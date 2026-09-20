@@ -1,5 +1,24 @@
-:80 {
+# Site address.
+#
+#   TXBOARD_SITE_ADDRESS unset -> plain HTTP on :80 (default). Use this behind an
+#                                 external TLS terminator (Cloudflare, an upstream
+#                                 load balancer, ...).
+#   TXBOARD_SITE_ADDRESS=panel.example.com
+#                              -> Caddy obtains and renews a Let's Encrypt
+#                                 certificate for that hostname, serves HTTPS on
+#                                 :443 and redirects :80 to it.
+#
+# Automatic HTTPS needs ports 80 and 443 published (see deploy/compose.yaml)
+# and DNS for the hostname already pointing at this machine.
+{$TXBOARD_SITE_ADDRESS::80} {
 	encode zstd gzip
+
+	# Optional raw TLS directives, expanded verbatim. Useful when automatic
+	# HTTPS cannot be used:
+	#   TXBOARD_TLS_DIRECTIVE="tls internal"           private CA / self-signed
+	#   TXBOARD_TLS_DIRECTIVE="tls admin@example.com"  pin the ACME account mail
+	# Expands to nothing when unset.
+	{$TXBOARD_TLS_DIRECTIVE}
 
 	# Everything below lives in the API container, which owns its own internal
 	# Caddy entrypoint (HTTP + WebSocket + Octane).

@@ -54,7 +54,28 @@ container recreates) and reports the panel URL instead of reinstalling.
 The database credentials live in `deploy/.env`; the `DB_*` keys in `api/.env`
 are overridden by the compose environment and do not need to be edited.
 
-The web gateway listens on port `8080`, serves the user frontend at `/`, serves the admin frontend at `/admin/`, and proxies `/api/*` to the Laravel service.
+The web gateway listens on ports `80` and `443` (`TXBOARD_HTTP_PORT` /
+`TXBOARD_HTTPS_PORT`), serves the user frontend at `/`, the admin frontend at
+`/admin/`, and proxies `/api/*` to the Laravel service.
+
+### Before exposing it to the internet
+
+Three things are deliberately left to you rather than defaulted, because the
+right answer depends on where the panel runs:
+
+1. **HTTPS.** Set `TXBOARD_SITE_ADDRESS=panel.example.com` in `deploy/.env` and
+   Caddy will obtain a Let's Encrypt certificate for it (ports 80/443 must reach
+   the machine and DNS must resolve first). Terminating TLS in front — Cloudflare,
+   an ALB — also works: leave it unset. Either way, set `APP_URL` to the public
+   HTTPS origin and `SESSION_SECURE_COOKIE=true` in `api/.env`. See
+   `deploy/README.md`.
+2. **Backups.** The `backup` service archives the database, the `APP_KEY` and the
+   uploads on a schedule. Set `TXBOARD_BACKUP_DIR` to a different disk; run
+   `docker compose -f deploy/compose.yaml run --rm backup` for one on demand.
+   Restore steps are in `deploy/README.md`.
+3. **CORS.** `CORS_ALLOWED_ORIGINS` is empty by default, which is correct when
+   this gateway serves both SPAs and the API from one origin. Add origins only if
+   a frontend genuinely lives elsewhere.
 
 ## Versioning
 
