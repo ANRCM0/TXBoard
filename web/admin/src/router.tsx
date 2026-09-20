@@ -1,4 +1,5 @@
 import { Navigate, createBrowserRouter, createHashRouter } from 'react-router-dom'
+import { resolveBasePath } from './lib/basePath'
 import { AdminLayout } from './components/layout/AdminLayout'
 import { AuthGuard } from './components/layout/AuthGuard'
 import { SignInPage } from './pages/SignInPage'
@@ -35,6 +36,8 @@ import { PlaceholderPage } from './pages/PlaceholderPage'
 
 const createAppRouter = import.meta.env.VITE_STATIC_PREVIEW === '1' ? createHashRouter : createBrowserRouter
 
+// `basename` keeps every nested route, redirect and absolute link inside the
+// mount point the bundle is served from (for example `/admin`).
 export const router = createAppRouter([
   { path: '/sign-in', element: <SignInPage /> },
   {
@@ -83,4 +86,4 @@ export const router = createAppRouter([
       },
     ],
   },
-])
+], { basename: resolveBasePath() })

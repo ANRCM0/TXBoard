@@ -40,6 +40,7 @@
     "Subscription plan does not exist": "Subscription plan does not exist",
     "The coupon code cannot be used for this subscription": "The coupon code cannot be used for this subscription",
     "The current required minimum withdrawal commission is :limit": "The current required minimum withdrawal commission is :limit",
+    "The current required minimum transfer commission is :limit": "The current required minimum transfer commission is :limit",
     "The maximum number of creations has been reached": "The maximum number of creations has been reached",
     "The old password is wrong": "The old password is wrong",
     "The ticket is closed and cannot be replied": "The ticket is closed and cannot be replied",

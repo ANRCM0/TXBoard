@@ -25,6 +25,8 @@ services:
       - ../api/storage/logs:/www/storage/logs
       - ../api/storage/theme:/www/storage/theme
       - ../api/plugins:/www/plugins
+      # Ship the in-repository integrations into the plugin scan path.
+      - ../integrations/AccessAudit:/www/plugins/AccessAudit
       - api-redis:/data
     environment:
       docker: "true"

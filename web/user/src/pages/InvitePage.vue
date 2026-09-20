@@ -27,10 +27,6 @@ const minimum=computed(()=>{
   const n=Number(config.value?.commission_withdraw_limit||0)
   return Number.isFinite(n)&&n>0?n:0
 })
-const feeRate=computed(()=>{
-  const n=Number(config.value?.withdraw_fee_rate||0)
-  return Number.isFinite(n)&&n>0?n:0
-})
 const baseRate=computed(()=>Number(stat.value[3]||0))
 const distributionEnabled=computed(()=>featureEnabled(config.value?.commission_distribution_enable,config.value!==null))
 const distributionTiers=computed(()=>[
@@ -38,12 +34,6 @@ const distributionTiers=computed(()=>[
   {label:t('invite.level2'),value:Math.floor((Number(config.value?.commission_distribution_l2)||0)*baseRate.value/100)},
   {label:t('invite.level3'),value:Math.floor((Number(config.value?.commission_distribution_l3)||0)*baseRate.value/100)},
 ])
-const transferPreview=computed(()=>{
-  const amount=Number(transferAmount.value)
-  if(!(amount>0))return null
-  const fee=amount*feeRate.value
-  return {fee,net:Math.max(0,amount-fee)}
-})
 const withdrawEnabled=computed(()=>
   config.value!==null &&
   featureEnabled(config.value.commission_enable,true) &&
@@ -156,7 +146,6 @@ function date(v?:number){return v?new Date(v*1000).toLocaleString(locale.value):
         <div class="form-stack">
           <label class="field-label">{{ t('invite.transferAmount') }}<input v-model="transferAmount" type="number" min="0.01" step="0.01" class="form-control" :placeholder="t('invite.max',{amount:available.toFixed(2)})"/></label>
           <p v-if="minimum" class="muted-copy">{{ t('invite.minimum',{amount:moneyMajor(minimum)}) }}</p>
-          <p v-if="transferPreview&&feeRate" class="muted-copy">{{ t('invite.feePreview',{rate:(feeRate*100).toFixed(2),fee:moneyMajor(transferPreview.fee),net:moneyMajor(transferPreview.net)}) }}</p>
           <button class="primary-btn full-btn" :disabled="acting||!Number(transferAmount)" @click="transfer">{{ t('invite.transferBalance') }}</button>
         </div>
       </section>
@@ -173,7 +162,6 @@ function date(v?:number){return v?new Date(v*1000).toLocaleString(locale.value):
       <div class="withdraw-notes">
         <span>{{ t('invite.withdrawable',{amount:moneyMajor(available)}) }}</span>
         <span v-if="minimum">{{ t('invite.withdrawMinimum',{amount:moneyMajor(minimum)}) }}</span>
-        <span v-if="feeRate">{{ t('invite.feeRate',{rate:(feeRate*100).toFixed(2)}) }}</span>
       </div>
       <button class="secondary-btn" :disabled="acting||!withdrawAccount.trim()||!withdrawMethod" @click="withdraw">{{ t('invite.submitWithdraw') }}</button>
     </section>

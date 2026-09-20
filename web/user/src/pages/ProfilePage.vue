@@ -68,7 +68,7 @@ function date(value:string|null){return value?new Date(value).toLocaleString(loc
       <header class="xboard-card-header">{{ t('profile.balance') }}</header>
       <div class="xboard-card-body">
         <div class="profile-wallet-value">
-          <strong>¥ {{ Number(auth.user?.balance||0).toFixed(2) }}</strong>
+          <strong>¥ {{ (Number(auth.user?.balance||0)/100).toFixed(2) }}</strong>
           <span>CNY</span>
         </div>
         <p>{{ t('dashboard.balanceHint') }}</p>
@@ -81,7 +81,7 @@ function date(value:string|null){return value?new Date(value).toLocaleString(loc
         <div class="account-row"><span>{{ t('profile.email') }}</span><strong>{{ auth.user?.email||'-' }}</strong></div>
         <div class="account-row"><span>UUID</span><strong class="mono">{{ auth.user?.uuid||'-' }}</strong></div>
         <div class="account-row"><span>{{ t('profile.planId') }}</span><strong>{{ auth.user?.plan_id??'-' }}</strong></div>
-        <div class="account-row"><span>{{ t('profile.commissionBalance') }}</span><strong>¥ {{ Number(auth.user?.commission_balance||0).toFixed(2) }}</strong></div>
+        <div class="account-row"><span>{{ t('profile.commissionBalance') }}</span><strong>¥ {{ (Number(auth.user?.commission_balance||0)/100).toFixed(2) }}</strong></div>
       </div>
     </section>
 

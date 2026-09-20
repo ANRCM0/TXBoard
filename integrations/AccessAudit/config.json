@@ -9,11 +9,13 @@
     {
       "title": "访问审计",
       "path": "/plugin/access-audit",
+      "url": "/plugin/access-audit",
       "icon": "🛡️"
     },
     {
       "title": "审计分析与设置",
       "path": "/plugin/access-audit/insights",
+      "url": "/plugin/access-audit/insights",
       "icon": "📊"
     }
   ],

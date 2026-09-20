@@ -417,3 +417,91 @@ Each runtime test should be recorded as:
 - ⚠️ adapter required
 - ❌ unavailable in tested backend
 - ➕ backend capability not yet exposed in TXBoard
+
+## 11. TXBoard sweep deltas
+
+Recorded fixes applied while aligning the TXBoard frontends, API and node runtime
+against the current Xboard core. Each entry states the drift and its resolution.
+
+### 11.1 Admin secure path
+
+- Drift: the Admin SPA compiled a hard-coded `/api/v2/<hash>` prefix, which breaks on
+  any instance whose `secure_path` has been rotated.
+- Resolution: the prefix is resolved at runtime from `VITE_API_V2_ADMIN_PREFIX`, then
+  `window.settings.secure_path`, then the value cached from a previous sign-in.
+  `POST /api/v2/passport/auth/login` now returns `secure_path` so a fresh browser can
+  bootstrap. A rotated path that starts answering 404 drops the cache and returns the
+  operator to sign-in.
+
+### 11.2 Admin login CAPTCHA
+
+- Drift: the backend verified CAPTCHA on user login only; admin login accepted a
+  password with no challenge even when `captcha_enable` was on.
+- Resolution: `V1\Passport\AuthController::login` now runs `CaptchaService::verify`
+  first and fails with the service error. `GET /api/v2/guest/comm/config` exposes the
+  public CAPTCHA settings to the Admin SPA, which renders reCAPTCHA v2, v3 or Turnstile
+  and forwards `recaptcha_data` / `recaptcha_v3_token` / `turnstile_token`.
+
+### 11.3 Comm config field coverage
+
+- `GET /api/v1/guest/comm/config` additionally returns `app_name`, `stop_register`,
+  `login_with_mail_link_enable`, `try_out_enable` and `try_out_plan_id`.
+- `GET /api/v1/user/comm/config` additionally returns `commission_withdraw_limit`,
+  `ticket_must_wait_reply`, `plan_change_enable`, `try_out_enable` and `try_out_plan_id`.
+- Deliberately **not** exposed: `traffic_warn_rate`, `invite_enable`, `commission_enable`,
+  `gift_card_enable`, `coupon_enable`, `ticket_enable`, `knowledge_enable`,
+  `traffic_log_enable`, `announcement_enable`, `register_enable` and `withdraw_fee_rate`.
+  The current core persists no such settings, so inventing them would fabricate product
+  state. The User SPA keeps its documented policy that a missing flag means the built-in
+  core route stays available.
+
+### 11.4 Commission transfer and withdrawal
+
+- Units: `commission_withdraw_limit` is a major-unit amount. `stat[4]` and
+  `commission_balance` are cents. Both the User SPA and `TicketController::withdraw`
+  compare major against major, which is consistent and was left unchanged.
+- Drift: the User SPA enforced a minimum transfer amount (`invite.minimum`) that
+  `POST /user/transfer` did not, so a direct API call could move any amount above one
+  cent. `UserController::transfer` now enforces the same minimum.
+- Drift: the User SPA rendered a transfer/withdrawal fee preview sourced from
+  `withdraw_fee_rate`, which no core setting provides and no code path charges. The fee
+  UI and the `withdraw_fee_rate` field were removed; `POST /user/transfer` moves the
+  full amount, which is what the UI now states.
+
+### 11.5 Localized minimum-amount message
+
+- Drift: the zh-CN and zh-TW strings for
+  `The current required minimum withdrawal commission is :limit` used `:limitCNY`, a
+  placeholder the controller never supplies, so users saw a literal `:limitCNY`.
+- Resolution: both locales now use `:limit`, and a matching transfer message was added
+  to zh-CN, zh-TW, ru-RU and en-US.
+
+### 11.6 Node handshake settings
+
+- Drift: `GET|POST /api/v2/server/handshake` returned no intervals, so a node fell back
+  to its local defaults instead of the panel `server_push_interval` /
+  `server_pull_interval` settings.
+- Resolution: the response now carries `settings.push_interval` and
+  `settings.pull_interval`, which is exactly what `node/internal/controlplane` decodes.
+
+### 11.7 Ingress route surface
+
+`web/Caddyfile` previously proxied `/api/*` only, which left the WebSocket endpoint,
+plugin pages, subscription output and uploaded assets unreachable behind the gateway.
+It now also proxies `/ws`, `/plugin/*`, `/storage/*` and `/{SUBSCRIBE_PATH}/{token}`
+(env `SUBSCRIBE_PATH`, default `s`) to the API container, and keeps the Admin SPA on
+`/admin/` and the hash-routed User SPA on `/`.
+
+### 11.8 AccessAudit plugin deployment
+
+- Drift: the plugin lived in `integrations/AccessAudit`, outside the `plugins` scan
+  path, so `PluginManager` never loaded it.
+- Resolution: `deploy/compose.yaml` mounts it at `/www/plugins/AccessAudit`. Both
+  `admin_menus` entries in `config.json` now declare a `url`, which is what
+  `PluginMenuPanel` needs in order to embed the plugin pages.
+
+### 11.9 Remaining residuals
+
+- The Admin SPA still routes `user/*` to a placeholder page.
+- `npm run verify:web` plus static route/contract comparison are the only automated
+  gates exercised here; no live backend instance was available for runtime tests.
