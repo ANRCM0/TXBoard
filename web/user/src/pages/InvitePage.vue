@@ -23,10 +23,20 @@ const acting=ref(false)
 const {config,load:loadConfig}=useUserCommConfig()
 
 const available=computed(()=>Number(stat.value[4]||0)/100)
-const minimum=computed(()=>{
-  const n=Number(config.value?.commission_withdraw_limit||0)
+function positiveAmount(v:unknown){
+  const n=Number(v||0)
   return Number.isFinite(n)&&n>0?n:0
+}
+// Transfer and withdrawal have independent minimums. Older backends omit
+// commission_transfer_limit entirely and an unset field can arrive as an empty
+// string, so both cases inherit the withdrawal minimum. A value that is
+// present and numeric (including 0, meaning no minimum) is authoritative.
+const transferMinimum=computed(()=>{
+  const raw=config.value?.commission_transfer_limit
+  if(raw===undefined||raw===null||raw==='')return positiveAmount(config.value?.commission_withdraw_limit)
+  return positiveAmount(raw)
 })
+const withdrawMinimum=computed(()=>positiveAmount(config.value?.commission_withdraw_limit))
 const baseRate=computed(()=>Number(stat.value[3]||0))
 const distributionEnabled=computed(()=>featureEnabled(config.value?.commission_distribution_enable,config.value!==null))
 const distributionTiers=computed(()=>[
@@ -70,7 +80,7 @@ async function transfer(){
   success.value=''
   if(!(amount>0)){error.value=t('invite.invalidAmount');return}
   if(amount>available.value){error.value=t('invite.insufficient');return}
-  if(minimum.value>0&&amount<minimum.value){error.value=t('invite.minimum',{amount:moneyMajor(minimum.value)});return}
+  if(transferMinimum.value>0&&amount<transferMinimum.value){error.value=t('invite.minimum',{amount:moneyMajor(transferMinimum.value)});return}
   acting.value=true
   try{
     await transferCommission(Math.round(amount*100))
@@ -86,7 +96,7 @@ async function withdraw(){
   if(!withdrawEnabled.value){error.value=t('invite.withdrawClosed');return}
   if(!withdrawMethod.value){error.value=t('invite.selectMethod');return}
   if(!withdrawAccount.value.trim()){error.value=t('invite.enterAccount');return}
-  if(minimum.value>0&&available.value<minimum.value){error.value=t('invite.withdrawMinimum',{amount:moneyMajor(minimum.value)});return}
+  if(withdrawMinimum.value>0&&available.value<withdrawMinimum.value){error.value=t('invite.withdrawMinimum',{amount:moneyMajor(withdrawMinimum.value)});return}
   acting.value=true
   try{
     await withdrawCommission({withdraw_method:withdrawMethod.value,withdraw_account:withdrawAccount.value.trim()})
@@ -145,7 +155,7 @@ function date(v?:number){return v?new Date(v*1000).toLocaleString(locale.value):
         <div class="section-head"><div><span class="eyebrow">TRANSFER</span><h2>{{ t('invite.transfer') }}</h2></div></div>
         <div class="form-stack">
           <label class="field-label">{{ t('invite.transferAmount') }}<input v-model="transferAmount" type="number" min="0.01" step="0.01" class="form-control" :placeholder="t('invite.max',{amount:available.toFixed(2)})"/></label>
-          <p v-if="minimum" class="muted-copy">{{ t('invite.minimum',{amount:moneyMajor(minimum)}) }}</p>
+          <p v-if="transferMinimum" class="muted-copy">{{ t('invite.minimum',{amount:moneyMajor(transferMinimum)}) }}</p>
           <button class="primary-btn full-btn" :disabled="acting||!Number(transferAmount)" @click="transfer">{{ t('invite.transferBalance') }}</button>
         </div>
       </section>
@@ -161,7 +171,7 @@ function date(v?:number){return v?new Date(v*1000).toLocaleString(locale.value):
       </div>
       <div class="withdraw-notes">
         <span>{{ t('invite.withdrawable',{amount:moneyMajor(available)}) }}</span>
-        <span v-if="minimum">{{ t('invite.withdrawMinimum',{amount:moneyMajor(minimum)}) }}</span>
+        <span v-if="withdrawMinimum">{{ t('invite.withdrawMinimum',{amount:moneyMajor(withdrawMinimum)}) }}</span>
       </div>
       <button class="secondary-btn" :disabled="acting||!withdrawAccount.trim()||!withdrawMethod" @click="withdraw">{{ t('invite.submitWithdraw') }}</button>
     </section>

@@ -48,6 +48,7 @@ export type UserCommConfig = {
   commission_distribution_l2?: number | string
   commission_distribution_l3?: number | string
   commission_withdraw_limit?: number | string
+  commission_transfer_limit?: number | string
   try_out_plan_id?: number
   try_out_enable?: number
   traffic_warn_rate?: number
@@ -64,13 +65,8 @@ export type UserCommConfig = {
   announcement_enable?: number
 }
 
-export type CaptchaPayload = {
-  recaptcha_data?: string
-  recaptcha_v3_token?: string
-  turnstile_token?: string
-  skip_recaptcha_v3?: boolean
-  skip_recaptcha_v3_error?: boolean
-}
+// Single source of truth shared with the admin SPA's captcha component.
+export type { CaptchaPayload } from '@txboard/shared'
 
 export async function fetchGuestConfig() {
   return request<GuestConfig>(api.get('/guest/comm/config'))

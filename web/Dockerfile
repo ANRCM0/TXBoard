@@ -2,10 +2,12 @@ FROM node:22-alpine AS build
 WORKDIR /workspace
 
 COPY package.json package-lock.json ./
+COPY web/shared/package.json web/shared/package.json
 COPY web/admin/package.json web/admin/package.json
 COPY web/user/package.json web/user/package.json
 RUN npm ci --no-audit --no-fund
 
+COPY web/shared web/shared
 COPY web/admin web/admin
 COPY web/user web/user
 RUN VITE_BASE_PATH=/admin/ npm run build --workspace @txboard/admin && \

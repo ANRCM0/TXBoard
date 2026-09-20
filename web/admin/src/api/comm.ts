@@ -10,11 +10,8 @@ export type GuestConfig = {
   turnstile_site_key?: string
 }
 
-export type CaptchaPayload = {
-  recaptcha_data?: string
-  recaptcha_v3_token?: string
-  turnstile_token?: string
-}
+// Single source of truth shared with the user SPA's captcha component.
+export type { CaptchaPayload } from '@txboard/shared'
 
 export async function fetchGuestConfig() {
   const { data } = await publicApiClient.get('/guest/comm/config')

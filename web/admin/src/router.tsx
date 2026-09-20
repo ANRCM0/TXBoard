@@ -32,7 +32,7 @@ import { PluginRoutePage } from './pages/plugins/PluginRoutePage'
 import { UsersPage } from './pages/users/UsersPage'
 import { TicketsPage } from './pages/users/TicketsPage'
 import { TrafficResetPage } from './pages/users/TrafficResetPage'
-import { PlaceholderPage } from './pages/PlaceholderPage'
+import { NotFoundPage } from './pages/NotFoundPage'
 
 const createAppRouter = import.meta.env.VITE_STATIC_PREVIEW === '1' ? createHashRouter : createBrowserRouter
 
@@ -80,8 +80,11 @@ export const router = createAppRouter([
           { path: 'user/ticket', element: <TicketsPage /> },
           { path: 'user/traffic-reset', element: <TrafficResetPage /> },
           { path: 'traffic-reset', element: <Navigate to="/user/traffic-reset" replace /> },
-          { path: 'user/*', element: <PlaceholderPage title="用户扩展" description="流量重置、邀请关系等高级用户工具继续补充中。" /> },
           { path: 'ticket', element: <Navigate to="/user/ticket" replace /> },
+          // Lowest-priority catch-all: any unmatched admin URL renders an
+          // explicit 404 inside the layout instead of the router's default
+          // error screen (or the old placeholder skeleton).
+          { path: '*', element: <NotFoundPage /> },
         ],
       },
     ],

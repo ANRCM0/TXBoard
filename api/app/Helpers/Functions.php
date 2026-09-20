@@ -50,6 +50,59 @@ if (!function_exists('admin_settings_batch')) {
     }
 }
 
+if (!function_exists('admin_feature_switches')) {
+    /**
+     * Feature switches that gate built-in user routes.
+     *
+     * A missing value means "enabled" so that an install which never touched
+     * these settings keeps every entry available. Persisted values are exposed
+     * to the user SPA through the guest/user comm config endpoints.
+     *
+     * @return array<string, int>
+     */
+    function admin_feature_switches(): array
+    {
+        $switches = [];
+        foreach ([
+            'invite_enable',
+            'commission_enable',
+            'gift_card_enable',
+            'coupon_enable',
+            'ticket_enable',
+            'knowledge_enable',
+            'traffic_log_enable',
+            'announcement_enable',
+            'register_enable',
+        ] as $key) {
+            $switches[$key] = (int) admin_setting($key, 1);
+        }
+
+        return $switches;
+    }
+}
+
+if (!function_exists('admin_transfer_minimum')) {
+    /**
+     * Effective minimum for a commission transfer, in major currency units.
+     *
+     * The admin field is optional: clearing it means "inherit the withdrawal
+     * minimum". A stored empty string is not null, so it would bypass the
+     * admin_setting() default and silently disable the check, which is why the
+     * value is normalised here instead of at each call site. A value that is
+     * present and numeric (including "0", meaning no minimum) is authoritative.
+     */
+    function admin_transfer_minimum(): float
+    {
+        $transferLimit = admin_setting('commission_transfer_limit');
+
+        if ($transferLimit === null || $transferLimit === '' || !is_numeric($transferLimit)) {
+            $transferLimit = admin_setting('commission_withdraw_limit', 100);
+        }
+
+        return (float) $transferLimit;
+    }
+}
+
 if (!function_exists('source_base_url')) {
     /**
      * 获取来源基础URL，优先Referer，其次Host

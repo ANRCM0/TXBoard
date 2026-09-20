@@ -1,4 +1,5 @@
-import { defineConfig, loadEnv } from 'vite'
+import { loadEnv } from 'vite'
+import { defineConfig } from 'vitest/config'
 import vue from '@vitejs/plugin-vue'
 import path from 'node:path'
 
@@ -9,6 +10,11 @@ export default defineConfig(({ mode }) => {
     plugins: [vue()],
     resolve: {
       alias: { '@': path.resolve(__dirname, 'src') },
+    },
+    test: {
+      environment: 'jsdom',
+      setupFiles: ['./src/test/setup.ts'],
+      include: ['src/**/*.test.ts'],
     },
     server: {
       port: Number(env.VITE_USER_PORT || 5173),

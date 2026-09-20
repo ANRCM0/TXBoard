@@ -16,7 +16,7 @@ class Setting
 
     public function __construct()
     {
-        $this->cache = Cache::store('redis');
+        $this->cache = Cache::store(config('cache.setting_store', 'redis'));
     }
 
     /**
@@ -131,10 +131,18 @@ class Setting
 
     /**
      * 清空缓存
+     *
+     * The database write has already succeeded at this point, so a cache
+     * outage (for example tests without a reachable Redis) must not turn a
+     * successful save into a failure.
      */
     private function flush(): void
     {
-        $this->cache->forget(self::CACHE_KEY);
+        try {
+            $this->cache->forget(self::CACHE_KEY);
+        } catch (\Throwable) {
+            // Cache unavailable; the next load() will fall back to defaults.
+        }
         $this->loadedSettings = null;
     }
 }

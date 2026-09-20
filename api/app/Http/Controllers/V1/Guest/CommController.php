@@ -33,9 +33,12 @@ class CommController extends Controller
             'login_with_mail_link_enable' => (int) admin_setting('login_with_mail_link_enable', 0),
             'try_out_enable' => (int) admin_setting('try_out_enable', 0),
             'try_out_plan_id' => (int) admin_setting('try_out_plan_id', 0),
+            'traffic_warn_rate' => admin_setting('traffic_warn_rate', 0),
             // 保持向后兼容
             'is_recaptcha' => (int) admin_setting('captcha_enable', 0) ? 1 : 0,
         ];
+
+        $data = array_merge($data, admin_feature_switches());
 
         $data = HookManager::filter('guest_comm_config', $data);
 

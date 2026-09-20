@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite",
     "typecheck": "vue-tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "build": "npm run typecheck && vite build",
     "preview": "vite preview"
   },
@@ -16,12 +18,15 @@
     "vue-router": "^4.5.1",
     "qrcode": "^1.5.4",
     "@stripe/stripe-js": "^7.9.0",
+    "@txboard/shared": "*",
     "dompurify": "^3.2.6"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^6.0.7",
     "typescript": "^5.9.3",
     "vite": "^7.1.0",
+    "vitest": "^3.2.4",
+    "jsdom": "^26.1.0",
     "vue-tsc": "^3.3.5",
     "@types/qrcode": "^1.5.6"
   }

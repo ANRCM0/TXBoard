@@ -198,7 +198,9 @@ class UserController extends Controller
                 if (!$user) {
                     throw new \Exception(__('The user does not exist'));
                 }
-                $limit = (float) admin_setting('commission_withdraw_limit', 100);
+                // Transfer has its own minimum; a blank setting inherits the
+                // withdrawal limit so existing installs keep their behaviour.
+                $limit = admin_transfer_minimum();
                 if ($limit > 0 && $amount < (int) round($limit * 100)) {
                     throw new \Exception(__('The current required minimum transfer commission is :limit', ['limit' => $limit]));
                 }

@@ -21,8 +21,32 @@ const schema = z.object({
   force_https: z.coerce.boolean().optional(),
   stop_register: z.coerce.boolean().optional(),
   ticket_must_wait_reply: z.coerce.boolean().optional(),
+  invite_enable: z.coerce.boolean().optional(),
+  commission_enable: z.coerce.boolean().optional(),
+  gift_card_enable: z.coerce.boolean().optional(),
+  coupon_enable: z.coerce.boolean().optional(),
+  ticket_enable: z.coerce.boolean().optional(),
+  knowledge_enable: z.coerce.boolean().optional(),
+  traffic_log_enable: z.coerce.boolean().optional(),
+  announcement_enable: z.coerce.boolean().optional(),
+  register_enable: z.coerce.boolean().optional(),
+  traffic_warn_rate: z.coerce.number().optional(),
 })
 type Values = z.infer<typeof schema>
+
+// Built-in user routes an operator can hide. Missing/never-set flags default to
+// enabled on the backend, so an untouched install keeps every entry.
+const featureSwitches = [
+  ['invite_enable', '邀请'],
+  ['commission_enable', '佣金 / 提现'],
+  ['gift_card_enable', '礼品卡'],
+  ['coupon_enable', '优惠券'],
+  ['ticket_enable', '工单'],
+  ['knowledge_enable', '知识库'],
+  ['traffic_log_enable', '流量日志'],
+  ['announcement_enable', '公告'],
+  ['register_enable', '注册'],
+] as const satisfies ReadonlyArray<readonly [keyof Values, string]>
 
 export function SystemSettingsPage() {
   const query = useQuery({ queryKey: ['settings', 'site'], queryFn: () => fetchSettings('site') })
@@ -45,7 +69,7 @@ export function SystemSettingsPage() {
     return () => sub.unsubscribe()
   }, [form, mutation])
 
-  function toggle(key: 'force_https' | 'stop_register' | 'ticket_must_wait_reply') {
+  function toggle(key: keyof Values) {
     form.setValue(key, !Boolean(form.getValues(key)), { shouldDirty: true })
   }
 
@@ -86,6 +110,23 @@ export function SystemSettingsPage() {
               <SwitchField label="强制 HTTPS" checked={Boolean(form.watch('force_https'))} onToggle={() => toggle('force_https')} />
               <SwitchField label="停止注册" checked={Boolean(form.watch('stop_register'))} onToggle={() => toggle('stop_register')} />
               <SwitchField label="工单必须等待回复" checked={Boolean(form.watch('ticket_must_wait_reply'))} onToggle={() => toggle('ticket_must_wait_reply')} />
+            </div>
+            <div className="config-form-fields">
+              <Field label="流量预警比例（%）"><input type="number" min="0" max="100" {...form.register('traffic_warn_rate')} /></Field>
+            </div>
+          </section>
+
+          <section className="config-form-section">
+            <h3>功能入口</h3>
+            <div className="config-switch-list">
+              {featureSwitches.map(([key, label]) => (
+                <SwitchField
+                  key={key}
+                  label={label}
+                  checked={Boolean(form.watch(key))}
+                  onToggle={() => toggle(key)}
+                />
+              ))}
             </div>
           </section>
 
