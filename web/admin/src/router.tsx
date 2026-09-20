@@ -34,10 +34,19 @@ import { TicketsPage } from './pages/users/TicketsPage'
 import { TrafficResetPage } from './pages/users/TrafficResetPage'
 import { NotFoundPage } from './pages/NotFoundPage'
 
-const createAppRouter = import.meta.env.VITE_STATIC_PREVIEW === '1' ? createHashRouter : createBrowserRouter
+// The GitHub Pages preview uses hash routing because a static host cannot
+// rewrite deep links back to index.html.
+const staticPreview = import.meta.env.VITE_STATIC_PREVIEW === '1'
+const createAppRouter = staticPreview ? createHashRouter : createBrowserRouter
 
 // `basename` keeps every nested route, redirect and absolute link inside the
 // mount point the bundle is served from (for example `/admin`).
+//
+// It must only be applied to the browser router: a hash router strips basename
+// from the URL *fragment* path, not from `window.location.pathname`. The
+// preview mounts the bundle under `/TXBoard/admin/` via VITE_BASE_PATH (which
+// only rewrites asset URLs) and routes through `#/`, so passing the mount
+// prefix here made every route miss and rendered a blank page.
 export const router = createAppRouter([
   { path: '/sign-in', element: <SignInPage /> },
   {
@@ -89,4 +98,4 @@ export const router = createAppRouter([
       },
     ],
   },
-], { basename: resolveBasePath() })
+], staticPreview ? undefined : { basename: resolveBasePath() })
