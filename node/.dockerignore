@@ -1,0 +1,7 @@
+.git
+.github
+**/*_test.go
+tx-node*
+xboard-node*
+xbctl*
+release

@@ -1,0 +1,27 @@
+# Dependencies
+**/node_modules/
+**/vendor/
+
+# Local environment and secrets
+**/.env
+**/.env.*
+!**/.env.example
+
+# Build and coverage output
+**/dist/
+**/build/
+**/coverage/
+**/.cache/
+**/*.log
+
+# Go and local binaries
+**/*.exe
+**/tx-node
+**/xboard-node
+**/xbctl
+
+# IDE and OS files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

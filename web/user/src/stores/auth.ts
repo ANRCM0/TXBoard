@@ -1,0 +1,74 @@
+import { defineStore } from 'pinia'
+import { computed, ref } from 'vue'
+import { getAuthData, clearAuthData } from '../api/client'
+import { login as loginApi, logout as logoutApi, register as registerApi, type LoginForm, type RegisterForm } from '../api/auth'
+import { checkLogin, fetchUserInfo, type UserInfo } from '../api/user'
+
+export const useAuthStore = defineStore('auth', () => {
+  const user = ref<UserInfo | null>(null)
+  const loading = ref(false)
+  const authenticated = ref(Boolean(getAuthData()))
+  const hasToken = computed(() => Boolean(getAuthData()))
+
+  async function login(form: LoginForm) {
+    loading.value = true
+    try {
+      await loginApi(form)
+      authenticated.value = true
+      await loadUser()
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function register(form: RegisterForm) {
+    loading.value = true
+    try {
+      await registerApi(form)
+      authenticated.value = true
+      await loadUser()
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function loadUser() {
+    try {
+      user.value = await fetchUserInfo()
+      authenticated.value = true
+      return user.value
+    } catch (error) {
+      clearAuthData()
+      user.value = null
+      authenticated.value = false
+      throw error
+    }
+  }
+
+  async function checkSession() {
+    if (!getAuthData()) {
+      authenticated.value = false
+      return false
+    }
+    try {
+      const result = await checkLogin()
+      authenticated.value = Boolean(result.is_login)
+      if (result.is_login) await loadUser()
+      else clearAuthData()
+      return authenticated.value
+    } catch {
+      clearAuthData()
+      authenticated.value = false
+      user.value = null
+      return false
+    }
+  }
+
+  async function logout() {
+    await logoutApi()
+    user.value = null
+    authenticated.value = false
+  }
+
+  return { user, loading, authenticated, hasToken, login, register, loadUser, checkSession, logout }
+})

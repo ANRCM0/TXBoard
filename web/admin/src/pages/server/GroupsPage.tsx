@@ -1,0 +1,8 @@
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Plus, Trash2 } from 'lucide-react'
+import { useState } from 'react'
+import { deleteGroup, getGroups, saveGroup, type GroupItem } from '../../api/server'
+import { DataTable, type Column } from '../../components/ui/DataTable'
+import { Modal } from '../../components/ui/Modal'
+import { PageHeader } from '../../components/ui/PageHeader'
+export function GroupsPage(){const qc=useQueryClient();const [open,setOpen]=useState(false);const[name,setName]=useState('');const q=useQuery({queryKey:['groups'],queryFn:getGroups});const save=useMutation({mutationFn:()=>saveGroup({name}),onSuccess:()=>{setOpen(false);setName('');qc.invalidateQueries({queryKey:['groups']})}});const del=useMutation({mutationFn:deleteGroup,onSuccess:()=>qc.invalidateQueries({queryKey:['groups']})});const rows=Array.isArray(q.data)?q.data:[];const columns:Column<GroupItem>[]=[{key:'id',header:'ID',render:r=>r.id},{key:'name',header:'名称',render:r=>r.name||'-'},{key:'a',header:'操作',render:r=><button className="icon-button danger" onClick={()=>del.mutate(r.id)}><Trash2 size={16}/></button>}];return <><PageHeader title="分组管理" action={<button className="button primary" onClick={()=>setOpen(true)}><Plus size={16}/>添加</button>}/><div className="card"><DataTable rows={rows} columns={columns}/></div><Modal open={open} title="添加分组" onClose={()=>setOpen(false)}><div className="form-stack"><label className="field"><span>名称</span><input value={name} onChange={e=>setName(e.target.value)}/></label><button className="button primary" onClick={()=>save.mutate()}>保存</button></div></Modal></>}

@@ -1,0 +1,48 @@
+# Xboard Node Configuration
+# Top-level settings are inherited by all instances. Instance overrides take precedence.
+
+# ── Single node (simplest) ──
+# panel:
+#   url: "https://panel.example.com"
+#   token: "your-api-key"
+#   node_id: 1
+
+# ── Multiple instances ──
+# kernel:
+#   type: "singbox"
+# log:
+#   level: "info"
+# instances:
+#   - panel:
+#       url: "https://panel.example.com"
+#       token: "api-key-1"
+#       node_id: 1
+#   - panel:
+#       url: "https://panel.example.com"
+#     machine:
+#       machine_id: 2
+#       token: "machine-token-2"
+#     log:
+#       level: "debug"   # override for this instance only
+
+# ── tx-node 扩展：sing-box 内核访问审计（可选，默认关闭） ──
+# 需要面板安装 AccessAudit 插件（v2.1+）。上报复用上面的 panel.url/token/node_id
+# 认证（与原版节点上报同一套 ServerV2 中间件），无需额外密钥。
+# 不加这段 = 与原版 xboard-node 行为完全一致。
+#
+# ⚠️ 容易踩的坑：report_all=false 时只上报「命中规则」的连接，
+#    面板上一条启用规则都没有 = 一个连接都不会上报（配置看着却是正常的）。
+#    → 只要命中记录：report_all: false + 面板至少配一条启用规则
+#    → 要全量访问日志：report_all: true
+#    处于无规则状态时节点启动会打 WARN，规则拉取到空集也会再告警一次。
+# audit:
+#   enabled: true
+#   report_all: false     # true = 全量访问日志上报（面板可查看所有连接，量级大）
+#   batch_max: 50        # 每次上报最多多少条事件（report_all 默认 200）
+#   flush_interval: 15   # 上报间隔（秒）
+#   rules_refresh: 5     # 规则拉取间隔（分钟）
+#   queue_cap: 5000      # 面板不可达时的本地队列上限（report_all 默认 50000）
+#                        # 溢出会丢弃并记录 dropped 计数 + 限流 WARN（非静默）
+#
+# 发送速率上界 = batch_max × 10 / flush_interval 条/秒（10 = 单 tick 最大批次数）
+# 开启 report_all 前请用该公式核对面板容量，详见 README「负载与容量边界」
