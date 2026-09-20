@@ -32,20 +32,11 @@ export async function forgetPassword(form: ForgetForm) {
   return request<boolean>(api.post('/passport/auth/forget', form))
 }
 
-function verifyCaptchaPayload(captcha?: CaptchaPayload) {
-  if (!captcha) return {}
-  if (captcha.skip_recaptcha_v3 || captcha.skip_recaptcha_v3_error) {
-    return { skip_recaptcha_v3: 1 }
-  }
-  const { skip_recaptcha_v3: _a, skip_recaptcha_v3_error: _b, ...rest } = captcha
-  return rest
-}
-
 export async function sendEmailVerify(email: string, purpose: 'register' | 'forget', captcha?: CaptchaPayload) {
   return request<null>(api.post('/passport/comm/sendEmailVerify', {
     email,
     purpose,
-    ...verifyCaptchaPayload(captcha),
+    ...(captcha ?? {}),
   }))
 }
 

@@ -32,7 +32,14 @@ class MailTemplateController extends Controller
 
     public function get(Request $request)
     {
-        $name = $request->input('name');
+        // getMeta()/getDefaultSubject() take a non-nullable string, so an
+        // absent `name` used to raise a TypeError and answer 500. Validate it
+        // like the sibling routes do and return 422 instead.
+        $params = $request->validate([
+            'name' => 'required|string',
+        ]);
+
+        $name = $params['name'];
         $meta = MailTemplate::getMeta($name);
         if (!$meta) {
             return $this->fail([404, '模板不存在']);

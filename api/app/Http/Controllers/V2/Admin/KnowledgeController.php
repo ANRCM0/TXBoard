@@ -15,15 +15,29 @@ class KnowledgeController extends Controller
     public function fetch(Request $request)
     {
         if ($request->input('id')) {
-            $knowledge = Knowledge::find($request->input('id'))->toArray();
+            $knowledge = Knowledge::find($request->input('id'));
             if (!$knowledge)
                 return $this->fail([400202, '知识不存在']);
-            return $this->success($knowledge);
+            return $this->success($knowledge->toArray());
         }
-        $data = Knowledge::select(['title', 'id', 'updated_at', 'category', 'show'])
+
+        $current = max(1, (int) $request->input('current', 1));
+        $pageSize = max(1, (int) $request->input('pageSize', 20));
+
+        // Same as the notice list: honour the filters the settings page sends
+        // instead of returning every article on every page.
+        $builder = Knowledge::select(['title', 'id', 'updated_at', 'category', 'show'])
             ->orderBy('sort', 'ASC')
-            ->get();
-        return $this->success($data);
+            ->when(
+                $request->input('title'),
+                fn ($query, $title) => $query->where('title', 'like', '%' . $title . '%')
+            )
+            ->when(
+                $request->input('category'),
+                fn ($query, $category) => $query->where('category', $category)
+            );
+
+        return $this->paginate($builder->paginate($pageSize, ['*'], 'page', $current));
     }
 
     public function getCategory(Request $request)

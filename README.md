@@ -27,11 +27,32 @@ Each component can still be developed independently. The root scripts exist to k
 
 ## Deployment
 
-Copy `api/.env.example` to `api/.env`, configure it, then run:
+Two files have to exist before the first start:
 
 ```bash
-docker compose -f deploy/compose.yaml up -d --build
+cp api/.env.example api/.env        # panel settings + APP_KEY (left blank on purpose)
+cp deploy/.env.example deploy/.env  # database credentials, Redis and gateway path
+$EDITOR deploy/.env                 # set TXBOARD_DB_PASSWORD / TXBOARD_DB_ROOT_PASSWORD
 ```
+
+Then build and start the stack, and run the installer once:
+
+```bash
+docker compose -f deploy/compose.yaml up -d --build --wait
+docker compose -f deploy/compose.yaml exec -it api php artisan xboard:install
+```
+
+`--wait` blocks until MySQL and the container's embedded Redis report healthy;
+installing before Redis is up makes the installer's cache step fail.
+
+`xboard:install` reads the database and Redis settings from the container
+environment, migrates the schema, creates the first administrator and prints the
+generated password plus the panel URL. Re-running it later is safe: it detects
+`INSTALLED=true` in `api/.env` (which is bind-mounted, so the state survives
+container recreates) and reports the panel URL instead of reinstalling.
+
+The database credentials live in `deploy/.env`; the `DB_*` keys in `api/.env`
+are overridden by the compose environment and do not need to be edited.
 
 The web gateway listens on port `8080`, serves the user frontend at `/`, serves the admin frontend at `/admin/`, and proxies `/api/*` to the Laravel service.
 

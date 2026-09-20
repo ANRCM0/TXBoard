@@ -16,12 +16,10 @@ const controller=createCaptchaController({
 })
 
 async function getPayload():Promise<CaptchaPayload>{
-  // The user flows label their reCAPTCHA v3 action "submit", and treat an
-  // unavailable token as an explicit skip so the API can decide what to do.
-  return controller.getPayload({
-    action:'submit',
-    onV3Unavailable:reason=>reason==='error'?{skip_recaptcha_v3_error:true}:{skip_recaptcha_v3:true},
-  })
+  // The user flows label their reCAPTCHA v3 action "submit". An unavailable
+  // token raises CaptchaUnavailableError, which the page shows as an error
+  // instead of posting a request the API would reject.
+  return controller.getPayload({ action:'submit' })
 }
 
 function reset(){

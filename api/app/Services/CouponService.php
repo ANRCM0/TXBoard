@@ -95,10 +95,12 @@ class CouponService
         if ($this->coupon->limit_use <= 0 && $this->coupon->limit_use !== NULL) {
             throw new ApiException(__('This coupon is no longer available'));
         }
-        if (time() < $this->coupon->started_at) {
+        // An empty bound means "no limit on that side" (the admin list renders
+        // it as 不限), so it must not be compared against the clock.
+        if ($this->coupon->started_at && time() < $this->coupon->started_at) {
             throw new ApiException(__('This coupon has not yet started'));
         }
-        if (time() > $this->coupon->ended_at) {
+        if ($this->coupon->ended_at && time() > $this->coupon->ended_at) {
             throw new ApiException(__('This coupon has expired'));
         }
         if ($this->coupon->limit_plan_ids && $this->planId) {

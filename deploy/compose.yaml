@@ -5,10 +5,24 @@ services:
     environment:
       MYSQL_DATABASE: ${TXBOARD_DB_DATABASE:-txboard}
       MYSQL_USER: ${TXBOARD_DB_USERNAME:-txboard}
-      MYSQL_PASSWORD: ${TXBOARD_DB_PASSWORD:-txboard}
-      MYSQL_ROOT_PASSWORD: ${TXBOARD_DB_ROOT_PASSWORD:-change-me}
+      MYSQL_PASSWORD: ${TXBOARD_DB_PASSWORD:?set TXBOARD_DB_PASSWORD in deploy/.env}
+      MYSQL_ROOT_PASSWORD: ${TXBOARD_DB_ROOT_PASSWORD:?set TXBOARD_DB_ROOT_PASSWORD in deploy/.env}
     volumes:
       - database-data:/var/lib/mysql
+    healthcheck:
+      # `xboard:install` migrates on first boot, so the API must not start
+      # against a MySQL that is still initialising its data directory.
+      test:
+        - CMD
+        - mysqladmin
+        - ping
+        - --host=127.0.0.1
+        - --user=root
+        - --password=${TXBOARD_DB_ROOT_PASSWORD:?}
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
 
   api:
     build:
@@ -18,15 +32,28 @@ services:
         APP_COMMIT: ${APP_COMMIT:-local}
     restart: unless-stopped
     depends_on:
-      - database
-    env_file:
-      - ../api/.env
+      database:
+        condition: service_healthy
+    # No `env_file` on purpose. env_file freezes its values into the container
+    # environment at create time, so the blank APP_KEY in api/.env.example
+    # shadowed the real key afterwards for every `docker compose exec` process
+    # (immutable Dotenv will not override a present variable) while PID 1 kept
+    # the entrypoint's key. The result was three different keys in play and
+    # undecryptable data. The bind-mounted /www/.env below is the single source
+    # of truth; only the service-discovery values that genuinely differ inside
+    # the network are injected via `environment:`.
     volumes:
-      - ../api/storage/logs:/www/storage/logs
-      - ../api/storage/theme:/www/storage/theme
+      # Persist everything the app writes: storage/app (uploads, backups),
+      # storage/framework (sessions, views) and storage/logs. Mounting the
+      # parent keeps a single bind mount in step with the documented layout.
+      - ../api/storage:/www/storage
       - ../api/plugins:/www/plugins
       # Ship the in-repository integrations into the plugin scan path.
       - ../integrations/AccessAudit:/www/plugins/AccessAudit
+      # Same file the entrypoint reads and `xboard:install` rewrites. Without
+      # this mount the generated APP_KEY and INSTALLED=true are lost on every
+      # container recreate, so the panel reverts to "not installed".
+      - ../api/.env:/www/.env
       - api-redis:/data
     environment:
       docker: "true"
@@ -35,11 +62,28 @@ services:
       DB_PORT: 3306
       DB_DATABASE: ${TXBOARD_DB_DATABASE:-txboard}
       DB_USERNAME: ${TXBOARD_DB_USERNAME:-txboard}
-      DB_PASSWORD: ${TXBOARD_DB_PASSWORD:-txboard}
+      DB_PASSWORD: ${TXBOARD_DB_PASSWORD:?set TXBOARD_DB_PASSWORD in deploy/.env}
+      # The image runs its own Redis bound to a unix socket only (see
+      # .docker/supervisor/supervisord.conf: --port 0 --unixsocket
+      # /data/redis.sock). Without these the app dials 127.0.0.1:6379, every
+      # cache/queue/settings call fails and the panel silently serves defaults.
+      # Point TXBOARD_REDIS_HOST/PORT at an external server to opt out.
+      REDIS_HOST: ${TXBOARD_REDIS_HOST:-/data/redis.sock}
+      REDIS_PORT: ${TXBOARD_REDIS_PORT:-0}
+      REDIS_PASSWORD: ${TXBOARD_REDIS_PASSWORD:-null}
       ENABLE_CADDY: "true"
       ENABLE_HORIZON: "true"
       ENABLE_REDIS: "true"
       ENABLE_WS_SERVER: "true"
+    healthcheck:
+      # Readiness gate for `docker compose up -d --wait`. The image bundles its
+      # own Redis, which needs a few seconds to bind its socket; running
+      # `xboard:install` before that makes the installer's cache step fail.
+      test: ["CMD-SHELL", "redis-cli -s /data/redis.sock ping | grep -q PONG"]
+      interval: 5s
+      timeout: 5s
+      retries: 24
+      start_period: 10s
 
   web:
     build:
@@ -54,7 +98,9 @@ services:
       # deploy/sync-gateway.sh instead of editing it by hand.
       SUBSCRIBE_PATH: ${TXBOARD_SUBSCRIBE_PATH:-s}
     ports:
-      - "8080:80"
+      # Host port is configurable so the stack can coexist with whatever else
+      # already owns 8080 on the host.
+      - "${TXBOARD_HTTP_PORT:-8080}:80"
 
 volumes:
   database-data:

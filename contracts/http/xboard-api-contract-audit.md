@@ -525,15 +525,19 @@ still boots.
 ### 11.10 Automated gates
 
 - `api/phpunit.xml` plus a `composer test` script wire the previously orphaned
-  `api/tests` suite; `php artisan test` (the CI command) runs 30 tests. The SQLite
+  `api/tests` suite; `php artisan test` (the CI command) runs 40 tests. The SQLite
   `:memory:` DSN is honoured directly, and the settings cache store is configurable
   (`cache.setting_store`, pinned to `array` in tests) so the suite does not need a live
-  Redis or MySQL.
+  Redis or MySQL. `AdminContractRegressionTest` and `UserKnowledgeCategoryTest`
+  pin the runtime contract fixes from 11.13 and fail against the pre-fix code.
 - Both frontends now run Vitest (`npm run test` per workspace, folded into
-  `npm run verify:web`): 25 tests across `@txboard/admin`, `@txboard/user` and
+  `npm run verify:web`): 27 tests across `@txboard/admin`, `@txboard/user` and
   `@txboard/shared`. The adapter suites cover request path/method/body shaping, envelope
   unwrapping, bearer-token injection and legacy response preservation; the shared suite
   covers captcha provider selection and controller behaviour against stubbed SDKs.
+- `web/admin/src/router.test.ts` imports the whole route tree, which costs ~4s against
+  the default 5s Vitest timeout and made the gate flaky on a loaded machine; it now
+  carries an explicit 30s budget and passes repeatedly.
 
 ### 11.11 Shared frontend module
 
@@ -554,5 +558,65 @@ still boots.
   charge path (see 11.3/11.4). Reviewed and deliberately deferred.
 - The Admin SPA's unmatched routes render an explicit in-app 404; the old `user/*`
   placeholder ("用户扩展" skeleton) was removed as dead code.
-- Automated gates now cover PHPUnit, Vitest, typecheck and production builds. No live
-  backend instance was available for runtime/end-to-end tests.
+- Automated gates now cover PHPUnit, Vitest, typecheck and production builds.
+- A live backend was subsequently booted (Octane + SQLite/MySQL + Redis) and the
+  frontends' request set was replayed against it; 11.13 records the contract
+  defects that surfaced and their fixes.
+- `GET {secure}/system/getQueueMasters` answers `403` for every account, because
+  `HorizonServiceProvider::gate()` is still the Laravel skeleton placeholder
+  (`in_array($user->email, [])`). Deciding who may inspect Horizon is an operator
+  security decision, so the gate is left untouched and flagged here rather than
+  silently broadened.
+- `StatisticalService` opens Redis through the raw `Redis` facade rather than a
+  cache store, so the ranking/report paths need a live Redis and cannot run under
+  the suite's `array` cache driver — which is why the ranking regression test mocks
+  the service. This works in the compose deployment, where Redis is bundled.
+
+### 11.13 Runtime sweep against a live backend
+
+The full parameterless `GET` surface (80 routes) plus 15 parameterised calls was
+replayed against a running containerised instance, and the results compared with
+what the two SPAs actually consume. Before the fixes, 43 answered `200` and one
+answered `500`; eight of the `200`s carried a shape the frontend could not use.
+A later sweep widened the net to the whole route table and found two more `500`s.
+Each row below is now pinned by a regression test in
+`api/tests/Feature/Admin/AdminContractRegressionTest.php` and
+`api/tests/Feature/User/UserKnowledgeCategoryTest.php`, which fail against the
+pre-fix code.
+
+After the fixes the sweep reports **no response in the `5xx` class**. The
+remaining non-2xx replies are `400`/`422` validation answers and one `403` from
+Horizon's authorization gate, all of them returned to deliberately
+parameterless or unauthenticated calls.
+
+| # | Symptom before the fix | Fix |
+| --- | --- | --- |
+| 1 | `user/getUserInfoById` returned `balance`/`commission_balance` in cents while `user/fetch` returned major units (`1234` vs `12.34` for the same user), so the admin edit form multiplied every balance by 100 on save. | `transformUserData()` applies the same `/100` conversion as the list. |
+| 2 | `GET /api/v1/user/knowledge/getCategory` returned `500 Method ...::getCategory does not exist`, so the user SPA knowledge page never loaded. | Method implemented (language filter, dedupe, `show=1` gate). |
+| 3 | `system/getAuditLog` returned only `{total,data}`, so the audit table had no page count. | Returns the standard paginator shape. |
+| 4 | `traffic-reset/logs` nested everything under a `pagination` key. | `total/current_page/per_page/last_page` at the top level. |
+| 5 | `gift-card/templates` and `gift-card/codes` discarded the enrichment mapper, so `type_name`/`codes_count`/`used_count`/`template_name`/`status_name`/`user_email` were missing from every row. | `setCollection($data)` before paginating. |
+| 6 | Coupon create required both dates (`422 开始时间不能为空`) while the admin form has an explicit "不限" state that omits them. | Both columns nullable (new migration), `nullable` validation, and the coupon service treats an empty bound as unbounded. |
+| 7 | `notice/fetch` and `knowledge/fetch` ignored `current`/`pageSize`/`title`/`category` and returned the whole table, so admin search and paging were no-ops. | Server-side pagination and filters; `knowledge/fetch?id=` also no longer fatals on a missing row. |
+| 8 | The user SPA emitted `skip_recaptcha_v3` / `skip_recaptcha_v3_error`, which nothing in PHP ever read (0 grep hits) — a dead client-side captcha opt-out. | Removed. An unavailable reCAPTCHA v3 token now throws `CaptchaUnavailableError`, which both SPAs already surface as an inline error, so the flow fails closed instead of posting a request the API rejects. |
+| 9 | `GET {secure}/mail/template/get` answered `500`: `MailTemplate::getMeta()` is typed `string $name`, and the controller passed `$request->input('name')`, which is `null` when the query parameter is absent — a `TypeError`. | The parameter is validated (`required|string`), so the call answers `422` like its sibling routes. |
+| 10 | `GET {secure}/stat/getRanking` answered `500` for two independent reasons: `AdminRoute.php` routed it to a controller method that did not exist (`BadMethodCallException`), and `StatisticalService::getRanking()` queries on `$startAt`/`$endAt`, which only `setStartAt()`/`setEndAt()` populate — null bounds make the query builder throw `Illegal operator and value combination`. | The method exists, validates `type`/`limit`/window, defaults to the last 30 days and answers inside the standard envelope. |
+
+### 11.14 Deployment blockers found while building the images
+
+| # | Symptom before the fix | Fix |
+| --- | --- | --- |
+| 1 | `xboard:install` read `INSTALLED` with `getenv()`, which returns the string `"false"` for `INSTALLED=false`; `(bool) "false"` is `true`, so a fresh container reported itself as already installed and never migrated. | The flag is parsed as a boolean, preferring the `.env` file over a possibly stale process environment. |
+| 2 | Under Docker the installer could not run unattended: it prompted for the database type even though compose already injects the connection. | When `DB_CONNECTION` comes from the container environment the prompts are skipped. |
+| 3 | The generated `APP_KEY` was written to `.env` but `config:cache` then froze the placeholder value, because an exported `APP_KEY` wins over the file. | The new key is exported to the running process as well before caching. |
+| 4 | `api/.env` and `api/storage/logs`/`theme` were the only mounts, so `INSTALLED=true`, the `APP_KEY`, uploads, sessions and views were lost on every container recreate and the panel reverted to "not installed". | `api/.env` and `api/storage` are bind-mounted. |
+| 5 | The image ships Redis on a unix socket (`/data/redis.sock`, `--port 0`) but compose injected nothing, so the app dialled `127.0.0.1:6379`, every cache/queue/setting call failed and the panel silently served defaults. | `REDIS_HOST`/`REDIS_PORT` default to the socket, overridable via `TXBOARD_REDIS_*`. |
+| 6 | `api/.env.example` shipped a real `APP_KEY`, letting anyone forge tokens on an instance that never regenerated it. | The key is blank; the installer (Docker) or `php artisan key:generate` fills it. |
+| 7 | `deploy/.env.example` documented only `TXBOARD_SUBSCRIBE_PATH`, so the database credentials came from undocumented `:?` defaults and `sync-gateway.sh` truncated `deploy/.env` on every run. | Credentials are required and documented; `sync-gateway.sh` rewrites only its own key. |
+| 8 | The API started against a MySQL that was still initialising, and no service had a healthcheck. | `database` has a healthcheck and `api` waits for `service_healthy`. |
+| 9 | Mail config used `MAIL_DRIVER` (Laravel 7 era) and a literal `null` `MAIL_FROM_ADDRESS`, so no mail could be sent. | `MAIL_MAILER` and a real `MAIL_FROM_ADDRESS`/`MAIL_FROM_NAME`. |
+| 10 | The installer pointed operators at `/{secure_path}` as the panel URL, but the gateway's catch-all serves the *user* SPA there (`/{secure_path}` only 302s to `/admin/`), and it printed a re-derived default rather than the configured `secure_path`. | The message now points at `/admin/` and prints the effective admin API prefix. |
+| 11 | Following the documented order (`up -d`, then immediately `xboard:install`) left the panel permanently `502`: with `APP_KEY` blank Octane died with `MissingAppKeyException`, supervisord exhausted its retry budget and entered `FATAL`, and `docker compose restart api` did **not** recover it. | The entrypoint generates and persists an `APP_KEY` on first boot, before any service starts, and `startretries` is raised so a transient cold-start failure cannot permanently kill a service. |
+| 12 | `env_file: ../api/.env` froze the blank `APP_KEY` into the container environment at create time; an immutable Dotenv never overrides a present variable, so every `docker compose exec` process (the installer, `route:list`, `tinker`) read an empty key while PID 1 used the entrypoint's. The installer consequently minted a **third** key, and the CLI and the running server disagreed on the admin prefix. | `env_file` is removed: the bind-mounted `/www/.env` is the single source of truth, and the installer reuses the key already in the file instead of regenerating it. |
+| 13 | `xboard:install` aborted before migrating whenever the container's embedded Redis was not yet accepting connections (the `cache:clear` step threw), leaving an empty schema and a `500` panel. | `api` has a readiness healthcheck so `docker compose up -d --wait` gates the install, and a failed cache clear is downgraded to a warning rather than a fatal. |
+

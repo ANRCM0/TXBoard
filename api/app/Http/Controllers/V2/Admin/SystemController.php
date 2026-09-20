@@ -117,7 +117,15 @@ class SystemController extends Controller
         $total = $builder->count();
         $res = $builder->forPage($current, $pageSize)->get();
 
-        return response(['data' => $res, 'total' => $total]);
+        // Standard paginator shape: the audit log page drives its "next page"
+        // control from last_page, which the old {data,total} payload omitted.
+        return response([
+            'total' => $total,
+            'current_page' => $current,
+            'per_page' => $pageSize,
+            'last_page' => max(1, (int) ceil($total / $pageSize)),
+            'data' => $res,
+        ]);
     }
 
     public function getHorizonFailedJobs(Request $request, JobRepository $jobRepository)

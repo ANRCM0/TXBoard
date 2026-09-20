@@ -23,13 +23,18 @@ afterEach(() => {
 })
 
 describe('admin router basename', () => {
+  // Importing ./router pulls in the whole route tree (antd plus every page), which
+  // costs several seconds on a cold module registry. The default 5s timeout made
+  // this file fail whenever the machine was busy, so it gets its own budget.
+  const IMPORT_TIMEOUT_MS = 30_000
+
   it('ignores the Pages mount prefix for the hash router', async () => {
     const router = await routerFor(true, '/TXBoard/admin/')
     expect(router.basename).toBe('/')
-  })
+  }, IMPORT_TIMEOUT_MS)
 
   it('keeps the mount prefix for the browser router', async () => {
     const router = await routerFor(false, '/admin/')
     expect(router.basename).toBe('/admin')
-  })
+  }, IMPORT_TIMEOUT_MS)
 })

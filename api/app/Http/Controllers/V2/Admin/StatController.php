@@ -427,6 +427,36 @@ class StatController extends Controller
      * @param Request $request
      * @return array
      */
+    /**
+     * Ranking boards backed by StatisticalService::getRanking().
+     *
+     * AdminRoute.php has always routed /stat/getRanking here, but the method
+     * did not exist, so the endpoint answered 500 (BadMethodCallException) on
+     * every call.
+     */
+    public function getRanking(Request $request)
+    {
+        $params = $request->validate([
+            'type' => 'required|in:server_traffic_rank,user_consumption_rank,invite_rank',
+            'limit' => 'nullable|integer|min:1|max:100',
+            'start_time' => 'nullable|integer|min:1000000000|max:9999999999',
+            'end_time' => 'nullable|integer|min:1000000000|max:9999999999',
+        ]);
+
+        // The ranking builders query on $startAt/$endAt, which only
+        // setStartAt()/setEndAt() populate. Leaving them null made the query
+        // builder throw "Illegal operator and value combination", so the
+        // endpoint could never have answered 200. Default to the last 30 days.
+        $endAt = (int) ($params['end_time'] ?? time());
+        $startAt = (int) ($params['start_time'] ?? strtotime('-30 days', $endAt));
+        $this->service->setStartAt($startAt);
+        $this->service->setEndAt($endAt);
+
+        return $this->success(
+            $this->service->getRanking($params['type'], (int) ($params['limit'] ?? 20))
+        );
+    }
+
     public function getTrafficRank(Request $request)
     {
         $request->validate([
