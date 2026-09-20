@@ -208,6 +208,22 @@ echo "[entrypoint] Starting services (caddy=${ENABLE_CADDY} web=${ENABLE_WEB} ho
 # Drop stale Octane/WorkerMan state files so the new master does not signal
 # PIDs left over from a previous container run (causes Swoole kill EPERM).
 rm -f /www/storage/logs/octane-server-state.json /www/storage/logs/xboard-ws-server.pid 2>/dev/null || true
-chown -R www:www /www 2>/dev/null || true
+
+# Only the paths the application writes to need to be owned by www. This used to
+# be `chown -R www:www /www`, which re-walked the entire tree -- including the
+# whole vendor directory -- on every single container start. On the bind-mounted
+# storage tree that cost seconds per boot and achieved nothing, because the
+# read-only code and vendor files already ship with the right ownership.
+# The mkdir also guarantees the writable tree exists when storage/ is bind
+# mounted from a host checkout that has never run the application.
+mkdir -p /www/storage/app/public \
+         /www/storage/framework/cache/data \
+         /www/storage/framework/sessions \
+         /www/storage/framework/views \
+         /www/storage/logs \
+         /www/bootstrap/cache 2>/dev/null || true
+chown -R www:www /www/storage /www/bootstrap/cache 2>/dev/null || true
+chown -R www:www /www/plugins 2>/dev/null || true
+[ -f /www/.env ] && chown www:www /www/.env 2>/dev/null || true
 chown redis:redis /data 2>/dev/null || true
 exec "$@"

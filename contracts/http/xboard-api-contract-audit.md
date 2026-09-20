@@ -648,3 +648,45 @@ data, the certificate survives a gateway recreate, and the full parameterless
 
 `CorsPolicyTest` pins the origin policy; it fails against the previous `['*']`
 default.
+
+### 11.16 Docker optimisation and a latent build defect
+
+The images worked, but they built slowly, were larger than they needed to be, and
+— as tightening `.dockerignore` revealed — could only be built on a machine that
+had already run the application once. That last point was a genuine deployment
+defect, not a tidiness issue.
+
+| # | Problem | What was done |
+| --- | --- | --- |
+| 1 | `COPY . /www` came **before** `composer install`, so editing any application file invalidated the dependency layer and re-resolved the whole vendor tree. | Manifests are copied first and `composer install` runs against them; the source is copied afterwards. Editing a controller now rebuilds in **5 s** instead of re-downloading every package. |
+| 2 | `ARG APP_COMMIT` sat before `composer install`, so cutting a new commit also invalidated it. | Moved to the last layer. |
+| 3 | `COPY .docker /` scattered `supervisor/`, `caddy/` and `php/` into the image root, then three later `COPY`s duplicated the files to their real destinations. | The three config files copy straight to their destinations; `COPY .docker /` is gone. |
+| 4 | `patch`, `shadow` and `mysql-dev` were installed but only ever needed at build time; `chmod -R 775 /www` left the entire vendor tree group-writable. | Removed. (`git` stays: `UpdateService` shells out to it, so dropping it would break self-update.) Ownership is now limited to `storage` and `bootstrap/cache`. |
+| 5 | Base images used floating tags (`mysql:8.4`, `caddy:2-alpine`, `node:22-alpine`, `php8.2-alpine`), so an unrelated rebuild could change the database engine version under a running panel. | Pinned to `mysql:8.4.11`, `caddy:2.11.4-alpine`, `node:22.23.2-alpine`, `6.2.2-php8.2-alpine`, with a comment explaining that these are deliberate bumps. |
+| 6 | `.dockerignore` did not exclude `bootstrap/cache/*.php`, `database/*.sqlite`, uploads, logs or `tests/`. A developer's cached config would be baked into the image and silently override the container's environment; the PHPUnit suite shipped despite `--no-dev`. | All excluded. |
+| 7 | **The image could only be built from a checkout that had already run the app.** The build depended on the gitignored, host-generated `bootstrap/cache/packages.php` being copied in; without it, `package:discover` failed with `Class "Laravel\Reverb\ApplicationManagerServiceProvider" not found`. A clean clone would fail to build. | Root cause fixed — see below. |
+| 8 | `chown -R www:www /www` ran on every container start, re-walking the vendor tree for no benefit. | Narrowed to the writable paths, which the entrypoint now also `mkdir`s so a fresh bind-mounted `storage/` is usable. Measured 421 ms → 370 ms. |
+| 9 | No log rotation, and a 10 s stop grace period that cut Octane's drain and Horizon's job shutdown short on every redeploy. | `json-file` capped at 10 MB × 3 for all four services, and `stop_grace_period: 30s` on `api`. |
+| 10 | Built images were tagged with compose's throwaway `<project>-api` name. | Stable `txboard-api:local` / `txboard-web:local`, overridable via `TXBOARD_API_IMAGE` / `TXBOARD_WEB_IMAGE` to pull a published image instead. |
+
+**The root cause of #7.** `laravel/reverb` was present in `composer.lock` but
+required by neither `composer.json` nor any other locked package — an orphan left
+behind by a removed `composer require`. `composer install` dutifully installed it,
+its service provider landed in the package manifest, and instantiating that
+provider failed because Composer 2.10 does not map an unrequired package into the
+`--no-dev` autoloader. The application does not use Reverb at all: the only
+references anywhere were in the generated `bootstrap/cache` files, and it ships
+its own WebSocket server (`app/WebSocket/NodeWorker.php`).
+
+Removing the entry needed care. `composer update --minimal-changes` removed the
+orphan but also upgraded 27 unrelated packages including `laravel/framework`
+v12.54.1 → v12.69.2, which is far outside this change. Instead the 13 orphaned
+packages were removed from `composer.lock` directly and the `content-hash`
+refreshed with `composer update --lock`, giving **zero version changes**. Reverb
+and its ReactPHP/`pusher` dependency stack are no longer installed.
+
+Verified after the change: the API image drops from **391 MB to 350 MB**, a
+source-edit rebuild takes 5 s, the corrected lock installs cleanly with Composer
+2.10.2 (dev and production), the suite is green at **44 tests / 147 assertions**,
+a fresh stack installs and serves both SPAs and the API with a full sweep of
+**zero `5xx`**, and a backup archive still restores a deleted user.

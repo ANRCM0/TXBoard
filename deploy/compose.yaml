@@ -1,7 +1,20 @@
+# Services publish through Docker's json-file log driver, which grows without
+# bound unless it is capped. Left at the default, a busy panel eventually fills
+# the host disk and then cannot write logs, sessions or backups either.
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   database:
-    image: mysql:8.4
+    # Pinned to an exact patch release. `mysql:8.4` is a moving tag: an
+    # unrelated `docker compose pull` could otherwise upgrade the database under
+    # a running panel, and MySQL does not support downgrading a data directory.
+    image: mysql:8.4.11
     restart: unless-stopped
+    logging: *default-logging
     environment:
       MYSQL_DATABASE: ${TXBOARD_DB_DATABASE:-txboard}
       MYSQL_USER: ${TXBOARD_DB_USERNAME:-txboard}
@@ -25,12 +38,21 @@ services:
       start_period: 40s
 
   api:
+    # A stable name instead of compose's <project>-api, so the built image is
+    # reusable and `docker image prune` cannot collect it out from under the
+    # stack. Point TXBOARD_API_IMAGE at a published image to pull instead.
+    image: ${TXBOARD_API_IMAGE:-txboard-api:local}
     build:
       context: ../api
       dockerfile: Dockerfile
       args:
         APP_COMMIT: ${APP_COMMIT:-local}
     restart: unless-stopped
+    logging: *default-logging
+    # Octane needs a moment to drain in-flight requests and for Horizon to stop
+    # picking up jobs. The 10s default cuts that short and can abort a job
+    # mid-execution on every redeploy.
+    stop_grace_period: 30s
     depends_on:
       database:
         condition: service_healthy
@@ -86,10 +108,12 @@ services:
       start_period: 10s
 
   web:
+    image: ${TXBOARD_WEB_IMAGE:-txboard-web:local}
     build:
       context: ..
       dockerfile: web/Dockerfile
     restart: unless-stopped
+    logging: *default-logging
     depends_on:
       - api
     environment:
@@ -120,8 +144,9 @@ services:
   # the application's internal export; this protects the database, the APP_KEY
   # and the uploads together, which is what a restore actually needs.
   backup:
-    image: mysql:8.4
+    image: mysql:8.4.11
     restart: unless-stopped
+    logging: *default-logging
     depends_on:
       database:
         condition: service_healthy
