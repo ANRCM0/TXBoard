@@ -1,21 +1,46 @@
 :80 {
-  encode zstd gzip
+	encode zstd gzip
 
-  handle /api/* {
-    reverse_proxy api:7001
-  }
+	# Everything below lives in the API container, which owns its own internal
+	# Caddy entrypoint (HTTP + WebSocket + Octane).
+	handle /api/* {
+		reverse_proxy api:7001
+	}
 
-  redir /admin /admin/
+	handle /ws {
+		reverse_proxy api:7001
+	}
 
-  handle_path /admin/* {
-    root * /srv/admin
-    try_files {path} /index.html
-    file_server
-  }
+	# Plugin pages and plugin APIs are rendered by the API container.
+	handle /plugin/* {
+		reverse_proxy api:7001
+	}
 
-  handle {
-    root * /srv/user
-    try_files {path} /index.html
-    file_server
-  }
+	# Laravel public disk (uploaded logo, theme packages, ...).
+	handle /storage/* {
+		reverse_proxy api:7001
+	}
+
+	# Subscription output: /{subscribe_path}/{token}. Keep SUBSCRIBE_PATH in
+	# sync with the panel setting "subscribe_path" (default: s).
+	@subscribe path /{$SUBSCRIBE_PATH:s}/*
+	handle @subscribe {
+		reverse_proxy api:7001
+	}
+
+	# Admin single page application, built with VITE_BASE_PATH=/admin/.
+	redir /admin /admin/
+
+	handle_path /admin/* {
+		root * /srv/admin
+		try_files {path} /index.html
+		file_server
+	}
+
+	# The user application is hash routed, so it owns the catch-all.
+	handle {
+		root * /srv/user
+		try_files {path} /index.html
+		file_server
+	}
 }

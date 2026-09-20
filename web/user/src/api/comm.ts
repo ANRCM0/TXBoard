@@ -47,7 +47,6 @@ export type UserCommConfig = {
   commission_distribution_l1?: number | string
   commission_distribution_l2?: number | string
   commission_distribution_l3?: number | string
-  withdraw_fee_rate?: number
   commission_withdraw_limit?: number | string
   try_out_plan_id?: number
   try_out_enable?: number

@@ -28,6 +28,11 @@ class CommController extends Controller
             'app_description' => admin_setting('app_description'),
             'app_url' => admin_setting('app_url'),
             'logo' => admin_setting('logo'),
+            'app_name' => admin_setting('app_name', 'XBoard'),
+            'stop_register' => (int) admin_setting('stop_register', 0),
+            'login_with_mail_link_enable' => (int) admin_setting('login_with_mail_link_enable', 0),
+            'try_out_enable' => (int) admin_setting('try_out_enable', 0),
+            'try_out_plan_id' => (int) admin_setting('try_out_plan_id', 0),
             // 保持向后兼容
             'is_recaptcha' => (int) admin_setting('captcha_enable', 0) ? 1 : 0,
         ];

@@ -23,7 +23,12 @@ class CommController extends Controller
             'commission_distribution_enable' => (int)admin_setting('commission_distribution_enable', 0),
             'commission_distribution_l1' => admin_setting('commission_distribution_l1'),
             'commission_distribution_l2' => admin_setting('commission_distribution_l2'),
-            'commission_distribution_l3' => admin_setting('commission_distribution_l3')
+            'commission_distribution_l3' => admin_setting('commission_distribution_l3'),
+            'commission_withdraw_limit' => admin_setting('commission_withdraw_limit', 100),
+            'ticket_must_wait_reply' => (int) admin_setting('ticket_must_wait_reply', 0),
+            'plan_change_enable' => (int) admin_setting('plan_change_enable', 1),
+            'try_out_enable' => (int) admin_setting('try_out_enable', 0),
+            'try_out_plan_id' => (int) admin_setting('try_out_plan_id', 0)
         ];
         return $this->success($data);
     }

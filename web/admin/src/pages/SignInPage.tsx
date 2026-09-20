@@ -1,10 +1,14 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
+import { useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { z } from 'zod'
 import { login } from '../api/auth'
+import { fetchGuestConfig } from '../api/comm'
+import { CaptchaWidget, type CaptchaWidgetHandle } from '../components/CaptchaWidget'
+import { setAdminSecurePath } from '../api/client'
 import { setAccessToken } from '../lib/storage'
 
 const schema = z.object({
@@ -21,9 +25,24 @@ export function SignInPage() {
     resolver: zodResolver(schema),
     defaultValues: { email: '', password: '' },
   })
+  const captchaRef = useRef<CaptchaWidgetHandle | null>(null)
+  const captchaConfig = useQuery({
+    queryKey: ['admin', 'guest-config'],
+    queryFn: fetchGuestConfig,
+    staleTime: 300_000,
+    retry: false,
+  })
+  const captchaEnabled = Number(captchaConfig.data?.is_captcha || 0) === 1
 
   const mutation = useMutation({
-    mutationFn: (value: FormValues) => login(value.email, value.password),
+    mutationFn: async (value: FormValues) => {
+      const captcha = await captchaRef.current?.getPayload()
+      try {
+        return await login(value.email, value.password, captcha)
+      } finally {
+        captchaRef.current?.reset()
+      }
+    },
     onSuccess: data => {
       if (!Boolean(data.is_admin)) {
         toast.error('该账号不是管理员，无法进入管理后台')
@@ -37,6 +56,7 @@ export function SignInPage() {
       }
 
       setAccessToken(authorization)
+      setAdminSecurePath(String(data.secure_path || ''))
       toast.success('登录成功')
       navigate(params.get('redirect') || '/config/system', { replace: true })
     },
@@ -83,6 +103,9 @@ export function SignInPage() {
               {form.formState.errors.password ? <small>{form.formState.errors.password.message}</small> : null}
             </label>
 
+            {captchaEnabled ? (
+              <CaptchaWidget ref={captchaRef} config={captchaConfig.data ?? null} />
+            ) : null}
             <button type="submit" className="admin-auth-submit" disabled={mutation.isPending}>
               {mutation.isPending ? '登录中…' : '登录'}
             </button>

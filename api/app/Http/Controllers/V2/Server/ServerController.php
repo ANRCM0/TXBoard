@@ -35,7 +35,11 @@ class ServerController extends Controller
         }
 
         return response()->json([
-            'websocket' => $websocket
+            'websocket' => $websocket,
+            'settings' => [
+                'push_interval' => (int) admin_setting('server_push_interval', 60),
+                'pull_interval' => (int) admin_setting('server_pull_interval', 60),
+            ]
         ]);
     }
 
