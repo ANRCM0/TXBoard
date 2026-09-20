@@ -96,6 +96,10 @@ class ConfigController extends Controller
                 'commission_first_time_enable' => (bool) admin_setting('commission_first_time_enable', 1),
                 'commission_auto_check_enable' => (bool) admin_setting('commission_auto_check_enable', 1),
                 'commission_withdraw_limit' => admin_setting('commission_withdraw_limit', 100),
+                // Returned raw (empty when unset) so the admin field can show
+                // "blank = inherit the withdrawal minimum" and round-trip it;
+                // admin_transfer_minimum() resolves the effective value.
+                'commission_transfer_limit' => admin_setting('commission_transfer_limit'),
                 'commission_withdraw_method' => admin_setting('commission_withdraw_method', Dict::WITHDRAW_METHOD_WHITELIST_DEFAULT),
                 'withdraw_close_enable' => (bool) admin_setting('withdraw_close_enable', 0),
                 'commission_distribution_enable' => (bool) admin_setting('commission_distribution_enable', 0),
@@ -117,6 +121,10 @@ class ConfigController extends Controller
                 'currency' => admin_setting('currency', 'CNY'),
                 'currency_symbol' => admin_setting('currency_symbol', '¥'),
                 'ticket_must_wait_reply' => (bool) admin_setting('ticket_must_wait_reply', 0),
+                // Feature switches for built-in user routes. Default enabled so
+                // an unset flag never hides an entry.
+                ...array_map('boolval', admin_feature_switches()),
+                'traffic_warn_rate' => admin_setting('traffic_warn_rate', 0),
             ],
             'subscribe' => [
                 'plan_change_enable' => (bool) admin_setting('plan_change_enable', 1),

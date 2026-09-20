@@ -48,6 +48,11 @@ services:
     restart: unless-stopped
     depends_on:
       - api
+    environment:
+      # Must match the panel setting "subscribe_path", otherwise every
+      # subscription link silently 404s. Render it from the panel with
+      # deploy/sync-gateway.sh instead of editing it by hand.
+      SUBSCRIBE_PATH: ${TXBOARD_SUBSCRIBE_PATH:-s}
     ports:
       - "8080:80"
 

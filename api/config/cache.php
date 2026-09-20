@@ -22,6 +22,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Setting Cache Store
+    |--------------------------------------------------------------------------
+    |
+    | The admin settings repository keeps its cache in a dedicated store so it
+    | can be shared across Octane workers. Tests pin this to the "array" store
+    | so the suite does not need a reachable Redis server.
+    |
+    */
+
+    'setting_store' => env('SETTING_CACHE_STORE', 'redis'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Cache Stores
     |--------------------------------------------------------------------------
     |

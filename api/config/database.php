@@ -38,7 +38,11 @@ return [
         'sqlite' => [
             'driver' => 'sqlite',
             'url' => env('DATABASE_URL'),
-            'database' => env('DB_DATABASE') ? base_path(env('DB_DATABASE')) : database_path('database.sqlite'),
+            // Keep the SQLite in-memory DSN intact; only relative file paths are
+            // resolved against the application base path.
+            'database' => env('DB_DATABASE')
+                ? (env('DB_DATABASE') === ':memory:' ? ':memory:' : base_path(env('DB_DATABASE')))
+                : database_path('database.sqlite'),
             'prefix' => '',
             'foreign_key_constraints' => env('DB_FOREIGN_KEYS', true),
             'busy_timeout' => env('DB_BUSY_TIMEOUT', 30000),

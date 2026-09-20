@@ -9,6 +9,7 @@ const fields: SettingField[] = [
   { key: 'commission_first_time_enable', label: '仅首次购买返佣', type: 'switch', section: '佣金' },
   { key: 'commission_auto_check_enable', label: '自动确认佣金', type: 'switch', section: '佣金' },
   { key: 'commission_withdraw_limit', label: '最低提现金额', type: 'number', min: 0, section: '佣金' },
+  { key: 'commission_transfer_limit', label: '最低转账金额（留空则沿用最低提现金额）', type: 'number', min: 0, section: '佣金' },
   { key: 'commission_withdraw_method', label: '提现方式白名单', type: 'string-array', section: '佣金', placeholder: 'alipay\nwechat\nusdt' },
   { key: 'withdraw_close_enable', label: '关闭提现', type: 'switch', section: '佣金' },
 

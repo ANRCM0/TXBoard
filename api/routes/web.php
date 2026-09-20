@@ -73,18 +73,12 @@ Route::get('/', function (Request $request) {
     }
 });
 
-//TODO:: 兼容
+// Legacy admin entry point. TXBoard ships the admin SPA at /admin/, and the old
+// Blade shell below used to load /assets/admin/* which is no longer built, so
+// hitting /{secure_path} rendered a broken page. Keep the historical URL alive
+// by redirecting to the real SPA instead of rendering the dead shell.
 Route::get('/' . admin_setting('secure_path', admin_setting('frontend_admin_path', hash('crc32b', config('app.key')))), function () {
-    return view('admin', [
-        'title' => admin_setting('app_name', 'XBoard'),
-        'theme_sidebar' => admin_setting('frontend_theme_sidebar', 'light'),
-        'theme_header' => admin_setting('frontend_theme_header', 'dark'),
-        'theme_color' => admin_setting('frontend_theme_color', 'default'),
-        'background_url' => admin_setting('frontend_background_url'),
-        'version' => app(UpdateService::class)->getCurrentVersion(),
-        'logo' => admin_setting('logo'),
-        'secure_path' => admin_setting('secure_path', admin_setting('frontend_admin_path', hash('crc32b', config('app.key'))))
-    ]);
+    return redirect('/admin/', 302);
 });
 
 Route::get('/' . (admin_setting('subscribe_path', 's')) . '/{token}', [\App\Http\Controllers\V1\Client\ClientController::class, 'subscribe'])

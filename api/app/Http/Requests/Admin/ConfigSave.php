@@ -21,6 +21,20 @@ class ConfigSave extends FormRequest
         'commission_distribution_l1' => 'nullable|numeric',
         'commission_distribution_l2' => 'nullable|numeric',
         'commission_distribution_l3' => 'nullable|numeric',
+        'commission_transfer_limit' => 'nullable|numeric',
+        // feature switches
+        // These gate built-in user routes. They are persisted so an operator can
+        // hide an entry; a missing value means "enabled" (see feature-flags.ts).
+        'invite_enable' => 'boolean',
+        'commission_enable' => 'boolean',
+        'gift_card_enable' => 'boolean',
+        'coupon_enable' => 'boolean',
+        'ticket_enable' => 'boolean',
+        'knowledge_enable' => 'boolean',
+        'traffic_log_enable' => 'boolean',
+        'announcement_enable' => 'boolean',
+        'register_enable' => 'boolean',
+        'traffic_warn_rate' => 'nullable|numeric',
         // site
         'logo' => 'nullable|url',
         'force_https' => '',

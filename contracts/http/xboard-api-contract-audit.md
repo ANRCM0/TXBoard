@@ -448,12 +448,14 @@ against the current Xboard core. Each entry states the drift and its resolution.
   `login_with_mail_link_enable`, `try_out_enable` and `try_out_plan_id`.
 - `GET /api/v1/user/comm/config` additionally returns `commission_withdraw_limit`,
   `ticket_must_wait_reply`, `plan_change_enable`, `try_out_enable` and `try_out_plan_id`.
-- Deliberately **not** exposed: `traffic_warn_rate`, `invite_enable`, `commission_enable`,
+- Feature switches now **are** persisted: `invite_enable`, `commission_enable`,
   `gift_card_enable`, `coupon_enable`, `ticket_enable`, `knowledge_enable`,
-  `traffic_log_enable`, `announcement_enable`, `register_enable` and `withdraw_fee_rate`.
-  The current core persists no such settings, so inventing them would fabricate product
-  state. The User SPA keeps its documented policy that a missing flag means the built-in
-  core route stays available.
+  `traffic_log_enable`, `announcement_enable`, `register_enable` and `traffic_warn_rate`
+  are accepted by `ConfigSave`, editable on the admin site settings page, and returned by
+  both comm config endpoints. A missing flag still means "enabled", so an install that
+  never touched them keeps every entry available.
+- Still **not** exposed: `withdraw_fee_rate`. No core code path charges a transfer or
+  withdrawal fee, so exposing it would advertise behaviour that does not exist (see 11.9).
 
 ### 11.4 Commission transfer and withdrawal
 
@@ -467,6 +469,11 @@ against the current Xboard core. Each entry states the drift and its resolution.
   `withdraw_fee_rate`, which no core setting provides and no code path charges. The fee
   UI and the `withdraw_fee_rate` field were removed; `POST /user/transfer` moves the
   full amount, which is what the UI now states.
+- Drift: `commission_withdraw_limit` also governed transfers, so an operator could not
+  set independent minimums. `commission_transfer_limit` is now a first-class setting
+  (`ConfigSave`, admin invite page, `GET /user/comm/config`). `UserController::transfer`
+  and the User SPA use it, falling back to `commission_withdraw_limit` when it is unset,
+  so existing installs keep their current behaviour.
 
 ### 11.5 Localized minimum-amount message
 
@@ -492,6 +499,13 @@ It now also proxies `/ws`, `/plugin/*`, `/storage/*` and `/{SUBSCRIBE_PATH}/{tok
 (env `SUBSCRIBE_PATH`, default `s`) to the API container, and keeps the Admin SPA on
 `/admin/` and the hash-routed User SPA on `/`.
 
+The subscription matcher is the one place the gateway has to agree with a panel setting.
+That agreement is now rendered instead of hand-maintained: `php artisan
+panel:subscribe-path --export` prints the DB value and `deploy/sync-gateway.sh` writes it
+to `deploy/.env`, which `deploy/compose.yaml` feeds to the `web` service as
+`SUBSCRIBE_PATH`. The default `s` matches the Caddyfile fallback, so an unsynced install
+still boots.
+
 ### 11.8 AccessAudit plugin deployment
 
 - Drift: the plugin lived in `integrations/AccessAudit`, outside the `plugins` scan
@@ -500,8 +514,45 @@ It now also proxies `/ws`, `/plugin/*`, `/storage/*` and `/{SUBSCRIBE_PATH}/{tok
   `admin_menus` entries in `config.json` now declare a `url`, which is what
   `PluginMenuPanel` needs in order to embed the plugin pages.
 
-### 11.9 Remaining residuals
+### 11.9 Legacy admin delivery path
 
-- The Admin SPA still routes `user/*` to a placeholder page.
-- `npm run verify:web` plus static route/contract comparison are the only automated
-  gates exercised here; no live backend instance was available for runtime tests.
+- Drift: upstream kept a Blade shell (`resources/views/admin.blade.php`) served from
+  `GET /{secure_path}`, loading `/assets/admin/*`, while TXBoard ships the admin SPA at
+  `/admin/` and never builds those assets. The legacy URL rendered a broken page.
+- Resolution: the route now answers `302` to `/admin/` and the dead view was removed.
+  `tests/Feature/Admin/AdminEntryRedirectTest.php` pins the redirect.
+
+### 11.10 Automated gates
+
+- `api/phpunit.xml` plus a `composer test` script wire the previously orphaned
+  `api/tests` suite; `php artisan test` (the CI command) runs 30 tests. The SQLite
+  `:memory:` DSN is honoured directly, and the settings cache store is configurable
+  (`cache.setting_store`, pinned to `array` in tests) so the suite does not need a live
+  Redis or MySQL.
+- Both frontends now run Vitest (`npm run test` per workspace, folded into
+  `npm run verify:web`): 25 tests across `@txboard/admin`, `@txboard/user` and
+  `@txboard/shared`. The adapter suites cover request path/method/body shaping, envelope
+  unwrapping, bearer-token injection and legacy response preservation; the shared suite
+  covers captcha provider selection and controller behaviour against stubbed SDKs.
+
+### 11.11 Shared frontend module
+
+- Drift: the Admin SPA (React) and the User SPA (Vue) each carried their own Cloudflare
+  Turnstile / Google reCAPTCHA implementation, so every captcha fix had to be applied
+  twice and the two copies had already diverged (different script ids, different
+  reCAPTCHA v3 action labels, different unavailable-token payloads).
+- Resolution: `web/shared` is a new workspace package (`@txboard/shared`) holding the
+  framework-agnostic captcha core — provider/site-key selection, script loading, widget
+  mounting with render-key deduplication, token retrieval and reset. Each SPA keeps a
+  thin binding (`CaptchaWidget.tsx` / `CaptchaWidget.vue`) that supplies only its action
+  label and fallback payload. `CaptchaPayload` is re-exported from the shared package so
+  there is a single definition.
+
+### 11.12 Remaining residuals
+
+- No transfer/withdrawal **fee** support exists; adding it is a product decision and a new
+  charge path (see 11.3/11.4). Reviewed and deliberately deferred.
+- The Admin SPA's unmatched routes render an explicit in-app 404; the old `user/*`
+  placeholder ("用户扩展" skeleton) was removed as dead code.
+- Automated gates now cover PHPUnit, Vitest, typecheck and production builds. No live
+  backend instance was available for runtime/end-to-end tests.

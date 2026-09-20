@@ -21,8 +21,9 @@
 		reverse_proxy api:7001
 	}
 
-	# Subscription output: /{subscribe_path}/{token}. Keep SUBSCRIBE_PATH in
-	# sync with the panel setting "subscribe_path" (default: s).
+	# Subscription output: /{subscribe_path}/{token}. SUBSCRIBE_PATH must match
+	# the panel setting "subscribe_path". Render it from the panel with
+	# deploy/sync-gateway.sh instead of editing it by hand (default: s).
 	@subscribe path /{$SUBSCRIBE_PATH:s}/*
 	handle @subscribe {
 		reverse_proxy api:7001
