@@ -1,0 +1,13 @@
+{
+  "name": "txboard-monorepo",
+  "private": true,
+  "workspaces": [
+    "web/admin",
+    "web/user"
+  ],
+  "scripts": {
+    "typecheck:web": "npm run typecheck --workspaces --if-present",
+    "build:web": "npm run build --workspaces --if-present",
+    "verify:web": "npm run typecheck:web && npm run build:web"
+  }
+}

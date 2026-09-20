@@ -1,0 +1,21 @@
+:80 {
+  encode zstd gzip
+
+  handle /api/* {
+    reverse_proxy api:7001
+  }
+
+  redir /admin /admin/
+
+  handle_path /admin/* {
+    root * /srv/admin
+    try_files {path} /index.html
+    file_server
+  }
+
+  handle {
+    root * /srv/user
+    try_files {path} /index.html
+    file_server
+  }
+}

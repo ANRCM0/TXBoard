@@ -1,0 +1,54 @@
+services:
+  database:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${TXBOARD_DB_DATABASE:-txboard}
+      MYSQL_USER: ${TXBOARD_DB_USERNAME:-txboard}
+      MYSQL_PASSWORD: ${TXBOARD_DB_PASSWORD:-txboard}
+      MYSQL_ROOT_PASSWORD: ${TXBOARD_DB_ROOT_PASSWORD:-change-me}
+    volumes:
+      - database-data:/var/lib/mysql
+
+  api:
+    build:
+      context: ../api
+      dockerfile: Dockerfile
+      args:
+        APP_COMMIT: ${APP_COMMIT:-local}
+    restart: unless-stopped
+    depends_on:
+      - database
+    env_file:
+      - ../api/.env
+    volumes:
+      - ../api/storage/logs:/www/storage/logs
+      - ../api/storage/theme:/www/storage/theme
+      - ../api/plugins:/www/plugins
+      - api-redis:/data
+    environment:
+      docker: "true"
+      DB_CONNECTION: mysql
+      DB_HOST: database
+      DB_PORT: 3306
+      DB_DATABASE: ${TXBOARD_DB_DATABASE:-txboard}
+      DB_USERNAME: ${TXBOARD_DB_USERNAME:-txboard}
+      DB_PASSWORD: ${TXBOARD_DB_PASSWORD:-txboard}
+      ENABLE_CADDY: "true"
+      ENABLE_HORIZON: "true"
+      ENABLE_REDIS: "true"
+      ENABLE_WS_SERVER: "true"
+
+  web:
+    build:
+      context: ..
+      dockerfile: web/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "8080:80"
+
+volumes:
+  database-data:
+  api-redis:

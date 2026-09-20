@@ -1,0 +1,130 @@
+import { apiClient } from './client'
+import { unwrap } from '../lib/api'
+
+export type NodeItem = {
+  id: number
+  name?: string
+  type?: string
+  host?: string
+  port?: number
+  group_id?: number
+  machine_id?: number | null
+  show?: number | boolean
+  enabled?: boolean
+  online?: number | boolean
+  [key: string]: unknown
+}
+
+export type MachineLoadStatus = {
+  cpu?: number
+  mem?: { total?: number; used?: number }
+  swap?: { total?: number; used?: number }
+  disk?: { total?: number; used?: number }
+  net?: { in_speed?: number; out_speed?: number }
+  updated_at?: number
+}
+
+export type MachineItem = {
+  id: number
+  name?: string
+  notes?: string | null
+  is_active?: boolean
+  last_seen_at?: number | string | null
+  load_status?: MachineLoadStatus | null
+  servers_count?: number
+  created_at?: number | string
+  updated_at?: number | string
+  [key: string]: unknown
+}
+
+export type GroupItem = { id: number; name?: string; [key: string]: unknown }
+export type RouteItem = { id: number; remarks?: string; match?: string[]; action?: string; action_value?: string; [key: string]: unknown }
+
+export async function getNodes() {
+  const { data } = await apiClient.get('/server/manage/getNodes')
+  return unwrap<NodeItem[]>(data) || []
+}
+export async function saveNode(payload: Partial<NodeItem>) {
+  const { data } = await apiClient.post('/server/manage/save', payload)
+  return unwrap(data)
+}
+export async function updateNode(id: number, payload: Partial<NodeItem>) {
+  const { data } = await apiClient.post('/server/manage/update', { id, ...payload })
+  return unwrap(data)
+}
+export async function batchUpdateNodes(
+  ids: number[],
+  payload: { show?: 0 | 1; enabled?: boolean; machine_id?: number | null },
+) {
+  const { data } = await apiClient.post('/server/manage/batchUpdate', { ids, ...payload })
+  return unwrap(data)
+}
+export async function deleteNode(id: number) {
+  const { data } = await apiClient.post('/server/manage/drop', { id })
+  return unwrap(data)
+}
+export async function saveNodeOrder(items: Array<{ id: number; order: number }>) {
+  const { data } = await apiClient.post('/server/manage/sort', items)
+  return unwrap(data)
+}
+
+export async function getMachines() {
+  const { data } = await apiClient.get('/server/machine/fetch')
+  return unwrap<MachineItem[]>(data) || []
+}
+export async function saveMachine(payload: Partial<MachineItem>) {
+  const { data } = await apiClient.post('/server/machine/save', payload)
+  return unwrap(data)
+}
+export async function getMachineToken(id: number) {
+  const { data } = await apiClient.get('/server/machine/getToken', { params: { id } })
+  return unwrap(data)
+}
+export async function getInstallCommand(id: number) {
+  const { data } = await apiClient.get('/server/machine/installCommand', { params: { id } })
+  return unwrap(data)
+}
+export async function resetMachineToken(id: number) {
+  const { data } = await apiClient.post('/server/machine/resetToken', { id })
+  return unwrap(data)
+}
+export async function deleteMachine(id: number) {
+  const { data } = await apiClient.post('/server/machine/drop', { id })
+  return unwrap(data)
+}
+export async function getMachineHistory(machineId: number, limit = 240, rangeHours = 24) {
+  const { data } = await apiClient.get('/server/machine/history', {
+    params: { machine_id: machineId, limit, range_hours: rangeHours },
+  })
+  return unwrap(data)
+}
+export async function getMachineNodes(machineId: number) {
+  const { data } = await apiClient.get('/server/machine/nodes', { params: { machine_id: machineId } })
+  return unwrap<NodeItem[]>(data) || []
+}
+
+export async function getGroups() {
+  const { data } = await apiClient.get('/server/group/fetch')
+  return unwrap<GroupItem[]>(data) || []
+}
+export async function saveGroup(payload: Partial<GroupItem>) {
+  const { data } = await apiClient.post('/server/group/save', payload)
+  return unwrap(data)
+}
+export async function deleteGroup(id: number) {
+  const { data } = await apiClient.post('/server/group/drop', { id })
+  return unwrap(data)
+}
+
+export async function getRoutes() {
+  const { data } = await apiClient.get('/server/route/fetch')
+  return unwrap<RouteItem[]>(data) || []
+}
+export async function saveRoute(payload: Partial<RouteItem>) {
+  const { data } = await apiClient.post('/server/route/save', payload)
+  return unwrap(data)
+}
+export async function deleteRoute(id: number) {
+  const { data } = await apiClient.post('/server/route/drop', { id })
+  return unwrap(data)
+}
