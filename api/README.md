@@ -23,11 +23,15 @@ The React admin and Vue user applications live in `../web/admin` and `../web/use
 
 ## Docker
 
-The component Dockerfile builds directly from the checked-out `api/` source. From the repository root:
+Deployment is driven by the root Compose stack — see "Deploy with Docker Compose"
+in the [repository README](../README.md). This component is the `api` service
+there: one container bundling Octane (Swoole), Horizon, an embedded Redis, the
+WebSocket server and an internal Caddy under supervisord.
+
+To build just this image from the checked-out source:
 
 ```bash
 docker build -t txboard-api ./api
-docker compose -f deploy/compose.yaml up -d --build
 ```
 
 Published monorepo images use `ghcr.io/<owner>/<repo>-api`.

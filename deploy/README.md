@@ -1,28 +1,57 @@
-# Deployment
+# Deployment stack reference
 
-`compose.yaml` builds every image from the monorepo checkout.
+This is the operator's reference for the Compose stack: what each service is,
+how the images are built, and how to run HTTPS and backups. For the step-by-step
+first-run flow see the "Deploy with Docker Compose" section of the
+[repository README](../README.md).
 
-1. Copy `api/.env.example` to `api/.env`. Leave `APP_KEY` blank: the installer
-   generates one and writes it back to the mounted file.
-2. Copy `.env.example` to `.env` and set `TXBOARD_DB_PASSWORD` and
-   `TXBOARD_DB_ROOT_PASSWORD`. These are required, so `docker compose` refuses to
-   start with the placeholder database passwords.
-3. Run `docker compose -f deploy/compose.yaml up -d --wait`. `--wait` blocks
-   until MySQL and the embedded Redis pass their healthchecks; installing before
-   that makes the installer's cache step fail.
-4. Install the panel once and record the administrator password it prints:
+Every image builds from the monorepo checkout; nothing is fetched from a
+registry unless you point `TXBOARD_API_IMAGE` / `TXBOARD_WEB_IMAGE` at one.
 
-   ```sh
-   docker compose -f deploy/compose.yaml exec -it api php artisan xboard:install
-   ```
+## Services
 
-   The installer takes the database and Redis settings from the compose
-   environment, so the only question it asks is the administrator email
-   (or pass `ADMIN_ACCOUNT=you@example.com` to skip it entirely).
-5. Open `http://<host>:<TXBOARD_HTTP_PORT>/` for the user frontend or `/admin/`
-   for the admin frontend. The installer also prints the admin API prefix
-   (`secure_path`), which is what `/api/v2/{secure_path}/...` uses; the SPA
-   itself always lives at `/admin/`.
+| Service | Image | Role |
+| --- | --- | --- |
+| `database` | `mysql:8.4.11` | MySQL. The only stateful service with its own volume. |
+| `api` | built from `api/` | All-in-one application container: Octane (Swoole), Horizon, an embedded Redis on a unix socket, the WebSocket server and an internal Caddy, all under supervisord. |
+| `web` | built from `web/` | Caddy gateway serving both SPAs and proxying `/api/*` to `api`. |
+| `backup` | `mysql:8.4.11` | Runs `backup.sh` on an interval. |
+
+The gateway is the only service with published ports. `api` publishes nothing,
+so its internal Caddy on `7001` is unreachable from the host.
+
+## How the images are built
+
+`api/Dockerfile` and `web/Dockerfile` are laid out so that the expensive layers
+survive ordinary edits.
+
+- **Base images are pinned to exact releases** (`6.2.2-php8.2-alpine`,
+  `mysql:8.4.11`, `caddy:2.11.4-alpine`, `node:22.23.2-alpine`). Floating tags
+  such as `mysql:8.4` move under you: an unrelated rebuild could upgrade the
+  database beneath a running panel, and MySQL cannot downgrade a data directory.
+  Bump these deliberately, and read the release notes when you do.
+- **Dependencies are installed before the source is copied.** `composer.json`
+  and `composer.lock` are copied first, `composer install` runs, and only then is
+  the application copied in. Editing application code therefore reuses the
+  vendor layer instead of re-resolving every package.
+- **`APP_COMMIT` is set last**, so cutting a new commit only rebuilds the final
+  metadata layer rather than invalidating the dependency install.
+- **The autoloader is optimized after the source copy.** It classmaps
+  `database/seeders` and `database/factories`, so it cannot run before those
+  directories exist.
+- **BuildKit cache mounts** keep the Composer download cache and the npm cache
+  out of the image while making them reusable across builds.
+- **`api/.dockerignore` excludes local state** — `bootstrap/cache/*.php`,
+  developer SQLite files, uploads, logs and the test suite. A committed
+  `bootstrap/cache/config.php` would otherwise be baked into the image and
+  silently override the container's own environment. PHPUnit is a dev dependency
+  and `composer install --no-dev` is used, so the suite is dead weight.
+- **The `web` image is multi-stage**: Node builds the two SPAs, and only the
+  static output reaches the final Caddy image.
+
+At runtime the entrypoint only `chown`s the paths the application writes to
+(`storage`, `bootstrap/cache`, `plugins`, `.env`) rather than re-walking the
+entire tree — including `vendor` — on every container start.
 
 ## HTTPS
 
@@ -79,13 +108,15 @@ docker compose -f deploy/compose.yaml run --rm backup
 ```
 
 Each archive holds `db.sql.gz`, `env`, `storage-app.tar.gz` and a `MANIFEST`.
-All three parts matter: a database dump alone is **not** a backup, because the
+All the parts matter: a database dump alone is **not** a backup, because the
 encrypted columns in it cannot be read without the `APP_KEY` stored in
 `api/.env`. A dump that fails, or that fails its gzip integrity check, is
 discarded rather than kept — so any archive that exists is restorable.
 
 Point `TXBOARD_BACKUP_DIR` at a different disk or an NFS mount. Backups kept on
-the same volume as MySQL do not survive the failure they exist to cover.
+the same volume as MySQL do not survive the failure they exist to cover. It must
+be a path the Docker daemon can see: with a remote or VM-based daemon, a path
+that only exists inside your shell is not enough.
 
 To restore, stop the writers first so nothing is mid-write, then replay:
 
@@ -105,6 +136,14 @@ docker compose -f deploy/compose.yaml up -d --wait
 The dump contains `DROP TABLE` statements, so replaying it over an existing
 database replaces the schema rather than merging into it.
 
+## Logs
+
+Every service uses Docker's `json-file` driver capped at 10 MB × 3 files. Without
+that cap a busy panel eventually fills the host disk and then cannot write logs,
+sessions or backups either. Application-level logs under `api/storage/logs`
+are separate and are **not** rotated by Docker — `api/storage` is a bind mount,
+so they are yours to manage.
+
 ## State that outlives the containers
 
 | Path | Why it must persist |
@@ -116,6 +155,10 @@ database replaces the schema rather than merging into it.
 | `api-redis` (named volume) | Embedded Redis data, including `/data/redis.sock`. |
 | `caddy-data` / `caddy-config` (named volumes) | TLS certificates and the ACME account key. Without them every recreate re-requests a certificate and can trip Let's Encrypt's duplicate-certificate rate limit. |
 | `TXBOARD_BACKUP_DIR` (host directory) | Archives written by the `backup` service. Ideally on a different disk. |
+
+`docker compose down` keeps all of the above. **`docker compose down -v` deletes
+the named volumes**, including the database and the ACME account key, and cannot
+be undone.
 
 The `DB_*` keys in `api/.env` are ignored under compose: the API service
 receives them from `deploy/.env` through the environment, which takes precedence
@@ -139,4 +182,8 @@ API container and writes `deploy/.env` (read automatically by docker compose).
 Re-run it after changing `subscribe_path` in the admin panel. The default `s`
 matches the Caddyfile fallback, so a fresh install works before the first sync.
 
-TX-Node is intentionally not started by the root compose file because it normally runs on remote edge hosts with host networking. Build it with `docker build -f node/Dockerfile node` or use `node/deploy.sh`.
+## TX-Node
+
+TX-Node is intentionally not started by this compose file because it normally
+runs on remote edge hosts with host networking. Build it with
+`docker build -f node/Dockerfile node` or use `node/deploy.sh`.
