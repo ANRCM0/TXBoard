@@ -25,12 +25,31 @@ export type CaptchaPayload = {
   recaptcha_data?: string
   recaptcha_v3_token?: string
   turnstile_token?: string
-  skip_recaptcha_v3?: boolean
-  skip_recaptcha_v3_error?: boolean
 }
 
 /** Why a reCAPTCHA v3 token could not be produced. */
 export type V3UnavailableReason = 'not-ready' | 'error'
+
+/**
+ * Raised when the configured provider needs a token but none could be
+ * obtained. Callers must let this abort the request rather than sending it
+ * without a token: the API rejects a missing reCAPTCHA v3 token, and a
+ * client-supplied "skip" flag would be a captcha bypass, so there is
+ * deliberately no way for the browser to opt out.
+ */
+export class CaptchaUnavailableError extends Error {
+  readonly reason: V3UnavailableReason
+
+  constructor(reason: V3UnavailableReason) {
+    super(
+      reason === 'not-ready'
+        ? '人机验证尚未就绪，请稍后重试'
+        : '人机验证失败，请刷新页面后重试',
+    )
+    this.name = 'CaptchaUnavailableError'
+    this.reason = reason
+  }
+}
 
 const TURNSTILE_SRC = 'https://challenges.cloudflare.com/turnstile/v0/api.js'
 const RECAPTCHA_SRC = 'https://www.google.com/recaptcha/api.js'
@@ -187,18 +206,17 @@ export function createCaptchaController(options: CaptchaControllerOptions) {
   }
 
   /**
-   * Token(s) for the configured provider. reCAPTCHA v3 can legitimately fail;
-   * `onV3Unavailable` lets each app keep its own fallback payload (the user
-   * SPA sends `skip_recaptcha_v3[_error]`, the admin SPA sends nothing).
+   * Token(s) for the configured provider. reCAPTCHA v3 can legitimately fail
+   * (script blocked, quota, not ready); that raises CaptchaUnavailableError so
+   * the caller surfaces a real message instead of posting a request the API
+   * will reject.
    */
   async function getPayload(payloadOptions?: {
     action?: string
-    onV3Unavailable?: (reason: V3UnavailableReason) => CaptchaPayload
   }): Promise<CaptchaPayload> {
     const config = getConfig()
     const siteKey = captchaSiteKey(config)
     if (!siteKey) return {}
-    const unavailable = payloadOptions?.onV3Unavailable ?? (() => ({}))
     const type = captchaType(config)
 
     if (type === 'turnstile') {
@@ -211,12 +229,14 @@ export function createCaptchaController(options: CaptchaControllerOptions) {
     }
     if (type === 'recaptcha-v3') {
       const api = captchaWindow().grecaptcha
-      if (!ready || !api) return unavailable('not-ready')
+      if (!ready || !api) throw new CaptchaUnavailableError('not-ready')
       try {
         const token = await api.execute(siteKey, { action: payloadOptions?.action ?? 'submit' })
-        return token ? { recaptcha_v3_token: token } : unavailable('not-ready')
-      } catch {
-        return unavailable('error')
+        if (!token) throw new CaptchaUnavailableError('not-ready')
+        return { recaptcha_v3_token: token }
+      } catch (error) {
+        if (error instanceof CaptchaUnavailableError) throw error
+        throw new CaptchaUnavailableError('error')
       }
     }
     return {}

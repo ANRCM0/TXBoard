@@ -222,7 +222,11 @@ class UserController extends Controller
         ]);
         $user = User::find($request->input('id'))->load('invite_user');
         $user = HookManager::filter('admin.user.detail', $user, $request);
-        return $this->success($user);
+        // The list endpoint reports money in major units and the admin editor
+        // seeds its form from this response and posts those numbers straight
+        // back on save, so this endpoint has to use the same units. Previously
+        // it returned raw cents, which inflated every edited balance by 100x.
+        return $this->success($user instanceof User ? self::transformUserData($user) : $user);
     }
 
     public function update(UserUpdate $request)

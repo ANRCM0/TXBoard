@@ -24,7 +24,17 @@ fi
 
 assignment="$(docker compose -f compose.yaml exec -T api php artisan panel:subscribe-path --export)"
 
-printf '%s\n' "$assignment" > .env
+# Rewrite only our own key. deploy/.env also holds the database credentials
+# (and any external-Redis overrides), so truncating the file here would
+# silently drop them and break the next `docker compose up`.
+if [ -f .env ]; then
+    tmp="$(mktemp)"
+    grep -v '^TXBOARD_SUBSCRIBE_PATH=' .env > "$tmp" || true
+    printf '%s\n' "$assignment" >> "$tmp"
+    mv "$tmp" .env
+else
+    printf '%s\n' "$assignment" > .env
+fi
 
 echo "Rendered $(pwd)/.env:"
 echo "  $assignment"

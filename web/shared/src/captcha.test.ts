@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
+  CaptchaUnavailableError,
   captchaRenderKey,
   captchaSiteKey,
   captchaType,
@@ -122,7 +123,7 @@ describe('createCaptchaController', () => {
     expect(render).toHaveBeenCalledTimes(2)
   })
 
-  it('reports a v3 token unavailable state through the caller fallback', async () => {
+  it('fails closed when a v3 token cannot be produced', async () => {
     preloadScript('tx-google-recaptcha-v3')
     host()
     ;(window as { grecaptcha?: unknown }).grecaptcha = {
@@ -138,12 +139,11 @@ describe('createCaptchaController', () => {
     })
     await controller.mount()
 
-    await expect(
-      controller.getPayload({
-        action: 'login',
-        onV3Unavailable: reason => ({ skip_recaptcha_v3_error: reason === 'error' }),
-      }),
-    ).resolves.toEqual({ skip_recaptcha_v3_error: true })
+    // There is deliberately no client-side "skip" payload: the browser must not
+    // be able to opt out of captcha, so the payload call throws instead.
+    await expect(controller.getPayload({ action: 'login' })).rejects.toBeInstanceOf(
+      CaptchaUnavailableError,
+    )
   })
 
   it('returns an empty payload when captcha is disabled', async () => {

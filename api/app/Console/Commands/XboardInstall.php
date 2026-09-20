@@ -60,12 +60,9 @@ class XboardInstall extends Command
             $this->info(" \ \/ / | __ \ / _ \ / _` | '__/ _` | ");
             $this->info(" / /\ \ | |_) | (_) | (_| | | | (_| | ");
             $this->info("/_/  \_\|____/ \___/ \__,_|_|  \__,_| ");
-            if (
-                (File::exists(base_path() . '/.env') && $this->getEnvValue('INSTALLED'))
-                || (getenv('INSTALLED', false) && $isDocker)
-            ) {
+            if ($this->envFlag('INSTALLED')) {
                 $securePath = admin_setting('secure_path', admin_setting('frontend_admin_path', hash('crc32b', config('app.key'))));
-                $this->info("访问 http(s)://你的站点/{$securePath} 进入管理面板，你可以在用户中心修改你的密码。");
+                $this->info("管理面板：http(s)://你的站点/admin/（管理接口前缀：{$securePath}）");
                 $this->warn("如需重新安装请清空目录下 .env 文件的内容（Docker安装方式不可以删除此文件）");
                 $this->warn("快捷清空.env命令：");
                 note('rm .env && touch .env');
@@ -75,29 +72,65 @@ class XboardInstall extends Command
                 $this->error('😔：安装失败，Docker环境下安装请保留空的 .env 文件');
                 return;
             }
-            // 选择数据库类型
-            $dbType = $enableSqlite ? 'sqlite' : select(
-                label: '请选择数据库类型',
-                options: [
-                    'sqlite' => 'SQLite (无需额外安装)',
-                    'mysql' => 'MySQL',
-                    'postgresql' => 'PostgreSQL'
-                ],
-                default: 'sqlite'
-            );
+            // Inside the reference container the connection is injected by the
+            // compose environment. Asking for it cannot work there (no TTY) and
+            // would publish credentials a second time, so use it as-is.
+            $envConnection = $isDocker ? getenv('DB_CONNECTION') : false;
+            if ($envConnection) {
+                $this->info("使用容器环境提供的数据库配置：{$envConnection}");
+                $envConfig = [
+                    'DB_CONNECTION' => $envConnection,
+                    'DB_HOST' => (string) getenv('DB_HOST'),
+                    'DB_PORT' => (string) getenv('DB_PORT'),
+                    'DB_DATABASE' => (string) getenv('DB_DATABASE'),
+                    'DB_USERNAME' => (string) getenv('DB_USERNAME'),
+                    'DB_PASSWORD' => (string) getenv('DB_PASSWORD'),
+                ];
+            } else {
+                // 选择数据库类型
+                $dbType = $enableSqlite ? 'sqlite' : select(
+                    label: '请选择数据库类型',
+                    options: [
+                        'sqlite' => 'SQLite (无需额外安装)',
+                        'mysql' => 'MySQL',
+                        'postgresql' => 'PostgreSQL'
+                    ],
+                    default: 'sqlite'
+                );
 
-            // 使用 match 表达式配置数据库
-            $envConfig = match ($dbType) {
-                'sqlite' => $this->configureSqlite(),
-                'mysql' => $this->configureMysql(),
-                'postgresql' => $this->configurePostgresql(),
-                default => throw new \InvalidArgumentException("不支持的数据库类型: {$dbType}")
-            };
+                // 使用 match 表达式配置数据库
+                $envConfig = match ($dbType) {
+                    'sqlite' => $this->configureSqlite(),
+                    'mysql' => $this->configureMysql(),
+                    'postgresql' => $this->configurePostgresql(),
+                    default => throw new \InvalidArgumentException("不支持的数据库类型: {$dbType}")
+                };
+            }
 
             if (is_null($envConfig)) {
                 return; // 用户选择退出安装
             }
-            $envConfig['APP_KEY'] = 'base64:' . base64_encode(Encrypter::generateKey('AES-256-CBC'));
+            // Reuse the key already present in .env (the container entrypoint
+            // writes one on first boot). Regenerating it here would invalidate
+            // the key the running Octane worker booted with, so the panel would
+            // encrypt with one key and decrypt with another until the container
+            // was recreated.
+            $existingKey = (string) ($this->envFileValue('APP_KEY') ?? '');
+            if ($existingKey === '') {
+                $existingKey = trim((string) getenv('APP_KEY'));
+            }
+            $appKey = $existingKey !== ''
+                ? $existingKey
+                : 'base64:' . base64_encode(Encrypter::generateKey('AES-256-CBC'));
+            $envConfig['APP_KEY'] = $appKey;
+            // The .env write alone is not enough: under Docker an already
+            // exported APP_KEY (env_file) wins over the file, so config:cache
+            // below would freeze the placeholder value. Export it for this run
+            // too so the key that gets persisted is the one actually in use.
+            putenv("APP_KEY={$appKey}");
+            $_ENV['APP_KEY'] = $appKey;
+            $_SERVER['APP_KEY'] = $appKey;
+            Config::set('app.key', $appKey);
             $isReidsValid = false;
             while (!$isReidsValid) {
                 // 判断是否为Docker环境
@@ -165,7 +198,16 @@ class XboardInstall extends Command
             Config::set('session.driver', 'array');
 
             $this->call('config:cache');
-            Artisan::call('cache:clear');
+            try {
+                Artisan::call('cache:clear');
+            } catch (\Throwable $e) {
+                // A cold container can reach this point before its embedded
+                // Redis is accepting connections. The install drivers are
+                // already forced to array/sync above, so this is only about a
+                // possibly stale cache and must not abort the migration (which
+                // would leave the panel answering 500 on an empty schema).
+                $this->warn('缓存清理失败，继续安装：' . $e->getMessage());
+            }
             $this->info('正在导入数据库请稍等...');
             Artisan::call("migrate", ['--force' => true]);
             $this->info(Artisan::output());
@@ -182,8 +224,14 @@ class XboardInstall extends Command
             $this->info("管理员邮箱：{$email}");
             $this->info("管理员密码：{$password}");
 
-            $defaultSecurePath = hash('crc32b', config('app.key'));
-            $this->info("访问 http(s)://你的站点/{$defaultSecurePath} 进入管理面板，你可以在用户中心修改你的密码。");
+            // The SPA is served by the gateway at /admin/. The secure path is the
+            // admin API prefix (/api/v2/{secure_path}/...), not a browser URL:
+            // /{secure_path} only 302s to /admin/ and is unreachable through the
+            // shipped Caddy config, whose catch-all serves the user SPA. Reading
+            // the setting (rather than re-deriving the default) also keeps this
+            // correct on an install that already changed it.
+            $securePath = admin_setting('secure_path', admin_setting('frontend_admin_path', hash('crc32b', config('app.key'))));
+            $this->info("管理面板：http(s)://你的站点/admin/（管理接口前缀：{$securePath}）");
             $envConfig['INSTALLED'] = true;
             $this->saveToEnv($envConfig);
             foreach (array_keys($installDriverOverrides) as $key) {
@@ -241,6 +289,48 @@ class XboardInstall extends Command
         $dotenv->load();
 
         return Env::get($key, $default);
+    }
+
+    /**
+     * Read a value straight out of the .env file.
+     *
+     * Env::get() cannot be trusted here: an immutable Dotenv never overrides an
+     * existing environment variable, and Docker's env_file leaves APP_KEY
+     * present-but-empty in the container environment. Every `docker compose
+     * exec` process therefore saw '' and ignored the real key the entrypoint
+     * had written to the file.
+     */
+    private function envFileValue(string $key): ?string
+    {
+        $path = base_path() . '/.env';
+        if (!File::exists($path) || !preg_match(
+            '/^' . preg_quote($key, '/') . '=(.*)$/m',
+            (string) File::get($path),
+            $matches
+        )) {
+            return null;
+        }
+
+        return trim($matches[1], " \t\"'");
+    }
+
+    /**
+     * Read a boolean flag from the .env file itself, falling back to the
+     * process environment.
+     *
+     * getenv() returns the string "false" for INSTALLED=false, which is truthy
+     * in PHP and made a fresh container report itself as already installed.
+     * Reading the file first also keeps the answer correct when the process
+     * environment is stale (Docker env_file is only re-read on restart).
+     */
+    private function envFlag(string $key): bool
+    {
+        $fromFile = $this->envFileValue($key);
+        if ($fromFile !== null) {
+            return filter_var($fromFile, FILTER_VALIDATE_BOOLEAN);
+        }
+
+        return filter_var((string) getenv($key), FILTER_VALIDATE_BOOLEAN);
     }
 
     /**

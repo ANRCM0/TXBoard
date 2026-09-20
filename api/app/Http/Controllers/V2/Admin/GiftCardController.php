@@ -65,7 +65,12 @@ class GiftCardController extends Controller
             ];
         })->values();
 
-        return $this->paginate( $templates);
+        // Hand the enriched rows to the paginator. The mapper above adds
+        // type_name/codes_count/used_count that the table renders; returning
+        // the raw paginator silently discarded all of it.
+        $templates->setCollection($data);
+
+        return $this->paginate($templates);
     }
 
     /**
@@ -382,6 +387,10 @@ class GiftCardController extends Controller
                 'created_at' => $code->created_at,
             ];
         })->values();
+
+        // Same as templates(): publish the mapped rows so template_name,
+        // status_name and user_email reach the table.
+        $codes->setCollection($data);
 
         return $this->paginate($codes);
     }

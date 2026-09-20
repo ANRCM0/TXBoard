@@ -13,11 +13,20 @@ class NoticeController extends Controller
 {
     public function fetch(Request $request)
     {
-        return $this->success(
-            Notice::orderBy('sort', 'ASC')
-                ->orderBy('id', 'DESC')
-                ->get()
-        );
+        $current = max(1, (int) $request->input('current', 1));
+        $pageSize = max(1, (int) $request->input('pageSize', 20));
+
+        // Server-side pagination and title filter. The settings page sends
+        // current/pageSize/title; ignoring them made search a no-op and
+        // returned the entire table on every page.
+        $builder = Notice::orderBy('sort', 'ASC')
+            ->orderBy('id', 'DESC')
+            ->when(
+                $request->input('title'),
+                fn ($query, $title) => $query->where('title', 'like', '%' . $title . '%')
+            );
+
+        return $this->paginate($builder->paginate($pageSize, ['*'], 'page', $current));
     }
 
     public function save(NoticeSave $request)

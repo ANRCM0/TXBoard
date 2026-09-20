@@ -98,14 +98,15 @@ class TrafficResetController extends Controller
       ];
     });
 
+    // Standard top-level paginator. The page reads total/current_page/last_page
+    // straight off the response, so nesting them under `pagination` made the
+    // footer show "0 records" and disabled the next-page control.
     return response()->json([
       'data' => $formattedLogs->toArray(),
-      'pagination' => [
-        'current_page' => $logs->currentPage(),
-        'last_page' => $logs->lastPage(),
-        'per_page' => $logs->perPage(),
-        'total' => $logs->total(),
-      ],
+      'total' => $logs->total(),
+      'current_page' => $logs->currentPage(),
+      'per_page' => $logs->perPage(),
+      'last_page' => $logs->lastPage(),
     ]);
   }
 

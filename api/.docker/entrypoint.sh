@@ -1,6 +1,15 @@
 #!/bin/sh
 set -e
 
+# compose bind-mounts the host's api/.env over /www/.env. If that file did not
+# exist, Docker silently created a *directory* there instead, which produces
+# baffling failures. Fail loudly with the fix.
+if [ -d /www/.env ]; then
+    echo "[entrypoint] FATAL: /www/.env is a directory, not a file." >&2
+    echo "[entrypoint] Create the env file first:  cp api/.env.example api/.env" >&2
+    exit 1
+fi
+
 # Resolve the binding scheme based on whether the embedded Caddy is enabled.
 #
 # When ENABLE_CADDY=true (default), Caddy owns the public port (7001) and
@@ -115,6 +124,58 @@ export OCTANE_WORKERS OCTANE_TASK_WORKERS OCTANE_MAX_REQUESTS \
 
 echo "[entrypoint] Auto-tune (profile=${RESOURCE_PROFILE}): cpus=${CPUS} mem=${MEM_MIB}MiB slots=${SLOTS} -> octane=${OCTANE_WORKERS} horizon(dp/biz/notif)=${HORIZON_DATA_PIPELINE_MAX}/${HORIZON_BUSINESS_MAX}/${HORIZON_NOTIFICATION_MAX} horizon_worker_mem=${HORIZON_WORKER_MEMORY_MB}MB"
 echo "[entrypoint] Horizon supervisors use balance=auto with minProcesses=1, so they scale up to the cap on demand and back down when idle."
+
+# ---------------------------------------------------------------------------
+# Self-provision APP_KEY before any service starts.
+#
+# The key cannot be baked into the image (it would be a shared secret) and a
+# fresh checkout ships .env.example with it blank, but Laravel refuses to boot
+# without one: Octane dies with MissingAppKeyException, supervisord exhausts
+# its restart budget and the panel answers 502 forever. Worse, env_file values
+# are frozen into the container at create time, so a plain `docker compose
+# restart` keeps the empty value even after .env has been fixed. Generating the
+# key here and persisting it to the bind-mounted .env closes both holes: the
+# panel boots before the installer runs, and the key never changes afterwards.
+# ---------------------------------------------------------------------------
+ensure_app_key() {
+    key=$(printf '%s' "${APP_KEY:-}" | tr -d '"'"'"' ')
+
+    if [ -z "$key" ] && [ -f /www/.env ]; then
+        key=$(grep -E '^APP_KEY=' /www/.env 2>/dev/null | tail -1 | cut -d= -f2- | tr -d '"'"'"' ')
+    fi
+
+    if [ -n "$key" ]; then
+        export APP_KEY="$key"
+        return 0
+    fi
+
+    key="base64:$(head -c 32 /dev/urandom | base64 | tr -d '\n')"
+    export APP_KEY="$key"
+
+    if [ -f /www/.env ]; then
+        new_env=$(mktemp)
+        if grep -qE '^APP_KEY=' /www/.env; then
+            sed "s|^APP_KEY=.*|APP_KEY=${key}|" /www/.env > "$new_env"
+        else
+            cat /www/.env > "$new_env"
+            printf '\nAPP_KEY=%s\n' "$key" >> "$new_env"
+        fi
+        # `sed -i`/`mv` rename a temp file over the target, which fails with
+        # EBUSY because compose bind-mounts .env as a single file. Writing
+        # through the existing inode updates it in place instead. A failure
+        # here must not kill the container: the key is still exported for this
+        # boot, it just would not survive a recreate.
+        if cat "$new_env" > /www/.env 2>/dev/null; then
+            echo "[entrypoint] Generated a new APP_KEY and persisted it to /www/.env"
+        else
+            echo "[entrypoint] WARNING: could not persist APP_KEY to /www/.env; it is ephemeral for this boot." >&2
+        fi
+        rm -f "$new_env"
+    else
+        echo "[entrypoint] WARNING: /www/.env missing; APP_KEY is ephemeral for this boot." >&2
+    fi
+}
+ensure_app_key
 
 redis_reachable() {
     local host port

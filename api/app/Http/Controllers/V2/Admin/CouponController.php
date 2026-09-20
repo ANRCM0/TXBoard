@@ -155,8 +155,8 @@ class CouponController extends Controller
         foreach ($coupons as $coupon) {
             $type = ['', '金额', '比例'][$coupon['type']];
             $value = ['', ($coupon['value'] / 100), $coupon['value']][$coupon['type']];
-            $startTime = date('Y-m-d H:i:s', $coupon['started_at']);
-            $endTime = date('Y-m-d H:i:s', $coupon['ended_at']);
+            $startTime = $coupon['started_at'] ? date('Y-m-d H:i:s', $coupon['started_at']) : '不限';
+            $endTime = $coupon['ended_at'] ? date('Y-m-d H:i:s', $coupon['ended_at']) : '不限';
             $limitUse = $coupon['limit_use'] ?? '不限制';
             $createTime = date('Y-m-d H:i:s', $coupon['created_at']);
             $limitPlanIds = isset($coupon['limit_plan_ids']) ? implode("/", $coupon['limit_plan_ids']) : '不限制';
