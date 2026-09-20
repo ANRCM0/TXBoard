@@ -525,7 +525,7 @@ still boots.
 ### 11.10 Automated gates
 
 - `api/phpunit.xml` plus a `composer test` script wire the previously orphaned
-  `api/tests` suite; `php artisan test` (the CI command) runs 40 tests. The SQLite
+  `api/tests` suite; `php artisan test` (the CI command) runs 44 tests. The SQLite
   `:memory:` DSN is honoured directly, and the settings cache store is configurable
   (`cache.setting_store`, pinned to `array` in tests) so the suite does not need a live
   Redis or MySQL. `AdminContractRegressionTest` and `UserKnowledgeCategoryTest`
@@ -620,3 +620,31 @@ parameterless or unauthenticated calls.
 | 12 | `env_file: ../api/.env` froze the blank `APP_KEY` into the container environment at create time; an immutable Dotenv never overrides a present variable, so every `docker compose exec` process (the installer, `route:list`, `tinker`) read an empty key while PID 1 used the entrypoint's. The installer consequently minted a **third** key, and the CLI and the running server disagreed on the admin prefix. | `env_file` is removed: the bind-mounted `/www/.env` is the single source of truth, and the installer reuses the key already in the file instead of regenerating it. |
 | 13 | `xboard:install` aborted before migrating whenever the container's embedded Redis was not yet accepting connections (the `cache:clear` step threw), leaving an empty schema and a `500` panel. | `api` has a readiness healthcheck so `docker compose up -d --wait` gates the install, and a failed cache clear is downgraded to a warning rather than a fatal. |
 
+
+### 11.15 Production hardening: TLS, backups, CORS
+
+Everything above makes the panel *run*. It still served plaintext HTTP, kept no
+backups and allowed any origin, which is not a shape to put on the public
+internet. Each item below was verified against a live stack, over TLS, with a
+self-signed `tls internal` certificate.
+
+| # | Gap | What was done |
+| --- | --- | --- |
+| 1 | The gateway was hard-coded to `:80`, so there was no way to serve HTTPS from the stack at all — on a panel that carries credentials, bearer tokens and subscription links. | `web/Caddyfile` takes its site address from `TXBOARD_SITE_ADDRESS`. A hostname makes Caddy obtain and renew a Let's Encrypt certificate, serve 443 and redirect 80; unset keeps plain `:80` for an external terminator. `TXBOARD_TLS_DIRECTIVE` passes a raw directive through for a private CA. |
+| 2 | Nothing persisted `/data`, so every gateway recreate would re-request a certificate and could trip Let's Encrypt's duplicate-certificate rate limit. | `caddy-data` / `caddy-config` named volumes. Verified: the certificate's SHA-256 fingerprint is identical after `up -d --force-recreate web`. |
+| 3 | No backup of anything. The panel's own `ENABLE_AUTO_BACKUP_AND_UPDATE` covers only its internal export, and `database-data` was the sole copy of the database. | `deploy/backup.sh` plus a `backup` compose service archives the database, the `APP_KEY` and the uploads on an interval with retention. |
+| 4 | A database-only backup would have been a trap: the encrypted columns in the dump are unreadable without the `APP_KEY`, which lived only in `api/.env`. | The archive carries `env` alongside `db.sql.gz`, plus a `MANIFEST`. Verified: `grep -c '^APP_KEY=base64:' env` is 1. |
+| 5 | An operator would have had no tested way back. | Restore procedure documented and exercised end to end. Verified: delete a user (count 0), replay the dump, restart — user back with the original balance. Retention verified separately (5 archives, keep 3 → the 2 oldest pruned, non-archive directories left alone). |
+| 6 | `api/config/cors.php` shipped `'allowed_origins' => ['*']`, letting any website read API responses from a visitor's browser. | Origins come from `CORS_ALLOWED_ORIGINS` / `CORS_ALLOWED_ORIGINS_PATTERNS` and default to an empty list, which is correct because the gateway serves both SPAs and the API from one origin. |
+| 7 | `LOG_LEVEL=debug` and an undocumented `APP_URL` were production defaults: verbose logs on one side, `http://localhost` links in every queued verification mail on the other. | `LOG_LEVEL=warning` with a note, and `APP_URL` documented together with the reason it cannot be inferred (Horizon sends the mail from a CLI process with no request). |
+
+Verified in one sequence against the running stack: HTTPS serves both SPAs
+(`<title>TXBoard`), `http://` answers `308` to `https://`, admin and user login
+succeed over TLS, CORS returns no `Access-Control-Allow-Origin` for an
+unlisted origin and returns the origin itself for a listed one, a backup archive
+passes its gzip integrity check with 33 tables, the restore recovers deleted
+data, the certificate survives a gateway recreate, and the full parameterless
+`GET` sweep answers with **zero `5xx`**.
+
+`CorsPolicyTest` pins the origin policy; it fails against the previous `['*']`
+default.
