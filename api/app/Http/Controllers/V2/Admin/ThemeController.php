@@ -105,7 +105,7 @@ class ThemeController extends Controller
     {
         $data = [
             'themes' => $this->themeService->getList(),
-            'active' => $this->themeService->normalizeThemeName(admin_setting('frontend_theme', 'TXBoard'))
+            'active' => admin_setting('frontend_theme', 'TXBoard')
         ];
         return $this->success($data);
     }
