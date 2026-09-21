@@ -35,9 +35,7 @@ COPY api/.docker/caddy/Caddyfile /etc/caddy/Caddyfile
 COPY api/.docker/php/zz-xboard.ini /usr/local/etc/php/conf.d/zz-xboard.ini
 COPY api/.docker/entrypoint.sh /entrypoint.sh
 COPY api/.docker/healthcheck.php /opt/txboard/healthcheck.php
-COPY install.sh /opt/txboard/install.sh
-COPY backup.sh /opt/txboard/backup.sh
-RUN chmod +x /entrypoint.sh /opt/txboard/install.sh /opt/txboard/backup.sh && \
+RUN chmod +x /entrypoint.sh && \
     TXBOARD_SITE_ADDRESS=:80 SUBSCRIBE_PATH=s caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
 
 WORKDIR /www
