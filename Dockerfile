@@ -15,7 +15,10 @@ RUN --mount=type=cache,target=/root/.npm \
 COPY web/shared web/shared
 COPY web/admin web/admin
 COPY web/user web/user
-RUN VITE_BASE_PATH=/admin/ npm run build --workspace @txboard/admin && \
+# The admin bundle's Vite base is asset-only. Browser routing is mounted at
+# the instance-specific secure_path at runtime, while Caddy exposes only the
+# hashed bundle files below this private static namespace (never index.html).
+RUN VITE_BASE_PATH=/.txboard-admin/ npm run build --workspace @txboard/admin && \
     VITE_BASE_PATH=/ npm run build --workspace @txboard/user
 
 # One production image for the entire TXBoard control plane:

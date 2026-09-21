@@ -422,13 +422,22 @@ AccessAudit 的后端、数据库迁移、Admin App 与发布生命周期均由�
 /api/v1/*
 ```
 
+管理后台页面：
+
+```text
+/{secure_path}/
+/{secure_path}/config/system
+```
+
 Admin API：
 
 ```text
 /api/v2/{secure_path}/*
 ```
 
-`secure_path` 由运行时中间件逐请求校验。修改后台安全路径后，新路径立即生效，旧路径立即返回 404，不需要重启 Octane 或容器。
+`secure_path` 同时作为管理页面入口和 Admin API 前缀，并由运行时中间件逐请求校验。固定路径 `/admin` 不再提供管理后台；修改安全路径后，前端会切换到新地址，旧页面路径与旧 API 前缀都会立即返回 404，不需要重启 Octane、Caddy 或容器。
+
+后台前端的 JavaScript/CSS 使用内部静态命名空间 `/.txboard-admin/assets/*` 分发，但该命名空间不提供 `index.html`，不能作为管理页面入口。
 
 管理员 POST 操作会进入审计日志；密码、Token、Secret、API Key 等敏感字段会递归脱敏后再持久化。
 

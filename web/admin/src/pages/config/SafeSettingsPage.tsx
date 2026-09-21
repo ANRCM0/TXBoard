@@ -3,7 +3,7 @@ import { SettingsForm, type SettingField } from '../../components/config/Setting
 const fields: SettingField[] = [
   { key: 'email_verify', label: '注册邮箱验证', type: 'switch', section: '账号安全' },
   { key: 'safe_mode_enable', label: '安全模式', type: 'switch', section: '账号安全' },
-  { key: 'secure_path', label: '后台安全路径', section: '账号安全', saveMode: 'blur', description: '至少 8 位，只允许字母、数字、下划线和连字符；编辑完成并离开输入框后立即生效，无需重启。' },
+  { key: 'secure_path', label: '后台安全路径', section: '账号安全', saveMode: 'blur', description: '至少 8 位，只允许字母、数字、下划线和连字符；离开输入框后立即生效，后台会自动切换到新地址，旧地址立即 404，无需重启。' },
   { key: 'email_gmail_limit_enable', label: '限制 Gmail 别名注册', type: 'switch', section: '邮箱限制' },
   { key: 'email_whitelist_enable', label: '启用邮箱后缀白名单', type: 'switch', section: '邮箱限制' },
   { key: 'email_whitelist_suffix', label: '允许的邮箱后缀', type: 'string-array', section: '邮箱限制', placeholder: 'gmail.com\noutlook.com', visibleWhen: v => Boolean(v.email_whitelist_enable) },

@@ -2,6 +2,8 @@ import { useMutation, useQuery } from '@tanstack/react-query'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { fetchSettings, saveSettings, type Settings } from '../../api/config'
+import { setAdminSecurePath } from '../../api/client'
+import { resolveBasePath } from '../../lib/basePath'
 import { ConfigSectionFrame } from './ConfigSectionFrame'
 
 export type SettingOption = { label: string; value: string | number }
@@ -43,7 +45,36 @@ export function SettingsForm({
 
   const mutation = useMutation({
     mutationFn: (payload: Settings) => saveSettings(payload),
-    onSuccess: () => toast.success('已自动保存'),
+    onSuccess: (_data, payload) => {
+      toast.success('已自动保存')
+
+      const nextSecurePath =
+        typeof payload.secure_path === 'string'
+          ? payload.secure_path.trim().replace(/^\/+|\/+$/g, '')
+          : ''
+      const currentBase = resolveBasePath()
+      const currentSecurePath = currentBase.replace(/^\/+|\/+$/g, '')
+
+      // The router basename is created once at application startup. After the
+      // backend accepts a secure_path rotation, persist the new API prefix and
+      // perform one full navigation to the same admin sub-route under the new
+      // mount. The old URL becomes a 404 immediately.
+      if (
+        nextSecurePath &&
+        currentSecurePath &&
+        nextSecurePath !== currentSecurePath &&
+        import.meta.env.VITE_STATIC_PREVIEW !== '1'
+      ) {
+        setAdminSecurePath(nextSecurePath)
+        const pathname = window.location.pathname
+        const suffix = pathname.startsWith(currentBase)
+          ? pathname.slice(currentBase.length) || '/'
+          : '/'
+        window.location.replace(
+          `/${nextSecurePath}${suffix}${window.location.search}${window.location.hash}`,
+        )
+      }
+    },
   })
 
   const sections = useMemo(() => {

@@ -9,6 +9,7 @@ use App\Models\Knowledge;
 use App\Models\MailTemplate;
 use App\Models\Notice;
 use App\Models\User;
+use App\Services\AuthService;
 use App\Services\StatisticalService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -76,6 +77,19 @@ class AdminContractRegressionTest extends TestCase
         $this->assertSame('[REDACTED]', $payload['server_token']);
         $this->assertSame('[REDACTED]', $payload['telegram_bot_token']);
         $this->assertSame('[REDACTED]', $payload['turnstile_secret_key']);
+    }
+
+    public function test_regular_user_auth_payload_does_not_disclose_secure_path(): void
+    {
+        $user = $this->makeUser('auth-user@example.com', 0, 0, false);
+        $userPayload = (new AuthService($user))->generateAuthData();
+
+        $this->assertArrayNotHasKey('secure_path', $userPayload);
+
+        $admin = $this->makeUser('auth-admin@example.com', 0, 0, true);
+        $adminPayload = (new AuthService($admin))->generateAuthData();
+
+        $this->assertSame($this->securePath, $adminPayload['secure_path']);
     }
 
     public function test_secure_path_rotation_takes_effect_without_application_restart(): void

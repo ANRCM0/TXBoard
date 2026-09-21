@@ -66,7 +66,7 @@ class TxboardInstall extends Command
                 }
                 $this->seedCoreSettings();
                 $securePath = admin_setting('secure_path', admin_setting('frontend_admin_path', hash('crc32b', config('app.key'))));
-                $this->info("TXBoard 已完成安装。管理面板：http(s)://你的站点/admin/（管理接口前缀：{$securePath}）");
+                $this->info("TXBoard 已完成安装。管理面板：http(s)://你的站点/{$securePath}/");
                 return self::SUCCESS;
             }
 
@@ -236,14 +236,11 @@ class TxboardInstall extends Command
             $this->info("管理员邮箱：{$email}");
             $this->info("管理员密码：{$password}");
 
-            // The SPA is served by the gateway at /admin/. The secure path is the
-            // admin API prefix (/api/v2/{secure_path}/...), not a browser URL:
-            // /{secure_path} only 302s to /admin/ and is unreachable through the
-            // shipped Caddy config, whose catch-all serves the user SPA. Reading
-            // the setting (rather than re-deriving the default) also keeps this
-            // correct on an install that already changed it.
+            // The browser entry and the Admin API share the same live secure
+            // path. Reading the persisted setting keeps this correct for repaired
+            // or upgraded installations that already rotated it.
             $securePath = admin_setting('secure_path', admin_setting('frontend_admin_path', hash('crc32b', config('app.key'))));
-            $this->info("管理面板：http(s)://你的站点/admin/（管理接口前缀：{$securePath}）");
+            $this->info("管理面板：http(s)://你的站点/{$securePath}/");
             $envConfig['INSTALLED'] = true;
             $this->saveToEnv($envConfig);
             foreach (array_keys($installDriverOverrides) as $key) {
