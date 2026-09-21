@@ -2097,3 +2097,14 @@ body{font-size:16px;background:var(--bg);color:var(--fg);overflow:hidden}
     animation-iteration-count:1!important;
   }
 }
+
+.modal-card-wide{width:min(980px,100%)}
+.node-form-section{border:1px solid var(--border);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:12px}
+.node-form-section>h4{margin:0;font-size:14px}
+.node-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.node-form-grid .full{grid-column:1/-1}
+.node-form-checks{display:flex;gap:18px;flex-wrap:wrap}
+.node-form-multiselect{min-height:96px!important}
+.node-form-hint{color:var(--muted);font-size:12px;line-height:1.5}
+.node-protocol-badge{font-size:12px;color:var(--muted);font-weight:500}
+@media(max-width:720px){.node-form-grid{grid-template-columns:1fr}.node-form-grid .full{grid-column:auto}}
