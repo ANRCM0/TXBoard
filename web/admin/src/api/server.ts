@@ -1,18 +1,7 @@
 import { apiClient } from './client'
 import { unwrap } from '../lib/api'
 
-export type NodeProtocolType =
-  | 'hysteria'
-  | 'vless'
-  | 'trojan'
-  | 'vmess'
-  | 'tuic'
-  | 'shadowsocks'
-  | 'anytls'
-  | 'socks'
-  | 'naive'
-  | 'http'
-  | 'mieru'
+export type NodeProtocolType = string
 
 export type NodeRateTimeRange = {
   start: string
