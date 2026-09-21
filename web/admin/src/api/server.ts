@@ -33,12 +33,13 @@ export type ProtocolFormOption = {
 export type ProtocolFormField = {
   key: string
   label: string
-  type: 'text' | 'number' | 'select' | 'checkbox' | 'textarea' | 'json'
+  type: 'text' | 'number' | 'select' | 'checkbox' | 'textarea' | 'json' | 'json-array' | 'string-list'
   placeholder?: string
   full?: boolean
   min?: number
   max?: number
   step?: number | string
+  separator?: 'comma' | 'newline'
   options?: ProtocolFormOption[]
   visible_when?: ProtocolFormCondition | ProtocolFormCondition[]
 }
