@@ -50,10 +50,10 @@ export function SettingsForm({
 
       const nextSecurePath =
         typeof payload.secure_path === 'string'
-          ? payload.secure_path.trim().replace(/^\\/+|\\/+$/g, '')
+          ? payload.secure_path.trim().replace(/^\/+|\/+$/g, '')
           : ''
       const currentBase = resolveBasePath()
-      const currentSecurePath = currentBase.replace(/^\\/+|\\/+$/g, '')
+      const currentSecurePath = currentBase.replace(/^\/+|\/+$/g, '')
 
       // The router basename is created once at application startup. After the
       // backend accepts a secure_path rotation, persist the new API prefix and
