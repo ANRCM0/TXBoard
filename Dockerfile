@@ -78,7 +78,9 @@ ENV ENABLE_WEB=true \
     ENABLE_HORIZON=true \
     ENABLE_REDIS=true \
     ENABLE_WS_SERVER=true \
-    ENABLE_CADDY=true
+    ENABLE_CADDY=true \
+    XDG_DATA_HOME=/caddy-data \
+    XDG_CONFIG_HOME=/caddy-config
 
 ARG APP_COMMIT=unknown
 ENV APP_COMMIT=${APP_COMMIT}

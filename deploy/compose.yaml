@@ -49,8 +49,8 @@ services:
       - ../api/plugins:/www/plugins
       - ../api/.env:/www/.env
       - txboard-redis:/data
-      - caddy-data:/data/caddy
-      - caddy-config:/config
+      - caddy-data:/caddy-data
+      - caddy-config:/caddy-config
     environment:
       docker: "true"
       DB_CONNECTION: mysql
