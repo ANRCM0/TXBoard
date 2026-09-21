@@ -169,15 +169,6 @@ ensure_app_key() {
 }
 ensure_app_key
 
-# Keep the bundled first-party integration in sync with the application image.
-# /www/plugins is persistent so third-party plugins survive image replacement;
-# only the canonical AccessAudit directory is refreshed from the image.
-if [ -d /opt/txboard/integrations/AccessAudit ]; then
-    mkdir -p /www/plugins
-    rm -rf /www/plugins/AccessAudit
-    cp -R /opt/txboard/integrations/AccessAudit /www/plugins/AccessAudit
-fi
-
 redis_reachable() {
     local host port
     host=$(grep -E '^REDIS_HOST=' /www/.env 2>/dev/null | tail -1 | cut -d= -f2- | tr -d '"' | tr -d "'")

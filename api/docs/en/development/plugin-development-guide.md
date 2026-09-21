@@ -344,9 +344,10 @@ ZIP 根目录可以直接是插件目录，也可以包含一层插件目录；�
 
 ## 16. Reference plugin
 
-AccessAudit 2.4.x 是 Plugin Package v1 的参考实现：
+[TXBoard-AccessAudit](https://github.com/PaiMonCai/TXBoard-AccessAudit) 是 Plugin Package v1 的第一方参考实现：
 
-- PHP backend / migrations / routes 位于插件包；
+- 独立仓库维护 PHP backend / migrations / routes；
 - CRUD/Settings 使用宿主 Schema；
 - Dashboard / Analytics 位于插件自己的 `admin/dist`；
-- TXBoard Admin 不包含 AccessAudit 专属 React 源码。
+- Git tag 自动生成可上传的 Plugin ZIP；
+- TXBoard Admin 和 TXBoard 镜像都不包含 AccessAudit 专属源码。
