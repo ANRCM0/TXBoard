@@ -28,6 +28,13 @@ class InitializePlugins
      */
     public function handle(Request $request, Closure $next)
     {
+        // Runtime health must work before the database has been installed.
+        // Requiring the plugin table here would make a fresh container unhealthy
+        // and block the installer at "docker compose up --wait".
+        if ($request->is('api/health')) {
+            return $next($request);
+        }
+
         // This single method call handles loading and booting all enabled plugins.
         // It's safe to call multiple times, as it will only run once per request.
         $this->pluginManager->initializeEnabledPlugins();
