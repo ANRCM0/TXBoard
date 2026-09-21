@@ -118,65 +118,63 @@ Machine
 
 ## 快速部署
 
-当前仓库只保留**源码 + Docker Compose** 部署入口。一键部署与私有仓库分发方案正在重新设计，不在当前版本中固化。
+生产用户通过独立公开仓库 [TXBoard-Deploy](https://github.com/PaiMonCai/TXBoard-Deploy) 部署。部署脚本只拉取 TXBoard 镜像，不 clone、不构建本仓库源码。
 
-### 环境要求
+服务器只需要：
 
-- Docker Engine 24+
+- Docker Engine
 - Docker Compose v2
-- 建议至少 2 vCPU / 2 GB RAM
-- 如由 TXBoard 自己签发 HTTPS，服务器需要开放 80 / 443 并正确配置 DNS
+- Linux amd64 / arm64
 
-### 1. 准备配置
+交互式安装：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/PaiMonCai/TXBoard-Deploy/main/install.sh | sudo bash
+```
+
+安装器会询问镜像标签、域名/TLS 模式、管理员邮箱、端口、安装目录与备份保留数量，然后生成运行时 Compose 和配置，并直接拉取：
+
+```text
+ghcr.io/paimoncai/txboard:<tag>
+```
+
+用户服务器不需要 Git、PHP、Composer、Node.js、npm 或 TXBoard 源码。
+
+完整安装与更新说明见：
+
+[TXBoard-Deploy](https://github.com/PaiMonCai/TXBoard-Deploy)
+
+### 维护者源码部署
+
+本仓库根目录仍保留开发/维护用途的 Compose：
 
 ```bash
 cp .env.example .env
 cp api/.env.example api/.env
-```
-
-至少设置根目录 `.env` 中的数据库密码：
-
-```env
-TXBOARD_DB_PASSWORD=change-me
-TXBOARD_DB_ROOT_PASSWORD=change-root-password
-```
-
-### 2. 启动
-
-从当前源码构建：
-
-```bash
 docker compose up -d --build --remove-orphans --wait
-```
-
-### 3. 初始化
-
-```bash
 docker compose exec -it txboard php artisan xboard:install
 ```
-
-安装完成后，TXBoard 会创建管理员并输出随机密码。
 
 ---
 
 ## Docker 部署模型
 
-仓库根目录是当前 Compose 部署入口：
+生产分发边界：
 
 ```text
-TXBoard/
-├── Dockerfile
-├── compose.yaml
-├── .env.example
-├── backup.sh
-├── sync-gateway.sh
-├── api/
-├── web/
-├── contracts/
-└── docs/
+TXBoard source / CI
+        │
+        ▼
+ghcr.io/paimoncai/txboard
+        │
+        ▼
+TXBoard-Deploy
+        │
+        ▼
+user server
 ```
 
-Compose 中只有一个 TXBoard 应用服务：
+TXBoard 应用镜像包含：
 
 ```text
 txboard
@@ -189,26 +187,16 @@ txboard
 └── WebSocket
 ```
 
-另外的 `database` 和 `backup` 是基础设施服务，并不是第二套 TXBoard 应用镜像。
+MySQL 和备份任务由 TXBoard-Deploy 生成的 Compose 作为基础设施服务运行。
 
-### 常用命令
+部署仓库只依赖稳定运行接口：
 
-```bash
-docker compose ps
-docker compose logs -f txboard
-docker compose exec txboard sh
-docker compose exec txboard php artisan about
-docker compose restart txboard
-docker compose down
-```
+- TXBoard image
+- `GET /api/health`
+- `php artisan xboard:install`
+- `php artisan xboard:install-status`
 
-不要随意执行：
-
-```bash
-docker compose down -v
-```
-
-它会删除 MySQL、Redis 和 Caddy 等命名卷。
+它不依赖本仓库源码目录结构。
 
 ---
 
@@ -233,16 +221,22 @@ docker compose exec -T txboard php artisan xboard:install
 
 ## 更新
 
-TXBoard 不再支持在运行中的容器里执行 `git reset` / `composer install` 式自更新。
+生产部署通过 TXBoard-Deploy 更新镜像：
 
-### 从源码更新
+```bash
+curl -fsSL https://raw.githubusercontent.com/PaiMonCai/TXBoard-Deploy/main/update.sh | sudo bash
+```
+
+更新器默认先做一次备份，然后拉取当前配置的 TXBoard 镜像并等待真实应用 healthcheck 通过。
+
+维护者从源码更新：
 
 ```bash
 git pull
 docker compose up -d --build --remove-orphans --wait
 ```
 
-应用启动时仍会执行必要的数据库迁移、默认插件检查与主题刷新，但不会修改容器内源码。
+TXBoard 不在运行中的容器里执行 `git reset` / `composer install` 式源码自更新。
 
 ---
 
@@ -513,6 +507,7 @@ TXBoard/
 - [HTTP Contract Audit](contracts/http/xboard-api-contract-audit.md)
 - [TX-Node Protocol](contracts/node-protocol/README.md)
 - [Plugin Development Guide](api/docs/en/development/plugin-development-guide.md)
+- [TXBoard-Deploy](https://github.com/PaiMonCai/TXBoard-Deploy)
 - [TXBoard-AccessAudit](https://github.com/PaiMonCai/TXBoard-AccessAudit)
 - [Historical Web Notes](docs/archive/)
 
@@ -537,7 +532,7 @@ ghcr.io/paimoncai/txboard:sha-<commit>
 
 API 与两个前端作为同一个 artifact 构建，避免版本漂移。
 
-> GitHub 仓库可见性、镜像可见性以及未来的一键部署分发方式将作为独立发布设计重新确定，不再由当前 README 假设。
+生产部署脚本独立维护在公开的 [TXBoard-Deploy](https://github.com/PaiMonCai/TXBoard-Deploy)，应用源码仓库与部署分发不再耦合。
 
 
 ---
