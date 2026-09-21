@@ -120,6 +120,8 @@ class PluginController extends Controller
                     'need_upgrade' => $needUpgrade,
                     'admin_menus' => $config['admin_menus'] ?? null,
                     'admin_crud' => $config['admin_crud'] ?? null,
+                    'package' => $config['package'] ?? null,
+                    'asset_base' => $this->pluginManager->getPublicAssetBase($code),
                 ];
             }
         }

@@ -2040,17 +2040,3 @@ body{font-size:16px;background:var(--bg);color:var(--fg);overflow:hidden}
   .payment-notify{max-width:220px}
 }
 
-
-/* Native plugin renderers -------------------------------------------------- */
-.plugin-native-page { display: grid; gap: 16px; }
-.plugin-native-actions, .plugin-native-filter { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-.plugin-native-filter input { min-width: 240px; }
-.plugin-native-filter input, .plugin-native-filter select {
-  min-height: 38px; border: 1px solid var(--border); border-radius: 8px; padding: 0 10px;
-  background: var(--card); color: inherit;
-}
-.plugin-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
-.plugin-metric { display: grid; gap: 6px; }
-.plugin-metric > span, .plugin-metric > small { color: var(--muted-foreground); }
-.plugin-metric > strong { font-size: 24px; line-height: 1.15; }
-.plugin-chart { width: 100%; min-height: 300px; }

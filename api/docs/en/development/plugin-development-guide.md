@@ -1,691 +1,352 @@
-# XBoard Plugin Development Guide
+# TXBoard Plugin Development Guide
 
-## 📦 Plugin Structure
+TXBoard 插件是正式的扩展层。插件可以只提供 PHP 能力，也可以通过 Schema 让 TXBoard 自动生成后台 UI；复杂插件还可以使用 **Plugin Package v1** 自带完整的 Admin App。
 
-Each plugin is an independent directory with the following structure:
+跨仓库规范以 [Plugin Package Contract](../../../../contracts/plugin-package/README.md) 为准。
 
+## 1. Plugin structure
+
+推荐结构：
+
+```text
+YourPlugin/
+├── Plugin.php
+├── config.json
+├── README.md
+├── routes/
+│   ├── api.php
+│   └── web.php
+├── Http/Controllers/
+├── Models/
+├── Services/
+├── Commands/
+├── database/migrations/
+├── resources/assets/
+└── admin/dist/               # optional Plugin Package v1 Admin App
 ```
-plugins/
-└── YourPlugin/               # Plugin directory (PascalCase naming)
-    ├── Plugin.php           # Main plugin class (required)
-    ├── config.json          # Plugin configuration (required)
-    ├── routes/
-    │   └── api.php          # API routes
-    ├── Controllers/         # Controllers directory
-    │   └── YourController.php
-    ├── Commands/            # Artisan commands directory
-    │   └── YourCommand.php
-    └── README.md            # Documentation
-```
 
-## 🚀 Quick Start
+目录名通常使用 PascalCase；manifest `code` 使用小写字母、数字与下划线。
 
-### 1. Create Configuration File `config.json`
+## 2. Minimal config.json
 
 ```json
 {
-    "name": "My Plugin",
-    "code": "my_plugin", // Corresponds to plugin directory (lowercase + underscore)
-    "version": "1.0.0",
-    "description": "Plugin functionality description",
-    "author": "Author Name",
-    "require": {
-        "xboard": ">=1.0.0" // Version not fully implemented yet
-    },
-    "config": {
-        "api_key": {
-            "type": "string",
-            "default": "",
-            "label": "API Key",
-            "description": "API Key"
-        },
-        "timeout": {
-            "type": "number",
-            "default": 300,
-            "label": "Timeout (seconds)",
-            "description": "Timeout in seconds"
-        }
+  "name": "My Plugin",
+  "code": "my_plugin",
+  "type": "feature",
+  "version": "1.0.0",
+  "description": "My TXBoard plugin",
+  "author": "Your Name",
+  "config": {
+    "api_key": {
+      "type": "string",
+      "default": "",
+      "label": "API Key"
     }
+  }
 }
 ```
 
-### 2. Create Main Plugin Class `Plugin.php`
+支持的常用配置类型包括 `string`、`number`、`boolean`、`json`、`yaml`、`select` 等。后台 Settings 页面由 TXBoard 根据 Schema 生成。
+
+## 3. Plugin.php
 
 ```php
 <?php
 
-namespace Plugin\YourPlugin;
+namespace Plugin\MyPlugin;
 
 use App\Services\Plugin\AbstractPlugin;
 
 class Plugin extends AbstractPlugin
 {
-    /**
-     * Called when plugin starts
-     */
     public function boot(): void
     {
-        // Register frontend configuration hook
-        $this->filter('guest_comm_config', function ($config) {
-            $config['my_plugin_enable'] = true;
-            $config['my_plugin_setting'] = $this->getConfig('api_key', '');
+        $this->filter('guest_comm_config', function (array $config) {
+            $config['my_plugin_enabled'] = true;
             return $config;
         });
     }
 }
 ```
 
-### 3. Create Controller
+Plugin Runtime 负责加载启用插件并执行生命周期逻辑。
 
-**Recommended approach: Extend PluginController**
+## 4. Routes and controllers
 
-```php
-<?php
-
-namespace Plugin\YourPlugin\Controllers;
-
-use App\Http\Controllers\PluginController;
-use Illuminate\Http\Request;
-
-class YourController extends PluginController
-{
-    public function handle(Request $request)
-    {
-        // Get plugin configuration
-        $apiKey = $this->getConfig('api_key');
-        $timeout = $this->getConfig('timeout', 300);
-
-        // Your business logic...
-
-        return $this->success(['message' => 'Success']);
-    }
-}
-```
-
-### 4. Create Routes `routes/api.php`
+`routes/api.php`：
 
 ```php
 <?php
 
 use Illuminate\Support\Facades\Route;
-use Plugin\YourPlugin\Controllers\YourController;
+use Plugin\MyPlugin\Http\Controllers\ExampleController;
 
-Route::group([
-    'prefix' => 'api/v1/your-plugin'
-], function () {
-    Route::post('/handle', [YourController::class, 'handle']);
+Route::middleware(['api'])->prefix('/api/v1/plugin/my-plugin')->group(function () {
+    Route::post('/example', [ExampleController::class, 'handle']);
 });
 ```
 
-## 🔧 Configuration Access
-
-In controllers, you can easily access plugin configuration:
+管理员专用插件 API 可以在 `routes/web.php` 中使用 `admin` middleware：
 
 ```php
-// Get single configuration
-$value = $this->getConfig('key', 'default_value');
-
-// Get all configurations
-$allConfig = $this->getConfig();
-
-// Check if plugin is enabled
-$enabled = $this->isPluginEnabled();
+Route::middleware(['web', 'admin'])->group(function () {
+    Route::get('/plugin/my-plugin/stats', [AdminController::class, 'stats']);
+});
 ```
 
-## 🎣 Hook System
+不要假设 `secure_path` 的值；如果需要访问 TXBoard Admin API，由 Admin Bridge 提供当前 prefix。
 
-### Popular Hooks (Recommended to follow)
+## 5. Database migrations
 
-XBoard has built-in hooks for many business-critical nodes. Plugin developers can flexibly extend through `filter` or `listen` methods. Here are the most commonly used and valuable hooks:
+将 migration 放在：
 
-| Hook Name                 | Type   | Typical Parameters       | Description      |
-| ------------------------- | ------ | ----------------------- | ---------------- |
-| user.register.before      | action | Request                 | Before user registration |
-| user.register.after       | action | User                    | After user registration |
-| user.login.after          | action | User                    | After user login |
-| user.password.reset.after | action | User                    | After password reset |
-| order.cancel.before       | action | Order                   | Before order cancellation |
-| order.cancel.after        | action | Order                   | After order cancellation |
-| payment.notify.before     | action | method, uuid, request   | Before payment callback |
-| payment.notify.verified   | action | array                   | Payment callback verification successful |
-| payment.notify.failed     | action | method, uuid, request   | Payment callback verification failed |
-| traffic.reset.after       | action | User                    | After traffic reset |
-| ticket.create.after       | action | Ticket                  | After ticket creation |
-| ticket.reply.user.after   | action | Ticket                  | After user replies to ticket |
-| ticket.close.after        | action | Ticket                  | After ticket closure |
+```text
+database/migrations/
+```
 
-> ⚡️ The hook system will continue to expand. Developers can always follow this documentation and the `php artisan hook:list` command to get the latest supported hooks.
+安装时 TXBoard 会执行插件 migration；升级会继续运行尚未执行的 migration。
 
-### Filter Hooks
+Migration 必须支持已有生产数据向前迁移，不要依赖清空表或重装插件。
 
-Used to modify data:
+## 6. Settings UI
+
+仅配置项时，不要写 Admin App。
+
+```json
+{
+  "config": {
+    "enabled": {
+      "type": "boolean",
+      "default": true,
+      "label": "启用功能"
+    },
+    "endpoint": {
+      "type": "string",
+      "default": "",
+      "label": "Endpoint"
+    }
+  }
+}
+```
+
+TXBoard 会自动生成 Settings 页面。
+
+## 7. CRUD UI
+
+标准表格/表单优先使用 `admin_crud`：
+
+```json
+{
+  "admin_crud": {
+    "rules": {
+      "version": 1,
+      "title": "Rules",
+      "id_field": "id",
+      "api": {
+        "list": "/plugin/my-plugin/rules",
+        "save": "/plugin/my-plugin/rules/save",
+        "delete": "/plugin/my-plugin/rules/delete"
+      },
+      "columns": [
+        { "key": "id", "title": "ID", "type": "number" },
+        { "key": "name", "title": "Name", "searchable": true }
+      ],
+      "form": [
+        { "name": "id", "type": "number", "hidden": true },
+        { "name": "name", "type": "string", "label": "Name", "required": true }
+      ]
+    }
+  }
+}
+```
+
+这样插件无需维护自己的表格、分页和表单壳层。
+
+## 8. Plugin Package v1 Admin App
+
+只有 Dashboard、图表、可视化工作台等复杂页面才建议自带 Admin App。
+
+Manifest：
+
+```json
+{
+  "package": {
+    "schema": 1,
+    "admin": {
+      "format": "static-app",
+      "dist": "admin/dist"
+    }
+  },
+  "admin_menus": [
+    {
+      "title": "Dashboard",
+      "path": "dashboard",
+      "app": "admin/index.html#/dashboard"
+    }
+  ]
+}
+```
+
+插件 release ZIP 必须已经包含：
+
+```text
+admin/dist/index.html
+admin/dist/assets/...
+```
+
+TXBoard 不会帮插件运行 npm 或 Vite。
+
+React、Vue、Svelte、原生 JS 都可以，前提是输出纯静态文件并使用相对资源路径。
+
+## 9. Admin Bridge v1
+
+插件 App 启动后：
+
+```js
+const origin = window.location.origin
+
+window.parent.postMessage(
+  { type: 'txboard:plugin:ready', version: 1 },
+  origin,
+)
+
+window.addEventListener('message', (event) => {
+  if (event.origin !== origin) return
+
+  const message = event.data
+  if (message?.type !== 'txboard:plugin:init' || message.version !== 1) return
+
+  const authorization = message.auth.authorization
+  const rootApi = message.api.root
+  const adminApi = message.api.admin
+
+  // Example:
+  fetch(rootApi + '/plugin/my-plugin/stats', {
+    headers: { Authorization: authorization }
+  })
+})
+```
+
+跳到同一插件宿主页：
+
+```js
+window.parent.postMessage(
+  {
+    type: 'txboard:plugin:navigate',
+    version: 1,
+    path: 'rules'
+  },
+  origin,
+)
+```
+
+完整字段和安全规则见 Plugin Package Contract。
+
+## 10. Hooks
+
+插件可以使用 `filter` 与 `listen` 扩展业务流程。
+
+示例：
 
 ```php
-// In Plugin.php boot() method
-$this->filter('guest_comm_config', function ($config) {
-    // Add configuration for frontend
+$this->filter('guest_comm_config', function (array $config) {
     $config['my_setting'] = $this->getConfig('setting');
     return $config;
 });
-```
 
-### Action Hooks
-
-Used to execute operations:
-
-```php
 $this->listen('user.created', function ($user) {
-    // Operations after user creation
-    $this->doSomething($user);
+    // plugin logic
 });
 ```
 
-## 📝 Real Example: Telegram Login Plugin
+Hook 属于应用级扩展点。使用前应通过当前源码或 `php artisan hook:list` 确认名称仍然存在。
 
-Using TelegramLogin plugin as an example to demonstrate complete implementation:
-
-**Main Plugin Class** (23 lines):
-
-```php
-<?php
-
-namespace Plugin\TelegramLogin;
-
-use App\Services\Plugin\AbstractPlugin;
-
-class Plugin extends AbstractPlugin
-{
-    public function boot(): void
-    {
-        $this->filter('guest_comm_config', function ($config) {
-            $config['telegram_login_enable'] = true;
-            $config['telegram_login_domain'] = $this->getConfig('domain', '');
-            $config['telegram_bot_username'] = $this->getConfig('bot_username', '');
-            return $config;
-        });
-    }
-}
-```
-
-**Controller** (extends PluginController):
-
-```php
-class TelegramLoginController extends PluginController
-{
-    public function telegramLogin(Request $request)
-    {
-        // Check plugin status
-        if ($error = $this->beforePluginAction()) {
-            return $error[1];
-        }
-
-        // Get configuration
-        $botToken = $this->getConfig('bot_token');
-        $timeout = $this->getConfig('auth_timeout', 300);
-
-        // Business logic...
-
-        return $this->success($result);
-    }
-}
-```
-
-## ⏰ Plugin Scheduled Tasks (Scheduler)
-
-Plugins can register their own scheduled tasks by implementing the `schedule(Schedule $schedule)` method in the main class.
-
-**Example:**
+## 11. Scheduled tasks
 
 ```php
 use Illuminate\Console\Scheduling\Schedule;
 
-class Plugin extends AbstractPlugin
-{
-    public function schedule(Schedule $schedule): void
-    {
-        // Execute every hour
-        $schedule->call(function () {
-            // Your scheduled task logic
-            \Log::info('Plugin scheduled task executed');
-        })->hourly();
-    }
-}
-```
-
-- Just implement the `schedule()` method in Plugin.php.
-- All plugin scheduled tasks will be automatically scheduled by the main program.
-- Supports all Laravel scheduler usage.
-
-## 🖥️ Plugin Artisan Commands
-
-Plugins can automatically register Artisan commands by creating command classes in the `Commands/` directory.
-
-### Command Directory Structure
-
-```
-plugins/YourPlugin/
-├── Commands/
-│   ├── TestCommand.php      # Test command
-│   ├── BackupCommand.php    # Backup command
-│   └── CleanupCommand.php   # Cleanup command
-```
-
-### Create Command Class
-
-**Example: TestCommand.php**
-
-```php
-<?php
-
-namespace Plugin\YourPlugin\Commands;
-
-use Illuminate\Console\Command;
-
-class TestCommand extends Command
-{
-    protected $signature = 'your-plugin:test {action=ping} {--message=Hello}';
-    protected $description = 'Test plugin functionality';
-
-    public function handle(): int
-    {
-        $action = $this->argument('action');
-        $message = $this->option('message');
-
-        try {
-            return match ($action) {
-                'ping' => $this->ping($message),
-                'info' => $this->showInfo(),
-                default => $this->showHelp()
-            };
-        } catch (\Exception $e) {
-            $this->error('Operation failed: ' . $e->getMessage());
-            return 1;
-        }
-    }
-
-    protected function ping(string $message): int
-    {
-        $this->info("✅ {$message}");
-        return 0;
-    }
-
-    protected function showInfo(): int
-    {
-        $this->info('Plugin Information:');
-        $this->table(
-            ['Property', 'Value'],
-            [
-                ['Plugin Name', 'YourPlugin'],
-                ['Version', '1.0.0'],
-                ['Status', 'Enabled'],
-            ]
-        );
-        return 0;
-    }
-
-    protected function showHelp(): int
-    {
-        $this->info('Usage:');
-        $this->line('  php artisan your-plugin:test ping --message="Hello"  # Test');
-        $this->line('  php artisan your-plugin:test info                    # Show info');
-        return 0;
-    }
-}
-```
-
-### Automatic Command Registration
-
-- ✅ Automatically register all commands in `Commands/` directory when plugin is enabled
-- ✅ Command namespace automatically set to `Plugin\YourPlugin\Commands`
-- ✅ Supports all Laravel command features (arguments, options, interaction, etc.)
-
-### Usage Examples
-
-```bash
-# Test command
-php artisan your-plugin:test ping --message="Hello World"
-
-# Show information
-php artisan your-plugin:test info
-
-# View help
-php artisan your-plugin:test --help
-```
-
-### Best Practices
-
-1. **Command Naming**: Use `plugin-name:action` format, e.g., `telegram:test`
-2. **Error Handling**: Wrap main logic with try-catch
-3. **Return Values**: Return 0 for success, 1 for failure
-4. **User Friendly**: Provide clear help information and error messages
-5. **Type Declarations**: Use PHP 8.2 type declarations
-
-## 🛠️ Development Tools
-
-### Controller Base Class Selection
-
-**Method 1: Extend PluginController (Recommended)**
-
-- Automatic configuration access: `$this->getConfig()`
-- Automatic status checking: `$this->beforePluginAction()`
-- Unified error handling
-
-**Method 2: Use HasPluginConfig Trait**
-
-```php
-use App\Http\Controllers\Controller;
-use App\Traits\HasPluginConfig;
-
-class YourController extends Controller
-{
-    use HasPluginConfig;
-
-    public function handle()
-    {
-        $config = $this->getConfig('key');
-        // ...
-    }
-}
-```
-
-### Configuration Types
-
-Supported configuration types:
-
-- `string` - String
-- `number` - Number
-- `boolean` - Boolean
-- `json` - Array
-- `yaml`
-
-## 🎯 Best Practices
-
-### 1. Concise Main Class
-
-- Plugin main class should be as concise as possible
-- Mainly used for registering hooks and routes
-- Complex logic should be placed in controllers or services
-
-### 2. Configuration Management
-
-- Define all configuration items in `config.json`
-- Use `$this->getConfig()` to access configuration
-- Provide default values for all configurations
-
-### 3. Route Design
-
-- Use semantic route prefixes
-- Place API routes in `routes/api.php`
-- Place Web routes in `routes/web.php`
-
-### 4. Error Handling
-
-```php
-public function handle(Request $request)
-{
-    // Check plugin status
-    if ($error = $this->beforePluginAction()) {
-        return $error[1];
-    }
-
-    try {
-        // Business logic
-        return $this->success($result);
-    } catch (\Exception $e) {
-        return $this->fail([500, $e->getMessage()]);
-    }
-}
-```
-
-## 🔍 Debugging Tips
-
-### 1. Logging
-
-```php
-\Log::info('Plugin operation', ['data' => $data]);
-\Log::error('Plugin error', ['error' => $e->getMessage()]);
-```
-
-### 2. Configuration Checking
-
-```php
-// Check required configuration
-if (!$this->getConfig('required_key')) {
-    return $this->fail([400, 'Missing configuration']);
-}
-```
-
-### 3. Development Mode
-
-```php
-if (config('app.debug')) {
-    // Detailed debug information for development environment
-}
-```
-
-## 📋 Plugin Lifecycle
-
-1. **Installation**: Validate configuration, register to database
-2. **Enable**: Load plugin, register hooks and routes
-3. **Running**: Handle requests, execute business logic
-
-## 🎉 Summary
-
-Based on TelegramLogin plugin practical experience:
-
-- **Simplicity**: Main class only 23 lines, focused on core functionality
-- **Practicality**: Extends PluginController, convenient configuration access
-- **Maintainability**: Clear directory structure, standard development patterns
-- **Extensibility**: Hook-based architecture, easy to extend functionality
-
-Following this guide, you can quickly develop plugins with complete functionality and concise code! 🚀
-
-## 🖥️ Complete Plugin Artisan Commands Guide
-
-### Feature Highlights
-
-✅ **Auto Registration**: Automatically register all commands in `Commands/` directory when plugin is enabled  
-✅ **Namespace Isolation**: Each plugin's commands use independent namespaces  
-✅ **Type Safety**: Support PHP 8.2 type declarations  
-✅ **Error Handling**: Comprehensive exception handling and error messages  
-✅ **Configuration Integration**: Commands can access plugin configuration  
-✅ **Interaction Support**: Support user input and confirmation operations
-
-### Real Case Demonstrations
-
-#### 1. Telegram Plugin Commands
-
-```bash
-# Test Bot connection
-php artisan telegram:test ping
-
-# Send message
-php artisan telegram:test send --message="Hello World"
-
-# Get Bot information
-php artisan telegram:test info
-```
-
-#### 2. TelegramExtra Plugin Commands
-
-```bash
-# Show all statistics
-php artisan telegram-extra:stats all
-
-# User statistics
-php artisan telegram-extra:stats users
-
-# JSON format output
-php artisan telegram-extra:stats users --format=json
-```
-
-#### 3. Example Plugin Commands
-
-```bash
-# Basic usage
-php artisan example:hello
-
-# With arguments and options
-php artisan example:hello Bear --message="Welcome!"
-```
-
-### Development Best Practices
-
-#### 1. Command Naming Conventions
-
-```php
-// ✅ Recommended: Use plugin name as prefix
-protected $signature = 'telegram:test {action}';
-protected $signature = 'telegram-extra:stats {type}';
-protected $signature = 'example:hello {name}';
-
-// ❌ Avoid: Use generic names
-protected $signature = 'test {action}';
-protected $signature = 'stats {type}';
-```
-
-#### 2. Error Handling Pattern
-
-```php
-public function handle(): int
-{
-    try {
-        // Main logic
-        return $this->executeAction();
-    } catch (\Exception $e) {
-        $this->error('Operation failed: ' . $e->getMessage());
-        return 1;
-    }
-}
-```
-
-#### 3. User Interaction
-
-```php
-// Get user input
-$chatId = $this->ask('Please enter chat ID');
-
-// Confirm operation
-if (!$this->confirm('Are you sure you want to execute this operation?')) {
-    $this->info('Operation cancelled');
-    return 0;
-}
-
-// Choose operation
-$action = $this->choice('Choose operation', ['ping', 'send', 'info']);
-```
-
-#### 4. Configuration Access
-
-```php
-// Access plugin configuration in commands
-protected function getConfig(string $key, $default = null): mixed
-{
-    // Get plugin instance through PluginManager
-    $plugin = app(\App\Services\Plugin\PluginManager::class)
-        ->getEnabledPlugins()['example_plugin'] ?? null;
-
-    return $plugin ? $plugin->getConfig($key, $default) : $default;
-}
-```
-
-### Advanced Usage
-
-#### 1. Multi-Command Plugins
-
-```php
-// One plugin can have multiple commands
-plugins/YourPlugin/Commands/
-├── BackupCommand.php      # Backup command
-├── CleanupCommand.php     # Cleanup command
-├── StatsCommand.php       # Statistics command
-└── TestCommand.php        # Test command
-```
-
-#### 2. Inter-Command Communication
-
-```php
-// Share data between commands through cache or database
-Cache::put('plugin:backup:progress', $progress, 3600);
-$progress = Cache::get('plugin:backup:progress');
-```
-
-#### 3. Scheduled Task Integration
-
-```php
-// Call commands in plugin's schedule method
 public function schedule(Schedule $schedule): void
 {
-    $schedule->command('your-plugin:backup')->daily();
-    $schedule->command('your-plugin:cleanup')->weekly();
+    $schedule->call(function () {
+        // cleanup / aggregation
+    })->hourly()->onOneServer();
 }
 ```
 
-### Debugging Tips
+TXBoard 会为已启用插件注册 scheduler。
 
-#### 1. Command Testing
+## 12. Artisan commands
 
-```bash
-# View command help
-php artisan your-plugin:command --help
+插件可以在 `Commands/` 中提供命令。命令类应使用独立命名空间，例如：
 
-# Verbose output
-php artisan your-plugin:command --verbose
-
-# Debug mode
-php artisan your-plugin:command --debug
+```text
+my-plugin:sync
+my-plugin:check
 ```
 
-#### 2. Logging
+插件禁用后，不应依赖这些命令继续维持核心业务。
 
-```php
-// Log in commands
-Log::info('Plugin command executed', [
-    'command' => $this->signature,
-    'arguments' => $this->arguments(),
-    'options' => $this->options()
-]);
+## 13. Lifecycle
+
+典型生命周期：
+
+```text
+ZIP upload
+   ↓
+package validation
+   ↓
+copy to api/plugins/{Plugin}
+   ↓
+install
+   ├── migrations
+   ├── default config
+   └── publish assets
+   ↓
+enable
+   ├── service provider
+   ├── routes
+   ├── views
+   ├── commands
+   └── boot()
 ```
 
-#### 3. Performance Monitoring
+升级要求新版本号高于旧版本，并重新发布静态资源。
 
-```php
-// Record command execution time
-$startTime = microtime(true);
-// ... execution logic
-$endTime = microtime(true);
-$this->info("Execution time: " . round(($endTime - $startTime) * 1000, 2) . "ms");
+## 14. Security model
+
+PHP 插件运行在 TXBoard Laravel 进程内，拥有高权限。**插件不是沙箱代码。**
+
+安装前必须信任其来源并审查代码。
+
+TXBoard 对 ZIP 做路径穿越、符号链接、entry 数和解压体积检查，但这些只解决包格式风险，不代表插件业务代码安全。
+
+Plugin Admin App 运行在 iframe 中，用于隔离 UI 生命周期和依赖，而不是为恶意 PHP 插件提供安全边界。
+
+## 15. Packaging
+
+推荐独立插件仓库的发布流程：
+
+```text
+source
+  ↓ tests
+frontend build
+  ↓
+admin/dist
+  ↓
+release ZIP
+  ↓
+TXBoard upload
 ```
 
-### Common Issues
+ZIP 根目录可以直接是插件目录，也可以包含一层插件目录；必须能找到 `config.json`。
 
-#### Q: Commands not showing in list?
+## 16. Reference plugin
 
-A: Check if plugin is enabled and ensure `Commands/` directory exists and contains valid command classes.
+AccessAudit 2.4.x 是 Plugin Package v1 的参考实现：
 
-#### Q: Command execution failed?
-
-A: Check if command class namespace is correct and ensure it extends `Illuminate\Console\Command`.
-
-#### Q: How to access plugin configuration?
-
-A: Get plugin instance through `PluginManager`, then call `getConfig()` method.
-
-#### Q: Can commands call other commands?
-
-A: Yes, use `Artisan::call()` method to call other commands.
-
-```php
-Artisan::call('other-plugin:command', ['arg' => 'value']);
-```
-
-### Summary
-
-The plugin command system provides powerful extension capabilities for XBoard:
-
-- 🚀 **Development Efficiency**: Quickly create management commands
-- 🔧 **Operational Convenience**: Automate daily operations
-- 📊 **Monitoring Capability**: Real-time system status viewing
-- 🛠️ **Debug Support**: Convenient problem troubleshooting tools
-
-By properly using plugin commands, you can greatly improve system maintainability and user experience! 🎉
+- PHP backend / migrations / routes 位于插件包；
+- CRUD/Settings 使用宿主 Schema；
+- Dashboard / Analytics 位于插件自己的 `admin/dist`；
+- TXBoard Admin 不包含 AccessAudit 专属 React 源码。

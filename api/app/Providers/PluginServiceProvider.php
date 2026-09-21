@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Models\Plugin;
 use App\Services\Plugin\HookManager;
 use App\Services\Plugin\PluginManager;
+use App\Services\Plugin\PluginPackage;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\DB;
@@ -16,7 +17,7 @@ class PluginServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->scoped(PluginManager::class, function ($app) {
-            return new PluginManager();
+            return new PluginManager($app->make(PluginPackage::class));
         });
     }
 
