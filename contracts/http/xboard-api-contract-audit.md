@@ -425,13 +425,19 @@ against the current Xboard core. Each entry states the drift and its resolution.
 
 ### 11.1 Admin secure path
 
-- Drift: the Admin SPA compiled a hard-coded `/api/v2/<hash>` prefix, which breaks on
-  any instance whose `secure_path` has been rotated.
-- Resolution: the prefix is resolved at runtime from `VITE_API_V2_ADMIN_PREFIX`, then
-  `window.settings.secure_path`, then the value cached from a previous sign-in.
-  `POST /api/v2/passport/auth/login` now returns `secure_path` so a fresh browser can
-  bootstrap. A rotated path that starts answering 404 drops the cache and returns the
-  operator to sign-in.
+- Drift: the Admin SPA compiled a hard-coded `/api/v2/<hash>` prefix, and the backend
+  also registered the configured `secure_path` only during application bootstrap.
+  Rotating the setting therefore required an Octane/application restart before the new
+  API path existed.
+- Resolution: Admin routes are registered once under
+  `/api/v2/{admin_path}/*`. `AdminPath` validates that path against the current
+  `secure_path` setting on every request and returns 404 for a mismatch without
+  revealing the configured value. The Admin SPA still learns the path from
+  `POST /api/v2/passport/auth/login`, but after a successful `config/save` that
+  contains `secure_path` it immediately re-points the admin Axios client to the new
+  prefix. Rotation therefore takes effect on the next request without an Octane or
+  container restart. The 404 cache-reset/sign-in fallback remains for out-of-band
+  rotations.
 
 ### 11.2 Admin login CAPTCHA
 

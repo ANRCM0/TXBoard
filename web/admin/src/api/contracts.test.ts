@@ -93,6 +93,16 @@ describe('admin secure path resolution', () => {
     expect(apiClient.defaults.baseURL).toBe('/api/v2/rotated2024')
   })
 
+  it('switches the admin client immediately after a secure-path save succeeds', async () => {
+    setAdminSecurePath('before-rotation')
+    responder = () => ({ data: { data: true } })
+
+    await saveSettings({ secure_path: 'after-rotation' })
+
+    expect(seen[0].baseURL).toBe('/api/v2/before-rotation')
+    expect(apiClient.defaults.baseURL).toBe('/api/v2/after-rotation')
+  })
+
   it('exposes the public prefix separately from the admin prefix', () => {
     expect(getResolvedApiPrefixes().public).toBe('/api/v2')
   })

@@ -1,4 +1,4 @@
-import { apiClient } from './client'
+import { apiClient, setAdminSecurePath } from './client'
 import { unwrap } from '../lib/api'
 
 export type Settings = Record<string, unknown>
@@ -15,6 +15,15 @@ export async function fetchSettings(key: string) {
 
 export async function saveSettings(payload: Settings) {
   const { data } = await apiClient.post('/config/save', payload)
+
+  // The backend validates {admin_path} against the current setting on every
+  // request. Re-point the client only after the rotation request succeeds so
+  // the next admin call immediately uses the new path without a re-login.
+  const nextSecurePath = typeof payload.secure_path === 'string'
+    ? payload.secure_path.trim()
+    : ''
+  if (nextSecurePath) setAdminSecurePath(nextSecurePath)
+
   return unwrap(data)
 }
 
