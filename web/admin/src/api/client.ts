@@ -94,7 +94,7 @@ function resolveAdminPrefix() {
   return `${runtimeBaseUrl()}/api/v2`
 }
 
-function attachCommonErrorHandling(client: AxiosInstance, options: { redirectOnAuthError: boolean }) {
+function attachCommonErrorHandling(client: AxiosInstance, options: { redirectOnAuthError: boolean; resetSecurePathOnNotFound?: boolean }) {
   client.interceptors.response.use(
     response => response,
     (error: AxiosError<{ message?: string; error?: unknown }>) => {
@@ -115,6 +115,7 @@ function attachCommonErrorHandling(client: AxiosInstance, options: { redirectOnA
       // operator back to sign-in so the fresh path is learned again.
       if (
         options.redirectOnAuthError &&
+        options.resetSecurePathOnNotFound !== false &&
         status === 404 &&
         !hasExplicitAdminPrefix() &&
         readStoredSecurePath()
@@ -163,9 +164,9 @@ for (const client of [apiClient, pluginApiClient]) {
 
 attachCommonErrorHandling(publicApiClient, { redirectOnAuthError: false })
 attachCommonErrorHandling(apiClient, { redirectOnAuthError: true })
-// Root plugin routes are not tied to the instance secure-path cache, so a plugin-level
-// 404 must never invalidate the administrator's cached secure path.
-attachCommonErrorHandling(pluginApiClient, { redirectOnAuthError: false })
+// Root plugin routes share administrator auth but are not tied to the instance
+// secure-path cache, so a plugin-level 404 must never invalidate that cache.
+attachCommonErrorHandling(pluginApiClient, { redirectOnAuthError: true, resetSecurePathOnNotFound: false })
 
 export function getResolvedApiPrefixes() {
   return {
