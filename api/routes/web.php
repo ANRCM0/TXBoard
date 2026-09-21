@@ -29,14 +29,14 @@ Route::get('/', function (Request $request) {
         }
     }
 
-    $theme = admin_setting('frontend_theme', 'Xboard');
+    $theme = admin_setting('frontend_theme', 'TXBoard');
     $themeService = new ThemeService();
 
     try {
         if (!$themeService->exists($theme)) {
-            if ($theme !== 'Xboard') {
+            if ($theme !== 'TXBoard') {
                 Log::warning('Theme not found, switching to default theme', ['theme' => $theme]);
-                $theme = 'Xboard';
+                $theme = 'TXBoard';
                 admin_setting(['frontend_theme' => $theme]);
             }
             $themeService->switch($theme);
@@ -56,10 +56,10 @@ Route::get('/', function (Request $request) {
         }
 
         $renderParams = [
-            'title' => admin_setting('app_name', 'Xboard'),
+            'title' => admin_setting('app_name', 'TXBoard'),
             'theme' => $theme,
             'version' => app(VersionService::class)->getCurrentVersion(),
-            'description' => admin_setting('app_description', 'Xboard is best'),
+            'description' => admin_setting('app_description', 'TXBoard control plane'),
             'logo' => admin_setting('logo'),
             'theme_config' => $themeService->getConfig($theme)
         ];
