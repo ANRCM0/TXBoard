@@ -1,3 +1,8 @@
+# Keep the historical project name used when compose.yaml lived under deploy/.
+# This makes the root-level migration reuse the existing named volumes and lets
+# --remove-orphans retire the old api/web containers safely.
+name: deploy
+
 x-logging: &default-logging
   driver: json-file
   options:
@@ -12,8 +17,8 @@ services:
     environment:
       MYSQL_DATABASE: ${TXBOARD_DB_DATABASE:-txboard}
       MYSQL_USER: ${TXBOARD_DB_USERNAME:-txboard}
-      MYSQL_PASSWORD: ${TXBOARD_DB_PASSWORD:?set TXBOARD_DB_PASSWORD in deploy/.env}
-      MYSQL_ROOT_PASSWORD: ${TXBOARD_DB_ROOT_PASSWORD:?set TXBOARD_DB_ROOT_PASSWORD in deploy/.env}
+      MYSQL_PASSWORD: ${TXBOARD_DB_PASSWORD:?set TXBOARD_DB_PASSWORD in .env}
+      MYSQL_ROOT_PASSWORD: ${TXBOARD_DB_ROOT_PASSWORD:?set TXBOARD_DB_ROOT_PASSWORD in .env}
     volumes:
       - database-data:/var/lib/mysql
     healthcheck:
@@ -34,7 +39,7 @@ services:
     # embedded Redis and the WebSocket server.
     image: ${TXBOARD_IMAGE:-ghcr.io/paimoncai/txboard:latest}
     build:
-      context: ..
+      context: .
       dockerfile: Dockerfile
       args:
         APP_COMMIT: ${APP_COMMIT:-local}
@@ -45,9 +50,9 @@ services:
       database:
         condition: service_healthy
     volumes:
-      - ../api/storage:/www/storage
-      - ../api/plugins:/www/plugins
-      - ../api/.env:/www/.env
+      - ./api/storage:/www/storage
+      - ./api/plugins:/www/plugins
+      - ./api/.env:/www/.env
       - api-redis:/data
       - caddy-data:/caddy-data
       - caddy-config:/caddy-config
@@ -58,7 +63,7 @@ services:
       DB_PORT: 3306
       DB_DATABASE: ${TXBOARD_DB_DATABASE:-txboard}
       DB_USERNAME: ${TXBOARD_DB_USERNAME:-txboard}
-      DB_PASSWORD: ${TXBOARD_DB_PASSWORD:?set TXBOARD_DB_PASSWORD in deploy/.env}
+      DB_PASSWORD: ${TXBOARD_DB_PASSWORD:?set TXBOARD_DB_PASSWORD in .env}
       REDIS_HOST: ${TXBOARD_REDIS_HOST:-/data/redis.sock}
       REDIS_PORT: ${TXBOARD_REDIS_PORT:-0}
       REDIS_PASSWORD: ${TXBOARD_REDIS_PASSWORD:-null}
@@ -92,7 +97,7 @@ services:
       DB_PORT: 3306
       DB_DATABASE: ${TXBOARD_DB_DATABASE:-txboard}
       DB_USERNAME: ${TXBOARD_DB_USERNAME:-txboard}
-      DB_PASSWORD: ${TXBOARD_DB_PASSWORD:?set TXBOARD_DB_PASSWORD in deploy/.env}
+      DB_PASSWORD: ${TXBOARD_DB_PASSWORD:?set TXBOARD_DB_PASSWORD in .env}
       BACKUP_DIR: /backups
       BACKUP_SOURCE_DIR: /backup-source/api
       BACKUP_INTERVAL: ${TXBOARD_BACKUP_INTERVAL:-86400}
@@ -100,7 +105,7 @@ services:
     volumes:
       - ./backup.sh:/usr/local/bin/txboard-backup.sh:ro
       - ${TXBOARD_BACKUP_DIR:-./backups}:/backups
-      - ../api:/backup-source/api:ro
+      - ./api:/backup-source/api:ro
 
 volumes:
   database-data:

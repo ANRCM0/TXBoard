@@ -3,7 +3,7 @@
 TXBoard has one supported deployment definition and one application image:
 
 ```text
-deploy/compose.yaml
+compose.yaml
 ghcr.io/paimoncai/txboard
 ```
 

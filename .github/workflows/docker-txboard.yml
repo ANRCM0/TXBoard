@@ -11,7 +11,7 @@ on:
       - ".dockerignore"
       - "package.json"
       - "package-lock.json"
-      - "deploy/compose.yaml"
+      - "compose.yaml"
       - ".github/workflows/docker-txboard.yml"
   pull_request:
     branches: [main]
@@ -23,7 +23,7 @@ on:
       - ".dockerignore"
       - "package.json"
       - "package-lock.json"
-      - "deploy/compose.yaml"
+      - "compose.yaml"
       - ".github/workflows/docker-txboard.yml"
   workflow_dispatch:
 
@@ -41,7 +41,7 @@ jobs:
         env:
           TXBOARD_DB_PASSWORD: test-password
           TXBOARD_DB_ROOT_PASSWORD: test-root-password
-        run: docker compose -f deploy/compose.yaml config >/dev/null
+        run: docker compose config >/dev/null
       - uses: docker/setup-buildx-action@v3
       - uses: docker/build-push-action@v6
         with:

@@ -3,13 +3,13 @@ set -eu
 
 cd "$(dirname "$0")"
 
-if ! docker compose -f compose.yaml ps --status running txboard >/dev/null 2>&1; then
+if ! docker compose ps --status running txboard >/dev/null 2>&1; then
     echo "The txboard service must be running so the panel setting can be read." >&2
-    echo "Start it with: docker compose -f compose.yaml up -d txboard" >&2
+    echo "Start it with: docker compose up -d txboard" >&2
     exit 1
 fi
 
-assignment="$(docker compose -f compose.yaml exec -T txboard php artisan panel:subscribe-path --export)"
+assignment="$(docker compose exec -T txboard php artisan panel:subscribe-path --export)"
 
 if [ -f .env ]; then
     tmp="$(mktemp)"
