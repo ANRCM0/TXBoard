@@ -45,6 +45,13 @@
 		}
 	}
 
+	# Plugin Package v1 admin bundles are published to /www/public/plugins.
+	# Keep this route separate from the singular /plugin/* backend API namespace.
+	handle_path /plugins/* {
+		root * /www/public/plugins
+		file_server
+	}
+
 	@subscribe path /{$SUBSCRIBE_PATH:s}/*
 	handle @subscribe {
 		reverse_proxy 127.0.0.1:{$OCTANE_INTERNAL_PORT:7002} {

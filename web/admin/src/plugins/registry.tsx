@@ -1,17 +1,15 @@
 import type { ComponentType } from 'react'
 import type { PluginAdminMenu, PluginItem } from '../api/plugin'
-import { AccessAuditAnalytics } from './access-audit/AccessAuditAnalytics'
-import { AccessAuditDashboard } from './access-audit/AccessAuditDashboard'
 
 export type PluginRendererProps = {
   plugin: PluginItem
   menu: PluginAdminMenu
 }
 
-const renderers: Record<string, ComponentType<PluginRendererProps>> = {
-  'access-audit-dashboard': AccessAuditDashboard,
-  'access-audit-analytics': AccessAuditAnalytics,
-}
+// Host-native renderers are intentionally exceptional. Plugin Package v1
+// plugins should ship admin/dist and declare admin_menus[].app instead of
+// requiring a TXBoard frontend rebuild.
+const renderers: Record<string, ComponentType<PluginRendererProps>> = {}
 
 export function resolvePluginRenderer(name?: string) {
   if (!name) return null

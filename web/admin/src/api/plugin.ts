@@ -30,6 +30,7 @@ export type PluginAdminMenu = {
   embed?: string
   component?: string
   renderer?: string
+  app?: string
 }
 
 export type PluginAdminCrudColumn = {
@@ -81,6 +82,8 @@ export type PluginItem = {
   config?: Record<string, PluginConfigField>
   admin_crud?: Record<string, PluginAdminCrudSchema> | null
   admin_menus?: PluginAdminMenu[] | null
+  package?: { schema?: number; [key: string]: unknown } | null
+  asset_base?: string
   [key: string]: unknown
 }
 
@@ -149,6 +152,25 @@ export async function updatePluginConfig(code: string, config: Record<string, un
 export function normalizePluginPath(path?: string) {
   if (!path) return ''
   return path.trim().replace(/^\/+/, '').replace(/\/+$/, '')
+}
+
+
+export function resolvePluginAppUrl(plugin: Pick<PluginItem, 'code' | 'asset_base'>, menu: PluginAdminMenu) {
+  const app = menu.app?.trim()
+  if (!app) return null
+  if (
+    app.startsWith('/') ||
+    app.includes('\\') ||
+    /^[a-z][a-z0-9+.-]*:/i.test(app)
+  ) return null
+
+  const path = app.split(/[?#]/, 1)[0]
+  if (!path.startsWith('admin/') || !path.toLowerCase().endsWith('.html')) return null
+  if (!/^[A-Za-z0-9._/-]+$/.test(path)) return null
+  if (path.split('/').some(segment => !segment || segment === '.' || segment === '..')) return null
+
+  const base = (plugin.asset_base?.trim() || `/plugins/${encodeURIComponent(plugin.code)}`).replace(/\/+$/, '')
+  return `${base}/${app}`
 }
 
 export function resolvePluginCrudApiPath(

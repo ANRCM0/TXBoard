@@ -48,8 +48,11 @@ Theme Runtime is part of TXBoard's supported extension architecture. `api/theme/
 
 - `api/plugins-core/`: bundled core plugins.
 - `api/plugins/`: runtime/user plugins.
-- `integrations/`: repository-level optional integrations such as AccessAudit.
-- `web/admin/src/plugins/`: native React plugin renderers where schema-driven UI is not sufficient.
+- `integrations/AccessAudit/`: transitional first-party reference package for Plugin Package v1.
+- Plugin-owned complex Admin UI belongs in `<plugin>/admin/dist/`.
+- `web/admin/src/plugins/` owns only the host Bridge and exceptional host-native renderer registry; independent plugins must not require edits there.
+
+Plugin Package v1 deliberately makes plugin source repositories independent of TXBoard's frontend build.
 
 ## Deployment boundary
 
@@ -63,5 +66,6 @@ MySQL and the backup helper are separate infrastructure services in `compose.yam
 2. Frontends consume APIs instead of importing backend implementation.
 3. Theme and Plugin systems are supported extension layers and must not be treated as disposable legacy code.
 4. Optional integrations must not become hard dependencies of the core node protocol.
-5. Production application code is replaced by image deployment; running containers do not self-update source code.
-6. Cross-component compatibility knowledge belongs under `contracts/`.
+5. Independent plugin repositories depend on the Plugin Package contract, not TXBoard Admin source code.
+6. Production application code is replaced by image deployment; running containers do not self-update source code.
+7. Cross-component compatibility knowledge belongs under `contracts/`.

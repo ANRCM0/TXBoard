@@ -9,6 +9,8 @@ import {
   setAdminSecurePath,
 } from './client'
 import { fetchSettings, saveSettings } from './config'
+import { resolvePluginAppUrl } from './plugin'
+import { normalizePluginNavigationTarget } from '../plugins/bridge'
 
 type Seen = AxiosRequestConfig & { headers: Record<string, string> }
 
@@ -105,5 +107,28 @@ describe('admin secure path resolution', () => {
 
   it('exposes the public prefix separately from the admin prefix', () => {
     expect(getResolvedApiPrefixes().public).toBe('/api/v2')
+  })
+})
+
+
+describe('plugin package v1 admin app contract', () => {
+  it('resolves plugin-owned admin assets below the plugin asset base', () => {
+    expect(resolvePluginAppUrl(
+      { code: 'access_audit', asset_base: '/plugins/access_audit' },
+      { app: 'admin/index.html#/dashboard' },
+    )).toBe('/plugins/access_audit/admin/index.html#/dashboard')
+  })
+
+  it('rejects external and traversal plugin app references', () => {
+    expect(resolvePluginAppUrl({ code: 'demo' }, { app: 'https://example.com/app.html' })).toBeNull()
+    expect(resolvePluginAppUrl({ code: 'demo' }, { app: 'admin/../index.html' })).toBeNull()
+    expect(resolvePluginAppUrl({ code: 'demo' }, { app: '/admin/index.html' })).toBeNull()
+  })
+
+  it('only accepts relative host navigation targets from plugin apps', () => {
+    expect(normalizePluginNavigationTarget('rules')).toBe('rules')
+    expect(normalizePluginNavigationTarget('reports/page')).toBe('reports/page')
+    expect(normalizePluginNavigationTarget('../config')).toBeNull()
+    expect(normalizePluginNavigationTarget('https://example.com')).toBeNull()
   })
 })

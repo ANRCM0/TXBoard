@@ -46,7 +46,8 @@ class XboardUpdate extends Command
         $this->info(Artisan::output());
         $this->info('正在检查并安装默认插件...');
         PluginManager::installDefaultPlugins();
-        $this->info('默认插件检查完成');
+        app(PluginManager::class)->publishInstalledAssets();
+        $this->info('默认插件与插件前端资源检查完成');
         app(VersionService::class)->refreshCache();
         $themeService = app(ThemeService::class);
         $themeService->refreshCurrentTheme();
