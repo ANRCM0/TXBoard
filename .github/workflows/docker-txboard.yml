@@ -6,7 +6,6 @@ on:
     paths:
       - "api/**"
       - "web/**"
-      - "integrations/**"
       - "Dockerfile"
       - ".dockerignore"
       - "package.json"
@@ -18,7 +17,6 @@ on:
     paths:
       - "api/**"
       - "web/**"
-      - "integrations/**"
       - "Dockerfile"
       - ".dockerignore"
       - "package.json"

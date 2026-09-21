@@ -538,10 +538,9 @@ TXBoard/
 
 主要 CI：
 
-- `api-ci`
-- `web-ci`
-- `txboard-image`
-- `pages-preview`
+- `api-ci`：Laravel API 测试
+- `web-ci`：Admin/User 前端验证
+- `txboard-image`：Compose 校验、Docker 构建与 GHCR 发布
 
 生产镜像：
 
