@@ -9,6 +9,7 @@ export const useAuthStore = defineStore('auth', () => {
   const loading = ref(false)
   const authenticated = ref(Boolean(getAuthData()))
   const hasToken = computed(() => authenticated.value)
+  let userLoading: Promise<UserInfo> | null = null
 
   async function login(form: LoginForm) {
     loading.value = true
@@ -32,20 +33,27 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  async function loadUser() {
-    try {
-      user.value = await fetchUserInfo()
-      authenticated.value = true
-      return user.value
-    } catch (error) {
-      const status = (error as { response?: { status?: number } })?.response?.status
-      if (status === 401 || status === 403) {
-        clearAuthData()
-        user.value = null
-        authenticated.value = false
-      }
-      throw error
-    }
+  function loadUser() {
+    if (userLoading) return userLoading
+    userLoading = fetchUserInfo()
+      .then(data => {
+        user.value = data
+        authenticated.value = true
+        return data
+      })
+      .catch(error => {
+        const status = (error as { response?: { status?: number } })?.response?.status
+        if (status === 401 || status === 403) {
+          clearAuthData()
+          user.value = null
+          authenticated.value = false
+        }
+        throw error
+      })
+      .finally(() => {
+        userLoading = null
+      })
+    return userLoading
   }
 
   async function checkSession() {

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { Suspense, useState } from 'react'
 import { Outlet } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
 import { TopBar } from './TopBar'
@@ -13,7 +13,9 @@ export function AdminLayout() {
         <TopBar onOpenMenu={() => setOpen(true)} />
         <div className="admin-scroll">
           <div className='admin-page'>
-            <Outlet />
+            <Suspense fallback={<div className="route-panel-loading" role="status" aria-live="polite">正在加载页面…</div>}>
+              <Outlet />
+            </Suspense>
           </div>
         </div>
       </main>

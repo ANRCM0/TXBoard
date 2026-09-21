@@ -1,5 +1,4 @@
 import { useQuery } from '@tanstack/react-query'
-import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { BarChart3, MessageSquare, Server, Users, Wallet, Wifi } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
@@ -52,21 +51,7 @@ export function DashboardPage() {
         <strong>{money(chart.data?.summary?.paid_total)}</strong>
       </div>
       <div className="dash-chart">
-        <ResponsiveContainer width="100%" height={300}>
-          <AreaChart data={points}>
-            <defs>
-              <linearGradient id="incomeGradientTx" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="var(--primary)" stopOpacity={0.2}/>
-                <stop offset="100%" stopColor="transparent" stopOpacity={0.05}/>
-              </linearGradient>
-            </defs>
-            <CartesianGrid vertical={false} strokeDasharray="3 3" opacity={0.3}/>
-            <XAxis dataKey="date" hide/>
-            <YAxis hide width={60}/>
-            <Tooltip/>
-            <Area type="monotone" dataKey="value" stroke="var(--primary)" fill="url(#incomeGradientTx)" isAnimationActive={false}/>
-          </AreaChart>
-        </ResponsiveContainer>
+        <IncomeChart points={points}/>
       </div>
     </section>
 
@@ -96,6 +81,42 @@ export function DashboardPage() {
       </section>
     </div>
   </div>
+}
+
+function IncomeChart({points}:{points:Array<{date:string;value:number}>}){
+  const chart=useMemo(()=>{
+    if(!points.length)return null
+    const width=1000
+    const height=260
+    const inset=24
+    const max=Math.max(1,...points.map(point=>point.value))
+    const plotWidth=width-inset*2
+    const plotHeight=height-inset*2
+    const coordinates=points.map((point,index)=>({
+      ...point,
+      x:inset+(points.length===1?.5:index/(points.length-1))*plotWidth,
+      y:height-inset-(point.value/max)*plotHeight,
+    }))
+    const line=coordinates.map((point,index)=>(index?'L':'M')+' '+point.x.toFixed(1)+' '+point.y.toFixed(1)).join(' ')
+    const area='M '+coordinates[0].x.toFixed(1)+' '+(height-inset)+' '+line+' L '+coordinates.at(-1)!.x.toFixed(1)+' '+(height-inset)+' Z'
+    return {width,height,inset,coordinates,line,area,max}
+  },[points])
+
+  if(!chart)return <div className="dashboard-chart-empty">暂无订单收入数据</div>
+
+  return <svg className="income-chart" viewBox={'0 0 '+chart.width+' '+chart.height} role="img" aria-label="订单收入趋势图">
+    {[0,.25,.5,.75,1].map(step=>{
+      const y=chart.inset+step*(chart.height-chart.inset*2)
+      return <line key={step} x1={chart.inset} x2={chart.width-chart.inset} y1={y} y2={y} className="income-chart-grid"/>
+    })}
+    <path d={chart.area} className="income-chart-area"/>
+    <path d={chart.line} className="income-chart-line"/>
+    {chart.coordinates.map(point=><circle key={point.date} cx={point.x} cy={point.y} r="3" className="income-chart-dot">
+      <title>{point.date}：¥ {point.value.toFixed(2)}</title>
+    </circle>)}
+    <text x={chart.inset} y={chart.height-2} className="income-chart-label">{points[0].date}</text>
+    <text x={chart.width-chart.inset} y={chart.height-2} textAnchor="end" className="income-chart-label">{points.at(-1)?.date}</text>
+  </svg>
 }
 
 function DashCard({icon,label,value,sub}:{icon:React.ReactNode;label:string;value:string;sub?:string}){

@@ -24,6 +24,7 @@ import {
 import { useState, type KeyboardEvent } from 'react'
 import { NavLink } from 'react-router-dom'
 import { getPlugins, normalizePluginPath } from '../../api/plugin'
+import { preloadAdminRoute } from '../../lib/routePreload'
 
 const groups = [
   {
@@ -167,6 +168,8 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                       <NavLink
                         key={to}
                         to={to}
+                        onMouseEnter={() => preloadAdminRoute(to)}
+                        onFocus={() => preloadAdminRoute(to)}
                         onClick={onClose}
                         className={({ isActive }) => `admin-nav-sub ${isActive ? 'active' : ''}`}
                       >
@@ -192,6 +195,8 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                   <NavLink
                     key={item.path}
                     to={item.path}
+                    onMouseEnter={() => preloadAdminRoute(item.path)}
+                    onFocus={() => preloadAdminRoute(item.path)}
                     onClick={onClose}
                     className={({ isActive }) => `admin-nav-sub ${isActive ? 'active' : ''}`}
                   >

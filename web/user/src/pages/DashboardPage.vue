@@ -41,15 +41,16 @@ const shortcuts=computed(()=>[
 onMounted(async()=>{
   loading.value=true
   try{
-    const [sub,stat,news]=await Promise.all([
+    const [sub,stat,news,guest]=await Promise.all([
       fetchSubscribe(),
       fetchUserStat().catch(()=>[] as number[]),
       fetchNotices().catch(()=>[] as NoticeItem[]),
+      fetchGuestConfig().catch(()=>null),
     ])
     subscribe.value=sub
     stats.value=stat
     notices.value=news
-    try{siteTitle.value=(await fetchGuestConfig()).app_name||'TXBoard'}catch{}
+    siteTitle.value=guest?.app_name||'TXBoard'
     if(notices.value.length>1){
       noticeTimer=window.setInterval(()=>{
         noticeIndex.value=(noticeIndex.value+1)%notices.value.length

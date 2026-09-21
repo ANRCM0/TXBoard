@@ -59,13 +59,14 @@ onMounted(async()=>{
   document.documentElement.dataset.userTheme=dark.value?'dark':'light'
   updateViewport()
   window.addEventListener('resize',updateViewport)
+  const configPromise=loadConfig().catch(()=>null)
   if(!auth.user){
     try{await auth.loadUser()}catch{
       await router.replace({path:'/login',query:{redirect:route.fullPath}})
       return
     }
   }
-  try{await loadConfig()}catch{}
+  await configPromise
 })
 
 onUnmounted(()=>window.removeEventListener('resize',updateViewport))

@@ -398,7 +398,7 @@ body{overflow:hidden}
   width:220px;
   background:var(--u-panel);
   border-right:1px solid var(--u-border);
-  transition:width .18s ease,transform .2s ease;
+  transition:transform .2s ease;
   overflow:hidden;
 }
 .user-sidebar.collapsed{width:64px}
@@ -484,7 +484,7 @@ body{overflow:hidden}
   min-height:0;
   display:flex;
   flex-direction:column;
-  transition:margin-left .18s ease;
+  transition:none;
 }
 .user-shell.collapsed .user-main{margin-left:64px}
 .user-header{
