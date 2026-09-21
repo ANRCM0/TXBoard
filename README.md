@@ -73,7 +73,7 @@ Two files, with a strict division of responsibility.
 | `CORS_ALLOWED_ORIGINS` | Empty. Both frontends are served from this same origin, so no cross-origin access is needed. Add origins only if a frontend genuinely lives elsewhere. |
 | `MAIL_*` | Your SMTP credentials, or registration and password-reset mail is silently dropped. |
 
-Editing `api/.env` takes effect after `docker compose restart api`.
+Editing `api/.env` takes effect after `docker compose restart txboard`.
 
 ### Common operations
 
@@ -133,7 +133,7 @@ docker compose -f deploy/compose.yaml up -d --wait
 | `api/.env` bind mount | `INSTALLED=true`, the generated `APP_KEY` and Redis settings. Losing it makes the panel report itself as not installed. |
 | `api/storage` bind mount | Logs, uploads, themes and sessions. |
 | `api/plugins` bind mount | Installed plugins. |
-| `api-redis` volume | Embedded Redis data, including `/data/redis.sock`. |
+| `api-redis` volume | Embedded Redis data, including `/data/redis.sock`. The legacy volume name is intentionally retained across the single-image migration. |
 | `caddy-data` / `caddy-config` volumes | TLS certificates and the ACME account key. Without them every recreate re-requests a certificate and can trip Let's Encrypt's duplicate-certificate rate limit. |
 | `TXBOARD_BACKUP_DIR` | Archives. Put it on another disk. |
 
@@ -151,7 +151,7 @@ Also worth doing: change the database passwords from their initial values, keep 
 
 | Symptom | Cause and fix |
 | --- | --- |
-| `502` from the gateway | The API container is not ready. `docker compose -f deploy/compose.yaml logs txboard` — during first-run troubleshooting look for a fatal from Octane. |
+| `502` from the gateway | The TXBoard container is not ready. `docker compose -f deploy/compose.yaml logs txboard` — during first-run troubleshooting look for a fatal from Octane. |
 | `set TXBOARD_DB_PASSWORD in deploy/.env` | Compose refuses to start with blank database credentials. Copy `deploy/.env.example` and fill them in. |
 | Panel says it is not installed after a recreate | `api/.env` was deleted or replaced; it holds `INSTALLED=true` and the `APP_KEY`. Restore it from a backup. |
 | `xboard:install` fails at the cache step | MySQL or Redis was not up. Use `up -d --wait` and re-run. |

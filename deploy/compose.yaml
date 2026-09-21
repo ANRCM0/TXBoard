@@ -48,7 +48,7 @@ services:
       - ../api/storage:/www/storage
       - ../api/plugins:/www/plugins
       - ../api/.env:/www/.env
-      - txboard-redis:/data
+      - api-redis:/data
       - caddy-data:/caddy-data
       - caddy-config:/caddy-config
     environment:
@@ -104,6 +104,6 @@ services:
 
 volumes:
   database-data:
-  txboard-redis:
+  api-redis:
   caddy-data:
   caddy-config:

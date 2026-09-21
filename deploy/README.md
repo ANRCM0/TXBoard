@@ -86,7 +86,7 @@ storage archive, then start the stack again.
 ## Persistent state
 
 `api/.env`, `api/storage`, `api/plugins`, `database-data`,
-`txboard-redis`, `caddy-data`, `caddy-config` and the external backup
+`api-redis`, `caddy-data`, `caddy-config` and the external backup
 directory survive application image replacement.
 
 TX-Node remains a separate project and is not part of this Compose stack.
