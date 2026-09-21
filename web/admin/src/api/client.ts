@@ -163,7 +163,9 @@ for (const client of [apiClient, pluginApiClient]) {
 
 attachCommonErrorHandling(publicApiClient, { redirectOnAuthError: false })
 attachCommonErrorHandling(apiClient, { redirectOnAuthError: true })
-attachCommonErrorHandling(pluginApiClient, { redirectOnAuthError: true })
+// Root plugin routes are not tied to the instance secure-path cache, so a plugin-level
+// 404 must never invalidate the administrator's cached secure path.
+attachCommonErrorHandling(pluginApiClient, { redirectOnAuthError: false })
 
 export function getResolvedApiPrefixes() {
   return {
