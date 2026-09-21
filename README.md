@@ -41,8 +41,8 @@ ghcr.io/paimoncai/txboard
 ### 扩展体系
 
 - **Theme System**：保留 Xboard 兼容主题，同时支持安装、切换和配置自定义主题
-- **Plugin System**：支持核心插件、第三方插件、Schema 驱动的 CRUD / Settings UI 和原生 React 插件页面
-- **AccessAudit**：作为独立可选插件提供规则、命中记录、分析与封禁能力
+- **Plugin System**：支持核心插件、第三方 ZIP、Schema 驱动 UI，以及 Plugin Package v1 自带 Admin App
+- **AccessAudit**：Plugin Package v1 参考插件，提供规则、命中记录、分析与封禁能力
 - 支付、通知等能力可通过插件继续扩展
 
 ---
@@ -353,33 +353,31 @@ api/plugins-core/
 api/plugins/
 ```
 
-### 集成插件
+### Plugin Package v1
 
-仓库级集成位于：
-
-```text
-integrations/
-```
-
-例如：
+独立插件可以把完整发布包上传到 TXBoard。复杂后台页面放在插件自己的：
 
 ```text
-integrations/AccessAudit/
+admin/dist/
 ```
 
-Admin 前端提供通用 Plugin Runtime，可处理：
+TXBoard Admin 通过同源 iframe + Admin Bridge 承载它，不需要把插件 React/Vue 源码编译进 TXBoard。
+
+通用 Plugin Runtime 支持：
 
 - Settings Schema
 - CRUD Schema
+- Plugin-owned Admin App
 - Plugin Menu
-- Legacy iframe/component
-- Build-time native React renderer
+- Legacy component / embed compatibility
 
-因此复杂插件可以拥有自己的 React 管理页面，而普通插件不需要重复实现一套后台 UI。
+`integrations/AccessAudit/` 目前保留为 Plugin Package v1 的第一方参考包；其 Dashboard / Analytics 已经完全属于插件自身，不再存在于 TXBoard Admin 编译产物中。等官方外部插件仓库建立后，这个参考包可以机械迁出而无需再改宿主前端。
 
-插件开发指南见：
+插件规范与开发指南：
 
-[Plugin Development Guide](api/docs/en/development/plugin-development-guide.md)
+- [Plugin Package Contract](contracts/plugin-package/README.md)
+- [Plugin Package Contract](contracts/plugin-package/README.md)
+- [Plugin Development Guide](api/docs/en/development/plugin-development-guide.md)
 
 ---
 
@@ -425,9 +423,11 @@ AccessAudit 是可选的面板插件，不属于 TX-Node 核心协议。
 - 可选 TX-Node audit reporter
 - Xray legacy sidecar compatibility
 
-插件源码：
+当前参考插件包：
 
 [AccessAudit](integrations/AccessAudit/README.md)
+
+AccessAudit 的复杂 Admin UI 已由插件自己的 `admin/dist` 提供；TXBoard Admin 不再包含 AccessAudit 专属 React renderer。
 
 ---
 
@@ -502,7 +502,7 @@ TXBoard/
 │   └── shared/
 │
 ├── integrations/
-│   └── AccessAudit/             可选审计插件
+│   └── AccessAudit/             Plugin Package v1 第一方参考包
 │
 ├── contracts/
 │   ├── http/

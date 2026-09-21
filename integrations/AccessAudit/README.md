@@ -64,3 +64,15 @@ POST /api/v1/plugin/access-audit/report
 发布包中的 `admin/dist` 会由 TXBoard 发布到 `/plugins/access_audit/admin/`。Admin Bridge 提供当前管理员 Authorization、Admin API prefix、插件信息和宿主导航能力。
 
 因此 AccessAudit 的后台 UI 可以与 TXBoard 独立构建、独立版本化，而不要求修改 `web/admin`。
+
+
+## Extraction status
+
+AccessAudit 2.4.x is now self-contained at the package level:
+
+- backend source is inside this plugin directory;
+- migrations and routes are inside this plugin directory;
+- Dashboard / Analytics are inside `admin/dist`;
+- TXBoard Admin has no AccessAudit-specific compiled renderer.
+
+The remaining in-repository placement is only a **distribution transition**. Once an official AccessAudit repository/release channel exists, this directory can be moved out of TXBoard and installed through the standard plugin ZIP flow without another host-side UI refactor.
