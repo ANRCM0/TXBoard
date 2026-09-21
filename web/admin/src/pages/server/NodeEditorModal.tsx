@@ -1,4 +1,5 @@
-import { useEffect, useState, type ChangeEvent } from 'react'
+import { ChevronDown, Info } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import type {
   GroupItem,
@@ -12,10 +13,26 @@ import { Modal } from '../../components/ui/Modal'
 import { ProtocolSchemaForm } from './ProtocolSchemaForm'
 
 type JsonValue = Record<string, unknown> | unknown[]
+const GB = 1024 ** 3
+
+const protocolColors: Record<string, string> = {
+  shadowsocks: '#46a758',
+  vmess: '#d63384',
+  trojan: '#e9ad31',
+  hysteria: '#4f7edb',
+  vless: '#202124',
+  tuic: '#08b45b',
+  socks: '#2696df',
+  naive: '#9c2bb3',
+  http: '#ef5423',
+  mieru: '#46a758',
+  anytls: '#7654c9',
+}
 
 type Draft = {
   name: string
   type: NodeProtocolType
+  code: string
   host: string
   port: string
   serverPort: string
@@ -89,16 +106,23 @@ function stringValue(value: unknown) {
   return value === null || value === undefined ? '' : String(value)
 }
 
+function transferToGb(value: unknown) {
+  const bytes = Number(value || 0)
+  if (!Number.isFinite(bytes) || bytes <= 0) return '0'
+  return String(Number((bytes / GB).toFixed(2)))
+}
+
 function draftFromNode(node?: NodeItem | null, definitions: ProtocolDefinitionMeta[] = []): Draft {
-  const type = canonicalType(node?.type, definitions)
+  const type = node?.type ? canonicalType(node.type, definitions) : ''
   return {
     name: stringValue(node?.name),
     type,
+    code: stringValue(node?.code),
     host: stringValue(node?.host),
     port: stringValue(node?.port ?? ''),
     serverPort: stringValue(node?.server_port ?? ''),
     rate: stringValue(node?.rate ?? 1),
-    transferEnable: stringValue(node?.transfer_enable ?? 0),
+    transferEnable: transferToGb(node?.transfer_enable),
     parentId: stringValue(node?.parent_id ?? ''),
     machineId: stringValue(node?.machine_id ?? ''),
     show: node?.show === undefined ? true : Boolean(node.show),
@@ -156,8 +180,79 @@ function JsonField({
   </label>
 }
 
-function selectedNumbers(event: ChangeEvent<HTMLSelectElement>) {
-  return Array.from(event.target.selectedOptions).map((option) => Number(option.value))
+function ProtocolPicker({
+  value,
+  definitions,
+  onChange,
+}: {
+  value: NodeProtocolType
+  definitions: ProtocolDefinitionMeta[]
+  onChange: (type: NodeProtocolType) => void
+}) {
+  const selected = protocolDefinition(value, definitions)
+  return <details className="node-protocol-picker">
+    <summary>
+      <span>{selected?.label || (definitions.length ? '选择协议类型' : '加载协议类型…')}</span>
+      <ChevronDown size={16}/>
+    </summary>
+    {definitions.length ? <div className="node-protocol-options">
+      {definitions.map((definition) => <button
+        type="button"
+        key={definition.type}
+        className={definition.type === value ? 'active' : ''}
+        onClick={(event) => {
+          onChange(definition.type)
+          event.currentTarget.closest('details')?.removeAttribute('open')
+        }}
+      >
+        <i style={{ background: protocolColors[definition.type] || '#64748b' }}/>
+        <span>{definition.label}</span>
+      </button>)}
+    </div> : null}
+  </details>
+}
+
+function MultiPicker({
+  label,
+  placeholder,
+  value,
+  options,
+  onChange,
+}: {
+  label: string
+  placeholder: string
+  value: number[]
+  options: Array<{ value: number; label: string }>
+  onChange: (value: number[]) => void
+}) {
+  const selected = options.filter((option) => value.includes(option.value))
+  const toggle = (optionValue: number) => {
+    onChange(value.includes(optionValue)
+      ? value.filter((item) => item !== optionValue)
+      : [...value, optionValue])
+  }
+
+  return <div className="node-editor-field node-editor-field-full">
+    <div className="node-editor-label-row"><span>{label}</span><small>可多选</small></div>
+    <details className="node-multi-picker">
+      <summary>
+        <span className={selected.length ? '' : 'placeholder'}>
+          {selected.length ? selected.map((option) => option.label).join('、') : placeholder}
+        </span>
+        <ChevronDown size={16}/>
+      </summary>
+      <div className="node-multi-options">
+        {options.length ? options.map((option) => <label key={option.value}>
+          <input
+            type="checkbox"
+            checked={value.includes(option.value)}
+            onChange={() => toggle(option.value)}
+          />
+          <span>{option.label}</span>
+        </label>) : <p>暂无可选项</p>}
+      </div>
+    </details>
+  </div>
 }
 
 export function NodeEditorModal({
@@ -194,6 +289,7 @@ export function NodeEditorModal({
 
     setDraft((current) => {
       if (Object.keys(current.protocolSettings).length > 0) return current
+      if (!node?.id && !current.type) return current
 
       const type = canonicalType(node?.type || current.type, protocolDefinitions)
       return {
@@ -223,18 +319,21 @@ export function NodeEditorModal({
     const port = Number(draft.port)
     const serverPort = Number(draft.serverPort)
     const rate = Number(draft.rate)
-    const transferEnable = Number(draft.transferEnable || 0)
+    const transferLimitGb = Number(draft.transferEnable || 0)
 
     if (!draft.name.trim()) return toast.error('请输入节点名称')
+    if (!draft.type) return toast.error('请选择协议类型')
     if (!draft.host.trim()) return toast.error('请输入节点地址')
     if (!Number.isInteger(port) || port < 1 || port > 65535) return toast.error('连接端口必须在 1-65535 之间')
     if (!Number.isInteger(serverPort) || serverPort < 1 || serverPort > 65535) return toast.error('后端服务端口必须在 1-65535 之间')
     if (!Number.isFinite(rate) || rate < 0) return toast.error('倍率必须是大于等于 0 的数字')
-    if (!Number.isInteger(transferEnable) || transferEnable < 0) return toast.error('流量上限必须是大于等于 0 的整数')
+    if (!Number.isFinite(transferLimitGb) || transferLimitGb < 0) return toast.error('流量上限必须是大于等于 0 的数字')
+    const transferEnable = Math.round(transferLimitGb * GB)
     const payload: Partial<NodeItem> = {
       ...(node?.id ? { id: node.id } : {}),
       name: draft.name.trim(),
       type: draft.type,
+      code: draft.code.trim() || null,
       host: draft.host.trim(),
       port,
       server_port: serverPort,
@@ -263,6 +362,13 @@ export function NodeEditorModal({
   }
 
   const renderProtocolFields = () => {
+    if (!draft.type) {
+      return <div className="node-protocol-empty">
+        <Info size={30}/>
+        <span>请先选择协议类型</span>
+      </div>
+    }
+
     const managed = protocolDefinition(draft.type, protocolDefinitions)
 
     if (managed?.form_schema?.length) {
@@ -283,63 +389,145 @@ export function NodeEditorModal({
     />
   }
 
-  return <Modal open={open} title={node ? '编辑节点' : '添加节点'} onClose={onClose} wide>
-    <div className="form-stack">
-      <section className="node-form-section">
-        <h4>基础配置 <span className="node-protocol-badge">连接与节点控制</span></h4>
-        <div className="node-form-grid">
-          <label className="field"><span>节点名称</span><input value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} /></label>
-          <label className="field"><span>协议类型</span><select value={draft.type} onChange={(event) => setType(event.target.value as NodeProtocolType)}>
-            {(protocolDefinitions.length
-              ? protocolDefinitions
-              : [{ type: draft.type, label: draft.type, schema_version: 0, defaults: {}, form_schema: [] }]
-            ).map((item) => <option key={item.type} value={item.type}>{item.label}</option>)}
-          </select></label>
-          <label className="field"><span>连接地址</span><input value={draft.host} onChange={(event) => setDraft({ ...draft, host: event.target.value })} placeholder="node.example.com / IP" /></label>
-          <label className="field"><span>连接端口</span><input type="number" min={1} max={65535} value={draft.port} onChange={(event) => setDraft({ ...draft, port: event.target.value })} /></label>
-          <label className="field"><span>后端服务端口</span><input type="number" min={1} max={65535} value={draft.serverPort} onChange={(event) => setDraft({ ...draft, serverPort: event.target.value })} /></label>
-          <label className="field"><span>倍率</span><input type="number" min={0} step="0.01" value={draft.rate} onChange={(event) => setDraft({ ...draft, rate: event.target.value })} /></label>
-          <label className="field"><span>流量上限（Bytes，0 不限制）</span><input type="number" min={0} value={draft.transferEnable} onChange={(event) => setDraft({ ...draft, transferEnable: event.target.value })} /></label>
-          <label className="field"><span>所属机器</span><select value={draft.machineId} onChange={(event) => setDraft({ ...draft, machineId: event.target.value })}><option value="">不绑定</option>{machines.map((machine) => <option key={machine.id} value={machine.id}>{machine.name || 'Machine ' + machine.id}</option>)}</select></label>
-          <label className="field"><span>父节点</span><select value={draft.parentId} onChange={(event) => setDraft({ ...draft, parentId: event.target.value })}><option value="">无</option>{nodes.filter((item) => item.id !== node?.id).map((item) => <option key={item.id} value={item.id}>{item.name || 'Node ' + item.id}</option>)}</select></label>
-        </div>
-        <div className="node-form-checks">
-          <label className="check-field"><input type="checkbox" checked={draft.show} onChange={(event) => setDraft({ ...draft, show: event.target.checked })} />在订阅中显示</label>
-          <label className="check-field"><input type="checkbox" checked={draft.enabled} onChange={(event) => setDraft({ ...draft, enabled: event.target.checked })} />启用节点</label>
-        </div>
-      </section>
+  return <Modal
+    open={open}
+    title={node ? '编辑节点' : '新建节点'}
+    subtitle="管理节点连接、协议参数与访问范围。"
+    onClose={onClose}
+    wide
+    className="node-editor-modal"
+    bodyClassName="node-editor-body"
+    headerAction={<ProtocolPicker value={draft.type} definitions={protocolDefinitions} onChange={setType}/>}
+    footer={<div className="node-editor-actions">
+      <button className="button node-editor-cancel" onClick={onClose}>取消</button>
+      <button className="button primary" disabled={saving} onClick={submit}>{saving ? '提交中…' : '提交'}</button>
+    </div>}
+  >
+    <div className="node-editor-form">
+      <div className="node-editor-grid">
+        <label className="node-editor-field">
+          <span>节点名称</span>
+          <input value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} placeholder="请输入节点名称"/>
+        </label>
+        <label className="node-editor-field">
+          <span>基础倍率</span>
+          <div className="node-input-suffix">
+            <input type="number" min={0} step="0.01" value={draft.rate} onChange={(event) => setDraft({ ...draft, rate: event.target.value })}/>
+            <b>x</b>
+          </div>
+        </label>
+      </div>
 
-      <section className="node-form-section">
-        <h4>权限与路由</h4>
-        <div className="node-form-grid">
-          <label className="field"><span>权限组（可多选）</span><select className="node-form-multiselect" multiple value={draft.groupIds.map(String)} onChange={(event) => setDraft({ ...draft, groupIds: selectedNumbers(event) })}>{groups.map((group) => <option key={group.id} value={group.id}>{group.name || 'Group ' + group.id}</option>)}</select></label>
-          <label className="field"><span>路由组（可多选）</span><select className="node-form-multiselect" multiple value={draft.routeIds.map(String)} onChange={(event) => setDraft({ ...draft, routeIds: selectedNumbers(event) })}>{routes.map((route) => <option key={route.id} value={route.id}>{route.remarks || 'Route ' + route.id}</option>)}</select></label>
-          <label className="field full"><span>标签（逗号分隔）</span><input value={draft.tags} onChange={(event) => setDraft({ ...draft, tags: event.target.value })} /></label>
+      <div className="node-toggle-row">
+        <div>
+          <strong>启用动态倍率</strong>
+          <small>根据时间段设置不同的倍率乘数</small>
         </div>
-      </section>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={draft.rateTimeEnable}
+          className={'node-editor-switch' + (draft.rateTimeEnable ? ' active' : '')}
+          onClick={() => setDraft({ ...draft, rateTimeEnable: !draft.rateTimeEnable })}
+        ><span/></button>
+      </div>
 
-      <section className="node-form-section">
-        <h4>协议配置 <span className="node-protocol-badge">{protocolDefinition(draft.type, protocolDefinitions)?.label || draft.type}</span></h4>
+      <div className="node-editor-grid">
+        <label className="node-editor-field">
+          <span>流量限制 <small>（GB）</small></span>
+          <input type="number" min={0} step="0.01" value={draft.transferEnable} onChange={(event) => setDraft({ ...draft, transferEnable: event.target.value })} placeholder="0 表示不限制"/>
+        </label>
+        <label className="node-editor-field">
+          <span>自定义节点 ID <small>（选填）</small></span>
+          <input value={draft.code} onChange={(event) => setDraft({ ...draft, code: event.target.value })} placeholder="请输入自定义节点 ID"/>
+        </label>
+      </div>
+
+      <label className="node-editor-field node-editor-field-full">
+        <span>节点标签</span>
+        <input value={draft.tags} onChange={(event) => setDraft({ ...draft, tags: event.target.value })} placeholder="输入标签，多个标签使用逗号分隔"/>
+      </label>
+
+      <MultiPicker
+        label="权限组"
+        placeholder="请选择权限组"
+        value={draft.groupIds}
+        options={groups.map((group) => ({ value: group.id, label: group.name || 'Group ' + group.id }))}
+        onChange={(groupIds) => setDraft({ ...draft, groupIds })}
+      />
+
+      <label className="node-editor-field node-editor-field-full">
+        <span>节点地址</span>
+        <input value={draft.host} onChange={(event) => setDraft({ ...draft, host: event.target.value })} placeholder="请输入节点域名或者 IP"/>
+      </label>
+
+      <div className="node-port-grid">
+        <label className="node-editor-field">
+          <span>连接端口</span>
+          <input type="number" min={1} max={65535} value={draft.port} onChange={(event) => setDraft({ ...draft, port: event.target.value })} placeholder="用户连接端口"/>
+        </label>
+        <span className="node-port-arrow">→</span>
+        <label className="node-editor-field">
+          <span>服务端口</span>
+          <input type="number" min={1} max={65535} value={draft.serverPort} onChange={(event) => setDraft({ ...draft, serverPort: event.target.value })} placeholder="请输入服务端口"/>
+        </label>
+      </div>
+
+      <section className={'node-protocol-stage' + (draft.type ? ' has-protocol' : '')}>
+        {draft.type ? <div className="node-editor-section-title">
+          <strong>协议配置</strong>
+          <span>{protocolDefinition(draft.type, protocolDefinitions)?.label || draft.type}</span>
+        </div> : null}
         {renderProtocolFields()}
       </section>
 
-      <details className="node-form-section">
-        <summary><strong>高级节点模型</strong> <span className="node-form-hint">时间倍率、IP/排除规则、自定义出站与路由、证书配置</span></summary>
-        <div className="node-form-checks">
-          <label className="check-field"><input type="checkbox" checked={draft.rateTimeEnable} onChange={(event) => setDraft({ ...draft, rateTimeEnable: event.target.checked })} />启用分时倍率</label>
-        </div>
-        {draft.rateTimeEnable && <JsonField label="分时倍率 rate_time_ranges" value={draft.rateTimeRanges} arrayOnly onChange={(value) => setDraft({ ...draft, rateTimeRanges: value })} />}
-        <JsonField label="Excludes" value={draft.excludes} arrayOnly onChange={(value) => setDraft({ ...draft, excludes: value })} />
-        <JsonField label="IPs" value={draft.ips} arrayOnly onChange={(value) => setDraft({ ...draft, ips: value })} />
-        <JsonField label="Custom Outbounds" value={draft.customOutbounds} arrayOnly onChange={(value) => setDraft({ ...draft, customOutbounds: value })} />
-        <JsonField label="Custom Routes" value={draft.customRoutes} arrayOnly onChange={(value) => setDraft({ ...draft, customRoutes: value })} />
-        <JsonField label="Certificate Config" value={draft.certConfig} onChange={(value) => setDraft({ ...draft, certConfig: value })} />
-      </details>
-
-      <div className="modal-actions">
-        <button className="button" onClick={onClose}>取消</button>
-        <button className="button primary" disabled={saving} onClick={submit}>{saving ? '保存中…' : node ? '保存修改' : '创建节点'}</button>
+      <div className="node-editor-grid">
+        <label className="node-editor-field">
+          <span>父级节点</span>
+          <select value={draft.parentId} onChange={(event) => setDraft({ ...draft, parentId: event.target.value })}>
+            <option value="">无</option>
+            {nodes.filter((item) => item.id !== node?.id).map((item) => <option key={item.id} value={item.id}>{item.name || 'Node ' + item.id}</option>)}
+          </select>
+        </label>
+        <label className="node-editor-field">
+          <span>绑定服务器</span>
+          <select value={draft.machineId} onChange={(event) => setDraft({ ...draft, machineId: event.target.value })}>
+            <option value="">独立部署</option>
+            {machines.map((machine) => <option key={machine.id} value={machine.id}>{machine.name || 'Machine ' + machine.id}</option>)}
+          </select>
+        </label>
       </div>
+
+      <MultiPicker
+        label="路由组"
+        placeholder="请选择路由组"
+        value={draft.routeIds}
+        options={routes.map((route) => ({ value: route.id, label: route.remarks || 'Route ' + route.id }))}
+        onChange={(routeIds) => setDraft({ ...draft, routeIds })}
+      />
+
+      <div className="node-toggle-pair">
+        <div className="node-toggle-row">
+          <div><strong>在订阅中显示</strong><small>允许用户订阅获取该节点</small></div>
+          <button type="button" role="switch" aria-checked={draft.show} className={'node-editor-switch' + (draft.show ? ' active' : '')} onClick={() => setDraft({ ...draft, show: !draft.show })}><span/></button>
+        </div>
+        <div className="node-toggle-row">
+          <div><strong>启用节点</strong><small>关闭后节点停止参与服务</small></div>
+          <button type="button" role="switch" aria-checked={draft.enabled} className={'node-editor-switch' + (draft.enabled ? ' active' : '')} onClick={() => setDraft({ ...draft, enabled: !draft.enabled })}><span/></button>
+        </div>
+      </div>
+
+      <details className="node-editor-advanced">
+        <summary><strong>高级节点模型</strong><span>IP、排除规则、自定义出站、路由与证书</span><ChevronDown size={17}/></summary>
+        <div className="node-editor-advanced-body">
+          {draft.rateTimeEnable && <JsonField label="分时倍率 rate_time_ranges" value={draft.rateTimeRanges} arrayOnly onChange={(value) => setDraft({ ...draft, rateTimeRanges: value })}/>}
+          <JsonField label="Excludes" value={draft.excludes} arrayOnly onChange={(value) => setDraft({ ...draft, excludes: value })}/>
+          <JsonField label="IPs" value={draft.ips} arrayOnly onChange={(value) => setDraft({ ...draft, ips: value })}/>
+          <JsonField label="Custom Outbounds" value={draft.customOutbounds} arrayOnly onChange={(value) => setDraft({ ...draft, customOutbounds: value })}/>
+          <JsonField label="Custom Routes" value={draft.customRoutes} arrayOnly onChange={(value) => setDraft({ ...draft, customRoutes: value })}/>
+          <JsonField label="Certificate Config" value={draft.certConfig} onChange={(value) => setDraft({ ...draft, certConfig: value })}/>
+        </div>
+      </details>
     </div>
   </Modal>
 }
