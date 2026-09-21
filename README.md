@@ -150,7 +150,7 @@ Also worth doing: change the database passwords from their initial values, keep 
 | Symptom | Cause and fix |
 | --- | --- |
 | `502` from the gateway | The TXBoard container is not ready. `docker compose logs txboard` — during first-run troubleshooting look for a fatal from Octane. |
-| `set TXBOARD_DB_PASSWORD in deploy/.env` | Compose refuses to start with blank database credentials. Copy `deploy/.env.example` and fill them in. |
+| `set TXBOARD_DB_PASSWORD in .env` | Compose refuses to start with blank database credentials. Copy `.env.example` to `.env` and fill them in. |
 | Panel says it is not installed after a recreate | `api/.env` was deleted or replaced; it holds `INSTALLED=true` and the `APP_KEY`. Restore it from a backup. |
 | `xboard:install` fails at the cache step | MySQL or Redis was not up. Use `up -d --wait` and re-run. |
 | Port 80/443 already in use | Set `TXBOARD_HTTP_PORT` / `TXBOARD_HTTPS_PORT`. |

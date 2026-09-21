@@ -23,4 +23,4 @@ fi
 echo "Rendered $(pwd)/.env:"
 echo "  $assignment"
 echo
-echo "Apply it with: docker compose -f $(pwd)/compose.yaml up -d --remove-orphans txboard"
+echo "Apply it with: docker compose up -d --remove-orphans txboard"
