@@ -20,9 +20,9 @@
 **/xboard-node
 **/xbctl
 
-# Backups written by deploy/backup.sh -- never commit a dump: it holds live user
+# Backups written by backup.sh -- never commit a dump: it holds live user
 # data, password hashes and the APP_KEY.
-deploy/backups/
+backups/
 
 # IDE and OS files
 .idea/

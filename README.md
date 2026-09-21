@@ -20,15 +20,12 @@ git clone https://github.com/PaiMonCai/TXBoard.git
 cd TXBoard
 
 cp api/.env.example api/.env        # panel settings; APP_KEY is generated for you
-cp deploy/.env.example deploy/.env  # stack settings
-$EDITOR deploy/.env                 # set TXBOARD_DB_PASSWORD and TXBOARD_DB_ROOT_PASSWORD
+cp .env.example .env              # Docker stack settings
+$EDITOR .env                        # set TXBOARD_DB_PASSWORD and TXBOARD_DB_ROOT_PASSWORD
 
-docker compose -f deploy/compose.yaml up -d --build --remove-orphans --wait
-docker compose -f deploy/compose.yaml exec -it txboard php artisan xboard:install
+docker compose up -d --build --remove-orphans --wait
+docker compose exec -it txboard php artisan xboard:install
 ```
-
-Tip: `export COMPOSE_FILE=deploy/compose.yaml` in your shell and the `-f` flag
-becomes unnecessary for every command below.
 
 `--wait` matters. It blocks until MySQL has finished initialising and the container's embedded Redis is answering, which is what makes the following `xboard:install` safe to run immediately. Installing against a database that is still starting is the most common first-run failure.
 
@@ -42,13 +39,13 @@ becomes unnecessary for every command below.
 | `http://<host>/admin/` | Admin frontend (React). |
 | `http://<host>/api/v1/*` | Public and user API. |
 | `http://<host>/api/v2/<secure_path>/*` | Admin API. The prefix is printed by the installer and is deliberately not guessable. |
-| `http://<host>/<subscribe_path>/<token>` | Subscription output. Kept in step with the panel setting by `deploy/sync-gateway.sh`. |
+| `http://<host>/<subscribe_path>/<token>` | Subscription output. Kept in step with the panel setting by `./sync-gateway.sh`. |
 
 ### Configuration
 
 Two files, with a strict division of responsibility.
 
-`deploy/.env` — read by Docker Compose, controls the stack itself.
+`.env` — read by Docker Compose, controls the stack itself.
 
 | Key | Default | Purpose |
 | --- | --- | --- |
@@ -60,7 +57,7 @@ Two files, with a strict division of responsibility.
 | `TXBOARD_BACKUP_DIR` | `./backups` | Where archives are written. Prefer another disk. |
 | `TXBOARD_BACKUP_INTERVAL` / `TXBOARD_BACKUP_RETENTION` | `86400` / `7` | Seconds between backups, and how many archives to keep. |
 | `TXBOARD_REDIS_HOST` / `TXBOARD_REDIS_PORT` | `/data/redis.sock` / `0` | Point at an external Redis to opt out of the embedded one. |
-| `TXBOARD_SUBSCRIBE_PATH` | `s` | Must match the panel setting; render it with `deploy/sync-gateway.sh`. |
+| `TXBOARD_SUBSCRIBE_PATH` | `s` | Must match the panel setting; render it with `./sync-gateway.sh`. |
 | `TXBOARD_IMAGE` | `ghcr.io/paimoncai/txboard:latest` | Single published TXBoard application image. Pin a `sha-*` tag for deterministic rollouts. |
 
 `api/.env` — read by the application. The `DB_*` and `REDIS_*` keys are overridden by the compose environment and do not need editing. The keys that matter in production are:
@@ -79,26 +76,26 @@ Editing `api/.env` takes effect after `docker compose restart txboard`.
 
 ```bash
 # Status and health
-docker compose -f deploy/compose.yaml ps
+docker compose ps
 
 # Follow logs (rotation caps them at 10 MB x 3 per service)
-docker compose -f deploy/compose.yaml logs -f txboard
+docker compose logs -f txboard
 
 # Open a shell, or run any artisan command
-docker compose -f deploy/compose.yaml exec txboard sh
-docker compose -f deploy/compose.yaml exec txboard php artisan about
+docker compose exec txboard sh
+docker compose exec txboard php artisan about
 
 # Restart one service after an .env change
-docker compose -f deploy/compose.yaml restart txboard
+docker compose restart txboard
 
 # Update to the latest source. --remove-orphans also removes the old
 # dual-image api/web containers during the first single-image upgrade.
 git pull
-docker compose -f deploy/compose.yaml up -d --build --remove-orphans --wait
+docker compose up -d --build --remove-orphans --wait
 
 # Stop (keeps data) / stop and delete ALL data
-docker compose -f deploy/compose.yaml down
-docker compose -f deploy/compose.yaml down -v   # destroys the database and APP_KEY
+docker compose down
+docker compose down -v   # destroys the database and APP_KEY
 ```
 
 ### Backups and restore
@@ -106,7 +103,7 @@ docker compose -f deploy/compose.yaml down -v   # destroys the database and APP_
 The `backup` service archives the database, the `APP_KEY` and the uploads on a schedule. Run one on demand:
 
 ```bash
-docker compose -f deploy/compose.yaml run --rm backup
+docker compose run --rm backup
 ```
 
 Each archive contains `db.sql.gz`, `env`, `storage-app.tar.gz` and a `MANIFEST`. All the parts are needed together: a database dump alone is not a backup, because the encrypted columns in it cannot be read without the `APP_KEY` stored in `env`. A dump that fails, or that fails its gzip integrity check, is discarded rather than kept — so anything present in the backup directory is restorable.
@@ -114,16 +111,16 @@ Each archive contains `db.sql.gz`, `env`, `storage-app.tar.gz` and a `MANIFEST`.
 To restore, stop the writers first, then replay:
 
 ```bash
-docker compose -f deploy/compose.yaml stop txboard
+docker compose stop txboard
 
-gunzip -c deploy/backups/<stamp>/db.sql.gz | \
-  docker compose -f deploy/compose.yaml exec -T database \
+gunzip -c backups/<stamp>/db.sql.gz | \
+  docker compose exec -T database \
     sh -c 'exec mysql -uroot -p"$MYSQL_ROOT_PASSWORD" "$MYSQL_DATABASE"'
 
-cp deploy/backups/<stamp>/env api/.env
-tar -xzf deploy/backups/<stamp>/storage-app.tar.gz -C api/storage/app
+cp backups/<stamp>/env api/.env
+tar -xzf backups/<stamp>/storage-app.tar.gz -C api/storage/app
 
-docker compose -f deploy/compose.yaml up -d --wait
+docker compose up -d --wait
 ```
 
 ### State that outlives the containers
@@ -142,8 +139,8 @@ docker compose -f deploy/compose.yaml up -d --wait
 
 Three things are deliberately left to you, because the right answer depends on where the panel runs:
 
-1. **HTTPS.** Set `TXBOARD_SITE_ADDRESS=panel.example.com` in `deploy/.env`, make sure DNS resolves to this host and ports 80/443 reach it, then `docker compose -f deploy/compose.yaml up -d txboard`. Caddy obtains and renews the certificate and redirects 80 to 443. Terminating TLS in front (Cloudflare, an ALB) also works — leave the value empty. Either way set `APP_URL` and `SESSION_SECURE_COOKIE=true` in `api/.env`.
-2. **Backups.** Point `TXBOARD_BACKUP_DIR` at a different disk and confirm `docker compose -f deploy/compose.yaml run --rm backup` produces an archive. Test a restore before you need one.
+1. **HTTPS.** Set `TXBOARD_SITE_ADDRESS=panel.example.com` in `.env`, make sure DNS resolves to this host and ports 80/443 reach it, then `docker compose up -d txboard`. Caddy obtains and renews the certificate and redirects 80 to 443. Terminating TLS in front (Cloudflare, an ALB) also works — leave the value empty. Either way set `APP_URL` and `SESSION_SECURE_COOKIE=true` in `api/.env`.
+2. **Backups.** Point `TXBOARD_BACKUP_DIR` at a different disk and confirm `docker compose run --rm backup` produces an archive. Test a restore before you need one.
 3. **CORS.** Leave `CORS_ALLOWED_ORIGINS` empty unless a frontend is served from a different origin.
 
 Also worth doing: change the database passwords from their initial values, keep `APP_DEBUG=false`, and monitor disk space — the log rotation and backup retention above bound growth, but the database itself does not shrink.
@@ -152,13 +149,13 @@ Also worth doing: change the database passwords from their initial values, keep 
 
 | Symptom | Cause and fix |
 | --- | --- |
-| `502` from the gateway | The TXBoard container is not ready. `docker compose -f deploy/compose.yaml logs txboard` — during first-run troubleshooting look for a fatal from Octane. |
-| `set TXBOARD_DB_PASSWORD in deploy/.env` | Compose refuses to start with blank database credentials. Copy `deploy/.env.example` and fill them in. |
+| `502` from the gateway | The TXBoard container is not ready. `docker compose logs txboard` — during first-run troubleshooting look for a fatal from Octane. |
+| `set TXBOARD_DB_PASSWORD in .env` | Compose refuses to start with blank database credentials. Copy `.env.example` to `.env` and fill them in. |
 | Panel says it is not installed after a recreate | `api/.env` was deleted or replaced; it holds `INSTALLED=true` and the `APP_KEY`. Restore it from a backup. |
 | `xboard:install` fails at the cache step | MySQL or Redis was not up. Use `up -d --wait` and re-run. |
 | Port 80/443 already in use | Set `TXBOARD_HTTP_PORT` / `TXBOARD_HTTPS_PORT`. |
-| Subscription links 404 | `TXBOARD_SUBSCRIBE_PATH` drifted from the panel setting. Run `deploy/sync-gateway.sh` and restart `txboard`. |
-| Lost the admin password | `docker compose -f deploy/compose.yaml exec txboard php artisan reset:password you@example.com` — it prompts for the new one. |
+| Subscription links 404 | `TXBOARD_SUBSCRIBE_PATH` drifted from the panel setting. Run `./sync-gateway.sh` and restart `txboard`. |
+| Lost the admin password | `docker compose exec txboard php artisan reset:password you@example.com` — it prompts for the new one. |
 
 ## Repository layout
 
@@ -167,7 +164,6 @@ Also worth doing: change the database passwords from their initial values, keep 
 - `web/user/` — Vue user frontend.
 - `integrations/AccessAudit/` — optional panel-side AccessAudit plugin and its compatibility sidecar assets. This directory is the plugin source of truth.
 - `contracts/` — cross-repository compatibility contracts for the web/API surface and TX-Node protocol.
-- `deploy/` — the single supported Compose stack documented above.
 - `docs/` — architecture, deployment notes and archived implementation records.
 - `.github/workflows/` — path-scoped CI and release workflows.
 
@@ -187,7 +183,7 @@ The API and web frontends can still be developed independently. The root scripts
 To build the single TXBoard image without starting the stack:
 
 ```bash
-docker compose -f deploy/compose.yaml build
+docker compose build
 ```
 
 TX-Node is intentionally not part of this repository or the root Compose stack because it runs on remote edge hosts. Install, build, and release it from [PaiMonCai/TX-Node](https://github.com/PaiMonCai/TX-Node).
