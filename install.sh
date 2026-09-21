@@ -304,7 +304,6 @@ MAILGUN_SECRET=
 INSTALLED=false
 EOF
 
-  write_compose
   chmod 600 .env api.env
 else
   # Existing installer-managed deployment: preserve credentials and local data.
@@ -312,6 +311,10 @@ else
   log "Existing installation detected; configuration and data will be preserved."
 fi
 
+# compose.yaml is installer-managed. Refresh it on every run so existing
+# deployments receive healthcheck/runtime fixes without touching credentials or
+# persistent data.
+write_compose
 copy_backup_script
 
 if [[ "$RENDER_ONLY" -eq 1 ]]; then
