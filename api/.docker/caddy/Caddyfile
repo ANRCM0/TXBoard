@@ -1,13 +1,5 @@
-# Xboard protocol fusion entrypoint.
-#
-# Caddy listens on a single public port and dispatches HTTP traffic to Octane
-# while transparently upgrading WebSocket requests to the ws-server worker.
-# This lets every external reverse proxy (nginx, Cloudflare, the user's own
-# Caddy, ...) treat the panel as a single upstream and avoids exposing the
-# 8076 WebSocket port directly.
 {
 	admin off
-	auto_https off
 	persist_config off
 	log {
 		output stdout
@@ -18,18 +10,60 @@
 	}
 }
 
-:{$CADDY_LISTEN_PORT:7001} {
-	@ws path /ws
-	reverse_proxy @ws 127.0.0.1:{$WS_PORT:8076}
+# One public listener for the complete TXBoard control plane.
+#
+# TXBOARD_SITE_ADDRESS unset/:80 -> plain HTTP (usually behind Cloudflare/nginx)
+# TXBOARD_SITE_ADDRESS=panel.example.com -> automatic HTTPS on 443.
+{$TXBOARD_SITE_ADDRESS::80} {
+	encode zstd gzip
 
-	reverse_proxy 127.0.0.1:{$OCTANE_INTERNAL_PORT:7002} {
-		header_up Host {host}
-		# X-Forwarded-For is auto-appended with our remote_addr by Caddy
-		# (enabled by the global trusted_proxies above), so Octane receives the
-		# full proxy chain and Laravel's TrustProxies middleware resolves the
-		# real client IP using its own trust list. We additionally surface the
-		# directly-connected peer as X-Real-IP for downstream consumers (logs,
-		# admin tools) that read it directly without TrustProxies.
-		header_up X-Real-IP {remote_host}
+	{$TXBOARD_TLS_DIRECTIVE}
+
+	@ws path /ws
+	handle @ws {
+		reverse_proxy 127.0.0.1:{$WS_PORT:8076}
+	}
+
+	handle /api/* {
+		reverse_proxy 127.0.0.1:{$OCTANE_INTERNAL_PORT:7002} {
+			header_up Host {host}
+			header_up X-Real-IP {remote_host}
+		}
+	}
+
+	handle /plugin/* {
+		reverse_proxy 127.0.0.1:{$OCTANE_INTERNAL_PORT:7002} {
+			header_up Host {host}
+			header_up X-Real-IP {remote_host}
+		}
+	}
+
+	handle /storage/* {
+		reverse_proxy 127.0.0.1:{$OCTANE_INTERNAL_PORT:7002} {
+			header_up Host {host}
+			header_up X-Real-IP {remote_host}
+		}
+	}
+
+	@subscribe path /{$SUBSCRIBE_PATH:s}/*
+	handle @subscribe {
+		reverse_proxy 127.0.0.1:{$OCTANE_INTERNAL_PORT:7002} {
+			header_up Host {host}
+			header_up X-Real-IP {remote_host}
+		}
+	}
+
+	redir /admin /admin/
+
+	handle_path /admin/* {
+		root * /srv/admin
+		try_files {path} /index.html
+		file_server
+	}
+
+	handle {
+		root * /srv/user
+		try_files {path} /index.html
+		file_server
 	}
 }

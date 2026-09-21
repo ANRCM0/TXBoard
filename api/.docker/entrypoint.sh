@@ -10,28 +10,20 @@ if [ -d /www/.env ]; then
     exit 1
 fi
 
-# Resolve the binding scheme based on whether the embedded Caddy is enabled.
-#
-# When ENABLE_CADDY=true (default), Caddy owns the public port (7001) and
-# dispatches traffic internally; Octane and ws-server bind to localhost only
-# so they cannot be reached from outside the container.
-#
-# When ENABLE_CADDY=false (e.g. an external reverse proxy or split mode),
-# Octane takes the public port directly to keep behaviour identical to the
-# pre-Caddy releases.
+# The single TXBoard image owns the public HTTP(S) ports through Caddy.
+# Application servers stay loopback-only and are never published directly.
 if [ "${ENABLE_CADDY}" = "true" ]; then
     : "${OCTANE_HOST:=127.0.0.1}"
     : "${OCTANE_PORT:=7002}"
     : "${WS_HOST:=127.0.0.1}"
     : "${WS_PORT:=8076}"
-    : "${CADDY_LISTEN_PORT:=7001}"
 else
     : "${OCTANE_HOST:=0.0.0.0}"
     : "${OCTANE_PORT:=7001}"
     : "${WS_HOST:=0.0.0.0}"
     : "${WS_PORT:=8076}"
 fi
-export OCTANE_HOST OCTANE_PORT WS_HOST WS_PORT CADDY_LISTEN_PORT
+export OCTANE_HOST OCTANE_PORT WS_HOST WS_PORT
 export OCTANE_INTERNAL_PORT="${OCTANE_PORT}"
 
 # ---------------------------------------------------------------------------
@@ -176,6 +168,15 @@ ensure_app_key() {
     fi
 }
 ensure_app_key
+
+# Keep the bundled first-party integration in sync with the application image.
+# /www/plugins is persistent so third-party plugins survive image replacement;
+# only the canonical AccessAudit directory is refreshed from the image.
+if [ -d /opt/txboard/integrations/AccessAudit ]; then
+    mkdir -p /www/plugins
+    rm -rf /www/plugins/AccessAudit
+    cp -R /opt/txboard/integrations/AccessAudit /www/plugins/AccessAudit
+fi
 
 redis_reachable() {
     local host port
