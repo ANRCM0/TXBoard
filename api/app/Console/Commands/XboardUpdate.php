@@ -3,7 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Services\ThemeService;
-use App\Services\UpdateService;
+use App\Services\VersionService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Artisan;
 use App\Services\Plugin\PluginManager;
@@ -22,7 +22,7 @@ class XboardUpdate extends Command
      *
      * @var string
      */
-    protected $description = 'xboard 更新';
+    protected $description = 'TXBoard runtime migration and extension refresh';
 
     /**
      * Create a new command instance.
@@ -47,8 +47,7 @@ class XboardUpdate extends Command
         $this->info('正在检查并安装默认插件...');
         PluginManager::installDefaultPlugins();
         $this->info('默认插件检查完成');
-        $updateService = new UpdateService();
-        $updateService->updateVersionCache();
+        app(VersionService::class)->refreshCache();
         $themeService = app(ThemeService::class);
         $themeService->refreshCurrentTheme();
         if (config('queue.default') === 'sync') {
@@ -60,6 +59,6 @@ class XboardUpdate extends Command
                 $this->warn('horizon:terminate skipped: ' . $e->getMessage());
             }
         }
-        $this->info('更新完毕，队列服务已重启，你无需进行任何操作。');
+        $this->info('运行时迁移与扩展刷新完成。');
     }
 }
