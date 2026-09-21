@@ -1,6 +1,6 @@
 # TXBoard
 
-TXBoard is maintained as a single monorepo containing the control-plane API, two web frontends, and the optional node runtime.
+TXBoard is the control-plane project: it contains the Laravel API, the admin and user frontends, the plugin runtime, deployment files, and the panel-side node protocol. The node runtime is maintained independently in [PaiMonCai/TX-Node](https://github.com/PaiMonCai/TX-Node) and communicates with TXBoard only through HTTP/WebSocket protocol contracts.
 
 **Docker Compose is the supported way to deploy TXBoard.** One command brings up the database, the API (Octane + Horizon + Redis + WebSocket server), both frontends behind a Caddy gateway, and a scheduled backup service. Everything else in this document is either configuration for that stack or instructions for working on the source.
 
@@ -165,9 +165,8 @@ Also worth doing: change the database passwords from their initial values, keep 
 - `api/` — Laravel control-plane API and plugin runtime.
 - `web/admin/` — React administration frontend.
 - `web/user/` — Vue user frontend.
-- `node/` — Go node runtime compatible with the TXBoard/Xboard panel protocol.
-- `integrations/AccessAudit/` — panel-side plugin consumed by the API and TX-Node audit reporter.
-- `contracts/` — cross-component HTTP and node protocol contracts.
+- `integrations/AccessAudit/` — optional panel-side AccessAudit plugin and its compatibility sidecar assets. This directory is the plugin source of truth.
+- `contracts/` — cross-repository compatibility contracts for the web/API surface and TX-Node protocol.
 - `deploy/` — the Compose stack documented above.
 - `.github/workflows/` — path-scoped CI and release workflows.
 
@@ -180,10 +179,9 @@ npm install
 npm run verify:web
 composer install --working-dir=api
 composer test --working-dir=api
-make -C node test
 ```
 
-Each component can still be developed independently. The root scripts exist to keep cross-component changes reproducible.
+The API and web frontends can still be developed independently. The root scripts keep panel-side changes reproducible; TX-Node has its own CI, releases, and test suite in its separate repository.
 
 To build the images without starting the stack:
 
@@ -191,7 +189,7 @@ To build the images without starting the stack:
 docker compose -f deploy/compose.yaml build
 ```
 
-TX-Node is intentionally not part of the root compose file because it normally runs on remote edge hosts with host networking. Build it with `docker build -f node/Dockerfile node`, or use `node/deploy.sh`.
+TX-Node is intentionally not part of this repository or the root Compose stack because it runs on remote edge hosts. Install, build, and release it from [PaiMonCai/TX-Node](https://github.com/PaiMonCai/TX-Node).
 
 ## Versioning
 
@@ -199,9 +197,9 @@ Components release independently from the same `main` branch:
 
 - API images: `ghcr.io/<owner>/<repo>-api`
 - Web images: `ghcr.io/<owner>/<repo>-web`
-- Node images: `ghcr.io/<owner>/<repo>-node`
-- Node release tags: `node-vX.Y.Z`
+
+TX-Node versions and releases independently in its own repository; TXBoard tags do not imply a TX-Node version.
 
 ## Licensing and provenance
 
-The API retains its existing MIT license in `api/LICENSE`. TX-Node contains inherited work whose redistribution terms must be confirmed before making the monorepo public; see `THIRD_PARTY_NOTICES.md`.
+The API retains its existing MIT license in `api/LICENSE`. TX-Node licensing and provenance are maintained in the separate TX-Node repository; see `THIRD_PARTY_NOTICES.md` for TXBoard-side notes.

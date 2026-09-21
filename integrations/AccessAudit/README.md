@@ -1,5 +1,8 @@
 # AccessAudit 访问审计插件
 
+> **Source of truth:** this directory is the canonical panel-side AccessAudit plugin. TX-Node only contains the optional audit reporter/client; it does not vendor or release the panel plugin.
+
+
 节点上报用户访问目标，Xboard 侧匹配名单、达到阈值自动封禁用户、推送 Telegram 告警；支持分节点查看 + 节点级异常通报（上报中断 / 命中突增）。
 
 ## 架构
