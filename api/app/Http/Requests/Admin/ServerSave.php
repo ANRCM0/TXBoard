@@ -4,6 +4,7 @@
 namespace App\Http\Requests\Admin;
 
 use App\Models\Server;
+use App\Protocols\ProtocolRegistry;
 use Illuminate\Foundation\Http\FormRequest;
 
 class ServerSave extends FormRequest
@@ -146,6 +147,11 @@ class ServerSave extends FormRequest
 
     private function getProtocolRules(string $type): array
     {
+        $definition = app(ProtocolRegistry::class)->get($type);
+        if ($definition) {
+            return $definition->rules();
+        }
+
         $rules = self::PROTOCOL_RULES[$type] ?? [];
 
         return match ($type) {

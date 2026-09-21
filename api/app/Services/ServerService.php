@@ -6,6 +6,7 @@ use App\Models\Server;
 use App\Models\ServerMachine;
 use App\Models\ServerRoute;
 use App\Models\User;
+use App\Protocols\ProtocolRegistry;
 use App\Services\Plugin\HookManager;
 use App\Utils\CacheKey;
 use App\Utils\Helper;
@@ -263,7 +264,11 @@ class ServerService
             'networkSettings' => data_get($protocolSettings, 'network_settings') ?: null,
         ];
 
-        $response = match ($nodeType) {
+        $definition = app(ProtocolRegistry::class)->get($nodeType);
+
+        $response = $definition
+            ? $definition->buildNodeConfig($node)
+            : match ($nodeType) {
             'shadowsocks' => [
                 ...$baseConfig,
                 'cipher' => $protocolSettings['cipher'],
