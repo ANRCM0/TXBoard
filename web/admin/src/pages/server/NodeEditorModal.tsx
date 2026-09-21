@@ -187,9 +187,22 @@ export function NodeEditorModal({
 
   useEffect(() => {
     if (open) setDraft(draftFromNode(node, protocolDefinitions))
-    // Protocol definitions may refresh while the modal is open. Do not reset
-    // in-progress input merely because query data received a new reference.
   }, [open, node?.id])
+
+  useEffect(() => {
+    if (!open || protocolDefinitions.length === 0) return
+
+    setDraft((current) => {
+      if (Object.keys(current.protocolSettings).length > 0) return current
+
+      const type = canonicalType(node?.type || current.type, protocolDefinitions)
+      return {
+        ...current,
+        type,
+        protocolSettings: mergeDeep(protocolDefaults(type, protocolDefinitions), node?.protocol_settings),
+      }
+    })
+  }, [open, node?.id, node?.type, node?.protocol_settings, protocolDefinitions])
 
   const updateProtocol = (path: string, value: unknown) => {
     setDraft((current) => ({
