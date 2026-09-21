@@ -68,7 +68,29 @@ jobs:
       - name: Verify installer is embedded in image
         run: |
           docker run --rm --entrypoint sh txboard-ci:pr -c \
-            'test -x /opt/txboard/install.sh && test -x /opt/txboard/backup.sh'
+            'test -x /opt/txboard/install.sh && test -x /opt/txboard/backup.sh && test -f /opt/txboard/healthcheck.php'
+      - name: Smoke-test Octane runtime
+        shell: bash
+        run: |
+          docker run -d --name txboard-smoke \
+            -e DB_CONNECTION=sqlite \
+            -e DB_DATABASE=/tmp/txboard-smoke.sqlite \
+            -e ENABLE_HORIZON=false \
+            -e ENABLE_WS_SERVER=false \
+            txboard-ci:pr
+          ok=0
+          for i in {1..30}; do
+            if docker exec txboard-smoke php /opt/txboard/healthcheck.php; then
+              ok=1
+              break
+            fi
+            sleep 1
+          done
+          if [ "$ok" -ne 1 ]; then
+            docker logs txboard-smoke
+            exit 1
+          fi
+          docker rm -f txboard-smoke
 
   publish:
     if: github.event_name != 'pull_request'

@@ -34,10 +34,15 @@ class RouteServiceProvider extends ServiceProvider
      */
     public function map()
     {
+        // Container/runtime health endpoint. Keep this route deliberately free
+        // of database, cache and session middleware: a successful response proves
+        // that Laravel providers booted and an Octane worker can serve requests.
+        Route::get('/api/health', static function () {
+            return response()->json(['status' => 'ok']);
+        });
+
         $this->mapApiRoutes();
         $this->mapWebRoutes();
-
-        //
     }
 
     /**

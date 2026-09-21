@@ -3,7 +3,6 @@
 namespace App\Providers;
 
 use App\Services\Plugin\HookManager;
-use App\Services\UpdateService;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Octane\Facades\Octane;
 use Illuminate\Support\Facades\Cache;
@@ -23,7 +22,6 @@ class OctaneServiceProvider extends ServiceProvider
         }
         if ($this->app->bound('octane')) {
             $this->app['events']->listen(WorkerStarting::class, function () {
-                app(UpdateService::class)->updateVersionCache();
                 HookManager::reset();
             });
         }

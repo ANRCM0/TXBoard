@@ -2,9 +2,11 @@
 
 namespace App\Console\Commands;
 
+use App\Services\InstallState;
 use App\Services\Plugin\PluginManager;
 use Illuminate\Console\Command;
 use Illuminate\Encryption\Encrypter;
+use App\Models\Setting as SettingModel;
 use App\Models\User;
 use App\Utils\Helper;
 use Illuminate\Support\Env;
@@ -12,9 +14,9 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Schema;
 use function Laravel\Prompts\confirm;
 use function Laravel\Prompts\text;
-use function Laravel\Prompts\note;
 use function Laravel\Prompts\select;
 
 class XboardInstall extends Command
@@ -60,13 +62,21 @@ class XboardInstall extends Command
             $this->info(" \ \/ / | __ \ / _ \ / _` | '__/ _` | ");
             $this->info(" / /\ \ | |_) | (_) | (_| | | | (_| | ");
             $this->info("/_/  \_\|____/ \___/ \__,_|_|  \__,_| ");
-            if ($this->envFlag('INSTALLED')) {
+            $installState = app(InstallState::class);
+            if ($installState->hasAdministrator()) {
+                if (!$this->envFlag('INSTALLED')) {
+                    $this->warn('检测到数据库已有管理员，但 INSTALLED 标记缺失；正在修复安装标记。');
+                    self::set_env_var('INSTALLED', true);
+                }
+                $this->seedCoreSettings();
                 $securePath = admin_setting('secure_path', admin_setting('frontend_admin_path', hash('crc32b', config('app.key'))));
-                $this->info("管理面板：http(s)://你的站点/admin/（管理接口前缀：{$securePath}）");
-                $this->warn("如需重新安装请清空目录下 .env 文件的内容（Docker安装方式不可以删除此文件）");
-                $this->warn("快捷清空.env命令：");
-                note('rm .env && touch .env');
-                return;
+                $this->info("TXBoard 已完成安装。管理面板：http(s)://你的站点/admin/（管理接口前缀：{$securePath}）");
+                return self::SUCCESS;
+            }
+
+            if ($this->envFlag('INSTALLED')) {
+                $this->warn('检测到 INSTALLED=true，但数据库中不存在管理员；将按未安装状态修复。');
+                self::set_env_var('INSTALLED', false);
             }
             if (is_dir(base_path() . '/.env')) {
                 $this->error('😔：安装失败，Docker环境下安装请保留空的 .env 文件');
@@ -217,6 +227,7 @@ class XboardInstall extends Command
             Artisan::call("migrate", ['--force' => true]);
             $this->info(Artisan::output());
             $this->info('数据库导入完成');
+            $this->seedCoreSettings();
             $this->info('开始注册管理员账号');
             if (!self::registerAdmin($email, $password)) {
                 abort(500, '管理员账号注册失败，请重试');
@@ -244,8 +255,34 @@ class XboardInstall extends Command
                 unset($_ENV[$key], $_SERVER[$key]);
             }
             Artisan::call('config:clear');
-        } catch (\Exception $e) {
-            $this->error($e);
+            return self::SUCCESS;
+        } catch (\Throwable $e) {
+            $this->error($e->getMessage());
+            return self::FAILURE;
+        }
+    }
+
+    private function seedCoreSettings(): void
+    {
+        if (!Schema::hasTable('v2_settings')) {
+            return;
+        }
+
+        $existingSecurePath = SettingModel::query()
+            ->whereIn('name', ['secure_path', 'frontend_admin_path'])
+            ->orderByRaw("CASE WHEN name = 'secure_path' THEN 0 ELSE 1 END")
+            ->value('value');
+
+        $defaults = [
+            'secure_path' => $existingSecurePath ?: hash('crc32b', (string) config('app.key')),
+            'app_name' => (string) config('app.name', 'TXBoard'),
+            'app_url' => (string) config('app.url', 'http://localhost'),
+        ];
+
+        foreach ($defaults as $name => $value) {
+            if (!SettingModel::query()->where('name', $name)->exists()) {
+                SettingModel::createOrUpdate($name, $value);
+            }
         }
     }
 

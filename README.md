@@ -262,6 +262,25 @@ docker compose down -v
 
 ---
 
+## 健康检查与安装状态
+
+TXBoard 容器健康状态同时验证：
+
+- 内置 Redis 可响应；
+- Laravel / Octane worker 能实际返回 `GET /api/health = 200`。
+
+因此 Redis 正常但 Octane 崩溃时，容器会正确显示为 `unhealthy`，不会再出现 API 已经 502 但 Docker 仍显示 healthy 的情况。
+
+安装状态以**数据库中真实存在管理员账号**为准，`.env` 中的 `INSTALLED` 只作为持久化标记。若出现旧标记与数据库不一致，重新执行：
+
+```bash
+docker compose exec -T txboard php artisan xboard:install
+```
+
+安装命令会自动修复标记并补齐基础设置（`secure_path`、`app_name`、`app_url`）。
+
+---
+
 ## 更新
 
 TXBoard 不再支持在运行中的容器里执行 `git reset` / `composer install` 式自更新。
