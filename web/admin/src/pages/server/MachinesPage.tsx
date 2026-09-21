@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { BarChart3, Cable, KeyRound, MoreHorizontal, Plus, RefreshCw, RotateCcw, Search, Trash2, Pencil } from 'lucide-react'
+import { BarChart3, Cable, Copy, KeyRound, MoreHorizontal, Plus, RefreshCw, RotateCcw, Search, Trash2, Pencil } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import {
@@ -25,7 +25,7 @@ export function MachinesPage() {
   const [notes, setNotes] = useState('')
   const [active, setActive] = useState(true)
   const [search, setSearch] = useState('')
-  const [tokenInfo, setTokenInfo] = useState<unknown>(null)
+  const [tokenInfo, setTokenInfo] = useState<{ token?: string; install_command?: string } | null>(null)
   const [tokenMachineId, setTokenMachineId] = useState<number | null>(null)
   const [historyMachine, setHistoryMachine] = useState<MachineItem | null>(null)
   const [bindingMachine, setBindingMachine] = useState<MachineItem | null>(null)
@@ -55,7 +55,10 @@ export function MachinesPage() {
         const result = data as Record<string, unknown>
         const id = Number(result.id)
         if (Number.isFinite(id)) setTokenMachineId(id)
-        setTokenInfo({ token: result.token, install_command: result.install_command })
+        setTokenInfo({
+          token: typeof result.token === 'string' ? result.token : '',
+          install_command: typeof result.install_command === 'string' ? result.install_command : '',
+        })
         window.clearTimeout(hideTimer.current)
         hideTimer.current = window.setTimeout(closeToken, 18_000)
       }
@@ -117,6 +120,17 @@ export function MachinesPage() {
     window.clearTimeout(hideTimer.current)
     setTokenInfo(null)
     setTokenMachineId(null)
+  }
+
+  async function copyInstallCommand() {
+    const command = tokenInfo?.install_command
+    if (!command) return
+    try {
+      await navigator.clipboard.writeText(command)
+      toast.success('安装命令已复制')
+    } catch {
+      toast.error('复制失败，请手动复制安装命令')
+    }
   }
 
   const rows = Array.isArray(query.data) ? query.data : []
@@ -213,8 +227,22 @@ export function MachinesPage() {
       </Modal>
 
       <Modal open={!!tokenInfo} title="机器凭据（18 秒后自动隐藏）" onClose={closeToken}>
-        <pre className="code-block">{JSON.stringify(tokenInfo, null, 2)}</pre>
+        <div className="form-stack">
+          <label className="field">
+            <span>Machine Token</span>
+            <pre className="code-block">{tokenInfo?.token || '-'}</pre>
+          </label>
+          <label className="field">
+            <span>一键安装命令</span>
+            <pre className="code-block">{tokenInfo?.install_command || '-'}</pre>
+          </label>
+        </div>
         <div className="card-actions">
+          {tokenInfo?.install_command ? (
+            <button className="button primary" onClick={copyInstallCommand}>
+              <Copy size={16}/>复制安装命令
+            </button>
+          ) : null}
           {tokenMachineId !== null ? (
             <button
               className="button"
@@ -224,7 +252,7 @@ export function MachinesPage() {
               <RotateCcw size={16}/>{resetToken.isPending ? '重置中…' : '重置 Token'}
             </button>
           ) : null}
-          <button className="button primary" onClick={closeToken}>关闭</button>
+          <button className="button" onClick={closeToken}>关闭</button>
         </div>
       </Modal>
 
