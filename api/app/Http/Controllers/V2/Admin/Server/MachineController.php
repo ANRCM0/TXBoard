@@ -202,14 +202,14 @@ class MachineController extends Controller
     private function buildInstallCommand(Request $request, ServerMachine $machine): string
     {
         $panelUrl = rtrim((string) (admin_setting('app_url') ?: $request->getSchemeAndHttpHost()), '/');
-        $installerUrl = 'https://raw.githubusercontent.com/PaiMonCai/TXBoard/main/node/deploy.sh';
+        $installerUrl = 'https://raw.githubusercontent.com/PaiMonCai/TX-Node-Installer/main/deploy.sh';
 
         return sprintf(
-            'curl -fsSL %s | sudo bash -s -- --mode machine --panel %s --token %s --machine-id %d',
-            $installerUrl,
+            'curl -fsSL %s | sudo bash -s -- install --mode machine --panel-url %s --machine-id %d --token %s',
+            escapeshellarg($installerUrl),
             escapeshellarg($panelUrl),
-            escapeshellarg($machine->token),
-            $machine->id
+            $machine->id,
+            escapeshellarg($machine->token)
         );
     }
 }
