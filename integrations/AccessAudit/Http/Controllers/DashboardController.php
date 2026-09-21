@@ -12,14 +12,6 @@ class DashboardController extends Controller
     private const LOGS_PER_PAGE = 20;
 
     /**
-     * 渲染访问审计主页，并注入主页快捷入口和访问日志手动操作。
-     *
-     * 不直接改动体积较大的 admin.blade.php，避免后续上游页面调整时产生大块冲突；
-     * 所有增强都在原页面脚本加载完成后执行。
-     */
-
-
-    /**
      * 访问日志分页查询。
      *
      * 每页固定 20 条，避免日志量大时单页高度失控；筛选条件与旧接口完全兼容。
@@ -78,6 +70,7 @@ class DashboardController extends Controller
                 'user_id' => $l->user_id,
                 'user_email' => $emails[$l->user_id] ?? "?#{$l->user_id}",
                 'target' => $l->target,
+                'target_ip' => $l->target_ip,
                 'source_ip' => $l->source_ip,
                 'matched' => (bool) $l->matched,
                 'created_at' => $l->created_at,

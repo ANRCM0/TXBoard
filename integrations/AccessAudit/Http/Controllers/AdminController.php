@@ -275,14 +275,6 @@ class AdminController extends Controller
         ]);
     }
 
-    // ── 全量访问日志 ──────────────────────────────────────────
-
-    /**
-     * 访问日志查询（节点/用户/目标关键字/时间范围筛选）
-     * GET logs?node_id=&user_id=&keyword=&from=&to=&page=
-     */
-
-
     // ── 手动封禁 / 解封 ───────────────────────────────────────
 
     public function ban(Request $request, AuditProcessor $processor)
