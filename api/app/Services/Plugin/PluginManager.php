@@ -19,8 +19,9 @@ class PluginManager
     protected bool $pluginsInitialized = false;
     protected array $configTypesCache = [];
 
-    public function __construct()
-    {
+    public function __construct(
+        protected PluginPackage $pluginPackage
+    ) {
         $this->pluginPath = base_path('plugins');
         $this->corePluginPath = base_path('plugins-core');
     }
@@ -67,6 +68,11 @@ class PluginManager
     public function getPluginPaths(): array
     {
         return [$this->corePluginPath, $this->pluginPath];
+    }
+
+    public function getPublicAssetBase(string $pluginCode): string
+    {
+        return $this->pluginPackage->publicAssetBase($pluginCode);
     }
 
     /**
@@ -179,6 +185,7 @@ class PluginManager
         if (!$this->validateConfig($config)) {
             throw new \Exception('Invalid plugin config');
         }
+        $this->pluginPackage->assertDeclaredAdminAppsExist($this->getPluginPath($pluginCode), $config);
 
         // 检查插件是否已安装
         if (Plugin::where('code', $pluginCode)->exists()) {
@@ -291,13 +298,47 @@ class PluginManager
     /**
      * 发布插件资源
      */
-    protected function publishAssets(string $pluginCode): void
+    public function publishAssets(string $pluginCode): void
     {
-        $assetsPath = $this->getPluginPath($pluginCode) . '/resources/assets';
-        if (File::exists($assetsPath)) {
-            $publishPath = public_path('plugins/' . $pluginCode);
-            File::ensureDirectoryExists($publishPath);
-            File::copyDirectory($assetsPath, $publishPath);
+        $pluginPath = $this->getPluginPath($pluginCode);
+        $legacyAssetsPath = $pluginPath . '/resources/assets';
+        $adminDistPath = $pluginPath . '/admin/dist';
+
+        if (!File::isDirectory($legacyAssetsPath) && !File::isDirectory($adminDistPath)) {
+            return;
+        }
+
+        $publishPath = public_path('plugins/' . $pluginCode);
+        if (File::isDirectory($publishPath)) {
+            File::deleteDirectory($publishPath);
+        }
+        File::ensureDirectoryExists($publishPath);
+
+        if (File::isDirectory($legacyAssetsPath)) {
+            File::copyDirectory($legacyAssetsPath, $publishPath);
+        }
+
+        if (File::isDirectory($adminDistPath)) {
+            $adminPublishPath = $publishPath . '/admin';
+            File::ensureDirectoryExists($adminPublishPath);
+            File::copyDirectory($adminDistPath, $adminPublishPath);
+        }
+    }
+
+    public function publishInstalledAssets(): void
+    {
+        Plugin::query()->pluck('code')->each(function (string $pluginCode): void {
+            if ($this->resolvePluginPath($pluginCode)) {
+                $this->publishAssets($pluginCode);
+            }
+        });
+    }
+
+    protected function removePublishedAssets(string $pluginCode): void
+    {
+        $publishPath = public_path('plugins/' . $pluginCode);
+        if (File::isDirectory($publishPath)) {
+            File::deleteDirectory($publishPath);
         }
     }
 
@@ -338,7 +379,7 @@ class PluginManager
             }
         }
 
-        return true;
+        return $this->pluginPackage->validateManifestExtension($config);
     }
 
     /**
@@ -363,6 +404,10 @@ class PluginManager
             $values = $this->castConfigValuesByType($pluginCode, $values);
             $plugin->setConfig($values);
         }
+
+        // Plugin Package v1 admin assets are immutable build artifacts. Re-publish
+        // on enable so a newly replaced container always has the matching UI.
+        $this->publishAssets($pluginCode);
 
         // 注册服务提供者
         $this->registerServiceProvider($pluginCode);
@@ -443,6 +488,7 @@ class PluginManager
         }
 
         File::deleteDirectory($pluginPath);
+        $this->removePublishedAssets($pluginCode);
 
         return true;
     }
@@ -482,9 +528,10 @@ class PluginManager
         }
 
         $config = json_decode(File::get($configFile), true);
-        if (!$config || !isset($config['version'])) {
+        if (!$config || !isset($config['version']) || !$this->validateConfig($config)) {
             throw new \Exception('Invalid plugin config or missing version');
         }
+        $this->pluginPackage->assertDeclaredAdminAppsExist($this->getPluginPath($pluginCode), $config);
 
         $newVersion = $config['version'];
         $oldVersion = $dbPlugin->version;
@@ -538,7 +585,16 @@ class PluginManager
             throw new \Exception('无法打开插件包文件');
         }
 
-        $zip->extractTo($extractPath);
+        try {
+            $this->pluginPackage->assertSafeArchive($zip);
+            if (!$zip->extractTo($extractPath)) {
+                throw new \Exception('插件包解压失败');
+            }
+        } catch (\Throwable $e) {
+            $zip->close();
+            File::deleteDirectory($extractPath);
+            throw $e;
+        }
         $zip->close();
 
         $configFile = File::glob($extractPath . '/*/config.json');
@@ -557,6 +613,13 @@ class PluginManager
         if (!$this->validateConfig($config)) {
             File::deleteDirectory($extractPath);
             throw new \Exception('插件配置文件格式错误');
+        }
+
+        try {
+            $this->pluginPackage->assertDeclaredAdminAppsExist($pluginPath, $config);
+        } catch (\Throwable $e) {
+            File::deleteDirectory($extractPath);
+            throw $e;
         }
 
         $targetPath = $this->getUserPluginPath($config['code']);
