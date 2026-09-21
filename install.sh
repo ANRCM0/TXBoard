@@ -338,7 +338,7 @@ else
   docker compose up -d --remove-orphans --wait database txboard
 
   log "Initializing TXBoard..."
-  docker compose exec -T txboard php artisan xboard:install | tee install-result.log
+  docker compose exec -T txboard php artisan xboard:install
 
   if ! grep -Eq '^INSTALLED=(1|true)$' api.env; then
     die "installation did not complete. Check: docker compose logs txboard"
