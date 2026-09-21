@@ -1,6 +1,6 @@
 # TX-Node Protocol Contract
 
-TX-Node communicates with the panel exclusively over HTTP/WebSocket adapters in `node/internal/panel` and `node/internal/controlplane`.
+TXBoard exposes the control-plane protocol consumed by the independent [PaiMonCai/TX-Node](https://github.com/PaiMonCai/TX-Node) agent. TXBoard does not compile, vendor, or deploy TX-Node. TX-Node connects outbound to the panel over HTTP/WebSocket and implements the client-side adapters in its own `internal/panel` and `internal/controlplane` packages.
 
 ## Core endpoints
 
@@ -16,9 +16,15 @@ TX-Node communicates with the panel exclusively over HTTP/WebSocket adapters in 
 - `POST /api/v1/server/UniProxy/alive`
 - `POST /api/v1/server/UniProxy/status`
 
-## AccessAudit extension
+These endpoints are the core panel/agent compatibility surface and remain available independently of optional plugins.
+
+## Optional AccessAudit extension
+
+When the AccessAudit plugin is installed and enabled, it extends the node protocol with:
 
 - `GET /api/v1/plugin/access-audit/rules`
 - `POST /api/v1/plugin/access-audit/report`
 
-Changes to these paths or their payloads require matching tests in `node/internal/panel` or `node/internal/audit` and a corresponding API/plugin change.
+AccessAudit is not a TX-Node dependency and is not part of the core node protocol. TX-Node may enable its audit reporter only when this plugin capability is desired.
+
+Changes to core endpoint paths or payloads require coordinated compatibility tests in TXBoard and the separate TX-Node repository. Changes to the AccessAudit extension require corresponding plugin tests and TX-Node audit-client compatibility checks.
