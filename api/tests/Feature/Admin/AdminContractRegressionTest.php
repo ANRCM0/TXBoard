@@ -78,6 +78,25 @@ class AdminContractRegressionTest extends TestCase
         $this->assertSame('[REDACTED]', $payload['turnstile_secret_key']);
     }
 
+    public function test_secure_path_rotation_takes_effect_without_application_restart(): void
+    {
+        $oldPath = $this->securePath;
+        $newPath = 'rotated-admin-path';
+
+        $this->postJson("/api/v2/{$oldPath}/config/save", [
+            'secure_path' => $newPath,
+        ])->assertOk();
+
+        $this->getJson("/api/v2/{$oldPath}/config/fetch?key=safe")
+            ->assertNotFound();
+
+        $this->getJson("/api/v2/{$newPath}/config/fetch?key=safe")
+            ->assertOk()
+            ->assertJsonPath('data.safe.secure_path', $newPath);
+
+        $this->securePath = $newPath;
+    }
+
     /**
      * last_page is what drives the audit log's next-page control.
      */

@@ -23,4 +23,18 @@ class AdminEntryRedirectTest extends TestCase
 
         $this->get('/' . $securePath)->assertRedirect('/admin/');
     }
+    public function test_legacy_admin_entry_uses_the_rotated_secure_path_immediately(): void
+    {
+        $oldPath = (string) admin_setting(
+            'secure_path',
+            admin_setting('frontend_admin_path', hash('crc32b', config('app.key')))
+        );
+        $newPath = 'rotated-admin-entry';
+
+        admin_setting(['secure_path' => $newPath]);
+
+        $this->get('/' . $newPath)->assertRedirect('/admin/');
+        $this->get('/' . $oldPath)->assertNotFound();
+    }
+
 }

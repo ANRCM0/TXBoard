@@ -17,6 +17,7 @@ export type SettingField = {
   step?: number
   section?: string
   visibleWhen?: (values: Settings) => boolean
+  saveMode?: 'auto' | 'blur'
 }
 
 export function SettingsForm({
@@ -52,13 +53,21 @@ export function SettingsForm({
     return order
   }, [fields])
 
-  function patch(key: string, value: unknown) {
+  function patch(field: SettingField, value: unknown) {
     setValues(prev => {
-      const next = { ...prev, [key]: value }
+      const next = { ...prev, [field.key]: value }
       window.clearTimeout(timer.current)
-      timer.current = window.setTimeout(() => mutation.mutate(next), 1000)
+      if ((field.saveMode || 'auto') === 'auto') {
+        timer.current = window.setTimeout(() => mutation.mutate(next), 1000)
+      }
       return next
     })
+  }
+
+  function commitBlurField(field: SettingField) {
+    if (field.saveMode !== 'blur') return
+    window.clearTimeout(timer.current)
+    mutation.mutate(values)
   }
 
   return (
@@ -83,7 +92,8 @@ export function SettingsForm({
                       key={field.key}
                       field={field}
                       value={values[field.key]}
-                      onChange={value => patch(field.key, value)}
+                      onChange={value => patch(field, value)}
+                      onCommit={() => commitBlurField(field)}
                     />
                   ))}
                 </div>
@@ -103,10 +113,12 @@ function SettingInput({
   field,
   value,
   onChange,
+  onCommit,
 }: {
   field: SettingField
   value: unknown
   onChange: (value: unknown) => void
+  onCommit: () => void
 }) {
   const type = field.type || 'text'
 
@@ -140,6 +152,7 @@ function SettingInput({
             const option = field.options?.find(item => String(item.value) === event.target.value)
             onChange(typeof option?.value === 'number' ? Number(event.target.value) : event.target.value)
           }}
+          onBlur={onCommit}
         >
           {field.options?.map(option => (
             <option key={String(option.value)} value={String(option.value)}>
@@ -160,6 +173,7 @@ function SettingInput({
         <textarea
           value={text}
           placeholder={field.placeholder}
+          onBlur={onCommit}
           onChange={event =>
             onChange(
               type === 'string-array'
@@ -186,6 +200,7 @@ function SettingInput({
         min={field.min}
         max={field.max}
         step={field.step}
+        onBlur={onCommit}
         onChange={event =>
           onChange(type === 'number' ? (event.target.value === '' ? '' : Number(event.target.value)) : event.target.value)
         }

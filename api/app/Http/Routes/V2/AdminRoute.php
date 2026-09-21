@@ -26,12 +26,12 @@ class AdminRoute
 
     public function map(Registrar $router): void
     {
+        // Register a stable route template and validate the actual secure path
+        // per request. This lets operators rotate secure_path without reloading
+        // Octane or rebuilding Laravel's route table.
         $router->group([
-            'prefix' => admin_setting(
-                'secure_path',
-                admin_setting('frontend_admin_path', hash('crc32b', config('app.key')))
-            ),
-            'middleware' => ['admin', 'log'],
+            'prefix' => '{admin_path}',
+            'middleware' => ['admin.path', 'admin', 'log'],
         ], function (Registrar $router): void {
             foreach (self::ROUTE_MODULES as $routeModule) {
                 app($routeModule)->map($router);
