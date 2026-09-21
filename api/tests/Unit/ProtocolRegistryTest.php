@@ -44,4 +44,20 @@ class ProtocolRegistryTest extends TestCase
             $this->assertIsArray($definition->rules());
         }
     }
+
+    public function test_normalization_casts_values_and_allows_list_replacement(): void
+    {
+        $tuic = (new ProtocolRegistry())->get('tuic');
+
+        $normalized = $tuic->normalize([
+            'version' => '5',
+            'alpn' => [],
+            'tls' => ['allow_insecure' => '1'],
+        ]);
+
+        $this->assertSame(5, $normalized['version']);
+        $this->assertSame([], $normalized['alpn']);
+        $this->assertTrue($normalized['tls']['allow_insecure']);
+        $this->assertSame('cubic', $normalized['congestion_control']);
+    }
 }
