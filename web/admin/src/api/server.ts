@@ -1,23 +1,44 @@
 import { apiClient } from './client'
 import { unwrap } from '../lib/api'
 
-export type NodeProtocolType =
-  | 'hysteria'
-  | 'vless'
-  | 'trojan'
-  | 'vmess'
-  | 'tuic'
-  | 'shadowsocks'
-  | 'anytls'
-  | 'socks'
-  | 'naive'
-  | 'http'
-  | 'mieru'
+export type NodeProtocolType = string
 
 export type NodeRateTimeRange = {
   start: string
   end: string
   rate: number
+}
+
+export type ProtocolFormCondition = {
+  field: string
+  equals: unknown
+}
+
+export type ProtocolFormOption = {
+  value: string | number | boolean
+  label: string
+}
+
+export type ProtocolFormField = {
+  key: string
+  label: string
+  type: 'text' | 'number' | 'select' | 'checkbox' | 'textarea' | 'json' | 'json-array' | 'string-list'
+  placeholder?: string
+  full?: boolean
+  min?: number
+  max?: number
+  step?: number | string
+  separator?: 'comma' | 'newline'
+  options?: ProtocolFormOption[]
+  visible_when?: ProtocolFormCondition | ProtocolFormCondition[]
+}
+
+export type ProtocolDefinitionMeta = {
+  type: NodeProtocolType
+  label: string
+  schema_version: number
+  defaults: Record<string, unknown>
+  form_schema: ProtocolFormField[]
 }
 
 export type NodeItem = {
@@ -75,6 +96,11 @@ export type MachineItem = {
 
 export type GroupItem = { id: number; name?: string; [key: string]: unknown }
 export type RouteItem = { id: number; remarks?: string; match?: string[]; action?: string; action_value?: string; [key: string]: unknown }
+
+export async function getProtocolDefinitions() {
+  const { data } = await apiClient.get('/server/manage/protocols')
+  return unwrap<ProtocolDefinitionMeta[]>(data) || []
+}
 
 export async function getNodes() {
   const { data } = await apiClient.get('/server/manage/getNodes')

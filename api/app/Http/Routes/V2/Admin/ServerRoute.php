@@ -25,6 +25,7 @@ class ServerRoute
         });
 
         $router->group(['prefix' => 'server/manage'], function (Registrar $router): void {
+            $router->get('/protocols', [ManageController::class, 'protocols']);
             $router->get('/getNodes', [ManageController::class, 'getNodes']);
             $router->post('/update', [ManageController::class, 'update']);
             $router->post('/save', [ManageController::class, 'save']);

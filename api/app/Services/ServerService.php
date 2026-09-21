@@ -6,6 +6,7 @@ use App\Models\Server;
 use App\Models\ServerMachine;
 use App\Models\ServerRoute;
 use App\Models\User;
+use App\Protocols\ProtocolRegistry;
 use App\Services\Plugin\HookManager;
 use App\Utils\CacheKey;
 use App\Utils\Helper;
@@ -250,124 +251,8 @@ class ServerService
 
     public static function buildNodeConfig(Server $node): array
     {
-        $nodeType = $node->type;
-        $protocolSettings = $node->protocol_settings;
-        $serverPort = $node->server_port;
-        $host = $node->host;
-
-        $baseConfig = [
-            'protocol' => $nodeType,
-            'listen_ip' => '0.0.0.0',
-            'server_port' => (int) $serverPort,
-            'network' => data_get($protocolSettings, 'network'),
-            'networkSettings' => data_get($protocolSettings, 'network_settings') ?: null,
-        ];
-
-        $response = match ($nodeType) {
-            'shadowsocks' => [
-                ...$baseConfig,
-                'cipher' => $protocolSettings['cipher'],
-                'plugin' => $protocolSettings['plugin'],
-                'plugin_opts' => $protocolSettings['plugin_opts'],
-                'server_key' => match ($protocolSettings['cipher']) {
-                        '2022-blake3-aes-128-gcm' => Helper::getServerKey($node->created_at, 16),
-                        '2022-blake3-aes-256-gcm' => Helper::getServerKey($node->created_at, 32),
-                        default => null,
-                    },
-            ],
-            'vmess' => [
-                ...$baseConfig,
-                'tls' => (int) $protocolSettings['tls'],
-                'tls_settings' => $protocolSettings['tls_settings'],
-                'multiplex' => data_get($protocolSettings, 'multiplex'),
-            ],
-            'trojan' => [
-                ...$baseConfig,
-                'host' => $host,
-                'server_name' => data_get($protocolSettings, 'tls_settings.server_name'),
-                'multiplex' => data_get($protocolSettings, 'multiplex'),
-                'tls' => (int) $protocolSettings['tls'],
-                'tls_settings' => match ((int) $protocolSettings['tls']) {
-                        2 => $protocolSettings['reality_settings'],
-                        default => $protocolSettings['tls_settings'],
-                    },
-            ],
-            'vless' => [
-                ...$baseConfig,
-                'tls' => (int) $protocolSettings['tls'],
-                'flow' => $protocolSettings['flow'],
-                'decryption' => match (data_get($protocolSettings, 'encryption.enabled')) {
-                    true => data_get($protocolSettings, 'encryption.decryption'),
-                    default => null,
-                },
-                'tls_settings' => match ((int) $protocolSettings['tls']) {
-                        2 => $protocolSettings['reality_settings'],
-                        default => $protocolSettings['tls_settings'],
-                    },
-                'multiplex' => data_get($protocolSettings, 'multiplex'),
-            ],
-            'hysteria' => [
-                ...$baseConfig,
-                'server_port' => (int) $serverPort,
-                'version' => (int) $protocolSettings['version'],
-                'host' => $host,
-                'server_name' => $protocolSettings['tls']['server_name'],
-                'tls_settings' => $protocolSettings['tls'],
-                'up_mbps' => (int) $protocolSettings['bandwidth']['up'],
-                'down_mbps' => (int) $protocolSettings['bandwidth']['down'],
-                ...match ((int) $protocolSettings['version']) {
-                        1 => ['obfs' => $protocolSettings['obfs']['password'] ?? null],
-                        2 => [
-                            'obfs' => $protocolSettings['obfs']['open'] ? $protocolSettings['obfs']['type'] : null,
-                            'obfs-password' => $protocolSettings['obfs']['password'] ?? null,
-                        ],
-                        default => [],
-                    },
-            ],
-            'tuic' => [
-                ...$baseConfig,
-                'version' => (int) $protocolSettings['version'],
-                'server_port' => (int) $serverPort,
-                'server_name' => $protocolSettings['tls']['server_name'],
-                'congestion_control' => $protocolSettings['congestion_control'],
-                'tls_settings' => $protocolSettings['tls'],
-                'auth_timeout' => '3s',
-                'zero_rtt_handshake' => false,
-                'heartbeat' => '3s',
-            ],
-            'anytls' => [
-                ...$baseConfig,
-                'server_port' => (int) $serverPort,
-                'server_name' => $protocolSettings['tls']['server_name'],
-                'tls_settings' => $protocolSettings['tls'],
-                'padding_scheme' => $protocolSettings['padding_scheme'],
-            ],
-            'socks' => [
-                ...$baseConfig,
-                'server_port' => (int) $serverPort,
-                'tls' => (int) data_get($protocolSettings, 'tls', 0),
-                'tls_settings' => data_get($protocolSettings, 'tls_settings'),
-            ],
-            'naive' => [
-                ...$baseConfig,
-                'server_port' => (int) $serverPort,
-                'tls' => (int) $protocolSettings['tls'],
-                'tls_settings' => $protocolSettings['tls_settings'],
-            ],
-            'http' => [
-                ...$baseConfig,
-                'server_port' => (int) $serverPort,
-                'tls' => (int) $protocolSettings['tls'],
-                'tls_settings' => $protocolSettings['tls_settings'],
-            ],
-            'mieru' => [
-                ...$baseConfig,
-                'server_port' => (int) $serverPort,
-                'transport' => data_get($protocolSettings, 'transport', 'TCP'),
-                'traffic_pattern' => $protocolSettings['traffic_pattern'],
-            ],
-            default => [],
-        };
+        $definition = app(ProtocolRegistry::class)->get($node->type);
+        $response = $definition ? $definition->buildNodeConfig($node) : [];
 
         if (!empty($node['route_ids'])) {
             $response['routes'] = self::getRoutes($node['route_ids']);
