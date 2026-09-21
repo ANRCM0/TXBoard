@@ -55,11 +55,6 @@ COPY --chown=www:www api/ /www/
 COPY --from=web-build /workspace/web/admin/dist /srv/admin
 COPY --from=web-build /workspace/web/user/dist /srv/user
 
-# AccessAudit remains a normal TXBoard plugin, but the canonical in-repo
-# version is shipped with the image so production no longer needs a source-tree
-# bind mount just to make the bundled integration available.
-COPY integrations/AccessAudit /opt/txboard/integrations/AccessAudit
-
 RUN composer dump-autoload --no-dev --optimize --no-interaction && \
     php artisan package:discover --ansi && \
     mkdir -p storage/app/public \
