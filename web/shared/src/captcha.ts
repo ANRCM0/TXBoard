@@ -85,8 +85,17 @@ function captchaWindow(): CaptchaWindow {
   return window as CaptchaWindow
 }
 
-export function captchaType(config: CaptchaConfig | null | undefined): CaptchaType {
-  return (config?.captcha_type as CaptchaType) || 'recaptcha'
+/**
+ * Provider selected by the config. An absent type keeps the historical
+ * reCAPTCHA v2 default; an unrecognized type returns `null` so callers fail
+ * closed (render nothing) instead of silently falling back to a provider the
+ * server did not ask for, which would be a captcha bypass.
+ */
+export function captchaType(config: CaptchaConfig | null | undefined): CaptchaType | null {
+  const type = config?.captcha_type
+  if (!type) return 'recaptcha'
+  if (type === 'turnstile' || type === 'recaptcha' || type === 'recaptcha-v3') return type
+  return null
 }
 
 function isEnabled(config: CaptchaConfig | null | undefined): boolean {
@@ -100,6 +109,7 @@ function isEnabled(config: CaptchaConfig | null | undefined): boolean {
 export function captchaSiteKey(config: CaptchaConfig | null | undefined): string {
   if (!config || !isEnabled(config)) return ''
   const type = captchaType(config)
+  if (type === null) return ''
   if (type === 'turnstile') return String(config.turnstile_site_key || '')
   if (type === 'recaptcha-v3') return String(config.recaptcha_v3_site_key || '')
   return String(config.recaptcha_site_key || '')
@@ -127,7 +137,12 @@ function loadScript(src: string, id: string): Promise<void> {
     script.async = true
     script.defer = true
     script.onload = () => resolve()
-    script.onerror = () => reject(new Error('Failed to load captcha script'))
+    script.onerror = () => {
+      // Drop the failed tag so a later loadScript() retries instead of
+      // treating the dead script as loaded.
+      script.remove()
+      reject(new Error('Failed to load captcha script'))
+    }
     document.head.appendChild(script)
   })
 }
@@ -155,6 +170,8 @@ export function createCaptchaController(options: CaptchaControllerOptions) {
   const { getConfig, containerId, onReadyChange } = options
   let widgetId: number | string | null = null
   let renderedKey: string | null = null
+  let renderedType: CaptchaType | null = null
+  let mountToken = 0
   let ready = false
 
   function setReady(value: boolean) {
@@ -169,17 +186,28 @@ export function createCaptchaController(options: CaptchaControllerOptions) {
     setReady(false)
     if (!key) {
       renderedKey = null
+      renderedType = null
       return
     }
-    renderedKey = key
     const type = captchaType(config)
     const siteKey = captchaSiteKey(config)
+    if (!type) return
+    // A newer mount supersedes this one: after every await, bail out if the
+    // token moved on, so concurrent mounts cannot stack duplicate widgets.
+    const token = ++mountToken
+    // Drop any previous widget (e.g. a stale iframe after a site-key rotation)
+    // before rendering the new one into the same container.
+    const container = document.getElementById(containerId)
+    if (container) container.innerHTML = ''
     try {
       if (type === 'turnstile') {
         await loadScript(TURNSTILE_SRC, SCRIPT_IDS.turnstile)
+        if (token !== mountToken) return
         const api = captchaWindow().turnstile
         if (!api) return
         widgetId = api.render(resolveContainer(containerId), { sitekey: siteKey, theme: 'auto' })
+        renderedKey = key
+        renderedType = type
         setReady(true)
         return
       }
@@ -188,20 +216,30 @@ export function createCaptchaController(options: CaptchaControllerOptions) {
           RECAPTCHA_SRC + '?render=' + encodeURIComponent(siteKey),
           SCRIPT_IDS['recaptcha-v3'],
         )
+        if (token !== mountToken) return
         const api = captchaWindow().grecaptcha
         if (!api) return
         await new Promise<void>(resolve => api.ready(() => resolve()))
+        if (token !== mountToken) return
+        renderedKey = key
+        renderedType = type
         setReady(true)
         return
       }
       await loadScript(RECAPTCHA_SRC + '?render=explicit', SCRIPT_IDS.recaptcha)
+      if (token !== mountToken) return
       const api = captchaWindow().grecaptcha
       if (!api) return
       widgetId = api.render(resolveContainer(containerId), { sitekey: siteKey })
+      renderedKey = key
+      renderedType = type
       setReady(true)
     } catch {
-      renderedKey = null
-      setReady(false)
+      if (token === mountToken) {
+        renderedKey = null
+        renderedType = null
+        setReady(false)
+      }
     }
   }
 
@@ -243,14 +281,16 @@ export function createCaptchaController(options: CaptchaControllerOptions) {
   }
 
   function reset(): void {
-    const type = captchaType(getConfig())
-    if (type === 'turnstile') captchaWindow().turnstile?.reset(widgetId as string)
-    else if (type === 'recaptcha') captchaWindow().grecaptcha?.reset(widgetId as number)
+    // Dispatch on the provider the widget was actually rendered with, not the
+    // current config: the config may have switched types since the render.
+    if (renderedType === 'turnstile') captchaWindow().turnstile?.reset(widgetId as string)
+    else if (renderedType === 'recaptcha') captchaWindow().grecaptcha?.reset(widgetId as number)
   }
 
   function dispose(): void {
     widgetId = null
     renderedKey = null
+    renderedType = null
     setReady(false)
   }
 
