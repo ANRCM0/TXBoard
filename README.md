@@ -23,7 +23,7 @@ cp api/.env.example api/.env        # panel settings; APP_KEY is generated for y
 cp deploy/.env.example deploy/.env  # stack settings
 $EDITOR deploy/.env                 # set TXBOARD_DB_PASSWORD and TXBOARD_DB_ROOT_PASSWORD
 
-docker compose -f deploy/compose.yaml up -d --build --wait
+docker compose -f deploy/compose.yaml up -d --build --remove-orphans --wait
 docker compose -f deploy/compose.yaml exec -it txboard php artisan xboard:install
 ```
 
@@ -91,9 +91,10 @@ docker compose -f deploy/compose.yaml exec txboard php artisan about
 # Restart one service after an .env change
 docker compose -f deploy/compose.yaml restart txboard
 
-# Update to the latest source
+# Update to the latest source. --remove-orphans also removes the old
+# dual-image api/web containers during the first single-image upgrade.
 git pull
-docker compose -f deploy/compose.yaml up -d --build --wait
+docker compose -f deploy/compose.yaml up -d --build --remove-orphans --wait
 
 # Stop (keeps data) / stop and delete ALL data
 docker compose -f deploy/compose.yaml down

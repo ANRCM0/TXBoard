@@ -21,7 +21,7 @@ it:
 
 ```sh
 docker compose -f deploy/compose.yaml pull txboard
-docker compose -f deploy/compose.yaml up -d --wait txboard
+docker compose -f deploy/compose.yaml up -d --remove-orphans --wait txboard
 ```
 
 When deploying directly from a checkout, `--build` rebuilds the same single

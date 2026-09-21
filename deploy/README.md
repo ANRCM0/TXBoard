@@ -35,17 +35,31 @@ cp api/.env.example api/.env
 cp deploy/.env.example deploy/.env
 # Set TXBOARD_DB_PASSWORD and TXBOARD_DB_ROOT_PASSWORD.
 
-docker compose -f deploy/compose.yaml up -d --wait
+docker compose -f deploy/compose.yaml up -d --remove-orphans --wait
 docker compose -f deploy/compose.yaml exec txboard php artisan xboard:install
 ```
 
 To build from the checkout instead of pulling the published image:
 
 ```sh
-docker compose -f deploy/compose.yaml up -d --build --wait
+docker compose -f deploy/compose.yaml up -d --build --remove-orphans --wait
 ```
 
 Set `TXBOARD_IMAGE` in `deploy/.env` to pin a specific published tag.
+
+## Migrating from the old dual-image stack
+
+The old Compose file used `api` and `web` services. The first start with this
+version must remove those orphan containers, otherwise the old `web` container
+can keep ports 80/443 occupied:
+
+```sh
+docker compose -f deploy/compose.yaml up -d --remove-orphans --wait
+```
+
+The existing `database-data`, `api-redis`, `caddy-data` and `caddy-config`
+volumes are deliberately reused, so this service consolidation does not require
+a data migration or new TLS certificates.
 
 ## HTTPS
 
