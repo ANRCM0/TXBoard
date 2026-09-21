@@ -14,61 +14,7 @@ use Plugin\AccessAudit\Services\AuditProcessor;
 
 class AdminController extends Controller
 {
-    public function page()
-    {
-        // 主审计页与分析页保持独立，但首页必须有稳定、可见的入口。
-        // 旧实现依赖匹配一段固定 HTML 后 str_replace；Blade/缓存/旧 worker 下可能匹配失败。
-        // 这里改为在 </body> 前无条件注入一个小脚本：优先把按钮放到页头时间后面，
-        // 如果页头结构未来变化，则退化为右上角浮动按钮，确保入口不会再“消失”。
-        $html = view('AccessAudit::admin')->render();
 
-        $entryScript = <<<'HTML'
-<script>
-(function () {
-  function installAccessAuditInsightsEntry() {
-    if (document.getElementById('aaInsightsEntry')) return;
-
-    const link = document.createElement('a');
-    link.id = 'aaInsightsEntry';
-    link.className = 'aa-btn aa-btn--ghost aa-btn--sm';
-    link.href = '/plugin/access-audit/insights';
-    link.title = '打开数据分析、排行和插件设置';
-    link.style.textDecoration = 'none';
-    link.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-6M22 20H2"/></svg><span>数据分析与设置</span>';
-
-    const clock = document.getElementById('headClock');
-    const headerActions = clock && clock.parentElement;
-    if (headerActions) {
-      clock.insertAdjacentElement('afterend', link);
-      return;
-    }
-
-    // 兜底：即使未来页头 DOM 改版，仍保留一个可点击入口。
-    link.style.position = 'fixed';
-    link.style.top = '18px';
-    link.style.right = '18px';
-    link.style.zIndex = '9999';
-    link.style.background = '#fff';
-    document.body.appendChild(link);
-  }
-
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', installAccessAuditInsightsEntry, { once: true });
-  } else {
-    installAccessAuditInsightsEntry();
-  }
-})();
-</script>
-HTML;
-
-        if (str_contains($html, '</body>')) {
-            $html = str_replace('</body>', $entryScript . "\n</body>", $html);
-        } else {
-            $html .= $entryScript;
-        }
-
-        return response($html);
-    }
 
     public function stats()
     {
@@ -327,65 +273,6 @@ HTML;
         return response()->json([
             'data' => AuditBanLog::query()->orderByDesc('id')->limit(100)->get(),
         ]);
-    }
-
-    // ── 全量访问日志 ──────────────────────────────────────────
-
-    /**
-     * 访问日志查询（节点/用户/目标关键字/时间范围筛选）
-     * GET logs?node_id=&user_id=&keyword=&from=&to=&page=
-     */
-    public function logs(Request $request)
-    {
-        $query = AuditAccessLog::query()->orderByDesc('id');
-        if ($request->filled('node_id')) {
-            $query->where('node_id', (int) $request->input('node_id'));
-        }
-        if ($request->filled('user_id')) {
-            $query->where('user_id', (int) $request->input('user_id'));
-        }
-        if ($request->filled('keyword')) {
-            $kw = trim((string) $request->input('keyword'));
-            $query->where('target', 'like', '%' . str_replace(['%', '_'], ['\\%', '\\_'], $kw) . '%');
-        }
-        if ($request->filled('from')) {
-            $query->where('created_at', '>=', (int) $request->input('from'));
-        }
-        if ($request->filled('to')) {
-            $query->where('created_at', '<=', (int) $request->input('to'));
-        }
-        if ($request->filled('matched')) {
-            $query->where('matched', (int) $request->input('matched'));
-        }
-
-        $page = max(1, (int) $request->input('page', 1));
-        $perPage = 50;
-        $total = $query->count();
-        $logs = $query->offset(($page - 1) * $perPage)->limit($perPage)->get();
-
-        $emails = User::query()->whereIn('id', $logs->pluck('user_id')->unique())
-            ->pluck('email', 'id');
-        $nodeNames = \App\Models\Server::query()
-            ->whereIn('id', $logs->pluck('node_id')->unique())->pluck('name', 'id');
-
-        return response()->json(['data' => [
-            'total' => $total,
-            'page' => $page,
-            'per_page' => $perPage,
-            'pages' => (int) ceil($total / $perPage),
-            'list' => $logs->map(fn ($l) => [
-                'id' => $l->id,
-                'node_id' => $l->node_id,
-                'node_name' => $nodeNames[$l->node_id] ?? "节点 #{$l->node_id}",
-                'user_id' => $l->user_id,
-                'user_email' => $emails[$l->user_id] ?? "?#{$l->user_id}",
-                'target' => $l->target,
-                'target_ip' => $l->target_ip,
-                'source_ip' => $l->source_ip,
-                'matched' => (bool) $l->matched,
-                'created_at' => $l->created_at,
-            ]),
-        ]]);
     }
 
     // ── 手动封禁 / 解封 ───────────────────────────────────────

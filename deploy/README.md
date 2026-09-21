@@ -184,6 +184,4 @@ matches the Caddyfile fallback, so a fresh install works before the first sync.
 
 ## TX-Node
 
-TX-Node is intentionally not started by this compose file because it normally
-runs on remote edge hosts with host networking. Build it with
-`docker build -f node/Dockerfile node` or use `node/deploy.sh`.
+TX-Node is maintained and released independently in [PaiMonCai/TX-Node](https://github.com/PaiMonCai/TX-Node). It is intentionally not built or started by the TXBoard Compose stack because agents normally run on remote edge hosts. TXBoard communicates with it only through the versioned node protocol contract.

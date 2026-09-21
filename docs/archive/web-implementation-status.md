@@ -1,3 +1,5 @@
+> Archived implementation snapshot. Kept for project history; it is not the current roadmap.
+
 # Implementation Status
 
 ## Phase 1 — completed

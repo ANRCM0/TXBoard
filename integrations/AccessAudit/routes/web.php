@@ -4,14 +4,15 @@ use Illuminate\Support\Facades\Route;
 use Plugin\AccessAudit\Http\Controllers\AdminController;
 use Plugin\AccessAudit\Http\Controllers\AnalyticsController;
 use Plugin\AccessAudit\Http\Controllers\DashboardController;
-use Plugin\AccessAudit\Http\Controllers\SettingsController;
 
-// 页面本体不挂 admin（页面内置管理员登录表单），数据/操作接口挂 admin
+// Legacy bookmarks now land in the native React plugin UI.
 Route::middleware(['web'])->group(function () {
-    Route::get('/plugin/access-audit', [DashboardController::class, 'page']);
-    Route::get('/plugin/access-audit/insights', [AnalyticsController::class, 'page']);
+    Route::get('/plugin/access-audit', fn () => redirect('/admin/plugins/access_audit/dashboard'));
+    Route::get('/plugin/access-audit/insights', fn () => redirect('/admin/plugins/access_audit/analytics'));
 });
 
+// Plugin-owned admin APIs keep their stable root paths and use the same
+// Sanctum administrator token as the React admin.
 Route::middleware(['web', 'admin'])->group(function () {
     Route::get('/plugin/access-audit/stats', [AdminController::class, 'stats']);
     Route::get('/plugin/access-audit/nodes', [AdminController::class, 'nodes']);
@@ -25,8 +26,6 @@ Route::middleware(['web', 'admin'])->group(function () {
     Route::get('/plugin/access-audit/ban-logs', [AdminController::class, 'banLogs']);
 
     Route::get('/plugin/access-audit/analytics', [AnalyticsController::class, 'data']);
-    Route::get('/plugin/access-audit/settings', [SettingsController::class, 'index']);
-    Route::post('/plugin/access-audit/settings', [SettingsController::class, 'update']);
 
     Route::post('/plugin/access-audit/ban', [AdminController::class, 'ban']);
     Route::post('/plugin/access-audit/unban', [AdminController::class, 'unban']);

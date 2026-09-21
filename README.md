@@ -167,7 +167,8 @@ Also worth doing: change the database passwords from their initial values, keep 
 - `web/user/` — Vue user frontend.
 - `integrations/AccessAudit/` — optional panel-side AccessAudit plugin and its compatibility sidecar assets. This directory is the plugin source of truth.
 - `contracts/` — cross-repository compatibility contracts for the web/API surface and TX-Node protocol.
-- `deploy/` — the Compose stack documented above.
+- `deploy/` — the single supported Compose stack documented above.
+- `docs/` — architecture, deployment notes and archived implementation records.
 - `.github/workflows/` — path-scoped CI and release workflows.
 
 ## Local development and verification

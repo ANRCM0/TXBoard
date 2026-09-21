@@ -1,6 +1,7 @@
 import { ExternalLink } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
+import { resolvePluginRenderer } from '../../plugins/registry'
 import {
   fetchPluginMenuHtml,
   normalizePluginPath,
@@ -23,12 +24,19 @@ export function PluginMenuPanel({
   menu: PluginAdminMenu
 }) {
   const path = normalizePluginPath(menu.path)
-  const directSrc = useMemo(() => iframeSource(menu), [menu])
+  const NativeRenderer = resolvePluginRenderer(menu.renderer)
+  const directSrc = useMemo(() => NativeRenderer ? null : iframeSource(menu), [menu, NativeRenderer])
   const [html, setHtml] = useState<string | null>(null)
   const [loading, setLoading] = useState(!directSrc)
   const [failed, setFailed] = useState(false)
 
   useEffect(() => {
+    if (NativeRenderer) {
+      setLoading(false)
+      setFailed(false)
+      setHtml(null)
+      return
+    }
     if (directSrc) {
       setLoading(false)
       setFailed(false)
@@ -51,7 +59,11 @@ export function PluginMenuPanel({
       setLoading(false)
     })
     return () => { cancelled = true }
-  }, [directSrc, menu.component])
+  }, [directSrc, menu.component, NativeRenderer])
+
+  if (NativeRenderer) {
+    return <NativeRenderer plugin={plugin} menu={menu}/>
+  }
 
   function openContent() {
     if (directSrc) {

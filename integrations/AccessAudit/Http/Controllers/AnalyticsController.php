@@ -8,11 +8,6 @@ use Plugin\AccessAudit\Services\AnalyticsService;
 
 class AnalyticsController extends Controller
 {
-    public function page()
-    {
-        return response()->view('AccessAudit::analytics');
-    }
-
     public function data(Request $request, AnalyticsService $analytics)
     {
         $data = $request->validate([
