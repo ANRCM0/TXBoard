@@ -8,6 +8,7 @@
 
 # Repository-only material not needed by the production image.
 compose.yaml
+backup.sh
 sync-gateway.sh
 .env.example
 contracts
