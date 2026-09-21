@@ -28,8 +28,8 @@ class Kernel extends ConsoleKernel
     protected function schedule(Schedule $schedule): void
     {
         Cache::put(CacheKey::get('SCHEDULE_LAST_CHECK_AT', null), time());
-        // v2board
-        $schedule->command('xboard:statistics')->dailyAt('0:10')->onOneServer();
+        // TXBoard daily statistics
+        $schedule->command('txboard:statistics')->dailyAt('0:10')->onOneServer();
         // check
         $schedule->command('check:order')->everyMinute()->onOneServer()->withoutOverlapping(5);
         $schedule->command('check:commission')->everyMinute()->onOneServer()->withoutOverlapping(5);

@@ -32,7 +32,7 @@ RUN install-php-extensions pcntl bcmath zip redis && \
 
 COPY api/.docker/supervisor/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 COPY api/.docker/caddy/Caddyfile /etc/caddy/Caddyfile
-COPY api/.docker/php/zz-xboard.ini /usr/local/etc/php/conf.d/zz-xboard.ini
+COPY api/.docker/php/zz-txboard.ini /usr/local/etc/php/conf.d/zz-txboard.ini
 COPY api/.docker/entrypoint.sh /entrypoint.sh
 COPY api/.docker/healthcheck.php /opt/txboard/healthcheck.php
 RUN chmod +x /entrypoint.sh && \

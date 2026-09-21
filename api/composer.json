@@ -1,9 +1,9 @@
 {
-    "name": "xboard/xboard",
+    "name": "txboard/txboard",
     "type": "project",
-    "description": "xboard is a proxy protocol manage.",
+    "description": "TXBoard control plane for users, subscriptions, billing, nodes and extensions.",
     "keywords": [
-        "xboard",
+        "txboard",
         "v2ray",
         "shadowsocks",
         "trojan",

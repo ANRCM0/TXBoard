@@ -2,9 +2,9 @@
 window.routerBase = 'http://127.0.0.1:8000/'
 window.settings = {
   // 站点名称
-  title: 'Xboard',
+  title: 'TXBoard',
   // 站点描述
-  description: 'Xboard',
+  description: 'TXBoard',
   assets_path: '/assets',
   // 主题色
   theme: {

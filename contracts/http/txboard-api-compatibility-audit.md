@@ -1,10 +1,10 @@
-# Xboard API Contract Audit
+# TXBoard API Compatibility Audit
 
 > Baseline upstream: `cedar2025/Xboard` `master`
 >
 > Audited commit: `4f48e61a2cbc6db5338872b6bdb45ef954ec1256`
 >
-> TXBoard goal: run against current Xboard core while remaining tolerant of Xboard-derived forks and plugin extensions.
+> Historical baseline: Xboard upstream. Current TXBoard keeps documented compatibility only where it is still intentional.
 
 ## 1. Architecture baseline
 
