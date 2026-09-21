@@ -57,11 +57,7 @@ class TxboardInstall extends Command
             $enableSqlite = getenv('ENABLE_SQLITE', false);
             $enableRedis = getenv('ENABLE_REDIS', false);
             $adminAccount = getenv('ADMIN_ACCOUNT', false);
-            $this->info("__    __ ____                      _  ");
-            $this->info("\ \  / /| __ )  ___   __ _ _ __ __| | ");
-            $this->info(" \ \/ / | __ \ / _ \ / _` | '__/ _` | ");
-            $this->info(" / /\ \ | |_) | (_) | (_| | | | (_| | ");
-            $this->info("/_/  \_\|____/ \___/ \__,_|_|  \__,_| ");
+            $this->info('TXBoard installer');
             $installState = app(InstallState::class);
             if ($installState->hasAdministrator()) {
                 if (!$this->envFlag('INSTALLED')) {
@@ -479,7 +475,7 @@ class TxboardInstall extends Command
                 'DB_CONNECTION' => 'pgsql',
                 'DB_HOST' => text(label: "请输入PostgreSQL数据库地址", default: '127.0.0.1', required: true),
                 'DB_PORT' => text(label: '请输入PostgreSQL数据库端口', default: '5432', required: true),
-                'DB_DATABASE' => text(label: '请输入PostgreSQL数据库名', default: 'xboard', required: true),
+                'DB_DATABASE' => text(label: '请输入PostgreSQL数据库名', default: 'txboard', required: true),
                 'DB_USERNAME' => text(label: '请输入PostgreSQL数据库用户名', default: 'postgres', required: true),
                 'DB_PASSWORD' => text(label: '请输入PostgreSQL数据库密码', required: false),
             ];
