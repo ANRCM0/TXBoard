@@ -21,4 +21,19 @@ describe('admin sidebar navigation layout', () => {
     expect(sidebarNavigation).toContain('flex-direction:column')
     expect(sidebarNavigation).not.toContain('display:grid')
   })
+
+  it('keeps the main workspace centered and bounded on wide screens', () => {
+    const adminPage = declarationBlock('.admin-page')
+
+    expect(adminPage).toContain('max-width:1520px')
+    expect(adminPage).toContain('margin:0 auto')
+  })
+
+  it('uses the shared sidebar width token for shell alignment', () => {
+    const sidebar = declarationBlock('.admin-sidebar')
+    const main = declarationBlock('.admin-main')
+
+    expect(sidebar).toContain('width:var(--admin-sidebar-width)')
+    expect(main).toContain('margin-left:var(--admin-sidebar-width)')
+  })
 })

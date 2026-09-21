@@ -24,7 +24,8 @@ export function DashboardPage() {
 
   return <div className="admin-dashboard">
     <div className="dashboard-range-row">
-      <select value={range} onChange={event=>setRange(Number(event.target.value))}>
+      <label htmlFor='dashboard-range'>{'\u7edf\u8ba1\u5468\u671f'}</label>
+      <select id='dashboard-range' value={range} onChange={event=>setRange(Number(event.target.value))}>
         <option value={7}>7 天</option>
         <option value={30}>30 天</option>
         <option value={90}>90 天</option>
