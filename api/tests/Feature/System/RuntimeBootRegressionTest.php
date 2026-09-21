@@ -2,8 +2,12 @@
 
 namespace Tests\Feature\System;
 
+use App\Http\Middleware\InitializePlugins;
 use App\Models\User;
 use App\Services\InstallState;
+use App\Services\Plugin\PluginManager;
+use Illuminate\Http\Request;
+use Mockery;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -16,6 +20,20 @@ class RuntimeBootRegressionTest extends TestCase
         $this->getJson('/api/health')
             ->assertOk()
             ->assertExactJson(['status' => 'ok']);
+    }
+
+    public function test_health_endpoint_skips_plugin_initialization(): void
+    {
+        $pluginManager = Mockery::mock(PluginManager::class);
+        $pluginManager->shouldNotReceive('initializeEnabledPlugins');
+
+        $middleware = new InitializePlugins($pluginManager);
+        $response = $middleware->handle(
+            Request::create('/api/health', 'GET'),
+            fn () => response()->json(['status' => 'ok'])
+        );
+
+        $this->assertSame(200, $response->getStatusCode());
     }
 
     public function test_application_provider_imports_resolve_to_real_classes(): void
