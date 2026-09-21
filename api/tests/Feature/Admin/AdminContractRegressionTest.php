@@ -58,6 +58,26 @@ class AdminContractRegressionTest extends TestCase
         $this->assertEqualsWithDelta(12.34, $row['balance'], 0.00001);
     }
 
+    public function test_admin_audit_log_redacts_sensitive_config_values(): void
+    {
+        $response = $this->postJson("/api/v2/{$this->securePath}/config/save", [
+            'email_password' => 'mail-secret',
+            'server_token' => '1234567890123456',
+            'telegram_bot_token' => 'telegram-secret',
+            'turnstile_secret_key' => 'turnstile-secret',
+        ]);
+
+        $response->assertOk();
+
+        $log = AdminAuditLog::query()->latest('id')->firstOrFail();
+        $payload = json_decode((string) $log->request_data, true);
+
+        $this->assertSame('[REDACTED]', $payload['email_password']);
+        $this->assertSame('[REDACTED]', $payload['server_token']);
+        $this->assertSame('[REDACTED]', $payload['telegram_bot_token']);
+        $this->assertSame('[REDACTED]', $payload['turnstile_secret_key']);
+    }
+
     /**
      * last_page is what drives the audit log's next-page control.
      */

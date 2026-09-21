@@ -13,6 +13,7 @@ use Laravel\Horizon\Contracts\MetricsRepository;
 use Laravel\Horizon\Contracts\SupervisorRepository;
 use Laravel\Horizon\Contracts\WorkloadRepository;
 use Laravel\Horizon\WaitTimeCalculator;
+use Laravel\Horizon\ProvisioningPlan;
 use App\Helpers\ResponseEnum;
 
 class SystemController extends Controller
@@ -30,6 +31,44 @@ class SystemController extends Controller
     public function getQueueWorkload(WorkloadRepository $workload)
     {
         return $this->success(collect($workload->get())->sortBy('name')->values()->toArray());
+    }
+
+    /**
+     * TXBoard-owned wrapper for Horizon's master-supervisor payload.
+     *
+     * Keep the response contract equivalent to Horizon 5.30.x while avoiding
+     * a route-level dependency on Horizon's internal HTTP controller.
+     */
+    public function getQueueMasters(
+        MasterSupervisorRepository $masters,
+        SupervisorRepository $supervisors
+    ) {
+        $masterMap = collect($masters->all())->keyBy('name')->sortBy('name');
+        $supervisorMap = collect($supervisors->all())->sortBy('name')->groupBy('master');
+
+        return $masterMap->each(function ($master, $name) use ($supervisorMap) {
+            $environment = $master->environment ?? config('horizon.env') ?? config('app.env');
+            $provisioned = collect(ProvisioningPlan::get($name)->plan[$environment] ?? [])
+                ->map(function ($value, $key) use ($name) {
+                    return (object) [
+                        'name' => $name . ':' . $key,
+                        'master' => $name,
+                        'status' => 'inactive',
+                        'processes' => [],
+                        'options' => [
+                            'queue' => array_key_exists('queue', $value) && is_array($value['queue'])
+                                ? implode(',', $value['queue'])
+                                : ($value['queue'] ?? ''),
+                            'balance' => $value['balance'] ?? null,
+                        ],
+                    ];
+                });
+
+            $master->supervisors = ($supervisorMap->get($name) ?? collect())
+                ->merge($provisioned)
+                ->unique('name')
+                ->values();
+        });
     }
 
     protected function getScheduleStatus(): bool
