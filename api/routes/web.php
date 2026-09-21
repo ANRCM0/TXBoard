@@ -73,23 +73,48 @@ Route::get('/', function (Request $request) {
     }
 });
 
-// Legacy admin entry point. TXBoard ships the admin SPA at /admin/, and the old
-// Blade shell below used to load /assets/admin/* which is no longer built, so
-// hitting /{secure_path} rendered a broken page. Keep the historical URL alive
-// by redirecting to the real SPA instead of rendering the dead shell.
-Route::get('/{admin_path}', function (string $adminPath) {
-    $expected = trim((string) admin_setting(
-        'secure_path',
-        admin_setting('frontend_admin_path', hash('crc32b', config('app.key')))
-    ));
-
-    if ($expected === '' || !hash_equals($expected, trim($adminPath))) {
-        abort(404);
-    }
-
-    return redirect('/admin/', 302);
-})->where('admin_path', '[A-Za-z0-9_-]+');
-
+// Subscription links must win before the dynamic admin catch-all.
 Route::get('/' . (admin_setting('subscribe_path', 's')) . '/{token}', [\App\Http\Controllers\V1\Client\ClientController::class, 'subscribe'])
     ->middleware('client')
     ->name('client.subscribe');
+
+/*
+|--------------------------------------------------------------------------
+| Runtime admin SPA entry
+|--------------------------------------------------------------------------
+|
+| The admin bundle is built once, but its browser path is deliberately not
+| fixed at build time. Caddy forwards non-user-SPA paths here; AdminPath then
+| compares {admin_path} with the live secure_path on every request.
+|
+| This makes /admin and stale secure paths return 404, while a rotated path is
+| usable immediately without rebuilding the frontend, regenerating routes, or
+| reloading Caddy/Octane.
+|
+*/
+$serveAdminSpa = static function (Request $request, string $admin_path, ?string $admin_route = null) {
+    // /srv/admin is the production image location. The checkout fallbacks keep
+    // feature tests and local development able to exercise the entry route.
+    $candidates = [
+        '/srv/admin/index.html',
+        base_path('../web/admin/dist/index.html'),
+        base_path('../web/admin/index.html'),
+    ];
+
+    foreach ($candidates as $indexPath) {
+        if (File::exists($indexPath)) {
+            return response(File::get($indexPath), 200, [
+                'Content-Type' => 'text/html; charset=UTF-8',
+                'Cache-Control' => 'no-store, private',
+            ]);
+        }
+    }
+
+    Log::error('Admin SPA index is missing', ['candidates' => $candidates]);
+    abort(503, '管理后台资源不可用');
+};
+
+Route::get('/{admin_path}/{admin_route?}', $serveAdminSpa)
+    ->where('admin_path', '[A-Za-z0-9_-]+')
+    ->where('admin_route', '.*')
+    ->middleware('admin.path');
