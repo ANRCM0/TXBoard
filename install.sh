@@ -169,7 +169,7 @@ services:
       - "${TXBOARD_HTTP_PORT:-80}:80"
       - "${TXBOARD_HTTPS_PORT:-443}:443"
     healthcheck:
-      test: ["CMD-SHELL", "redis-cli -s /data/redis.sock ping | grep -q PONG"]
+      test: ["CMD-SHELL", "redis-cli -s /data/redis.sock ping | grep -q PONG && php /opt/txboard/healthcheck.php"]
       interval: 5s
       timeout: 5s
       retries: 24
@@ -324,31 +324,23 @@ fi
 log "Pulling public images..."
 docker compose pull
 
-INSTALLED=false
-if grep -Eq '^INSTALLED=(1|true)$' api.env; then
-  INSTALLED=true
+log "Starting database and TXBoard..."
+docker compose up -d --remove-orphans --wait database txboard
+
+# Always ask TXBoard to reconcile installation state. The command is idempotent:
+# a complete database returns immediately, while a stale INSTALLED marker with
+# no administrator is repaired by performing the missing initialization.
+log "Reconciling TXBoard installation state..."
+docker compose exec -T txboard php artisan xboard:install
+
+if ! docker compose exec -T txboard php artisan xboard:install-status --no-interaction >/dev/null; then
+  die "installation state is incomplete. Check: docker compose logs txboard"
 fi
 
-if [[ "$INSTALLED" == "true" ]]; then
-  log "Updating existing TXBoard deployment..."
-  docker compose up -d --remove-orphans --wait
-  log "TXBoard is up to date."
-else
-  log "Starting database and TXBoard..."
-  docker compose up -d --remove-orphans --wait database txboard
-
-  log "Initializing TXBoard..."
-  docker compose exec -T txboard php artisan xboard:install
-
-  if ! grep -Eq '^INSTALLED=(1|true)$' api.env; then
-    die "installation did not complete. Check: docker compose logs txboard"
-  fi
-
-  docker compose up -d backup
-  docker compose restart txboard >/dev/null
-  docker compose up -d --wait txboard >/dev/null
-  log "TXBoard installation completed."
-fi
+docker compose up -d backup
+docker compose restart txboard >/dev/null
+docker compose up -d --wait txboard >/dev/null
+log "TXBoard is installed and up to date."
 
 APP_URL="$(grep -E '^APP_URL=' api.env | tail -1 | cut -d= -f2-)"
 log "Install directory: $INSTALL_DIR"
