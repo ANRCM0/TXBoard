@@ -1,30 +1,28 @@
 # Deployment
 
-TXBoard has one supported executable deployment definition:
+TXBoard has one supported deployment definition and one application image:
 
 ```text
 deploy/compose.yaml
+ghcr.io/paimoncai/txboard
 ```
 
-Use the repository root README for the complete first-run, upgrade, backup and restore flow. Keeping one Compose stack avoids configuration drift between several near-identical templates.
+The single `txboard` container serves both SPAs and runs the Laravel control
+plane, Caddy, Octane, Horizon, embedded Redis and WebSocket server. MySQL and the
+backup helper stay separate infrastructure services.
 
-## 1Panel / aaPanel / existing reverse proxy
+For 1Panel, aaPanel, Cloudflare or another reverse proxy, leave
+`TXBOARD_SITE_ADDRESS` empty and proxy to the host port published by the
+`txboard` service. For direct HTTPS, set it to the panel hostname and let the
+container's Caddy obtain the certificate.
 
-The supported stack can run behind an existing control panel or reverse proxy. Pick unused host ports through `TXBOARD_HTTP_PORT` / `TXBOARD_HTTPS_PORT`, then proxy the public hostname to the TXBoard web gateway. Do not proxy directly to the Laravel/Octane process.
-
-If TLS terminates in 1Panel, aaPanel, Cloudflare or another upstream proxy, leave `TXBOARD_SITE_ADDRESS` empty and forward the original scheme/client headers.
-
-## External services
-
-The default stack owns MySQL and the API container's Redis state. Advanced operators can layer a local Compose override for external MySQL/Redis or process splitting, but TXBoard no longer ships separate `compose.*.sample.yaml` variants. This keeps the repository's supported deployment contract singular.
-
-## Updating
-
-Use Git + the supported Compose stack:
+Update by replacing the application image/container, not by mutating code inside
+it:
 
 ```sh
-git pull
-docker compose -f deploy/compose.yaml up -d --build --wait
+docker compose -f deploy/compose.yaml pull txboard
+docker compose -f deploy/compose.yaml up -d --wait txboard
 ```
 
-The historical `api/update.sh` in-place updater is intentionally removed; container deployments should be replaced/rebuilt rather than mutating application code inside a running container.
+When deploying directly from a checkout, `--build` rebuilds the same single
+root Dockerfile instead.
