@@ -1,4 +1,4 @@
-import { apiClient } from './client'
+import { apiClient, pluginApiClient } from './client'
 import { unwrap } from '../lib/api'
 
 export type PluginOption = {
@@ -29,6 +29,7 @@ export type PluginAdminMenu = {
   url?: string
   embed?: string
   component?: string
+  renderer?: string
 }
 
 export type PluginAdminCrudColumn = {
@@ -170,17 +171,20 @@ export async function fetchPluginCrudList(
     sort_order?: 'asc' | 'desc'
   } = {},
 ): Promise<PluginCrudPage> {
-  const { data } = await apiClient.get(path, { params })
+  const client = path.startsWith('/plugin/') ? pluginApiClient : apiClient
+  const { data } = await client.get(path, { params })
   return normalizeCrudPage(data, params.current, params.pageSize)
 }
 
 export async function savePluginCrudRecord(path: string, payload: Record<string, unknown>) {
-  const { data } = await apiClient.post(path, payload)
+  const client = path.startsWith('/plugin/') ? pluginApiClient : apiClient
+  const { data } = await client.post(path, payload)
   return unwrap(data)
 }
 
 export async function deletePluginCrudRecord(path: string, payload: Record<string, unknown>) {
-  const { data } = await apiClient.post(path, payload)
+  const client = path.startsWith('/plugin/') ? pluginApiClient : apiClient
+  const { data } = await client.post(path, payload)
   return unwrap(data)
 }
 
@@ -191,15 +195,12 @@ export async function fetchPluginMenuHtml(component?: string): Promise<string | 
   try {
     let data: unknown
     if (path.startsWith('/')) {
-      const authorization = localStorage.getItem('access_token') || ''
-      const response = await fetch(path, {
-        headers: {
-          Accept: 'text/html,application/json',
-          ...(authorization ? { Authorization: authorization } : {}),
-        },
+      const response = await pluginApiClient.get(path, {
+        headers: { Accept: 'text/html,application/json' },
+        responseType: 'text',
+        transformResponse: [(value) => value],
       })
-      if (!response.ok) return null
-      data = await response.text()
+      data = response.data
     } else {
       const response = await apiClient.get(path, {
         headers: { Accept: 'text/html,application/json' },

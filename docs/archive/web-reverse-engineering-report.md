@@ -1,3 +1,5 @@
+> Archived reverse-engineering notes. The maintained React/Vue source is authoritative.
+
 # Xboard 前端逆向分析报告
 
 > 版本：2026-09-20  
