@@ -145,14 +145,25 @@ export const apiClient = axios.create({
   headers: { 'Content-Type': 'application/json' },
 })
 
-apiClient.interceptors.request.use(config => {
-  const authorization = getAuthorizationHeader()
-  if (authorization) config.headers.Authorization = authorization
-  return config
+// Plugin-owned admin APIs may intentionally live outside the instance-specific
+// /api/v2/<secure_path> namespace. They still use the same Sanctum bearer token.
+export const pluginApiClient = axios.create({
+  baseURL: runtimeBaseUrl(),
+  timeout: 30_000,
+  headers: { 'Content-Type': 'application/json' },
 })
+
+for (const client of [apiClient, pluginApiClient]) {
+  client.interceptors.request.use(config => {
+    const authorization = getAuthorizationHeader()
+    if (authorization) config.headers.Authorization = authorization
+    return config
+  })
+}
 
 attachCommonErrorHandling(publicApiClient, { redirectOnAuthError: false })
 attachCommonErrorHandling(apiClient, { redirectOnAuthError: true })
+attachCommonErrorHandling(pluginApiClient, { redirectOnAuthError: true })
 
 export function getResolvedApiPrefixes() {
   return {
