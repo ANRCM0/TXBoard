@@ -16,21 +16,12 @@ class ThemeService
     private const CONFIG_FILE = 'config.json';
     private const SETTING_PREFIX = 'theme_';
     private const SYSTEM_THEMES = ['TXBoard', 'v2board'];
-    private const LEGACY_THEME_ALIASES = ['Xboard' => 'TXBoard'];
 
     public function __construct()
     {
         $this->registerThemeViewPaths();
     }
 
-    public function normalizeThemeName(?string $theme): ?string
-    {
-        if ($theme === null) {
-            return null;
-        }
-
-        return self::LEGACY_THEME_ALIASES[$theme] ?? $theme;
-    }
 
     /**
      * Register theme view paths
@@ -53,7 +44,6 @@ class ThemeService
      */
     public function getThemeViewPath(string $theme): ?string
     {
-        $theme = $this->normalizeThemeName($theme) ?? $theme;
         $themePath = $this->getThemePath($theme);
         if (!$themePath) {
             return null;
@@ -144,7 +134,7 @@ class ThemeService
                 throw new Exception('Theme name not configured');
             }
 
-            if (in_array($config['name'], array_merge(self::SYSTEM_THEMES, array_keys(self::LEGACY_THEME_ALIASES)), true)) {
+            if (in_array($config['name'], self::SYSTEM_THEMES, true)) {
                 throw new Exception('Cannot upload theme with same name as system theme');
             }
 
@@ -201,10 +191,7 @@ class ThemeService
             return true;
         }
 
-        $requestedTheme = $theme;
-        $theme = $this->normalizeThemeName($theme) ?? $theme;
-        $currentThemeRaw = admin_setting('current_theme');
-        $currentTheme = $this->normalizeThemeName($currentThemeRaw);
+        $currentTheme = admin_setting('current_theme');
 
         try {
             $themePath = $this->getThemePath($theme);
@@ -216,9 +203,7 @@ class ThemeService
                 throw new Exception('Theme view file not found');
             }
 
-            if ($currentThemeRaw && $currentThemeRaw !== $theme) {
-                $this->cleanupThemeFiles($currentThemeRaw);
-            } elseif ($currentTheme && $currentTheme !== $theme) {
+            if ($currentTheme && $currentTheme !== $theme) {
                 $this->cleanupThemeFiles($currentTheme);
             }
 
@@ -241,7 +226,6 @@ class ThemeService
      */
     public function delete(string $theme): bool
     {
-        $theme = $this->normalizeThemeName($theme) ?? $theme;
 
         try {
             if (in_array($theme, self::SYSTEM_THEMES, true)) {
@@ -281,7 +265,6 @@ class ThemeService
      */
     public function getThemePath(string $theme): ?string
     {
-        $theme = $this->normalizeThemeName($theme) ?? $theme;
         $systemPath = base_path(self::SYSTEM_THEME_DIR . $theme);
         if (File::exists($systemPath)) {
             return $systemPath;
@@ -300,19 +283,7 @@ class ThemeService
      */
     public function getConfig(string $theme): ?array
     {
-        $theme = $this->normalizeThemeName($theme) ?? $theme;
         $config = admin_setting(self::SETTING_PREFIX . $theme);
-
-        if ($config === null) {
-            $legacyTheme = array_search($theme, self::LEGACY_THEME_ALIASES, true);
-            if ($legacyTheme !== false) {
-                $legacyConfig = admin_setting(self::SETTING_PREFIX . $legacyTheme);
-                if ($legacyConfig !== null) {
-                    admin_setting([self::SETTING_PREFIX . $theme => $legacyConfig]);
-                    $config = $legacyConfig;
-                }
-            }
-        }
 
         if ($config === null) {
             $this->initConfig($theme);
@@ -327,7 +298,6 @@ class ThemeService
      */
     public function updateConfig(string $theme, array $config): bool
     {
-        $theme = $this->normalizeThemeName($theme) ?? $theme;
 
         try {
             if (!$this->getThemePath($theme)) {
@@ -361,7 +331,6 @@ class ThemeService
      */
     private function readConfigFile(string $theme): ?array
     {
-        $theme = $this->normalizeThemeName($theme) ?? $theme;
         $themePath = $this->getThemePath($theme);
         if (!$themePath) {
             return null;
@@ -403,16 +372,11 @@ class ThemeService
     public function refreshCurrentTheme(): bool
     {
         try {
-            $currentThemeRaw = admin_setting('current_theme');
-            if (!$currentThemeRaw) {
+            $currentTheme = admin_setting('current_theme');
+            if (!$currentTheme) {
                 return false;
             }
 
-            $currentTheme = $this->normalizeThemeName($currentThemeRaw) ?? $currentThemeRaw;
-            if ($currentThemeRaw !== $currentTheme) {
-                $this->cleanupThemeFiles($currentThemeRaw);
-                admin_setting(['current_theme' => $currentTheme]);
-            }
             $this->cleanupThemeFiles($currentTheme);
 
             $themePath = $this->getThemePath($currentTheme);
@@ -445,7 +409,6 @@ class ThemeService
      */
     private function initConfig(string $theme, bool $preserveExisting = false): void
     {
-        $theme = $this->normalizeThemeName($theme) ?? $theme;
         $config = $this->readConfigFile($theme);
         if (!$config) {
             return;
