@@ -184,8 +184,7 @@ redis_reachable() {
 # Never trust INSTALLED in .env by itself. A stale marker paired with an
 # empty/new database previously caused the runtime updater to create tables/plugins
 # while skipping the installer, leaving a panel with no administrator.
-# Accept the legacy xboard:install alias during the compatibility window.
-if echo " $* " | grep -Eq ' (txboard:install|xboard:install) '; then
+if echo " $* " | grep -q ' txboard:install '; then
     echo "[entrypoint] Skipping txboard:update while running the installer."
 elif php /www/artisan txboard:install-status --no-interaction >/dev/null 2>&1; then
     if redis_reachable; then
@@ -206,8 +205,7 @@ echo "[entrypoint] Starting services (caddy=${ENABLE_CADDY} web=${ENABLE_WEB} ho
 # Drop stale Octane/WorkerMan state files so the new master does not signal
 # PIDs left over from a previous container run (causes Swoole kill EPERM).
 rm -f /www/storage/logs/octane-server-state.json \
-      /www/storage/logs/txboard-ws-server.pid \
-      /www/storage/logs/xboard-ws-server.pid 2>/dev/null || true
+      /www/storage/logs/txboard-ws-server.pid 2>/dev/null || true
 
 # Only the paths the application writes to need to be owned by www. This used to
 # be `chown -R www:www /www`, which re-walked the entire tree -- including the
