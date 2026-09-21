@@ -1,7 +1,7 @@
 <?php
 
 use App\Services\ThemeService;
-use App\Services\UpdateService;
+use App\Services\VersionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Log;
@@ -58,7 +58,7 @@ Route::get('/', function (Request $request) {
         $renderParams = [
             'title' => admin_setting('app_name', 'Xboard'),
             'theme' => $theme,
-            'version' => app(UpdateService::class)->getCurrentVersion(),
+            'version' => app(VersionService::class)->getCurrentVersion(),
             'description' => admin_setting('app_description', 'Xboard is best'),
             'logo' => admin_setting('logo'),
             'theme_config' => $themeService->getConfig($theme)
