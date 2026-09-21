@@ -1,15 +1,25 @@
 /**
- * Resolves the mount point of the admin SPA.
+ * Resolve the browser mount point of the admin SPA.
  *
- * TXBoard ships the admin bundle under `/admin/` (see web/Dockerfile), so
- * Vite injects `BASE_URL = /admin/` and every absolute route, redirect or
- * link has to be prefixed with it. When the bundle is served from the domain
- * root, `BASE_URL` is `/` and these helpers degrade to plain root paths.
+ * Vite's BASE_URL is intentionally *not* the router base in production.
+ * The bundle is compiled under a fixed, non-entry static namespace
+ * (/.txboard-admin/) while the page itself is served from the instance's
+ * runtime secure_path, e.g. /a8f3c2d1/config/system.
+ *
+ * The secure path is a single URL segment, so the first pathname segment is
+ * the only mount information the browser router needs. Static previews keep
+ * hash routing and therefore use '/' as their router base.
  */
 export function resolveBasePath(): string {
-  const raw = String(import.meta.env.BASE_URL || '/').trim()
-  if (!raw || raw === '/' || raw === './') return '/'
-  return '/' + raw.replace(/^\/+|\/+$/g, '')
+  if (import.meta.env.VITE_STATIC_PREVIEW === '1') return '/'
+  if (typeof window === 'undefined') return '/'
+
+  const firstSegment = window.location.pathname
+    .split('/')
+    .map(segment => segment.trim())
+    .find(Boolean)
+
+  return firstSegment ? `/${firstSegment}` : '/'
 }
 
 export function withBasePath(path: string): string {
