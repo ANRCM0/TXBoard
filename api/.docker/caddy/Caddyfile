@@ -60,17 +60,40 @@
 		}
 	}
 
-	redir /admin /admin/
-
-	handle_path /admin/* {
-		root * /srv/admin
-		try_files {path} /index.html
+	# Admin JavaScript/CSS is public only as immutable static assets. The admin
+	# index itself is never served from this namespace, so /admin (or any other
+	# guessed fixed path) cannot bootstrap the management SPA.
+	handle_path /.txboard-admin/assets/* {
+		root * /srv/admin/assets
 		file_server
 	}
 
-	handle {
+	@adminStaticRoot path /.txboard-admin /.txboard-admin/
+	handle @adminStaticRoot {
+		respond 404
+	}
+
+	# The user application uses hash routing, therefore its real browser
+	# pathname stays at '/'. Its compiled chunks live under /assets/*.
+	handle /assets/* {
 		root * /srv/user
-		try_files {path} /index.html
 		file_server
+	}
+
+	handle / {
+		root * /srv/user
+		rewrite * /index.html
+		file_server
+	}
+
+	# Every other browser path is resolved by Laravel. Laravel validates the
+	# first segment against the live secure_path and serves the admin index only
+	# when it matches. Wrong/old/admin guesses therefore become indistinguishable
+	# 404s, and rotating secure_path needs no Caddy reload or container restart.
+	handle {
+		reverse_proxy 127.0.0.1:{$OCTANE_INTERNAL_PORT:7002} {
+			header_up Host {host}
+			header_up X-Real-IP {remote_host}
+		}
 	}
 }
