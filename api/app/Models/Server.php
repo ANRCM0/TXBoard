@@ -142,8 +142,8 @@ class Server extends Model
                 'enabled' => ['type' => 'boolean', 'default' => false],
                 'protocol' => ['type' => 'string', 'default' => 'yamux'],
                 'max_connections' => ['type' => 'integer', 'default' => null],
-                // 'min_streams' => ['type' => 'integer', 'default' => null],
-                // 'max_streams' => ['type' => 'integer', 'default' => null],
+                'min_streams' => ['type' => 'integer', 'default' => null],
+                'max_streams' => ['type' => 'integer', 'default' => null],
                 'padding' => ['type' => 'boolean', 'default' => false],
                 'brutal' => [
                     'type' => 'object',
@@ -262,6 +262,7 @@ class Server extends Model
         ],
         self::TYPE_HYSTERIA => [
             'version' => ['type' => 'integer', 'default' => 2],
+            'alpn' => ['type' => 'string', 'default' => null],
             'bandwidth' => [
                 'type' => 'object',
                 'fields' => [
@@ -288,6 +289,7 @@ class Server extends Model
             'tls' => self::TLS_CONFIGURATION
         ],
         self::TYPE_ANYTLS => [
+            'alpn' => ['type' => 'string', 'default' => null],
             'padding_scheme' => [
                 'type' => 'array',
                 'default' => [
