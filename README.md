@@ -1,202 +1,563 @@
 # TXBoard
 
-TXBoard is the control-plane project: it contains the Laravel API, the admin and user frontends, the plugin runtime, deployment files, and the panel-side node protocol. The node runtime is maintained independently in [PaiMonCai/TX-Node](https://github.com/PaiMonCai/TX-Node) and communicates with TXBoard only through HTTP/WebSocket protocol contracts.
+> 面向代理服务与节点网络的现代化 Control Plane。  
+> 基于 Xboard 演进，保留兼容能力，同时将前端、节点、主题、插件和部署体系重新拆分为清晰的边界。
 
-**Docker Compose is the supported way to deploy TXBoard.** TXBoard itself is one application image: Caddy, both frontends, Laravel/Octane, Horizon, embedded Redis and the WebSocket server all run in the single `txboard` container. MySQL and the backup helper remain infrastructure services. Everything else in this document is either configuration for that stack or instructions for working on the source.
+TXBoard 负责用户、订阅、订单、支付、节点、机器、流量、工单、内容、主题与插件等控制面能力。节点运行时不再内嵌在本仓库中，而由独立的 [TX-Node](https://github.com/PaiMonCai/TX-Node) 提供，通过 HTTP / WebSocket 协议与 TXBoard 通信。
 
-## Deploy with Docker Compose
+当前生产部署采用 **单 TXBoard 应用镜像**：
 
-### Requirements
+```text
+ghcr.io/paimoncai/txboard
+```
 
-- Docker Engine 24+ with Compose v2 (`docker compose version`).
-- 2 vCPU and 2 GB RAM minimum; the stack auto-tunes its worker count to the CPU and memory it is given.
-- Ports 80 and 443 free, or set `TXBOARD_HTTP_PORT` / `TXBOARD_HTTPS_PORT` to something else.
-- A DNS record pointing at the host **if** you want automatic HTTPS. Plain HTTP and TLS-terminated-in-front setups do not need one.
+一个 `txboard` 容器同时包含 Admin/User 前端、Caddy、Laravel Octane、Horizon、Redis 和 WebSocket 服务。MySQL 与备份任务作为基础设施服务独立运行。
 
-### Quick start
+---
+
+## 主要能力
+
+### 控制面
+
+- 用户、订阅与套餐管理
+- 订单、支付、优惠券与礼品卡
+- 节点、机器、节点组与路由管理
+- 流量统计、流量重置与排行榜
+- 工单、公告与知识库
+- 邮件、Telegram 与通知能力
+- 管理员审计日志
+- 动态后台安全路径 `secure_path`
+
+### 节点与协议
+
+- 独立 TX-Node Agent / Data Plane
+- HTTP 基线控制协议
+- WebSocket 实时控制通道
+- Machine / Agent / Node 分层模型
+- UniProxy V1 兼容接口
+- V2 Machine / Server 协议
+- 可选 AccessAudit 节点审计扩展
+
+### 扩展体系
+
+- **Theme System**：保留 Xboard 兼容主题，同时支持安装、切换和配置自定义主题
+- **Plugin System**：支持核心插件、第三方插件、Schema 驱动的 CRUD / Settings UI 和原生 React 插件页面
+- **AccessAudit**：作为独立可选插件提供规则、命中记录、分析与封禁能力
+- 支付、通知等能力可通过插件继续扩展
+
+---
+
+## 架构
+
+```mermaid
+flowchart LR
+    User[User Browser] --> Caddy
+    Admin[Admin Browser] --> Caddy
+
+    subgraph TXBoard["TXBoard single image"]
+        Caddy[Caddy Gateway]
+        UserSPA[Vue User SPA]
+        AdminSPA[React Admin SPA]
+        API[Laravel 12 / Octane]
+        Horizon[Horizon]
+        Redis[(Embedded Redis)]
+        WS[WebSocket Server]
+        Plugins[Plugin Runtime]
+        Themes[Theme Runtime]
+
+        Caddy --> UserSPA
+        Caddy --> AdminSPA
+        Caddy --> API
+        Caddy --> WS
+        API --> Horizon
+        API --> Redis
+        API --> Plugins
+        API --> Themes
+    end
+
+    API --> MySQL[(MySQL)]
+    Node[TX-Node] -->|HTTPS / WSS| API
+    Node -->|WSS| WS
+```
+
+TXBoard 是 **Control Plane**，TX-Node 是独立的 **Agent / Data Plane**。两个仓库之间只共享协议契约，不互相导入源码，也不互相参与构建。
+
+### Machine、Agent 与 Node
+
+```text
+Machine
+└── Agent (TX-Node process)
+    ├── Node A
+    ├── Node B
+    └── Node C
+```
+
+- **Machine**：实际主机或运行环境
+- **Agent**：运行在 Machine 上的 TX-Node 进程
+- **Node**：由 Agent 承载和管理的代理服务实例
+- **Panel**：TXBoard Control Plane
+
+---
+
+## 技术栈
+
+| 层 | 技术 |
+| --- | --- |
+| Admin | React + TypeScript + Vite |
+| User | Vue + TypeScript + Vite |
+| API | Laravel 12 + PHP 8.2 |
+| Application Server | Laravel Octane + Swoole |
+| Queue | Laravel Horizon |
+| Cache / Queue Backend | Redis |
+| Database | MySQL 8 |
+| Gateway | Caddy |
+| Runtime | Docker Compose |
+| Node Agent | Independent TX-Node repository |
+
+---
+
+## 快速部署
+
+### 环境要求
+
+- Docker Engine 24+
+- Docker Compose v2
+- 建议至少 2 vCPU / 2 GB RAM
+- 如由 TXBoard 自己签发 HTTPS，服务器需要开放 80 / 443 并正确配置 DNS
+
+### 1. 获取项目
 
 ```bash
 git clone https://github.com/PaiMonCai/TXBoard.git
 cd TXBoard
+```
 
-cp api/.env.example api/.env        # panel settings; APP_KEY is generated for you
-cp .env.example .env              # Docker stack settings
-$EDITOR .env                        # set TXBOARD_DB_PASSWORD and TXBOARD_DB_ROOT_PASSWORD
+### 2. 准备配置
 
+```bash
+cp .env.example .env
+cp api/.env.example api/.env
+```
+
+编辑根目录 `.env`，至少设置：
+
+```env
+TXBOARD_DB_PASSWORD=change-me
+TXBOARD_DB_ROOT_PASSWORD=change-root-password
+```
+
+根目录 `.env` 负责 Docker Stack；`api/.env` 负责 Laravel 应用配置。
+
+### 3. 启动
+
+使用当前源码构建：
+
+```bash
 docker compose up -d --build --remove-orphans --wait
+```
+
+使用已发布镜像：
+
+```bash
+docker compose pull txboard
+docker compose up -d --remove-orphans --wait
+```
+
+### 4. 初始化
+
+```bash
 docker compose exec -it txboard php artisan xboard:install
 ```
 
-`--wait` matters. It blocks until MySQL has finished initialising and the container's embedded Redis is answering, which is what makes the following `xboard:install` safe to run immediately. Installing against a database that is still starting is the most common first-run failure.
+安装器会完成数据库迁移并创建第一个管理员，同时输出管理员密码与 `secure_path`。
 
-`xboard:install` migrates the schema, creates the first administrator, and prints the generated password together with the admin API prefix (`secure_path`). **Record that password now** — it is printed once. Re-running the command later is safe: it sees `INSTALLED=true` in `api/.env` and prints the panel URL instead of reinstalling.
+---
 
-### What you get
+## Docker 部署模型
 
-| URL | What it is |
-| --- | --- |
-| `http://<host>/` | User frontend (Vue). |
-| `http://<host>/admin/` | Admin frontend (React). |
-| `http://<host>/api/v1/*` | Public and user API. |
-| `http://<host>/api/v2/<secure_path>/*` | Admin API. The prefix is printed by the installer and is deliberately not guessable. |
-| `http://<host>/<subscribe_path>/<token>` | Subscription output. Kept in step with the panel setting by `./sync-gateway.sh`. |
+仓库根目录就是完整部署入口：
 
-### Configuration
-
-Two files, with a strict division of responsibility.
-
-`.env` — read by Docker Compose, controls the stack itself.
-
-| Key | Default | Purpose |
-| --- | --- | --- |
-| `TXBOARD_DB_PASSWORD` | *required* | Application database password. |
-| `TXBOARD_DB_ROOT_PASSWORD` | *required* | MySQL root password. |
-| `TXBOARD_HTTP_PORT` / `TXBOARD_HTTPS_PORT` | `80` / `443` | Published host ports. |
-| `TXBOARD_SITE_ADDRESS` | *empty* | Public hostname. Set it to get automatic HTTPS; leave empty to serve plain HTTP behind an external terminator. |
-| `TXBOARD_TLS_DIRECTIVE` | *empty* | Raw Caddy TLS directive, e.g. `tls internal` for a private CA. |
-| `TXBOARD_BACKUP_DIR` | `./backups` | Where archives are written. Prefer another disk. |
-| `TXBOARD_BACKUP_INTERVAL` / `TXBOARD_BACKUP_RETENTION` | `86400` / `7` | Seconds between backups, and how many archives to keep. |
-| `TXBOARD_REDIS_HOST` / `TXBOARD_REDIS_PORT` | `/data/redis.sock` / `0` | Point at an external Redis to opt out of the embedded one. |
-| `TXBOARD_SUBSCRIBE_PATH` | `s` | Must match the panel setting; render it with `./sync-gateway.sh`. |
-| `TXBOARD_IMAGE` | `ghcr.io/paimoncai/txboard:latest` | Single published TXBoard application image. Pin a `sha-*` tag for deterministic rollouts. |
-
-`api/.env` — read by the application. The `DB_*` and `REDIS_*` keys are overridden by the compose environment and do not need editing. The keys that matter in production are:
-
-| Key | Set it to |
-| --- | --- |
-| `APP_URL` | Your public origin, e.g. `https://panel.example.com`. Verification and password-reset mail is sent by a queued Horizon worker with no request to infer the host from, so this is the only source for those links. |
-| `SESSION_SECURE_COOKIE` | `true` once you are serving HTTPS. |
-| `LOG_LEVEL` | `warning` (the default). Use `debug` only while diagnosing. |
-| `CORS_ALLOWED_ORIGINS` | Empty. Both frontends are served from this same origin, so no cross-origin access is needed. Add origins only if a frontend genuinely lives elsewhere. |
-| `MAIL_*` | Your SMTP credentials, or registration and password-reset mail is silently dropped. |
-
-Editing `api/.env` takes effect after `docker compose restart txboard`.
-
-### Common operations
-
-```bash
-# Status and health
-docker compose ps
-
-# Follow logs (rotation caps them at 10 MB x 3 per service)
-docker compose logs -f txboard
-
-# Open a shell, or run any artisan command
-docker compose exec txboard sh
-docker compose exec txboard php artisan about
-
-# Restart one service after an .env change
-docker compose restart txboard
-
-# Update to the latest source. --remove-orphans also removes the old
-# dual-image api/web containers during the first single-image upgrade.
-git pull
-docker compose up -d --build --remove-orphans --wait
-
-# Stop (keeps data) / stop and delete ALL data
-docker compose down
-docker compose down -v   # destroys the database and APP_KEY
+```text
+TXBoard/
+├── Dockerfile
+├── compose.yaml
+├── .env.example
+├── backup.sh
+├── sync-gateway.sh
+├── api/
+├── web/
+├── integrations/
+├── contracts/
+└── docs/
 ```
 
-### Backups and restore
+Compose 中只有一个 TXBoard 应用服务：
 
-The `backup` service archives the database, the `APP_KEY` and the uploads on a schedule. Run one on demand:
+```text
+txboard
+├── Caddy
+├── React Admin
+├── Vue User
+├── Laravel / Octane
+├── Horizon
+├── Redis
+└── WebSocket
+```
+
+另外的 `database` 和 `backup` 只是基础设施服务，并不是第二套 TXBoard 应用镜像。
+
+### 常用命令
+
+```bash
+# 状态
+docker compose ps
+
+# 日志
+docker compose logs -f txboard
+
+# Shell
+docker compose exec txboard sh
+
+# Laravel
+docker compose exec txboard php artisan about
+
+# 重启应用
+docker compose restart txboard
+
+# 停止
+docker compose down
+```
+
+不要随意执行：
+
+```bash
+docker compose down -v
+```
+
+它会删除 MySQL、Redis 和 Caddy 等命名卷。
+
+---
+
+## 更新
+
+TXBoard 不再支持在运行中的容器里执行 `git reset` / `composer install` 式自更新。
+
+### 从源码更新
+
+```bash
+git pull
+docker compose up -d --build --remove-orphans --wait
+```
+
+### 使用发布镜像更新
+
+```bash
+docker compose pull txboard
+docker compose up -d --remove-orphans --wait txboard
+```
+
+应用启动时仍会执行必要的数据库迁移、默认插件检查与主题刷新，但不会修改容器内源码。
+
+---
+
+## HTTPS
+
+### Caddy 自动 HTTPS
+
+在根目录 `.env` 中设置：
+
+```env
+TXBOARD_SITE_ADDRESS=panel.example.com
+```
+
+随后确保 DNS 指向服务器，并开放 80 / 443。
+
+Laravel 配置：
+
+```env
+APP_URL=https://panel.example.com
+SESSION_SECURE_COOKIE=true
+```
+
+### 外部反向代理
+
+如果 HTTPS 由 Cloudflare、1Panel、aaPanel、Nginx 或其他入口终止：
+
+```env
+TXBOARD_SITE_ADDRESS=
+```
+
+然后将域名反向代理到 TXBoard 对外 HTTP 端口即可。
+
+---
+
+## 备份
+
+内置 `backup` 服务会同时备份：
+
+- MySQL 数据库
+- `api/.env`（包含 APP_KEY）
+- `storage/app` 上传数据
+- 备份 Manifest
+
+手动备份：
 
 ```bash
 docker compose run --rm backup
 ```
 
-Each archive contains `db.sql.gz`, `env`, `storage-app.tar.gz` and a `MANIFEST`. All the parts are needed together: a database dump alone is not a backup, because the encrypted columns in it cannot be read without the `APP_KEY` stored in `env`. A dump that fails, or that fails its gzip integrity check, is discarded rather than kept — so anything present in the backup directory is restorable.
+默认输出到：
 
-To restore, stop the writers first, then replay:
-
-```bash
-docker compose stop txboard
-
-gunzip -c backups/<stamp>/db.sql.gz | \
-  docker compose exec -T database \
-    sh -c 'exec mysql -uroot -p"$MYSQL_ROOT_PASSWORD" "$MYSQL_DATABASE"'
-
-cp backups/<stamp>/env api/.env
-tar -xzf backups/<stamp>/storage-app.tar.gz -C api/storage/app
-
-docker compose up -d --wait
+```text
+backups/
 ```
 
-### State that outlives the containers
+数据库和 APP_KEY 必须一起保存，否则加密字段无法恢复。
 
-| Path | Why it must persist |
-| --- | --- |
-| `database-data` volume | MySQL data directory. |
-| `api/.env` bind mount | `INSTALLED=true`, the generated `APP_KEY` and Redis settings. Losing it makes the panel report itself as not installed. |
-| `api/storage` bind mount | Logs, uploads, themes and sessions. |
-| `api/plugins` bind mount | Installed plugins. |
-| `api-redis` volume | Embedded Redis data, including `/data/redis.sock`. The legacy volume name is intentionally retained across the single-image migration. |
-| `caddy-data` / `caddy-config` volumes | TLS certificates and the ACME account key. Without them every recreate re-requests a certificate and can trip Let's Encrypt's duplicate-certificate rate limit. |
-| `TXBOARD_BACKUP_DIR` | Archives. Put it on another disk. |
+---
 
-### Going to production
+## Theme System
 
-Three things are deliberately left to you, because the right answer depends on where the panel runs:
+TXBoard **保留主题体系**，主题不是临时兼容代码。
 
-1. **HTTPS.** Set `TXBOARD_SITE_ADDRESS=panel.example.com` in `.env`, make sure DNS resolves to this host and ports 80/443 reach it, then `docker compose up -d txboard`. Caddy obtains and renews the certificate and redirects 80 to 443. Terminating TLS in front (Cloudflare, an ALB) also works — leave the value empty. Either way set `APP_URL` and `SESSION_SECURE_COOKIE=true` in `api/.env`.
-2. **Backups.** Point `TXBOARD_BACKUP_DIR` at a different disk and confirm `docker compose run --rm backup` produces an archive. Test a restore before you need one.
-3. **CORS.** Leave `CORS_ALLOWED_ORIGINS` empty unless a frontend is served from a different origin.
+当前有两层：
 
-Also worth doing: change the database passwords from their initial values, keep `APP_DEBUG=false`, and monitor disk space — the log rotation and backup retention above bound growth, but the database itself does not shrink.
+1. `api/theme/`：随项目发布的系统主题与 Xboard 兼容主题
+2. `api/storage/theme/`：用户安装的主题
 
-### Troubleshooting
+后台支持主题发现、ZIP 上传、切换、配置与删除。
 
-| Symptom | Cause and fix |
-| --- | --- |
-| `502` from the gateway | The TXBoard container is not ready. `docker compose logs txboard` — during first-run troubleshooting look for a fatal from Octane. |
-| `set TXBOARD_DB_PASSWORD in .env` | Compose refuses to start with blank database credentials. Copy `.env.example` to `.env` and fill them in. |
-| Panel says it is not installed after a recreate | `api/.env` was deleted or replaced; it holds `INSTALLED=true` and the `APP_KEY`. Restore it from a backup. |
-| `xboard:install` fails at the cache step | MySQL or Redis was not up. Use `up -d --wait` and re-run. |
-| Port 80/443 already in use | Set `TXBOARD_HTTP_PORT` / `TXBOARD_HTTPS_PORT`. |
-| Subscription links 404 | `TXBOARD_SUBSCRIBE_PATH` drifted from the panel setting. Run `./sync-gateway.sh` and restart `txboard`. |
-| Lost the admin password | `docker compose exec txboard php artisan reset:password you@example.com` — it prompts for the new one. |
+现代 User SPA 位于 `web/user/`，而 Xboard legacy theme 仍作为兼容路径存在。后续主题系统可以继续向“统一 Theme Package”演进，而不需要删除 Theme Runtime。
 
-## Repository layout
+---
 
-- `api/` — Laravel control-plane API and plugin runtime.
-- `web/admin/` — React administration frontend.
-- `web/user/` — Vue user frontend.
-- `integrations/AccessAudit/` — optional panel-side AccessAudit plugin and its compatibility sidecar assets. This directory is the plugin source of truth.
-- `contracts/` — cross-repository compatibility contracts for the web/API surface and TX-Node protocol.
-- `docs/` — architecture, deployment notes and archived implementation records.
-- `.github/workflows/` — path-scoped CI and release workflows.
+## Plugin System
 
-## Local development and verification
+插件是 TXBoard 的正式扩展边界。
 
-The commands below are for working on the source, not for deployment.
+### 核心插件
+
+位于：
+
+```text
+api/plugins-core/
+```
+
+包含支付、Telegram 等核心扩展。
+
+### 用户插件
+
+运行时目录：
+
+```text
+api/plugins/
+```
+
+### 集成插件
+
+仓库级集成位于：
+
+```text
+integrations/
+```
+
+例如：
+
+```text
+integrations/AccessAudit/
+```
+
+Admin 前端提供通用 Plugin Runtime，可处理：
+
+- Settings Schema
+- CRUD Schema
+- Plugin Menu
+- Legacy iframe/component
+- Build-time native React renderer
+
+因此复杂插件可以拥有自己的 React 管理页面，而普通插件不需要重复实现一套后台 UI。
+
+插件开发指南见：
+
+[Plugin Development Guide](api/docs/en/development/plugin-development-guide.md)
+
+---
+
+## TX-Node
+
+TX-Node 已从 TXBoard 仓库完全拆分：
+
+[github.com/PaiMonCai/TX-Node](https://github.com/PaiMonCai/TX-Node)
+
+TXBoard 不构建、不发布、也不运行 TX-Node。
+
+核心协议包括：
+
+```text
+POST /api/v2/server/handshake
+POST /api/v2/server/report
+GET  /api/v2/server/config
+GET  /api/v2/server/user
+POST /api/v2/server/machine/nodes
+POST /api/v2/server/machine/status
+```
+
+同时保留必要的 UniProxy V1 兼容接口。
+
+完整契约：
+
+[TX-Node Protocol Contract](contracts/node-protocol/README.md)
+
+---
+
+## AccessAudit
+
+AccessAudit 是可选的面板插件，不属于 TX-Node 核心协议。
+
+它提供：
+
+- 审计规则
+- 命中记录
+- 节点健康状态
+- 分析与排行榜
+- 用户封禁 / 解封
+- Telegram 告警
+- 可选 TX-Node audit reporter
+- Xray legacy sidecar compatibility
+
+插件源码：
+
+[AccessAudit](integrations/AccessAudit/README.md)
+
+---
+
+## API 与后台安全路径
+
+公共 API：
+
+```text
+/api/v1/*
+```
+
+Admin API：
+
+```text
+/api/v2/{secure_path}/*
+```
+
+`secure_path` 由运行时中间件逐请求校验。修改后台安全路径后，新路径立即生效，旧路径立即返回 404，不需要重启 Octane 或容器。
+
+管理员 POST 操作会进入审计日志；密码、Token、Secret、API Key 等敏感字段会递归脱敏后再持久化。
+
+---
+
+## 本地开发
+
+### Web
 
 ```bash
 npm install
 npm run verify:web
-composer install --working-dir=api
-composer test --working-dir=api
 ```
 
-The API and web frontends can still be developed independently. The root scripts keep panel-side changes reproducible; TX-Node has its own CI, releases, and test suite in its separate repository.
-
-To build the single TXBoard image without starting the stack:
+单独开发：
 
 ```bash
-docker compose build
+npm run dev --workspace @txboard/admin
+npm run dev --workspace @txboard/user
 ```
 
-TX-Node is intentionally not part of this repository or the root Compose stack because it runs on remote edge hosts. Install, build, and release it from [PaiMonCai/TX-Node](https://github.com/PaiMonCai/TX-Node).
+### API
 
-## Versioning
+```bash
+cd api
+cp .env.example .env
+composer install
+php artisan key:generate
+php artisan migrate
+php artisan test
+```
 
-TXBoard publishes one control-plane image from `main`:
+根目录也提供统一验证：
 
-- `ghcr.io/paimoncai/txboard:latest`
-- `ghcr.io/paimoncai/txboard:sha-<commit>`
+```bash
+make verify
+```
 
-TX-Node versions and releases independently in its own repository; TXBoard tags do not imply a TX-Node version.
+---
 
-## Licensing and provenance
+## 仓库结构
 
-The API retains its existing MIT license in `api/LICENSE`. TX-Node licensing and provenance are maintained in the separate TX-Node repository; see `THIRD_PARTY_NOTICES.md` for TXBoard-side notes.
+```text
+TXBoard/
+├── api/                         Laravel Control Plane
+│   ├── app/
+│   ├── plugins-core/            内置插件
+│   ├── theme/                   系统 / 兼容主题
+│   └── storage/theme/           用户主题
+│
+├── web/
+│   ├── admin/                   React Admin
+│   ├── user/                    Vue User
+│   └── shared/
+│
+├── integrations/
+│   └── AccessAudit/             可选审计插件
+│
+├── contracts/
+│   ├── http/
+│   └── node-protocol/
+│
+├── docs/
+│   ├── architecture/
+│   └── archive/
+│
+├── Dockerfile                   单 TXBoard 镜像
+├── compose.yaml                 官方部署入口
+├── backup.sh
+└── sync-gateway.sh
+```
+
+---
+
+## 文档
+
+- [Architecture](docs/architecture/README.md)
+- [HTTP Contract Audit](contracts/http/xboard-api-contract-audit.md)
+- [TX-Node Protocol](contracts/node-protocol/README.md)
+- [Plugin Development Guide](api/docs/en/development/plugin-development-guide.md)
+- [AccessAudit](integrations/AccessAudit/README.md)
+- [Historical Web Notes](docs/archive/)
+
+`docs/archive/` 中的内容仅用于保存历史实现记录，不代表当前架构。
+
+---
+
+## CI 与镜像
+
+主要 CI：
+
+- `api-ci`
+- `web-ci`
+- `txboard-image`
+- `pages-preview`
+
+生产镜像：
+
+```text
+ghcr.io/paimoncai/txboard:latest
+ghcr.io/paimoncai/txboard:sha-<commit>
+```
+
+API 与两个前端作为同一个 artifact 发布，避免版本漂移。
+
+---
+
+## License & Provenance
+
+TXBoard 的 API 部分源自 Xboard，并继续保留原 MIT License，详见：
+
+- [api/LICENSE](api/LICENSE)
+- [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)
+
+TX-Node 是独立仓库，拥有独立的版本与发布生命周期。

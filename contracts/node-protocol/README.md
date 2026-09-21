@@ -1,30 +1,54 @@
 # TX-Node Protocol Contract
 
-TXBoard exposes the control-plane protocol consumed by the independent [PaiMonCai/TX-Node](https://github.com/PaiMonCai/TX-Node) agent. TXBoard does not compile, vendor, or deploy TX-Node. TX-Node connects outbound to the panel over HTTP/WebSocket and implements the client-side adapters in its own `internal/panel` and `internal/controlplane` packages.
+TXBoard 是控制面，独立的 [TX-Node](https://github.com/PaiMonCai/TX-Node) 是节点 Agent / Data Plane。
 
-## Core endpoints
+TX-Node 主动向 TXBoard 发起 HTTPS / WSS 连接；TXBoard 不编译、不 vendor、也不部署 TX-Node。
 
-- `POST /api/v2/server/handshake`
-- `POST /api/v2/server/report`
-- `GET /api/v2/server/config`
-- `GET /api/v2/server/user`
-- `POST /api/v2/server/machine/nodes`
-- `POST /api/v2/server/machine/status`
-- `GET /api/v1/server/UniProxy/config`
-- `GET /api/v1/server/UniProxy/user`
-- `POST /api/v1/server/UniProxy/push`
-- `POST /api/v1/server/UniProxy/alive`
-- `POST /api/v1/server/UniProxy/status`
+## V2 core protocol
 
-These endpoints are the core panel/agent compatibility surface and remain available independently of optional plugins.
+```http
+POST /api/v2/server/handshake
+POST /api/v2/server/report
+GET  /api/v2/server/config
+GET  /api/v2/server/user
+POST /api/v2/server/machine/nodes
+POST /api/v2/server/machine/status
+```
 
-## Optional AccessAudit extension
+V2 用于 Agent 握手、配置同步、用户同步、Machine 节点清单与状态上报。
 
-When the AccessAudit plugin is installed and enabled, it extends the node protocol with:
+## UniProxy V1 compatibility
 
-- `GET /api/v1/plugin/access-audit/rules`
-- `POST /api/v1/plugin/access-audit/report`
+```http
+GET  /api/v1/server/UniProxy/config
+GET  /api/v1/server/UniProxy/user
+POST /api/v1/server/UniProxy/push
+POST /api/v1/server/UniProxy/alive
+POST /api/v1/server/UniProxy/status
+```
 
-AccessAudit is not a TX-Node dependency and is not part of the core node protocol. TX-Node may enable its audit reporter only when this plugin capability is desired.
+这些接口用于现有 UniProxy/Xboard 兼容，不应在没有迁移计划的情况下删除。
 
-Changes to core endpoint paths or payloads require coordinated compatibility tests in TXBoard and the separate TX-Node repository. Changes to the AccessAudit extension require corresponding plugin tests and TX-Node audit-client compatibility checks.
+## WebSocket
+
+WebSocket 是实时控制加速通道，HTTP 是基础协议。Agent 应能够在 WebSocket 暂时不可用时继续依赖 HTTP 完成核心同步。
+
+## AccessAudit extension
+
+AccessAudit 是可选插件，不属于核心 TX-Node 协议：
+
+```http
+GET  /api/v1/plugin/access-audit/rules
+POST /api/v1/plugin/access-audit/report
+```
+
+TX-Node 可以启用可选 audit reporter 使用这些接口；未安装 AccessAudit 时，不影响核心节点功能。
+
+## Change policy
+
+核心 endpoint、认证方式、payload 或语义发生变化时，需要：
+
+1. 更新 TXBoard 端契约与测试；
+2. 在 TX-Node 仓库验证对应 adapter；
+3. 保留必要的兼容窗口；
+4. 避免将可选插件协议提升为核心硬依赖。

@@ -1,38 +1,43 @@
 # AccessAudit
 
-AccessAudit is the canonical optional panel-side audit plugin for TXBoard.
+AccessAudit 是 TXBoard 的可选审计插件，负责规则、访问命中、分析、封禁与告警。
+
+它不是 TX-Node 的硬依赖，也不属于核心节点协议。
 
 ## Ownership
 
-- Plugin backend source: this directory.
-- Native administrator UI: TXBoard's React plugin runtime in `web/admin/src/plugins/access-audit/`.
-- Node-side collection/reporting: optional client in the independent TX-Node repository.
-- Xray compatibility sidecar: `node-agent/` in this plugin.
+```text
+integrations/AccessAudit/
+├── backend plugin            本目录
+├── database / services       本目录
+├── node-agent/               legacy Xray sidecar
+└── admin native UI           web/admin/src/plugins/access-audit/
+```
 
-TX-Node does not vendor or release this panel plugin.
+TX-Node 中只保留可选 audit reporter/client。
 
 ## Admin UI
 
-After the plugin is installed and enabled, use the TXBoard administrator UI:
+插件安装并启用后，由 TXBoard React Admin Plugin Runtime 提供页面：
 
-- `/admin/plugins/access_audit/dashboard` — overview, node health, access logs, manual ban/unban.
-- `/admin/plugins/access_audit/analytics` — analytics and rankings.
-- `/admin/plugins/access_audit/rules` — schema-driven rule CRUD.
-- `/admin/plugins/access_audit/reports` — recent matched reports.
-- `/admin/plugins/access_audit/ban-logs` — recent ban/unban history.
-- `/admin/plugins/access_audit/settings` — schema-driven plugin settings.
+- `/admin/plugins/access_audit/dashboard`
+- `/admin/plugins/access_audit/analytics`
+- `/admin/plugins/access_audit/rules`
+- `/admin/plugins/access_audit/reports`
+- `/admin/plugins/access_audit/ban-logs`
+- `/admin/plugins/access_audit/settings`
 
-The historical `/plugin/access-audit` and `/plugin/access-audit/insights` URLs redirect to the native React UI. The old standalone Blade dashboard is no longer shipped.
+普通 CRUD 与 Settings 使用 schema-driven UI；Dashboard / Analytics 使用受控的原生 React renderer。
 
-## Node protocol
+## Node extension
 
 ```http
-POST {panel}/api/v1/plugin/access-audit/report
-GET  {panel}/api/v1/plugin/access-audit/rules?token=<server_token>&node_id=1
+GET  /api/v1/plugin/access-audit/rules
+POST /api/v1/plugin/access-audit/report
 ```
 
-These endpoints are optional extensions to the TXBoard ↔ TX-Node protocol. Core node operation does not depend on AccessAudit.
+这是核心 TXBoard ↔ TX-Node 协议之上的可选扩展。
 
-## Xray compatibility sidecar
+## Compatibility sidecar
 
-`node-agent/audit-agent.py` tails Xray-compatible logs and reports them to the same plugin API. It belongs to AccessAudit rather than TX-Node because it is a plugin-specific compatibility adapter.
+`node-agent/` 是为不能直接使用 TX-Node audit reporter 的 legacy Xray 部署保留的兼容 sidecar。新部署优先使用 TX-Node 原生可选审计能力。
