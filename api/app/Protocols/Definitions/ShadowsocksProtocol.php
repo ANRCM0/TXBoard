@@ -8,25 +8,15 @@ use App\Utils\Helper;
 
 class ShadowsocksProtocol extends AbstractProtocolDefinition
 {
-    public function type(): string
-    {
-        return Server::TYPE_SHADOWSOCKS;
-    }
-
-    public function label(): string
-    {
-        return 'Shadowsocks';
-    }
+    public function type(): string { return Server::TYPE_SHADOWSOCKS; }
+    public function label(): string { return 'Shadowsocks'; }
 
     public function defaults(): array
     {
         return [
             'cipher' => 'aes-128-gcm',
             'obfs' => '',
-            'obfs_settings' => [
-                'host' => '',
-                'path' => '',
-            ],
+            'obfs_settings' => ['host' => '', 'path' => ''],
             'plugin' => '',
             'plugin_opts' => '',
         ];
@@ -35,19 +25,14 @@ class ShadowsocksProtocol extends AbstractProtocolDefinition
     public function formSchema(): array
     {
         return [
-            [
-                'key' => 'cipher',
-                'label' => '加密方式',
-                'type' => 'select',
-                'options' => [
-                    ['value' => 'aes-128-gcm', 'label' => 'aes-128-gcm'],
-                    ['value' => 'aes-256-gcm', 'label' => 'aes-256-gcm'],
-                    ['value' => 'chacha20-ietf-poly1305', 'label' => 'chacha20-ietf-poly1305'],
-                    ['value' => '2022-blake3-aes-128-gcm', 'label' => '2022-blake3-aes-128-gcm'],
-                    ['value' => '2022-blake3-aes-256-gcm', 'label' => '2022-blake3-aes-256-gcm'],
-                    ['value' => '2022-blake3-chacha20-poly1305', 'label' => '2022-blake3-chacha20-poly1305'],
-                ],
-            ],
+            ['key' => 'cipher', 'label' => '加密方式', 'type' => 'select', 'options' => [
+                ['value' => 'aes-128-gcm', 'label' => 'aes-128-gcm'],
+                ['value' => 'aes-256-gcm', 'label' => 'aes-256-gcm'],
+                ['value' => 'chacha20-ietf-poly1305', 'label' => 'chacha20-ietf-poly1305'],
+                ['value' => '2022-blake3-aes-128-gcm', 'label' => '2022-blake3-aes-128-gcm'],
+                ['value' => '2022-blake3-aes-256-gcm', 'label' => '2022-blake3-aes-256-gcm'],
+                ['value' => '2022-blake3-chacha20-poly1305', 'label' => '2022-blake3-chacha20-poly1305'],
+            ]],
             ['key' => 'obfs', 'label' => 'Obfs', 'type' => 'text', 'placeholder' => 'http / tls'],
             ['key' => 'obfs_settings.host', 'label' => 'Obfs Host', 'type' => 'text'],
             ['key' => 'obfs_settings.path', 'label' => 'Obfs Path', 'type' => 'text'],
@@ -81,7 +66,8 @@ class ShadowsocksProtocol extends AbstractProtocolDefinition
             'plugin_opts' => $settings['plugin_opts'] ?? null,
             'server_key' => match ($cipher) {
                 '2022-blake3-aes-128-gcm' => Helper::getServerKey($node->created_at, 16),
-                '2022-blake3-aes-256-gcm' => Helper::getServerKey($node->created_at, 32),
+                '2022-blake3-aes-256-gcm',
+                '2022-blake3-chacha20-poly1305' => Helper::getServerKey($node->created_at, 32),
                 default => null,
             },
         ];

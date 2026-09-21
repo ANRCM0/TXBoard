@@ -6,23 +6,19 @@ use App\Models\Server;
 use App\Protocols\AbstractProtocolDefinition;
 use App\Protocols\Shared\ProtocolFields;
 
-class VlessProtocol extends AbstractProtocolDefinition
+class TrojanProtocol extends AbstractProtocolDefinition
 {
-    public function type(): string { return Server::TYPE_VLESS; }
-    public function label(): string { return 'VLESS'; }
+    public function type(): string { return Server::TYPE_TROJAN; }
+    public function label(): string { return 'Trojan'; }
 
     public function defaults(): array
     {
         return [
-            'tls' => 0,
+            'tls' => 1,
             'network' => 'tcp',
             'network_settings' => [],
-            'flow' => '',
-            'encryption' => [
-                'enabled' => false,
-                'encryption' => '',
-                'decryption' => '',
-            ],
+            'server_name' => '',
+            'allow_insecure' => false,
             'tls_settings' => ProtocolFields::tlsDefaults(),
             'reality_settings' => ProtocolFields::realityDefaults(),
             'multiplex' => ProtocolFields::multiplexDefaults(),
@@ -32,8 +28,6 @@ class VlessProtocol extends AbstractProtocolDefinition
 
     public function formSchema(): array
     {
-        $encryptionOnly = [['field' => 'encryption.enabled', 'equals' => true]];
-
         return array_merge(
             [
                 ['key' => 'tls', 'label' => 'TLS 模式', 'type' => 'select', 'options' => [
@@ -42,51 +36,40 @@ class VlessProtocol extends AbstractProtocolDefinition
                     ['value' => 2, 'label' => 'Reality'],
                 ]],
                 ['key' => 'network', 'label' => '传输协议', 'type' => 'text', 'placeholder' => 'tcp / ws / grpc / httpupgrade / xhttp'],
-                ['key' => 'flow', 'label' => 'Flow', 'type' => 'text', 'placeholder' => 'xtls-rprx-vision'],
                 ['key' => 'network_settings', 'label' => 'Network Settings', 'type' => 'json', 'full' => true],
             ],
             ProtocolFields::tlsSchema('tls_settings', [['field' => 'tls', 'equals' => 1]]),
             ProtocolFields::realitySchema([['field' => 'tls', 'equals' => 2]]),
             ProtocolFields::utlsSchema(),
             ProtocolFields::multiplexSchema(),
-            [
-                ['key' => 'encryption.enabled', 'label' => '启用 VLESS Encryption', 'type' => 'checkbox', 'full' => true],
-                ['key' => 'encryption.encryption', 'label' => 'Encryption / Client Public Key', 'type' => 'text', 'visible_when' => $encryptionOnly],
-                ['key' => 'encryption.decryption', 'label' => 'Decryption / Server Private Key', 'type' => 'text', 'visible_when' => $encryptionOnly],
-            ],
         );
     }
 
     public function rules(): array
     {
         return array_merge([
-            'tls' => 'required|integer|in:0,1,2',
+            'tls' => 'nullable|integer|in:0,1,2',
             'network' => 'required|string',
             'network_settings' => 'nullable|array',
-            'flow' => 'nullable|string',
-            'encryption' => 'nullable|array',
-            'encryption.enabled' => 'nullable|boolean',
-            'encryption.encryption' => 'nullable|string',
-            'encryption.decryption' => 'nullable|string',
+            'server_name' => 'nullable|string',
+            'allow_insecure' => 'nullable|boolean',
         ], ProtocolFields::tlsRules('tls_settings'), ProtocolFields::realityRules(), ProtocolFields::multiplexRules(), ProtocolFields::utlsRules());
     }
 
     public function buildNodeConfig(Server $node): array
     {
         $settings = $this->normalize($node->protocol_settings ?? []);
-        $tlsMode = (int) ($settings['tls'] ?? 0);
+        $tlsMode = (int) $settings['tls'];
 
         return [
             ...$this->baseConfig($node),
-            'tls' => $tlsMode,
-            'flow' => $settings['flow'] ?? null,
-            'decryption' => data_get($settings, 'encryption.enabled')
-                ? data_get($settings, 'encryption.decryption')
-                : null,
-            'tls_settings' => $tlsMode === 2
-                ? ($settings['reality_settings'] ?? [])
-                : ($settings['tls_settings'] ?? []),
+            'host' => $node->host,
+            'server_name' => data_get($settings, 'tls_settings.server_name'),
             'multiplex' => data_get($settings, 'multiplex'),
+            'tls' => $tlsMode,
+            'tls_settings' => $tlsMode === 2
+                ? $settings['reality_settings']
+                : $settings['tls_settings'],
         ];
     }
 }
