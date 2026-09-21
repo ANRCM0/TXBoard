@@ -8,7 +8,7 @@ use Tests\TestCase;
 
 class TxboardNamespaceTest extends TestCase
 {
-    public function test_txboard_commands_are_canonical_and_legacy_aliases_remain_registered(): void
+    public function test_only_txboard_commands_are_registered(): void
     {
         Artisan::call('list', ['--raw' => true]);
         $commands = Artisan::output();
@@ -30,7 +30,7 @@ class TxboardNamespaceTest extends TestCase
             'xboard:rollback',
             'xboard:statistics',
         ] as $legacyCommand) {
-            $this->assertStringContainsString($legacyCommand, $commands);
+            $this->assertStringNotContainsString($legacyCommand, $commands);
         }
     }
 
