@@ -65,6 +65,8 @@ services:
       SUBSCRIBE_PATH: ${TXBOARD_SUBSCRIBE_PATH:-s}
       TXBOARD_SITE_ADDRESS: ${TXBOARD_SITE_ADDRESS:-:80}
       TXBOARD_TLS_DIRECTIVE: ${TXBOARD_TLS_DIRECTIVE:-}
+      XDG_DATA_HOME: /caddy-data
+      XDG_CONFIG_HOME: /caddy-config
       ENABLE_CADDY: "true"
       ENABLE_HORIZON: "true"
       ENABLE_REDIS: "true"

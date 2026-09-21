@@ -64,8 +64,7 @@ a data migration or new TLS certificates.
 ## HTTPS
 
 Set `TXBOARD_SITE_ADDRESS=panel.example.com` for Caddy-managed HTTPS. Leave it
-empty for plain HTTP behind Cloudflare/nginx/another TLS terminator. Certificates
-and Caddy state persist in `caddy-data` and `caddy-config`.
+empty for plain HTTP behind Cloudflare/nginx/another TLS terminator. Certificates and Caddy state persist in `caddy-data` and `caddy-config`. Caddy uses dedicated XDG roots inside the container so its certificate state does not collide with embedded Redis under `/data`.
 
 After enabling HTTPS, set `APP_URL=https://panel.example.com` and
 `SESSION_SECURE_COOKIE=true` in `api/.env`, then restart `txboard`.
