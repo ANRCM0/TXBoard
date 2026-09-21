@@ -28,10 +28,11 @@ FROM phpswoole/swoole:6.2.2-php8.2-alpine
 COPY --from=mlocati/php-extension-installer /usr/bin/install-php-extensions /usr/local/bin/
 
 RUN install-php-extensions pcntl bcmath zip redis && \
-    apk add --no-cache sqlite mysql-client mariadb-connector-c supervisor redis caddy && \
+    apk add --no-cache sqlite-libs mariadb-connector-c supervisor redis caddy && \
     addgroup -S -g 1000 www && adduser -S -G www -u 1000 www && \
     (getent group redis || addgroup -S redis) && \
-    (getent passwd redis || adduser -S -G redis -H -h /data redis)
+    (getent passwd redis || adduser -S -G redis -H -h /data redis) && \
+    rm -f /usr/local/bin/install-php-extensions
 
 COPY api/.docker/supervisor/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 COPY api/.docker/caddy/Caddyfile /etc/caddy/Caddyfile
