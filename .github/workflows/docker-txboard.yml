@@ -58,6 +58,44 @@ jobs:
         run: |
           docker run --rm --entrypoint sh txboard-ci:pr -c \
             'test -f /opt/txboard/healthcheck.php'
+      - name: Verify PHP database runtime dependencies
+        run: |
+          docker run --rm --entrypoint php txboard-ci:pr -r '
+            $drivers = PDO::getAvailableDrivers();
+            foreach (["mysql", "sqlite"] as $driver) {
+                if (!in_array($driver, $drivers, true)) {
+                    fwrite(STDERR, "Missing PDO driver: {$driver}\\n");
+                    exit(1);
+                }
+            }
+            echo "PDO drivers: ".implode(", ", $drivers)."\\n";
+          '
+      - name: Report image footprint
+        shell: bash
+        run: |
+          bytes="$(docker image inspect txboard-ci:pr --format '{{.Size}}')"
+          mib="$(awk -v b="$bytes" 'BEGIN { printf "%.1f", b / 1024 / 1024 }')"
+          echo "TXBoard local image size: ${mib} MiB (${bytes} bytes)"
+
+          docker run --rm --entrypoint sh txboard-ci:pr -c \
+            'du -sh /www /www/vendor /srv /usr/local/lib/php/extensions /usr/bin/caddy /usr/bin/redis-server 2>/dev/null || true' \
+            | tee /tmp/txboard-footprint.txt
+
+          {
+            echo "### TXBoard image footprint"
+            echo
+            echo "- Local uncompressed image size: **${mib} MiB** (${bytes} bytes)"
+            echo
+            echo "#### Runtime paths"
+            echo '~~~text'
+            cat /tmp/txboard-footprint.txt
+            echo '~~~'
+            echo
+            echo "#### Docker layers"
+            echo '~~~text'
+            docker history txboard-ci:pr --format '{{.Size}}\t{{.CreatedBy}}'
+            echo '~~~'
+          } >> "$GITHUB_STEP_SUMMARY"
       - name: Smoke-test Octane runtime
         shell: bash
         run: |
