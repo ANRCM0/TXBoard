@@ -441,9 +441,10 @@ body{font-size:16px;background:var(--bg);color:var(--fg);overflow:hidden}
   color:var(--fg);
 }
 .admin-sidebar-nav{
-  display:grid;
+  display:flex;
   min-height:0;
   flex:1;
+  flex-direction:column;
   gap:4px;
   padding:8px 0;
   overflow:auto;
@@ -2039,4 +2040,3 @@ body{font-size:16px;background:var(--bg);color:var(--fg);overflow:hidden}
   .payment-config-grid{grid-template-columns:1fr}
   .payment-notify{max-width:220px}
 }
-
