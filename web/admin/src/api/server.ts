@@ -78,11 +78,11 @@ export async function saveMachine(payload: Partial<MachineItem>) {
 }
 export async function getMachineToken(id: number) {
   const { data } = await apiClient.get('/server/machine/getToken', { params: { id } })
-  return unwrap(data)
+  return unwrap<{ token?: string }>(data)?.token || ''
 }
 export async function getInstallCommand(id: number) {
   const { data } = await apiClient.get('/server/machine/installCommand', { params: { id } })
-  return unwrap(data)
+  return unwrap<{ command?: string }>(data)?.command || ''
 }
 export async function resetMachineToken(id: number) {
   const { data } = await apiClient.post('/server/machine/resetToken', { id })
