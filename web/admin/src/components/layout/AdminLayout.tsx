@@ -12,7 +12,9 @@ export function AdminLayout() {
       <main className="admin-main">
         <TopBar onOpenMenu={() => setOpen(true)} />
         <div className="admin-scroll">
-          <Outlet />
+          <div className='admin-page'>
+            <Outlet />
+          </div>
         </div>
       </main>
       {open ? (
