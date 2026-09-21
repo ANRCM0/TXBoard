@@ -1,6 +1,6 @@
 # TXBoard Architecture
 
-TXBoard 是 Control Plane；TX-Node 是独立 Agent / Data Plane。当前仓库只包含面板、前端、协议契约、主题与插件，不包含 TX-Node 源码。
+TXBoard 是 Control Plane；TX-Node 是独立 Agent / Data Plane。当前仓库包含面板、前端、协议契约、主题与 Plugin Runtime，不包含 TX-Node 或可选独立插件的源码。
 
 ## Runtime
 
@@ -47,12 +47,12 @@ Theme Runtime is part of TXBoard's supported extension architecture. `api/theme/
 ### Plugins
 
 - `api/plugins-core/`: bundled core plugins.
-- `api/plugins/`: runtime/user plugins.
-- `integrations/AccessAudit/`: transitional first-party reference package for Plugin Package v1.
+- `api/plugins/`: runtime/user plugins persisted by the deployment.
 - Plugin-owned complex Admin UI belongs in `<plugin>/admin/dist/`.
 - `web/admin/src/plugins/` owns only the host Bridge and exceptional host-native renderer registry; independent plugins must not require edits there.
+- [TXBoard-AccessAudit](https://github.com/PaiMonCai/TXBoard-AccessAudit) is the first-party Plugin Package v1 reference implementation and lives outside this repository.
 
-Plugin Package v1 deliberately makes plugin source repositories independent of TXBoard's frontend build.
+Plugin Package v1 deliberately makes plugin repositories independent of TXBoard's source tree, frontend build and application image.
 
 ## Deployment boundary
 

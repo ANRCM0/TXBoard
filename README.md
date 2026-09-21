@@ -42,7 +42,7 @@ ghcr.io/paimoncai/txboard
 
 - **Theme System**：保留 Xboard 兼容主题，同时支持安装、切换和配置自定义主题
 - **Plugin System**：支持核心插件、第三方 ZIP、Schema 驱动 UI，以及 Plugin Package v1 自带 Admin App
-- **AccessAudit**：Plugin Package v1 参考插件，提供规则、命中记录、分析与封禁能力
+- **AccessAudit**：独立官方插件仓库 [TXBoard-AccessAudit](https://github.com/PaiMonCai/TXBoard-AccessAudit)，作为 Plugin Package v1 参考实现
 - 支付、通知等能力可通过插件继续扩展
 
 ---
@@ -371,11 +371,10 @@ TXBoard Admin 通过同源 iframe + Admin Bridge 承载它，不需要把插件 
 - Plugin Menu
 - Legacy component / embed compatibility
 
-`integrations/AccessAudit/` 目前保留为 Plugin Package v1 的第一方参考包；其 Dashboard / Analytics 已经完全属于插件自身，不再存在于 TXBoard Admin 编译产物中。等官方外部插件仓库建立后，这个参考包可以机械迁出而无需再改宿主前端。
+复杂插件源码不进入 TXBoard Core。官方参考插件 [TXBoard-AccessAudit](https://github.com/PaiMonCai/TXBoard-AccessAudit) 已独立发布；它的 Dashboard / Analytics、后端、迁移和发布 ZIP 都由插件仓库自行维护。
 
 插件规范与开发指南：
 
-- [Plugin Package Contract](contracts/plugin-package/README.md)
 - [Plugin Package Contract](contracts/plugin-package/README.md)
 - [Plugin Development Guide](api/docs/en/development/plugin-development-guide.md)
 
@@ -423,11 +422,15 @@ AccessAudit 是可选的面板插件，不属于 TX-Node 核心协议。
 - 可选 TX-Node audit reporter
 - Xray legacy sidecar compatibility
 
-当前参考插件包：
+独立仓库：
 
-[AccessAudit](integrations/AccessAudit/README.md)
+[TXBoard-AccessAudit](https://github.com/PaiMonCai/TXBoard-AccessAudit)
 
-AccessAudit 的复杂 Admin UI 已由插件自己的 `admin/dist` 提供；TXBoard Admin 不再包含 AccessAudit 专属 React renderer。
+AccessAudit 的后端、数据库迁移、Admin App 与发布生命周期均由独立仓库维护。TXBoard 镜像不再内置或覆盖 AccessAudit。
+
+新安装请从 AccessAudit Releases 下载插件 ZIP，然后在 TXBoard 后台 **插件管理 → 上传插件 → 安装 → 启用**。
+
+从旧版 TXBoard 升级时，已有的 `api/plugins/AccessAudit` 不会被主动删除；升级主程序不会再自动同步或覆盖该目录。
 
 ---
 
@@ -501,12 +504,10 @@ TXBoard/
 │   ├── user/                    Vue User
 │   └── shared/
 │
-├── integrations/
-│   └── AccessAudit/             Plugin Package v1 第一方参考包
-│
 ├── contracts/
 │   ├── http/
-│   └── node-protocol/
+│   ├── node-protocol/
+│   └── plugin-package/
 │
 ├── docs/
 │   ├── architecture/
@@ -526,7 +527,7 @@ TXBoard/
 - [HTTP Contract Audit](contracts/http/xboard-api-contract-audit.md)
 - [TX-Node Protocol](contracts/node-protocol/README.md)
 - [Plugin Development Guide](api/docs/en/development/plugin-development-guide.md)
-- [AccessAudit](integrations/AccessAudit/README.md)
+- [TXBoard-AccessAudit](https://github.com/PaiMonCai/TXBoard-AccessAudit)
 - [Historical Web Notes](docs/archive/)
 
 `docs/archive/` 中的内容仅用于保存历史实现记录，不代表当前架构。
