@@ -182,29 +182,32 @@ redis_reachable() {
 }
 
 # Never trust INSTALLED in .env by itself. A stale marker paired with an
-# empty/new database previously caused xboard:update to create tables/plugins
-# while skipping xboard:install, leaving a panel with no administrator.
-if echo " $* " | grep -q ' xboard:install '; then
-    echo "[entrypoint] Skipping xboard:update while running xboard:install."
-elif php /www/artisan xboard:install-status --no-interaction >/dev/null 2>&1; then
+# empty/new database previously caused the runtime updater to create tables/plugins
+# while skipping the installer, leaving a panel with no administrator.
+# Accept the legacy xboard:install alias during the compatibility window.
+if echo " $* " | grep -Eq ' (txboard:install|xboard:install) '; then
+    echo "[entrypoint] Skipping txboard:update while running the installer."
+elif php /www/artisan txboard:install-status --no-interaction >/dev/null 2>&1; then
     if redis_reachable; then
-        echo "[entrypoint] Running xboard:update (installed database confirmed, redis reachable)..."
-        php /www/artisan xboard:update --no-interaction || \
-            echo "[entrypoint] WARNING: xboard:update failed; continuing so supervisor can boot anyway." >&2
+        echo "[entrypoint] Running txboard:update (installed database confirmed, redis reachable)..."
+        php /www/artisan txboard:update --no-interaction || \
+            echo "[entrypoint] WARNING: txboard:update failed; continuing so supervisor can boot anyway." >&2
     else
-        echo "[entrypoint] Running xboard:update (installed database confirmed, redis not yet up, using array/sync drivers)..."
+        echo "[entrypoint] Running txboard:update (installed database confirmed, redis not yet up, using array/sync drivers)..."
         CACHE_DRIVER=array QUEUE_CONNECTION=sync SESSION_DRIVER=array \
-            php /www/artisan xboard:update --no-interaction || \
-            echo "[entrypoint] WARNING: xboard:update failed; continuing so supervisor can boot anyway." >&2
+            php /www/artisan txboard:update --no-interaction || \
+            echo "[entrypoint] WARNING: txboard:update failed; continuing so supervisor can boot anyway." >&2
     fi
 else
-    echo "[entrypoint] Skipping xboard:update (database has no administrator yet or is unavailable)."
+    echo "[entrypoint] Skipping txboard:update (database has no administrator yet or is unavailable)."
 fi
 
 echo "[entrypoint] Starting services (caddy=${ENABLE_CADDY} web=${ENABLE_WEB} horizon=${ENABLE_HORIZON} ws=${ENABLE_WS_SERVER})..."
 # Drop stale Octane/WorkerMan state files so the new master does not signal
 # PIDs left over from a previous container run (causes Swoole kill EPERM).
-rm -f /www/storage/logs/octane-server-state.json /www/storage/logs/xboard-ws-server.pid 2>/dev/null || true
+rm -f /www/storage/logs/octane-server-state.json \
+      /www/storage/logs/txboard-ws-server.pid \
+      /www/storage/logs/xboard-ws-server.pid 2>/dev/null || true
 
 # Only the paths the application writes to need to be owned by www. This used to
 # be `chown -R www:www /www`, which re-walked the entire tree -- including the
