@@ -1,7 +1,10 @@
 <?php
 
 $host = '127.0.0.1';
-$port = (int) (getenv('OCTANE_PORT') ?: 7002);
+// Healthchecks run in a fresh docker exec/healthcheck process and do not see
+// variables exported by entrypoint after container creation. Use a dedicated
+// Docker-level override and otherwise target the fixed internal Caddy-mode port.
+$port = (int) (getenv('TXBOARD_HEALTHCHECK_PORT') ?: 7002);
 $errno = 0;
 $errstr = '';
 
