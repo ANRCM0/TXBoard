@@ -34,14 +34,14 @@ class TxboardNamespaceTest extends TestCase
         }
     }
 
-    public function test_legacy_xboard_theme_name_resolves_to_txboard_system_theme(): void
+    public function test_txboard_system_theme_is_canonical(): void
     {
         $themes = app(ThemeService::class);
 
-        $this->assertSame('TXBoard', $themes->normalizeThemeName('Xboard'));
-        $this->assertTrue($themes->exists('Xboard'));
+        $this->assertTrue($themes->exists('TXBoard'));
+        $this->assertFalse($themes->exists('Xboard'));
 
-        $path = str_replace('\\', '/', (string) $themes->getThemePath('Xboard'));
+        $path = str_replace('\\', '/', (string) $themes->getThemePath('TXBoard'));
         $this->assertStringEndsWith('/theme/TXBoard', $path);
     }
 }
