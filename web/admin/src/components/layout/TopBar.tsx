@@ -3,6 +3,7 @@ import { LogOut, Menu, Moon, Package, Search, Sun, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { removeAccessToken } from '../../lib/storage'
+import { preloadAdminRoute } from '../../lib/routePreload'
 
 const commandItems = [
   ['/', '仪表盘'],
@@ -172,7 +173,13 @@ export function TopBar({ onOpenMenu }: { onOpenMenu: () => void }) {
             </div>
             <div className="admin-command-list">
               {commands.map(([path, label]) => (
-                <button type="button" key={path} onClick={() => go(path)}>
+                <button
+                  type="button"
+                  key={path}
+                  onMouseEnter={() => preloadAdminRoute(path)}
+                  onFocus={() => preloadAdminRoute(path)}
+                  onClick={() => go(path)}
+                >
                   <span>{label}</span>
                   <small>{path}</small>
                 </button>

@@ -137,13 +137,13 @@ function attachCommonErrorHandling(client: AxiosInstance, options: { redirectOnA
 
 export const publicApiClient = axios.create({
   baseURL: resolvePublicPrefix(),
-  timeout: 30_000,
+  timeout: 10_000,
   headers: { 'Content-Type': 'application/json' },
 })
 
 export const apiClient = axios.create({
   baseURL: resolveAdminPrefix(),
-  timeout: 30_000,
+  timeout: 10_000,
   headers: { 'Content-Type': 'application/json' },
 })
 
@@ -151,7 +151,7 @@ export const apiClient = axios.create({
 // /api/v2/<secure_path> namespace. They still use the same Sanctum bearer token.
 export const pluginApiClient = axios.create({
   baseURL: runtimeBaseUrl(),
-  timeout: 30_000,
+  timeout: 10_000,
   headers: { 'Content-Type': 'application/json' },
 })
 

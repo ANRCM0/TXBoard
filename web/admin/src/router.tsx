@@ -1,38 +1,40 @@
+import { lazy } from 'react'
 import { Navigate, createBrowserRouter, createHashRouter } from 'react-router-dom'
 import { resolveBasePath } from './lib/basePath'
 import { AdminLayout } from './components/layout/AdminLayout'
 import { AuthGuard } from './components/layout/AuthGuard'
-import { SignInPage } from './pages/SignInPage'
-import { DashboardPage } from './pages/DashboardPage'
-import { AuditLogPage } from './pages/system/AuditLogPage'
-import { SystemSettingsPage } from './pages/config/SystemSettingsPage'
-import { SafeSettingsPage } from './pages/config/SafeSettingsPage'
-import { SubscribeSettingsPage } from './pages/config/SubscribeSettingsPage'
-import { InviteSettingsPage } from './pages/config/InviteSettingsPage'
-import { FrontendSettingsPage } from './pages/config/FrontendSettingsPage'
-import { ServerSettingsPage } from './pages/config/ServerSettingsPage'
-import { GenericSettingsPage } from './pages/config/GenericSettingsPage'
-import { EmailSettingsPage } from './pages/config/EmailSettingsPage'
-import { TelegramSettingsPage } from './pages/config/TelegramSettingsPage'
-import { AppSettingsPage } from './pages/config/AppSettingsPage'
-import { ThemeSettingsPage } from './pages/config/ThemeSettingsPage'
-import { PaymentSettingsPage } from './pages/config/PaymentSettingsPage'
-import { NoticeSettingsPage } from './pages/config/NoticeSettingsPage'
-import { KnowledgeSettingsPage } from './pages/config/KnowledgeSettingsPage'
-import { NodesPage } from './pages/server/NodesPage'
-import { MachinesPage } from './pages/server/MachinesPage'
-import { GroupsPage } from './pages/server/GroupsPage'
-import { RoutesPage } from './pages/server/RoutesPage'
-import { PlansPage } from './pages/finance/PlansPage'
-import { OrdersPage } from './pages/finance/OrdersPage'
-import { GiftCardPage } from './pages/finance/GiftCardPage'
-import { CouponPage } from './pages/finance/CouponPage'
-import { PluginsPage } from './pages/plugins/PluginsPage'
-import { PluginRoutePage } from './pages/plugins/PluginRoutePage'
-import { UsersPage } from './pages/users/UsersPage'
-import { TicketsPage } from './pages/users/TicketsPage'
-import { TrafficResetPage } from './pages/users/TrafficResetPage'
-import { NotFoundPage } from './pages/NotFoundPage'
+
+const SignInPage = lazy(() => import('./pages/SignInPage').then(module => ({ default: module.SignInPage })))
+const DashboardPage = lazy(() => import('./pages/DashboardPage').then(module => ({ default: module.DashboardPage })))
+const AuditLogPage = lazy(() => import('./pages/system/AuditLogPage').then(module => ({ default: module.AuditLogPage })))
+const SystemSettingsPage = lazy(() => import('./pages/config/SystemSettingsPage').then(module => ({ default: module.SystemSettingsPage })))
+const SafeSettingsPage = lazy(() => import('./pages/config/SafeSettingsPage').then(module => ({ default: module.SafeSettingsPage })))
+const SubscribeSettingsPage = lazy(() => import('./pages/config/SubscribeSettingsPage').then(module => ({ default: module.SubscribeSettingsPage })))
+const InviteSettingsPage = lazy(() => import('./pages/config/InviteSettingsPage').then(module => ({ default: module.InviteSettingsPage })))
+const FrontendSettingsPage = lazy(() => import('./pages/config/FrontendSettingsPage').then(module => ({ default: module.FrontendSettingsPage })))
+const ServerSettingsPage = lazy(() => import('./pages/config/ServerSettingsPage').then(module => ({ default: module.ServerSettingsPage })))
+const GenericSettingsPage = lazy(() => import('./pages/config/GenericSettingsPage').then(module => ({ default: module.GenericSettingsPage })))
+const EmailSettingsPage = lazy(() => import('./pages/config/EmailSettingsPage').then(module => ({ default: module.EmailSettingsPage })))
+const TelegramSettingsPage = lazy(() => import('./pages/config/TelegramSettingsPage').then(module => ({ default: module.TelegramSettingsPage })))
+const AppSettingsPage = lazy(() => import('./pages/config/AppSettingsPage').then(module => ({ default: module.AppSettingsPage })))
+const ThemeSettingsPage = lazy(() => import('./pages/config/ThemeSettingsPage').then(module => ({ default: module.ThemeSettingsPage })))
+const PaymentSettingsPage = lazy(() => import('./pages/config/PaymentSettingsPage').then(module => ({ default: module.PaymentSettingsPage })))
+const NoticeSettingsPage = lazy(() => import('./pages/config/NoticeSettingsPage').then(module => ({ default: module.NoticeSettingsPage })))
+const KnowledgeSettingsPage = lazy(() => import('./pages/config/KnowledgeSettingsPage').then(module => ({ default: module.KnowledgeSettingsPage })))
+const NodesPage = lazy(() => import('./pages/server/NodesPage').then(module => ({ default: module.NodesPage })))
+const MachinesPage = lazy(() => import('./pages/server/MachinesPage').then(module => ({ default: module.MachinesPage })))
+const GroupsPage = lazy(() => import('./pages/server/GroupsPage').then(module => ({ default: module.GroupsPage })))
+const RoutesPage = lazy(() => import('./pages/server/RoutesPage').then(module => ({ default: module.RoutesPage })))
+const PlansPage = lazy(() => import('./pages/finance/PlansPage').then(module => ({ default: module.PlansPage })))
+const OrdersPage = lazy(() => import('./pages/finance/OrdersPage').then(module => ({ default: module.OrdersPage })))
+const GiftCardPage = lazy(() => import('./pages/finance/GiftCardPage').then(module => ({ default: module.GiftCardPage })))
+const CouponPage = lazy(() => import('./pages/finance/CouponPage').then(module => ({ default: module.CouponPage })))
+const PluginsPage = lazy(() => import('./pages/plugins/PluginsPage').then(module => ({ default: module.PluginsPage })))
+const PluginRoutePage = lazy(() => import('./pages/plugins/PluginRoutePage').then(module => ({ default: module.PluginRoutePage })))
+const UsersPage = lazy(() => import('./pages/users/UsersPage').then(module => ({ default: module.UsersPage })))
+const TicketsPage = lazy(() => import('./pages/users/TicketsPage').then(module => ({ default: module.TicketsPage })))
+const TrafficResetPage = lazy(() => import('./pages/users/TrafficResetPage').then(module => ({ default: module.TrafficResetPage })))
+const NotFoundPage = lazy(() => import('./pages/NotFoundPage').then(module => ({ default: module.NotFoundPage })))
 
 // The GitHub Pages preview uses hash routing because a static host cannot
 // rewrite deep links back to index.html.

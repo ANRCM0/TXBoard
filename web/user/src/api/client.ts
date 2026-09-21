@@ -12,7 +12,7 @@ const baseURL = (import.meta.env.VITE_API_V1_PREFIX || '/api/v1').replace(/\/$/,
 
 export const api = axios.create({
   baseURL,
-  timeout: 30_000,
+  timeout: 10_000,
   headers: {
     'Content-Type': 'application/json',
     Accept: 'application/json',

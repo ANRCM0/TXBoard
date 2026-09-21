@@ -257,6 +257,8 @@ class StatController extends Controller
      */
     public function getStats()
     {
+        return app('cache')->remember('admin.dashboard.stats.v1', 15, function () {
+        $now = time();
         $currentMonthStart = strtotime(date('Y-m-01'));
         $lastMonthStart = strtotime('-1 month', $currentMonthStart);
         $twoMonthsAgoStart = strtotime('-2 month', $currentMonthStart);
@@ -265,96 +267,113 @@ class StatController extends Controller
         $todayStart = strtotime('today');
         $yesterdayStart = strtotime('-1 day', $todayStart);
 
-        // 获取在线节点数
         $onlineNodes = Server::all()->filter(function ($server) {
             return !!$server->is_online;
         })->count();
 
-        // 获取在线设备数和在线用户数
-        $onlineDevices = User::where('t', '>=', time() - 600)
-            ->sum('online_count');
-        $onlineUsers = User::where('t', '>=', time() - 600)
-            ->count();
-
-        // 获取今日流量统计
-        $todayTraffic = StatServer::where('record_at', '>=', $todayStart)
-            ->where('record_at', '<', time())
-            ->selectRaw('SUM(u) as upload, SUM(d) as download, SUM(u + d) as total')
+        $orderStats = Order::query()
+            ->selectRaw(
+                'COALESCE(SUM(CASE WHEN created_at >= ? AND created_at < ? AND status NOT IN (0, 2) THEN total_amount ELSE 0 END), 0) AS today_income,
+                 COALESCE(SUM(CASE WHEN created_at >= ? AND created_at < ? AND status NOT IN (0, 2) THEN total_amount ELSE 0 END), 0) AS yesterday_income,
+                 COALESCE(SUM(CASE WHEN created_at >= ? AND created_at < ? AND status NOT IN (0, 2) THEN total_amount ELSE 0 END), 0) AS current_month_income,
+                 COALESCE(SUM(CASE WHEN created_at >= ? AND created_at < ? AND status NOT IN (0, 2) THEN total_amount ELSE 0 END), 0) AS last_month_income,
+                 COALESCE(SUM(CASE WHEN created_at >= ? AND created_at < ? AND status NOT IN (0, 2) THEN total_amount ELSE 0 END), 0) AS two_months_ago_income,
+                 COALESCE(SUM(CASE WHEN commission_status = 0 AND invite_user_id IS NOT NULL AND status = ? AND commission_balance > 0 THEN 1 ELSE 0 END), 0) AS commission_pending_total',
+                [
+                    $todayStart, $now,
+                    $yesterdayStart, $todayStart,
+                    $currentMonthStart, $now,
+                    $lastMonthStart, $currentMonthStart,
+                    $twoMonthsAgoStart, $lastMonthStart,
+                    Order::STATUS_COMPLETED,
+                ]
+            )
             ->first();
 
-        // 获取本月流量统计
-        $monthTraffic = StatServer::where('record_at', '>=', $currentMonthStart)
-            ->where('record_at', '<', time())
-            ->selectRaw('SUM(u) as upload, SUM(d) as download, SUM(u + d) as total')
+        $commissionStats = CommissionLog::query()
+            ->selectRaw(
+                'COALESCE(SUM(CASE WHEN created_at >= ? AND created_at < ? THEN get_amount ELSE 0 END), 0) AS current_month_payout,
+                 COALESCE(SUM(CASE WHEN created_at >= ? AND created_at < ? THEN get_amount ELSE 0 END), 0) AS last_month_payout,
+                 COALESCE(SUM(CASE WHEN created_at >= ? AND created_at < ? THEN get_amount ELSE 0 END), 0) AS two_months_ago_payout',
+                [
+                    $currentMonthStart, $now,
+                    $lastMonthStart, $currentMonthStart,
+                    $twoMonthsAgoStart, $lastMonthStart,
+                ]
+            )
             ->first();
 
-        // 获取总流量统计
-        $totalTraffic = StatServer::selectRaw('SUM(u) as upload, SUM(d) as download, SUM(u + d) as total')
+        $onlineCutoff = $now - 600;
+        $userStats = User::query()
+            ->selectRaw(
+                'COUNT(*) AS total_users,
+                 COALESCE(SUM(CASE WHEN created_at >= ? AND created_at < ? THEN 1 ELSE 0 END), 0) AS current_month_new_users,
+                 COALESCE(SUM(CASE WHEN created_at >= ? AND created_at < ? THEN 1 ELSE 0 END), 0) AS last_month_new_users,
+                 COALESCE(SUM(CASE WHEN expired_at >= ? OR expired_at IS NULL THEN 1 ELSE 0 END), 0) AS active_users,
+                 COALESCE(SUM(CASE WHEN t >= ? THEN 1 ELSE 0 END), 0) AS online_users,
+                 COALESCE(SUM(CASE WHEN t >= ? THEN COALESCE(online_count, 0) ELSE 0 END), 0) AS online_devices',
+                [
+                    $currentMonthStart, $now,
+                    $lastMonthStart, $currentMonthStart,
+                    $now,
+                    $onlineCutoff,
+                    $onlineCutoff,
+                ]
+            )
             ->first();
 
-        // Today's income
-        $todayIncome = Order::where('created_at', '>=', $todayStart)
-            ->where('created_at', '<', time())
-            ->whereNotIn('status', [0, 2])
-            ->sum('total_amount');
+        $trafficStats = StatServer::query()
+            ->selectRaw(
+                'COALESCE(SUM(CASE WHEN record_at >= ? AND record_at < ? THEN u ELSE 0 END), 0) AS today_upload,
+                 COALESCE(SUM(CASE WHEN record_at >= ? AND record_at < ? THEN d ELSE 0 END), 0) AS today_download,
+                 COALESCE(SUM(CASE WHEN record_at >= ? AND record_at < ? THEN u + d ELSE 0 END), 0) AS today_total,
+                 COALESCE(SUM(CASE WHEN record_at >= ? AND record_at < ? THEN u ELSE 0 END), 0) AS month_upload,
+                 COALESCE(SUM(CASE WHEN record_at >= ? AND record_at < ? THEN d ELSE 0 END), 0) AS month_download,
+                 COALESCE(SUM(CASE WHEN record_at >= ? AND record_at < ? THEN u + d ELSE 0 END), 0) AS month_total,
+                 COALESCE(SUM(u), 0) AS total_upload,
+                 COALESCE(SUM(d), 0) AS total_download,
+                 COALESCE(SUM(u + d), 0) AS total',
+                [
+                    $todayStart, $now,
+                    $todayStart, $now,
+                    $todayStart, $now,
+                    $currentMonthStart, $now,
+                    $currentMonthStart, $now,
+                    $currentMonthStart, $now,
+                ]
+            )
+            ->first();
 
-        // Yesterday's income for day growth calculation
-        $yesterdayIncome = Order::where('created_at', '>=', $yesterdayStart)
-            ->where('created_at', '<', $todayStart)
-            ->whereNotIn('status', [0, 2])
-            ->sum('total_amount');
-
-        // Current month income
-        $currentMonthIncome = Order::where('created_at', '>=', $currentMonthStart)
-            ->where('created_at', '<', time())
-            ->whereNotIn('status', [0, 2])
-            ->sum('total_amount');
-
-        // Last month income
-        $lastMonthIncome = Order::where('created_at', '>=', $lastMonthStart)
-            ->where('created_at', '<', $currentMonthStart)
-            ->whereNotIn('status', [0, 2])
-            ->sum('total_amount');
-
-        // Last month commission payout
-        $lastMonthCommissionPayout = CommissionLog::where('created_at', '>=', $lastMonthStart)
-            ->where('created_at', '<', $currentMonthStart)
-            ->sum('get_amount');
-
-        // Current month commission payout
-        $currentMonthCommissionPayout = CommissionLog::where('created_at', '>=', $currentMonthStart)
-            ->where('created_at', '<', time())
-            ->sum('get_amount');
-
-        // Current month new users
-        $currentMonthNewUsers = User::where('created_at', '>=', $currentMonthStart)
-            ->where('created_at', '<', time())
-            ->count();
-
-        // Total users
-        $totalUsers = User::count();
-
-        // Active users (users with valid subscription)
-        $activeUsers = User::where(function ($query) {
-            $query->where('expired_at', '>=', time())
-                ->orWhere('expired_at', NULL);
-        })->count();
-
-        // Previous month income for growth calculation
-        $twoMonthsAgoIncome = Order::where('created_at', '>=', $twoMonthsAgoStart)
-            ->where('created_at', '<', $lastMonthStart)
-            ->whereNotIn('status', [0, 2])
-            ->sum('total_amount');
-
-        // Previous month commission for growth calculation
-        $twoMonthsAgoCommission = CommissionLog::where('created_at', '>=', $twoMonthsAgoStart)
-            ->where('created_at', '<', $lastMonthStart)
-            ->sum('get_amount');
-
-        // Previous month users for growth calculation
-        $lastMonthNewUsers = User::where('created_at', '>=', $lastMonthStart)
-            ->where('created_at', '<', $currentMonthStart)
-            ->count();
+        $todayIncome = (int) $orderStats->today_income;
+        $yesterdayIncome = (int) $orderStats->yesterday_income;
+        $currentMonthIncome = (int) $orderStats->current_month_income;
+        $lastMonthIncome = (int) $orderStats->last_month_income;
+        $twoMonthsAgoIncome = (int) $orderStats->two_months_ago_income;
+        $commissionPendingTotal = (int) $orderStats->commission_pending_total;
+        $currentMonthCommissionPayout = (int) $commissionStats->current_month_payout;
+        $lastMonthCommissionPayout = (int) $commissionStats->last_month_payout;
+        $twoMonthsAgoCommission = (int) $commissionStats->two_months_ago_payout;
+        $currentMonthNewUsers = (int) $userStats->current_month_new_users;
+        $lastMonthNewUsers = (int) $userStats->last_month_new_users;
+        $totalUsers = (int) $userStats->total_users;
+        $activeUsers = (int) $userStats->active_users;
+        $onlineUsers = (int) $userStats->online_users;
+        $onlineDevices = (int) $userStats->online_devices;
+        $todayTraffic = (object) [
+            'upload' => (int) $trafficStats->today_upload,
+            'download' => (int) $trafficStats->today_download,
+            'total' => (int) $trafficStats->today_total,
+        ];
+        $monthTraffic = (object) [
+            'upload' => (int) $trafficStats->month_upload,
+            'download' => (int) $trafficStats->month_download,
+            'total' => (int) $trafficStats->month_total,
+        ];
+        $totalTraffic = (object) [
+            'upload' => (int) $trafficStats->total_upload,
+            'download' => (int) $trafficStats->total_download,
+            'total' => (int) $trafficStats->total,
+        ];
 
         // Calculate growth rates
         $monthIncomeGrowth = $lastMonthIncome > 0 ? round(($currentMonthIncome - $lastMonthIncome) / $lastMonthIncome * 100, 1) : 0;
@@ -363,13 +382,7 @@ class StatController extends Controller
         $userGrowth = $lastMonthNewUsers > 0 ? round(($currentMonthNewUsers - $lastMonthNewUsers) / $lastMonthNewUsers * 100, 1) : 0;
         $dayIncomeGrowth = $yesterdayIncome > 0 ? round(($todayIncome - $yesterdayIncome) / $yesterdayIncome * 100, 1) : 0;
 
-        // 获取待处理工单和佣金数据
         $ticketPendingTotal = Ticket::where('status', 0)->count();
-        $commissionPendingTotal = Order::where('commission_status', 0)
-            ->where('invite_user_id', '!=', NULL)
-            ->whereIn('status', [Order::STATUS_COMPLETED])
-            ->where('commission_balance', '>', 0)
-            ->count();
 
         return [
             'data' => [
@@ -419,6 +432,7 @@ class StatController extends Controller
                 ]
             ]
         ];
+        });
     }
 
     /**
@@ -468,6 +482,11 @@ class StatController extends Controller
         $type = $request->input('type');
         $startDate = $request->input('start_time', strtotime('-7 days'));
         $endDate = $request->input('end_time', time());
+        $cacheKey = 'admin.dashboard.traffic-rank.' . sha1(
+            $type . ':' . intdiv((int) $startDate, 15) . ':' . intdiv((int) $endDate, 15)
+        );
+
+        return app('cache')->remember($cacheKey, 15, function () use ($type, $startDate, $endDate) {
         $previousStartDate = $startDate - ($endDate - $startDate);
         $previousEndDate = $startDate;
 
@@ -534,5 +553,6 @@ class StatController extends Controller
             'timestamp' => date('c'),
             'data' => $result
         ];
+        });
     }
 }
