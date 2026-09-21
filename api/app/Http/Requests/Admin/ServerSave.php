@@ -30,6 +30,8 @@ class ServerSave extends FormRequest
         'config' => 'nullable|string',
         'query_server_name' => 'nullable|string',
         'key' => 'nullable|string',
+        'key_path' => 'nullable|string',
+        'config_path' => 'nullable|string',
     ];
 
     private const REALITY_RULES = [
@@ -224,6 +226,14 @@ class ServerSave extends FormRequest
             $result[$prefix . $field] = $rule;
         }
         return $result;
+    }
+
+    protected function prepareForValidation(): void
+    {
+        $type = Server::normalizeType($this->input('type'));
+        if ($type) {
+            $this->merge(['type' => $type]);
+        }
     }
 
     public function rules(): array
