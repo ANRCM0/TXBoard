@@ -20,6 +20,37 @@ export type NodeRateTimeRange = {
   rate: number
 }
 
+export type ProtocolFormCondition = {
+  field: string
+  equals: unknown
+}
+
+export type ProtocolFormOption = {
+  value: string | number | boolean
+  label: string
+}
+
+export type ProtocolFormField = {
+  key: string
+  label: string
+  type: 'text' | 'number' | 'select' | 'checkbox' | 'textarea' | 'json'
+  placeholder?: string
+  full?: boolean
+  min?: number
+  max?: number
+  step?: number | string
+  options?: ProtocolFormOption[]
+  visible_when?: ProtocolFormCondition | ProtocolFormCondition[]
+}
+
+export type ProtocolDefinitionMeta = {
+  type: NodeProtocolType
+  label: string
+  schema_version: number
+  defaults: Record<string, unknown>
+  form_schema: ProtocolFormField[]
+}
+
 export type NodeItem = {
   id: number
   name?: string
@@ -75,6 +106,11 @@ export type MachineItem = {
 
 export type GroupItem = { id: number; name?: string; [key: string]: unknown }
 export type RouteItem = { id: number; remarks?: string; match?: string[]; action?: string; action_value?: string; [key: string]: unknown }
+
+export async function getProtocolDefinitions() {
+  const { data } = await apiClient.get('/server/manage/protocols')
+  return unwrap<ProtocolDefinitionMeta[]>(data) || []
+}
 
 export async function getNodes() {
   const { data } = await apiClient.get('/server/manage/getNodes')

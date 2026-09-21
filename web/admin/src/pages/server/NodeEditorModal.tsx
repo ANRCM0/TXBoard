@@ -5,9 +5,11 @@ import type {
   MachineItem,
   NodeItem,
   NodeProtocolType,
+  ProtocolDefinitionMeta,
   RouteItem,
 } from '../../api/server'
 import { Modal } from '../../components/ui/Modal'
+import { ProtocolSchemaForm } from './ProtocolSchemaForm'
 
 const PROTOCOLS: Array<{ value: NodeProtocolType; label: string }> = [
   { value: 'shadowsocks', label: 'Shadowsocks' },
@@ -208,6 +210,17 @@ function mergeDeep(base: Record<string, unknown>, extra: unknown): Record<string
   return result
 }
 
+function protocolDefinition(type: NodeProtocolType, definitions: ProtocolDefinitionMeta[]) {
+  return definitions.find((definition) => definition.type === type)
+}
+
+function protocolDefaults(type: NodeProtocolType, definitions: ProtocolDefinitionMeta[]): Record<string, unknown> {
+  const managed = protocolDefinition(type, definitions)
+  return managed && isRecord(managed.defaults)
+    ? managed.defaults
+    : defaultProtocolSettings(type)
+}
+
 function getAt(source: Record<string, unknown>, path: string, fallback: unknown = ''): unknown {
   let current: unknown = source
   for (const key of path.split('.')) {
@@ -243,7 +256,7 @@ function numberOrNull(value: string) {
   return Number.isFinite(number) ? number : null
 }
 
-function draftFromNode(node?: NodeItem | null): Draft {
+function draftFromNode(node?: NodeItem | null, definitions: ProtocolDefinitionMeta[] = []): Draft {
   const type = canonicalType(node?.type)
   return {
     name: stringValue(node?.name),
@@ -267,7 +280,7 @@ function draftFromNode(node?: NodeItem | null): Draft {
     customOutbounds: Array.isArray(node?.custom_outbounds) ? node.custom_outbounds : [],
     customRoutes: Array.isArray(node?.custom_routes) ? node.custom_routes : [],
     certConfig: (isRecord(node?.cert_config) || Array.isArray(node?.cert_config)) ? node.cert_config : [],
-    protocolSettings: mergeDeep(defaultProtocolSettings(type), node?.protocol_settings),
+    protocolSettings: mergeDeep(protocolDefaults(type, definitions), node?.protocol_settings),
   }
 }
 
@@ -321,6 +334,7 @@ export function NodeEditorModal({
   machines,
   groups,
   routes,
+  protocolDefinitions,
   saving,
   onClose,
   onSubmit,
@@ -331,15 +345,16 @@ export function NodeEditorModal({
   machines: MachineItem[]
   groups: GroupItem[]
   routes: RouteItem[]
+  protocolDefinitions: ProtocolDefinitionMeta[]
   saving: boolean
   onClose: () => void
   onSubmit: (payload: Partial<NodeItem>) => void
 }) {
-  const [draft, setDraft] = useState<Draft>(() => draftFromNode(node))
+  const [draft, setDraft] = useState<Draft>(() => draftFromNode(node, protocolDefinitions))
 
   useEffect(() => {
-    if (open) setDraft(draftFromNode(node))
-  }, [open, node?.id])
+    if (open) setDraft(draftFromNode(node, protocolDefinitions))
+  }, [open, node?.id, protocolDefinitions])
 
   const updateProtocol = (path: string, value: unknown) => {
     setDraft((current) => ({
@@ -355,7 +370,7 @@ export function NodeEditorModal({
     setDraft((current) => ({
       ...current,
       type,
-      protocolSettings: defaultProtocolSettings(type),
+      protocolSettings: protocolDefaults(type, protocolDefinitions),
     }))
   }
 
@@ -494,6 +509,15 @@ export function NodeEditorModal({
   }
 
   const renderProtocolFields = () => {
+    const managed = protocolDefinition(draft.type, protocolDefinitions)
+    if (managed?.form_schema?.length) {
+      return <ProtocolSchemaForm
+        fields={managed.form_schema}
+        value={draft.protocolSettings}
+        onChange={updateProtocol}
+      />
+    }
+
     switch (draft.type) {
       case 'shadowsocks':
         return <div className="node-form-grid">
@@ -595,7 +619,7 @@ export function NodeEditorModal({
       </section>
 
       <section className="node-form-section">
-        <h4>协议配置 <span className="node-protocol-badge">{PROTOCOLS.find((item) => item.value === draft.type)?.label}</span></h4>
+        <h4>协议配置 <span className="node-protocol-badge">{protocolDefinition(draft.type, protocolDefinitions)?.label || PROTOCOLS.find((item) => item.value === draft.type)?.label}</span></h4>
         {renderProtocolFields()}
       </section>
 
