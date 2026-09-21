@@ -3,7 +3,7 @@
 TXBoard has one supported deployment definition and one application image:
 
 ```text
-deploy/compose.yaml
+compose.yaml
 ghcr.io/paimoncai/txboard
 ```
 
@@ -20,8 +20,8 @@ Update by replacing the application image/container, not by mutating code inside
 it:
 
 ```sh
-docker compose -f deploy/compose.yaml pull txboard
-docker compose -f deploy/compose.yaml up -d --remove-orphans --wait txboard
+docker compose pull txboard
+docker compose up -d --remove-orphans --wait txboard
 ```
 
 When deploying directly from a checkout, `--build` rebuilds the same single
