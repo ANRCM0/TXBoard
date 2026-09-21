@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, watch } from 'vue'
+import { onBeforeUnmount, onMounted, watch } from 'vue'
 import { captchaSiteKey, createCaptchaController, type CaptchaPayload } from '@txboard/shared'
 import type { GuestConfig } from '../api/comm'
 
@@ -27,7 +27,9 @@ function reset(){
 }
 
 onMounted(()=>void controller.mount())
-watch(()=>props.config,()=>void controller.mount())
+// flush:'post' so the container div (gated by v-if) exists before mount().
+watch(()=>props.config,()=>void controller.mount(),{flush:'post'})
+onBeforeUnmount(()=>controller.dispose())
 defineExpose({getPayload,reset})
 </script>
 

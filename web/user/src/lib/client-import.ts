@@ -26,8 +26,8 @@ export function detectPlatform():ClientPlatform{
   return 'unknown'
 }
 
-function base64Url(input:string){
-  return btoa(unescape(encodeURIComponent(input))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')
+function base64(input:string){
+  return btoa(unescape(encodeURIComponent(input)))
 }
 
 export function appendSubscribeTypes(url:string,types:string[]){
@@ -45,12 +45,12 @@ export function buildImportClients(subscribeUrl:string,siteTitle='TXBoard'):Impo
   if(!subscribeUrl)return []
   const encoded=encodeURIComponent(subscribeUrl)
   const name=encodeURIComponent(siteTitle)
-  const b64=base64Url(subscribeUrl)
+  const b64=base64(subscribeUrl)
   return [
     {name:'__copy__',platforms:['windows','mac','ios','android','unknown'],action:'copy'},
     {name:'Clash',platforms:['windows'],action:'open',url:'clash://install-config?url='+encoded+'&name='+name},
     {name:'Clash Meta',platforms:['mac','android'],action:'open',url:'clash://install-config?url='+encoded+'&name='+name},
-    {name:'Hiddify',platforms:['windows','mac','ios','android'],action:'open',url:'hiddify://import/'+subscribeUrl+'#'+siteTitle},
+    {name:'Hiddify',platforms:['windows','mac','ios','android'],action:'open',url:'hiddify://import/'+encoded+'#'+name},
     {name:'Sing-box',platforms:['mac','ios','android'],action:'open',url:'sing-box://import-remote-profile?url='+encoded+'#'+name},
     {name:'Shadowrocket',platforms:['ios','mac'],action:'open',url:'shadowrocket://add/sub://'+b64+'?remark='+name},
     {name:'Quantumult X',platforms:['ios','mac'],action:'open',url:'quantumult-x:///update-configuration?remote-resource='+encodeURIComponent(JSON.stringify({server_remote:[subscribeUrl+', tag='+siteTitle]}))},

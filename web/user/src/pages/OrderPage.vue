@@ -1,11 +1,10 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRouter } from 'vue-router'
 import { canCancelOrder, cancelOrder, fetchOrders, type OrderItem } from '../api/order'
 import { errorMessage } from '../api/client'
 import { useI18n } from '../i18n'
 
-const route=useRoute()
 const router=useRouter()
 const {t,locale}=useI18n()
 const rows=ref<OrderItem[]>([])
@@ -24,7 +23,7 @@ async function load(){
     total.value=result.total||0
   }catch(e){error.value=errorMessage(e)}finally{loading.value=false}
 }
-onMounted(()=>{if(route.query.created)error.value=t('order.created');void load()})
+onMounted(()=>void load())
 
 async function cancel(row:OrderItem){
   if(!confirm(t('order.confirmCancel')))return
@@ -117,7 +116,7 @@ function statusClass(value:number){
         <div>
           <button class="secondary-btn small-btn" :disabled="page<=1" @click="page--;load()">{{ t('common.previous') }}</button>
           <span>{{ t('common.page',{page}) }}</span>
-          <button class="secondary-btn small-btn" :disabled="rows.length<20" @click="page++;load()">{{ t('common.next') }}</button>
+          <button class="secondary-btn small-btn" :disabled="page*20>=total" @click="page++;load()">{{ t('common.next') }}</button>
         </div>
       </div>
     </section>

@@ -60,7 +60,10 @@ onMounted(async()=>{
   updateViewport()
   window.addEventListener('resize',updateViewport)
   if(!auth.user){
-    try{await auth.loadUser()}catch{return}
+    try{await auth.loadUser()}catch{
+      await router.replace({path:'/login',query:{redirect:route.fullPath}})
+      return
+    }
   }
   try{await loadConfig()}catch{}
 })

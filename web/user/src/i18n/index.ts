@@ -37,7 +37,7 @@ const zhCN:Catalog={
   'plan.validate':'验证','plan.couponValid':'优惠券有效：{discount}','plan.currentSelection':'当前选择',
   'plan.price':'价格','plan.discount':'优惠','plan.createOrder':'创建订单','plan.noDescription':'暂无套餐说明','period.month':'月付','period.quarter':'季付','period.halfYear':'半年付','period.year':'年付','period.twoYear':'两年付','period.threeYear':'三年付','period.onetime':'一次性','period.reset':'重置流量',
 
-  'order.title':'我的订单','order.desc':'查看订阅购买、续费与支付状态。','order.created':'订单已创建，请完成支付。',
+  'order.title':'我的订单','order.desc':'查看订阅购买、续费与支付状态。',
   'order.allStatus':'全部状态','order.pending':'待支付','order.processing':'开通中','order.cancelled':'已取消',
   'order.completed':'已完成','order.discounted':'已折抵','order.tradeNo':'订单号','order.plan':'套餐','order.period':'周期',
   'order.createdAt':'创建时间','order.payDetail':'支付 / 详情','order.empty':'暂无订单','order.confirmCancel':'确认取消该订单？',
@@ -100,6 +100,7 @@ const zhCN:Catalog={
   'profile.noSessions':'暂无活动会话','profile.security':'安全操作','profile.securityDesc':'重置安全凭据会使旧凭据失效。',
   'profile.quickLogin':'生成快速登录链接','profile.resetSecurity':'重置安全凭据','profile.passwordUpdated':'密码已更新',
   'profile.quickCopied':'快速登录链接已复制','profile.securityReset':'安全凭据已重置',
+  'profile.passwordMismatch':'两次输入的新密码不一致','profile.confirmRemove':'确认移除该登录会话？','profile.confirmReset':'重置安全凭据会使旧的订阅凭据失效，确认继续？',
 
   'client.auto':'自动','client.copySubscription':'复制订阅链接','client.title':'导入订阅到客户端','client.desc':'根据设备筛选可用客户端，也可以指定协议类型。','client.copy':'复制链接','client.open':'一键打开','client.empty':'当前设备没有匹配的一键导入客户端，请直接复制订阅链接。','notFound.title':'页面不存在','notFound.desc':'你访问的地址不存在或已被移动。','notFound.back':'返回仪表盘',
 }
@@ -141,7 +142,7 @@ const enUS:Catalog={
   'plan.currentSelection':'Selected','plan.price':'Price','plan.discount':'Discount','plan.createOrder':'Create order',
   'plan.noDescription':'No plan description','period.month':'Monthly','period.quarter':'Quarterly','period.halfYear':'Half-year','period.year':'Yearly','period.twoYear':'Two-year','period.threeYear':'Three-year','period.onetime':'One-time','period.reset':'Reset traffic',
 
-  'order.title':'My orders','order.desc':'Review purchases, renewals, and payment status.','order.created':'Order created. Please complete payment.',
+  'order.title':'My orders','order.desc':'Review purchases, renewals, and payment status.',
   'order.allStatus':'All statuses','order.pending':'Pending','order.processing':'Processing','order.cancelled':'Cancelled',
   'order.completed':'Completed','order.discounted':'Discounted','order.tradeNo':'Order No.','order.plan':'Plan','order.period':'Period',
   'order.createdAt':'Created','order.payDetail':'Pay / Details','order.empty':'No orders','order.confirmCancel':'Cancel this order?',
@@ -236,7 +237,7 @@ export function useI18n(){
     let value=(catalogs[locale.value]||zhCN)[key]||zhCN[key]||key
     if(params){
       for(const [name,replacement] of Object.entries(params)){
-        value=value.replace(new RegExp('\\{'+name+'\\}','g'),String(replacement))
+        value=value.split('{'+name+'}').join(String(replacement))
       }
     }
     return value

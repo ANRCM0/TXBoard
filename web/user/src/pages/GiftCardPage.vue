@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import { checkGiftCard, fetchGiftCardDetail, fetchGiftCardHistory, redeemGiftCard, type GiftCardCheckResult, type GiftCardDetail, type GiftCardHistoryItem, type GiftCardRewards } from '../api/gift-card'
 import { errorMessage } from '../api/client'
 import { useI18n } from '../i18n'
@@ -16,6 +16,7 @@ const detail=ref<GiftCardDetail|null>(null)
 const detailLoading=ref(false)
 
 onMounted(()=>void loadHistory())
+watch(code,()=>{preview.value=null})
 
 async function loadHistory(){
   try{history.value=(await fetchGiftCardHistory({page:1,per_page:20})).data||[]}catch(e){error.value=errorMessage(e)}
@@ -33,6 +34,7 @@ async function check(){
   try{preview.value=await checkGiftCard(code.value.trim())}catch(e){preview.value=null;error.value=errorMessage(e)}finally{acting.value=false}
 }
 async function openDetail(id:number){
+  detail.value=null
   detailLoading.value=true
   error.value=''
   try{detail.value=await fetchGiftCardDetail(id)}catch(e){error.value=errorMessage(e)}finally{detailLoading.value=false}

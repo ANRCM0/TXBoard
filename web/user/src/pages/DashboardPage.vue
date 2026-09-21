@@ -19,6 +19,7 @@ const importOpen=ref(false)
 const siteTitle=ref('TXBoard')
 const noticeIndex=ref(0)
 let noticeTimer:number|null=null
+let copyTimer:number|null=null
 
 const used=computed(()=>Number(subscribe.value?.u||0)+Number(subscribe.value?.d||0))
 const quota=computed(()=>{
@@ -57,11 +58,15 @@ onMounted(async()=>{
   }catch(e){error.value=errorMessage(e)}finally{loading.value=false}
 })
 
-onUnmounted(()=>{if(noticeTimer!==null)window.clearInterval(noticeTimer)})
+onUnmounted(()=>{
+  if(noticeTimer!==null)window.clearInterval(noticeTimer)
+  if(copyTimer!==null)window.clearTimeout(copyTimer)
+})
 
 function markCopied(){
   copied.value=true
-  window.setTimeout(()=>{copied.value=false},1600)
+  if(copyTimer!==null)window.clearTimeout(copyTimer)
+  copyTimer=window.setTimeout(()=>{copied.value=false},1600)
 }
 async function copySubscription(){
   if(!subscribe.value?.subscribe_url)return

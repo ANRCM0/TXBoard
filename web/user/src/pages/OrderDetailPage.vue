@@ -55,18 +55,20 @@ watch(()=>route.params.trade_no,()=>void load())
 onUnmounted(stopPoll)
 
 function stopPoll(){
-  if(pollTimer!==null){window.clearInterval(pollTimer);pollTimer=null}
+  if(pollTimer!==null){window.clearTimeout(pollTimer);pollTimer=null}
 }
 function startPoll(){
   stopPoll()
   if(!order.value)return
   const tradeNo=order.value.trade_no
-  pollTimer=window.setInterval(async()=>{
+  const tick=async()=>{
     try{
       const status=await checkOrderStatus(tradeNo)
-      if(status!==0){stopPoll();await load()}
+      if(status!==0){stopPoll();await load();return}
     }catch{}
-  },3000)
+    pollTimer=window.setTimeout(()=>void tick(),3000)
+  }
+  pollTimer=window.setTimeout(()=>void tick(),3000)
 }
 
 async function pay(){
@@ -96,7 +98,8 @@ async function pay(){
       return
     }
     if(result.type===1&&typeof result.data==='string'){
-      const win=window.open(result.data,'_blank','noopener,noreferrer')
+      const win=window.open(result.data,'_blank')
+      if(win)win.opener=null
       redirectHint.value=win?t('order.redirectOpened'):t('order.popupBlocked')
       startPoll()
       return

@@ -11,6 +11,7 @@ const mountError=ref<string|null>(null)
 let stripe:Stripe|null=null
 let card:StripeCardElement|null=null
 let observer:MutationObserver|undefined
+let mountSeq=0
 
 function dark(){return document.documentElement.dataset.userTheme==='dark'}
 function style():StripeElementStyle{
@@ -25,12 +26,15 @@ function style():StripeElementStyle{
 function sync(){card?.update({style:style()})}
 
 async function mount(){
+  const seq=++mountSeq
   ready.value=false
   mountError.value=null
   if(!props.paymentId)return
   try{
     const key=await fetchStripePublicKey(props.paymentId)
+    if(seq!==mountSeq)return
     stripe=await loadStripe(key)
+    if(seq!==mountSeq)return
     if(!stripe)throw new Error('Stripe.js 加载失败')
     const elements=stripe.elements()
     card?.destroy()
