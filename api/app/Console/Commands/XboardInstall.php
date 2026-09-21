@@ -167,10 +167,15 @@ class XboardInstall extends Command
                 }
             }
 
-            if (!copy(base_path() . '/.env.example', base_path() . '/.env')) {
-                abort(500, '复制环境文件失败，请检查目录权限');
+            // Bare-metal installs start from .env.example. Docker deployments
+            // already mount a persistent .env and may preconfigure APP_URL,
+            // cookie security, mail and other runtime settings. Do not overwrite
+            // that file during installation.
+            if (!$isDocker || !File::exists(base_path() . '/.env') || trim((string) File::get(base_path() . '/.env')) === '') {
+                if (!copy(base_path() . '/.env.example', base_path() . '/.env')) {
+                    abort(500, '复制环境文件失败，请检查目录权限');
+                }
             }
-            ;
             $email = !empty($adminAccount) ? $adminAccount : text(
                 label: '请输入管理员账号',
                 default: 'admin@demo.com',
