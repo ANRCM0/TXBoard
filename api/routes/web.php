@@ -77,9 +77,18 @@ Route::get('/', function (Request $request) {
 // Blade shell below used to load /assets/admin/* which is no longer built, so
 // hitting /{secure_path} rendered a broken page. Keep the historical URL alive
 // by redirecting to the real SPA instead of rendering the dead shell.
-Route::get('/' . admin_setting('secure_path', admin_setting('frontend_admin_path', hash('crc32b', config('app.key')))), function () {
+Route::get('/{admin_path}', function (string $adminPath) {
+    $expected = trim((string) admin_setting(
+        'secure_path',
+        admin_setting('frontend_admin_path', hash('crc32b', config('app.key')))
+    ));
+
+    if ($expected === '' || !hash_equals($expected, trim($adminPath))) {
+        abort(404);
+    }
+
     return redirect('/admin/', 302);
-});
+})->where('admin_path', '[A-Za-z0-9_-]+');
 
 Route::get('/' . (admin_setting('subscribe_path', 's')) . '/{token}', [\App\Http\Controllers\V1\Client\ClientController::class, 'subscribe'])
     ->middleware('client')
