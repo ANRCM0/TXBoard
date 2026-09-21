@@ -146,11 +146,15 @@ export function PlanEditor({
     }
 
     const prices: PlanPrices = {}
-    for (const [key] of periods) {
+    for (const [key, label] of periods) {
       const raw = draft.prices[key]
       if (raw === '') continue
       const n = Number(raw)
-      if (Number.isFinite(n) && n > 0) prices[key] = Number(n.toFixed(2))
+      if (!Number.isFinite(n) || n <= 0) {
+        toast.error(`${label}价格无效，请输入大于 0 的数字`)
+        return
+      }
+      prices[key] = Number(n.toFixed(2))
     }
 
     mutation.mutate({

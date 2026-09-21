@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query'
 import { LogOut, Menu, Moon, Package, Search, Sun, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
@@ -64,6 +65,7 @@ const titleRules: Array<[RegExp, string]> = [
 export function TopBar({ onOpenMenu }: { onOpenMenu: () => void }) {
   const navigate = useNavigate()
   const location = useLocation()
+  const queryClient = useQueryClient()
   const [dark, setDark] = useState(() => localStorage.getItem('theme') === 'dark')
   const [commandOpen, setCommandOpen] = useState(false)
   const [query, setQuery] = useState('')
@@ -85,6 +87,10 @@ export function TopBar({ onOpenMenu }: { onOpenMenu: () => void }) {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [])
 
+  useEffect(() => {
+    if (!commandOpen) setQuery('')
+  }, [commandOpen])
+
   const title = useMemo(
     () => titleRules.find(([pattern]) => pattern.test(location.pathname))?.[1] || 'TXBoard',
     [location.pathname],
@@ -104,6 +110,7 @@ export function TopBar({ onOpenMenu }: { onOpenMenu: () => void }) {
 
   function logout() {
     removeAccessToken()
+    queryClient.clear()
     navigate('/sign-in')
   }
 

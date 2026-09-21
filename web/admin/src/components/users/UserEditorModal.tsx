@@ -57,8 +57,9 @@ function bytesToGb(value?: number | null) {
 }
 
 function gbToBytes(value: string) {
+  if (value.trim() === '') return null
   const n = Number(value)
-  return Number.isFinite(n) && n >= 0 ? Math.round(n * GB) : 0
+  return Number.isFinite(n) && n >= 0 ? Math.round(n * GB) : null
 }
 
 function nullableNumber(value: string) {
@@ -148,9 +149,6 @@ export function UserEditorModal({
       id: user.id,
       email: edit.email.trim(),
       plan_id: edit.plan_id ? Number(edit.plan_id) : null,
-      transfer_enable: gbToBytes(edit.transfer_gb),
-      u: gbToBytes(edit.used_up_gb),
-      d: gbToBytes(edit.used_down_gb),
       expired_at: toEpoch(edit.expired_at),
       balance: Number(edit.balance || 0),
       commission_balance: Number(edit.commission_balance || 0),
@@ -162,6 +160,12 @@ export function UserEditorModal({
       remarks: edit.remarks,
       banned: edit.banned,
     }
+    const transferEnable = gbToBytes(edit.transfer_gb)
+    const usedUp = gbToBytes(edit.used_up_gb)
+    const usedDown = gbToBytes(edit.used_down_gb)
+    if (transferEnable != null) payload.transfer_enable = transferEnable
+    if (usedUp != null) payload.u = usedUp
+    if (usedDown != null) payload.d = usedDown
     if (edit.password.trim()) payload.password = edit.password.trim()
     editMutation.mutate(payload)
   }

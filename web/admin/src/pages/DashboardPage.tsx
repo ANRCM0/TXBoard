@@ -12,14 +12,15 @@ export function DashboardPage() {
     const end = new Date()
     const start = new Date()
     start.setDate(end.getDate()-range)
-    return { start_date:start.toISOString().slice(0,10), end_date:end.toISOString().slice(0,10) }
+    const fmt=(d:Date)=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+    return { start_date:fmt(start), end_date:fmt(end) }
   },[range])
   const chart = useQuery({ queryKey:['orderChart',window], queryFn:()=>getOrderChart(window) })
   const now=Math.floor(Date.now()/1000)
   const userRank=useQuery({ queryKey:['trafficRank','user',range], queryFn:()=>getTrafficRank('user',now-range*86400,now) })
   const nodeRank=useQuery({ queryKey:['trafficRank','node',range], queryFn:()=>getTrafficRank('node',now-range*86400,now) })
   const s=stats.data||{}
-  const points=(chart.data?.list||[]).map(row=>({date:String(row.date||''),value:Number(row.paid_total||0)}))
+  const points=(chart.data?.list||[]).map(row=>({date:String(row.date||''),value:Number(row.paid_total||0)/100}))
 
   return <div className="admin-dashboard">
     <div className="dashboard-range-row">
@@ -47,7 +48,7 @@ export function DashboardPage() {
           <h2>订单收入趋势</h2>
           <p>按所选周期查看已支付订单金额。</p>
         </div>
-        <strong>{moneyMajor(chart.data?.summary?.paid_total)}</strong>
+        <strong>{money(chart.data?.summary?.paid_total)}</strong>
       </div>
       <div className="dash-chart">
         <ResponsiveContainer width="100%" height={300}>
@@ -78,9 +79,9 @@ export function DashboardPage() {
         <div className="admin-dashboard-card-head"><div><h2>周期汇总</h2><p>订单与佣金统计。</p></div></div>
         <dl className="dashboard-summary-list">
           <div><dt>已支付订单</dt><dd>{String(chart.data?.summary?.paid_count||0)}</dd></div>
-          <div><dt>收入</dt><dd>{moneyMajor(chart.data?.summary?.paid_total)}</dd></div>
+          <div><dt>收入</dt><dd>{money(chart.data?.summary?.paid_total)}</dd></div>
           <div><dt>佣金笔数</dt><dd>{String(chart.data?.summary?.commission_count||0)}</dd></div>
-          <div><dt>佣金</dt><dd>{moneyMajor(chart.data?.summary?.commission_total)}</dd></div>
+          <div><dt>佣金</dt><dd>{money(chart.data?.summary?.commission_total)}</dd></div>
         </dl>
       </section>
       <section className="admin-dashboard-card">
@@ -115,6 +116,5 @@ function Rank({title,rows}:{title:string;rows:Array<Record<string,unknown>>}){
   </section>
 }
 function money(v:unknown){const n=Number(v||0);return '¥ '+(n/100).toFixed(2)}
-function moneyMajor(v:unknown){return '¥ '+Number(v||0).toFixed(2)}
 function growth(v:unknown){const n=Number(v||0);return (n>=0?'+':'')+n.toFixed(1)+'%'}
 function bytes(v:unknown){const n=Number(v||0);if(!n)return '0 B';const gb=n/1073741824;return gb>=1024?(gb/1024).toFixed(2)+' TB':gb.toFixed(gb>=10?1:2)+' GB'}

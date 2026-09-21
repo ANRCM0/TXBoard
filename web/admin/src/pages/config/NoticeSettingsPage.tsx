@@ -23,9 +23,11 @@ export function NoticeSettingsPage() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingId, setEditingId] = useState<number | null>(null)
   const [form, setForm] = useState<NoticeItem>({ show: 1, popup: 0, tags: [] })
+  const [tagDraft, setTagDraft] = useState('')
   const [sortMode, setSortMode] = useState(false)
   const [sortRows, setSortRows] = useState<NoticeItem[]>([])
   const [dragId, setDragId] = useState<number | null>(null)
+  const [imgError, setImgError] = useState('')
 
   const query = useQuery({
     queryKey: ['notices', page, pageSize, appliedSearch],
@@ -43,7 +45,7 @@ export function NoticeSettingsPage() {
     mutationFn: () => saveNotice({
       ...form,
       ...(editingId ? { id: editingId } : {}),
-      tags: normalizeTags(form.tags),
+      tags: normalizeTags(tagDraft),
     }),
     onSuccess: async () => {
       toast.success(editingId ? '公告已更新' : '公告已创建')
@@ -84,20 +86,24 @@ export function NoticeSettingsPage() {
       img_url: '',
       tags: [],
     })
+    setTagDraft('')
     setDialogOpen(true)
   }
 
   function openEdit(row: NoticeItem) {
     setEditingId(row.id || null)
     setForm({ ...row, tags: normalizeTags(row.tags) })
+    setTagDraft(normalizeTags(row.tags).join(', '))
     setDialogOpen(true)
   }
 
   async function enterSortMode() {
-    const all = await getNoticeAll()
-    setSortRows(all)
-    setSortMode(true)
-    setDragId(null)
+    try {
+      const all = await getNoticeAll()
+      setSortRows(all)
+      setSortMode(true)
+      setDragId(null)
+    } catch {}
   }
 
   function moveDrop(targetId: number) {
@@ -125,7 +131,6 @@ export function NoticeSettingsPage() {
   }
 
   const rows = sortMode ? sortRows : (query.data?.data || [])
-  const tagText = normalizeTags(form.tags).join(', ')
 
   return <>
     <PageHeader
@@ -211,7 +216,7 @@ export function NoticeSettingsPage() {
               <td><strong>{row.title || '-'}</strong></td>
               <td>
                 <div className="notice-tags">
-                  {normalizeTags(row.tags).slice(0, 4).map(tag => <span className="badge" key={tag}>{tag}</span>)}
+                  {normalizeTags(row.tags).slice(0, 4).map((tag, index) => <span className="badge" key={tag + index}>{tag}</span>)}
                 </div>
               </td>
               <td>
@@ -290,22 +295,20 @@ export function NoticeSettingsPage() {
           />
         </label>
 
-        {form.img_url && <div className="notice-image-preview">
+        {form.img_url && imgError !== form.img_url && <div className="notice-image-preview">
           <img
             src={String(form.img_url)}
             alt="公告预览"
-            onError={event => { event.currentTarget.style.display = 'none' }}
+            onError={() => setImgError(String(form.img_url))}
           />
         </div>}
 
         <label className="field">
           <span>标签</span>
           <input
-            value={tagText}
-            onChange={event => setForm(current => ({
-              ...current,
-              tags: event.target.value.split(',').map(item => item.trim()).filter(Boolean),
-            }))}
+            value={tagDraft}
+            onChange={event => setTagDraft(event.target.value)}
+            onBlur={() => setForm(current => ({ ...current, tags: normalizeTags(tagDraft) }))}
             placeholder="维护, 重要, 活动"
           />
         </label>

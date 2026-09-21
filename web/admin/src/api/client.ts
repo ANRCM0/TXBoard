@@ -101,7 +101,7 @@ function attachCommonErrorHandling(client: AxiosInstance, options: { redirectOnA
       const status = error.response?.status
       const message = error.response?.data?.message || error.message || '请求失败'
 
-      if (options.redirectOnAuthError && (status === 401 || status === 403)) {
+      if (options.redirectOnAuthError && status === 401) {
         removeAccessToken()
         const signInPath = withBasePath('/sign-in')
         if (import.meta.env.VITE_STATIC_PREVIEW !== '1' && window.location.pathname !== signInPath) {
@@ -124,7 +124,8 @@ function attachCommonErrorHandling(client: AxiosInstance, options: { redirectOnA
         removeAccessToken()
         const signInPath = withBasePath('/sign-in')
         if (import.meta.env.VITE_STATIC_PREVIEW !== '1' && window.location.pathname !== signInPath) {
-          window.location.assign(signInPath)
+          const redirect = encodeURIComponent(window.location.pathname + window.location.search)
+          window.location.assign(`${signInPath}?redirect=${redirect}`)
         }
       }
 

@@ -39,6 +39,8 @@ export function SettingsForm({
     if (query.data) setValues(query.data)
   }, [query.data])
 
+  useEffect(() => () => window.clearTimeout(timer.current), [])
+
   const mutation = useMutation({
     mutationFn: (payload: Settings) => saveSettings(payload),
     onSuccess: () => toast.success('已自动保存'),
@@ -54,14 +56,12 @@ export function SettingsForm({
   }, [fields])
 
   function patch(field: SettingField, value: unknown) {
-    setValues(prev => {
-      const next = { ...prev, [field.key]: value }
-      window.clearTimeout(timer.current)
-      if ((field.saveMode || 'auto') === 'auto') {
-        timer.current = window.setTimeout(() => mutation.mutate(next), 1000)
-      }
-      return next
-    })
+    const next = { ...values, [field.key]: value }
+    setValues(next)
+    window.clearTimeout(timer.current)
+    if ((field.saveMode || 'auto') === 'auto') {
+      timer.current = window.setTimeout(() => mutation.mutate(next), 1000)
+    }
   }
 
   function commitBlurField(field: SettingField) {
@@ -165,25 +165,19 @@ function SettingInput({
     )
   }
 
-  if (type === 'textarea' || type === 'string-array') {
-    const text = type === 'string-array' && Array.isArray(value) ? value.join('\n') : String(value ?? '')
+  if (type === 'string-array') {
+    return <StringArrayInput field={field} value={value} onChange={onChange} onCommit={onCommit} />
+  }
+
+  if (type === 'textarea') {
     return (
       <label className="config-field">
         <span>{field.label}</span>
         <textarea
-          value={text}
+          value={String(value ?? '')}
           placeholder={field.placeholder}
           onBlur={onCommit}
-          onChange={event =>
-            onChange(
-              type === 'string-array'
-                ? event.target.value
-                    .split(/[\n,]/)
-                    .map(item => item.trim())
-                    .filter(Boolean)
-                : event.target.value,
-            )
-          }
+          onChange={event => onChange(event.target.value)}
         />
         {field.description ? <small>{field.description}</small> : null}
       </label>
@@ -204,6 +198,44 @@ function SettingInput({
         onChange={event =>
           onChange(type === 'number' ? (event.target.value === '' ? '' : Number(event.target.value)) : event.target.value)
         }
+      />
+      {field.description ? <small>{field.description}</small> : null}
+    </label>
+  )
+}
+
+function StringArrayInput({
+  field,
+  value,
+  onChange,
+  onCommit,
+}: {
+  field: SettingField
+  value: unknown
+  onChange: (value: unknown) => void
+  onCommit: () => void
+}) {
+  const serialize = (input: unknown) => (Array.isArray(input) ? input.join('\n') : String(input ?? ''))
+  const [draft, setDraft] = useState(() => serialize(value))
+
+  useEffect(() => setDraft(serialize(value)), [value])
+
+  return (
+    <label className="config-field">
+      <span>{field.label}</span>
+      <textarea
+        value={draft}
+        placeholder={field.placeholder}
+        onBlur={() => {
+          onChange(
+            draft
+              .split(/[\n,]/)
+              .map(item => item.trim())
+              .filter(Boolean),
+          )
+          onCommit()
+        }}
+        onChange={event => setDraft(event.target.value)}
       />
       {field.description ? <small>{field.description}</small> : null}
     </label>

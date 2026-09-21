@@ -98,18 +98,22 @@ export function KnowledgeSettingsPage() {
 
   async function openEdit(row: KnowledgeItem) {
     if (!row.id) return
-    const detail = await getKnowledgeDetail(row.id)
-    setEditingId(row.id)
-    setForm({ ...detail, show: detail.show ?? true })
-    setPreview(false)
-    setDialogOpen(true)
+    try {
+      const detail = await getKnowledgeDetail(row.id)
+      setEditingId(row.id)
+      setForm({ ...detail, show: detail.show ?? true })
+      setPreview(false)
+      setDialogOpen(true)
+    } catch {}
   }
 
   async function enterSortMode() {
-    const all = await getKnowledgeAll()
-    setSortRows(all)
-    setSortMode(true)
-    setDragId(null)
+    try {
+      const all = await getKnowledgeAll()
+      setSortRows(all)
+      setSortMode(true)
+      setDragId(null)
+    } catch {}
   }
 
   function moveDrop(targetId: number) {

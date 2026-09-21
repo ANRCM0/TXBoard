@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { BarChart3, Cable, KeyRound, MoreHorizontal, Plus, RefreshCw, RotateCcw, Search, Trash2, Pencil } from 'lucide-react'
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import {
   deleteMachine,
@@ -30,6 +30,8 @@ export function MachinesPage() {
   const [historyMachine, setHistoryMachine] = useState<MachineItem | null>(null)
   const [bindingMachine, setBindingMachine] = useState<MachineItem | null>(null)
   const hideTimer = useRef<number | undefined>()
+
+  useEffect(() => () => window.clearTimeout(hideTimer.current), [])
 
   const query = useQuery({
     queryKey: ['machines'],
@@ -102,9 +104,13 @@ export function MachinesPage() {
   async function showToken(id: number) {
     window.clearTimeout(hideTimer.current)
     setTokenMachineId(id)
-    const [token, command] = await Promise.all([getMachineToken(id), getInstallCommand(id)])
-    setTokenInfo({ token, install_command: command })
-    hideTimer.current = window.setTimeout(closeToken, 18_000)
+    try {
+      const [token, command] = await Promise.all([getMachineToken(id), getInstallCommand(id)])
+      setTokenInfo({ token, install_command: command })
+      hideTimer.current = window.setTimeout(closeToken, 18_000)
+    } catch {
+      setTokenMachineId(null)
+    }
   }
 
   function closeToken() {

@@ -9,7 +9,7 @@ import {
   Power,
   Trash2,
 } from 'lucide-react'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { toast } from 'sonner'
 import {
   deletePayment,
@@ -55,6 +55,7 @@ export function PaymentSettingsPage() {
   const [draft, setDraft] = useState<Draft>(emptyDraft)
   const [schema, setSchema] = useState<Record<string, PaymentFormField>>({})
   const [schemaLoading, setSchemaLoading] = useState(false)
+  const schemaSeq = useRef(0)
 
   const refresh = () => qc.invalidateQueries({ queryKey: ['payments'] })
 
@@ -102,6 +103,7 @@ export function PaymentSettingsPage() {
   })
 
   async function loadSchema(payment: string, id?: number, seed: Record<string, unknown> = {}) {
+    const seq = ++schemaSeq.current
     if (!payment) {
       setSchema({})
       setDraft(value => ({ ...value, config: seed }))
@@ -111,6 +113,7 @@ export function PaymentSettingsPage() {
     setSchemaLoading(true)
     try {
       const nextSchema = await getPaymentForm(payment, id)
+      if (seq !== schemaSeq.current) return
       setSchema(nextSchema)
       const nextConfig: Record<string, unknown> = {}
       for (const [key, field] of Object.entries(nextSchema)) {
@@ -118,6 +121,7 @@ export function PaymentSettingsPage() {
       }
       setDraft(value => ({ ...value, config: nextConfig }))
     } catch {
+      if (seq !== schemaSeq.current) return
       const fallback = Object.fromEntries(
         Object.keys(seed).map(key => [key, {
           type: 'string',
@@ -130,7 +134,7 @@ export function PaymentSettingsPage() {
       setDraft(value => ({ ...value, config: { ...seed } }))
       toast.warning('无法读取该支付网关的动态表单，已使用现有配置作为兼容编辑模式')
     } finally {
-      setSchemaLoading(false)
+      if (seq === schemaSeq.current) setSchemaLoading(false)
     }
   }
 

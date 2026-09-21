@@ -113,8 +113,14 @@ export function OrderAssignModal({
       </label>
       <button
         className="button primary"
-        disabled={mutation.isPending || !email.trim() || !planId || !period || !(Number(amount) >= 0)}
-        onClick={() => mutation.mutate()}
+        disabled={mutation.isPending || !email.trim() || !planId || !period || !amount.trim() || !(Number(amount) >= 0)}
+        onClick={() => {
+          if (!periods.some(item => item.key === period)) {
+            toast.error('请选择有效周期')
+            return
+          }
+          mutation.mutate()
+        }}
       >
         {mutation.isPending ? '创建中…' : '创建订单'}
       </button>

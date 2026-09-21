@@ -42,7 +42,9 @@ export async function getThemes() {
   }
 
   const themes = payload && typeof payload === 'object'
-    ? Object.entries(payload).map(([name, item]) => ({ name, ...item }))
+    ? Object.entries(payload)
+      .filter((entry): entry is [string, ThemeItem] => typeof entry[1] === 'object' && entry[1] !== null)
+      .map(([name, item]) => ({ name, ...item }))
     : []
 
   return { themes, active: undefined } satisfies ThemesResponse
