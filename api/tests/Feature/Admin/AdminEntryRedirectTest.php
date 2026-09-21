@@ -9,21 +9,28 @@ class AdminEntryRedirectTest extends TestCase
 {
     use RefreshDatabase;
 
-    /**
-     * The historical /{secure_path} entry point used to render a Blade shell
-     * that loaded /assets/admin/*, which TXBoard no longer builds. It must keep
-     * the URL working by handing off to the admin SPA instead.
-     */
-    public function test_legacy_secure_path_redirects_to_admin_spa(): void
+    public function test_secure_path_serves_the_admin_spa_without_redirecting_to_admin(): void
     {
-        $securePath = admin_setting(
+        $securePath = (string) admin_setting(
             'secure_path',
             admin_setting('frontend_admin_path', hash('crc32b', config('app.key')))
         );
 
-        $this->get('/' . $securePath)->assertRedirect('/admin/');
+        $this->get('/' . $securePath)
+            ->assertOk()
+            ->assertHeader('Cache-Control', 'no-store, private')
+            ->assertSee('id="root"', false);
+
+        $this->get('/' . $securePath . '/config/system')
+            ->assertOk()
+            ->assertSee('id="root"', false);
+
+        $this->get('/admin')->assertNotFound();
+        $this->get('/admin/')->assertNotFound();
+        $this->get('/admin/sign-in')->assertNotFound();
     }
-    public function test_legacy_admin_entry_uses_the_rotated_secure_path_immediately(): void
+
+    public function test_rotating_secure_path_invalidates_the_old_entry_immediately(): void
     {
         $oldPath = (string) admin_setting(
             'secure_path',
@@ -33,8 +40,9 @@ class AdminEntryRedirectTest extends TestCase
 
         admin_setting(['secure_path' => $newPath]);
 
-        $this->get('/' . $newPath)->assertRedirect('/admin/');
+        $this->get('/' . $newPath)->assertOk();
+        $this->get('/' . $newPath . '/sign-in')->assertOk();
         $this->get('/' . $oldPath)->assertNotFound();
+        $this->get('/' . $oldPath . '/config/system')->assertNotFound();
     }
-
 }
