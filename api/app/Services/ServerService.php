@@ -388,9 +388,11 @@ class ServerService
                 $certConfig['cert_mode'] = $certConfig['mode'];
                 unset($certConfig['mode']);
             }
-            if (data_get($certConfig, 'cert_mode') !== 'none') {
-                $response['cert_config'] = $certConfig;
-            }
+
+            // "none" is an explicit state transition, not the absence of a
+            // certificate configuration. Nodes need to receive it so they can
+            // clear previously active certificate material at runtime.
+            $response['cert_config'] = $certConfig;
         }
 
         return $response;
