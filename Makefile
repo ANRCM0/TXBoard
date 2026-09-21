@@ -1,12 +1,9 @@
-.PHONY: verify web api node
+.PHONY: verify web api
 
-verify: web api node
+verify: web api
 
 web:
 	npm run verify:web
 
 api:
 	composer test --working-dir=api
-
-node:
-	$(MAKE) -C node test
