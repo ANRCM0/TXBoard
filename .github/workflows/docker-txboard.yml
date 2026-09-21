@@ -11,6 +11,8 @@ on:
       - "package.json"
       - "package-lock.json"
       - "compose.yaml"
+      - "install.sh"
+      - "backup.sh"
       - ".github/workflows/docker-txboard.yml"
   pull_request:
     branches: [main]
@@ -22,6 +24,8 @@ on:
       - "package.json"
       - "package-lock.json"
       - "compose.yaml"
+      - "install.sh"
+      - "backup.sh"
       - ".github/workflows/docker-txboard.yml"
   workflow_dispatch:
 
@@ -40,18 +44,31 @@ jobs:
           TXBOARD_DB_PASSWORD: test-password
           TXBOARD_DB_ROOT_PASSWORD: test-root-password
         run: docker compose config >/dev/null
+      - name: Validate image-only installer
+        run: |
+          bash -n install.sh
+          sh -n backup.sh
+          TXBOARD_INSTALL_DIR=/tmp/txboard-installer-test \
+          TXBOARD_ADMIN_EMAIL=admin@example.com \
+          bash install.sh --yes --render-only
       - uses: docker/setup-buildx-action@v3
       - uses: docker/build-push-action@v6
         with:
           context: .
           file: ./Dockerfile
           push: false
+          load: true
+          tags: txboard-ci:pr
           platforms: linux/amd64
           build-args: |
             APP_COMMIT=${{ github.sha }}
           cache-from: type=gha,scope=txboard
           cache-to: type=gha,mode=max,scope=txboard
           provenance: false
+      - name: Verify installer is embedded in image
+        run: |
+          docker run --rm --entrypoint sh txboard-ci:pr -c \
+            'test -x /opt/txboard/install.sh && test -x /opt/txboard/backup.sh'
 
   publish:
     if: github.event_name != 'pull_request'
@@ -64,6 +81,10 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - uses: docker/setup-qemu-action@v3
+      - name: Validate deployment scripts
+        run: |
+          bash -n install.sh
+          sh -n backup.sh
       - uses: docker/setup-buildx-action@v3
       - name: Normalize image name
         id: image
