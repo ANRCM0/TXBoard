@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\ServerSave;
 use App\Models\Server;
 use App\Models\ServerGroup;
+use App\Protocols\ProtocolRegistry;
 use App\Services\ServerService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -14,6 +15,11 @@ use Illuminate\Support\Facades\Log;
 
 class ManageController extends Controller
 {
+    public function protocols(ProtocolRegistry $registry)
+    {
+        return $this->success($registry->metadata());
+    }
+
     public function getNodes(Request $request)
     {
         $servers = ServerService::getAllServers()->map(function ($item) {

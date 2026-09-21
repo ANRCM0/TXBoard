@@ -7,6 +7,7 @@ import {
   getGroups,
   getMachines,
   getNodes,
+  getProtocolDefinitions,
   getRoutes,
   saveNode,
   type NodeItem,
@@ -23,6 +24,7 @@ export function NodesPage(){
   const [machineFilter,setMachineFilter]=useState('')
 
   const query=useQuery({queryKey:['nodes'],queryFn:getNodes,refetchInterval:30_000})
+  const protocolDefinitions=useQuery({queryKey:['protocol-definitions'],queryFn:getProtocolDefinitions,staleTime:300_000,retry:1})
   const machines=useQuery({queryKey:['machines'],queryFn:getMachines,staleTime:30_000})
   const groups=useQuery({queryKey:['groups'],queryFn:getGroups,staleTime:30_000})
   const routes=useQuery({queryKey:['routes'],queryFn:getRoutes,staleTime:30_000})
@@ -113,6 +115,7 @@ export function NodesPage(){
       machines={machineRows}
       groups={groupRows}
       routes={routeRows}
+      protocolDefinitions={Array.isArray(protocolDefinitions.data)?protocolDefinitions.data:[]}
       saving={save.isPending}
       onClose={()=>{setOpen(false);setEditing(null)}}
       onSubmit={(payload)=>save.mutate(payload)}

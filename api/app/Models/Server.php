@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Cache;
 use App\Utils\CacheKey;
 use App\Utils\Helper;
 use App\Models\User;
+use App\Protocols\ProtocolRegistry;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 
 /**
@@ -135,229 +136,12 @@ class Server extends Model
         'machine_id' => 'integer',
     ];
 
-    private const MULTIPLEX_CONFIGURATION = [
-        'multiplex' => [
-            'type' => 'object',
-            'fields' => [
-                'enabled' => ['type' => 'boolean', 'default' => false],
-                'protocol' => ['type' => 'string', 'default' => 'yamux'],
-                'max_connections' => ['type' => 'integer', 'default' => null],
-                'min_streams' => ['type' => 'integer', 'default' => null],
-                'max_streams' => ['type' => 'integer', 'default' => null],
-                'padding' => ['type' => 'boolean', 'default' => false],
-                'brutal' => [
-                    'type' => 'object',
-                    'fields' => [
-                        'enabled' => ['type' => 'boolean', 'default' => false],
-                        'up_mbps' => ['type' => 'integer', 'default' => null],
-                        'down_mbps' => ['type' => 'integer', 'default' => null],
-                    ]
-                ]
-            ]
-        ]
-    ];
-
-    private const REALITY_CONFIGURATION = [
-        'reality_settings' => [
-            'type' => 'object',
-            'fields' => [
-                'server_name' => ['type' => 'string', 'default' => null],
-                'server_port' => ['type' => 'string', 'default' => null],
-                'public_key' => ['type' => 'string', 'default' => null],
-                'private_key' => ['type' => 'string', 'default' => null],
-                'short_id' => ['type' => 'string', 'default' => null],
-                'allow_insecure' => ['type' => 'boolean', 'default' => false],
-            ]
-        ]
-    ];
-
-    private const UTLS_CONFIGURATION = [
-        'utls' => [
-            'type' => 'object',
-            'fields' => [
-                'enabled' => ['type' => 'boolean', 'default' => false],
-                'fingerprint' => ['type' => 'string', 'default' => 'chrome'],
-            ]
-        ]
-    ];
-
-    private const ECH_CONFIGURATION = [
-        'ech' => [
-            'type' => 'object',
-            'fields' => [
-                'enabled' => ['type' => 'boolean', 'default' => false],
-                'config' => ['type' => 'string', 'default' => null],
-                'query_server_name' => ['type' => 'string', 'default' => null],
-                'key' => ['type' => 'string', 'default' => null],
-                'key_path' => ['type' => 'string', 'default' => null],
-                'config_path' => ['type' => 'string', 'default' => null],
-            ]
-        ]
-    ];
-
-    private const TLS_SETTINGS_CONFIGURATION = [
-        'type' => 'object',
-        'fields' => [
-            'server_name' => ['type' => 'string', 'default' => null],
-            'allow_insecure' => ['type' => 'boolean', 'default' => false],
-            ...self::ECH_CONFIGURATION,
-        ]
-    ];
-
-    private const TLS_CONFIGURATION = [
-        'type' => 'object',
-        'fields' => [
-            'server_name' => ['type' => 'string', 'default' => null],
-            'allow_insecure' => ['type' => 'boolean', 'default' => false],
-            ...self::ECH_CONFIGURATION,
-        ]
-    ];
-
-    private const PROTOCOL_CONFIGURATIONS = [
-        self::TYPE_TROJAN => [
-            'tls' => ['type' => 'integer', 'default' => 1],
-            'network' => ['type' => 'string', 'default' => null],
-            'network_settings' => ['type' => 'array', 'default' => null],
-            'server_name' => ['type' => 'string', 'default' => null],
-            'allow_insecure' => ['type' => 'boolean', 'default' => false],
-            'tls_settings' => self::TLS_SETTINGS_CONFIGURATION,
-            ...self::REALITY_CONFIGURATION,
-            ...self::MULTIPLEX_CONFIGURATION,
-            ...self::UTLS_CONFIGURATION
-        ],
-        self::TYPE_VMESS => [
-            'tls' => ['type' => 'integer', 'default' => 0],
-            'network' => ['type' => 'string', 'default' => null],
-            'rules' => ['type' => 'array', 'default' => null],
-            'network_settings' => ['type' => 'array', 'default' => null],
-            'tls_settings' => self::TLS_SETTINGS_CONFIGURATION,
-            ...self::MULTIPLEX_CONFIGURATION,
-            ...self::UTLS_CONFIGURATION
-        ],
-        self::TYPE_VLESS => [
-            'tls' => ['type' => 'integer', 'default' => 0],
-            'tls_settings' => self::TLS_SETTINGS_CONFIGURATION,
-            'flow' => ['type' => 'string', 'default' => null],
-            'encryption' => [
-                'type' => 'object',
-                'default' => null,
-                'fields' => [
-                    'enabled' => ['type' => 'boolean', 'default' => false],
-                    'encryption' => ['type' => 'string', 'default' => null],  // 客户端公钥
-                    'decryption' => ['type' => 'string', 'default' => null],   // 服务端私钥
-                ]
-            ],
-            'network' => ['type' => 'string', 'default' => null],
-            'network_settings' => ['type' => 'array', 'default' => null],
-            ...self::REALITY_CONFIGURATION,
-            ...self::MULTIPLEX_CONFIGURATION,
-            ...self::UTLS_CONFIGURATION
-        ],
-        self::TYPE_SHADOWSOCKS => [
-            'cipher' => ['type' => 'string', 'default' => null],
-            'obfs' => ['type' => 'string', 'default' => null],
-            'obfs_settings' => ['type' => 'array', 'default' => null],
-            'plugin' => ['type' => 'string', 'default' => null],
-            'plugin_opts' => ['type' => 'string', 'default' => null]
-        ],
-        self::TYPE_HYSTERIA => [
-            'version' => ['type' => 'integer', 'default' => 2],
-            'alpn' => ['type' => 'string', 'default' => null],
-            'bandwidth' => [
-                'type' => 'object',
-                'fields' => [
-                    'up' => ['type' => 'integer', 'default' => null],
-                    'down' => ['type' => 'integer', 'default' => null]
-                ]
-            ],
-            'obfs' => [
-                'type' => 'object',
-                'fields' => [
-                    'open' => ['type' => 'boolean', 'default' => false],
-                    'type' => ['type' => 'string', 'default' => 'salamander'],
-                    'password' => ['type' => 'string', 'default' => null]
-                ]
-            ],
-            'tls' => self::TLS_CONFIGURATION,
-            'hop_interval' => ['type' => 'integer', 'default' => null]
-        ],
-        self::TYPE_TUIC => [
-            'version' => ['type' => 'integer', 'default' => 5],
-            'congestion_control' => ['type' => 'string', 'default' => 'cubic'],
-            'alpn' => ['type' => 'array', 'default' => ['h3']],
-            'udp_relay_mode' => ['type' => 'string', 'default' => 'native'],
-            'tls' => self::TLS_CONFIGURATION
-        ],
-        self::TYPE_ANYTLS => [
-            'alpn' => ['type' => 'string', 'default' => null],
-            'padding_scheme' => [
-                'type' => 'array',
-                'default' => [
-                    "stop=8",
-                    "0=30-30",
-                    "1=100-400",
-                    "2=400-500,c,500-1000,c,500-1000,c,500-1000,c,500-1000",
-                    "3=9-9,500-1000",
-                    "4=500-1000",
-                    "5=500-1000",
-                    "6=500-1000",
-                    "7=500-1000"
-                ]
-            ],
-            'tls' => self::TLS_CONFIGURATION
-        ],
-        self::TYPE_SOCKS => [
-            'tls' => ['type' => 'integer', 'default' => 0],
-            'tls_settings' => self::TLS_SETTINGS_CONFIGURATION
-        ],
-        self::TYPE_NAIVE => [
-            'tls' => ['type' => 'integer', 'default' => 0],
-            'tls_settings' => self::TLS_SETTINGS_CONFIGURATION
-        ],
-        self::TYPE_HTTP => [
-            'tls' => ['type' => 'integer', 'default' => 0],
-            'tls_settings' => self::TLS_SETTINGS_CONFIGURATION
-        ],
-        self::TYPE_MIERU => [
-            'transport' => ['type' => 'string', 'default' => 'TCP'],
-            'traffic_pattern' => ['type' => 'string', 'default' => ''],
-            ...self::MULTIPLEX_CONFIGURATION,
-        ]
-    ];
-
-    private function castValueWithConfig($value, array $config)
-    {
-        if ($value === null && $config['type'] !== 'object') {
-            return $config['default'] ?? null;
-        }
-
-        return match ($config['type']) {
-            'integer' => (int) $value,
-            'boolean' => (bool) $value,
-            'string' => (string) $value,
-            'array' => (array) $value,
-            'object' => is_array($value) ?
-            $this->castSettingsWithConfig($value, $config['fields']) :
-            $config['default'] ?? null,
-            default => $value
-        };
-    }
-
-    private function castSettingsWithConfig(array $settings, array $configs): array
-    {
-        $result = [];
-        foreach ($configs as $key => $config) {
-            $value = $settings[$key] ?? null;
-            $result[$key] = $this->castValueWithConfig($value, $config);
-        }
-        return $result;
-    }
-
     public function getProtocolSettingsAttribute($value)
     {
         $settings = json_decode($value, true) ?? [];
-        $configs = self::PROTOCOL_CONFIGURATIONS[$this->type] ?? [];
-        return $this->castSettingsWithConfig($settings, $configs);
+        $definition = app(ProtocolRegistry::class)->get($this->type);
+
+        return $definition ? $definition->normalize($settings) : $settings;
     }
 
     public function setProtocolSettingsAttribute($value)
@@ -366,10 +150,11 @@ class Server extends Model
             $value = json_decode($value, true);
         }
 
-        $configs = self::PROTOCOL_CONFIGURATIONS[$this->type] ?? [];
-        $castedSettings = $this->castSettingsWithConfig($value ?? [], $configs);
+        $settings = is_array($value) ? $value : [];
+        $definition = app(ProtocolRegistry::class)->get($this->type);
+        $normalized = $definition ? $definition->normalize($settings) : $settings;
 
-        $this->attributes['protocol_settings'] = json_encode($castedSettings);
+        $this->attributes['protocol_settings'] = json_encode($normalized);
     }
 
     public function generateServerPassword(User $user): string
