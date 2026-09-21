@@ -21,7 +21,7 @@ import {
   WalletCards,
   X,
 } from 'lucide-react'
-import { useState } from 'react'
+import { useState, type KeyboardEvent } from 'react'
 import { NavLink } from 'react-router-dom'
 import { getPlugins, normalizePluginPath } from '../../api/plugin'
 
@@ -106,6 +106,16 @@ export function Sidebar({ open, onClose }: SidebarProps) {
     setOpenGroups(state => ({ ...state, [key]: !(state[key] ?? true) }))
   }
 
+  function preventSpaceScroll(event: KeyboardEvent<HTMLButtonElement>) {
+    if (event.key === ' ') event.preventDefault()
+  }
+
+  function toggleGroupWithSpace(event: KeyboardEvent<HTMLButtonElement>, key: string) {
+    if (event.key !== ' ') return
+    event.preventDefault()
+    toggleGroup(key)
+  }
+
   return (
     <aside className={`admin-sidebar ${open ? 'is-open' : ''}`}>
       <div className="admin-sidebar-inner">
@@ -140,7 +150,11 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                 <button
                   type="button"
                   className="admin-nav-group-trigger"
+                  aria-controls={`admin-nav-${group.key}`}
+                  aria-expanded={expanded}
                   onClick={() => toggleGroup(group.key)}
+                  onKeyDown={preventSpaceScroll}
+                  onKeyUp={event => toggleGroupWithSpace(event, group.key)}
                 >
                   <GroupIcon size={18} />
                   <span>{group.title}</span>
@@ -148,7 +162,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                 </button>
 
                 {expanded ? (
-                  <div className="admin-nav-sublist">
+                  <div className="admin-nav-sublist" id={`admin-nav-${group.key}`}>
                     {group.items.map(([to, label, Icon]) => (
                       <NavLink
                         key={to}
