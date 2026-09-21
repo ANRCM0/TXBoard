@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ChangeEvent } from 'react'
 import { toast } from 'sonner'
 import type {
   GroupItem,
@@ -310,7 +310,7 @@ function JsonField({
   </label>
 }
 
-function selectedNumbers(event: React.ChangeEvent<HTMLSelectElement>) {
+function selectedNumbers(event: ChangeEvent<HTMLSelectElement>) {
   return Array.from(event.target.selectedOptions).map((option) => Number(option.value))
 }
 
