@@ -14,12 +14,6 @@ return [
             'ignore_exceptions' => false,
         ],
 
-        'backup' => [
-            'driver' => 'single',
-            'path' => storage_path('logs/backup.log'),
-            'level' => 'debug',
-        ],
-
         'single' => [
             'driver' => 'single',
             'path' => storage_path('logs/laravel.log'),
