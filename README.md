@@ -125,57 +125,81 @@ Machine
 - 建议至少 2 vCPU / 2 GB RAM
 - 如由 TXBoard 自己签发 HTTPS，服务器需要开放 80 / 443 并正确配置 DNS
 
-### 1. 获取项目
+### 一键安装（推荐）
+
+安装脚本随公开镜像一起发布，因此部署机器**不需要访问 TXBoard 源码仓库**：
 
 ```bash
-git clone https://github.com/PaiMonCai/TXBoard.git
-cd TXBoard
+docker run --pull=always --rm --entrypoint cat \
+  ghcr.io/paimoncai/txboard:latest \
+  /opt/txboard/install.sh | sudo bash
 ```
 
-### 2. 准备配置
+脚本会：
+
+- 创建 `/opt/txboard` 运行目录；
+- 自动生成随机 MySQL 密码；
+- 生成 image-only `compose.yaml` 与持久化配置；
+- 拉取 `ghcr.io/paimoncai/txboard:latest` 和 MySQL；
+- 启动数据库与 TXBoard；
+- 自动执行初始化安装；
+- 创建管理员并在终端输出随机密码；
+- 启动周期备份服务。
+
+安装过程中可输入域名和管理员邮箱。无域名时使用 HTTP/IP；填写域名时由内置 Caddy 自动申请 HTTPS。
+
+无人值守示例：
+
+```bash
+docker run --pull=always --rm --entrypoint cat \
+  ghcr.io/paimoncai/txboard:latest \
+  /opt/txboard/install.sh |
+sudo env \
+  TXBOARD_DOMAIN=panel.example.com \
+  TXBOARD_ADMIN_EMAIL=admin@example.com \
+  bash -s -- --yes
+```
+
+默认运行目录：
+
+```text
+/opt/txboard/
+├── .env
+├── api.env
+├── compose.yaml
+├── backup.sh
+├── data/
+│   ├── storage/
+│   └── plugins/
+└── backups/
+```
+
+后续更新不需要 Git：
+
+```bash
+cd /opt/txboard
+docker compose pull
+docker compose up -d --remove-orphans --wait
+```
+
+### 源码部署（开发者）
+
+拥有源码仓库访问权限时仍可从源码构建：
 
 ```bash
 cp .env.example .env
 cp api/.env.example api/.env
-```
-
-编辑根目录 `.env`，至少设置：
-
-```env
-TXBOARD_DB_PASSWORD=change-me
-TXBOARD_DB_ROOT_PASSWORD=change-root-password
-```
-
-根目录 `.env` 负责 Docker Stack；`api/.env` 负责 Laravel 应用配置。
-
-### 3. 启动
-
-使用当前源码构建：
-
-```bash
 docker compose up -d --build --remove-orphans --wait
-```
-
-使用已发布镜像：
-
-```bash
-docker compose pull txboard
-docker compose up -d --remove-orphans --wait
-```
-
-### 4. 初始化
-
-```bash
 docker compose exec -it txboard php artisan xboard:install
 ```
-
-安装器会完成数据库迁移并创建第一个管理员，同时输出管理员密码与 `secure_path`。
 
 ---
 
 ## Docker 部署模型
 
-仓库根目录就是完整部署入口：
+生产用户推荐使用公开镜像 + image-only 安装目录；源码仓库主要用于开发和构建。
+
+源码仓库根目录仍保留开发部署入口：
 
 ```text
 TXBoard/
@@ -241,6 +265,14 @@ docker compose down -v
 ## 更新
 
 TXBoard 不再支持在运行中的容器里执行 `git reset` / `composer install` 式自更新。
+
+### 镜像安装更新
+
+```bash
+cd /opt/txboard
+docker compose pull
+docker compose up -d --remove-orphans --wait
+```
 
 ### 从源码更新
 
@@ -536,6 +568,22 @@ TXBoard/
 
 ## CI 与镜像
 
+
+### Private 源码 + Public 镜像
+
+TXBoard 可以把 GitHub 仓库设为 Private，同时让 `ghcr.io/paimoncai/txboard` 保持 Public。推荐顺序：
+
+1. 打开个人主页的 **Packages → txboard → Package settings**。
+2. 在 **Inherited access / Manage access** 中关闭 **Inherit access from repository**，让 Container package 使用独立权限。
+3. 确认 **Manage Actions access** 中 TXBoard 仓库仍有发布权限。
+4. 在 Package settings 的 **Change visibility** 中将容器包设为 **Public**。
+5. 再到 TXBoard 仓库 **Settings → General → Danger Zone → Change repository visibility** 将源码仓库设为 **Private**。
+
+公开 GHCR 镜像可以匿名拉取，所以一键安装不需要 GitHub Token。
+
+> 仓库 Private 不代表镜像内容不可查看。当前 PHP 应用源码位于 Docker image 内，任何能够拉取公开镜像的人都可以提取容器文件系统。如果你的目标是“连镜像使用者也不能读取 PHP 源码”，需要额外采用 PHP 编码/编译分发方案。
+
+
 主要 CI：
 
 - `api-ci`：Laravel API 测试
@@ -548,6 +596,10 @@ TXBoard/
 ghcr.io/paimoncai/txboard:latest
 ghcr.io/paimoncai/txboard:sha-<commit>
 ```
+
+GHCR Container package 可以保持 Public，即使 TXBoard GitHub 源码仓库设为 Private。公开镜像支持匿名拉取；生产用户不需要 GitHub Token。
+
+> 注意：仓库 Private 只能隐藏 Git 历史与源码仓库访问。TXBoard 后端是 PHP，应用源码本身会随 Docker image 进入容器；**公开镜像并不等于源码保密**。如果目标是让任何镜像使用者都无法读取 PHP 源码，还需要额外的编译/编码分发方案。
 
 API 与两个前端作为同一个 artifact 发布，避免版本漂移。
 
