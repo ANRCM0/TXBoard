@@ -130,7 +130,7 @@ Machine
 安装脚本随公开镜像一起发布，因此部署机器**不需要访问 TXBoard 源码仓库**：
 
 ```bash
-docker run --rm --entrypoint cat \
+docker run --pull=always --rm --entrypoint cat \
   ghcr.io/paimoncai/txboard:latest \
   /opt/txboard/install.sh | sudo bash
 ```
@@ -151,7 +151,7 @@ docker run --rm --entrypoint cat \
 无人值守示例：
 
 ```bash
-docker run --rm --entrypoint cat \
+docker run --pull=always --rm --entrypoint cat \
   ghcr.io/paimoncai/txboard:latest \
   /opt/txboard/install.sh |
 sudo env \
@@ -567,6 +567,22 @@ TXBoard/
 ---
 
 ## CI 与镜像
+
+
+### Private 源码 + Public 镜像
+
+TXBoard 可以把 GitHub 仓库设为 Private，同时让 `ghcr.io/paimoncai/txboard` 保持 Public。推荐顺序：
+
+1. 打开个人主页的 **Packages → txboard → Package settings**。
+2. 在 **Inherited access / Manage access** 中关闭 **Inherit access from repository**，让 Container package 使用独立权限。
+3. 确认 **Manage Actions access** 中 TXBoard 仓库仍有发布权限。
+4. 在 Package settings 的 **Change visibility** 中将容器包设为 **Public**。
+5. 再到 TXBoard 仓库 **Settings → General → Danger Zone → Change repository visibility** 将源码仓库设为 **Private**。
+
+公开 GHCR 镜像可以匿名拉取，所以一键安装不需要 GitHub Token。
+
+> 仓库 Private 不代表镜像内容不可查看。当前 PHP 应用源码位于 Docker image 内，任何能够拉取公开镜像的人都可以提取容器文件系统。如果你的目标是“连镜像使用者也不能读取 PHP 源码”，需要额外采用 PHP 编码/编译分发方案。
+
 
 主要 CI：
 

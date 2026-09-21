@@ -13,8 +13,6 @@ on:
       - "compose.yaml"
       - "install.sh"
       - "backup.sh"
-      - "install.sh"
-      - "backup.sh"
       - ".github/workflows/docker-txboard.yml"
   pull_request:
     branches: [main]
@@ -26,6 +24,8 @@ on:
       - "package.json"
       - "package-lock.json"
       - "compose.yaml"
+      - "install.sh"
+      - "backup.sh"
       - ".github/workflows/docker-txboard.yml"
   workflow_dispatch:
 
@@ -57,12 +57,18 @@ jobs:
           context: .
           file: ./Dockerfile
           push: false
+          load: true
+          tags: txboard-ci:pr
           platforms: linux/amd64
           build-args: |
             APP_COMMIT=${{ github.sha }}
           cache-from: type=gha,scope=txboard
           cache-to: type=gha,mode=max,scope=txboard
           provenance: false
+      - name: Verify installer is embedded in image
+        run: |
+          docker run --rm --entrypoint sh txboard-ci:pr -c \
+            'test -x /opt/txboard/install.sh && test -x /opt/txboard/backup.sh'
 
   publish:
     if: github.event_name != 'pull_request'
