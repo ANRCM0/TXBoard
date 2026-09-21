@@ -1,17 +1,53 @@
 import { apiClient } from './client'
 import { unwrap } from '../lib/api'
 
+export type NodeProtocolType =
+  | 'hysteria'
+  | 'vless'
+  | 'trojan'
+  | 'vmess'
+  | 'tuic'
+  | 'shadowsocks'
+  | 'anytls'
+  | 'socks'
+  | 'naive'
+  | 'http'
+  | 'mieru'
+
+export type NodeRateTimeRange = {
+  start: string
+  end: string
+  rate: number
+}
+
 export type NodeItem = {
   id: number
   name?: string
-  type?: string
+  type?: NodeProtocolType | string
   host?: string
   port?: number
+  server_port?: number
   group_id?: number
+  group_ids?: number[]
+  route_ids?: number[]
+  tags?: string[]
+  excludes?: unknown[]
+  ips?: unknown[]
+  parent_id?: number | null
   machine_id?: number | null
   show?: number | boolean
   enabled?: boolean
   online?: number | boolean
+  rate?: number
+  rate_time_enable?: boolean
+  rate_time_ranges?: NodeRateTimeRange[]
+  protocol_settings?: Record<string, unknown>
+  transfer_enable?: number
+  custom_outbounds?: unknown[]
+  custom_routes?: unknown[]
+  cert_config?: Record<string, unknown> | unknown[]
+  code?: string | null
+  spectific_key?: string | null
   [key: string]: unknown
 }
 
