@@ -1,84 +1,37 @@
-# Telegram 插件
+# Telegram Plugin
 
-XBoard 的 Telegram Bot 插件，提供用户账号绑定、流量查询、订阅链接获取等功能。
+TXBoard 内置 Telegram Bot 插件，为用户提供账号绑定、自助查询和事件通知能力。
 
-## 功能特性
+## Features
 
--   ✅ 工单通知功能（可配置开关）
--   ✅ 支付通知功能（可配置开关）
--   ✅ 用户账号绑定/解绑
--   ✅ 流量使用情况查询
--   ✅ 订阅链接获取
--   ✅ 工单回复支持
+- 用户账号绑定 / 解绑
+- 流量查询
+- 获取最新订阅链接
+- 工单通知
+- 支付通知
+- 可配置欢迎信息与帮助文案
 
-## 可用命令
+## Commands
 
-### `/start` - 开始使用
-
-欢迎新用户并显示帮助信息，支持动态配置。
-
-### `/bind` - 绑定账号
-
-绑定用户的 XBoard 账号到 Telegram。
-
-```
-/bind [订阅链接]
+```text
+/start
+/bind <subscription-url>
+/traffic
+/getlatesturl
+/unbind
 ```
 
-### `/traffic` - 查看流量
+## Configuration
 
-查看当前绑定账号的流量使用情况。
+插件配置由 TXBoard Plugin Runtime 管理，常用字段包括：
 
-### `/getlatesturl` - 获取订阅链接
+- `auto_reply`
+- `help_text`
+- `start_welcome_title`
+- `start_bot_description`
+- `start_bind_guide`
+- `start_unbind_guide`
+- `enable_ticket_notify`
+- `enable_payment_notify`
 
-获取最新的订阅链接。
-
-### `/unbind` - 解绑账号
-
-解绑当前 Telegram 账号与 XBoard 账号的关联。
-
-## 配置选项
-
-### 基础配置
-
-| 配置项       | 类型    | 默认值                                                                                     | 说明                 |
-| ------------ | ------- | ------------------------------------------------------------------------------------------ | -------------------- |
-| `auto_reply` | boolean | true                                                                                       | 是否自动回复未知命令 |
-| `help_text`  | text    | '请使用以下命令：\\n/bind - 绑定账号\\n/traffic - 查看流量\\n/getlatesturl - 获取最新链接' | 未知命令的回复文本   |
-
-### `/start` 命令动态配置
-
-| 配置项                  | 类型 | 说明                     |
-| ----------------------- | ---- | ------------------------ |
-| `start_welcome_title`   | text | 欢迎标题                 |
-| `start_bot_description` | text | 机器人功能介绍           |
-| `start_bind_guide`      | text | 未绑定用户的绑定指导     |
-| `start_unbind_guide`    | text | 已绑定用户显示的命令列表 |
-| `start_bind_commands`   | text | 未绑定用户显示的命令列表 |
-| `start_footer`          | text | 底部提示信息             |
-
-### 工单通知配置
-
-| 配置项                 | 类型    | 默认值 | 说明                 |
-| ---------------------- | ------- | ------ | -------------------- |
-| `enable_ticket_notify` | boolean | true   | 是否开启工单通知功能 |
-
-### 支付通知配置
-
-| 配置项                  | 类型    | 默认值 | 说明                 |
-| ----------------------- | ------- | ------ | -------------------- |
-| `enable_payment_notify` | boolean | true   | 是否开启支付通知功能 |
-
-## 使用流程
-
-### 新用户使用流程
-
-1. 用户首次使用 Bot，发送 `/start`
-2. 根据提示绑定账号：`/bind [订阅链接]`
-3. 绑定成功后即可使用其他功能
-
-### 日常使用流程
-
-1. 查看流量：`/traffic`
-2. 获取订阅链接：`/getlatesturl`
-3. 管理绑定：`/unbind`
+具体可用字段以插件当前 `config.json` 和实现为准，避免 README 与运行时 Schema 漂移。
