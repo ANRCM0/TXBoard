@@ -1,5 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery } from '@tanstack/react-query'
+import { type AxiosError } from 'axios'
 import { useForm } from 'react-hook-form'
 import { useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
@@ -58,10 +59,15 @@ export function SignInPage() {
       setAccessToken(authorization)
       setAdminSecurePath(String(data.secure_path || ''))
       toast.success('登录成功')
-      navigate(params.get('redirect') || '/config/system', { replace: true })
+      const redirect = params.get('redirect') || ''
+      const target = redirect.startsWith('/') && !redirect.startsWith('//') && redirect !== '/sign-in'
+        ? redirect
+        : '/config/system'
+      navigate(target, { replace: true })
     },
     onError: error => {
-      toast.error(error instanceof Error ? error.message : '登录失败')
+      const axiosError = error as AxiosError<{ message?: string }>
+      toast.error(axiosError.response?.data?.message || (error instanceof Error ? error.message : '登录失败'))
     },
   })
 

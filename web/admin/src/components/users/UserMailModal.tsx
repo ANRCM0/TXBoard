@@ -1,4 +1,5 @@
 import { useMutation } from '@tanstack/react-query'
+import { isAxiosError } from 'axios'
 import { useEffect, useState } from 'react'
 import { Send } from 'lucide-react'
 import { toast } from 'sonner'
@@ -46,7 +47,9 @@ export function UserMailModal({
       setContent('')
       onClose()
     },
-    onError: error => toast.error(error instanceof Error ? error.message : '发送失败'),
+    onError: error => {
+      if (!isAxiosError(error)) toast.error(error instanceof Error ? error.message : '发送失败')
+    },
   })
 
   return <Modal open={open} title="批量发送邮件" onClose={onClose}>

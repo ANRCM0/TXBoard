@@ -62,8 +62,9 @@ function Item({ label, value }: { label: string; value: string }) {
 }
 
 function money(value: unknown) {
+  if (value === '' || value == null) return '-'
   const n = Number(value)
-  return Number.isFinite(n) && value != null ? `¥ ${(n / 100).toFixed(2)}` : '-'
+  return Number.isFinite(n) ? `¥ ${(n / 100).toFixed(2)}` : '-'
 }
 
 function formatTime(value: unknown) {

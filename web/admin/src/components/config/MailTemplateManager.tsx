@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { RefreshCw, RotateCcw, Save, Send } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import {
   getMailTemplate,
@@ -29,19 +29,22 @@ export function MailTemplateManager() {
     enabled: Boolean(selected),
   })
 
+  const lastSelected = useRef<string | null>(null)
   useEffect(() => {
-    if (detail.data) {
-      setSubject(detail.data.subject || '')
-      setContent(detail.data.content || '')
-    }
-  }, [detail.data])
+    if (!detail.data || lastSelected.current === selected) return
+    lastSelected.current = selected
+    setSubject(detail.data.subject || '')
+    setContent(detail.data.content || '')
+  }, [detail.data, selected])
 
   const save = useMutation({
     mutationFn: () => saveMailTemplate({ name: selected, subject, content }),
     onSuccess: () => {
       toast.success('邮件模板已保存')
       qc.invalidateQueries({ queryKey: ['mailTemplates'] })
-      qc.invalidateQueries({ queryKey: ['mailTemplate', selected] })
+      if (detail.data) {
+        qc.setQueryData(['mailTemplate', selected], { ...detail.data, subject, content, customized: true })
+      }
     },
   })
 
@@ -49,6 +52,7 @@ export function MailTemplateManager() {
     mutationFn: () => resetMailTemplate(selected),
     onSuccess: () => {
       toast.success('已恢复默认模板')
+      lastSelected.current = null
       qc.invalidateQueries({ queryKey: ['mailTemplates'] })
       qc.invalidateQueries({ queryKey: ['mailTemplate', selected] })
     },

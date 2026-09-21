@@ -7,14 +7,16 @@ import { z } from 'zod'
 import { fetchSettings, saveSettings } from '../../api/config'
 import { ConfigSectionFrame } from '../../components/config/ConfigSectionFrame'
 
+const optionalNumber = z.preprocess(value => value === '' ? null : value, z.coerce.number().nullish())
+
 const schema = z.object({
   app_name: z.string().optional(),
   app_description: z.string().optional(),
   app_url: z.string().optional(),
   logo: z.string().optional(),
   subscribe_url: z.string().optional(),
-  try_out_plan_id: z.coerce.number().optional(),
-  try_out_hour: z.coerce.number().optional(),
+  try_out_plan_id: optionalNumber,
+  try_out_hour: optionalNumber,
   tos_url: z.string().optional(),
   currency: z.string().optional(),
   currency_symbol: z.string().optional(),
@@ -30,7 +32,7 @@ const schema = z.object({
   traffic_log_enable: z.coerce.boolean().optional(),
   announcement_enable: z.coerce.boolean().optional(),
   register_enable: z.coerce.boolean().optional(),
-  traffic_warn_rate: z.coerce.number().optional(),
+  traffic_warn_rate: optionalNumber,
 })
 type Values = z.infer<typeof schema>
 
@@ -58,13 +60,18 @@ export function SystemSettingsPage() {
   })
 
   useEffect(() => {
-    if (query.data) form.reset(query.data as Values)
+    if (query.data && !form.formState.isDirty) form.reset(query.data as Values)
   }, [query.data, form])
 
   useEffect(() => {
-    const sub = form.watch(value => {
+    const sub = form.watch((value, info) => {
+      // reset() notifications carry neither name nor type; ignore them so
+      // hydrating the form never triggers an autosave.
+      if (!info.type && !info.name) return
+      const parsed = schema.safeParse(value)
+      if (!parsed.success) return
       window.clearTimeout(timer.current)
-      timer.current = window.setTimeout(() => mutation.mutate(value as Values), 1000)
+      timer.current = window.setTimeout(() => mutation.mutate(parsed.data), 1000)
     })
     return () => sub.unsubscribe()
   }, [form, mutation])

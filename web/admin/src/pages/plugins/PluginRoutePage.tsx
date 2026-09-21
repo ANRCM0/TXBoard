@@ -126,5 +126,6 @@ function findMenu(menus: PluginAdminMenu[] | null | undefined, subpath: string) 
 
 function findCrud(cruds: Record<string, PluginAdminCrudSchema> | null | undefined, subpath: string) {
   if (!subpath || !cruds) return null
-  return cruds[subpath] || cruds[normalizePluginPath(subpath)] || null
+  const key = Object.prototype.hasOwnProperty.call(cruds, subpath) ? subpath : normalizePluginPath(subpath)
+  return Object.prototype.hasOwnProperty.call(cruds, key) ? cruds[key] : null
 }

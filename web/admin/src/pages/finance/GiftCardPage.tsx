@@ -547,5 +547,5 @@ function StatCard({ label, value }: { label: string; value?: number }) { return 
 function giftCodeStatus(status?: number) { return ({0:'未使用',1:'已使用',2:'已过期',3:'已禁用'} as Record<number,string>)[Number(status)] || '-' }
 function formatTime(value?: number | null, dateOnly=false) { if (!value) return '永不过期'; const d=new Date(value*1000); return dateOnly?d.toLocaleDateString():d.toLocaleString() }
 function summaryJson(value: unknown) { try { const s=JSON.stringify(value || {}); return s.length>90?s.slice(0,87)+'…':s } catch { return '-' } }
-function dateOffset(days:number) { const d=new Date(); d.setDate(d.getDate()+days); return d.toISOString().slice(0,10) }
+function dateOffset(days:number) { const d=new Date(); d.setDate(d.getDate()+days); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` }
 async function copyText(value:string) { try { await navigator.clipboard.writeText(value); toast.success('已复制') } catch { toast.error('复制失败') } }

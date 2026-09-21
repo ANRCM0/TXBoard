@@ -137,7 +137,10 @@ class UserController extends Controller
         }
 
         collect($request->input('sort'))->each(function ($sort) use ($builder) {
-            $field = $sort['id'];
+            $field = match ($sort['id']) {
+                'total_used' => DB::raw('(u + d)'),
+                default => $sort['id']
+            };
             $direction = $sort['desc'] ? 'DESC' : 'ASC';
             $builder->orderBy($field, $direction);
         });

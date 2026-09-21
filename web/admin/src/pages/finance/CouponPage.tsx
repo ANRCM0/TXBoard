@@ -262,12 +262,12 @@ function buildPayload(draft: Draft, id?: number): CouponPayload {
     ...(draft.code.trim() ? { code: draft.code.trim() } : {}),
     type: draft.type,
     value: draft.type === 1 ? Math.round(Number(draft.value) * 100) : Number(draft.value),
-    ...(draft.limit_use !== '' ? { limit_use: Number(draft.limit_use) } : {}),
-    ...(draft.limit_use_with_user !== '' ? { limit_use_with_user: Number(draft.limit_use_with_user) } : {}),
-    ...(draft.limit_plan_ids.length ? { limit_plan_ids: draft.limit_plan_ids } : {}),
-    ...(draft.limit_period.length ? { limit_period: draft.limit_period } : {}),
-    ...(draft.started_at ? { started_at: toTs(draft.started_at) } : {}),
-    ...(draft.ended_at ? { ended_at: toTs(draft.ended_at) } : {}),
+    ...(draft.limit_use !== '' ? { limit_use: Number(draft.limit_use) } : id ? { limit_use: null } : {}),
+    ...(draft.limit_use_with_user !== '' ? { limit_use_with_user: Number(draft.limit_use_with_user) } : id ? { limit_use_with_user: null } : {}),
+    ...(draft.limit_plan_ids.length ? { limit_plan_ids: draft.limit_plan_ids } : id ? { limit_plan_ids: [] } : {}),
+    ...(draft.limit_period.length ? { limit_period: draft.limit_period } : id ? { limit_period: [] } : {}),
+    ...(draft.started_at ? { started_at: toTs(draft.started_at) } : id ? { started_at: null } : {}),
+    ...(draft.ended_at ? { ended_at: toTs(draft.ended_at) } : id ? { ended_at: null } : {}),
   }
   return payload
 }

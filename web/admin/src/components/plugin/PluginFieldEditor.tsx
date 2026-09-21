@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type {
   PluginAdminCrudFormField,
   PluginAdminCrudSchema,
@@ -110,6 +110,7 @@ function PluginField({
           onChange(matched?.value ?? raw)
         }}
       >
+        {!field.required && <option value="">未选择</option>}
         {field.options.map(option => <option key={String(option.value)} value={String(option.value)}>
           {option.label ?? option.value}
         </option>)}
@@ -180,8 +181,14 @@ function JsonPluginField({
   }
   const [text, setText] = useState(() => serialize(value))
   const [error, setError] = useState('')
+  const lastEmitted = useRef(serialize(value))
 
-  useEffect(() => setText(serialize(value)), [value])
+  useEffect(() => {
+    const serialized = serialize(value)
+    if (serialized === lastEmitted.current) return
+    lastEmitted.current = serialized
+    setText(serialized)
+  }, [value])
 
   return <label className="field plugin-field-wide">
     <span>{label}{required && <em className="required-mark"> *</em>}</span>
@@ -195,6 +202,7 @@ function JsonPluginField({
         try {
           const parsed = JSON.parse(next)
           setError('')
+          lastEmitted.current = serialize(parsed)
           onChange(parsed)
         } catch {
           setError('JSON 格式有误')

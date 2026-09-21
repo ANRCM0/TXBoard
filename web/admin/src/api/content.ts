@@ -39,7 +39,10 @@ export async function getKnowledgePage(params: { current?: number; pageSize?: nu
 
 export async function getKnowledgeAll() {
   const { data } = await apiClient.get('/knowledge/fetch')
-  return normalizeList<KnowledgeItem>(data)
+  const first = normalizePage<KnowledgeItem>(data)
+  if (first.total <= first.data.length) return first.data
+  const { data: full } = await apiClient.get('/knowledge/fetch', { params: { current: 1, pageSize: first.total } })
+  return normalizePage<KnowledgeItem>(full, 1, first.total).data
 }
 
 export async function getKnowledgeDetail(id: number) {
@@ -79,7 +82,10 @@ export async function getNoticePage(params: { current?: number; pageSize?: numbe
 
 export async function getNoticeAll() {
   const { data } = await apiClient.get('/notice/fetch')
-  return normalizeList<NoticeItem>(data)
+  const first = normalizePage<NoticeItem>(data)
+  if (first.total <= first.data.length) return first.data
+  const { data: full } = await apiClient.get('/notice/fetch', { params: { current: 1, pageSize: first.total } })
+  return normalizePage<NoticeItem>(full, 1, first.total).data
 }
 
 export async function saveNotice(payload: NoticeItem) {
@@ -127,7 +133,7 @@ function normalizePage<T>(raw: unknown, current = 1, pageSize = 20): ContentPage
     total: list.length,
     current_page: current,
     per_page: pageSize,
-    last_page: Math.max(1, Math.ceil(list.length / pageSize)),
+    last_page: Math.max(1, Math.ceil(list.length / Math.max(1, pageSize))),
     data: list,
   }
 }

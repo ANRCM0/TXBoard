@@ -267,8 +267,8 @@ export function UsersPage() {
               <td><TrafficCell user={user}/></td>
               <td>{formatExpire(user.expired_at)}</td>
               <td>
-                <strong>¥ {Number(user.balance || 0).toFixed(2)}</strong>
-                {Number(user.commission_balance || 0) > 0 && <small className="table-sub">佣金 ¥ {Number(user.commission_balance).toFixed(2)}</small>}
+                <strong>¥ {(Number(user.balance || 0) / 100).toFixed(2)}</strong>
+                {Number(user.commission_balance || 0) > 0 && <small className="table-sub">佣金 ¥ {(Number(user.commission_balance) / 100).toFixed(2)}</small>}
               </td>
               <td>{Number(user.online_count || 0)}</td>
               <td><span className={Boolean(user.banned) ? 'status off' : 'status ok'}>{user.banned ? '已封禁' : '正常'}</span></td>

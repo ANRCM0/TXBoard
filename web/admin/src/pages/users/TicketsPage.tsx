@@ -179,7 +179,8 @@ function TicketDetailModal({
   }, [query.data])
 
   useEffect(() => {
-    if (ticketId !== null) setReply('')
+    setDetail(null)
+    setReply('')
   }, [ticketId])
 
   const replyMutation = useMutation({

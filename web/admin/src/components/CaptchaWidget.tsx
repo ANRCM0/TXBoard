@@ -32,6 +32,7 @@ export const CaptchaWidget = forwardRef<CaptchaWidgetHandle, { config: GuestConf
     useEffect(() => {
       configRef.current = config
       void controller.mount()
+      return () => controller.dispose()
     }, [controller, config])
 
     useImperativeHandle(

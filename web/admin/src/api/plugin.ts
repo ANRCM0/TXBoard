@@ -180,7 +180,8 @@ export function resolvePluginCrudApiPath(
   schema?: PluginAdminCrudSchema,
 ) {
   const configured = schema?.api?.[action]?.trim()
-  return configured || null
+  if (!configured || /^https?:\/\//i.test(configured) || configured.startsWith('//') || !configured.startsWith('/')) return null
+  return configured
 }
 
 export async function fetchPluginCrudList(
@@ -254,7 +255,7 @@ function normalizeCrudPage(raw: unknown, current = 1, pageSize = 20): PluginCrud
       total: raw.length,
       current_page: current,
       per_page: pageSize,
-      last_page: Math.max(1, Math.ceil(raw.length / pageSize)),
+      last_page: Math.max(1, Math.ceil(raw.length / Math.max(1, pageSize))),
       data: raw as Record<string, unknown>[],
     }
   }
@@ -271,7 +272,7 @@ function normalizeCrudPage(raw: unknown, current = 1, pageSize = 20): PluginCrud
     total: Number(source.total ?? rows.length),
     current_page: Number(source.current_page ?? current),
     per_page: Number(source.per_page ?? pageSize),
-    last_page: Number(source.last_page ?? Math.max(1, Math.ceil(Number(source.total ?? rows.length) / pageSize))),
+    last_page: Number(source.last_page ?? Math.max(1, Math.ceil(Number(source.total ?? rows.length) / Math.max(1, pageSize)))),
     data: rows,
   }
 }

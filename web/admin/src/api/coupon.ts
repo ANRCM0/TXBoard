@@ -1,3 +1,5 @@
+import { type AxiosError } from 'axios'
+import { toast } from 'sonner'
 import { apiClient } from './client'
 import { unwrap } from '../lib/api'
 
@@ -66,19 +68,29 @@ export async function deleteCoupon(id: number) {
 }
 
 export async function generateCouponsCsv(payload: CouponPayload & { generate_count: number }) {
-  const response = await apiClient.post('/coupon/generate', payload, {
-    responseType: 'blob',
-  })
-  const blob = response.data as Blob
-  const url = URL.createObjectURL(blob)
   try {
+    const response = await apiClient.post('/coupon/generate', payload, {
+      responseType: 'blob',
+    })
+    const blob = response.data as Blob
+    const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
     link.download = 'coupons.csv'
     document.body.appendChild(link)
     link.click()
     link.remove()
-  } finally {
-    URL.revokeObjectURL(url)
+    setTimeout(() => URL.revokeObjectURL(url), 1000)
+  } catch (error) {
+    const data = (error as AxiosError).response?.data
+    if (data instanceof Blob) {
+      try {
+        const message = (JSON.parse(await data.text()) as { message?: string }).message
+        if (message) toast.error(message)
+      } catch {
+        void 0
+      }
+    }
+    throw error
   }
 }
