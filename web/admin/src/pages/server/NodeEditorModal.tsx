@@ -354,7 +354,10 @@ export function NodeEditorModal({
 
   useEffect(() => {
     if (open) setDraft(draftFromNode(node, protocolDefinitions))
-  }, [open, node?.id, protocolDefinitions])
+    // Protocol definitions may refresh while the modal is open. Do not reset
+    // in-progress input merely because query data received a new reference.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, node?.id])
 
   const updateProtocol = (path: string, value: unknown) => {
     setDraft((current) => ({
