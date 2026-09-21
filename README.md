@@ -1,7 +1,7 @@
 # TXBoard
 
 > 面向代理服务与节点网络的现代化 Control Plane。  
-> TXBoard 是独立维护的控制面产品；对历史 Xboard 接口仅保留明确标注的兼容层，并持续收敛内部命名空间。
+> TXBoard 是独立维护的控制面产品，应用、运行时、部署与扩展接口统一使用 TXBoard 命名空间。
 
 TXBoard 负责用户、订阅、订单、支付、节点、机器、流量、工单、内容、主题与插件等控制面能力。节点运行时不再内嵌在本仓库中，而由独立的 [TX-Node](https://github.com/PaiMonCai/TX-Node) 提供，通过 HTTP / WebSocket 协议与 TXBoard 通信。
 
@@ -40,7 +40,7 @@ ghcr.io/paimoncai/txboard
 
 ### 扩展体系
 
-- **Theme System**：默认系统主题为 TXBoard，同时兼容旧实例保存的 `Xboard` 主题标识，并支持安装、切换和配置自定义主题
+- **Theme System**：默认系统主题为 TXBoard，支持安装、切换和配置自定义主题
 - **Plugin System**：支持核心插件、第三方 ZIP、Schema 驱动 UI，以及 Plugin Package v1 自带 Admin App
 - **AccessAudit**：独立官方插件仓库 [TXBoard-AccessAudit](https://github.com/PaiMonCai/TXBoard-AccessAudit)，作为 Plugin Package v1 参考实现
 - 支付、通知等能力可通过插件继续扩展
@@ -307,7 +307,7 @@ TXBoard **保留主题体系**，主题不是临时兼容代码。
 
 后台支持主题发现、ZIP 上传、切换、配置与删除。
 
-现代 User SPA 位于 `web/user/`。旧实例若保存了 `frontend_theme=Xboard` / `current_theme=Xboard`，运行时会自动映射到 `TXBoard`，无需保留旧目录。后续主题系统可以继续向“统一 Theme Package”演进。
+现代 User SPA 位于 `web/user/`。历史默认品牌值由数据库 migration 一次性迁移到 TXBoard；运行时不再保留旧主题命名别名。后续主题系统可以继续向“统一 Theme Package”演进。
 
 ---
 
@@ -476,7 +476,7 @@ TXBoard/
 ├── api/                         Laravel Control Plane
 │   ├── app/
 │   ├── plugins-core/            内置插件
-│   ├── theme/                   系统 / 兼容主题
+│   ├── theme/                   系统主题
 │   └── storage/theme/           用户主题
 │
 ├── web/
