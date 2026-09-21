@@ -56,7 +56,11 @@ async function quickLogin(){
     success.value=t('profile.quickCopied')
   }catch(e){error.value=errorMessage(e)}finally{acting.value=false}
 }
-function date(value:string|null){return value?new Date(value).toLocaleString(locale.value):'-'}
+function date(value:string|null){
+  if(!value)return '-'
+  const normalized=/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(value)?value.replace(' ','T'):value
+  return new Date(normalized).toLocaleString(locale.value)
+}
 </script>
 
 <template>
@@ -99,7 +103,7 @@ function date(value:string|null){return value?new Date(value).toLocaleString(loc
       <header class="xboard-card-header">{{ t('profile.sessions') }}</header>
       <div class="responsive-table profile-session-table">
         <table>
-          <thead><tr><th>Session</th><th>{{ t('profile.created',{time:''}).replace(/s*$/,'') }}</th><th>{{ t('profile.lastUsed',{time:''}).replace(/s*$/,'') }}</th><th>{{ t('common.actions') }}</th></tr></thead>
+          <thead><tr><th>Session</th><th>{{ t('profile.created',{time:''}).replace(/\s*$/,'') }}</th><th>{{ t('profile.lastUsed',{time:''}).replace(/\s*$/,'') }}</th><th>{{ t('common.actions') }}</th></tr></thead>
           <tbody>
             <tr v-for="session in sessions" :key="session.id">
               <td>{{ session.name||('Session #'+session.id) }}</td>

@@ -39,12 +39,12 @@ const form=reactive({
   inviteCode:'',
 })
 
-const registrationDisabled=computed(()=>guest.value?.stop_register===1||guest.value?.register_enable===0)
-const needsEmailCode=computed(()=>guest.value?.is_email_verify===1)
-const showCaptcha=computed(()=>guest.value?.is_captcha===1)
-const showMailLink=computed(()=>guest.value?.login_with_mail_link_enable===1)
+const registrationDisabled=computed(()=>Number(guest.value?.stop_register)===1||Number(guest.value?.register_enable)===0)
+const needsEmailCode=computed(()=>Number(guest.value?.is_email_verify)===1)
+const showCaptcha=computed(()=>Number(guest.value?.is_captcha)===1)
+const showMailLink=computed(()=>Number(guest.value?.login_with_mail_link_enable)===1)
 const telegramLoginEndpoint=computed(()=>guest.value?.telegram_login_endpoint?.trim()||'')
-const inviteRequired=computed(()=>guest.value?.is_invite_force===1)
+const inviteRequired=computed(()=>Number(guest.value?.is_invite_force)===1)
 const termsRequired=computed(()=>Boolean(guest.value?.tos_url))
 const telegramAuthUrl=computed(()=>{
   const value=guest.value?.telegram_login_domain?.trim()
@@ -53,7 +53,7 @@ const telegramAuthUrl=computed(()=>{
   const base=guest.value?.app_url?.replace(/\/$/,'')
   return base?base+'/'+value.replace(/^\//,''):undefined
 })
-const showTelegram=computed(()=>guest.value?.telegram_login_enable===1&&Boolean(guest.value?.telegram_bot_username)&&Boolean(telegramAuthUrl.value||telegramLoginEndpoint.value))
+const showTelegram=computed(()=>Number(guest.value?.telegram_login_enable)===1&&Boolean(guest.value?.telegram_bot_username)&&Boolean(telegramAuthUrl.value||telegramLoginEndpoint.value))
 
 watch(()=>route.query.tab,value=>{
   tab.value=value==='register'||value==='forget'?value:'login'
@@ -253,7 +253,7 @@ async function sendCode(){
             />
           </label>
 
-          <label v-if="tab==='register'&&guest?.invite_enable!==0" class="auth-field">
+          <label v-if="tab==='register'&&Number(guest?.invite_enable)!==0" class="auth-field">
             <span>{{ t('auth.inviteCode') }}</span>
             <input
               v-model="form.inviteCode"

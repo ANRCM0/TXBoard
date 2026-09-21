@@ -79,7 +79,8 @@ async function transfer(){
   error.value=''
   success.value=''
   if(!(amount>0)){error.value=t('invite.invalidAmount');return}
-  if(amount>available.value){error.value=t('invite.insufficient');return}
+  if(!/^\d+(\.\d{1,2})?$/.test(transferAmount.value.trim())){error.value=t('invite.invalidAmount');return}
+  if(Math.round(amount*100)>Math.round(available.value*100)){error.value=t('invite.insufficient');return}
   if(transferMinimum.value>0&&amount<transferMinimum.value){error.value=t('invite.minimum',{amount:moneyMajor(transferMinimum.value)});return}
   acting.value=true
   try{

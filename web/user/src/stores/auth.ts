@@ -8,7 +8,7 @@ export const useAuthStore = defineStore('auth', () => {
   const user = ref<UserInfo | null>(null)
   const loading = ref(false)
   const authenticated = ref(Boolean(getAuthData()))
-  const hasToken = computed(() => Boolean(getAuthData()))
+  const hasToken = computed(() => authenticated.value)
 
   async function login(form: LoginForm) {
     loading.value = true
@@ -38,9 +38,12 @@ export const useAuthStore = defineStore('auth', () => {
       authenticated.value = true
       return user.value
     } catch (error) {
-      clearAuthData()
-      user.value = null
-      authenticated.value = false
+      const status = (error as { response?: { status?: number } })?.response?.status
+      if (status === 401 || status === 403) {
+        clearAuthData()
+        user.value = null
+        authenticated.value = false
+      }
       throw error
     }
   }

@@ -45,10 +45,11 @@ watch(
 )
 
 function sync(){
+  const trimmed=local.value.trim()
   emit(
     'update:modelValue',
     enabled.value
-      ? local.value.trim()+(suffix.value?'@'+suffix.value:'')
+      ? (trimmed?trimmed+(suffix.value?'@'+suffix.value:''):'')
       : local.value,
   )
 }

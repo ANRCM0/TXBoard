@@ -7,6 +7,7 @@ const props=defineProps<{show:boolean;subscribeUrl:string;siteTitle?:string}>()
 const emit=defineEmits<{close:[];copied:[]}>()
 const {t}=useI18n()
 const selectedTypes=ref<string[]>(['auto'])
+const copyError=ref('')
 
 watch(()=>props.show,open=>{if(open)selectedTypes.value=['auto']})
 const filteredUrl=computed(()=>appendSubscribeTypes(props.subscribeUrl,selectedTypes.value))
@@ -21,7 +22,12 @@ function toggleType(value:string){
   if(!selectedTypes.value.length)selectedTypes.value=['auto']
 }
 async function clickClient(client:ReturnType<typeof buildImportClients>[number]){
-  if(client.action==='copy'){await navigator.clipboard.writeText(filteredUrl.value);emit('copied');return}
+  if(client.action==='copy'){
+    copyError.value=''
+    try{await navigator.clipboard.writeText(filteredUrl.value);emit('copied')}
+    catch{copyError.value=t('dashboard.copyFailed')}
+    return
+  }
   if(client.url)window.location.href=client.url
 }
 </script>
@@ -41,6 +47,7 @@ async function clickClient(client:ReturnType<typeof buildImportClients>[number])
         </button>
       </div>
       <div v-if="!clients.length" class="empty-state">{{ t('client.empty') }}</div>
+      <div v-if="copyError" class="empty-state">{{ copyError }}</div>
     </div>
   </div>
 </template>

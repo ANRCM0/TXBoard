@@ -14,6 +14,7 @@ export async function fetchKnowledge(language?: string) {
   const data = await request<KnowledgeItem[] | GroupedKnowledge>(
     api.get('/user/knowledge/fetch', { params: language ? { language } : undefined }),
   )
+  if (!data) return []
   return Array.isArray(data) ? data : Object.values(data).flat()
 }
 

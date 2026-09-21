@@ -37,15 +37,32 @@ api.interceptors.response.use(
     if (error?.response?.status === 403) {
       const message = String(error?.response?.data?.message || '')
       if (/login|token|auth|登录|认证|过期/i.test(message)) {
-        clearAuthData()
-        if (!window.location.hash.includes('/login')) {
-          window.location.hash = '#/login'
-        }
+        forceLogout()
       }
     }
     return Promise.reject(error)
   },
 )
+
+function forceLogout() {
+  clearAuthData()
+  void (async () => {
+    try {
+      const { useAuthStore } = await import('../stores/auth')
+      const auth = useAuthStore()
+      auth.user = null
+      auth.authenticated = false
+    } catch {}
+    try {
+      const { useUserCommConfig } = await import('../composables/useUserCommConfig')
+      useUserCommConfig().reset()
+    } catch {}
+  })()
+  if (!window.location.hash.includes('/login')) {
+    const redirect = window.location.hash.replace(/^#/, '') || '/'
+    window.location.hash = '#/login?redirect=' + encodeURIComponent(redirect)
+  }
+}
 
 export function saveAuthData(authData: string) {
   const normalized = normalizeAuthorization(authData)
