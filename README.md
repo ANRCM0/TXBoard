@@ -1,7 +1,7 @@
 # TXBoard
 
 > 面向代理服务与节点网络的现代化 Control Plane。  
-> 基于 Xboard 演进，保留兼容能力，同时将前端、节点、主题、插件和部署体系重新拆分为清晰的边界。
+> TXBoard 是独立维护的控制面产品；对历史 Xboard 接口仅保留明确标注的兼容层，并持续收敛内部命名空间。
 
 TXBoard 负责用户、订阅、订单、支付、节点、机器、流量、工单、内容、主题与插件等控制面能力。节点运行时不再内嵌在本仓库中，而由独立的 [TX-Node](https://github.com/PaiMonCai/TX-Node) 提供，通过 HTTP / WebSocket 协议与 TXBoard 通信。
 
@@ -40,7 +40,7 @@ ghcr.io/paimoncai/txboard
 
 ### 扩展体系
 
-- **Theme System**：保留 Xboard 兼容主题，同时支持安装、切换和配置自定义主题
+- **Theme System**：默认系统主题为 TXBoard，同时兼容旧实例保存的 `Xboard` 主题标识，并支持安装、切换和配置自定义主题
 - **Plugin System**：支持核心插件、第三方 ZIP、Schema 驱动 UI，以及 Plugin Package v1 自带 Admin App
 - **AccessAudit**：独立官方插件仓库 [TXBoard-AccessAudit](https://github.com/PaiMonCai/TXBoard-AccessAudit)，作为 Plugin Package v1 参考实现
 - 支付、通知等能力可通过插件继续扩展
@@ -152,7 +152,7 @@ ghcr.io/paimoncai/txboard:<tag>
 cp .env.example .env
 cp api/.env.example api/.env
 docker compose up -d --build --remove-orphans --wait
-docker compose exec -it txboard php artisan xboard:install
+docker compose exec -it txboard php artisan txboard:install
 ```
 
 ---
@@ -193,8 +193,8 @@ MySQL 和备份任务由 TXBoard-Deploy 生成的 Compose 作为基础设施服�
 
 - TXBoard image
 - `GET /api/health`
-- `php artisan xboard:install`
-- `php artisan xboard:install-status`
+- `php artisan txboard:install`
+- `php artisan txboard:install-status`
 
 它不依赖本仓库源码目录结构。
 
@@ -212,7 +212,7 @@ TXBoard 容器健康状态同时验证：
 安装状态以**数据库中真实存在管理员账号**为准，`.env` 中的 `INSTALLED` 只作为持久化标记。若出现旧标记与数据库不一致，重新执行：
 
 ```bash
-docker compose exec -T txboard php artisan xboard:install
+docker compose exec -T txboard php artisan txboard:install
 ```
 
 安装命令会自动修复标记并补齐基础设置（`secure_path`、`app_name`、`app_url`）。
@@ -302,12 +302,12 @@ TXBoard **保留主题体系**，主题不是临时兼容代码。
 
 当前有两层：
 
-1. `api/theme/`：随项目发布的系统主题与 Xboard 兼容主题
+1. `api/theme/`：随项目发布的 TXBoard 系统主题
 2. `api/storage/theme/`：用户安装的主题
 
 后台支持主题发现、ZIP 上传、切换、配置与删除。
 
-现代 User SPA 位于 `web/user/`，而 Xboard legacy theme 仍作为兼容路径存在。后续主题系统可以继续向“统一 Theme Package”演进，而不需要删除 Theme Runtime。
+现代 User SPA 位于 `web/user/`。旧实例若保存了 `frontend_theme=Xboard` / `current_theme=Xboard`，运行时会自动映射到 `TXBoard`，无需保留旧目录。后续主题系统可以继续向“统一 Theme Package”演进。
 
 ---
 
@@ -504,7 +504,7 @@ TXBoard/
 ## 文档
 
 - [Architecture](docs/architecture/README.md)
-- [HTTP Contract Audit](contracts/http/xboard-api-contract-audit.md)
+- [HTTP Compatibility Audit](contracts/http/txboard-api-compatibility-audit.md)
 - [TX-Node Protocol](contracts/node-protocol/README.md)
 - [Plugin Development Guide](api/docs/en/development/plugin-development-guide.md)
 - [TXBoard-Deploy](https://github.com/PaiMonCai/TXBoard-Deploy)
