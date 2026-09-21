@@ -265,7 +265,6 @@ class ThemeService
      */
     public function getThemePath(string $theme): ?string
     {
-        $theme = $this->normalizeThemeName($theme) ?? $theme;
         $systemPath = base_path(self::SYSTEM_THEME_DIR . $theme);
         if (File::exists($systemPath)) {
             return $systemPath;
@@ -284,7 +283,6 @@ class ThemeService
      */
     public function getConfig(string $theme): ?array
     {
-        $theme = $this->normalizeThemeName($theme) ?? $theme;
         $config = admin_setting(self::SETTING_PREFIX . $theme);
 
         if ($config === null) {
@@ -300,7 +298,6 @@ class ThemeService
      */
     public function updateConfig(string $theme, array $config): bool
     {
-        $theme = $this->normalizeThemeName($theme) ?? $theme;
 
         try {
             if (!$this->getThemePath($theme)) {
@@ -334,7 +331,6 @@ class ThemeService
      */
     private function readConfigFile(string $theme): ?array
     {
-        $theme = $this->normalizeThemeName($theme) ?? $theme;
         $themePath = $this->getThemePath($theme);
         if (!$themePath) {
             return null;
@@ -413,7 +409,6 @@ class ThemeService
      */
     private function initConfig(string $theme, bool $preserveExisting = false): void
     {
-        $theme = $this->normalizeThemeName($theme) ?? $theme;
         $config = $this->readConfigFile($theme);
         if (!$config) {
             return;
