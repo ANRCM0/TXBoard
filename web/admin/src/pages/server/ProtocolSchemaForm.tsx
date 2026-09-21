@@ -37,15 +37,20 @@ function JsonSchemaField({
   value: unknown
   onChange: (value: unknown) => void
 }) {
-  const format = (input: unknown) => JSON.stringify(input ?? {}, null, 2)
+  const arrayOnly = field.type === 'json-array'
+  const format = (input: unknown) => JSON.stringify(input ?? (arrayOnly ? [] : {}), null, 2)
   const [text, setText] = useState(format(value))
 
   useEffect(() => setText(format(value)), [value])
 
   const commit = () => {
     try {
-      const parsed = text.trim() ? JSON.parse(text) : {}
-      if (!isRecord(parsed) && !Array.isArray(parsed)) {
+      const parsed = text.trim() ? JSON.parse(text) : (arrayOnly ? [] : {})
+      if (arrayOnly && !Array.isArray(parsed)) {
+        toast.error(field.label + ' 必须是 JSON 数组')
+        return
+      }
+      if (!arrayOnly && !isRecord(parsed) && !Array.isArray(parsed)) {
         toast.error(field.label + ' 必须是 JSON 对象或数组')
         return
       }
@@ -91,13 +96,39 @@ export function ProtocolSchemaForm({
         </label>
       }
 
-      if (field.type === 'json') {
+      if (field.type === 'json' || field.type === 'json-array') {
         return <JsonSchemaField
           key={field.key}
           field={field}
           value={current}
           onChange={(next) => onChange(field.key, next)}
         />
+      }
+
+      if (field.type === 'string-list') {
+        const separator = field.separator === 'newline' ? '\n' : ', '
+        const splitPattern = field.separator === 'newline' ? /\r?\n/ : /,/
+        const items = Array.isArray(current) ? current.map(String) : []
+        return <label key={field.key} className={'field' + className}>
+          <span>{field.label}</span>
+          {field.separator === 'newline'
+            ? <textarea
+                value={items.join(separator)}
+                placeholder={field.placeholder}
+                onChange={(event) => onChange(
+                  field.key,
+                  event.target.value.split(splitPattern).map((item) => item.trim()).filter(Boolean),
+                )}
+              />
+            : <input
+                value={items.join(separator)}
+                placeholder={field.placeholder}
+                onChange={(event) => onChange(
+                  field.key,
+                  event.target.value.split(splitPattern).map((item) => item.trim()).filter(Boolean),
+                )}
+              />}
+        </label>
       }
 
       if (field.type === 'select') {
