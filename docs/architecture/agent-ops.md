@@ -6,6 +6,17 @@
 >
 > Goal: expose safe, auditable and model-friendly operations without granting an Agent arbitrary shell access.
 
+## Documentation map
+
+- **This document**: stable architecture, trust boundaries, risk model and implemented operating model.
+- [Agent Ops 进度与阶段复盘](./agent-ops-progress.md): delivery history, merged milestones, engineering lessons, current limitations and roadmap.
+- [Agent Ops 开发指南](./agent-ops-development-guide.md): concrete extension workflow, file touchpoints, test matrix and Definition of Done.
+- [Agent Ops HTTP Contract](../../contracts/http/agent-ops-v1.md): public Agent HTTP semantics.
+- [Node Ops Protocol v1](../../contracts/node-protocol/agent-ops-v1.md): TXBoard ↔ TX-Node typed operation contract.
+
+When implementation changes, update the contract first, then the progress/development documents if the delivery state or development rules changed.
+
+
 ## 1. Overview
 
 TXBoard Agent Ops is the AI operations layer for TXBoard.
