@@ -12,12 +12,15 @@ import {
   revokeAgentToken,
   type AgentActionItem,
 } from '../../api/agent'
+import { getMachines, getNodes } from '../../api/server'
 import { PageHeader } from '../../components/ui/PageHeader'
 
 export function AgentOpsPage() {
   const qc = useQueryClient()
   const abilities = useQuery({ queryKey: ['agentAbilities'], queryFn: getAgentAbilities })
   const tokens = useQuery({ queryKey: ['agentTokens'], queryFn: getAgentTokens })
+  const nodes = useQuery({ queryKey: ['agentScopeNodes'], queryFn: getNodes })
+  const machines = useQuery({ queryKey: ['agentScopeMachines'], queryFn: getMachines })
   const actions = useQuery({
     queryKey: ['agentActions'],
     queryFn: () => getAgentActions(),
@@ -27,6 +30,9 @@ export function AgentOpsPage() {
   const [clientName, setClientName] = useState('')
   const [expires, setExpires] = useState(30)
   const [selected, setSelected] = useState<string[]>([])
+  const [targetMode, setTargetMode] = useState<'all' | 'restricted'>('all')
+  const [targetNodeIds, setTargetNodeIds] = useState<number[]>([])
+  const [targetMachineIds, setTargetMachineIds] = useState<number[]>([])
   const [plainToken, setPlainToken] = useState('')
 
   useEffect(() => {
@@ -40,6 +46,9 @@ export function AgentOpsPage() {
     onSuccess: data => {
       setPlainToken(data?.plain_text_token || '')
       setClientName('')
+      setTargetMode('all')
+      setTargetNodeIds([])
+      setTargetMachineIds([])
       void qc.invalidateQueries({ queryKey: ['agentTokens'] })
       toast.success('Agent Token 已创建，仅本次显示明文')
     },
@@ -80,6 +89,14 @@ export function AgentOpsPage() {
       current.includes(ability)
         ? current.filter(item => item !== ability)
         : [...current, ability],
+    )
+  }
+
+  function toggleNumber(value: number, setter: React.Dispatch<React.SetStateAction<number[]>>) {
+    setter(current =>
+      current.includes(value)
+        ? current.filter(item => item !== value)
+        : [...current, value],
     )
   }
 
@@ -139,16 +156,85 @@ export function AgentOpsPage() {
           </div>
         </div>
 
+        <div className="form-stack">
+          <span>资源范围</span>
+          <div className="chip-list">
+            <label className="badge">
+              <input
+                type="radio"
+                name="agent-target-mode"
+                checked={targetMode === 'all'}
+                onChange={() => setTargetMode('all')}
+              />
+              全部节点 / 机器
+            </label>
+            <label className="badge">
+              <input
+                type="radio"
+                name="agent-target-mode"
+                checked={targetMode === 'restricted'}
+                onChange={() => setTargetMode('restricted')}
+              />
+              限定资源
+            </label>
+          </div>
+
+          {targetMode === 'restricted' ? (
+            <>
+              <div>
+                <strong>机器</strong>
+                <div className="chip-list">
+                  {(machines.data || []).map(machine => (
+                    <label className="badge" key={machine.id}>
+                      <input
+                        type="checkbox"
+                        checked={targetMachineIds.includes(machine.id)}
+                        onChange={() => toggleNumber(machine.id, setTargetMachineIds)}
+                      />
+                      {machine.name || `Machine #${machine.id}`}
+                    </label>
+                  ))}
+                  {!machines.data?.length ? <span className="text-muted">暂无机器</span> : null}
+                </div>
+              </div>
+              <div>
+                <strong>单独节点</strong>
+                <div className="chip-list">
+                  {(nodes.data || []).map(node => (
+                    <label className="badge" key={node.id}>
+                      <input
+                        type="checkbox"
+                        checked={targetNodeIds.includes(node.id)}
+                        onChange={() => toggleNumber(node.id, setTargetNodeIds)}
+                      />
+                      {node.name || `Node #${node.id}`}
+                    </label>
+                  ))}
+                  {!nodes.data?.length ? <span className="text-muted">暂无节点</span> : null}
+                </div>
+              </div>
+            </>
+          ) : null}
+        </div>
+
         <div>
           <button
             type="button"
             className="button button-primary"
-            disabled={!clientName.trim() || !selected.length || createToken.isPending}
+            disabled={
+              !clientName.trim() ||
+              !selected.length ||
+              createToken.isPending ||
+              (targetMode === 'restricted' && !targetNodeIds.length && !targetMachineIds.length)
+            }
             onClick={() =>
               createToken.mutate({
                 client_name: clientName.trim(),
                 abilities: selected,
                 expires_in_days: expires,
+                target_mode: targetMode,
+                target_node_ids: targetNodeIds,
+                target_machine_ids: targetMachineIds,
               })
             }
           >
@@ -181,6 +267,7 @@ export function AgentOpsPage() {
               <tr>
                 <th>客户端</th>
                 <th>Abilities</th>
+                <th>资源范围</th>
                 <th>最后使用</th>
                 <th>过期时间</th>
                 <th>操作</th>
@@ -191,6 +278,7 @@ export function AgentOpsPage() {
                 <tr key={token.id}>
                   <td><strong>{token.client_name}</strong></td>
                   <td>{token.abilities?.length || 0} 项</td>
+                  <td>{formatScope(token.target_scope)}</td>
                   <td>{formatDate(token.last_used_at)}</td>
                   <td>{formatDate(token.expires_at)}</td>
                   <td>
@@ -207,7 +295,7 @@ export function AgentOpsPage() {
                 </tr>
               ))}
               {!tokens.data?.length ? (
-                <tr><td colSpan={5} className="empty-cell">{tokens.isLoading ? '加载中…' : '暂无 Agent Token'}</td></tr>
+                <tr><td colSpan={6} className="empty-cell">{tokens.isLoading ? '加载中…' : '暂无 Agent Token'}</td></tr>
               ) : null}
             </tbody>
           </table>
@@ -308,4 +396,13 @@ function formatDate(value?: string | null) {
   if (!value) return '-'
   const date = new Date(value)
   return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString()
+}
+
+
+function formatScope(scope?: { mode: 'all' | 'restricted'; node_ids: number[]; machine_ids: number[] }) {
+  if (!scope || scope.mode === 'all') return '全部资源'
+  const parts: string[] = []
+  if (scope.machine_ids.length) parts.push(`机器 ${scope.machine_ids.join(', ')}`)
+  if (scope.node_ids.length) parts.push(`节点 ${scope.node_ids.join(', ')}`)
+  return parts.join(' · ') || '无资源'
 }
