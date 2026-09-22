@@ -28,6 +28,7 @@ import { UserEditorModal } from '../../components/users/UserEditorModal'
 import { UserMailModal } from '../../components/users/UserMailModal'
 import { QueryFeedback } from '../../components/ui/QueryFeedback'
 import { PageHeader } from '../../components/ui/PageHeader'
+import { requestConfirm } from '../../components/ui/ConfirmDialog'
 
 const GB = 1024 * 1024 * 1024
 
@@ -234,7 +235,7 @@ export function UsersPage() {
         <button
           className="button danger"
           disabled={banSelected.isPending || query.isPlaceholderData || query.isFetching}
-          onClick={() => confirm('确认封禁所选用户？') && banSelected.mutate(Array.from(selected))}
+          onClick={() => requestConfirm({ title: '批量封禁', message: '确认封禁所选用户？被封禁用户将无法登录。', danger: true, confirmLabel: '封禁', action: () => banSelected.mutate(Array.from(selected)) })}
         ><Ban size={15}/>{banSelected.isPending ? '处理中…' : '批量封禁'}</button>
         <button className="button" onClick={() => setSelected(new Set())}>取消选择</button>
       </div>
@@ -291,13 +292,13 @@ export function UsersPage() {
                     className="icon-button"
                     title="重置订阅密钥"
                     disabled={resetSecret.isPending}
-                    onClick={() => confirm('重置后原订阅链接将失效，确认继续？') && resetSecret.mutate(user.id)}
+                    onClick={() => requestConfirm({ title: '重置订阅密钥', message: '重置后原订阅链接将失效，确认继续？', danger: true, confirmLabel: '重置', action: () => resetSecret.mutate(user.id) })}
                   ><KeyRound size={15}/></button>
                   <button
                     className="icon-button danger"
                     title="删除"
                     disabled={remove.isPending}
-                    onClick={() => confirm('删除用户会清理关联数据，且后端会拒绝删除仍有余额/处理中订单的用户。确认继续？') && remove.mutate(user.id)}
+                    onClick={() => requestConfirm({ title: '删除用户', message: '删除用户会清理关联数据，且后端会拒绝删除仍有余额/处理中订单的用户。确认继续？', danger: true, confirmLabel: '删除', action: () => remove.mutate(user.id) })}
                   ><Trash2 size={15}/></button>
                 </div>
               </td>

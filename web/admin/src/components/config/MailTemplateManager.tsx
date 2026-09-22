@@ -9,6 +9,7 @@ import {
   saveMailTemplate,
   testMailTemplate,
 } from '../../api/mail'
+import { requestConfirm } from '../ui/ConfirmDialog'
 
 export function MailTemplateManager() {
   const qc = useQueryClient()
@@ -93,7 +94,7 @@ export function MailTemplateManager() {
             <p>{detail.data?.customized ? '当前使用自定义模板' : '当前使用系统默认模板'}</p>
           </div>
           <div className="actions">
-            <button className="button" disabled={reset.isPending || !detail.data?.customized} onClick={() => confirm('确认恢复系统默认模板？') && reset.mutate()}><RotateCcw size={15}/>恢复默认</button>
+            <button className="button" disabled={reset.isPending || !detail.data?.customized} onClick={() => requestConfirm({ title: '恢复默认模板', message: '确认恢复系统默认模板？当前自定义内容将被覆盖。', danger: true, confirmLabel: '恢复', action: () => reset.mutate() })}><RotateCcw size={15}/>恢复默认</button>
             <button className="button primary" disabled={save.isPending || !subject || !content} onClick={() => save.mutate()}><Save size={15}/>{save.isPending ? '保存中…' : '保存'}</button>
           </div>
         </div>

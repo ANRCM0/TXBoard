@@ -14,6 +14,7 @@ import {
 import { getPlans } from '../../api/finance'
 import { Modal } from '../../components/ui/Modal'
 import { PageHeader } from '../../components/ui/PageHeader'
+import { requestConfirm } from '../../components/ui/ConfirmDialog'
 
 const PERIODS = [
   ['monthly', '月付'],
@@ -194,7 +195,7 @@ export function CouponPage() {
             <td><button className={Boolean(row.show) ? 'switch-control active' : 'switch-control'} onClick={() => toggle.mutate(row.id)}><span/></button></td>
             <td><div className="actions">
               <button className="icon-button" onClick={() => openEdit(row)}><Pencil size={15}/></button>
-              <button className="icon-button danger" onClick={() => confirm('确认删除该优惠券？') && remove.mutate(row.id)}><Trash2 size={15}/></button>
+              <button className="icon-button danger" onClick={() => requestConfirm({ title: '删除优惠券', message: '确认删除该优惠券？', danger: true, confirmLabel: '删除', action: () => remove.mutate(row.id) })}><Trash2 size={15}/></button>
             </div></td>
           </tr>)}
           {!rows.length && <tr><td colSpan={10} className="empty-cell">{query.isLoading ? '加载中…' : '暂无优惠券'}</td></tr>}

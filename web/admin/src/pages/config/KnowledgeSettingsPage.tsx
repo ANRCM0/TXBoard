@@ -16,6 +16,7 @@ import {
 import { MarkdownLite } from '../../components/ui/MarkdownLite'
 import { Modal } from '../../components/ui/Modal'
 import { PageHeader } from '../../components/ui/PageHeader'
+import { requestConfirm } from '../../components/ui/ConfirmDialog'
 
 const LANGUAGES = ['zh-CN', 'en-US', 'zh-TW', 'ru-RU'] as const
 
@@ -243,7 +244,7 @@ export function KnowledgeSettingsPage() {
                 <button
                   className="icon-button danger"
                   title="删除"
-                  onClick={() => row.id && confirm('确认删除「' + (row.title || row.id) + '」？') && remove.mutate(row.id)}
+                  onClick={() => { const id = row.id; if (id === undefined) return; requestConfirm({ title: '删除知识库文章', message: '确认删除「' + (row.title || row.id) + '」？', danger: true, confirmLabel: '删除', action: () => remove.mutate(id) }) }}
                 ><Trash2 size={15}/></button>
               </div></td>}
             </tr>)}

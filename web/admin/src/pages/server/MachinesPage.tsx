@@ -16,6 +16,7 @@ import { MachineNodeBinding } from '../../components/server/MachineNodeBinding'
 import { DataTable, type Column } from '../../components/ui/DataTable'
 import { Modal } from '../../components/ui/Modal'
 import { PageHeader } from '../../components/ui/PageHeader'
+import { requestConfirm } from '../../components/ui/ConfirmDialog'
 
 export function MachinesPage() {
   const qc = useQueryClient()
@@ -175,13 +176,13 @@ export function MachinesPage() {
             <button onClick={() => setBindingMachine(row)}><Cable size={15}/>节点绑定</button>
             <button onClick={() => setHistoryMachine(row)}><BarChart3 size={15}/>负载历史</button>
             <button
-              onClick={() => confirm('重置后旧 Token 将失效，确认继续？') && resetToken.mutate(row.id)}
+              onClick={() => requestConfirm({ title: '重置 Token', message: '重置后旧 Token 将失效，确认继续？', danger: true, confirmLabel: '重置', action: () => resetToken.mutate(row.id) })}
             >
               <RotateCcw size={15}/>重置 Token
             </button>
             <button
               className="danger"
-              onClick={() => confirm('确认删除机器？关联节点将自动解绑。') && remove.mutate(row.id)}
+              onClick={() => requestConfirm({ title: '删除机器', message: '确认删除机器？关联节点将自动解绑。', danger: true, confirmLabel: '删除', action: () => remove.mutate(row.id) })}
             >
               <Trash2 size={15}/>删除
             </button>
@@ -247,7 +248,7 @@ export function MachinesPage() {
             <button
               className="button"
               disabled={resetToken.isPending}
-              onClick={() => confirm('重置后旧 Token 将失效，确认继续？') && resetToken.mutate(tokenMachineId)}
+              onClick={() => requestConfirm({ title: '重置 Token', message: '重置后旧 Token 将失效，确认继续？', danger: true, confirmLabel: '重置', action: () => resetToken.mutate(tokenMachineId) })}
             >
               <RotateCcw size={16}/>{resetToken.isPending ? '重置中…' : '重置 Token'}
             </button>

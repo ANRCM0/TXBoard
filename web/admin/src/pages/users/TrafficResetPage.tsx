@@ -8,6 +8,7 @@ import {
   resetUserTraffic,
 } from '../../api/traffic-reset'
 import { PageHeader } from '../../components/ui/PageHeader'
+import { requestConfirm } from '../../components/ui/ConfirmDialog'
 
 export function TrafficResetPage() {
   const qc = useQueryClient()
@@ -65,7 +66,7 @@ export function TrafficResetPage() {
         <button
           className="button primary"
           disabled={resetMutation.isPending || !Number(resetUserId)}
-          onClick={() => confirm('确认将该用户已使用的上传/下载流量重置为 0？') && resetMutation.mutate()}
+          onClick={() => requestConfirm({ title: '重置流量', message: '确认将该用户已使用的上传/下载流量重置为 0？该操作不可恢复。', danger: true, confirmLabel: '执行重置', action: () => resetMutation.mutate() })}
         >{resetMutation.isPending ? '重置中…' : '执行重置'}</button>
       </div>
     </section>

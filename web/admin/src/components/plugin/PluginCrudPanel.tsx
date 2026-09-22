@@ -18,6 +18,7 @@ import {
   normalizePluginFields,
   PluginFieldEditor,
 } from './PluginFieldEditor'
+import { requestConfirm } from '../ui/ConfirmDialog'
 
 export function PluginCrudPanel({
   plugin,
@@ -193,7 +194,7 @@ export function PluginCrudPanel({
                     onClick={() => {
                       const id = row[idField]
                       if (id == null) return
-                      if (confirm('确认删除这条记录？')) remove.mutate({ [idField]: id })
+                      requestConfirm({ title: '删除记录', message: '确认删除这条记录？', danger: true, confirmLabel: '删除', action: () => remove.mutate({ [idField]: id }) })
                     }}
                   ><Trash2 size={15}/></button>}
                 </div>

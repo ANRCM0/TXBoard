@@ -12,6 +12,7 @@ import {
 } from '../../api/ticket'
 import { Modal } from '../../components/ui/Modal'
 import { PageHeader } from '../../components/ui/PageHeader'
+import { requestConfirm } from '../../components/ui/ConfirmDialog'
 
 export function TicketsPage() {
   const qc = useQueryClient()
@@ -250,7 +251,7 @@ function TicketDetailModal({
           <button
             className="button danger"
             disabled={closeMutation.isPending}
-            onClick={() => confirm('确认关闭该工单？') && closeMutation.mutate()}
+            onClick={() => requestConfirm({ title: '关闭工单', message: '确认关闭该工单？关闭后用户将无法继续回复。', danger: true, confirmLabel: '关闭工单', action: () => closeMutation.mutate() })}
           >关闭工单</button>
 
           <button

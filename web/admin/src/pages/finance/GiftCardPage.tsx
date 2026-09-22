@@ -22,6 +22,7 @@ import {
 import { JsonEditor } from '../../components/ui/JsonEditor'
 import { Modal } from '../../components/ui/Modal'
 import { PageHeader } from '../../components/ui/PageHeader'
+import { requestConfirm } from '../../components/ui/ConfirmDialog'
 
 const GB = 1024 * 1024 * 1024
 
@@ -147,7 +148,7 @@ function TemplatesPanel({ onGenerated }: { onGenerated: () => void }) {
               className="icon-button danger"
               title="删除"
               disabled={Number(template.codes_count || 0) > 0}
-              onClick={() => confirm('只有没有兑换码的模板可以删除。确认删除？') && remove.mutate(template.id)}
+              onClick={() => requestConfirm({ title: '删除礼品卡模板', message: '只有没有兑换码的模板可以删除。确认删除？', danger: true, confirmLabel: '删除', action: () => remove.mutate(template.id) })}
             ><Trash2 size={15}/></button>
           </div>
         </div>
@@ -439,7 +440,7 @@ function CodesPanel() {
         <td><code className="small-code">{code.batch_id || '-'}</code></td>
         <td><div className="actions">
           {(code.status === 0 || code.status === 3) && <button className="button compact-button" onClick={() => toggle.mutate({ id: code.id, action: code.status === 3 ? 'enable' : 'disable' })}>{code.status === 3 ? '启用' : '禁用'}</button>}
-          {code.status !== 1 && <button className="icon-button danger" onClick={() => confirm('确认删除该兑换码？') && remove.mutate(code.id)}><Trash2 size={14}/></button>}
+          {code.status !== 1 && <button className="icon-button danger" onClick={() => requestConfirm({ title: '删除兑换码', message: '确认删除该兑换码？', danger: true, confirmLabel: '删除', action: () => remove.mutate(code.id) })}><Trash2 size={14}/></button>}
         </div></td>
       </tr>)}
       {!rows.length && <tr><td colSpan={8} className="empty-cell">{query.isLoading ? '加载中…' : '暂无兑换码'}</td></tr>}
