@@ -12,6 +12,7 @@ import { fetchSettings, saveSettings } from './config'
 import { copyNode, generateSecret } from './server'
 import { resolvePluginAppUrl } from './plugin'
 import { getThemes } from './theme'
+import { getModuleRegistry } from './module'
 import { normalizePluginNavigationTarget } from '../plugins/bridge'
 
 type Seen = AxiosRequestConfig & { headers: Record<string, string> }
@@ -122,6 +123,60 @@ describe('theme adapter contract', () => {
       is_system: true,
       can_delete: false,
     })
+  })
+})
+
+describe('module registry contract', () => {
+  it('reads the unified Module Registry from GET /module only', async () => {
+    responder = () => ({
+      data: {
+        data: {
+          modules: [
+            {
+              id: 'theme.txboard',
+              name: 'TXBoard',
+              version: '1.0.0',
+              type: 'theme',
+              source: 'system',
+              installed: true,
+              enabled: true,
+              active: true,
+              health: 'healthy',
+              capabilities: ['theme'],
+              compatibility: { txboard: '*' },
+            },
+          ],
+          errors: [],
+          summary: {
+            total: 1,
+            health: {
+              healthy: 1,
+              degraded: 0,
+              disabled: 0,
+              failed: 0,
+              incompatible: 0,
+              missing_dependency: 0,
+            },
+            discovery_errors: 0,
+          },
+        },
+      },
+    })
+
+    const result = await getModuleRegistry()
+
+    expect(seen).toHaveLength(1)
+    expect(seen[0].method).toBe('get')
+    expect(seen[0].url).toBe('/module')
+    expect(result.modules).toHaveLength(1)
+    expect(result.modules[0]).toMatchObject({
+      id: 'theme.txboard',
+      type: 'theme',
+      source: 'system',
+      active: true,
+      health: 'healthy',
+    })
+    expect(result.summary.total).toBe(1)
   })
 })
 

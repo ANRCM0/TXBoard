@@ -8,6 +8,7 @@ const SignInPage = lazy(() => import('./pages/SignInPage').then(module => ({ def
 const DashboardPage = lazy(() => import('./pages/DashboardPage').then(module => ({ default: module.DashboardPage })))
 const AuditLogPage = lazy(() => import('./pages/system/AuditLogPage').then(module => ({ default: module.AuditLogPage })))
 const AgentOpsPage = lazy(() => import('./pages/system/AgentOpsPage').then(module => ({ default: module.AgentOpsPage })))
+const ModuleCenterPage = lazy(() => import('./pages/system/ModuleCenterPage').then(module => ({ default: module.ModuleCenterPage })))
 const SystemSettingsPage = lazy(() => import('./pages/config/SystemSettingsPage').then(module => ({ default: module.SystemSettingsPage })))
 const SafeSettingsPage = lazy(() => import('./pages/config/SafeSettingsPage').then(module => ({ default: module.SafeSettingsPage })))
 const SubscribeSettingsPage = lazy(() => import('./pages/config/SubscribeSettingsPage').then(module => ({ default: module.SubscribeSettingsPage })))
@@ -65,6 +66,7 @@ export const router = createAppRouter([
           { index: true, element: <DashboardPage /> },
           { path: 'system/audit-log', element: <AuditLogPage /> },
           { path: 'system/agent-ops', element: <AgentOpsPage /> },
+          { path: 'system/modules', element: <ModuleCenterPage /> },
           { path: 'config/system', element: <SystemSettingsPage /> },
           { path: 'config/system/safe', element: <SafeSettingsPage /> },
           { path: 'config/system/subscribe', element: <SubscribeSettingsPage /> },
