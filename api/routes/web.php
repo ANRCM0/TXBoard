@@ -29,8 +29,8 @@ Route::get('/', function (Request $request) {
         }
     }
 
-    $theme = admin_setting('frontend_theme', 'TXBoard');
-    $themeService = new ThemeService();
+    $themeService = app(ThemeService::class);
+    $theme = $themeService->getActiveTheme();
 
     try {
         if (!$themeService->exists($theme)) {

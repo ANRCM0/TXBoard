@@ -16,6 +16,7 @@ class ThemeService
     private const CONFIG_FILE = 'config.json';
     private const SETTING_PREFIX = 'theme_';
     private const SYSTEM_THEMES = ['TXBoard', 'v2board'];
+    private const DEFAULT_THEME = 'TXBoard';
 
     public function __construct()
     {
@@ -52,6 +53,27 @@ class ThemeService
     }
 
     /**
+     * Resolve the effective user-facing theme.
+     *
+     * frontend_theme is the canonical setting used by the web entrypoint.
+     * current_theme is read only as a legacy fallback for older installations.
+     */
+    public function getActiveTheme(): string
+    {
+        $theme = trim((string) admin_setting('frontend_theme', ''));
+        if ($theme !== '' && $this->exists($theme)) {
+            return $theme;
+        }
+
+        $legacyTheme = trim((string) admin_setting('current_theme', ''));
+        if ($legacyTheme !== '' && $this->exists($legacyTheme)) {
+            return $legacyTheme;
+        }
+
+        return self::DEFAULT_THEME;
+    }
+
+    /**
      * Get all available themes
      */
     public function getList(): array
@@ -78,8 +100,10 @@ class ThemeService
      */
     private function getThemesFromPath(string $path, bool $canDelete): array
     {
+        $activeTheme = $this->getActiveTheme();
+
         return collect(File::directories($path))
-            ->mapWithKeys(function ($dir) use ($canDelete) {
+            ->mapWithKeys(function ($dir) use ($canDelete, $activeTheme) {
                 $name = basename($dir);
                 if (
                     !File::exists($dir . '/' . self::CONFIG_FILE) ||
@@ -92,7 +116,7 @@ class ThemeService
                     return [];
                 }
 
-                $config['can_delete'] = $canDelete && $name !== admin_setting('current_theme');
+                $config['can_delete'] = $canDelete && $name !== $activeTheme;
                 $config['is_system'] = !$canDelete;
                 return [$name => $config];
             })->toArray();
@@ -191,7 +215,7 @@ class ThemeService
             return true;
         }
 
-        $currentTheme = admin_setting('current_theme');
+        $currentTheme = $this->getActiveTheme();
 
         try {
             $themePath = $this->getThemePath($theme);
@@ -212,7 +236,7 @@ class ThemeService
                 throw new Exception('Failed to copy theme files');
             }
 
-            admin_setting(['current_theme' => $theme]);
+            admin_setting(['frontend_theme' => $theme]);
             return true;
 
         } catch (Exception $e) {
@@ -232,7 +256,7 @@ class ThemeService
                 throw new Exception('System theme cannot be deleted');
             }
 
-            if ($theme === admin_setting('current_theme')) {
+            if ($theme === $this->getActiveTheme()) {
                 throw new Exception('Current theme cannot be deleted');
             }
 
@@ -372,10 +396,7 @@ class ThemeService
     public function refreshCurrentTheme(): bool
     {
         try {
-            $currentTheme = admin_setting('current_theme');
-            if (!$currentTheme) {
-                return false;
-            }
+            $currentTheme = $this->getActiveTheme();
 
             $this->cleanupThemeFiles($currentTheme);
 
