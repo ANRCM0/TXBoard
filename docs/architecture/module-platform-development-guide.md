@@ -451,11 +451,22 @@ Delivered:
 
 No generalized Module write HTTP route was added.
 
-### PR D — Theme Package v1 + Theme lifecycle adapter — ▶ current target
+### PR D — Theme Package v1 + Theme lifecycle adapter — ✅ completed
 
-Formalize Theme Package v1 and map activate/configure/delete semantics without reimplementing `ThemeService`.
+Delivered:
 
-### PR E — Module Center
+- `contracts/theme-package/` contract, schema and example;
+- backward-compatible `config.json + dashboard.blade.php` package boundary;
+- Theme Package DTO/validation and bounded ZIP extraction safety;
+- `frontend_theme` canonical ownership with read-only `current_theme` compatibility fallback;
+- `ThemeLifecycleAdapter -> ThemeService` delegation;
+- explicit per-operation lifecycle support;
+- user-theme removal semantics with Registry-confirmed absence;
+- regression coverage for default, legacy, stale, custom and system-theme states.
+
+Theme upload/configuration remain specialized Theme Runtime APIs because they require payloads beyond the generic lifecycle command.
+
+### PR E — Module Center — ▶ current target
 
 Build the read-only unified inventory first. It should consume the Module Registry API rather than scanning Plugin/Theme state independently.
 
@@ -473,9 +484,9 @@ Add deeper Agent Ops health/metadata only. Do not move Agent authorization, appr
 
 Avoid combining multiple phases into one large refactor.
 
-## 20. Phase C implementation result
+## 20. Phase D implementation result
 
-Phase C keeps the lifecycle layer focused on translating a Module lifecycle request into the existing specialized runtime.
+Phase D keeps Theme Runtime authoritative while making Theme a first-class Module lifecycle participant.
 
 Required direction:
 
@@ -486,34 +497,30 @@ Admin / future Module API
    ModuleLifecycle
           |
           v
-PluginLifecycleAdapter
+ThemeLifecycleAdapter
           |
           v
-    PluginManager
+     ThemeService
 ```
 
-Forbidden direction:
+The adapter maps only payload-free operations:
+
+- `enable` -> activate/switch;
+- `uninstall` -> delete an inactive user theme.
+
+It does not reimplement upload extraction, configuration persistence, public asset refresh or deletion rules.
+
+Theme Package v1 deliberately formalizes the current package layout instead of requiring an immediate `manifest.json` migration. The Module adapter derives normalized Module metadata.
+
+The active-theme invariant after Phase D is:
 
 ```text
-ModuleLifecycle
-  -> filesystem mutations
-  -> migration execution
-  -> plugin boot implementation
-  -> direct v2_plugins state changes
+frontend_theme = canonical state
+current_theme  = read-only legacy compatibility fallback
+TXBoard        = deterministic default
 ```
 
-Those responsibilities already belong to `PluginManager`.
-
-Phase C delivers:
-
-- supported operations: install, enable, disable, upgrade and uninstall;
-- stable lifecycle result/error models;
-- Plugin-only lifecycle adapter;
-- unsupported module-type behavior;
-- state refresh semantics;
-- tests for all Plugin lifecycle delegation paths.
-
-Theme lifecycle and generalized Module Center write UI remain outside Phase C.
+The next phase is a read-only Module Center. It must consume the Module Registry API directly and must not independently merge Plugin, Theme and Agent state.
 
 ## 21. Definition of Done for each Module
 

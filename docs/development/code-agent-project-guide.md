@@ -33,13 +33,17 @@ Plugin / Theme / Agent Ops adapters
 PR C
 Plugin lifecycle integration
         ✅
+
+PR D
+Theme Package v1 / Theme lifecycle adapter
+        ✅
 ```
 
 当前：
 
 ```text
-PR D
-Theme Package v1 / Theme lifecycle adapter
+PR E
+Read-only Module Center
         ▶
 ```
 
@@ -139,9 +143,9 @@ PluginManager
 
 不要因为“看起来更统一”就复制现有 Plugin/Theme 状态到新表。
 
-## 5. Phase C 已交付结构
+## 5. Phase C / Phase D 已交付结构
 
-Plugin lifecycle integration 已按以下顺序完成：
+Plugin lifecycle integration 已完成以下结构：
 
 ### C1 — lifecycle contract
 
@@ -313,6 +317,6 @@ contract -> matching contract tests
 
 当前推荐任务：
 
-> 实现 Module Platform Phase D：Theme Package v1 / Theme lifecycle adapter。
+> 实现 Module Platform Phase E：read-only Module Center。
 
-Phase C 已完成统一 Module lifecycle 到现有 `PluginManager` 的安全委托。Phase D 应继续采用 adapter-first / delegation-first，通过 `ThemeService` 落实 Theme lifecycle，并保持 `frontend_theme` 为唯一 canonical active-theme state、`TXBoard` 为默认主题。
+Phase C/Phase D 已完成 Plugin 与 Theme Runtime 的 adapter/delegation。Module Center 必须直接消费 `GET /api/v2/{secure_path}/module`，不要再分别请求 Plugin、Theme、Agent API 并在前端拼装第二套 Module 模型。本阶段只做统一 inventory/status 展示，不引入通用写操作。

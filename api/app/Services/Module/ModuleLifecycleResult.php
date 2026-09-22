@@ -14,7 +14,7 @@ final readonly class ModuleLifecycleResult
 
     public static function success(
         ModuleLifecycleOperation $operation,
-        ModuleDescriptor $module,
+        ?ModuleDescriptor $module,
     ): self {
         return new self(
             operation: $operation,

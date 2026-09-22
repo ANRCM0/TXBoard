@@ -16,7 +16,7 @@ upgrade
 uninstall
 ```
 
-Not every Module type must support every operation. Phase C provides a lifecycle adapter only for `plugin` modules.
+Not every Module type supports every operation. Adapters declare both the Module types and operations they can execute. Phase C added Plugin lifecycle; Phase D adds the Theme mappings that are safe without an additional payload.
 
 ## Execution model
 
@@ -32,6 +32,14 @@ For Plugin modules:
 ModuleLifecycle
       -> PluginLifecycleAdapter
       -> PluginManager
+```
+
+For Theme modules:
+
+```text
+ModuleLifecycle
+      -> ThemeLifecycleAdapter
+      -> ThemeService
 ```
 
 The Module layer MUST NOT directly:
@@ -59,6 +67,19 @@ During Phase C the normalized Plugin Module ID is the Plugin Package v1 `code`.
 
 Package upload/download and plugin file deletion are not lifecycle operations in v1.
 
+## Theme operation mapping
+
+Theme packages always have an effective active theme, so Theme lifecycle support is intentionally narrower:
+
+| Module operation | Theme Runtime call |
+| --- | --- |
+| `enable` | `ThemeService::switch(name)` |
+| `uninstall` | `ThemeService::delete(name)` for an inactive user theme |
+
+`install` and `upgrade` require a package upload payload and stay on the specialized Theme API. `disable` is unsupported. Theme configuration also remains a specialized Theme Runtime operation.
+
+System themes and the active theme reject `uninstall` before delegation.
+
 ## Result model
 
 A lifecycle execution produces:
@@ -77,7 +98,7 @@ A lifecycle execution produces:
 }
 ```
 
-The returned `module` is re-read from `ModuleRegistry` after mutation. Runtime state is never trusted from a package declaration or inferred from the requested operation.
+The returned `module` is re-read from `ModuleRegistry` after mutation. Runtime state is never trusted from a package declaration or inferred from the requested operation. For runtimes where successful uninstall removes discovery metadata entirely (for example a user Theme), `success=true` with `module=null` is a valid refreshed final state when the adapter explicitly declares that postcondition.
 
 ## Error model
 
@@ -85,6 +106,7 @@ Stable error codes:
 
 - `module_not_found` — the Registry cannot resolve the requested Module before execution;
 - `unsupported_module_type` — no lifecycle adapter supports the Module type;
+- `unsupported_operation` — the Module type is known but the requested operation is not valid for that type/current state;
 - `runtime_error` — the specialized runtime rejected or failed the operation;
 - `state_refresh_failed` — mutation returned but the final Module state could not be resolved.
 
@@ -101,6 +123,8 @@ Lifecycle orchestration may read the Registry before and after a mutation, but t
 Plugin Package v1 remains unchanged.
 
 Phase C does not require existing plugins to add a Module manifest, rename their code, move `admin/dist`, rebuild TXBoard Admin, or rewrite lifecycle methods.
+
+Phase D preserves the existing Theme Package `config.json + dashboard.blade.php` boundary. Existing themes do not need a generic `manifest.json` to participate in Module Registry.
 
 ## Runtime scope
 

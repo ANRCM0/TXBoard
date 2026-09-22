@@ -5,6 +5,7 @@ namespace App\Services;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\View;
+use App\Services\Theme\ThemePackage;
 use Illuminate\Http\UploadedFile;
 use Exception;
 use ZipArchive;
@@ -18,8 +19,9 @@ class ThemeService
     private const SYSTEM_THEMES = ['TXBoard', 'v2board'];
     private const DEFAULT_THEME = 'TXBoard';
 
-    public function __construct()
-    {
+    public function __construct(
+        private readonly ThemePackage $themePackage,
+    ) {
         $this->registerThemeViewPaths();
     }
 
@@ -61,10 +63,15 @@ class ThemeService
     public function getActiveTheme(): string
     {
         $theme = trim((string) admin_setting('frontend_theme', ''));
-        if ($theme !== '' && $this->exists($theme)) {
-            return $theme;
+        if ($theme !== '') {
+            return $this->exists($theme)
+                ? $theme
+                : self::DEFAULT_THEME;
         }
 
+        // Historical compatibility only. Reads may consult current_theme
+        // only when canonical state is absent; explicit switches are the
+        // only writes to frontend_theme.
         $legacyTheme = trim((string) admin_setting('current_theme', ''));
         if ($legacyTheme !== '' && $this->exists($legacyTheme)) {
             return $legacyTheme;
@@ -89,7 +96,9 @@ class ThemeService
         // 获取用户主题
         $userPath = base_path(self::USER_THEME_DIR);
         if (File::exists($userPath)) {
-            $themes = array_merge($themes, $this->getThemesFromPath($userPath, true));
+            // System theme identities remain authoritative if a legacy user
+            // directory collides with the same exact runtime name.
+            $themes += $this->getThemesFromPath($userPath, true);
         }
 
         return $themes;
@@ -128,42 +137,30 @@ class ThemeService
     public function upload(UploadedFile $file): bool
     {
         $zip = new ZipArchive;
-        $tmpPath = storage_path('tmp/' . uniqid());
+        $tmpPath = storage_path('tmp/' . uniqid('', true));
+        $opened = false;
 
         try {
             if ($zip->open($file->path()) !== true) {
                 throw new Exception('Invalid theme package');
             }
+            $opened = true;
 
-            $configEntry = collect(range(0, $zip->numFiles - 1))
-                ->map(fn($i) => $zip->getNameIndex($i))
-                ->first(fn($name) => basename($name) === self::CONFIG_FILE);
+            $this->themePackage->assertSafeArchive($zip);
+            $configEntry = $this->themePackage->configEntry($zip);
 
-            if (!$configEntry) {
-                throw new Exception('Theme config file not found');
+            if (!$zip->extractTo($tmpPath)) {
+                throw new Exception('Failed to extract theme package');
             }
 
-            $zip->extractTo($tmpPath);
-            $zip->close();
+            $sourcePath = $this->themePackage->sourcePath($tmpPath, $configEntry);
+            $manifest = $this->themePackage->manifestFromFile(
+                $sourcePath . '/' . self::CONFIG_FILE
+            );
+            $this->themePackage->assertRequiredFiles($sourcePath);
 
-            $sourcePath = $tmpPath . '/' . rtrim(dirname($configEntry), '.');
-            $configFile = $sourcePath . '/' . self::CONFIG_FILE;
-
-            if (!File::exists($configFile)) {
-                throw new Exception('Theme config file not found');
-            }
-
-            $config = json_decode(File::get($configFile), true);
-            if (empty($config['name'])) {
-                throw new Exception('Theme name not configured');
-            }
-
-            if (in_array($config['name'], self::SYSTEM_THEMES, true)) {
+            if ($this->isSystemTheme($manifest->name)) {
                 throw new Exception('Cannot upload theme with same name as system theme');
-            }
-
-            if (!File::exists($sourcePath . '/dashboard.blade.php')) {
-                throw new Exception('Missing required theme file: dashboard.blade.php');
             }
 
             $userThemePath = base_path(self::USER_THEME_DIR);
@@ -171,35 +168,42 @@ class ThemeService
                 File::makeDirectory($userThemePath, 0755, true);
             }
 
-            $targetPath = $userThemePath . $config['name'];
+            $targetPath = $userThemePath . $manifest->name;
             if (File::exists($targetPath)) {
-                $oldConfigFile = $targetPath . '/config.json';
+                $oldConfigFile = $targetPath . '/' . self::CONFIG_FILE;
                 if (!File::exists($oldConfigFile)) {
                     throw new Exception('Existing theme missing config file');
                 }
-                $oldConfig = json_decode(File::get($oldConfigFile), true);
-                $oldVersion = $oldConfig['version'] ?? '0.0.0';
-                $newVersion = $config['version'] ?? '0.0.0';
-                if (version_compare($newVersion, $oldVersion, '>')) {
-                    $this->cleanupThemeFiles($config['name']);
-                    File::deleteDirectory($targetPath);
-                    File::copyDirectory($sourcePath, $targetPath);
-                    // 更新主题时保留用户配置
-                    $this->initConfig($config['name'], true);
-                    return true;
-                } else {
+
+                $oldConfig = json_decode((string) File::get($oldConfigFile), true);
+                $oldVersion = is_array($oldConfig) && is_string($oldConfig['version'] ?? null)
+                    ? $oldConfig['version']
+                    : '0.0.0';
+
+                if (!version_compare($manifest->version, $oldVersion, '>')) {
                     throw new Exception('Theme exists and not a newer version');
                 }
+
+                $this->cleanupThemeFiles($manifest->name);
+                File::deleteDirectory($targetPath);
+                if (!File::copyDirectory($sourcePath, $targetPath)) {
+                    throw new Exception('Failed to install theme files');
+                }
+
+                $this->initConfig($manifest->name, true);
+                return true;
             }
 
-            File::copyDirectory($sourcePath, $targetPath);
-            $this->initConfig($config['name']);
+            if (!File::copyDirectory($sourcePath, $targetPath)) {
+                throw new Exception('Failed to install theme files');
+            }
+            $this->initConfig($manifest->name);
 
             return true;
-
-        } catch (Exception $e) {
-            throw $e;
         } finally {
+            if ($opened) {
+                $zip->close();
+            }
             if (File::exists($tmpPath)) {
                 File::deleteDirectory($tmpPath);
             }
@@ -252,7 +256,11 @@ class ThemeService
     {
 
         try {
-            if (in_array($theme, self::SYSTEM_THEMES, true)) {
+            if (!$this->isSafeThemeName($theme)) {
+                throw new Exception('Invalid theme name');
+            }
+
+            if ($this->isSystemTheme($theme)) {
                 throw new Exception('System theme cannot be deleted');
             }
 
@@ -289,6 +297,10 @@ class ThemeService
      */
     public function getThemePath(string $theme): ?string
     {
+        if (!$this->isSafeThemeName($theme)) {
+            return null;
+        }
+
         $systemPath = base_path(self::SYSTEM_THEME_DIR . $theme);
         if (File::exists($systemPath)) {
             return $systemPath;
@@ -447,4 +459,27 @@ class ThemeService
             admin_setting([self::SETTING_PREFIX . $theme => $defaults]);
         }
     }
+    private function isSafeThemeName(string $theme): bool
+    {
+        $name = trim($theme);
+
+        return $name !== ''
+            && strlen($name) <= 120
+            && !str_contains($name, chr(0))
+            && !str_contains($name, '/')
+            && !str_contains($name, '\\')
+            && !in_array($name, ['.', '..'], true);
+    }
+
+    private function isSystemTheme(string $theme): bool
+    {
+        foreach (self::SYSTEM_THEMES as $systemTheme) {
+            if (strcasecmp($theme, $systemTheme) === 0) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
 }

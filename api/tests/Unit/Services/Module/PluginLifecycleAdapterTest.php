@@ -35,8 +35,15 @@ class PluginLifecycleAdapterTest extends TestCase
     {
         $adapter = new PluginLifecycleAdapter($this->createMock(PluginManager::class));
 
-        $this->assertTrue($adapter->supports($this->descriptor(ModuleType::PLUGIN)));
+        $plugin = $this->descriptor(ModuleType::PLUGIN);
+        $this->assertTrue($adapter->supports($plugin));
         $this->assertFalse($adapter->supports($this->descriptor(ModuleType::THEME)));
+        $this->assertTrue(
+            $adapter->supportsOperation($plugin, ModuleLifecycleOperation::UNINSTALL)
+        );
+        $this->assertTrue(
+            $adapter->expectsModuleAfterOperation($plugin, ModuleLifecycleOperation::UNINSTALL)
+        );
     }
 
     public function test_execute_rejects_non_plugin_module_when_called_directly(): void
