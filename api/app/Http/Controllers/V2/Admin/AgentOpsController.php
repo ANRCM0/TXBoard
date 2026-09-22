@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AgentAction;
 use App\Services\AgentOps\AgentAbility;
 use App\Services\AgentOps\AgentActionService;
+use App\Services\AgentOps\AgentTargetScope;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
@@ -34,7 +35,8 @@ class AgentOpsController extends Controller
             ->map(fn ($token) => [
                 'id' => $token->id,
                 'client_name' => preg_replace('/^agent:/', '', (string) $token->name),
-                'abilities' => $token->abilities ?? [],
+                'abilities' => AgentTargetScope::functionalAbilities($token),
+                'target_scope' => AgentTargetScope::describe($token),
                 'last_used_at' => $token->last_used_at,
                 'expires_at' => $token->expires_at,
                 'created_at' => $token->created_at,
@@ -50,12 +52,23 @@ class AgentOpsController extends Controller
             'abilities' => 'nullable|array|min:1',
             'abilities.*' => 'string|max:64',
             'expires_in_days' => 'nullable|integer|min:1|max:90',
+            'target_mode' => 'nullable|in:all,restricted',
+            'target_node_ids' => 'nullable|array',
+            'target_node_ids.*' => 'integer|exists:v2_server,id',
+            'target_machine_ids' => 'nullable|array',
+            'target_machine_ids.*' => 'integer|exists:v2_server_machine,id',
         ]);
 
         try {
-            $abilities = AgentAbility::validate($params['abilities'] ?? AgentAbility::DEFAULT_READ);
+            $functional = AgentAbility::validate($params['abilities'] ?? AgentAbility::DEFAULT_READ);
+            $abilities = AgentTargetScope::compile(
+                $functional,
+                $params['target_mode'] ?? 'all',
+                $params['target_node_ids'] ?? [],
+                $params['target_machine_ids'] ?? [],
+            );
         } catch (\InvalidArgumentException $e) {
-            throw ValidationException::withMessages(['abilities' => $e->getMessage()]);
+            throw ValidationException::withMessages(['target_scope' => $e->getMessage()]);
         }
 
         $admin = Auth::guard('sanctum')->user();
@@ -69,7 +82,8 @@ class AgentOpsController extends Controller
         return $this->success([
             'id' => $newToken->accessToken->id,
             'client_name' => $params['client_name'],
-            'abilities' => $abilities,
+            'abilities' => $functional,
+            'target_scope' => AgentTargetScope::describe($newToken->accessToken),
             'expires_at' => $expiresAt->toIso8601String(),
             'plain_text_token' => $newToken->plainTextToken,
         ]);

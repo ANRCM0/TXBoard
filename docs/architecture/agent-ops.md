@@ -1,6 +1,6 @@
 # TXBoard Agent Ops / MCP Architecture
 
-> Status: Proposed
+> Status: Implemented (Agent Ops v1); Phase 5 AI-native composition remains future work
 >
 > Scope: TXBoard Control Plane, TX-Node operations, external Agent integrations
 >
@@ -226,7 +226,8 @@ The first release should stay deliberately small.
 | `txboard_full_sync_node` | OPERATE | Re-push config and users |
 | `txboard_reload_node_config` | OPERATE | Validate and reload runtime config |
 | `txboard_restart_kernel` | OPERATE | Restart the managed proxy kernel |
-| `txboard_network_test` | OPERATE | Fixed diagnostic operations such as ping/DNS/port checks |
+| `txboard_network_test` | OPERATE | Fixed DNS/TCP port diagnostics under target policy |
+| `txboard_tail_logs` | OPERATE | Approval-gated bounded/redacted TX-Node application log tail |
 
 Do not add generic database, Redis, filesystem or shell tools.
 
@@ -375,7 +376,7 @@ Principles:
 - short-lived access tokens where practical;
 - revocable credentials;
 - per-client identity;
-- optional target restrictions, for example a token limited to specific machines/node groups;
+- target restrictions implemented through token-scoped node and machine IDs;
 - secrets are never returned through MCP tool outputs.
 
 ## 12. Audit requirements
@@ -474,7 +475,9 @@ Log retrieval must also be bounded by:
 - named log sources;
 - maximum line count/byte count;
 - secret redaction;
-- time range limits.
+- no caller-controlled filesystem path.
+
+TX-Node v1 file logs do not encode a calendar date, so Agent Ops v1 does not claim an unreliable historical time filter. It uses a bounded tail window instead; adding trustworthy time-range filtering requires a dated log format first.
 
 Network diagnostics must restrict destinations and protocols according to deployment policy to prevent the Agent interface from becoming a general-purpose network scanner.
 
@@ -499,64 +502,59 @@ Requirements:
 - [x] Define architecture boundary.
 - [x] Define risk model.
 - [x] Define initial tool catalog.
-- [ ] Add Agent Ops HTTP contract under `contracts/http/`.
-- [ ] Add Node Ops protocol contract under `contracts/node-protocol/`.
+- [x] Add Agent Ops HTTP contract under `contracts/http/`.
+- [x] Add Node Ops protocol contract under `contracts/node-protocol/`.
 
-### Phase 1 — Read-only Agent Ops
+### Phase 1 — Read-only Agent Ops — implemented
 
-Implement:
+- [x] system status;
+- [x] machine/node inventory;
+- [x] metrics;
+- [x] normalized node diagnostics;
+- [x] traffic summary;
+- [x] queue health;
+- [x] read-only Agent audit endpoint.
 
-- system status;
-- machine/node inventory;
-- metrics;
-- normalized node diagnostics;
-- traffic summary;
-- queue health;
-- read-only audit endpoint.
+### Phase 2 — Controlled node actions — implemented
 
-No node mutation in this phase.
+- [x] full sync;
+- [x] config validate/reload;
+- [x] kernel status/restart;
+- [x] bounded/redacted application logs;
+- [x] bounded DNS/TCP network checks;
+- [x] request IDs and result events;
+- [x] timeout handling;
+- [x] duplicate request-ID replay protection.
 
-### Phase 2 — Controlled node actions
+Verification remains an explicit Agent step: after a successful mutating action, the Agent should call the relevant read/diagnostic tool rather than treating command acknowledgement as proof of recovery.
 
-Implement typed TX-Node actions:
+### Phase 3 — MCP Gateway — implemented
 
-- full sync;
-- config validate/reload;
-- kernel status/restart;
-- bounded logs;
-- bounded network checks.
+- [x] Streamable HTTP MCP adapter;
+- [x] authenticated Bearer requests;
+- [x] one-to-one mapping to Agent Ops API;
+- [x] structured tool errors;
+- [x] client/protocol correlation metadata;
+- [x] optional Compose `mcp` profile.
 
-Add request IDs, result events, timeout handling and verification.
+The gateway contains no direct database, Redis or node-control logic.
 
-### Phase 3 — MCP Gateway
+### Phase 4 — Approval and policy engine — implemented for v1
 
-Create the independent MCP adapter.
+- [x] pending actions;
+- [x] Admin approval/rejection UI;
+- [x] risk classes;
+- [x] per-tool functional scopes;
+- [x] per-target node/machine scopes;
+- [x] action cooldown;
+- [x] pending-action limits per token and node;
+- [x] Agent-specific audit trail.
 
-Initial transport target:
+Safe auto-remediation remains intentionally disabled in v1. Enabling it later requires an explicit policy design rather than silently bypassing approval.
 
-- remote MCP over HTTP;
-- authenticated requests;
-- one-to-one mapping to Agent Ops API;
-- structured errors;
-- client/correlation metadata.
+### Phase 5 — AI-native operations — future/optional
 
-The gateway must contain no direct database or node-control logic.
-
-### Phase 4 — Approval and policy engine
-
-Implement:
-
-- pending actions;
-- approval UI;
-- risk policies;
-- per-tool scopes;
-- per-target scopes;
-- cooldowns/rate limits;
-- optional safe auto-remediation policies.
-
-### Phase 5 — AI-native operations
-
-Add higher-level capabilities such as:
+Higher-level capabilities can be composed on top of the stable v1 tools, such as:
 
 - fleet health summaries;
 - anomaly explanations based on telemetry;
