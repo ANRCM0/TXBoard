@@ -41,11 +41,12 @@ The guiding rule is:
 Completed:
 
 - **Phase A / PR A** — Module Package v1 contract, JSON Schema, PHP Module DTO/value objects and drift tests;
-- **Phase B / PR B** — read-only Module Registry, Plugin/Theme/Agent Ops adapters, discovery isolation and read-only Admin inventory API.
+- **Phase B / PR B** — read-only Module Registry, Plugin/Theme/Agent Ops adapters, discovery isolation and read-only Admin inventory API;
+- **Phase C / PR C** — Module Lifecycle v1, PluginLifecycleAdapter delegation to existing `PluginManager`, structured lifecycle result/error state and post-mutation Registry refresh.
 
 Current implementation target:
 
-- **Phase C** — Plugin lifecycle integration through a Module lifecycle abstraction that delegates to the existing `PluginManager`.
+- **Phase D** — Theme Package v1 and Theme lifecycle adapter, preserving `frontend_theme` as the single canonical active-theme state.
 
 Important invariant:
 
@@ -197,7 +198,7 @@ Admin code should eventually consume the registry instead of independently scann
 
 ## 7. Lifecycle
 
-Module Platform v1 defines a common lifecycle vocabulary:
+Module Platform v1 defines a common lifecycle vocabulary. The implemented lifecycle orchestration contract is [Module Lifecycle Contract v1](../../contracts/module-lifecycle/README.md).
 
 ```text
 discover
@@ -275,13 +276,19 @@ Existing components remain valid:
 - schema-driven Settings / CRUD;
 - plugin-owned `admin/dist`.
 
-Module Platform v1 adds an adapter:
+Module Platform v1 adds read and lifecycle adapters:
 
 ```text
 Plugin Package v1
       -> PluginModuleAdapter
       -> Module Registry
+
+ModuleLifecycle
+      -> PluginLifecycleAdapter
+      -> PluginManager
 ```
+
+The lifecycle adapter delegates install/enable/disable/upgrade/uninstall to `PluginManager` and re-reads Registry state afterward. It does not duplicate migrations, plugin loading, boot, asset publishing or database mutations.
 
 No Plugin Package v2 is required until the common Module model proves stable.
 
@@ -447,11 +454,11 @@ Checksum, signatures and publisher identity are future trust-layer work, not a v
 
 ### Phase C — Plugin lifecycle integration
 
-Map future Module lifecycle management onto Plugin Runtime while preserving Plugin Package v1 behavior.
+**Implemented.** Module Lifecycle v1 now defines install/enable/disable/upgrade/uninstall, structured results/errors, Plugin lifecycle delegation to the existing `PluginManager`, unsupported-type behavior and post-mutation Registry refresh. No generic Module write HTTP API was added in this phase.
 
 ### Phase D — Theme package and lifecycle adapter
 
-Formalize Theme Package v1, remove theme-state ambiguity and register themes as modules.
+**Current target.** Formalize Theme Package v1, remove theme-state ambiguity and map Theme lifecycle operations through `ThemeService` while preserving `frontend_theme` as the canonical state.
 
 ### Phase E — Module Center
 
