@@ -7,6 +7,12 @@ export type AgentTargetScope = {
   machine_ids: number[]
 }
 
+export type AgentPairing = {
+  code: string
+  expires_at: string
+  expires_in_seconds: number
+}
+
 export type AgentTokenItem = {
   id: number
   client_name: string
@@ -92,7 +98,7 @@ export async function createAgentToken(payload: {
   target_machine_ids?: number[]
 }) {
   const { data } = await apiClient.post('/agent/tokens/create', payload)
-  return unwrap<AgentTokenItem & { plain_text_token: string }>(data)
+  return unwrap<AgentTokenItem & { plain_text_token: string; pairing?: AgentPairing | null }>(data)
 }
 
 export async function revokeAgentToken(id: number) {
