@@ -9,6 +9,7 @@ import {
   setAdminSecurePath,
 } from './client'
 import { fetchSettings, saveSettings } from './config'
+import { generateSecret } from './server'
 import { resolvePluginAppUrl } from './plugin'
 import { normalizePluginNavigationTarget } from '../plugins/bridge'
 
@@ -87,6 +88,19 @@ describe('config adapter contract', () => {
 
     expect(String(seen[0].headers.Authorization)).toBe('Bearer secret-token')
   })
+})
+
+describe('node editor endpoints', () => {
+  it('asks the panel to mint key material for a protocol field', async () => {
+    responder = () => ({ data: { data: { private_key: 'PRIVATE', public_key: 'PUBLIC' } } })
+
+    await expect(generateSecret('x25519')).resolves.toEqual({ private_key: 'PRIVATE', public_key: 'PUBLIC' })
+
+    expect(seen[0].method).toBe('get')
+    expect(seen[0].url).toBe('/server/manage/generateSecret')
+    expect(seen[0].params).toEqual({ kind: 'x25519' })
+  })
+
 })
 
 describe('admin secure path resolution', () => {

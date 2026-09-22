@@ -1,5 +1,5 @@
 import { ChevronDown, Info } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import type {
   GroupItem,
@@ -141,42 +141,82 @@ function draftFromNode(node?: NodeItem | null, definitions: ProtocolDefinitionMe
   }
 }
 
+/**
+ * Lets a JSON editor report whether it currently holds unparsable text, so a
+ * submit can refuse to silently drop what the operator just typed.
+ */
+type JsonValidityReporter = (key: string, report: (() => boolean) | null) => void
+
 function JsonField({
   label,
   value,
   onChange,
   arrayOnly = false,
+  reportJsonValidity,
 }: {
   label: string
   value: JsonValue | unknown
   onChange: (value: JsonValue) => void
   arrayOnly?: boolean
+  reportJsonValidity?: JsonValidityReporter
 }) {
   const format = (input: unknown) => JSON.stringify(input ?? (arrayOnly ? [] : {}), null, 2)
   const [text, setText] = useState(format(value))
+  const [invalid, setInvalid] = useState(false)
 
-  useEffect(() => setText(format(value)), [value])
-
-  const commit = () => {
+  const parse = (raw: string): { ok: boolean; value?: unknown } => {
     try {
-      const parsed = text.trim() ? JSON.parse(text) : (arrayOnly ? [] : {})
-      if (arrayOnly && !Array.isArray(parsed)) {
-        toast.error(label + ' 必须是 JSON 数组')
-        return
-      }
-      if (!arrayOnly && !Array.isArray(parsed) && !isRecord(parsed)) {
-        toast.error(label + ' 必须是 JSON 对象或数组')
-        return
-      }
-      onChange(parsed)
+      const parsed = raw.trim() ? JSON.parse(raw) : (arrayOnly ? [] : {})
+      if (arrayOnly && !Array.isArray(parsed)) return { ok: false }
+      if (!arrayOnly && !Array.isArray(parsed) && !isRecord(parsed)) return { ok: false }
+      return { ok: true, value: parsed }
     } catch {
-      toast.error(label + ' JSON 格式不正确')
+      return { ok: false }
     }
   }
 
+  // Re-format only when the value arrives from outside this editor (node load,
+  // protocol switch). A value echoed back from our own commit keeps the text
+  // exactly as typed, so typing never fights a pretty-printer.
+  useEffect(() => {
+    setText(previous => {
+      const parsed = parse(previous)
+      return parsed.ok && JSON.stringify(parsed.value) === JSON.stringify(value)
+        ? previous
+        : format(value)
+    })
+    setInvalid(false)
+  }, [value])
+
+  const commit = (raw: string, announce: boolean) => {
+    setText(raw)
+    const parsed = parse(raw)
+    if (!parsed.ok) {
+      setInvalid(true)
+      if (announce) toast.error(label + ' JSON 格式不正确，请修正后再提交')
+      return
+    }
+    setInvalid(false)
+    onChange(parsed.value as JsonValue)
+  }
+
+  const invalidRef = useRef(invalid)
+  invalidRef.current = invalid
+  useEffect(() => {
+    reportJsonValidity?.(label, () => invalidRef.current)
+    return () => reportJsonValidity?.(label, null)
+  }, [reportJsonValidity, label])
+
   return <label className="field full">
     <span>{label}</span>
-    <textarea value={text} onChange={(event) => setText(event.target.value)} onBlur={commit} spellCheck={false} />
+    <textarea
+      value={text}
+      onChange={(event) => commit(event.target.value, false)}
+      onBlur={() => commit(text, true)}
+      spellCheck={false}
+      aria-invalid={invalid || undefined}
+      className={invalid ? 'is-invalid' : undefined}
+    />
   </label>
 }
 
@@ -279,9 +319,18 @@ export function NodeEditorModal({
   onSubmit: (payload: Partial<NodeItem>) => void
 }) {
   const [draft, setDraft] = useState<Draft>(() => draftFromNode(node, protocolDefinitions))
+  const jsonValidity = useRef(new Map<string, () => boolean>())
 
+  const reportJsonValidity = useCallback<JsonValidityReporter>((key, report) => {
+    if (report) jsonValidity.current.set(key, report)
+    else jsonValidity.current.delete(key)
+  }, [])
+
+  // Fields register on mount and unregister on unmount (the portal content is
+  // torn down while closed), so reopening always starts from a clean registry.
   useEffect(() => {
-    if (open) setDraft(draftFromNode(node, protocolDefinitions))
+    if (!open) return
+    setDraft(draftFromNode(node, protocolDefinitions))
   }, [open, node?.id])
 
   useEffect(() => {
@@ -328,6 +377,16 @@ export function NodeEditorModal({
     if (!Number.isInteger(serverPort) || serverPort < 1 || serverPort > 65535) return toast.error('后端服务端口必须在 1-65535 之间')
     if (!Number.isFinite(rate) || rate < 0) return toast.error('倍率必须是大于等于 0 的数字')
     if (!Number.isFinite(transferLimitGb) || transferLimitGb < 0) return toast.error('流量上限必须是大于等于 0 的数字')
+
+    // Never discard freshly typed JSON: values are committed on blur, so an
+    // unparsable field means the payload below would silently use stale data.
+    const invalidJson = Array.from(jsonValidity.current.entries())
+      .filter(([, isInvalid]) => isInvalid())
+      .map(([label]) => label)
+    if (invalidJson.length) {
+      return toast.error('JSON 格式不正确：' + invalidJson.join('、') + '，请先修正后再提交')
+    }
+
     const transferEnable = Math.round(transferLimitGb * GB)
     const payload: Partial<NodeItem> = {
       ...(node?.id ? { id: node.id } : {}),
@@ -376,6 +435,8 @@ export function NodeEditorModal({
         fields={managed.form_schema}
         value={draft.protocolSettings}
         onChange={updateProtocol}
+        generatorContext={{ host: draft.host.trim() }}
+        reportJsonValidity={reportJsonValidity}
       />
     }
 
@@ -386,6 +447,7 @@ export function NodeEditorModal({
         ...current,
         protocolSettings: isRecord(value) ? value : {},
       }))}
+      reportJsonValidity={reportJsonValidity}
     />
   }
 
@@ -520,12 +582,12 @@ export function NodeEditorModal({
       <details className="node-editor-advanced">
         <summary><strong>高级节点模型</strong><span>IP、排除规则、自定义出站、路由与证书</span><ChevronDown size={17}/></summary>
         <div className="node-editor-advanced-body">
-          {draft.rateTimeEnable && <JsonField label="分时倍率 rate_time_ranges" value={draft.rateTimeRanges} arrayOnly onChange={(value) => setDraft({ ...draft, rateTimeRanges: value })}/>}
-          <JsonField label="Excludes" value={draft.excludes} arrayOnly onChange={(value) => setDraft({ ...draft, excludes: value })}/>
-          <JsonField label="IPs" value={draft.ips} arrayOnly onChange={(value) => setDraft({ ...draft, ips: value })}/>
-          <JsonField label="Custom Outbounds" value={draft.customOutbounds} arrayOnly onChange={(value) => setDraft({ ...draft, customOutbounds: value })}/>
-          <JsonField label="Custom Routes" value={draft.customRoutes} arrayOnly onChange={(value) => setDraft({ ...draft, customRoutes: value })}/>
-          <JsonField label="Certificate Config" value={draft.certConfig} onChange={(value) => setDraft({ ...draft, certConfig: value })}/>
+          {draft.rateTimeEnable && <JsonField label="分时倍率 rate_time_ranges" value={draft.rateTimeRanges} arrayOnly onChange={(value) => setDraft({ ...draft, rateTimeRanges: value })} reportJsonValidity={reportJsonValidity}/>}
+          <JsonField label="Excludes" value={draft.excludes} arrayOnly onChange={(value) => setDraft({ ...draft, excludes: value })} reportJsonValidity={reportJsonValidity}/>
+          <JsonField label="IPs" value={draft.ips} arrayOnly onChange={(value) => setDraft({ ...draft, ips: value })} reportJsonValidity={reportJsonValidity}/>
+          <JsonField label="Custom Outbounds" value={draft.customOutbounds} arrayOnly onChange={(value) => setDraft({ ...draft, customOutbounds: value })} reportJsonValidity={reportJsonValidity}/>
+          <JsonField label="Custom Routes" value={draft.customRoutes} arrayOnly onChange={(value) => setDraft({ ...draft, customRoutes: value })} reportJsonValidity={reportJsonValidity}/>
+          <JsonField label="Certificate Config" value={draft.certConfig} onChange={(value) => setDraft({ ...draft, certConfig: value })} reportJsonValidity={reportJsonValidity}/>
         </div>
       </details>
     </div>
