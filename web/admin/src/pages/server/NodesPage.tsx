@@ -1,8 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { MoreHorizontal, Pencil, Plus, RefreshCw, Search, Trash2 } from 'lucide-react'
+import { Copy, MoreHorizontal, Pencil, Plus, RefreshCw, Search, Trash2 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import {
+  copyNode,
   deleteNode,
   getGroups,
   getMachines,
@@ -15,6 +16,7 @@ import {
 import { DataTable, type Column } from '../../components/ui/DataTable'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { NodeEditorModal } from './NodeEditorModal'
+import { requestConfirm } from '../../components/ui/ConfirmDialog'
 
 export function NodesPage(){
   const qc=useQueryClient()
@@ -43,6 +45,18 @@ export function NodesPage(){
     onSuccess:()=>{
       toast.success('节点已删除')
       qc.invalidateQueries({queryKey:['nodes']})
+    },
+  })
+  // Copying keeps the protocol settings (keys included); the editor opens so the
+  // operator can rename the copy and point it at its own host/port.
+  const copy=useMutation({
+    mutationFn:copyNode,
+    onSuccess:async id=>{
+      toast.success('节点已复制，请修改名称、地址与端口')
+      await qc.invalidateQueries({queryKey:['nodes']})
+      const rows=qc.getQueryData<NodeItem[]>(['nodes'])
+      const copied=Array.isArray(rows)?rows.find(row=>row.id===id):undefined
+      if(copied){setEditing(copied);setOpen(true)}
     },
   })
 
@@ -81,7 +95,8 @@ export function NodesPage(){
         <summary aria-label={'节点 '+(row.name||row.id)+' 的操作'}><MoreHorizontal size={18}/></summary>
         <div className="row-menu-popover">
           <button onClick={()=>{setEditing(row);setOpen(true)}}><Pencil size={15}/>编辑</button>
-          <button className="danger" disabled={remove.isPending} onClick={()=>confirm('删除节点 '+(row.name||row.id)+'？')&&remove.mutate(row.id)}><Trash2 size={15}/>删除</button>
+          <button disabled={copy.isPending} onClick={()=>copy.mutate(row.id)}><Copy size={15}/>复制</button>
+          <button className="danger" disabled={remove.isPending} onClick={()=>requestConfirm({title:'删除节点',message:'删除节点 '+(row.name||row.id)+'？删除后无法恢复。',danger: true, confirmLabel: '删除',action:()=>remove.mutate(row.id)})}><Trash2 size={15}/>删除</button>
         </div>
       </details>,
     },

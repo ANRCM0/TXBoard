@@ -9,7 +9,7 @@ import {
   setAdminSecurePath,
 } from './client'
 import { fetchSettings, saveSettings } from './config'
-import { generateSecret } from './server'
+import { copyNode, generateSecret } from './server'
 import { resolvePluginAppUrl } from './plugin'
 import { normalizePluginNavigationTarget } from '../plugins/bridge'
 
@@ -101,6 +101,15 @@ describe('node editor endpoints', () => {
     expect(seen[0].params).toEqual({ kind: 'x25519' })
   })
 
+  it('copies a node and unwraps the new node id', async () => {
+    responder = () => ({ data: { data: 42 } })
+
+    await expect(copyNode(7)).resolves.toBe(42)
+
+    expect(seen[0].method).toBe('post')
+    expect(seen[0].url).toBe('/server/manage/copy')
+    expect(JSON.parse(String(seen[0].data))).toEqual({ id: 7 })
+  })
 })
 
 describe('admin secure path resolution', () => {

@@ -147,6 +147,11 @@ export async function batchUpdateNodes(
   const { data } = await apiClient.post('/server/manage/batchUpdate', { ids, ...payload })
   return unwrap(data)
 }
+/** Copy a node with its protocol settings; resolves to the new node id. */
+export async function copyNode(id: number) {
+  const { data } = await apiClient.post('/server/manage/copy', { id })
+  return unwrap<number>(data)
+}
 export async function deleteNode(id: number) {
   const { data } = await apiClient.post('/server/manage/drop', { id })
   return unwrap(data)
