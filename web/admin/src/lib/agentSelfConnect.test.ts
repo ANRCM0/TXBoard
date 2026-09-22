@@ -15,16 +15,27 @@ describe('Agent self-connect prompt', () => {
     )
   })
 
-  it('directs the Agent to the hosted guide without embedding a credential', () => {
+  it('builds a one-sentence pairing prompt without the long-lived token', () => {
     const prompt = buildAgentSelfConnectPrompt(
       'https://panel.example.com/.well-known/txboard-agent-connect.md',
+      'txbp_abcdefghijklmnopqrstuvwx',
     )
 
-    expect(prompt).toContain('TXBoard 官方 Agent 自助接入文档')
-    expect(prompt).toContain('https://panel.example.com/.well-known/txboard-agent-connect.md')
-    expect(prompt).toContain('不要安装或启动第二套 TXBoard MCP Server')
-    expect(prompt).toContain('txboard_system_status')
+    expect(prompt).toBe(
+      '请按 https://panel.example.com/.well-known/txboard-agent-connect.md 自助接入 TXBoard；一次性配对码：txbp_abcdefghijklmnopqrstuvwx',
+    )
     expect(prompt).not.toContain('Bearer ')
     expect(prompt).not.toContain('plain_text_token')
+  })
+
+  it('keeps the v1 manual-secret fallback when pairing is unavailable', () => {
+    const prompt = buildAgentSelfConnectPrompt(
+      'https://panel.example.com/.well-known/txboard-agent-connect.md',
+      null,
+    )
+
+    expect(prompt).toContain('当前没有可用的一次性配对码')
+    expect(prompt).toContain('本地 secret / env')
+    expect(prompt).not.toContain('Bearer ')
   })
 })
