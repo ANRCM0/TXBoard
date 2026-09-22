@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { BarChart3, Cable, Copy, KeyRound, MoreHorizontal, Plus, RefreshCw, RotateCcw, Search, Trash2, Pencil } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
 import {
   deleteMachine,
@@ -152,7 +153,7 @@ export function MachinesPage() {
       header: '机器',
       render: row => (
         <div className="machine-name">
-          <strong>{row.name || `Machine ${row.id}`}</strong>
+          <Link className="table-link" to={`/server/machine/${row.id}`}><strong>{row.name || `Machine ${row.id}`}</strong></Link>
           {row.notes ? <small>{row.notes}</small> : null}
         </div>
       ),

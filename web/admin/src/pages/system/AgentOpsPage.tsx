@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Check, Copy, KeyRound, ShieldCheck, Trash2, X } from 'lucide-react'
 import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from 'react'
+import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
 import {
   approveAgentAction,
@@ -182,7 +183,7 @@ export function AgentOpsPage() {
             <tbody>
               {(fleet.data?.nodes || []).map(node => (
                 <tr key={node.node_id}>
-                  <td><strong>{node.name}</strong> <code>#{node.node_id}</code></td>
+                  <td><Link className="table-link" to={`/server/node/${node.node_id}`}><strong>{node.name}</strong></Link> <code>#{node.node_id}</code></td>
                   <td><span className="badge">{node.status}</span></td>
                   <td>{node.websocket ? 'online' : 'offline'}</td>
                   <td>{node.kernel_running == null ? 'unknown' : node.kernel_running ? 'running' : 'stopped'}</td>
@@ -544,7 +545,7 @@ function ActionRow({
   return (
     <tr>
       <td><code>{action.request_id}</code></td>
-      <td><strong>{nodeName || 'Node'}</strong><small className="table-sub">#{action.node_id}</small></td>
+      <td><Link className="table-link" to={`/server/node/${action.node_id}`}><strong>{nodeName || 'Node'}</strong></Link><small className="table-sub">#{action.node_id}</small></td>
       <td><code>{action.action}</code></td>
       <td><span className="badge"><ShieldCheck size={13} /> {action.risk_level}</span></td>
       <td><span className="badge">{action.status}</span></td>

@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link2, Search, Unlink } from 'lucide-react'
 import { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
 import { batchUpdateNodes, getMachineNodes, getNodes, type NodeItem } from '../../api/server'
 import { DataTable, type Column } from '../ui/DataTable'
@@ -60,7 +61,7 @@ export function MachineNodeBinding({ machineId }: { machineId: number }) {
 
   const boundColumns: Column<NodeItem>[] = [
     { key: 'id', header: 'ID', render: row => row.id },
-    { key: 'name', header: '节点', render: row => <strong>{row.name || `Node ${row.id}`}</strong> },
+    { key: 'name', header: '节点', render: row => <Link className="table-link" to={`/server/node/${row.id}`}><strong>{row.name || `Node ${row.id}`}</strong></Link> },
     { key: 'type', header: '类型', render: row => <span className="badge">{row.type || '-'}</span> },
     { key: 'host', header: '地址', render: row => row.host ? `${row.host}${row.port ? ':' + row.port : ''}` : '-' },
     { key: 'enabled', header: '启用', render: row => <span className={row.enabled === false ? 'status off' : 'status ok'}>{row.enabled === false ? '否' : '是'}</span> },
