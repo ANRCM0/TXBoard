@@ -110,8 +110,54 @@ export type MachineItem = {
   [key: string]: unknown
 }
 
-export type GroupItem = { id: number; name?: string; [key: string]: unknown }
-export type RouteItem = { id: number; remarks?: string; match?: string[]; action?: string; action_value?: string; [key: string]: unknown }
+export type GroupItem = {
+  id: number
+  name?: string
+  users_count?: number
+  plans_count?: number
+  server_count?: number
+  created_at?: number | string
+  updated_at?: number | string
+  [key: string]: unknown
+}
+
+export type RouteItem = {
+  id: number
+  remarks?: string
+  match?: string[]
+  action?: 'block' | 'direct' | 'dns' | 'proxy' | string
+  action_value?: string | null
+  enabled?: boolean
+  sort?: number | null
+  server_count?: number
+  created_at?: number | string
+  updated_at?: number | string
+  [key: string]: unknown
+}
+
+export type RouteSimulationResult = {
+  node: { id: number; name?: string }
+  target: string
+  authoritative: boolean
+  warning?: string | null
+  match?: {
+    layer: 'built_in' | 'panel'
+    id?: number
+    remarks: string
+    action: string
+    action_value?: string | null
+    pattern?: string | null
+  } | null
+  evaluated_routes: Array<{
+    id: number
+    remarks?: string
+    matched: boolean
+    matched_pattern?: string | null
+    action: string
+    action_value?: string | null
+  }>
+  unresolved_patterns: string[]
+}
 
 /**
  * Ask the panel to mint key material for a protocol field. Params come from the
@@ -220,4 +266,12 @@ export async function saveRoute(payload: Partial<RouteItem>) {
 export async function deleteRoute(id: number) {
   const { data } = await apiClient.post('/server/route/drop', { id })
   return unwrap(data)
+}
+export async function sortRoutes(items: Array<{ id: number; sort: number }>) {
+  const { data } = await apiClient.post('/server/route/sort', items)
+  return unwrap(data)
+}
+export async function simulateRoute(nodeId: number, target: string) {
+  const { data } = await apiClient.post('/server/route/simulate', { node_id: nodeId, target })
+  return unwrap<RouteSimulationResult>(data)
 }

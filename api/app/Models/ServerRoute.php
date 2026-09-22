@@ -12,6 +12,8 @@ class ServerRoute extends Model
     protected $casts = [
         'created_at' => 'timestamp',
         'updated_at' => 'timestamp',
-        'match' => 'array'
+        'match' => 'array',
+        'enabled' => 'boolean',
+        'sort' => 'integer',
     ];
 }

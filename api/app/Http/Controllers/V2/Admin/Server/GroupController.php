@@ -16,7 +16,7 @@ class GroupController extends Controller
     {
         $serverGroups = ServerGroup::query()
             ->orderByDesc('id')
-            ->withCount('users')
+            ->withCount(['users', 'plans'])
             ->get();
 
         // 只在需要时手动加载server_count
@@ -35,11 +35,14 @@ class GroupController extends Controller
 
         if ($request->input('id')) {
             $serverGroup = ServerGroup::find($request->input('id'));
+            if (!$serverGroup) {
+                return $this->fail([400202, '组不存在']);
+            }
         } else {
             $serverGroup = new ServerGroup();
         }
 
-        $serverGroup->name = $request->input('name');
+        $serverGroup->name = trim((string) $request->input('name'));
         return $this->success($serverGroup->save());
     }
 
@@ -51,7 +54,10 @@ class GroupController extends Controller
         if (!$serverGroup) {
             return $this->fail([400202, '组不存在']);
         }
-        if (Server::whereJsonContains('group_ids', $groupId)->exists()) {
+        if (Server::query()->where(function ($query) use ($groupId) {
+            $query->whereJsonContains('group_ids', $groupId)
+                ->orWhereJsonContains('group_ids', (string) $groupId);
+        })->exists()) {
             return $this->fail([400, '该组已被节点所使用，无法删除']);
         }
 
