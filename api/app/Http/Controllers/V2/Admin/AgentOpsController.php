@@ -7,9 +7,11 @@ use App\Models\AgentAction;
 use App\Services\AgentOps\AgentAbility;
 use App\Services\AgentOps\AgentActionService;
 use App\Services\AgentOps\AgentInsightService;
+use App\Services\AgentOps\AgentPairingService;
 use App\Services\AgentOps\AgentTargetScope;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
 class AgentOpsController extends Controller
@@ -17,6 +19,7 @@ class AgentOpsController extends Controller
     public function __construct(
         private readonly AgentActionService $actions,
         private readonly AgentInsightService $insights,
+        private readonly AgentPairingService $pairings,
     ) {
     }
 
@@ -82,6 +85,21 @@ class AgentOpsController extends Controller
             $expiresAt,
         );
 
+        $pairing = null;
+        try {
+            $pairing = $this->pairings->issue(
+                (int) $admin->id,
+                (int) $newToken->accessToken->id,
+                $newToken->plainTextToken,
+            );
+        } catch (\Throwable) {
+            // Pairing is onboarding convenience, not the Agent credential source of truth.
+            // Keep the existing one-time plain token fallback if transient Redis is unavailable.
+            Log::warning('Agent pairing issuance unavailable', [
+                'token_id' => (int) $newToken->accessToken->id,
+            ]);
+        }
+
         return $this->success([
             'id' => $newToken->accessToken->id,
             'client_name' => $params['client_name'],
@@ -89,7 +107,9 @@ class AgentOpsController extends Controller
             'target_scope' => AgentTargetScope::describe($newToken->accessToken),
             'expires_at' => $expiresAt->toIso8601String(),
             'plain_text_token' => $newToken->plainTextToken,
-        ]);
+            'pairing' => $pairing,
+        ])->header('Cache-Control', 'no-store')
+            ->header('Pragma', 'no-cache');
     }
 
     public function revokeToken(Request $request)
