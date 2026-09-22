@@ -422,26 +422,52 @@ Caddy /mcp
 
 长期如果 MCP 的 release cadence、auth integration 或 client compatibility 明显独立于 TXBoard，仍可迁移到独立 `TXBoard-MCP` 仓库，但必须继续只消费 Agent Ops HTTP API。
 
-### 8.4 Agent Self-Connect
+### 8.4 Agent Self-Connect v1 / v2 Pairing
 
-Agent Token 创建成功后，Admin 会自动打开 Agent 自助接入弹窗。管理员复制的提示词只包含当前 TXBoard 实例的公开 guide URL：
+Self-Connect v1 建立了版本匹配的公开 guide：
 
 ```text
 /.well-known/txboard-agent-connect.md
 ```
 
-Guide 随 TXBoard 版本进入主镜像，由当前实例直接提供，因此不会依赖 private repository 或 GitHub `main` 的未来版本内容。Agent 读取 guide 后检测 Hermes / OpenClaw / 其他 MCP client 的原生配置方式，连接已有同域 `/mcp`，并只通过 read-only tool 完成 onboarding 验证。
+Self-Connect v2 在不改变长期 Agent Token 事实来源的前提下增加一次性 pairing：
 
-安全边界保持不变：
+```text
+Admin creates Agent Token
+        ↓
+encrypted pairing payload -> Redis TTL (default 600s)
+        ↓
+one-sentence prompt = guide URL + txbp_...
+        ↓
+Agent POST /api/v2/agent/pairings/redeem
+        ↓
+one-time long-lived Agent Token delivery
+        ↓
+Agent local secret/config
+        ↓
+existing /mcp
+```
 
-- plain-text Agent Token 不进入复制提示词；
-- guide 不包含任何部署 secret；
+运行时规则：
+
+- pairing code 具有至少 128-bit entropy，默认 TTL 600 秒，硬限制 60–900 秒；
+- raw code 不进入 Redis key，key 使用 SHA-256 派生；
+- Redis payload 用 APP_KEY 加密；
+- 同一 code 通过 cache-backed lock + pull 保证一次性兑换；
+- Redis 只保存短期 credential-delivery state，不拥有 abilities / target scope / expiry / revocation；
+- token 被撤销后，即使 pairing 还在 TTL 内也无法兑换；
+- Redis 不可用时 token 创建仍成功，Admin 回退到 v1 手动 secret 方式；
+- 不新增数据库 migration，不把 pairing 状态放进 Octane worker 全局内存。
+
+安全边界继续保持：
+
+- 长期 plain-text Agent Token 不进入一句话提示词；
+- pairing code 是短期、单次临时 bearer capability；
+- enrollment endpoint 不允许 Agent 直连 Redis；
 - 不安装第二套 TXBoard MCP Server；
-- 不允许 Agent 把 MySQL / Redis / TX-Node / SSH / Docker / generic shell 当成替代控制路径；
-- onboarding 不用 mutation tool 做“测试”；
+- 不允许 MySQL / Redis / TX-Node / SSH / Docker / generic shell 成为替代控制路径；
+- onboarding 只做 read-only MCP 验证；
 - abilities、target scope、approval、audit 仍由 Agent Ops runtime 执行。
-
-Pairing code / one-time token exchange 不属于当前 v1，未来如需要必须单独定义 enrollment contract。
 
 ### 8.5 当前 anomaly explanation 是 deterministic
 

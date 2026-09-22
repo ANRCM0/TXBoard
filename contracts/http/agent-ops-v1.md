@@ -12,6 +12,44 @@ Agent tokens are administrator-owned Sanctum tokens whose token name begins with
 
 When `agent:target:restricted` is absent, the token is not resource-restricted. When it is present, all node/machine reads and node actions are filtered to the declared targets. A machine target includes the nodes currently assigned to that machine.
 
+## Agent Self-Connect v2 pairing
+
+Agent Token creation remains an Admin-authenticated operation. The existing token-creation response is extended additively with an optional short-lived pairing object:
+
+```json
+{
+  "pairing": {
+    "code": "txbp_...",
+    "expires_at": "2026-09-23T00:10:00+00:00",
+    "expires_in_seconds": 600
+  }
+}
+```
+
+The existing `plain_text_token` field remains available for compatibility/manual fallback.
+
+A pre-auth Agent may exchange the short-lived code exactly once:
+
+| Method | Path | Authentication | Rate limit |
+| --- | --- | --- | --- |
+| POST | `/pairings/redeem` | pairing code in JSON body | 10/minute |
+
+Request:
+
+```json
+{
+  "pairing_code": "txbp_..."
+}
+```
+
+Success returns the existing long-lived Agent Token and its normalized metadata. Sensitive create/redeem responses use `Cache-Control: no-store`.
+
+Pairing state is encrypted transient state in the configured cache store (production default: Redis) with a default 600-second TTL and one-time redemption. It is not a second source of truth for abilities, target scope, expiry or revocation.
+
+Redeemed, expired, missing, corrupted, or revoked pairings return HTTP 410 with the same generic message. Pairing-store failure returns HTTP 503 without exposing Redis details.
+
+See `contracts/agent-self-connect/v2.md` for the full enrollment/security contract.
+
 ## Read endpoints
 
 | Method | Path | Ability | Target enforcement |
