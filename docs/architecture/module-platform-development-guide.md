@@ -399,47 +399,122 @@ Every Module Platform change should consider:
 - runtime healthcheck still works before installation；
 - optional broken module cannot break base container health unexpectedly。
 
-## 19. PR structure
+## 19. PR structure and current delivery status
 
 Prefer small architecture-preserving PRs.
 
-Recommended sequence:
+### PR A — Module contract and DTOs — ✅ completed
 
-### PR A — Module contract and DTOs
+Delivered:
 
-No behavior changes.
+- Module Package v1;
+- JSON Schema;
+- `ModuleManifest`;
+- `ModuleDescriptor`;
+- type/source/health vocabularies;
+- Capability contract and drift tests.
 
-### PR B — Module Registry foundation
+No existing runtime behavior was changed.
 
-Read-only discovery.
+### PR B — Read-only Module Registry foundation — ✅ completed
 
-### PR C — Plugin adapter
+Delivered:
 
-Existing behavior unchanged.
+- `ModuleRegistry`;
+- discovery isolation;
+- Plugin / Theme / Agent Ops adapters;
+- stable legacy Theme IDs;
+- read-only Admin Module Registry HTTP API;
+- system Module ID collision protection.
 
-### PR D — Theme contract + adapter
+The Registry observes existing runtimes and does not own lifecycle mutations.
 
-Canonical theme state enforced.
+### PR C — Plugin lifecycle integration — ▶ current target
+
+Introduce a Module lifecycle abstraction for Plugin modules:
+
+```text
+ModuleLifecycle
+      -> PluginLifecycleAdapter
+      -> existing PluginManager
+```
+
+Rules:
+
+- do not duplicate `PluginManager` install/enable/disable/upgrade/uninstall logic;
+- Plugin Package v1 remains compatible;
+- Module lifecycle must delegate to the existing Plugin Runtime;
+- lifecycle mutations must re-read Registry state after completion;
+- define explicit unsupported-operation behavior for non-Plugin module types;
+- add lifecycle contract/tests before adding generalized write routes.
+
+### PR D — Theme Package v1 + Theme lifecycle adapter
+
+Formalize Theme Package v1 and map activate/configure/delete semantics without reimplementing `ThemeService`.
 
 ### PR E — Module Center
 
-Read-only unified inventory first.
+Build the read-only unified inventory first. It should consume the Module Registry API rather than scanning Plugin/Theme state independently.
 
-### PR F — lifecycle management through Module API
+### PR F — controlled Module management API
 
-Only after registry/state is stable.
+Expose only lifecycle operations that have stable adapters and authorization semantics. Do not create generic mutation endpoints before Plugin/Theme lifecycle contracts are stable.
 
-### PR G — Admin Bridge v2
+### PR G — Admin Navigation Registry + Admin Bridge v2
 
-Incremental compatibility.
+Incremental compatibility; Admin Bridge v1 remains supported.
 
-### PR H — Agent Ops registration
+### PR H — Agent Ops registry enrichment
 
-Metadata/health integration only.
+Add deeper Agent Ops health/metadata only. Do not move Agent authorization, approval or MCP execution into Module Runtime.
 
-Avoid combining all phases into one large refactor.
+Avoid combining multiple phases into one large refactor.
 
-## 20. Definition of Done for each Module
+## 20. Phase C implementation rules
+
+The next development phase is Plugin lifecycle integration.
+
+The lifecycle layer must have one job: translate a Module lifecycle request into the existing specialized runtime.
+
+Required direction:
+
+```text
+Admin / future Module API
+          |
+          v
+   ModuleLifecycle
+          |
+          v
+PluginLifecycleAdapter
+          |
+          v
+    PluginManager
+```
+
+Forbidden direction:
+
+```text
+ModuleLifecycle
+  -> filesystem mutations
+  -> migration execution
+  -> plugin boot implementation
+  -> direct v2_plugins state changes
+```
+
+Those responsibilities already belong to `PluginManager`.
+
+Phase C should first define:
+
+- supported operations;
+- lifecycle result/error model;
+- Plugin-only adapter;
+- unsupported module-type behavior;
+- state refresh semantics;
+- tests for install, enable, disable, upgrade and uninstall delegation.
+
+Do not add Theme lifecycle or a generalized Module Center write UI in the same PR.
+
+## 21. Definition of Done for each Module
 
 A production-ready Module integration should answer:
 
