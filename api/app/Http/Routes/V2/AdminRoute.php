@@ -2,6 +2,7 @@
 
 namespace App\Http\Routes\V2;
 
+use App\Http\Routes\V2\Admin\AgentRoute;
 use App\Http\Routes\V2\Admin\AnalyticsRoute;
 use App\Http\Routes\V2\Admin\CommerceRoute;
 use App\Http\Routes\V2\Admin\ContentRoute;
@@ -13,9 +14,9 @@ use Illuminate\Contracts\Routing\Registrar;
 
 class AdminRoute
 {
-    /** @var array<class-string> */
     private const ROUTE_MODULES = [
         SystemRoute::class,
+        AgentRoute::class,
         AdminServerRoute::class,
         CommerceRoute::class,
         AdminUserRoute::class,
@@ -26,9 +27,6 @@ class AdminRoute
 
     public function map(Registrar $router): void
     {
-        // Register a stable route template and validate the actual secure path
-        // per request. This lets operators rotate secure_path without reloading
-        // Octane or rebuilding Laravel's route table.
         $router->group([
             'prefix' => '{admin_path}',
             'middleware' => ['admin.path', 'admin', 'log'],
