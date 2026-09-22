@@ -5,11 +5,13 @@ on:
     branches: [main]
     paths:
       - "api/**"
+      - "contracts/module-package/**"
       - ".github/workflows/ci-api.yml"
   pull_request:
     branches: [main]
     paths:
       - "api/**"
+      - "contracts/module-package/**"
       - ".github/workflows/ci-api.yml"
 
 concurrency:
