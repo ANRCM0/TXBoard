@@ -135,17 +135,18 @@ Agent Ops should extend this path rather than bypass it.
 
 Add an application service boundary before exposing MCP operations.
 
-Suggested namespace:
+Current service boundary:
 
 ```text
 api/app/Services/AgentOps/
+  AgentAbility.php
+  AgentTargetScope.php
   AgentOpsService.php
-  DiagnosticService.php
-  ApprovalService.php
-  AuditService.php
-  NodeActionService.php
+  AgentActionService.php
   AgentInsightService.php
 ```
+
+Responsibilities are intentionally separated: `AgentOpsService` normalizes read telemetry, `AgentActionService` owns approval-gated action state/dispatch, and `AgentInsightService` composes AI-native fleet summaries, timelines, remediation guidance, inspections and verification.
 
 The MCP server and Admin UI should consume stable Agent Ops endpoints instead of calling arbitrary Admin controllers.
 
