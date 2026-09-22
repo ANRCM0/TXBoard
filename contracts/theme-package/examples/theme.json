@@ -1,0 +1,21 @@
+{
+  "name": "ExampleTheme",
+  "description": "Example Theme Package v1 theme",
+  "author": "TXBoard",
+  "version": "1.2.0",
+  "compatibility": {
+    "txboard": ">=1.0.0"
+  },
+  "configs": [
+    {
+      "label": "Theme color",
+      "field_name": "theme_color",
+      "field_type": "select",
+      "select_options": {
+        "default": "Default",
+        "blue": "Blue"
+      },
+      "default_value": "default"
+    }
+  ]
+}

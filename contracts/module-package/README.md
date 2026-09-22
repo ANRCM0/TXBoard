@@ -230,9 +230,9 @@ A future Plugin Package v2 may adopt Module Manifest fields directly, but that i
 
 ## Relationship to Theme and Agent Ops
 
-Theme Package v1 will later map theme packages into Module descriptors.
+Theme Package v1 preserves the specialized `config.json + dashboard.blade.php` package boundary and maps package metadata into Module descriptors through `ThemeModuleAdapter`. Theme runtime state continues to come from `ThemeService`.
 
-Agent Ops will later register as a system Agent/Integration module. MCP remains an optional protocol adapter and does not become a generic plugin runtime.
+Agent Ops registers as a system Agent/Integration module. MCP remains an optional protocol adapter and does not become a generic plugin runtime.
 
 ## PR A scope
 

@@ -40,6 +40,20 @@ class ModuleLifecycleTest extends TestCase
                 return $module->manifest->type === ModuleType::PLUGIN;
             }
 
+            public function supportsOperation(
+                ModuleDescriptor $module,
+                ModuleLifecycleOperation $operation,
+            ): bool {
+                return $this->supports($module);
+            }
+
+            public function expectsModuleAfterOperation(
+                ModuleDescriptor $module,
+                ModuleLifecycleOperation $operation,
+            ): bool {
+                return true;
+            }
+
             public function execute(
                 ModuleDescriptor $module,
                 ModuleLifecycleOperation $operation,
@@ -110,6 +124,20 @@ class ModuleLifecycleTest extends TestCase
                 return true;
             }
 
+            public function supportsOperation(
+                ModuleDescriptor $module,
+                ModuleLifecycleOperation $operation,
+            ): bool {
+                return $this->supports($module);
+            }
+
+            public function expectsModuleAfterOperation(
+                ModuleDescriptor $module,
+                ModuleLifecycleOperation $operation,
+            ): bool {
+                return true;
+            }
+
             public function execute(
                 ModuleDescriptor $module,
                 ModuleLifecycleOperation $operation,
@@ -150,6 +178,20 @@ class ModuleLifecycleTest extends TestCase
                 return true;
             }
 
+            public function supportsOperation(
+                ModuleDescriptor $module,
+                ModuleLifecycleOperation $operation,
+            ): bool {
+                return $this->supports($module);
+            }
+
+            public function expectsModuleAfterOperation(
+                ModuleDescriptor $module,
+                ModuleLifecycleOperation $operation,
+            ): bool {
+                return true;
+            }
+
             public function execute(
                 ModuleDescriptor $module,
                 ModuleLifecycleOperation $operation,
@@ -167,6 +209,107 @@ class ModuleLifecycleTest extends TestCase
             $result->error?->code,
         );
         $this->assertNull($result->module);
+    }
+
+    public function test_known_module_type_with_unsupported_operation_returns_explicit_error(): void
+    {
+        $state = $this->state();
+        $registry = $this->registry($state);
+
+        $adapter = new class implements ModuleLifecycleAdapter {
+            public function name(): string
+            {
+                return 'theme';
+            }
+
+            public function supports(ModuleDescriptor $module): bool
+            {
+                return true;
+            }
+
+            public function supportsOperation(
+                ModuleDescriptor $module,
+                ModuleLifecycleOperation $operation,
+            ): bool {
+                return false;
+            }
+
+            public function expectsModuleAfterOperation(
+                ModuleDescriptor $module,
+                ModuleLifecycleOperation $operation,
+            ): bool {
+                return true;
+            }
+
+            public function execute(
+                ModuleDescriptor $module,
+                ModuleLifecycleOperation $operation,
+            ): void {
+                throw new RuntimeException('must not execute');
+            }
+        };
+
+        $result = (new ModuleLifecycle($registry, [$adapter]))
+            ->execute('access_audit', ModuleLifecycleOperation::DISABLE);
+
+        $this->assertFalse($result->success);
+        $this->assertSame(
+            ModuleLifecycleErrorCode::UNSUPPORTED_OPERATION,
+            $result->error?->code,
+        );
+        $this->assertSame('theme', $result->error?->adapter);
+        $this->assertSame(1, $state->discoveries);
+    }
+
+    public function test_successful_removal_may_end_with_module_absent_from_registry(): void
+    {
+        $state = $this->state();
+        $registry = $this->registry($state);
+
+        $adapter = new class($state) implements ModuleLifecycleAdapter {
+            public function __construct(private readonly stdClass $state)
+            {
+            }
+
+            public function name(): string
+            {
+                return 'theme';
+            }
+
+            public function supports(ModuleDescriptor $module): bool
+            {
+                return true;
+            }
+
+            public function supportsOperation(
+                ModuleDescriptor $module,
+                ModuleLifecycleOperation $operation,
+            ): bool {
+                return $operation === ModuleLifecycleOperation::UNINSTALL;
+            }
+
+            public function expectsModuleAfterOperation(
+                ModuleDescriptor $module,
+                ModuleLifecycleOperation $operation,
+            ): bool {
+                return false;
+            }
+
+            public function execute(
+                ModuleDescriptor $module,
+                ModuleLifecycleOperation $operation,
+            ): void {
+                $this->state->exists = false;
+            }
+        };
+
+        $result = (new ModuleLifecycle($registry, [$adapter]))
+            ->execute('access_audit', ModuleLifecycleOperation::UNINSTALL);
+
+        $this->assertTrue($result->success);
+        $this->assertNull($result->module);
+        $this->assertNull($result->error);
+        $this->assertSame(2, $state->discoveries);
     }
 
     public function test_result_array_uses_stable_operation_and_error_vocabulary(): void

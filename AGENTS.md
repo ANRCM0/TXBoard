@@ -24,10 +24,11 @@ Completed:
 - PR A: Module Package v1 contract / DTOs / capability vocabulary.
 - PR B: read-only Module Registry with Plugin, Theme and Agent Ops adapters.
 - PR C: Plugin lifecycle integration through `ModuleLifecycle -> PluginLifecycleAdapter -> PluginManager`.
+- PR D: Theme Package v1, canonical active-theme state and `ThemeLifecycleAdapter -> ThemeService` delegation.
 
 Current target:
 
-- PR D: Theme Package v1 / Theme lifecycle adapter.
+- PR E: read-only Module Center consuming the Module Registry API.
 
 Required direction:
 
@@ -307,19 +308,9 @@ Before merge:
 
 Use merge commits for project PRs unless explicitly instructed otherwise.
 
-## 18. Current Phase D rules
+## 18. Current Phase E rules
 
-Phase C is complete. Module lifecycle now delegates Plugin mutations through:
-
-```text
-ModuleLifecycle
-      -> PluginLifecycleAdapter
-      -> existing PluginManager
-```
-
-The next Module Platform work is Theme Package v1 / Theme lifecycle integration.
-
-Required direction:
+Phase D is complete. Theme modules now use:
 
 ```text
 ModuleLifecycle
@@ -327,13 +318,30 @@ ModuleLifecycle
       -> existing ThemeService
 ```
 
+Theme Package v1 keeps `config.json + dashboard.blade.php` compatible, while `frontend_theme` is the only canonical active-theme state.
+
+The next Module Platform work is the read-only Module Center.
+
+Required direction:
+
+```text
+TXBoard Admin Module Center
+          |
+          v
+GET /api/v2/{secure_path}/module
+          |
+          v
+    Module Registry
+```
+
 Keep these invariants:
 
-- `frontend_theme` is the only canonical active-theme state;
-- `TXBoard` is the built-in default;
-- `current_theme` may be read only for historical compatibility;
-- Theme Admin, user rendering and Module Registry must resolve the same effective theme;
-- do not add a second Theme state table merely for Module Platform;
-- do not mix Theme lifecycle, Module Center write UI and Admin Bridge v2 in one PR.
+- the Admin must not call Plugin, Theme and Agent APIs separately and rebuild another Module model;
+- Module Center is read-only in this phase;
+- do not add generic Module mutation routes before the controlled management API phase;
+- existing specialized Plugin/Theme/Agent management pages may remain;
+- render Registry-provided identity, type, source, version, enabled/active, health and capabilities;
+- discovery errors must remain visible without exposing secrets;
+- do not mix Admin Bridge v2 or Agent policy changes into this PR.
 
-The goal remains to make Module Platform **orchestrate** specialized runtimes, not replace them.
+The goal is one inventory model, not another frontend source of truth.
