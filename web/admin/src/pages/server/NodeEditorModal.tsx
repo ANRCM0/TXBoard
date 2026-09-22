@@ -10,6 +10,7 @@ import type {
   RouteItem,
 } from '../../api/server'
 import { Modal } from '../../components/ui/Modal'
+import { requestConfirm } from '../../components/ui/ConfirmDialog'
 import { ProtocolSchemaForm } from './ProtocolSchemaForm'
 
 type JsonValue = Record<string, unknown> | unknown[]
@@ -84,6 +85,11 @@ function protocolDefinition(type: NodeProtocolType, definitions: ProtocolDefinit
 function protocolDefaults(type: NodeProtocolType, definitions: ProtocolDefinitionMeta[]): Record<string, unknown> {
   const managed = protocolDefinition(type, definitions)
   return managed && isRecord(managed.defaults) ? managed.defaults : {}
+}
+
+/** True once the operator diverged from the values the modal was opened with. */
+function isDirty(draft: Draft, node: NodeItem | null | undefined, definitions: ProtocolDefinitionMeta[]) {
+  return JSON.stringify(draft) !== JSON.stringify(draftFromNode(node, definitions))
 }
 
 function setAt(source: Record<string, unknown>, path: string, value: unknown): Record<string, unknown> {
@@ -349,6 +355,20 @@ export function NodeEditorModal({
     })
   }, [open, node?.id, node?.type, node?.protocol_settings, protocolDefinitions])
 
+  const requestClose = () => {
+    if (!isDirty(draft, node, protocolDefinitions)) {
+      onClose()
+      return
+    }
+    requestConfirm({
+      title: '放弃未保存的更改',
+      message: '当前节点的修改尚未保存，关闭后将丢失这些内容。',
+      danger: true,
+      confirmLabel: '放弃更改',
+      action: onClose,
+    })
+  }
+
   const updateProtocol = (path: string, value: unknown) => {
     setDraft((current) => ({
       ...current,
@@ -357,11 +377,24 @@ export function NodeEditorModal({
   }
 
   const setType = (type: NodeProtocolType) => {
-    setDraft((current) => ({
-      ...current,
-      type,
-      protocolSettings: protocolDefaults(type, protocolDefinitions),
-    }))
+    const defaults = protocolDefaults(type, protocolDefinitions)
+    // Only a chosen protocol with diverging settings can lose data.
+    const hasEdits = Boolean(draft.type) && JSON.stringify(draft.protocolSettings)
+      !== JSON.stringify(protocolDefaults(draft.type, protocolDefinitions))
+
+    // Switching protocols replaces the whole protocol model, including keys.
+    if (hasEdits) {
+      requestConfirm({
+        title: '切换协议类型',
+        message: '切换协议会清空已填写的协议参数（含已生成的密钥），确认继续？',
+        danger: true,
+        confirmLabel: '切换',
+        action: () => setDraft((current) => ({ ...current, type, protocolSettings: defaults })),
+      })
+      return
+    }
+
+    setDraft((current) => ({ ...current, type, protocolSettings: defaults }))
   }
 
   const submit = () => {
@@ -455,13 +488,13 @@ export function NodeEditorModal({
     open={open}
     title={node ? '编辑节点' : '新建节点'}
     subtitle="管理节点连接、协议参数与访问范围。"
-    onClose={onClose}
+    onClose={requestClose}
     wide
     className="node-editor-modal"
     bodyClassName="node-editor-body"
     headerAction={<ProtocolPicker value={draft.type} definitions={protocolDefinitions} onChange={setType}/>}
     footer={<div className="node-editor-actions">
-      <button className="button node-editor-cancel" onClick={onClose}>取消</button>
+      <button className="button node-editor-cancel" onClick={requestClose}>取消</button>
       <button className="button primary" disabled={saving} onClick={submit}>{saving ? '提交中…' : '提交'}</button>
     </div>}
   >
