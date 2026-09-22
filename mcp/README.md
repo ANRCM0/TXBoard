@@ -34,15 +34,19 @@ That compatibility service now reuses the same TXBoard image instead of building
 
 ## Agent self-connect
 
-After an administrator creates an Agent Token, TXBoard Admin now presents an **Agent 自助接入** dialog. The copied prompt intentionally contains no credential; it points the Agent at the version-matched public guide served by that TXBoard instance:
+TXBoard Admin presents **Agent 自助接入** immediately after Agent Token creation.
+
+Self-Connect v2 prefers a single short prompt:
 
 ```text
-https://panel.example.com/.well-known/txboard-agent-connect.md
+请按 https://panel.example.com/.well-known/txboard-agent-connect.md 自助接入 TXBoard；一次性配对码：txbp_...
 ```
 
-The guide instructs Hermes, OpenClaw and other MCP-compatible Agents to detect their own native MCP configuration, connect to the existing remote `/mcp` endpoint, preserve unrelated configuration and verify with read-only tools only.
+The pairing code is temporary and one-time. TXBoard stores only an APP_KEY-encrypted credential-delivery payload in the shared cache (production default Redis), with a default 600-second TTL. The Agent redeems the code through `POST /api/v2/agent/pairings/redeem`, stores the returned long-lived Agent Token in its own local secret/config mechanism, then connects to the existing `/mcp` endpoint.
 
-This is onboarding over the existing MCP Gateway, not an installer for another gateway. The Agent Token remains separate from the prompt and the Agent Ops permission / target scope / approval / audit boundary is unchanged.
+The durable authorization source remains the Sanctum Agent Token. Pairing cannot widen abilities, target scope, expiry or approval rights. If transient pairing storage is unavailable, Admin retains the v1 manual-token fallback.
+
+This remains onboarding over the existing MCP Gateway, not an installer for another gateway. MCP still never connects directly to Redis/MySQL/TX-Node and the Agent Ops permission / target scope / approval / audit boundary is unchanged.
 
 ## Standalone development
 
