@@ -2,7 +2,7 @@
 
 > 最后更新：2026-09-22
 >
-> 当前基线：TXBoard `main@7db01019f7ee9de47e2e445d4f0255fa113bfe59`
+> Phase 5 实现基线：TXBoard `7db01019f7ee9de47e2e445d4f0255fa113bfe59`
 >
 > 状态：Phase 0–5 已实现；自动修复保持关闭。
 
