@@ -19,11 +19,16 @@ class AgentRoute
             $router->get('/nodes', [AgentOpsController::class, 'nodes']);
             $router->get('/nodes/{nodeId}/metrics', [AgentOpsController::class, 'nodeMetrics']);
             $router->get('/nodes/{nodeId}/diagnose', [AgentOpsController::class, 'diagnoseNode']);
+            $router->get('/fleet/health', [AgentOpsController::class, 'fleetHealth']);
+            $router->get('/inspections', [AgentOpsController::class, 'inspectionHistory']);
+            $router->get('/nodes/{nodeId}/remediation', [AgentOpsController::class, 'remediationPlan']);
+            $router->get('/nodes/{nodeId}/timeline', [AgentOpsController::class, 'incidentTimeline']);
             $router->get('/traffic/summary', [AgentOpsController::class, 'trafficSummary']);
             $router->get('/queue/status', [AgentOpsController::class, 'queueStatus']);
             $router->get('/audit', [AgentOpsController::class, 'auditLogs']);
             $router->post('/nodes/{nodeId}/actions', [AgentOpsController::class, 'createNodeAction']);
             $router->get('/actions/{requestId}', [AgentOpsController::class, 'actionStatus']);
+            $router->get('/actions/{requestId}/verify', [AgentOpsController::class, 'verifyAction']);
         });
     }
 }
