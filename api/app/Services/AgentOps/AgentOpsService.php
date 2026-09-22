@@ -207,9 +207,15 @@ class AgentOpsService
             ->get()
             ->map(fn (AgentAuditLog $log) => [
                 'request_id' => $log->request_id,
+                'actor_type' => $log->actor_type,
                 'client_name' => $log->client_name,
+                'protocol' => $log->protocol,
                 'tool' => $log->tool,
                 'risk_level' => $log->risk_level,
+                'approval_required' => (bool) $log->approval_required,
+                'approval_actor' => $log->approval_actor,
+                'started_at' => $log->started_at,
+                'finished_at' => $log->finished_at,
                 'target_type' => $log->target_type,
                 'target_id' => $log->target_id,
                 'result_status' => $log->result_status,
