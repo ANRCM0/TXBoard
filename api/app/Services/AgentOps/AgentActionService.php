@@ -52,6 +52,11 @@ class AgentActionService
             'risk' => 'operate',
             'event' => 'ops.network.port_check',
         ],
+        'ops.logs.tail' => [
+            'ability' => AgentAbility::NODES_DIAGNOSE,
+            'risk' => 'operate',
+            'event' => 'ops.logs.tail',
+        ],
     ];
 
     public function definition(string $action): array
@@ -66,24 +71,65 @@ class AgentActionService
     {
         $definition = $this->definition($action);
         $input = $this->validateInput($node, $action, $input);
+        $tokenId = $token->id ?? null;
 
-        $duplicate = AgentAction::query()
-            ->where('token_id', $token->id ?? null)
+        $pendingSameAction = AgentAction::query()
+            ->where('token_id', $tokenId)
             ->where('node_id', $node->id)
             ->where('action', $action)
             ->where('status', AgentAction::STATUS_PENDING)
-            ->where('created_at', '>=', time() - 60)
             ->orderByDesc('id')
             ->first();
 
-        if ($duplicate && $duplicate->input === $input) {
-            return $duplicate;
+        if ($pendingSameAction) {
+            if ($pendingSameAction->input === $input) {
+                return $pendingSameAction;
+            }
+            throw new \InvalidArgumentException('A different request for this action is already pending');
+        }
+
+        $maxPendingPerToken = max(1, (int) config('agent_ops.max_pending_per_token', 20));
+        $pendingPerToken = AgentAction::query()
+            ->where('token_id', $tokenId)
+            ->where('status', AgentAction::STATUS_PENDING)
+            ->count();
+        if ($pendingPerToken >= $maxPendingPerToken) {
+            throw new \InvalidArgumentException('Agent pending-action limit reached');
+        }
+
+        $maxPendingPerNode = max(1, (int) config('agent_ops.max_pending_per_node', 5));
+        $pendingPerNode = AgentAction::query()
+            ->where('node_id', $node->id)
+            ->where('status', AgentAction::STATUS_PENDING)
+            ->count();
+        if ($pendingPerNode >= $maxPendingPerNode) {
+            throw new \InvalidArgumentException('Node pending-action limit reached');
+        }
+
+        $cooldown = max(0, (int) config('agent_ops.action_cooldown', 30));
+        if ($cooldown > 0) {
+            $recent = AgentAction::query()
+                ->where('token_id', $tokenId)
+                ->where('node_id', $node->id)
+                ->where('action', $action)
+                ->whereIn('status', [
+                    AgentAction::STATUS_RUNNING,
+                    AgentAction::STATUS_SUCCEEDED,
+                    AgentAction::STATUS_FAILED,
+                    AgentAction::STATUS_TIMED_OUT,
+                ])
+                ->where('created_at', '>=', time() - $cooldown)
+                ->exists();
+
+            if ($recent) {
+                throw new \InvalidArgumentException("Action cooldown is active ({$cooldown}s)");
+            }
         }
 
         return AgentAction::create([
             'request_id' => 'ops_' . Str::lower((string) Str::ulid()),
             'admin_id' => $admin->id,
-            'token_id' => $token->id ?? null,
+            'token_id' => $tokenId,
             'node_id' => $node->id,
             'action' => $action,
             'risk_level' => $definition['risk'],
@@ -264,6 +310,25 @@ class AgentActionService
                 throw new \InvalidArgumentException('Port must be between 1 and 65535');
             }
             return ['target' => $target, 'port' => $port];
+        }
+
+        if ($action === 'ops.logs.tail') {
+            $source = strtolower(trim((string) ($input['source'] ?? 'application')));
+            if ($source !== 'application') {
+                throw new \InvalidArgumentException('Unsupported log source');
+            }
+
+            $maxLines = max(1, (int) config('agent_ops.log_max_lines', 200));
+            $lines = (int) ($input['lines'] ?? min(100, $maxLines));
+            if ($lines < 1 || $lines > $maxLines) {
+                throw new \InvalidArgumentException("Log lines must be between 1 and {$maxLines}");
+            }
+
+            return [
+                'source' => 'application',
+                'lines' => $lines,
+                'max_bytes' => max(1024, (int) config('agent_ops.log_max_bytes', 65536)),
+            ];
         }
 
         return [];
