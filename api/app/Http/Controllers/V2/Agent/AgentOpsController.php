@@ -104,7 +104,11 @@ class AgentOpsController extends Controller
             'input' => 'nullable|array',
         ]);
 
-        $definition = $this->actions->definition($params['action']);
+        try {
+            $definition = $this->actions->definition($params['action']);
+        } catch (\InvalidArgumentException $e) {
+            throw ValidationException::withMessages(['action' => $e->getMessage()]);
+        }
         AgentAbility::assert($request, $definition['ability']);
 
         $node = Server::find($nodeId);
@@ -131,7 +135,11 @@ class AgentOpsController extends Controller
     public function actionStatus(Request $request, string $requestId)
     {
         AgentAbility::assert($request, AgentAbility::NODES_READ);
-        $action = $this->actions->find($requestId);
+        try {
+            $action = $this->actions->find($requestId);
+        } catch (\InvalidArgumentException) {
+            return $this->fail([404000, 'Agent action not found']);
+        }
 
         if ((int) $action->admin_id !== (int) $request->user()->id) {
             return $this->fail([403000, 'Forbidden']);
