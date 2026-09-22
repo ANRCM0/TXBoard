@@ -3,6 +3,7 @@
 namespace App\WebSocket;
 
 use App\Models\Server;
+use App\Services\AgentOps\AgentActionService;
 use App\Services\DeviceStateService;
 use App\Services\NodeRegistry;
 use App\Services\ServerService;
@@ -98,6 +99,25 @@ class NodeEventHandlers
         ]);
 
         Log::debug("[WS] Node#{$nodeId} requested devices, sent " . count($devices) . " users");
+    }
+
+    /**
+     * Handle typed Agent Ops result from TX-Node.
+     */
+    public static function handleOpsResult(TcpConnection $conn, int $nodeId, array $data): void
+    {
+        try {
+            app(AgentActionService::class)->handleNodeResult($nodeId, $data);
+            Log::info("[WS] Node#{$nodeId} operation result received", [
+                'request_id' => $data['request_id'] ?? null,
+                'ok' => $data['ok'] ?? null,
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning("[WS] Failed to persist operation result from node#{$nodeId}", [
+                'request_id' => $data['request_id'] ?? null,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     /**
