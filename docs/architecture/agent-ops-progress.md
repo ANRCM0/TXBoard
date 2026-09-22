@@ -405,17 +405,21 @@ TX-Node 当前 file log 不保证包含可解析日历日期。
 
 在日志格式先标准化之前，不实现伪精确的 `from/to` 时间过滤。
 
-### 8.3 MCP Gateway 仍在 TXBoard 仓库内
+### 8.3 MCP Gateway 随 TXBoard 主镜像分发
 
-当前实现适合部署和验证。
+MCP Gateway 仍位于 `mcp/`，但生产 artifact 已与 TXBoard 主镜像统一：
 
-长期如果 MCP 的：
+```text
+Caddy /mcp
+  -> loopback MCP Gateway
+  -> Agent Ops HTTP API
+```
 
-- release cadence；
-- auth integration；
-- client compatibility；
+默认 `ENABLE_MCP=false`，因此不使用 AI Agent 的部署不会启动额外 Node 进程。启用后 Gateway 只监听 loopback，Caddy 是唯一公共入口；Agent Ops 权限、target scope、approval、audit 与 TX-Node typed operation 边界保持不变。
 
-开始明显独立于 TXBoard，可迁移到独立 `TXBoard-MCP` 仓库，但必须继续只消费 Agent Ops HTTP API。
+源码 Compose 的历史 `mcp` profile 继续保留为兼容方式，但也复用同一个 TXBoard image，不再需要第二个 MCP production image。
+
+长期如果 MCP 的 release cadence、auth integration 或 client compatibility 明显独立于 TXBoard，仍可迁移到独立 `TXBoard-MCP` 仓库，但必须继续只消费 Agent Ops HTTP API。
 
 ### 8.4 当前 anomaly explanation 是 deterministic
 

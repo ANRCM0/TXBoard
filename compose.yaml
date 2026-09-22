@@ -36,7 +36,7 @@ services:
 
   txboard:
     # One application image contains the API, both SPAs, Caddy, Horizon,
-    # embedded Redis and the WebSocket server.
+    # embedded Redis, WebSocket server and the optional MCP Gateway.
     image: ${TXBOARD_IMAGE:-ghcr.io/paimoncai/txboard:latest}
     build:
       context: .
@@ -74,6 +74,11 @@ services:
       ENABLE_HORIZON: "true"
       ENABLE_REDIS: "true"
       ENABLE_WS_SERVER: "true"
+      ENABLE_MCP: "${TXBOARD_ENABLE_MCP:-false}"
+      MCP_HOST: 127.0.0.1
+      MCP_PORT: 3000
+      MCP_ALLOWED_HOSTS: localhost,127.0.0.1
+      MCP_ALLOWED_ORIGINS: ${TXBOARD_MCP_ALLOWED_ORIGINS:-}
     ports:
       - "${TXBOARD_HTTP_PORT:-80}:80"
       - "${TXBOARD_HTTPS_PORT:-443}:443"
@@ -84,11 +89,14 @@ services:
       retries: 24
       start_period: 10s
 
+  # Backward-compatible standalone MCP profile. New deployments should prefer
+  # TXBOARD_ENABLE_MCP=true on the main txboard service so /mcp is served through
+  # the same Caddy ingress. The compatibility profile reuses the same TXBoard
+  # image instead of building a second MCP image.
   txboard-mcp:
     profiles: ["mcp"]
-    build:
-      context: ./mcp
-      dockerfile: Dockerfile
+    image: ${TXBOARD_IMAGE:-ghcr.io/paimoncai/txboard:latest}
+    entrypoint: ["node", "/opt/txboard-mcp/dist/index.js"]
     restart: unless-stopped
     logging: *default-logging
     depends_on:
