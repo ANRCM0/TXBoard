@@ -4,7 +4,7 @@ Base path: `/api/v2/agent`
 
 Authentication: `Authorization: Bearer <TXBoard Agent token>`.
 
-Agent tokens are administrator-owned Sanctum tokens whose token name begins with `agent:`. Every endpoint requires an explicit functional `agent:*` ability. Tokens can additionally carry resource restrictions:
+Agent tokens are administrator-owned Sanctum tokens whose token name begins with `agent:`. Every endpoint requires an explicit functional `agent:*` ability. Phase 5 insight tools use `agent:insights:read`. Tokens can additionally carry resource restrictions:
 
 - `agent:target:restricted`
 - `agent:target:node:<id>`
@@ -86,6 +86,95 @@ Policy values are deployment-configurable, with hard safety caps where applicabl
 An identical pending request is returned as the existing pending action rather than duplicated. A different request for the same action while one is pending is rejected.
 
 Policy violations and malformed action input return HTTP 422. Missing abilities or target-scope violations return HTTP 403.
+
+## AI-native insight endpoints
+
+All Phase 5 insight endpoints require `agent:insights:read`. Node-scoped insight calls also enforce the token's node/machine target restrictions.
+
+### Fleet health
+
+`GET /fleet/health` returns a normalized fleet snapshot with `healthy`, `degraded` and `critical` node states.
+
+```json
+{
+  "status": "critical",
+  "summary": {
+    "status": "critical",
+    "total_nodes": 8,
+    "healthy_nodes": 6,
+    "degraded_nodes": 1,
+    "critical_nodes": 1,
+    "warning_count": 4
+  },
+  "nodes": [],
+  "generated_at": 1780000000
+}
+```
+
+Severity is derived from normalized warning severity. Informational warnings remain visible without automatically downgrading the node.
+
+### Inspection history
+
+TXBoard persists normalized fleet snapshots in `v2_agent_inspection`.
+
+The scheduler runs `agent:inspect-fleet` every five minutes when:
+
+```text
+AGENT_OPS_INSPECTION_ENABLED=true
+```
+
+Default retention is controlled by:
+
+```text
+AGENT_OPS_INSPECTION_RETENTION_DAYS=7
+```
+
+Inspection rows contain normalized health findings only. They do not contain raw TX-Node logs, Agent prompts or credentials.
+
+### Incident timeline
+
+`GET /nodes/{nodeId}/timeline?hours=24&limit=100` composes:
+
+- inspection state transitions;
+- Agent action requested/approved/finished events;
+- Agent API audit events.
+
+Consecutive inspection snapshots with the same node state/warning signature are collapsed.
+
+Limits:
+
+- `hours`: 1–168;
+- `limit`: 1–100.
+
+### Remediation plan
+
+`GET /nodes/{nodeId}/remediation` returns deterministic guidance derived from current normalized warnings.
+
+The response includes:
+
+```json
+{
+  "automatic_remediation_enabled": false,
+  "policy": "recommend_then_approve_then_execute_then_verify",
+  "recommendations": []
+}
+```
+
+A remediation plan can recommend an approval-gated action such as `ops.kernel.restart`, but it cannot approve or execute that action.
+
+### Post-action verification
+
+`GET /actions/{requestId}/verify` re-reads current telemetry instead of trusting the operation ACK.
+
+Verification states:
+
+- `waiting`;
+- `passed`;
+- `failed`;
+- `inconclusive`;
+- `action_not_successful`.
+
+For example, an `ops.kernel.restart` action whose stored status is `succeeded` still verifies as `failed` when the node WebSocket is currently offline. If the target no longer exists, verification is `inconclusive` with `target_missing`.
 
 ## Admin control plane
 
