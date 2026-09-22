@@ -208,7 +208,7 @@ export function MachinesPage() {
       </div>
 
       <div className="server-table-card">
-        <DataTable rows={filteredRows} columns={columns}/>
+        <DataTable rows={filteredRows} columns={columns} rowKey={row=>row.id} loading={query.isFetching} error={query.isError} onRetry={()=>query.refetch()}/>
       </div>
 
       <Modal open={open} title={editing ? '编辑机器' : '添加机器'} onClose={() => setOpen(false)}>

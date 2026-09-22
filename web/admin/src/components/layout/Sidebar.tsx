@@ -25,6 +25,7 @@ import { useState, type KeyboardEvent } from 'react'
 import { NavLink } from 'react-router-dom'
 import { getPlugins, normalizePluginPath } from '../../api/plugin'
 import { preloadAdminRoute } from '../../lib/routePreload'
+import { useDialog } from '../../lib/useDialog'
 
 const groups = [
   {
@@ -80,6 +81,7 @@ type SidebarProps = {
 }
 
 export function Sidebar({ open, onClose }: SidebarProps) {
+  const dialogRef = useDialog(open, onClose)
   const pluginsQuery = useQuery({ queryKey: ['pluginList'], queryFn: () => getPlugins() })
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     system: true,
@@ -118,7 +120,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
   }
 
   return (
-    <aside className={`admin-sidebar ${open ? 'is-open' : ''}`}>
+    <div ref={dialogRef} tabIndex={-1} role={open ? 'dialog' : undefined} aria-modal={open || undefined} aria-label="管理导航" className={`admin-sidebar ${open ? 'is-open' : ''}`}>
       <div className="admin-sidebar-inner">
         <div className="admin-sidebar-brand">
           <div className="admin-sidebar-brand-main">
@@ -132,7 +134,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
           </button>
         </div>
 
-        <nav className="admin-sidebar-nav">
+        <nav className="admin-sidebar-nav" aria-label="主导航">
           <NavLink
             to="/"
             end
@@ -214,6 +216,6 @@ export function Sidebar({ open, onClose }: SidebarProps) {
           <span>TXBoard</span>
         </div>
       </div>
-    </aside>
+    </div>
   )
 }
