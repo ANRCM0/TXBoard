@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { useMemo, useState } from 'react'
 import { getMachineHistory } from '../../api/server'
+import { QueryFeedback } from '../ui/QueryFeedback'
 
 type HistoryPoint = {
   time: string
@@ -76,7 +77,8 @@ export function MachineHistoryChart({ machineId }: { machineId: number }) {
       </select>
     </div>
 
-    {query.isLoading ? <div className="chart-state">加载历史数据…</div> :
+    {query.isError ? <QueryFeedback error onRetry={() => query.refetch()} /> :
+      query.isLoading ? <div className="chart-state">加载历史数据…</div> :
       data.length ? <div className="history-chart">
         <ResponsiveContainer width="100%" height={320}>
           <LineChart data={data}>
