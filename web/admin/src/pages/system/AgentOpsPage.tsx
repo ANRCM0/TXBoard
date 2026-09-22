@@ -17,6 +17,9 @@ import {
 } from '../../api/agent'
 import { getMachines, getNodes } from '../../api/server'
 import { PageHeader } from '../../components/ui/PageHeader'
+import { Modal } from '../../components/ui/Modal'
+import { QueryFeedback } from '../../components/ui/QueryFeedback'
+import { requestConfirm } from '../../components/ui/ConfirmDialog'
 
 export function AgentOpsPage() {
   const qc = useQueryClient()
@@ -47,6 +50,8 @@ export function AgentOpsPage() {
   const [targetNodeIds, setTargetNodeIds] = useState<number[]>([])
   const [targetMachineIds, setTargetMachineIds] = useState<number[]>([])
   const [plainToken, setPlainToken] = useState('')
+  const [rejectingAction, setRejectingAction] = useState<AgentActionItem | null>(null)
+  const [rejectReason, setRejectReason] = useState('')
 
   useEffect(() => {
     if (!selected.length && abilities.data?.default_read?.length) {
@@ -97,6 +102,8 @@ export function AgentOpsPage() {
       rejectAgentAction(requestId, reason),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['agentActions'] })
+      setRejectingAction(null)
+      setRejectReason('')
       toast.success('运维动作已拒绝')
     },
   })
@@ -151,6 +158,8 @@ export function AgentOpsPage() {
           </button>
         </div>
 
+        <QueryFeedback loading={fleet.isFetching && !fleet.data} error={fleet.isError} onRetry={() => fleet.refetch()} />
+
         <div className="chip-list">
           <span className="badge">状态 {fleet.data?.status || 'unknown'}</span>
           <span className="badge">节点 {fleet.data?.summary.total_nodes ?? 0}</span>
@@ -180,7 +189,7 @@ export function AgentOpsPage() {
                   <td>{node.warnings.map(item => item.code).join(', ') || '-'}</td>
                 </tr>
               ))}
-              {!fleet.data?.nodes?.length ? (
+              {!fleet.data?.nodes?.length && !fleet.isError ? (
                 <tr><td colSpan={5} className="empty-cell">{fleet.isLoading ? '加载中…' : '暂无节点'}</td></tr>
               ) : null}
             </tbody>
@@ -189,6 +198,7 @@ export function AgentOpsPage() {
 
         <div>
           <strong>最近巡检</strong>
+          <QueryFeedback loading={inspections.isFetching && !inspections.data} error={inspections.isError} onRetry={() => inspections.refetch()} />
           <div className="table-wrap">
             <table className="data-table">
               <thead>
@@ -210,7 +220,7 @@ export function AgentOpsPage() {
                     <td>{formatEpoch(item.finished_at)}</td>
                   </tr>
                 ))}
-                {!inspections.data?.length ? (
+                {!inspections.data?.length && !inspections.isError ? (
                   <tr><td colSpan={5} className="empty-cell">{inspections.isLoading ? '加载中…' : '暂无巡检记录'}</td></tr>
                 ) : null}
               </tbody>
@@ -367,6 +377,7 @@ export function AgentOpsPage() {
             <p className="text-muted">撤销后对应 MCP / Agent 会立即失去访问权限。</p>
           </div>
         </div>
+        <QueryFeedback loading={tokens.isFetching && !tokens.data} error={tokens.isError} onRetry={() => tokens.refetch()} />
         <div className="table-wrap">
           <table className="data-table">
             <thead>
@@ -393,14 +404,20 @@ export function AgentOpsPage() {
                       className="icon-button danger"
                       aria-label="撤销 Token"
                       disabled={revokeToken.isPending}
-                      onClick={() => revokeToken.mutate(token.id)}
+                      onClick={() => requestConfirm({
+                        title: '撤销 Agent Token',
+                        message: `确认撤销「${token.client_name}」？撤销后该客户端会立即失去 Agent Ops 访问权限。`,
+                        danger: true,
+                        confirmLabel: '撤销 Token',
+                        action: () => revokeToken.mutate(token.id),
+                      })}
                     >
                       <Trash2 size={15} />
                     </button>
                   </td>
                 </tr>
               ))}
-              {!tokens.data?.length ? (
+              {!tokens.data?.length && !tokens.isError ? (
                 <tr><td colSpan={6} className="empty-cell">{tokens.isLoading ? '加载中…' : '暂无 Agent Token'}</td></tr>
               ) : null}
             </tbody>
@@ -416,6 +433,7 @@ export function AgentOpsPage() {
           </div>
           <span className="badge">{pending.length} pending</span>
         </div>
+        <QueryFeedback loading={actions.isFetching && !actions.data} error={actions.isError} onRetry={() => actions.refetch()} />
         <div className="table-wrap">
           <table className="data-table">
             <thead>
@@ -430,38 +448,94 @@ export function AgentOpsPage() {
               </tr>
             </thead>
             <tbody>
-              {(actions.data || []).map(action => (
-                <ActionRow
-                  key={action.request_id}
-                  action={action}
-                  approving={approve.isPending}
-                  rejecting={reject.isPending}
-                  onApprove={() => approve.mutate(action.request_id)}
-                  onReject={() => {
-                    const reason = window.prompt('拒绝原因（可选）') || undefined
-                    reject.mutate({ requestId: action.request_id, reason })
-                  }}
-                />
-              ))}
-              {!actions.data?.length ? (
+              {(actions.data || []).map(action => {
+                const nodeName = (nodes.data || []).find(node => node.id === action.node_id)?.name
+                return (
+                  <ActionRow
+                    key={action.request_id}
+                    action={action}
+                    nodeName={nodeName}
+                    approving={approve.isPending}
+                    rejecting={reject.isPending}
+                    onApprove={() => requestConfirm({
+                      title: '批准运维动作',
+                      message: `确认批准 ${action.action}？目标：${nodeName || 'Node'} #${action.node_id}；风险：${action.risk_level}。批准后动作会立即通过控制通道下发。`,
+                      danger: ['high', 'critical'].includes(String(action.risk_level).toLowerCase()),
+                      confirmLabel: '批准并下发',
+                      action: () => approve.mutate(action.request_id),
+                    })}
+                    onReject={() => {
+                      setRejectingAction(action)
+                      setRejectReason('')
+                    }}
+                  />
+                )
+              })}
+              {!actions.data?.length && !actions.isError ? (
                 <tr><td colSpan={7} className="empty-cell">{actions.isLoading ? '加载中…' : '暂无 Agent 动作'}</td></tr>
               ) : null}
             </tbody>
           </table>
         </div>
       </div>
+
+      <Modal
+        open={Boolean(rejectingAction)}
+        title="拒绝运维动作"
+        onClose={() => {
+          if (reject.isPending) return
+          setRejectingAction(null)
+          setRejectReason('')
+        }}
+      >
+        {rejectingAction ? (
+          <div className="form-stack">
+            <dl className="meta-list">
+              <div><dt>目标节点</dt><dd>Node #{rejectingAction.node_id}</dd></div>
+              <div><dt>动作</dt><dd><code>{rejectingAction.action}</code></dd></div>
+              <div><dt>风险等级</dt><dd>{rejectingAction.risk_level}</dd></div>
+              <div><dt>Request ID</dt><dd><code>{rejectingAction.request_id}</code></dd></div>
+            </dl>
+            <label className="field">
+              <span>拒绝原因（可选）</span>
+              <textarea
+                value={rejectReason}
+                onChange={event => setRejectReason(event.target.value)}
+                placeholder="例如：节点正在承载高峰流量，暂不执行重启"
+                maxLength={500}
+              />
+            </label>
+            <div className="card-actions">
+              <button className="button" disabled={reject.isPending} onClick={() => {
+                setRejectingAction(null)
+                setRejectReason('')
+              }}>取消</button>
+              <button
+                className="button danger"
+                disabled={reject.isPending}
+                onClick={() => reject.mutate({
+                  requestId: rejectingAction.request_id,
+                  reason: rejectReason.trim() || undefined,
+                })}
+              >{reject.isPending ? '拒绝中…' : '确认拒绝'}</button>
+            </div>
+          </div>
+        ) : null}
+      </Modal>
     </>
   )
 }
 
 function ActionRow({
   action,
+  nodeName,
   approving,
   rejecting,
   onApprove,
   onReject,
 }: {
   action: AgentActionItem
+  nodeName?: string
   approving: boolean
   rejecting: boolean
   onApprove: () => void
@@ -470,7 +544,7 @@ function ActionRow({
   return (
     <tr>
       <td><code>{action.request_id}</code></td>
-      <td>#{action.node_id}</td>
+      <td><strong>{nodeName || 'Node'}</strong><small className="table-sub">#{action.node_id}</small></td>
       <td><code>{action.action}</code></td>
       <td><span className="badge"><ShieldCheck size={13} /> {action.risk_level}</span></td>
       <td><span className="badge">{action.status}</span></td>

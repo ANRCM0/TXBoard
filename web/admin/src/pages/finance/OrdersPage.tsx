@@ -16,7 +16,7 @@ import { QueryFeedback } from '../../components/ui/QueryFeedback'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { requestConfirm } from '../../components/ui/ConfirmDialog'
 
-type FilterField = 'trade_no' | 'user_id' | 'callback_no'
+type FilterField = 'trade_no' | 'email' | 'user_id' | 'callback_no'
 
 export function OrdersPage() {
   const qc = useQueryClient()
@@ -105,6 +105,7 @@ export function OrdersPage() {
       <div className="order-search">
         <select aria-label="订单搜索字段" value={field} onChange={e => { setPage(1); setField(e.target.value as FilterField); setAppliedKeyword(''); setKeyword(''); }}>
           <option value="trade_no">订单号</option>
+          <option value="email">用户邮箱</option>
           <option value="user_id">用户 ID</option>
           <option value="callback_no">回调号</option>
         </select>
@@ -163,7 +164,7 @@ export function OrdersPage() {
             {rows.map(order => <tr key={order.id}>
               <td>
                 <button className="link-button" onClick={() => setDetailId(order.id)}>{order.trade_no}</button>
-                <small className="table-sub">User #{order.user_id}</small>
+                <small className="table-sub">{order.user?.email || `User #${order.user_id}`}</small>
               </td>
               <td><span className="badge">{typeLabel(order.type)}</span></td>
               <td>

@@ -1,8 +1,10 @@
 import { useQuery } from '@tanstack/react-query'
-import { BarChart3, MessageSquare, Server, Users, Wallet, Wifi } from 'lucide-react'
+import { AlertTriangle, BarChart3, Bot, MessageSquare, Server, Users, Wallet, Wifi } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getDashboardStats, getOrderChart, getTrafficRank } from '../api/statistics'
+import { getAgentActions, getAgentFleetHealth } from '../api/agent'
+import { QueryFeedback } from '../components/ui/QueryFeedback'
 
 export function DashboardPage() {
   const [range, setRange] = useState(30)
@@ -18,7 +20,12 @@ export function DashboardPage() {
   const now=Math.floor(Date.now()/1000)
   const userRank=useQuery({ queryKey:['trafficRank','user',range], queryFn:()=>getTrafficRank('user',now-range*86400,now) })
   const nodeRank=useQuery({ queryKey:['trafficRank','node',range], queryFn:()=>getTrafficRank('node',now-range*86400,now) })
+  const fleet=useQuery({ queryKey:['agentFleetHealth'], queryFn:getAgentFleetHealth, refetchInterval:30_000, retry:1 })
+  const agentActions=useQuery({ queryKey:['agentActions','pending'], queryFn:()=>getAgentActions('pending'), refetchInterval:15_000, retry:1 })
   const s=stats.data||{}
+  const pendingAgentActions=(agentActions.data||[]).filter(item=>item.status==='pending')
+  const criticalNodes=Number(fleet.data?.summary.critical_nodes||0)
+  const degradedNodes=Number(fleet.data?.summary.degraded_nodes||0)
   const points=(chart.data?.list||[]).map(row=>({date:String(row.date||''),value:Number(row.paid_total||0)/100}))
 
   return <div className="admin-dashboard">
@@ -31,15 +38,30 @@ export function DashboardPage() {
       </select>
     </div>
 
+    <QueryFeedback loading={stats.isFetching && !stats.data} error={stats.isError && !stats.data} onRetry={() => stats.refetch()} />
+
+    <section className="dashboard-ops-section">
+      <div className="dashboard-section-heading">
+        <div>
+          <h2>需要处理</h2>
+          <p>优先展示需要管理员介入的工单、佣金与运维异常。</p>
+        </div>
+      </div>
+      <div className="dashboard-stats dashboard-action-stats">
+        <Link className="dash-link" to="/user/ticket"><DashCard icon={<MessageSquare size={18}/>} label="待处理工单" value={count(s.ticketPendingTotal)} sub="进入工单管理"/></Link>
+        <Link className="dash-link" to="/finance/order"><DashCard icon={<BarChart3 size={18}/>} label="待确认佣金" value={count(s.commissionPendingTotal)} sub="进入订单管理"/></Link>
+        <Link className="dash-link" to="/system/agent-ops"><DashCard icon={<AlertTriangle size={18}/>} label="异常节点" value={fleet.isLoading || fleet.isError ? '—' : String(criticalNodes + degradedNodes)} sub={fleet.isError ? 'Fleet Health 加载失败' : fleet.isLoading ? '正在读取 Fleet Health' : `Critical ${criticalNodes} · Degraded ${degradedNodes}`}/></Link>
+        <Link className="dash-link" to="/system/agent-ops"><DashCard icon={<Bot size={18}/>} label="待审批运维" value={agentActions.isLoading || agentActions.isError ? '—' : String(pendingAgentActions.length)} sub={agentActions.isError ? '审批队列加载失败' : agentActions.isLoading ? '正在读取审批队列' : '进入 Agent 运维'}/></Link>
+      </div>
+    </section>
+
     <div className="dashboard-stats">
       <DashCard icon={<Wallet size={18}/>} label="今日收入" value={money(s.todayIncome)} sub={growth(s.dayIncomeGrowth)}/>
       <DashCard icon={<Wallet size={18}/>} label="本月收入" value={money(s.currentMonthIncome)} sub={growth(s.monthIncomeGrowth)}/>
-      <DashCard icon={<Users size={18}/>} label="总用户" value={String(s.totalUsers||0)} sub={'活跃 '+String(s.activeUsers||0)}/>
-      <DashCard icon={<Users size={18}/>} label="本月新用户" value={String(s.currentMonthNewUsers||0)} sub={growth(s.userGrowth)}/>
-      <DashCard icon={<Wifi size={18}/>} label="在线用户" value={String(s.onlineUsers||0)} sub={'设备 '+String(s.onlineDevices||0)}/>
-      <DashCard icon={<Server size={18}/>} label="在线节点" value={String(s.onlineNodes||0)} sub="实时快照"/>
-      <Link className="dash-link" to="/user/ticket"><DashCard icon={<MessageSquare size={18}/>} label="待处理工单" value={String(s.ticketPendingTotal||0)} sub="进入工单管理"/></Link>
-      <Link className="dash-link" to="/finance/order"><DashCard icon={<BarChart3 size={18}/>} label="待确认佣金" value={String(s.commissionPendingTotal||0)} sub="进入订单管理"/></Link>
+      <DashCard icon={<Users size={18}/>} label="总用户" value={count(s.totalUsers)} sub={'活跃 '+count(s.activeUsers)}/>
+      <DashCard icon={<Users size={18}/>} label="本月新用户" value={count(s.currentMonthNewUsers)} sub={growth(s.userGrowth)}/>
+      <DashCard icon={<Wifi size={18}/>} label="在线用户" value={count(s.onlineUsers)} sub={'设备 '+count(s.onlineDevices)}/>
+      <DashCard icon={<Server size={18}/>} label="在线节点" value={count(s.onlineNodes)} sub="实时快照"/>
     </div>
 
     <section className="admin-dashboard-card dashboard-chart-card">
@@ -51,22 +73,22 @@ export function DashboardPage() {
         <strong>{money(chart.data?.summary?.paid_total)}</strong>
       </div>
       <div className="dash-chart">
-        <IncomeChart points={points}/>
+        {chart.isFetching && !chart.data ? <QueryFeedback loading /> : chart.isError ? <QueryFeedback error onRetry={() => chart.refetch()} /> : <IncomeChart points={points}/>} 
       </div>
     </section>
 
     <div className="dashboard-rank-grid">
-      <Rank title="用户流量排行" rows={userRank.data||[]}/>
-      <Rank title="节点流量排行" rows={nodeRank.data||[]}/>
+      <Rank title="用户流量排行" rows={userRank.data||[]} loading={userRank.isFetching && !userRank.data} error={userRank.isError} onRetry={() => userRank.refetch()}/>
+      <Rank title="节点流量排行" rows={nodeRank.data||[]} loading={nodeRank.isFetching && !nodeRank.data} error={nodeRank.isError} onRetry={() => nodeRank.refetch()}/>
     </div>
 
     <div className="dashboard-summary-grid">
       <section className="admin-dashboard-card">
         <div className="admin-dashboard-card-head"><div><h2>周期汇总</h2><p>订单与佣金统计。</p></div></div>
         <dl className="dashboard-summary-list">
-          <div><dt>已支付订单</dt><dd>{String(chart.data?.summary?.paid_count||0)}</dd></div>
+          <div><dt>已支付订单</dt><dd>{count(chart.data?.summary?.paid_count)}</dd></div>
           <div><dt>收入</dt><dd>{money(chart.data?.summary?.paid_total)}</dd></div>
-          <div><dt>佣金笔数</dt><dd>{String(chart.data?.summary?.commission_count||0)}</dd></div>
+          <div><dt>佣金笔数</dt><dd>{count(chart.data?.summary?.commission_count)}</dd></div>
           <div><dt>佣金</dt><dd>{money(chart.data?.summary?.commission_total)}</dd></div>
         </dl>
       </section>
@@ -127,16 +149,18 @@ function DashCard({icon,label,value,sub}:{icon:React.ReactNode;label:string;valu
   </div>
 }
 
-function Rank({title,rows}:{title:string;rows:Array<Record<string,unknown>>}){
+function Rank({title,rows,loading,error,onRetry}:{title:string;rows:Array<Record<string,unknown>>;loading?:boolean;error?:boolean;onRetry?:()=>void}){
   return <section className="admin-dashboard-card rank-card">
     <div className="admin-dashboard-card-head"><div><h2>{title}</h2></div></div>
+    <QueryFeedback loading={loading} error={error} onRetry={onRetry}/>
     <div className="rank-list">
       <div className="rank-list-head"><span>#</span><span>名称</span><span>流量</span></div>
       {rows.slice(0,10).map((r,i)=><div key={i}><span>{i+1}</span><span>{String(r.name??r.email??r.server_name??'-')}</span><strong>{bytes(Number(r.value??r.total??r.traffic??0))}</strong></div>)}
-      {!rows.length?<div className="rank-empty">暂无数据</div>:null}
+      {!rows.length&&!error?<div className="rank-empty">{loading?'加载中…':'暂无数据'}</div>:null}
     </div>
   </section>
 }
-function money(v:unknown){const n=Number(v||0);return '¥ '+(n/100).toFixed(2)}
-function growth(v:unknown){const n=Number(v||0);return (n>=0?'+':'')+n.toFixed(1)+'%'}
-function bytes(v:unknown){const n=Number(v||0);if(!n)return '0 B';const gb=n/1073741824;return gb>=1024?(gb/1024).toFixed(2)+' TB':gb.toFixed(gb>=10?1:2)+' GB'}
+function count(v:unknown){return v===undefined||v===null?'—':String(v)}
+function money(v:unknown){if(v===undefined||v===null)return '—';const n=Number(v);return Number.isFinite(n)?'¥ '+(n/100).toFixed(2):'—'}
+function growth(v:unknown){if(v===undefined||v===null)return '—';const n=Number(v);return Number.isFinite(n)?(n>=0?'+':'')+n.toFixed(1)+'%':'—'}
+function bytes(v:unknown){if(v===undefined||v===null)return '—';const n=Number(v);if(!Number.isFinite(n))return '—';if(!n)return '0 B';const gb=n/1073741824;return gb>=1024?(gb/1024).toFixed(2)+' TB':gb.toFixed(gb>=10?1:2)+' GB'}
