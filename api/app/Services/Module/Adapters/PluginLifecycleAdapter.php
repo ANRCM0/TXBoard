@@ -30,7 +30,17 @@ final class PluginLifecycleAdapter implements ModuleLifecycleAdapter
         ModuleDescriptor $module,
         ModuleLifecycleOperation $operation,
     ): bool {
-        return $this->supports($module);
+        if (!$this->supports($module)) {
+            return false;
+        }
+
+        return match ($operation) {
+            ModuleLifecycleOperation::INSTALL => !$module->installed,
+            ModuleLifecycleOperation::ENABLE => $module->installed && !$module->enabled,
+            ModuleLifecycleOperation::DISABLE => $module->installed && $module->enabled,
+            ModuleLifecycleOperation::UPGRADE,
+            ModuleLifecycleOperation::UNINSTALL => $module->installed,
+        };
     }
 
     public function expectsModuleAfterOperation(
@@ -45,7 +55,7 @@ final class PluginLifecycleAdapter implements ModuleLifecycleAdapter
         ModuleLifecycleOperation $operation,
     ): void {
         if (!$this->supportsOperation($module, $operation)) {
-            throw new LogicException('PluginLifecycleAdapter only supports plugin modules');
+            throw new LogicException('Plugin lifecycle operation is not supported');
         }
 
         $pluginCode = $module->manifest->id;

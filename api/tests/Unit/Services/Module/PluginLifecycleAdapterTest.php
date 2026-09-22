@@ -28,16 +28,31 @@ class PluginLifecycleAdapterTest extends TestCase
             ->willReturn(true);
 
         $adapter = new PluginLifecycleAdapter($manager);
-        $adapter->execute($this->descriptor(ModuleType::PLUGIN), $operation);
+        $adapter->execute(
+            $this->descriptor(ModuleType::PLUGIN, $operation !== ModuleLifecycleOperation::INSTALL, $operation === ModuleLifecycleOperation::DISABLE),
+            $operation,
+        );
     }
 
     public function test_adapter_only_supports_plugin_modules(): void
     {
         $adapter = new PluginLifecycleAdapter($this->createMock(PluginManager::class));
 
-        $plugin = $this->descriptor(ModuleType::PLUGIN);
+        $plugin = $this->descriptor(ModuleType::PLUGIN, true, false);
         $this->assertTrue($adapter->supports($plugin));
-        $this->assertFalse($adapter->supports($this->descriptor(ModuleType::THEME)));
+        $this->assertFalse($adapter->supports($this->descriptor(ModuleType::THEME, true, false)));
+        $this->assertFalse(
+            $adapter->supportsOperation($plugin, ModuleLifecycleOperation::INSTALL)
+        );
+        $this->assertTrue(
+            $adapter->supportsOperation($plugin, ModuleLifecycleOperation::ENABLE)
+        );
+        $this->assertFalse(
+            $adapter->supportsOperation($plugin, ModuleLifecycleOperation::DISABLE)
+        );
+        $this->assertTrue(
+            $adapter->supportsOperation($plugin, ModuleLifecycleOperation::UPGRADE)
+        );
         $this->assertTrue(
             $adapter->supportsOperation($plugin, ModuleLifecycleOperation::UNINSTALL)
         );
@@ -51,10 +66,10 @@ class PluginLifecycleAdapterTest extends TestCase
         $adapter = new PluginLifecycleAdapter($this->createMock(PluginManager::class));
 
         $this->expectException(LogicException::class);
-        $this->expectExceptionMessage('PluginLifecycleAdapter only supports plugin modules');
+        $this->expectExceptionMessage('Plugin lifecycle operation is not supported');
 
         $adapter->execute(
-            $this->descriptor(ModuleType::THEME),
+            $this->descriptor(ModuleType::THEME, true, false),
             ModuleLifecycleOperation::ENABLE,
         );
     }
@@ -70,7 +85,11 @@ class PluginLifecycleAdapterTest extends TestCase
         ];
     }
 
-    private function descriptor(ModuleType $type): ModuleDescriptor
+    private function descriptor(
+        ModuleType $type,
+        bool $installed,
+        bool $enabled,
+    ): ModuleDescriptor
     {
         return new ModuleDescriptor(
             manifest: ModuleManifest::fromArray([
@@ -85,8 +104,8 @@ class PluginLifecycleAdapterTest extends TestCase
                 'capabilities' => [],
             ]),
             source: ModuleSource::USER,
-            installed: true,
-            enabled: false,
+            installed: $installed,
+            enabled: $enabled,
             active: null,
             health: ModuleHealth::HEALTHY,
         );

@@ -67,6 +67,9 @@ class ThemeLifecycleAdapterTest extends TestCase
         $inactiveUser = $this->descriptor('CustomTheme', ModuleSource::USER, false);
 
         $this->assertFalse(
+            $adapter->supportsOperation($system, ModuleLifecycleOperation::ENABLE)
+        );
+        $this->assertFalse(
             $adapter->supportsOperation($system, ModuleLifecycleOperation::UNINSTALL)
         );
         $this->assertFalse(

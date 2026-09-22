@@ -15,6 +15,28 @@ final class ModuleLifecycle
     ) {
     }
 
+    /**
+     * @return list<ModuleLifecycleOperation>|null
+     */
+    public function supportedOperations(string $moduleId): ?array
+    {
+        $module = $this->modules->find($moduleId);
+        if (!$module) {
+            return null;
+        }
+
+        $adapter = $this->adapterFor($module);
+        if (!$adapter) {
+            return [];
+        }
+
+        return array_values(array_filter(
+            ModuleLifecycleOperation::cases(),
+            fn (ModuleLifecycleOperation $operation): bool =>
+                $adapter->supportsOperation($module, $operation),
+        ));
+    }
+
     public function execute(
         string $moduleId,
         ModuleLifecycleOperation $operation,
