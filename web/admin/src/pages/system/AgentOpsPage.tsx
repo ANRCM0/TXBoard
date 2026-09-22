@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Check, Copy, KeyRound, ShieldCheck, Trash2, X } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from 'react'
 import { toast } from 'sonner'
 import {
   approveAgentAction,
@@ -92,7 +92,7 @@ export function AgentOpsPage() {
     )
   }
 
-  function toggleNumber(value: number, setter: React.Dispatch<React.SetStateAction<number[]>>) {
+  function toggleNumber(value: number, setter: Dispatch<SetStateAction<number[]>>) {
     setter(current =>
       current.includes(value)
         ? current.filter(item => item !== value)
