@@ -37,11 +37,14 @@ class AgentOpsService
         ];
     }
 
-    public function machines(): array
+    public function machines(?array $allowedMachineIds = null): array
     {
-        return ServerMachine::withCount('servers')
-            ->orderBy('id')
-            ->get()
+        $query = ServerMachine::withCount('servers')->orderBy('id');
+        if ($allowedMachineIds !== null) {
+            $query->whereIn('id', $allowedMachineIds);
+        }
+
+        return $query->get()
             ->map(fn (ServerMachine $machine) => [
                 'id' => $machine->id,
                 'name' => $machine->name,
@@ -54,9 +57,15 @@ class AgentOpsService
             ->toArray();
     }
 
-    public function nodes(): array
+    public function nodes(?array $allowedNodeIds = null): array
     {
-        return ServerService::getAllServers()
+        $nodes = ServerService::getAllServers();
+        if ($allowedNodeIds !== null) {
+            $allowed = array_fill_keys(array_map('intval', $allowedNodeIds), true);
+            $nodes = $nodes->filter(fn (Server $node) => isset($allowed[(int) $node->id]));
+        }
+
+        return $nodes
             ->map(fn (Server $node) => $this->nodeSnapshot($node))
             ->values()
             ->toArray();
@@ -145,9 +154,14 @@ class AgentOpsService
         ];
     }
 
-    public function trafficSummary(): array
+    public function trafficSummary(?array $allowedNodeIds = null): array
     {
         $nodes = ServerService::getAllServers();
+        if ($allowedNodeIds !== null) {
+            $allowed = array_fill_keys(array_map('intval', $allowedNodeIds), true);
+            $nodes = $nodes->filter(fn (Server $node) => isset($allowed[(int) $node->id]));
+        }
+
         return [
             'nodes' => $nodes->count(),
             'online_nodes' => $nodes->filter(fn (Server $node) => (bool) $node->is_online)->count(),
@@ -174,10 +188,21 @@ class AgentOpsService
         ];
     }
 
-    public function auditLogs(int $limit = 50): array
+    public function auditLogs(int $limit = 50, ?array $allowedNodeIds = null): array
     {
-        return AgentAuditLog::query()
-            ->orderByDesc('id')
+        $query = AgentAuditLog::query()->orderByDesc('id');
+        if ($allowedNodeIds !== null) {
+            $ids = array_map('strval', array_map('intval', $allowedNodeIds));
+            $query->where(function ($scoped) use ($ids) {
+                $scoped->whereNull('target_type')
+                    ->orWhere(function ($nodeQuery) use ($ids) {
+                        $nodeQuery->where('target_type', 'node')
+                            ->whereIn('target_id', $ids);
+                    });
+            });
+        }
+
+        return $query
             ->limit(max(1, min(100, $limit)))
             ->get()
             ->map(fn (AgentAuditLog $log) => [
