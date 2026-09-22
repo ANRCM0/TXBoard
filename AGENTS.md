@@ -23,10 +23,11 @@ Completed:
 
 - PR A: Module Package v1 contract / DTOs / capability vocabulary.
 - PR B: read-only Module Registry with Plugin, Theme and Agent Ops adapters.
+- PR C: Plugin lifecycle integration through `ModuleLifecycle -> PluginLifecycleAdapter -> PluginManager`.
 
 Current target:
 
-- PR C: Plugin lifecycle integration.
+- PR D: Theme Package v1 / Theme lifecycle adapter.
 
 Required direction:
 
@@ -306,26 +307,33 @@ Before merge:
 
 Use merge commits for project PRs unless explicitly instructed otherwise.
 
-## 18. Current Phase C rules
+## 18. Current Phase D rules
 
-The next Module Platform work is Plugin lifecycle integration.
+Phase C is complete. Module lifecycle now delegates Plugin mutations through:
 
-Implement:
+```text
+ModuleLifecycle
+      -> PluginLifecycleAdapter
+      -> existing PluginManager
+```
 
-- a lifecycle operation vocabulary/result model;
-- a `PluginLifecycleAdapter`;
-- delegation to existing `PluginManager`;
-- unsupported-operation behavior for non-Plugin Module types;
-- lifecycle state refresh after mutation;
-- tests proving delegation and compatibility.
+The next Module Platform work is Theme Package v1 / Theme lifecycle integration.
 
-Do not implement in the same PR:
+Required direction:
 
-- Theme lifecycle;
-- Module Center write UI;
-- Admin Bridge v2;
-- Module database tables unless proven necessary;
-- Plugin Package v2;
-- generic lifecycle logic that directly edits files/migrations/database rows.
+```text
+ModuleLifecycle
+      -> ThemeLifecycleAdapter
+      -> existing ThemeService
+```
 
-The goal is to make Module Platform **orchestrate** specialized runtimes, not replace them.
+Keep these invariants:
+
+- `frontend_theme` is the only canonical active-theme state;
+- `TXBoard` is the built-in default;
+- `current_theme` may be read only for historical compatibility;
+- Theme Admin, user rendering and Module Registry must resolve the same effective theme;
+- do not add a second Theme state table merely for Module Platform;
+- do not mix Theme lifecycle, Module Center write UI and Admin Bridge v2 in one PR.
+
+The goal remains to make Module Platform **orchestrate** specialized runtimes, not replace them.
