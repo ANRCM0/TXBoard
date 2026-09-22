@@ -50,7 +50,15 @@ class ModuleRegistryApiTest extends TestCase
 
         $this->assertSame('agent', $modules['agent_ops']['type']);
         $this->assertSame('system', $modules['agent_ops']['source']);
-        $this->assertContains('agent.api', $modules['agent_ops']['capabilities']);
+        $this->assertSame('TXBoard AI-native operations and approval control plane', $modules['agent_ops']['description']);
+        $this->assertSame('TXBoard', $modules['agent_ops']['author']);
+        $this->assertSame(['agent.api', 'agent.admin'], $modules['agent_ops']['capabilities']);
+        $this->assertContains($modules['agent_ops']['health'], ['healthy', 'degraded']);
+        $this->assertSame(
+            ['schedule', 'horizon', 'websocket_server'],
+            array_keys($modules['agent_ops']['health_details']['checks'])
+        );
+        $this->assertGreaterThan(0, $modules['agent_ops']['health_details']['observed_at']);
 
         $this->assertSame('theme', $modules['theme.txboard']['type']);
         $this->assertTrue($modules['theme.txboard']['active']);

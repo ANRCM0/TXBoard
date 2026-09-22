@@ -23,12 +23,18 @@ export type ModuleDescriptor = {
   id: string
   name: string
   version: string
+  description?: string
+  author?: string
   type: ModuleType
   source: ModuleSource
   installed: boolean
   enabled: boolean
   active: boolean | null
   health: ModuleHealth
+  health_details?: {
+    checks: Record<string, boolean | null>
+    observed_at: number
+  }
   capabilities: string[]
   compatibility: {
     txboard: string
