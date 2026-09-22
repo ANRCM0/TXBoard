@@ -23,7 +23,9 @@ const PaymentSettingsPage = lazy(() => import('./pages/config/PaymentSettingsPag
 const NoticeSettingsPage = lazy(() => import('./pages/config/NoticeSettingsPage').then(module => ({ default: module.NoticeSettingsPage })))
 const KnowledgeSettingsPage = lazy(() => import('./pages/config/KnowledgeSettingsPage').then(module => ({ default: module.KnowledgeSettingsPage })))
 const NodesPage = lazy(() => import('./pages/server/NodesPage').then(module => ({ default: module.NodesPage })))
+const NodeDetailPage = lazy(() => import('./pages/server/NodeDetailPage').then(module => ({ default: module.NodeDetailPage })))
 const MachinesPage = lazy(() => import('./pages/server/MachinesPage').then(module => ({ default: module.MachinesPage })))
+const MachineDetailPage = lazy(() => import('./pages/server/MachineDetailPage').then(module => ({ default: module.MachineDetailPage })))
 const GroupsPage = lazy(() => import('./pages/server/GroupsPage').then(module => ({ default: module.GroupsPage })))
 const RoutesPage = lazy(() => import('./pages/server/RoutesPage').then(module => ({ default: module.RoutesPage })))
 const PlansPage = lazy(() => import('./pages/finance/PlansPage').then(module => ({ default: module.PlansPage })))
@@ -79,7 +81,9 @@ export const router = createAppRouter([
           { path: 'config/plugin', element: <PluginsPage /> },
           { path: 'config/subscribe-template', element: <GenericSettingsPage settingKey="subscribe_template" title="订阅模板" /> },
           { path: 'server/manage', element: <NodesPage /> },
+          { path: 'server/node/:nodeId', element: <NodeDetailPage /> },
           { path: 'server/machine', element: <MachinesPage /> },
+          { path: 'server/machine/:machineId', element: <MachineDetailPage /> },
           { path: 'server/group', element: <GroupsPage /> },
           { path: 'server/route', element: <RoutesPage /> },
           { path: 'finance/plan', element: <PlansPage /> },
