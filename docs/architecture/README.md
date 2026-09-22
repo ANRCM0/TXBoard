@@ -8,7 +8,7 @@ TXBoard 下一阶段的上层架构基线是 **Module Platform v1**：在不改�
 
 - [Module Platform v1](./module-platform-v1.md)：下一版目标架构、Core/Module 边界、Module Manifest、Registry、Capability、Health、Theme/Plugin/Agent 迁移方案与 Definition of Done；
 - [Module Platform v1 开发指南](./module-platform-development-guide.md)：后续模块化 PR 的 contract-first、adapter-first、兼容、权限、Octane、安全与测试规则；
-- [Code Agent 项目开发指南](../development/code-agent-project-guide.md)：Codex / Code Agent 的仓库工作流、架构边界、当前 Phase C 实施顺序与完成检查。根目录 `AGENTS.md` 提供 Agent 自动读取的执行规则。
+- [Code Agent 项目开发指南](../development/code-agent-project-guide.md)：Codex / Code Agent 的仓库工作流、架构边界、Phase C 已完成实现与当前 Phase D 约束。根目录 `AGENTS.md` 提供 Agent 自动读取的执行规则。
 
 Module Platform 是现有 Plugin / Theme / Agent Ops 架构之上的统一层，不替代它们已经稳定的 domain runtime，也不将 User、Order、Node 等 Core 领域强行插件化。
 
