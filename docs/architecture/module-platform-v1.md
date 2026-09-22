@@ -1,6 +1,6 @@
 # TXBoard Module Platform v1
 
-> Status: Proposed — next architecture baseline
+> Status: Active architecture baseline — implementation in progress
 >
 > Scope: TXBoard Core, Theme Runtime, Plugin Runtime, Admin extension host, Agent Ops / MCP integration
 >
@@ -35,6 +35,21 @@ flowchart TD
 The guiding rule is:
 
 > **Core owns product truth; Modules extend capabilities.**
+
+### Current implementation status
+
+Completed:
+
+- **Phase A / PR A** — Module Package v1 contract, JSON Schema, PHP Module DTO/value objects and drift tests;
+- **Phase B / PR B** — read-only Module Registry, Plugin/Theme/Agent Ops adapters, discovery isolation and read-only Admin inventory API.
+
+Current implementation target:
+
+- **Phase C** — Plugin lifecycle integration through a Module lifecycle abstraction that delegates to the existing `PluginManager`.
+
+Important invariant:
+
+> The Registry is currently an inventory/normalization layer. It MUST NOT become a second implementation of Plugin, Theme or Agent lifecycle behavior.
 
 ## 2. Core boundary
 
@@ -108,7 +123,7 @@ Target shape:
     "admin.menu",
     "admin.app",
     "api.route",
-    "hook",
+    "hook.action",
     "database.migration"
   ]
 }
