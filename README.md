@@ -1,6 +1,6 @@
 # TXBoard
 
-> 面向代理服务与节点网络的现代化 Control Plane。  
+> 面向用户、订阅、网络节点、扩展模块与 AI 原生运维的模块化 Control Plane。  
 > TXBoard 是独立维护的控制面产品，应用、运行时、部署与扩展接口统一使用 TXBoard 命名空间。
 
 TXBoard 负责用户、订阅、订单、支付、节点、机器、流量、工单、内容、主题与插件等控制面能力。节点运行时不再内嵌在本仓库中，而由独立的 [TX-Node](https://github.com/PaiMonCai/TX-Node) 提供，通过 HTTP / WebSocket 协议与 TXBoard 通信。
@@ -39,6 +39,8 @@ ghcr.io/paimoncai/txboard
 - 可选 AccessAudit 节点审计扩展
 
 ### 扩展体系
+
+下一阶段以 **Module Platform v1** 为架构基线，将 Theme、Plugin 与 Agent Ops / MCP 收敛到统一 Module Registry、Capability Registry、Health 与 Admin 扩展契约，同时保持 Core 业务领域为唯一事实来源。详见 [Module Platform v1](docs/architecture/module-platform-v1.md) 与 [开发指南](docs/architecture/module-platform-development-guide.md)。
 
 - **Theme System**：默认系统主题为 TXBoard，支持安装、切换和配置自定义主题
 - **Plugin System**：支持核心插件、第三方 ZIP、Schema 驱动 UI，以及 Plugin Package v1 自带 Admin App
