@@ -8,6 +8,7 @@ export type ConfirmRequest = {
   cancelLabel?: string
   danger?: boolean
   action: () => void
+  cancelAction?: () => void
 }
 
 // Module-level store, mirroring the dialog stack in lib/useDialog: any page can
@@ -37,12 +38,18 @@ function dismiss() {
 
 function ConfirmDialog({ request, onClose }: { request: ConfirmRequest | null; onClose: () => void }) {
   if (!request) return null
+
+  const cancel = () => {
+    onClose()
+    request.cancelAction?.()
+  }
+
   return <Modal
     open
     title={request.title}
-    onClose={onClose}
+    onClose={cancel}
     footer={<div className="modal-actions">
-      <button type="button" className="button" onClick={onClose}>{request.cancelLabel || '取消'}</button>
+      <button type="button" className="button" onClick={cancel}>{request.cancelLabel || '取消'}</button>
       <button
         type="button"
         className={'button ' + (request.danger ? 'danger' : 'primary')}

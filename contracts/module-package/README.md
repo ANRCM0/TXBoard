@@ -166,7 +166,11 @@ A module may declare host navigation metadata:
 
 Navigation paths are safe relative paths. Absolute URLs, protocols, empty path segments and `.` / `..` traversal are invalid.
 
-This declaration does not define how a page is rendered. Plugin Package v1 `admin_menus[].app`, schema-driven CRUD and future Admin Bridge v2 remain specialized rendering contracts.
+This declaration does not define how a page is rendered. Plugin Package v1 `admin_menus[].app` and schema-driven CRUD remain specialized rendering contracts.
+
+Phase G projects validated navigation through `ModuleDescriptor.admin.navigation` and the existing Module Registry API. See [Admin Navigation Registry Contract v1](../admin-navigation/README.md).
+
+Admin Bridge v2 is an additive host-service protocol and does not change the navigation declaration schema.
 
 ## Runtime descriptor
 

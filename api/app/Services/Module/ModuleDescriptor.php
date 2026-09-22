@@ -16,7 +16,7 @@ final readonly class ModuleDescriptor
 
     public function toArray(): array
     {
-        return [
+        $descriptor = [
             'id' => $this->manifest->id,
             'name' => $this->manifest->name,
             'version' => $this->manifest->version,
@@ -31,5 +31,13 @@ final readonly class ModuleDescriptor
                 'txboard' => $this->manifest->txboardCompatibility,
             ],
         ];
+
+        if ($this->manifest->adminNavigation !== []) {
+            $descriptor['admin'] = [
+                'navigation' => $this->manifest->adminNavigation,
+            ];
+        }
+
+        return $descriptor;
     }
 }

@@ -65,6 +65,103 @@ class ModuleRegistryApiTest extends TestCase
         $this->assertSame(count($modules), $response->json('data.summary.total'));
     }
 
+    public function test_legacy_plugin_navigation_is_projected_safely_into_module_descriptor(): void
+    {
+        $path = base_path('plugins/NavFixture');
+        File::ensureDirectoryExists($path);
+
+        file_put_contents($path . '/config.json', json_encode([
+            'name' => 'Navigation Fixture',
+            'code' => 'nav_fixture',
+            'version' => '1.0.0',
+            'description' => 'Navigation projection fixture',
+            'author' => 'TXBoard tests',
+            'admin_menus' => [
+                [
+                    'id' => 'dashboard',
+                    'title' => 'Dashboard',
+                    'path' => '/dashboard/',
+                    'icon' => 'layout-dashboard',
+                    'order' => 20,
+                ],
+                [
+                    'id' => 'unsafe',
+                    'title' => 'Unsafe',
+                    'path' => '../config',
+                ],
+            ],
+        ], JSON_THROW_ON_ERROR));
+
+        Plugin::create([
+            'name' => 'Navigation Fixture',
+            'code' => 'nav_fixture',
+            'version' => '1.0.0',
+            'is_enabled' => true,
+            'config' => null,
+            'installed_at' => now(),
+        ]);
+
+        try {
+            $response = $this->getJson("/api/v2/{$this->securePath}/module/nav_fixture");
+
+            $response->assertOk()
+                ->assertJsonPath('data.id', 'nav_fixture')
+                ->assertJsonPath('data.enabled', true)
+                ->assertJsonPath('data.admin.navigation.0.id', 'dashboard')
+                ->assertJsonPath('data.admin.navigation.0.title', 'Dashboard')
+                ->assertJsonPath('data.admin.navigation.0.path', 'dashboard')
+                ->assertJsonPath('data.admin.navigation.0.icon', 'layout-dashboard')
+                ->assertJsonPath('data.admin.navigation.0.order', 20);
+
+            $this->assertCount(1, $response->json('data.admin.navigation'));
+            $this->assertContains('admin.menu', $response->json('data.capabilities'));
+        } finally {
+            File::deleteDirectory($path);
+        }
+    }
+
+    public function test_invalid_legacy_navigation_is_omitted_without_hiding_plugin(): void
+    {
+        $path = base_path('plugins/InvalidNavFixture');
+        File::ensureDirectoryExists($path);
+
+        file_put_contents($path . '/config.json', json_encode([
+            'name' => 'Invalid Navigation Fixture',
+            'code' => 'invalid_nav_fixture',
+            'version' => '1.0.0',
+            'description' => 'Invalid navigation projection fixture',
+            'author' => 'TXBoard tests',
+            'admin_menus' => [
+                [
+                    'id' => 'escape',
+                    'title' => 'Escape',
+                    'path' => '../config',
+                ],
+            ],
+        ], JSON_THROW_ON_ERROR));
+
+        Plugin::create([
+            'name' => 'Invalid Navigation Fixture',
+            'code' => 'invalid_nav_fixture',
+            'version' => '1.0.0',
+            'is_enabled' => true,
+            'config' => null,
+            'installed_at' => now(),
+        ]);
+
+        try {
+            $response = $this->getJson("/api/v2/{$this->securePath}/module/invalid_nav_fixture");
+
+            $response->assertOk()
+                ->assertJsonPath('data.id', 'invalid_nav_fixture')
+                ->assertJsonMissingPath('data.admin');
+
+            $this->assertNotContains('admin.menu', $response->json('data.capabilities'));
+        } finally {
+            File::deleteDirectory($path);
+        }
+    }
+
     public function test_system_module_identity_cannot_be_shadowed_by_user_plugin(): void
     {
         $path = base_path('plugins/AgentOps');

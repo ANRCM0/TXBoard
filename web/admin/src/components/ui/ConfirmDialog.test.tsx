@@ -54,6 +54,26 @@ describe('ConfirmDialogHost', () => {
     expect(document.querySelector('[role="dialog"]')).toBeNull()
   })
 
+  it('runs the optional cancel callback when the operator cancels', async () => {
+    const action = vi.fn()
+    const cancelAction = vi.fn()
+    await mount()
+
+    act(() => requestConfirm({
+      title: 'Bridge confirmation',
+      action,
+      cancelAction,
+    }))
+
+    const cancelButton = Array.from(document.querySelectorAll<HTMLButtonElement>('.modal-footer button'))
+      .find(button => button.textContent === '取消')!
+    act(() => cancelButton.click())
+
+    expect(cancelAction).toHaveBeenCalledTimes(1)
+    expect(action).not.toHaveBeenCalled()
+    expect(document.querySelector('[role="dialog"]')).toBeNull()
+  })
+
   it('closes on Escape without running the action', async () => {
     const action = vi.fn()
     await mount()

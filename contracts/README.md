@@ -10,6 +10,8 @@
 - `module-package/README.md`：Module Platform v1 的统一 Module Manifest、Capability 与运行时 Descriptor 契约。
 - `module-lifecycle/README.md`：Module Lifecycle v1 的统一操作、结果、错误与 runtime delegation 契约。
 - `theme-package/README.md`：Theme Package v1、主题包安全、canonical active-theme 与 Theme Runtime 生命周期契约。
+- `admin-navigation/README.md`：Module Admin Navigation Registry 的统一导航投影与宿主路由契约。
+- `admin-bridge/README.md`：Admin Bridge v2 可选宿主服务协议，并保持 Bridge v1 兼容。
 
 Laravel routes 是服务器端可执行事实来源；`contracts/` 用于记录跨仓库、跨前端需要稳定维护的契约。
 
