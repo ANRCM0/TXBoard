@@ -78,7 +78,11 @@ The MCP Gateway is an adapter, not a second control plane. It must not connect d
 
 Arbitrary shell execution is intentionally excluded. Node operations must be fixed, versioned and typed, such as kernel restart, configuration validation/reload, bounded log retrieval and bounded network diagnostics.
 
-See [Agent Ops / MCP Architecture](./agent-ops.md) for the complete design, risk model, tool catalog, audit requirements and delivery phases.
+Agent Ops 文档分为三层：
+
+- [Agent Ops / MCP Architecture](./agent-ops.md)：稳定架构、风险模型和运行边界；
+- [Agent Ops 进度与阶段复盘](./agent-ops-progress.md)：Phase 0–5 交付、PR/commit、经验、限制和下一步；
+- [Agent Ops 开发指南](./agent-ops-development-guide.md)：新增 READ / INSIGHT / OPERATE 能力的实施步骤、测试矩阵和 Definition of Done。
 
 ## Deployment boundary
 
