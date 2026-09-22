@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Copy, MoreHorizontal, Pencil, Plus, RefreshCw, Search, Trash2 } from 'lucide-react'
 import { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
 import {
   copyNode,
@@ -81,11 +82,14 @@ export function NodesPage(){
 
   const columns:Column<NodeItem>[]=[
     {key:'id',header:'ID',width:'70px',render:row=>row.id},
-    {key:'name',header:'名称',render:row=><strong className="server-node-name">{row.name||'-'}</strong>},
+    {key:'name',header:'名称',render:row=><Link className="table-link server-node-name" to={`/server/node/${row.id}`}><strong>{row.name||`Node #${row.id}`}</strong></Link>},
     {key:'type',header:'类型',render:row=><span className="badge">{row.type==='hysteria'?'hysteria2':row.type||'-'}</span>},
     {key:'host',header:'地址',render:row=>row.host?(String(row.host)+(row.port?':'+row.port:'')):'-'},
     {key:'rate',header:'倍率',render:row=>row.rate??'-'},
-    {key:'machine',header:'机器',render:row=>machineRows.find(machine=>machine.id===row.machine_id)?.name||row.machine_id||'-'},
+    {key:'machine',header:'机器',render:row=>{
+      const machine=machineRows.find(item=>item.id===row.machine_id)
+      return machine?<Link className="table-link" to={`/server/machine/${machine.id}`}>{machine.name||`Machine #${machine.id}`}</Link>:row.machine_id?`Machine #${row.machine_id}`:'-'
+    }},
     {key:'status',header:'状态',render:row=><span className="machine-status"><i className={row.online?'online':'off'}/>{row.online?'在线':'离线'}</span>},
     {
       key:'actions',
