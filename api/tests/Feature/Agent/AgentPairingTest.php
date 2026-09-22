@@ -43,6 +43,18 @@ class AgentPairingTest extends TestCase
         $this->assertStringNotContainsString($code, $cacheKey);
     }
 
+    public function test_token_creation_falls_back_when_transient_pairing_store_is_unavailable(): void
+    {
+        config()->set('agent_ops.pairing_cache_store', 'missing-pairing-store');
+
+        [$response] = $this->createPairedToken('pairing-fallback');
+
+        $response->assertOk()
+            ->assertJsonPath('data.pairing', null);
+
+        $this->assertNotSame('', (string) $response->json('data.plain_text_token'));
+    }
+
     public function test_pairing_redeems_once_and_returns_the_existing_agent_token(): void
     {
         [$created, $admin] = $this->createPairedToken('pairing-once');
