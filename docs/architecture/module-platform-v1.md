@@ -43,11 +43,12 @@ Completed:
 - **Phase A / PR A** — Module Package v1 contract, JSON Schema, PHP Module DTO/value objects and drift tests;
 - **Phase B / PR B** — read-only Module Registry, Plugin/Theme/Agent Ops adapters, discovery isolation and read-only Admin inventory API;
 - **Phase C / PR C** — Module Lifecycle v1, PluginLifecycleAdapter delegation to existing `PluginManager`, structured lifecycle result/error state and post-mutation Registry refresh;
-- **Phase D / PR D** — Theme Package v1, hardened Theme archive validation, canonical `frontend_theme` ownership with read-only legacy fallback and ThemeLifecycleAdapter delegation to `ThemeService`.
+- **Phase D / PR D** — Theme Package v1, hardened Theme archive validation, canonical `frontend_theme` ownership with read-only legacy fallback and ThemeLifecycleAdapter delegation to `ThemeService`;
+- **Phase E / PR E** — read-only Admin Module Center consuming the Module Registry API as the single inventory model.
 
 Current implementation target:
 
-- **Phase E** — read-only Module Center consuming the existing Module Registry Admin API.
+- **Phase F** — controlled Module management API delegating through stable lifecycle adapters.
 
 Important invariant:
 
@@ -472,13 +473,17 @@ Checksum, signatures and publisher identity are future trust-layer work, not a v
 
 ### Phase E — Module Center
 
-**Current target.** Build the read-only unified Admin inventory and status page from `GET /api/v2/{secure_path}/module`; the web app must not reconstruct a second Module model from Plugin/Theme/Agent APIs.
+**Implemented.** The Admin now has a read-only Module Center backed only by `GET /api/v2/{secure_path}/module`. It renders Registry-provided inventory, runtime state, health, capabilities, compatibility and discovery errors without rebuilding Module state from specialized APIs.
 
-### Phase F — Admin Bridge v2
+### Phase F — controlled Module management API
+
+**Current target.** Expose stable lifecycle operations through `ModuleLifecycle` and its specialized adapters while preserving the Registry as read-only infrastructure.
+
+### Phase G — Admin Bridge v2
 
 Add host services while keeping Bridge v1 compatible.
 
-### Phase G — Agent integration
+### Phase H — Agent integration
 
 Register Agent Ops in the Module Registry without changing the Agent Ops security model.
 

@@ -1,6 +1,7 @@
 const preloaders: Record<string, () => Promise<unknown>> = {
   '/system/audit-log': () => import('../pages/system/AuditLogPage'),
   '/system/agent-ops': () => import('../pages/system/AgentOpsPage'),
+  '/system/modules': () => import('../pages/system/ModuleCenterPage'),
   '/config/system': () => import('../pages/config/SystemSettingsPage'),
   '/config/system/safe': () => import('../pages/config/SafeSettingsPage'),
   '/config/system/subscribe': () => import('../pages/config/SubscribeSettingsPage'),

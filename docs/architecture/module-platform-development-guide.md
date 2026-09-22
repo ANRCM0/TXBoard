@@ -466,13 +466,23 @@ Delivered:
 
 Theme upload/configuration remain specialized Theme Runtime APIs because they require payloads beyond the generic lifecycle command.
 
-### PR E — Module Center — ▶ current target
+### PR E — Module Center — ✅ completed
 
-Build the read-only unified inventory first. It should consume the Module Registry API rather than scanning Plugin/Theme state independently.
+Delivered:
 
-### PR F — controlled Module management API
+- read-only Admin Module Center;
+- one frontend API client for `GET /api/v2/{secure_path}/module`;
+- Registry summary, inventory, runtime state, health, capabilities and compatibility display;
+- discovery-error visibility;
+- search/type/source/health filtering;
+- navigation, route preload and command-palette integration;
+- frontend contract tests proving the page reads the unified Module endpoint.
 
-Expose only lifecycle operations that have stable adapters and authorization semantics. Do not create generic mutation endpoints before Plugin/Theme lifecycle contracts are stable.
+Existing Plugin, Theme and Agent management pages remain specialized surfaces.
+
+### PR F — controlled Module management API — ▶ current target
+
+Expose only lifecycle operations that have stable adapters and authorization semantics. All mutations must delegate through `ModuleLifecycle`; Module Registry remains read-only.
 
 ### PR G — Admin Navigation Registry + Admin Bridge v2
 
@@ -520,7 +530,7 @@ current_theme  = read-only legacy compatibility fallback
 TXBoard        = deterministic default
 ```
 
-The next phase is a read-only Module Center. It must consume the Module Registry API directly and must not independently merge Plugin, Theme and Agent state.
+Phase E adds the read-only Module Center directly on top of the Module Registry API. The next phase is a controlled Module management API that delegates supported mutations through `ModuleLifecycle`.
 
 ## 21. Definition of Done for each Module
 
