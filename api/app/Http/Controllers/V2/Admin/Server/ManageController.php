@@ -293,17 +293,59 @@ class ManageController extends Controller
     }
 
     /**
-     * Generate ECH (Encrypted Client Hello) key pair.
-     * Returns PEM-encoded ECH key (server-side) and ECH config (client-side).
+     * Generate material for the admin protocol editor.
+     *
+     * Protocol form schema fields declare a "generator", so operators never
+     * have to run `xray x25519` (or similar) by hand. Only the generator kinds
+     * referenced by the protocol definitions are accepted.
      */
+    public function generateSecret(Request $request)
+    {
+        return match ($request->input('kind')) {
+            'x25519' => $this->success($this->x25519KeyPairMaterial()),
+            'hex' => $this->success($this->hexMaterial($request)),
+            'ech' => $this->success($this->echKeyMaterial((string) $request->input('public_name', ''))),
+            default => throw new ApiException('unsupported generator kind'),
+        };
+    }
+
     public function generateEchKey(Request $request)
     {
-        $publicName = $request->input('public_name', 'ech.example.com');
+        return $this->success($this->echKeyMaterial((string) $request->input('public_name', '')));
+    }
+
+    /** @return array{private_key:string,public_key:string} */
+    private function x25519KeyPairMaterial(): array
+    {
+        $privateKey = random_bytes(32);
+
+        return [
+            'private_key' => base64_encode($privateKey),
+            'public_key' => base64_encode(sodium_crypto_scalarmult_base($privateKey)),
+        ];
+    }
+
+    /** @return array{value:string} */
+    private function hexMaterial(Request $request): array
+    {
+        $bytes = (int) $request->input('bytes', 8);
+        $bytes = max(1, min(64, $bytes));
+
+        return ['value' => bin2hex(random_bytes($bytes))];
+    }
+
+    /**
+     * Build ECH key material: PEM key (server-side) plus PEM config (client-side).
+     *
+     * @return array{key:string,config:string}
+     */
+    private function echKeyMaterial(string $publicName): array
+    {
+        $publicName = trim($publicName) ?: 'ech.example.com';
         if (strlen($publicName) < 1 || strlen($publicName) > 253) {
             throw new ApiException('public_name must be a valid domain (1-253 bytes)');
         }
 
-        // Generate X25519 key pair
         $privateKey = random_bytes(32);
         $publicKey = sodium_crypto_scalarmult_base($privateKey);
 
@@ -339,9 +381,9 @@ class ManageController extends Controller
             . chunk_split(base64_encode($echConfigList), 64, "\n")
             . "-----END ECH CONFIGS-----";
 
-        return $this->success([
+        return [
             'key' => $keyPem,
             'config' => $configPem,
-        ]);
+        ];
     }
 }

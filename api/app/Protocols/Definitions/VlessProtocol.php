@@ -52,7 +52,7 @@ class VlessProtocol extends AbstractProtocolDefinition
             [
                 ['key' => 'encryption.enabled', 'label' => '启用 VLESS Encryption', 'type' => 'checkbox', 'full' => true],
                 ['key' => 'encryption.encryption', 'label' => 'Encryption / Client Public Key', 'type' => 'text', 'visible_when' => $encryptionOnly],
-                ['key' => 'encryption.decryption', 'label' => 'Decryption / Server Private Key', 'type' => 'text', 'visible_when' => $encryptionOnly],
+                ['key' => 'encryption.decryption', 'label' => 'Decryption / Server Private Key', 'type' => 'text', 'visible_when' => $encryptionOnly, 'generator' => ProtocolFields::x25519Generator('encryption.decryption', 'encryption.encryption', '生成 VLESS Encryption 密钥对')],
             ],
         );
     }

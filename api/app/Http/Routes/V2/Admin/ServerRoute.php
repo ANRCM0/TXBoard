@@ -37,6 +37,7 @@ class ServerRoute
             $router->post('/resetTraffic', [ManageController::class, 'resetTraffic']);
             $router->post('/batchResetTraffic', [ManageController::class, 'batchResetTraffic']);
             $router->get('/generateEchKey', [ManageController::class, 'generateEchKey']);
+            $router->get('/generateSecret', [ManageController::class, 'generateSecret']);
         });
 
         $router->group(['prefix' => 'server/machine'], function (Registrar $router): void {
