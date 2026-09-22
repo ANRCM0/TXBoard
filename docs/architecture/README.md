@@ -2,6 +2,15 @@
 
 TXBoard 是 Control Plane；TX-Node 是独立 Agent / Data Plane。当前仓库包含面板、前端、协议契约、主题与 Plugin Runtime，不包含 TX-Node 或可选独立插件的源码。
 
+## Architecture roadmap
+
+TXBoard 下一阶段的上层架构基线是 **Module Platform v1**：在不改变 Core 业务事实来源的前提下，将现有 Theme、Plugin 与 Agent Ops / MCP 通过统一 Module Registry、Capability Registry、Health 和 Admin 扩展契约进行收敛。
+
+- [Module Platform v1](./module-platform-v1.md)：下一版目标架构、Core/Module 边界、Module Manifest、Registry、Capability、Health、Theme/Plugin/Agent 迁移方案与 Definition of Done；
+- [Module Platform v1 开发指南](./module-platform-development-guide.md)：后续模块化 PR 的 contract-first、adapter-first、兼容、权限、Octane、安全与测试规则。
+
+Module Platform 是现有 Plugin / Theme / Agent Ops 架构之上的统一层，不替代它们已经稳定的 domain runtime，也不将 User、Order、Node 等 Core 领域强行插件化。
+
 ## Runtime
 
 ```mermaid
