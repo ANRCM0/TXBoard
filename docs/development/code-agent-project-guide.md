@@ -49,13 +49,16 @@ Controlled Module management API
 PR G
 Admin Navigation Registry + Admin Bridge v2
         ✅
+
+PR H
+Agent Ops registry enrichment
+        ✅
 ```
 
 当前：
 
 ```text
-PR H
-Agent Ops registry enrichment
+Module Platform v1 stabilization
         ▶
 ```
 
@@ -329,6 +332,6 @@ contract -> matching contract tests
 
 当前推荐任务：
 
-> 实现 Module Platform Phase H：Agent Ops registry enrichment。
+> Module Platform v1 已完成 A–H 实现，进入 stabilization。
 
-Phase G 已完成统一 Admin Navigation Registry 与可选 Admin Bridge v2。Phase H 只丰富 Agent Ops 在 Module Registry 中的 health/metadata/capability 表达；MCP 仍是可选 protocol adapter，Agent 权限、scope、approval、audit 和 TX-Node typed operation 链路不得迁入 Module Runtime。
+优先做契约回归、兼容性修复、错误隔离、Octane/生产镜像验证和明确的小范围产品改进。不要自行创建“Phase I”或隐式升级 Plugin Package / Theme Package / Admin Bridge / Module contract；破坏性演进必须先写新的版本化架构与 contract。

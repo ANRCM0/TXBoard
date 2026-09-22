@@ -11,6 +11,7 @@ final readonly class ModuleDescriptor
         public bool $enabled,
         public ?bool $active,
         public ModuleHealth $health,
+        public ?ModuleHealthDetails $healthDetails = null,
     ) {
     }
 
@@ -20,6 +21,17 @@ final readonly class ModuleDescriptor
             'id' => $this->manifest->id,
             'name' => $this->manifest->name,
             'version' => $this->manifest->version,
+        ];
+
+        if ($this->manifest->description !== null) {
+            $descriptor['description'] = $this->manifest->description;
+        }
+
+        if ($this->manifest->author !== null) {
+            $descriptor['author'] = $this->manifest->author;
+        }
+
+        $descriptor += [
             'type' => $this->manifest->type->value,
             'source' => $this->source->value,
             'installed' => $this->installed,
@@ -31,6 +43,10 @@ final readonly class ModuleDescriptor
                 'txboard' => $this->manifest->txboardCompatibility,
             ],
         ];
+
+        if ($this->healthDetails !== null) {
+            $descriptor['health_details'] = $this->healthDetails->toArray();
+        }
 
         if ($this->manifest->adminNavigation !== []) {
             $descriptor['admin'] = [

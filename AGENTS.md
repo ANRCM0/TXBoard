@@ -28,10 +28,11 @@ Completed:
 - PR E: read-only Module Center consuming the Module Registry API as the single inventory model.
 - PR F: controlled Module management API delegating supported lifecycle operations through `ModuleLifecycle`.
 - PR G: Admin Navigation Registry projected through Module Registry plus optional Admin Bridge v2 host services.
+- PR H: Agent Ops registry enrichment with bounded runtime health details and preserved Agent/MCP security boundaries.
 
 Current target:
 
-- PR H: Agent Ops registry enrichment.
+- Module Platform v1 stabilization and compatibility hardening. Do not invent a Phase I without an explicit versioned architecture proposal.
 
 Required direction:
 
@@ -312,31 +313,37 @@ Before merge:
 
 Use merge commits for project PRs unless explicitly instructed otherwise.
 
-## 18. Current Phase H rules
+## 18. Module Platform v1 stabilization rules
 
-Phase G is complete. Admin extension navigation now uses:
+Phases A–H complete Module Platform v1.
+
+The implemented control flow remains:
 
 ```text
-Module / legacy Plugin declaration
-        -> Module Adapter
-        -> ModuleDescriptor.admin.navigation
-        -> Module Registry API
-        -> Admin shell
+Module Registry
+    -> read-only inventory / health / navigation
+
+Module Management API
+    -> ModuleLifecycle
+    -> specialized Plugin / Theme runtime
+
+Agent Ops / MCP
+    -> Agent Ops API
+    -> permission / target scope / approval / audit
+    -> TXBoard domain service
+    -> TX-Node typed operation
 ```
 
-Admin Bridge v1 remains compatible and Bridge v2 is optional.
+Stabilization work must preserve these invariants:
 
-The next Module Platform work is Agent Ops registry enrichment.
-
-Keep these invariants:
-
-- Agent Ops API remains usable without MCP;
-- MCP remains an optional protocol adapter;
-- permission, target scope, approval and audit remain authoritative;
-- Module Registry may describe Agent Ops health/capabilities/navigation, but must not execute Agent actions;
+- do not create a second source of truth for Plugin, Theme, Agent Ops or Core domains;
+- keep Plugin Package v1, Theme Package v1 and Admin Bridge v1 compatibility;
+- keep Registry reads side-effect free;
+- keep lifecycle mutations behind specialized adapters;
+- keep Agent Ops API usable without MCP and preserve permission/scope/approval/audit;
+- keep health details bounded, runtime-derived and non-secret;
 - do not add direct Module/MCP access to MySQL, Redis, TX-Node, SSH, Docker, shell or arbitrary filesystem;
-- use bounded, non-secret health metadata;
-- do not move Agent action state into a new Module table;
-- preserve Octane safety and failure isolation.
+- do not add a Module database table unless runtime state cannot be reliably derived;
+- treat any breaking package/Bridge/Module contract as an explicit future version, not an implicit v1 extension.
 
-The goal is richer Module representation of Agent Ops without weakening its existing security boundary.
+The next work should be compatibility hardening, bug fixes and targeted product improvements against the completed v1 contracts.

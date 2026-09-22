@@ -511,9 +511,22 @@ Delivered:
 
 Plugin page rendering remains specialized and plugin-owned `admin/dist` stays the complex UI boundary.
 
-### PR H — Agent Ops registry enrichment — ▶ current target
+### PR H — Agent Ops registry enrichment — ✅ completed
 
-Add deeper Agent Ops health/metadata only. Do not move Agent authorization, approval or MCP execution into Module Runtime.
+Delivered:
+
+- `contracts/agent-ops-module/README.md`;
+- generic bounded runtime `health_details` DTO;
+- Agent Ops health derivation from the existing system-status runtime;
+- healthy/degraded mapping for Scheduler, Horizon and WebSocket worker checks;
+- non-secret degraded fallback when health collection fails;
+- Module Center health-check rendering;
+- API/unit/web contract coverage;
+- no Agent token/action/approval state moved into Module Runtime.
+
+### Post-v1 stabilization — ▶ current target
+
+Module Platform v1 is feature-complete for the A–H roadmap. Continue with compatibility hardening, contract drift prevention, bug fixes and scoped product improvements. Breaking package, lifecycle, navigation or Bridge changes require an explicit future version.
 
 Avoid combining multiple phases into one large refactor.
 
@@ -553,7 +566,7 @@ current_theme  = read-only legacy compatibility fallback
 TXBoard        = deterministic default
 ```
 
-Phase E adds the read-only Module Center directly on top of the Module Registry API. Phase F adds a controlled management HTTP adapter over `ModuleLifecycle`. Phase G adds common Admin navigation projection and optional Bridge v2 host services. The next phase is Agent Ops registry enrichment.
+Phase E adds the read-only Module Center directly on top of the Module Registry API. Phase F adds a controlled management HTTP adapter over `ModuleLifecycle`. Phase G adds common Admin navigation projection and optional Bridge v2 host services. Phase H completes v1 by enriching Agent Ops with bounded runtime health while preserving its security boundary.
 
 ## 21. Definition of Done for each Module
 

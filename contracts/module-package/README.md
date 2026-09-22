@@ -181,6 +181,8 @@ TXBoard runtime code may normalize a manifest into a descriptor containing state
   "id": "access_audit",
   "name": "Access Audit",
   "version": "1.2.0",
+  "description": "Audit extension for TXBoard",
+  "author": "TXBoard",
   "type": "plugin",
   "source": "user",
   "installed": true,
@@ -195,6 +197,24 @@ TXBoard runtime code may normalize a manifest into a descriptor containing state
 ```
 
 Runtime state is derived by TXBoard and is never trusted from the package manifest.
+
+The descriptor may also project the already-validated intrinsic `module.description` and `module.author` fields as optional top-level metadata. This is a projection of package/system metadata, not a second state source.
+
+A runtime descriptor may optionally expose bounded health checks:
+
+```json
+{
+  "health_details": {
+    "checks": {
+      "schedule": true,
+      "websocket_server": false
+    },
+    "observed_at": 1790112000
+  }
+}
+```
+
+`health_details` is runtime-only. It is not a Module Manifest field. Check values are boolean or null and must not contain arbitrary error text or secrets.
 
 Initial health vocabulary:
 
@@ -236,7 +256,7 @@ A future Plugin Package v2 may adopt Module Manifest fields directly, but that i
 
 Theme Package v1 preserves the specialized `config.json + dashboard.blade.php` package boundary and maps package metadata into Module descriptors through `ThemeModuleAdapter`. Theme runtime state continues to come from `ThemeService`.
 
-Agent Ops registers as a system Agent/Integration module. MCP remains an optional protocol adapter and does not become a generic plugin runtime.
+Agent Ops registers as a system Agent/Integration module. Its bounded runtime health projection is defined by [Agent Ops Module Integration Contract v1](../agent-ops-module/README.md). MCP remains an optional protocol adapter and does not become a generic plugin runtime.
 
 ## PR A scope
 

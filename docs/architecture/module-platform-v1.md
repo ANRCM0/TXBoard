@@ -1,6 +1,6 @@
 # TXBoard Module Platform v1
 
-> Status: Active architecture baseline — implementation in progress
+> Status: Active architecture baseline — Module Platform v1 implementation complete; stabilization ongoing
 >
 > Scope: TXBoard Core, Theme Runtime, Plugin Runtime, Admin extension host, Agent Ops / MCP integration
 >
@@ -46,11 +46,10 @@ Completed:
 - **Phase D / PR D** — Theme Package v1, hardened Theme archive validation, canonical `frontend_theme` ownership with read-only legacy fallback and ThemeLifecycleAdapter delegation to `ThemeService`;
 - **Phase E / PR E** — read-only Admin Module Center consuming the Module Registry API as the single inventory model;
 - **Phase F / PR F** — controlled Module management API with state-aware operation discovery and lifecycle execution through specialized adapters;
-- **Phase G / PR G** — Admin Navigation Registry projected through Module Registry and additive Admin Bridge v2 host services with Bridge v1 compatibility.
+- **Phase G / PR G** — Admin Navigation Registry projected through Module Registry and additive Admin Bridge v2 host services with Bridge v1 compatibility;
+- **Phase H / PR H** — Agent Ops registry enrichment with bounded runtime health checks and non-secret failure isolation.
 
-Current implementation target:
-
-- **Phase H** — Agent Ops registry enrichment without changing Agent/MCP policy.
+Module Platform v1 implementation is complete. Current work is stabilization and compatibility hardening; future breaking evolution requires an explicit versioned proposal.
 
 Important invariant:
 
@@ -485,7 +484,7 @@ Checksum, signatures and publisher identity are future trust-layer work, not a v
 
 ### Phase H — Agent integration
 
-**Current target.** Enrich Agent Ops Module health/metadata while preserving the existing Agent Ops permission, scope, approval, audit and TX-Node typed-operation boundary.
+**Implemented.** Agent Ops remains the system `agent_ops` Module and now derives `healthy/degraded` state plus bounded `health_details` from the existing Agent Ops system-status runtime. Health collection failures keep the Module discoverable with unknown checks and a fixed non-secret discovery diagnostic. Agent permission, target scope, approval, audit, MCP and TX-Node typed-operation boundaries are unchanged.
 
 ## 18. Explicit non-goals
 
@@ -517,5 +516,7 @@ Module Platform v1 is complete when:
 10. Agent Ops / MCP continues to use its existing safe API boundary.
 11. API/Web/Image CI covers the compatibility contract.
 12. No duplicate business source of truth is introduced.
+
+**Implementation status: achieved by Phases A–H.** Stabilization may continue without widening the v1 contract implicitly.
 
 At that point TXBoard can accurately be described as a **Modular Control Plane Platform**.

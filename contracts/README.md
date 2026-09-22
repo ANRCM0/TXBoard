@@ -12,6 +12,7 @@
 - `theme-package/README.md`：Theme Package v1、主题包安全、canonical active-theme 与 Theme Runtime 生命周期契约。
 - `admin-navigation/README.md`：Module Admin Navigation Registry 的统一导航投影与宿主路由契约。
 - `admin-bridge/README.md`：Admin Bridge v2 可选宿主服务协议，并保持 Bridge v1 兼容。
+- `agent-ops-module/README.md`：Agent Ops 作为 system Module 的能力与有界运行时健康投影契约。
 
 Laravel routes 是服务器端可执行事实来源；`contracts/` 用于记录跨仓库、跨前端需要稳定维护的契约。
 

@@ -1,6 +1,6 @@
 # Agent Ops 进度与阶段复盘
 
-> 最后更新：2026-09-22
+> 最后更新：2026-09-23
 >
 > Phase 5 实现基线：TXBoard `7db01019f7ee9de47e2e445d4f0255fa113bfe59`
 >
@@ -451,7 +451,56 @@ Phase 5 不在 Control Plane 内部调用 LLM。
 
 ---
 
-## 10. 下一阶段建议
+## 10. Module Platform Phase H integration
+
+Agent Ops 现已在 Module Platform v1 中完成只读 Registry enrichment。
+
+这一步没有新增 Agent action、Token、approval 或 MCP 能力，而是把现有 Agent Ops runtime 的可观测事实投影到 `agent_ops` Module：
+
+```text
+AgentOpsService::systemStatus()
+        ↓
+AgentOpsModuleAdapter
+        ↓
+ModuleDescriptor.health / health_details
+        ↓
+Module Registry
+        ↓
+Module Center
+```
+
+当前 Module health 只使用三个已有、低成本、本地只读检查：
+
+- `schedule`；
+- `horizon`；
+- `websocket_server`。
+
+全部为 true 时 Module 为 `healthy`；任何 false/unknown 为 `degraded`。health collection 异常不会隐藏 Module，也不会把原始异常、Redis/SQL 信息或 secret 暴露到 Registry。
+
+Descriptor 同时投影 system-owned `description` / `author` metadata，并继续声明：
+
+```text
+agent.api
+agent.admin
+```
+
+没有改变的安全边界：
+
+```text
+MCP
+  -> Agent Ops API
+  -> permission
+  -> target scope
+  -> approval / audit
+  -> TXBoard domain service
+  -> TX-Node typed operation
+```
+
+Module Registry 不读取具体 Agent token、target scope、pending action、approval reason、audit payload、fleet finding 或 node address/metrics，也不执行任何 Agent operation。
+
+---
+
+## 11. 下一阶段建议
 
 Phase 0–5 已经完成，因此后续不再用“补完 Agent Ops 基础架构”的方式推进。
 
@@ -508,7 +557,7 @@ Level 3 destructive action 不进入自动修复。
 
 ---
 
-## 11. 复盘入口
+## 12. 复盘入口
 
 排查 Agent Ops 问题时建议按这个顺序：
 
