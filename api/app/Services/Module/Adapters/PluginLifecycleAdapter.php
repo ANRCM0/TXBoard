@@ -26,11 +26,25 @@ final class PluginLifecycleAdapter implements ModuleLifecycleAdapter
         return $module->manifest->type === ModuleType::PLUGIN;
     }
 
+    public function supportsOperation(
+        ModuleDescriptor $module,
+        ModuleLifecycleOperation $operation,
+    ): bool {
+        return $this->supports($module);
+    }
+
+    public function expectsModuleAfterOperation(
+        ModuleDescriptor $module,
+        ModuleLifecycleOperation $operation,
+    ): bool {
+        return true;
+    }
+
     public function execute(
         ModuleDescriptor $module,
         ModuleLifecycleOperation $operation,
     ): void {
-        if (!$this->supports($module)) {
+        if (!$this->supportsOperation($module, $operation)) {
             throw new LogicException('PluginLifecycleAdapter only supports plugin modules');
         }
 

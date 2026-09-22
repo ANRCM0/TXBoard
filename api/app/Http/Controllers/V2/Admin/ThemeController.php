@@ -50,8 +50,11 @@ class ThemeController extends Controller
                 throw new ApiException('上传目录无写入权限');
             }
 
-            // 检查主题目录权限
-            $themePath = base_path('theme');
+            // 用户主题安装在 storage/theme；系统主题目录不是上传目标。
+            $themePath = base_path('storage/theme');
+            if (!File::exists($themePath)) {
+                File::makeDirectory($themePath, 0755, true);
+            }
             if (!is_writable($themePath)) {
                 throw new ApiException('主题目录无写入权限');
             }
