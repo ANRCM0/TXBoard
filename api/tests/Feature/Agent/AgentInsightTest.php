@@ -120,6 +120,34 @@ class AgentInsightTest extends TestCase
         );
     }
 
+    public function test_verify_action_reports_deleted_target_as_inconclusive(): void
+    {
+        $admin = $this->makeAdmin();
+        $node = $this->makeNode('deleted-target');
+
+        AgentAction::create([
+            'request_id' => 'ops_deleted_target',
+            'admin_id' => $admin->id,
+            'node_id' => $node->id,
+            'action' => 'ops.kernel.restart',
+            'risk_level' => 'operate',
+            'status' => AgentAction::STATUS_SUCCEEDED,
+            'input' => [],
+            'result' => ['kernel_running' => true],
+            'started_at' => time() - 2,
+            'finished_at' => time() - 1,
+            'created_at' => time() - 3,
+            'updated_at' => time() - 1,
+        ]);
+
+        $node->delete();
+
+        $verification = app(AgentInsightService::class)->verifyAction('ops_deleted_target');
+
+        $this->assertSame('inconclusive', $verification['verification_status']);
+        $this->assertSame('target_missing', $verification['error_code']);
+    }
+
     public function test_insight_endpoints_respect_target_scope(): void
     {
         $admin = $this->makeAdmin();
