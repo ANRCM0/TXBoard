@@ -141,6 +141,23 @@ class AgentInsightService
             ];
         }
 
+        $node = Server::find((int) $action->node_id);
+        if (!$node) {
+            return [
+                'request_id' => $action->request_id,
+                'action' => $action->action,
+                'action_status' => $action->status,
+                'verification_status' => 'inconclusive',
+                'checks' => [[
+                    'name' => 'target_exists',
+                    'passed' => null,
+                    'observed' => false,
+                ]],
+                'error_code' => 'target_missing',
+                'verified_at' => time(),
+            ];
+        }
+
         $diagnosis = $this->ops->diagnoseNode((int) $action->node_id);
         $checks = [];
 
