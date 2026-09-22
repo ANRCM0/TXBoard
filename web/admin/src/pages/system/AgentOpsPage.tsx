@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Check, Copy, KeyRound, ShieldCheck, Trash2, X } from 'lucide-react'
+import { Bot, Check, Copy, ExternalLink, KeyRound, ShieldCheck, Trash2, X } from 'lucide-react'
 import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from 'react'
 import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -21,6 +21,7 @@ import { PageHeader } from '../../components/ui/PageHeader'
 import { Modal } from '../../components/ui/Modal'
 import { QueryFeedback } from '../../components/ui/QueryFeedback'
 import { requestConfirm } from '../../components/ui/ConfirmDialog'
+import { agentSelfConnectGuideUrl, buildAgentSelfConnectPrompt } from '../../lib/agentSelfConnect'
 
 export function AgentOpsPage() {
   const qc = useQueryClient()
@@ -51,8 +52,14 @@ export function AgentOpsPage() {
   const [targetNodeIds, setTargetNodeIds] = useState<number[]>([])
   const [targetMachineIds, setTargetMachineIds] = useState<number[]>([])
   const [plainToken, setPlainToken] = useState('')
+  const [connectModalOpen, setConnectModalOpen] = useState(false)
   const [rejectingAction, setRejectingAction] = useState<AgentActionItem | null>(null)
   const [rejectReason, setRejectReason] = useState('')
+  const selfConnectGuideUrl = useMemo(() => agentSelfConnectGuideUrl(window.location.origin), [])
+  const selfConnectPrompt = useMemo(
+    () => buildAgentSelfConnectPrompt(selfConnectGuideUrl),
+    [selfConnectGuideUrl],
+  )
 
   useEffect(() => {
     if (!selected.length && abilities.data?.default_read?.length) {
@@ -64,6 +71,7 @@ export function AgentOpsPage() {
     mutationFn: createAgentToken,
     onSuccess: data => {
       setPlainToken(data?.plain_text_token || '')
+      setConnectModalOpen(Boolean(data?.plain_text_token))
       setClientName('')
       setTargetMode('all')
       setTargetNodeIds([])
@@ -134,6 +142,11 @@ export function AgentOpsPage() {
     if (!plainToken) return
     await navigator.clipboard.writeText(plainToken)
     toast.success('已复制 Token')
+  }
+
+  async function copySelfConnectPrompt() {
+    await navigator.clipboard.writeText(selfConnectPrompt)
+    toast.success('已复制 Agent 自助接入提示词')
   }
 
   return (
@@ -364,9 +377,14 @@ export function AgentOpsPage() {
           <div className="callout warning">
             <strong>请立即保存此 Token，关闭页面后不会再次显示。</strong>
             <pre className="code-block">{plainToken}</pre>
-            <button type="button" className="button" onClick={() => void copyToken()}>
-              <Copy size={15} />复制
-            </button>
+            <div className="card-actions">
+              <button type="button" className="button" onClick={() => void copyToken()}>
+                <Copy size={15} />复制 Token
+              </button>
+              <button type="button" className="button button-primary" onClick={() => setConnectModalOpen(true)}>
+                <Bot size={15} />Agent 自助接入
+              </button>
+            </div>
           </div>
         ) : null}
       </div>
@@ -479,6 +497,44 @@ export function AgentOpsPage() {
           </table>
         </div>
       </div>
+
+      <Modal
+        open={connectModalOpen && Boolean(plainToken)}
+        title="让 AI Agent 接入 TXBoard"
+        subtitle="把提示词交给 Hermes、OpenClaw 或其他 MCP Agent，由它读取当前 TXBoard 版本的接入文档并自行配置。"
+        wide
+        onClose={() => setConnectModalOpen(false)}
+      >
+        <div className="form-stack">
+          <div>
+            <strong>1. 复制下面的 Agent 自助接入提示词</strong>
+            <p className="text-muted">提示词只包含当前面板的公开接入文档地址，不包含 Agent Token。</p>
+          </div>
+          <pre className="code-block">{selfConnectPrompt}</pre>
+          <div className="card-actions">
+            <button type="button" className="button button-primary" onClick={() => void copySelfConnectPrompt()}>
+              <Copy size={15} />复制接入提示词
+            </button>
+            <a className="button" href={selfConnectGuideUrl} target="_blank" rel="noreferrer">
+              <ExternalLink size={15} />查看 Agent Guide
+            </a>
+          </div>
+
+          <div className="callout warning">
+            <strong>2. 单独保存 Agent Token</strong>
+            <p>让 Agent 优先通过本地 secret / env 机制读取它。不要把长期 Token 拼进上面的提示词或提交到仓库。</p>
+            <pre className="code-block">{plainToken}</pre>
+            <button type="button" className="button" onClick={() => void copyToken()}>
+              <Copy size={15} />复制 Token
+            </button>
+          </div>
+
+          <div className="callout">
+            <strong>Agent 会做什么？</strong>
+            <p>它会检测自己的 MCP 配置方式，连接同域 <code>/mcp</code>，只用只读工具验证连接，并汇报配置位置、工具发现结果和是否需要 reload / restart。</p>
+          </div>
+        </div>
+      </Modal>
 
       <Modal
         open={Boolean(rejectingAction)}
