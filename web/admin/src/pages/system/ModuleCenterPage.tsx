@@ -49,6 +49,8 @@ export function ModuleCenterPage() {
         module.id,
         module.name,
         module.version,
+        module.description || '',
+        module.author || '',
         module.type,
         module.source,
         ...module.capabilities,
@@ -195,6 +197,8 @@ function ModuleRow({ module }: { module: ModuleDescriptor }) {
     <td>
       <strong>{module.name}</strong>
       <small className="table-sub"><code>{module.id}</code></small>
+      {module.description ? <small className="table-sub">{module.description}</small> : null}
+      {module.author ? <small className="table-sub">by {module.author}</small> : null}
     </td>
     <td>
       <span className="badge">{typeLabel(module.type)}</span>
@@ -203,7 +207,7 @@ function ModuleRow({ module }: { module: ModuleDescriptor }) {
     </td>
     <td><code>{module.version}</code></td>
     <td><span className={runtimeStateClass(module)}>{runtimeState(module)}</span></td>
-    <td><span className={healthClass(module.health)}>{healthLabel(module.health)}</span></td>
+    <td><ModuleHealthCell module={module} /></td>
     <td>
       <div className="actions">
         {module.capabilities.length
@@ -213,6 +217,43 @@ function ModuleRow({ module }: { module: ModuleDescriptor }) {
     </td>
     <td><code>{module.compatibility.txboard}</code></td>
   </tr>
+}
+
+function ModuleHealthCell({ module }: { module: ModuleDescriptor }) {
+  const checks = Object.entries(module.health_details?.checks || {})
+
+  return <div>
+    <span className={healthClass(module.health)}>{healthLabel(module.health)}</span>
+    {module.health_details?.observed_at ? (
+      <small className="table-sub">Observed {formatEpoch(module.health_details.observed_at)}</small>
+    ) : null}
+    {checks.length ? (
+      <div className="actions" style={{ marginTop: 6 }}>
+        {checks.map(([name, value]) => (
+          <span
+            className={value === true ? 'status ok' : value === false ? 'badge fleet-degraded' : 'status off'}
+            key={name}
+            title={healthCheckLabel(name)}
+          >
+            {healthCheckLabel(name)} {value === true ? '✓' : value === false ? '!' : '?'}
+          </span>
+        ))}
+      </div>
+    ) : null}
+  </div>
+}
+
+function formatEpoch(value: number) {
+  const date = new Date(value * 1000)
+  return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString()
+}
+
+function healthCheckLabel(value: string) {
+  return ({
+    schedule: 'Scheduler',
+    horizon: 'Horizon',
+    websocket_server: 'WebSocket',
+  } as Record<string, string>)[value] || value.replaceAll('_', ' ')
 }
 
 function SummaryCard({

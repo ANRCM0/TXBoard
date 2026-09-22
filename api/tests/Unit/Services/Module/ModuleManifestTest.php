@@ -62,6 +62,8 @@ class ModuleManifestTest extends TestCase
             'id' => 'access_audit',
             'name' => 'Access Audit',
             'version' => '1.2.0',
+            'description' => 'Audit extension for TXBoard',
+            'author' => 'TXBoard',
             'type' => 'plugin',
             'source' => 'user',
             'installed' => true,
@@ -170,6 +172,14 @@ class ModuleManifestTest extends TestCase
             'runtime state in package declaration' => [
                 static function (array &$manifest): void {
                     $manifest['enabled'] = true;
+                },
+            ],
+            'runtime health details in package declaration' => [
+                static function (array &$manifest): void {
+                    $manifest['health_details'] = [
+                        'checks' => ['runtime' => true],
+                        'observed_at' => 1790112000,
+                    ];
                 },
             ],
             'unknown module field' => [
