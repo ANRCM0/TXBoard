@@ -220,6 +220,16 @@ window.parent.postMessage(
 
 宿主只接受安全的相对插件 path；外部 URL 和目录穿越不会被执行。
 
+## Admin Bridge v2 compatibility
+
+Admin Bridge v1 remains the required compatibility baseline for Plugin Package v1.
+
+Plugins may optionally negotiate the additive Admin Bridge v2 protocol using `txboard:module:ready` version `2`. Bridge v2 adds bounded host services such as navigation, toast, confirmation, refresh, Core entity deep links and theme context.
+
+See [Admin Bridge Contract v2](../admin-bridge/README.md).
+
+A v1-only plugin requires no manifest change or rebuild.
+
 ## Backend runtime
 
 插件后端继续使用 TXBoard Plugin Runtime：

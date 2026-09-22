@@ -495,11 +495,23 @@ Delivered:
 
 Plugin/Theme upload and configuration, Agent approval and MCP execution remain specialized APIs.
 
-### PR G — Admin Navigation Registry + Admin Bridge v2 — ▶ current target
+### PR G — Admin Navigation Registry + Admin Bridge v2 — ✅ completed
 
-Incremental compatibility; Admin Bridge v1 remains supported.
+Delivered:
 
-### PR H — Agent Ops registry enrichment
+- `contracts/admin-navigation/README.md`;
+- `ModuleDescriptor.admin.navigation` projection;
+- conservative Plugin Package v1 `admin_menus` normalization;
+- Sidebar and command palette consumption of the unified Module Registry snapshot;
+- defensive frontend navigation normalization and tests;
+- `contracts/admin-bridge/README.md`;
+- optional Bridge v2 negotiation and bounded host services;
+- Bridge v1 compatibility;
+- confirmation correlation/cancellation, theme context and Core deep-link services.
+
+Plugin page rendering remains specialized and plugin-owned `admin/dist` stays the complex UI boundary.
+
+### PR H — Agent Ops registry enrichment — ▶ current target
 
 Add deeper Agent Ops health/metadata only. Do not move Agent authorization, approval or MCP execution into Module Runtime.
 
@@ -541,7 +553,7 @@ current_theme  = read-only legacy compatibility fallback
 TXBoard        = deterministic default
 ```
 
-Phase E adds the read-only Module Center directly on top of the Module Registry API. Phase F adds a controlled management HTTP adapter over `ModuleLifecycle`. The next phase is Admin Navigation Registry + Admin Bridge v2.
+Phase E adds the read-only Module Center directly on top of the Module Registry API. Phase F adds a controlled management HTTP adapter over `ModuleLifecycle`. Phase G adds common Admin navigation projection and optional Bridge v2 host services. The next phase is Agent Ops registry enrichment.
 
 ## 21. Definition of Done for each Module
 

@@ -45,11 +45,12 @@ Completed:
 - **Phase C / PR C** — Module Lifecycle v1, PluginLifecycleAdapter delegation to existing `PluginManager`, structured lifecycle result/error state and post-mutation Registry refresh;
 - **Phase D / PR D** — Theme Package v1, hardened Theme archive validation, canonical `frontend_theme` ownership with read-only legacy fallback and ThemeLifecycleAdapter delegation to `ThemeService`;
 - **Phase E / PR E** — read-only Admin Module Center consuming the Module Registry API as the single inventory model;
-- **Phase F / PR F** — controlled Module management API with state-aware operation discovery and lifecycle execution through specialized adapters.
+- **Phase F / PR F** — controlled Module management API with state-aware operation discovery and lifecycle execution through specialized adapters;
+- **Phase G / PR G** — Admin Navigation Registry projected through Module Registry and additive Admin Bridge v2 host services with Bridge v1 compatibility.
 
 Current implementation target:
 
-- **Phase G** — Admin Navigation Registry + Admin Bridge v2.
+- **Phase H** — Agent Ops registry enrichment without changing Agent/MCP policy.
 
 Important invariant:
 
@@ -351,9 +352,7 @@ Existing Theme, Plugin and Agent Ops pages may remain during v1 as specialized m
 
 ## 12. Admin Navigation Registry
 
-Navigation is currently declared differently by core pages, plugins and Agent Ops.
-
-Module Platform v1 introduces a common Admin Navigation Registry.
+Module Platform v1 uses a common Admin Navigation Registry projected through the Module Descriptor and existing Registry API.
 
 Target declaration:
 
@@ -373,11 +372,11 @@ Target declaration:
 }
 ```
 
-The Admin shell owns rendering and route integration.
+The Admin shell owns rendering and route integration. Plugin page rendering remains a specialized Plugin Runtime concern; the Navigation Registry does not copy `app`, CRUD, embed or component execution metadata.
 
 ## 13. Admin Bridge v2
 
-Admin Bridge v1 remains compatible.
+Admin Bridge v1 remains compatible. Bridge v2 is implemented as an optional same-origin iframe protocol.
 
 Bridge v2 may add host services such as:
 
@@ -482,11 +481,11 @@ Checksum, signatures and publisher identity are future trust-layer work, not a v
 
 ### Phase G — Admin Navigation Registry + Admin Bridge v2
 
-**Current target.** Add a common host navigation registry and extend host services while keeping Admin Bridge v1 compatible.
+**Implemented.** Validated Module navigation is projected through `ModuleDescriptor.admin.navigation` and the existing Registry API. Legacy Plugin Package v1 `admin_menus` are conservatively adapted without package changes. Sidebar and command navigation consume the shared Module snapshot. Admin Bridge v2 adds bounded optional host services while Bridge v1 remains compatible.
 
 ### Phase H — Agent integration
 
-Register Agent Ops in the Module Registry without changing the Agent Ops security model.
+**Current target.** Enrich Agent Ops Module health/metadata while preserving the existing Agent Ops permission, scope, approval, audit and TX-Node typed-operation boundary.
 
 ## 18. Explicit non-goals
 

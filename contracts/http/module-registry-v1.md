@@ -57,6 +57,32 @@ Response data:
 
 Modules are sorted by stable Module ID.
 
+A descriptor may additionally expose validated host navigation metadata:
+
+```json
+{
+  "id": "access_audit",
+  "type": "plugin",
+  "installed": true,
+  "enabled": true,
+  "admin": {
+    "navigation": [
+      {
+        "id": "dashboard",
+        "title": "Dashboard",
+        "path": "dashboard",
+        "icon": "layout-dashboard",
+        "order": 10
+      }
+    ]
+  }
+}
+```
+
+Navigation is package/module metadata, not runtime authorization. The Admin shell consumes this projection through the same Registry endpoint; specialized Plugin APIs remain responsible for page rendering metadata.
+
+See `contracts/admin-navigation/README.md`.
+
 A broken adapter or malformed legacy module must not prevent healthy modules from being returned. Discovery failures are reported in `errors`:
 
 ```json
