@@ -36,7 +36,7 @@ class OrderController extends Controller
     {
         $current = $request->input('current', 1);
         $pageSize = $request->input('pageSize', 10);
-        $orderModel = Order::with('plan:id,name');
+        $orderModel = Order::with(['plan:id,name', 'user:id,email']);
 
         if ($request->boolean('is_commission')) {
             $orderModel->whereNotNull('invite_user_id')
@@ -87,6 +87,17 @@ class OrderController extends Controller
 
     private function buildFilterQuery(Builder $query, string $field, mixed $value): void
     {
+        if ($field === 'email') {
+            $needle = is_string($value) && str_contains($value, ':')
+                ? explode(':', $value, 2)[1]
+                : $value;
+
+            $query->whereHas('user', function ($userQuery) use ($needle) {
+                $userQuery->where('email', 'like', "%{$needle}%");
+            });
+            return;
+        }
+
         // Handle array values for 'in' operations
         if (is_array($value)) {
             $query->whereIn($field, $value);

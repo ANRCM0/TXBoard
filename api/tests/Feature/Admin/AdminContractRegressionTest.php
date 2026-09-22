@@ -8,6 +8,7 @@ use App\Models\GiftCardTemplate;
 use App\Models\Knowledge;
 use App\Models\MailTemplate;
 use App\Models\Notice;
+use App\Models\Order;
 use App\Models\User;
 use App\Services\AuthService;
 use App\Services\StatisticalService;
@@ -131,6 +132,35 @@ class AdminContractRegressionTest extends TestCase
         $response->assertJsonStructure(['total', 'current_page', 'per_page', 'last_page', 'data']);
         $this->assertSame(1, $response->json('total'));
         $this->assertSame(1, $response->json('last_page'));
+    }
+
+    public function test_order_list_can_filter_by_user_email_and_returns_user_identity(): void
+    {
+        $target = $this->makeUser('order-search-target@example.com', 0, 0);
+        $other = $this->makeUser('order-search-other@example.com', 0, 0);
+
+        foreach ([[$target, 'target-order'], [$other, 'other-order']] as [$user, $tradeNo]) {
+            Order::create([
+                'user_id' => $user->id,
+                'plan_id' => 0,
+                'period' => 'month_price',
+                'trade_no' => $tradeNo,
+                'total_amount' => 100,
+                'type' => Order::TYPE_NEW_PURCHASE,
+                'status' => Order::STATUS_PENDING,
+                'created_at' => time(),
+                'updated_at' => time(),
+            ]);
+        }
+
+        $response = $this->getJson(
+            "/api/v2/{$this->securePath}/order/fetch?current=1&pageSize=20&filter[0][id]=email&filter[0][value]=search-target"
+        );
+
+        $response->assertOk();
+        $this->assertSame(1, $response->json('total'));
+        $this->assertSame('order-search-target@example.com', $response->json('data.0.user.email'));
+        $this->assertSame('target-order', $response->json('data.0.trade_no'));
     }
 
     public function test_traffic_reset_logs_return_a_top_level_paginator(): void
