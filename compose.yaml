@@ -84,6 +84,30 @@ services:
       retries: 24
       start_period: 10s
 
+  txboard-mcp:
+    profiles: ["mcp"]
+    build:
+      context: ./mcp
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    logging: *default-logging
+    depends_on:
+      txboard:
+        condition: service_healthy
+    environment:
+      TXBOARD_BASE_URL: http://txboard
+      MCP_HOST: 0.0.0.0
+      MCP_PORT: 3000
+      MCP_ALLOWED_HOSTS: ${TXBOARD_MCP_ALLOWED_HOSTS:-localhost,127.0.0.1}
+      MCP_ALLOWED_ORIGINS: ${TXBOARD_MCP_ALLOWED_ORIGINS:-}
+    ports:
+      - "127.0.0.1:${TXBOARD_MCP_PORT:-3000}:3000"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+
   backup:
     image: mysql:8.4.11
     restart: unless-stopped

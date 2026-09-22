@@ -30,6 +30,7 @@ class NodeWorker
         'node.status' => [NodeEventHandlers::class, 'handleNodeStatus'],
         'report.devices' => [NodeEventHandlers::class, 'handleDeviceReport'],
         'request.devices' => [NodeEventHandlers::class, 'handleDeviceRequest'],
+        'ops.result' => [NodeEventHandlers::class, 'handleOpsResult'],
     ];
 
     public function __construct(string $host, int $port)
