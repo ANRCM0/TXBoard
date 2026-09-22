@@ -60,6 +60,14 @@ class AdminContractRegressionTest extends TestCase
         $this->assertEqualsWithDelta(12.34, $row['balance'], 0.00001);
     }
 
+    public function test_missing_user_detail_returns_domain_error_instead_of_server_error(): void
+    {
+        $response = $this->getJson("/api/v2/{$this->securePath}/user/getUserInfoById?id=999999");
+
+        $response->assertStatus(400);
+        $this->assertSame('用户不存在', $response->json('message'));
+    }
+
     public function test_admin_audit_log_redacts_sensitive_config_values(): void
     {
         $response = $this->postJson("/api/v2/{$this->securePath}/config/save", [
