@@ -26,10 +26,11 @@ Completed:
 - PR C: Plugin lifecycle integration through `ModuleLifecycle -> PluginLifecycleAdapter -> PluginManager`.
 - PR D: Theme Package v1, canonical active-theme state and `ThemeLifecycleAdapter -> ThemeService` delegation.
 - PR E: read-only Module Center consuming the Module Registry API as the single inventory model.
+- PR F: controlled Module management API delegating supported lifecycle operations through `ModuleLifecycle`.
 
 Current target:
 
-- PR F: controlled Module management API.
+- PR G: Admin Navigation Registry + Admin Bridge v2.
 
 Required direction:
 
@@ -255,9 +256,10 @@ Follow existing response conventions.
 
 Do not create generic Module mutation endpoints until lifecycle contracts and adapters are stable.
 
-Read-only Module Registry v1 contract:
+Module HTTP contracts:
 
-`contracts/http/module-registry-v1.md`
+- read-only Registry: `contracts/http/module-registry-v1.md`;
+- controlled lifecycle management: `contracts/http/module-management-v1.md`.
 
 ## 16. Testing requirements
 
@@ -309,32 +311,28 @@ Before merge:
 
 Use merge commits for project PRs unless explicitly instructed otherwise.
 
-## 18. Current Phase F rules
+## 18. Current Phase G rules
 
-Phase E is complete. The Admin Module Center reads inventory only through:
+Phase F is complete. Controlled lifecycle management now uses:
 
 ```text
-TXBoard Admin Module Center
-          |
-          v
-GET /api/v2/{secure_path}/module
-          |
-          v
-    Module Registry
+Admin HTTP
+    -> ModuleLifecycle
+    -> PluginLifecycleAdapter -> PluginManager
+    -> ThemeLifecycleAdapter  -> ThemeService
 ```
 
-The next Module Platform work is the controlled Module management API.
+The next Module Platform work is Admin Navigation Registry + Admin Bridge v2.
 
 Keep these invariants:
 
-- lifecycle mutations must enter through `ModuleLifecycle`, never through Module Registry;
-- expose only operations supported by a registered lifecycle adapter;
-- Plugin mutations continue through `PluginLifecycleAdapter -> PluginManager`;
-- Theme mutations continue through `ThemeLifecycleAdapter -> ThemeService`;
-- payload-bearing Plugin/Theme upload and configuration APIs remain specialized runtime APIs;
-- preserve the dynamic `secure_path` Admin boundary and existing authorization;
-- return stable lifecycle result/error vocabulary without leaking runtime exception text;
-- do not add Module database tables or duplicate runtime state;
-- do not mix Admin Bridge v2 or Agent policy changes into this PR.
+- Admin Bridge v1 remains compatible;
+- Module/package navigation declarations are data, not permission bypasses;
+- host navigation must stay relative and validated;
+- complex Plugin Admin apps remain plugin-owned `admin/dist` builds;
+- do not require third-party plugins to modify TXBoard React source;
+- navigation/runtime registries must remain Octane-safe and container-managed;
+- do not move Plugin/Theme lifecycle into the Bridge;
+- do not change Agent Ops/MCP authorization, approval or TX-Node boundaries in the same PR.
 
-The goal is a controlled orchestration API, not a second Plugin/Theme runtime.
+The goal is a stable host extension surface, not a frontend plugin sandbox.

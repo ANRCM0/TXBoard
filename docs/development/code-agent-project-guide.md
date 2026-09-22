@@ -41,13 +41,17 @@ Theme Package v1 / Theme lifecycle adapter
 PR E
 Read-only Module Center
         ✅
+
+PR F
+Controlled Module management API
+        ✅
 ```
 
 当前：
 
 ```text
-PR F
-Controlled Module management API
+PR G
+Admin Navigation Registry + Admin Bridge v2
         ▶
 ```
 
@@ -321,6 +325,6 @@ contract -> matching contract tests
 
 当前推荐任务：
 
-> 实现 Module Platform Phase F：controlled Module management API。
+> 实现 Module Platform Phase G：Admin Navigation Registry + Admin Bridge v2。
 
-Phase E 已完成统一只读 Module Center。Phase F 必须让管理动作进入 `ModuleLifecycle`，再由 Plugin/Theme lifecycle adapter 委托现有专业 Runtime；Module Registry 继续保持只读。不要把 Plugin/Theme upload、配置或 Agent approval 强行塞进通用 lifecycle API。
+Phase F 已完成受控 Module management API。Phase G 应统一 Admin navigation 声明与宿主能力，同时保持 Admin Bridge v1、Plugin Package v1 和 plugin-owned `admin/dist` 兼容；不要把 Bridge 描述成 PHP 安全沙箱，也不要把 lifecycle 或 Agent Ops 安全策略塞进 Bridge。

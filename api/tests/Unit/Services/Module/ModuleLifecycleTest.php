@@ -20,6 +20,68 @@ use stdClass;
 
 class ModuleLifecycleTest extends TestCase
 {
+    public function test_supported_operations_are_derived_from_registered_adapter_and_current_state(): void
+    {
+        $state = $this->state();
+        $registry = $this->registry($state);
+
+        $adapter = new class implements ModuleLifecycleAdapter {
+            public function name(): string
+            {
+                return 'selective';
+            }
+
+            public function supports(ModuleDescriptor $module): bool
+            {
+                return true;
+            }
+
+            public function supportsOperation(
+                ModuleDescriptor $module,
+                ModuleLifecycleOperation $operation,
+            ): bool {
+                return in_array($operation, [
+                    ModuleLifecycleOperation::ENABLE,
+                    ModuleLifecycleOperation::UNINSTALL,
+                ], true);
+            }
+
+            public function expectsModuleAfterOperation(
+                ModuleDescriptor $module,
+                ModuleLifecycleOperation $operation,
+            ): bool {
+                return true;
+            }
+
+            public function execute(
+                ModuleDescriptor $module,
+                ModuleLifecycleOperation $operation,
+            ): void {
+            }
+        };
+
+        $operations = (new ModuleLifecycle($registry, [$adapter]))
+            ->supportedOperations('access_audit');
+
+        $this->assertSame([
+            ModuleLifecycleOperation::ENABLE,
+            ModuleLifecycleOperation::UNINSTALL,
+        ], $operations);
+        $this->assertSame(1, $state->discoveries);
+    }
+
+    public function test_supported_operations_distinguish_unknown_and_unmanaged_modules(): void
+    {
+        $state = $this->state();
+        $registry = $this->registry($state);
+        $lifecycle = new ModuleLifecycle($registry, []);
+
+        $this->assertSame([], $lifecycle->supportedOperations('access_audit'));
+
+        $state->exists = false;
+        $this->assertNull($lifecycle->supportedOperations('access_audit'));
+    }
+
     public function test_successful_operation_re_reads_registry_state(): void
     {
         $state = $this->state();

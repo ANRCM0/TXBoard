@@ -4,6 +4,7 @@
 
 - `http/xboard-api-contract-audit.md`：Admin/User Web 与 API 的兼容记录。
 - `http/module-registry-v1.md`：Module Platform 的只读 Admin Registry HTTP 契约。
+- `http/module-management-v1.md`：Module Platform 的受控 Admin lifecycle 管理 HTTP 契约。
 - `node-protocol/README.md`：TXBoard 与独立 TX-Node 之间的协议入口。
 - `plugin-package/README.md`：TXBoard 与独立插件仓库之间的 Plugin Package v1 / Admin Bridge 契约。
 - `module-package/README.md`：Module Platform v1 的统一 Module Manifest、Capability 与运行时 Descriptor 契约。

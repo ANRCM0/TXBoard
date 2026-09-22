@@ -13,6 +13,8 @@ class ExtensionRoute
     {
         $router->group(['prefix' => 'module'], function (Registrar $router): void {
             $router->get('/', [ModuleController::class, 'index']);
+            $router->get('/{id}/lifecycle', [ModuleController::class, 'lifecycle']);
+            $router->post('/{id}/lifecycle/{operation}', [ModuleController::class, 'executeLifecycle']);
             $router->get('/{id}', [ModuleController::class, 'show']);
         });
 

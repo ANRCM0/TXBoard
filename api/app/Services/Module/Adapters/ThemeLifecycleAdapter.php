@@ -38,7 +38,7 @@ final class ThemeLifecycleAdapter implements ModuleLifecycleAdapter
         }
 
         return match ($operation) {
-            ModuleLifecycleOperation::ENABLE => true,
+            ModuleLifecycleOperation::ENABLE => $module->active !== true,
             ModuleLifecycleOperation::UNINSTALL =>
                 $module->source === ModuleSource::USER && $module->active !== true,
             default => false,
