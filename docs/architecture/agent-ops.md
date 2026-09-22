@@ -1,6 +1,6 @@
 # TXBoard Agent Ops / MCP Architecture
 
-> Status: Implemented (Agent Ops v1); Phase 5 AI-native composition remains future work
+> Status: Implemented — Agent Ops v1 including Phase 5 AI-native operations
 >
 > Scope: TXBoard Control Plane, TX-Node operations, external Agent integrations
 >
@@ -47,7 +47,7 @@ These rules are mandatory.
 
 1. **No arbitrary shell tool.** TXBoard MUST NOT expose a generic `exec(command)`, `ssh(command)` or equivalent MCP tool.
 2. **Control Plane remains authoritative.** Agents do not write directly to MySQL, Redis or TX-Node local files.
-3. **Reuse existing services.** Agent operations call application services such as `ServerService`, `NodeSyncService`, statistics services and future `OpsService`; they do not duplicate domain logic in the MCP server.
+3. **Reuse existing services.** Agent operations call application services such as `ServerService`, `NodeSyncService`, `AgentOpsService`, `AgentActionService` and `AgentInsightService`; they do not duplicate domain logic in the MCP server.
 4. **MCP is optional.** TXBoard and TX-Node must continue to work when the MCP Gateway is absent.
 5. **All state-changing actions are auditable.** Every operation records actor, client, target, parameters, result and request/correlation ID.
 6. **High-risk actions require explicit approval.** Approval is enforced server-side and cannot be bypassed by prompt text.
@@ -144,6 +144,7 @@ api/app/Services/AgentOps/
   ApprovalService.php
   AuditService.php
   NodeActionService.php
+  AgentInsightService.php
 ```
 
 The MCP server and Admin UI should consume stable Agent Ops endpoints instead of calling arbitrary Admin controllers.
@@ -223,6 +224,11 @@ The first release should stay deliberately small.
 | `txboard_traffic_summary` | READ | Traffic and utilization summary |
 | `txboard_queue_status` | READ | Queue/Horizon diagnostics |
 | `txboard_audit_logs` | READ | Agent/admin operation history |
+| `txboard_fleet_health` | READ | Fleet-wide normalized health and severity summary |
+| `txboard_inspection_history` | READ | Scheduled/manual normalized fleet inspection history |
+| `txboard_incident_timeline` | READ | Node timeline composed from inspections, Agent actions and audit |
+| `txboard_remediation_plan` | READ | Deterministic remediation guidance; never auto-executes |
+| `txboard_verify_action` | READ | Re-check a completed action against current telemetry |
 | `txboard_full_sync_node` | OPERATE | Re-push config and users |
 | `txboard_reload_node_config` | OPERATE | Validate and reload runtime config |
 | `txboard_restart_kernel` | OPERATE | Restart the managed proxy kernel |
@@ -359,6 +365,7 @@ agent:nodes:read
 agent:metrics:read
 agent:traffic:read
 agent:audit:read
+agent:insights:read
 
 agent:nodes:sync
 agent:nodes:diagnose
@@ -431,8 +438,10 @@ Example:
 User: "Check why JP-03 is unavailable."
 
 Agent
-  -> txboard_node_metrics
+  -> txboard_fleet_health
   -> txboard_diagnose_node
+  -> txboard_incident_timeline
+  -> txboard_remediation_plan
 
 TXBoard
   -> online=true
@@ -446,9 +455,19 @@ User approves
 
 Agent
   -> txboard_restart_kernel
+
+User approves in TXBoard Admin
+
+TXBoard / TX-Node
+  -> dispatch typed operation
+  -> record ops.result
+
+Agent
+  -> txboard_verify_action
   -> txboard_diagnose_node
 
 TXBoard
+  -> verification_status=passed
   -> kernel.running=true
   -> connections recovering
 ```
@@ -552,20 +571,133 @@ The gateway contains no direct database, Redis or node-control logic.
 
 Safe auto-remediation remains intentionally disabled in v1. Enabling it later requires an explicit policy design rather than silently bypassing approval.
 
-### Phase 5 — AI-native operations — future/optional
+### Phase 5 — AI-native operations — implemented
 
-Higher-level capabilities can be composed on top of the stable v1 tools, such as:
+Phase 5 composes the stable v1 primitives; it does not introduce a second execution path.
 
-- fleet health summaries;
-- anomaly explanations based on telemetry;
-- incident timelines;
-- guided remediation;
-- post-action verification;
-- scheduled fleet inspection.
+- [x] fleet health summaries with normalized `healthy / degraded / critical` state;
+- [x] deterministic anomaly explanations based on warning codes and telemetry;
+- [x] incident timelines composed from inspection state changes, Agent actions and Agent audit;
+- [x] guided remediation plans that map warnings to safe next tools/actions;
+- [x] post-action verification against current telemetry instead of trusting command acknowledgement;
+- [x] scheduled fleet inspection every five minutes;
+- [x] normalized inspection history with configurable retention;
+- [x] Admin fleet-health view and manual inspection trigger;
+- [x] target-scope enforcement for Agent insight endpoints.
 
-These capabilities should compose the same narrow tools rather than bypassing them.
+Automatic remediation remains intentionally **disabled**. A remediation plan can recommend an approval-gated operation, but it cannot approve or execute that operation itself.
 
-## 17. Suggested first implementation slice
+
+
+## 17. AI-native operations implementation
+
+### 17.1 Fleet health
+
+`AgentInsightService::fleetHealth()` evaluates the current normalized diagnosis for every visible node and classifies each node as:
+
+- `critical`: at least one critical warning;
+- `degraded`: no critical warning, but at least one warning-level condition;
+- `healthy`: no critical/warning-level condition.
+
+Informational warnings remain visible but do not automatically downgrade fleet state.
+
+For target-restricted Agent tokens, fleet health is calculated only over nodes visible to that token.
+
+### 17.2 Scheduled inspections
+
+TXBoard runs:
+
+```text
+agent:inspect-fleet
+```
+
+every five minutes through the existing Laravel scheduler when `AGENT_OPS_INSPECTION_ENABLED=true`.
+
+Default retention:
+
+```text
+AGENT_OPS_INSPECTION_RETENTION_DAYS=7
+```
+
+Each row in `v2_agent_inspection` stores only:
+
+- inspection ID/source/status;
+- aggregate counts;
+- normalized per-node health findings;
+- timestamps.
+
+It does **not** persist raw TX-Node logs, credentials or arbitrary node configuration.
+
+Administrators can also trigger a manual inspection from **Admin → Agent 运维**.
+
+### 17.3 Incident timeline
+
+`txboard_incident_timeline` combines three existing evidence streams:
+
+1. fleet inspection state changes;
+2. Agent action lifecycle events;
+3. Agent API audit events.
+
+Consecutive inspection snapshots with the same node status/warning signature are collapsed so the timeline emphasizes state transitions instead of repeating five-minute samples.
+
+### 17.4 Remediation plans
+
+`txboard_remediation_plan` is deterministic and evidence-based. It maps known warning codes to bounded next steps.
+
+Examples:
+
+- `websocket_offline` → host-side control-channel investigation; no node action is recommended because the control channel is unavailable;
+- `kernel_not_running` → recommend `txboard_restart_kernel`, still requiring Admin approval;
+- high CPU/memory/disk → inspect metrics and bounded logs before changing runtime state;
+- stale metrics → re-check telemetry/control-channel state;
+- zero active connections → correlate with traffic and expected demand before declaring an incident.
+
+The plan never executes its own recommendation.
+
+### 17.5 Post-action verification
+
+`txboard_verify_action` separates **command acknowledgement** from **observed recovery**.
+
+Examples:
+
+- kernel restart: WebSocket must still be connected and the kernel must currently report running;
+- config reload: control channel must be connected and the kernel must not report failed;
+- full sync: the node control channel must still be connected;
+- diagnostic/read-style node operations: a result must have been received.
+
+Verification states:
+
+```text
+waiting
+passed
+failed
+inconclusive
+action_not_successful
+```
+
+If an action says `succeeded` but current telemetry contradicts the expected state, verification returns `failed`. If the target has disappeared, verification returns `inconclusive` with `target_missing`.
+
+### 17.6 Agent operating loop
+
+The implemented high-level loop is:
+
+```text
+Scheduled inspection / fleet health
+  -> anomaly detected
+  -> node diagnosis
+  -> incident timeline
+  -> deterministic remediation plan
+  -> request approval-gated action
+  -> administrator approval
+  -> TX-Node typed operation
+  -> ops.result
+  -> post-action verification
+  -> updated fleet health / audit
+```
+
+This is AI-native orchestration without granting the Agent autonomous infrastructure execution.
+
+## 18. Historical first implementation slice
 
 The first code slice should be intentionally small:
 
@@ -579,7 +711,7 @@ The first code slice should be intentionally small:
 
 This keeps the first milestone observable and safe while proving the full Agent -> MCP -> TXBoard flow.
 
-## 18. Design decision summary
+## 19. Design decision summary
 
 TXBoard Agent Ops is an orchestration and safety layer, not a remote shell.
 
