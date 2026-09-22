@@ -36,6 +36,7 @@ const groups = [
     items: [
       ['/config/system', '系统配置', Settings],
       ['/config/frontend', '前端设置', LayoutDashboard],
+      ['/system/modules', '模块中心', Boxes],
       ['/system/agent-ops', 'Agent 运维', Bot],
       ['/system/audit-log', '审计日志', FileText],
       ['/config/plugin', '插件管理', Plug],
