@@ -21,6 +21,8 @@ class ServerRoute
         $router->group(['prefix' => 'server/route'], function (Registrar $router): void {
             $router->get('/fetch', [RouteController::class, 'fetch']);
             $router->post('/save', [RouteController::class, 'save']);
+            $router->post('/sort', [RouteController::class, 'sort']);
+            $router->post('/simulate', [RouteController::class, 'simulate']);
             $router->post('/drop', [RouteController::class, 'drop']);
         });
 

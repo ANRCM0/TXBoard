@@ -9,8 +9,11 @@ use App\Models\Knowledge;
 use App\Models\MailTemplate;
 use App\Models\Notice;
 use App\Models\Order;
+use App\Models\Server;
+use App\Models\ServerRoute;
 use App\Models\User;
 use App\Services\AuthService;
+use App\Services\ServerService;
 use App\Services\StatisticalService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -169,6 +172,121 @@ class AdminContractRegressionTest extends TestCase
         $this->assertSame(1, $response->json('total'));
         $this->assertSame('order-search-target@example.com', $response->json('data.0.user.email'));
         $this->assertSame('target-order', $response->json('data.0.trade_no'));
+    }
+
+    public function test_panel_route_simulator_matches_enabled_routes_in_dispatch_order(): void
+    {
+        $later = ServerRoute::create([
+            'remarks' => 'later-block',
+            'match' => ['example.com'],
+            'action' => 'block',
+            'enabled' => true,
+            'sort' => 20,
+        ]);
+        $first = ServerRoute::create([
+            'remarks' => 'first-direct',
+            'match' => ['example.com'],
+            'action' => 'direct',
+            'enabled' => true,
+            'sort' => 10,
+        ]);
+        $disabled = ServerRoute::create([
+            'remarks' => 'disabled-rule',
+            'match' => ['example.com'],
+            'action' => 'block',
+            'enabled' => false,
+            'sort' => 1,
+        ]);
+
+        $node = Server::create([
+            'type' => Server::TYPE_SOCKS,
+            'name' => 'route-simulator-node',
+            'rate' => 1,
+            'host' => 'route.example.test',
+            'port' => '1080',
+            'server_port' => 1080,
+            'group_ids' => [],
+            'route_ids' => [$later->id, $first->id, $disabled->id],
+            'tags' => [],
+            'protocol_settings' => [],
+            'show' => true,
+            'enabled' => true,
+        ]);
+
+        $response = $this->postJson("/api/v2/{$this->securePath}/server/route/simulate", [
+            'node_id' => $node->id,
+            'target' => 'https://api.example.com/path',
+        ]);
+
+        $response->assertOk();
+        $this->assertSame($first->id, $response->json('data.match.id'));
+        $this->assertSame('direct', $response->json('data.match.action'));
+
+        $dispatched = ServerService::getRoutes([$later->id, $first->id, $disabled->id]);
+        $this->assertSame([$first->id, $later->id], $dispatched->pluck('id')->all());
+    }
+
+    public function test_panel_route_simulator_reports_kernel_private_address_block(): void
+    {
+        $node = Server::create([
+            'type' => Server::TYPE_SOCKS,
+            'name' => 'route-private-node',
+            'rate' => 1,
+            'host' => 'route.example.test',
+            'port' => '1081',
+            'server_port' => 1081,
+            'group_ids' => [],
+            'route_ids' => [],
+            'tags' => [],
+            'protocol_settings' => [],
+            'show' => true,
+            'enabled' => true,
+        ]);
+
+        $response = $this->postJson("/api/v2/{$this->securePath}/server/route/simulate", [
+            'node_id' => $node->id,
+            'target' => '192.168.1.10',
+        ]);
+
+        $response->assertOk();
+        $this->assertSame('built_in', $response->json('data.match.layer'));
+        $this->assertSame('block', $response->json('data.match.action'));
+    }
+
+    public function test_route_in_use_cannot_be_deleted_and_dns_requires_target(): void
+    {
+        $route = ServerRoute::create([
+            'remarks' => 'used-route',
+            'match' => ['example.net'],
+            'action' => 'block',
+            'enabled' => true,
+            'sort' => 10,
+        ]);
+
+        Server::create([
+            'type' => Server::TYPE_SOCKS,
+            'name' => 'route-used-node',
+            'rate' => 1,
+            'host' => 'route.example.test',
+            'port' => '1082',
+            'server_port' => 1082,
+            'group_ids' => [],
+            'route_ids' => [$route->id],
+            'tags' => [],
+            'protocol_settings' => [],
+            'show' => true,
+            'enabled' => true,
+        ]);
+
+        $this->postJson("/api/v2/{$this->securePath}/server/route/drop", ['id' => $route->id])
+            ->assertStatus(400)
+            ->assertJsonPath('message', '该路由仍被节点使用，请先从节点配置中解除关联');
+
+        $this->postJson("/api/v2/{$this->securePath}/server/route/save", [
+            'remarks' => 'dns-without-target',
+            'match' => ['dns.example.com'],
+            'action' => 'dns',
+        ])->assertStatus(422);
     }
 
     public function test_traffic_reset_logs_return_a_top_level_paginator(): void
