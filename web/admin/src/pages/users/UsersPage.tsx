@@ -11,7 +11,7 @@ import {
   Search,
   Trash2,
 } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { getPlans } from '../../api/finance'
 import {
@@ -26,6 +26,7 @@ import {
 } from '../../api/user-admin'
 import { UserEditorModal } from '../../components/users/UserEditorModal'
 import { UserMailModal } from '../../components/users/UserMailModal'
+import { QueryFeedback } from '../../components/ui/QueryFeedback'
 import { PageHeader } from '../../components/ui/PageHeader'
 
 const GB = 1024 * 1024 * 1024
@@ -44,6 +45,7 @@ export function UsersPage() {
   const [editorOpen, setEditorOpen] = useState(false)
   const [editing, setEditing] = useState<AdminUser | null>(null)
   const [mailOpen, setMailOpen] = useState(false)
+  const selectPageRef = useRef<HTMLInputElement>(null)
 
   const filters = useMemo<UserFilter[]>(() => {
     const result: UserFilter[] = []
@@ -107,6 +109,13 @@ export function UsersPage() {
   const pageIds = users.map(user => user.id)
   const allPageSelected = pageIds.length > 0 && pageIds.every(id => selected.has(id))
 
+  useEffect(() => {
+    if (selectPageRef.current) selectPageRef.current.indeterminate = !allPageSelected && pageIds.some(id => selected.has(id))
+  }, [allPageSelected, pageIds, selected])
+
+  // Selection is scoped to the current view so hidden rows cannot be acted on accidentally.
+  useEffect(() => { setSelected(new Set()) }, [page, pageSize, appliedSearch, planId, banState, sortField, sortDesc])
+
   function togglePage() {
     setSelected(current => {
       const next = new Set(current)
@@ -136,8 +145,7 @@ export function UsersPage() {
       setEditing(detail)
       setEditorOpen(true)
     } catch {
-      setEditing(user)
-      setEditorOpen(true)
+      toast.error('无法加载用户详情，请重试')
     }
   }
 
@@ -166,7 +174,7 @@ export function UsersPage() {
   return <>
     <PageHeader
       title="用户管理"
-      description="服务端分页、筛选、创建/编辑、订阅密钥、封禁、删除与批量邮件。"
+      description="管理用户套餐、流量与账户状态，支持筛选和批量操作。"
       action={<div className="actions">
         <button className="button" onClick={() => setMailOpen(true)}><Mail size={15}/>发送邮件</button>
         <button className="button primary" onClick={openCreate}><Plus size={15}/>创建用户</button>
@@ -176,6 +184,7 @@ export function UsersPage() {
     <div className="user-toolbar">
       <div className="order-search">
         <input
+          aria-label="搜索用户邮箱"
           value={search}
           onChange={event => setSearch(event.target.value)}
           onKeyDown={event => {
@@ -191,18 +200,18 @@ export function UsersPage() {
         </button>
       </div>
 
-      <select value={planId} onChange={event => { setPlanId(event.target.value); setPage(1) }}>
+      <select aria-label="筛选套餐" value={planId} onChange={event => { setPlanId(event.target.value); setPage(1) }}>
         <option value="">全部套餐</option>
         {plans.map(plan => <option key={plan.id} value={plan.id}>{plan.name}</option>)}
       </select>
 
-      <select value={banState} onChange={event => { setBanState(event.target.value); setPage(1) }}>
+      <select aria-label="筛选用户状态" value={banState} onChange={event => { setBanState(event.target.value); setPage(1) }}>
         <option value="">全部状态</option>
         <option value="0">正常</option>
         <option value="1">已封禁</option>
       </select>
 
-      <select value={sortField} onChange={event => { setSortField(event.target.value); setPage(1) }}>
+      <select aria-label="排序字段" value={sortField} onChange={event => { setSortField(event.target.value); setPage(1) }}>
         <option value="id">按 ID</option>
         <option value="email">按邮箱</option>
         <option value="balance">按余额</option>
@@ -224,7 +233,7 @@ export function UsersPage() {
         <button className="button" onClick={() => setMailOpen(true)}><Mail size={15}/>发送邮件</button>
         <button
           className="button danger"
-          disabled={banSelected.isPending}
+          disabled={banSelected.isPending || query.isPlaceholderData || query.isFetching}
           onClick={() => confirm('确认封禁所选用户？') && banSelected.mutate(Array.from(selected))}
         ><Ban size={15}/>{banSelected.isPending ? '处理中…' : '批量封禁'}</button>
         <button className="button" onClick={() => setSelected(new Set())}>取消选择</button>
@@ -232,11 +241,12 @@ export function UsersPage() {
     </div>}
 
     <div className="card user-table-card">
-      <div className="table-wrap">
+      <QueryFeedback loading={query.isFetching} error={query.isError} onRetry={() => query.refetch()} />
+      <div className="table-wrap" tabIndex={0} role="region" aria-label="用户列表" aria-busy={query.isFetching}>
         <table className="data-table user-table">
           <thead>
             <tr>
-              <th className="select-col"><input type="checkbox" checked={allPageSelected} onChange={togglePage}/></th>
+              <th className="select-col"><input ref={selectPageRef} aria-label="选择本页全部用户" disabled={query.isPlaceholderData || query.isFetching} type="checkbox" checked={allPageSelected} onChange={togglePage}/></th>
               <th>ID</th>
               <th>用户</th>
               <th>套餐</th>
@@ -251,7 +261,7 @@ export function UsersPage() {
           </thead>
           <tbody>
             {users.map(user => <tr key={user.id}>
-              <td className="select-col"><input type="checkbox" checked={selected.has(user.id)} onChange={() => toggleUser(user.id)}/></td>
+              <td className="select-col"><input aria-label={'选择用户 '+user.email} disabled={query.isPlaceholderData || query.isFetching} type="checkbox" checked={selected.has(user.id)} onChange={() => toggleUser(user.id)}/></td>
               <td>{user.id}</td>
               <td>
                 <div className="user-identity">
@@ -280,18 +290,20 @@ export function UsersPage() {
                   <button
                     className="icon-button"
                     title="重置订阅密钥"
+                    disabled={resetSecret.isPending}
                     onClick={() => confirm('重置后原订阅链接将失效，确认继续？') && resetSecret.mutate(user.id)}
                   ><KeyRound size={15}/></button>
                   <button
                     className="icon-button danger"
                     title="删除"
+                    disabled={remove.isPending}
                     onClick={() => confirm('删除用户会清理关联数据，且后端会拒绝删除仍有余额/处理中订单的用户。确认继续？') && remove.mutate(user.id)}
                   ><Trash2 size={15}/></button>
                 </div>
               </td>
             </tr>)}
 
-            {!users.length && <tr>
+            {!users.length && !query.isFetching && !query.isError && <tr>
               <td colSpan={11} className="empty-cell">{query.isLoading ? '加载中…' : '没有符合条件的用户'}</td>
             </tr>}
           </tbody>
@@ -303,18 +315,18 @@ export function UsersPage() {
           共 {query.data?.total || 0} 人 · 第 {query.data?.current_page || page} / {query.data?.last_page || 1} 页
         </span>
         <div className="pagination-actions">
-          <select value={pageSize} onChange={event => { setPageSize(Number(event.target.value)); setPage(1) }}>
+          <select aria-label="每页条数" value={pageSize} onChange={event => { setPageSize(Number(event.target.value)); setPage(1) }}>
             <option value={10}>10 / 页</option>
             <option value={20}>20 / 页</option>
             <option value={50}>50 / 页</option>
             <option value={100}>100 / 页</option>
           </select>
-          <button className="icon-button" disabled={page <= 1} onClick={() => setPage(value => Math.max(1, value - 1))}>
+          <button className="icon-button" aria-label="上一页" disabled={query.isFetching || page <= 1} onClick={() => setPage(value => Math.max(1, value - 1))}>
             <ChevronLeft size={16}/>
           </button>
           <button
             className="icon-button"
-            disabled={page >= Number(query.data?.last_page || 1)}
+            aria-label="下一页" disabled={query.isFetching || page >= Number(query.data?.last_page || 1)}
             onClick={() => setPage(value => value + 1)}
           ><ChevronRight size={16}/></button>
         </div>

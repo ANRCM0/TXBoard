@@ -1,9 +1,11 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { LogOut, Menu, Moon, Package, Search, Sun, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { removeAccessToken } from '../../lib/storage'
 import { preloadAdminRoute } from '../../lib/routePreload'
+import { useDialog } from '../../lib/useDialog'
 
 const commandItems = [
   ['/', '仪表盘'],
@@ -70,6 +72,9 @@ export function TopBar({ onOpenMenu }: { onOpenMenu: () => void }) {
   const [dark, setDark] = useState(() => localStorage.getItem('theme') === 'dark')
   const [commandOpen, setCommandOpen] = useState(false)
   const [query, setQuery] = useState('')
+  const [activeIndex, setActiveIndex] = useState(0)
+  const commandRef = useDialog(commandOpen, () => setCommandOpen(false))
+  const shortcut = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘ K' : 'Ctrl K'
 
   useEffect(() => {
     document.documentElement.dataset.theme = dark ? 'dark' : 'light'
@@ -82,15 +87,23 @@ export function TopBar({ onOpenMenu }: { onOpenMenu: () => void }) {
         event.preventDefault()
         setCommandOpen(true)
       }
-      if (event.key === 'Escape') setCommandOpen(false)
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [])
 
   useEffect(() => {
-    if (!commandOpen) setQuery('')
+    if (!commandOpen) {
+      setQuery('')
+      setActiveIndex(0)
+    }
   }, [commandOpen])
+
+  useEffect(() => { setCommandOpen(false) }, [location.pathname])
+
+  useEffect(() => {
+    commandRef.current?.querySelector('[aria-selected="true"]')?.scrollIntoView?.({ block: 'nearest' })
+  }, [activeIndex, commandOpen, commandRef])
 
   const title = useMemo(
     () => titleRules.find(([pattern]) => pattern.test(location.pathname))?.[1] || 'TXBoard',
@@ -106,7 +119,7 @@ export function TopBar({ onOpenMenu }: { onOpenMenu: () => void }) {
   const commands = useMemo(() => {
     const q = query.trim().toLowerCase()
     if (!q) return commandItems
-    return commandItems.filter(([, label]) => label.toLowerCase().includes(q))
+    return commandItems.filter(([path, label]) => `${label} ${path}`.toLowerCase().includes(q))
   }, [query])
 
   function logout() {
@@ -124,7 +137,7 @@ export function TopBar({ onOpenMenu }: { onOpenMenu: () => void }) {
   return (
     <>
       <header className={`admin-toolbar mode-${toolbarMode}`}>
-        <button type="button" className="admin-toolbar-mobile" onClick={onOpenMenu}>
+        <button type="button" className="admin-toolbar-mobile" aria-label="打开导航" onClick={onOpenMenu}>
           <Menu size={20} />
         </button>
 
@@ -136,16 +149,14 @@ export function TopBar({ onOpenMenu }: { onOpenMenu: () => void }) {
           </div>
         ) : null}
 
-        {toolbarMode !== 'icon-title' ? (
-          <button type="button" className="admin-command-trigger" onClick={() => setCommandOpen(true)}>
+        <button type="button" aria-label="搜索菜单和功能" className="admin-command-trigger" onClick={() => setCommandOpen(true)}>
             <Search size={16} />
             <span>搜索菜单和功能…</span>
-            <kbd>⌘K</kbd>
-          </button>
-        ) : null}
+            <kbd>{shortcut}</kbd>
+        </button>
 
         <div className="admin-toolbar-actions">
-          <button type="button" className="admin-toolbar-icon" onClick={() => setDark(value => !value)}>
+          <button type="button" className="admin-toolbar-icon" aria-label={dark ? '切换浅色模式' : '切换深色模式'} title={dark ? '切换浅色模式' : '切换深色模式'} onClick={() => setDark(value => !value)}>
             {dark ? <Sun size={20} /> : <Moon size={20} />}
           </button>
           <button type="button" className="admin-avatar-button" onClick={logout} title="退出">
@@ -158,25 +169,46 @@ export function TopBar({ onOpenMenu }: { onOpenMenu: () => void }) {
         </div>
       </header>
 
-      {commandOpen ? (
+      {commandOpen ? createPortal(
         <div className="admin-command-overlay" onMouseDown={event => event.target === event.currentTarget && setCommandOpen(false)}>
-          <div className="admin-command-dialog">
+          <div ref={commandRef} tabIndex={-1} className="admin-command-dialog" role="dialog" aria-modal="true" aria-label="搜索菜单和功能">
             <div className="admin-command-input">
               <Search size={18} />
               <input
-                autoFocus
+                data-autofocus
+                aria-label="搜索菜单和功能"
+                role="combobox"
+                aria-expanded="true"
+                aria-autocomplete="list"
+                aria-controls="admin-command-results"
+                aria-activedescendant={commands.length ? `admin-command-${activeIndex}` : undefined}
                 value={query}
-                onChange={event => setQuery(event.target.value)}
+                onChange={event => { setQuery(event.target.value); setActiveIndex(0) }}
+                onKeyDown={event => {
+                  if (event.nativeEvent.isComposing || !commands.length) return
+                  if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+                    event.preventDefault()
+                    setActiveIndex(index => (index + (event.key === 'ArrowDown' ? 1 : -1) + commands.length) % commands.length)
+                  }
+                  if (event.key === 'Enter') {
+                    event.preventDefault()
+                    go(commands[activeIndex][0])
+                  }
+                }}
                 placeholder="搜索菜单和功能…"
               />
-              <button type="button" onClick={() => setCommandOpen(false)}><X size={17} /></button>
+              <button type="button" aria-label="关闭搜索" onClick={() => setCommandOpen(false)}><X size={17} /></button>
             </div>
-            <div className="admin-command-list">
-              {commands.map(([path, label]) => (
+            <div className="admin-command-list" id="admin-command-results" role="listbox" aria-label="搜索结果">
+              {commands.map(([path, label], index) => (
                 <button
                   type="button"
                   key={path}
-                  onMouseEnter={() => preloadAdminRoute(path)}
+                  role="option"
+                  id={`admin-command-${index}`}
+                  aria-selected={index === activeIndex}
+                  tabIndex={-1}
+                  onMouseEnter={() => { setActiveIndex(index); preloadAdminRoute(path) }}
                   onFocus={() => preloadAdminRoute(path)}
                   onClick={() => go(path)}
                 >
@@ -186,9 +218,10 @@ export function TopBar({ onOpenMenu }: { onOpenMenu: () => void }) {
               ))}
               {!commands.length ? <div className="admin-command-empty">没有匹配项</div> : null}
             </div>
+            <div className="admin-command-hint">↑ ↓ 选择 · Enter 打开 · Esc 关闭</div>
           </div>
         </div>
-      ) : null}
+      , document.body) : null}
     </>
   )
 }

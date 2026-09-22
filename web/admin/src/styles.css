@@ -2547,3 +2547,73 @@ body{font-size:16px;background:var(--bg);color:var(--fg);overflow:hidden}
   color:var(--muted);
   font-size:13px;
 }
+
+/* Shared interaction states: keep controls legible in both themes and on touch screens. */
+:root{color-scheme:light}
+:root[data-theme="dark"]{color-scheme:dark}
+:where(button,a,input,select,textarea,summary,[tabindex]):focus-visible{
+  outline:2px solid #3b82f6;
+  outline-offset:3px;
+}
+button:disabled{cursor:not-allowed;opacity:.55}
+.admin-main,.admin-page,.page-header>div{min-width:0}
+.page-header p{line-height:1.6;max-width:72ch}
+.query-feedback{
+  display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:10px;
+  min-height:58px;padding:12px 16px;color:var(--muted);font-size:13px;
+}
+.query-feedback.is-error{color:var(--danger);background:color-mix(in srgb,var(--danger) 5%,var(--panel))}
+.query-feedback .button{height:32px;font-size:12px}
+.loading-spinner{animation:loading-spin 1s linear infinite}
+@keyframes loading-spin{to{transform:rotate(360deg)}}
+.data-table tbody tr:has(input[type="checkbox"]:checked){background:color-mix(in srgb,#3b82f6 8%,var(--panel))}
+.table-wrap{overscroll-behavior-x:contain}
+.pagination-meta{font-variant-numeric:tabular-nums}
+.config-autosave{display:flex;justify-content:flex-end;align-items:center;gap:12px;flex-wrap:wrap}
+.modal-root{overscroll-behavior:contain}
+.modal-card:not(.node-editor-modal){display:flex;flex-direction:column;max-height:calc(100dvh - 36px);overflow:hidden}
+.modal-header{flex:none;height:auto;min-height:56px;padding-top:14px;padding-bottom:14px;gap:16px;background:var(--panel)}
+.modal-header-actions{flex:none}
+.modal-body{min-height:0;overflow-y:auto;overscroll-behavior:contain}
+.modal-footer{flex:none}
+.admin-command-dialog{display:flex;flex-direction:column;align-self:flex-start}
+.admin-command-list{min-height:0;flex:1;overscroll-behavior:contain}
+.admin-command-list>button[aria-selected="true"]{background:var(--hover);box-shadow:inset 3px 0 0 var(--primary)}
+.admin-command-hint{flex:none;padding:10px 16px;border-top:1px solid var(--border);color:var(--muted);font-size:12px}
+body:has(.modal-root,.admin-command-overlay,.admin-sidebar.is-open) .admin-scroll{overflow:hidden}
+@media(max-width:860px){
+  .admin-sidebar:not(.is-open){visibility:hidden}
+  .admin-sidebar.is-open{visibility:visible}
+}
+@media(max-width:700px){
+  .admin-command-trigger{display:inline-flex!important;flex:0 0 38px!important;width:38px;min-width:38px;padding:0;justify-content:center}
+  .admin-command-trigger span,.admin-command-trigger kbd{display:none}
+  .admin-toolbar{gap:8px}
+  .admin-toolbar h1{font-size:17px}
+  .admin-toolbar-icon-title{min-width:0}
+  .admin-toolbar-icon-title h1{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .order-toolbar,.user-toolbar,.server-page-toolbar{flex-wrap:wrap;gap:8px}
+  .order-search,.server-search{min-width:0;width:100%;flex-wrap:wrap}
+  .order-search input{min-width:100px;flex:1}
+  .order-search select{max-width:120px}
+  .pagination-bar{align-items:flex-start;gap:12px;flex-wrap:wrap}
+  .pagination-actions{margin-left:auto}
+  .selection-bar{align-items:flex-start;gap:12px;flex-direction:column}
+  .modal-root{padding:10px}
+  .modal-card:not(.node-editor-modal){max-height:calc(100dvh - 20px)}
+  .modal-body{padding:16px}
+  .modal-title h3{overflow-wrap:anywhere}
+  .modal-header-actions{gap:8px}
+  .icon-button{min-width:36px;min-height:36px}
+  .admin-command-overlay{padding-top:8dvh}
+  .admin-command-dialog{max-height:80dvh}
+  .admin-command-list small{display:none}
+}
+@media(prefers-reduced-motion:reduce){.loading-spinner{animation:none}}
+
+/* Preserve readable cells while keeping horizontal scrolling inside the card. */
+.order-table{min-width:1000px}
+.user-table{min-width:1120px}
+.order-table .badge,.order-table .status,.order-table td:nth-child(4){white-space:nowrap}
+:root[data-theme="dark"] .order-table .link-button{color:#60a5fa}
+:root[data-theme="dark"] .status.ok{color:#34d399}

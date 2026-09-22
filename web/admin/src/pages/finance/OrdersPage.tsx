@@ -12,6 +12,7 @@ import {
 } from '../../api/finance'
 import { OrderAssignModal } from '../../components/finance/OrderAssignModal'
 import { OrderDetailModal } from '../../components/finance/OrderDetailModal'
+import { QueryFeedback } from '../../components/ui/QueryFeedback'
 import { PageHeader } from '../../components/ui/PageHeader'
 
 type FilterField = 'trade_no' | 'user_id' | 'callback_no'
@@ -95,18 +96,19 @@ export function OrdersPage() {
   return <>
     <PageHeader
       title="订单管理"
-      description="服务端分页、筛选、订单详情、手动处理与佣金状态管理。"
+      description="查询订单、核对收款与跟进佣金发放。"
     />
 
     <div className="order-toolbar finance-order-toolbar">
       <button className="button" onClick={() => setAssignOpen(true)}><Plus size={16}/>创建订单</button>
       <div className="order-search">
-        <select value={field} onChange={e => { setField(e.target.value as FilterField); setAppliedKeyword(''); setKeyword(''); }}>
+        <select aria-label="订单搜索字段" value={field} onChange={e => { setPage(1); setField(e.target.value as FilterField); setAppliedKeyword(''); setKeyword(''); }}>
           <option value="trade_no">订单号</option>
           <option value="user_id">用户 ID</option>
           <option value="callback_no">回调号</option>
         </select>
         <input
+          aria-label="搜索订单"
           value={keyword}
           onChange={e => setKeyword(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && applySearch()}
@@ -115,7 +117,7 @@ export function OrdersPage() {
         <button className="button" onClick={applySearch}><Search size={15}/>搜索</button>
       </div>
 
-      <select value={status} onChange={e => { setStatus(e.target.value); setPage(1) }}>
+      <select aria-label="筛选订单状态" value={status} onChange={e => { setStatus(e.target.value); setPage(1) }}>
         <option value="">全部订单状态</option>
         <option value="0">待支付</option>
         <option value="1">开通中</option>
@@ -124,7 +126,7 @@ export function OrdersPage() {
         <option value="4">已折抵</option>
       </select>
 
-      <select value={commission} onChange={e => { setCommission(e.target.value); setPage(1) }}>
+      <select aria-label="筛选佣金状态" value={commission} onChange={e => { setCommission(e.target.value); setPage(1) }}>
         <option value="">全部佣金状态</option>
         <option value="0">待确认</option>
         <option value="1">发放中</option>
@@ -141,7 +143,8 @@ export function OrdersPage() {
     </div>
 
     <div className="card order-table-card">
-      <div className="table-wrap">
+      <QueryFeedback loading={query.isFetching} error={query.isError} onRetry={() => query.refetch()} />
+      <div className="table-wrap" tabIndex={0} role="region" aria-label="订单列表" aria-busy={query.isFetching}>
         <table className="data-table order-table">
           <thead>
             <tr>
@@ -174,19 +177,19 @@ export function OrdersPage() {
                 </small> : null}
               </td>
               <td><span className={statusClass(order.status)}>{statusLabel(order.status)}</span></td>
-              <td><CommissionCell order={order} onChange={value => commissionMutation.mutate({ tradeNo: order.trade_no, value })}/></td>
+              <td><CommissionCell disabled={commissionMutation.isPending || query.isPlaceholderData} order={order} onChange={value => commissionMutation.mutate({ tradeNo: order.trade_no, value })}/></td>
               <td>{formatTime(order.created_at)}</td>
               <td>
                 <div className="actions">
                   <button className="icon-button" title="详情" onClick={() => setDetailId(order.id)}><Eye size={15}/></button>
                   {order.status === 0 && <>
-                    <button className="icon-button success" title="标记付款" onClick={() => confirm('确认手动标记该订单为已付款？') && paid.mutate(order.trade_no)}><CheckCircle2 size={15}/></button>
-                    <button className="icon-button danger" title="取消订单" onClick={() => confirm('确认取消该订单？') && cancel.mutate(order.trade_no)}><XCircle size={15}/></button>
+                    <button className="icon-button success" title="标记付款" disabled={paid.isPending || cancel.isPending || query.isPlaceholderData} onClick={() => confirm('确认手动标记该订单为已付款？') && paid.mutate(order.trade_no)}><CheckCircle2 size={15}/></button>
+                    <button className="icon-button danger" title="取消订单" disabled={paid.isPending || cancel.isPending || query.isPlaceholderData} onClick={() => confirm('确认取消该订单？') && cancel.mutate(order.trade_no)}><XCircle size={15}/></button>
                   </>}
                 </div>
               </td>
             </tr>)}
-            {!rows.length && <tr><td colSpan={8} className="empty-cell">{query.isLoading ? '加载中…' : '没有符合条件的订单'}</td></tr>}
+            {!rows.length && !query.isFetching && !query.isError && <tr><td colSpan={8} className="empty-cell">{query.isLoading ? '加载中…' : '没有符合条件的订单'}</td></tr>}
           </tbody>
         </table>
       </div>
@@ -196,14 +199,14 @@ export function OrdersPage() {
           共 {Number(data?.total || 0)} 条 · 第 {Number(data?.current_page || page)} / {Math.max(1, Number(data?.last_page || 1))} 页
         </div>
         <div className="pagination-actions">
-          <select value={pageSize} onChange={e => { setPageSize(Number(e.target.value)); setPage(1) }}>
+          <select aria-label="每页条数" value={pageSize} onChange={e => { setPageSize(Number(e.target.value)); setPage(1) }}>
             <option value={10}>10 / 页</option>
             <option value={20}>20 / 页</option>
             <option value={50}>50 / 页</option>
             <option value={100}>100 / 页</option>
           </select>
-          <button className="icon-button" disabled={page <= 1} onClick={() => setPage(value => Math.max(1, value - 1))}><ChevronLeft size={16}/></button>
-          <button className="icon-button" disabled={page >= Number(data?.last_page || 1)} onClick={() => setPage(value => value + 1)}><ChevronRight size={16}/></button>
+          <button className="icon-button" aria-label="上一页" disabled={query.isFetching || page <= 1} onClick={() => setPage(value => Math.max(1, value - 1))}><ChevronLeft size={16}/></button>
+          <button className="icon-button" aria-label="下一页" disabled={query.isFetching || page >= Number(data?.last_page || 1)} onClick={() => setPage(value => value + 1)}><ChevronRight size={16}/></button>
         </div>
       </div>
     </div>
@@ -218,11 +221,13 @@ export function OrdersPage() {
   </>
 }
 
-function CommissionCell({ order, onChange }: { order: OrderItem; onChange: (value: 0 | 1 | 3) => void }) {
+function CommissionCell({ order, onChange, disabled }: { disabled?: boolean; order: OrderItem; onChange: (value: 0 | 1 | 3) => void }) {
   if (!order.invite_user_id || Number(order.commission_balance || 0) <= 0) return <span className="muted">-</span>
   if (order.commission_status === 2) return <div><span className="status ok">有效</span><small className="table-sub">{money(order.commission_balance)}</small></div>
   return <div className="commission-cell">
     <select
+      aria-label={'订单 '+order.trade_no+' 的佣金状态'}
+      disabled={disabled}
       value={String(order.commission_status ?? 0)}
       onChange={e => onChange(Number(e.target.value) as 0 | 1 | 3)}
     >
