@@ -3,12 +3,16 @@
 namespace App\Http\Routes\V2;
 
 use App\Http\Controllers\V2\Agent\AgentOpsController;
+use App\Http\Controllers\V2\Agent\AgentPairingController;
 use Illuminate\Contracts\Routing\Registrar;
 
 class AgentRoute
 {
     public function map(Registrar $router): void
     {
+        $router->post('/agent/pairings/redeem', [AgentPairingController::class, 'redeem'])
+            ->middleware('throttle:10,1');
+
         $router->group([
             'prefix' => 'agent',
             'middleware' => ['agent', 'agent.log', 'throttle:120,1'],

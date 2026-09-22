@@ -13,7 +13,7 @@
 - `admin-navigation/README.md`：Module Admin Navigation Registry 的统一导航投影与宿主路由契约。
 - `admin-bridge/README.md`：Admin Bridge v2 可选宿主服务协议，并保持 Bridge v1 兼容。
 - `agent-ops-module/README.md`：Agent Ops 作为 system Module 的能力与有界运行时健康投影契约。
-- `agent-self-connect/README.md`：Token 创建后的 Agent 自助接入提示词、公开 Markdown guide、secret handling 与只读验证契约。
+- `agent-self-connect/README.md`：Agent Self-Connect v1 基线；`agent-self-connect/v2.md`：短期 pairing code、Redis TTL、一次性 token exchange 与一句话接入契约。
 
 Laravel routes 是服务器端可执行事实来源；`contracts/` 用于记录跨仓库、跨前端需要稳定维护的契约。
 

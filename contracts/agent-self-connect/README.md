@@ -2,6 +2,8 @@
 
 Status: stable additive Agent Ops UX contract.
 
+Self-Connect v2 adds short-lived one-time pairing without removing this v1 manual-secret fallback. See [v2 pairing contract](./v2.md).
+
 ## Goal
 
 After an administrator creates a TXBoard Agent Token, TXBoard should let an AI Agent configure itself as an MCP client without requiring the operator to understand MCP transport details.
