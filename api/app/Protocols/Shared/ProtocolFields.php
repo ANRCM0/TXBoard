@@ -34,7 +34,7 @@ class ProtocolFields
             ['key' => "{$root}.ech.config", 'label' => 'ECH Config', 'type' => 'textarea', 'full' => true, 'visible_when' => $echWhen],
             ['key' => "{$root}.ech.query_server_name", 'label' => 'ECH Query Server Name', 'type' => 'text', 'visible_when' => $echWhen],
             ['key' => "{$root}.ech.key_path", 'label' => 'ECH Key Path', 'type' => 'text', 'visible_when' => $echWhen],
-            ['key' => "{$root}.ech.key", 'label' => 'ECH Key', 'type' => 'textarea', 'full' => true, 'visible_when' => $echWhen],
+            ['key' => "{$root}.ech.key", 'label' => 'ECH Key', 'type' => 'textarea', 'full' => true, 'visible_when' => $echWhen, 'generator' => self::echGenerator($root)],
             ['key' => "{$root}.ech.config_path", 'label' => 'ECH Config Path', 'type' => 'text', 'full' => true, 'visible_when' => $echWhen],
         ];
     }
@@ -73,9 +73,49 @@ class ProtocolFields
             ['key' => 'reality_settings.server_name', 'label' => 'Reality SNI', 'type' => 'text', 'visible_when' => $visibleWhen],
             ['key' => 'reality_settings.server_port', 'label' => 'Reality 目标端口', 'type' => 'number', 'min' => 1, 'max' => 65535, 'visible_when' => $visibleWhen],
             ['key' => 'reality_settings.public_key', 'label' => 'Reality Public Key', 'type' => 'text', 'full' => true, 'visible_when' => $visibleWhen],
-            ['key' => 'reality_settings.private_key', 'label' => 'Reality Private Key', 'type' => 'text', 'full' => true, 'visible_when' => $visibleWhen],
-            ['key' => 'reality_settings.short_id', 'label' => 'Reality Short ID', 'type' => 'text', 'visible_when' => $visibleWhen],
+            ['key' => 'reality_settings.private_key', 'label' => 'Reality Private Key', 'type' => 'text', 'full' => true, 'visible_when' => $visibleWhen, 'generator' => self::x25519Generator('reality_settings.private_key', 'reality_settings.public_key', '生成 Reality 密钥对')],
+            ['key' => 'reality_settings.short_id', 'label' => 'Reality Short ID', 'type' => 'text', 'visible_when' => $visibleWhen, 'generator' => self::hexGenerator('reality_settings.short_id', 8, '随机 Short ID')],
             ['key' => 'reality_settings.allow_insecure', 'label' => 'Reality 跳过证书验证', 'type' => 'checkbox', 'visible_when' => $visibleWhen],
+        ];
+    }
+
+    /**
+     * Generator metadata consumed by the admin protocol editor: the editor calls
+     * the matching generator and writes every response key into the mapped
+     * protocol_settings path.
+     */
+    public static function x25519Generator(string $privateField, string $publicField, string $label): array
+    {
+        return [
+            'kind' => 'x25519',
+            'label' => $label,
+            'map' => [
+                'private_key' => $privateField,
+                'public_key' => $publicField,
+            ],
+        ];
+    }
+
+    public static function hexGenerator(string $field, int $bytes, string $label): array
+    {
+        return [
+            'kind' => 'hex',
+            'label' => $label,
+            'params' => ['bytes' => $bytes],
+            'map' => ['value' => $field],
+        ];
+    }
+
+    public static function echGenerator(string $root): array
+    {
+        return [
+            'kind' => 'ech',
+            'label' => '生成 ECH 密钥',
+            'params' => ['public_name' => '$host'],
+            'map' => [
+                'key' => "{$root}.ech.key",
+                'config' => "{$root}.ech.config",
+            ],
         ];
     }
 

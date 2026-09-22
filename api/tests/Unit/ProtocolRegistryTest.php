@@ -45,6 +45,45 @@ class ProtocolRegistryTest extends TestCase
         }
     }
 
+    public function test_generators_map_into_fields_of_the_same_protocol(): void
+    {
+        $generators = 0;
+
+        foreach ((new ProtocolRegistry())->metadata() as $definition) {
+            $keys = array_column($definition['form_schema'], 'key');
+
+            foreach ($definition['form_schema'] as $field) {
+                if (!isset($field['generator'])) {
+                    continue;
+                }
+
+                $generators++;
+                $generator = $field['generator'];
+                $this->assertContains($generator['kind'], ['x25519', 'hex', 'ech'], "Unknown generator kind for {$field['key']}");
+                $this->assertNotEmpty($generator['map']);
+
+                foreach ($generator['map'] as $target) {
+                    $this->assertContains($target, $keys, "{$field['key']} generator maps to unknown field {$target}");
+                }
+            }
+
+            $this->assertGreaterThan(0, $generators);
+        }
+
+        $this->assertSame(14, $generators);
+    }
+
+    public function test_vless_encryption_generator_syncs_the_client_public_key(): void
+    {
+        $definition = (new ProtocolRegistry())->get('vless');
+        $schema = collect($definition->formSchema())
+            ->firstWhere('key', 'encryption.decryption');
+
+        $this->assertSame('x25519', $schema['generator']['kind']);
+        $this->assertSame('encryption.decryption', $schema['generator']['map']['private_key']);
+        $this->assertSame('encryption.encryption', $schema['generator']['map']['public_key']);
+    }
+
     public function test_normalization_casts_values_and_allows_list_replacement(): void
     {
         $tuic = (new ProtocolRegistry())->get('tuic');
