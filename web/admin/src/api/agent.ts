@@ -1,10 +1,17 @@
 import { apiClient } from './client'
 import { unwrap } from '../lib/api'
 
+export type AgentTargetScope = {
+  mode: 'all' | 'restricted'
+  node_ids: number[]
+  machine_ids: number[]
+}
+
 export type AgentTokenItem = {
   id: number
   client_name: string
   abilities: string[]
+  target_scope?: AgentTargetScope
   last_used_at?: string | null
   expires_at?: string | null
   created_at?: string | null
@@ -45,6 +52,9 @@ export async function createAgentToken(payload: {
   client_name: string
   abilities: string[]
   expires_in_days: number
+  target_mode: 'all' | 'restricted'
+  target_node_ids?: number[]
+  target_machine_ids?: number[]
 }) {
   const { data } = await apiClient.post('/agent/tokens/create', payload)
   return unwrap<AgentTokenItem & { plain_text_token: string }>(data)
