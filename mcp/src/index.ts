@@ -129,6 +129,45 @@ function createTxboardServer(authorization: string): McpServer {
     catch (e) { return errorResult(e); }
   });
 
+  server.registerTool('txboard_fleet_health', {
+    description: 'Return a normalized fleet health summary with per-node severity and warnings. Respects token target scope.',
+  }, async () => {
+    try { return result(await api(authorization, '/fleet/health')); }
+    catch (e) { return errorResult(e); }
+  });
+
+  server.registerTool('txboard_inspection_history', {
+    description: 'Read recent scheduled/manual fleet inspection snapshots. Respects token target scope.',
+    inputSchema: z.object({ limit: z.number().int().min(1).max(50).default(20) }),
+  }, async ({ limit }) => {
+    try { return result(await api(authorization, `/inspections?limit=${limit}`)); }
+    catch (e) { return errorResult(e); }
+  });
+
+  server.registerTool('txboard_incident_timeline', {
+    description: 'Build a node incident timeline from inspection state changes, Agent actions and Agent audit records.',
+    inputSchema: z.object({
+      node_id: z.number().int().positive(),
+      hours: z.number().int().min(1).max(168).default(24),
+      limit: z.number().int().min(1).max(100).default(100),
+    }),
+  }, async ({ node_id, hours, limit }) => {
+    try {
+      return result(await api(
+        authorization,
+        `/nodes/${node_id}/timeline?hours=${hours}&limit=${limit}`,
+      ));
+    } catch (e) { return errorResult(e); }
+  });
+
+  server.registerTool('txboard_remediation_plan', {
+    description: 'Return a deterministic, safety-aware remediation plan for current node warnings. It never executes actions automatically.',
+    inputSchema: z.object({ node_id: z.number().int().positive() }),
+  }, async ({ node_id }) => {
+    try { return result(await api(authorization, `/nodes/${node_id}/remediation`)); }
+    catch (e) { return errorResult(e); }
+  });
+
   server.registerTool('txboard_traffic_summary', {
     description: 'Read aggregate traffic, node availability and connection totals.',
   }, async () => {
@@ -221,6 +260,18 @@ function createTxboardServer(authorization: string): McpServer {
   }, async ({ request_id }) => {
     try { return result(await api(authorization, `/actions/${encodeURIComponent(request_id)}`)); }
     catch (e) { return errorResult(e); }
+  });
+
+  server.registerTool('txboard_verify_action', {
+    description: 'Verify a completed Agent Ops action against current node telemetry instead of trusting command acknowledgement alone.',
+    inputSchema: z.object({ request_id: z.string().min(8).max(64) }),
+  }, async ({ request_id }) => {
+    try {
+      return result(await api(
+        authorization,
+        `/actions/${encodeURIComponent(request_id)}/verify`,
+      ));
+    } catch (e) { return errorResult(e); }
   });
 
   return server;

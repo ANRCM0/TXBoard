@@ -44,6 +44,12 @@ class Kernel extends ConsoleKernel
         $schedule->command('horizon:snapshot')->everyFiveMinutes()->onOneServer();
         // cleanup stale online_count (GC for Redis TTL expiration)
         $schedule->command('cleanup:online-status')->everyFiveMinutes()->onOneServer();
+        if ((bool) config('agent_ops.inspection_enabled', true)) {
+            $schedule->command('agent:inspect-fleet')
+                ->everyFiveMinutes()
+                ->onOneServer()
+                ->withoutOverlapping(10);
+        }
         app(PluginManager::class)->registerPluginSchedules($schedule);
 
     }

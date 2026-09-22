@@ -13,6 +13,7 @@ final class AgentAbility
     public const METRICS_READ = 'agent:metrics:read';
     public const TRAFFIC_READ = 'agent:traffic:read';
     public const AUDIT_READ = 'agent:audit:read';
+    public const INSIGHTS_READ = 'agent:insights:read';
     public const NODES_SYNC = 'agent:nodes:sync';
     public const NODES_DIAGNOSE = 'agent:nodes:diagnose';
     public const NODES_OPERATE = 'agent:nodes:operate';
@@ -28,6 +29,7 @@ final class AgentAbility
         self::METRICS_READ,
         self::TRAFFIC_READ,
         self::AUDIT_READ,
+        self::INSIGHTS_READ,
         self::NODES_DIAGNOSE,
     ];
 
@@ -38,6 +40,7 @@ final class AgentAbility
         self::METRICS_READ,
         self::TRAFFIC_READ,
         self::AUDIT_READ,
+        self::INSIGHTS_READ,
         self::NODES_SYNC,
         self::NODES_DIAGNOSE,
         self::NODES_OPERATE,

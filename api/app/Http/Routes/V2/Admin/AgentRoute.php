@@ -14,6 +14,10 @@ class AgentRoute
             $router->get('/tokens', [AgentOpsController::class, 'tokens']);
             $router->post('/tokens/create', [AgentOpsController::class, 'createToken']);
             $router->post('/tokens/revoke', [AgentOpsController::class, 'revokeToken']);
+            $router->get('/fleet/health', [AgentOpsController::class, 'fleetHealth']);
+            $router->get('/inspections', [AgentOpsController::class, 'inspectionList']);
+            $router->post('/inspections/run', [AgentOpsController::class, 'runInspection']);
+            $router->get('/nodes/{nodeId}/timeline', [AgentOpsController::class, 'nodeTimeline']);
             $router->get('/actions', [AgentOpsController::class, 'actionList']);
             $router->post('/actions/approve', [AgentOpsController::class, 'approveAction']);
             $router->post('/actions/reject', [AgentOpsController::class, 'rejectAction']);
