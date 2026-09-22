@@ -37,7 +37,12 @@ Read tools:
 - `txboard_traffic_summary`
 - `txboard_queue_status`
 - `txboard_audit_logs`
+- `txboard_fleet_health`
+- `txboard_inspection_history`
+- `txboard_incident_timeline`
+- `txboard_remediation_plan`
 - `txboard_action_status`
+- `txboard_verify_action`
 
 Approval-gated operation requests:
 
@@ -48,6 +53,27 @@ Approval-gated operation requests:
 - `txboard_tail_logs`
 
 A state-changing or node-executed tool returns a pending action. An administrator approves or rejects it from **TXBoard Admin → Agent 运维**.
+
+## AI-native workflow
+
+A typical incident workflow is:
+
+```text
+txboard_fleet_health
+  -> txboard_diagnose_node
+  -> txboard_incident_timeline
+  -> txboard_remediation_plan
+  -> approval-gated operation
+  -> txboard_action_status
+  -> txboard_verify_action
+  -> txboard_fleet_health
+```
+
+`txboard_remediation_plan` is advisory only. It never calls another tool or bypasses approval.
+
+`txboard_verify_action` re-reads current telemetry. It may return `failed` even when an action status is `succeeded` if the observed node state did not recover.
+
+TXBoard also runs a normalized fleet inspection every five minutes by default and retains seven days of inspection history. Administrators can trigger an immediate inspection from the Agent Ops Admin page.
 
 ## Security
 

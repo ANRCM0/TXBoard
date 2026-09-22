@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AgentAction;
 use App\Services\AgentOps\AgentAbility;
 use App\Services\AgentOps\AgentActionService;
+use App\Services\AgentOps\AgentInsightService;
 use App\Services\AgentOps\AgentTargetScope;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -13,8 +14,10 @@ use Illuminate\Validation\ValidationException;
 
 class AgentOpsController extends Controller
 {
-    public function __construct(private readonly AgentActionService $actions)
-    {
+    public function __construct(
+        private readonly AgentActionService $actions,
+        private readonly AgentInsightService $insights,
+    ) {
     }
 
     public function abilities()
@@ -101,6 +104,36 @@ class AgentOpsController extends Controller
 
         $token->delete();
         return $this->success(true);
+    }
+
+    public function fleetHealth()
+    {
+        return $this->success($this->insights->fleetHealth());
+    }
+
+    public function inspectionList(Request $request)
+    {
+        $params = $request->validate(['limit' => 'nullable|integer|min:1|max:50']);
+        return $this->success($this->insights->inspectionHistory((int) ($params['limit'] ?? 20)));
+    }
+
+    public function runInspection()
+    {
+        return $this->success($this->insights->runInspection('admin'));
+    }
+
+    public function nodeTimeline(Request $request, int $nodeId)
+    {
+        $params = $request->validate([
+            'hours' => 'nullable|integer|min:1|max:168',
+            'limit' => 'nullable|integer|min:1|max:100',
+        ]);
+
+        return $this->success($this->insights->incidentTimeline(
+            $nodeId,
+            (int) ($params['hours'] ?? 24),
+            (int) ($params['limit'] ?? 100),
+        ));
     }
 
     public function actionList(Request $request)

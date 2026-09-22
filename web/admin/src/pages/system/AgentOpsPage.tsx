@@ -4,11 +4,14 @@ import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from
 import { toast } from 'sonner'
 import {
   approveAgentAction,
+  getAgentFleetHealth,
+  getAgentInspections,
   createAgentToken,
   getAgentAbilities,
   getAgentActions,
   getAgentTokens,
   rejectAgentAction,
+  runAgentInspection,
   revokeAgentToken,
   type AgentActionItem,
 } from '../../api/agent'
@@ -21,6 +24,16 @@ export function AgentOpsPage() {
   const tokens = useQuery({ queryKey: ['agentTokens'], queryFn: getAgentTokens })
   const nodes = useQuery({ queryKey: ['agentScopeNodes'], queryFn: getNodes })
   const machines = useQuery({ queryKey: ['agentScopeMachines'], queryFn: getMachines })
+  const fleet = useQuery({
+    queryKey: ['agentFleetHealth'],
+    queryFn: getAgentFleetHealth,
+    refetchInterval: 30_000,
+  })
+  const inspections = useQuery({
+    queryKey: ['agentInspections'],
+    queryFn: () => getAgentInspections(10),
+    refetchInterval: 30_000,
+  })
   const actions = useQuery({
     queryKey: ['agentActions'],
     queryFn: () => getAgentActions(),
@@ -51,6 +64,15 @@ export function AgentOpsPage() {
       setTargetMachineIds([])
       void qc.invalidateQueries({ queryKey: ['agentTokens'] })
       toast.success('Agent Token 已创建，仅本次显示明文')
+    },
+  })
+
+  const runInspection = useMutation({
+    mutationFn: runAgentInspection,
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['agentFleetHealth'] })
+      void qc.invalidateQueries({ queryKey: ['agentInspections'] })
+      toast.success('Fleet 巡检已完成')
     },
   })
 
@@ -112,6 +134,90 @@ export function AgentOpsPage() {
         title="Agent 运维"
         description="管理 MCP / Agent 凭据与审批队列。Agent 写操作必须经过这里的人工批准后才会下发到 TX-Node。"
       />
+
+      <div className="card form-stack">
+        <div className="card-header">
+          <div>
+            <h2>AI-native Fleet Health</h2>
+            <p className="text-muted">定时巡检每 5 分钟生成一次规范化健康快照；这里不会保存原始日志或凭据。</p>
+          </div>
+          <button
+            type="button"
+            className="button"
+            disabled={runInspection.isPending}
+            onClick={() => runInspection.mutate()}
+          >
+            {runInspection.isPending ? '巡检中…' : '立即巡检'}
+          </button>
+        </div>
+
+        <div className="chip-list">
+          <span className="badge">状态 {fleet.data?.status || 'unknown'}</span>
+          <span className="badge">节点 {fleet.data?.summary.total_nodes ?? 0}</span>
+          <span className="badge">Critical {fleet.data?.summary.critical_nodes ?? 0}</span>
+          <span className="badge">Degraded {fleet.data?.summary.degraded_nodes ?? 0}</span>
+          <span className="badge">Healthy {fleet.data?.summary.healthy_nodes ?? 0}</span>
+        </div>
+
+        <div className="table-wrap">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>节点</th>
+                <th>状态</th>
+                <th>WebSocket</th>
+                <th>Kernel</th>
+                <th>Warnings</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(fleet.data?.nodes || []).map(node => (
+                <tr key={node.node_id}>
+                  <td><strong>{node.name}</strong> <code>#{node.node_id}</code></td>
+                  <td><span className="badge">{node.status}</span></td>
+                  <td>{node.websocket ? 'online' : 'offline'}</td>
+                  <td>{node.kernel_running == null ? 'unknown' : node.kernel_running ? 'running' : 'stopped'}</td>
+                  <td>{node.warnings.map(item => item.code).join(', ') || '-'}</td>
+                </tr>
+              ))}
+              {!fleet.data?.nodes?.length ? (
+                <tr><td colSpan={5} className="empty-cell">{fleet.isLoading ? '加载中…' : '暂无节点'}</td></tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
+
+        <div>
+          <strong>最近巡检</strong>
+          <div className="table-wrap">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>来源</th>
+                  <th>状态</th>
+                  <th>Critical / Degraded</th>
+                  <th>时间</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(inspections.data || []).map(item => (
+                  <tr key={item.inspection_id}>
+                    <td><code>{item.inspection_id}</code></td>
+                    <td>{item.source}</td>
+                    <td><span className="badge">{item.status}</span></td>
+                    <td>{item.summary.critical_nodes} / {item.summary.degraded_nodes}</td>
+                    <td>{formatEpoch(item.finished_at)}</td>
+                  </tr>
+                ))}
+                {!inspections.data?.length ? (
+                  <tr><td colSpan={5} className="empty-cell">{inspections.isLoading ? '加载中…' : '暂无巡检记录'}</td></tr>
+                ) : null}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
 
       <div className="card form-stack">
         <div>
@@ -405,4 +511,10 @@ function formatScope(scope?: { mode: 'all' | 'restricted'; node_ids: number[]; m
   if (scope.machine_ids.length) parts.push(`机器 ${scope.machine_ids.join(', ')}`)
   if (scope.node_ids.length) parts.push(`节点 ${scope.node_ids.join(', ')}`)
   return parts.join(' · ') || '无资源'
+}
+
+
+function formatEpoch(value?: number | null) {
+  if (!value) return '-'
+  return new Date(value * 1000).toLocaleString()
 }

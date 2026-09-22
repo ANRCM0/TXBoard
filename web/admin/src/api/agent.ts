@@ -38,6 +38,41 @@ export type AgentAbilities = {
   all: string[]
 }
 
+export type FleetFinding = {
+  node_id: number
+  name: string
+  status: 'healthy' | 'degraded' | 'critical'
+  online: boolean
+  websocket: boolean
+  kernel_running?: boolean | null
+  warnings: Array<{ code: string; severity: string; [key: string]: unknown }>
+}
+
+export type FleetHealth = {
+  status: 'healthy' | 'degraded' | 'critical'
+  summary: {
+    status: 'healthy' | 'degraded' | 'critical'
+    total_nodes: number
+    healthy_nodes: number
+    degraded_nodes: number
+    critical_nodes: number
+    warning_count: number
+  }
+  nodes: FleetFinding[]
+  generated_at: number
+}
+
+export type AgentInspectionItem = {
+  inspection_id: string
+  source: string
+  status: 'healthy' | 'degraded' | 'critical'
+  summary: FleetHealth['summary']
+  findings: FleetFinding[]
+  started_at: number
+  finished_at: number
+  created_at: number
+}
+
 export async function getAgentAbilities() {
   const { data } = await apiClient.get('/agent/abilities')
   return unwrap<AgentAbilities>(data) || { default_read: [], all: [] }
@@ -80,4 +115,20 @@ export async function approveAgentAction(request_id: string) {
 export async function rejectAgentAction(request_id: string, reason?: string) {
   const { data } = await apiClient.post('/agent/actions/reject', { request_id, reason })
   return unwrap<AgentActionItem>(data)
+}
+
+
+export async function getAgentFleetHealth() {
+  const { data } = await apiClient.get('/agent/fleet/health')
+  return unwrap<FleetHealth>(data)
+}
+
+export async function getAgentInspections(limit = 10) {
+  const { data } = await apiClient.get('/agent/inspections', { params: { limit } })
+  return unwrap<AgentInspectionItem[]>(data) || []
+}
+
+export async function runAgentInspection() {
+  const { data } = await apiClient.post('/agent/inspections/run')
+  return unwrap<AgentInspectionItem>(data)
 }
