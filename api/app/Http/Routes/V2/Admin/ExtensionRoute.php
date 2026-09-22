@@ -2,6 +2,7 @@
 
 namespace App\Http\Routes\V2\Admin;
 
+use App\Http\Controllers\V2\Admin\ModuleController;
 use App\Http\Controllers\V2\Admin\PluginController;
 use App\Http\Controllers\V2\Admin\ThemeController;
 use Illuminate\Contracts\Routing\Registrar;
@@ -10,6 +11,11 @@ class ExtensionRoute
 {
     public function map(Registrar $router): void
     {
+        $router->group(['prefix' => 'module'], function (Registrar $router): void {
+            $router->get('/', [ModuleController::class, 'index']);
+            $router->get('/{id}', [ModuleController::class, 'show']);
+        });
+
         $router->group(['prefix' => 'theme'], function (Registrar $router): void {
             $router->get('/getThemes', [ThemeController::class, 'getThemes']);
             $router->post('/upload', [ThemeController::class, 'upload']);

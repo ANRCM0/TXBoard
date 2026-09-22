@@ -422,27 +422,31 @@ Checksum, signatures and publisher identity are future trust-layer work, not a v
 
 ## 17. Delivery phases
 
-### Phase A — Foundation
+### Phase A — Contract foundation
 
-Implement Module Manifest contract, Module Registry, Capability Registry, common module DTO/API, compatibility and health primitives. No behavior migration yet.
+**Implemented.** Module Package v1 now defines Module Manifest, Descriptor, type/source/health vocabularies and Capability contract.
 
-### Phase B — Plugin adapter
+### Phase B — Read-only Registry foundation
 
-Map Plugin Package v1 into Module Registry while preserving existing plugin behavior.
+**Implemented.** The read-only Module Registry now normalizes current Plugin, Theme and Agent Ops subsystems through adapters and exposes an Admin inventory API. Registry discovery does not execute lifecycle mutations.
 
-### Phase C — Theme adapter
+### Phase C — Plugin lifecycle integration
+
+Map future Module lifecycle management onto Plugin Runtime while preserving Plugin Package v1 behavior.
+
+### Phase D — Theme package and lifecycle adapter
 
 Formalize Theme Package v1, remove theme-state ambiguity and register themes as modules.
 
-### Phase D — Module Center
+### Phase E — Module Center
 
 Build the unified Admin inventory and status page.
 
-### Phase E — Admin Bridge v2
+### Phase F — Admin Bridge v2
 
 Add host services while keeping Bridge v1 compatible.
 
-### Phase F — Agent integration
+### Phase G — Agent integration
 
 Register Agent Ops in the Module Registry without changing the Agent Ops security model.
 
