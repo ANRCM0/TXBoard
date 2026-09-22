@@ -5,7 +5,9 @@
 - `http/xboard-api-contract-audit.md`：Admin/User Web 与 API 的兼容记录。
 - `http/module-registry-v1.md`：Module Platform 的只读 Admin Registry HTTP 契约。
 - `node-protocol/README.md`：TXBoard 与独立 TX-Node 之间的协议入口。
-- `plugin-package/README.md`：TXBoard 与独立插件仓库之间的 Plugin Package v1 / Admin Bridge 契约。\n- `module-package/README.md`：Module Platform v1 的统一 Module Manifest、Capability 与运行时 Descriptor 契约。
+- `plugin-package/README.md`：TXBoard 与独立插件仓库之间的 Plugin Package v1 / Admin Bridge 契约。
+- `module-package/README.md`：Module Platform v1 的统一 Module Manifest、Capability 与运行时 Descriptor 契约。
+- `module-lifecycle/README.md`：Module Lifecycle v1 的统一操作、结果、错误与 runtime delegation 契约。
 
 Laravel routes 是服务器端可执行事实来源；`contracts/` 用于记录跨仓库、跨前端需要稳定维护的契约。
 

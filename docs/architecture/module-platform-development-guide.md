@@ -429,7 +429,7 @@ Delivered:
 
 The Registry observes existing runtimes and does not own lifecycle mutations.
 
-### PR C — Plugin lifecycle integration — ▶ current target
+### PR C — Plugin lifecycle integration — ✅ completed
 
 Introduce a Module lifecycle abstraction for Plugin modules:
 
@@ -439,16 +439,19 @@ ModuleLifecycle
       -> existing PluginManager
 ```
 
-Rules:
+Delivered:
 
-- do not duplicate `PluginManager` install/enable/disable/upgrade/uninstall logic;
-- Plugin Package v1 remains compatible;
-- Module lifecycle must delegate to the existing Plugin Runtime;
-- lifecycle mutations must re-read Registry state after completion;
-- define explicit unsupported-operation behavior for non-Plugin module types;
-- add lifecycle contract/tests before adding generalized write routes.
+- `contracts/module-lifecycle/README.md` lifecycle vocabulary/result/error contract;
+- `ModuleLifecycle` orchestration and container-scoped registration;
+- `PluginLifecycleAdapter` delegation to existing `PluginManager`;
+- explicit unsupported module-type behavior;
+- structured non-secret runtime failures;
+- Registry state refresh after mutation/failure;
+- unit tests for all five Plugin operations, unknown Module, unsupported type, runtime failure and refresh semantics.
 
-### PR D — Theme Package v1 + Theme lifecycle adapter
+No generalized Module write HTTP route was added.
+
+### PR D — Theme Package v1 + Theme lifecycle adapter — ▶ current target
 
 Formalize Theme Package v1 and map activate/configure/delete semantics without reimplementing `ThemeService`.
 
@@ -470,11 +473,9 @@ Add deeper Agent Ops health/metadata only. Do not move Agent authorization, appr
 
 Avoid combining multiple phases into one large refactor.
 
-## 20. Phase C implementation rules
+## 20. Phase C implementation result
 
-The next development phase is Plugin lifecycle integration.
-
-The lifecycle layer must have one job: translate a Module lifecycle request into the existing specialized runtime.
+Phase C keeps the lifecycle layer focused on translating a Module lifecycle request into the existing specialized runtime.
 
 Required direction:
 
@@ -503,16 +504,16 @@ ModuleLifecycle
 
 Those responsibilities already belong to `PluginManager`.
 
-Phase C should first define:
+Phase C delivers:
 
-- supported operations;
-- lifecycle result/error model;
-- Plugin-only adapter;
+- supported operations: install, enable, disable, upgrade and uninstall;
+- stable lifecycle result/error models;
+- Plugin-only lifecycle adapter;
 - unsupported module-type behavior;
 - state refresh semantics;
-- tests for install, enable, disable, upgrade and uninstall delegation.
+- tests for all Plugin lifecycle delegation paths.
 
-Do not add Theme lifecycle or a generalized Module Center write UI in the same PR.
+Theme lifecycle and generalized Module Center write UI remain outside Phase C.
 
 ## 21. Definition of Done for each Module
 
