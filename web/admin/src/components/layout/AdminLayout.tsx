@@ -2,6 +2,7 @@ import { Suspense, useEffect, useRef, useState } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
 import { TopBar } from './TopBar'
+import { ConfirmDialogHost } from '../ui/ConfirmDialog'
 
 export function AdminLayout() {
   const [open, setOpen] = useState(false)
@@ -41,6 +42,7 @@ export function AdminLayout() {
           onClick={() => setOpen(false)}
         />
       ) : null}
+      <ConfirmDialogHost/>
     </div>
   )
 }

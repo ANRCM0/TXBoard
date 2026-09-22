@@ -15,6 +15,7 @@ import {
   type PluginItem,
 } from '../../api/plugin'
 import { PageHeader } from '../../components/ui/PageHeader'
+import { requestConfirm } from '../../components/ui/ConfirmDialog'
 
 export function PluginsPage() {
   const qc = useQueryClient()
@@ -141,7 +142,7 @@ export function PluginsPage() {
             {!plugin.is_enabled && <button
               className="button danger"
               disabled={action.isPending}
-              onClick={() => confirm(`确认卸载插件「${plugin.name || plugin.code}」？`) && action.mutate({ kind: 'uninstall', code: plugin.code })}
+              onClick={() => requestConfirm({ title: '卸载插件', message: `确认卸载插件「${plugin.name || plugin.code}」？卸载后配置将保留。`, danger: true, confirmLabel: '卸载', action: () => action.mutate({ kind: 'uninstall', code: plugin.code }) })}
             >卸载</button>}
           </>}
 
@@ -149,7 +150,7 @@ export function PluginsPage() {
             className="icon-button danger"
             title="删除插件文件"
             disabled={action.isPending}
-            onClick={() => confirm('确认永久删除该插件目录？') && action.mutate({ kind: 'delete', code: plugin.code })}
+            onClick={() => requestConfirm({ title: '删除插件目录', message: '确认永久删除该插件目录？该操作不可恢复。', danger: true, confirmLabel: '删除', action: () => action.mutate({ kind: 'delete', code: plugin.code }) })}
           ><Trash2 size={15}/></button>}
         </div>
       </article>)}

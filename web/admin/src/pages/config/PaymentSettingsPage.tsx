@@ -25,6 +25,7 @@ import {
 } from '../../api/payment'
 import { Modal } from '../../components/ui/Modal'
 import { PageHeader } from '../../components/ui/PageHeader'
+import { requestConfirm } from '../../components/ui/ConfirmDialog'
 
 type Draft = {
   name: string
@@ -277,7 +278,7 @@ export function PaymentSettingsPage() {
                     className="icon-button danger"
                     title="删除"
                     disabled={deleteMutation.isPending}
-                    onClick={() => confirm(`确认删除支付方式「${payment.name}」？`) && deleteMutation.mutate(payment.id)}
+                    onClick={() => requestConfirm({ title: '删除支付方式', message: `确认删除支付方式「${payment.name}」？`, danger: true, confirmLabel: '删除', action: () => deleteMutation.mutate(payment.id) })}
                   ><Trash2 size={14}/></button>
                 </div>
               </td>

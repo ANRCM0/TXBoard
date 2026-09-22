@@ -7,6 +7,7 @@ import { saveSettings } from '../../api/config'
 import { JsonEditor } from '../../components/ui/JsonEditor'
 import { Modal } from '../../components/ui/Modal'
 import { PageHeader } from '../../components/ui/PageHeader'
+import { requestConfirm } from '../../components/ui/ConfirmDialog'
 
 function idOf(theme: ThemeItem) {
   return String(theme.name || theme.theme || theme.title || 'unknown')
@@ -86,7 +87,7 @@ export function ThemeSettingsPage() {
               <button className="icon-button" title="预览" onClick={() => { setPreview(theme); setPreviewIndex(0) }}><Eye size={16}/></button>
               <button className="icon-button" title="配置" onClick={() => openConfig(theme)}><Settings2 size={16}/></button>
               {!active && <button className="button" onClick={() => activate.mutate(id)}>切换</button>}
-              <button className="icon-button danger" disabled={active} title={active ? '当前主题不能删除' : '删除'} onClick={() => confirm(`确认删除主题 ${id}？`) && remove.mutate(id)}><Trash2 size={16}/></button>
+              <button className="icon-button danger" disabled={active} title={active ? '当前主题不能删除' : '删除'} onClick={() => requestConfirm({ title: '删除主题', message: `确认删除主题 ${id}？`, danger: true, confirmLabel: '删除', action: () => remove.mutate(id) })}><Trash2 size={16}/></button>
             </div>
           </div>
         </article>

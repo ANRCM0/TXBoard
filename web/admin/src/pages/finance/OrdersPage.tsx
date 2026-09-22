@@ -14,6 +14,7 @@ import { OrderAssignModal } from '../../components/finance/OrderAssignModal'
 import { OrderDetailModal } from '../../components/finance/OrderDetailModal'
 import { QueryFeedback } from '../../components/ui/QueryFeedback'
 import { PageHeader } from '../../components/ui/PageHeader'
+import { requestConfirm } from '../../components/ui/ConfirmDialog'
 
 type FilterField = 'trade_no' | 'user_id' | 'callback_no'
 
@@ -183,8 +184,8 @@ export function OrdersPage() {
                 <div className="actions">
                   <button className="icon-button" title="详情" onClick={() => setDetailId(order.id)}><Eye size={15}/></button>
                   {order.status === 0 && <>
-                    <button className="icon-button success" title="标记付款" disabled={paid.isPending || cancel.isPending || query.isPlaceholderData} onClick={() => confirm('确认手动标记该订单为已付款？') && paid.mutate(order.trade_no)}><CheckCircle2 size={15}/></button>
-                    <button className="icon-button danger" title="取消订单" disabled={paid.isPending || cancel.isPending || query.isPlaceholderData} onClick={() => confirm('确认取消该订单？') && cancel.mutate(order.trade_no)}><XCircle size={15}/></button>
+                    <button className="icon-button success" title="标记付款" disabled={paid.isPending || cancel.isPending || query.isPlaceholderData} onClick={() => requestConfirm({ title: '标记付款', message: '确认手动标记该订单为已付款？', confirmLabel: '标记付款', action: () => paid.mutate(order.trade_no) })}><CheckCircle2 size={15}/></button>
+                    <button className="icon-button danger" title="取消订单" disabled={paid.isPending || cancel.isPending || query.isPlaceholderData} onClick={() => requestConfirm({ title: '取消订单', message: '确认取消该订单？用户将无法继续支付。', danger: true, confirmLabel: '取消订单', action: () => cancel.mutate(order.trade_no) })}><XCircle size={15}/></button>
                   </>}
                 </div>
               </td>

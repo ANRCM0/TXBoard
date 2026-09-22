@@ -12,6 +12,7 @@ import {
 import { getGroups } from '../../api/server'
 import { PlanEditor } from '../../components/finance/PlanEditor'
 import { PageHeader } from '../../components/ui/PageHeader'
+import { requestConfirm } from '../../components/ui/ConfirmDialog'
 
 export function PlansPage() {
   const qc = useQueryClient()
@@ -153,7 +154,7 @@ export function PlansPage() {
                   <button
                     className="icon-button danger"
                     title="删除"
-                    onClick={() => confirm(`确认删除套餐「${plan.name}」？存在订单或用户时后端会拒绝删除。`) && remove.mutate(plan.id)}
+                    onClick={() => requestConfirm({ title: '删除套餐', message: `确认删除套餐「${plan.name}」？存在订单或用户时后端会拒绝删除。`, danger: true, confirmLabel: '删除', action: () => remove.mutate(plan.id) })}
                   ><Trash2 size={15}/></button>
                 </div>
               </td>

@@ -13,6 +13,7 @@ import {
 } from '../../api/content'
 import { Modal } from '../../components/ui/Modal'
 import { PageHeader } from '../../components/ui/PageHeader'
+import { requestConfirm } from '../../components/ui/ConfirmDialog'
 
 export function NoticeSettingsPage() {
   const qc = useQueryClient()
@@ -229,7 +230,7 @@ export function NoticeSettingsPage() {
                 <button
                   className="icon-button danger"
                   title="删除"
-                  onClick={() => row.id && confirm('确认删除「' + (row.title || row.id) + '」？') && remove.mutate(row.id)}
+                  onClick={() => { const id = row.id; if (id === undefined) return; requestConfirm({ title: '删除公告', message: '确认删除「' + (row.title || row.id) + '」？', danger: true, confirmLabel: '删除', action: () => remove.mutate(id) }) }}
                 ><Trash2 size={15}/></button>
               </div></td>}
             </tr>)}
