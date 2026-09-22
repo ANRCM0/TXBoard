@@ -112,6 +112,12 @@ Stable error codes:
 
 Runtime exception text is not part of the public lifecycle error contract. Lifecycle errors expose stable, non-secret diagnostics and the adapter name when relevant.
 
+## Admin HTTP adapter
+
+The controlled Admin HTTP mapping is defined by [Module Management Admin HTTP Contract v1](../http/module-management-v1.md).
+
+The HTTP layer may query adapter-supported operations and invoke `ModuleLifecycle`, but it must not bypass lifecycle adapters or expose specialized runtime exception text.
+
 ## Registry boundary
 
 Module Registry remains read-only inventory/normalization infrastructure.

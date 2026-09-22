@@ -90,7 +90,7 @@ Unknown IDs return HTTP 404:
 
 ## Read-only boundary
 
-Module Registry v1 intentionally provides no mutation endpoints.
+Module Registry resources themselves remain read-only. Phase F adds a separate nested lifecycle management surface documented in `module-management-v1.md`; those mutation routes delegate to `ModuleLifecycle` and do not make `ModuleRegistry` mutable.
 
 The following remain owned by their current specialized runtimes:
 

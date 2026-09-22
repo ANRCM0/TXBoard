@@ -480,11 +480,22 @@ Delivered:
 
 Existing Plugin, Theme and Agent management pages remain specialized surfaces.
 
-### PR F — controlled Module management API — ▶ current target
+### PR F — controlled Module management API — ✅ completed
 
-Expose only lifecycle operations that have stable adapters and authorization semantics. All mutations must delegate through `ModuleLifecycle`; Module Registry remains read-only.
+Delivered:
 
-### PR G — Admin Navigation Registry + Admin Bridge v2
+- `contracts/http/module-management-v1.md`;
+- state-aware lifecycle operation discovery;
+- `GET /module/{id}/lifecycle`;
+- `POST /module/{id}/lifecycle/{operation}`;
+- stable HTTP mapping for lifecycle errors;
+- Plugin installed/enabled state gates;
+- Theme active/source state gates;
+- feature/unit coverage proving Registry remains read-only and specialized runtimes remain authoritative.
+
+Plugin/Theme upload and configuration, Agent approval and MCP execution remain specialized APIs.
+
+### PR G — Admin Navigation Registry + Admin Bridge v2 — ▶ current target
 
 Incremental compatibility; Admin Bridge v1 remains supported.
 
@@ -530,7 +541,7 @@ current_theme  = read-only legacy compatibility fallback
 TXBoard        = deterministic default
 ```
 
-Phase E adds the read-only Module Center directly on top of the Module Registry API. The next phase is a controlled Module management API that delegates supported mutations through `ModuleLifecycle`.
+Phase E adds the read-only Module Center directly on top of the Module Registry API. Phase F adds a controlled management HTTP adapter over `ModuleLifecycle`. The next phase is Admin Navigation Registry + Admin Bridge v2.
 
 ## 21. Definition of Done for each Module
 
