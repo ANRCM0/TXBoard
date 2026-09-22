@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { CheckCircle2, ChevronLeft, ChevronRight, Eye, Plus, Search, XCircle } from 'lucide-react'
 import { useMemo, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import {
   cancelOrder,
@@ -20,11 +21,14 @@ type FilterField = 'trade_no' | 'email' | 'user_id' | 'callback_no'
 
 export function OrdersPage() {
   const qc = useQueryClient()
+  const [searchParams] = useSearchParams()
+  const initialField = parseFilterField(searchParams.get('field'))
+  const initialKeyword = searchParams.get('keyword') || ''
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(20)
-  const [field, setField] = useState<FilterField>('trade_no')
-  const [keyword, setKeyword] = useState('')
-  const [appliedKeyword, setAppliedKeyword] = useState('')
+  const [field, setField] = useState<FilterField>(initialField)
+  const [keyword, setKeyword] = useState(initialKeyword)
+  const [appliedKeyword, setAppliedKeyword] = useState(initialKeyword)
   const [status, setStatus] = useState('')
   const [commission, setCommission] = useState('')
   const [commissionOnly, setCommissionOnly] = useState(false)
@@ -164,7 +168,7 @@ export function OrdersPage() {
             {rows.map(order => <tr key={order.id}>
               <td>
                 <button className="link-button" onClick={() => setDetailId(order.id)}>{order.trade_no}</button>
-                <small className="table-sub">{order.user?.email || `User #${order.user_id}`}</small>
+                <small className="table-sub"><Link className="table-link" to={`/user/${order.user_id}`}>{order.user?.email || `User #${order.user_id}`}</Link></small>
               </td>
               <td><span className="badge">{typeLabel(order.type)}</span></td>
               <td>
@@ -239,6 +243,12 @@ function CommissionCell({ order, onChange, disabled }: { disabled?: boolean; ord
     </select>
     <small>{money(order.commission_balance)}</small>
   </div>
+}
+
+function parseFilterField(value: string | null): FilterField {
+  return value === 'email' || value === 'user_id' || value === 'callback_no' || value === 'trade_no'
+    ? value
+    : 'trade_no'
 }
 
 function money(value: unknown) {

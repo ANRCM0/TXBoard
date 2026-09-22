@@ -223,7 +223,16 @@ class UserController extends Controller
         ], [
             'id.required' => '用户ID不能为空'
         ]);
-        $user = User::find($request->input('id'))->load('invite_user');
+        $user = User::with([
+            'invite_user:id,email',
+            'plan:id,name',
+            'group:id,name',
+        ])->find($request->input('id'));
+
+        if (!$user) {
+            return $this->fail([400202, '用户不存在']);
+        }
+
         $user = HookManager::filter('admin.user.detail', $user, $request);
         // The list endpoint reports money in major units and the admin editor
         // seeds its form from this response and posts those numbers straight

@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ChevronLeft, ChevronRight, MessageSquare, Search } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import {
   closeTicket,
@@ -17,13 +18,16 @@ import { requestConfirm } from '../../components/ui/ConfirmDialog'
 
 export function TicketsPage() {
   const qc = useQueryClient()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const initialEmail = searchParams.get('email') || ''
+  const initialTicketId = Number(searchParams.get('ticket'))
   const [statusTab, setStatusTab] = useState<'open' | 'closed'>('open')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
-  const [email, setEmail] = useState('')
-  const [appliedEmail, setAppliedEmail] = useState('')
+  const [email, setEmail] = useState(initialEmail)
+  const [appliedEmail, setAppliedEmail] = useState(initialEmail)
   const [replyStatus, setReplyStatus] = useState('')
-  const [detailId, setDetailId] = useState<number | null>(null)
+  const [detailId, setDetailId] = useState<number | null>(Number.isInteger(initialTicketId) && initialTicketId > 0 ? initialTicketId : null)
 
   const query = useQuery({
     queryKey: ['tickets', statusTab, page, pageSize, appliedEmail, replyStatus],
@@ -42,6 +46,21 @@ export function TicketsPage() {
   function switchTab(next: 'open' | 'closed') {
     setStatusTab(next)
     setPage(1)
+  }
+
+  function openTicket(id: number) {
+    setDetailId(id)
+    const next = new URLSearchParams(searchParams)
+    next.set('ticket', String(id))
+    if (appliedEmail) next.set('email', appliedEmail)
+    setSearchParams(next, { replace: true })
+  }
+
+  function closeTicketDetail() {
+    setDetailId(null)
+    const next = new URLSearchParams(searchParams)
+    next.delete('ticket')
+    setSearchParams(next, { replace: true })
   }
 
   return <>
@@ -106,17 +125,17 @@ export function TicketsPage() {
             {rows.map(ticket => <tr key={ticket.id}>
               <td>{ticket.id}</td>
               <td>
-                <button className="link-button ticket-subject" onClick={() => setDetailId(ticket.id)}>
+                <button className="link-button ticket-subject" onClick={() => openTicket(ticket.id)}>
                   {cleanSubject(ticket.subject)}
                 </button>
                 {isWithdrawTicket(ticket) && <span className="badge withdraw-badge">提现</span>}
               </td>
-              <td>{ticket.user?.email || '-'}</td>
+              <td>{ticket.user?.id ? <Link className="table-link" to={`/user/${ticket.user.id}`}>{ticket.user.email || `User #${ticket.user.id}`}</Link> : '-'}</td>
               <td><span className={levelClass(ticket.level)}>{levelLabel(ticket)}</span></td>
               <td><span className={ticket.reply_status === 0 ? 'status off' : 'status ok'}>{ticket.reply_status === 0 ? '待回复' : '已回复'}</span></td>
               <td>{formatTime(ticket.updated_at)}</td>
               <td>
-                <button className="button compact-button" onClick={() => setDetailId(ticket.id)}>
+                <button className="button compact-button" onClick={() => openTicket(ticket.id)}>
                   <MessageSquare size={14}/>{ticket.status === 1 ? '查看' : '回复'}
                 </button>
               </td>
@@ -152,7 +171,7 @@ export function TicketsPage() {
 
     <TicketDetailModal
       ticketId={detailId}
-      onClose={() => setDetailId(null)}
+      onClose={closeTicketDetail}
       onChanged={() => qc.invalidateQueries({ queryKey: ['tickets'] })}
     />
   </>
@@ -214,7 +233,7 @@ function TicketDetailModal({
   >
     {query.isError ? <QueryFeedback error onRetry={() => query.refetch()} /> : query.isLoading && !detail ? <div className="empty-state">加载工单…</div> : detail ? <div className="ticket-detail">
       <div className="ticket-detail-meta">
-        <span>用户：<strong>{detail.user?.email || '-'}</strong></span>
+        <span>用户：{detail.user?.id ? <Link className="table-link" to={`/user/${detail.user.id}`}>{detail.user.email || `User #${detail.user.id}`}</Link> : <strong>-</strong>}</span>
         <span>状态：<strong>{detail.status === 1 ? '已关闭' : '处理中'}</strong></span>
       </div>
 

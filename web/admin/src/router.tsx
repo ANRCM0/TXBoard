@@ -33,6 +33,7 @@ const CouponPage = lazy(() => import('./pages/finance/CouponPage').then(module =
 const PluginsPage = lazy(() => import('./pages/plugins/PluginsPage').then(module => ({ default: module.PluginsPage })))
 const PluginRoutePage = lazy(() => import('./pages/plugins/PluginRoutePage').then(module => ({ default: module.PluginRoutePage })))
 const UsersPage = lazy(() => import('./pages/users/UsersPage').then(module => ({ default: module.UsersPage })))
+const UserDetailPage = lazy(() => import('./pages/users/UserDetailPage').then(module => ({ default: module.UserDetailPage })))
 const TicketsPage = lazy(() => import('./pages/users/TicketsPage').then(module => ({ default: module.TicketsPage })))
 const TrafficResetPage = lazy(() => import('./pages/users/TrafficResetPage').then(module => ({ default: module.TrafficResetPage })))
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage').then(module => ({ default: module.NotFoundPage })))
@@ -90,6 +91,7 @@ export const router = createAppRouter([
           { path: 'plugins/:pluginCode/*', element: <PluginRoutePage /> },
           { path: 'user', element: <Navigate to="/user/manage" replace /> },
           { path: 'user/manage', element: <UsersPage /> },
+          { path: 'user/:userId', element: <UserDetailPage /> },
           { path: 'user/ticket', element: <TicketsPage /> },
           { path: 'user/traffic-reset', element: <TrafficResetPage /> },
           { path: 'traffic-reset', element: <Navigate to="/user/traffic-reset" replace /> },

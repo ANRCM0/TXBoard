@@ -12,6 +12,7 @@ import {
   Trash2,
 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
 import { getPlans } from '../../api/finance'
 import {
@@ -266,7 +267,7 @@ export function UsersPage() {
               <td>{user.id}</td>
               <td>
                 <div className="user-identity">
-                  <strong>{user.email}</strong>
+                  <Link className="link-button user-detail-link" to={`/user/${user.id}`}>{user.email}</Link>
                   <div className="user-badges">
                     {Boolean(user.is_admin) && <span className="badge">Admin</span>}
                     {Boolean(user.is_staff) && <span className="badge">Staff</span>}
@@ -278,8 +279,8 @@ export function UsersPage() {
               <td><TrafficCell user={user}/></td>
               <td>{formatExpire(user.expired_at)}</td>
               <td>
-                <strong>¥ {(Number(user.balance || 0) / 100).toFixed(2)}</strong>
-                {Number(user.commission_balance || 0) > 0 && <small className="table-sub">佣金 ¥ {(Number(user.commission_balance) / 100).toFixed(2)}</small>}
+                <strong>¥ {Number(user.balance || 0).toFixed(2)}</strong>
+                {Number(user.commission_balance || 0) > 0 && <small className="table-sub">佣金 ¥ {Number(user.commission_balance).toFixed(2)}</small>}
               </td>
               <td>{Number(user.online_count || 0)}</td>
               <td><span className={Boolean(user.banned) ? 'status off' : 'status ok'}>{user.banned ? '已封禁' : '正常'}</span></td>
