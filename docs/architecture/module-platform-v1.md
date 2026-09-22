@@ -44,11 +44,12 @@ Completed:
 - **Phase B / PR B** — read-only Module Registry, Plugin/Theme/Agent Ops adapters, discovery isolation and read-only Admin inventory API;
 - **Phase C / PR C** — Module Lifecycle v1, PluginLifecycleAdapter delegation to existing `PluginManager`, structured lifecycle result/error state and post-mutation Registry refresh;
 - **Phase D / PR D** — Theme Package v1, hardened Theme archive validation, canonical `frontend_theme` ownership with read-only legacy fallback and ThemeLifecycleAdapter delegation to `ThemeService`;
-- **Phase E / PR E** — read-only Admin Module Center consuming the Module Registry API as the single inventory model.
+- **Phase E / PR E** — read-only Admin Module Center consuming the Module Registry API as the single inventory model;
+- **Phase F / PR F** — controlled Module management API with state-aware operation discovery and lifecycle execution through specialized adapters.
 
 Current implementation target:
 
-- **Phase F** — controlled Module management API delegating through stable lifecycle adapters.
+- **Phase G** — Admin Navigation Registry + Admin Bridge v2.
 
 Important invariant:
 
@@ -477,11 +478,11 @@ Checksum, signatures and publisher identity are future trust-layer work, not a v
 
 ### Phase F — controlled Module management API
 
-**Current target.** Expose stable lifecycle operations through `ModuleLifecycle` and its specialized adapters while preserving the Registry as read-only infrastructure.
+**Implemented.** Admin clients can query state-aware supported lifecycle operations and execute the stable lifecycle vocabulary through `ModuleLifecycle`. The HTTP adapter preserves dynamic `secure_path`, stable lifecycle errors and Registry refresh semantics without making Module Registry mutable.
 
-### Phase G — Admin Bridge v2
+### Phase G — Admin Navigation Registry + Admin Bridge v2
 
-Add host services while keeping Bridge v1 compatible.
+**Current target.** Add a common host navigation registry and extend host services while keeping Admin Bridge v1 compatible.
 
 ### Phase H — Agent integration
 
