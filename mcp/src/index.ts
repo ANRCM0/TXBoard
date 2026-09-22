@@ -47,6 +47,7 @@ async function api<T>(authorization: string, path: string, init?: RequestInit): 
       'content-type': 'application/json',
       authorization,
       'x-agent-client': 'txboard-mcp',
+      'x-agent-protocol': 'mcp',
       ...(init?.headers ?? {}),
     },
     signal: AbortSignal.timeout(15_000),
@@ -179,6 +180,21 @@ function createTxboardServer(authorization: string): McpServer {
   }, async ({ node_id }) => {
     try { return result(await requestAction(node_id, 'ops.kernel.restart')); }
     catch (e) { return errorResult(e); }
+  });
+
+  server.registerTool('txboard_tail_logs', {
+    description: 'Request a bounded tail of the TX-Node application log. Only the configured application log source is allowed; administrator approval is required.',
+    inputSchema: z.object({
+      node_id: z.number().int().positive(),
+      lines: z.number().int().min(1).max(200).default(100),
+    }),
+  }, async ({ node_id, lines }) => {
+    try {
+      return result(await requestAction(node_id, 'ops.logs.tail', {
+        source: 'application',
+        lines,
+      }));
+    } catch (e) { return errorResult(e); }
   });
 
   server.registerTool('txboard_network_test', {

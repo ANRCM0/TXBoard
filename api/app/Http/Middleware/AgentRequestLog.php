@@ -26,6 +26,7 @@ class AgentRequestLog
     {
         $requestId = (string) ($request->header('X-Request-ID') ?: Str::ulid());
         $request->attributes->set('agent_request_id', $requestId);
+        $startedAt = time();
 
         $response = null;
         $error = null;
@@ -52,9 +53,15 @@ class AgentRequestLog
                         'request_id' => $requestId,
                         'admin_id' => $user->id,
                         'token_id' => $token->id ?? null,
+                        'actor_type' => 'agent',
                         'client_name' => preg_replace('/^agent:/', '', (string) $token->name),
+                        'protocol' => $this->protocol($request),
                         'tool' => $this->toolName($request),
                         'risk_level' => $request->isMethod('GET') ? 'read' : 'operate',
+                        'approval_required' => $request->isMethod('POST') && $request->route('nodeId') !== null,
+                        'approval_actor' => null,
+                        'started_at' => $startedAt,
+                        'finished_at' => time(),
                         'target_type' => $nodeId ? 'node' : ($actionRequestId ? 'action' : null),
                         'target_id' => $nodeId ? (string) $nodeId : ($actionRequestId ? (string) $actionRequestId : null),
                         'input_redacted' => json_encode($this->redact($request->all()), JSON_UNESCAPED_UNICODE),
@@ -74,6 +81,12 @@ class AgentRequestLog
                 $response->headers->set('X-TXBoard-Request-ID', $requestId);
             }
         }
+    }
+
+    private function protocol($request): string
+    {
+        $value = strtolower(trim((string) $request->header('X-Agent-Protocol', 'http')));
+        return preg_match('/^[a-z0-9._-]{1,32}$/', $value) ? $value : 'unknown';
     }
 
     private function toolName($request): string
