@@ -3,6 +3,7 @@
 namespace Tests\Feature\Agent;
 
 use App\Models\AgentAction;
+use App\Models\AgentAuditLog;
 use App\Models\Server;
 use App\Models\User;
 use App\Services\AgentOps\AgentAbility;
@@ -231,6 +232,27 @@ class AgentOpsTest extends TestCase
         $response->assertOk()
             ->assertJsonPath('data.target_scope.mode', 'restricted')
             ->assertJsonPath('data.target_scope.node_ids.0', $node->id);
+    }
+
+
+    public function test_agent_audit_records_protocol_and_timing_context(): void
+    {
+        $admin = $this->makeAdmin();
+        $issued = $admin->createToken('agent:audit-context', [
+            AgentAbility::NODES_READ,
+        ]);
+
+        $this->withHeader('X-Agent-Protocol', 'mcp')
+            ->withToken($issued->plainTextToken)
+            ->getJson('/api/v2/agent/whoami')
+            ->assertOk();
+
+        $log = AgentAuditLog::query()->latest('id')->firstOrFail();
+        $this->assertSame('agent', $log->actor_type);
+        $this->assertSame('mcp', $log->protocol);
+        $this->assertNotNull($log->started_at);
+        $this->assertNotNull($log->finished_at);
+        $this->assertFalse((bool) $log->approval_required);
     }
 
     private function makeNode(string $name, string $host): Server
