@@ -27,6 +27,28 @@
 		reverse_proxy 127.0.0.1:{$WS_PORT:8076}
 	}
 
+	# MCP is an optional protocol adapter. When disabled, keep the route dark.
+	# When enabled, Caddy is the only public ingress; the Node process remains
+	# bound to loopback inside the TXBoard container.
+	@mcpDisabled {
+		path /mcp
+		expression `"{$ENABLE_MCP:false}" != "true"`
+	}
+	handle @mcpDisabled {
+		respond 404
+	}
+
+	@mcpEnabled {
+		path /mcp
+		expression `"{$ENABLE_MCP:false}" == "true"`
+	}
+	handle @mcpEnabled {
+		reverse_proxy 127.0.0.1:{$MCP_PORT:3000} {
+			header_up Host 127.0.0.1
+			header_up X-Real-IP {remote_host}
+		}
+	}
+
 	handle /api/* {
 		reverse_proxy 127.0.0.1:{$OCTANE_INTERNAL_PORT:7002} {
 			header_up Host {host}

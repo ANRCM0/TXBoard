@@ -11,7 +11,7 @@ TXBoard 负责用户、订阅、订单、支付、节点、机器、流量、工
 ghcr.io/paimoncai/txboard
 ```
 
-一个 `txboard` 容器同时包含 Admin/User 前端、Caddy、Laravel Octane、Horizon、Redis 和 WebSocket 服务。MySQL 与备份任务作为基础设施服务独立运行。
+一个 `txboard` 容器同时包含 Admin/User 前端、Caddy、Laravel Octane、Horizon、Redis、WebSocket 服务，以及默认关闭的 MCP Gateway。MySQL 与备份任务作为基础设施服务独立运行。
 
 ---
 
@@ -64,6 +64,7 @@ flowchart LR
         Horizon[Horizon]
         Redis[(Embedded Redis)]
         WS[WebSocket Server]
+        MCP[MCP Gateway]
         Plugins[Plugin Runtime]
         Themes[Theme Runtime]
 
@@ -71,6 +72,8 @@ flowchart LR
         Caddy --> AdminSPA
         Caddy --> API
         Caddy --> WS
+        Caddy --> MCP
+        MCP --> API
         API --> Horizon
         API --> Redis
         API --> Plugins
@@ -186,7 +189,8 @@ txboard
 ├── Laravel / Octane
 ├── Horizon
 ├── Redis
-└── WebSocket
+├── WebSocket
+└── MCP Gateway（默认关闭）
 ```
 
 MySQL 和备份任务由 TXBoard-Deploy 生成的 Compose 作为基础设施服务运行。
@@ -359,6 +363,28 @@ TXBoard Admin 通过同源 iframe + Admin Bridge 承载它，不需要把插件 
 
 - [Plugin Package Contract](contracts/plugin-package/README.md)
 - [Plugin Development Guide](api/docs/en/development/plugin-development-guide.md)
+
+---
+
+## Agent Ops / MCP
+
+Agent Ops API 属于 TXBoard Core 控制面；MCP 只是可选协议适配器。生产镜像已经内置 MCP Gateway，但默认不启动。
+
+源码 Compose 可通过：
+
+```env
+TXBOARD_ENABLE_MCP=true
+```
+
+启用同域 MCP 入口：
+
+```text
+https://panel.example.com/mcp
+```
+
+MCP 进程只监听容器 loopback，并继续通过 Agent Ops HTTP API 执行权限、target scope、approval 与 audit。它不会直接连接 MySQL、Redis、TX-Node、SSH、Docker 或通用 Shell。
+
+历史 `docker compose --profile mcp up -d` 方式仍保留为兼容路径，并复用同一个 TXBoard 镜像。
 
 ---
 

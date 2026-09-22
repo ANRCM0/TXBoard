@@ -21,14 +21,25 @@ COPY web/user web/user
 RUN VITE_BASE_PATH=/.txboard-admin/ npm run build --workspace @txboard/admin && \
     VITE_BASE_PATH=/ npm run build --workspace @txboard/user
 
+# Build the optional MCP protocol adapter separately. The final image keeps only
+# the compiled gateway and production dependencies; TypeScript tooling stays out
+# of the runtime image.
+FROM node:24-alpine AS mcp-build
+WORKDIR /workspace/mcp
+COPY mcp/package.json mcp/tsconfig.json ./
+RUN npm install --no-audit --no-fund
+COPY mcp/src ./src
+RUN npm run build && npm prune --omit=dev
+
 # One production image for the entire TXBoard control plane:
-# Caddy + Admin/User SPAs + Octane + Horizon + Redis + WebSocket server.
+# Caddy + Admin/User SPAs + Octane + Horizon + Redis + WebSocket server
+# + optional MCP Gateway.
 FROM phpswoole/swoole:6.2.2-php8.2-alpine
 
 COPY --from=mlocati/php-extension-installer /usr/bin/install-php-extensions /usr/local/bin/
 
 RUN install-php-extensions pcntl bcmath zip redis && \
-    apk add --no-cache sqlite-libs mariadb-connector-c supervisor redis caddy && \
+    apk add --no-cache sqlite-libs mariadb-connector-c supervisor redis caddy nodejs && \
     addgroup -S -g 1000 www && adduser -S -G www -u 1000 www && \
     (getent group redis || addgroup -S redis) && \
     (getent passwd redis || adduser -S -G redis -H -h /data redis) && \
@@ -59,6 +70,9 @@ RUN --mount=type=cache,target=/tmp/composer-cache \
 COPY --chown=www:www api/ /www/
 COPY --from=web-build /workspace/web/admin/dist /srv/admin
 COPY --from=web-build /workspace/web/user/dist /srv/user
+COPY --from=mcp-build /workspace/mcp/package.json /opt/txboard-mcp/package.json
+COPY --from=mcp-build /workspace/mcp/node_modules /opt/txboard-mcp/node_modules
+COPY --from=mcp-build /workspace/mcp/dist /opt/txboard-mcp/dist
 
 RUN composer dump-autoload --no-dev --optimize --no-interaction && \
     php artisan package:discover --ansi && \
@@ -79,7 +93,11 @@ ENV ENABLE_WEB=true \
     ENABLE_HORIZON=true \
     ENABLE_REDIS=true \
     ENABLE_WS_SERVER=true \
+    ENABLE_MCP=false \
     ENABLE_CADDY=true \
+    MCP_HOST=127.0.0.1 \
+    MCP_PORT=3000 \
+    NODE_ENV=production \
     XDG_DATA_HOME=/caddy-data \
     XDG_CONFIG_HOME=/caddy-config
 

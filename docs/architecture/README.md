@@ -17,10 +17,11 @@ Module Platform 是现有 Plugin / Theme / Agent Ops 架构之上的统一层，
 ```mermaid
 flowchart LR
     Browser --> Caddy
-    AIAgent["AI Agent"] -->|MCP| MCP["Optional MCP Gateway"]
-    MCP -->|Agent Ops API| API
+    AIAgent["AI Agent"] -->|MCP /mcp| Caddy
 
     subgraph Image["TXBoard image"]
+        Caddy --> MCP["Optional MCP Gateway"]
+        MCP -->|Agent Ops API| API
         Caddy --> Admin[React Admin]
         Caddy --> User[Vue User]
         Caddy --> API[Laravel / Octane]
@@ -96,7 +97,7 @@ Agent Ops 文档分为三层：
 
 ## Deployment boundary
 
-Production has one TXBoard application image built by the root `Dockerfile`. It includes both SPAs, Caddy, Laravel/Octane, Horizon, embedded Redis and WebSocket.
+Production has one TXBoard application image built by the root `Dockerfile`. It includes both SPAs, Caddy, Laravel/Octane, Horizon, embedded Redis, WebSocket and the optional MCP Gateway. MCP is disabled by default and remains a protocol adapter over the Agent Ops HTTP API.
 
 MySQL and the backup helper are separate infrastructure services in `compose.yaml`.
 
