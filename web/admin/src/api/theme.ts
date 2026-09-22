@@ -13,7 +13,14 @@ export type ThemeItem = {
   is_active?: boolean
   active?: boolean
   configs?: unknown[]
+  can_delete?: boolean
+  is_system?: boolean
   [key: string]: unknown
+}
+
+type RawThemesResponse = {
+  themes: ThemeItem[] | Record<string, ThemeItem>
+  active?: string
 }
 
 export type ThemesResponse = {
@@ -23,20 +30,29 @@ export type ThemesResponse = {
 
 export async function getThemes() {
   const { data } = await apiClient.get('/theme/getThemes')
-  const payload = unwrap<ThemesResponse | ThemeItem[] | Record<string, ThemeItem>>(data)
+  const payload = unwrap<RawThemesResponse | ThemeItem[] | Record<string, ThemeItem>>(data)
 
   if (Array.isArray(payload)) {
     return { themes: payload, active: undefined } satisfies ThemesResponse
   }
 
   if (payload && typeof payload === 'object' && 'themes' in payload) {
-    const current = payload as ThemesResponse
-    const active = current.active
+    const current = payload as RawThemesResponse
+    const active = current.active || 'TXBoard'
+    const rawThemes = Array.isArray(current.themes)
+      ? current.themes
+      : Object.entries(current.themes || {})
+        .filter((entry): entry is [string, ThemeItem] => typeof entry[1] === 'object' && entry[1] !== null)
+        .map(([name, item]) => ({ name, ...item }))
+
     return {
-      themes: (Array.isArray(current.themes) ? current.themes : []).map(theme => ({
-        ...theme,
-        is_active: Boolean(theme.is_active || theme.active || (active && theme.name === active)),
-      })),
+      themes: rawThemes.map(theme => {
+        const id = String(theme.name || theme.theme || theme.title || '')
+        return {
+          ...theme,
+          is_active: Boolean(theme.is_active || theme.active || id === active),
+        }
+      }),
       active,
     } satisfies ThemesResponse
   }

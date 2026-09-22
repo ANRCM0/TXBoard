@@ -123,6 +123,34 @@ class AdminContractRegressionTest extends TestCase
         $this->securePath = $newPath;
     }
 
+    public function test_default_theme_is_reported_as_active_without_persisted_setting(): void
+    {
+        $themes = $this->getJson("/api/v2/{$this->securePath}/theme/getThemes");
+
+        $themes->assertOk();
+        $this->assertSame('TXBoard', $themes->json('data.active'));
+        $this->assertSame('TXBoard', $themes->json('data.themes.TXBoard.name'));
+        $this->assertTrue((bool) $themes->json('data.themes.TXBoard.is_system'));
+        $this->assertFalse((bool) $themes->json('data.themes.TXBoard.can_delete'));
+
+        $frontend = $this->getJson("/api/v2/{$this->securePath}/config/fetch?key=frontend");
+        $frontend->assertOk();
+        $this->assertSame('TXBoard', $frontend->json('data.frontend.frontend_theme'));
+
+        $this->postJson("/api/v2/{$this->securePath}/config/save", [
+            'frontend_theme' => 'TXBoard',
+        ])->assertOk();
+
+        $this->assertSame('TXBoard', admin_setting('frontend_theme'));
+        $this->assertNull(admin_setting('current_theme'));
+
+        admin_setting(['frontend_theme' => 'Xboard']);
+
+        $stale = $this->getJson("/api/v2/{$this->securePath}/theme/getThemes");
+        $stale->assertOk();
+        $this->assertSame('TXBoard', $stale->json('data.active'));
+    }
+
     /**
      * last_page is what drives the audit log's next-page control.
      */

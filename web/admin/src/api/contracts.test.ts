@@ -11,6 +11,7 @@ import {
 import { fetchSettings, saveSettings } from './config'
 import { copyNode, generateSecret } from './server'
 import { resolvePluginAppUrl } from './plugin'
+import { getThemes } from './theme'
 import { normalizePluginNavigationTarget } from '../plugins/bridge'
 
 type Seen = AxiosRequestConfig & { headers: Record<string, string> }
@@ -87,6 +88,40 @@ describe('config adapter contract', () => {
     await fetchSettings('site')
 
     expect(String(seen[0].headers.Authorization)).toBe('Bearer secret-token')
+  })
+})
+
+describe('theme adapter contract', () => {
+  it('normalizes keyed theme maps and marks the built-in default active', async () => {
+    responder = () => ({
+      data: {
+        data: {
+          themes: {
+            TXBoard: {
+              name: 'TXBoard',
+              description: 'TXBoard default theme',
+              version: '1.0.0',
+              is_system: true,
+              can_delete: false,
+            },
+          },
+          active: 'TXBoard',
+        },
+      },
+    })
+
+    const result = await getThemes()
+
+    expect(seen[0].method).toBe('get')
+    expect(seen[0].url).toBe('/theme/getThemes')
+    expect(result.active).toBe('TXBoard')
+    expect(result.themes).toHaveLength(1)
+    expect(result.themes[0]).toMatchObject({
+      name: 'TXBoard',
+      is_active: true,
+      is_system: true,
+      can_delete: false,
+    })
   })
 })
 

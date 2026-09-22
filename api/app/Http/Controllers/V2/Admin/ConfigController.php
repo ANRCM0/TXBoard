@@ -140,7 +140,7 @@ class ConfigController extends Controller
                 'subscribe_path' => admin_setting('subscribe_path', 's'),
             ],
             'frontend' => [
-                'frontend_theme' => admin_setting('frontend_theme', 'Xboard'),
+                'frontend_theme' => app(ThemeService::class)->getActiveTheme(),
                 'frontend_theme_sidebar' => admin_setting('frontend_theme_sidebar', 'light'),
                 'frontend_theme_header' => admin_setting('frontend_theme_header', 'dark'),
                 'frontend_theme_color' => admin_setting('frontend_theme_color', 'default'),
@@ -234,9 +234,9 @@ class ConfigController extends Controller
                 SubscribeTemplate::setContent($templateKeys[$k], $v);
                 continue;
             }
-            if ($k == 'frontend_theme') {
-                $themeService = app(ThemeService::class);
-                $themeService->switch($v);
+            if ($k === 'frontend_theme') {
+                app(ThemeService::class)->switch($v);
+                continue;
             }
             admin_setting([$k => $v]);
         }
