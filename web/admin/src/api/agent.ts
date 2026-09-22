@@ -1,0 +1,73 @@
+import { apiClient } from './client'
+import { unwrap } from '../lib/api'
+
+export type AgentTokenItem = {
+  id: number
+  client_name: string
+  abilities: string[]
+  last_used_at?: string | null
+  expires_at?: string | null
+  created_at?: string | null
+}
+
+export type AgentActionItem = {
+  request_id: string
+  node_id: number
+  action: string
+  risk_level: string
+  status: string
+  input?: Record<string, unknown> | null
+  result?: Record<string, unknown> | null
+  error_code?: string | null
+  approved_by?: number | null
+  approved_at?: number | null
+  started_at?: number | null
+  finished_at?: number | null
+  created_at?: number | null
+}
+
+export type AgentAbilities = {
+  default_read: string[]
+  all: string[]
+}
+
+export async function getAgentAbilities() {
+  const { data } = await apiClient.get('/agent/abilities')
+  return unwrap<AgentAbilities>(data) || { default_read: [], all: [] }
+}
+
+export async function getAgentTokens() {
+  const { data } = await apiClient.get('/agent/tokens')
+  return unwrap<AgentTokenItem[]>(data) || []
+}
+
+export async function createAgentToken(payload: {
+  client_name: string
+  abilities: string[]
+  expires_in_days: number
+}) {
+  const { data } = await apiClient.post('/agent/tokens/create', payload)
+  return unwrap<AgentTokenItem & { plain_text_token: string }>(data)
+}
+
+export async function revokeAgentToken(id: number) {
+  const { data } = await apiClient.post('/agent/tokens/revoke', { id })
+  return unwrap(data)
+}
+
+export async function getAgentActions(status?: string) {
+  const { data } = await apiClient.get('/agent/actions', {
+    params: { ...(status ? { status } : {}), limit: 50 },
+  })
+  return unwrap<AgentActionItem[]>(data) || []
+}
+
+export async function approveAgentAction(request_id: string) {
+  const { data } = await apiClient.post('/agent/actions/approve', { request_id })
+  return unwrap<AgentActionItem>(data)
+}
+
+export async function rejectAgentAction(request_id: string, reason?: string) {
+  const { data } = await apiClient.post('/agent/actions/reject', { request_id, reason })
+  return unwrap<AgentActionItem>(data)
+}
