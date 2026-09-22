@@ -23,12 +23,40 @@ Docker Compose keeps the service disabled unless the `mcp` profile is selected:
 docker compose --profile mcp up -d
 ```
 
-The published MCP port binds to loopback by default. Put your own authenticated HTTPS reverse proxy or private overlay network in front of it when remote clients need access.
+The published MCP port binds to loopback by default. Put a trusted authenticated HTTPS reverse proxy or private overlay network in front of it when remote clients need access.
+
+## Tools
+
+Read tools:
+
+- `txboard_system_status`
+- `txboard_list_machines`
+- `txboard_list_nodes`
+- `txboard_node_metrics`
+- `txboard_diagnose_node`
+- `txboard_traffic_summary`
+- `txboard_queue_status`
+- `txboard_audit_logs`
+- `txboard_action_status`
+
+Approval-gated operation requests:
+
+- `txboard_full_sync_node`
+- `txboard_reload_node_config`
+- `txboard_restart_kernel`
+- `txboard_network_test`
+- `txboard_tail_logs`
+
+A state-changing or node-executed tool returns a pending action. An administrator approves or rejects it from **TXBoard Admin → Agent 运维**.
 
 ## Security
 
-- Bearer tokens are TXBoard Sanctum Agent tokens with explicit `agent:*` abilities.
+- Bearer tokens are TXBoard Sanctum Agent tokens with explicit functional `agent:*` abilities.
+- Tokens can be restricted to specific node IDs and/or machine IDs.
 - The gateway does not persist bearer tokens.
-- State-changing tools create a pending action; an administrator must approve the action in TXBoard before dispatch.
-- No arbitrary shell, SQL, Redis, filesystem or Docker tool is exposed.
+- It forwards `X-Agent-Protocol: mcp` so Agent audit records identify MCP traffic.
+- State-changing/node-executed tools create a pending action; an administrator must approve the action in TXBoard before dispatch.
+- Repeated operations are subject to TXBoard cooldown and pending-queue limits.
+- Log retrieval is limited to the operator-configured TX-Node application log, is line/byte bounded and redacted.
+- No arbitrary shell, SQL, Redis, filesystem path, HTTP fetch, package-install or Docker tool is exposed.
 - Network diagnostics remain constrained by TXBoard target policy.
