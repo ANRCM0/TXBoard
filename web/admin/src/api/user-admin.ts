@@ -5,6 +5,7 @@ export type AdminUser = {
   id: number
   email: string
   plan_id?: number | null
+  group_id?: number | null
   plan?: { id?: number; name?: string } | null
   group?: { id?: number; name?: string } | null
   invite_user?: { id?: number; email?: string } | null
@@ -22,6 +23,9 @@ export type AdminUser = {
   total_used?: number
   online_count?: number
   next_reset_at?: number | null
+  last_reset_at?: number | null
+  reset_count?: number
+  last_login_at?: number | null
   speed_limit?: number | null
   device_limit?: number | null
   is_admin?: boolean | number
