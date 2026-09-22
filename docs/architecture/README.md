@@ -39,7 +39,7 @@ flowchart LR
 
 The MCP Gateway is optional and is not part of the core node protocol. Agent requests are mediated by TXBoard permissions, approval policy and audit before any node-scoped action is dispatched.
 
-Token creation in Admin also exposes a credential-free self-connect prompt pointing to the version-matched public guide at `/.well-known/txboard-agent-connect.md`. External Agents use that guide to configure the existing Remote HTTP MCP endpoint and perform read-only verification; the guide does not create a second MCP runtime or widen Agent permissions.
+Token creation in Admin exposes a version-matched self-connect guide at `/.well-known/txboard-agent-connect.md`. Self-Connect v2 also issues a short-lived one-time pairing code backed by encrypted Redis TTL state so an external Agent can exchange the temporary code for the already-created Agent Token, store it locally, configure the existing Remote HTTP MCP endpoint and perform read-only verification. Pairing is credential delivery only: durable authorization remains the Sanctum Agent Token, and no second MCP/control-plane runtime is created.
 
 ## Repository boundaries
 
