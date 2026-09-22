@@ -104,11 +104,6 @@ class AgentPairingService
         }
     }
 
-    public function cacheKeyForTesting(string $code): string
-    {
-        return $this->cacheKey($code);
-    }
-
     private function store()
     {
         return Cache::store((string) config('agent_ops.pairing_cache_store', 'redis'));
