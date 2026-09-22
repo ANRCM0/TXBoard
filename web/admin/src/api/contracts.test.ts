@@ -136,12 +136,21 @@ describe('module registry contract', () => {
               id: 'theme.txboard',
               name: 'TXBoard',
               version: '1.0.0',
+              description: 'TXBoard default theme',
+              author: 'TXBoard',
               type: 'theme',
               source: 'system',
               installed: true,
               enabled: true,
               active: true,
               health: 'healthy',
+              health_details: {
+                checks: {
+                  schedule: true,
+                  websocket_server: null,
+                },
+                observed_at: 1790112000,
+              },
               capabilities: ['theme'],
               compatibility: { txboard: '*' },
               admin: {
@@ -181,10 +190,19 @@ describe('module registry contract', () => {
     expect(result.modules).toHaveLength(1)
     expect(result.modules[0]).toMatchObject({
       id: 'theme.txboard',
+      description: 'TXBoard default theme',
+      author: 'TXBoard',
       type: 'theme',
       source: 'system',
       active: true,
       health: 'healthy',
+      health_details: {
+        checks: {
+          schedule: true,
+          websocket_server: null,
+        },
+        observed_at: 1790112000,
+      },
       admin: {
         navigation: [
           {

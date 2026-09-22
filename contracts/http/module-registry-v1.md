@@ -27,6 +27,8 @@ Response data:
       "id": "theme.txboard",
       "name": "TXBoard",
       "version": "1.0.0",
+      "description": "TXBoard default theme",
+      "author": "TXBoard",
       "type": "theme",
       "source": "system",
       "installed": true,
@@ -56,6 +58,27 @@ Response data:
 ```
 
 Modules are sorted by stable Module ID.
+
+Descriptors may optionally project validated intrinsic `description` / `author` metadata and bounded runtime health details:
+
+```json
+{
+  "id": "agent_ops",
+  "description": "TXBoard AI-native operations and approval control plane",
+  "author": "TXBoard",
+  "health": "degraded",
+  "health_details": {
+    "checks": {
+      "schedule": true,
+      "horizon": true,
+      "websocket_server": false
+    },
+    "observed_at": 1790112000
+  }
+}
+```
+
+`health_details` is runtime-derived only. Check values are boolean or null; arbitrary runtime exception text, credentials and secrets are not valid health-detail values.
 
 A descriptor may additionally expose validated host navigation metadata:
 
@@ -94,6 +117,23 @@ A broken adapter or malformed legacy module must not prevent healthy modules fro
 ```
 
 Errors must not contain credentials or other secrets.
+
+A runtime descriptor may optionally include bounded `health_details` derived by TXBoard:
+
+```json
+{
+  "health_details": {
+    "checks": {
+      "schedule": true,
+      "horizon": true,
+      "websocket_server": false
+    },
+    "observed_at": 1790112000
+  }
+}
+```
+
+Check values are boolean or null. This field must not contain arbitrary runtime exception text.
 
 ## Get one module
 
@@ -153,4 +193,6 @@ Agent Ops is registered as the system module:
 agent_ops
 ```
 
-It describes the existing Agent Ops HTTP/Admin capability. MCP remains optional and outside the Registry execution path.
+It describes the existing Agent Ops HTTP/Admin capability. Phase H additionally derives `healthy/degraded` state and bounded `health_details.checks` from the existing Agent Ops system-status service. Health collection failures keep the system Module discoverable and use a fixed non-secret diagnostic.
+
+MCP remains optional and outside the Registry execution path.
