@@ -12,6 +12,7 @@ import {
 } from '../../api/ticket'
 import { Modal } from '../../components/ui/Modal'
 import { PageHeader } from '../../components/ui/PageHeader'
+import { QueryFeedback } from '../../components/ui/QueryFeedback'
 import { requestConfirm } from '../../components/ui/ConfirmDialog'
 
 export function TicketsPage() {
@@ -87,6 +88,7 @@ export function TicketsPage() {
     </div>
 
     <div className="card ticket-table-card">
+      <QueryFeedback loading={query.isFetching} error={query.isError} onRetry={() => query.refetch()} />
       <div className="table-wrap">
         <table className="data-table">
           <thead>
@@ -119,7 +121,7 @@ export function TicketsPage() {
                 </button>
               </td>
             </tr>)}
-            {!rows.length && <tr>
+            {!rows.length && !query.isError && <tr>
               <td colSpan={7} className="empty-cell">{query.isLoading ? '加载中…' : '暂无工单'}</td>
             </tr>}
           </tbody>
@@ -210,7 +212,7 @@ function TicketDetailModal({
     title={detail ? cleanSubject(detail.subject) : '工单详情'}
     onClose={onClose}
   >
-    {query.isLoading && !detail ? <div className="empty-state">加载工单…</div> : detail ? <div className="ticket-detail">
+    {query.isError ? <QueryFeedback error onRetry={() => query.refetch()} /> : query.isLoading && !detail ? <div className="empty-state">加载工单…</div> : detail ? <div className="ticket-detail">
       <div className="ticket-detail-meta">
         <span>用户：<strong>{detail.user?.email || '-'}</strong></span>
         <span>状态：<strong>{detail.status === 1 ? '已关闭' : '处理中'}</strong></span>

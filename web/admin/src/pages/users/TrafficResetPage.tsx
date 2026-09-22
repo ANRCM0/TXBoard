@@ -8,7 +8,9 @@ import {
   resetUserTraffic,
 } from '../../api/traffic-reset'
 import { PageHeader } from '../../components/ui/PageHeader'
+import { QueryFeedback } from '../../components/ui/QueryFeedback'
 import { requestConfirm } from '../../components/ui/ConfirmDialog'
+import { getUsers, type AdminUser } from '../../api/user-admin'
 
 export function TrafficResetPage() {
   const qc = useQueryClient()
@@ -18,7 +20,9 @@ export function TrafficResetPage() {
   const [appliedEmail, setAppliedEmail] = useState('')
   const [source, setSource] = useState('')
   const [days, setDays] = useState(30)
-  const [resetUserId, setResetUserId] = useState('')
+  const [resetLookup, setResetLookup] = useState('')
+  const [appliedResetLookup, setAppliedResetLookup] = useState('')
+  const [selectedResetUser, setSelectedResetUser] = useState<AdminUser | null>(null)
   const [resetReason, setResetReason] = useState('')
 
   const logsQuery = useQuery({
@@ -38,19 +42,45 @@ export function TrafficResetPage() {
     enabled: tab === 'stats',
   })
 
+  const resetUserQuery = useQuery({
+    queryKey: ['trafficResetUserLookup', appliedResetLookup],
+    queryFn: () => {
+      const keyword = appliedResetLookup.trim()
+      const numeric = /^\d+$/.test(keyword)
+      return getUsers({
+        current: 1,
+        pageSize: 8,
+        filter: numeric
+          ? [{ id: 'id', value: `eq:${keyword}` }]
+          : [{ id: 'email', value: keyword }],
+        sort: [{ id: 'id', desc: true }],
+      })
+    },
+    enabled: Boolean(appliedResetLookup.trim()),
+  })
+
   const resetMutation = useMutation({
-    mutationFn: () => resetUserTraffic(Number(resetUserId), resetReason),
+    mutationFn: () => resetUserTraffic(selectedResetUser!.id, resetReason),
     onSuccess: () => {
       toast.success('用户流量已重置')
       setResetReason('')
+      setSelectedResetUser(null)
       qc.invalidateQueries({ queryKey: ['trafficResetLogs'] })
       qc.invalidateQueries({ queryKey: ['trafficResetStats'] })
       qc.invalidateQueries({ queryKey: ['adminUsers'] })
+      qc.invalidateQueries({ queryKey: ['trafficResetUserLookup'] })
     },
   })
 
   const logs = logsQuery.data?.data || []
   const stats = statsQuery.data || {}
+  const resetCandidates = resetUserQuery.data?.data || []
+
+  function applyResetLookup() {
+    const keyword = resetLookup.trim()
+    setSelectedResetUser(null)
+    setAppliedResetLookup(keyword)
+  }
 
   return <>
     <PageHeader title="流量重置" description="查看重置日志、来源统计，并支持管理员手动重置用户流量。"/>
@@ -61,13 +91,54 @@ export function TrafficResetPage() {
         <RefreshCcw size={20}/>
       </div>
       <div className="manual-reset-form">
-        <label className="field"><span>用户 ID</span><input type="number" min="1" value={resetUserId} onChange={e => setResetUserId(e.target.value)} placeholder="123"/></label>
+        <div className="manual-reset-user-picker">
+          <span className="manual-reset-label">用户</span>
+          <div className="order-search">
+            <input
+              value={resetLookup}
+              onChange={e => setResetLookup(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && applyResetLookup()}
+              placeholder="输入邮箱或 UID…"
+            />
+            <button className="button" type="button" onClick={applyResetLookup}><Search size={15}/>查找</button>
+          </div>
+          {appliedResetLookup ? (
+            <div className="manual-reset-user-results">
+              <QueryFeedback loading={resetUserQuery.isFetching} error={resetUserQuery.isError} onRetry={() => resetUserQuery.refetch()} />
+              {!resetUserQuery.isFetching && !resetUserQuery.isError && resetCandidates.map(user => (
+                <button
+                  type="button"
+                  key={user.id}
+                  className={selectedResetUser?.id === user.id ? 'manual-reset-user-option selected' : 'manual-reset-user-option'}
+                  onClick={() => setSelectedResetUser(user)}
+                >
+                  <strong>{user.email}</strong>
+                  <small>
+                    UID #{user.id} · {user.plan?.name || '无套餐'} · 已用 {trafficUsed(user)} / {trafficTotal(user)}
+                  </small>
+                </button>
+              ))}
+              {!resetUserQuery.isFetching && !resetUserQuery.isError && !resetCandidates.length ? (
+                <span className="muted">未找到匹配用户。</span>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
         <label className="field"><span>原因</span><input value={resetReason} onChange={e => setResetReason(e.target.value)} placeholder="管理员手动重置"/></label>
         <button
           className="button primary"
-          disabled={resetMutation.isPending || !Number(resetUserId)}
-          onClick={() => requestConfirm({ title: '重置流量', message: '确认将该用户已使用的上传/下载流量重置为 0？该操作不可恢复。', danger: true, confirmLabel: '执行重置', action: () => resetMutation.mutate() })}
-        >{resetMutation.isPending ? '重置中…' : '执行重置'}</button>
+          disabled={resetMutation.isPending || !selectedResetUser}
+          onClick={() => {
+            if (!selectedResetUser) return
+            requestConfirm({
+              title: '重置流量',
+              message: `确认重置 ${selectedResetUser.email}（UID #${selectedResetUser.id}）的已用流量？当前已用 ${trafficUsed(selectedResetUser)}，执行后不可恢复。`,
+              danger: true,
+              confirmLabel: '执行重置',
+              action: () => resetMutation.mutate(),
+            })
+          }}
+        >{resetMutation.isPending ? '重置中…' : selectedResetUser ? `重置 ${selectedResetUser.email}` : '请先选择用户'}</button>
       </div>
     </section>
 
@@ -94,6 +165,7 @@ export function TrafficResetPage() {
       </div>
 
       <div className="card traffic-reset-table-card">
+        <QueryFeedback loading={logsQuery.isFetching} error={logsQuery.isError} onRetry={() => logsQuery.refetch()} />
         <div className="table-wrap"><table className="data-table">
           <thead><tr><th>ID</th><th>用户</th><th>重置类型</th><th>来源</th><th>清除流量</th><th>重置后</th><th>时间</th><th>原因</th></tr></thead>
           <tbody>
@@ -107,7 +179,7 @@ export function TrafficResetPage() {
               <td>{formatTime(row.reset_time)}</td>
               <td>{String(row.metadata?.reason || '-')}</td>
             </tr>)}
-            {!logs.length && <tr><td colSpan={8} className="empty-cell">{logsQuery.isLoading ? '加载中…' : '暂无重置记录'}</td></tr>}
+            {!logs.length && !logsQuery.isError && <tr><td colSpan={8} className="empty-cell">{logsQuery.isLoading ? '加载中…' : '暂无重置记录'}</td></tr>}
           </tbody>
         </table></div>
         <div className="pagination-bar">
@@ -128,6 +200,7 @@ export function TrafficResetPage() {
           <option value={365}>最近 365 天</option>
         </select>
       </div>
+      <QueryFeedback loading={statsQuery.isFetching} error={statsQuery.isError} onRetry={() => statsQuery.refetch()} />
       <div className="stats-cards traffic-stats-cards">
         <Stat label="总重置次数" value={stats.total_resets}/>
         <Stat label="管理员手动" value={stats.manual_resets}/>
@@ -140,8 +213,22 @@ export function TrafficResetPage() {
   </>
 }
 
+function trafficUsed(user: AdminUser) {
+  return formatBytes(Number(user.total_used ?? ((user.u || 0) + (user.d || 0))))
+}
+
+function trafficTotal(user: AdminUser) {
+  return formatBytes(Number(user.transfer_enable || 0))
+}
+
+function formatBytes(value: number) {
+  if (!Number.isFinite(value) || value <= 0) return '0 B'
+  const gb = value / 1073741824
+  return gb >= 1024 ? `${(gb / 1024).toFixed(2)} TB` : `${gb.toFixed(gb >= 10 ? 1 : 2)} GB`
+}
+
 function Stat({ label, value }: { label: string; value?: number }) {
-  return <div className="stat-card"><span>{label}</span><strong>{Number(value || 0).toLocaleString()}</strong></div>
+  return <div className="stat-card"><span>{label}</span><strong>{value === undefined ? '—' : Number(value).toLocaleString()}</strong></div>
 }
 
 function formatTime(value: unknown) {

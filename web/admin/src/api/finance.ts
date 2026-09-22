@@ -49,6 +49,7 @@ export type OrderItem = {
   user_id: number
   plan_id: number
   plan?: { id: number; name: string } | null
+  user?: { id: number; email?: string } | null
   period?: string
   total_amount: number
   handling_amount?: number | null

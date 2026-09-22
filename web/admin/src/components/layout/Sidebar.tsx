@@ -35,7 +35,9 @@ const groups = [
     icon: Settings,
     items: [
       ['/config/system', '系统配置', Settings],
+      ['/config/frontend', '前端设置', LayoutDashboard],
       ['/system/agent-ops', 'Agent 运维', Bot],
+      ['/system/audit-log', '审计日志', FileText],
       ['/config/plugin', '插件管理', Plug],
       ['/config/theme', '主题配置', Package],
       ['/config/notice', '公告管理', Bell],
