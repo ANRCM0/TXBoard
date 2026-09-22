@@ -1,9 +1,11 @@
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { LogOut, Menu, Moon, Package, Search, Sun, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useLocation, useNavigate } from 'react-router-dom'
+import { getModuleRegistry } from '../../api/module'
 import { removeAccessToken } from '../../lib/storage'
+import { buildModuleNavigationGroups } from '../../navigation/registry'
 import { preloadAdminRoute } from '../../lib/routePreload'
 import { useDialog } from '../../lib/useDialog'
 
@@ -73,6 +75,7 @@ export function TopBar({ onOpenMenu }: { onOpenMenu: () => void }) {
   const navigate = useNavigate()
   const location = useLocation()
   const queryClient = useQueryClient()
+  const modulesQuery = useQuery({ queryKey: ['moduleRegistry'], queryFn: getModuleRegistry })
   const [dark, setDark] = useState(() => localStorage.getItem('theme') === 'dark')
   const [commandOpen, setCommandOpen] = useState(false)
   const [query, setQuery] = useState('')
@@ -120,11 +123,18 @@ export function TopBar({ onOpenMenu }: { onOpenMenu: () => void }) {
     return 'search-only' as const
   }, [location.pathname])
 
+  const moduleCommands = useMemo(
+    () => buildModuleNavigationGroups(modulesQuery.data?.modules || [])
+      .flatMap(group => group.items.map(item => [item.href, `${group.title} · ${item.title}`] as const)),
+    [modulesQuery.data?.modules],
+  )
+
   const commands = useMemo(() => {
+    const all = [...commandItems, ...moduleCommands]
     const q = query.trim().toLowerCase()
-    if (!q) return commandItems
-    return commandItems.filter(([path, label]) => `${label} ${path}`.toLowerCase().includes(q))
-  }, [query])
+    if (!q) return all
+    return all.filter(([path, label]) => `${label} ${path}`.toLowerCase().includes(q))
+  }, [moduleCommands, query])
 
   function logout() {
     removeAccessToken()

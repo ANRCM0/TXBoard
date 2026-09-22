@@ -144,6 +144,16 @@ describe('module registry contract', () => {
               health: 'healthy',
               capabilities: ['theme'],
               compatibility: { txboard: '*' },
+              admin: {
+                navigation: [
+                  {
+                    id: 'dashboard',
+                    title: 'Dashboard',
+                    path: 'dashboard',
+                    order: 10,
+                  },
+                ],
+              },
             },
           ],
           errors: [],
@@ -175,6 +185,16 @@ describe('module registry contract', () => {
       source: 'system',
       active: true,
       health: 'healthy',
+      admin: {
+        navigation: [
+          {
+            id: 'dashboard',
+            title: 'Dashboard',
+            path: 'dashboard',
+            order: 10,
+          },
+        ],
+      },
     })
     expect(result.summary.total).toBe(1)
   })

@@ -11,6 +11,14 @@ export type ModuleHealth =
   | 'incompatible'
   | 'missing_dependency'
 
+export type ModuleAdminNavigation = {
+  id: string
+  title: string
+  path: string
+  icon?: string
+  order?: number
+}
+
 export type ModuleDescriptor = {
   id: string
   name: string
@@ -24,6 +32,9 @@ export type ModuleDescriptor = {
   capabilities: string[]
   compatibility: {
     txboard: string
+  }
+  admin?: {
+    navigation: ModuleAdminNavigation[]
   }
 }
 
