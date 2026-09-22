@@ -15,6 +15,7 @@ import {
   runAgentInspection,
   revokeAgentToken,
   type AgentActionItem,
+  type AgentPairing,
 } from '../../api/agent'
 import { getMachines, getNodes } from '../../api/server'
 import { PageHeader } from '../../components/ui/PageHeader'
@@ -52,13 +53,14 @@ export function AgentOpsPage() {
   const [targetNodeIds, setTargetNodeIds] = useState<number[]>([])
   const [targetMachineIds, setTargetMachineIds] = useState<number[]>([])
   const [plainToken, setPlainToken] = useState('')
+  const [pairing, setPairing] = useState<AgentPairing | null>(null)
   const [connectModalOpen, setConnectModalOpen] = useState(false)
   const [rejectingAction, setRejectingAction] = useState<AgentActionItem | null>(null)
   const [rejectReason, setRejectReason] = useState('')
   const selfConnectGuideUrl = useMemo(() => agentSelfConnectGuideUrl(window.location.origin), [])
   const selfConnectPrompt = useMemo(
-    () => buildAgentSelfConnectPrompt(selfConnectGuideUrl),
-    [selfConnectGuideUrl],
+    () => buildAgentSelfConnectPrompt(selfConnectGuideUrl, pairing?.code),
+    [selfConnectGuideUrl, pairing?.code],
   )
 
   useEffect(() => {
@@ -71,6 +73,7 @@ export function AgentOpsPage() {
     mutationFn: createAgentToken,
     onSuccess: data => {
       setPlainToken(data?.plain_text_token || '')
+      setPairing(data?.pairing || null)
       setConnectModalOpen(Boolean(data?.plain_text_token))
       setClientName('')
       setTargetMode('all')
@@ -507,8 +510,12 @@ export function AgentOpsPage() {
       >
         <div className="form-stack">
           <div>
-            <strong>1. 复制下面的 Agent 自助接入提示词</strong>
-            <p className="text-muted">提示词只包含当前面板的公开接入文档地址，不包含 Agent Token。</p>
+            <strong>1. 复制一句话给 Agent</strong>
+            <p className="text-muted">
+              {pairing
+                ? `提示词包含一个仅可使用一次的临时配对码，有效至 ${formatDate(pairing.expires_at)}；长期 Agent Token 不会进入提示词。`
+                : '临时配对服务当前不可用，提示词会退回 v1 手动 secret / env 接入方式。'}
+            </p>
           </div>
           <pre className="code-block">{selfConnectPrompt}</pre>
           <div className="card-actions">
@@ -521,8 +528,8 @@ export function AgentOpsPage() {
           </div>
 
           <div className="callout warning">
-            <strong>2. 单独保存 Agent Token</strong>
-            <p>让 Agent 优先通过本地 secret / env 机制读取它。不要把长期 Token 拼进上面的提示词或提交到仓库。</p>
+            <strong>2. 长期 Agent Token（备用手动方式）</strong>
+            <p>{pairing ? '正常情况下 Agent 会用一次性配对码自动兑换并本地保存 Token；这里仍保留原有一次性明文作为兼容与故障回退。' : '请通过 Agent 的本地 secret / env 机制提供 Token，不要把长期 Token 发到聊天里或提交到仓库。'}</p>
             <pre className="code-block">{plainToken}</pre>
             <button type="button" className="button" onClick={() => void copyToken()}>
               <Copy size={15} />复制 Token
@@ -531,7 +538,7 @@ export function AgentOpsPage() {
 
           <div className="callout">
             <strong>Agent 会做什么？</strong>
-            <p>它会检测自己的 MCP 配置方式，连接同域 <code>/mcp</code>，只用只读工具验证连接，并汇报配置位置、工具发现结果和是否需要 reload / restart。</p>
+            <p>它会检测自己的 MCP 配置方式；有配对码时先向 TXBoard 一次性兑换长期 Agent Token，再连接同域 <code>/mcp</code>，只用只读工具验证连接，并汇报非敏感结果。</p>
           </div>
         </div>
       </Modal>
