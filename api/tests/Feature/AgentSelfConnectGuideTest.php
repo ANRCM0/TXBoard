@@ -18,8 +18,9 @@ class AgentSelfConnectGuideTest extends TestCase
 
         $body = $response->getContent();
 
-        $this->assertStringContainsString('TXBoard Agent Self-Connect Guide v1', $body);
+        $this->assertStringContainsString('TXBoard Agent Self-Connect Guide v2', $body);
         $this->assertStringContainsString('<PANEL_ORIGIN>/mcp', $body);
+        $this->assertStringContainsString('/api/v2/agent/pairings/redeem', $body);
         $this->assertStringContainsString('txboard_system_status', $body);
         $this->assertStringContainsString('Do not install or start another TXBoard MCP server', $body);
         $this->assertStringContainsString('Do not disable TLS verification automatically', $body);
