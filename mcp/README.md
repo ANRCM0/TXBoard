@@ -32,6 +32,18 @@ docker compose --profile mcp up -d
 
 That compatibility service now reuses the same TXBoard image instead of building a second MCP image.
 
+## Agent self-connect
+
+After an administrator creates an Agent Token, TXBoard Admin now presents an **Agent 自助接入** dialog. The copied prompt intentionally contains no credential; it points the Agent at the version-matched public guide served by that TXBoard instance:
+
+```text
+https://panel.example.com/.well-known/txboard-agent-connect.md
+```
+
+The guide instructs Hermes, OpenClaw and other MCP-compatible Agents to detect their own native MCP configuration, connect to the existing remote `/mcp` endpoint, preserve unrelated configuration and verify with read-only tools only.
+
+This is onboarding over the existing MCP Gateway, not an installer for another gateway. The Agent Token remains separate from the prompt and the Agent Ops permission / target scope / approval / audit boundary is unchanged.
+
 ## Standalone development
 
 The gateway can still be built and run independently:
