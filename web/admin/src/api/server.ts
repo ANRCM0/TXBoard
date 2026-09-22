@@ -19,6 +19,21 @@ export type ProtocolFormOption = {
   label: string
 }
 
+export type ProtocolGeneratorKind = 'x25519' | 'hex' | 'ech'
+
+/**
+ * Declarative key generation for a protocol field. The editor calls the
+ * generator endpoint once and writes every response key into its mapped
+ * protocol_settings path, so admins never run `xray x25519` by hand.
+ */
+export type ProtocolFieldGenerator = {
+  kind: ProtocolGeneratorKind
+  label?: string
+  params?: Record<string, string | number>
+  /** response key -> protocol_settings path */
+  map: Record<string, string>
+}
+
 export type ProtocolFormField = {
   key: string
   label: string
@@ -31,6 +46,7 @@ export type ProtocolFormField = {
   separator?: 'comma' | 'newline'
   options?: ProtocolFormOption[]
   visible_when?: ProtocolFormCondition | ProtocolFormCondition[]
+  generator?: ProtocolFieldGenerator
 }
 
 export type ProtocolDefinitionMeta = {
@@ -96,6 +112,16 @@ export type MachineItem = {
 
 export type GroupItem = { id: number; name?: string; [key: string]: unknown }
 export type RouteItem = { id: number; remarks?: string; match?: string[]; action?: string; action_value?: string; [key: string]: unknown }
+
+/**
+ * Ask the panel to mint key material for a protocol field. Params come from the
+ * generator metadata; values starting with $ are resolved from editor context
+ * (for example $host -> the node address currently being edited).
+ */
+export async function generateSecret(kind: ProtocolGeneratorKind, params: Record<string, unknown> = {}) {
+  const { data } = await apiClient.get('/server/manage/generateSecret', { params: { kind, ...params } })
+  return unwrap<Record<string, string>>(data) || {}
+}
 
 export async function getProtocolDefinitions() {
   const { data } = await apiClient.get('/server/manage/protocols')
