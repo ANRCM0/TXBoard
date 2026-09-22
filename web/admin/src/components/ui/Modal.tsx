@@ -1,5 +1,7 @@
 import { X } from 'lucide-react'
 import type { ReactNode } from 'react'
+import { createPortal } from 'react-dom'
+import { useDialog } from '../../lib/useDialog'
 
 export function Modal({
   open,
@@ -24,9 +26,10 @@ export function Modal({
   className?: string
   bodyClassName?: string
 }) {
+  const dialogRef = useDialog(open, onClose)
   if (!open) return null
-  return <div className="modal-root" role="dialog" aria-modal="true" aria-label={title}>
-    <button className="modal-backdrop" onClick={onClose} aria-label="关闭" />
+  return createPortal(<div ref={dialogRef} tabIndex={-1} className="modal-root" role="dialog" aria-modal="true" aria-label={title}>
+    <button type="button" tabIndex={-1} className="modal-backdrop" onClick={onClose} aria-label="关闭" />
     <div className={[wide ? 'modal-card modal-card-wide' : 'modal-card', className].filter(Boolean).join(' ')}>
       <div className="modal-header">
         <div className="modal-title">
@@ -35,11 +38,11 @@ export function Modal({
         </div>
         <div className="modal-header-actions">
           {headerAction}
-          <button className="icon-button" onClick={onClose} aria-label="关闭"><X size={18}/></button>
+          <button type="button" className="icon-button" onClick={onClose} aria-label="关闭"><X size={18}/></button>
         </div>
       </div>
       <div className={['modal-body', bodyClassName].filter(Boolean).join(' ')}>{children}</div>
       {footer ? <div className="modal-footer">{footer}</div> : null}
     </div>
-  </div>
+  </div>, document.body)
 }

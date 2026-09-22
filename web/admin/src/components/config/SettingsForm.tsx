@@ -1,10 +1,11 @@
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { fetchSettings, saveSettings, type Settings } from '../../api/config'
 import { setAdminSecurePath } from '../../api/client'
 import { resolveBasePath } from '../../lib/basePath'
 import { ConfigSectionFrame } from './ConfigSectionFrame'
+import { QueryFeedback } from '../ui/QueryFeedback'
 
 export type SettingOption = { label: string; value: string | number }
 export type SettingField = {
@@ -33,19 +34,32 @@ export function SettingsForm({
   description: string
   fields: SettingField[]
 }) {
+  const queryClient = useQueryClient()
   const query = useQuery({ queryKey: ['settings', settingKey], queryFn: () => fetchSettings(settingKey) })
   const [values, setValues] = useState<Settings>({})
+  const latestValues = useRef<Settings>({})
+  const dirty = useRef(false)
+  const [unsaved, setUnsaved] = useState(false)
   const timer = useRef<number | undefined>()
 
   useEffect(() => {
-    if (query.data) setValues(query.data)
+    if (query.data && !dirty.current) {
+      latestValues.current = query.data
+      setValues(query.data)
+    }
   }, [query.data])
 
   useEffect(() => () => window.clearTimeout(timer.current), [])
 
   const mutation = useMutation({
+    scope: { id: `settings-${settingKey}` },
     mutationFn: (payload: Settings) => saveSettings(payload),
     onSuccess: (_data, payload) => {
+      if (payload === latestValues.current) {
+        dirty.current = false
+        setUnsaved(false)
+      }
+      queryClient.setQueryData(['settings', settingKey], payload)
       toast.success('已自动保存')
 
       const nextSecurePath =
@@ -87,7 +101,10 @@ export function SettingsForm({
   }, [fields])
 
   function patch(field: SettingField, value: unknown) {
-    const next = { ...values, [field.key]: value }
+    const next = { ...latestValues.current, [field.key]: value }
+    latestValues.current = next
+    dirty.current = true
+    setUnsaved(true)
     setValues(next)
     window.clearTimeout(timer.current)
     if ((field.saveMode || 'auto') === 'auto') {
@@ -98,13 +115,13 @@ export function SettingsForm({
   function commitBlurField(field: SettingField) {
     if (field.saveMode !== 'blur') return
     window.clearTimeout(timer.current)
-    mutation.mutate(values)
+    mutation.mutate(latestValues.current)
   }
 
   return (
     <ConfigSectionFrame title={title} description={description}>
-      {query.isLoading ? (
-        <p className="config-frame-loading">加载中…</p>
+      {query.isLoading || (query.isError && !query.data) ? (
+        <QueryFeedback loading={query.isFetching} error={query.isError} onRetry={() => query.refetch()} />
       ) : (
         <div className="config-form-sections">
           {sections.map(section => {
@@ -131,8 +148,12 @@ export function SettingsForm({
               </section>
             )
           })}
-          <div className="config-autosave">
-            {mutation.isPending ? '保存中…' : '修改后 1 秒自动保存'}
+          <div className="config-autosave" role="status" aria-live="polite">
+            {mutation.isPending ? '保存中…' : mutation.isError ? '保存失败，修改仍保留在当前页面' : unsaved ? '有待保存的修改…' : mutation.isSuccess ? '所有修改已保存' : '修改后自动保存，部分设置在离开输入框后保存'}
+            {mutation.isError && <button type="button" className="button" onClick={() => {
+              window.clearTimeout(timer.current)
+              mutation.mutate(latestValues.current)
+            }}>重试保存</button>}
           </div>
         </div>
       )}
@@ -163,6 +184,7 @@ function SettingInput({
         <button
           type="button"
           role="switch"
+          aria-label={field.label}
           aria-checked={Boolean(value)}
           className={`config-switch ${Boolean(value) ? 'active' : ''}`}
           onClick={() => onChange(!Boolean(value))}

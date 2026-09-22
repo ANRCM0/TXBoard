@@ -78,10 +78,10 @@ export function NodesPage(){
       header:'操作',
       width:'72px',
       render:row=><details className="row-menu">
-        <summary><MoreHorizontal size={18}/></summary>
+        <summary aria-label={'节点 '+(row.name||row.id)+' 的操作'}><MoreHorizontal size={18}/></summary>
         <div className="row-menu-popover">
           <button onClick={()=>{setEditing(row);setOpen(true)}}><Pencil size={15}/>编辑</button>
-          <button className="danger" onClick={()=>confirm('删除节点 '+(row.name||row.id)+'？')&&remove.mutate(row.id)}><Trash2 size={15}/>删除</button>
+          <button className="danger" disabled={remove.isPending} onClick={()=>confirm('删除节点 '+(row.name||row.id)+'？')&&remove.mutate(row.id)}><Trash2 size={15}/>删除</button>
         </div>
       </details>,
     },
@@ -97,16 +97,17 @@ export function NodesPage(){
     <div className="server-page-toolbar">
       <div className="server-search">
         <Search size={15}/>
-        <input value={search} onChange={event=>setSearch(event.target.value)} placeholder="搜索节点…" />
+        <input aria-label="搜索节点" value={search} onChange={event=>setSearch(event.target.value)} placeholder="搜索节点…" />
       </div>
-      <select value={machineFilter} onChange={event=>setMachineFilter(event.target.value)}>
+      <select aria-label="筛选运行机器" value={machineFilter} onChange={event=>setMachineFilter(event.target.value)}>
         <option value="">全部机器</option>
         {machineRows.map(machine=><option key={machine.id} value={String(machine.id)}>{machine.name||'Machine '+machine.id}</option>)}
       </select>
-      <button className="button" onClick={()=>query.refetch()}><RefreshCw size={16}/>刷新</button>
+      {(search||machineFilter)&&<button className="button" onClick={()=>{setSearch('');setMachineFilter('')}}>清除筛选</button>}
+      <button className="button" disabled={query.isFetching} onClick={()=>query.refetch()}><RefreshCw size={16} className={query.isFetching?'loading-spinner':undefined}/>{query.isFetching?'刷新中…':'刷新'}</button>
     </div>
 
-    <div className="server-table-card"><DataTable rows={filtered} columns={columns}/></div>
+    <div className="server-table-card"><DataTable rows={filtered} columns={columns} rowKey={row=>row.id} loading={query.isFetching} error={query.isError} onRetry={()=>query.refetch()} empty={search||machineFilter?'没有符合条件的节点，请调整筛选条件':'还没有节点，点击“添加节点”开始配置'}/></div>
 
     <NodeEditorModal
       open={open}
