@@ -77,6 +77,17 @@ class ModuleManifestTest extends TestCase
             'compatibility' => [
                 'txboard' => '>=1.0.0',
             ],
+            'admin' => [
+                'navigation' => [
+                    [
+                        'id' => 'audit',
+                        'title' => 'Access Audit',
+                        'path' => 'audit',
+                        'icon' => 'shield',
+                        'order' => 100,
+                    ],
+                ],
+            ],
         ], $descriptor->toArray());
 
         $this->assertArrayNotHasKey('enabled', $manifest->toArray());

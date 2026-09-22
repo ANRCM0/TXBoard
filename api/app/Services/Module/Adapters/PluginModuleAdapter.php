@@ -153,8 +153,12 @@ final class PluginModuleAdapter implements ModuleAdapter
         $capabilities = [];
 
         $menus = $config['admin_menus'] ?? [];
-        if (is_array($menus) && $menus !== []) {
+        $navigation = $this->legacyAdminNavigation($menus);
+        if ($navigation !== []) {
             $capabilities[] = ModuleCapability::ADMIN_MENU;
+        }
+
+        if (is_array($menus)) {
             foreach ($menus as $menu) {
                 if (is_array($menu) && !empty($menu['app'])) {
                     $capabilities[] = ModuleCapability::ADMIN_APP;
@@ -210,11 +214,135 @@ final class PluginModuleAdapter implements ModuleAdapter
             $module['author'] = $author;
         }
 
-        return [
+        $manifest = [
             'schema' => ModuleManifest::SCHEMA_VERSION,
             'module' => $module,
             'compatibility' => ['txboard' => trim($compatibility)],
             'capabilities' => array_values(array_unique($capabilities)),
         ];
+
+        if ($navigation !== []) {
+            $manifest['admin'] = [
+                'navigation' => $navigation,
+            ];
+        }
+
+        return $manifest;
+    }
+
+    /**
+     * @return list<array{id: string, title: string, path: string, icon?: string, order?: int}>
+     */
+    private function legacyAdminNavigation(mixed $menus): array
+    {
+        if (!is_array($menus) || !array_is_list($menus)) {
+            return [];
+        }
+
+        $navigation = [];
+        $seenIds = [];
+
+        foreach ($menus as $index => $menu) {
+            if (!is_array($menu) || array_is_list($menu)) {
+                continue;
+            }
+
+            $path = $this->safeLegacyNavigationPath($menu['path'] ?? null);
+            if ($path === null) {
+                continue;
+            }
+
+            $title = null;
+            foreach (['title', 'label'] as $field) {
+                if (is_string($menu[$field] ?? null) && trim($menu[$field]) !== '') {
+                    $candidate = trim($menu[$field]);
+                    if (strlen($candidate) <= 120) {
+                        $title = $candidate;
+                        break;
+                    }
+                }
+            }
+            $title ??= $path;
+
+            $id = $this->legacyNavigationId($menu['id'] ?? null, $path, $index);
+            while (isset($seenIds[$id])) {
+                $suffix = '-' . substr(hash('sha256', $path . ':' . $index . ':' . $id), 0, 8);
+                $id = substr($id, 0, max(1, 64 - strlen($suffix))) . $suffix;
+            }
+            $seenIds[$id] = true;
+
+            $item = [
+                'id' => $id,
+                'title' => $title,
+                'path' => $path,
+            ];
+
+            if (
+                is_string($menu['icon'] ?? null)
+                && trim($menu['icon']) !== ''
+                && strlen(trim($menu['icon'])) <= 80
+            ) {
+                $item['icon'] = trim($menu['icon']);
+            }
+
+            if (
+                is_int($menu['order'] ?? null)
+                && $menu['order'] >= -100000
+                && $menu['order'] <= 100000
+            ) {
+                $item['order'] = $menu['order'];
+            }
+
+            $navigation[] = $item;
+        }
+
+        return $navigation;
+    }
+
+    private function safeLegacyNavigationPath(mixed $value): ?string
+    {
+        if (!is_string($value)) {
+            return null;
+        }
+
+        $path = trim($value);
+        if (
+            $path === ''
+            || str_contains($path, '\\')
+            || preg_match('/^[a-z][a-z0-9+.-]*:/i', $path)
+        ) {
+            return null;
+        }
+
+        $path = trim($path, '/');
+        if (
+            $path === ''
+            || !preg_match('/^[A-Za-z0-9_-]+(?:\/[A-Za-z0-9_-]+)*$/', $path)
+        ) {
+            return null;
+        }
+
+        return $path;
+    }
+
+    private function legacyNavigationId(mixed $value, string $path, int $index): string
+    {
+        if (
+            is_string($value)
+            && preg_match('/^[A-Za-z0-9_-]+$/', trim($value))
+            && strlen(trim($value)) <= 64
+        ) {
+            return trim($value);
+        }
+
+        $candidate = str_replace('/', '-', $path);
+        $candidate = preg_replace('/[^A-Za-z0-9_-]+/', '-', $candidate) ?? '';
+        $candidate = trim($candidate, '-_');
+
+        if ($candidate === '') {
+            $candidate = 'nav-' . substr(hash('sha256', $path . ':' . $index), 0, 12);
+        }
+
+        return substr($candidate, 0, 64);
     }
 }

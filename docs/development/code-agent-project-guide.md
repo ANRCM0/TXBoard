@@ -45,13 +45,17 @@ Read-only Module Center
 PR F
 Controlled Module management API
         ✅
+
+PR G
+Admin Navigation Registry + Admin Bridge v2
+        ✅
 ```
 
 当前：
 
 ```text
-PR G
-Admin Navigation Registry + Admin Bridge v2
+PR H
+Agent Ops registry enrichment
         ▶
 ```
 
@@ -325,6 +329,6 @@ contract -> matching contract tests
 
 当前推荐任务：
 
-> 实现 Module Platform Phase G：Admin Navigation Registry + Admin Bridge v2。
+> 实现 Module Platform Phase H：Agent Ops registry enrichment。
 
-Phase F 已完成受控 Module management API。Phase G 应统一 Admin navigation 声明与宿主能力，同时保持 Admin Bridge v1、Plugin Package v1 和 plugin-owned `admin/dist` 兼容；不要把 Bridge 描述成 PHP 安全沙箱，也不要把 lifecycle 或 Agent Ops 安全策略塞进 Bridge。
+Phase G 已完成统一 Admin Navigation Registry 与可选 Admin Bridge v2。Phase H 只丰富 Agent Ops 在 Module Registry 中的 health/metadata/capability 表达；MCP 仍是可选 protocol adapter，Agent 权限、scope、approval、audit 和 TX-Node typed operation 链路不得迁入 Module Runtime。

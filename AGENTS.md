@@ -27,10 +27,11 @@ Completed:
 - PR D: Theme Package v1, canonical active-theme state and `ThemeLifecycleAdapter -> ThemeService` delegation.
 - PR E: read-only Module Center consuming the Module Registry API as the single inventory model.
 - PR F: controlled Module management API delegating supported lifecycle operations through `ModuleLifecycle`.
+- PR G: Admin Navigation Registry projected through Module Registry plus optional Admin Bridge v2 host services.
 
 Current target:
 
-- PR G: Admin Navigation Registry + Admin Bridge v2.
+- PR H: Agent Ops registry enrichment.
 
 Required direction:
 
@@ -311,28 +312,31 @@ Before merge:
 
 Use merge commits for project PRs unless explicitly instructed otherwise.
 
-## 18. Current Phase G rules
+## 18. Current Phase H rules
 
-Phase F is complete. Controlled lifecycle management now uses:
+Phase G is complete. Admin extension navigation now uses:
 
 ```text
-Admin HTTP
-    -> ModuleLifecycle
-    -> PluginLifecycleAdapter -> PluginManager
-    -> ThemeLifecycleAdapter  -> ThemeService
+Module / legacy Plugin declaration
+        -> Module Adapter
+        -> ModuleDescriptor.admin.navigation
+        -> Module Registry API
+        -> Admin shell
 ```
 
-The next Module Platform work is Admin Navigation Registry + Admin Bridge v2.
+Admin Bridge v1 remains compatible and Bridge v2 is optional.
+
+The next Module Platform work is Agent Ops registry enrichment.
 
 Keep these invariants:
 
-- Admin Bridge v1 remains compatible;
-- Module/package navigation declarations are data, not permission bypasses;
-- host navigation must stay relative and validated;
-- complex Plugin Admin apps remain plugin-owned `admin/dist` builds;
-- do not require third-party plugins to modify TXBoard React source;
-- navigation/runtime registries must remain Octane-safe and container-managed;
-- do not move Plugin/Theme lifecycle into the Bridge;
-- do not change Agent Ops/MCP authorization, approval or TX-Node boundaries in the same PR.
+- Agent Ops API remains usable without MCP;
+- MCP remains an optional protocol adapter;
+- permission, target scope, approval and audit remain authoritative;
+- Module Registry may describe Agent Ops health/capabilities/navigation, but must not execute Agent actions;
+- do not add direct Module/MCP access to MySQL, Redis, TX-Node, SSH, Docker, shell or arbitrary filesystem;
+- use bounded, non-secret health metadata;
+- do not move Agent action state into a new Module table;
+- preserve Octane safety and failure isolation.
 
-The goal is a stable host extension surface, not a frontend plugin sandbox.
+The goal is richer Module representation of Agent Ops without weakening its existing security boundary.

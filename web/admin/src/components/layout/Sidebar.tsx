@@ -24,7 +24,8 @@ import {
 } from 'lucide-react'
 import { useState, type KeyboardEvent } from 'react'
 import { NavLink } from 'react-router-dom'
-import { getPlugins, normalizePluginPath } from '../../api/plugin'
+import { getModuleRegistry } from '../../api/module'
+import { buildModuleNavigationGroups } from '../../navigation/registry'
 import { preloadAdminRoute } from '../../lib/routePreload'
 import { useDialog } from '../../lib/useDialog'
 
@@ -87,7 +88,7 @@ type SidebarProps = {
 
 export function Sidebar({ open, onClose }: SidebarProps) {
   const dialogRef = useDialog(open, onClose)
-  const pluginsQuery = useQuery({ queryKey: ['pluginList'], queryFn: () => getPlugins() })
+  const modulesQuery = useQuery({ queryKey: ['moduleRegistry'], queryFn: getModuleRegistry })
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     system: true,
     node: true,
@@ -95,20 +96,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
     user: true,
   })
 
-  const pluginGroups = (Array.isArray(pluginsQuery.data) ? pluginsQuery.data : [])
-    .filter(plugin => plugin.is_installed && plugin.is_enabled && plugin.admin_menus?.length)
-    .map(plugin => ({
-      code: plugin.code,
-      title: plugin.name || plugin.code,
-      version: plugin.version,
-      items: (plugin.admin_menus || [])
-        .map(menu => {
-          const path = normalizePluginPath(menu.path)
-          return path ? { path: `/plugins/${plugin.code}/${path}`, label: menu.title || menu.label || path } : null
-        })
-        .filter((item): item is { path: string; label: string } => item !== null),
-    }))
-    .filter(group => group.items.length)
+  const moduleGroups = buildModuleNavigationGroups(modulesQuery.data?.modules || [])
 
   function toggleGroup(key: string) {
     setOpenGroups(state => ({ ...state, [key]: !(state[key] ?? true) }))
@@ -190,8 +178,8 @@ export function Sidebar({ open, onClose }: SidebarProps) {
             )
           })}
 
-          {pluginGroups.map(group => (
-            <section className="admin-nav-group" key={group.code}>
+          {moduleGroups.map(group => (
+            <section className="admin-nav-group" key={group.moduleId}>
               <button type="button" className="admin-nav-group-trigger">
                 <Plug size={18} />
                 <span className="truncate">{group.title}</span>
@@ -200,15 +188,15 @@ export function Sidebar({ open, onClose }: SidebarProps) {
               <div className="admin-nav-sublist">
                 {group.items.map(item => (
                   <NavLink
-                    key={item.path}
-                    to={item.path}
-                    onMouseEnter={() => preloadAdminRoute(item.path)}
-                    onFocus={() => preloadAdminRoute(item.path)}
+                    key={item.id}
+                    to={item.href}
+                    onMouseEnter={() => preloadAdminRoute(item.href)}
+                    onFocus={() => preloadAdminRoute(item.href)}
                     onClick={onClose}
                     className={({ isActive }) => `admin-nav-sub ${isActive ? 'active' : ''}`}
                   >
                     <Plug size={16} />
-                    <span>{item.label}</span>
+                    <span>{item.title}</span>
                   </NavLink>
                 ))}
               </div>
