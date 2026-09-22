@@ -22,10 +22,15 @@ When `agent:target:restricted` is absent, the token is not resource-restricted. 
 | GET | `/nodes` | `agent:nodes:read` | filtered |
 | GET | `/nodes/{nodeId}/metrics` | `agent:metrics:read` | enforced |
 | GET | `/nodes/{nodeId}/diagnose` | `agent:nodes:diagnose` | enforced |
+| GET | `/fleet/health` | `agent:insights:read` | filtered |
+| GET | `/inspections?limit=20` | `agent:insights:read` | filtered |
+| GET | `/nodes/{nodeId}/remediation` | `agent:insights:read` | enforced |
+| GET | `/nodes/{nodeId}/timeline?hours=24&limit=100` | `agent:insights:read` | enforced |
 | GET | `/traffic/summary` | `agent:traffic:read` | filtered |
 | GET | `/queue/status` | `agent:system:read` | global |
 | GET | `/audit?limit=50` | `agent:audit:read` | filtered for node-targeted records |
 | GET | `/actions/{requestId}` | `agent:nodes:read` | enforced |
+| GET | `/actions/{requestId}/verify` | `agent:insights:read` | enforced |
 
 ## Action request
 
@@ -92,6 +97,13 @@ Token management:
 - `GET /api/v2/{secure_path}/agent/tokens`
 - `POST /api/v2/{secure_path}/agent/tokens/create`
 - `POST /api/v2/{secure_path}/agent/tokens/revoke`
+
+Fleet inspection:
+
+- `GET /api/v2/{secure_path}/agent/fleet/health`
+- `GET /api/v2/{secure_path}/agent/inspections`
+- `POST /api/v2/{secure_path}/agent/inspections/run`
+- `GET /api/v2/{secure_path}/agent/nodes/{nodeId}/timeline`
 
 Approval:
 
