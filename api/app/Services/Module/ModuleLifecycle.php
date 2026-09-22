@@ -37,7 +37,19 @@ final class ModuleLifecycle
                 module: $module,
                 error: new ModuleLifecycleError(
                     code: ModuleLifecycleErrorCode::UNSUPPORTED_MODULE_TYPE,
-                    message: 'Lifecycle operation is not supported for this module type',
+                    message: 'Lifecycle is not supported for this module type',
+                ),
+            );
+        }
+
+        if (!$adapter->supportsOperation($module, $operation)) {
+            return ModuleLifecycleResult::failure(
+                operation: $operation,
+                module: $module,
+                error: new ModuleLifecycleError(
+                    code: ModuleLifecycleErrorCode::UNSUPPORTED_OPERATION,
+                    message: 'Lifecycle operation is not supported for this module state',
+                    adapter: $adapter->name(),
                 ),
             );
         }
@@ -57,7 +69,7 @@ final class ModuleLifecycle
         }
 
         $refreshed = $this->modules->find($moduleId);
-        if (!$refreshed) {
+        if (!$refreshed && $adapter->expectsModuleAfterOperation($module, $operation)) {
             return ModuleLifecycleResult::failure(
                 operation: $operation,
                 error: new ModuleLifecycleError(

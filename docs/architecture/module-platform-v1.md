@@ -42,11 +42,12 @@ Completed:
 
 - **Phase A / PR A** — Module Package v1 contract, JSON Schema, PHP Module DTO/value objects and drift tests;
 - **Phase B / PR B** — read-only Module Registry, Plugin/Theme/Agent Ops adapters, discovery isolation and read-only Admin inventory API;
-- **Phase C / PR C** — Module Lifecycle v1, PluginLifecycleAdapter delegation to existing `PluginManager`, structured lifecycle result/error state and post-mutation Registry refresh.
+- **Phase C / PR C** — Module Lifecycle v1, PluginLifecycleAdapter delegation to existing `PluginManager`, structured lifecycle result/error state and post-mutation Registry refresh;
+- **Phase D / PR D** — Theme Package v1, hardened Theme archive validation, canonical `frontend_theme` ownership with read-only legacy fallback and ThemeLifecycleAdapter delegation to `ThemeService`.
 
 Current implementation target:
 
-- **Phase D** — Theme Package v1 and Theme lifecycle adapter, preserving `frontend_theme` as the single canonical active-theme state.
+- **Phase E** — read-only Module Center consuming the existing Module Registry Admin API.
 
 Important invariant:
 
@@ -310,17 +311,26 @@ TXBoard
 
 Legacy `current_theme` may be read only for compatibility during migration; it must not remain a second source of truth.
 
-Theme Package v1 should formalize identity/version, entrypoint, static assets, configuration schema, compatibility, source, active state and health.
-
-Target layout:
+Theme Package v1 formalizes the existing compatibility boundary instead of forcing a breaking package migration:
 
 ```text
 theme/
-├── manifest.json
+├── config.json
 ├── dashboard.blade.php
-├── assets/
-└── config.schema.json
+└── assets/                  # optional
 ```
+
+`config.json` declares package metadata/configuration fields. `ThemeModuleAdapter` maps those declarations into the common Module Manifest. Existing themes are not required to add a generic `manifest.json`.
+
+Theme lifecycle delegates to the existing runtime:
+
+```text
+ModuleLifecycle
+      -> ThemeLifecycleAdapter
+      -> ThemeService
+```
+
+The generic lifecycle maps `enable` to theme activation and `uninstall` to deletion of inactive user themes. Upload/upgrade and configuration keep their specialized Theme API because they require payloads beyond a Module lifecycle operation.
 
 ## 11. Admin Module Center
 
@@ -458,11 +468,11 @@ Checksum, signatures and publisher identity are future trust-layer work, not a v
 
 ### Phase D — Theme package and lifecycle adapter
 
-**Current target.** Formalize Theme Package v1, remove theme-state ambiguity and map Theme lifecycle operations through `ThemeService` while preserving `frontend_theme` as the canonical state.
+**Implemented.** Theme Package v1 preserves the existing theme package layout, adds bounded archive validation, keeps legacy `current_theme` as read-only compatibility fallback, normalizes Theme package metadata in Registry and delegates supported lifecycle operations through `ThemeLifecycleAdapter -> ThemeService`.
 
 ### Phase E — Module Center
 
-Build the unified Admin inventory and status page.
+**Current target.** Build the read-only unified Admin inventory and status page from `GET /api/v2/{secure_path}/module`; the web app must not reconstruct a second Module model from Plugin/Theme/Agent APIs.
 
 ### Phase F — Admin Bridge v2
 

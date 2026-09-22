@@ -1,7 +1,11 @@
 {
   "name": "TXBoard",
   "description": "TXBoard default theme",
+  "author": "TXBoard",
   "version": "1.0.0",
+  "compatibility": {
+    "txboard": "*"
+  },
   "images": "",
   "configs": [
     {

@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Services\Module\Adapters\AgentOpsModuleAdapter;
 use App\Services\Module\Adapters\PluginLifecycleAdapter;
 use App\Services\Module\Adapters\PluginModuleAdapter;
+use App\Services\Module\Adapters\ThemeLifecycleAdapter;
 use App\Services\Module\Adapters\ThemeModuleAdapter;
 use App\Services\Module\ModuleLifecycle;
 use App\Services\Module\ModuleRegistry;
@@ -28,6 +29,7 @@ class ModuleServiceProvider extends ServiceProvider
                 modules: $app->make(ModuleRegistry::class),
                 adapters: [
                     $app->make(PluginLifecycleAdapter::class),
+                    $app->make(ThemeLifecycleAdapter::class),
                 ],
             );
         });
