@@ -7,6 +7,8 @@ TXBoard 是 Control Plane；TX-Node 是独立 Agent / Data Plane。当前仓库�
 ```mermaid
 flowchart LR
     Browser --> Caddy
+    AIAgent["AI Agent"] -->|MCP| MCP["Optional MCP Gateway"]
+    MCP -->|Agent Ops API| API
 
     subgraph Image["TXBoard image"]
         Caddy --> Admin[React Admin]
@@ -20,9 +22,11 @@ flowchart LR
     end
 
     API --> DB[(MySQL)]
-    Agent[TX-Node] -->|HTTPS| API
-    Agent -->|WSS| WS
+    Node[TX-Node] -->|HTTPS| API
+    Node -->|WSS| WS
 ```
+
+The MCP Gateway is optional and is not part of the core node protocol. Agent requests are mediated by TXBoard permissions, approval policy and audit before any node-scoped action is dispatched.
 
 ## Repository boundaries
 
@@ -54,6 +58,28 @@ Theme Runtime is part of TXBoard's supported extension architecture. `api/theme/
 
 Plugin Package v1 deliberately makes plugin repositories independent of TXBoard's source tree, frontend build and application image.
 
+### Agent Ops / MCP
+
+TXBoard supports an optional AI operations layer that exposes narrow, auditable capabilities to external Agents.
+
+The architecture is:
+
+```text
+AI Agent
+  -> MCP Gateway
+  -> TXBoard Agent Ops API
+  -> permission / approval / audit
+  -> TXBoard domain services
+  -> Redis / WebSocket
+  -> TX-Node typed operations
+```
+
+The MCP Gateway is an adapter, not a second control plane. It must not connect directly to MySQL, publish directly to Redis or open unrestricted SSH sessions to TX-Node machines.
+
+Arbitrary shell execution is intentionally excluded. Node operations must be fixed, versioned and typed, such as kernel restart, configuration validation/reload, bounded log retrieval and bounded network diagnostics.
+
+See [Agent Ops / MCP Architecture](./agent-ops.md) for the complete design, risk model, tool catalog, audit requirements and delivery phases.
+
 ## Deployment boundary
 
 Production has one TXBoard application image built by the root `Dockerfile`. It includes both SPAs, Caddy, Laravel/Octane, Horizon, embedded Redis and WebSocket.
@@ -69,3 +95,4 @@ MySQL and the backup helper are separate infrastructure services in `compose.yam
 5. Independent plugin repositories depend on the Plugin Package contract, not TXBoard Admin source code.
 6. Production application code is replaced by image deployment; running containers do not self-update source code.
 7. Cross-component compatibility knowledge belongs under `contracts/`.
+8. MCP and other Agent integrations consume the Agent Ops API and must not bypass TXBoard domain services, permissions, approval policy or audit.
