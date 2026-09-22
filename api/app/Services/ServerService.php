@@ -115,8 +115,14 @@ class ServerService
     // 获取路由规则
     public static function getRoutes(array $routeIds)
     {
-        $routes = ServerRoute::select(['id', 'match', 'action', 'action_value'])->whereIn('id', $routeIds)->get();
-        return $routes;
+        return ServerRoute::query()
+            ->select(['id', 'match', 'action', 'action_value'])
+            ->whereIn('id', $routeIds)
+            ->where('enabled', true)
+            ->orderByRaw('CASE WHEN sort IS NULL THEN 1 ELSE 0 END')
+            ->orderBy('sort')
+            ->orderBy('id')
+            ->get();
     }
 
     /**

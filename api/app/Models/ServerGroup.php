@@ -29,6 +29,11 @@ class ServerGroup extends Model
         return $this->hasMany(User::class, 'group_id', 'id');
     }
 
+    public function plans(): HasMany
+    {
+        return $this->hasMany(Plan::class, 'group_id', 'id');
+    }
+
     public function servers()
     {
         return Server::whereJsonContains('group_ids', (string) $this->id)->get();
@@ -40,7 +45,12 @@ class ServerGroup extends Model
     protected function serverCount(): Attribute
     {
         return Attribute::make(
-            get: fn () => Server::whereJsonContains('group_ids', (string) $this->id)->count(),
+            get: fn () => Server::query()
+                ->where(function ($query) {
+                    $query->whereJsonContains('group_ids', $this->id)
+                        ->orWhereJsonContains('group_ids', (string) $this->id);
+                })
+                ->count(),
         );
     }
 }
