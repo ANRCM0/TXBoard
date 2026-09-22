@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "module": {
+    "id": "access_audit",
+    "name": "Access Audit",
+    "version": "1.2.0",
+    "type": "plugin",
+    "description": "Audit extension for TXBoard",
+    "author": "TXBoard"
+  },
+  "compatibility": {
+    "txboard": ">=1.0.0"
+  },
+  "capabilities": [
+    "admin.menu",
+    "admin.app",
+    "api.route",
+    "database.migration"
+  ],
+  "admin": {
+    "navigation": [
+      {
+        "id": "audit",
+        "title": "Access Audit",
+        "path": "audit",
+        "icon": "shield",
+        "order": 100
+      }
+    ]
+  }
+}

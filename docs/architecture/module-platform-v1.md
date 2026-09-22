@@ -80,11 +80,13 @@ A Module is described by:
 
 ## 4. Module Manifest v1
 
-Module Platform v1 will introduce a stable manifest contract under:
+Module Platform v1 defines its stable manifest contract under:
 
 ```text
 contracts/module-package/
 ```
+
+See [Module Package Contract v1](../../contracts/module-package/README.md) and its canonical [JSON Schema](../../contracts/module-package/schema-v1.json).
 
 Target shape:
 
