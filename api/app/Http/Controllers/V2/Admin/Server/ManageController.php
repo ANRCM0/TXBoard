@@ -289,7 +289,8 @@ class ManageController extends Controller
         $copiedServer->d = 0;
         $copiedServer->save();
 
-        return $this->success(true);
+        // Return the new id so the admin editor can open the copy right away.
+        return $this->success($copiedServer->id);
     }
 
     /**
