@@ -47,6 +47,7 @@ Fleet inspection / Agent observation
 - bounded network diagnostics；
 - bounded/redacted log tail；
 - MCP Gateway；
+- Agent Token 创建后的 Self-Connect 提示词与版本匹配 Markdown guide；
 - Admin Agent 运维页面；
 - fleet health；
 - 五分钟定时巡检；
@@ -421,7 +422,28 @@ Caddy /mcp
 
 长期如果 MCP 的 release cadence、auth integration 或 client compatibility 明显独立于 TXBoard，仍可迁移到独立 `TXBoard-MCP` 仓库，但必须继续只消费 Agent Ops HTTP API。
 
-### 8.4 当前 anomaly explanation 是 deterministic
+### 8.4 Agent Self-Connect
+
+Agent Token 创建成功后，Admin 会自动打开 Agent 自助接入弹窗。管理员复制的提示词只包含当前 TXBoard 实例的公开 guide URL：
+
+```text
+/.well-known/txboard-agent-connect.md
+```
+
+Guide 随 TXBoard 版本进入主镜像，由当前实例直接提供，因此不会依赖 private repository 或 GitHub `main` 的未来版本内容。Agent 读取 guide 后检测 Hermes / OpenClaw / 其他 MCP client 的原生配置方式，连接已有同域 `/mcp`，并只通过 read-only tool 完成 onboarding 验证。
+
+安全边界保持不变：
+
+- plain-text Agent Token 不进入复制提示词；
+- guide 不包含任何部署 secret；
+- 不安装第二套 TXBoard MCP Server；
+- 不允许 Agent 把 MySQL / Redis / TX-Node / SSH / Docker / generic shell 当成替代控制路径；
+- onboarding 不用 mutation tool 做“测试”；
+- abilities、target scope、approval、audit 仍由 Agent Ops runtime 执行。
+
+Pairing code / one-time token exchange 不属于当前 v1，未来如需要必须单独定义 enrollment contract。
+
+### 8.5 当前 anomaly explanation 是 deterministic
 
 Phase 5 不在 Control Plane 内部调用 LLM。
 
