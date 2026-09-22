@@ -4,7 +4,37 @@ Optional MCP adapter for the TXBoard Agent Ops API.
 
 The gateway contains no TXBoard domain logic and never connects directly to MySQL, Redis, or TX-Node. A caller supplies a TXBoard Agent Bearer token; the gateway verifies it through `/api/v2/agent/whoami` and forwards it to the Agent Ops API.
 
-## Run
+## Production image
+
+The TXBoard production image embeds this gateway. It is disabled by default.
+
+Set this in the root deployment environment:
+
+```env
+TXBOARD_ENABLE_MCP=true
+```
+
+After the container restarts, the same TXBoard Caddy ingress exposes:
+
+```text
+https://panel.example.com/mcp
+```
+
+The embedded Node process listens only on `127.0.0.1:3000`. Caddy is the public ingress and forwards the Agent Bearer token unchanged. The gateway continues to call the existing Agent Ops HTTP API over loopback; packaging it into the main image does not grant direct MySQL, Redis, WebSocket or TX-Node access.
+
+When disabled, the MCP process is not started and Caddy returns `404` for `/mcp`.
+
+The historical source-compose profile remains available for compatibility:
+
+```bash
+docker compose --profile mcp up -d
+```
+
+That compatibility service now reuses the same TXBoard image instead of building a second MCP image.
+
+## Standalone development
+
+The gateway can still be built and run independently:
 
 ```bash
 npm install
@@ -15,15 +45,7 @@ MCP_ALLOWED_HOSTS=localhost,127.0.0.1 \
 node dist/index.js
 ```
 
-The endpoint is `http://127.0.0.1:3000/mcp` by default.
-
-Docker Compose keeps the service disabled unless the `mcp` profile is selected:
-
-```bash
-docker compose --profile mcp up -d
-```
-
-The published MCP port binds to loopback by default. Put a trusted authenticated HTTPS reverse proxy or private overlay network in front of it when remote clients need access.
+The standalone endpoint is `http://127.0.0.1:3000/mcp` by default. Keep any directly published standalone port on loopback and place a trusted authenticated HTTPS reverse proxy or private overlay network in front of it.
 
 ## Tools
 
