@@ -62,6 +62,12 @@ Module Platform v1 stabilization
         ▶
 ```
 
+已完成的 stabilization 产品化改进：
+
+- MCP Gateway 随 TXBoard 主镜像分发，默认关闭；
+- 启用后由主镜像 Caddy 提供同域 `/mcp`，Gateway 仍只消费 Agent Ops API；
+- 历史 source-compose `mcp` profile 保持兼容并复用同一镜像。
+
 ## 2. 开始任务前
 
 Agent 应先阅读：
