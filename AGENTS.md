@@ -25,10 +25,11 @@ Completed:
 - PR B: read-only Module Registry with Plugin, Theme and Agent Ops adapters.
 - PR C: Plugin lifecycle integration through `ModuleLifecycle -> PluginLifecycleAdapter -> PluginManager`.
 - PR D: Theme Package v1, canonical active-theme state and `ThemeLifecycleAdapter -> ThemeService` delegation.
+- PR E: read-only Module Center consuming the Module Registry API as the single inventory model.
 
 Current target:
 
-- PR E: read-only Module Center consuming the Module Registry API.
+- PR F: controlled Module management API.
 
 Required direction:
 
@@ -308,21 +309,9 @@ Before merge:
 
 Use merge commits for project PRs unless explicitly instructed otherwise.
 
-## 18. Current Phase E rules
+## 18. Current Phase F rules
 
-Phase D is complete. Theme modules now use:
-
-```text
-ModuleLifecycle
-      -> ThemeLifecycleAdapter
-      -> existing ThemeService
-```
-
-Theme Package v1 keeps `config.json + dashboard.blade.php` compatible, while `frontend_theme` is the only canonical active-theme state.
-
-The next Module Platform work is the read-only Module Center.
-
-Required direction:
+Phase E is complete. The Admin Module Center reads inventory only through:
 
 ```text
 TXBoard Admin Module Center
@@ -334,14 +323,18 @@ GET /api/v2/{secure_path}/module
     Module Registry
 ```
 
+The next Module Platform work is the controlled Module management API.
+
 Keep these invariants:
 
-- the Admin must not call Plugin, Theme and Agent APIs separately and rebuild another Module model;
-- Module Center is read-only in this phase;
-- do not add generic Module mutation routes before the controlled management API phase;
-- existing specialized Plugin/Theme/Agent management pages may remain;
-- render Registry-provided identity, type, source, version, enabled/active, health and capabilities;
-- discovery errors must remain visible without exposing secrets;
+- lifecycle mutations must enter through `ModuleLifecycle`, never through Module Registry;
+- expose only operations supported by a registered lifecycle adapter;
+- Plugin mutations continue through `PluginLifecycleAdapter -> PluginManager`;
+- Theme mutations continue through `ThemeLifecycleAdapter -> ThemeService`;
+- payload-bearing Plugin/Theme upload and configuration APIs remain specialized runtime APIs;
+- preserve the dynamic `secure_path` Admin boundary and existing authorization;
+- return stable lifecycle result/error vocabulary without leaking runtime exception text;
+- do not add Module database tables or duplicate runtime state;
 - do not mix Admin Bridge v2 or Agent policy changes into this PR.
 
-The goal is one inventory model, not another frontend source of truth.
+The goal is a controlled orchestration API, not a second Plugin/Theme runtime.

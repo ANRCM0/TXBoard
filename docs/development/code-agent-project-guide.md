@@ -37,13 +37,17 @@ Plugin lifecycle integration
 PR D
 Theme Package v1 / Theme lifecycle adapter
         ✅
+
+PR E
+Read-only Module Center
+        ✅
 ```
 
 当前：
 
 ```text
-PR E
-Read-only Module Center
+PR F
+Controlled Module management API
         ▶
 ```
 
@@ -317,6 +321,6 @@ contract -> matching contract tests
 
 当前推荐任务：
 
-> 实现 Module Platform Phase E：read-only Module Center。
+> 实现 Module Platform Phase F：controlled Module management API。
 
-Phase C/Phase D 已完成 Plugin 与 Theme Runtime 的 adapter/delegation。Module Center 必须直接消费 `GET /api/v2/{secure_path}/module`，不要再分别请求 Plugin、Theme、Agent API 并在前端拼装第二套 Module 模型。本阶段只做统一 inventory/status 展示，不引入通用写操作。
+Phase E 已完成统一只读 Module Center。Phase F 必须让管理动作进入 `ModuleLifecycle`，再由 Plugin/Theme lifecycle adapter 委托现有专业 Runtime；Module Registry 继续保持只读。不要把 Plugin/Theme upload、配置或 Agent approval 强行塞进通用 lifecycle API。
