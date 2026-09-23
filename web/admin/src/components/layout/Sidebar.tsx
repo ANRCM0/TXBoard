@@ -1,85 +1,17 @@
 import { useQuery } from '@tanstack/react-query'
 import {
-  Bell,
-  Bot,
-  BookOpen,
-  Boxes,
   ChevronDown,
-  CreditCard,
-  FileText,
-  Gift,
   LayoutDashboard,
-  MessageCircle,
-  Network,
-  Package,
   Plug,
-  RefreshCcw,
-  Route,
-  Server,
-  Settings,
-  Tag,
-  Users,
-  WalletCards,
   X,
 } from 'lucide-react'
 import { useState, type KeyboardEvent } from 'react'
 import { NavLink } from 'react-router-dom'
 import { getModuleRegistry } from '../../api/module'
+import { coreNavigationGroups } from '../../navigation/core'
 import { buildModuleNavigationGroups } from '../../navigation/registry'
 import { preloadAdminRoute } from '../../lib/routePreload'
 import { useDialog } from '../../lib/useDialog'
-
-const groups = [
-  {
-    key: 'system',
-    title: '系统管理',
-    icon: Settings,
-    items: [
-      ['/config/system', '系统配置', Settings],
-      ['/config/frontend', '前端设置', LayoutDashboard],
-      ['/system/modules', '模块中心', Boxes],
-      ['/system/agent-ops', 'Agent 运维', Bot],
-      ['/system/audit-log', '审计日志', FileText],
-      ['/config/plugin', '插件管理', Plug],
-      ['/config/theme', '主题配置', Package],
-      ['/config/notice', '公告管理', Bell],
-      ['/config/payment', '支付配置', WalletCards],
-      ['/config/knowledge', '知识库管理', BookOpen],
-    ],
-  },
-  {
-    key: 'node',
-    title: '节点管理',
-    icon: Server,
-    items: [
-      ['/server/machine', '服务器管理', Server],
-      ['/server/manage', '节点管理', Network],
-      ['/server/group', '权限组管理', Boxes],
-      ['/server/route', '路由管理', Route],
-    ],
-  },
-  {
-    key: 'subscription',
-    title: '订阅管理',
-    icon: CreditCard,
-    items: [
-      ['/finance/plan', '套餐管理', CreditCard],
-      ['/finance/order', '订单管理', FileText],
-      ['/finance/coupon', '优惠券', Tag],
-      ['/finance/gift-card', '礼品卡', Gift],
-    ],
-  },
-  {
-    key: 'user',
-    title: '用户管理',
-    icon: Users,
-    items: [
-      ['/user/manage', '用户管理', Users],
-      ['/user/traffic-reset', '流量重置', RefreshCcw],
-      ['/user/ticket', '工单管理', MessageCircle],
-    ],
-  },
-] as const
 
 type SidebarProps = {
   open: boolean
@@ -89,12 +21,9 @@ type SidebarProps = {
 export function Sidebar({ open, onClose }: SidebarProps) {
   const dialogRef = useDialog(open, onClose)
   const modulesQuery = useQuery({ queryKey: ['moduleRegistry'], queryFn: getModuleRegistry })
-  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
-    system: true,
-    node: true,
-    subscription: true,
-    user: true,
-  })
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() =>
+    Object.fromEntries(coreNavigationGroups.map(group => [group.key, true])),
+  )
 
   const moduleGroups = buildModuleNavigationGroups(modulesQuery.data?.modules || [])
 
@@ -138,7 +67,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
             <span>仪表盘</span>
           </NavLink>
 
-          {groups.map(group => {
+          {coreNavigationGroups.map(group => {
             const GroupIcon = group.icon
             const expanded = openGroups[group.key] ?? true
             return (
