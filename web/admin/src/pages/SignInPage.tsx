@@ -10,6 +10,7 @@ import { login } from '../api/auth'
 import { fetchGuestConfig } from '../api/comm'
 import { CaptchaWidget, type CaptchaWidgetHandle } from '../components/CaptchaWidget'
 import { setAdminSecurePath } from '../api/client'
+import { toRouterTarget } from '../lib/basePath'
 import { setAccessToken } from '../lib/storage'
 
 const schema = z.object({
@@ -59,10 +60,19 @@ export function SignInPage() {
       setAccessToken(authorization)
       setAdminSecurePath(String(data.secure_path || ''))
       toast.success('登录成功')
-      const redirect = params.get('redirect') || ''
-      const target = redirect.startsWith('/') && !redirect.startsWith('//') && redirect !== '/sign-in'
-        ? redirect
-        : '/config/system'
+
+      // Redirect query values are router-relative. Normalize any value produced
+      // by older builds that still included the physical secure_path prefix so
+      // React Router does not prepend the basename a second time.
+      const redirect = toRouterTarget(params.get('redirect') || '')
+      const redirectPathname = redirect.split(/[?#]/, 1)[0]
+      const target =
+        redirect.startsWith('/') &&
+        !redirect.startsWith('//') &&
+        redirectPathname !== '/sign-in'
+          ? redirect
+          : '/config/system'
+
       navigate(target, { replace: true })
     },
     onError: error => {
