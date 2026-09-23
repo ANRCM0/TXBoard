@@ -1,7 +1,7 @@
 import axios, { type AxiosError, type AxiosInstance } from 'axios'
 import { toast } from 'sonner'
 import { getAuthorizationHeader, removeAccessToken } from '../lib/storage'
-import { withBasePath } from '../lib/basePath'
+import { currentRouterTarget, withBasePath } from '../lib/basePath'
 
 type RuntimeSettings = {
   base_url?: string
@@ -105,7 +105,7 @@ function attachCommonErrorHandling(client: AxiosInstance, options: { redirectOnA
         removeAccessToken()
         const signInPath = withBasePath('/sign-in')
         if (import.meta.env.VITE_STATIC_PREVIEW !== '1' && window.location.pathname !== signInPath) {
-          const redirect = encodeURIComponent(window.location.pathname + window.location.search)
+          const redirect = encodeURIComponent(currentRouterTarget())
           window.location.assign(`${signInPath}?redirect=${redirect}`)
         }
       }
@@ -124,7 +124,7 @@ function attachCommonErrorHandling(client: AxiosInstance, options: { redirectOnA
         removeAccessToken()
         const signInPath = withBasePath('/sign-in')
         if (import.meta.env.VITE_STATIC_PREVIEW !== '1' && window.location.pathname !== signInPath) {
-          const redirect = encodeURIComponent(window.location.pathname + window.location.search)
+          const redirect = encodeURIComponent(currentRouterTarget())
           window.location.assign(`${signInPath}?redirect=${redirect}`)
         }
       }
