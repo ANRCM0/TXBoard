@@ -8,6 +8,7 @@ use App\Services\Module\ModuleLifecycleErrorCode;
 use App\Services\Module\ModuleLifecycleOperation;
 use App\Services\Module\ModuleLifecycleResult;
 use App\Services\Module\ModuleRegistry;
+use Illuminate\Http\Request;
 
 class ModuleController extends Controller
 {
@@ -22,8 +23,11 @@ class ModuleController extends Controller
         return $this->success($this->modules->snapshot()->toArray());
     }
 
-    public function show(string $id)
+    public function show(Request $request)
     {
+        // The enclosing Admin route also has {admin_path}; read named route
+        // parameters rather than receiving that prefix as the first argument.
+        $id = (string) $request->route('id');
         $module = $this->modules->find($id);
         if (!$module) {
             return $this->fail([404000, 'Module not found']);
@@ -32,8 +36,9 @@ class ModuleController extends Controller
         return $this->success($module->toArray());
     }
 
-    public function lifecycle(string $id)
+    public function lifecycle(Request $request)
     {
+        $id = (string) $request->route('id');
         $operations = $this->lifecycle->supportedOperations($id);
         if ($operations === null) {
             return $this->fail([404000, 'Module not found']);
@@ -48,8 +53,10 @@ class ModuleController extends Controller
         ]);
     }
 
-    public function executeLifecycle(string $id, string $operation)
+    public function executeLifecycle(Request $request)
     {
+        $id = (string) $request->route('id');
+        $operation = (string) $request->route('operation');
         $lifecycleOperation = ModuleLifecycleOperation::tryFrom($operation);
         if (!$lifecycleOperation) {
             return $this->fail(
