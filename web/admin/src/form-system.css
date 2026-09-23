@@ -668,3 +668,52 @@
     grid-column:auto;
   }
 }
+
+
+/* Keep existing editor actions visible while scrolling long modal forms. */
+.modal-placement-center .modal-body > .form-stack > .card-actions:last-child,
+.modal-placement-center .modal-body > .plan-editor > .card-actions:last-child,
+.modal-placement-center .modal-body > .payment-editor > .card-actions:last-child,
+.modal-placement-center .modal-body > .gift-template-editor > .card-actions:last-child,
+.modal-placement-center .modal-body > .coupon-editor > .card-actions:last-child{
+  position:sticky;
+  z-index:5;
+  bottom:-18px;
+  margin:8px -18px -18px;
+  padding:12px 18px;
+  border-top:1px solid var(--border);
+  background:color-mix(in srgb,var(--panel) 96%,var(--hover));
+  box-shadow:0 -10px 24px rgba(15,23,42,.04);
+}
+
+.modal-placement-center .modal-body > .form-stack > .card-actions:last-child::before,
+.modal-placement-center .modal-body > .plan-editor > .card-actions:last-child::before,
+.modal-placement-center .modal-body > .payment-editor > .card-actions:last-child::before,
+.modal-placement-center .modal-body > .gift-template-editor > .card-actions:last-child::before,
+.modal-placement-center .modal-body > .coupon-editor > .card-actions:last-child::before{
+  content:"";
+  margin-right:auto;
+}
+
+.plugin-field-list{
+  gap:14px 16px;
+}
+
+.plugin-switch-field{
+  min-height:54px;
+  background:color-mix(in srgb,var(--hover) 32%,var(--panel));
+}
+
+@media(max-width:760px){
+  .modal-placement-center .modal-body > .form-stack > .card-actions:last-child,
+  .modal-placement-center .modal-body > .plan-editor > .card-actions:last-child,
+  .modal-placement-center .modal-body > .payment-editor > .card-actions:last-child,
+  .modal-placement-center .modal-body > .gift-template-editor > .card-actions:last-child,
+  .modal-placement-center .modal-body > .coupon-editor > .card-actions:last-child{
+    bottom:-16px;
+    margin-left:-16px;
+    margin-right:-16px;
+    margin-bottom:-16px;
+    padding:11px 16px;
+  }
+}
