@@ -34,5 +34,52 @@ export function preloadAdminRoute(path: string) {
   const loader = path.startsWith('/plugins/')
     ? () => import('../pages/plugins/PluginRoutePage')
     : preloaders[path]
-  if (loader) void loader()
+
+  return loader ? loader() : Promise.resolve()
+}
+
+type IdleWindow = Window & typeof globalThis & {
+  requestIdleCallback?: (
+    callback: () => void,
+    options?: { timeout: number },
+  ) => number
+  cancelIdleCallback?: (id: number) => void
+}
+
+/**
+ * Warm host route chunks after the first paint so later sidebar navigation
+ * usually resolves from the browser module cache instead of suspending on a
+ * network fetch. Work is serialized to avoid a burst of chunk requests.
+ */
+export function scheduleAdminRouteWarmup(paths: readonly string[]) {
+  if (typeof window === 'undefined') return () => {}
+
+  const queue = [...new Set(paths.filter(path => Boolean(preloaders[path])))]
+  let cancelled = false
+  let timer: number | undefined
+
+  const loadNext = () => {
+    if (cancelled || !queue.length) return
+    const next = queue.shift()!
+    void preloadAdminRoute(next).finally(() => {
+      if (cancelled || !queue.length) return
+      timer = window.setTimeout(loadNext, 24)
+    })
+  }
+
+  const browser = window as IdleWindow
+  let idleId: number | undefined
+  if (browser.requestIdleCallback) {
+    idleId = browser.requestIdleCallback(loadNext, { timeout: 1200 })
+  } else {
+    timer = window.setTimeout(loadNext, 500)
+  }
+
+  return () => {
+    cancelled = true
+    if (timer !== undefined) window.clearTimeout(timer)
+    if (idleId !== undefined && browser.cancelIdleCallback) {
+      browser.cancelIdleCallback(idleId)
+    }
+  }
 }
