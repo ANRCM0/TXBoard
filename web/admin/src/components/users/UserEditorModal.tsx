@@ -53,7 +53,7 @@ function toEpoch(value: string) {
 
 function bytesToGb(value?: number | null) {
   if (!value) return ''
-  return (value / GB).toFixed(3).replace(/\.000$/, '')
+  return (value / GB).toFixed(3).replace(/.000$/, '')
 }
 
 function gbToBytes(value: string) {
@@ -145,6 +145,7 @@ export function UserEditorModal({
   function saveEdit() {
     if (!user) return
     if (!edit.email.trim()) return toast.error('请输入邮箱')
+
     const payload: UserUpdatePayload = {
       id: user.id,
       email: edit.email.trim(),
@@ -160,6 +161,7 @@ export function UserEditorModal({
       remarks: edit.remarks,
       banned: edit.banned,
     }
+
     const transferEnable = gbToBytes(edit.transfer_gb)
     const usedUp = gbToBytes(edit.used_up_gb)
     const usedDown = gbToBytes(edit.used_down_gb)
@@ -170,57 +172,269 @@ export function UserEditorModal({
     editMutation.mutate(payload)
   }
 
-  return <Modal open={open} title={editing ? '编辑用户' : '创建用户'} onClose={onClose}>
-    {editing ? <div className="form-stack">
-      <div className="settings-grid user-edit-grid">
-        <Field label="邮箱"><input value={edit.email} onChange={e => setEdit(v => ({ ...v, email: e.target.value }))}/></Field>
-        <Field label="新密码"><input type="password" value={edit.password} placeholder="留空不修改" onChange={e => setEdit(v => ({ ...v, password: e.target.value }))}/></Field>
+  const pending = editMutation.isPending || createMutation.isPending
 
-        <Field label="套餐"><select value={edit.plan_id} onChange={e => setEdit(v => ({ ...v, plan_id: e.target.value }))}>
-          <option value="">无套餐</option>
-          {plans.map(plan => <option key={plan.id} value={plan.id}>{plan.name}</option>)}
-        </select></Field>
-        <Field label="到期时间"><input type="datetime-local" value={edit.expired_at} onChange={e => setEdit(v => ({ ...v, expired_at: e.target.value }))}/></Field>
+  return (
+    <Modal
+      open={open}
+      title={editing ? '编辑用户' : '创建用户'}
+      subtitle={editing && user
+        ? `User #${user.id} · ${user.email || '未设置邮箱'}`
+        : '创建新的 TXBoard 用户账户，并可直接分配套餐与到期时间。'}
+      placement="right"
+      className="user-editor-drawer"
+      onClose={onClose}
+      footer={
+        <div className="user-editor-footer">
+          <button className="button" onClick={onClose} disabled={pending}>取消</button>
+          {editing ? (
+            <button className="button primary" disabled={editMutation.isPending} onClick={saveEdit}>
+              {editMutation.isPending ? '保存中…' : '保存用户'}
+            </button>
+          ) : (
+            <button
+              className="button primary"
+              disabled={createMutation.isPending || !create.email.trim()}
+              onClick={() => createMutation.mutate()}
+            >
+              {createMutation.isPending ? '创建中…' : '创建用户'}
+            </button>
+          )}
+        </div>
+      }
+    >
+      {editing ? (
+        <div className="user-editor-form">
+          <div className="user-editor-summary">
+            <span className={edit.banned ? 'status off' : 'status ok'}>{edit.banned ? '已封禁' : '正常'}</span>
+            <strong>{user?.plan?.name || (edit.plan_id ? `Plan #${edit.plan_id}` : '无套餐')}</strong>
+            <small>{edit.expired_at ? `到期 ${new Date(edit.expired_at).toLocaleDateString()}` : '长期有效'}</small>
+          </div>
 
-        <Field label="总流量（GB）"><input type="number" min="0" step="0.001" value={edit.transfer_gb} onChange={e => setEdit(v => ({ ...v, transfer_gb: e.target.value }))}/></Field>
-        <Field label="上传已用（GB）"><input type="number" min="0" step="0.001" value={edit.used_up_gb} onChange={e => setEdit(v => ({ ...v, used_up_gb: e.target.value }))}/></Field>
-        <Field label="下载已用（GB）"><input type="number" min="0" step="0.001" value={edit.used_down_gb} onChange={e => setEdit(v => ({ ...v, used_down_gb: e.target.value }))}/></Field>
-        <Field label="余额"><input type="number" min="0" step="0.01" value={edit.balance} onChange={e => setEdit(v => ({ ...v, balance: e.target.value }))}/></Field>
+          <FormSection title="账户" description="登录身份和密码。留空新密码不会修改现有凭据。">
+            <div className="admin-form-grid">
+              <Field label="邮箱" className="full">
+                <input
+                  type="email"
+                  value={edit.email}
+                  onChange={event => setEdit(value => ({ ...value, email: event.target.value }))}
+                />
+              </Field>
+              <Field label="新密码" className="full" help="只在需要重置密码时填写。">
+                <input
+                  type="password"
+                  autoComplete="new-password"
+                  value={edit.password}
+                  placeholder="留空不修改"
+                  onChange={event => setEdit(value => ({ ...value, password: event.target.value }))}
+                />
+              </Field>
+            </div>
+          </FormSection>
 
-        <Field label="佣金余额"><input type="number" min="0" step="0.01" value={edit.commission_balance} onChange={e => setEdit(v => ({ ...v, commission_balance: e.target.value }))}/></Field>
-        <Field label="佣金比例（%）"><input type="number" min="0" max="100" value={edit.commission_rate} onChange={e => setEdit(v => ({ ...v, commission_rate: e.target.value }))}/></Field>
-        <Field label="折扣（%）"><input type="number" min="0" max="100" value={edit.discount} onChange={e => setEdit(v => ({ ...v, discount: e.target.value }))}/></Field>
-        <Field label="限速（Mbps）"><input type="number" min="0" value={edit.speed_limit} onChange={e => setEdit(v => ({ ...v, speed_limit: e.target.value }))}/></Field>
+          <FormSection title="订阅与流量" description="套餐、有效期与用户流量事实。">
+            <div className="admin-form-grid">
+              <Field label="套餐">
+                <select value={edit.plan_id} onChange={event => setEdit(value => ({ ...value, plan_id: event.target.value }))}>
+                  <option value="">无套餐</option>
+                  {plans.map(plan => <option key={plan.id} value={plan.id}>{plan.name}</option>)}
+                </select>
+              </Field>
+              <Field label="到期时间" help="留空表示长期有效。">
+                <input
+                  type="datetime-local"
+                  value={edit.expired_at}
+                  onChange={event => setEdit(value => ({ ...value, expired_at: event.target.value }))}
+                />
+              </Field>
+              <UnitField label="总流量" unit="GB" value={edit.transfer_gb} min="0" step="0.001" onChange={value => setEdit(current => ({ ...current, transfer_gb: value }))} />
+              <UnitField label="上传已用" unit="GB" value={edit.used_up_gb} min="0" step="0.001" onChange={value => setEdit(current => ({ ...current, used_up_gb: value }))} />
+              <UnitField label="下载已用" unit="GB" value={edit.used_down_gb} min="0" step="0.001" onChange={value => setEdit(current => ({ ...current, used_down_gb: value }))} />
+            </div>
+          </FormSection>
 
-        <Field label="设备限制"><input type="number" min="0" value={edit.device_limit} onChange={e => setEdit(v => ({ ...v, device_limit: e.target.value }))}/></Field>
-        <Field label="邀请人邮箱"><input value={edit.invite_user_email} onChange={e => setEdit(v => ({ ...v, invite_user_email: e.target.value }))}/></Field>
+          <FormSection title="资金与佣金" description="账户余额、佣金账户与个性化折扣。">
+            <div className="admin-form-grid">
+              <UnitField label="余额" unit="¥" value={edit.balance} min="0" step="0.01" onChange={value => setEdit(current => ({ ...current, balance: value }))} />
+              <UnitField label="佣金余额" unit="¥" value={edit.commission_balance} min="0" step="0.01" onChange={value => setEdit(current => ({ ...current, commission_balance: value }))} />
+              <UnitField label="佣金比例" unit="%" value={edit.commission_rate} min="0" max="100" onChange={value => setEdit(current => ({ ...current, commission_rate: value }))} />
+              <UnitField label="折扣" unit="%" value={edit.discount} min="0" max="100" onChange={value => setEdit(current => ({ ...current, discount: value }))} />
+            </div>
+          </FormSection>
 
-        <label className="field settings-field-wide"><span>备注</span><textarea value={edit.remarks} onChange={e => setEdit(v => ({ ...v, remarks: e.target.value }))}/></label>
-        <label className="check-field settings-field-wide"><input type="checkbox" checked={edit.banned} onChange={e => setEdit(v => ({ ...v, banned: e.target.checked }))}/><span>封禁用户</span></label>
-      </div>
+          <FormSection title="限制与归属" description="覆盖套餐默认限制时使用；留空表示沿用系统或套餐设置。">
+            <div className="admin-form-grid">
+              <UnitField label="限速" unit="Mbps" value={edit.speed_limit} min="0" onChange={value => setEdit(current => ({ ...current, speed_limit: value }))} />
+              <Field label="设备限制" help="留空表示不覆盖套餐设置。">
+                <input
+                  type="number"
+                  min="0"
+                  value={edit.device_limit}
+                  onChange={event => setEdit(value => ({ ...value, device_limit: event.target.value }))}
+                />
+              </Field>
+              <Field label="邀请人邮箱" className="full">
+                <input
+                  type="email"
+                  value={edit.invite_user_email}
+                  placeholder="邀请关系不存在时留空"
+                  onChange={event => setEdit(value => ({ ...value, invite_user_email: event.target.value }))}
+                />
+              </Field>
+            </div>
+          </FormSection>
 
-      <div className="card-actions">
-        <button className="button" onClick={onClose}>取消</button>
-        <button className="button primary" disabled={editMutation.isPending} onClick={saveEdit}>{editMutation.isPending ? '保存中…' : '保存用户'}</button>
-      </div>
-    </div> : <div className="form-stack">
-      <Field label="邮箱 *"><input type="email" value={create.email} onChange={e => setCreate(v => ({ ...v, email: e.target.value }))} placeholder="user@example.com"/></Field>
-      <Field label="密码"><input type="password" value={create.password} onChange={e => setCreate(v => ({ ...v, password: e.target.value }))} placeholder="留空则默认使用邮箱"/></Field>
-      <Field label="套餐"><select value={create.plan_id} onChange={e => setCreate(v => ({ ...v, plan_id: e.target.value }))}>
-        <option value="">无套餐</option>
-        {plans.map(plan => <option key={plan.id} value={plan.id}>{plan.name}</option>)}
-      </select></Field>
-      <Field label="到期时间"><input type="datetime-local" value={create.expired_at} onChange={e => setCreate(v => ({ ...v, expired_at: e.target.value }))}/></Field>
-      <div className="card-actions">
-        <button className="button" onClick={onClose}>取消</button>
-        <button className="button primary" disabled={createMutation.isPending || !create.email.trim()} onClick={() => createMutation.mutate()}>{createMutation.isPending ? '创建中…' : '创建用户'}</button>
-      </div>
-    </div>}
-  </Modal>
+          <FormSection title="备注与账户状态" description="管理员备注不会展示给用户。">
+            <div className="admin-form-grid">
+              <Field label="备注" className="full">
+                <textarea
+                  value={edit.remarks}
+                  placeholder="记录特殊处理、来源或其他管理信息…"
+                  onChange={event => setEdit(value => ({ ...value, remarks: event.target.value }))}
+                />
+              </Field>
+              <div className="admin-switch-row user-editor-danger full">
+                <div>
+                  <strong>封禁用户</strong>
+                  <small>封禁后用户将无法正常登录和使用账户能力。</small>
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-label="封禁用户"
+                  aria-checked={edit.banned}
+                  className={`config-switch ${edit.banned ? 'active' : ''}`}
+                  onClick={() => setEdit(value => ({ ...value, banned: !value.banned }))}
+                >
+                  <span />
+                </button>
+              </div>
+            </div>
+          </FormSection>
+        </div>
+      ) : (
+        <div className="user-editor-form">
+          <FormSection title="账户" description="邮箱是登录身份；密码留空时沿用现有后端生成逻辑。">
+            <div className="admin-form-grid">
+              <Field label="邮箱 *" className="full">
+                <input
+                  autoFocus
+                  type="email"
+                  value={create.email}
+                  onChange={event => setCreate(value => ({ ...value, email: event.target.value }))}
+                  placeholder="user@example.com"
+                />
+              </Field>
+              <Field label="密码" className="full" help="留空则默认使用邮箱。">
+                <input
+                  type="password"
+                  autoComplete="new-password"
+                  value={create.password}
+                  onChange={event => setCreate(value => ({ ...value, password: event.target.value }))}
+                  placeholder="可选"
+                />
+              </Field>
+            </div>
+          </FormSection>
+
+          <FormSection title="初始订阅" description="可以创建空账户，也可以立即分配套餐和到期时间。">
+            <div className="admin-form-grid">
+              <Field label="套餐">
+                <select value={create.plan_id} onChange={event => setCreate(value => ({ ...value, plan_id: event.target.value }))}>
+                  <option value="">无套餐</option>
+                  {plans.map(plan => <option key={plan.id} value={plan.id}>{plan.name}</option>)}
+                </select>
+              </Field>
+              <Field label="到期时间" help="留空表示长期有效。">
+                <input
+                  type="datetime-local"
+                  value={create.expired_at}
+                  onChange={event => setCreate(value => ({ ...value, expired_at: event.target.value }))}
+                />
+              </Field>
+            </div>
+          </FormSection>
+        </div>
+      )}
+    </Modal>
+  )
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return <label className="field"><span>{label}</span>{children}</label>
+function FormSection({
+  title,
+  description,
+  children,
+}: {
+  title: string
+  description: string
+  children: React.ReactNode
+}) {
+  return (
+    <section className="admin-form-section">
+      <div className="admin-form-section-head">
+        <div>
+          <strong>{title}</strong>
+          <small>{description}</small>
+        </div>
+      </div>
+      <div className="admin-form-section-body">{children}</div>
+    </section>
+  )
+}
+
+function Field({
+  label,
+  help,
+  className = '',
+  children,
+}: {
+  label: string
+  help?: string
+  className?: string
+  children: React.ReactNode
+}) {
+  return (
+    <label className={`field ${className}`.trim()}>
+      <span>{label}</span>
+      {children}
+      {help ? <small className="field-help">{help}</small> : null}
+    </label>
+  )
+}
+
+function UnitField({
+  label,
+  unit,
+  value,
+  onChange,
+  min,
+  max,
+  step,
+}: {
+  label: string
+  unit: string
+  value: string
+  onChange: (value: string) => void
+  min?: string
+  max?: string
+  step?: string
+}) {
+  return (
+    <label className="field">
+      <span>{label}</span>
+      <span className="input-with-unit">
+        <input
+          type="number"
+          value={value}
+          min={min}
+          max={max}
+          step={step}
+          onChange={event => onChange(event.target.value)}
+        />
+        <span>{unit}</span>
+      </span>
+    </label>
+  )
 }
 
 function emptyEdit(): EditDraft {
