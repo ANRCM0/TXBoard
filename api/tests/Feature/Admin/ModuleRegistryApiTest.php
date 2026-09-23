@@ -112,7 +112,6 @@ class ModuleRegistryApiTest extends TestCase
         try {
             $response = $this->getJson("/api/v2/{$this->securePath}/module/nav_fixture");
 
-            $this->assertSame(200, $response->status(), $response->getContent());
             $response->assertOk()
                 ->assertJsonPath('data.id', 'nav_fixture')
                 ->assertJsonPath('data.enabled', true)
@@ -161,7 +160,6 @@ class ModuleRegistryApiTest extends TestCase
         try {
             $response = $this->getJson("/api/v2/{$this->securePath}/module/invalid_nav_fixture");
 
-            $this->assertSame(200, $response->status(), $response->getContent());
             $response->assertOk()
                 ->assertJsonPath('data.id', 'invalid_nav_fixture')
                 ->assertJsonMissingPath('data.admin');
@@ -206,9 +204,8 @@ class ModuleRegistryApiTest extends TestCase
 
     public function test_module_registry_detail_is_read_only_and_returns_404_for_unknown_id(): void
     {
-        $response = $this->getJson("/api/v2/{$this->securePath}/module/theme.txboard");
-        $this->assertSame(200, $response->status(), $response->getContent());
-        $response->assertOk()
+        $this->getJson("/api/v2/{$this->securePath}/module/theme.txboard")
+            ->assertOk()
             ->assertJsonPath('data.id', 'theme.txboard')
             ->assertJsonPath('data.type', 'theme');
 

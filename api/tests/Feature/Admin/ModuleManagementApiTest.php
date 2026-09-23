@@ -37,9 +37,8 @@ class ModuleManagementApiTest extends TestCase
             'installed_at' => now(),
         ]);
 
-        $response = $this->getJson("/api/v2/{$this->securePath}/module/theme.txboard/lifecycle");
-        $this->assertSame(200, $response->status(), $response->getContent());
-        $response->assertOk()
+        $this->getJson("/api/v2/{$this->securePath}/module/theme.txboard/lifecycle")
+            ->assertOk()
             ->assertJsonPath('data.module_id', 'theme.txboard')
             ->assertJsonPath('data.operations', []);
 
