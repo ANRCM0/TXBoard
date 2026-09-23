@@ -63,7 +63,7 @@ class ModuleManagementApiTest extends TestCase
                     'uninstall',
                 ]);
         } finally {
-            File::deleteDirectory(base_path('theme/CustomTheme'));
+            File::deleteDirectory(base_path('storage/theme/CustomTheme'));
         }
     }
 
@@ -91,7 +91,7 @@ class ModuleManagementApiTest extends TestCase
                 ->assertOk()
                 ->assertJsonPath('data.operations', []);
         } finally {
-            File::deleteDirectory(base_path('theme/CustomTheme'));
+            File::deleteDirectory(base_path('storage/theme/CustomTheme'));
         }
     }
 
@@ -149,7 +149,7 @@ class ModuleManagementApiTest extends TestCase
 
     private function createTheme(string $name): void
     {
-        $path = base_path('theme/' . $name);
+        $path = base_path('storage/theme/' . $name);
         File::ensureDirectoryExists($path);
 
         file_put_contents($path . '/config.json', json_encode([
