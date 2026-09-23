@@ -113,8 +113,10 @@ class ModuleRegistryApiTest extends TestCase
             $response = $this->getJson("/api/v2/{$this->securePath}/module/nav_fixture");
 
             $response->assertOk()
-                ->assertJsonPath('data.id', 'nav_fixture')
-                ->assertJsonPath('data.enabled', true)
+                ->assertJsonPath('data.id', 'nav_fixture');
+            $this->assertTrue(Plugin::where('code', 'nav_fixture')->firstOrFail()->is_enabled);
+            $this->assertTrue($response->json('data.enabled'), json_encode($response->json('data')));
+            $response->assertJsonPath('data.enabled', true)
                 ->assertJsonPath('data.admin.navigation.0.id', 'dashboard')
                 ->assertJsonPath('data.admin.navigation.0.title', 'Dashboard')
                 ->assertJsonPath('data.admin.navigation.0.path', 'dashboard')
