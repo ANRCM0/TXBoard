@@ -6,6 +6,7 @@ use App\Models\Server;
 use App\Models\ServerMachine;
 use App\Services\DeviceStateService;
 use App\Services\NodeRegistry;
+use App\Services\NodeSyncService;
 use App\Services\ServerService;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -226,6 +227,7 @@ class NodeWorker
 
         $machine->forceFill(['last_seen_at' => now()->timestamp])->saveQuietly();
         NodeRegistry::addMachine($machineId, $conn);
+        NodeSyncService::markMachineOnline($machineId);
 
         // 把同一个连接注册到该机器下所有节点
         $nodeIds = [];
@@ -270,9 +272,14 @@ class NodeWorker
 
         $event = $msg['event'] ?? '';
 
-        // 机器连接：从消息中读取 node_id 来分派到具体节点
-        if (!empty($conn->machineNodeIds)) {
+        // 机器连接：从消息中读取 node_id 来分派到具体节点。
+        // machineId is authoritative here because a valid Machine may
+        // temporarily host zero nodes and still needs heartbeat/update control.
+        if (!empty($conn->machineId)) {
             if ($event === 'pong') {
+                if (!empty($conn->machineId)) {
+                    NodeSyncService::markMachineOnline((int) $conn->machineId);
+                }
                 foreach ($conn->machineNodeIds as $nid) {
                     Cache::put("node_ws_alive:{$nid}", true, 86400);
                 }
@@ -302,8 +309,8 @@ class NodeWorker
     {
         $service = app(DeviceStateService::class);
 
-        // 机器模式：清理所有关联节点
-        if (!empty($conn->machineNodeIds)) {
+        // 机器模式：清理所有关联节点。machineId also covers empty machines.
+        if (!empty($conn->machineId)) {
             $machineId = $conn->machineId ?? 'unknown';
             foreach ($conn->machineNodeIds as $nodeId) {
                 NodeRegistry::remove($nodeId, $conn);
@@ -317,6 +324,7 @@ class NodeWorker
 
             if (!empty($conn->machineId)) {
                 NodeRegistry::removeMachine((int) $conn->machineId, $conn);
+                NodeSyncService::markMachineOffline((int) $conn->machineId);
             }
 
             Log::debug("[WS] Machine#{$machineId} disconnected", [

@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Server;
 use App\Models\ServerMachine;
 use App\Models\ServerMachineLoadHistory;
+use App\Services\MachineRuntimeUpdateService;
 use App\Services\NodeSyncService;
 use Illuminate\Http\Request;
 
@@ -120,6 +121,30 @@ class MachineController extends Controller
         return $this->success([
             'command' => $this->buildInstallCommand($request, $machine),
         ]);
+    }
+
+    /**
+     * 请求 TX-Node runtime 更新。
+     *
+     * TXBoard 只负责鉴权、审计和 typed operation 下发；实际升级/回滚
+     * 继续由 TX-Node Installer 负责。
+     */
+    public function runtimeUpdate(Request $request, MachineRuntimeUpdateService $updates)
+    {
+        $params = $request->validate([
+            'machine_id' => 'required|integer|exists:v2_server_machine,id',
+            'target' => 'required|in:latest',
+        ]);
+
+        $machine = ServerMachine::find((int) $params['machine_id']);
+
+        try {
+            return $this->success($updates->request($machine, (string) $params['target']));
+        } catch (\InvalidArgumentException $e) {
+            return $this->fail([422100, $e->getMessage()]);
+        } catch (\RuntimeException $e) {
+            return $this->fail([503100, 'Machine runtime update dispatch failed']);
+        }
     }
 
     /**
