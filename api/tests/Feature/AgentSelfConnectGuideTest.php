@@ -2,10 +2,13 @@
 
 namespace Tests\Feature;
 
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class AgentSelfConnectGuideTest extends TestCase
 {
+    use RefreshDatabase;
+
     public function test_self_connect_guide_is_public_version_matched_markdown(): void
     {
         $response = $this->get('/.well-known/txboard-agent-connect.md');

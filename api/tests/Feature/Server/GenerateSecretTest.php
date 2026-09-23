@@ -73,7 +73,7 @@ class GenerateSecretTest extends TestCase
         $this->assertStringContainsString('-----BEGIN ECH KEYS-----', (string) $response->json('data.key'));
         $this->assertStringContainsString('-----END ECH KEYS-----', (string) $response->json('data.key'));
         $this->assertStringContainsString('-----BEGIN ECH CONFIGS-----', (string) $response->json('data.config'));
-        $this->assertStringContainsString('node.example.com', base64_decode((string) $response->json('data.config')));
+        $this->assertStringContainsString('node.example.com', $this->decodeEchConfigPem((string) $response->json('data.config')));
     }
 
     public function test_ech_generator_falls_back_to_a_default_public_name(): void
@@ -81,7 +81,16 @@ class GenerateSecretTest extends TestCase
         $response = $this->getJson("/api/v2/{$this->securePath}/server/manage/generateSecret?kind=ech");
 
         $response->assertOk();
-        $this->assertStringContainsString('ech.example.com', base64_decode((string) $response->json('data.config')));
+        $this->assertStringContainsString('ech.example.com', $this->decodeEchConfigPem((string) $response->json('data.config')));
+    }
+
+    private function decodeEchConfigPem(string $pem): string
+    {
+        $payload = preg_replace('/-----BEGIN ECH CONFIGS-----|-----END ECH CONFIGS-----|\s+/', '', $pem);
+        $decoded = base64_decode((string) $payload, true);
+        $this->assertNotFalse($decoded);
+
+        return $decoded;
     }
 
     public function test_unknown_generator_kind_is_rejected(): void

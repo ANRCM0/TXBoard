@@ -1,13 +1,13 @@
 <?php
 
-namespace TestsFeatureAdmin;
+namespace Tests\Feature\Admin;
 
-use AppHttpControllersV2AdminStatController;
-use AppServicesStatisticalService;
-use IlluminateFoundationTestingRefreshDatabase;
-use IlluminateSupportFacadesCache;
-use IlluminateSupportFacadesDB;
-use TestsTestCase;
+use App\Http\Controllers\V2\Admin\StatController;
+use App\Services\StatisticalService;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+use Tests\TestCase;
 
 class AdminDashboardStatsPerformanceTest extends TestCase
 {

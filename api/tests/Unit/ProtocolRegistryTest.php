@@ -67,9 +67,9 @@ class ProtocolRegistryTest extends TestCase
                 }
             }
 
-            $this->assertGreaterThan(0, $generators);
         }
 
+        $this->assertGreaterThan(0, $generators);
         $this->assertSame(14, $generators);
     }
 

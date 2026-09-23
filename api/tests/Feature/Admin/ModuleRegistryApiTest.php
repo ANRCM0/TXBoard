@@ -104,7 +104,8 @@ class ModuleRegistryApiTest extends TestCase
             'name' => 'Navigation Fixture',
             'code' => 'nav_fixture',
             'version' => '1.0.0',
-            'is_enabled' => true,
+            // Config-only fixture has no executable Plugin.php; do not boot it.
+            'is_enabled' => false,
             'config' => null,
             'installed_at' => now(),
         ]);
@@ -114,7 +115,8 @@ class ModuleRegistryApiTest extends TestCase
 
             $response->assertOk()
                 ->assertJsonPath('data.id', 'nav_fixture')
-                ->assertJsonPath('data.enabled', true)
+                ->assertJsonPath('data.installed', true)
+                ->assertJsonPath('data.enabled', false)
                 ->assertJsonPath('data.admin.navigation.0.id', 'dashboard')
                 ->assertJsonPath('data.admin.navigation.0.title', 'Dashboard')
                 ->assertJsonPath('data.admin.navigation.0.path', 'dashboard')
@@ -152,7 +154,7 @@ class ModuleRegistryApiTest extends TestCase
             'name' => 'Invalid Navigation Fixture',
             'code' => 'invalid_nav_fixture',
             'version' => '1.0.0',
-            'is_enabled' => true,
+            'is_enabled' => false,
             'config' => null,
             'installed_at' => now(),
         ]);
@@ -192,7 +194,8 @@ class ModuleRegistryApiTest extends TestCase
             $this->assertSame('system', $modules['agent_ops']['source']);
 
             $collision = collect($response->json('data.errors'))
-                ->first(fn (array $error) => ($error['module_id'] ?? null) === 'agent_ops');
+                ->first(fn (array $error) => ($error['module_id'] ?? null) === 'agent_ops'
+                    && ($error['adapter'] ?? null) === 'plugin');
 
             $this->assertNotNull($collision);
             $this->assertSame('plugin', $collision['adapter']);

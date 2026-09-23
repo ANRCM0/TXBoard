@@ -5,7 +5,7 @@ namespace Tests\Unit\Services\Module;
 use App\Services\AgentOps\AgentOpsService;
 use App\Services\Module\Adapters\AgentOpsModuleAdapter;
 use App\Services\Module\ModuleHealth;
-use PHPUnit\Framework\TestCase;
+use Tests\TestCase;
 use RuntimeException;
 
 class AgentOpsModuleAdapterTest extends TestCase

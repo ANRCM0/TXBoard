@@ -30,7 +30,7 @@ class TxboardNamespaceTest extends TestCase
             'xboard:rollback',
             'xboard:statistics',
         ] as $legacyCommand) {
-            $this->assertStringNotContainsString($legacyCommand, $commands);
+            $this->assertDoesNotMatchRegularExpression('/^' . preg_quote($legacyCommand, '/') . '(?:\s|$)/m', $commands);
         }
     }
 

@@ -26,9 +26,13 @@ class CorsPolicyTest extends TestCase
     public function test_origins_are_read_from_a_comma_separated_environment_list(): void
     {
         $previous = getenv('CORS_ALLOWED_ORIGINS');
+        $previousEnv = $_ENV['CORS_ALLOWED_ORIGINS'] ?? null;
+        $previousServer = $_SERVER['CORS_ALLOWED_ORIGINS'] ?? null;
 
         try {
             putenv('CORS_ALLOWED_ORIGINS= https://panel.example.com , https://app.example.com ,, ');
+            $_ENV['CORS_ALLOWED_ORIGINS'] = ' https://panel.example.com , https://app.example.com ,, ';
+            $_SERVER['CORS_ALLOWED_ORIGINS'] = $_ENV['CORS_ALLOWED_ORIGINS'];
             $config = require base_path('config/cors.php');
 
             $this->assertSame(
@@ -40,6 +44,16 @@ class CorsPolicyTest extends TestCase
             $previous === false
                 ? putenv('CORS_ALLOWED_ORIGINS')
                 : putenv("CORS_ALLOWED_ORIGINS={$previous}");
+            if ($previousEnv === null) {
+                unset($_ENV['CORS_ALLOWED_ORIGINS']);
+            } else {
+                $_ENV['CORS_ALLOWED_ORIGINS'] = $previousEnv;
+            }
+            if ($previousServer === null) {
+                unset($_SERVER['CORS_ALLOWED_ORIGINS']);
+            } else {
+                $_SERVER['CORS_ALLOWED_ORIGINS'] = $previousServer;
+            }
         }
     }
 
