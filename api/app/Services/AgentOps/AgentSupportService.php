@@ -86,6 +86,11 @@ class AgentSupportService
             if ($lastId < 1) {
                 throw ValidationException::withMessages(['ticket' => 'Ticket has no messages']);
             }
+            AgentSupportReplyRequest::where('token_id', $tokenId)->where('status', 'pending')
+                ->where('created_at', '<', time() - 86400)->update(['status' => 'expired']);
+            if (AgentSupportReplyRequest::where('token_id', $tokenId)->where('status', 'pending')->count() >= 20) {
+                throw ValidationException::withMessages(['ticket' => 'Agent pending support reply limit reached']);
+            }
             if (AgentSupportReplyRequest::where('ticket_id', $ticketId)->where('status', 'pending')->exists()) {
                 throw ValidationException::withMessages(['ticket' => 'A reply is already pending approval']);
             }

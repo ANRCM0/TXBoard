@@ -109,7 +109,7 @@ class AgentSupportTest extends TestCase
 
     private function ticket(User $customer): Ticket
     {
-        $ticket = Ticket::create(['user_id' => $customer->id, 'subject' => 'Connectivity help', 'status' => Ticket::STATUS_OPENING, 'reply_status' => Ticket::REPLY_STATUS_WAITING]);
+        $ticket = Ticket::create(['user_id' => $customer->id, 'subject' => 'Connectivity help', 'level' => 0, 'status' => Ticket::STATUS_OPENING, 'reply_status' => Ticket::REPLY_STATUS_WAITING]);
         TicketMessage::create(['ticket_id' => $ticket->id, 'user_id' => $customer->id, 'message' => 'Need help']);
         return $ticket;
     }
