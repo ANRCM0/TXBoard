@@ -22,6 +22,50 @@ export function resolveBasePath(): string {
   return firstSegment ? `/${firstSegment}` : '/'
 }
 
+/**
+ * Convert a browser-visible admin target back into the path React Router sees
+ * inside its basename.
+ *
+ * Example:
+ *
+ *   /a8f3c2d1/config/system?tab=safe -> /config/system?tab=safe
+ *   /a8f3c2d1                         -> /
+ *
+ * Already router-relative targets are left unchanged. Protocol-relative or
+ * otherwise non-local values are also left untouched so redirect validation
+ * can still reject them explicitly.
+ */
+export function toRouterTarget(target: string): string {
+  const value = String(target || '')
+  if (!value.startsWith('/') || value.startsWith('//')) return value
+
+  const suffixIndex = value.search(/[?#]/)
+  const pathname = suffixIndex === -1 ? value : value.slice(0, suffixIndex)
+  const suffix = suffixIndex === -1 ? '' : value.slice(suffixIndex)
+  const base = resolveBasePath()
+
+  if (base === '/') return (pathname || '/') + suffix
+
+  if (pathname === base) return '/' + suffix
+  if (pathname.startsWith(base + '/')) {
+    return (pathname.slice(base.length) || '/') + suffix
+  }
+
+  return (pathname || '/') + suffix
+}
+
+/**
+ * Current admin location in router-relative form.
+ *
+ * Browser redirects must never persist the physical secure_path prefix inside
+ * the redirect query parameter: React Router will add its basename again when
+ * navigating after sign-in.
+ */
+export function currentRouterTarget(): string {
+  if (typeof window === 'undefined') return '/'
+  return toRouterTarget(window.location.pathname + window.location.search)
+}
+
 export function withBasePath(path: string): string {
   const base = resolveBasePath()
   const normalized = '/' + String(path || '').replace(/^\/+/, '')
