@@ -71,4 +71,17 @@ describe('Modal keyboard interaction', () => {
     act(() => document.querySelector<HTMLButtonElement>('.modal-header button')!.click())
     expect(submit).not.toHaveBeenCalled()
   })
+
+  it('supports a right-side drawer placement without changing dialog semantics', () => {
+    act(() => root.render(
+      <Modal open title="编辑用户" placement="right" onClose={() => {}}>
+        <input aria-label="邮箱" />
+      </Modal>,
+    ))
+
+    const dialog = document.querySelector<HTMLElement>('[role="dialog"]')!
+    expect(dialog.classList.contains('modal-placement-right')).toBe(true)
+    expect(dialog.getAttribute('aria-modal')).toBe('true')
+    expect(document.querySelector('.modal-card')).not.toBeNull()
+  })
 })
