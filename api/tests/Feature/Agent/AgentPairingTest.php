@@ -26,7 +26,7 @@ class AgentPairingTest extends TestCase
         [$response] = $this->createPairedToken('pairing-encrypted');
 
         $response->assertOk()
-            ->assertHeader('Cache-Control', 'no-store')
+            ->assertHeader('Cache-Control', 'no-store, private')
             ->assertJsonPath('data.pairing.expires_in_seconds', 60);
 
         $plain = (string) $response->json('data.plain_text_token');
@@ -67,7 +67,7 @@ class AgentPairingTest extends TestCase
         ]);
 
         $redeemed->assertOk()
-            ->assertHeader('Cache-Control', 'no-store')
+            ->assertHeader('Cache-Control', 'no-store, private')
             ->assertJsonPath('data.plain_text_token', $plain)
             ->assertJsonPath('data.client_name', 'pairing-once');
 
