@@ -3,6 +3,7 @@
 namespace App\Http\Routes\V2;
 
 use App\Http\Controllers\V2\Agent\AgentOpsController;
+use App\Http\Controllers\V2\Agent\AgentSupportController;
 use App\Http\Controllers\V2\Agent\AgentPairingController;
 use Illuminate\Contracts\Routing\Registrar;
 
@@ -17,6 +18,11 @@ class AgentRoute
             'prefix' => 'agent',
             'middleware' => ['agent', 'agent.log', 'throttle:120,1'],
         ], function (Registrar $router): void {
+            $router->get('/support/overview', [AgentSupportController::class, 'overview']);
+            $router->get('/support/tickets', [AgentSupportController::class, 'tickets']);
+            $router->get('/support/tickets/{ticketId}', [AgentSupportController::class, 'ticket']);
+            $router->post('/support/tickets/{ticketId}/reply-requests', [AgentSupportController::class, 'requestReply']);
+            $router->get('/support/reply-requests/{requestId}', [AgentSupportController::class, 'replyStatus']);
             $router->get('/whoami', [AgentOpsController::class, 'whoami']);
             $router->get('/system/status', [AgentOpsController::class, 'systemStatus']);
             $router->get('/machines', [AgentOpsController::class, 'machines']);

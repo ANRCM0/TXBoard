@@ -20,6 +20,7 @@ class AgentRequestLog
         'access_key',
         'credential',
         'authorization',
+        'message',
     ];
 
     public function handle($request, Closure $next)
@@ -44,6 +45,7 @@ class AgentRequestLog
 
                 if ($user && $token) {
                     $nodeId = $request->route('nodeId');
+                    $ticketId = $request->route('ticketId');
                     $actionRequestId = $request->route('requestId');
                     $status = $error
                         ? 'failed'
@@ -58,12 +60,12 @@ class AgentRequestLog
                         'protocol' => $this->protocol($request),
                         'tool' => $this->toolName($request),
                         'risk_level' => $request->isMethod('GET') ? 'read' : 'operate',
-                        'approval_required' => $request->isMethod('POST') && $request->route('nodeId') !== null,
+                        'approval_required' => $request->isMethod('POST') && ($nodeId !== null || $ticketId !== null),
                         'approval_actor' => null,
                         'started_at' => $startedAt,
                         'finished_at' => time(),
-                        'target_type' => $nodeId ? 'node' : ($actionRequestId ? 'action' : null),
-                        'target_id' => $nodeId ? (string) $nodeId : ($actionRequestId ? (string) $actionRequestId : null),
+                        'target_type' => $ticketId ? 'ticket' : ($nodeId ? 'node' : ($actionRequestId ? 'action' : null)),
+                        'target_id' => $ticketId ? (string) $ticketId : ($nodeId ? (string) $nodeId : ($actionRequestId ? (string) $actionRequestId : null)),
                         'input_redacted' => json_encode($this->redact($request->all()), JSON_UNESCAPED_UNICODE),
                         'result_status' => $status,
                         'result_summary' => $error
