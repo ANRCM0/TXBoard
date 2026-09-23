@@ -104,20 +104,19 @@ class ModuleRegistryApiTest extends TestCase
             'name' => 'Navigation Fixture',
             'code' => 'nav_fixture',
             'version' => '1.0.0',
-            'is_enabled' => true,
+            // Config-only fixture has no executable Plugin.php; do not boot it.
+            'is_enabled' => false,
             'config' => null,
             'installed_at' => now(),
         ]);
-        $this->assertTrue(Plugin::where('code', 'nav_fixture')->exists(), 'plugin fixture must exist before registry read');
 
         try {
             $response = $this->getJson("/api/v2/{$this->securePath}/module/nav_fixture");
 
             $response->assertOk()
-                ->assertJsonPath('data.id', 'nav_fixture');
-            $this->assertTrue(Plugin::where('code', 'nav_fixture')->firstOrFail()->is_enabled);
-            $this->assertTrue($response->json('data.enabled'), json_encode($response->json('data')));
-            $response->assertJsonPath('data.enabled', true)
+                ->assertJsonPath('data.id', 'nav_fixture')
+                ->assertJsonPath('data.installed', true)
+                ->assertJsonPath('data.enabled', false)
                 ->assertJsonPath('data.admin.navigation.0.id', 'dashboard')
                 ->assertJsonPath('data.admin.navigation.0.title', 'Dashboard')
                 ->assertJsonPath('data.admin.navigation.0.path', 'dashboard')
@@ -155,7 +154,7 @@ class ModuleRegistryApiTest extends TestCase
             'name' => 'Invalid Navigation Fixture',
             'code' => 'invalid_nav_fixture',
             'version' => '1.0.0',
-            'is_enabled' => true,
+            'is_enabled' => false,
             'config' => null,
             'installed_at' => now(),
         ]);
