@@ -43,6 +43,11 @@ describe('admin router basename', () => {
     expect(collectRoutePaths(router.routes)).toContain('system/modules')
   }, IMPORT_TIMEOUT_MS)
 
+  it('includes the dedicated feature entry settings route', async () => {
+    const router = await routerFor(true, '/TXBoard/admin/', '/TXBoard/admin/')
+    expect(collectRoutePaths(router.routes)).toContain('config/system/features')
+  }, IMPORT_TIMEOUT_MS)
+
   it('uses the runtime secure path instead of the Vite asset base', async () => {
     const router = await routerFor(
       false,
