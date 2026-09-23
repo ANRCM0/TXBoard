@@ -43,29 +43,50 @@ export function TelegramSettingsPage() {
           <section className="config-form-section">
             <h3>Bot</h3>
             <label className="config-switch-field">
-              <div><strong>启用 Telegram Bot</strong><small>启用登录、通知或其他 Telegram 集成功能。</small></div>
+              <div>
+                <strong>启用 Telegram Bot</strong>
+                <small>启用登录、通知或其他 Telegram 集成功能。</small>
+              </div>
               <button
                 type="button"
                 role="switch"
                 aria-checked={Boolean(values.telegram_bot_enable)}
                 className={`config-switch ${Boolean(values.telegram_bot_enable) ? 'active' : ''}`}
                 onClick={() => patch('telegram_bot_enable', !Boolean(values.telegram_bot_enable))}
-              ><span /></button>
+              >
+                <span />
+              </button>
             </label>
 
-            <label className="config-field">
-              <span>Bot Token</span>
-              <input type="password" value={String(values.telegram_bot_token ?? '')} onChange={event => patch('telegram_bot_token', event.target.value)} placeholder="123456:ABC..." />
-            </label>
-            <label className="config-field">
-              <span>Webhook 基地址</span>
-              <input value={String(values.telegram_webhook_url ?? '')} onChange={event => patch('telegram_webhook_url', event.target.value)} placeholder="https://example.com" />
-              <small>后端会自动拼接 /api/v1/guest/telegram/webhook；留空时使用 app_url。</small>
-            </label>
-            <label className="config-field">
-              <span>讨论群链接</span>
-              <input value={String(values.telegram_discuss_link ?? '')} onChange={event => patch('telegram_discuss_link', event.target.value)} placeholder="https://t.me/..." />
-            </label>
+            <div className="config-form-fields">
+              <label className="config-field config-field-wide">
+                <span>Bot Token</span>
+                <input
+                  type="password"
+                  value={String(values.telegram_bot_token ?? '')}
+                  onChange={event => patch('telegram_bot_token', event.target.value)}
+                  placeholder="123456:ABC..."
+                />
+                <small>Token 属于敏感凭据，请只在受信任环境中管理。</small>
+              </label>
+              <label className="config-field">
+                <span>Webhook 基地址</span>
+                <input
+                  value={String(values.telegram_webhook_url ?? '')}
+                  onChange={event => patch('telegram_webhook_url', event.target.value)}
+                  placeholder="https://example.com"
+                />
+                <small>后端会自动拼接 /api/v1/guest/telegram/webhook；留空时使用 app_url。</small>
+              </label>
+              <label className="config-field">
+                <span>讨论群链接</span>
+                <input
+                  value={String(values.telegram_discuss_link ?? '')}
+                  onChange={event => patch('telegram_discuss_link', event.target.value)}
+                  placeholder="https://t.me/..."
+                />
+              </label>
+            </div>
           </section>
 
           <div className="config-action-row">
