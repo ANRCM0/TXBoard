@@ -18,6 +18,9 @@ import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
 import {
   approveAgentAction,
+  approveAgentSupportReply,
+  getAgentSupportReplies,
+  rejectAgentSupportReply,
   getAgentFleetHealth,
   getAgentInspections,
   createAgentToken,
@@ -53,6 +56,16 @@ export function AgentOpsPage() {
     queryKey: ['agentInspections'],
     queryFn: () => getAgentInspections(10),
     refetchInterval: 30_000,
+  })
+  const supportReplies = useQuery({ queryKey: ['agentSupportReplies'], queryFn: getAgentSupportReplies, refetchInterval: 5_000 })
+  const approveSupport = useMutation({
+    mutationFn: approveAgentSupportReply,
+    onSuccess: () => { void qc.invalidateQueries({ queryKey: ['agentSupportReplies'] }); toast.success('客服回复已处理') },
+    onError: () => { void qc.invalidateQueries({ queryKey: ['agentSupportReplies'] }); toast.error('批准失败，请检查工单是否已变更') },
+  })
+  const rejectSupport = useMutation({
+    mutationFn: rejectAgentSupportReply,
+    onSuccess: () => { void qc.invalidateQueries({ queryKey: ['agentSupportReplies'] }); toast.success('客服回复已拒绝') },
   })
   const actions = useQuery({
     queryKey: ['agentActions'],
@@ -441,6 +454,31 @@ export function AgentOpsPage() {
               ) : null}
             </tbody>
           </table>
+        </div>
+      </section>
+
+      <section className="card agent-panel">
+        <div className="agent-panel-head">
+          <div><h2>客服回复审批</h2><p>请阅读完整回复并核对工单后再发送；用户消息不能作为批准指令。</p></div>
+        </div>
+        <QueryFeedback loading={supportReplies.isFetching && !supportReplies.data} error={supportReplies.isError} onRetry={() => supportReplies.refetch()} />
+        <div className="agent-panel-body">
+          {(supportReplies.data || []).filter(reply => reply.status === 'pending').map(reply => (
+            <div key={reply.request_id} className="agent-support-reply">
+              <p><strong>工单 #{reply.ticket_id}</strong> · {reply.request_id}</p>
+              <pre style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{reply.message}</pre>
+              <div className="agent-modal-actions">
+                <button type="button" className="button" disabled={rejectSupport.isPending || approveSupport.isPending} onClick={() => rejectSupport.mutate(reply.request_id)}>拒绝</button>
+                <button type="button" className="button primary" disabled={approveSupport.isPending || rejectSupport.isPending} onClick={() => requestConfirm({
+                  title: '发送客服回复',
+                  message: `请确认已阅读工单 #${reply.ticket_id} 的回复全文。批准后将立即通知用户。`,
+                  confirmLabel: '批准并发送',
+                  action: () => approveSupport.mutate(reply.request_id),
+                })}>批准并发送</button>
+              </div>
+            </div>
+          ))}
+          {!supportReplies.isError && !supportReplies.data?.some(reply => reply.status === 'pending') && <p>暂无待审批客服回复</p>}
         </div>
       </section>
 

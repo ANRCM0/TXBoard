@@ -19,6 +19,8 @@ final class AgentAbility
     public const NODES_OPERATE = 'agent:nodes:operate';
     public const NODES_WRITE = 'agent:nodes:write';
     public const USERS_READ = 'agent:users:read';
+    public const SUPPORT_READ = 'agent:support:read';
+    public const SUPPORT_REPLY_REQUEST = 'agent:support:reply:request';
     public const USERS_WRITE = 'agent:users:write';
     public const SYSTEM_DANGEROUS = 'agent:system:dangerous';
 
@@ -46,6 +48,8 @@ final class AgentAbility
         self::NODES_OPERATE,
         self::NODES_WRITE,
         self::USERS_READ,
+        self::SUPPORT_READ,
+        self::SUPPORT_REPLY_REQUEST,
         self::USERS_WRITE,
         self::SYSTEM_DANGEROUS,
     ];
