@@ -71,6 +71,9 @@ class AgentPairingTest extends TestCase
             ->assertJsonPath('data.plain_text_token', $plain)
             ->assertJsonPath('data.client_name', 'pairing-once');
 
+        // Clear Sanctum::actingAs() so the next request authenticates the issued bearer token.
+        $this->app['auth']->forgetGuards();
+
         $this->withToken((string) $redeemed->json('data.plain_text_token'))
             ->getJson('/api/v2/agent/whoami')
             ->assertOk()
