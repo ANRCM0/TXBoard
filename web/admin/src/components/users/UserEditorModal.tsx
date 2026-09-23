@@ -53,7 +53,7 @@ function toEpoch(value: string) {
 
 function bytesToGb(value?: number | null) {
   if (!value) return ''
-  return (value / GB).toFixed(3).replace(/.000$/, '')
+  return (value / GB).toFixed(3).replace(/\\.000$/, '')
 }
 
 function gbToBytes(value: string) {
