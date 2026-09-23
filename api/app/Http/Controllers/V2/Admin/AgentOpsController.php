@@ -67,6 +67,9 @@ class AgentOpsController extends Controller
 
         try {
             $functional = AgentAbility::validate($params['abilities'] ?? AgentAbility::DEFAULT_READ);
+            if (($params['target_mode'] ?? 'all') === 'restricted' && array_intersect($functional, [AgentAbility::SUPPORT_READ, AgentAbility::SUPPORT_REPLY_REQUEST])) {
+                throw new \InvalidArgumentException('Support abilities require an unrestricted back-office token; node scope does not restrict customer data');
+            }
             $abilities = AgentTargetScope::compile(
                 $functional,
                 $params['target_mode'] ?? 'all',

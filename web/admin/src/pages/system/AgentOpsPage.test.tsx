@@ -7,6 +7,9 @@ import { AgentOpsPage } from './AgentOpsPage'
 
 vi.mock('../../api/agent', () => ({
   approveAgentAction: vi.fn(),
+  approveAgentSupportReply: vi.fn(),
+  rejectAgentSupportReply: vi.fn(),
+  getAgentSupportReplies: vi.fn().mockResolvedValue([]),
   createAgentToken: vi.fn(),
   getAgentAbilities: vi.fn().mockResolvedValue({
     default_read: ['agent:system:read'],

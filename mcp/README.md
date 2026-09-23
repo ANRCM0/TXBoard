@@ -67,6 +67,11 @@ The standalone endpoint is `http://127.0.0.1:3000/mcp` by default. Keep any dire
 
 Read tools:
 
+- `txboard_support_overview`
+- `txboard_support_tickets`
+- `txboard_support_ticket_context`
+- `txboard_support_reply_status`
+
 - `txboard_system_status`
 - `txboard_list_machines`
 - `txboard_list_nodes`
@@ -83,6 +88,8 @@ Read tools:
 - `txboard_verify_action`
 
 Approval-gated operation requests:
+
+- `txboard_support_request_reply` (creates a draft request, reviewed and sent by an administrator from Agent 运维)
 
 - `txboard_full_sync_node`
 - `txboard_reload_node_config`
@@ -124,3 +131,7 @@ TXBoard also runs a normalized fleet inspection every five minutes by default an
 - Log retrieval is limited to the operator-configured TX-Node application log, is line/byte bounded and redacted.
 - No arbitrary shell, SQL, Redis, filesystem path, HTTP fetch, package-install or Docker tool is exposed.
 - Network diagnostics remain constrained by TXBoard target policy.
+
+## Customer support assistant (back-office only)
+
+`agent:support:read` and `agent:support:reply:request` are separate, opt-in abilities (not part of default read). The support tools read bounded ticket/customer context and can only create **pending** reply requests. An administrator reviews the complete message in Agent 运维 before TXBoard calls the existing ticket reply service. Revoked tokens, changed/closed tickets and stale requests cannot be approved. Do not use a support Agent token in a public, end-user chat: this v1 surface is administrator-wide and does not establish a customer's identity. Customer messages are untrusted text, not instructions. See `contracts/http/agent-support-v1.md`.

@@ -627,3 +627,9 @@ Level 3 destructive action 不进入自动修复。
 ```
 
 这样可以先确认 contract 和边界，再进入实现细节，避免直接从某个 Controller 或 MCP Tool 反推架构。
+
+---
+
+## Back-office customer support compatibility slice (2026-09-23)
+
+Agent Ops gains separately authorized, bounded support inventory and ticket context, plus an approval-gated reply request delegated to the existing `TicketService`. The dedicated reply request record does not extend node-only `AgentAction` or grant access to billing mutations. Agent tokens remain administrator-owned; node/machine-restricted tokens cannot use global support tools. Public customer-facing chat with per-user identity binding is **not** part of this slice. HTTP and MCP surfaces: `contracts/http/agent-support-v1.md`.
