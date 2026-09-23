@@ -51,7 +51,11 @@ export function OrderAssignModal({
     if (!selectedPlan?.prices) return []
     return Object.entries(selectedPlan.prices)
       .filter(([key, value]) => key in periodMap && Number(value) > 0)
-      .map(([key, value]) => ({ key, legacy: periodMap[key as keyof typeof periodMap], price: Number(value) }))
+      .map(([key, value]) => ({
+        key,
+        legacy: periodMap[key as keyof typeof periodMap],
+        price: Number(value),
+      }))
   }, [selectedPlan])
 
   useEffect(() => {
@@ -86,44 +90,67 @@ export function OrderAssignModal({
     },
   })
 
-  return <Modal open={open} title="手动创建订单" onClose={onClose}>
-    <div className="form-stack">
-      <label className="field">
-        <span>用户邮箱 *</span>
-        <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="user@example.com"/>
-      </label>
-      <label className="field">
-        <span>套餐 *</span>
-        <select value={planId} onChange={e => { setPlanId(e.target.value); setPeriod(''); setAmount('') }}>
-          <option value="">请选择套餐</option>
-          {plans.map(plan => <option key={plan.id} value={plan.id}>{plan.name}</option>)}
-        </select>
-      </label>
-      <label className="field">
-        <span>周期 *</span>
-        <select value={period} onChange={e => setPeriod(e.target.value)} disabled={!selectedPlan}>
-          <option value="">请选择周期</option>
-          {periods.map(item => <option key={item.key} value={item.key}>{labels[item.key] || item.key} · ¥ {item.price.toFixed(2)}</option>)}
-        </select>
-      </label>
-      <label className="field">
-        <span>订单金额（元）*</span>
-        <input type="number" min="0" step="0.01" value={amount} onChange={e => setAmount(e.target.value)}/>
-        <small className="field-help">提交时自动换算为后端使用的“分”。</small>
-      </label>
-      <button
-        className="button primary"
-        disabled={mutation.isPending || !email.trim() || !planId || !period || !amount.trim() || !(Number(amount) >= 0)}
-        onClick={() => {
-          if (!periods.some(item => item.key === period)) {
-            toast.error('请选择有效周期')
-            return
-          }
-          mutation.mutate()
-        }}
-      >
-        {mutation.isPending ? '创建中…' : '创建订单'}
-      </button>
-    </div>
-  </Modal>
+  function submit() {
+    if (!periods.some(item => item.key === period)) {
+      toast.error('请选择有效周期')
+      return
+    }
+    mutation.mutate()
+  }
+
+  return (
+    <Modal
+      open={open}
+      title="手动创建订单"
+      subtitle="为指定用户直接创建已有套餐订单，金额提交时换算为后端使用的分。"
+      onClose={onClose}
+      footer={
+        <div className="content-editor-footer">
+          <button className="button" onClick={onClose} disabled={mutation.isPending}>取消</button>
+          <button
+            className="button primary"
+            disabled={mutation.isPending || !email.trim() || !planId || !period || !amount.trim() || !(Number(amount) >= 0)}
+            onClick={submit}
+          >
+            {mutation.isPending ? '创建中…' : '创建订单'}
+          </button>
+        </div>
+      }
+    >
+      <div className="form-stack">
+        <label className="field">
+          <span>用户邮箱 *</span>
+          <input autoFocus type="email" value={email} onChange={event => setEmail(event.target.value)} placeholder="user@example.com"/>
+        </label>
+        <div className="two-col">
+          <label className="field">
+            <span>套餐 *</span>
+            <select value={planId} onChange={event => { setPlanId(event.target.value); setPeriod(''); setAmount('') }}>
+              <option value="">请选择套餐</option>
+              {plans.map(plan => <option key={plan.id} value={plan.id}>{plan.name}</option>)}
+            </select>
+          </label>
+          <label className="field">
+            <span>周期 *</span>
+            <select value={period} onChange={event => setPeriod(event.target.value)} disabled={!selectedPlan}>
+              <option value="">请选择周期</option>
+              {periods.map(item => (
+                <option key={item.key} value={item.key}>
+                  {labels[item.key] || item.key} · ¥ {item.price.toFixed(2)}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+        <label className="field">
+          <span>订单金额 *</span>
+          <span className="input-with-unit">
+            <input type="number" min="0" step="0.01" value={amount} onChange={event => setAmount(event.target.value)}/>
+            <span>¥</span>
+          </span>
+          <small className="field-help">默认跟随套餐周期价格，也可以在创建前调整。</small>
+        </label>
+      </div>
+    </Modal>
+  )
 }
