@@ -5,12 +5,12 @@ import {
   Plug,
   X,
 } from 'lucide-react'
-import { useState, type KeyboardEvent } from 'react'
+import { useEffect, useMemo, useState, type KeyboardEvent } from 'react'
 import { NavLink } from 'react-router-dom'
 import { getModuleRegistry } from '../../api/module'
 import { coreNavigationGroups } from '../../navigation/core'
 import { buildModuleNavigationGroups } from '../../navigation/registry'
-import { preloadAdminRoute } from '../../lib/routePreload'
+import { preloadAdminRoute, scheduleAdminRouteWarmup } from '../../lib/routePreload'
 import { useDialog } from '../../lib/useDialog'
 
 type SidebarProps = {
@@ -25,7 +25,16 @@ export function Sidebar({ open, onClose }: SidebarProps) {
     Object.fromEntries(coreNavigationGroups.map(group => [group.key, true])),
   )
 
+  const coreRoutePaths = useMemo(
+    () => coreNavigationGroups.flatMap(group => group.items.map(([path]) => path)),
+    [],
+  )
   const moduleGroups = buildModuleNavigationGroups(modulesQuery.data?.modules || [])
+
+  useEffect(
+    () => scheduleAdminRouteWarmup(coreRoutePaths),
+    [coreRoutePaths],
+  )
 
   function toggleGroup(key: string) {
     setOpenGroups(state => ({ ...state, [key]: !(state[key] ?? true) }))
@@ -39,6 +48,10 @@ export function Sidebar({ open, onClose }: SidebarProps) {
     if (event.key !== ' ') return
     event.preventDefault()
     toggleGroup(key)
+  }
+
+  function warmRoute(path: string) {
+    void preloadAdminRoute(path)
   }
 
   return (
@@ -92,8 +105,9 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                       <NavLink
                         key={to}
                         to={to}
-                        onMouseEnter={() => preloadAdminRoute(to)}
-                        onFocus={() => preloadAdminRoute(to)}
+                        onPointerEnter={() => warmRoute(to)}
+                        onPointerDown={() => warmRoute(to)}
+                        onFocus={() => warmRoute(to)}
                         onClick={onClose}
                         className={({ isActive }) => `admin-nav-sub ${isActive ? 'active' : ''}`}
                       >
@@ -119,8 +133,9 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                   <NavLink
                     key={item.id}
                     to={item.href}
-                    onMouseEnter={() => preloadAdminRoute(item.href)}
-                    onFocus={() => preloadAdminRoute(item.href)}
+                    onPointerEnter={() => warmRoute(item.href)}
+                    onPointerDown={() => warmRoute(item.href)}
+                    onFocus={() => warmRoute(item.href)}
                     onClick={onClose}
                     className={({ isActive }) => `admin-nav-sub ${isActive ? 'active' : ''}`}
                   >
