@@ -57,6 +57,12 @@ jobs:
         run: |
           cp .env.example .env
           php artisan key:generate
+      - name: Run Agent Support slice tests
+        env:
+          APP_ENV: testing
+          DB_CONNECTION: sqlite
+          DB_DATABASE: ":memory:"
+        run: php artisan test tests/Feature/Agent/AgentSupportTest.php
       - name: Run tests
         env:
           APP_ENV: testing

@@ -138,3 +138,27 @@ export async function runAgentInspection() {
   const { data } = await apiClient.post('/agent/inspections/run')
   return unwrap<AgentInspectionItem>(data)
 }
+
+export type AgentSupportReply = {
+  request_id: string
+  ticket_id: number
+  status: string
+  message: string
+  created_at: number
+  approved_at?: number | null
+}
+
+export async function getAgentSupportReplies() {
+  const { data } = await apiClient.get('/agent/support/reply-requests', { params: { limit: 50 } })
+  return unwrap<AgentSupportReply[]>(data) || []
+}
+
+export async function approveAgentSupportReply(request_id: string) {
+  const { data } = await apiClient.post('/agent/support/reply-requests/approve', { request_id })
+  return unwrap<AgentSupportReply>(data)
+}
+
+export async function rejectAgentSupportReply(request_id: string) {
+  const { data } = await apiClient.post('/agent/support/reply-requests/reject', { request_id })
+  return unwrap<AgentSupportReply>(data)
+}

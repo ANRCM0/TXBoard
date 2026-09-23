@@ -3,6 +3,7 @@
 namespace App\Http\Routes\V2\Admin;
 
 use App\Http\Controllers\V2\Admin\AgentOpsController;
+use App\Http\Controllers\V2\Admin\AgentSupportController;
 use Illuminate\Contracts\Routing\Registrar;
 
 class AgentRoute
@@ -10,6 +11,9 @@ class AgentRoute
     public function map(Registrar $router): void
     {
         $router->group(['prefix' => 'agent'], function (Registrar $router): void {
+            $router->get('/support/reply-requests', [AgentSupportController::class, 'replies']);
+            $router->post('/support/reply-requests/approve', [AgentSupportController::class, 'approve']);
+            $router->post('/support/reply-requests/reject', [AgentSupportController::class, 'reject']);
             $router->get('/abilities', [AgentOpsController::class, 'abilities']);
             $router->get('/tokens', [AgentOpsController::class, 'tokens']);
             $router->post('/tokens/create', [AgentOpsController::class, 'createToken']);
