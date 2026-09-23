@@ -5,16 +5,14 @@ import { RouterProvider } from 'react-router-dom'
 import { Toaster } from 'sonner'
 import { router } from './router'
 import './styles.css'
+import './form-system.css'
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 30_000,
-      retry: (failureCount, error) => {
-        const status = (error as { response?: { status?: number } })?.response?.status
-        return failureCount < 1 && (status === undefined || status >= 500)
-      },
+      retry: 1,
       refetchOnWindowFocus: false,
+      staleTime: 15_000,
     },
   },
 })
@@ -22,12 +20,8 @@ const queryClient = new QueryClient({
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
-      <React.Suspense
-        fallback={<div className='route-loading' role='status' aria-live='polite'><span />正在加载页面…</div>}
-      >
-        <RouterProvider router={router} future={{ v7_startTransition: true }} />
-      </React.Suspense>
-      <Toaster richColors position="top-right" />
+      <RouterProvider router={router} />
+      <Toaster richColors position="top-center" />
     </QueryClientProvider>
   </React.StrictMode>,
 )
