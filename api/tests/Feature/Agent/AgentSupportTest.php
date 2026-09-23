@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Services\AgentOps\AgentAbility;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Auth;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -27,6 +28,7 @@ class AgentSupportTest extends TestCase
         $without = $admin->createToken('agent:node-only', [AgentAbility::NODES_READ])->plainTextToken;
 
         $this->withToken($without)->getJson('/api/v2/agent/support/overview')->assertForbidden();
+        Auth::forgetGuards();
         $this->withToken($plain)->getJson('/api/v2/agent/support/overview')->assertOk()->assertJsonPath('data.tickets_waiting', 1);
         $this->getJson('/api/v2/agent/support/tickets?limit=1')->assertOk()->assertJsonCount(1, 'data');
         $detail = $this->getJson('/api/v2/agent/support/tickets/'.$ticket->id)->assertOk()
@@ -49,6 +51,7 @@ class AgentSupportTest extends TestCase
         $url = '/api/v2/agent/support/tickets/'.$ticket->id.'/reply-requests';
 
         $this->withToken($read)->postJson($url, ['message' => 'We are looking into this'])->assertForbidden();
+        Auth::forgetGuards();
         $this->withToken($write)->postJson($url, ['message' => ' '])->assertStatus(422);
         $created = $this->postJson($url, ['message' => 'We are looking into this'])->assertOk()->assertJsonPath('data.status', 'pending');
         $id = $created->json('data.request_id');
@@ -56,6 +59,7 @@ class AgentSupportTest extends TestCase
         $this->assertStringNotContainsString('We are looking into this', $created->getContent());
         $this->postJson($url, ['message' => 'Another reply'])->assertUnprocessable();
         $this->getJson('/api/v2/agent/support/reply-requests/'.$id)->assertOk()->assertJsonPath('data.status', 'pending');
+        Auth::forgetGuards();
         $this->withToken($read)->getJson('/api/v2/agent/support/reply-requests/'.$id)->assertForbidden();
         $this->assertStringNotContainsString('We are looking into this', (string) AgentAuditLog::where('target_type', 'ticket')->firstOrFail()->input_redacted);
 
