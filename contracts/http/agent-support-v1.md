@@ -1,4 +1,4 @@
-﻿# Agent Support HTTP Contract v1 (additive to Agent Ops v1)
+# Agent Support HTTP Contract v1 (additive to Agent Ops v1)
 
 Base `/api/v2/agent/support`; Agent Bearer token, same `agent`/`agent.log` middleware. This is an **administrator-owned back-office assistant**, NOT a user-facing credential. No public chat visitor may receive this token. Existing node/machine target scopes do not limit support data; token creation rejects combining support abilities with a restricted node/machine scope.
 
