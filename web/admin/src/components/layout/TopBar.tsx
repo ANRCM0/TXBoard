@@ -42,35 +42,35 @@ const commandItems = [
 ] as const
 
 const titleRules: Array<[RegExp, string]> = [
-  [/^/$/, '仪表盘'],
-  [/^/config/system/features/, '功能入口'],
-  [/^/config/system/, '系统配置'],
-  [/^/config/frontend/, '前端配置'],
-  [/^/system/modules/, '模块中心'],
-  [/^/config/server/, '服务器配置'],
-  [/^/config/email/, '邮件配置'],
-  [/^/config/telegram/, 'Telegram'],
-  [/^/config/APP/, 'APP 配置'],
-  [/^/config/payment/, '支付配置'],
-  [/^/config/theme/, '主题管理'],
-  [/^/config/notice/, '通知管理'],
-  [/^/config/knowledge/, '知识库管理'],
-  [/^/config/plugin/, '插件管理'],
-  [/^/server/machine/d+/, '机器详情'],
-  [/^/server/machine/, '机器管理'],
-  [/^/server/node/d+/, '节点详情'],
-  [/^/server/manage/, '节点管理'],
-  [/^/server/group/, '分组管理'],
-  [/^/server/route/, '路由管理'],
-  [/^/finance/plan/, '套餐管理'],
-  [/^/finance/order/, '订单管理'],
-  [/^/finance/coupon/, '优惠券管理'],
-  [/^/finance/gift-card/, '礼品卡管理'],
-  [/^/user/manage/, '用户管理'],
-  [/^/user/traffic-reset/, '流量重置'],
-  [/^/user/ticket/, '工单管理'],
-  [/^/system/audit-log/, '审计日志'],
-  [/^/plugins//, '插件'],
+  [/^\/$/, '仪表盘'],
+  [/^\/config\/system\/features/, '功能入口'],
+  [/^\/config\/system/, '系统配置'],
+  [/^\/config\/frontend/, '前端配置'],
+  [/^\/system\/modules/, '模块中心'],
+  [/^\/config\/server/, '服务器配置'],
+  [/^\/config\/email/, '邮件配置'],
+  [/^\/config\/telegram/, 'Telegram'],
+  [/^\/config\/APP/, 'APP 配置'],
+  [/^\/config\/payment/, '支付配置'],
+  [/^\/config\/theme/, '主题管理'],
+  [/^\/config\/notice/, '通知管理'],
+  [/^\/config\/knowledge/, '知识库管理'],
+  [/^\/config\/plugin/, '插件管理'],
+  [/^\/server\/machine\/\d+/, '机器详情'],
+  [/^\/server\/machine/, '机器管理'],
+  [/^\/server\/node\/\d+/, '节点详情'],
+  [/^\/server\/manage/, '节点管理'],
+  [/^\/server\/group/, '分组管理'],
+  [/^\/server\/route/, '路由管理'],
+  [/^\/finance\/plan/, '套餐管理'],
+  [/^\/finance\/order/, '订单管理'],
+  [/^\/finance\/coupon/, '优惠券管理'],
+  [/^\/finance\/gift-card/, '礼品卡管理'],
+  [/^\/user\/manage/, '用户管理'],
+  [/^\/user\/traffic-reset/, '流量重置'],
+  [/^\/user\/ticket/, '工单管理'],
+  [/^\/system\/audit-log/, '审计日志'],
+  [/^\/plugins\//, '插件'],
 ]
 
 export function TopBar({ onOpenMenu }: { onOpenMenu: () => void }) {
@@ -119,7 +119,7 @@ export function TopBar({ onOpenMenu }: { onOpenMenu: () => void }) {
     [location.pathname],
   )
   const toolbarMode = useMemo(() => {
-    const path = location.pathname.replace(//$/, '') || '/'
+    const path = location.pathname.replace(/\/$/, '') || '/'
     if (path === '/') return 'dashboard' as const
     if (path === '/config/plugin' || path.startsWith('/plugins/')) return 'icon-title' as const
     return 'search-only' as const
