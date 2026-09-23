@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
+  ArrowUpCircle,
   Cable,
   Copy,
   ExternalLink,
@@ -20,6 +21,7 @@ import {
   getMachineNodes,
   getMachineToken,
   resetMachineToken,
+  updateMachineRuntime,
   type MachineItem,
 } from '../../api/server'
 import { MachineHistoryChart } from '../../components/server/MachineHistoryChart'
@@ -67,6 +69,21 @@ export function MachineOpsDrawer({
     },
   })
 
+  const runtimeUpdate = useMutation({
+    mutationFn: () => updateMachineRuntime(machineId),
+    onSuccess: async result => {
+      toast.success(
+        result?.request_id
+          ? `TX-Node 更新请求已下发：${result.request_id}`
+          : 'TX-Node 更新请求已下发',
+      )
+      await qc.invalidateQueries({ queryKey: ['machines'] })
+    },
+    onError: () => {
+      toast.error('更新请求未下发，请检查机器在线状态与 Installer 更新桥接能力')
+    },
+  })
+
   useEffect(() => {
     if (!open) {
       window.clearTimeout(hideTimer.current)
@@ -84,6 +101,8 @@ export function MachineOpsDrawer({
   const cpu = finite(machine.load_status?.cpu)
   const memory = machineRatio(machine.load_status?.mem)
   const disk = machineRatio(machine.load_status?.disk)
+  const runtime = machine.load_status?.runtime
+  const lastRuntimeUpdate = runtime?.update
 
   async function showCredentials() {
     window.clearTimeout(hideTimer.current)
@@ -206,6 +225,74 @@ export function MachineOpsDrawer({
                 </div>
               </section>
             </div>
+
+            <section className="machine-ops-card machine-runtime-card">
+              <div className="machine-ops-card-head">
+                <div>
+                  <h3>TX-Node Runtime</h3>
+                  <p>Machine 级运行时生命周期；实际升级与回滚由 TX-Node Installer 执行。</p>
+                </div>
+                <button
+                  type="button"
+                  className="button primary"
+                  disabled={
+                    runtimeUpdate.isPending ||
+                    !online ||
+                    machine.is_active === false ||
+                    runtime?.updater_available !== true
+                  }
+                  onClick={() => requestConfirm({
+                    title: '更新 TX-Node Runtime',
+                    message: `确认将 ${machine.name || `Machine #${machine.id}`} 更新到 latest？更新会重启 TX-Node，当前承载的 ${Number(machine.servers_count || nodes.length || 0)} 个节点可能短暂断开。失败时 Installer 会尝试恢复之前的镜像。`,
+                    danger: true,
+                    confirmLabel: '更新到 latest',
+                    action: () => runtimeUpdate.mutate(),
+                  })}
+                >
+                  <ArrowUpCircle size={14} />
+                  {runtimeUpdate.isPending ? '下发中…' : '更新到 latest'}
+                </button>
+              </div>
+
+              <div className="machine-runtime-summary">
+                <div>
+                  <span>当前版本</span>
+                  <strong>{runtime?.version || '未上报'}</strong>
+                  <small>{runtime?.build_time ? `构建 ${runtime.build_time}` : '等待新版 TX-Node 上报 build 信息'}</small>
+                </div>
+                <div>
+                  <span>部署方式</span>
+                  <strong>{runtime?.deployment === 'docker' ? 'Docker' : 'Unknown'}</strong>
+                  <small>{runtime?.updater_available ? 'Installer bridge 可用' : '远程更新不可用'}</small>
+                </div>
+                <div>
+                  <span>最近更新</span>
+                  <strong>{lastRuntimeUpdate ? runtimeUpdateLabel(lastRuntimeUpdate.status) : '暂无记录'}</strong>
+                  <small>{lastRuntimeUpdate?.updated_at ? formatEpoch(lastRuntimeUpdate.updated_at) : '尚未收到更新状态'}</small>
+                </div>
+              </div>
+
+              {lastRuntimeUpdate?.message ? (
+                <div className={`machine-runtime-result machine-runtime-${lastRuntimeUpdate.status}`}>
+                  <strong>{lastRuntimeUpdate.request_id}</strong>
+                  <span>{lastRuntimeUpdate.message}</span>
+                </div>
+              ) : null}
+
+              {runtimeUpdate.isSuccess && runtimeUpdate.data?.request_id !== lastRuntimeUpdate?.request_id ? (
+                <div className="machine-runtime-result machine-runtime-running">
+                  <strong>{runtimeUpdate.data?.request_id || 'update accepted'}</strong>
+                  <span>请求已下发，等待 TX-Node 重启并重新上报最终状态。断开 WebSocket 本身不代表更新失败。</span>
+                </div>
+              ) : null}
+
+              {runtime?.updater_available !== true ? (
+                <div className="machine-ops-sensitive-note">
+                  <ShieldAlert size={15} />
+                  <span>当前 TX-Node / Installer 尚未提供 Machine Runtime Update v1。可继续在服务器使用公开 Installer 的 <code>txnode upgrade</code>，升级到支持版本后这里会自动显示可用状态。</span>
+                </div>
+              ) : null}
+            </section>
 
             <section className="machine-ops-card">
               <div className="machine-ops-card-head">
@@ -376,6 +463,22 @@ function formatTime(value: unknown) {
     return Number.isNaN(date.getTime()) ? value : date.toLocaleString()
   }
   return '-'
+}
+
+function runtimeUpdateLabel(status: string) {
+  switch (status) {
+    case 'accepted': return '已接受'
+    case 'running': return '更新中'
+    case 'succeeded': return '更新成功'
+    case 'rolled_back': return '已自动回滚'
+    case 'failed': return '更新失败'
+    default: return status || '未知'
+  }
+}
+
+function formatEpoch(value: number) {
+  if (!Number.isFinite(value) || value <= 0) return '-'
+  return new Date(value * 1000).toLocaleString()
 }
 
 function loadFreshness(machine: MachineItem) {
