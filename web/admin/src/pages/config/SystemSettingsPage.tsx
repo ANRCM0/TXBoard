@@ -76,7 +76,7 @@ export function SystemSettingsPage() {
               <Field label="站点描述"><input {...form.register('app_description')} /></Field>
               <Field label="站点 URL"><input {...form.register('app_url')} /></Field>
               <Field label="Logo URL"><input {...form.register('logo')} /></Field>
-              <Field label="订阅 URL"><textarea {...form.register('subscribe_url')} /></Field>
+              <Field label="订阅 URL" className="config-field-wide"><textarea {...form.register('subscribe_url')} /></Field>
               <Field label="服务条款 URL"><input {...form.register('tos_url')} /></Field>
             </div>
           </section>
@@ -112,8 +112,16 @@ export function SystemSettingsPage() {
   )
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return <label className="config-field"><span>{label}</span>{children}</label>
+function Field({
+  label,
+  className = '',
+  children,
+}: {
+  label: string
+  className?: string
+  children: React.ReactNode
+}) {
+  return <label className={`config-field ${className}`.trim()}><span>{label}</span>{children}</label>
 }
 
 function SwitchField({
