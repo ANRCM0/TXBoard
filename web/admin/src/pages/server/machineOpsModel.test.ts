@@ -6,7 +6,9 @@ import {
 } from './machineOpsModel'
 import type { MachineItem } from '../../api/server'
 
-const now = 2_000_000
+// Use a realistic epoch-millisecond value so the production timestamp
+// normalizer does not intentionally interpret the fixture as epoch seconds.
+const now = 2_000_000_000_000
 
 describe('machine operations model', () => {
   it('derives online state from active status and recent heartbeat', () => {
