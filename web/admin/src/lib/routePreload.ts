@@ -12,6 +12,7 @@ const preloaders: Record<string, () => Promise<unknown>> = {
   '/config/telegram': () => import('../pages/config/TelegramSettingsPage'),
   '/config/APP': () => import('../pages/config/AppSettingsPage'),
   '/config/plugin': () => import('../pages/plugins/PluginsPage'),
+  '/config/subscribe-template': () => import('../pages/config/SubscribeTemplatePage'),
   '/config/theme': () => import('../pages/config/ThemeSettingsPage'),
   '/config/notice': () => import('../pages/config/NoticeSettingsPage'),
   '/config/payment': () => import('../pages/config/PaymentSettingsPage'),
