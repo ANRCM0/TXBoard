@@ -12,6 +12,7 @@ import { useDialog } from '../../lib/useDialog'
 const commandItems = [
   ['/', '仪表盘'],
   ['/config/system', '系统设置'],
+  ['/config/system/features', '功能入口'],
   ['/config/system/safe', '安全设置'],
   ['/config/system/subscribe', '订阅设置'],
   ['/config/system/invite', '邀请设置'],
@@ -42,6 +43,7 @@ const commandItems = [
 
 const titleRules: Array<[RegExp, string]> = [
   [/^\/$/, '仪表盘'],
+  [/^\/config\/system\/features/, '功能入口'],
   [/^\/config\/system/, '系统配置'],
   [/^\/config\/frontend/, '前端配置'],
   [/^\/system\/modules/, '模块中心'],
