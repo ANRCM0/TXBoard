@@ -1,5 +1,18 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Bot, Check, Copy, ExternalLink, KeyRound, ShieldCheck, Trash2, X } from 'lucide-react'
+import {
+  Activity,
+  Bot,
+  Check,
+  CircleCheckBig,
+  Copy,
+  ExternalLink,
+  KeyRound,
+  Server,
+  ShieldCheck,
+  Trash2,
+  TriangleAlert,
+  X,
+} from 'lucide-react'
 import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from 'react'
 import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -23,6 +36,7 @@ import { Modal } from '../../components/ui/Modal'
 import { QueryFeedback } from '../../components/ui/QueryFeedback'
 import { requestConfirm } from '../../components/ui/ConfirmDialog'
 import { agentSelfConnectGuideUrl, buildAgentSelfConnectPrompt } from '../../lib/agentSelfConnect'
+import './AgentOpsPage.css'
 
 export function AgentOpsPage() {
   const qc = useQueryClient()
@@ -46,6 +60,7 @@ export function AgentOpsPage() {
     refetchInterval: 5_000,
   })
 
+  const [createModalOpen, setCreateModalOpen] = useState(false)
   const [clientName, setClientName] = useState('')
   const [expires, setExpires] = useState(30)
   const [selected, setSelected] = useState<string[]>([])
@@ -57,6 +72,7 @@ export function AgentOpsPage() {
   const [connectModalOpen, setConnectModalOpen] = useState(false)
   const [rejectingAction, setRejectingAction] = useState<AgentActionItem | null>(null)
   const [rejectReason, setRejectReason] = useState('')
+
   const selfConnectGuideUrl = useMemo(() => agentSelfConnectGuideUrl(window.location.origin), [])
   const selfConnectPrompt = useMemo(
     () => buildAgentSelfConnectPrompt(selfConnectGuideUrl, pairing?.code),
@@ -74,6 +90,7 @@ export function AgentOpsPage() {
     onSuccess: data => {
       setPlainToken(data?.plain_text_token || '')
       setPairing(data?.pairing || null)
+      setCreateModalOpen(false)
       setConnectModalOpen(Boolean(data?.plain_text_token))
       setClientName('')
       setTargetMode('all')
@@ -125,6 +142,16 @@ export function AgentOpsPage() {
     [actions.data],
   )
 
+  const fleetStatus = fleet.data?.status || 'unknown'
+  const unhealthyNodes =
+    (fleet.data?.summary.critical_nodes ?? 0) +
+    (fleet.data?.summary.degraded_nodes ?? 0)
+  const canCreate =
+    Boolean(clientName.trim()) &&
+    selected.length > 0 &&
+    !createToken.isPending &&
+    (targetMode === 'all' || targetNodeIds.length > 0 || targetMachineIds.length > 0)
+
   function toggleAbility(ability: string) {
     setSelected(current =>
       current.includes(ability)
@@ -153,17 +180,61 @@ export function AgentOpsPage() {
   }
 
   return (
-    <>
+    <div className="agent-ops-page">
       <PageHeader
         title="Agent 运维"
-        description="管理 MCP / Agent 凭据与审批队列。Agent 写操作必须经过这里的人工批准后才会下发到 TX-Node。"
+        description="统一管理 Agent 凭据、Fleet 健康状态与人工审批；MCP 仍通过 TXBoard Agent Ops 安全边界执行。"
+        action={
+          <div className="agent-page-actions">
+            {plainToken ? (
+              <button type="button" className="button" onClick={() => setConnectModalOpen(true)}>
+                <Bot size={15} />接入信息
+              </button>
+            ) : null}
+            <button type="button" className="button primary" onClick={() => setCreateModalOpen(true)}>
+              <KeyRound size={15} />创建 Agent Token
+            </button>
+          </div>
+        }
       />
 
-      <div className="card form-stack">
-        <div className="card-header">
+      <div className="agent-overview-grid">
+        <OverviewCard
+          icon={<Activity size={18} />}
+          label="Fleet 状态"
+          value={fleetStatus}
+          tone={fleetStatus === 'healthy' ? 'ok' : fleetStatus === 'critical' ? 'danger' : 'warn'}
+        />
+        <OverviewCard
+          icon={<Server size={18} />}
+          label="节点"
+          value={String(fleet.data?.summary.total_nodes ?? 0)}
+        />
+        <OverviewCard
+          icon={<CircleCheckBig size={18} />}
+          label="Healthy"
+          value={String(fleet.data?.summary.healthy_nodes ?? 0)}
+          tone="ok"
+        />
+        <OverviewCard
+          icon={<TriangleAlert size={18} />}
+          label="异常节点"
+          value={String(unhealthyNodes)}
+          tone={unhealthyNodes > 0 ? 'warn' : 'ok'}
+        />
+        <OverviewCard
+          icon={<KeyRound size={18} />}
+          label="Agent Token / 待审批"
+          value={`${tokens.data?.length ?? 0} / ${pending.length}`}
+          tone={pending.length ? 'warn' : undefined}
+        />
+      </div>
+
+      <section className="card agent-panel">
+        <div className="agent-panel-head">
           <div>
             <h2>AI-native Fleet Health</h2>
-            <p className="text-muted">定时巡检每 5 分钟生成一次规范化健康快照；这里不会保存原始日志或凭据。</p>
+            <p>定时巡检生成规范化健康快照；这里不会保存原始日志或凭据。</p>
           </div>
           <button
             type="button"
@@ -171,53 +242,63 @@ export function AgentOpsPage() {
             disabled={runInspection.isPending}
             onClick={() => runInspection.mutate()}
           >
+            <Activity size={14} />
             {runInspection.isPending ? '巡检中…' : '立即巡检'}
           </button>
         </div>
 
-        <QueryFeedback loading={fleet.isFetching && !fleet.data} error={fleet.isError} onRetry={() => fleet.refetch()} />
+        <div className="agent-panel-body">
+          <QueryFeedback loading={fleet.isFetching && !fleet.data} error={fleet.isError} onRetry={() => fleet.refetch()} />
 
-        <div className="chip-list">
-          <span className="badge">状态 {fleet.data?.status || 'unknown'}</span>
-          <span className="badge">节点 {fleet.data?.summary.total_nodes ?? 0}</span>
-          <span className="badge">Critical {fleet.data?.summary.critical_nodes ?? 0}</span>
-          <span className="badge">Degraded {fleet.data?.summary.degraded_nodes ?? 0}</span>
-          <span className="badge">Healthy {fleet.data?.summary.healthy_nodes ?? 0}</span>
-        </div>
+          <div className="agent-health-summary">
+            <StatusPill label={`状态 ${fleetStatus}`} status={fleetStatus} />
+            <StatusPill label={`Critical ${fleet.data?.summary.critical_nodes ?? 0}`} status="critical" />
+            <StatusPill label={`Degraded ${fleet.data?.summary.degraded_nodes ?? 0}`} status="degraded" />
+            <StatusPill label={`Healthy ${fleet.data?.summary.healthy_nodes ?? 0}`} status="healthy" />
+          </div>
 
-        <div className="table-wrap">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>节点</th>
-                <th>状态</th>
-                <th>WebSocket</th>
-                <th>Kernel</th>
-                <th>Warnings</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(fleet.data?.nodes || []).map(node => (
-                <tr key={node.node_id}>
-                  <td><Link className="table-link" to={`/server/node/${node.node_id}`}><strong>{node.name}</strong></Link> <code>#{node.node_id}</code></td>
-                  <td><span className="badge">{node.status}</span></td>
-                  <td>{node.websocket ? 'online' : 'offline'}</td>
-                  <td>{node.kernel_running == null ? 'unknown' : node.kernel_running ? 'running' : 'stopped'}</td>
-                  <td>{node.warnings.map(item => item.code).join(', ') || '-'}</td>
+          <div className="table-wrap">
+            <table className="data-table agent-table">
+              <thead>
+                <tr>
+                  <th>节点</th>
+                  <th>状态</th>
+                  <th>WebSocket</th>
+                  <th>Kernel</th>
+                  <th>Warnings</th>
                 </tr>
-              ))}
-              {!fleet.data?.nodes?.length && !fleet.isError ? (
-                <tr><td colSpan={5} className="empty-cell">{fleet.isLoading ? '加载中…' : '暂无节点'}</td></tr>
-              ) : null}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {(fleet.data?.nodes || []).map(node => (
+                  <tr key={node.node_id}>
+                    <td>
+                      <Link className="table-link" to={`/server/node/${node.node_id}`}>
+                        <strong>{node.name}</strong>
+                      </Link>{' '}
+                      <code>#{node.node_id}</code>
+                    </td>
+                    <td><StatusPill label={node.status} status={node.status} /></td>
+                    <td>{node.websocket ? 'online' : 'offline'}</td>
+                    <td>{node.kernel_running == null ? 'unknown' : node.kernel_running ? 'running' : 'stopped'}</td>
+                    <td>{node.warnings.map(item => item.code).join(', ') || '-'}</td>
+                  </tr>
+                ))}
+                {!fleet.data?.nodes?.length && !fleet.isError ? (
+                  <tr><td colSpan={5} className="empty-cell">{fleet.isLoading ? '加载中…' : '暂无节点'}</td></tr>
+                ) : null}
+              </tbody>
+            </table>
+          </div>
 
-        <div>
-          <strong>最近巡检</strong>
+          <div className="agent-section-divider" />
+
+          <div className="agent-subsection-title">
+            <strong>最近巡检</strong>
+            <span>最近 10 条</span>
+          </div>
           <QueryFeedback loading={inspections.isFetching && !inspections.data} error={inspections.isError} onRetry={() => inspections.refetch()} />
           <div className="table-wrap">
-            <table className="data-table">
+            <table className="data-table agent-table">
               <thead>
                 <tr>
                   <th>ID</th>
@@ -232,7 +313,7 @@ export function AgentOpsPage() {
                   <tr key={item.inspection_id}>
                     <td><code>{item.inspection_id}</code></td>
                     <td>{item.source}</td>
-                    <td><span className="badge">{item.status}</span></td>
+                    <td><StatusPill label={item.status} status={item.status} /></td>
                     <td>{item.summary.critical_nodes} / {item.summary.degraded_nodes}</td>
                     <td>{formatEpoch(item.finished_at)}</td>
                   </tr>
@@ -244,164 +325,21 @@ export function AgentOpsPage() {
             </table>
           </div>
         </div>
-      </div>
+      </section>
 
-      <div className="card form-stack">
-        <div>
-          <h2>创建 Agent Token</h2>
-          <p className="text-muted">Token 使用最小权限能力集；明文只在创建成功后显示一次。</p>
-        </div>
-
-        <div className="form-grid">
-          <label>
-            <span>客户端名称</span>
-            <input
-              value={clientName}
-              onChange={event => setClientName(event.target.value)}
-              placeholder="例如 chatgpt-prod"
-            />
-          </label>
-          <label>
-            <span>有效期（天）</span>
-            <input
-              type="number"
-              min={1}
-              max={90}
-              value={expires}
-              onChange={event => setExpires(Number(event.target.value) || 30)}
-            />
-          </label>
-        </div>
-
-        <div>
-          <span>Abilities</span>
-          <div className="chip-list">
-            {(abilities.data?.all || []).map(ability => (
-              <label className="badge" key={ability}>
-                <input
-                  type="checkbox"
-                  checked={selected.includes(ability)}
-                  onChange={() => toggleAbility(ability)}
-                />
-                {ability}
-              </label>
-            ))}
-          </div>
-        </div>
-
-        <div className="form-stack">
-          <span>资源范围</span>
-          <div className="chip-list">
-            <label className="badge">
-              <input
-                type="radio"
-                name="agent-target-mode"
-                checked={targetMode === 'all'}
-                onChange={() => setTargetMode('all')}
-              />
-              全部节点 / 机器
-            </label>
-            <label className="badge">
-              <input
-                type="radio"
-                name="agent-target-mode"
-                checked={targetMode === 'restricted'}
-                onChange={() => setTargetMode('restricted')}
-              />
-              限定资源
-            </label>
-          </div>
-
-          {targetMode === 'restricted' ? (
-            <>
-              <div>
-                <strong>机器</strong>
-                <div className="chip-list">
-                  {(machines.data || []).map(machine => (
-                    <label className="badge" key={machine.id}>
-                      <input
-                        type="checkbox"
-                        checked={targetMachineIds.includes(machine.id)}
-                        onChange={() => toggleNumber(machine.id, setTargetMachineIds)}
-                      />
-                      {machine.name || `Machine #${machine.id}`}
-                    </label>
-                  ))}
-                  {!machines.data?.length ? <span className="text-muted">暂无机器</span> : null}
-                </div>
-              </div>
-              <div>
-                <strong>单独节点</strong>
-                <div className="chip-list">
-                  {(nodes.data || []).map(node => (
-                    <label className="badge" key={node.id}>
-                      <input
-                        type="checkbox"
-                        checked={targetNodeIds.includes(node.id)}
-                        onChange={() => toggleNumber(node.id, setTargetNodeIds)}
-                      />
-                      {node.name || `Node #${node.id}`}
-                    </label>
-                  ))}
-                  {!nodes.data?.length ? <span className="text-muted">暂无节点</span> : null}
-                </div>
-              </div>
-            </>
-          ) : null}
-        </div>
-
-        <div>
-          <button
-            type="button"
-            className="button button-primary"
-            disabled={
-              !clientName.trim() ||
-              !selected.length ||
-              createToken.isPending ||
-              (targetMode === 'restricted' && !targetNodeIds.length && !targetMachineIds.length)
-            }
-            onClick={() =>
-              createToken.mutate({
-                client_name: clientName.trim(),
-                abilities: selected,
-                expires_in_days: expires,
-                target_mode: targetMode,
-                target_node_ids: targetNodeIds,
-                target_machine_ids: targetMachineIds,
-              })
-            }
-          >
-            <KeyRound size={16} />
-            创建 Token
-          </button>
-        </div>
-
-        {plainToken ? (
-          <div className="callout warning">
-            <strong>请立即保存此 Token，关闭页面后不会再次显示。</strong>
-            <pre className="code-block">{plainToken}</pre>
-            <div className="card-actions">
-              <button type="button" className="button" onClick={() => void copyToken()}>
-                <Copy size={15} />复制 Token
-              </button>
-              <button type="button" className="button button-primary" onClick={() => setConnectModalOpen(true)}>
-                <Bot size={15} />Agent 自助接入
-              </button>
-            </div>
-          </div>
-        ) : null}
-      </div>
-
-      <div className="card content-table-card">
-        <div className="card-header">
+      <section className="card agent-panel">
+        <div className="agent-panel-head">
           <div>
             <h2>Agent Token</h2>
-            <p className="text-muted">撤销后对应 MCP / Agent 会立即失去访问权限。</p>
+            <p>Token 使用最小权限能力集；撤销后对应 MCP / Agent 会立即失去访问权限。</p>
           </div>
+          <button type="button" className="button" onClick={() => setCreateModalOpen(true)}>
+            <KeyRound size={14} />创建 Token
+          </button>
         </div>
         <QueryFeedback loading={tokens.isFetching && !tokens.data} error={tokens.isError} onRetry={() => tokens.refetch()} />
-        <div className="table-wrap">
-          <table className="data-table">
+        <div className="agent-panel-body flush table-wrap">
+          <table className="data-table agent-table">
             <thead>
               <tr>
                 <th>客户端</th>
@@ -415,7 +353,12 @@ export function AgentOpsPage() {
             <tbody>
               {(tokens.data || []).map(token => (
                 <tr key={token.id}>
-                  <td><strong>{token.client_name}</strong></td>
+                  <td>
+                    <div className="agent-token-client">
+                      <strong>{token.client_name}</strong>
+                      <small>Token #{token.id}</small>
+                    </div>
+                  </td>
                   <td>{token.abilities?.length || 0} 项</td>
                   <td>{formatScope(token.target_scope)}</td>
                   <td>{formatDate(token.last_used_at)}</td>
@@ -445,19 +388,19 @@ export function AgentOpsPage() {
             </tbody>
           </table>
         </div>
-      </div>
+      </section>
 
-      <div className="card content-table-card">
-        <div className="card-header">
+      <section className="card agent-panel">
+        <div className="agent-panel-head">
           <div>
             <h2>待审批动作</h2>
-            <p className="text-muted">Agent 无法自行批准动作。批准后 TXBoard 才会通过现有 Redis / WebSocket 控制通道下发。</p>
+            <p>Agent 无法自行批准动作；批准后 TXBoard 才会通过既有控制通道下发。</p>
           </div>
-          <span className="badge">{pending.length} pending</span>
+          <span className="agent-status-pill"><span className={`agent-status-dot ${pending.length ? 'degraded' : 'healthy'}`} />{pending.length} pending</span>
         </div>
         <QueryFeedback loading={actions.isFetching && !actions.data} error={actions.isError} onRetry={() => actions.refetch()} />
-        <div className="table-wrap">
-          <table className="data-table">
+        <div className="agent-panel-body flush table-wrap">
+          <table className="data-table agent-table">
             <thead>
               <tr>
                 <th>Request ID</th>
@@ -499,7 +442,183 @@ export function AgentOpsPage() {
             </tbody>
           </table>
         </div>
-      </div>
+      </section>
+
+      <Modal
+        open={createModalOpen}
+        title="创建 Agent Token"
+        subtitle="为 Hermes、OpenClaw 或其他 Agent 创建最小权限凭据。"
+        className="agent-token-modal"
+        bodyClassName="agent-token-modal-body"
+        onClose={() => {
+          if (!createToken.isPending) setCreateModalOpen(false)
+        }}
+        footer={
+          <div className="agent-modal-actions">
+            <button type="button" className="button" disabled={createToken.isPending} onClick={() => setCreateModalOpen(false)}>
+              取消
+            </button>
+            <button
+              type="button"
+              className="button primary"
+              disabled={!canCreate}
+              onClick={() =>
+                createToken.mutate({
+                  client_name: clientName.trim(),
+                  abilities: selected,
+                  expires_in_days: expires,
+                  target_mode: targetMode,
+                  target_node_ids: targetNodeIds,
+                  target_machine_ids: targetMachineIds,
+                })
+              }
+            >
+              <KeyRound size={15} />
+              {createToken.isPending ? '创建中…' : '创建 Token'}
+            </button>
+          </div>
+        }
+      >
+        <div className="agent-token-form">
+          <section className="agent-form-section">
+            <div className="agent-form-section-head">
+              <div>
+                <strong>基本信息</strong>
+                <small>名称用于审计识别；Token 明文只会在创建成功后显示一次。</small>
+              </div>
+            </div>
+            <div className="agent-form-grid">
+              <label className="agent-field">
+                <span>客户端名称</span>
+                <input
+                  autoFocus
+                  value={clientName}
+                  onChange={event => setClientName(event.target.value)}
+                  placeholder="例如 Hermes-prod"
+                  maxLength={100}
+                />
+                <small>建议使用可识别环境的名称。</small>
+              </label>
+              <label className="agent-field">
+                <span>有效期（天）</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={90}
+                  value={expires}
+                  onChange={event => setExpires(Math.min(90, Math.max(1, Number(event.target.value) || 30)))}
+                />
+                <small>1–90 天</small>
+              </label>
+            </div>
+          </section>
+
+          <section className="agent-form-section">
+            <div className="agent-form-section-head">
+              <div>
+                <strong>Abilities</strong>
+                <small>默认选中后端声明的只读能力。写入、操作和危险能力需要主动勾选。</small>
+              </div>
+              <span className="agent-status-pill">{selected.length} selected</span>
+            </div>
+            <div className="agent-ability-grid">
+              {(abilities.data?.all || []).map(ability => {
+                const checked = selected.includes(ability)
+                const sensitive = isSensitiveAbility(ability)
+                return (
+                  <label
+                    className={`agent-ability-option ${checked ? 'selected' : ''} ${sensitive ? 'sensitive' : ''}`}
+                    key={ability}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => toggleAbility(ability)}
+                    />
+                    <span className="agent-ability-copy">
+                      <code>{ability}</code>
+                      <small>{abilityCaption(ability)}</small>
+                    </span>
+                  </label>
+                )
+              })}
+              {!abilities.data?.all?.length ? <span className="agent-empty-hint">Abilities 加载中…</span> : null}
+            </div>
+          </section>
+
+          <section className="agent-form-section">
+            <div className="agent-form-section-head">
+              <div>
+                <strong>资源范围</strong>
+                <small>限制 Agent 能够观察或操作的节点与机器范围。</small>
+              </div>
+            </div>
+            <div className="agent-scope-picker">
+              <label className={`agent-scope-option ${targetMode === 'all' ? 'active' : ''}`}>
+                <input
+                  type="radio"
+                  name="agent-target-mode"
+                  checked={targetMode === 'all'}
+                  onChange={() => setTargetMode('all')}
+                />
+                <span>
+                  <strong>全部节点 / 机器</strong>
+                  <small>适合全局只读巡检或受控运维 Agent。</small>
+                </span>
+              </label>
+              <label className={`agent-scope-option ${targetMode === 'restricted' ? 'active' : ''}`}>
+                <input
+                  type="radio"
+                  name="agent-target-mode"
+                  checked={targetMode === 'restricted'}
+                  onChange={() => setTargetMode('restricted')}
+                />
+                <span>
+                  <strong>限定资源</strong>
+                  <small>只授权明确勾选的机器与节点。</small>
+                </span>
+              </label>
+            </div>
+
+            {targetMode === 'restricted' ? (
+              <>
+                <div className="agent-resource-group">
+                  <strong>机器</strong>
+                  <div className="agent-resource-grid">
+                    {(machines.data || []).map(machine => (
+                      <label className="agent-resource-option" key={machine.id}>
+                        <input
+                          type="checkbox"
+                          checked={targetMachineIds.includes(machine.id)}
+                          onChange={() => toggleNumber(machine.id, setTargetMachineIds)}
+                        />
+                        <span>{machine.name || `Machine #${machine.id}`}</span>
+                      </label>
+                    ))}
+                    {!machines.data?.length ? <span className="agent-empty-hint">暂无机器</span> : null}
+                  </div>
+                </div>
+                <div className="agent-resource-group">
+                  <strong>单独节点</strong>
+                  <div className="agent-resource-grid">
+                    {(nodes.data || []).map(node => (
+                      <label className="agent-resource-option" key={node.id}>
+                        <input
+                          type="checkbox"
+                          checked={targetNodeIds.includes(node.id)}
+                          onChange={() => toggleNumber(node.id, setTargetNodeIds)}
+                        />
+                        <span>{node.name || `Node #${node.id}`}</span>
+                      </label>
+                    ))}
+                    {!nodes.data?.length ? <span className="agent-empty-hint">暂无节点</span> : null}
+                  </div>
+                </div>
+              </>
+            ) : null}
+          </section>
+        </div>
+      </Modal>
 
       <Modal
         open={connectModalOpen && Boolean(plainToken)}
@@ -508,38 +627,40 @@ export function AgentOpsPage() {
         wide
         onClose={() => setConnectModalOpen(false)}
       >
-        <div className="form-stack">
-          <div>
-            <strong>1. 复制一句话给 Agent</strong>
-            <p className="text-muted">
+        <div className="agent-connect-steps">
+          <section className="agent-connect-step">
+            <h4>1. 复制一句话给 Agent</h4>
+            <p>
               {pairing
                 ? `提示词包含一个仅可使用一次的临时配对码，有效至 ${formatDate(pairing.expires_at)}；长期 Agent Token 不会进入提示词。`
                 : '临时配对服务当前不可用，提示词会退回 v1 手动 secret / env 接入方式。'}
             </p>
-          </div>
-          <pre className="code-block">{selfConnectPrompt}</pre>
-          <div className="card-actions">
-            <button type="button" className="button button-primary" onClick={() => void copySelfConnectPrompt()}>
-              <Copy size={15} />复制接入提示词
-            </button>
-            <a className="button" href={selfConnectGuideUrl} target="_blank" rel="noreferrer">
-              <ExternalLink size={15} />查看 Agent Guide
-            </a>
-          </div>
+            <pre className="code-block">{selfConnectPrompt}</pre>
+            <div className="card-actions">
+              <button type="button" className="button primary" onClick={() => void copySelfConnectPrompt()}>
+                <Copy size={15} />复制接入提示词
+              </button>
+              <a className="button" href={selfConnectGuideUrl} target="_blank" rel="noreferrer">
+                <ExternalLink size={15} />查看 Agent Guide
+              </a>
+            </div>
+          </section>
 
-          <div className="callout warning">
-            <strong>2. 长期 Agent Token（备用手动方式）</strong>
+          <section className="agent-connect-step">
+            <h4>2. 长期 Agent Token（备用手动方式）</h4>
             <p>{pairing ? '正常情况下 Agent 会用一次性配对码自动兑换并本地保存 Token；这里仍保留原有一次性明文作为兼容与故障回退。' : '请通过 Agent 的本地 secret / env 机制提供 Token，不要把长期 Token 发到聊天里或提交到仓库。'}</p>
             <pre className="code-block">{plainToken}</pre>
-            <button type="button" className="button" onClick={() => void copyToken()}>
-              <Copy size={15} />复制 Token
-            </button>
-          </div>
+            <div className="card-actions">
+              <button type="button" className="button" onClick={() => void copyToken()}>
+                <Copy size={15} />复制 Token
+              </button>
+            </div>
+          </section>
 
-          <div className="callout">
-            <strong>Agent 会做什么？</strong>
+          <section className="agent-connect-step">
+            <h4>Agent 会做什么？</h4>
             <p>它会检测自己的 MCP 配置方式；有配对码时先向 TXBoard 一次性兑换长期 Agent Token，再连接同域 <code>/mcp</code>，只用只读工具验证连接，并汇报非敏感结果。</p>
-          </div>
+          </section>
         </div>
       </Modal>
 
@@ -586,7 +707,46 @@ export function AgentOpsPage() {
           </div>
         ) : null}
       </Modal>
-    </>
+    </div>
+  )
+}
+
+function OverviewCard({
+  icon,
+  label,
+  value,
+  tone,
+}: {
+  icon: React.ReactNode
+  label: string
+  value: string
+  tone?: 'ok' | 'warn' | 'danger'
+}) {
+  return (
+    <div className="agent-overview-card">
+      <span className={`agent-overview-icon ${tone || ''}`}>{icon}</span>
+      <span className="agent-overview-copy">
+        <span>{label}</span>
+        <strong>{value}</strong>
+      </span>
+    </div>
+  )
+}
+
+function StatusPill({ label, status }: { label: string; status: string }) {
+  const normalized = String(status).toLowerCase()
+  const tone = normalized === 'healthy'
+    ? 'healthy'
+    : normalized === 'critical'
+      ? 'critical'
+      : normalized === 'degraded'
+        ? 'degraded'
+        : ''
+  return (
+    <span className="agent-status-pill">
+      <span className={`agent-status-dot ${tone}`} />
+      {label}
+    </span>
   )
 }
 
@@ -631,6 +791,16 @@ function ActionRow({
   )
 }
 
+function isSensitiveAbility(ability: string) {
+  return /(write|operate|sync|dangerous)/i.test(ability)
+}
+
+function abilityCaption(ability: string) {
+  if (/dangerous/i.test(ability)) return '高风险能力'
+  if (/(write|operate|sync)/i.test(ability)) return '变更 / 操作能力'
+  return '只读 / 分析能力'
+}
+
 function compact(value: unknown) {
   const text = JSON.stringify(value)
   return text.length > 90 ? text.slice(0, 87) + '…' : text
@@ -642,7 +812,6 @@ function formatDate(value?: string | null) {
   return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString()
 }
 
-
 function formatScope(scope?: { mode: 'all' | 'restricted'; node_ids: number[]; machine_ids: number[] }) {
   if (!scope || scope.mode === 'all') return '全部资源'
   const parts: string[] = []
@@ -650,7 +819,6 @@ function formatScope(scope?: { mode: 'all' | 'restricted'; node_ids: number[]; m
   if (scope.node_ids.length) parts.push(`节点 ${scope.node_ids.join(', ')}`)
   return parts.join(' · ') || '无资源'
 }
-
 
 function formatEpoch(value?: number | null) {
   if (!value) return '-'
