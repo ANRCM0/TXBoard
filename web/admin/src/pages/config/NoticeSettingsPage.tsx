@@ -269,76 +269,111 @@ export function NoticeSettingsPage() {
     <Modal
       open={dialogOpen}
       title={editingId ? '编辑公告' : '添加公告'}
+      subtitle="维护公告正文、标签、图片和前台展示方式。"
+      className="content-editor-modal"
       onClose={() => setDialogOpen(false)}
-    >
-      <div className="form-stack">
-        <label className="field">
-          <span>标题 *</span>
-          <input value={String(form.title || '')} onChange={event => setForm(current => ({ ...current, title: event.target.value }))}/>
-        </label>
-
-        <label className="field">
-          <span>正文 *</span>
-          <textarea
-            className="notice-editor"
-            value={String(form.content || '')}
-            onChange={event => setForm(current => ({ ...current, content: event.target.value }))}
-          />
-          <small className="field-help">公告正文为纯文本。</small>
-        </label>
-
-        <label className="field">
-          <span>图片 URL</span>
-          <input
-            value={String(form.img_url || '')}
-            onChange={event => setForm(current => ({ ...current, img_url: event.target.value }))}
-            placeholder="https://..."
-          />
-        </label>
-
-        {form.img_url && imgError !== form.img_url && <div className="notice-image-preview">
-          <img
-            src={String(form.img_url)}
-            alt="公告预览"
-            onError={() => setImgError(String(form.img_url))}
-          />
-        </div>}
-
-        <label className="field">
-          <span>标签</span>
-          <input
-            value={tagDraft}
-            onChange={event => setTagDraft(event.target.value)}
-            onBlur={() => setForm(current => ({ ...current, tags: normalizeTags(tagDraft) }))}
-            placeholder="维护, 重要, 活动"
-          />
-        </label>
-
-        <div className="two-col compact">
-          <label className="check-field">
-            <input
-              type="checkbox"
-              checked={Boolean(form.show)}
-              onChange={event => setForm(current => ({ ...current, show: event.target.checked ? 1 : 0 }))}
-            />
-            <span>前台显示</span>
-          </label>
-          <label className="check-field">
-            <input
-              type="checkbox"
-              checked={Boolean(form.popup)}
-              onChange={event => setForm(current => ({ ...current, popup: event.target.checked ? 1 : 0 }))}
-            />
-            <span>弹窗展示</span>
-          </label>
-        </div>
-
-        <div className="card-actions">
-          <button className="button" onClick={() => setDialogOpen(false)}>取消</button>
+      footer={
+        <div className="content-editor-footer">
+          <button className="button" onClick={() => setDialogOpen(false)} disabled={save.isPending}>取消</button>
           <button className="button primary" disabled={save.isPending} onClick={validateAndSave}>
-            {save.isPending ? '保存中…' : '保存'}
+            {save.isPending ? '保存中…' : '保存公告'}
           </button>
         </div>
+      }
+    >
+      <div className="content-editor-form">
+        <section className="admin-form-section">
+          <div className="admin-form-section-head">
+            <div><strong>基本信息</strong><small>标题、标签与可选的展示图片。</small></div>
+          </div>
+          <div className="admin-form-section-body">
+            <div className="content-editor-grid">
+              <label className="field full">
+                <span>标题 *</span>
+                <input
+                  autoFocus
+                  value={String(form.title || '')}
+                  onChange={event => setForm(current => ({ ...current, title: event.target.value }))}
+                  placeholder="例如：服务维护通知"
+                />
+              </label>
+
+              <label className="field">
+                <span>图片 URL</span>
+                <input
+                  value={String(form.img_url || '')}
+                  onChange={event => setForm(current => ({ ...current, img_url: event.target.value }))}
+                  placeholder="https://..."
+                />
+                <small className="field-help">留空表示不展示图片。</small>
+              </label>
+
+              <label className="field">
+                <span>标签</span>
+                <input
+                  value={tagDraft}
+                  onChange={event => setTagDraft(event.target.value)}
+                  onBlur={() => setForm(current => ({ ...current, tags: normalizeTags(tagDraft) }))}
+                  placeholder="维护, 重要, 活动"
+                />
+                <small className="field-help">使用逗号分隔多个标签。</small>
+              </label>
+
+              {form.img_url && imgError !== form.img_url ? (
+                <div className="notice-image-preview full">
+                  <img
+                    src={String(form.img_url)}
+                    alt="公告预览"
+                    onError={() => setImgError(String(form.img_url))}
+                  />
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </section>
+
+        <section className="admin-form-section">
+          <div className="admin-form-section-head">
+            <div><strong>公告正文</strong><small>正文保持纯文本输出，避免编辑器引入额外格式语义。</small></div>
+          </div>
+          <div className="admin-form-section-body">
+            <label className="field">
+              <span>正文 *</span>
+              <textarea
+                className="notice-editor"
+                value={String(form.content || '')}
+                onChange={event => setForm(current => ({ ...current, content: event.target.value }))}
+                placeholder="填写要展示给用户的公告内容…"
+              />
+            </label>
+          </div>
+        </section>
+
+        <section className="admin-form-section">
+          <div className="admin-form-section-head">
+            <div><strong>展示方式</strong><small>控制公告是否可见，以及是否以弹窗形式展示。</small></div>
+          </div>
+          <div className="admin-form-section-body">
+            <div className="two-col compact">
+              <label className="check-field">
+                <input
+                  type="checkbox"
+                  checked={Boolean(form.show)}
+                  onChange={event => setForm(current => ({ ...current, show: event.target.checked ? 1 : 0 }))}
+                />
+                <span><strong>前台显示</strong><small>关闭后公告保留但不展示。</small></span>
+              </label>
+              <label className="check-field">
+                <input
+                  type="checkbox"
+                  checked={Boolean(form.popup)}
+                  onChange={event => setForm(current => ({ ...current, popup: event.target.checked ? 1 : 0 }))}
+                />
+                <span><strong>弹窗展示</strong><small>启用后按现有用户端规则弹出。</small></span>
+              </label>
+            </div>
+          </div>
+        </section>
       </div>
     </Modal>
   </>

@@ -283,67 +283,105 @@ export function KnowledgeSettingsPage() {
     <Modal
       open={dialogOpen}
       title={editingId ? '编辑知识库文章' : '添加知识库文章'}
+      subtitle="维护文章元数据和 Markdown 正文。"
+      className="content-editor-modal"
       onClose={() => setDialogOpen(false)}
-    >
-      <div className="form-stack">
-        <label className="field">
-          <span>标题 *</span>
-          <input value={String(form.title || '')} onChange={event => setForm(current => ({ ...current, title: event.target.value }))}/>
-        </label>
-
-        <label className="field">
-          <span>分类 *</span>
-          <input
-            list="knowledge-category-list"
-            value={String(form.category || '')}
-            onChange={event => setForm(current => ({ ...current, category: event.target.value }))}
-          />
-          <datalist id="knowledge-category-list">
-            {(categories.data || []).map(item => <option key={item} value={item}/>)}
-          </datalist>
-        </label>
-
-        <label className="field">
-          <span>语言 *</span>
-          <select
-            value={String(form.language || 'zh-CN')}
-            onChange={event => setForm(current => ({ ...current, language: event.target.value }))}
-          >
-            {LANGUAGES.map(item => <option key={item} value={item}>{item}</option>)}
-          </select>
-        </label>
-
-        <div className="editor-tabs">
-          <button className={!preview ? 'tab active' : 'tab'} onClick={() => setPreview(false)}>编辑</button>
-          <button className={preview ? 'tab active' : 'tab'} onClick={() => setPreview(true)}>预览</button>
-        </div>
-
-        {preview
-          ? <MarkdownLite content={String(form.body || '')}/>
-          : <label className="field">
-            <span>正文 *</span>
-            <textarea
-              className="knowledge-editor"
-              value={String(form.body || '')}
-              onChange={event => setForm(current => ({ ...current, body: event.target.value }))}
-            />
-          </label>}
-
-        <label className="check-field">
-          <input
-            type="checkbox"
-            checked={Boolean(form.show)}
-            onChange={event => setForm(current => ({ ...current, show: event.target.checked }))}
-          />
-          <span>前台显示</span>
-        </label>
-
-        <div className="card-actions">
-          <button className="button" onClick={() => setDialogOpen(false)}>取消</button>
+      footer={
+        <div className="content-editor-footer">
+          <button className="button" onClick={() => setDialogOpen(false)} disabled={save.isPending}>取消</button>
           <button className="button primary" disabled={save.isPending} onClick={validateAndSave}>
-            {save.isPending ? '保存中…' : '保存'}
+            {save.isPending ? '保存中…' : '保存文章'}
           </button>
         </div>
+      }
+    >
+      <div className="content-editor-form">
+        <section className="admin-form-section">
+          <div className="admin-form-section-head">
+            <div><strong>文章信息</strong><small>标题、分类和语言决定文章在知识库中的归类方式。</small></div>
+          </div>
+          <div className="admin-form-section-body">
+            <div className="content-editor-grid">
+              <label className="field full">
+                <span>标题 *</span>
+                <input
+                  autoFocus
+                  value={String(form.title || '')}
+                  onChange={event => setForm(current => ({ ...current, title: event.target.value }))}
+                  placeholder="文章标题"
+                />
+              </label>
+
+              <label className="field">
+                <span>分类 *</span>
+                <input
+                  list="knowledge-category-list"
+                  value={String(form.category || '')}
+                  onChange={event => setForm(current => ({ ...current, category: event.target.value }))}
+                  placeholder="例如：使用教程"
+                />
+                <datalist id="knowledge-category-list">
+                  {(categories.data || []).map(item => <option key={item} value={item}/>)}
+                </datalist>
+              </label>
+
+              <label className="field">
+                <span>语言 *</span>
+                <select
+                  value={String(form.language || 'zh-CN')}
+                  onChange={event => setForm(current => ({ ...current, language: event.target.value }))}
+                >
+                  {LANGUAGES.map(item => <option key={item} value={item}>{item}</option>)}
+                </select>
+              </label>
+            </div>
+          </div>
+        </section>
+
+        <section className="admin-form-section">
+          <div className="admin-form-section-head">
+            <div><strong>正文</strong><small>使用 Markdown 编写内容，可在保存前切换预览检查排版。</small></div>
+          </div>
+          <div className="admin-form-section-body">
+            <div className="content-editor-toolbar">
+              <span>{preview ? '预览模式' : 'Markdown 编辑模式'}</span>
+              <div className="editor-tabs">
+                <button className={!preview ? 'tab active' : 'tab'} onClick={() => setPreview(false)}>编辑</button>
+                <button className={preview ? 'tab active' : 'tab'} onClick={() => setPreview(true)}>预览</button>
+              </div>
+            </div>
+
+            <div style={{ marginTop: 12 }}>
+              {preview
+                ? <MarkdownLite content={String(form.body || '')}/>
+                : <label className="field">
+                  <span>Markdown 正文 *</span>
+                  <textarea
+                    className="knowledge-editor"
+                    value={String(form.body || '')}
+                    onChange={event => setForm(current => ({ ...current, body: event.target.value }))}
+                    placeholder={"# 标题\n\n正文内容…"}
+                  />
+                </label>}
+            </div>
+          </div>
+        </section>
+
+        <section className="admin-form-section">
+          <div className="admin-form-section-head">
+            <div><strong>发布状态</strong><small>关闭后文章保留在后台，但不会在用户端展示。</small></div>
+          </div>
+          <div className="admin-form-section-body">
+            <label className="check-field">
+              <input
+                type="checkbox"
+                checked={Boolean(form.show)}
+                onChange={event => setForm(current => ({ ...current, show: event.target.checked }))}
+              />
+              <span><strong>前台显示</strong><small>启用后用户可以在知识库中看到该文章。</small></span>
+            </label>
+          </div>
+        </section>
       </div>
     </Modal>
   </>
