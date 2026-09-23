@@ -10,6 +10,7 @@ const AuditLogPage = lazy(() => import('./pages/system/AuditLogPage').then(modul
 const AgentOpsPage = lazy(() => import('./pages/system/AgentOpsPage').then(module => ({ default: module.AgentOpsPage })))
 const ModuleCenterPage = lazy(() => import('./pages/system/ModuleCenterPage').then(module => ({ default: module.ModuleCenterPage })))
 const SystemSettingsPage = lazy(() => import('./pages/config/SystemSettingsPage').then(module => ({ default: module.SystemSettingsPage })))
+const FeatureEntrySettingsPage = lazy(() => import('./pages/config/FeatureEntrySettingsPage').then(module => ({ default: module.FeatureEntrySettingsPage })))
 const SafeSettingsPage = lazy(() => import('./pages/config/SafeSettingsPage').then(module => ({ default: module.SafeSettingsPage })))
 const SubscribeSettingsPage = lazy(() => import('./pages/config/SubscribeSettingsPage').then(module => ({ default: module.SubscribeSettingsPage })))
 const InviteSettingsPage = lazy(() => import('./pages/config/InviteSettingsPage').then(module => ({ default: module.InviteSettingsPage })))
@@ -68,6 +69,7 @@ export const router = createAppRouter([
           { path: 'system/agent-ops', element: <AgentOpsPage /> },
           { path: 'system/modules', element: <ModuleCenterPage /> },
           { path: 'config/system', element: <SystemSettingsPage /> },
+          { path: 'config/system/features', element: <FeatureEntrySettingsPage /> },
           { path: 'config/system/safe', element: <SafeSettingsPage /> },
           { path: 'config/system/subscribe', element: <SubscribeSettingsPage /> },
           { path: 'config/system/invite', element: <InviteSettingsPage /> },
