@@ -15,7 +15,7 @@ const SubscribeSettingsPage = lazy(() => import('./pages/config/SubscribeSetting
 const InviteSettingsPage = lazy(() => import('./pages/config/InviteSettingsPage').then(module => ({ default: module.InviteSettingsPage })))
 const FrontendSettingsPage = lazy(() => import('./pages/config/FrontendSettingsPage').then(module => ({ default: module.FrontendSettingsPage })))
 const ServerSettingsPage = lazy(() => import('./pages/config/ServerSettingsPage').then(module => ({ default: module.ServerSettingsPage })))
-const GenericSettingsPage = lazy(() => import('./pages/config/GenericSettingsPage').then(module => ({ default: module.GenericSettingsPage })))
+const SubscribeTemplatePage = lazy(() => import('./pages/config/SubscribeTemplatePage').then(module => ({ default: module.SubscribeTemplatePage })))
 const EmailSettingsPage = lazy(() => import('./pages/config/EmailSettingsPage').then(module => ({ default: module.EmailSettingsPage })))
 const TelegramSettingsPage = lazy(() => import('./pages/config/TelegramSettingsPage').then(module => ({ default: module.TelegramSettingsPage })))
 const AppSettingsPage = lazy(() => import('./pages/config/AppSettingsPage').then(module => ({ default: module.AppSettingsPage })))
@@ -81,7 +81,7 @@ export const router = createAppRouter([
           { path: 'config/notice', element: <NoticeSettingsPage /> },
           { path: 'config/knowledge', element: <KnowledgeSettingsPage /> },
           { path: 'config/plugin', element: <PluginsPage /> },
-          { path: 'config/subscribe-template', element: <GenericSettingsPage settingKey="subscribe_template" title="订阅模板" /> },
+          { path: 'config/subscribe-template', element: <SubscribeTemplatePage /> },
           { path: 'server/manage', element: <NodesPage /> },
           { path: 'server/node/:nodeId', element: <NodeDetailPage /> },
           { path: 'server/machine', element: <MachinesPage /> },
