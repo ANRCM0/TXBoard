@@ -176,7 +176,7 @@ function SettingInput({
 
   if (type === 'switch') {
     return (
-      <label className="config-switch-field">
+      <label className="config-switch-field config-field-wide">
         <div>
           <strong>{field.label}</strong>
           {field.description ? <small>{field.description}</small> : null}
@@ -224,7 +224,7 @@ function SettingInput({
 
   if (type === 'textarea') {
     return (
-      <label className="config-field">
+      <label className="config-field config-field-wide">
         <span>{field.label}</span>
         <textarea
           value={String(value ?? '')}
@@ -274,7 +274,7 @@ function StringArrayInput({
   useEffect(() => setDraft(serialize(value)), [value])
 
   return (
-    <label className="config-field">
+    <label className="config-field config-field-wide">
       <span>{field.label}</span>
       <textarea
         value={draft}
