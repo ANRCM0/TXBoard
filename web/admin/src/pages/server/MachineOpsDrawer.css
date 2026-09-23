@@ -237,3 +237,90 @@
   .machine-ops-overview{grid-template-columns:repeat(2,minmax(0,1fr))}
   .machine-ops-overview-card{min-height:70px}
 }
+
+
+.machine-runtime-card .machine-ops-card-head{
+  align-items:center;
+}
+.machine-runtime-summary{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:9px;
+}
+.machine-runtime-summary>div{
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+  padding:11px 12px;
+  border:1px solid var(--border);
+  border-radius:8px;
+  background:color-mix(in srgb,var(--hover) 34%,var(--panel));
+}
+.machine-runtime-summary span{
+  color:var(--muted);
+  font-size:10px;
+}
+.machine-runtime-summary strong{
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  font-size:13px;
+}
+.machine-runtime-summary small{
+  overflow:hidden;
+  color:var(--muted);
+  font-size:10px;
+  line-height:1.45;
+  text-overflow:ellipsis;
+}
+.machine-runtime-result{
+  display:flex;
+  align-items:flex-start;
+  gap:9px;
+  margin-top:10px;
+  padding:9px 10px;
+  border:1px solid var(--border);
+  border-radius:8px;
+  background:var(--hover);
+  font-size:10.5px;
+  line-height:1.5;
+}
+.machine-runtime-result strong{
+  flex:none;
+  font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono",monospace;
+  font-size:10px;
+}
+.machine-runtime-result span{
+  color:var(--muted);
+}
+.machine-runtime-succeeded{
+  border-color:rgba(16,185,129,.22);
+  background:rgba(16,185,129,.055);
+}
+.machine-runtime-running,
+.machine-runtime-accepted{
+  border-color:rgba(59,130,246,.20);
+  background:rgba(59,130,246,.05);
+}
+.machine-runtime-failed,
+.machine-runtime-rolled_back{
+  border-color:rgba(245,158,11,.24);
+  background:rgba(245,158,11,.06);
+}
+.machine-runtime-card .machine-ops-sensitive-note{
+  margin-top:10px;
+}
+
+@media(max-width:760px){
+  .machine-runtime-card .machine-ops-card-head{
+    align-items:flex-start;
+    flex-direction:column;
+  }
+  .machine-runtime-card .machine-ops-card-head .button{
+    width:100%;
+  }
+  .machine-runtime-summary{
+    grid-template-columns:1fr;
+  }
+}
