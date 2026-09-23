@@ -42,7 +42,7 @@ class MachineController extends Controller
      */
     public function status(Request $request): JsonResponse
     {
-        $request->validate([
+        $params = $request->validate([
             'cpu' => 'required|numeric|min:0|max:100',
             'mem.total' => 'required|integer|min:0',
             'mem.used' => 'required|integer|min:0',
@@ -52,6 +52,17 @@ class MachineController extends Controller
             'disk.used' => 'nullable|integer|min:0',
             'net.in_speed' => 'nullable|numeric|min:0',
             'net.out_speed' => 'nullable|numeric|min:0',
+            'runtime' => 'nullable|array',
+            'runtime.version' => 'nullable|string|max:64',
+            'runtime.build_time' => 'nullable|string|max:64',
+            'runtime.deployment' => 'nullable|in:docker,unknown',
+            'runtime.updater_available' => 'nullable|boolean',
+            'runtime.update' => 'nullable|array',
+            'runtime.update.request_id' => ['nullable', 'string', 'max:64', 'regex:/^[A-Za-z0-9._:-]+$/'],
+            'runtime.update.target' => 'nullable|in:latest',
+            'runtime.update.status' => 'nullable|in:accepted,running,succeeded,failed,rolled_back',
+            'runtime.update.updated_at' => 'nullable|integer|min:1',
+            'runtime.update.message' => 'nullable|string|max:160',
         ]);
 
         $machine = $this->authenticateMachine($request);
@@ -82,6 +93,10 @@ class MachineController extends Controller
                 'in_speed' => (float) $netInSpeed,
                 'out_speed' => (float) $netOutSpeed,
             ];
+        }
+
+        if (isset($params['runtime']) && is_array($params['runtime'])) {
+            $loadStatus['runtime'] = $this->normalizeRuntimeStatus($params['runtime']);
         }
 
         $machine->forceFill([
@@ -115,6 +130,35 @@ class MachineController extends Controller
         }
 
         return response()->json(['data' => true]);
+    }
+
+    private function normalizeRuntimeStatus(array $runtime): array
+    {
+        $normalized = [
+            'version' => (string) ($runtime['version'] ?? ''),
+            'build_time' => (string) ($runtime['build_time'] ?? ''),
+            'deployment' => (string) ($runtime['deployment'] ?? 'unknown'),
+            'updater_available' => (bool) ($runtime['updater_available'] ?? false),
+        ];
+
+        if (isset($runtime['update']) && is_array($runtime['update'])) {
+            $update = $runtime['update'];
+            $message = trim((string) ($update['message'] ?? ''));
+            $message = preg_replace('/[\\x00-\\x1F\\x7F]+/u', ' ', $message) ?? '';
+            if (preg_match('/(authorization|bearer|password|token|secret|private[_-]?key|api[_-]?key|credential)/i', $message)) {
+                $message = '[REDACTED]';
+            }
+
+            $normalized['update'] = [
+                'request_id' => (string) ($update['request_id'] ?? ''),
+                'target' => (string) ($update['target'] ?? 'latest'),
+                'status' => (string) ($update['status'] ?? ''),
+                'updated_at' => (int) ($update['updated_at'] ?? 0),
+                'message' => mb_substr($message, 0, 160),
+            ];
+        }
+
+        return $normalized;
     }
 
     private function authenticateMachine(Request $request): ServerMachine

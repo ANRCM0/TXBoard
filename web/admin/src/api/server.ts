@@ -88,12 +88,29 @@ export type NodeItem = {
   [key: string]: unknown
 }
 
+export type MachineRuntimeUpdateStatus = {
+  request_id: string
+  target: 'latest'
+  status: 'accepted' | 'running' | 'succeeded' | 'failed' | 'rolled_back'
+  updated_at: number
+  message?: string
+}
+
+export type MachineRuntimeStatus = {
+  version?: string
+  build_time?: string
+  deployment?: 'docker' | 'unknown'
+  updater_available?: boolean
+  update?: MachineRuntimeUpdateStatus
+}
+
 export type MachineLoadStatus = {
   cpu?: number
   mem?: { total?: number; used?: number }
   swap?: { total?: number; used?: number }
   disk?: { total?: number; used?: number }
   net?: { in_speed?: number; out_speed?: number }
+  runtime?: MachineRuntimeStatus
   updated_at?: number
 }
 
@@ -226,6 +243,21 @@ export async function getInstallCommand(id: number) {
 export async function resetMachineToken(id: number) {
   const { data } = await apiClient.post('/server/machine/resetToken', { id })
   return unwrap(data)
+}
+
+export type MachineRuntimeUpdateRequestResult = {
+  machine_id: number
+  request_id: string
+  target: 'latest'
+  status: 'accepted'
+}
+
+export async function updateMachineRuntime(id: number) {
+  const { data } = await apiClient.post('/server/machine/runtime/update', {
+    machine_id: id,
+    target: 'latest',
+  })
+  return unwrap<MachineRuntimeUpdateRequestResult>(data)
 }
 export async function deleteMachine(id: number) {
   const { data } = await apiClient.post('/server/machine/drop', { id })
