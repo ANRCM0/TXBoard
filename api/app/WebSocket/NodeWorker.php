@@ -272,8 +272,10 @@ class NodeWorker
 
         $event = $msg['event'] ?? '';
 
-        // 机器连接：从消息中读取 node_id 来分派到具体节点
-        if (!empty($conn->machineNodeIds)) {
+        // 机器连接：从消息中读取 node_id 来分派到具体节点。
+        // machineId is authoritative here because a valid Machine may
+        // temporarily host zero nodes and still needs heartbeat/update control.
+        if (!empty($conn->machineId)) {
             if ($event === 'pong') {
                 if (!empty($conn->machineId)) {
                     NodeSyncService::markMachineOnline((int) $conn->machineId);
@@ -307,8 +309,8 @@ class NodeWorker
     {
         $service = app(DeviceStateService::class);
 
-        // 机器模式：清理所有关联节点
-        if (!empty($conn->machineNodeIds)) {
+        // 机器模式：清理所有关联节点。machineId also covers empty machines.
+        if (!empty($conn->machineId)) {
             $machineId = $conn->machineId ?? 'unknown';
             foreach ($conn->machineNodeIds as $nodeId) {
                 NodeRegistry::remove($nodeId, $conn);
