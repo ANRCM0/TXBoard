@@ -108,6 +108,7 @@ class ModuleRegistryApiTest extends TestCase
             'config' => null,
             'installed_at' => now(),
         ]);
+        $this->assertTrue(Plugin::where('code', 'nav_fixture')->exists(), 'plugin fixture must exist before registry read');
 
         try {
             $response = $this->getJson("/api/v2/{$this->securePath}/module/nav_fixture");
