@@ -11,6 +11,23 @@ use Illuminate\Support\Facades\Redis;
 
 class NodeSyncService
 {
+    private const MACHINE_WS_TTL_SECONDS = 180;
+
+    public static function isMachineOnline(int $machineId): bool
+    {
+        return (bool) Cache::get("machine_ws_alive:{$machineId}");
+    }
+
+    public static function markMachineOnline(int $machineId): void
+    {
+        Cache::put("machine_ws_alive:{$machineId}", true, self::MACHINE_WS_TTL_SECONDS);
+    }
+
+    public static function markMachineOffline(int $machineId): void
+    {
+        Cache::forget("machine_ws_alive:{$machineId}");
+    }
+
     /**
      * Check if node has active WS connection
      */
@@ -166,7 +183,7 @@ class NodeSyncService
     /**
      * Publish a machine-level push command to Redis — picked up by the Workerman WS server
      */
-    public static function pushMachine(int $machineId, string $event, array $data): void
+    public static function pushMachine(int $machineId, string $event, array $data): bool
     {
         try {
             Redis::publish('node:push', json_encode([
@@ -174,11 +191,13 @@ class NodeSyncService
                 'event' => $event,
                 'data' => $data,
             ]));
+            return true;
         } catch (\Throwable $e) {
             Log::warning("[NodePush] Redis machine publish failed: {$e->getMessage()}", [
                 'machine_id' => $machineId,
                 'event' => $event,
             ]);
+            return false;
         }
     }
 }
