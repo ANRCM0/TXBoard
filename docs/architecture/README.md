@@ -71,6 +71,21 @@ Theme Runtime is part of TXBoard's supported extension architecture. `api/theme/
 
 Plugin Package v1 deliberately makes plugin repositories independent of TXBoard's source tree, frontend build and application image.
 
+### Machine runtime lifecycle
+
+TX-Node deployment/upgrade remains owned by the public TX-Node Installer. TXBoard may orchestrate a bounded Machine-level runtime update through the versioned [Machine Runtime Update v1](../../contracts/node-protocol/machine-runtime-update-v1.md) contract:
+
+```text
+Admin
+  -> Machine Admin API
+  -> typed machine WS event
+  -> TX-Node
+  -> Installer-owned local update bridge
+  -> existing Installer upgrade runtime
+```
+
+TXBoard does not SSH into the host, mount the Docker socket, or reimplement Installer upgrade/rollback behavior.
+
 ### Agent Ops / MCP
 
 TXBoard supports an optional AI operations layer that exposes narrow, auditable capabilities to external Agents.

@@ -17,6 +17,14 @@ POST /api/v2/server/machine/status
 
 V2 用于 Agent 握手、配置同步、用户同步、Machine 节点清单与状态上报。
 
+## Machine runtime update
+
+Machine-level TX-Node runtime upgrades are defined separately from per-node Agent Ops:
+
+- [Machine Runtime Update Protocol v1](./machine-runtime-update-v1.md)
+
+The update path delegates deployment mechanics to TX-Node Installer. It does not add SSH, generic shell, Docker socket access from TXBoard, or arbitrary image selection.
+
 ## UniProxy V1 compatibility
 
 ```http
