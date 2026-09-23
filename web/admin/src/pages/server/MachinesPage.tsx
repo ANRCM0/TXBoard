@@ -53,7 +53,7 @@ export function MachinesPage() {
     queryKey: ['machines'],
     queryFn: getMachines,
     staleTime: 30_000,
-    refetchInterval: 60_000,
+    refetchInterval: opsMachineId !== null ? 10_000 : 60_000,
     refetchOnWindowFocus: true,
   })
 
