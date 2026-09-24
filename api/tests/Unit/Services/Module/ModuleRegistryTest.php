@@ -43,7 +43,7 @@ class ModuleRegistryTest extends TestCase
 
             public function discover(): ModuleDiscoveryResult
             {
-                throw new RuntimeException('broken adapter');
+                throw new RuntimeException('broken adapter: password=do-not-expose');
             }
         };
 
@@ -58,7 +58,8 @@ class ModuleRegistryTest extends TestCase
         $this->assertSame('healthy_module', $snapshot->modules[0]->manifest->id);
         $this->assertCount(1, $snapshot->errors);
         $this->assertSame('broken', $snapshot->errors[0]->adapter);
-        $this->assertSame('broken adapter', $snapshot->errors[0]->message);
+        $this->assertSame('Module adapter discovery failed', $snapshot->errors[0]->message);
+        $this->assertStringNotContainsString('do-not-expose', json_encode($snapshot->toArray(), JSON_THROW_ON_ERROR));
     }
 
     public function test_duplicate_module_ids_are_reported_without_replacing_first_module(): void

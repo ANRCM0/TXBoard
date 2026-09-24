@@ -2,12 +2,12 @@
 
 TXBoard 是 Control Plane；TX-Node 是独立 Agent / Data Plane。当前仓库包含面板、前端、协议契约、主题与 Plugin Runtime，不包含 TX-Node 或可选独立插件的源码。
 
-## Architecture roadmap
+## 当前架构状态
 
-TXBoard 下一阶段的上层架构基线是 **Module Platform v1**：在不改变 Core 业务事实来源的前提下，将现有 Theme、Plugin 与 Agent Ops / MCP 通过统一 Module Registry、Capability Registry、Health 和 Admin 扩展契约进行收敛。
+**Module Platform v1 的 A–H 阶段已经实现；当前阶段是稳定化与兼容性加固。** 它统一 Plugin、Theme、Agent Ops 的只读库存、健康与 Admin 导航，并通过专门适配器委托既有 PluginManager 和 ThemeService。Core 业务仍是唯一事实来源；Agent Ops / MCP 继续遵守 API 权限、目标范围、审批和审计边界。不要把后续稳定化工作描述为尚未启动的 v1 阶段，也不要在没有版本化架构提案的情况下创建新阶段。
 
-- [Module Platform v1](./module-platform-v1.md)：下一版目标架构、Core/Module 边界、Module Manifest、Registry、Capability、Health、Theme/Plugin/Agent 迁移方案与 Definition of Done；
-- [Module Platform v1 开发指南](./module-platform-development-guide.md)：后续模块化 PR 的 contract-first、adapter-first、兼容、权限、Octane、安全与测试规则；
+- [Module Platform v1](./module-platform-v1.md)：已实现的架构基线、Core/Module 边界、Manifest、Registry、Capability、Health 与 A–H 阶段状态；
+- [Module Platform v1 开发指南](./module-platform-development-guide.md)：当前稳定化工作的 contract-first、adapter-first、兼容、权限、Octane、安全与测试规则；
 - [Code Agent 项目开发指南](../development/code-agent-project-guide.md)：Codex / Code Agent 的仓库工作流、架构边界、Phase A–H 已完成实现与当前 Module Platform v1 stabilization 约束。根目录 `AGENTS.md` 提供 Agent 自动读取的执行规则。
 
 Module Platform 是现有 Plugin / Theme / Agent Ops 架构之上的统一层，不替代它们已经稳定的 domain runtime，也不将 User、Order、Node 等 Core 领域强行插件化。

@@ -23,10 +23,10 @@ final class ModuleRegistry
         foreach ($this->adapters as $adapter) {
             try {
                 $result = $adapter->discover();
-            } catch (Throwable $e) {
+            } catch (Throwable) {
                 $errors[] = new ModuleDiscoveryError(
                     adapter: $adapter->name(),
-                    message: $e->getMessage(),
+                    message: 'Module adapter discovery failed',
                 );
                 continue;
             }
