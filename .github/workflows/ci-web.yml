@@ -10,11 +10,6 @@ on:
       - ".github/workflows/ci-web.yml"
   pull_request:
     branches: [main]
-    paths:
-      - "web/**"
-      - "package.json"
-      - "package-lock.json"
-      - ".github/workflows/ci-web.yml"
 
 concurrency:
   group: web-ci-${{ github.ref }}
@@ -30,5 +25,6 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: package-lock.json
+      - run: node scripts/check-ci-pr-coverage.mjs
       - run: npm ci --no-audit --no-fund
       - run: npm run verify:web

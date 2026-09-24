@@ -8,6 +8,7 @@ TXBoard 是 Control Plane；TX-Node 是独立 Agent / Data Plane。当前仓库�
 
 - [Module Platform v1](./module-platform-v1.md)：已实现的架构基线、Core/Module 边界、Manifest、Registry、Capability、Health 与 A–H 阶段状态；
 - [Module Platform v1 开发指南](./module-platform-development-guide.md)：当前稳定化工作的 contract-first、adapter-first、兼容、权限、Octane、安全与测试规则；
+- [Module Platform v1 稳定化计划与交付流程](../development/module-platform-v1-stabilization-plan.md)：后续 PR 顺序、验收条件、测试门禁与发布观察；
 - [Code Agent 项目开发指南](../development/code-agent-project-guide.md)：Codex / Code Agent 的仓库工作流、架构边界、Phase A–H 已完成实现与当前 Module Platform v1 stabilization 约束。根目录 `AGENTS.md` 提供 Agent 自动读取的执行规则。
 
 Module Platform 是现有 Plugin / Theme / Agent Ops 架构之上的统一层，不替代它们已经稳定的 domain runtime，也不将 User、Order、Node 等 Core 领域强行插件化。

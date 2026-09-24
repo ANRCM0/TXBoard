@@ -11,12 +11,6 @@ on:
       - ".github/workflows/ci-api.yml"
   pull_request:
     branches: [main]
-    paths:
-      - "api/**"
-      - "contracts/module-package/**"
-      - "contracts/module-lifecycle/**"
-      - "contracts/theme-package/**"
-      - ".github/workflows/ci-api.yml"
 
 concurrency:
   group: api-ci-${{ github.ref }}

@@ -25,7 +25,7 @@ ghcr.io/paimoncai/txboard
 | Agent Ops / MCP | MCP 为可选协议适配器，调用 Agent Ops API；操作继续经过权限、目标范围、审批和审计，不直接访问数据库、Redis 或 TX-Node。 |
 | 交付与验证 | `api/tests` 覆盖 PHP 契约和业务接口；根目录 `npm run verify:web` 覆盖两个前端的类型检查、测试、构建和性能预算。CI 分别验证 API、Web、MCP 与生产镜像。 |
 
-下一步优先处理 v1 兼容问题、故障隔离和有明确契约依据的产品改进；破坏性扩展需要单独的版本化架构提案。
+下一步优先处理 v1 兼容问题、故障隔离和有明确契约依据的产品改进；破坏性扩展需要单独的版本化架构提案。执行顺序和 PR/CI/发布门禁见 [Module Platform v1 稳定化计划](docs/development/module-platform-v1-stabilization-plan.md)。
 
 ---
 

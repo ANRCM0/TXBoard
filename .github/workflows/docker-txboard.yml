@@ -15,16 +15,6 @@ on:
       - ".github/workflows/docker-txboard.yml"
   pull_request:
     branches: [main]
-    paths:
-      - "api/**"
-      - "web/**"
-      - "mcp/**"
-      - "Dockerfile"
-      - ".dockerignore"
-      - "package.json"
-      - "package-lock.json"
-      - "compose.yaml"
-      - ".github/workflows/docker-txboard.yml"
   workflow_dispatch:
 
 permissions:
