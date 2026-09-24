@@ -116,7 +116,7 @@ A broken adapter or malformed legacy module must not prevent healthy modules fro
 }
 ```
 
-Errors must not contain credentials or other secrets.
+Errors must not contain credentials or other secrets. Adapter failures and validation exceptions are reported with bounded, non-secret diagnostic messages; raw exception text and invalid/untrusted module IDs are never returned. The adapter name and (when validated) module ID remain available to locate the failing subsystem.
 
 A runtime descriptor may optionally include bounded `health_details` derived by TXBoard:
 

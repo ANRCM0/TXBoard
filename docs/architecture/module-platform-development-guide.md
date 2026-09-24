@@ -1,6 +1,6 @@
 # Module Platform v1 开发指南
 
-> 用途：指导 TXBoard 下一阶段所有模块化改造。
+> 用途：指导 Module Platform v1 完成后的稳定化、兼容性加固与后续有明确版本化提案的扩展工作。
 >
 > 前置阅读：[Module Platform v1](./module-platform-v1.md)。
 

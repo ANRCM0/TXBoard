@@ -13,6 +13,20 @@ ghcr.io/paimoncai/txboard
 
 一个 `txboard` 容器同时包含 Admin/User 前端、Caddy、Laravel Octane、Horizon、Redis、WebSocket 服务，以及默认关闭的 MCP Gateway。MySQL 与备份任务作为基础设施服务独立运行。
 
+## 当前项目状态
+
+截至 2026 年 9 月，仓库的代码与契约基线如下；这描述实现状态，不代表所有部署实例已经升级：
+
+| 范围 | 状态与边界 |
+| --- | --- |
+| Core 控制面 | 用户、订阅、订单、节点、机器和路由等仍由 Laravel API 持有事实来源；TX-Node 在独立仓库，通过版本化 HTTP / WebSocket 契约通信。 |
+| Module Platform v1 | A–H 阶段完成；Module Package、Registry、Lifecycle、Theme Package、Module Center、管理 API、后台导航与 Agent Ops 健康投影均已落地。当前工作是兼容性加固与缺陷修复。 |
+| 扩展运行时 | PluginManager 和 ThemeService 保持权威；Registry 只负责只读发现，ModuleLifecycle 通过专门适配器执行支持的操作。第三方插件无需迁移到新清单或改造 Admin 源码。 |
+| Agent Ops / MCP | MCP 为可选协议适配器，调用 Agent Ops API；操作继续经过权限、目标范围、审批和审计，不直接访问数据库、Redis 或 TX-Node。 |
+| 交付与验证 | `api/tests` 覆盖 PHP 契约和业务接口；根目录 `npm run verify:web` 覆盖两个前端的类型检查、测试、构建和性能预算。CI 分别验证 API、Web、MCP 与生产镜像。 |
+
+下一步优先处理 v1 兼容问题、故障隔离和有明确契约依据的产品改进；破坏性扩展需要单独的版本化架构提案。
+
 ---
 
 ## 主要能力
@@ -40,7 +54,7 @@ ghcr.io/paimoncai/txboard
 
 ### 扩展体系
 
-下一阶段以 **Module Platform v1** 为架构基线，将 Theme、Plugin 与 Agent Ops / MCP 收敛到统一 Module Registry、Capability Registry、Health 与 Admin 扩展契约，同时保持 Core 业务领域为唯一事实来源。详见 [Module Platform v1](docs/architecture/module-platform-v1.md) 与 [开发指南](docs/architecture/module-platform-development-guide.md)。
+**Module Platform v1 已完成 A–H 阶段，当前进入稳定化与兼容性加固。** Registry 将 Plugin、Theme 和 Agent Ops 归一为只读库存、健康状态与后台导航；受控管理 API 通过 ModuleLifecycle 委托现有 PluginManager / ThemeService，不重新实现生命周期。Agent Ops / MCP 仍通过既有权限、目标范围、审批与审计链路，不是第二控制面。详见 [Module Platform v1](docs/architecture/module-platform-v1.md) 与 [开发指南](docs/architecture/module-platform-development-guide.md)。
 
 - **Theme System**：默认系统主题为 TXBoard，支持安装、切换和配置自定义主题
 - **Plugin System**：支持核心插件、第三方 ZIP、Schema 驱动 UI，以及 Plugin Package v1 自带 Admin App

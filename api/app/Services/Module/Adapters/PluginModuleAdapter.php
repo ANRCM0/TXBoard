@@ -70,11 +70,11 @@ final class PluginModuleAdapter implements ModuleAdapter
 
                 try {
                     $manifest = ModuleManifest::fromArray($this->manifestFromLegacyConfig($directory, $config));
-                } catch (Throwable $e) {
+                } catch (Throwable) {
                     $errors[] = new ModuleDiscoveryError(
                         adapter: $this->name(),
-                        moduleId: $code,
-                        message: $e->getMessage(),
+                        moduleId: null,
+                        message: 'Plugin metadata is invalid',
                     );
                     continue;
                 }
@@ -84,12 +84,12 @@ final class PluginModuleAdapter implements ModuleAdapter
 
                 try {
                     $this->pluginPackage->assertDeclaredAdminAppsExist($directory, $config);
-                } catch (Throwable $e) {
+                } catch (Throwable) {
                     $health = ModuleHealth::FAILED;
                     $errors[] = new ModuleDiscoveryError(
                         adapter: $this->name(),
                         moduleId: $manifest->id,
-                        message: $e->getMessage(),
+                        message: 'Plugin admin app validation failed',
                     );
                 }
 
@@ -119,10 +119,10 @@ final class PluginModuleAdapter implements ModuleAdapter
             }
 
             return Plugin::query()->get()->keyBy('code');
-        } catch (Throwable $e) {
+        } catch (Throwable) {
             $errors[] = new ModuleDiscoveryError(
                 adapter: $this->name(),
-                message: 'Plugin installation state is unavailable: ' . $e->getMessage(),
+                message: 'Plugin installation state is unavailable',
             );
 
             return collect();
