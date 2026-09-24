@@ -9,6 +9,8 @@ export default defineConfig(({ mode }) => {
     plugins: [react()],
     test: {
       environment: 'jsdom',
+      // Avoid starving the router's dynamic import when the full suite runs under load.
+      maxWorkers: 4,
       setupFiles: ['./src/test/setup.ts'],
       include: ['src/**/*.test.{ts,tsx}'],
     },

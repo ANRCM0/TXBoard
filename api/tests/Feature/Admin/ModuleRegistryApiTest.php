@@ -172,6 +172,51 @@ class ModuleRegistryApiTest extends TestCase
         }
     }
 
+    public function test_discovery_errors_do_not_expose_plugin_admin_references_or_invalid_ids(): void
+    {
+        $secret = 'token-for-regression-test';
+        $appPath = base_path('plugins/UnsafeAdminAppFixture');
+        $invalidIdPath = base_path('plugins/InvalidModuleIdFixture');
+        File::ensureDirectoryExists($appPath);
+        File::ensureDirectoryExists($invalidIdPath);
+
+        file_put_contents($appPath . '/config.json', json_encode([
+            'name' => 'Unsafe Admin App Fixture',
+            'code' => 'unsafe_admin_fixture',
+            'version' => '1.0.0',
+            'description' => 'Missing admin app reference',
+            'author' => 'TXBoard tests',
+            'package' => ['schema' => 1],
+            'admin_menus' => [['app' => "admin/{$secret}.html"]],
+        ], JSON_THROW_ON_ERROR));
+        file_put_contents($invalidIdPath . '/config.json', json_encode([
+            'name' => 'Invalid Module ID Fixture',
+            'code' => "Bearer {$secret}",
+            'version' => '1.0.0',
+            'description' => 'Invalid module identity',
+            'author' => 'TXBoard tests',
+        ], JSON_THROW_ON_ERROR));
+
+        try {
+            $response = $this->getJson("/api/v2/{$this->securePath}/module");
+            $response->assertOk();
+
+            $errors = collect($response->json('data.errors'));
+            $appError = $errors->first(fn (array $error) => $error['module_id'] === 'unsafe_admin_fixture');
+            $this->assertNotNull($appError);
+            $this->assertSame('Plugin admin app validation failed', $appError['message']);
+            $this->assertContains('unsafe_admin_fixture', array_column($response->json('data.modules'), 'id'));
+
+            $invalidIdError = $errors->first(fn (array $error) =>
+                $error['adapter'] === 'plugin' && $error['message'] === 'Plugin metadata is invalid');
+            $this->assertNotNull($invalidIdError);
+            $this->assertNull($invalidIdError['module_id']);
+            $this->assertStringNotContainsString($secret, $response->getContent());
+        } finally {
+            File::deleteDirectory($appPath);
+            File::deleteDirectory($invalidIdPath);
+        }
+    }
     public function test_system_module_identity_cannot_be_shadowed_by_user_plugin(): void
     {
         $path = base_path('plugins/AgentOps');

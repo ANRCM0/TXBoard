@@ -44,12 +44,12 @@ final class ThemeModuleAdapter implements ModuleAdapter
 
             try {
                 $package = ThemePackageManifest::fromArray($config);
-            } catch (Throwable $e) {
+            } catch (Throwable) {
                 $health = ModuleHealth::DEGRADED;
                 $errors[] = new ModuleDiscoveryError(
                     adapter: $this->name(),
                     moduleId: $moduleId,
-                    message: 'Theme Package metadata is invalid: ' . $e->getMessage(),
+                    message: 'Theme Package metadata is invalid',
                 );
             }
 
@@ -86,11 +86,11 @@ final class ThemeModuleAdapter implements ModuleAdapter
                     ],
                     'capabilities' => [ModuleCapability::THEME],
                 ]);
-            } catch (Throwable $e) {
+            } catch (Throwable) {
                 $errors[] = new ModuleDiscoveryError(
                     adapter: $this->name(),
                     moduleId: $moduleId,
-                    message: $e->getMessage(),
+                    message: 'Theme module metadata is invalid',
                 );
                 continue;
             }
