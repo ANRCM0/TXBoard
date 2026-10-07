@@ -37,7 +37,7 @@ services:
   txboard:
     # One application image contains the API, both SPAs, Caddy, Horizon,
     # embedded Redis, WebSocket server and the optional MCP Gateway.
-    image: ${TXBOARD_IMAGE:-ghcr.io/paimoncai/txboard:latest}
+    image: ${TXBOARD_IMAGE:-ghcr.io/ANRCM0/txboard:latest}
     build:
       context: .
       dockerfile: Dockerfile
@@ -95,7 +95,7 @@ services:
   # image instead of building a second MCP image.
   txboard-mcp:
     profiles: ["mcp"]
-    image: ${TXBOARD_IMAGE:-ghcr.io/paimoncai/txboard:latest}
+    image: ${TXBOARD_IMAGE:-ghcr.io/ANRCM0/txboard:latest}
     entrypoint: ["node", "/opt/txboard-mcp/dist/index.js"]
     restart: unless-stopped
     logging: *default-logging

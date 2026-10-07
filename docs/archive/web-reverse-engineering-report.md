@@ -1417,7 +1417,7 @@ array
 宿主机端口：7801
 容器端口：7001
 容器：xboard
-镜像：ghcr.io/paimoncai/txboard-api:latest
+镜像：ghcr.io/ANRCM0/txboard-api:latest
 框架：Laravel 11
 来源：基于 V2board 二次开发
 数据库：MySQL
