@@ -344,7 +344,7 @@ ZIP 根目录可以直接是插件目录，也可以包含一层插件目录；�
 
 ## 16. Reference plugin
 
-[TXBoard-AccessAudit](https://github.com/PaiMonCai/TXBoard-AccessAudit) 是 Plugin Package v1 的第一方参考实现：
+[TXBoard-AccessAudit](https://github.com/ANRCM0/TXBoard-AccessAudit) 是 Plugin Package v1 的第一方参考实现：
 
 - 独立仓库维护 PHP backend / migrations / routes；
 - CRUD/Settings 使用宿主 Schema；

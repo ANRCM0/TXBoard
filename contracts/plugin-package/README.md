@@ -296,6 +296,6 @@ install / migrate / publish admin assets
 
 ## Reference implementation
 
-[TXBoard-AccessAudit](https://github.com/PaiMonCai/TXBoard-AccessAudit) 是 Plugin Package v1 的第一方参考实现。
+[TXBoard-AccessAudit](https://github.com/ANRCM0/TXBoard-AccessAudit) 是 Plugin Package v1 的第一方参考实现。
 
 它独立维护 PHP backend、migrations、routes、Schema 与 `admin/dist`，TXBoard Admin 不包含 AccessAudit 专属 React renderer，TXBoard 应用镜像也不打包 AccessAudit 源码。

@@ -1,6 +1,6 @@
 # TX-Node Protocol Contract
 
-TXBoard 是控制面，独立的 [TX-Node](https://github.com/PaiMonCai/TX-Node) 是节点 Agent / Data Plane。
+TXBoard 是控制面，独立的 [TX-Node](https://github.com/ANRCM0/TX-Node) 是节点 Agent / Data Plane。
 
 TX-Node 主动向 TXBoard 发起 HTTPS / WSS 连接；TXBoard 不编译、不 vendor、也不部署 TX-Node。
 

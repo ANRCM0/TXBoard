@@ -3,7 +3,7 @@
 > 面向用户、订阅、网络节点、扩展模块与 AI 原生运维的模块化 Control Plane。  
 > TXBoard 是独立维护的控制面产品，应用、运行时、部署与扩展接口统一使用 TXBoard 命名空间。
 
-TXBoard 负责用户、订阅、订单、支付、节点、机器、流量、工单、内容、主题与插件等控制面能力。节点运行时不再内嵌在本仓库中，而由独立的 [TX-Node](https://github.com/PaiMonCai/TX-Node) 提供，通过 HTTP / WebSocket 协议与 TXBoard 通信。
+TXBoard 负责用户、订阅、订单、支付、节点、机器、流量、工单、内容、主题与插件等控制面能力。节点运行时不再内嵌在本仓库中，而由独立的 [TX-Node](https://github.com/ANRCM0/TX-Node) 提供，通过 HTTP / WebSocket 协议与 TXBoard 通信。
 
 当前生产部署采用 **单 TXBoard 应用镜像**：
 
@@ -58,7 +58,7 @@ ghcr.io/paimoncai/txboard
 
 - **Theme System**：默认系统主题为 TXBoard，支持安装、切换和配置自定义主题
 - **Plugin System**：支持核心插件、第三方 ZIP、Schema 驱动 UI，以及 Plugin Package v1 自带 Admin App
-- **AccessAudit**：独立官方插件仓库 [TXBoard-AccessAudit](https://github.com/PaiMonCai/TXBoard-AccessAudit)，作为 Plugin Package v1 参考实现
+- **AccessAudit**：独立官方插件仓库 [TXBoard-AccessAudit](https://github.com/ANRCM0/TXBoard-AccessAudit)，作为 Plugin Package v1 参考实现
 - 支付、通知等能力可通过插件继续扩展
 
 ---
@@ -137,7 +137,7 @@ Machine
 
 ## 快速部署
 
-生产用户通过独立公开仓库 [TXBoard-Deploy](https://github.com/PaiMonCai/TXBoard-Deploy) 部署。部署脚本只拉取 TXBoard 镜像，不 clone、不构建本仓库源码。
+生产用户通过独立公开仓库 [TXBoard-Deploy](https://github.com/ANRCM0/TXBoard-Deploy) 部署。部署脚本只拉取 TXBoard 镜像，不 clone、不构建本仓库源码。
 
 服务器只需要：
 
@@ -148,7 +148,7 @@ Machine
 交互式安装：
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/PaiMonCai/TXBoard-Deploy/main/install.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/ANRCM0/TXBoard-Deploy/main/install.sh | sudo bash
 ```
 
 安装器会询问镜像标签、域名/TLS 模式、管理员邮箱、端口、安装目录与备份保留数量，然后生成运行时 Compose 和配置，并直接拉取：
@@ -161,7 +161,7 @@ ghcr.io/paimoncai/txboard:<tag>
 
 完整安装与更新说明见：
 
-[TXBoard-Deploy](https://github.com/PaiMonCai/TXBoard-Deploy)
+[TXBoard-Deploy](https://github.com/ANRCM0/TXBoard-Deploy)
 
 ### 维护者源码部署
 
@@ -244,7 +244,7 @@ docker compose exec -T txboard php artisan txboard:install
 生产部署通过 TXBoard-Deploy 更新镜像：
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/PaiMonCai/TXBoard-Deploy/main/update.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/ANRCM0/TXBoard-Deploy/main/update.sh | sudo bash
 ```
 
 更新器默认先做一次备份，然后拉取当前配置的 TXBoard 镜像并等待真实应用 healthcheck 通过。
@@ -371,7 +371,7 @@ TXBoard Admin 通过同源 iframe + Admin Bridge 承载它，不需要把插件 
 - Plugin Menu
 - Legacy component / embed compatibility
 
-复杂插件源码不进入 TXBoard Core。官方参考插件 [TXBoard-AccessAudit](https://github.com/PaiMonCai/TXBoard-AccessAudit) 已独立发布；它的 Dashboard / Analytics、后端、迁移和发布 ZIP 都由插件仓库自行维护。
+复杂插件源码不进入 TXBoard Core。官方参考插件 [TXBoard-AccessAudit](https://github.com/ANRCM0/TXBoard-AccessAudit) 已独立发布；它的 Dashboard / Analytics、后端、迁移和发布 ZIP 都由插件仓库自行维护。
 
 插件规范与开发指南：
 
@@ -406,7 +406,7 @@ MCP 进程只监听容器 loopback，并继续通过 Agent Ops HTTP API 执行�
 
 TX-Node 已从 TXBoard 仓库完全拆分：
 
-[github.com/PaiMonCai/TX-Node](https://github.com/PaiMonCai/TX-Node)
+[github.com/ANRCM0/TX-Node](https://github.com/ANRCM0/TX-Node)
 
 TXBoard 不构建、不发布、也不运行 TX-Node。
 
@@ -446,7 +446,7 @@ AccessAudit 是可选的面板插件，不属于 TX-Node 核心协议。
 
 独立仓库：
 
-[TXBoard-AccessAudit](https://github.com/PaiMonCai/TXBoard-AccessAudit)
+[TXBoard-AccessAudit](https://github.com/ANRCM0/TXBoard-AccessAudit)
 
 AccessAudit 的后端、数据库迁移、Admin App 与发布生命周期均由独立仓库维护。TXBoard 镜像不再内置或覆盖 AccessAudit。
 
@@ -558,8 +558,8 @@ TXBoard/
 - [HTTP Compatibility Audit](contracts/http/txboard-api-compatibility-audit.md)
 - [TX-Node Protocol](contracts/node-protocol/README.md)
 - [Plugin Development Guide](api/docs/en/development/plugin-development-guide.md)
-- [TXBoard-Deploy](https://github.com/PaiMonCai/TXBoard-Deploy)
-- [TXBoard-AccessAudit](https://github.com/PaiMonCai/TXBoard-AccessAudit)
+- [TXBoard-Deploy](https://github.com/ANRCM0/TXBoard-Deploy)
+- [TXBoard-AccessAudit](https://github.com/ANRCM0/TXBoard-AccessAudit)
 - [Historical Web Notes](docs/archive/)
 
 `docs/archive/` 中的内容仅用于保存历史实现记录，不代表当前架构。
@@ -583,7 +583,7 @@ ghcr.io/paimoncai/txboard:sha-<commit>
 
 API 与两个前端作为同一个 artifact 构建，避免版本漂移。
 
-生产部署脚本独立维护在公开的 [TXBoard-Deploy](https://github.com/PaiMonCai/TXBoard-Deploy)，应用源码仓库与部署分发不再耦合。
+生产部署脚本独立维护在公开的 [TXBoard-Deploy](https://github.com/ANRCM0/TXBoard-Deploy)，应用源码仓库与部署分发不再耦合。
 
 
 ---
