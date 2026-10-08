@@ -55,7 +55,7 @@ class CheckOrder extends Command
             ->orderBy('id', 'ASC')
             ->lazyById(200)
             ->each(function ($order) {
-                OrderHandleJob::dispatch($order->trade_no);
+                OrderHandleJob::dispatch($order->trade_no)->onConnection('redis');
             });
     }
 }
