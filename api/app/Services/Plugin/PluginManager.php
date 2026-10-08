@@ -90,7 +90,9 @@ class PluginManager
             $pluginFile = $this->getPluginPath($pluginCode) . '/Plugin.php';
             if (!File::exists($pluginFile)) {
                 Log::warning("Plugin class file not found: {$pluginFile}");
-                Plugin::query()->where('code', $pluginCode)->delete();
+                // Preserve plugin registration and settings for future external reinstall.
+                // A missing package must never silently delete database records.
+                Plugin::query()->where('code', $pluginCode)->update(['is_enabled' => false]);
                 return null;
             }
             require_once $pluginFile;
@@ -390,7 +392,6 @@ class PluginManager
         $plugin = $this->loadPlugin($pluginCode);
 
         if (!$plugin) {
-            Plugin::where('code', $pluginCode)->delete();
             throw new \Exception('Plugin not found: ' . $pluginCode);
         }
 

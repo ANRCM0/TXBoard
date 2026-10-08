@@ -53,6 +53,9 @@ class PaymentController extends Controller
         if (!$payment)
             return $this->fail([400202, '支付方式不存在']);
         $payment->enable = !$payment->enable;
+        if ($payment->enable && !in_array($payment->payment, PaymentService::getAllPaymentMethodNames(), true)) {
+            return $this->fail([400, '支付插件不存在或未启用']);
+        }
         if (!$payment->save())
             return $this->fail([500, '保存失败']);
         return $this->success(true);
@@ -79,6 +82,9 @@ class PaymentController extends Controller
             'handling_fee_fixed.integer' => '固定手续费格式有误',
             'handling_fee_percent.between' => '百分比手续费范围须在0-100之间'
         ]);
+        if (!in_array($params['payment'], PaymentService::getAllPaymentMethodNames(), true)) {
+            return $this->fail([400, '支付插件不存在或未启用']);
+        }
         if ($request->input('id')) {
             $payment = Payment::find($request->input('id'));
             if (!$payment)

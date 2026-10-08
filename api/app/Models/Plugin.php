@@ -32,10 +32,6 @@ class Plugin extends Model
     const PROTECTED_PLUGINS = [
         'epay',           // EPay
         'alipay_f2f',     // Alipay F2F
-        'btcpay',         // BTCPay
-        'coinbase',       // Coinbase
-        'coin_payments',  // CoinPayments
-        'mgate',          // MGate
         'telegram',       // Telegram
     ];
 
