@@ -568,7 +568,11 @@ class PluginManager
             if (!is_array($config)) {
                 throw new \RuntimeException("Invalid enabled plugin manifest: {$dependent->code}");
             }
-            if (array_key_exists($code, $config['require'] ?? [])) {
+            $requires = $config['require'] ?? [];
+            if (!is_array($requires)) {
+                throw new \RuntimeException("Invalid enabled plugin dependencies: {$dependent->code}");
+            }
+            if (array_key_exists($code, $requires)) {
                 throw new \RuntimeException("Plugin {$code} is required by {$dependent->code}");
             }
         }
@@ -713,7 +717,12 @@ class PluginManager
             File::deleteDirectory($extractPath);
             throw new \RuntimeException('Bundled plugins cannot be overwritten by uploads');
         }
-        $this->assertDependencies($config['require'] ?? []);
+        try {
+            $this->assertDependencies($config['require'] ?? []);
+        } catch (\Throwable $e) {
+            File::deleteDirectory($extractPath);
+            throw $e;
+        }
         $targetPath = $this->getUserPluginPath($code);
         $existingRow = Plugin::query()->where('code', $code)->first();
 
