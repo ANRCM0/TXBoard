@@ -29,9 +29,9 @@ class TrafficHealthTest extends TestCase
                 'payload_hash' => str_repeat('b', 64), 'created_at' => time()],
         ]);
 
-        $this->artisan('traffic:health', ['--json' => true])
-            ->expectsOutputToContain('"settled_batches":2')
-            ->expectsOutputToContain('"pending_traffic_jobs":3')
+        $this->artisan('traffic:health')
+            ->expectsOutputToContain('Settled batches: 2')
+            ->expectsOutputToContain('Pending traffic jobs: 3')
             ->assertExitCode(0);
     }
 
