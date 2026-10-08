@@ -2,14 +2,14 @@
 
 # Build both SPAs once, then copy only their static output into the final
 # control-plane image. Node never reaches production.
-FROM node:22.23.2-alpine AS web-build
+FROM --platform=$BUILDPLATFORM node:22.23.2-alpine AS web-build
 WORKDIR /workspace
 
 COPY package.json package-lock.json ./
 COPY web/shared/package.json web/shared/package.json
 COPY web/admin/package.json web/admin/package.json
 COPY web/user/package.json web/user/package.json
-RUN --mount=type=cache,target=/root/.npm \
+RUN --mount=type=cache,target=/root/.npm,sharing=locked \
     npm ci --no-audit --no-fund
 
 COPY web/shared web/shared

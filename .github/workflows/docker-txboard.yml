@@ -1,18 +1,11 @@
 name: txboard-image
 
 on:
+  # Every main commit updates the independent development image channel.
   push:
     branches: [main]
-    paths:
-      - "api/**"
-      - "web/**"
-      - "mcp/**"
-      - "Dockerfile"
-      - ".dockerignore"
-      - "package.json"
-      - "package-lock.json"
-      - "compose.yaml"
-      - ".github/workflows/docker-txboard.yml"
+    tags:
+      - "v*"
   pull_request:
     branches: [main]
     paths:
@@ -24,26 +17,25 @@ on:
       - "package.json"
       - "package-lock.json"
       - "compose.yaml"
+      - "scripts/resolve-image-tags.sh"
+      - "scripts/test-image-tags.sh"
       - ".github/workflows/docker-txboard.yml"
-  workflow_dispatch:
 
 permissions:
   contents: read
   packages: write
 
-# Only the newest run for a branch may publish image tags such as `latest`.
-# This prevents rapid consecutive main pushes from racing and letting an older
-# commit overwrite the tag after a newer image has already been published.
+# Branch builds cannot replace stable or preview; different release tags are
+# serialized by channel so a slower older tag cannot overwrite the channel.
 concurrency:
-  group: txboard-image-${{ github.workflow }}-${{ github.ref }}
+  group: txboard-image-${{ github.event_name == 'pull_request' && github.ref || (github.ref_type == 'branch' && 'dev' || (contains(github.ref_name, '-') && 'preview' || 'stable')) }}
   cancel-in-progress: true
 
 jobs:
-  # A passing image build alone is not a release qualification. Perform the
-  # full API, web and MCP checks on the exact commit before moving `latest`.
+  # A passing image build alone is not release qualification. Run regression
+  # checks on the exact Git commit for PR, dev, preview and stable channels.
   release-gate:
-    # Run on PRs as well, so publishing cannot be gated by an untested CI job.
-    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
+    # Tag releases use exactly the same validation as pull requests and main.
     runs-on: ubuntu-latest
     services:
       redis:
@@ -66,6 +58,8 @@ jobs:
       AGENT_OPS_PAIRING_CACHE_STORE: array
     steps:
       - uses: actions/checkout@v4
+      - name: Test image tag classification
+        run: bash scripts/test-image-tags.sh
       - uses: shivammathur/setup-php@v2
         with:
           php-version: "8.2"
@@ -104,8 +98,7 @@ jobs:
           npm run build
 
   verify:
-    # Smoke-test the actual container on main before any registry publication.
-    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
+    # Smoke-test actual runtime on PR, main and release tags.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -244,12 +237,29 @@ jobs:
           docker rm -f txboard-mcp-smoke
 
   publish:
-    # Do not publish from a PR or a manually dispatched non-main ref.
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    # PRs validate but never push. Only a main commit or a vetted semver Git
+    # tag may publish; neither can overwrite the other channel.
+    if: github.event_name == 'push'
     needs: [release-gate, verify]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Resolve dev / preview / stable image tags
+        id: channel
+        env:
+          TXBOARD_IMAGE_REPO: ghcr.io/anrcm0/txboard
+        run: bash scripts/resolve-image-tags.sh
+      - name: Reject release tags not contained in main
+        if: github.ref_type == 'tag'
+        shell: bash
+        run: |
+          git fetch origin main
+          if ! git merge-base --is-ancestor HEAD origin/main; then
+            echo "::error::Release Git tags must reference a commit already on main."
+            exit 1
+          fi
       - uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -257,17 +267,6 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       - uses: docker/setup-qemu-action@v3
       - uses: docker/setup-buildx-action@v3
-      - name: Normalize image name
-        id: image
-        shell: bash
-        run: echo "name=$(echo 'ghcr.io/${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
-      - uses: docker/metadata-action@v5
-        id: meta
-        with:
-          images: ${{ steps.image.outputs.name }}
-          tags: |
-            type=raw,value=latest
-            type=sha,format=short
       - uses: docker/build-push-action@v6
         with:
           context: .
@@ -278,6 +277,20 @@ jobs:
             APP_COMMIT=${{ github.sha }}
           cache-from: type=gha,scope=txboard
           cache-to: type=gha,mode=max,scope=txboard
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          tags: ${{ steps.channel.outputs.tags }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ github.ref_name }}
           provenance: false
+      - name: Report published channel
+        env:
+          RELEASE_CHANNEL: ${{ steps.channel.outputs.channel }}
+          RELEASE_TAGS: ${{ steps.channel.outputs.tags }}
+        shell: bash
+        run: |
+          {
+            echo "### Published TXBoard ${RELEASE_CHANNEL} image"
+            echo
+            printf '%s\\n' "$RELEASE_TAGS" | sed 's/^/- `/; s/$/`/'
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -26,11 +26,13 @@ curl -fsSL https://raw.githubusercontent.com/ANRCM0/TXBoard-Deploy/main/install.
 
 按照提示设置域名或 HTTP 模式、管理员邮箱、MySQL、镜像标签及安装目录。安装器生成配置并拉取镜像，不需要在服务器上克隆本仓库，也不需要本地 PHP / Node.js 构建环境。
 
-默认镜像：
+默认正式版镜像（仅推送正式发布 Git 标签时更新）：
 
 ```text
 ghcr.io/anrcm0/txboard:latest
 ```
+
+开发版每次 `main` 提交自动发布为 `dev`，不会覆盖 `latest`。预览版在推送 `vX.Y.Z-rc.N` / `-beta.N` / `-preview.N` 标签时发布为 `preview`。正式版在推送 `vX.Y.Z` 标签时发布为 `latest`。完整规则见 [镜像发布策略](docs/operations/image-release-channels.md)。
 
 安装参数、外部 MySQL、反向代理、HTTPS、备份和管理命令详见 [TXBoard-Deploy 文档](https://github.com/ANRCM0/TXBoard-Deploy#readme)。
 
