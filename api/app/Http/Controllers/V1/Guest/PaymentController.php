@@ -30,11 +30,6 @@ class PaymentController extends Controller
             $paymentService = new PaymentService($method, $payment->id);
             $verify = $paymentService->notify($request->input());
 
-            // Some gateways acknowledge a signed, still-pending event without settling it.
-            if (is_string($verify) && $verify === 'IPN OK: pending') {
-                return $verify;
-            }
-
             if (!is_array($verify)
                 || !isset($verify['trade_no'], $verify['callback_no'])
                 || !is_string($verify['trade_no'])
