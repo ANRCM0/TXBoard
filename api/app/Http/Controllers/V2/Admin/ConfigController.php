@@ -139,12 +139,10 @@ class ConfigController extends Controller
                 'default_remind_traffic' => (bool) admin_setting('default_remind_traffic', 1),
                 'subscribe_path' => admin_setting('subscribe_path', 's'),
             ],
+            // Only the selected theme remains global; appearance belongs to the
+            // selected theme's config.json + theme_<name> values.
             'frontend' => [
                 'frontend_theme' => app(ThemeService::class)->getActiveTheme(),
-                'frontend_theme_sidebar' => admin_setting('frontend_theme_sidebar', 'light'),
-                'frontend_theme_header' => admin_setting('frontend_theme_header', 'dark'),
-                'frontend_theme_color' => admin_setting('frontend_theme_color', 'default'),
-                'frontend_background_url' => admin_setting('frontend_background_url'),
             ],
             'server' => [
                 'server_token' => admin_setting('server_token'),
