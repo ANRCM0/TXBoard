@@ -25,6 +25,27 @@ class AgentOpsTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_wildcard_sanctum_token_named_agent_is_rejected(): void
+    {
+        $admin = $this->makeAdmin();
+        $plain = $admin->createToken('agent:renamed-root', ['*'])->plainTextToken;
+
+        $this->withToken($plain)->getJson('/api/v2/agent/whoami')
+            ->assertForbidden()->assertJsonPath('message', 'Invalid Agent scopes');
+        $this->withToken($plain)->getJson('/api/v2/agent/system/status')
+            ->assertForbidden();
+    }
+
+    public function test_agent_with_only_read_ability_cannot_execute_node_actions(): void
+    {
+        $admin = $this->makeAdmin();
+        $plain = $admin->createToken('agent:read-only', [AgentAbility::NODES_READ])->plainTextToken;
+
+        $this->withToken($plain)->postJson('/api/v2/agent/nodes/1/actions', [
+            'action' => 'node.restart',
+        ])->assertForbidden();
+    }
+
     public function test_agent_token_can_identify_itself_without_exposing_the_secret(): void
     {
         $admin = $this->makeAdmin();

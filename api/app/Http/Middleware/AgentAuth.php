@@ -19,6 +19,15 @@ class AgentAuth
             return response()->json(['message' => 'Agent credential required'], 403);
         }
 
+        // A renamed general-purpose Sanctum token with '*' is not an Agent
+        // credential. It must carry explicit, least-privilege Agent scopes.
+        $abilities = $token->abilities ?? null;
+        if (!is_array($abilities) || $abilities === []
+            || in_array('*', $abilities, true)
+            || array_diff($abilities, \App\Services\AgentOps\AgentAbility::ALL) !== []) {
+            return response()->json(['message' => 'Invalid Agent scopes'], 403);
+        }
+
         $request->setUserResolver(static fn () => $user);
 
         return $next($request);
