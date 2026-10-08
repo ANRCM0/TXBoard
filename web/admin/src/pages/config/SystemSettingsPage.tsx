@@ -1,11 +1,11 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useMutation, useQuery } from '@tanstack/react-query'
-import { useEffect, useRef } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
-import { toast } from 'sonner'
 import { z } from 'zod'
-import { fetchSettings, saveSettings } from '../../api/config'
+import { fetchSettings, type Settings } from '../../api/config'
 import { ConfigSectionFrame } from '../../components/config/ConfigSectionFrame'
+import { SettingsAutosaveStatus, useSettingsAutosave } from '../../components/config/SettingsAutosave'
 
 const optionalNumber = z.preprocess(value => value === '' ? null : value, z.coerce.number().nullish())
 
@@ -27,34 +27,43 @@ const schema = z.object({
 })
 type Values = z.infer<typeof schema>
 
+// Empty optional text settings are stored as null by the API. Form input
+// values must be strings; otherwise an unrelated null blocks every autosave.
+const nullableTextKeys = [
+  'app_name', 'app_description', 'app_url', 'logo',
+  'subscribe_url', 'tos_url', 'currency', 'currency_symbol',
+] as const
+
+export function normalizeSystemSettings(settings: Settings): Values {
+  const values = { ...settings }
+  for (const key of nullableTextKeys) {
+    if (values[key] == null) values[key] = ''
+  }
+  return schema.parse(values)
+}
+
+function validateSystemSettings(value: unknown) {
+  const parsed = schema.safeParse(value)
+  if (parsed.success) return { success: true as const, data: parsed.data }
+  const issue = parsed.error.issues[0]
+  return {
+    success: false as const,
+    message: issue ? `${issue.path.join('.') || '表单'}：${issue.message}` : '请检查输入内容',
+  }
+}
+
 export function SystemSettingsPage() {
   const query = useQuery({ queryKey: ['settings', 'site'], queryFn: () => fetchSettings('site') })
   const form = useForm<Values>({ resolver: zodResolver(schema), defaultValues: {} })
-  const timer = useRef<number | undefined>(undefined)
-  const mutation = useMutation({
-    mutationFn: (values: Values) => saveSettings(values),
-    onSuccess: () => toast.success('已自动保存'),
+  const { state: saveState, retry } = useSettingsAutosave({
+    watch: form.watch,
+    validate: validateSystemSettings,
+    settingKey: 'site',
   })
 
   useEffect(() => {
-    if (query.data && !form.formState.isDirty) form.reset(query.data as Values)
+    if (query.data && !form.formState.isDirty) form.reset(normalizeSystemSettings(query.data))
   }, [query.data, form])
-
-  useEffect(() => {
-    const sub = form.watch((value, info) => {
-      // reset() notifications carry neither name nor type; ignore them so
-      // hydrating the form never triggers an autosave.
-      if (!info.type && !info.name) return
-      const parsed = schema.safeParse(value)
-      if (!parsed.success) return
-      window.clearTimeout(timer.current)
-      timer.current = window.setTimeout(() => mutation.mutate(parsed.data), 1000)
-    })
-    return () => {
-      sub.unsubscribe()
-      window.clearTimeout(timer.current)
-    }
-  }, [form, mutation])
 
   function toggle(key: keyof Values) {
     form.setValue(key, !Boolean(form.getValues(key)), { shouldDirty: true })
@@ -67,6 +76,11 @@ export function SystemSettingsPage() {
     >
       {query.isLoading ? (
         <p className="config-frame-loading">加载中…</p>
+      ) : query.isError ? (
+        <div className="query-feedback is-error" role="alert">
+          <span>站点配置加载失败，无法保存修改。</span>
+          <button type="button" className="button" onClick={() => query.refetch()}>重试加载</button>
+        </div>
       ) : (
         <form className="config-form-sections">
           <section className="config-form-section">
@@ -103,9 +117,7 @@ export function SystemSettingsPage() {
             </div>
           </section>
 
-          <div className="config-autosave">
-            {mutation.isPending ? '正在保存…' : '修改后 1 秒自动保存'}
-          </div>
+          <SettingsAutosaveStatus state={saveState} onRetry={retry} />
         </form>
       )}
     </ConfigSectionFrame>
