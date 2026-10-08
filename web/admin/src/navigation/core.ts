@@ -32,7 +32,6 @@ export const coreNavigationGroups = [
     icon: Settings,
     items: [
       ['/config/system', '系统配置', Settings],
-      ['/config/frontend', '前端设置', LayoutDashboard],
       ['/system/audit-log', '审计日志', FileText],
     ],
   },
@@ -43,7 +42,7 @@ export const coreNavigationGroups = [
     items: [
       ['/system/modules', '模块中心', Boxes],
       ['/config/plugin', '插件管理', Plug],
-      ['/config/theme', '主题配置', Package],
+      ['/config/theme', '主题管理', Package],
     ],
   },
   {
