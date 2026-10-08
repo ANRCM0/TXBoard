@@ -556,6 +556,11 @@ body{font-size:16px;background:var(--bg);color:var(--fg);overflow:hidden}
   overflow:auto;
   overscroll-behavior:contain;
 }
+/* The navigation container scrolls; its first row and groups must not shrink. */
+.admin-nav-root,
+.admin-nav-group{
+  flex:none;
+}
 .admin-nav-root,
 .admin-nav-group-trigger{
   display:flex;
