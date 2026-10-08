@@ -18,6 +18,50 @@ class OrderServiceConcurrencyTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_paid_queues_fulfillment_and_duplicate_callback_does_not_queue_twice(): void
+    {
+        \Illuminate\Support\Facades\Bus::fake();
+
+        $user = $this->makeUser();
+        $order = $this->makeOrder($user, $this->makePlan());
+
+        $this->assertTrue((new OrderService(Order::findOrFail($order->id)))->paid('callback-1'));
+        $this->assertTrue((new OrderService(Order::findOrFail($order->id)))->paid('callback-1'));
+
+        $this->assertSame(Order::STATUS_PROCESSING, $order->fresh()->status);
+        $this->assertSame('callback-1', $order->fresh()->callback_no);
+        \Illuminate\Support\Facades\Bus::assertDispatchedTimes(\App\Jobs\OrderHandleJob::class, 1);
+    }
+
+    public function test_paid_remains_successful_when_queue_dispatch_fails_after_commit(): void
+    {
+        // Creating a user triggers UserObserver queue jobs. Only simulate the
+        // outage around the payment callback, not fixture setup.
+        $user = $this->makeUser();
+        $order = $this->makeOrder($user, $this->makePlan());
+
+        \Illuminate\Support\Facades\Log::spy();
+        $queue = \Mockery::mock(\Illuminate\Contracts\Queue\Queue::class);
+        // Laravel versions can use push or pushOn when dispatching a named
+        // queue. Both paths represent a single queue submission attempt.
+        $dispatchAttempts = 0;
+        $simulateOutage = function () use (&$dispatchAttempts) {
+            $dispatchAttempts++;
+            throw new \RuntimeException('queue unavailable');
+        };
+        $queue->shouldReceive('push')->andReturnUsing($simulateOutage);
+        $queue->shouldReceive('pushOn')->andReturnUsing($simulateOutage);
+        \Illuminate\Support\Facades\Queue::shouldReceive('connection')
+            ->once()
+            ->with('redis')
+            ->andReturn($queue);
+
+        $this->assertTrue((new OrderService(Order::findOrFail($order->id)))->paid('callback-outage'));
+        $this->assertSame(1, $dispatchAttempts);
+        $this->assertSame(Order::STATUS_PROCESSING, $order->fresh()->status);
+        $this->assertSame('callback-outage', $order->fresh()->callback_no);
+    }
+
     public function test_cancel_only_refunds_once_when_called_with_stale_order_models(): void
     {
         $user = $this->makeUser(['balance' => 0]);
