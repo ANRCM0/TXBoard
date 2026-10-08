@@ -79,18 +79,29 @@ class Plugin extends AbstractPlugin implements PaymentInterface
 
     public function notify($params): array|bool
     {
-        $sign = $params['sign'];
+        foreach (['sign', 'pid', 'trade_status', 'money', 'out_trade_no', 'trade_no'] as $field) {
+            if (!isset($params[$field]) || !is_scalar($params[$field]) || $params[$field] === '') {
+                return false;
+            }
+        }
+        if ((string) $params['pid'] !== (string) $this->getConfig('pid')
+            || $params['trade_status'] !== 'TRADE_SUCCESS') {
+            return false;
+        }
+
+        $sign = (string) $params['sign'];
         unset($params['sign'], $params['sign_type']);
         ksort($params);
         $str = stripslashes(urldecode(http_build_query($params))) . $this->getConfig('key');
 
-        if ($sign !== md5($str)) {
+        if (!hash_equals(md5($str), $sign)) {
             return false;
         }
 
         return [
-            'trade_no' => $params['out_trade_no'],
-            'callback_no' => $params['trade_no']
+            'trade_no' => (string) $params['out_trade_no'],
+            'callback_no' => (string) $params['trade_no'],
+            'paid_amount' => (string) $params['money'],
         ];
     }
 }
