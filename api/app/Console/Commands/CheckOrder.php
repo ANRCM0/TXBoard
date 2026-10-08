@@ -43,8 +43,16 @@ class CheckOrder extends Command
      */
     public function handle()
     {
-        Order::whereIn('status', [Order::STATUS_PENDING, Order::STATUS_PROCESSING])
-            ->orderBy('created_at', 'ASC')
+        // Pending orders only need handling after the two-hour expiry window.
+        // Processing orders must remain eligible for recovery on every run.
+        Order::where(function ($query) {
+                $query->where('status', Order::STATUS_PROCESSING)
+                    ->orWhere(function ($pending) {
+                        $pending->where('status', Order::STATUS_PENDING)
+                            ->where('created_at', '<=', time() - 7200);
+                    });
+            })
+            ->orderBy('id', 'ASC')
             ->lazyById(200)
             ->each(function ($order) {
                 OrderHandleJob::dispatch($order->trade_no);
