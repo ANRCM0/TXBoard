@@ -90,7 +90,6 @@ class PluginManager
             $pluginFile = $this->getPluginPath($pluginCode) . '/Plugin.php';
             if (!File::exists($pluginFile)) {
                 Log::warning("Plugin class file not found: {$pluginFile}");
-                Plugin::query()->where('code', $pluginCode)->delete();
                 return null;
             }
             require_once $pluginFile;
@@ -387,17 +386,18 @@ class PluginManager
      */
     public function enable(string $pluginCode): bool
     {
-        $plugin = $this->loadPlugin($pluginCode);
-
-        if (!$plugin) {
-            Plugin::where('code', $pluginCode)->delete();
-            throw new \Exception('Plugin not found: ' . $pluginCode);
+        $dbPlugin = Plugin::query()->where('code', $pluginCode)->first();
+        if (!$dbPlugin) {
+            throw new \RuntimeException('Plugin is not installed: ' . $pluginCode);
+        }
+        if ($dbPlugin->is_enabled) {
+            return true; // Idempotent enable: never boot/register a second time.
         }
 
-        // 获取插件配置
-        $dbPlugin = Plugin::query()
-            ->where('code', $pluginCode)
-            ->first();
+        $plugin = $this->loadPlugin($pluginCode);
+        if (!$plugin) {
+            throw new \RuntimeException('Plugin runtime is unavailable: ' . $pluginCode);
+        }
 
         if ($dbPlugin && !empty($dbPlugin->config)) {
             $values = json_decode($dbPlugin->config, true) ?: [];
@@ -409,24 +409,27 @@ class PluginManager
         // on enable so a newly replaced container always has the matching UI.
         $this->publishAssets($pluginCode);
 
-        // 注册服务提供者
-        $this->registerServiceProvider($pluginCode);
-
-        // 加载路由
-        $this->loadRoutes($pluginCode);
-
-        // 加载视图
-        $this->loadViews($pluginCode);
-
-        // 更新数据库状态
-        Plugin::query()
-            ->where('code', $pluginCode)
-            ->update([
-                'is_enabled' => true,
-                'updated_at' => now(),
-            ]);
-        // 初始化插件
-        $plugin->boot();
+        try {
+            // The database must never claim enabled if the plugin failed boot.
+            HookManager::withOwner($pluginCode, function () use ($pluginCode, $plugin): void {
+                $this->registerServiceProvider($pluginCode);
+                $this->loadRoutes($pluginCode);
+                $this->loadViews($pluginCode);
+                $plugin->boot();
+            });
+            $dbPlugin->update(['is_enabled' => true, 'updated_at' => now()]);
+        } catch (\Throwable $e) {
+            HookManager::removeOwner($pluginCode);
+            try {
+                $plugin->cleanup();
+            } catch (\Throwable $cleanupError) {
+                Log::warning('Plugin boot rollback cleanup failed', [
+                    'plugin' => $pluginCode, 'error' => $cleanupError->getMessage(),
+                ]);
+            }
+            // Do not delete the plugin record or its saved configuration.
+            throw $e;
+        }
 
         return true;
     }
@@ -436,19 +439,26 @@ class PluginManager
      */
     public function disable(string $pluginCode): bool
     {
-        $plugin = $this->loadPlugin($pluginCode);
-        if (!$plugin) {
-            throw new \Exception('Plugin not found');
+        $dbPlugin = Plugin::query()->where('code', $pluginCode)->first();
+        if (!$dbPlugin) {
+            throw new \RuntimeException('Plugin is not installed: ' . $pluginCode);
+        }
+        if (!$dbPlugin->is_enabled) {
+            HookManager::removeOwner($pluginCode);
+            return true;
         }
 
-        Plugin::query()
-            ->where('code', $pluginCode)
-            ->update([
-                'is_enabled' => false,
-                'updated_at' => now(),
+        // Revoke execution before calling untrusted plugin cleanup.
+        $dbPlugin->update(['is_enabled' => false, 'updated_at' => now()]);
+        HookManager::removeOwner($pluginCode);
+        try {
+            $plugin = $this->loadPlugin($pluginCode);
+            $plugin?->cleanup();
+        } catch (\Throwable $e) {
+            Log::warning('Plugin cleanup failed after it was disabled', [
+                'plugin' => $pluginCode, 'error' => $e->getMessage(),
             ]);
-
-        $plugin->cleanup();
+        }
 
         return true;
     }
@@ -459,7 +469,10 @@ class PluginManager
     public function uninstall(string $pluginCode): bool
     {
         $this->disable($pluginCode);
-        $this->runMigrationsRollback($pluginCode);
+        // Uninstall removes runtime registration and owned assets, but does
+        // not drop user/business tables. Database migrations are retained so
+        // accidental uninstalls cannot destroy plugin-owned persistent data.
+        $this->removePublishedAssets($pluginCode);
         Plugin::query()->where('code', $pluginCode)->delete();
 
         return true;
@@ -474,12 +487,11 @@ class PluginManager
      */
     public function delete(string $pluginCode): bool
     {
-        if (Plugin::where('code', $pluginCode)->exists()) {
-            $this->uninstall($pluginCode);
-        }
-
         if ($this->isCorePlugin($pluginCode)) {
             throw new \Exception('核心插件不允许删除');
+        }
+        if (Plugin::where('code', $pluginCode)->exists()) {
+            $this->uninstall($pluginCode);
         }
 
         $pluginPath = $this->getUserPluginPath($pluginCode);
@@ -681,14 +693,16 @@ class PluginManager
                     $pluginInstance->setConfig($values);
                 }
 
-                $this->registerServiceProvider($pluginCode);
-                $this->loadRoutes($pluginCode);
-                $this->loadViews($pluginCode);
-                $this->registerPluginCommands($pluginCode, $pluginInstance);
+                HookManager::withOwner($pluginCode, function () use ($pluginCode, $pluginInstance): void {
+                    $this->registerServiceProvider($pluginCode);
+                    $this->loadRoutes($pluginCode);
+                    $this->loadViews($pluginCode);
+                    $this->registerPluginCommands($pluginCode, $pluginInstance);
+                    $pluginInstance->boot();
+                });
 
-                $pluginInstance->boot();
-
-            } catch (\Exception $e) {
+            } catch (\Throwable $e) {
+                HookManager::removeOwner($dbPlugin->code);
                 Log::error("Failed to initialize plugin '{$dbPlugin->code}': " . $e->getMessage());
             }
         }
