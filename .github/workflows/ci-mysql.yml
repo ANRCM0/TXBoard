@@ -72,9 +72,9 @@ jobs:
           php -r '
             require "vendor/autoload.php";
             $app = require "bootstrap/app.php";
-            $app->make(Illuminate\\Contracts\\Console\\Kernel::class)->bootstrap();
+            $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
             foreach (["v2_user", "v2_order", "v2_traffic_batch", "v2_plugins"] as $table) {
-                if (!Illuminate\\Support\\Facades\\Schema::hasTable($table)) {
+                if (!Illuminate\Support\Facades\Schema::hasTable($table)) {
                     fwrite(STDERR, "Missing MySQL table: " . $table . PHP_EOL);
                     exit(1);
                 }
