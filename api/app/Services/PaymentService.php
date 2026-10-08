@@ -13,7 +13,6 @@ class PaymentService
     protected $config;
     protected $payment;
     protected $pluginManager;
-    protected $class;
 
     public function __construct($method, $id = NULL, $uuid = NULL)
     {
@@ -61,7 +60,7 @@ class PaymentService
             }
         }
 
-        $this->payment = new $this->class($this->config);
+        throw new ApiException('payment method not found or disabled');
     }
 
     public function notify($params)
