@@ -54,7 +54,12 @@ class ServerController extends Controller
 
         $traffic = $request->input('traffic');
         if (is_array($traffic) && !empty($traffic)) {
-            ServerService::processTraffic($node, $traffic);
+            $batchId = $request->input('traffic_batch_id');
+            if ($batchId !== null && (!is_string($batchId)
+                || !preg_match('/^[A-Za-z0-9:_-]{8,80}$/D', $batchId))) {
+                return response()->json(['message' => 'Invalid traffic_batch_id'], 422);
+            }
+            ServerService::processTraffic($node, $traffic, $batchId);
         }
 
         $alive = $request->input('alive');

@@ -128,7 +128,7 @@ class ServerService
     /**
      * 处理节点流量数据汇报
      */
-    public static function processTraffic(Server $node, array $traffic): void
+    public static function processTraffic(Server $node, array $traffic, ?string $batchId = null): void
     {
         $data = TrafficUsage::normalize($traffic, $node->getCurrentRate());
 
@@ -142,7 +142,7 @@ class ServerService
         Cache::put(CacheKey::get("SERVER_{$nodeType}_ONLINE_USER", $nodeId), count($data), 3600);
         Cache::put(CacheKey::get("SERVER_{$nodeType}_LAST_PUSH_AT", $nodeId), time(), 3600);
 
-        (new UserService())->trafficFetch($node, $node->type, $data);
+        (new UserService())->trafficFetch($node, $node->type, $data, $batchId);
     }
 
     /**

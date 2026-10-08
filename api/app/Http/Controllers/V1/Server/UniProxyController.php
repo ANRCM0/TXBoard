@@ -47,7 +47,11 @@ class UniProxyController extends Controller
 
         $node = $this->getNodeInfo($request);
 
-        ServerService::processTraffic($node, $res);
+        $batchId = $request->header('X-Traffic-Batch-ID');
+        if ($batchId !== null && !preg_match('/^[A-Za-z0-9:_-]{8,80}$/D', $batchId)) {
+            return $this->fail([422, 'Invalid traffic batch ID']);
+        }
+        ServerService::processTraffic($node, $res, $batchId);
 
         return $this->success(true);
     }
