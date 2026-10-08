@@ -24,6 +24,9 @@ class Setting
      */
     public function get(string $key, mixed $default = null): mixed
     {
+        if (SettingModel::isRetiredAppearanceKey($key)) {
+            return $default;
+        }
         $this->load();
         return Arr::get($this->loadedSettings, strtolower($key), $default);
     }
@@ -33,6 +36,7 @@ class Setting
      */
     public function set(string $key, mixed $value = null): bool
     {
+        SettingModel::assertWritableKey($key);
         SettingModel::createOrUpdate(strtolower($key), $value);
         $this->flush();
         return true;
@@ -43,6 +47,10 @@ class Setting
      */
     public function save(array $settings): bool
     {
+        // Validate the whole batch before writing any settings.
+        foreach (array_keys($settings) as $key) {
+            SettingModel::assertWritableKey((string) $key);
+        }
         foreach ($settings as $key => $value) {
             SettingModel::createOrUpdate(strtolower($key), $value);
         }
@@ -78,6 +86,9 @@ class Setting
         
         foreach ($keys as $index => $item) {
             $isNumericIndex = is_numeric($index);
+            if (SettingModel::isRetiredAppearanceKey((string) ($isNumericIndex ? $item : $index))) {
+                continue;
+            }
             $key = strtolower($isNumericIndex ? $item : $index);
             $default = $isNumericIndex ? config('v2board.' . $item) : (config('v2board.' . $key) ?? $item);
             
@@ -113,6 +124,11 @@ class Setting
                 );
             });
             
+            // Discard stale fields even if a shared cache predates the migration.
+            foreach (SettingModel::RETIRED_APPEARANCE_KEYS as $retiredKey) {
+                unset($settings[$retiredKey]);
+            }
+
             // 处理JSON格式的值
             foreach ($settings as $key => $value) {
                 if (is_string($value)) {

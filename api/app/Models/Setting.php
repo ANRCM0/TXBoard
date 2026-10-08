@@ -6,6 +6,29 @@ use Illuminate\Database\Eloquent\Model;
 
 class Setting extends Model
 {
+    /**
+     * Retired site-wide appearance fields. The active theme's per-theme config
+     * has replaced these values; writes are prohibited after migration.
+     */
+    public const RETIRED_APPEARANCE_KEYS = [
+        'frontend_theme_sidebar',
+        'frontend_theme_header',
+        'frontend_theme_color',
+        'frontend_background_url',
+    ];
+
+    public static function isRetiredAppearanceKey(string $name): bool
+    {
+        return in_array(strtolower($name), self::RETIRED_APPEARANCE_KEYS, true);
+    }
+
+    public static function assertWritableKey(string $name): void
+    {
+        if (self::isRetiredAppearanceKey($name)) {
+            throw new \InvalidArgumentException("Retired global appearance setting: {$name}");
+        }
+    }
+
     protected $table = 'v2_settings';
     protected $guarded = [];
     protected $casts = [
@@ -58,6 +81,7 @@ class Setting extends Model
      */
     public static function createOrUpdate(string $name, $value): self
     {
+        self::assertWritableKey($name);
         $processedValue = is_array($value) ? json_encode($value) : $value;
         
         return self::updateOrCreate(

@@ -2,6 +2,9 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Models\Setting as SettingModel;
+use Illuminate\Validation\Validator;
+
 use Illuminate\Foundation\Http\FormRequest;
 
 class ConfigSave extends FormRequest
@@ -131,6 +134,21 @@ class ConfigSave extends FormRequest
     public function rules()
     {
         return self::RULES;
+    }
+
+    /**
+     * Fail stale admin clients explicitly rather than silently accepting
+     * appearance fields that are no longer backed by site-wide settings.
+     */
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator): void {
+            foreach (SettingModel::RETIRED_APPEARANCE_KEYS as $key) {
+                if ($this->exists($key)) {
+                    $validator->errors()->add($key, 'Global appearance settings have been removed; configure the active theme instead.');
+                }
+            }
+        });
     }
 
     public function messages()
