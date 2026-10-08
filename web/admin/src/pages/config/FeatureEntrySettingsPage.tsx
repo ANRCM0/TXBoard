@@ -1,11 +1,11 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useMutation, useQuery } from '@tanstack/react-query'
-import { useEffect, useRef } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
-import { toast } from 'sonner'
 import { z } from 'zod'
-import { fetchSettings, saveSettings } from '../../api/config'
+import { fetchSettings } from '../../api/config'
 import { ConfigSectionFrame } from '../../components/config/ConfigSectionFrame'
+import { SettingsAutosaveStatus, useSettingsAutosave } from '../../components/config/SettingsAutosave'
 
 const schema = z.object({
   invite_enable: z.coerce.boolean().optional(),
@@ -20,6 +20,16 @@ const schema = z.object({
 })
 
 type Values = z.infer<typeof schema>
+
+function validateFeatureSettings(value: unknown) {
+  const parsed = schema.safeParse(value)
+  if (parsed.success) return { success: true as const, data: parsed.data }
+  const issue = parsed.error.issues[0]
+  return {
+    success: false as const,
+    message: issue ? `${issue.path.join('.') || '表单'}：${issue.message}` : '请检查输入内容',
+  }
+}
 
 const featureSwitches = [
   ['invite_enable', '邀请'],
@@ -42,11 +52,10 @@ export function FeatureEntrySettingsPage() {
     resolver: zodResolver(schema),
     defaultValues: {},
   })
-  const timer = useRef<number | undefined>(undefined)
-
-  const mutation = useMutation({
-    mutationFn: (values: Values) => saveSettings(values),
-    onSuccess: () => toast.success('已自动保存'),
+  const { state: saveState, retry } = useSettingsAutosave({
+    watch: form.watch,
+    validate: validateFeatureSettings,
+    settingKey: 'site',
   })
 
   useEffect(() => {
@@ -54,21 +63,6 @@ export function FeatureEntrySettingsPage() {
       form.reset(schema.parse(query.data))
     }
   }, [query.data, form])
-
-  useEffect(() => {
-    const sub = form.watch((value, info) => {
-      if (!info.type && !info.name) return
-      const parsed = schema.safeParse(value)
-      if (!parsed.success) return
-      window.clearTimeout(timer.current)
-      timer.current = window.setTimeout(() => mutation.mutate(parsed.data), 1000)
-    })
-
-    return () => {
-      sub.unsubscribe()
-      window.clearTimeout(timer.current)
-    }
-  }, [form, mutation])
 
   function toggle(key: keyof Values) {
     form.setValue(key, !Boolean(form.getValues(key)), {
@@ -107,13 +101,7 @@ export function FeatureEntrySettingsPage() {
             </div>
           </section>
 
-          <div className="config-autosave" role="status" aria-live="polite">
-            {mutation.isPending
-              ? '正在保存…'
-              : mutation.isError
-                ? '保存失败，请再次修改或重试'
-                : '修改后 1 秒自动保存'}
-          </div>
+          <SettingsAutosaveStatus state={saveState} onRetry={retry} />
         </form>
       )}
     </ConfigSectionFrame>
