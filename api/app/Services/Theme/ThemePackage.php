@@ -39,7 +39,10 @@ final class ThemePackage
             }
 
             foreach (explode('/', rtrim($normalized, '/')) as $segment) {
-                if ($segment === '' || $segment === '.' || $segment === '..') {
+                if ($segment === '..') {
+                    throw new InvalidArgumentException('Theme package contains path traversal');
+                }
+                if ($segment === '' || $segment === '.') {
                     throw new InvalidArgumentException('Theme archive contains unsafe path segments');
                 }
             }

@@ -154,7 +154,10 @@ final class PluginPackage
             }
 
             foreach (explode('/', rtrim($normalized, '/')) as $segment) {
-                if ($segment === '' || $segment === '.' || $segment === '..') {
+                if ($segment === '..') {
+                    throw new InvalidArgumentException('插件包包含目录穿越路径');
+                }
+                if ($segment === '' || $segment === '.') {
                     throw new InvalidArgumentException('Plugin archive contains unsafe path segments');
                 }
             }
