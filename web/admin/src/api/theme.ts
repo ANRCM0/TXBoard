@@ -3,6 +3,8 @@ import { unwrap } from '../lib/api'
 
 export type ThemeConfigField = {
   field_name: string
+  group?: string
+  description?: string
   label?: string
   field_type?: string
   placeholder?: string
