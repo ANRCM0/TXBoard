@@ -8,7 +8,7 @@ TXBoard 负责用户、订阅、订单、支付、节点、机器、流量、工
 当前生产部署采用 **单 TXBoard 应用镜像**：
 
 ```text
-ghcr.io/ANRCM0/txboard
+ghcr.io/anrcm0/txboard
 ```
 
 一个 `txboard` 容器同时包含 Admin/User 前端、Caddy、Laravel Octane、Horizon、Redis、WebSocket 服务，以及默认关闭的 MCP Gateway。MySQL 与备份任务作为基础设施服务独立运行。
@@ -154,7 +154,7 @@ curl -fsSL https://raw.githubusercontent.com/ANRCM0/TXBoard-Deploy/main/install.
 安装器会询问镜像标签、域名/TLS 模式、管理员邮箱、端口、安装目录与备份保留数量，然后生成运行时 Compose 和配置，并直接拉取：
 
 ```text
-ghcr.io/ANRCM0/txboard:<tag>
+ghcr.io/anrcm0/txboard:<tag>
 ```
 
 用户服务器不需要 Git、PHP、Composer、Node.js、npm 或 TXBoard 源码。
@@ -184,7 +184,7 @@ docker compose exec -it txboard php artisan txboard:install
 TXBoard source / CI
         │
         ▼
-ghcr.io/ANRCM0/txboard
+ghcr.io/anrcm0/txboard
         │
         ▼
 TXBoard-Deploy
@@ -577,8 +577,8 @@ TXBoard/
 生产镜像标签：
 
 ```text
-ghcr.io/ANRCM0/txboard:latest
-ghcr.io/ANRCM0/txboard:sha-<commit>
+ghcr.io/anrcm0/txboard:latest
+ghcr.io/anrcm0/txboard:sha-<commit>
 ```
 
 API 与两个前端作为同一个 artifact 构建，避免版本漂移。
