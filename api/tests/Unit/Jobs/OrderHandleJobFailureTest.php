@@ -3,8 +3,6 @@
 namespace Tests\Unit\Jobs;
 
 use App\Jobs\OrderHandleJob;
-use App\Models\Order;
-use App\Services\OrderService;
 use Illuminate\Support\Facades\Log;
 use Mockery;
 use Tests\TestCase;
