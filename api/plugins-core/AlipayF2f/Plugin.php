@@ -28,29 +28,14 @@ class Plugin extends AbstractPlugin implements PaymentInterface
     public function form(): array
     {
         return [
-            'app_id' => [
-                'label' => '支付宝APPID',
-                'type' => 'string',
-                'required' => true,
-                'description' => '支付宝开放平台应用的APPID'
-            ],
-            'private_key' => [
-                'label' => '支付宝私钥',
-                'type' => 'text',
-                'required' => true,
-                'description' => '应用私钥，用于签名'
-            ],
-            'public_key' => [
-                'label' => '支付宝公钥',
-                'type' => 'text',
-                'required' => true,
-                'description' => '支付宝公钥，用于验签'
-            ],
-            'product_name' => [
-                'label' => '自定义商品名称',
-                'type' => 'string',
-                'description' => '将会体现在支付宝账单中'
-            ]
+            'app_id' => ['label' => '支付宝APPID', 'type' => 'string', 'required' => true,
+                'description' => '支付宝开放平台应用的APPID'],
+            'private_key' => ['label' => '支付宝私钥', 'type' => 'text', 'required' => true,
+                'description' => '应用私钥，用于签名'],
+            'public_key' => ['label' => '支付宝公钥', 'type' => 'text', 'required' => true,
+                'description' => '支付宝公钥，用于验签'],
+            'product_name' => ['label' => '自定义商品名称', 'type' => 'string',
+                'description' => '将会体现在支付宝账单中'],
         ];
     }
 
@@ -69,10 +54,7 @@ class Plugin extends AbstractPlugin implements PaymentInterface
                 'total_amount' => $order['total_amount'] / 100
             ]);
             $gateway->send();
-            return [
-                'type' => 0,
-                'data' => $gateway->getQrCodeUrl()
-            ];
+            return ['type' => 0, 'data' => $gateway->getQrCodeUrl()];
         } catch (\Exception $e) {
             Log::error($e);
             throw new ApiException($e->getMessage());
@@ -81,8 +63,14 @@ class Plugin extends AbstractPlugin implements PaymentInterface
 
     public function notify($params): array|bool
     {
-        if ($params['trade_status'] !== 'TRADE_SUCCESS')
+        if (($params['trade_status'] ?? null) !== 'TRADE_SUCCESS'
+            || empty($params['out_trade_no'])
+            || empty($params['trade_no'])
+            || empty($params['total_amount'])
+            || !isset($params['app_id'])
+            || (string) $params['app_id'] !== (string) $this->getConfig('app_id')) {
             return false;
+        }
 
         $gateway = new AlipayF2F();
         $gateway->setAppId($this->getConfig('app_id'));
@@ -90,14 +78,14 @@ class Plugin extends AbstractPlugin implements PaymentInterface
         $gateway->setAlipayPublicKey($this->getConfig('public_key'));
 
         try {
-            if ($gateway->verify($params)) {
-                return [
-                    'trade_no' => $params['out_trade_no'],
-                    'callback_no' => $params['trade_no']
-                ];
-            } else {
+            if (!$gateway->verify($params)) {
                 return false;
             }
+            return [
+                'trade_no' => (string) $params['out_trade_no'],
+                'callback_no' => (string) $params['trade_no'],
+                'paid_amount' => (string) $params['total_amount'],
+            ];
         } catch (\Exception $e) {
             return false;
         }
