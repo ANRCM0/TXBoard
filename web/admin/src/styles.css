@@ -2746,13 +2746,6 @@ body:has(.modal-root,.admin-command-overlay,.admin-sidebar.is-open) .admin-scrol
 :root[data-theme="dark"] .order-table .link-button{color:#60a5fa}
 :root[data-theme="dark"] .status.ok{color:#34d399}
 
-/* Theme management: a single home for legacy page appearance and theme options. */
-.theme-appearance-settings{display:flex;flex-direction:column;gap:18px;margin:0 0 24px;padding:20px}
-.theme-appearance-heading h2,.theme-management-heading h2{margin:0;font-size:18px;font-weight:650}
-.theme-appearance-heading p,.theme-management-heading span{margin:6px 0 0;color:var(--muted);font-size:13px;line-height:1.6}
-.theme-appearance-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
-.theme-appearance-fields .config-field{min-width:0}
-.theme-appearance-actions{display:flex;justify-content:flex-end;align-items:center;gap:12px;flex-wrap:wrap}
-.theme-appearance-actions [role="alert"]{color:var(--danger);font-size:13px}
 .theme-management-heading{display:flex;flex-direction:column;gap:2px;margin:0 0 16px}
-@media(max-width:700px){.theme-appearance-settings{padding:16px}.theme-appearance-fields{grid-template-columns:1fr}.theme-appearance-actions .button{width:100%}}
+.theme-management-heading h2{margin:0;font-size:18px;font-weight:650}
+.theme-management-heading span{margin:6px 0 0;color:var(--muted);font-size:13px;line-height:1.6}

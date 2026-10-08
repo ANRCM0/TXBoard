@@ -4,7 +4,6 @@ import { useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { deleteTheme, getThemeConfig, getThemes, saveThemeConfig, uploadTheme, type ThemeItem } from '../../api/theme'
 import { saveSettings } from '../../api/config'
-import { ThemeAppearanceSettings } from './ThemeAppearanceSettings'
 import { normalizeThemeFields, ThemeConfigFields } from './ThemeConfigFields'
 import { Modal } from '../../components/ui/Modal'
 import { PageHeader } from '../../components/ui/PageHeader'
@@ -80,7 +79,7 @@ export function ThemeSettingsPage() {
   return <>
     <PageHeader
       title="主题管理"
-      description="统一管理用户端主题：上传、预览、切换、外观与各主题独立配置。"
+      description="统一管理用户端主题：上传、预览、切换以及各主题自身声明的配置项。"
       action={<><input ref={inputRef} type="file" accept=".zip" hidden onChange={e => {
         const file = e.target.files?.[0]
         if (file) upload.mutate(file)
@@ -88,11 +87,9 @@ export function ThemeSettingsPage() {
       }}/><button className="button primary" onClick={() => inputRef.current?.click()} disabled={upload.isPending}><Upload size={16}/>{upload.isPending ? '上传中…' : '上传主题'}</button></>}
     />
 
-    <ThemeAppearanceSettings />
-
     <div className="theme-management-heading">
       <h2>已安装主题</h2>
-      <span>选择主题卡片的“配置”以编辑该主题声明的设置项。</span>
+      <span>点击主题卡片的“设置”，编辑该主题专属配置；启用主题后自动应用到用户前端。</span>
     </div>
 
     {query.isLoading ? <div className="card">加载主题…</div> : query.isError ? (

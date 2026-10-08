@@ -680,6 +680,9 @@ body{overflow:hidden}
   place-items:center;
   padding:16px;
   background:var(--u-bg);
+  background-image:var(--u-theme-background-image, none);
+  background-position:center;
+  background-size:cover;
 }
 .auth-panel{
   display:block;
@@ -1692,3 +1695,12 @@ body{overflow:hidden}
   .profile-wallet-value strong{font-size:40px}
   .invite-summary-grid{grid-template-columns:1fr}
 }
+
+/* Selected TXBoard theme package owns these presentation values.
+   Dark-mode remains a per-user choice, not an admin-wide appearance setting. */
+:root[data-user-accent="blue"]{--u-primary:#2563eb;--u-primary-strong:#1d4ed8}
+:root[data-user-accent="black"]{--u-primary:#1f2937;--u-primary-strong:#111827}
+:root[data-user-accent="darkblue"]{--u-primary:#1e40af;--u-primary-strong:#1e3a8a}
+:root[data-user-theme="dark"][data-user-accent="blue"]{--u-primary:#60a5fa;--u-primary-strong:#93c5fd}
+:root[data-user-theme="dark"][data-user-accent="black"]{--u-primary:#a3a3a3;--u-primary-strong:#d4d4d4}
+:root[data-user-theme="dark"][data-user-accent="darkblue"]{--u-primary:#818cf8;--u-primary-strong:#a5b4fc}
