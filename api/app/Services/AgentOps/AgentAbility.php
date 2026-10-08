@@ -57,7 +57,10 @@ final class AgentAbility
     public static function assert(Request $request, string $ability): void
     {
         $token = $request->user()?->currentAccessToken();
-        if (!$token || !$token->can($ability)) {
+        $abilities = $token?->abilities ?? null;
+        if (!is_array($abilities) || in_array('*', $abilities, true)
+            || !in_array($ability, $abilities, true)
+            || !$token->can($ability)) {
             throw new AccessDeniedHttpException("Agent token is missing required ability: {$ability}");
         }
     }
