@@ -1,25 +1,55 @@
 import { useQuery } from '@tanstack/react-query'
 import { AlertTriangle, BarChart3, Bot, MessageSquare, Server, Users, Wallet, Wifi } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getDashboardStats, getOrderChart, getTrafficRank } from '../api/statistics'
 import { getAgentActions, getAgentFleetHealth } from '../api/agent'
 import { QueryFeedback } from '../components/ui/QueryFeedback'
+import { DashboardPeriodPicker } from '../components/dashboard/DashboardPeriodPicker'
+import { getPeriodDates, getPeriodTimestamps, readDashboardPeriod, saveDashboardPeriod, type DashboardPeriod } from '../lib/dashboardPeriod'
 
 export function DashboardPage() {
-  const [range, setRange] = useState(30)
-  const stats = useQuery({ queryKey:['dashboardStats'], queryFn:getDashboardStats, refetchInterval:60_000 })
-  const window = useMemo(() => {
-    const end = new Date()
-    const start = new Date()
-    start.setDate(end.getDate()-range)
-    const fmt=(d:Date)=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
-    return { start_date:fmt(start), end_date:fmt(end) }
-  },[range])
-  const chart = useQuery({ queryKey:['orderChart',window], queryFn:()=>getOrderChart(window) })
-  const now=Math.floor(Date.now()/1000)
-  const userRank=useQuery({ queryKey:['trafficRank','user',range], queryFn:()=>getTrafficRank('user',now-range*86400,now) })
-  const nodeRank=useQuery({ queryKey:['trafficRank','node',range], queryFn:()=>getTrafficRank('node',now-range*86400,now) })
+  const [incomePeriod, setIncomePeriod] = useState<DashboardPeriod>(() => readDashboardPeriod('income'))
+  const [summaryPeriod, setSummaryPeriod] = useState<DashboardPeriod>(() => readDashboardPeriod('order-summary'))
+  const [userPeriod, setUserPeriod] = useState<DashboardPeriod>(() => readDashboardPeriod('user-rank'))
+  const [nodePeriod, setNodePeriod] = useState<DashboardPeriod>(() => readDashboardPeriod('node-rank'))
+
+  useEffect(() => saveDashboardPeriod('income', incomePeriod), [incomePeriod])
+  useEffect(() => saveDashboardPeriod('order-summary', summaryPeriod), [summaryPeriod])
+  useEffect(() => saveDashboardPeriod('user-rank', userPeriod), [userPeriod])
+  useEffect(() => saveDashboardPeriod('node-rank', nodePeriod), [nodePeriod])
+
+  const incomeDates = useMemo(() => getPeriodDates(incomePeriod), [incomePeriod])
+  const summaryDates = useMemo(() => getPeriodDates(summaryPeriod), [summaryPeriod])
+  const userDates = useMemo(() => getPeriodDates(userPeriod), [userPeriod])
+  const nodeDates = useMemo(() => getPeriodDates(nodePeriod), [nodePeriod])
+  const stats = useQuery({ queryKey: ['dashboardStats'], queryFn: getDashboardStats, refetchInterval: 60_000 })
+  const chart = useQuery({
+    queryKey: ['orderChart', incomeDates.start_date, incomeDates.end_date],
+    queryFn: () => getOrderChart(incomeDates),
+    refetchInterval: 300_000,
+  })
+  const orderSummary = useQuery({
+    queryKey: ['orderChart', summaryDates.start_date, summaryDates.end_date],
+    queryFn: () => getOrderChart(summaryDates),
+    refetchInterval: 300_000,
+  })
+  const userRank = useQuery({
+    queryKey: ['trafficRank', 'user', userDates.start_date, userDates.end_date],
+    queryFn: () => {
+      const { start_time, end_time } = getPeriodTimestamps(userPeriod)
+      return getTrafficRank('user', start_time, end_time)
+    },
+    refetchInterval: 300_000,
+  })
+  const nodeRank = useQuery({
+    queryKey: ['trafficRank', 'node', nodeDates.start_date, nodeDates.end_date],
+    queryFn: () => {
+      const { start_time, end_time } = getPeriodTimestamps(nodePeriod)
+      return getTrafficRank('node', start_time, end_time)
+    },
+    refetchInterval: 300_000,
+  })
   const fleet=useQuery({ queryKey:['agentFleetHealth'], queryFn:getAgentFleetHealth, refetchInterval:30_000, retry:1 })
   const agentActions=useQuery({ queryKey:['agentActions','pending'], queryFn:()=>getAgentActions('pending'), refetchInterval:15_000, retry:1 })
   const s=stats.data||{}
@@ -29,15 +59,6 @@ export function DashboardPage() {
   const points=(chart.data?.list||[]).map(row=>({date:String(row.date||''),value:Number(row.paid_total||0)/100}))
 
   return <div className="admin-dashboard">
-    <div className="dashboard-range-row">
-      <label htmlFor='dashboard-range'>{'\u7edf\u8ba1\u5468\u671f'}</label>
-      <select id='dashboard-range' value={range} onChange={event=>setRange(Number(event.target.value))}>
-        <option value={7}>7 天</option>
-        <option value={30}>30 天</option>
-        <option value={90}>90 天</option>
-      </select>
-    </div>
-
     <QueryFeedback loading={stats.isFetching && !stats.data} error={stats.isError && !stats.data} onRetry={() => stats.refetch()} />
 
     <section className="dashboard-ops-section">
@@ -70,7 +91,10 @@ export function DashboardPage() {
           <h2>订单收入趋势</h2>
           <p>按所选周期查看已支付订单金额。</p>
         </div>
-        <strong>{money(chart.data?.summary?.paid_total)}</strong>
+        <div className="dashboard-card-actions">
+          <strong>{money(chart.data?.summary?.paid_total)}</strong>
+          <DashboardPeriodPicker label="订单收入趋势" value={incomePeriod} onChange={setIncomePeriod}/>
+        </div>
       </div>
       <div className="dash-chart">
         {chart.isFetching && !chart.data ? <QueryFeedback loading /> : chart.isError ? <QueryFeedback error onRetry={() => chart.refetch()} /> : <IncomeChart points={points}/>} 
@@ -78,22 +102,26 @@ export function DashboardPage() {
     </section>
 
     <div className="dashboard-rank-grid">
-      <Rank title="用户流量排行" rows={userRank.data||[]} loading={userRank.isFetching && !userRank.data} error={userRank.isError} onRetry={() => userRank.refetch()}/>
-      <Rank title="节点流量排行" rows={nodeRank.data||[]} loading={nodeRank.isFetching && !nodeRank.data} error={nodeRank.isError} onRetry={() => nodeRank.refetch()}/>
+      <Rank title="用户流量排行" period={userPeriod} onPeriodChange={setUserPeriod} rows={userRank.data||[]} loading={userRank.isFetching && !userRank.data} error={userRank.isError} onRetry={() => userRank.refetch()}/>
+      <Rank title="节点流量排行" period={nodePeriod} onPeriodChange={setNodePeriod} rows={nodeRank.data||[]} loading={nodeRank.isFetching && !nodeRank.data} error={nodeRank.isError} onRetry={() => nodeRank.refetch()}/>
     </div>
 
     <div className="dashboard-summary-grid">
-      <section className="admin-dashboard-card">
-        <div className="admin-dashboard-card-head"><div><h2>周期汇总</h2><p>订单与佣金统计。</p></div></div>
+      <section className="admin-dashboard-card dashboard-summary-card">
+        <div className="admin-dashboard-card-head">
+          <div><h2>周期汇总</h2><p>订单与佣金统计。</p></div>
+          <DashboardPeriodPicker label="周期汇总" value={summaryPeriod} onChange={setSummaryPeriod}/>
+        </div>
+        <QueryFeedback loading={orderSummary.isFetching && !orderSummary.data} error={orderSummary.isError} onRetry={() => orderSummary.refetch()}/>
         <dl className="dashboard-summary-list">
-          <div><dt>已支付订单</dt><dd>{count(chart.data?.summary?.paid_count)}</dd></div>
-          <div><dt>收入</dt><dd>{money(chart.data?.summary?.paid_total)}</dd></div>
-          <div><dt>佣金笔数</dt><dd>{count(chart.data?.summary?.commission_count)}</dd></div>
-          <div><dt>佣金</dt><dd>{money(chart.data?.summary?.commission_total)}</dd></div>
+          <div><dt>已支付订单</dt><dd>{count(orderSummary.data?.summary?.paid_count)}</dd></div>
+          <div><dt>收入</dt><dd>{money(orderSummary.data?.summary?.paid_total)}</dd></div>
+          <div><dt>佣金笔数</dt><dd>{count(orderSummary.data?.summary?.commission_count)}</dd></div>
+          <div><dt>佣金</dt><dd>{money(orderSummary.data?.summary?.commission_total)}</dd></div>
         </dl>
       </section>
       <section className="admin-dashboard-card">
-        <div className="admin-dashboard-card-head"><div><h2>流量与佣金</h2><p>当前周期运营概览。</p></div></div>
+        <div className="admin-dashboard-card-head"><div><h2>流量与佣金</h2><p>今日及当月实时概览。</p></div></div>
         <dl className="dashboard-summary-list">
           <div><dt>今日流量</dt><dd>{bytes(s.todayTraffic?.total)}</dd></div>
           <div><dt>月累计流量</dt><dd>{bytes(s.monthTraffic?.total)}</dd></div>
@@ -149,9 +177,12 @@ function DashCard({icon,label,value,sub}:{icon:React.ReactNode;label:string;valu
   </div>
 }
 
-function Rank({title,rows,loading,error,onRetry}:{title:string;rows:Array<Record<string,unknown>>;loading?:boolean;error?:boolean;onRetry?:()=>void}){
+function Rank({title,period,onPeriodChange,rows,loading,error,onRetry}:{title:string;period:DashboardPeriod;onPeriodChange:(period:DashboardPeriod)=>void;rows:Array<Record<string,unknown>>;loading?:boolean;error?:boolean;onRetry?:()=>void}){
   return <section className="admin-dashboard-card rank-card">
-    <div className="admin-dashboard-card-head"><div><h2>{title}</h2></div></div>
+    <div className="admin-dashboard-card-head">
+      <div><h2>{title}</h2></div>
+      <DashboardPeriodPicker label={title} value={period} onChange={onPeriodChange}/>
+    </div>
     <QueryFeedback loading={loading} error={error} onRetry={onRetry}/>
     <div className="rank-list">
       <div className="rank-list-head"><span>#</span><span>名称</span><span>流量</span></div>

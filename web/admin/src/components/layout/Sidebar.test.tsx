@@ -25,7 +25,7 @@ function mountSidebar() {
     root.render(
       <QueryClientProvider client={queryClient}>
         <MemoryRouter>
-          <Sidebar open={false} onClose={() => {}} />
+          <Sidebar open={false} onClose={() => {}} collapsed={false} onExpand={() => {}} />
         </MemoryRouter>
       </QueryClientProvider>,
     )

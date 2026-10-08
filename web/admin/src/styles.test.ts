@@ -26,6 +26,13 @@ describe('admin sidebar navigation layout', () => {
     expect(styles).toContain(['.admin-nav-root,', '.admin-nav-group{', '  flex:none;'].join('\n'))
   })
 
+  it('keeps the default compact rail and dashboard picker controls independently sized', () => {
+    expect(styles).toContain('--admin-sidebar-compact-width:64px')
+    expect(styles).toContain('.admin-shell.is-sidebar-collapsed .admin-main{margin-left:var(--admin-sidebar-compact-width)}')
+    expect(styles).toContain('.dashboard-period-popover{')
+    expect(styles).toContain('.dashboard-chart-card,')
+  })
+
   it('keeps the main workspace centered and bounded on wide screens', () => {
     const adminPage = declarationBlock('.admin-page')
 
