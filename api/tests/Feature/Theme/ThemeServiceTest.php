@@ -129,6 +129,44 @@ class ThemeServiceTest extends TestCase
         app(ThemeService::class)->delete('TXBoard');
     }
 
+    public function test_switch_preserves_assets_owned_by_other_themes(): void
+    {
+        $this->createTheme('AlphaTheme');
+        $this->createTheme('BetaTheme');
+        $service = app(ThemeService::class);
+
+        File::ensureDirectoryExists(public_path('theme/BetaTheme'));
+        File::put(public_path('theme/BetaTheme/keep.txt'), 'unrelated assets');
+
+        $service->switch('AlphaTheme');
+        $this->assertSame('AlphaTheme', $service->getActiveTheme());
+        $this->assertFileExists(public_path('theme/AlphaTheme/dashboard.blade.php'));
+        $this->assertSame('unrelated assets', File::get(public_path('theme/BetaTheme/keep.txt')));
+
+        $service->switch('TXBoard');
+        $this->assertDirectoryDoesNotExist(public_path('theme/AlphaTheme'));
+        $this->assertSame('unrelated assets', File::get(public_path('theme/BetaTheme/keep.txt')));
+    }
+
+    public function test_switch_failure_preserves_previously_published_assets_and_setting(): void
+    {
+        $service = app(ThemeService::class);
+        admin_setting(['frontend_theme' => 'TXBoard']);
+        File::ensureDirectoryExists(public_path('theme/TXBoard'));
+        File::put(public_path('theme/TXBoard/keep.txt'), 'original publication');
+
+        try {
+            $service->switch('MissingTheme');
+            $this->fail('A missing theme must not activate.');
+        } catch (\Exception $e) {
+            $this->assertSame('Theme not found', $e->getMessage());
+        }
+
+        $this->assertSame('TXBoard', $service->getActiveTheme());
+        $this->assertSame('original publication', File::get(public_path('theme/TXBoard/keep.txt')));
+        File::delete(public_path('theme/TXBoard/keep.txt'));
+    }
+
     private function createTheme(string $name): void
     {
         $path = base_path('storage/theme/' . $name);

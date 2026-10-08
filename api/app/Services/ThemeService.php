@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\View;
 use App\Services\Theme\ThemePackage;
 use Illuminate\Http\UploadedFile;
 use Exception;
+use Throwable;
 use ZipArchive;
 
 class ThemeService
@@ -184,13 +185,43 @@ class ThemeService
                     throw new Exception('Theme exists and not a newer version');
                 }
 
-                $this->cleanupThemeFiles($manifest->name);
-                File::deleteDirectory($targetPath);
-                if (!File::copyDirectory($sourcePath, $targetPath)) {
-                    throw new Exception('Failed to install theme files');
-                }
+                // Never remove the working theme before the newer package has
+                // copied successfully. Stage on the same filesystem to make
+                // the promotion reversible if anything fails.
+                $backup = $userThemePath . '.backup-' . bin2hex(random_bytes(8));
+                $staging = $userThemePath . '.staging-' . bin2hex(random_bytes(8));
+                try {
+                    if (!File::copyDirectory($sourcePath, $staging)) {
+                        throw new Exception('Failed to stage theme upgrade');
+                    }
+                    if (!rename($targetPath, $backup)) {
+                        throw new Exception('Failed to back up current theme');
+                    }
+                    if (!rename($staging, $targetPath)) {
+                        throw new Exception('Failed to activate upgraded theme');
+                    }
 
-                $this->initConfig($manifest->name, true);
+                    $this->initConfig($manifest->name, true);
+                    if ($manifest->name === $this->getActiveTheme()
+                        && !$this->refreshCurrentTheme()) {
+                        throw new Exception('Failed to publish upgraded active theme');
+                    }
+                } catch (Throwable $e) {
+                    File::deleteDirectory($staging);
+                    if (File::isDirectory($backup)) {
+                        File::deleteDirectory($targetPath);
+                        if (!rename($backup, $targetPath)) {
+                            Log::critical('Theme upgrade rollback needs manual recovery', [
+                                'theme' => $manifest->name, 'backup' => $backup,
+                            ]);
+                        }
+                        if ($manifest->name === $this->getActiveTheme()) {
+                            $this->refreshCurrentTheme();
+                        }
+                    }
+                    throw $e;
+                }
+                File::deleteDirectory($backup);
                 return true;
             }
 
@@ -231,16 +262,13 @@ class ThemeService
                 throw new Exception('Theme view file not found');
             }
 
+            $this->publishThemeAssets($theme, $themePath, function () use ($theme): void {
+                admin_setting(['frontend_theme' => $theme]);
+            });
+
             if ($currentTheme && $currentTheme !== $theme) {
                 $this->cleanupThemeFiles($currentTheme);
             }
-
-            $targetPath = public_path('theme/' . $theme);
-            if (!File::copyDirectory($themePath, $targetPath)) {
-                throw new Exception('Failed to copy theme files');
-            }
-
-            admin_setting(['frontend_theme' => $theme]);
             return true;
 
         } catch (Exception $e) {
@@ -410,17 +438,12 @@ class ThemeService
         try {
             $currentTheme = $this->getActiveTheme();
 
-            $this->cleanupThemeFiles($currentTheme);
-
             $themePath = $this->getThemePath($currentTheme);
             if (!$themePath) {
                 throw new Exception('Current theme path not found');
             }
 
-            $targetPath = public_path('theme/' . $currentTheme);
-            if (!File::copyDirectory($themePath, $targetPath)) {
-                throw new Exception('Failed to copy theme files');
-            }
+            $this->publishThemeAssets($currentTheme, $themePath);
 
             Log::info('Refreshed current theme files', ['theme' => $currentTheme]);
             return true;
@@ -432,6 +455,63 @@ class ThemeService
             ]);
             return false;
         }
+    }
+
+    /**
+     * Publish into an owner-scoped directory through staging and rename.
+     * Preserve the previous publication if copy, activation or setting
+     * persistence fails. Never touch a different theme's assets.
+     */
+    private function publishThemeAssets(string $theme, string $source, ?callable $afterPublish = null): void
+    {
+        if (!$this->isSafeThemeName($theme)) {
+            throw new Exception('Invalid theme name');
+        }
+        $parent = public_path('theme');
+        File::ensureDirectoryExists($parent);
+
+        $target = $parent . '/' . $theme;
+        $staged = $parent . '/.staging-' . bin2hex(random_bytes(8));
+        $backup = $parent . '/.backup-' . bin2hex(random_bytes(8));
+        $savedOld = false;
+
+        try {
+            if (!File::copyDirectory($source, $staged)) {
+                throw new Exception('Failed to stage theme assets');
+            }
+
+            if (File::isDirectory($target)) {
+                if (!rename($target, $backup)) {
+                    throw new Exception('Failed to back up theme assets');
+                }
+                $savedOld = true;
+            }
+            if (!rename($staged, $target)) {
+                throw new Exception('Failed to publish theme assets');
+            }
+
+            if ($afterPublish !== null) {
+                $afterPublish();
+            }
+        } catch (Throwable $e) {
+            File::deleteDirectory($staged);
+            if ($savedOld) {
+                File::deleteDirectory($target);
+                if (!rename($backup, $target)) {
+                    Log::critical('Published theme assets need manual recovery', [
+                        'theme' => $theme, 'backup' => $backup,
+                    ]);
+                }
+            } else {
+                File::deleteDirectory($target);
+            }
+            throw $e;
+        }
+
+        if ($savedOld) {
+            File::deleteDirectory($backup);
+        }
+        cache()->forget("theme_{$theme}_assets");
     }
 
     /**
