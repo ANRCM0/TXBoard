@@ -112,7 +112,7 @@ export function ThemeSettingsPage() {
             <div><h3>{theme.title || theme.name || theme.theme || id}</h3><p>{theme.description || '暂无描述'} · {theme.version || 'unknown'}{theme.is_system ? ' · 系统内置' : ''}</p></div>
             <div className="theme-actions">
               <button className="icon-button" title="预览" onClick={() => { setPreview(theme); setPreviewIndex(0) }}><Eye size={16}/></button>
-              <button className="icon-button" title="配置" onClick={() => openConfig(theme)}><Settings2 size={16}/></button>
+              <button className="button" title="配置此主题" onClick={() => openConfig(theme)}><Settings2 size={16}/>设置</button>
               {!active && <button className="button" onClick={() => activate.mutate(id)}>切换</button>}
               <button className="icon-button danger" disabled={!canDelete} title={active ? '当前主题不能删除' : theme.is_system || theme.can_delete === false ? '系统主题不能删除' : '删除'} onClick={() => requestConfirm({ title: '删除主题', message: `确认删除主题 ${id}？`, danger: true, confirmLabel: '删除', action: () => remove.mutate(id) })}><Trash2 size={16}/></button>
             </div>
