@@ -191,10 +191,8 @@ class PluginManager
             throw new \Exception('Plugin already installed');
         }
 
-        // 检查依赖
-        if (!$this->checkDependencies($config['require'] ?? [])) {
-            throw new \Exception('Dependencies not satisfied');
-        }
+        // Check manifest versions before any migration or filesystem action.
+        $this->assertDependencies($config['require'] ?? []);
 
         // 运行数据库迁移
         $this->runMigrations(pluginCode: $pluginCode);
@@ -405,6 +403,16 @@ class PluginManager
             $plugin->setConfig($values);
         }
 
+        $configFile = $this->getPluginPath($pluginCode) . '/config.json';
+        $config = File::isFile($configFile)
+            ? json_decode((string) File::get($configFile), true)
+            : null;
+        if (!is_array($config) || !$this->validateConfig($config)
+            || $config['code'] !== $pluginCode) {
+            throw new \RuntimeException('Invalid plugin manifest for enable');
+        }
+        $this->assertDependencies($config['require'] ?? [], true);
+
         // Plugin Package v1 admin assets are immutable build artifacts. Re-publish
         // on enable so a newly replaced container always has the matching UI.
         $this->publishAssets($pluginCode);
@@ -447,6 +455,7 @@ class PluginManager
             HookManager::removeOwner($pluginCode);
             return true;
         }
+        $this->assertNoActiveDependents($pluginCode);
 
         // Revoke execution before calling untrusted plugin cleanup.
         $dbPlugin->update(['is_enabled' => false, 'updated_at' => now()]);
@@ -468,6 +477,7 @@ class PluginManager
      */
     public function uninstall(string $pluginCode): bool
     {
+        $this->assertNoActiveDependents($pluginCode);
         $this->disable($pluginCode);
         // Uninstall removes runtime registration and owned assets, but does
         // not drop user/business tables. Database migrations are retained so
@@ -510,13 +520,58 @@ class PluginManager
      */
     protected function checkDependencies(array $requires): bool
     {
-        foreach ($requires as $package => $version) {
-            if ($package === 'xboard') {
-                // 检查xboard版本
-                // 实现版本比较逻辑
+        try {
+            $this->assertDependencies($requires);
+            return true;
+        } catch (\InvalidArgumentException | \RuntimeException) {
+            return false;
+        }
+    }
+
+    private function assertDependencies(mixed $requires, bool $activeOnly = false): void
+    {
+        if (!is_array($requires) || array_is_list($requires) && $requires !== []) {
+            throw new \InvalidArgumentException('Plugin require must be a package/version map');
+        }
+
+        foreach ($requires as $package => $constraint) {
+            if (!is_string($package) || !preg_match('/^[a-z][a-z0-9_]*$/', $package)
+                || !is_string($constraint)) {
+                throw new \InvalidArgumentException('Invalid plugin dependency entry');
+            }
+
+            if ($package === 'txboard' || $package === 'xboard') {
+                $installedVersion = (string) config('app.version', '1.0.0');
+            } else {
+                $installed = Plugin::query()->where('code', $package)->first();
+                if (!$installed || ($activeOnly && !$installed->is_enabled)) {
+                    throw new \RuntimeException("Missing or disabled plugin dependency: {$package}");
+                }
+                $installedVersion = (string) $installed->version;
+            }
+
+            if (!PluginVersionConstraint::matches($installedVersion, $constraint)) {
+                throw new \RuntimeException("Incompatible plugin dependency: {$package}");
             }
         }
-        return true;
+    }
+
+    private function assertNoActiveDependents(string $code): void
+    {
+        foreach (Plugin::query()->where('is_enabled', true)->where('code', '!=', $code)->get() as $dependent) {
+            $configFile = $this->getPluginPath($dependent->code) . '/config.json';
+            if (!File::isFile($configFile)) {
+                // Fail closed for enabled plugins whose dependency metadata is unavailable.
+                throw new \RuntimeException("Cannot inspect enabled plugin: {$dependent->code}");
+            }
+            $config = json_decode((string) File::get($configFile), true);
+            if (!is_array($config)) {
+                throw new \RuntimeException("Invalid enabled plugin manifest: {$dependent->code}");
+            }
+            if (array_key_exists($code, $config['require'] ?? [])) {
+                throw new \RuntimeException("Plugin {$code} is required by {$dependent->code}");
+            }
+        }
     }
 
     /**
@@ -545,6 +600,10 @@ class PluginManager
         }
         $this->pluginPackage->assertDeclaredAdminAppsExist($this->getPluginPath($pluginCode), $config);
 
+        if ($config['code'] !== $pluginCode) {
+            throw new \RuntimeException('Plugin manifest identity changed');
+        }
+        $this->assertDependencies($config['require'] ?? [], true);
         $newVersion = $config['version'];
         $oldVersion = $dbPlugin->version;
 
@@ -552,26 +611,41 @@ class PluginManager
             throw new \Exception('Plugin is already up to date');
         }
 
-        $this->disable($pluginCode);
-        $this->runMigrations($pluginCode);
-
-        $plugin = $this->loadPlugin($pluginCode);
-            if ($plugin) {
-                if (!empty($dbPlugin->config)) {
-                    $values = json_decode($dbPlugin->config, true) ?: [];
-                    $values = $this->castConfigValuesByType($pluginCode, $values);
-                    $plugin->setConfig($values);
-                }
-
-                $plugin->update($oldVersion, $newVersion);
+        $wasEnabled = (bool) $dbPlugin->is_enabled;
+        $previousConfig = $dbPlugin->config;
+        try {
+            if ($wasEnabled) {
+                $this->disable($pluginCode);
             }
+            // Plugin-authored DDL / external effects cannot be atomically
+            // rolled back by a SQL transaction on MySQL.
+            $this->runMigrations($pluginCode);
 
-        $dbPlugin->update([
-            'version' => $newVersion,
-            'updated_at' => now(),
-        ]);
-
-        $this->enable($pluginCode);
+            $plugin = $this->loadPlugin($pluginCode);
+            if (!$plugin) {
+                throw new \RuntimeException('Plugin implementation unavailable after upgrade');
+            }
+            if (!empty($previousConfig)) {
+                $values = json_decode($previousConfig, true) ?: [];
+                $plugin->setConfig($this->castConfigValuesByType($pluginCode, $values));
+            }
+            $plugin->update($oldVersion, $newVersion);
+            $dbPlugin->update(['version' => $newVersion, 'updated_at' => now()]);
+            if ($wasEnabled) {
+                $this->enable($pluginCode);
+            }
+        } catch (\Throwable $e) {
+            // Restore durable metadata. If a new package is already on disk,
+            // upload() restores that directory before trying reactivation.
+            $dbPlugin->update([
+                'version' => $oldVersion,
+                'config' => $previousConfig,
+                'is_enabled' => false,
+                'updated_at' => now(),
+            ]);
+            HookManager::removeOwner($pluginCode);
+            throw $e;
+        }
 
         return true;
     }
@@ -634,34 +708,71 @@ class PluginManager
             throw $e;
         }
 
-        $targetPath = $this->getUserPluginPath($config['code']);
-        if (File::exists($targetPath)) {
-            $installedConfigPath = $targetPath . '/config.json';
-            if (!File::exists($installedConfigPath)) {
-                throw new \Exception('已安装插件缺少配置文件，无法判断是否可升级');
-            }
-            $installedConfig = json_decode(File::get($installedConfigPath), true);
+        $code = $config['code'];
+        if ($this->isCorePlugin($code)) {
+            File::deleteDirectory($extractPath);
+            throw new \RuntimeException('Bundled plugins cannot be overwritten by uploads');
+        }
+        $this->assertDependencies($config['require'] ?? []);
+        $targetPath = $this->getUserPluginPath($code);
+        $existingRow = Plugin::query()->where('code', $code)->first();
 
-            $oldVersion = $installedConfig['version'] ?? null;
-            $newVersion = $config['version'] ?? null;
-            if (!$oldVersion || !$newVersion) {
-                throw new \Exception('插件缺少版本号，无法判断是否可升级');
+        if (File::isDirectory($targetPath)) {
+            $installedConfigFile = $targetPath . '/config.json';
+            $oldConfig = File::isFile($installedConfigFile)
+                ? json_decode((string) File::get($installedConfigFile), true)
+                : null;
+            if (!is_array($oldConfig) || !isset($oldConfig['version'])
+                || !version_compare($config['version'], $oldConfig['version'], '>')) {
+                File::deleteDirectory($extractPath);
+                throw new \RuntimeException('Uploaded plugin version must be newer');
             }
-            if (version_compare($newVersion, $oldVersion, '<=')) {
-                throw new \Exception('上传插件版本不高于已安装版本，无法升级');
+        }
+        $staged = $targetPath . '.staging-' . bin2hex(random_bytes(8));
+        $backup = $targetPath . '.backup-' . bin2hex(random_bytes(8));
+        $hadOldFiles = false;
+        $wasEnabled = (bool) ($existingRow?->is_enabled ?? false);
+        try {
+            if (!File::copyDirectory($pluginPath, $staged)) {
+                throw new \RuntimeException('Failed to stage plugin package');
+            }
+            if (File::isDirectory($targetPath)) {
+                if (!rename($targetPath, $backup)) {
+                    throw new \RuntimeException('Failed to back up installed plugin');
+                }
+                $hadOldFiles = true;
+            }
+            if (!rename($staged, $targetPath)) {
+                throw new \RuntimeException('Failed to publish staged plugin');
             }
 
+            if ($existingRow) {
+                $this->update($code);
+            }
+        } catch (\Throwable $e) {
+            File::deleteDirectory($staged);
             File::deleteDirectory($targetPath);
+            if ($hadOldFiles && !rename($backup, $targetPath)) {
+                Log::critical('Plugin upgrade rollback requires manual recovery', [
+                    'plugin' => $code, 'backup' => $backup,
+                ]);
+            }
+            if ($existingRow && $wasEnabled) {
+                try {
+                    $this->enable($code);
+                } catch (\Throwable $restoreError) {
+                    Log::error('Failed to restore plugin after upgrade rollback', [
+                        'plugin' => $code, 'error' => $restoreError->getMessage(),
+                    ]);
+                }
+            }
+            throw $e;
+        } finally {
+            File::deleteDirectory($extractPath);
         }
-
-        File::copyDirectory($pluginPath, $targetPath);
-        File::deleteDirectory($pluginPath);
-        File::deleteDirectory($extractPath);
-
-        if (Plugin::where('code', $config['code'])->exists()) {
-            return $this->update($config['code']);
+        if ($hadOldFiles) {
+            File::deleteDirectory($backup);
         }
-
         return true;
     }
 
