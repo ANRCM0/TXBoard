@@ -22,6 +22,10 @@ describe('admin sidebar navigation layout', () => {
     expect(sidebarNavigation).not.toContain('display:grid')
   })
 
+  it('never squeezes the dashboard row or expandable groups when the sidebar overflows', () => {
+    expect(styles).toContain(['.admin-nav-root,', '.admin-nav-group{', '  flex:none;'].join('\n'))
+  })
+
   it('keeps the main workspace centered and bounded on wide screens', () => {
     const adminPage = declarationBlock('.admin-page')
 

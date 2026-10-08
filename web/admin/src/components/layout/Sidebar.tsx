@@ -18,12 +18,35 @@ type SidebarProps = {
   onClose: () => void
 }
 
+const OPEN_GROUPS_STORAGE_KEY = 'txboard:admin:sidebar:open-groups'
+
+// Read preferences before the first paint, so a refresh does not briefly expand every group.
+function readOpenGroups(): Record<string, boolean> {
+  const groups: Record<string, boolean> = Object.fromEntries(
+    coreNavigationGroups.map(group => [group.key, true]),
+  )
+
+  try {
+    const stored = window.localStorage.getItem(OPEN_GROUPS_STORAGE_KEY)
+    if (!stored) return groups
+    const saved: unknown = JSON.parse(stored)
+    if (!saved || typeof saved !== 'object' || Array.isArray(saved)) return groups
+
+    for (const group of coreNavigationGroups) {
+      const expanded = (saved as Record<string, unknown>)[group.key]
+      if (typeof expanded === 'boolean') groups[group.key] = expanded
+    }
+  } catch {
+    // Private browsing, blocked storage and invalid old values use the defaults.
+  }
+
+  return groups
+}
+
 export function Sidebar({ open, onClose }: SidebarProps) {
   const dialogRef = useDialog(open, onClose)
   const modulesQuery = useQuery({ queryKey: ['moduleRegistry'], queryFn: getModuleRegistry })
-  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() =>
-    Object.fromEntries(coreNavigationGroups.map(group => [group.key, true])),
-  )
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(readOpenGroups)
 
   const coreRoutePaths = useMemo(
     () => coreNavigationGroups.flatMap(group => group.items.map(([path]) => path)),
@@ -35,6 +58,14 @@ export function Sidebar({ open, onClose }: SidebarProps) {
     () => scheduleAdminRouteWarmup(coreRoutePaths),
     [coreRoutePaths],
   )
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(OPEN_GROUPS_STORAGE_KEY, JSON.stringify(openGroups))
+    } catch {
+      // A storage write failure must never break navigation.
+    }
+  }, [openGroups])
 
   function toggleGroup(key: string) {
     setOpenGroups(state => ({ ...state, [key]: !(state[key] ?? true) }))
