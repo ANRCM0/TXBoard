@@ -1,0 +1,87 @@
+name: api-mysql-ci
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "api/**"
+      - ".github/workflows/ci-mysql.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "api/**"
+      - ".github/workflows/ci-mysql.yml"
+
+concurrency:
+  group: api-mysql-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  mysql-regression:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: phase4-ci-root
+          MYSQL_DATABASE: txboard_ci
+          MYSQL_USER: txboard_ci
+          MYSQL_PASSWORD: phase4-ci-user
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --host=127.0.0.1 --user=root --password=phase4-ci-root"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 15
+    env:
+      APP_ENV: testing
+      DB_CONNECTION: mysql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_DATABASE: txboard_ci
+      DB_USERNAME: txboard_ci
+      DB_PASSWORD: phase4-ci-user
+      CACHE_DRIVER: array
+      QUEUE_CONNECTION: sync
+      SESSION_DRIVER: array
+      SETTING_CACHE_STORE: array
+      AGENT_OPS_PAIRING_CACHE_STORE: array
+    defaults:
+      run:
+        working-directory: api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.2"
+          extensions: mbstring, pdo_mysql, mysqlnd, redis
+          coverage: none
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist
+      - name: Prepare test environment
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+      - name: Apply all production-schema migrations on MySQL 8.4
+        run: |
+          php artisan migrate --force --no-interaction
+          php artisan migrate:status --no-interaction
+      - name: Verify ledger, order and plugin schema exists
+        run: |
+          php -r '
+            require "vendor/autoload.php";
+            $app = require "bootstrap/app.php";
+            $app->make(Illuminate\\Contracts\\Console\\Kernel::class)->bootstrap();
+            foreach (["v2_user", "v2_order", "v2_traffic_batch", "v2_plugins"] as $table) {
+                if (!Illuminate\\Support\\Facades\\Schema::hasTable($table)) {
+                    fwrite(STDERR, "Missing MySQL table: " . $table . PHP_EOL);
+                    exit(1);
+                }
+            }
+            echo "MySQL core schema verified" . PHP_EOL;
+          '
+      - name: MySQL settlement and order recovery regressions
+        run: |
+          php artisan test tests/Feature/Server/TrafficBatchSettlementTest.php
+          php artisan test tests/Feature/Order/CheckOrderRecoveryTest.php
