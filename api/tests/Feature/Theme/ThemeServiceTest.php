@@ -186,6 +186,20 @@ class ThemeServiceTest extends TestCase
         }
     }
 
+    public function test_frontend_root_preserves_default_spa_and_switches_to_custom_blade(): void
+    {
+        admin_setting(['frontend_theme' => 'TXBoard']);
+        $default = $this->get('/');
+        $default->assertOk();
+        $this->assertStringContainsString('id="app"', $default->getContent());
+
+        $this->createTheme('RoutingTheme');
+        app(ThemeService::class)->switch('RoutingTheme');
+        $custom = $this->get('/');
+        $custom->assertOk();
+        $this->assertStringContainsString('<!doctype html>', strtolower($custom->getContent()));
+    }
+
     private function createTheme(string $name): void
     {
         $path = base_path('storage/theme/' . $name);
