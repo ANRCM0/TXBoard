@@ -42,7 +42,7 @@ class AgentOpsTest extends TestCase
         $plain = $admin->createToken('agent:read-only', [AgentAbility::NODES_READ])->plainTextToken;
 
         $this->withToken($plain)->postJson('/api/v2/agent/nodes/1/actions', [
-            'action' => 'node.restart',
+            'action' => 'ops.kernel.restart',
         ])->assertForbidden();
     }
 
