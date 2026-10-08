@@ -36,10 +36,11 @@ class OrderServiceConcurrencyTest extends TestCase
     public function test_paid_remains_successful_when_queue_dispatch_fails_after_commit(): void
     {
         \Illuminate\Support\Facades\Log::spy();
-        \Illuminate\Support\Facades\Queue::fake();
-        \Illuminate\Support\Facades\Queue::shouldReceive('connection')
-            ->once()
+        $queue = \Mockery::mock(\Illuminate\Contracts\Queue\Queue::class);
+        $queue->shouldReceive('push')->once()
             ->andThrow(new \RuntimeException('queue unavailable'));
+        \Illuminate\Support\Facades\Queue::shouldReceive('connection')
+            ->once()->with('redis')->andReturn($queue);
 
         $user = $this->makeUser();
         $order = $this->makeOrder($user, $this->makePlan());
