@@ -101,6 +101,28 @@ describe('issue #101: site settings autosave', () => {
     expect(host.querySelector('.config-autosave')?.textContent).toContain('设置保存成功')
   })
 
+  it('flushes a pending valid edit when navigating away before the debounce completes', async () => {
+    vi.mocked(fetchSettings).mockResolvedValue(site)
+    vi.mocked(saveSettings).mockResolvedValue(true)
+    await mount(<SystemSettingsPage />)
+    const name = host.querySelector<HTMLInputElement>('input[name="app_name"]')!
+
+    vi.useFakeTimers()
+    act(() => { name.value = 'Saved on navigation'; Simulate.change(name) })
+    expect(saveSettings).not.toHaveBeenCalled()
+    expect(host.querySelector('.config-autosave')?.textContent).toContain('有待保存')
+
+    // React Router page replacement should not lose changes still in debounce.
+    await act(async () => {
+      root.render(<QueryClientProvider client={client}><MemoryRouter><div>Another admin page</div></MemoryRouter></QueryClientProvider>)
+      await Promise.resolve()
+    })
+    expect(saveSettings).toHaveBeenCalledTimes(1)
+    expect(saveSettings).toHaveBeenCalledWith(expect.objectContaining({ app_name: 'Saved on navigation' }))
+    await act(async () => { await vi.advanceTimersByTimeAsync(1200) })
+    expect(saveSettings).toHaveBeenCalledTimes(1)
+  })
+
   it('keeps unsaved edits visible and offers retry on failed request', async () => {
     vi.mocked(fetchSettings).mockResolvedValue(site)
     vi.mocked(saveSettings).mockRejectedValueOnce(new Error('server rejected')).mockResolvedValue(true)
