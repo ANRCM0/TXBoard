@@ -18,6 +18,21 @@ class OrderServiceConcurrencyTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_paid_queues_fulfillment_and_duplicate_callback_does_not_queue_twice(): void
+    {
+        \Illuminate\Support\Facades\Bus::fake();
+
+        $user = $this->makeUser();
+        $order = $this->makeOrder($user, $this->makePlan());
+
+        $this->assertTrue((new OrderService(Order::findOrFail($order->id)))->paid('callback-1'));
+        $this->assertTrue((new OrderService(Order::findOrFail($order->id)))->paid('callback-1'));
+
+        $this->assertSame(Order::STATUS_PROCESSING, $order->fresh()->status);
+        $this->assertSame('callback-1', $order->fresh()->callback_no);
+        \Illuminate\Support\Facades\Bus::assertDispatchedTimes(\App\Jobs\OrderHandleJob::class, 1);
+    }
+
     public function test_cancel_only_refunds_once_when_called_with_stale_order_models(): void
     {
         $user = $this->makeUser(['balance' => 0]);
