@@ -36,7 +36,7 @@ class OrderServiceConcurrencyTest extends TestCase
     public function test_paid_remains_successful_when_queue_dispatch_fails_after_commit(): void
     {
         \Illuminate\Support\Facades\Log::spy();
-        \Illuminate\Support\Facades\Bus::shouldReceive('dispatch')
+        \Illuminate\Support\Facades\Queue::shouldReceive('connection')
             ->once()
             ->andThrow(new \RuntimeException('queue unavailable'));
 
