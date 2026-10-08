@@ -39,8 +39,73 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # A passing image build alone is not a release qualification. Perform the
+  # full API, web and MCP checks on the exact commit before moving `latest`.
+  release-gate:
+    # Run on PRs as well, so publishing cannot be gated by an untested CI job.
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      APP_ENV: testing
+      DB_CONNECTION: sqlite
+      DB_DATABASE: ":memory:"
+      CACHE_DRIVER: array
+      QUEUE_CONNECTION: sync
+      SESSION_DRIVER: array
+      SETTING_CACHE_STORE: array
+      AGENT_OPS_PAIRING_CACHE_STORE: array
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.2"
+          extensions: mbstring, sqlite3, pdo_sqlite, redis
+          coverage: none
+      - name: Install API dependencies
+        working-directory: api
+        run: composer install --no-interaction --prefer-dist
+      - name: Prepare API test environment
+        working-directory: api
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+      - name: API regression tests
+        working-directory: api
+        run: php artisan test
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Install frontend dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Verify web typecheck, tests, build and performance budget
+        run: npm run verify:web
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install MCP dependencies
+        working-directory: mcp
+        run: npm install --no-audit --no-fund
+      - name: Verify MCP typecheck and build
+        working-directory: mcp
+        run: |
+          npm run typecheck
+          npm run build
+
   verify:
-    if: github.event_name == 'pull_request'
+    # Smoke-test the actual container on main before any registry publication.
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -179,7 +244,9 @@ jobs:
           docker rm -f txboard-mcp-smoke
 
   publish:
-    if: github.event_name != 'pull_request'
+    # Do not publish from a PR or a manually dispatched non-main ref.
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    needs: [release-gate, verify]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
