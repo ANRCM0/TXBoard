@@ -6,7 +6,6 @@ import {
   CreditCard,
   FileText,
   Gift,
-  LayoutDashboard,
   MessageCircle,
   Network,
   Package,
