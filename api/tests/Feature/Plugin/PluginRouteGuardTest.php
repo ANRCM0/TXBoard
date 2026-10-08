@@ -5,14 +5,15 @@ namespace Tests\Feature\Plugin;
 use App\Http\Middleware\EnsurePluginEnabled;
 use App\Models\Plugin;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Route;
+use Illuminate\Http\Request;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Tests\TestCase;
 
 class PluginRouteGuardTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_route_registered_in_memory_is_denied_after_disabling_plugin(): void
+    public function test_registered_plugin_guard_immediately_revokes_disabled_plugin(): void
     {
         $plugin = Plugin::create([
             'name' => 'Route Guard Test',
@@ -22,20 +23,39 @@ class PluginRouteGuardTest extends TestCase
             'is_enabled' => true,
             'installed_at' => now(),
         ]);
-        Route::middleware([EnsurePluginEnabled::class . ':phase3_route_fixture'])
-            ->get('/_phase3_plugin_route_fixture', static fn () => response()->json(['ok' => true]));
 
-        $this->getJson('/_phase3_plugin_route_fixture')->assertOk()->assertJsonPath('ok', true);
+        $guard = app(EnsurePluginEnabled::class);
+        $request = Request::create('/_phase3_plugin_route_fixture', 'GET');
+        $next = static fn () => response()->json(['ok' => true]);
+
+        $response = $guard->handle($request, $next, 'phase3_route_fixture');
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertSame(['ok' => true], $response->getData(true));
 
         $plugin->update(['is_enabled' => false]);
-        $this->getJson('/_phase3_plugin_route_fixture')->assertNotFound();
+        $this->expectException(NotFoundHttpException::class);
+        $guard->handle($request, $next, 'phase3_route_fixture');
     }
 
-    public function test_missing_or_uninstalled_plugin_route_is_denied(): void
+    public function test_missing_or_uninstalled_plugin_is_denied(): void
     {
-        Route::middleware([EnsurePluginEnabled::class . ':uninstalled_plugin'])
-            ->get('/_phase3_uninstalled_route_fixture', static fn () => response('unsafe'));
+        $guard = app(EnsurePluginEnabled::class);
+        $this->expectException(NotFoundHttpException::class);
+        $guard->handle(
+            Request::create('/_phase3_uninstalled_route_fixture', 'GET'),
+            static fn () => response('unsafe'),
+            'uninstalled_plugin',
+        );
+    }
 
-        $this->get('/_phase3_uninstalled_route_fixture')->assertNotFound();
+    public function test_invalid_plugin_identity_is_denied(): void
+    {
+        $guard = app(EnsurePluginEnabled::class);
+        $this->expectException(NotFoundHttpException::class);
+        $guard->handle(
+            Request::create('/_phase3_invalid_plugin_route_fixture', 'GET'),
+            static fn () => response('unsafe'),
+            '../invalid_plugin',
+        );
     }
 }
