@@ -474,6 +474,7 @@ class ThemeService
         $staged = $parent . '/.staging-' . bin2hex(random_bytes(8));
         $backup = $parent . '/.backup-' . bin2hex(random_bytes(8));
         $savedOld = false;
+        $published = false;
 
         try {
             if (!File::copyDirectory($source, $staged)) {
@@ -489,6 +490,7 @@ class ThemeService
             if (!rename($staged, $target)) {
                 throw new Exception('Failed to publish theme assets');
             }
+            $published = true;
 
             if ($afterPublish !== null) {
                 $afterPublish();
@@ -502,7 +504,9 @@ class ThemeService
                         'theme' => $theme, 'backup' => $backup,
                     ]);
                 }
-            } else {
+            } elseif ($published) {
+                // Staging or backup failed before publication: the original
+                // target still belongs to the active theme and must survive.
                 File::deleteDirectory($target);
             }
             throw $e;
