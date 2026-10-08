@@ -3,6 +3,8 @@
 namespace Tests\Feature\Config;
 
 use App\Models\Setting as SettingModel;
+use App\Models\User;
+use Laravel\Sanctum\Sanctum;
 use App\Support\Setting;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
@@ -82,6 +84,42 @@ class LegacyGlobalAppearanceCleanupTest extends TestCase
         $this->assertNull(DB::table('v2_settings')->where('name', 'site_cleanup_guard')->value('value'));
         $settings->save(['frontend_theme' => 'TXBoard']);
         $this->assertSame('TXBoard', $settings->get('frontend_theme'));
+    }
+
+    public function test_admin_endpoint_rejects_legacy_fields_without_saving_unrelated_settings(): void
+    {
+        $admin = User::create([
+            'email' => 'legacy-appearance-admin@example.com',
+            'password' => 'password',
+            'uuid' => '00000000-0000-0000-0000-000000000099',
+            'token' => 'abababababababababababababababab',
+            'balance' => 0,
+            'commission_balance' => 0,
+            'transfer_enable' => 0,
+            'u' => 0,
+            'd' => 0,
+            'banned' => 0,
+            'is_admin' => 1,
+            'is_staff' => 0,
+            'expired_at' => 0,
+            'remind_expire' => 1,
+            'remind_traffic' => 1,
+            'created_at' => time(),
+            'updated_at' => time(),
+        ]);
+        Sanctum::actingAs($admin);
+        $securePath = (string) admin_setting(
+            'secure_path',
+            admin_setting('frontend_admin_path', hash('crc32b', config('app.key')))
+        );
+
+        $this->postJson("/api/v2/{$securePath}/config/save", [
+            'app_name' => 'should-not-save',
+            'frontend_theme_color' => '',
+        ])->assertUnprocessable()->assertJsonValidationErrors(['frontend_theme_color']);
+
+        $this->assertNull(DB::table('v2_settings')->where('name', 'app_name')->value('value'));
+        $this->assertNull(DB::table('v2_settings')->where('name', 'frontend_theme_color')->value('value'));
     }
 
     public function test_cached_legacy_values_are_not_exposed_by_settings_reads(): void
