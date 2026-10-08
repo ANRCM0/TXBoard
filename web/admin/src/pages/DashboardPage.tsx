@@ -6,6 +6,7 @@ import { getDashboardStats, getOrderChart, getTrafficRank } from '../api/statist
 import { getAgentActions, getAgentFleetHealth } from '../api/agent'
 import { QueryFeedback } from '../components/ui/QueryFeedback'
 import { DashboardPeriodPicker } from '../components/dashboard/DashboardPeriodPicker'
+import { QueueDashboardSections } from '../components/dashboard/QueueDashboardSections'
 import { getPeriodDates, getPeriodTimestamps, readDashboardPeriod, saveDashboardPeriod, type DashboardPeriod } from '../lib/dashboardPeriod'
 
 export function DashboardPage() {
@@ -130,6 +131,7 @@ export function DashboardPage() {
         </dl>
       </section>
     </div>
+    <QueueDashboardSections />
   </div>
 }
 
