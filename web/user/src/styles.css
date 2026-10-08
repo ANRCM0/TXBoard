@@ -680,6 +680,9 @@ body{overflow:hidden}
   place-items:center;
   padding:16px;
   background:var(--u-bg);
+  background-image:var(--u-theme-background-image, none);
+  background-position:center;
+  background-size:cover;
 }
 .auth-panel{
   display:block;
