@@ -12,6 +12,10 @@ vi.mock('../api/statistics', () => ({
   getOrderChart: vi.fn(),
   getTrafficRank: vi.fn(),
 }))
+vi.mock('../components/dashboard/QueueDashboardSections', () => ({
+  QueueDashboardSections: () => <div data-testid="queue-monitoring">队列状态 · 作业详情</div>,
+}))
+
 vi.mock('../api/agent', () => ({
   getAgentActions: vi.fn().mockResolvedValue([]),
   getAgentFleetHealth: vi.fn().mockResolvedValue({
@@ -73,12 +77,20 @@ afterEach(() => {
   localStorage.clear()
 })
 
-it('removes the global statistics selector and exposes four independent pickers', () => {
+it('removes both redundant summary cards while retaining the trend, rankings and queue monitoring', () => {
   expect(host.querySelector('.dashboard-range-row')).toBeNull()
-  expect(host.querySelectorAll('.dashboard-period-trigger')).toHaveLength(4)
-  for (const title of ['订单收入趋势', '周期汇总', '用户流量排行', '节点流量排行']) {
+  expect(host.querySelector('.dashboard-summary-grid')).toBeNull()
+  expect(host.querySelector('.dashboard-summary-list')).toBeNull()
+  expect(host.textContent).not.toContain('周期汇总')
+  expect(host.textContent).not.toContain('流量与佣金')
+  expect(host.querySelectorAll('.dashboard-period-trigger')).toHaveLength(3)
+  for (const title of ['订单收入趋势', '用户流量排行', '节点流量排行']) {
     expect(picker(title).textContent).toContain('最近30天')
   }
+  expect(host.querySelector('[data-testid="queue-monitoring"]')?.textContent).toContain('队列状态')
+  expect(host.querySelector('[data-testid="queue-monitoring"]')?.textContent).toContain('作业详情')
+  expect(getOrderChart).toHaveBeenCalledTimes(1)
+  expect(localStorage.getItem('txboard:dashboard:period:order-summary')).toBeNull()
 })
 
 it('changes only the selected traffic ranking when its period changes', async () => {
@@ -115,5 +127,5 @@ it('applies custom dates only to the income trend', async () => {
   await flush()
   expect(getOrderChart).toHaveBeenCalledWith({ start_date: '2026-09-01', end_date: '2026-09-03' })
   expect(picker('订单收入趋势').textContent).toContain('自定义范围')
-  expect(picker('周期汇总').textContent).toContain('最近30天')
+  expect(host.querySelector('.dashboard-summary-grid')).toBeNull()
 })
