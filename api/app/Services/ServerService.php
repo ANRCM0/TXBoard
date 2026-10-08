@@ -130,10 +130,7 @@ class ServerService
      */
     public static function processTraffic(Server $node, array $traffic): void
     {
-        $data = array_filter($traffic, fn($item) =>
-            is_array($item) && count($item) === 2
-            && is_numeric($item[0]) && is_numeric($item[1])
-        );
+        $data = TrafficUsage::normalize($traffic, $node->getCurrentRate());
 
         if (empty($data)) {
             return;
