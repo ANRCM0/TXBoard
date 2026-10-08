@@ -34,7 +34,7 @@ class NodeProtocolContractTest extends TestCase
         $this->user('no-plan', null, ['group_id' => 1, 'transfer_enable' => 200]);
         $snapshot = ServerService::getAvailableUsers($node)->toArray();
         $this->assertSame([$eligible->id], array_column($snapshot, 'id'));
-        $this->assertSame(['id', 'uuid', 'speed_limit', 'device_limit'], array_keys($snapshot[0]));
+        $this->assertSame(['id', 'uuid', 'speed_limit', 'device_limit'], array_keys((array) $snapshot[0]));
     }
 
     public function test_common_protocols_emit_fields_consumed_by_tx_node(): void
