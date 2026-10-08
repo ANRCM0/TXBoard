@@ -33,6 +33,21 @@ class OrderServiceConcurrencyTest extends TestCase
         \Illuminate\Support\Facades\Bus::assertDispatchedTimes(\App\Jobs\OrderHandleJob::class, 1);
     }
 
+    public function test_paid_remains_successful_when_queue_dispatch_fails_after_commit(): void
+    {
+        \Illuminate\Support\Facades\Log::spy();
+        \Illuminate\Support\Facades\Bus::shouldReceive('dispatch')
+            ->once()
+            ->andThrow(new \RuntimeException('queue unavailable'));
+
+        $user = $this->makeUser();
+        $order = $this->makeOrder($user, $this->makePlan());
+
+        $this->assertTrue((new OrderService(Order::findOrFail($order->id)))->paid('callback-outage'));
+        $this->assertSame(Order::STATUS_PROCESSING, $order->fresh()->status);
+        $this->assertSame('callback-outage', $order->fresh()->callback_no);
+    }
+
     public function test_cancel_only_refunds_once_when_called_with_stale_order_models(): void
     {
         $user = $this->makeUser(['balance' => 0]);
