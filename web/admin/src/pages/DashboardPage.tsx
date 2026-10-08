@@ -11,28 +11,20 @@ import { getPeriodDates, getPeriodTimestamps, readDashboardPeriod, saveDashboard
 
 export function DashboardPage() {
   const [incomePeriod, setIncomePeriod] = useState<DashboardPeriod>(() => readDashboardPeriod('income'))
-  const [summaryPeriod, setSummaryPeriod] = useState<DashboardPeriod>(() => readDashboardPeriod('order-summary'))
   const [userPeriod, setUserPeriod] = useState<DashboardPeriod>(() => readDashboardPeriod('user-rank'))
   const [nodePeriod, setNodePeriod] = useState<DashboardPeriod>(() => readDashboardPeriod('node-rank'))
 
   useEffect(() => saveDashboardPeriod('income', incomePeriod), [incomePeriod])
-  useEffect(() => saveDashboardPeriod('order-summary', summaryPeriod), [summaryPeriod])
   useEffect(() => saveDashboardPeriod('user-rank', userPeriod), [userPeriod])
   useEffect(() => saveDashboardPeriod('node-rank', nodePeriod), [nodePeriod])
 
   const incomeDates = useMemo(() => getPeriodDates(incomePeriod), [incomePeriod])
-  const summaryDates = useMemo(() => getPeriodDates(summaryPeriod), [summaryPeriod])
   const userDates = useMemo(() => getPeriodDates(userPeriod), [userPeriod])
   const nodeDates = useMemo(() => getPeriodDates(nodePeriod), [nodePeriod])
   const stats = useQuery({ queryKey: ['dashboardStats'], queryFn: getDashboardStats, refetchInterval: 60_000 })
   const chart = useQuery({
     queryKey: ['orderChart', incomeDates.start_date, incomeDates.end_date],
     queryFn: () => getOrderChart(incomeDates),
-    refetchInterval: 300_000,
-  })
-  const orderSummary = useQuery({
-    queryKey: ['orderChart', summaryDates.start_date, summaryDates.end_date],
-    queryFn: () => getOrderChart(summaryDates),
     refetchInterval: 300_000,
   })
   const userRank = useQuery({
@@ -107,30 +99,6 @@ export function DashboardPage() {
       <Rank title="节点流量排行" period={nodePeriod} onPeriodChange={setNodePeriod} rows={nodeRank.data||[]} loading={nodeRank.isFetching && !nodeRank.data} error={nodeRank.isError} onRetry={() => nodeRank.refetch()}/>
     </div>
 
-    <div className="dashboard-summary-grid">
-      <section className="admin-dashboard-card dashboard-summary-card">
-        <div className="admin-dashboard-card-head">
-          <div><h2>周期汇总</h2><p>订单与佣金统计。</p></div>
-          <DashboardPeriodPicker label="周期汇总" value={summaryPeriod} onChange={setSummaryPeriod}/>
-        </div>
-        <QueryFeedback loading={orderSummary.isFetching && !orderSummary.data} error={orderSummary.isError} onRetry={() => orderSummary.refetch()}/>
-        <dl className="dashboard-summary-list">
-          <div><dt>已支付订单</dt><dd>{count(orderSummary.data?.summary?.paid_count)}</dd></div>
-          <div><dt>收入</dt><dd>{money(orderSummary.data?.summary?.paid_total)}</dd></div>
-          <div><dt>佣金笔数</dt><dd>{count(orderSummary.data?.summary?.commission_count)}</dd></div>
-          <div><dt>佣金</dt><dd>{money(orderSummary.data?.summary?.commission_total)}</dd></div>
-        </dl>
-      </section>
-      <section className="admin-dashboard-card">
-        <div className="admin-dashboard-card-head"><div><h2>流量与佣金</h2><p>今日及当月实时概览。</p></div></div>
-        <dl className="dashboard-summary-list">
-          <div><dt>今日流量</dt><dd>{bytes(s.todayTraffic?.total)}</dd></div>
-          <div><dt>月累计流量</dt><dd>{bytes(s.monthTraffic?.total)}</dd></div>
-          <div><dt>本月佣金支出</dt><dd>{money(s.currentMonthCommissionPayout)}</dd></div>
-          <div><dt>佣金增长</dt><dd>{growth(s.commissionGrowth)}</dd></div>
-        </dl>
-      </section>
-    </div>
     <QueueDashboardSections />
   </div>
 }
