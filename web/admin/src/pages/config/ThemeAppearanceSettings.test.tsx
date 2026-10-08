@@ -38,6 +38,8 @@ it('edits legacy appearance settings from theme management without switching act
     root.render(<QueryClientProvider client={client}><ThemeAppearanceSettings /></QueryClientProvider>)
     await new Promise(resolve => setTimeout(resolve, 25))
   })
+  // React Query resolves asynchronously; flush the settled query/render cycle.
+  await act(async () => { await new Promise(resolve => setTimeout(resolve, 50)) })
   const selects = host.querySelectorAll<HTMLSelectElement>('select')
   expect(selects).toHaveLength(3)
   act(() => { selects[2].value = 'green'; Simulate.change(selects[2]) })
