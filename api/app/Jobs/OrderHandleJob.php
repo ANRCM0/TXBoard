@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Models\Order;
 use App\Services\OrderService;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -13,11 +14,23 @@ use Illuminate\Queue\SerializesModels;
 class OrderHandleJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
-    protected $order;
     protected $tradeNo;
 
     public $tries = 3;
-    public $timeout = 5;
+    public $timeout = 30;
+
+    public function backoff(): array
+    {
+        return [10, 30, 60];
+    }
+
+    public function failed(?\Throwable $exception): void
+    {
+        Log::error('Order fulfillment job exhausted its retries', [
+            'trade_no' => $this->tradeNo,
+            'error' => $exception?->getMessage(),
+        ]);
+    }
     /**
      * Create a new job instance.
      *
@@ -47,7 +60,16 @@ class OrderHandleJob implements ShouldQueue
                 }
                 break;
             case Order::STATUS_PROCESSING:
-                $orderService->open();
+                try {
+                    $orderService->open();
+                } catch (\Throwable $exception) {
+                    Log::error('Order fulfillment attempt failed', [
+                        'trade_no' => $this->tradeNo,
+                        'order_id' => $order->id,
+                        'error' => $exception->getMessage(),
+                    ]);
+                    throw $exception;
+                }
                 break;
         }
     }
