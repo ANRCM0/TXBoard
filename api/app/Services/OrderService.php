@@ -352,7 +352,7 @@ class OrderService
                 // turn a valid payment callback into a failure response.
                 // check:order will recover PROCESSING orders when it runs.
                 try {
-                    OrderHandleJob::dispatch($order->trade_no);
+                    OrderHandleJob::dispatch($order->trade_no)->onConnection('redis');
                 } catch (\Throwable $exception) {
                     Log::error('Paid order queued for scheduler recovery after dispatch failure', [
                         'order_id' => $order->id,
