@@ -39,8 +39,10 @@ class OrderServiceConcurrencyTest extends TestCase
         $queue = \Mockery::mock(\Illuminate\Contracts\Queue\Queue::class);
         $queue->shouldReceive('push')->once()
             ->andThrow(new \RuntimeException('queue unavailable'));
+        $queue->shouldReceive('pushOn')->once()
+            ->andThrow(new \RuntimeException('queue unavailable'));
         \Illuminate\Support\Facades\Queue::shouldReceive('connection')
-            ->once()->with('redis')->andReturn($queue);
+            ->andReturn($queue);
 
         $user = $this->makeUser();
         $order = $this->makeOrder($user, $this->makePlan());
