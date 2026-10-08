@@ -11,7 +11,7 @@ import {
 import { fetchSettings, saveSettings } from './config'
 import { copyNode, generateSecret } from './server'
 import { resolvePluginAppUrl } from './plugin'
-import { getThemes } from './theme'
+import { getThemes, getThemeConfig, saveThemeConfig } from './theme'
 import { getModuleRegistry } from './module'
 import { normalizePluginNavigationTarget } from '../plugins/bridge'
 
@@ -93,6 +93,22 @@ describe('config adapter contract', () => {
 })
 
 describe('theme adapter contract', () => {
+  it('loads and saves per-theme settings through administrator-scoped endpoints', async () => {
+    responder = config => ({
+      data: { data: config.url === '/theme/getThemeConfig'
+        ? { theme_color: 'blue', background_url: '' }
+        : { theme_color: 'green' },
+      },
+    })
+    await expect(getThemeConfig('TXBoard')).resolves.toEqual({ theme_color: 'blue', background_url: '' })
+    await expect(saveThemeConfig('TXBoard', { theme_color: 'green' })).resolves.toEqual({ theme_color: 'green' })
+    expect(seen[0].method).toBe('post')
+    expect(seen[0].url).toBe('/theme/getThemeConfig')
+    expect(JSON.parse(String(seen[0].data))).toEqual({ name: 'TXBoard' })
+    expect(seen[1].url).toBe('/theme/saveThemeConfig')
+    expect(JSON.parse(String(seen[1].data))).toEqual({ name: 'TXBoard', config: { theme_color: 'green' } })
+  })
+
   it('normalizes keyed theme maps and marks the built-in default active', async () => {
     responder = () => ({
       data: {
