@@ -358,6 +358,38 @@ class ThemeService
     }
 
     /**
+     * Export only public presentation fields declared by the theme manifest.
+     * Server-only and credential settings must never reach guest clients.
+     */
+    public function getPublicConfig(string $theme): array
+    {
+        $schema = $this->readConfigFile($theme);
+        $values = $this->getConfig($theme) ?? [];
+        if (!is_array($schema) || !is_array($values)) {
+            return [];
+        }
+
+        $public = [];
+        foreach ($schema['configs'] ?? [] as $field) {
+            if (!is_array($field) || !is_string($field['field_name'] ?? null)) {
+                continue;
+            }
+            if (($field['public'] ?? true) === false) {
+                continue;
+            }
+            if (in_array(strtolower((string) ($field['field_type'] ?? '')), ['password', 'secret', 'hidden'], true)) {
+                continue;
+            }
+            $name = $field['field_name'];
+            if (array_key_exists($name, $values)) {
+                $public[$name] = $values[$name];
+            }
+        }
+
+        return $public;
+    }
+
+    /**
      * Update theme config
      */
     public function updateConfig(string $theme, array $config): bool
