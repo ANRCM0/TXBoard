@@ -9,12 +9,11 @@
 ## Documentation map
 
 - **This document**: stable architecture, trust boundaries, risk model and implemented operating model.
-- [Agent Ops 进度与阶段复盘](./agent-ops-progress.md): delivery history, merged milestones, engineering lessons, current limitations and roadmap.
 - [Agent Ops 开发指南](./agent-ops-development-guide.md): concrete extension workflow, file touchpoints, test matrix and Definition of Done.
 - [Agent Ops HTTP Contract](../../contracts/http/agent-ops-v1.md): public Agent HTTP semantics.
 - [Node Ops Protocol v1](../../contracts/node-protocol/agent-ops-v1.md): TXBoard ↔ TX-Node typed operation contract.
 
-When implementation changes, update the contract first, then the progress/development documents if the delivery state or development rules changed.
+When implementation changes, update the contract first, then the architecture/development guide as necessary.
 
 
 ## 1. Overview
@@ -526,84 +525,9 @@ Requirements:
 - verification is performed separately from command acknowledgement;
 - node disconnects do not silently convert a queued operation into success.
 
-## 16. Delivery phases
+## 16. AI-native operations implementation
 
-### Phase 0 — Contract and documentation
-
-- [x] Define architecture boundary.
-- [x] Define risk model.
-- [x] Define initial tool catalog.
-- [x] Add Agent Ops HTTP contract under `contracts/http/`.
-- [x] Add Node Ops protocol contract under `contracts/node-protocol/`.
-
-### Phase 1 — Read-only Agent Ops — implemented
-
-- [x] system status;
-- [x] machine/node inventory;
-- [x] metrics;
-- [x] normalized node diagnostics;
-- [x] traffic summary;
-- [x] queue health;
-- [x] read-only Agent audit endpoint.
-
-### Phase 2 — Controlled node actions — implemented
-
-- [x] full sync;
-- [x] config validate/reload;
-- [x] kernel status/restart;
-- [x] bounded/redacted application logs;
-- [x] bounded DNS/TCP network checks;
-- [x] request IDs and result events;
-- [x] timeout handling;
-- [x] duplicate request-ID replay protection.
-
-Verification remains an explicit Agent step: after a successful mutating action, the Agent should call the relevant read/diagnostic tool rather than treating command acknowledgement as proof of recovery.
-
-### Phase 3 — MCP Gateway — implemented
-
-- [x] Streamable HTTP MCP adapter;
-- [x] authenticated Bearer requests;
-- [x] one-to-one mapping to Agent Ops API;
-- [x] structured tool errors;
-- [x] client/protocol correlation metadata;
-- [x] optional Compose `mcp` profile.
-
-The gateway contains no direct database, Redis or node-control logic.
-
-### Phase 4 — Approval and policy engine — implemented for v1
-
-- [x] pending actions;
-- [x] Admin approval/rejection UI;
-- [x] risk classes;
-- [x] per-tool functional scopes;
-- [x] per-target node/machine scopes;
-- [x] action cooldown;
-- [x] pending-action limits per token and node;
-- [x] Agent-specific audit trail.
-
-Safe auto-remediation remains intentionally disabled in v1. Enabling it later requires an explicit policy design rather than silently bypassing approval.
-
-### Phase 5 — AI-native operations — implemented
-
-Phase 5 composes the stable v1 primitives; it does not introduce a second execution path.
-
-- [x] fleet health summaries with normalized `healthy / degraded / critical` state;
-- [x] deterministic anomaly explanations based on warning codes and telemetry;
-- [x] incident timelines composed from inspection state changes, Agent actions and Agent audit;
-- [x] guided remediation plans that map warnings to safe next tools/actions;
-- [x] post-action verification against current telemetry instead of trusting command acknowledgement;
-- [x] scheduled fleet inspection every five minutes;
-- [x] normalized inspection history with configurable retention;
-- [x] Admin fleet-health view and manual inspection trigger;
-- [x] target-scope enforcement for Agent insight endpoints.
-
-Automatic remediation remains intentionally **disabled**. A remediation plan can recommend an approval-gated operation, but it cannot approve or execute that operation itself.
-
-
-
-## 17. AI-native operations implementation
-
-### 17.1 Fleet health
+### 16.1 Fleet health
 
 `AgentInsightService::fleetHealth()` evaluates the current normalized diagnosis for every visible node and classifies each node as:
 
@@ -615,7 +539,7 @@ Informational warnings remain visible but do not automatically downgrade fleet s
 
 For target-restricted Agent tokens, fleet health is calculated only over nodes visible to that token.
 
-### 17.2 Scheduled inspections
+### 16.2 Scheduled inspections
 
 TXBoard runs:
 
@@ -642,7 +566,7 @@ It does **not** persist raw TX-Node logs, credentials or arbitrary node configur
 
 Administrators can also trigger a manual inspection from **Admin → Agent 运维**.
 
-### 17.3 Incident timeline
+### 16.3 Incident timeline
 
 `txboard_incident_timeline` combines three existing evidence streams:
 
@@ -652,7 +576,7 @@ Administrators can also trigger a manual inspection from **Admin → Agent 运�
 
 Consecutive inspection snapshots with the same node status/warning signature are collapsed so the timeline emphasizes state transitions instead of repeating five-minute samples.
 
-### 17.4 Remediation plans
+### 16.4 Remediation plans
 
 `txboard_remediation_plan` is deterministic and evidence-based. It maps known warning codes to bounded next steps.
 
@@ -666,7 +590,7 @@ Examples:
 
 The plan never executes its own recommendation.
 
-### 17.5 Post-action verification
+### 16.5 Post-action verification
 
 `txboard_verify_action` separates **command acknowledgement** from **observed recovery**.
 
@@ -689,7 +613,7 @@ action_not_successful
 
 If an action says `succeeded` but current telemetry contradicts the expected state, verification returns `failed`. If the target has disappeared, verification returns `inconclusive` with `target_missing`.
 
-### 17.6 Agent operating loop
+### 16.6 Agent operating loop
 
 The implemented high-level loop is:
 
@@ -709,21 +633,7 @@ Scheduled inspection / fleet health
 
 This is AI-native orchestration without granting the Agent autonomous infrastructure execution.
 
-## 18. Historical first implementation slice
-
-The first code slice should be intentionally small:
-
-1. introduce `AgentOpsService`;
-2. expose read-only endpoints for system health, node list and node diagnostics;
-3. normalize metrics already available from `ServerService`;
-4. add Agent-specific scopes/authentication;
-5. write structured audit entries for Agent calls;
-6. define MCP schemas for the three read-only operations;
-7. only after those are stable, add `ops.kernel.restart`.
-
-This keeps the first milestone observable and safe while proving the full Agent -> MCP -> TXBoard flow.
-
-## 19. Design decision summary
+## 17. Design decision summary
 
 TXBoard Agent Ops is an orchestration and safety layer, not a remote shell.
 
