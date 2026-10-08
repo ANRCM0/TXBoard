@@ -8,7 +8,7 @@ TXBoard 是 Control Plane；TX-Node 是独立 Agent / Data Plane。当前仓库�
 
 - [Module Platform v1](./module-platform-v1.md)：已实现的架构基线、Core/Module 边界、Manifest、Registry、Capability、Health 与 A–H 阶段状态；
 - [Module Platform v1 开发指南](./module-platform-development-guide.md)：当前稳定化工作的 contract-first、adapter-first、兼容、权限、Octane、安全与测试规则；
-- [Code Agent 项目开发指南](../development/code-agent-project-guide.md)：Codex / Code Agent 的仓库工作流、架构边界、Phase A–H 已完成实现与当前 Module Platform v1 stabilization 约束。根目录 `AGENTS.md` 提供 Agent 自动读取的执行规则。
+- [编码 Agent 开发规则](../../AGENTS.md)：仓库统一开发约束、兼容性、安全与测试要求。
 
 Module Platform 是现有 Plugin / Theme / Agent Ops 架构之上的统一层，不替代它们已经稳定的 domain runtime，也不将 User、Order、Node 等 Core 领域强行插件化。
 
@@ -106,10 +106,9 @@ The MCP Gateway is an adapter, not a second control plane. It must not connect d
 
 Arbitrary shell execution is intentionally excluded. Node operations must be fixed, versioned and typed, such as kernel restart, configuration validation/reload, bounded log retrieval and bounded network diagnostics.
 
-Agent Ops 文档分为三层：
+Agent Ops 的长期维护文档：
 
 - [Agent Ops / MCP Architecture](./agent-ops.md)：稳定架构、风险模型和运行边界；
-- [Agent Ops 进度与阶段复盘](./agent-ops-progress.md)：Phase 0–5 交付、PR/commit、经验、限制和下一步；
 - [Agent Ops 开发指南](./agent-ops-development-guide.md)：新增 READ / INSIGHT / OPERATE 能力的实施步骤、测试矩阵和 Definition of Done。
 
 ## Deployment boundary

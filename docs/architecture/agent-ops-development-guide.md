@@ -2,7 +2,7 @@
 
 > 用途：指导后续新增 Agent / MCP / TX-Node 运维能力。
 >
-> 前置阅读：[Agent Ops Architecture](./agent-ops.md) 与 [Agent Ops 进度与阶段复盘](./agent-ops-progress.md)。
+> 前置阅读：[Agent Ops Architecture](./agent-ops.md) 与相应的 HTTP / TX-Node 协议契约。
 
 ---
 
@@ -681,7 +681,7 @@ shell_command
 ### Docs
 
 - [ ] architecture/status 若边界变化则同步；
-- [ ] progress 文档更新阶段状态；
+- [ ] 架构/契约文档按实际行为同步更新；
 - [ ] known limitation 有变化则记录。
 
 ---
@@ -757,19 +757,3 @@ CI：
 重点记录**为什么**，而不只是“改了哪些文件”。
 
 ---
-
-## 14. 下一步开发顺序
-
-当前推荐优先级：
-
-1. **Node capability negotiation**；
-2. **更可靠的 telemetry freshness / confidence**；
-3. **标准化 log timestamp**；
-4. **verification coverage 扩展**；
-5. **inspection state-change notification**；
-6. **跨节点 incident correlation**；
-7. 最后才评估 narrow auto-remediation。
-
-不建议下一步直接做“让 Agent 自动重启所有异常节点”。
-
-先把“知道 Node 能做什么、知道遥测是否可信、知道动作是否真的恢复”做扎实。
