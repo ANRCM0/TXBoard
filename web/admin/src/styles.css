@@ -2749,3 +2749,13 @@ body:has(.modal-root,.admin-command-overlay,.admin-sidebar.is-open) .admin-scrol
 .theme-management-heading{display:flex;flex-direction:column;gap:2px;margin:0 0 16px}
 .theme-management-heading h2{margin:0;font-size:18px;font-weight:650}
 .theme-management-heading span{margin:6px 0 0;color:var(--muted);font-size:13px;line-height:1.6}
+
+/* Persistent settings save feedback, including narrow/mobile admin layouts. */
+.config-autosave-saved{color:var(--success)}
+.config-autosave-error,.config-autosave-invalid{color:var(--danger)}
+.config-autosave-pending,.config-autosave-saving{color:var(--fg)}
+.config-autosave-error .button{white-space:nowrap}
+@media(max-width:600px){
+  .config-autosave{justify-content:flex-start;text-align:left}
+  .config-autosave-error .button{width:100%;min-height:36px}
+}
