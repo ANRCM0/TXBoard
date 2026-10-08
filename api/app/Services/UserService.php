@@ -114,7 +114,7 @@ class UserService
         return true;
     }
 
-    public function trafficFetch(Server $server, string $protocol, array $data)
+    public function trafficFetch(Server $server, string $protocol, array $data, ?string $batchId = null)
     {
         $server->rate = $server->getCurrentRate();
         $server = $server->toArray();
@@ -131,6 +131,13 @@ class UserService
         }
 
         $timestamp = strtotime(date('Y-m-d'));
+        if ($batchId !== null) {
+            // The complete report must be settled as one atomic, idempotent
+            // unit, not three independent retryable statistics jobs.
+            \App\Jobs\TrafficBatchJob::dispatch($server, $data, $protocol, $timestamp, $batchId);
+            return;
+        }
+
         collect($data)->chunk(1000)->each(function ($chunk) use ($timestamp, $server, $protocol) {
             TrafficFetchJob::dispatch($server, $chunk->toArray(), $protocol, $timestamp);
             StatUserJob::dispatch($server, $chunk->toArray(), $protocol, 'd');
