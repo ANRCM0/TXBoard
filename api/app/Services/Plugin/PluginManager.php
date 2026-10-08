@@ -194,16 +194,21 @@ class PluginManager
         // Check manifest versions before any migration or filesystem action.
         $this->assertDependencies($config['require'] ?? []);
 
-        // 运行数据库迁移
+        if (($config['code'] ?? null) !== $pluginCode) {
+            throw new \RuntimeException('Plugin manifest identity does not match requested installation');
+        }
+
+        // Missing plugin PHP must be rejected before running migrations.
+        $plugin = $this->loadPlugin($pluginCode);
+        if (!$plugin) {
+            throw new \RuntimeException('Plugin implementation not found: ' . $pluginCode);
+        }
+
         $this->runMigrations(pluginCode: $pluginCode);
 
         DB::beginTransaction();
         try {
-            // 提取配置默认值
             $defaultValues = $this->extractDefaultConfig($config);
-
-            // 创建插件实例
-            $plugin = $this->loadPlugin($pluginCode);
 
             // 注册到数据库
             Plugin::create([
@@ -226,10 +231,11 @@ class PluginManager
 
             DB::commit();
             return true;
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             if (DB::transactionLevel() > 0) {
                 DB::rollBack();
             }
+            HookManager::removeOwner($pluginCode);
             throw $e;
         }
     }
