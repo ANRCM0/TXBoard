@@ -1,6 +1,15 @@
 import { apiClient } from './client'
 import { unwrap } from '../lib/api'
 
+export type ThemeConfigField = {
+  field_name: string
+  label?: string
+  field_type?: string
+  placeholder?: string
+  default_value?: unknown
+  select_options?: Record<string, string> | Array<{ label: string; value: string | number }>
+}
+
 export type ThemeItem = {
   name?: string
   theme?: string
@@ -12,7 +21,7 @@ export type ThemeItem = {
   preview?: string
   is_active?: boolean
   active?: boolean
-  configs?: unknown[]
+  configs?: ThemeConfigField[]
   can_delete?: boolean
   is_system?: boolean
   [key: string]: unknown
