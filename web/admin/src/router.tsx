@@ -14,12 +14,10 @@ const FeatureEntrySettingsPage = lazy(() => import('./pages/config/FeatureEntryS
 const SafeSettingsPage = lazy(() => import('./pages/config/SafeSettingsPage').then(module => ({ default: module.SafeSettingsPage })))
 const SubscribeSettingsPage = lazy(() => import('./pages/config/SubscribeSettingsPage').then(module => ({ default: module.SubscribeSettingsPage })))
 const InviteSettingsPage = lazy(() => import('./pages/config/InviteSettingsPage').then(module => ({ default: module.InviteSettingsPage })))
-const FrontendSettingsPage = lazy(() => import('./pages/config/FrontendSettingsPage').then(module => ({ default: module.FrontendSettingsPage })))
 const ServerSettingsPage = lazy(() => import('./pages/config/ServerSettingsPage').then(module => ({ default: module.ServerSettingsPage })))
 const SubscribeTemplatePage = lazy(() => import('./pages/config/SubscribeTemplatePage').then(module => ({ default: module.SubscribeTemplatePage })))
 const EmailSettingsPage = lazy(() => import('./pages/config/EmailSettingsPage').then(module => ({ default: module.EmailSettingsPage })))
 const TelegramSettingsPage = lazy(() => import('./pages/config/TelegramSettingsPage').then(module => ({ default: module.TelegramSettingsPage })))
-const AppSettingsPage = lazy(() => import('./pages/config/AppSettingsPage').then(module => ({ default: module.AppSettingsPage })))
 const ThemeSettingsPage = lazy(() => import('./pages/config/ThemeSettingsPage').then(module => ({ default: module.ThemeSettingsPage })))
 const PaymentSettingsPage = lazy(() => import('./pages/config/PaymentSettingsPage').then(module => ({ default: module.PaymentSettingsPage })))
 const NoticeSettingsPage = lazy(() => import('./pages/config/NoticeSettingsPage').then(module => ({ default: module.NoticeSettingsPage })))
@@ -73,11 +71,11 @@ export const router = createAppRouter([
           { path: 'config/system/safe', element: <SafeSettingsPage /> },
           { path: 'config/system/subscribe', element: <SubscribeSettingsPage /> },
           { path: 'config/system/invite', element: <InviteSettingsPage /> },
-          { path: 'config/frontend', element: <FrontendSettingsPage /> },
+          { path: 'config/frontend', element: <Navigate to="/config/theme" replace /> },
           { path: 'config/server', element: <ServerSettingsPage /> },
           { path: 'config/email', element: <EmailSettingsPage /> },
           { path: 'config/telegram', element: <TelegramSettingsPage /> },
-          { path: 'config/APP', element: <AppSettingsPage /> },
+          { path: 'config/APP', element: <Navigate to="/config/system" replace /> },
           { path: 'config/payment', element: <PaymentSettingsPage /> },
           { path: 'config/theme', element: <ThemeSettingsPage /> },
           { path: 'config/notice', element: <NoticeSettingsPage /> },
