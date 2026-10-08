@@ -399,140 +399,9 @@ Every Module Platform change should consider:
 - runtime healthcheck still works before installation；
 - optional broken module cannot break base container health unexpectedly。
 
-## 19. PR structure and current delivery status
+## 19. Theme lifecycle integration
 
-Prefer small architecture-preserving PRs.
-
-### PR A — Module contract and DTOs — ✅ completed
-
-Delivered:
-
-- Module Package v1;
-- JSON Schema;
-- `ModuleManifest`;
-- `ModuleDescriptor`;
-- type/source/health vocabularies;
-- Capability contract and drift tests.
-
-No existing runtime behavior was changed.
-
-### PR B — Read-only Module Registry foundation — ✅ completed
-
-Delivered:
-
-- `ModuleRegistry`;
-- discovery isolation;
-- Plugin / Theme / Agent Ops adapters;
-- stable legacy Theme IDs;
-- read-only Admin Module Registry HTTP API;
-- system Module ID collision protection.
-
-The Registry observes existing runtimes and does not own lifecycle mutations.
-
-### PR C — Plugin lifecycle integration — ✅ completed
-
-Introduce a Module lifecycle abstraction for Plugin modules:
-
-```text
-ModuleLifecycle
-      -> PluginLifecycleAdapter
-      -> existing PluginManager
-```
-
-Delivered:
-
-- `contracts/module-lifecycle/README.md` lifecycle vocabulary/result/error contract;
-- `ModuleLifecycle` orchestration and container-scoped registration;
-- `PluginLifecycleAdapter` delegation to existing `PluginManager`;
-- explicit unsupported module-type behavior;
-- structured non-secret runtime failures;
-- Registry state refresh after mutation/failure;
-- unit tests for all five Plugin operations, unknown Module, unsupported type, runtime failure and refresh semantics.
-
-No generalized Module write HTTP route was added.
-
-### PR D — Theme Package v1 + Theme lifecycle adapter — ✅ completed
-
-Delivered:
-
-- `contracts/theme-package/` contract, schema and example;
-- backward-compatible `config.json + dashboard.blade.php` package boundary;
-- Theme Package DTO/validation and bounded ZIP extraction safety;
-- `frontend_theme` canonical ownership with read-only `current_theme` compatibility fallback;
-- `ThemeLifecycleAdapter -> ThemeService` delegation;
-- explicit per-operation lifecycle support;
-- user-theme removal semantics with Registry-confirmed absence;
-- regression coverage for default, legacy, stale, custom and system-theme states.
-
-Theme upload/configuration remain specialized Theme Runtime APIs because they require payloads beyond the generic lifecycle command.
-
-### PR E — Module Center — ✅ completed
-
-Delivered:
-
-- read-only Admin Module Center;
-- one frontend API client for `GET /api/v2/{secure_path}/module`;
-- Registry summary, inventory, runtime state, health, capabilities and compatibility display;
-- discovery-error visibility;
-- search/type/source/health filtering;
-- navigation, route preload and command-palette integration;
-- frontend contract tests proving the page reads the unified Module endpoint.
-
-Existing Plugin, Theme and Agent management pages remain specialized surfaces.
-
-### PR F — controlled Module management API — ✅ completed
-
-Delivered:
-
-- `contracts/http/module-management-v1.md`;
-- state-aware lifecycle operation discovery;
-- `GET /module/{id}/lifecycle`;
-- `POST /module/{id}/lifecycle/{operation}`;
-- stable HTTP mapping for lifecycle errors;
-- Plugin installed/enabled state gates;
-- Theme active/source state gates;
-- feature/unit coverage proving Registry remains read-only and specialized runtimes remain authoritative.
-
-Plugin/Theme upload and configuration, Agent approval and MCP execution remain specialized APIs.
-
-### PR G — Admin Navigation Registry + Admin Bridge v2 — ✅ completed
-
-Delivered:
-
-- `contracts/admin-navigation/README.md`;
-- `ModuleDescriptor.admin.navigation` projection;
-- conservative Plugin Package v1 `admin_menus` normalization;
-- Sidebar and command palette consumption of the unified Module Registry snapshot;
-- defensive frontend navigation normalization and tests;
-- `contracts/admin-bridge/README.md`;
-- optional Bridge v2 negotiation and bounded host services;
-- Bridge v1 compatibility;
-- confirmation correlation/cancellation, theme context and Core deep-link services.
-
-Plugin page rendering remains specialized and plugin-owned `admin/dist` stays the complex UI boundary.
-
-### PR H — Agent Ops registry enrichment — ✅ completed
-
-Delivered:
-
-- `contracts/agent-ops-module/README.md`;
-- generic bounded runtime `health_details` DTO;
-- Agent Ops health derivation from the existing system-status runtime;
-- healthy/degraded mapping for Scheduler, Horizon and WebSocket worker checks;
-- non-secret degraded fallback when health collection fails;
-- Module Center health-check rendering;
-- API/unit/web contract coverage;
-- no Agent token/action/approval state moved into Module Runtime.
-
-### Post-v1 stabilization — ▶ current target
-
-Module Platform v1 is feature-complete for the A–H roadmap. Continue with compatibility hardening, contract drift prevention, bug fixes and scoped product improvements. Breaking package, lifecycle, navigation or Bridge changes require an explicit future version.
-
-Avoid combining multiple phases into one large refactor.
-
-## 20. Phase D implementation result
-
-Phase D keeps Theme Runtime authoritative while making Theme a first-class Module lifecycle participant.
+Theme Runtime remains authoritative; Module lifecycle delegates supported operations through a Theme adapter.
 
 Required direction:
 
@@ -558,7 +427,7 @@ It does not reimplement upload extraction, configuration persistence, public ass
 
 Theme Package v1 deliberately formalizes the current package layout instead of requiring an immediate `manifest.json` migration. The Module adapter derives normalized Module metadata.
 
-The active-theme invariant after Phase D is:
+The active-theme invariant is:
 
 ```text
 frontend_theme = canonical state
@@ -566,9 +435,8 @@ current_theme  = read-only legacy compatibility fallback
 TXBoard        = deterministic default
 ```
 
-Phase E adds the read-only Module Center directly on top of the Module Registry API. Phase F adds a controlled management HTTP adapter over `ModuleLifecycle`. Phase G adds common Admin navigation projection and optional Bridge v2 host services. Phase H completes v1 by enriching Agent Ops with bounded runtime health while preserving its security boundary.
 
-## 21. Definition of Done for each Module
+## 20. Definition of Done for each Module
 
 A production-ready Module integration should answer:
 
