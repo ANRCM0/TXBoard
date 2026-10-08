@@ -70,18 +70,19 @@ class OrderServiceConcurrencyTest extends TestCase
         $user = $this->makeUser(['balance' => 0, 'expired_at' => 0, 'transfer_enable' => 0]);
         $order = $this->makeOrder($user, $this->makePlan(), [
             'status' => Order::STATUS_PROCESSING,
-            'period' => 'unsupported-period-for-failure-injection',
+            'plan_id' => 999999999,
         ]);
 
         try {
             (new OrderService(Order::findOrFail($order->id)))->open();
-            $this->fail('Unsupported billing period should fail fulfillment.');
+            $this->fail('Missing plan should fail fulfillment.');
         } catch (\Throwable $exception) {
             $this->assertSame(Order::STATUS_PROCESSING, $order->fresh()->status);
             $this->assertNull($user->fresh()->plan_id);
         }
 
-        $order->update(['period' => Plan::PERIOD_MONTHLY]);
+        $plan = Plan::where('name', 'Race Test Plan')->firstOrFail();
+        $order->update(['plan_id' => $plan->id]);
 
         (new OrderService(Order::findOrFail($order->id)))->open();
         (new OrderService(Order::findOrFail($order->id)))->open();
