@@ -42,16 +42,22 @@ class OrderServiceConcurrencyTest extends TestCase
 
         \Illuminate\Support\Facades\Log::spy();
         $queue = \Mockery::mock(\Illuminate\Contracts\Queue\Queue::class);
-        // An OrderHandleJob specifies the order_handle queue, so Laravel uses
-        // pushOn rather than push. Model the single actual dispatch attempt.
-        $queue->shouldReceive('pushOn')->once()
-            ->andThrow(new \RuntimeException('queue unavailable'));
+        // Laravel versions can use push or pushOn when dispatching a named
+        // queue. Both paths represent a single queue submission attempt.
+        $dispatchAttempts = 0;
+        $simulateOutage = function () use (&$dispatchAttempts) {
+            $dispatchAttempts++;
+            throw new \RuntimeException('queue unavailable');
+        };
+        $queue->shouldReceive('push')->andReturnUsing($simulateOutage);
+        $queue->shouldReceive('pushOn')->andReturnUsing($simulateOutage);
         \Illuminate\Support\Facades\Queue::shouldReceive('connection')
             ->once()
             ->with('redis')
             ->andReturn($queue);
 
         $this->assertTrue((new OrderService(Order::findOrFail($order->id)))->paid('callback-outage'));
+        $this->assertSame(1, $dispatchAttempts);
         $this->assertSame(Order::STATUS_PROCESSING, $order->fresh()->status);
         $this->assertSame('callback-outage', $order->fresh()->callback_no);
     }
