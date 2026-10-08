@@ -134,11 +134,15 @@ final class PluginPackage
         }
 
         $uncompressed = 0;
+        $seenEntries = [];
 
         for ($i = 0; $i < $zip->numFiles; $i++) {
             $stat = $zip->statIndex($i);
             $name = (string) ($stat['name'] ?? '');
-            $normalized = str_replace('\\', '/', $name);
+            if (str_contains($name, '\\')) {
+                throw new InvalidArgumentException('Plugin archive contains Windows-style separators');
+            }
+            $normalized = $name;
 
             if (
                 $normalized === ''
@@ -150,10 +154,15 @@ final class PluginPackage
             }
 
             foreach (explode('/', rtrim($normalized, '/')) as $segment) {
-                if ($segment === '..') {
-                    throw new InvalidArgumentException('插件包包含目录穿越路径');
+                if ($segment === '' || $segment === '.' || $segment === '..') {
+                    throw new InvalidArgumentException('Plugin archive contains unsafe path segments');
                 }
             }
+            $entryId = strtolower(rtrim($normalized, '/'));
+            if (isset($seenEntries[$entryId])) {
+                throw new InvalidArgumentException('Plugin archive contains duplicate paths');
+            }
+            $seenEntries[$entryId] = true;
 
             $uncompressed += (int) ($stat['size'] ?? 0);
             if ($uncompressed > self::MAX_UNCOMPRESSED_BYTES) {
@@ -168,6 +177,34 @@ final class PluginPackage
                     throw new InvalidArgumentException('插件包不允许包含符号链接');
                 }
             }
+        }
+    }
+
+    /**
+     * Only one installable plugin root is allowed. This prevents an archive
+     * from smuggling a second manifest which could be selected by glob order.
+     */
+    public function assertInstallableArchive(ZipArchive $zip): void
+    {
+        $candidates = [];
+        $entries = [];
+        for ($i = 0; $i < $zip->numFiles; $i++) {
+            $entry = (string) $zip->getNameIndex($i);
+            if (str_ends_with($entry, '/')) {
+                continue;
+            }
+            $entries[$entry] = true;
+            if (preg_match('#^(?:[A-Za-z0-9_-]+/)?config\\.json$#', $entry)) {
+                $candidates[] = $entry;
+            }
+        }
+        if (count($candidates) !== 1) {
+            throw new InvalidArgumentException('Plugin archive must contain exactly one installable config.json');
+        }
+        $parent = dirname($candidates[0]);
+        $runtimeFile = ($parent === '.' ? '' : $parent . '/') . 'Plugin.php';
+        if (!isset($entries[$runtimeFile])) {
+            throw new InvalidArgumentException('Plugin archive is missing Plugin.php in manifest root');
         }
     }
 

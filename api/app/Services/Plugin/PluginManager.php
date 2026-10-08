@@ -684,6 +684,7 @@ class PluginManager
 
         try {
             $this->pluginPackage->assertSafeArchive($zip);
+            $this->pluginPackage->assertInstallableArchive($zip);
             if (!$zip->extractTo($extractPath)) {
                 throw new \Exception('插件包解压失败');
             }
