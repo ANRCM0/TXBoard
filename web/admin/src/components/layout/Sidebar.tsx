@@ -16,6 +16,8 @@ import { useDialog } from '../../lib/useDialog'
 type SidebarProps = {
   open: boolean
   onClose: () => void
+  collapsed: boolean
+  onExpand: () => void
 }
 
 const OPEN_GROUPS_STORAGE_KEY = 'txboard:admin:sidebar:open-groups'
@@ -43,7 +45,7 @@ function readOpenGroups(): Record<string, boolean> {
   return groups
 }
 
-export function Sidebar({ open, onClose }: SidebarProps) {
+export function Sidebar({ open, onClose, collapsed, onExpand }: SidebarProps) {
   const dialogRef = useDialog(open, onClose)
   const modulesQuery = useQuery({ queryKey: ['moduleRegistry'], queryFn: getModuleRegistry })
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(readOpenGroups)
@@ -104,6 +106,8 @@ export function Sidebar({ open, onClose }: SidebarProps) {
           <NavLink
             to="/"
             end
+            title="仪表盘"
+            aria-label="仪表盘"
             onClick={onClose}
             className={({ isActive }) => `admin-nav-root ${isActive ? 'active' : ''}`}
           >
@@ -119,9 +123,11 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                 <button
                   type="button"
                   className="admin-nav-group-trigger"
+                  title={group.title}
+                  aria-label={group.title}
                   aria-controls={`admin-nav-${group.key}`}
                   aria-expanded={expanded}
-                  onClick={() => toggleGroup(group.key)}
+                  onClick={() => collapsed && !open ? onExpand() : toggleGroup(group.key)}
                   onKeyDown={preventSpaceScroll}
                   onKeyUp={event => toggleGroupWithSpace(event, group.key)}
                 >
@@ -154,7 +160,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
 
           {moduleGroups.map(group => (
             <section className="admin-nav-group" key={group.moduleId}>
-              <button type="button" className="admin-nav-group-trigger">
+              <button type="button" className="admin-nav-group-trigger" title={group.title} aria-label={group.title} onClick={() => { if (collapsed && !open) onExpand() }}>
                 <Plug size={18} />
                 <span className="truncate">{group.title}</span>
                 {group.version ? <small>v{group.version}</small> : null}
