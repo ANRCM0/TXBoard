@@ -10,6 +10,7 @@ use App\Models\TrafficResetLog;
 use App\Models\User;
 use App\Services\Plugin\HookManager;
 use App\Utils\Helper;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
@@ -352,7 +353,10 @@ class OrderService
                 // turn a valid payment callback into a failure response.
                 // check:order will recover PROCESSING orders when it runs.
                 try {
-                    OrderHandleJob::dispatch($order->trade_no)->onConnection('redis');
+                    // Dispatch immediately, while we are inside the try/catch.
+                    // PendingDispatch dispatches from its destructor, which can
+                    // defer exceptions beyond the intended error boundary.
+                    Bus::dispatch((new OrderHandleJob($order->trade_no))->onConnection('redis'));
                 } catch (\Throwable $exception) {
                     Log::error('Paid order queued for scheduler recovery after dispatch failure', [
                         'order_id' => $order->id,

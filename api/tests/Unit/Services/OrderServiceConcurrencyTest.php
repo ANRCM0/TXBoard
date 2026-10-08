@@ -37,11 +37,13 @@ class OrderServiceConcurrencyTest extends TestCase
     {
         \Illuminate\Support\Facades\Log::spy();
         $queue = \Mockery::mock(\Illuminate\Contracts\Queue\Queue::class);
-        $queue->shouldReceive('push')->once()
-            ->andThrow(new \RuntimeException('queue unavailable'));
+        // An OrderHandleJob specifies the order_handle queue, so Laravel uses
+        // pushOn rather than push. Model the single actual dispatch attempt.
         $queue->shouldReceive('pushOn')->once()
             ->andThrow(new \RuntimeException('queue unavailable'));
         \Illuminate\Support\Facades\Queue::shouldReceive('connection')
+            ->once()
+            ->with('redis')
             ->andReturn($queue);
 
         $user = $this->makeUser();
