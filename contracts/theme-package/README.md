@@ -60,6 +60,14 @@ theme_{theme-name}
 
 It is not package-declared runtime state.
 
+### Theme-owned frontend appearance
+
+There is no global Page Appearance panel. Colors, background images and other theme visuals are configured per installed theme through Theme Management and stored under `theme_{theme-name}`. Switching the active theme selects that theme's own settings; other themes retain their settings independently.
+
+The public `GET /api/v1/guest/comm/config` response contains `frontend_theme` (active theme name) and `theme_config` (public settings declared by that theme). The built-in Vue user front reads this response when loading the page and applies the built-in theme color and login background. Themes rendered from `dashboard.blade.php` continue receiving `theme_config` as view data.
+
+Manifest fields are public presentation values by default. **Never store API secrets in browser-facing theme fields.** Use `"public": false` for server-only fields; field types `password`, `secret`, and `hidden` are also excluded from public configuration. Site identity, payments, access control and other business settings stay in system configuration.
+
 ## Active theme state
 
 The only canonical active-theme setting is:
