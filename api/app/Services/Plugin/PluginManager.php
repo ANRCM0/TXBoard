@@ -2,6 +2,7 @@
 
 namespace App\Services\Plugin;
 
+use App\Http\Middleware\EnsurePluginEnabled;
 use App\Models\Plugin;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Facades\DB;
@@ -128,14 +129,14 @@ class PluginManager
             $webRouteFile = $routesPath . '/web.php';
             $apiRouteFile = $routesPath . '/api.php';
             if (File::exists($webRouteFile)) {
-                Route::middleware('web')
+                Route::middleware(['web', EnsurePluginEnabled::class . ':' . $pluginCode])
                     ->namespace($this->getPluginNamespace($pluginCode) . '\\Controllers')
                     ->group(function () use ($webRouteFile) {
                         require $webRouteFile;
                     });
             }
             if (File::exists($apiRouteFile)) {
-                Route::middleware('api')
+                Route::middleware(['api', EnsurePluginEnabled::class . ':' . $pluginCode])
                     ->namespace($this->getPluginNamespace($pluginCode) . '\\Controllers')
                     ->group(function () use ($apiRouteFile) {
                         require $apiRouteFile;
