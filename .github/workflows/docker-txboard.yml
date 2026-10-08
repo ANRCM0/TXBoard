@@ -17,6 +17,8 @@ on:
       - "package.json"
       - "package-lock.json"
       - "compose.yaml"
+      - "backup.sh"
+      - "scripts/test-backup.sh"
       - "scripts/resolve-image-tags.sh"
       - "scripts/test-image-tags.sh"
       - ".github/workflows/docker-txboard.yml"
@@ -102,6 +104,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Verify backup integrity and mysqldump failure handling
+        run: bash scripts/test-backup.sh backup.sh
       - name: Validate Compose
         env:
           TXBOARD_DB_PASSWORD: test-password
