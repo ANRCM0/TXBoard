@@ -48,6 +48,14 @@ describe('admin router basename', () => {
     expect(collectRoutePaths(router.routes)).toContain('config/system/features')
   }, IMPORT_TIMEOUT_MS)
 
+  it('keeps old theme and APP bookmarks as redirects without old settings pages', async () => {
+    const router = await routerFor(true, '/TXBoard/admin/', '/TXBoard/admin/')
+    const all = collectRoutePaths(router.routes)
+    expect(all).toContain('config/theme')
+    expect(all).toContain('config/frontend')
+    expect(all).toContain('config/APP')
+  }, IMPORT_TIMEOUT_MS)
+
   it('uses the runtime secure path instead of the Vite asset base', async () => {
     const router = await routerFor(
       false,

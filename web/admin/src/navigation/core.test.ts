@@ -27,7 +27,6 @@ describe('core admin navigation', () => {
   it('keeps system management focused on core settings and audit', () => {
     expect(routes('system')).toEqual([
       ['/config/system', '系统配置'],
-      ['/config/frontend', '前端设置'],
       ['/system/audit-log', '审计日志'],
     ])
   })
@@ -36,7 +35,7 @@ describe('core admin navigation', () => {
     expect(routes('extensions')).toEqual([
       ['/system/modules', '模块中心'],
       ['/config/plugin', '插件管理'],
-      ['/config/theme', '主题配置'],
+      ['/config/theme', '主题管理'],
     ])
   })
 
@@ -55,6 +54,14 @@ describe('core admin navigation', () => {
       ['/config/notice', '公告管理'],
       ['/config/knowledge', '知识库管理'],
     ])
+  })
+
+  it('exposes a single theme management entry and hides obsolete settings menus', () => {
+    const items: Array<{ path: string; label: string }> = coreNavigationGroups.flatMap(group => group.items.map(([path, label]) => ({ path, label })))
+    expect(items.filter(item => item.path === '/config/theme')).toEqual([
+      { path: '/config/theme', label: '主题管理' },
+    ])
+    expect(items.some(item => item.path === '/config/frontend' || item.path === '/config/APP')).toBe(false)
   })
 
   it('does not duplicate host-owned routes across groups', () => {
