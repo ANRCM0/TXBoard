@@ -20,6 +20,7 @@ final class ThemePackage
         }
 
         $uncompressed = 0;
+        $seenEntries = [];
         for ($i = 0; $i < $zip->numFiles; $i++) {
             $stat = $zip->statIndex($i);
             $name = (string) ($stat['name'] ?? '');
@@ -41,7 +42,15 @@ final class ThemePackage
                 if ($segment === '..') {
                     throw new InvalidArgumentException('Theme package contains path traversal');
                 }
+                if ($segment === '' || $segment === '.') {
+                    throw new InvalidArgumentException('Theme archive contains unsafe path segments');
+                }
             }
+            $entryId = strtolower(rtrim($normalized, '/'));
+            if (isset($seenEntries[$entryId])) {
+                throw new InvalidArgumentException('Theme archive contains duplicate paths');
+            }
+            $seenEntries[$entryId] = true;
 
             $uncompressed += (int) ($stat['size'] ?? 0);
             if ($uncompressed > self::MAX_UNCOMPRESSED_BYTES) {
