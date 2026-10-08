@@ -32,6 +32,27 @@ Route::get('/', function (Request $request) {
     $themeService = app(ThemeService::class);
     $theme = $themeService->getActiveTheme();
 
+    // The production user SPA was the existing default at Caddy's /. Keep
+    // serving precisely that app when the built-in theme is selected, rather
+    // than accidentally replacing it with the legacy umi.js Blade theme.
+    if ($theme === 'TXBoard') {
+        $candidates = [
+            '/srv/user/index.html',
+            base_path('../web/user/dist/index.html'),
+            base_path('../web/user/index.html'),
+        ];
+        foreach ($candidates as $indexPath) {
+            if (File::isFile($indexPath)) {
+                return response(File::get($indexPath), 200, [
+                    'Content-Type' => 'text/html; charset=UTF-8',
+                    'Cache-Control' => 'no-store, private',
+                ]);
+            }
+        }
+        Log::error('User SPA index is missing', ['candidates' => $candidates]);
+        abort(503, '用户前台资源不可用');
+    }
+
     try {
         if (!$themeService->exists($theme)) {
             if ($theme !== 'TXBoard') {
