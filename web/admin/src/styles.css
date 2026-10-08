@@ -2924,3 +2924,48 @@ body:has(.modal-root,.admin-command-overlay,.admin-sidebar.is-open) .admin-scrol
   .admin-dashboard-card-head{flex-wrap:wrap}
   .dashboard-card-actions{width:100%;justify-content:space-between}
 }
+
+
+/* Dashboard Horizon queue health and failed-jobs inspection */
+.dashboard-queue-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.dashboard-queue-card{min-width:0;overflow:visible}
+.dashboard-queue-heading h2{display:flex;gap:9px;align-items:center}
+.dashboard-queue-heading h2 svg{flex:none}
+.dashboard-queue-icon-button{display:grid;place-items:center;flex:none;width:34px;height:34px;border:1px solid var(--border);border-radius:8px;background:var(--panel);color:var(--fg);cursor:pointer}
+.dashboard-queue-icon-button:hover{background:var(--hover)}
+.dashboard-queue-icon-button:disabled{opacity:.5;cursor:wait}
+.dashboard-queue-health{margin:10px 20px 12px;padding:14px;border-radius:10px;background:var(--hover)}
+.dashboard-queue-health-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.dashboard-queue-health-title{display:flex;align-items:center;gap:9px;font-weight:650}
+.dashboard-queue-health.tone-ok .dashboard-queue-health-title svg{color:#16a34a}
+.dashboard-queue-health.tone-warn .dashboard-queue-health-title svg{color:#d97706}
+.dashboard-queue-health.tone-error .dashboard-queue-health-title svg{color:#dc2626}
+.dashboard-queue-health p{margin:8px 0;color:var(--muted);font-size:12px;overflow-wrap:anywhere}
+.dashboard-queue-health small{color:var(--muted);font-size:12px}
+.dashboard-queue-status-tag{flex:none;padding:3px 8px;border-radius:6px;background:var(--panel);color:var(--muted);font-size:11px}
+.dashboard-queue-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding:10px 20px 20px}
+.dashboard-queue-metrics>div{min-width:0;display:flex;flex-direction:column;gap:7px;padding:14px;border-radius:10px;background:var(--hover)}
+.dashboard-queue-metrics span{color:var(--muted);font-size:12px}
+.dashboard-queue-metrics strong{font-size:25px;line-height:1.2;font-weight:700;overflow-wrap:anywhere}
+.dashboard-queue-metrics small{min-height:16px;color:var(--muted);font-size:11px;overflow-wrap:anywhere}
+.dashboard-queue-metrics .dashboard-queue-error-count{color:var(--danger)}
+.dashboard-queue-footer{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:0 20px 18px;flex-wrap:wrap}
+.dashboard-queue-footer>span{max-width:33ch;color:var(--muted);font-size:11px}
+.dashboard-queue-view-errors{display:flex;gap:6px;align-items:center;padding:7px 9px;border:1px solid var(--border);border-radius:7px;background:var(--panel);color:var(--fg);font-size:12px;cursor:pointer}
+.dashboard-queue-view-errors:hover{background:var(--hover)}
+.dashboard-queue-failures{margin:0 20px 20px;border:1px solid var(--border);border-radius:9px;max-height:320px;overflow:auto}
+.dashboard-queue-failure-row{display:flex;width:100%;align-items:center;justify-content:space-between;gap:12px;padding:12px;border:0;border-bottom:1px solid var(--border);background:var(--panel);color:var(--fg);text-align:left;cursor:pointer}
+.dashboard-queue-failure-row:last-child{border-bottom:0}
+.dashboard-queue-failure-row:hover{background:var(--hover)}
+.dashboard-queue-failure-row>svg{flex:none;color:var(--muted)}
+.dashboard-queue-failure-text{display:flex;flex-direction:column;gap:4px;min-width:0}
+.dashboard-queue-failure-text strong{font-size:12px;overflow-wrap:anywhere}
+.dashboard-queue-failure-text small{color:var(--muted);font-size:11px;overflow-wrap:anywhere}
+.dashboard-queue-empty{margin:0;padding:20px;color:var(--muted);font-size:12px;text-align:center}
+.dashboard-queue-detail-meta{display:grid;gap:6px;margin:0 0 16px}
+.dashboard-queue-detail-meta>div{display:grid;grid-template-columns:85px minmax(0,1fr);gap:10px;padding:6px 0;font-size:13px}
+.dashboard-queue-detail-meta dt{color:var(--muted)}
+.dashboard-queue-detail-meta dd{margin:0;overflow-wrap:anywhere}
+.dashboard-queue-exception{max-height:50vh;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;padding:16px;border-radius:9px;background:var(--hover);color:var(--fg);font-size:12px;line-height:1.6}
+@media(max-width:1020px){.dashboard-queue-grid{grid-template-columns:1fr}}
+@media(max-width:560px){.dashboard-queue-metrics{padding:10px 14px 14px;gap:8px}.dashboard-queue-health{margin:10px 14px}.dashboard-queue-footer{padding:0 14px 14px}.dashboard-queue-failures{margin:0 14px 14px}}
