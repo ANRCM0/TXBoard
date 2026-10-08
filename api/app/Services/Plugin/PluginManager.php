@@ -304,28 +304,69 @@ class PluginManager
      */
     public function publishAssets(string $pluginCode): void
     {
+        // Asset publication has the same owner boundaries as the plugin ID.
+        $this->pluginPackage->publicAssetBase($pluginCode);
         $pluginPath = $this->getPluginPath($pluginCode);
         $legacyAssetsPath = $pluginPath . '/resources/assets';
         $adminDistPath = $pluginPath . '/admin/dist';
+        $publishPath = public_path('plugins/' . $pluginCode);
+        $hasAssets = File::isDirectory($legacyAssetsPath) || File::isDirectory($adminDistPath);
 
-        if (!File::isDirectory($legacyAssetsPath) && !File::isDirectory($adminDistPath)) {
+        if (!$hasAssets) {
+            // A newer package may no longer own any public assets.
+            $this->removePublishedAssets($pluginCode);
             return;
         }
 
-        $publishPath = public_path('plugins/' . $pluginCode);
-        if (File::isDirectory($publishPath)) {
-            File::deleteDirectory($publishPath);
-        }
-        File::ensureDirectoryExists($publishPath);
+        $parent = public_path('plugins');
+        File::ensureDirectoryExists($parent);
+        $staging = $parent . '/.staging-' . bin2hex(random_bytes(8));
+        $backup = $parent . '/.backup-' . bin2hex(random_bytes(8));
+        $backedUp = false;
+        $promoted = false;
 
-        if (File::isDirectory($legacyAssetsPath)) {
-            File::copyDirectory($legacyAssetsPath, $publishPath);
+        try {
+            File::ensureDirectoryExists($staging);
+            if (File::isDirectory($legacyAssetsPath)
+                && !File::copyDirectory($legacyAssetsPath, $staging)) {
+                throw new \RuntimeException('Failed to stage plugin resources');
+            }
+            if (File::isDirectory($adminDistPath)) {
+                File::ensureDirectoryExists($staging . '/admin');
+                if (!File::copyDirectory($adminDistPath, $staging . '/admin')) {
+                    throw new \RuntimeException('Failed to stage plugin admin application');
+                }
+            }
+
+            if (File::isDirectory($publishPath)) {
+                if (!rename($publishPath, $backup)) {
+                    throw new \RuntimeException('Failed to back up plugin resources');
+                }
+                $backedUp = true;
+            }
+            if (!rename($staging, $publishPath)) {
+                throw new \RuntimeException('Failed to publish plugin resources');
+            }
+            $promoted = true;
+        } catch (\Throwable $e) {
+            File::deleteDirectory($staging);
+            if ($backedUp) {
+                if ($promoted) {
+                    File::deleteDirectory($publishPath);
+                }
+                if (!rename($backup, $publishPath)) {
+                    Log::critical('Plugin asset rollback needs manual intervention', [
+                        'plugin' => $pluginCode, 'backup' => $backup,
+                    ]);
+                }
+            } elseif ($promoted) {
+                File::deleteDirectory($publishPath);
+            }
+            throw $e;
         }
 
-        if (File::isDirectory($adminDistPath)) {
-            $adminPublishPath = $publishPath . '/admin';
-            File::ensureDirectoryExists($adminPublishPath);
-            File::copyDirectory($adminDistPath, $adminPublishPath);
+        if ($backedUp) {
+            File::deleteDirectory($backup);
         }
     }
 
@@ -340,6 +381,7 @@ class PluginManager
 
     protected function removePublishedAssets(string $pluginCode): void
     {
+        $this->pluginPackage->publicAssetBase($pluginCode);
         $publishPath = public_path('plugins/' . $pluginCode);
         if (File::isDirectory($publishPath)) {
             File::deleteDirectory($publishPath);
