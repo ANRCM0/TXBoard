@@ -1,6 +1,8 @@
 import { api, request } from './client'
 
 export type GuestConfig = {
+  frontend_theme?: string
+  theme_config?: Record<string, unknown>
   app_name?: string
   app_description?: string
   app_url?: string
