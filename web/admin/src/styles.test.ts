@@ -23,7 +23,7 @@ describe('admin sidebar navigation layout', () => {
   })
 
   it('never squeezes the dashboard row or expandable groups when the sidebar overflows', () => {
-    expect(styles).toMatch(/\\.admin-nav-root,\\s*\\.admin-nav-group\\s*\\{\\s*flex:none;\\s*\\}/)
+    expect(styles).toContain(['.admin-nav-root,', '.admin-nav-group{', '  flex:none;'].join('\n'))
   })
 
   it('keeps the main workspace centered and bounded on wide screens', () => {
