@@ -790,6 +790,7 @@ class PluginManager
         $staged = $targetPath . '.staging-' . bin2hex(random_bytes(8));
         $backup = $targetPath . '.backup-' . bin2hex(random_bytes(8));
         $hadOldFiles = false;
+        $promoted = false;
         $wasEnabled = (bool) ($existingRow?->is_enabled ?? false);
         try {
             if (!File::copyDirectory($pluginPath, $staged)) {
@@ -804,21 +805,35 @@ class PluginManager
             if (!rename($staged, $targetPath)) {
                 throw new \RuntimeException('Failed to publish staged plugin');
             }
+            $promoted = true;
 
             if ($existingRow) {
                 $this->update($code);
             }
         } catch (\Throwable $e) {
             File::deleteDirectory($staged);
-            File::deleteDirectory($targetPath);
-            if ($hadOldFiles && !rename($backup, $targetPath)) {
-                Log::critical('Plugin upgrade rollback requires manual recovery', [
-                    'plugin' => $code, 'backup' => $backup,
-                ]);
+            // If copying the new package failed before touching the old
+            // directory, NEVER delete the live plugin.
+            if ($promoted) {
+                File::deleteDirectory($targetPath);
             }
-            if ($existingRow && $wasEnabled) {
+            $restored = false;
+            if ($hadOldFiles) {
+                $restored = rename($backup, $targetPath);
+                if (!$restored) {
+                    Log::critical('Plugin upgrade rollback requires manual recovery', [
+                        'plugin' => $code, 'backup' => $backup,
+                    ]);
+                }
+            }
+            if ($existingRow && $restored) {
                 try {
-                    $this->enable($code);
+                    // The failed upgrade may have published new-version
+                    // assets; republish the restored version instead.
+                    $this->publishAssets($code);
+                    if ($wasEnabled) {
+                        $this->enable($code);
+                    }
                 } catch (\Throwable $restoreError) {
                     Log::error('Failed to restore plugin after upgrade rollback', [
                         'plugin' => $code, 'error' => $restoreError->getMessage(),
