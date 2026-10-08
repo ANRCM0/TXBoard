@@ -71,15 +71,23 @@ class HookManager
         $actions = self::getActions();
         $filters = self::getFilters();
         foreach ($owned[$code] ?? [] as [$kind, $hook, $priority, $key]) {
-            $collection =& ($kind === 'action' ? $actions : $filters);
-            unset($collection[$hook][$priority][$key]);
-            if (empty($collection[$hook][$priority])) {
-                unset($collection[$hook][$priority]);
+            if ($kind === 'action') {
+                unset($actions[$hook][$priority][$key]);
+                if (empty($actions[$hook][$priority])) {
+                    unset($actions[$hook][$priority]);
+                }
+                if (empty($actions[$hook])) {
+                    unset($actions[$hook]);
+                }
+            } else {
+                unset($filters[$hook][$priority][$key]);
+                if (empty($filters[$hook][$priority])) {
+                    unset($filters[$hook][$priority]);
+                }
+                if (empty($filters[$hook])) {
+                    unset($filters[$hook]);
+                }
             }
-            if (empty($collection[$hook])) {
-                unset($collection[$hook]);
-            }
-            unset($collection);
         }
         unset($owned[$code]);
         self::setActions($actions);
