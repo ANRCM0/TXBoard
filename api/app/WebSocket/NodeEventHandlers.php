@@ -19,7 +19,7 @@ class NodeEventHandlers
      */
     public static function handlePong(TcpConnection $conn, int $nodeId, array $data = []): void
     {
-        Cache::put("node_ws_alive:{$nodeId}", true, 86400);
+        \App\Services\NodeSyncService::markNodeOnline($nodeId);
     }
 
     /**

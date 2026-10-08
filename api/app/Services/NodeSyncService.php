@@ -11,7 +11,19 @@ use Illuminate\Support\Facades\Redis;
 
 class NodeSyncService
 {
-    private const MACHINE_WS_TTL_SECONDS = 180;
+    // A stale socket must stop looking online shortly after lost heartbeats.
+    public const WS_TTL_SECONDS = 180;
+    private const MACHINE_WS_TTL_SECONDS = self::WS_TTL_SECONDS;
+
+    public static function markNodeOnline(int $nodeId): void
+    {
+        Cache::put("node_ws_alive:{$nodeId}", true, self::WS_TTL_SECONDS);
+    }
+
+    public static function markNodeOffline(int $nodeId): void
+    {
+        Cache::forget("node_ws_alive:{$nodeId}");
+    }
 
     public static function isMachineOnline(int $machineId): bool
     {

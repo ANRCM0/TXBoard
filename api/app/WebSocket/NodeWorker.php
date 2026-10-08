@@ -107,6 +107,12 @@ class NodeWorker
             }
         });
 
+        // Direct authoritative reconciliation is independent of Redis pub/sub.
+        // Lost events or a Redis reconnect are corrected on the next sweep.
+        Timer::add(300, function () {
+            $this->reconcileConnections();
+        });
+
         Timer::add(10, function () {
             $pendingNodeIds = Redis::spop('device:push_pending_nodes', 100);
             if (empty($pendingNodeIds)) {
@@ -121,6 +127,63 @@ class NodeWorker
                 }
             }
         });
+    }
+
+    private function reconcileConnections(): void
+    {
+        foreach (NodeRegistry::getConnectedMachineIds() as $machineId) {
+            $conn = NodeRegistry::getMachine($machineId);
+            if (!$conn) {
+                continue;
+            }
+
+            try {
+                $machine = ServerMachine::find($machineId);
+                if (!$machine || !$machine->is_active) {
+                    $conn->close();
+                    continue;
+                }
+                $nodes = ServerService::getMachineNodes($machine);
+                $newIds = $nodes->pluck('id')->map(fn ($id) => (int) $id)->all();
+                $oldIds = $conn->machineNodeIds ?? [];
+                if ($oldIds !== $newIds) {
+                    NodeRegistry::refreshMachineNodes($machineId, $newIds);
+                    NodeRegistry::sendMachine($machineId, 'sync.nodes', [
+                        'nodes' => $nodes->map(fn ($node) => [
+                            'id' => $node->id, 'type' => $node->type, 'name' => $node->name,
+                        ])->all(),
+                    ]);
+                    foreach (array_diff($oldIds, $newIds) as $removedId) {
+                        NodeSyncService::markNodeOffline((int) $removedId);
+                    }
+                }
+            } catch (\Throwable $e) {
+                Log::warning('[WS] Machine reconciliation failed', [
+                    'machine_id' => $machineId, 'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        foreach (NodeRegistry::getConnectedNodeIds() as $nodeId) {
+            try {
+                $conn = NodeRegistry::get($nodeId);
+                if (!$conn) {
+                    continue;
+                }
+                if ((time() - (int) ($conn->lastPongAt ?? 0)) >= NodeSyncService::WS_TTL_SECONDS) {
+                    $conn->close();
+                    continue;
+                }
+                $node = Server::find($nodeId);
+                if ($node && $node->enabled) {
+                    NodeEventHandlers::pushFullSync($conn, $node);
+                }
+            } catch (\Throwable $e) {
+                Log::warning('[WS] Node full resync failed', [
+                    'node_id' => $nodeId, 'error' => $e->getMessage(),
+                ]);
+            }
+        }
     }
 
     public function onConnect(TcpConnection $conn): void
@@ -185,8 +248,9 @@ class NodeWorker
         }
 
         $conn->nodeId = $nodeId;
+        $conn->lastPongAt = time();
         NodeRegistry::add($nodeId, $conn);
-        Cache::put("node_ws_alive:{$nodeId}", true, 86400);
+        NodeSyncService::markNodeOnline($nodeId);
 
         app(DeviceStateService::class)->clearAllNodeDevices($nodeId);
 
@@ -226,6 +290,7 @@ class NodeWorker
         $nodes = ServerService::getMachineNodes($machine);
 
         $machine->forceFill(['last_seen_at' => now()->timestamp])->saveQuietly();
+        $conn->lastPongAt = time();
         NodeRegistry::addMachine($machineId, $conn);
         NodeSyncService::markMachineOnline($machineId);
 
@@ -234,7 +299,7 @@ class NodeWorker
         $deviceService = app(DeviceStateService::class);
         foreach ($nodes as $node) {
             NodeRegistry::add($node->id, $conn);
-            Cache::put("node_ws_alive:{$node->id}", true, 86400);
+            NodeSyncService::markNodeOnline((int) $node->id);
             $deviceService->clearAllNodeDevices($node->id);
             $nodeIds[] = $node->id;
         }
@@ -277,11 +342,12 @@ class NodeWorker
         // temporarily host zero nodes and still needs heartbeat/update control.
         if (!empty($conn->machineId)) {
             if ($event === 'pong') {
+                $conn->lastPongAt = time();
                 if (!empty($conn->machineId)) {
                     NodeSyncService::markMachineOnline((int) $conn->machineId);
                 }
                 foreach ($conn->machineNodeIds as $nid) {
-                    Cache::put("node_ws_alive:{$nid}", true, 86400);
+                    NodeSyncService::markNodeOnline((int) $nid);
                 }
                 return;
             }
@@ -299,6 +365,9 @@ class NodeWorker
 
         // 旧模式：单节点
         $nodeId = $conn->nodeId ?? null;
+        if ($event === 'pong' && $nodeId) {
+            $conn->lastPongAt = time();
+        }
         if (isset($this->handlers[$event]) && $nodeId) {
             $handler = $this->handlers[$event];
             $handler($conn, $nodeId, $msg['data'] ?? []);
@@ -312,9 +381,16 @@ class NodeWorker
         // 机器模式：清理所有关联节点。machineId also covers empty machines.
         if (!empty($conn->machineId)) {
             $machineId = $conn->machineId ?? 'unknown';
+            // A replaced connection must never clear its successor's state.
+            if (NodeRegistry::getMachine((int) $conn->machineId) !== $conn) {
+                return;
+            }
             foreach ($conn->machineNodeIds as $nodeId) {
+                if (NodeRegistry::get((int) $nodeId) !== $conn) {
+                    continue;
+                }
                 NodeRegistry::remove($nodeId, $conn);
-                Cache::forget("node_ws_alive:{$nodeId}");
+                NodeSyncService::markNodeOffline((int) $nodeId);
 
                 $affectedUserIds = $service->clearAllNodeDevices($nodeId);
                 foreach ($affectedUserIds as $userId) {
@@ -338,8 +414,11 @@ class NodeWorker
         // 旧模式：单节点
         if (!empty($conn->nodeId)) {
             $nodeId = $conn->nodeId;
+            if (NodeRegistry::get((int) $nodeId) !== $conn) {
+                return;
+            }
             NodeRegistry::remove($nodeId, $conn);
-            Cache::forget("node_ws_alive:{$nodeId}");
+            NodeSyncService::markNodeOffline((int) $nodeId);
 
             $affectedUserIds = $service->clearAllNodeDevices($nodeId);
             foreach ($affectedUserIds as $userId) {
