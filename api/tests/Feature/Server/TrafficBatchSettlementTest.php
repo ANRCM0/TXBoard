@@ -136,4 +136,44 @@ class TrafficBatchSettlementTest extends TestCase
         $this->assertSame(1, DB::table('v2_traffic_batch')->count());
         $this->assertSame(0, (int) ($server->fresh()->u + $server->fresh()->d));
     }
+    public function test_many_replayed_and_reverse_order_batches_keep_exact_aggregate(): void
+    {
+        Bus::fake();
+        $user = User::create([
+            'email' => 'pressure-phase2@example.test', 'password' => 'password',
+            'uuid' => '10000000-0000-0000-0000-000000000005',
+            'token' => '1234567890abcdef1234567890abcdec',
+            'u' => 0, 'd' => 0, 'transfer_enable' => 1073741824,
+            'created_at' => time(), 'updated_at' => time(),
+        ]);
+        $server = Server::create([
+            'name' => 'stress-node', 'type' => Server::TYPE_VMESS,
+            'host' => '127.0.0.1', 'port' => '443', 'server_port' => 443,
+            'rate' => 1, 'group_ids' => [1], 'enabled' => true,
+        ]);
+        Redis::shouldReceive('sadd')->zeroOrMoreTimes()->andReturn(1);
+        $date = strtotime(date('Y-m-d'));
+
+        foreach ([array_reverse(range(1, 150)), range(1, 150),
+            array_reverse(range(1, 150))] as $pass) {
+            foreach ($pass as $sequence) {
+                (new TrafficBatchJob(
+                    ['id' => $server->id, 'rate' => 1],
+                    [$user->id => [1, 2]], 'vmess', $date,
+                    'pressure-' . str_pad((string) $sequence, 8, '0', STR_PAD_LEFT)
+                ))->handle();
+            }
+        }
+
+        $this->assertSame(150, DB::table('v2_traffic_batch')->count());
+        $this->assertSame(150, (int) $user->fresh()->u);
+        $this->assertSame(300, (int) $user->fresh()->d);
+        $this->assertSame(450, (int) ($server->fresh()->u + $server->fresh()->d));
+        $this->assertSame(1, DB::table('v2_stat_user')->where('user_id', $user->id)->count());
+        $this->assertSame(450, (int) DB::table('v2_stat_user')->where('user_id', $user->id)->first()->u
+            + (int) DB::table('v2_stat_user')->where('user_id', $user->id)->first()->d);
+        $this->assertSame(450, (int) DB::table('v2_stat_server')->where('server_id', $server->id)->first()->u
+            + (int) DB::table('v2_stat_server')->where('server_id', $server->id)->first()->d);
+    }
+
 }
