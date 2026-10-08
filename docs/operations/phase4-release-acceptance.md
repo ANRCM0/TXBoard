@@ -8,7 +8,7 @@ same commit. The gate runs:
 - TypeScript checks, tests, production SPA builds, frontend performance budget;
 - MCP TypeScript checks and build (Node 24).
 
-A failed or cancelled gate cannot update the registry `latest` tag. Manual
+The same SHA must additionally pass the container build, healthcheck and MCP\nsmoke tests in `verify`, including on `main`. Both jobs must succeed before\n`publish` can start.\n\nA failed or cancelled gate cannot update the registry `latest` tag. Manual
 `workflow_dispatch` runs on non-main branches cannot publish. PR builds still
 run the existing Docker image/runtime smoke checks and never push an image.
 

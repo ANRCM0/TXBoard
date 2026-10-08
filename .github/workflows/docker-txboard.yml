@@ -104,7 +104,8 @@ jobs:
           npm run build
 
   verify:
-    if: github.event_name == 'pull_request'
+    # Smoke-test the actual container on main before any registry publication.
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -245,7 +246,7 @@ jobs:
   publish:
     # Do not publish from a PR or a manually dispatched non-main ref.
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
-    needs: release-gate
+    needs: [release-gate, verify]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
