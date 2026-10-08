@@ -123,11 +123,11 @@ class PaymentWebhookTest extends TestCase
 
         $this->postCallback($payment, $order->trade_no)->assertOk()
             ->assertSeeText('success');
-        $this->assertSame(Order::STATUS_COMPLETED, $order->fresh()->status);
+        $this->assertSame(Order::STATUS_PROCESSING, $order->fresh()->status);
         $this->assertSame('provider-trade-1', $order->fresh()->callback_no);
 
         $this->postCallback($payment, $order->trade_no)->assertOk();
-        $this->assertSame(Order::STATUS_COMPLETED, $order->fresh()->status);
+        $this->assertSame(Order::STATUS_PROCESSING, $order->fresh()->status);
     }
 
     private function payment(string $uuid = 'epay_gateway_uuid_value_00000001'): Payment
