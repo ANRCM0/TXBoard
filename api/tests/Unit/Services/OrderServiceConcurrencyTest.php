@@ -35,6 +35,11 @@ class OrderServiceConcurrencyTest extends TestCase
 
     public function test_paid_remains_successful_when_queue_dispatch_fails_after_commit(): void
     {
+        // Creating a user triggers UserObserver queue jobs. Only simulate the
+        // outage around the payment callback, not fixture setup.
+        $user = $this->makeUser();
+        $order = $this->makeOrder($user, $this->makePlan());
+
         \Illuminate\Support\Facades\Log::spy();
         $queue = \Mockery::mock(\Illuminate\Contracts\Queue\Queue::class);
         // An OrderHandleJob specifies the order_handle queue, so Laravel uses
@@ -45,9 +50,6 @@ class OrderServiceConcurrencyTest extends TestCase
             ->once()
             ->with('redis')
             ->andReturn($queue);
-
-        $user = $this->makeUser();
-        $order = $this->makeOrder($user, $this->makePlan());
 
         $this->assertTrue((new OrderService(Order::findOrFail($order->id)))->paid('callback-outage'));
         $this->assertSame(Order::STATUS_PROCESSING, $order->fresh()->status);
