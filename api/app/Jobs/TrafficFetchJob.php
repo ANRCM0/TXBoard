@@ -31,9 +31,11 @@ class TrafficFetchJob implements ShouldQueue
 
     public function handle(): void
     {
-        $userIds = array_keys($this->data);
+        $userIds = [];
+        $data = \App\Services\TrafficUsage::normalize($this->data, $this->server['rate'] ?? null);
 
-        foreach ($this->data as $uid => $v) {
+        foreach ($data as $uid => $v) {
+
             User::where('id', $uid)
                 ->incrementEach(
                     [
@@ -42,6 +44,7 @@ class TrafficFetchJob implements ShouldQueue
                     ],
                     ['t' => time()]
                 );
+            $userIds[] = $uid;
         }
 
         if (!empty($userIds)) {

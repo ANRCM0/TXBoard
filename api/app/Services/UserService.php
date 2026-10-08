@@ -123,6 +123,13 @@ class UserService
         // Compatible with legacy hook
         list($server, $protocol, $data) = HookManager::filter('traffic.before_process', [$server, $protocol, $data]);
 
+        // Hooks are untrusted input too. Revalidate after both hook layers,
+        // before any account or statistics job can observe the payload.
+        $data = TrafficUsage::normalize($data, $server['rate'] ?? null);
+        if ($data === []) {
+            return;
+        }
+
         $timestamp = strtotime(date('Y-m-d'));
         collect($data)->chunk(1000)->each(function ($chunk) use ($timestamp, $server, $protocol) {
             TrafficFetchJob::dispatch($server, $chunk->toArray(), $protocol, $timestamp);
