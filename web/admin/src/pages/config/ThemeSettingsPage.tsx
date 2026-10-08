@@ -4,7 +4,8 @@ import { useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { deleteTheme, getThemeConfig, getThemes, saveThemeConfig, uploadTheme, type ThemeItem } from '../../api/theme'
 import { saveSettings } from '../../api/config'
-import { JsonEditor } from '../../components/ui/JsonEditor'
+import { ThemeAppearanceSettings } from './ThemeAppearanceSettings'
+import { normalizeThemeFields, ThemeConfigFields } from './ThemeConfigFields'
 import { Modal } from '../../components/ui/Modal'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { requestConfirm } from '../../components/ui/ConfirmDialog'
@@ -26,6 +27,9 @@ export function ThemeSettingsPage() {
   const [previewIndex, setPreviewIndex] = useState(0)
   const [configTheme, setConfigTheme] = useState<ThemeItem | null>(null)
   const [config, setConfig] = useState<Record<string, unknown>>({})
+  const [configLoading, setConfigLoading] = useState(false)
+  const [configError, setConfigError] = useState(false)
+  const configRequest = useRef(0)
 
   const themes = useMemo(() => query.data?.themes || [], [query.data])
 
@@ -43,19 +47,32 @@ export function ThemeSettingsPage() {
     onSuccess: () => { toast.success('主题上传成功'); refresh() },
   })
   const saveConfig = useMutation({
-    mutationFn: () => saveThemeConfig(idOf(configTheme!), config),
+    mutationFn: ({ theme, next }: { theme: string; next: Record<string, unknown> }) => saveThemeConfig(theme, next),
     onSuccess: () => { toast.success('主题配置已保存'); setConfigTheme(null); refresh() },
   })
 
   async function openConfig(theme: ThemeItem) {
+    const request = ++configRequest.current
     setConfigTheme(theme)
+    setConfig({})
+    setConfigError(false)
+    setConfigLoading(true)
     try {
       const data = await getThemeConfig(idOf(theme))
-      setConfig(data || {})
+      if (request === configRequest.current) setConfig(data || {})
     } catch {
-      setConfig({})
+      if (request === configRequest.current) setConfigError(true)
+    } finally {
+      if (request === configRequest.current) setConfigLoading(false)
     }
   }
+
+  function closeConfig() {
+    ++configRequest.current
+    setConfigTheme(null)
+  }
+
+  const configFields = normalizeThemeFields(configTheme?.configs)
 
   const previewImages = preview ? imagesOf(preview) : []
   const activeImage = previewImages[previewIndex] || ''
@@ -63,7 +80,7 @@ export function ThemeSettingsPage() {
   return <>
     <PageHeader
       title="主题管理"
-      description="对应 E1t：主题卡片、预览、切换、删除、上传和动态配置。"
+      description="统一管理用户端主题：上传、预览、切换、外观与各主题独立配置。"
       action={<><input ref={inputRef} type="file" accept=".zip" hidden onChange={e => {
         const file = e.target.files?.[0]
         if (file) upload.mutate(file)
@@ -71,7 +88,16 @@ export function ThemeSettingsPage() {
       }}/><button className="button primary" onClick={() => inputRef.current?.click()} disabled={upload.isPending}><Upload size={16}/>{upload.isPending ? '上传中…' : '上传主题'}</button></>}
     />
 
-    {query.isLoading ? <div className="card">加载主题…</div> : <div className="theme-grid">
+    <ThemeAppearanceSettings />
+
+    <div className="theme-management-heading">
+      <h2>已安装主题</h2>
+      <span>选择主题卡片的“配置”以编辑该主题声明的设置项。</span>
+    </div>
+
+    {query.isLoading ? <div className="card">加载主题…</div> : query.isError ? (
+      <div className="card" role="alert">主题列表加载失败。<button className="button" onClick={() => query.refetch()}>重试</button></div>
+    ) : <div className="theme-grid">
       {themes.map(theme => {
         const id = idOf(theme)
         const image = imagesOf(theme)[0]
@@ -107,9 +133,31 @@ export function ThemeSettingsPage() {
       </div> : <div className="empty-state">该主题没有预览图。</div>}
     </Modal>
 
-    <Modal open={!!configTheme} title={configTheme ? `配置：${idOf(configTheme)}` : '主题配置'} onClose={() => setConfigTheme(null)}>
-      <JsonEditor value={config} onChange={setConfig}/>
-      <div className="card-actions"><button className="button primary" onClick={() => saveConfig.mutate()} disabled={saveConfig.isPending}>{saveConfig.isPending ? '保存中…' : '保存配置'}</button></div>
+    <Modal open={!!configTheme} title={configTheme ? `配置：${idOf(configTheme)}` : '主题配置'} onClose={closeConfig}>
+      {configLoading ? (
+        <div role="status">正在读取主题配置…</div>
+      ) : configError ? (
+        <div role="alert">主题配置加载失败，请关闭后重试。不会覆盖已有配置。</div>
+      ) : configFields.length ? (
+        <>
+          <ThemeConfigFields
+            fields={configFields}
+            values={config}
+            onChange={(name, value) => setConfig(previous => ({ ...previous, [name]: value }))}
+          />
+          {saveConfig.isError && <p role="alert">配置保存失败，请检查设置后重试。</p>}
+          <div className="card-actions">
+            <button className="button" onClick={closeConfig}>取消</button>
+            <button className="button primary" onClick={() => {
+              if (configTheme) saveConfig.mutate({ theme: idOf(configTheme), next: config })
+            }} disabled={saveConfig.isPending}>
+              {saveConfig.isPending ? '保存中…' : '保存配置'}
+            </button>
+          </div>
+        </>
+      ) : (
+        <div className="empty-state">这个主题没有声明可配置项，无需保存。</div>
+      )}
     </Modal>
   </>
 }
