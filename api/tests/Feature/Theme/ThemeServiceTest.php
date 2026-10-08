@@ -167,6 +167,25 @@ class ThemeServiceTest extends TestCase
         File::delete(public_path('theme/TXBoard/keep.txt'));
     }
 
+    public function test_failed_asset_staging_never_deletes_existing_theme_publication(): void
+    {
+        $service = app(ThemeService::class);
+        $target = public_path('theme/ExistingTheme');
+        File::ensureDirectoryExists($target);
+        File::put($target . '/keep.txt', 'stable version');
+
+        try {
+            $method = new \ReflectionMethod(ThemeService::class, 'publishThemeAssets');
+            $method->invoke($service, 'ExistingTheme', storage_path('theme/nonexistent-staging-input'));
+            $this->fail('Missing source must not be published.');
+        } catch (\Exception $e) {
+            $this->assertSame('Failed to stage theme assets', $e->getMessage());
+        } finally {
+            $this->assertSame('stable version', File::get($target . '/keep.txt'));
+            File::deleteDirectory($target);
+        }
+    }
+
     private function createTheme(string $name): void
     {
         $path = base_path('storage/theme/' . $name);
