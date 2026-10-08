@@ -96,7 +96,10 @@ class ServerService
         }
         $users = User::toBase()
             ->whereIn('group_id', $groupIds)
-            ->whereRaw('u + d < transfer_enable')
+            // The REST snapshot must agree with User::isAvailable() used by WS.
+            ->whereNotNull('plan_id')
+            ->where('transfer_enable', '>', 0)
+            ->whereRaw('COALESCE(u, 0) + COALESCE(d, 0) < transfer_enable')
             ->where(function ($query) {
                 $query->where('expired_at', '>=', time())
                     ->orWhere('expired_at', NULL);
@@ -108,6 +111,7 @@ class ServerService
                 'speed_limit',
                 'device_limit'
             ])
+            ->orderBy('id')
             ->get();
         return HookManager::filter('server.users.get', $users, $node);
     }
