@@ -50,6 +50,60 @@ class HookManager
     }
 
     /**
+     * Register callbacks from a known plugin within its ownership scope.
+     * The try/finally restores the prior owner even if plugin boot throws.
+     */
+    public static function withOwner(string $code, callable $callback): mixed
+    {
+        $previous = App::bound('hook.current_owner')
+            ? App::make('hook.current_owner') : null;
+        App::instance('hook.current_owner', $code);
+        try {
+            return $callback();
+        } finally {
+            App::instance('hook.current_owner', $previous);
+        }
+    }
+
+    public static function removeOwner(string $code): void
+    {
+        $owned = App::bound('hook.owned') ? App::make('hook.owned') : [];
+        $actions = self::getActions();
+        $filters = self::getFilters();
+        foreach ($owned[$code] ?? [] as [$kind, $hook, $priority, $key]) {
+            $collection =& ($kind === 'action' ? $actions : $filters);
+            unset($collection[$hook][$priority][$key]);
+            if (empty($collection[$hook][$priority])) {
+                unset($collection[$hook][$priority]);
+            }
+            if (empty($collection[$hook])) {
+                unset($collection[$hook]);
+            }
+            unset($collection);
+        }
+        unset($owned[$code]);
+        self::setActions($actions);
+        self::setFilters($filters);
+        App::instance('hook.owned', $owned);
+    }
+
+    private static function registrationKey(string $kind, string $hook, int $priority, callable $callback): string
+    {
+        $id = self::getCallableId($callback);
+        $owner = App::bound('hook.current_owner') ? App::make('hook.current_owner') : null;
+        if (!is_string($owner) || $owner === '') {
+            return $id;
+        }
+
+        $key = 'plugin:' . $owner . ':' . $id;
+        $owned = App::bound('hook.owned') ? App::make('hook.owned') : [];
+        $owned[$owner][$kind . ':' . $hook . ':' . $priority . ':' . $key] =
+            [$kind, $hook, $priority, $key];
+        App::instance('hook.owned', $owned);
+        return $key;
+    }
+
+    /**
      * Generate unique identifier for callback
      * 
      * @param callable $callback
@@ -168,7 +222,7 @@ class HookManager
             $actions[$hook][$priority] = [];
         }
 
-        $actions[$hook][$priority][self::getCallableId($callback)] = $callback;
+        $actions[$hook][$priority][self::registrationKey('action', $hook, $priority, $callback)] = $callback;
 
         self::setActions($actions);
     }
@@ -193,7 +247,7 @@ class HookManager
             $filters[$hook][$priority] = [];
         }
 
-        $filters[$hook][$priority][self::getCallableId($callback)] = $callback;
+        $filters[$hook][$priority][self::registrationKey('filter', $hook, $priority, $callback)] = $callback;
 
         self::setFilters($filters);
     }
@@ -282,5 +336,7 @@ class HookManager
     {
         App::instance('hook.actions', []);
         App::instance('hook.filters', []);
+        App::instance('hook.owned', []);
+        App::instance('hook.current_owner', null);
     }
 }
