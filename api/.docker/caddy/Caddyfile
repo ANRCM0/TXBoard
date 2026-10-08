@@ -106,7 +106,8 @@
 	}
 
 	# Theme assets published by ThemeService are served without involving the SPA.
-	handle /theme/* {
+	@themeAssets path_regexp ^/theme/[A-Za-z0-9_-]+/assets/.*$
+	handle @themeAssets {
 		root * /www/public
 		file_server
 	}
