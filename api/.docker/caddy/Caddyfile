@@ -105,6 +105,38 @@
 		file_server
 	}
 
+	# Theme assets published by ThemeService are served without involving the SPA.
+	handle /theme/* {
+		root * /www/public
+		file_server
+	}
+
+	# Explicit opt-in: preserve the current Vue SPA by default. This is needed
+	# because Laravel themes have an independent entry point and the legacy
+	# system theme does not behave like the Vue SPA.
+	# Set TXBOARD_USER_FRONTEND=theme in the container environment to use
+	# frontend_theme from ThemeService at /. /user-spa/ stays available as a
+	# fallback for captcha and advanced payment integrations.
+	@themeRoot {
+		path /
+		expression `"{$TXBOARD_USER_FRONTEND:spa}" == "theme"`
+	}
+	handle @themeRoot {
+		reverse_proxy 127.0.0.1:{$OCTANE_INTERNAL_PORT:7002} {
+			header_up Host {host}
+			header_up X-Real-IP {remote_host}
+		}
+	}
+
+	handle /user-spa {
+		redir /user-spa/ 308
+	}
+	handle /user-spa/ {
+		root * /srv/user
+		rewrite * /index.html
+		file_server
+	}
+
 	handle / {
 		root * /srv/user
 		rewrite * /index.html
