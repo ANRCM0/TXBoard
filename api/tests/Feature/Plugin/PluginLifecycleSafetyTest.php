@@ -91,6 +91,30 @@ class PluginLifecycleSafetyTest extends TestCase
         $this->assertDatabaseMissing('v2_plugins', ['code' => 'phase3_missing_dependency']);
     }
 
+    public function test_repeat_install_rejects_duplicate_registration_without_mutation(): void
+    {
+        $this->makePlugin('phase3_missing_dependency', false, '{"saved":"original"}');
+        $path = base_path('plugins/Phase3MissingDependency');
+        File::ensureDirectoryExists($path);
+        File::put($path . '/config.json', json_encode([
+            'name' => 'Repeat Install Fixture',
+            'code' => 'phase3_missing_dependency',
+            'version' => '1.0.0',
+            'description' => 'Repeated install safety',
+            'author' => 'TXBoard',
+        ], JSON_THROW_ON_ERROR));
+
+        try {
+            app(PluginManager::class)->install('phase3_missing_dependency');
+            $this->fail('Repeat installation must not register the module again.');
+        } catch (\Exception $e) {
+            $this->assertSame('Plugin already installed', $e->getMessage());
+        }
+        $this->assertSame(1, Plugin::query()->where('code', 'phase3_missing_dependency')->count());
+        $this->assertSame('{"saved":"original"}',
+            Plugin::query()->where('code', 'phase3_missing_dependency')->value('config'));
+    }
+
     private function makePlugin(string $code, bool $enabled, ?string $config = null): void
     {
         Plugin::create([
