@@ -30,6 +30,12 @@ class ThemePublicConfigTest extends TestCase
         $response->assertJsonMissingPath('data.frontend_theme_color');
         $response->assertJsonMissingPath('data.frontend_background_url');
 
+        // Legacy and undeclared private fields are not public theme settings.
+        $stored = $service->getConfig('TXBoard');
+        admin_setting(['theme_TXBoard' => array_merge($stored, ['smtp_password' => 'never-public'])]);
+        $this->getJson('/api/v1/guest/comm/config')
+            ->assertJsonMissingPath('data.theme_config.smtp_password');
+
         $service->updateConfig('TXBoard', ['theme_color' => 'darkblue']);
         $this->getJson('/api/v1/guest/comm/config')
             ->assertJsonPath('data.theme_config.theme_color', 'darkblue');
