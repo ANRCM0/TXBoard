@@ -42,7 +42,8 @@ jobs:
   # A passing image build alone is not a release qualification. Perform the
   # full API, web and MCP checks on the exact commit before moving `latest`.
   release-gate:
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    # Run on PRs as well, so publishing cannot be gated by an untested CI job.
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     services:
       redis:
