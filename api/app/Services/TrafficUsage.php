@@ -67,7 +67,8 @@ final class TrafficUsage
     {
         if (!preg_match('/^[1-9][0-9]*$/D', (string) $value)
             || strlen((string) $value) > strlen((string) PHP_INT_MAX)
-            || (float) $value > PHP_INT_MAX) {
+            || (strlen((string) $value) === strlen((string) PHP_INT_MAX)
+                && strcmp((string) $value, (string) PHP_INT_MAX) > 0)) {
             return null;
         }
 
@@ -81,7 +82,8 @@ final class TrafficUsage
         }
         if (!preg_match('/^(0|[1-9][0-9]*)$/D', (string) $value)
             || strlen((string) $value) > strlen((string) self::MAX_REPORT_BYTES)
-            || (float) $value > self::MAX_REPORT_BYTES) {
+            || (strlen((string) $value) === strlen((string) self::MAX_REPORT_BYTES)
+                && strcmp((string) $value, (string) self::MAX_REPORT_BYTES) > 0)) {
             return null;
         }
 

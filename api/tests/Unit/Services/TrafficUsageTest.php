@@ -35,8 +35,15 @@ class TrafficUsageTest extends TestCase
         }
     }
 
-    public function test_rejects_integer_overflow_after_multiplier(): void
+    public function test_enforces_safety_cap_even_with_large_valid_multiplier(): void
     {
-        $this->assertSame([], TrafficUsage::normalize([9 => [TrafficUsage::MAX_REPORT_BYTES, 0]], 1000));
+        $this->assertSame([], TrafficUsage::normalize([9 => [(string) (TrafficUsage::MAX_REPORT_BYTES + 1), 0]], 1000));
+        $this->assertSame([9 => [TrafficUsage::MAX_REPORT_BYTES, 0]],
+            TrafficUsage::normalize([9 => [TrafficUsage::MAX_REPORT_BYTES, 0]], 1000));
+    }
+
+    public function test_rejects_user_ids_larger_than_php_int_max(): void
+    {
+        $this->assertSame([], TrafficUsage::normalize(['9223372036854775808' => [1, 1]], 1));
     }
 }
