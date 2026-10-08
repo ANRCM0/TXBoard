@@ -10,7 +10,6 @@ import {
   Server,
   Settings,
   ShieldCheck,
-  Smartphone,
   ToggleLeft,
   Users,
 } from 'lucide-react'
@@ -19,14 +18,12 @@ import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 const sections = [
   { to: '/config/system', label: '站点设置', icon: Settings, end: true },
   { to: '/config/system/features', label: '功能入口', icon: ToggleLeft },
-  { to: '/config/frontend', label: '前端设置', icon: AppWindow },
   { to: '/config/system/safe', label: '安全设置', icon: ShieldCheck },
   { to: '/config/system/subscribe', label: '订阅设置', icon: Cable },
   { to: '/config/system/invite', label: '邀请&佣金设置', icon: Users },
   { to: '/config/server', label: '节点配置', icon: Server },
   { to: '/config/email', label: '邮件设置', icon: Mail },
   { to: '/config/telegram', label: 'Telegram 设置', icon: Send },
-  { to: '/config/APP', label: 'APP 设置', icon: Smartphone },
   { to: '/config/subscribe-template', label: '订阅模板', icon: AppWindow },
 ] as const
 
@@ -59,7 +56,7 @@ export function ConfigSectionFrame({
     <div className="config-frame-page">
       <div className="config-frame-heading">
         <h1>系统设置</h1>
-        <p>管理系统核心配置，包括站点、功能入口、前端、安全、订阅、邀请佣金、节点、邮件和通知等设置。</p>
+        <p>管理系统核心配置，包括站点、功能入口、安全、订阅、邀请佣金、节点、邮件和通知等设置。主题外观请在扩展中心 → 主题管理中配置。</p>
       </div>
 
       <div className="config-frame-divider" />
