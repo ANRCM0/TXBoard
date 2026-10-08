@@ -109,7 +109,7 @@ class TrafficBatchSettlementTest extends TestCase
         try {
             $job->handle();
             $this->fail('Counter overflow must abort the entire batch.');
-        } catch (\\RuntimeException $e) {
+        } catch (\RuntimeException $e) {
             $this->assertSame('User traffic counter overflow', $e->getMessage());
         }
 
