@@ -348,9 +348,18 @@ class OrderService
             $this->order = $order;
 
             if ($shouldDispatch) {
-                // Fulfillment is handled by the queue; check:order provides recovery
-                // if the dispatch fails after the payment state is committed.
-                OrderHandleJob::dispatch($order->trade_no);
+                // The paid state is already committed. A queue outage must not
+                // turn a valid payment callback into a failure response.
+                // check:order will recover PROCESSING orders when it runs.
+                try {
+                    OrderHandleJob::dispatch($order->trade_no);
+                } catch (\Throwable $exception) {
+                    Log::error('Paid order queued for scheduler recovery after dispatch failure', [
+                        'order_id' => $order->id,
+                        'trade_no' => $order->trade_no,
+                        'error' => $exception->getMessage(),
+                    ]);
+                }
             }
         } catch (\Exception $e) {
             Log::error($e);
