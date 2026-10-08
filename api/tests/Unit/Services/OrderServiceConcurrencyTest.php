@@ -65,6 +65,33 @@ class OrderServiceConcurrencyTest extends TestCase
         $this->assertLessThan($before + (45 * 86400), $user->expired_at);
     }
 
+    public function test_failed_fulfillment_rolls_back_and_can_be_retried_without_duplicate_entitlement(): void
+    {
+        $user = $this->makeUser(['balance' => 0, 'expired_at' => 0, 'transfer_enable' => 0]);
+        $order = $this->makeOrder($user, $this->makePlan(), [
+            'status' => Order::STATUS_PROCESSING,
+            'plan_id' => 999999999,
+        ]);
+
+        try {
+            (new OrderService(Order::findOrFail($order->id)))->open();
+            $this->fail('Missing plan should fail fulfillment.');
+        } catch (\Throwable $exception) {
+            $this->assertSame(Order::STATUS_PROCESSING, $order->fresh()->status);
+            $this->assertNull($user->fresh()->plan_id);
+        }
+
+        $plan = Plan::where('name', 'Race Test Plan')->firstOrFail();
+        $order->update(['plan_id' => $plan->id]);
+
+        (new OrderService(Order::findOrFail($order->id)))->open();
+        (new OrderService(Order::findOrFail($order->id)))->open();
+
+        $this->assertSame(Order::STATUS_COMPLETED, $order->fresh()->status);
+        $this->assertSame($order->plan_id, $user->fresh()->plan_id);
+        $this->assertSame(1, $user->fresh()->reset_count);
+    }
+
     public function test_gift_card_redeem_only_grants_rewards_once_for_stale_code_models(): void
     {
         $user = $this->makeUser(['balance' => 0]);
