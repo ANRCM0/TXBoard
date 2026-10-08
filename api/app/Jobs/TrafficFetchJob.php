@@ -34,6 +34,11 @@ class TrafficFetchJob implements ShouldQueue
         $userIds = array_keys($this->data);
 
         foreach ($this->data as $uid => $v) {
+            if (!is_array($v) || count($v) < 2 || !is_numeric($v[0]) || !is_numeric($v[1])
+                || $v[0] < 0 || $v[1] < 0) {
+                continue;
+            }
+
             User::where('id', $uid)
                 ->incrementEach(
                     [
