@@ -32,6 +32,7 @@ class Kernel extends ConsoleKernel
         $schedule->command('txboard:statistics')->dailyAt('0:10')->onOneServer();
         // check
         $schedule->command('check:order')->everyMinute()->onOneServer()->withoutOverlapping(5);
+        $schedule->command('check:stale-processing-orders')->everyFiveMinutes()->onOneServer()->withoutOverlapping(5);
         $schedule->command('check:commission')->everyMinute()->onOneServer()->withoutOverlapping(5);
         $schedule->command('check:ticket')->everyMinute()->onOneServer()->withoutOverlapping(5);
         $schedule->command('check:traffic-exceeded')->everyMinute()->onOneServer()->withoutOverlapping(10)->runInBackground();
