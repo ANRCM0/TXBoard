@@ -348,7 +348,9 @@ class OrderService
             $this->order = $order;
 
             if ($shouldDispatch) {
-                OrderHandleJob::dispatchSync($order->trade_no);
+                // Fulfillment is handled by the queue; check:order provides recovery
+                // if the dispatch fails after the payment state is committed.
+                OrderHandleJob::dispatch($order->trade_no);
             }
         } catch (\Exception $e) {
             Log::error($e);
