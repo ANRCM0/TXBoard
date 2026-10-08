@@ -35,6 +35,7 @@ export function useSettingsAutosave<T extends FieldValues>({
 }) {
   const [state, setState] = useState<AutosaveState>({ kind: 'idle' })
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const scheduled = useRef<{ payload: Settings; revision: number } | null>(null)
   const revision = useRef(0)
   const latestPayload = useRef<Settings | null>(null)
   const validateRef = useRef(validate)
@@ -60,6 +61,7 @@ export function useSettingsAutosave<T extends FieldValues>({
       // form.reset() hydration does not represent a user edit.
       if (!info.name && !info.type) return
       clearTimeout(timer.current)
+      scheduled.current = null
       const current = ++revision.current
       const parsed = validateRef.current(value)
       if (!parsed.success) {
@@ -69,15 +71,24 @@ export function useSettingsAutosave<T extends FieldValues>({
       }
 
       latestPayload.current = parsed.data
+      const request = { payload: parsed.data, revision: current }
+      scheduled.current = request
       setState({ kind: 'pending' })
       timer.current = setTimeout(() => {
+        scheduled.current = null
         setState({ kind: 'saving' })
-        mutate({ payload: parsed.data, revision: current })
+        mutate(request)
       }, 1000)
     })
     return () => {
       subscription.unsubscribe()
       clearTimeout(timer.current)
+      // A user can navigate away within the debounce window. Flush the
+      // latest valid draft rather than silently dropping it on unmount.
+      // The shared mutation scope still serializes this with older requests.
+      const pending = scheduled.current
+      scheduled.current = null
+      if (pending) mutate(pending)
     }
   }, [watch, mutate])
 
