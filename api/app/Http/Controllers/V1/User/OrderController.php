@@ -186,7 +186,6 @@ class OrderController extends Controller
             'handling_fee_percent'
         ])
             ->where('enable', 1)
-            ->whereIn('payment', PaymentService::getAllPaymentMethodNames())
             ->orderBy('sort', 'ASC')
             ->get();
 

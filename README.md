@@ -34,12 +34,6 @@ ghcr.io/anrcm0/txboard:latest
 
 安装参数、外部 MySQL、反向代理、HTTPS、备份和管理命令详见 [TXBoard-Deploy 文档](https://github.com/ANRCM0/TXBoard-Deploy#readme)。
 
-## 内置支付插件
-
-TXBoard Core 目前保留 **EPay（易支付）** 和 **AlipayF2F（支付宝当面付）** 作为内置支付插件。BTCPay、Coinbase、CoinPayments 与 MGate 已从 `api/plugins-core/` 移除，不再默认安装或随 Core 镜像发布；未来按需通过独立插件包提供。
-
-从旧版升级时，数据库迁移将禁用这四个旧支付插件及其支付渠道配置，**不会删除配置、历史订单或交易记录**。它们不会继续出现在用户可用支付方式中；在重新安装可信的独立插件包之前，无法通过后台重新启用这些渠道。
-
 ## 升级
 
 生产部署使用独立更新器。升级前请确保已有可恢复的数据库、配置与上传文件备份；更新器默认先执行一次备份，再拉取目标镜像并检查应用健康状态。
