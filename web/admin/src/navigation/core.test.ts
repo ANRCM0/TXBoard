@@ -57,7 +57,7 @@ describe('core admin navigation', () => {
   })
 
   it('exposes a single theme management entry and hides obsolete settings menus', () => {
-    const items = coreNavigationGroups.flatMap(group => group.items.map(([path, label]) => ({ path, label })))
+    const items: Array<{ path: string; label: string }> = coreNavigationGroups.flatMap(group => group.items.map(([path, label]) => ({ path, label })))
     expect(items.filter(item => item.path === '/config/theme')).toEqual([
       { path: '/config/theme', label: '主题管理' },
     ])
