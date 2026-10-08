@@ -31,7 +31,7 @@ class TrafficFetchJob implements ShouldQueue
 
     public function handle(): void
     {
-        $userIds = array_keys($this->data);
+        $userIds = [];
 
         foreach ($this->data as $uid => $v) {
             if (!is_array($v) || count($v) < 2 || !is_numeric($v[0]) || !is_numeric($v[1])
@@ -47,6 +47,7 @@ class TrafficFetchJob implements ShouldQueue
                     ],
                     ['t' => time()]
                 );
+            $userIds[] = $uid;
         }
 
         if (!empty($userIds)) {
