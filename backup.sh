@@ -21,6 +21,7 @@
 #   BACKUP_SOURCE_DIR the api checkout holding .env       (default /backup-source/api)
 #
 set -eu
+umask 077
 
 DB_HOST="${DB_HOST:-database}"
 DB_PORT="${DB_PORT:-3306}"
@@ -52,7 +53,7 @@ prune() {
         done
 }
 
-run_backup() {
+run_backup() (
     stamp=$(date -u '+%Y%m%dT%H%M%SZ')
     dest="$BACKUP_DIR/$stamp"
     mkdir -p "$dest"
@@ -61,6 +62,11 @@ run_backup() {
     # --single-transaction keeps InnoDB consistent without locking the panel.
     # --set-gtid-purged=OFF stops mysqldump emitting GTID statements that a
     # restore into a server without GTID enabled would reject.
+    # POSIX sh reports only the last command's status in a pipeline.
+    # Export first and check mysqldump before compressing the archive.
+    dump_file="$dest/db.sql"
+    trap 'rm -f "$dump_file"' EXIT
+    trap 'rm -f "$dump_file"; exit 1' HUP INT TERM
     if ! MYSQL_PWD="$DB_PASSWORD" mysqldump \
             --host="$DB_HOST" \
             --port="$DB_PORT" \
@@ -72,19 +78,22 @@ run_backup() {
             --triggers \
             --set-gtid-purged=OFF \
             --default-character-set=utf8mb4 \
-            "$DB_DATABASE" 2>/dev/null | gzip -9 > "$dest/db.sql.gz"; then
+            "$DB_DATABASE" > "$dump_file" 2>/dev/null; then
         log "ERROR: mysqldump failed; discarding the partial archive"
         rm -rf "$dest"
         return 1
     fi
-
-    # A truncated dump can still exit 0 from the pipeline above, so verify the
-    # archive before keeping it. An unverified backup is worse than none.
+    if [ ! -s "$dump_file" ] || ! gzip -9 "$dump_file"; then
+        log "ERROR: database dump is empty or compression failed"
+        rm -rf "$dest"
+        return 1
+    fi
     if [ ! -s "$dest/db.sql.gz" ] || ! gzip -t "$dest/db.sql.gz" 2>/dev/null; then
         log "ERROR: db.sql.gz is empty or corrupt; discarding the archive"
         rm -rf "$dest"
         return 1
     fi
+
     log "  db.sql.gz: $(wc -c < "$dest/db.sql.gz" | tr -d ' ') bytes"
 
     if [ -f "$BACKUP_SOURCE_DIR/.env" ]; then
@@ -114,7 +123,7 @@ run_backup() {
 
     log "wrote $dest"
     prune
-}
+)
 
 if [ "$BACKUP_INTERVAL" -gt 0 ] 2>/dev/null; then
     log "periodic mode: every ${BACKUP_INTERVAL}s, retention ${BACKUP_RETENTION}"

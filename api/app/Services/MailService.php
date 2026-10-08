@@ -312,7 +312,13 @@ class MailService
             'subject' => $params['subject'],
             'template_name' => $params['template_name'],
             'error' => $error,
-            'config' => config('mail')
+            // Persist only a strict allowlist of diagnostic fields. Never store
+            // SMTP credentials or the full mail configuration in logs/API data.
+            'config' => json_encode([
+                'host' => config('mail.host'),
+                'port' => config('mail.port'),
+                'encryption' => config('mail.encryption'),
+            ], JSON_UNESCAPED_SLASHES)
         ];
         MailLog::create($log);
         return $log;
