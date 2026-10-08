@@ -4,6 +4,7 @@ namespace Tests\Feature\Theme;
 
 use App\Services\ThemeService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class ThemePublicConfigTest extends TestCase
@@ -17,9 +18,11 @@ class ThemePublicConfigTest extends TestCase
             'theme_color' => 'blue',
             'background_url' => 'https://example.test/login.jpg',
         ]);
-        admin_setting([
-            'frontend_theme_color' => 'black',
-            'frontend_background_url' => 'https://example.test/old.jpg',
+        // Simulate rows left behind by an old installation. Runtime writes to
+        // these retired keys are now prohibited by SettingModel.
+        DB::table('v2_settings')->insert([
+            ['name' => 'frontend_theme_color', 'value' => 'black'],
+            ['name' => 'frontend_background_url', 'value' => 'https://example.test/old.jpg'],
         ]);
 
         $response = $this->getJson('/api/v1/guest/comm/config');
