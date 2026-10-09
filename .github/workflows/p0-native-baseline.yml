@@ -1,0 +1,85 @@
+name: p0-native-baseline
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/p0-api-audit.mjs"
+      - "scripts/tests/p0-api-audit.test.mjs"
+      - "api/**"
+      - ".github/workflows/p0-native-baseline.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "scripts/p0-api-audit.mjs"
+      - "scripts/tests/p0-api-audit.test.mjs"
+      - "api/**"
+      - ".github/workflows/p0-native-baseline.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  inventory-and-contracts:
+    runs-on: ubuntu-latest
+    env:
+      APP_ENV: testing
+      DB_CONNECTION: sqlite
+      DB_DATABASE: ":memory:"
+      CACHE_DRIVER: array
+      QUEUE_CONNECTION: sync
+      SESSION_DRIVER: array
+      SETTING_CACHE_STORE: array
+      AGENT_OPS_PAIRING_CACHE_STORE: array
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Test P0 evidence generator
+        run: node --test scripts/tests/p0-api-audit.test.mjs
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.2"
+          extensions: mbstring, sqlite3, pdo_sqlite, redis
+          coverage: none
+      - name: Install PHP dependencies
+        working-directory: api
+        run: composer install --no-interaction --prefer-dist
+      - name: Prepare isolated Laravel application
+        working-directory: api
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+      - name: Export route registry and audit old consumers
+        run: |
+          php api/artisan route:list --json > "$RUNNER_TEMP/p0-routes.json"
+          node scripts/p0-api-audit.mjs --routes "$RUNNER_TEMP/p0-routes.json" --output-dir artifacts/p0-audit
+      - name: Preserve P0 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: txboard-p0-api-inventory
+          path: artifacts/p0-audit/
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Guard compatibility routes and middleware
+        working-directory: api
+        run: php artisan test tests/Feature/Contract/LegacyApiBoundaryTest.php
+      - name: Core billing and node regression slices
+        working-directory: api
+        run: |
+          php artisan test tests/Feature/Payment/PaymentWebhookTest.php
+          php artisan test tests/Unit/Services/OrderServiceConcurrencyTest.php
+          php artisan test tests/Feature/Server/NodeProtocolContractTest.php
+          php artisan test tests/Feature/Server/TrafficBatchSettlementTest.php
