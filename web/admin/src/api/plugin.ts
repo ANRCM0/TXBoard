@@ -95,59 +95,11 @@ export type PluginCrudPage = {
   data: Record<string, unknown>[]
 }
 
-export async function getPlugins(params: Record<string, unknown> = {}) {
-  const { data } = await apiClient.get('/plugin/getPlugins', { params })
-  return unwrap<PluginItem[]>(data) || []
-}
-
-export async function installPlugin(code: string) {
-  const { data } = await apiClient.post('/plugin/install', { code })
-  return unwrap(data)
-}
-
-export async function uninstallPlugin(code: string) {
-  const { data } = await apiClient.post('/plugin/uninstall', { code })
-  return unwrap(data)
-}
-
-export async function enablePlugin(code: string) {
-  const { data } = await apiClient.post('/plugin/enable', { code })
-  return unwrap(data)
-}
-
-export async function disablePlugin(code: string) {
-  const { data } = await apiClient.post('/plugin/disable', { code })
-  return unwrap(data)
-}
-
-export async function deletePlugin(code: string) {
-  const { data } = await apiClient.post('/plugin/delete', { code })
-  return unwrap(data)
-}
-
-export async function uploadPlugin(file: File) {
-  const form = new FormData()
-  form.append('file', file)
-  const { data } = await apiClient.post('/plugin/upload', form, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  })
-  return unwrap(data)
-}
-
-export async function upgradePlugin(code: string) {
-  const { data } = await apiClient.post('/plugin/upgrade', { code })
-  return unwrap(data)
-}
-
-export async function getPluginConfig(code: string) {
-  const { data } = await apiClient.get('/plugin/config', { params: { code } })
-  return unwrap<Record<string, PluginConfigField>>(data) || {}
-}
-
-export async function updatePluginConfig(code: string, config: Record<string, unknown>) {
-  const { data } = await apiClient.post('/plugin/config', { code, config })
-  return unwrap(data)
-}
+export {
+  getPlugins, getPluginConfig, updatePluginConfig,
+  installPlugin, uninstallPlugin, enablePlugin, disablePlugin,
+  upgradePlugin, deletePlugin, uploadPlugin,
+} from './plugin-admin'
 
 export function normalizePluginPath(path?: string) {
   if (!path) return ''

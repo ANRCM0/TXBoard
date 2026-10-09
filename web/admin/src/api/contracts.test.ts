@@ -29,7 +29,8 @@ import {
 import { getUsers, getUserDetail, getUserSubscriptionLink, resetUserSecret, destroyUser, banUsers, updateUser, generateUser } from './user-admin'
 import { copyNode, generateSecret, getProtocolDefinitions, getNodes, saveNode, updateNode, batchUpdateNodes, saveNodeOrder, deleteNode } from './server'
 import { resolvePluginAppUrl } from './plugin'
-import { getThemes, getThemeConfig, saveThemeConfig } from './theme'
+import { getThemes, getThemeConfig, saveThemeConfig, deleteTheme, uploadTheme } from './theme'
+import { getPlugins, installPlugin, uninstallPlugin, enablePlugin, disablePlugin, upgradePlugin, deletePlugin, getPluginConfig, updatePluginConfig, uploadPlugin } from './plugin'
 import { getModuleRegistry } from './module'
 import { normalizePluginNavigationTarget } from '../plugins/bridge'
 
@@ -170,53 +171,113 @@ describe('native configuration side-effect contract', () => {
   })
 })
 
-describe('theme adapter contract', () => {
-  it('loads and saves per-theme settings through administrator-scoped endpoints', async () => {
+describe('native theme administration contract', () => {
+  it('uses scoped GET/PUT per-theme config and native envelope', async () => {
+    setAdminSecurePath('extension-admin')
     responder = config => ({
-      data: { data: config.url === '/theme/getThemeConfig'
-        ? { theme_color: 'blue', background_url: '' }
-        : { theme_color: 'green' },
+      data: {
+        data: config.method === 'get'
+          ? { theme_color: 'blue', background_url: '' }
+          : { theme_color: 'green' },
+        request_id: 'theme-native',
       },
     })
-    await expect(getThemeConfig('TXBoard')).resolves.toEqual({ theme_color: 'blue', background_url: '' })
-    await expect(saveThemeConfig('TXBoard', { theme_color: 'green' })).resolves.toEqual({ theme_color: 'green' })
-    expect(seen[0].method).toBe('post')
-    expect(seen[0].url).toBe('/theme/getThemeConfig')
-    expect(JSON.parse(String(seen[0].data))).toEqual({ name: 'TXBoard' })
-    expect(seen[1].url).toBe('/theme/saveThemeConfig')
-    expect(JSON.parse(String(seen[1].data))).toEqual({ name: 'TXBoard', config: { theme_color: 'green' } })
+    await expect(getThemeConfig('TXBoard')).resolves.toEqual({
+      theme_color: 'blue', background_url: '',
+    })
+    await expect(saveThemeConfig('TXBoard', { theme_color: 'green' }))
+      .resolves.toEqual({ theme_color: 'green' })
+    expect(seen.map(config => [config.method, config.url])).toEqual([
+      ['get', '/admin/extension-admin/themes/TXBoard/config'],
+      ['put', '/admin/extension-admin/themes/TXBoard/config'],
+    ])
+    expect(JSON.parse(String(seen[1].data))).toEqual({ config: { theme_color: 'green' } })
+    expect(seen.every(config => config.baseURL === '/txapi')).toBe(true)
   })
 
   it('normalizes keyed theme maps and marks the built-in default active', async () => {
+    setAdminSecurePath('extension-admin')
     responder = () => ({
-      data: {
-        data: {
-          themes: {
-            TXBoard: {
-              name: 'TXBoard',
-              description: 'TXBoard default theme',
-              version: '1.0.0',
-              is_system: true,
-              can_delete: false,
-            },
+      data: { data: {
+        themes: {
+          TXBoard: {
+            name: 'TXBoard', description: 'TXBoard default theme',
+            version: '1.0.0', is_system: true, can_delete: false,
           },
-          active: 'TXBoard',
         },
-      },
+        active: 'TXBoard',
+      }, request_id: 'theme-list' },
     })
-
     const result = await getThemes()
-
     expect(seen[0].method).toBe('get')
-    expect(seen[0].url).toBe('/theme/getThemes')
+    expect(seen[0].url).toBe('/admin/extension-admin/themes')
     expect(result.active).toBe('TXBoard')
     expect(result.themes).toHaveLength(1)
     expect(result.themes[0]).toMatchObject({
-      name: 'TXBoard',
-      is_active: true,
-      is_system: true,
-      can_delete: false,
+      name: 'TXBoard', is_active: true, is_system: true, can_delete: false,
     })
+  })
+
+  it('deletes and uploads themes via native protected management', async () => {
+    setAdminSecurePath('extension-admin')
+    responder = () => ({ data: { data: { ok: true }, request_id: 'theme-write' } })
+    await deleteTheme('demo')
+    await uploadTheme(new File(['content'], 'demo.zip', { type: 'application/zip' }))
+    expect(seen.map(config => [config.method, config.url])).toEqual([
+      ['delete', '/admin/extension-admin/themes/demo'],
+      ['post', '/admin/extension-admin/themes/upload'],
+    ])
+    expect(seen.every(config => config.baseURL === '/txapi')).toBe(true)
+  })
+})
+
+describe('native plugin management contract', () => {
+  it('lists plugins and manages lifecycle without calling old V2 admin routes', async () => {
+    setAdminSecurePath('plugin-admin')
+    responder = config => ({ data: {
+      data: config.method === 'get' && config.url?.endsWith('/plugins')
+        ? [{ code: 'demo', name: 'Demo', is_installed: true }]
+        : { ok: true },
+      request_id: 'plugin-native',
+    } })
+    await expect(getPlugins({ type: 'feature' })).resolves.toHaveLength(1)
+    await installPlugin('demo')
+    await enablePlugin('demo')
+    await disablePlugin('demo')
+    await upgradePlugin('demo')
+    await uninstallPlugin('demo')
+    await deletePlugin('demo')
+    expect(seen.map(config => [config.method, config.url])).toEqual([
+      ['get', '/admin/plugin-admin/plugins'],
+      ['post', '/admin/plugin-admin/plugins/demo/actions/install'],
+      ['post', '/admin/plugin-admin/plugins/demo/actions/enable'],
+      ['post', '/admin/plugin-admin/plugins/demo/actions/disable'],
+      ['post', '/admin/plugin-admin/plugins/demo/actions/upgrade'],
+      ['post', '/admin/plugin-admin/plugins/demo/actions/uninstall'],
+      ['delete', '/admin/plugin-admin/plugins/demo'],
+    ])
+    expect(seen[0].params).toEqual({ type: 'feature' })
+    expect(seen.every(config => config.baseURL === '/txapi')).toBe(true)
+  })
+
+  it('reads and writes plugin config and uploads ZIP with native identity', async () => {
+    setAdminSecurePath('plugin-admin')
+    responder = config => ({ data: {
+      data: config.method === 'get'
+        ? { secret: { type: 'text', label: 'Secret', value: 'masked' } }
+        : { ok: true },
+      request_id: 'plugin-config',
+    } })
+    await getPluginConfig('demo')
+    await updatePluginConfig('demo', { secret: 'new' })
+    await uploadPlugin(new File(['content'], 'demo.zip', { type: 'application/zip' }))
+    expect(seen.map(config => [config.method, config.url])).toEqual([
+      ['get', '/admin/plugin-admin/plugins/demo/config'],
+      ['put', '/admin/plugin-admin/plugins/demo/config'],
+      ['post', '/admin/plugin-admin/plugins/upload'],
+    ])
+    expect(JSON.parse(String(seen[1].data))).toEqual({ config: { secret: 'new' } })
+    expect(() => installPlugin('../admin')).toThrow('Invalid plugin code')
   })
 })
 

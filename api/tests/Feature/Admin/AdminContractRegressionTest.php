@@ -125,7 +125,7 @@ class AdminContractRegressionTest extends TestCase
 
     public function test_default_theme_is_reported_as_active_without_persisted_setting(): void
     {
-        $themes = $this->getJson("/api/v2/{$this->securePath}/theme/getThemes");
+        $themes = $this->getJson("/txapi/admin/{$this->securePath}/themes");
 
         $themes->assertOk();
         $this->assertSame('TXBoard', $themes->json('data.active'));
@@ -146,7 +146,7 @@ class AdminContractRegressionTest extends TestCase
 
         admin_setting(['frontend_theme' => 'Xboard']);
 
-        $stale = $this->getJson("/api/v2/{$this->securePath}/theme/getThemes");
+        $stale = $this->getJson("/txapi/admin/{$this->securePath}/themes");
         $stale->assertOk();
         $this->assertSame('TXBoard', $stale->json('data.active'));
     }
