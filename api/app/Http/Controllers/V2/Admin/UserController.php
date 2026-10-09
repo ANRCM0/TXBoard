@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\V2\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Domains\Identity\AdminAccountProtection;
 use App\Http\Requests\Admin\UserGenerate;
 use App\Http\Requests\Admin\UserSendMail;
 use App\Http\Requests\Admin\UserUpdate;
@@ -27,23 +28,14 @@ class UserController extends Controller
 {
     use QueryOperators;
 
-    public function resetSecret(Request $request)
+    public function resetSecret(Request $request, AdminAccountProtection $accounts)
     {
-        $user = User::find($request->input('id'));
-        if (!$user)
+        $request->validate(['id' => 'required|integer|min:1']);
+        if (!User::query()->whereKey($request->integer('id'))->exists()) {
             return $this->fail([400202, '用户不存在']);
-        $user->token = Helper::guid();
-        $user->uuid = Helper::guid(true);
-        $result = $user->save();
-
-        if ($result) {
-            HookManager::call('admin.user.secret.reset', [
-                'user' => $user,
-                'request' => $request,
-            ]);
         }
-
-        return $this->success($result);
+        $accounts->rotateCredentials($request->integer('id'), $request);
+        return $this->success(true);
     }
 
     // Apply filters and sorts to the query builder.
@@ -700,39 +692,22 @@ class UserController extends Controller
     }
 
     // Delete user and related data.
-    public function destroy(Request $request)
+    public function destroy(Request $request, AdminAccountProtection $accounts)
     {
-        $request->validate([
-            'id' => 'required|exists:App\Models\User,id'
-        ], [
-            'id.required' => '用户ID不能为空',
-            'id.exists' => '用户不存在'
-        ]);
-        $user = User::find($request->input('id'));
-        HookManager::call('admin.user.destroy.before', [
-            'user' => $user,
-            'request' => $request,
-        ]);
-
-        try {
-            DB::beginTransaction();
-            $user->orders()->delete();
-            $user->codes()->delete();
-            $user->stat()->delete();
-            $user->tickets()->delete();
-            $user->delete();
-            DB::commit();
-
-            HookManager::call('admin.user.destroy.after', [
-                'user' => $user,
-                'request' => $request,
-            ]);
-
-            return $this->success(true);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error($e);
-            return $this->fail([500, '删除失败']);
+        $request->validate(['id' => 'required|integer|min:1']);
+        $id = $request->integer('id');
+        if ($id === (int) $request->user()->id) {
+            return $this->fail([400203, '不能删除当前管理员账户']);
         }
+        if (!User::query()->whereKey($id)->exists()) {
+            return $this->fail([400202, '用户不存在']);
+        }
+        // Legacy V2 entry remains callable until all internal/external consumers
+        // migrate. It must use the same no-loss guard as native TXAPI.
+        if (!$accounts->deleteUnused($id, $request)) {
+            return $this->fail([400203, '用户仍有余额、权限或历史数据，不能删除']);
+        }
+        return $this->success(true);
     }
+
 }
