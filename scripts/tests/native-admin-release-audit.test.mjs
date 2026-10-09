@@ -24,7 +24,7 @@ test('inventory separates unfinished modules from fully-native guards', () => {
   try {
     writeFileSync(join(dir, 'ticket.ts'), 'nativeApiClient.get("/admin/safe/tickets")')
     writeFileSync(join(dir, 'content.ts'), 'nativeApiClient.post("/admin/safe/content")')
-    writeFileSync(join(dir, 'finance.ts'), 'apiClient.get("/config/fetch")')
+    writeFileSync(join(dir, 'unmigrated-module.ts'), 'apiClient.get("/config/fetch")')
     writeFileSync(join(dir, 'ticket.test.ts'), 'apiClient.post("/wrong")')
     writeFileSync(join(dir, 'client.ts'), 'apiClient.post("/internal")')
     const report = buildNativeAdminInventory(dir)
