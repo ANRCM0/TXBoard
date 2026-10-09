@@ -122,4 +122,53 @@ final class GiftCardAdminController
             'Gift card has redemption history; disable it instead', 409);
         return TxapiResponse::success($request, ['ok' => true]);
     }
+    public function createTemplate(Request $request): JsonResponse
+    {
+        $data = $this->templateInput($request);
+        $data['admin_id'] = $request->user()->id;
+        $data['status'] = $data['status'] ?? true;
+        $data['sort'] = $data['sort'] ?? 0;
+        $template = GiftCardTemplate::query()->create($data);
+        return TxapiResponse::success($request, ['id' => $template->id], status: 201);
+    }
+
+    public function updateTemplate(Request $request): JsonResponse
+    {
+        $data = $this->templateInput($request, true);
+        $template = GiftCardTemplate::query()->findOrFail((int) $request->route('id'));
+        $template->fill($data)->saveOrFail();
+        return TxapiResponse::success($request, ['id' => $template->id]);
+    }
+
+    public function deleteTemplate(Request $request): JsonResponse
+    {
+        $deleted = DB::transaction(static function () use ($request): bool {
+            $template = GiftCardTemplate::query()->lockForUpdate()->findOrFail((int) $request->route('id'));
+            if ($template->codes()->exists() || $template->usages()->exists()) return false;
+            return (bool) $template->delete();
+        });
+        if (!$deleted) return TxapiResponse::error($request, 'GIFT_TEMPLATE_IN_USE',
+            'Template has issuance or redemption history; disable it instead', 409);
+        return TxapiResponse::success($request, ['ok' => true]);
+    }
+
+    private function templateInput(Request $request, bool $partial = false): array
+    {
+        $required = $partial ? 'sometimes' : 'required';
+        return $request->validate([
+            'name' => [$required, 'string', 'max:255'],
+            'description' => ['sometimes', 'nullable', 'string', 'max:5000'],
+            'type' => [$required, 'integer', \Illuminate\Validation\Rule::in(array_keys(GiftCardTemplate::getTypeMap()))],
+            'status' => ['sometimes', 'boolean'],
+            'conditions' => ['sometimes', 'nullable', 'array'],
+            'rewards' => [$required, 'array'],
+            'limits' => ['sometimes', 'nullable', 'array'],
+            'special_config' => ['sometimes', 'nullable', 'array'],
+            'icon' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'background_image' => ['sometimes', 'nullable', 'url', 'max:255'],
+            'theme_color' => ['sometimes', 'nullable', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+            'sort' => ['sometimes', 'integer', 'min:0'],
+        ]);
+    }
+
 }
