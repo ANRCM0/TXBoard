@@ -42,6 +42,7 @@ Route::middleware('throttle:10,1')->group(function () {
 
 Route::middleware('throttle:60,1')->group(function () {
     Route::get('public/config', [PublicController::class, 'config']);
+    Route::get('public/site-config', [PublicController::class, 'siteConfig']);
     Route::get('plans', [PublicController::class, 'plans']);
 });
 
@@ -50,6 +51,7 @@ Route::middleware(['txapi.user', 'throttle:120,1'])->group(function () {
     Route::get('me', [AccountController::class, 'me']);
     Route::get('me/subscription', [AccountController::class, 'subscription']);
     Route::get('me/dashboard-stats', [AccountController::class, 'dashboardStats']);
+    Route::get('me/site-config', [AccountController::class, 'userConfig']);
     Route::get('me/preferences', [AccountController::class, 'preferences']);
     Route::patch('me/preferences', [AccountController::class, 'updatePreferences']);
     Route::get('traffic/logs', [TrafficController::class, 'index']);

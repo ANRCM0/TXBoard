@@ -1,4 +1,4 @@
-import { api, request } from './client'
+import { api, nativeApi, nativeRequest, request } from './client'
 
 export type GuestConfig = {
   frontend_theme?: string
@@ -71,11 +71,11 @@ export type UserCommConfig = {
 export type { CaptchaPayload } from '@txboard/shared'
 
 export async function fetchGuestConfig() {
-  return request<GuestConfig>(api.get('/guest/comm/config'))
+  return nativeRequest<GuestConfig>(nativeApi.get('/public/site-config'))
 }
 
 export async function fetchUserCommConfig() {
-  return request<UserCommConfig>(api.get('/user/comm/config'))
+  return nativeRequest<UserCommConfig>(nativeApi.get('/me/site-config'))
 }
 
 export async function fetchStripePublicKey(paymentId: number) {

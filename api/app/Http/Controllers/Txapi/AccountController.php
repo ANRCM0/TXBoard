@@ -7,6 +7,7 @@ use App\Models\Order;
 use App\Models\Plan;
 use App\Models\Ticket;
 use App\Services\UserService;
+use App\Services\SiteConfigService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -92,6 +93,11 @@ final class AccountController
             return Helper::getSubscribeUrl($user->token);
         });
         return TxapiResponse::success($request, ['subscribe_url' => $newUrl]);
+    }
+
+    public function userConfig(Request $request, SiteConfigService $settings): JsonResponse
+    {
+        return TxapiResponse::success($request, $settings->user());
     }
 
     public function preferences(Request $request): JsonResponse
