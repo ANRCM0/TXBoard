@@ -161,6 +161,12 @@ Controller 不承担复杂交易，只完成鉴权、验证和调用服务。域
 
 API 兼容策略不是永久双轨；但在证据不足时宁可保留短期 adapter 也不要丢单/中断节点。
 
+## P4-B 大流量批次 SQL 查询优化
+
+- 保持 `TrafficBatchJob` 原子账本：节点行锁、批次唯一键、用户/用户统计/节点统计同一事务；Redis 配额通知仅在提交后执行。
+- 每批次先按用户 ID 排序、分片最多 400 个键并加行锁读取用户计数；相同分片批量读取每日用户统计，替代每个用户两次 `SELECT`。每用户的溢出检查、增量更新、事务回滚仍不变。
+- 增加 40 用户自动化查询次数上限断言，SQLite 和 MySQL 回归继续检验乱序回放、批次 ID 碰撞、溢出回滚与总数一致。
+- 这仅为 SQL 往返次数优化，不宣称生产 p95/p99 已实测；Redis/队列瓶颈需在真实负载环境单独评估。
 ## P4 TXBoard Native Node v1（服务端）
 
 - 建立独立 `/txapi/node/v1/*` 控制面；规范见 [Node Native Protocol v1](../../contracts/node-protocol/node-native-v1.md)。Bearer + Node-ID/Machine-ID 请求头、机器归属校验，不从 GET 查询参数获取 token。
