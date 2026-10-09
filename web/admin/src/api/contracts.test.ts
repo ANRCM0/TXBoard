@@ -18,6 +18,7 @@ import { getTrafficResetLogs, getTrafficResetStats, resetUserTraffic, getUserTra
 import { deletePayment, getPayments, getPaymentMethods, getPaymentForm, savePayment, togglePayment, sortPayments } from './payment'
 import { getQueueSnapshot, getQueueFailures, getQueueFailure } from './queueMonitor'
 import { getCoupons, saveCoupon, toggleCoupon, deleteCoupon } from './coupon'
+import { listMailTemplates, getMailTemplate, saveMailTemplate, resetMailTemplate, testMailTemplate } from './mail'
 import {
   getKnowledgePage, getKnowledgeAll, getKnowledgeDetail, getKnowledgeCategories,
   saveKnowledge, toggleKnowledge, sortKnowledge, deleteKnowledge,
@@ -924,5 +925,34 @@ describe('native administrator coupon management contract', () => {
     setAdminSecurePath('coupon-admin')
     responder = () => ({ data: { data: [] } })
     await expect(getCoupons({})).rejects.toThrow('Invalid native coupons page response')
+  })
+})
+
+describe('native administrator mail template contract', () => {
+  it('reads, saves, resets and tests mail templates through dynamic admin TXAPI', async () => {
+    setAdminSecurePath('mail-admin')
+    responder = config => ({
+      data: { data: config.url === '/admin/mail-admin/mail-templates'
+        ? [{ name: 'notify', label: '通知', customized: false }]
+        : config.url?.endsWith('/notify') && config.method === 'get'
+          ? { name: 'notify', label: '通知', content: '{{content}}' }
+          : { ok: true }, request_id: 'mail-native' },
+    })
+    await expect(listMailTemplates()).resolves.toHaveLength(1)
+    await expect(getMailTemplate('notify')).resolves.toMatchObject({ name: 'notify' })
+    await expect(saveMailTemplate({ name: 'notify', subject: 'Hi', content: '{{content}}' }))
+      .resolves.toEqual({ ok: true })
+    await expect(resetMailTemplate('notify')).resolves.toEqual({ ok: true })
+    await expect(testMailTemplate('notify', 'admin@example.test')).resolves.toEqual({ ok: true })
+    expect(seen.map(config => [config.method, config.url])).toEqual([
+      ['get', '/admin/mail-admin/mail-templates'],
+      ['get', '/admin/mail-admin/mail-templates/notify'],
+      ['put', '/admin/mail-admin/mail-templates/notify'],
+      ['delete', '/admin/mail-admin/mail-templates/notify'],
+      ['post', '/admin/mail-admin/mail-templates/notify/test'],
+    ])
+    expect(JSON.parse(String(seen[2].data))).toEqual({ subject: 'Hi', content: '{{content}}' })
+    expect(JSON.parse(String(seen[4].data))).toEqual({ email: 'admin@example.test' })
+    expect(seen.every(config => config.baseURL === '/txapi')).toBe(true)
   })
 })

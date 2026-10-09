@@ -13,6 +13,7 @@ use App\Http\Controllers\Txapi\Admin\TrafficResetAdminController;
 use App\Http\Controllers\Txapi\Admin\PaymentSafetyController;
 use App\Http\Controllers\Txapi\Admin\QueueAdminController;
 use App\Http\Controllers\Txapi\Admin\CouponAdminController;
+use App\Http\Controllers\Txapi\Admin\MailTemplateAdminController;
 use App\Http\Controllers\Txapi\Admin\PaymentManagementController;
 use App\Http\Controllers\Txapi\AccountController;
 use App\Http\Controllers\Txapi\ServerController;
@@ -59,6 +60,11 @@ Route::prefix('admin/{admin_path}')
     ->middleware(['admin.path', 'admin', 'log', 'throttle:120,1'])
     ->group(function () {
         Route::get('audit-logs', [AuditLogController::class, 'index']);
+        Route::get('mail-templates', [MailTemplateAdminController::class, 'index']);
+        Route::get('mail-templates/{name}', [MailTemplateAdminController::class, 'show']);
+        Route::put('mail-templates/{name}', [MailTemplateAdminController::class, 'save']);
+        Route::delete('mail-templates/{name}', [MailTemplateAdminController::class, 'reset']);
+        Route::post('mail-templates/{name}/test', [MailTemplateAdminController::class, 'test']);
         Route::get('coupons', [CouponAdminController::class, 'index']);
         Route::post('coupons', [CouponAdminController::class, 'save']);
         Route::post('coupons/export', [CouponAdminController::class, 'generateCsv']);

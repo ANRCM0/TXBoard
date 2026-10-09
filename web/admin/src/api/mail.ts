@@ -1,5 +1,4 @@
-import { apiClient } from './client'
-import { unwrap } from '../lib/api'
+import { nativeApiClient, nativeAdminPath, unwrapNative, type NativeApiEnvelope } from './client'
 
 export type MailTemplateSummary = {
   name: string
@@ -20,26 +19,31 @@ export type MailTemplateDetail = {
 }
 
 export async function listMailTemplates() {
-  const { data } = await apiClient.get('/mail/template/list')
-  return unwrap<MailTemplateSummary[]>(data) || []
+  return (await unwrapNative(nativeApiClient.get<NativeApiEnvelope<MailTemplateSummary[]>>(nativeAdminPath('mail-templates')))) || []
 }
 
 export async function getMailTemplate(name: string) {
-  const { data } = await apiClient.get('/mail/template/get', { params: { name } })
-  return unwrap<MailTemplateDetail>(data)
+  return unwrapNative(nativeApiClient.get<NativeApiEnvelope<MailTemplateDetail>>(
+    nativeAdminPath('mail-templates') + '/' + encodeURIComponent(name),
+  ))
 }
 
 export async function saveMailTemplate(payload: { name: string; subject: string; content: string }) {
-  const { data } = await apiClient.post('/mail/template/save', payload)
-  return unwrap(data)
+  return unwrapNative(nativeApiClient.put<NativeApiEnvelope<{ ok: boolean }>>(
+    nativeAdminPath('mail-templates') + '/' + encodeURIComponent(payload.name),
+    { subject: payload.subject, content: payload.content },
+  ))
 }
 
 export async function resetMailTemplate(name: string) {
-  const { data } = await apiClient.post('/mail/template/reset', { name })
-  return unwrap(data)
+  return unwrapNative(nativeApiClient.delete<NativeApiEnvelope<{ ok: boolean }>>(
+    nativeAdminPath('mail-templates') + '/' + encodeURIComponent(name),
+  ))
 }
 
 export async function testMailTemplate(name: string, email?: string) {
-  const { data } = await apiClient.post('/mail/template/test', { name, ...(email ? { email } : {}) })
-  return unwrap(data)
+  return unwrapNative(nativeApiClient.post<NativeApiEnvelope<{ ok: boolean }>>(
+    nativeAdminPath('mail-templates') + '/' + encodeURIComponent(name) + '/test',
+    email ? { email } : {},
+  ))
 }
