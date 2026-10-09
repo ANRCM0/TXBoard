@@ -8,6 +8,7 @@ use App\Services\GiftCardService;
 use App\Exceptions\ApiException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 final class GiftCardController
 {
@@ -16,7 +17,7 @@ final class GiftCardController
         $data = $request->validate(['code' => ['required', 'string', 'max:255']]);
         try {
             $service = new GiftCardService($data['code']);
-            $service->setUser($request->user());
+            $service->setUser(Auth::guard('sanctum')->user());
             $service->validateIsActive();
             $eligibility = $service->checkUserEligibility();
             return TxapiResponse::success($request, [
@@ -35,7 +36,7 @@ final class GiftCardController
         $data = $request->validate(['code' => ['required', 'string', 'max:255']]);
         try {
             $service = new GiftCardService($data['code']);
-            $service->setUser($request->user());
+            $service->setUser(Auth::guard('sanctum')->user());
             $service->validate();
             $result = $service->redeem(['user_agent' => $request->userAgent()]);
             return TxapiResponse::success($request, [
@@ -56,7 +57,7 @@ final class GiftCardController
             'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
         ]);
         $page = GiftCardUsage::query()->with(['template', 'code'])
-            ->where('user_id', $request->user()->id)
+            ->where('user_id', Auth::guard('sanctum')->id())
             ->orderByDesc('created_at')->orderByDesc('id')
             ->paginate((int) ($data['per_page'] ?? 15), ['*'], 'page', (int) ($data['page'] ?? 1));
         $items = $page->getCollection()->map(static fn (GiftCardUsage $usage): array => [
@@ -84,7 +85,7 @@ final class GiftCardController
     public function detail(Request $request, int $id): JsonResponse
     {
         $usage = GiftCardUsage::query()->with(['template', 'code', 'inviteUser'])
-            ->where('user_id', $request->user()->id)->find($id);
+            ->where('user_id', Auth::guard('sanctum')->id())->find($id);
         if (!$usage) {
             return TxapiResponse::error($request, 'NOT_FOUND', 'Gift card record not found', 404);
         }
