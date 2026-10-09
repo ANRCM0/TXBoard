@@ -28,3 +28,13 @@ User public/user common configuration, eligible node list, invitations/withdrawa
 - `GET /txapi/me/nodes` uses the existing permission-aware `UserService::isAvailable` and `ServerService::getAvailableServers` to retain visibility and online/rate calculations.
 - Its explicit response whitelist hides generated node passwords, server keys, private hosts, TLS material and other configuration data. Official Vue node page moves off `/api/v1/user/server/fetch` without changing how the list is displayed.
 - Internal tests require 401 without Sanctum, empty list without a subscription, and no secret keys in serialized node data.
+
+## LR-13 / V1 official-user compatibility route retirement
+
+User decision: **external consumers adapt themselves and do not gate TXBoard internal route cleanup**. Remove V1 routes after their official Vue callers use TXAPI. Keep V2 Admin Passport and dynamic Admin routes, Telegram Bot webhook, payment callback, and subscription configuration URL. Legacy controllers/services are retained where V2 or domain internals still reference them; this PR removes route registrations only, not database tables.
+
+Removed V1 official-user route patterns:
+
+`/resetSecurity`, `/changePassword`, `/update`, `/getSubscribe`, `/getStat`, `/checkLogin`, `/getQuickLoginUrl`, `/getActiveSession`, `/removeActiveSession`, `/order/save`, `/order/checkout`, `/order/check`, `/order/detail`, `/order/fetch`, `/order/getPaymentMethod`, `/order/cancel`, `/plan/fetch`, `/notice/fetch`, `/ticket/reply`, `/ticket/close`, `/ticket/save`, `/ticket/fetch`, `/server/fetch`, `/coupon/check`, `/knowledge/fetch`, `/knowledge/getCategory`, `/stat/getTrafficLog`, `/invite/details`.
+
+Removed V1 passport bridge: `/auth/token2Login`, `/auth/forget`, `/auth/getQuickLoginUrl`, `/auth/loginWithMailLink`, `/comm/sendEmailVerify` and guest `/comm/config`. Retained legacy V1 Passport login/register, invite, gift cards, commission transfer/withdraw, Stripe public-key bridge and all critical payment/subscription routes until the remaining TXBoard-internal callers migrate. V2 login and guest config remain registered for React Admin.
