@@ -1,5 +1,4 @@
-import { apiClient, nativeApiClient, nativeAdminPath, type NativeApiEnvelope } from './client'
-import { unwrap } from '../lib/api'
+import { nativeApiClient, nativeAdminPath, unwrapNative, type NativeApiEnvelope } from './client'
 
 export type AdminUser = {
   id: number
@@ -210,8 +209,11 @@ export async function sendUsersMail(payload:
   | { scope: 'filtered'; filter: UserFilter[]; subject: string; content: string; sort?: string; sort_type?: 'ASC' | 'DESC' }
   | { scope: 'all'; subject: string; content: string }
 ) {
-  const { data } = await apiClient.post('/user/sendMail', payload)
-  return unwrap(data)
+  const result = await unwrapNative(nativeApiClient.post<NativeApiEnvelope<{ queued: number }>>(
+    nativeAdminPath('users') + '/mail', payload,
+  ))
+  if (!Number.isSafeInteger(result?.queued)) throw new Error('Mail dispatch not acknowledged')
+  return result.queued
 }
 
 export async function banUsers(payload:
