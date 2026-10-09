@@ -11,9 +11,9 @@ final class RedemptionCodeContractTest extends TestCase
     public function test_template_types_use_redemption_code_names(): void
     {
         $types = GiftCardTemplate::getTypeMap();
-        self::assertSame('通用兑换码', $types[GiftCardTemplate::TYPE_GENERAL]);
-        self::assertSame('套餐兑换码', $types[GiftCardTemplate::TYPE_PLAN]);
-        self::assertSame('盲盒兑换码', $types[GiftCardTemplate::TYPE_MYSTERY]);
+        self::assertSame('通用礼品卡', $types[GiftCardTemplate::TYPE_GENERAL]);
+        self::assertSame('套餐礼品卡', $types[GiftCardTemplate::TYPE_PLAN]);
+        self::assertSame('盲盒礼品卡', $types[GiftCardTemplate::TYPE_MYSTERY]);
     }
 
     public function test_existing_type_and_status_identifiers_are_preserved(): void
