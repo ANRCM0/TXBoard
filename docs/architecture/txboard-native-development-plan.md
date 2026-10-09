@@ -161,6 +161,14 @@ Controller 不承担复杂交易，只完成鉴权、验证和调用服务。域
 
 API 兼容策略不是永久双轨；但在证据不足时宁可保留短期 adapter 也不要丢单/中断节点。
 
+## P1-B 订单列表读路径迁移（首个业务页面）
+
+- Vue User 订单列表与“待处理订单”检查改为调用 `GET /txapi/orders`，从 MySQL 根据用户、状态、分页参数读取，**不再拉取全部订单并在浏览器筛选分页**。
+- 新订单 DTO 补充最小展示字段 type、plan.id/name、paid_at；前端专用 adapter 将 ISO 时间转为现有 UI 使用的秒级 timestamp，将整型 amount_minor 映射到旧页面的 total_amount，仅在页面适配层映射旧套餐周期显示。Native HTTP 层绝不输出 Xboard 风格字段。
+- 详情、创建、支付、取消依旧调用旧 API，因为付款页面需要旧字段、业务写操作仍以旧接口为权威；不能把它们指向只有只读能力的新入口。
+- 服务器端订单按 created_at DESC、id DESC 稳定排序、每页最多 100，并强制用户所有权；跨 SQLite、MySQL 和 Vue HTTP adapter 做契约测试。
+- 此 PR 是只读页面链路切换，没有 schema/billing/webhook/node 或 Gateway 变更；回退可恢复原有列表 adapter，原旧 endpoint 保持可用。
+
 ## P1-B 客户端适配第一批（不切换业务接口）
 
 - Vue User 的登录态 canonical key 为 `txboard_auth_data`。首次读取自动迁移 `xboard_auth_data` 到新键，优先使用新值，并且成功迁移后移除旧键。登录写入、退出、令牌失效清理同时移除旧存储，避免旧会话被恢复。

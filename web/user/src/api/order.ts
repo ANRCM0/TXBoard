@@ -1,4 +1,4 @@
-import { api, request } from './client'
+import { api, nativeApi, request, type NativeEnvelope } from './client'
 
 export type OrderItem = {
   trade_no: string
@@ -52,21 +52,75 @@ export type OrderDetail = OrderItem & {
   }
 }
 
-export async function fetchOrders(params: { status?: number; page?: number; pageSize?: number } = {}) {
-  const all = await request<OrderItem[]>(api.get('/user/order/fetch'))
-  const filtered = params.status === undefined
-    ? all
-    : all.filter(order => order.status === params.status)
+type NativeOrder = {
+  id: number
+  trade_no: string
+  plan_id: number
+  plan: { id: number; name: string } | null
+  period: string
+  type: number
+  status: number
+  amount_minor: number
+  created_at: string
+  paid_at: string | null
+}
+
+const LEGACY_PERIOD: Record<string, string> = {
+  monthly: 'month_price',
+  quarterly: 'quarter_price',
+  half_yearly: 'half_year_price',
+  yearly: 'year_price',
+  two_yearly: 'two_year_price',
+  three_yearly: 'three_year_price',
+  onetime: 'onetime_price',
+  reset_traffic: 'reset_price',
+}
+
+function toLegacyOrder(order: NativeOrder): OrderItem {
+  const created = Date.parse(order.created_at)
+  const paid = order.paid_at ? Date.parse(order.paid_at) : null
+  if (!Number.isFinite(created) || (paid !== null && !Number.isFinite(paid))) {
+    throw new Error('Invalid TXAPI order timestamp')
+  }
+  return {
+    trade_no: order.trade_no,
+    plan_id: order.plan_id,
+    plan: order.plan ?? undefined,
+    period: LEGACY_PERIOD[order.period] ?? order.period,
+    type: order.type,
+    status: order.status,
+    total_amount: order.amount_minor,
+    created_at: Math.floor(created / 1000),
+    paid_at: paid === null ? null : Math.floor(paid / 1000),
+  }
+}
+
+export async function fetchOrders(
+  params: { status?: number; page?: number; pageSize?: number } = {},
+): Promise<OrderPageResult> {
   const page = params.page ?? 1
   const pageSize = params.pageSize ?? 20
-  const start = Math.max(0, (page - 1) * pageSize)
+  const response = await nativeApi.get<NativeEnvelope<NativeOrder[]>>('/orders', {
+    params: {
+      page,
+      per_page: pageSize,
+      ...(params.status !== undefined ? { status: params.status } : {}),
+    },
+  })
+  const envelope = response.data
+  const meta = envelope?.meta
+  if (!envelope?.request_id || !Array.isArray(envelope.data) || !meta ||
+      !Number.isInteger(meta.total) || !Number.isInteger(meta.page) ||
+      !Number.isInteger(meta.per_page)) {
+    throw new Error('Invalid TXAPI order pagination response')
+  }
 
   return {
-    data: filtered.slice(start, start + pageSize),
-    total: filtered.length,
-    current_page: page,
-    page_size: pageSize,
-  } satisfies OrderPageResult
+    data: envelope.data.map(toLegacyOrder),
+    total: meta.total,
+    current_page: meta.page,
+    page_size: meta.per_page,
+  }
 }
 
 export async function fetchFirstBlockingOrder(): Promise<OrderItem | null> {
