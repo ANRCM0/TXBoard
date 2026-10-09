@@ -1,4 +1,4 @@
-import { api, nativeApi, request, type NativeEnvelope } from './client'
+import { api, nativeApi, nativeRequest, request, type NativeEnvelope } from './client'
 
 export type OrderItem = {
   trade_no: string
@@ -132,7 +132,11 @@ export async function fetchFirstBlockingOrder(): Promise<OrderItem | null> {
 }
 
 export async function saveOrder(payload: { plan_id: number; period: string; coupon_code?: string }) {
-  return request<string>(api.post('/user/order/save', payload))
+  const response = await nativeRequest<{ trade_no: string }>(nativeApi.post('/orders', payload))
+  if (!response || typeof response.trade_no !== 'string' || !response.trade_no) {
+    throw new Error('Invalid TXAPI created order')
+  }
+  return response.trade_no
 }
 
 export async function fetchOrderDetail(tradeNo: string) {
@@ -140,7 +144,17 @@ export async function fetchOrderDetail(tradeNo: string) {
 }
 
 export async function fetchPaymentMethods() {
-  return request<PaymentMethod[]>(api.get('/user/order/getPaymentMethod'))
+  const methods = await nativeRequest<Array<{
+    id: number; name: string; provider: string; icon?: string | null
+    fee_fixed_minor: number; fee_percent: number
+  }>>(nativeApi.get('/billing/payment-methods'))
+  if (!Array.isArray(methods)) throw new Error('Invalid TXAPI payment methods')
+  return methods.map(m => ({
+    id: m.id, name: m.name, payment: m.provider,
+    icon: m.icon ?? undefined,
+    handling_fee_fixed: m.fee_fixed_minor,
+    handling_fee_percent: m.fee_percent,
+  }))
 }
 
 export async function checkOrderStatus(tradeNo: string) {
@@ -148,7 +162,7 @@ export async function checkOrderStatus(tradeNo: string) {
 }
 
 export async function cancelOrder(tradeNo: string) {
-  return request<null>(api.post('/user/order/cancel', { trade_no: tradeNo }))
+  return nativeRequest<{ ok: boolean }>(nativeApi.post('/orders/' + encodeURIComponent(tradeNo) + '/cancel'))
 }
 
 export async function checkoutOrder(tradeNo: string) {

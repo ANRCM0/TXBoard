@@ -21,6 +21,13 @@
 
 Hono Gateway 独立的 [TXAPI BFF Target](txapi-bff-target-v1.md) 保留 `{ok,data,meta}` 的 v1 SDK envelope，和 Laravel 原生响应不同。
 
+## P3-A2 Native Billing / Orders
+
+- `GET /txapi/billing/wallet` 只返回 balance_minor、commission_balance_minor；`GET /txapi/billing/commissions?page=&per_page=` 返佣入账记录的数据库分页和当前用户归属。
+- `GET /txapi/billing/payment-methods` 仅返回可用方式及不含配置密钥的固定白名单；`POST /txapi/billing/coupons/check` 返回 type 和 value_minor/percent。
+- `POST /txapi/orders`（plan_id、period、可选 coupon_code）创建并返回 trade_no；`POST /txapi/orders/{tradeNo}/cancel` 只允许所有者取消 pending 订单。订单核心状态、余额划转、券与返佣均委托同一 OrderService；新入口不会发明支付成功信号。
+- 支付 checkout/回调暂保留 V1 原有签名流程，待 P3-A3/P3-B 共享核心与提供方 contract 验证完成后切换。
+
 ## P2-E Native authentication
 
 - `POST /txapi/auth/login`、`POST /txapi/auth/register` 复用原注册、Captcha、密码限制与 Sanctum；仅返回 auth_data，不包含 subscription token 或 admin secure_path。

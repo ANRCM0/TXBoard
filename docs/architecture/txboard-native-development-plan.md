@@ -161,6 +161,14 @@ Controller 不承担复杂交易，只完成鉴权、验证和调用服务。域
 
 API 兼容策略不是永久双轨；但在证据不足时宁可保留短期 adapter 也不要丢单/中断节点。
 
+## P3-A2 原生交易 API 与用户操作
+
+- 原生 `GET /txapi/billing/wallet` 返回余额/返佣余额（分）；`GET /txapi/billing/commissions` 按当前用户 ID 过滤已产生的返佣记录并使用数据库分页，不暴露其他人的佣金。
+- 原生 `GET /txapi/billing/payment-methods` 只列出启用的方式，严格白名单排除 provider config/key；固定手续费使用最小货币单位；`POST /txapi/billing/coupons/check` 复用 CouponService 权限检查，固定金额用 value_minor，百分比用 percent。
+- 原生 `POST /txapi/orders`、`POST /txapi/orders/{tradeNo}/cancel` 分别委托 OrderService::createFromRequest 与 cancel；交易仍由原服务负责原子扣余额、优惠券限额、订单类型/升级/返佣定价与恢复。
+- Vue 的下单、取消、支付方式、优惠券展示、返佣分页读路径切换到 /txapi；**线上支付发起/收款回调依旧走历史有签名验收的 provider 流程**，不允许新入口绕过服务端费率/付款确认。
+- 补充 SQLite/MySQL 套餐新购余额抵扣、取消只返还一次、券占用/归还、跨用户查看与金融配置泄露测试。
+
 ## P3-A1 交易一致性第一批（可回滚，无 Schema 迁移）
 
 - 订单创建已在持有用户行锁的事务中重新读取套餐并核验购买资格与价格，不再单纯依赖事务开始前的校验；交易金额一律折算为整数分，并将券折扣与会员折扣限制在订单小计之内，避免负价。

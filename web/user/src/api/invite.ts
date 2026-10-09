@@ -1,4 +1,4 @@
-import { api, request } from './client'
+import { api, nativeApi, nativeRequest, request, type NativeEnvelope } from './client'
 
 export type InviteCode = {
   code: string
@@ -29,10 +29,24 @@ export async function withdrawCommission(payload:{withdraw_method:string;withdra
 }
 
 export async function fetchInviteDetails(current = 1, pageSize = 10) {
-  return request<{
-    data: Array<{ created_at?: number; get_amount?: number }>
-    total: number
-    current_page?: number
-    page_size?: number
-  }>(api.get('/user/invite/details', { params: { current, page_size: pageSize } }))
+  const { data: result } = await nativeApi.get<NativeEnvelope<Array<{
+    id: number; trade_no: string; earned_minor: number; created_at: string
+  }>>>('/billing/commissions', {
+    params: { page: current, per_page: pageSize },
+  })
+  if (!result?.request_id || !Array.isArray(result.data) ||
+      !result.meta || !Number.isInteger(result.meta.total)) {
+    throw new Error('Invalid TXAPI commission history')
+  }
+  return {
+    data: result.data.map(item => {
+      const timestamp = Date.parse(item.created_at)
+      if (!Number.isFinite(timestamp)) throw new Error('Invalid TXAPI commission date')
+      return { id: item.id, trade_no: item.trade_no, get_amount: item.earned_minor,
+        created_at: Math.floor(timestamp / 1000) }
+    }),
+    total: result.meta.total,
+    current_page: result.meta.page,
+    page_size: result.meta.per_page,
+  }
 }
