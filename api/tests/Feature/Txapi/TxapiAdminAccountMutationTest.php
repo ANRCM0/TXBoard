@@ -82,7 +82,7 @@ class TxapiAdminAccountMutationTest extends TestCase
         $target = $this->user('secret-target@example.test');
         $oldToken = $target->token;
         $called = [];
-        HookManager::addAction('admin.user.secret.reset', function (array $payload) use (&$called): void {
+        HookManager::register('admin.user.secret.reset', function (array $payload) use (&$called): void {
             $called[] = $payload['user']->id;
         });
         Sanctum::actingAs($admin);
