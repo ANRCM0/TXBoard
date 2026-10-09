@@ -26,9 +26,9 @@ final class TxapiAdminStrictCloseoutTest extends TestCase
 
     public function test_remaining_administrator_routes_enforce_role_and_dynamic_path(): void
     {
-        foreach (['/modules', '/orders/assign', '/users/mail'] as $suffix) {
-            $this->postJson(self::ROOT . $suffix, [])->assertStatus(403);
-        }
+        $this->getJson(self::ROOT . '/modules')->assertStatus(403);
+        $this->postJson(self::ROOT . '/orders/assign', [])->assertStatus(403);
+        $this->postJson(self::ROOT . '/users/mail', [])->assertStatus(403);
         Sanctum::actingAs($this->user('nonadmin-strict@example.test'));
         $this->getJson(self::ROOT . '/modules')->assertStatus(403);
         $this->postJson(self::ROOT . '/orders/assign', [])->assertStatus(403);
