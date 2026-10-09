@@ -97,7 +97,7 @@ export function getKnowledgePage(params: SearchParams = {}) {
 export function getKnowledgeAll() {
   return all<KnowledgeItem>('content/knowledge')
 }
-export function getKnowledgeDetail(id: number) {
+export async function getKnowledgeDetail(id: number) {
   return data<KnowledgeItem>(nativeApiClient.get(resource('content/knowledge', id)))
 }
 export async function getKnowledgeCategories() {
