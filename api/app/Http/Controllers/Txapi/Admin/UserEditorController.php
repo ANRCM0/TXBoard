@@ -57,7 +57,7 @@ final class UserEditorController
         }
         unset($fields['expected_balance_minor'], $fields['expected_commission_balance_minor']);
 
-        $user = DB::transaction(static function () use ($request, $id, $fields): User {
+        [$user, $applied] = DB::transaction(static function () use ($request, $id, $fields): array {
             $user = User::query()->lockForUpdate()->findOrFail($id);
             foreach (['balance' => 'expected_balance_minor',
                          'commission_balance' => 'expected_commission_balance_minor'] as $key => $expectedKey) {
@@ -71,7 +71,7 @@ final class UserEditorController
             $changes = $fields;
             if (array_key_exists('email', $changes)) {
                 $email = strtolower(trim($changes['email']));
-                if (User::byEmail($email)->whereKeyNot($id)->exists()) {
+                if (User::byEmail($email)->where('id', '!=', $id)->exists()) {
                     throw ValidationException::withMessages(['email' => 'Email already in use']);
                 }
                 $changes['email'] = $email;
@@ -120,11 +120,11 @@ final class UserEditorController
             if ((!$wasBanned && (bool) $user->banned) || array_key_exists('password', $changes)) {
                 (new AuthService($user))->removeAllSessions();
             }
-            return $user;
+            return [$user, $changes];
         });
 
         HookManager::call('admin.user.update.after', [
-            'user' => $user->refresh(), 'params' => $fields, 'request' => $request,
+            'user' => $user->refresh(), 'params' => $applied, 'request' => $request,
         ]);
         return TxapiResponse::success($request, ['ok' => true, 'id' => (int) $user->id]);
     }
