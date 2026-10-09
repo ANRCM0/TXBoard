@@ -75,6 +75,7 @@ final class TxapiAdminExtensionsTest extends TestCase
     {
         Sanctum::actingAs($this->user('plugin-ops@example.test', true));
         $manager = Mockery::mock(PluginManager::class);
+        $manager->shouldReceive('initializeEnabledPlugins')->andReturnNull();
         $manager->shouldReceive('resolvePluginPath')
             ->once()->with('test_plugin')->andReturn('/fake/test_plugin');
         $manager->shouldReceive('enable')->once()->with('test_plugin')->andReturn(true);
