@@ -407,7 +407,7 @@ class AdminContractRegressionTest extends TestCase
             'updated_at' => time(),
         ]);
 
-        $response = $this->getJson("/api/v2/{$this->securePath}/gift-card/templates");
+        $response = $this->getJson("/txapi/admin/{$this->securePath}/redemption-codes/templates");
 
         $response->assertOk();
         $row = $response->json('data.0');
