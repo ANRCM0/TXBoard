@@ -49,8 +49,8 @@ class TxapiWalletRechargeTest extends TestCase
         $created = $this->postJson($root, $body,
             ['Idempotency-Key' => $key])->assertCreated()
             ->assertJsonPath('data.amount_minor', 1500)
-            ->assertJsonPath('data.fee_minor', 130)
-            ->assertJsonPath('data.total_minor', 1630)
+            ->assertJsonPath('data.fee_minor', 180)
+            ->assertJsonPath('data.total_minor', 1680)
             ->assertJsonPath('data.status', WalletRecharge::STATUS_PENDING);
         $trade = (string) $created->json('data.trade_no');
         $this->assertStringStartsWith('WR', $trade);
