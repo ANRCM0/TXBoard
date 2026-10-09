@@ -13,8 +13,9 @@ import {
 import { fetchSettings, saveSettings, testSendMail, setTelegramWebhook } from './config'
 import { getGroups, saveGroup, deleteGroup, getRoutes, saveRoute, sortRoutes, simulateRoute, deleteRoute } from './server'
 import { getMachines, saveMachine, getMachineCredentials, resetMachineToken, updateMachineRuntime, deleteMachine, getMachineNodes, getMachineHistory } from './server'
+import { getModuleRegistry } from './module'
 import { getAuditLogs, getDashboardStats, getOrderChart, getTrafficRank, getAnalyticsRanking, getUserTrafficStats } from './statistics'
-import { getPlans, getOrders, savePlan, updatePlanFlags, deletePlan, sortPlans, getOrderDetail, markOrderPaid, cancelOrder } from './finance'
+import { getPlans, getOrders, savePlan, updatePlanFlags, deletePlan, sortPlans, getOrderDetail, markOrderPaid, cancelOrder, assignOrder, updateOrderCommission } from './finance'
 import { getTickets, getTicketDetail, replyTicket, closeTicket } from './ticket'
 import { getTrafficResetLogs, getTrafficResetStats, resetUserTraffic, getUserTrafficResetHistory } from './traffic-reset'
 import { deletePayment, getPayments, getPaymentMethods, getPaymentForm, savePayment, togglePayment, sortPayments } from './payment'
@@ -26,7 +27,7 @@ import {
   saveKnowledge, toggleKnowledge, sortKnowledge, deleteKnowledge,
   getNoticePage, getNoticeAll, saveNotice, toggleNotice, sortNotice, deleteNotice,
 } from './content'
-import { getUsers, getUserDetail, getUserSubscriptionLink, resetUserSecret, destroyUser, banUsers, updateUser, generateUser } from './user-admin'
+import { getUsers, getUserDetail, getUserSubscriptionLink, resetUserSecret, destroyUser, banUsers, updateUser, generateUser, sendUsersMail } from './user-admin'
 import { copyNode, generateSecret, getProtocolDefinitions, getNodes, saveNode, updateNode, batchUpdateNodes, saveNodeOrder, deleteNode } from './server'
 import { resolvePluginAppUrl } from './plugin'
 import { getThemes, getThemeConfig, saveThemeConfig, deleteTheme, uploadTheme } from './theme'
@@ -1303,5 +1304,51 @@ describe('native analytics administrator API contracts', () => {
     expect(seen[0].params).toEqual({ page: 2, per_page: 1 })
     expect(seen[0].baseURL).toBe('/txapi')
     await expect(getUserTrafficStats(-2)).rejects.toThrow('Invalid user ID')
+  })
+})
+
+describe('strict native administrator closeout contracts', () => {
+  it('reads module registry under rotating TXAPI administrator prefix', async () => {
+    setAdminSecurePath('cutover')
+    responder = () => ({ data: {
+      data: { modules: [{ id: 'agent_ops', type: 'agent' }], errors: [], summary: { total: 1 } },
+      request_id: 'modules-native',
+    } })
+    await expect(getModuleRegistry()).resolves.toHaveProperty('summary.total', 1)
+    expect(seen.map(config => [config.method, config.url, config.baseURL])).toEqual([
+      ['get', '/admin/cutover/modules', '/txapi'],
+    ])
+  })
+
+  it('creates pending order and reviews commission without V2 fallback', async () => {
+    setAdminSecurePath('cutover')
+    responder = config => ({ data: {
+      data: config.url?.endsWith('/assign') ? { trade_no: 'TX-PENDING-01' } : { ok: true },
+      request_id: 'orders-native',
+    } })
+    await expect(assignOrder({
+      email: 'test@example.test', plan_id: 1, period: 'month_price', total_amount: 1900,
+    })).resolves.toBe('TX-PENDING-01')
+    await expect(updateOrderCommission('TX-PENDING-01', 1)).resolves.toBe(true)
+    expect(seen.map(config => [config.method, config.url])).toEqual([
+      ['post', '/admin/cutover/orders/assign'],
+      ['post', '/admin/cutover/orders/TX-PENDING-01/commission-review'],
+    ])
+    expect(JSON.parse(String(seen[1].data))).toEqual({ commission_status: 1 })
+    expect(seen.every(config => config.baseURL === '/txapi')).toBe(true)
+  })
+
+  it('queues selected user mail using the native, bounded admin request', async () => {
+    setAdminSecurePath('cutover')
+    responder = () => ({ data: { data: { queued: 2 }, request_id: 'mail-native' } })
+    await expect(sendUsersMail({
+      scope: 'selected', user_ids: [2, 3],
+      subject: 'Notice', content: 'Message',
+    })).resolves.toBe(2)
+    expect(seen.map(config => [config.method, config.url])).toEqual([
+      ['post', '/admin/cutover/users/mail'],
+    ])
+    expect(seen[0].baseURL).toBe('/txapi')
+    expect(JSON.parse(String(seen[0].data)).user_ids).toEqual([2, 3])
   })
 })
