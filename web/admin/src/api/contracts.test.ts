@@ -17,6 +17,7 @@ import { getTickets, getTicketDetail, replyTicket, closeTicket } from './ticket'
 import { getTrafficResetLogs, getTrafficResetStats, resetUserTraffic, getUserTrafficResetHistory } from './traffic-reset'
 import { deletePayment, getPayments, getPaymentMethods, getPaymentForm, savePayment, togglePayment, sortPayments } from './payment'
 import { getQueueSnapshot, getQueueFailures, getQueueFailure } from './queueMonitor'
+import { getCoupons, saveCoupon, toggleCoupon, deleteCoupon } from './coupon'
 import {
   getKnowledgePage, getKnowledgeAll, getKnowledgeDetail, getKnowledgeCategories,
   saveKnowledge, toggleKnowledge, sortKnowledge, deleteKnowledge,
@@ -879,5 +880,49 @@ describe('native administrator queue monitoring contract', () => {
     setAdminSecurePath('queue-admin')
     responder = () => ({ data: { data: { status: 'running' } } })
     await expect(getQueueSnapshot()).rejects.toThrow('Invalid TXAPI response')
+  })
+})
+
+describe('native administrator coupon management contract', () => {
+  it('translates legacy table filters and native pagination, without calling V2', async () => {
+    setAdminSecurePath('coupon-admin')
+    responder = () => ({ data: {
+      data: [{ id: 7, code: 'SAVE50', type: 1, value: 5000 }],
+      meta: { page: 2, per_page: 10, total: 11, last_page: 2 },
+      request_id: 'coupon-read',
+    } })
+    const page = await getCoupons({ current: 2, pageSize: 10,
+      filter: [{ id: 'code', value: 'SAVE' }, { id: 'type', value: 1 }] })
+    expect(page).toMatchObject({ current_page: 2, per_page: 10, total: 11, last_page: 2 })
+    expect(seen[0].baseURL).toBe('/txapi')
+    expect(seen[0].url).toBe('/admin/coupon-admin/coupons')
+    expect(seen[0].params).toEqual({ page: 2, per_page: 10, code: 'SAVE', type: 1 })
+  })
+
+  it('calls native create/edit, toggle and guarded delete', async () => {
+    setAdminSecurePath('coupon-admin')
+    responder = config => ({ data: {
+      data: config.url?.endsWith('/toggle') ? { show: true }
+        : config.method === 'delete' ? { ok: true } : { id: 7 },
+      request_id: 'coupon-write',
+    } })
+    const payload = { name: 'Save', type: 1, value: 5000 }
+    await saveCoupon(payload)
+    await saveCoupon({ ...payload, id: 7 })
+    await toggleCoupon(7)
+    await deleteCoupon(7)
+    expect(seen.map(config => [config.method, config.url])).toEqual([
+      ['post', '/admin/coupon-admin/coupons'],
+      ['put', '/admin/coupon-admin/coupons/7'],
+      ['patch', '/admin/coupon-admin/coupons/7/toggle'],
+      ['delete', '/admin/coupon-admin/coupons/7'],
+    ])
+    await expect(deleteCoupon(0)).rejects.toThrow('Invalid coupon ID')
+  })
+
+  it('rejects malformed coupon pagination envelopes', async () => {
+    setAdminSecurePath('coupon-admin')
+    responder = () => ({ data: { data: [] } })
+    await expect(getCoupons({})).rejects.toThrow('Invalid native coupons page response')
   })
 })

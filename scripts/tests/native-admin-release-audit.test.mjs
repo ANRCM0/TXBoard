@@ -46,6 +46,7 @@ test('formerly-native module V2 regression is flagged, never hidden by other mod
     assert.ok(COMPLETED_ADMIN_MODULES.includes('traffic-reset'))
     assert.ok(COMPLETED_ADMIN_MODULES.includes('payment'))
     assert.ok(COMPLETED_ADMIN_MODULES.includes('queueMonitor'))
+    assert.ok(COMPLETED_ADMIN_MODULES.includes('coupon'))
     writeFileSync(join(dir, 'traffic-reset.ts'), "apiClient.post('/traffic-reset/reset-user')")
     const report = buildNativeAdminInventory(dir)
     assert.deepEqual(report.regressions, ['traffic-reset'])
