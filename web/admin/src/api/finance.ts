@@ -1,5 +1,4 @@
-import { apiClient, nativeApiClient, nativeAdminPath, type NativeApiEnvelope } from './client'
-import { unwrap } from '../lib/api'
+import { nativeApiClient, nativeAdminPath, unwrapNative, type NativeApiEnvelope } from './client'
 
 export type PlanPrices = Partial<Record<
   'monthly' | 'quarterly' | 'half_yearly' | 'yearly' | 'two_yearly' | 'three_yearly' | 'onetime' | 'reset_traffic',
@@ -182,15 +181,20 @@ export async function getOrderDetail(id: number) {
   return data.data
 }
 export async function assignOrder(payload: { email: string; plan_id: number; period: string; total_amount: number }) {
-  const { data } = await apiClient.post('/order/assign', payload)
-  return unwrap<string>(data)
+  const result = await unwrapNative(nativeApiClient.post<NativeApiEnvelope<{ trade_no: string }>>(
+    nativeAdminPath('orders') + '/assign', payload,
+  ))
+  if (!result?.trade_no) throw new Error('Manual order assignment not acknowledged')
+  return result.trade_no
 }
 export async function updateOrderCommission(tradeNo: string, commissionStatus: 0 | 1 | 3) {
-  const { data } = await apiClient.post('/order/update', {
-    trade_no: tradeNo,
-    commission_status: commissionStatus,
-  })
-  return unwrap(data)
+  if (!tradeNo) throw new Error('Order trade number required')
+  const result = await unwrapNative(nativeApiClient.post<NativeApiEnvelope<{ ok: boolean }>>(
+    nativeAdminPath('orders') + '/' + encodeURIComponent(tradeNo) + '/commission-review',
+    { commission_status: commissionStatus },
+  ))
+  if (result?.ok !== true) throw new Error('Commission review not acknowledged')
+  return true
 }
 export async function markOrderPaid(tradeNo: string) {
   const { data } = await nativeApiClient.post<NativeApiEnvelope<{ ok: boolean }>>(
