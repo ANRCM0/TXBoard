@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Txapi;
 use App\Core\Http\TxapiResponse;
 use App\Domains\Subscription\PlanCatalog;
 use App\Models\User;
+use App\Services\SiteConfigService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -17,6 +18,11 @@ final class PublicController
             'name' => (string) config('app.name', 'TXBoard'),
             'api_prefix' => '/txapi',
         ]);
+    }
+
+    public function siteConfig(Request $request, SiteConfigService $settings): JsonResponse
+    {
+        return TxapiResponse::success($request, $settings->guest());
     }
 
     public function plans(Request $request, PlanCatalog $catalog): JsonResponse

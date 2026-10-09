@@ -84,7 +84,7 @@ describe('auth adapter contract', () => {
 
   it('attaches stored auth data to later requests', async () => {
     saveAuthData('token-4')
-    responder = () => ({ status: 'success', data: {} })
+    responder = () => ({ data: { app_name: 'TXBoard' }, request_id: 'trace-site' })
 
     await fetchGuestConfig()
 
@@ -93,12 +93,13 @@ describe('auth adapter contract', () => {
 })
 
 describe('guest config adapter contract', () => {
-  it('reads GET /guest/comm/config', async () => {
-    responder = () => ({ status: 'success', data: { app_name: 'TXBoard' } })
+  it('reads GET /txapi/public/site-config', async () => {
+    responder = () => ({ data: { app_name: 'TXBoard' }, request_id: 'trace-site' })
 
     await expect(fetchGuestConfig()).resolves.toEqual({ app_name: 'TXBoard' })
     expect(seen[0].method).toBe('get')
-    expect(seen[0].url).toBe('/guest/comm/config')
+    expect(seen[0].url).toBe('/public/site-config')
+    expect(seen[0].baseURL).toBe('/txapi')
   })
 })
 

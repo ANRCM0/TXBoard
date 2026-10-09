@@ -16,3 +16,9 @@ The V1 `guest/telegram/webhook` handles Bot commands and join requests, **not** 
 ## Follow-up
 
 User public/user common configuration, eligible node list, invitations/withdrawals and gift card commands are internal V1 consumers to migrate by domain. React Admin V2 path remains needed until its API client is migrated. Removing routes is authorized only after TXBoard-internal callers and tests have been switched.
+
+## LR-11 / site settings
+
+- The two Vue configuration consumers move to `GET /txapi/public/site-config` and `GET /txapi/me/site-config`; V1 Guest/User configs and TXAPI share the same `SiteConfigService` projections, preserving theme hooks and feature flags without copying configuration logic.
+- Existing `GET /txapi/public/config` remains a minimal system metadata contract. Sensitive payment and Bot signing secrets must not be exposed to either public or user site config.
+- External consumers adapt independently and do not block TXBoard-internal API removal decisions.
