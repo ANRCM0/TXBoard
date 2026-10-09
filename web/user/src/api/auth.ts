@@ -41,18 +41,17 @@ export async function sendEmailVerify(email: string, purpose: 'register' | 'forg
 }
 
 export async function loginWithMailLink(email: string, captcha?: CaptchaPayload) {
-  return request<boolean>(api.post('/passport/auth/loginWithMailLink', { email, ...captcha }))
+  return nativeRequest<{ ok: boolean }>(nativeApi.post('/auth/mail-link', { email, ...captcha }))
 }
 
 export async function token2Login(verify: string) {
-  const { data } = await api.get<{ data?: AuthPayload; message?: string }>('/passport/auth/token2Login', {
-    params: { verify },
-  })
-  if (data.data?.auth_data) {
-    saveAuthData(data.data.auth_data)
-    return data.data
+  // Never send a disposable login credential as a GET query parameter.
+  const result = await nativeRequest<AuthPayload>(nativeApi.post('/auth/one-time-token', { verify }))
+  if (!result || typeof result.auth_data !== 'string' || !result.auth_data) {
+    throw new Error('Invalid TXAPI token login response')
   }
-  throw new Error(data.message || 'Token login failed')
+  saveAuthData(result.auth_data)
+  return result
 }
 
 export async function telegramLogin(payload: Record<string, unknown>, endpoint: string) {

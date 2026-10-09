@@ -33,6 +33,9 @@ Route::match(['get', 'post'], 'payment/webhook/{method}/{uuid}',
 Route::middleware('throttle:10,1')->group(function () {
     Route::post('auth/login', [AuthController::class, 'login']);
     Route::post('auth/register', [AuthController::class, 'register']);
+    // Shared MailLinkService keeps V1 email links and native requests interoperable.
+    Route::post('auth/mail-link', [AuthController::class, 'mailLink']);
+    Route::post('auth/one-time-token', [AuthController::class, 'oneTimeToken']);
 });
 
 Route::middleware('throttle:60,1')->group(function () {
