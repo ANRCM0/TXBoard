@@ -10,6 +10,7 @@ use App\Http\Controllers\Txapi\InviteController;
 use App\Http\Controllers\Txapi\CommissionController;
 use App\Http\Controllers\Txapi\GiftCardController;
 use App\Http\Controllers\Txapi\StripeConfigController;
+use App\Http\Controllers\Txapi\InvitePageViewController;
 use App\Http\Controllers\Txapi\PaymentWebhookController;
 use App\Http\Controllers\Txapi\AuthController;
 use App\Http\Controllers\Txapi\ContentController;
@@ -49,6 +50,7 @@ Route::middleware('throttle:60,1')->group(function () {
     Route::get('public/config', [PublicController::class, 'config']);
     Route::get('public/site-config', [PublicController::class, 'siteConfig']);
     Route::get('plans', [PublicController::class, 'plans']);
+    Route::post('public/invite-page-view', [InvitePageViewController::class, 'store'])->middleware('throttle:20,1');
 });
 
 Route::middleware(['txapi.user', 'throttle:120,1'])->group(function () {
