@@ -103,7 +103,7 @@ class AgentSupportTest extends TestCase
         $this->postJson('/txapi/admin/'.$secure.'/agents/tokens', [
             'client_name' => 'unsafe-support', 'abilities' => [AgentAbility::SUPPORT_READ],
             'target_mode' => 'restricted', 'target_node_ids' => [$node->id],
-        ])->assertUnprocessable()->assertJsonValidationErrors('target_scope');
+        ])->assertUnprocessable()->assertJsonPath('error.fields.0', 'target_scope');
 
         $manual = $admin->createToken('agent:manually-restricted', [
             AgentAbility::SUPPORT_READ, 'agent:target:restricted', 'agent:target:node:'.$node->id,
