@@ -21,6 +21,13 @@
 
 Hono Gateway 独立的 [TXAPI BFF Target](txapi-bff-target-v1.md) 保留 `{ok,data,meta}` 的 v1 SDK envelope，和 Laravel 原生响应不同。
 
+## P2-A 已实施的套餐只读协议
+
+- `GET /txapi/plans`：匿名可用、仅展示 show+sell 并有容量的套餐；输出 id/name/content/tags/traffic_limit_bytes/speed_limit_mbps/device_limit/capacity_limit/reset_traffic_method/prices[{period,amount_minor}]/renewable。
+- `GET /txapi/plans/{planId}`：仅已登录用户可用，复用现存 PlanService 资格检查；本人可读取有续费权的隐藏套餐，其他用户返回 404。禁用/不存在的套餐不泄露是否真实存在。
+- 查询/展示不等于预定价格或完成购买资格审核；创建订单时仍以当前权限、容量和实时计价为准。旧 PlanResource 的 `month_price` 等字段仅旧接口继续输出。
+- 有容量限制的公开套餐使用一次 group-by 统计有效用户而不是逐计划 count；不缓存跨用户的详情响应。
+
 ## P1-B 首个页面已迁移
 
 Vue 用户订单列表现已直接使用 `GET /txapi/orders` 的服务端分页/状态过滤和原生响应。增加只读展示字段 type、plan{id,name}、paid_at（RFC3339 UTC 或 null）；旧 Vue UI 使用的金额/时间/周期格式仅在前端 adapter 转换。订单详情、创建、支付、取消仍使用旧 V1 路径；Admin 当前仍使用旧动态路由。
