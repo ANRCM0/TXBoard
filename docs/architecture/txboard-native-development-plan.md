@@ -161,6 +161,13 @@ Controller 不承担复杂交易，只完成鉴权、验证和调用服务。域
 
 API 兼容策略不是永久双轨；但在证据不足时宁可保留短期 adapter 也不要丢单/中断节点。
 
+## P2-B 套餐前端只读迁移
+
+- `web/user/src/api/plan.ts` 的套餐列表及详情都使用 `GET /txapi/plans`、`GET /txapi/plans/{planId}`；通过唯一的页面适配器将原生 period/amount_minor/traffic_limit_bytes 映射为历史页面视图字段，不使新后端重新输出 Xboard DTO。
+- 前端对响应结构、价格整数与套餐 ID 做显式验证；返回异常时抛错并显示失败，不回落全量旧接口掩盖原生接口缺失。
+- 原 `saveOrder`、`checkCoupon`、`checkoutOrder` 与支付回调不改；订单仍按服务端权限和价格二次验证，本次仅迁移展示和可购套餐详情读路径。
+- 独立单测验证无旧套餐列表调用、保留历史页面的周期/价格单位和认证 Token，回滚可恢复原业务 adapter；旧 V1 套餐路由仍有效。
+
 ## P2-A Subscription Native Catalog：查询域与购买权限边界
 
 - 新增 `Domains/Subscription/PlanCatalog`：汇总可显示/可售套餐，并以一次分组查询核对所有有限容量套餐的有效订阅人数，避免逐套餐 COUNT 引发 N+1。
