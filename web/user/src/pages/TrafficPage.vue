@@ -32,7 +32,7 @@ function changePage(next:number) {
 }
 
 function rate(row:TrafficLogItem){
-  const raw=row.server_rate??row.rate??1
+  const raw=row.server_rate??1
   const n=parseFloat(String(raw))
   return Number.isFinite(n)&&n>0?n:1
 }
