@@ -20,8 +20,9 @@ use Illuminate\Support\Facades\Redis;
 use Tests\TestCase;
 
 /**
- * P0-B synthetic in-process journey. All HTTP and persistence paths are real,
- * but the payment provider and workers are simulated; this is NOT staging E2E.
+ * P0-B synthetic in-process journey using exclusively native TXAPI HTTP routes.
+ * All HTTP and persistence paths are real, but the provider and workers are
+ * simulated; this is NOT staging E2E or external TX-Node interoperability.
  */
 class CorePurchaseTrafficJourneyTest extends TestCase
 {
@@ -78,21 +79,20 @@ class CorePurchaseTrafficJourneyTest extends TestCase
             'EPay was not discoverable immediately after the synthetic fixture');
 
         // Use the real password/login endpoint and its Sanctum bearer.
-        $login = $this->postJson('/api/v1/passport/auth/login', [
+        $login = $this->postJson('/txapi/auth/login', [
             'email' => $user->email, 'password' => 'sample-password-2026',
         ]);
-        $login->assertOk()->assertJsonPath('status', 'success');
+        $login->assertOk()->assertJsonStructure(['data' => ['auth_data'], 'request_id']);
         $bearer = $login->json('data.auth_data');
         $this->assertIsString($bearer);
         $this->assertStringStartsWith('Bearer ', $bearer);
         $headers = ['Authorization' => $bearer];
 
-        $create = $this->postJson('/api/v1/user/order/save', [
-            'plan_id' => $plan->id, 'period' => 'month_price',
+        $create = $this->postJson('/txapi/orders', [
+            'plan_id' => $plan->id, 'period' => Plan::PERIOD_MONTHLY,
         ], $headers);
-        $this->assertSame(200, $create->status(), 'Order create rejected: ' . (string) $create->json('message'));
-        $create->assertJsonPath('status', 'success');
-        $tradeNo = $create->json('data');
+        $create->assertStatus(201)->assertJsonStructure(['data' => ['trade_no'], 'request_id']);
+        $tradeNo = $create->json('data.trade_no');
         $this->assertIsString($tradeNo);
         $order = Order::where('trade_no', $tradeNo)->firstOrFail();
         $this->assertSame(1000, (int) $order->total_amount);
@@ -109,12 +109,11 @@ class CorePurchaseTrafficJourneyTest extends TestCase
             'EPay payment hook was not registered');
 
         // EPay pay() only creates an external redirect URL; nothing is sent.
-        $checkout = $this->postJson('/api/v1/user/order/checkout', [
-            'trade_no' => $tradeNo, 'method' => $payment->id,
+        $checkout = $this->postJson('/txapi/orders/' . $tradeNo . '/checkout', [
+            'method' => $payment->id,
         ], $headers);
-        $this->assertSame(200, $checkout->status(), 'Checkout rejected: ' . (string) $checkout->json('message'));
-        $checkout->assertJsonPath('type', 1);
-        $this->assertStringContainsString('payment.invalid/submit.php?', (string) $checkout->json('data'));
+        $checkout->assertOk()->assertJsonPath('data.type', 1);
+        $this->assertStringContainsString('payment.invalid/submit.php?', (string) $checkout->json('data.data'));
         $this->assertSame((int) $payment->id, (int) $order->fresh()->payment_id);
 
         $payload = [
@@ -125,7 +124,7 @@ class CorePurchaseTrafficJourneyTest extends TestCase
         ksort($payload);
         $payload['sign'] = md5(stripslashes(urldecode(http_build_query($payload))) . 'p0b-test-only-secret');
         $payload['sign_type'] = 'MD5';
-        $endpoint = '/api/v1/guest/payment/notify/EPay/' . $payment->uuid;
+        $endpoint = '/txapi/payment/webhook/EPay/' . $payment->uuid;
 
         $this->post($endpoint, $payload)->assertOk()->assertSeeText('success');
         $this->assertSame(Order::STATUS_PROCESSING, (int) $order->fresh()->status);
@@ -148,19 +147,21 @@ class CorePurchaseTrafficJourneyTest extends TestCase
             'host' => '127.0.0.1', 'port' => '443', 'server_port' => 443,
             'rate' => 2, 'group_ids' => ['1'], 'show' => true, 'enabled' => true,
         ]);
-        $this->getJson('/api/v1/user/server/fetch', $headers)
+        $this->getJson('/txapi/me/nodes', $headers)
             ->assertOk()->assertJsonPath('data.0.id', $server->id);
-        $this->postJson('/api/v2/server/handshake', [
-            'token' => 'p0b-node-secret', 'node_id' => $server->id,
-        ])->assertOk()->assertJsonPath('websocket.enabled', false);
+        $nodeHeaders = [
+            'Authorization' => 'Bearer p0b-node-secret',
+            'X-TX-Node-ID' => (string) $server->id,
+        ];
+        $this->postJson('/txapi/node/v1/handshake', [], $nodeHeaders)
+            ->assertOk()->assertJsonPath('data.websocket.enabled', false);
 
         $report = [
-            'token' => 'p0b-node-secret', 'node_id' => $server->id,
-            'traffic_batch_id' => 'p0b-traffic-0001',
+            'protocol_version' => 1, 'traffic_batch_id' => 'p0b-traffic-0001',
             'traffic' => [$user->id => [100, 300]],
         ];
-        $this->postJson('/api/v2/server/report', $report)
-            ->assertOk()->assertJsonPath('data', true);
+        $this->postJson('/txapi/node/v1/report', $report, $nodeHeaders)
+            ->assertStatus(202)->assertJsonPath('data.settlement', 'queued');
         $jobs = Bus::dispatched(TrafficBatchJob::class);
         $this->assertCount(1, $jobs);
         $jobs->first()->handle();
@@ -174,7 +175,7 @@ class CorePurchaseTrafficJourneyTest extends TestCase
         $this->assertSame(400, (int) ($server->fresh()->u + $server->fresh()->d));
         $this->assertSame(1, DB::table('v2_stat_server')->where('server_id', $server->id)->count());
 
-        $this->getJson('/api/v1/user/order/check?trade_no=' . rawurlencode($tradeNo), $headers)
-            ->assertOk()->assertJsonPath('data', Order::STATUS_COMPLETED);
+        $this->getJson('/txapi/orders/' . rawurlencode($tradeNo), $headers)
+            ->assertOk()->assertJsonPath('data.status', Order::STATUS_COMPLETED);
     }
 }
