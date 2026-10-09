@@ -3,6 +3,7 @@
 use App\Http\Controllers\Txapi\Admin\AuditLogController;
 use App\Http\Controllers\Txapi\Admin\CommerceReadController;
 use App\Http\Controllers\Txapi\Admin\TicketAdminController;
+use App\Http\Controllers\Txapi\Admin\ContentAdminController;
 use App\Http\Controllers\Txapi\AccountController;
 use App\Http\Controllers\Txapi\ServerController;
 use App\Http\Controllers\Txapi\TrafficController;
@@ -53,6 +54,21 @@ Route::prefix('admin/{admin_path}')
         Route::get('tickets/{id}', [TicketAdminController::class, 'show'])->whereNumber('id');
         Route::post('tickets/{id}/reply', [TicketAdminController::class, 'reply'])->whereNumber('id');
         Route::post('tickets/{id}/close', [TicketAdminController::class, 'close'])->whereNumber('id');
+        Route::get('content/notices', [ContentAdminController::class, 'notices']);
+        Route::post('content/notices', [ContentAdminController::class, 'saveNotice']);
+        Route::put('content/notices/sort', [ContentAdminController::class, 'sortNotices']);
+        Route::get('content/notices/{id}', [ContentAdminController::class, 'notice'])->whereNumber('id');
+        Route::put('content/notices/{id}', [ContentAdminController::class, 'saveNotice'])->whereNumber('id');
+        Route::patch('content/notices/{id}/visibility', [ContentAdminController::class, 'showNotice'])->whereNumber('id');
+        Route::delete('content/notices/{id}', [ContentAdminController::class, 'deleteNotice'])->whereNumber('id');
+        Route::get('content/knowledge', [ContentAdminController::class, 'knowledge']);
+        Route::post('content/knowledge', [ContentAdminController::class, 'saveArticle']);
+        Route::get('content/knowledge/categories', [ContentAdminController::class, 'categories']);
+        Route::put('content/knowledge/sort', [ContentAdminController::class, 'sortArticles']);
+        Route::get('content/knowledge/{id}', [ContentAdminController::class, 'article'])->whereNumber('id');
+        Route::put('content/knowledge/{id}', [ContentAdminController::class, 'saveArticle'])->whereNumber('id');
+        Route::patch('content/knowledge/{id}/visibility', [ContentAdminController::class, 'showArticle'])->whereNumber('id');
+        Route::delete('content/knowledge/{id}', [ContentAdminController::class, 'deleteArticle'])->whereNumber('id');
     });
 
 Route::middleware('throttle:10,1')->group(function () {
