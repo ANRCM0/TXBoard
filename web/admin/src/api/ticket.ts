@@ -1,5 +1,4 @@
-import { apiClient } from './client'
-import { unwrap } from '../lib/api'
+import { nativeApiClient, nativeAdminPath, type NativeApiEnvelope } from './client'
 import type { AdminUser } from './user-admin'
 
 export type TicketMessage = {
@@ -42,29 +41,56 @@ export async function getTickets(payload: {
 }) {
   const current = payload.current ?? 1
   const pageSize = payload.pageSize ?? 10
-  const { data } = await apiClient.post<{ data?: TicketItem[]; total?: number }>('/ticket/fetch', payload)
-  const rows = Array.isArray(data?.data) ? data.data : []
-  const total = Number(data?.total || 0)
+  if (payload.reply_status && payload.reply_status.length !== 1) {
+    throw new Error('Native tickets require a single reply status filter')
+  }
+  const { data: envelope } = await nativeApiClient.get<NativeApiEnvelope<TicketItem[]>>(
+    nativeAdminPath('tickets'),
+    { params: {
+      page: current, per_page: pageSize,
+      ...(payload.status !== undefined ? { status: payload.status } : {}),
+      ...(payload.email ? { email: payload.email } : {}),
+      ...(payload.reply_status?.length ? { reply_status: payload.reply_status[0] } : {}),
+    } },
+  )
+  if (!envelope?.request_id || !Array.isArray(envelope.data) || !envelope.meta ||
+      !Number.isInteger(envelope.meta.total) || !Number.isInteger(envelope.meta.last_page)) {
+    throw new Error('Invalid native ticket list response')
+  }
   return {
-    data: rows,
-    total,
-    current_page: current,
-    per_page: pageSize,
-    last_page: Math.max(1, Math.ceil(total / pageSize)),
+    data: envelope.data,
+    total: envelope.meta.total,
+    current_page: envelope.meta.page,
+    per_page: envelope.meta.per_page,
+    last_page: envelope.meta.last_page,
   } satisfies TicketPageResult
 }
 
+function ticketResource(id: number) {
+  if (!Number.isSafeInteger(id) || id < 1) throw new Error('Invalid ticket ID')
+  return `${nativeAdminPath('tickets')}/${id}`
+}
+
 export async function getTicketDetail(id: number) {
-  const { data } = await apiClient.get('/ticket/fetch', { params: { id } })
-  return unwrap<TicketDetail>(data)
+  const { data } = await nativeApiClient.get<NativeApiEnvelope<TicketDetail>>(ticketResource(id))
+  if (!data?.request_id || !data.data || !Array.isArray(data.data.messages)) {
+    throw new Error('Invalid native ticket detail response')
+  }
+  return data.data
 }
 
 export async function replyTicket(id: number, message: string) {
-  const { data } = await apiClient.post('/ticket/reply', { id, message })
-  return unwrap(data)
+  const { data } = await nativeApiClient.post<NativeApiEnvelope<{ ok: boolean }>>(
+    ticketResource(id) + '/reply', { message },
+  )
+  if (!data?.request_id || data.data?.ok !== true) throw new Error('Native ticket reply not acknowledged')
+  return true
 }
 
 export async function closeTicket(id: number) {
-  const { data } = await apiClient.post('/ticket/close', { id })
-  return unwrap(data)
+  const { data } = await nativeApiClient.post<NativeApiEnvelope<{ ok: boolean }>>(
+    ticketResource(id) + '/close',
+  )
+  if (!data?.request_id || data.data?.ok !== true) throw new Error('Native ticket closure not acknowledged')
+  return true
 }
