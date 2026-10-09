@@ -87,6 +87,11 @@ class NodeWorker
             foreach (NodeRegistry::getConnectedNodeIds() as $nodeId) {
                 $conn = NodeRegistry::get($nodeId);
                 if ($conn) {
+                    if (!empty($conn->txnodeNative)
+                        && time() - (int) ($conn->lastPongAt ?? 0) >= NodeSyncService::WS_TTL_SECONDS) {
+                        $conn->close();
+                        continue;
+                    }
                     $oid = spl_object_id($conn);
                     if (!isset($seen[$oid])) {
                         $seen[$oid] = true;
@@ -100,6 +105,11 @@ class NodeWorker
             foreach (NodeRegistry::getConnectedMachineIds() as $machineId) {
                 $conn = NodeRegistry::getMachine($machineId);
                 if ($conn) {
+                    if (!empty($conn->txnodeNative)
+                        && time() - (int) ($conn->lastPongAt ?? 0) >= NodeSyncService::WS_TTL_SECONDS) {
+                        $conn->close();
+                        continue;
+                    }
                     $oid = spl_object_id($conn);
                     if (!isset($seen[$oid])) {
                         $seen[$oid] = true;
@@ -186,7 +196,9 @@ class NodeWorker
                     $conn->close();
                     continue;
                 }
-                if (!empty($conn->txnodeNative)) {
+                if (!empty($conn->txnodeNative) && empty($conn->machineId)) {
+                    // Machine sockets use their machine token (checked in
+                    // the machine reconciliation above), not server_token.
                     $configured = (string) admin_setting('server_token', '');
                     if ($configured === '' ||
                         !hash_equals((string) ($conn->txnodeCredentialHash ?? ''),
