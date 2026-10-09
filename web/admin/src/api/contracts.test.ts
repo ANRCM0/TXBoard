@@ -28,7 +28,7 @@ import {
 } from './content'
 import { getUsers, getUserDetail, getUserSubscriptionLink, resetUserSecret, destroyUser, banUsers, updateUser, generateUser, sendUsersMail } from './user-admin'
 import { copyNode, generateSecret, getProtocolDefinitions, getNodes, saveNode, updateNode, batchUpdateNodes, saveNodeOrder, deleteNode } from './server'
-import { resolvePluginAppUrl } from './plugin'
+import { resolvePluginAppUrl, resolvePluginCrudApiPath, fetchPluginCrudList, savePluginCrudRecord } from './plugin'
 import { getThemes, getThemeConfig, saveThemeConfig, deleteTheme, uploadTheme } from './theme'
 import { getAgentTokens, createAgentToken, revokeAgentToken, getAgentAbilities, getAgentActions, approveAgentAction, rejectAgentAction, getAgentFleetHealth, getAgentInspections, runAgentInspection, getAgentSupportReplies, approveAgentSupportReply, rejectAgentSupportReply } from './agent'
 import { getPlugins, installPlugin, uninstallPlugin, enablePlugin, disablePlugin, upgradePlugin, deletePlugin, getPluginConfig, updatePluginConfig, uploadPlugin } from './plugin'
@@ -1349,5 +1349,20 @@ describe('strict native administrator closeout contracts', () => {
     ])
     expect(seen[0].baseURL).toBe('/txapi')
     expect(JSON.parse(String(seen[0].data)).user_ids).toEqual([2, 3])
+  })
+})
+
+describe('plugin-owned boundary remains separate from legacy V2 admin', () => {
+  it('accepts explicit plugin routes but rejects retired admin and external paths', async () => {
+    expect(resolvePluginCrudApiPath('demo', 'items', 'list', {
+      api: { list: '/plugin/demo/items', save: '/plugin/demo/items' },
+    })).toBe('/plugin/demo/items')
+    expect(resolvePluginCrudApiPath('demo', 'items', 'list', {
+      api: { list: '/api/v2/secure/user/fetch' },
+    })).toBeNull()
+    await expect(fetchPluginCrudList('/api/v2/secure/module')).rejects
+      .toThrow('Plugin API must use a plugin-owned path')
+    await expect(savePluginCrudRecord('/admin/secure/users', { id: 1 })).rejects
+      .toThrow('Plugin API must use a plugin-owned path')
   })
 })
