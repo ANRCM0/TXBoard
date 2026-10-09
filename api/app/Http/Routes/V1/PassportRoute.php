@@ -16,6 +16,7 @@ class PassportRoute
             $router->post('/auth/register', [AuthController::class, 'register']);
             $router->post('/auth/login', [AuthController::class, 'login']);
             // Comm
+            $router->post('/comm/sendEmailVerify', [CommController::class, 'sendEmailVerify']);
             $router->post('/comm/pv', [CommController::class, 'pv']);
         });
     }
