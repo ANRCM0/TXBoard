@@ -1,5 +1,5 @@
 import { nativeApi, nativeRequest, type NativeEnvelope } from './client'
-import { fetchPaymentMethods, type PaymentMethod } from './order'
+import type { PaymentMethod } from './order'
 
 export type Recharge = {
   trade_no: string
@@ -44,7 +44,14 @@ export async function getWalletBalance(): Promise<{ balance_minor: number; commi
 }
 
 export async function getRechargeMethods(): Promise<PaymentMethod[]> {
-  return fetchPaymentMethods()
+  const methods = await nativeRequest<PaymentMethod[]>(
+    nativeApi.get('/billing/recharge-payment-methods'),
+  )
+  if (!Array.isArray(methods) || methods.some(m =>
+    !Number.isSafeInteger(m.id) || m.id < 1 || !['EPay','AlipayF2F'].includes(m.payment))) {
+    throw new Error('Invalid TXAPI recharge payment methods')
+  }
+  return methods
 }
 
 export async function createRecharge(amountMinor: number, methodId: number, idempotencyKey: string): Promise<Recharge> {
