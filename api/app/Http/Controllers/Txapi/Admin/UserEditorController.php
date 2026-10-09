@@ -104,7 +104,12 @@ final class UserEditorController
                 $changes['email'] = $email;
             }
             if (array_key_exists('plan_id', $changes)) {
-                if ($changes['plan_id'] !== null) {
+                // The editor sends the current plan on every save. Do not
+                // silently rewrite a manually assigned group if unchanged.
+                if ($changes['plan_id'] === null && $user->plan_id === null ||
+                    $changes['plan_id'] !== null && (int) $changes['plan_id'] === (int) $user->plan_id) {
+                    unset($changes['plan_id']);
+                } elseif ($changes['plan_id'] !== null) {
                     $plan = Plan::findOrFail((int) $changes['plan_id']);
                     $changes['group_id'] = $plan->group_id;
                 } else {
