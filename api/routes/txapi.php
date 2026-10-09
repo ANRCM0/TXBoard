@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Txapi\Admin\AuditLogController;
 use App\Http\Controllers\Txapi\AccountController;
 use App\Http\Controllers\Txapi\ServerController;
 use App\Http\Controllers\Txapi\TrafficController;
@@ -37,6 +38,15 @@ Route::match(['get', 'post'], 'payment/webhook/{method}/{uuid}',
 
 // Only TXBoard native endpoints live here. No legacy controllers, no
 // BFF/Agent/Node/webhook wildcard proxying and no guessed Gateway behavior.
+// First native React Admin read domain. The dynamic admin path is validated
+// before authorization, preserving the legacy AdminPath 404 invariant.
+// Do not open this namespace to ordinary user, node or agent bearer tokens.
+Route::prefix('admin/{admin_path}')
+    ->middleware(['admin.path', 'admin', 'log', 'throttle:120,1'])
+    ->group(function () {
+        Route::get('audit-logs', [AuditLogController::class, 'index']);
+    });
+
 Route::middleware('throttle:10,1')->group(function () {
     Route::post('auth/login', [AuthController::class, 'login']);
     Route::post('auth/register', [AuthController::class, 'register']);
