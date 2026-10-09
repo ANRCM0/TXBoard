@@ -21,6 +21,12 @@
 
 Hono Gateway 独立的 [TXAPI BFF Target](txapi-bff-target-v1.md) 保留 `{ok,data,meta}` 的 v1 SDK envelope，和 Laravel 原生响应不同。
 
+## P3-A3 Native checkout & shared provider invocation
+
+- `POST /txapi/orders/{tradeNo}/checkout` 使用 owner-scoped 行锁、统一手续费与网关配置，返回 native `{data:{type,data},request_id}`。免费单走已有 paid 状态机；付费单在锁提交后调支付提供方，并继续使用默认旧 webhook URL。
+- 旧 `POST /api/v1/user/order/checkout` 保留原始 `{type,data}` 形态，但与 native 共享相同 OrderCheckout 服务。余额、券、账期已在订单创建时计算，不允许浏览器提交应付金额。
+- 新路径只有 CI/模拟验证，不代表支付沙箱签名真实接入已经执行。
+
 ## P3-B Native provider callback path (code shipped, rollout disabled)
 
 - `GET/POST /txapi/payment/webhook/{method}/{uuid}` 与旧 `/api/v1/guest/payment/notify/{method}/{uuid}` 调用同一验签/订单落库领域服务。provider 回调只返回原始 ACK 文本/自定义 ACK，不使用 JSON envelope。无签名、错误金额、错商户和冲突 callback 返回非 2xx。

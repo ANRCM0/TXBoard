@@ -48,6 +48,7 @@ Route::middleware(['txapi.user', 'throttle:120,1'])->group(function () {
     Route::post('billing/coupons/check', [BillingController::class, 'checkCoupon']);
     Route::post('orders', [BillingController::class, 'createOrder']);
     Route::post('orders/{tradeNo}/cancel', [BillingController::class, 'cancelOrder']);
+    Route::post('orders/{tradeNo}/checkout', [BillingController::class, 'checkout']);
     Route::get('orders', [AccountController::class, 'orders']);
     Route::get('orders/{tradeNo}', [AccountController::class, 'order']);
 });

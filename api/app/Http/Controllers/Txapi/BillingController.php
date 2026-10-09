@@ -120,6 +120,29 @@ final class BillingController
         return TxapiResponse::success($request, ['trade_no' => $order->trade_no], status: 201);
     }
 
+    public function checkout(Request $request, string $tradeNo): JsonResponse
+    {
+        $params = $request->validate([
+            'method' => ['sometimes', 'nullable', 'integer', 'min:1'],
+            'token' => ['sometimes', 'nullable', 'string', 'max:2048'],
+        ]);
+        try {
+            $result = app(\App\Domains\Billing\OrderCheckout::class)->start(
+                (int) Auth::guard('sanctum')->id(), $tradeNo,
+                isset($params['method']) ? (int) $params['method'] : null,
+                $params['token'] ?? null
+            );
+        } catch (ApiException $e) {
+            $status = in_array((int) $e->getCode(), [404, 409, 422, 502], true)
+                ? (int) $e->getCode() : 409;
+            return TxapiResponse::error($request, $status === 404 ? 'NOT_FOUND'
+                : ($status === 422 ? 'PAYMENT_METHOD_INVALID'
+                : ($status === 502 ? 'GATEWAY_FAILED' : 'ORDER_CONFLICT')),
+                'Checkout could not be completed', $status);
+        }
+        return TxapiResponse::success($request, $result);
+    }
+
     public function cancelOrder(Request $request, string $tradeNo): JsonResponse
     {
         $order = Order::query()->where('user_id', Auth::guard('sanctum')->id())
