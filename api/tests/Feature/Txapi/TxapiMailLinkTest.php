@@ -54,6 +54,24 @@ class TxapiMailLinkTest extends TestCase
             ->assertOk()->assertJsonPath('data.email', $user->email);
     }
 
+    public function test_disposable_code_cannot_be_consumed_while_another_worker_holds_its_lock(): void
+    {
+        $user = $this->user('concurrent-redeem@example.test');
+        $code = bin2hex(random_bytes(16));
+        Cache::put(CacheKey::get('TEMP_TOKEN', $code), $user->id, 300);
+        $lock = Cache::lock('mail-token-consume:' . hash('sha256', $code), 10);
+        $this->assertTrue($lock->get());
+        try {
+            $this->postJson('/txapi/auth/one-time-token', ['verify' => $code])
+                ->assertStatus(401)->assertJsonPath('error.code', 'TOKEN_INVALID');
+            $this->assertSame($user->id, Cache::get(CacheKey::get('TEMP_TOKEN', $code)));
+        } finally {
+            $lock->release();
+        }
+        $this->postJson('/txapi/auth/one-time-token', ['verify' => $code])->assertOk();
+        $this->postJson('/txapi/auth/one-time-token', ['verify' => $code])->assertStatus(401);
+    }
+
     public function test_invalid_banned_and_expired_tokens_are_denied(): void
     {
         $user = $this->user('mail-banned@example.test');
