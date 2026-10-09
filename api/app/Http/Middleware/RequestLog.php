@@ -44,6 +44,12 @@ class RequestLog
         return $response;
     }
 
+    /** @deprecated Shared with older middleware tests/extensions; use sanitizer directly. */
+    protected function redactSensitiveData(mixed $value, ?string $key = null): mixed
+    {
+        return AdminAuditSanitizer::redact($value, $key);
+    }
+
     private function resolveAction(string $path): string
     {
         // api/v2/{secure_path}/user/update → user.update
