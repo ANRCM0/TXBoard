@@ -65,11 +65,11 @@ class AgentSupportTest extends TestCase
 
         Sanctum::actingAs($admin);
         $secure = (string) admin_setting('secure_path', admin_setting('frontend_admin_path', hash('crc32b', config('app.key'))));
-        $this->getJson('/api/v2/'.$secure.'/agent/support/reply-requests')->assertOk()->assertJsonPath('data.0.message', 'We are looking into this');
-        $this->postJson('/api/v2/'.$secure.'/agent/support/reply-requests/approve', ['request_id' => $id])->assertOk()->assertJsonPath('data.status', 'succeeded');
+        $this->getJson('/txapi/admin/'.$secure.'/agents/support/reply-requests')->assertOk()->assertJsonPath('data.0.message', 'We are looking into this');
+        $this->postJson('/txapi/admin/'.$secure.'/agents/support/reply-requests/approve', ['request_id' => $id])->assertOk()->assertJsonPath('data.status', 'succeeded');
         $this->assertSame(2, TicketMessage::where('ticket_id', $ticket->id)->count());
         $this->assertDatabaseHas('v2_ticket', ['id' => $ticket->id, 'reply_status' => Ticket::REPLY_STATUS_REPLIED]);
-        $this->postJson('/api/v2/'.$secure.'/agent/support/reply-requests/approve', ['request_id' => $id])->assertUnprocessable();
+        $this->postJson('/txapi/admin/'.$secure.'/agents/support/reply-requests/approve', ['request_id' => $id])->assertUnprocessable();
         $this->assertSame(2, TicketMessage::where('ticket_id', $ticket->id)->count());
     }
 
@@ -84,10 +84,10 @@ class AgentSupportTest extends TestCase
         TicketMessage::create(['ticket_id' => $ticket->id, 'user_id' => $customer->id, 'message' => 'new info']);
         Sanctum::actingAs($admin);
         $secure = (string) admin_setting('secure_path', admin_setting('frontend_admin_path', hash('crc32b', config('app.key'))));
-        $this->postJson('/api/v2/'.$secure.'/agent/support/reply-requests/approve', ['request_id' => $id])->assertUnprocessable();
+        $this->postJson('/txapi/admin/'.$secure.'/agents/support/reply-requests/approve', ['request_id' => $id])->assertUnprocessable();
         $this->assertSame('pending', AgentSupportReplyRequest::where('request_id', $id)->firstOrFail()->status);
         $token->accessToken->delete();
-        $this->postJson('/api/v2/'.$secure.'/agent/support/reply-requests/approve', ['request_id' => $id])->assertUnprocessable();
+        $this->postJson('/txapi/admin/'.$secure.'/agents/support/reply-requests/approve', ['request_id' => $id])->assertUnprocessable();
     }
 
     public function test_restricted_node_token_cannot_be_issued_with_global_support_access(): void
@@ -100,7 +100,7 @@ class AgentSupportTest extends TestCase
             'host' => 'support.example.com', 'port' => '443', 'server_port' => 443,
             'group_ids' => [], 'route_ids' => [], 'protocol_settings' => [], 'show' => true,
         ]);
-        $this->postJson('/api/v2/'.$secure.'/agent/tokens/create', [
+        $this->postJson('/txapi/admin/'.$secure.'/agents/tokens', [
             'client_name' => 'unsafe-support', 'abilities' => [AgentAbility::SUPPORT_READ],
             'target_mode' => 'restricted', 'target_node_ids' => [$node->id],
         ])->assertUnprocessable()->assertJsonValidationErrors('target_scope');
