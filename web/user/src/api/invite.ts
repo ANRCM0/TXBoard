@@ -25,7 +25,7 @@ export async function transferCommission(transfer_amount: number) {
 }
 
 export async function withdrawCommission(payload:{withdraw_method:string;withdraw_account:string}) {
-  return request<null>(api.post('/user/ticket/withdraw', payload))
+  return nativeRequest<{ ok: boolean }>(nativeApi.post('/billing/withdrawals', payload))
 }
 
 export async function fetchInviteDetails(current = 1, pageSize = 10) {
