@@ -133,7 +133,7 @@ class TxapiAdminUserEditorTest extends TestCase
         $this->postJson($url, ['is_admin' => true])->assertStatus(422);
         $this->postJson($url, ['is_staff' => true])->assertStatus(422);
         $this->postJson($url, ['transfer_enable' => -1])->assertStatus(422);
-        $this->postJson($url, ['plan_id' => 999999])->assertStatus(404);
+        $this->postJson($url, ['plan_id' => 999999, 'expected_plan_id' => null])->assertStatus(404);
         $this->postJson($url, ['invite_user_email' => $account->email])->assertStatus(422);
         $this->postJson($url, ['password' => 'NewSecurePass789', 'banned' => true])
             ->assertOk();
