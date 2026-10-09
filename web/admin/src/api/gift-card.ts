@@ -99,8 +99,7 @@ export async function generateGiftCodes(payload: {
   expires_hours?: number
   max_usage?: number
 }) {
-  const { data } = await apiClient.post('/gift-card/generate-codes', payload)
-  return unwrap<{ batch_id?: string; count?: number }>(data)
+  return unwrapNative<{ batch_id?: string; count?: number }>(nativeApiClient.post(nativeAdminPath('gift-cards') + '/codes/batches', payload))
 }
 
 export async function getGiftCodes(params: {
@@ -115,13 +114,11 @@ export async function getGiftCodes(params: {
 }
 
 export async function toggleGiftCode(id: number, action: 'disable' | 'enable') {
-  const { data } = await apiClient.post('/gift-card/toggle-code', { id, action })
-  return unwrap(data)
+  return unwrapNative(nativeApiClient.patch(nativeAdminPath('gift-cards') + `/codes/${id}/toggle`, { action }))
 }
 
 export async function updateGiftCode(id: number, payload: { expires_at?: number | null; max_usage?: number; status?: number }) {
-  const { data } = await apiClient.post('/gift-card/update-code', { id, ...payload })
-  return unwrap(data)
+  return unwrapNative(nativeApiClient.patch(nativeAdminPath('gift-cards') + `/codes/${id}`, payload))
 }
 
 export async function deleteGiftCode(id: number) {
