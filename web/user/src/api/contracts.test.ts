@@ -1,6 +1,6 @@
 import type { AxiosRequestConfig } from 'axios'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { login } from './auth'
+import { login, logout } from './auth'
 import { api, nativeApi, nativeRequest, clearAuthData, getAuthData, request, saveAuthData } from './client'
 import { fetchGuestConfig } from './comm'
 
@@ -102,6 +102,17 @@ describe('guest config adapter contract', () => {
   })
 })
 
+
+describe('native sign-out reliability', () => {
+  it('clears credentials even when the server-side revoke cannot be reached', async () => {
+    saveAuthData('temporary-token')
+    nativeApi.defaults.adapter = async () => {
+      throw new Error('network unavailable')
+    }
+    await expect(logout()).resolves.toBeUndefined()
+    expect(getAuthData()).toBe('')
+  })
+})
 
 describe('P1-B safe auth key migration and native API client', () => {
   it('transfers an existing legacy bearer to the native key without logging out', () => {

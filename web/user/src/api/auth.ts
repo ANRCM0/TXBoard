@@ -64,9 +64,10 @@ export async function telegramLogin(payload: Record<string, unknown>, endpoint: 
 export async function logout() {
   try {
     await nativeRequest<{ ok: boolean }>(nativeApi.post('/auth/logout'))
+  } catch {
+    // Server revocation is best effort if offline. Avoid leaving the UI stuck
+    // in an authenticated state when local credentials are already discarded.
   } finally {
-    // A network failure cannot keep the local session open. Other server-side
-    // tokens can be revoked through the session-management UI.
     clearAuthData()
   }
 }
