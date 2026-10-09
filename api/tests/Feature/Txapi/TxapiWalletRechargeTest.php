@@ -20,6 +20,9 @@ class TxapiWalletRechargeTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        // Rate limits are exercised separately; financial validation tests
+        // must not exhaust the 10/minute HTTP creation throttle.
+        $this->withoutMiddleware(\Illuminate\Routing\Middleware\ThrottleRequests::class);
         Plugin::create([
             'name' => 'EPay', 'code' => 'epay', 'type' => 'payment',
             'version' => '1.0.0', 'is_enabled' => true, 'config' => '{}',
