@@ -274,36 +274,5 @@ export async function getMachineNodes(machineId: number) {
   return unwrap<NodeItem[]>(data) || []
 }
 
-export async function getGroups() {
-  const { data } = await apiClient.get('/server/group/fetch')
-  return unwrap<GroupItem[]>(data) || []
-}
-export async function saveGroup(payload: Partial<GroupItem>) {
-  const { data } = await apiClient.post('/server/group/save', payload)
-  return unwrap(data)
-}
-export async function deleteGroup(id: number) {
-  const { data } = await apiClient.post('/server/group/drop', { id })
-  return unwrap(data)
-}
-
-export async function getRoutes() {
-  const { data } = await apiClient.get('/server/route/fetch')
-  return unwrap<RouteItem[]>(data) || []
-}
-export async function saveRoute(payload: Partial<RouteItem>) {
-  const { data } = await apiClient.post('/server/route/save', payload)
-  return unwrap(data)
-}
-export async function deleteRoute(id: number) {
-  const { data } = await apiClient.post('/server/route/drop', { id })
-  return unwrap(data)
-}
-export async function sortRoutes(items: Array<{ id: number; sort: number }>) {
-  const { data } = await apiClient.post('/server/route/sort', items)
-  return unwrap(data)
-}
-export async function simulateRoute(nodeId: number, target: string) {
-  const { data } = await apiClient.post('/server/route/simulate', { node_id: nodeId, target })
-  return unwrap<RouteSimulationResult>(data)
-}
+export { getGroups, saveGroup, deleteGroup } from './server-groups'
+export { getRoutes, saveRoute, deleteRoute, sortRoutes, simulateRoute } from './server-routes'
