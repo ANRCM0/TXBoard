@@ -79,6 +79,7 @@ Route::prefix('admin/{admin_path}')
         Route::patch('gift-cards/codes/{id}/toggle', [GiftCardAdminController::class, 'toggle'])->whereNumber('id');
         Route::patch('gift-cards/codes/{id}', [GiftCardAdminController::class, 'editCode'])->whereNumber('id');
         Route::get('gift-cards/codes', [GiftCardAdminController::class, 'codes']);
+        Route::get('gift-cards/statistics', [GiftCardAdminController::class, 'statistics']);
         Route::get('gift-cards/usages', [GiftCardAdminController::class, 'usages']);
         Route::delete('gift-cards/codes/{id}', [GiftCardAdminController::class, 'deleteCode'])->whereNumber('id');
         Route::get('coupons', [CouponAdminController::class, 'index']);
