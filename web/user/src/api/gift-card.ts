@@ -84,7 +84,7 @@ export async function fetchGiftCardDetail(id: number) {
 }
 
 export async function fetchGiftCardHistory(params: { page?: number; per_page?: number } = {}) {
-  return request<{
+  return nativeRequest<{
     data: GiftCardHistoryItem[]
     pagination: {
       current_page: number
