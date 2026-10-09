@@ -39,7 +39,7 @@ class CorePurchaseTrafficJourneyTest extends TestCase
             'version' => '1.0.0', 'is_enabled' => true, 'config' => '{}',
         ]);
         $payment = Payment::create([
-            'uuid' => 'p0b_epay_gateway_0000000000000001',
+            'uuid' => 'p0b_epay_gateway_00000000000001',
             'payment' => 'EPay', 'name' => 'Synthetic EPay',
             'enable' => true,
             'config' => ['pid' => 'p0b-merchant', 'key' => 'p0b-test-only-secret',
