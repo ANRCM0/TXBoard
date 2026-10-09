@@ -81,7 +81,6 @@ async function followPayment(tradeNo:string){
     pollTimer=window.setTimeout(()=>void tick(),3000)
   }
   await tick()
-  if(pollTimer===null)pollTimer=window.setTimeout(()=>void tick(),3000)
 }
 
 async function payRecharge(item:Recharge){
