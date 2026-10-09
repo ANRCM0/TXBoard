@@ -12,7 +12,9 @@ use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 /**
- * Comparable synthetic CI data only. No network QPS, production load,
+ * Native TXAPI synthetic read baseline (v2). Deliberately not comparable to
+ * the historical V1 API's latency, schema, pagination or SQL behaviour.
+ * No network QPS, production load,
  * queue lag, real user traffic or SLA conformance is implied.
  */
 class P0ReadPathBaselineTest extends TestCase
@@ -58,8 +60,8 @@ class P0ReadPathBaselineTest extends TestCase
             if ($counting) $queryCount++;
         });
         $routes = [
-            'public_plans' => '/api/v1/guest/plan/fetch',
-            'user_orders' => '/api/v1/user/order/fetch',
+            'public_plans' => '/txapi/plans',
+            'user_orders' => '/txapi/orders?per_page=20',
         ];
         $results = [];
         foreach ($routes as $name => $path) {
@@ -97,8 +99,8 @@ class P0ReadPathBaselineTest extends TestCase
         }
 
         $report = [
-            'schema_version' => 1,
-            'kind' => 'synthetic_ci_in_process_read_only_baseline',
+            'schema_version' => 2,
+            'kind' => 'native_txapi_ci_in_process_read_only_baseline',
             'db_driver' => DB::getDriverName(),
             'fixtures' => ['users' => 1, 'plans' => 1, 'orders' => 30],
             'warmups_per_route' => 3,
