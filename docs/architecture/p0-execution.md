@@ -39,6 +39,16 @@
 - 导出不读取用户/订单/支付记录，不包含数据库名称、连接参数、默认值、表行数或业务数据。生产 schema 只能在经授权的受控环境采集。
 - 两份工件都只是 P0-A 自动化辅助证据，不是来源授权、真实消费者清单或迁移批准；不得以候选 owner 替代人工核验。
 
+## P0-B 第一批：隔离业务链路与合成 SQL 读性能
+
+- CorePurchaseTrafficJourneyTest 在本地/CI 应用内，使用真实 Laravel HTTP 入口、数据库写入与测试 EPay 插件，覆盖密码登录、下单、生成外部支付 URL、签名通知、重复通知、OrderHandleJob 履约、可见节点、节点握手、HTTP 流量批次上报以及 TrafficBatchJob 去重与账户/节点/统计账本核验。
+- 支付商户和交易通知为**合成测试数据**；测试不会请求第三方支付域名。队列通过 Bus::fake 捕获，再显式执行任务，不代表真实 Redis Horizon/Worker 交付。节点交互是 Laravel HTTP 模拟客户端，不代表真正 TX-Node 互通。
+- P0ReadPathBaselineTest 使用 1 名合成用户、1 个套餐、30 条订单；分别对公开套餐列表与用户订单列表执行 3 次热身、20 次测量，在 MySQL CI 导出 p50/p95/p99 响应时长和 SQL 查询数分布。文件只含预定义操作名、合成样本数量与指标，不导出 SQL 文本、数据库连接、令牌或业务记录。
+- 新增 MySQL CI 附件 txboard-p0b-synthetic-mysql-read-path；这些是同一 CI 环境内的**合成应用内性能观测数据**，**不是生产负载/QPS、真实网关端到端延迟、SLA 或性能优化效果**；不同 Runner 的毫秒值不可直接比较。
+- SQLite 快速回归与 MySQL 8.4 CI 双运行核心旅程；脚本没有修改线上交易服务、节点服务或数据库迁移。
+
+**未完成的 P0-B 出口：** 隔离真实 TX-Node / 真实 Redis Horizon 与支付沙箱的联调；真正请求链路的 p95/p99 与 SQL EXPLAIN、Redis/队列延迟、MySQL 锁等待、CPU/内存、故障注入及恢复演练仍需额外环境和人工批准。
+
 ## P0 还没有完成的事项
 
 - **P0-A：** 对每个路由逐条确认真实消费者、Owner、风险、第三方代码 provenance、迁移窗口和业务回滚负责人；整理 Controller/Service/Model/Migration 双向调用关系及数据库字段字典。

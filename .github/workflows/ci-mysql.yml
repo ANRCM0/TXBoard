@@ -93,6 +93,20 @@ jobs:
           path: api/artifacts/p0-schema.json
           if-no-files-found: warn
           retention-days: 14
+      - name: P0-B synthetic MySQL HTTP-to-worker journey
+        run: php artisan test tests/Feature/Journey/CorePurchaseTrafficJourneyTest.php
+      - name: P0-B synthetic MySQL read-path baseline
+        env:
+          P0_BASELINE_OUTPUT: ${{ github.workspace }}/api/artifacts/p0b-read-path-mysql.json
+        run: php artisan test tests/Feature/Performance/P0ReadPathBaselineTest.php
+      - name: Preserve P0-B synthetic benchmark artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: txboard-p0b-synthetic-mysql-read-path
+          path: api/artifacts/p0b-read-path-mysql.json
+          if-no-files-found: warn
+          retention-days: 14
       - name: MySQL settlement and order recovery regressions
         run: |
           php artisan test tests/Feature/Server/TrafficBatchSettlementTest.php
