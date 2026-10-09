@@ -12,6 +12,7 @@ import {
 } from './client'
 import { fetchSettings, saveSettings, testSendMail, setTelegramWebhook } from './config'
 import { getGroups, saveGroup, deleteGroup, getRoutes, saveRoute, sortRoutes, simulateRoute, deleteRoute } from './server'
+import { getMachines, saveMachine, getMachineCredentials, resetMachineToken, updateMachineRuntime, deleteMachine, getMachineNodes, getMachineHistory } from './server'
 import { getAuditLogs } from './statistics'
 import { getPlans, getOrders, savePlan, updatePlanFlags, deletePlan, sortPlans, getOrderDetail, markOrderPaid, cancelOrder } from './finance'
 import { getTickets, getTicketDetail, replyTicket, closeTicket } from './ticket'
@@ -1049,5 +1050,64 @@ describe('native administrator mail template contract', () => {
     expect(JSON.parse(String(seen[2].data))).toEqual({ subject: 'Hi', content: '{{content}}' })
     expect(JSON.parse(String(seen[4].data))).toEqual({ email: 'admin@example.test' })
     expect(seen.every(config => config.baseURL === '/txapi')).toBe(true)
+  })
+})
+
+
+describe('native machine management contract', () => {
+  it('pages list and nodes through TXAPI with native metadata', async () => {
+    setAdminSecurePath('machine-admin')
+    responder = config => {
+      const page = Number((config.params as { page?: number })?.page)
+      return { data: {
+        data: page === 1 ? [{ id: 3, name: 'machine-3' }] : [{ id: 4, name: 'machine-4' }],
+        meta: { page, per_page: 100, total: 2, last_page: 2 },
+        request_id: 'machine-pages',
+      } }
+    }
+    await expect(getMachines()).resolves.toHaveLength(2)
+    await expect(getMachineNodes(3)).resolves.toHaveLength(2)
+    expect(seen.map(config => config.url)).toEqual([
+      '/admin/machine-admin/network-machines', '/admin/machine-admin/network-machines',
+      '/admin/machine-admin/network-machines/3/nodes', '/admin/machine-admin/network-machines/3/nodes',
+    ])
+    expect(seen.every(config => config.baseURL === '/txapi')).toBe(true)
+    expect(seen.map(config => (config.params as { page?: number }).page)).toEqual([1, 2, 1, 2])
+  })
+
+  it('creates, edits, reveals and rotates credentials without GET secrets', async () => {
+    setAdminSecurePath('machine-admin')
+    responder = config => ({ data: {
+      data: config.url?.endsWith('/credentials') || config.url?.endsWith('/token/rotate')
+        ? { token: 'machine-secret', install_command: 'install --token machine-secret' }
+        : config.url?.endsWith('/history') ? []
+          : config.url?.endsWith('/runtime/update')
+            ? { machine_id: 3, request_id: 'mup_test', target: 'latest', status: 'accepted' }
+            : config.method === 'post' ? { id: 3, token: 'new-token', install_command: 'install' }
+              : { ok: true },
+      request_id: 'machine-write',
+    } })
+
+    await saveMachine({ name: 'machine-3' })
+    await saveMachine({ id: 3, name: 'renamed' })
+    await expect(getMachineCredentials(3)).resolves.toHaveProperty('token', 'machine-secret')
+    await expect(resetMachineToken(3)).resolves.toHaveProperty('install_command')
+    await expect(updateMachineRuntime(3)).resolves.toHaveProperty('request_id', 'mup_test')
+    await getMachineHistory(3, 240, 6)
+    await deleteMachine(3)
+
+    expect(seen.map(config => [config.method, config.url])).toEqual([
+      ['post', '/admin/machine-admin/network-machines'],
+      ['put', '/admin/machine-admin/network-machines/3'],
+      ['post', '/admin/machine-admin/network-machines/3/credentials'],
+      ['post', '/admin/machine-admin/network-machines/3/token/rotate'],
+      ['post', '/admin/machine-admin/network-machines/3/runtime/update'],
+      ['get', '/admin/machine-admin/network-machines/3/history'],
+      ['delete', '/admin/machine-admin/network-machines/3'],
+    ])
+    expect(JSON.parse(String(seen[4].data))).toEqual({ target: 'latest' })
+    expect(seen[5].params).toEqual({ limit: 240, range_hours: 6 })
+    expect(seen.every(config => config.baseURL === '/txapi')).toBe(true)
+    expect(() => getMachineCredentials(0)).toThrow('Invalid machine ID')
   })
 })
