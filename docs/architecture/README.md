@@ -9,6 +9,7 @@
 
 - [P0 执行记录与基线](p0-execution.md) — 已实现的审计工具、兼容回归与剩余生产验收。
 - [P2 阶段验收记录](p2-completion.md) — P2-A–E 合并 PR、实际 TXAPI 路由、测试证据与未退役的兼容入口。
+- [P3 阶段验收记录](p3-completion.md) — 核心交易、双 webhook、共享 checkout、审计工件及支付商外部联调待验收项。
 
 
 1. [详细重构与开发方案](txboard-native-development-plan.md) — 架构、API、领域、优化、P0–P7、数据和发布。
