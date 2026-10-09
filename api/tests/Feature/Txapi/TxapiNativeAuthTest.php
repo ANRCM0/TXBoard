@@ -46,6 +46,9 @@ class TxapiNativeAuthTest extends TestCase
         $sessionId = $sessions->json('data.0.id');
         $this->deleteJson('/txapi/auth/sessions/'.$sessionId, [], $headers)
             ->assertOk()->assertJsonPath('data.ok', true);
+        $this->assertFalse($user->tokens()->whereKey($sessionId)->exists(),
+            'Revoked session must be deleted from Sanctum persistence');
+        app('auth')->forgetGuards(); // a separate inbound request, not cached test guard
         $this->getJson('/txapi/me', $headers)->assertStatus(401);
     }
 
@@ -98,7 +101,11 @@ class TxapiNativeAuthTest extends TestCase
         $this->postJson('/txapi/auth/password', [
             'old_password' => 'P2StrongPassword2026', 'new_password' => 'NewPassword2026',
         ], ['Authorization' => $second])->assertOk()->assertJsonPath('data.ok', true);
+        $this->assertSame(1, $user->tokens()->count(),
+            'Password change must revoke every other persisted token');
+        app('auth')->forgetGuards();
         $this->getJson('/txapi/me', ['Authorization' => $first])->assertStatus(401);
+        app('auth')->forgetGuards();
         $this->getJson('/txapi/me', ['Authorization' => $second])->assertOk();
         $this->assertTrue(Hash::check('NewPassword2026', $user->fresh()->password));
     }
