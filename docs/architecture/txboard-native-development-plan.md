@@ -1,10 +1,10 @@
 # TXBoard Native — 独立化重构与优化开发方案
 
-> 日期：2026-10-09 · 方案 1.0 · 状态：**P0–P3 核心代码已落地；P3 外部验收及 P4–P7 仍待开发/验证**
+> 日期：2026-10-09 · 方案 1.0 · 状态：**P0–P4 TXBoard 服务端核心代码已落地；P3 支付商外部验收和 P4 TX-Node 双端联调待完成，P5–P7 仍待开发/验证**
 >
 > **唯一正式 API 根入口：`/txapi`。** 原有 `/api/v1`、`/api/v2` 只作为迁移兼容入口，确认所有支持的消费端升级后退役。
 >
-> 本方案持续记录已合并代码与目标施工路线；当前具体实现以 main 分支源码及已验证的 CURRENT contracts 为准。P2 交付与明确保留的旧业务路径见 [P2 验收记录](p2-completion.md) 和 [P3 验收记录](p3-completion.md)。
+> 本方案持续记录已合并代码与目标施工路线；当前具体实现以 main 分支源码及已验证的 CURRENT contracts 为准。P2 交付与明确保留的旧业务路径见 [P2 验收记录](p2-completion.md) 和 [P3 验收记录](p3-completion.md)、[P4 验收记录](p4-completion.md)。第一批兼容整理见 [Legacy Retirement Batch 1](legacy-retirement-batch-1.md)。
 
 ## 1. 改造目标、原则与非目标
 
@@ -30,7 +30,7 @@
 | `web/admin/src/api/client.ts` | /api/v2/{secure_path} | /txapi/admin/{secure_path}、动态轮换 |
 | `api/app/Services/PaymentService.php` | 支付通知 URL 硬编码 /api/v1 | 命名路由、老单通知兼容 |
 | `api/app/Http/Controllers/V1/User/OrderController.php` | 全量查询订单列表 | 服务端分页、筛选、稳定排序 |
-| `web/user/src/api/order.ts` | 浏览器端过滤/分页 | 标准分页与类型化 DTO |
+| `web/user/src/api/order.ts` | 订单列表已有服务端分页，但订单详情与轮询仍有 V1 调用 | 继续按端点迁移；详情补齐前保留旧入口 |
 | `api/app/Models/User.php`、`Plan.php`、`Order.php` | v2_* 表名和部分历史字段 | 隔离领域规则，DB 最后迁移 |
 | `api/app/Services/OrderService.php` | 订单、计价、返佣及结算逻辑集中 | 业务服务拆分、并发/幂等 |
 | `contracts/node-protocol/README.md` | /api/v2/server/* 是当前正式 Node 线协议 | 双边版本化协议 |
@@ -55,7 +55,7 @@
 | TX-Node | `/txapi/node/v1/*` | Node 身份和版本化协议 |
 | Agent Ops | `/txapi/agent/v1/*` | Agent 专用 abilities、target scope、审批 |
 | 插件/扩展 | `/txapi/extensions/{code}/v1/*` | host 权限 + 启停防护 |
-| 支付回调 | `/txapi/payment/webhooks/*` | 验签、重放检测和唯一结算 |
+| 支付回调（已实现，出站默认未切换） | `GET/POST /txapi/payment/webhook/{method}/{uuid}` | 验签、重放检测和唯一结算 |
  
 用户/Admin REST 不强制路径版本号；跨仓库 Node、Agent、Extension 协议必须有版本。任何新 HTTP 功能禁止注册在 /api/v1 或 /api/v2。不能把 secure_path 当成管理员鉴权；用户/管理员/节点/Agent token 不可互相提权。
 
@@ -183,7 +183,7 @@ API 兼容策略不是永久双轨；但在证据不足时宁可保留短期 ada
 - 建立独立 `/txapi/node/v1/*` 控制面；规范见 [Node Native Protocol v1](../../contracts/node-protocol/node-native-v1.md)。Bearer + Node-ID/Machine-ID 请求头、机器归属校验，不从 GET 查询参数获取 token。
 - 复用 ServerService、ProtocolRegistry、TrafficUsage、UserService 与 TrafficBatchJob；仅 `202 accepted/queued` 代表请求入队，不代表数据库账本结算。
 - HTTP ETag 优化配置/用户快照轮询；机器发现和基本运行状态仅机器 Token 可操作；既有 V1/V2/WS 入口全部保留。
-- 原生握手明确禁用 WebSocket（此版本只交付 HTTP polling）；TX-Node 适配、真实联调及生产滚动升级全部后置，不触碰 TX-Node 仓库。
+- **P4 初始 HTTP-only 交付说明（历史）**：当时握手不协商 WebSocket；随后 P4-D 已添加原生 WS 服务端。当前 WS 默认关闭，TX-Node 适配、真实联调及生产滚动升级仍后置。
 - SQLite/MySQL 协议回归测试验证未授权、跨机器、ETag、负流量、批次验证及入队语义。
 ## P3-A3 统一 Checkout 状态转移
 

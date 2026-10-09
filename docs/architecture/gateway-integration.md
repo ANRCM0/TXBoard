@@ -52,7 +52,7 @@ Browser → HTTPS ingress
 | `/txapi/admin/{secure_path}/*` | Laravel | Admin token/RBAC/audit，直连 |
 | `/txapi/node/v1/*` | Laravel | Node identity，直连 |
 | `/txapi/agent/v1/*` | Laravel | Agent ability/target/approval，直连 |
-| `/txapi/payment/webhooks/*` | Laravel | Provider 验签/幂等，直连 |
+| `/txapi/payment/webhook/{method}/{uuid}` | Laravel | Provider 验签/幂等，直连（原生回调 URL 默认不启用） |
 | `/txapi/extensions/*`、订阅链接、WebSocket | Laravel 或既有处理器 | 对应独立协议，直连 |
 
 这是一份**候选映射**，并未发明已存在的 Laravel 实现。原 Gateway 还有 notices、payment method display、subscription summary、dashboard stats、order status 和 secure auth 等操作，须逐一建 native upstream 契约后才能迁移，不允许猜测路径。

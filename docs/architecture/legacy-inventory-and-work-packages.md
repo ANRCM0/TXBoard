@@ -43,6 +43,10 @@
 | 用户订阅客户端 | 独立的订阅地址 | 逐客户端验证，不随意硬切 |
 | 第三方插件/主题 | Module/Plugin/Theme Package v1 | 显式兼容窗口/版本声明 |
 
+## 首批实施工作包
+
+详见 [Legacy Retirement Batch 1](legacy-retirement-batch-1.md)：LR-01 文档对齐、LR-02 原生用户端调用收敛、LR-03 页面冗余展示适配清理。**本批不退役任何公开 V1/V2 路由，也不提前移除浏览器旧令牌迁移。**
+
 ## 完整盘点记录格式
 
 ```text

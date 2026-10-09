@@ -1,6 +1,6 @@
-# TXAPI Contract v1（P1–P3 代码已实施 + P4–P7 目标）
+# TXAPI Contract v1（P1–P4 服务端代码已实施 + P5–P7 目标）
 
-**当前状态：** P1–P3 原生核心代码已合并 TXBoard main；已实施路由以 [P2 阶段验收记录](../../docs/architecture/p2-completion.md) 和 [P3 阶段验收记录](../../docs/architecture/p3-completion.md) 为准（部署需使用包含该代码的镜像，不代表线上已经更新）。本文件中未列为已实施的 Node/Agent/Plugin/Admin/Webhook/Gateway 等路径**仍是目标协议，不得按已上线接口调用**。原 `/api/v1`、`/api/v2` 等兼容入口必须保留。
+**当前状态（代码，不代表生产已切流）：** P1–P4 TXBoard 服务端代码已合并 main；当前入口以 `api/routes/txapi.php` 和 [P2](../../docs/architecture/p2-completion.md)、[P3](../../docs/architecture/p3-completion.md)、[P4](../../docs/architecture/p4-completion.md) 交付记录为准。原生 Node HTTP/WS 与支付 Webhook 服务端已实现，但 TX-Node 真实联调尚未执行，原生 WS 与新支付通知 URL 默认均关闭。Admin、Agent、Extensions、Gateway BFF 仍是 **TARGET** 而非已上线接口。原 `/api/v1`、`/api/v2` 兼容入口必须保留。
 
 ## Root: /txapi
 
@@ -14,10 +14,10 @@
 | Authentication | `/txapi/auth/*` | 验证码/反枚举/限流 |
 | User | `/txapi/me/*`、`/txapi/plans/*`、`/txapi/orders/*` | Sanctum user/ownership |
 | Admin | `/txapi/admin/{secure_path}/*` | Admin + dynamic path + RBAC + audit |
-| TX-Node | `/txapi/node/v1/*` | 独立 Node identity/protocol |
+| TX-Node (CURRENT server, no external interoperability signoff) | `/txapi/node/v1/*` (HTTP + native WS) | 独立 Node identity/protocol |
 | Agent Ops | `/txapi/agent/v1/*` | Agent abilities/scope/approval |
 | Extensions | `/txapi/extensions/{code}/v1/*` | Module enabled + permissions |
-| Payment webhook | `/txapi/payment/webhooks/*` | 签名 + 重放防护 + 幂等 |
+| Payment webhook (CURRENT handler, rollout off by default) | `GET/POST /txapi/payment/webhook/{method}/{uuid}` | 签名 + 重放防护 + 幂等 |
 
 Hono Gateway 独立的 [TXAPI BFF Target](txapi-bff-target-v1.md) 保留 `{ok,data,meta}` 的 v1 SDK envelope，和 Laravel 原生响应不同。
 
@@ -38,7 +38,7 @@ Hono Gateway 独立的 [TXAPI BFF Target](txapi-bff-target-v1.md) 保留 `{ok,da
 - `GET /txapi/billing/wallet` 只返回 balance_minor、commission_balance_minor；`GET /txapi/billing/commissions?page=&per_page=` 返佣入账记录的数据库分页和当前用户归属。
 - `GET /txapi/billing/payment-methods` 仅返回可用方式及不含配置密钥的固定白名单；`POST /txapi/billing/coupons/check` 返回 type 和 value_minor/percent。
 - `POST /txapi/orders`（plan_id、period、可选 coupon_code）创建并返回 trade_no；`POST /txapi/orders/{tradeNo}/cancel` 只允许所有者取消 pending 订单。订单核心状态、余额划转、券与返佣均委托同一 OrderService；新入口不会发明支付成功信号。
-- 支付 checkout/回调暂保留 V1 原有签名流程，待 P3-A3/P3-B 共享核心与提供方 contract 验证完成后切换。
+- P3-A3/P3-B 已实现原生 Checkout 与共用签名/幂等回调核心；旧 V1 仍可用，真实提供方切流和对账尚未验收。
 
 ## P2-E Native authentication
 
@@ -57,11 +57,11 @@ Hono Gateway 独立的 [TXAPI BFF Target](txapi-bff-target-v1.md) 保留 `{ok,da
 - `GET /txapi/me` 增加 uuid、balance_minor、commission_balance_minor、expired_at、telegram_id；所有字段为固定白名单，不返回私有订阅 token。
 - `GET /txapi/notices?page=&per_page=` 仅认证用户、仅 show 的公告、数据库分页/总数；公告日期使用 ISO UTC。
 - `GET /txapi/knowledge?language=&keyword=`、`/txapi/knowledge/categories`、`/txapi/knowledge/{articleId}` 认证用户专属，隐藏未公开文章；所有正文按当前用户的订阅有效性进行 gated content 替换和 subscribeUrl 插值。
-- 用户前端针对正文保留 DOMPurify；本阶段未实现新登录写接口和工单写接口。
+- 用户前端针对正文保留 DOMPurify；后续 P2-D/P2-E 已实现原生工单写入和普通登录/注册。
 
 ## P2-B 用户套餐页面适配
 
-Vue 套餐列表/详情现使用原生 /txapi/plans 和认证详情 /txapi/plans/{planId}；前端业务页 adapter 将 native 周期、整数价格、流量字节映射到现有 Vue 页面视图字段。旧订单创建、优惠券、checkout 保持旧 V1，并在结算阶段重复验证资格与金额。
+Vue 套餐列表/详情现使用原生 /txapi/plans 和认证详情 /txapi/plans/{planId}；前端业务页 adapter 将 native 周期、整数价格、流量字节映射到现有 Vue 页面视图字段。订单创建、优惠券验证、checkout 在后续 P3 已改为原生 TXAPI，并在结算阶段重复验证资格与金额。
 
 ## P2-A 已实施的套餐只读协议
 
@@ -72,13 +72,13 @@ Vue 套餐列表/详情现使用原生 /txapi/plans 和认证详情 /txapi/plans
 
 ## P1-B 首个页面已迁移
 
-Vue 用户订单列表现已直接使用 `GET /txapi/orders` 的服务端分页/状态过滤和原生响应。增加只读展示字段 type、plan{id,name}、paid_at（RFC3339 UTC 或 null）；旧 Vue UI 使用的金额/时间/周期格式仅在前端 adapter 转换。订单详情、创建、支付、取消仍使用旧 V1 路径；Admin 当前仍使用旧动态路由。
+Vue 用户订单列表现已直接使用 `GET /txapi/orders` 的服务端分页/状态过滤和原生响应。增加只读展示字段 type、plan{id,name}、paid_at（RFC3339 UTC 或 null）；旧 Vue UI 使用的金额/时间/周期格式仅在前端 adapter 转换。订单详情与付款状态轮询仍有旧 V1 调用（Batch 1 LR-02 迁移轮询）；订单创建、支付、取消已于 P3 转向原生；Admin 当前仍使用旧动态路由。
 
 ## P1-B 前端适配准备
 
 Vue User 与 React Admin 已引入隔离的 native HTTP 客户端和类型化 envelope；Vue 登录态优先读 `txboard_auth_data`、兼容迁移旧存储。业务 UI 仍通过 legacy adapters 请求它们尚未迁移的接口。新 /txapi DTO 尚未支持的字段不得伪造或从老 UI 偷偷兜底为假成功。
 
-## P1-A 当前已实现的协议冻结面
+## P1-A 历史基线（以下为 P1 时点快照，非当前功能清单）
 
 - **健康检查**：`GET /txapi/health` 无鉴权，不加载插件、数据库或 Redis。返回 `data.status=ok`。
 - **匿名只读**：`GET /txapi/public/config` 仅 name/api_prefix；`GET /txapi/plans` 输出 id/name/traffic_limit_bytes/prices[{period,amount_minor}]/renewable，排除隐藏、停卖或售罄套餐；不公开后台路径/插件秘钥。
