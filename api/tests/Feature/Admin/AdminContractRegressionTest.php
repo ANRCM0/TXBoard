@@ -146,7 +146,7 @@ class AdminContractRegressionTest extends TestCase
 
         admin_setting(['frontend_theme' => 'Xboard']);
 
-        $stale = $this->getJson("/api/v2/{$this->securePath}/theme/getThemes");
+        $stale = $this->getJson("/txapi/admin/{$this->securePath}/themes");
         $stale->assertOk();
         $this->assertSame('TXBoard', $stale->json('data.active'));
     }
