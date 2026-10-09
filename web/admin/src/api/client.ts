@@ -52,6 +52,15 @@ export function setAdminSecurePath(securePath: string) {
   apiClient.defaults.baseURL = buildAdminPrefix(value)
 }
 
+/** Native administrator operations must keep the instance-specific secure path. */
+export function nativeAdminPath(operation: 'audit-logs'): string {
+  // The stored value takes precedence over the injected initial setting after
+  // secure_path rotation. Never guess a constant path or fall back to /me.
+  const securePath = readStoredSecurePath() || String(runtimeSettings().secure_path || '').trim()
+  if (!securePath) throw new Error('Administrator secure path is unavailable')
+  return `/admin/${encodeURIComponent(securePath)}/${operation}`
+}
+
 export function clearAdminSecurePath() {
   try {
     localStorage.removeItem(ADMIN_SECURE_PATH_KEY)
