@@ -44,7 +44,7 @@ it('does not expose a blank editable form when loading settings fails', async ()
 })
 it('serializes saves and keeps newer edits while an earlier request completes', async () => {
   vi.mocked(fetchSettings).mockResolvedValue({ domains: ['old.example'] })
-  let finishFirst!: (value: unknown) => void
+  let finishFirst!: (value: boolean) => void
   vi.mocked(saveSettings).mockImplementationOnce(() => new Promise(resolve => { finishFirst = resolve })).mockResolvedValue(true)
   await mount()
   const input = host.querySelector('textarea')!

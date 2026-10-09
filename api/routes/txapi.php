@@ -14,6 +14,7 @@ use App\Http\Controllers\Txapi\Admin\PaymentSafetyController;
 use App\Http\Controllers\Txapi\Admin\QueueAdminController;
 use App\Http\Controllers\Txapi\Admin\CouponAdminController;
 use App\Http\Controllers\Txapi\Admin\MailTemplateAdminController;
+use App\Http\Controllers\Txapi\Admin\SettingsAdminController;
 use App\Http\Controllers\Txapi\Admin\PaymentManagementController;
 use App\Http\Controllers\Txapi\AccountController;
 use App\Http\Controllers\Txapi\ServerController;
@@ -60,6 +61,9 @@ Route::prefix('admin/{admin_path}')
     ->middleware(['admin.path', 'admin', 'log', 'throttle:120,1'])
     ->group(function () {
         Route::get('audit-logs', [AuditLogController::class, 'index']);
+        Route::get('settings', [SettingsAdminController::class, 'index']);
+        Route::get('settings/{group}', [SettingsAdminController::class, 'group']);
+        Route::post('settings', [SettingsAdminController::class, 'save']);
         Route::get('mail-templates', [MailTemplateAdminController::class, 'index']);
         Route::get('mail-templates/{name}', [MailTemplateAdminController::class, 'show']);
         Route::put('mail-templates/{name}', [MailTemplateAdminController::class, 'save']);

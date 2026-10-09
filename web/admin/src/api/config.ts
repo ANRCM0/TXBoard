@@ -1,11 +1,12 @@
-import { apiClient, setAdminSecurePath } from './client'
+import { apiClient, nativeApiClient, nativeAdminPath, unwrapNative, setAdminSecurePath, type NativeApiEnvelope } from './client'
 import { unwrap } from '../lib/api'
 
 export type Settings = Record<string, unknown>
 
 export async function fetchSettings(key: string) {
-  const { data } = await apiClient.get('/config/fetch', { params: { key } })
-  const payload = unwrap<Settings>(data) || {}
+  const payload = (await unwrapNative(nativeApiClient.get<NativeApiEnvelope<Settings>>(
+    nativeAdminPath('settings') + '/' + encodeURIComponent(key),
+  ))) || {}
   const scoped = payload[key]
   if (scoped && typeof scoped === 'object' && !Array.isArray(scoped)) {
     return scoped as Settings
@@ -14,7 +15,9 @@ export async function fetchSettings(key: string) {
 }
 
 export async function saveSettings(payload: Settings) {
-  const { data } = await apiClient.post('/config/save', payload)
+  const saved = await unwrapNative(nativeApiClient.post<NativeApiEnvelope<{ ok: boolean }>>(
+    nativeAdminPath('settings'), payload,
+  ))
 
   // The backend validates {admin_path} against the current setting on every
   // request. Re-point the client only after the rotation request succeeds so
@@ -24,7 +27,8 @@ export async function saveSettings(payload: Settings) {
     : ''
   if (nextSecurePath) setAdminSecurePath(nextSecurePath)
 
-  return unwrap(data)
+  if (saved?.ok !== true) throw new Error('Native administrator settings save not acknowledged')
+  return true
 }
 
 export async function testSendMail(payload: Settings = {}) {
