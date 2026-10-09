@@ -78,6 +78,7 @@ Route::prefix('admin/{admin_path}')
         Route::post('redemption-codes/codes/batches', [GiftCardAdminController::class, 'issue']);
         Route::patch('redemption-codes/codes/{id}/toggle', [GiftCardAdminController::class, 'toggle'])->whereNumber('id');
         Route::patch('redemption-codes/codes/{id}', [GiftCardAdminController::class, 'editCode'])->whereNumber('id');
+        Route::get('redemption-codes/codes/export', [GiftCardAdminController::class, 'exportCodes']);
         Route::get('redemption-codes/codes', [GiftCardAdminController::class, 'codes']);
         Route::get('redemption-codes/statistics', [GiftCardAdminController::class, 'statistics']);
         Route::get('redemption-codes/usages', [GiftCardAdminController::class, 'usages']);
