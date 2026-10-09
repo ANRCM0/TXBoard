@@ -73,13 +73,13 @@ Route::prefix('admin/{admin_path}')
         Route::post('network-machines', [NetworkMachineAdminController::class, 'create']);
         Route::put('network-machines/{id}', [NetworkMachineAdminController::class, 'update'])->whereNumber('id');
         Route::post('network-machines/{id}/credentials', [NetworkMachineAdminController::class, 'credentials'])
-            ->whereNumber('id')->middleware('throttle:10,1');
+            ->whereNumber('id');
         Route::post('network-machines/{id}/token/rotate', [NetworkMachineAdminController::class, 'rotateToken'])
-            ->whereNumber('id')->middleware('throttle:5,1');
+            ->whereNumber('id');
         Route::get('network-machines/{id}/nodes', [NetworkMachineAdminController::class, 'nodes'])->whereNumber('id');
         Route::get('network-machines/{id}/history', [NetworkMachineAdminController::class, 'history'])->whereNumber('id');
         Route::post('network-machines/{id}/runtime/update', [NetworkMachineAdminController::class, 'updateRuntime'])
-            ->whereNumber('id')->middleware('throttle:5,1');
+            ->whereNumber('id');
         Route::delete('network-machines/{id}', [NetworkMachineAdminController::class, 'delete'])->whereNumber('id');
 
         Route::get('network-nodes', [NetworkNodeAdminController::class, 'index']);
