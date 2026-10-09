@@ -193,7 +193,7 @@ Route::middleware(['txapi.user', 'throttle:120,1'])->group(function () {
     Route::post('gift-cards/check', [GiftCardController::class, 'check']);
     Route::post('gift-cards/redeem', [GiftCardController::class, 'redeem'])->middleware('throttle:5,1');
     Route::get('gift-cards/history', [GiftCardController::class, 'history']);
-    Route::get('redemption-codes/types', [GiftCardController::class, 'types']);
+    Route::get('gift-cards/types', [GiftCardController::class, 'types']);
     Route::get('gift-cards/history/{id}', [GiftCardController::class, 'detail'])->whereNumber('id');
     Route::post('billing/stripe-public-key', [StripeConfigController::class, 'publicKey']);
     Route::post('billing/withdrawals', [WithdrawalController::class, 'store'])->middleware('throttle:5,1');
