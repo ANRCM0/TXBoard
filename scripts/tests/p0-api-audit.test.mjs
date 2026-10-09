@@ -38,6 +38,15 @@ test('route inventory guards payment, user, admin, agent and node contracts',()=
  const routes=collectRoutes(input);
  assert.equal(routes.length,7);
  assert.deepEqual(verifyCriticalRoutes(routes),[]);
+ const expanded={
+  user:'App\\Http\\Middleware\\User',
+  'server.v2':'App\\Http\\Middleware\\ServerV2',
+  'admin.path':'App\\Http\\Middleware\\AdminPath',
+  admin:'App\\Http\\Middleware\\Admin',
+  agent:'App\\Http\\Middleware\\AgentAuth'
+ };
+ const resolved=routes.map(r=>({...r,middleware:r.middleware.map(m=>expanded[m]||m)}));
+ assert.deepEqual(verifyCriticalRoutes(resolved),[]);
  const broken=routes.map(r=>r.uri.includes('order/checkout')?{...r,middleware:['api']}:r);
  assert.ok(verifyCriticalRoutes(broken).some(s=>s.includes('missing middleware user')));
  const hidden=collectRoutes([{uri:'api/v2/secret-admin-path/config/fetch',method:'GET'}]);

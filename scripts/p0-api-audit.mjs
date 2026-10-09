@@ -83,13 +83,25 @@ export function collectRoutes(input) {
  }).filter(r=>/^(api\/v[12](?:\/|$)|api\/health$|txapi(?:\/|$))/.test(r.uri))
    .sort((a,b)=>a.uri.localeCompare(b.uri)||a.method.localeCompare(b.method));
 }
+// route:list --json expands Laravel aliases to full middleware class names.
+// Treat both representations as equivalent; do not waive the actual guard.
+const expandedMiddleware = {
+ user: 'App\\Http\\Middleware\\User',
+ 'server.v2': 'App\\Http\\Middleware\\ServerV2',
+ 'admin.path': 'App\\Http\\Middleware\\AdminPath',
+ admin: 'App\\Http\\Middleware\\Admin',
+ agent: 'App\\Http\\Middleware\\AgentAuth',
+};
 export function verifyCriticalRoutes(routes) {
  const failures=[];
  for(const [method,uri,guards] of required) {
   const route=routes.find(r=>r.uri===uri&&r.method.split('|').includes(method));
   if(!route) {failures.push(method+' '+uri+' missing');continue;}
-  for(const guard of guards) if(!route.middleware.some(m=>m===guard||m.startsWith(guard+':')))
-   failures.push(method+' '+uri+' missing middleware '+guard);
+  for(const guard of guards) {
+   const names=[guard,expandedMiddleware[guard]].filter(Boolean);
+   if(!route.middleware.some(m=>names.some(name=>m===name||m.startsWith(name+':'))))
+    failures.push(method+' '+uri+' missing middleware '+guard);
+  }
  }
  return failures;
 }
