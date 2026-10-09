@@ -145,7 +145,7 @@ class MachineRuntimeUpdateTest extends TestCase
             ->andReturn(1);
 
         $response = $this->postJson(
-            "/api/v2/{$this->securePath}/server/machine/runtime/update",
+            "/txapi/admin/{$this->securePath}/network-machines/{$machine->id}/runtime/update",
             ['machine_id' => $machine->id, 'target' => 'latest']
         );
 
@@ -166,7 +166,7 @@ class MachineRuntimeUpdateTest extends TestCase
         $machine = $this->machine();
 
         $this->postJson(
-            "/api/v2/{$this->securePath}/server/machine/runtime/update",
+            "/txapi/admin/{$this->securePath}/network-machines/{$machine->id}/runtime/update",
             ['machine_id' => $machine->id, 'target' => 'ghcr.io/example/other:latest']
         )->assertStatus(422);
     }
@@ -186,11 +186,11 @@ class MachineRuntimeUpdateTest extends TestCase
         NodeSyncService::markMachineOnline($machine->id);
 
         $this->postJson(
-            "/api/v2/{$this->securePath}/server/machine/runtime/update",
+            "/txapi/admin/{$this->securePath}/network-machines/{$machine->id}/runtime/update",
             ['machine_id' => $machine->id, 'target' => 'latest']
         )
             ->assertStatus(422)
-            ->assertJsonPath('message', 'Machine runtime updater is unavailable; update TX-Node Installer first');
+            ->assertJsonPath('error.message', 'Machine runtime updater is unavailable; update TX-Node Installer first');
     }
 
     public function test_admin_update_rejects_stale_or_disconnected_machine(): void
@@ -207,11 +207,11 @@ class MachineRuntimeUpdateTest extends TestCase
         NodeSyncService::markMachineOnline($machine->id);
 
         $this->postJson(
-            "/api/v2/{$this->securePath}/server/machine/runtime/update",
+            "/txapi/admin/{$this->securePath}/network-machines/{$machine->id}/runtime/update",
             ['machine_id' => $machine->id, 'target' => 'latest']
         )
             ->assertStatus(422)
-            ->assertJsonPath('message', 'Machine heartbeat is stale or offline');
+            ->assertJsonPath('error.message', 'Machine heartbeat is stale or offline');
     }
 
     private function machine(array $overrides = []): ServerMachine
