@@ -96,7 +96,7 @@ class TxapiAdminAuditTest extends TestCase
             foreach (['rotated-old-path', 'historic-secret', 'historic-password', 'Bearer old-secret', 'api_key=unsafe'] as $private) {
                 $this->assertStringNotContainsString($private, $body);
             }
-            $this->assertStringContainsString('content/knowledge/77', $body);
+            $this->assertStringContainsString('content/knowledge/77', (string) $res->json('data.0.uri'));
         }
     }
 
