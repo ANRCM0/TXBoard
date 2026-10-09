@@ -161,6 +161,13 @@ Controller 不承担复杂交易，只完成鉴权、验证和调用服务。域
 
 API 兼容策略不是永久双轨；但在证据不足时宁可保留短期 adapter 也不要丢单/中断节点。
 
+## P2-D 工单业务域原生化
+
+- 原生 `GET /txapi/tickets` / `GET /txapi/tickets/{ticketId}`：仅当前登录用户的数据，数据库稳定分页，详情按消息 ID 顺序，固定 DTO，拒绝越权。
+- 新建、回复与关闭分别由 `POST /txapi/tickets`、`POST /txapi/tickets/{id}/messages`、`POST /txapi/tickets/{id}/close` 提供；创建复用既有 TicketService 的事务与“一人一个未关闭工单”约束，回复复用 TicketService 与原 hook，行级锁检查关闭状态和连续回复限制；关闭幂等。
+- Vue 工单列表/详情及提交/回复/关闭迁移到原生路由；前端只进行时间与字段适配，管理工单接口、提现工单业务继续在旧实现中保持兼容。
+- 跨数据库测试覆盖创建、回复、关闭、规则冲突、身份隔离、分页参数与敏感字段白名单。
+
 ## P2-C 原生账户/公告/知识库
 
 - 原生账户 `GET /txapi/me` 扩展最小展示字段：uuid、余额分、返佣余额分、到期时间、Telegram 标识；严格白名单，不暴露明文订阅 Token/密码信息。Vue User 用户资料由 native adapter 转换为原有视图字段，安全敏感的认证/token 管理仍通过已有认证业务端点。
