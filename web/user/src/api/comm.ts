@@ -79,5 +79,5 @@ export async function fetchUserCommConfig() {
 }
 
 export async function fetchStripePublicKey(paymentId: number) {
-  return request<string>(api.post('/user/comm/getStripePublicKey', { id: paymentId }))
+  return nativeRequest<string>(nativeApi.post('/billing/stripe-public-key', { id: paymentId }))
 }
