@@ -117,6 +117,8 @@ jobs:
         run: php artisan test tests/Feature/Txapi/TxapiPlanCatalogTest.php
       - name: P1-A native TXAPI read/auth contract on MySQL
         run: php artisan test tests/Feature/Txapi/TxapiCoreContractTest.php
+      - name: P3-A monetary state transitions and coupon recovery on MySQL
+        run: php artisan test tests/Unit/Services/OrderServiceConcurrencyTest.php
       - name: MySQL settlement and order recovery regressions
         run: |
           php artisan test tests/Feature/Server/TrafficBatchSettlementTest.php
