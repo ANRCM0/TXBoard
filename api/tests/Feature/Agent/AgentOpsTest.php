@@ -124,23 +124,23 @@ class AgentOpsTest extends TestCase
             admin_setting('frontend_admin_path', hash('crc32b', config('app.key')))
         );
 
-        $created = $this->postJson("/api/v2/{$securePath}/agent/tokens/create", [
+        $created = $this->postJson("/txapi/admin/{$securePath}/agents/tokens", [
             'client_name' => 'mcp-test',
             'abilities' => [AgentAbility::NODES_READ, AgentAbility::NODES_DIAGNOSE],
             'expires_in_days' => 7,
         ]);
 
-        $created->assertOk();
+        $created->assertStatus(201);
         $plain = (string) $created->json('data.plain_text_token');
         $this->assertNotSame('', $plain);
 
         $id = (int) $created->json('data.id');
-        $list = $this->getJson("/api/v2/{$securePath}/agent/tokens");
+        $list = $this->getJson("/txapi/admin/{$securePath}/agents/tokens");
         $list->assertOk();
         $this->assertSame('mcp-test', $list->json('data.0.client_name'));
         $this->assertStringNotContainsString($plain, (string) $list->getContent());
 
-        $this->postJson("/api/v2/{$securePath}/agent/tokens/revoke", ['id' => $id])
+        $this->deleteJson("/txapi/admin/{$securePath}/agents/tokens/{$id}")
             ->assertOk();
 
         $this->assertDatabaseMissing('personal_access_tokens', ['id' => $id]);
@@ -241,7 +241,7 @@ class AgentOpsTest extends TestCase
             admin_setting('frontend_admin_path', hash('crc32b', config('app.key')))
         );
 
-        $response = $this->postJson("/api/v2/{$securePath}/agent/tokens/create", [
+        $response = $this->postJson("/txapi/admin/{$securePath}/agents/tokens", [
             'client_name' => 'restricted-client',
             'abilities' => [AgentAbility::NODES_READ],
             'expires_in_days' => 7,
@@ -250,7 +250,7 @@ class AgentOpsTest extends TestCase
             'target_machine_ids' => [],
         ]);
 
-        $response->assertOk()
+        $response->assertStatus(201)
             ->assertJsonPath('data.target_scope.mode', 'restricted')
             ->assertJsonPath('data.target_scope.node_ids.0', $node->id);
     }
