@@ -13,12 +13,11 @@ class RetiredLegacyUserRoutesTest extends TestCase
 {
     public function test_migrated_v1_routes_are_not_registered(): void
     {
-        $removedUser = ["/resetSecurity","/changePassword","/update","/getSubscribe","/getStat","/checkLogin","/getQuickLoginUrl","/getActiveSession","/removeActiveSession","/order/save","/order/checkout","/order/check","/order/detail","/order/fetch","/order/getPaymentMethod","/order/cancel","/plan/fetch","/notice/fetch","/ticket/reply","/ticket/close","/ticket/save","/ticket/fetch","/server/fetch","/coupon/check","/knowledge/fetch","/knowledge/getCategory","/stat/getTrafficLog","/invite/details"];
-        $removedPassport = ["/auth/token2Login","/auth/forget","/auth/getQuickLoginUrl","/auth/loginWithMailLink","/comm/sendEmailVerify"];
+        $removedUser = ["/resetSecurity","/changePassword","/update","/getSubscribe","/getStat","/checkLogin","/getQuickLoginUrl","/getActiveSession","/removeActiveSession","/order/detail","/order/getPaymentMethod","/order/cancel","/plan/fetch","/notice/fetch","/ticket/reply","/ticket/close","/ticket/save","/ticket/fetch","/coupon/check","/knowledge/fetch","/stat/getTrafficLog","/invite/details"];
+        $removedPassport = ["/auth/token2Login","/auth/forget","/auth/getQuickLoginUrl","/auth/loginWithMailLink"];
         $paths = array_merge(
             array_map(static fn ($path) => 'api/v1/user' . $path, $removedUser),
-            array_map(static fn ($path) => 'api/v1/passport' . $path, $removedPassport),
-            ['api/v1/guest/comm/config']
+            array_map(static fn ($path) => 'api/v1/passport' . $path, $removedPassport)
         );
         $active = array_map(static fn ($r) => $r->uri(), Route::getRoutes()->getRoutes());
         foreach ($paths as $uri) {
@@ -33,6 +32,14 @@ class RetiredLegacyUserRoutesTest extends TestCase
             'api/v1/guest/payment/notify/{method}/{uuid}',
             'api/v1/guest/telegram/webhook',
             'api/v1/passport/auth/login',
+            'api/v1/passport/comm/sendEmailVerify',
+            'api/v1/guest/comm/config',
+            'api/v1/user/order/save',
+            'api/v1/user/order/checkout',
+            'api/v1/user/order/check',
+            'api/v1/user/order/fetch',
+            'api/v1/user/server/fetch',
+            'api/v1/user/knowledge/getCategory',
             'api/v1/user/invite/fetch',
             'api/v1/user/invite/save',
             'api/v1/user/ticket/withdraw',
