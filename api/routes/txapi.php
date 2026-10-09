@@ -146,6 +146,7 @@ Route::middleware(['txapi.user', 'throttle:120,1'])->group(function () {
     Route::post('billing/stripe-public-key', [StripeConfigController::class, 'publicKey']);
     Route::post('billing/withdrawals', [WithdrawalController::class, 'store'])->middleware('throttle:5,1');
     Route::get('billing/wallet', [BillingController::class, 'wallet']);
+    Route::get('billing/recharge-payment-methods', [WalletRechargeController::class, 'methods']);
     Route::get('billing/recharges', [WalletRechargeController::class, 'index']);
     Route::post('billing/recharges', [WalletRechargeController::class, 'store'])->middleware('throttle:10,1');
     Route::get('billing/recharges/{tradeNo}', [WalletRechargeController::class, 'show']);
