@@ -108,6 +108,9 @@ class TxapiCoreContractTest extends TestCase
             ->assertJsonPath('data.0.trade_no', $second->trade_no);
         $this->assertArrayNotHasKey('callback_no', $page->json('data.0'));
         $this->assertSame(100, $page->json('data.0.amount_minor'));
+        $page->assertJsonPath('data.0.plan.name', 'Order plan')
+            ->assertJsonPath('data.0.type', Order::TYPE_NEW_PURCHASE)
+            ->assertJsonPath('data.0.paid_at', null);
 
         $this->getJson('/txapi/orders?per_page=1&page=2')
             ->assertOk()->assertJsonPath('data.0.trade_no', $first->trade_no);

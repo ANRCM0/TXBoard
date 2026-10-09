@@ -35,15 +35,15 @@ final class AccountController
         ]);
 
         $userId = (int) Auth::guard('sanctum')->id();
-        $query = Order::query()->where('user_id', $userId);
+        $query = Order::query()->with('plan:id,name')->where('user_id', $userId);
         if (array_key_exists('status', $input)) {
             $query->where('status', $input['status']);
         }
         $perPage = (int) ($input['per_page'] ?? 20);
         $page = (int) ($input['page'] ?? 1);
         $result = $query->orderByDesc('created_at')->orderByDesc('id')
-            ->paginate($perPage, ['id', 'trade_no', 'plan_id', 'period',
-                'status', 'total_amount', 'created_at'], 'page', $page);
+            ->paginate($perPage, ['id', 'trade_no', 'plan_id', 'period', 'type',
+                'status', 'total_amount', 'paid_at', 'created_at'], 'page', $page);
 
         return TxapiResponse::success($request,
             $result->getCollection()->map(static fn (Order $order): array => self::toOrder($order))->all(),
@@ -58,7 +58,7 @@ final class AccountController
 
     public function order(Request $request, string $tradeNo): JsonResponse
     {
-        $order = Order::query()->where('user_id', Auth::guard('sanctum')->id())
+        $order = Order::query()->with('plan:id,name')->where('user_id', Auth::guard('sanctum')->id())
             ->where('trade_no', $tradeNo)->first();
         if ($order === null) {
             abort(404);
@@ -73,8 +73,11 @@ final class AccountController
             'trade_no' => (string) $order->trade_no,
             'plan_id' => (int) $order->plan_id,
             'period' => (string) $order->period,
+            'type' => (int) $order->type,
             'status' => (int) $order->status,
             'amount_minor' => (int) $order->total_amount,
+            'plan' => $order->plan ? ['id' => (int) $order->plan->id, 'name' => (string) $order->plan->name] : null,
+            'paid_at' => $order->paid_at ? Carbon::createFromTimestampUTC((int) $order->paid_at)->toIso8601String() : null,
             'created_at' => Carbon::createFromTimestampUTC((int) $order->created_at)
                 ->toIso8601String(),
         ];
