@@ -15,6 +15,7 @@ import { getAuditLogs } from './statistics'
 import { getPlans, getOrders, savePlan, updatePlanFlags, deletePlan, sortPlans, getOrderDetail, markOrderPaid, cancelOrder } from './finance'
 import { getTickets, getTicketDetail, replyTicket, closeTicket } from './ticket'
 import { getTrafficResetLogs, getTrafficResetStats, resetUserTraffic, getUserTrafficResetHistory } from './traffic-reset'
+import { deletePayment } from './payment'
 import {
   getKnowledgePage, getKnowledgeAll, getKnowledgeDetail, getKnowledgeCategories,
   saveKnowledge, toggleKnowledge, sortKnowledge, deleteKnowledge,
@@ -770,5 +771,23 @@ describe('native administrator traffic reset contract', () => {
     setAdminSecurePath('traffic-admin')
     responder = () => ({ data: { data: [], request_id: 'no-meta' } })
     await expect(getTrafficResetLogs()).rejects.toThrow('Invalid native traffic reset logs response')
+  })
+})
+
+describe('native administrator payment deletion guard', () => {
+  it('uses scoped TXAPI and checks deletion confirmation', async () => {
+    setAdminSecurePath('secure-payment-admin')
+    responder = () => ({ data: { data: { ok: true }, request_id: 'payment-delete-ok' } })
+    await expect(deletePayment(9)).resolves.toBe(true)
+    expect(seen[0].url).toBe('/admin/secure-payment-admin/payment-methods/9/delete')
+    expect(seen[0].baseURL).toBe('/txapi')
+    expect(seen[0].method).toBe('post')
+    await expect(deletePayment(0)).rejects.toThrow('Invalid payment method ID')
+  })
+
+  it('does not treat malformed responses as a successful payment deletion', async () => {
+    setAdminSecurePath('secure-payment-admin')
+    responder = () => ({ data: { data: { ok: false }, request_id: 'failed' } })
+    await expect(deletePayment(9)).rejects.toThrow('not acknowledged')
   })
 })
