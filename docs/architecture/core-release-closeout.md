@@ -10,6 +10,13 @@
 - 增补 PHP 端跨权限/配置/成功/上游失败测试、React Admin API 合同测试及 `config` 已迁移防回退审计守卫。
 - **尚未验收**：CI 全绿、真实 Telegram Bot/Webhook 可达性、实际 SMTP 投递、部署回滚及日志脱敏的真实环境复核。不能据此宣布配置管理的生产验收通过。
 
+## Network Admin Phase 1（节点组与路由，开发中）
+
+- 本阶段开发策略已更新：**不为尚未适配的 TX-Node 保留旧管理 API 的兼容层**；TXBoard 先建立原生契约，后续由 TX-Node 主动适配。资金、权限、审计和数据库安全要求不因此降低。
+- 节点组、路由的 React Admin 官方调用点已改为 `/txapi/admin/{admin_path}/network-groups`、`network-routes`。V2 Group/Route 管理路由注册及旧 Controller 已删除；新 DTO 显式选择字段，包含有界批次关联计数。
+- 当前只覆盖 **Group/Route**，节点管理和机器管理尚未迁移；实际数据平面回归尚未验证。详见 [Network Phase 1](native-network-admin-phase-1.md)。
+- 本段只描述源码改动，CI、部署与回滚依据以 PR 检查及 Issue #168 为准；不能将开发切换视为首个正式版可发布。
+
 ## 范围决策
 
 - 唯一新增正式业务 API 根路径为 /txapi。TXBoard 是唯一权威控制面，资金、权限与流量业务不下沉到独立 Gateway。

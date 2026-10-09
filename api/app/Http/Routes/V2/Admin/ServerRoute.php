@@ -2,30 +2,14 @@
 
 namespace App\Http\Routes\V2\Admin;
 
-use App\Http\Controllers\V2\Admin\Server\GroupController;
 use App\Http\Controllers\V2\Admin\Server\MachineController;
 use App\Http\Controllers\V2\Admin\Server\ManageController;
-use App\Http\Controllers\V2\Admin\Server\RouteController;
 use Illuminate\Contracts\Routing\Registrar;
 
 class ServerRoute
 {
     public function map(Registrar $router): void
     {
-        $router->group(['prefix' => 'server/group'], function (Registrar $router): void {
-            $router->get('/fetch', [GroupController::class, 'fetch']);
-            $router->post('/save', [GroupController::class, 'save']);
-            $router->post('/drop', [GroupController::class, 'drop']);
-        });
-
-        $router->group(['prefix' => 'server/route'], function (Registrar $router): void {
-            $router->get('/fetch', [RouteController::class, 'fetch']);
-            $router->post('/save', [RouteController::class, 'save']);
-            $router->post('/sort', [RouteController::class, 'sort']);
-            $router->post('/simulate', [RouteController::class, 'simulate']);
-            $router->post('/drop', [RouteController::class, 'drop']);
-        });
-
         $router->group(['prefix' => 'server/manage'], function (Registrar $router): void {
             $router->get('/protocols', [ManageController::class, 'protocols']);
             $router->get('/getNodes', [ManageController::class, 'getNodes']);

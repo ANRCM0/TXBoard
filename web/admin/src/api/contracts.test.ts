@@ -11,6 +11,7 @@ import {
   setAdminSecurePath,
 } from './client'
 import { fetchSettings, saveSettings, testSendMail, setTelegramWebhook } from './config'
+import { getGroups, saveGroup, deleteGroup, getRoutes, saveRoute, sortRoutes, simulateRoute, deleteRoute } from './server'
 import { getAuditLogs } from './statistics'
 import { getPlans, getOrders, savePlan, updatePlanFlags, deletePlan, sortPlans, getOrderDetail, markOrderPaid, cancelOrder } from './finance'
 import { getTickets, getTicketDetail, replyTicket, closeTicket } from './ticket'
@@ -111,6 +112,42 @@ describe('config adapter contract', () => {
     await fetchSettings('site')
 
     expect(String(seen[0].headers.Authorization)).toBe('Bearer secret-token')
+  })
+})
+
+describe('native network group and route contracts', () => {
+  it('uses the rotating administrator path for group and route operations only', async () => {
+    setAdminSecurePath('network-admin')
+    responder = config => ({ data: {
+      data: config.method === 'get'
+        ? [{ id: 5, name: 'one', remarks: 'one' }]
+        : config.url?.endsWith('/simulate')
+          ? { node: { id: 3 }, target: 'example.com', authoritative: true, evaluated_routes: [], unresolved_patterns: [] }
+          : { ok: true, id: 5 },
+      request_id: 'network-native',
+    } })
+
+    await getGroups()
+    await saveGroup({ name: 'one' })
+    await deleteGroup(5)
+    await getRoutes()
+    await saveRoute({ remarks: 'one', action: 'direct', match: ['example.com'] })
+    await sortRoutes([{ id: 5, sort: 10 }])
+    await simulateRoute(3, 'example.com')
+    await deleteRoute(5)
+
+    expect(seen.map(config => [config.method, config.url])).toEqual([
+      ['get', '/admin/network-admin/network-groups'],
+      ['post', '/admin/network-admin/network-groups'],
+      ['delete', '/admin/network-admin/network-groups/5'],
+      ['get', '/admin/network-admin/network-routes'],
+      ['post', '/admin/network-admin/network-routes'],
+      ['put', '/admin/network-admin/network-routes/sort'],
+      ['post', '/admin/network-admin/network-routes/simulate'],
+      ['delete', '/admin/network-admin/network-routes/5'],
+    ])
+    expect(JSON.parse(String(seen[6].data))).toEqual({ node_id: 3, target: 'example.com' })
+    expect(seen.every(config => config.baseURL === '/txapi')).toBe(true)
   })
 })
 
