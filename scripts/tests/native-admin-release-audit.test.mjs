@@ -69,3 +69,24 @@ test('config module direct V2 calls are a blocking native regression', () => {
     rmSync(dir, { recursive: true, force: true })
   }
 })
+
+test('finance, user mail and module registry stay native-only after strict cutover', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'txboard-strict-phase7-'))
+  try {
+    for (const item of ['finance', 'user-admin', 'module']) {
+      assert.ok(COMPLETED_ADMIN_MODULES.includes(item))
+      writeFileSync(join(dir, item + '.ts'), 'nativeApiClient.get("/admin/secure/' + item + '")')
+    }
+    const green = buildNativeAdminInventory(dir)
+    assert.equal(green.totals.remaining_modules, 0)
+    assert.equal(green.totals.legacy_call_sites, 0)
+    assert.equal(green.totals.strict_release_ready, true)
+
+    writeFileSync(join(dir, 'module.ts'), "apiClient.get('/module')")
+    const red = buildNativeAdminInventory(dir)
+    assert.deepEqual(red.regressions, ['module'])
+    assert.equal(red.totals.strict_release_ready, false)
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
