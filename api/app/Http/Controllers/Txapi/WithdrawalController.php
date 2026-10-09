@@ -9,6 +9,7 @@ use App\Services\TicketService;
 use App\Utils\Dict;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 final class WithdrawalController
 {
@@ -25,7 +26,7 @@ final class WithdrawalController
             admin_setting('commission_withdraw_method', Dict::WITHDRAW_METHOD_WHITELIST_DEFAULT), true)) {
             return TxapiResponse::error($request, 'WITHDRAW_METHOD_INVALID', 'Unsupported withdrawal method', 422);
         }
-        $user = User::query()->findOrFail($request->user()->id);
+        $user = User::query()->findOrFail(Auth::guard('sanctum')->id());
         if ((float) admin_setting('commission_withdraw_limit', 100) > ((int) $user->commission_balance / 100)) {
             return TxapiResponse::error($request, 'WITHDRAW_MINIMUM_NOT_MET', 'Withdrawal minimum not met', 422);
         }
