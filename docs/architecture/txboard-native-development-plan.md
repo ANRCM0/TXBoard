@@ -161,6 +161,14 @@ Controller 不承担复杂交易，只完成鉴权、验证和调用服务。域
 
 API 兼容策略不是永久双轨；但在证据不足时宁可保留短期 adapter 也不要丢单/中断节点。
 
+## P1-B 客户端适配第一批（不切换业务接口）
+
+- Vue User 的登录态 canonical key 为 `txboard_auth_data`。首次读取自动迁移 `xboard_auth_data` 到新键，优先使用新值，并且成功迁移后移除旧键。登录写入、退出、令牌失效清理同时移除旧存储，避免旧会话被恢复。
+- Vue 的 legacy `api` 和 native `nativeApi` 并行。Native 客户端使用 `/txapi`、标准 `{data,meta?,request_id}` envelope 和共用 Bearer；401 仅在带 `UNAUTHENTICATED` 错误代码时注销，普通 403 禁止误注销。
+- React Admin 的老 `/api/v2/{secure_path}` 原封不动；新增独立 native client，其 404 不能清除或重置后台安全路径；它通过原 Sanctum Bearer 请求已实现的 TXAPI 用户只读接口。
+- Vue/React Vite 本地开发代理加入 /txapi；客户端合约单测验证令牌迁移、不会复活旧 session、不同 API base、错误 schema 与动态 admin path 保留。
+- **本批没有将订单、套餐、资料业务页强制改用 TXAPI**。因为新 DTO 尚不完整且存在与旧 UI 不兼容的字段，后续按页面/领域落实 adapter 后再单独切换，禁止“新服务返回空白但前端假装成功”。
+
 ## 当前执行决议（2026-10-09）：内核优先，外部适配后置
 
 维护者明确要求先完成 TXBoard 本体：**真实 TX-Node 版本互通、独立 Gateway/Hono 联调、支付提供方沙箱、第三方插件主题端到端升级和线上负载/恢复演练不作为 P1–P6 代码开发的前置阻塞**。TXBoard 只承诺已测试的 Laravel 内部合同与向后兼容；这些外部工程应在后续独立适配 TXBoard 已冻结的协议。

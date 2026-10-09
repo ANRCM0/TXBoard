@@ -21,6 +21,10 @@
 
 Hono Gateway 独立的 [TXAPI BFF Target](txapi-bff-target-v1.md) 保留 `{ok,data,meta}` 的 v1 SDK envelope，和 Laravel 原生响应不同。
 
+## P1-B 前端适配准备
+
+Vue User 与 React Admin 已引入隔离的 native HTTP 客户端和类型化 envelope；Vue 登录态优先读 `txboard_auth_data`、兼容迁移旧存储。业务 UI 仍通过 legacy adapters 请求它们尚未迁移的接口。新 /txapi DTO 尚未支持的字段不得伪造或从老 UI 偷偷兜底为假成功。
+
 ## P1-A 当前已实现的协议冻结面
 
 - **健康检查**：`GET /txapi/health` 无鉴权，不加载插件、数据库或 Redis。返回 `data.status=ok`。

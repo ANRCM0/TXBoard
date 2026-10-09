@@ -68,6 +68,12 @@ function hasExplicitAdminPrefix() {
   )
 }
 
+function resolveNativePrefix() {
+  const explicit = String(import.meta.env.VITE_TXAPI_PREFIX || '').trim()
+  if (explicit) return explicit.replace(/\/$/, '')
+  return `${runtimeBaseUrl()}/txapi`
+}
+
 function resolvePublicPrefix() {
   const explicit = String(import.meta.env.VITE_API_V2_PUBLIC_PREFIX || '').trim()
   if (explicit) return explicit.replace(/\/$/, '')
@@ -135,6 +141,28 @@ function attachCommonErrorHandling(client: AxiosInstance, options: { redirectOnA
   )
 }
 
+// Native TXAPI is separate from the legacy admin secure-path namespace.
+// Native 404s must never be interpreted as secure-path rotation.
+export const nativeApiClient = axios.create({
+  baseURL: resolveNativePrefix(),
+  timeout: 10_000,
+  headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+})
+
+export type NativeApiEnvelope<T> = {
+  data: T
+  meta?: { page: number; per_page: number; total: number; last_page: number }
+  request_id: string
+}
+
+export async function unwrapNative<T>(promise: Promise<{ data: NativeApiEnvelope<T> }>): Promise<T> {
+  const { data } = await promise
+  if (!data || typeof data !== 'object' || !('data' in data) || !data.request_id) {
+    throw new Error('Invalid TXAPI response')
+  }
+  return data.data
+}
+
 export const publicApiClient = axios.create({
   baseURL: resolvePublicPrefix(),
   timeout: 10_000,
@@ -155,7 +183,7 @@ export const pluginApiClient = axios.create({
   headers: { 'Content-Type': 'application/json' },
 })
 
-for (const client of [apiClient, pluginApiClient]) {
+for (const client of [apiClient, pluginApiClient, nativeApiClient]) {
   client.interceptors.request.use(config => {
     const authorization = getAuthorizationHeader()
     if (authorization) config.headers.Authorization = authorization
@@ -164,6 +192,7 @@ for (const client of [apiClient, pluginApiClient]) {
 }
 
 attachCommonErrorHandling(publicApiClient, { redirectOnAuthError: false })
+attachCommonErrorHandling(nativeApiClient, { redirectOnAuthError: true, resetSecurePathOnNotFound: false })
 attachCommonErrorHandling(apiClient, { redirectOnAuthError: true })
 // Root plugin routes share administrator auth but are not tied to the instance
 // secure-path cache, so a plugin-level 404 must never invalidate that cache.
@@ -173,5 +202,6 @@ export function getResolvedApiPrefixes() {
   return {
     public: resolvePublicPrefix(),
     admin: resolveAdminPrefix(),
+    native: resolveNativePrefix(),
   }
 }

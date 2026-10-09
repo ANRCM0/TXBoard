@@ -4,6 +4,8 @@ import { unwrap } from '../lib/api'
 import { removeAccessToken, setAccessToken } from '../lib/storage'
 import {
   apiClient,
+  nativeApiClient,
+  unwrapNative,
   clearAdminSecurePath,
   getResolvedApiPrefixes,
   setAdminSecurePath,
@@ -22,11 +24,13 @@ let responder: (config: AxiosRequestConfig) => { data: unknown; status?: number 
 let originalBaseURL: string | undefined
 
 function installAdapter() {
-  apiClient.defaults.adapter = async config => {
+  const adapter = async (config: AxiosRequestConfig) => {
     seen.push(config as unknown as Seen)
     const { data, status = 200 } = responder(config as unknown as AxiosRequestConfig)
     return { data, status, statusText: 'OK', headers: {}, config } as never
   }
+  apiClient.defaults.adapter = adapter
+  nativeApiClient.defaults.adapter = adapter
 }
 
 beforeEach(() => {
@@ -297,5 +301,26 @@ describe('plugin package v1 admin app contract', () => {
     expect(normalizePluginNavigationTarget('reports/page')).toBe('reports/page')
     expect(normalizePluginNavigationTarget('../config')).toBeNull()
     expect(normalizePluginNavigationTarget('https://example.com')).toBeNull()
+  })
+})
+
+
+describe('P1-B admin native TXAPI client isolation', () => {
+  it('points to /txapi without leaking or depending on the dynamic legacy admin path', async () => {
+    setAdminSecurePath('rotated-secret-path')
+    setAccessToken('admin-session')
+    responder = () => ({ data: { data: { id: 7 }, request_id: 'trace-2' } })
+
+    await expect(unwrapNative<{ id: number }>(nativeApiClient.get('/me'))).resolves.toEqual({ id: 7 })
+    expect(seen[0].baseURL).toBe('/txapi')
+    expect(seen[0].url).toBe('/me')
+    expect(String(seen[0].headers.Authorization)).toBe('Bearer admin-session')
+    expect(apiClient.defaults.baseURL).toBe('/api/v2/rotated-secret-path')
+    expect(getResolvedApiPrefixes().native).toBe('/txapi')
+  })
+
+  it('rejects invalid native envelopes without a fake success', async () => {
+    await expect(unwrapNative(Promise.resolve({ data: { data: null } as never })))
+      .rejects.toThrow('Invalid TXAPI response')
   })
 })
