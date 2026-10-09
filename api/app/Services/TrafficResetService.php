@@ -25,17 +25,30 @@ class TrafficResetService
       return false;
     }
 
-    return $this->performReset($user, $triggerSource);
+    return $this->performReset($user, $triggerSource, [], true);
   }
 
   /**
    * Perform the traffic reset for a user.
    */
-  public function performReset(User $user, string $triggerSource = TrafficResetLog::SOURCE_MANUAL): bool
-  {
+  public function performReset(
+    User $user,
+    string $triggerSource = TrafficResetLog::SOURCE_MANUAL,
+    array $metadata = [],
+    bool $recheckDue = false
+  ): bool {
     try {
-      return DB::transaction(function () use ($user, $triggerSource) {
-        $oldUpload = $user->u ?? 0;
+      return DB::transaction(function () use ($user, $triggerSource, $metadata, $recheckDue) {
+        // Lock and refresh in the same SQL transaction as traffic reporting.
+        // An earlier read can be stale while the Node has reported usage.
+        $user = User::query()->with('plan')->lockForUpdate()->findOrFail($user->id);
+        if ($recheckDue && !$user->shouldResetTraffic()) {
+          return false;
+        }
+        if ($triggerSource === TrafficResetLog::SOURCE_MANUAL && !$this->canReset($user)) {
+          return false;
+        }
+        $oldUpload = (int) ($user->u ?? 0);
         $oldDownload = $user->d ?? 0;
         $oldTotal = $oldUpload + $oldDownload;
 
@@ -58,6 +71,7 @@ class TrafficResetService
           'new_upload' => 0,
           'new_download' => 0,
           'new_total' => 0,
+          'metadata' => $metadata,
         ]);
 
         $this->clearUserCache($user);
@@ -129,24 +143,17 @@ class TrafficResetService
   {
     $expiredAt = Carbon::createFromTimestamp($user->expired_at, config('app.timezone'));
     $resetDay = $expiredAt->day;
-    $resetTime = [$expiredAt->hour, $expiredAt->minute, $expiredAt->second];
-    
-    $currentMonthTarget = $from->copy()->day($resetDay)->setTime(...$resetTime);
-    if ($currentMonthTarget->timestamp > $from->timestamp) {
-      return $currentMonthTarget;
+    $time = [$expiredAt->hour, $expiredAt->minute, $expiredAt->second];
+
+    // A plan anchored to day 31 resets on Feb 28/29, not an overflow into
+    // March. Construct from the first of the month before choosing its day.
+    $thisMonth = $from->copy()->startOfMonth()
+      ->day(min($resetDay, $from->daysInMonth))->setTime(...$time);
+    if ($thisMonth->timestamp > $from->timestamp) {
+      return $thisMonth;
     }
-    
-    $nextMonthTarget = $from->copy()->startOfMonth()->addMonths(1)->day($resetDay)->setTime(...$resetTime);
-    
-    if ($nextMonthTarget->month !== ($from->month % 12) + 1) {
-      $nextMonth = ($from->month % 12) + 1;
-      $nextYear = $from->year + ($from->month === 12 ? 1 : 0);
-      $lastDayOfNextMonth = Carbon::create($nextYear, $nextMonth, 1)->endOfMonth()->day;
-      $targetDay = min($resetDay, $lastDayOfNextMonth);
-      $nextMonthTarget = Carbon::create($nextYear, $nextMonth, $targetDay)->setTime(...$resetTime);
-    }
-    
-    return $nextMonthTarget;
+    $nextMonth = $from->copy()->startOfMonth()->addMonthNoOverflow();
+    return $nextMonth->day(min($resetDay, $nextMonth->daysInMonth))->setTime(...$time);
   }
 
   /**
@@ -171,23 +178,17 @@ class TrafficResetService
     $expiredAt = Carbon::createFromTimestamp($user->expired_at, config('app.timezone'));
     $resetMonth = $expiredAt->month;
     $resetDay = $expiredAt->day;
-    $resetTime = [$expiredAt->hour, $expiredAt->minute, $expiredAt->second];
+    $time = [$expiredAt->hour, $expiredAt->minute, $expiredAt->second];
 
-    $currentYearTarget = $from->copy()->month($resetMonth)->day($resetDay)->setTime(...$resetTime);
-    if ($currentYearTarget->timestamp > $from->timestamp) {
-      return $currentYearTarget;
+    // Feb 29 of an initial leap-year expiry must become Feb 28 in a
+    // non-leap year, never overflow to March 1.
+    $thisYear = $from->copy()->startOfYear()->month($resetMonth);
+    $thisYear->day(min($resetDay, $thisYear->daysInMonth))->setTime(...$time);
+    if ($thisYear->timestamp > $from->timestamp) {
+      return $thisYear;
     }
-    
-    $nextYearTarget = $from->copy()->startOfYear()->addYears(1)->month($resetMonth)->day($resetDay)->setTime(...$resetTime);
-    
-    if ($nextYearTarget->month !== $resetMonth) {
-      $nextYear = $from->year + 1;
-      $lastDayOfMonth = Carbon::create($nextYear, $resetMonth, 1)->endOfMonth()->day;
-      $targetDay = min($resetDay, $lastDayOfMonth);
-      $nextYearTarget = Carbon::create($nextYear, $resetMonth, $targetDay)->setTime(...$resetTime);
-    }
-    
-    return $nextYearTarget;
+    $nextYear = $from->copy()->startOfYear()->addYearNoOverflow()->month($resetMonth);
+    return $nextYear->day(min($resetDay, $nextYear->daysInMonth))->setTime(...$time);
   }
 
 
@@ -410,6 +411,6 @@ class TrafficResetService
       return false;
     }
 
-    return $this->performReset($user, TrafficResetLog::SOURCE_MANUAL);
+    return $this->performReset($user, TrafficResetLog::SOURCE_MANUAL, $metadata);
   }
 }
