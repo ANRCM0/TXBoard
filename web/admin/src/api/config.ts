@@ -27,7 +27,8 @@ export async function saveSettings(payload: Settings) {
     : ''
   if (nextSecurePath) setAdminSecurePath(nextSecurePath)
 
-  return saved
+  if (saved?.ok !== true) throw new Error('Native administrator settings save not acknowledged')
+  return true
 }
 
 export async function testSendMail(payload: Settings = {}) {
