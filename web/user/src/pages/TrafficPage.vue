@@ -8,13 +8,31 @@ const {t,locale}=useI18n()
 const rows=ref<TrafficLogItem[]>([])
 const loading=ref(true)
 const error=ref('')
+const page=ref(1)
+const pageSize=20
+const total=ref(0)
 
-onMounted(async()=>{
-  try{rows.value=await fetchTrafficLog()}catch(e){error.value=errorMessage(e)}finally{loading.value=false}
-})
+async function load() {
+  loading.value=true
+  error.value=''
+  try {
+    const result=await fetchTrafficLog(page.value,pageSize)
+    rows.value=result.data
+    total.value=result.total
+  } catch(e) {
+    rows.value=[]
+    error.value=errorMessage(e)
+  } finally { loading.value=false }
+}
+onMounted(()=>void load())
+function changePage(next:number) {
+  if(next<1||next>Math.max(1,Math.ceil(total.value/pageSize))||next===page.value)return
+  page.value=next
+  void load()
+}
 
 function rate(row:TrafficLogItem){
-  const raw=row.server_rate??row.rate??1
+  const raw=row.server_rate??1
   const n=parseFloat(String(raw))
   return Number.isFinite(n)&&n>0?n:1
 }
@@ -26,7 +44,7 @@ function bytes(value:number){
   return n.toFixed(i>=3?2:1)+' '+units[i]
 }
 function date(ts:number){return new Date(ts*1000).toLocaleDateString(locale.value)}
-const total=computed(()=>rows.value.length)
+const pages=computed(()=>Math.max(1,Math.ceil(total.value/pageSize)))
 </script>
 
 <template>
@@ -58,6 +76,13 @@ const total=computed(()=>rows.value.length)
       </table>
     </div>
 
-    <div class="traffic-footer-count">{{ t('common.total',{total}) }}</div>
+    <div class="traffic-footer-count">
+      <span>{{ t('common.total',{total}) }}</span>
+      <div class="pager">
+        <button class="secondary-btn small-btn" :disabled="loading||page<=1" @click="changePage(page-1)">{{ t('common.previous') }}</button>
+        <span>{{ t('common.page',{page}) }} / {{ pages }}</span>
+        <button class="secondary-btn small-btn" :disabled="loading||page>=pages" @click="changePage(page+1)">{{ t('common.next') }}</button>
+      </div>
+    </div>
   </section>
 </template>

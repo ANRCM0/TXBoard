@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Txapi\AccountController;
+use App\Http\Controllers\Txapi\TrafficController;
 use App\Http\Controllers\Txapi\NodeProtocolController;
 use App\Http\Middleware\TxNodeAuth;
 use App\Http\Controllers\Txapi\BillingController;
@@ -42,6 +43,7 @@ Route::middleware('throttle:60,1')->group(function () {
 Route::middleware(['txapi.user', 'throttle:120,1'])->group(function () {
     Route::get('plans/{planId}', [PublicController::class, 'plan'])->whereNumber('planId');
     Route::get('me', [AccountController::class, 'me']);
+    Route::get('traffic/logs', [TrafficController::class, 'index']);
     Route::post('auth/logout', [AuthController::class, 'logout']);
     Route::get('auth/sessions', [AuthController::class, 'sessions']);
     Route::delete('auth/sessions/{sessionId}', [AuthController::class, 'revoke'])->whereNumber('sessionId');
