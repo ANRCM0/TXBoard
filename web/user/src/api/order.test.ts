@@ -1,7 +1,7 @@
 import type { AxiosRequestConfig } from 'axios'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { api, nativeApi, saveAuthData } from './client'
-import { fetchFirstBlockingOrder, fetchOrders } from './order'
+import { checkOrderStatus, fetchFirstBlockingOrder, fetchOrders } from './order'
 
 const currentTime = '2026-10-09T02:03:04+00:00'
 const nativeOrder = {
@@ -96,5 +96,29 @@ describe('P1-B native orders read migration', () => {
       request_id: 'native-trace',
     })
     await expect(fetchOrders()).rejects.toThrow('Invalid TXAPI order timestamp')
+  })
+})
+
+describe('LR-02 native order status polling', () => {
+  it('uses the owner-scoped native order endpoint instead of legacy order/check', async () => {
+    payload = () => ({ data: { ...nativeOrder, status: 1 }, request_id: 'native-trace' })
+    await expect(checkOrderStatus('TX-PAGINATED-ORDER')).resolves.toBe(1)
+    expect(calls).toHaveLength(1)
+    expect(calls[0].baseURL).toBe('/txapi')
+    expect(calls[0].url).toBe('/orders/TX-PAGINATED-ORDER')
+    expect(String((calls[0].headers as Record<string, string>).Authorization)).toBe('Bearer test-session')
+  })
+
+  it('rejects missing or malformed native status instead of faking a payment result', async () => {
+    payload = () => ({ data: { status: '1' }, request_id: 'native-trace' })
+    await expect(checkOrderStatus('a')).rejects.toThrow('Invalid TXAPI order status')
+    payload = () => ({ data: { status: 9 }, request_id: 'native-trace' })
+    await expect(checkOrderStatus('a')).rejects.toThrow('Invalid TXAPI order status')
+  })
+
+  it('encodes the order reference as a single route segment', async () => {
+    payload = () => ({ data: { status: 0 }, request_id: 'native-trace' })
+    await checkOrderStatus('a/b')
+    expect(calls[0].url).toBe('/orders/a%2Fb')
   })
 })

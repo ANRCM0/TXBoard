@@ -157,8 +157,16 @@ export async function fetchPaymentMethods() {
   }))
 }
 
-export async function checkOrderStatus(tradeNo: string) {
-  return request<number>(api.get('/user/order/check', { params: { trade_no: tradeNo } }))
+export async function checkOrderStatus(tradeNo: string): Promise<number> {
+  // Read from the owner-scoped native endpoint; the legacy order detail still
+  // serves extra pricing fields and must not be removed in this batch.
+  const order = await nativeRequest<{ status: number }>(
+    nativeApi.get('/orders/' + encodeURIComponent(tradeNo)),
+  )
+  if (!order || !Number.isInteger(order.status) || order.status < 0 || order.status > 4) {
+    throw new Error('Invalid TXAPI order status')
+  }
+  return order.status
 }
 
 export async function cancelOrder(tradeNo: string) {
