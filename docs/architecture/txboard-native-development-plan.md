@@ -161,6 +161,14 @@ Controller 不承担复杂交易，只完成鉴权、验证和调用服务。域
 
 API 兼容策略不是永久双轨；但在证据不足时宁可保留短期 adapter 也不要丢单/中断节点。
 
+## P2-E 原生认证及会话安全收尾
+
+- 用户登录与注册通过 `POST /txapi/auth/login`、`POST /txapi/auth/register`，分别复用现有 LoginService、RegisterService、CaptchaService 和 Sanctum AuthService；保留密码错误限流、机器人校验、注册关闭、邀请码、邮箱验证码与已有用户登录/注册 Hook 逻辑。
+- 原生认证响应只提供 `auth_data`，不暴露订阅私有 Token 和管理 secure_path；认证失败映射稳定 401/409/422/429 错误及统一 request_id。
+- 新 `/txapi/auth/logout`、`GET /txapi/auth/sessions`、`DELETE /txapi/auth/sessions/{sessionId}`、`POST /txapi/auth/password` 复用 Sanctum 用户 token、只返回白名单会话字段，密码更新撤销其他会话。
+- Vue 的普通登录、注册、会话列表/撤销和密码修改使用原生接口；邮箱登录/重置、临时 token 与 Telegram 登录、订阅安全重置等特殊操作继续兼容原 V1，保持独立验证。
+- 不涉及支付/节点或管理员动态地址迁移。新增 SQLite/MySQL 登录、注册、越权、密码撤销与敏感字段测试。
+
 ## P2-D 工单业务域原生化
 
 - 原生 `GET /txapi/tickets` / `GET /txapi/tickets/{ticketId}`：仅当前登录用户的数据，数据库稳定分页，详情按消息 ID 顺序，固定 DTO，拒绝越权。

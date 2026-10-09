@@ -107,6 +107,8 @@ jobs:
           path: api/artifacts/p0b-read-path-mysql.json
           if-no-files-found: warn
           retention-days: 14
+      - name: P2-E native user auth and token lifecycle on MySQL
+        run: php artisan test tests/Feature/Txapi/TxapiNativeAuthTest.php
       - name: P2-D native support ticket contract on MySQL
         run: php artisan test tests/Feature/Txapi/TxapiTicketWorkflowTest.php
       - name: P2-C native account content contracts on MySQL

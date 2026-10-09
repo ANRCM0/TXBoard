@@ -1,6 +1,6 @@
 import type { AxiosRequestConfig } from 'axios'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { login } from './auth'
+import { login, logout } from './auth'
 import { api, nativeApi, nativeRequest, clearAuthData, getAuthData, request, saveAuthData } from './client'
 import { fetchGuestConfig } from './comm'
 
@@ -60,12 +60,13 @@ describe('user response envelope contract', () => {
 
 describe('auth adapter contract', () => {
   it('logs in against /passport/auth/login and stores the bearer token', async () => {
-    responder = () => ({ status: 'success', data: { auth_data: 'token-1' } })
+    responder = () => ({ data: { auth_data: 'token-1' }, request_id: 'trace-login' })
 
     await login({ email: 'a@b.c', password: 'secret' })
 
     expect(seen[0].method).toBe('post')
-    expect(seen[0].url).toBe('/passport/auth/login')
+    expect(seen[0].url).toBe('/auth/login')
+    expect(seen[0].baseURL).toBe('/txapi')
     expect(JSON.parse(String(seen[0].data))).toEqual({ email: 'a@b.c', password: 'secret' })
     expect(getAuthData()).toBe('Bearer token-1')
   })
@@ -101,6 +102,17 @@ describe('guest config adapter contract', () => {
   })
 })
 
+
+describe('native sign-out reliability', () => {
+  it('clears credentials even when the server-side revoke cannot be reached', async () => {
+    saveAuthData('temporary-token')
+    nativeApi.defaults.adapter = async () => {
+      throw new Error('network unavailable')
+    }
+    await expect(logout()).resolves.toBeUndefined()
+    expect(getAuthData()).toBe('')
+  })
+})
 
 describe('P1-B safe auth key migration and native API client', () => {
   it('transfers an existing legacy bearer to the native key without logging out', () => {

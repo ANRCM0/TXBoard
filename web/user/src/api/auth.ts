@@ -1,4 +1,4 @@
-import { api, clearAuthData, request, saveAuthData } from './client'
+import { api, nativeApi, nativeRequest, clearAuthData, request, saveAuthData } from './client'
 import type { CaptchaPayload } from './comm'
 
 export type LoginForm = { email: string; password: string; email_code?: string } & CaptchaPayload
@@ -17,13 +17,13 @@ export type ForgetForm = {
 type AuthPayload = { auth_data: string; is_admin?: boolean }
 
 export async function login(form: LoginForm) {
-  const result = await request<AuthPayload>(api.post('/passport/auth/login', form))
+  const result = await nativeRequest<AuthPayload>(nativeApi.post('/auth/login', form))
   saveAuthData(result.auth_data)
   return result
 }
 
 export async function register(form: RegisterForm) {
-  const result = await request<AuthPayload>(api.post('/passport/auth/register', form))
+  const result = await nativeRequest<AuthPayload>(nativeApi.post('/auth/register', form))
   saveAuthData(result.auth_data)
   return result
 }
@@ -62,7 +62,12 @@ export async function telegramLogin(payload: Record<string, unknown>, endpoint: 
 }
 
 export async function logout() {
-  // Current Xboard core has no /user/logout route. Clearing the local
-  // Sanctum bearer is the supported frontend logout behavior.
-  clearAuthData()
+  try {
+    await nativeRequest<{ ok: boolean }>(nativeApi.post('/auth/logout'))
+  } catch {
+    // Server revocation is best effort if offline. Avoid leaving the UI stuck
+    // in an authenticated state when local credentials are already discarded.
+  } finally {
+    clearAuthData()
+  }
 }
