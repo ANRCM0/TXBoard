@@ -109,11 +109,11 @@ class TxapiBillingTest extends TestCase
             'enable' => false, 'config' => ['key' => 'hidden'],
         ]);
         CommissionLog::create([
-            'invite_user_id' => $user->id, 'trade_no' => 'P3-COMM-1',
+            'user_id' => $outsider->id, 'invite_user_id' => $user->id, 'trade_no' => 'P3-COMM-1',
             'get_amount' => 55, 'order_amount' => 1000,
         ]);
         CommissionLog::create([
-            'invite_user_id' => $outsider->id, 'trade_no' => 'P3-HIDDEN',
+            'user_id' => $user->id, 'invite_user_id' => $outsider->id, 'trade_no' => 'P3-HIDDEN',
             'get_amount' => 777, 'order_amount' => 1000,
         ]);
         Sanctum::actingAs($user);
