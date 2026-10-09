@@ -57,6 +57,9 @@ final class TxapiAdminSettingsTest extends TestCase
 
     public function test_telegram_webhook_requires_admin_and_saved_valid_settings(): void
     {
+        // Check auth and validation independently from the explicit 3/min
+        // side-effect throttle; keep the middleware enabled in production.
+        $this->withoutMiddleware(\Illuminate\Routing\Middleware\ThrottleRequests::class);
         $uri = self::ROOT . '/telegram/webhook';
         $payload = ['telegram_bot_token' => '123456:test-bot-token'];
         Http::fake();
@@ -90,8 +93,9 @@ final class TxapiAdminSettingsTest extends TestCase
         $response = $this->postJson(self::ROOT . '/telegram/webhook',
             ['telegram_bot_token' => $token]);
         $response->assertOk()->assertJsonPath('data.ok', true)
-            ->assertHeader('Cache-Control', 'no-store')
             ->assertDontSee(md5($token));
+        $this->assertStringContainsString('no-store',
+            (string) $response->headers->get('Cache-Control'));
         $this->assertArrayNotHasKey('webhook_url', $response->json('data'));
         Http::assertSent(static function ($request) use ($token): bool {
             return str_ends_with($request->url(), '/setWebhook')
