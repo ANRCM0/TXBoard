@@ -1,6 +1,7 @@
 <?php
 namespace App\Http\Routes\V1;
 
+use App\Http\Controllers\V1\Guest\CommController;
 use App\Http\Controllers\V1\Guest\PaymentController;
 use App\Http\Controllers\V1\Guest\PlanController;
 use App\Http\Controllers\V1\Guest\TelegramController;
@@ -20,6 +21,7 @@ class GuestRoute
             // Payment
             $router->match(['get', 'post'], '/payment/notify/{method}/{uuid}', [PaymentController::class, 'notify']);
             // Comm
+            $router->get('/comm/config', [CommController::class, 'config']);
         });
     }
 }
