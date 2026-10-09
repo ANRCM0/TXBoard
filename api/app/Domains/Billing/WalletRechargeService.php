@@ -20,6 +20,8 @@ final class WalletRechargeService
 {
     public const MIN_AMOUNT_MINOR = 100;
     public const MAX_AMOUNT_MINOR = 500000;
+    // Existing v2_user.balance is a signed 32-bit SQL INTEGER.
+    public const MAX_BALANCE_MINOR = 2147483647;
     public const VERIFIED_RECHARGE_PROVIDERS = ['EPay', 'AlipayF2F'];
 
     public function create(int $userId, int $amountMinor, int $paymentId, string $requestKey): WalletRecharge
@@ -33,7 +35,10 @@ final class WalletRechargeService
         ): WalletRecharge {
             // Serialize create requests per user so the pending limit cannot
             // be evaded by concurrent POSTs.
-            User::query()->whereKey($userId)->lockForUpdate()->firstOrFail();
+            $user = User::query()->whereKey($userId)->lockForUpdate()->firstOrFail();
+            if ((int) $user->balance > self::MAX_BALANCE_MINOR - $amountMinor) {
+                throw new ApiException('Wallet balance limit exceeded', 409);
+            }
             $existing = WalletRecharge::query()
                 ->where('user_id', $userId)->where('request_key', $requestKey)->first();
             if ($existing) {
@@ -138,7 +143,7 @@ final class WalletRechargeService
             }
             $user = User::query()->whereKey($recharge->user_id)
                 ->lockForUpdate()->first();
-            if (!$user || (int) $user->balance > PHP_INT_MAX - (int) $recharge->amount_minor) {
+            if (!$user || (int) $user->balance > self::MAX_BALANCE_MINOR - (int) $recharge->amount_minor) {
                 return false;
             }
             $user->balance = (int) $user->balance + (int) $recharge->amount_minor;
