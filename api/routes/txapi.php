@@ -18,6 +18,8 @@ use App\Http\Controllers\Txapi\Admin\MailTemplateAdminController;
 use App\Http\Controllers\Txapi\Admin\SettingsAdminController;
 use App\Http\Controllers\Txapi\Admin\NetworkGroupAdminController;
 use App\Http\Controllers\Txapi\Admin\NetworkRouteAdminController;
+use App\Http\Controllers\Txapi\Admin\NetworkNodeAdminController;
+use App\Http\Controllers\Txapi\Admin\NetworkNodeSecretController;
 use App\Http\Controllers\Txapi\Admin\PaymentManagementController;
 use App\Http\Controllers\Txapi\AccountController;
 use App\Http\Controllers\Txapi\ServerController;
@@ -64,6 +66,22 @@ Route::prefix('admin/{admin_path}')
     ->middleware(['admin.path', 'admin', 'log', 'throttle:120,1'])
     ->group(function () {
         Route::get('audit-logs', [AuditLogController::class, 'index']);
+        // Native control-plane node management; no legacy V2 proxy.
+        Route::get('network-nodes', [NetworkNodeAdminController::class, 'index']);
+        Route::get('network-nodes/protocols', [NetworkNodeAdminController::class, 'protocols']);
+        Route::post('network-nodes/secrets', [NetworkNodeSecretController::class, 'generate'])
+            ->middleware('throttle:10,1');
+        Route::put('network-nodes/sort', [NetworkNodeAdminController::class, 'sort']);
+        Route::patch('network-nodes/batch', [NetworkNodeAdminController::class, 'batchUpdate']);
+        Route::post('network-nodes/batch-delete', [NetworkNodeAdminController::class, 'batchDelete']);
+        Route::post('network-nodes/batch-traffic-reset', [NetworkNodeAdminController::class, 'batchResetTraffic']);
+        Route::post('network-nodes', [NetworkNodeAdminController::class, 'save']);
+        Route::put('network-nodes/{id}', [NetworkNodeAdminController::class, 'replace'])->whereNumber('id');
+        Route::patch('network-nodes/{id}', [NetworkNodeAdminController::class, 'patch'])->whereNumber('id');
+        Route::post('network-nodes/{id}/copy', [NetworkNodeAdminController::class, 'copy'])->whereNumber('id');
+        Route::post('network-nodes/{id}/traffic-reset', [NetworkNodeAdminController::class, 'resetTraffic'])->whereNumber('id');
+        Route::delete('network-nodes/{id}', [NetworkNodeAdminController::class, 'delete'])->whereNumber('id');
+
         Route::get('network-groups', [NetworkGroupAdminController::class, 'index']);
         Route::post('network-groups', [NetworkGroupAdminController::class, 'save']);
         Route::delete('network-groups/{id}', [NetworkGroupAdminController::class, 'delete'])->whereNumber('id');
