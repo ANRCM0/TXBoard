@@ -156,6 +156,8 @@ export function UserEditorModal({
       commission_balance: Number(edit.commission_balance || 0),
       expected_balance_minor: Math.round(Number(user.balance ?? 0) * 100),
       expected_commission_balance_minor: Math.round(Number(user.commission_balance ?? 0) * 100),
+      expected_plan_id: user.plan_id ?? null,
+      expected_expired_at: user.expired_at ?? null,
       commission_rate: nullableNumber(edit.commission_rate),
       discount: nullableNumber(edit.discount),
       speed_limit: nullableNumber(edit.speed_limit),
@@ -171,9 +173,18 @@ export function UserEditorModal({
     const transferEnable = gbToBytes(edit.transfer_gb)
     const usedUp = gbToBytes(edit.used_up_gb)
     const usedDown = gbToBytes(edit.used_down_gb)
-    if (transferEnable != null) payload.transfer_enable = transferEnable
-    if (usedUp != null) payload.u = usedUp
-    if (usedDown != null) payload.d = usedDown
+    if (transferEnable != null) {
+      payload.transfer_enable = transferEnable
+      payload.expected_transfer_enable = user.transfer_enable ?? null
+    }
+    if (usedUp != null) {
+      payload.u = usedUp
+      payload.expected_u = user.u ?? null
+    }
+    if (usedDown != null) {
+      payload.d = usedDown
+      payload.expected_d = user.d ?? null
+    }
     if (edit.password.trim()) payload.password = edit.password.trim()
     editMutation.mutate(payload)
   }
