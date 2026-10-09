@@ -173,7 +173,7 @@ class GiftCardCode extends Model
     {
         do {
             $safePrefix = (string) $prefix;
-            $code = $safePrefix . strtoupper(substr(md5(uniqid($safePrefix . mt_rand(), true)), 0, 12));
+            $code = $safePrefix . strtoupper(bin2hex(random_bytes(6)));
         } while (self::where('code', $code)->exists());
 
         return $code;
@@ -184,7 +184,7 @@ class GiftCardCode extends Model
      */
     public static function batchGenerate(int $templateId, int $count, array $options = []): string
     {
-        $batchId = uniqid('batch_');
+        $batchId = 'batch_' . bin2hex(random_bytes(12));
         $prefix = $options['prefix'] ?? 'GC';
         $expiresAt = $options['expires_at'] ?? null;
         $maxUsage = $options['max_usage'] ?? 1;
