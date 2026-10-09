@@ -18,6 +18,11 @@ final class AccountController
             'id' => (int) $user->id,
             'email' => (string) $user->email,
             'plan_id' => $user->plan_id === null ? null : (int) $user->plan_id,
+            'uuid' => (string) $user->uuid,
+            'balance_minor' => (int) $user->balance,
+            'commission_balance_minor' => (int) $user->commission_balance,
+            'expired_at' => $user->expired_at ? Carbon::createFromTimestampUTC((int) $user->expired_at)->toIso8601String() : null,
+            'telegram_id' => $user->telegram_id === null ? null : (int) $user->telegram_id,
             'traffic' => [
                 'upload_bytes' => (int) ($user->u ?? 0),
                 'download_bytes' => (int) ($user->d ?? 0),

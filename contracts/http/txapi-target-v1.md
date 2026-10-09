@@ -21,6 +21,13 @@
 
 Hono Gateway 独立的 [TXAPI BFF Target](txapi-bff-target-v1.md) 保留 `{ok,data,meta}` 的 v1 SDK envelope，和 Laravel 原生响应不同。
 
+## P2-C Account 与 Content
+
+- `GET /txapi/me` 增加 uuid、balance_minor、commission_balance_minor、expired_at、telegram_id；所有字段为固定白名单，不返回私有订阅 token。
+- `GET /txapi/notices?page=&per_page=` 仅认证用户、仅 show 的公告、数据库分页/总数；公告日期使用 ISO UTC。
+- `GET /txapi/knowledge?language=&keyword=`、`/txapi/knowledge/categories`、`/txapi/knowledge/{articleId}` 认证用户专属，隐藏未公开文章；所有正文按当前用户的订阅有效性进行 gated content 替换和 subscribeUrl 插值。
+- 用户前端针对正文保留 DOMPurify；本阶段未实现新登录写接口和工单写接口。
+
 ## P2-B 用户套餐页面适配
 
 Vue 套餐列表/详情现使用原生 /txapi/plans 和认证详情 /txapi/plans/{planId}；前端业务页 adapter 将 native 周期、整数价格、流量字节映射到现有 Vue 页面视图字段。旧订单创建、优惠券、checkout 保持旧 V1，并在结算阶段重复验证资格与金额。

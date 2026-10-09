@@ -84,7 +84,7 @@ class TxapiCoreContractTest extends TestCase
         $response = $this->getJson('/txapi/me');
         $response->assertOk()->assertJsonPath('data.email', 'self@example.test')
             ->assertJsonPath('data.traffic.upload_bytes', 21);
-        $this->assertSame(['id', 'email', 'plan_id', 'traffic'], array_keys($response->json('data')));
+        $this->assertSame(['id', 'email', 'plan_id', 'uuid', 'balance_minor', 'commission_balance_minor', 'expired_at', 'telegram_id', 'traffic'], array_keys($response->json('data')));
         $this->assertStringNotContainsString($user->token, $response->getContent());
         $this->assertStringNotContainsString($user->password, $response->getContent());
         $this->assertSame($response->json('request_id'), $response->headers->get('X-Request-Id'));
