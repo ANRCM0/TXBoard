@@ -21,7 +21,7 @@ export async function generateInviteCode() {
 }
 
 export async function transferCommission(transfer_amount: number) {
-  return request<null>(api.post('/user/transfer', { transfer_amount }))
+  return nativeRequest<boolean>(nativeApi.post('/billing/commission-transfer', { transfer_amount }))
 }
 
 export async function withdrawCommission(payload:{withdraw_method:string;withdraw_account:string}) {
