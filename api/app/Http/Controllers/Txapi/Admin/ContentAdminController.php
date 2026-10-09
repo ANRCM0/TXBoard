@@ -39,6 +39,7 @@ final class ContentAdminController
 
     public function notice(Request $request, string $id): JsonResponse
     {
+        $id = (string) $request->route('id');
         $notice = Notice::query()->findOrFail((int) $id);
         return TxapiResponse::success($request, self::noticeDto($notice));
     }
@@ -66,6 +67,7 @@ final class ContentAdminController
 
     public function showNotice(Request $request, string $id): JsonResponse
     {
+        $id = (string) $request->route('id');
         $visible = DB::transaction(static function () use ($id): bool {
             $n = Notice::query()->lockForUpdate()->findOrFail((int) $id);
             $n->show = !$n->show;
@@ -77,6 +79,7 @@ final class ContentAdminController
 
     public function deleteNotice(Request $request, string $id): JsonResponse
     {
+        $id = (string) $request->route('id');
         Notice::query()->findOrFail((int) $id)->deleteOrFail();
         return TxapiResponse::success($request, ['ok' => true]);
     }
@@ -118,6 +121,7 @@ final class ContentAdminController
 
     public function article(Request $request, string $id): JsonResponse
     {
+        $id = (string) $request->route('id');
         return TxapiResponse::success($request,
             self::knowledgeDto(Knowledge::query()->findOrFail((int) $id), true));
     }
@@ -143,6 +147,7 @@ final class ContentAdminController
 
     public function showArticle(Request $request, string $id): JsonResponse
     {
+        $id = (string) $request->route('id');
         $visible = DB::transaction(static function () use ($id): bool {
             $k = Knowledge::query()->lockForUpdate()->findOrFail((int) $id);
             $k->show = !$k->show;
@@ -154,6 +159,7 @@ final class ContentAdminController
 
     public function deleteArticle(Request $request, string $id): JsonResponse
     {
+        $id = (string) $request->route('id');
         Knowledge::query()->findOrFail((int) $id)->deleteOrFail();
         return TxapiResponse::success($request, ['ok' => true]);
     }
