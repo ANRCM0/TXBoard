@@ -1,6 +1,6 @@
-# TXAPI Target Contract v1 (P1-A 逐步实现)
+# TXAPI Contract v1（P1/P2 代码已实施 + P3–P7 目标）
 
-**当前状态：** P1-A 第一批原生接口已在 TXBoard 源码中实现（需随版本部署，不代表线上已启用）：GET `/txapi/health`、`/txapi/public/config`、`/txapi/plans`、`/txapi/me`、`/txapi/orders`、`/txapi/orders/{tradeNo}`。其余表内路径仍是目标协议，**不得按已实现 API 调用**。Node、Agent、插件、管理员、Webhook、Gateway 均保留现有入口。
+**当前状态：** P1/P2 原生代码已合并 TXBoard main；已实施路由以 [P2 阶段验收记录](../../docs/architecture/p2-completion.md) 为准（部署需使用包含该代码的镜像，不代表线上已经更新）。本文件中未列为已实施的 Node/Agent/Plugin/Admin/Webhook/Gateway 等路径**仍是目标协议，不得按已上线接口调用**。原 `/api/v1`、`/api/v2` 等兼容入口必须保留。
 
 ## Root: /txapi
 
