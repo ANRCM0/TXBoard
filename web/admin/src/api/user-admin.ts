@@ -146,8 +146,11 @@ export async function updateUser(payload: UserUpdatePayload) {
 }
 
 export async function resetUserSecret(id: number) {
-  const { data } = await apiClient.post('/user/resetSecret', { id })
-  return unwrap(data)
+  const { data } = await nativeApiClient.post<NativeApiEnvelope<{ ok: boolean }>>(
+    adminUserResource(id) + '/subscription-credentials/rotate',
+  )
+  if (!data?.request_id || data.data?.ok !== true) throw new Error('Native credential rotation not acknowledged')
+  return true
 }
 
 export async function generateUser(payload: {
@@ -164,8 +167,11 @@ export async function generateUser(payload: {
 }
 
 export async function destroyUser(id: number) {
-  const { data } = await apiClient.post('/user/destroy', { id })
-  return unwrap(data)
+  const { data } = await nativeApiClient.post<NativeApiEnvelope<{ ok: boolean }>>(
+    adminUserResource(id) + '/delete',
+  )
+  if (!data?.request_id || data.data?.ok !== true) throw new Error('Native account deletion not acknowledged')
+  return true
 }
 
 export async function sendUsersMail(payload:
@@ -181,6 +187,11 @@ export async function banUsers(payload:
   | { scope: 'selected'; user_ids: number[] }
   | { scope: 'filtered'; filter: UserFilter[] }
 ) {
-  const { data } = await apiClient.post('/user/ban', payload)
-  return unwrap(data)
+  const { data } = await nativeApiClient.post<NativeApiEnvelope<{ updated: number }>>(
+    nativeAdminPath('users') + '/ban', payload,
+  )
+  if (!data?.request_id || !Number.isInteger(data.data?.updated)) {
+    throw new Error('Native ban operation not acknowledged')
+  }
+  return data.data.updated
 }
