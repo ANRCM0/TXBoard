@@ -27,10 +27,10 @@ test('scan locates old callers but never exposes source lines or secrets', () =>
 test('route inventory guards payment, user, admin, agent and node contracts',()=>{
  const input=[
   {uri:'api/health',method:'GET|HEAD'},
-  {uri:'api/v1/passport/auth/login',method:'POST'},
-  {uri:'api/v1/user/order/checkout',method:'POST',middleware:['api','user']},
-  {uri:'api/v1/guest/payment/notify/{method}/{uuid}',method:'GET|HEAD|POST'},
-  {uri:'api/v2/server/handshake',method:'GET|HEAD|POST',middleware:['api','server.v2']},
+  {uri:'txapi/auth/login',method:'POST'},
+  {uri:'txapi/orders/{tradeNo}/checkout',method:'POST',middleware:['api','txapi.user']},
+  {uri:'txapi/payment/webhook/{method}/{uuid}',method:'GET|HEAD|POST'},
+  {uri:'txapi/node/v1/handshake',method:'POST',middleware:['api','txnode']},
   {uri:'api/v2/{admin_path}/config/fetch',method:'GET|HEAD',middleware:['api','admin.path','admin']},
   {uri:'api/v2/agent/whoami',method:'GET|HEAD',middleware:['api','agent']},
   {uri:'other/path',method:'GET'}
@@ -40,6 +40,8 @@ test('route inventory guards payment, user, admin, agent and node contracts',()=
  assert.deepEqual(verifyCriticalRoutes(routes),[]);
  const expanded={
   user:'App\\Http\\Middleware\\User',
+  'txapi.user':'App\\Http\\Middleware\\TxapiUser',
+  txnode:'App\\Http\\Middleware\\TxNodeAuth',
   'server.v2':'App\\Http\\Middleware\\ServerV2',
   'admin.path':'App\\Http\\Middleware\\AdminPath',
   admin:'App\\Http\\Middleware\\Admin',
@@ -47,8 +49,8 @@ test('route inventory guards payment, user, admin, agent and node contracts',()=
  };
  const resolved=routes.map(r=>({...r,middleware:r.middleware.map(m=>expanded[m]||m)}));
  assert.deepEqual(verifyCriticalRoutes(resolved),[]);
- const broken=routes.map(r=>r.uri.includes('order/checkout')?{...r,middleware:['api']}:r);
- assert.ok(verifyCriticalRoutes(broken).some(s=>s.includes('missing middleware user')));
+ const broken=routes.map(r=>r.uri.includes('orders/{tradeNo}/checkout')?{...r,middleware:['api']}:r);
+ assert.ok(verifyCriticalRoutes(broken).some(s=>s.includes('missing middleware txapi.user')));
  const hidden=collectRoutes([{uri:'api/v2/secret-admin-path/config/fetch',method:'GET'}]);
  assert.equal(hidden[0].uri,'api/v2/{admin_path}/config/fetch');
  assert.ok(!JSON.stringify(hidden).includes('secret-admin-path'));
@@ -56,6 +58,6 @@ test('route inventory guards payment, user, admin, agent and node contracts',()=
  const queue=buildReviewQueue(routes);
  assert.equal(queue.length,7);
  assert.ok(queue.every(r=>r.review_status==='unverified'&&r.removal_allowed===false));
- assert.equal(queue.find(r=>r.uri.includes('payment/notify')).risk,'critical');
+ assert.equal(queue.find(r=>r.uri.includes('payment/webhook')).risk,'critical');
  assert.equal(queue.find(r=>r.uri.includes('admin_path')).controller_file,null);
 });
