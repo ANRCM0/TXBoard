@@ -45,7 +45,7 @@ class GenerateSecretTest extends TestCase
 
     public function test_x25519_generator_returns_a_matching_key_pair(): void
     {
-        $response = $this->getJson("/api/v2/{$this->securePath}/server/manage/generateSecret?kind=x25519");
+        $response = $this->postJson("/txapi/admin/{$this->securePath}/network-nodes/secrets", ['kind' => 'x25519']);
 
         $response->assertOk();
 
@@ -57,9 +57,9 @@ class GenerateSecretTest extends TestCase
         $this->assertSame(sodium_crypto_scalarmult_base($privateKey), $publicKey);
     }
 
-    public function test_hex_generator_clamps_the_requested_length(): void
+    public function test_hex_generator_respects_the_maximum_allowed_length(): void
     {
-        $response = $this->getJson("/api/v2/{$this->securePath}/server/manage/generateSecret?kind=hex&bytes=4096");
+        $response = $this->postJson("/txapi/admin/{$this->securePath}/network-nodes/secrets", ['kind' => 'hex', 'bytes' => 64]);
 
         $response->assertOk();
         $this->assertSame(128, strlen((string) $response->json('data.value')));
@@ -67,7 +67,7 @@ class GenerateSecretTest extends TestCase
 
     public function test_ech_generator_returns_key_and_config_pem(): void
     {
-        $response = $this->getJson("/api/v2/{$this->securePath}/server/manage/generateSecret?kind=ech&public_name=node.example.com");
+        $response = $this->postJson("/txapi/admin/{$this->securePath}/network-nodes/secrets", ['kind' => 'ech', 'public_name' => 'node.example.com']);
 
         $response->assertOk();
         $this->assertStringContainsString('-----BEGIN ECH KEYS-----', (string) $response->json('data.key'));
@@ -78,7 +78,7 @@ class GenerateSecretTest extends TestCase
 
     public function test_ech_generator_falls_back_to_a_default_public_name(): void
     {
-        $response = $this->getJson("/api/v2/{$this->securePath}/server/manage/generateSecret?kind=ech");
+        $response = $this->postJson("/txapi/admin/{$this->securePath}/network-nodes/secrets", ['kind' => 'ech']);
 
         $response->assertOk();
         $this->assertStringContainsString('ech.example.com', $this->decodeEchConfigPem((string) $response->json('data.config')));
@@ -95,7 +95,7 @@ class GenerateSecretTest extends TestCase
 
     public function test_unknown_generator_kind_is_rejected(): void
     {
-        $this->getJson("/api/v2/{$this->securePath}/server/manage/generateSecret?kind=rsa")
-            ->assertStatus(400);
+        $this->postJson("/txapi/admin/{$this->securePath}/network-nodes/secrets", ['kind' => 'rsa'])
+            ->assertStatus(422);
     }
 }

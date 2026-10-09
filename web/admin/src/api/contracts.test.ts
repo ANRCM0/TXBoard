@@ -26,7 +26,7 @@ import {
   getNoticePage, getNoticeAll, saveNotice, toggleNotice, sortNotice, deleteNotice,
 } from './content'
 import { getUsers, getUserDetail, getUserSubscriptionLink, resetUserSecret, destroyUser, banUsers, updateUser, generateUser } from './user-admin'
-import { copyNode, generateSecret } from './server'
+import { copyNode, generateSecret, getProtocolDefinitions, getNodes, saveNode, updateNode, batchUpdateNodes, saveNodeOrder, deleteNode } from './server'
 import { resolvePluginAppUrl } from './plugin'
 import { getThemes, getThemeConfig, saveThemeConfig } from './theme'
 import { getModuleRegistry } from './module'
@@ -311,25 +311,60 @@ describe('module registry contract', () => {
   })
 })
 
-describe('node editor endpoints', () => {
-  it('asks the panel to mint key material for a protocol field', async () => {
-    responder = () => ({ data: { data: { private_key: 'PRIVATE', public_key: 'PUBLIC' } } })
-
-    await expect(generateSecret('x25519')).resolves.toEqual({ private_key: 'PRIVATE', public_key: 'PUBLIC' })
-
-    expect(seen[0].method).toBe('get')
-    expect(seen[0].url).toBe('/server/manage/generateSecret')
-    expect(seen[0].params).toEqual({ kind: 'x25519' })
+describe('native node editor contract', () => {
+  it('requests schema and creates key material through the native admin path', async () => {
+    setAdminSecurePath('node-admin')
+    responder = config => ({ data: {
+      data: config.url?.endsWith('/protocols') ? [{ type: 'socks', label: 'SOCKS' }]
+        : { private_key: 'PRIVATE', public_key: 'PUBLIC' },
+      request_id: 'node-key',
+    } })
+    await expect(getProtocolDefinitions()).resolves.toHaveLength(1)
+    await expect(generateSecret('x25519')).resolves.toEqual({
+      private_key: 'PRIVATE', public_key: 'PUBLIC',
+    })
+    expect(seen.map(config => [config.method, config.url])).toEqual([
+      ['get', '/admin/node-admin/network-nodes/protocols'],
+      ['post', '/admin/node-admin/network-nodes/secrets'],
+    ])
+    expect(JSON.parse(String(seen[1].data))).toEqual({ kind: 'x25519' })
+    expect(seen.every(config => config.baseURL === '/txapi')).toBe(true)
   })
 
-  it('copies a node and unwraps the new node id', async () => {
-    responder = () => ({ data: { data: 42 } })
-
+  it('pages node inventory, creates/edits/copies/deletes and rejects V2 fallback', async () => {
+    setAdminSecurePath('node-admin')
+    responder = config => ({ data: {
+      data: config.method === 'get'
+        ? Number((config.params as { page?: number })?.page) === 1
+          ? [{ id: 1, name: 'A' }] : [{ id: 2, name: 'B' }]
+        : config.url?.endsWith('/copy') ? 42 : { ok: true, id: 7 },
+      meta: config.method === 'get'
+        ? { page: Number((config.params as { page?: number })?.page), per_page: 100, total: 2, last_page: 2 }
+        : undefined,
+      request_id: 'node-admin',
+    } })
+    await expect(getNodes()).resolves.toHaveLength(2)
+    await saveNode({ name: 'New', host: 'node.test' })
+    await saveNode({ id: 7, name: 'Updated' })
+    await updateNode(7, { enabled: false })
+    await batchUpdateNodes([7], { enabled: true })
+    await saveNodeOrder([{ id: 7, order: 2 }])
     await expect(copyNode(7)).resolves.toBe(42)
-
-    expect(seen[0].method).toBe('post')
-    expect(seen[0].url).toBe('/server/manage/copy')
-    expect(JSON.parse(String(seen[0].data))).toEqual({ id: 7 })
+    await deleteNode(7)
+    expect(seen.map(config => [config.method, config.url])).toEqual([
+      ['get', '/admin/node-admin/network-nodes'],
+      ['get', '/admin/node-admin/network-nodes'],
+      ['post', '/admin/node-admin/network-nodes'],
+      ['put', '/admin/node-admin/network-nodes/7'],
+      ['patch', '/admin/node-admin/network-nodes/7'],
+      ['patch', '/admin/node-admin/network-nodes/batch'],
+      ['put', '/admin/node-admin/network-nodes/sort'],
+      ['post', '/admin/node-admin/network-nodes/7/copy'],
+      ['delete', '/admin/node-admin/network-nodes/7'],
+    ])
+    expect(seen[0].params).toEqual({ page: 1, per_page: 100 })
+    expect(seen[1].params).toEqual({ page: 2, per_page: 100 })
+    expect(seen.every(config => config.baseURL === '/txapi')).toBe(true)
   })
 })
 

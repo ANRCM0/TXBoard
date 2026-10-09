@@ -65,7 +65,7 @@ class NodeCopyTest extends TestCase
             ],
         ]);
 
-        $response = $this->postJson("/api/v2/{$this->securePath}/server/manage/copy", ['id' => $server->id]);
+        $response = $this->postJson("/txapi/admin/{$this->securePath}/network-nodes/{$server->id}/copy");
 
         $response->assertOk();
 
@@ -83,7 +83,7 @@ class NodeCopyTest extends TestCase
 
     public function test_copy_rejects_unknown_nodes(): void
     {
-        $this->postJson("/api/v2/{$this->securePath}/server/manage/copy", ['id' => 424242])
-            ->assertStatus(400);
+        $this->postJson("/txapi/admin/{$this->securePath}/network-nodes/424242/copy")
+            ->assertStatus(404);
     }
 }

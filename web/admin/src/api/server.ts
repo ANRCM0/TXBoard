@@ -176,53 +176,11 @@ export type RouteSimulationResult = {
   unresolved_patterns: string[]
 }
 
-/**
- * Ask the panel to mint key material for a protocol field. Params come from the
- * generator metadata; values starting with $ are resolved from editor context
- * (for example $host -> the node address currently being edited).
- */
-export async function generateSecret(kind: ProtocolGeneratorKind, params: Record<string, unknown> = {}) {
-  const { data } = await apiClient.get('/server/manage/generateSecret', { params: { kind, ...params } })
-  return unwrap<Record<string, string>>(data) || {}
-}
-
-export async function getProtocolDefinitions() {
-  const { data } = await apiClient.get('/server/manage/protocols')
-  return unwrap<ProtocolDefinitionMeta[]>(data) || []
-}
-
-export async function getNodes() {
-  const { data } = await apiClient.get('/server/manage/getNodes')
-  return unwrap<NodeItem[]>(data) || []
-}
-export async function saveNode(payload: Partial<NodeItem>) {
-  const { data } = await apiClient.post('/server/manage/save', payload)
-  return unwrap(data)
-}
-export async function updateNode(id: number, payload: Partial<NodeItem>) {
-  const { data } = await apiClient.post('/server/manage/update', { id, ...payload })
-  return unwrap(data)
-}
-export async function batchUpdateNodes(
-  ids: number[],
-  payload: { show?: 0 | 1; enabled?: boolean; machine_id?: number | null },
-) {
-  const { data } = await apiClient.post('/server/manage/batchUpdate', { ids, ...payload })
-  return unwrap(data)
-}
-/** Copy a node with its protocol settings; resolves to the new node id. */
-export async function copyNode(id: number) {
-  const { data } = await apiClient.post('/server/manage/copy', { id })
-  return unwrap<number>(data)
-}
-export async function deleteNode(id: number) {
-  const { data } = await apiClient.post('/server/manage/drop', { id })
-  return unwrap(data)
-}
-export async function saveNodeOrder(items: Array<{ id: number; order: number }>) {
-  const { data } = await apiClient.post('/server/manage/sort', items)
-  return unwrap(data)
-}
+export {
+  generateSecret, getProtocolDefinitions, getNodes, saveNode, updateNode,
+  batchUpdateNodes, copyNode, deleteNode, saveNodeOrder,
+  batchDeleteNodes, resetNodeTraffic, batchResetNodeTraffic,
+} from './server-nodes'
 
 export async function getMachines() {
   const { data } = await apiClient.get('/server/machine/fetch')
