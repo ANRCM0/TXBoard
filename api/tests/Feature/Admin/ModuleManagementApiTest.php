@@ -37,7 +37,7 @@ class ModuleManagementApiTest extends TestCase
             'installed_at' => now(),
         ]);
 
-        $this->getJson("/api/v2/{$this->securePath}/module/theme.txboard/lifecycle")
+        $this->getJson("/txapi/admin/{$this->securePath}/modules/theme.txboard/operations")
             ->assertOk()
             ->assertJsonPath('data.module_id', 'theme.txboard')
             ->assertJsonPath('data.operations', []);
@@ -45,17 +45,17 @@ class ModuleManagementApiTest extends TestCase
         $this->createTheme('CustomTheme');
 
         try {
-            $this->getJson("/api/v2/{$this->securePath}/module/theme.customtheme/lifecycle")
+            $this->getJson("/txapi/admin/{$this->securePath}/modules/theme.customtheme/operations")
                 ->assertOk()
                 ->assertJsonPath('data.module_id', 'theme.customtheme')
                 ->assertJsonPath('data.operations', ['enable', 'uninstall']);
 
-            $this->getJson("/api/v2/{$this->securePath}/module/agent_ops/lifecycle")
+            $this->getJson("/txapi/admin/{$this->securePath}/modules/agent_ops/operations")
                 ->assertOk()
                 ->assertJsonPath('data.module_id', 'agent_ops')
                 ->assertJsonPath('data.operations', []);
 
-            $this->getJson("/api/v2/{$this->securePath}/module/epay/lifecycle")
+            $this->getJson("/txapi/admin/{$this->securePath}/modules/epay/operations")
                 ->assertOk()
                 ->assertJsonPath('data.operations', [
                     'disable',
@@ -74,12 +74,11 @@ class ModuleManagementApiTest extends TestCase
 
         try {
             $response = $this->postJson(
-                "/api/v2/{$this->securePath}/module/theme.customtheme/lifecycle/enable"
+                "/txapi/admin/{$this->securePath}/modules/theme.customtheme/operations/enable"
             );
 
             $response->assertOk()
-                ->assertJsonPath('status', 'success')
-                ->assertJsonPath('data.operation', 'enable')
+                                ->assertJsonPath('data.operation', 'enable')
                 ->assertJsonPath('data.success', true)
                 ->assertJsonPath('data.module.id', 'theme.customtheme')
                 ->assertJsonPath('data.module.active', true)
@@ -87,7 +86,7 @@ class ModuleManagementApiTest extends TestCase
 
             $this->assertSame('CustomTheme', admin_setting('frontend_theme'));
 
-            $this->getJson("/api/v2/{$this->securePath}/module/theme.customtheme/lifecycle")
+            $this->getJson("/txapi/admin/{$this->securePath}/modules/theme.customtheme/operations")
                 ->assertOk()
                 ->assertJsonPath('data.operations', []);
         } finally {
@@ -98,53 +97,40 @@ class ModuleManagementApiTest extends TestCase
     public function test_unsupported_theme_operation_returns_conflict_with_stable_lifecycle_error(): void
     {
         $response = $this->postJson(
-            "/api/v2/{$this->securePath}/module/theme.txboard/lifecycle/disable"
+            "/txapi/admin/{$this->securePath}/modules/theme.txboard/operations/disable"
         );
 
         $response->assertStatus(409)
-            ->assertJsonPath('status', 'fail')
-            ->assertJsonPath('data.operation', 'disable')
-            ->assertJsonPath('data.success', false)
-            ->assertJsonPath('data.error.code', 'unsupported_operation')
-            ->assertJsonPath('data.error.adapter', 'theme');
+                        ->assertJsonPath('error.code', 'MODULE_OPERATION_CONFLICT');
     }
 
     public function test_module_without_lifecycle_adapter_returns_conflict(): void
     {
         $response = $this->postJson(
-            "/api/v2/{$this->securePath}/module/agent_ops/lifecycle/enable"
+            "/txapi/admin/{$this->securePath}/modules/agent_ops/operations/enable"
         );
 
         $response->assertStatus(409)
-            ->assertJsonPath('data.error.code', 'unsupported_module_type')
-            ->assertJsonPath('data.operation', 'enable');
+            ->assertJsonPath('error.code', 'MODULE_OPERATION_CONFLICT');
     }
 
     public function test_unknown_module_and_invalid_operation_have_stable_http_failures(): void
     {
-        $this->getJson("/api/v2/{$this->securePath}/module/not_found/lifecycle")
+        $this->getJson("/txapi/admin/{$this->securePath}/modules/not_found/operations")
             ->assertNotFound()
-            ->assertJsonPath('message', 'Module not found');
+            ->assertJsonPath('error.message', 'Module not found');
 
         $this->postJson(
-            "/api/v2/{$this->securePath}/module/not_found/lifecycle/enable"
+            "/txapi/admin/{$this->securePath}/modules/not_found/operations/enable"
         )
             ->assertNotFound()
-            ->assertJsonPath('data.error.code', 'module_not_found');
+            ->assertJsonPath('error.code', 'MODULE_NOT_FOUND');
 
         $this->postJson(
-            "/api/v2/{$this->securePath}/module/theme.txboard/lifecycle/restart"
+            "/txapi/admin/{$this->securePath}/modules/theme.txboard/operations/restart"
         )
             ->assertStatus(422)
-            ->assertJsonPath('message', 'Invalid module lifecycle operation')
-            ->assertJsonPath('data.operation', 'restart')
-            ->assertJsonPath('data.allowed', [
-                'install',
-                'enable',
-                'disable',
-                'upgrade',
-                'uninstall',
-            ]);
+            ->assertJsonPath('error.code', 'MODULE_OPERATION_INVALID');
     }
 
     private function createTheme(string $name): void
