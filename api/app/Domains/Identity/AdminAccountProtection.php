@@ -3,6 +3,7 @@
 namespace App\Domains\Identity;
 
 use App\Models\Order;
+use App\Models\WalletRecharge;
 use App\Models\User;
 use App\Services\AuthService;
 use App\Services\Plugin\HookManager;
