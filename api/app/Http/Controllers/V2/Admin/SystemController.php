@@ -4,6 +4,7 @@ namespace App\Http\Controllers\V2\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\AdminAuditLog;
+use App\Core\Security\AdminAuditSanitizer;
 use App\Utils\CacheKey;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -155,6 +156,16 @@ class SystemController extends Controller
 
         $total = $builder->count();
         $res = $builder->forPage($current, $pageSize)->get();
+        // Legacy Admin V2 must not bypass the native historical redaction.
+        $res->transform(static function (AdminAuditLog $log): array {
+            $row = $log->toArray();
+            $row['uri'] = AdminAuditSanitizer::safeUri((string) ($log->uri ?? ''));
+            $row['action'] = AdminAuditSanitizer::safeAction(
+                (string) ($log->action ?? ''), (string) ($log->uri ?? ''));
+            $row['request_data'] = AdminAuditSanitizer::safeJson(
+                (string) ($log->request_data ?? ''));
+            return $row;
+        });
 
         // Standard paginator shape: the audit log page drives its "next page"
         // control from last_page, which the old {data,total} payload omitted.
