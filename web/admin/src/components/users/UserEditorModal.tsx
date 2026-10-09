@@ -160,7 +160,10 @@ export function UserEditorModal({
       discount: nullableNumber(edit.discount),
       speed_limit: nullableNumber(edit.speed_limit),
       device_limit: nullableNumber(edit.device_limit),
-      invite_user_email: edit.invite_user_email.trim(),
+      // Do not silently unlink an existing inviter when the list DTO omits it.
+      ...(edit.invite_user_email.trim() || user.invite_user
+        ? { invite_user_email: edit.invite_user_email.trim() }
+        : {}),
       remarks: edit.remarks,
       banned: edit.banned,
     }
