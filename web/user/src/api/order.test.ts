@@ -1,7 +1,7 @@
 import type { AxiosRequestConfig } from 'axios'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { api, nativeApi, saveAuthData } from './client'
-import { checkOrderStatus, fetchFirstBlockingOrder, fetchOrders } from './order'
+import { checkOrderStatus, fetchFirstBlockingOrder, fetchOrderDetail, fetchOrders } from './order'
 
 const currentTime = '2026-10-09T02:03:04+00:00'
 const nativeOrder = {
@@ -120,5 +120,28 @@ describe('LR-02 native order status polling', () => {
     payload = () => ({ data: { status: 0 }, request_id: 'native-trace' })
     await checkOrderStatus('a/b')
     expect(calls[0].url).toBe('/orders/a%2Fb')
+  })
+})
+
+describe('LR-05 native order detail', () => {
+  it('reads native private detail without invoking the V1 order detail route', async () => {
+    payload = () => ({ data: {
+      ...nativeOrder, payment_id: 7, balance_amount_minor: 350, discount_amount_minor: 200,
+      plan: { id: 5, name: 'Plan A', traffic_limit_bytes: 2 * 1073741824 },
+    }, request_id: 'detail-trace' })
+    const order = await fetchOrderDetail('my-trade')
+    expect(calls).toHaveLength(1)
+    expect(calls[0].url).toBe('/orders/my-trade/detail')
+    expect(calls[0].baseURL).toBe('/txapi')
+    expect(order).toMatchObject({ trade_no: 'TX-PAGINATED-ORDER',
+      balance_amount: 350, discount_amount: 200, payment_id: 7,
+      plan: { name: 'Plan A', transfer_enable: 2 } })
+  })
+  it('rejects missing monetary breakdown and other invalid detail data', async () => {
+    payload = () => ({ data: {
+      ...nativeOrder, payment_id: null, balance_amount_minor: undefined,
+      discount_amount_minor: 0, plan: { id: 5, name: 'A', traffic_limit_bytes: 0 },
+    }, request_id: 'trace' })
+    await expect(fetchOrderDetail('safe')).rejects.toThrow('Invalid TXAPI order detail')
   })
 })
