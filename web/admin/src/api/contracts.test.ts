@@ -12,6 +12,7 @@ import {
 } from './client'
 import { fetchSettings, saveSettings } from './config'
 import { getAuditLogs } from './statistics'
+import { getPlans, getOrders } from './finance'
 import { getTickets, getTicketDetail, replyTicket, closeTicket } from './ticket'
 import { copyNode, generateSecret } from './server'
 import { resolvePluginAppUrl } from './plugin'
@@ -360,6 +361,59 @@ describe('native administrator audit contract', () => {
     setAdminSecurePath('admin-known')
     responder = () => ({ data: { data: [], request_id: 'without-paging' } })
     await expect(getAuditLogs()).rejects.toThrow('Invalid native administrator audit response')
+  })
+})
+
+describe('native admin plans and orders', () => {
+  it('collects complete paged plans through secure-path-scoped TXAPI', async () => {
+    setAdminSecurePath('admin-plans')
+    responder = config => {
+      const page = Number((config.params as { page: number }).page)
+      return {
+        data: {
+          data: [{ id: page, name: 'Plan ' + page, transfer_enable: 2 }],
+          meta: { page, per_page: 100, total: 2, last_page: 2 },
+          request_id: 'plans-' + page,
+        },
+      }
+    }
+    const plans = await getPlans()
+    expect(plans.map(p => p.id)).toEqual([1, 2])
+    expect(seen[0].baseURL).toBe('/txapi')
+    expect(seen[0].url).toBe('/admin/admin-plans/plans')
+    expect(seen[0].params).toEqual({ page: 1, per_page: 100 })
+    expect(seen[1].params).toEqual({ page: 2, per_page: 100 })
+  })
+
+  it('maps existing order UI filters exactly and preserves pagination', async () => {
+    setAdminSecurePath('admin-orders')
+    responder = () => ({
+      data: {
+        data: [{ id: 1, trade_no: 'TX123', user_id: 5, plan_id: 2, total_amount: 1200, status: 3, type: 1 }],
+        meta: { page: 2, per_page: 10, total: 13, last_page: 2 },
+        request_id: 'orders-native',
+      },
+    })
+    const result = await getOrders({
+      current: 2, pageSize: 10, is_commission: true,
+      filter: [{ id: 'email', value: 'buyer' }, { id: 'status', value: [3] }],
+    })
+    expect(result.total).toBe(13)
+    expect(result.last_page).toBe(2)
+    expect(result.data[0].trade_no).toBe('TX123')
+    expect(seen[0].url).toBe('/admin/admin-orders/orders')
+    expect(seen[0].params).toEqual({
+      page: 2, per_page: 10, is_commission: true, email: 'buyer', status: 3,
+    })
+    await expect(getOrders({ filter: [{ id: 'private_field', value: 'x' }] }))
+      .rejects.toThrow('Unsupported native order filter')
+  })
+
+  it('rejects malformed native commerce envelopes', async () => {
+    setAdminSecurePath('admin-commerce')
+    responder = () => ({ data: { data: [], request_id: 'missing-meta' } })
+    await expect(getPlans()).rejects.toThrow('Invalid TXAPI plan catalog response')
+    await expect(getOrders()).rejects.toThrow('Invalid TXAPI order list response')
   })
 })
 
