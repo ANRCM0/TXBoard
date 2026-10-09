@@ -22,3 +22,9 @@ User public/user common configuration, eligible node list, invitations/withdrawa
 - The two Vue configuration consumers move to `GET /txapi/public/site-config` and `GET /txapi/me/site-config`; V1 Guest/User configs and TXAPI share the same `SiteConfigService` projections, preserving theme hooks and feature flags without copying configuration logic.
 - Existing `GET /txapi/public/config` remains a minimal system metadata contract. Sensitive payment and Bot signing secrets must not be exposed to either public or user site config.
 - External consumers adapt independently and do not block TXBoard-internal API removal decisions.
+
+## LR-12 / user-visible nodes
+
+- `GET /txapi/me/nodes` uses the existing permission-aware `UserService::isAvailable` and `ServerService::getAvailableServers` to retain visibility and online/rate calculations.
+- Its explicit response whitelist hides generated node passwords, server keys, private hosts, TLS material and other configuration data. Official Vue node page moves off `/api/v1/user/server/fetch` without changing how the list is displayed.
+- Internal tests require 401 without Sanctum, empty list without a subscription, and no secret keys in serialized node data.
