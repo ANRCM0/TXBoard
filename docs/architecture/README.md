@@ -12,6 +12,7 @@
 - [P4 阶段验收记录](p4-completion.md) — TXBoard Native Node v1、流量分批查询优化、自动化证据与外部 Node 联调后置。
 - [P3 阶段验收记录](p3-completion.md) — 核心交易、双 webhook、共享 checkout、审计工件及支付商外部联调待验收项。
 - [Legacy Retirement Batch 1](legacy-retirement-batch-1.md) — LR-01～LR-03 的工作范围、危险边界、测试与删除门禁。
+- [Legacy Retirement Batch 3](legacy-retirement-batch-3.md) — LR-07～LR-09 原生安全认证、一次性令牌和邮箱恢复工作包；LR-04～LR-06 可在各自 PR 中追踪。
 
 
 1. [详细重构与开发方案](txboard-native-development-plan.md) — 架构、API、领域、优化、P0–P7、数据和发布。
