@@ -215,6 +215,18 @@ final class GiftCardAdminController
     }
 
 
+    public function exportCodes(Request $request): \Symfony\Component\HttpFoundation\Response
+    {
+        $input = $request->validate(['batch_id' => ['required', 'string', 'max:128']]);
+        $batchId = $input['batch_id'];
+        if (!GiftCardCode::query()->where('batch_id', $batchId)->exists()) abort(404);
+        return response()->streamDownload(static function () use ($batchId): void {
+            foreach (GiftCardCode::query()->where('batch_id', $batchId)->orderBy('id')->cursor() as $code) {
+                echo $code->code . "\\n";
+            }
+        }, 'redemption_codes.txt', ['Content-Type' => 'text/plain; charset=UTF-8', 'Cache-Control' => 'no-store']);
+    }
+
     public function statistics(Request $request): JsonResponse
     {
         $input = $request->validate([
