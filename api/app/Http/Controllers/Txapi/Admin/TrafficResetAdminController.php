@@ -71,6 +71,7 @@ final class TrafficResetAdminController
         $filters = $request->validate(['limit' => ['sometimes', 'integer', 'min:1', 'max:50']]);
         $user = User::query()->findOrFail((int) $request->route('id'));
         $history = $service->getUserResetHistory($user, (int) ($filters['limit'] ?? 10));
+        $history->load('user:id,email');
         return TxapiResponse::success($request, [
             'user' => [
                 'id' => (int) $user->id,
