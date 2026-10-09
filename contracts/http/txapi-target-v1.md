@@ -21,6 +21,12 @@
 
 Hono Gateway 独立的 [TXAPI BFF Target](txapi-bff-target-v1.md) 保留 `{ok,data,meta}` 的 v1 SDK envelope，和 Laravel 原生响应不同。
 
+## P2-E Native authentication
+
+- `POST /txapi/auth/login`、`POST /txapi/auth/register` 复用原注册、Captcha、密码限制与 Sanctum；仅返回 auth_data，不包含 subscription token 或 admin secure_path。
+- `POST /txapi/auth/logout` 注销当前 token；`GET /txapi/auth/sessions` 返回不含 token hash 的当前用户会话；`DELETE /txapi/auth/sessions/{sessionId}` 仅能操作当前用户 token；`POST /txapi/auth/password` 验证旧密码后撤销其他会话。
+- 邮件链接、Telegram、验证码发送、忘记密码和订阅密钥重置仍走 legacy（业务安全与交互契约保持不变），用户前端的普通登录注册/会话管理已迁移。
+
 ## P2-D Tickets
 
 - `GET /txapi/tickets?page=&per_page=`：Sanctum 用户隔离、稳定数据库分页、数据+meta；`GET /txapi/tickets/{id}`：仅所有者可见，messages 带 is_me、时间使用 ISO UTC。

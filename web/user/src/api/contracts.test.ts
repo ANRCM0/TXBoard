@@ -60,12 +60,13 @@ describe('user response envelope contract', () => {
 
 describe('auth adapter contract', () => {
   it('logs in against /passport/auth/login and stores the bearer token', async () => {
-    responder = () => ({ status: 'success', data: { auth_data: 'token-1' } })
+    responder = () => ({ data: { auth_data: 'token-1' }, request_id: 'trace-login' })
 
     await login({ email: 'a@b.c', password: 'secret' })
 
     expect(seen[0].method).toBe('post')
-    expect(seen[0].url).toBe('/passport/auth/login')
+    expect(seen[0].url).toBe('/auth/login')
+    expect(seen[0].baseURL).toBe('/txapi')
     expect(JSON.parse(String(seen[0].data))).toEqual({ email: 'a@b.c', password: 'secret' })
     expect(getAuthData()).toBe('Bearer token-1')
   })
