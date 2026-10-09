@@ -145,6 +145,48 @@ class TxapiWalletRechargeTest extends TestCase
             (int) WalletRecharge::where('trade_no', $second)->value('status'));
     }
 
+    public function test_recharge_methods_exclude_non_verified_provider_adapters_and_keep_configs_private(): void
+    {
+        $supported = $this->payment();
+        Payment::create([
+            'uuid' => 'unsafe-wallet-merchant', 'payment' => 'StripeCredit',
+            'name' => 'Not audited for recharge', 'enable' => true,
+            'config' => ['secret_key' => 'never-return-provider-secret'],
+        ]);
+        $user = $this->user('topup-methods@example.test');
+        Sanctum::actingAs($user);
+        $methods = $this->getJson('/txapi/billing/recharge-payment-methods')
+            ->assertOk()->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', $supported->id)
+            ->assertJsonPath('data.0.payment', 'EPay');
+        $this->assertStringNotContainsString('never-return-provider-secret', $methods->getContent());
+        $this->assertStringNotContainsString('Not audited for recharge', $methods->getContent());
+        $this->postJson('/txapi/billing/recharges', [
+            'amount_minor' => 1000,
+            'payment_method_id' => Payment::where('payment', 'StripeCredit')->value('id'),
+        ], ['Idempotency-Key' => 'e2b01300-9d18-420d-a0d6-f213147d0005'])
+            ->assertStatus(422);
+    }
+
+    public function test_account_with_wallet_recharge_history_cannot_be_physically_deleted(): void
+    {
+        admin_setting(['secure_path' => 'wallet-delete-guard']);
+        $owner = $this->user('wallet-history@example.test');
+        $admin = $this->user('wallet-root@example.test');
+        $admin->is_admin = true;
+        $admin->saveOrFail();
+        $payment = $this->payment();
+        Sanctum::actingAs($owner);
+        $trade = (string) $this->postJson('/txapi/billing/recharges', [
+            'amount_minor' => 1000, 'payment_method_id' => $payment->id,
+        ], ['Idempotency-Key' => 'e2b01300-9d18-420d-a0d6-f213147d0006'])->json('data.trade_no');
+        Sanctum::actingAs($admin);
+        $this->postJson('/txapi/admin/wallet-delete-guard/users/' . $owner->id . '/delete')
+            ->assertStatus(409)->assertJsonPath('error.code', 'ACCOUNT_IN_USE');
+        $this->assertNotNull($owner->fresh());
+        $this->assertNotNull(WalletRecharge::where('trade_no', $trade)->first());
+    }
+
     private function user(string $email): User
     {
         return User::create([
