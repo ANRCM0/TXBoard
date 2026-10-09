@@ -5,7 +5,8 @@ namespace App\Http\Controllers\Txapi;
 use App\Core\Http\TxapiResponse;
 use App\Services\ServerService;
 use App\Domains\Network\MachineTelemetry;
-use App\Services\TrafficUsage;
+use App\Domains\Network\NativeNodeReport;
+use App\Domains\Network\NodeReportError;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -21,7 +22,11 @@ final class NodeProtocolController
             'capabilities' => [
                 'http_poll', 'etag', 'traffic_batch_v1', 'machine_discovery',
             ],
-            'websocket' => ['enabled' => false],
+            'websocket' => [
+                'enabled' => (bool) config('node_ws.native_enabled', false),
+                'path' => '/txapi/node/v1/ws',
+                'heartbeat_interval_seconds' => 55,
+            ],
             'settings' => $this->intervals(),
         ]);
     }
@@ -85,51 +90,12 @@ final class NodeProtocolController
         if (strlen($request->getContent()) > 1048576) {
             return TxapiResponse::error($request, 'REPORT_TOO_LARGE', 'Report limit exceeded', 413);
         }
-        $params = $request->validate([
-            'protocol_version' => ['required', 'integer', 'in:1'],
-            'traffic_batch_id' => ['nullable', 'string', 'regex:/^[A-Za-z0-9:_-]{8,80}$/D'],
-            'traffic' => ['sometimes', 'array', 'max:10000'],
-            'alive' => ['sometimes', 'array'],
-            'online' => ['sometimes', 'array'],
-            'status' => ['sometimes', 'array'],
-            'metrics' => ['sometimes', 'array'],
-        ]);
-        $traffic = $params['traffic'] ?? [];
-        $batch = $params['traffic_batch_id'] ?? null;
-        if ($traffic !== [] && !$batch) {
-            return TxapiResponse::error($request, 'BATCH_ID_REQUIRED',
-                'Traffic reports require a stable batch ID', 422);
+        try {
+            $result = app(NativeNodeReport::class)->submit($node, $request->all());
+        } catch (NodeReportError $e) {
+            return TxapiResponse::error($request, $e->errorCode, $e->getMessage(), 422);
         }
-        if ($traffic !== []) {
-            $valid = TrafficUsage::normalize($traffic, $node->getCurrentRate());
-            if (count($valid) !== count($traffic)) {
-                return TxapiResponse::error($request, 'INVALID_TRAFFIC',
-                    'Traffic entries must be unsigned byte pairs', 422);
-            }
-        }
-
-        ServerService::touchNode($node);
-        if ($traffic !== []) {
-            ServerService::processTraffic($node, $traffic, $batch);
-        }
-        if (!empty($params['alive'])) {
-            ServerService::processAlive($node->id, $params['alive']);
-        }
-        if (!empty($params['online'])) {
-            ServerService::processOnline($node, $params['online']);
-        }
-        if (!empty($params['status'])) {
-            ServerService::processStatus($node, $params['status']);
-        }
-        if (!empty($params['metrics'])) {
-            ServerService::updateMetrics($node, $params['metrics']);
-        }
-        return TxapiResponse::success($request, [
-            'protocol_version' => 1,
-            'accepted' => true,
-            'traffic_batch_id' => $batch,
-            'settlement' => $traffic === [] ? 'none' : 'queued',
-        ], status: 202);
+        return TxapiResponse::success($request, $result, status: 202);
     }
 
     private function intervals(): array

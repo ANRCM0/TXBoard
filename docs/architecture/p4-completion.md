@@ -5,6 +5,7 @@
 ## 已交付
 
 - [#127](https://github.com/ANRCM0/TXBoard/pull/127)：原生 `/txapi/node/v1/*`，机器/节点 Bearer headers 身份认证，机器与节点归属校验，握手、配置和用户快照 ETag、流量强校验和 202 接收、机器清单与机器状态。HTTP-only；旧 V1/V2/WS 保留。
+- [#130](https://github.com/ANRCM0/TXBoard/pull/130)：P4-D 原生 WS、请求头认证、实时同步、心跳与跨传输流量结算复用；Caddy 反代与回退开关。
 - [#129](https://github.com/ANRCM0/TXBoard/pull/129)：机器级无 Node ID 握手，以及原生/旧版机器状态采用同一写入服务；保留 net、runtime/update 字段、历史记录与消息脱敏。
 - [#128](https://github.com/ANRCM0/TXBoard/pull/128)：`TrafficBatchJob` 用户与日统计读取分块批量预取，保持行锁、去重、溢出保护、SQL 原子结算及 Redis 提交后通知。
 - 完整线协议和上报重试语义参见 [Native Node Protocol v1](../../contracts/node-protocol/node-native-v1.md)。
@@ -20,7 +21,7 @@
 ## 未完成/不可宣称
 
 - **TX-Node 客户端适配和真实双端网络联调未开始**；当前未修改 TX-Node 仓库，不应将代理节点切换到 native path。
-- 原生 WebSocket 尚未提供：握手的 `websocket.enabled=false` 是明确约束，旧 WS 继续运行。
+- 原生 WebSocket P4-D TXBoard 服务端已提供，但 TXBOARD_NATIVE_NODE_WS_ENABLED 默认关闭，直到反代/TLS 和外部联调完成；旧 WS 继续运行。
 - 202 并非持久账本回执：队列成功接收后的丢失/死亡需要失败队列监控和运维对账。全链路 exactly-once 交付只能在完成可靠队列/收据方案后验证。
 - MySQL CI 不是生产节点吞吐负载测试，未声明稳定 p95/p99、Redis 内存、跨机真实并发和网络断连恢复指标。
 - 不删除旧 node API、机器接口、WS、AccessAudit 可选插件，也不变更 TX-Node Installer。

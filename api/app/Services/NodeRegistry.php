@@ -78,11 +78,13 @@ class NodeRegistry
             $data['node_id'] = $nodeId;
         }
 
-        $payload = json_encode([
-            'event' => $event,
-            'data' => $data,
-            'timestamp' => time(),
-        ]);
+        $payload = !empty($conn->txnodeNative)
+            ? \App\WebSocket\NativeNodeFrame::encode($event, $data)
+            : json_encode([
+                'event' => $event,
+                'data' => $data,
+                'timestamp' => time(),
+            ]);
 
         $conn->send($payload);
         return true;
@@ -121,11 +123,13 @@ class NodeRegistry
             return false;
         }
 
-        $payload = json_encode([
-            'event' => $event,
-            'data' => $data,
-            'timestamp' => time(),
-        ]);
+        $payload = !empty($conn->txnodeNative)
+            ? \App\WebSocket\NativeNodeFrame::encode($event, $data)
+            : json_encode([
+                'event' => $event,
+                'data' => $data,
+                'timestamp' => time(),
+            ]);
 
         $conn->send($payload);
         return true;
