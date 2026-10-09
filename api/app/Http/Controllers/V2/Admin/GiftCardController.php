@@ -414,7 +414,7 @@ class GiftCardController extends Controller
             if ($request->input('action') === 'disable') {
                 $code->markAsDisabled();
             } else {
-                if ($code->status === GiftCardCode::STATUS_DISABLED) {
+                if ($code->status === GiftCardCode::STATUS_DISABLED && $code->usage_count === 0 && !$code->usages()->exists()) {
                     $code->status = GiftCardCode::STATUS_UNUSED;
                     $code->save();
                 }
@@ -576,6 +576,15 @@ class GiftCardController extends Controller
 
             if (empty($updateData)) {
                 return $this->success($code);
+            }
+
+            // Historical redemptions must never be reset through administrative edits.
+            if (($code->usage_count > 0 || $code->usages()->exists()) &&
+                (array_key_exists('status', $updateData) && $updateData['status'] === GiftCardCode::STATUS_UNUSED)) {
+                return $this->fail([400, '已兑换礼品卡不可恢复为未使用']);
+            }
+            if (isset($updateData['max_usage']) && $updateData['max_usage'] < $code->usage_count) {
+                return $this->fail([400, '最大使用次数不可低于已使用次数']);
             }
 
             $updateData['updated_at'] = time();
