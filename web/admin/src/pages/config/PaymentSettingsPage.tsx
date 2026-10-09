@@ -368,7 +368,7 @@ export function PaymentSettingsPage() {
             <CreditCard size={17}/>
             <div>
               <strong>网关参数</strong>
-              <small>由当前 Xboard 支付插件的 form() 动态生成</small>
+              <small>由当前支付插件的 form() 动态生成</small>
             </div>
           </div>
 

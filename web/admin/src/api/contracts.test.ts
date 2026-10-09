@@ -15,7 +15,7 @@ import { getAuditLogs } from './statistics'
 import { getPlans, getOrders, savePlan, updatePlanFlags, deletePlan, sortPlans, getOrderDetail, markOrderPaid, cancelOrder } from './finance'
 import { getTickets, getTicketDetail, replyTicket, closeTicket } from './ticket'
 import { getTrafficResetLogs, getTrafficResetStats, resetUserTraffic, getUserTrafficResetHistory } from './traffic-reset'
-import { deletePayment } from './payment'
+import { deletePayment, getPayments, getPaymentMethods, getPaymentForm, savePayment, togglePayment, sortPayments } from './payment'
 import {
   getKnowledgePage, getKnowledgeAll, getKnowledgeDetail, getKnowledgeCategories,
   saveKnowledge, toggleKnowledge, sortKnowledge, deleteKnowledge,
@@ -789,5 +789,60 @@ describe('native administrator payment deletion guard', () => {
     setAdminSecurePath('secure-payment-admin')
     responder = () => ({ data: { data: { ok: false }, request_id: 'failed' } })
     await expect(deletePayment(9)).rejects.toThrow('not acknowledged')
+  })
+})
+
+describe('native administrator payment management contract', () => {
+  it('reads payment methods, providers and plugin forms through the secured TXAPI', async () => {
+    setAdminSecurePath('payment-admin')
+    responder = config => ({
+      data: {
+        data: config.url?.endsWith('/providers')
+          ? ['EPay']
+          : config.url?.endsWith('/form')
+            ? { key: { type: 'string', label: 'Key', value: 'secret' } }
+            : [{ id: 7, name: 'Test', payment: 'EPay', config: { key: 'secret' } }],
+        request_id: 'payment-read',
+      },
+    })
+    await expect(getPayments()).resolves.toMatchObject([{ id: 7 }])
+    await expect(getPaymentMethods()).resolves.toEqual(['EPay'])
+    await expect(getPaymentForm('EPay', 7)).resolves.toHaveProperty('key.value', 'secret')
+    expect(seen.map(request => request.url)).toEqual([
+      '/admin/payment-admin/payment-methods',
+      '/admin/payment-admin/payment-methods/providers',
+      '/admin/payment-admin/payment-methods/form',
+    ])
+    expect(seen.map(request => request.baseURL)).toEqual(['/txapi', '/txapi', '/txapi'])
+    expect(JSON.parse(String(seen[2].data))).toEqual({ payment: 'EPay', id: 7 })
+  })
+
+  it('saves, toggles and sorts through native endpoints without V2 fallback', async () => {
+    setAdminSecurePath('payment-admin')
+    responder = config => ({
+      data: {
+        data: config.url?.endsWith('/toggle') ? { enable: false }
+          : config.url?.endsWith('/sort') ? { ok: true } : { id: 7 },
+        request_id: 'payment-mutation',
+      },
+    })
+    const payload = { name: 'Card', payment: 'EPay', config: { api_key: 'secret' } }
+    await expect(savePayment(payload)).resolves.toEqual({ id: 7 })
+    await expect(savePayment({ ...payload, id: 7 })).resolves.toEqual({ id: 7 })
+    await expect(togglePayment(7)).resolves.toEqual({ enable: false })
+    await expect(sortPayments([7, 8])).resolves.toEqual({ ok: true })
+    expect(seen.map(request => [request.method, request.url])).toEqual([
+      ['post', '/admin/payment-admin/payment-methods'],
+      ['put', '/admin/payment-admin/payment-methods/7'],
+      ['patch', '/admin/payment-admin/payment-methods/7/toggle'],
+      ['put', '/admin/payment-admin/payment-methods/sort'],
+    ])
+    expect(JSON.parse(String(seen[3].data))).toEqual({ ids: [7, 8] })
+  })
+
+  it('rejects malformed TXAPI envelopes without silently succeeding', async () => {
+    setAdminSecurePath('payment-admin')
+    responder = () => ({ data: { data: [{ id: 1 }] } })
+    await expect(getPayments()).rejects.toThrow('Invalid TXAPI response')
   })
 })
