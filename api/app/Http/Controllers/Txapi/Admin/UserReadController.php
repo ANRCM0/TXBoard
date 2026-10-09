@@ -77,9 +77,9 @@ final class UserReadController
             // Admin editor historically expects major currency units, not cents.
             'balance' => ((int) $user->balance) / 100,
             'commission_balance' => ((int) $user->commission_balance) / 100,
-            'commission_rate' => $user->commission_rate === null ? null : (int) $user->commission_rate,
+            'commission_rate' => $user->commission_rate === null ? null : (float) $user->commission_rate,
             'commission_type' => $user->commission_type === null ? null : (int) $user->commission_type,
-            'discount' => $user->discount === null ? null : (int) $user->discount,
+            'discount' => $user->discount === null ? null : (float) $user->discount,
             'expired_at' => $user->expired_at === null ? null : (int) $user->expired_at,
             'created_at' => (int) $user->created_at,
             'banned' => (bool) $user->banned,
