@@ -13,11 +13,11 @@ export type InviteStat = {
 }
 
 export async function fetchInvite() {
-  return request<InviteStat>(api.get('/user/invite/fetch'))
+  return nativeRequest<InviteStat>(nativeApi.get('/invites'))
 }
 
 export async function generateInviteCode() {
-  return request<boolean>(api.get('/user/invite/save'))
+  return nativeRequest<boolean>(nativeApi.post('/invites'))
 }
 
 export async function transferCommission(transfer_amount: number) {
