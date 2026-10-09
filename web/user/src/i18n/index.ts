@@ -92,7 +92,7 @@ const zhCN:Catalog={
   'gift.balanceReward':'余额 ¥ {amount}','gift.trafficReward':'流量 {amount} GB','gift.expireReward':'有效期 +{days} 天',
   'gift.planReward':'套餐 #{id}','gift.deviceReward':'设备限制 {count}','gift.rewardFallback':'奖励详情以兑换结果为准','gift.redeemed':'已兑换：{name}','gift.notes':'备注',
 
-  'profile.title':'个人设置','profile.desc':'管理账户密码、活动会话和安全凭据。','profile.account':'账户信息',
+  'profile.preferences':'提醒设置','profile.remindExpire':'到期提醒','profile.remindTraffic':'流量提醒','profile.savePreferences':'保存设置','profile.preferencesSaved':'提醒设置已保存','profile.title':'个人设置','profile.desc':'管理账户密码、活动会话和安全凭据。','profile.account':'账户信息',
   'profile.email':'邮箱','profile.planId':'套餐 ID','profile.balance':'余额','profile.commissionBalance':'佣金余额',
   'profile.changePassword':'修改密码','profile.oldPassword':'旧密码','profile.newPassword':'新密码',
   'profile.confirmNewPassword':'确认新密码','profile.savePassword':'保存新密码','profile.sessions':'活动会话',
@@ -199,7 +199,7 @@ const enUS:Catalog={
   'gift.balanceReward':'Balance ¥ {amount}','gift.trafficReward':'Traffic {amount} GB','gift.expireReward':'Expiry +{days} days',
   'gift.planReward':'Plan #{id}','gift.deviceReward':'Device limit {count}','gift.rewardFallback':'See redemption result for reward details','gift.redeemed':'Redeemed: {name}','gift.notes':'Notes',
 
-  'profile.title':'Profile','profile.desc':'Manage your password, active sessions, and security credentials.','profile.account':'Account',
+  'profile.preferences':'Notification preferences','profile.remindExpire':'Expiration reminders','profile.remindTraffic':'Traffic reminders','profile.savePreferences':'Save preferences','profile.preferencesSaved':'Preferences saved','profile.title':'Profile','profile.desc':'Manage your password, active sessions, and security credentials.','profile.account':'Account',
   'profile.email':'Email','profile.planId':'Plan ID','profile.balance':'Balance','profile.commissionBalance':'Commission balance',
   'profile.changePassword':'Change password','profile.oldPassword':'Old password','profile.newPassword':'New password',
   'profile.confirmNewPassword':'Confirm new password','profile.savePassword':'Save password','profile.sessions':'Active sessions',
