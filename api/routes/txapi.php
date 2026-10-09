@@ -11,6 +11,7 @@ use App\Http\Controllers\Txapi\Admin\ContentAdminController;
 use App\Http\Controllers\Txapi\Admin\OrderAdminController;
 use App\Http\Controllers\Txapi\Admin\TrafficResetAdminController;
 use App\Http\Controllers\Txapi\Admin\PaymentSafetyController;
+use App\Http\Controllers\Txapi\Admin\PaymentManagementController;
 use App\Http\Controllers\Txapi\AccountController;
 use App\Http\Controllers\Txapi\ServerController;
 use App\Http\Controllers\Txapi\TrafficController;
@@ -56,6 +57,13 @@ Route::prefix('admin/{admin_path}')
     ->middleware(['admin.path', 'admin', 'log', 'throttle:120,1'])
     ->group(function () {
         Route::get('audit-logs', [AuditLogController::class, 'index']);
+        Route::get('payment-methods', [PaymentManagementController::class, 'index']);
+        Route::get('payment-methods/providers', [PaymentManagementController::class, 'providers']);
+        Route::post('payment-methods/form', [PaymentManagementController::class, 'form']);
+        Route::post('payment-methods', [PaymentManagementController::class, 'save']);
+        Route::put('payment-methods/sort', [PaymentManagementController::class, 'sort']);
+        Route::put('payment-methods/{id}', [PaymentManagementController::class, 'save'])->whereNumber('id');
+        Route::patch('payment-methods/{id}/toggle', [PaymentManagementController::class, 'toggle'])->whereNumber('id');
         Route::post('payment-methods/{id}/delete', [PaymentSafetyController::class, 'delete'])->whereNumber('id');
         Route::get('traffic-resets', [TrafficResetAdminController::class, 'index']);
         Route::get('traffic-resets/stats', [TrafficResetAdminController::class, 'stats']);
