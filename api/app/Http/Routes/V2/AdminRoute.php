@@ -2,7 +2,6 @@
 
 namespace App\Http\Routes\V2;
 
-use App\Http\Routes\V2\Admin\AgentRoute;
 use App\Http\Routes\V2\Admin\AnalyticsRoute;
 use App\Http\Routes\V2\Admin\CommerceRoute;
 use App\Http\Routes\V2\Admin\ContentRoute;
@@ -15,7 +14,6 @@ class AdminRoute
 {
     private const ROUTE_MODULES = [
         SystemRoute::class,
-        AgentRoute::class,
         CommerceRoute::class,
         AdminUserRoute::class,
         ContentRoute::class,
