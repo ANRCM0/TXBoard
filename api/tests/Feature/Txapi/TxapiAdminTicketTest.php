@@ -7,6 +7,7 @@ use App\Models\TicketMessage;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Routing\Middleware\ThrottleRequests;
+use Illuminate\Support\Facades\Bus;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -18,6 +19,7 @@ class TxapiAdminTicketTest extends TestCase
     {
         parent::setUp();
         $this->withoutMiddleware(ThrottleRequests::class);
+        Bus::fake();
         admin_setting(['secure_path' => 'admin_ticket_core']);
     }
 
