@@ -36,11 +36,11 @@ final class UserEditorController
             'commission_balance' => ['sometimes', 'required_with:expected_commission_balance_minor', 'numeric', 'min:0'],
             'expected_balance_minor' => ['required_with:balance', 'integer', 'min:0'],
             'expected_commission_balance_minor' => ['required_with:commission_balance', 'integer', 'min:0'],
-            'expected_transfer_enable' => ['required_with:transfer_enable', 'nullable', 'integer', 'min:0'],
-            'expected_u' => ['required_with:u', 'nullable', 'integer', 'min:0'],
-            'expected_d' => ['required_with:d', 'nullable', 'integer', 'min:0'],
-            'expected_plan_id' => ['required_with:plan_id', 'nullable', 'integer', 'min:1'],
-            'expected_expired_at' => ['required_with:expired_at', 'nullable', 'integer', 'min:0'],
+            'expected_transfer_enable' => ['sometimes', 'nullable', 'integer', 'min:0'],
+            'expected_u' => ['sometimes', 'nullable', 'integer', 'min:0'],
+            'expected_d' => ['sometimes', 'nullable', 'integer', 'min:0'],
+            'expected_plan_id' => ['sometimes', 'nullable', 'integer', 'min:1'],
+            'expected_expired_at' => ['sometimes', 'nullable', 'integer', 'min:0'],
             'commission_rate' => ['sometimes', 'nullable', 'numeric', 'min:0', 'max:100'],
             'discount' => ['sometimes', 'nullable', 'numeric', 'min:0', 'max:100'],
             'speed_limit' => ['sometimes', 'nullable', 'integer', 'min:0'],
@@ -53,6 +53,15 @@ final class UserEditorController
             'id' => ['prohibited'],
         ]);
         $id = (int) $request->route('id');
+
+        foreach (['transfer_enable', 'u', 'd', 'plan_id', 'expired_at'] as $field) {
+            if (array_key_exists($field, $fields) &&
+                !array_key_exists('expected_' . $field, $request->all())) {
+                throw ValidationException::withMessages([
+                    $field => 'Original subscription/traffic snapshot required',
+                ]);
+            }
+        }
 
         foreach (['balance' => 'expected_balance_minor',
                      'commission_balance' => 'expected_commission_balance_minor'] as $key => $expectedKey) {
