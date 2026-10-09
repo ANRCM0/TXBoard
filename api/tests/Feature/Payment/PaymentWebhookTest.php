@@ -26,6 +26,8 @@ class PaymentWebhookTest extends TestCase
             'is_enabled' => true,
             'config' => '{}',
         ]);
+        $this->app->forgetInstance(\App\Services\Plugin\PluginManager::class);
+        \App\Services\Plugin\HookManager::reset();
     }
 
     public function test_missing_order_must_not_be_acknowledged_as_paid(): void
@@ -130,6 +132,62 @@ class PaymentWebhookTest extends TestCase
         $this->assertSame(Order::STATUS_PROCESSING, $order->fresh()->status);
     }
 
+    public function test_native_signed_callback_and_legacy_duplicate_share_exact_one_settlement(): void
+    {
+        \Illuminate\Support\Facades\Bus::fake();
+        $payment = $this->payment();
+        $order = $this->order($payment);
+        $uri = '/txapi/payment/webhook/EPay/' . $payment->uuid;
+        $signed = $this->signedPayload($order->trade_no);
+
+        $this->post($uri, $signed)->assertOk()->assertSeeText('success');
+        $this->postCallback($payment, $order->trade_no)
+            ->assertOk()->assertSeeText('success');
+        $this->assertSame(Order::STATUS_PROCESSING, (int) $order->fresh()->status);
+        $this->assertSame('provider-trade-1', $order->fresh()->callback_no);
+        \Illuminate\Support\Facades\Bus::assertDispatchedTimes(
+            \App\Jobs\OrderHandleJob::class, 1
+        );
+
+        $otherTransaction = $this->signedPayload($order->trade_no,
+            ['trade_no' => 'another-provider-transaction']);
+        $this->post($uri, $otherTransaction)->assertStatus(400);
+        $this->assertSame('provider-trade-1', $order->fresh()->callback_no);
+    }
+
+    public function test_native_callback_rejects_invalid_signature_wrong_provider_and_amount(): void
+    {
+        $payment = $this->payment();
+        $different = $this->payment('native-other-provider-uuid');
+        $order = $this->order($payment);
+        $uri = '/txapi/payment/webhook/EPay/' . $payment->uuid;
+
+        $invalid = $this->signedPayload($order->trade_no);
+        $invalid['sign'] = 'forged';
+        $this->post($uri, $invalid)->assertStatus(422)->assertSeeText('fail');
+        $this->post($uri, $this->signedPayload($order->trade_no,
+            ['money' => '9.99']))->assertStatus(400)->assertSeeText('fail');
+        $this->post('/txapi/payment/webhook/EPay/' . $different->uuid,
+            $this->signedPayload($order->trade_no))->assertStatus(400);
+        $this->assertSame(Order::STATUS_PENDING, (int) $order->fresh()->status);
+    }
+
+    public function test_native_get_callback_supports_legacy_gateway_query_mode(): void
+    {
+        \Illuminate\Support\Facades\Bus::fake();
+        $payment = $this->payment();
+        $order = $this->order($payment);
+        $url = '/txapi/payment/webhook/EPay/' . $payment->uuid . '?'
+            . http_build_query($this->signedPayload($order->trade_no));
+        $this->get($url)->assertOk()->assertSeeText('success');
+        $this->assertSame(Order::STATUS_PROCESSING, (int) $order->fresh()->status);
+    }
+
+    public function test_checkout_callback_target_is_legacy_by_default(): void
+    {
+        $this->assertFalse(config('billing.native_webhook_enabled'));
+    }
+
     private function payment(string $uuid = 'epay_gateway_uuid_value_00000001'): Payment
     {
         return Payment::create([
@@ -186,7 +244,7 @@ class PaymentWebhookTest extends TestCase
             'payment_id' => $payment->id,
             'type' => Order::TYPE_NEW_PURCHASE,
             'period' => Plan::PERIOD_MONTHLY,
-            'trade_no' => uniqid('payment_order_', true),
+            'trade_no' => 'pay_' . bin2hex(random_bytes(10)),
             'total_amount' => $total,
             'handling_amount' => $fee,
             'balance_amount' => 0,

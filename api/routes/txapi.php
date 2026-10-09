@@ -2,11 +2,17 @@
 
 use App\Http\Controllers\Txapi\AccountController;
 use App\Http\Controllers\Txapi\BillingController;
+use App\Http\Controllers\Txapi\PaymentWebhookController;
 use App\Http\Controllers\Txapi\AuthController;
 use App\Http\Controllers\Txapi\ContentController;
 use App\Http\Controllers\Txapi\TicketController;
 use App\Http\Controllers\Txapi\PublicController;
 use Illuminate\Support\Facades\Route;
+
+// Native provider callback is intentionally not JSON-wrapped. It goes through
+// the identical signed, locked processor as the legacy V1 route.
+Route::match(['get', 'post'], 'payment/webhook/{method}/{uuid}',
+    [PaymentWebhookController::class, 'notify']);
 
 // Only TXBoard native endpoints live here. No legacy controllers, no
 // BFF/Agent/Node/webhook wildcard proxying and no guessed Gateway behavior.

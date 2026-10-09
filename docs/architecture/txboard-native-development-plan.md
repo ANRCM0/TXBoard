@@ -161,6 +161,13 @@ Controller 不承担复杂交易，只完成鉴权、验证和调用服务。域
 
 API 兼容策略不是永久双轨；但在证据不足时宁可保留短期 adapter 也不要丢单/中断节点。
 
+## P3-B 双路径 webhook（代码合约完成，第三方沙箱保留后置）
+
+- `GET/POST /txapi/payment/webhook/{method}/{uuid}` 与原 `/api/v1/guest/payment/notify/{method}/{uuid}` 同时支持，两者委托同一 `Domains/Billing/PaymentNotificationProcessor`，同一支付插件签名校验、商户绑定、金额检查和订单入账；**provider 原始 ACK 不是普通 JSON envelope**，旧接口响应格式保持不变。
+- 订单锁内同时复核付款 provider ID、已验证的签名金额和 callback_no，避免收款时切换支付方式与回调交错造成越权入账；相同 callback 只确认一次，不同 provider trade ID 失败，已取消订单不能回生。
+- `api/config/billing.php` 新增默认关闭的 `TXBOARD_NATIVE_PAYMENT_WEBHOOK` 开关。默认**所有出站支付请求继续通知旧路径**，只在提供方沙箱与反向代理已验收后手动打开开关切换新回调 URL。旧 webhook 在实证无消费者前保留。
+- SQLite/MySQL 测试新旧路径重放、签名错误、金额不符、跨商户、GET/POST 回调、仅一次履约；真实第三方支付沙箱、提供方兼容、线上核对仍为 deferred，本批不宣布 P3-B 实际上线验收完成。
+
 ## P3-A2 原生交易 API 与用户操作
 
 - 原生 `GET /txapi/billing/wallet` 返回余额/返佣余额（分）；`GET /txapi/billing/commissions` 按当前用户 ID 过滤已产生的返佣记录并使用数据库分页，不暴露其他人的佣金。
