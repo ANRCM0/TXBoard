@@ -456,14 +456,13 @@ class AdminContractRegressionTest extends TestCase
         });
 
         $response = $this->getJson(
-            "/api/v2/{$this->securePath}/stat/getRanking?type=server_traffic_rank"
+            "/txapi/admin/{$this->securePath}/analytics/rankings?type=server_traffic_rank"
         );
 
         $response->assertOk();
-        $this->assertSame('success', $response->json('status'));
         $this->assertSame([['id' => '7', 'value' => 12]], $response->json('data'));
 
-        $this->getJson("/api/v2/{$this->securePath}/stat/getRanking?type=bogus")
+        $this->getJson("/txapi/admin/{$this->securePath}/analytics/rankings?type=bogus")
             ->assertStatus(422);
     }
 
