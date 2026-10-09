@@ -24,6 +24,7 @@ use App\Http\Controllers\Txapi\Admin\NetworkMachineAdminController;
 use App\Http\Controllers\Txapi\Admin\ThemeAdminController;
 use App\Http\Controllers\Txapi\Admin\PluginAdminController;
 use App\Http\Controllers\Txapi\Admin\AgentAdminController;
+use App\Http\Controllers\Txapi\Admin\AnalyticsAdminController;
 use App\Http\Controllers\Txapi\Admin\AgentSupportAdminController;
 use App\Http\Controllers\Txapi\Admin\PaymentManagementController;
 use App\Http\Controllers\Txapi\AccountController;
@@ -83,6 +84,19 @@ Route::prefix('admin/{admin_path}')
 
         // Agent management is admin-only. The separate Agent bearer API is
         // a different execution boundary and is not proxied by this namespace.
+        // Dashboard, ranking and accounting reads share the audited native
+        // admin boundary and enforce server-side reporting bounds.
+        Route::get('analytics/dashboard', [AnalyticsAdminController::class, 'dashboard']);
+        Route::get('analytics/overview', [AnalyticsAdminController::class, 'overview']);
+        Route::get('analytics/orders/chart', [AnalyticsAdminController::class, 'orders']);
+        Route::get('analytics/traffic/rank', [AnalyticsAdminController::class, 'trafficRank']);
+        Route::get('analytics/rankings', [AnalyticsAdminController::class, 'ranking']);
+        Route::get('analytics/users/{id}/traffic', [AnalyticsAdminController::class, 'userTraffic'])
+            ->whereNumber('id');
+        Route::get('analytics/records', [AnalyticsAdminController::class, 'records']);
+        Route::get('analytics/nodes/rank/{period}', [AnalyticsAdminController::class, 'serverRank'])
+            ->where('period', 'today|yesterday');
+
         Route::get('agents/abilities', [AgentAdminController::class, 'abilities']);
         Route::get('agents/tokens', [AgentAdminController::class, 'tokens']);
         Route::post('agents/tokens', [AgentAdminController::class, 'createToken']);
