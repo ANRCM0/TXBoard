@@ -105,9 +105,41 @@ export function verifyCriticalRoutes(routes) {
  }
  return failures;
 }
+export function buildReviewQueue(routes) {
+ // Hints, not assertions about real consumers or production traffic.
+ return routes.map(route => {
+  const unsafeMethod = route.method.split('|').some(m => !['GET', 'HEAD', 'OPTIONS'].includes(m));
+  const highRisk = ['Payment', 'Billing', 'Node/Traffic', 'Admin', 'Agent'].includes(route.domain);
+  const hint = route.domain === 'Admin' ? 'Admin backend / React Admin'
+   : route.domain === 'Node/Traffic' ? 'Network backend / TX-Node'
+   : route.domain === 'Agent' ? 'Agent Ops / MCP clients'
+   : route.domain === 'Payment' ? 'Billing / payment provider'
+   : route.domain === 'Billing' ? 'Billing / Vue user'
+   : route.domain === 'Identity' ? 'Identity / Vue user'
+   : 'TXBoard public / Vue user';
+  const controller = route.action.split('@')[0];
+  const controller_file = controller.startsWith('App\\Http\\Controllers\\')
+   ? 'api/app/Http/Controllers/' + controller.slice('App\\Http\\Controllers\\'.length).replaceAll('\\', '/') + '.php'
+   : null;
+  return {
+   method: route.method,
+   uri: route.uri,
+   domain: route.domain,
+   risk: highRisk ? 'critical' : unsafeMethod ? 'high' : 'review',
+   owner_hint: hint,
+   controller_file,
+   review_status: 'unverified',
+   confirmed_consumers: [],
+   approval_owner: null,
+   rollback_owner: null,
+   removal_allowed: false,
+  };
+ });
+}
 export function generate(root,routesData) {
  const routes=collectRoutes(routesData);
- return {schema_version:1,references:collectReferences(root),routes,failures:verifyCriticalRoutes(routes)};
+ return {schema_version:2,references:collectReferences(root),routes,
+  review_queue:buildReviewQueue(routes),failures:verifyCriticalRoutes(routes)};
 }
 function main() {
  const args=process.argv.slice(2);
@@ -121,6 +153,7 @@ function main() {
  const dest=resolve(arg('--output-dir'));
  mkdirSync(dest,{recursive:true});
  writeFileSync(join(dest,'inventory.json'),JSON.stringify(report,null,2)+'\n');
+ writeFileSync(join(dest,'route-review.json'),JSON.stringify(report.review_queue,null,2)+'\n');
  const byDomain={};
  for(const route of report.routes) byDomain[route.domain]=(byDomain[route.domain]||0)+1;
  const summary=['# TXBoard P0 baseline','',

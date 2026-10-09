@@ -3,7 +3,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
-import { collectReferences, collectRoutes, verifyCriticalRoutes } from '../p0-api-audit.mjs';
+import { collectReferences, collectRoutes, verifyCriticalRoutes, buildReviewQueue } from '../p0-api-audit.mjs';
 
 test('scan locates old callers but never exposes source lines or secrets', () => {
  const root=mkdtempSync(join(tmpdir(),'txboard-p0-'));
@@ -53,4 +53,9 @@ test('route inventory guards payment, user, admin, agent and node contracts',()=
  assert.equal(hidden[0].uri,'api/v2/{admin_path}/config/fetch');
  assert.ok(!JSON.stringify(hidden).includes('secret-admin-path'));
  assert.throws(()=>collectRoutes({bad:1}),/must be an array/);
+ const queue=buildReviewQueue(routes);
+ assert.equal(queue.length,7);
+ assert.ok(queue.every(r=>r.review_status==='unverified'&&r.removal_allowed===false));
+ assert.equal(queue.find(r=>r.uri.includes('payment/notify')).risk,'critical');
+ assert.equal(queue.find(r=>r.uri.includes('admin_path')).controller_file,null);
 });

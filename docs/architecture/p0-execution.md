@@ -31,6 +31,14 @@
 | 批次流量去重、乱序与碰撞 | TrafficBatchSettlementTest |
 | 实际 MySQL 表和事务行为 | api-mysql-ci 工作流 |
 
+## P0-A 第二批：可复现的路由审核队列与数据库证据
+
+- P0 API 工作流同时输出 route-review.json。每条路由有初步业务归属、风险分级、控制器文件候选位置、未验证的消费者列表及审批/回滚字段。所有路由默认 unverified，且 removal_allowed=false；这些只是人工核验任务，不代表外部调用者已经查清。
+- MySQL CI 运行 php scripts/p0-schema-inventory.php --output=artifacts/p0-schema.json，并上传 txboard-p0-mysql-schema 工件（保留 14 天）。仅输出表名、字段名/类型/可空性、索引唯一性及列顺序、外键关系和约束校验。
+- MySQL P0 校验保护 v2_user.email 唯一、v2_order.trade_no 唯一、v2_traffic_batch(server_id,batch_id) 组合唯一；失败时阻断 CI。索引契约保护结算安全，不意味着生产资金或流量对账已经通过。
+- 导出不读取用户/订单/支付记录，不包含数据库名称、连接参数、默认值、表行数或业务数据。生产 schema 只能在经授权的受控环境采集。
+- 两份工件都只是 P0-A 自动化辅助证据，不是来源授权、真实消费者清单或迁移批准；不得以候选 owner 替代人工核验。
+
 ## P0 还没有完成的事项
 
 - **P0-A：** 对每个路由逐条确认真实消费者、Owner、风险、第三方代码 provenance、迁移窗口和业务回滚负责人；整理 Controller/Service/Model/Migration 双向调用关系及数据库字段字典。
