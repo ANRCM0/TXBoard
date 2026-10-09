@@ -94,7 +94,7 @@ final class PaymentManagementController
             'name' => ['required', 'string', 'max:255'],
             'icon' => ['nullable', 'string', 'max:2048'],
             'payment' => ['required', 'string', 'max:120'],
-            'config' => ['required', 'array', 'max:200'],
+            'config' => ['present', 'array', 'max:200'],
             'notify_domain' => ['nullable', 'url:http,https', 'max:2048'],
             'handling_fee_fixed' => ['nullable', 'integer', 'min:0'],
             'handling_fee_percent' => ['nullable', 'numeric', 'between:0,100'],
