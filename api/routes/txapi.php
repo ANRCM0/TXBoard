@@ -4,6 +4,7 @@ use App\Http\Controllers\Txapi\Admin\AuditLogController;
 use App\Http\Controllers\Txapi\Admin\CommerceReadController;
 use App\Http\Controllers\Txapi\Admin\TicketAdminController;
 use App\Http\Controllers\Txapi\Admin\UserReadController;
+use App\Http\Controllers\Txapi\Admin\AccountMutationController;
 use App\Http\Controllers\Txapi\Admin\PlanMutationController;
 use App\Http\Controllers\Txapi\Admin\ContentAdminController;
 use App\Http\Controllers\Txapi\Admin\OrderAdminController;
@@ -63,7 +64,10 @@ Route::prefix('admin/{admin_path}')
         Route::get('users', [UserReadController::class, 'index']);
         Route::get('users/{id}', [UserReadController::class, 'show'])->whereNumber('id');
         Route::get('users/{id}/subscription-link', [UserReadController::class, 'subscriptionLink'])->whereNumber('id');
-        // POST for audited mutations while RequestLog supports POST only.
+        Route::post('users/{id}/subscription-credentials/rotate', [AccountMutationController::class, 'rotate'])->whereNumber('id');
+        Route::post('users/{id}/delete', [AccountMutationController::class, 'delete'])->whereNumber('id');
+        Route::post('users/ban', [AccountMutationController::class, 'ban']);
+        // Existing plan mutations retain POST; RequestLog now audits POST, PUT, PATCH and DELETE.
         Route::post('plans', [PlanMutationController::class, 'save']);
         Route::post('plans/sort', [PlanMutationController::class, 'sort']);
         Route::post('plans/{id}/flags', [PlanMutationController::class, 'flags'])->whereNumber('id');

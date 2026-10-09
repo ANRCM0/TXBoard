@@ -19,7 +19,7 @@ import {
   saveKnowledge, toggleKnowledge, sortKnowledge, deleteKnowledge,
   getNoticePage, getNoticeAll, saveNotice, toggleNotice, sortNotice, deleteNotice,
 } from './content'
-import { getUsers, getUserDetail, getUserSubscriptionLink } from './user-admin'
+import { getUsers, getUserDetail, getUserSubscriptionLink, resetUserSecret, destroyUser, banUsers } from './user-admin'
 import { copyNode, generateSecret } from './server'
 import { resolvePluginAppUrl } from './plugin'
 import { getThemes, getThemeConfig, saveThemeConfig } from './theme'
@@ -653,5 +653,33 @@ describe('native administrator order detail and state actions', () => {
       '/admin/order-admin/orders/TX-2026/cancel',
     ])
     expect(seen.map(x => x.method)).toEqual(['post', 'post'])
+  })
+})
+
+describe('native guarded administrator account mutations', () => {
+  it('never sends user deletion or secret rotation to legacy V2', async () => {
+    setAdminSecurePath('security-admin')
+    responder = () => ({ data: { data: { ok: true }, request_id: 'native-mutation' } })
+    await expect(resetUserSecret(7)).resolves.toBe(true)
+    await expect(destroyUser(7)).resolves.toBe(true)
+    expect(seen.map(x => x.url)).toEqual([
+      '/admin/security-admin/users/7/subscription-credentials/rotate',
+      '/admin/security-admin/users/7/delete',
+    ])
+    expect(seen.map(x => x.method)).toEqual(['post', 'post'])
+    await expect(destroyUser(0)).rejects.toThrow('Invalid admin user ID')
+  })
+
+  it('accepts only actual counted native ban acknowledgements', async () => {
+    setAdminSecurePath('security-admin')
+    responder = () => ({ data: { data: { updated: 2 }, request_id: 'ban-2' } })
+    await expect(banUsers({ scope: 'selected', user_ids: [2, 4] })).resolves.toBe(2)
+    expect(seen[0].url).toBe('/admin/security-admin/users/ban')
+    expect(JSON.parse(String(seen[0].data))).toEqual({
+      scope: 'selected', user_ids: [2, 4],
+    })
+    responder = () => ({ data: { data: {}, request_id: 'missing-count' } })
+    await expect(banUsers({ scope: 'selected', user_ids: [2] }))
+      .rejects.toThrow('Native ban operation not acknowledged')
   })
 })
