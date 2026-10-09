@@ -84,6 +84,41 @@ class TxapiAdminUserEditorTest extends TestCase
         $this->assertSame(1525, (int) $account->fresh()->balance);
     }
 
+    public function test_stale_traffic_and_subscription_edits_cannot_overwrite_newer_state(): void
+    {
+        $admin = $this->makeUser('editor-traffic-admin@example.test', true);
+        $account = $this->makeUser('editor-traffic-owner@example.test');
+        $account->u = 100;
+        $account->d = 200;
+        $account->transfer_enable = 1024;
+        $account->expired_at = time() + 3600;
+        $account->saveOrFail();
+        Sanctum::actingAs($admin);
+        $url = '/txapi/admin/editor_safe_path/users/' . $account->id . '/update';
+        $this->postJson($url, ['u' => 120])->assertStatus(422);
+        $this->postJson($url, ['expired_at' => null, 'expected_expired_at' => null])->assertStatus(422);
+
+        // Mimic a successful traffic batch after the editor was opened.
+        $account->d = 400;
+        $account->expired_at += 86400;
+        $account->saveOrFail();
+
+        $this->postJson($url, [
+            'd' => 200, 'expected_d' => 200,
+            'expired_at' => null, 'expected_expired_at' => $account->expired_at - 86400,
+        ])->assertStatus(422);
+        $this->assertSame(400, (int) $account->fresh()->d);
+        $this->assertSame((int) $account->expired_at, (int) $account->fresh()->expired_at);
+
+        $this->postJson($url, [
+            'u' => 150, 'expected_u' => 100,
+            'd' => 400, 'expected_d' => 400,
+            'expired_at' => $account->expired_at, 'expected_expired_at' => $account->expired_at,
+        ])->assertOk();
+        $this->assertSame(150, (int) $account->fresh()->u);
+        $this->assertSame(400, (int) $account->fresh()->d);
+    }
+
     public function test_editor_does_not_promote_admin_and_preserves_password_hooks_and_sessions(): void
     {
         $admin = $this->makeUser('editor-hooks-admin@example.test', true);
