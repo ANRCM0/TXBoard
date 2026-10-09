@@ -11,4 +11,10 @@
 - 对认证、Webhook、Node、Agent、插件管理加限流/重放保护；使用负向测试覆盖跨用户资源、管理员与普通 Token 混用、旧路由旁路、并发结算、ZIP 攻击。
 - PHP/Composer、JS/npm 依赖安全更新需测试与发布审批；发现高风险权限/资金问题应阻断 release。
 
+## 反向代理信任边界（Caddy）
+
+Caddy 的可信代理默认仅允许 `127.0.0.1/8 ::1/128`，不再无条件信任 `0.0.0.0/0 ::/0`。使用 Docker Compose 时通过 `.env` 中 `TXBOARD_TRUSTED_PROXY_CIDRS` 配置上游可信 OpenResty/1Panel 代理的确切 IP/CIDR（多个以空格分隔）。不要直接填写全网或笼统地信任整个公网。修改后重建或重启 TXBoard 容器加载 Caddy 配置。
+
+上线验收：从可信反代与直连入口分别测试 X-Forwarded-For/Forwarded 伪造、不可信 IP 下的限流身份、双代理链与 IPv6；记录实际网段、回退操作和反代跳数。默认收紧可能改变经过外部 Docker 反代的真实客户端 IP 识别，因此务必按部署拓扑显式设置，不应为“修复”访问日志而恢复全网信任。
+
 参照 [Agent Ops](../architecture/agent-ops.md)、[Extension Runtime](../architecture/extension-runtime-policy.md)、[现行 Agent Contract](../../contracts/http/agent-ops-v1.md)。
