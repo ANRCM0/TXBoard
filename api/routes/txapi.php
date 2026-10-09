@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\Txapi\AccountController;
+use App\Http\Controllers\Txapi\NodeProtocolController;
+use App\Http\Middleware\TxNodeAuth;
 use App\Http\Controllers\Txapi\BillingController;
 use App\Http\Controllers\Txapi\PaymentWebhookController;
 use App\Http\Controllers\Txapi\AuthController;
@@ -8,6 +10,17 @@ use App\Http\Controllers\Txapi\ContentController;
 use App\Http\Controllers\Txapi\TicketController;
 use App\Http\Controllers\Txapi\PublicController;
 use Illuminate\Support\Facades\Route;
+
+// Versioned TX-Node control plane; scoped bearer credentials, separate from user
+// auth. Never expose node credentials in URLs. Legacy V1/V2 stays live.
+Route::prefix('node/v1')->middleware(TxNodeAuth::class)->group(function () {
+    Route::post('handshake', [NodeProtocolController::class, 'handshake']);
+    Route::get('config', [NodeProtocolController::class, 'config']);
+    Route::get('users', [NodeProtocolController::class, 'users']);
+    Route::post('report', [NodeProtocolController::class, 'report']);
+    Route::get('machine/nodes', [NodeProtocolController::class, 'machineNodes']);
+    Route::post('machine/status', [NodeProtocolController::class, 'machineStatus']);
+});
 
 // Native provider callback is intentionally not JSON-wrapped. It goes through
 // the identical signed, locked processor as the legacy V1 route.

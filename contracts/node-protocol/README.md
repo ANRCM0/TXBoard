@@ -52,7 +52,11 @@ POST /api/v1/plugin/access-audit/report
 
 TX-Node 可以启用可选 audit reporter 使用这些接口；未安装 AccessAudit 时，不影响核心节点功能。
 
-## TXBoard Native 目标路由（NOT LIVE）
+## TXBoard Native v1（server-side implemented; TX-Node adaptation deferred）
+
+See [Native Node Protocol v1](./node-native-v1.md). TXBoard serves the new protocol; TX-Node has **not** been changed or connected. Legacy V1/V2/WS endpoints remain active.
+
+## Original native target guidance
 
 目标 Node API 为 `/txapi/node/v1/*`。这需要 TXBoard 与 TX-Node 对鉴权、capabilities、握手、配置同步、流量幂等和 HTTP/WSS 回退进行双边版本化与联调。**上面的 /api/v2/server/*、UniProxy 以及 AccessAudit 路径依然是当前生效契约，不可在当前阶段直接删掉。** 参见 [TXAPI Target](../http/txapi-target-v1.md)。
 

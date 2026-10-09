@@ -161,6 +161,13 @@ Controller 不承担复杂交易，只完成鉴权、验证和调用服务。域
 
 API 兼容策略不是永久双轨；但在证据不足时宁可保留短期 adapter 也不要丢单/中断节点。
 
+## P4 TXBoard Native Node v1（服务端）
+
+- 建立独立 `/txapi/node/v1/*` 控制面；规范见 [Node Native Protocol v1](../../contracts/node-protocol/node-native-v1.md)。Bearer + Node-ID/Machine-ID 请求头、机器归属校验，不从 GET 查询参数获取 token。
+- 复用 ServerService、ProtocolRegistry、TrafficUsage、UserService 与 TrafficBatchJob；仅 `202 accepted/queued` 代表请求入队，不代表数据库账本结算。
+- HTTP ETag 优化配置/用户快照轮询；机器发现和基本运行状态仅机器 Token 可操作；既有 V1/V2/WS 入口全部保留。
+- 原生握手明确禁用 WebSocket（此版本只交付 HTTP polling）；TX-Node 适配、真实联调及生产滚动升级全部后置，不触碰 TX-Node 仓库。
+- SQLite/MySQL 协议回归测试验证未授权、跨机器、ETag、负流量、批次验证及入队语义。
 ## P3-A3 统一 Checkout 状态转移
 
 - `Domains/Billing/OrderCheckout` 为新旧接口共用交易发起服务：在用户归属+订单行锁下读取待支付订单、拒绝负金额、零元订单复用幂等 paid 转换、正金额统一获取启用的支付方式与计算手续费（分）。
