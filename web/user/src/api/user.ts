@@ -56,12 +56,6 @@ export async function fetchUserInfo(): Promise<UserInfo> {
   }
 }
 
-// P2 security-sensitive login/session management stays on the existing V1
-// service until native token lifecycle has parity with mail-link/telegram.
-export async function checkLogin() {
-  return request<{ is_login: boolean }>(api.get('/user/checkLogin'))
-}
-
 export async function fetchUserStat() {
   return request<number[]>(api.get('/user/getStat'))
 }

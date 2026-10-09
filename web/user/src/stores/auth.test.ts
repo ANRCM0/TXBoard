@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { fetchUserInfo } from '../api/user'
+import { getAuthData, saveAuthData } from '../api/client'
 import { useAuthStore } from './auth'
 
 vi.mock('../api/auth', () => ({
@@ -10,7 +11,6 @@ vi.mock('../api/auth', () => ({
 }))
 
 vi.mock('../api/user', () => ({
-  checkLogin: vi.fn(),
   fetchUserInfo: vi.fn(),
 }))
 
@@ -28,6 +28,7 @@ const user = {
 
 describe('auth store request deduplication', () => {
   beforeEach(() => {
+    localStorage.clear()
     setActivePinia(createPinia())
     vi.clearAllMocks()
   })
@@ -42,5 +43,35 @@ describe('auth store request deduplication', () => {
     expect(first).toEqual(user)
     expect(second).toEqual(user)
     expect(auth.user).toEqual(user)
+  })
+  it('reuses the native profile request for session revalidation', async () => {
+    saveAuthData('Bearer known-session')
+    vi.mocked(fetchUserInfo).mockResolvedValue(user)
+    const auth = useAuthStore()
+
+    await expect(auth.checkSession()).resolves.toBe(true)
+    expect(fetchUserInfo).toHaveBeenCalledTimes(1)
+    expect(auth.user).toEqual(user)
+    expect(getAuthData()).toBe('Bearer known-session')
+  })
+
+  it('does not destroy the bearer on an offline session check', async () => {
+    saveAuthData('Bearer offline-session')
+    vi.mocked(fetchUserInfo).mockRejectedValue(new Error('Network Error'))
+    const auth = useAuthStore()
+
+    await expect(auth.checkSession()).resolves.toBe(false)
+    expect(auth.authenticated).toBe(true)
+    expect(getAuthData()).toBe('Bearer offline-session')
+  })
+
+  it('clears a rejected native session', async () => {
+    saveAuthData('Bearer invalid-session')
+    vi.mocked(fetchUserInfo).mockRejectedValue({ response: { status: 401 } })
+    const auth = useAuthStore()
+
+    await expect(auth.checkSession()).resolves.toBe(false)
+    expect(auth.authenticated).toBe(false)
+    expect(getAuthData()).toBe('')
   })
 })

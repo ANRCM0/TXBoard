@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { getAuthData, clearAuthData } from '../api/client'
 import { login as loginApi, logout as logoutApi, register as registerApi, type LoginForm, type RegisterForm } from '../api/auth'
-import { checkLogin, fetchUserInfo, type UserInfo } from '../api/user'
+import { fetchUserInfo, type UserInfo } from '../api/user'
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<UserInfo | null>(null)
@@ -59,18 +59,17 @@ export const useAuthStore = defineStore('auth', () => {
   async function checkSession() {
     if (!getAuthData()) {
       authenticated.value = false
+      user.value = null
       return false
     }
     try {
-      const result = await checkLogin()
-      authenticated.value = Boolean(result.is_login)
-      if (result.is_login) await loadUser()
-      else clearAuthData()
-      return authenticated.value
+      // /txapi/me is both the session proof and the user profile: avoid
+      // the old /api/v1/user/checkLogin and a second network request.
+      await loadUser()
+      return true
     } catch {
-      clearAuthData()
-      authenticated.value = false
-      user.value = null
+      // loadUser clears credentials only for definitive 401/403 responses.
+      // A network failure must not silently destroy a valid bearer token.
       return false
     }
   }
