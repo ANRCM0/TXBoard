@@ -25,17 +25,30 @@ class TrafficResetService
       return false;
     }
 
-    return $this->performReset($user, $triggerSource);
+    return $this->performReset($user, $triggerSource, [], true);
   }
 
   /**
    * Perform the traffic reset for a user.
    */
-  public function performReset(User $user, string $triggerSource = TrafficResetLog::SOURCE_MANUAL): bool
-  {
+  public function performReset(
+    User $user,
+    string $triggerSource = TrafficResetLog::SOURCE_MANUAL,
+    array $metadata = [],
+    bool $recheckDue = false
+  ): bool {
     try {
-      return DB::transaction(function () use ($user, $triggerSource) {
-        $oldUpload = $user->u ?? 0;
+      return DB::transaction(function () use ($user, $triggerSource, $metadata, $recheckDue) {
+        // Lock and refresh in the same SQL transaction as traffic reporting.
+        // An earlier read can be stale while the Node has reported usage.
+        $user = User::query()->with('plan')->lockForUpdate()->findOrFail($user->id);
+        if ($recheckDue && !$user->shouldResetTraffic()) {
+          return false;
+        }
+        if ($triggerSource === TrafficResetLog::SOURCE_MANUAL && !$this->canReset($user)) {
+          return false;
+        }
+        $oldUpload = (int) ($user->u ?? 0);
         $oldDownload = $user->d ?? 0;
         $oldTotal = $oldUpload + $oldDownload;
 
@@ -58,6 +71,7 @@ class TrafficResetService
           'new_upload' => 0,
           'new_download' => 0,
           'new_total' => 0,
+          'metadata' => $metadata,
         ]);
 
         $this->clearUserCache($user);
@@ -410,6 +424,6 @@ class TrafficResetService
       return false;
     }
 
-    return $this->performReset($user, TrafficResetLog::SOURCE_MANUAL);
+    return $this->performReset($user, TrafficResetLog::SOURCE_MANUAL, $metadata);
   }
 }
