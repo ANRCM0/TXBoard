@@ -13,7 +13,6 @@ import {
 import { fetchSettings, saveSettings, testSendMail, setTelegramWebhook } from './config'
 import { getGroups, saveGroup, deleteGroup, getRoutes, saveRoute, sortRoutes, simulateRoute, deleteRoute } from './server'
 import { getMachines, saveMachine, getMachineCredentials, resetMachineToken, updateMachineRuntime, deleteMachine, getMachineNodes, getMachineHistory } from './server'
-import { getModuleRegistry } from './module'
 import { getAuditLogs, getDashboardStats, getOrderChart, getTrafficRank, getAnalyticsRanking, getUserTrafficStats } from './statistics'
 import { getPlans, getOrders, savePlan, updatePlanFlags, deletePlan, sortPlans, getOrderDetail, markOrderPaid, cancelOrder, assignOrder, updateOrderCommission } from './finance'
 import { getTickets, getTicketDetail, replyTicket, closeTicket } from './ticket'
