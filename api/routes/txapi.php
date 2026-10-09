@@ -5,6 +5,7 @@ use App\Http\Controllers\Txapi\Admin\CommerceReadController;
 use App\Http\Controllers\Txapi\Admin\TicketAdminController;
 use App\Http\Controllers\Txapi\Admin\UserReadController;
 use App\Http\Controllers\Txapi\Admin\AccountMutationController;
+use App\Http\Controllers\Txapi\Admin\UserEditorController;
 use App\Http\Controllers\Txapi\Admin\PlanMutationController;
 use App\Http\Controllers\Txapi\Admin\ContentAdminController;
 use App\Http\Controllers\Txapi\Admin\OrderAdminController;
@@ -62,6 +63,8 @@ Route::prefix('admin/{admin_path}')
         Route::post('tickets/{id}/reply', [TicketAdminController::class, 'reply'])->whereNumber('id');
         Route::post('tickets/{id}/close', [TicketAdminController::class, 'close'])->whereNumber('id');
         Route::get('users', [UserReadController::class, 'index']);
+        Route::post('users', [UserEditorController::class, 'create']);
+        Route::post('users/{id}/update', [UserEditorController::class, 'update'])->whereNumber('id');
         Route::get('users/{id}', [UserReadController::class, 'show'])->whereNumber('id');
         Route::get('users/{id}/subscription-link', [UserReadController::class, 'subscriptionLink'])->whereNumber('id');
         Route::post('users/{id}/subscription-credentials/rotate', [AccountMutationController::class, 'rotate'])->whereNumber('id');
