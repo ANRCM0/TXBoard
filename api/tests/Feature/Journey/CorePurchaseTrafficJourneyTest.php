@@ -10,6 +10,8 @@ use App\Models\Plan;
 use App\Models\Plugin;
 use App\Models\Server;
 use App\Models\User;
+use App\Services\PaymentService;
+use App\Services\Plugin\PluginManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
@@ -86,6 +88,15 @@ class CorePurchaseTrafficJourneyTest extends TestCase
         $this->assertSame(1000, (int) $order->total_amount);
         $this->assertSame(Order::STATUS_PENDING, (int) $order->status);
         $this->assertNull($user->fresh()->plan_id);
+
+        // Verify that the payment provider remains enabled and hook-registered
+        // on both SQLite and MySQL before the checkout invokes it.
+        $this->assertTrue(Plugin::query()->where('code', 'epay')->where('is_enabled', true)
+            ->where('type', 'payment')->exists(), 'Payment plugin record is inactive');
+        $this->assertArrayHasKey('epay', app(PluginManager::class)->getEnabledPaymentPlugins(),
+            'Enabled payment plugin was not loaded');
+        $this->assertArrayHasKey('EPay', (new PaymentService('temp'))->getAvailablePaymentMethods(),
+            'EPay payment hook was not registered');
 
         // EPay pay() only creates an external redirect URL; nothing is sent.
         $checkout = $this->postJson('/api/v1/user/order/checkout', [
