@@ -65,6 +65,8 @@ Route::prefix('admin/{admin_path}')
         Route::get('settings', [SettingsAdminController::class, 'index']);
         Route::get('settings/{group}', [SettingsAdminController::class, 'group']);
         Route::post('settings', [SettingsAdminController::class, 'save']);
+        Route::post('settings/telegram/webhook', [SettingsAdminController::class, 'setTelegramWebhook'])
+            ->middleware('throttle:3,1');
         Route::get('mail-templates', [MailTemplateAdminController::class, 'index']);
         Route::get('mail-templates/{name}', [MailTemplateAdminController::class, 'show']);
         Route::put('mail-templates/{name}', [MailTemplateAdminController::class, 'save']);
