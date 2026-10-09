@@ -24,7 +24,7 @@ test('inventory separates unfinished modules from fully-native guards', () => {
   try {
     writeFileSync(join(dir, 'ticket.ts'), 'nativeApiClient.get("/admin/safe/tickets")')
     writeFileSync(join(dir, 'content.ts'), 'nativeApiClient.post("/admin/safe/content")')
-    writeFileSync(join(dir, 'finance.ts'), 'apiClient.get("/config/fetch")')
+    writeFileSync(join(dir, 'unmigrated-module.ts'), 'apiClient.get("/config/fetch")')
     writeFileSync(join(dir, 'ticket.test.ts'), 'apiClient.post("/wrong")')
     writeFileSync(join(dir, 'client.ts'), 'apiClient.post("/internal")')
     const report = buildNativeAdminInventory(dir)
@@ -65,6 +65,27 @@ test('config module direct V2 calls are a blocking native regression', () => {
     const report = buildNativeAdminInventory(dir)
     assert.deepEqual(report.regressions, ['config'])
     assert.equal(report.totals.strict_release_ready, false)
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('finance, user mail and module registry stay native-only after strict cutover', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'txboard-strict-phase7-'))
+  try {
+    for (const item of ['finance', 'user-admin', 'module']) {
+      assert.ok(COMPLETED_ADMIN_MODULES.includes(item))
+      writeFileSync(join(dir, item + '.ts'), 'nativeApiClient.get("/admin/secure/' + item + '")')
+    }
+    const green = buildNativeAdminInventory(dir)
+    assert.equal(green.totals.remaining_modules, 0)
+    assert.equal(green.totals.legacy_call_sites, 0)
+    assert.equal(green.totals.strict_release_ready, true)
+
+    writeFileSync(join(dir, 'module.ts'), "apiClient.get('/module')")
+    const red = buildNativeAdminInventory(dir)
+    assert.deepEqual(red.regressions, ['module'])
+    assert.equal(red.totals.strict_release_ready, false)
   } finally {
     rmSync(dir, { recursive: true, force: true })
   }

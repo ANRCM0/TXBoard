@@ -14,7 +14,7 @@ import { fetchSettings, saveSettings, testSendMail, setTelegramWebhook } from '.
 import { getGroups, saveGroup, deleteGroup, getRoutes, saveRoute, sortRoutes, simulateRoute, deleteRoute } from './server'
 import { getMachines, saveMachine, getMachineCredentials, resetMachineToken, updateMachineRuntime, deleteMachine, getMachineNodes, getMachineHistory } from './server'
 import { getAuditLogs, getDashboardStats, getOrderChart, getTrafficRank, getAnalyticsRanking, getUserTrafficStats } from './statistics'
-import { getPlans, getOrders, savePlan, updatePlanFlags, deletePlan, sortPlans, getOrderDetail, markOrderPaid, cancelOrder } from './finance'
+import { getPlans, getOrders, savePlan, updatePlanFlags, deletePlan, sortPlans, getOrderDetail, markOrderPaid, cancelOrder, assignOrder, updateOrderCommission } from './finance'
 import { getTickets, getTicketDetail, replyTicket, closeTicket } from './ticket'
 import { getTrafficResetLogs, getTrafficResetStats, resetUserTraffic, getUserTrafficResetHistory } from './traffic-reset'
 import { deletePayment, getPayments, getPaymentMethods, getPaymentForm, savePayment, togglePayment, sortPayments } from './payment'
@@ -26,9 +26,9 @@ import {
   saveKnowledge, toggleKnowledge, sortKnowledge, deleteKnowledge,
   getNoticePage, getNoticeAll, saveNotice, toggleNotice, sortNotice, deleteNotice,
 } from './content'
-import { getUsers, getUserDetail, getUserSubscriptionLink, resetUserSecret, destroyUser, banUsers, updateUser, generateUser } from './user-admin'
+import { getUsers, getUserDetail, getUserSubscriptionLink, resetUserSecret, destroyUser, banUsers, updateUser, generateUser, sendUsersMail } from './user-admin'
 import { copyNode, generateSecret, getProtocolDefinitions, getNodes, saveNode, updateNode, batchUpdateNodes, saveNodeOrder, deleteNode } from './server'
-import { resolvePluginAppUrl } from './plugin'
+import { resolvePluginAppUrl, resolvePluginCrudApiPath, fetchPluginCrudList, savePluginCrudRecord } from './plugin'
 import { getThemes, getThemeConfig, saveThemeConfig, deleteTheme, uploadTheme } from './theme'
 import { getAgentTokens, createAgentToken, revokeAgentToken, getAgentAbilities, getAgentActions, approveAgentAction, rejectAgentAction, getAgentFleetHealth, getAgentInspections, runAgentInspection, getAgentSupportReplies, approveAgentSupportReply, rejectAgentSupportReply } from './agent'
 import { getPlugins, installPlugin, uninstallPlugin, enablePlugin, disablePlugin, upgradePlugin, deletePlugin, getPluginConfig, updatePluginConfig, uploadPlugin } from './plugin'
@@ -283,7 +283,8 @@ describe('native plugin management contract', () => {
 })
 
 describe('module registry contract', () => {
-  it('reads the unified Module Registry from GET /module only', async () => {
+  it('reads the unified Module Registry from native TXAPI only', async () => {
+    setAdminSecurePath('module-contract')
     responder = () => ({
       data: {
         data: {
@@ -335,6 +336,7 @@ describe('module registry contract', () => {
             discovery_errors: 0,
           },
         },
+        request_id: 'module-registry',
       },
     })
 
@@ -342,7 +344,8 @@ describe('module registry contract', () => {
 
     expect(seen).toHaveLength(1)
     expect(seen[0].method).toBe('get')
-    expect(seen[0].url).toBe('/module')
+    expect(seen[0].url).toBe('/admin/module-contract/modules')
+    expect(seen[0].baseURL).toBe('/txapi')
     expect(result.modules).toHaveLength(1)
     expect(result.modules[0]).toMatchObject({
       id: 'theme.txboard',
@@ -1303,5 +1306,66 @@ describe('native analytics administrator API contracts', () => {
     expect(seen[0].params).toEqual({ page: 2, per_page: 1 })
     expect(seen[0].baseURL).toBe('/txapi')
     await expect(getUserTrafficStats(-2)).rejects.toThrow('Invalid user ID')
+  })
+})
+
+describe('strict native administrator closeout contracts', () => {
+  it('reads module registry under rotating TXAPI administrator prefix', async () => {
+    setAdminSecurePath('cutover')
+    responder = () => ({ data: {
+      data: { modules: [{ id: 'agent_ops', type: 'agent' }], errors: [], summary: { total: 1 } },
+      request_id: 'modules-native',
+    } })
+    await expect(getModuleRegistry()).resolves.toHaveProperty('summary.total', 1)
+    expect(seen.map(config => [config.method, config.url, config.baseURL])).toEqual([
+      ['get', '/admin/cutover/modules', '/txapi'],
+    ])
+  })
+
+  it('creates pending order and reviews commission without V2 fallback', async () => {
+    setAdminSecurePath('cutover')
+    responder = config => ({ data: {
+      data: config.url?.endsWith('/assign') ? { trade_no: 'TX-PENDING-01' } : { ok: true },
+      request_id: 'orders-native',
+    } })
+    await expect(assignOrder({
+      email: 'test@example.test', plan_id: 1, period: 'month_price', total_amount: 1900,
+    })).resolves.toBe('TX-PENDING-01')
+    await expect(updateOrderCommission('TX-PENDING-01', 1)).resolves.toBe(true)
+    expect(seen.map(config => [config.method, config.url])).toEqual([
+      ['post', '/admin/cutover/orders/assign'],
+      ['post', '/admin/cutover/orders/TX-PENDING-01/commission-review'],
+    ])
+    expect(JSON.parse(String(seen[1].data))).toEqual({ commission_status: 1 })
+    expect(seen.every(config => config.baseURL === '/txapi')).toBe(true)
+  })
+
+  it('queues selected user mail using the native, bounded admin request', async () => {
+    setAdminSecurePath('cutover')
+    responder = () => ({ data: { data: { queued: 2 }, request_id: 'mail-native' } })
+    await expect(sendUsersMail({
+      scope: 'selected', user_ids: [2, 3],
+      subject: 'Notice', content: 'Message',
+    })).resolves.toBe(2)
+    expect(seen.map(config => [config.method, config.url])).toEqual([
+      ['post', '/admin/cutover/users/mail'],
+    ])
+    expect(seen[0].baseURL).toBe('/txapi')
+    expect(JSON.parse(String(seen[0].data)).user_ids).toEqual([2, 3])
+  })
+})
+
+describe('plugin-owned boundary remains separate from legacy V2 admin', () => {
+  it('accepts explicit plugin routes but rejects retired admin and external paths', async () => {
+    expect(resolvePluginCrudApiPath('demo', 'items', 'list', {
+      api: { list: '/plugin/demo/items', save: '/plugin/demo/items' },
+    })).toBe('/plugin/demo/items')
+    expect(resolvePluginCrudApiPath('demo', 'items', 'list', {
+      api: { list: '/api/v2/secure/user/fetch' },
+    })).toBeNull()
+    await expect(fetchPluginCrudList('/api/v2/secure/module')).rejects
+      .toThrow('Plugin API must use a plugin-owned path')
+    await expect(savePluginCrudRecord('/admin/secure/users', { id: 1 })).rejects
+      .toThrow('Plugin API must use a plugin-owned path')
   })
 })

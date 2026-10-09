@@ -1,5 +1,4 @@
-import { apiClient } from './client'
-import { unwrap } from '../lib/api'
+import { nativeApiClient, nativeAdminPath, unwrapNative, type NativeApiEnvelope } from './client'
 
 export type ModuleType = 'core' | 'plugin' | 'theme' | 'integration' | 'provider' | 'agent'
 export type ModuleSource = 'system' | 'bundled' | 'user' | 'external'
@@ -63,6 +62,7 @@ export type ModuleRegistrySnapshot = {
 }
 
 export async function getModuleRegistry() {
-  const { data } = await apiClient.get('/module')
-  return unwrap<ModuleRegistrySnapshot>(data)
+  return unwrapNative(nativeApiClient.get<NativeApiEnvelope<ModuleRegistrySnapshot>>(
+    nativeAdminPath('modules'),
+  ))
 }

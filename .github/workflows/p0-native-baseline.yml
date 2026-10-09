@@ -57,7 +57,7 @@ jobs:
       - name: Test native Admin release inventory
         run: node --test scripts/tests/native-admin-release-audit.test.mjs
       - name: Capture native Admin V2 remaining call sites
-        run: node scripts/native-admin-release-audit.mjs --guard-native --output artifacts/release/admin-native-gap.json
+        run: node scripts/native-admin-release-audit.mjs --strict --guard-native --output artifacts/release/admin-native-gap.json
       - name: Publish native Admin release-gap inventory
         if: always()
         uses: actions/upload-artifact@v4
