@@ -87,7 +87,7 @@ final class TxapiAdminAgentsTest extends TestCase
             'client_name' => 'bad-scope',
             'abilities' => [AgentAbility::SUPPORT_READ],
             'target_mode' => 'restricted',
-        ])->assertStatus(422)->assertJsonValidationErrors('target_scope');
+        ])->assertStatus(422)->assertJsonPath('error.fields.0', 'target_scope');
     }
 
     public function test_invalid_approvals_are_bounded_and_legacy_v2_admin_agent_paths_are_gone(): void
