@@ -7,8 +7,10 @@ use App\Http\Requests\Admin\ConfigSave;
 use App\Models\SubscribeTemplate;
 use App\Services\AdminSettingsProjection;
 use App\Services\ThemeService;
+use App\Services\TelegramService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Throwable;
 
 final class SettingsAdminController
 {
@@ -57,5 +59,57 @@ final class SettingsAdminController
         }
 
         return TxapiResponse::success($request, ['ok' => true]);
+    }
+
+    /**
+     * Register the existing V1 Telegram callback using the saved bot token.
+     * No webhook URL (which carries an authentication digest), credentials or
+     * upstream exception details may be returned to the browser.
+     */
+    public function setTelegramWebhook(Request $request): JsonResponse
+    {
+        $input = $request->validate([
+            'telegram_bot_token' => ['required', 'string', 'max:256'],
+        ]);
+        $storedToken = trim((string) admin_setting('telegram_bot_token', ''));
+        if ($storedToken === '' || !hash_equals($storedToken, trim($input['telegram_bot_token']))) {
+            return TxapiResponse::error($request, 'TELEGRAM_SETTINGS_NOT_SAVED',
+                'Save the current Telegram bot token before registering the webhook', 409)
+                ->header('Cache-Control', 'no-store');
+        }
+
+        $baseUrl = trim((string) admin_setting('telegram_webhook_url', ''));
+        if ($baseUrl === '') {
+            $baseUrl = trim((string) admin_setting('app_url', ''));
+        }
+        if ($baseUrl === '' || !filter_var($baseUrl, FILTER_VALIDATE_URL)
+            || !in_array(parse_url($baseUrl, PHP_URL_SCHEME), ['http', 'https'], true)
+            || parse_url($baseUrl, PHP_URL_QUERY) !== null
+            || parse_url($baseUrl, PHP_URL_FRAGMENT) !== null) {
+            return TxapiResponse::error($request, 'TELEGRAM_WEBHOOK_URL_INVALID',
+                'Configure a valid Telegram webhook base URL first', 422)
+                ->header('Cache-Control', 'no-store');
+        }
+
+        $baseUrl = rtrim($baseUrl, '/');
+        $hookUrl = str_contains($baseUrl, '/api/v1/guest/telegram/webhook')
+            ? $baseUrl : $baseUrl . '/api/v1/guest/telegram/webhook';
+        // The V1 webhook remains the live callback. Its shared verification
+        // scheme cannot be changed until the client/protocol migration.
+        $hookUrl .= '?' . http_build_query(['access_token' => md5($storedToken)]);
+
+        try {
+            $telegram = new TelegramService($storedToken);
+            $telegram->getMe();
+            $telegram->setWebhook(url: $hookUrl);
+            $telegram->registerBotCommands();
+        } catch (Throwable) {
+            return TxapiResponse::error($request, 'TELEGRAM_WEBHOOK_FAILED',
+                'Telegram webhook registration failed', 503)
+                ->header('Cache-Control', 'no-store');
+        }
+
+        return TxapiResponse::success($request, ['ok' => true])
+            ->header('Cache-Control', 'no-store');
     }
 }
