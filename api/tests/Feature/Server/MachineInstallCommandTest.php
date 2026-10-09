@@ -54,8 +54,8 @@ class MachineInstallCommandTest extends TestCase
             'is_active' => true,
         ]);
 
-        $response = $this->getJson(
-            "/api/v2/{$this->securePath}/server/machine/installCommand?id={$machine->id}"
+        $response = $this->postJson(
+            "/txapi/admin/{$this->securePath}/network-machines/{$machine->id}/credentials"
         );
 
         $response->assertOk();
