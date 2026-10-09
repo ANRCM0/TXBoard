@@ -12,6 +12,7 @@ use App\Models\Server;
 use App\Models\User;
 use App\Services\PaymentService;
 use App\Services\Plugin\PluginManager;
+use App\Services\Plugin\HookManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
@@ -66,6 +67,11 @@ class CorePurchaseTrafficJourneyTest extends TestCase
             'reset_traffic_method' => Plan::RESET_TRAFFIC_MONTHLY,
             'created_at' => time(), 'updated_at' => time(),
         ]);
+
+        // Plugin fixtures are inserted after Laravel boot. Simulate the next
+        // request boundary so stale pre-fixture scoped plugin state is discarded.
+        $this->app->forgetInstance(PluginManager::class);
+        HookManager::reset();
 
         // A seeded provider must be discoverable before HTTP bootstraps plugins.
         $this->assertArrayHasKey('epay', app(PluginManager::class)->getEnabledPaymentPlugins(),
