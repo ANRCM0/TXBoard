@@ -17,6 +17,15 @@ Read first:
 - `docs/architecture/README.md`
 - relevant files under `contracts/`
 
+## TXBoard Native target direction (design approved, not implemented)
+
+- Full plan: `docs/architecture/txboard-native-development-plan.md`; evidence-based inventory: `docs/architecture/legacy-inventory-and-work-packages.md`.
+- All future TXBoard HTTP APIs MUST be under `/txapi/*`. Do not create new `/api/v1` or `/api/v2` endpoints. Existing paths are transitional until confirmed migration.
+- Distinguish CURRENT effective wire contracts from TARGET `contracts/http/txapi-target-v1.md`. Never present proposed paths as deployed.
+- Upgrade by domain with performance/security baseline, tests, feature flags, consumer inventory, rollback and signed-off deprecation.
+- Protect payment callbacks, historical balances/orders, TX-Node, Gateway, Agent/MCP, installed plugins and runtime healthchecks; no mass database renaming.
+- Prefer meaningful optimization to mechanical renaming; preserve Module Platform v1 and source licensing in `api/LICENSE` / `THIRD_PARTY_NOTICES.md`.
+
 ## 2. Current Module Platform status
 
 Completed:
@@ -252,9 +261,9 @@ Do not require third-party plugins to modify TXBoard React source.
 
 ## 15. API rules
 
-Use the existing dynamic `secure_path` Admin boundary.
+CURRENT: preserve the dynamic `secure_path` Admin boundary and current response conventions. TARGET: `/txapi/admin/{secure_path}` with native schemas, RBAC and audit, only when migrated.
 
-Follow existing response conventions.
+Follow existing response conventions on deployed legacy endpoints; new TXAPI responses follow their separately versioned contract.
 
 Do not create generic Module mutation endpoints until lifecycle contracts and adapters are stable.
 

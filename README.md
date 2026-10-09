@@ -100,8 +100,9 @@ docker compose exec -it txboard php artisan txboard:install
 
 ## 文档与协议
 
-- [架构与开发指南](docs/architecture/README.md)
-- [跨组件协议契约](contracts/README.md)
+- **[TXBoard Native 开发方案：统一 /txapi、去 Xboard 残留、优化与迁移](docs/architecture/txboard-native-development-plan.md)**（目标计划，尚未实施）
+- [架构与开发指南（CURRENT / TARGET）](docs/architecture/README.md)
+- [跨组件协议契约（CURRENT / TARGET）](contracts/README.md)
 - [插件开发指南](api/docs/en/development/plugin-development-guide.md)
 - [MCP Gateway](mcp/README.md)
 - [贡献与编码约束](AGENTS.md)
