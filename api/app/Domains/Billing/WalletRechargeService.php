@@ -20,6 +20,7 @@ final class WalletRechargeService
 {
     public const MIN_AMOUNT_MINOR = 100;
     public const MAX_AMOUNT_MINOR = 500000;
+    public const VERIFIED_RECHARGE_PROVIDERS = ['EPay', 'AlipayF2F'];
 
     public function create(int $userId, int $amountMinor, int $paymentId, string $requestKey): WalletRecharge
     {
@@ -49,8 +50,9 @@ final class WalletRechargeService
             }
             $method = Payment::query()->whereKey($paymentId)
                 ->where('enable', true)->first();
-            if (!$method) {
-                throw new ApiException('Payment method unavailable', 422);
+            if (!$method || !in_array((string) $method->payment,
+                self::VERIFIED_RECHARGE_PROVIDERS, true)) {
+                throw new ApiException('Verified recharge payment method unavailable', 422);
             }
 
             // Same payment fee semantics as native OrderCheckout: store exact
@@ -83,8 +85,9 @@ final class WalletRechargeService
         }
         $payment = Payment::query()->whereKey($recharge->payment_id)
             ->where('enable', true)->first();
-        if (!$payment) {
-            throw new ApiException('Payment method unavailable', 422);
+        if (!$payment || !in_array((string) $payment->payment,
+            self::VERIFIED_RECHARGE_PROVIDERS, true)) {
+            throw new ApiException('Verified recharge payment method unavailable', 422);
         }
         $provider = new PaymentService((string) $payment->payment, $payment->id);
         // Provider calls happen outside DB locks and are not confirmation of
