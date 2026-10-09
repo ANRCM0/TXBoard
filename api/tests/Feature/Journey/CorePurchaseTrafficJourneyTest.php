@@ -91,7 +91,8 @@ class CorePurchaseTrafficJourneyTest extends TestCase
         $checkout = $this->postJson('/api/v1/user/order/checkout', [
             'trade_no' => $tradeNo, 'method' => $payment->id,
         ], $headers);
-        $checkout->assertOk()->assertJsonPath('type', 1);
+        $this->assertSame(200, $checkout->status(), 'Checkout rejected: ' . (string) $checkout->json('message'));
+        $checkout->assertJsonPath('type', 1);
         $this->assertStringContainsString('payment.invalid/submit.php?', (string) $checkout->json('data'));
         $this->assertSame((int) $payment->id, (int) $order->fresh()->payment_id);
 
