@@ -49,6 +49,12 @@
 
 **未完成的 P0-B 出口：** 隔离真实 TX-Node / 真实 Redis Horizon 与支付沙箱的联调；真正请求链路的 p95/p99 与 SQL EXPLAIN、Redis/队列延迟、MySQL 锁等待、CPU/内存、故障注入及恢复演练仍需额外环境和人工批准。
 
+## P1 开发与 P0 外部验收分离
+
+维护者决定先完成 TXBoard 原生架构。P0-B 已具有 MySQL 和 SQLite 合成登录→支付→订阅→流量账本回归，以及合成读 API 性能采样。真实 TX-Node 联调、独立 Gateway、支付沙箱、正式运行环境压力与恢复演练及逐项外部消费者批准仍未完成，但不阻断 P1–P6 的**非破坏性开发**。原 P0/P4/P7 的对外发布、删旧接口、资金与节点验收条件未豁免，不得标为完成。
+
+P1-A 第一批只实现独立 /txapi/health、公开配置/套餐、Sanctum 用户信息与订单只读分页、详情；独立的 native JSON/Error/Trace/User Auth 规则和 SQLite/MySQL 合同测试随 PR 引入。没有新写操作、没有数据库 schema 修改，老 API 和旧支付回调保持有效。后续 P1-B 单独迁移 Vue/React 客户端。
+
 ## P0 还没有完成的事项
 
 - **P0-A：** 对每个路由逐条确认真实消费者、Owner、风险、第三方代码 provenance、迁移窗口和业务回滚负责人；整理 Controller/Service/Model/Migration 双向调用关系及数据库字段字典。

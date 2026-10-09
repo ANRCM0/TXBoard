@@ -40,6 +40,11 @@ class RouteServiceProvider extends ServiceProvider
         Route::get('/api/health', static function () {
             return response()->json(['status' => 'ok']);
         });
+        // Public liveness is deliberately outside API middleware and database
+        // boot: independent of billing, Redis, plug-ins or migration state.
+        Route::get('/txapi/health', static function (\Illuminate\Http\Request $request) {
+            return \App\Core\Http\TxapiResponse::success($request, ['status' => 'ok']);
+        });
 
         $this->mapApiRoutes();
         $this->mapWebRoutes();
@@ -68,6 +73,10 @@ class RouteServiceProvider extends ServiceProvider
      */
     protected function mapApiRoutes()
     {
+        Route::middleware(['api', 'txapi.request-id'])
+            ->prefix('/txapi')
+            ->group(base_path('routes/txapi.php'));
+
         Route::group([
             'prefix' => '/api/v1',
             'middleware' => 'api',

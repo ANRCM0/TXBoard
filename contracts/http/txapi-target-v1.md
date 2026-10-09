@@ -1,6 +1,6 @@
-# TXAPI Target Contract v1 (PROPOSED / NOT LIVE)
+# TXAPI Target Contract v1 (P1-A 逐步实现)
 
-**这不是已部署的 HTTP 协议。** 当前 Node、Agent、插件及管理 API 仍以现行 Laravel route:list 和 CURRENT contracts 为准；需要通过后续 PR 实现。
+**当前状态：** P1-A 第一批原生接口已在 TXBoard 源码中实现（需随版本部署，不代表线上已启用）：GET `/txapi/health`、`/txapi/public/config`、`/txapi/plans`、`/txapi/me`、`/txapi/orders`、`/txapi/orders/{tradeNo}`。其余表内路径仍是目标协议，**不得按已实现 API 调用**。Node、Agent、插件、管理员、Webhook、Gateway 均保留现有入口。
 
 ## Root: /txapi
 
@@ -20,6 +20,16 @@
 | Payment webhook | `/txapi/payment/webhooks/*` | 签名 + 重放防护 + 幂等 |
 
 Hono Gateway 独立的 [TXAPI BFF Target](txapi-bff-target-v1.md) 保留 `{ok,data,meta}` 的 v1 SDK envelope，和 Laravel 原生响应不同。
+
+## P1-A 当前已实现的协议冻结面
+
+- **健康检查**：`GET /txapi/health` 无鉴权，不加载插件、数据库或 Redis。返回 `data.status=ok`。
+- **匿名只读**：`GET /txapi/public/config` 仅 name/api_prefix；`GET /txapi/plans` 输出 id/name/traffic_limit_bytes/prices[{period,amount_minor}]/renewable，排除隐藏、停卖或售罄套餐；不公开后台路径/插件秘钥。
+- **Sanctum 用户只读**：`GET /txapi/me` 返回安全字段白名单；`GET /txapi/orders` 支持 page/per_page/status，per_page 不超过 100，按 created_at DESC、id DESC 做稳定排序，用户 ID 在 SQL 层过滤；`GET /txapi/orders/{tradeNo}` 严格用户所有权验证。**当前没有任何 TXAPI 写单、付款或用户更新接口**。
+- **统一响应**：成功包含 data、可选 meta、request_id，返回 X-Request-Id；错误包含 error.code、error.message、可选不含用户值的字段名列表及 request_id。所有 request_id 由服务端产生。
+- **兼容**：/api/health、/api/v1、/api/v2、原支付回调及已有前端保持不变。Laravel 不提供 Gateway BFF 路由。
+- **财务口径**：订单 amount_minor 来自原整型分字段；套餐价格由原主货币单位换算整数次级单位。P2/P3 必须完成币种、金额精度和价格格式的严格审计后才能作为跨币种报价契约。
+- **回退**：P1-A 纯加法修改，无数据库 migration 和线上写入；旧客户端无需切换，部署上一个镜像即可撤销 TXAPI 第一批入口。
 
 ## Proposed response/error policy
 
