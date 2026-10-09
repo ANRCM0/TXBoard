@@ -20,6 +20,7 @@ import {
   destroyUser,
   getUserDetail,
   getUsers,
+  getUserSubscriptionLink,
   resetUserSecret,
   type AdminUser,
   type UserFilter,
@@ -152,12 +153,9 @@ export function UsersPage() {
   }
 
   async function copySubscribe(user: AdminUser) {
-    const url = user.subscribe_url
-    if (!url) {
-      toast.error('该用户没有订阅链接')
-      return
-    }
     try {
+      const url = await getUserSubscriptionLink(user.id)
+      if (!url) throw new Error('Missing subscribe URL')
       await navigator.clipboard.writeText(url)
       toast.success('订阅链接已复制')
     } catch {

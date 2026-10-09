@@ -1,4 +1,4 @@
-import { apiClient } from './client'
+import { apiClient, nativeApiClient, nativeAdminPath, type NativeApiEnvelope } from './client'
 import { unwrap } from '../lib/api'
 
 export type AdminUser = {
@@ -77,19 +77,67 @@ export type UserUpdatePayload = {
   is_staff?: boolean
 }
 
+function adminUserResource(id: number) {
+  if (!Number.isSafeInteger(id) || id < 1) throw new Error('Invalid admin user ID')
+  return nativeAdminPath('users') + '/' + id
+}
+
 export async function getUsers(params: {
   current?: number
   pageSize?: number
   filter?: UserFilter[]
   sort?: UserSort[]
 }) {
-  const { data } = await apiClient.post<UserPageResult>('/user/fetch', params)
-  return data
+  const query: Record<string, unknown> = {
+    page: params.current ?? 1, per_page: params.pageSize ?? 10,
+  }
+  for (const { id, value } of params.filter || []) {
+    if (id === 'email' && typeof value === 'string') query.email = value
+    else if ((id === 'plan_id' || id === 'banned') && typeof value === 'string' &&
+             /^eq:[0-9]+$/.test(value)) query[id] = Number(value.slice(3))
+    else throw new Error('Unsupported native user filter')
+  }
+  if (params.sort && params.sort.length) {
+    if (params.sort.length !== 1) throw new Error('Only one native user sort is supported')
+    const { id, desc } = params.sort[0]
+    if (!new Set(['id', 'email', 'balance', 'total_used', 'expired_at', 'created_at']).has(id)) {
+      throw new Error('Unsupported native user sort')
+    }
+    query.sort = id
+    query.descending = desc
+  }
+  const { data: envelope } = await nativeApiClient.get<NativeApiEnvelope<AdminUser[]>>(
+    nativeAdminPath('users'), { params: query },
+  )
+  if (!envelope?.request_id || !Array.isArray(envelope.data) || !envelope.meta ||
+      !Number.isInteger(envelope.meta.total) || !Number.isInteger(envelope.meta.last_page)) {
+    throw new Error('Invalid native user page response')
+  }
+  return {
+    data: envelope.data,
+    total: envelope.meta.total,
+    current_page: envelope.meta.page,
+    per_page: envelope.meta.per_page,
+    last_page: envelope.meta.last_page,
+  } satisfies UserPageResult
 }
 
 export async function getUserDetail(id: number) {
-  const { data } = await apiClient.get('/user/getUserInfoById', { params: { id } })
-  return unwrap<AdminUser>(data)
+  const { data } = await nativeApiClient.get<NativeApiEnvelope<AdminUser>>(adminUserResource(id))
+  if (!data?.request_id || !data.data || typeof data.data.id !== 'number') {
+    throw new Error('Invalid native user detail response')
+  }
+  return data.data
+}
+
+export async function getUserSubscriptionLink(id: number) {
+  const { data } = await nativeApiClient.get<NativeApiEnvelope<{ subscribe_url: string }>>(
+    adminUserResource(id) + '/subscription-link',
+  )
+  if (!data?.request_id || typeof data.data?.subscribe_url !== 'string') {
+    throw new Error('Invalid native user subscription response')
+  }
+  return data.data.subscribe_url
 }
 
 export async function updateUser(payload: UserUpdatePayload) {
