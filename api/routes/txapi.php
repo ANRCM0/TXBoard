@@ -67,7 +67,7 @@ Route::prefix('admin/{admin_path}')
         Route::post('users/{id}/subscription-credentials/rotate', [AccountMutationController::class, 'rotate'])->whereNumber('id');
         Route::post('users/{id}/delete', [AccountMutationController::class, 'delete'])->whereNumber('id');
         Route::post('users/ban', [AccountMutationController::class, 'ban']);
-        // POST for audited mutations while RequestLog supports POST only.
+        // Existing plan mutations retain POST; RequestLog now audits POST, PUT, PATCH and DELETE.
         Route::post('plans', [PlanMutationController::class, 'save']);
         Route::post('plans/sort', [PlanMutationController::class, 'sort']);
         Route::post('plans/{id}/flags', [PlanMutationController::class, 'flags'])->whereNumber('id');
