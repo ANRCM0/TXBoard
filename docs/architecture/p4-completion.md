@@ -5,6 +5,7 @@
 ## 已交付
 
 - [#127](https://github.com/ANRCM0/TXBoard/pull/127)：原生 `/txapi/node/v1/*`，机器/节点 Bearer headers 身份认证，机器与节点归属校验，握手、配置和用户快照 ETag、流量强校验和 202 接收、机器清单与机器状态。HTTP-only；旧 V1/V2/WS 保留。
+- [#129](https://github.com/ANRCM0/TXBoard/pull/129)：机器级无 Node ID 握手，以及原生/旧版机器状态采用同一写入服务；保留 net、runtime/update 字段、历史记录与消息脱敏。
 - [#128](https://github.com/ANRCM0/TXBoard/pull/128)：`TrafficBatchJob` 用户与日统计读取分块批量预取，保持行锁、去重、溢出保护、SQL 原子结算及 Redis 提交后通知。
 - 完整线协议和上报重试语义参见 [Native Node Protocol v1](../../contracts/node-protocol/node-native-v1.md)。
 

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Txapi;
 
 use App\Core\Http\TxapiResponse;
 use App\Services\ServerService;
+use App\Domains\Network\MachineTelemetry;
 use App\Services\TrafficUsage;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -15,7 +16,8 @@ final class NodeProtocolController
         $node = $request->attributes->get('txnode.node');
         return TxapiResponse::success($request, [
             'protocol_version' => 1,
-            'node_id' => (int) $node->id,
+            'node_id' => $node ? (int) $node->id : null,
+            'mode' => $node ? 'node' : 'machine',
             'capabilities' => [
                 'http_poll', 'etag', 'traffic_batch_v1', 'machine_discovery',
             ],
@@ -65,35 +67,12 @@ final class NodeProtocolController
         $machine = $request->attributes->get('txnode.machine');
         $params = $request->validate([
             'protocol_version' => ['required', 'integer', 'in:1'],
-            'cpu' => ['required', 'numeric', 'min:0', 'max:100'],
-            'mem' => ['required', 'array'],
-            'mem.total' => ['required', 'integer', 'min:0'],
-            'mem.used' => ['required', 'integer', 'min:0'],
-            'swap' => ['sometimes', 'array'],
-            'swap.total' => ['sometimes', 'integer', 'min:0'],
-            'swap.used' => ['sometimes', 'integer', 'min:0'],
-            'disk' => ['sometimes', 'array'],
-            'disk.total' => ['sometimes', 'integer', 'min:0'],
-            'disk.used' => ['sometimes', 'integer', 'min:0'],
-        ]);
+        ] + MachineTelemetry::rules());
         if ($params['mem']['used'] > $params['mem']['total']) {
             return TxapiResponse::error($request, 'INVALID_MACHINE_STATUS',
                 'Used memory cannot exceed total memory', 422);
         }
-        $updatedAt = now()->timestamp;
-        $machine->forceFill([
-            'last_seen_at' => $updatedAt,
-            'load_status' => [
-                'cpu' => (float) $params['cpu'],
-                'mem' => ['total' => (int) $params['mem']['total'],
-                    'used' => (int) $params['mem']['used']],
-                'swap' => ['total' => (int) ($params['swap']['total'] ?? 0),
-                    'used' => (int) ($params['swap']['used'] ?? 0)],
-                'disk' => ['total' => (int) ($params['disk']['total'] ?? 0),
-                    'used' => (int) ($params['disk']['used'] ?? 0)],
-                'updated_at' => $updatedAt,
-            ],
-        ])->saveOrFail();
+        app(MachineTelemetry::class)->record($machine, $params);
         return TxapiResponse::success($request, [
             'protocol_version' => 1,
             'accepted' => true,

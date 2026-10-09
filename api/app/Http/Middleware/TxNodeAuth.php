@@ -23,7 +23,9 @@ final class TxNodeAuth
         $machineId = $this->positiveId($request->header('X-TX-Machine-ID'));
         $nodeId = $this->positiveId($request->header('X-TX-Node-ID'));
         $machineOnly = $request->is('txapi/node/v1/machine/nodes')
-            || $request->is('txapi/node/v1/machine/status');
+            || $request->is('txapi/node/v1/machine/status')
+            || ($request->is('txapi/node/v1/handshake')
+                && $machineId !== null && $nodeId === null);
 
         if ($request->hasHeader('X-TX-Node-ID') && $nodeId === null) {
             return TxapiResponse::error($request, 'NODE_ID_REQUIRED', 'Invalid node identity', 422);
