@@ -9,15 +9,25 @@
 - 必须保留实际仍承担协议职责的订阅配置 URL、原支付回调、Telegram Bot webhook、旧节点/Agent/管理入口，除非已在本体独立证明对应新链路等价且明确切换策略。外部消费者须自行升级，不阻止已无本体依赖的普通旧用户路由退役。
 - 代码已合并、CI 通过、部署预发验证、外部服务联调与生产对账是不同等级，不可混淆。
 
+## 2026-10-09 已核实进度（非发布声明）
+
+- TXAPI User Native、套餐/订单主流程、签名支付回调和流量账本均已有实现；[PR #159](https://github.com/ANRCM0/TXBoard/pull/159) 新增用户本人钱包充值页面、独立流水和签名金额验证，不是管理员代充。
+- React Admin 已迁移：审计、套餐（含写端）、订单主要操作、用户主要操作、工单、公告知识库、流量重置（[PR #160](https://github.com/ANRCM0/TXBoard/pull/160)）。支付方式**删除**也已在 [PR #161](https://github.com/ANRCM0/TXBoard/pull/161) 使用新接口且同时保护旧 V2。
+- 仍在使用 V2 的后台业务至少包括：系统配置及其敏感项、支付渠道配置/动态表单/排序/启停、优惠券与批量 CSV、礼品卡、节点机器、插件和主题、Mail、Agent、队列及统计。订单指派/佣金复核和用户群发仍是 V2。勿用“核心页面已迁移”替代“全部后台已原生化”。
+- 新增可重复的 CI 证据：`node scripts/native-admin-release-audit.mjs --guard-native --output artifacts/release/admin-native-gap.json` 会生成 React Admin **直接 apiClient 调用点**缺口，并拒绝 `content`/`ticket`/`traffic-reset` 已完成模块回退 V2；`--strict` 是人工发布前的检查项，**现在预计不能通过**。
+- 这个静态扫描不等于 Laravel 全路由/插件/Worker/外部调用图，也不是漏洞扫描；必须与 `scripts/p0-api-audit.mjs`、功能合同测试和业务服务真实引用审计合并看待。
+- 本轮已知未验收：真实 1Panel/OpenResty CIDR 与备份恢复、MySQL 多实例实际并发、Redis/Horizon/Octane 长时间运行、支付商沙盒及对账、独立 TX-Node/Gateway 协议联调。任何一项缺失都不能称为“生产稳定版已发布”。
+
 ## 已交付与剩余
 
 | 领域 | 当前本体代码 | 仍需验收 |
 | --- | --- | --- |
-| P1/P2 用户端 | Native TXAPI、认证/套餐/内容/工单 | 旧桥接与 React Admin |
-| P3 交易 | 共享支付状态机/订单服务/财务审计 | 并发、对账及后置真实商户 |
-| P4 Node/Traffic | Native HTTP/WSS 服务端和共享 SQL 账本 | 外部 TX-Node 双端后置 |
-| Legacy Batch 1–5 | 大部分 Vue 迁入 TXAPI | 旧路由/Controller/Test 进一步清理 |
-| Runtime security | 收紧 Caddy 可信代理；令牌分域 | 真实反代 CIDR/部署回归 |
+| P1/P2 用户端 | Native TXAPI，认证/套餐/内容/工单和钱包充值前台 | 发布部署及旧桥接移除前的完整回归 |
+| P3 交易 | 共享订单/支付状态机、独立钱包充值账本、重复回调防护、渠道历史留存保护 | 真实商户签名对账、退款/冲正机制和线上 MySQL 并发 |
+| P4 Node/Traffic | Native HTTP/WSS 服务端、共享 SQL 账本、后台重置并发保护 | 节点管理原生化、真实 MySQL 上报/重置竞争及外部 TX-Node 后置 |
+| React Admin 核心 | 审计/套餐/订单主要操作/用户主要操作/工单/公告知识库/流量重置 | config、payment、coupon、gift-card、plugin、theme、server、Agent、mail、统计等部分 V2 |
+| Legacy Batch 1–6 | 大部分 Vue 用户端已迁至 TXAPI，逐批移除闲置旧用户路由 | 按调用图和自动缺口清单逐条判定 V2/V1 退役 |
+| Runtime security | Caddy 可信代理、审计脱敏、管理员路径/角色隔离 | 真实反代 CIDR、备份恢复和持久化队列回归 |
 
 ## C1. TXBoard 内部引用收口
 
