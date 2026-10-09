@@ -42,12 +42,12 @@ final class TicketAdminController
              'total' => $page->total(), 'last_page' => $page->lastPage()]);
     }
 
-    public function show(Request $request, string $id): JsonResponse
+    public function show(Request $request): JsonResponse
     {
         $ticket = Ticket::query()->with(['user:id,email',
             'messages' => static fn ($query) => $query
                 ->orderBy('id')->select(['id','ticket_id','user_id','message','created_at'])])
-            ->findOrFail((int) $id);
+            ->findOrFail((int) $request->route('id'));
         $data = self::ticketDto($ticket);
         $data['messages'] = $ticket->messages->map(static fn (TicketMessage $message): array => [
             'id' => (int) $message->id,
@@ -60,20 +60,21 @@ final class TicketAdminController
         return TxapiResponse::success($request, $data);
     }
 
-    public function reply(Request $request, TicketService $tickets, string $id): JsonResponse
+    public function reply(Request $request, TicketService $tickets): JsonResponse
     {
         $params = $request->validate(['message' => ['required','string','max:10000']]);
-        $ticket = Ticket::query()->findOrFail((int) $id);
+        $ticket = Ticket::query()->findOrFail((int) $request->route('id'));
         if ((int) $ticket->status === Ticket::STATUS_CLOSED) {
             return TxapiResponse::error($request, 'TICKET_CLOSED', 'Closed tickets cannot be replied to', 409);
         }
         // Keep the existing shared service: sends notifications and plugin hooks.
-        $tickets->replyByAdmin((int) $id, $params['message'], (int) $request->user()->id);
+        $tickets->replyByAdmin((int) $request->route('id'), $params['message'], (int) $request->user()->id);
         return TxapiResponse::success($request, ['ok' => true]);
     }
 
-    public function close(Request $request, string $id): JsonResponse
+    public function close(Request $request): JsonResponse
     {
+        $id = (int) $request->route('id');
         DB::transaction(static function () use ($id): void {
             $ticket = Ticket::query()->lockForUpdate()->findOrFail((int) $id);
             if ((int) $ticket->status !== Ticket::STATUS_CLOSED) {
