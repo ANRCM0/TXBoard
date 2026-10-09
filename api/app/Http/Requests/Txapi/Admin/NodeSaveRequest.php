@@ -11,7 +11,7 @@ final class NodeSaveRequest extends ServerSave
         $rules = parent::rules();
         $rules['name'] = ['required', 'string', 'max:255'];
         $rules['host'] = ['required', 'string', 'max:255'];
-        $rules['port'] = ['required', 'string', 'max:64'];
+        $rules['port'] = ['required', 'regex:/^[0-9]{1,5}(?:-[0-9]{1,5})?$/'];
         $rules['server_port'] = ['required', 'integer', 'between:1,65535'];
         $rules['rate'] = ['required', 'numeric', 'min:0'];
         $rules['show'] = ['sometimes', 'boolean'];
