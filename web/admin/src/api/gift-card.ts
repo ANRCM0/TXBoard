@@ -81,18 +81,15 @@ export async function getGiftTemplates(params: { page?: number; per_page?: numbe
 }
 
 export async function createGiftTemplate(payload: Omit<GiftTemplate, 'id'>) {
-  const { data } = await apiClient.post('/gift-card/create-template', payload)
-  return unwrap(data)
+  return unwrapNative(nativeApiClient.post(nativeAdminPath('gift-cards') + '/templates', payload))
 }
 
 export async function updateGiftTemplate(id: number, payload: Partial<GiftTemplate>) {
-  const { data } = await apiClient.post('/gift-card/update-template', { id, ...payload })
-  return unwrap(data)
+  return unwrapNative(nativeApiClient.put(nativeAdminPath('gift-cards') + `/templates/${id}`, payload))
 }
 
 export async function deleteGiftTemplate(id: number) {
-  const { data } = await apiClient.post('/gift-card/delete-template', { id })
-  return unwrap(data)
+  return unwrapNative(nativeApiClient.delete(nativeAdminPath('gift-cards') + `/templates/${id}`))
 }
 
 export async function generateGiftCodes(payload: {
