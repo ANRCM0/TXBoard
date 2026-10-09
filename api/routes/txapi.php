@@ -20,6 +20,7 @@ use App\Http\Controllers\Txapi\Admin\NetworkGroupAdminController;
 use App\Http\Controllers\Txapi\Admin\NetworkRouteAdminController;
 use App\Http\Controllers\Txapi\Admin\NetworkNodeAdminController;
 use App\Http\Controllers\Txapi\Admin\NetworkNodeSecretController;
+use App\Http\Controllers\Txapi\Admin\NetworkMachineAdminController;
 use App\Http\Controllers\Txapi\Admin\PaymentManagementController;
 use App\Http\Controllers\Txapi\AccountController;
 use App\Http\Controllers\Txapi\ServerController;
@@ -67,6 +68,20 @@ Route::prefix('admin/{admin_path}')
     ->group(function () {
         Route::get('audit-logs', [AuditLogController::class, 'index']);
         // Native control-plane node management; no legacy V2 proxy.
+        // Native machine admin — secret-bearing actions are authenticated POST only.
+        Route::get('network-machines', [NetworkMachineAdminController::class, 'index']);
+        Route::post('network-machines', [NetworkMachineAdminController::class, 'create']);
+        Route::put('network-machines/{id}', [NetworkMachineAdminController::class, 'update'])->whereNumber('id');
+        Route::post('network-machines/{id}/credentials', [NetworkMachineAdminController::class, 'credentials'])
+            ->whereNumber('id')->middleware('throttle:10,1');
+        Route::post('network-machines/{id}/token/rotate', [NetworkMachineAdminController::class, 'rotateToken'])
+            ->whereNumber('id')->middleware('throttle:5,1');
+        Route::get('network-machines/{id}/nodes', [NetworkMachineAdminController::class, 'nodes'])->whereNumber('id');
+        Route::get('network-machines/{id}/history', [NetworkMachineAdminController::class, 'history'])->whereNumber('id');
+        Route::post('network-machines/{id}/runtime/update', [NetworkMachineAdminController::class, 'updateRuntime'])
+            ->whereNumber('id')->middleware('throttle:5,1');
+        Route::delete('network-machines/{id}', [NetworkMachineAdminController::class, 'delete'])->whereNumber('id');
+
         Route::get('network-nodes', [NetworkNodeAdminController::class, 'index']);
         Route::get('network-nodes/protocols', [NetworkNodeAdminController::class, 'protocols']);
         Route::post('network-nodes/secrets', [NetworkNodeSecretController::class, 'generate'])
