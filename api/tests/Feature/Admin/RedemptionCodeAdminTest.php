@@ -22,7 +22,7 @@ final class RedemptionCodeAdminTest extends TestCase
         $admin = User::factory()->create(['is_admin' => 1]);
         Sanctum::actingAs($admin);
         $path = (string) admin_setting('secure_path', admin_setting('frontend_admin_path', hash('crc32b', config('app.key'))));
-        $this->base = "/txapi/admin/{$path}/redemption-codes";
+        $this->base = "/txapi/admin/{$path}/gift-cards";
     }
 
     private function template(): GiftCardTemplate
