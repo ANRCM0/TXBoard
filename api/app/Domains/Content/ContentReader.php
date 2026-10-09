@@ -87,7 +87,7 @@ final class ContentReader
         ];
         // Existing extensions may customize article resources. Preserve hook
         // semantics while applying an explicit public-field whitelist.
-        $filtered = HookManager::filter('user.knowledge.resource', $data);
+        $filtered = HookManager::filter('user.knowledge.resource', $data, request(), $article);
         if (!is_array($filtered)) {
             $filtered = $data;
         }
