@@ -21,6 +21,8 @@ use App\Http\Controllers\Txapi\Admin\NetworkRouteAdminController;
 use App\Http\Controllers\Txapi\Admin\NetworkNodeAdminController;
 use App\Http\Controllers\Txapi\Admin\NetworkNodeSecretController;
 use App\Http\Controllers\Txapi\Admin\NetworkMachineAdminController;
+use App\Http\Controllers\Txapi\Admin\ThemeAdminController;
+use App\Http\Controllers\Txapi\Admin\PluginAdminController;
 use App\Http\Controllers\Txapi\Admin\PaymentManagementController;
 use App\Http\Controllers\Txapi\AccountController;
 use App\Http\Controllers\Txapi\ServerController;
@@ -69,6 +71,22 @@ Route::prefix('admin/{admin_path}')
         Route::get('audit-logs', [AuditLogController::class, 'index']);
         // Native control-plane node management; no legacy V2 proxy.
         // Native machine admin — secret-bearing actions are authenticated POST only.
+        // Native extension management; package uploads run archive validators
+        // in the corresponding domain service, never directly in HTTP layer.
+        Route::get('themes', [ThemeAdminController::class, 'index']);
+        Route::post('themes/upload', [ThemeAdminController::class, 'upload']);
+        Route::get('themes/{name}/config', [ThemeAdminController::class, 'config']);
+        Route::put('themes/{name}/config', [ThemeAdminController::class, 'saveConfig']);
+        Route::delete('themes/{name}', [ThemeAdminController::class, 'delete']);
+
+        Route::get('plugins/types', [PluginAdminController::class, 'types']);
+        Route::get('plugins', [PluginAdminController::class, 'index']);
+        Route::post('plugins/upload', [PluginAdminController::class, 'upload']);
+        Route::get('plugins/{code}/config', [PluginAdminController::class, 'config']);
+        Route::put('plugins/{code}/config', [PluginAdminController::class, 'saveConfig']);
+        Route::post('plugins/{code}/actions/{action}', [PluginAdminController::class, 'action']);
+        Route::delete('plugins/{code}', [PluginAdminController::class, 'delete']);
+
         Route::get('network-machines', [NetworkMachineAdminController::class, 'index']);
         Route::post('network-machines', [NetworkMachineAdminController::class, 'create']);
         Route::put('network-machines/{id}', [NetworkMachineAdminController::class, 'update'])->whereNumber('id');
