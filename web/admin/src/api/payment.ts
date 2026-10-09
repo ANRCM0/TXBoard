@@ -1,5 +1,5 @@
-import { apiClient, nativeApiClient, nativeAdminPath, type NativeApiEnvelope } from './client'
-import { unwrap } from '../lib/api'
+import { nativeApiClient, nativeAdminPath, unwrapNative, type NativeApiEnvelope } from './client'
+
 
 export type PaymentOption =
   | string
@@ -44,31 +44,31 @@ export type PaymentSavePayload = {
 }
 
 export async function getPayments() {
-  const { data } = await apiClient.get('/payment/fetch')
-  return unwrap<PaymentItem[]>(data) || []
+  return (await unwrapNative(nativeApiClient.get<NativeApiEnvelope<PaymentItem[]>>(nativeAdminPath('payment-methods')))) || []
 }
 
 export async function getPaymentMethods() {
-  const { data } = await apiClient.get('/payment/getPaymentMethods')
-  return unwrap<string[]>(data) || []
+  return (await unwrapNative(nativeApiClient.get<NativeApiEnvelope<string[]>>(nativeAdminPath('payment-methods') + '/providers'))) || []
 }
 
 export async function getPaymentForm(payment: string, id?: number) {
-  const { data } = await apiClient.post('/payment/getPaymentForm', {
-    payment,
-    ...(id ? { id } : {}),
-  })
-  return unwrap<Record<string, PaymentFormField>>(data) || {}
+  return (await unwrapNative(nativeApiClient.post<NativeApiEnvelope<Record<string, PaymentFormField>>>(
+    nativeAdminPath('payment-methods') + '/form', { payment, ...(id ? { id } : {}) },
+  ))) || {}
 }
 
 export async function savePayment(payload: PaymentSavePayload) {
-  const { data } = await apiClient.post('/payment/save', payload)
-  return unwrap(data)
+  const base = nativeAdminPath('payment-methods')
+  const response = payload.id
+    ? nativeApiClient.put<NativeApiEnvelope<{ id: number }>>(base + '/' + payload.id, payload)
+    : nativeApiClient.post<NativeApiEnvelope<{ id: number }>>(base, payload)
+  return unwrapNative(response)
 }
 
 export async function togglePayment(id: number) {
-  const { data } = await apiClient.post('/payment/show', { id })
-  return unwrap(data)
+  return unwrapNative(nativeApiClient.patch<NativeApiEnvelope<{ enable: boolean }>>(
+    nativeAdminPath('payment-methods') + '/' + id + '/toggle',
+  ))
 }
 
 export async function deletePayment(id: number) {
@@ -83,6 +83,7 @@ export async function deletePayment(id: number) {
 }
 
 export async function sortPayments(ids: number[]) {
-  const { data } = await apiClient.post('/payment/sort', { ids })
-  return unwrap(data)
+  return unwrapNative(nativeApiClient.put<NativeApiEnvelope<{ ok: boolean }>>(
+    nativeAdminPath('payment-methods') + '/sort', { ids },
+  ))
 }
