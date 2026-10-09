@@ -1,4 +1,4 @@
-import { api, nativeApi, nativeRequest, request, type NativeEnvelope } from './client'
+import { nativeApi, nativeRequest, type NativeEnvelope } from './client'
 
 export type InviteCode = {
   code: string
