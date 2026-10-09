@@ -1,5 +1,4 @@
-import { apiClient, nativeApiClient, nativeAdminPath, type NativeApiEnvelope, unwrapNative } from './client'
-import { unwrap } from '../lib/api'
+import { nativeApiClient, nativeAdminPath, type NativeApiEnvelope, unwrapNative } from './client'
 
 export type GiftTemplate = {
   id: number
@@ -131,11 +130,11 @@ export async function getGiftUsages(params: { page?: number; per_page?: number; 
 }
 
 export async function getGiftStatistics(startDate?: string, endDate?: string) {
-  const { data } = await apiClient.get('/gift-card/statistics', {
+  const { data } = await nativeApiClient.get<NativeApiEnvelope<GiftStats>>(nativeAdminPath('gift-cards') + '/statistics', {
     params: {
       ...(startDate ? { start_date: startDate } : {}),
       ...(endDate ? { end_date: endDate } : {}),
     },
   })
-  return unwrap<GiftStats>(data) || {}
+  return data.data || {}
 }
