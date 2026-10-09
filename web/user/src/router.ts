@@ -22,6 +22,7 @@ const routes:RouteRecordRaw[]=[
       {path:'plan/:id',component:()=>import('./pages/PlanDetailPage.vue')},
       {path:'order',component:()=>import('./pages/OrderPage.vue')},
       {path:'order/:trade_no',component:()=>import('./pages/OrderDetailPage.vue')},
+      {path:'wallet',component:()=>import('./pages/WalletPage.vue')},
       {path:'node',component:()=>import('./pages/NodePage.vue')},
       {path:'traffic',component:()=>import('./pages/TrafficPage.vue'),meta:{feature:'traffic_log_enable'}},
       {path:'knowledge',component:()=>import('./pages/KnowledgePage.vue'),meta:{feature:'knowledge_enable'}},
