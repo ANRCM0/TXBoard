@@ -1,4 +1,4 @@
-import { api, nativeApi, nativeRequest, request } from './client'
+import { nativeApi, nativeRequest } from './client'
 
 export type GuestConfig = {
   frontend_theme?: string
