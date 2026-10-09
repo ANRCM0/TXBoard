@@ -55,7 +55,7 @@ class TxapiTrafficLogTest extends TestCase
     {
         StatUser::create([
             'user_id' => $user->id, 'u' => $upload, 'd' => $upload * 2,
-            'record_at' => $at, 'server_rate' => 1,
+            'record_at' => $at, 'server_rate' => 1, 'record_type' => 'd',
         ]);
     }
 }
