@@ -1,4 +1,4 @@
-import { apiClient } from './client'
+import { apiClient, nativeApiClient, nativeAdminPath, type NativeApiEnvelope } from './client'
 import { unwrap } from '../lib/api'
 
 export type PlanPrices = Partial<Record<
@@ -84,9 +84,22 @@ export type OrderDetail = OrderItem & {
   [key: string]: unknown
 }
 
+// Admin SPA needs the complete plan catalog for sorting/editing. Fetch
+// bounded native pages; never silently return a truncated first page.
 export async function getPlans() {
-  const { data } = await apiClient.get('/plan/fetch')
-  return unwrap<PlanItem[]>(data) || []
+  const plans: PlanItem[] = []
+  for (let page = 1; page <= 100; page++) {
+    const { data: envelope } = await nativeApiClient.get<NativeApiEnvelope<PlanItem[]>>(
+      nativeAdminPath('plans'), { params: { page, per_page: 100 } },
+    )
+    if (!envelope?.request_id || !Array.isArray(envelope.data) || !envelope.meta ||
+        !Number.isInteger(envelope.meta.last_page)) {
+      throw new Error('Invalid TXAPI plan catalog response')
+    }
+    plans.push(...envelope.data)
+    if (page >= envelope.meta.last_page) return plans
+  }
+  throw new Error('Plan catalog exceeds native pagination safety limit')
 }
 export async function savePlan(payload: PlanSavePayload) {
   const { data } = await apiClient.post('/plan/save', payload)
@@ -106,8 +119,43 @@ export async function sortPlans(ids: number[]) {
 }
 
 export async function getOrders(params: Record<string, unknown> = {}) {
-  const { data } = await apiClient.get<OrderPagination>('/order/fetch', { params })
-  return data
+  const query: Record<string, unknown> = {
+    page: params.current ?? 1,
+    per_page: params.pageSize ?? 20,
+  }
+  if (params.is_commission) query.is_commission = true
+
+  const filters = Array.isArray(params.filter) ? params.filter : []
+  const allowed = new Set(['trade_no', 'email', 'user_id', 'callback_no', 'status', 'commission_status'])
+  for (const item of filters) {
+    if (!item || typeof item !== 'object' || !('id' in item) || !('value' in item)) {
+      throw new Error('Malformed native order filter')
+    }
+    const { id, value } = item as { id: string; value: unknown }
+    if (!allowed.has(id)) throw new Error('Unsupported native order filter: ' + id)
+    if (Array.isArray(value)) {
+      if (value.length !== 1) throw new Error('Native order filter must have one value')
+      query[id] = value[0]
+    } else {
+      query[id] = value
+    }
+  }
+
+  const { data: envelope } = await nativeApiClient.get<NativeApiEnvelope<OrderItem[]>>(
+    nativeAdminPath('orders'), { params: query },
+  )
+  if (!envelope?.request_id || !Array.isArray(envelope.data) || !envelope.meta ||
+      !Number.isInteger(envelope.meta.total) || !Number.isInteger(envelope.meta.page) ||
+      !Number.isInteger(envelope.meta.per_page) || !Number.isInteger(envelope.meta.last_page)) {
+    throw new Error('Invalid TXAPI order list response')
+  }
+  return {
+    data: envelope.data,
+    total: envelope.meta.total,
+    current_page: envelope.meta.page,
+    per_page: envelope.meta.per_page,
+    last_page: envelope.meta.last_page,
+  } satisfies OrderPagination
 }
 export async function getOrderDetail(id: number) {
   const { data } = await apiClient.post('/order/detail', { id })

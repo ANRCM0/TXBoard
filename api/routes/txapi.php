@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Txapi\Admin\AuditLogController;
+use App\Http\Controllers\Txapi\Admin\CommerceReadController;
 use App\Http\Controllers\Txapi\AccountController;
 use App\Http\Controllers\Txapi\ServerController;
 use App\Http\Controllers\Txapi\TrafficController;
@@ -45,6 +46,8 @@ Route::prefix('admin/{admin_path}')
     ->middleware(['admin.path', 'admin', 'log', 'throttle:120,1'])
     ->group(function () {
         Route::get('audit-logs', [AuditLogController::class, 'index']);
+        Route::get('plans', [CommerceReadController::class, 'plans']);
+        Route::get('orders', [CommerceReadController::class, 'orders']);
     });
 
 Route::middleware('throttle:10,1')->group(function () {
