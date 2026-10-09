@@ -1,4 +1,4 @@
-import { apiClient } from './client'
+import { apiClient, nativeApiClient, nativeAdminPath, type NativeApiEnvelope } from './client'
 import { unwrap } from '../lib/api'
 
 export type PaymentOption =
@@ -72,8 +72,14 @@ export async function togglePayment(id: number) {
 }
 
 export async function deletePayment(id: number) {
-  const { data } = await apiClient.post('/payment/drop', { id })
-  return unwrap(data)
+  if (!Number.isSafeInteger(id) || id < 1) throw new Error('Invalid payment method ID')
+  const { data } = await nativeApiClient.post<NativeApiEnvelope<{ ok: boolean }>>(
+    nativeAdminPath('payment-methods') + '/' + id + '/delete',
+  )
+  if (!data?.request_id || data.data?.ok !== true) {
+    throw new Error('Native payment deletion not acknowledged')
+  }
+  return true
 }
 
 export async function sortPayments(ids: number[]) {
