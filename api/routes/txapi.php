@@ -9,6 +9,9 @@ use App\Http\Controllers\Txapi\Admin\UserEditorController;
 use App\Http\Controllers\Txapi\Admin\PlanMutationController;
 use App\Http\Controllers\Txapi\Admin\ContentAdminController;
 use App\Http\Controllers\Txapi\Admin\OrderAdminController;
+use App\Http\Controllers\Txapi\Admin\OrderOperationsAdminController;
+use App\Http\Controllers\Txapi\Admin\UserMailAdminController;
+use App\Http\Controllers\Txapi\Admin\ModuleAdminController;
 use App\Http\Controllers\Txapi\Admin\TrafficResetAdminController;
 use App\Http\Controllers\Txapi\Admin\PaymentSafetyController;
 use App\Http\Controllers\Txapi\Admin\QueueAdminController;
@@ -86,6 +89,12 @@ Route::prefix('admin/{admin_path}')
         // a different execution boundary and is not proxied by this namespace.
         // Dashboard, ranking and accounting reads share the audited native
         // admin boundary and enforce server-side reporting bounds.
+        // Native Module Registry: inventory and explicit lifecycle actions.
+        Route::get('modules', [ModuleAdminController::class, 'index']);
+        Route::get('modules/{id}/operations', [ModuleAdminController::class, 'operations']);
+        Route::post('modules/{id}/operations/{operation}', [ModuleAdminController::class, 'execute']);
+        Route::get('modules/{id}', [ModuleAdminController::class, 'show']);
+
         Route::get('analytics/dashboard', [AnalyticsAdminController::class, 'dashboard']);
         Route::get('analytics/overview', [AnalyticsAdminController::class, 'overview']);
         Route::get('analytics/orders/chart', [AnalyticsAdminController::class, 'orders']);
@@ -203,6 +212,8 @@ Route::prefix('admin/{admin_path}')
         Route::post('traffic-resets/users/{id}/reset', [TrafficResetAdminController::class, 'reset'])->whereNumber('id');
         Route::get('plans', [CommerceReadController::class, 'plans']);
         Route::get('orders', [CommerceReadController::class, 'orders']);
+        Route::post('orders/assign', [OrderOperationsAdminController::class, 'assign']);
+        Route::post('orders/{tradeNo}/commission-review', [OrderOperationsAdminController::class, 'commission']);
         Route::get('orders/{id}/detail', [OrderAdminController::class, 'detail'])->whereNumber('id');
         Route::post('orders/{tradeNo}/paid', [OrderAdminController::class, 'paid']);
         Route::post('orders/{tradeNo}/cancel', [OrderAdminController::class, 'cancel']);
@@ -218,6 +229,7 @@ Route::prefix('admin/{admin_path}')
         Route::post('users/{id}/subscription-credentials/rotate', [AccountMutationController::class, 'rotate'])->whereNumber('id');
         Route::post('users/{id}/delete', [AccountMutationController::class, 'delete'])->whereNumber('id');
         Route::post('users/ban', [AccountMutationController::class, 'ban']);
+        Route::post('users/mail', [UserMailAdminController::class, 'send']);
         // Existing plan mutations retain POST; RequestLog now audits POST, PUT, PATCH and DELETE.
         Route::post('plans', [PlanMutationController::class, 'save']);
         Route::post('plans/sort', [PlanMutationController::class, 'sort']);
