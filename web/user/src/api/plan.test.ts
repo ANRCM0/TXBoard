@@ -67,13 +67,10 @@ describe('P2 native subscription client', () => {
       name: 'TXPlan',
       content: '2 GB plan',
       tags: ['fast', 'popular'],
-      transfer_enable: 2,
+      traffic_limit_bytes: 2 * 1073741824,
       capacity_limit: null,
-      month_price: 1250,
-      year_price: 12000,
-      reset_price: 300,
-      two_year_price: null,
-      renew: true,
+      prices: sample.prices,
+      renewable: true,
     })
   })
 
@@ -82,8 +79,8 @@ describe('P2 native subscription client', () => {
     const plan = await fetchPlanById(8)
     expect(seen[0].url).toBe('/plans/8')
     expect(plan.name).toBe('TXPlan')
-    expect(plan.month_price).toBe(1250)
-    expect(plan.transfer_enable).toBe(2)
+    expect(plan.prices[0]).toEqual({ period: 'monthly', amount_minor: 1250 })
+    expect(plan.traffic_limit_bytes).toBe(2 * 1073741824)
   })
 
   it('rejects missing pagination data, malformed prices and invalid plan IDs', async () => {
@@ -95,9 +92,33 @@ describe('P2 native subscription client', () => {
     ] }], request_id: 'trace-1' })
     await expect(fetchPlans()).rejects.toThrow('Invalid TXAPI plan price')
 
+    responder = () => ({ data: [{ ...sample, prices: [
+      { period: 'month_price', amount_minor: 1250 },
+    ] }], request_id: 'trace-1' })
+    await expect(fetchPlans()).rejects.toThrow('Invalid TXAPI plan price')
+
+    responder = () => ({ data: [{ ...sample, prices: [
+      { period: 'monthly', amount_minor: 1250 },
+      { period: 'monthly', amount_minor: 1200 },
+    ] }], request_id: 'trace-1' })
+    await expect(fetchPlans()).rejects.toThrow('Invalid TXAPI plan price')
+
     responder = () => ({ data: [sample] })
     await expect(fetchPlans()).rejects.toThrow('Invalid TXAPI response')
 
     await expect(fetchPlanById(0)).rejects.toThrow('Invalid plan ID')
+  })
+})
+
+describe('LR-03 native plan DTO contract', () => {
+  it('preserves canonical plan prices and traffic units without Xboard field mapping', async () => {
+    const plans = await fetchPlans()
+    const plan = plans[0]
+    expect(plan.prices).toEqual(sample.prices)
+    expect(plan.traffic_limit_bytes).toBe(sample.traffic_limit_bytes)
+    expect(plan).not.toHaveProperty('month_price')
+    expect(plan).not.toHaveProperty('transfer_enable')
+    expect(plan).not.toHaveProperty('show')
+    expect(plan).not.toHaveProperty('sell')
   })
 })

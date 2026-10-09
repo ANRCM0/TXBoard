@@ -4,7 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { checkCoupon } from '../api/coupon'
 import { errorMessage } from '../api/client'
 import { cancelOrder, fetchFirstBlockingOrder, saveOrder } from '../api/order'
-import { fetchPlanById, PERIODS, type PlanItem } from '../api/plan'
+import { fetchPlanById, type PlanItem } from '../api/plan'
 import { useI18n } from '../i18n'
 
 const route=useRoute()
@@ -18,14 +18,14 @@ const loading=ref(true)
 const buying=ref(false)
 const error=ref('')
 
-const availablePeriods=computed(()=>plan.value?PERIODS.filter(([key])=>Number((plan.value as unknown as Record<string,unknown>)[key]||0)>0):[])
+const availablePeriods=computed(()=>plan.value?.prices??[])
 
 async function load(){
   loading.value=true
   error.value=''
   try{
     plan.value=await fetchPlanById(Number(route.params.id))
-    period.value=availablePeriods.value[0]?.[0]||''
+    period.value=availablePeriods.value[0]?.period||''
   }catch(e){
     error.value=errorMessage(e)
     await router.replace('/plan')
@@ -35,15 +35,14 @@ onMounted(()=>void load())
 watch(()=>route.params.id,()=>void load())
 watch(period,()=>{couponDiscount.value='';couponCode.value=''})
 
-function price(key:string){
-  if(!plan.value)return '¥ 0.00'
-  return '¥ '+(Number((plan.value as unknown as Record<string,unknown>)[key]||0)/100).toFixed(2)
+function price(cents:number){
+  return '¥ '+(cents/100).toFixed(2)
 }
 function periodLabel(key:string){
   return ({
-    month_price:t('period.month'),quarter_price:t('period.quarter'),half_year_price:t('period.halfYear'),
-    year_price:t('period.year'),two_year_price:t('period.twoYear'),three_year_price:t('period.threeYear'),
-    onetime_price:t('period.onetime'),reset_price:t('period.reset'),
+    monthly:t('period.month'),quarterly:t('period.quarter'),half_yearly:t('period.halfYear'),
+    yearly:t('period.year'),two_yearly:t('period.twoYear'),three_yearly:t('period.threeYear'),
+    onetime:t('period.onetime'),reset_traffic:t('period.reset'),
   } as Record<string,string>)[key]||key
 }
 function description(value?:string){
@@ -94,13 +93,13 @@ async function buy(){
           <div class="plan-section-label">{{ t('plan.choosePeriod') }}</div>
           <div class="period-grid plan-radio-grid">
             <label
-              v-for="[key] in availablePeriods"
-              :key="key"
+              v-for="item in availablePeriods"
+              :key="item.period"
               class="period-option"
-              :class="{active:period===key}"
+              :class="{active:period===item.period}"
             >
-              <input v-model="period" type="radio" :value="key"/>
-              <span><strong>{{ periodLabel(key) }}</strong><small>{{ price(key) }}</small></span>
+              <input v-model="period" type="radio" :value="item.period"/>
+              <span><strong>{{ periodLabel(item.period) }}</strong><small>{{ price(item.amount_minor) }}</small></span>
             </label>
           </div>
 
