@@ -73,36 +73,40 @@ describe('admin api envelope', () => {
 })
 
 describe('config adapter contract', () => {
-  it('fetches a scoped settings group from GET /config/fetch', async () => {
-    responder = () => ({ data: { data: { site: { app_name: 'TX' } } } })
+  it('fetches a scoped settings group via native TXAPI', async () => {
+    setAdminSecurePath('settings-admin')
+    responder = () => ({ data: { data: { site: { app_name: 'TX' } }, request_id: 'settings-get' } })
 
     const result = await fetchSettings('site')
 
     expect(seen[0].method).toBe('get')
-    expect(seen[0].url).toBe('/config/fetch')
-    expect(seen[0].params).toEqual({ key: 'site' })
+    expect(seen[0].url).toBe('/admin/settings-admin/settings/site')
+    expect(seen[0].baseURL).toBe('/txapi')
     expect(result).toEqual({ app_name: 'TX' })
   })
 
   it('falls back to the whole payload when the group is absent', async () => {
-    responder = () => ({ data: { data: { app_name: 'TX' } } })
+    setAdminSecurePath('settings-admin')
+    responder = () => ({ data: { data: { app_name: 'TX' }, request_id: 'settings-fallback' } })
 
     await expect(fetchSettings('site')).resolves.toEqual({ app_name: 'TX' })
   })
 
-  it('saves settings with POST /config/save and a JSON body', async () => {
-    responder = () => ({ data: { data: true } })
+  it('saves settings through native TXAPI with a JSON body', async () => {
+    setAdminSecurePath('settings-admin')
+    responder = () => ({ data: { data: { ok: true }, request_id: 'settings-save' } })
 
     await saveSettings({ app_name: 'TX' })
 
     expect(seen[0].method).toBe('post')
-    expect(seen[0].url).toBe('/config/save')
+    expect(seen[0].url).toBe('/admin/settings-admin/settings')
     expect(JSON.parse(String(seen[0].data))).toEqual({ app_name: 'TX' })
   })
 
   it('attaches the stored bearer token to admin requests', async () => {
     setAccessToken('secret-token')
-    responder = () => ({ data: { data: {} } })
+    setAdminSecurePath('settings-admin')
+    responder = () => ({ data: { data: {}, request_id: 'settings-auth' } })
 
     await fetchSettings('site')
 
@@ -282,11 +286,12 @@ describe('admin secure path resolution', () => {
 
   it('switches the admin client immediately after a secure-path save succeeds', async () => {
     setAdminSecurePath('before-rotation')
-    responder = () => ({ data: { data: true } })
+    responder = () => ({ data: { data: { ok: true }, request_id: 'settings-rotate' } })
 
     await saveSettings({ secure_path: 'after-rotation' })
 
-    expect(seen[0].baseURL).toBe('/api/v2/before-rotation')
+    expect(seen[0].baseURL).toBe('/txapi')
+    expect(seen[0].url).toBe('/admin/before-rotation/settings')
     expect(apiClient.defaults.baseURL).toBe('/api/v2/after-rotation')
   })
 
