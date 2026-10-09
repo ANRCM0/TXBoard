@@ -53,7 +53,7 @@ export function setAdminSecurePath(securePath: string) {
 }
 
 /** Native administrator operations must keep the instance-specific secure path. */
-export function nativeAdminPath(operation: 'audit-logs' | 'plans' | 'orders' | 'tickets' | 'users' | 'content/notices' | 'content/knowledge' | 'traffic-resets' | 'payment-methods' | 'queue' | 'coupons' | 'mail-templates' | 'settings' | 'gift-cards' | 'redemption-codes'): string {
+export function nativeAdminPath(operation: 'audit-logs' | 'plans' | 'orders' | 'tickets' | 'users' | 'content/notices' | 'content/knowledge' | 'traffic-resets' | 'payment-methods' | 'queue' | 'coupons' | 'mail-templates' | 'settings' | 'gift-cards'): string {
   // The stored value takes precedence over the injected initial setting after
   // secure_path rotation. Never guess a constant path or fall back to /me.
   const securePath = readStoredSecurePath() || String(runtimeSettings().secure_path || '').trim()
