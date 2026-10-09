@@ -13,6 +13,7 @@ import {
 import { fetchSettings, saveSettings } from './config'
 import { getAuditLogs } from './statistics'
 import { getPlans, getOrders } from './finance'
+import { getTickets, getTicketDetail, replyTicket, closeTicket } from './ticket'
 import { getUsers, getUserDetail, getUserSubscriptionLink } from './user-admin'
 import { copyNode, generateSecret } from './server'
 import { resolvePluginAppUrl } from './plugin'
@@ -414,6 +415,54 @@ describe('native admin plans and orders', () => {
     responder = () => ({ data: { data: [], request_id: 'missing-meta' } })
     await expect(getPlans()).rejects.toThrow('Invalid TXAPI plan catalog response')
     await expect(getOrders()).rejects.toThrow('Invalid TXAPI order list response')
+  })
+})
+
+describe('native administrator tickets', () => {
+  it('uses native owner-guarded ticket pagination and detail', async () => {
+    setAdminSecurePath('support-admin')
+    setAccessToken('support-session')
+    responder = config => ({
+      data: {
+        data: config.method === 'get' && config.url?.endsWith('/42')
+          ? { id: 42, messages: [{ id: 1, message: 'Help' }] }
+          : [{ id: 42, subject: 'Help' }],
+        meta: { page: 2, per_page: 10, total: 11, last_page: 2 },
+        request_id: 'support-ticket',
+      },
+    })
+    const page = await getTickets({
+      current: 2, pageSize: 10, status: 0, reply_status: [1], email: 'help@example.test',
+    })
+    expect(page.total).toBe(11)
+    expect(page.last_page).toBe(2)
+    expect(seen[0].baseURL).toBe('/txapi')
+    expect(seen[0].url).toBe('/admin/support-admin/tickets')
+    expect(seen[0].params).toEqual({
+      page: 2, per_page: 10, status: 0, reply_status: 1, email: 'help@example.test',
+    })
+    expect(String(seen[0].headers.Authorization)).toBe('Bearer support-session')
+    const detail = await getTicketDetail(42)
+    expect(detail.messages?.[0].message).toBe('Help')
+    expect(seen[1].url).toBe('/admin/support-admin/tickets/42')
+    await expect(getTicketDetail(0)).rejects.toThrow('Invalid ticket ID')
+  })
+
+  it('uses native reply and close POSTs with envelope acknowledgements', async () => {
+    setAdminSecurePath('support-admin')
+    responder = () => ({ data: { data: { ok: true }, request_id: 'mutation-ok' } })
+    await expect(replyTicket(42, 'Resolved')).resolves.toBe(true)
+    await expect(closeTicket(42)).resolves.toBe(true)
+    expect(seen[0].url).toBe('/admin/support-admin/tickets/42/reply')
+    expect(JSON.parse(String(seen[0].data))).toEqual({ message: 'Resolved' })
+    expect(seen[1].url).toBe('/admin/support-admin/tickets/42/close')
+  })
+
+  it('rejects malformed native pages instead of silently discarding tickets', async () => {
+    setAdminSecurePath('support-admin')
+    responder = () => ({ data: { data: [], request_id: 'missing-meta' } })
+    await expect(getTickets({})).rejects.toThrow('Invalid native ticket list response')
+    await expect(getTickets({ reply_status: [0, 1] })).rejects.toThrow('single reply status')
   })
 })
 
