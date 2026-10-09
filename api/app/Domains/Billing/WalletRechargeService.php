@@ -43,8 +43,9 @@ final class WalletRechargeService
                 return $existing;
             }
             if (WalletRecharge::query()->where('user_id', $userId)
-                ->where('status', WalletRecharge::STATUS_PENDING)->count() >= 5) {
-                throw new ApiException('Too many pending recharges', 409);
+                ->where('status', WalletRecharge::STATUS_PENDING)
+                ->where('created_at', '>=', time() - 86400)->count() >= 20) {
+                throw new ApiException('Too many recent pending recharges', 409);
             }
             $method = Payment::query()->whereKey($paymentId)
                 ->where('enable', true)->first();
