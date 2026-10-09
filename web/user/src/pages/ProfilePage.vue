@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { changePassword, getActiveSessions, getQuickLoginUrl, getUserPreferences, removeActiveSession, resetSecurity, updateUserPreferences, type ActiveSession } from '../api/profile'
 import { errorMessage } from '../api/client'
 import { useAuthStore } from '../stores/auth'
 import { useI18n } from '../i18n'
 
 const auth=useAuthStore()
+const router=useRouter()
 const {t,locale}=useI18n()
 const sessions=ref<ActiveSession[]>([])
 const error=ref('')
@@ -93,6 +95,7 @@ function date(value:string|null){
           <span>CNY</span>
         </div>
         <p>{{ t('dashboard.balanceHint') }}</p>
+        <button class="primary-btn small-btn" @click="router.push('/wallet')">{{ locale==='en-US'?'Add funds':'充值余额' }}</button>
       </div>
     </section>
 
