@@ -1,4 +1,4 @@
-import { apiClient } from './client'
+import { apiClient, nativeApiClient, nativeAdminPath, type NativeApiEnvelope } from './client'
 import { unwrap } from '../lib/api'
 
 export type DashboardStats = {
@@ -70,6 +70,21 @@ export async function getAuditLogs(params: {
   admin_id?: number
   keyword?: string
 } = {}) {
-  const { data } = await apiClient.get('/system/getAuditLog', { params })
-  return data as Paged<AuditLog>
+  const { current = 1, page_size = 20, ...filters } = params
+  const { data: envelope } = await nativeApiClient.get<NativeApiEnvelope<AuditLog[]>>(
+    nativeAdminPath('audit-logs'),
+    { params: { page: current, per_page: page_size, ...filters } },
+  )
+  if (!envelope?.request_id || !Array.isArray(envelope.data) ||
+      !envelope.meta || !Number.isInteger(envelope.meta.total) ||
+      !Number.isInteger(envelope.meta.last_page)) {
+    throw new Error('Invalid native administrator audit response')
+  }
+  return {
+    data: envelope.data,
+    total: envelope.meta.total,
+    current_page: envelope.meta.page,
+    per_page: envelope.meta.per_page,
+    last_page: envelope.meta.last_page,
+  } as Paged<AuditLog>
 }
