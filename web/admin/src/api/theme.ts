@@ -1,5 +1,10 @@
-import { apiClient } from './client'
-import { unwrap } from '../lib/api'
+import { nativeApiClient, nativeAdminPath, unwrapNative, type NativeApiEnvelope } from './client'
+
+const base = () => nativeAdminPath('themes')
+const themePath = (name: string) => {
+  if (!/^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$/.test(name)) throw new Error('Invalid theme name')
+  return base() + '/' + encodeURIComponent(name)
+}
 
 export type ThemeConfigField = {
   field_name: string
@@ -40,8 +45,9 @@ export type ThemesResponse = {
 }
 
 export async function getThemes() {
-  const { data } = await apiClient.get('/theme/getThemes')
-  const payload = unwrap<RawThemesResponse | ThemeItem[] | Record<string, ThemeItem>>(data)
+  const payload = await unwrapNative(nativeApiClient.get<NativeApiEnvelope<RawThemesResponse | ThemeItem[] | Record<string, ThemeItem>>>(
+    base(),
+  ))
 
   if (Array.isArray(payload)) {
     return { themes: payload, active: undefined } satisfies ThemesResponse
@@ -78,25 +84,27 @@ export async function getThemes() {
 }
 
 export async function getThemeConfig(theme: string) {
-  const { data } = await apiClient.post('/theme/getThemeConfig', { name: theme })
-  return unwrap<Record<string, unknown>>(data)
+  return unwrapNative(nativeApiClient.get<NativeApiEnvelope<Record<string, unknown>>>(
+    themePath(theme) + '/config',
+  ))
 }
 
 export async function saveThemeConfig(theme: string, config: Record<string, unknown>) {
-  const { data } = await apiClient.post('/theme/saveThemeConfig', { name: theme, config })
-  return unwrap<Record<string, unknown>>(data)
+  return unwrapNative(nativeApiClient.put<NativeApiEnvelope<Record<string, unknown>>>(
+    themePath(theme) + '/config', { config },
+  ))
 }
 
 export async function uploadTheme(file: File) {
   const form = new FormData()
   form.append('file', file)
-  const { data } = await apiClient.post('/theme/upload', form, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  })
-  return unwrap(data)
+  return unwrapNative(nativeApiClient.post<NativeApiEnvelope<{ ok: boolean }>>(
+    base() + '/upload', form, { headers: { 'Content-Type': 'multipart/form-data' } },
+  ))
 }
 
 export async function deleteTheme(theme: string) {
-  const { data } = await apiClient.post('/theme/delete', { name: theme })
-  return unwrap(data)
+  return unwrapNative(nativeApiClient.delete<NativeApiEnvelope<{ ok: boolean }>>(
+    themePath(theme),
+  ))
 }
