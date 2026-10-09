@@ -241,7 +241,7 @@ class AdminContractRegressionTest extends TestCase
             'enabled' => true,
         ]);
 
-        $response = $this->postJson("/api/v2/{$this->securePath}/server/route/simulate", [
+        $response = $this->postJson("/txapi/admin/{$this->securePath}/network-routes/simulate", [
             'node_id' => $node->id,
             'target' => 'https://api.example.com/path',
         ]);
@@ -271,7 +271,7 @@ class AdminContractRegressionTest extends TestCase
             'enabled' => true,
         ]);
 
-        $response = $this->postJson("/api/v2/{$this->securePath}/server/route/simulate", [
+        $response = $this->postJson("/txapi/admin/{$this->securePath}/network-routes/simulate", [
             'node_id' => $node->id,
             'target' => '192.168.1.10',
         ]);
@@ -306,11 +306,11 @@ class AdminContractRegressionTest extends TestCase
             'enabled' => true,
         ]);
 
-        $this->postJson("/api/v2/{$this->securePath}/server/route/drop", ['id' => $route->id])
-            ->assertStatus(400)
-            ->assertJsonPath('message', '该路由仍被节点使用，请先从节点配置中解除关联');
+        $this->deleteJson("/txapi/admin/{$this->securePath}/network-routes/{$route->id}")
+            ->assertStatus(409)
+            ->assertJsonPath('error.code', 'NETWORK_ROUTE_IN_USE');
 
-        $this->postJson("/api/v2/{$this->securePath}/server/route/save", [
+        $this->postJson("/txapi/admin/{$this->securePath}/network-routes", [
             'remarks' => 'dns-without-target',
             'match' => ['dns.example.com'],
             'action' => 'dns',
