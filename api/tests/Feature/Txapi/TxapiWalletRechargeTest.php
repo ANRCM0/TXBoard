@@ -148,6 +148,22 @@ class TxapiWalletRechargeTest extends TestCase
             (int) WalletRecharge::where('trade_no', $second)->value('status'));
     }
 
+    public function test_wallet_balance_sql_integer_overflow_is_blocked_before_collecting_payment(): void
+    {
+        $payment = $this->payment();
+        $owner = $this->user('overflow-wallet@example.test');
+        $owner->balance = 2147483600;
+        $owner->saveOrFail();
+        Sanctum::actingAs($owner);
+
+        $this->postJson('/txapi/billing/recharges', [
+            'amount_minor' => 100, 'payment_method_id' => $payment->id,
+        ], ['Idempotency-Key' => 'e2b01300-9d18-420d-a0d6-f213147d0007'])
+            ->assertStatus(409)->assertJsonPath('error.code', 'RECHARGE_REJECTED');
+        $this->assertSame(0, WalletRecharge::query()->where('user_id', $owner->id)->count());
+        $this->assertSame(2147483600, (int) $owner->fresh()->balance);
+    }
+
     public function test_recharge_methods_exclude_non_verified_provider_adapters_and_keep_configs_private(): void
     {
         $supported = $this->payment();
