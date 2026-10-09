@@ -14,6 +14,7 @@ import { fetchSettings, saveSettings } from './config'
 import { getAuditLogs } from './statistics'
 import { getPlans, getOrders, savePlan, updatePlanFlags, deletePlan, sortPlans, getOrderDetail, markOrderPaid, cancelOrder } from './finance'
 import { getTickets, getTicketDetail, replyTicket, closeTicket } from './ticket'
+import { getTrafficResetLogs, getTrafficResetStats, resetUserTraffic, getUserTrafficResetHistory } from './traffic-reset'
 import {
   getKnowledgePage, getKnowledgeAll, getKnowledgeDetail, getKnowledgeCategories,
   saveKnowledge, toggleKnowledge, sortKnowledge, deleteKnowledge,
@@ -718,5 +719,56 @@ describe('native admin user editor contract', () => {
     expect(seen[0].baseURL).toBe('/txapi')
     expect(seen[0].url).toBe('/admin/editable-admin/users')
     expect(seen[0].method).toBe('post')
+  })
+})
+
+describe('native administrator traffic reset contract', () => {
+  it('requests a scoped bounded log page and maps TXAPI meta to existing table props', async () => {
+    setAdminSecurePath('traffic-admin')
+    responder = () => ({ data: {
+      data: [{ id: 11, user_id: 4, reset_type: 'manual', old_traffic: { total: 200 } }],
+      request_id: 'traffic-request',
+      meta: { page: 2, per_page: 20, total: 32, last_page: 2 },
+    } })
+    const page = await getTrafficResetLogs({ page: 2, per_page: 20, user_id: 4 })
+    expect(page.total).toBe(32)
+    expect(page.current_page).toBe(2)
+    expect(seen[0].baseURL).toBe('/txapi')
+    expect(seen[0].url).toBe('/admin/traffic-admin/traffic-resets')
+    expect(seen[0].params).toEqual({ page: 2, per_page: 20, user_id: 4 })
+  })
+
+  it('uses secured native stats and user history routes, not V2', async () => {
+    setAdminSecurePath('traffic-admin')
+    responder = config => ({ data: {
+      data: config.url?.endsWith('/stats') ? { total_resets: 2, manual_resets: 1 }
+        : { user: { id: 4, email: 'x@example.test' }, history: [{ id: 11 }] },
+      request_id: 'traffic-stats',
+    } })
+    expect((await getTrafficResetStats(14)).total_resets).toBe(2)
+    expect((await getUserTrafficResetHistory(4, 5)).history).toHaveLength(1)
+    expect(seen[0].url).toBe('/admin/traffic-admin/traffic-resets/stats')
+    expect(seen[0].params).toEqual({ days: 14 })
+    expect(seen[1].url).toBe('/admin/traffic-admin/traffic-resets/users/4')
+    expect(seen[1].params).toEqual({ limit: 5 })
+  })
+
+  it('sends audited native manual reset with reason and checks acknowledgement', async () => {
+    setAdminSecurePath('traffic-admin')
+    responder = () => ({ data: {
+      data: { user_id: 4, email: 'x@example.test', reset_time: '2026-10-09T00:00:00Z' },
+      request_id: 'traffic-reset-ok',
+    } })
+    await expect(resetUserTraffic(4, 'customer asked')).resolves.toMatchObject({ user_id: 4 })
+    expect(seen[0].url).toBe('/admin/traffic-admin/traffic-resets/users/4/reset')
+    expect(seen[0].method).toBe('post')
+    expect(JSON.parse(String(seen[0].data))).toEqual({ reason: 'customer asked' })
+    await expect(resetUserTraffic(0)).rejects.toThrow('Invalid traffic reset user ID')
+  })
+
+  it('rejects malformed native log pages', async () => {
+    setAdminSecurePath('traffic-admin')
+    responder = () => ({ data: { data: [], request_id: 'no-meta' } })
+    await expect(getTrafficResetLogs()).rejects.toThrow('Invalid native traffic reset logs response')
   })
 })
