@@ -15,6 +15,7 @@ TXBoard 是一个模块化的网络服务 **Control Plane（控制面板）**，
 | **TXBoard**（本仓库） | 控制面源代码、前后端、镜像构建及协议契约 |
 | [TXBoard-Deploy](https://github.com/ANRCM0/TXBoard-Deploy) | 面向用户的安装、升级和部署管理 |
 | [TX-Node](https://github.com/ANRCM0/TX-Node) | 独立节点 Agent / Data Plane |
+| [TXBoard-Gateway](https://github.com/ANRCM0/TXBoard-Gateway) | 可选 API 中间件与独立主题 BFF（不是 MCP Gateway） |
 
 ## 安装
 
@@ -104,7 +105,9 @@ docker compose exec -it txboard php artisan txboard:install
 - [架构与开发指南（CURRENT / TARGET）](docs/architecture/README.md)
 - [跨组件协议契约（CURRENT / TARGET）](contracts/README.md)
 - [插件开发指南](api/docs/en/development/plugin-development-guide.md)
-- [MCP Gateway](mcp/README.md)
+- **[Gateway 双仓集成 ADR（/txapi/bff/v1）](docs/architecture/gateway-integration.md)**（未来目标）
+- [TXAPI BFF 目标契约](contracts/http/txapi-bff-target-v1.md)
+- [MCP Gateway（Agent Ops 专用）](mcp/README.md)
 - [贡献与编码约束](AGENTS.md)
 
 许可证与第三方来源说明见 [api/LICENSE](api/LICENSE) 和 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。

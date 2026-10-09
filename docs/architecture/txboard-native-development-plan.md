@@ -79,6 +79,10 @@
 - Mutation 校验、所有权、限流、request_id、审计与错误码有统一规则；支付可重试动作有幂等键和数据库唯一性保障。
 - 详细候选规范见 [TXAPI Target](../../contracts/http/txapi-target-v1.md)。目标文档不是当前已上线协议。
 
+### Gateway 双仓联合方案（ADR-006）
+
+`/txapi` 是统一对外 API 根路径，**并不意味着所有请求都通过 Gateway**。独立 Hono Gateway 只处理未来 `/txapi/bff/v1/*` 的可选主题/用户 BFF；其余 native API、Admin、Node、Agent、Webhook、插件直接进入 Laravel。Edge 要先分流 BFF 子树，Gateway 只通过私有 TXBoard origin 的固定 named operations 调用 native API。BFF v1 保留现有 SDK `{ok,data,meta}` envelope，与 Native `{data,meta,request_id}` 不同。现有 `/gateway/v1/*` 和固定 `/api/v1/*` 仍有效。联合 G0–G5 工作包、可信代理风险和双轨/回退请见 [Gateway Integration ADR](gateway-integration.md) 与 [BFF Target Contract](../../contracts/http/txapi-bff-target-v1.md)。
+
 ## 4. 建议的模块化单体代码结构
 
 ```text

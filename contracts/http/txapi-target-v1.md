@@ -4,25 +4,28 @@
 
 ## Root: /txapi
 
-全部未来 TXBoard-owned HTTP API 使用 §/txapi/*§，不再新增 §/api/v1/*§、§/api/v2/*§。
+全部未来 TXBoard-owned HTTP API 使用 `/txapi/*`，不再新增 `/api/v1/*`、`/api/v2/*`。
 
 | Scope | Target | Required boundary |
 |---|---|---|
-| Health | §GET /txapi/health§ | liveness，不依赖 DB/Redis |
-| Public | §/txapi/public/*§ | 匿名，速率限制，公开字段 |
-| Authentication | §/txapi/auth/*§ | 验证码/反枚举/限流 |
-| User | §/txapi/me/*§、§/txapi/plans/*§、§/txapi/orders/*§ | Sanctum user/ownership |
-| Admin | §/txapi/admin/{secure_path}/*§ | Admin + dynamic path + RBAC + audit |
-| TX-Node | §/txapi/node/v1/*§ | 独立 Node identity/protocol |
-| Agent Ops | §/txapi/agent/v1/*§ | Agent abilities/scope/approval |
-| Extensions | §/txapi/extensions/{code}/v1/*§ | Module enabled + permissions |
-| Payment webhook | §/txapi/payment/webhooks/*§ | 签名 + 重放防护 + 幂等 |
+| Gateway BFF (optional) | `/txapi/bff/v1/*` | Hono 独立进程，Edge 分流；v1 SDK envelope，不是 Laravel handler |
+| Health | `GET /txapi/health` | liveness，不依赖 DB/Redis |
+| Public | `/txapi/public/*` | 匿名，速率限制，公开字段 |
+| Authentication | `/txapi/auth/*` | 验证码/反枚举/限流 |
+| User | `/txapi/me/*`、`/txapi/plans/*`、`/txapi/orders/*` | Sanctum user/ownership |
+| Admin | `/txapi/admin/{secure_path}/*` | Admin + dynamic path + RBAC + audit |
+| TX-Node | `/txapi/node/v1/*` | 独立 Node identity/protocol |
+| Agent Ops | `/txapi/agent/v1/*` | Agent abilities/scope/approval |
+| Extensions | `/txapi/extensions/{code}/v1/*` | Module enabled + permissions |
+| Payment webhook | `/txapi/payment/webhooks/*` | 签名 + 重放防护 + 幂等 |
+
+Hono Gateway 独立的 [TXAPI BFF Target](txapi-bff-target-v1.md) 保留 `{ok,data,meta}` 的 v1 SDK envelope，和 Laravel 原生响应不同。
 
 ## Proposed response/error policy
 
-- 成功：HTTP 2xx、§data§、可选 §meta§ 和 §request_id§。
-- 失败：HTTP 4xx/5xx、§error.code§ 与安全的 §error.message§。新端点不继续传播 Xboard 的 status 字段。
-- 分页：§meta.page/per_page/total/last_page§，服务端筛选与稳定排序；拟定 per_page 最大 100，P1 后冻结。
+- 成功：HTTP 2xx、`data`、可选 `meta` 和 `request_id`。
+- 失败：HTTP 4xx/5xx、`error.code` 与安全的 `error.message`。新端点不继续传播 Xboard 的 status 字段。
+- 分页：`meta.page/per_page/total/last_page`，服务端筛选与稳定排序；拟定 per_page 最大 100，P1 后冻结。
 - 金额：整数最小货币单位 + 明确货币；流量：int64 字节；时间：RFC3339 UTC；输出字段白名单。
 - 安全：User/Admin/Node/Agent 令牌互不提权；服务端资源隔离、权限、日志脱敏和速率限制。
 - 状态变更：经过验证、审计；外部可重试的结算事件使用数据库幂等唯一键。

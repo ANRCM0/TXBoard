@@ -1,6 +1,6 @@
 # TXBoard Contracts — CURRENT 与 TARGET
 
-§contracts/§ 记录 TXBoard 与前端、TX-Node、插件、主题、模块、Agent/MCP 的跨仓库边界。
+`contracts/` 记录 TXBoard 与前端、TX-Node、插件、主题、模块、Agent/MCP 的跨仓库边界。
 
 ## CURRENT（已实现/生效）
 
@@ -13,7 +13,9 @@
 
 ## TARGET（计划，尚未实现）
 
-- [TXAPI v1 Target](http/txapi-target-v1.md)：最终官方 API 以 §/txapi/*§ 为统一入口；现在仍有生效的 /api/v1、/api/v2 协议。
+- [TXAPI BFF Target v1](http/txapi-bff-target-v1.md)：独立 Hono Gateway 目标 /txapi/bff/v1/*；当前 /gateway/v1/* 仍有效。
+- [Gateway 双仓 ADR](../docs/architecture/gateway-integration.md)：职责/分流/G0–G5。
+- [TXAPI v1 Target](http/txapi-target-v1.md)：最终官方 API 以 `/txapi/*` 为统一入口；现在仍有生效的 /api/v1、/api/v2 协议。
 - [Native 详细开发方案](../docs/architecture/txboard-native-development-plan.md)、[遗留依赖矩阵](../docs/architecture/legacy-inventory-and-work-packages.md)。
 
 ## 变更规定
