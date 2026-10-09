@@ -94,6 +94,41 @@ class TxapiAdminPlanMutationTest extends TestCase
         $this->assertNull($plan->fresh());
     }
 
+    public function test_explicit_force_update_changes_only_subscribers_and_preserves_units(): void
+    {
+        Sanctum::actingAs($this->user('plan-force-admin@example.test', true));
+        $current = Plan::create([
+            'name' => 'Force current', 'group_id' => 1, 'transfer_enable' => 2,
+            'show' => true, 'sell' => true, 'renew' => true,
+            'prices' => ['monthly' => 9],
+        ]);
+        $other = Plan::create([
+            'name' => 'Force unrelated', 'group_id' => 1, 'transfer_enable' => 1,
+            'show' => true, 'sell' => true, 'renew' => true,
+            'prices' => ['monthly' => 9],
+        ]);
+        $subscriber = $this->user('force-current@example.test', false);
+        $subscriber->plan_id = $current->id;
+        $subscriber->transfer_enable = 2 * 1073741824;
+        $subscriber->saveOrFail();
+        $outsider = $this->user('force-other@example.test', false);
+        $outsider->plan_id = $other->id;
+        $outsider->transfer_enable = 1073741824;
+        $outsider->saveOrFail();
+
+        $this->postJson('/txapi/admin/plan_mutation_admin/plans', [
+            'id' => $current->id, 'name' => 'Force current',
+            'transfer_enable' => 5, 'force_update' => true,
+            'speed_limit' => null, 'device_limit' => 1,
+            'prices' => ['monthly' => 9],
+        ])->assertOk()->assertJsonPath('data.id', $current->id);
+
+        $this->assertSame(5, (int) $current->fresh()->transfer_enable);
+        $this->assertSame(5 * 1073741824, (int) $subscriber->fresh()->transfer_enable);
+        $this->assertSame(1, (int) $subscriber->fresh()->device_limit);
+        $this->assertSame(1073741824, (int) $outsider->fresh()->transfer_enable);
+    }
+
     private function user(string $email, bool $admin): User
     {
         return User::create([
