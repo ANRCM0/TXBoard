@@ -12,7 +12,7 @@ import {
 } from './client'
 import { fetchSettings, saveSettings } from './config'
 import { getAuditLogs } from './statistics'
-import { getPlans, getOrders, savePlan, updatePlanFlags, deletePlan, sortPlans } from './finance'
+import { getPlans, getOrders, savePlan, updatePlanFlags, deletePlan, sortPlans, getOrderDetail, markOrderPaid, cancelOrder } from './finance'
 import { getTickets, getTicketDetail, replyTicket, closeTicket } from './ticket'
 import {
   getKnowledgePage, getKnowledgeAll, getKnowledgeDetail, getKnowledgeCategories,
@@ -627,5 +627,31 @@ describe('native administrator notice and knowledge editors', () => {
     responder = () => ({ data: { data: [], request_id: 'missing-meta' } })
     await expect(getNoticePage()).rejects.toThrow('Invalid native content pagination')
     await expect(getKnowledgeAll()).rejects.toThrow('Invalid native content pagination')
+  })
+})
+
+describe('native administrator order detail and state actions', () => {
+  it('reads secret-free detail behind native admin path and rejects invalid ids', async () => {
+    setAdminSecurePath('order-admin')
+    responder = () => ({
+      data: { data: { id: 7, trade_no: 'ORDER-7', user_id: 1, plan_id: 2, total_amount: 500, status: 0, type: 1 }, request_id: 'order-detail-native' },
+    })
+    const detail = await getOrderDetail(7)
+    expect(detail.trade_no).toBe('ORDER-7')
+    expect(seen[0].url).toBe('/admin/order-admin/orders/7/detail')
+    expect(seen[0].baseURL).toBe('/txapi')
+    await expect(getOrderDetail(0)).rejects.toThrow('Invalid order ID')
+  })
+
+  it('sends paid and cancellation requests only to admin-scoped native POSTs', async () => {
+    setAdminSecurePath('order-admin')
+    responder = () => ({ data: { data: { ok: true }, request_id: 'order-action' } })
+    await expect(markOrderPaid('TX-2026')).resolves.toBe(true)
+    await expect(cancelOrder('TX-2026')).resolves.toBe(true)
+    expect(seen.map(x => x.url)).toEqual([
+      '/admin/order-admin/orders/TX-2026/paid',
+      '/admin/order-admin/orders/TX-2026/cancel',
+    ])
+    expect(seen.map(x => x.method)).toEqual(['post', 'post'])
   })
 })

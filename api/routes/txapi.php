@@ -6,6 +6,7 @@ use App\Http\Controllers\Txapi\Admin\TicketAdminController;
 use App\Http\Controllers\Txapi\Admin\UserReadController;
 use App\Http\Controllers\Txapi\Admin\PlanMutationController;
 use App\Http\Controllers\Txapi\Admin\ContentAdminController;
+use App\Http\Controllers\Txapi\Admin\OrderAdminController;
 use App\Http\Controllers\Txapi\AccountController;
 use App\Http\Controllers\Txapi\ServerController;
 use App\Http\Controllers\Txapi\TrafficController;
@@ -52,6 +53,9 @@ Route::prefix('admin/{admin_path}')
         Route::get('audit-logs', [AuditLogController::class, 'index']);
         Route::get('plans', [CommerceReadController::class, 'plans']);
         Route::get('orders', [CommerceReadController::class, 'orders']);
+        Route::get('orders/{id}/detail', [OrderAdminController::class, 'detail'])->whereNumber('id');
+        Route::post('orders/{tradeNo}/paid', [OrderAdminController::class, 'paid']);
+        Route::post('orders/{tradeNo}/cancel', [OrderAdminController::class, 'cancel']);
         Route::get('tickets', [TicketAdminController::class, 'index']);
         Route::get('tickets/{id}', [TicketAdminController::class, 'show'])->whereNumber('id');
         Route::post('tickets/{id}/reply', [TicketAdminController::class, 'reply'])->whereNumber('id');
