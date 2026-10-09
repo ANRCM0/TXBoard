@@ -32,8 +32,6 @@ export type TrafficResetStats = {
   gift_card_resets?: number
 }
 
-type PageMeta = { page: number; per_page: number; last_page: number; total: number }
-
 function unwrapList<T>(payload: NativeApiEnvelope<T[]>, name: string) {
   const meta = payload?.meta
   if (!payload?.request_id || !Array.isArray(payload.data) || !meta ||
