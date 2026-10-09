@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
-import { changePassword, getActiveSessions, getQuickLoginUrl, removeActiveSession, resetSecurity, type ActiveSession } from '../api/profile'
+import { changePassword, getActiveSessions, getQuickLoginUrl, getUserPreferences, removeActiveSession, resetSecurity, updateUserPreferences, type ActiveSession } from '../api/profile'
 import { errorMessage } from '../api/client'
 import { useAuthStore } from '../stores/auth'
 import { useI18n } from '../i18n'
@@ -13,15 +13,32 @@ const success=ref('')
 const acting=ref(false)
 const quickUrl=ref('')
 const password=reactive({old:'',next:'',confirm:''})
+const preferences=reactive({remind_expire:false,remind_traffic:false})
+const preferencesLoaded=ref(false)
+const savingPreferences=ref(false)
 
 async function load(){
   try{
     if(!auth.user)await auth.loadUser()
     sessions.value=await getActiveSessions()
+    Object.assign(preferences, await getUserPreferences())
+    preferencesLoaded.value=true
   }catch(e){error.value=errorMessage(e)}
 }
 onMounted(()=>void load())
 
+async function savePreferences() {
+  if (!preferencesLoaded.value) return
+  savingPreferences.value=true
+  error.value=''
+  success.value=''
+  try {
+    const updated=await updateUserPreferences({...preferences})
+    Object.assign(preferences,updated)
+    success.value=t('profile.preferencesSaved')
+  } catch(e) { error.value=errorMessage(e) }
+  finally { savingPreferences.value=false }
+}
 async function updatePassword(){
   error.value=''
   success.value=''
@@ -86,6 +103,15 @@ function date(value:string|null){
         <div class="account-row"><span>UUID</span><strong class="mono">{{ auth.user?.uuid||'-' }}</strong></div>
         <div class="account-row"><span>{{ t('profile.planId') }}</span><strong>{{ auth.user?.plan_id??'-' }}</strong></div>
         <div class="account-row"><span>{{ t('profile.commissionBalance') }}</span><strong>¥ {{ (Number(auth.user?.commission_balance||0)/100).toFixed(2) }}</strong></div>
+      </div>
+    </section>
+
+    <section class="xboard-card profile-section-card">
+      <header class="xboard-card-header">{{ t('profile.preferences') }}</header>
+      <div class="xboard-card-body profile-form-column">
+        <label><input v-model="preferences.remind_expire" type="checkbox" :disabled="!preferencesLoaded||savingPreferences"/> {{ t('profile.remindExpire') }}</label>
+        <label><input v-model="preferences.remind_traffic" type="checkbox" :disabled="!preferencesLoaded||savingPreferences"/> {{ t('profile.remindTraffic') }}</label>
+        <button class="primary-btn profile-save-btn" :disabled="!preferencesLoaded||savingPreferences" @click="savePreferences">{{ t('profile.savePreferences') }}</button>
       </div>
     </section>
 

@@ -31,6 +31,38 @@ final class AccountController
         ]);
     }
 
+    public function preferences(Request $request): JsonResponse
+    {
+        return TxapiResponse::success($request, self::preferencesDto(Auth::guard('sanctum')->user()));
+    }
+
+    public function updatePreferences(Request $request): JsonResponse
+    {
+        $values = $request->validate([
+            'remind_expire' => ['sometimes', 'required', 'boolean'],
+            'remind_traffic' => ['sometimes', 'required', 'boolean'],
+        ]);
+        if ($values === []) {
+            return TxapiResponse::error($request, 'PREFERENCES_REQUIRED',
+                'At least one preference must be supplied', 422);
+        }
+        $user = Auth::guard('sanctum')->user();
+        // Explicit allowlist; cannot mutate balance, role or subscription tokens.
+        foreach ($values as $key => $value) {
+            $user->$key = (bool) $value;
+        }
+        $user->saveOrFail();
+        return TxapiResponse::success($request, self::preferencesDto($user));
+    }
+
+    private static function preferencesDto($user): array
+    {
+        return [
+            'remind_expire' => (bool) $user->remind_expire,
+            'remind_traffic' => (bool) $user->remind_traffic,
+        ];
+    }
+
     public function orders(Request $request): JsonResponse
     {
         $input = $request->validate([

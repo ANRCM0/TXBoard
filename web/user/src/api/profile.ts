@@ -4,8 +4,14 @@ export async function changePassword(payload: { old_password: string; new_passwo
   return nativeRequest<{ ok: boolean }>(nativeApi.post('/auth/password', payload))
 }
 
-export async function updateUser(payload: Record<string, unknown>) {
-  return request<null>(api.post('/user/update', payload))
+export type UserPreferences = { remind_expire: boolean; remind_traffic: boolean }
+
+export async function getUserPreferences(): Promise<UserPreferences> {
+  return nativeRequest<UserPreferences>(nativeApi.get('/me/preferences'))
+}
+
+export async function updateUserPreferences(payload: UserPreferences): Promise<UserPreferences> {
+  return nativeRequest<UserPreferences>(nativeApi.patch('/me/preferences', payload))
 }
 
 export async function resetSecurity() {
