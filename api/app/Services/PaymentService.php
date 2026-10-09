@@ -73,7 +73,10 @@ class PaymentService
     public function pay($order)
     {
         // custom notify domain name
-        $notifyUrl = url("/api/v1/guest/payment/notify/{$this->method}/{$this->config['uuid']}");
+        $notifyPath = config('billing.native_webhook_enabled', false)
+            ? "/txapi/payment/webhook/{$this->method}/{$this->config['uuid']}"
+            : "/api/v1/guest/payment/notify/{$this->method}/{$this->config['uuid']}";
+        $notifyUrl = url($notifyPath);
         if ($this->config['notify_domain']) {
             $parseUrl = parse_url($notifyUrl);
             $notifyUrl = $this->config['notify_domain'] . $parseUrl['path'];

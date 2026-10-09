@@ -334,13 +334,25 @@ class OrderService
         }
     }
 
-    public function paid(string $callbackNo)
+    public function paid(string $callbackNo, ?int $paymentId = null, ?int $verifiedAmountMinor = null)
     {
         try {
-            [$order, $shouldDispatch] = DB::transaction(function () use ($callbackNo) {
+            [$order, $shouldDispatch] = DB::transaction(function () use ($callbackNo, $paymentId, $verifiedAmountMinor) {
                 $order = $this->lockCurrentOrder();
                 if (!$order) {
                     throw new \RuntimeException('Order not found.');
+                }
+                // Provider identity + signed amount must be checked under the
+                // same order lock as PENDING -> PROCESSING. This closes the
+                // race with simultaneous checkout method changes or callbacks.
+                if ($paymentId !== null && (int) $order->payment_id !== $paymentId) {
+                    throw new \RuntimeException('Payment provider mismatch');
+                }
+                if ($verifiedAmountMinor !== null && (
+                    $verifiedAmountMinor <= 0
+                    || (int) $order->total_amount + (int) ($order->handling_amount ?? 0) !== $verifiedAmountMinor
+                )) {
+                    throw new \RuntimeException('Verified payment amount mismatch');
                 }
                 if ((int) $order->status !== Order::STATUS_PENDING) {
                     // A different provider transaction must never be accepted
