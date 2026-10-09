@@ -68,6 +68,8 @@ export type UserUpdatePayload = {
   banned?: boolean
   balance?: number
   commission_balance?: number
+  expected_balance_minor?: number
+  expected_commission_balance_minor?: number
   commission_rate?: number | null
   commission_type?: number
   discount?: number | null
