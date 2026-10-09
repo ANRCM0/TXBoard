@@ -14,6 +14,7 @@ import { fetchSettings, saveSettings } from './config'
 import { getAuditLogs } from './statistics'
 import { getPlans, getOrders, savePlan, updatePlanFlags, deletePlan, sortPlans } from './finance'
 import { getTickets, getTicketDetail, replyTicket, closeTicket } from './ticket'
+import { getUsers, getUserDetail, getUserSubscriptionLink } from './user-admin'
 import { copyNode, generateSecret } from './server'
 import { resolvePluginAppUrl } from './plugin'
 import { getThemes, getThemeConfig, saveThemeConfig } from './theme'
@@ -462,6 +463,59 @@ describe('native administrator tickets', () => {
     responder = () => ({ data: { data: [], request_id: 'missing-meta' } })
     await expect(getTickets({})).rejects.toThrow('Invalid native ticket list response')
     await expect(getTickets({ reply_status: [0, 1] })).rejects.toThrow('single reply status')
+  })
+})
+
+describe('native administrator user reads', () => {
+  it('keeps existing UI filter/sort semantics without exposing subscription tokens in list', async () => {
+    setAdminSecurePath('people-admin')
+    responder = () => ({ data: {
+      data: [{ id: 7, email: 'test@example.test', balance: 12.34 }],
+      meta: { page: 2, per_page: 20, total: 30, last_page: 2 },
+      request_id: 'native-user-list',
+    } })
+    const users = await getUsers({
+      current: 2, pageSize: 20,
+      filter: [
+        { id: 'email', value: 'test' },
+        { id: 'plan_id', value: 'eq:3' },
+        { id: 'banned', value: 'eq:0' },
+      ],
+      sort: [{ id: 'total_used', desc: true }],
+    })
+    expect(users.data).toHaveLength(1)
+    expect(users.data[0].balance).toBe(12.34)
+    expect(users.last_page).toBe(2)
+    expect(seen[0].url).toBe('/admin/people-admin/users')
+    expect(seen[0].baseURL).toBe('/txapi')
+    expect(seen[0].params).toEqual({
+      page: 2, per_page: 20, email: 'test', plan_id: 3, banned: 0,
+      sort: 'total_used', descending: true,
+    })
+  })
+
+  it('reads private subscription only when the operator explicitly requests it', async () => {
+    setAdminSecurePath('people-admin')
+    responder = config => ({ data: {
+      data: config.url?.endsWith('/subscription-link')
+        ? { subscribe_url: 'https://example.test/s/secret' }
+        : { id: 7, email: 'test@example.test' },
+      request_id: 'native-user-detail',
+    } })
+    const user = await getUserDetail(7)
+    expect(user.id).toBe(7)
+    const link = await getUserSubscriptionLink(7)
+    expect(link).toBe('https://example.test/s/secret')
+    expect(seen[0].url).toBe('/admin/people-admin/users/7')
+    expect(seen[1].url).toBe('/admin/people-admin/users/7/subscription-link')
+    await expect(getUserSubscriptionLink(0)).rejects.toThrow('Invalid admin user ID')
+  })
+
+  it('rejects unknown filter fields before issuing requests', async () => {
+    setAdminSecurePath('people-admin')
+    await expect(getUsers({ filter: [{ id: 'token', value: 'x' }] }))
+      .rejects.toThrow('Unsupported native user filter')
+    expect(seen).toHaveLength(0)
   })
 })
 
