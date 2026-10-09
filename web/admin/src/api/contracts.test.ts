@@ -10,7 +10,7 @@ import {
   getResolvedApiPrefixes,
   setAdminSecurePath,
 } from './client'
-import { fetchSettings, saveSettings } from './config'
+import { fetchSettings, saveSettings, testSendMail, setTelegramWebhook } from './config'
 import { getAuditLogs } from './statistics'
 import { getPlans, getOrders, savePlan, updatePlanFlags, deletePlan, sortPlans, getOrderDetail, markOrderPaid, cancelOrder } from './finance'
 import { getTickets, getTicketDetail, replyTicket, closeTicket } from './ticket'
@@ -111,6 +111,24 @@ describe('config adapter contract', () => {
     await fetchSettings('site')
 
     expect(String(seen[0].headers.Authorization)).toBe('Bearer secret-token')
+  })
+})
+
+describe('native configuration side-effect contract', () => {
+  it('reuses the native notify mail test and registers webhooks under the rotating secure path', async () => {
+    setAdminSecurePath('settings-actions')
+    responder = () => ({ data: { data: { ok: true }, request_id: 'config-actions' } })
+
+    await expect(testSendMail()).resolves.toEqual({ ok: true })
+    await expect(setTelegramWebhook('123456:test-token')).resolves.toEqual({ ok: true })
+
+    expect(seen.map(config => [config.method, config.url])).toEqual([
+      ['post', '/admin/settings-actions/mail-templates/notify/test'],
+      ['post', '/admin/settings-actions/settings/telegram/webhook'],
+    ])
+    expect(JSON.parse(String(seen[0].data))).toEqual({})
+    expect(JSON.parse(String(seen[1].data))).toEqual({ telegram_bot_token: '123456:test-token' })
+    expect(seen.every(config => config.baseURL === '/txapi')).toBe(true)
   })
 })
 
