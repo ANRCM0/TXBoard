@@ -127,7 +127,7 @@ class GiftCardController extends Controller
         } catch (\Exception $e) {
             Log::error('创建礼品卡模板失败', [
                 'admin_id' => $request->user()->id,
-                'data' => $request->all(),
+                'fields' => array_keys($request->all()),
                 'error' => $e->getMessage(),
             ]);
             return $this->fail([500, '创建失败']);
@@ -202,7 +202,7 @@ class GiftCardController extends Controller
         }
 
         // 检查是否有关联的兑换码
-        if ($template->codes()->exists()) {
+        if ($template->codes()->exists() || $template->usages()->exists()) {
             return $this->fail([400, '该模板下存在兑换码，无法删除']);
         }
 
