@@ -19,7 +19,25 @@ final class RedemptionCodeAdminTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $admin = User::factory()->create(['is_admin' => 1]);
+        $admin = User::create([
+            'email' => 'gift-admin@example.com',
+            'password' => 'password',
+            'uuid' => '00000000-0000-0000-0000-000000000091',
+            'token' => str_repeat('a', 32),
+            'balance' => 0,
+            'commission_balance' => 0,
+            'transfer_enable' => 0,
+            'u' => 0,
+            'd' => 0,
+            'banned' => 0,
+            'is_admin' => 1,
+            'is_staff' => 0,
+            'expired_at' => 0,
+            'remind_expire' => 1,
+            'remind_traffic' => 1,
+            'created_at' => time(),
+            'updated_at' => time(),
+        ]);
         Sanctum::actingAs($admin);
         $path = (string) admin_setting('secure_path', admin_setting('frontend_admin_path', hash('crc32b', config('app.key'))));
         $this->base = "/txapi/admin/{$path}/gift-cards";
