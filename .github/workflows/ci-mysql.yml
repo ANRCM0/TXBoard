@@ -137,6 +137,8 @@ jobs:
         run: php artisan test tests/Feature/Txapi/TxapiBillingTest.php
       - name: P3-A monetary state transitions and coupon recovery on MySQL
         run: php artisan test tests/Unit/Services/OrderServiceConcurrencyTest.php
+      - name: P4-D native WS frames, scopes and cross-transport ledger
+        run: php artisan test tests/Feature/Server/TxNodeNativeWebSocketTest.php
       - name: P4 native node authentication and protocol contract on MySQL
         run: php artisan test tests/Feature/Server/TxNodeNativeProtocolTest.php
       - name: P4 optimized traffic batch query budget and settlement correctness

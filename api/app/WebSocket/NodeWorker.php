@@ -90,7 +90,9 @@ class NodeWorker
                     $oid = spl_object_id($conn);
                     if (!isset($seen[$oid])) {
                         $seen[$oid] = true;
-                        $conn->send(json_encode(['event' => 'ping']));
+                        $conn->send(!empty($conn->txnodeNative)
+                            ? NativeNodeFrame::encode('heartbeat.ping', ['sent_at' => time()])
+                            : json_encode(['event' => 'ping']));
                     }
                 }
             }
@@ -101,7 +103,9 @@ class NodeWorker
                     $oid = spl_object_id($conn);
                     if (!isset($seen[$oid])) {
                         $seen[$oid] = true;
-                        $conn->send(json_encode(['event' => 'ping']));
+                        $conn->send(!empty($conn->txnodeNative)
+                            ? NativeNodeFrame::encode('heartbeat.ping', ['sent_at' => time()])
+                            : json_encode(['event' => 'ping']));
                     }
                 }
             }
@@ -139,7 +143,10 @@ class NodeWorker
 
             try {
                 $machine = ServerMachine::find($machineId);
-                if (!$machine || !$machine->is_active) {
+                if (!$machine || !$machine->is_active
+                    || (!empty($conn->txnodeNative)
+                        && !hash_equals((string) ($conn->txnodeCredentialHash ?? ''),
+                            hash('sha256', (string) $machine->token)))) {
                     $conn->close();
                     continue;
                 }
@@ -175,9 +182,20 @@ class NodeWorker
                     continue;
                 }
                 $node = Server::find($nodeId);
-                if ($node && $node->enabled) {
-                    NodeEventHandlers::pushFullSync($conn, $node);
+                if (!$node || !$node->enabled) {
+                    $conn->close();
+                    continue;
                 }
+                if (!empty($conn->txnodeNative)) {
+                    $configured = (string) admin_setting('server_token', '');
+                    if ($configured === '' ||
+                        !hash_equals((string) ($conn->txnodeCredentialHash ?? ''),
+                            hash('sha256', $configured))) {
+                        $conn->close();
+                        continue;
+                    }
+                }
+                NodeEventHandlers::pushFullSync($conn, $node);
             } catch (\Throwable $e) {
                 Log::warning('[WS] Node full resync failed', [
                     'node_id' => $nodeId, 'error' => $e->getMessage(),
@@ -200,6 +218,20 @@ class NodeWorker
 
     public function onWebSocketConnect(TcpConnection $conn, $httpMessage): void
     {
+        $nativePath = $httpMessage instanceof \Workerman\Protocols\Http\Request
+            ? $httpMessage->path() : parse_url((string) $httpMessage, PHP_URL_PATH);
+        if ($nativePath === NativeNodeWebSocket::PATH) {
+            if (isset($conn->authTimer)) {
+                Timer::del($conn->authTimer);
+            }
+            if (!$httpMessage instanceof \Workerman\Protocols\Http\Request) {
+                $conn->close(NativeNodeFrame::encode('error', ['code' => 'INVALID_UPGRADE']));
+                return;
+            }
+            app(NativeNodeWebSocket::class)->connect($conn, $httpMessage);
+            return;
+        }
+
         $queryString = '';
         if (is_string($httpMessage)) {
             $queryString = parse_url($httpMessage, PHP_URL_QUERY) ?? '';
@@ -330,6 +362,10 @@ class NodeWorker
 
     public function onMessage(TcpConnection $conn, $data): void
     {
+        if (!empty($conn->txnodeNative)) {
+            app(NativeNodeWebSocket::class)->message($conn, $data);
+            return;
+        }
         $msg = json_decode($data, true);
         if (!is_array($msg)) {
             return;

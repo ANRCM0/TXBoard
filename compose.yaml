@@ -74,6 +74,7 @@ services:
       ENABLE_HORIZON: "true"
       ENABLE_REDIS: "true"
       ENABLE_WS_SERVER: "true"
+      TXBOARD_NATIVE_NODE_WS_ENABLED: "${TXBOARD_NATIVE_NODE_WS_ENABLED:-false}"
       ENABLE_MCP: "${TXBOARD_ENABLE_MCP:-false}"
       MCP_HOST: 127.0.0.1
       MCP_PORT: 3000

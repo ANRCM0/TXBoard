@@ -161,6 +161,12 @@ Controller 不承担复杂交易，只完成鉴权、验证和调用服务。域
 
 API 兼容策略不是永久双轨；但在证据不足时宁可保留短期 adapter 也不要丢单/中断节点。
 
+## P4-D Native WebSocket TXBoard 服务端
+
+- 扩展现有 Workerman `/txapi/node/v1/ws`，Bearer + Node-ID/Machine-ID headers 与 HTTP 共享授权边界；原生流量报告复用 NativeNodeReport/TrafficBatchJob，不重复实现记账。
+- 原生 WS 支持实时全量/增量配置和用户推送、机器节点同步、心跳与故障回退；保留旧 WS 传输协议。
+- Caddy 单体与分离部署均提供 Upgrade 转发；TXBOARD_NATIVE_NODE_WS_ENABLED 默认关闭，确认反向代理/TLS 与客户端能力后再开启。
+- TX-Node 未改动，真实双方联调、生产重连/压力、持久队列 ACK 验收均后置。
 ## P4-C 机器状态协议兼容收尾
 
 - Native 握手支持 Machine Token + Machine-ID（无需 Node ID）；共享 MachineTelemetry 统一 V2 与 TXAPI 的状态字段、负载历史、net 速率、runtime 更新元数据和敏感信息脱敏。
