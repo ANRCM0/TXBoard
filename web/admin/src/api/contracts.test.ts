@@ -11,6 +11,7 @@ import {
   setAdminSecurePath,
 } from './client'
 import { fetchSettings, saveSettings } from './config'
+import { getAuditLogs } from './statistics'
 import { copyNode, generateSecret } from './server'
 import { resolvePluginAppUrl } from './plugin'
 import { getThemes, getThemeConfig, saveThemeConfig } from './theme'
@@ -322,5 +323,41 @@ describe('P1-B admin native TXAPI client isolation', () => {
   it('rejects invalid native envelopes without a fake success', async () => {
     await expect(unwrapNative(Promise.resolve({ data: { data: null } as never })))
       .rejects.toThrow('Invalid TXAPI response')
+  })
+})
+
+describe('native administrator audit contract', () => {
+  it('uses dynamic admin path, native bearer and bounded server pagination', async () => {
+    setAdminSecurePath('native-audit-secure')
+    setAccessToken('native-admin-bearer')
+    responder = () => ({
+      data: {
+        data: [{ id: 1, action: 'config.save', request_data: '{"password":"[REDACTED]"}' }],
+        meta: { total: 1, page: 2, per_page: 1, last_page: 2 },
+        request_id: 'test-native-admin-audit',
+      },
+    })
+
+    const result = await getAuditLogs({ current: 2, page_size: 1, action: 'config.save' })
+    expect(result.total).toBe(1)
+    expect(result.current_page).toBe(2)
+    expect(result.last_page).toBe(2)
+    expect(seen[0].baseURL).toBe('/txapi')
+    expect(seen[0].url).toBe('/admin/native-audit-secure/audit-logs')
+    expect(seen[0].params).toEqual({ page: 2, per_page: 1, action: 'config.save' })
+    expect(String(seen[0].headers.Authorization)).toBe('Bearer native-admin-bearer')
+
+    setAdminSecurePath('native-audit-rotated')
+    await getAuditLogs()
+    expect(seen[1].url).toBe('/admin/native-audit-rotated/audit-logs')
+  })
+
+  it('does not guess native path or conceal malformed admin responses', async () => {
+    clearAdminSecurePath()
+    await expect(getAuditLogs()).rejects.toThrow('Administrator secure path is unavailable')
+    expect(seen).toHaveLength(0)
+    setAdminSecurePath('admin-known')
+    responder = () => ({ data: { data: [], request_id: 'without-paging' } })
+    await expect(getAuditLogs()).rejects.toThrow('Invalid native administrator audit response')
   })
 })
