@@ -107,6 +107,8 @@ jobs:
           path: api/artifacts/p0b-read-path-mysql.json
           if-no-files-found: warn
           retention-days: 14
+      - name: P1-A native TXAPI read/auth contract on MySQL
+        run: php artisan test tests/Feature/Txapi/TxapiCoreContractTest.php
       - name: MySQL settlement and order recovery regressions
         run: |
           php artisan test tests/Feature/Server/TrafficBatchSettlementTest.php

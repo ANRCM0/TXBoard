@@ -31,7 +31,7 @@ class InitializePlugins
         // Runtime health must work before the database has been installed.
         // Requiring the plugin table here would make a fresh container unhealthy
         // and block the installer at "docker compose up --wait".
-        if ($request->is('api/health')) {
+        if ($request->is('api/health') || $request->is('txapi/health')) {
             return $next($request);
         }
 

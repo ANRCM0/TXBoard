@@ -39,6 +39,8 @@ class Kernel extends HttpKernel
         'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
         'user' => \App\Http\Middleware\User::class,
+        'txapi.user' => \App\Http\Middleware\TxapiUser::class,
+        'txapi.request-id' => \App\Http\Middleware\TxapiRequestId::class,
         'admin' => \App\Http\Middleware\Admin::class,
         'admin.path' => \App\Http\Middleware\AdminPath::class,
         'agent' => \App\Http\Middleware\AgentAuth::class,
