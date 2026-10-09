@@ -3,10 +3,10 @@
 namespace App\Http\Controllers\Txapi\Admin;
 
 use App\Core\Http\TxapiResponse;
+use App\Core\Security\AdminAuditSanitizer;
 use App\Models\AdminAuditLog;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Carbon;
 
 final class AuditLogController
 {
@@ -47,16 +47,16 @@ final class AuditLogController
             return [
                 'id' => (int) $row->id,
                 'admin_id' => (int) $row->admin_id,
-                'action' => (string) ($row->action ?? ''),
+                'action' => AdminAuditSanitizer::safeAction((string) ($row->action ?? ''), (string) ($row->uri ?? '')),
                 'method' => (string) ($row->method ?? ''),
-                'uri' => (string) ($row->uri ?? ''),
+                'uri' => AdminAuditSanitizer::safeUri((string) ($row->uri ?? '')),
                 'ip' => (string) ($row->ip ?? ''),
                 'created_at' => (int) $row->created_at,
                 'admin' => $row->admin ? [
                     'id' => (int) $row->admin->id,
                     'email' => (string) $row->admin->email,
                 ] : null,
-                'request_data' => self::safeRequestData((string) ($row->request_data ?? '')),
+                'request_data' => AdminAuditSanitizer::safeJson((string) ($row->request_data ?? '')),
             ];
         })->all();
 
@@ -68,38 +68,4 @@ final class AuditLogController
         ]);
     }
 
-    private static function safeRequestData(string $raw): string
-    {
-        if ($raw === '') {
-            return '';
-        }
-        // Historical rows might contain credentials; non-JSON content is
-        // intentionally not exposed by the new native API.
-        $decoded = json_decode($raw, true);
-        if (!is_array($decoded)) {
-            return '[REDACTED]';
-        }
-        return json_encode(self::scrub($decoded), JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE) ?: '[REDACTED]';
-    }
-
-    private static function scrub(array $record): array
-    {
-        $clean = [];
-        foreach ($record as $key => $value) {
-            if (is_string($key)) {
-                $normalized = strtolower(str_replace(['-', '.', ' '], '_', $key));
-                $private = $normalized === 'key';
-                foreach (['password', 'passwd', 'token', 'secret', 'api_key',
-                    'private_key', 'access_key', 'credential', 'authorization'] as $fragment) {
-                    $private = $private || str_contains($normalized, $fragment);
-                }
-                if ($private) {
-                    $clean[$key] = '[REDACTED]';
-                    continue;
-                }
-            }
-            $clean[$key] = is_array($value) ? self::scrub($value) : $value;
-        }
-        return $clean;
-    }
 }
