@@ -78,7 +78,8 @@ class CorePurchaseTrafficJourneyTest extends TestCase
         $create = $this->postJson('/api/v1/user/order/save', [
             'plan_id' => $plan->id, 'period' => 'month_price',
         ], $headers);
-        $create->assertOk()->assertJsonPath('status', 'success');
+        $this->assertSame(200, $create->status(), 'Order create rejected: ' . (string) $create->json('message'));
+        $create->assertJsonPath('status', 'success');
         $tradeNo = $create->json('data');
         $this->assertIsString($tradeNo);
         $order = Order::where('trade_no', $tradeNo)->firstOrFail();
