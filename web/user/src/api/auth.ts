@@ -29,14 +29,12 @@ export async function register(form: RegisterForm) {
 }
 
 export async function forgetPassword(form: ForgetForm) {
-  return request<boolean>(api.post('/passport/auth/forget', form))
+  return nativeRequest<{ ok: boolean }>(nativeApi.post('/auth/password/forgot', form))
 }
 
 export async function sendEmailVerify(email: string, purpose: 'register' | 'forget', captcha?: CaptchaPayload) {
-  return request<null>(api.post('/passport/comm/sendEmailVerify', {
-    email,
-    purpose,
-    ...(captcha ?? {}),
+  return nativeRequest<{ ok: boolean }>(nativeApi.post('/auth/email-code', {
+    email, purpose, ...(captcha ?? {}),
   }))
 }
 

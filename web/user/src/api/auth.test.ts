@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { api, getAuthData, nativeApi, saveAuthData } from './client'
-import { loginWithMailLink, token2Login } from './auth'
+import { forgetPassword, loginWithMailLink, sendEmailVerify, token2Login } from './auth'
 
 const nativeAdapter = nativeApi.defaults.adapter
 const oldAdapter = api.defaults.adapter
@@ -44,5 +44,19 @@ describe('LR-08 native mail-link and token exchange', () => {
     payload = { data: { ok: true }, request_id: 'native-mail' }
     await expect(token2Login('invalid')).rejects.toThrow('Invalid TXAPI token login response')
     expect(getAuthData()).toBe('Bearer existing')
+  })
+})
+
+describe('LR-09 native recovery transport', () => {
+  it('sends email codes over native POST with captcha', async () => {
+    await sendEmailVerify('reset@example.test', 'forget', { turnstile_token: 'turnstile-test' })
+    expect(calls[0]).toMatchObject({ method:'post', baseURL:'/txapi', url:'/auth/email-code' })
+    expect(JSON.parse(String(calls[0].data))).toEqual({
+      email:'reset@example.test', purpose:'forget', turnstile_token:'turnstile-test',
+    })
+  })
+  it('resets password over native POST, never legacy passport', async () => {
+    await forgetPassword({ email:'reset@example.test', email_code:'123456', password:'reset-secret' })
+    expect(calls[0]).toMatchObject({ method:'post', baseURL:'/txapi', url:'/auth/password/forgot' })
   })
 })

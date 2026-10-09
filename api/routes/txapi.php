@@ -36,6 +36,8 @@ Route::middleware('throttle:10,1')->group(function () {
     // Shared MailLinkService keeps V1 email links and native requests interoperable.
     Route::post('auth/mail-link', [AuthController::class, 'mailLink']);
     Route::post('auth/one-time-token', [AuthController::class, 'oneTimeToken']);
+    Route::post('auth/email-code', [AuthController::class, 'sendEmailCode']);
+    Route::post('auth/password/forgot', [AuthController::class, 'forgotPassword']);
 });
 
 Route::middleware('throttle:60,1')->group(function () {

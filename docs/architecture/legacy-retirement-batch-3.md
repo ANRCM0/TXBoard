@@ -15,6 +15,13 @@
 - Vue 邮件登录链接申请与临时令牌兑换改用原生 POST，旧 V1/V2 继续保留供旧邮件链接和外部客户端；并发重放与服务器访问日志审计仍须单独验收。
 - 邮件验证码/找回密码及 Telegram 另属 LR-09+，不在本 PR 移除或修改。
 
+## LR-09 原生邮箱验证码与找回密码
+
+- `POST /txapi/auth/email-code` 与 V1 共享 `EmailVerificationService`，沿用原 CacheKey、邮件模板、域名白名单与冷却，改用随机安全的 `random_int` 和原子发送冷却。
+- `POST /txapi/auth/password/forgot` 沿用 `LoginService::resetPassword` 的验证码和错误频率规则，并校验配置启用的 Captcha。
+- **安全行为变更（V1 与原生共有）**：成功找回密码时撤销用户所有现有 Sanctum 会话；邮箱验证码也会在重置后失效。请在发布说明中告知用户须重新登录。
+- Vue 用户端验证码申请及找回密码已迁入 TXAPI；旧路由仍为其他消费者保留。
+
 ## 下一阶段验收与风险
 
 邮件验证码发送、忘记密码及 Telegram 登录仍依赖 `/api/v1/passport/*`，须分开做强制 Captcha、限流、回放/并发兑换与新旧共用领域服务的集成测试。不要直接把 V1 controller 移入 TXAPI 或将旧 token 暴露给普通 profile。

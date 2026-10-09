@@ -6,9 +6,12 @@ use App\Core\Http\TxapiResponse;
 use App\Exceptions\ApiException;
 use App\Http\Requests\Passport\AuthLogin;
 use App\Http\Requests\Passport\AuthRegister;
+use App\Http\Requests\Passport\AuthForget;
+use App\Http\Requests\Passport\CommSendEmailVerify;
 use App\Models\User;
 use App\Services\Auth\LoginService;
 use App\Services\Auth\MailLinkService;
+use App\Services\Auth\EmailVerificationService;
 use App\Services\Auth\RegisterService;
 use App\Services\AuthService;
 use App\Services\CaptchaService;
@@ -108,6 +111,44 @@ final class AuthController
         }
         $auth = (new AuthService($user))->generateAuthData();
         return TxapiResponse::success($request, ['auth_data' => $auth['auth_data']]);
+    }
+
+    public function sendEmailCode(CommSendEmailVerify $request, CaptchaService $captcha,
+        EmailVerificationService $issuer): JsonResponse
+    {
+        [$valid] = $captcha->verify($request);
+        if (!$valid) {
+            return TxapiResponse::error($request, 'CAPTCHA_INVALID', 'Captcha verification failed', 400);
+        }
+        [$ok] = $issuer->send((string) $request->input('email'));
+        if (!$ok) {
+            return TxapiResponse::error($request, 'EMAIL_CODE_REJECTED',
+                'Unable to send verification code', 400);
+        }
+        return TxapiResponse::success($request, ['ok' => true]);
+    }
+
+    public function forgotPassword(AuthForget $request, CaptchaService $captcha,
+        LoginService $service): JsonResponse
+    {
+        [$valid] = $captcha->verify($request);
+        if (!$valid) {
+            return TxapiResponse::error($request, 'CAPTCHA_INVALID', 'Captcha verification failed', 400);
+        }
+        [$ok, $result] = $service->resetPassword(
+            (string) $request->input('email'),
+            (string) $request->input('email_code'),
+            (string) $request->input('password')
+        );
+        if (!$ok) {
+            if ((int) ($result[0] ?? 400) === 429) {
+                return TxapiResponse::error($request, 'RATE_LIMITED',
+                    'Please try again later', 429);
+            }
+            return TxapiResponse::error($request, 'RESET_REJECTED',
+                'Unable to reset password', 400);
+        }
+        return TxapiResponse::success($request, ['ok' => true]);
     }
 
     public function logout(Request $request): JsonResponse
