@@ -1,4 +1,4 @@
-# TXBoard 镜像发布通道（Phase 4）
+# TXBoard 镜像发布通道（CURRENT）
 
 GHCR 仓库：`ghcr.io/anrcm0/txboard`，支持 `linux/amd64` / `linux/arm64`。
 

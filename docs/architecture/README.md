@@ -1,129 +1,23 @@
-# TXBoard Architecture
+# TXBoard Architecture — 文档入口
 
-TXBoard 是 Control Plane；TX-Node 是独立 Agent / Data Plane。当前仓库包含面板、前端、协议契约、主题与 Plugin Runtime，不包含 TX-Node 或可选独立插件的源码。
+## 当前（CURRENT）与目标（TARGET）
 
-## 当前架构状态
+- **CURRENT**：现行 Laravel API 路由仍包含 §/api/v1§、§/api/v2§；Module Platform v1、Plugin/Theme/Agent Ops 与 Node contracts 已运行。
+- **TARGET**：统一正式 API §/txapi/*§，分阶段降低 Xboard 残留并优化业务、安全与性能；**目前尚未修改运行时代码**。
 
-**Module Platform v1 的 A–H 阶段已经实现；当前阶段是稳定化与兼容性加固。** 它统一 Plugin、Theme、Agent Ops 的只读库存、健康与 Admin 导航，并通过专门适配器委托既有 PluginManager 和 ThemeService。Core 业务仍是唯一事实来源；Agent Ops / MCP 继续遵守 API 权限、目标范围、审批和审计边界。不要把后续稳定化工作描述为尚未启动的 v1 阶段，也不要在没有版本化架构提案的情况下创建新阶段。
+## TXBoard Native 开发主线
 
-- [Module Platform v1](./module-platform-v1.md)：已实现的架构基线、Core/Module 边界、Manifest、Registry、Capability、Health 与 A–H 阶段状态；
-- [Module Platform v1 开发指南](./module-platform-development-guide.md)：当前稳定化工作的 contract-first、adapter-first、兼容、权限、Octane、安全与测试规则；
-- [编码 Agent 开发规则](../../AGENTS.md)：仓库统一开发约束、兼容性、安全与测试要求。
+1. [详细重构与开发方案](txboard-native-development-plan.md) — 架构、API、领域、优化、P0–P7、数据和发布。
+2. [遗留依赖盘点](legacy-inventory-and-work-packages.md) — 首批审计、跨仓库消费端和 PR 分类。
+3. [TXAPI Target v1](../../contracts/http/txapi-target-v1.md) — 计划接口，未部署。
+4. [运行/发布手册](../operations/README.md)；[安全基线](../security/README.md)；[扩展运行时](extension-runtime-policy.md)。
 
-Module Platform 是现有 Plugin / Theme / Agent Ops 架构之上的统一层，不替代它们已经稳定的 domain runtime，也不将 User、Order、Node 等 Core 领域强行插件化。
+## 保留的已实现架构文档
 
-## Runtime
+- [Module Platform v1](module-platform-v1.md)、[Module Platform 开发指南](module-platform-development-guide.md)。
+- [Agent Ops / MCP](agent-ops.md)、[Agent Ops 开发指南](agent-ops-development-guide.md)。
+- [跨仓库现行契约](../../contracts/README.md)、[插件开发指南](../../api/docs/en/development/plugin-development-guide.md)、[AGENTS 开发规则](../../AGENTS.md)。
 
-```mermaid
-flowchart LR
-    Browser --> Caddy
-    AIAgent["AI Agent"] -->|MCP /mcp| Caddy
+## 不变的边界
 
-    subgraph Image["TXBoard image"]
-        Caddy --> MCP["Optional MCP Gateway"]
-        MCP -->|Agent Ops API| API
-        Caddy --> Admin[React Admin]
-        Caddy --> User[Vue User]
-        Caddy --> API[Laravel / Octane]
-        Caddy --> WS[WebSocket]
-        API --> Horizon
-        API --> Redis[(Redis)]
-        API --> Plugin[Plugin Runtime]
-        API --> Theme[Theme Runtime]
-    end
-
-    API --> DB[(MySQL)]
-    Node[TX-Node] -->|HTTPS| API
-    Node -->|WSS| WS
-```
-
-The MCP Gateway is optional and is not part of the core node protocol. Agent requests are mediated by TXBoard permissions, approval policy and audit before any node-scoped action is dispatched.
-
-Token creation in Admin exposes a version-matched self-connect guide at `/.well-known/txboard-agent-connect.md`. Self-Connect v2 also issues a short-lived one-time pairing code backed by encrypted Redis TTL state so an external Agent can exchange the temporary code for the already-created Agent Token, store it locally, configure the existing Remote HTTP MCP endpoint and perform read-only verification. Pairing is credential delivery only: durable authorization remains the Sanctum Agent Token, and no second MCP/control-plane runtime is created.
-
-## Repository boundaries
-
-### Control Plane
-
-`api/` owns authentication, users, subscriptions, commerce, server/machine management, plugins, themes, queues and node-facing APIs.
-
-### Frontends
-
-- `web/admin/`: React administrator SPA.
-- `web/user/`: Vue user SPA.
-- Frontends depend on HTTP contracts, not Laravel implementation files.
-
-### TX-Node
-
-TX-Node lives in a separate repository. TXBoard never imports, builds or releases TX-Node. Compatibility is defined by `contracts/node-protocol/`.
-
-### Themes
-
-Theme Runtime is part of TXBoard's supported extension architecture. `api/theme/` contains system/compatibility themes; user-installed themes persist under storage.
-
-### Plugins
-
-- `api/plugins-core/`: bundled core plugins.
-- `api/plugins/`: runtime/user plugins persisted by the deployment.
-- Plugin-owned complex Admin UI belongs in `<plugin>/admin/dist/`.
-- `web/admin/src/plugins/` owns only the host Bridge and exceptional host-native renderer registry; independent plugins must not require edits there.
-- [TXBoard-AccessAudit](https://github.com/ANRCM0/TXBoard-AccessAudit) is the first-party Plugin Package v1 reference implementation and lives outside this repository.
-
-Plugin Package v1 deliberately makes plugin repositories independent of TXBoard's source tree, frontend build and application image.
-
-### Machine runtime lifecycle
-
-TX-Node deployment/upgrade remains owned by the public TX-Node Installer. TXBoard may orchestrate a bounded Machine-level runtime update through the versioned [Machine Runtime Update v1](../../contracts/node-protocol/machine-runtime-update-v1.md) contract:
-
-```text
-Admin
-  -> Machine Admin API
-  -> typed machine WS event
-  -> TX-Node
-  -> Installer-owned local update bridge
-  -> existing Installer upgrade runtime
-```
-
-TXBoard does not SSH into the host, mount the Docker socket, or reimplement Installer upgrade/rollback behavior.
-
-### Agent Ops / MCP
-
-TXBoard supports an optional AI operations layer that exposes narrow, auditable capabilities to external Agents.
-
-The architecture is:
-
-```text
-AI Agent
-  -> MCP Gateway
-  -> TXBoard Agent Ops API
-  -> permission / approval / audit
-  -> TXBoard domain services
-  -> Redis / WebSocket
-  -> TX-Node typed operations
-```
-
-The MCP Gateway is an adapter, not a second control plane. It must not connect directly to MySQL, publish directly to Redis or open unrestricted SSH sessions to TX-Node machines.
-
-Arbitrary shell execution is intentionally excluded. Node operations must be fixed, versioned and typed, such as kernel restart, configuration validation/reload, bounded log retrieval and bounded network diagnostics.
-
-Agent Ops 的长期维护文档：
-
-- [Agent Ops / MCP Architecture](./agent-ops.md)：稳定架构、风险模型和运行边界；
-- [Agent Ops 开发指南](./agent-ops-development-guide.md)：新增 READ / INSIGHT / OPERATE 能力的实施步骤、测试矩阵和 Definition of Done。
-
-## Deployment boundary
-
-Production has one TXBoard application image built by the root `Dockerfile`. It includes both SPAs, Caddy, Laravel/Octane, Horizon, embedded Redis, WebSocket and the optional MCP Gateway. MCP is disabled by default and remains a protocol adapter over the Agent Ops HTTP API.
-
-MySQL and the backup helper are separate infrastructure services in `compose.yaml`.
-
-## Dependency rules
-
-1. TXBoard and TX-Node communicate only through versioned HTTP/WebSocket contracts.
-2. Frontends consume APIs instead of importing backend implementation.
-3. Theme and Plugin systems are supported extension layers and must not be treated as disposable legacy code.
-4. Optional integrations must not become hard dependencies of the core node protocol.
-5. Independent plugin repositories depend on the Plugin Package contract, not TXBoard Admin source code.
-6. Production application code is replaced by image deployment; running containers do not self-update source code.
-7. Cross-component compatibility knowledge belongs under `contracts/`.
-8. MCP and other Agent integrations consume the Agent Ops API and must not bypass TXBoard domain services, permissions, approval policy or audit.
+TXBoard 是 Control Plane，TX-Node 是独立 Agent/Data Plane。Vue/React 消费 HTTP 契约、域层拥有业务真相；Module Runtime 不复制 PluginManager/ThemeService，Agent/MCP 不绕过权限、审批、审计；节点安装与升级仍由 TX-Node Installer 负责。
