@@ -49,10 +49,10 @@ final class PlanMutationController
                 $plan = Plan::query()->lockForUpdate()->findOrFail((int) $input['id']);
                 if ($force) {
                     User::query()->where('plan_id', $plan->id)->update([
-                        'group_id' => $attributes['group_id'] ?? $plan->group_id,
+                        'group_id' => array_key_exists('group_id', $attributes) ? $attributes['group_id'] : $plan->group_id,
                         'transfer_enable' => (int) $attributes['transfer_enable'] * 1073741824,
-                        'speed_limit' => $attributes['speed_limit'] ?? $plan->speed_limit,
-                        'device_limit' => $attributes['device_limit'] ?? $plan->device_limit,
+                        'speed_limit' => array_key_exists('speed_limit', $attributes) ? $attributes['speed_limit'] : $plan->speed_limit,
+                        'device_limit' => array_key_exists('device_limit', $attributes) ? $attributes['device_limit'] : $plan->device_limit,
                     ]);
                 }
                 $plan->fill($attributes)->saveOrFail();
