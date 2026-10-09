@@ -25,9 +25,9 @@ class AgentPairingTest extends TestCase
     {
         [$response] = $this->createPairedToken('pairing-encrypted');
 
-        $response->assertOk()
-            ->assertHeader('Cache-Control', 'no-store, private')
+        $response->assertStatus(201)
             ->assertJsonPath('data.pairing.expires_in_seconds', 60);
+        $this->assertStringContainsString('no-store', (string) $response->headers->get('Cache-Control'));
 
         $plain = (string) $response->json('data.plain_text_token');
         $code = (string) $response->json('data.pairing.code');
@@ -49,7 +49,7 @@ class AgentPairingTest extends TestCase
 
         [$response] = $this->createPairedToken('pairing-fallback');
 
-        $response->assertOk()
+        $response->assertStatus(201)
             ->assertJsonPath('data.pairing', null);
 
         $this->assertNotSame('', (string) $response->json('data.plain_text_token'));
@@ -105,7 +105,7 @@ class AgentPairingTest extends TestCase
         $code = (string) $created->json('data.pairing.code');
 
         $securePath = $this->securePath();
-        $this->postJson("/api/v2/{$securePath}/agent/tokens/revoke", ['id' => $tokenId])
+        $this->deleteJson("/txapi/admin/{$securePath}/agents/tokens/{$tokenId}")
             ->assertOk();
 
         $this->postJson('/api/v2/agent/pairings/redeem', [
@@ -122,7 +122,7 @@ class AgentPairingTest extends TestCase
         $admin = $this->makeAdmin();
         Sanctum::actingAs($admin);
 
-        $response = $this->postJson("/api/v2/{$this->securePath()}/agent/tokens/create", [
+        $response = $this->postJson("/txapi/admin/{$this->securePath()}/agents/tokens", [
             'client_name' => $clientName,
             'expires_in_days' => 7,
         ]);

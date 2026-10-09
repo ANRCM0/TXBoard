@@ -23,6 +23,8 @@ use App\Http\Controllers\Txapi\Admin\NetworkNodeSecretController;
 use App\Http\Controllers\Txapi\Admin\NetworkMachineAdminController;
 use App\Http\Controllers\Txapi\Admin\ThemeAdminController;
 use App\Http\Controllers\Txapi\Admin\PluginAdminController;
+use App\Http\Controllers\Txapi\Admin\AgentAdminController;
+use App\Http\Controllers\Txapi\Admin\AgentSupportAdminController;
 use App\Http\Controllers\Txapi\Admin\PaymentManagementController;
 use App\Http\Controllers\Txapi\AccountController;
 use App\Http\Controllers\Txapi\ServerController;
@@ -78,6 +80,24 @@ Route::prefix('admin/{admin_path}')
         Route::get('themes/{name}/config', [ThemeAdminController::class, 'config']);
         Route::put('themes/{name}/config', [ThemeAdminController::class, 'saveConfig']);
         Route::delete('themes/{name}', [ThemeAdminController::class, 'delete']);
+
+        // Agent management is admin-only. The separate Agent bearer API is
+        // a different execution boundary and is not proxied by this namespace.
+        Route::get('agents/abilities', [AgentAdminController::class, 'abilities']);
+        Route::get('agents/tokens', [AgentAdminController::class, 'tokens']);
+        Route::post('agents/tokens', [AgentAdminController::class, 'createToken']);
+        Route::delete('agents/tokens/{id}', [AgentAdminController::class, 'revokeToken'])->whereNumber('id');
+        Route::get('agents/fleet/health', [AgentAdminController::class, 'fleetHealth']);
+        Route::get('agents/inspections', [AgentAdminController::class, 'inspections']);
+        Route::post('agents/inspections', [AgentAdminController::class, 'runInspection']);
+        Route::get('agents/nodes/{nodeId}/timeline', [AgentAdminController::class, 'nodeTimeline'])
+            ->whereNumber('nodeId');
+        Route::get('agents/actions', [AgentAdminController::class, 'actions']);
+        Route::post('agents/actions/approve', [AgentAdminController::class, 'approveAction']);
+        Route::post('agents/actions/reject', [AgentAdminController::class, 'rejectAction']);
+        Route::get('agents/support/reply-requests', [AgentSupportAdminController::class, 'replies']);
+        Route::post('agents/support/reply-requests/approve', [AgentSupportAdminController::class, 'approve']);
+        Route::post('agents/support/reply-requests/reject', [AgentSupportAdminController::class, 'reject']);
 
         Route::get('plugins/types', [PluginAdminController::class, 'types']);
         Route::get('plugins', [PluginAdminController::class, 'index']);
