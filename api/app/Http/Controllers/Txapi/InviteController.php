@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Utils\Helper;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 final class InviteController
@@ -17,7 +18,7 @@ final class InviteController
     public function index(Request $request): JsonResponse
     {
         $user = User::query()->with(['codes' => fn ($q) => $q->where('status', 0)])
-            ->findOrFail($request->user()->id);
+            ->findOrFail(Auth::guard('sanctum')->id());
         $pending = (int) Order::query()->where('status', 3)
             ->where('commission_status', 0)->where('invite_user_id', $user->id)
             ->sum('commission_balance');
@@ -42,7 +43,7 @@ final class InviteController
     public function store(Request $request): JsonResponse
     {
         $created = DB::transaction(function () use ($request): bool {
-            $user = User::query()->lockForUpdate()->findOrFail($request->user()->id);
+            $user = User::query()->lockForUpdate()->findOrFail(Auth::guard('sanctum')->id());
             if (InviteCode::query()->where('user_id', $user->id)
                 ->where('status', 0)->count() >= (int) admin_setting('invite_gen_limit', 5)) {
                 return false;
