@@ -26,6 +26,8 @@ class PaymentWebhookTest extends TestCase
             'is_enabled' => true,
             'config' => '{}',
         ]);
+        $this->app->forgetInstance(\App\Services\Plugin\PluginManager::class);
+        \App\Services\Plugin\HookManager::reset();
     }
 
     public function test_missing_order_must_not_be_acknowledged_as_paid(): void
@@ -242,7 +244,7 @@ class PaymentWebhookTest extends TestCase
             'payment_id' => $payment->id,
             'type' => Order::TYPE_NEW_PURCHASE,
             'period' => Plan::PERIOD_MONTHLY,
-            'trade_no' => uniqid('payment_order_', true),
+            'trade_no' => 'pay_' . bin2hex(random_bytes(10)),
             'total_amount' => $total,
             'handling_amount' => $fee,
             'balance_amount' => 0,
