@@ -113,6 +113,44 @@ final class TxapiAdminTrafficResetTest extends TestCase
         $this->assertSame(0, TrafficResetLog::query()->count());
     }
 
+    public function test_monthly_day_31_clamps_to_february_last_day(): void
+    {
+        \Carbon\Carbon::setTestNow('2026-02-10 08:00:00');
+        try {
+            $user = $this->user('end-of-month@example.test');
+            $plan = $this->plan();
+            $plan->reset_traffic_method = Plan::RESET_TRAFFIC_MONTHLY;
+            $plan->saveOrFail();
+            $user->plan_id = $plan->id;
+            $user->expired_at = \Carbon\Carbon::parse('2026-01-31 10:20:00', config('app.timezone'))->timestamp;
+            $user->saveOrFail();
+            $next = app(TrafficResetService::class)->calculateNextResetTime($user->fresh());
+            $this->assertSame('2026-02-28 10:20:00',
+                $next?->format('Y-m-d H:i:s'));
+        } finally {
+            \Carbon\Carbon::setTestNow();
+        }
+    }
+
+    public function test_yearly_february_29_clamps_in_nonleap_year(): void
+    {
+        \Carbon\Carbon::setTestNow('2025-01-11 08:00:00');
+        try {
+            $user = $this->user('leap-expiry@example.test');
+            $plan = $this->plan();
+            $plan->reset_traffic_method = Plan::RESET_TRAFFIC_YEARLY;
+            $plan->saveOrFail();
+            $user->plan_id = $plan->id;
+            $user->expired_at = \Carbon\Carbon::parse('2024-02-29 09:30:00', config('app.timezone'))->timestamp;
+            $user->saveOrFail();
+            $next = app(TrafficResetService::class)->calculateNextResetTime($user->fresh());
+            $this->assertSame('2025-02-28 09:30:00',
+                $next?->format('Y-m-d H:i:s'));
+        } finally {
+            \Carbon\Carbon::setTestNow();
+        }
+    }
+
     public function test_invalid_filters_and_inactive_or_missing_subscriptions_cannot_reset(): void
     {
         $admin = $this->user('traffic-validator@example.test', true);
