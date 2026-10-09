@@ -101,7 +101,8 @@ docker compose exec -it txboard php artisan txboard:install
 
 ## 文档与协议
 
-- **[TXBoard Native 开发方案：统一 /txapi、去 Xboard 残留、优化与迁移](docs/architecture/txboard-native-development-plan.md)**（目标计划，尚未实施）
+- **[TXBoard Native 开发方案：统一 /txapi、去 Xboard 残留、优化与迁移](docs/architecture/txboard-native-development-plan.md)**（P0–P4 核心实现已合并；内部旧依赖继续收尾）
+- **[TXBoard 本体大版本收尾清单](docs/architecture/core-release-closeout.md)**（当前实施顺序；TX-Node/Gateway/真实支付商适配后置）
 - [架构与开发指南（CURRENT / TARGET）](docs/architecture/README.md)
 - [跨组件协议契约（CURRENT / TARGET）](contracts/README.md)
 - [插件开发指南](api/docs/en/development/plugin-development-guide.md)
