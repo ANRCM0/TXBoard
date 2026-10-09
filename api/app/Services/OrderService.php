@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Exceptions\ApiException;
 use App\Jobs\OrderHandleJob;
 use App\Models\Order;
+use App\Models\Coupon;
 use App\Models\Plan;
 use App\Models\TrafficResetLog;
 use App\Models\User;
@@ -77,6 +78,11 @@ class OrderService
                 throw new ApiException(__('The user does not exist'));
             }
 
+            // Revalidate under the user lock; the preflight checks above can
+            // become stale while another transaction changes entitlement.
+            $plan = Plan::whereKey($plan->id)->firstOrFail();
+            (new PlanService($plan))->validatePurchase($user, $period);
+
             if ($userService->isNotCompleteOrderByUserId($user->id)) {
                 throw new ApiException(__('You have an unpaid or pending order, please try again later or cancel it'));
             }
@@ -88,7 +94,7 @@ class OrderService
                 'plan_id' => $plan->id,
                 'period' => $newPeriod,
                 'trade_no' => Helper::generateOrderNo(),
-                'total_amount' => (int) (optional($plan->prices)[$newPeriod] * 100),
+                'total_amount' => (int) round((float) $plan->prices[$newPeriod] * 100),
             ]);
 
             $orderService = new self($order);
@@ -214,10 +220,14 @@ class OrderService
     public function setVipDiscount(User $user)
     {
         $order = $this->order;
-        if ($user->discount) {
-            $order->discount_amount = $order->discount_amount + ($order->total_amount * ($user->discount / 100));
-        }
-        $order->total_amount = $order->total_amount - $order->discount_amount;
+        $subtotal = (int) $order->total_amount;
+        $couponDiscount = (int) ($order->discount_amount ?? 0);
+        $vipDiscount = $user->discount
+            ? (int) round($subtotal * ((float) $user->discount / 100))
+            : 0;
+        $discount = min($subtotal, max(0, $couponDiscount + $vipDiscount));
+        $order->discount_amount = $discount;
+        $order->total_amount = $subtotal - $discount;
     }
 
     public function setInvite(User $user): void
@@ -333,6 +343,15 @@ class OrderService
                     throw new \RuntimeException('Order not found.');
                 }
                 if ((int) $order->status !== Order::STATUS_PENDING) {
+                    // A different provider transaction must never be accepted
+                    // even when both requests observed PENDING before locking.
+                    $sameCallback = in_array((int) $order->status, [
+                        Order::STATUS_PROCESSING, Order::STATUS_COMPLETED,
+                    ], true) && $order->callback_no !== null
+                        && hash_equals((string) $order->callback_no, $callbackNo);
+                    if (!$sameCallback) {
+                        throw new \RuntimeException('Payment transition conflict');
+                    }
                     return [$order, false];
                 }
 
@@ -394,6 +413,16 @@ class OrderService
                     }
                 }
 
+                // A coupon slot was reserved at order creation, not at payment.
+                // Cancellation must release it exactly once while PENDING is
+                // locked; duplicate cancel/late webhook cannot restore twice.
+                if ($order->coupon_id !== null) {
+                    $coupon = Coupon::whereKey($order->coupon_id)->lockForUpdate()->first();
+                    if ($coupon && $coupon->limit_use !== null) {
+                        $coupon->limit_use = (int) $coupon->limit_use + 1;
+                        $coupon->saveOrFail();
+                    }
+                }
                 return $order;
             });
 

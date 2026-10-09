@@ -180,6 +180,55 @@ class OrderServiceConcurrencyTest extends TestCase
         $this->assertSame(1, $code->usages()->count());
     }
 
+    public function test_different_provider_callback_cannot_be_acknowledged_after_paid(): void
+    {
+        \Illuminate\Support\Facades\Bus::fake();
+        $user = $this->makeUser();
+        $order = $this->makeOrder($user, $this->makePlan());
+
+        $this->assertTrue((new OrderService($order))->paid('provider-1'));
+        $this->assertFalse((new OrderService($order))->paid('provider-2'));
+        $this->assertTrue((new OrderService($order))->paid('provider-1'));
+        $this->assertSame('provider-1', $order->fresh()->callback_no);
+        \Illuminate\Support\Facades\Bus::assertDispatchedTimes(\App\Jobs\OrderHandleJob::class, 1);
+    }
+
+    public function test_pending_order_cancel_releases_coupon_slot_and_refunds_balance_once(): void
+    {
+        $user = $this->makeUser(['balance' => 0]);
+        $coupon = \App\Models\Coupon::create([
+            'code' => 'CANCEL-RELEASE-ONE',
+            'name' => 'Cancelled reserved discount',
+            'type' => 1, 'value' => 100,
+            'show' => 1, 'limit_use' => 2,
+        ]);
+        $order = $this->makeOrder($user, $this->makePlan(), [
+            'status' => Order::STATUS_PENDING,
+            'coupon_id' => $coupon->id,
+            'balance_amount' => 200,
+            'total_amount' => 800,
+        ]);
+        $this->assertTrue((new OrderService($order))->cancel());
+        $this->assertFalse((new OrderService($order))->cancel());
+        $this->assertSame(200, (int) $user->fresh()->balance);
+        $this->assertSame(3, (int) $coupon->fresh()->limit_use);
+        $this->assertSame(Order::STATUS_CANCELLED, (int) $order->fresh()->status);
+        // Late provider confirmation cannot change or refund the cancelled order.
+        $this->assertFalse((new OrderService($order))->paid('late-provider'));
+        $this->assertSame(3, (int) $coupon->fresh()->limit_use);
+    }
+
+    public function test_combined_vip_and_coupon_discount_never_makes_negative_order(): void
+    {
+        $user = $this->makeUser(['discount' => 80]);
+        $order = $this->makeOrder($user, $this->makePlan(), [
+            'total_amount' => 100, 'discount_amount' => 50,
+        ]);
+        (new OrderService($order))->setVipDiscount($user);
+        $this->assertSame(0, (int) $order->total_amount);
+        $this->assertSame(100, (int) $order->discount_amount);
+    }
+
     public function test_checkout_rejects_negative_order_amount(): void
     {
         $user = $this->makeUser(['balance' => 0]);
