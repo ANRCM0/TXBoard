@@ -60,7 +60,7 @@ class MachineInstallCommandTest extends TestCase
 
         $response->assertOk();
 
-        $command = (string) $response->json('data.command');
+        $command = (string) $response->json('data.install_command');
 
         $this->assertStringContainsString(
             "https://raw.githubusercontent.com/PaiMonCai/TX-Node-Installer/main/deploy.sh",
