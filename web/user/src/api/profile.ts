@@ -1,4 +1,4 @@
-import { api, nativeApi, nativeRequest, request } from './client'
+import { nativeApi, nativeRequest } from './client'
 
 export async function changePassword(payload: { old_password: string; new_password: string }) {
   return nativeRequest<{ ok: boolean }>(nativeApi.post('/auth/password', payload))
@@ -15,7 +15,13 @@ export async function updateUserPreferences(payload: UserPreferences): Promise<U
 }
 
 export async function resetSecurity() {
-  return request<string>(api.get('/user/resetSecurity'))
+  const result = await nativeRequest<{ subscribe_url: string }>(
+    nativeApi.post('/me/subscription-credentials/rotate'),
+  )
+  if (!result || typeof result.subscribe_url !== 'string' || !result.subscribe_url) {
+    throw new Error('Invalid TXAPI subscription rotation response')
+  }
+  return result.subscribe_url
 }
 
 export type ActiveSession = {
@@ -37,5 +43,9 @@ export async function removeActiveSession(sessionId: string) {
 }
 
 export async function getQuickLoginUrl() {
-  return request<string>(api.post('/user/getQuickLoginUrl'))
+  const result = await nativeRequest<{ url: string }>(nativeApi.post('/auth/quick-login'))
+  if (!result || typeof result.url !== 'string' || !result.url.includes('/#/login?verify=')) {
+    throw new Error('Invalid TXAPI quick login response')
+  }
+  return result.url
 }

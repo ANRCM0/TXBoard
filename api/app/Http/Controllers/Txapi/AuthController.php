@@ -100,6 +100,29 @@ final class AuthController
         return TxapiResponse::success($request, ['ok' => true]);
     }
 
+    public function quickLogin(Request $request, LoginService $service): JsonResponse
+    {
+        $input = $request->validate([
+            'redirect' => ['sometimes', 'string', 'max:200'],
+        ]);
+        $redirect = $input['redirect'] ?? 'dashboard';
+        // Only internal Vue route paths. Avoid injecting scheme, host, fragment,
+        // query or parent-directory segments into a bearer-bearing login link.
+        if (!preg_match('~\\A/?[A-Za-z0-9][A-Za-z0-9/_-]*\\z~D', $redirect)
+            || str_contains($redirect, '//') || str_contains($redirect, '..')) {
+            return TxapiResponse::error($request, 'INVALID_REDIRECT',
+                'Redirect must be a local application route', 422);
+        }
+        $url = $service->generateQuickLoginUrl(Auth::guard('sanctum')->user(), $redirect);
+        if (!is_string($url) || $url === '') {
+            return TxapiResponse::error($request, 'LINK_UNAVAILABLE',
+                'Quick login unavailable', 409);
+        }
+        // The URL holds a one-time credential. Do not log it or embed it into
+        // URL query parameters of this API request.
+        return TxapiResponse::success($request, ['url' => $url]);
+    }
+
     public function password(Request $request): JsonResponse
     {
         $params = $request->validate([
