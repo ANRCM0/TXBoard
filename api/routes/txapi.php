@@ -10,6 +10,7 @@ use App\Http\Controllers\Txapi\Admin\PlanMutationController;
 use App\Http\Controllers\Txapi\Admin\ContentAdminController;
 use App\Http\Controllers\Txapi\Admin\OrderAdminController;
 use App\Http\Controllers\Txapi\Admin\TrafficResetAdminController;
+use App\Http\Controllers\Txapi\Admin\PaymentSafetyController;
 use App\Http\Controllers\Txapi\AccountController;
 use App\Http\Controllers\Txapi\ServerController;
 use App\Http\Controllers\Txapi\TrafficController;
@@ -55,6 +56,7 @@ Route::prefix('admin/{admin_path}')
     ->middleware(['admin.path', 'admin', 'log', 'throttle:120,1'])
     ->group(function () {
         Route::get('audit-logs', [AuditLogController::class, 'index']);
+        Route::post('payment-methods/{id}/delete', [PaymentSafetyController::class, 'delete'])->whereNumber('id');
         Route::get('traffic-resets', [TrafficResetAdminController::class, 'index']);
         Route::get('traffic-resets/stats', [TrafficResetAdminController::class, 'stats']);
         Route::get('traffic-resets/users/{id}', [TrafficResetAdminController::class, 'show'])->whereNumber('id');
