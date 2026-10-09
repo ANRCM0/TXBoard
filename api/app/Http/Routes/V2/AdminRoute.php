@@ -2,7 +2,6 @@
 
 namespace App\Http\Routes\V2;
 
-use App\Http\Routes\V2\Admin\AnalyticsRoute;
 use App\Http\Routes\V2\Admin\CommerceRoute;
 use App\Http\Routes\V2\Admin\ContentRoute;
 use App\Http\Routes\V2\Admin\ExtensionRoute;
@@ -17,7 +16,6 @@ class AdminRoute
         CommerceRoute::class,
         AdminUserRoute::class,
         ContentRoute::class,
-        AnalyticsRoute::class,
         ExtensionRoute::class,
     ];
 

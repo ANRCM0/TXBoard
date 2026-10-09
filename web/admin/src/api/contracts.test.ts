@@ -13,7 +13,7 @@ import {
 import { fetchSettings, saveSettings, testSendMail, setTelegramWebhook } from './config'
 import { getGroups, saveGroup, deleteGroup, getRoutes, saveRoute, sortRoutes, simulateRoute, deleteRoute } from './server'
 import { getMachines, saveMachine, getMachineCredentials, resetMachineToken, updateMachineRuntime, deleteMachine, getMachineNodes, getMachineHistory } from './server'
-import { getAuditLogs } from './statistics'
+import { getAuditLogs, getDashboardStats, getOrderChart, getTrafficRank, getAnalyticsRanking, getUserTrafficStats } from './statistics'
 import { getPlans, getOrders, savePlan, updatePlanFlags, deletePlan, sortPlans, getOrderDetail, markOrderPaid, cancelOrder } from './finance'
 import { getTickets, getTicketDetail, replyTicket, closeTicket } from './ticket'
 import { getTrafficResetLogs, getTrafficResetStats, resetUserTraffic, getUserTrafficResetHistory } from './traffic-reset'
@@ -1254,5 +1254,54 @@ describe('native Agent administrator contract', () => {
     expect(seen.every(config => config.baseURL === '/txapi')).toBe(true)
     expect(seen[1].params).toEqual({ status: 'pending', limit: 50 })
     expect(JSON.parse(String(seen[3].data))).toEqual({ request_id: 'action1', reason: 'not approved' })
+  })
+})
+
+
+describe('native analytics administrator API contracts', () => {
+  it('reads dashboard cards, order history and node/user traffic rank through TXAPI', async () => {
+    setAdminSecurePath('analytics-dynamic')
+    responder = config => ({ data: {
+      data: config.url?.endsWith('/dashboard') ? { todayIncome: 2500, totalUsers: 14 }
+        : config.url?.endsWith('/orders/chart')
+          ? { list: [{ date: '2026-10-09', paid_total: 2500 }], summary: { paid_total: 2500 } }
+          : config.url?.endsWith('/traffic/rank')
+            ? [{ id: '5', name: 'node', value: 1000 }]
+            : [{ id: '7', value: 43 }],
+      request_id: 'analytics-native',
+    } })
+    await expect(getDashboardStats()).resolves.toHaveProperty('todayIncome', 2500)
+    await expect(getOrderChart({ start_date: '2026-10-01', end_date: '2026-10-09' }))
+      .resolves.toHaveProperty('summary.paid_total', 2500)
+    await expect(getTrafficRank('node', 1790812800, 1791504000)).resolves.toHaveLength(1)
+    await expect(getAnalyticsRanking('invite_rank', 10)).resolves.toHaveLength(1)
+    expect(seen.map(config => [config.method, config.url])).toEqual([
+      ['get', '/admin/analytics-dynamic/analytics/dashboard'],
+      ['get', '/admin/analytics-dynamic/analytics/orders/chart'],
+      ['get', '/admin/analytics-dynamic/analytics/traffic/rank'],
+      ['get', '/admin/analytics-dynamic/analytics/rankings'],
+    ])
+    expect(seen[1].params).toEqual({ start_date: '2026-10-01', end_date: '2026-10-09' })
+    expect(seen[2].params).toEqual({
+      type: 'node', start_time: 1790812800, end_time: 1791504000,
+    })
+    expect(seen.every(config => config.baseURL === '/txapi')).toBe(true)
+  })
+
+  it('validates the native paginated user traffic response and refuses unsafe IDs', async () => {
+    setAdminSecurePath('analytics-dynamic')
+    responder = () => ({ data: {
+      data: [{ id: 42, user_id: 9, u: 100, d: 200 }],
+      meta: { page: 2, per_page: 1, total: 3, last_page: 3 },
+      request_id: 'user-traffic',
+    } })
+    await expect(getUserTrafficStats(9, 2, 1)).resolves.toMatchObject({
+      total: 3, current_page: 2, per_page: 1,
+      data: [{ id: 42, user_id: 9 }],
+    })
+    expect(seen[0].url).toBe('/admin/analytics-dynamic/analytics/users/9/traffic')
+    expect(seen[0].params).toEqual({ page: 2, per_page: 1 })
+    expect(seen[0].baseURL).toBe('/txapi')
+    await expect(getUserTrafficStats(-2)).rejects.toThrow('Invalid user ID')
   })
 })

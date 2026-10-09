@@ -26,6 +26,10 @@ export function customRangeError(start: string, end: string, today = formatLocal
   if (start < EARLIEST_DASHBOARD_DATE) return '开始日期不能早于 2001-09-10'
   if (start > end) return '开始日期不能晚于结束日期'
   if (end > today) return '结束日期不能晚于今天'
+  const [sy, sm, sd] = start.split('-').map(Number)
+  const [ey, em, ed] = end.split('-').map(Number)
+  const days = (Date.UTC(ey, em - 1, ed) - Date.UTC(sy, sm - 1, sd)) / 86_400_000
+  if (days > 365) return '统计范围不能超过366天'
   return null
 }
 

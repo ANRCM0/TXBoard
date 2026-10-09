@@ -1,5 +1,4 @@
-import { apiClient, nativeApiClient, nativeAdminPath, type NativeApiEnvelope } from './client'
-import { unwrap } from '../lib/api'
+import { nativeApiClient, nativeAdminPath, unwrapNative, type NativeApiEnvelope } from './client'
 
 export type DashboardStats = {
   todayIncome?: number
@@ -42,25 +41,62 @@ export type Paged<T> = {
   data: T[]
 }
 
-export async function getDashboardStats() {
-  const { data } = await apiClient.get('/stat/getStats')
-  return unwrap<DashboardStats>(data) || {}
+const analyticsPath = (operation: string) => nativeAdminPath('analytics') + '/' + operation
+
+export function getDashboardStats(): Promise<DashboardStats> {
+  return unwrapNative(nativeApiClient.get<NativeApiEnvelope<DashboardStats>>(
+    analyticsPath('dashboard'),
+  ))
 }
 
-export async function getOrderChart(params: { start_date?: string; end_date?: string } = {}) {
-  const { data } = await apiClient.get('/stat/getOrder', { params })
-  return unwrap<{ list?: Array<Record<string, unknown>>; summary?: Record<string, unknown> }>(data) || {}
+export function getOrderChart(params: { start_date?: string; end_date?: string } = {}):
+  Promise<{ list?: Array<Record<string, unknown>>; summary?: Record<string, unknown> }> {
+  return unwrapNative(nativeApiClient.get<NativeApiEnvelope<{
+    list?: Array<Record<string, unknown>>
+    summary?: Record<string, unknown>
+  }>>(analyticsPath('orders/chart'), { params }))
 }
 
-export async function getTrafficRank(type: 'node' | 'user', startTime?: number, endTime?: number) {
-  const { data } = await apiClient.get('/stat/getTrafficRank', {
-    params: {
-      type,
-      ...(startTime ? { start_time: startTime } : {}),
-      ...(endTime ? { end_time: endTime } : {}),
+export function getTrafficRank(type: 'node' | 'user', startTime?: number, endTime?: number):
+  Promise<Array<Record<string, unknown>>> {
+  return unwrapNative(nativeApiClient.get<NativeApiEnvelope<Array<Record<string, unknown>>>>(
+    analyticsPath('traffic/rank'), {
+      params: {
+        type,
+        ...(startTime !== undefined ? { start_time: startTime } : {}),
+        ...(endTime !== undefined ? { end_time: endTime } : {}),
+      },
     },
-  })
-  return unwrap<Array<Record<string, unknown>>>(data) || []
+  ))
+}
+
+export function getAnalyticsRanking(type: 'server_traffic_rank' | 'user_consumption_rank' | 'invite_rank',
+  limit = 20, startTime?: number, endTime?: number) {
+  return unwrapNative(nativeApiClient.get<NativeApiEnvelope<Array<Record<string, unknown>>>>(
+    analyticsPath('rankings'), {
+      params: {
+        type, limit,
+        ...(startTime !== undefined ? { start_time: startTime } : {}),
+        ...(endTime !== undefined ? { end_time: endTime } : {}),
+      },
+    },
+  ))
+}
+
+export async function getUserTrafficStats(userId: number, page = 1, perPage = 20) {
+  if (!Number.isSafeInteger(userId) || userId < 1) throw new Error('Invalid user ID')
+  const { data: envelope } = await nativeApiClient.get<NativeApiEnvelope<Array<Record<string, unknown>>>>(
+    analyticsPath('users/' + userId + '/traffic'),
+    { params: { page, per_page: perPage } },
+  )
+  if (!envelope?.request_id || !Array.isArray(envelope.data) ||
+      !envelope.meta || !Number.isInteger(envelope.meta.total) ||
+      !Number.isInteger(envelope.meta.last_page)) {
+    throw new Error('Invalid native user traffic report')
+  }
+  return { data: envelope.data, total: envelope.meta.total,
+    current_page: envelope.meta.page, per_page: envelope.meta.per_page,
+    last_page: envelope.meta.last_page } as Paged<Record<string, unknown>>
 }
 
 export async function getAuditLogs(params: {

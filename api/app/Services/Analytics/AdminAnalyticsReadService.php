@@ -1,8 +1,7 @@
 <?php
 
-namespace App\Http\Controllers\V2\Admin;
+namespace App\Services\Analytics;
 
-use App\Http\Controllers\Controller;
 use App\Models\CommissionLog;
 use App\Models\Order;
 use App\Models\Server;
@@ -11,105 +10,17 @@ use App\Models\StatServer;
 use App\Models\StatUser;
 use App\Models\Ticket;
 use App\Models\User;
-use App\Services\StatisticalService;
 use Illuminate\Http\Request;
 
-class StatController extends Controller
+/**
+ * Native administrative analytics read model.
+ *
+ * Aggregation formulas are intentionally retained from the historical
+ * dashboard during the control-plane migration. Callers must validate
+ * bounded windows before invoking dated queries.
+ */
+final class AdminAnalyticsReadService
 {
-    private $service;
-    public function __construct(StatisticalService $service)
-    {
-        $this->service = $service;
-    }
-    public function getOverride(Request $request)
-    {
-        // 获取在线节点数
-        $onlineNodes = Server::all()->filter(function ($server) {
-            return !!$server->is_online;
-        })->count();
-        // 获取在线设备数和在线用户数
-        $onlineDevices = User::where('t', '>=', time() - 600)
-            ->sum('online_count');
-        $onlineUsers = User::where('t', '>=', time() - 600)
-            ->count();
-
-        // 获取今日流量统计
-        $todayStart = strtotime('today');
-        $todayTraffic = StatServer::where('record_at', '>=', $todayStart)
-            ->where('record_at', '<', time())
-            ->selectRaw('SUM(u) as upload, SUM(d) as download, SUM(u + d) as total')
-            ->first();
-
-        // 获取本月流量统计
-        $monthStart = strtotime(date('Y-m-1'));
-        $monthTraffic = StatServer::where('record_at', '>=', $monthStart)
-            ->where('record_at', '<', time())
-            ->selectRaw('SUM(u) as upload, SUM(d) as download, SUM(u + d) as total')
-            ->first();
-
-        // 获取总流量统计
-        $totalTraffic = StatServer::selectRaw('SUM(u) as upload, SUM(d) as download, SUM(u + d) as total')
-            ->first();
-
-        return [
-            'data' => [
-                'month_income' => Order::where('created_at', '>=', strtotime(date('Y-m-1')))
-                    ->where('created_at', '<', time())
-                    ->whereNotIn('status', [0, 2])
-                    ->sum('total_amount'),
-                'month_register_total' => User::where('created_at', '>=', strtotime(date('Y-m-1')))
-                    ->where('created_at', '<', time())
-                    ->count(),
-                'ticket_pending_total' => Ticket::where('status', 0)
-                    ->count(),
-                'commission_pending_total' => Order::where('commission_status', 0)
-                    ->where('invite_user_id', '!=', NULL)
-                    ->whereNotIn('status', [0, 2])
-                    ->where('commission_balance', '>', 0)
-                    ->count(),
-                'day_income' => Order::where('created_at', '>=', strtotime(date('Y-m-d')))
-                    ->where('created_at', '<', time())
-                    ->whereNotIn('status', [0, 2])
-                    ->sum('total_amount'),
-                'last_month_income' => Order::where('created_at', '>=', strtotime('-1 month', strtotime(date('Y-m-1'))))
-                    ->where('created_at', '<', strtotime(date('Y-m-1')))
-                    ->whereNotIn('status', [0, 2])
-                    ->sum('total_amount'),
-                'commission_month_payout' => CommissionLog::where('created_at', '>=', strtotime(date('Y-m-1')))
-                    ->where('created_at', '<', time())
-                    ->sum('get_amount'),
-                'commission_last_month_payout' => CommissionLog::where('created_at', '>=', strtotime('-1 month', strtotime(date('Y-m-1'))))
-                    ->where('created_at', '<', strtotime(date('Y-m-1')))
-                    ->sum('get_amount'),
-                // 新增统计数据
-                'online_nodes' => $onlineNodes,
-                'online_devices' => $onlineDevices,
-                'online_users' => $onlineUsers,
-                'today_traffic' => [
-                    'upload' => $todayTraffic->upload ?? 0,
-                    'download' => $todayTraffic->download ?? 0,
-                    'total' => $todayTraffic->total ?? 0
-                ],
-                'month_traffic' => [
-                    'upload' => $monthTraffic->upload ?? 0,
-                    'download' => $monthTraffic->download ?? 0,
-                    'total' => $monthTraffic->total ?? 0
-                ],
-                'total_traffic' => [
-                    'upload' => $totalTraffic->upload ?? 0,
-                    'download' => $totalTraffic->download ?? 0,
-                    'total' => $totalTraffic->total ?? 0
-                ]
-            ]
-        ];
-    }
-
-    /**
-     * Get order statistics with filtering and pagination
-     *
-     * @param Request $request
-     * @return array
-     */
     public function getOrder(Request $request)
     {
         $request->validate([
@@ -197,12 +108,7 @@ class StatController extends Controller
         ];
     }
 
-    /**
-     * Get human readable label for statistic type
-     *
-     * @param string $type
-     * @return string
-     */
+
     private function getTypeLabel(string $type): string
     {
         return match ($type) {
@@ -214,50 +120,10 @@ class StatController extends Controller
         };
     }
 
-    // 获取当日实时流量排行
-    public function getServerLastRank()
-    {
-        $data = $this->service->getServerRank();
-        return $this->success(data: $data);
-    }
-    // 获取昨日节点流量排行
-    public function getServerYesterdayRank()
-    {
-        $data = $this->service->getServerRank('yesterday');
-        return $this->success($data);
-    }
 
-    public function getStatUser(Request $request)
-    {
-        $request->validate([
-            'user_id' => 'required|integer'
-        ]);
-
-        $pageSize = $request->input('pageSize', 10);
-        $records = StatUser::orderBy('record_at', 'DESC')
-            ->where('user_id', $request->input('user_id'))
-            ->paginate($pageSize);
-
-        $data = $records->items();
-        return [
-            'data' => $data,
-            'total' => $records->total(),
-        ];
-    }
-
-    public function getStatRecord(Request $request)
-    {
-        return [
-            'data' => $this->service->getStatRecord($request->input('type'))
-        ];
-    }
-
-    /**
-     * Get comprehensive statistics data including income, users, and growth rates
-     */
     public function getStats()
     {
-        return app('cache')->remember('admin.dashboard.stats.v1', 15, function () {
+        return app('cache')->remember('txapi.admin.analytics.dashboard.v2', 15, function () {
         $now = time();
         $currentMonthStart = strtotime(date('Y-m-01'));
         $lastMonthStart = strtotime('-1 month', $currentMonthStart);
@@ -435,41 +301,6 @@ class StatController extends Controller
         });
     }
 
-    /**
-     * Get traffic ranking data for nodes or users
-     * 
-     * @param Request $request
-     * @return array
-     */
-    /**
-     * Ranking boards backed by StatisticalService::getRanking().
-     *
-     * AdminRoute.php has always routed /stat/getRanking here, but the method
-     * did not exist, so the endpoint answered 500 (BadMethodCallException) on
-     * every call.
-     */
-    public function getRanking(Request $request)
-    {
-        $params = $request->validate([
-            'type' => 'required|in:server_traffic_rank,user_consumption_rank,invite_rank',
-            'limit' => 'nullable|integer|min:1|max:100',
-            'start_time' => 'nullable|integer|min:1000000000|max:9999999999',
-            'end_time' => 'nullable|integer|min:1000000000|max:9999999999',
-        ]);
-
-        // The ranking builders query on $startAt/$endAt, which only
-        // setStartAt()/setEndAt() populate. Leaving them null made the query
-        // builder throw "Illegal operator and value combination", so the
-        // endpoint could never have answered 200. Default to the last 30 days.
-        $endAt = (int) ($params['end_time'] ?? time());
-        $startAt = (int) ($params['start_time'] ?? strtotime('-30 days', $endAt));
-        $this->service->setStartAt($startAt);
-        $this->service->setEndAt($endAt);
-
-        return $this->success(
-            $this->service->getRanking($params['type'], (int) ($params['limit'] ?? 20))
-        );
-    }
 
     public function getTrafficRank(Request $request)
     {
@@ -482,7 +313,7 @@ class StatController extends Controller
         $type = $request->input('type');
         $startDate = $request->input('start_time', strtotime('-7 days'));
         $endDate = $request->input('end_time', time());
-        $cacheKey = 'admin.dashboard.traffic-rank.' . sha1(
+        $cacheKey = 'txapi.admin.analytics.traffic-rank.' . sha1(
             $type . ':' . intdiv((int) $startDate, 15) . ':' . intdiv((int) $endDate, 15)
         );
 

@@ -2,8 +2,7 @@
 
 namespace Tests\Feature\Admin;
 
-use App\Http\Controllers\V2\Admin\StatController;
-use App\Services\StatisticalService;
+use App\Services\Analytics\AdminAnalyticsReadService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -21,7 +20,7 @@ class AdminDashboardStatsPerformanceTest extends TestCase
             $queryCount++;
         });
 
-        $controller = new StatController($this->createMock(StatisticalService::class));
+        $controller = new AdminAnalyticsReadService();
         $first = $controller->getStats();
         $firstQueryCount = $queryCount;
         $second = $controller->getStats();
