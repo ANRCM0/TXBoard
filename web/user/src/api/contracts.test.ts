@@ -1,7 +1,7 @@
 import type { AxiosRequestConfig } from 'axios'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { login } from './auth'
-import { api, clearAuthData, getAuthData, request, saveAuthData } from './client'
+import { api, nativeApi, nativeRequest, clearAuthData, getAuthData, request, saveAuthData } from './client'
 import { fetchGuestConfig } from './comm'
 
 type Seen = AxiosRequestConfig & { headers: Record<string, string> }
@@ -10,7 +10,7 @@ let seen: Seen[] = []
 let responder: (config: AxiosRequestConfig) => unknown
 
 function installAdapter() {
-  api.defaults.adapter = async config => {
+  const adapter = async (config: AxiosRequestConfig) => {
     seen.push(config as unknown as Seen)
     return {
       data: responder(config as unknown as AxiosRequestConfig),
@@ -20,6 +20,8 @@ function installAdapter() {
       config,
     } as never
   }
+  api.defaults.adapter = adapter
+  nativeApi.defaults.adapter = adapter
 }
 
 beforeEach(() => {
@@ -96,5 +98,46 @@ describe('guest config adapter contract', () => {
     await expect(fetchGuestConfig()).resolves.toEqual({ app_name: 'TXBoard' })
     expect(seen[0].method).toBe('get')
     expect(seen[0].url).toBe('/guest/comm/config')
+  })
+})
+
+
+describe('P1-B safe auth key migration and native API client', () => {
+  it('transfers an existing legacy bearer to the native key without logging out', () => {
+    localStorage.setItem('xboard_auth_data', 'old-token')
+    expect(getAuthData()).toBe('Bearer old-token')
+    expect(localStorage.getItem('txboard_auth_data')).toBe('Bearer old-token')
+    expect(localStorage.getItem('xboard_auth_data')).toBeNull()
+  })
+
+  it('prefers a new session when stale legacy data also exists', () => {
+    localStorage.setItem('txboard_auth_data', 'Bearer newest')
+    localStorage.setItem('xboard_auth_data', 'Bearer outdated')
+    expect(getAuthData()).toBe('Bearer newest')
+    expect(localStorage.getItem('xboard_auth_data')).toBeNull()
+  })
+
+  it('clears both token keys and never resurrects the prior session', () => {
+    localStorage.setItem('xboard_auth_data', 'old-token')
+    saveAuthData('new-token')
+    clearAuthData()
+    expect(getAuthData()).toBe('')
+    expect(localStorage.getItem('xboard_auth_data')).toBeNull()
+    expect(localStorage.getItem('txboard_auth_data')).toBeNull()
+  })
+
+  it('sends the same bearer to the native endpoint and validates native envelope', async () => {
+    localStorage.setItem('xboard_auth_data', 'legacy-token')
+    responder = () => ({ data: { id: 7 }, request_id: 'trace-1' })
+    await expect(nativeRequest<{ id: number }>(nativeApi.get('/me'))).resolves.toEqual({ id: 7 })
+    expect(seen[0].baseURL).toBe('/txapi')
+    expect(seen[0].url).toBe('/me')
+    expect(String(seen[0].headers.Authorization)).toBe('Bearer legacy-token')
+    expect(localStorage.getItem('xboard_auth_data')).toBeNull()
+  })
+
+  it('rejects malformed native envelopes rather than claiming success', async () => {
+    await expect(nativeRequest(Promise.resolve({ data: { request_id: '' } as never })))
+      .rejects.toThrow('Invalid TXAPI response')
   })
 })
