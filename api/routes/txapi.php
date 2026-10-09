@@ -72,6 +72,9 @@ Route::prefix('admin/{admin_path}')
         Route::post('mail-templates/{name}/test', [MailTemplateAdminController::class, 'test']);
         Route::get('gift-cards/types', [GiftCardAdminController::class, 'types']);
         Route::get('gift-cards/templates', [GiftCardAdminController::class, 'templates']);
+        Route::post('gift-cards/templates', [GiftCardAdminController::class, 'createTemplate']);
+        Route::put('gift-cards/templates/{id}', [GiftCardAdminController::class, 'updateTemplate'])->whereNumber('id');
+        Route::delete('gift-cards/templates/{id}', [GiftCardAdminController::class, 'deleteTemplate'])->whereNumber('id');
         Route::get('gift-cards/codes', [GiftCardAdminController::class, 'codes']);
         Route::get('gift-cards/usages', [GiftCardAdminController::class, 'usages']);
         Route::delete('gift-cards/codes/{id}', [GiftCardAdminController::class, 'deleteCode'])->whereNumber('id');
