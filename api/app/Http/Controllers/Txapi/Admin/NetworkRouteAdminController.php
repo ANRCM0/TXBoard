@@ -186,8 +186,9 @@ final class NetworkRouteAdminController
     }
 
 
-    public function delete(Request $request, int $id): JsonResponse
+    public function delete(Request $request, string $id): JsonResponse
     {
+        $id = (int) $id;
         $status = DB::transaction(function () use ($id): string {
             $route = ServerRoute::query()->lockForUpdate()->find($id);
             if (!$route) return 'missing';
