@@ -6,6 +6,9 @@ on:
     paths:
       - "scripts/p0-api-audit.mjs"
       - "scripts/tests/p0-api-audit.test.mjs"
+      - "scripts/native-admin-release-audit.mjs"
+      - "scripts/tests/native-admin-release-audit.test.mjs"
+      - "web/admin/src/api/**"
       - "api/**"
       - ".github/workflows/p0-native-baseline.yml"
   pull_request:
@@ -13,6 +16,9 @@ on:
     paths:
       - "scripts/p0-api-audit.mjs"
       - "scripts/tests/p0-api-audit.test.mjs"
+      - "scripts/native-admin-release-audit.mjs"
+      - "scripts/tests/native-admin-release-audit.test.mjs"
+      - "web/admin/src/api/**"
       - "api/**"
       - ".github/workflows/p0-native-baseline.yml"
 
@@ -48,6 +54,18 @@ jobs:
           node-version: "22"
       - name: Test P0 evidence generator
         run: node --test scripts/tests/p0-api-audit.test.mjs
+      - name: Test native Admin release inventory
+        run: node --test scripts/tests/native-admin-release-audit.test.mjs
+      - name: Capture native Admin V2 remaining call sites
+        run: node scripts/native-admin-release-audit.mjs --guard-native --output artifacts/release/admin-native-gap.json
+      - name: Publish native Admin release-gap inventory
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: txboard-admin-native-release-gaps
+          path: artifacts/release/admin-native-gap.json
+          if-no-files-found: warn
+          retention-days: 14
       - uses: shivammathur/setup-php@v2
         with:
           php-version: "8.2"
