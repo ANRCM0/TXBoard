@@ -14,10 +14,9 @@ import { toast } from 'sonner'
 import { getAgentActions, getAgentFleetHealth } from '../../api/agent'
 import {
   deleteMachine,
-  getInstallCommand,
   getMachineNodes,
+  getMachineCredentials,
   getMachines,
-  getMachineToken,
   resetMachineToken,
   saveMachine,
   type MachineItem,
@@ -89,12 +88,10 @@ export function MachineDetailPage() {
 
   const resetToken = useMutation({
     mutationFn: () => resetMachineToken(machineId),
-    onSuccess: async () => {
+    onSuccess: async result => {
       toast.success('Machine Token 已重置，请保存新的凭据')
-      await Promise.all([
-        qc.invalidateQueries({ queryKey: ['machines'] }),
-        showCredentials(),
-      ])
+      setCredentials({ token: result.token, command: result.install_command })
+      await qc.invalidateQueries({ queryKey: ['machines'] })
     },
   })
 
@@ -121,11 +118,8 @@ export function MachineDetailPage() {
   async function showCredentials() {
     setCredentialsLoading(true)
     try {
-      const [token, command] = await Promise.all([
-        getMachineToken(machineId),
-        getInstallCommand(machineId),
-      ])
-      setCredentials({ token, command })
+      const result = await getMachineCredentials(machineId)
+      setCredentials({ token: result.token, command: result.install_command })
     } catch {
       toast.error('无法读取机器凭据')
     } finally {
