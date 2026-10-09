@@ -7,7 +7,6 @@ use App\Models\User;
 use App\Utils\Helper;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 final class UserReadController
 {
@@ -29,7 +28,7 @@ final class UserReadController
         if (isset($params['plan_id'])) $query->where('plan_id', (int) $params['plan_id']);
         if (isset($params['banned'])) $query->where('banned', (int) $params['banned']);
         $sort = $params['sort'] ?? 'id';
-        $direction = !isset($params['descending']) || $params['descending'] ? 'desc' : 'asc';
+        $direction = !$request->has('descending') || $request->boolean('descending') ? 'desc' : 'asc';
         if ($sort === 'total_used') {
             $query->orderByRaw('(u + d) ' . $direction);
         } else {
