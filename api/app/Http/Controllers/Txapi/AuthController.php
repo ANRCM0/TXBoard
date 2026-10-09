@@ -8,6 +8,7 @@ use App\Http\Requests\Passport\AuthLogin;
 use App\Http\Requests\Passport\AuthRegister;
 use App\Models\User;
 use App\Services\Auth\LoginService;
+use App\Services\Auth\MailLinkService;
 use App\Services\Auth\RegisterService;
 use App\Services\AuthService;
 use App\Services\CaptchaService;
@@ -62,6 +63,51 @@ final class AuthController
         }
         $data = (new AuthService($result))->generateAuthData();
         return TxapiResponse::success($request, ['auth_data' => $data['auth_data']], status: 201);
+    }
+
+    public function mailLink(Request $request, CaptchaService $captcha, MailLinkService $service): JsonResponse
+    {
+        $input = $request->validate(['email' => ['required', 'email:strict', 'max:255']]);
+        [$valid] = $captcha->verify($request);
+        if (!$valid) {
+            return TxapiResponse::error($request, 'CAPTCHA_INVALID', 'Captcha verification failed', 400);
+        }
+        // This shared service enforces the admin feature flag, per-email cooldown
+        // and privacy-safe success on unknown addresses.
+        [$ok, $result] = $service->handleMailLink($input['email']);
+        if (!$ok) {
+            $code = (int) ($result[0] ?? 400);
+            if ($code === 404) {
+                return TxapiResponse::error($request, 'FEATURE_DISABLED',
+                    'Mail-link login disabled', 404);
+            }
+            if ($code === 429) {
+                return TxapiResponse::error($request, 'RATE_LIMITED',
+                    'Please try again later', 429);
+            }
+            return TxapiResponse::error($request, 'REQUEST_REJECTED',
+                'Unable to request login link', 422);
+        }
+        return TxapiResponse::success($request, ['ok' => true]);
+    }
+
+    public function oneTimeToken(Request $request, MailLinkService $service): JsonResponse
+    {
+        $input = $request->validate(['verify' => ['required', 'string', 'max:200']]);
+        // The same disposable TEMP_TOKEN cache is shared with legacy V1,
+        // so redeeming via either API consumes the code.
+        $id = $service->handleTokenLogin($input['verify']);
+        if (!$id) {
+            return TxapiResponse::error($request, 'TOKEN_INVALID',
+                'Invalid or expired login link', 401);
+        }
+        $user = User::query()->find($id);
+        if ($user === null || $user->banned) {
+            return TxapiResponse::error($request, 'TOKEN_INVALID',
+                'Invalid or expired login link', 401);
+        }
+        $auth = (new AuthService($user))->generateAuthData();
+        return TxapiResponse::success($request, ['auth_data' => $auth['auth_data']]);
     }
 
     public function logout(Request $request): JsonResponse

@@ -80,21 +80,26 @@ class MailLinkService
      */
     public function handleTokenLogin(string $token): ?int
     {
-        $key = CacheKey::get('TEMP_TOKEN', $token);
-        $userId = Cache::get($key);
+        // The V1 and native TXAPI endpoints share this redemption method.
+        // Serialize check-and-delete across PHP workers so the same code
+        // cannot issue multiple Sanctum sessions under concurrent requests.
+        // Hash the secret before using it as a lock identifier.
+        $lock = Cache::lock('mail-token-consume:' . hash('sha256', $token), 10);
 
-        if (!$userId) {
-            return null;
-        }
+        return $lock->get(static function () use ($token): ?int {
+            $key = CacheKey::get('TEMP_TOKEN', $token);
+            $userId = Cache::get($key);
+            if (!$userId) {
+                return null;
+            }
 
-        $user = User::find($userId);
+            $user = User::find($userId);
+            if (!$user || $user->banned) {
+                return null;
+            }
 
-        if (!$user || $user->banned) {
-            return null;
-        }
-
-        Cache::forget($key);
-
-        return $userId;
+            Cache::forget($key);
+            return (int) $userId;
+        }) ?: null;
     }
 }
