@@ -67,6 +67,10 @@ class CorePurchaseTrafficJourneyTest extends TestCase
             'created_at' => time(), 'updated_at' => time(),
         ]);
 
+        // A seeded provider must be discoverable before HTTP bootstraps plugins.
+        $this->assertArrayHasKey('epay', app(PluginManager::class)->getEnabledPaymentPlugins(),
+            'EPay was not discoverable immediately after the synthetic fixture');
+
         // Use the real password/login endpoint and its Sanctum bearer.
         $login = $this->postJson('/api/v1/passport/auth/login', [
             'email' => $user->email, 'password' => 'sample-password-2026',
