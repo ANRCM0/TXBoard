@@ -80,9 +80,35 @@ class TrafficBatchJob implements ShouldQueue
                 return false;
             }
 
+            // P4: one indexed SELECT per bounded chunk, not one SELECT for
+            // every individual user and statistics row. Lock users in ID order
+            // to preserve deterministic lock acquisition across replay batches.
+            // Chunking also respects SQLite/MySQL bind-parameter limits.
+            $usersById = [];
+            $statsByUser = [];
+            $statKey = [
+                'server_rate' => $rate,
+                'record_at' => $this->recordAt,
+                'record_type' => 'd',
+            ];
+            foreach (array_chunk(array_keys($data), 400) as $ids) {
+                $users = DB::table('v2_user')->whereIn('id', $ids)
+                    ->orderBy('id')->lockForUpdate()
+                    ->get(['id', 'u', 'd']);
+                foreach ($users as $user) {
+                    $usersById[(int) $user->id] = $user;
+                }
+
+                $stats = DB::table('v2_stat_user')->where($statKey)
+                    ->whereIn('user_id', $ids)->get(['id', 'user_id']);
+                foreach ($stats as $stat) {
+                    $statsByUser[(int) $stat->user_id] = $stat;
+                }
+            }
+
             $rawUp = $rawDown = 0;
             foreach ($data as $uid => [$up, $down]) {
-                $user = DB::table('v2_user')->where('id', $uid)->lockForUpdate()->first();
+                $user = $usersById[(int) $uid] ?? null;
                 if (!$user) {
                     continue;
                 }
@@ -104,7 +130,7 @@ class TrafficBatchJob implements ShouldQueue
                     'record_at' => $this->recordAt,
                     'record_type' => 'd',
                 ];
-                $stat = DB::table('v2_stat_user')->where($where)->first();
+                $stat = $statsByUser[(int) $uid] ?? null;
                 if ($stat) {
                     DB::table('v2_stat_user')->where('id', $stat->id)->incrementEach([
                         'u' => $billedUp, 'd' => $billedDown,

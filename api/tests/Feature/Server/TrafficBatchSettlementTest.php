@@ -176,4 +176,48 @@ class TrafficBatchSettlementTest extends TestCase
             + (int) DB::table('v2_stat_server')->where('server_id', $server->id)->first()->d);
     }
 
+    public function test_bulk_batch_prefetch_avoids_per_user_select_queries(): void
+    {
+        Bus::fake();
+        Redis::shouldReceive('sadd')->zeroOrMoreTimes()->andReturn(1);
+        $server = Server::create([
+            'name' => 'bulk-query-node', 'type' => Server::TYPE_VMESS,
+            'host' => '127.0.0.1', 'port' => '443', 'server_port' => 443,
+            'rate' => 2, 'group_ids' => [1], 'enabled' => true,
+        ]);
+        $usage = [];
+        for ($i = 0; $i < 40; $i++) {
+            $user = User::create([
+                'email' => "batch-user-{$i}@example.test", 'password' => 'test',
+                'uuid' => sprintf('20000000-0000-0000-0000-%012d', $i + 1),
+                'token' => bin2hex(random_bytes(16)),
+                'u' => 0, 'd' => 0, 'transfer_enable' => 1073741824,
+            ]);
+            $usage[$user->id] = [1, 2];
+        }
+        DB::connection()->flushQueryLog();
+        DB::connection()->enableQueryLog();
+        (new TrafficBatchJob(['id' => $server->id, 'rate' => 2],
+            $usage, 'vmess', strtotime(date('Y-m-d')), 'bulk-prefetch-batch-001'
+        ))->handle();
+        $log = DB::connection()->getQueryLog();
+        DB::connection()->disableQueryLog();
+
+        $countSelect = static function (string $table) use ($log): int {
+            return count(array_filter($log, static function ($query) use ($table): bool {
+                $sql = strtolower(ltrim($query['query']));
+                return str_starts_with($sql, 'select ')
+                    && (str_contains($sql, 'from "'.$table.'"')
+                        || str_contains($sql, 'from '.chr(96).$table.chr(96)));
+            }));
+        };
+        // 40 users should not trigger 40 locking SELECTs or 40 stat lookups.
+        $this->assertLessThanOrEqual(2, $countSelect('v2_user'));
+        $this->assertLessThanOrEqual(2, $countSelect('v2_stat_user'));
+        $this->assertSame(40, DB::table('v2_stat_user')->count());
+        $this->assertSame(40, (int) $server->fresh()->u);
+        $this->assertSame(80, (int) $server->fresh()->d);
+        $this->assertSame(1, DB::table('v2_traffic_batch')->count());
+    }
+
 }
