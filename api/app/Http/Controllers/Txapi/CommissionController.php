@@ -6,6 +6,7 @@ use App\Core\Http\TxapiResponse;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 final class CommissionController
@@ -17,7 +18,7 @@ final class CommissionController
         ]);
         $amount = (int) $input['transfer_amount'];
         $result = DB::transaction(function () use ($request, $amount): string {
-            $user = User::query()->lockForUpdate()->findOrFail($request->user()->id);
+            $user = User::query()->lockForUpdate()->findOrFail(Auth::guard('sanctum')->id());
             $minimum = admin_transfer_minimum();
             if ($minimum > 0 && $amount < (int) round($minimum * 100)) {
                 return 'MINIMUM_NOT_MET';
