@@ -161,6 +161,13 @@ Controller 不承担复杂交易，只完成鉴权、验证和调用服务。域
 
 API 兼容策略不是永久双轨；但在证据不足时宁可保留短期 adapter 也不要丢单/中断节点。
 
+## P2-C 原生账户/公告/知识库
+
+- 原生账户 `GET /txapi/me` 扩展最小展示字段：uuid、余额分、返佣余额分、到期时间、Telegram 标识；严格白名单，不暴露明文订阅 Token/密码信息。Vue User 用户资料由 native adapter 转换为原有视图字段，安全敏感的认证/token 管理仍通过已有认证业务端点。
+- `GET /txapi/notices` 按数据库分页和显示状态过滤，Native 返回受限字段及 ISO UTC 日期；Vue 公告调用原生接口，取消旧接口无效响应时的静默空列表。
+- `GET /txapi/knowledge`、`/knowledge/categories`、`/knowledge/{articleId}` 尊重原有 show/language、当前用户的订阅有效性与私有订阅链接模板替换；对无效订阅用户隐藏 access 内容；HTML 仍由前端 DOMPurify 清理，保留原 HookManager filter 兼容路径。
+- 本批不涉及支付、订阅密钥重置、邮件登录、验证码或者工单写路径。新增 SQLite/MySQL 访问控制、知识库权限与列表边界测试。
+
 ## P2-B 套餐前端只读迁移
 
 - `web/user/src/api/plan.ts` 的套餐列表及详情都使用 `GET /txapi/plans`、`GET /txapi/plans/{planId}`；通过唯一的页面适配器将原生 period/amount_minor/traffic_limit_bytes 映射为历史页面视图字段，不使新后端重新输出 Xboard DTO。
