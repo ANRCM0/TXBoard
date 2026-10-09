@@ -18,7 +18,7 @@ class AdminQueueMonitorTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->path = '/api/v2/'.(string) admin_setting(
+        $this->path = '/txapi/admin/'.(string) admin_setting(
             'secure_path',
             admin_setting('frontend_admin_path', hash('crc32b', config('app.key')))
         );
@@ -61,7 +61,7 @@ class AdminQueueMonitorTest extends TestCase
             'longest_wait_queue' => null,
         ]);
 
-        $this->getJson($this->path.'/stat/queue/snapshot')
+        $this->getJson($this->path.'/queue/snapshot')
             ->assertOk()
             ->assertJsonPath('data.status', 'inactive')
             ->assertJsonPath('data.failed_last_7_days', 0);
@@ -81,12 +81,12 @@ class AdminQueueMonitorTest extends TestCase
             'failed_at' => now(),
         ]);
 
-        $this->getJson($this->path.'/stat/queue/failures')->assertOk()
+        $this->getJson($this->path.'/queue/failures')->assertOk()
             ->assertJsonPath('data.0.job', 'App\\Jobs\\SendEmailJob')
             ->assertDontSee('email-password-private')
             ->assertDontSee('private123');
 
-        $this->getJson($this->path.'/stat/queue/failure?id='.$id)->assertOk()
+        $this->getJson($this->path.'/queue/failures/'.$id)->assertOk()
             ->assertJsonPath('data.queue', 'send_email')
             ->assertSee('[REDACTED]', false)
             ->assertDontSee('private123')
@@ -96,14 +96,14 @@ class AdminQueueMonitorTest extends TestCase
 
     public function test_queue_routes_require_admin_authentication(): void
     {
-        $this->getJson($this->path.'/stat/queue/snapshot')->assertStatus(403);
-        $this->getJson($this->path.'/stat/queue/failures')->assertStatus(403);
-        $this->getJson($this->path.'/stat/queue/failure?id=1')->assertStatus(403);
+        $this->getJson($this->path.'/queue/snapshot')->assertStatus(403);
+        $this->getJson($this->path.'/queue/failures')->assertStatus(403);
+        $this->getJson($this->path.'/queue/failures/1')->assertStatus(403);
     }
 
     public function test_missing_job_returns_404(): void
     {
         $this->admin();
-        $this->getJson($this->path.'/stat/queue/failure?id=999999')->assertNotFound();
+        $this->getJson($this->path.'/queue/failures/999999')->assertNotFound();
     }
 }
