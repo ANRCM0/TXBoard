@@ -63,6 +63,27 @@ class TxapiEmailRecoveryTest extends TestCase
         ])->assertStatus(400);
     }
 
+    public function test_parallel_password_reset_does_not_fail_with_500_or_replay_code(): void
+    {
+        $user = $this->user('busy-reset@example.test');
+        Cache::put(CacheKey::get('EMAIL_VERIFY_CODE', $user->email), 654321, 300);
+        $lock = Cache::lock('password-reset:' . hash('sha256', strtolower(trim($user->email))), 15);
+        $this->assertTrue($lock->get());
+        try {
+            $this->postJson('/txapi/auth/password/forgot', [
+                'email' => $user->email, 'email_code' => '654321',
+                'password' => 'BlockedResetPassword2026',
+            ])->assertStatus(429)->assertJsonPath('error.code', 'RATE_LIMITED');
+            $this->assertNotNull(Cache::get(CacheKey::get('EMAIL_VERIFY_CODE', $user->email)));
+        } finally {
+            $lock->release();
+        }
+        $this->postJson('/txapi/auth/password/forgot', [
+            'email' => $user->email, 'email_code' => '654321',
+            'password' => 'AllowedResetPassword2026',
+        ])->assertOk();
+    }
+
     public function test_invalid_recovery_fields_are_rejected(): void
     {
         $this->postJson('/txapi/auth/password/forgot', [
