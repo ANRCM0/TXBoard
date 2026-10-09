@@ -190,10 +190,15 @@ class GiftCardCode extends Model
         $maxUsage = $options['max_usage'] ?? 1;
 
         $codes = [];
+        $generated = [];
         for ($i = 0; $i < $count; $i++) {
+            do {
+                $codeValue = self::generateCode($prefix);
+            } while (isset($generated[$codeValue]));
+            $generated[$codeValue] = true;
             $codes[] = [
                 'template_id' => $templateId,
-                'code' => self::generateCode($prefix),
+                'code' => $codeValue,
                 'batch_id' => $batchId,
                 'status' => self::STATUS_UNUSED,
                 'expires_at' => $expiresAt,
