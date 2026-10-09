@@ -17,9 +17,8 @@ import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
 import {
-  getInstallCommand,
   getMachineNodes,
-  getMachineToken,
+  getMachineCredentials,
   resetMachineToken,
   updateMachineRuntime,
   type MachineItem,
@@ -60,12 +59,12 @@ export function MachineOpsDrawer({
 
   const resetToken = useMutation({
     mutationFn: () => resetMachineToken(machineId),
-    onSuccess: async () => {
+    onSuccess: async result => {
       toast.success('Machine Token 已重置，请保存新的凭据')
-      await Promise.all([
-        qc.invalidateQueries({ queryKey: ['machines'] }),
-        showCredentials(),
-      ])
+      setCredentials({ token: result.token, command: result.install_command })
+      window.clearTimeout(hideTimer.current)
+      hideTimer.current = window.setTimeout(() => setCredentials(null), 18_000)
+      await qc.invalidateQueries({ queryKey: ['machines'] })
     },
   })
 
@@ -108,11 +107,8 @@ export function MachineOpsDrawer({
     window.clearTimeout(hideTimer.current)
     setCredentialsLoading(true)
     try {
-      const [token, command] = await Promise.all([
-        getMachineToken(machineId),
-        getInstallCommand(machineId),
-      ])
-      setCredentials({ token, command })
+      const result = await getMachineCredentials(machineId)
+      setCredentials({ token: result.token, command: result.install_command })
       hideTimer.current = window.setTimeout(() => setCredentials(null), 18_000)
     } catch {
       toast.error('无法读取机器凭据')

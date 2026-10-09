@@ -54,13 +54,13 @@ class MachineInstallCommandTest extends TestCase
             'is_active' => true,
         ]);
 
-        $response = $this->getJson(
-            "/api/v2/{$this->securePath}/server/machine/installCommand?id={$machine->id}"
+        $response = $this->postJson(
+            "/txapi/admin/{$this->securePath}/network-machines/{$machine->id}/credentials"
         );
 
         $response->assertOk();
 
-        $command = (string) $response->json('data.command');
+        $command = (string) $response->json('data.install_command');
 
         $this->assertStringContainsString(
             "https://raw.githubusercontent.com/PaiMonCai/TX-Node-Installer/main/deploy.sh",

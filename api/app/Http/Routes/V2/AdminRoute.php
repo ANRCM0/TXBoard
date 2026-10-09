@@ -7,7 +7,6 @@ use App\Http\Routes\V2\Admin\AnalyticsRoute;
 use App\Http\Routes\V2\Admin\CommerceRoute;
 use App\Http\Routes\V2\Admin\ContentRoute;
 use App\Http\Routes\V2\Admin\ExtensionRoute;
-use App\Http\Routes\V2\Admin\ServerRoute as AdminServerRoute;
 use App\Http\Routes\V2\Admin\SystemRoute;
 use App\Http\Routes\V2\Admin\UserRoute as AdminUserRoute;
 use Illuminate\Contracts\Routing\Registrar;
@@ -17,7 +16,6 @@ class AdminRoute
     private const ROUTE_MODULES = [
         SystemRoute::class,
         AgentRoute::class,
-        AdminServerRoute::class,
         CommerceRoute::class,
         AdminUserRoute::class,
         ContentRoute::class,

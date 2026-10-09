@@ -1,5 +1,3 @@
-import { apiClient } from './client'
-import { unwrap } from '../lib/api'
 
 export type NodeProtocolType = string
 
@@ -182,27 +180,6 @@ export {
   batchDeleteNodes, resetNodeTraffic, batchResetNodeTraffic,
 } from './server-nodes'
 
-export async function getMachines() {
-  const { data } = await apiClient.get('/server/machine/fetch')
-  return unwrap<MachineItem[]>(data) || []
-}
-export async function saveMachine(payload: Partial<MachineItem>) {
-  const { data } = await apiClient.post('/server/machine/save', payload)
-  return unwrap(data)
-}
-export async function getMachineToken(id: number) {
-  const { data } = await apiClient.get('/server/machine/getToken', { params: { id } })
-  return unwrap<{ token?: string }>(data)?.token || ''
-}
-export async function getInstallCommand(id: number) {
-  const { data } = await apiClient.get('/server/machine/installCommand', { params: { id } })
-  return unwrap<{ command?: string }>(data)?.command || ''
-}
-export async function resetMachineToken(id: number) {
-  const { data } = await apiClient.post('/server/machine/resetToken', { id })
-  return unwrap(data)
-}
-
 export type MachineRuntimeUpdateRequestResult = {
   machine_id: number
   request_id: string
@@ -210,27 +187,10 @@ export type MachineRuntimeUpdateRequestResult = {
   status: 'accepted'
 }
 
-export async function updateMachineRuntime(id: number) {
-  const { data } = await apiClient.post('/server/machine/runtime/update', {
-    machine_id: id,
-    target: 'latest',
-  })
-  return unwrap<MachineRuntimeUpdateRequestResult>(data)
-}
-export async function deleteMachine(id: number) {
-  const { data } = await apiClient.post('/server/machine/drop', { id })
-  return unwrap(data)
-}
-export async function getMachineHistory(machineId: number, limit = 240, rangeHours = 24) {
-  const { data } = await apiClient.get('/server/machine/history', {
-    params: { machine_id: machineId, limit, range_hours: rangeHours },
-  })
-  return unwrap(data)
-}
-export async function getMachineNodes(machineId: number) {
-  const { data } = await apiClient.get('/server/machine/nodes', { params: { machine_id: machineId } })
-  return unwrap<NodeItem[]>(data) || []
-}
+export {
+  getMachines, saveMachine, getMachineCredentials, resetMachineToken,
+  updateMachineRuntime, deleteMachine, getMachineHistory, getMachineNodes,
+} from './server-machines'
 
 export { getGroups, saveGroup, deleteGroup } from './server-groups'
 export { getRoutes, saveRoute, deleteRoute, sortRoutes, simulateRoute } from './server-routes'
