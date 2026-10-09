@@ -36,6 +36,11 @@ final class UserEditorController
             'commission_balance' => ['sometimes', 'required_with:expected_commission_balance_minor', 'numeric', 'min:0'],
             'expected_balance_minor' => ['required_with:balance', 'integer', 'min:0'],
             'expected_commission_balance_minor' => ['required_with:commission_balance', 'integer', 'min:0'],
+            'expected_transfer_enable' => ['required_with:transfer_enable', 'nullable', 'integer', 'min:0'],
+            'expected_u' => ['required_with:u', 'nullable', 'integer', 'min:0'],
+            'expected_d' => ['required_with:d', 'nullable', 'integer', 'min:0'],
+            'expected_plan_id' => ['required_with:plan_id', 'nullable', 'integer', 'min:1'],
+            'expected_expired_at' => ['required_with:expired_at', 'nullable', 'integer', 'min:0'],
             'commission_rate' => ['sometimes', 'nullable', 'numeric', 'min:0', 'max:100'],
             'discount' => ['sometimes', 'nullable', 'numeric', 'min:0', 'max:100'],
             'speed_limit' => ['sometimes', 'nullable', 'integer', 'min:0'],
@@ -56,6 +61,9 @@ final class UserEditorController
             }
         }
         unset($fields['expected_balance_minor'], $fields['expected_commission_balance_minor']);
+        foreach (['transfer_enable', 'u', 'd', 'plan_id', 'expired_at'] as $field) {
+            unset($fields['expected_' . $field]);
+        }
 
         [$user, $applied] = DB::transaction(static function () use ($request, $id, $fields): array {
             $user = User::query()->lockForUpdate()->findOrFail($id);
@@ -65,6 +73,16 @@ final class UserEditorController
                     (int) $user->$key !== (int) $request->input($expectedKey)) {
                     throw ValidationException::withMessages([
                         $key => 'Account balance changed since this editor opened. Reload before saving.',
+                    ]);
+                }
+            }
+            foreach (['transfer_enable', 'u', 'd', 'plan_id', 'expired_at'] as $field) {
+                if (array_key_exists($field, $fields) &&
+                    ($user->$field === null ? null : (int) $user->$field)
+                    !== ($request->input('expected_' . $field) === null
+                        ? null : (int) $request->input('expected_' . $field))) {
+                    throw ValidationException::withMessages([
+                        $field => 'Subscription or usage changed while editing. Reload before saving.',
                     ]);
                 }
             }
