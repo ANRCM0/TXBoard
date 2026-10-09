@@ -3,10 +3,11 @@
 namespace App\Http\Controllers\Txapi;
 
 use App\Core\Http\TxapiResponse;
-use App\Models\Plan;
-use App\Services\PlanService;
+use App\Domains\Subscription\PlanCatalog;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 final class PublicController
 {
@@ -18,32 +19,21 @@ final class PublicController
         ]);
     }
 
-    public function plans(Request $request): JsonResponse
+    public function plans(Request $request, PlanCatalog $catalog): JsonResponse
     {
-        $plans = Plan::query()->where('show', true)->where('sell', true)
-            ->orderBy('sort')->orderBy('id')->get();
-        $available = $plans->filter(
-            static fn (Plan $plan): bool => app(PlanService::class)->hasCapacity($plan)
-        )->map(static function (Plan $plan): array {
-            $prices = [];
-            foreach (Plan::getAvailablePeriods() as $period => $label) {
-                $price = $plan->prices[$period] ?? null;
-                if ($price === null) {
-                    continue;
-                }
-                // Legacy price model stores currency-major amounts. TXAPI only
-                // outputs integer minor units; legacy period names never leak.
-                $prices[] = ['period' => $period, 'amount_minor' => (int) round((float) $price * 100)];
-            }
-            return [
-                'id' => (int) $plan->id,
-                'name' => (string) $plan->name,
-                'traffic_limit_bytes' => (int) $plan->transfer_enable * 1073741824,
-                'prices' => $prices,
-                'renewable' => (bool) $plan->renew,
-            ];
-        })->values()->all();
+        return TxapiResponse::success($request, $catalog->available());
+    }
 
-        return TxapiResponse::success($request, $available);
+    public function plan(Request $request, PlanCatalog $catalog, int $planId): JsonResponse
+    {
+        $user = Auth::guard('sanctum')->user();
+        if (!$user instanceof User) {
+            abort(401);
+        }
+        $plan = $catalog->availableForUser($planId, $user);
+        if ($plan === null) {
+            abort(404);
+        }
+        return TxapiResponse::success($request, $plan);
     }
 }

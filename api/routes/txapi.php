@@ -12,6 +12,7 @@ Route::middleware('throttle:60,1')->group(function () {
 });
 
 Route::middleware(['txapi.user', 'throttle:120,1'])->group(function () {
+    Route::get('plans/{planId}', [PublicController::class, 'plan'])->whereNumber('planId');
     Route::get('me', [AccountController::class, 'me']);
     Route::get('orders', [AccountController::class, 'orders']);
     Route::get('orders/{tradeNo}', [AccountController::class, 'order']);

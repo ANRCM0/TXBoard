@@ -161,6 +161,13 @@ Controller 不承担复杂交易，只完成鉴权、验证和调用服务。域
 
 API 兼容策略不是永久双轨；但在证据不足时宁可保留短期 adapter 也不要丢单/中断节点。
 
+## P2-A Subscription Native Catalog：查询域与购买权限边界
+
+- 新增 `Domains/Subscription/PlanCatalog`：汇总可显示/可售套餐，并以一次分组查询核对所有有限容量套餐的有效订阅人数，避免逐套餐 COUNT 引发 N+1。
+- 原生 `GET /txapi/plans` 使用固定 DTO（canonical period、amount_minor、traffic_limit_bytes、tags、content、设备/速度/容量/重置策略）；`GET /txapi/plans/{planId}` 必须具备 Sanctum 用户身份且复用 PlanService 现有续费/新购资格规则，隐藏的续费专用套餐仅本人可访问，不向陌生账户公开。
+- **唯一授权来源仍是既有 OrderService + PlanService**；价格、容量、订阅资格在 checkout/create 时仍须重新验算，不将页面展示价格视为预授权报价。禁止新增请求绕过旧结算或支付幂等。
+- P2-A 只改原生只读 catalog，保留 `/api/v1` 套餐端点及原业务。跨 SQLite/MySQL 测试验证用户隔离、隐藏套餐、到期会员和批量查询，外部 TX-Node/Gateway 后置。
+
 ## P1-B 订单列表读路径迁移（首个业务页面）
 
 - Vue User 订单列表与“待处理订单”检查改为调用 `GET /txapi/orders`，从 MySQL 根据用户、状态、分页参数读取，**不再拉取全部订单并在浏览器筛选分页**。
