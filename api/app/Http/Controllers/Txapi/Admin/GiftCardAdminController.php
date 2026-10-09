@@ -214,6 +214,43 @@ final class GiftCardAdminController
         return TxapiResponse::success($request, ['ok' => true]);
     }
 
+
+    public function statistics(Request $request): JsonResponse
+    {
+        $input = $request->validate([
+            'start_date' => ['sometimes', 'date_format:Y-m-d'],
+            'end_date' => ['sometimes', 'date_format:Y-m-d'],
+        ]);
+        $start = $input['start_date'] ?? date('Y-m-d', strtotime('-30 days'));
+        $end = $input['end_date'] ?? date('Y-m-d');
+        if ($start > $end) {
+            return TxapiResponse::error($request, 'INVALID_DATE_RANGE', 'Start date must not exceed end date', 422);
+        }
+        $from = strtotime($start . ' 00:00:00');
+        $to = strtotime($end . ' 23:59:59');
+        $daily = GiftCardUsage::query()->whereBetween('created_at', [$from, $to])
+            ->get(['created_at'])->groupBy(static fn ($row) => date('Y-m-d', (int) $row->created_at))
+            ->map(static fn ($items, $day) => ['date' => $day, 'count' => $items->count()])
+            ->values()->all();
+        $types = GiftCardUsage::query()->with('template')->selectRaw('template_id, COUNT(*) as count')
+            ->groupBy('template_id')->get()->map(static fn ($item) => [
+                'template_name' => $item->template?->name ?? '',
+                'type_name' => $item->template?->type_name ?? '',
+                'count' => (int) $item->count,
+            ])->all();
+        return TxapiResponse::success($request, [
+            'total_stats' => [
+                'templates_count' => GiftCardTemplate::query()->count(),
+                'active_templates_count' => GiftCardTemplate::query()->where('status', 1)->count(),
+                'codes_count' => GiftCardCode::query()->count(),
+                'used_codes_count' => GiftCardCode::query()->where('status', GiftCardCode::STATUS_USED)->count(),
+                'usages_count' => GiftCardUsage::query()->count(),
+            ],
+            'daily_usages' => $daily,
+            'type_stats' => $types,
+        ]);
+    }
+
     private function templateInput(Request $request, bool $partial = false): array
     {
         $required = $partial ? 'sometimes' : 'required';
