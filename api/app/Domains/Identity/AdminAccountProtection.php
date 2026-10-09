@@ -3,6 +3,7 @@
 namespace App\Domains\Identity;
 
 use App\Models\Order;
+use App\Models\WalletRecharge;
 use App\Models\User;
 use App\Services\AuthService;
 use App\Services\Plugin\HookManager;
@@ -27,6 +28,7 @@ final class AdminAccountProtection
                 || (int) $user->balance !== 0 || (int) $user->commission_balance !== 0
                 || (int) $user->u !== 0 || (int) $user->d !== 0
                 || $user->orders()->exists() || $user->tickets()->exists()
+                || WalletRecharge::query()->where('user_id', $userId)->exists()
                 || $user->codes()->exists() || $user->stat()->exists()
                 || $user->trafficResetLogs()->exists()
                 || Order::query()->where('invite_user_id', $userId)->exists()

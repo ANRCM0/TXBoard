@@ -25,7 +25,8 @@ const navGroups=computed<NavGroup[]>(()=>{
   const top:NavItem[]=[{to:'/dashboard',label:t('nav.dashboard'),icon:'⌂'}]
   if(featureEnabled(c?.knowledge_enable,loaded))top.push({to:'/knowledge',label:t('nav.knowledge'),icon:'▱'})
 
-  const billing:NavItem[]=[{to:'/order',label:t('nav.order'),icon:'▤'}]
+  const billing:NavItem[]=[{to:'/order',label:t('nav.order'),icon:'▤'},
+    {to:'/wallet',label:locale.value==='en-US'?'Wallet top-up':'钱包充值',icon:'¥'}]
   if(featureEnabled(c?.invite_enable,loaded))billing.push({to:'/invite',label:t('nav.invite'),icon:'♧'})
   if(featureEnabled(c?.gift_card_enable,loaded))billing.push({to:'/gift-card',label:t('nav.giftCard'),icon:'✦'})
 

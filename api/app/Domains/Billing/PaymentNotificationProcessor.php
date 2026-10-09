@@ -4,6 +4,7 @@ namespace App\Domains\Billing;
 
 use App\Models\Order;
 use App\Models\Payment;
+use App\Models\WalletRecharge;
 use App\Services\OrderService;
 use App\Services\PaymentService;
 use App\Services\Plugin\HookManager;
@@ -37,7 +38,25 @@ final class PaymentNotificationProcessor
             }
 
             HookManager::call('payment.notify.verified', $verified);
-            if (!$this->settle($verified, $payment)) {
+            // Wallet recharges are NOT subscription orders. Both payment
+            // types share the same provider signature verification boundary,
+            // but settle into separate transactional state machines.
+            $isRecharge = WalletRecharge::query()
+                ->where('trade_no', $verified['trade_no'])->exists();
+            if ($isRecharge) {
+                // All wallet credits require an independently verified paid
+                // amount. Providers that do not supply signed paid_amount
+                // must not silently credit an account.
+                $signedAmount = array_key_exists('paid_amount', $verified)
+                    ? $this->decimalToCents($verified['paid_amount']) : null;
+                $settled = $signedAmount !== null
+                    && app(WalletRechargeService::class)->settleVerified(
+                        $verified['trade_no'], (int) $payment->id,
+                        $verified['callback_no'], $signedAmount);
+            } else {
+                $settled = $this->settle($verified, $payment);
+            }
+            if (!$settled) {
                 return ['status' => 400, 'error' => 'handle error'];
             }
             return ['status' => 200, 'body' => $verified['custom_result'] ?? 'success'];
@@ -70,6 +89,13 @@ final class PaymentNotificationProcessor
             if ($signedAmount === null || $signedAmount !== $expectedAmount) {
                 return false;
             }
+        }
+
+        // A verified gateway transaction must not be replayed to move
+        // funds in the wallet ledger and an ordinary subscription order.
+        if (WalletRecharge::query()->where('payment_id', $payment->id)
+            ->where('callback_no', $verified['callback_no'])->exists()) {
+            return false;
         }
 
         if ((int) $order->status !== Order::STATUS_PENDING) {
