@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\V2\Admin;
 
 use App\Exceptions\ApiException;
+use App\Domains\Billing\AdminPaymentSafety;
 use App\Http\Controllers\Controller;
 use App\Models\Payment;
 use App\Services\PaymentService;
@@ -98,12 +99,20 @@ class PaymentController extends Controller
         return $this->success(true);
     }
 
-    public function drop(Request $request)
+    public function drop(Request $request, AdminPaymentSafety $safety)
     {
-        $payment = Payment::find($request->input('id'));
-        if (!$payment)
+        $params = $request->validate(['id' => ['required', 'integer', 'min:1']]);
+        if (!Payment::query()->whereKey($params['id'])->exists()) {
             return $this->fail([400202, '支付方式不存在']);
-        return $this->success($payment->delete());
+        }
+        // The V2 route remains accessible until all consumers migrate. A
+        // native-only guard would leave a destructive bypass in the release.
+        if (!$safety->deleteUnused((int) $params['id'])) {
+            return response()->json([
+                'message' => '支付渠道已有订阅或余额充值记录，不能删除；请先停用该渠道',
+            ], 409);
+        }
+        return $this->success(true);
     }
 
 
