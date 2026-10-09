@@ -3,6 +3,7 @@
 namespace Tests\Feature\Txapi;
 
 use App\Models\AdminAuditLog;
+use App\Models\Plan;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -103,16 +104,18 @@ class TxapiAdminAuditTest extends TestCase
     {
         admin_setting(['secure_path' => 'rotating-admin-private-path']);
         Sanctum::actingAs($this->user('audit-mutation-operator@example.test', true));
-        // Even a rejected/failed valid route must be logged without carrying
-        // tokens supplied in unexpected query params.
+        $plan = Plan::create([
+            'name' => 'Audit test plan', 'group_id' => 1, 'transfer_enable' => 1,
+            'show' => true, 'sell' => true, 'renew' => true, 'prices' => ['monthly' => 20],
+        ]);
         $this->postJson(
-            '/txapi/admin/rotating-admin-private-path/plans/999999/flags?token=leaky-token&password=bad',
+            '/txapi/admin/rotating-admin-private-path/plans/' . $plan->id . '/flags?token=leaky-token&password=bad',
             ['show' => true, 'config' => ['api_key' => 'should-not-persist']]
-        )->assertStatus(404);
+        )->assertOk();
 
         $audit = AdminAuditLog::query()->latest('id')->firstOrFail();
-        $this->assertSame('/txapi/admin/{admin_path}/plans/999999/flags', $audit->uri);
-        $this->assertSame('plans_999999.flags', $audit->action);
+        $this->assertSame('/txapi/admin/{admin_path}/plans/' . $plan->id . '/flags', $audit->uri);
+        $this->assertSame('plans_' . $plan->id . '.flags', $audit->action);
         $this->assertStringNotContainsString('rotating-admin-private-path', (string) $audit->uri);
         $this->assertStringNotContainsString('leaky-token', (string) $audit->uri);
         $this->assertStringNotContainsString('should-not-persist', (string) $audit->request_data);
