@@ -6,6 +6,7 @@ use App\Core\Http\TxapiResponse;
 use App\Domains\Billing\WalletRechargeService;
 use App\Exceptions\ApiException;
 use App\Models\WalletRecharge;
+use App\Models\Payment;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -13,6 +14,23 @@ use Illuminate\Validation\ValidationException;
 
 final class WalletRechargeController
 {
+    public function methods(Request $request): JsonResponse
+    {
+        $methods = Payment::query()->where('enable', true)
+            ->whereIn('payment', WalletRechargeService::VERIFIED_RECHARGE_PROVIDERS)
+            ->orderBy('sort')->orderBy('id')
+            ->get(['id','name','payment','icon','handling_fee_fixed','handling_fee_percent'])
+            ->map(static fn (Payment $method): array => [
+                'id' => (int) $method->id,
+                'name' => (string) $method->name,
+                'payment' => (string) $method->payment,
+                'icon' => $method->icon,
+                'handling_fee_fixed' => (int) ($method->handling_fee_fixed ?? 0),
+                'handling_fee_percent' => (float) ($method->handling_fee_percent ?? 0),
+            ])->all();
+        return TxapiResponse::success($request, $methods);
+    }
+
     public function store(Request $request, WalletRechargeService $service): JsonResponse
     {
         $params = $request->validate([
