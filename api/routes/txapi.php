@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Txapi\AccountController;
+use App\Http\Controllers\Txapi\ServerController;
 use App\Http\Controllers\Txapi\TrafficController;
 use App\Http\Controllers\Txapi\NodeProtocolController;
 use App\Http\Middleware\TxNodeAuth;
@@ -52,6 +53,7 @@ Route::middleware(['txapi.user', 'throttle:120,1'])->group(function () {
     Route::get('me/subscription', [AccountController::class, 'subscription']);
     Route::get('me/dashboard-stats', [AccountController::class, 'dashboardStats']);
     Route::get('me/site-config', [AccountController::class, 'userConfig']);
+    Route::get('me/nodes', [ServerController::class, 'index']);
     Route::get('me/preferences', [AccountController::class, 'preferences']);
     Route::patch('me/preferences', [AccountController::class, 'updatePreferences']);
     Route::get('traffic/logs', [TrafficController::class, 'index']);

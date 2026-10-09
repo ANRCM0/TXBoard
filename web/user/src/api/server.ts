@@ -1,4 +1,4 @@
-import { api } from './client'
+import { nativeApi, nativeRequest } from './client'
 
 export type ServerNode = {
   id: number
@@ -8,11 +8,20 @@ export type ServerNode = {
   rate: number | string
   tags?: string[] | null
   is_online: boolean
-  cache_key?: string
   last_check_at?: number | null
 }
 
 export async function fetchServers(): Promise<ServerNode[]> {
-  const { data } = await api.get<{ data?: ServerNode[] }>('/user/server/fetch')
-  return Array.isArray(data?.data) ? data.data : []
+  const nodes = await nativeRequest<ServerNode[]>(nativeApi.get('/me/nodes'))
+  if (!Array.isArray(nodes) || !nodes.every(item =>
+    item && Number.isSafeInteger(item.id) && item.id > 0 &&
+    typeof item.type === 'string' && typeof item.name === 'string' &&
+    typeof item.is_online === 'boolean' &&
+    (typeof item.rate === 'number' && Number.isFinite(item.rate) ||
+      typeof item.rate === 'string' && item.rate.length > 0) &&
+    (item.tags == null || Array.isArray(item.tags) &&
+      item.tags.every(tag => typeof tag === 'string')))) {
+    throw new Error('Invalid TXAPI node list')
+  }
+  return nodes
 }
