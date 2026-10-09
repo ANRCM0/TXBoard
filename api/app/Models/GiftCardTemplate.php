@@ -67,9 +67,9 @@ class GiftCardTemplate extends Model
     public static function getTypeMap(): array
     {
         return [
-            self::TYPE_GENERAL => '通用兑换码',
-            self::TYPE_PLAN => '套餐兑换码',
-            self::TYPE_MYSTERY => '盲盒兑换码',
+            self::TYPE_GENERAL => '通用礼品卡',
+            self::TYPE_PLAN => '套餐礼品卡',
+            self::TYPE_MYSTERY => '盲盒礼品卡',
         ];
     }
 
