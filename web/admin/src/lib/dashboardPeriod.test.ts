@@ -41,6 +41,7 @@ describe('dashboard independent date periods', () => {
     expect(customRangeError('2026-10-01', '2026-10-09', '2026-10-08')).toBeTruthy()
     expect(customRangeError('2026-02-30', '2026-10-08', '2026-10-08')).toBeTruthy()
     expect(customRangeError('2000-01-01', '2026-10-08', '2026-10-08')).toBeTruthy()
+    expect(customRangeError('2025-01-01', '2026-10-08', '2026-10-08')).toBe('统计范围不能超过366天')
     expect(customRangeError('2026-10-01', '2026-10-08', '2026-10-08')).toBeNull()
   })
 
