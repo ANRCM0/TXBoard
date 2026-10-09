@@ -151,6 +151,12 @@ class TxNodeNativeWebSocketTest extends TestCase
             $this->assertSame('NODE_NOT_FOUND', end($sent)['data']['code']);
             Bus::assertNotDispatched(TrafficBatchJob::class);
 
+            // A healthy machine connection must not be compared against
+            // the global single-node server token during reconciliation.
+            $worker = new \App\WebSocket\NodeWorker('127.0.0.1', 8077);
+            (new \ReflectionMethod($worker, 'reconcileConnections'))->invoke($worker);
+            $this->assertSame($conn, NodeRegistry::getMachine((int) $machine->id));
+
             $machine->update(['token' => 'newly-rotated']);
             $ws->message($conn, NativeNodeFrame::encode('heartbeat.ping', [], 'revoked'));
             $this->assertSame('UNAUTHORIZED', end($sent)['data']['code']);
