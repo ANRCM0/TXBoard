@@ -3,29 +3,12 @@
 namespace App\Http\Routes\V2\Admin;
 
 use App\Http\Controllers\V2\Admin\Server\MachineController;
-use App\Http\Controllers\V2\Admin\Server\ManageController;
 use Illuminate\Contracts\Routing\Registrar;
 
 class ServerRoute
 {
     public function map(Registrar $router): void
     {
-        $router->group(['prefix' => 'server/manage'], function (Registrar $router): void {
-            $router->get('/protocols', [ManageController::class, 'protocols']);
-            $router->get('/getNodes', [ManageController::class, 'getNodes']);
-            $router->post('/update', [ManageController::class, 'update']);
-            $router->post('/save', [ManageController::class, 'save']);
-            $router->post('/drop', [ManageController::class, 'drop']);
-            $router->post('/copy', [ManageController::class, 'copy']);
-            $router->post('/sort', [ManageController::class, 'sort']);
-            $router->post('/batchDelete', [ManageController::class, 'batchDelete']);
-            $router->post('/batchUpdate', [ManageController::class, 'batchUpdate']);
-            $router->post('/resetTraffic', [ManageController::class, 'resetTraffic']);
-            $router->post('/batchResetTraffic', [ManageController::class, 'batchResetTraffic']);
-            $router->get('/generateEchKey', [ManageController::class, 'generateEchKey']);
-            $router->get('/generateSecret', [ManageController::class, 'generateSecret']);
-        });
-
         $router->group(['prefix' => 'server/machine'], function (Registrar $router): void {
             $router->get('/fetch', [MachineController::class, 'fetch']);
             $router->post('/save', [MachineController::class, 'save']);
