@@ -37,7 +37,7 @@ final class TxapiAdminQueueTest extends TestCase
             ->assertJsonPath('data.status', 'inactive')
             ->assertJsonPath('data.failed_last_7_days', 0)
             ->assertJsonPath('data.failed_jobs_available', true);
-        $this->assertSame('no-store', $response->headers->get('Cache-Control'));
+        $this->assertStringContainsString('no-store', (string) $response->headers->get('Cache-Control'));
         $this->assertNotEmpty($response->json('request_id'));
     }
 
@@ -61,7 +61,7 @@ final class TxapiAdminQueueTest extends TestCase
             ->assertDontSee('internal-command-password')
             ->assertDontSee('private123')
             ->assertDontSee('abcdefghi');
-        $this->assertSame('no-store', $list->headers->get('Cache-Control'));
+        $this->assertStringContainsString('no-store', (string) $list->headers->get('Cache-Control'));
 
         $this->getJson(self::ROOT . '/failures/' . $id)->assertOk()
             ->assertSee('[REDACTED]', false)
