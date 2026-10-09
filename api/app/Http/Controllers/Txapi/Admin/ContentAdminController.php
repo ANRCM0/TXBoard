@@ -45,6 +45,9 @@ final class ContentAdminController
 
     public function saveNotice(Request $request, ?string $id = null): JsonResponse
     {
+        // A parent {admin_path} route parameter is not a content resource ID.
+        // Read only the explicitly named {id} to distinguish POST create vs PUT update.
+        $id = $request->route('id');
         $params = $request->validate([
             'title' => ['required','string','max:255'],
             'content' => ['required','string','max:1000000'],
@@ -121,6 +124,9 @@ final class ContentAdminController
 
     public function saveArticle(Request $request, ?string $id = null): JsonResponse
     {
+        // A parent {admin_path} route parameter is not a content resource ID.
+        // Read only the explicitly named {id} to distinguish POST create vs PUT update.
+        $id = $request->route('id');
         $params = $request->validate([
             'title' => ['required','string','max:255'],
             'category' => ['required','string','max:255'],
