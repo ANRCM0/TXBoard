@@ -6,6 +6,7 @@ use App\Http\Controllers\Txapi\TrafficController;
 use App\Http\Controllers\Txapi\NodeProtocolController;
 use App\Http\Middleware\TxNodeAuth;
 use App\Http\Controllers\Txapi\BillingController;
+use App\Http\Controllers\Txapi\InviteController;
 use App\Http\Controllers\Txapi\PaymentWebhookController;
 use App\Http\Controllers\Txapi\AuthController;
 use App\Http\Controllers\Txapi\ContentController;
@@ -75,6 +76,8 @@ Route::middleware(['txapi.user', 'throttle:120,1'])->group(function () {
     Route::get('tickets/{ticketId}', [TicketController::class, 'show'])->whereNumber('ticketId');
     Route::post('tickets/{ticketId}/messages', [TicketController::class, 'reply'])->whereNumber('ticketId');
     Route::post('tickets/{ticketId}/close', [TicketController::class, 'close'])->whereNumber('ticketId');
+    Route::get('invites', [InviteController::class, 'index']);
+    Route::post('invites', [InviteController::class, 'store'])->middleware('throttle:10,1');
     Route::get('billing/wallet', [BillingController::class, 'wallet']);
     Route::get('billing/commissions', [BillingController::class, 'commissions']);
     Route::get('billing/payment-methods', [BillingController::class, 'methods']);
