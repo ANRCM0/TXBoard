@@ -1,4 +1,4 @@
-import { api } from './client'
+import { nativeApi } from './client'
 
 const KEY='txboard_invite_code'
 
@@ -20,5 +20,5 @@ export function resolveInviteCode(){
 
 export function recordPageView(){
   const invite=resolveInviteCode()
-  if(invite)api.post('/passport/comm/pv',{invite_code:invite}).catch(()=>{})
+  if(invite)nativeApi.post('/public/invite-page-view',{invite_code:invite}).catch(()=>{})
 }

@@ -1,4 +1,4 @@
-import { api, request } from './client'
+import { nativeApi, nativeRequest } from './client'
 
 export type GiftCardRewards = {
   balance?: number
@@ -48,16 +48,16 @@ export type GiftCardHistoryItem = {
 }
 
 export async function checkGiftCard(code: string) {
-  return request<GiftCardCheckResult>(api.post('/user/gift-card/check', { code }))
+  return nativeRequest<GiftCardCheckResult>(nativeApi.post('/gift-cards/check', { code }))
 }
 
 export async function redeemGiftCard(code: string) {
-  return request<{
+  return nativeRequest<{
     message: string
     rewards: GiftCardRewards
     invite_rewards?: GiftCardRewards
     template_name: string
-  }>(api.post('/user/gift-card/redeem', { code }))
+  }>(nativeApi.post('/gift-cards/redeem', { code }))
 }
 
 export type GiftCardDetail = {
@@ -80,11 +80,11 @@ export type GiftCardDetail = {
 }
 
 export async function fetchGiftCardDetail(id: number) {
-  return request<GiftCardDetail>(api.get('/user/gift-card/detail', { params: { id } }))
+  return nativeRequest<GiftCardDetail>(nativeApi.get(`/gift-cards/history/${id}`))
 }
 
 export async function fetchGiftCardHistory(params: { page?: number; per_page?: number } = {}) {
-  return request<{
+  return nativeRequest<{
     data: GiftCardHistoryItem[]
     pagination: {
       current_page: number
@@ -92,5 +92,5 @@ export async function fetchGiftCardHistory(params: { page?: number; per_page?: n
       per_page: number
       total: number
     }
-  }>(api.get('/user/gift-card/history', { params }))
+  }>(nativeApi.get('/gift-cards/history', { params }))
 }

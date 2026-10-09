@@ -6,6 +6,12 @@ use App\Http\Controllers\Txapi\TrafficController;
 use App\Http\Controllers\Txapi\NodeProtocolController;
 use App\Http\Middleware\TxNodeAuth;
 use App\Http\Controllers\Txapi\BillingController;
+use App\Http\Controllers\Txapi\InviteController;
+use App\Http\Controllers\Txapi\CommissionController;
+use App\Http\Controllers\Txapi\GiftCardController;
+use App\Http\Controllers\Txapi\StripeConfigController;
+use App\Http\Controllers\Txapi\InvitePageViewController;
+use App\Http\Controllers\Txapi\WithdrawalController;
 use App\Http\Controllers\Txapi\PaymentWebhookController;
 use App\Http\Controllers\Txapi\AuthController;
 use App\Http\Controllers\Txapi\ContentController;
@@ -45,6 +51,7 @@ Route::middleware('throttle:60,1')->group(function () {
     Route::get('public/config', [PublicController::class, 'config']);
     Route::get('public/site-config', [PublicController::class, 'siteConfig']);
     Route::get('plans', [PublicController::class, 'plans']);
+    Route::post('public/invite-page-view', [InvitePageViewController::class, 'store'])->middleware('throttle:20,1');
 });
 
 Route::middleware(['txapi.user', 'throttle:120,1'])->group(function () {
@@ -75,6 +82,16 @@ Route::middleware(['txapi.user', 'throttle:120,1'])->group(function () {
     Route::get('tickets/{ticketId}', [TicketController::class, 'show'])->whereNumber('ticketId');
     Route::post('tickets/{ticketId}/messages', [TicketController::class, 'reply'])->whereNumber('ticketId');
     Route::post('tickets/{ticketId}/close', [TicketController::class, 'close'])->whereNumber('ticketId');
+    Route::get('invites', [InviteController::class, 'index']);
+    Route::post('invites', [InviteController::class, 'store'])->middleware('throttle:10,1');
+    Route::post('billing/commission-transfer', [CommissionController::class, 'transfer'])->middleware('throttle:10,1');
+    Route::post('gift-cards/check', [GiftCardController::class, 'check']);
+    Route::post('gift-cards/redeem', [GiftCardController::class, 'redeem'])->middleware('throttle:5,1');
+    Route::get('gift-cards/history', [GiftCardController::class, 'history']);
+    Route::get('gift-cards/types', [GiftCardController::class, 'types']);
+    Route::get('gift-cards/history/{id}', [GiftCardController::class, 'detail'])->whereNumber('id');
+    Route::post('billing/stripe-public-key', [StripeConfigController::class, 'publicKey']);
+    Route::post('billing/withdrawals', [WithdrawalController::class, 'store'])->middleware('throttle:5,1');
     Route::get('billing/wallet', [BillingController::class, 'wallet']);
     Route::get('billing/commissions', [BillingController::class, 'commissions']);
     Route::get('billing/payment-methods', [BillingController::class, 'methods']);

@@ -1,4 +1,4 @@
-import { api, nativeApi, nativeRequest, request, type NativeEnvelope } from './client'
+import { nativeApi, nativeRequest, type NativeEnvelope } from './client'
 
 export type InviteCode = {
   code: string
@@ -13,19 +13,19 @@ export type InviteStat = {
 }
 
 export async function fetchInvite() {
-  return request<InviteStat>(api.get('/user/invite/fetch'))
+  return nativeRequest<InviteStat>(nativeApi.get('/invites'))
 }
 
 export async function generateInviteCode() {
-  return request<boolean>(api.get('/user/invite/save'))
+  return nativeRequest<boolean>(nativeApi.post('/invites'))
 }
 
 export async function transferCommission(transfer_amount: number) {
-  return request<null>(api.post('/user/transfer', { transfer_amount }))
+  return nativeRequest<boolean>(nativeApi.post('/billing/commission-transfer', { transfer_amount }))
 }
 
 export async function withdrawCommission(payload:{withdraw_method:string;withdraw_account:string}) {
-  return request<null>(api.post('/user/ticket/withdraw', payload))
+  return nativeRequest<{ ok: boolean }>(nativeApi.post('/billing/withdrawals', payload))
 }
 
 export async function fetchInviteDetails(current = 1, pageSize = 10) {
