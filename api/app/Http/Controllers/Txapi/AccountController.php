@@ -4,6 +4,9 @@ namespace App\Http\Controllers\Txapi;
 
 use App\Core\Http\TxapiResponse;
 use App\Models\Order;
+use App\Models\Plan;
+use App\Models\Ticket;
+use App\Services\UserService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -31,6 +34,48 @@ final class AccountController
                 'download_bytes' => (int) ($user->d ?? 0),
                 'limit_bytes' => (int) ($user->transfer_enable ?? 0),
             ],
+        ]);
+    }
+
+    public function subscription(Request $request, UserService $service): JsonResponse
+    {
+        // Only the authenticated subscriber may see their private subscription
+        // URL. Never expose the underlying raw token in the response.
+        $user = User::query()->findOrFail(Auth::guard('sanctum')->id());
+        $plan = $user->plan_id ? Plan::query()->find($user->plan_id) : null;
+        if ($user->plan_id && $plan === null) {
+            return TxapiResponse::error($request, 'PLAN_UNAVAILABLE',
+                'Subscription plan unavailable', 409);
+        }
+        return TxapiResponse::success($request, [
+            'subscribe_url' => Helper::getSubscribeUrl((string) $user->token),
+            'reset_day' => $service->getResetDay($user),
+            'plan' => $plan ? [
+                'id' => (int) $plan->id,
+                'name' => (string) $plan->name,
+                'traffic_limit_bytes' => (int) $plan->transfer_enable * 1073741824,
+            ] : null,
+            'upload_bytes' => (int) ($user->u ?? 0),
+            'download_bytes' => (int) ($user->d ?? 0),
+            'traffic_limit_bytes' => (int) ($user->transfer_enable ?? 0),
+            'device_limit' => $user->device_limit === null ? null : (int) $user->device_limit,
+            'speed_limit_mbps' => $user->speed_limit === null ? null : (float) $user->speed_limit,
+            'expired_at' => $user->expired_at
+                ? Carbon::createFromTimestampUTC((int) $user->expired_at)->toIso8601String() : null,
+            'next_reset_at' => $user->next_reset_at
+                ? Carbon::createFromTimestampUTC((int) $user->next_reset_at)->toIso8601String() : null,
+        ]);
+    }
+
+    public function dashboardStats(Request $request): JsonResponse
+    {
+        $userId = (int) Auth::guard('sanctum')->id();
+        return TxapiResponse::success($request, [
+            'unpaid_orders' => Order::query()->where('user_id', $userId)
+                ->where('status', 0)->count(),
+            'open_tickets' => Ticket::query()->where('user_id', $userId)
+                ->where('status', 0)->count(),
+            'invited_users' => User::query()->where('invite_user_id', $userId)->count(),
         ]);
     }
 

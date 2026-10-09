@@ -48,6 +48,8 @@ Route::middleware('throttle:60,1')->group(function () {
 Route::middleware(['txapi.user', 'throttle:120,1'])->group(function () {
     Route::get('plans/{planId}', [PublicController::class, 'plan'])->whereNumber('planId');
     Route::get('me', [AccountController::class, 'me']);
+    Route::get('me/subscription', [AccountController::class, 'subscription']);
+    Route::get('me/dashboard-stats', [AccountController::class, 'dashboardStats']);
     Route::get('me/preferences', [AccountController::class, 'preferences']);
     Route::patch('me/preferences', [AccountController::class, 'updatePreferences']);
     Route::get('traffic/logs', [TrafficController::class, 'index']);

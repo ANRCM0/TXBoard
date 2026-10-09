@@ -1,4 +1,4 @@
-import { api, nativeApi, nativeRequest, request } from './client'
+import { nativeApi, nativeRequest } from './client'
 
 export type UserInfo = {
   email: string
@@ -56,6 +56,17 @@ export async function fetchUserInfo(): Promise<UserInfo> {
   }
 }
 
-export async function fetchUserStat() {
-  return request<number[]>(api.get('/user/getStat'))
+type DashboardStats = {
+  unpaid_orders: number
+  open_tickets: number
+  invited_users: number
+}
+export async function fetchUserStat(): Promise<number[]> {
+  const stats = await nativeRequest<DashboardStats>(nativeApi.get('/me/dashboard-stats'))
+  if (!stats || ![stats.unpaid_orders, stats.open_tickets, stats.invited_users]
+    .every(value => Number.isSafeInteger(value) && value >= 0)) {
+    throw new Error('Invalid TXAPI dashboard stats')
+  }
+  // Existing dashboard UI expects [orders, tickets, invited users].
+  return [stats.unpaid_orders, stats.open_tickets, stats.invited_users]
 }
