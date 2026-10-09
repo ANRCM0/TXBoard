@@ -174,8 +174,12 @@ export async function getOrders(params: Record<string, unknown> = {}) {
   } satisfies OrderPagination
 }
 export async function getOrderDetail(id: number) {
-  const { data } = await apiClient.post('/order/detail', { id })
-  return unwrap<OrderDetail>(data)
+  if (!Number.isSafeInteger(id) || id < 1) throw new Error('Invalid order ID')
+  const { data } = await nativeApiClient.get<NativeApiEnvelope<OrderDetail>>(
+    nativeAdminPath('orders') + '/' + id + '/detail',
+  )
+  if (!data?.request_id || data.data?.id !== id) throw new Error('Invalid native order detail response')
+  return data.data
 }
 export async function assignOrder(payload: { email: string; plan_id: number; period: string; total_amount: number }) {
   const { data } = await apiClient.post('/order/assign', payload)
@@ -189,10 +193,16 @@ export async function updateOrderCommission(tradeNo: string, commissionStatus: 0
   return unwrap(data)
 }
 export async function markOrderPaid(tradeNo: string) {
-  const { data } = await apiClient.post('/order/paid', { trade_no: tradeNo })
-  return unwrap(data)
+  const { data } = await nativeApiClient.post<NativeApiEnvelope<{ ok: boolean }>>(
+    nativeAdminPath('orders') + '/' + encodeURIComponent(tradeNo) + '/paid',
+  )
+  if (!data?.request_id || data.data?.ok !== true) throw new Error('Native order settlement not acknowledged')
+  return true
 }
 export async function cancelOrder(tradeNo: string) {
-  const { data } = await apiClient.post('/order/cancel', { trade_no: tradeNo })
-  return unwrap(data)
+  const { data } = await nativeApiClient.post<NativeApiEnvelope<{ ok: boolean }>>(
+    nativeAdminPath('orders') + '/' + encodeURIComponent(tradeNo) + '/cancel',
+  )
+  if (!data?.request_id || data.data?.ok !== true) throw new Error('Native order cancellation not acknowledged')
+  return true
 }
