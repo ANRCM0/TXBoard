@@ -71,6 +71,28 @@ final class AccountController
         return TxapiResponse::success($request, self::toOrder($order));
     }
 
+    public function orderDetail(Request $request, string $tradeNo): JsonResponse
+    {
+        // Dedicated detail projection. The lightweight list/status DTO must
+        // not expand to include payment, wallet or private account data.
+        $order = Order::query()->with('plan:id,name,transfer_enable')
+            ->where('user_id', Auth::guard('sanctum')->id())
+            ->where('trade_no', $tradeNo)->first();
+        if ($order === null || $order->plan === null) {
+            abort(404);
+        }
+        $data = self::toOrder($order);
+        $data['plan'] = [
+            'id' => (int) $order->plan->id,
+            'name' => (string) $order->plan->name,
+            'traffic_limit_bytes' => (int) $order->plan->transfer_enable * 1073741824,
+        ];
+        $data['payment_id'] = $order->payment_id === null ? null : (int) $order->payment_id;
+        $data['balance_amount_minor'] = (int) ($order->balance_amount ?? 0);
+        $data['discount_amount_minor'] = (int) ($order->discount_amount ?? 0);
+        return TxapiResponse::success($request, $data);
+    }
+
     private static function toOrder(Order $order): array
     {
         return [

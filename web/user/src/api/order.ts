@@ -30,26 +30,10 @@ export type PaymentMethod = {
 }
 
 export type OrderDetail = OrderItem & {
-  balance_amount?: number
-  handling_amount?: number | null
-  discount_amount?: number
-  surplus_amount?: number
-  surplus_credit?: number
-  surplus_orders?: OrderItem[]
-  try_out_plan_id?: number
-  payment?: PaymentMethod | null
-  plan?: {
-    name?: string
-    transfer_enable?: number
-    month_price?: number | null
-    quarter_price?: number | null
-    half_year_price?: number | null
-    year_price?: number | null
-    two_year_price?: number | null
-    three_year_price?: number | null
-    onetime_price?: number | null
-    reset_price?: number | null
-  }
+  payment_id: number | null
+  balance_amount: number
+  discount_amount: number
+  plan: { name: string; transfer_enable: number }
 }
 
 type NativeOrder = {
@@ -63,6 +47,13 @@ type NativeOrder = {
   amount_minor: number
   created_at: string
   paid_at: string | null
+}
+
+type NativeOrderDetail = Omit<NativeOrder, 'plan'> & {
+  plan: { id: number; name: string; traffic_limit_bytes: number }
+  payment_id: number | null
+  balance_amount_minor: number
+  discount_amount_minor: number
 }
 
 const LEGACY_PERIOD: Record<string, string> = {
@@ -139,8 +130,25 @@ export async function saveOrder(payload: { plan_id: number; period: string; coup
   return response.trade_no
 }
 
-export async function fetchOrderDetail(tradeNo: string) {
-  return request<OrderDetail>(api.get('/user/order/detail', { params: { trade_no: tradeNo } }))
+export async function fetchOrderDetail(tradeNo: string): Promise<OrderDetail> {
+  const item = await nativeRequest<NativeOrderDetail>(
+    nativeApi.get('/orders/' + encodeURIComponent(tradeNo) + '/detail'),
+  )
+  if (!item || !item.plan || typeof item.plan.name !== 'string' ||
+      !Number.isSafeInteger(item.plan.traffic_limit_bytes) ||
+      item.plan.traffic_limit_bytes < 0 ||
+      (item.payment_id !== null && !Number.isSafeInteger(item.payment_id)) ||
+      !Number.isSafeInteger(item.balance_amount_minor) || item.balance_amount_minor < 0 ||
+      !Number.isSafeInteger(item.discount_amount_minor) || item.discount_amount_minor < 0) {
+    throw new Error('Invalid TXAPI order detail')
+  }
+  return {
+    ...toLegacyOrder(item),
+    payment_id: item.payment_id,
+    balance_amount: item.balance_amount_minor,
+    discount_amount: item.discount_amount_minor,
+    plan: { name: item.plan.name, transfer_enable: item.plan.traffic_limit_bytes / 1073741824 },
+  }
 }
 
 export async function fetchPaymentMethods() {
