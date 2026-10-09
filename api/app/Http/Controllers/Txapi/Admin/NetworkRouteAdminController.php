@@ -186,9 +186,11 @@ final class NetworkRouteAdminController
     }
 
 
-    public function delete(Request $request, string $id): JsonResponse
+    public function delete(Request $request): JsonResponse
     {
-        $id = (int) $id;
+        // The dynamic {admin_path} is the first route parameter; read id by
+        // name rather than relying on parameter position.
+        $id = (int) $request->route('id');
         $status = DB::transaction(function () use ($id): string {
             $route = ServerRoute::query()->lockForUpdate()->find($id);
             if (!$route) return 'missing';
