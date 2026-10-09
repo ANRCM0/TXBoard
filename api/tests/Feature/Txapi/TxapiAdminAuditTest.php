@@ -69,6 +69,56 @@ class TxapiAdminAuditTest extends TestCase
         $this->getJson($url . '?admin_id=foo')->assertStatus(422);
     }
 
+
+    public function test_legacy_historical_audit_entries_do_not_reveal_queries_admin_paths_or_credential_payloads(): void
+    {
+        admin_setting(['secure_path' => 'current-safe-admin']);
+        $admin = $this->user('audit-historic-reader@example.test', true);
+        AdminAuditLog::create([
+            'admin_id' => $admin->id,
+            'action' => 'txapi_admin_rotated-old-path_content.delete',
+            'method' => 'DELETE',
+            'uri' => '/txapi/admin/rotated-old-path/content/knowledge/77?token=historic-secret&api_key=unsafe',
+            'request_data' => json_encode([
+                'remark' => 'public text',
+                'payment_config' => ['secret_key' => 'historic-password', 'nested' => ['auth_token' => 'Bearer old-secret']],
+            ]),
+            'ip' => '127.0.0.1', 'created_at' => time(), 'updated_at' => time(),
+        ]);
+        Sanctum::actingAs($admin);
+        foreach ([
+            '/txapi/admin/current-safe-admin/audit-logs',
+            '/api/v2/current-safe-admin/system/getAuditLog',
+        ] as $endpoint) {
+            $res = $this->getJson($endpoint)->assertOk();
+            $body = $res->getContent();
+            foreach (['rotated-old-path', 'historic-secret', 'historic-password', 'Bearer old-secret', 'api_key=unsafe'] as $private) {
+                $this->assertStringNotContainsString($private, $body);
+            }
+            $this->assertStringContainsString('content/knowledge/77', $body);
+        }
+    }
+
+    public function test_admin_unsafe_request_audit_stores_normalized_action_and_query_free_uri(): void
+    {
+        admin_setting(['secure_path' => 'rotating-admin-private-path']);
+        Sanctum::actingAs($this->user('audit-mutation-operator@example.test', true));
+        // Even a rejected/failed valid route must be logged without carrying
+        // tokens supplied in unexpected query params.
+        $this->postJson(
+            '/txapi/admin/rotating-admin-private-path/plans/999999/flags?token=leaky-token&password=bad',
+            ['show' => true, 'config' => ['api_key' => 'should-not-persist']]
+        )->assertStatus(404);
+
+        $audit = AdminAuditLog::query()->latest('id')->firstOrFail();
+        $this->assertSame('/txapi/admin/{admin_path}/plans/999999/flags', $audit->uri);
+        $this->assertSame('plans_999999.flags', $audit->action);
+        $this->assertStringNotContainsString('rotating-admin-private-path', (string) $audit->uri);
+        $this->assertStringNotContainsString('leaky-token', (string) $audit->uri);
+        $this->assertStringNotContainsString('should-not-persist', (string) $audit->request_data);
+        $this->assertStringContainsString('[REDACTED]', (string) $audit->request_data);
+    }
+
     private function user(string $email, bool $admin): User
     {
         return User::create([
