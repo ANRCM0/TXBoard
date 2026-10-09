@@ -76,6 +76,9 @@ jobs:
       - name: Guard compatibility routes and middleware
         working-directory: api
         run: php artisan test tests/Feature/Contract/LegacyApiBoundaryTest.php
+      - name: P0-B synthetic purchase-to-traffic journey
+        working-directory: api
+        run: php artisan test tests/Feature/Journey/CorePurchaseTrafficJourneyTest.php
       - name: Core billing and node regression slices
         working-directory: api
         run: |
