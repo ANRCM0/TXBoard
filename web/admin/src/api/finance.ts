@@ -102,20 +102,36 @@ export async function getPlans() {
   throw new Error('Plan catalog exceeds native pagination safety limit')
 }
 export async function savePlan(payload: PlanSavePayload) {
-  const { data } = await apiClient.post('/plan/save', payload)
-  return unwrap(data)
+  const { data } = await nativeApiClient.post<NativeApiEnvelope<{ id: number }>>(
+    nativeAdminPath('plans'), payload,
+  )
+  if (!data?.request_id || !Number.isSafeInteger(data.data?.id)) {
+    throw new Error('Native plan save not acknowledged')
+  }
+  return data.data.id
 }
 export async function updatePlanFlags(id: number, payload: Pick<PlanItem, 'show' | 'sell' | 'renew'>) {
-  const { data } = await apiClient.post('/plan/update', { id, ...payload })
-  return unwrap(data)
+  if (!Number.isSafeInteger(id) || id < 1) throw new Error('Invalid plan ID')
+  const { data } = await nativeApiClient.post<NativeApiEnvelope<{ ok: boolean }>>(
+    nativeAdminPath('plans') + '/' + id + '/flags', payload,
+  )
+  if (!data?.request_id || data.data?.ok !== true) throw new Error('Native plan flag update not acknowledged')
+  return true
 }
 export async function deletePlan(id: number) {
-  const { data } = await apiClient.post('/plan/drop', { id })
-  return unwrap(data)
+  if (!Number.isSafeInteger(id) || id < 1) throw new Error('Invalid plan ID')
+  const { data } = await nativeApiClient.post<NativeApiEnvelope<{ ok: boolean }>>(
+    nativeAdminPath('plans') + '/' + id + '/delete',
+  )
+  if (!data?.request_id || data.data?.ok !== true) throw new Error('Native plan delete not acknowledged')
+  return true
 }
 export async function sortPlans(ids: number[]) {
-  const { data } = await apiClient.post('/plan/sort', { ids })
-  return unwrap(data)
+  const { data } = await nativeApiClient.post<NativeApiEnvelope<{ ok: boolean }>>(
+    nativeAdminPath('plans') + '/sort', { ids },
+  )
+  if (!data?.request_id || data.data?.ok !== true) throw new Error('Native plan sort not acknowledged')
+  return true
 }
 
 export async function getOrders(params: Record<string, unknown> = {}) {

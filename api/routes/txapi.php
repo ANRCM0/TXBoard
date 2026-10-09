@@ -4,6 +4,7 @@ use App\Http\Controllers\Txapi\Admin\AuditLogController;
 use App\Http\Controllers\Txapi\Admin\CommerceReadController;
 use App\Http\Controllers\Txapi\Admin\TicketAdminController;
 use App\Http\Controllers\Txapi\Admin\UserReadController;
+use App\Http\Controllers\Txapi\Admin\PlanMutationController;
 use App\Http\Controllers\Txapi\Admin\ContentAdminController;
 use App\Http\Controllers\Txapi\AccountController;
 use App\Http\Controllers\Txapi\ServerController;
@@ -58,6 +59,11 @@ Route::prefix('admin/{admin_path}')
         Route::get('users', [UserReadController::class, 'index']);
         Route::get('users/{id}', [UserReadController::class, 'show'])->whereNumber('id');
         Route::get('users/{id}/subscription-link', [UserReadController::class, 'subscriptionLink'])->whereNumber('id');
+        // POST for audited mutations while RequestLog supports POST only.
+        Route::post('plans', [PlanMutationController::class, 'save']);
+        Route::post('plans/sort', [PlanMutationController::class, 'sort']);
+        Route::post('plans/{id}/flags', [PlanMutationController::class, 'flags'])->whereNumber('id');
+        Route::post('plans/{id}/delete', [PlanMutationController::class, 'delete'])->whereNumber('id');
         Route::get('content/notices', [ContentAdminController::class, 'notices']);
         Route::post('content/notices', [ContentAdminController::class, 'saveNotice']);
         Route::put('content/notices/sort', [ContentAdminController::class, 'sortNotices']);

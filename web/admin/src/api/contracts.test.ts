@@ -12,7 +12,7 @@ import {
 } from './client'
 import { fetchSettings, saveSettings } from './config'
 import { getAuditLogs } from './statistics'
-import { getPlans, getOrders } from './finance'
+import { getPlans, getOrders, savePlan, updatePlanFlags, deletePlan, sortPlans } from './finance'
 import { getTickets, getTicketDetail, replyTicket, closeTicket } from './ticket'
 import {
   getKnowledgePage, getKnowledgeAll, getKnowledgeDetail, getKnowledgeCategories,
@@ -521,6 +521,30 @@ describe('native administrator user reads', () => {
     await expect(getUsers({ filter: [{ id: 'token', value: 'x' }] }))
       .rejects.toThrow('Unsupported native user filter')
     expect(seen).toHaveLength(0)
+  })
+})
+
+describe('native administrator plan write contract', () => {
+  it('uses audit-friendly POST routes for create edit flags ordering and deletion', async () => {
+    setAdminSecurePath('plan-native-secret')
+    responder = config => ({ data: {
+      data: config.url === '/admin/plan-native-secret/plans' ? { id: 43 } : { ok: true },
+      request_id: 'native-plan-mutation',
+    } })
+    await expect(savePlan({ name: 'New', transfer_enable: 2, prices: { monthly: 10 } })).resolves.toBe(43)
+    await expect(updatePlanFlags(43, { show: true, sell: false })).resolves.toBe(true)
+    await expect(sortPlans([43, 41])).resolves.toBe(true)
+    await expect(deletePlan(43)).resolves.toBe(true)
+
+    expect(seen.map(item => item.url)).toEqual([
+      '/admin/plan-native-secret/plans',
+      '/admin/plan-native-secret/plans/43/flags',
+      '/admin/plan-native-secret/plans/sort',
+      '/admin/plan-native-secret/plans/43/delete',
+    ])
+    expect(seen.map(item => item.method)).toEqual(['post', 'post', 'post', 'post'])
+    expect(JSON.parse(String(seen[1].data))).toEqual({ show: true, sell: false })
+    await expect(deletePlan(0)).rejects.toThrow('Invalid plan ID')
   })
 })
 
