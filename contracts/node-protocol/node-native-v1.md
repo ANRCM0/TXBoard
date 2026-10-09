@@ -7,7 +7,7 @@ Base: HTTPS `/txapi/node/v1`. Native polling is authoritative; native WebSocket 
 ## Authentication and tenancy
 
 - Send `Authorization: Bearer <credential>` on every request. For individual nodes use existing TXBoard server token; for a machine use that machine's current token. Never pass token in query/body.
-- Send `X-TX-Node-ID` with the database primary key `v2_server.id` (not the legacy `code` alias). For machine credentials also send `X-TX-Machine-ID`; selected node must be enabled and assigned to that enabled machine. Machine-only endpoints need just machine ID.
+- Send `X-TX-Node-ID` with the database primary key `v2_server.id` (not the legacy `code` alias). For machine credentials also send `X-TX-Machine-ID`; selected node must be enabled and assigned to that enabled machine. Machine-only endpoints need just machine ID. `POST /handshake` also accepts a machine identity without Node ID for machine-mode bootstrap; its response carries `mode:"machine"` and `node_id:null`.
 - Wrong/disabled credentials return HTTP 401, unknown/foreign node returns 404. No token is echoed or serialized.
 
 ## Endpoints
@@ -21,7 +21,7 @@ Base: HTTPS `/txapi/node/v1`. Native polling is authoritative; native WebSocket 
 | GET | `/machine/nodes` | nodes of authenticated machine only |
 | POST | `/machine/status` | authenticated machine cpu/memory/disk snapshot |
 
-Handshake `data` includes `protocol_version:1`, `node_id`, `capabilities`, `websocket:{enabled:false}`, `settings:{push_interval,pull_interval}`. Normal successful responses use `{data,request_id}` and header `X-Request-Id`; errors use `{error:{code,message},request_id}`. ETags are scoped to the node and its selected configuration or user snapshot; never reuse cached snapshots across node identity.
+Handshake `data` includes `protocol_version:1`, `mode:"node"|"machine"`, `node_id`, `capabilities`, `websocket:{enabled:false}`, `settings:{push_interval,pull_interval}`. Normal successful responses use `{data,request_id}` and header `X-Request-Id`; errors use `{error:{code,message},request_id}`. ETags are scoped to the node and its selected configuration or user snapshot; never reuse cached snapshots across node identity.
 
 ## Example batch and semantics
 
@@ -37,7 +37,7 @@ Handshake `data` includes `protocol_version:1`, `node_id`, `capabilities`, `webs
 
 ## Machine status
 
-`POST /machine/status` requires a valid machine token and `X-TX-Machine-ID`; body includes `protocol_version:1`, `cpu` (0–100), `mem:{total,used}` unsigned bytes and optional `swap` and `disk`. Does not allow a global node token to write machine status.
+`POST /machine/status` requires a valid machine token and `X-TX-Machine-ID`; body includes `protocol_version:1`, `cpu` (0–100), `mem:{total,used}` unsigned bytes and optional `swap` and `disk`. Also accepts `net:{in_speed,out_speed}` and bounded `runtime`/`runtime.update` metadata (secret-like messages redacted). Native and legacy endpoints now use the same SQL machine status/history writer. Does not allow a global node token to write machine status.
 
 ## Migration and compatibility
 

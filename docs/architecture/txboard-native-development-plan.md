@@ -161,6 +161,11 @@ Controller 不承担复杂交易，只完成鉴权、验证和调用服务。域
 
 API 兼容策略不是永久双轨；但在证据不足时宁可保留短期 adapter 也不要丢单/中断节点。
 
+## P4-C 机器状态协议兼容收尾
+
+- Native 握手支持 Machine Token + Machine-ID（无需 Node ID）；共享 MachineTelemetry 统一 V2 与 TXAPI 的状态字段、负载历史、net 速率、runtime 更新元数据和敏感信息脱敏。
+- 原有 V2 machine/status JSON 响应不变；机器 Token / Node Scope 严格校验；跨数据库测试覆盖上述行为。
+- TX-Node 仓库与真实联调不在本批范围。
 ## P4-B 大流量批次 SQL 查询优化
 
 - 保持 `TrafficBatchJob` 原子账本：节点行锁、批次唯一键、用户/用户统计/节点统计同一事务；Redis 配额通知仅在提交后执行。

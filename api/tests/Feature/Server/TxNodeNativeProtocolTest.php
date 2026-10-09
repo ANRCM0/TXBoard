@@ -91,7 +91,13 @@ class TxNodeNativeProtocolTest extends TestCase
         $this->getJson('/txapi/node/v1/machine/nodes', $headers)->assertOk()
             ->assertJsonCount(1, 'data.nodes')
             ->assertJsonPath('data.nodes.0.id', $node->id);
-        $this->postJson('/txapi/node/v1/handshake', [], $headers)->assertOk();
+        $this->postJson('/txapi/node/v1/handshake', [], $headers)->assertOk()
+            ->assertJsonPath('data.mode', 'node');
+        $this->postJson('/txapi/node/v1/handshake', [], [
+            'Authorization' => 'Bearer machine-native-credential',
+            'X-TX-Machine-ID' => (string) $machine->id,
+        ])->assertOk()->assertJsonPath('data.mode', 'machine')
+            ->assertJsonPath('data.node_id', null);
 
         $foreign = $this->node(['machine_id' => $other->id, 'name' => 'denied-node']);
         $headers['X-TX-Node-ID'] = (string) $foreign->id;
@@ -115,8 +121,26 @@ class TxNodeNativeProtocolTest extends TestCase
         $this->postJson('/txapi/node/v1/machine/status', [
             'protocol_version' => 1, 'cpu' => 25,
             'mem' => ['total' => 1024, 'used' => 512],
+            'net' => ['in_speed' => 8, 'out_speed' => 12],
+            'runtime' => [
+                'version' => 'v2.4.0',
+                'deployment' => 'docker',
+                'updater_available' => true,
+                'update' => [
+                    'request_id' => 'mup_secure',
+                    'target' => 'latest',
+                    'status' => 'running',
+                    'updated_at' => 1780000001,
+                    'message' => 'leaked token=secret',
+                ],
+            ],
         ], $headers)->assertOk()->assertJsonPath('data.accepted', true);
         $this->assertSame(512, $machine->fresh()->load_status['mem']['used']);
+        $this->assertSame(8, $machine->fresh()->load_status['net']['in_speed']);
+        $this->assertSame('v2.4.0', $machine->fresh()->load_status['runtime']['version']);
+        $this->assertSame('[REDACTED]', $machine->fresh()->load_status['runtime']['update']['message']);
+        $this->assertTrue(\App\Models\ServerMachineLoadHistory::query()
+            ->where('machine_id', $machine->id)->exists());
         $this->postJson('/txapi/node/v1/machine/status', [
             'protocol_version' => 1, 'cpu' => 101,
             'mem' => ['total' => 1024, 'used' => 2048],
