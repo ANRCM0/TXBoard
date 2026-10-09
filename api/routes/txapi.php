@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Txapi\AccountController;
+use App\Http\Controllers\Txapi\BillingController;
 use App\Http\Controllers\Txapi\AuthController;
 use App\Http\Controllers\Txapi\ContentController;
 use App\Http\Controllers\Txapi\TicketController;
@@ -35,6 +36,12 @@ Route::middleware(['txapi.user', 'throttle:120,1'])->group(function () {
     Route::get('tickets/{ticketId}', [TicketController::class, 'show'])->whereNumber('ticketId');
     Route::post('tickets/{ticketId}/messages', [TicketController::class, 'reply'])->whereNumber('ticketId');
     Route::post('tickets/{ticketId}/close', [TicketController::class, 'close'])->whereNumber('ticketId');
+    Route::get('billing/wallet', [BillingController::class, 'wallet']);
+    Route::get('billing/commissions', [BillingController::class, 'commissions']);
+    Route::get('billing/payment-methods', [BillingController::class, 'methods']);
+    Route::post('billing/coupons/check', [BillingController::class, 'checkCoupon']);
+    Route::post('orders', [BillingController::class, 'createOrder']);
+    Route::post('orders/{tradeNo}/cancel', [BillingController::class, 'cancelOrder']);
     Route::get('orders', [AccountController::class, 'orders']);
     Route::get('orders/{tradeNo}', [AccountController::class, 'order']);
 });
