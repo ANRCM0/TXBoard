@@ -98,7 +98,7 @@ final class TxapiAdminSettingsTest extends TestCase
             (string) $response->headers->get('Cache-Control'));
         $this->assertArrayNotHasKey('webhook_url', $response->json('data'));
         Http::assertSent(static function ($request) use ($token): bool {
-            return str_ends_with($request->url(), '/setWebhook')
+            return str_ends_with((string) parse_url($request->url(), PHP_URL_PATH), '/setWebhook')
                 && $request['url'] === 'https://panel.example.test/api/v1/guest/telegram/webhook?access_token=' . md5($token);
         });
     }
