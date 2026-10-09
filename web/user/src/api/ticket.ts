@@ -1,4 +1,4 @@
-import { api, request } from './client'
+import { nativeApi, nativeRequest, type NativeEnvelope } from './client'
 
 export type TicketMessage = {
   id: number
@@ -18,20 +18,57 @@ export type TicketItem = {
   message?: TicketMessage[]
 }
 
-export async function fetchTickets(page = 1, pageSize = 20) {
-  const all = await request<TicketItem[]>(api.get('/user/ticket/fetch'))
-  const total = all.length
-  const start = Math.max(0, (page - 1) * pageSize)
+type NativeTicket = {
+  id: number
+  subject: string
+  level: number
+  status: number
+  reply_status: number
+  created_at: string
+  updated_at: string
+  messages?: { id: number; message: string; is_me: boolean; created_at: string }[]
+}
+
+function seconds(value: string) {
+  const time = Date.parse(value)
+  if (!Number.isFinite(time)) throw new Error('Invalid TXAPI ticket date')
+  return Math.floor(time / 1000)
+}
+
+function toTicket(item: NativeTicket): TicketItem {
   return {
-    data: all.slice(start, start + pageSize),
-    total,
-    current_page: page,
-    page_size: pageSize,
+    id: item.id,
+    subject: item.subject,
+    level: item.level,
+    status: item.status,
+    reply_status: item.reply_status,
+    created_at: seconds(item.created_at),
+    updated_at: seconds(item.updated_at),
+    message: item.messages?.map(m => ({
+      id: m.id, is_me: m.is_me, message: m.message, created_at: seconds(m.created_at),
+    })),
   }
 }
 
-export async function fetchTicketById(id: number) {
-  return request<TicketItem>(api.get('/user/ticket/fetch', { params: { id } }))
+export async function fetchTickets(page = 1, pageSize = 20) {
+  const { data: payload } = await nativeApi.get<NativeEnvelope<NativeTicket[]>>('/tickets', {
+    params: { page, per_page: pageSize },
+  })
+  if (!payload?.request_id || !Array.isArray(payload.data) ||
+      !payload.meta || !Number.isInteger(payload.meta.total)) {
+    throw new Error('Invalid TXAPI tickets response')
+  }
+  return {
+    data: payload.data.map(toTicket),
+    total: payload.meta.total,
+    current_page: payload.meta.page,
+    page_size: payload.meta.per_page,
+  }
+}
+
+export async function fetchTicketById(id: number): Promise<TicketItem> {
+  if (!Number.isSafeInteger(id) || id < 1) throw new Error('Invalid ticket id')
+  return toTicket(await nativeRequest<NativeTicket>(nativeApi.get('/tickets/' + id)))
 }
 
 export async function saveTicket(payload: {
@@ -39,13 +76,18 @@ export async function saveTicket(payload: {
   level: number
   message: string
 }) {
-  return request<boolean>(api.post('/user/ticket/save', payload))
+  const data = await nativeRequest<{ id: number }>(nativeApi.post('/tickets', payload))
+  return Number.isSafeInteger(data?.id) && data.id > 0
 }
 
 export async function replyTicket(payload: { id: number; message: string }) {
-  return request<boolean>(api.post('/user/ticket/reply', payload))
+  const data = await nativeRequest<{ ok: boolean }>(
+    nativeApi.post('/tickets/' + payload.id + '/messages', { message: payload.message }),
+  )
+  return data.ok
 }
 
 export async function closeTicket(id: number) {
-  return request<boolean>(api.post('/user/ticket/close', { id }))
+  const data = await nativeRequest<{ ok: boolean }>(nativeApi.post('/tickets/' + id + '/close'))
+  return data.ok
 }

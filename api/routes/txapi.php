@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Txapi\AccountController;
 use App\Http\Controllers\Txapi\ContentController;
+use App\Http\Controllers\Txapi\TicketController;
 use App\Http\Controllers\Txapi\PublicController;
 use Illuminate\Support\Facades\Route;
 
@@ -19,6 +20,11 @@ Route::middleware(['txapi.user', 'throttle:120,1'])->group(function () {
     Route::get('knowledge', [ContentController::class, 'knowledge']);
     Route::get('knowledge/categories', [ContentController::class, 'categories']);
     Route::get('knowledge/{articleId}', [ContentController::class, 'article'])->whereNumber('articleId');
+    Route::get('tickets', [TicketController::class, 'index']);
+    Route::post('tickets', [TicketController::class, 'store']);
+    Route::get('tickets/{ticketId}', [TicketController::class, 'show'])->whereNumber('ticketId');
+    Route::post('tickets/{ticketId}/messages', [TicketController::class, 'reply'])->whereNumber('ticketId');
+    Route::post('tickets/{ticketId}/close', [TicketController::class, 'close'])->whereNumber('ticketId');
     Route::get('orders', [AccountController::class, 'orders']);
     Route::get('orders/{tradeNo}', [AccountController::class, 'order']);
 });

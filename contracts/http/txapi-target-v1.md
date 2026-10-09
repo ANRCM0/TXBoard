@@ -21,6 +21,12 @@
 
 Hono Gateway 独立的 [TXAPI BFF Target](txapi-bff-target-v1.md) 保留 `{ok,data,meta}` 的 v1 SDK envelope，和 Laravel 原生响应不同。
 
+## P2-D Tickets
+
+- `GET /txapi/tickets?page=&per_page=`：Sanctum 用户隔离、稳定数据库分页、数据+meta；`GET /txapi/tickets/{id}`：仅所有者可见，messages 带 is_me、时间使用 ISO UTC。
+- `POST /txapi/tickets`（subject/level/message）返回 201 和 id；`POST /txapi/tickets/{id}/messages` 回复；`POST /txapi/tickets/{id}/close` 关闭（幂等）。全部使用固定响应和严格 401/404/409/422 状态。
+- 重用既有 TicketService 的状态规则和扩展事件；旧 V1 工单及提款功能仍保留，不涉及任何管理员功能调整。
+
 ## P2-C Account 与 Content
 
 - `GET /txapi/me` 增加 uuid、balance_minor、commission_balance_minor、expired_at、telegram_id；所有字段为固定白名单，不返回私有订阅 token。
