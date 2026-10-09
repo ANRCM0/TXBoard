@@ -85,43 +85,52 @@ class LoginService
      */
     public function resetPassword(string $email, string $emailCode, string $password): array
     {
-        // 检查重置请求限制
-        $forgetRequestLimitKey = CacheKey::get('FORGET_REQUEST_LIMIT', $email);
-        $forgetRequestLimit = (int) Cache::get($forgetRequestLimitKey);
-        if ($forgetRequestLimit >= 3) {
-            return [false, [429, __('Reset failed, Please try again later')]];
-        }
+        // Serialize recovery across PHP workers; a single email code may not
+        // update the password twice before it is removed from cache.
+        $key = 'password-reset:' . hash('sha256', strtolower(trim($email)));
+        $result = Cache::lock($key, 15)->get(function () use ($email, $emailCode, $password): array {
 
-        // 验证邮箱验证码
-        $cachedEmailCode = Cache::get(CacheKey::get('EMAIL_VERIFY_CODE', $email));
-        if ($cachedEmailCode === null || !hash_equals((string) $cachedEmailCode, $emailCode)) {
-            Cache::put($forgetRequestLimitKey, $forgetRequestLimit ? $forgetRequestLimit + 1 : 1, 300);
-            return [false, [400, __('Incorrect email verification code')]];
-        }
+            // 检查重置请求限制
+            $forgetRequestLimitKey = CacheKey::get('FORGET_REQUEST_LIMIT', $email);
+            $forgetRequestLimit = (int) Cache::get($forgetRequestLimitKey);
+            if ($forgetRequestLimit >= 3) {
+                return [false, [429, __('Reset failed, Please try again later')]];
+            }
 
-        // 查找用户
-        $user = User::byEmail($email)->first();
-        if (!$user) {
-            return [false, [400, __('This email is not registered in the system')]];
-        }
+            // 验证邮箱验证码
+            $cachedEmailCode = Cache::get(CacheKey::get('EMAIL_VERIFY_CODE', $email));
+            if ($cachedEmailCode === null || !hash_equals((string) $cachedEmailCode, $emailCode)) {
+                Cache::put($forgetRequestLimitKey, $forgetRequestLimit ? $forgetRequestLimit + 1 : 1, 300);
+                return [false, [400, __('Incorrect email verification code')]];
+            }
 
-        // 更新密码
-        $user->password = password_hash($password, PASSWORD_DEFAULT);
-        $user->password_algo = NULL;
-        $user->password_salt = NULL;
+            // 查找用户
+            $user = User::byEmail($email)->first();
+            if (!$user) {
+                return [false, [400, __('This email is not registered in the system')]];
+            }
 
-        if (!$user->save()) {
-            return [false, [500, __('Reset failed')]];
-        }
+            // 更新密码
+            $user->password = password_hash($password, PASSWORD_DEFAULT);
+            $user->password_algo = NULL;
+            $user->password_salt = NULL;
 
-        HookManager::call('user.password.reset.after', $user);
+            if (!$user->save()) {
+                return [false, [500, __('Reset failed')]];
+            }
 
-        // 清除邮箱验证码
-        Cache::forget(CacheKey::get('EMAIL_VERIFY_CODE', $email));
+            // A recovered password invalidates all existing sessions, even for
+            // V1 clients using this same service.
+            $user->tokens()->delete();
+            HookManager::call('user.password.reset.after', $user);
 
-        return [true, true];
+            // 清除邮箱验证码
+            Cache::forget(CacheKey::get('EMAIL_VERIFY_CODE', $email));
+
+            return [true, true];
+        });
+        return is_array($result) ? $result : [false, [429, __('Reset failed, Please try again later')]];
     }
-
 
     /**
      * 生成临时登录令牌和快速登录URL

@@ -21,6 +21,24 @@
 
 Hono Gateway 独立的 [TXAPI BFF Target](txapi-bff-target-v1.md) 保留 `{ok,data,meta}` 的 v1 SDK envelope，和 Laravel 原生响应不同。
 
+## Native user/auth CURRENT after Legacy Batches 1–3
+
+The following handlers are present in Laravel `api/routes/txapi.php` (code shipped, not a statement about production deployments):
+
+| Endpoint | Scope and invariants |
+|---|---|
+| `GET /txapi/traffic/logs?page=&per_page=` | Sanctum user, current-month owner-scoped SQL, server pagination, whitelisted byte counters and multiplier |
+| `GET /txapi/orders/{tradeNo}/detail` | Sanctum order owner; minor-unit balance/discount, payment ID lock, plan traffic, no provider secrets |
+| `GET/PATCH /txapi/me/preferences` | Sanctum user, only expiration and traffic reminder preferences |
+| `POST /txapi/auth/quick-login` | Sanctum user, rate limit, only local redirect and existing short-lived login code |
+| `POST /txapi/me/subscription-credentials/rotate` | Sanctum user, row lock, rotate private subscription UUID/token, return subscription URL |
+| `POST /txapi/auth/mail-link` | Anonymous, Captcha (when enabled) and existing mail-link policy, enumeration-safe success |
+| `POST /txapi/auth/one-time-token` | Anonymous token redeem, shared one-time code store/lock, only `auth_data` in response |
+| `POST /txapi/auth/email-code` | Anonymous, Captcha (when enabled), shared V1/TXAPI email issuer and cooldown |
+| `POST /txapi/auth/password/forgot` | Anonymous, Captcha, single-use email code, revoke sessions on successful reset |
+
+All legacy V1/V2 routes and existing subscription URL generators remain available until supported consumers and external providers complete migration. Credential-bearing URLs, checkout and payment callbacks require separate live integration validation. See [Batch 3](../../docs/architecture/legacy-retirement-batch-3.md).
+
 ## P3-A3 Native checkout & shared provider invocation
 
 - `POST /txapi/orders/{tradeNo}/checkout` 使用 owner-scoped 行锁、统一手续费与网关配置，返回 native `{data:{type,data},request_id}`。免费单走已有 paid 状态机；付费单在锁提交后调支付提供方，并继续使用默认旧 webhook URL。
@@ -44,7 +62,7 @@ Hono Gateway 独立的 [TXAPI BFF Target](txapi-bff-target-v1.md) 保留 `{ok,da
 
 - `POST /txapi/auth/login`、`POST /txapi/auth/register` 复用原注册、Captcha、密码限制与 Sanctum；仅返回 auth_data，不包含 subscription token 或 admin secure_path。
 - `POST /txapi/auth/logout` 注销当前 token；`GET /txapi/auth/sessions` 返回不含 token hash 的当前用户会话；`DELETE /txapi/auth/sessions/{sessionId}` 仅能操作当前用户 token；`POST /txapi/auth/password` 验证旧密码后撤销其他会话。
-- 邮件链接、Telegram、验证码发送、忘记密码和订阅密钥重置仍走 legacy（业务安全与交互契约保持不变），用户前端的普通登录注册/会话管理已迁移。
+- **P2-E 历史阶段说明**：当时邮件链接、Telegram、验证码发送、忘记密码与订阅密钥重置仍使用 legacy；Legacy Batches 1–3 后除 Telegram 等外已陆续切换 Vue 官方调用方，现行接口见上方 CURRENT 清单。
 
 ## P2-D Tickets
 
@@ -72,7 +90,7 @@ Vue 套餐列表/详情现使用原生 /txapi/plans 和认证详情 /txapi/plans
 
 ## P1-B 首个页面已迁移
 
-Vue 用户订单列表现已直接使用 `GET /txapi/orders` 的服务端分页/状态过滤和原生响应。增加只读展示字段 type、plan{id,name}、paid_at（RFC3339 UTC 或 null）；旧 Vue UI 使用的金额/时间/周期格式仅在前端 adapter 转换。订单详情与付款状态轮询仍有旧 V1 调用（Batch 1 LR-02 迁移轮询）；订单创建、支付、取消已于 P3 转向原生；Admin 当前仍使用旧动态路由。
+Vue 用户订单列表使用 `GET /txapi/orders` 的服务端分页/状态过滤与原生响应；LR-02 后状态轮询、LR-05 后订单详情均切到原生。订单创建、支付、取消已于 P3 转向原生；Admin 仍使用旧动态路由。早期 UI 金额、时间、周期 adapter 只是历史展示兼容，不是后端协议。
 
 ## P1-B 前端适配准备
 
