@@ -152,6 +152,68 @@ final class GiftCardAdminController
         return TxapiResponse::success($request, ['ok' => true]);
     }
 
+
+    public function issue(Request $request): JsonResponse
+    {
+        $input = $request->validate([
+            'template_id' => ['required', 'integer', 'exists:v2_gift_card_template,id'],
+            'count' => ['required', 'integer', 'min:1', 'max:500'],
+            'prefix' => ['sometimes', 'string', 'max:10', 'regex:/^[A-Z0-9]*$/'],
+            'expires_hours' => ['sometimes', 'integer', 'min:1', 'max:87600'],
+            'max_usage' => ['sometimes', 'integer', 'min:1', 'max:1000'],
+        ]);
+        $batch = DB::transaction(static function () use ($input): ?string {
+            $template = GiftCardTemplate::query()->lockForUpdate()->findOrFail($input['template_id']);
+            if (!$template->isAvailable()) return null;
+            $options = [
+                'prefix' => $input['prefix'] ?? 'GC',
+                'max_usage' => $input['max_usage'] ?? 1,
+            ];
+            if (isset($input['expires_hours'])) {
+                $options['expires_at'] = time() + $input['expires_hours'] * 3600;
+            }
+            return GiftCardCode::batchGenerate($template->id, $input['count'], $options);
+        });
+        if ($batch === null) {
+            return TxapiResponse::error($request, 'TEMPLATE_DISABLED', 'Template unavailable', 409);
+        }
+        return TxapiResponse::success($request, ['batch_id' => $batch, 'count' => $input['count']], status: 201);
+    }
+
+    public function toggle(Request $request): JsonResponse
+    {
+        $input = $request->validate(['action' => ['required', 'in:enable,disable']]);
+        $changed = DB::transaction(static function () use ($request, $input): bool {
+            $code = GiftCardCode::query()->lockForUpdate()->findOrFail((int) $request->route('id'));
+            if ($input['action'] === 'disable') {
+                if ($code->status === GiftCardCode::STATUS_USED) return false;
+                $code->status = GiftCardCode::STATUS_DISABLED;
+            } else {
+                if ($code->status !== GiftCardCode::STATUS_DISABLED ||
+                    $code->usage_count > 0 || $code->usages()->exists() || $code->isExpired()) return false;
+                $code->status = GiftCardCode::STATUS_UNUSED;
+            }
+            return $code->save();
+        });
+        if (!$changed) return TxapiResponse::error($request, 'INVALID_CODE_STATE', 'Invalid code transition', 409);
+        return TxapiResponse::success($request, ['ok' => true]);
+    }
+
+    public function editCode(Request $request): JsonResponse
+    {
+        $input = $request->validate([
+            'expires_at' => ['sometimes', 'nullable', 'integer', 'min:0'],
+            'max_usage' => ['sometimes', 'integer', 'min:1', 'max:1000'],
+        ]);
+        $changed = DB::transaction(static function () use ($request, $input): bool {
+            $code = GiftCardCode::query()->lockForUpdate()->findOrFail((int) $request->route('id'));
+            if (isset($input['max_usage']) && $input['max_usage'] < $code->usage_count) return false;
+            return $code->fill($input)->save();
+        });
+        if (!$changed) return TxapiResponse::error($request, 'USAGE_CONFLICT', 'Cannot reduce usage below history', 409);
+        return TxapiResponse::success($request, ['ok' => true]);
+    }
+
     private function templateInput(Request $request, bool $partial = false): array
     {
         $required = $partial ? 'sometimes' : 'required';
