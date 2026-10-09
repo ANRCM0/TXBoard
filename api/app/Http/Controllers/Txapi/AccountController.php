@@ -8,6 +8,9 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
+use App\Models\User;
+use App\Utils\Helper;
 
 final class AccountController
 {
@@ -29,6 +32,21 @@ final class AccountController
                 'limit_bytes' => (int) ($user->transfer_enable ?? 0),
             ],
         ]);
+    }
+
+    public function rotateSubscriptionCredentials(Request $request): JsonResponse
+    {
+        // Mutates a private subscription secret; never expose this as GET.
+        // Serialize concurrent rotations and preserve existing Sanctum sessions.
+        $newUrl = DB::transaction(static function (): string {
+            $user = User::query()->whereKey(Auth::guard('sanctum')->id())
+                ->lockForUpdate()->firstOrFail();
+            $user->uuid = Helper::guid(true);
+            $user->token = Helper::guid();
+            $user->saveOrFail();
+            return Helper::getSubscribeUrl($user->token);
+        });
+        return TxapiResponse::success($request, ['subscribe_url' => $newUrl]);
     }
 
     public function preferences(Request $request): JsonResponse

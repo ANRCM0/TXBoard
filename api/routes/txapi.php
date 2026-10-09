@@ -50,6 +50,11 @@ Route::middleware(['txapi.user', 'throttle:120,1'])->group(function () {
     Route::get('auth/sessions', [AuthController::class, 'sessions']);
     Route::delete('auth/sessions/{sessionId}', [AuthController::class, 'revoke'])->whereNumber('sessionId');
     Route::post('auth/password', [AuthController::class, 'password']);
+    // Sensitive self-service actions; legacy endpoints remain while callers migrate.
+    Route::post('auth/quick-login', [AuthController::class, 'quickLogin'])
+        ->middleware('throttle:5,1');
+    Route::post('me/subscription-credentials/rotate', [AccountController::class, 'rotateSubscriptionCredentials'])
+        ->middleware('throttle:3,1');
     Route::get('notices', [ContentController::class, 'notices']);
     Route::get('knowledge', [ContentController::class, 'knowledge']);
     Route::get('knowledge/categories', [ContentController::class, 'categories']);
