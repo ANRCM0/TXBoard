@@ -7,6 +7,7 @@ use App\Models\ServerRoute;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
+use Illuminate\Support\Facades\Route;
 use Tests\TestCase;
 
 final class TxapiAdminNetworkGroupsRoutesTest extends TestCase
@@ -97,6 +98,17 @@ final class TxapiAdminNetworkGroupsRoutesTest extends TestCase
         $this->deleteJson(self::ROOT . '/network-routes/' . $id)
             ->assertOk()->assertJsonPath('data.ok', true);
         $this->deleteJson(self::ROOT . '/network-routes/' . $id)->assertStatus(404);
+    }
+
+
+    public function test_legacy_v2_group_and_route_admin_paths_are_not_registered(): void
+    {
+        $all = collect(Route::getRoutes()->getRoutes())->map(static fn ($route) => $route->uri())->all();
+        foreach (['server/group/fetch', 'server/group/save', 'server/group/drop',
+            'server/route/fetch', 'server/route/save', 'server/route/sort',
+            'server/route/simulate', 'server/route/drop'] as $suffix) {
+            $this->assertNotContains('api/v2/{admin_path}/' . $suffix, $all);
+        }
     }
 
     private function account(string $email, bool $admin = false): User
