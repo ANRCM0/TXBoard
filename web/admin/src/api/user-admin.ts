@@ -11,6 +11,8 @@ export type AdminUser = {
   invite_user?: { id?: number; email?: string } | null
   balance?: number
   commission_balance?: number
+  expected_balance_minor?: number
+  expected_commission_balance_minor?: number
   commission_rate?: number | null
   commission_type?: number | null
   discount?: number | null
@@ -66,6 +68,13 @@ export type UserUpdatePayload = {
   banned?: boolean
   balance?: number
   commission_balance?: number
+  expected_balance_minor?: number
+  expected_commission_balance_minor?: number
+  expected_transfer_enable?: number | null
+  expected_u?: number | null
+  expected_d?: number | null
+  expected_plan_id?: number | null
+  expected_expired_at?: number | null
   commission_rate?: number | null
   commission_type?: number
   discount?: number | null
@@ -141,8 +150,22 @@ export async function getUserSubscriptionLink(id: number) {
 }
 
 export async function updateUser(payload: UserUpdatePayload) {
-  const { data } = await apiClient.post('/user/update', payload)
-  return unwrap(data)
+  if (payload.balance !== undefined &&
+      !Number.isSafeInteger(payload.expected_balance_minor)) {
+    throw new Error('Expected balance snapshot required for native edits')
+  }
+  if (payload.commission_balance !== undefined &&
+      !Number.isSafeInteger(payload.expected_commission_balance_minor)) {
+    throw new Error('Expected commission snapshot required for native edits')
+  }
+  const { id, ...changes } = payload
+  const { data } = await nativeApiClient.post<NativeApiEnvelope<{ ok: boolean; id: number }>>(
+    adminUserResource(id) + '/update', changes,
+  )
+  if (!data?.request_id || data.data?.ok !== true || data.data?.id !== id) {
+    throw new Error('Native user update not acknowledged')
+  }
+  return true
 }
 
 export async function resetUserSecret(id: number) {
@@ -162,8 +185,16 @@ export async function generateUser(payload: {
   generate_count?: number
   return_credentials?: boolean
 }) {
-  const { data } = await apiClient.post('/user/generate', payload)
-  return unwrap(data)
+  if (!payload.password || payload.password.length < 8) {
+    throw new Error('New users need an explicit password of at least 8 characters')
+  }
+  const { data } = await nativeApiClient.post<NativeApiEnvelope<{ id: number }>>(
+    nativeAdminPath('users'), payload,
+  )
+  if (!data?.request_id || !Number.isSafeInteger(data.data?.id)) {
+    throw new Error('Native user creation not acknowledged')
+  }
+  return data.data.id
 }
 
 export async function destroyUser(id: number) {

@@ -123,12 +123,13 @@ export function UserEditorModal({
   const createMutation = useMutation({
     mutationFn: () => {
       const email = create.email.trim()
+      if (create.password.length < 8) throw new Error('创建用户必须填写至少 8 位的密码')
       const at = email.lastIndexOf('@')
       if (at <= 0 || at === email.length - 1) throw new Error('邮箱格式不正确')
       return generateUser({
         email_prefix: email.slice(0, at),
         email_suffix: email.slice(at + 1),
-        password: create.password || undefined,
+        password: create.password,
         plan_id: create.plan_id ? Number(create.plan_id) : null,
         expired_at: toEpoch(create.expired_at),
         return_credentials: true,
@@ -153,11 +154,18 @@ export function UserEditorModal({
       expired_at: toEpoch(edit.expired_at),
       balance: Number(edit.balance || 0),
       commission_balance: Number(edit.commission_balance || 0),
+      expected_balance_minor: Math.round(Number(user.balance ?? 0) * 100),
+      expected_commission_balance_minor: Math.round(Number(user.commission_balance ?? 0) * 100),
+      expected_plan_id: user.plan_id ?? null,
+      expected_expired_at: user.expired_at ?? null,
       commission_rate: nullableNumber(edit.commission_rate),
       discount: nullableNumber(edit.discount),
       speed_limit: nullableNumber(edit.speed_limit),
       device_limit: nullableNumber(edit.device_limit),
-      invite_user_email: edit.invite_user_email.trim(),
+      // Do not silently unlink an existing inviter when the list DTO omits it.
+      ...(edit.invite_user_email.trim() || user.invite_user
+        ? { invite_user_email: edit.invite_user_email.trim() }
+        : {}),
       remarks: edit.remarks,
       banned: edit.banned,
     }
@@ -165,9 +173,18 @@ export function UserEditorModal({
     const transferEnable = gbToBytes(edit.transfer_gb)
     const usedUp = gbToBytes(edit.used_up_gb)
     const usedDown = gbToBytes(edit.used_down_gb)
-    if (transferEnable != null) payload.transfer_enable = transferEnable
-    if (usedUp != null) payload.u = usedUp
-    if (usedDown != null) payload.d = usedDown
+    if (transferEnable != null) {
+      payload.transfer_enable = transferEnable
+      payload.expected_transfer_enable = user.transfer_enable ?? null
+    }
+    if (usedUp != null) {
+      payload.u = usedUp
+      payload.expected_u = user.u ?? null
+    }
+    if (usedDown != null) {
+      payload.d = usedDown
+      payload.expected_d = user.d ?? null
+    }
     if (edit.password.trim()) payload.password = edit.password.trim()
     editMutation.mutate(payload)
   }
@@ -194,7 +211,7 @@ export function UserEditorModal({
           ) : (
             <button
               className="button primary"
-              disabled={createMutation.isPending || !create.email.trim()}
+              disabled={createMutation.isPending || !create.email.trim() || create.password.length < 8}
               onClick={() => createMutation.mutate()}
             >
               {createMutation.isPending ? '创建中…' : '创建用户'}

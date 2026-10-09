@@ -19,7 +19,7 @@ import {
   saveKnowledge, toggleKnowledge, sortKnowledge, deleteKnowledge,
   getNoticePage, getNoticeAll, saveNotice, toggleNotice, sortNotice, deleteNotice,
 } from './content'
-import { getUsers, getUserDetail, getUserSubscriptionLink, resetUserSecret, destroyUser, banUsers } from './user-admin'
+import { getUsers, getUserDetail, getUserSubscriptionLink, resetUserSecret, destroyUser, banUsers, updateUser, generateUser } from './user-admin'
 import { copyNode, generateSecret } from './server'
 import { resolvePluginAppUrl } from './plugin'
 import { getThemes, getThemeConfig, saveThemeConfig } from './theme'
@@ -681,5 +681,42 @@ describe('native guarded administrator account mutations', () => {
     responder = () => ({ data: { data: {}, request_id: 'missing-count' } })
     await expect(banUsers({ scope: 'selected', user_ids: [2] }))
       .rejects.toThrow('Native ban operation not acknowledged')
+  })
+})
+
+describe('native admin user editor contract', () => {
+  it('uses native scoped edit with original minor-unit balances', async () => {
+    setAdminSecurePath('editable-admin')
+    responder = () => ({ data: { request_id: 'saved-user', data: { ok: true, id: 7 } } })
+    await expect(updateUser({
+      id: 7, email: 'change@example.test',
+      balance: 12.34, expected_balance_minor: 1234,
+      commission_balance: 5.67, expected_commission_balance_minor: 567,
+    })).resolves.toBe(true)
+    expect(seen[0].baseURL).toBe('/txapi')
+    expect(seen[0].url).toBe('/admin/editable-admin/users/7/update')
+    expect(JSON.parse(String(seen[0].data))).toEqual({
+      email: 'change@example.test',
+      balance: 12.34, expected_balance_minor: 1234,
+      commission_balance: 5.67, expected_commission_balance_minor: 567,
+    })
+    await expect(updateUser({ id: 7, balance: 14.2 }))
+      .rejects.toThrow('Expected balance snapshot required')
+  })
+
+  it('rejects implicit email passwords and writes create to TXAPI only', async () => {
+    setAdminSecurePath('editable-admin')
+    await expect(generateUser({
+      email_prefix: 'user', email_suffix: 'example.test',
+    })).rejects.toThrow('explicit password')
+    expect(seen).toHaveLength(0)
+    responder = () => ({ data: { request_id: 'new-user', data: { id: 51 } } })
+    await expect(generateUser({
+      email_prefix: 'user', email_suffix: 'example.test',
+      password: 'VeryStrongPassword123', return_credentials: true,
+    })).resolves.toBe(51)
+    expect(seen[0].baseURL).toBe('/txapi')
+    expect(seen[0].url).toBe('/admin/editable-admin/users')
+    expect(seen[0].method).toBe('post')
   })
 })
