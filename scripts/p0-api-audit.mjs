@@ -17,11 +17,11 @@ const marks = [
 ];
 const required = [
  ['GET','api/health',[]],
- ['POST','api/v1/passport/auth/login',[]],
- ['POST','api/v1/user/order/checkout',['user']],
- ['GET','api/v1/guest/payment/notify/{method}/{uuid}',[]],
- ['POST','api/v1/guest/payment/notify/{method}/{uuid}',[]],
- ['GET','api/v2/server/handshake',['server.v2']],
+ ['POST','txapi/auth/login',[]],
+ ['POST','txapi/orders/{tradeNo}/checkout',['txapi.user']],
+ ['GET','txapi/payment/webhook/{method}/{uuid}',[]],
+ ['POST','txapi/payment/webhook/{method}/{uuid}',[]],
+ ['POST','txapi/node/v1/handshake',['txnode']],
  ['GET','api/v2/{admin_path}/config/fetch',['admin.path','admin']],
  ['GET','api/v2/agent/whoami',['agent']],
 ];
@@ -87,6 +87,8 @@ export function collectRoutes(input) {
 // Treat both representations as equivalent; do not waive the actual guard.
 const expandedMiddleware = {
  user: 'App\\Http\\Middleware\\User',
+ 'txapi.user': 'App\\Http\\Middleware\\TxapiUser',
+ txnode: 'App\\Http\\Middleware\\TxNodeAuth',
  'server.v2': 'App\\Http\\Middleware\\ServerV2',
  'admin.path': 'App\\Http\\Middleware\\AdminPath',
  admin: 'App\\Http\\Middleware\\Admin',
