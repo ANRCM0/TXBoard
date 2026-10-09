@@ -29,8 +29,8 @@ final class RedemptionCodeContractTest extends TestCase
 
     public function test_code_format_validation_remains_compatible(): void
     {
-        self::assertSame(1, GiftCardCode::validateCodeFormat('GC1234567890'));
-        self::assertSame(0, GiftCardCode::validateCodeFormat('invalid-code'));
+        self::assertTrue(GiftCardCode::validateCodeFormat('GC1234567890'));
+        self::assertFalse(GiftCardCode::validateCodeFormat('invalid-code'));
         self::assertSame(0, GiftCardCode::validateCodeFormat('gc1234567890'));
     }
 }
