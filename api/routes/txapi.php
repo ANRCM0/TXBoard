@@ -3,6 +3,7 @@
 use App\Http\Controllers\Txapi\Admin\AuditLogController;
 use App\Http\Controllers\Txapi\Admin\CommerceReadController;
 use App\Http\Controllers\Txapi\Admin\TicketAdminController;
+use App\Http\Controllers\Txapi\Admin\UserReadController;
 use App\Http\Controllers\Txapi\AccountController;
 use App\Http\Controllers\Txapi\ServerController;
 use App\Http\Controllers\Txapi\TrafficController;
@@ -53,6 +54,9 @@ Route::prefix('admin/{admin_path}')
         Route::get('tickets/{id}', [TicketAdminController::class, 'show'])->whereNumber('id');
         Route::post('tickets/{id}/reply', [TicketAdminController::class, 'reply'])->whereNumber('id');
         Route::post('tickets/{id}/close', [TicketAdminController::class, 'close'])->whereNumber('id');
+        Route::get('users', [UserReadController::class, 'index']);
+        Route::get('users/{id}', [UserReadController::class, 'show'])->whereNumber('id');
+        Route::get('users/{id}/subscription-link', [UserReadController::class, 'subscriptionLink'])->whereNumber('id');
     });
 
 Route::middleware('throttle:10,1')->group(function () {

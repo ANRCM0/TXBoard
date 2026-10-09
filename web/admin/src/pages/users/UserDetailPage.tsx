@@ -12,7 +12,7 @@ import { toast } from 'sonner'
 import { getOrders, getPlans } from '../../api/finance'
 import { getTickets, type TicketItem } from '../../api/ticket'
 import { getUserTrafficResetHistory, resetUserTraffic } from '../../api/traffic-reset'
-import { getUserDetail, resetUserSecret } from '../../api/user-admin'
+import { getUserDetail, getUserSubscriptionLink, resetUserSecret } from '../../api/user-admin'
 import { OrderDetailModal } from '../../components/finance/OrderDetailModal'
 import { UserEditorModal } from '../../components/users/UserEditorModal'
 import { PageHeader } from '../../components/ui/PageHeader'
@@ -97,12 +97,10 @@ export function UserDetailPage() {
   const resetHistory = resetHistoryQuery.data?.history || []
 
   async function copySubscribe() {
-    if (!user?.subscribe_url) {
-      toast.error('该用户没有订阅链接')
-      return
-    }
     try {
-      await navigator.clipboard.writeText(user.subscribe_url)
+      const url = await getUserSubscriptionLink(userId)
+      if (!url) throw new Error('Missing subscribe URL')
+      await navigator.clipboard.writeText(url)
       toast.success('订阅链接已复制')
     } catch {
       toast.error('复制失败')
