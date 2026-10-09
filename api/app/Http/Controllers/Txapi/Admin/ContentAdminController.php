@@ -175,6 +175,9 @@ final class ContentAdminController
     private static function sortModel(string $model, array $ids): void
     {
         DB::transaction(static function () use ($model, $ids): void {
+            if ($model::query()->count() !== count($ids)) {
+                abort(422, 'The complete content ordering is required');
+            }
             // Refuse partial sorts and missing IDs instead of partly changing
             // the admin ordering. Lock rows in stable ID order.
             $records = $model::query()->whereIn('id', $ids)->orderBy('id')
