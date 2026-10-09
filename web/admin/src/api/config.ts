@@ -1,5 +1,5 @@
-import { apiClient, nativeApiClient, nativeAdminPath, unwrapNative, setAdminSecurePath, type NativeApiEnvelope } from './client'
-import { unwrap } from '../lib/api'
+import { nativeApiClient, nativeAdminPath, unwrapNative, setAdminSecurePath, type NativeApiEnvelope } from './client'
+import { testMailTemplate } from './mail'
 
 export type Settings = Record<string, unknown>
 
@@ -31,14 +31,15 @@ export async function saveSettings(payload: Settings) {
   return true
 }
 
-export async function testSendMail(payload: Settings = {}) {
-  const { data } = await apiClient.post('/config/testSendMail', payload)
-  return unwrap(data)
+export async function testSendMail() {
+  // Use the existing native mail-template delivery path, not a second SMTP
+  // integration. The notify template is the legacy config test's template.
+  return testMailTemplate('notify')
 }
 
 export async function setTelegramWebhook(telegramBotToken: string) {
-  const { data } = await apiClient.post('/config/setTelegramWebhook', {
-    telegram_bot_token: telegramBotToken,
-  })
-  return unwrap(data)
+  return unwrapNative(nativeApiClient.post<NativeApiEnvelope<{ ok: boolean }>>(
+    nativeAdminPath('settings') + '/telegram/webhook',
+    { telegram_bot_token: telegramBotToken },
+  ))
 }

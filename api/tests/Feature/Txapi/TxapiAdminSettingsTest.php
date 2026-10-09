@@ -4,6 +4,7 @@ namespace Tests\Feature\Txapi;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -51,6 +52,72 @@ final class TxapiAdminSettingsTest extends TestCase
         $this->getJson(self::ROOT)->assertStatus(404);
         $this->getJson('/txapi/admin/settings_rotated_secret/settings/site')
             ->assertOk()->assertJsonPath('data.site.app_name', 'New TXBoard Name');
+    }
+
+
+    public function test_telegram_webhook_requires_admin_and_saved_valid_settings(): void
+    {
+        // Check auth and validation independently from the explicit 3/min
+        // side-effect throttle; keep the middleware enabled in production.
+        $this->withoutMiddleware(\Illuminate\Routing\Middleware\ThrottleRequests::class);
+        $uri = self::ROOT . '/telegram/webhook';
+        $payload = ['telegram_bot_token' => '123456:test-bot-token'];
+        Http::fake();
+
+        $this->postJson($uri, $payload)->assertStatus(403);
+        Sanctum::actingAs($this->account('telegram-user@example.test'));
+        $this->postJson($uri, $payload)->assertStatus(403);
+
+        Sanctum::actingAs($this->account('telegram-admin@example.test', true));
+        $this->postJson('/txapi/admin/wrong/settings/telegram/webhook', $payload)
+            ->assertStatus(404);
+        $this->postJson($uri, [])->assertStatus(422);
+        $this->postJson($uri, $payload)->assertStatus(409)
+            ->assertJsonPath('error.code', 'TELEGRAM_SETTINGS_NOT_SAVED');
+
+        admin_setting(['telegram_bot_token' => $payload['telegram_bot_token'],
+            'telegram_webhook_url' => '', 'app_url' => '']);
+        $this->postJson($uri, $payload)->assertStatus(422)
+            ->assertJsonPath('error.code', 'TELEGRAM_WEBHOOK_URL_INVALID');
+        Http::assertNothingSent();
+    }
+
+    public function test_telegram_webhook_uses_v1_callback_but_never_exposes_its_credential(): void
+    {
+        $token = '123456:test-bot-token';
+        admin_setting(['telegram_bot_token' => $token,
+            'telegram_webhook_url' => 'https://panel.example.test']);
+        Sanctum::actingAs($this->account('telegram-success@example.test', true));
+        Http::fake(['api.telegram.org/*' => Http::response(['ok' => true, 'result' => true])]);
+
+        $response = $this->postJson(self::ROOT . '/telegram/webhook',
+            ['telegram_bot_token' => $token]);
+        $response->assertOk()->assertJsonPath('data.ok', true)
+            ->assertDontSee(md5($token));
+        $this->assertStringContainsString('no-store',
+            (string) $response->headers->get('Cache-Control'));
+        $this->assertArrayNotHasKey('webhook_url', $response->json('data'));
+        Http::assertSent(static function ($request) use ($token): bool {
+            return str_ends_with((string) parse_url($request->url(), PHP_URL_PATH), '/setWebhook')
+                && $request['url'] === 'https://panel.example.test/api/v1/guest/telegram/webhook?access_token=' . md5($token);
+        });
+    }
+
+    public function test_telegram_upstream_failure_is_redacted_from_native_response(): void
+    {
+        $token = '123456:test-bot-token';
+        admin_setting(['telegram_bot_token' => $token,
+            'telegram_webhook_url' => 'https://panel.example.test']);
+        Sanctum::actingAs($this->account('telegram-fail@example.test', true));
+        Http::fake(['*' => Http::response(['ok' => false,
+            'description' => 'SECRET_UPSTREAM_DETAILS'])]);
+
+        $this->postJson(self::ROOT . '/telegram/webhook',
+            ['telegram_bot_token' => $token])
+            ->assertStatus(503)
+            ->assertJsonPath('error.code', 'TELEGRAM_WEBHOOK_FAILED')
+            ->assertDontSee('SECRET_UPSTREAM_DETAILS')
+            ->assertDontSee(md5($token));
     }
 
     private function account(string $email, bool $admin = false): User

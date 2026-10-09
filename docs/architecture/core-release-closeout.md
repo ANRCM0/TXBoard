@@ -2,6 +2,14 @@
 
 > 2026-10-09。只覆盖 TXBoard 主仓 Laravel、Vue User、React Admin、内置运行时和数据库。不是新版本发布声明，不包含外部服务适配。
 
+## 2026-10-09 配置管理原生化补充（待 CI / 部署验收）
+
+- React Admin `config.ts` 不再直接调用 V2：原 SMTP 诊断改为复用既有 `/txapi/admin/{admin_path}/mail-templates/notify/test`；Telegram Webhook 注册改走 `POST /txapi/admin/{admin_path}/settings/telegram/webhook`，没有新增 Telegram 或邮件提供商。
+- Webhook 接口要求管理员身份及动态安全路径、每分钟 3 次限流、已保存的机器人 Token 与表单一致；校验 URL；仍将实际回调指向兼容性必需的 `/api/v1/guest/telegram/webhook`，不触碰其认证协议。
+- 原生注册响应不回显附带鉴权摘要的 Webhook URL；上游错误以固定代码返回。Telegram setWebhook 失败日志也脱敏 URL。V2 原有接口仍保留给历史调用方。
+- 增补 PHP 端跨权限/配置/成功/上游失败测试、React Admin API 合同测试及 `config` 已迁移防回退审计守卫。
+- **尚未验收**：CI 全绿、真实 Telegram Bot/Webhook 可达性、实际 SMTP 投递、部署回滚及日志脱敏的真实环境复核。不能据此宣布配置管理的生产验收通过。
+
 ## 范围决策
 
 - 唯一新增正式业务 API 根路径为 /txapi。TXBoard 是唯一权威控制面，资金、权限与流量业务不下沉到独立 Gateway。

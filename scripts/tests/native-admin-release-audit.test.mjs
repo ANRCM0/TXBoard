@@ -24,7 +24,7 @@ test('inventory separates unfinished modules from fully-native guards', () => {
   try {
     writeFileSync(join(dir, 'ticket.ts'), 'nativeApiClient.get("/admin/safe/tickets")')
     writeFileSync(join(dir, 'content.ts'), 'nativeApiClient.post("/admin/safe/content")')
-    writeFileSync(join(dir, 'config.ts'), 'apiClient.get("/config/fetch")')
+    writeFileSync(join(dir, 'finance.ts'), 'apiClient.get("/config/fetch")')
     writeFileSync(join(dir, 'ticket.test.ts'), 'apiClient.post("/wrong")')
     writeFileSync(join(dir, 'client.ts'), 'apiClient.post("/internal")')
     const report = buildNativeAdminInventory(dir)
@@ -48,9 +48,22 @@ test('formerly-native module V2 regression is flagged, never hidden by other mod
     assert.ok(COMPLETED_ADMIN_MODULES.includes('queueMonitor'))
     assert.ok(COMPLETED_ADMIN_MODULES.includes('coupon'))
     assert.ok(COMPLETED_ADMIN_MODULES.includes('mail'))
+    assert.ok(COMPLETED_ADMIN_MODULES.includes('config'))
     writeFileSync(join(dir, 'traffic-reset.ts'), "apiClient.post('/traffic-reset/reset-user')")
     const report = buildNativeAdminInventory(dir)
     assert.deepEqual(report.regressions, ['traffic-reset'])
+    assert.equal(report.totals.strict_release_ready, false)
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('config module direct V2 calls are a blocking native regression', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'txboard-config-guard-'))
+  try {
+    writeFileSync(join(dir, 'config.ts'), "apiClient.post('/config/setTelegramWebhook')")
+    const report = buildNativeAdminInventory(dir)
+    assert.deepEqual(report.regressions, ['config'])
     assert.equal(report.totals.strict_release_ready, false)
   } finally {
     rmSync(dir, { recursive: true, force: true })
