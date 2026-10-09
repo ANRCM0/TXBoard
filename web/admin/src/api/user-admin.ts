@@ -70,6 +70,11 @@ export type UserUpdatePayload = {
   commission_balance?: number
   expected_balance_minor?: number
   expected_commission_balance_minor?: number
+  expected_transfer_enable?: number | null
+  expected_u?: number | null
+  expected_d?: number | null
+  expected_plan_id?: number | null
+  expected_expired_at?: number | null
   commission_rate?: number | null
   commission_type?: number
   discount?: number | null
