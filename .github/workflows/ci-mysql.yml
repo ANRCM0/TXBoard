@@ -81,6 +81,18 @@ jobs:
             }
             echo "MySQL core schema verified" . PHP_EOL;
           '
+      - name: Verify P0 metadata normalization
+        run: php artisan test tests/Unit/Support/Audit/MySqlSchemaInventoryTest.php
+      - name: Capture read-only MySQL schema and uniqueness evidence
+        run: php scripts/p0-schema-inventory.php --output=artifacts/p0-schema.json
+      - name: Upload MySQL P0 schema evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: txboard-p0-mysql-schema
+          path: api/artifacts/p0-schema.json
+          if-no-files-found: warn
+          retention-days: 14
       - name: MySQL settlement and order recovery regressions
         run: |
           php artisan test tests/Feature/Server/TrafficBatchSettlementTest.php
