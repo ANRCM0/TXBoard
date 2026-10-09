@@ -3,6 +3,7 @@
 use App\Http\Controllers\Txapi\Admin\AuditLogController;
 use App\Http\Controllers\Txapi\Admin\CommerceReadController;
 use App\Http\Controllers\Txapi\Admin\TicketAdminController;
+use App\Http\Controllers\Txapi\Admin\PlanMutationController;
 use App\Http\Controllers\Txapi\AccountController;
 use App\Http\Controllers\Txapi\ServerController;
 use App\Http\Controllers\Txapi\TrafficController;
@@ -49,6 +50,12 @@ Route::prefix('admin/{admin_path}')
         Route::get('audit-logs', [AuditLogController::class, 'index']);
         Route::get('plans', [CommerceReadController::class, 'plans']);
         Route::get('orders', [CommerceReadController::class, 'orders']);
+        // POST is intentionally used for all administrator mutations until the
+        // RequestLog audit middleware records all unsafe HTTP methods.
+        Route::post('plans', [PlanMutationController::class, 'save']);
+        Route::post('plans/sort', [PlanMutationController::class, 'sort']);
+        Route::post('plans/{id}/flags', [PlanMutationController::class, 'flags'])->whereNumber('id');
+        Route::post('plans/{id}/delete', [PlanMutationController::class, 'delete'])->whereNumber('id');
         Route::get('tickets', [TicketAdminController::class, 'index']);
         Route::get('tickets/{id}', [TicketAdminController::class, 'show'])->whereNumber('id');
         Route::post('tickets/{id}/reply', [TicketAdminController::class, 'reply'])->whereNumber('id');
