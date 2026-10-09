@@ -1,6 +1,6 @@
 # Extension Runtime Policy / 扩展运行时约束
 
-本文件整合已完成的 Phase 3 插件升级与安全记录。**CURRENT** 以现有 Plugin/Theme/Module contracts 和代码为准；§/txapi/extensions§ 为尚未部署的 TARGET。
+本文件整合已完成的 Phase 3 插件升级与安全记录。**CURRENT** 以现有 Plugin/Theme/Module contracts 和代码为准；`/txapi/extensions` 为尚未部署的 TARGET。
 
 - Plugin Package v1、Theme Package v1、Admin Bridge v1/2、Module Lifecycle v1 保持生效，不能无预告破坏安装插件。
 - PHP 插件在 Laravel/Octane 进程内执行，**不具有进程隔离沙箱**，仅能安装可信来源。ZIP 结构检查不等于发布者验证。
@@ -10,5 +10,5 @@
 - 升级使用同文件系统 staging、backup、rename；metadata 尽力恢复，但第三方迁移与任意 PHP cleanup **无法保证完整回滚**。
 - 停用或卸载后，Octane 持久缓存的旧 HTTP route 必须被 enabled guard 拒绝；已加载类不可卸载，应按需重启 Octane/queue/scheduler。
 - Module Registry 是只读权威投影，Lifecycle 委托既有 PluginManager/ThemeService，不重写第二套系统。
-- 新插件目标路径 §/txapi/extensions/{code}/v1/*§，要声明 capability 和权限；迁移需要真实插件作者/消费者验证与版本窗口。
+- 新插件目标路径 `/txapi/extensions/{code}/v1/*`，要声明 capability 和权限；迁移需要真实插件作者/消费者验证与版本窗口。
 - 关键测试：恶意归档、错误 manifest、依赖冲突、升级失败回滚、stale route、Octane Worker 状态、AccessAudit/参考插件联调。

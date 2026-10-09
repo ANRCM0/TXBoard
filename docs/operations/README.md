@@ -8,9 +8,9 @@
 
 ## 运行与流量可靠性
 
-- 当前应用轻量探针是 §GET /api/health§；在新 §/txapi/health§ 运行并完成 Docker、代理和 TXBoard-Deploy 调整之前不得删除它。
-- 当前计划每 5 分钟执行 §php artisan traffic:health§；§php artisan traffic:health --json§ 用于机器可读统计，检查持久化 §v2_traffic_batch§ ledger、Redis §traffic_fetch§ 队列 backlog。
-- 关键日志告警：§traffic_queue_unavailable§、§traffic_queue_backlog_high§；空 ledger 在没有流量时可能正常。
+- 当前应用轻量探针是 `GET /api/health`；在新 `/txapi/health` 运行并完成 Docker、代理和 TXBoard-Deploy 调整之前不得删除它。
+- 当前计划每 5 分钟执行 `php artisan traffic:health`；`php artisan traffic:health --json` 用于机器可读统计，检查持久化 `v2_traffic_batch` ledger、Redis `traffic_fetch` 队列 backlog。
+- 关键日志告警：`traffic_queue_unavailable`、`traffic_queue_backlog_high`；空 ledger 在没有流量时可能正常。
 - 故障演练：重复 batch 不能二次入账，同 ID 不同计数应拒绝，反序上报应正确，SQL 溢出整批回滚；Redis 故障有可观察异常但不得部分结算。
 
 ## 测试与生产验收

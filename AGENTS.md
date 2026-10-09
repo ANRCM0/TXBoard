@@ -26,6 +26,15 @@ Read first:
 - Protect payment callbacks, historical balances/orders, TX-Node, Gateway, Agent/MCP, installed plugins and runtime healthchecks; no mass database renaming.
 - Prefer meaningful optimization to mechanical renaming; preserve Module Platform v1 and source licensing in `api/LICENSE` / `THIRD_PARTY_NOTICES.md`.
 
+## Optional TXBoard-Gateway architecture (TARGET, not implemented)
+
+- Read `docs/architecture/gateway-integration.md` and `contracts/http/txapi-bff-target-v1.md` for ADR-006.
+- The optional Hono Gateway owns only future `/txapi/bff/v1/*`; Laravel owns the rest of `/txapi/*`.
+- Preserve CURRENT `/gateway/v1/*` → fixed `/api/v1/*` until staged cross-repo upgrade and rollback.
+- Gateway is distinct from `mcp/`; never route Admin, Agent, Node, webhooks, extensions, raw subscriptions or financial writes through theme BFF.
+- Edge must dispatch BFF subtree before general TXAPI, with fixed private upstream and no proxy loops. Authorization and idempotency belong Laravel.
+- New Gateway v1 URL must preserve SDK envelope. Change BFF contract or sensitive writes only by explicit versioned agreement/tests.
+
 ## 2. Current Module Platform status
 
 Completed:
