@@ -105,7 +105,7 @@ class AgentPairingTest extends TestCase
         $code = (string) $created->json('data.pairing.code');
 
         $securePath = $this->securePath();
-        $this->postJson("/api/v2/{$securePath}/agent/tokens/revoke", ['id' => $tokenId])
+        $this->deleteJson("/txapi/admin/{$securePath}/agents/tokens/{$tokenId}")
             ->assertOk();
 
         $this->postJson('/api/v2/agent/pairings/redeem', [
@@ -122,7 +122,7 @@ class AgentPairingTest extends TestCase
         $admin = $this->makeAdmin();
         Sanctum::actingAs($admin);
 
-        $response = $this->postJson("/api/v2/{$this->securePath()}/agent/tokens/create", [
+        $response = $this->postJson("/txapi/admin/{$this->securePath()}/agents/tokens", [
             'client_name' => $clientName,
             'expires_in_days' => 7,
         ]);
