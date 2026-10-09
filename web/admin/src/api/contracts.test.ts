@@ -14,6 +14,11 @@ import { fetchSettings, saveSettings } from './config'
 import { getAuditLogs } from './statistics'
 import { getPlans, getOrders, savePlan, updatePlanFlags, deletePlan, sortPlans, getOrderDetail, markOrderPaid, cancelOrder } from './finance'
 import { getTickets, getTicketDetail, replyTicket, closeTicket } from './ticket'
+import {
+  getKnowledgePage, getKnowledgeAll, getKnowledgeDetail, getKnowledgeCategories,
+  saveKnowledge, toggleKnowledge, sortKnowledge, deleteKnowledge,
+  getNoticePage, getNoticeAll, saveNotice, toggleNotice, sortNotice, deleteNotice,
+} from './content'
 import { getUsers, getUserDetail, getUserSubscriptionLink } from './user-admin'
 import { copyNode, generateSecret } from './server'
 import { resolvePluginAppUrl } from './plugin'
@@ -540,6 +545,88 @@ describe('native administrator plan write contract', () => {
     expect(seen.map(item => item.method)).toEqual(['post', 'post', 'post', 'post'])
     expect(JSON.parse(String(seen[1].data))).toEqual({ show: true, sell: false })
     await expect(deletePlan(0)).rejects.toThrow('Invalid plan ID')
+  })
+})
+
+describe('native administrator notice and knowledge editors', () => {
+  it('loads paginated admin-only drafts with validated TXAPI envelopes', async () => {
+    setAdminSecurePath('editor-only')
+    setAccessToken('admin-access')
+    responder = () => ({
+      data: {
+        data: [{ id: 3, title: 'Draft', show: false }],
+        meta: { page: 2, per_page: 10, total: 11, last_page: 2 },
+        request_id: 'native-content-1',
+      },
+    })
+    const notices = await getNoticePage({ current: 2, pageSize: 10, title: 'Draft' })
+    expect(notices.total).toBe(11)
+    expect(notices.data[0].show).toBe(false)
+    expect(seen[0].baseURL).toBe('/txapi')
+    expect(seen[0].url).toBe('/admin/editor-only/content/notices')
+    expect(seen[0].params).toEqual({ page: 2, per_page: 10, title: 'Draft' })
+    expect(String(seen[0].headers.Authorization)).toBe('Bearer admin-access')
+    await getKnowledgePage({ category: 'guides' })
+    expect(seen[1].url).toBe('/admin/editor-only/content/knowledge')
+    expect(seen[1].params).toEqual({ page: 1, per_page: 20, category: 'guides' })
+  })
+
+  it('uses native scoped create edit visibility sort and delete HTTP verbs', async () => {
+    setAdminSecurePath('content-editor')
+    responder = () => ({ data: { data: { id: 7 }, request_id: 'saved' } })
+    await saveKnowledge({ title: 'Article', category: 'faq', language: 'zh-CN', body: 'text' })
+    await saveKnowledge({ id: 7, title: 'Edit', category: 'faq', language: 'zh-CN', body: 'text' })
+    await toggleKnowledge(7)
+    await sortKnowledge([7, 8])
+    await deleteKnowledge(7)
+    expect(seen.map(x => x.method)).toEqual(['post', 'put', 'patch', 'put', 'delete'])
+    expect(seen[0].url).toBe('/admin/content-editor/content/knowledge')
+    expect(seen[1].url).toBe('/admin/content-editor/content/knowledge/7')
+    expect(seen[2].url).toBe('/admin/content-editor/content/knowledge/7/visibility')
+    expect(seen[3].url).toBe('/admin/content-editor/content/knowledge/sort')
+    expect(JSON.parse(String(seen[3].data))).toEqual({ ids: [7, 8] })
+    expect(seen[4].url).toBe('/admin/content-editor/content/knowledge/7')
+    await saveNotice({ title: 'Hello', content: 'world' })
+    await saveNotice({ id: 2, title: 'Edit', content: 'world' })
+    await toggleNotice(2)
+    await sortNotice([2, 1])
+    await deleteNotice(2)
+    expect(seen.slice(5).map(x => x.method)).toEqual(['post', 'put', 'patch', 'put', 'delete'])
+    expect(seen[5].url).toBe('/admin/content-editor/content/notices')
+    expect(seen[9].url).toBe('/admin/content-editor/content/notices/2')
+  })
+
+  it('reads all pages for drag-sort, category lists and article details', async () => {
+    setAdminSecurePath('content-admin')
+    responder = config => {
+      const url = String(config.url)
+      if (url.endsWith('/categories')) {
+        return { data: { data: ['news', 'faq'], request_id: 'categories' } }
+      }
+      if (url.endsWith('/7')) {
+        return { data: { data: { id: 7, body: 'Private draft' }, request_id: 'article' } }
+      }
+      const current = Number((config.params as { page?: number } | undefined)?.page || 1)
+      return { data: {
+        data: [{ id: current, title: 'Article ' + current }],
+        meta: { page: current, per_page: 100, total: 2, last_page: 2 },
+        request_id: 'paged-' + current,
+      } }
+    }
+    expect((await getKnowledgeAll()).map(x => x.id)).toEqual([1, 2])
+    expect((await getNoticeAll()).map(x => x.id)).toEqual([1, 2])
+    expect(await getKnowledgeCategories()).toEqual(['news', 'faq'])
+    expect((await getKnowledgeDetail(7)).body).toBe('Private draft')
+    expect(seen.slice(0, 4).map(x => (x.params as { page: number }).page))
+      .toEqual([1, 2, 1, 2])
+    await expect(getKnowledgeDetail(0)).rejects.toThrow('Invalid content ID')
+  })
+
+  it('never treats malformed metadata as an empty successful collection', async () => {
+    setAdminSecurePath('content-editor')
+    responder = () => ({ data: { data: [], request_id: 'missing-meta' } })
+    await expect(getNoticePage()).rejects.toThrow('Invalid native content pagination')
+    await expect(getKnowledgeAll()).rejects.toThrow('Invalid native content pagination')
   })
 })
 

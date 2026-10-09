@@ -27,7 +27,9 @@ class RequestLog
 
     public function handle($request, Closure $next)
     {
-        if ($request->method() !== 'POST') {
+        // Native admin writes use PUT/PATCH/DELETE as well as POST.
+        // They must all produce the same redacted audit trail.
+        if (!in_array($request->method(), ['POST', 'PUT', 'PATCH', 'DELETE'], true)) {
             return $next($request);
         }
 
