@@ -98,7 +98,7 @@ final class AnalyticsAdminController
         ]);
         $page = StatUser::query()->where('user_id', $id)->orderByDesc('record_at')
             ->orderByDesc('id')->paginate((int) ($params['per_page'] ?? 20),
-                ['id', 'user_id', 'server_id', 'record_type', 'record_at', 'u', 'd'],
+                ['id', 'user_id', 'server_rate', 'record_type', 'record_at', 'u', 'd'],
                 'page', (int) ($params['page'] ?? 1));
         return TxapiResponse::success($request, $page->items(), [
             'page' => $page->currentPage(), 'per_page' => $page->perPage(),
