@@ -29,8 +29,8 @@ export function EmailSettingsPage() {
     onSuccess: () => toast.success('邮件配置已保存'),
   })
   const test = useMutation({
-    mutationFn: () => testSendMail(form),
-    onSuccess: () => toast.success('测试邮件请求已提交'),
+    mutationFn: () => testSendMail(),
+    onSuccess: () => toast.success('测试邮件已发送'),
   })
 
   function patch(key: string, value: unknown) {
