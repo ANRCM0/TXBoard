@@ -12,6 +12,7 @@ use App\Http\Controllers\Txapi\Admin\OrderAdminController;
 use App\Http\Controllers\Txapi\Admin\TrafficResetAdminController;
 use App\Http\Controllers\Txapi\Admin\PaymentSafetyController;
 use App\Http\Controllers\Txapi\Admin\QueueAdminController;
+use App\Http\Controllers\Txapi\Admin\CouponAdminController;
 use App\Http\Controllers\Txapi\Admin\PaymentManagementController;
 use App\Http\Controllers\Txapi\AccountController;
 use App\Http\Controllers\Txapi\ServerController;
@@ -58,6 +59,12 @@ Route::prefix('admin/{admin_path}')
     ->middleware(['admin.path', 'admin', 'log', 'throttle:120,1'])
     ->group(function () {
         Route::get('audit-logs', [AuditLogController::class, 'index']);
+        Route::get('coupons', [CouponAdminController::class, 'index']);
+        Route::post('coupons', [CouponAdminController::class, 'save']);
+        Route::post('coupons/export', [CouponAdminController::class, 'generateCsv']);
+        Route::put('coupons/{id}', [CouponAdminController::class, 'save'])->whereNumber('id');
+        Route::patch('coupons/{id}/toggle', [CouponAdminController::class, 'toggle'])->whereNumber('id');
+        Route::delete('coupons/{id}', [CouponAdminController::class, 'delete'])->whereNumber('id');
         Route::get('queue/snapshot', [QueueAdminController::class, 'snapshot']);
         Route::get('queue/failures', [QueueAdminController::class, 'failures']);
         Route::get('queue/failures/{id}', [QueueAdminController::class, 'failure'])->whereNumber('id');

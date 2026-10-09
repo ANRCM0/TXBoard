@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\V2\Admin;
 
 use App\Exceptions\ApiException;
+use App\Domains\Billing\AdminCouponSafety;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\CouponGenerate;
 use App\Http\Requests\Admin\CouponSave;
@@ -165,7 +166,7 @@ class CouponController extends Controller
         echo $data;
     }
 
-    public function drop(Request $request)
+    public function drop(Request $request, AdminCouponSafety $safety)
     {
         $request->validate([
             'id' => 'required|numeric'
@@ -177,8 +178,12 @@ class CouponController extends Controller
         if (!$coupon) {
             return $this->fail([400202, '优惠券不存在']);
         }
-        if (!$coupon->delete()) {
-            return $this->fail([500, '删除失败']);
+        // Keep the legacy V2 entry protected until all supported clients move.
+        // Hard deletion would destroy the reference of historic orders.
+        if (!$safety->deleteUnused((int) $coupon->id)) {
+            return response()->json([
+                'message' => '优惠券已有订单历史，无法删除，请改为停用',
+            ], 409);
         }
 
         return $this->success(true);

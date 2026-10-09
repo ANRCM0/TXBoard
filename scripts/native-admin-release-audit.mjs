@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url'
 // These full UI modules already run exclusively through native TXAPI.
 // Mixed modules (finance/user-admin/statistics) remain intentionally excluded.
 export const COMPLETED_ADMIN_MODULES = Object.freeze([
-  'content', 'ticket', 'traffic-reset', 'payment', 'queueMonitor',
+  'content', 'ticket', 'traffic-reset', 'payment', 'queueMonitor', 'coupon',
 ])
 
 export function scanLegacyClientCalls(source) {
