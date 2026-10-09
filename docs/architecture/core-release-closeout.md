@@ -14,7 +14,8 @@
 - TXAPI User Native、套餐/订单主流程、签名支付回调和流量账本均已有实现；[PR #159](https://github.com/ANRCM0/TXBoard/pull/159) 新增用户本人钱包充值页面、独立流水和签名金额验证，不是管理员代充。
 - React Admin 已迁移：审计、套餐（含写端）、订单主要操作、用户主要操作、工单、公告知识库、流量重置（[PR #160](https://github.com/ANRCM0/TXBoard/pull/160)）。支付方式**删除**也已在 [PR #161](https://github.com/ANRCM0/TXBoard/pull/161) 使用新接口且同时保护旧 V2。
 - 仍在使用 V2 的后台业务至少包括：系统配置及其敏感项、优惠券与批量 CSV、礼品卡、节点机器、插件和主题、Mail、Agent、队列及统计。订单指派/佣金复核和用户群发仍是 V2。勿用“核心页面已迁移”替代“全部后台已原生化”。
-- 本轮新增：支付渠道的后台列表、插件动态表单、创建、编辑、启停、排序已接入受动态管理员路径保护的 TXAPI；支付渠道删除沿用原生受交易历史保护的实现。保留原 V2 给未完成迁移的受支持客户端，支付通知地址继续依配置指向 legacy 或 native 回调，禁止提前删除旧支付回调。新增的 PHP/React 合同测试须经 CI 核验后才能合并，不代表真实商户对账完成。\n- 新增可重复的 CI 证据：`node scripts/native-admin-release-audit.mjs --guard-native --output artifacts/release/admin-native-gap.json` 会生成 React Admin **直接 apiClient 调用点**缺口，并拒绝 `content`/`ticket`/`traffic-reset`/`payment` 已完成模块回退 V2；`--strict` 是人工发布前的检查项，**现在预计不能通过**。
+- 本轮新增：队列监控快照、失败任务列表与脱敏详情接入管理员专属 TXAPI；复用 `QueueMonitorService` 与共享失败任务脱敏格式器，旧 V2 的脱敏契约保留，且不提供队列重试或任务执行入口。新增 PHP/React 合同测试仍以 CI 为验收依据。
+- 本轮新增：支付渠道的后台列表、插件动态表单、创建、编辑、启停、排序已接入受动态管理员路径保护的 TXAPI；支付渠道删除沿用原生受交易历史保护的实现。保留原 V2 给未完成迁移的受支持客户端，支付通知地址继续依配置指向 legacy 或 native 回调，禁止提前删除旧支付回调。新增的 PHP/React 合同测试须经 CI 核验后才能合并，不代表真实商户对账完成。\n- 新增可重复的 CI 证据：`node scripts/native-admin-release-audit.mjs --guard-native --output artifacts/release/admin-native-gap.json` 会生成 React Admin **直接 apiClient 调用点**缺口，并拒绝 `content`/`ticket`/`traffic-reset`/`payment`/`queueMonitor` 已完成模块回退 V2；`--strict` 是人工发布前的检查项，**现在预计不能通过**。
 - 这个静态扫描不等于 Laravel 全路由/插件/Worker/外部调用图，也不是漏洞扫描；必须与 `scripts/p0-api-audit.mjs`、功能合同测试和业务服务真实引用审计合并看待。
 - 本轮已知未验收：真实 1Panel/OpenResty CIDR 与备份恢复、MySQL 多实例实际并发、Redis/Horizon/Octane 长时间运行、支付商沙盒及对账、独立 TX-Node/Gateway 协议联调。任何一项缺失都不能称为“生产稳定版已发布”。
 

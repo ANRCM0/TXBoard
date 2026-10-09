@@ -16,6 +16,7 @@ import { getPlans, getOrders, savePlan, updatePlanFlags, deletePlan, sortPlans, 
 import { getTickets, getTicketDetail, replyTicket, closeTicket } from './ticket'
 import { getTrafficResetLogs, getTrafficResetStats, resetUserTraffic, getUserTrafficResetHistory } from './traffic-reset'
 import { deletePayment, getPayments, getPaymentMethods, getPaymentForm, savePayment, togglePayment, sortPayments } from './payment'
+import { getQueueSnapshot, getQueueFailures, getQueueFailure } from './queueMonitor'
 import {
   getKnowledgePage, getKnowledgeAll, getKnowledgeDetail, getKnowledgeCategories,
   saveKnowledge, toggleKnowledge, sortKnowledge, deleteKnowledge,
@@ -844,5 +845,39 @@ describe('native administrator payment management contract', () => {
     setAdminSecurePath('payment-admin')
     responder = () => ({ data: { data: [{ id: 1 }] } })
     await expect(getPayments()).rejects.toThrow('Invalid TXAPI response')
+  })
+})
+
+describe('native administrator queue monitoring contract', () => {
+  it('uses native TXAPI for snapshot, bounded failures and redacted details', async () => {
+    setAdminSecurePath('queue-admin')
+    responder = config => ({
+      data: {
+        data: config.url?.endsWith('/snapshot') ? {
+          status: 'inactive', connection: 'redis', processes: 0, observed_at: '2026-10-09T00:00:00Z',
+        } : config.url?.endsWith('/failures/12') ? {
+          id: 12, job: 'App\\Jobs\\SendEmailJob', exception: '[REDACTED]',
+        } : [{
+          id: 12, job: 'App\\Jobs\\SendEmailJob', message: '[REDACTED]',
+        }],
+        request_id: 'native-queue',
+      },
+    })
+    await expect(getQueueSnapshot()).resolves.toMatchObject({ status: 'inactive' })
+    await expect(getQueueFailures()).resolves.toMatchObject([{ id: 12 }])
+    await expect(getQueueFailure(12)).resolves.toMatchObject({ id: 12 })
+    expect(seen.map(request => [request.baseURL, request.url])).toEqual([
+      ['/txapi', '/admin/queue-admin/queue/snapshot'],
+      ['/txapi', '/admin/queue-admin/queue/failures'],
+      ['/txapi', '/admin/queue-admin/queue/failures/12'],
+    ])
+    expect(seen[1].params).toEqual({ limit: 10 })
+    await expect(getQueueFailure(0)).rejects.toThrow('Invalid queue failure ID')
+  })
+
+  it('does not accept a malformed native queue response', async () => {
+    setAdminSecurePath('queue-admin')
+    responder = () => ({ data: { data: { status: 'running' } } })
+    await expect(getQueueSnapshot()).rejects.toThrow('Invalid TXAPI response')
   })
 })

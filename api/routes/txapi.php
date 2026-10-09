@@ -11,6 +11,7 @@ use App\Http\Controllers\Txapi\Admin\ContentAdminController;
 use App\Http\Controllers\Txapi\Admin\OrderAdminController;
 use App\Http\Controllers\Txapi\Admin\TrafficResetAdminController;
 use App\Http\Controllers\Txapi\Admin\PaymentSafetyController;
+use App\Http\Controllers\Txapi\Admin\QueueAdminController;
 use App\Http\Controllers\Txapi\Admin\PaymentManagementController;
 use App\Http\Controllers\Txapi\AccountController;
 use App\Http\Controllers\Txapi\ServerController;
@@ -57,6 +58,9 @@ Route::prefix('admin/{admin_path}')
     ->middleware(['admin.path', 'admin', 'log', 'throttle:120,1'])
     ->group(function () {
         Route::get('audit-logs', [AuditLogController::class, 'index']);
+        Route::get('queue/snapshot', [QueueAdminController::class, 'snapshot']);
+        Route::get('queue/failures', [QueueAdminController::class, 'failures']);
+        Route::get('queue/failures/{id}', [QueueAdminController::class, 'failure'])->whereNumber('id');
         Route::get('payment-methods', [PaymentManagementController::class, 'index']);
         Route::get('payment-methods/providers', [PaymentManagementController::class, 'providers']);
         Route::post('payment-methods/form', [PaymentManagementController::class, 'form']);
