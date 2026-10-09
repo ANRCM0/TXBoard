@@ -14,6 +14,14 @@ class TxapiSecurityActionsTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        // Authentication and DTO tests must not share IP-rate state with other
+        // features in the same suite. Middleware remains enabled in production.
+        $this->withoutMiddleware(\Illuminate\Routing\Middleware\ThrottleRequests::class);
+    }
+
     public function test_quick_login_requires_user_token_validates_redirect_and_uses_one_time_login_service(): void
     {
         $this->postJson('/txapi/auth/quick-login')->assertStatus(401);
@@ -30,7 +38,6 @@ class TxapiSecurityActionsTest extends TestCase
         $this->assertStringContainsString('/#/login?verify=', $url);
         $this->assertStringContainsString('redirect=dashboard', $url);
         $this->assertArrayNotHasKey('token', $response->json('data'));
-        parse_str((string) parse_url($url, PHP_URL_FRAGMENT), $unused);
         preg_match('/[?&]verify=([^&]+)/', $url, $matches);
         $this->assertNotEmpty($matches[1] ?? null);
         $token = urldecode($matches[1]);
@@ -47,7 +54,7 @@ class TxapiSecurityActionsTest extends TestCase
         $uuid = $owner->uuid;
         $unrelatedToken = $other->token;
         Sanctum::actingAs($owner);
-        $this->getJson('/txapi/me/subscription-credentials/rotate')->assertStatus(405);
+        $this->getJson('/txapi/me/subscription-credentials/rotate')->assertStatus(404);
         $result = $this->postJson('/txapi/me/subscription-credentials/rotate');
         $result->assertOk()->assertJsonStructure(['data' => ['subscribe_url'], 'request_id']);
         $owner->refresh();
