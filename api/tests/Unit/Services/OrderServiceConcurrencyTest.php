@@ -239,11 +239,9 @@ class OrderServiceConcurrencyTest extends TestCase
             'total_amount' => -1,
         ]);
 
-        $response = $this->postJson('/api/v1/user/order/checkout', [
-            'trade_no' => $order->trade_no,
-        ]);
+        $response = $this->postJson('/txapi/orders/' . $order->trade_no . '/checkout');
 
-        $response->assertStatus(400);
+        $response->assertStatus(409)->assertJsonPath('error.code', 'ORDER_CONFLICT');
         $this->assertSame(Order::STATUS_PENDING, Order::findOrFail($order->id)->status);
         $this->assertNull(User::findOrFail($user->id)->plan_id);
     }

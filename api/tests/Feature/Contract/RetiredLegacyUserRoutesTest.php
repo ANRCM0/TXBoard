@@ -6,14 +6,14 @@ use Illuminate\Support\Facades\Route;
 use Tests\TestCase;
 
 /**
- * Batch 4: official Vue has moved to TXAPI. Only TXBoard-internal consumers
+ * Batches 4–6: official Vue + P0 internal journey have moved to TXAPI. Only TXBoard-internal consumers
  * gate these retirements; independently deployed consumers must migrate.
  */
 class RetiredLegacyUserRoutesTest extends TestCase
 {
     public function test_migrated_v1_routes_are_not_registered(): void
     {
-        $removedUser = ["/resetSecurity","/changePassword","/update","/getSubscribe","/getStat","/checkLogin","/getQuickLoginUrl","/getActiveSession","/removeActiveSession","/order/detail","/order/getPaymentMethod","/order/cancel","/plan/fetch","/notice/fetch","/ticket/reply","/ticket/close","/ticket/save","/ticket/fetch","/coupon/check","/knowledge/fetch","/stat/getTrafficLog","/invite/details"];
+        $removedUser = ["/resetSecurity","/changePassword","/update","/getSubscribe","/getStat","/checkLogin","/getQuickLoginUrl","/getActiveSession","/removeActiveSession","/order/detail","/order/getPaymentMethod","/order/cancel","/plan/fetch","/notice/fetch","/ticket/reply","/ticket/close","/ticket/save","/ticket/fetch","/coupon/check","/knowledge/fetch","/stat/getTrafficLog","/invite/details","/info","/transfer","/order/save","/order/checkout","/order/check","/order/fetch","/invite/save","/invite/fetch","/ticket/withdraw","/server/fetch","/gift-card/check","/gift-card/redeem","/gift-card/history","/gift-card/detail","/gift-card/types","/comm/getStripePublicKey"];
         $removedPassport = ["/auth/token2Login","/auth/forget","/auth/getQuickLoginUrl","/auth/loginWithMailLink"];
         $paths = array_merge(
             array_map(static fn ($path) => 'api/v1/user' . $path, $removedUser),
@@ -34,17 +34,9 @@ class RetiredLegacyUserRoutesTest extends TestCase
             'api/v1/passport/auth/login',
             'api/v1/passport/comm/sendEmailVerify',
             'api/v1/guest/comm/config',
-            'api/v1/user/order/save',
-            'api/v1/user/order/checkout',
-            'api/v1/user/order/check',
-            'api/v1/user/order/fetch',
-            'api/v1/user/server/fetch',
+            'api/v1/user/comm/config',
             'api/v1/user/knowledge/getCategory',
-            'api/v1/user/invite/fetch',
-            'api/v1/user/invite/save',
-            'api/v1/user/ticket/withdraw',
-            'api/v1/user/gift-card/redeem',
-            'api/v1/user/comm/getStripePublicKey',
+            'api/v1/user/telegram/getBotInfo',
             'api/v2/passport/auth/login',
             'api/v2/guest/comm/config',
         ] as $uri) {
