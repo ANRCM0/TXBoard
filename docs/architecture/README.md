@@ -7,6 +7,9 @@
 
 ## TXBoard Native 开发主线
 
+- [P0 执行记录与基线](p0-execution.md) — 已实现的审计工具、兼容回归与剩余生产验收。
+
+
 1. [详细重构与开发方案](txboard-native-development-plan.md) — 架构、API、领域、优化、P0–P7、数据和发布。
 2. [Gateway 集成 ADR](gateway-integration.md) — 双仓职责、/txapi/bff/v1、部署、G0–G5。
 3. [BFF Target Contract](../../contracts/http/txapi-bff-target-v1.md) — 未来协议，未上线。
