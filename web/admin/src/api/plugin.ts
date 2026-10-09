@@ -1,4 +1,4 @@
-import { apiClient, pluginApiClient } from './client'
+import { pluginApiClient } from './client'
 import { unwrap } from '../lib/api'
 
 export type PluginOption = {
@@ -132,8 +132,18 @@ export function resolvePluginCrudApiPath(
   schema?: PluginAdminCrudSchema,
 ) {
   const configured = schema?.api?.[action]?.trim()
-  if (!configured || /^https?:\/\//i.test(configured) || configured.startsWith('//') || !configured.startsWith('/')) return null
+  if (!configured || !isPluginApiPath(configured)) return null
   return configured
+}
+
+// Plugin-manifest APIs must be owned by the named plugin; no legacy admin fallback.
+function isPluginApiPath(path: string): boolean {
+  return /^\/plugin\/[A-Za-z0-9_-]+(?:\/[A-Za-z0-9_.-]+)*\/?(?:\?[A-Za-z0-9_.=%&-]+)?$/.test(path) &&
+    !path.split(/[/?]/).some(part => part === '.' || part === '..')
+}
+function checkedPluginApiPath(path: string): string {
+  if (!isPluginApiPath(path)) throw new Error('Plugin API must use a plugin-owned path')
+  return path
 }
 
 export async function fetchPluginCrudList(
@@ -146,20 +156,17 @@ export async function fetchPluginCrudList(
     sort_order?: 'asc' | 'desc'
   } = {},
 ): Promise<PluginCrudPage> {
-  const client = path.startsWith('/plugin/') ? pluginApiClient : apiClient
-  const { data } = await client.get(path, { params })
+  const { data } = await pluginApiClient.get(checkedPluginApiPath(path), { params })
   return normalizeCrudPage(data, params.current, params.pageSize)
 }
 
 export async function savePluginCrudRecord(path: string, payload: Record<string, unknown>) {
-  const client = path.startsWith('/plugin/') ? pluginApiClient : apiClient
-  const { data } = await client.post(path, payload)
+  const { data } = await pluginApiClient.post(checkedPluginApiPath(path), payload)
   return unwrap(data)
 }
 
 export async function deletePluginCrudRecord(path: string, payload: Record<string, unknown>) {
-  const client = path.startsWith('/plugin/') ? pluginApiClient : apiClient
-  const { data } = await client.post(path, payload)
+  const { data } = await pluginApiClient.post(checkedPluginApiPath(path), payload)
   return unwrap(data)
 }
 
@@ -167,23 +174,16 @@ export async function fetchPluginMenuHtml(component?: string): Promise<string | 
   const path = component?.trim()
   if (!path || /^https?:\/\//i.test(path)) return null
 
+  if (!isPluginApiPath(path) &&
+      !/^\/plugins\/[A-Za-z0-9_-]+(?:\/[A-Za-z0-9_.-]+)*\/?$/.test(path)) return null
+
   try {
-    let data: unknown
-    if (path.startsWith('/')) {
-      const response = await pluginApiClient.get(path, {
-        headers: { Accept: 'text/html,application/json' },
-        responseType: 'text',
-        transformResponse: [(value) => value],
-      })
-      data = response.data
-    } else {
-      const response = await apiClient.get(path, {
-        headers: { Accept: 'text/html,application/json' },
-        responseType: 'text',
-        transformResponse: [(value) => value],
-      })
-      data = response.data
-    }
+    const response = await pluginApiClient.get(path, {
+      headers: { Accept: 'text/html,application/json' },
+      responseType: 'text',
+      transformResponse: [(value) => value],
+    })
+    const data: unknown = response.data
 
     if (typeof data !== 'string') return null
     const trimmed = data.trim()
