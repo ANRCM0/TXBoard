@@ -71,24 +71,24 @@ export type GiftPage<T> = {
 }
 
 export async function getGiftTypes() {
-  return unwrapNative<Record<string, string>>(nativeApiClient.get(nativeAdminPath('redemption-codes') + '/types'))
+  return unwrapNative<Record<string, string>>(nativeApiClient.get(nativeAdminPath('gift-cards') + '/types'))
 }
 
 export async function getGiftTemplates(params: { page?: number; per_page?: number; type?: number; status?: number } = {}) {
-  const { data } = await nativeApiClient.get<NativeApiEnvelope<GiftTemplate[]>>(nativeAdminPath('redemption-codes') + '/templates', { params })
+  const { data } = await nativeApiClient.get<NativeApiEnvelope<GiftTemplate[]>>(nativeAdminPath('gift-cards') + '/templates', { params })
   return { ...(data.meta || { page: 1, per_page: 15, total: 0, last_page: 1 }), current_page: data.meta?.page ?? 1, data: data.data } as GiftPage<GiftTemplate>
 }
 
 export async function createGiftTemplate(payload: Omit<GiftTemplate, 'id'>) {
-  return unwrapNative(nativeApiClient.post(nativeAdminPath('redemption-codes') + '/templates', payload))
+  return unwrapNative(nativeApiClient.post(nativeAdminPath('gift-cards') + '/templates', payload))
 }
 
 export async function updateGiftTemplate(id: number, payload: Partial<GiftTemplate>) {
-  return unwrapNative(nativeApiClient.put(nativeAdminPath('redemption-codes') + `/templates/${id}`, payload))
+  return unwrapNative(nativeApiClient.put(nativeAdminPath('gift-cards') + `/templates/${id}`, payload))
 }
 
 export async function deleteGiftTemplate(id: number) {
-  return unwrapNative(nativeApiClient.delete(nativeAdminPath('redemption-codes') + `/templates/${id}`))
+  return unwrapNative(nativeApiClient.delete(nativeAdminPath('gift-cards') + `/templates/${id}`))
 }
 
 export async function generateGiftCodes(payload: {
@@ -98,7 +98,7 @@ export async function generateGiftCodes(payload: {
   expires_hours?: number
   max_usage?: number
 }) {
-  return unwrapNative<{ batch_id?: string; count?: number }>(nativeApiClient.post(nativeAdminPath('redemption-codes') + '/codes/batches', payload))
+  return unwrapNative<{ batch_id?: string; count?: number }>(nativeApiClient.post(nativeAdminPath('gift-cards') + '/codes/batches', payload))
 }
 
 export async function getGiftCodes(params: {
@@ -108,29 +108,29 @@ export async function getGiftCodes(params: {
   batch_id?: string
   status?: number
 } = {}) {
-  const { data } = await nativeApiClient.get<NativeApiEnvelope<GiftCode[]>>(nativeAdminPath('redemption-codes') + '/codes', { params })
+  const { data } = await nativeApiClient.get<NativeApiEnvelope<GiftCode[]>>(nativeAdminPath('gift-cards') + '/codes', { params })
   return { ...(data.meta || { page: 1, per_page: 15, total: 0, last_page: 1 }), current_page: data.meta?.page ?? 1, data: data.data } as GiftPage<GiftCode>
 }
 
 export async function toggleGiftCode(id: number, action: 'disable' | 'enable') {
-  return unwrapNative(nativeApiClient.patch(nativeAdminPath('redemption-codes') + `/codes/${id}/toggle`, { action }))
+  return unwrapNative(nativeApiClient.patch(nativeAdminPath('gift-cards') + `/codes/${id}/toggle`, { action }))
 }
 
 export async function updateGiftCode(id: number, payload: { expires_at?: number | null; max_usage?: number; status?: number }) {
-  return unwrapNative(nativeApiClient.patch(nativeAdminPath('redemption-codes') + `/codes/${id}`, payload))
+  return unwrapNative(nativeApiClient.patch(nativeAdminPath('gift-cards') + `/codes/${id}`, payload))
 }
 
 export async function deleteGiftCode(id: number) {
-  return unwrapNative(nativeApiClient.delete(nativeAdminPath('redemption-codes') + `/codes/${id}`))
+  return unwrapNative(nativeApiClient.delete(nativeAdminPath('gift-cards') + `/codes/${id}`))
 }
 
 export async function getGiftUsages(params: { page?: number; per_page?: number; template_id?: number; user_id?: number } = {}) {
-  const { data } = await nativeApiClient.get<NativeApiEnvelope<GiftUsage[]>>(nativeAdminPath('redemption-codes') + '/usages', { params })
+  const { data } = await nativeApiClient.get<NativeApiEnvelope<GiftUsage[]>>(nativeAdminPath('gift-cards') + '/usages', { params })
   return { ...(data.meta || { page: 1, per_page: 15, total: 0, last_page: 1 }), current_page: data.meta?.page ?? 1, data: data.data } as GiftPage<GiftUsage>
 }
 
 export async function getGiftStatistics(startDate?: string, endDate?: string) {
-  const { data } = await nativeApiClient.get<NativeApiEnvelope<GiftStats>>(nativeAdminPath('redemption-codes') + '/statistics', {
+  const { data } = await nativeApiClient.get<NativeApiEnvelope<GiftStats>>(nativeAdminPath('gift-cards') + '/statistics', {
     params: {
       ...(startDate ? { start_date: startDate } : {}),
       ...(endDate ? { end_date: endDate } : {}),
