@@ -283,7 +283,8 @@ describe('native plugin management contract', () => {
 })
 
 describe('module registry contract', () => {
-  it('reads the unified Module Registry from GET /module only', async () => {
+  it('reads the unified Module Registry from native TXAPI only', async () => {
+    setAdminSecurePath('module-contract')
     responder = () => ({
       data: {
         data: {
@@ -335,6 +336,7 @@ describe('module registry contract', () => {
             discovery_errors: 0,
           },
         },
+        request_id: 'module-registry',
       },
     })
 
@@ -342,7 +344,8 @@ describe('module registry contract', () => {
 
     expect(seen).toHaveLength(1)
     expect(seen[0].method).toBe('get')
-    expect(seen[0].url).toBe('/module')
+    expect(seen[0].url).toBe('/admin/module-contract/modules')
+    expect(seen[0].baseURL).toBe('/txapi')
     expect(result.modules).toHaveLength(1)
     expect(result.modules[0]).toMatchObject({
       id: 'theme.txboard',
