@@ -32,7 +32,8 @@ class P0ReadPathBaselineTest extends TestCase
         $plan = Plan::create([
             'name' => 'Synthetic Read Plan', 'group_id' => 1,
             'transfer_enable' => 2, 'show' => 1, 'sell' => 1, 'renew' => 1,
-            'sort' => 0, 'reset_traffic_method' => Plan::RESET_TRAFFIC_MONTHLY,
+            'sort' => 0, 'capacity_limit' => null,
+            'reset_traffic_method' => Plan::RESET_TRAFFIC_MONTHLY,
             'prices' => [Plan::PERIOD_MONTHLY => 10],
             'created_at' => time(), 'updated_at' => time(),
         ]);

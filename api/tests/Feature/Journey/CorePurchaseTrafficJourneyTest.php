@@ -59,7 +59,7 @@ class CorePurchaseTrafficJourneyTest extends TestCase
         $plan = Plan::create([
             'group_id' => 1, 'transfer_enable' => 2,
             'name' => 'P0-B Synthetic Plan', 'show' => 1, 'sort' => 0,
-            'renew' => 1, 'sell' => 1,
+            'renew' => 1, 'sell' => 1, 'capacity_limit' => null,
             'prices' => [Plan::PERIOD_MONTHLY => 10],
             'reset_traffic_method' => Plan::RESET_TRAFFIC_MONTHLY,
             'created_at' => time(), 'updated_at' => time(),
