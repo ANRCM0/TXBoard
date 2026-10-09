@@ -11,6 +11,7 @@ use App\Http\Controllers\Txapi\CommissionController;
 use App\Http\Controllers\Txapi\GiftCardController;
 use App\Http\Controllers\Txapi\StripeConfigController;
 use App\Http\Controllers\Txapi\InvitePageViewController;
+use App\Http\Controllers\Txapi\WithdrawalController;
 use App\Http\Controllers\Txapi\PaymentWebhookController;
 use App\Http\Controllers\Txapi\AuthController;
 use App\Http\Controllers\Txapi\ContentController;
@@ -90,6 +91,7 @@ Route::middleware(['txapi.user', 'throttle:120,1'])->group(function () {
     Route::get('gift-cards/types', [GiftCardController::class, 'types']);
     Route::get('gift-cards/history/{id}', [GiftCardController::class, 'detail'])->whereNumber('id');
     Route::post('billing/stripe-public-key', [StripeConfigController::class, 'publicKey']);
+    Route::post('billing/withdrawals', [WithdrawalController::class, 'store'])->middleware('throttle:5,1');
     Route::get('billing/wallet', [BillingController::class, 'wallet']);
     Route::get('billing/commissions', [BillingController::class, 'commissions']);
     Route::get('billing/payment-methods', [BillingController::class, 'methods']);
