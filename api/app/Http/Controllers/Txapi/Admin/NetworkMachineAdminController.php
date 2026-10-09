@@ -11,6 +11,7 @@ use App\Services\NodeSyncService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\RateLimiter;
 
 final class NetworkMachineAdminController
 {
@@ -82,7 +83,12 @@ final class NetworkMachineAdminController
 
     public function credentials(Request $request): JsonResponse
     {
-        $machine = ServerMachine::query()->find((int) $request->route('id'));
+        $id = (int) $request->route('id');
+        if (!$this->allowSensitiveAction($request, 'credentials', $id, 10)) {
+            return TxapiResponse::error($request, 'MACHINE_CREDENTIAL_RATE_LIMITED',
+                'Credential access rate limit reached', 429);
+        }
+        $machine = ServerMachine::query()->find($id);
         if (!$machine) return $this->missing($request);
         // Explicit authenticated POST only: never put credentials in a URL or
         // normal machine list; RequestLog sees no token in the request payload.
@@ -95,6 +101,10 @@ final class NetworkMachineAdminController
     public function rotateToken(Request $request): JsonResponse
     {
         $id = (int) $request->route('id');
+        if (!$this->allowSensitiveAction($request, 'rotation', $id, 5)) {
+            return TxapiResponse::error($request, 'MACHINE_TOKEN_RATE_LIMITED',
+                'Token rotation rate limit reached', 429);
+        }
         $machine = DB::transaction(function () use ($id): ?ServerMachine {
             $machine = ServerMachine::query()->lockForUpdate()->find($id);
             if (!$machine) return null;
@@ -190,6 +200,16 @@ final class NetworkMachineAdminController
             return TxapiResponse::error($request, 'MACHINE_RUNTIME_DISPATCH_FAILED',
                 'Machine runtime update dispatch failed', 503);
         }
+    }
+
+    private function allowSensitiveAction(Request $request, string $operation, int $id, int $limit): bool
+    {
+        // Separate operation-specific counters: Laravel's global and nested
+        // numeric throttle middleware otherwise share the same request key.
+        $key = 'txapi:machine:' . $operation . ':' . $request->user()->getAuthIdentifier() . ':' . $id;
+        if (RateLimiter::tooManyAttempts($key, $limit)) return false;
+        RateLimiter::hit($key, 60);
+        return true;
     }
 
     private function validateFields(Request $request): array
