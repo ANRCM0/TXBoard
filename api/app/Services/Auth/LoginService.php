@@ -129,7 +129,7 @@ class LoginService
 
             return [true, true];
         });
-        return $result ?? [false, [429, __('Reset failed, Please try again later')]];
+        return is_array($result) ? $result : [false, [429, __('Reset failed, Please try again later')]];
     }
 
     /**
