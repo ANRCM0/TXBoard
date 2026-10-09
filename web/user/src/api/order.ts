@@ -170,18 +170,17 @@ export async function checkoutOrder(tradeNo: string) {
 }
 
 export async function checkoutOrderWithMethod(tradeNo: string, method?: number, token?: string) {
-  const { data } = await api.post<{
-    status?: string
-    type?: number
-    data?: string | boolean
-    message?: string
-  }>('/user/order/checkout', {
-    trade_no: tradeNo,
-    ...(method !== undefined ? { method } : {}),
-    ...(token ? { token } : {}),
-  })
-  if (data.data !== undefined) return { type: data.type ?? 0, data: data.data }
-  throw new Error(data.message || '支付请求失败')
+  const result = await nativeRequest<{ type: number; data: string | boolean }>(
+    nativeApi.post('/orders/' + encodeURIComponent(tradeNo) + '/checkout', {
+      ...(method !== undefined ? { method } : {}),
+      ...(token ? { token } : {}),
+    }),
+  )
+  if (!result || !Number.isInteger(result.type) ||
+      (typeof result.data !== 'string' && typeof result.data !== 'boolean')) {
+    throw new Error('Invalid TXAPI checkout response')
+  }
+  return result
 }
 
 export function orderStatus(status: number) {

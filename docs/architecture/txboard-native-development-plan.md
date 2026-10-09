@@ -161,6 +161,13 @@ Controller 不承担复杂交易，只完成鉴权、验证和调用服务。域
 
 API 兼容策略不是永久双轨；但在证据不足时宁可保留短期 adapter 也不要丢单/中断节点。
 
+## P3-A3 统一 Checkout 状态转移
+
+- `Domains/Billing/OrderCheckout` 为新旧接口共用交易发起服务：在用户归属+订单行锁下读取待支付订单、拒绝负金额、零元订单复用幂等 paid 转换、正金额统一获取启用的支付方式与计算手续费（分）。
+- Provider 外部调用在订单锁事务提交后进行，防止外部网关慢响应长期占用 MySQL 行锁；支付方法 ID、手续费与订单绑定时同一事务持久化。原 V1 仍保持 `{type,data}` 响应。
+- `POST /txapi/orders/{tradeNo}/checkout` 返回 native `data:{type,data}`，Vue 支付操作切到新入口；完整回调依旧通过 P3-B 的共享验签路径，默认向旧 URL 通知，外部提供方切流未自动打开。
+- SQLite/MySQL 验证免费订单只能触发一次履约、跨用户拒绝、负价/无支付方式拒绝；既有 P0 合成支付、真实 provider 签名回归持续运行。
+
 ## P3-B 双路径 webhook（代码合约完成，第三方沙箱保留后置）
 
 - `GET/POST /txapi/payment/webhook/{method}/{uuid}` 与原 `/api/v1/guest/payment/notify/{method}/{uuid}` 同时支持，两者委托同一 `Domains/Billing/PaymentNotificationProcessor`，同一支付插件签名校验、商户绑定、金额检查和订单入账；**provider 原始 ACK 不是普通 JSON envelope**，旧接口响应格式保持不变。

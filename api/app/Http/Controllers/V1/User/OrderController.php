@@ -117,50 +117,19 @@ class OrderController extends Controller
 
     public function checkout(Request $request)
     {
-        $tradeNo = $request->input('trade_no');
-        $method = $request->input('method');
-        $order = Order::where('trade_no', $tradeNo)
-            ->where('user_id', $request->user()->id)
-            ->where('status', 0)
-            ->first();
-        if (!$order) {
-            return $this->fail([400, __('Order does not exist or has been paid')]);
+        try {
+            $result = app(\App\Domains\Billing\OrderCheckout::class)->start(
+                (int) $request->user()->id,
+                (string) $request->input('trade_no', ''),
+                $request->input('method') === null ? null : (int) $request->input('method'),
+                $request->input('token')
+            );
+            // The V1 checkout response is historically {type,data}, not the
+            // usual success/data envelope. Preserve it for old clients.
+            return response($result);
+        } catch (ApiException $exception) {
+            return $this->fail([400, $exception->getMessage()]);
         }
-        if ($order->total_amount < 0) {
-            return $this->fail([400, __('Order amount is invalid')]);
-        }
-        // free process
-        if ($order->total_amount <= 0) {
-            $orderService = new OrderService($order);
-            if (!$orderService->paid($order->trade_no))
-                return $this->fail([400, '支付失败']);
-            return response([
-                'type' => -1,
-                'data' => true
-            ]);
-        }
-        $payment = Payment::find($method);
-        if (!$payment || !$payment->enable) {
-            return $this->fail([400, __('Payment method is not available')]);
-        }
-        $paymentService = new PaymentService($payment->payment, $payment->id);
-        $order->handling_amount = NULL;
-        if ($payment->handling_fee_fixed || $payment->handling_fee_percent) {
-            $order->handling_amount = (int) round(($order->total_amount * ($payment->handling_fee_percent / 100)) + $payment->handling_fee_fixed);
-        }
-        $order->payment_id = $method;
-        if (!$order->save())
-            return $this->fail([400, __('Request failed, please try again later')]);
-        $result = $paymentService->pay([
-            'trade_no' => $tradeNo,
-            'total_amount' => isset($order->handling_amount) ? ($order->total_amount + $order->handling_amount) : $order->total_amount,
-            'user_id' => $order->user_id,
-            'stripe_token' => $request->input('token')
-        ]);
-        return response([
-            'type' => $result['type'],
-            'data' => $result['data']
-        ]);
     }
 
     public function check(Request $request)

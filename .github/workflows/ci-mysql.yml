@@ -117,6 +117,8 @@ jobs:
         run: php artisan test tests/Feature/Txapi/TxapiPlanCatalogTest.php
       - name: P1-A native TXAPI read/auth contract on MySQL
         run: php artisan test tests/Feature/Txapi/TxapiCoreContractTest.php
+      - name: P3-A3 shared checkout and native checkout boundary on MySQL
+        run: php artisan test tests/Feature/Txapi/TxapiCheckoutTest.php
       - name: P3-B dual-webhook signed notification and replay on MySQL
         run: php artisan test tests/Feature/Payment/PaymentWebhookTest.php
       - name: P3-A2 native billing contracts and reconciliation
