@@ -37,10 +37,10 @@ class ModuleRegistryApiTest extends TestCase
             'installed_at' => now(),
         ]);
 
-        $response = $this->getJson("/api/v2/{$this->securePath}/module");
+        $response = $this->getJson("/txapi/admin/{$this->securePath}/modules");
 
         $response->assertOk()
-            ->assertJsonPath('status', 'success');
+            ->assertJsonStructure(['data','request_id']);
 
         $modules = collect($response->json('data.modules'))->keyBy('id');
 
@@ -111,7 +111,7 @@ class ModuleRegistryApiTest extends TestCase
         ]);
 
         try {
-            $response = $this->getJson("/api/v2/{$this->securePath}/module/nav_fixture");
+            $response = $this->getJson("/txapi/admin/{$this->securePath}/modules/nav_fixture");
 
             $response->assertOk()
                 ->assertJsonPath('data.id', 'nav_fixture')
@@ -160,7 +160,7 @@ class ModuleRegistryApiTest extends TestCase
         ]);
 
         try {
-            $response = $this->getJson("/api/v2/{$this->securePath}/module/invalid_nav_fixture");
+            $response = $this->getJson("/txapi/admin/{$this->securePath}/modules/invalid_nav_fixture");
 
             $response->assertOk()
                 ->assertJsonPath('data.id', 'invalid_nav_fixture')
@@ -198,7 +198,7 @@ class ModuleRegistryApiTest extends TestCase
         ], JSON_THROW_ON_ERROR));
 
         try {
-            $response = $this->getJson("/api/v2/{$this->securePath}/module");
+            $response = $this->getJson("/txapi/admin/{$this->securePath}/modules");
             $response->assertOk();
 
             $errors = collect($response->json('data.errors'));
@@ -231,7 +231,7 @@ class ModuleRegistryApiTest extends TestCase
         ], JSON_THROW_ON_ERROR));
 
         try {
-            $response = $this->getJson("/api/v2/{$this->securePath}/module");
+            $response = $this->getJson("/txapi/admin/{$this->securePath}/modules");
             $response->assertOk();
 
             $modules = collect($response->json('data.modules'))->keyBy('id');
@@ -251,16 +251,16 @@ class ModuleRegistryApiTest extends TestCase
 
     public function test_module_registry_detail_is_read_only_and_returns_404_for_unknown_id(): void
     {
-        $this->getJson("/api/v2/{$this->securePath}/module/theme.txboard")
+        $this->getJson("/txapi/admin/{$this->securePath}/modules/theme.txboard")
             ->assertOk()
             ->assertJsonPath('data.id', 'theme.txboard')
             ->assertJsonPath('data.type', 'theme');
 
-        $this->getJson("/api/v2/{$this->securePath}/module/not_found")
+        $this->getJson("/txapi/admin/{$this->securePath}/modules/not_found")
             ->assertNotFound()
-            ->assertJsonPath('message', 'Module not found');
+            ->assertJsonPath('error.message', 'Module not found');
 
-        $this->postJson("/api/v2/{$this->securePath}/module", [])
+        $this->postJson("/txapi/admin/{$this->securePath}/modules", [])
             ->assertStatus(405);
     }
 
