@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\V2\Agent;
+namespace App\Http\Controllers\Txapi\Agent;
 
 use App\Http\Controllers\Controller;
 use App\Services\AgentOps\AgentPairingService;

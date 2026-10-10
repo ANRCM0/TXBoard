@@ -110,7 +110,7 @@ Route::get('/.well-known/txboard-agent-connect.md', static function () {
 });
 
 // Subscription links must win before the dynamic admin catch-all.
-Route::get('/' . (admin_setting('subscribe_path', 's')) . '/{token}', [\App\Http\Controllers\V1\Client\ClientController::class, 'subscribe'])
+Route::get('/' . (admin_setting('subscribe_path', 's')) . '/{token}', [\App\Http\Controllers\SubscriptionController::class, 'subscribe'])
     ->middleware('client')
     ->name('client.subscribe');
 
