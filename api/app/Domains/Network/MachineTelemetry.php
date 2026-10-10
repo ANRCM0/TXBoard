@@ -30,7 +30,7 @@ final class MachineTelemetry
             'runtime.updater_available' => 'nullable|boolean',
             'runtime.update' => 'nullable|array',
             'runtime.update.request_id' => ['nullable', 'string', 'max:64', 'regex:/^[A-Za-z0-9._:-]+$/'],
-            'runtime.update.target' => 'nullable|in:latest',
+            'runtime.update.target' => 'nullable|in:latest,dev',
             'runtime.update.status' => 'nullable|in:accepted,running,succeeded,failed,rolled_back',
             'runtime.update.updated_at' => 'nullable|integer|min:1',
             'runtime.update.message' => 'nullable|string|max:160',
