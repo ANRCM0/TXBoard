@@ -99,6 +99,7 @@ export type MachineRuntimeStatus = {
   build_time?: string
   deployment?: 'docker' | 'unknown'
   updater_available?: boolean
+  update_targets?: Array<'latest' | 'dev'>
   update?: MachineRuntimeUpdateStatus
 }
 
