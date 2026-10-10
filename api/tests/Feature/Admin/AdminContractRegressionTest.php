@@ -73,7 +73,7 @@ class AdminContractRegressionTest extends TestCase
 
     public function test_admin_audit_log_redacts_sensitive_config_values(): void
     {
-        $response = $this->postJson("/api/v2/{$this->securePath}/config/save", [
+        $response = $this->postJson("/txapi/admin/{$this->securePath}/settings", [
             'email_password' => 'mail-secret',
             'server_token' => '1234567890123456',
             'telegram_bot_token' => 'telegram-secret',
@@ -109,14 +109,14 @@ class AdminContractRegressionTest extends TestCase
         $oldPath = $this->securePath;
         $newPath = 'rotated-admin-path';
 
-        $this->postJson("/api/v2/{$oldPath}/config/save", [
+        $this->postJson("/txapi/admin/{$oldPath}/settings", [
             'secure_path' => $newPath,
         ])->assertOk();
 
-        $this->getJson("/api/v2/{$oldPath}/config/fetch?key=safe")
+        $this->getJson("/txapi/admin/{$oldPath}/settings/safe")
             ->assertNotFound();
 
-        $this->getJson("/api/v2/{$newPath}/config/fetch?key=safe")
+        $this->getJson("/txapi/admin/{$newPath}/settings/safe")
             ->assertOk()
             ->assertJsonPath('data.safe.secure_path', $newPath);
 
@@ -133,11 +133,11 @@ class AdminContractRegressionTest extends TestCase
         $this->assertTrue((bool) $themes->json('data.themes.TXBoard.is_system'));
         $this->assertFalse((bool) $themes->json('data.themes.TXBoard.can_delete'));
 
-        $frontend = $this->getJson("/api/v2/{$this->securePath}/config/fetch?key=frontend");
+        $frontend = $this->getJson("/txapi/admin/{$this->securePath}/settings/frontend");
         $frontend->assertOk();
         $this->assertSame('TXBoard', $frontend->json('data.frontend.frontend_theme'));
 
-        $this->postJson("/api/v2/{$this->securePath}/config/save", [
+        $this->postJson("/txapi/admin/{$this->securePath}/settings", [
             'frontend_theme' => 'TXBoard',
         ])->assertOk();
 
@@ -319,10 +319,10 @@ class AdminContractRegressionTest extends TestCase
 
     public function test_traffic_reset_logs_return_a_top_level_paginator(): void
     {
-        $response = $this->getJson("/api/v2/{$this->securePath}/traffic-reset/logs?per_page=10");
+        $response = $this->getJson("/txapi/admin/{$this->securePath}/traffic-resets?per_page=10");
 
         $response->assertOk();
-        $response->assertJsonStructure(['total', 'current_page', 'per_page', 'last_page', 'data']);
+        $response->assertJsonStructure(['meta' => ['page', 'per_page', 'total', 'last_page'], 'data', 'request_id']);
         $this->assertArrayNotHasKey('pagination', $response->json());
     }
 
@@ -358,15 +358,15 @@ class AdminContractRegressionTest extends TestCase
             ]);
         }
 
-        $page = $this->getJson("/api/v2/{$this->securePath}/notice/fetch?current=1&pageSize=2");
+        $page = $this->getJson("/txapi/admin/{$this->securePath}/content/notices?page=1&per_page=2");
         $page->assertOk();
-        $this->assertSame(3, $page->json('total'));
-        $this->assertSame(2, $page->json('last_page'));
+        $this->assertSame(3, $page->json('meta.total'));
+        $this->assertSame(2, $page->json('meta.last_page'));
         $this->assertCount(2, $page->json('data'));
 
-        $filtered = $this->getJson("/api/v2/{$this->securePath}/notice/fetch?current=1&pageSize=20&title=beta");
+        $filtered = $this->getJson("/txapi/admin/{$this->securePath}/content/notices?page=1&per_page=20&title=beta");
         $filtered->assertOk();
-        $this->assertSame(1, $filtered->json('total'));
+        $this->assertSame(1, $filtered->json('meta.total'));
     }
 
     public function test_admin_knowledge_list_paginates_and_filters(): void
@@ -375,19 +375,19 @@ class AdminContractRegressionTest extends TestCase
         $this->makeKnowledge('kb-two', 'catA');
         $this->makeKnowledge('kb-three', 'catB');
 
-        $page = $this->getJson("/api/v2/{$this->securePath}/knowledge/fetch?current=1&pageSize=2");
+        $page = $this->getJson("/txapi/admin/{$this->securePath}/content/knowledge?page=1&per_page=2");
         $page->assertOk();
-        $this->assertSame(3, $page->json('total'));
-        $this->assertSame(2, $page->json('last_page'));
+        $this->assertSame(3, $page->json('meta.total'));
+        $this->assertSame(2, $page->json('meta.last_page'));
         $this->assertCount(2, $page->json('data'));
 
-        $byCategory = $this->getJson("/api/v2/{$this->securePath}/knowledge/fetch?current=1&pageSize=20&category=catB");
+        $byCategory = $this->getJson("/txapi/admin/{$this->securePath}/content/knowledge?page=1&per_page=20&category=catB");
         $byCategory->assertOk();
-        $this->assertSame(1, $byCategory->json('total'));
+        $this->assertSame(1, $byCategory->json('meta.total'));
 
-        $byTitle = $this->getJson("/api/v2/{$this->securePath}/knowledge/fetch?current=1&pageSize=20&title=kb-two");
+        $byTitle = $this->getJson("/txapi/admin/{$this->securePath}/content/knowledge?page=1&per_page=20&title=kb-two");
         $byTitle->assertOk();
-        $this->assertSame(1, $byTitle->json('total'));
+        $this->assertSame(1, $byTitle->json('meta.total'));
     }
 
     /**
@@ -425,13 +425,11 @@ class AdminContractRegressionTest extends TestCase
      */
     public function test_mail_template_get_validates_name_instead_of_failing(): void
     {
-        $this->getJson("/api/v2/{$this->securePath}/mail/template/get")
-            ->assertStatus(422);
-
+        // Missing or unknown native path segment must not expose PHP internals.
+        $this->getJson("/txapi/admin/{$this->securePath}/mail-templates/unknown")->assertNotFound();
         $name = array_key_first(MailTemplate::TEMPLATES);
-        $ok = $this->getJson("/api/v2/{$this->securePath}/mail/template/get?name={$name}");
-        $ok->assertOk();
-        $this->assertSame($name, $ok->json('data.name'));
+        $this->getJson("/txapi/admin/{$this->securePath}/mail-templates/{$name}")
+            ->assertOk()->assertJsonPath('data.name', $name);
     }
 
     /**

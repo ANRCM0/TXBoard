@@ -53,7 +53,7 @@ export function SignInPage() {
 
       const authorization = String(data.auth_data || data.access_token || '')
       if (!authorization) {
-        toast.error('登录成功响应中未返回管理员 Sanctum auth_data')
+        toast.error('登录成功响应中未返回管理员授权凭据')
         return
       }
 
@@ -86,7 +86,7 @@ export function SignInPage() {
       <div className="admin-auth-wrap">
         <div className="admin-auth-brand">
           <h1>TXBoard</h1>
-          <p>Xboard 管理中心</p>
+          <p>TXBoard 管理中心</p>
         </div>
 
         <div className="admin-auth-card">
@@ -119,10 +119,17 @@ export function SignInPage() {
               {form.formState.errors.password ? <small>{form.formState.errors.password.message}</small> : null}
             </label>
 
+            {captchaConfig.isError ? (
+              <div role="alert" className="admin-auth-config-error">
+                验证码配置加载失败，管理员登录已暂停。
+                <button type="button" onClick={() => void captchaConfig.refetch()}>重新加载</button>
+              </div>
+            ) : null}
             {captchaEnabled ? (
               <CaptchaWidget ref={captchaRef} config={captchaConfig.data ?? null} />
             ) : null}
-            <button type="submit" className="admin-auth-submit" disabled={mutation.isPending}>
+            <button type="submit" className="admin-auth-submit"
+              disabled={mutation.isPending || captchaConfig.isPending || captchaConfig.isError}>
               {mutation.isPending ? '登录中…' : '登录'}
             </button>
           </form>

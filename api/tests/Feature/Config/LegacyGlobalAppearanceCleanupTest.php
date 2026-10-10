@@ -113,10 +113,10 @@ class LegacyGlobalAppearanceCleanupTest extends TestCase
             admin_setting('frontend_admin_path', hash('crc32b', config('app.key')))
         );
 
-        $this->postJson("/api/v2/{$securePath}/config/save", [
+        $this->postJson("/txapi/admin/{$securePath}/settings", [
             'app_name' => 'should-not-save',
             'frontend_theme_color' => '',
-        ])->assertUnprocessable()->assertJsonValidationErrors(['frontend_theme_color']);
+        ])->assertUnprocessable()->assertJsonPath('error.fields.0', 'frontend_theme_color');
 
         $this->assertNull(DB::table('v2_settings')->where('name', 'app_name')->value('value'));
         $this->assertNull(DB::table('v2_settings')->where('name', 'frontend_theme_color')->value('value'));

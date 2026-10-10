@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { unwrap } from '../lib/api'
 import { removeAccessToken, setAccessToken } from '../lib/storage'
 import {
-  apiClient,
+  nativeAdminPath,
   nativeApiClient,
   unwrapNative,
   clearAdminSecurePath,
@@ -33,13 +33,14 @@ import { getThemes, getThemeConfig, saveThemeConfig, deleteTheme, uploadTheme } 
 import { getAgentTokens, createAgentToken, revokeAgentToken, getAgentAbilities, getAgentActions, approveAgentAction, rejectAgentAction, getAgentFleetHealth, getAgentInspections, runAgentInspection, getAgentSupportReplies, approveAgentSupportReply, rejectAgentSupportReply } from './agent'
 import { getPlugins, installPlugin, uninstallPlugin, enablePlugin, disablePlugin, upgradePlugin, deletePlugin, getPluginConfig, updatePluginConfig, uploadPlugin } from './plugin'
 import { getModuleRegistry } from './module'
+import { login } from './auth'
+import { fetchGuestConfig } from './comm'
 import { normalizePluginNavigationTarget } from '../plugins/bridge'
 
 type Seen = AxiosRequestConfig & { headers: Record<string, string> }
 
 let seen: Seen[] = []
 let responder: (config: AxiosRequestConfig) => { data: unknown; status?: number }
-let originalBaseURL: string | undefined
 
 function installAdapter() {
   const adapter = async (config: AxiosRequestConfig) => {
@@ -47,21 +48,18 @@ function installAdapter() {
     const { data, status = 200 } = responder(config as unknown as AxiosRequestConfig)
     return { data, status, statusText: 'OK', headers: {}, config } as never
   }
-  apiClient.defaults.adapter = adapter
   nativeApiClient.defaults.adapter = adapter
 }
 
 beforeEach(() => {
   seen = []
   responder = () => ({ data: { data: null } })
-  originalBaseURL = apiClient.defaults.baseURL
   localStorage.clear()
   removeAccessToken()
   installAdapter()
 })
 
 afterEach(() => {
-  apiClient.defaults.baseURL = originalBaseURL
   clearAdminSecurePath()
   localStorage.clear()
 })
@@ -435,9 +433,9 @@ describe('native node editor contract', () => {
 })
 
 describe('admin secure path resolution', () => {
-  it('re-points the admin client at a rotated secure path', () => {
+  it('resolves a newly rotated administrator path for native requests', () => {
     setAdminSecurePath('rotated2024')
-    expect(apiClient.defaults.baseURL).toBe('/api/v2/rotated2024')
+    expect(nativeAdminPath('settings')).toBe('/admin/rotated2024/settings')
   })
 
   it('switches the admin client immediately after a secure-path save succeeds', async () => {
@@ -448,11 +446,11 @@ describe('admin secure path resolution', () => {
 
     expect(seen[0].baseURL).toBe('/txapi')
     expect(seen[0].url).toBe('/admin/before-rotation/settings')
-    expect(apiClient.defaults.baseURL).toBe('/api/v2/after-rotation')
+    expect(nativeAdminPath('settings')).toBe('/admin/after-rotation/settings')
   })
 
-  it('exposes the public prefix separately from the admin prefix', () => {
-    expect(getResolvedApiPrefixes().public).toBe('/api/v2')
+  it('exposes only native and plugin-owned prefixes', () => {
+    expect(getResolvedApiPrefixes()).toEqual({ native: '/txapi', plugin: '' })
   })
 })
 
@@ -490,7 +488,7 @@ describe('P1-B admin native TXAPI client isolation', () => {
     expect(seen[0].baseURL).toBe('/txapi')
     expect(seen[0].url).toBe('/me')
     expect(String(seen[0].headers.Authorization)).toBe('Bearer admin-session')
-    expect(apiClient.defaults.baseURL).toBe('/api/v2/rotated-secret-path')
+    expect(nativeAdminPath('settings')).toBe('/admin/rotated-secret-path/settings')
     expect(getResolvedApiPrefixes().native).toBe('/txapi')
   })
 
@@ -1367,5 +1365,40 @@ describe('plugin-owned boundary remains separate from legacy V2 admin', () => {
       .toThrow('Plugin API must use a plugin-owned path')
     await expect(savePluginCrudRecord('/admin/secure/users', { id: 1 })).rejects
       .toThrow('Plugin API must use a plugin-owned path')
+  })
+})
+
+describe('native management bootstrap contract', () => {
+  it('reads CAPTCHA provider configuration only from native public site config', async () => {
+    responder = () => ({ data: {
+      data: { is_captcha: 1, captcha_type: 'turnstile', turnstile_site_key: 'site-key' },
+      request_id: 'public-site',
+    } })
+    await expect(fetchGuestConfig()).resolves.toMatchObject({
+      is_captcha: 1, captcha_type: 'turnstile', turnstile_site_key: 'site-key',
+    })
+    expect(seen.map(config => [config.method, config.url, config.baseURL]))
+      .toEqual([['get', '/public/site-config', '/txapi']])
+  })
+
+  it('requires an explicit CAPTCHA activation flag, never silently disables it', async () => {
+    responder = () => ({ data: { data: { captcha_type: 'turnstile' }, request_id: 'invalid-site' } })
+    await expect(fetchGuestConfig()).rejects.toThrow('Invalid public CAPTCHA configuration')
+  })
+
+  it('signs in through native admin-auth, preserving captcha and scoped path', async () => {
+    responder = () => ({ data: {
+      data: {
+        auth_data: 'Bearer generated-admin-token', is_admin: true, secure_path: 'rotated-secret',
+      },
+      request_id: 'native-admin-sign-in',
+    } })
+    await expect(login('admin@example.test', 'pass', { turnstile_token: 'captcha-test' }))
+      .resolves.toMatchObject({ is_admin: true, secure_path: 'rotated-secret' })
+    expect(seen.map(config => [config.method, config.url, config.baseURL]))
+      .toEqual([['post', '/auth/admin/login', '/txapi']])
+    expect(JSON.parse(String(seen[0].data))).toEqual({
+      email: 'admin@example.test', password: 'pass', turnstile_token: 'captcha-test',
+    })
   })
 })

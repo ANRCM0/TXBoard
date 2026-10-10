@@ -254,6 +254,7 @@ Route::prefix('admin/{admin_path}')
 
 Route::middleware('throttle:10,1')->group(function () {
     Route::post('auth/login', [AuthController::class, 'login']);
+    Route::post('auth/admin/login', [AuthController::class, 'adminLogin']);
     Route::post('auth/register', [AuthController::class, 'register']);
     // Shared MailLinkService keeps V1 email links and native requests interoperable.
     Route::post('auth/mail-link', [AuthController::class, 'mailLink']);

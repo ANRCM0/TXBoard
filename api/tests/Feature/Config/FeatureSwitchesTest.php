@@ -73,7 +73,7 @@ class FeatureSwitchesTest extends TestCase
             admin_setting('frontend_admin_path', hash('crc32b', config('app.key')))
         );
 
-        $response = $this->postJson("/api/v2/{$securePath}/config/save", [
+        $response = $this->postJson("/txapi/admin/{$securePath}/settings", [
             'ticket_enable' => false,
             'invite_enable' => true,
         ]);

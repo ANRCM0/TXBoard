@@ -3,7 +3,6 @@
 namespace App\Http\Routes\V2;
 
 use App\Http\Routes\V2\Admin\CommerceRoute;
-use App\Http\Routes\V2\Admin\ContentRoute;
 use App\Http\Routes\V2\Admin\SystemRoute;
 use App\Http\Routes\V2\Admin\UserRoute as AdminUserRoute;
 use Illuminate\Contracts\Routing\Registrar;
@@ -14,7 +13,6 @@ class AdminRoute
         SystemRoute::class,
         CommerceRoute::class,
         AdminUserRoute::class,
-        ContentRoute::class,
     ];
 
     public function map(Registrar $router): void

@@ -1,5 +1,5 @@
 import type { PluginItem } from '../api/plugin'
-import { getResolvedApiPrefixes, pluginApiClient } from '../api/client'
+import { nativeAdminPath, nativeApiClient, pluginApiClient } from '../api/client'
 import { getAuthorizationHeader } from '../lib/storage'
 
 export const PLUGIN_BRIDGE_VERSION = 1
@@ -80,6 +80,12 @@ export type ModuleBridgeRequest =
   | { kind: 'open-user' | 'open-node' | 'open-machine'; id: string }
   | { kind: 'get-theme'; requestId: string }
 
+/** Plugins adopt TXAPI's rotating administrator scope; no V2 fallback. */
+function nativeAdminApiRoot(): string {
+  const prefix = String(nativeApiClient.defaults.baseURL || '/txapi').replace(/\/$/, '')
+  return prefix + nativeAdminPath('plugins').slice(0, -'/plugins'.length)
+}
+
 export function buildPluginBridgeInit(plugin: PluginItem, path: string): PluginBridgeInit {
   return {
     type: 'txboard:plugin:init',
@@ -92,7 +98,7 @@ export function buildPluginBridgeInit(plugin: PluginItem, path: string): PluginB
     route: { path },
     api: {
       root: String(pluginApiClient.defaults.baseURL || ''),
-      admin: getResolvedApiPrefixes().admin,
+      admin: nativeAdminApiRoot(),
     },
     auth: {
       authorization: getAuthorizationHeader(),
@@ -113,7 +119,7 @@ export function buildModuleBridgeInit(plugin: PluginItem, path: string): ModuleB
     route: { path },
     api: {
       root: String(pluginApiClient.defaults.baseURL || ''),
-      admin: getResolvedApiPrefixes().admin,
+      admin: nativeAdminApiRoot(),
     },
     auth: {
       authorization: getAuthorizationHeader(),

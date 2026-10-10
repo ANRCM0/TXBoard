@@ -1,6 +1,3 @@
-import { apiClient } from './client'
-import { unwrap } from '../lib/api'
-
 export type AgentTargetScope = {
   mode: 'all' | 'restricted'
   node_ids: number[]

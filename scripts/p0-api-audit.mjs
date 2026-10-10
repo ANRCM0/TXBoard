@@ -22,7 +22,9 @@ const required = [
  ['GET','txapi/payment/webhook/{method}/{uuid}',[]],
  ['POST','txapi/payment/webhook/{method}/{uuid}',[]],
  ['POST','txapi/node/v1/handshake',['txnode']],
- ['GET','api/v2/{admin_path}/config/fetch',['admin.path','admin']],
+ ['POST','txapi/auth/admin/login',[]],
+ ['GET','txapi/public/site-config',[]],
+ ['GET','txapi/admin/{admin_path}/settings',['admin.path','admin']],
  ['GET','api/v2/agent/whoami',['agent']],
 ];
 function owner(path) {

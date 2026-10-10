@@ -32,14 +32,7 @@ function readStoredSecurePath() {
   }
 }
 
-function buildAdminPrefix(securePath: string) {
-  return `${runtimeBaseUrl()}/api/v2/${trimSlashes(securePath)}`
-}
-
-/**
- * Caches the instance-specific admin secure path learned from a successful
- * admin sign-in and re-points the admin API client at it.
- */
+/** Persist a rotating administrator secure path for native TXAPI requests. */
 export function setAdminSecurePath(securePath: string) {
   const value = trimSlashes(String(securePath || '').trim())
   if (!value) return
@@ -49,7 +42,6 @@ export function setAdminSecurePath(securePath: string) {
     // Storage can be unavailable (private browsing); the in-memory base URL is
     // still switched below.
   }
-  apiClient.defaults.baseURL = buildAdminPrefix(value)
 }
 
 /** Native administrator operations must keep the instance-specific secure path. */
@@ -69,44 +61,10 @@ export function clearAdminSecurePath() {
   }
 }
 
-function hasExplicitAdminPrefix() {
-  return Boolean(
-    String(
-      import.meta.env.VITE_API_V2_ADMIN_PREFIX || import.meta.env.VITE_API_V2_PREFIX || '',
-    ).trim(),
-  )
-}
-
 function resolveNativePrefix() {
   const explicit = String(import.meta.env.VITE_TXAPI_PREFIX || '').trim()
   if (explicit) return explicit.replace(/\/$/, '')
   return `${runtimeBaseUrl()}/txapi`
-}
-
-function resolvePublicPrefix() {
-  const explicit = String(import.meta.env.VITE_API_V2_PUBLIC_PREFIX || '').trim()
-  if (explicit) return explicit.replace(/\/$/, '')
-  return `${runtimeBaseUrl()}/api/v2`
-}
-
-function resolveAdminPrefix() {
-  const explicit = String(
-    import.meta.env.VITE_API_V2_ADMIN_PREFIX ||
-    import.meta.env.VITE_API_V2_PREFIX ||
-    '',
-  ).trim()
-  if (explicit) return explicit.replace(/\/$/, '')
-
-  // The admin API lives behind an instance-generated secure path. It is either
-  // injected by the PHP admin shell (window.settings.secure_path) or learned
-  // from the admin sign-in response and cached for later page loads.
-  const securePath = String(runtimeSettings().secure_path || '').trim() || readStoredSecurePath()
-  if (securePath) return buildAdminPrefix(securePath)
-
-  // Nothing is known yet: the operator still has to sign in through /sign-in,
-  // which resolves the real path at runtime. Failing here is preferable to
-  // silently probing a hardcoded, guessed prefix.
-  return `${runtimeBaseUrl()}/api/v2`
 }
 
 function attachCommonErrorHandling(client: AxiosInstance, options: { redirectOnAuthError: boolean; resetSecurePathOnNotFound?: boolean }) {
@@ -125,33 +83,14 @@ function attachCommonErrorHandling(client: AxiosInstance, options: { redirectOnA
         }
       }
 
-      // A cached secure path goes stale when an operator rotates it, after
-      // which every admin call answers 404. Drop the cache and send the
-      // operator back to sign-in so the fresh path is learned again.
-      if (
-        options.redirectOnAuthError &&
-        options.resetSecurePathOnNotFound !== false &&
-        status === 404 &&
-        !hasExplicitAdminPrefix() &&
-        readStoredSecurePath()
-      ) {
-        clearAdminSecurePath()
-        removeAccessToken()
-        const signInPath = withBasePath('/sign-in')
-        if (import.meta.env.VITE_STATIC_PREVIEW !== '1' && window.location.pathname !== signInPath) {
-          const redirect = encodeURIComponent(currentRouterTarget())
-          window.location.assign(`${signInPath}?redirect=${redirect}`)
-        }
-      }
-
       if (status !== 401) toast.error(message)
       return Promise.reject(error)
     },
   )
 }
 
-// Native TXAPI is separate from the legacy admin secure-path namespace.
-// Native 404s must never be interpreted as secure-path rotation.
+// All first-party administration, including sign-in, uses native TXAPI.
+// Native resource 404s must never be treated as administrator path rotation.
 export const nativeApiClient = axios.create({
   baseURL: resolveNativePrefix(),
   timeout: 10_000,
@@ -172,27 +111,15 @@ export async function unwrapNative<T>(promise: Promise<{ data: NativeApiEnvelope
   return data.data
 }
 
-export const publicApiClient = axios.create({
-  baseURL: resolvePublicPrefix(),
-  timeout: 10_000,
-  headers: { 'Content-Type': 'application/json' },
-})
-
-export const apiClient = axios.create({
-  baseURL: resolveAdminPrefix(),
-  timeout: 10_000,
-  headers: { 'Content-Type': 'application/json' },
-})
-
-// Plugin-owned admin APIs may intentionally live outside the instance-specific
-// /api/v2/<secure_path> namespace. They still use the same Sanctum bearer token.
+// Plugin-owned APIs run under /plugin/*, outside the core admin namespace.
+// They use the same administrator bearer but never an old /api/v2 path.
 export const pluginApiClient = axios.create({
   baseURL: runtimeBaseUrl(),
   timeout: 10_000,
   headers: { 'Content-Type': 'application/json' },
 })
 
-for (const client of [apiClient, pluginApiClient, nativeApiClient]) {
+for (const client of [pluginApiClient, nativeApiClient]) {
   client.interceptors.request.use(config => {
     const authorization = getAuthorizationHeader()
     if (authorization) config.headers.Authorization = authorization
@@ -200,17 +127,11 @@ for (const client of [apiClient, pluginApiClient, nativeApiClient]) {
   })
 }
 
-attachCommonErrorHandling(publicApiClient, { redirectOnAuthError: false })
 attachCommonErrorHandling(nativeApiClient, { redirectOnAuthError: true, resetSecurePathOnNotFound: false })
-attachCommonErrorHandling(apiClient, { redirectOnAuthError: true })
 // Root plugin routes share administrator auth but are not tied to the instance
 // secure-path cache, so a plugin-level 404 must never invalidate that cache.
 attachCommonErrorHandling(pluginApiClient, { redirectOnAuthError: true, resetSecurePathOnNotFound: false })
 
 export function getResolvedApiPrefixes() {
-  return {
-    public: resolvePublicPrefix(),
-    admin: resolveAdminPrefix(),
-    native: resolveNativePrefix(),
-  }
+  return { native: resolveNativePrefix(), plugin: runtimeBaseUrl() }
 }

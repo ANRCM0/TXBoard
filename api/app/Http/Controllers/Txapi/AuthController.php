@@ -45,6 +45,44 @@ final class AuthController
         return TxapiResponse::success($request, ['auth_data' => $data['auth_data']]);
     }
 
+    /**
+     * First-party management login: issue a bearer only to an active admin.
+     * Unlike the generic account login, the native response includes the
+     * rotating admin path exclusively after the administrator role check.
+     */
+    public function adminLogin(AuthLogin $request, CaptchaService $captcha, LoginService $service): JsonResponse
+    {
+        [$valid] = $captcha->verify($request);
+        if (!$valid) {
+            return TxapiResponse::error($request, 'CAPTCHA_INVALID',
+                'Captcha verification failed', 400)->header('Cache-Control', 'no-store');
+        }
+        [$success, $result] = $service->login(
+            (string) $request->input('email'),
+            (string) $request->input('password')
+        );
+        if (!$success) {
+            $limited = (int) ($result[0] ?? 400) === 429;
+            return TxapiResponse::error($request,
+                $limited ? 'RATE_LIMITED' : 'INVALID_CREDENTIALS',
+                $limited ? 'Too many attempts' : 'Invalid credentials',
+                $limited ? 429 : 401)->header('Cache-Control', 'no-store');
+        }
+
+        // Check BEFORE creating an administrator bearer. Do not leak either
+        // the admin path or subscription token to regular users.
+        if (!$result instanceof User || !$result->is_admin || $result->banned) {
+            return TxapiResponse::error($request, 'ADMIN_ACCESS_DENIED',
+                'Administrator access required', 403)->header('Cache-Control', 'no-store');
+        }
+        $auth = (new AuthService($result))->generateAuthData();
+        return TxapiResponse::success($request, [
+            'auth_data' => $auth['auth_data'],
+            'is_admin' => true,
+            'secure_path' => (string) $auth['secure_path'],
+        ])->header('Cache-Control', 'private, no-store');
+    }
+
     public function register(AuthRegister $request, RegisterService $service): JsonResponse
     {
         try {
