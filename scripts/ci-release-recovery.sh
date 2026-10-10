@@ -54,8 +54,10 @@ php scripts/ci-release-fixture.php verify-upgrade
 php scripts/ci-release-fixture.php seed-ledgers
 
 # The actual application backup is exercised, not a hand-crafted SQL dump.
-mkdir -p storage/app
+mkdir -p storage/app storage/theme plugins
 printf '%s\n' 'synthetic-release-storage-marker' > storage/app/ci-release-restore-marker.txt
+printf '%s\n' 'synthetic-release-theme-marker' > storage/theme/ci-release-theme-marker.txt
+printf '%s\n' 'synthetic-release-plugin-marker' > plugins/ci-release-plugin-marker.txt
 DB_HOST=127.0.0.1 BACKUP_INTERVAL=0 BACKUP_RETENTION=1 \
   BACKUP_DIR="$work/backups" BACKUP_SOURCE_DIR="$root/api" \
   sh "$root/backup.sh" > "$work/backup.log"
@@ -68,6 +70,10 @@ fi
 gzip -t "$archive/db.sql.gz"
 tar -xOzf "$archive/storage-app.tar.gz" ./ci-release-restore-marker.txt |
   cmp -s - storage/app/ci-release-restore-marker.txt
+tar -xOzf "$archive/storage-theme.tar.gz" ./ci-release-theme-marker.txt |
+  cmp -s - storage/theme/ci-release-theme-marker.txt
+tar -xOzf "$archive/plugins.tar.gz" ./ci-release-plugin-marker.txt |
+  cmp -s - plugins/ci-release-plugin-marker.txt
 cmp -s "$archive/env" .env
 
 echo '[release-recovery] Restore actual backup into separate, empty MySQL schema'
@@ -91,7 +97,7 @@ cat > artifacts/release-recovery.json <<'JSON'
   "migration": "pass",
   "preexisting_wallet_order_traffic": "preserved",
   "legacy_presentation_setting": "purged",
-  "backup": "actual backup.sh, checksum verified",
+  "backup": "actual backup.sh, checksum verified (database, APP_KEY, uploads, theme, plugin)",
   "restore": "isolated fresh MySQL schema, ledger and balances verified",
   "repeat_migration": "pass",
   "real_production_upgrade": "not_tested",
