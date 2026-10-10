@@ -1,41 +1,17 @@
-# TXBoard Architecture — 文档入口
+# TXBoard 开发者文档
 
-## 当前（CURRENT）与目标（TARGET）
+## 接口对接
 
-- **CURRENT (TXAPI-only 开发分支)**：已删除 `/api/v1/*`、`/api/v2/*` 注册入口与路由文件；Laravel 公开、用户、管理、节点、Agent、签名支付和 Telegram Webhook 均由 `/txapi/*` 承载。
-- **CURRENT 2026-10-10（PR #182）**：原生 React Admin、TXAPI Node HTTP/WS、`/txapi/agent/v1/*`、`/txapi/integrations/telegram/webhook` 与 `/txapi/payment/webhook/*` 是本仓注册的入口；动态订阅 `/{subscribe_path}/{token}` 是独立的核心分发功能。第三方调用者必须升级；跨组件真实联调仍未验收。
-- **TARGET**：完成跨组件协议字段验证、Agent 响应契约原生化和真实部署验收；不恢复任何 V1/V2 HTTP 兼容入口。
+- [外部主题：TXAPI HTTP 对接](../../contracts/http/theme-integration-current.md)
+- [TXNode：HTTP / WebSocket 对接](../../contracts/node-protocol/txnode-integration-current.md)
+- [对外路由总览与身份边界](../../contracts/http/external-adapter-current.md)
+- [HTTP 路由清单与导出](http-route-inventory.md)
 
-## 外部开发者先看（当前协议）
+## 扩展与部署
 
-- [完整 Laravel HTTP 路由扫描及 CI Artifact](http-route-inventory.md) — 从 route:list 自动生成，CI 对关键方法、鉴权边界和旧管理端退役进行守卫。
-- [外部服务 CURRENT API / WS 适配手册](../../contracts/http/external-adapter-current.md) — Node、Agent、Gateway、支付、订阅、插件及管理员权限的真实协议边界。
-- [真实部署与发布验收](../operations/release-staging-acceptance.md) — PR #180 已提供合成备份恢复 CI，但不等于生产验收。
-- [Issue #168 发布阻塞清单](https://github.com/ANRCM0/TXBoard/issues/168) — 未开发/未适配/未联调的逐项权威状态。
+- [Theme Package v1](../../contracts/theme-package/README.md)、[插件开发指南](../../api/docs/en/development/plugin-development-guide.md)
+- [Module Platform 开发指南](module-platform-development-guide.md)、[Agent Ops 开发指南](agent-ops-development-guide.md)
+- [部署验收](../operations/release-staging-acceptance.md)、[数据库切换操作](../operations/native-mysql-table-cutover.md)、[安全规范](../security/README.md)
+- [项目开发规则](../../AGENTS.md)
 
-## TXBoard Native 开发主线
-
-- [P0 执行记录与基线](p0-execution.md) — 已实现的审计工具、兼容回归与剩余生产验收。
-- [P2 阶段验收记录](p2-completion.md) — P2-A–E 合并 PR、实际 TXAPI 路由、测试证据与未退役的兼容入口。
-- [P4 阶段验收记录](p4-completion.md) — TXBoard Native Node v1、流量分批查询优化、自动化证据与外部 Node 联调后置。
-- [P3 阶段验收记录](p3-completion.md) — 核心交易、双 webhook、共享 checkout、审计工件及支付商外部联调待验收项。
-- [Legacy Retirement Batch 1](legacy-retirement-batch-1.md) — LR-01～LR-03 的工作范围、危险边界、测试与删除门禁。
-- [Legacy Retirement Batch 3](legacy-retirement-batch-3.md) — LR-07～LR-09 原生安全认证、一次性令牌和邮箱恢复工作包；LR-04～LR-06 可在各自 PR 中追踪。
-
-
-1. [详细重构与开发方案](txboard-native-development-plan.md) — 架构、API、领域、优化、P0–P7、数据和发布。
-2. [Gateway 集成 ADR](gateway-integration.md) — 双仓职责、/txapi/bff/v1、部署、G0–G5。
-3. [BFF Target Contract](../../contracts/http/txapi-bff-target-v1.md) — 未来协议，未上线。
-4. [遗留依赖盘点](legacy-inventory-and-work-packages.md) — 首批审计、跨仓库消费端和 PR 分类。
-5. [TXAPI Contract v1](../../contracts/http/txapi-target-v1.md) — 已实现 P1/P2 接口与剩余目标路径，部署状态取决于实际版本。
-6. [运行/发布手册](../operations/README.md)；[安全基线](../security/README.md)；[扩展运行时](extension-runtime-policy.md)。
-
-## 保留的已实现架构文档
-
-- [Module Platform v1](module-platform-v1.md)、[Module Platform 开发指南](module-platform-development-guide.md)。
-- [Agent Ops / MCP](agent-ops.md)、[Agent Ops 开发指南](agent-ops-development-guide.md)。
-- [跨仓库现行契约](../../contracts/README.md)、[插件开发指南](../../api/docs/en/development/plugin-development-guide.md)、[AGENTS 开发规则](../../AGENTS.md)。
-
-## 不变的边界
-
-TXBoard 是 Control Plane，TX-Node 是独立 Agent/Data Plane。Vue/React 消费 HTTP 契约、域层拥有业务真相；Module Runtime 不复制 PluginManager/ThemeService，Agent/MCP 不绕过权限、审批、审计；节点安装与升级仍由 TX-Node Installer 负责。
+TXBoard 为控制面，TXNode 为独立 Agent/Data Plane。浏览器主题仅使用面向用户的 TXAPI，不得携带 Node、Machine、Admin 或 Agent 私密凭据。

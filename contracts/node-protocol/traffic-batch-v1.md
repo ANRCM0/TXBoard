@@ -1,23 +1,12 @@
-# TXBoard traffic report batch id (phase 2)
+# TXNode 流量批次与幂等
 
-V2 `POST /api/v2/server/report` supports optional `traffic_batch_id` alongside
-the existing `traffic` map. V1 `UniProxy/push` supports the same value in
-`X-Traffic-Batch-ID` header. IDs must match `[A-Za-z0-9:_-]{8,80}`
-and be unique per node for every new sample. The *same* ID and *unchanged*
-bytes MUST be used when retrying after a timeout or lost acknowledgement.
+正式上报接口：`POST /txapi/node/v1/report`；WebSocket：`traffic.report`。两者使用相同的服务端校验与队列结算逻辑。
 
-With an ID, all accepted counters (user u/d, per-user daily stats, node u/d,
-per-node daily stats) and the dedupe ledger commit as one SQL transaction.
-A duplicate ID can never settle a second time. Reuse with different data
-is logged as an integrity error. Ledger rows are retained indefinitely,
-unless an intentional administrative retention policy is introduced.
+- 每个有实际流量的上报必须携带 `protocol_version:1`、`traffic_batch_id`、`traffic`。
+- `traffic_batch_id` 符合 `[A-Za-z0-9:_-]{8,80}`，同节点的新样本必须唯一。
+- `traffic` 为 `{"<user_id>":[upload_bytes,download_bytes]}`，非负整数，最多 10,000 个用户，每方向不超过 1 PiB，HTTP body 不超过 1 MiB。
+- 网络超时、丢 ACK 或重连时，用**相同的 batch ID 和相同的流量样本**重试；不要给原样本创建新 ID。
+- HTTP `202` 或 WebSocket `traffic.ack` 的 `settlement:"queued"` 仅表示入队，不是持久化完成。
+- 服务端按 `(server_id,batch_id)` 做账本幂等，流量/统计变更在数据库事务中完成；客户端仍需有监控与对账路径。
 
-Without a batch ID, older agents continue using the legacy best-effort
-asynchronous pipeline, which **does not guarantee exactly-once accounting**.
-Enable identified batches in TX-Node before claiming end-to-end delivery safety.
-Acknowledge reports only after enqueue succeeds. The worker retries transient
-SQL failures; Redis quota notifications are best-effort after SQL commit.
-
-The ledger's uniqueness is `(server_id, batch_id)`. Reports are ordered by
-their own immutable increment identities: an old batch arriving late is still
-a unique valid increment, rather than overwriting a newer cumulative counter.
+[完整请求示例、鉴权、错误码与机器模式](txnode-integration-current.md)。

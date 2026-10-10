@@ -1,23 +1,29 @@
-# HTTP route inventory — TXAPI-only development
+# TXBoard HTTP 路由清单
 
-> Effective branch: PR #182, 2026-10-10. The registered Laravel HTTP route list is authoritative; old plans do not imply live endpoints.
+Laravel HTTP 路由由 `api/app/Providers/RouteServiceProvider.php` 注册，具体 URI 以 `api/routes/txapi.php`、`api/routes/web.php` 为准。
 
-## Canonical route families
+| 路由组 | 身份 |
+| --- | --- |
+| `/txapi/public/*`、`GET /txapi/plans` | 匿名 |
+| `/txapi/auth/*` | 登录/注册匿名，部分会话操作需用户 Bearer |
+| `/txapi/me/*`、`/txapi/orders/*`、`/txapi/billing/*`、`/txapi/tickets/*` | User Bearer |
+| `/txapi/admin/{admin_path}/*` | Admin Bearer、动态管理路径、RBAC |
+| `/txapi/node/v1/*` | Node/Machine Bearer 与身份头 |
+| `/txapi/agent/v1/*` | Agent Bearer/能力范围（pairing 独立） |
+| `/txapi/payment/webhook/{method}/{uuid}` | 支付商签名 |
+| `/txapi/integrations/telegram/webhook` | Telegram 验证 |
+| `/{subscribe_path}/{token}` | 私密订阅链接 |
+| `/txapi/health`、`/api/health` | 无鉴权应用存活探针 |
 
-- `/txapi/public/*`, `/txapi/auth/*`, `/txapi/me/*`, `/txapi/orders/*`, `/txapi/billing/*` — public and user APIs.
-- `/txapi/admin/{admin_path}/*` — admin Bearer, rotating path, RBAC and audit.
-- `/txapi/node/v1/*` — typed authenticated Node/Machine HTTP; native WebSocket at `/txapi/node/v1/ws` runs through Workerman, not Laravel.
-- `/txapi/agent/v1/*` — Agent runtime operations and pairing. The current handlers still reuse the existing Agent services and response body contract; future envelope changes need explicit tests.
-- `/txapi/payment/webhook/{method}/{uuid}` — signed payment callback (GET/POST, raw provider ACK).
-- `/txapi/integrations/telegram/webhook` — Telegram callback; server validates the configured digest.
-- `/{subscribe_path}/{token}` — dynamic subscription delivery outside the HTTP TXAPI namespace.
-- `/plugin/{code}/*` — plugin-owned routes, scoped to installed and enabled plugins.
-- `/api/health` and `/txapi/health` — liveness probes; neither verifies database or payment services.
+## 生成全量路由列表
 
-**Removed:** all `/api/v1/*` and `/api/v2/*` application route registration, plus Caddy's old `/ws` forwarding path. They must not be reintroduced by an extension or a future refactor. No V1/V2 compatibility is promised in development.
+CI 工作流 `p0-native-baseline` 会执行 Laravel route-list 与 `scripts/export-route-catalog.mjs --check`。本地可执行：
 
-## CI snapshot and regression guard
+```bash
+cd api && php artisan route:list --json > ../route-list.json
+cd .. && node scripts/export-route-catalog.mjs --routes route-list.json --json artifacts/routes.json --markdown artifacts/routes.md --check
+```
 
-The `p0-native-baseline` workflow runs `php api/artisan route:list --json`, then `scripts/export-route-catalog.mjs --check` and `scripts/p0-api-audit.mjs`. The generated `txboard-http-route-catalog` artifact lists HTTP method, URI, principal and middleware. Both guards fail if `api/v1/*` or `api/v2/*` appears again. The PHP contract suite independently asserts the absence of old route names.
+此快照不包含 Workerman `wss://<host>/txapi/node/v1/ws`、反向代理配置和插件动态注册路由；这些须在实际运行环境核实。
 
-Important limitations: Laravel's route registry does not cover Caddy/Workerman WebSocket routing or dynamically installed plugin routes. Run live HTTP/WS and payment/Telegram/MCP tests before release. [Native entrypoint details](../../contracts/http/external-adapter-current.md).
+[外部主题接口](../../contracts/http/theme-integration-current.md) · [TXNode 接口](../../contracts/node-protocol/txnode-integration-current.md)

@@ -1,8 +1,6 @@
 # TXBoard Theme Package Contract v1
 
-Theme Package v1 formalizes the existing TXBoard theme package shape without forcing published themes into a breaking directory migration.
-
-The compatibility boundary remains:
+Theme Package v1 requires:
 
 ```text
 config.json
@@ -25,7 +23,7 @@ dashboard.blade.php
 
 The fixed v1 rendering entrypoint is `dashboard.blade.php`.
 
-Existing themes are not required to add `manifest.json`. Module Platform derives a Module Manifest through `ThemeModuleAdapter`. A future breaking package layout requires an explicit versioned contract.
+Packages may omit `manifest.json`. Module Platform derives a manifest from theme package metadata.
 
 ## config.json
 
@@ -40,7 +38,7 @@ Optional package metadata:
 - `author`;
 - `compatibility.txboard` — defaults to `*` when omitted;
 - `configs` — schema-driven theme settings;
-- legacy/theme-specific extension fields.
+- theme-specific extension fields.
 
 The canonical schema is [schema-v1.json](./schema-v1.json), with an example under [examples/theme.json](./examples/theme.json).
 
@@ -64,7 +62,7 @@ It is not package-declared runtime state.
 
 There is no global Page Appearance panel. Colors, background images and other theme visuals are configured per installed theme through Theme Management and stored under `theme_{theme-name}`. Switching the active theme selects that theme's own settings; other themes retain their settings independently.
 
-The public `GET /api/v1/guest/comm/config` response contains `frontend_theme` (active theme name) and `theme_config` (public settings declared by that theme). The built-in Vue user front reads this response when loading the page and applies the built-in theme color and login background. Themes rendered from `dashboard.blade.php` continue receiving `theme_config` as view data.
+The public `GET /txapi/public/site-config` returns `data.frontend_theme` and `data.theme_config` (public theme settings). Browser themes read the response and apply presentation settings. Blade themes also receive `theme_config` as view data. See [Theme HTTP integration](../http/theme-integration-current.md).
 
 Manifest fields are public presentation values by default. **Never store API secrets in browser-facing theme fields.** Use `"public": false` for server-only fields; field types `password`, `secret`, and `hidden` are also excluded from public configuration. Site identity, payments, access control and other business settings stay in system configuration.
 
@@ -82,7 +80,7 @@ The built-in default is:
 TXBoard
 ```
 
-`current_theme` is legacy read-only compatibility input. If `frontend_theme` is absent, the runtime may resolve a valid legacy theme for compatibility, but read paths do not copy it into canonical state. An invalid non-empty `frontend_theme` falls back to `TXBoard` and does not delegate authority back to `current_theme`. Only explicit theme switching writes `frontend_theme`.
+Explicit theme switching writes `frontend_theme`; invalid active themes resolve to `TXBoard`.
 
 ## Module normalization
 

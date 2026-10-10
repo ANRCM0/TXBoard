@@ -1,70 +1,13 @@
-# TX-Node Protocol Contract
+# TXNode 接口
 
-TXBoard 是控制面，独立的 [TX-Node](https://github.com/ANRCM0/TX-Node) 是节点 Agent / Data Plane。
+TXNode 通过 HTTPS/WSS 主动连接 TXBoard，使用独立 Node/Machine 凭据；HTTP 提供基础通信，WebSocket 为可选实时通道。
 
-TX-Node 主动向 TXBoard 发起 HTTPS / WSS 连接；TXBoard 不编译、不 vendor、也不部署 TX-Node。
+**[TXNode 当前 HTTP / WebSocket 完整对接手册](txnode-integration-current.md)**
 
-## V2 core protocol
+- HTTP：`/txapi/node/v1/handshake`、`config`、`users`、`report`、`machine/nodes`、`machine/status`。
+- WebSocket：`/txapi/node/v1/ws`，须配置 Workerman、TLS Upgrade 与功能开关。
+- 请求头：`Authorization: Bearer <token>`；单节点使用 `X-TX-Node-ID`，机器使用 `X-TX-Machine-ID`。
+- 机器运行时升级补充：[Machine Runtime Update v1](machine-runtime-update-v1.md)。
+- Agent 动作结果通过 WebSocket `ops.result` / `ops.ack` 回传。
 
-```http
-POST /api/v2/server/handshake
-POST /api/v2/server/report
-GET  /api/v2/server/config
-GET  /api/v2/server/user
-POST /api/v2/server/machine/nodes
-POST /api/v2/server/machine/status
-```
-
-V2 用于 Agent 握手、配置同步、用户同步、Machine 节点清单与状态上报。
-
-## Machine runtime update
-
-Machine-level TX-Node runtime upgrades are defined separately from per-node Agent Ops:
-
-- [Machine Runtime Update Protocol v1](./machine-runtime-update-v1.md)
-
-The update path delegates deployment mechanics to TX-Node Installer. It does not add SSH, generic shell, Docker socket access from TXBoard, or arbitrary image selection.
-
-## UniProxy V1 compatibility
-
-```http
-GET  /api/v1/server/UniProxy/config
-GET  /api/v1/server/UniProxy/user
-POST /api/v1/server/UniProxy/push
-POST /api/v1/server/UniProxy/alive
-POST /api/v1/server/UniProxy/status
-```
-
-这些接口用于现有 UniProxy/Xboard 兼容，不应在没有迁移计划的情况下删除。
-
-## WebSocket
-
-WebSocket 是实时控制加速通道，HTTP 是基础协议。Agent 应能够在 WebSocket 暂时不可用时继续依赖 HTTP 完成核心同步。
-
-## AccessAudit extension
-
-AccessAudit 是可选插件，不属于核心 TX-Node 协议：
-
-```http
-GET  /api/v1/plugin/access-audit/rules
-POST /api/v1/plugin/access-audit/report
-```
-
-TX-Node 可以启用可选 audit reporter 使用这些接口；未安装 AccessAudit 时，不影响核心节点功能。
-
-## TXBoard Native v1（server-side implemented; TX-Node adaptation deferred）
-
-See [Native Node Protocol v1](./node-native-v1.md). TXBoard serves the new protocol; TX-Node has **not** been changed or connected. Legacy V1/V2/WS endpoints remain active.
-
-## Original native target guidance
-
-目标 Node API 为 `/txapi/node/v1/*`。这需要 TXBoard 与 TX-Node 对鉴权、capabilities、握手、配置同步、流量幂等和 HTTP/WSS 回退进行双边版本化与联调。**上面的 /api/v2/server/*、UniProxy 以及 AccessAudit 路径依然是当前生效契约，不可在当前阶段直接删掉。** 参见 [TXAPI Target](../http/txapi-target-v1.md)。
-
-## Change policy
-
-核心 endpoint、认证方式、payload 或语义发生变化时，需要：
-
-1. 更新 TXBoard 端契约与测试；
-2. 在 TX-Node 仓库验证对应 adapter；
-3. 保留必要的兼容窗口；
-4. 避免将可选插件协议提升为核心硬依赖。
+修改核心协议时同时更新 TXBoard 校验、测试和 TXNode 适配器，实际联调需验证认证、ETag、账本幂等、故障重试和 WSS 降级。
