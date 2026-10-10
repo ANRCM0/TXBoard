@@ -6,7 +6,9 @@ use Illuminate\Database\Eloquent\Model;
 
 class AdminAuditLog extends Model
 {
-    protected $table = 'v2_admin_audit_log';
+    
+    use \App\Support\Database\ResolvesNativeEloquentTable;
+protected $table = 'v2_admin_audit_log';
     protected $dateFormat = 'U';
     protected $guarded = ['id'];
     protected $casts = [

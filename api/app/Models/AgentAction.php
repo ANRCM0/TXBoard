@@ -6,7 +6,9 @@ use Illuminate\Database\Eloquent\Model;
 
 class AgentAction extends Model
 {
-    public const STATUS_PENDING = 'pending';
+    
+    use \App\Support\Database\ResolvesNativeEloquentTable;
+public const STATUS_PENDING = 'pending';
     public const STATUS_RUNNING = 'running';
     public const STATUS_SUCCEEDED = 'succeeded';
     public const STATUS_FAILED = 'failed';
