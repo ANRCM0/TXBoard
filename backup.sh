@@ -57,6 +57,9 @@ run_backup() (
     stamp=$(date -u '+%Y%m%dT%H%M%SZ')
     dest="$BACKUP_DIR/$stamp"
     mkdir -p "$dest"
+    # Any interrupted or incomplete backup is unusable and must not be retained.
+    trap 'rm -rf "$dest"' EXIT
+    trap 'exit 1' HUP INT TERM
 
     log "dumping $DB_DATABASE@$DB_HOST:$DB_PORT -> $dest/db.sql.gz"
     # --single-transaction keeps InnoDB consistent without locking the panel.
@@ -65,8 +68,6 @@ run_backup() (
     # POSIX sh reports only the last command's status in a pipeline.
     # Export first and check mysqldump before compressing the archive.
     dump_file="$dest/db.sql"
-    trap 'rm -f "$dump_file"' EXIT
-    trap 'rm -f "$dump_file"; exit 1' HUP INT TERM
     if ! MYSQL_PWD="$DB_PASSWORD" mysqldump \
             --host="$DB_HOST" \
             --port="$DB_PORT" \
@@ -96,21 +97,60 @@ run_backup() (
 
     log "  db.sql.gz: $(wc -c < "$dest/db.sql.gz" | tr -d ' ') bytes"
 
-    if [ -f "$BACKUP_SOURCE_DIR/.env" ]; then
-        cp "$BACKUP_SOURCE_DIR/.env" "$dest/env"
-        chmod 600 "$dest/env"
-        log "  captured .env (contains APP_KEY)"
-    else
-        log "  WARNING: no .env at $BACKUP_SOURCE_DIR/.env; APP_KEY NOT captured"
+    # APP_KEY is required to decrypt stored credentials on restore.
+    if [ ! -s "$BACKUP_SOURCE_DIR/.env" ] ||
+       ! grep -Eq '^APP_KEY=.+
+
+    {
+        echo "created_at=$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+        echo "database=$DB_DATABASE"
+        echo "db_host=$DB_HOST"
+        echo "contents=db.sql.gz env storage-app.tar.gz"
+    } > "$dest/MANIFEST"
+
+    (
+        cd "$dest" || exit 1
+        if [ -f storage-app.tar.gz ]; then
+            sha256sum db.sql.gz env storage-app.tar.gz > CHECKSUMS.sha256
+        else
+            sha256sum db.sql.gz env > CHECKSUMS.sha256
+        fi
+        sha256sum -c CHECKSUMS.sha256 >/dev/null
+    ) || {
+        log "ERROR: backup integrity checksum failed"
+        return 1
+    }
+    log "wrote $dest"
+    trap - EXIT HUP INT TERM
+    prune
+)
+
+if [ "$BACKUP_INTERVAL" -gt 0 ] 2>/dev/null; then
+    log "periodic mode: every ${BACKUP_INTERVAL}s, retention ${BACKUP_RETENTION}"
+    while true; do
+        run_backup || log "backup failed; will retry at the next interval"
+        sleep "$BACKUP_INTERVAL"
+    done
+else
+    run_backup
+fi
+ "$BACKUP_SOURCE_DIR/.env"; then
+        log "ERROR: missing .env or APP_KEY; refusing incomplete backup"
+        return 1
     fi
+    cp "$BACKUP_SOURCE_DIR/.env" "$dest/env"
+    chmod 600 "$dest/env"
+    log "  captured .env (contains APP_KEY)"
 
     if [ -d "$BACKUP_SOURCE_DIR/storage/app" ]; then
-        tar -czf "$dest/storage-app.tar.gz" -C "$BACKUP_SOURCE_DIR/storage/app" . 2>/dev/null ||
-            log "  WARNING: storage/app archive failed"
+        if ! tar -czf "$dest/storage-app.tar.gz" -C "$BACKUP_SOURCE_DIR/storage/app" . 2>/dev/null ||
+           ! gzip -t "$dest/storage-app.tar.gz"; then
+            log "ERROR: storage/app archive failed; refusing incomplete backup"
+            return 1
+        fi
         log "  captured storage/app"
     else
-        # Not an error: uploads live in storage/app, so if it does not exist yet
-        # there is simply nothing to capture.
+        # A new installation may not have any stored uploads yet.
         log "  no storage/app yet (no uploads to capture)"
     fi
 
