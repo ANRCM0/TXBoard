@@ -2,6 +2,8 @@
 
 取代旧 Phase 2/4 的阶段记录。现行协议与目标 TXAPI 不能混为一谈。
 
+当前对外适配以 [外部 HTTP / WS CURRENT 接入手册](../../contracts/http/external-adapter-current.md) 为准；真实环境逐步验收见 [预发与恢复流程](release-staging-acceptance.md)。完整 HTTP 目录由 [route:list CI](../architecture/http-route-inventory.md) 提供，而非人工猜测。
+
 ## 当前镜像通道
 
 以 [image-release-channels.md](image-release-channels.md) 为准：main 触发 dev，PR 只跑验证，正式 tag 可更新 latest。纯文档合入 main 也可能触发 CI/开发镜像构建。
