@@ -19,3 +19,31 @@ The MySQL 8.4 workflow first performs the full legacy migration replay, then the
 For a **new installation**, run historical migrations and the installer under `TX_NATIVE_TABLES=false` first, then apply the same approved one-time cutover before opening the instance for traffic. For an **existing installation**, stage and test against a populated clone before the maintenance window. Neither path authorizes direct production DDL from CI or this document.
 
 A clean CI run is necessary but not sufficient: real plugin code, production backup restoration, open connections, external reporting, runtime flags and operational authorization remain independent sign-off gates.
+
+## Maintained migration and source guards
+
+The compatibility layer remains intentional until production has completed the
+backed-up schema cutover. In particular, `v2_*` declarations inside models
+using `ResolvesNativeEloquentTable` are NOT unadapted production queries.
+Pre-2026-09-21 schema migrations are historical Laravel replay records, and
+must not be deleted just to make a text search appear clean.
+
+Modern migrations (since 2026-09-21) use
+`NativeTableName::runtime('v2_example')` for schema and query builder operations,
+even if they were first shipped while the default schema was still legacy.
+The static `database-native-migration-gate.mjs` test prevents newly introduced
+literal table references in these migrations. Source inventory now recognizes
+prefix-aware migration creators for MySQL parity.
+
+The `database-runtime-reference-gate.mjs --check` CI step blocks unresolved
+literal runtime references, but reports dynamic calls separately for code review.
+Neither source gate proves external plugin or worker compatibility and neither
+automatically approves a real rename. Only the documented maintenance-window
+procedure can do that.
+
+The retired `migrateFromV2b` raw-SQL converter and its migration-history
+seed helper are intentionally no longer shipped as live Artisan commands.
+They were not part of the maintained update path and bypassed transactional
+schema safety checks. Existing migrations-table rows and historical database
+records remain untouched. Operators needing to import older upstream
+databases must use an independently reviewed backup-and-import procedure.

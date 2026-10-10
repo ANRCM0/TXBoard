@@ -70,10 +70,18 @@ final class MySqlSchemaInventory
 
     public static function validate(array $tables): array
     {
+        // The same uniqueness invariants apply after an approved v2_* -> tx_* rename.
+        // Never give a partial or mixed schema a passing result.
+        $hasLegacy = isset($tables['v2_user']);
+        $hasNative = isset($tables['tx_user']);
+        if ($hasLegacy && $hasNative) {
+            throw new RuntimeException('Mixed legacy/native user schema cannot be validated');
+        }
+        $prefix = $hasNative ? 'tx_' : 'v2_';
         $requirements = [
-            'v2_user' => [['email']],
-            'v2_order' => [['trade_no']],
-            'v2_traffic_batch' => [['server_id', 'batch_id']],
+            $prefix . 'user' => [['email']],
+            $prefix . 'order' => [['trade_no']],
+            $prefix . 'traffic_batch' => [['server_id', 'batch_id']],
         ];
         $results = [];
         foreach ($requirements as $table => $keys) {

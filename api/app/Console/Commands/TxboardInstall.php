@@ -220,8 +220,12 @@ class TxboardInstall extends Command
                 $this->warn('缓存清理失败，继续安装：' . $e->getMessage());
             }
             $this->info('正在导入数据库请稍等...');
-            Artisan::call("migrate", ['--force' => true]);
+            $migrationResult = Artisan::call("migrate", ['--force' => true, '--no-interaction' => true]);
             $this->info(Artisan::output());
+            if ($migrationResult !== 0) {
+                $this->error('数据库迁移失败：安装已中止，不会创建管理员或设置 INSTALLED 标记。');
+                return self::FAILURE;
+            }
             $this->info('数据库导入完成');
             $this->seedCoreSettings();
             $this->info('开始注册管理员账号');

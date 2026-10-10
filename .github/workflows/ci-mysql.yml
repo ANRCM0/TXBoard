@@ -6,6 +6,8 @@ on:
     paths:
       - "api/**"
       - "scripts/database-runtime-reference-gate.mjs"
+      - "scripts/database-native-migration-gate.mjs"
+      - "scripts/tests/database-native-migration-gate.test.mjs"
       - "scripts/tests/database-runtime-reference-gate.test.mjs"
       - "scripts/database-native-cutover-plan.mjs"
       - "scripts/tests/database-native-cutover-plan.test.mjs"
@@ -20,6 +22,8 @@ on:
     paths:
       - "api/**"
       - "scripts/database-runtime-reference-gate.mjs"
+      - "scripts/database-native-migration-gate.mjs"
+      - "scripts/tests/database-native-migration-gate.test.mjs"
       - "scripts/tests/database-runtime-reference-gate.test.mjs"
       - "scripts/database-native-cutover-plan.mjs"
       - "scripts/tests/database-native-cutover-plan.test.mjs"
@@ -116,12 +120,18 @@ jobs:
           node scripts/database-mysql-parity.mjs --source api/artifacts/source-schema.json --mysql api/artifacts/p0-schema.json --output api/artifacts/mysql-schema-parity.json --check
       - name: Verify atomic native rename and rollback against isolated MySQL probe tables
         run: APP_ENV=testing php scripts/database-atomic-rename-roundtrip.php
-      - name: Test native runtime reference inventory
+      - name: Test native table inventory and migration guards
         working-directory: .
-        run: node --test scripts/tests/database-runtime-reference-gate.test.mjs
-      - name: Report remaining runtime V2 references (informational)
+        run: |
+          node --test scripts/tests/database-schema-inventory.test.mjs
+          node --test scripts/tests/database-runtime-reference-gate.test.mjs
+          node --test scripts/tests/database-native-migration-gate.test.mjs
+      - name: Block new native-incompatible migrations
         working-directory: .
-        run: node scripts/database-runtime-reference-gate.mjs --source api/artifacts/source-schema.json --output api/artifacts/native-runtime-reference-gate.json
+        run: node scripts/database-native-migration-gate.mjs --root . --check
+      - name: Block literal legacy SQL outside prefix-aware models
+        working-directory: .
+        run: node scripts/database-runtime-reference-gate.mjs --source api/artifacts/source-schema.json --output api/artifacts/native-runtime-reference-gate.json --check
       - name: Upload native runtime reference audit
         if: always()
         uses: actions/upload-artifact@v4
