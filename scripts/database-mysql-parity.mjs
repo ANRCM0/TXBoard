@@ -31,7 +31,7 @@ export function compare(source, mysql) {
     }
     const exists = actual.has(oldName);
     const targetExists = actual.has(newName);
-    if (!exists) missing.push(oldName);
+    if (!exists && entry.migrationCreators?.length) missing.push(oldName);
     if (targetExists) collisions.push(newName);
     if (!entry.migrationCreators?.length) missingCreators.push(oldName);
     mappings.push({
@@ -42,7 +42,7 @@ export function compare(source, mysql) {
     });
   }
   const failures = [...(source.issues ?? []), ...missing.map(x => 'MySQL table missing: ' + x), ...collisions.map(x => 'Target table already exists: ' + x)];
-  const warnings = [...(source.warnings ?? []), ...missingCreators.map(x => 'No source creation migration: ' + x)];
+  const warnings = [...(source.warnings ?? []), ...missingCreators.map(x => 'No source creation migration (verify live DB): ' + x)];
   return {
     schemaVersion: 1,
     readOnly: true,
