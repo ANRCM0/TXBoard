@@ -104,12 +104,13 @@ Envelope:
 
 ```json
 {
+  "protocol_version": 1,
   "event": "ops.machine.runtime.update",
+  "request_id": "native-ws-message-id",
   "data": {
     "request_id": "mup_01J...",
     "target": "latest"
-  },
-  "timestamp": 1780000000
+  }
 }
 ```
 
