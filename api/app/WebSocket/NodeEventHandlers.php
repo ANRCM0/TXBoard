@@ -3,123 +3,15 @@
 namespace App\WebSocket;
 
 use App\Models\Server;
-use App\Services\AgentOps\AgentActionService;
 use App\Services\DeviceStateService;
 use App\Services\NodeRegistry;
 use App\Services\ServerService;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Redis;
 use Workerman\Connection\TcpConnection;
 
+/** Outbound native TX-Node synchronization helpers only. */
 class NodeEventHandlers
 {
-    /**
-     * Handle pong heartbeat
-     */
-    public static function handlePong(TcpConnection $conn, int $nodeId, array $data = []): void
-    {
-        \App\Services\NodeSyncService::markNodeOnline($nodeId);
-    }
-
-    /**
-     * Handle node status update
-     */
-    public static function handleNodeStatus(TcpConnection $conn, int $nodeId, array $data): void
-    {
-        $node = Server::find($nodeId);
-        if (!$node) return;
-
-        $nodeType = strtoupper($node->type);
-        Cache::put(\App\Utils\CacheKey::get('SERVER_' . $nodeType . '_LAST_CHECK_AT', $nodeId), time(), 3600);
-        ServerService::updateMetrics($node, $data);
-
-        Log::debug("[WS] Node#{$nodeId} status updated");
-    }
-
-    /**
-     * Handle device report from node
-     * 
-     * 数据格式: {"event": "report.devices", "data": {userId: [ip1, ip2, ...], ...}}
-     */
-    public static function handleDeviceReport(TcpConnection $conn, int $nodeId, array $data): void
-    {
-        $service = app(DeviceStateService::class);
-
-        if (isset($data['devices']) && is_array($data['devices'])) {
-            $data = $data['devices'];
-        }
-
-        // Get old data
-        $oldDevices = $service->getNodeDevices($nodeId);
-
-        // Calculate diff
-        $removedUsers = array_diff_key($oldDevices, $data);
-        $newDevices = [];
-
-        foreach ($data as $userId => $ips) {
-            if (is_numeric($userId) && is_array($ips)) {
-                $newDevices[(int) $userId] = $ips;
-            }
-        }
-
-        // Handle removed users
-        foreach ($removedUsers as $userId => $ips) {
-            $service->removeNodeDevices($nodeId, $userId);
-            $service->notifyUpdate($userId);
-        }
-
-        // Handle new/updated users
-        foreach ($newDevices as $userId => $ips) {
-            $service->setDevices($userId, $nodeId, $ips);
-        }
-
-        // Mark for push
-        Redis::sadd('device:push_pending_nodes', $nodeId);
-
-        Log::debug("[WS] Node#{$nodeId} synced " . count($newDevices) . " users, removed " . count($removedUsers));
-    }
-
-    /**
-     * Handle device state request from node
-     */
-    public static function handleDeviceRequest(TcpConnection $conn, int $nodeId, array $data = []): void
-    {
-        $node = Server::find($nodeId);
-        if (!$node) return;
-
-        $users = ServerService::getAvailableUsers($node);
-        $userIds = $users->pluck('id')->toArray();
-
-        $service = app(DeviceStateService::class);
-        $devices = $service->getUsersDevices($userIds);
-
-        NodeRegistry::send($nodeId, 'sync.devices', [
-            'users' => $devices,
-        ]);
-
-        Log::debug("[WS] Node#{$nodeId} requested devices, sent " . count($devices) . " users");
-    }
-
-    /**
-     * Handle typed Agent Ops result from TX-Node.
-     */
-    public static function handleOpsResult(TcpConnection $conn, int $nodeId, array $data): void
-    {
-        try {
-            app(AgentActionService::class)->handleNodeResult($nodeId, $data);
-            Log::info("[WS] Node#{$nodeId} operation result received", [
-                'request_id' => $data['request_id'] ?? null,
-                'ok' => $data['ok'] ?? null,
-            ]);
-        } catch (\Throwable $e) {
-            Log::warning("[WS] Failed to persist operation result from node#{$nodeId}", [
-                'request_id' => $data['request_id'] ?? null,
-                'error' => $e->getMessage(),
-            ]);
-        }
-    }
-
     /**
      * Push device state to node
      */
