@@ -25,7 +25,7 @@ class ThemePublicConfigTest extends TestCase
             ['name' => 'frontend_background_url', 'value' => 'https://example.test/old.jpg'],
         ]);
 
-        $response = $this->getJson('/api/v1/guest/comm/config');
+        $response = $this->getJson('/txapi/public/site-config');
         $response->assertOk();
         $response->assertJsonPath('data.frontend_theme', 'TXBoard');
         $response->assertJsonPath('data.theme_config.theme_color', 'blue');
@@ -36,11 +36,11 @@ class ThemePublicConfigTest extends TestCase
         // Legacy and undeclared private fields are not public theme settings.
         $stored = $service->getConfig('TXBoard');
         admin_setting(['theme_TXBoard' => array_merge($stored, ['smtp_password' => 'never-public'])]);
-        $this->getJson('/api/v1/guest/comm/config')
+        $this->getJson('/txapi/public/site-config')
             ->assertJsonMissingPath('data.theme_config.smtp_password');
 
         $service->updateConfig('TXBoard', ['theme_color' => 'darkblue']);
-        $this->getJson('/api/v1/guest/comm/config')
+        $this->getJson('/txapi/public/site-config')
             ->assertJsonPath('data.theme_config.theme_color', 'darkblue');
     }
 }

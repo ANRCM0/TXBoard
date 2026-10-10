@@ -23,7 +23,7 @@ class TxapiEmailRecoveryTest extends TestCase
         Queue::fake();
     }
 
-    public function test_native_and_legacy_codes_share_cache_cooldown_and_delivery(): void
+    public function test_native_codes_share_cache_cooldown_and_delivery(): void
     {
         $email = 'verify@example.test';
         $res = $this->postJson('/txapi/auth/email-code', ['email' => $email, 'purpose' => 'forget']);
@@ -35,9 +35,10 @@ class TxapiEmailRecoveryTest extends TestCase
         $this->assertLessThanOrEqual(999999, $code);
         $this->postJson('/txapi/auth/email-code', ['email' => $email])
             ->assertStatus(400)->assertJsonPath('error.code', 'EMAIL_CODE_REJECTED');
-        $legacy = 'legacy-verify@example.test';
-        $this->postJson('/api/v1/passport/comm/sendEmailVerify', ['email' => $legacy])->assertOk();
-        $this->assertNotNull(Cache::get(CacheKey::get('EMAIL_VERIFY_CODE', $legacy)));
+        $second = 'native-verify@example.test';
+        $this->postJson('/txapi/auth/email-code', ['email' => $second, 'purpose' => 'register'])
+            ->assertOk();
+        $this->assertNotNull(Cache::get(CacheKey::get('EMAIL_VERIFY_CODE', $second)));
         Queue::assertPushed(SendEmailJob::class, 2);
     }
 
