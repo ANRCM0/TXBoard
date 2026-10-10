@@ -1,13 +1,13 @@
 # TXBoard Native Node Protocol v1
 
-**Scope: TXBoard server only.** TX-Node repository remains unchanged. These endpoints are for future adapter integration; do not redirect production nodes yet.
+**CURRENT TXBoard server-side contract.** The independently developed TX-Node client and production deployment must still be verified before a real cutover. Start with the [TXNode Integration Guide](txnode-integration-current.md), which supersedes historical compatibility wording below.
 
 Base: HTTPS `/txapi/node/v1`. HTTP polling and native WebSocket are implemented on TXBoard; WebSocket opt-in is disabled until the public TLS/Upgrade route is verified.
 
 ## Authentication and tenancy
 
 - Send `Authorization: Bearer <credential>` on every request. For individual nodes use existing TXBoard server token; for a machine use that machine's current token. Never pass token in query/body.
-- Send `X-TX-Node-ID` with the database primary key `v2_server.id` (not the legacy `code` alias). For machine credentials also send `X-TX-Machine-ID`; selected node must be enabled and assigned to that enabled machine. Machine-only endpoints need just machine ID. `POST /handshake` also accepts a machine identity without Node ID for machine-mode bootstrap; its response carries `mode:"machine"` and `node_id:null`.
+- Send `X-TX-Node-ID` with the TXBoard Server model's database primary key `id` (not any legacy `code` alias; the internal `v2_*`/`tx_*` physical table prefix does not change the ID). For machine credentials also send `X-TX-Machine-ID`; selected node must be enabled and assigned to that enabled machine. Machine-only endpoints need just machine ID. `POST /handshake` also accepts a machine identity without Node ID for machine-mode bootstrap; its response carries `mode:"machine"` and `node_id:null`.
 - Wrong/disabled credentials return HTTP 401, unknown/foreign node returns 404. No token is echoed or serialized.
 
 ## Endpoints
@@ -43,11 +43,11 @@ Handshake `data` includes `protocol_version:1`, `mode:"node"|"machine"`, `node_i
 
 The new WebSocket endpoint is `wss://<panel-host>/txapi/node/v1/ws` on the existing Workerman listener (port 8076). Single-container and split Caddy ingress route the Upgrade to Workerman, not to Laravel Octane. If an external Nginx/OpenResty proxy is used, set HTTP/1.1 Upgrade + Connection headers and forward Authorization and X-TX-Node-ID / X-TX-Machine-ID headers.
 
-**Feature gate:** `TXBOARD_NATIVE_NODE_WS_ENABLED=false` by default. Enable only after WS service, HTTPS proxy, health check, and client handshake are confirmed. Native HTTP handshake exposes `websocket:{enabled:boolean,path:"/txapi/node/v1/ws",heartbeat_interval_seconds:55}`. HTTP polling remains available. Existing `/ws` remains available for old clients.
+**Feature gate:** `TXBOARD_NATIVE_NODE_WS_ENABLED=false` by default. Enable only after WS service, HTTPS proxy, health check, and client handshake are confirmed. Native HTTP handshake exposes `websocket:{enabled:boolean,path:"/txapi/node/v1/ws",heartbeat_interval_seconds:55}`. HTTP polling remains available. Old `/ws` has been removed from current TXBoard routing; there is no legacy fallback.
 
 **Security:** WebSocket Upgrade requires Bearer credentials in Authorization and scoped node/machine identity headers, checked by the same TxNodeAuth middleware as HTTP. Query credentials are rejected on the native path. A machine session multiplexes only the nodes assigned to that machine. Inbound operations recheck the DB ownership and token, so revoked machine credentials, disabled nodes and foreign-node traffic are rejected.
 
-**Envelope:** Native WS messages are `{protocol_version:1,event:"...",data:{...},request_id:"client-id"}` with a 1 MiB max frame. The server replies with `session.ready`, real-time `sync.config`, `sync.users`, `sync.user.delta`, `sync.nodes`, `heartbeat.ping`, `heartbeat.ack`, `sync.ack`, `traffic.ack`, or `error`. Redis node:push uses native framing for native sockets, retaining legacy framing for existing clients.
+**Envelope:** Native WS messages are `{protocol_version:1,event:"...",data:{...},request_id:"client-id"}` with a 1 MiB max frame. The server replies with `session.ready`, real-time `sync.config`, `sync.users`, `sync.user.delta`, `sync.nodes`, `heartbeat.ping`, `heartbeat.ack`, `sync.ack`, `traffic.ack`, or `error`. Redis node:push uses native framing for native sockets, without guaranteeing any old WebSocket route.
 
 **Heartbeat:** respond to server heartbeat.ping with heartbeat.pong; the server replies heartbeat.ack, and closes stale connections. Reconnect with headers, reload snapshots, and retry pending traffic with identical batch identifiers.
 
@@ -58,4 +58,4 @@ The new WebSocket endpoint is `wss://<panel-host>/txapi/node/v1/ws` on the exist
 **Rollout:** TX-Node source and real dual-system integration are outside this P4-D server-only change. Validate production DNS, TLS, WS Upgrade, Redis, queue recovery and actual agent before enabling in service.
 ## Migration and compatibility
 
-Old `/api/v1/server/UniProxy/*`, `/api/v2/server/*`, and legacy WS remain unchanged. **TX-Node is not modified in this stage.** Before any agent redirect, separately validate Go adapter, TLS, ETag handling, batched durable replay, queue outage behavior, machine polling, old route rollback and production canary. AccessAudit remains an optional extension outside this core protocol.
+Old `/api/v1/server/UniProxy/*`, `/api/v2/server/*`, and legacy `/ws` are **not** registered in current TXBoard. The independent TX-Node client and actual cross-repository integration are **not** established by this server-side document. Before any agent redirect, separately validate Go adapter, TLS, ETag handling, batched durable replay, queue outage behavior, machine polling, old route rollback and production canary. AccessAudit remains an optional extension outside this core protocol.

@@ -1,6 +1,12 @@
 # TXBoard TXAPI — Current External HTTP/WS Entry Points
 
-> **CURRENT SOURCE STATE, 2026-10-10, PR #182.** Development mode: there is **no backwards compatibility** for `/api/v1/*` or `/api/v2/*`. This file describes the Laravel and runtime entry points, not verified production integrations.
+> **CURRENT SOURCE STATE, 2026-10-10, main (through PR #201).** Development mode: there is **no backwards compatibility** for `/api/v1/*` or `/api/v2/*`. This file describes the Laravel and runtime entry points, not verified production integrations.
+
+## 外部开发者快速入口
+
+- **[外部主题完整用户路由及接入示例](theme-integration-current.md)**：以 `/txapi` 为基础的公开、注册登录、钱包/订单/充值、工单、订阅与安全规范。
+- **[TXNode HTTP/WS 适配手册](../node-protocol/txnode-integration-current.md)**：按节点/机器身份、HTTP 接口、WS 帧与 202 异步结算协议实现。
+- [HTTP 全量注册表、变更守卫与 CI 工件](../../docs/architecture/http-route-inventory.md)。本文件列出接口族和授权边界，不取代这两份开发指南。
 
 ## Protocol ownership
 

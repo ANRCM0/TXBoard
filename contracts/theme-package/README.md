@@ -64,7 +64,7 @@ It is not package-declared runtime state.
 
 There is no global Page Appearance panel. Colors, background images and other theme visuals are configured per installed theme through Theme Management and stored under `theme_{theme-name}`. Switching the active theme selects that theme's own settings; other themes retain their settings independently.
 
-The public `GET /api/v1/guest/comm/config` response contains `frontend_theme` (active theme name) and `theme_config` (public settings declared by that theme). The built-in Vue user front reads this response when loading the page and applies the built-in theme color and login background. Themes rendered from `dashboard.blade.php` continue receiving `theme_config` as view data.
+The current public `GET /txapi/public/site-config` response contains `data.frontend_theme` (active theme name) and `data.theme_config` (public settings declared by that theme). The obsolete `GET /api/v1/guest/comm/config` route is **not registered**. The built-in user front reads the native response to apply built-in appearance, while server-rendered themes continue to receive `theme_config` as Blade view data. For auth, user, order and billing routes see [External Theme TXAPI Integration](../http/theme-integration-current.md).
 
 Manifest fields are public presentation values by default. **Never store API secrets in browser-facing theme fields.** Use `"public": false` for server-only fields; field types `password`, `secret`, and `hidden` are also excluded from public configuration. Site identity, payments, access control and other business settings stay in system configuration.
 

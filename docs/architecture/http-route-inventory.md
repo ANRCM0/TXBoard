@@ -2,6 +2,12 @@
 
 > Effective branch: PR #182, 2026-10-10. The registered Laravel HTTP route list is authoritative; old plans do not imply live endpoints.
 
+## 对外接入专题
+
+- [外部主题 TXAPI 路由清单、示例与响应约定](../../contracts/http/theme-integration-current.md)
+- [TXNode 原生 HTTP/WSS 集成指南及身份/流量协议](../../contracts/node-protocol/txnode-integration-current.md)
+- [对外 HTTP/WS 总入口](../../contracts/http/external-adapter-current.md)
+
 ## Canonical route families
 
 - `/txapi/public/*`, `/txapi/auth/*`, `/txapi/me/*`, `/txapi/orders/*`, `/txapi/billing/*` — public and user APIs.

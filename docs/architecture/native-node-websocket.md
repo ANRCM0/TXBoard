@@ -25,6 +25,6 @@ The server sends `session.ready`, `heartbeat.ping`, `sync.nodes`, `sync.config`,
 
 ## Release boundaries
 
-The feature switch is `TXBOARD_NATIVE_NODE_WS_ENABLED`; the reverse proxy must route the Upgrade path separately. Historical `v2_*` tables remain **active** payment, identity, traffic and Agent models. Removing old Controller classes does not authorize dropping those tables. Schema migration needs separate backup, backfill, rollback and accounting parity gates.
+The feature switch is `TXBOARD_NATIVE_NODE_WS_ENABLED`; the reverse proxy must route the Upgrade path separately. Physical tables may still be `v2_*` on an uncut-over deployment; `TX_NATIVE_TABLES` and the atomic `v2_* → tx_*` migration are controlled separately. CI verifies the isolated MySQL roundtrip; production database cutover still requires a verified backup, maintenance freeze, rollback and accounting parity gates. Node protocol paths must **not** depend on the internal SQL table prefix.
 
 CI covers Laravel API, MySQL regressions, P0 route inventory and the image build. External TX-Node implementation and real Agent/Node integration must still be tested against these frames.

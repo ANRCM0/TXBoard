@@ -9,6 +9,8 @@
 ## 外部开发者先看（当前协议）
 
 - [完整 Laravel HTTP 路由扫描及 CI Artifact](http-route-inventory.md) — 从 route:list 自动生成，CI 对关键方法、鉴权边界和旧管理端退役进行守卫。
+- **[外部主题：全部用户路由及对接示例](../../contracts/http/theme-integration-current.md)** — 主题公开配置、登录态、套餐订单、充值和订阅。
+- **[TXNode：Node HTTP/WS 路由与对接协议](../../contracts/node-protocol/txnode-integration-current.md)** — 鉴权、ETag、流量幂等、Machine/WS 与反代。
 - [外部服务 CURRENT API / WS 适配手册](../../contracts/http/external-adapter-current.md) — Node、Agent、Gateway、支付、订阅、插件及管理员权限的真实协议边界。
 - [真实部署与发布验收](../operations/release-staging-acceptance.md) — PR #180 已提供合成备份恢复 CI，但不等于生产验收。
 - [Issue #168 发布阻塞清单](https://github.com/ANRCM0/TXBoard/issues/168) — 未开发/未适配/未联调的逐项权威状态。

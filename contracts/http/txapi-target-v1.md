@@ -1,5 +1,7 @@
 # TXAPI Contract v1（P1–P4 服务端代码已实施 + P5–P7 目标）
 
+> **请勿用于外部主题或 TXNode 接入！** 现行接口请使用 [外部主题 CURRENT 指南](theme-integration-current.md)、[TXNode CURRENT 指南](../node-protocol/txnode-integration-current.md) 以及 [实时 HTTP 路由清单](../../docs/architecture/http-route-inventory.md)。本文保留历史迁移叙述，正文中关于旧 V1/V2 可用、Admin 尚未交付、旧支付回调默认存在等内容均不代表当前运行时事实。
+
 > **历史阶段性方案 / TARGET 混合文档**：本文第一段中的“Admin 仍为 TARGET”已过时；第一方 Admin TXAPI 与旧 V2 Admin 移除已在 2026-10-10 完成。Agent Native `/txapi/agent/v1/*`、Extensions Native `/txapi/extensions/{code}/v1/*`、独立 BFF `/txapi/bff/v1/*` **尚非本仓 CURRENT 路由**。已注册 HTTP 以 [实时路由快照](../../docs/architecture/http-route-inventory.md) 和 [CURRENT 外部适配手册](external-adapter-current.md) 为准。以下保留早期设计/迁移时点信息，不能当作现行部署保证。
 
 **当前状态（代码，不代表生产已切流）：** P1–P4 TXBoard 服务端代码已合并 main；当前入口以 `api/routes/txapi.php` 和 [P2](../../docs/architecture/p2-completion.md)、[P3](../../docs/architecture/p3-completion.md)、[P4](../../docs/architecture/p4-completion.md) 交付记录为准。原生 Node HTTP/WS 与支付 Webhook 服务端已实现，但 TX-Node 真实联调尚未执行，原生 WS 与新支付通知 URL 默认均关闭。Admin、Agent、Extensions、Gateway BFF 仍是 **TARGET** 而非已上线接口。原 `/api/v1`、`/api/v2` 兼容入口必须保留。
