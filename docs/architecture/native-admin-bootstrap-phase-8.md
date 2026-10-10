@@ -13,7 +13,7 @@ The React Admin login page and CAPTCHA bootstrap no longer use `/api/v2/passport
 - The V2 Notice/Knowledge `ContentRoute` group has been deregistered and its unused legacy controllers removed. Admin React uses `/txapi/admin/{admin_path}/content/notices` and `content/knowledge`.
 - The V2 SystemRoute entries for config, mail templates and traffic reset have been deregistered. The remaining legacy `system/*` internal diagnostics continue temporarily under V2 until a separate caller audit and replacement. Native TXAPI settings/mail/traffic-reset implementations are authoritative.
 - The route retirement test asserts absent V2 registrations and present native counterparts.
-- This does **not** retire payments or callback handlers, subscription paths, node/agent runtime Wire protocols, remaining V2 `commerce/*`, `user/*`, or `system/*` diagnostics. Legacy PHP controller files only used by old tests may need subsequent cleanup once their references are migrated.
+- This does **not** retire payments or callback handlers, subscription paths, node/agent runtime Wire protocols, remaining V2 `commerce/*`, `user/*`, or `system/*` diagnostics. Obsolete V2 ConfigController, MailTemplateController and TrafficResetController files have also been deleted after legacy PHP regression cases were migrated to TXAPI. The remaining SystemController diagnostic endpoints are a separate later audit.
 
 ## Release gates
 
