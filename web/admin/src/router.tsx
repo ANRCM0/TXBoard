@@ -27,6 +27,7 @@ const NodeDetailPage = lazy(() => import('./pages/server/NodeDetailPage').then(m
 const MachinesPage = lazy(() => import('./pages/server/MachinesPage').then(module => ({ default: module.MachinesPage })))
 const MachineDetailPage = lazy(() => import('./pages/server/MachineDetailPage').then(module => ({ default: module.MachineDetailPage })))
 const GroupsPage = lazy(() => import('./pages/server/GroupsPage').then(module => ({ default: module.GroupsPage })))
+const AccessAuditPage = lazy(() => import('./pages/server/AccessAuditPage').then(module => ({ default: module.AccessAuditPage })))
 const RoutesPage = lazy(() => import('./pages/server/RoutesPage').then(module => ({ default: module.RoutesPage })))
 const PlansPage = lazy(() => import('./pages/finance/PlansPage').then(module => ({ default: module.PlansPage })))
 const OrdersPage = lazy(() => import('./pages/finance/OrdersPage').then(module => ({ default: module.OrdersPage })))
@@ -88,6 +89,7 @@ export const router = createAppRouter([
           { path: 'server/machine/:machineId', element: <MachineDetailPage /> },
           { path: 'server/group', element: <GroupsPage /> },
           { path: 'server/route', element: <RoutesPage /> },
+          { path: 'server/access-audit', element: <AccessAuditPage /> },
           { path: 'finance/plan', element: <PlansPage /> },
           { path: 'finance/order', element: <OrdersPage /> },
           { path: 'finance/gift-card', element: <GiftCardPage /> },
