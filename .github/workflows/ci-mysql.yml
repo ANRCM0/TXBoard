@@ -5,11 +5,17 @@ on:
     branches: [main]
     paths:
       - "api/**"
+      - "scripts/database-schema-inventory.mjs"
+      - "scripts/database-mysql-parity.mjs"
+      - "scripts/tests/database-mysql-parity.test.mjs"
       - ".github/workflows/ci-mysql.yml"
   pull_request:
     branches: [main]
     paths:
       - "api/**"
+      - "scripts/database-schema-inventory.mjs"
+      - "scripts/database-mysql-parity.mjs"
+      - "scripts/tests/database-mysql-parity.test.mjs"
       - ".github/workflows/ci-mysql.yml"
 
 concurrency:
@@ -85,6 +91,25 @@ jobs:
         run: php artisan test tests/Unit/Support/Audit/MySqlSchemaInventoryTest.php
       - name: Capture read-only MySQL schema and uniqueness evidence
         run: php scripts/p0-schema-inventory.php --output=artifacts/p0-schema.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Test source-to-MySQL parity checker
+        working-directory: .
+        run: node --test scripts/tests/database-mysql-parity.test.mjs
+      - name: Compare source V2 schema inventory against MySQL 8.4
+        working-directory: .
+        run: |
+          node scripts/database-schema-inventory.mjs --root . --output api/artifacts/source-schema.json --check
+          node scripts/database-mysql-parity.mjs --source api/artifacts/source-schema.json --mysql api/artifacts/p0-schema.json --output api/artifacts/mysql-schema-parity.json --check
+      - name: Preserve native schema parity evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: txboard-mysql-schema-parity
+          path: api/artifacts/mysql-schema-parity.json
+          if-no-files-found: warn
+          retention-days: 14
       - name: Upload MySQL P0 schema evidence
         if: always()
         uses: actions/upload-artifact@v4
