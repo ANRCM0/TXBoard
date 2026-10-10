@@ -1,0 +1,311 @@
+<?php
+
+namespace Tests\Unit\Services;
+
+use App\Exceptions\ApiException;
+use App\Models\GiftCardCode;
+use App\Models\GiftCardTemplate;
+use App\Models\Order;
+use App\Models\Plan;
+use App\Models\User;
+use App\Services\GiftCardService;
+use App\Services\OrderService;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Laravel\Sanctum\Sanctum;
+use Tests\TestCase;
+
+class OrderServiceConcurrencyTest extends TestCase
+{
+    use RefreshDatabase;
+
+    public function test_paid_queues_fulfillment_and_duplicate_callback_does_not_queue_twice(): void
+    {
+        \Illuminate\Support\Facades\Bus::fake();
+
+        $user = $this->makeUser();
+        $order = $this->makeOrder($user, $this->makePlan());
+
+        $this->assertTrue((new OrderService(Order::findOrFail($order->id)))->paid('callback-1'));
+        $this->assertTrue((new OrderService(Order::findOrFail($order->id)))->paid('callback-1'));
+
+        $this->assertSame(Order::STATUS_PROCESSING, $order->fresh()->status);
+        $this->assertSame('callback-1', $order->fresh()->callback_no);
+        \Illuminate\Support\Facades\Bus::assertDispatchedTimes(\App\Jobs\OrderHandleJob::class, 1);
+    }
+
+    public function test_paid_remains_successful_when_queue_dispatch_fails_after_commit(): void
+    {
+        // Creating a user triggers UserObserver queue jobs. Only simulate the
+        // outage around the payment callback, not fixture setup.
+        $user = $this->makeUser();
+        $order = $this->makeOrder($user, $this->makePlan());
+
+        \Illuminate\Support\Facades\Log::spy();
+        $queue = \Mockery::mock(\Illuminate\Contracts\Queue\Queue::class);
+        // Laravel versions can use push or pushOn when dispatching a named
+        // queue. Both paths represent a single queue submission attempt.
+        $dispatchAttempts = 0;
+        $simulateOutage = function () use (&$dispatchAttempts) {
+            $dispatchAttempts++;
+            throw new \RuntimeException('queue unavailable');
+        };
+        $queue->shouldReceive('push')->andReturnUsing($simulateOutage);
+        $queue->shouldReceive('pushOn')->andReturnUsing($simulateOutage);
+        \Illuminate\Support\Facades\Queue::shouldReceive('connection')
+            ->once()
+            ->with('redis')
+            ->andReturn($queue);
+
+        $this->assertTrue((new OrderService(Order::findOrFail($order->id)))->paid('callback-outage'));
+        $this->assertSame(1, $dispatchAttempts);
+        $this->assertSame(Order::STATUS_PROCESSING, $order->fresh()->status);
+        $this->assertSame('callback-outage', $order->fresh()->callback_no);
+    }
+
+    public function test_cancel_only_refunds_once_when_called_with_stale_order_models(): void
+    {
+        $user = $this->makeUser(['balance' => 0]);
+        $plan = $this->makePlan();
+        $order = $this->makeOrder($user, $plan, [
+            'status' => Order::STATUS_PENDING,
+            'balance_amount' => 100,
+            'total_amount' => 1000,
+        ]);
+
+        $firstStaleOrder = Order::findOrFail($order->id);
+        $secondStaleOrder = Order::findOrFail($order->id);
+
+        $this->assertTrue((new OrderService($firstStaleOrder))->cancel());
+        $this->assertFalse((new OrderService($secondStaleOrder))->cancel());
+        $this->assertSame(100, User::findOrFail($user->id)->balance);
+    }
+
+    public function test_open_only_applies_subscription_once_when_called_with_stale_order_models(): void
+    {
+        $user = $this->makeUser([
+            'balance' => 0,
+            'expired_at' => 0,
+            'transfer_enable' => 0,
+            'u' => 1073741824,
+            'd' => 0,
+        ]);
+        $plan = $this->makePlan();
+        $order = $this->makeOrder($user, $plan, [
+            'status' => Order::STATUS_PROCESSING,
+            'balance_amount' => 1100,
+            'total_amount' => 0,
+        ]);
+
+        $before = time();
+        $firstStaleOrder = Order::findOrFail($order->id);
+        $secondStaleOrder = Order::findOrFail($order->id);
+
+        (new OrderService($firstStaleOrder))->open();
+        (new OrderService($secondStaleOrder))->open();
+
+        $user->refresh();
+        $this->assertSame(1, $user->reset_count);
+        $this->assertSame(Order::STATUS_COMPLETED, Order::findOrFail($order->id)->status);
+        $this->assertLessThan($before + (45 * 86400), $user->expired_at);
+    }
+
+    public function test_failed_fulfillment_rolls_back_and_can_be_retried_without_duplicate_entitlement(): void
+    {
+        $user = $this->makeUser(['balance' => 0, 'expired_at' => 0, 'transfer_enable' => 0]);
+        $order = $this->makeOrder($user, $this->makePlan(), [
+            'status' => Order::STATUS_PROCESSING,
+            'plan_id' => 999999999,
+        ]);
+
+        try {
+            (new OrderService(Order::findOrFail($order->id)))->open();
+            $this->fail('Missing plan should fail fulfillment.');
+        } catch (\Throwable $exception) {
+            $this->assertSame(Order::STATUS_PROCESSING, $order->fresh()->status);
+            $this->assertNull($user->fresh()->plan_id);
+        }
+
+        $plan = Plan::where('name', 'Race Test Plan')->firstOrFail();
+        $order->update(['plan_id' => $plan->id]);
+
+        (new OrderService(Order::findOrFail($order->id)))->open();
+        (new OrderService(Order::findOrFail($order->id)))->open();
+
+        $this->assertSame(Order::STATUS_COMPLETED, $order->fresh()->status);
+        $this->assertSame($order->plan_id, $user->fresh()->plan_id);
+        $this->assertSame(1, $user->fresh()->reset_count);
+    }
+
+    public function test_gift_card_redeem_only_grants_rewards_once_for_stale_code_models(): void
+    {
+        $user = $this->makeUser(['balance' => 0]);
+        $template = GiftCardTemplate::create([
+            'name' => 'race-test',
+            'description' => 'race-test',
+            'type' => GiftCardTemplate::TYPE_GENERAL,
+            'status' => 1,
+            'rewards' => ['balance' => 100],
+            'admin_id' => 1,
+            'created_at' => time(),
+            'updated_at' => time(),
+        ]);
+        GiftCardCode::create([
+            'template_id' => $template->id,
+            'code' => 'RACEUNITTEST',
+            'status' => GiftCardCode::STATUS_UNUSED,
+            'usage_count' => 0,
+            'max_usage' => 1,
+            'created_at' => time(),
+            'updated_at' => time(),
+        ]);
+
+        $firstService = (new GiftCardService('RACEUNITTEST'))->setUser(User::findOrFail($user->id));
+        $secondService = (new GiftCardService('RACEUNITTEST'))->setUser(User::findOrFail($user->id));
+
+        $firstService->validate();
+        $secondService->validate();
+        $firstService->redeem();
+
+        try {
+            $secondService->redeem();
+            $this->fail('The second stale gift card redeem should fail.');
+        } catch (ApiException $exception) {
+            $this->assertNotSame('', $exception->getMessage());
+        }
+
+        $user->refresh();
+        $code = GiftCardCode::where('code', 'RACEUNITTEST')->firstOrFail();
+        $this->assertSame(100, $user->balance);
+        $this->assertSame(1, $code->usage_count);
+        $this->assertSame(1, $code->usages()->count());
+    }
+
+    public function test_different_provider_callback_cannot_be_acknowledged_after_paid(): void
+    {
+        \Illuminate\Support\Facades\Bus::fake();
+        $user = $this->makeUser();
+        $order = $this->makeOrder($user, $this->makePlan());
+
+        $this->assertTrue((new OrderService($order))->paid('provider-1'));
+        $this->assertFalse((new OrderService($order))->paid('provider-2'));
+        $this->assertTrue((new OrderService($order))->paid('provider-1'));
+        $this->assertSame('provider-1', $order->fresh()->callback_no);
+        \Illuminate\Support\Facades\Bus::assertDispatchedTimes(\App\Jobs\OrderHandleJob::class, 1);
+    }
+
+    public function test_pending_order_cancel_releases_coupon_slot_and_refunds_balance_once(): void
+    {
+        $user = $this->makeUser(['balance' => 0]);
+        $coupon = \App\Models\Coupon::create([
+            'code' => 'CANCEL-RELEASE-ONE',
+            'name' => 'Cancelled reserved discount',
+            'type' => 1, 'value' => 100,
+            'show' => 1, 'limit_use' => 2,
+        ]);
+        $order = $this->makeOrder($user, $this->makePlan(), [
+            'status' => Order::STATUS_PENDING,
+            'coupon_id' => $coupon->id,
+            'balance_amount' => 200,
+            'total_amount' => 800,
+        ]);
+        $this->assertTrue((new OrderService($order))->cancel());
+        $this->assertFalse((new OrderService($order))->cancel());
+        $this->assertSame(200, (int) $user->fresh()->balance);
+        $this->assertSame(3, (int) $coupon->fresh()->limit_use);
+        $this->assertSame(Order::STATUS_CANCELLED, (int) $order->fresh()->status);
+        // Late provider confirmation cannot change or refund the cancelled order.
+        $this->assertFalse((new OrderService($order))->paid('late-provider'));
+        $this->assertSame(3, (int) $coupon->fresh()->limit_use);
+    }
+
+    public function test_combined_vip_and_coupon_discount_never_makes_negative_order(): void
+    {
+        $user = $this->makeUser(['discount' => 80]);
+        $order = $this->makeOrder($user, $this->makePlan(), [
+            'total_amount' => 100, 'discount_amount' => 50,
+        ]);
+        (new OrderService($order))->setVipDiscount($user);
+        $this->assertSame(0, (int) $order->total_amount);
+        $this->assertSame(100, (int) $order->discount_amount);
+    }
+
+    public function test_checkout_rejects_negative_order_amount(): void
+    {
+        $user = $this->makeUser(['balance' => 0]);
+        Sanctum::actingAs($user);
+
+        $order = $this->makeOrder($user, $this->makePlan(), [
+            'status' => Order::STATUS_PENDING,
+            'total_amount' => -1,
+        ]);
+
+        $response = $this->postJson('/txapi/orders/' . $order->trade_no . '/checkout');
+
+        $response->assertStatus(409)->assertJsonPath('error.code', 'ORDER_CONFLICT');
+        $this->assertSame(Order::STATUS_PENDING, Order::findOrFail($order->id)->status);
+        $this->assertNull(User::findOrFail($user->id)->plan_id);
+    }
+
+    private function makeUser(array $overrides = []): User
+    {
+        return User::create(array_merge([
+            'email' => 'race-test@example.com',
+            'password' => 'password',
+            'uuid' => '00000000-0000-0000-0000-000000000001',
+            'token' => '0123456789abcdef0123456789abcdef',
+            'balance' => 0,
+            'commission_balance' => 0,
+            'transfer_enable' => 0,
+            'u' => 0,
+            'd' => 0,
+            'banned' => 0,
+            'is_admin' => 0,
+            'is_staff' => 0,
+            'expired_at' => 0,
+            'remind_expire' => 1,
+            'remind_traffic' => 1,
+            'created_at' => time(),
+            'updated_at' => time(),
+        ], $overrides));
+    }
+
+    private function makePlan(array $overrides = []): Plan
+    {
+        return Plan::create(array_merge([
+            'group_id' => null,
+            'transfer_enable' => 1111,
+            'name' => 'Race Test Plan',
+            'speed_limit' => null,
+            'show' => 1,
+            'sort' => 0,
+            'renew' => 1,
+            'prices' => [
+                Plan::PERIOD_MONTHLY => 11,
+            ],
+            'reset_traffic_method' => Plan::RESET_TRAFFIC_MONTHLY,
+            'capacity_limit' => null,
+            'sell' => 1,
+            'device_limit' => null,
+            'created_at' => time(),
+            'updated_at' => time(),
+        ], $overrides));
+    }
+
+    private function makeOrder(User $user, Plan $plan, array $overrides = []): Order
+    {
+        return Order::create(array_merge([
+            'user_id' => $user->id,
+            'plan_id' => $plan->id,
+            'type' => Order::TYPE_NEW_PURCHASE,
+            'period' => Plan::PERIOD_MONTHLY,
+            'trade_no' => uniqid('race_', true),
+            'total_amount' => 0,
+            'balance_amount' => 0,
+            'status' => Order::STATUS_PENDING,
+            'commission_status' => 0,
+            'commission_balance' => 0,
+            'created_at' => time(),
+            'updated_at' => time(),
+        ], $overrides));
+    }
+}

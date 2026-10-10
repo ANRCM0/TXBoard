@@ -1,0 +1,149 @@
+{
+	admin off
+	persist_config off
+	log {
+		output stdout
+		format console
+	}
+	servers {
+		# Never trust arbitrary Internet clients to supply Forwarded/XFF.
+		# Only explicitly configured ingress proxy IPs may set client identity.
+		trusted_proxies static {$TXBOARD_TRUSTED_PROXY_CIDRS:127.0.0.1/8 ::1/128}
+	}
+}
+
+# One public listener for the complete TXBoard control plane.
+#
+# TXBOARD_SITE_ADDRESS unset/:80 -> plain HTTP (usually behind Cloudflare/nginx)
+# TXBOARD_SITE_ADDRESS=panel.example.com -> automatic HTTPS on 443.
+{$TXBOARD_SITE_ADDRESS::80} {
+	encode zstd gzip
+
+	{$TXBOARD_TLS_DIRECTIVE}
+
+	@immutableAssets path /assets/* /admin/assets/*
+	header @immutableAssets Cache-Control "public, max-age=31536000, immutable"
+
+	@nativeNodeWs path /txapi/node/v1/ws
+	handle @nativeNodeWs {
+		reverse_proxy 127.0.0.1:{$WS_PORT:8076}
+	}
+
+
+	# MCP is an optional protocol adapter. When disabled, keep the route dark.
+	# When enabled, Caddy is the only public ingress; the Node process remains
+	# bound to loopback inside the TXBoard container.
+	@mcpDisabled {
+		path /mcp
+		expression `"{$ENABLE_MCP:false}" != "true"`
+	}
+	handle @mcpDisabled {
+		respond 404
+	}
+
+	@mcpEnabled {
+		path /mcp
+		expression `"{$ENABLE_MCP:false}" == "true"`
+	}
+	handle @mcpEnabled {
+		reverse_proxy 127.0.0.1:{$MCP_PORT:3000} {
+			header_up Host 127.0.0.1
+			header_up X-Real-IP {remote_host}
+		}
+	}
+
+	handle /api/* {
+		reverse_proxy 127.0.0.1:{$OCTANE_INTERNAL_PORT:7002} {
+			header_up Host {host}
+			header_up X-Real-IP {remote_host}
+		}
+	}
+
+	handle /plugin/* {
+		reverse_proxy 127.0.0.1:{$OCTANE_INTERNAL_PORT:7002} {
+			header_up Host {host}
+			header_up X-Real-IP {remote_host}
+		}
+	}
+
+	handle /storage/* {
+		reverse_proxy 127.0.0.1:{$OCTANE_INTERNAL_PORT:7002} {
+			header_up Host {host}
+			header_up X-Real-IP {remote_host}
+		}
+	}
+
+	# Plugin Package v1 admin bundles are published to /www/public/plugins.
+	# Keep this route separate from the singular /plugin/* backend API namespace.
+	handle_path /plugins/* {
+		root * /www/public/plugins
+		file_server
+	}
+
+	@subscribe path /{$SUBSCRIBE_PATH:s}/*
+	handle @subscribe {
+		reverse_proxy 127.0.0.1:{$OCTANE_INTERNAL_PORT:7002} {
+			header_up Host {host}
+			header_up X-Real-IP {remote_host}
+		}
+	}
+
+	# Admin JavaScript/CSS is public only as immutable static assets. The admin
+	# index itself is never served from this namespace, so /admin (or any other
+	# guessed fixed path) cannot bootstrap the management SPA.
+	handle_path /.txboard-admin/assets/* {
+		root * /srv/admin/assets
+		file_server
+	}
+
+	@adminStaticRoot path /.txboard-admin /.txboard-admin/
+	handle @adminStaticRoot {
+		respond 404
+	}
+
+	# The user application uses hash routing, therefore its real browser
+	# pathname stays at '/'. Its compiled chunks live under /assets/*.
+	handle /assets/* {
+		root * /srv/user
+		file_server
+	}
+
+	# Theme assets published by ThemeService are served without involving the SPA.
+	@themeAssets path_regexp ^/theme/[A-Za-z0-9_-]+/assets/.*$
+	handle @themeAssets {
+		root * /www/public
+		file_server
+	}
+
+	# The Laravel root resolves frontend_theme at request time. It returns the
+	# existing compiled Vue SPA for TXBoard and the selected Blade template
+	# for a custom theme. Backend selection means admin theme switches take
+	# effect immediately without a Caddy reload or a regression to umi.js.
+	# Keep the Vue app reachable for advanced login/payment fallback.
+	handle /user-spa {
+		redir /user-spa/ 308
+	}
+	handle /user-spa/ {
+		root * /srv/user
+		rewrite * /index.html
+		file_server
+	}
+
+	handle / {
+		reverse_proxy 127.0.0.1:{$OCTANE_INTERNAL_PORT:7002} {
+			header_up Host {host}
+			header_up X-Real-IP {remote_host}
+		}
+	}
+
+	# Every other browser path is resolved by Laravel. Laravel validates the
+	# first segment against the live secure_path and serves the admin index only
+	# when it matches. Wrong/old/admin guesses therefore become indistinguishable
+	# 404s, and rotating secure_path needs no Caddy reload or container restart.
+	handle {
+		reverse_proxy 127.0.0.1:{$OCTANE_INTERNAL_PORT:7002} {
+			header_up Host {host}
+			header_up X-Real-IP {remote_host}
+		}
+	}
+}

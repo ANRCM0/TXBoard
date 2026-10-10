@@ -1,0 +1,513 @@
+<?php
+
+namespace Tests\Feature\Admin;
+
+use App\Models\AdminAuditLog;
+use App\Models\Coupon;
+use App\Models\GiftCardTemplate;
+use App\Models\Knowledge;
+use App\Models\MailTemplate;
+use App\Models\Notice;
+use App\Models\Order;
+use App\Models\Server;
+use App\Models\ServerRoute;
+use App\Models\User;
+use App\Services\AuthService;
+use App\Services\ServerService;
+use App\Services\StatisticalService;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Laravel\Sanctum\Sanctum;
+use Mockery;
+use Tests\TestCase;
+
+/**
+ * Regression cover for the admin SPA <-> API contract defects found while
+ * auditing the running backend. Every test here fails against the previous
+ * implementation.
+ */
+class AdminContractRegressionTest extends TestCase
+{
+    use RefreshDatabase;
+
+    private string $securePath;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        Sanctum::actingAs($this->makeAdmin());
+
+        $this->securePath = (string) admin_setting(
+            'secure_path',
+            admin_setting('frontend_admin_path', hash('crc32b', config('app.key')))
+        );
+    }
+
+    /**
+     * The admin editor seeds its form from this endpoint and posts the numbers
+     * straight back, so cents here meant every edited balance was inflated 100x.
+     */
+    public function test_user_detail_reports_money_in_the_same_units_as_the_list(): void
+    {
+        $target = $this->makeUser('detail-target@example.com', 1234, 567);
+
+        $detail = $this->getJson("/txapi/admin/{$this->securePath}/users/{$target->id}");
+        $detail->assertOk();
+        $this->assertEqualsWithDelta(12.34, $detail->json('data.balance'), 0.00001);
+        $this->assertEqualsWithDelta(5.67, $detail->json('data.commission_balance'), 0.00001);
+
+        $list = $this->getJson("/txapi/admin/{$this->securePath}/users?page=1&per_page=50");
+        $list->assertOk();
+        $row = collect($list->json('data'))->firstWhere('id', $target->id);
+        $this->assertNotNull($row, 'the created user should appear in the list');
+        $this->assertEqualsWithDelta(12.34, $row['balance'], 0.00001);
+    }
+
+    public function test_missing_user_detail_returns_domain_error_instead_of_server_error(): void
+    {
+        $response = $this->getJson("/txapi/admin/{$this->securePath}/users/999999");
+
+        $response->assertNotFound();
+        $this->assertArrayNotHasKey('data', $response->json());
+    }
+
+    public function test_admin_audit_log_redacts_sensitive_config_values(): void
+    {
+        $response = $this->postJson("/txapi/admin/{$this->securePath}/settings", [
+            'email_password' => 'mail-secret',
+            'server_token' => '1234567890123456',
+            'telegram_bot_token' => 'telegram-secret',
+            'turnstile_secret_key' => 'turnstile-secret',
+        ]);
+
+        $response->assertOk();
+
+        $log = AdminAuditLog::query()->latest('id')->firstOrFail();
+        $payload = json_decode((string) $log->request_data, true);
+
+        $this->assertSame('[REDACTED]', $payload['email_password']);
+        $this->assertSame('[REDACTED]', $payload['server_token']);
+        $this->assertSame('[REDACTED]', $payload['telegram_bot_token']);
+        $this->assertSame('[REDACTED]', $payload['turnstile_secret_key']);
+    }
+
+    public function test_regular_user_auth_payload_does_not_disclose_secure_path(): void
+    {
+        $user = $this->makeUser('auth-user@example.com', 0, 0, false);
+        $userPayload = (new AuthService($user))->generateAuthData();
+
+        $this->assertArrayNotHasKey('secure_path', $userPayload);
+
+        $admin = $this->makeUser('auth-admin@example.com', 0, 0, true);
+        $adminPayload = (new AuthService($admin))->generateAuthData();
+
+        $this->assertSame($this->securePath, $adminPayload['secure_path']);
+    }
+
+    public function test_secure_path_rotation_takes_effect_without_application_restart(): void
+    {
+        $oldPath = $this->securePath;
+        $newPath = 'rotated-admin-path';
+
+        $this->postJson("/txapi/admin/{$oldPath}/settings", [
+            'secure_path' => $newPath,
+        ])->assertOk();
+
+        $this->getJson("/txapi/admin/{$oldPath}/settings/safe")
+            ->assertNotFound();
+
+        $this->getJson("/txapi/admin/{$newPath}/settings/safe")
+            ->assertOk()
+            ->assertJsonPath('data.safe.secure_path', $newPath);
+
+        $this->securePath = $newPath;
+    }
+
+    public function test_default_theme_is_reported_as_active_without_persisted_setting(): void
+    {
+        $themes = $this->getJson("/txapi/admin/{$this->securePath}/themes");
+
+        $themes->assertOk();
+        $this->assertSame('TXBoard', $themes->json('data.active'));
+        $this->assertSame('TXBoard', $themes->json('data.themes.TXBoard.name'));
+        $this->assertTrue((bool) $themes->json('data.themes.TXBoard.is_system'));
+        $this->assertFalse((bool) $themes->json('data.themes.TXBoard.can_delete'));
+
+        $frontend = $this->getJson("/txapi/admin/{$this->securePath}/settings/frontend");
+        $frontend->assertOk();
+        $this->assertSame('TXBoard', $frontend->json('data.frontend.frontend_theme'));
+
+        $this->postJson("/txapi/admin/{$this->securePath}/settings", [
+            'frontend_theme' => 'TXBoard',
+        ])->assertOk();
+
+        $this->assertSame('TXBoard', admin_setting('frontend_theme'));
+        $this->assertNull(admin_setting('current_theme'));
+
+        admin_setting(['frontend_theme' => 'Xboard']);
+
+        $stale = $this->getJson("/txapi/admin/{$this->securePath}/themes");
+        $stale->assertOk();
+        $this->assertSame('TXBoard', $stale->json('data.active'));
+    }
+
+    /**
+     * last_page is what drives the audit log's next-page control.
+     */
+    public function test_audit_log_returns_the_standard_paginator(): void
+    {
+        AdminAuditLog::create([
+            'admin_id' => 1,
+            'action' => 'user.update',
+            'method' => 'POST',
+            'uri' => '/api/v2/example/user/update',
+            'created_at' => time(),
+            'updated_at' => time(),
+        ]);
+
+        $response = $this->getJson("/txapi/admin/{$this->securePath}/audit-logs?page=1&per_page=10");
+
+        $response->assertOk();
+        $response->assertJsonStructure(['data', 'request_id', 'meta' => ['page', 'per_page', 'total', 'last_page']]);
+        $this->assertSame(1, $response->json('meta.total'));
+        $this->assertSame(1, $response->json('meta.last_page'));
+    }
+
+    public function test_order_list_can_filter_by_user_email_and_returns_user_identity(): void
+    {
+        $target = $this->makeUser('order-search-target@example.com', 0, 0);
+        $other = $this->makeUser('order-search-other@example.com', 0, 0);
+
+        foreach ([[$target, 'target-order'], [$other, 'other-order']] as [$user, $tradeNo]) {
+            Order::create([
+                'user_id' => $user->id,
+                'plan_id' => 0,
+                'period' => 'month_price',
+                'trade_no' => $tradeNo,
+                'total_amount' => 100,
+                'type' => Order::TYPE_NEW_PURCHASE,
+                'status' => Order::STATUS_PENDING,
+                'created_at' => time(),
+                'updated_at' => time(),
+            ]);
+        }
+
+        $response = $this->getJson(
+            "/txapi/admin/{$this->securePath}/orders?page=1&per_page=20&email=search-target"
+        );
+
+        $response->assertOk();
+        $this->assertSame(1, $response->json('meta.total'));
+        $this->assertSame('order-search-target@example.com', $response->json('data.0.user.email'));
+        $this->assertSame('target-order', $response->json('data.0.trade_no'));
+    }
+
+    public function test_panel_route_simulator_matches_enabled_routes_in_dispatch_order(): void
+    {
+        $later = ServerRoute::create([
+            'remarks' => 'later-block',
+            'match' => ['example.com'],
+            'action' => 'block',
+            'enabled' => true,
+            'sort' => 20,
+        ]);
+        $first = ServerRoute::create([
+            'remarks' => 'first-direct',
+            'match' => ['example.com'],
+            'action' => 'direct',
+            'enabled' => true,
+            'sort' => 10,
+        ]);
+        $disabled = ServerRoute::create([
+            'remarks' => 'disabled-rule',
+            'match' => ['example.com'],
+            'action' => 'block',
+            'enabled' => false,
+            'sort' => 1,
+        ]);
+
+        $node = Server::create([
+            'type' => Server::TYPE_SOCKS,
+            'name' => 'route-simulator-node',
+            'rate' => 1,
+            'host' => 'route.example.test',
+            'port' => '1080',
+            'server_port' => 1080,
+            'group_ids' => [],
+            'route_ids' => [$later->id, $first->id, $disabled->id],
+            'tags' => [],
+            'protocol_settings' => [],
+            'show' => true,
+            'enabled' => true,
+        ]);
+
+        $response = $this->postJson("/txapi/admin/{$this->securePath}/network-routes/simulate", [
+            'node_id' => $node->id,
+            'target' => 'https://api.example.com/path',
+        ]);
+
+        $response->assertOk();
+        $this->assertSame($first->id, $response->json('data.match.id'));
+        $this->assertSame('direct', $response->json('data.match.action'));
+
+        $dispatched = ServerService::getRoutes([$later->id, $first->id, $disabled->id]);
+        $this->assertSame([$first->id, $later->id], $dispatched->pluck('id')->all());
+    }
+
+    public function test_panel_route_simulator_reports_kernel_private_address_block(): void
+    {
+        $node = Server::create([
+            'type' => Server::TYPE_SOCKS,
+            'name' => 'route-private-node',
+            'rate' => 1,
+            'host' => 'route.example.test',
+            'port' => '1081',
+            'server_port' => 1081,
+            'group_ids' => [],
+            'route_ids' => [],
+            'tags' => [],
+            'protocol_settings' => [],
+            'show' => true,
+            'enabled' => true,
+        ]);
+
+        $response = $this->postJson("/txapi/admin/{$this->securePath}/network-routes/simulate", [
+            'node_id' => $node->id,
+            'target' => '192.168.1.10',
+        ]);
+
+        $response->assertOk();
+        $this->assertSame('built_in', $response->json('data.match.layer'));
+        $this->assertSame('block', $response->json('data.match.action'));
+    }
+
+    public function test_route_in_use_cannot_be_deleted_and_dns_requires_target(): void
+    {
+        $route = ServerRoute::create([
+            'remarks' => 'used-route',
+            'match' => ['example.net'],
+            'action' => 'block',
+            'enabled' => true,
+            'sort' => 10,
+        ]);
+
+        Server::create([
+            'type' => Server::TYPE_SOCKS,
+            'name' => 'route-used-node',
+            'rate' => 1,
+            'host' => 'route.example.test',
+            'port' => '1082',
+            'server_port' => 1082,
+            'group_ids' => [],
+            'route_ids' => [$route->id],
+            'tags' => [],
+            'protocol_settings' => [],
+            'show' => true,
+            'enabled' => true,
+        ]);
+
+        $this->deleteJson("/txapi/admin/{$this->securePath}/network-routes/{$route->id}")
+            ->assertStatus(409)
+            ->assertJsonPath('error.code', 'NETWORK_ROUTE_IN_USE');
+
+        $this->postJson("/txapi/admin/{$this->securePath}/network-routes", [
+            'remarks' => 'dns-without-target',
+            'match' => ['dns.example.com'],
+            'action' => 'dns',
+        ])->assertStatus(422);
+    }
+
+    public function test_traffic_reset_logs_return_a_top_level_paginator(): void
+    {
+        $response = $this->getJson("/txapi/admin/{$this->securePath}/traffic-resets?per_page=10");
+
+        $response->assertOk();
+        $response->assertJsonStructure(['meta' => ['page', 'per_page', 'total', 'last_page'], 'data', 'request_id']);
+        $this->assertArrayNotHasKey('pagination', $response->json());
+    }
+
+    /**
+     * The coupon form renders "不限" when both bounds are empty, so the API has
+     * to accept a coupon with no validity window.
+     */
+    public function test_coupon_can_be_created_without_a_validity_window(): void
+    {
+        $response = $this->postJson("/txapi/admin/{$this->securePath}/coupons", [
+            'name' => 'no-expiry',
+            'type' => 1,
+            'value' => 100,
+            'limit_use' => 1,
+        ]);
+
+        $response->assertCreated();
+
+        $coupon = Coupon::where('name', 'no-expiry')->first();
+        $this->assertNotNull($coupon);
+        $this->assertSame(0, (int) $coupon->started_at);
+        $this->assertSame(0, (int) $coupon->ended_at);
+    }
+
+    public function test_admin_notice_list_paginates_and_filters_by_title(): void
+    {
+        foreach (['alpha', 'beta', 'gamma'] as $index => $name) {
+            Notice::create([
+                'title' => "notice-{$name}",
+                'content' => '<p>x</p>',
+                'show' => 1,
+                'sort' => $index,
+            ]);
+        }
+
+        $page = $this->getJson("/txapi/admin/{$this->securePath}/content/notices?page=1&per_page=2");
+        $page->assertOk();
+        $this->assertSame(3, $page->json('meta.total'));
+        $this->assertSame(2, $page->json('meta.last_page'));
+        $this->assertCount(2, $page->json('data'));
+
+        $filtered = $this->getJson("/txapi/admin/{$this->securePath}/content/notices?page=1&per_page=20&title=beta");
+        $filtered->assertOk();
+        $this->assertSame(1, $filtered->json('meta.total'));
+    }
+
+    public function test_admin_knowledge_list_paginates_and_filters(): void
+    {
+        $this->makeKnowledge('kb-one', 'catA');
+        $this->makeKnowledge('kb-two', 'catA');
+        $this->makeKnowledge('kb-three', 'catB');
+
+        $page = $this->getJson("/txapi/admin/{$this->securePath}/content/knowledge?page=1&per_page=2");
+        $page->assertOk();
+        $this->assertSame(3, $page->json('meta.total'));
+        $this->assertSame(2, $page->json('meta.last_page'));
+        $this->assertCount(2, $page->json('data'));
+
+        $byCategory = $this->getJson("/txapi/admin/{$this->securePath}/content/knowledge?page=1&per_page=20&category=catB");
+        $byCategory->assertOk();
+        $this->assertSame(1, $byCategory->json('meta.total'));
+
+        $byTitle = $this->getJson("/txapi/admin/{$this->securePath}/content/knowledge?page=1&per_page=20&title=kb-two");
+        $byTitle->assertOk();
+        $this->assertSame(1, $byTitle->json('meta.total'));
+    }
+
+    /**
+     * The mapper builds type_name/codes_count/used_count and the table renders
+     * them; returning the raw paginator discarded all three.
+     */
+    public function test_gift_card_templates_keep_their_enriched_fields(): void
+    {
+        GiftCardTemplate::create([
+            'name' => 'template-a',
+            'type' => 1,
+            'rewards' => ['balance' => 100],
+            'admin_id' => 1,
+            'status' => 1,
+            'sort' => 0,
+            'created_at' => time(),
+            'updated_at' => time(),
+        ]);
+
+        $response = $this->getJson("/txapi/admin/{$this->securePath}/gift-cards/templates");
+
+        $response->assertOk();
+        $row = $response->json('data.0');
+        $this->assertIsArray($row);
+        $this->assertArrayHasKey('type_name', $row);
+        $this->assertArrayHasKey('codes_count', $row);
+        $this->assertArrayHasKey('used_count', $row);
+        $this->assertSame(0, $row['codes_count']);
+        $this->assertSame(0, $row['used_count']);
+    }
+
+    /**
+     * MailTemplate::getMeta() is typed `string $name`, so an absent query
+     * parameter used to raise a TypeError and answer 500 instead of 422.
+     */
+    public function test_mail_template_get_validates_name_instead_of_failing(): void
+    {
+        // Missing or unknown native path segment must not expose PHP internals.
+        $this->getJson("/txapi/admin/{$this->securePath}/mail-templates/unknown")->assertNotFound();
+        $name = array_key_first(MailTemplate::TEMPLATES);
+        $this->getJson("/txapi/admin/{$this->securePath}/mail-templates/{$name}")
+            ->assertOk()->assertJsonPath('data.name', $name);
+    }
+
+    /**
+     * AdminRoute.php has always routed /stat/getRanking, but the controller
+     * method did not exist, so every call answered 500 (BadMethodCallException).
+     *
+     * StatisticalService talks to Redis through the raw Redis facade, which the
+     * suite does not provide, so it is mocked: what is under test here is that
+     * the route resolves to a real method, that a time window is applied (the
+     * builders throw "Illegal operator and value combination" without one) and
+     * that the result comes back in the standard envelope.
+     */
+    public function test_stat_ranking_endpoint_is_implemented(): void
+    {
+        $this->mock(StatisticalService::class, function ($mock) {
+            $mock->shouldReceive('setStartAt')->once()->with(Mockery::type('int'));
+            $mock->shouldReceive('setEndAt')->once()->with(Mockery::type('int'));
+            $mock->shouldReceive('getRanking')
+                ->once()
+                ->with('server_traffic_rank', 20)
+                ->andReturn([['id' => '7', 'value' => 12]]);
+        });
+
+        $response = $this->getJson(
+            "/txapi/admin/{$this->securePath}/analytics/rankings?type=server_traffic_rank"
+        );
+
+        $response->assertOk();
+        $this->assertSame([['id' => '7', 'value' => 12]], $response->json('data'));
+
+        $this->getJson("/txapi/admin/{$this->securePath}/analytics/rankings?type=bogus")
+            ->assertStatus(422);
+    }
+
+    private function makeKnowledge(string $title, string $category): Knowledge
+    {
+        return Knowledge::create([
+            'title' => $title,
+            'category' => $category,
+            'language' => 'zh-CN',
+            'body' => '<p>x</p>',
+            'show' => 1,
+            'sort' => 0,
+        ]);
+    }
+
+    private function makeAdmin(): User
+    {
+        return $this->makeUser('contract-admin@example.com', 0, 0, true);
+    }
+
+    private function makeUser(
+        string $email,
+        int $balance,
+        int $commission,
+        bool $isAdmin = false,
+    ): User {
+        static $sequence = 0;
+        $sequence++;
+
+        return User::create([
+            'email' => $email,
+            'password' => 'password',
+            'uuid' => sprintf('00000000-0000-0000-0000-%012d', $sequence),
+            'token' => str_pad((string) $sequence, 32, 'a', STR_PAD_LEFT),
+            'balance' => $balance,
+            'commission_balance' => $commission,
+            'transfer_enable' => 0,
+            'u' => 0,
+            'd' => 0,
+            'banned' => 0,
+            'is_admin' => $isAdmin ? 1 : 0,
+            'is_staff' => 0,
+            'expired_at' => 0,
+            'remind_expire' => 1,
+            'remind_traffic' => 1,
+            'created_at' => time(),
+            'updated_at' => time(),
+        ]);
+    }
+}

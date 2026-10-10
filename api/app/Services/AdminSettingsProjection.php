@@ -1,0 +1,166 @@
+<?php
+
+namespace App\Services;
+
+use App\Services\ThemeService;
+use App\Utils\Dict;
+
+/**
+ * Authoritative settings projection for TXAPI administrator endpoints. Do not project these admin-only secrets to
+ * public or subscriber endpoints.
+ */
+final class AdminSettingsProjection
+{
+    public function getConfigMappings(): array
+    {
+        return [
+            'invite' => [
+                'invite_force' => (bool) admin_setting('invite_force', 0),
+                'invite_commission' => admin_setting('invite_commission', 10),
+                'invite_gen_limit' => admin_setting('invite_gen_limit', 5),
+                'invite_never_expire' => (bool) admin_setting('invite_never_expire', 0),
+                'commission_first_time_enable' => (bool) admin_setting('commission_first_time_enable', 1),
+                'commission_auto_check_enable' => (bool) admin_setting('commission_auto_check_enable', 1),
+                'commission_withdraw_limit' => admin_setting('commission_withdraw_limit', 100),
+                // Returned raw (empty when unset) so the admin field can show
+                // "blank = inherit the withdrawal minimum" and round-trip it;
+                // admin_transfer_minimum() resolves the effective value.
+                'commission_transfer_limit' => admin_setting('commission_transfer_limit'),
+                'commission_withdraw_method' => admin_setting('commission_withdraw_method', Dict::WITHDRAW_METHOD_WHITELIST_DEFAULT),
+                'withdraw_close_enable' => (bool) admin_setting('withdraw_close_enable', 0),
+                'commission_distribution_enable' => (bool) admin_setting('commission_distribution_enable', 0),
+                'commission_distribution_l1' => admin_setting('commission_distribution_l1'),
+                'commission_distribution_l2' => admin_setting('commission_distribution_l2'),
+                'commission_distribution_l3' => admin_setting('commission_distribution_l3')
+            ],
+            'site' => [
+                'logo' => admin_setting('logo'),
+                'force_https' => (int) admin_setting('force_https', 0),
+                'stop_register' => (int) admin_setting('stop_register', 0),
+                'app_name' => admin_setting('app_name', 'TXBoard'),
+                'app_description' => admin_setting('app_description', 'TXBoard control plane'),
+                'app_url' => admin_setting('app_url'),
+                'subscribe_url' => admin_setting('subscribe_url'),
+                'try_out_plan_id' => (int) admin_setting('try_out_plan_id', 0),
+                'try_out_hour' => (int) admin_setting('try_out_hour', 1),
+                'tos_url' => admin_setting('tos_url'),
+                'currency' => admin_setting('currency', 'CNY'),
+                'currency_symbol' => admin_setting('currency_symbol', '¥'),
+                'ticket_must_wait_reply' => (bool) admin_setting('ticket_must_wait_reply', 0),
+                // Feature switches for built-in user routes. Default enabled so
+                // an unset flag never hides an entry.
+                ...array_map('boolval', admin_feature_switches()),
+                'traffic_warn_rate' => admin_setting('traffic_warn_rate', 0),
+            ],
+            'subscribe' => [
+                'plan_change_enable' => (bool) admin_setting('plan_change_enable', 1),
+                'reset_traffic_method' => (int) admin_setting('reset_traffic_method', 0),
+                'surplus_enable' => (bool) admin_setting('surplus_enable', 1),
+                'new_order_event_id' => (int) admin_setting('new_order_event_id', 0),
+                'renew_order_event_id' => (int) admin_setting('renew_order_event_id', 0),
+                'change_order_event_id' => (int) admin_setting('change_order_event_id', 0),
+                'show_info_to_server_enable' => (bool) admin_setting('show_info_to_server_enable', 0),
+                'show_protocol_to_server_enable' => (bool) admin_setting('show_protocol_to_server_enable', 0),
+                'default_remind_expire' => (bool) admin_setting('default_remind_expire', 1),
+                'default_remind_traffic' => (bool) admin_setting('default_remind_traffic', 1),
+                'subscribe_path' => admin_setting('subscribe_path', 's'),
+            ],
+            // Only the selected theme remains global; appearance belongs to the
+            // selected theme's config.json + theme_<name> values.
+            'frontend' => [
+                'frontend_theme' => app(ThemeService::class)->getActiveTheme(),
+            ],
+            'server' => [
+                'server_token' => admin_setting('server_token'),
+                'server_pull_interval' => admin_setting('server_pull_interval', 60),
+                'server_push_interval' => admin_setting('server_push_interval', 60),
+                'device_limit_mode' => (int) admin_setting('device_limit_mode', 0),
+            ],
+            'email' => [
+                'email_host' => admin_setting('email_host'),
+                'email_port' => admin_setting('email_port'),
+                'email_username' => admin_setting('email_username'),
+                'email_password' => admin_setting('email_password'),
+                'email_encryption' => admin_setting('email_encryption'),
+                'email_from_address' => admin_setting('email_from_address'),
+                'remind_mail_enable' => (bool) admin_setting('remind_mail_enable', false),
+            ],
+            'telegram' => [
+                'telegram_bot_enable' => (bool) admin_setting('telegram_bot_enable', 0),
+                'telegram_bot_token' => admin_setting('telegram_bot_token'),
+                'telegram_webhook_url' => admin_setting('telegram_webhook_url'),
+                'telegram_discuss_link' => admin_setting('telegram_discuss_link')
+            ],
+            'app' => [
+                'windows_version' => admin_setting('windows_version', ''),
+                'windows_download_url' => admin_setting('windows_download_url', ''),
+                'macos_version' => admin_setting('macos_version', ''),
+                'macos_download_url' => admin_setting('macos_download_url', ''),
+                'android_version' => admin_setting('android_version', ''),
+                'android_download_url' => admin_setting('android_download_url', '')
+            ],
+            'safe' => [
+                'email_verify' => (bool) admin_setting('email_verify', 0),
+                'safe_mode_enable' => (bool) admin_setting('safe_mode_enable', 0),
+                'secure_path' => admin_setting('secure_path', admin_setting('frontend_admin_path', hash('crc32b', config('app.key')))),
+                'email_whitelist_enable' => (bool) admin_setting('email_whitelist_enable', 0),
+                'email_whitelist_suffix' => admin_setting('email_whitelist_suffix', Dict::EMAIL_WHITELIST_SUFFIX_DEFAULT),
+                'email_gmail_limit_enable' => (bool) admin_setting('email_gmail_limit_enable', 0),
+                'captcha_enable' => (bool) admin_setting('captcha_enable', 0),
+                'captcha_type' => admin_setting('captcha_type', 'recaptcha'),
+                'recaptcha_key' => admin_setting('recaptcha_key', ''),
+                'recaptcha_site_key' => admin_setting('recaptcha_site_key', ''),
+                'recaptcha_v3_secret_key' => admin_setting('recaptcha_v3_secret_key', ''),
+                'recaptcha_v3_site_key' => admin_setting('recaptcha_v3_site_key', ''),
+                'recaptcha_v3_score_threshold' => admin_setting('recaptcha_v3_score_threshold', 0.5),
+                'turnstile_secret_key' => admin_setting('turnstile_secret_key', ''),
+                'turnstile_site_key' => admin_setting('turnstile_site_key', ''),
+                'register_limit_by_ip_enable' => (bool) admin_setting('register_limit_by_ip_enable', 0),
+                'register_limit_count' => admin_setting('register_limit_count', 3),
+                'register_limit_expire' => admin_setting('register_limit_expire', 60),
+                'password_limit_enable' => (bool) admin_setting('password_limit_enable', 1),
+                'password_limit_count' => admin_setting('password_limit_count', 5),
+                'password_limit_expire' => admin_setting('password_limit_expire', 60)
+
+            ],
+            'subscribe_template' => [
+                'subscribe_template_singbox' => $this->formatTemplateContent(
+                    subscribe_template('singbox') ?? '',
+                    'json'
+                ),
+                'subscribe_template_clash' => subscribe_template('clash') ?? '',
+                'subscribe_template_clashmeta' => subscribe_template('clashmeta') ?? '',
+                'subscribe_template_stash' => subscribe_template('stash') ?? '',
+                'subscribe_template_surge' => subscribe_template('surge') ?? '',
+                'subscribe_template_surfboard' => subscribe_template('surfboard') ?? ''
+            ]
+        ];
+    }
+
+
+    private function formatTemplateContent(mixed $content, string $format = 'string'): string
+    {
+        return match ($format) {
+            'json' => match (true) {
+                    is_array($content) => json_encode(
+                        value: $content,
+                        flags: JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+                    ),
+
+                    is_string($content) && str($content)->isJson() => rescue(
+                        callback: fn() => json_encode(
+                            value: json_decode($content, associative: true, flags: JSON_THROW_ON_ERROR),
+                            flags: JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+                        ),
+                        rescue: $content,
+                        report: false
+                    ),
+
+                    default => str($content)->toString()
+                },
+
+            default => str($content)->toString()
+        };
+    }
+
+}
