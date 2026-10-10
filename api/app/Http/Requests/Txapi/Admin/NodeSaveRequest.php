@@ -16,11 +16,11 @@ final class NodeSaveRequest extends ServerSave
         $rules['rate'] = ['required', 'numeric', 'min:0'];
         $rules['show'] = ['sometimes', 'boolean'];
         $rules['group_ids'] = ['nullable', 'array', 'max:100'];
-        $rules['group_ids.*'] = ['integer', 'distinct', 'exists:v2_server_group,id'];
+        $rules['group_ids.*'] = ['integer', 'distinct', \Illuminate\Validation\Rule::exists(\App\Support\Database\NativeTableName::runtime('v2_server_group'), 'id')];
         $rules['route_ids'] = ['nullable', 'array', 'max:200'];
-        $rules['route_ids.*'] = ['integer', 'distinct', 'exists:v2_server_route,id'];
-        $rules['machine_id'] = ['nullable', 'integer', 'exists:v2_server_machine,id'];
-        $rules['parent_id'] = ['nullable', 'integer', 'exists:v2_server,id'];
+        $rules['route_ids.*'] = ['integer', 'distinct', \Illuminate\Validation\Rule::exists(\App\Support\Database\NativeTableName::runtime('v2_server_route'), 'id')];
+        $rules['machine_id'] = ['nullable', 'integer', \Illuminate\Validation\Rule::exists(\App\Support\Database\NativeTableName::runtime('v2_server_machine'), 'id')];
+        $rules['parent_id'] = ['nullable', 'integer', \Illuminate\Validation\Rule::exists(\App\Support\Database\NativeTableName::runtime('v2_server'), 'id')];
         $rules['tags'] = ['nullable', 'array', 'max:100'];
         $rules['tags.*'] = ['string', 'max:100'];
         $rules['transfer_enable'] = ['nullable', 'integer', 'min:0'];
