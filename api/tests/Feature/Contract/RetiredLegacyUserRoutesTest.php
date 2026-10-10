@@ -20,6 +20,9 @@ class RetiredLegacyUserRoutesTest extends TestCase
     {
         $this->assertDirectoryDoesNotExist(app_path('Http/Controllers/V1'));
         $this->assertDirectoryDoesNotExist(app_path('Http/Controllers/V2'));
+        foreach (['User', 'Server', 'ServerV2'] as $class) {
+            $this->assertFileDoesNotExist(app_path('Http/Middleware/' . $class . '.php'));
+        }
         $routes = collect(Route::getRoutes()->getRoutes());
         $subscribe = $routes->first(static fn ($route) => $route->getName() === 'client.subscribe');
         $this->assertNotNull($subscribe);
