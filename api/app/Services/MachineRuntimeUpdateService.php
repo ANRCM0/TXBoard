@@ -43,6 +43,9 @@ class MachineRuntimeUpdateService
         if (!is_array($runtime) || ($runtime['updater_available'] ?? false) !== true) {
             throw new \InvalidArgumentException('Machine runtime updater is unavailable; update TX-Node Installer first');
         }
+        if ($target === 'dev' && !in_array('dev', $runtime['update_targets'] ?? [], true)) {
+            throw new \InvalidArgumentException('This Machine runtime has not advertised dev update support; update TX-Node and Installer first');
+        }
 
         $requestId = 'mup_' . Str::lower((string) Str::ulid());
         $cooldownKey = "machine_runtime_update:cooldown:{$machine->id}";
