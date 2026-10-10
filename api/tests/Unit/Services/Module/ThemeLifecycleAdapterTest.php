@@ -104,7 +104,7 @@ class ThemeLifecycleAdapterTest extends TestCase
             manifest: ModuleManifest::fromArray([
                 'schema' => 1,
                 'module' => [
-                    'id' => ModuleId::legacy('theme', $theme),
+                    'id' => ModuleId::theme($theme),
                     'name' => $theme,
                     'version' => '1.0.0',
                     'type' => ModuleType::THEME->value,

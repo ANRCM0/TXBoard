@@ -38,25 +38,20 @@ final class ThemeModuleAdapter implements ModuleAdapter
                 continue;
             }
 
-            $moduleId = ModuleId::legacy('theme', (string) $key);
-            $health = ModuleHealth::HEALTHY;
-            $package = null;
-
+            $moduleId = ModuleId::theme((string) $key);
             try {
                 $package = ThemePackageManifest::fromArray($config);
             } catch (Throwable) {
-                $health = ModuleHealth::DEGRADED;
                 $errors[] = new ModuleDiscoveryError(
                     adapter: $this->name(),
                     moduleId: $moduleId,
                     message: 'Theme Package metadata is invalid',
                 );
+                continue;
             }
 
-            $displayName = $package?->name
-                ?? trim((string) ($config['name'] ?? $key));
-            $version = $package?->version
-                ?? $this->legacyVersion($config['version'] ?? null);
+            $displayName = $package->name;
+            $version = $package->version;
 
             $module = [
                 'id' => $moduleId,
@@ -65,13 +60,13 @@ final class ThemeModuleAdapter implements ModuleAdapter
                 'type' => 'theme',
             ];
 
-            $description = $package?->description
+            $description = $package->description
                 ?? trim((string) ($config['description'] ?? ''));
             if ($description !== '') {
                 $module['description'] = $description;
             }
 
-            $author = $package?->author
+            $author = $package->author
                 ?? trim((string) ($config['author'] ?? ''));
             if ($author !== '') {
                 $module['author'] = $author;
@@ -82,7 +77,7 @@ final class ThemeModuleAdapter implements ModuleAdapter
                     'schema' => ModuleManifest::SCHEMA_VERSION,
                     'module' => $module,
                     'compatibility' => [
-                        'txboard' => $package?->txboardCompatibility ?? '*',
+                        'txboard' => $package->txboardCompatibility,
                     ],
                     'capabilities' => [ModuleCapability::THEME],
                 ]);
@@ -101,20 +96,11 @@ final class ThemeModuleAdapter implements ModuleAdapter
                 installed: true,
                 enabled: true,
                 active: ((string) $key) === $active,
-                health: $health,
+                health: ModuleHealth::HEALTHY,
             );
         }
 
         return new ModuleDiscoveryResult($modules, $errors);
     }
 
-    private function legacyVersion(mixed $version): string
-    {
-        $value = is_string($version) ? trim($version) : '';
-
-        return preg_match(
-            '/^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/',
-            $value,
-        ) ? $value : '0.0.0';
-    }
 }
