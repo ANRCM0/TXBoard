@@ -8,7 +8,7 @@ TXBoard 是一个模块化的网络服务 **Control Plane（控制面板）**，
 - **节点**：节点运行时由独立的 [TX-Node](https://github.com/ANRCM0/TX-Node) 提供，通过版本化 HTTP / WebSocket 契约与 TXBoard 通信。
 - **扩展**：内置 Theme / Plugin Runtime、Module Platform v1；可选插件示例见 [TXBoard-AccessAudit](https://github.com/ANRCM0/TXBoard-AccessAudit)。
 
-**开发期 API 清理说明（2026-10-10，PR #182）：** TXBoard 主仓的 Xboard `/api/v1/*` 和 `/api/v2/*` 注册路由已移除，不保留兼容入口；正式业务 API 使用 `/txapi/*`，Agent 使用 `/txapi/agent/v1/*`，支付和 Telegram 回调也使用 TXAPI。动态订阅地址 `/{subscribe_path}/{token}` 仍为必要功能。使用旧地址的外部客户端必须升级。
+**接口约定：** TXBoard 业务 API 使用 `/txapi/*`，TXNode 使用 `/txapi/node/v1/*`（HTTP / WebSocket）；动态订阅链接使用 `/{subscribe_path}/{token}`。开发第三方主题和节点请遵循版本化接口契约。
 
 项目源代码、生产安装器与节点运行时分别维护：
 
@@ -103,14 +103,15 @@ docker compose exec -it txboard php artisan txboard:install
 
 ## 文档与协议
 
-- **[TXBoard Native 开发方案：统一 /txapi、去 Xboard 残留、优化与迁移](docs/architecture/txboard-native-development-plan.md)**（P0–P4 核心实现已合并；内部旧依赖继续收尾）
-- **[TXBoard 本体大版本收尾清单](docs/architecture/core-release-closeout.md)**（当前实施顺序；TX-Node/Gateway/真实支付商适配后置）
-- [架构与开发指南（CURRENT / TARGET）](docs/architecture/README.md)
-- [跨组件协议契约（CURRENT / TARGET）](contracts/README.md)
+- **[文档中心](docs/README.md)**：架构、外部对接、运维和安全指南。
+- [外部主题 HTTP API 对接](contracts/http/theme-integration-current.md)
+- [TXNode HTTP / WebSocket 对接](contracts/node-protocol/txnode-integration-current.md)
+- [架构与开发规范](docs/architecture/README.md)
+- [版本化协议与扩展规范](contracts/README.md)
+- [运维、发布和数据库切换](docs/operations/README.md)
 - [插件开发指南](api/docs/en/development/plugin-development-guide.md)
-- **[Gateway 双仓集成 ADR（/txapi/bff/v1）](docs/architecture/gateway-integration.md)**（未来目标）
-- [TXAPI BFF 目标契约](contracts/http/txapi-bff-target-v1.md)
-- [MCP Gateway（Agent Ops 专用）](mcp/README.md)
+- [MCP Gateway](mcp/README.md)
 - [贡献与编码约束](AGENTS.md)
+
 
 许可证与第三方来源说明见 [api/LICENSE](api/LICENSE) 和 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。

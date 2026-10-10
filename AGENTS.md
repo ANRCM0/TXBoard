@@ -17,50 +17,19 @@ Read first:
 - `docs/architecture/README.md`
 - relevant files under `contracts/`
 
-## TXBoard Native target direction (design approved, not implemented)
+## TXAPI 与跨仓接口边界
 
-- Full plan: `docs/architecture/txboard-native-development-plan.md`; evidence-based inventory: `docs/architecture/legacy-inventory-and-work-packages.md`.
-- All future TXBoard HTTP APIs MUST be under `/txapi/*`. Do not create new `/api/v1` or `/api/v2` endpoints. Existing paths are transitional until confirmed migration.
-- Distinguish CURRENT effective wire contracts from TARGET `contracts/http/txapi-target-v1.md`. Never present proposed paths as deployed.
-- Upgrade by domain with performance/security baseline, tests, feature flags, consumer inventory, rollback and signed-off deprecation.
-- Protect payment callbacks, historical balances/orders, TX-Node, Gateway, Agent/MCP, installed plugins and runtime healthchecks; no mass database renaming.
-- Prefer meaningful optimization to mechanical renaming; preserve Module Platform v1 and source licensing in `api/LICENSE` / `THIRD_PARTY_NOTICES.md`.
+- TXBoard 应用 API 统一使用已注册的 `/txapi/*` 路由；不要新建未注册的 V1/V2 入口。
+- User、Admin、Node/Machine、Agent 与支付商回调使用各自独立的凭据和鉴权中间件；不得互相借用。
+- 当前 HTTP 路由以 `api/routes/txapi.php`、`api/routes/web.php` 和 `api/app/Providers/RouteServiceProvider.php` 为准；TXNode WSS 由 Workerman 管理，不属于 Laravel HTTP registry。
+- 跨仓修改优先阅读 `contracts/http/external-adapter-current.md`、`contracts/http/theme-integration-current.md`、`contracts/node-protocol/txnode-integration-current.md`。
+- 可选独立 Gateway 不持有 Laravel 用户/订单/资金/Node 状态，也不能接管管理员、Agent、支付 Webhook 或订阅密钥。
+- 保持生产数据库切换与 API 升级分离：严禁在没有维护窗口、可恢复备份、身份/财务一致性验证的情况下重命名表或启用 `TX_NATIVE_TABLES`。
+- 对外协议修改必须同时更新对应契约和真实消费者，按现有回归测试验证权限、事务及重试语义。
 
-## Optional TXBoard-Gateway architecture (TARGET, not implemented)
+## 2. Module Platform
 
-- Read `docs/architecture/gateway-integration.md` and `contracts/http/txapi-bff-target-v1.md` for ADR-006.
-- The optional Hono Gateway owns only future `/txapi/bff/v1/*`; Laravel owns the rest of `/txapi/*`.
-- Preserve CURRENT `/gateway/v1/*` → fixed `/api/v1/*` until staged cross-repo upgrade and rollback.
-- Gateway is distinct from `mcp/`; never route Admin, Agent, Node, webhooks, extensions, raw subscriptions or financial writes through theme BFF.
-- Edge must dispatch BFF subtree before general TXAPI, with fixed private upstream and no proxy loops. Authorization and idempotency belong Laravel.
-- New Gateway v1 URL must preserve SDK envelope. Change BFF contract or sensitive writes only by explicit versioned agreement/tests.
-
-## 2. Current Module Platform status
-
-Completed:
-
-- PR A: Module Package v1 contract / DTOs / capability vocabulary.
-- PR B: read-only Module Registry with Plugin, Theme and Agent Ops adapters.
-- PR C: Plugin lifecycle integration through `ModuleLifecycle -> PluginLifecycleAdapter -> PluginManager`.
-- PR D: Theme Package v1, canonical active-theme state and `ThemeLifecycleAdapter -> ThemeService` delegation.
-- PR E: read-only Module Center consuming the Module Registry API as the single inventory model.
-- PR F: controlled Module management API delegating supported lifecycle operations through `ModuleLifecycle`.
-- PR G: Admin Navigation Registry projected through Module Registry plus optional Admin Bridge v2 host services.
-- PR H: Agent Ops registry enrichment with bounded runtime health details and preserved Agent/MCP security boundaries.
-
-Current target:
-
-- Module Platform v1 stabilization and compatibility hardening. Do not invent a Phase I without an explicit versioned architecture proposal.
-
-Required direction:
-
-```text
-ModuleLifecycle
-      -> PluginLifecycleAdapter
-      -> existing PluginManager
-```
-
-Do not reimplement plugin lifecycle behavior in Module Runtime.
+Module Registry 提供只读库存和健康视图；Mutation 由 Module Management API 通过 `ModuleLifecycle` 委托各自 Plugin/Theme 运行时执行。适配器不得重新实现核心域逻辑。API 和扩展契约见 `contracts/module-package/`、`contracts/module-lifecycle/`、`contracts/http/module-registry-v1.md` 和 `contracts/http/module-management-v1.md`。
 
 ## 3. Core vs Module
 
@@ -270,9 +239,9 @@ Do not require third-party plugins to modify TXBoard React source.
 
 ## 15. API rules
 
-CURRENT: preserve the dynamic `secure_path` Admin boundary and current response conventions. TARGET: `/txapi/admin/{secure_path}` with native schemas, RBAC and audit, only when migrated.
+Admin requests use `/txapi/admin/{admin_path}/*` with validated dynamic `secure_path`, Admin Bearer, RBAC and audit. User API, Agent and Node credentials cannot authorize Admin operations.
 
-Follow existing response conventions on deployed legacy endpoints; new TXAPI responses follow their separately versioned contract.
+Laravel TXAPI success responses normally have `data` and `request_id`; errors use `error.code`. Agent runtime and signed webhook bodies have their own explicit contract.
 
 Do not create generic Module mutation endpoints until lifecycle contracts and adapters are stable.
 
@@ -327,13 +296,11 @@ Before merge:
 2. remove accidental unrelated changes;
 3. ensure tests cover the new contract;
 4. verify API/Image/Web CI as relevant;
-5. update architecture/development docs when milestone status changes.
+5. update current interface/architecture docs when behavior or invariants change.
 
 Use merge commits for project PRs unless explicitly instructed otherwise.
 
 ## 18. Module Platform v1 stabilization rules
-
-Phases A–H complete Module Platform v1.
 
 The implemented control flow remains:
 
@@ -364,4 +331,4 @@ Stabilization work must preserve these invariants:
 - do not add a Module database table unless runtime state cannot be reliably derived;
 - treat any breaking package/Bridge/Module contract as an explicit future version, not an implicit v1 extension.
 
-The next work should be compatibility hardening, bug fixes and targeted product improvements against the completed v1 contracts.
+Changes must preserve these invariants and update the applicable versioned contract.
