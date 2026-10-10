@@ -85,8 +85,17 @@ export function assertCurrentBoundaries(items) {
   ];
   const missing = required.filter(x => !paths.has(x));
   const obsolete = items.filter(x => /^\/api\/v2\/\{admin_path\}(?:\/|$)/.test(x.path));
-  const unguarded = items.filter(x => x.family === 'TXAPI admin' &&
-    (!x.middleware.includes('admin.path') || !/(^|,)admin(,|$)/.test(x.middleware)));
+  // Laravel route:list --json expands middleware aliases to class names.
+  // Compare both spellings instead of falsely treating all native routes as unguarded.
+  const unguarded = items.filter(x => {
+    if (x.family !== 'TXAPI admin') return false;
+    const middleware = x.middleware.split(',').map(v => v.trim());
+    const present = (alias, fullyQualified) => middleware.some(v =>
+      v === alias || v.startsWith(alias + ':') ||
+      v === fullyQualified || v.startsWith(fullyQualified + ':'));
+    return !present('admin.path', 'App\\Http\\Middleware\\AdminPath') ||
+      !present('admin', 'App\\Http\\Middleware\\Admin');
+  });
   if (missing.length || obsolete.length || unguarded.length) {
     throw new Error(JSON.stringify({
       missing_current_routes: missing,
