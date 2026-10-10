@@ -112,7 +112,7 @@ export async function unwrapNative<T>(promise: Promise<{ data: NativeApiEnvelope
 }
 
 // Plugin-owned APIs run under /plugin/*, outside the core admin namespace.
-// They use the same administrator bearer but never an old /api/v2 path.
+// They use the same administrator bearer but never the TXAPI admin namespace.
 export const pluginApiClient = axios.create({
   baseURL: runtimeBaseUrl(),
   timeout: 10_000,

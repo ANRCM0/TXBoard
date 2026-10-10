@@ -24,9 +24,7 @@ final class PaymentManagementController
 
         return TxapiResponse::success($request, $methods->map(
             static function (Payment $method): array {
-                $path = config('billing.native_webhook_enabled', false)
-                    ? "/txapi/payment/webhook/{$method->payment}/{$method->uuid}"
-                    : "/api/v1/guest/payment/notify/{$method->payment}/{$method->uuid}";
+                $path = "/txapi/payment/webhook/{$method->payment}/{$method->uuid}";
                 $notifyUrl = url($path);
                 if ($method->notify_domain) {
                     $notifyUrl = rtrim((string) $method->notify_domain, '/') . $path;
