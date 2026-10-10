@@ -9,11 +9,10 @@
 ## Documentation map
 
 - **This document**: stable architecture, trust boundaries, risk model and implemented operating model.
-- [Agent Ops 开发指南](./agent-ops-development-guide.md): concrete extension workflow, file touchpoints, test matrix and Definition of Done.
 - [Agent Ops HTTP Contract](../../contracts/http/agent-ops-v1.md): public Agent HTTP semantics.
 - [Node Ops Protocol v1](../../contracts/node-protocol/agent-ops-v1.md): TXBoard ↔ TX-Node typed operation contract.
 
-When implementation changes, update the contract first, then the architecture/development guide as necessary.
+When implementation changes, update the contract first, then this architecture and the repository [development rules](../../AGENTS.md) as necessary.
 
 
 ## 1. Overview
@@ -652,3 +651,12 @@ Agent
 ```
 
 This preserves the existing Control Plane/Data Plane architecture while making TXBoard usable by modern Agents without giving those Agents unrestricted infrastructure access.
+
+## 18. 扩展能力时的实施约束
+
+新增能力先划分为 READ（只读）、INSIGHT（解释/建议）、OPERATE（有界变更）或 DANGEROUS（高风险），再定义稳定输入输出、Agent ability、目标作用域、失败代码、审计字段和测试。
+
+1. READ/INSIGHT 通过已有领域服务读取数据，在服务端按 token ability 与 Node/Machine target scope 过滤；不得返回数据后才让 MCP 自行过滤。
+2. OPERATE/DANGEROUS 先在 [Node Ops 协议](../../contracts/node-protocol/agent-ops-v1.md) 明确 versioned operation、超时、幂等和可观测验证信号；输入采用固定 enum、范围限制、目的地址 allow-list，不开放任意命令、文件路径或 URL。
+3. 状态变更由服务端审批/审计，并通过既有 Node 控制通道分发；同一 request_id 的非幂等请求不得重复执行。Node `ops.result`/ACK 与最终健康验证分离，没有证据时返回 `inconclusive`，不能伪造成功。
+4. 测试覆盖跨作用域 403、目标不存在 404、无效操作/输入 422、撤销、重放、队列故障、Node 超时与不可达、审计脱敏及 MCP 最小权限。详细编码约束见 [AGENTS.md](../../AGENTS.md)。

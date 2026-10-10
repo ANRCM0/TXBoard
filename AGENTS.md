@@ -13,8 +13,8 @@ The project is evolving toward a **Modular Control Plane Platform**.
 Read first:
 
 - `docs/architecture/module-platform-v1.md`
-- `docs/architecture/module-platform-development-guide.md`
-- `docs/architecture/README.md`
+- `docs/architecture/agent-ops.md`
+- `docs/README.md`
 - relevant files under `contracts/`
 
 ## TXAPI 与跨仓接口边界
@@ -332,3 +332,23 @@ Stabilization work must preserve these invariants:
 - treat any breaking package/Bridge/Module contract as an explicit future version, not an implicit v1 extension.
 
 Changes must preserve these invariants and update the applicable versioned contract.
+
+## 19. 路由及外部契约校验
+
+- Laravel HTTP 注册入口：`api/routes/txapi.php`、`api/routes/web.php`、`api/app/Providers/RouteServiceProvider.php`；节点 WebSocket 由 Workerman 单独处理，不能以 `route:list` 证明 WSS 已启用。
+- 修改路由时导出并核对注册表；插件动态路由、网关规则和反向代理仍须在对应运行时核对：
+
+```bash
+cd api && php artisan route:list --json > ../route-list.json
+cd .. && node scripts/export-route-catalog.mjs --routes route-list.json --json artifacts/routes.json --markdown artifacts/routes.md --check
+```
+
+- 访问控制按匿名、用户、管理员、Node/Machine、Agent、支付/Telegram 回调分别校验；不得仅以 URL 前缀判断授权。跨仓变更同时更新消费方和 `contracts/`。
+
+## 20. 新增 Module / Agent 能力的验收规则
+
+- **Module**：先明确稳定 ID、type、version、capabilities、依赖、配置归属、运行时状态、升级/回滚方式和管理权限；capability 只描述产品能力，不代表管理员权限或 Agent ability。Health 检查必须只读、有界、可预测，enabled 不等于 healthy。
+- **Theme / Plugin**：保持现有包格式与 Admin Bridge 协商规则；对依赖冲突、系统/当前主题保护、禁用后 stale route、坏包、失败升级、Octane worker 缓存做负向测试。若引入持久化表，先证明不能从既有数据安全派生状态。
+- **Agent**：分类 READ、INSIGHT、OPERATE、DANGEROUS；敏感操作默认进入服务端审批，Agent 不能直接标记 approved/running/succeeded。每个 READ 端点按 ability + target scope 过滤，每个操作还须经过输入 allow-list 和目标范围校验。
+- **Node operation**：先定义 `operation/input/output/timeout/error_code/idempotency/verification` 契约，再实现固定类型操作；同一 request_id 不得重复执行非幂等动作，`ops.result` 只说明执行报告，独立观测通过后才能称为恢复成功，未知状态返回 inconclusive。
+- **安全输入与审计**：禁止任意 URL、内网元数据探测、文件路径、命令行或进程名注入；诊断只允许固定来源和有界参数。审计包含 actor/client/protocol/tool/target/risk/request_id/status/error code，敏感 token、password、authorization、private key 和输入内容须脱敏。验证 403 scope/ability、404 目标丢失、422 策略/参数拒绝、重放和撤销的负向用例。

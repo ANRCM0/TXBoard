@@ -1,6 +1,6 @@
 # TXBoard 发布前真实环境验收 Runbook
 
-> **状态：需要操作员执行，CI 不能代替。** 适用 TXBoard 自有 Compose，或 1Panel + 外部 MySQL 8.4 / Redis + 反代（OpenResty/Caddy）部署。只在隔离预发环境操作支付、Token 轮换、恢复和故障注入。尚无真实验收证据时禁止勾选 Issue #168 的 Release 完成项。
+> **状态：需要操作员执行，CI 不能代替。** 适用 TXBoard 自有 Compose，或 1Panel + 外部 MySQL 8.4 / Redis + 反代（OpenResty/Caddy）部署。只在隔离预发环境操作支付、Token 轮换、恢复和故障注入。没有真实验收证据时不得宣称已通过生产发布验收。
 
 ## 0. 验收前准备与红线
 
@@ -121,3 +121,11 @@ bash scripts/staging-readonly-smoke.sh https://<staging-domain>
 | 责任人 | 执行人、复核人、日期、未通过缺陷 Issue |
 
 **Go 规则：** 不得存在 P0/P1 安全/财务/数据丢失缺陷；所有涉及真实环境的发布阻塞项必须有 PASS 证据或明确的产品范围调整。未验证支付商户、机器 Token 失效、真实备份恢复或生产数据对账时，维持 **NO-GO**。Release/Tag 不得因 CI 合成测试全部绿灯而自动授权。
+
+## 日常运行监控与故障判定
+
+- 应用探针 `GET /txapi/health`、`GET /api/health` 只验证基本存活，不能代替 MySQL、Redis/Horizon、支付商、TXNode 的端到端健康检查。
+- 观察 API p95、5xx、MySQL 死锁和慢查询、失败任务与队列 backlog、Node/Machine 连接、Agent 审批、支付/钱包/佣金对账；结合 `traffic_queue_unavailable`、`traffic_queue_backlog_high` 告警。
+- 可用运行时中执行 `php artisan traffic:health --json`，检查持久流量批次 ledger 与队列；HTTP 202 或 WS `traffic.ack` 的 `queued` 是接收确认，不代表 SQL 最终结算。
+- 同 `traffic_batch_id` 重试不能重复计费，同 ID 但不同计数必须拒绝；故障后以持久账本核对，并确认失败任务可恢复。回退镜像不会自动撤销 DDL 或资金交易，必须按备份与对账计划处理。
+- 按 [镜像发布通道](image-release-channels.md) 使用不可变 digest，数据库表名切换必须依照 [独立切换 Runbook](native-mysql-table-cutover.md) 在维护窗口执行。

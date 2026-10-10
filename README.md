@@ -78,7 +78,7 @@ TXBoard 对外业务 API 使用 `/txapi/*`，节点接口使用 `/txapi/node/v1/
 ## 文档
 
 - [文档中心](docs/README.md)
-- [架构与开发指南](docs/architecture/README.md)
-- [运行与发布操作手册](docs/operations/README.md)
+- [模块系统架构](docs/architecture/module-platform-v1.md) 与 [Agent Ops / MCP 架构](docs/architecture/agent-ops.md)
+- [发布与验收操作手册](docs/operations/release-staging-acceptance.md)
 - [安全基线](docs/security/README.md)
 - [代码贡献规范](AGENTS.md)

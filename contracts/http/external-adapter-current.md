@@ -21,7 +21,7 @@
 - **[外部主题：HTTP 请求、字段、完整用户路由](theme-integration-current.md)**
 - **[TXNode：HTTP/WSS、握手、流量与机器状态](../node-protocol/txnode-integration-current.md)**
 - [主题包格式](../theme-package/README.md)
-- [HTTP 路由导出](../../docs/architecture/http-route-inventory.md)
+- [HTTP 路由导出与开发要求](../../AGENTS.md)
 - [真实环境对接检查](../../docs/operations/release-staging-acceptance.md)
 
 HTTP 路由由 `api/routes/txapi.php` 和 `RouteServiceProvider.php` 注册；Workerman WebSocket、插件动态路由以及反向代理规则不包含在 Laravel route-list 内。
