@@ -82,7 +82,3 @@ TXBoard 对外业务 API 使用 `/txapi/*`，节点接口使用 `/txapi/node/v1/
 - [运行与发布操作手册](docs/operations/README.md)
 - [安全基线](docs/security/README.md)
 - [代码贡献规范](AGENTS.md)
-
-## 许可证
-
-项目许可信息请参阅 [api/LICENSE](api/LICENSE)。第三方组件及来源说明见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
