@@ -5,6 +5,8 @@ on:
     branches: [main]
     paths:
       - "api/**"
+      - "scripts/compare-critical-data-snapshots.mjs"
+      - "scripts/tests/compare-critical-data-snapshots.test.mjs"
       - "scripts/database-schema-inventory.mjs"
       - "scripts/database-mysql-parity.mjs"
       - "scripts/tests/database-mysql-parity.test.mjs"
@@ -13,6 +15,8 @@ on:
     branches: [main]
     paths:
       - "api/**"
+      - "scripts/compare-critical-data-snapshots.mjs"
+      - "scripts/tests/compare-critical-data-snapshots.test.mjs"
       - "scripts/database-schema-inventory.mjs"
       - "scripts/database-mysql-parity.mjs"
       - "scripts/tests/database-mysql-parity.test.mjs"
@@ -108,6 +112,23 @@ jobs:
         with:
           name: txboard-mysql-schema-parity
           path: api/artifacts/mysql-schema-parity.json
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Test cutover aggregate comparison
+        working-directory: .
+        run: node --test scripts/tests/compare-critical-data-snapshots.test.mjs
+      - name: Capture read-only critical data baseline on MySQL
+        run: php scripts/database-critical-data-snapshot.php --output=artifacts/critical-data-baseline.json
+      - name: Verify unchanged critical baseline on MySQL
+        working-directory: .
+        run: |
+          node scripts/compare-critical-data-snapshots.mjs api/artifacts/critical-data-baseline.json api/artifacts/critical-data-baseline.json
+      - name: Upload cutover critical data baseline
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: txboard-critical-data-baseline
+          path: api/artifacts/critical-data-baseline.json
           if-no-files-found: warn
           retention-days: 14
       - name: Upload MySQL P0 schema evidence
