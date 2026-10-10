@@ -8,7 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('v2_agent_audit_log', function (Blueprint $table) {
+        Schema::table('tx_agent_audit_log', function (Blueprint $table) {
             $table->string('actor_type', 32)->default('agent')->after('token_id');
             $table->string('protocol', 32)->default('http')->after('client_name');
             $table->boolean('approval_required')->default(false)->after('risk_level');
@@ -23,7 +23,7 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::table('v2_agent_audit_log', function (Blueprint $table) {
+        Schema::table('tx_agent_audit_log', function (Blueprint $table) {
             $table->dropIndex(['protocol', 'created_at']);
             $table->dropIndex(['approval_required', 'created_at']);
             $table->dropColumn([

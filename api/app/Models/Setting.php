@@ -6,8 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Setting extends Model
 {
-    
-    use \App\Support\Database\ResolvesNativeEloquentTable;
+
 /**
      * Retired site-wide appearance fields. The active theme's per-theme config
      * has replaced these values; writes are prohibited after migration.
@@ -45,7 +44,7 @@ class Setting extends Model
         }
     }
 
-    protected $table = 'v2_settings';
+    protected $table = 'tx_settings';
     protected $guarded = [];
     protected $casts = [
         'name' => 'string',

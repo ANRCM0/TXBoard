@@ -8,14 +8,14 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
-        if (!Schema::hasTable('v2_server_route')) {
+        if (!Schema::hasTable('tx_server_route')) {
             return;
         }
 
-        $hasEnabled = Schema::hasColumn('v2_server_route', 'enabled');
-        $hasSort = Schema::hasColumn('v2_server_route', 'sort');
+        $hasEnabled = Schema::hasColumn('tx_server_route', 'enabled');
+        $hasSort = Schema::hasColumn('tx_server_route', 'sort');
 
-        Schema::table('v2_server_route', function (Blueprint $table) use ($hasEnabled, $hasSort) {
+        Schema::table('tx_server_route', function (Blueprint $table) use ($hasEnabled, $hasSort) {
             if (!$hasEnabled) {
                 $table->boolean('enabled')->default(true);
             }
@@ -24,13 +24,13 @@ return new class extends Migration {
             }
         });
 
-        DB::table('v2_server_route')
+        DB::table('tx_server_route')
             ->orderBy('id')
             ->get(['id', 'sort'])
             ->values()
             ->each(function ($route, int $index) {
                 if ($route->sort === null) {
-                    DB::table('v2_server_route')
+                    DB::table('tx_server_route')
                         ->where('id', $route->id)
                         ->update(['sort' => ($index + 1) * 10]);
                 }
@@ -39,14 +39,14 @@ return new class extends Migration {
 
     public function down(): void
     {
-        if (!Schema::hasTable('v2_server_route')) {
+        if (!Schema::hasTable('tx_server_route')) {
             return;
         }
 
-        $hasSort = Schema::hasColumn('v2_server_route', 'sort');
-        $hasEnabled = Schema::hasColumn('v2_server_route', 'enabled');
+        $hasSort = Schema::hasColumn('tx_server_route', 'sort');
+        $hasEnabled = Schema::hasColumn('tx_server_route', 'enabled');
 
-        Schema::table('v2_server_route', function (Blueprint $table) use ($hasSort, $hasEnabled) {
+        Schema::table('tx_server_route', function (Blueprint $table) use ($hasSort, $hasEnabled) {
             if ($hasSort) {
                 $table->dropColumn('sort');
             }

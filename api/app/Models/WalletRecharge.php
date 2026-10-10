@@ -6,9 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 final class WalletRecharge extends Model
 {
-    
-    use \App\Support\Database\ResolvesNativeEloquentTable;
-protected $table = 'v2_wallet_recharge';
+
+protected $table = 'tx_wallet_recharge';
     protected $dateFormat = 'U';
     protected $guarded = ['id'];
     protected $casts = [

@@ -153,7 +153,7 @@ Severity is derived from normalized warning severity. Informational warnings rem
 
 ### Inspection history
 
-TXBoard persists normalized fleet snapshots in `v2_agent_inspection`.
+TXBoard persists normalized fleet snapshots in `tx_agent_inspection`.
 
 The scheduler runs `agent:inspect-fleet` every five minutes when:
 

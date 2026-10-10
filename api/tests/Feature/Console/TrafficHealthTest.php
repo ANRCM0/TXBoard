@@ -22,7 +22,7 @@ class TrafficHealthTest extends TestCase
             }
         );
 
-        DB::table('v2_traffic_batch')->insert([
+        DB::table('tx_traffic_batch')->insert([
             ['server_id' => 11, 'batch_id' => 'health-00000001',
                 'payload_hash' => str_repeat('a', 64), 'created_at' => time()],
             ['server_id' => 11, 'batch_id' => 'health-00000002',

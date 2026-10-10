@@ -64,7 +64,7 @@ ghcr.io/anrcm0/txboard:latest
 curl -fsSL https://raw.githubusercontent.com/ANRCM0/TXBoard-Deploy/main/update.sh | sudo bash
 ```
 
-升级前应备份并验证可恢复的数据库、应用配置、上传文件、主题和插件。涉及数据库表结构切换的操作须遵循单独的 [数据库切换手册](docs/operations/native-mysql-table-cutover.md)，不能将更新镜像视为自动执行数据迁移的授权。
+升级前应备份并验证可恢复的数据库、应用配置、上传文件、主题和插件。TXBoard 仅支持原生 `tx_*` 数据表；旧版数据库需先在离线备份副本中制定并验证独立的数据迁移方案，**更新镜像不会自动迁移既有数据**。详见 [原生数据库要求](docs/operations/native-schema.md)。
 
 ## API 与扩展
 

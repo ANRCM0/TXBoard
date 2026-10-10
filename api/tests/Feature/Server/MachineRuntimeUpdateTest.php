@@ -158,7 +158,7 @@ class MachineRuntimeUpdateTest extends TestCase
 
         $this->assertStringStartsWith('mup_', (string) $response->json('data.request_id'));
 
-        $this->assertDatabaseHas('v2_admin_audit_log', [
+        $this->assertDatabaseHas('tx_admin_audit_log', [
             'method' => 'POST',
         ]);
     }

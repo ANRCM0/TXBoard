@@ -17,9 +17,8 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
  */
 class ServerGroup extends Model
 {
-    
-    use \App\Support\Database\ResolvesNativeEloquentTable;
-protected $table = 'v2_server_group';
+
+protected $table = 'tx_server_group';
     protected $dateFormat = 'U';
     protected $casts = [
         'created_at' => 'timestamp',

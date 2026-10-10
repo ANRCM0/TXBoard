@@ -68,7 +68,7 @@ class AgentSupportTest extends TestCase
         $this->getJson('/txapi/admin/'.$secure.'/agents/support/reply-requests')->assertOk()->assertJsonPath('data.0.message', 'We are looking into this');
         $this->postJson('/txapi/admin/'.$secure.'/agents/support/reply-requests/approve', ['request_id' => $id])->assertOk()->assertJsonPath('data.status', 'succeeded');
         $this->assertSame(2, TicketMessage::where('ticket_id', $ticket->id)->count());
-        $this->assertDatabaseHas('v2_ticket', ['id' => $ticket->id, 'reply_status' => Ticket::REPLY_STATUS_REPLIED]);
+        $this->assertDatabaseHas('tx_ticket', ['id' => $ticket->id, 'reply_status' => Ticket::REPLY_STATUS_REPLIED]);
         $this->postJson('/txapi/admin/'.$secure.'/agents/support/reply-requests/approve', ['request_id' => $id])->assertUnprocessable();
         $this->assertSame(2, TicketMessage::where('ticket_id', $ticket->id)->count());
     }

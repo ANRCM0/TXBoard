@@ -193,6 +193,14 @@ redis_reachable() {
 # while skipping the installer, leaving a panel with no administrator.
 if echo " $* " | grep -q ' txboard:install '; then
     echo "[entrypoint] Skipping txboard:update while running the installer."
+else
+    php /www/artisan txboard:assert-native-schema --allow-unavailable --no-interaction || {
+        echo "[entrypoint] FATAL: native TXBoard schema required. Refusing to boot against an incompatible database." >&2
+        exit 1
+    }
+fi
+if echo " $* " | grep -q ' txboard:install '; then
+    echo "[entrypoint] Skipping txboard:update while running the installer."
 elif php /www/artisan txboard:install-status --no-interaction >/dev/null 2>&1; then
     if redis_reachable; then
         echo "[entrypoint] Running txboard:update (installed database confirmed, redis reachable)..."

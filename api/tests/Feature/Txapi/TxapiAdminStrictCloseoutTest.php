@@ -100,7 +100,7 @@ final class TxapiAdminStrictCloseoutTest extends TestCase
         Queue::assertPushed(SendEmailJob::class, 1);
     }
 
-    public function test_four_obsolete_v2_paths_are_absent(): void
+    public function test_four_obsolete_tx_paths_are_absent(): void
     {
         $routes = collect(Route::getRoutes()->getRoutes())
             ->map(static fn ($route): string => $route->uri())->all();

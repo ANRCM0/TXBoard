@@ -71,9 +71,9 @@ final class MySqlSchemaInventory
     public static function validate(array $tables): array
     {
         $requirements = [
-            'v2_user' => [['email']],
-            'v2_order' => [['trade_no']],
-            'v2_traffic_batch' => [['server_id', 'batch_id']],
+            'tx_user' => [['email']],
+            'tx_order' => [['trade_no']],
+            'tx_traffic_batch' => [['server_id', 'batch_id']],
         ];
         $results = [];
         foreach ($requirements as $table => $keys) {

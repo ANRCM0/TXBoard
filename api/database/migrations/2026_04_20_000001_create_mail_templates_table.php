@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
-        Schema::create('v2_mail_templates', function (Blueprint $table) {
+        Schema::create('tx_mail_templates', function (Blueprint $table) {
             $table->id();
             $table->string('name', 64)->unique();
             $table->string('subject', 255);
@@ -18,6 +18,6 @@ return new class extends Migration {
 
     public function down(): void
     {
-        Schema::dropIfExists('v2_mail_templates');
+        Schema::dropIfExists('tx_mail_templates');
     }
 };

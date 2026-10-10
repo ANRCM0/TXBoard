@@ -61,10 +61,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 class User extends Authenticatable
 {
-    
-    use \App\Support\Database\ResolvesNativeEloquentTable;
+
 use HasApiTokens;
-    protected $table = 'v2_user';
+    protected $table = 'tx_user';
     protected $dateFormat = 'U';
     protected $guarded = ['id'];
     protected $casts = [

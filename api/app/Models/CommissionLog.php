@@ -6,9 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class CommissionLog extends Model
 {
-    
-    use \App\Support\Database\ResolvesNativeEloquentTable;
-protected $table = 'v2_commission_log';
+
+protected $table = 'tx_commission_log';
     protected $dateFormat = 'U';
     protected $guarded = ['id'];
     protected $casts = [

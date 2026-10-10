@@ -8,7 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('v2_traffic_batch', function (Blueprint $table) {
+        Schema::create('tx_traffic_batch', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('server_id');
             $table->string('batch_id', 80);
@@ -21,6 +21,6 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::dropIfExists('v2_traffic_batch');
+        Schema::dropIfExists('tx_traffic_batch');
     }
 };

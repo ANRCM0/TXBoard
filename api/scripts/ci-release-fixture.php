@@ -41,21 +41,21 @@ $now = time();
 $old = $phase === 'seed-old';
 
 if ($old) {
-    if (Schema::hasTable(\App\Support\Database\NativeTableName::runtime('v2_wallet_recharge')) || Schema::hasTable(\App\Support\Database\NativeTableName::runtime('v2_traffic_batch'))) {
+    if (Schema::hasTable('tx_wallet_recharge') || Schema::hasTable('tx_traffic_batch')) {
         $fail('old baseline already contains new release ledger schema');
     }
-    if (DB::table(\App\Support\Database\NativeTableName::runtime('v2_user'))->where('email', $email)->exists()) {
+    if (DB::table('tx_user')->where('email', $email)->exists()) {
         $fail('fixture already seeded');
     }
     DB::transaction(static function () use ($email, $trade, $now): void {
-        $planId = DB::table(\App\Support\Database\NativeTableName::runtime('v2_plan'))->insertGetId([
+        $planId = DB::table('tx_plan')->insertGetId([
             'name' => 'Synthetic CI Release Plan', 'group_id' => 1,
             'transfer_enable' => 2, 'sort' => 0, 'show' => 1,
             'sell' => 1, 'renew' => 1,
             'prices' => json_encode(['monthly' => 12], JSON_THROW_ON_ERROR),
             'created_at' => $now, 'updated_at' => $now,
         ]);
-        $userId = DB::table(\App\Support\Database\NativeTableName::runtime('v2_user'))->insertGetId([
+        $userId = DB::table('tx_user')->insertGetId([
             'email' => $email,
             'password' => password_hash('fixture-only-do-not-use', PASSWORD_BCRYPT),
             'token' => 'c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1',
@@ -65,54 +65,50 @@ if ($old) {
             'u' => 1024, 'd' => 2048, 'transfer_enable' => 2147483648,
             'created_at' => $now, 'updated_at' => $now,
         ]);
-        DB::table(\App\Support\Database\NativeTableName::runtime('v2_order'))->insert([
+        DB::table('tx_order')->insert([
             'trade_no' => $trade, 'user_id' => $userId, 'plan_id' => $planId,
             'period' => 'monthly', 'type' => 1, 'status' => 3,
             'total_amount' => 1299, 'commission_balance' => 0,
             'created_at' => $now, 'updated_at' => $now,
         ]);
-        DB::table(\App\Support\Database\NativeTableName::runtime('v2_settings'))->insert([
-            ['name' => 'app_name', 'value' => 'TXBoard CI Restore',
-             'created_at' => now(), 'updated_at' => now()],
-            ['name' => 'frontend_theme_color', 'value' => 'legacy-color-to-purge',
-             'created_at' => now(), 'updated_at' => now()],
+        DB::table('tx_settings')->insert([
+            'name' => 'app_name', 'value' => 'TXBoard CI Restore',
+            'created_at' => now(), 'updated_at' => now(),
         ]);
     });
-    echo "Seeded synthetic legacy user, order, balances and appearance setting.\n";
+    echo "Seeded synthetic native user, order, balances and settings.\n";
     exit(0);
 }
 
-$user = DB::table(\App\Support\Database\NativeTableName::runtime('v2_user'))->where('email', $email)->first();
+$user = DB::table('tx_user')->where('email', $email)->first();
 if (!$user) $fail('synthetic user missing');
 $requireEqual((int) $user->balance, 8450, 'wallet balance in minor currency units');
 $requireEqual((int) $user->commission_balance, 275, 'commission balance in minor currency units');
 $requireEqual((int) $user->u, 1024, 'user upstream traffic');
 $requireEqual((int) $user->d, 2048, 'user downstream traffic');
 $requireEqual((int) $user->transfer_enable, 2147483648, 'user traffic entitlement');
-$order = DB::table(\App\Support\Database\NativeTableName::runtime('v2_order'))->where('trade_no', $trade)->first();
+$order = DB::table('tx_order')->where('trade_no', $trade)->first();
 if (!$order) $fail('historical order missing');
 $requireEqual((int) $order->user_id, (int) $user->id, 'historical order owner');
 $requireEqual((int) $order->plan_id, (int) $user->plan_id, 'historical order plan');
 $requireEqual((int) $order->total_amount, 1299, 'historical order amount');
 $requireEqual((int) $order->status, 3, 'historical order status');
-$requireEqual((int) DB::table(\App\Support\Database\NativeTableName::runtime('v2_settings'))->where('name', 'frontend_theme_color')->count(),
-    0, 'legacy presentation setting purge');
-$requireEqual((string) DB::table(\App\Support\Database\NativeTableName::runtime('v2_settings'))->where('name', 'app_name')->value('value'),
-    'TXBoard CI Restore', 'non-legacy setting retention');
+$requireEqual((string) DB::table('tx_settings')->where('name', 'app_name')->value('value'),
+    'TXBoard CI Restore', 'native setting retention');
 
-foreach ([\App\Support\Database\NativeTableName::runtime('v2_traffic_batch'), \App\Support\Database\NativeTableName::runtime('v2_wallet_recharge')] as $table) {
+foreach (['tx_traffic_batch', 'tx_wallet_recharge'] as $table) {
     if (!Schema::hasTable($table)) $fail($table . ' missing after migration');
 }
 
 if ($phase === 'seed-ledgers') {
-    if (DB::table(\App\Support\Database\NativeTableName::runtime('v2_wallet_recharge'))->exists() || DB::table(\App\Support\Database\NativeTableName::runtime('v2_traffic_batch'))->exists()) {
+    if (DB::table('tx_wallet_recharge')->exists() || DB::table('tx_traffic_batch')->exists()) {
         $fail('new ledgers already seeded');
     }
-    DB::table(\App\Support\Database\NativeTableName::runtime('v2_traffic_batch'))->insert([
+    DB::table('tx_traffic_batch')->insert([
         'server_id' => 1, 'batch_id' => 'ci-release-batch',
         'payload_hash' => str_repeat('a', 64), 'created_at' => $now,
     ]);
-    DB::table(\App\Support\Database\NativeTableName::runtime('v2_wallet_recharge'))->insert([
+    DB::table('tx_wallet_recharge')->insert([
         'user_id' => $user->id, 'payment_id' => 1,
         'trade_no' => 'TX-CI-RECHARGE-0001',
         'request_key' => '00000000-0000-0000-0000-000000009992',
@@ -123,14 +119,14 @@ if ($phase === 'seed-ledgers') {
     exit(0);
 }
 if ($phase === 'verify-restore') {
-    $batch = DB::table(\App\Support\Database\NativeTableName::runtime('v2_traffic_batch'))->where('batch_id', 'ci-release-batch')->first();
-    $recharge = DB::table(\App\Support\Database\NativeTableName::runtime('v2_wallet_recharge'))
+    $batch = DB::table('tx_traffic_batch')->where('batch_id', 'ci-release-batch')->first();
+    $recharge = DB::table('tx_wallet_recharge')
         ->where('trade_no', 'TX-CI-RECHARGE-0001')->first();
     if (!$batch || !$recharge) $fail('new idempotency ledger data missing');
     $requireEqual((int) $recharge->user_id, (int) $user->id, 'recharge owner');
     $requireEqual((int) $recharge->amount_minor, 2500, 'recharge amount');
     $requireEqual((int) $recharge->status, 0, 'pending recharge not accidentally credited');
-    $requireEqual((int) DB::table(\App\Support\Database\NativeTableName::runtime('v2_wallet_recharge'))->count(), 1, 'recharge count');
-    $requireEqual((int) DB::table(\App\Support\Database\NativeTableName::runtime('v2_traffic_batch'))->count(), 1, 'traffic batch count');
+    $requireEqual((int) DB::table('tx_wallet_recharge')->count(), 1, 'recharge count');
+    $requireEqual((int) DB::table('tx_traffic_batch')->count(), 1, 'traffic batch count');
 }
 echo "PASS {$phase}: synthetic balances, paid order, settings and ledger schema intact.\n";

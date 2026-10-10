@@ -13,7 +13,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('v2_coupon', function (Blueprint $table) {
+        Schema::table('tx_coupon', function (Blueprint $table) {
             $table->integer('started_at')->nullable()->change();
             $table->integer('ended_at')->nullable()->change();
         });
@@ -21,7 +21,7 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::table('v2_coupon', function (Blueprint $table) {
+        Schema::table('tx_coupon', function (Blueprint $table) {
             $table->integer('started_at')->nullable(false)->change();
             $table->integer('ended_at')->nullable(false)->change();
         });

@@ -60,7 +60,7 @@ final class TxapiAdminNetworkNodesTest extends TestCase
         $created = $this->postJson(self::ROOT, $payload)
             ->assertOk()->assertJsonPath('data.ok', true);
         $id = $created->json('data.id');
-        $this->assertDatabaseHas('v2_server', ['id' => $id, 'name' => 'Native Node']);
+        $this->assertDatabaseHas('tx_server', ['id' => $id, 'name' => 'Native Node']);
 
         $this->getJson(self::ROOT . '?page=1&per_page=1')
             ->assertOk()->assertJsonPath('meta.total', 1)
@@ -135,11 +135,11 @@ final class TxapiAdminNetworkNodesTest extends TestCase
         $this->postJson(self::ROOT . '/batch-delete', [
             'ids' => [$first->id, 999999],
         ])->assertStatus(404);
-        $this->assertDatabaseHas('v2_server', ['id' => $first->id]);
+        $this->assertDatabaseHas('tx_server', ['id' => $first->id]);
         $this->postJson(self::ROOT . '/batch-delete', [
             'ids' => [$first->id, $second->id],
         ])->assertOk();
-        $this->assertDatabaseMissing('v2_server', ['id' => $first->id]);
+        $this->assertDatabaseMissing('tx_server', ['id' => $first->id]);
     }
 
     public function test_native_secret_generation_has_bounded_input_and_no_store_response(): void
@@ -160,7 +160,7 @@ final class TxapiAdminNetworkNodesTest extends TestCase
             ->assertOk()->assertJsonStructure(['data' => ['key', 'config']]);
     }
 
-    public function test_no_legacy_node_admin_v2_routes_are_registered(): void
+    public function test_no_legacy_node_admin_tx_routes_are_registered(): void
     {
         $uris = collect(Route::getRoutes()->getRoutes())->map(
             static fn ($route) => $route->uri()

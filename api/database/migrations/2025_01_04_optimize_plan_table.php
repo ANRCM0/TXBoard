@@ -12,14 +12,14 @@ return new class extends Migration {
     public function up(): void
     {
         // Step 1: Add new columns first
-        Schema::table('v2_plan', function (Blueprint $table) {
+        Schema::table('tx_plan', function (Blueprint $table) {
             $table->json('prices')->nullable()->after('name')
                 ->comment('Store different duration prices and reset traffic price');
             $table->boolean('sell')->default(false)->after('prices')->comment('is sell');
         });
 
         // Step 2: Migrate data to new format
-        DB::table('v2_plan')->orderBy('id')->chunk(100, function ($plans) {
+        DB::table('tx_plan')->orderBy('id')->chunk(100, function ($plans) {
             foreach ($plans as $plan) {
                 $prices = array_filter([
                     'monthly' => $plan->month_price !== null ? $plan->month_price / 100 : null,
@@ -34,7 +34,7 @@ return new class extends Migration {
                     return $price !== null;
                 });
 
-                DB::table('v2_plan')
+                DB::table('tx_plan')
                     ->where('id', $plan->id)
                     ->update([
                         'prices' => json_encode($prices),
@@ -44,7 +44,7 @@ return new class extends Migration {
         });
 
         // Step 3: Optimize existing columns
-        Schema::table('v2_plan', function (Blueprint $table) {
+        Schema::table('tx_plan', function (Blueprint $table) {
             // Modify existing columns to be more efficient
             $table->unsignedInteger('group_id')->nullable()->change();
             $table->unsignedBigInteger('transfer_enable')->nullable()
@@ -58,7 +58,7 @@ return new class extends Migration {
         });
 
         // Step 4: Drop old columns
-        Schema::table('v2_plan', function (Blueprint $table) {
+        Schema::table('tx_plan', function (Blueprint $table) {
             $table->dropColumn([
                 'month_price',
                 'quarter_price',
@@ -78,7 +78,7 @@ return new class extends Migration {
     public function down(): void
     {
         // Step 1: Add back old columns
-        Schema::table('v2_plan', function (Blueprint $table) {
+        Schema::table('tx_plan', function (Blueprint $table) {
             $table->integer('month_price')->nullable();
             $table->integer('quarter_price')->nullable();
             $table->integer('half_year_price')->nullable();
@@ -90,11 +90,11 @@ return new class extends Migration {
         });
 
         // Step 2: Restore data from new format to old format
-        DB::table('v2_plan')->orderBy('id')->chunk(100, function ($plans) {
+        DB::table('tx_plan')->orderBy('id')->chunk(100, function ($plans) {
             foreach ($plans as $plan) {
                 $prices = json_decode($plan->prices, true) ?? [];
 
-                DB::table('v2_plan')
+                DB::table('tx_plan')
                     ->where('id', $plan->id)
                     ->update([
                         'month_price' => $prices['monthly'] * 100 ?? null,
@@ -110,7 +110,7 @@ return new class extends Migration {
         });
 
         // Step 3: Drop new columns
-        Schema::table('v2_plan', function (Blueprint $table) {
+        Schema::table('tx_plan', function (Blueprint $table) {
             $table->dropColumn([
                 'prices',
                 'sell'
@@ -118,7 +118,7 @@ return new class extends Migration {
         });
 
         // Step 4: Restore column types to original
-        Schema::table('v2_plan', function (Blueprint $table) {
+        Schema::table('tx_plan', function (Blueprint $table) {
             $table->integer('group_id')->change();
             $table->integer('transfer_enable')->change();
             $table->integer('speed_limit')->nullable()->change();

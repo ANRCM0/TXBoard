@@ -7,9 +7,8 @@ use Illuminate\Support\Facades\DB;
 
 class ServerLog extends Model
 {
-    
-    use \App\Support\Database\ResolvesNativeEloquentTable;
-protected $table = 'v2_server_log';
+
+protected $table = 'tx_server_log';
     protected $dateFormat = 'U';
     protected $casts = [
         'created_at' => 'timestamp',

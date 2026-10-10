@@ -6,9 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class AgentInspection extends Model
 {
-    
-    use \App\Support\Database\ResolvesNativeEloquentTable;
-protected $table = 'v2_agent_inspection';
+
+protected $table = 'tx_agent_inspection';
     protected $dateFormat = 'U';
     protected $guarded = ['id'];
 

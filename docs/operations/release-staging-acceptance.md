@@ -128,4 +128,4 @@ bash scripts/staging-readonly-smoke.sh https://<staging-domain>
 - 观察 API p95、5xx、MySQL 死锁和慢查询、失败任务与队列 backlog、Node/Machine 连接、Agent 审批、支付/钱包/佣金对账；结合 `traffic_queue_unavailable`、`traffic_queue_backlog_high` 告警。
 - 可用运行时中执行 `php artisan traffic:health --json`，检查持久流量批次 ledger 与队列；HTTP 202 或 WS `traffic.ack` 的 `queued` 是接收确认，不代表 SQL 最终结算。
 - 同 `traffic_batch_id` 重试不能重复计费，同 ID 但不同计数必须拒绝；故障后以持久账本核对，并确认失败任务可恢复。回退镜像不会自动撤销 DDL 或资金交易，必须按备份与对账计划处理。
-- 按 [镜像发布通道](image-release-channels.md) 使用不可变 digest，数据库表名切换必须依照 [独立切换 Runbook](native-mysql-table-cutover.md) 在维护窗口执行。
+- 按 [镜像发布通道](image-release-channels.md) 使用不可变 digest。部署的数据库必须符合 [TXBoard 原生数据库结构](native-schema.md)；任何已有旧库的数据转换均属于独立运维工作，不属于镜像升级。

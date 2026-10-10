@@ -43,9 +43,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 class Order extends Model
 {
-    
-    use \App\Support\Database\ResolvesNativeEloquentTable;
-protected $table = 'v2_order';
+
+protected $table = 'tx_order';
     protected $dateFormat = 'U';
     protected $guarded = ['id'];
     protected $casts = [

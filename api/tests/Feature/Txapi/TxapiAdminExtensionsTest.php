@@ -83,10 +83,10 @@ final class TxapiAdminExtensionsTest extends TestCase
 
         $this->postJson(self::ROOT . '/plugins/test_plugin/actions/enable')
             ->assertOk()->assertJsonPath('data.ok', true);
-        $this->assertDatabaseHas('v2_admin_audit_log', ['method' => 'POST']);
+        $this->assertDatabaseHas('tx_admin_audit_log', ['method' => 'POST']);
     }
 
-    public function test_retired_v2_theme_and_plugin_admin_endpoints_are_unregistered(): void
+    public function test_retired_tx_theme_and_plugin_admin_endpoints_are_unregistered(): void
     {
         $uris = collect(Route::getRoutes()->getRoutes())
             ->map(static fn ($route) => $route->uri())->all();

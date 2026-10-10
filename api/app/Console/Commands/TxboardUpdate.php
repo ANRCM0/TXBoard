@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Services\ThemeService;
+use App\Support\Database\NativeSchemaPreflight;
 use App\Services\VersionService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Artisan;
@@ -41,6 +42,12 @@ class TxboardUpdate extends Command
      */
     public function handle()
     {
+        try {
+            NativeSchemaPreflight::assertReady();
+        } catch (\Throwable $e) {
+            $this->error('数据库结构不符合 TXBoard 原生模式，拒绝自动更新：' . $e->getMessage());
+            return self::FAILURE;
+        }
         $this->info('正在导入数据库请稍等...');
         $migrateExitCode = Artisan::call("migrate", ['--force' => true, '--no-interaction' => true]);
         $this->info(Artisan::output());

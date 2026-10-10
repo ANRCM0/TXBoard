@@ -8,7 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('v2_wallet_recharge', function (Blueprint $table) {
+        Schema::create('tx_wallet_recharge', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('user_id');
             $table->unsignedBigInteger('payment_id');
@@ -29,6 +29,6 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::dropIfExists('v2_wallet_recharge');
+        Schema::dropIfExists('tx_wallet_recharge');
     }
 };

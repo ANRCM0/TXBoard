@@ -13,8 +13,8 @@ class AddTrafficResetFieldsToUsers extends Migration
     public function up(): void
     {
         ini_set('memory_limit', '-1');
-        if (!Schema::hasColumn('v2_user', 'next_reset_at')) {
-            Schema::table('v2_user', function (Blueprint $table) {
+        if (!Schema::hasColumn('tx_user', 'next_reset_at')) {
+            Schema::table('tx_user', function (Blueprint $table) {
                 $table->integer('next_reset_at')->nullable()->after('expired_at')->comment('下次流量重置时间');
                 $table->integer('last_reset_at')->nullable()->after('next_reset_at')->comment('上次流量重置时间');
                 $table->integer('reset_count')->default(0)->after('last_reset_at')->comment('流量重置次数');
@@ -31,7 +31,7 @@ class AddTrafficResetFieldsToUsers extends Migration
      */
     public function down(): void
     {
-        Schema::table('v2_user', function (Blueprint $table) {
+        Schema::table('tx_user', function (Blueprint $table) {
             $table->dropIndex('idx_next_reset_at');
             $table->dropColumn(['next_reset_at', 'last_reset_at', 'reset_count']);
         });

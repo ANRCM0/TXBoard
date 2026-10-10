@@ -35,11 +35,10 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  */
 class Plan extends Model
 {
-    
-    use \App\Support\Database\ResolvesNativeEloquentTable;
+
 use HasFactory;
 
-    protected $table = 'v2_plan';
+    protected $table = 'tx_plan';
     protected $dateFormat = 'U';
 
     // 定义流量重置方式

@@ -365,7 +365,7 @@ class TxNodeNativeWebSocketTest extends TestCase
             $this->assertSame('traffic.ack', end($sent)['event']);
             $this->assertSame('queued', end($sent)['data']['settlement']);
             $this->assertSame('report-001', end($sent)['request_id']);
-            $this->assertSame(0, DB::table('v2_traffic_batch')->count());
+            $this->assertSame(0, DB::table('tx_traffic_batch')->count());
 
             $this->postJson('/txapi/node/v1/report', [
                 'protocol_version' => 1, 'traffic_batch_id' => $batchId,
@@ -383,7 +383,7 @@ class TxNodeNativeWebSocketTest extends TestCase
             }
             $this->assertSame(100, (int) $user->fresh()->u);
             $this->assertSame(200, (int) $user->fresh()->d);
-            $this->assertSame(1, DB::table('v2_traffic_batch')->count());
+            $this->assertSame(1, DB::table('tx_traffic_batch')->count());
         } finally {
             NodeRegistry::remove((int) $node->id, $conn);
         }

@@ -75,6 +75,6 @@ Accessible under **Node Management → AccessAudit** in the React Admin.
 
 ## Data protection and retention
 
-The tables `v2_access_audit_rule` / `v2_access_audit_event` (or `tx_access_audit_*` on native cutover) are isolated from admin logs, user balances and traffic billing. Event logs contain sensitive targets and IP addresses and must not be rendered to non-admin users. API replies set `Cache-Control: no-store`. A daily scheduled `access-audit:prune` command removes events older than 30 days in bounded batches; the deployment must run Laravel `schedule:run` regularly.
+The tables `tx_access_audit_rule` / `tx_access_audit_event` (or `tx_access_audit_*` on native cutover) are isolated from admin logs, user balances and traffic billing. Event logs contain sensitive targets and IP addresses and must not be rendered to non-admin users. API replies set `Cache-Control: no-store`. A daily scheduled `access-audit:prune` command removes events older than 30 days in bounded batches; the deployment must run Laravel `schedule:run` regularly.
 
 This feature **does not** automatically ban accounts, reset traffic, change proxy routing, inspect HTTPS content, or guarantee crash-proof retention. End-to-end live verification is required before broad deployment.

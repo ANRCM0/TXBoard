@@ -5,29 +5,15 @@ on:
     branches: [main]
     paths:
       - "api/**"
-      - "scripts/database-runtime-reference-gate.mjs"
-      - "scripts/tests/database-runtime-reference-gate.test.mjs"
-      - "scripts/database-native-cutover-plan.mjs"
-      - "scripts/tests/database-native-cutover-plan.test.mjs"
       - "scripts/compare-critical-data-snapshots.mjs"
       - "scripts/tests/compare-critical-data-snapshots.test.mjs"
-      - "scripts/database-schema-inventory.mjs"
-      - "scripts/database-mysql-parity.mjs"
-      - "scripts/tests/database-mysql-parity.test.mjs"
       - ".github/workflows/ci-mysql.yml"
   pull_request:
     branches: [main]
     paths:
       - "api/**"
-      - "scripts/database-runtime-reference-gate.mjs"
-      - "scripts/tests/database-runtime-reference-gate.test.mjs"
-      - "scripts/database-native-cutover-plan.mjs"
-      - "scripts/tests/database-native-cutover-plan.test.mjs"
       - "scripts/compare-critical-data-snapshots.mjs"
       - "scripts/tests/compare-critical-data-snapshots.test.mjs"
-      - "scripts/database-schema-inventory.mjs"
-      - "scripts/database-mysql-parity.mjs"
-      - "scripts/tests/database-mysql-parity.test.mjs"
       - ".github/workflows/ci-mysql.yml"
 
 concurrency:
@@ -85,13 +71,13 @@ jobs:
         run: |
           php artisan migrate --force --no-interaction
           php artisan migrate:status --no-interaction
-      - name: Verify ledger, order and plugin schema exists
+      - name: Verify native ledger, order and plugin schema exists
         run: |
           php -r '
             require "vendor/autoload.php";
             $app = require "bootstrap/app.php";
             $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
-            foreach (["v2_user", "v2_order", "v2_traffic_batch", "v2_plugins"] as $table) {
+            foreach (["tx_user", "tx_order", "tx_traffic_batch", "tx_plugins"] as $table) {
                 if (!Illuminate\Support\Facades\Schema::hasTable($table)) {
                     fwrite(STDERR, "Missing MySQL table: " . $table . PHP_EOL);
                     exit(1);
@@ -106,75 +92,30 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - name: Test source-to-MySQL parity checker
+      - name: Verify native-only source references
         working-directory: .
-        run: node --test scripts/tests/database-mysql-parity.test.mjs
-      - name: Compare source V2 schema inventory against MySQL 8.4
+        run: node scripts/check-native-schema-only.mjs --check
+      - name: Test native-only source guard
+        working-directory: .
+        run: node --test scripts/tests/check-native-schema-only.test.mjs
+      - name: Test native critical snapshot comparison
         working-directory: .
         run: |
-          node scripts/database-schema-inventory.mjs --root . --output api/artifacts/source-schema.json --check
-          node scripts/database-mysql-parity.mjs --source api/artifacts/source-schema.json --mysql api/artifacts/p0-schema.json --output api/artifacts/mysql-schema-parity.json --check
-      - name: Verify atomic native rename and rollback against isolated MySQL probe tables
-        run: APP_ENV=testing php scripts/database-atomic-rename-roundtrip.php
-      - name: Test native runtime reference inventory
-        working-directory: .
-        run: node --test scripts/tests/database-runtime-reference-gate.test.mjs
-      - name: Report remaining runtime V2 references (informational)
-        working-directory: .
-        run: node scripts/database-runtime-reference-gate.mjs --source api/artifacts/source-schema.json --output api/artifacts/native-runtime-reference-gate.json
-      - name: Upload native runtime reference audit
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: txboard-native-runtime-reference-audit
-          path: api/artifacts/native-runtime-reference-gate.json
-          if-no-files-found: warn
-          retention-days: 14
-      - name: Test conservative native cutover planner
-        working-directory: .
-        run: node --test scripts/tests/database-native-cutover-plan.test.mjs
-      - name: Generate non-executable table cutover review plan
-        working-directory: .
-        run: node scripts/database-native-cutover-plan.mjs --parity api/artifacts/mysql-schema-parity.json --output api/artifacts/native-cutover-plan.json
-      - name: Upload native cutover review plan
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: txboard-native-cutover-plan
-          path: api/artifacts/native-cutover-plan.json
-          if-no-files-found: warn
-          retention-days: 14
-      - name: Preserve native schema parity evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: txboard-mysql-schema-parity
-          path: api/artifacts/mysql-schema-parity.json
-          if-no-files-found: warn
-          retention-days: 14
-      - name: Test cutover aggregate comparison
-        working-directory: .
-        run: node --test scripts/tests/compare-critical-data-snapshots.test.mjs
-      - name: Capture read-only critical data baseline on MySQL
+          node --test scripts/tests/compare-critical-data-snapshots.test.mjs
+          node --test scripts/tests/compare-critical-row-fingerprints.test.mjs
+      - name: Capture native critical data baseline
         run: php scripts/database-critical-data-snapshot.php --output=artifacts/critical-data-baseline.json
-      - name: Verify unchanged critical baseline on MySQL
-        working-directory: .
-        run: |
-          node scripts/compare-critical-data-snapshots.mjs api/artifacts/critical-data-baseline.json api/artifacts/critical-data-baseline.json
-      - name: Upload cutover critical data baseline
+      - name: Capture native row-level fingerprints
+        run: php scripts/database-critical-row-fingerprints.php --output=artifacts/critical-row-fingerprints.json
+      - name: Upload native database evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: txboard-critical-data-baseline
-          path: api/artifacts/critical-data-baseline.json
-          if-no-files-found: warn
-          retention-days: 14
-      - name: Upload MySQL P0 schema evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: txboard-p0-mysql-schema
-          path: api/artifacts/p0-schema.json
+          name: txboard-native-database-evidence
+          path: |
+            api/artifacts/critical-data-baseline.json
+            api/artifacts/critical-row-fingerprints.json
+            api/artifacts/p0-schema.json
           if-no-files-found: warn
           retention-days: 14
       - name: P0-B synthetic MySQL HTTP-to-worker journey
@@ -229,8 +170,3 @@ jobs:
         run: php artisan test tests/Feature/Server/TrafficBatchSettlementTest.php
       - name: MySQL order recovery regression
         run: php artisan test tests/Feature/Order/CheckOrderRecoveryTest.php
-      - name: Exercise full-table native upgrade and atomic rollback on MySQL 8.4
-        run: |
-          php -l app/Console/Commands/DatabaseNativeCutover.php
-          php -l scripts/database-native-full-roundtrip.php
-          php scripts/database-native-full-roundtrip.php

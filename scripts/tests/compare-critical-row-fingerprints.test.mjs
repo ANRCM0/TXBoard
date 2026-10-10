@@ -6,16 +6,16 @@ const snap = (prefix, digestValue = digest) => ({
   schema_version: 1, read_only: true, kind: 'critical-row-fingerprints',
   table_prefix: prefix, tables: { user: { rows: '2', columns: ['balance', 'id'], sha256: digestValue } },
 });
-test('matching rows pass even when table prefixes change', () => {
-  assert.equal(compareRowFingerprints(snap('v2'), snap('tx')).passed, true);
+test('matching native rows pass', () => {
+  assert.equal(compareRowFingerprints(snap('tx'), snap('tx')).passed, true);
 });
 test('different row content fails even if counts match', () => {
-  assert.deepEqual(compareRowFingerprints(snap('v2'), snap('tx', 'b'.repeat(64))).failures, ['Row digest mismatch: user']);
+  assert.deepEqual(compareRowFingerprints(snap('tx'), snap('tx', 'b'.repeat(64))).failures, ['Row digest mismatch: user']);
 });
 test('different schema columns fail', () => {
   const after = snap('tx'); after.tables.user.columns = ['id'];
-  assert.equal(compareRowFingerprints(snap('v2'), after).passed, false);
+  assert.equal(compareRowFingerprints(snap('tx'), after).passed, false);
 });
 test('rejects invalid evidence', () => {
-  assert.throws(() => compareRowFingerprints(snap('v2'), {}), /Invalid row fingerprint/);
+  assert.throws(() => compareRowFingerprints(snap('tx'), {}), /Invalid row fingerprint/);
 });

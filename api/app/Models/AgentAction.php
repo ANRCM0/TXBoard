@@ -6,8 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class AgentAction extends Model
 {
-    
-    use \App\Support\Database\ResolvesNativeEloquentTable;
+
 public const STATUS_PENDING = 'pending';
     public const STATUS_RUNNING = 'running';
     public const STATUS_SUCCEEDED = 'succeeded';
@@ -16,7 +15,7 @@ public const STATUS_PENDING = 'pending';
     public const STATUS_TIMED_OUT = 'timed_out';
     public const STATUS_UNKNOWN = 'unknown';
 
-    protected $table = 'v2_agent_action';
+    protected $table = 'tx_agent_action';
     protected $dateFormat = 'U';
     protected $guarded = ['id'];
 

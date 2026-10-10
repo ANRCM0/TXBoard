@@ -8,7 +8,7 @@ use Tests\TestCase;
 /** The development API is TXAPI only: V1/V2 may not return under any route provider. */
 class RetiredLegacyUserRoutesTest extends TestCase
 {
-    public function test_no_v1_or_v2_routes_are_registered(): void
+    public function test_no_v1_or_tx_routes_are_registered(): void
     {
         foreach (Route::getRoutes()->getRoutes() as $route) {
             $this->assertDoesNotMatchRegularExpression('~^api/v[12](?:/|$)~', $route->uri(),

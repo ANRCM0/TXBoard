@@ -13,10 +13,9 @@ $app->make(\Illuminate\Contracts\Console\Kernel::class)->bootstrap();
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
-$options = getopt('', ['output:', 'prefix:']);
-$prefix = $options['prefix'] ?? 'v2';
-if (!isset($options['output']) || !is_string($options['output']) || !in_array($prefix, ['v2', 'tx'], true)) {
-    fwrite(STDERR, "Usage: php scripts/database-critical-row-fingerprints.php --output=PATH [--prefix=v2|tx]\n");
+$options = getopt('', ['output:']);
+if (!isset($options['output']) || !is_string($options['output'])) {
+    fwrite(STDERR, "Usage: php scripts/database-critical-row-fingerprints.php --output=PATH\n");
     exit(2);
 }
 if (DB::connection()->getDriverName() !== 'mysql') {
@@ -26,9 +25,9 @@ if (DB::connection()->getDriverName() !== 'mysql') {
 
 $domains = ['user', 'order', 'wallet_recharge', 'commission_log', 'traffic_batch', 'stat_user', 'stat_server'];
 $report = ['schema_version' => 1, 'read_only' => true, 'kind' => 'critical-row-fingerprints',
-    'table_prefix' => $prefix, 'tables' => []];
+    'table_prefix' => 'tx', 'tables' => []];
 foreach ($domains as $domain) {
-    $table = $prefix . '_' . $domain;
+    $table = 'tx_' . $domain;
     if (!Schema::hasTable($table) || !Schema::hasColumn($table, 'id')) {
         throw new RuntimeException("Missing table or id column: {$table}");
     }

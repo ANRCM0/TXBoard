@@ -99,7 +99,7 @@ final class NativeAccessAuditTest extends TestCase
         $this->postJson($path, $body, $this->nodeHeaders($node))->assertOk()
             ->assertJsonPath('data.received', 1)->assertJsonPath('data.inserted', 0);
         $this->assertSame(1, DB::table(NativeAccessAudit::eventsTable())->count());
-        $this->assertDatabaseCount('v2_traffic_batch', 0);
+        $this->assertDatabaseCount('tx_traffic_batch', 0);
         $this->postJson($path, ['protocol_version' => 1, 'events' => [
             $this->event($user->id, 'invalid-event-id'),
         ]], $this->nodeHeaders($node))->assertStatus(422);
@@ -135,6 +135,6 @@ final class NativeAccessAuditTest extends TestCase
         $headers['X-TX-Node-ID'] = (string) $ownedNode->id;
         $this->postJson('/txapi/node/v1/audit/report', $body, $headers)
             ->assertOk()->assertJsonPath('data.inserted', 1);
-        $this->assertDatabaseCount('v2_access_audit_event', 1);
+        $this->assertDatabaseCount('tx_access_audit_event', 1);
     }
 }

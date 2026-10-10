@@ -17,10 +17,10 @@
 ## 运维与安全
 
 - [镜像发布通道](operations/image-release-channels.md)
-- [MySQL 原生表切换操作](operations/native-mysql-table-cutover.md)
+- [MySQL 原生数据库结构](operations/native-schema.md)
 - [发布前验收、备份恢复和运行监控](operations/release-staging-acceptance.md)
 - [安全基线与插件/主题运行时边界](security/README.md)
 
 开发者应遵循 [AGENTS.md](../AGENTS.md)；其中包含 Laravel 路由导出命令和新增 Module / Agent 能力的实现检查要求。
 
-数据库表名切换、支付商、第三方 TXNode、插件等真实环境行为须单独验收；CI 通过不代表生产部署或跨仓联调已通过。
+原生数据库部署、支付商、第三方 TXNode、插件等真实环境行为须单独验收；CI 通过不代表生产部署或跨仓联调已通过。

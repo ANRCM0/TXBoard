@@ -23,9 +23,8 @@ use Illuminate\Support\Facades\Log;
  */
 class Plugin extends Model
 {
-    
-    use \App\Support\Database\ResolvesNativeEloquentTable;
-protected $table = 'v2_plugins';
+
+protected $table = 'tx_plugins';
 
     const TYPE_FEATURE = 'feature';
     const TYPE_PAYMENT = 'payment';

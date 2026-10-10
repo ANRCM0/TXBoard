@@ -168,11 +168,11 @@ class CorePurchaseTrafficJourneyTest extends TestCase
 
         $this->assertSame(200, (int) $user->fresh()->u);
         $this->assertSame(600, (int) $user->fresh()->d);
-        $this->assertSame(1, DB::table('v2_traffic_batch')->count());
-        $this->assertSame(800, (int) DB::table('v2_stat_user')
+        $this->assertSame(1, DB::table('tx_traffic_batch')->count());
+        $this->assertSame(800, (int) DB::table('tx_stat_user')
             ->where('user_id', $user->id)->sum(DB::raw('u + d')));
         $this->assertSame(400, (int) ($server->fresh()->u + $server->fresh()->d));
-        $this->assertSame(1, DB::table('v2_stat_server')->where('server_id', $server->id)->count());
+        $this->assertSame(1, DB::table('tx_stat_server')->where('server_id', $server->id)->count());
 
         $this->getJson('/txapi/orders/' . rawurlencode($tradeNo), $headers)
             ->assertOk()->assertJsonPath('data.status', Order::STATUS_COMPLETED);

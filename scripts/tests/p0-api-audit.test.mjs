@@ -13,7 +13,7 @@ test('scan locates old callers but never exposes source lines or secrets', () =>
   mkdirSync(join(root,'docs'),{recursive:true});
   writeFileSync(join(root,'web/user/src/client.ts'),
    'const url="/api/v1";\nconst key="xboard_auth_data"; // SECRET_VALUE\n');
-  writeFileSync(join(root,'api/app/Model.php'),'<?php $table="v2_order";');
+  writeFileSync(join(root,'api/app/Model.php'),'<?php $table="tx_order";');
   writeFileSync(join(root,'docs/old.md'),'/api/v1');
   const found=collectReferences(root);
   assert.ok(found.some(x=>x.kind==='legacy_api'&&x.owner==='User web'&&x.line===1));

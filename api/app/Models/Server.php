@@ -60,8 +60,7 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
  */
 class Server extends Model
 {
-    
-    use \App\Support\Database\ResolvesNativeEloquentTable;
+
 public const TYPE_HYSTERIA = 'hysteria';
     public const TYPE_VLESS = 'vless';
     public const TYPE_TROJAN = 'trojan';
@@ -113,7 +112,7 @@ public const TYPE_HYSTERIA = 'hysteria';
         self::TYPE_MIERU,
     ];
 
-    protected $table = 'v2_server';
+    protected $table = 'tx_server';
 
     protected $guarded = ['id'];
     protected $casts = [

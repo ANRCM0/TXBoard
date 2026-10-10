@@ -49,7 +49,7 @@ final class TxapiAdminNetworkMachinesTest extends TestCase
         $this->assertStringContainsString('no-store', (string) $response->headers->get('Cache-Control'));
         $this->assertStringContainsString("install --mode machine", $response->json('data.install_command'));
         $this->assertStringContainsString("--channel 'dev'", $response->json('data.install_command'));
-        $this->assertDatabaseHas('v2_server_machine', ['id' => $id, 'name' => 'Tokyo-Machine']);
+        $this->assertDatabaseHas('tx_server_machine', ['id' => $id, 'name' => 'Tokyo-Machine']);
 
         $this->getJson(self::ROOT)->assertOk()
             ->assertJsonPath('data.0.name', 'Tokyo-Machine')
@@ -73,7 +73,7 @@ final class TxapiAdminNetworkMachinesTest extends TestCase
         $this->assertSame($rotated->json('data.token'), ServerMachine::findOrFail($id)->token);
         $this->assertStringContainsString('no-store', (string) $rotated->headers->get('Cache-Control'));
         $this->assertStringNotContainsString($oldToken, $rotated->getContent());
-        $this->assertDatabaseHas('v2_admin_audit_log', ['method' => 'POST']);
+        $this->assertDatabaseHas('tx_admin_audit_log', ['method' => 'POST']);
     }
 
     public function test_machine_delete_detaches_nodes_and_history_is_bounded(): void
@@ -100,12 +100,12 @@ final class TxapiAdminNetworkMachinesTest extends TestCase
         $this->deleteJson(self::ROOT . '/' . $machine->id)
             ->assertOk()->assertJsonPath('data.ok', true);
         $this->assertNull($node->fresh()->machine_id);
-        $this->assertDatabaseMissing('v2_server_machine', ['id' => $machine->id]);
+        $this->assertDatabaseMissing('tx_server_machine', ['id' => $machine->id]);
         $this->deleteJson(self::ROOT . '/' . $machine->id)->assertStatus(404);
         $this->postJson(self::ROOT . '/' . $machine->id . '/credentials')->assertStatus(404);
     }
 
-    public function test_runtime_endpoint_rejects_unknown_target_and_old_v2_admin_routes_are_gone(): void
+    public function test_runtime_endpoint_rejects_unknown_target_and_old_tx_admin_routes_are_gone(): void
     {
         Sanctum::actingAs($this->user('machine-run@example.test', true));
         $machine = ServerMachine::create([

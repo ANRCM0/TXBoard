@@ -11,7 +11,7 @@ final class RetiredLegacyAdminRoutesTest extends TestCase
      * V2 public/subscriber/provider/Agent/Node paths have different contracts.
      * This is a zero-V2-ADMIN requirement, not a universal V2 protocol removal.
      */
-    public function test_entire_v2_admin_route_tree_is_absent(): void
+    public function test_entire_tx_admin_route_tree_is_absent(): void
     {
         $routes = collect(Route::getRoutes()->getRoutes());
         $obsolete = $routes->filter(static function ($route): bool {

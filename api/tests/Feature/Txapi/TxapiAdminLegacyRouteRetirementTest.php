@@ -7,7 +7,7 @@ use Tests\TestCase;
 
 final class TxapiAdminLegacyRouteRetirementTest extends TestCase
 {
-    public function test_native_content_and_settings_replace_v2_admin_routes_without_redirect_shims(): void
+    public function test_native_content_and_settings_replace_tx_admin_routes_without_redirect_shims(): void
     {
         $routes = collect(Route::getRoutes()->getRoutes())
             ->map(static fn ($route) => $route->uri())->all();
