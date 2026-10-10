@@ -8,6 +8,7 @@ import {
   Gift,
   MessageCircle,
   Network,
+  ShieldCheck,
   Package,
   Plug,
   RefreshCcw,
@@ -61,6 +62,7 @@ export const coreNavigationGroups = [
       ['/server/manage', '节点管理', Network],
       ['/server/group', '权限组管理', Boxes],
       ['/server/route', '路由管理', Route],
+      ['/server/access-audit', '访问审计', ShieldCheck],
     ],
   },
   {
