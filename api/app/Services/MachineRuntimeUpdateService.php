@@ -63,7 +63,7 @@ class MachineRuntimeUpdateService
         return [
             'machine_id' => (int) $machine->id,
             'request_id' => $requestId,
-            'target' => 'latest',
+            'target' => $target,
             'status' => 'accepted',
         ];
     }
