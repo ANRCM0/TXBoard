@@ -17,7 +17,7 @@ final class FinancialInvariantAudit
     /** @return array<string, mixed> */
     public function snapshot(): array
     {
-        $duplicateProviderTransactions = DB::table('v2_order')
+        $duplicateProviderTransactions = DB::table(\App\Support\Database\NativeTableName::runtime('v2_order'))
             ->select('payment_id', 'callback_no')
             ->whereNotNull('payment_id')->whereNotNull('callback_no')
             ->whereIn('status', [Order::STATUS_PROCESSING, Order::STATUS_COMPLETED])
@@ -43,7 +43,7 @@ final class FinancialInvariantAudit
         return [
             'schema_version' => 1,
             'scope' => 'stored_money_and_order_invariants_only',
-            'tables_scanned' => ['v2_order', 'v2_user', 'v2_commission_log'],
+            'tables_scanned' => [\App\Support\Database\NativeTableName::runtime('v2_order'), \App\Support\Database\NativeTableName::runtime('v2_user'), \App\Support\Database\NativeTableName::runtime('v2_commission_log')],
             'orders_scanned' => Order::query()->count(),
             'violations' => $violations,
             'passed' => array_sum($violations) === 0,

@@ -70,7 +70,7 @@ class StatServerJob implements ShouldQueue
 
     protected function updateServerTraffic(int $u, int $d): void
     {
-        DB::table('v2_server')
+        DB::table(\App\Support\Database\NativeTableName::runtime('v2_server'))
             ->where('id', $this->server['id'])
             ->incrementEach(
                 ['u' => $u, 'd' => $d],
