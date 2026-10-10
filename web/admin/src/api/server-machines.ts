@@ -53,9 +53,9 @@ export function resetMachineToken(id: number): Promise<MachineCredentials> {
   ))
 }
 
-export function updateMachineRuntime(id: number): Promise<MachineRuntimeUpdateRequestResult> {
+export function updateMachineRuntime(id: number, target: 'latest' | 'dev' = 'latest'): Promise<MachineRuntimeUpdateRequestResult> {
   return unwrapNative(nativeApiClient.post<NativeApiEnvelope<MachineRuntimeUpdateRequestResult>>(
-    path(id) + '/runtime/update', { target: 'latest' },
+    path(id) + '/runtime/update', { target },
   ))
 }
 
