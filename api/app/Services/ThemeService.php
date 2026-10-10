@@ -98,7 +98,7 @@ class ThemeService
                 $name = basename($dir);
                 if (
                     !File::exists($dir . '/' . self::CONFIG_FILE) ||
-                    !File::exists($dir . '/dashboard.blade.php')
+                    ($name !== self::DEFAULT_THEME && !File::exists($dir . '/dashboard.blade.php'))
                 ) {
                     return [];
                 }
@@ -232,6 +232,16 @@ class ThemeService
         }
 
         $currentTheme = $this->getActiveTheme();
+
+        // The built-in theme is served by the native Vue SPA; no static Umi
+        // application or Blade theme asset publication is required.
+        if ($theme === self::DEFAULT_THEME) {
+            admin_setting(['frontend_theme' => $theme]);
+            if ($currentTheme !== self::DEFAULT_THEME) {
+                $this->cleanupThemeFiles($currentTheme);
+            }
+            return true;
+        }
 
         try {
             $themePath = $this->getThemePath($theme);

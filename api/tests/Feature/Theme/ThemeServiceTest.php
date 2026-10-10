@@ -107,6 +107,14 @@ class ThemeServiceTest extends TestCase
         app(ThemeService::class)->delete('CustomTheme');
     }
 
+    public function test_built_in_theme_switch_uses_native_vue_without_static_theme_assets(): void
+    {
+        $service = app(ThemeService::class);
+        $this->assertArrayHasKey('TXBoard', $service->getList());
+        $this->assertTrue($service->switch('TXBoard'));
+        $this->assertSame('TXBoard', $service->getActiveTheme());
+    }
+
     public function test_system_theme_cannot_be_deleted(): void
     {
         $this->expectException(\Exception::class);
