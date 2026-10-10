@@ -6,7 +6,9 @@ use Illuminate\Database\Eloquent\Model;
 
 class Knowledge extends Model
 {
-    protected $table = 'v2_knowledge';
+    
+    use \App\Support\Database\ResolvesNativeEloquentTable;
+protected $table = 'v2_knowledge';
     protected $dateFormat = 'U';
     protected $guarded = ['id'];
     protected $casts = [

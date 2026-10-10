@@ -25,7 +25,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class GiftCardUsage extends Model
 {
-    protected $table = 'v2_gift_card_usage';
+    
+    use \App\Support\Database\ResolvesNativeEloquentTable;
+protected $table = 'v2_gift_card_usage';
     protected $dateFormat = 'U';
     public $timestamps = false;
 
