@@ -52,14 +52,14 @@ describe('user response envelope contract', () => {
     await expect(request<number>(Promise.resolve({ data: { status: 'success' } }))).rejects.toThrow()
   })
 
-  it('preserves legacy top-level { data, total } responses', async () => {
-    const legacy = { data: [{ id: 1 }], total: 1 }
-    await expect(request<typeof legacy>(Promise.resolve({ data: legacy }))).resolves.toEqual(legacy)
+  it('preserves plugin top-level { data, total } responses', async () => {
+    const pluginPayload = { data: [{ id: 1 }], total: 1 }
+    await expect(request<typeof pluginPayload>(Promise.resolve({ data: pluginPayload }))).resolves.toEqual(pluginPayload)
   })
 })
 
 describe('auth adapter contract', () => {
-  it('logs in against /passport/auth/login and stores the bearer token', async () => {
+  it('logs in against native /auth/login and stores the bearer token', async () => {
     responder = () => ({ data: { auth_data: 'token-1' }, request_id: 'trace-login' })
 
     await login({ email: 'a@b.c', password: 'secret' })
@@ -115,22 +115,22 @@ describe('native sign-out reliability', () => {
   })
 })
 
-describe('P1-B safe auth key migration and native API client', () => {
-  it('transfers an existing legacy bearer to the native key without logging out', () => {
+describe('TXAPI-only browser auth; retired tokens cannot be revived', () => {
+  it('rejects old Xboard storage keys rather than migrating credentials', () => {
     localStorage.setItem('xboard_auth_data', 'old-token')
-    expect(getAuthData()).toBe('Bearer old-token')
-    expect(localStorage.getItem('txboard_auth_data')).toBe('Bearer old-token')
+    expect(getAuthData()).toBe('')
+    expect(localStorage.getItem('txboard_auth_data')).toBeNull()
     expect(localStorage.getItem('xboard_auth_data')).toBeNull()
   })
 
-  it('prefers a new session when stale legacy data also exists', () => {
+  it('uses only the native session and erases retired storage', () => {
     localStorage.setItem('txboard_auth_data', 'Bearer newest')
     localStorage.setItem('xboard_auth_data', 'Bearer outdated')
     expect(getAuthData()).toBe('Bearer newest')
     expect(localStorage.getItem('xboard_auth_data')).toBeNull()
   })
 
-  it('clears both token keys and never resurrects the prior session', () => {
+  it('clears active and retired keys without resurrecting sessions', () => {
     localStorage.setItem('xboard_auth_data', 'old-token')
     saveAuthData('new-token')
     clearAuthData()
@@ -141,11 +141,12 @@ describe('P1-B safe auth key migration and native API client', () => {
 
   it('sends the same bearer to the native endpoint and validates native envelope', async () => {
     localStorage.setItem('xboard_auth_data', 'legacy-token')
+    saveAuthData('current-token')
     responder = () => ({ data: { id: 7 }, request_id: 'trace-1' })
     await expect(nativeRequest<{ id: number }>(nativeApi.get('/me'))).resolves.toEqual({ id: 7 })
     expect(seen[0].baseURL).toBe('/txapi')
     expect(seen[0].url).toBe('/me')
-    expect(String(seen[0].headers.Authorization)).toBe('Bearer legacy-token')
+    expect(String(seen[0].headers.Authorization)).toBe('Bearer current-token')
     expect(localStorage.getItem('xboard_auth_data')).toBeNull()
   })
 
