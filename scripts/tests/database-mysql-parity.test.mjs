@@ -39,3 +39,27 @@ test('rejects invalid metadata, duplicate tables and unsafe mappings', () => {
   assert.throws(() => compare({...source,tables:[{oldName:'v2_user',proposedName:'users;drop',migrationCreators:[]}]},mysql), /Unsafe/);
   assert.deepEqual(args(['--source','s','--mysql','m','--output','o','--check']), {source:'s',mysql:'m',output:'o',check:true});
 });
+
+test('five protocol tables consolidated into v2_server are historical, not missing live tables', () => {
+  const protocols = ['hysteria', 'shadowsocks', 'trojan', 'vless', 'vmess'];
+  const expanded = { ...source, tables: [
+    ...source.tables,
+    ...protocols.map(name => ({ oldName: 'v2_server_' + name, proposedName: 'tx_server_' + name, migrationCreators: ['2023_initial.php'] })),
+  ] };
+  const report = compare(expanded, mysql);
+  assert.deepEqual(report.failures, []);
+  assert.equal(report.historicalConsolidatedTables.length, 5);
+  assert.ok(report.mappings.filter(x => x.lifecycle === 'consolidated-into-v2_server').length === 5);
+});
+
+test('missing other migrated business tables remain hard failures', () => {
+  const changed = { ...source, tables: [...source.tables, { oldName: 'v2_payment', proposedName: 'tx_payment', migrationCreators: ['initial.php'] }] };
+  assert.match(compare(changed, mysql).failures.join(' '), /MySQL table missing: v2_payment/);
+});
+
+test('legacy protocol table unexpectedly still present remains visible for manual review', () => {
+  const changed = { ...source, tables: [...source.tables, { oldName: 'v2_server_trojan', proposedName: 'tx_server_trojan', migrationCreators: ['initial.php'] }] };
+  const report = compare(changed, { ...mysql, tables: [...mysql.tables, { table: 'v2_server_trojan', columns: [], indexes: [], foreign_keys: [] }] });
+  assert.equal(report.mappings.find(x => x.oldName === 'v2_server_trojan').lifecycle, 'candidate');
+  assert.deepEqual(report.historicalConsolidatedTables, []);
+});
