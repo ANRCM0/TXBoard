@@ -233,6 +233,13 @@ class TxNodeNativeWebSocketTest extends TestCase
 
             $ws->message($conn, NativeNodeFrame::encode('ops.result', [
                 'request_id' => $action->request_id, 'ok' => true,
+                'result' => ['log' => str_repeat('x', 65000)],
+            ], 'oversized-ops'));
+            $this->assertSame('INVALID_OPERATION_RESULT', end($sent)['data']['code']);
+            $this->assertSame(AgentAction::STATUS_RUNNING, $action->fresh()->status);
+
+            $ws->message($conn, NativeNodeFrame::encode('ops.result', [
+                'request_id' => $action->request_id, 'ok' => true,
                 'result' => ['status' => 'healthy'],
             ], 'valid-ops'));
             $this->assertSame('ops.ack', end($sent)['event']);

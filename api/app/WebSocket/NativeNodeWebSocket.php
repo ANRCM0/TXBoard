@@ -134,6 +134,10 @@ final class NativeNodeWebSocket
                     throw new \InvalidArgumentException('INVALID_OPERATION_RESULT');
                 }
                 $payload = $validated->validated();
+                // AgentAction.result is a MySQL TEXT field, not a 1 MiB blob.
+                if (strlen(json_encode($payload['result'] ?? [], JSON_THROW_ON_ERROR)) > 60000) {
+                    throw new \InvalidArgumentException('INVALID_OPERATION_RESULT');
+                }
                 $accepted = app(AgentActionService::class)->handleNodeResult((int) $node->id, $payload);
                 $this->send($conn, 'ops.ack', [
                     'accepted' => $accepted,
