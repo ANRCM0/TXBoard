@@ -20,6 +20,7 @@ const preloaders: Record<string, () => Promise<unknown>> = {
   '/server/manage': () => import('../pages/server/NodesPage'),
   '/server/group': () => import('../pages/server/GroupsPage'),
   '/server/route': () => import('../pages/server/RoutesPage'),
+  '/server/access-audit': () => import('../pages/server/AccessAuditPage'),
   '/finance/plan': () => import('../pages/finance/PlansPage'),
   '/finance/order': () => import('../pages/finance/OrdersPage'),
   '/finance/coupon': () => import('../pages/finance/CouponPage'),
