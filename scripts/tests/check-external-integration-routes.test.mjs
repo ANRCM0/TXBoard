@@ -16,7 +16,9 @@ const fixture = () => [...themeRows(theme), ...nodeRows(node)].map(label => {
 test('theme and TXNode docs have full current route tables', () => {
   const result = verifyGuideRoutes(fixture(), theme, node);
   assert.ok(result.userCount >= 25);
-  assert.equal(result.nodeCount, 6);
+  assert.equal(result.nodeCount, 8);
+  assert.ok(nodeRows(node).includes('POST /txapi/node/v1/audit/report'));
+  assert.ok(nodeRows(node).includes('GET /txapi/node/v1/audit/rules'));
   assert.ok(themeRows(theme).includes('POST /txapi/billing/recharges'));
   assert.ok(nodeRows(node).includes('POST /txapi/node/v1/report'));
 });
