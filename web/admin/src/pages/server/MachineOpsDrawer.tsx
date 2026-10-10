@@ -247,7 +247,8 @@ export function MachineOpsDrawer({
                     runtimeUpdate.isPending ||
                     !online ||
                     machine.is_active === false ||
-                    runtime?.updater_available !== true
+                    runtime?.updater_available !== true ||
+                    (updateTarget === 'dev' && !runtime?.update_targets?.includes('dev'))
                   }
                   onClick={() => requestConfirm({
                     title: '更新 TX-Node Runtime',
@@ -271,7 +272,7 @@ export function MachineOpsDrawer({
                 <div>
                   <span>部署方式</span>
                   <strong>{runtime?.deployment === 'docker' ? 'Docker' : 'Unknown'}</strong>
-                  <small>{runtime?.updater_available ? 'Installer bridge 可用' : '远程更新不可用'}</small>
+                  <small>{runtime?.updater_available ? `Installer bridge 可用：${runtime.update_targets?.join(', ') || 'latest（旧版）'}` : '远程更新不可用'}</small>
                 </div>
                 <div>
                   <span>最近更新</span>
