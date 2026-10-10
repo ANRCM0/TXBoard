@@ -41,4 +41,4 @@ Gateway 当前还实现了 notices、order status、subscription summary、payme
 5. G4: opt-in Edge/Deploy/theme switch, trusted proxy CIDR, no proxy loop and tested rollback.
 6. G5: retire old routes only after all supported callers migrated and actual old traffic is zero.
 
-See [integration ADR](../../docs/architecture/gateway-integration.md) and [Native TXAPI target](txapi-target-v1.md).
+For deployed TXBoard entrypoints see [external interface overview](external-adapter-current.md). This proposed BFF interface is not a registered Laravel route.
