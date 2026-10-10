@@ -196,13 +196,17 @@ if echo " $* " | grep -q ' txboard:install '; then
 elif php /www/artisan txboard:install-status --no-interaction >/dev/null 2>&1; then
     if redis_reachable; then
         echo "[entrypoint] Running txboard:update (installed database confirmed, redis reachable)..."
-        php /www/artisan txboard:update --no-interaction || \
-            echo "[entrypoint] WARNING: txboard:update failed; continuing so supervisor can boot anyway." >&2
+        php /www/artisan txboard:update --no-interaction || {
+            echo "[entrypoint] FATAL: txboard:update failed. Refusing to start with a potentially incompatible database." >&2
+            exit 1
+        }
     else
         echo "[entrypoint] Running txboard:update (installed database confirmed, redis not yet up, using array/sync drivers)..."
-        CACHE_DRIVER=array QUEUE_CONNECTION=sync SESSION_DRIVER=array \
-            php /www/artisan txboard:update --no-interaction || \
-            echo "[entrypoint] WARNING: txboard:update failed; continuing so supervisor can boot anyway." >&2
+        CACHE_DRIVER=array QUEUE_CONNECTION=sync SESSION_DRIVER=array SETTING_CACHE_STORE=array \
+            php /www/artisan txboard:update --no-interaction || {
+                echo "[entrypoint] FATAL: txboard:update failed without Redis. Refusing unsafe startup." >&2
+                exit 1
+            }
     fi
 else
     echo "[entrypoint] Skipping txboard:update (database has no administrator yet or is unavailable)."
