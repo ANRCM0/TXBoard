@@ -1,0 +1,172 @@
+name: api-mysql-ci
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "api/**"
+      - "scripts/compare-critical-data-snapshots.mjs"
+      - "scripts/tests/compare-critical-data-snapshots.test.mjs"
+      - ".github/workflows/ci-mysql.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "api/**"
+      - "scripts/compare-critical-data-snapshots.mjs"
+      - "scripts/tests/compare-critical-data-snapshots.test.mjs"
+      - ".github/workflows/ci-mysql.yml"
+
+concurrency:
+  group: api-mysql-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  mysql-regression:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: phase4-ci-root
+          MYSQL_DATABASE: txboard_ci
+          MYSQL_USER: txboard_ci
+          MYSQL_PASSWORD: phase4-ci-user
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --host=127.0.0.1 --user=root --password=phase4-ci-root"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 15
+    env:
+      APP_ENV: testing
+      DB_CONNECTION: mysql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_DATABASE: txboard_ci
+      DB_USERNAME: txboard_ci
+      DB_PASSWORD: phase4-ci-user
+      CACHE_DRIVER: array
+      QUEUE_CONNECTION: sync
+      SESSION_DRIVER: array
+      SETTING_CACHE_STORE: array
+      AGENT_OPS_PAIRING_CACHE_STORE: array
+    defaults:
+      run:
+        working-directory: api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.2"
+          extensions: mbstring, pdo_mysql, mysqlnd, redis
+          coverage: none
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist
+      - name: Prepare test environment
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+      - name: Apply all production-schema migrations on MySQL 8.4
+        run: |
+          php artisan migrate --force --no-interaction
+          php artisan migrate:status --no-interaction
+      - name: Verify native ledger, order and plugin schema exists
+        run: |
+          php -r '
+            require "vendor/autoload.php";
+            $app = require "bootstrap/app.php";
+            $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+            foreach (["tx_user", "tx_order", "tx_traffic_batch", "tx_plugins"] as $table) {
+                if (!Illuminate\Support\Facades\Schema::hasTable($table)) {
+                    fwrite(STDERR, "Missing MySQL table: " . $table . PHP_EOL);
+                    exit(1);
+                }
+            }
+            echo "MySQL core schema verified" . PHP_EOL;
+          '
+      - name: Verify P0 metadata normalization
+        run: php artisan test tests/Unit/Support/Audit/MySqlSchemaInventoryTest.php
+      - name: Capture read-only MySQL schema and uniqueness evidence
+        run: php scripts/p0-schema-inventory.php --output=artifacts/p0-schema.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Verify native-only source references
+        working-directory: .
+        run: node scripts/check-native-schema-only.mjs --check
+      - name: Test native-only source guard
+        working-directory: .
+        run: node --test scripts/tests/check-native-schema-only.test.mjs
+      - name: Test native critical snapshot comparison
+        working-directory: .
+        run: |
+          node --test scripts/tests/compare-critical-data-snapshots.test.mjs
+          node --test scripts/tests/compare-critical-row-fingerprints.test.mjs
+      - name: Capture native critical data baseline
+        run: php scripts/database-critical-data-snapshot.php --output=artifacts/critical-data-baseline.json
+      - name: Capture native row-level fingerprints
+        run: php scripts/database-critical-row-fingerprints.php --output=artifacts/critical-row-fingerprints.json
+      - name: Upload native database evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: txboard-native-database-evidence
+          path: |
+            api/artifacts/critical-data-baseline.json
+            api/artifacts/critical-row-fingerprints.json
+            api/artifacts/p0-schema.json
+          if-no-files-found: warn
+          retention-days: 14
+      - name: P0-B synthetic MySQL HTTP-to-worker journey
+        run: php artisan test tests/Feature/Journey/CorePurchaseTrafficJourneyTest.php
+      - name: P0-B synthetic MySQL read-path baseline
+        env:
+          P0_BASELINE_OUTPUT: ${{ github.workspace }}/api/artifacts/p0b-read-path-mysql.json
+        run: php artisan test tests/Feature/Performance/P0ReadPathBaselineTest.php
+      - name: Preserve P0-B synthetic benchmark artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: txboard-p0b-synthetic-mysql-read-path
+          path: api/artifacts/p0b-read-path-mysql.json
+          if-no-files-found: warn
+          retention-days: 14
+      - name: P2-E native user auth and token lifecycle on MySQL
+        run: php artisan test tests/Feature/Txapi/TxapiNativeAuthTest.php
+      - name: P2-D native support ticket contract on MySQL
+        run: php artisan test tests/Feature/Txapi/TxapiTicketWorkflowTest.php
+      - name: P2-C native account content contracts on MySQL
+        run: php artisan test tests/Feature/Txapi/TxapiAccountContentTest.php
+      - name: P2-A native plan catalog and renewal permissions on MySQL
+        run: php artisan test tests/Feature/Txapi/TxapiPlanCatalogTest.php
+      - name: P1-A native TXAPI read/auth contract on MySQL
+        run: php artisan test tests/Feature/Txapi/TxapiCoreContractTest.php
+      - name: P3 financial invariant audit regression
+        run: php artisan test tests/Feature/Billing/FinancialInvariantAuditTest.php
+      - name: Capture P3 read-only billing invariant artifact
+        run: php scripts/p3-billing-audit.php --output=artifacts/p3-billing-audit.json
+      - name: Upload P3 billing invariant artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: txboard-p3-billing-invariants
+          path: api/artifacts/p3-billing-audit.json
+          if-no-files-found: warn
+          retention-days: 14
+      - name: P3-A3 shared checkout and native checkout boundary on MySQL
+        run: php artisan test tests/Feature/Txapi/TxapiCheckoutTest.php
+      - name: P3-B dual-webhook signed notification and replay on MySQL
+        run: php artisan test tests/Feature/Payment/PaymentWebhookTest.php
+      - name: P3-A2 native billing contracts and reconciliation
+        run: php artisan test tests/Feature/Txapi/TxapiBillingTest.php
+      - name: P3-A monetary state transitions and coupon recovery on MySQL
+        run: php artisan test tests/Unit/Services/OrderServiceConcurrencyTest.php
+      - name: P4-D native WS frames, scopes and cross-transport ledger
+        run: php artisan test tests/Feature/Server/TxNodeNativeWebSocketTest.php
+      - name: P4 native node authentication and protocol contract on MySQL
+        run: php artisan test tests/Feature/Server/TxNodeNativeProtocolTest.php
+      - name: P4 optimized traffic batch query budget and settlement correctness
+        run: php artisan test tests/Feature/Server/TrafficBatchSettlementTest.php
+      - name: MySQL order recovery regression
+        run: php artisan test tests/Feature/Order/CheckOrderRecoveryTest.php

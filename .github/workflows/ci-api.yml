@@ -1,0 +1,127 @@
+name: api-ci
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "api/**"
+      - "contracts/module-package/**"
+      - "contracts/module-lifecycle/**"
+      - "contracts/theme-package/**"
+      - "web/admin/src/api/**"
+      - "contracts/http/external-adapter-current.md"
+      - "contracts/http/theme-integration-current.md"
+      - "contracts/node-protocol/txnode-integration-current.md"
+      - "scripts/p0-api-audit.mjs"
+      - "scripts/export-route-catalog.mjs"
+      - "scripts/check-native-schema-only.mjs"
+      - "scripts/tests/check-native-schema-only.test.mjs"
+      - "scripts/tests/export-route-catalog.test.mjs"
+      - "scripts/check-external-integration-routes.mjs"
+      - "scripts/tests/check-external-integration-routes.test.mjs"
+      - "scripts/tests/p0-api-audit.test.mjs"
+      - "scripts/native-admin-release-audit.mjs"
+      - "scripts/tests/native-admin-release-audit.test.mjs"
+      - ".github/workflows/ci-api.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "api/**"
+      - "contracts/module-package/**"
+      - "contracts/module-lifecycle/**"
+      - "contracts/theme-package/**"
+      - "web/admin/src/api/**"
+      - "contracts/http/external-adapter-current.md"
+      - "contracts/http/theme-integration-current.md"
+      - "contracts/node-protocol/txnode-integration-current.md"
+      - "scripts/p0-api-audit.mjs"
+      - "scripts/export-route-catalog.mjs"
+      - "scripts/check-native-schema-only.mjs"
+      - "scripts/tests/check-native-schema-only.test.mjs"
+      - "scripts/tests/export-route-catalog.test.mjs"
+      - "scripts/check-external-integration-routes.mjs"
+      - "scripts/tests/check-external-integration-routes.test.mjs"
+      - "scripts/tests/p0-api-audit.test.mjs"
+      - "scripts/native-admin-release-audit.mjs"
+      - "scripts/tests/native-admin-release-audit.test.mjs"
+      - ".github/workflows/ci-api.yml"
+
+concurrency:
+  group: api-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      CACHE_DRIVER: array
+      QUEUE_CONNECTION: sync
+      SESSION_DRIVER: array
+      SETTING_CACHE_STORE: array
+      AGENT_OPS_PAIRING_CACHE_STORE: array
+    defaults:
+      run:
+        working-directory: api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.2"
+          extensions: mbstring, sqlite3, pdo_sqlite, redis
+          coverage: none
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist
+      - name: Prepare test environment
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+      - name: Run tests
+        env:
+          APP_ENV: testing
+          DB_CONNECTION: sqlite
+          DB_DATABASE: ":memory:"
+        run: php artisan test
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Test native source and route audit tools
+        working-directory: .
+        run: |
+          node --test scripts/tests/check-native-schema-only.test.mjs
+          node --test scripts/tests/p0-api-audit.test.mjs
+          node --test scripts/tests/native-admin-release-audit.test.mjs
+          node --test scripts/tests/export-route-catalog.test.mjs
+          node --test scripts/tests/check-external-integration-routes.test.mjs
+      - name: Verify native source and Admin references
+        working-directory: .
+        run: |
+          node scripts/check-native-schema-only.mjs --check
+          node scripts/native-admin-release-audit.mjs --strict --guard-native --output artifacts/release/admin-native-gap.json
+      - name: Audit live HTTP routes and external integration contracts
+        working-directory: .
+        run: |
+          php api/artisan route:list --json > "$RUNNER_TEMP/txboard-routes.json"
+          node scripts/p0-api-audit.mjs --routes "$RUNNER_TEMP/txboard-routes.json" --output-dir artifacts/p0-audit
+          node scripts/export-route-catalog.mjs --routes "$RUNNER_TEMP/txboard-routes.json" --json artifacts/route-catalog/http-routes.json --markdown artifacts/route-catalog/http-routes.md --check
+          node scripts/check-external-integration-routes.mjs --routes "$RUNNER_TEMP/txboard-routes.json"
+      - name: Preserve non-secret schema and route audit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: txboard-api-contract-audit
+          path: |
+            artifacts/release/admin-native-gap.json
+            artifacts/route-catalog/
+            artifacts/p0-audit/
+          if-no-files-found: warn
+          retention-days: 14
