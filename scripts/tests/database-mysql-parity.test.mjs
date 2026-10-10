@@ -63,3 +63,15 @@ test('legacy protocol table unexpectedly still present remains visible for manua
   assert.equal(report.mappings.find(x => x.oldName === 'v2_server_trojan').lifecycle, 'candidate');
   assert.deepEqual(report.historicalConsolidatedTables, []);
 });
+
+test('source-only model references with no create migration are not invented in fresh MySQL', () => {
+  const names = ['v2_server_log', 'v2_server_stat', 'v2_stat_order'];
+  const expanded = { ...source, tables: [...source.tables, ...names.map(oldName => ({
+    oldName, proposedName: 'tx_' + oldName.slice(3), migrationCreators: [],
+  }))] };
+  const report = compare(expanded, mysql);
+  assert.deepEqual(report.failures, []);
+  assert.deepEqual(report.unverifiedSourceOnlyTables, names);
+  assert.equal(report.mappings.filter(x => x.lifecycle === 'unverified-source-only').length, 3);
+  assert.equal(report.readyForAutomaticRename, false);
+});

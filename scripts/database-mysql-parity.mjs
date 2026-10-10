@@ -35,6 +35,7 @@ export function compare(source, mysql) {
   const collisions = [];
   const missingCreators = [];
   const historicalConsolidated = [];
+  const sourceOnlyMissing = [];
   for (const entry of source.tables) {
     const oldName = entry.oldName;
     const newName = entry.proposedName;
@@ -45,11 +46,12 @@ export function compare(source, mysql) {
     const targetExists = actual.has(newName);
     if (!exists && consolidatedProtocolTables.has(oldName)) historicalConsolidated.push(oldName);
     else if (!exists && entry.migrationCreators?.length) missing.push(oldName);
+    else if (!exists) sourceOnlyMissing.push(oldName);
     if (targetExists) collisions.push(newName);
     if (!entry.migrationCreators?.length) missingCreators.push(oldName);
     mappings.push({
       oldName, proposedName: newName, existsInMysql: exists, targetAlreadyExists: targetExists,
-      lifecycle: consolidatedProtocolTables.has(oldName) && !exists ? 'consolidated-into-v2_server' : 'candidate',
+      lifecycle: consolidatedProtocolTables.has(oldName) && !exists ? 'consolidated-into-v2_server' : (!exists && !entry.migrationCreators?.length ? 'unverified-source-only' : 'candidate'),
       columns: exists ? actual.get(oldName).columns.length : null,
       indexes: exists ? actual.get(oldName).indexes.length : null,
       foreignKeys: exists ? actual.get(oldName).foreign_keys.length : null,
@@ -65,6 +67,7 @@ export function compare(source, mysql) {
     mysqlTableCount: mysql.tables.length,
     mappings,
     historicalConsolidatedTables: historicalConsolidated.sort(),
+    unverifiedSourceOnlyTables: sourceOnlyMissing.sort(),
     untrackedMysqlV2Tables: [...actual.keys()].filter(x => x.startsWith('v2_') && !mappings.some(m => m.oldName === x)).sort(),
     warnings: [...new Set(warnings)].sort(),
     failures: [...new Set(failures)].sort(),
@@ -92,7 +95,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
     const report = compare(JSON.parse(readFileSync(opts.source, 'utf8')), JSON.parse(readFileSync(opts.mysql, 'utf8')));
     mkdirSync(dirname(resolve(opts.output)), { recursive: true });
     writeFileSync(opts.output, JSON.stringify(report, null, 2) + '\n');
-    console.log(JSON.stringify({ mapped: report.sourceTableCount, mysql: report.mysqlTableCount, failures: report.failures, warnings: report.warnings, historicalConsolidated: report.historicalConsolidatedTables, untracked: report.untrackedMysqlV2Tables }));
+    console.log(JSON.stringify({ mapped: report.sourceTableCount, mysql: report.mysqlTableCount, failures: report.failures, warnings: report.warnings, historicalConsolidated: report.historicalConsolidatedTables, unverifiedSourceOnly: report.unverifiedSourceOnlyTables, untracked: report.untrackedMysqlV2Tables }));
     if (opts.check && report.failures.length) process.exitCode = 1;
   } catch (error) {
     console.error(error.message);
