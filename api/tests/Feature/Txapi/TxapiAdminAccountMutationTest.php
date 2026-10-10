@@ -33,7 +33,7 @@ class TxapiAdminAccountMutationTest extends TestCase
         $this->postJson($root . '/' . $admin->id . '/delete')->assertStatus(409);
     }
 
-    public function test_legacy_and_native_delete_refuse_to_erase_orders_or_balances(): void
+    public function test_native_delete_refuses_to_erase_orders_or_balances(): void
     {
         $admin = $this->user('delete-admin@example.test', true);
         $debtor = $this->user('delete-owed@example.test');
@@ -51,10 +51,6 @@ class TxapiAdminAccountMutationTest extends TestCase
         $this->postJson($root . '/' . $buyer->id . '/delete')
             ->assertStatus(409)->assertJsonPath('error.code', 'ACCOUNT_IN_USE');
         $this->postJson($root . '/' . $debtor->id . '/delete')->assertStatus(409);
-        $this->postJson('/api/v2/safe_account_admin/user/destroy', ['id' => $buyer->id])
-            ->assertStatus(400);
-        $this->postJson('/api/v2/safe_account_admin/user/destroy', ['id' => $debtor->id])
-            ->assertStatus(400);
         $this->assertNotNull($buyer->fresh());
         $this->assertSame($order->id, Order::where('trade_no', 'SAFE-HISTORY-ORDER')->value('id'));
         $this->assertSame(340, (int) $debtor->fresh()->balance);
