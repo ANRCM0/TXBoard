@@ -17,10 +17,10 @@ class AdminSecurePathTest extends TestCase
         );
         $wrongPath = $securePath . '-wrong';
 
-        $this->getJson("/api/v2/{$wrongPath}/config/fetch")
+        $this->getJson("/txapi/admin/{$wrongPath}/settings")
             ->assertNotFound();
 
-        $this->getJson("/api/v2/{$securePath}/config/fetch")
+        $this->getJson("/txapi/admin/{$securePath}/settings")
             ->assertForbidden();
     }
 }
