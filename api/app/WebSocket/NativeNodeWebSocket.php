@@ -220,7 +220,7 @@ final class NativeNodeWebSocket
             'heartbeat_interval_seconds' => 55,
             'heartbeat_timeout_seconds' => NodeSyncService::WS_TTL_SECONDS,
             'capabilities' => ['sync.config', 'sync.users', 'sync.user.delta',
-                'sync.nodes', 'traffic.report', 'traffic.ack', 'ops.result',
+                'sync.nodes', 'sync.devices', 'traffic.report', 'traffic.ack', 'ops.result',
                 'ops.ack', 'heartbeat.ping'],
         ]);
     }

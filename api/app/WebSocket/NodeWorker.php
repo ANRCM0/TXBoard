@@ -252,10 +252,8 @@ class NodeWorker
                 NodeRegistry::remove($nodeId, $conn);
                 NodeSyncService::markNodeOffline((int) $nodeId);
 
-                $affectedUserIds = $service->clearAllNodeDevices($nodeId);
-                foreach ($affectedUserIds as $userId) {
-                    $service->notifyUpdate($userId);
-                }
+                // clearAllNodeDevices already refreshes each affected user's count.
+                $service->clearAllNodeDevices($nodeId);
             }
 
             if (!empty($conn->machineId)) {
@@ -280,10 +278,8 @@ class NodeWorker
             NodeRegistry::remove($nodeId, $conn);
             NodeSyncService::markNodeOffline((int) $nodeId);
 
+            // clearAllNodeDevices performs the per-user online-count update.
             $affectedUserIds = $service->clearAllNodeDevices($nodeId);
-            foreach ($affectedUserIds as $userId) {
-                $service->notifyUpdate($userId);
-            }
 
             Log::debug("[WS] Node#{$nodeId} disconnected", [
                 'total' => NodeRegistry::count(),

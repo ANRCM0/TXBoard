@@ -17,11 +17,11 @@ All frames have `protocol_version: 1`, string `event`, object `data` and a messa
 
 Operation completions are serialized transactionally: the first valid result wins, retries for completed actions are acknowledged without overwriting the result, and expired or unknown actions return `accepted: false`. `ok` must be a boolean. Error and message fields are bounded.
 
-Do not send the retired inbound event names `pong`, `node.status`, `report.devices`, `request.devices` or a legacy JSON-shaped `ops.result`. Current HTTP or versioned-WS `traffic.report` handles alive/status/metrics; device state changes remain managed via the supported domain services. Reintroducing a retired name requires a new native schema and explicit contract tests.
+Do not send the retired inbound event names `pong`, `node.status`, `report.devices`, `request.devices` or a legacy JSON-shaped `ops.result`. Current HTTP or versioned-WS `traffic.report` handles alive/status/metrics; device state changes remain managed via native `alive` reports. Those reports enqueue a deduplicated outbound `sync.devices` notification. Reintroducing a retired name requires a new native schema and explicit contract tests.
 
 ## Native outbound events
 
-The server sends `session.ready`, `heartbeat.ping`, `sync.nodes`, `sync.config`, `sync.users`, `sync.user.delta`, typed `ops.*` commands and `ops.ack` using `NativeNodeFrame`. Multiplexed machine connections carry node IDs on scoped commands. `NativeNodePush` handles outgoing configuration and device-state snapshots.
+The server sends `session.ready`, `heartbeat.ping`, `sync.nodes`, `sync.config`, `sync.users`, `sync.user.delta`, `sync.devices`, typed `ops.*` commands and `ops.ack` using `NativeNodeFrame`. Multiplexed machine connections carry node IDs on scoped commands. `NativeNodePush` handles outgoing configuration and device-state snapshots.
 
 ## Release boundaries
 
