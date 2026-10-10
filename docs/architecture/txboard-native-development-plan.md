@@ -1,5 +1,7 @@
 # TXBoard Native — 独立化重构与优化开发方案
 
+> **2026-10-10 状态更新**：以下方案的 P5–P7、React Admin/V2 Admin “尚需迁移”等说法属于 2026-10-09 历史快照。PR #163–#179 已实现第一方后台管理 Native 与删除 V2 Admin Router；PR #180 增加合成恢复 CI。**仍缺跨仓 Node/Agent/Gateway 协议迁移、Node 持久结算回执/故障恢复设计、真实历史数据恢复、支付/Agent/Node 外部联调与正式发布证据。** 详细以 [CURRENT 外部接入](../../contracts/http/external-adapter-current.md) 和 [发布阻塞 Issue #168](https://github.com/ANRCM0/TXBoard/issues/168) 为准。
+>
 > 日期：2026-10-09 · 方案 1.0 · 状态：**P0–P4 TXBoard 服务端核心代码已落地，Batch 1–5 原生化已合并；React Admin/遗留实现收口与 P5–P7 尚需持续开发/验证，P3 真实支付商及 P4 外部 TX-Node 双端验收后置**
 >
 > **唯一正式 API 根入口：`/txapi`。** 原有 `/api/v1`、`/api/v2` 只作为迁移兼容入口，确认所有支持的消费端升级后退役。
