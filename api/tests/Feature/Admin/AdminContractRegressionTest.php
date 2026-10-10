@@ -51,12 +51,12 @@ class AdminContractRegressionTest extends TestCase
     {
         $target = $this->makeUser('detail-target@example.com', 1234, 567);
 
-        $detail = $this->getJson("/api/v2/{$this->securePath}/user/getUserInfoById?id={$target->id}");
+        $detail = $this->getJson("/txapi/admin/{$this->securePath}/users/{$target->id}");
         $detail->assertOk();
         $this->assertEqualsWithDelta(12.34, $detail->json('data.balance'), 0.00001);
         $this->assertEqualsWithDelta(5.67, $detail->json('data.commission_balance'), 0.00001);
 
-        $list = $this->getJson("/api/v2/{$this->securePath}/user/fetch?current=1&pageSize=50");
+        $list = $this->getJson("/txapi/admin/{$this->securePath}/users?page=1&per_page=50");
         $list->assertOk();
         $row = collect($list->json('data'))->firstWhere('id', $target->id);
         $this->assertNotNull($row, 'the created user should appear in the list');
@@ -65,10 +65,10 @@ class AdminContractRegressionTest extends TestCase
 
     public function test_missing_user_detail_returns_domain_error_instead_of_server_error(): void
     {
-        $response = $this->getJson("/api/v2/{$this->securePath}/user/getUserInfoById?id=999999");
+        $response = $this->getJson("/txapi/admin/{$this->securePath}/users/999999");
 
-        $response->assertStatus(400);
-        $this->assertSame('用户不存在', $response->json('message'));
+        $response->assertNotFound();
+        $this->assertArrayNotHasKey('data', $response->json());
     }
 
     public function test_admin_audit_log_redacts_sensitive_config_values(): void
@@ -165,12 +165,12 @@ class AdminContractRegressionTest extends TestCase
             'updated_at' => time(),
         ]);
 
-        $response = $this->getJson("/api/v2/{$this->securePath}/system/getAuditLog?current=1&page_size=10");
+        $response = $this->getJson("/txapi/admin/{$this->securePath}/audit-logs?page=1&per_page=10");
 
         $response->assertOk();
-        $response->assertJsonStructure(['total', 'current_page', 'per_page', 'last_page', 'data']);
-        $this->assertSame(1, $response->json('total'));
-        $this->assertSame(1, $response->json('last_page'));
+        $response->assertJsonStructure(['data', 'request_id', 'meta' => ['page', 'per_page', 'total', 'last_page']]);
+        $this->assertSame(1, $response->json('meta.total'));
+        $this->assertSame(1, $response->json('meta.last_page'));
     }
 
     public function test_order_list_can_filter_by_user_email_and_returns_user_identity(): void
@@ -193,11 +193,11 @@ class AdminContractRegressionTest extends TestCase
         }
 
         $response = $this->getJson(
-            "/api/v2/{$this->securePath}/order/fetch?current=1&pageSize=20&filter[0][id]=email&filter[0][value]=search-target"
+            "/txapi/admin/{$this->securePath}/orders?page=1&per_page=20&email=search-target"
         );
 
         $response->assertOk();
-        $this->assertSame(1, $response->json('total'));
+        $this->assertSame(1, $response->json('meta.total'));
         $this->assertSame('order-search-target@example.com', $response->json('data.0.user.email'));
         $this->assertSame('target-order', $response->json('data.0.trade_no'));
     }
@@ -332,19 +332,19 @@ class AdminContractRegressionTest extends TestCase
      */
     public function test_coupon_can_be_created_without_a_validity_window(): void
     {
-        $response = $this->postJson("/api/v2/{$this->securePath}/coupon/generate", [
+        $response = $this->postJson("/txapi/admin/{$this->securePath}/coupons", [
             'name' => 'no-expiry',
             'type' => 1,
             'value' => 100,
             'limit_use' => 1,
         ]);
 
-        $response->assertOk();
+        $response->assertCreated();
 
         $coupon = Coupon::where('name', 'no-expiry')->first();
         $this->assertNotNull($coupon);
-        $this->assertNull($coupon->started_at);
-        $this->assertNull($coupon->ended_at);
+        $this->assertSame(0, (int) $coupon->started_at);
+        $this->assertSame(0, (int) $coupon->ended_at);
     }
 
     public function test_admin_notice_list_paginates_and_filters_by_title(): void
