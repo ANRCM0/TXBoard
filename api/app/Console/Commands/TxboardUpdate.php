@@ -42,8 +42,12 @@ class TxboardUpdate extends Command
     public function handle()
     {
         $this->info('正在导入数据库请稍等...');
-        Artisan::call("migrate", ['--force' => true]);
+        $migrateExitCode = Artisan::call("migrate", ['--force' => true, '--no-interaction' => true]);
         $this->info(Artisan::output());
+        if ($migrateExitCode !== 0) {
+            $this->error("数据库迁移失败，阻止插件与主题刷新。请核对备份、迁移日志与数据库结构。");
+            return self::FAILURE;
+        }
         $this->info('正在检查并安装默认插件...');
         PluginManager::installDefaultPlugins();
         app(PluginManager::class)->publishInstalledAssets();
