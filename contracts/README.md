@@ -4,6 +4,9 @@
 
 ## CURRENT（已实现/生效）
 
+- **[对外 HTTP / WS 接入手册（CURRENT）](http/external-adapter-current.md)**：按实际注册表区分 Native、保留 V1/V2、跨仓目标，覆盖 Node/Agent/Gateway/支付/订阅。
+- [HTTP 路由全量自动快照](../docs/architecture/http-route-inventory.md)：CI 从 Laravel `route:list --json` 输出 Artifact。
+
 - [Module Registry v1](http/module-registry-v1.md)、[Module Management v1](http/module-management-v1.md)
 - [TX-Node Protocol](node-protocol/README.md)、[Agent Ops v1](http/agent-ops-v1.md)、[Agent Support](http/agent-support-v1.md)
 - [Plugin Package v1](plugin-package/README.md)、[Theme Package v1](theme-package/README.md)

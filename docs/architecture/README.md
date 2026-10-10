@@ -3,7 +3,15 @@
 ## 当前（CURRENT）与目标（TARGET）
 
 - **CURRENT**：现行 Laravel API 路由仍包含 `/api/v1`、`/api/v2`；Module Platform v1、Plugin/Theme/Agent Ops 与 Node contracts 已运行。
-- **TARGET**：统一正式 API `/txapi/*`，分阶段降低 Xboard 残留并优化业务、安全与性能；**P1–P4 TXBoard 服务端代码已合并 main，外部支付商/Node 联调和旧端点退役均未完成**。
+- **CURRENT 2026-10-10**：第一方 React Admin 后台路由已全部迁至 `/txapi/admin/{admin_path}/*`、旧 V2 Admin 注册树已删除（PR #163–#179），P1–P4 Node/账本/用户功能服务端已实现；**V1/V2 非后台外部运行接口、Agent Ops、订阅和支付商旧回调仍有效**。完整 CI 与合成恢复已通过，外部 TX-Node/支付商真实联调未验收。
+- **TARGET**：逐服务版本化跨仓协议、完成 Node/Agent/独立 Gateway 适配与真实部署验收，再审议非管理 V1/V2 退役。
+
+## 外部开发者先看（当前协议）
+
+- [完整 Laravel HTTP 路由扫描及 CI Artifact](http-route-inventory.md) — 从 route:list 自动生成，CI 对关键方法、鉴权边界和旧管理端退役进行守卫。
+- [外部服务 CURRENT API / WS 适配手册](../../contracts/http/external-adapter-current.md) — Node、Agent、Gateway、支付、订阅、插件及管理员权限的真实协议边界。
+- [真实部署与发布验收](../operations/release-staging-acceptance.md) — PR #180 已提供合成备份恢复 CI，但不等于生产验收。
+- [Issue #168 发布阻塞清单](https://github.com/ANRCM0/TXBoard/issues/168) — 未开发/未适配/未联调的逐项权威状态。
 
 ## TXBoard Native 开发主线
 

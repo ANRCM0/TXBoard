@@ -5,6 +5,9 @@ on:
     branches: [main]
     paths:
       - "scripts/p0-api-audit.mjs"
+      - "scripts/export-route-catalog.mjs"
+      - "scripts/tests/export-route-catalog.test.mjs"
+      - "contracts/http/external-adapter-current.md"
       - "scripts/tests/p0-api-audit.test.mjs"
       - "scripts/native-admin-release-audit.mjs"
       - "scripts/tests/native-admin-release-audit.test.mjs"
@@ -15,6 +18,9 @@ on:
     branches: [main]
     paths:
       - "scripts/p0-api-audit.mjs"
+      - "scripts/export-route-catalog.mjs"
+      - "scripts/tests/export-route-catalog.test.mjs"
+      - "contracts/http/external-adapter-current.md"
       - "scripts/tests/p0-api-audit.test.mjs"
       - "scripts/native-admin-release-audit.mjs"
       - "scripts/tests/native-admin-release-audit.test.mjs"
@@ -83,6 +89,23 @@ jobs:
         run: |
           php api/artisan route:list --json > "$RUNNER_TEMP/p0-routes.json"
           node scripts/p0-api-audit.mjs --routes "$RUNNER_TEMP/p0-routes.json" --output-dir artifacts/p0-audit
+      - name: Verify route catalog exporter
+        run: node --test scripts/tests/export-route-catalog.test.mjs
+      - name: Export and guard live HTTP route catalog
+        run: |
+          node scripts/export-route-catalog.mjs \
+            --routes "$RUNNER_TEMP/p0-routes.json" \
+            --json artifacts/route-catalog/http-routes.json \
+            --markdown artifacts/route-catalog/http-routes.md \
+            --check
+      - name: Preserve HTTP route catalog (no credentials)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: txboard-http-route-catalog
+          path: artifacts/route-catalog/
+          if-no-files-found: warn
+          retention-days: 14
       - name: Preserve P0 evidence
         if: always()
         uses: actions/upload-artifact@v4
