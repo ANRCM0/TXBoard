@@ -20,6 +20,7 @@ jobs:
           node scripts/refactor-native-tx-only.mjs
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git restore -- .github/workflows
           git add -A
           git diff --cached --stat
           git diff --cached --quiet || (git commit -m "refactor(database)!: native tx-only schema, retire legacy V2 compatibility" && git push origin HEAD:refactor/native-tx-only-20261010)
