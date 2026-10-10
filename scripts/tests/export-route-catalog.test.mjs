@@ -30,6 +30,9 @@ test('can export deterministic Laravel route registry and critical control-plane
   assert.ok(markdown(out).includes('external-adapter-current.md'));
 });
 test('rejects all legacy V1/V2 routes even if current endpoints still present', () => {
+  const routes = inventory([...required,
+    {method:'POST',uri:'api/v2/{admin_path}/order/update'},
+    {method:'GET|HEAD',uri:'api/v1/guest/plan/fetch'}]);
   assert.throws(() => assertCurrentBoundaries(routes), /legacy_routes/);
 });
 test('rejects native Admin missing AdminPath or Admin guard', () => {
@@ -37,7 +40,7 @@ test('rejects native Admin missing AdminPath or Admin guard', () => {
     ? {...r,middleware:['api','admin.path']} : r));
   assert.throws(() => assertCurrentBoundaries(routes), /unguarded_native_admin/);
 });
-test('distinguishes future BFF/Agent target and current Agent legacy', () => {
+test('classifies native Agent and Telegram endpoints', () => {
   assert.equal(classify('txapi/integrations/telegram/webhook')[0], 'Native Telegram webhook');
   assert.equal(classify('txapi/node/v1/handshake')[0], 'TXAPI Node HTTP');
 });
