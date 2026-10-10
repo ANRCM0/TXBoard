@@ -39,7 +39,7 @@ export function verifyGuideRoutes(routes, theme, node) {
     undocumentedNode: nodes.filter(r => !nodeset.has(r.method + ' ' + r.path)).map(r => r.method + ' ' + r.path),
     staleDocumentation: [...themeset, ...nodeset].filter(s => !live.has(s)),
   };
-  if (user.length < 25 || nodes.length !== 6 || themeset.size < 55 || nodeset.size !== 6
+  if (user.length < 25 || nodes.length !== 8 || themeset.size < 55 || nodeset.size !== 8
     || themeset.size !== themeDeclared.length || nodeset.size !== nodeDeclared.length
     || !theme.includes('Idempotency-Key') || !node.includes('traffic_batch_id')
     || !node.includes('X-TX-Machine-ID') || !node.includes('/txapi/node/v1/ws')
