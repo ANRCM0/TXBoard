@@ -32,7 +32,8 @@ class TxapiSiteConfigTest extends TestCase
         Sanctum::actingAs($user);
         $native = $this->getJson('/txapi/me/site-config');
         $native->assertOk();
-        $this->assertSame(app(\App\Services\SiteConfigService::class)->user(), $native->json('data'));
+        // JSON transport normalizes whole-number floating settings (100.0 -> 100).
+        $this->assertEquals(app(\App\Services\SiteConfigService::class)->user(), $native->json('data'));
         $this->assertArrayNotHasKey('telegram_bot_token', $native->json('data'));
     }
 }
