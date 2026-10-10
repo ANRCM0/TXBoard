@@ -79,7 +79,7 @@ Browser → HTTPS ingress
 
 请求头/主题 manifest/客户端参数不得选择中间件策略、绕过全局基线或改变 upstream operation；只读公开、可安全重试的操作才允许有界自动重试。管理员、Node、Agent、Webhook 不允许进入主题 BFF。
 
-**当前待审安全问题**：TXBoard 的 `api/.docker/caddy/Caddyfile` 包含 `trusted_proxies static 0.0.0.0/0 ::/0`，过于宽泛。需要在单独的部署/安全 PR 中按真实网络划定代理信任 CIDR、剔除伪造 Forwarded 头，测试直接访问和双代理链。不能因为 Gateway 有安全中间件就忽视 Caddy 入口风险。本次仅记录、**不改配置**。
+**安全状态更新（2026-10-10 核对源码）**：Caddy 现行配置为 `trusted_proxies static {$TXBOARD_TRUSTED_PROXY_CIDRS:127.0.0.1/8 ::1/128}`，不再默认信任 `0.0.0.0/0 ::/0`。**但** 1Panel/OpenResty 的实际 ingress 来源 CIDR、直连绕过、双反代链和 Forwarded/XFF 伪造仍需预发验收。不要设置为全网 CIDR，也不能只靠 Gateway 掩盖入口层问题。参见 [运行时接入手册](../../contracts/http/external-adapter-current.md)。
 
 ## 5. 部署、可选性和回滚
 
