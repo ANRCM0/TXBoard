@@ -90,7 +90,7 @@ class Setting
                 continue;
             }
             $key = strtolower($isNumericIndex ? $item : $index);
-            $default = $isNumericIndex ? config('v2board.' . $item) : (config('v2board.' . $key) ?? $item);
+            $default = $isNumericIndex ? null : $item;
             
             $result[$item] = Arr::get($this->loadedSettings, $key, $default);
         }

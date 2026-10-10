@@ -10,7 +10,7 @@ final class MailTemplateAdminService
 {
     public function getTestSubject(string $name): string
     {
-        $appName = admin_setting('app_name', 'XBoard');
+        $appName = admin_setting('app_name', 'TXBoard');
         return match ($name) {
             'verify' => "{$appName} - 验证码测试",
             'notify' => "{$appName} - 通知测试",
@@ -23,7 +23,7 @@ final class MailTemplateAdminService
 
     public function getTestVars(string $name): array
     {
-        $appName = admin_setting('app_name', 'XBoard');
+        $appName = admin_setting('app_name', 'TXBoard');
         $appUrl = admin_setting('app_url', 'https://example.com');
 
         return match ($name) {
@@ -56,7 +56,7 @@ final class MailTemplateAdminService
 
     public function getDefaultSubject(string $name): string
     {
-        $appName = admin_setting('app_name', 'XBoard');
+        $appName = admin_setting('app_name', 'TXBoard');
         return match ($name) {
             'verify' => "{$appName} - 邮箱验证码",
             'notify' => "{$appName} - 站点通知",
