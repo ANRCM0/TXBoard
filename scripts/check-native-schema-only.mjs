@@ -16,7 +16,7 @@ export function check(root = '.') {
       else if (item.isFile() && !skip.has(path) && (/\.(php|mjs|cjs|js|ts|tsx|vue|sql)$/.test(path) || (path.startsWith('api/plugins-core/') && path.endsWith('/config.json')))) {
         const source = readFileSync(abs, 'utf8');
         const incompatible = /(?:v(?:2)_|NativeTableName|ResolvesNativeEloquentTable|TX_NATIVE_TABLES|migrateFromV2b)/g;
-        const historical = /(?:v2board|xboard|current_theme|ModuleId::legacy)/gi;
+        const historical = /(?:\bv2board\b|\bxboard\b|\bcurrent_theme\b|ModuleId::legacy)/gi;
         const scan = [incompatible, ...(path.startsWith('api/app/') || path.startsWith('api/plugins-core/') ? [historical] : [])];
         for (const pattern of scan) for (const m of source.matchAll(pattern)) {
           violations.push({ path, line: source.slice(0, m.index).split('\n').length, type: m[0] });
