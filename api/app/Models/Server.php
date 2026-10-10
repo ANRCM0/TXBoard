@@ -60,7 +60,9 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
  */
 class Server extends Model
 {
-    public const TYPE_HYSTERIA = 'hysteria';
+    
+    use \App\Support\Database\ResolvesNativeEloquentTable;
+public const TYPE_HYSTERIA = 'hysteria';
     public const TYPE_VLESS = 'vless';
     public const TYPE_TROJAN = 'trojan';
     public const TYPE_VMESS = 'vmess';

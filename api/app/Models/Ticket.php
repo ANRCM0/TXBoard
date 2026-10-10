@@ -24,7 +24,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 class Ticket extends Model
 {
-    protected $table = 'v2_ticket';
+    
+    use \App\Support\Database\ResolvesNativeEloquentTable;
+protected $table = 'v2_ticket';
     protected $dateFormat = 'U';
     protected $guarded = ['id'];
     protected $casts = [

@@ -6,7 +6,9 @@ use Illuminate\Database\Eloquent\Model;
 
 class Setting extends Model
 {
-    /**
+    
+    use \App\Support\Database\ResolvesNativeEloquentTable;
+/**
      * Retired site-wide appearance fields. The active theme's per-theme config
      * has replaced these values; writes are prohibited after migration.
      */
