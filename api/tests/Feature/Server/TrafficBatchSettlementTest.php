@@ -41,13 +41,13 @@ class TrafficBatchSettlementTest extends TestCase
         $new('report-0001', $payload)->handle();
         $this->assertSame(200, (int) $user->fresh()->u);
         $this->assertSame(600, (int) $user->fresh()->d);
-        $this->assertSame(1, DB::table('v2_traffic_batch')->count());
-        $this->assertSame(1, DB::table('v2_stat_user')->where('user_id', $user->id)->count());
-        $this->assertSame(800, (int) DB::table('v2_stat_user')->where('user_id', $user->id)->first()->u
-            + (int) DB::table('v2_stat_user')->where('user_id', $user->id)->first()->d);
+        $this->assertSame(1, DB::table('tx_traffic_batch')->count());
+        $this->assertSame(1, DB::table('tx_stat_user')->where('user_id', $user->id)->count());
+        $this->assertSame(800, (int) DB::table('tx_stat_user')->where('user_id', $user->id)->first()->u
+            + (int) DB::table('tx_stat_user')->where('user_id', $user->id)->first()->d);
         $this->assertSame(400, (int) ($server->fresh()->u + $server->fresh()->d));
-        $this->assertSame(400, (int) DB::table('v2_stat_server')->where('server_id', $server->id)->first()->u
-            + (int) DB::table('v2_stat_server')->where('server_id', $server->id)->first()->d);
+        $this->assertSame(400, (int) DB::table('tx_stat_server')->where('server_id', $server->id)->first()->u
+            + (int) DB::table('tx_stat_server')->where('server_id', $server->id)->first()->d);
     }
 
     public function test_out_of_order_batches_and_replays_converge_without_double_charging(): void
@@ -79,10 +79,10 @@ class TrafficBatchSettlementTest extends TestCase
         }
         $this->assertSame(10, (int) $user->fresh()->u);
         $this->assertSame(20, (int) $user->fresh()->d);
-        $this->assertSame(4, DB::table('v2_traffic_batch')->count());
+        $this->assertSame(4, DB::table('tx_traffic_batch')->count());
         $this->assertSame(30, (int) ($server->fresh()->u + $server->fresh()->d));
-        $this->assertSame(30, (int) DB::table('v2_stat_server')->where('server_id', $server->id)->first()->u
-            + (int) DB::table('v2_stat_server')->where('server_id', $server->id)->first()->d);
+        $this->assertSame(30, (int) DB::table('tx_stat_server')->where('server_id', $server->id)->first()->u
+            + (int) DB::table('tx_stat_server')->where('server_id', $server->id)->first()->d);
     }
 
     public function test_overflow_rolls_back_ledger_stats_and_all_accounts(): void
@@ -114,9 +114,9 @@ class TrafficBatchSettlementTest extends TestCase
         }
 
         $this->assertSame(PHP_INT_MAX - 5, (int) $user->fresh()->u);
-        $this->assertSame(0, DB::table('v2_traffic_batch')->count());
-        $this->assertSame(0, DB::table('v2_stat_user')->count());
-        $this->assertSame(0, DB::table('v2_stat_server')->count());
+        $this->assertSame(0, DB::table('tx_traffic_batch')->count());
+        $this->assertSame(0, DB::table('tx_stat_user')->count());
+        $this->assertSame(0, DB::table('tx_stat_server')->count());
         $this->assertSame(0, (int) ($server->fresh()->u + $server->fresh()->d));
     }
 
@@ -133,7 +133,7 @@ class TrafficBatchSettlementTest extends TestCase
             [123 => [1, 1]], 'vmess', $date, 'collision-01'))->handle();
         (new TrafficBatchJob(['id' => $server->id, 'rate' => 1],
             [123 => [100, 100]], 'vmess', $date, 'collision-01'))->handle();
-        $this->assertSame(1, DB::table('v2_traffic_batch')->count());
+        $this->assertSame(1, DB::table('tx_traffic_batch')->count());
         $this->assertSame(0, (int) ($server->fresh()->u + $server->fresh()->d));
     }
     public function test_many_replayed_and_reverse_order_batches_keep_exact_aggregate(): void
@@ -165,15 +165,15 @@ class TrafficBatchSettlementTest extends TestCase
             }
         }
 
-        $this->assertSame(150, DB::table('v2_traffic_batch')->count());
+        $this->assertSame(150, DB::table('tx_traffic_batch')->count());
         $this->assertSame(150, (int) $user->fresh()->u);
         $this->assertSame(300, (int) $user->fresh()->d);
         $this->assertSame(450, (int) ($server->fresh()->u + $server->fresh()->d));
-        $this->assertSame(1, DB::table('v2_stat_user')->where('user_id', $user->id)->count());
-        $this->assertSame(450, (int) DB::table('v2_stat_user')->where('user_id', $user->id)->first()->u
-            + (int) DB::table('v2_stat_user')->where('user_id', $user->id)->first()->d);
-        $this->assertSame(450, (int) DB::table('v2_stat_server')->where('server_id', $server->id)->first()->u
-            + (int) DB::table('v2_stat_server')->where('server_id', $server->id)->first()->d);
+        $this->assertSame(1, DB::table('tx_stat_user')->where('user_id', $user->id)->count());
+        $this->assertSame(450, (int) DB::table('tx_stat_user')->where('user_id', $user->id)->first()->u
+            + (int) DB::table('tx_stat_user')->where('user_id', $user->id)->first()->d);
+        $this->assertSame(450, (int) DB::table('tx_stat_server')->where('server_id', $server->id)->first()->u
+            + (int) DB::table('tx_stat_server')->where('server_id', $server->id)->first()->d);
     }
 
     public function test_bulk_batch_prefetch_avoids_per_user_select_queries(): void
@@ -212,12 +212,12 @@ class TrafficBatchSettlementTest extends TestCase
             }));
         };
         // 40 users should not trigger 40 locking SELECTs or 40 stat lookups.
-        $this->assertLessThanOrEqual(2, $countSelect('v2_user'));
-        $this->assertLessThanOrEqual(2, $countSelect('v2_stat_user'));
-        $this->assertSame(40, DB::table('v2_stat_user')->count());
+        $this->assertLessThanOrEqual(2, $countSelect('tx_user'));
+        $this->assertLessThanOrEqual(2, $countSelect('tx_stat_user'));
+        $this->assertSame(40, DB::table('tx_stat_user')->count());
         $this->assertSame(40, (int) $server->fresh()->u);
         $this->assertSame(80, (int) $server->fresh()->d);
-        $this->assertSame(1, DB::table('v2_traffic_batch')->count());
+        $this->assertSame(1, DB::table('tx_traffic_batch')->count());
     }
 
 }

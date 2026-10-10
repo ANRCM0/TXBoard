@@ -11,8 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('v2_order', function (Blueprint $table) {
-            $table->index('updated_at');
+        Schema::table('tx_user', function (Blueprint $table) {
+            $table->index(['u','d','expired_at','group_id','banned','transfer_enable']);
         });
     }
 
@@ -21,8 +21,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('v2_order', function (Blueprint $table) {
-            $table->dropIndex(['updated_at']);
+        Schema::table('tx_user', function (Blueprint $table) {
+            $table->dropIndex(['u','d','expired_at','group_id','banned','transfer_enable']);
         });
     }
 };

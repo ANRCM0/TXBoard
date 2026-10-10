@@ -97,7 +97,7 @@ final class TxapiAdminAnalyticsTest extends TestCase
             ->assertOk()->assertJsonPath('data', []);
     }
 
-    public function test_legacy_v2_admin_statistics_routes_are_retired(): void
+    public function test_legacy_tx_admin_statistics_routes_are_retired(): void
     {
         $uris = collect(Route::getRoutes()->getRoutes())
             ->map(static fn ($route) => $route->uri())->all();

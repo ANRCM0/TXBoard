@@ -21,9 +21,9 @@ final class RetiredRuntimeSettingsMigrationTest extends TestCase
     public function test_migration_is_idempotent_and_preserves_active_node_and_captcha_settings(): void
     {
         foreach (self::RETIRED as $key) {
-            DB::table('v2_settings')->insert(['name' => $key, 'value' => 'obsolete']);
+            DB::table('tx_settings')->insert(['name' => $key, 'value' => 'obsolete']);
         }
-        DB::table('v2_settings')->insert([
+        DB::table('tx_settings')->insert([
             ['name' => 'server_token', 'value' => 'current-node-token'],
             ['name' => 'captcha_enable', 'value' => '1'],
             ['name' => 'frontend_theme', 'value' => 'TXBoard'],
@@ -35,13 +35,13 @@ final class RetiredRuntimeSettingsMigrationTest extends TestCase
         $migration->up();
         $migration->up();
 
-        $this->assertSame(0, DB::table('v2_settings')->whereIn('name', self::RETIRED)->count());
-        $this->assertSame('current-node-token', DB::table('v2_settings')->where('name', 'server_token')->value('value'));
-        $this->assertSame('1', DB::table('v2_settings')->where('name', 'captcha_enable')->value('value'));
-        $this->assertSame('TXBoard', DB::table('v2_settings')->where('name', 'frontend_theme')->value('value'));
+        $this->assertSame(0, DB::table('tx_settings')->whereIn('name', self::RETIRED)->count());
+        $this->assertSame('current-node-token', DB::table('tx_settings')->where('name', 'server_token')->value('value'));
+        $this->assertSame('1', DB::table('tx_settings')->where('name', 'captcha_enable')->value('value'));
+        $this->assertSame('TXBoard', DB::table('tx_settings')->where('name', 'frontend_theme')->value('value'));
         $this->assertNull($cache->get(Setting::CACHE_KEY));
         $migration->down();
-        $this->assertSame(0, DB::table('v2_settings')->whereIn('name', self::RETIRED)->count());
+        $this->assertSame(0, DB::table('tx_settings')->whereIn('name', self::RETIRED)->count());
     }
 
     public function test_old_keys_are_unreadable_and_unwritable_through_model_and_cache(): void
@@ -77,6 +77,6 @@ final class RetiredRuntimeSettingsMigrationTest extends TestCase
         } catch (InvalidArgumentException $e) {
             $this->assertStringContainsString('Retired TXBoard runtime', $e->getMessage());
         }
-        $this->assertNull(DB::table('v2_settings')->where('name', 'app_name')->value('value'));
+        $this->assertNull(DB::table('tx_settings')->where('name', 'app_name')->value('value'));
     }
 }

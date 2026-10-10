@@ -24,7 +24,7 @@ final class OrderOperationsAdminController
     {
         $data = $request->validate([
             'email' => ['required', 'email', 'max:254'],
-            'plan_id' => ['required', 'integer', 'min:1', \Illuminate\Validation\Rule::exists(\App\Support\Database\NativeTableName::runtime('v2_plan'), 'id')],
+            'plan_id' => ['required', 'integer', 'min:1', \Illuminate\Validation\Rule::exists('tx_plan', 'id')],
             'period' => ['required', 'in:month_price,quarter_price,half_year_price,year_price,two_year_price,three_year_price,onetime_price,reset_price'],
             'total_amount' => ['required', 'integer', 'min:0', 'max:2147483647'],
         ]);

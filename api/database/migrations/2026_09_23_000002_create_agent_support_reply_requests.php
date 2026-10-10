@@ -1,7 +1,5 @@
 <?php
 
-use App\Support\Database\NativeTableName;
-
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -9,7 +7,7 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
-        Schema::create(NativeTableName::runtime('v2_agent_support_reply_request'), function (Blueprint $table) {
+        Schema::create('tx_agent_support_reply_request', function (Blueprint $table) {
             $table->id();
             $table->string('request_id', 64)->unique();
             $table->unsignedBigInteger('ticket_id')->index();
@@ -28,6 +26,6 @@ return new class extends Migration {
 
     public function down(): void
     {
-        Schema::dropIfExists(NativeTableName::runtime('v2_agent_support_reply_request'));
+        Schema::dropIfExists('tx_agent_support_reply_request');
     }
 };

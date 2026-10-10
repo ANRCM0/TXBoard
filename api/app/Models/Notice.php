@@ -6,9 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class Notice extends Model
 {
-    
-    use \App\Support\Database\ResolvesNativeEloquentTable;
-protected $table = 'v2_notice';
+
+protected $table = 'tx_notice';
     protected $dateFormat = 'U';
     protected $guarded = ['id'];
     protected $casts = [

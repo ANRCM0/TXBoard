@@ -160,7 +160,7 @@ The following remain on their existing specialized APIs because they require pay
 - Agent token/action/approval lifecycle;
 - MCP tool execution.
 
-The management API MUST NOT directly mutate `v2_plugins`, theme files, migrations, Plugin.php lifecycle, Agent approval state, MySQL, Redis or TX-Node.
+The management API MUST NOT directly mutate `tx_plugins`, theme files, migrations, Plugin.php lifecycle, Agent approval state, MySQL, Redis or TX-Node.
 
 ## Compatibility
 

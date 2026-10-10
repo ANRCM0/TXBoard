@@ -554,7 +554,7 @@ Default retention:
 AGENT_OPS_INSPECTION_RETENTION_DAYS=7
 ```
 
-Each row in `v2_agent_inspection` stores only:
+Each row in `tx_agent_inspection` stores only:
 
 - inspection ID/source/status;
 - aggregate counts;

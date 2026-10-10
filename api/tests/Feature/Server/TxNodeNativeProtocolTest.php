@@ -196,7 +196,7 @@ class TxNodeNativeProtocolTest extends TestCase
         Bus::assertDispatched(TrafficBatchJob::class, 1);
 
         // Reception is not a completed financial settlement.
-        $this->assertDatabaseCount('v2_traffic_batch', 0);
+        $this->assertDatabaseCount('tx_traffic_batch', 0);
     }
 
     public function test_obsolete_node_paths_are_not_registered(): void

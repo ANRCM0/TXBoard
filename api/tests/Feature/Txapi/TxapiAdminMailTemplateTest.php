@@ -52,7 +52,7 @@ final class TxapiAdminMailTemplateTest extends TestCase
             'subject' => 'Custom code',
             'content' => '<p>{{code}}</p>',
         ])->assertOk()->assertJsonPath('data.ok', true);
-        $this->assertDatabaseHas('v2_mail_templates', [
+        $this->assertDatabaseHas('tx_mail_templates', [
             'name' => 'verify', 'subject' => 'Custom code',
         ]);
         $this->assertNull(Cache::get('mail_template:verify'));

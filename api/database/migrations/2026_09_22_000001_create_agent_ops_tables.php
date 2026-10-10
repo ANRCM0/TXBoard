@@ -1,7 +1,5 @@
 <?php
 
-use App\Support\Database\NativeTableName;
-
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -10,7 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create(NativeTableName::runtime('v2_agent_action'), function (Blueprint $table) {
+        Schema::create('tx_agent_action', function (Blueprint $table) {
             $table->id();
             $table->string('request_id', 64)->unique();
             $table->unsignedBigInteger('admin_id')->index();
@@ -33,7 +31,7 @@ return new class extends Migration
             $table->index(['token_id', 'created_at']);
         });
 
-        Schema::create(NativeTableName::runtime('v2_agent_audit_log'), function (Blueprint $table) {
+        Schema::create('tx_agent_audit_log', function (Blueprint $table) {
             $table->id();
             $table->string('request_id', 64)->index();
             $table->unsignedBigInteger('admin_id')->index();
@@ -55,7 +53,7 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::dropIfExists(NativeTableName::runtime('v2_agent_audit_log'));
-        Schema::dropIfExists(NativeTableName::runtime('v2_agent_action'));
+        Schema::dropIfExists('tx_agent_audit_log');
+        Schema::dropIfExists('tx_agent_action');
     }
 };

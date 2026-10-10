@@ -11,16 +11,16 @@ class MySqlSchemaInventoryTest extends TestCase
     public function test_preserves_index_column_order_without_exporting_defaults_or_sensitive_rows(): void
     {
         $columns = [
-            (object) ['table_name' => 'v2_traffic_batch', 'column_name' => 'server_id',
+            (object) ['table_name' => 'tx_traffic_batch', 'column_name' => 'server_id',
                 'data_type' => 'bigint', 'is_nullable' => 'NO',
                 'column_default' => 'DO_NOT_EXPORT_THIS_SECRET'],
-            (object) ['table_name' => 'v2_traffic_batch', 'column_name' => 'batch_id',
+            (object) ['table_name' => 'tx_traffic_batch', 'column_name' => 'batch_id',
                 'data_type' => 'varchar', 'is_nullable' => 'NO'],
         ];
         $indexes = [
-            (object) ['table_name' => 'v2_traffic_batch', 'index_name' => 'uq_batch',
+            (object) ['table_name' => 'tx_traffic_batch', 'index_name' => 'uq_batch',
                 'non_unique' => 0, 'seq_in_index' => 2, 'column_name' => 'batch_id'],
-            (object) ['table_name' => 'v2_traffic_batch', 'index_name' => 'uq_batch',
+            (object) ['table_name' => 'tx_traffic_batch', 'index_name' => 'uq_batch',
                 'non_unique' => 0, 'seq_in_index' => 1, 'column_name' => 'server_id'],
         ];
         $result = MySqlSchemaInventory::build($columns, $indexes);
@@ -42,7 +42,7 @@ class MySqlSchemaInventoryTest extends TestCase
 
     public function test_nonunique_index_cannot_satisfy_transaction_invariant(): void
     {
-        $tables = ['v2_order' => ['indexes' => [
+        $tables = ['tx_order' => ['indexes' => [
             ['name' => 'idx_trade', 'unique' => false, 'columns' => ['trade_no']],
         ]]];
         $result = MySqlSchemaInventory::validate($tables);
@@ -64,6 +64,6 @@ class MySqlSchemaInventoryTest extends TestCase
     public function test_mixed_legacy_and_native_user_tables_are_rejected(): void
     {
         $this->expectException(RuntimeException::class);
-        MySqlSchemaInventory::validate(['tx_user' => ['indexes' => []], 'v2_user' => ['indexes' => []]]);
+        MySqlSchemaInventory::validate(['tx_user' => ['indexes' => []], 'tx_user' => ['indexes' => []]]);
     }
 }

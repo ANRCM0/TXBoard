@@ -7,9 +7,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class Coupon extends Model
 {
-    
-    use \App\Support\Database\ResolvesNativeEloquentTable;
-protected $table = 'v2_coupon';
+
+protected $table = 'tx_coupon';
     protected $dateFormat = 'U';
     protected $guarded = ['id'];
     protected $casts = [

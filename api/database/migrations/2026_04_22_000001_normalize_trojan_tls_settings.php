@@ -7,7 +7,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        DB::table('v2_server')
+        DB::table('tx_server')
             ->where('type', 'trojan')
             ->chunkById(100, function ($servers) {
                 foreach ($servers as $server) {
@@ -41,7 +41,7 @@ return new class extends Migration
                     }
 
                     if ($needsUpdate) {
-                        DB::table('v2_server')
+                        DB::table('tx_server')
                             ->where('id', $server->id)
                             ->update(['protocol_settings' => json_encode($settings)]);
                     }

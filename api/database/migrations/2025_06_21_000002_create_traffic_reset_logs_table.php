@@ -11,7 +11,7 @@ class CreateTrafficResetLogsTable extends Migration
      */
     public function up(): void
     {
-        Schema::create('v2_traffic_reset_logs', function (Blueprint $table) {
+        Schema::create('tx_traffic_reset_logs', function (Blueprint $table) {
             $table->id();
             $table->bigInteger('user_id')->comment('用户ID');
             $table->string('reset_type', 50)->comment('重置类型');
@@ -38,6 +38,6 @@ class CreateTrafficResetLogsTable extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('v2_traffic_reset_logs');
+        Schema::dropIfExists('tx_traffic_reset_logs');
     }
 } 

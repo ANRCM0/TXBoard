@@ -27,9 +27,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 class GiftCardTemplate extends Model
 {
-    
-    use \App\Support\Database\ResolvesNativeEloquentTable;
-protected $table = 'v2_gift_card_template';
+
+protected $table = 'tx_gift_card_template';
     protected $dateFormat = 'U';
 
     // 卡片类型常量

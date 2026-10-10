@@ -24,9 +24,8 @@ use Illuminate\Support\Str;
  */
 class ServerMachine extends Model
 {
-    
-    use \App\Support\Database\ResolvesNativeEloquentTable;
-protected $table = 'v2_server_machine';
+
+protected $table = 'tx_server_machine';
 
     protected $guarded = ['id'];
 

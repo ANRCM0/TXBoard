@@ -77,7 +77,7 @@ final class NetworkNodeAdminController
         $data = $request->validate([
             'show' => ['sometimes', 'boolean'],
             'enabled' => ['sometimes', 'boolean'],
-            'machine_id' => ['sometimes', 'nullable', 'integer', \Illuminate\Validation\Rule::exists(\App\Support\Database\NativeTableName::runtime('v2_server_machine'), 'id')],
+            'machine_id' => ['sometimes', 'nullable', 'integer', \Illuminate\Validation\Rule::exists('tx_server_machine', 'id')],
         ]);
         if ($data === []) {
             return TxapiResponse::error($request, 'NETWORK_NODE_UPDATE_EMPTY',
@@ -156,7 +156,7 @@ final class NetworkNodeAdminController
             'ids.*' => ['integer', 'min:1', 'distinct'],
             'show' => ['sometimes', 'boolean'],
             'enabled' => ['sometimes', 'boolean'],
-            'machine_id' => ['sometimes', 'nullable', 'integer', \Illuminate\Validation\Rule::exists(\App\Support\Database\NativeTableName::runtime('v2_server_machine'), 'id')],
+            'machine_id' => ['sometimes', 'nullable', 'integer', \Illuminate\Validation\Rule::exists('tx_server_machine', 'id')],
         ]);
         $ids = $data['ids'];
         unset($data['ids']);

@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('v2_plugins', function (Blueprint $table) {
+        Schema::create('tx_plugins', function (Blueprint $table) {
             $table->id();
             $table->string('name');
             $table->string('code')->unique();
@@ -28,6 +28,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('v2_plugins');
+        Schema::dropIfExists('tx_plugins');
     }
 };

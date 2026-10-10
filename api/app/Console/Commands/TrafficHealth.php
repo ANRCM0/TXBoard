@@ -27,10 +27,10 @@ class TrafficHealth extends Command
         }
 
         $cutoff = time() - ($minutes * 60);
-        $recent = DB::table(\App\Support\Database\NativeTableName::runtime('v2_traffic_batch'))->where('created_at', '>=', $cutoff);
+        $recent = DB::table('tx_traffic_batch')->where('created_at', '>=', $cutoff);
         $settled = (clone $recent)->count();
         $nodes = (clone $recent)->distinct()->count('server_id');
-        $lastSettledAt = DB::table(\App\Support\Database\NativeTableName::runtime('v2_traffic_batch'))->max('created_at');
+        $lastSettledAt = DB::table('tx_traffic_batch')->max('created_at');
         $queuePending = null;
         $alerts = [];
 

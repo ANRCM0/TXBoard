@@ -10,7 +10,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('v2_subscribe_templates', function (Blueprint $table) {
+        Schema::create('tx_subscribe_templates', function (Blueprint $table) {
             $table->id();
             $table->string('name')->unique()->comment('Template key, e.g. singbox, clash');
             $table->mediumText('content')->nullable()->comment('Template content');
@@ -22,7 +22,7 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::dropIfExists('v2_subscribe_templates');
+        Schema::dropIfExists('tx_subscribe_templates');
     }
 
     private function seedDefaults(): void
@@ -58,7 +58,7 @@ return new class extends Migration
         ];
 
         foreach ($protocols as $name => $fileFallbacks) {
-            $existing = DB::table('v2_settings')
+            $existing = DB::table('tx_settings')
                 ->where('name', "subscribe_template_{$name}")
                 ->value('value');
 
@@ -75,7 +75,7 @@ return new class extends Migration
                 }
             }
 
-            DB::table('v2_subscribe_templates')->insert([
+            DB::table('tx_subscribe_templates')->insert([
                 'name' => $name,
                 'content' => $content,
                 'created_at' => now(),
@@ -83,8 +83,8 @@ return new class extends Migration
             ]);
         }
 
-        // Clean up old entries from v2_settings
-        DB::table('v2_settings')
+        // Clean up old entries from tx_settings
+        DB::table('tx_settings')
             ->where('name', 'like', 'subscribe_template_%')
             ->delete();
     }

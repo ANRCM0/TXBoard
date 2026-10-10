@@ -101,7 +101,7 @@ final class RedemptionCodeAdminTest extends TestCase
             'max_usage' => 0,
         ])->assertStatus(422);
         $this->deleteJson($this->base . '/codes/' . $code->id)->assertStatus(409);
-        $this->assertDatabaseHas('v2_gift_card_code', ['id' => $code->id]);
+        $this->assertDatabaseHas('tx_gift_card_code', ['id' => $code->id]);
     }
 
     public function test_template_with_issued_codes_cannot_be_deleted(): void
@@ -113,6 +113,6 @@ final class RedemptionCodeAdminTest extends TestCase
             'usage_count' => 0, 'max_usage' => 1,
         ]);
         $this->deleteJson($this->base . '/templates/' . $template->id)->assertStatus(409);
-        $this->assertDatabaseHas('v2_gift_card_template', ['id' => $template->id]);
+        $this->assertDatabaseHas('tx_gift_card_template', ['id' => $template->id]);
     }
 }

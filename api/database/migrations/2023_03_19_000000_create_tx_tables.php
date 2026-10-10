@@ -11,8 +11,8 @@ return new class extends Migration {
     public function up(): void
     {
         // Commission Log
-        if (!Schema::hasTable('v2_commission_log')) {
-            Schema::create('v2_commission_log', function (Blueprint $table) {
+        if (!Schema::hasTable('tx_commission_log')) {
+            Schema::create('tx_commission_log', function (Blueprint $table) {
                 $table->integer('id', true);
                 $table->integer('invite_user_id');
                 $table->integer('user_id');
@@ -25,8 +25,8 @@ return new class extends Migration {
         }
 
         // Invite Code
-        if (!Schema::hasTable('v2_invite_code')) {
-            Schema::create('v2_invite_code', function (Blueprint $table) {
+        if (!Schema::hasTable('tx_invite_code')) {
+            Schema::create('tx_invite_code', function (Blueprint $table) {
                 $table->integer('id', true);
                 $table->integer('user_id');
                 $table->char('code', 32);
@@ -38,8 +38,8 @@ return new class extends Migration {
         }
 
         // Knowledge
-        if (!Schema::hasTable('v2_knowledge')) {
-            Schema::create('v2_knowledge', function (Blueprint $table) {
+        if (!Schema::hasTable('tx_knowledge')) {
+            Schema::create('tx_knowledge', function (Blueprint $table) {
                 $table->integer('id', true);
                 $table->char('language', 5)->comment('語言');
                 $table->string('category')->comment('分類名');
@@ -53,8 +53,8 @@ return new class extends Migration {
         }
 
         // Plan
-        if (!Schema::hasTable('v2_plan')) {
-            Schema::create('v2_plan', function (Blueprint $table) {
+        if (!Schema::hasTable('tx_plan')) {
+            Schema::create('tx_plan', function (Blueprint $table) {
                 $table->integer('id', true);
                 $table->integer('group_id');
                 $table->integer('transfer_enable');
@@ -80,8 +80,8 @@ return new class extends Migration {
         }
 
         // Server Group
-        if (!Schema::hasTable('v2_server_group')) {
-            Schema::create('v2_server_group', function (Blueprint $table) {
+        if (!Schema::hasTable('tx_server_group')) {
+            Schema::create('tx_server_group', function (Blueprint $table) {
                 $table->integer('id', true);
                 $table->string('name');
                 $table->integer('created_at');
@@ -90,8 +90,8 @@ return new class extends Migration {
         }
 
         // Server Route
-        if (!Schema::hasTable('v2_server_route')) {
-            Schema::create('v2_server_route', function (Blueprint $table) {
+        if (!Schema::hasTable('tx_server_route')) {
+            Schema::create('tx_server_route', function (Blueprint $table) {
                 $table->integer('id', true);
                 $table->string('remarks');
                 $table->text('match');
@@ -103,8 +103,8 @@ return new class extends Migration {
         }
 
         // stat server
-        if (!Schema::hasTable('v2_stat_server')) {
-            Schema::create('v2_stat_server', function (Blueprint $table) {
+        if (!Schema::hasTable('tx_stat_server')) {
+            Schema::create('tx_stat_server', function (Blueprint $table) {
                 $table->integer('id', true);
                 $table->integer('server_id')->index('server_id')->comment('节点id');
                 $table->char('server_type', 11)->comment('节点类型');
@@ -120,8 +120,8 @@ return new class extends Migration {
         }
 
         // User
-        if (!Schema::hasTable('v2_user')) {
-            Schema::create('v2_user', function (Blueprint $table) {
+        if (!Schema::hasTable('tx_user')) {
+            Schema::create('tx_user', function (Blueprint $table) {
                 $table->integer('id', true);
                 $table->integer('invite_user_id')->nullable();
                 $table->bigInteger('telegram_id')->nullable();
@@ -158,8 +158,8 @@ return new class extends Migration {
         }
 
         // Mail Log
-        if (!Schema::hasTable('v2_mail_log')) {
-            Schema::create('v2_mail_log', function (Blueprint $table) {
+        if (!Schema::hasTable('tx_mail_log')) {
+            Schema::create('tx_mail_log', function (Blueprint $table) {
                 $table->integer('id', true);
                 $table->string('email', 64);
                 $table->string('subject');
@@ -171,8 +171,8 @@ return new class extends Migration {
         }
 
         // Log
-        if (!Schema::hasTable('v2_log')) {
-            Schema::create('v2_log', function (Blueprint $table) {
+        if (!Schema::hasTable('tx_log')) {
+            Schema::create('tx_log', function (Blueprint $table) {
                 $table->integer('id', true);
                 $table->text('title');
                 $table->string('level', 11)->nullable();
@@ -188,8 +188,8 @@ return new class extends Migration {
         }
 
         // Stat
-        if (!Schema::hasTable('v2_stat')) {
-            Schema::create('v2_stat', function (Blueprint $table) {
+        if (!Schema::hasTable('tx_stat')) {
+            Schema::create('tx_stat', function (Blueprint $table) {
                 $table->integer('id', true);
                 $table->integer('record_at');
                 $table->char('record_type', 1);
@@ -212,8 +212,8 @@ return new class extends Migration {
         }
 
         // stat user
-        if (!Schema::hasTable('v2_stat_user')) {
-            Schema::create('v2_stat_user', function (Blueprint $table) {
+        if (!Schema::hasTable('tx_stat_user')) {
+            Schema::create('tx_stat_user', function (Blueprint $table) {
                 $table->integer('id', true);
                 $table->integer('user_id');
                 $table->decimal('server_rate', 10);
@@ -233,8 +233,8 @@ return new class extends Migration {
         }
 
         // ticket message
-        if (!Schema::hasTable('v2_ticket_message')) {
-            Schema::create('v2_ticket_message', function (Blueprint $table) {
+        if (!Schema::hasTable('tx_ticket_message')) {
+            Schema::create('tx_ticket_message', function (Blueprint $table) {
                 $table->integer('id', true);
                 $table->integer('user_id');
                 $table->integer('ticket_id');
@@ -245,8 +245,8 @@ return new class extends Migration {
         }
 
         // Order
-        if (!Schema::hasTable('v2_order')) {
-            Schema::create('v2_order', function (Blueprint $table) {
+        if (!Schema::hasTable('tx_order')) {
+            Schema::create('tx_order', function (Blueprint $table) {
                 $table->integer('id', true);
                 $table->integer('invite_user_id')->nullable();
                 $table->integer('user_id');
@@ -275,8 +275,8 @@ return new class extends Migration {
         }
 
         // Payment
-        if (!Schema::hasTable('v2_payment')) {
-            Schema::create('v2_payment', function (Blueprint $table) {
+        if (!Schema::hasTable('tx_payment')) {
+            Schema::create('tx_payment', function (Blueprint $table) {
                 $table->integer('id', true);
                 $table->char('uuid', 32);
                 $table->string('payment', 16);
@@ -294,8 +294,8 @@ return new class extends Migration {
         }
 
         // Coupon
-        if (!Schema::hasTable('v2_coupon')) {
-            Schema::create('v2_coupon', function (Blueprint $table) {
+        if (!Schema::hasTable('tx_coupon')) {
+            Schema::create('tx_coupon', function (Blueprint $table) {
                 $table->integer('id', true);
                 $table->string('code');
                 $table->string('name');
@@ -314,8 +314,8 @@ return new class extends Migration {
         }
 
         // Notice
-        if (!Schema::hasTable('v2_notice')) {
-            Schema::create('v2_notice', function (Blueprint $table) {
+        if (!Schema::hasTable('tx_notice')) {
+            Schema::create('tx_notice', function (Blueprint $table) {
                 $table->integer('id', true);
                 $table->string('title');
                 $table->text('content');
@@ -328,8 +328,8 @@ return new class extends Migration {
         }
 
         // Ticket
-        if (!Schema::hasTable('v2_ticket')) {
-            Schema::create('v2_ticket', function (Blueprint $table) {
+        if (!Schema::hasTable('tx_ticket')) {
+            Schema::create('tx_ticket', function (Blueprint $table) {
                 $table->integer('id', true);
                 $table->integer('user_id');
                 $table->string('subject');
@@ -342,8 +342,8 @@ return new class extends Migration {
         }
 
         // Server Hysteria
-        if (!Schema::hasTable('v2_server_hysteria')) {
-            Schema::create('v2_server_hysteria', function (Blueprint $table) {
+        if (!Schema::hasTable('tx_server_hysteria')) {
+            Schema::create('tx_server_hysteria', function (Blueprint $table) {
                 $table->integer('id', true);
                 $table->string('group_id');
                 $table->string('route_id')->nullable();
@@ -366,9 +366,9 @@ return new class extends Migration {
         }
 
         // Server Shadowsocks
-        if (!Schema::hasTable('v2_server_shadowsocks')) {
+        if (!Schema::hasTable('tx_server_shadowsocks')) {
             autoIncrement:
-            Schema::create('v2_server_shadowsocks', function (Blueprint $table) {
+            Schema::create('tx_server_shadowsocks', function (Blueprint $table) {
                 $table->integer('id', true);
                 $table->string('group_id');
                 $table->string('route_id')->nullable();
@@ -389,8 +389,8 @@ return new class extends Migration {
             });
         }
         // Server Trojan
-        if (!Schema::hasTable('v2_server_trojan')) {
-            Schema::create('v2_server_trojan', function (Blueprint $table) {
+        if (!Schema::hasTable('tx_server_trojan')) {
+            Schema::create('tx_server_trojan', function (Blueprint $table) {
                 $table->integer('id', true)->comment('节点ID');
                 $table->string('group_id')->comment('节点组');
                 $table->string('route_id')->nullable();
@@ -411,8 +411,8 @@ return new class extends Migration {
         }
 
         // Server Vless
-        if (!Schema::hasTable('v2_server_vless')) {
-            Schema::create('v2_server_vless', function (Blueprint $table) {
+        if (!Schema::hasTable('tx_server_vless')) {
+            Schema::create('tx_server_vless', function (Blueprint $table) {
                 $table->integer('id', true);
                 $table->text('group_id');
                 $table->text('route_id')->nullable();
@@ -436,8 +436,8 @@ return new class extends Migration {
         }
 
         // Server Vmess
-        if (!Schema::hasTable('v2_server_vmess')) {
-            Schema::create('v2_server_vmess', function (Blueprint $table) {
+        if (!Schema::hasTable('tx_server_vmess')) {
+            Schema::create('tx_server_vmess', function (Blueprint $table) {
                 $table->integer('id', true);
                 $table->string('group_id');
                 $table->string('route_id')->nullable();
@@ -469,28 +469,28 @@ return new class extends Migration {
      */
     public function down(): void
     {
-        Schema::dropIfExists('v2_commission_log');
-        Schema::dropIfExists('v2_plan');
-        Schema::dropIfExists('v2_user');
-        Schema::dropIfExists('v2_mail_log');
-        Schema::dropIfExists('v2_log');
-        Schema::dropIfExists('v2_stat');
-        Schema::dropIfExists('v2_order');
-        Schema::dropIfExists('v2_coupon');
-        Schema::dropIfExists('v2_notice');
-        Schema::dropIfExists('v2_ticket');
-        Schema::dropIfExists('v2_settings');
-        Schema::dropIfExists('v2_ticket_message');
-        Schema::dropIfExists('v2_invite_code');
-        Schema::dropIfExists('v2_knowledge');
-        Schema::dropIfExists('v2_server_group');
-        Schema::dropIfExists('v2_server_route');
-        Schema::dropIfExists('v2_stat_server');
-        Schema::dropIfExists('v2_stat_user');
-        Schema::dropIfExists('v2_server_hysteria');
-        Schema::dropIfExists('v2_server_shadowsocks');
-        Schema::dropIfExists('v2_server_trojan');
-        Schema::dropIfExists('v2_server_vless');
-        Schema::dropIfExists('v2_server_vmess');
+        Schema::dropIfExists('tx_commission_log');
+        Schema::dropIfExists('tx_plan');
+        Schema::dropIfExists('tx_user');
+        Schema::dropIfExists('tx_mail_log');
+        Schema::dropIfExists('tx_log');
+        Schema::dropIfExists('tx_stat');
+        Schema::dropIfExists('tx_order');
+        Schema::dropIfExists('tx_coupon');
+        Schema::dropIfExists('tx_notice');
+        Schema::dropIfExists('tx_ticket');
+        Schema::dropIfExists('tx_settings');
+        Schema::dropIfExists('tx_ticket_message');
+        Schema::dropIfExists('tx_invite_code');
+        Schema::dropIfExists('tx_knowledge');
+        Schema::dropIfExists('tx_server_group');
+        Schema::dropIfExists('tx_server_route');
+        Schema::dropIfExists('tx_stat_server');
+        Schema::dropIfExists('tx_stat_user');
+        Schema::dropIfExists('tx_server_hysteria');
+        Schema::dropIfExists('tx_server_shadowsocks');
+        Schema::dropIfExists('tx_server_trojan');
+        Schema::dropIfExists('tx_server_vless');
+        Schema::dropIfExists('tx_server_vmess');
     }
 };

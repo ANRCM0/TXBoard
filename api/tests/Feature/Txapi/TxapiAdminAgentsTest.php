@@ -90,7 +90,7 @@ final class TxapiAdminAgentsTest extends TestCase
         ])->assertStatus(422)->assertJsonPath('error.fields.0', 'target_scope');
     }
 
-    public function test_invalid_approvals_are_bounded_and_legacy_v2_admin_agent_paths_are_gone(): void
+    public function test_invalid_approvals_are_bounded_and_legacy_tx_admin_agent_paths_are_gone(): void
     {
         Sanctum::actingAs($this->user('agent-approval@example.test', true));
         $this->postJson(self::ROOT . '/actions/approve', ['request_id' => 'not_found'])

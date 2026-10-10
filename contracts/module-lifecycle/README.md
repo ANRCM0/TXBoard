@@ -44,7 +44,7 @@ ModuleLifecycle
 
 The Module layer MUST NOT directly:
 
-- mutate `v2_plugins`;
+- mutate `tx_plugins`;
 - run plugin migrations;
 - require `Plugin.php`;
 - call plugin `boot()` or `cleanup()`;

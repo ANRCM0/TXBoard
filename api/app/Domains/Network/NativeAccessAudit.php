@@ -4,7 +4,7 @@ namespace App\Domains\Network;
 
 use App\Models\Server;
 use App\Models\User;
-use App\Support\Database\NativeTableName;
+
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
@@ -16,12 +16,12 @@ final class NativeAccessAudit
 
     public static function rulesTable(): string
     {
-        return NativeTableName::runtime('v2_access_audit_rule');
+        return 'tx_access_audit_rule';
     }
 
     public static function eventsTable(): string
     {
-        return NativeTableName::runtime('v2_access_audit_event');
+        return 'tx_access_audit_event';
     }
 
     public function rules(): array

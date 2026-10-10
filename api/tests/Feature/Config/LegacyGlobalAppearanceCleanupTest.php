@@ -26,9 +26,9 @@ class LegacyGlobalAppearanceCleanupTest extends TestCase
     public function test_one_way_migration_purges_only_old_global_appearance_and_shared_cache(): void
     {
         foreach (self::OLD_KEYS as $key) {
-            DB::table('v2_settings')->insert(['name' => $key, 'value' => 'obsolete']);
+            DB::table('tx_settings')->insert(['name' => $key, 'value' => 'obsolete']);
         }
-        DB::table('v2_settings')->insert([
+        DB::table('tx_settings')->insert([
             ['name' => 'frontend_theme', 'value' => 'TXBoard'],
             ['name' => 'theme_TXBoard', 'value' => '{"theme_color":"blue"}'],
             ['name' => 'app_name', 'value' => 'Original site'],
@@ -44,14 +44,14 @@ class LegacyGlobalAppearanceCleanupTest extends TestCase
         $migration->up();
         $migration->up(); // Safe to rerun after an interrupted rollout.
 
-        $this->assertSame(0, DB::table('v2_settings')->whereIn('name', self::OLD_KEYS)->count());
-        $this->assertSame('TXBoard', DB::table('v2_settings')->where('name', 'frontend_theme')->value('value'));
-        $this->assertSame('{"theme_color":"blue"}', DB::table('v2_settings')->where('name', 'theme_TXBoard')->value('value'));
-        $this->assertSame('Original site', DB::table('v2_settings')->where('name', 'app_name')->value('value'));
+        $this->assertSame(0, DB::table('tx_settings')->whereIn('name', self::OLD_KEYS)->count());
+        $this->assertSame('TXBoard', DB::table('tx_settings')->where('name', 'frontend_theme')->value('value'));
+        $this->assertSame('{"theme_color":"blue"}', DB::table('tx_settings')->where('name', 'theme_TXBoard')->value('value'));
+        $this->assertSame('Original site', DB::table('tx_settings')->where('name', 'app_name')->value('value'));
         $this->assertNull($cache->get(Setting::CACHE_KEY));
 
         $migration->down();
-        $this->assertSame(0, DB::table('v2_settings')->whereIn('name', self::OLD_KEYS)->count());
+        $this->assertSame(0, DB::table('tx_settings')->whereIn('name', self::OLD_KEYS)->count());
     }
 
     public function test_retired_appearance_keys_cannot_be_recreated_via_model_or_settings_service(): void
@@ -72,7 +72,7 @@ class LegacyGlobalAppearanceCleanupTest extends TestCase
                 $this->assertStringContainsString('Retired global appearance', $e->getMessage());
             }
         }
-        $this->assertSame(0, DB::table('v2_settings')->whereIn('name', self::OLD_KEYS)->count());
+        $this->assertSame(0, DB::table('tx_settings')->whereIn('name', self::OLD_KEYS)->count());
 
         // Mixed valid/retired batches must fail without partly saving valid keys.
         try {
@@ -81,7 +81,7 @@ class LegacyGlobalAppearanceCleanupTest extends TestCase
         } catch (InvalidArgumentException $e) {
             $this->assertStringContainsString('Retired global appearance', $e->getMessage());
         }
-        $this->assertNull(DB::table('v2_settings')->where('name', 'site_cleanup_guard')->value('value'));
+        $this->assertNull(DB::table('tx_settings')->where('name', 'site_cleanup_guard')->value('value'));
         $settings->save(['frontend_theme' => 'TXBoard']);
         $this->assertSame('TXBoard', $settings->get('frontend_theme'));
     }
@@ -118,8 +118,8 @@ class LegacyGlobalAppearanceCleanupTest extends TestCase
             'frontend_theme_color' => '',
         ])->assertUnprocessable()->assertJsonPath('error.fields.0', 'frontend_theme_color');
 
-        $this->assertNull(DB::table('v2_settings')->where('name', 'app_name')->value('value'));
-        $this->assertNull(DB::table('v2_settings')->where('name', 'frontend_theme_color')->value('value'));
+        $this->assertNull(DB::table('tx_settings')->where('name', 'app_name')->value('value'));
+        $this->assertNull(DB::table('tx_settings')->where('name', 'frontend_theme_color')->value('value'));
     }
 
     public function test_cached_legacy_values_are_not_exposed_by_settings_reads(): void

@@ -26,13 +26,13 @@ return new class extends Migration {
     {
         // 批量更新订单的周期字段
         foreach (self::PERIOD_MAPPING as $oldPeriod => $newPeriod) {
-            DB::table('v2_order')
+            DB::table('tx_order')
                 ->where('period', $oldPeriod)
                 ->update(['period' => $newPeriod]);
         }
 
         // 检查是否还有未转换的记录
-        $unconvertedCount = DB::table('v2_order')
+        $unconvertedCount = DB::table('tx_order')
             ->whereNotIn('period', array_values(self::PERIOD_MAPPING))
             ->count();
 
@@ -48,7 +48,7 @@ return new class extends Migration {
     {
         // 回滚操作 - 将新的周期值转换回旧的价格字段名
         foreach (self::PERIOD_MAPPING as $oldPeriod => $newPeriod) {
-            DB::table('v2_order')
+            DB::table('tx_order')
                 ->where('period', $newPeriod)
                 ->update(['period' => $oldPeriod]);
         }

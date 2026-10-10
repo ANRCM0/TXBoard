@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         // 礼品卡模板表
-        Schema::create('v2_gift_card_template', function (Blueprint $table) {
+        Schema::create('tx_gift_card_template', function (Blueprint $table) {
             $table->id();
             $table->string('name')->comment('礼品卡名称');
             $table->text('description')->nullable()->comment('礼品卡描述');
@@ -35,7 +35,7 @@ return new class extends Migration
         });
 
         // 礼品卡兑换码表
-        Schema::create('v2_gift_card_code', function (Blueprint $table) {
+        Schema::create('tx_gift_card_code', function (Blueprint $table) {
             $table->id();
             $table->integer('template_id')->comment('模板ID');
             $table->string('code', 32)->unique()->comment('兑换码');
@@ -60,7 +60,7 @@ return new class extends Migration
         });
 
         // 礼品卡使用记录表
-        Schema::create('v2_gift_card_usage', function (Blueprint $table) {
+        Schema::create('tx_gift_card_usage', function (Blueprint $table) {
             $table->id();
             $table->integer('code_id')->comment('兑换码ID');
             $table->integer('template_id')->comment('模板ID');
@@ -91,8 +91,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('v2_gift_card_usage');
-        Schema::dropIfExists('v2_gift_card_code');
-        Schema::dropIfExists('v2_gift_card_template');
+        Schema::dropIfExists('tx_gift_card_usage');
+        Schema::dropIfExists('tx_gift_card_code');
+        Schema::dropIfExists('tx_gift_card_template');
     }
 };

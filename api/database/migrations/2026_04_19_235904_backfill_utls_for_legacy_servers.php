@@ -9,11 +9,11 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (!Schema::hasTable('v2_server')) {
+        if (!Schema::hasTable('tx_server')) {
             return;
         }
 
-        DB::table('v2_server')
+        DB::table('tx_server')
             ->where('type', 'vless')
             ->orderBy('id')
             ->chunkById(200, function ($servers) {
@@ -35,7 +35,7 @@ return new class extends Migration
                             : 'chrome',
                     ];
 
-                    DB::table('v2_server')
+                    DB::table('tx_server')
                         ->where('id', $server->id)
                         ->update(['protocol_settings' => json_encode($settings)]);
                 }

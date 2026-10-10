@@ -12,7 +12,7 @@ return new class extends Migration {
      */
     public function up(): void
     {
-        Schema::create('v2_server', function (Blueprint $table) {
+        Schema::create('tx_server', function (Blueprint $table) {
             $table->id('id');
             $table->string('type')->comment('Server Type');
             $table->string('code')->nullable()->comment('Server Spectific Key');
@@ -33,9 +33,9 @@ return new class extends Migration {
         });
 
         // Migrate Trojan servers
-        $trojanServers = DB::table('v2_server_trojan')->get();
+        $trojanServers = DB::table('tx_server_trojan')->get();
         foreach ($trojanServers as $server) {
-            DB::table('v2_server')->insert([
+            DB::table('tx_server')->insert([
                 'type' => 'trojan',
                 'code' => (string) $server->id,
                 'parent_id' => $server->parent_id,
@@ -61,9 +61,9 @@ return new class extends Migration {
         }
 
         // Migrate VMess servers
-        $vmessServers = DB::table('v2_server_vmess')->get();
+        $vmessServers = DB::table('tx_server_vmess')->get();
         foreach ($vmessServers as $server) {
-            DB::table('v2_server')->insert([
+            DB::table('tx_server')->insert([
                 'type' => 'vmess',
                 'code' => (string) $server->id,
                 'parent_id' => $server->parent_id,
@@ -90,10 +90,10 @@ return new class extends Migration {
         }
 
         // Migrate VLESS servers
-        $vlessServers = DB::table('v2_server_vless')->get();
+        $vlessServers = DB::table('tx_server_vless')->get();
         foreach ($vlessServers as $server) {
             $tlsSettings = optional(json_decode($server->tls_settings));
-            DB::table('v2_server')->insert([
+            DB::table('tx_server')->insert([
                 'type' => 'vless',
                 'code' => (string) $server->id,
                 'parent_id' => $server->parent_id,
@@ -127,9 +127,9 @@ return new class extends Migration {
         }
 
         // Migrate Shadowsocks servers
-        $ssServers = DB::table('v2_server_shadowsocks')->get();
+        $ssServers = DB::table('tx_server_shadowsocks')->get();
         foreach ($ssServers as $server) {
-            DB::table('v2_server')->insert([
+            DB::table('tx_server')->insert([
                 'type' => 'shadowsocks',
                 'code' => (string) $server->id,
                 'parent_id' => $server->parent_id,
@@ -154,9 +154,9 @@ return new class extends Migration {
         }
 
         // Migrate Hysteria servers
-        $hysteriaServers = DB::table(table: 'v2_server_hysteria')->get();
+        $hysteriaServers = DB::table(table: 'tx_server_hysteria')->get();
         foreach ($hysteriaServers as $server) {
-            DB::table('v2_server')->insert([
+            DB::table('tx_server')->insert([
                 'type' => 'hysteria',
                 'code' => (string) $server->id,
                 'parent_id' => $server->parent_id,
@@ -195,11 +195,11 @@ return new class extends Migration {
         $this->updateParentIds();
 
         // Drop old tables
-        Schema::dropIfExists('v2_server_trojan');
-        Schema::dropIfExists('v2_server_vmess');
-        Schema::dropIfExists('v2_server_vless');
-        Schema::dropIfExists('v2_server_shadowsocks');
-        Schema::dropIfExists('v2_server_hysteria');
+        Schema::dropIfExists('tx_server_trojan');
+        Schema::dropIfExists('tx_server_vmess');
+        Schema::dropIfExists('tx_server_vless');
+        Schema::dropIfExists('tx_server_shadowsocks');
+        Schema::dropIfExists('tx_server_hysteria');
     }
 
     /**
@@ -208,19 +208,19 @@ return new class extends Migration {
     private function updateParentIds(): void
     {
         // Get all servers that have a parent_id
-        $servers = DB::table('v2_server')
+        $servers = DB::table('tx_server')
             ->whereNotNull('parent_id')
             ->get();
 
         // Update each server's parent_id to reference the new table's id
         foreach ($servers as $server) {
-            $parentId = DB::table('v2_server')
+            $parentId = DB::table('tx_server')
                 ->where('type', $server->type)
                 ->where('code', $server->parent_id)
                 ->value('id');
 
             if ($parentId) {
-                DB::table('v2_server')
+                DB::table('tx_server')
                     ->where('id', $server->id)
                     ->update(['parent_id' => $parentId]);
             }
@@ -239,7 +239,7 @@ return new class extends Migration {
 
         // Update each server's parent_id to reference back to the original id
         foreach ($servers as $server) {
-            $originalParentId = DB::table('v2_server')
+            $originalParentId = DB::table('tx_server')
                 ->where('type', $type)
                 ->where('id', $server->parent_id)
                 ->value('code');
@@ -258,7 +258,7 @@ return new class extends Migration {
     public function down(): void
     {
         // Recreate old tables
-        Schema::create('v2_server_trojan', function (Blueprint $table) {
+        Schema::create('tx_server_trojan', function (Blueprint $table) {
             $table->integer('id', true)->comment('节点ID');
             $table->string('group_id')->comment('节点组');
             $table->string('route_id')->nullable();
@@ -281,7 +281,7 @@ return new class extends Migration {
             $table->integer('updated_at');
         });
 
-        Schema::create('v2_server_vmess', function (Blueprint $table) {
+        Schema::create('tx_server_vmess', function (Blueprint $table) {
             $table->integer('id', true);
             $table->string('group_id');
             $table->string('route_id')->nullable();
@@ -305,7 +305,7 @@ return new class extends Migration {
             $table->integer('updated_at');
         });
 
-        Schema::create('v2_server_vless', function (Blueprint $table) {
+        Schema::create('tx_server_vless', function (Blueprint $table) {
             $table->integer('id', true);
             $table->text('group_id');
             $table->text('route_id')->nullable();
@@ -329,7 +329,7 @@ return new class extends Migration {
             $table->integer('updated_at');
         });
 
-        Schema::create('v2_server_shadowsocks', function (Blueprint $table) {
+        Schema::create('tx_server_shadowsocks', function (Blueprint $table) {
             $table->integer('id', true);
             $table->string('group_id');
             $table->string('route_id')->nullable();
@@ -351,7 +351,7 @@ return new class extends Migration {
             $table->integer('updated_at');
         });
 
-        Schema::create('v2_server_hysteria', function (Blueprint $table) {
+        Schema::create('tx_server_hysteria', function (Blueprint $table) {
             $table->integer('id', true);
             $table->string('group_id');
             $table->string('route_id')->nullable();
@@ -378,14 +378,14 @@ return new class extends Migration {
         });
 
         // Migrate data back to old tables
-        $servers = DB::table('v2_server')->get();
+        $servers = DB::table('tx_server')->get();
         foreach ($servers as $server) {
             $settings = json_decode($server->protocol_settings, true);
             $timestamp = strtotime($server->created_at);
             $updated = strtotime($server->updated_at);
             switch ($server->type) {
                 case 'trojan':
-                    DB::table('v2_server_trojan')->insert([
+                    DB::table('tx_server_trojan')->insert([
                         'id' => (int) $server->code,
                         'group_id' => $server->group_ids,
                         'route_id' => $server->route_ids,
@@ -407,7 +407,7 @@ return new class extends Migration {
                     ]);
                     break;
                 case 'vmess':
-                    DB::table('v2_server_vmess')->insert([
+                    DB::table('tx_server_vmess')->insert([
                         'id' => (int) $server->code,
                         'group_id' => $server->group_ids,
                         'route_id' => $server->route_ids,
@@ -442,7 +442,7 @@ return new class extends Migration {
                         ]);
                     }
 
-                    DB::table('v2_server_vless')->insert([
+                    DB::table('tx_server_vless')->insert([
                         'id' => (int) $server->code,
                         'group_id' => $server->group_ids,
                         'route_id' => $server->route_ids,
@@ -465,7 +465,7 @@ return new class extends Migration {
                     ]);
                     break;
                 case 'shadowsocks':
-                    DB::table('v2_server_shadowsocks')->insert([
+                    DB::table('tx_server_shadowsocks')->insert([
                         'id' => (int) $server->code,
                         'group_id' => $server->group_ids,
                         'route_id' => $server->route_ids,
@@ -486,7 +486,7 @@ return new class extends Migration {
                     ]);
                     break;
                 case 'hysteria':
-                    DB::table('v2_server_hysteria')->insert([
+                    DB::table('tx_server_hysteria')->insert([
                         'id' => (int) $server->code,
                         'group_id' => $server->group_ids,
                         'route_id' => $server->route_ids,
@@ -511,13 +511,13 @@ return new class extends Migration {
         }
 
         // Restore parent_id references for each server type
-        $this->restoreParentIds('trojan', 'v2_server_trojan');
-        $this->restoreParentIds('vmess', 'v2_server_vmess');
-        $this->restoreParentIds('vless', 'v2_server_vless');
-        $this->restoreParentIds('shadowsocks', 'v2_server_shadowsocks');
-        $this->restoreParentIds('hysteria', 'v2_server_hysteria');
+        $this->restoreParentIds('trojan', 'tx_server_trojan');
+        $this->restoreParentIds('vmess', 'tx_server_vmess');
+        $this->restoreParentIds('vless', 'tx_server_vless');
+        $this->restoreParentIds('shadowsocks', 'tx_server_shadowsocks');
+        $this->restoreParentIds('hysteria', 'tx_server_hysteria');
 
         // Drop new table
-        Schema::dropIfExists('v2_server');
+        Schema::dropIfExists('tx_server');
     }
 };

@@ -261,7 +261,7 @@ class TxboardInstall extends Command
 
     private function seedCoreSettings(): void
     {
-        if (!Schema::hasTable(\App\Support\Database\NativeTableName::runtime('v2_settings'))) {
+        if (!Schema::hasTable('tx_settings')) {
             return;
         }
 

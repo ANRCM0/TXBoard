@@ -8,7 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('v2_admin_audit_log', function (Blueprint $table) {
+        Schema::create('tx_admin_audit_log', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('admin_id')->index();
             $table->string('action', 64)->index()->comment('Action identifier e.g. user.update');
@@ -23,6 +23,6 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::dropIfExists('v2_admin_audit_log');
+        Schema::dropIfExists('tx_admin_audit_log');
     }
 };

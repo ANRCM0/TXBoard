@@ -108,7 +108,7 @@ final class NetworkRouteAdminController
     public function simulate(Request $request)
     {
         $params = $request->validate([
-            'node_id' => ['required', 'integer', \Illuminate\Validation\Rule::exists(\App\Support\Database\NativeTableName::runtime('v2_server'), 'id')],
+            'node_id' => ['required', 'integer', \Illuminate\Validation\Rule::exists('tx_server', 'id')],
             'target' => 'required|string|max:512',
         ]);
 

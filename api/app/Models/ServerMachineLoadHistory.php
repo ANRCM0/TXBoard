@@ -7,9 +7,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ServerMachineLoadHistory extends Model
 {
-    
-    use \App\Support\Database\ResolvesNativeEloquentTable;
-protected $table = 'v2_server_machine_load_history';
+
+protected $table = 'tx_server_machine_load_history';
 
     protected $guarded = ['id'];
 

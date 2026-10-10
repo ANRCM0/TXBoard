@@ -29,13 +29,13 @@ if (DB::connection()->getDriverName() !== 'mysql') {
 }
 
 $tables = [
-    'user' => ['v2_user', ['balance', 'commission_balance', 'u', 'd', 'transfer_enable']],
-    'order' => ['v2_order', ['total_amount', 'balance_amount', 'handling_amount', 'discount_amount']],
-    'wallet_recharge' => ['v2_wallet_recharge', ['amount_minor', 'fee_minor']],
-    'commission_log' => ['v2_commission_log', ['get_amount']],
-    'traffic_batch' => ['v2_traffic_batch', []],
-    'stat_user' => ['v2_stat_user', ['u', 'd']],
-    'stat_server' => ['v2_stat_server', ['u', 'd']],
+    'user' => ['tx_user', ['balance', 'commission_balance', 'u', 'd', 'transfer_enable']],
+    'order' => ['tx_order', ['total_amount', 'balance_amount', 'handling_amount', 'discount_amount']],
+    'wallet_recharge' => ['tx_wallet_recharge', ['amount_minor', 'fee_minor']],
+    'commission_log' => ['tx_commission_log', ['get_amount']],
+    'traffic_batch' => ['tx_traffic_batch', []],
+    'stat_user' => ['tx_stat_user', ['u', 'd']],
+    'stat_server' => ['tx_stat_server', ['u', 'd']],
 ];
 $report = ['schema_version' => 1, 'read_only' => true, 'scope' => 'aggregate-cutover-evidence',
     'not_a_row_level_proof' => true, 'table_prefix' => $prefix, 'tables' => []];

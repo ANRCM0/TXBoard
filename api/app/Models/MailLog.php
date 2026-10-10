@@ -6,9 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class MailLog extends Model
 {
-    
-    use \App\Support\Database\ResolvesNativeEloquentTable;
-protected $table = 'v2_mail_log';
+
+protected $table = 'tx_mail_log';
     protected $dateFormat = 'U';
     protected $guarded = ['id'];
     protected $casts = [

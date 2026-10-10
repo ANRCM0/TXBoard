@@ -114,7 +114,7 @@ final class PluginModuleAdapter implements ModuleAdapter
     private function installedPlugins(array &$errors): Collection
     {
         try {
-            if (!Schema::hasTable(\App\Support\Database\NativeTableName::runtime('v2_plugins'))) {
+            if (!Schema::hasTable('tx_plugins')) {
                 return collect();
             }
 

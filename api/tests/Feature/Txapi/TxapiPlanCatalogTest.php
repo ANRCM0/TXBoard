@@ -36,7 +36,7 @@ class TxapiPlanCatalogTest extends TestCase
 
         $capacityQueries = [];
         DB::listen(function ($query) use (&$capacityQueries): void {
-            if (str_contains(strtolower($query->sql), 'v2_user')
+            if (str_contains(strtolower($query->sql), 'tx_user')
                 && str_contains(strtolower($query->sql), 'group by')) {
                 $capacityQueries[] = $query->sql;
             }

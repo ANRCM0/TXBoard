@@ -11,8 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('v2_payment', function (Blueprint $table) {
-            $table->text('icon')->nullable()->change();
+        Schema::table('tx_plan', function (Blueprint $table) {
+            $table->json('tags')->nullable()->after('content');
         });
     }
 
@@ -21,8 +21,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('v2_payment', function (Blueprint $table) {
-            $table->string('icon')->nullable()->change();
+        Schema::table('tx_plan', function (Blueprint $table) {
+            $table->dropColumn('tags');
         });
     }
 };

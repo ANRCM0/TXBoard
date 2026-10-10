@@ -20,7 +20,7 @@ class ThemePublicConfigTest extends TestCase
         ]);
         // Simulate rows left behind by an old installation. Runtime writes to
         // these retired keys are now prohibited by SettingModel.
-        DB::table('v2_settings')->insert([
+        DB::table('tx_settings')->insert([
             ['name' => 'frontend_theme_color', 'value' => 'black'],
             ['name' => 'frontend_background_url', 'value' => 'https://example.test/old.jpg'],
         ]);

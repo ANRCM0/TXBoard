@@ -8,7 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('v2_plugins', function (Blueprint $table) {
+        Schema::table('tx_plugins', function (Blueprint $table) {
             $table->string('type', 20)->default('feature')->after('code')->comment('插件类型：feature功能性，payment支付型');
             $table->index(['type', 'is_enabled']);
         });
@@ -16,7 +16,7 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::table('v2_plugins', function (Blueprint $table) {
+        Schema::table('tx_plugins', function (Blueprint $table) {
             $table->dropIndex(['type', 'is_enabled']);
             $table->dropColumn('type');
         });

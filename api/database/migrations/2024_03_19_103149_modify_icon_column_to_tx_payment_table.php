@@ -11,8 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('v2_user', function (Blueprint $table) {
-            $table->index(['u','d','expired_at','group_id','banned','transfer_enable']);
+        Schema::table('tx_payment', function (Blueprint $table) {
+            $table->text('icon')->nullable()->change();
         });
     }
 
@@ -21,8 +21,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('v2_user', function (Blueprint $table) {
-            $table->dropIndex(['u','d','expired_at','group_id','banned','transfer_enable']);
+        Schema::table('tx_payment', function (Blueprint $table) {
+            $table->string('icon')->nullable()->change();
         });
     }
 };

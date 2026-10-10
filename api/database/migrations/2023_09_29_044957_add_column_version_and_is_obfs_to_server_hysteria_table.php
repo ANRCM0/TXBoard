@@ -13,7 +13,7 @@ class AddColumnVersionAndIsObfsToServerHysteriaTable extends Migration
      */
     public function up()
     {
-        Schema::table('v2_server_hysteria', function (Blueprint $table) {
+        Schema::table('tx_server_hysteria', function (Blueprint $table) {
             $table->tinyInteger('version',false,true)->default(1)->comment('hysteria版本,Version:1\2');
             $table->boolean('is_obfs')->default(true)->comment('是否开启obfs');
         });
@@ -26,7 +26,7 @@ class AddColumnVersionAndIsObfsToServerHysteriaTable extends Migration
      */
     public function down()
     {
-        Schema::table('v2_server_hysteria', function (Blueprint $table) {
+        Schema::table('tx_server_hysteria', function (Blueprint $table) {
             $table->dropColumn('version','is_obfs');
         });
     }

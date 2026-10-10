@@ -13,7 +13,7 @@ class AddColumnNetworkAndNetworkSettingsToV2ServerTrojan extends Migration
      */
     public function up()
     {
-        Schema::table('v2_server_trojan', function (Blueprint $table) {
+        Schema::table('tx_server_trojan', function (Blueprint $table) {
             $table->string('network', 11)->default('tcp')->after('server_name')->comment('传输协议');
             $table->text('networkSettings')->nullable()->after('network')->comment('传输协议配置');
         });
@@ -26,7 +26,7 @@ class AddColumnNetworkAndNetworkSettingsToV2ServerTrojan extends Migration
      */
     public function down()
     {
-        Schema::table('v2_server_trojan', function (Blueprint $table) {
+        Schema::table('tx_server_trojan', function (Blueprint $table) {
             $table->dropColumn(["network","networkSettings"]);
         });
     }

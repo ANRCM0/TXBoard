@@ -27,9 +27,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 class GiftCardCode extends Model
 {
-    
-    use \App\Support\Database\ResolvesNativeEloquentTable;
-protected $table = 'v2_gift_card_code';
+
+protected $table = 'tx_gift_card_code';
     protected $dateFormat = 'U';
 
     // 状态常量

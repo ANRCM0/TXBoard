@@ -10,13 +10,13 @@ return new class extends Migration {
      */
     public function up(): void
     {
-        Schema::table('v2_user', function (Blueprint $table) {
+        Schema::table('tx_user', function (Blueprint $table) {
             $table->index('t');
             $table->index('online_count');
             $table->index('created_at');
         });
 
-        Schema::table('v2_order', function (Blueprint $table) {
+        Schema::table('tx_order', function (Blueprint $table) {
             $table->index('created_at');
             $table->index('status');
             $table->index('total_amount');
@@ -25,24 +25,24 @@ return new class extends Migration {
             $table->index('commission_balance');
         });
 
-        Schema::table('v2_stat_server', function (Blueprint $table) {
+        Schema::table('tx_stat_server', function (Blueprint $table) {
             $table->index('server_id');
             $table->index('record_at');
             $table->index('u');
             $table->index('d');
         });
 
-        Schema::table('v2_stat_user', function (Blueprint $table) {
+        Schema::table('tx_stat_user', function (Blueprint $table) {
             $table->index('u');
             $table->index('d');
         });
 
-        Schema::table('v2_commission_log', function (Blueprint $table) {
+        Schema::table('tx_commission_log', function (Blueprint $table) {
             $table->index('created_at');
             $table->index('get_amount');
         });
 
-        Schema::table('v2_ticket', function (Blueprint $table) {
+        Schema::table('tx_ticket', function (Blueprint $table) {
             $table->index('status');
             $table->index('created_at');
         });
@@ -53,13 +53,13 @@ return new class extends Migration {
      */
     public function down(): void
     {
-        Schema::table('v2_user', function (Blueprint $table) {
+        Schema::table('tx_user', function (Blueprint $table) {
             $table->dropIndex(['t']);
             $table->dropIndex(['online_count']);
             $table->dropIndex(['created_at']);
         });
 
-        Schema::table('v2_order', function (Blueprint $table) {
+        Schema::table('tx_order', function (Blueprint $table) {
             $table->dropIndex(['created_at']);
             $table->dropIndex(['status']);
             $table->dropIndex(['total_amount']);
@@ -68,24 +68,24 @@ return new class extends Migration {
             $table->dropIndex(['commission_balance']);
         });
 
-        Schema::table('v2_stat_server', function (Blueprint $table) {
+        Schema::table('tx_stat_server', function (Blueprint $table) {
             $table->dropIndex(['server_id']);
             $table->dropIndex(['record_at']);
             $table->dropIndex(['u']);
             $table->dropIndex(['d']);
         });
 
-        Schema::table('v2_stat_user', function (Blueprint $table) {
+        Schema::table('tx_stat_user', function (Blueprint $table) {
             $table->dropIndex(['u']);
             $table->dropIndex(['d']);
         });
 
-        Schema::table('v2_commission_log', function (Blueprint $table) {
+        Schema::table('tx_commission_log', function (Blueprint $table) {
             $table->dropIndex(['created_at']);
             $table->dropIndex(['get_amount']);
         });
 
-        Schema::table('v2_ticket', function (Blueprint $table) {
+        Schema::table('tx_ticket', function (Blueprint $table) {
             $table->dropIndex(['status']);
             $table->dropIndex(['created_at']);
         });

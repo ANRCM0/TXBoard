@@ -25,7 +25,7 @@ Read first:
 - 跨仓修改优先阅读 `contracts/http/external-adapter-current.md`、`contracts/http/theme-integration-current.md`、`contracts/node-protocol/txnode-integration-current.md`。
 - 可选独立 Gateway 不持有 Laravel 用户/订单/资金/Node 状态，也不能接管管理员、Agent、支付 Webhook 或订阅密钥。
 - 保持生产数据库切换与 API 升级分离：严禁在没有维护窗口、可恢复备份、身份/财务一致性验证的情况下重命名表或启用 `TX_NATIVE_TABLES`。
-- 新 Migration 的 Schema/DB 表名必须使用 `NativeTableName::runtime('v2_xxx')`，同时适用于切换前后的数据库；历史建表 Migration 保留以支持首次安装，不要重写迁移历史。所有改动必须通过 native migration/source gates。
+- 新 Migration 的 Schema/DB 表名必须使用 `'tx_xxx'`，同时适用于切换前后的数据库；历史建表 Migration 保留以支持首次安装，不要重写迁移历史。所有改动必须通过 native migration/source gates。
 - 对外协议修改必须同时更新对应契约和真实消费者，按现有回归测试验证权限、事务及重试语义。
 
 ## 2. Module Platform

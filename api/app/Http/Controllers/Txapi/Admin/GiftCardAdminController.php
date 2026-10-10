@@ -156,7 +156,7 @@ final class GiftCardAdminController
     public function issue(Request $request): JsonResponse
     {
         $input = $request->validate([
-            'template_id' => ['required', 'integer', \Illuminate\Validation\Rule::exists(\App\Support\Database\NativeTableName::runtime('v2_gift_card_template'), 'id')],
+            'template_id' => ['required', 'integer', \Illuminate\Validation\Rule::exists('tx_gift_card_template', 'id')],
             'count' => ['required', 'integer', 'min:1', 'max:500'],
             'prefix' => ['sometimes', 'string', 'max:10', 'regex:/^[A-Z0-9]*$/'],
             'expires_hours' => ['sometimes', 'integer', 'min:1', 'max:87600'],

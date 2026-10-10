@@ -6,9 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class MailTemplate extends Model
 {
-    
-    use \App\Support\Database\ResolvesNativeEloquentTable;
-protected $table = 'v2_mail_templates';
+
+protected $table = 'tx_mail_templates';
 
     protected $fillable = ['name', 'subject', 'content'];
 

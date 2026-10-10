@@ -171,7 +171,7 @@ Module Registry is an inventory and normalization layer, not a replacement contr
 
 ### Plugin
 
-Legacy Plugin Package v1 entries are normalized conservatively from `config.json`, package layout and `v2_plugins` installation state.
+Legacy Plugin Package v1 entries are normalized conservatively from `config.json`, package layout and `tx_plugins` installation state.
 
 The adapter does not load `Plugin.php`, call `boot()` or execute plugin lifecycle code during discovery.
 

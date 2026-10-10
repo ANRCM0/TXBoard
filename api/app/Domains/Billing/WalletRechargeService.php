@@ -20,7 +20,7 @@ final class WalletRechargeService
 {
     public const MIN_AMOUNT_MINOR = 100;
     public const MAX_AMOUNT_MINOR = 500000;
-    // Existing v2_user.balance is a signed 32-bit SQL INTEGER.
+    // Existing tx_user.balance is a signed 32-bit SQL INTEGER.
     public const MAX_BALANCE_MINOR = 2147483647;
     public const VERIFIED_RECHARGE_PROVIDERS = ['EPay', 'AlipayF2F'];
 

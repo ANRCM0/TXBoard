@@ -88,7 +88,7 @@ class PluginLifecycleSafetyTest extends TestCase
         } catch (\RuntimeException $e) {
             $this->assertStringContainsString('Missing or disabled plugin dependency', $e->getMessage());
         }
-        $this->assertDatabaseMissing('v2_plugins', ['code' => 'phase3_missing_dependency']);
+        $this->assertDatabaseMissing('tx_plugins', ['code' => 'phase3_missing_dependency']);
     }
 
     public function test_repeat_install_rejects_duplicate_registration_without_mutation(): void

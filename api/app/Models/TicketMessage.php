@@ -20,9 +20,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class TicketMessage extends Model
 {
-    
-    use \App\Support\Database\ResolvesNativeEloquentTable;
-protected $table = 'v2_ticket_message';
+
+protected $table = 'tx_ticket_message';
     protected $dateFormat = 'U';
     protected $guarded = ['id'];
     protected $casts = [

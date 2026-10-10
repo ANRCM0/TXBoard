@@ -12,7 +12,7 @@ const marks = [
  ['legacy_api',/\/api\/v[12](?=\/|['"?\s]|$)/gi],
  ['legacy_session',/xboard_auth_data/gi],
  ['xboard_reference',/\bxboard\b/gi],
- ['legacy_schema',/\bv2_[a-z][a-z0-9_]*\b/gi],
+ ['legacy_schema',/\btx_[a-z][a-z0-9_]*\b/gi],
  ['legacy_health',/\/api\/health(?=\/|['"?\s]|$)/gi],
 ];
 const required = [

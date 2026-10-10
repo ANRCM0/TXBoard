@@ -13,7 +13,7 @@ class CreateV2SettingsTable extends Migration
      */
     public function up()
     {
-        Schema::create('v2_settings', function (Blueprint $table) {
+        Schema::create('tx_settings', function (Blueprint $table) {
             $table->id();
             $table->string('group')->comment('设置分组')->nullable();
             $table->string('type')->comment('设置类型')->nullable();
@@ -30,6 +30,6 @@ class CreateV2SettingsTable extends Migration
      */
     public function down()
     {
-        Schema::dropIfExists('v2_settings');
+        Schema::dropIfExists('tx_settings');
     }
 }

@@ -38,7 +38,7 @@ class AgentInsightTest extends TestCase
         $exit = Artisan::call('agent:inspect-fleet', ['--source' => 'test']);
 
         $this->assertSame(0, $exit);
-        $this->assertDatabaseCount('v2_agent_inspection', 1);
+        $this->assertDatabaseCount('tx_agent_inspection', 1);
 
         $inspection = AgentInspection::query()->firstOrFail();
         $this->assertSame('test', $inspection->source);

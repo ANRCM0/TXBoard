@@ -57,19 +57,19 @@ class TrafficBatchJob implements ShouldQueue
         $settled = DB::transaction(function () use ($serverId, $rate, $hash, $data, &$acceptedUsers) {
             // Serialise batches for one server and prevent duplicate stat rows
             // even on databases without composite unique statistics indexes.
-            $server = DB::table(\App\Support\Database\NativeTableName::runtime('v2_server'))->where('id', $serverId)->lockForUpdate()->first();
+            $server = DB::table('tx_server')->where('id', $serverId)->lockForUpdate()->first();
             if (!$server) {
                 throw new RuntimeException('Cannot settle traffic for missing server');
             }
 
-            $inserted = DB::table(\App\Support\Database\NativeTableName::runtime('v2_traffic_batch'))->insertOrIgnore([
+            $inserted = DB::table('tx_traffic_batch')->insertOrIgnore([
                 'server_id' => $serverId,
                 'batch_id' => $this->batchId,
                 'payload_hash' => $hash,
                 'created_at' => time(),
             ]);
             if ($inserted !== 1) {
-                $oldHash = DB::table(\App\Support\Database\NativeTableName::runtime('v2_traffic_batch'))->where([
+                $oldHash = DB::table('tx_traffic_batch')->where([
                     'server_id' => $serverId, 'batch_id' => $this->batchId,
                 ])->value('payload_hash');
                 if (!is_string($oldHash) || !hash_equals($oldHash, $hash)) {
@@ -92,14 +92,14 @@ class TrafficBatchJob implements ShouldQueue
                 'record_type' => 'd',
             ];
             foreach (array_chunk(array_keys($data), 400) as $ids) {
-                $users = DB::table(\App\Support\Database\NativeTableName::runtime('v2_user'))->whereIn('id', $ids)
+                $users = DB::table('tx_user')->whereIn('id', $ids)
                     ->orderBy('id')->lockForUpdate()
                     ->get(['id', 'u', 'd']);
                 foreach ($users as $user) {
                     $usersById[(int) $user->id] = $user;
                 }
 
-                $stats = DB::table(\App\Support\Database\NativeTableName::runtime('v2_stat_user'))->where($statKey)
+                $stats = DB::table('tx_stat_user')->where($statKey)
                     ->whereIn('user_id', $ids)->get(['id', 'user_id']);
                 foreach ($stats as $stat) {
                     $statsByUser[(int) $stat->user_id] = $stat;
@@ -120,7 +120,7 @@ class TrafficBatchJob implements ShouldQueue
                     throw new RuntimeException('User traffic counter overflow');
                 }
 
-                DB::table(\App\Support\Database\NativeTableName::runtime('v2_user'))->where('id', $uid)->incrementEach([
+                DB::table('tx_user')->where('id', $uid)->incrementEach([
                     'u' => $billedUp, 'd' => $billedDown,
                 ], ['t' => time()]);
 
@@ -132,11 +132,11 @@ class TrafficBatchJob implements ShouldQueue
                 ];
                 $stat = $statsByUser[(int) $uid] ?? null;
                 if ($stat) {
-                    DB::table(\App\Support\Database\NativeTableName::runtime('v2_stat_user'))->where('id', $stat->id)->incrementEach([
+                    DB::table('tx_stat_user')->where('id', $stat->id)->incrementEach([
                         'u' => $billedUp, 'd' => $billedDown,
                     ], ['updated_at' => time()]);
                 } else {
-                    DB::table(\App\Support\Database\NativeTableName::runtime('v2_stat_user'))->insert($where + [
+                    DB::table('tx_stat_user')->insert($where + [
                         'u' => $billedUp, 'd' => $billedDown,
                         'created_at' => time(), 'updated_at' => time(),
                     ]);
@@ -152,7 +152,7 @@ class TrafficBatchJob implements ShouldQueue
                 throw new RuntimeException('Server traffic counter overflow');
             }
 
-            DB::table(\App\Support\Database\NativeTableName::runtime('v2_server'))->where('id', $serverId)->incrementEach([
+            DB::table('tx_server')->where('id', $serverId)->incrementEach([
                 'u' => $rawUp, 'd' => $rawDown,
             ], ['updated_at' => now()]);
 
@@ -162,13 +162,13 @@ class TrafficBatchJob implements ShouldQueue
                 'record_at' => $this->recordAt,
                 'record_type' => 'd',
             ];
-            $stat = DB::table(\App\Support\Database\NativeTableName::runtime('v2_stat_server'))->where($where)->first();
+            $stat = DB::table('tx_stat_server')->where($where)->first();
             if ($stat) {
-                DB::table(\App\Support\Database\NativeTableName::runtime('v2_stat_server'))->where('id', $stat->id)->incrementEach([
+                DB::table('tx_stat_server')->where('id', $stat->id)->incrementEach([
                     'u' => $rawUp, 'd' => $rawDown,
                 ], ['updated_at' => time()]);
             } else {
-                DB::table(\App\Support\Database\NativeTableName::runtime('v2_stat_server'))->insert($where + [
+                DB::table('tx_stat_server')->insert($where + [
                     'u' => $rawUp, 'd' => $rawDown,
                     'created_at' => time(), 'updated_at' => time(),
                 ]);

@@ -6,9 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class AgentSupportReplyRequest extends Model
 {
-    
-    use \App\Support\Database\ResolvesNativeEloquentTable;
-protected $table = 'v2_agent_support_reply_request';
+
+protected $table = 'tx_agent_support_reply_request';
     protected $dateFormat = 'U';
     protected $guarded = ['id'];
     protected $hidden = ['message'];

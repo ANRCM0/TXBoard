@@ -46,7 +46,7 @@ final class TxapiAdminNetworkGroupsRoutesTest extends TestCase
         $created = $this->postJson(self::ROOT . '/network-groups', ['name' => ' Alpha '])
             ->assertOk()->assertJsonPath('data.ok', true);
         $id = $created->json('data.id');
-        $this->assertDatabaseHas('v2_server_group', ['id' => $id, 'name' => 'Alpha']);
+        $this->assertDatabaseHas('tx_server_group', ['id' => $id, 'name' => 'Alpha']);
         $this->postJson(self::ROOT . '/network-groups', ['id' => $id, 'name' => 'Beta'])
             ->assertOk();
         $this->getJson(self::ROOT . '/network-groups')->assertOk()
@@ -101,7 +101,7 @@ final class TxapiAdminNetworkGroupsRoutesTest extends TestCase
     }
 
 
-    public function test_legacy_v2_group_and_route_admin_paths_are_not_registered(): void
+    public function test_legacy_tx_group_and_route_admin_paths_are_not_registered(): void
     {
         $all = collect(Route::getRoutes()->getRoutes())->map(static fn ($route) => $route->uri())->all();
         foreach (['server/group/fetch', 'server/group/save', 'server/group/drop',
