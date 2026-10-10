@@ -37,6 +37,20 @@ final class TxapiAdminSettingsTest extends TestCase
             ->assertJsonPath('data.site.app_name', 'TXBoard Testing');
     }
 
+    public function test_retired_settings_are_absent_and_cannot_be_saved(): void
+    {
+        Sanctum::actingAs($this->account('retired-keys@example.test', true));
+        $server = $this->getJson(self::ROOT . '/server')->assertOk()->json('data.server');
+        $this->assertArrayNotHasKey('server_ws_enable', $server);
+        $this->assertArrayNotHasKey('server_ws_url', $server);
+        $safe = $this->getJson(self::ROOT . '/safe')->assertOk()->json('data.safe');
+        $this->assertArrayNotHasKey('recaptcha_enable', $safe);
+
+        $this->postJson(self::ROOT, ['server_ws_enable' => true])->assertStatus(422);
+        $this->postJson(self::ROOT, ['server_ws_url' => 'wss://example.test/ws'])->assertStatus(422);
+        $this->postJson(self::ROOT, ['recaptcha_enable' => true])->assertStatus(422);
+    }
+
     public function test_save_uses_existing_configuration_validation_and_path_rotation(): void
     {
         Sanctum::actingAs($this->account('settings-editor@example.test', true));
