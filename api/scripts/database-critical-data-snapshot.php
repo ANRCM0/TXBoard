@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 /**
- * Read-only cutover baseline. Aggregate counts/sums only; no user identifiers,
+ * Read-only native-schema baseline. Aggregate counts/sums only; no user identifiers,
  * payment references, credentials, individual records or mutable operations.
  */
 require dirname(__DIR__) . '/vendor/autoload.php';
@@ -13,18 +13,13 @@ $app->make(\Illuminate\Contracts\Console\Kernel::class)->bootstrap();
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
-$options = getopt('', ['output:', 'prefix:']);
-$prefix = $options['prefix'] ?? 'v2';
-if (!is_string($prefix) || !in_array($prefix, ['v2', 'tx'], true)) {
-    fwrite(STDERR, "Invalid --prefix: expected v2 or tx\\n");
-    exit(2);
-}
+$options = getopt('', ['output:']);
 if (!isset($options['output']) || !is_string($options['output'])) {
-    fwrite(STDERR, "Usage: php scripts/database-critical-data-snapshot.php --output=artifacts/critical-data.json [--prefix=v2|tx]\n");
+    fwrite(STDERR, "Usage: php scripts/database-critical-data-snapshot.php --output=artifacts/critical-data.json\n");
     exit(2);
 }
 if (DB::connection()->getDriverName() !== 'mysql') {
-    fwrite(STDERR, "MySQL required for cutover evidence\n");
+    fwrite(STDERR, "MySQL required for native schema evidence\n");
     exit(2);
 }
 
@@ -37,10 +32,9 @@ $tables = [
     'stat_user' => ['tx_stat_user', ['u', 'd']],
     'stat_server' => ['tx_stat_server', ['u', 'd']],
 ];
-$report = ['schema_version' => 1, 'read_only' => true, 'scope' => 'aggregate-cutover-evidence',
-    'not_a_row_level_proof' => true, 'table_prefix' => $prefix, 'tables' => []];
+$report = ['schema_version' => 1, 'read_only' => true, 'scope' => 'native-aggregate-evidence',
+    'not_a_row_level_proof' => true, 'table_prefix' => 'tx', 'tables' => []];
 foreach ($tables as $domain => [$table, $amounts]) {
-    $table = $prefix . substr($table, 2);
     if (!Schema::hasTable($table)) {
         fwrite(STDERR, "Missing required critical table: {$table}\n");
         exit(1);

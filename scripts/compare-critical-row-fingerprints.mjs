@@ -7,7 +7,7 @@ export function compareRowFingerprints(before, after) {
   for (const snapshot of [before, after]) {
     if (snapshot?.schema_version !== 1 || snapshot.read_only !== true ||
         snapshot.kind !== 'critical-row-fingerprints' ||
-        !['v2', 'tx'].includes(snapshot.table_prefix) || !snapshot.tables) {
+        snapshot.table_prefix !== 'tx' || !snapshot.tables) {
       throw new Error('Invalid row fingerprint snapshot');
     }
   }

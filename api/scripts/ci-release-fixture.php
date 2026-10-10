@@ -72,13 +72,11 @@ if ($old) {
             'created_at' => $now, 'updated_at' => $now,
         ]);
         DB::table('tx_settings')->insert([
-            ['name' => 'app_name', 'value' => 'TXBoard CI Restore',
-             'created_at' => now(), 'updated_at' => now()],
-            ['name' => 'frontend_theme_color', 'value' => 'legacy-color-to-purge',
-             'created_at' => now(), 'updated_at' => now()],
+            'name' => 'app_name', 'value' => 'TXBoard CI Restore',
+            'created_at' => now(), 'updated_at' => now(),
         ]);
     });
-    echo "Seeded synthetic legacy user, order, balances and appearance setting.\n";
+    echo "Seeded synthetic native user, order, balances and settings.\n";
     exit(0);
 }
 
@@ -95,10 +93,8 @@ $requireEqual((int) $order->user_id, (int) $user->id, 'historical order owner');
 $requireEqual((int) $order->plan_id, (int) $user->plan_id, 'historical order plan');
 $requireEqual((int) $order->total_amount, 1299, 'historical order amount');
 $requireEqual((int) $order->status, 3, 'historical order status');
-$requireEqual((int) DB::table('tx_settings')->where('name', 'frontend_theme_color')->count(),
-    0, 'legacy presentation setting purge');
 $requireEqual((string) DB::table('tx_settings')->where('name', 'app_name')->value('value'),
-    'TXBoard CI Restore', 'non-legacy setting retention');
+    'TXBoard CI Restore', 'native setting retention');
 
 foreach (['tx_traffic_batch', 'tx_wallet_recharge'] as $table) {
     if (!Schema::hasTable($table)) $fail($table . ' missing after migration');

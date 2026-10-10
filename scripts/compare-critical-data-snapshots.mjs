@@ -8,9 +8,9 @@ export function compareCriticalSnapshots(before, after) {
       before.read_only !== true || after.read_only !== true ||
       !before.tables || !after.tables) throw new Error('Invalid critical-data snapshot');
   const failures = [];
-  // Prefixes may differ across a coordinated rename; compare domain metrics only.
+  // Native snapshots always describe tx_* tables.
   for (const snapshot of [before, after]) {
-    if (snapshot.table_prefix !== undefined && !['v2', 'tx'].includes(snapshot.table_prefix)) {
+    if (snapshot.table_prefix !== undefined && snapshot.table_prefix !== 'tx') {
       throw new Error('Invalid critical-data table prefix');
     }
   }

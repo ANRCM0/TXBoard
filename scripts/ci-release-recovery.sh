@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# CI-ONLY: synthetic pre-ledger schema upgrade and real mysqldump/restore.
+# CI-ONLY: synthetic older native schema upgrade and real mysqldump/restore.
 # Requires APP_ENV=testing, TXBOARD_CI_RESTORE=1, MySQL 8.4 and Docker.
 set -euo pipefail
 
@@ -19,7 +19,6 @@ mkdir -p "$work/bin" "$work/before-ledgers" "$work/backups" "$root/api/artifacts
 cp "$root"/api/database/migrations/*.php "$work/before-ledgers/"
 for file in \
   2026_10_08_000001_create_traffic_batch_ledger.php \
-  2026_10_08_000002_purge_legacy_frontend_appearance.php \
   2026_10_09_000001_create_wallet_recharge_table.php; do
   if [[ ! -f "$work/before-ledgers/$file" ]]; then
     echo "Missing release migration: $file" >&2
@@ -96,7 +95,7 @@ cat > artifacts/release-recovery.json <<'JSON'
   "scope": "synthetic MySQL 8.4 previous-migrations-to-current upgrade",
   "migration": "pass",
   "preexisting_wallet_order_traffic": "preserved",
-  "legacy_presentation_setting": "purged",
+  "native_presentation_setting": "preserved",
   "backup": "actual backup.sh, checksum verified (database, APP_KEY, uploads, theme, plugin)",
   "restore": "isolated fresh MySQL schema, ledger and balances verified",
   "repeat_migration": "pass",
