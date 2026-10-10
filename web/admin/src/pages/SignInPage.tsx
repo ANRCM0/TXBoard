@@ -53,7 +53,7 @@ export function SignInPage() {
 
       const authorization = String(data.auth_data || data.access_token || '')
       if (!authorization) {
-        toast.error('登录成功响应中未返回管理员 Sanctum auth_data')
+        toast.error('登录成功响应中未返回管理员授权凭据')
         return
       }
 
@@ -86,7 +86,7 @@ export function SignInPage() {
       <div className="admin-auth-wrap">
         <div className="admin-auth-brand">
           <h1>TXBoard</h1>
-          <p>Xboard 管理中心</p>
+          <p>TXBoard 管理中心</p>
         </div>
 
         <div className="admin-auth-card">
