@@ -23,6 +23,17 @@ fi
 SH
 chmod +x "$work/bin/mysqldump"
 
+# Freeze only the archive folder stamp so the collision test is deterministic.
+cat > "$work/bin/date" <<'SH'
+#!/bin/sh
+if [ "$1" = "-u" ] && [ "$2" = "+%Y%m%dT%H%M%SZ" ]; then
+  printf '%s\n' '20260101T000000Z'
+else
+  exec /bin/date "$@"
+fi
+SH
+chmod +x "$work/bin/date"
+
 export PATH="$work/bin:$PATH"
 export DB_HOST=database DB_PORT=3306 DB_DATABASE=txboard DB_USERNAME=test DB_PASSWORD=dummy
 export BACKUP_DIR="$work/backups" BACKUP_SOURCE_DIR="$work/source"
@@ -37,6 +48,14 @@ test -f "$(dirname "$archive")/env"
 test -f "$(dirname "$archive")/storage-app.tar.gz"
 test -f "$(dirname "$archive")/storage-theme.tar.gz"
 test -f "$(dirname "$archive")/plugins.tar.gz"
+# A second backup with the same stamp must neither overwrite nor delete
+# the first valid archive (even when the caller is asked to retry).
+if sh "$script" > "$work/collision.log" 2>&1; then
+  echo 'timestamp-colliding backup unexpectedly succeeded' >&2
+  exit 1
+fi
+test -s "$archive"
+(cd "$(dirname "$archive")" && sha256sum -c CHECKSUMS.sha256 >/dev/null)
 tar -xOzf "$(dirname "$archive")/storage-theme.tar.gz" ./theme.txt | grep -Fq 'installed theme'
 tar -xOzf "$(dirname "$archive")/plugins.tar.gz" ./plugin.txt | grep -Fq 'installed plugin'
 test ! -e "$(dirname "$archive")/db.sql"
