@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import type { PluginItem } from '../api/plugin'
+import { setAdminSecurePath } from '../api/client'
 import {
   MODULE_BRIDGE_SERVICES,
   MODULE_BRIDGE_VERSION,
@@ -18,6 +19,7 @@ const plugin: PluginItem = {
 
 beforeEach(() => {
   document.documentElement.dataset.theme = 'dark'
+  setAdminSecurePath('native-bridge')
 })
 
 describe('Admin Bridge compatibility', () => {
@@ -43,6 +45,7 @@ describe('Admin Bridge compatibility', () => {
       route: { path: 'reports' },
       theme: { mode: 'dark' },
     })
+    expect(init.api.admin).toBe('/txapi/admin/native-bridge')
     expect(init.services).toEqual([...MODULE_BRIDGE_SERVICES])
   })
 
