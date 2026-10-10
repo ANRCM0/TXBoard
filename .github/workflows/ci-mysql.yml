@@ -5,6 +5,8 @@ on:
     branches: [main]
     paths:
       - "api/**"
+      - "scripts/database-runtime-reference-gate.mjs"
+      - "scripts/tests/database-runtime-reference-gate.test.mjs"
       - "scripts/database-native-cutover-plan.mjs"
       - "scripts/tests/database-native-cutover-plan.test.mjs"
       - "scripts/compare-critical-data-snapshots.mjs"
@@ -17,6 +19,8 @@ on:
     branches: [main]
     paths:
       - "api/**"
+      - "scripts/database-runtime-reference-gate.mjs"
+      - "scripts/tests/database-runtime-reference-gate.test.mjs"
       - "scripts/database-native-cutover-plan.mjs"
       - "scripts/tests/database-native-cutover-plan.test.mjs"
       - "scripts/compare-critical-data-snapshots.mjs"
@@ -110,6 +114,20 @@ jobs:
         run: |
           node scripts/database-schema-inventory.mjs --root . --output api/artifacts/source-schema.json --check
           node scripts/database-mysql-parity.mjs --source api/artifacts/source-schema.json --mysql api/artifacts/p0-schema.json --output api/artifacts/mysql-schema-parity.json --check
+      - name: Test native runtime reference inventory
+        working-directory: .
+        run: node --test scripts/tests/database-runtime-reference-gate.test.mjs
+      - name: Report remaining runtime V2 references (informational)
+        working-directory: .
+        run: node scripts/database-runtime-reference-gate.mjs --source api/artifacts/source-schema.json --output api/artifacts/native-runtime-reference-gate.json
+      - name: Upload native runtime reference audit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: txboard-native-runtime-reference-audit
+          path: api/artifacts/native-runtime-reference-gate.json
+          if-no-files-found: warn
+          retention-days: 14
       - name: Test conservative native cutover planner
         working-directory: .
         run: node --test scripts/tests/database-native-cutover-plan.test.mjs
