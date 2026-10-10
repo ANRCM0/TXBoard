@@ -9,7 +9,7 @@ Navigation declarations are metadata. They do not grant authorization, register 
 Admin navigation is projected through the existing Module Registry descriptor:
 
 ```text
-Module / legacy package declaration
+Module / package declaration
         -> Module adapter
         -> Module Descriptor.admin.navigation
         -> GET /api/v2/{secure_path}/module
@@ -60,13 +60,13 @@ For Plugin modules in v1 this means:
 
 A navigation declaration does not override permissions or runtime status.
 
-## Plugin Package v1 compatibility
+## Plugin Package v1 navigation
 
 Existing Plugin Package v1 plugins keep using `config.json -> admin_menus`.
 
 They are not required to add `manifest.json` or change package layout.
 
-`PluginModuleAdapter` may conservatively project compatible legacy menu fields into Module navigation:
+`PluginModuleAdapter` may conservatively project declared plugin menu fields into Module navigation:
 
 ```text
 admin_menus[].id     -> admin.navigation[].id, when valid
@@ -77,9 +77,9 @@ admin_menus[].icon   -> admin.navigation[].icon
 admin_menus[].order  -> admin.navigation[].order
 ```
 
-Legacy rendering metadata such as `app`, `component`, `embed`, `renderer` and CRUD/config schemas remain Plugin Runtime concerns. The Navigation Registry does not copy or execute them.
+Plugin rendering metadata such as `app`, `component`, `embed`, `renderer` and CRUD/config schemas remain Plugin Runtime concerns. The Navigation Registry does not copy or execute them.
 
-A legacy menu with an unsafe navigation path is omitted from the unified navigation projection. It must not make an otherwise valid Plugin disappear from Module Registry.
+A plugin menu with an unsafe navigation path is omitted from the unified navigation projection. It must not make an otherwise valid Plugin disappear from Module Registry.
 
 ## Host route resolution
 

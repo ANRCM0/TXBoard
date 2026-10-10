@@ -84,10 +84,10 @@ Explicit theme switching writes `frontend_theme`; invalid active themes resolve 
 
 ## Module normalization
 
-Theme Module IDs remain host-derived for compatibility:
+Theme Module IDs are deterministic:
 
 ```text
-ModuleId::legacy('theme', runtime-theme-name)
+ModuleId::theme(runtime-theme-name)
 ```
 
 Package metadata maps into the common Module descriptor, while TXBoard derives:

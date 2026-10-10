@@ -4,7 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
-// Backfill default utls for legacy vless reality nodes after the uTLS refactor.
+// Initialize uTLS defaults for existing VLESS Reality server settings.
 return new class extends Migration
 {
     public function up(): void
