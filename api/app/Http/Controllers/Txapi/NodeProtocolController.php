@@ -6,6 +6,7 @@ use App\Core\Http\TxapiResponse;
 use App\Services\ServerService;
 use App\Domains\Network\MachineTelemetry;
 use App\Domains\Network\NativeNodeReport;
+use App\Domains\Network\NativeAccessAudit;
 use App\Domains\Network\NodeReportError;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -20,7 +21,7 @@ final class NodeProtocolController
             'node_id' => $node ? (int) $node->id : null,
             'mode' => $node ? 'node' : 'machine',
             'capabilities' => [
-                'http_poll', 'etag', 'traffic_batch_v1', 'machine_discovery',
+                'http_poll', 'etag', 'traffic_batch_v1', 'machine_discovery', 'access_audit_v1',
             ],
             'websocket' => [
                 'enabled' => (bool) config('node_ws.native_enabled', false),
@@ -96,6 +97,25 @@ final class NodeProtocolController
             return TxapiResponse::error($request, $e->errorCode, $e->getMessage(), 422);
         }
         return TxapiResponse::success($request, $result, status: 202);
+    }
+
+    public function auditRules(Request $request): JsonResponse
+    {
+        return TxapiResponse::success($request, [
+            'protocol_version' => 1,
+            'rules' => app(NativeAccessAudit::class)->rules(),
+        ])->header('Cache-Control', 'no-store');
+    }
+
+    public function auditReport(Request $request): JsonResponse
+    {
+        if (strlen($request->getContent()) > 1048576) {
+            return TxapiResponse::error($request, 'AUDIT_TOO_LARGE', 'Audit report limit exceeded', 413);
+        }
+        $node = $request->attributes->get('txnode.node');
+        return TxapiResponse::success($request,
+            app(NativeAccessAudit::class)->ingest($node, $request->all())
+        )->header('Cache-Control', 'no-store');
     }
 
     private function intervals(): array
