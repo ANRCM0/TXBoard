@@ -11,6 +11,9 @@
 #                       unreadable without it, so a database-only backup is not
 #                       a backup.
 #   storage-app.tar.gz  uploads and anything else under storage/app
+#   storage-theme.tar.gz  user-installed themes under storage/theme (if present)
+#   plugins.tar.gz        installed plugin packages under plugins (if present)
+#   CHECKSUMS.sha256      verify all present payloads before restoration
 #   MANIFEST            what the archive is, so a restore needs no guesswork
 #
 # Environment:
@@ -101,20 +104,41 @@ run_backup() (
     if [ ! -s "$BACKUP_SOURCE_DIR/.env" ] ||
        ! grep -Eq '^APP_KEY=.+
 
+    # User-installed themes and plugins are persisted on separate host paths
+    # from storage/app. Without these files, a database restore is incomplete.
+    for entry in "storage/theme:storage-theme.tar.gz" "plugins:plugins.tar.gz"; do
+        source_dir=${entry%%:*}
+        archive_name=${entry#*:}
+        if [ -d "$BACKUP_SOURCE_DIR/$source_dir" ]; then
+            if ! tar -czf "$dest/$archive_name" -C "$BACKUP_SOURCE_DIR/$source_dir" . 2>/dev/null ||
+               ! gzip -t "$dest/$archive_name"; then
+                log "ERROR: cannot preserve $source_dir; refusing incomplete backup"
+                return 1
+            fi
+            log "  captured $source_dir"
+        fi
+    done
+
+    contents="db.sql.gz env"
+    for entry in storage-app.tar.gz storage-theme.tar.gz plugins.tar.gz; do
+        [ ! -f "$dest/$entry" ] || contents="$contents $entry"
+    done
     {
         echo "created_at=$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
         echo "database=$DB_DATABASE"
         echo "db_host=$DB_HOST"
-        echo "contents=db.sql.gz env storage-app.tar.gz"
+        echo "contents=$contents"
     } > "$dest/MANIFEST"
 
     (
         cd "$dest" || exit 1
-        if [ -f storage-app.tar.gz ]; then
-            sha256sum db.sql.gz env storage-app.tar.gz > CHECKSUMS.sha256
-        else
-            sha256sum db.sql.gz env > CHECKSUMS.sha256
-        fi
+        set -- db.sql.gz env
+        for item in storage-app.tar.gz storage-theme.tar.gz plugins.tar.gz; do
+            if [ -f "$item" ]; then
+                set -- "$@" "$item"
+            fi
+        done
+        sha256sum "$@" > CHECKSUMS.sha256
         sha256sum -c CHECKSUMS.sha256 >/dev/null
     ) || {
         log "ERROR: backup integrity checksum failed"
