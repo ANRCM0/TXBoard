@@ -231,3 +231,8 @@ jobs:
         run: |
           php artisan test tests/Feature/Server/TrafficBatchSettlementTest.php
           php artisan test tests/Feature/Order/CheckOrderRecoveryTest.php
+      - name: Exercise full-table native upgrade and atomic rollback on MySQL 8.4
+        run: |
+          php -l app/Console/Commands/DatabaseNativeCutover.php
+          php -l scripts/database-native-full-roundtrip.php
+          php scripts/database-native-full-roundtrip.php
