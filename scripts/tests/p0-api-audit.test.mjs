@@ -31,12 +31,14 @@ test('route inventory guards payment, user, admin, agent and node contracts',()=
   {uri:'txapi/orders/{tradeNo}/checkout',method:'POST',middleware:['api','txapi.user']},
   {uri:'txapi/payment/webhook/{method}/{uuid}',method:'GET|HEAD|POST'},
   {uri:'txapi/node/v1/handshake',method:'POST',middleware:['api','txnode']},
-  {uri:'api/v2/{admin_path}/config/fetch',method:'GET|HEAD',middleware:['api','admin.path','admin']},
+  {uri:'txapi/auth/admin/login',method:'POST'},
+  {uri:'txapi/public/site-config',method:'GET|HEAD'},
+  {uri:'txapi/admin/{admin_path}/settings',method:'GET|HEAD',middleware:['api','admin.path','admin']},
   {uri:'api/v2/agent/whoami',method:'GET|HEAD',middleware:['api','agent']},
   {uri:'other/path',method:'GET'}
  ];
  const routes=collectRoutes(input);
- assert.equal(routes.length,7);
+ assert.equal(routes.length,9);
  assert.deepEqual(verifyCriticalRoutes(routes),[]);
  const expanded={
   user:'App\\Http\\Middleware\\User',
@@ -56,7 +58,7 @@ test('route inventory guards payment, user, admin, agent and node contracts',()=
  assert.ok(!JSON.stringify(hidden).includes('secret-admin-path'));
  assert.throws(()=>collectRoutes({bad:1}),/must be an array/);
  const queue=buildReviewQueue(routes);
- assert.equal(queue.length,7);
+ assert.equal(queue.length,9);
  assert.ok(queue.every(r=>r.review_status==='unverified'&&r.removal_allowed===false));
  assert.equal(queue.find(r=>r.uri.includes('payment/webhook')).risk,'critical');
  assert.equal(queue.find(r=>r.uri.includes('admin_path')).controller_file,null);
