@@ -1,5 +1,7 @@
 <?php
 
+use App\Support\Database\NativeTableName;
+
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -8,11 +10,11 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (!Schema::hasTable('v2_settings')) {
+        if (!Schema::hasTable(NativeTableName::runtime('v2_settings'))) {
             return;
         }
 
-        $settings = DB::table('v2_settings');
+        $settings = DB::table(NativeTableName::runtime('v2_settings'));
 
         $settings->where('name', 'app_name')
             ->whereIn('value', ['XBoard', 'Xboard'])
@@ -28,11 +30,11 @@ return new class extends Migration
                 ->update(['value' => 'TXBoard']);
         }
 
-        $legacyTheme = DB::table('v2_settings')->where('name', 'theme_Xboard')->first();
-        $newTheme = DB::table('v2_settings')->where('name', 'theme_TXBoard')->first();
+        $legacyTheme = DB::table(NativeTableName::runtime('v2_settings'))->where('name', 'theme_Xboard')->first();
+        $newTheme = DB::table(NativeTableName::runtime('v2_settings'))->where('name', 'theme_TXBoard')->first();
 
         if ($legacyTheme && !$newTheme) {
-            DB::table('v2_settings')
+            DB::table(NativeTableName::runtime('v2_settings'))
                 ->where('id', $legacyTheme->id)
                 ->update(['name' => 'theme_TXBoard']);
         }

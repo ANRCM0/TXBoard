@@ -1,5 +1,7 @@
 <?php
 
+use App\Support\Database\NativeTableName;
+
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -8,7 +10,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('v2_agent_inspection', function (Blueprint $table) {
+        Schema::create(NativeTableName::runtime('v2_agent_inspection'), function (Blueprint $table) {
             $table->id();
             $table->string('inspection_id', 64)->unique();
             $table->string('source', 24)->default('schedule')->index();
@@ -27,6 +29,6 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::dropIfExists('v2_agent_inspection');
+        Schema::dropIfExists(NativeTableName::runtime('v2_agent_inspection'));
     }
 };

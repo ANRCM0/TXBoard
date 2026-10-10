@@ -1,5 +1,7 @@
 <?php
 
+use App\Support\Database\NativeTableName;
+
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -17,8 +19,8 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (Schema::hasTable('v2_settings')) {
-            DB::table('v2_settings')
+        if (Schema::hasTable(NativeTableName::runtime('v2_settings'))) {
+            DB::table(NativeTableName::runtime('v2_settings'))
                 ->whereIn(DB::raw('LOWER(name)'), [
                     'frontend_theme_sidebar',
                     'frontend_theme_header',
