@@ -39,6 +39,6 @@ return new class extends Migration
     public function down(): void
     {
         Schema::dropIfExists(NativeTableName::runtime('v2_access_audit_event'));
-        Schema::dropIfExists(NativeTableName::runtime('v2_access_audit_rule'))
+        Schema::dropIfExists(NativeTableName::runtime('v2_access_audit_rule'));
     }
 };
