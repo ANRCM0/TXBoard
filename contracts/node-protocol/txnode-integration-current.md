@@ -111,7 +111,7 @@ Content-Type: application/json
 
 ### 2.4 原生 AccessAudit（可选、默认关闭）
 
-同一 `TxNodeAuth` 认证边界；Machine 的每节点访问也必须在 Machine 身份头之外携带 `X-TX-Node-ID`。**不要**向 query string 或 JSON body 传入 Token，也不要在 TXBoard 实现旧 Xboard 插件路径。只有 `audit.enabled: true` 的 sing-box 节点会发起这些请求。
+同一 `TxNodeAuth` 认证边界；Machine 的每节点访问也必须在 Machine 身份头之外携带 `X-TX-Node-ID`。**不要**向 query string 或 JSON body 传入 Token，也不要添加额外的节点访问入口。只有 `audit.enabled: true` 的 sing-box 节点会发起这些请求。
 
 ```http
 GET /txapi/node/v1/audit/rules
