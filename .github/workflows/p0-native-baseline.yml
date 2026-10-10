@@ -6,6 +6,8 @@ on:
     paths:
       - "scripts/p0-api-audit.mjs"
       - "scripts/export-route-catalog.mjs"
+      - "scripts/database-schema-inventory.mjs"
+      - "scripts/tests/database-schema-inventory.test.mjs"
       - "scripts/tests/export-route-catalog.test.mjs"
       - "contracts/http/external-adapter-current.md"
       - "scripts/tests/p0-api-audit.test.mjs"
@@ -19,6 +21,8 @@ on:
     paths:
       - "scripts/p0-api-audit.mjs"
       - "scripts/export-route-catalog.mjs"
+      - "scripts/database-schema-inventory.mjs"
+      - "scripts/tests/database-schema-inventory.test.mjs"
       - "scripts/tests/export-route-catalog.test.mjs"
       - "contracts/http/external-adapter-current.md"
       - "scripts/tests/p0-api-audit.test.mjs"
@@ -58,6 +62,18 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+      - name: Test read-only database schema inventory
+        run: node --test scripts/tests/database-schema-inventory.test.mjs
+      - name: Inventory V2 schema references and proposed native names
+        run: node scripts/database-schema-inventory.mjs --root . --output artifacts/database/schema-inventory.json --check
+      - name: Preserve schema cutover inventory
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: txboard-database-schema-inventory
+          path: artifacts/database/schema-inventory.json
+          if-no-files-found: warn
+          retention-days: 14
       - name: Test P0 evidence generator
         run: node --test scripts/tests/p0-api-audit.test.mjs
       - name: Test native Admin release inventory
