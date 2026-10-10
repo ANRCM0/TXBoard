@@ -1,5 +1,6 @@
 <?php
 
+use App\Support\Database\NativeTableName;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -9,7 +10,7 @@ return new class extends Migration
     public function up(): void
     {
         // Both tables are independent from billing and admin action logs.
-        Schema::create('v2_access_audit_rule', function (Blueprint $table): void {
+        Schema::create(NativeTableName::runtime('v2_access_audit_rule'), function (Blueprint $table): void {
             $table->id();
             $table->string('name', 120);
             $table->string('match_type', 24);
@@ -18,7 +19,7 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        Schema::create('v2_access_audit_event', function (Blueprint $table): void {
+        Schema::create(NativeTableName::runtime('v2_access_audit_event'), function (Blueprint $table): void {
             $table->id();
             $table->unsignedBigInteger('server_id');
             $table->unsignedBigInteger('user_id');
@@ -37,7 +38,7 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::dropIfExists('v2_access_audit_event');
-        Schema::dropIfExists('v2_access_audit_rule');
+        Schema::dropIfExists(NativeTableName::runtime('v2_access_audit_event'));
+        Schema::dropIfExists(NativeTableName::runtime('v2_access_audit_rule'))
     }
 };
