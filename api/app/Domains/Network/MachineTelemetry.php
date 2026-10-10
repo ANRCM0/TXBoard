@@ -28,6 +28,8 @@ final class MachineTelemetry
             'runtime.build_time' => 'nullable|string|max:64',
             'runtime.deployment' => 'nullable|in:docker,unknown',
             'runtime.updater_available' => 'nullable|boolean',
+            'runtime.update_targets' => 'nullable|array|max:2',
+            'runtime.update_targets.*' => 'in:latest,dev',
             'runtime.update' => 'nullable|array',
             'runtime.update.request_id' => ['nullable', 'string', 'max:64', 'regex:/^[A-Za-z0-9._:-]+$/'],
             'runtime.update.target' => 'nullable|in:latest,dev',
@@ -100,6 +102,7 @@ final class MachineTelemetry
             'build_time' => (string) ($runtime['build_time'] ?? ''),
             'deployment' => (string) ($runtime['deployment'] ?? 'unknown'),
             'updater_available' => (bool) ($runtime['updater_available'] ?? false),
+            'update_targets' => array_values(array_unique($runtime['update_targets'] ?? [])),
         ];
         if (isset($runtime['update']) && is_array($runtime['update'])) {
             $update = $runtime['update'];
