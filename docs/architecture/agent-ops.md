@@ -1,0 +1,662 @@
+# TXBoard Agent Ops / MCP Architecture
+
+> Scope: Agent Ops v1 architecture, permissions, approval, audit and typed TXNode operations
+>
+> Scope: TXBoard Control Plane, TX-Node operations, external Agent integrations
+>
+> Goal: expose safe, auditable and model-friendly operations without granting an Agent arbitrary shell access.
+
+## Documentation map
+
+- **This document**: stable architecture, trust boundaries, risk model and implemented operating model.
+- [Agent Ops HTTP Contract](../../contracts/http/agent-ops-v1.md): public Agent HTTP semantics.
+- [Node Ops Protocol v1](../../contracts/node-protocol/agent-ops-v1.md): TXBoard ↔ TX-Node typed operation contract.
+
+When implementation changes, update the contract first, then this architecture and the repository [development rules](../../AGENTS.md) as necessary.
+
+
+## 1. Overview
+
+TXBoard Agent Ops is the AI operations layer for TXBoard.
+
+The design separates four concerns:
+
+1. **TXBoard Core** remains the source of truth for users, nodes, machines, configuration, metrics and permissions.
+2. **Agent Ops API** exposes a stable, narrow set of operations designed for automation.
+3. **MCP Gateway** maps Agent tool calls to the Agent Ops API.
+4. **TX-Node** executes only versioned node-operation events delivered through the existing TXBoard control channel.
+
+The MCP layer is an adapter, not a second control plane.
+
+```mermaid
+flowchart TD
+    Agent["ChatGPT / Claude / Codex / OpenClaw / other Agent"]
+    MCP["TXBoard MCP Gateway"]
+    Auth["Auth + Scope + Approval Policy"]
+    Ops["TXBoard Agent Ops API"]
+    Audit["Agent Audit Log"]
+    Service["TXBoard Services"]
+    Redis["Redis node:push"]
+    WS["TXBoard WebSocket"]
+    Node["TX-Node"]
+
+    Agent -->|MCP| MCP
+    MCP --> Auth
+    Auth --> Ops
+    Ops --> Audit
+    Ops --> Service
+    Service --> Redis
+    Redis --> WS
+    WS --> Node
+```
+
+## 2. Architectural rules
+
+These rules are mandatory.
+
+1. **No arbitrary shell tool.** TXBoard MUST NOT expose a generic `exec(command)`, `ssh(command)` or equivalent MCP tool.
+2. **Control Plane remains authoritative.** Agents do not write directly to MySQL, Redis or TX-Node local files.
+3. **Reuse existing services.** Agent operations call application services such as `ServerService`, `NodeSyncService`, `AgentOpsService`, `AgentActionService` and `AgentInsightService`; they do not duplicate domain logic in the MCP server.
+4. **MCP is optional.** TXBoard and TX-Node must continue to work when the MCP Gateway is absent.
+5. **All state-changing actions are auditable.** Every operation records actor, client, target, parameters, result and request/correlation ID.
+6. **High-risk actions require explicit approval.** Approval is enforced server-side and cannot be bypassed by prompt text.
+7. **Node actions are typed events.** TX-Node only implements a fixed allow-list of versioned operations.
+8. **Read and write permissions are separate.** A token allowed to inspect node health does not automatically have permission to restart or modify a node.
+9. **Agent responses must be structured.** Diagnostic endpoints return normalized fields and machine-readable warnings instead of forcing the model to infer state from raw database records.
+
+## 3. Repository boundary
+
+TXBoard currently defines itself as the Control Plane and TX-Node as an independent Data Plane. Agent Ops follows the same boundary.
+
+### TXBoard repository
+
+Owns:
+
+- Agent Ops HTTP endpoints;
+- permissions/scopes;
+- approval policy;
+- audit records;
+- normalized diagnostics;
+- action dispatch to TX-Node;
+- compatibility contracts;
+- Admin UI for Agent access configuration and audit history.
+
+### MCP Gateway
+
+Preferred long-term form: an independent service/repository, tentatively **TXBoard-MCP**.
+
+It owns:
+
+- MCP protocol transport;
+- MCP tool schemas;
+- conversion between MCP requests and Agent Ops API calls;
+- OAuth/Bearer-token integration where required;
+- client metadata and correlation IDs.
+
+It MUST NOT:
+
+- connect directly to TXBoard MySQL;
+- publish directly to Redis;
+- open raw SSH sessions to managed machines;
+- contain TXBoard business rules.
+
+A minimal in-repository prototype is acceptable during development, but production architecture should preserve this boundary.
+
+### TX-Node repository
+
+Owns execution of node-scoped operations defined in the versioned node protocol, for example:
+
+- kernel status;
+- kernel restart;
+- configuration validation/reload;
+- bounded log retrieval;
+- network diagnostics;
+- service health checks.
+
+TX-Node must reject unknown operations and validate all input locally.
+
+## 4. Existing TXBoard capabilities to reuse
+
+Agent Ops should build on the current control path instead of introducing a second remote-execution system.
+
+Current building blocks include:
+
+- `ServerService` for node state, status and metrics;
+- `NodeSyncService` for Redis-backed node and machine event dispatch;
+- `NodeRegistry` and the Workerman WebSocket process for active node connections;
+- Horizon/system status endpoints;
+- `AdminAuditLog` for existing administrative auditing;
+- server/machine management controllers;
+- statistics and device-state services.
+
+The existing dispatch path is:
+
+```text
+Laravel service
+  -> Redis: node:push
+  -> Workerman WebSocket
+  -> TX-Node
+```
+
+Agent Ops should extend this path rather than bypass it.
+
+## 5. Agent Ops service layer
+
+Add an application service boundary before exposing MCP operations.
+
+Current service boundary:
+
+```text
+api/app/Services/AgentOps/
+  AgentAbility.php
+  AgentTargetScope.php
+  AgentOpsService.php
+  AgentActionService.php
+  AgentInsightService.php
+```
+
+Responsibilities are intentionally separated: `AgentOpsService` normalizes read telemetry, `AgentActionService` owns approval-gated action state/dispatch, and `AgentInsightService` composes AI-native fleet summaries, timelines, remediation guidance, inspections and verification.
+
+The MCP server and Admin UI should consume stable Agent Ops endpoints instead of calling arbitrary Admin controllers.
+
+Example internal API:
+
+```php
+$ops->getNodeHealth($nodeId);
+$ops->diagnoseNode($nodeId);
+$ops->requestNodeAction($actor, $nodeId, 'kernel.restart', $input);
+$ops->getSystemHealth();
+```
+
+## 6. Tool risk model
+
+Every Agent operation belongs to exactly one risk class.
+
+### Level 1 — READ
+
+May run automatically when the token has the required read scope.
+
+Examples:
+
+- system health;
+- node list;
+- machine list;
+- node metrics;
+- node online state;
+- traffic summary;
+- queue/Horizon health;
+- audit-log lookup;
+- diagnostic summaries.
+
+### Level 2 — OPERATE
+
+Changes runtime state but should not permanently alter business data.
+
+Requires an operation scope and, by default, user confirmation.
+
+Examples:
+
+- full node sync;
+- reload configuration;
+- restart proxy kernel;
+- run bounded ping/port/DNS diagnostics;
+- clear transient device state;
+- restart a controlled TX-Node service.
+
+### Level 3 — DANGEROUS
+
+Changes persistent configuration, access, user state or destructive resources.
+
+Requires a dedicated high-risk scope plus explicit server-side approval.
+
+Examples:
+
+- modify node configuration;
+- enable/disable nodes when it affects production routing;
+- change user entitlement/traffic;
+- rotate credentials;
+- delete nodes, machines or users;
+- modify authentication, billing or payment configuration.
+
+Some operations may be permanently excluded from MCP even for administrators.
+
+## 7. Initial MCP tool catalog
+
+The first release should stay deliberately small.
+
+| Tool | Risk | Purpose |
+| --- | --- | --- |
+| `txboard_system_status` | READ | Scheduler, Horizon and core health |
+| `txboard_list_machines` | READ | Machine inventory and connection state |
+| `txboard_list_nodes` | READ | Node inventory and normalized online state |
+| `txboard_node_metrics` | READ | CPU, memory, disk, connections, traffic and kernel state |
+| `txboard_diagnose_node` | READ | Normalized health assessment and warnings |
+| `txboard_traffic_summary` | READ | Traffic and utilization summary |
+| `txboard_queue_status` | READ | Queue/Horizon diagnostics |
+| `txboard_audit_logs` | READ | Agent/admin operation history |
+| `txboard_fleet_health` | READ | Fleet-wide normalized health and severity summary |
+| `txboard_inspection_history` | READ | Scheduled/manual normalized fleet inspection history |
+| `txboard_incident_timeline` | READ | Node timeline composed from inspections, Agent actions and audit |
+| `txboard_remediation_plan` | READ | Deterministic remediation guidance; never auto-executes |
+| `txboard_verify_action` | READ | Re-check a completed action against current telemetry |
+| `txboard_full_sync_node` | OPERATE | Re-push config and users |
+| `txboard_reload_node_config` | OPERATE | Validate and reload runtime config |
+| `txboard_restart_kernel` | OPERATE | Restart the managed proxy kernel |
+| `txboard_network_test` | OPERATE | Fixed DNS/TCP port diagnostics under target policy |
+| `txboard_tail_logs` | OPERATE | Approval-gated bounded/redacted TX-Node application log tail |
+
+Do not add generic database, Redis, filesystem or shell tools.
+
+## 8. Normalized diagnostic model
+
+Models perform better when TXBoard provides a concise operational view rather than exposing raw records.
+
+Example:
+
+```json
+{
+  "target": {
+    "type": "node",
+    "id": 12,
+    "name": "JP-03"
+  },
+  "online": true,
+  "websocket": true,
+  "kernel": {
+    "running": false
+  },
+  "resources": {
+    "cpu_percent": 32.1,
+    "memory_percent": 48.5,
+    "disk_percent": 62.3
+  },
+  "connections": {
+    "active": 0
+  },
+  "traffic": {
+    "inbound_bps": 0,
+    "outbound_bps": 0
+  },
+  "last_seen_at": 1758535200,
+  "warnings": [
+    {
+      "code": "kernel_not_running",
+      "severity": "critical"
+    },
+    {
+      "code": "no_active_connections",
+      "severity": "warning"
+    }
+  ]
+}
+```
+
+The diagnostic endpoint should distinguish facts from derived warnings. It should not invent causes when telemetry is insufficient.
+
+## 9. Node Ops protocol
+
+Extend `contracts/node-protocol/` with typed operation messages.
+
+Suggested operations:
+
+```text
+ops.kernel.status
+ops.kernel.restart
+ops.config.validate
+ops.config.reload
+ops.logs.tail
+ops.network.ping
+ops.network.dns
+ops.network.port_check
+ops.service.status
+ops.service.restart
+ops.system.info
+```
+
+Each operation must define:
+
+- protocol version;
+- input schema;
+- maximum input size;
+- timeout;
+- output schema;
+- error codes;
+- whether it mutates runtime state;
+- whether it is idempotent;
+- minimum TX-Node version.
+
+An operation request should carry a correlation ID:
+
+```json
+{
+  "event": "ops.kernel.restart",
+  "data": {
+    "node_id": 12,
+    "request_id": "ops_01...",
+    "reason": "agent-approved remediation"
+  }
+}
+```
+
+TX-Node should respond with a result event carrying the same request ID.
+
+## 10. Approval model
+
+Confirmation must be enforced by TXBoard, not by the language model alone.
+
+Recommended flow:
+
+```text
+Agent requests action
+  -> Agent Ops validates scope
+  -> policy marks action as approval-required
+  -> TXBoard creates pending action
+  -> user approves in trusted UI/client
+  -> TXBoard dispatches typed node action
+  -> result is recorded
+```
+
+For future trusted automation, policies may allow narrow auto-remediation rules such as:
+
+- restart kernel only when health state is unhealthy;
+- maximum one automatic restart per node per configured cooldown;
+- never execute destructive Level 3 actions automatically.
+
+## 11. Authentication and scopes
+
+Agent credentials should be independent from normal administrator browser sessions.
+
+Suggested scopes:
+
+```text
+agent:system:read
+agent:machines:read
+agent:nodes:read
+agent:metrics:read
+agent:traffic:read
+agent:audit:read
+agent:insights:read
+
+agent:nodes:sync
+agent:nodes:diagnose
+agent:nodes:operate
+
+agent:nodes:write
+agent:users:read
+agent:users:write
+agent:system:dangerous
+```
+
+Principles:
+
+- default deny;
+- short-lived access tokens where practical;
+- revocable credentials;
+- per-client identity;
+- target restrictions implemented through token-scoped node and machine IDs;
+- secrets are never returned through MCP tool outputs.
+
+## 12. Audit requirements
+
+Every Agent request should create a structured audit record.
+
+Minimum fields:
+
+```text
+request_id
+timestamp
+actor_type
+actor_id
+client_id
+protocol
+tool
+risk_level
+target_type
+target_id
+input_redacted
+approval_required
+approval_actor
+started_at
+finished_at
+result_status
+result_summary
+error_code
+source_ip / client metadata where appropriate
+```
+
+Sensitive values such as tokens, passwords, UUID secrets and payment credentials must be redacted before persistence.
+
+Agent audit records may reuse or extend the existing admin audit infrastructure, but Agent actions should remain independently filterable.
+
+## 13. Agent operating loop
+
+The preferred operational behavior is:
+
+```text
+Observe
+  -> Diagnose
+  -> Plan
+  -> Request approval when required
+  -> Execute
+  -> Verify
+  -> Audit
+```
+
+Example:
+
+```text
+User: "Check why JP-03 is unavailable."
+
+Agent
+  -> txboard_fleet_health
+  -> txboard_diagnose_node
+  -> txboard_incident_timeline
+  -> txboard_remediation_plan
+
+TXBoard
+  -> online=true
+  -> websocket=true
+  -> kernel.running=false
+
+Agent
+  -> proposes txboard_restart_kernel
+
+User approves
+
+Agent
+  -> txboard_restart_kernel
+
+User approves in TXBoard Admin
+
+TXBoard / TX-Node
+  -> dispatch typed operation
+  -> record ops.result
+
+Agent
+  -> txboard_verify_action
+  -> txboard_diagnose_node
+
+TXBoard
+  -> verification_status=passed
+  -> kernel.running=true
+  -> connections recovering
+```
+
+The final verification step is required for state-changing operations whenever a verification signal exists.
+
+## 14. Safety constraints
+
+The following are intentionally unsupported:
+
+- arbitrary shell execution;
+- arbitrary SQL;
+- arbitrary Redis commands;
+- unrestricted filesystem read/write;
+- retrieval of raw credentials;
+- arbitrary outbound HTTP requests from TX-Node;
+- arbitrary package installation;
+- arbitrary Docker commands.
+
+If a future use case appears to require one of these capabilities, first create a typed, narrowly scoped operation instead.
+
+Log retrieval must also be bounded by:
+
+- named log sources;
+- maximum line count/byte count;
+- secret redaction;
+- no caller-controlled filesystem path.
+
+TX-Node v1 file logs do not encode a calendar date, so Agent Ops v1 does not claim an unreliable historical time filter. It uses a bounded tail window instead; adding trustworthy time-range filtering requires a dated log format first.
+
+Network diagnostics must restrict destinations and protocols according to deployment policy to prevent the Agent interface from becoming a general-purpose network scanner.
+
+## 15. Failure handling
+
+Agent Ops actions must be safe under retries and partial failures.
+
+Requirements:
+
+- every state-changing request gets a unique request ID;
+- idempotent operations should de-duplicate retries;
+- non-idempotent actions should return the previous result when the same request ID is replayed;
+- action timeout does not imply action failure;
+- TXBoard records `pending / running / succeeded / failed / timed_out / unknown`;
+- verification is performed separately from command acknowledgement;
+- node disconnects do not silently convert a queued operation into success.
+
+## 16. AI-native operations implementation
+
+### 16.1 Fleet health
+
+`AgentInsightService::fleetHealth()` evaluates the current normalized diagnosis for every visible node and classifies each node as:
+
+- `critical`: at least one critical warning;
+- `degraded`: no critical warning, but at least one warning-level condition;
+- `healthy`: no critical/warning-level condition.
+
+Informational warnings remain visible but do not automatically downgrade fleet state.
+
+For target-restricted Agent tokens, fleet health is calculated only over nodes visible to that token.
+
+### 16.2 Scheduled inspections
+
+TXBoard runs:
+
+```text
+agent:inspect-fleet
+```
+
+every five minutes through the existing Laravel scheduler when `AGENT_OPS_INSPECTION_ENABLED=true`.
+
+Default retention:
+
+```text
+AGENT_OPS_INSPECTION_RETENTION_DAYS=7
+```
+
+Each row in `tx_agent_inspection` stores only:
+
+- inspection ID/source/status;
+- aggregate counts;
+- normalized per-node health findings;
+- timestamps.
+
+It does **not** persist raw TX-Node logs, credentials or arbitrary node configuration.
+
+Administrators can also trigger a manual inspection from **Admin → Agent 运维**.
+
+### 16.3 Incident timeline
+
+`txboard_incident_timeline` combines three existing evidence streams:
+
+1. fleet inspection state changes;
+2. Agent action lifecycle events;
+3. Agent API audit events.
+
+Consecutive inspection snapshots with the same node status/warning signature are collapsed so the timeline emphasizes state transitions instead of repeating five-minute samples.
+
+### 16.4 Remediation plans
+
+`txboard_remediation_plan` is deterministic and evidence-based. It maps known warning codes to bounded next steps.
+
+Examples:
+
+- `websocket_offline` → host-side control-channel investigation; no node action is recommended because the control channel is unavailable;
+- `kernel_not_running` → recommend `txboard_restart_kernel`, still requiring Admin approval;
+- high CPU/memory/disk → inspect metrics and bounded logs before changing runtime state;
+- stale metrics → re-check telemetry/control-channel state;
+- zero active connections → correlate with traffic and expected demand before declaring an incident.
+
+The plan never executes its own recommendation.
+
+### 16.5 Post-action verification
+
+`txboard_verify_action` separates **command acknowledgement** from **observed recovery**.
+
+Examples:
+
+- kernel restart: WebSocket must still be connected and the kernel must currently report running;
+- config reload: control channel must be connected and the kernel must not report failed;
+- full sync: the node control channel must still be connected;
+- diagnostic/read-style node operations: a result must have been received.
+
+Verification states:
+
+```text
+waiting
+passed
+failed
+inconclusive
+action_not_successful
+```
+
+If an action says `succeeded` but current telemetry contradicts the expected state, verification returns `failed`. If the target has disappeared, verification returns `inconclusive` with `target_missing`.
+
+### 16.6 Agent operating loop
+
+The implemented high-level loop is:
+
+```text
+Scheduled inspection / fleet health
+  -> anomaly detected
+  -> node diagnosis
+  -> incident timeline
+  -> deterministic remediation plan
+  -> request approval-gated action
+  -> administrator approval
+  -> TX-Node typed operation
+  -> ops.result
+  -> post-action verification
+  -> updated fleet health / audit
+```
+
+This is AI-native orchestration without granting the Agent autonomous infrastructure execution.
+
+## 17. Design decision summary
+
+TXBoard Agent Ops is an orchestration and safety layer, not a remote shell.
+
+The stable model is:
+
+```text
+Agent
+  -> MCP Gateway
+  -> TXBoard Agent Ops API
+  -> permission / approval / audit
+  -> TXBoard domain services
+  -> Redis / WebSocket
+  -> TX-Node typed operation
+  -> result
+  -> verification
+```
+
+This preserves the existing Control Plane/Data Plane architecture while making TXBoard usable by modern Agents without giving those Agents unrestricted infrastructure access.
+
+## 18. 扩展能力时的实施约束
+
+新增能力先划分为 READ（只读）、INSIGHT（解释/建议）、OPERATE（有界变更）或 DANGEROUS（高风险），再定义稳定输入输出、Agent ability、目标作用域、失败代码、审计字段和测试。
+
+1. READ/INSIGHT 通过已有领域服务读取数据，在服务端按 token ability 与 Node/Machine target scope 过滤；不得返回数据后才让 MCP 自行过滤。
+2. OPERATE/DANGEROUS 先在 [Node Ops 协议](../../contracts/node-protocol/agent-ops-v1.md) 明确 versioned operation、超时、幂等和可观测验证信号；输入采用固定 enum、范围限制、目的地址 allow-list，不开放任意命令、文件路径或 URL。
+3. 状态变更由服务端审批/审计，并通过既有 Node 控制通道分发；同一 request_id 的非幂等请求不得重复执行。Node `ops.result`/ACK 与最终健康验证分离，没有证据时返回 `inconclusive`，不能伪造成功。
+4. 测试覆盖跨作用域 403、目标不存在 404、无效操作/输入 422、撤销、重放、队列故障、Node 超时与不可达、审计脱敏及 MCP 最小权限。详细编码约束见 [AGENTS.md](../../AGENTS.md)。
