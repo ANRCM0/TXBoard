@@ -8,6 +8,12 @@ export function compareCriticalSnapshots(before, after) {
       before.read_only !== true || after.read_only !== true ||
       !before.tables || !after.tables) throw new Error('Invalid critical-data snapshot');
   const failures = [];
+  // Prefixes may differ across a coordinated rename; compare domain metrics only.
+  for (const snapshot of [before, after]) {
+    if (snapshot.table_prefix !== undefined && !['v2', 'tx'].includes(snapshot.table_prefix)) {
+      throw new Error('Invalid critical-data table prefix');
+    }
+  }
   const domains = new Set([...Object.keys(before.tables), ...Object.keys(after.tables)]);
   for (const domain of [...domains].sort()) {
     const left = before.tables[domain], right = after.tables[domain];

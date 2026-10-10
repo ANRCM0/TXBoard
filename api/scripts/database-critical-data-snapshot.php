@@ -13,9 +13,14 @@ $app->make(\Illuminate\Contracts\Console\Kernel::class)->bootstrap();
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
-$options = getopt('', ['output:']);
+$options = getopt('', ['output:', 'prefix:']);
+$prefix = $options['prefix'] ?? 'v2';
+if (!is_string($prefix) || !in_array($prefix, ['v2', 'tx'], true)) {
+    fwrite(STDERR, "Invalid --prefix: expected v2 or tx\\n");
+    exit(2);
+}
 if (!isset($options['output']) || !is_string($options['output'])) {
-    fwrite(STDERR, "Usage: php scripts/database-critical-data-snapshot.php --output=artifacts/critical-data.json\n");
+    fwrite(STDERR, "Usage: php scripts/database-critical-data-snapshot.php --output=artifacts/critical-data.json [--prefix=v2|tx]\n");
     exit(2);
 }
 if (DB::connection()->getDriverName() !== 'mysql') {
@@ -33,8 +38,9 @@ $tables = [
     'stat_server' => ['v2_stat_server', ['u', 'd']],
 ];
 $report = ['schema_version' => 1, 'read_only' => true, 'scope' => 'aggregate-cutover-evidence',
-    'not_a_row_level_proof' => true, 'tables' => []];
+    'not_a_row_level_proof' => true, 'table_prefix' => $prefix, 'tables' => []];
 foreach ($tables as $domain => [$table, $amounts]) {
+    $table = $prefix . substr($table, 2);
     if (!Schema::hasTable($table)) {
         fwrite(STDERR, "Missing required critical table: {$table}\n");
         exit(1);
