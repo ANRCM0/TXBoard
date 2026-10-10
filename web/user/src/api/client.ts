@@ -8,8 +8,6 @@ export type ApiEnvelope<T> = {
 }
 
 const AUTH_KEY = 'txboard_auth_data'
-// Purge obsolete browser credentials without importing their authorization.
-const RETIRED_AUTH_KEY = 'xboard_auth_data'
 const nativeBaseURL = (import.meta.env.VITE_TXAPI_PREFIX || '/txapi').replace(/\/$/, '')
 // Optional plugin API calls use same-origin /plugin/*, never removed V1/V2 paths.
 const baseURL = '/'
@@ -111,19 +109,14 @@ export function saveAuthData(authData: string) {
     return
   }
   localStorage.setItem(AUTH_KEY, normalized)
-  // Never leave an obsolete bearer copy after a successful login.
-  localStorage.removeItem(RETIRED_AUTH_KEY)
 }
 
 export function getAuthData() {
-  // Stale Xboard credentials are never accepted as TXAPI session tokens.
-  localStorage.removeItem(RETIRED_AUTH_KEY)
   return normalizeAuthorization(localStorage.getItem(AUTH_KEY))
 }
 
 export function clearAuthData() {
   localStorage.removeItem(AUTH_KEY)
-  localStorage.removeItem(RETIRED_AUTH_KEY)
 }
 
 export async function request<T>(

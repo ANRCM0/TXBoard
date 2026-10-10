@@ -85,7 +85,7 @@ Optional fields:
 - `module.description`;
 - `module.author`.
 
-A module ID is an identity, not a directory name. Runtime adapters are responsible for mapping legacy plugin/theme names into a stable Module ID.
+A module ID is an identity, not a directory name. Runtime adapters deterministically map plugin and theme names into stable Module IDs.
 
 ## Compatibility
 

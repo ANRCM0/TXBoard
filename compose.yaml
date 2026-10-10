@@ -1,7 +1,5 @@
-# Keep the historical project name used when compose.yaml lived under deploy/.
-# This makes the root-level migration reuse the existing named volumes and lets
-# --remove-orphans retire the old api/web containers safely.
-name: deploy
+# TXBoard native Compose project. Existing volumes in other projects are not reused.
+name: txboard
 
 x-logging: &default-logging
   driver: json-file
@@ -90,33 +88,6 @@ services:
       timeout: 5s
       retries: 24
       start_period: 10s
-
-  # Backward-compatible standalone MCP profile. New deployments should prefer
-  # TXBOARD_ENABLE_MCP=true on the main txboard service so /mcp is served through
-  # the same Caddy ingress. The compatibility profile reuses the same TXBoard
-  # image instead of building a second MCP image.
-  txboard-mcp:
-    profiles: ["mcp"]
-    image: ${TXBOARD_IMAGE:-ghcr.io/anrcm0/txboard:latest}
-    entrypoint: ["node", "/opt/txboard-mcp/dist/index.js"]
-    restart: unless-stopped
-    logging: *default-logging
-    depends_on:
-      txboard:
-        condition: service_healthy
-    environment:
-      TXBOARD_BASE_URL: http://txboard
-      MCP_HOST: 0.0.0.0
-      MCP_PORT: 3000
-      MCP_ALLOWED_HOSTS: ${TXBOARD_MCP_ALLOWED_HOSTS:-localhost,127.0.0.1}
-      MCP_ALLOWED_ORIGINS: ${TXBOARD_MCP_ALLOWED_ORIGINS:-}
-    ports:
-      - "127.0.0.1:${TXBOARD_MCP_PORT:-3000}:3000"
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/healthz"]
-      interval: 10s
-      timeout: 3s
-      retries: 6
 
   backup:
     image: mysql:8.4.11

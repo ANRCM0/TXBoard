@@ -17,7 +17,7 @@ class ThemeService
     private const USER_THEME_DIR = '/storage/theme/';
     private const CONFIG_FILE = 'config.json';
     private const SETTING_PREFIX = 'theme_';
-    private const SYSTEM_THEMES = ['TXBoard', 'v2board'];
+    private const SYSTEM_THEMES = ['TXBoard'];
     private const DEFAULT_THEME = 'TXBoard';
 
     public function __construct(
@@ -55,30 +55,11 @@ class ThemeService
         return $themePath . '/dashboard.blade.php';
     }
 
-    /**
-     * Resolve the effective user-facing theme.
-     *
-     * frontend_theme is the canonical setting used by the web entrypoint.
-     * current_theme is read only as a legacy fallback for older installations.
-     */
+    /** Only frontend_theme selects the active theme. */
     public function getActiveTheme(): string
     {
         $theme = trim((string) admin_setting('frontend_theme', ''));
-        if ($theme !== '') {
-            return $this->exists($theme)
-                ? $theme
-                : self::DEFAULT_THEME;
-        }
-
-        // Historical compatibility only. Reads may consult current_theme
-        // only when canonical state is absent; explicit switches are the
-        // only writes to frontend_theme.
-        $legacyTheme = trim((string) admin_setting('current_theme', ''));
-        if ($legacyTheme !== '' && $this->exists($legacyTheme)) {
-            return $legacyTheme;
-        }
-
-        return self::DEFAULT_THEME;
+        return $theme !== '' && $this->exists($theme) ? $theme : self::DEFAULT_THEME;
     }
 
     /**
@@ -97,7 +78,7 @@ class ThemeService
         // 获取用户主题
         $userPath = base_path(self::USER_THEME_DIR);
         if (File::exists($userPath)) {
-            // System theme identities remain authoritative if a legacy user
+            // System theme identities remain authoritative if a user
             // directory collides with the same exact runtime name.
             $themes += $this->getThemesFromPath($userPath, true);
         }
@@ -117,7 +98,7 @@ class ThemeService
                 $name = basename($dir);
                 if (
                     !File::exists($dir . '/' . self::CONFIG_FILE) ||
-                    !File::exists($dir . '/dashboard.blade.php')
+                    ($name !== self::DEFAULT_THEME && !File::exists($dir . '/dashboard.blade.php'))
                 ) {
                     return [];
                 }
@@ -251,6 +232,16 @@ class ThemeService
         }
 
         $currentTheme = $this->getActiveTheme();
+
+        // The built-in theme is served by the native Vue SPA; no static Umi
+        // application or Blade theme asset publication is required.
+        if ($theme === self::DEFAULT_THEME) {
+            admin_setting(['frontend_theme' => $theme]);
+            if ($currentTheme !== self::DEFAULT_THEME) {
+                $this->cleanupThemeFiles($currentTheme);
+            }
+            return true;
+        }
 
         try {
             $themePath = $this->getThemePath($theme);

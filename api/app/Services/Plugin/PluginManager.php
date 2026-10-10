@@ -589,7 +589,7 @@ class PluginManager
                 throw new \InvalidArgumentException('Invalid plugin dependency entry');
             }
 
-            if ($package === 'txboard' || $package === 'xboard') {
+            if ($package === 'txboard') {
                 $installedVersion = (string) config('app.version', '1.0.0');
             } else {
                 $installed = Plugin::query()->where('code', $package)->first();

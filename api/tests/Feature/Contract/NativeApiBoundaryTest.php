@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\Route;
 use Tests\TestCase;
 
 /** Native core contracts plus the still-active external-protocol boundaries. */
-class LegacyApiBoundaryTest extends TestCase
+class NativeApiBoundaryTest extends TestCase
 {
     public function test_native_routes_keep_methods_and_guards(): void
     {

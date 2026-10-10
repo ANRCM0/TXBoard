@@ -133,7 +133,7 @@ final class PluginModuleAdapter implements ModuleAdapter
     {
         foreach (['name', 'code', 'version', 'description', 'author'] as $field) {
             if (!is_string($config[$field] ?? null) || trim($config[$field]) === '') {
-                throw new \InvalidArgumentException("Legacy plugin field {$field} is required");
+                throw new \InvalidArgumentException("Plugin field {$field} is required");
             }
         }
 
@@ -141,7 +141,7 @@ final class PluginModuleAdapter implements ModuleAdapter
             isset($config['type'])
             && !in_array($config['type'], [Plugin::TYPE_FEATURE, Plugin::TYPE_PAYMENT], true)
         ) {
-            throw new \InvalidArgumentException('Legacy plugin type is not supported');
+            throw new \InvalidArgumentException('Plugin type is not supported');
         }
 
         $code = trim($config['code']);
@@ -196,7 +196,7 @@ final class PluginModuleAdapter implements ModuleAdapter
         }
 
         $requires = is_array($config['require'] ?? null) ? $config['require'] : [];
-        $compatibility = $requires['txboard'] ?? $requires['xboard'] ?? '*';
+        $compatibility = $requires['txboard'] ?? '*';
         if (!is_string($compatibility) || trim($compatibility) === '') {
             $compatibility = '*';
         }

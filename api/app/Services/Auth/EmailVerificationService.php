@@ -33,10 +33,10 @@ final class EmailVerificationService
         try {
             SendEmailJob::dispatch([
                 'email' => $email,
-                'subject' => admin_setting('app_name', 'XBoard') . __('Email verification code'),
+                'subject' => admin_setting('app_name', 'TXBoard') . __('Email verification code'),
                 'template_name' => 'verify',
                 'template_value' => [
-                    'name' => admin_setting('app_name', 'XBoard'),
+                    'name' => admin_setting('app_name', 'TXBoard'),
                     'code' => $code,
                     'url' => admin_setting('app_url'),
                 ],

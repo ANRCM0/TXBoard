@@ -32,9 +32,7 @@ Route::get('/', function (Request $request) {
     $themeService = app(ThemeService::class);
     $theme = $themeService->getActiveTheme();
 
-    // The production user SPA was the existing default at Caddy's /. Keep
-    // serving precisely that app when the built-in theme is selected, rather
-    // than accidentally replacing it with the legacy umi.js Blade theme.
+    // TXBoard's built-in theme is the native Vue user SPA.
     if ($theme === 'TXBoard') {
         $candidates = [
             '/srv/user/index.html',

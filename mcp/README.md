@@ -24,14 +24,6 @@ The embedded Node process listens only on `127.0.0.1:3000`. Caddy is the public 
 
 When disabled, the MCP process is not started and Caddy returns `404` for `/mcp`.
 
-The historical source-compose profile remains available for compatibility:
-
-```bash
-docker compose --profile mcp up -d
-```
-
-That compatibility service now reuses the same TXBoard image instead of building a second MCP image.
-
 ## Agent self-connect
 
 TXBoard Admin presents **Agent 自助接入** immediately after Agent Token creation.
@@ -44,7 +36,7 @@ Self-Connect v2 prefers a single short prompt:
 
 The pairing code is temporary and one-time. TXBoard stores only an APP_KEY-encrypted credential-delivery payload in the shared cache (production default Redis), with a default 600-second TTL. The Agent redeems the code through `POST /txapi/agent/v1/pairings/redeem`, stores the returned long-lived Agent Token in its own local secret/config mechanism, then connects to the existing `/mcp` endpoint.
 
-The durable authorization source remains the Sanctum Agent Token. Pairing cannot widen abilities, target scope, expiry or approval rights. If transient pairing storage is unavailable, Admin retains the v1 manual-token fallback.
+The durable authorization source remains the Sanctum Agent Token. Pairing cannot widen abilities, target scope, expiry or approval rights. If transient pairing storage is unavailable, administrators can still create standard Agent tokens.
 
 This remains onboarding over the existing MCP Gateway, not an installer for another gateway. MCP still never connects directly to Redis/MySQL/TX-Node and the Agent Ops permission / target scope / approval / audit boundary is unchanged.
 

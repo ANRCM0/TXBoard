@@ -73,7 +73,7 @@ final class ThemeLifecycleAdapter implements ModuleLifecycleAdapter
     {
         foreach (array_keys($this->themes->getList()) as $theme) {
             $name = (string) $theme;
-            if (ModuleId::legacy('theme', $name) === $module->manifest->id) {
+            if (ModuleId::theme($name) === $module->manifest->id) {
                 return $name;
             }
         }

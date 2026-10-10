@@ -276,7 +276,7 @@ v1 does not include:
 - OS package upgrades;
 - Docker upgrades;
 - kernel binary upgrades independent of TX-Node;
-- legacy systemd TX-Node remote upgrade.
+- direct systemd/runtime upgrades initiated by the control plane.
 
 The `latest`/`dev` selection is narrowly scoped; unknown tags, digests, arbitrary images, generic deployment management and unapproved commands remain unsupported.
 

@@ -13,3 +13,7 @@ Laravel 自有的 `migrations`、`failed_jobs`、`personal_access_tokens` 等表
 ## 启动保护
 
 安装及升级前必须通过 `NativeSchemaPreflight` 检测。数据库已经存在非原生表或只存在旧 Migration 记录时，拒绝初始化，防止意外创建并行的 `tx_*` 空表。容器首次启动若数据库尚未连接可暂时继续启动，但后续的实际安装/升级不会跳过检查。
+
+## Compose project identity
+
+The root Compose project is named `txboard`. It no longer reuses Docker volumes from historical deployment project names. Operators with an existing installation must not assume that similarly named services or volumes contain the same data; back up the original installation, identify its database volumes explicitly, and perform a separately verified restore to the new project before deploying. No volume is automatically renamed or deleted.

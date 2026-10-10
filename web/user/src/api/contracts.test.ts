@@ -115,42 +115,34 @@ describe('native sign-out reliability', () => {
   })
 })
 
-describe('TXAPI-only browser auth; retired tokens cannot be revived', () => {
-  it('rejects old Xboard storage keys rather than migrating credentials', () => {
-    localStorage.setItem('xboard_auth_data', 'old-token')
+describe('TXAPI-only browser authorization', () => {
+  it('has no implicit session', () => {
     expect(getAuthData()).toBe('')
     expect(localStorage.getItem('txboard_auth_data')).toBeNull()
-    expect(localStorage.getItem('xboard_auth_data')).toBeNull()
   })
 
-  it('uses only the native session and erases retired storage', () => {
-    localStorage.setItem('txboard_auth_data', 'Bearer newest')
-    localStorage.setItem('xboard_auth_data', 'Bearer outdated')
-    expect(getAuthData()).toBe('Bearer newest')
-    expect(localStorage.getItem('xboard_auth_data')).toBeNull()
+  it('uses only the native session storage key', () => {
+    saveAuthData('current-token')
+    expect(getAuthData()).toBe('Bearer current-token')
   })
 
-  it('clears active and retired keys without resurrecting sessions', () => {
-    localStorage.setItem('xboard_auth_data', 'old-token')
+  it('removes the current token without resurrecting credentials', () => {
     saveAuthData('new-token')
     clearAuthData()
     expect(getAuthData()).toBe('')
-    expect(localStorage.getItem('xboard_auth_data')).toBeNull()
     expect(localStorage.getItem('txboard_auth_data')).toBeNull()
   })
 
-  it('sends the same bearer to the native endpoint and validates native envelope', async () => {
-    localStorage.setItem('xboard_auth_data', 'legacy-token')
+  it('sends native bearer credentials and validates native envelopes', async () => {
     saveAuthData('current-token')
     responder = () => ({ data: { id: 7 }, request_id: 'trace-1' })
     await expect(nativeRequest<{ id: number }>(nativeApi.get('/me'))).resolves.toEqual({ id: 7 })
     expect(seen[0].baseURL).toBe('/txapi')
     expect(seen[0].url).toBe('/me')
     expect(String(seen[0].headers.Authorization)).toBe('Bearer current-token')
-    expect(localStorage.getItem('xboard_auth_data')).toBeNull()
   })
 
-  it('rejects malformed native envelopes rather than claiming success', async () => {
+  it('rejects malformed native envelopes', async () => {
     await expect(nativeRequest(Promise.resolve({ data: { request_id: '' } as never })))
       .rejects.toThrow('Invalid TXAPI response')
   })

@@ -77,6 +77,6 @@ class RouteServiceProvider extends ServiceProvider
             ->prefix('/txapi')
             ->group(base_path('routes/txapi.php'));
 
-        // No Xboard V1/V2 route registry: TXAPI is the sole application API.
+        // No TXBoard V1/V2 route registry: TXAPI is the sole application API.
     }
 }

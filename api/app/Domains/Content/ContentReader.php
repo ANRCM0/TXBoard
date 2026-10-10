@@ -12,7 +12,7 @@ use Illuminate\Support\Carbon;
 
 /**
  * P2 content read model. User-scoped article bodies are never shared/cached.
- * Preserve legacy placeholder & subscription gating semantics, including
+ * Preserve placeholder & subscription gating semantics, including
  * knowledge.resource filter used by installed extensions.
  */
 final class ContentReader
@@ -67,7 +67,7 @@ final class ContentReader
         $body = (string) ($article->body ?? '');
         if (!app(UserService::class)->isAvailable($user)) {
             $body = preg_replace('/<!--access start-->(.*?)<!--access end-->/s',
-                '<div class="v2board-no-access">'.__('You must have a valid subscription to view content in this area').'</div>',
+                '<div class="txboard-no-access">'.__('You must have a valid subscription to view content in this area').'</div>',
                 $body);
         }
         $subscription = Helper::getSubscribeUrl($user->token);

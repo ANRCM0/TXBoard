@@ -5,7 +5,7 @@ namespace Tests\Feature\Contract;
 use Illuminate\Support\Facades\Route;
 use Tests\TestCase;
 
-final class RetiredLegacyAdminRoutesTest extends TestCase
+final class NativeAdminRoutesTest extends TestCase
 {
     /**
      * V2 public/subscriber/provider/Agent/Node paths have different contracts.

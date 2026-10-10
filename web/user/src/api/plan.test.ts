@@ -110,8 +110,8 @@ describe('P2 native subscription client', () => {
   })
 })
 
-describe('LR-03 native plan DTO contract', () => {
-  it('preserves canonical plan prices and traffic units without Xboard field mapping', async () => {
+describe('native plan DTO contract', () => {
+  it('preserves canonical plan prices and traffic units without deprecated field mapping', async () => {
     const plans = await fetchPlans()
     const plan = plans[0]
     expect(plan.prices).toEqual(sample.prices)

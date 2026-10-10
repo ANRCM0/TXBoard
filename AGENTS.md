@@ -114,7 +114,7 @@ Built-in default:
 TXBoard
 ```
 
-`current_theme` is legacy compatibility only. Do not write a second active-theme source of truth.
+`frontend_theme` is the only active theme setting; do not add an alternate source of truth.
 
 Theme Admin, user rendering and Module Registry must resolve the same effective theme.
 

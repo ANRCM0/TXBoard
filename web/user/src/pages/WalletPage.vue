@@ -147,9 +147,9 @@ async function turnPage(step:number){
     <div v-if="error" class="page-alert">{{ error }}</div>
     <div v-if="info" class="page-alert success">{{ info }}</div>
 
-    <section class="xboard-card profile-wallet-card">
-      <header class="xboard-card-header">{{ text('账户余额','Wallet balance') }}</header>
-      <div class="xboard-card-body">
+    <section class="txboard-card profile-wallet-card">
+      <header class="txboard-card-header">{{ text('账户余额','Wallet balance') }}</header>
+      <div class="txboard-card-body">
         <div class="profile-wallet-value">
           <strong>{{ money(wallet.balance_minor) }}</strong><span>CNY</span>
         </div>
@@ -157,9 +157,9 @@ async function turnPage(step:number){
       </div>
     </section>
 
-    <section class="xboard-card profile-section-card">
-      <header class="xboard-card-header">{{ text('充值金额与支付方式','Amount and payment method') }}</header>
-      <div class="xboard-card-body profile-form-column">
+    <section class="txboard-card profile-section-card">
+      <header class="txboard-card-header">{{ text('充值金额与支付方式','Amount and payment method') }}</header>
+      <div class="txboard-card-body profile-form-column">
         <label>{{ text('充值金额（元）','Top-up amount (CNY)') }}
           <input v-model="amount" type="text" inputmode="decimal" class="form-control"
                  placeholder="50.00" :disabled="acting"/>
@@ -188,8 +188,8 @@ async function turnPage(step:number){
       </div>
     </section>
 
-    <section class="xboard-card profile-section-card">
-      <header class="xboard-card-header">{{ text('充值记录','Recharge history') }}</header>
+    <section class="txboard-card profile-section-card">
+      <header class="txboard-card-header">{{ text('充值记录','Recharge history') }}</header>
       <div class="responsive-table">
         <table>
           <thead><tr>

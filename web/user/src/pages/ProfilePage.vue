@@ -87,9 +87,9 @@ function date(value:string|null){
     <div v-if="error" class="page-alert">{{ error }}</div>
     <div v-if="success" class="page-alert success">{{ success }}</div>
 
-    <section class="xboard-card profile-wallet-card">
-      <header class="xboard-card-header">{{ t('profile.balance') }}</header>
-      <div class="xboard-card-body">
+    <section class="txboard-card profile-wallet-card">
+      <header class="txboard-card-header">{{ t('profile.balance') }}</header>
+      <div class="txboard-card-body">
         <div class="profile-wallet-value">
           <strong>¥ {{ (Number(auth.user?.balance||0)/100).toFixed(2) }}</strong>
           <span>CNY</span>
@@ -99,9 +99,9 @@ function date(value:string|null){
       </div>
     </section>
 
-    <section class="xboard-card profile-section-card">
-      <header class="xboard-card-header">{{ t('profile.account') }}</header>
-      <div class="xboard-card-body">
+    <section class="txboard-card profile-section-card">
+      <header class="txboard-card-header">{{ t('profile.account') }}</header>
+      <div class="txboard-card-body">
         <div class="account-row"><span>{{ t('profile.email') }}</span><strong>{{ auth.user?.email||'-' }}</strong></div>
         <div class="account-row"><span>UUID</span><strong class="mono">{{ auth.user?.uuid||'-' }}</strong></div>
         <div class="account-row"><span>{{ t('profile.planId') }}</span><strong>{{ auth.user?.plan_id??'-' }}</strong></div>
@@ -109,18 +109,18 @@ function date(value:string|null){
       </div>
     </section>
 
-    <section class="xboard-card profile-section-card">
-      <header class="xboard-card-header">{{ t('profile.preferences') }}</header>
-      <div class="xboard-card-body profile-form-column">
+    <section class="txboard-card profile-section-card">
+      <header class="txboard-card-header">{{ t('profile.preferences') }}</header>
+      <div class="txboard-card-body profile-form-column">
         <label><input v-model="preferences.remind_expire" type="checkbox" :disabled="!preferencesLoaded||savingPreferences"/> {{ t('profile.remindExpire') }}</label>
         <label><input v-model="preferences.remind_traffic" type="checkbox" :disabled="!preferencesLoaded||savingPreferences"/> {{ t('profile.remindTraffic') }}</label>
         <button class="primary-btn profile-save-btn" :disabled="!preferencesLoaded||savingPreferences" @click="savePreferences">{{ t('profile.savePreferences') }}</button>
       </div>
     </section>
 
-    <section class="xboard-card profile-section-card">
-      <header class="xboard-card-header">{{ t('profile.changePassword') }}</header>
-      <div class="xboard-card-body profile-form-column">
+    <section class="txboard-card profile-section-card">
+      <header class="txboard-card-header">{{ t('profile.changePassword') }}</header>
+      <div class="txboard-card-body profile-form-column">
         <label>{{ t('profile.oldPassword') }}<input v-model="password.old" type="password" class="form-control"/></label>
         <label>{{ t('profile.newPassword') }}<input v-model="password.next" type="password" class="form-control"/></label>
         <label>{{ t('profile.confirmNewPassword') }}<input v-model="password.confirm" type="password" class="form-control"/></label>
@@ -128,8 +128,8 @@ function date(value:string|null){
       </div>
     </section>
 
-    <section class="xboard-card profile-section-card">
-      <header class="xboard-card-header">{{ t('profile.sessions') }}</header>
+    <section class="txboard-card profile-section-card">
+      <header class="txboard-card-header">{{ t('profile.sessions') }}</header>
       <div class="responsive-table profile-session-table">
         <table>
           <thead><tr><th>Session</th><th>{{ t('profile.created',{time:''}).replace(/\s*$/,'') }}</th><th>{{ t('profile.lastUsed',{time:''}).replace(/\s*$/,'') }}</th><th>{{ t('common.actions') }}</th></tr></thead>
@@ -146,17 +146,17 @@ function date(value:string|null){
       </div>
     </section>
 
-    <section class="xboard-card profile-section-card">
-      <header class="xboard-card-header">{{ t('profile.quickLogin') }}</header>
-      <div class="xboard-card-body">
+    <section class="txboard-card profile-section-card">
+      <header class="txboard-card-header">{{ t('profile.quickLogin') }}</header>
+      <div class="txboard-card-body">
         <button class="primary-btn small-btn" :disabled="acting" @click="quickLogin">{{ t('profile.quickLogin') }}</button>
         <div v-if="quickUrl" class="quick-url"><code>{{ quickUrl }}</code></div>
       </div>
     </section>
 
-    <section class="xboard-card profile-section-card">
-      <header class="xboard-card-header">{{ t('profile.security') }}</header>
-      <div class="xboard-card-body">
+    <section class="txboard-card profile-section-card">
+      <header class="txboard-card-header">{{ t('profile.security') }}</header>
+      <div class="txboard-card-body">
         <div class="profile-warning">{{ t('profile.securityDesc') }}</div>
         <button class="secondary-btn danger small-btn profile-reset-btn" :disabled="acting" @click="reset">{{ t('profile.resetSecurity') }}</button>
       </div>

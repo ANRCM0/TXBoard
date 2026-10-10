@@ -99,12 +99,12 @@ class ModuleRegistryTest extends TestCase
         $this->assertSame(0, $payload['summary']['discovery_errors']);
     }
 
-    public function test_legacy_theme_ids_are_stable_and_safe(): void
+    public function test_native_theme_ids_are_stable_and_safe(): void
     {
-        $this->assertSame('theme.txboard', ModuleId::legacy('theme', 'TXBoard'));
+        $this->assertSame('theme.txboard', ModuleId::theme('TXBoard'));
 
-        $first = ModuleId::legacy('theme', '主题 A');
-        $second = ModuleId::legacy('theme', '主题 A');
+        $first = ModuleId::theme('主题 A');
+        $second = ModuleId::theme('主题 A');
 
         $this->assertSame($first, $second);
         $this->assertMatchesRegularExpression('/^theme\.[a-z0-9][a-z0-9._-]*$/', $first);

@@ -2,11 +2,10 @@
 
 Status: **implementation contract**. This is an opt-in audit feature, distinct from traffic billing and administrator request logs.
 
-## Architecture and compatibility
+## TXBoard native architecture
 
-- TX-Node uses one sing-box observation/matching/buffering reporter. The control-plane provider selects **Xboard legacy plugin** transport or **TXBoard native bearer** transport.
-- Xboard is unchanged: `GET /api/v1/plugin/access-audit/rules`, `POST /api/v1/plugin/access-audit/report`, old plugin credentials and payload shape. Xboard must actually install the compatible server plugin.
-- TXBoard implements independent native routes below; **no legacy plugin endpoints** are mounted inside TXBoard. It uses the existing `TxNodeAuth` middleware. The audit feature is off by default in TX-Node config.
+- TX-Node uses its sing-box observation, matching, buffering and reporting pipeline with TXBoard bearer authentication.
+- TXBoard exposes the native endpoints below, authorized by `TxNodeAuth`. AccessAudit is disabled by default in TX-Node configuration.
 - Machine mode supplies both `X-TX-Machine-ID` and `X-TX-Node-ID` for per-node audit; another Machine's node returns 404.
 - The optional reporter only attaches to the sing-box kernel. Xray and Standalone do not claim feature parity.
 - TXBoard administrators manage rules and logs; node credentials cannot use the Admin API.
@@ -75,6 +74,6 @@ Accessible under **Node Management → AccessAudit** in the React Admin.
 
 ## Data protection and retention
 
-The tables `tx_access_audit_rule` / `tx_access_audit_event` (or `tx_access_audit_*` on native cutover) are isolated from admin logs, user balances and traffic billing. Event logs contain sensitive targets and IP addresses and must not be rendered to non-admin users. API replies set `Cache-Control: no-store`. A daily scheduled `access-audit:prune` command removes events older than 30 days in bounded batches; the deployment must run Laravel `schedule:run` regularly.
+The tables `tx_access_audit_rule` / `tx_access_audit_event` are isolated from admin logs, user balances and traffic billing. Event logs contain sensitive targets and IP addresses and must not be rendered to non-admin users. API replies set `Cache-Control: no-store`. A daily scheduled `access-audit:prune` command removes events older than 30 days in bounded batches; the deployment must run Laravel `schedule:run` regularly.
 
 This feature **does not** automatically ban accounts, reset traffic, change proxy routing, inspect HTTPS content, or guarantee crash-proof retention. End-to-end live verification is required before broad deployment.

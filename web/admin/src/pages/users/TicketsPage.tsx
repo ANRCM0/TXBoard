@@ -66,7 +66,7 @@ export function TicketsPage() {
   return <>
     <PageHeader
       title="工单管理"
-      description="工单筛选、消息详情、回复和关闭。当前 Xboard core 已不提供工单类型管理接口。"
+      description="工单筛选、消息详情、回复和关闭。工单类型管理不属于当前 TXBoard 接口范围。"
     />
 
     <div className="ticket-tabs">
@@ -239,7 +239,7 @@ function TicketDetailModal({
 
       {withdraw ? (
         <div className="page-alert">
-          这是佣金提现工单。当前 Xboard core 的 /ticket/close 只负责关闭工单，不会自动打款或返还佣金；请完成实际资金处理后再关闭。
+          这是佣金提现工单。关闭工单不会自动打款或返还佣金；请完成实际资金处理后再关闭。
         </div>
       ) : null}
 

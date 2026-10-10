@@ -344,7 +344,7 @@ button:disabled{opacity:.5;cursor:not-allowed}
 
 
 /* =========================================================
-   Xboard visual parity layer
+   TXBoard visual parity layer
    ========================================================= */
 :root{
   font-family:'Encode Sans Condensed','Arial Narrow',Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
@@ -573,7 +573,7 @@ body{overflow:hidden}
 }
 .mobile-menu{display:none}
 
-/* shared flat Xboard component language */
+/* shared flat TXBoard component language */
 .page-stack{gap:20px}
 .page-title{margin:0}
 .page-title h1{
@@ -593,7 +593,7 @@ body{overflow:hidden}
   color:var(--u-muted);
   font-weight:500;
 }
-.content-card,.subscription-card,.metric-card,.plan-card,.node-card,.gift-redeem-card,.welcome-card,.xboard-card{
+.content-card,.subscription-card,.metric-card,.plan-card,.node-card,.gift-redeem-card,.welcome-card,.txboard-card{
   background:var(--u-panel);
   border:1px solid var(--u-border);
   border-radius:6px;
@@ -795,7 +795,7 @@ body{overflow:hidden}
 }
 
 /* dashboard */
-.xboard-dashboard{
+.txboard-dashboard{
   padding-bottom:40px;
 }
 .dash-alert{
@@ -893,17 +893,17 @@ body{overflow:hidden}
   background:rgba(255,255,255,.45);
 }
 .dash-promo-dots button.active{background:#fff}
-.xboard-card{
+.txboard-card{
   margin-top:20px;
   overflow:hidden;
 }
-.xboard-card-header{
+.txboard-card-header{
   padding:19px 24px 20px;
   font-size:18px;
   line-height:1.6;
   font-weight:500;
 }
-.xboard-card-body{padding:0 24px 20px}
+.txboard-card-body{padding:0 24px 20px}
 .sub-plan-name{
   margin-bottom:8px;
   font-size:16px;
@@ -936,7 +936,7 @@ body{overflow:hidden}
   font-size:42px;
   line-height:1;
 }
-.dashboard-shortcuts .xboard-card-header{border-bottom:1px solid var(--u-border)}
+.dashboard-shortcuts .txboard-card-header{border-bottom:1px solid var(--u-border)}
 .shortcut-list{display:flex;flex-direction:column}
 .shortcut-row{
   width:100%;
@@ -1073,7 +1073,7 @@ body{overflow:hidden}
 .plan-coupon-row{max-width:480px}
 .plan-buy-btn{margin-top:20px}
 
-/* Xboard order-detail dark summary */
+/* TXBoard order-detail dark summary */
 .order-detail-grid{
   grid-template-columns:minmax(0,2fr) minmax(280px,1fr);
   gap:20px;

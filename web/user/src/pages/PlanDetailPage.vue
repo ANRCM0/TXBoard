@@ -80,11 +80,11 @@ async function buy(){
 <template>
   <div class="plan-detail-page">
     <div v-if="error" class="page-alert">{{ error }}</div>
-    <div v-if="loading" class="xboard-card skeleton-card"/>
+    <div v-if="loading" class="txboard-card skeleton-card"/>
 
-    <section v-else-if="plan" class="xboard-card plan-detail-xcard">
-      <header class="xboard-card-header">{{ plan.name }}</header>
-      <div class="xboard-card-body">
+    <section v-else-if="plan" class="txboard-card plan-detail-xcard">
+      <header class="txboard-card-header">{{ plan.name }}</header>
+      <div class="txboard-card-body">
         <p class="plan-detail-copy">{{ description(plan.content) }}</p>
 
         <div v-if="!availablePeriods.length" class="page-alert">{{ t('plan.noPeriod') }}</div>

@@ -1,6 +1,6 @@
 # TXBoard Plugin Package Contract
 
-Plugin Package 是 TXBoard 与独立插件仓库之间的稳定兼容边界。
+Plugin Package 是 TXBoard 与独立插件仓库之间的正式扩展协议边界。
 
 当前版本：**Plugin Package v1**。
 
@@ -28,7 +28,7 @@ YourPlugin/
 │   └── migrations/
 │
 ├── resources/
-│   └── assets/               # legacy/general static assets, optional
+│   └── assets/               # optional static assets
 │
 └── admin/
     └── dist/                 # Plugin Package v1 Admin App
@@ -131,7 +131,7 @@ Settings / CRUD schema
         ↓
 Plugin Package v1 admin/dist
         ↓
-legacy component / embed
+component / embed
 ```
 
 宿主原生 renderer 是 TXBoard 自身的例外扩展点，不是独立插件的发布接口。

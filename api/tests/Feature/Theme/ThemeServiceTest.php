@@ -32,44 +32,32 @@ class ThemeServiceTest extends TestCase
         $this->assertNull(admin_setting('frontend_theme'));
     }
 
-    public function test_valid_legacy_theme_is_read_only_compatibility_fallback(): void
+    public function test_canonical_theme_is_the_only_active_theme_source(): void
     {
-        $this->createTheme('LegacyTheme');
-        admin_setting(['current_theme' => 'LegacyTheme']);
-
+        $this->createTheme('OtherTheme');
         $service = app(ThemeService::class);
-
-        $this->assertSame('LegacyTheme', $service->getActiveTheme());
-        $this->assertNull(admin_setting('frontend_theme'));
-        $this->assertSame('LegacyTheme', admin_setting('current_theme'));
+        $this->assertSame('TXBoard', $service->getActiveTheme());
+        admin_setting(['frontend_theme' => 'OtherTheme']);
+        $this->assertSame('OtherTheme', $service->getActiveTheme());
     }
 
-    public function test_invalid_canonical_theme_does_not_fall_back_to_legacy_state(): void
+    public function test_invalid_canonical_theme_uses_default_without_mutating_setting(): void
     {
-        $this->createTheme('LegacyTheme');
-        admin_setting([
-            'frontend_theme' => 'MissingTheme',
-            'current_theme' => 'LegacyTheme',
-        ]);
-
+        admin_setting(['frontend_theme' => 'MissingTheme']);
         $service = app(ThemeService::class);
-
         $this->assertSame('TXBoard', $service->getActiveTheme());
         $this->assertSame('MissingTheme', admin_setting('frontend_theme'));
-        $this->assertSame('LegacyTheme', admin_setting('current_theme'));
     }
 
     public function test_switch_writes_only_canonical_active_theme_state(): void
     {
         $this->createTheme('CustomTheme');
-        admin_setting(['current_theme' => 'HistoricalTheme']);
 
         $service = app(ThemeService::class);
         $service->switch('CustomTheme');
 
         $this->assertSame('CustomTheme', $service->getActiveTheme());
         $this->assertSame('CustomTheme', admin_setting('frontend_theme'));
-        $this->assertSame('HistoricalTheme', admin_setting('current_theme'));
     }
 
     public function test_unsafe_theme_reference_never_resolves_outside_theme_roots(): void
@@ -83,7 +71,7 @@ class ThemeServiceTest extends TestCase
         $service->delete('../TXBoard');
     }
 
-    public function test_system_theme_inventory_wins_exact_legacy_user_name_collision(): void
+    public function test_system_theme_inventory_wins_exact_user_name_collision(): void
     {
         $this->createTheme('TXBoard');
 
@@ -94,12 +82,11 @@ class ThemeServiceTest extends TestCase
         $this->assertSame('TXBoard default theme', $theme['description']);
     }
 
-    public function test_switching_back_to_default_updates_only_frontend_theme(): void
+    public function test_switching_back_to_default_updates_canonical_theme(): void
     {
         $this->createTheme('CustomTheme');
         admin_setting([
             'frontend_theme' => 'CustomTheme',
-            'current_theme' => 'HistoricalTheme',
         ]);
 
         $service = app(ThemeService::class);
@@ -107,7 +94,6 @@ class ThemeServiceTest extends TestCase
 
         $this->assertSame('TXBoard', $service->getActiveTheme());
         $this->assertSame('TXBoard', admin_setting('frontend_theme'));
-        $this->assertSame('HistoricalTheme', admin_setting('current_theme'));
     }
 
     public function test_active_user_theme_cannot_be_deleted(): void
@@ -119,6 +105,14 @@ class ThemeServiceTest extends TestCase
         $this->expectExceptionMessage('Current theme cannot be deleted');
 
         app(ThemeService::class)->delete('CustomTheme');
+    }
+
+    public function test_built_in_theme_switch_uses_native_vue_without_static_theme_assets(): void
+    {
+        $service = app(ThemeService::class);
+        $this->assertArrayHasKey('TXBoard', $service->getList());
+        $this->assertTrue($service->switch('TXBoard'));
+        $this->assertSame('TXBoard', $service->getActiveTheme());
     }
 
     public function test_system_theme_cannot_be_deleted(): void
