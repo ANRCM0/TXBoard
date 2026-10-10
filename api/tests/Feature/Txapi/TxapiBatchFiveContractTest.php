@@ -18,7 +18,7 @@ use Tests\TestCase;
  * Internal native-only Batch 5 financial, ownership and repeat-request gate.
  * This is deterministic HTTP/SQL coverage, not an external payment/Node test.
  */
-class TxapiLegacyBatch5Test extends TestCase
+class TxapiBatchFiveContractTest extends TestCase
 {
     use RefreshDatabase;
 

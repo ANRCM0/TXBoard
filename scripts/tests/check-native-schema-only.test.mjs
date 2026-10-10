@@ -16,3 +16,18 @@ test('native names pass and legacy table names are rejected', t => {
   writeFileSync(path, "<?php protected $table = 'v" + "2_user';");
   assert.equal(check(dir).length, 1);
 });
+
+test('rejects retired application aliases and bundled plugin metadata', t => {
+  const dir = mkdtempSync(join(tmpdir(), 'tx-native-runtime-'));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  mkdirSync(join(dir, 'api/app'), { recursive: true });
+  mkdirSync(join(dir, 'api/plugins-core/Telegram'), { recursive: true });
+  mkdirSync(join(dir, 'scripts'), { recursive: true });
+  writeFileSync(join(dir, 'api/app/Theme.php'), "<?php admin_setting('current_" + "theme');");
+  writeFileSync(join(dir, 'api/plugins-core/Telegram/config.json'), '{"require":{"x' + 'board":">=1.0.0"}}');
+  const findings = check(dir);
+  assert.equal(findings.length, 2);
+  assert.deepEqual(findings.map(x => x.path).sort(), [
+    'api/app/Theme.php', 'api/plugins-core/Telegram/config.json',
+  ]);
+});

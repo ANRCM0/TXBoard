@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\Route;
 use Tests\TestCase;
 
 /** The development API is TXAPI only: V1/V2 may not return under any route provider. */
-class RetiredLegacyUserRoutesTest extends TestCase
+class NativeUserRoutesTest extends TestCase
 {
     public function test_no_v1_or_tx_routes_are_registered(): void
     {

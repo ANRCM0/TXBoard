@@ -13,9 +13,12 @@ export function check(root = '.') {
       const abs = join(dir, item.name);
       const path = relative(base, abs).replaceAll('\\', '/');
       if (item.isDirectory()) walk(abs);
-      else if (item.isFile() && /\.(php|mjs|cjs|js|ts|tsx|vue|sql)$/.test(path) && !skip.has(path)) {
+      else if (item.isFile() && /\.(php|mjs|cjs|js|ts|tsx|vue|sql)$/.test(path) || (path.startsWith('api/plugins-core/') && path.endsWith('/config.json')) && !skip.has(path)) {
         const source = readFileSync(abs, 'utf8');
-        for (const m of source.matchAll(/(?:v(?:2)_|NativeTableName|ResolvesNativeEloquentTable|TX_NATIVE_TABLES|migrateFromV2b)/g)) {
+        const incompatible = /(?:v(?:2)_|NativeTableName|ResolvesNativeEloquentTable|TX_NATIVE_TABLES|migrateFromV2b)/g;
+        const historical = /(?:v2board|xboard|current_theme|ModuleId::legacy)/gi;
+        const scan = [incompatible, ...(path.startsWith('api/app/') || path.startsWith('api/plugins-core/') ? [historical] : [])];
+        for (const pattern of scan) for (const m of source.matchAll(pattern)) {
           violations.push({ path, line: source.slice(0, m.index).split('\n').length, type: m[0] });
         }
       }

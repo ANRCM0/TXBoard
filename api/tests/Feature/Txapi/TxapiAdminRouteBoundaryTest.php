@@ -5,7 +5,7 @@ namespace Tests\Feature\Txapi;
 use Illuminate\Support\Facades\Route;
 use Tests\TestCase;
 
-final class TxapiAdminLegacyRouteRetirementTest extends TestCase
+final class TxapiAdminRouteBoundaryTest extends TestCase
 {
     public function test_native_content_and_settings_replace_tx_admin_routes_without_redirect_shims(): void
     {

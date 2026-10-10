@@ -16,10 +16,10 @@ class PluginPackageTest extends TestCase
         $this->package = new PluginPackage();
     }
 
-    public function test_legacy_plugin_without_admin_app_remains_valid(): void
+    public function test_native_plugin_without_optional_admin_app_remains_valid(): void
     {
         $this->assertTrue($this->package->validateManifestExtension([
-            'admin_menus' => [['path' => 'legacy', 'component' => 'legacy.page']],
+            'admin_menus' => [['path' => 'dashboard', 'component' => 'plugin.dashboard']],
         ]));
     }
 
