@@ -227,10 +227,8 @@ jobs:
         run: php artisan test tests/Feature/Server/TxNodeNativeProtocolTest.php
       - name: P4 optimized traffic batch query budget and settlement correctness
         run: php artisan test tests/Feature/Server/TrafficBatchSettlementTest.php
-      - name: MySQL settlement and order recovery regressions
-        run: |
-          php artisan test tests/Feature/Server/TrafficBatchSettlementTest.php
-          php artisan test tests/Feature/Order/CheckOrderRecoveryTest.php
+      - name: MySQL order recovery regression
+        run: php artisan test tests/Feature/Order/CheckOrderRecoveryTest.php
       - name: Exercise full-table native upgrade and atomic rollback on MySQL 8.4
         run: |
           php -l app/Console/Commands/DatabaseNativeCutover.php

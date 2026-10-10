@@ -6,6 +6,21 @@ on:
     branches: [main]
     tags:
       - "v*"
+    paths:
+      - "api/**"
+      - "web/**"
+      - "mcp/**"
+      - "Dockerfile"
+      - ".dockerignore"
+      - "package.json"
+      - "package-lock.json"
+      - "compose.yaml"
+      - "backup.sh"
+      - "scripts/test-backup.sh"
+      - "scripts/ci-release-recovery.sh"
+      - "scripts/resolve-image-tags.sh"
+      - "scripts/test-image-tags.sh"
+      - ".github/workflows/docker-txboard.yml"
   pull_request:
     branches: [main]
     paths:
@@ -32,12 +47,13 @@ permissions:
 # serialized by channel so a slower older tag cannot overwrite the channel.
 concurrency:
   group: txboard-image-${{ github.event_name == 'pull_request' && github.ref || (github.ref_type == 'branch' && 'dev' || (contains(github.ref_name, '-') && 'preview' || 'stable')) }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || github.ref_type == 'branch' }}
 
 jobs:
   # A passing image build alone is not release qualification. Run regression
   # checks on the exact Git commit for PR, dev, preview and stable channels.
   release-gate:
+    if: github.event_name == 'push'
     # Tag releases use exactly the same validation as pull requests and main.
     runs-on: ubuntu-latest
     services:
@@ -61,8 +77,6 @@ jobs:
       AGENT_OPS_PAIRING_CACHE_STORE: array
     steps:
       - uses: actions/checkout@v4
-      - name: Test image tag classification
-        run: bash scripts/test-image-tags.sh
       - uses: shivammathur/setup-php@v2
         with:
           php-version: "8.2"
@@ -101,6 +115,7 @@ jobs:
           npm run build
 
   release-recovery:
+    if: github.event_name == 'push'
     # Protect stable/preview publishing with a MySQL upgrade+restore check.
     # This is synthetic CI evidence, not an operator's real backup/rollback.
     runs-on: ubuntu-latest
@@ -165,10 +180,12 @@ jobs:
           retention-days: 14
 
   verify:
-    # Smoke-test actual runtime on PR, main and release tags.
+    # PRs smoke-test the image; main and release tags also run publish gates.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Test image tag classification
+        run: bash scripts/test-image-tags.sh
       - name: Verify backup integrity and mysqldump failure handling
         run: bash scripts/test-backup.sh backup.sh
       - name: Validate Compose

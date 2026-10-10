@@ -8,6 +8,20 @@ on:
       - "contracts/module-package/**"
       - "contracts/module-lifecycle/**"
       - "contracts/theme-package/**"
+      - "web/admin/src/api/**"
+      - "contracts/http/external-adapter-current.md"
+      - "contracts/http/theme-integration-current.md"
+      - "contracts/node-protocol/txnode-integration-current.md"
+      - "scripts/p0-api-audit.mjs"
+      - "scripts/export-route-catalog.mjs"
+      - "scripts/database-schema-inventory.mjs"
+      - "scripts/tests/database-schema-inventory.test.mjs"
+      - "scripts/tests/export-route-catalog.test.mjs"
+      - "scripts/check-external-integration-routes.mjs"
+      - "scripts/tests/check-external-integration-routes.test.mjs"
+      - "scripts/tests/p0-api-audit.test.mjs"
+      - "scripts/native-admin-release-audit.mjs"
+      - "scripts/tests/native-admin-release-audit.test.mjs"
       - ".github/workflows/ci-api.yml"
   pull_request:
     branches: [main]
@@ -16,6 +30,20 @@ on:
       - "contracts/module-package/**"
       - "contracts/module-lifecycle/**"
       - "contracts/theme-package/**"
+      - "web/admin/src/api/**"
+      - "contracts/http/external-adapter-current.md"
+      - "contracts/http/theme-integration-current.md"
+      - "contracts/node-protocol/txnode-integration-current.md"
+      - "scripts/p0-api-audit.mjs"
+      - "scripts/export-route-catalog.mjs"
+      - "scripts/database-schema-inventory.mjs"
+      - "scripts/tests/database-schema-inventory.test.mjs"
+      - "scripts/tests/export-route-catalog.test.mjs"
+      - "scripts/check-external-integration-routes.mjs"
+      - "scripts/tests/check-external-integration-routes.test.mjs"
+      - "scripts/tests/p0-api-audit.test.mjs"
+      - "scripts/native-admin-release-audit.mjs"
+      - "scripts/tests/native-admin-release-audit.test.mjs"
       - ".github/workflows/ci-api.yml"
 
 concurrency:
@@ -57,15 +85,44 @@ jobs:
         run: |
           cp .env.example .env
           php artisan key:generate
-      - name: Run Agent Support slice tests
-        env:
-          APP_ENV: testing
-          DB_CONNECTION: sqlite
-          DB_DATABASE: ":memory:"
-        run: php artisan test tests/Feature/Agent/AgentSupportTest.php
       - name: Run tests
         env:
           APP_ENV: testing
           DB_CONNECTION: sqlite
           DB_DATABASE: ":memory:"
         run: php artisan test
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Test schema and route audit tools
+        working-directory: .
+        run: |
+          node --test scripts/tests/database-schema-inventory.test.mjs
+          node --test scripts/tests/p0-api-audit.test.mjs
+          node --test scripts/tests/native-admin-release-audit.test.mjs
+          node --test scripts/tests/export-route-catalog.test.mjs
+          node --test scripts/tests/check-external-integration-routes.test.mjs
+      - name: Verify schema and native Admin references
+        working-directory: .
+        run: |
+          node scripts/database-schema-inventory.mjs --root . --output artifacts/database/schema-inventory.json --check
+          node scripts/native-admin-release-audit.mjs --strict --guard-native --output artifacts/release/admin-native-gap.json
+      - name: Audit live HTTP routes and external integration contracts
+        working-directory: .
+        run: |
+          php api/artisan route:list --json > "$RUNNER_TEMP/txboard-routes.json"
+          node scripts/p0-api-audit.mjs --routes "$RUNNER_TEMP/txboard-routes.json" --output-dir artifacts/p0-audit
+          node scripts/export-route-catalog.mjs --routes "$RUNNER_TEMP/txboard-routes.json" --json artifacts/route-catalog/http-routes.json --markdown artifacts/route-catalog/http-routes.md --check
+          node scripts/check-external-integration-routes.mjs --routes "$RUNNER_TEMP/txboard-routes.json"
+      - name: Preserve non-secret schema and route audit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: txboard-api-contract-audit
+          path: |
+            artifacts/database/schema-inventory.json
+            artifacts/release/admin-native-gap.json
+            artifacts/route-catalog/
+            artifacts/p0-audit/
+          if-no-files-found: warn
+          retention-days: 14
