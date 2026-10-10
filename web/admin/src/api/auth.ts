@@ -1,5 +1,4 @@
-import { publicApiClient } from './client'
-import { unwrap } from '../lib/api'
+import { nativeApiClient, unwrapNative, type NativeApiEnvelope } from './client'
 import type { CaptchaPayload } from './comm'
 
 export type LoginResponse = {
@@ -13,6 +12,7 @@ export type LoginResponse = {
 }
 
 export async function login(email: string, password: string, captcha: CaptchaPayload = {}) {
-  const { data } = await publicApiClient.post('/passport/auth/login', { email, password, ...captcha })
-  return unwrap<LoginResponse>(data)
+  return unwrapNative(nativeApiClient.post<NativeApiEnvelope<LoginResponse>>(
+    '/auth/admin/login', { email, password, ...captcha },
+  ))
 }
