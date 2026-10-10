@@ -1,7 +1,7 @@
 name: txboard-image
 
 on:
-  # Every main commit updates the independent development image channel.
+  # Runtime/build changes on main update the dev image; documentation-only commits do not.
   push:
     branches: [main]
     tags:
@@ -115,7 +115,6 @@ jobs:
           npm run build
 
   release-recovery:
-    if: github.event_name == 'push'
     # Protect stable/preview publishing with a MySQL upgrade+restore check.
     # This is synthetic CI evidence, not an operator's real backup/rollback.
     runs-on: ubuntu-latest
