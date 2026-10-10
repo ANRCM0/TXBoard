@@ -21,7 +21,7 @@ class AgentOpsTest extends TestCase
         $plain = $admin->createToken('ordinary-api-token', [AgentAbility::NODES_READ])->plainTextToken;
 
         $this->withToken($plain)
-            ->getJson('/api/v2/agent/whoami')
+            ->getJson('/txapi/agent/v1/whoami')
             ->assertForbidden();
     }
 
@@ -30,9 +30,9 @@ class AgentOpsTest extends TestCase
         $admin = $this->makeAdmin();
         $plain = $admin->createToken('agent:renamed-root', ['*'])->plainTextToken;
 
-        $this->withToken($plain)->getJson('/api/v2/agent/whoami')
+        $this->withToken($plain)->getJson('/txapi/agent/v1/whoami')
             ->assertForbidden()->assertJsonPath('message', 'Invalid Agent scopes');
-        $this->withToken($plain)->getJson('/api/v2/agent/system/status')
+        $this->withToken($plain)->getJson('/txapi/agent/v1/system/status')
             ->assertForbidden();
     }
 
@@ -41,7 +41,7 @@ class AgentOpsTest extends TestCase
         $admin = $this->makeAdmin();
         $plain = $admin->createToken('agent:read-only', [AgentAbility::NODES_READ])->plainTextToken;
 
-        $this->withToken($plain)->postJson('/api/v2/agent/nodes/1/actions', [
+        $this->withToken($plain)->postJson('/txapi/agent/v1/nodes/1/actions', [
             'action' => 'ops.kernel.restart',
         ])->assertForbidden();
     }
@@ -54,7 +54,7 @@ class AgentOpsTest extends TestCase
             AgentAbility::NODES_OPERATE,
         ])->plainTextToken;
 
-        $response = $this->withToken($plain)->getJson('/api/v2/agent/whoami');
+        $response = $this->withToken($plain)->getJson('/txapi/agent/v1/whoami');
 
         $response->assertOk()
             ->assertJsonPath('data.admin_id', $admin->id)
@@ -72,7 +72,7 @@ class AgentOpsTest extends TestCase
         ])->plainTextToken;
 
         $this->withToken($plain)
-            ->getJson('/api/v2/agent/traffic/summary')
+            ->getJson('/txapi/agent/v1/traffic/summary')
             ->assertForbidden();
     }
 
@@ -97,7 +97,7 @@ class AgentOpsTest extends TestCase
             AgentAbility::NODES_OPERATE,
         ])->plainTextToken;
 
-        $response = $this->withToken($plain)->postJson("/api/v2/agent/nodes/{$node->id}/actions", [
+        $response = $this->withToken($plain)->postJson("/txapi/agent/v1/nodes/{$node->id}/actions", [
             'action' => 'ops.kernel.restart',
             'input' => [],
         ]);
@@ -160,12 +160,12 @@ class AgentOpsTest extends TestCase
             'agent:target:node:' . $allowed->id,
         ]);
 
-        $list = $this->withToken($issued->plainTextToken)->getJson('/api/v2/agent/nodes');
+        $list = $this->withToken($issued->plainTextToken)->getJson('/txapi/agent/v1/nodes');
         $list->assertOk();
         $this->assertSame([$allowed->id], collect($list->json('data'))->pluck('id')->all());
 
         $this->withToken($issued->plainTextToken)
-            ->getJson("/api/v2/agent/nodes/{$blocked->id}/metrics")
+            ->getJson("/txapi/agent/v1/nodes/{$blocked->id}/metrics")
             ->assertForbidden();
     }
 
@@ -195,7 +195,7 @@ class AgentOpsTest extends TestCase
         ]);
 
         $this->withToken($issued->plainTextToken)
-            ->postJson("/api/v2/agent/nodes/{$node->id}/actions", [
+            ->postJson("/txapi/agent/v1/nodes/{$node->id}/actions", [
                 'action' => 'ops.kernel.restart',
                 'input' => [],
             ])
@@ -212,14 +212,14 @@ class AgentOpsTest extends TestCase
         ]);
 
         $this->withToken($issued->plainTextToken)
-            ->postJson("/api/v2/agent/nodes/{$node->id}/actions", [
+            ->postJson("/txapi/agent/v1/nodes/{$node->id}/actions", [
                 'action' => 'ops.logs.tail',
                 'input' => ['source' => 'application', 'lines' => 201],
             ])
             ->assertStatus(422);
 
         $ok = $this->withToken($issued->plainTextToken)
-            ->postJson("/api/v2/agent/nodes/{$node->id}/actions", [
+            ->postJson("/txapi/agent/v1/nodes/{$node->id}/actions", [
                 'action' => 'ops.logs.tail',
                 'input' => ['source' => 'application', 'lines' => 50],
             ]);
@@ -265,7 +265,7 @@ class AgentOpsTest extends TestCase
 
         $this->withHeader('X-Agent-Protocol', 'mcp')
             ->withToken($issued->plainTextToken)
-            ->getJson('/api/v2/agent/whoami')
+            ->getJson('/txapi/agent/v1/whoami')
             ->assertOk();
 
         $log = AgentAuditLog::query()->latest('id')->firstOrFail();

@@ -82,7 +82,7 @@ final class TxapiAdminSettingsTest extends TestCase
         Http::assertNothingSent();
     }
 
-    public function test_telegram_webhook_uses_v1_callback_but_never_exposes_its_credential(): void
+    public function test_telegram_webhook_uses_native_callback_without_exposing_credentials(): void
     {
         $token = '123456:test-bot-token';
         admin_setting(['telegram_bot_token' => $token,
@@ -99,7 +99,7 @@ final class TxapiAdminSettingsTest extends TestCase
         $this->assertArrayNotHasKey('webhook_url', $response->json('data'));
         Http::assertSent(static function ($request) use ($token): bool {
             return str_ends_with((string) parse_url($request->url(), PHP_URL_PATH), '/setWebhook')
-                && $request['url'] === 'https://panel.example.test/api/v1/guest/telegram/webhook?access_token=' . md5($token);
+                && $request['url'] === 'https://panel.example.test/txapi/integrations/telegram/webhook?access_token=' . md5($token);
         });
     }
 

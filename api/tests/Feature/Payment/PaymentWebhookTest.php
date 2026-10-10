@@ -109,12 +109,12 @@ class PaymentWebhookTest extends TestCase
         $payment = $this->payment();
         $order = $this->order($payment);
 
-        $this->post('/api/v1/guest/payment/notify/MGate/' . $payment->uuid,
+        $this->post('/txapi/payment/webhook/MGate/' . $payment->uuid,
             $this->signedPayload($order->trade_no))->assertStatus(422);
 
         $payload = $this->signedPayload($order->trade_no);
         $payload['sign'] = 'not-valid';
-        $this->post('/api/v1/guest/payment/notify/EPay/' . $payment->uuid, $payload)
+        $this->post('/txapi/payment/webhook/EPay/' . $payment->uuid, $payload)
             ->assertStatus(422);
     }
 
@@ -132,7 +132,7 @@ class PaymentWebhookTest extends TestCase
         $this->assertSame(Order::STATUS_PROCESSING, $order->fresh()->status);
     }
 
-    public function test_native_signed_callback_and_legacy_duplicate_share_exact_one_settlement(): void
+    public function test_repeated_native_callback_has_exactly_one_settlement(): void
     {
         \Illuminate\Support\Facades\Bus::fake();
         $payment = $this->payment();
@@ -183,9 +183,11 @@ class PaymentWebhookTest extends TestCase
         $this->assertSame(Order::STATUS_PROCESSING, (int) $order->fresh()->status);
     }
 
-    public function test_checkout_callback_target_is_legacy_by_default(): void
+    public function test_legacy_webhook_route_is_not_registered(): void
     {
-        $this->assertFalse(config('billing.native_webhook_enabled'));
+        $this->assertNotContains('api/v1/guest/payment/notify/{method}/{uuid}', array_map(
+            static fn ($route) => $route->uri(), \Illuminate\Support\Facades\Route::getRoutes()->getRoutes()
+        ));
     }
 
     private function payment(string $uuid = 'epay_gateway_uuid_value_00000001'): Payment
@@ -258,7 +260,7 @@ class PaymentWebhookTest extends TestCase
 
     private function postCallback(Payment $payment, string $orderNo, array $overrides = [])
     {
-        return $this->post('/api/v1/guest/payment/notify/EPay/' . $payment->uuid,
+        return $this->post('/txapi/payment/webhook/EPay/' . $payment->uuid,
             $this->signedPayload($orderNo, $overrides));
     }
 

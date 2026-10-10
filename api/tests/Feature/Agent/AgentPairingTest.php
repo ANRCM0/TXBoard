@@ -62,7 +62,7 @@ class AgentPairingTest extends TestCase
         $plain = (string) $created->json('data.plain_text_token');
         $code = (string) $created->json('data.pairing.code');
 
-        $redeemed = $this->postJson('/api/v2/agent/pairings/redeem', [
+        $redeemed = $this->postJson('/txapi/agent/v1/pairings/redeem', [
             'pairing_code' => $code,
         ]);
 
@@ -75,12 +75,12 @@ class AgentPairingTest extends TestCase
         $this->app['auth']->forgetGuards();
 
         $this->withToken((string) $redeemed->json('data.plain_text_token'))
-            ->getJson('/api/v2/agent/whoami')
+            ->getJson('/txapi/agent/v1/whoami')
             ->assertOk()
             ->assertJsonPath('data.admin_id', $admin->id)
             ->assertJsonPath('data.client_name', 'pairing-once');
 
-        $this->postJson('/api/v2/agent/pairings/redeem', [
+        $this->postJson('/txapi/agent/v1/pairings/redeem', [
             'pairing_code' => $code,
         ])->assertStatus(410)
             ->assertJsonPath('message', 'Pairing code is invalid, expired, or already redeemed');
@@ -93,7 +93,7 @@ class AgentPairingTest extends TestCase
 
         $this->travel(61)->seconds();
 
-        $this->postJson('/api/v2/agent/pairings/redeem', [
+        $this->postJson('/txapi/agent/v1/pairings/redeem', [
             'pairing_code' => $code,
         ])->assertStatus(410);
     }
@@ -108,11 +108,11 @@ class AgentPairingTest extends TestCase
         $this->deleteJson("/txapi/admin/{$securePath}/agents/tokens/{$tokenId}")
             ->assertOk();
 
-        $this->postJson('/api/v2/agent/pairings/redeem', [
+        $this->postJson('/txapi/agent/v1/pairings/redeem', [
             'pairing_code' => $code,
         ])->assertStatus(410);
 
-        $this->postJson('/api/v2/agent/pairings/redeem', [
+        $this->postJson('/txapi/agent/v1/pairings/redeem', [
             'pairing_code' => $code,
         ])->assertStatus(410);
     }

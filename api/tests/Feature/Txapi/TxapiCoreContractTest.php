@@ -29,10 +29,10 @@ class TxapiCoreContractTest extends TestCase
         $this->assertNotSame('caller-chosen-value', $response->json('request_id'));
 
         $this->getJson('/api/health')->assertOk()->assertJsonPath('status', 'ok');
-        $this->assertNotNull(Route::getRoutes()->match(
-            \Illuminate\Http\Request::create('/api/v1/guest/plan/fetch', 'GET')));
-        $this->assertNotNull(Route::getRoutes()->match(
-            \Illuminate\Http\Request::create('/api/v1/guest/payment/notify/EPay/example', 'POST')));
+        $registered = array_map(static fn ($r) => $r->uri(), Route::getRoutes()->getRoutes());
+        $this->assertNotContains('api/v1/guest/plan/fetch', $registered);
+        $this->assertNotContains('api/v1/guest/payment/notify/{method}/{uuid}', $registered);
+        $this->assertContains('txapi/payment/webhook/{method}/{uuid}', $registered);
     }
 
     public function test_public_config_does_not_expose_admin_path_or_keys(): void
