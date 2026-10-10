@@ -31,7 +31,7 @@ class RetiredLegacyUserRoutesTest extends TestCase
         $agent = $routes->first(static fn ($route) => $route->uri() === 'txapi/agent/v1/whoami');
         $this->assertNotNull($agent);
         $this->assertStringContainsString(
-            \App\Http\Controllers\Txapi\\Agent\\AgentOpsController::class, $agent->getActionName());
+            \App\Http\Controllers\Txapi\Agent\AgentOpsController::class, $agent->getActionName());
     }
 
     public function test_all_required_native_replacements_are_registered(): void
