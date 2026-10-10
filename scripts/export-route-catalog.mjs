@@ -17,6 +17,8 @@ export const classify = (uri) => {
   if (p.startsWith('/txapi/admin/')) return ['TXAPI admin', 'admin'];
   if (p.startsWith('/txapi/node/v1/')) return ['TXAPI Node HTTP', 'node'];
   if (p.startsWith('/txapi/payment/webhook/')) return ['Native payment callback', 'provider-signature'];
+  if (p.startsWith('/txapi/agent/v1/')) return ['TXAPI Agent runtime', 'agent'];
+  if (p === '/txapi/integrations/telegram/webhook') return ['Native Telegram webhook', 'telegram-digest'];
   if (p.startsWith('/txapi/auth/')) return ['TXAPI authentication', 'mixed'];
   if (p.startsWith('/txapi/public/') || p === '/txapi/plans' || p === '/txapi/health') return ['TXAPI public', 'public'];
   if (p.startsWith('/txapi/')) return ['TXAPI user/application', 'user'];
@@ -74,17 +76,14 @@ export function assertCurrentBoundaries(items) {
     'POST /txapi/node/v1/report',
     'GET /txapi/node/v1/machine/nodes',
     'POST /txapi/node/v1/machine/status',
-    'GET /api/v2/agent/whoami',
-    'POST /api/v2/agent/pairings/redeem',
-    'GET /api/v1/client/subscribe',
-    'POST /api/v1/guest/telegram/webhook',
-    'GET /api/v1/guest/payment/notify/{method}/{uuid}',
-    'POST /api/v1/guest/payment/notify/{method}/{uuid}',
+    'GET /txapi/agent/v1/whoami',
+    'POST /txapi/agent/v1/pairings/redeem',
+    'POST /txapi/integrations/telegram/webhook',
     'GET /txapi/payment/webhook/{method}/{uuid}',
     'POST /txapi/payment/webhook/{method}/{uuid}',
   ];
   const missing = required.filter(x => !paths.has(x));
-  const obsolete = items.filter(x => /^\/api\/v2\/\{admin_path\}(?:\/|$)/.test(x.path));
+  const obsolete = items.filter(x => /^\/api\/v[12](?:\/|$)/.test(x.path));
   // Laravel route:list --json expands middleware aliases to class names.
   // Compare both spellings instead of falsely treating all native routes as unguarded.
   const unguarded = items.filter(x => {
@@ -99,7 +98,7 @@ export function assertCurrentBoundaries(items) {
   if (missing.length || obsolete.length || unguarded.length) {
     throw new Error(JSON.stringify({
       missing_current_routes: missing,
-      retired_admin_routes: obsolete.map(x => x.method+' '+x.path),
+      legacy_routes: obsolete.map(x => x.method+' '+x.path),
       unguarded_native_admin: unguarded.map(x => x.method+' '+x.path),
     }, null, 2));
   }
@@ -116,7 +115,7 @@ export function markdown(items) {
     '# TXBoard HTTP 路由快照（自动生成）', '',
     '> Source: `php artisan route:list --json`. Each row is one HTTP verb, excluding implicit HEAD/OPTIONS.',
     '> This is a **server code registry**, not evidence that a deployment is live or that a client/provider is compatible.',
-    '> Workerman WebSocket `/txapi/node/v1/ws`, legacy `/ws`, proxy/Caddy mappings, runtime plugin routes and BFF targets are **not** established by this listing.',
+    '> Workerman WebSocket `/txapi/node/v1/ws`, proxy/Caddy mappings, runtime plugin routes and BFF targets are **not** established by this listing.',
     '> Paths with `{admin_path}` and `{token}` are placeholders. Do not substitute a real secret in source control.',
     '', '## Counts by route family', '', '| Family | HTTP methods |', '|---|---:|',
     ...[...summary].sort(([a],[b]) => a.localeCompare(b, 'en')).map(([family,count]) => `| ${escapeCell(family)} | ${count} |`),

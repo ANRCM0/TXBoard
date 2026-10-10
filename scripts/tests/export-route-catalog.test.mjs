@@ -13,12 +13,9 @@ const required = [
   ['POST', 'txapi/node/v1/report'],
   ['GET|HEAD', 'txapi/node/v1/machine/nodes'],
   ['POST', 'txapi/node/v1/machine/status'],
-  ['GET|HEAD', 'api/v2/agent/whoami', ['api', 'agent']],
-  ['POST', 'api/v2/agent/pairings/redeem'],
-  ['GET|HEAD', 'api/v1/client/subscribe'],
-  ['POST', 'api/v1/guest/telegram/webhook'],
-  ['GET|HEAD', 'api/v1/guest/payment/notify/{method}/{uuid}'],
-  ['POST', 'api/v1/guest/payment/notify/{method}/{uuid}'],
+  ['GET|HEAD', 'txapi/agent/v1/whoami', ['api', 'agent']],
+  ['POST', 'txapi/agent/v1/pairings/redeem'],
+  ['POST', 'txapi/integrations/telegram/webhook'],
   ['GET|HEAD', 'txapi/payment/webhook/{method}/{uuid}'],
   ['POST', 'txapi/payment/webhook/{method}/{uuid}'],
 ].map(([method,uri,middleware]) => ({method,uri,middleware:middleware || []}));
@@ -32,9 +29,8 @@ test('can export deterministic Laravel route registry and critical control-plane
   assert.match(markdown(out), /TXBoard HTTP 路由快照/);
   assert.ok(markdown(out).includes('external-adapter-current.md'));
 });
-test('rejects retired V2 Admin paths even if current endpoints still present', () => {
-  const routes = inventory([...required, {method:'POST',uri:'api/v2/{admin_path}/order/update'}]);
-  assert.throws(() => assertCurrentBoundaries(routes), /retired_admin_routes/);
+test('rejects all legacy V1/V2 routes even if current endpoints still present', () => {
+  assert.throws(() => assertCurrentBoundaries(routes), /legacy_routes/);
 });
 test('rejects native Admin missing AdminPath or Admin guard', () => {
   const routes = inventory(required.map(r => r.uri.includes('admin/{admin_path}')
@@ -42,10 +38,8 @@ test('rejects native Admin missing AdminPath or Admin guard', () => {
   assert.throws(() => assertCurrentBoundaries(routes), /unguarded_native_admin/);
 });
 test('distinguishes future BFF/Agent target and current Agent legacy', () => {
-  assert.equal(classify('api/v2/agent/whoami')[0], 'Legacy Agent Ops (CURRENT)');
-  assert.equal(classify('txapi/agent/v1/whoami')[0], 'TXAPI user/application');
+  assert.equal(classify('txapi/integrations/telegram/webhook')[0], 'Native Telegram webhook');
   assert.equal(classify('txapi/node/v1/handshake')[0], 'TXAPI Node HTTP');
-  assert.equal(classify('api/v1/guest/payment/notify/EPay/{uuid}')[1], 'provider-signature');
 });
 test('rejects duplicate route verbs and malformed input', () => {
   assert.throws(() => inventory([...required, ...required.slice(0,1)]), /Duplicate/);

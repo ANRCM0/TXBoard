@@ -2,7 +2,7 @@
 
 Optional MCP adapter for the TXBoard Agent Ops API.
 
-The gateway contains no TXBoard domain logic and never connects directly to MySQL, Redis, or TX-Node. A caller supplies a TXBoard Agent Bearer token; the gateway verifies it through `/api/v2/agent/whoami` and forwards it to the Agent Ops API.
+The gateway contains no TXBoard domain logic and never connects directly to MySQL, Redis, or TX-Node. A caller supplies a TXBoard Agent Bearer token; the gateway verifies it through `/txapi/agent/v1/whoami` and forwards it to the Agent Ops API.
 
 ## Production image
 
@@ -42,7 +42,7 @@ Self-Connect v2 prefers a single short prompt:
 请按 https://panel.example.com/.well-known/txboard-agent-connect.md 自助接入 TXBoard；一次性配对码：txbp_...
 ```
 
-The pairing code is temporary and one-time. TXBoard stores only an APP_KEY-encrypted credential-delivery payload in the shared cache (production default Redis), with a default 600-second TTL. The Agent redeems the code through `POST /api/v2/agent/pairings/redeem`, stores the returned long-lived Agent Token in its own local secret/config mechanism, then connects to the existing `/mcp` endpoint.
+The pairing code is temporary and one-time. TXBoard stores only an APP_KEY-encrypted credential-delivery payload in the shared cache (production default Redis), with a default 600-second TTL. The Agent redeems the code through `POST /txapi/agent/v1/pairings/redeem`, stores the returned long-lived Agent Token in its own local secret/config mechanism, then connects to the existing `/mcp` endpoint.
 
 The durable authorization source remains the Sanctum Agent Token. Pairing cannot widen abilities, target scope, expiry or approval rights. If transient pairing storage is unavailable, Admin retains the v1 manual-token fallback.
 
