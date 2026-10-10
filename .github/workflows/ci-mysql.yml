@@ -5,6 +5,8 @@ on:
     branches: [main]
     paths:
       - "api/**"
+      - "scripts/database-native-cutover-plan.mjs"
+      - "scripts/tests/database-native-cutover-plan.test.mjs"
       - "scripts/compare-critical-data-snapshots.mjs"
       - "scripts/tests/compare-critical-data-snapshots.test.mjs"
       - "scripts/database-schema-inventory.mjs"
@@ -15,6 +17,8 @@ on:
     branches: [main]
     paths:
       - "api/**"
+      - "scripts/database-native-cutover-plan.mjs"
+      - "scripts/tests/database-native-cutover-plan.test.mjs"
       - "scripts/compare-critical-data-snapshots.mjs"
       - "scripts/tests/compare-critical-data-snapshots.test.mjs"
       - "scripts/database-schema-inventory.mjs"
@@ -106,6 +110,20 @@ jobs:
         run: |
           node scripts/database-schema-inventory.mjs --root . --output api/artifacts/source-schema.json --check
           node scripts/database-mysql-parity.mjs --source api/artifacts/source-schema.json --mysql api/artifacts/p0-schema.json --output api/artifacts/mysql-schema-parity.json --check
+      - name: Test conservative native cutover planner
+        working-directory: .
+        run: node --test scripts/tests/database-native-cutover-plan.test.mjs
+      - name: Generate non-executable table cutover review plan
+        working-directory: .
+        run: node scripts/database-native-cutover-plan.mjs --parity api/artifacts/mysql-schema-parity.json --output api/artifacts/native-cutover-plan.json
+      - name: Upload native cutover review plan
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: txboard-native-cutover-plan
+          path: api/artifacts/native-cutover-plan.json
+          if-no-files-found: warn
+          retention-days: 14
       - name: Preserve native schema parity evidence
         if: always()
         uses: actions/upload-artifact@v4
