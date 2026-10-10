@@ -287,7 +287,7 @@ jobs:
                 fclose($socket);
                 if (!preg_match("~^HTTP/1\\.[01] 200 ~", $response) ||
                     !str_contains($response, "\"status\":\"ok\"")) {
-                    fwrite(STDERR, "Native/legacy liveness HTTP failed on {$path}\n");
+                    fwrite(STDERR, "Native TXBoard liveness HTTP failed on {$path}\n");
                     exit(1);
                 }
             }
