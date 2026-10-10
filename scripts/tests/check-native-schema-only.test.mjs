@@ -31,3 +31,15 @@ test('rejects retired application aliases and bundled plugin metadata', t => {
     'api/app/Theme.php', 'api/plugins-core/Telegram/config.json',
   ]);
 });
+
+test('web runtime and retired Compose projects are audited', t => {
+  const dir = mkdtempSync(join(tmpdir(), 'tx-native-web-'));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  mkdirSync(join(dir, 'api'), { recursive: true });
+  mkdirSync(join(dir, 'scripts'), { recursive: true });
+  mkdirSync(join(dir, 'web/user/src'), { recursive: true });
+  writeFileSync(join(dir, 'web/user/src/index.ts'), "const oldTheme = 'v" + "2board'");
+  writeFileSync(join(dir, 'compose.yaml'), 'name: deploy\nservices:\n  txboard-mcp:\n');
+  const issues = check(dir);
+  assert.equal(issues.length, 3);
+});

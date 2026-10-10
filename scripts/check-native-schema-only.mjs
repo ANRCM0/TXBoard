@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /** Reject legacy naming in all first-party PHP and executable JS source. */
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { resolve, join, relative } from 'node:path';
 import { pathToFileURL } from 'node:url';
 const ignore = new Set(['.git', 'vendor', 'node_modules', 'dist', 'build', 'coverage', 'artifacts']);
@@ -17,15 +17,23 @@ export function check(root = '.') {
         const source = readFileSync(abs, 'utf8');
         const incompatible = /(?:v(?:2)_|NativeTableName|ResolvesNativeEloquentTable|TX_NATIVE_TABLES|migrateFromV2b)/g;
         const historical = /(?:\bv2board\b|\bxboard\b|\bcurrent_theme\b|ModuleId::legacy)/gi;
-        const scan = [incompatible, ...(path.startsWith('api/app/') || path.startsWith('api/plugins-core/') ? [historical] : [])];
+        const scan = [incompatible, ...(path.startsWith('api/app/') || path.startsWith('api/plugins-core/') || path.startsWith('api/theme/') || path.startsWith('web/') || path.startsWith('mcp/') ? [historical] : [])];
         for (const pattern of scan) for (const m of source.matchAll(pattern)) {
           violations.push({ path, line: source.slice(0, m.index).split('\n').length, type: m[0] });
         }
       }
     }
   }
-  walk(join(base, 'api'));
-  walk(join(base, 'scripts'));
+  for (const dir of ['api', 'scripts', 'web', 'mcp']) {
+    if (existsSync(join(base, dir))) walk(join(base, dir));
+  }
+  const compose = join(base, 'compose.yaml');
+  if (existsSync(compose)) {
+    const source = readFileSync(compose, 'utf8');
+    for (const match of source.matchAll(/^\s*(?:name:\s*deploy\s*|txboard-mcp:)$/gm)) {
+      violations.push({ path: 'compose.yaml', line: source.slice(0, match.index).split('\n').length, type: 'retired Compose project/service' });
+    }
+  }
   return violations;
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
