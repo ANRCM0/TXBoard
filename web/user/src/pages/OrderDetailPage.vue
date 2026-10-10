@@ -133,13 +133,13 @@ function statusClass(value:number){
   <div class="order-detail-page">
     <div v-if="error" class="page-alert">{{ error }}</div>
     <div v-if="redirectHint" class="page-alert success">{{ redirectHint }}</div>
-    <div v-if="loading" class="xboard-card skeleton-card"/>
+    <div v-if="loading" class="txboard-card skeleton-card"/>
 
     <div v-else-if="order" class="order-detail-layout">
       <div class="order-detail-main">
-        <section class="xboard-card order-info-card">
-          <header class="xboard-card-header">{{ t('order.product') }}</header>
-          <div class="xboard-card-body">
+        <section class="txboard-card order-info-card">
+          <header class="txboard-card-header">{{ t('order.product') }}</header>
+          <div class="txboard-card-body">
             <div class="order-info-row">
               <span>{{ t('order.plan') }}</span>
               <strong>{{ order.plan?.name||('Plan #'+order.plan_id) }}</strong>
@@ -155,12 +155,12 @@ function statusClass(value:number){
           </div>
         </section>
 
-        <section class="xboard-card order-info-card">
-          <header class="xboard-card-header order-card-title-row">
+        <section class="txboard-card order-info-card">
+          <header class="txboard-card-header order-card-title-row">
             <span>{{ t('order.detailTitle') }}</span>
             <button v-if="canCancelOrder(order)" class="order-close-btn" @click="cancel">{{ t('order.cancelOrder') }}</button>
           </header>
-          <div class="xboard-card-body">
+          <div class="txboard-card-body">
             <div class="order-info-row">
               <span>{{ t('order.tradeNo') }}</span>
               <strong class="order-trade-value">{{ order.trade_no }}</strong>
@@ -191,8 +191,8 @@ function statusClass(value:number){
           </div>
         </section>
 
-        <section v-if="order.status===0" class="xboard-card payment-card">
-          <header class="xboard-card-header">{{ t('order.payment') }}</header>
+        <section v-if="order.status===0" class="txboard-card payment-card">
+          <header class="txboard-card-header">{{ t('order.payment') }}</header>
           <div class="payment-list">
             <label
               v-for="method in methods"

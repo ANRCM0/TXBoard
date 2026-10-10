@@ -55,7 +55,7 @@ function safeHtml(body:string){return DOMPurify.sanitize(body)}
 </script>
 
 <template>
-  <section class="xboard-card knowledge-page-card">
+  <section class="txboard-card knowledge-page-card">
     <div class="knowledge-search-bar">
       <input v-model="keyword" class="form-control" :placeholder="t('knowledge.search')" @keyup.enter="search"/>
       <button class="secondary-btn" @click="search">{{ t('common.search') }}</button>

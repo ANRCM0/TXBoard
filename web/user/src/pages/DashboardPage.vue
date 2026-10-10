@@ -95,7 +95,7 @@ function shortcutClick(item:{to?:string;action?:()=>void}){
 </script>
 
 <template>
-  <div class="xboard-dashboard">
+  <div class="txboard-dashboard">
     <div v-if="stats[2]>0" class="dash-alert dash-alert--info">
       <span>{{ t('dashboard.inviteAlert',{count:stats[2]}) }}</span>
       <router-link to="/invite">{{ t('dashboard.goView') }}</router-link>
@@ -138,9 +138,9 @@ function shortcutClick(item:{to?:string;action?:()=>void}){
       </div>
     </section>
 
-    <section class="xboard-card dashboard-sub-card">
-      <header class="xboard-card-header">{{ t('dashboard.subscription') }}</header>
-      <div class="xboard-card-body">
+    <section class="txboard-card dashboard-sub-card">
+      <header class="txboard-card-header">{{ t('dashboard.subscription') }}</header>
+      <div class="txboard-card-body">
         <div v-if="loading" class="skeleton-stack"><div/><div/><div/></div>
 
         <template v-else-if="subscribe?.plan">
@@ -173,8 +173,8 @@ function shortcutClick(item:{to?:string;action?:()=>void}){
       </div>
     </section>
 
-    <section class="xboard-card dashboard-shortcuts">
-      <header class="xboard-card-header">{{ t('dashboard.shortcut') }}</header>
+    <section class="txboard-card dashboard-shortcuts">
+      <header class="txboard-card-header">{{ t('dashboard.shortcut') }}</header>
       <div class="shortcut-list">
         <button v-for="item in shortcuts" :key="item.title" class="shortcut-row" @click="shortcutClick(item)">
           <div>

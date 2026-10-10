@@ -68,18 +68,18 @@ function date(v?:number){return v?new Date(v*1000).toLocaleString(locale.value):
     <div v-if="error" class="page-alert">{{ error }}</div>
     <div v-if="success" class="page-alert success">{{ success }}</div>
 
-    <section class="xboard-card gift-main-card">
-      <header class="xboard-card-header gift-card-header">
+    <section class="txboard-card gift-main-card">
+      <header class="txboard-card-header gift-card-header">
         <span>{{ t('gift.title') }}</span>
         <button class="primary-btn small-btn" @click="openRedeem">{{ t('gift.confirmRedeem') }}</button>
       </header>
-      <div class="xboard-card-body">
+      <div class="txboard-card-body">
         <p class="gift-card-hint">{{ t('gift.desc') }}</p>
       </div>
     </section>
 
-    <section class="xboard-card gift-history-card">
-      <header class="xboard-card-header">{{ t('gift.history') }}</header>
+    <section class="txboard-card gift-history-card">
+      <header class="txboard-card-header">{{ t('gift.history') }}</header>
       <div class="responsive-table">
         <table>
           <thead>

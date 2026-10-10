@@ -61,7 +61,7 @@ function statusClass(value:number){
 
     <div v-if="error" class="page-alert">{{ error }}</div>
 
-    <section class="xboard-card order-table-card">
+    <section class="txboard-card order-table-card">
       <div class="responsive-table">
         <table>
           <thead>

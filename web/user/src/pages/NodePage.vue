@@ -18,11 +18,11 @@ onMounted(async()=>{
   <div class="node-page">
     <div v-if="error" class="page-alert">{{ error }}</div>
 
-    <div v-if="loading" class="xboard-card node-loading-card">
+    <div v-if="loading" class="txboard-card node-loading-card">
       <div class="skeleton-stack"><div/><div/><div/></div>
     </div>
 
-    <section v-else-if="nodes.length" class="xboard-card node-list-card">
+    <section v-else-if="nodes.length" class="txboard-card node-list-card">
       <div class="node-list-header">
         <div class="node-col-name">{{ t('node.name') }}</div>
         <div class="node-col-meta">

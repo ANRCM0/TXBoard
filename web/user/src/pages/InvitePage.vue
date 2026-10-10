@@ -126,13 +126,13 @@ function date(v?:number){return v?new Date(v*1000).toLocaleString(locale.value):
     <div v-if="success" class="page-alert success">{{ success }}</div>
 
     <div class="invite-summary-grid">
-      <div class="xboard-card invite-summary-card"><span>{{ t('invite.people') }}</span><strong>{{ stat[0]||0 }}</strong><small>{{ t('invite.accumulated') }}</small></div>
-      <div class="xboard-card invite-summary-card"><span>{{ t('invite.validCommission') }}</span><strong>{{ moneyCents(stat[1]||0) }}</strong><small>{{ t('invite.validCommissionHint') }}</small></div>
-      <div class="xboard-card invite-summary-card"><span>{{ t('invite.pendingCommission') }}</span><strong>{{ moneyCents(stat[2]||0) }}</strong><small>{{ t('invite.pendingCommissionHint') }}</small></div>
-      <div class="xboard-card invite-summary-card"><span>{{ t('invite.available') }}</span><strong>{{ moneyMajor(available) }}</strong><small>{{ t('invite.availableHint') }}</small></div>
+      <div class="txboard-card invite-summary-card"><span>{{ t('invite.people') }}</span><strong>{{ stat[0]||0 }}</strong><small>{{ t('invite.accumulated') }}</small></div>
+      <div class="txboard-card invite-summary-card"><span>{{ t('invite.validCommission') }}</span><strong>{{ moneyCents(stat[1]||0) }}</strong><small>{{ t('invite.validCommissionHint') }}</small></div>
+      <div class="txboard-card invite-summary-card"><span>{{ t('invite.pendingCommission') }}</span><strong>{{ moneyCents(stat[2]||0) }}</strong><small>{{ t('invite.pendingCommissionHint') }}</small></div>
+      <div class="txboard-card invite-summary-card"><span>{{ t('invite.available') }}</span><strong>{{ moneyMajor(available) }}</strong><small>{{ t('invite.availableHint') }}</small></div>
     </div>
 
-    <section v-if="distributionEnabled" class="xboard-card invite-distribution-card">
+    <section v-if="distributionEnabled" class="txboard-card invite-distribution-card">
       <div class="section-head"><div><span class="eyebrow">DISTRIBUTION</span><h2>{{ t('invite.distribution') }}</h2></div></div>
       <div class="commission-tier-grid">
         <div class="commission-tier"><span>{{ t('invite.baseRate') }}</span><strong>{{ baseRate.toFixed(0) }}%</strong></div>
@@ -141,7 +141,7 @@ function date(v?:number){return v?new Date(v*1000).toLocaleString(locale.value):
     </section>
 
     <div class="invite-two-column">
-      <section class="xboard-card invite-section-card">
+      <section class="txboard-card invite-section-card">
         <div class="section-head"><div><span class="eyebrow">CODES</span><h2>{{ t('invite.codes') }}</h2></div><button class="primary-btn small-btn" :disabled="acting" @click="generate">{{ t('invite.generate') }}</button></div>
         <div class="invite-code-list">
           <div v-for="code in codes" :key="code.code" class="invite-code-row">
@@ -152,7 +152,7 @@ function date(v?:number){return v?new Date(v*1000).toLocaleString(locale.value):
         </div>
       </section>
 
-      <section class="xboard-card invite-section-card">
+      <section class="txboard-card invite-section-card">
         <div class="section-head"><div><span class="eyebrow">TRANSFER</span><h2>{{ t('invite.transfer') }}</h2></div></div>
         <div class="form-stack">
           <label class="field-label">{{ t('invite.transferAmount') }}<input v-model="transferAmount" type="number" min="0.01" step="0.01" class="form-control" :placeholder="t('invite.max',{amount:available.toFixed(2)})"/></label>
@@ -162,7 +162,7 @@ function date(v?:number){return v?new Date(v*1000).toLocaleString(locale.value):
       </section>
     </div>
 
-    <section v-if="withdrawEnabled" class="xboard-card invite-section-card">
+    <section v-if="withdrawEnabled" class="txboard-card invite-section-card">
       <div class="section-head"><div><span class="eyebrow">WITHDRAW</span><h2>{{ t('invite.withdraw') }}</h2><p>{{ t('invite.withdrawDesc') }}</p></div></div>
       <div class="withdraw-grid">
         <label class="field-label">{{ t('invite.withdrawMethod') }}
@@ -177,7 +177,7 @@ function date(v?:number){return v?new Date(v*1000).toLocaleString(locale.value):
       <button class="secondary-btn" :disabled="acting||!withdrawAccount.trim()||!withdrawMethod" @click="withdraw">{{ t('invite.submitWithdraw') }}</button>
     </section>
 
-    <section class="xboard-card invite-history-card">
+    <section class="txboard-card invite-history-card">
       <div class="section-head"><div><span class="eyebrow">HISTORY</span><h2>{{ t('invite.history') }}</h2></div></div>
       <div class="responsive-table"><table><thead><tr><th>{{ t('common.time') }}</th><th>{{ t('invite.commission') }}</th></tr></thead><tbody>
         <tr v-for="(row,index) in details" :key="index"><td>{{ date(row.created_at) }}</td><td><strong>{{ moneyCents(row.get_amount||0) }}</strong></td></tr>
