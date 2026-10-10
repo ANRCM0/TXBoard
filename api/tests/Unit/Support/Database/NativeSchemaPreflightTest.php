@@ -21,6 +21,19 @@ final class NativeSchemaPreflightTest extends TestCase
         $this->assertTrue(true);
     }
 
+    public function test_schema_qualified_mysql_tables_are_recognized(): void
+    {
+        NativeSchemaPreflight::inspect(['txboard.migrations', 'txboard.tx_user', 'txboard.tx_order'], true);
+        NativeSchemaPreflight::inspect(['txboard.migrations', 'txboard.failed_jobs'], false);
+        $this->assertTrue(true);
+    }
+
+    public function test_qualified_legacy_table_is_blocked(): void
+    {
+        $this->expectException(RuntimeException::class);
+        NativeSchemaPreflight::inspect(['txboard.tx_user', 'txboard.v2_user'], true);
+    }
+
     public function test_unknown_existing_schema_is_blocked_before_creation(): void
     {
         $this->expectException(RuntimeException::class);
