@@ -27,7 +27,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class TrafficResetLog extends Model
 {
-    protected $table = 'v2_traffic_reset_logs';
+    
+    use \App\Support\Database\ResolvesNativeEloquentTable;
+protected $table = 'v2_traffic_reset_logs';
 
     protected $fillable = [
         'user_id',

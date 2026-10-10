@@ -6,7 +6,9 @@ use Illuminate\Database\Eloquent\Model;
 
 class ServerRoute extends Model
 {
-    protected $table = 'v2_server_route';
+    
+    use \App\Support\Database\ResolvesNativeEloquentTable;
+protected $table = 'v2_server_route';
     protected $dateFormat = 'U';
     protected $guarded = ['id'];
     protected $casts = [
