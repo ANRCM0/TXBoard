@@ -1,4 +1,4 @@
-# TXBoard 发布前真实环境验收 Runbook（Phase 10）
+# TXBoard 发布前真实环境验收 Runbook
 
 > **状态：需要操作员执行，CI 不能代替。** 适用 TXBoard 自有 Compose，或 1Panel + 外部 MySQL 8.4 / Redis + 反代（OpenResty/Caddy）部署。只在隔离预发环境操作支付、Token 轮换、恢复和故障注入。尚无真实验收证据时禁止勾选 Issue #168 的 Release 完成项。
 

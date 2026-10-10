@@ -1,6 +1,6 @@
-# TXBoard 安全基线（CURRENT）及 TXAPI 迁移门禁
+# TXBoard 安全基线
 
-取代旧 Phase 3 安全阶段记录。本文件总结长期约束；实际授权仍以实现和 CURRENT contracts 为准。
+本文件记录持续适用的安全约束；实际授权由运行时代码及版本化契约决定。
 
 - 用户、管理员、节点和 Agent 使用独立凭据/最小权限；动态 secure_path 不是授权策略。
 - Agent token 使用细粒度 agent:* abilities 和 target scopes，拒绝未知能力、越权节点、未经审批动作；审计不可绕过。

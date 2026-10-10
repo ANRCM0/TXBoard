@@ -1,6 +1,6 @@
 # TXBoard Agent Ops / MCP Architecture
 
-> Status: Implemented — Agent Ops v1 including Phase 5 AI-native operations
+> Scope: Agent Ops v1 architecture, permissions, approval, audit and typed TXNode operations
 >
 > Scope: TXBoard Control Plane, TX-Node operations, external Agent integrations
 >
