@@ -114,11 +114,13 @@ Envelope:
 }
 ```
 
-v1 intentionally supports only:
+The bounded channel extension supports exactly:
 
 ```text
-target = latest
+target = latest | dev
 ```
+
+`latest` is the stable channel and `dev` is the development channel. The initial installer may use `--channel stable|dev`; these are installer input names, while the on-wire update event uses `latest|dev`.
 
 The target is not an arbitrary image reference, URL, tag, digest, command, or filesystem path.
 
@@ -130,7 +132,7 @@ On receipt, TX-Node must:
 
 1. verify that it is running in Machine mode;
 2. verify `request_id`;
-3. verify `target == latest`;
+3. verify `target` belongs to `{latest, dev}` and the local Installer capability marker advertises the requested target;
 4. verify that the Installer bridge advertises itself as available;
 5. write a bounded update request to the Installer-owned bridge;
 6. return to normal operation until the deployment runtime replaces/restarts the container.
@@ -156,14 +158,14 @@ The bridge accepts only the following logical fields:
 ```text
 schema=1
 request_id=<bounded request id>
-target=latest
+target=latest|dev
 ```
 
-The bridge must reject:
+The bridge capability marker advertises `target=latest,dev` when both channels are supported. Historical `target=latest` markers remain valid for stable-only requests; TX-Node must reject `dev` if the older bridge did not advertise that ability. The bridge must reject:
 
 - unknown schema;
 - unknown fields that alter execution semantics;
-- any target other than `latest`;
+- any target other than `latest` or `dev`;
 - arbitrary image references;
 - arbitrary shell fragments.
 
@@ -174,12 +176,12 @@ The bridge delegates the actual upgrade to the existing Installer deployment run
 The Installer-owned upgrade flow must:
 
 1. capture the currently running image ID;
-2. pull the official configured TX-Node image channel;
+2. choose only `ghcr.io/anrcm0/tx-node:latest` or `ghcr.io/anrcm0/tx-node:dev`, persist the chosen Compose channel and pull it;
 3. recreate the TX-Node container using the existing Compose deployment;
 4. verify container stability;
 5. verify the configured TX-Node health endpoint when enabled;
 6. mark success only after verification;
-7. on failure, restore the previously running image and recreate the container;
+7. on failure, restore **both the previous Compose image channel and the previously running image ID**, then recreate the container;
 8. report `rolled_back` if rollback succeeds;
 9. report `failed` if both update and rollback fail.
 
@@ -218,7 +220,7 @@ The Machine Ops surface should show:
 - updater availability;
 - last update status;
 - last update time;
-- explicit `Update to latest` action.
+- an explicit `latest` / `dev` selector and confirmed update/channel-switch action.
 
 The action requires an administrator confirmation because the Machine runtime will restart and all nodes hosted by that Machine can briefly disconnect.
 
@@ -270,10 +272,12 @@ v1 does not include:
 - downgrade selection;
 - fleet rolling-update orchestration;
 - automatic update scheduling;
-- update channels other than `latest`;
+- any image channel other than the two fixed official `latest` / `dev` targets;
 - OS package upgrades;
 - Docker upgrades;
 - kernel binary upgrades independent of TX-Node;
 - legacy systemd TX-Node remote upgrade.
 
-Those require later explicit contracts.
+The `latest`/`dev` selection is narrowly scoped; unknown tags, digests, arbitrary images, generic deployment management and unapproved commands remain unsupported.
+
+Admin `image_channel` is a persisted *preferred installation channel* used to generate new commands, not proof that a running container has switched. An existing Machine changes its runtime channel only through explicit update, successful health checks and Installer reconciliation.
