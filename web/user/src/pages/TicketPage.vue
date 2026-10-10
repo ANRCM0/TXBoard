@@ -81,8 +81,8 @@ function statusClass(row:TicketItem){
   <div class="ticket-page">
     <div v-if="error" class="page-alert">{{ error }}</div>
 
-    <section class="xboard-card ticket-main-card">
-      <header class="xboard-card-header ticket-card-header">
+    <section class="txboard-card ticket-main-card">
+      <header class="txboard-card-header ticket-card-header">
         <span>{{ t('ticket.title') }}</span>
         <button class="primary-btn small-btn" @click="createOpen=true">{{ t('ticket.new') }}</button>
       </header>

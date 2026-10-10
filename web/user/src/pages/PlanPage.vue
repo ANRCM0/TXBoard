@@ -44,15 +44,15 @@ const empty=computed(()=>!loading.value&&!plans.value.length)
     <div v-if="error" class="page-alert">{{ error }}</div>
 
     <div v-if="loading" class="plan-grid">
-      <div v-for="n in 2" :key="n" class="xboard-card skeleton-card"/>
+      <div v-for="n in 2" :key="n" class="txboard-card skeleton-card"/>
     </div>
 
-    <div v-else-if="empty" class="xboard-card empty-state"><strong>{{ t('plan.empty') }}</strong></div>
+    <div v-else-if="empty" class="txboard-card empty-state"><strong>{{ t('plan.empty') }}</strong></div>
 
     <div v-else class="plan-grid">
-      <article v-for="plan in plans" :key="plan.id" class="xboard-card plan-list-card">
-        <header class="xboard-card-header">{{ plan.name }}</header>
-        <div class="xboard-card-body">
+      <article v-for="plan in plans" :key="plan.id" class="txboard-card plan-list-card">
+        <header class="txboard-card-header">{{ plan.name }}</header>
+        <div class="txboard-card-body">
           <p class="plan-period-hint">{{ t('plan.billing') }}</p>
           <p class="plan-period-summary">{{ periodSummary(plan) }}</p>
 

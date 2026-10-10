@@ -48,7 +48,7 @@ const pages=computed(()=>Math.max(1,Math.ceil(total.value/pageSize)))
 </script>
 
 <template>
-  <section class="xboard-card traffic-page-card">
+  <section class="txboard-card traffic-page-card">
     <div class="traffic-info-alert">{{ t('traffic.hint') }}</div>
     <div v-if="error" class="traffic-error-alert">{{ error }}</div>
 
