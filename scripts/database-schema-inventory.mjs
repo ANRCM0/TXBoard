@@ -11,11 +11,13 @@ import { pathToFileURL } from 'node:url';
 const ignored = new Set(['.git', 'vendor', 'node_modules', '.next', 'dist', 'build', 'coverage', 'artifacts']);
 const patterns = [
   { kind: 'schema', regex: /Schema::(?:create|table|dropIfExists|drop|rename)\s*\(\s*['"]([^'"]+)['"]/g },
+  { kind: 'schema-resolved', regex: /Schema::(?:create|table|dropIfExists|drop|rename|hasTable|hasColumn)\s*\(\s*(?:\\?App\\Support\\Database\\)?NativeTableName::runtime\s*\(\s*['"]([^'"]+)['"]/g },
+  { kind: 'db-table-resolved', regex: /DB::table\s*\(\s*(?:\\?App\\Support\\Database\\)?NativeTableName::runtime\s*\(\s*['"]([^'"]+)['"]/g },
   { kind: 'db-table', regex: /DB::table\s*\(\s*['"]([^'"]+)['"]/g },
   { kind: 'model', regex: /(?:protected|public)\s+\$table\s*=\s*['"]([^'"]+)['"]/g },
   { kind: 'sql-literal', regex: /\b(?:FROM|JOIN|INTO|UPDATE|TABLE)\s+[`'"]?(v2_[a-z][a-z0-9_]*)\b/gi },
 ];
-const schemaCreation = /Schema::create\s*\(\s*['"]([^'"]+)['"]/g;
+const schemaCreation = /Schema::create\s*\(\s*(?:(?:\\?App\\Support\\Database\\)?NativeTableName::runtime\s*\(\s*)?['"]([^'"]+)['"]/g;
 const dynamicSql = /(?:DB::table|Schema::(?:table|create|rename))\s*\(\s*(?!['"])/g;
 
 function walk(dir) {

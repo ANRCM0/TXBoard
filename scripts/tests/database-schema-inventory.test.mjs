@@ -34,3 +34,14 @@ test('unmapped model tables fail closed and arguments reject unknown flags', t =
   assert.deepEqual(parseArgs(['--root', 'foo', '--check']), { root: 'foo', output: null, check: true });
   assert.throws(() => parseArgs(['--rename']), /Unknown argument/);
 });
+
+test('prefix-aware schema creators remain inventoried for MySQL parity', t => {
+  const root = mkdtempSync(join(tmpdir(), 'txboard-schema-native-'));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  mkdirSync(join(root, 'api/database/migrations'), { recursive: true });
+  writeFileSync(join(root, 'api/database/migrations/2026_10_11_create.php'),
+    "<?php Schema::create(NativeTableName::runtime('v2_wallet_recharge'), fn($table) => null);");
+  const result = inventory(root);
+  assert.deepEqual(result.tables[0].migrationCreators, ['api/database/migrations/2026_10_11_create.php']);
+  assert.equal(result.tables[0].oldName, 'v2_wallet_recharge');
+});
