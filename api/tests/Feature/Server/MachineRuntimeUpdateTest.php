@@ -163,6 +163,25 @@ class MachineRuntimeUpdateTest extends TestCase
         ]);
     }
 
+    public function test_admin_can_dispatch_dev_channel_switch(): void
+    {
+        $machine = $this->machine([
+            'last_seen_at' => now()->timestamp,
+            'load_status' => ['runtime' => ['deployment' => 'docker', 'updater_available' => true]],
+        ]);
+        NodeSyncService::markMachineOnline($machine->id);
+        Redis::shouldReceive('publish')->once()
+            ->with('node:push', Mockery::on(static function ($payload): bool {
+                $decoded = json_decode($payload, true);
+                return ($decoded['event'] ?? '') === 'ops.machine.runtime.update'
+                    && ($decoded['data']['target'] ?? '') === 'dev';
+            }))->andReturn(1);
+        $this->postJson(
+            "/txapi/admin/{$this->securePath}/network-machines/{$machine->id}/runtime/update",
+            ['target' => 'dev']
+        )->assertOk()->assertJsonPath('data.target', 'dev');
+    }
+
     public function test_admin_update_rejects_arbitrary_target(): void
     {
         $machine = $this->machine();
