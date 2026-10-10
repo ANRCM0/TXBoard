@@ -18,7 +18,9 @@ use Illuminate\Database\Eloquent\Model;
  */
 class StatUser extends Model
 {
-    protected $table = 'v2_stat_user';
+    
+    use \App\Support\Database\ResolvesNativeEloquentTable;
+protected $table = 'v2_stat_user';
     protected $dateFormat = 'U';
     protected $guarded = ['id'];
     protected $casts = [

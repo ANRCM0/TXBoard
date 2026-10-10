@@ -35,7 +35,9 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  */
 class Plan extends Model
 {
-    use HasFactory;
+    
+    use \App\Support\Database\ResolvesNativeEloquentTable;
+use HasFactory;
 
     protected $table = 'v2_plan';
     protected $dateFormat = 'U';
