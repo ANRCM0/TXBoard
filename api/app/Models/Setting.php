@@ -37,7 +37,9 @@ class Setting extends Model
     public static function assertWritableKey(string $name): void
     {
         if (self::isRetiredKey($name)) {
-            throw new \InvalidArgumentException("Retired TXBoard setting: {$name}");
+            throw new \InvalidArgumentException(self::isRetiredAppearanceKey($name)
+                ? "Retired global appearance setting: {$name}"
+                : "Retired TXBoard runtime setting: {$name}");
         }
     }
 
