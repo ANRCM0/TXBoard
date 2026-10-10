@@ -61,9 +61,9 @@ class MySqlSchemaInventoryTest extends TestCase
         $this->assertSame([true, true, true], array_column($result, 'passed'));
     }
 
-    public function test_mixed_legacy_and_native_user_tables_are_rejected(): void
+    public function test_missing_native_tables_fail_the_uniqueness_invariants(): void
     {
-        $this->expectException(RuntimeException::class);
-        MySqlSchemaInventory::validate(['tx_user' => ['indexes' => []], 'tx_user' => ['indexes' => []]]);
+        $checks = MySqlSchemaInventory::validate([]);
+        $this->assertSame([false, false, false], array_column($checks, 'passed'));
     }
 }

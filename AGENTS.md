@@ -24,8 +24,6 @@ Read first:
 - 当前 HTTP 路由以 `api/routes/txapi.php`、`api/routes/web.php` 和 `api/app/Providers/RouteServiceProvider.php` 为准；TXNode WSS 由 Workerman 管理，不属于 Laravel HTTP registry。
 - 跨仓修改优先阅读 `contracts/http/external-adapter-current.md`、`contracts/http/theme-integration-current.md`、`contracts/node-protocol/txnode-integration-current.md`。
 - 可选独立 Gateway 不持有 Laravel 用户/订单/资金/Node 状态，也不能接管管理员、Agent、支付 Webhook 或订阅密钥。
-- 保持生产数据库切换与 API 升级分离：严禁在没有维护窗口、可恢复备份、身份/财务一致性验证的情况下重命名表或启用 `TX_NATIVE_TABLES`。
-- 新 Migration 的 Schema/DB 表名必须使用 `'tx_xxx'`，同时适用于切换前后的数据库；历史建表 Migration 保留以支持首次安装，不要重写迁移历史。所有改动必须通过 native migration/source gates。
 - 对外协议修改必须同时更新对应契约和真实消费者，按现有回归测试验证权限、事务及重试语义。
 
 ## 2. Module Platform
@@ -353,3 +351,9 @@ cd .. && node scripts/export-route-catalog.mjs --routes route-list.json --json a
 - **Agent**：分类 READ、INSIGHT、OPERATE、DANGEROUS；敏感操作默认进入服务端审批，Agent 不能直接标记 approved/running/succeeded。每个 READ 端点按 ability + target scope 过滤，每个操作还须经过输入 allow-list 和目标范围校验。
 - **Node operation**：先定义 `operation/input/output/timeout/error_code/idempotency/verification` 契约，再实现固定类型操作；同一 request_id 不得重复执行非幂等动作，`ops.result` 只说明执行报告，独立观测通过后才能称为恢复成功，未知状态返回 inconclusive。
 - **安全输入与审计**：禁止任意 URL、内网元数据探测、文件路径、命令行或进程名注入；诊断只允许固定来源和有界参数。审计包含 actor/client/protocol/tool/target/risk/request_id/status/error code，敏感 token、password、authorization、private key 和输入内容须脱敏。验证 403 scope/ability、404 目标丢失、422 策略/参数拒绝、重放和撤销的负向用例。
+
+## 原生表命名规范
+
+- TXBoard 仅支持 `tx_*` 应用数据表，所有 Model、Schema Migration、SQL、校验规则直接使用原生表名。
+- 禁止重新引入表名前缀动态切换、旧版导入命令或兼容 Trait。
+- 对旧版本真实数据的转换必须先在离线副本验证，不得自动删除原有表。

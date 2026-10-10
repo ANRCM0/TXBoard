@@ -14,8 +14,8 @@ on:
       - "contracts/node-protocol/txnode-integration-current.md"
       - "scripts/p0-api-audit.mjs"
       - "scripts/export-route-catalog.mjs"
-      - "scripts/database-schema-inventory.mjs"
-      - "scripts/tests/database-schema-inventory.test.mjs"
+      - "scripts/check-native-schema-only.mjs"
+      - "scripts/tests/check-native-schema-only.test.mjs"
       - "scripts/tests/export-route-catalog.test.mjs"
       - "scripts/check-external-integration-routes.mjs"
       - "scripts/tests/check-external-integration-routes.test.mjs"
@@ -36,8 +36,8 @@ on:
       - "contracts/node-protocol/txnode-integration-current.md"
       - "scripts/p0-api-audit.mjs"
       - "scripts/export-route-catalog.mjs"
-      - "scripts/database-schema-inventory.mjs"
-      - "scripts/tests/database-schema-inventory.test.mjs"
+      - "scripts/check-native-schema-only.mjs"
+      - "scripts/tests/check-native-schema-only.test.mjs"
       - "scripts/tests/export-route-catalog.test.mjs"
       - "scripts/check-external-integration-routes.mjs"
       - "scripts/tests/check-external-integration-routes.test.mjs"
@@ -94,18 +94,18 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - name: Test schema and route audit tools
+      - name: Test native source and route audit tools
         working-directory: .
         run: |
-          node --test scripts/tests/database-schema-inventory.test.mjs
+          node --test scripts/tests/check-native-schema-only.test.mjs
           node --test scripts/tests/p0-api-audit.test.mjs
           node --test scripts/tests/native-admin-release-audit.test.mjs
           node --test scripts/tests/export-route-catalog.test.mjs
           node --test scripts/tests/check-external-integration-routes.test.mjs
-      - name: Verify schema and native Admin references
+      - name: Verify native source and Admin references
         working-directory: .
         run: |
-          node scripts/database-schema-inventory.mjs --root . --output artifacts/database/schema-inventory.json --check
+          node scripts/check-native-schema-only.mjs --check
           node scripts/native-admin-release-audit.mjs --strict --guard-native --output artifacts/release/admin-native-gap.json
       - name: Audit live HTTP routes and external integration contracts
         working-directory: .
@@ -120,7 +120,6 @@ jobs:
         with:
           name: txboard-api-contract-audit
           path: |
-            artifacts/database/schema-inventory.json
             artifacts/release/admin-native-gap.json
             artifacts/route-catalog/
             artifacts/p0-audit/
