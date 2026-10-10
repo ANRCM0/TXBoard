@@ -167,7 +167,7 @@ class MachineRuntimeUpdateTest extends TestCase
     {
         $machine = $this->machine([
             'last_seen_at' => now()->timestamp,
-            'load_status' => ['runtime' => ['deployment' => 'docker', 'updater_available' => true]],
+            'load_status' => ['runtime' => ['deployment' => 'docker', 'updater_available' => true, 'update_targets' => ['latest', 'dev']]],
         ]);
         NodeSyncService::markMachineOnline($machine->id);
         Redis::shouldReceive('publish')->once()
@@ -180,6 +180,19 @@ class MachineRuntimeUpdateTest extends TestCase
             "/txapi/admin/{$this->securePath}/network-machines/{$machine->id}/runtime/update",
             ['target' => 'dev']
         )->assertOk()->assertJsonPath('data.target', 'dev');
+    }
+
+    public function test_dev_dispatch_rejects_legacy_latest_only_machine(): void
+    {
+        $machine = $this->machine([
+            'last_seen_at' => now()->timestamp,
+            'load_status' => ['runtime' => ['deployment' => 'docker', 'updater_available' => true]],
+        ]);
+        NodeSyncService::markMachineOnline($machine->id);
+        $this->postJson(
+            "/txapi/admin/{$this->securePath}/network-machines/{$machine->id}/runtime/update",
+            ['target' => 'dev']
+        )->assertStatus(422)->assertJsonPath('error.code', 'MACHINE_RUNTIME_UNAVAILABLE');
     }
 
     public function test_admin_update_rejects_arbitrary_target(): void
