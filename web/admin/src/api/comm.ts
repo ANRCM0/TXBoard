@@ -1,5 +1,4 @@
-import { publicApiClient } from './client'
-import { unwrap } from '../lib/api'
+import { nativeApiClient, unwrapNative, type NativeApiEnvelope } from './client'
 
 export type GuestConfig = {
   is_captcha?: number
@@ -14,6 +13,10 @@ export type GuestConfig = {
 export type { CaptchaPayload } from '@txboard/shared'
 
 export async function fetchGuestConfig() {
-  const { data } = await publicApiClient.get('/guest/comm/config')
-  return unwrap<GuestConfig>(data)
+  const config = await unwrapNative(nativeApiClient.get<NativeApiEnvelope<GuestConfig>>('/public/site-config'))
+  // Fail closed rather than silently disabling CAPTCHA on a malformed site config.
+  if (!config || (Number(config.is_captcha) !== 0 && Number(config.is_captcha) !== 1)) {
+    throw new Error('Invalid public CAPTCHA configuration')
+  }
+  return config
 }
