@@ -8,8 +8,8 @@ import { resolve, dirname } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 export function auditRuntimeReferences(source) {
-  if (!Array.isArray(source?.references)) throw new Error('Invalid source inventory');
-  const references = source.references.filter(x => !x.path.startsWith('api/database/migrations/'));
+  if (!Array.isArray(source?.tables)) throw new Error('Invalid source inventory');
+  const references = source.tables.flatMap(x => x.references ?? []).filter(x => !x.path.startsWith('api/database/migrations/'));
   const byKind = {}, byTable = {};
   const paths = new Set();
   for (const x of references) {
@@ -17,7 +17,7 @@ export function auditRuntimeReferences(source) {
     byTable[x.table] = (byTable[x.table] ?? 0) + 1;
     paths.add(x.path);
   }
-  const dynamic = (source.dynamicCalls ?? []).filter(x => !x.path.startsWith('api/database/migrations/'));
+  const dynamic = (source.dynamicCallsNeedingManualReview ?? []).filter(x => !x.path.startsWith('api/database/migrations/'));
   return {
     schemaVersion: 1, readOnly: true, cutoverReady: references.length === 0 && dynamic.length === 0,
     remainingLiteralReferences: references.length, dynamicCallSitesToReview: dynamic.length,
