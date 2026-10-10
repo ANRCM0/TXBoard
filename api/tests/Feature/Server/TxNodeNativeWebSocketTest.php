@@ -63,6 +63,26 @@ class TxNodeNativeWebSocketTest extends TestCase
         return new WsRequest($headers."\r\n");
     }
 
+    public function test_worker_rejects_old_upgrade_and_unversioned_frames(): void
+    {
+        $worker = new \\App\\WebSocket\\NodeWorker('127.0.0.1', 8077);
+        $old = Mockery::mock(TcpConnection::class);
+        $old->shouldReceive('close')->once()->with(Mockery::on(
+            static fn ($frame): bool =>
+                (json_decode((string) $frame, true)['data']['code'] ?? null) === 'UNKNOWN_WS_PATH'
+        ));
+        $worker->onWebSocketConnect($old, new WsRequest(
+            "GET /ws?token=old-credential HTTP/1.1\\r\\nHost: local\\r\\n\\r\\n"
+        ));
+
+        $notAuthenticated = Mockery::mock(TcpConnection::class);
+        $notAuthenticated->shouldReceive('close')->once()->with(Mockery::on(
+            static fn ($frame): bool =>
+                (json_decode((string) $frame, true)['data']['code'] ?? null) === 'UNAUTHORIZED'
+        ));
+        $worker->onMessage($notAuthenticated, '{"event":"pong"}');
+    }
+
     public function test_handshake_advertises_ws_only_when_configured(): void
     {
         $node = $this->node();

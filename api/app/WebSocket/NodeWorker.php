@@ -26,14 +26,6 @@ class NodeWorker
 
     private Worker $worker;
 
-    private array $handlers = [
-        'pong' => [NodeEventHandlers::class, 'handlePong'],
-        'node.status' => [NodeEventHandlers::class, 'handleNodeStatus'],
-        'report.devices' => [NodeEventHandlers::class, 'handleDeviceReport'],
-        'request.devices' => [NodeEventHandlers::class, 'handleDeviceRequest'],
-        'ops.result' => [NodeEventHandlers::class, 'handleOpsResult'],
-    ];
-
     public function __construct(string $host, int $port)
     {
         $this->worker = new Worker("websocket://{$host}:{$port}");
@@ -87,17 +79,14 @@ class NodeWorker
             foreach (NodeRegistry::getConnectedNodeIds() as $nodeId) {
                 $conn = NodeRegistry::get($nodeId);
                 if ($conn) {
-                    if (!empty($conn->txnodeNative)
-                        && time() - (int) ($conn->lastPongAt ?? 0) >= NodeSyncService::WS_TTL_SECONDS) {
+                    if (time() - (int) ($conn->lastPongAt ?? 0) >= NodeSyncService::WS_TTL_SECONDS) {
                         $conn->close();
                         continue;
                     }
                     $oid = spl_object_id($conn);
                     if (!isset($seen[$oid])) {
                         $seen[$oid] = true;
-                        $conn->send(!empty($conn->txnodeNative)
-                            ? NativeNodeFrame::encode('heartbeat.ping', ['sent_at' => time()])
-                            : json_encode(['event' => 'ping']));
+                        $conn->send(NativeNodeFrame::encode('heartbeat.ping', ['sent_at' => time()]));
                     }
                 }
             }
@@ -105,17 +94,14 @@ class NodeWorker
             foreach (NodeRegistry::getConnectedMachineIds() as $machineId) {
                 $conn = NodeRegistry::getMachine($machineId);
                 if ($conn) {
-                    if (!empty($conn->txnodeNative)
-                        && time() - (int) ($conn->lastPongAt ?? 0) >= NodeSyncService::WS_TTL_SECONDS) {
+                    if (time() - (int) ($conn->lastPongAt ?? 0) >= NodeSyncService::WS_TTL_SECONDS) {
                         $conn->close();
                         continue;
                     }
                     $oid = spl_object_id($conn);
                     if (!isset($seen[$oid])) {
                         $seen[$oid] = true;
-                        $conn->send(!empty($conn->txnodeNative)
-                            ? NativeNodeFrame::encode('heartbeat.ping', ['sent_at' => time()])
-                            : json_encode(['event' => 'ping']));
+                        $conn->send(NativeNodeFrame::encode('heartbeat.ping', ['sent_at' => time()]));
                     }
                 }
             }
@@ -154,9 +140,8 @@ class NodeWorker
             try {
                 $machine = ServerMachine::find($machineId);
                 if (!$machine || !$machine->is_active
-                    || (!empty($conn->txnodeNative)
-                        && !hash_equals((string) ($conn->txnodeCredentialHash ?? ''),
-                            hash('sha256', (string) $machine->token)))) {
+                    || !hash_equals((string) ($conn->txnodeCredentialHash ?? ''),
+                            hash('sha256', (string) $machine->token))) {
                     $conn->close();
                     continue;
                 }
@@ -196,7 +181,7 @@ class NodeWorker
                     $conn->close();
                     continue;
                 }
-                if (!empty($conn->txnodeNative) && empty($conn->machineId)) {
+                if (empty($conn->machineId)) {
                     // Machine sockets use their machine token (checked in
                     // the machine reconciliation above), not server_token.
                     $configured = (string) admin_setting('server_token', '');
@@ -219,212 +204,34 @@ class NodeWorker
     public function onConnect(TcpConnection $conn): void
     {
         $conn->authTimer = Timer::add(self::AUTH_TIMEOUT, function () use ($conn) {
-            if (empty($conn->nodeId) && empty($conn->machineNodeIds)) {
-                $conn->close(json_encode([
-                    'event' => 'error',
-                    'data' => ['message' => 'auth timeout'],
-                ]));
+            if (empty($conn->txnodeNative)) {
+                $conn->close(NativeNodeFrame::encode('error', ['code' => 'AUTH_TIMEOUT']));
             }
         }, [], false);
     }
 
+    /** Only versioned TX-Node connections are accepted; query-token upgrades are gone. */
     public function onWebSocketConnect(TcpConnection $conn, $httpMessage): void
     {
-        $nativePath = $httpMessage instanceof \Workerman\Protocols\Http\Request
-            ? $httpMessage->path() : parse_url((string) $httpMessage, PHP_URL_PATH);
-        if ($nativePath === NativeNodeWebSocket::PATH) {
-            if (isset($conn->authTimer)) {
-                Timer::del($conn->authTimer);
-            }
-            if (!$httpMessage instanceof \Workerman\Protocols\Http\Request) {
-                $conn->close(NativeNodeFrame::encode('error', ['code' => 'INVALID_UPGRADE']));
-                return;
-            }
-            app(NativeNodeWebSocket::class)->connect($conn, $httpMessage);
+        if (!$httpMessage instanceof \Workerman\Protocols\Http\Request
+            || $httpMessage->path() !== NativeNodeWebSocket::PATH) {
+            $conn->close(NativeNodeFrame::encode('error', ['code' => 'UNKNOWN_WS_PATH']));
             return;
         }
-
-        // Only the native versioned WS handshake may enter this worker.
-        // Do not accept the removed /ws machine/node query-token protocol.
-        $conn->close(NativeNodeFrame::encode('error', ['code' => 'UNKNOWN_WS_PATH']));
-        return;
-
-        $queryString = '';
-        if (is_string($httpMessage)) {
-            $queryString = parse_url($httpMessage, PHP_URL_QUERY) ?? '';
-        } elseif ($httpMessage instanceof \Workerman\Protocols\Http\Request) {
-            $queryString = $httpMessage->queryString();
-        }
-
-        parse_str($queryString, $params);
-
         if (isset($conn->authTimer)) {
             Timer::del($conn->authTimer);
         }
-
-        // 判断认证模式
-        if (!empty($params['machine_id'])) {
-            $this->authenticateMachine($conn, $params);
-        } else {
-            $this->authenticateNode($conn, $params);
-        }
+        app(NativeNodeWebSocket::class)->connect($conn, $httpMessage);
     }
 
-    /**
-     * 旧模式：单节点认证
-     */
-    private function authenticateNode(TcpConnection $conn, array $params): void
-    {
-        $token = $params['token'] ?? '';
-        $nodeId = (int) ($params['node_id'] ?? 0);
-
-        $serverToken = admin_setting('server_token', '');
-        if ($token === '' || $serverToken === '' || !hash_equals($serverToken, $token)) {
-            $conn->close(json_encode([
-                'event' => 'error',
-                'data' => ['message' => 'invalid token'],
-            ]));
-            return;
-        }
-
-        $node = ServerService::getServer($nodeId, null);
-        if (!$node) {
-            $conn->close(json_encode([
-                'event' => 'error',
-                'data' => ['message' => 'node not found'],
-            ]));
-            return;
-        }
-
-        $conn->nodeId = $nodeId;
-        $conn->lastPongAt = time();
-        NodeRegistry::add($nodeId, $conn);
-        NodeSyncService::markNodeOnline($nodeId);
-
-        app(DeviceStateService::class)->clearAllNodeDevices($nodeId);
-
-        Log::debug("[WS] Node#{$nodeId} connected", [
-            'remote' => $conn->getRemoteIp(),
-            'total' => NodeRegistry::count(),
-        ]);
-
-        $conn->send(json_encode([
-            'event' => 'auth.success',
-            'data' => ['node_id' => $nodeId],
-        ]));
-
-        NodeEventHandlers::pushFullSync($conn, $node);
-    }
-
-    /**
-     * 新模式：机器认证，自动注册该机器下所有已启用节点
-     */
-    private function authenticateMachine(TcpConnection $conn, array $params): void
-    {
-        $machineId = (int) ($params['machine_id'] ?? 0);
-        $token = $params['token'] ?? '';
-
-        $machine = ServerMachine::where('id', $machineId)
-            ->where('token', $token)
-            ->first();
-
-        if (!$machine || !$machine->is_active) {
-            $conn->close(json_encode([
-                'event' => 'error',
-                'data' => ['message' => 'invalid machine credentials'],
-            ]));
-            return;
-        }
-
-        $nodes = ServerService::getMachineNodes($machine);
-
-        $machine->forceFill(['last_seen_at' => now()->timestamp])->saveQuietly();
-        $conn->lastPongAt = time();
-        NodeRegistry::addMachine($machineId, $conn);
-        NodeSyncService::markMachineOnline($machineId);
-
-        // 把同一个连接注册到该机器下所有节点
-        $nodeIds = [];
-        $deviceService = app(DeviceStateService::class);
-        foreach ($nodes as $node) {
-            NodeRegistry::add($node->id, $conn);
-            NodeSyncService::markNodeOnline((int) $node->id);
-            $deviceService->clearAllNodeDevices($node->id);
-            $nodeIds[] = $node->id;
-        }
-
-        // 连接上记录所属机器和节点列表
-        $conn->machineId = $machineId;
-        $conn->machineNodeIds = $nodeIds;
-
-        Log::debug("[WS] Machine#{$machineId} connected, nodes: " . implode(',', $nodeIds), [
-            'remote' => $conn->getRemoteIp(),
-            'total' => NodeRegistry::count(),
-            'machines' => NodeRegistry::machineCount(),
-        ]);
-
-        $conn->send(json_encode([
-            'event' => 'auth.success',
-            'data' => [
-                'machine_id' => $machineId,
-                'node_ids' => $nodeIds,
-            ],
-        ]));
-
-        // 为每个节点推送完整同步
-        foreach ($nodes as $node) {
-            NodeEventHandlers::pushFullSync($conn, $node);
-        }
-    }
-
+    /** A socket cannot fall through into the deleted legacy JSON event handler. */
     public function onMessage(TcpConnection $conn, $data): void
     {
-        if (!empty($conn->txnodeNative)) {
-            app(NativeNodeWebSocket::class)->message($conn, $data);
+        if (empty($conn->txnodeNative)) {
+            $conn->close(NativeNodeFrame::encode('error', ['code' => 'UNAUTHORIZED']));
             return;
         }
-        $msg = json_decode($data, true);
-        if (!is_array($msg)) {
-            return;
-        }
-
-        $event = $msg['event'] ?? '';
-
-        // 机器连接：从消息中读取 node_id 来分派到具体节点。
-        // machineId is authoritative here because a valid Machine may
-        // temporarily host zero nodes and still needs heartbeat/update control.
-        if (!empty($conn->machineId)) {
-            if ($event === 'pong') {
-                $conn->lastPongAt = time();
-                if (!empty($conn->machineId)) {
-                    NodeSyncService::markMachineOnline((int) $conn->machineId);
-                }
-                foreach ($conn->machineNodeIds as $nid) {
-                    NodeSyncService::markNodeOnline((int) $nid);
-                }
-                return;
-            }
-
-            $nodeId = (int) ($msg['data']['node_id'] ?? 0);
-            if ($nodeId <= 0 || !in_array($nodeId, $conn->machineNodeIds, true)) {
-                return;
-            }
-            if (isset($this->handlers[$event])) {
-                $handler = $this->handlers[$event];
-                $handler($conn, $nodeId, $msg['data'] ?? []);
-            }
-            return;
-        }
-
-        // 旧模式：单节点
-        $nodeId = $conn->nodeId ?? null;
-        if ($event === 'pong' && $nodeId) {
-            $conn->lastPongAt = time();
-        }
-        if (isset($this->handlers[$event]) && $nodeId) {
-            $handler = $this->handlers[$event];
-            $handler($conn, $nodeId, $msg['data'] ?? []);
-        }
+        app(NativeNodeWebSocket::class)->message($conn, $data);
     }
 
     public function onClose(TcpConnection $conn): void
@@ -464,7 +271,7 @@ class NodeWorker
             return;
         }
 
-        // 旧模式：单节点
+        // Native standalone node
         if (!empty($conn->nodeId)) {
             $nodeId = $conn->nodeId;
             if (NodeRegistry::get((int) $nodeId) !== $conn) {

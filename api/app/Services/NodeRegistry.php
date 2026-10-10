@@ -34,7 +34,7 @@ class NodeRegistry
 
     /**
      * Remove a node mapping only if it still points to the given connection.
-     * Passing null removes unconditionally (backward compat for single-node mode).
+     * Passing null removes unconditionally; live socket callers must pass the expected connection.
      */
     public static function remove(int $nodeId, ?TcpConnection $conn = null): void
     {
@@ -63,7 +63,7 @@ class NodeRegistry
     }
 
     /**
-     * Send a JSON message to a specific node.
+     * Send a versioned native frame to a specific node.
      */
     public static function send(int $nodeId, string $event, array $data): bool
     {
@@ -78,13 +78,7 @@ class NodeRegistry
             $data['node_id'] = $nodeId;
         }
 
-        $payload = !empty($conn->txnodeNative)
-            ? \App\WebSocket\NativeNodeFrame::encode($event, $data)
-            : json_encode([
-                'event' => $event,
-                'data' => $data,
-                'timestamp' => time(),
-            ]);
+        $payload = \App\WebSocket\NativeNodeFrame::encode($event, $data);
 
         $conn->send($payload);
         return true;
@@ -123,13 +117,7 @@ class NodeRegistry
             return false;
         }
 
-        $payload = !empty($conn->txnodeNative)
-            ? \App\WebSocket\NativeNodeFrame::encode($event, $data)
-            : json_encode([
-                'event' => $event,
-                'data' => $data,
-                'timestamp' => time(),
-            ]);
+        $payload = \App\WebSocket\NativeNodeFrame::encode($event, $data);
 
         $conn->send($payload);
         return true;
