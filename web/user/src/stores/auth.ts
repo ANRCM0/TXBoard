@@ -64,7 +64,7 @@ export const useAuthStore = defineStore('auth', () => {
     }
     try {
       // /txapi/me is both the session proof and the user profile: avoid
-      // the old /api/v1/user/checkLogin and a second network request.
+      // a redundant login-check request and a second round trip.
       await loadUser()
       return true
     } catch {

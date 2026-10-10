@@ -104,8 +104,8 @@ class TxapiWalletRechargeTest extends TestCase
             ->assertOk()->assertJsonPath('data.status', 1);
         $this->getJson('/txapi/billing/wallet')
             ->assertOk()->assertJsonPath('data.balance_minor', 1000);
-        // Legacy and native callbacks must share one durable idempotency record.
-        $this->post('/api/v1/guest/payment/notify/EPay/' . $method->uuid, $signed)
+        // Repeated native callback must reuse the durable idempotency record.
+        $this->post($callback, $signed)
             ->assertOk()->assertSeeText('success');
         $this->assertSame(1000, (int) $user->fresh()->balance);
         $this->post($callback, $this->signature($trade, '11.30', 'different-txn'))

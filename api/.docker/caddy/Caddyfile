@@ -29,10 +29,6 @@
 		reverse_proxy 127.0.0.1:{$WS_PORT:8076}
 	}
 
-	@ws path /ws
-	handle @ws {
-		reverse_proxy 127.0.0.1:{$WS_PORT:8076}
-	}
 
 	# MCP is an optional protocol adapter. When disabled, keep the route dark.
 	# When enabled, Caddy is the only public ingress; the Node process remains

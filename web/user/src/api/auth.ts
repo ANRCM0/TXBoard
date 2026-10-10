@@ -53,6 +53,11 @@ export async function token2Login(verify: string) {
 }
 
 export async function telegramLogin(payload: Record<string, unknown>, endpoint: string) {
+  // Login extensions are plugin-owned; do not let site configuration recreate
+  // arbitrary legacy API paths or direct requests to another origin.
+  if (!/^\/plugin\/[A-Za-z0-9_-]+(?:\/[A-Za-z0-9_-]+)*$/.test(endpoint)) {
+    throw new Error('Invalid Telegram plugin login endpoint')
+  }
   const result = await request<AuthPayload>(api.post(endpoint, payload))
   saveAuthData(result.auth_data)
   return result

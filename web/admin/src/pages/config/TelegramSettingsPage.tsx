@@ -76,7 +76,7 @@ export function TelegramSettingsPage() {
                   onChange={event => patch('telegram_webhook_url', event.target.value)}
                   placeholder="https://example.com"
                 />
-                <small>后端会自动拼接 /api/v1/guest/telegram/webhook；留空时使用 app_url。</small>
+                <small>后端会自动拼接 /txapi/integrations/telegram/webhook；留空时使用 app_url。</small>
               </label>
               <label className="config-field">
                 <span>讨论群链接</span>

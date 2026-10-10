@@ -40,7 +40,7 @@ function requestAllowed(req: IncomingMessage): boolean {
 }
 
 async function api<T>(authorization: string, path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(baseUrl + '/api/v2/agent' + path, {
+  const response = await fetch(baseUrl + '/txapi/agent/v1' + path, {
     ...init,
     headers: {
       accept: 'application/json',

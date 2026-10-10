@@ -67,7 +67,7 @@ Use:
 
 ```text
 guide:    <PANEL_ORIGIN>/.well-known/txboard-agent-connect.md
-pairing:  <PANEL_ORIGIN>/api/v2/agent/pairings/redeem
+pairing:  <PANEL_ORIGIN>/txapi/agent/v1/pairings/redeem
 MCP:      <PANEL_ORIGIN>/mcp
 ```
 
@@ -82,7 +82,7 @@ If the user's onboarding prompt contains a value beginning with `txbp_`, treat i
 Redeem it exactly once:
 
 ```http
-POST <PANEL_ORIGIN>/api/v2/agent/pairings/redeem
+POST <PANEL_ORIGIN>/txapi/agent/v1/pairings/redeem
 Content-Type: application/json
 
 {

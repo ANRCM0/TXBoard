@@ -199,13 +199,13 @@ class TxNodeNativeProtocolTest extends TestCase
         $this->assertDatabaseCount('v2_traffic_batch', 0);
     }
 
-    public function test_preexisting_v1_and_v2_node_paths_remain_available(): void
+    public function test_obsolete_node_paths_are_not_registered(): void
     {
-        $this->assertNotNull(\Illuminate\Support\Facades\Route::getRoutes()->match(
-            \Illuminate\Http\Request::create('/api/v1/server/UniProxy/config', 'GET')
-        ));
-        $this->assertNotNull(\Illuminate\Support\Facades\Route::getRoutes()->match(
-            \Illuminate\Http\Request::create('/api/v2/server/report', 'POST')
-        ));
+        $registered = array_map(static fn ($route) => $route->uri(),
+            \Illuminate\Support\Facades\Route::getRoutes()->getRoutes());
+        $this->assertNotContains('api/v1/server/UniProxy/config', $registered);
+        $this->assertNotContains('api/v2/server/report', $registered);
+        $this->assertContains('txapi/node/v1/report', $registered);
     }
+
 }

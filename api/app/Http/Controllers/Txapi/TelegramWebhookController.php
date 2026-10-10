@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\V1\Guest;
+namespace App\Http\Controllers\Txapi;
 
 use App\Exceptions\ApiException;
 use App\Http\Controllers\Controller;
@@ -10,7 +10,7 @@ use App\Services\TelegramService;
 use App\Services\UserService;
 use Illuminate\Http\Request;
 
-class TelegramController extends Controller
+class TelegramWebhookController extends Controller
 {
     protected ?object $msg = null;
     protected TelegramService $telegramService;

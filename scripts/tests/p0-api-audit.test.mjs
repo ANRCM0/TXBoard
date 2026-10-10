@@ -34,11 +34,12 @@ test('route inventory guards payment, user, admin, agent and node contracts',()=
   {uri:'txapi/auth/admin/login',method:'POST'},
   {uri:'txapi/public/site-config',method:'GET|HEAD'},
   {uri:'txapi/admin/{admin_path}/settings',method:'GET|HEAD',middleware:['api','admin.path','admin']},
-  {uri:'api/v2/agent/whoami',method:'GET|HEAD',middleware:['api','agent']},
+  {uri:'txapi/agent/v1/whoami',method:'GET|HEAD',middleware:['api','agent']},
+  {uri:'txapi/integrations/telegram/webhook',method:'POST'},
   {uri:'other/path',method:'GET'}
  ];
  const routes=collectRoutes(input);
- assert.equal(routes.length,9);
+ assert.equal(routes.length,10);
  assert.deepEqual(verifyCriticalRoutes(routes),[]);
  const expanded={
   user:'App\\Http\\Middleware\\User',
@@ -55,13 +56,13 @@ test('route inventory guards payment, user, admin, agent and node contracts',()=
  assert.ok(verifyCriticalRoutes(broken).some(s=>s.includes('missing middleware txapi.user')));
  const accidentallyRestored=[...routes, {uri:'api/v2/{admin_path}/order/paid',method:'POST',middleware:['api','admin.path','admin']}];
  assert.ok(verifyCriticalRoutes(accidentallyRestored).some(message =>
-   message.includes('Retired V2 administrator route re-registered')));
+   message.includes('Deprecated V1/V2 HTTP route registered')));
  const hidden=collectRoutes([{uri:'api/v2/secret-admin-path/config/fetch',method:'GET'}]);
  assert.equal(hidden[0].uri,'api/v2/{admin_path}/config/fetch');
  assert.ok(!JSON.stringify(hidden).includes('secret-admin-path'));
  assert.throws(()=>collectRoutes({bad:1}),/must be an array/);
  const queue=buildReviewQueue(routes);
- assert.equal(queue.length,9);
+ assert.equal(queue.length,10);
  assert.ok(queue.every(r=>r.review_status==='unverified'&&r.removal_allowed===false));
  assert.equal(queue.find(r=>r.uri.includes('payment/webhook')).risk,'critical');
  assert.equal(queue.find(r=>r.uri.includes('admin_path')).controller_file,null);

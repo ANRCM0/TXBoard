@@ -80,7 +80,7 @@ class MailLinkService
      */
     public function handleTokenLogin(string $token): ?int
     {
-        // The V1 and native TXAPI endpoints share this redemption method.
+        // Native TXAPI redemption uses this method for one-time login codes.
         // Serialize check-and-delete across PHP workers so the same code
         // cannot issue multiple Sanctum sessions under concurrent requests.
         // Hash the secret before using it as a lock identifier.

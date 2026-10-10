@@ -25,7 +25,8 @@ const required = [
  ['POST','txapi/auth/admin/login',[]],
  ['GET','txapi/public/site-config',[]],
  ['GET','txapi/admin/{admin_path}/settings',['admin.path','admin']],
- ['GET','api/v2/agent/whoami',['agent']],
+ ['GET','txapi/agent/v1/whoami',['agent']],
+ ['POST','txapi/integrations/telegram/webhook',[]],
 ];
 function owner(path) {
  if(path.startsWith('web/admin/')) return 'Admin web';
@@ -98,12 +99,10 @@ const expandedMiddleware = {
 };
 export function verifyCriticalRoutes(routes) {
  const failures=[];
- // V2 administrator routes are fully retired. Unlike V2 Agent/Client/Node
- // protocols, their presence indicates a first-party control-plane regression.
+ // Any reintroduced V1/V2 application route is a release regression.
  for(const route of routes) {
-  if(/^api\/v2\/\{admin_path\}(?:\/|$)/.test(route.uri)) {
-   failures.push('Retired V2 administrator route re-registered: '+route.method+' '+route.uri);
-  }
+  if(/^api\/v[12](?:\/|$)/.test(route.uri))
+   failures.push('Deprecated V1/V2 HTTP route registered: '+route.method+' '+route.uri);
  }
  for(const [method,uri,guards] of required) {
   const route=routes.find(r=>r.uri===uri&&r.method.split('|').includes(method));

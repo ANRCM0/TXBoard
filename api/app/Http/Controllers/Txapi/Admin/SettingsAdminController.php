@@ -62,7 +62,7 @@ final class SettingsAdminController
     }
 
     /**
-     * Register the existing V1 Telegram callback using the saved bot token.
+     * Register the native TXAPI Telegram callback using the saved bot token.
      * No webhook URL (which carries an authentication digest), credentials or
      * upstream exception details may be returned to the browser.
      */
@@ -92,10 +92,8 @@ final class SettingsAdminController
         }
 
         $baseUrl = rtrim($baseUrl, '/');
-        $hookUrl = str_contains($baseUrl, '/api/v1/guest/telegram/webhook')
-            ? $baseUrl : $baseUrl . '/api/v1/guest/telegram/webhook';
-        // The V1 webhook remains the live callback. Its shared verification
-        // scheme cannot be changed until the client/protocol migration.
+        $hookUrl = str_ends_with($baseUrl, '/txapi/integrations/telegram/webhook')
+            ? $baseUrl : $baseUrl . '/txapi/integrations/telegram/webhook';
         $hookUrl .= '?' . http_build_query(['access_token' => md5($storedToken)]);
 
         try {

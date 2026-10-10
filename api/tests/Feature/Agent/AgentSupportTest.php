@@ -27,17 +27,17 @@ class AgentSupportTest extends TestCase
         $plain = $admin->createToken('agent:support-reader', [AgentAbility::SUPPORT_READ])->plainTextToken;
         $without = $admin->createToken('agent:node-only', [AgentAbility::NODES_READ])->plainTextToken;
 
-        $this->withToken($without)->getJson('/api/v2/agent/support/overview')->assertForbidden();
+        $this->withToken($without)->getJson('/txapi/agent/v1/support/overview')->assertForbidden();
         Auth::forgetGuards();
-        $this->withToken($plain)->getJson('/api/v2/agent/support/overview')->assertOk()->assertJsonPath('data.tickets_waiting', 1);
-        $this->getJson('/api/v2/agent/support/tickets?limit=1')->assertOk()->assertJsonCount(1, 'data');
-        $detail = $this->getJson('/api/v2/agent/support/tickets/'.$ticket->id)->assertOk()
+        $this->withToken($plain)->getJson('/txapi/agent/v1/support/overview')->assertOk()->assertJsonPath('data.tickets_waiting', 1);
+        $this->getJson('/txapi/agent/v1/support/tickets?limit=1')->assertOk()->assertJsonCount(1, 'data');
+        $detail = $this->getJson('/txapi/agent/v1/support/tickets/'.$ticket->id)->assertOk()
             ->assertJsonPath('data.customer.id', $customer->id)
             ->assertJsonPath('data.messages.0.message', 'Need help');
         foreach (['email', 'uuid', 'token', 'password', 'subscribe_url', 'balance'] as $secret) {
             $this->assertArrayNotHasKey($secret, $detail->json('data.customer'));
         }
-        $this->getJson('/api/v2/agent/support/tickets?limit=51')->assertUnprocessable();
+        $this->getJson('/txapi/agent/v1/support/tickets?limit=51')->assertUnprocessable();
     }
 
     public function test_reply_requires_separate_ability_and_admin_approval_and_is_audited_without_message(): void
@@ -48,7 +48,7 @@ class AgentSupportTest extends TestCase
         $ticket = $this->ticket($customer);
         $read = $admin->createToken('agent:read', [AgentAbility::SUPPORT_READ])->plainTextToken;
         $write = $admin->createToken('agent:reply', [AgentAbility::SUPPORT_REPLY_REQUEST])->plainTextToken;
-        $url = '/api/v2/agent/support/tickets/'.$ticket->id.'/reply-requests';
+        $url = '/txapi/agent/v1/support/tickets/'.$ticket->id.'/reply-requests';
 
         $this->withToken($read)->postJson($url, ['message' => 'We are looking into this'])->assertForbidden();
         Auth::forgetGuards();
@@ -58,9 +58,9 @@ class AgentSupportTest extends TestCase
         $this->assertSame(1, TicketMessage::where('ticket_id', $ticket->id)->count());
         $this->assertStringNotContainsString('We are looking into this', $created->getContent());
         $this->postJson($url, ['message' => 'Another reply'])->assertUnprocessable();
-        $this->getJson('/api/v2/agent/support/reply-requests/'.$id)->assertOk()->assertJsonPath('data.status', 'pending');
+        $this->getJson('/txapi/agent/v1/support/reply-requests/'.$id)->assertOk()->assertJsonPath('data.status', 'pending');
         Auth::forgetGuards();
-        $this->withToken($read)->getJson('/api/v2/agent/support/reply-requests/'.$id)->assertForbidden();
+        $this->withToken($read)->getJson('/txapi/agent/v1/support/reply-requests/'.$id)->assertForbidden();
         $this->assertStringNotContainsString('We are looking into this', (string) AgentAuditLog::where('target_type', 'ticket')->firstOrFail()->input_redacted);
 
         Sanctum::actingAs($admin);
@@ -79,7 +79,7 @@ class AgentSupportTest extends TestCase
         $customer = $this->user(false);
         $ticket = $this->ticket($customer);
         $token = $admin->createToken('agent:reply', [AgentAbility::SUPPORT_REPLY_REQUEST]);
-        $url = '/api/v2/agent/support/tickets/'.$ticket->id.'/reply-requests';
+        $url = '/txapi/agent/v1/support/tickets/'.$ticket->id.'/reply-requests';
         $id = $this->withToken($token->plainTextToken)->postJson($url, ['message' => 'Old answer'])->assertOk()->json('data.request_id');
         TicketMessage::create(['ticket_id' => $ticket->id, 'user_id' => $customer->id, 'message' => 'new info']);
         Sanctum::actingAs($admin);
@@ -108,7 +108,7 @@ class AgentSupportTest extends TestCase
         $manual = $admin->createToken('agent:manually-restricted', [
             AgentAbility::SUPPORT_READ, 'agent:target:restricted', 'agent:target:node:'.$node->id,
         ])->plainTextToken;
-        $this->withToken($manual)->getJson('/api/v2/agent/support/overview')->assertForbidden();
+        $this->withToken($manual)->getJson('/txapi/agent/v1/support/overview')->assertForbidden();
     }
 
     private function ticket(User $customer): Ticket

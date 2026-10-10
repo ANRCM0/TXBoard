@@ -9,8 +9,8 @@ use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 /**
- * `/api/v1/user/knowledge/getCategory` was routed to a method that did not
- * exist, so the user SPA's Knowledge page got a 500 on every load.
+ * `/txapi/knowledge/categories` previously was routed to a method that did
+ * exist; this test now guards the TXAPI endpoint.
  */
 class UserKnowledgeCategoryTest extends TestCase
 {
@@ -28,7 +28,7 @@ class UserKnowledgeCategoryTest extends TestCase
         $this->makeKnowledge('kb-hidden', 'catHidden', 'zh-CN', 4, false);
         $this->makeKnowledge('kb-english', 'catEnglish', 'en', 5);
 
-        $response = $this->getJson('/api/v1/user/knowledge/getCategory?language=zh-CN');
+        $response = $this->getJson('/txapi/knowledge/categories?language=zh-CN');
 
         $response->assertOk();
         $this->assertSame(['catA', 'catB'], $response->json('data'));

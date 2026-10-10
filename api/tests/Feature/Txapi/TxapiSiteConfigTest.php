@@ -11,19 +11,17 @@ class TxapiSiteConfigTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_guest_config_matches_legacy_features_and_omits_secrets(): void
+    public function test_guest_config_matches_authoritative_service_and_omits_secrets(): void
     {
         $native = $this->getJson('/txapi/public/site-config');
-        $legacy = $this->getJson('/api/v1/guest/comm/config');
         $native->assertOk()->assertJsonStructure(['data', 'request_id']);
-        $legacy->assertOk();
-        $this->assertSame($legacy->json('data'), $native->json('data'));
+        $this->assertSame(app(\App\Services\SiteConfigService::class)->guest(), $native->json('data'));
         foreach (['telegram_bot_token', 'app_key', 'stripe_sk', 'jwt_secret'] as $key) {
             $this->assertArrayNotHasKey($key, $native->json('data'));
         }
     }
 
-    public function test_user_config_uses_sanctum_and_matches_same_legacy_projection(): void
+    public function test_user_config_uses_sanctum_and_matches_authoritative_service(): void
     {
         $this->getJson('/txapi/me/site-config')->assertStatus(401);
         $user = User::create([
@@ -33,10 +31,9 @@ class TxapiSiteConfigTest extends TestCase
         ]);
         Sanctum::actingAs($user);
         $native = $this->getJson('/txapi/me/site-config');
-        $legacy = $this->getJson('/api/v1/user/comm/config');
         $native->assertOk();
-        $legacy->assertOk();
-        $this->assertSame($legacy->json('data'), $native->json('data'));
+        // JSON transport normalizes whole-number floating settings (100.0 -> 100).
+        $this->assertEquals(app(\App\Services\SiteConfigService::class)->user(), $native->json('data'));
         $this->assertArrayNotHasKey('telegram_bot_token', $native->json('data'));
     }
 }

@@ -161,7 +161,7 @@ class AgentInsightTest extends TestCase
         ]);
 
         $response = $this->withToken($issued->plainTextToken)
-            ->getJson('/api/v2/agent/fleet/health');
+            ->getJson('/txapi/agent/v1/fleet/health');
 
         $response->assertOk()
             ->assertJsonPath('data.summary.total_nodes', 1)
@@ -179,12 +179,12 @@ class AgentInsightTest extends TestCase
         ]);
 
         $this->withToken($issued->plainTextToken)
-            ->getJson('/api/v2/agent/inspections?limit=5')
+            ->getJson('/txapi/agent/v1/inspections?limit=5')
             ->assertOk()
             ->assertJsonPath('data.0.source', 'test');
 
         $this->withToken($issued->plainTextToken)
-            ->getJson("/api/v2/agent/nodes/{$node->id}/remediation")
+            ->getJson("/txapi/agent/v1/nodes/{$node->id}/remediation")
             ->assertOk()
             ->assertJsonPath('data.automatic_remediation_enabled', false);
     }

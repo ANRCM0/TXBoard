@@ -44,6 +44,10 @@ use App\Http\Controllers\Txapi\StripeConfigController;
 use App\Http\Controllers\Txapi\InvitePageViewController;
 use App\Http\Controllers\Txapi\WithdrawalController;
 use App\Http\Controllers\Txapi\PaymentWebhookController;
+use App\Http\Controllers\V2\Agent\AgentOpsController;
+use App\Http\Controllers\V2\Agent\AgentSupportController;
+use App\Http\Controllers\V2\Agent\AgentPairingController;
+use App\Http\Controllers\Txapi\TelegramWebhookController;
 use App\Http\Controllers\Txapi\AuthController;
 use App\Http\Controllers\Txapi\ContentController;
 use App\Http\Controllers\Txapi\TicketController;
@@ -324,3 +328,34 @@ Route::middleware(['txapi.user', 'throttle:120,1'])->group(function () {
     Route::get('orders/{tradeNo}/detail', [AccountController::class, 'orderDetail']);
     Route::get('orders/{tradeNo}', [AccountController::class, 'order']);
 });
+
+// TXAPI-only Agent runtime operations. Laravel remains the authorization authority.
+Route::post('agent/v1/pairings/redeem', [AgentPairingController::class, 'redeem'])->middleware('throttle:10,1');
+Route::prefix('agent/v1')->middleware(['agent', 'agent.log', 'throttle:120,1'])->group(function () {
+            Route::get('/support/overview', [AgentSupportController::class, 'overview']);
+            Route::get('/support/tickets', [AgentSupportController::class, 'tickets']);
+            Route::get('/support/tickets/{ticketId}', [AgentSupportController::class, 'ticket']);
+            Route::post('/support/tickets/{ticketId}/reply-requests', [AgentSupportController::class, 'requestReply']);
+            Route::get('/support/reply-requests/{requestId}', [AgentSupportController::class, 'replyStatus']);
+            Route::get('/whoami', [AgentOpsController::class, 'whoami']);
+            Route::get('/system/status', [AgentOpsController::class, 'systemStatus']);
+            Route::get('/machines', [AgentOpsController::class, 'machines']);
+            Route::get('/nodes', [AgentOpsController::class, 'nodes']);
+            Route::get('/nodes/{nodeId}/metrics', [AgentOpsController::class, 'nodeMetrics']);
+            Route::get('/nodes/{nodeId}/diagnose', [AgentOpsController::class, 'diagnoseNode']);
+            Route::get('/fleet/health', [AgentOpsController::class, 'fleetHealth']);
+            Route::get('/inspections', [AgentOpsController::class, 'inspectionHistory']);
+            Route::get('/nodes/{nodeId}/remediation', [AgentOpsController::class, 'remediationPlan']);
+            Route::get('/nodes/{nodeId}/timeline', [AgentOpsController::class, 'incidentTimeline']);
+            Route::get('/traffic/summary', [AgentOpsController::class, 'trafficSummary']);
+            Route::get('/queue/status', [AgentOpsController::class, 'queueStatus']);
+            Route::get('/audit', [AgentOpsController::class, 'auditLogs']);
+            Route::post('/nodes/{nodeId}/actions', [AgentOpsController::class, 'createNodeAction']);
+            Route::get('/actions/{requestId}', [AgentOpsController::class, 'actionStatus']);
+            Route::get('/actions/{requestId}/verify', [AgentOpsController::class, 'verifyAction']);
+
+});
+
+// Telegram registration uses this native callback; the digest is validated by the controller.
+Route::post('integrations/telegram/webhook', [TelegramWebhookController::class, 'webhook'])
+    ->middleware('throttle:120,1');

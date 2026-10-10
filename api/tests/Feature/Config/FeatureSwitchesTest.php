@@ -52,7 +52,7 @@ class FeatureSwitchesTest extends TestCase
     {
         admin_setting(['ticket_enable' => 0]);
 
-        $response = $this->getJson('/api/v1/guest/comm/config');
+        $response = $this->getJson('/txapi/public/site-config');
 
         $response->assertOk();
         $this->assertSame(0, $response->json('data.ticket_enable'));

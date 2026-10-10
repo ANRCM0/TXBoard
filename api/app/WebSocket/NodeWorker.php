@@ -244,6 +244,11 @@ class NodeWorker
             return;
         }
 
+        // Only the native versioned WS handshake may enter this worker.
+        // Do not accept the removed /ws machine/node query-token protocol.
+        $conn->close(NativeNodeFrame::encode('error', ['code' => 'UNKNOWN_WS_PATH']));
+        return;
+
         $queryString = '';
         if (is_string($httpMessage)) {
             $queryString = parse_url($httpMessage, PHP_URL_QUERY) ?? '';

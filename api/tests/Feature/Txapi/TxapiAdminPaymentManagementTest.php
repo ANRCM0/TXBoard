@@ -36,14 +36,16 @@ final class TxapiAdminPaymentManagementTest extends TestCase
         $response = $this->getJson(self::ROOT)->assertOk()
             ->assertJsonPath('data.0.id', $payment->id)
             ->assertJsonPath('data.0.config.key', 'private-gateway-secret');
-        $this->assertStringContainsString('/api/v1/guest/payment/notify/EPay/only-admin',
-            $response->json('data.0.notify_url'));
+        $response->assertJsonPath('data.0.notify_url',
+            url('/txapi/payment/webhook/EPay/only-admin'));
         $this->assertNotEmpty($response->json('request_id'));
 
-        config()->set('billing.native_webhook_enabled', true);
+        // The native callback path remains authoritative with a custom host.
+        $payment->notify_domain = 'https://payment-notify.example.test';
+        $payment->saveOrFail();
         $this->getJson(self::ROOT)->assertOk()
             ->assertJsonPath('data.0.notify_url',
-                url('/txapi/payment/webhook/EPay/only-admin'));
+                'https://payment-notify.example.test/txapi/payment/webhook/EPay/only-admin');
     }
 
     public function test_native_create_update_preserves_provider_identity_and_validates_fee(): void

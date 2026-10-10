@@ -56,9 +56,9 @@ class MachineRuntimeUpdateTest extends TestCase
             'token' => 'runtime-machine-token',
         ]);
 
-        $response = $this->postJson('/api/v2/server/machine/status', [
+        $response = $this->postJson('/txapi/node/v1/machine/status', [
+            'protocol_version' => 1,
             'machine_id' => $machine->id,
-            'token' => 'runtime-machine-token',
             'cpu' => 12.5,
             'mem' => ['total' => 1024, 'used' => 512],
             'swap' => ['total' => 128, 'used' => 1],
@@ -76,7 +76,8 @@ class MachineRuntimeUpdateTest extends TestCase
                     'message' => 'upgrade completed',
                 ],
             ],
-        ]);
+        ], ['Authorization' => 'Bearer runtime-machine-token',
+            'X-TX-Machine-ID' => (string) $machine->id]);
 
         $response->assertOk();
         $machine->refresh();
@@ -93,9 +94,9 @@ class MachineRuntimeUpdateTest extends TestCase
     {
         $machine = $this->machine(['token' => 'redaction-machine-token']);
 
-        $this->postJson('/api/v2/server/machine/status', [
+        $this->postJson('/txapi/node/v1/machine/status', [
+            'protocol_version' => 1,
             'machine_id' => $machine->id,
-            'token' => 'redaction-machine-token',
             'cpu' => 1,
             'mem' => ['total' => 1024, 'used' => 128],
             'runtime' => [
@@ -110,7 +111,8 @@ class MachineRuntimeUpdateTest extends TestCase
                     'message' => 'registry token=super-secret',
                 ],
             ],
-        ])->assertOk();
+        ], ['Authorization' => 'Bearer redaction-machine-token',
+            'X-TX-Machine-ID' => (string) $machine->id])->assertOk();
 
         $machine->refresh();
         $this->assertSame(
