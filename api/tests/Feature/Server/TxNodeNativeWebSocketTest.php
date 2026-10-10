@@ -8,6 +8,8 @@ use App\Models\Server;
 use App\Models\ServerMachine;
 use App\Models\User;
 use App\Services\NodeRegistry;
+use App\Services\DeviceStateService;
+use App\Services\ServerService;
 use App\WebSocket\NativeNodeFrame;
 use App\WebSocket\NativeNodeWebSocket;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -130,6 +132,7 @@ class TxNodeNativeWebSocketTest extends TestCase
             $this->assertSame('session.ready', $sent[0]['event']);
             $this->assertSame(1, $sent[0]['protocol_version']);
             $this->assertSame('node', $sent[0]['data']['mode']);
+            $this->assertContains('sync.devices', $sent[0]['data']['capabilities']);
             $this->assertContains('sync.config', array_column($sent, 'event'));
             $this->assertContains('sync.users', array_column($sent, 'event'));
             $this->assertStringNotContainsString('native-ws-test-token', json_encode($sent));
@@ -311,6 +314,16 @@ class TxNodeNativeWebSocketTest extends TestCase
             NodeRegistry::removeMachine((int) $machine->id, $conn);
             NodeRegistry::remove((int) $node->id, $conn);
         }
+    }
+
+    public function test_native_alive_snapshot_enqueues_one_device_push_for_node(): void
+    {
+        $devices = Mockery::mock(DeviceStateService::class);
+        $devices->shouldReceive('setDevices')->once()->with(3, 77, ['10.0.0.1']);
+        $this->app->instance(DeviceStateService::class, $devices);
+        Redis::shouldReceive('sadd')->once()->with('device:push_pending_nodes', 77)->andReturn(1);
+
+        ServerService::processAlive(77, ['3' => ['10.0.0.1']]);
     }
 
     public function test_legacy_inbound_handler_class_has_been_removed(): void
