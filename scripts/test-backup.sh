@@ -34,6 +34,14 @@ gzip -cd "$archive" | grep -Fq 'CREATE TABLE backup_regression'
 test -f "$(dirname "$archive")/env"
 test -f "$(dirname "$archive")/storage-app.tar.gz"
 test ! -e "$(dirname "$archive")/db.sql"
+test -s "$(dirname "$archive")/CHECKSUMS.sha256"
+(cd "$(dirname "$archive")" && sha256sum -c CHECKSUMS.sha256 >/dev/null)
+# A modified archive must fail the integrity check before restoration.
+printf 'tampered' >> "$archive"
+if (cd "$(dirname "$archive")" && sha256sum -c CHECKSUMS.sha256 >/dev/null 2>&1); then
+  echo 'backup corruption was not detected' >&2
+  exit 1
+fi
 
 # A broken mysqldump may have emitted partial SQL: do not call that a backup.
 rm -rf "$work/backups"/*
@@ -45,4 +53,26 @@ if find "$work/backups" -mindepth 1 -print -quit | grep -q .; then
   echo 'partial backup was incorrectly retained' >&2
   exit 1
 fi
+# The key is indispensable for decrypting encrypted configuration.
+printf 'APP_KEY=base64:regression-test-key\n' > "$work/source/.env"
+rm -rf "$work/backups"/*
+mv "$work/source/.env" "$work/source/.env.held"
+if sh "$script" > "$work/missing-key.log" 2>&1; then
+  echo 'backup incorrectly succeeded without .env' >&2
+  exit 1
+fi
+test -z "$(find "$work/backups" -mindepth 1 -print -quit)"
+mv "$work/source/.env.held" "$work/source/.env"
+
+# A broken storage snapshot is also a failed backup, not a partial success.
+cat > "$work/bin/tar" <<'SH'
+#!/bin/sh
+exit 32
+SH
+chmod +x "$work/bin/tar"
+if sh "$script" > "$work/storage-failure.log" 2>&1; then
+  echo 'backup incorrectly succeeded after storage archive failure' >&2
+  exit 1
+fi
+test -z "$(find "$work/backups" -mindepth 1 -print -quit)"
 echo 'backup regression checks passed'
