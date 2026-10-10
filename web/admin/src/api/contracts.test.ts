@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { unwrap } from '../lib/api'
 import { removeAccessToken, setAccessToken } from '../lib/storage'
 import {
-  apiClient,
+  nativeAdminPath,
   nativeApiClient,
   unwrapNative,
   clearAdminSecurePath,
@@ -41,7 +41,6 @@ type Seen = AxiosRequestConfig & { headers: Record<string, string> }
 
 let seen: Seen[] = []
 let responder: (config: AxiosRequestConfig) => { data: unknown; status?: number }
-let originalBaseURL: string | undefined
 
 function installAdapter() {
   const adapter = async (config: AxiosRequestConfig) => {
@@ -49,21 +48,18 @@ function installAdapter() {
     const { data, status = 200 } = responder(config as unknown as AxiosRequestConfig)
     return { data, status, statusText: 'OK', headers: {}, config } as never
   }
-  apiClient.defaults.adapter = adapter
   nativeApiClient.defaults.adapter = adapter
 }
 
 beforeEach(() => {
   seen = []
   responder = () => ({ data: { data: null } })
-  originalBaseURL = apiClient.defaults.baseURL
   localStorage.clear()
   removeAccessToken()
   installAdapter()
 })
 
 afterEach(() => {
-  apiClient.defaults.baseURL = originalBaseURL
   clearAdminSecurePath()
   localStorage.clear()
 })
@@ -437,9 +433,9 @@ describe('native node editor contract', () => {
 })
 
 describe('admin secure path resolution', () => {
-  it('re-points the admin client at a rotated secure path', () => {
+  it('resolves a newly rotated administrator path for native requests', () => {
     setAdminSecurePath('rotated2024')
-    expect(apiClient.defaults.baseURL).toBe('/api/v2/rotated2024')
+    expect(nativeAdminPath('settings')).toBe('/admin/rotated2024/settings')
   })
 
   it('switches the admin client immediately after a secure-path save succeeds', async () => {
@@ -450,11 +446,11 @@ describe('admin secure path resolution', () => {
 
     expect(seen[0].baseURL).toBe('/txapi')
     expect(seen[0].url).toBe('/admin/before-rotation/settings')
-    expect(apiClient.defaults.baseURL).toBe('/api/v2/after-rotation')
+    expect(nativeAdminPath('settings')).toBe('/admin/after-rotation/settings')
   })
 
-  it('exposes the public prefix separately from the admin prefix', () => {
-    expect(getResolvedApiPrefixes().public).toBe('/api/v2')
+  it('exposes only native and plugin-owned prefixes', () => {
+    expect(getResolvedApiPrefixes()).toEqual({ native: '/txapi', plugin: '' })
   })
 })
 
@@ -492,7 +488,7 @@ describe('P1-B admin native TXAPI client isolation', () => {
     expect(seen[0].baseURL).toBe('/txapi')
     expect(seen[0].url).toBe('/me')
     expect(String(seen[0].headers.Authorization)).toBe('Bearer admin-session')
-    expect(apiClient.defaults.baseURL).toBe('/api/v2/rotated-secret-path')
+    expect(nativeAdminPath('settings')).toBe('/admin/rotated-secret-path/settings')
     expect(getResolvedApiPrefixes().native).toBe('/txapi')
   })
 
