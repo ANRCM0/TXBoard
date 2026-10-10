@@ -59,7 +59,13 @@ prune() {
 run_backup() (
     stamp=$(date -u '+%Y%m%dT%H%M%SZ')
     dest="$BACKUP_DIR/$stamp"
-    mkdir -p "$dest"
+    mkdir -p "$BACKUP_DIR"
+    # Refuse same-second parallel backups: a failed copy must never delete
+    # an existing complete snapshot sharing the timestamp.
+    if ! mkdir "$dest"; then
+        log "ERROR: archive timestamp collision; existing snapshot untouched"
+        return 1
+    fi
     trap 'rm -rf "$dest"' EXIT
     trap 'exit 1' HUP INT TERM
 
