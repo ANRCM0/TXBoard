@@ -13,7 +13,7 @@ export function check(root = '.') {
       const abs = join(dir, item.name);
       const path = relative(base, abs).replaceAll('\\', '/');
       if (item.isDirectory()) walk(abs);
-      else if (item.isFile() && /\.(php|mjs|cjs|js|ts|tsx|vue|sql)$/.test(path) || (path.startsWith('api/plugins-core/') && path.endsWith('/config.json')) && !skip.has(path)) {
+      else if (item.isFile() && !skip.has(path) && (/\.(php|mjs|cjs|js|ts|tsx|vue|sql)$/.test(path) || (path.startsWith('api/plugins-core/') && path.endsWith('/config.json')))) {
         const source = readFileSync(abs, 'utf8');
         const incompatible = /(?:v(?:2)_|NativeTableName|ResolvesNativeEloquentTable|TX_NATIVE_TABLES|migrateFromV2b)/g;
         const historical = /(?:v2board|xboard|current_theme|ModuleId::legacy)/gi;
