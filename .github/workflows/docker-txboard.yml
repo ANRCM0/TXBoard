@@ -19,6 +19,7 @@ on:
       - "compose.yaml"
       - "backup.sh"
       - "scripts/test-backup.sh"
+      - "scripts/ci-release-recovery.sh"
       - "scripts/resolve-image-tags.sh"
       - "scripts/test-image-tags.sh"
       - ".github/workflows/docker-txboard.yml"
@@ -98,6 +99,70 @@ jobs:
         run: |
           npm run typecheck
           npm run build
+
+  release-recovery:
+    # Protect stable/preview publishing with a MySQL upgrade+restore check.
+    # This is synthetic CI evidence, not an operator's real backup/rollback.
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: release-ci-root
+          MYSQL_DATABASE: txboard_release_ci
+          MYSQL_USER: txboard_release_ci
+          MYSQL_PASSWORD: release-ci-user
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --host=127.0.0.1 --user=root --password=release-ci-root"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 15
+    env:
+      APP_ENV: testing
+      DB_CONNECTION: mysql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_DATABASE: txboard_release_ci
+      DB_USERNAME: txboard_release_ci
+      DB_PASSWORD: release-ci-user
+      MYSQL_ROOT_PASSWORD: release-ci-root
+      TXBOARD_CI_RESTORE: "1"
+      CACHE_DRIVER: array
+      QUEUE_CONNECTION: sync
+      SESSION_DRIVER: array
+      SETTING_CACHE_STORE: array
+      AGENT_OPS_PAIRING_CACHE_STORE: array
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.2"
+          extensions: mbstring, pdo_mysql, mysqlnd, redis
+          coverage: none
+      - name: Install API dependencies
+        working-directory: api
+        run: composer install --no-interaction --prefer-dist
+      - name: Prepare isolated test .env
+        working-directory: api
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+      - name: Lint release/backup runner scripts
+        run: |
+          bash -n scripts/ci-release-recovery.sh
+          sh -n backup.sh
+      - name: Migrate synthetic existing MySQL data, back up and restore
+        run: bash scripts/ci-release-recovery.sh
+      - name: Preserve non-secret synthetic restore evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: txboard-release-recovery-synthetic
+          path: api/artifacts/release-recovery.json
+          if-no-files-found: warn
+          retention-days: 14
 
   verify:
     # Smoke-test actual runtime on PR, main and release tags.
@@ -195,6 +260,22 @@ jobs:
             docker logs txboard-smoke
             exit 1
           fi
+          # Test the actual Caddy -> Octane HTTP response, not only the PHP
+          # process healthcheck. These endpoints intentionally do not use DB.
+          docker exec txboard-smoke php -r '
+            foreach (["/api/health", "/txapi/health"] as $path) {
+                $socket = fsockopen("127.0.0.1", 80, $errno, $errstr, 2);
+                if (!$socket) { fwrite(STDERR, "HTTP socket unavailable\n"); exit(1); }
+                fwrite($socket, "GET {$path} HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n");
+                $response = stream_get_contents($socket);
+                fclose($socket);
+                if (!preg_match("~^HTTP/1\\.[01] 200 ~", $response) ||
+                    !str_contains($response, "\"status\":\"ok\"")) {
+                    fwrite(STDERR, "Native/legacy liveness HTTP failed on {$path}\n");
+                    exit(1);
+                }
+            }
+          '
           docker exec txboard-smoke php -r '
             $socket = fsockopen("127.0.0.1", 80, $errno, $errstr, 2);
             fwrite($socket, "GET /mcp HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n");
@@ -244,7 +325,7 @@ jobs:
     # PRs validate but never push. Only a main commit or a vetted semver Git
     # tag may publish; neither can overwrite the other channel.
     if: github.event_name == 'push'
-    needs: [release-gate, verify]
+    needs: [release-gate, release-recovery, verify]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

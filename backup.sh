@@ -11,6 +11,9 @@
 #                       unreadable without it, so a database-only backup is not
 #                       a backup.
 #   storage-app.tar.gz  uploads and anything else under storage/app
+#   storage-theme.tar.gz  installed user themes under storage/theme (if present)
+#   plugins.tar.gz        installed plugins under plugins (if present)
+#   CHECKSUMS.sha256      integrity for all present backed-up payloads
 #   MANIFEST            what the archive is, so a restore needs no guesswork
 #
 # Environment:
@@ -56,7 +59,15 @@ prune() {
 run_backup() (
     stamp=$(date -u '+%Y%m%dT%H%M%SZ')
     dest="$BACKUP_DIR/$stamp"
-    mkdir -p "$dest"
+    mkdir -p "$BACKUP_DIR"
+    # Refuse same-second parallel backups: a failed copy must never delete
+    # an existing complete snapshot sharing the timestamp.
+    if ! mkdir "$dest"; then
+        log "ERROR: archive timestamp collision; existing snapshot untouched"
+        return 1
+    fi
+    trap 'rm -rf "$dest"' EXIT
+    trap 'exit 1' HUP INT TERM
 
     log "dumping $DB_DATABASE@$DB_HOST:$DB_PORT -> $dest/db.sql.gz"
     # --single-transaction keeps InnoDB consistent without locking the panel.
@@ -65,8 +76,6 @@ run_backup() (
     # POSIX sh reports only the last command's status in a pipeline.
     # Export first and check mysqldump before compressing the archive.
     dump_file="$dest/db.sql"
-    trap 'rm -f "$dump_file"' EXIT
-    trap 'rm -f "$dump_file"; exit 1' HUP INT TERM
     if ! MYSQL_PWD="$DB_PASSWORD" mysqldump \
             --host="$DB_HOST" \
             --port="$DB_PORT" \
@@ -96,32 +105,66 @@ run_backup() (
 
     log "  db.sql.gz: $(wc -c < "$dest/db.sql.gz" | tr -d ' ') bytes"
 
-    if [ -f "$BACKUP_SOURCE_DIR/.env" ]; then
-        cp "$BACKUP_SOURCE_DIR/.env" "$dest/env"
-        chmod 600 "$dest/env"
-        log "  captured .env (contains APP_KEY)"
-    else
-        log "  WARNING: no .env at $BACKUP_SOURCE_DIR/.env; APP_KEY NOT captured"
+    # APP_KEY is indispensable when restoring encrypted settings.
+    if [ ! -s "$BACKUP_SOURCE_DIR/.env" ] ||
+       ! grep -Eq '^APP_KEY=.+$' "$BACKUP_SOURCE_DIR/.env"; then
+        log "ERROR: missing .env or APP_KEY; refusing incomplete backup"
+        return 1
     fi
+    cp "$BACKUP_SOURCE_DIR/.env" "$dest/env"
+    chmod 600 "$dest/env"
+    log "  captured .env (contains APP_KEY)"
 
     if [ -d "$BACKUP_SOURCE_DIR/storage/app" ]; then
-        tar -czf "$dest/storage-app.tar.gz" -C "$BACKUP_SOURCE_DIR/storage/app" . 2>/dev/null ||
-            log "  WARNING: storage/app archive failed"
+        if ! tar -czf "$dest/storage-app.tar.gz" -C "$BACKUP_SOURCE_DIR/storage/app" . 2>/dev/null ||
+           ! gzip -t "$dest/storage-app.tar.gz"; then
+            log "ERROR: storage/app archive failed; refusing incomplete backup"
+            return 1
+        fi
         log "  captured storage/app"
     else
-        # Not an error: uploads live in storage/app, so if it does not exist yet
-        # there is simply nothing to capture.
         log "  no storage/app yet (no uploads to capture)"
     fi
 
+    # User-installed theme and plugin source lives outside storage/app.
+    for entry in "storage/theme:storage-theme.tar.gz" "plugins:plugins.tar.gz"; do
+        source_dir=${entry%%:*}
+        archive_name=${entry#*:}
+        if [ -d "$BACKUP_SOURCE_DIR/$source_dir" ]; then
+            if ! tar -czf "$dest/$archive_name" -C "$BACKUP_SOURCE_DIR/$source_dir" . 2>/dev/null ||
+               ! gzip -t "$dest/$archive_name"; then
+                log "ERROR: cannot preserve $source_dir; refusing incomplete backup"
+                return 1
+            fi
+            log "  captured $source_dir"
+        fi
+    done
+
+    contents="db.sql.gz env"
+    for entry in storage-app.tar.gz storage-theme.tar.gz plugins.tar.gz; do
+        [ ! -f "$dest/$entry" ] || contents="$contents $entry"
+    done
     {
         echo "created_at=$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
         echo "database=$DB_DATABASE"
         echo "db_host=$DB_HOST"
-        echo "contents=db.sql.gz env storage-app.tar.gz"
+        echo "contents=$contents"
     } > "$dest/MANIFEST"
 
+    (
+        cd "$dest" || exit 1
+        set -- db.sql.gz env
+        for item in storage-app.tar.gz storage-theme.tar.gz plugins.tar.gz; do
+            [ ! -f "$item" ] || set -- "$@" "$item"
+        done
+        sha256sum "$@" > CHECKSUMS.sha256
+        sha256sum -c CHECKSUMS.sha256 >/dev/null
+    ) || {
+        log "ERROR: backup integrity checksum failed"
+        return 1
+    }
     log "wrote $dest"
+    trap - EXIT HUP INT TERM
     prune
 )
 
