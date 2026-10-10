@@ -260,6 +260,22 @@ jobs:
             docker logs txboard-smoke
             exit 1
           fi
+          # Test the actual Caddy -> Octane HTTP response, not only the PHP
+          # process healthcheck. These endpoints intentionally do not use DB.
+          docker exec txboard-smoke php -r '
+            foreach (["/api/health", "/txapi/health"] as $path) {
+                $socket = fsockopen("127.0.0.1", 80, $errno, $errstr, 2);
+                if (!$socket) { fwrite(STDERR, "HTTP socket unavailable\n"); exit(1); }
+                fwrite($socket, "GET {$path} HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n");
+                $response = stream_get_contents($socket);
+                fclose($socket);
+                if (!preg_match("~^HTTP/1\\.[01] 200 ~", $response) ||
+                    !str_contains($response, "\"status\":\"ok\"")) {
+                    fwrite(STDERR, "Native/legacy liveness HTTP failed on {$path}\n");
+                    exit(1);
+                }
+            }
+          '
           docker exec txboard-smoke php -r '
             $socket = fsockopen("127.0.0.1", 80, $errno, $errstr, 2);
             fwrite($socket, "GET /mcp HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n");
