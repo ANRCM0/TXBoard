@@ -4,16 +4,16 @@ namespace App\Services\Module;
 
 final class ModuleId
 {
-    public static function legacy(string $prefix, string $value): string
+    public static function theme(string $value): string
     {
-        $prefix = strtolower(trim($prefix));
+        $prefix = 'theme';
         $raw = trim($value);
         $lower = strtolower($raw);
         $normalized = preg_replace('/[^a-z0-9._-]+/', '-', $lower) ?? '';
         $normalized = trim($normalized, '.-_');
 
         if ($normalized === '') {
-            $normalized = 'legacy-' . substr(hash('sha256', $raw), 0, 12);
+            $normalized = 'name-' . substr(hash('sha256', $raw), 0, 12);
         } elseif ($normalized !== $lower) {
             $normalized .= '-' . substr(hash('sha256', $raw), 0, 8);
         }
