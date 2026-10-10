@@ -53,6 +53,9 @@ test('route inventory guards payment, user, admin, agent and node contracts',()=
  assert.deepEqual(verifyCriticalRoutes(resolved),[]);
  const broken=routes.map(r=>r.uri.includes('orders/{tradeNo}/checkout')?{...r,middleware:['api']}:r);
  assert.ok(verifyCriticalRoutes(broken).some(s=>s.includes('missing middleware txapi.user')));
+ const accidentallyRestored=[...routes, {uri:'api/v2/{admin_path}/order/paid',method:'POST',middleware:['api','admin.path','admin']}];
+ assert.ok(verifyCriticalRoutes(accidentallyRestored).some(message =>
+   message.includes('Retired V2 administrator route re-registered')));
  const hidden=collectRoutes([{uri:'api/v2/secret-admin-path/config/fetch',method:'GET'}]);
  assert.equal(hidden[0].uri,'api/v2/{admin_path}/config/fetch');
  assert.ok(!JSON.stringify(hidden).includes('secret-admin-path'));
