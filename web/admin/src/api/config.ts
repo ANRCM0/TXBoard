@@ -33,7 +33,7 @@ export async function saveSettings(payload: Settings) {
 
 export async function testSendMail() {
   // Use the existing native mail-template delivery path, not a second SMTP
-  // integration. The notify template is the legacy config test's template.
+  // integration. The notify template is TXBoard's configured test-mail template.
   return testMailTemplate('notify')
 }
 

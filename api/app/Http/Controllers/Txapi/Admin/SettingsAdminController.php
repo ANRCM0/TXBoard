@@ -44,8 +44,7 @@ final class SettingsAdminController
             'subscribe_template_surfboard' => 'surfboard',
         ];
 
-        // Match the established V2 save semantics so no admin setting is
-        // silently dropped or reinterpreted during the API migration.
+        // Persist only the validated native settings; retired keys are rejected.
         foreach ($data as $key => $value) {
             if (isset($templateKeys[$key])) {
                 SubscribeTemplate::setContent($templateKeys[$key], $value);

@@ -31,5 +31,5 @@ const fields: SettingField[] = [
 ]
 
 export function SafeSettingsPage() {
-  return <SettingsForm settingKey="safe" title="安全设置" description="字段与 Xboard 当前 ConfigController / ConfigSave 保持一致。" fields={fields}/>
+  return <SettingsForm settingKey="safe" title="安全设置" description="使用 TXAPI 原生设置接口，修改后立即生效。" fields={fields}/>
 }
