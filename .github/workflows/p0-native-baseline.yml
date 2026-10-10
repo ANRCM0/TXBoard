@@ -10,6 +10,10 @@ on:
       - "scripts/tests/database-schema-inventory.test.mjs"
       - "scripts/tests/export-route-catalog.test.mjs"
       - "contracts/http/external-adapter-current.md"
+      - "contracts/http/theme-integration-current.md"
+      - "contracts/node-protocol/txnode-integration-current.md"
+      - "scripts/check-external-integration-routes.mjs"
+      - "scripts/tests/check-external-integration-routes.test.mjs"
       - "scripts/tests/p0-api-audit.test.mjs"
       - "scripts/native-admin-release-audit.mjs"
       - "scripts/tests/native-admin-release-audit.test.mjs"
@@ -25,6 +29,10 @@ on:
       - "scripts/tests/database-schema-inventory.test.mjs"
       - "scripts/tests/export-route-catalog.test.mjs"
       - "contracts/http/external-adapter-current.md"
+      - "contracts/http/theme-integration-current.md"
+      - "contracts/node-protocol/txnode-integration-current.md"
+      - "scripts/check-external-integration-routes.mjs"
+      - "scripts/tests/check-external-integration-routes.test.mjs"
       - "scripts/tests/p0-api-audit.test.mjs"
       - "scripts/native-admin-release-audit.mjs"
       - "scripts/tests/native-admin-release-audit.test.mjs"
@@ -114,6 +122,10 @@ jobs:
             --json artifacts/route-catalog/http-routes.json \
             --markdown artifacts/route-catalog/http-routes.md \
             --check
+      - name: Check external theme and TXNode route guide drift
+        run: |
+          node --test scripts/tests/check-external-integration-routes.test.mjs
+          node scripts/check-external-integration-routes.mjs --routes "$RUNNER_TEMP/p0-routes.json"
       - name: Preserve HTTP route catalog (no credentials)
         if: always()
         uses: actions/upload-artifact@v4
