@@ -18,9 +18,6 @@
 	@nativeNodeWs path /txapi/node/v1/ws
 	reverse_proxy @nativeNodeWs ws-server:8076
 
-	@ws path /ws
-	reverse_proxy @ws ws-server:8076
-
 	reverse_proxy web:7001 {
 		header_up Host {host}
 		header_up X-Real-IP {remote_host}

@@ -89,10 +89,8 @@ export function collectRoutes(input) {
 // route:list --json expands Laravel aliases to full middleware class names.
 // Treat both representations as equivalent; do not waive the actual guard.
 const expandedMiddleware = {
- user: 'App\\Http\\Middleware\\User',
  'txapi.user': 'App\\Http\\Middleware\\TxapiUser',
  txnode: 'App\\Http\\Middleware\\TxNodeAuth',
- 'server.v2': 'App\\Http\\Middleware\\ServerV2',
  'admin.path': 'App\\Http\\Middleware\\AdminPath',
  admin: 'App\\Http\\Middleware\\Admin',
  agent: 'App\\Http\\Middleware\\AgentAuth',
