@@ -24,6 +24,8 @@
 | GET | `/txapi/node/v1/config` | 指定 Node | 节点 `config`、`base_config`；支持 `ETag`、`If-None-Match` / 304 |
 | GET | `/txapi/node/v1/users` | 指定 Node | `users` 可用用户快照；支持 `ETag` / 304 |
 | POST | `/txapi/node/v1/report` | 指定 Node | 统计流量/在线/状态/指标；HTTP 202 **只代表入队** |
+| GET | `/txapi/node/v1/audit/rules` | 指定 Node | 可选 AccessAudit 已启用规则快照；TXAPI JSON envelope |
+| POST | `/txapi/node/v1/audit/report` | 指定 Node | 可选访问审计事件，最多 200 条/批、1 MiB，按节点/事件 ID 幂等；HTTP 200 |
 | GET | `/txapi/node/v1/machine/nodes` | Machine | 仅当前机器的 `nodes:[{id,type,name}]` 和 `base_config` |
 | POST | `/txapi/node/v1/machine/status` | Machine | 机器 CPU、内存/磁盘、网络与 Runtime 状态快照 |
 | WS | `wss://<panel-host>/txapi/node/v1/ws` | Node 或 Machine 握手头 | Workerman 升级路径，**不是 Laravel HTTP Route**；功能开关默认关闭 |
@@ -44,7 +46,7 @@ curl -fsS -X POST 'https://<panel-host>/txapi/node/v1/handshake' \
     "protocol_version": 1,
     "node_id": 42,
     "mode": "node",
-    "capabilities": ["http_poll", "etag", "traffic_batch_v1", "machine_discovery"],
+    "capabilities": ["http_poll", "etag", "traffic_batch_v1", "machine_discovery", "access_audit_v1"],
     "websocket": {
       "enabled": false,
       "path": "/txapi/node/v1/ws",
@@ -107,7 +109,32 @@ Content-Type: application/json
 
 仅 `status` / `alive` / `online` / `metrics` 的报告可不包含非空流量；正常返回 `settlement:"none"`。参数不合法时可能收到 `422 INVALID_REPORT`、`422 INVALID_TRAFFIC`、`422 BATCH_ID_REQUIRED`；超大 HTTP 报文为 413。
 
-### 2.4 Machine 发现与状态
+### 2.4 原生 AccessAudit（可选、默认关闭）
+
+同一 `TxNodeAuth` 认证边界；Machine 的每节点访问也必须在 Machine 身份头之外携带 `X-TX-Node-ID`。**不要**向 query string 或 JSON body 传入 Token，也不要在 TXBoard 实现旧 Xboard 插件路径。只有 `audit.enabled: true` 的 sing-box 节点会发起这些请求。
+
+```http
+GET /txapi/node/v1/audit/rules
+Authorization: Bearer <server-token>
+X-TX-Node-ID: 42
+```
+
+`data.rules` 为启用的规则集合，字段 `id,name,match_type,match_value`；匹配类型为 `domain`、`domain_suffix`、`keyword`、`ip_cidr`。每个规则可用换行或逗号分隔多项。
+
+```http
+POST /txapi/node/v1/audit/report
+Authorization: Bearer <server-token>
+X-TX-Node-ID: 42
+Content-Type: application/json
+
+{"protocol_version":1,"events":[{"event_id":"0123456789abcdef0123456789abcdef","user_id":1001,"target":"example.net","target_ip":"203.0.113.1","matched":true}]}
+```
+
+`event_id` 是客户端为**每次观察**生成的 32 位小写十六进制随机 ID，失败重试必须保持原 ID。服务端按 `(server_id,event_id)` 唯一键去重；单批上限 200 条，总请求体 1 MiB。正常 200 返回 `data:{protocol_version:1,accepted:true,received:N,inserted:M}`，其中重复记录 `inserted=0`。不合法事件或用户应返回 422。审计数据与流量账本独立，不影响流量统计或充值；内存队列丢失不能当作持久流量回执。
+
+后台访问审计的管理端点见 [AccessAudit v1](./access-audit-v1.md)。面板端须部署新审计表并运行定时清理任务；默认保留 30 天。
+
+### 2.5 Machine 发现与状态
 
 ```bash
 curl -fsS 'https://<panel-host>/txapi/node/v1/machine/nodes' \
