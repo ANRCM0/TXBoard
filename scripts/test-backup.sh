@@ -7,9 +7,11 @@ test -f "$script"
 script="$(realpath "$script")"
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
-mkdir -p "$work/bin" "$work/backups" "$work/source/storage/app"
+mkdir -p "$work/bin" "$work/backups" "$work/source/storage/app" "$work/source/storage/theme" "$work/source/plugins"
 printf 'APP_KEY=base64:regression-test-key\n' > "$work/source/.env"
 printf 'upload\n' > "$work/source/storage/app/example.txt"
+printf 'installed theme\n' > "$work/source/storage/theme/theme.txt"
+printf 'installed plugin\n' > "$work/source/plugins/plugin.txt"
 
 cat > "$work/bin/mysqldump" <<'SH'
 #!/bin/sh
@@ -33,6 +35,10 @@ test -n "$archive"
 gzip -cd "$archive" | grep -Fq 'CREATE TABLE backup_regression'
 test -f "$(dirname "$archive")/env"
 test -f "$(dirname "$archive")/storage-app.tar.gz"
+test -f "$(dirname "$archive")/storage-theme.tar.gz"
+test -f "$(dirname "$archive")/plugins.tar.gz"
+tar -xOzf "$(dirname "$archive")/storage-theme.tar.gz" ./theme.txt | grep -Fq 'installed theme'
+tar -xOzf "$(dirname "$archive")/plugins.tar.gz" ./plugin.txt | grep -Fq 'installed plugin'
 test ! -e "$(dirname "$archive")/db.sql"
 test -s "$(dirname "$archive")/CHECKSUMS.sha256"
 (cd "$(dirname "$archive")" && sha256sum -c CHECKSUMS.sha256 >/dev/null)
