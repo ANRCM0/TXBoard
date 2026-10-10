@@ -78,7 +78,7 @@ cmp -s "$archive/env" .env
 
 echo '[release-recovery] Restore actual backup into separate, empty MySQL schema'
 MYSQL_PWD="$MYSQL_ROOT_PASSWORD" dbcli --user=root \
-  --execute='CREATE DATABASE txboard_restore_ci CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci'
+  --execute="CREATE DATABASE txboard_restore_ci CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; GRANT ALL PRIVILEGES ON txboard_restore_ci.* TO 'txboard_release_ci'@'%';"
 # Abort if either decompressing or loading the dump fails.
 gzip -dc "$archive/db.sql.gz" |
   MYSQL_PWD="$MYSQL_ROOT_PASSWORD" dbcli --user=root --database=txboard_restore_ci
