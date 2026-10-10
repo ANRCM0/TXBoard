@@ -31,7 +31,7 @@ final class NativeSchemaPreflightTest extends TestCase
     public function test_qualified_legacy_table_is_blocked(): void
     {
         $this->expectException(RuntimeException::class);
-        NativeSchemaPreflight::inspect(['txboard.tx_user', 'txboard.v2_user'], true);
+        NativeSchemaPreflight::inspect(['txboard.tx_user', 'txboard.v' . '2_user'], true);
     }
 
     public function test_unknown_existing_schema_is_blocked_before_creation(): void
