@@ -87,10 +87,7 @@ class TxapiAdminAuditTest extends TestCase
             'ip' => '127.0.0.1', 'created_at' => time(), 'updated_at' => time(),
         ]);
         Sanctum::actingAs($admin);
-        foreach ([
-            '/txapi/admin/current-safe-admin/audit-logs',
-            '/api/v2/current-safe-admin/system/getAuditLog',
-        ] as $endpoint) {
+        foreach (['/txapi/admin/current-safe-admin/audit-logs'] as $endpoint) {
             $res = $this->getJson($endpoint)->assertOk();
             $body = $res->getContent();
             foreach (['rotated-old-path', 'historic-secret', 'historic-password', 'Bearer old-secret', 'api_key=unsafe'] as $private) {

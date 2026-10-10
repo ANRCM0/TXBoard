@@ -98,6 +98,13 @@ const expandedMiddleware = {
 };
 export function verifyCriticalRoutes(routes) {
  const failures=[];
+ // V2 administrator routes are fully retired. Unlike V2 Agent/Client/Node
+ // protocols, their presence indicates a first-party control-plane regression.
+ for(const route of routes) {
+  if(/^api\/v2\/\{admin_path\}(?:\/|$)/.test(route.uri)) {
+   failures.push('Retired V2 administrator route re-registered: '+route.method+' '+route.uri);
+  }
+ }
  for(const [method,uri,guards] of required) {
   const route=routes.find(r=>r.uri===uri&&r.method.split('|').includes(method));
   if(!route) {failures.push(method+' '+uri+' missing');continue;}
