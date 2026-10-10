@@ -41,6 +41,7 @@ export function MachineDetailPage() {
   const [name, setName] = useState('')
   const [notes, setNotes] = useState('')
   const [active, setActive] = useState(true)
+  const [imageChannel, setImageChannel] = useState<'stable' | 'dev'>('stable')
 
   const machinesQuery = useQuery({
     queryKey: ['machines'],
@@ -78,7 +79,7 @@ export function MachineDetailPage() {
   const actions = (actionsQuery.data || []).filter(item => nodeIds.has(item.node_id)).slice(0, 8)
 
   const save = useMutation({
-    mutationFn: () => saveMachine({ id: machineId, name, notes, is_active: active }),
+    mutationFn: () => saveMachine({ id: machineId, name, notes, is_active: active, image_channel: imageChannel }),
     onSuccess: async () => {
       toast.success('机器已更新')
       setEditorOpen(false)
@@ -112,6 +113,7 @@ export function MachineDetailPage() {
     setName(machine.name || '')
     setNotes(String(machine.notes || ''))
     setActive(machine.is_active !== false)
+    setImageChannel(machine.image_channel === 'dev' ? 'dev' : 'stable')
     setEditorOpen(true)
   }
 
@@ -203,6 +205,7 @@ export function MachineDetailPage() {
           <Meta label="机器 ID" value={String(machine.id)} />
           <Meta label="运行状态" value={online ? '在线' : '离线'} />
           <Meta label="启用状态" value={machine.is_active === false ? '停用' : '启用'} />
+          <Meta label="镜像渠道" value={machine.image_channel === 'dev' ? '开发版 (dev)' : '稳定版 (latest)'} />
           <Meta label="最后心跳" value={formatTime(machine.last_seen_at)} />
           <Meta label="入站速率" value={formatRate(machine.load_status?.net?.in_speed)} />
           <Meta label="出站速率" value={formatRate(machine.load_status?.net?.out_speed)} />
@@ -299,6 +302,7 @@ export function MachineDetailPage() {
       <div className="form-stack">
         <label className="field"><span>机器名称</span><input value={name} onChange={event => setName(event.target.value)} /></label>
         <label className="field"><span>备注</span><textarea value={notes} onChange={event => setNotes(event.target.value)} /></label>
+        <label className="field"><span>TX-Node 镜像渠道</span><select value={imageChannel} onChange={event => setImageChannel(event.target.value as 'stable' | 'dev')}><option value="stable">稳定版 (latest)</option><option value="dev">开发版 (dev)</option></select><small>保存仅改变安装渠道配置，已运行服务器需单独执行远程更新切换。</small></label>
         <label className="config-switch-field">
           <div><strong>启用机器</strong><small>停用后机器仍保留配置，但不参与正常调度。</small></div>
           <button type="button" role="switch" aria-checked={active} className={`config-switch ${active ? 'active' : ''}`} onClick={() => setActive(value => !value)}><span /></button>
