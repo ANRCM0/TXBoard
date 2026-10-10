@@ -243,9 +243,9 @@ final class NetworkMachineAdminController
     private function installCommand(Request $request, ServerMachine $machine): string
     {
         $panelUrl = rtrim((string) (admin_setting('app_url') ?: $request->getSchemeAndHttpHost()), '/');
-        $installerUrl = 'https://raw.githubusercontent.com/PaiMonCai/TX-Node-Installer/main/deploy.sh';
+        $installerUrl = 'https://raw.githubusercontent.com/ANRCM0/TX-Node-Installer/main/deploy.sh';
         return sprintf(
-            'curl -fsSL %s | sudo bash -s -- install --mode machine --panel-url %s --machine-id %d --token %s',
+            'curl -fsSL %s | sudo bash -s -- install --mode machine --provider txboard --panel-url %s --machine-id %d --token %s',
             escapeshellarg($installerUrl),
             escapeshellarg($panelUrl),
             $machine->id,
