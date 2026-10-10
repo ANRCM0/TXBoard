@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Txapi\Admin\AuditLogController;
+use App\Http\Controllers\Txapi\Admin\AccessAuditAdminController;
 use App\Http\Controllers\Txapi\Admin\CommerceReadController;
 use App\Http\Controllers\Txapi\Admin\TicketAdminController;
 use App\Http\Controllers\Txapi\Admin\UserReadController;
@@ -61,6 +62,8 @@ Route::prefix('node/v1')->middleware(TxNodeAuth::class)->group(function () {
     Route::get('config', [NodeProtocolController::class, 'config']);
     Route::get('users', [NodeProtocolController::class, 'users']);
     Route::post('report', [NodeProtocolController::class, 'report']);
+    Route::get('audit/rules', [NodeProtocolController::class, 'auditRules'])->middleware('throttle:120,1');
+    Route::post('audit/report', [NodeProtocolController::class, 'auditReport'])->middleware('throttle:120,1');
     Route::get('machine/nodes', [NodeProtocolController::class, 'machineNodes']);
     Route::post('machine/status', [NodeProtocolController::class, 'machineStatus']);
 });
@@ -79,6 +82,10 @@ Route::prefix('admin/{admin_path}')
     ->middleware(['admin.path', 'admin', 'log', 'throttle:120,1'])
     ->group(function () {
         Route::get('audit-logs', [AuditLogController::class, 'index']);
+        Route::get('access-audit/rules', [AccessAuditAdminController::class, 'rules']);
+        Route::post('access-audit/rules', [AccessAuditAdminController::class, 'saveRule']);
+        Route::delete('access-audit/rules/{id}', [AccessAuditAdminController::class, 'deleteRule'])->whereNumber('id');
+        Route::get('access-audit/events', [AccessAuditAdminController::class, 'events']);
         // Native control-plane node management; no legacy V2 proxy.
         // Native machine admin — secret-bearing actions are authenticated POST only.
         // Native extension management; package uploads run archive validators
