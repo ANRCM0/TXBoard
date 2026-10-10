@@ -6,7 +6,9 @@ use Illuminate\Database\Eloquent\Model;
 
 class Stat extends Model
 {
-    protected $table = 'v2_stat';
+    
+    use \App\Support\Database\ResolvesNativeEloquentTable;
+protected $table = 'v2_stat';
     protected $dateFormat = 'U';
     protected $guarded = ['id'];
     protected $casts = [

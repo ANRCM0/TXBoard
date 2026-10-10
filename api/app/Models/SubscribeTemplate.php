@@ -7,7 +7,9 @@ use Illuminate\Support\Facades\Cache;
 
 class SubscribeTemplate extends Model
 {
-    protected $table = 'v2_subscribe_templates';
+    
+    use \App\Support\Database\ResolvesNativeEloquentTable;
+protected $table = 'v2_subscribe_templates';
     protected $guarded = [];
     protected $casts = [
         'name' => 'string',
