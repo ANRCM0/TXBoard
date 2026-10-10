@@ -44,4 +44,12 @@ Module Management (authorized mutations)
 
 ## 变更规则
 
-新增扩展类型先定义契约与适配器，再修改运行时、Admin UI 和测试。稳定字段的删除、权限扩展、安装升级或包格式变化须做版本化评审。更多设计与实现流程见 [Module Platform 开发指南](module-platform-development-guide.md) 和 [扩展运行时安全要求](extension-runtime-policy.md)。
+新增扩展类型先定义契约与适配器，再修改运行时、Admin UI 和测试。稳定字段的删除、权限扩展、安装升级或包格式变化须做版本化评审。实现时遵循 [项目开发约束](../../AGENTS.md) 与 [安全基线](../security/README.md)。
+
+## 开发与验证要求
+
+- 新增模块前明确 Core/Module 归属、稳定标识、类型、依赖、声明的 product-level capabilities、运行时配置所有者、版本兼容性及独立回退方法。不要使用具体文件是否存在替代能力语义。
+- 模块 `capability`、Admin permission、Agent ability/target scope 是不同授权层次，不能相互等同；Bridge 消息和 Admin 导航路径要进行版本校验及安全限制。
+- Module Health 为只读、有限、可预测的检查，可包含 manifest、依赖、兼容性、Admin 资源和配置状态；禁止任意 HTTP 请求、脚本或不受限扫描。模块可以 enabled 但 degraded；可选模块错误应独立暴露，不能拖垮 Core。
+- 插件/主题升级通过各自 runtime 处理：依赖关系、已有包兼容、活跃系统主题保护、Octane 缓存失效与 Worker 重启行为都需要回归测试；数据库变更不能创建第二套真相。
+- 变更清单必须验证包 Schema / DTO、Registry API、Lifecycle 权限、Admin UI、插件/主题兼容性、Agent 作用域以及镜像运行时；具体测试与约束由 [AGENTS.md](../../AGENTS.md) 维护。
