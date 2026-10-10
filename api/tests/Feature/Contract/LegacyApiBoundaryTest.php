@@ -16,7 +16,9 @@ class LegacyApiBoundaryTest extends TestCase
         $this->assertRoute('GET', 'api/v1/guest/payment/notify/{method}/{uuid}');
         $this->assertRoute('POST', 'api/v1/guest/payment/notify/{method}/{uuid}');
         $this->assertRoute('POST', 'txapi/node/v1/handshake', [\App\Http\Middleware\TxNodeAuth::class]);
-        $this->assertRoute('GET', 'api/v2/{admin_path}/config/fetch', ['admin.path', 'admin']);
+        $this->assertRoute('POST', 'txapi/auth/admin/login');
+        $this->assertRoute('GET', 'txapi/public/site-config');
+        $this->assertRoute('GET', 'txapi/admin/{admin_path}/settings', ['admin.path', 'admin']);
         $this->assertRoute('GET', 'api/v2/agent/whoami', ['agent']);
     }
 
