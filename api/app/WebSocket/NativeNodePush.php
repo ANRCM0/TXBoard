@@ -7,10 +7,9 @@ use App\Services\DeviceStateService;
 use App\Services\NodeRegistry;
 use App\Services\ServerService;
 use Illuminate\Support\Facades\Log;
-use Workerman\Connection\TcpConnection;
 
 /** Outbound native TX-Node synchronization helpers only. */
-class NodeEventHandlers
+final class NativeNodePush
 {
     /**
      * Push device state to node
@@ -32,9 +31,9 @@ class NodeEventHandlers
     }
 
     /**
-     * Push full config + users to newly connected node
+     * Publish full config + users through the active registry connection
      */
-    public static function pushFullSync(TcpConnection $conn, Server $node): void
+    public static function pushFullSync(Server $node): void
     {
         $nodeId = (int) $node->id;
 

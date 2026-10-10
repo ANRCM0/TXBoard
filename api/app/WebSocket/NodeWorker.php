@@ -123,7 +123,7 @@ class NodeWorker
             foreach ($pendingNodeIds as $nodeId) {
                 $nodeId = (int) $nodeId;
                 if (NodeRegistry::get($nodeId) !== null) {
-                    NodeEventHandlers::pushDeviceStateToNode($nodeId, $service);
+                    NativeNodePush::pushDeviceStateToNode($nodeId, $service);
                 }
             }
         });
@@ -192,7 +192,7 @@ class NodeWorker
                         continue;
                     }
                 }
-                NodeEventHandlers::pushFullSync($conn, $node);
+                NativeNodePush::pushFullSync($node);
             } catch (\Throwable $e) {
                 Log::warning('[WS] Node full resync failed', [
                     'node_id' => $nodeId, 'error' => $e->getMessage(),
@@ -224,7 +224,7 @@ class NodeWorker
         app(NativeNodeWebSocket::class)->connect($conn, $httpMessage);
     }
 
-    /** A socket cannot fall through into the deleted legacy JSON event handler. */
+    /** Reject unauthenticated frames; only the native versioned parser is reachable. */
     public function onMessage(TcpConnection $conn, $data): void
     {
         if (empty($conn->txnodeNative)) {

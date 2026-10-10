@@ -10,7 +10,6 @@ class DeviceStateService
 {
     private const PREFIX = 'user_devices:';
     private const TTL = 300;                     // device state ttl
-    private const DB_THROTTLE = 10;             // update db throttle
 
     /**
      * 移除 Redis key 的前缀
@@ -23,7 +22,7 @@ class DeviceStateService
 
     /**
      * 批量设置设备
-     * 用于 HTTP /alive 和 WebSocket report.devices
+     * Used by native TX-Node alive reports in HTTP and versioned WS traffic.report
      */
     public function setDevices(int $userId, int $nodeId, array $ips): void
     {
@@ -191,17 +190,11 @@ class DeviceStateService
      */
     public function notifyUpdate(int $userId): void
     {
-        $dbThrottleKey = "device:db_throttle:{$userId}";
-
-        // if (Redis::setnx($dbThrottleKey, 1)) {
-        //     Redis::expire($dbThrottleKey, self::DB_THROTTLE);
-
-            User::query()
-                ->whereKey($userId)
-                ->update([
-                    'online_count' => $this->getDeviceCount($userId),
-                    'last_online_at' => now(),
-                ]);
-        // }
+        User::query()
+            ->whereKey($userId)
+            ->update([
+                'online_count' => $this->getDeviceCount($userId),
+                'last_online_at' => now(),
+            ]);
     }
 }
