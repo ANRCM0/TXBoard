@@ -41,6 +41,7 @@ export function MachinesPage() {
   const [name, setName] = useState('')
   const [notes, setNotes] = useState('')
   const [active, setActive] = useState(true)
+  const [imageChannel, setImageChannel] = useState<'stable' | 'dev'>('stable')
   const [search, setSearch] = useState('')
   const [tokenInfo, setTokenInfo] = useState<{ token?: string; install_command?: string } | null>(null)
   const [opsMachineId, setOpsMachineId] = useState<number | null>(null)
@@ -63,6 +64,7 @@ export function MachinesPage() {
       name,
       notes,
       is_active: active,
+      image_channel: imageChannel,
     }),
     onSuccess: data => {
       toast.success(editing ? '服务器已更新' : '服务器已创建')
@@ -80,6 +82,7 @@ export function MachinesPage() {
       setName('')
       setNotes('')
       setActive(true)
+      setImageChannel('stable')
       void qc.invalidateQueries({ queryKey: ['machines'] })
     },
   })
@@ -99,6 +102,7 @@ export function MachinesPage() {
     setName('')
     setNotes('')
     setActive(true)
+    setImageChannel('stable')
     setOpen(true)
   }
 
@@ -107,6 +111,7 @@ export function MachinesPage() {
     setName(row.name || '')
     setNotes(String(row.notes || ''))
     setActive(row.is_active !== false)
+    setImageChannel(row.image_channel === 'dev' ? 'dev' : 'stable')
     setOpen(true)
   }
 
@@ -156,6 +161,7 @@ export function MachinesPage() {
       ),
     },
     { key: 'status', header: '状态', render: row => machineStatus(row) },
+    { key: 'channel', header: '镜像渠道', render: row => row.image_channel === 'dev' ? '开发版 · dev' : '稳定版 · latest' },
     { key: 'nodes', header: '节点数', render: row => <strong>{Number(row.servers_count || 0)}</strong> },
     { key: 'cpu', header: 'CPU', render: row => metric(row.load_status?.cpu) },
     { key: 'mem', header: '内存', render: row => metric(machineRatio(row.load_status?.mem)) },
@@ -267,6 +273,7 @@ export function MachinesPage() {
             <span>备注</span>
             <textarea value={notes} onChange={event => setNotes(event.target.value)} placeholder="入口机 / 日本区域…"/>
           </label>
+          <label className="field"><span>TX-Node 镜像渠道</span><select value={imageChannel} onChange={event => setImageChannel(event.target.value as 'stable' | 'dev')}><option value="stable">稳定版（latest）</option><option value="dev">开发版（dev）</option></select><small>新安装命令会使用此渠道；修改已有服务器的渠道不会自动升级运行容器，请在运行时管理中执行切换。</small></label>
           <label className="config-switch-field">
             <div>
               <strong>启用服务器</strong>
