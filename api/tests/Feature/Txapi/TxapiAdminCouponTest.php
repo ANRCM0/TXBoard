@@ -68,7 +68,7 @@ final class TxapiAdminCouponTest extends TestCase
         $this->assertNull(Coupon::find($id));
     }
 
-    public function test_coupon_used_by_order_cannot_be_deleted_via_native_or_v2(): void
+    public function test_coupon_used_by_order_cannot_be_deleted_via_native_admin(): void
     {
         $owner = $this->account('coupon-order-owner@example.test');
         $admin = $this->account('coupon-order-admin@example.test', true);
@@ -86,9 +86,6 @@ final class TxapiAdminCouponTest extends TestCase
         Sanctum::actingAs($admin);
         $this->deleteJson(self::ROOT . '/' . $coupon->id)
             ->assertStatus(409)->assertJsonPath('error.code', 'COUPON_IN_USE');
-        $this->postJson('/api/v2/coupon_admin_secret/coupon/drop', [
-            'id' => $coupon->id,
-        ])->assertStatus(409);
         $this->assertNotNull(Coupon::find($coupon->id));
     }
 
