@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\V1\Client;
+namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Models\Server;
@@ -11,7 +11,7 @@ use App\Services\UserService;
 use App\Utils\Helper;
 use Illuminate\Http\Request;
 
-class ClientController extends Controller
+class SubscriptionController extends Controller
 {
     /**
      * Protocol prefix mapping for server names

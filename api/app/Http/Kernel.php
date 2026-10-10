@@ -38,7 +38,6 @@ class Kernel extends HttpKernel
         'signed' => \Illuminate\Routing\Middleware\ValidateSignature::class,
         'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
-        'user' => \App\Http\Middleware\User::class,
         'txapi.user' => \App\Http\Middleware\TxapiUser::class,
         'txapi.request-id' => \App\Http\Middleware\TxapiRequestId::class,
         'admin' => \App\Http\Middleware\Admin::class,
@@ -48,8 +47,6 @@ class Kernel extends HttpKernel
         'client' => \App\Http\Middleware\Client::class,
         'staff' => \App\Http\Middleware\Staff::class,
         'log' => \App\Http\Middleware\RequestLog::class,
-        'server' => \App\Http\Middleware\Server::class,
-        'server.v2' => \App\Http\Middleware\ServerV2::class,
         'abilities' => \Laravel\Sanctum\Http\Middleware\CheckAbilities::class,
         'ability' => \Laravel\Sanctum\Http\Middleware\CheckForAnyAbility::class,
     ];

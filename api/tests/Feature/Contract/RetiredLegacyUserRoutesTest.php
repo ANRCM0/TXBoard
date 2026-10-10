@@ -16,6 +16,24 @@ class RetiredLegacyUserRoutesTest extends TestCase
         }
     }
 
+    public function test_old_controller_namespaces_are_absent_and_entrypoints_have_native_handlers(): void
+    {
+        $this->assertDirectoryDoesNotExist(app_path('Http/Controllers/V1'));
+        $this->assertDirectoryDoesNotExist(app_path('Http/Controllers/V2'));
+        foreach (['User', 'Server', 'ServerV2'] as $class) {
+            $this->assertFileDoesNotExist(app_path('Http/Middleware/' . $class . '.php'));
+        }
+        $routes = collect(Route::getRoutes()->getRoutes());
+        $subscribe = $routes->first(static fn ($route) => $route->getName() === 'client.subscribe');
+        $this->assertNotNull($subscribe);
+        $this->assertStringContainsString(
+            \App\Http\Controllers\SubscriptionController::class, $subscribe->getActionName());
+        $agent = $routes->first(static fn ($route) => $route->uri() === 'txapi/agent/v1/whoami');
+        $this->assertNotNull($agent);
+        $this->assertStringContainsString(
+            \App\Http\Controllers\Txapi\Agent\AgentOpsController::class, $agent->getActionName());
+    }
+
     public function test_all_required_native_replacements_are_registered(): void
     {
         $paths = array_map(static fn ($route) => $route->uri(), Route::getRoutes()->getRoutes());

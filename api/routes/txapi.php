@@ -44,9 +44,9 @@ use App\Http\Controllers\Txapi\StripeConfigController;
 use App\Http\Controllers\Txapi\InvitePageViewController;
 use App\Http\Controllers\Txapi\WithdrawalController;
 use App\Http\Controllers\Txapi\PaymentWebhookController;
-use App\Http\Controllers\V2\Agent\AgentOpsController;
-use App\Http\Controllers\V2\Agent\AgentSupportController;
-use App\Http\Controllers\V2\Agent\AgentPairingController;
+use App\Http\Controllers\Txapi\Agent\AgentOpsController;
+use App\Http\Controllers\Txapi\Agent\AgentSupportController;
+use App\Http\Controllers\Txapi\Agent\AgentPairingController;
 use App\Http\Controllers\Txapi\TelegramWebhookController;
 use App\Http\Controllers\Txapi\AuthController;
 use App\Http\Controllers\Txapi\ContentController;
@@ -55,7 +55,7 @@ use App\Http\Controllers\Txapi\PublicController;
 use Illuminate\Support\Facades\Route;
 
 // Versioned TX-Node control plane; scoped bearer credentials, separate from user
-// auth. Never expose node credentials in URLs. Legacy V1/V2 stays live.
+// auth. Never expose node credentials in URLs. No V1/V2 adapter is registered.
 Route::prefix('node/v1')->middleware(TxNodeAuth::class)->group(function () {
     Route::post('handshake', [NodeProtocolController::class, 'handshake']);
     Route::get('config', [NodeProtocolController::class, 'config']);
@@ -66,7 +66,7 @@ Route::prefix('node/v1')->middleware(TxNodeAuth::class)->group(function () {
 });
 
 // Native provider callback is intentionally not JSON-wrapped. It goes through
-// the identical signed, locked processor as the legacy V1 route.
+// the authoritative signed and locked payment settlement processor.
 Route::match(['get', 'post'], 'payment/webhook/{method}/{uuid}',
     [PaymentWebhookController::class, 'notify']);
 
@@ -260,7 +260,7 @@ Route::middleware('throttle:10,1')->group(function () {
     Route::post('auth/login', [AuthController::class, 'login']);
     Route::post('auth/admin/login', [AuthController::class, 'adminLogin']);
     Route::post('auth/register', [AuthController::class, 'register']);
-    // Shared MailLinkService keeps V1 email links and native requests interoperable.
+    // MailLinkService issues and consumes one-time native login credentials.
     Route::post('auth/mail-link', [AuthController::class, 'mailLink']);
     Route::post('auth/one-time-token', [AuthController::class, 'oneTimeToken']);
     Route::post('auth/email-code', [AuthController::class, 'sendEmailCode']);
