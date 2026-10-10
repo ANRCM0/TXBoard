@@ -8,7 +8,8 @@ export type ApiEnvelope<T> = {
 }
 
 const AUTH_KEY = 'txboard_auth_data'
-const LEGACY_AUTH_KEY = 'xboard_auth_data'
+// Purge obsolete browser credentials without importing their authorization.
+const RETIRED_AUTH_KEY = 'xboard_auth_data'
 const nativeBaseURL = (import.meta.env.VITE_TXAPI_PREFIX || '/txapi').replace(/\/$/, '')
 // Optional plugin API calls use same-origin /plugin/*, never removed V1/V2 paths.
 const baseURL = '/'
@@ -110,32 +111,19 @@ export function saveAuthData(authData: string) {
     return
   }
   localStorage.setItem(AUTH_KEY, normalized)
-  // Never leave an older bearer copy after a successful login.
-  localStorage.removeItem(LEGACY_AUTH_KEY)
+  // Never leave an obsolete bearer copy after a successful login.
+  localStorage.removeItem(RETIRED_AUTH_KEY)
 }
 
 export function getAuthData() {
-  const current = normalizeAuthorization(localStorage.getItem(AUTH_KEY))
-  if (current) {
-    localStorage.removeItem(LEGACY_AUTH_KEY)
-    return current
-  }
-  const legacy = normalizeAuthorization(localStorage.getItem(LEGACY_AUTH_KEY))
-  if (!legacy) return ''
-  // One-time, lossless migration on the first read. If storage is unavailable
-  // during migration, keep the old value so the current session still works.
-  try {
-    localStorage.setItem(AUTH_KEY, legacy)
-    localStorage.removeItem(LEGACY_AUTH_KEY)
-  } catch {
-    return legacy
-  }
-  return legacy
+  // Stale Xboard credentials are never accepted as TXAPI session tokens.
+  localStorage.removeItem(RETIRED_AUTH_KEY)
+  return normalizeAuthorization(localStorage.getItem(AUTH_KEY))
 }
 
 export function clearAuthData() {
   localStorage.removeItem(AUTH_KEY)
-  localStorage.removeItem(LEGACY_AUTH_KEY)
+  localStorage.removeItem(RETIRED_AUTH_KEY)
 }
 
 export async function request<T>(
@@ -154,9 +142,8 @@ export async function request<T>(
     return envelope.data
   }
 
-  // A number of current Xboard endpoints intentionally return legacy
-  // top-level structures such as { data, total } or { data, pagination }.
-  // Preserve those responses instead of unwrapping their "data" field.
+  // Dynamic plugin integrations may return their own top-level structures
+  // (for example { data, total }); do not reinterpret them as TXAPI envelopes.
   return data as T
 }
 

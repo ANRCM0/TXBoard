@@ -68,8 +68,6 @@ class ConfigSave extends FormRequest
         'server_pull_interval' => 'integer',
         'server_push_interval' => 'integer',
         'device_limit_mode' => 'integer',
-        'server_ws_enable' => 'boolean',
-        'server_ws_url' => 'nullable|url',
         // frontend
         'frontend_theme' => '',
         // email
@@ -100,7 +98,6 @@ class ConfigSave extends FormRequest
         'email_gmail_limit_enable' => 'boolean',
         'captcha_enable' => 'boolean',
         'captcha_type' => 'in:recaptcha,turnstile,recaptcha-v3',
-        'recaptcha_enable' => 'boolean',
         'recaptcha_key' => '',
         'recaptcha_site_key' => '',
         'recaptcha_v3_secret_key' => '',
@@ -143,6 +140,11 @@ class ConfigSave extends FormRequest
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator): void {
+            foreach (['server_ws_enable', 'server_ws_url', 'recaptcha_enable'] as $key) {
+                if ($this->exists($key)) {
+                    $validator->errors()->add($key, 'Retired setting is not supported by TXAPI.');
+                }
+            }
             foreach (SettingModel::RETIRED_APPEARANCE_KEYS as $key) {
                 if ($this->exists($key)) {
                     $validator->errors()->add($key, 'Global appearance settings have been removed; configure the active theme instead.');

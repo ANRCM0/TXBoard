@@ -6,8 +6,7 @@ use App\Services\ThemeService;
 use App\Utils\Dict;
 
 /**
- * Single authoritative settings read projection for the compatible V2 and
- * native TXAPI admin controllers. Do not project these admin-only secrets to
+ * Authoritative settings projection for TXAPI administrator endpoints. Do not project these admin-only secrets to
  * public or subscriber endpoints.
  */
 final class AdminSettingsProjection
@@ -38,8 +37,8 @@ final class AdminSettingsProjection
                 'logo' => admin_setting('logo'),
                 'force_https' => (int) admin_setting('force_https', 0),
                 'stop_register' => (int) admin_setting('stop_register', 0),
-                'app_name' => admin_setting('app_name', 'XBoard'),
-                'app_description' => admin_setting('app_description', 'XBoard is best!'),
+                'app_name' => admin_setting('app_name', 'TXBoard'),
+                'app_description' => admin_setting('app_description', 'TXBoard control plane'),
                 'app_url' => admin_setting('app_url'),
                 'subscribe_url' => admin_setting('subscribe_url'),
                 'try_out_plan_id' => (int) admin_setting('try_out_plan_id', 0),
@@ -76,8 +75,6 @@ final class AdminSettingsProjection
                 'server_pull_interval' => admin_setting('server_pull_interval', 60),
                 'server_push_interval' => admin_setting('server_push_interval', 60),
                 'device_limit_mode' => (int) admin_setting('device_limit_mode', 0),
-                'server_ws_enable' => (bool) admin_setting('server_ws_enable', 1),
-                'server_ws_url' => admin_setting('server_ws_url', ''),
             ],
             'email' => [
                 'email_host' => admin_setting('email_host'),
@@ -123,9 +120,8 @@ final class AdminSettingsProjection
                 'register_limit_expire' => admin_setting('register_limit_expire', 60),
                 'password_limit_enable' => (bool) admin_setting('password_limit_enable', 1),
                 'password_limit_count' => admin_setting('password_limit_count', 5),
-                'password_limit_expire' => admin_setting('password_limit_expire', 60),
-                // 保持向后兼容
-                'recaptcha_enable' => (bool) admin_setting('captcha_enable', 0)
+                'password_limit_expire' => admin_setting('password_limit_expire', 60)
+
             ],
             'subscribe_template' => [
                 'subscribe_template_singbox' => $this->formatTemplateContent(

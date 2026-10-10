@@ -3,10 +3,13 @@
 namespace Tests\Feature\Server;
 
 use App\Jobs\TrafficBatchJob;
+use App\Models\AgentAction;
 use App\Models\Server;
 use App\Models\ServerMachine;
 use App\Models\User;
 use App\Services\NodeRegistry;
+use App\Services\DeviceStateService;
+use App\Services\ServerService;
 use App\WebSocket\NativeNodeFrame;
 use App\WebSocket\NativeNodeWebSocket;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -129,6 +132,7 @@ class TxNodeNativeWebSocketTest extends TestCase
             $this->assertSame('session.ready', $sent[0]['event']);
             $this->assertSame(1, $sent[0]['protocol_version']);
             $this->assertSame('node', $sent[0]['data']['mode']);
+            $this->assertContains('sync.devices', $sent[0]['data']['capabilities']);
             $this->assertContains('sync.config', array_column($sent, 'event'));
             $this->assertContains('sync.users', array_column($sent, 'event'));
             $this->assertStringNotContainsString('native-ws-test-token', json_encode($sent));
@@ -184,6 +188,156 @@ class TxNodeNativeWebSocketTest extends TestCase
             NodeRegistry::removeMachine((int) $machine->id, $conn);
             NodeRegistry::remove((int) $node->id, $conn);
         }
+    }
+
+    public function test_native_operation_result_is_scoped_validated_and_idempotent(): void
+    {
+        $node = $this->node();
+        $otherNode = $this->node(['name' => 'foreign-node']);
+        $admin = User::create([
+            'email' => 'agent-ws-admin@example.test',
+            'password' => 'test', 'is_admin' => true,
+            'token' => bin2hex(random_bytes(16)),
+            'uuid' => (string) \Illuminate\Support\Str::uuid(),
+        ]);
+        $action = AgentAction::create([
+            'request_id' => 'ops_native_action_0001',
+            'admin_id' => $admin->id,
+            'node_id' => $node->id,
+            'action' => 'ops.kernel.status',
+            'status' => AgentAction::STATUS_RUNNING,
+            'risk_level' => 'operate',
+            'started_at' => time(),
+        ]);
+        $sent = [];
+        $conn = $this->connection($sent);
+        $ws = app(NativeNodeWebSocket::class);
+
+        try {
+            $ws->connect($conn, $this->upgrade($node->id, 'native-ws-test-token'));
+            $this->assertContains('ops.result', $sent[0]['data']['capabilities']);
+
+            $ws->message($conn, NativeNodeFrame::encode('ops.result', [
+                'node_id' => $otherNode->id,
+                'request_id' => $action->request_id, 'ok' => true,
+                'result' => ['status' => 'wrong-node'],
+            ], 'foreign-ops'));
+            $this->assertSame('NODE_NOT_FOUND', end($sent)['data']['code']);
+            $this->assertSame(AgentAction::STATUS_RUNNING, $action->fresh()->status);
+
+            $ws->message($conn, NativeNodeFrame::encode('ops.result', [
+                'request_id' => $action->request_id, 'ok' => 'not-a-boolean',
+            ], 'invalid-ops'));
+            $this->assertSame('INVALID_OPERATION_RESULT', end($sent)['data']['code']);
+            $this->assertSame(AgentAction::STATUS_RUNNING, $action->fresh()->status);
+
+            $ws->message($conn, NativeNodeFrame::encode('ops.result', [
+                'request_id' => $action->request_id, 'ok' => true,
+                'result' => ['log' => str_repeat('x', 65000)],
+            ], 'oversized-ops'));
+            $this->assertSame('INVALID_OPERATION_RESULT', end($sent)['data']['code']);
+            $this->assertSame(AgentAction::STATUS_RUNNING, $action->fresh()->status);
+
+            $ws->message($conn, NativeNodeFrame::encode('ops.result', [
+                'request_id' => $action->request_id, 'ok' => true,
+                'result' => ['status' => 'healthy'],
+            ], 'valid-ops'));
+            $this->assertSame('ops.ack', end($sent)['event']);
+            $this->assertSame('valid-ops', end($sent)['request_id']);
+            $this->assertTrue(end($sent)['data']['accepted']);
+            $this->assertSame(AgentAction::STATUS_SUCCEEDED, $action->fresh()->status);
+            $this->assertSame(['status' => 'healthy'], $action->fresh()->result);
+
+            // Duplicate delivery never overwrites the first committed result.
+            $ws->message($conn, NativeNodeFrame::encode('ops.result', [
+                'request_id' => $action->request_id, 'ok' => false,
+                'error_code' => 'late_duplicate',
+            ], 'duplicate-ops'));
+            $this->assertSame('ops.ack', end($sent)['event']);
+            $this->assertTrue(end($sent)['data']['accepted']);
+            $this->assertSame(AgentAction::STATUS_SUCCEEDED, $action->fresh()->status);
+            $this->assertSame(['status' => 'healthy'], $action->fresh()->result);
+
+            $ws->message($conn, NativeNodeFrame::encode('ops.result', [
+                'request_id' => 'ops_nonexistent_0001', 'ok' => true,
+            ], 'unknown-ops'));
+            $this->assertSame('ops.ack', end($sent)['event']);
+            $this->assertFalse(end($sent)['data']['accepted']);
+        } finally {
+            NodeRegistry::remove((int) $node->id, $conn);
+        }
+    }
+
+    public function test_machine_operation_result_respects_node_membership_and_timeout(): void
+    {
+        $machine = ServerMachine::create([
+            'name' => 'ops-machine', 'token' => 'ops-machine-credential', 'is_active' => true,
+        ]);
+        $otherMachine = ServerMachine::create([
+            'name' => 'ops-foreign', 'token' => 'ops-foreign-credential', 'is_active' => true,
+        ]);
+        $node = $this->node(['machine_id' => $machine->id]);
+        $foreign = $this->node(['machine_id' => $otherMachine->id, 'name' => 'foreign']);
+        $admin = User::create([
+            'email' => 'agent-ws-machine@example.test',
+            'password' => 'test', 'is_admin' => true,
+            'token' => bin2hex(random_bytes(16)),
+            'uuid' => (string) \Illuminate\Support\Str::uuid(),
+        ]);
+        $action = AgentAction::create([
+            'request_id' => 'ops_machine_action_0001',
+            'admin_id' => $admin->id, 'node_id' => $node->id,
+            'action' => 'ops.kernel.status', 'status' => AgentAction::STATUS_RUNNING,
+            'risk_level' => 'operate', 'started_at' => time() - 500,
+        ]);
+        $sent = [];
+        $conn = $this->connection($sent);
+        $ws = app(NativeNodeWebSocket::class);
+
+        try {
+            $ws->connect($conn, $this->upgrade(null, 'ops-machine-credential', $machine->id));
+            $ws->message($conn, NativeNodeFrame::encode('ops.result', [
+                'node_id' => $foreign->id,
+                'request_id' => $action->request_id, 'ok' => true,
+            ], 'wrong-membership'));
+            $this->assertSame('NODE_NOT_FOUND', end($sent)['data']['code']);
+            $this->assertSame(AgentAction::STATUS_RUNNING, $action->fresh()->status);
+
+            $ws->message($conn, NativeNodeFrame::encode('ops.result', [
+                'node_id' => $node->id,
+                'request_id' => $action->request_id, 'ok' => true,
+            ], 'too-late'));
+            $this->assertSame('ops.ack', end($sent)['event']);
+            $this->assertFalse(end($sent)['data']['accepted']);
+            $this->assertSame(AgentAction::STATUS_TIMED_OUT, $action->fresh()->status);
+
+            $machine->update(['token' => 'revoked-ops-credential']);
+            $ws->message($conn, NativeNodeFrame::encode('ops.result', [
+                'node_id' => $node->id,
+                'request_id' => $action->request_id, 'ok' => true,
+            ], 'revoked-ops'));
+            $this->assertSame('UNAUTHORIZED', end($sent)['data']['code']);
+        } finally {
+            NodeRegistry::removeMachine((int) $machine->id, $conn);
+            NodeRegistry::remove((int) $node->id, $conn);
+        }
+    }
+
+    public function test_native_alive_snapshot_enqueues_one_device_push_for_node(): void
+    {
+        $devices = Mockery::mock(DeviceStateService::class);
+        $devices->shouldReceive('setDevices')->once()->with(3, 77, ['10.0.0.1']);
+        $this->app->instance(DeviceStateService::class, $devices);
+        Redis::shouldReceive('sadd')->once()->with('device:push_pending_nodes', 77)->andReturn(1);
+
+        ServerService::processAlive(77, ['3' => ['10.0.0.1']]);
+    }
+
+    public function test_legacy_inbound_handler_class_has_been_removed(): void
+    {
+        $this->assertFileDoesNotExist(app_path('WebSocket/NodeEventHandlers.php'));
+        $this->assertTrue(class_exists(\App\WebSocket\NativeNodePush::class));
+        $this->assertFalse(class_exists(\App\WebSocket\NodeEventHandlers::class));
     }
 
     public function test_ws_and_http_reports_reuse_ledger_and_never_double_bill(): void

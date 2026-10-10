@@ -11,6 +11,7 @@ use App\Services\Plugin\HookManager;
 use App\Utils\CacheKey;
 use App\Utils\Helper;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Collection;
 
 class ServerService
@@ -157,6 +158,12 @@ class ServerService
         $service = app(DeviceStateService::class);
         foreach ($alive as $uid => $ips) {
             $service->setDevices((int) $uid, $nodeId, (array) $ips);
+        }
+
+        // Old JSON report.devices is gone: native alive snapshots must schedule
+        // the same deduplicated device-state fanout to active node sockets.
+        if ($alive !== []) {
+            Redis::sadd('device:push_pending_nodes', $nodeId);
         }
     }
 

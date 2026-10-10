@@ -4,6 +4,7 @@ namespace App\WebSocket;
 
 use App\Domains\Network\NativeNodeReport;
 use App\Domains\Network\NodeReportError;
+use App\Services\AgentOps\AgentActionService;
 use App\Http\Middleware\TxNodeAuth;
 use App\Models\Server;
 use App\Models\ServerMachine;
@@ -13,6 +14,7 @@ use App\Services\ServerService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
 use Workerman\Connection\TcpConnection;
 
 /**
@@ -31,7 +33,7 @@ final class NativeNodeWebSocket
         }
 
         // Workerman handles the HTTP Upgrade itself. Never accept bearer
-        // credentials through query parameters; old paths remain untouched.
+        // credentials through query parameters; retired paths are not recognized.
         $query = $upgrade->queryString();
         if ($query !== '') {
             $this->reject($conn, 'INVALID_UPGRADE');
@@ -79,14 +81,14 @@ final class NativeNodeWebSocket
                 ])->values()->all(),
             ]);
             foreach ($nodes as $item) {
-                NodeEventHandlers::pushFullSync($conn, $item);
+                NativeNodePush::pushFullSync($item);
             }
         } else {
             $conn->nodeId = (int) $node->id;
             NodeRegistry::add((int) $node->id, $conn);
             NodeSyncService::markNodeOnline((int) $node->id);
             $this->ready($conn, 'node', (int) $node->id, null);
-            NodeEventHandlers::pushFullSync($conn, $node);
+            NativeNodePush::pushFullSync($node);
         }
     }
 
@@ -112,12 +114,40 @@ final class NativeNodeWebSocket
                 return;
             }
 
-            if (!in_array($event, ['traffic.report', 'sync.request'], true)) {
+            if (!in_array($event, ['traffic.report', 'sync.request', 'ops.result'], true)) {
                 throw new \InvalidArgumentException('UNKNOWN_EVENT');
             }
+            // Every inbound node-scoped event is authorized against the live
+            // machine membership / server-token state, not a client-supplied ID.
             $node = $this->scopedNode($conn, $frame['data']);
+            if ($event === 'ops.result') {
+                $data = $frame['data'];
+                $validated = Validator::make($data, [
+                    'request_id' => ['required', 'string', 'max:64', 'regex:/^ops_[A-Za-z0-9_-]{8,60}$/D'],
+                    'ok' => ['required', 'boolean'],
+                    'result' => ['sometimes', 'array'],
+                    'message' => ['sometimes', 'nullable', 'string', 'max:2048'],
+                    'error_code' => ['sometimes', 'nullable', 'string', 'max:64'],
+                    'node_id' => ['sometimes', 'integer', 'min:1'],
+                ]);
+                if ($validated->fails()) {
+                    throw new \InvalidArgumentException('INVALID_OPERATION_RESULT');
+                }
+                $payload = $validated->validated();
+                // AgentAction.result is a MySQL TEXT field, not a 1 MiB blob.
+                if (strlen(json_encode($payload['result'] ?? [], JSON_THROW_ON_ERROR)) > 60000) {
+                    throw new \InvalidArgumentException('INVALID_OPERATION_RESULT');
+                }
+                $accepted = app(AgentActionService::class)->handleNodeResult((int) $node->id, $payload);
+                $this->send($conn, 'ops.ack', [
+                    'accepted' => $accepted,
+                    'node_id' => (int) $node->id,
+                    'action_request_id' => $payload['request_id'],
+                ], $requestId);
+                return;
+            }
             if ($event === 'sync.request') {
-                NodeEventHandlers::pushFullSync($conn, $node);
+                NativeNodePush::pushFullSync($node);
                 $this->send($conn, 'sync.ack', ['node_id' => (int) $node->id], $requestId);
                 return;
             }
@@ -131,6 +161,7 @@ final class NativeNodeWebSocket
             $code = in_array($e->getMessage(), [
                 'FRAME_TOO_LARGE', 'INVALID_FRAME', 'UNKNOWN_EVENT',
                 'NODE_NOT_FOUND', 'NODE_ID_REQUIRED', 'UNAUTHORIZED',
+                'INVALID_OPERATION_RESULT',
             ], true) ? $e->getMessage() : 'INVALID_FRAME';
             $this->sendError($conn, $code, $requestId);
             if ($code === 'UNAUTHORIZED') {
@@ -193,7 +224,8 @@ final class NativeNodeWebSocket
             'heartbeat_interval_seconds' => 55,
             'heartbeat_timeout_seconds' => NodeSyncService::WS_TTL_SECONDS,
             'capabilities' => ['sync.config', 'sync.users', 'sync.user.delta',
-                'sync.nodes', 'traffic.report', 'traffic.ack', 'heartbeat.ping'],
+                'sync.nodes', 'sync.devices', 'traffic.report', 'traffic.ack', 'ops.result',
+                'ops.ack', 'heartbeat.ping'],
         ]);
     }
 

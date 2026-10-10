@@ -226,32 +226,58 @@ class AgentActionService
         return $this->refreshTimeout($action);
     }
 
-    public function handleNodeResult(int $nodeId, array $data): void
+    /**
+     * Persist a native TX-Node completion for the matching approved action.
+     * Returns true for successful first delivery and terminal duplicates.
+     * A late result can never resurrect a timed-out/rejected action.
+     */
+    public function handleNodeResult(int $nodeId, array $data): bool
     {
         $requestId = (string) ($data['request_id'] ?? '');
         if ($requestId === '') {
-            return;
+            return false;
         }
 
-        /** @var AgentAction|null $action */
-        $action = AgentAction::query()
-            ->where('request_id', $requestId)
-            ->where('node_id', $nodeId)
-            ->first();
+        return DB::transaction(function () use ($nodeId, $requestId, $data): bool {
+            /** @var AgentAction|null $action */
+            $action = AgentAction::query()
+                ->where('request_id', $requestId)
+                ->where('node_id', $nodeId)
+                ->lockForUpdate()
+                ->first();
 
-        if (!$action || $action->status !== AgentAction::STATUS_RUNNING) {
-            return;
-        }
+            if (!$action) {
+                return false;
+            }
+            if (in_array($action->status, [
+                AgentAction::STATUS_SUCCEEDED, AgentAction::STATUS_FAILED,
+            ], true)) {
+                return true; // Idempotent retry; do not overwrite first result.
+            }
+            if ($action->status !== AgentAction::STATUS_RUNNING) {
+                return false;
+            }
+            $timeout = (int) config('agent_ops.action_timeout', 120);
+            if ($action->started_at && time() - (int) $action->started_at > $timeout) {
+                $action->update([
+                    'status' => AgentAction::STATUS_TIMED_OUT,
+                    'error_code' => 'operation_timeout',
+                    'finished_at' => time(),
+                ]);
+                return false;
+            }
 
-        $ok = (bool) ($data['ok'] ?? false);
-        $action->update([
-            'status' => $ok ? AgentAction::STATUS_SUCCEEDED : AgentAction::STATUS_FAILED,
-            'result' => is_array($data['result'] ?? null) ? $data['result'] : [
-                'message' => $data['message'] ?? null,
-            ],
-            'error_code' => $ok ? null : (string) ($data['error_code'] ?? 'node_operation_failed'),
-            'finished_at' => time(),
-        ]);
+            $ok = (bool) ($data['ok'] ?? false);
+            $action->update([
+                'status' => $ok ? AgentAction::STATUS_SUCCEEDED : AgentAction::STATUS_FAILED,
+                'result' => is_array($data['result'] ?? null) ? $data['result'] : [
+                    'message' => $data['message'] ?? null,
+                ],
+                'error_code' => $ok ? null : (string) ($data['error_code'] ?? 'node_operation_failed'),
+                'finished_at' => time(),
+            ]);
+            return true;
+        });
     }
 
     public function refreshTimeout(AgentAction $action): AgentAction

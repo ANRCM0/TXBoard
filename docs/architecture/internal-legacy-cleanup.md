@@ -21,6 +21,10 @@
 - Native Node WebSocket tests verify that a query-token upgrade on `/ws` and an unversioned message are not accepted.
 - Run the full API, MySQL, route-inventory, container-image, frontend and MCP checks on this branch before merging. These checks do not substitute for live payment, external Node/Agent or staging tests.
 
+## Native WS completion after PR #184
+
+The unreachable inbound handlers were removed in PR #184. The newer native TX-Node contract provides an authenticated and idempotent `ops.result` handler, and the remaining outbound helper has been renamed to `NativeNodePush`. See [Native WebSocket v1](native-node-websocket.md).
+
 ## Deferred follow-up (not a reason to resurrect V1/V2)
 
-Audit helper methods in `NodeEventHandlers` for event types not yet supported by the native WS inbound schema, and remove historical audit masking or config comments only after checking persisted records. In particular, do **not** delete log redaction code solely because it names a former API: old stored events may still contain sensitive paths.
+Audit historical audit masking and configuration comments only after checking persisted records. In particular, do **not** delete log redaction code solely because it names a former API: old stored events may still contain sensitive paths.

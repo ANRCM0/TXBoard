@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { inventory, classify, assertCurrentBoundaries, markdown, parseArgs } from '../export-route-catalog.mjs';
 
 const required = [
@@ -48,4 +49,15 @@ test('rejects duplicate route verbs and malformed input', () => {
   assert.throws(() => inventory([...required, ...required.slice(0,1)]), /Duplicate/);
   assert.throws(() => inventory([{}]), /Invalid/);
   assert.throws(() => parseArgs([]), /Missing --routes/);
+});
+
+test('split Caddy exposes only the native TX-Node WebSocket Upgrade path', () => {
+  const caddy = readFileSync(new URL('../../api/.docker/caddy/Caddyfile.split', import.meta.url), 'utf8');
+  assert.match(caddy, /@nativeNodeWs path \/txapi\/node\/v1\/ws/);
+  assert.doesNotMatch(caddy, /@ws path \/ws(?:\s|$)/);
+});
+
+test('route classifier never labels removed V1/V2 routes as current', () => {
+  assert.equal(classify('api/v2/server/handshake')[1], 'forbidden');
+  assert.equal(classify('api/v1/user/info')[1], 'forbidden');
 });

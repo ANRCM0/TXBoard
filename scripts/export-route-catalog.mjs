@@ -22,12 +22,9 @@ export const classify = (uri) => {
   if (p.startsWith('/txapi/auth/')) return ['TXAPI authentication', 'mixed'];
   if (p.startsWith('/txapi/public/') || p === '/txapi/plans' || p === '/txapi/health') return ['TXAPI public', 'public'];
   if (p.startsWith('/txapi/')) return ['TXAPI user/application', 'user'];
-  if (p.startsWith('/api/v2/agent/')) return ['Legacy Agent Ops (CURRENT)', 'agent'];
-  if (p.startsWith('/api/v2/server/')) return ['Legacy Node/Machine (CURRENT)', 'node'];
-  if (p.startsWith('/api/v1/server/')) return ['Legacy Node (CURRENT)', 'node'];
-  if (p.startsWith('/api/v1/guest/payment/')) return ['Legacy payment callback (CURRENT)', 'provider-signature'];
-  if (p.startsWith('/api/v1/') || p.startsWith('/api/v2/')) return ['Legacy V1/V2 application', 'legacy'];
-  if (/^\/(?:s|\{[^}]+\})\/\{token\}$/.test(p) || p === '/api/v1/client/subscribe') return ['Subscription delivery', 'subscription-credential'];
+  // Retired versions are recognized only to report an accidental regression.
+  if (/^\/api\/v[12](?:\/|$)/.test(p)) return ['Forbidden retired route', 'forbidden'];
+  if (/^\/(?:s|\{[^}]+\})\/\{token\}$/.test(p)) return ['Subscription delivery', 'subscription-credential'];
   return ['Web/other', 'mixed'];
 };
 
