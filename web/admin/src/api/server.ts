@@ -88,7 +88,7 @@ export type NodeItem = {
 
 export type MachineRuntimeUpdateStatus = {
   request_id: string
-  target: 'latest'
+  target: 'latest' | 'dev'
   status: 'accepted' | 'running' | 'succeeded' | 'failed' | 'rolled_back'
   updated_at: number
   message?: string
@@ -99,6 +99,7 @@ export type MachineRuntimeStatus = {
   build_time?: string
   deployment?: 'docker' | 'unknown'
   updater_available?: boolean
+  update_targets?: Array<'latest' | 'dev'>
   update?: MachineRuntimeUpdateStatus
 }
 
@@ -117,6 +118,7 @@ export type MachineItem = {
   name?: string
   notes?: string | null
   is_active?: boolean
+  image_channel?: 'stable' | 'dev'
   last_seen_at?: number | string | null
   load_status?: MachineLoadStatus | null
   servers_count?: number
@@ -183,7 +185,7 @@ export {
 export type MachineRuntimeUpdateRequestResult = {
   machine_id: number
   request_id: string
-  target: 'latest'
+  target: 'latest' | 'dev'
   status: 'accepted'
 }
 

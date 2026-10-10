@@ -66,10 +66,41 @@ class MachineInstallCommandTest extends TestCase
             "https://raw.githubusercontent.com/ANRCM0/TX-Node-Installer/main/deploy.sh",
             $command
         );
-        $this->assertStringContainsString('install --mode machine --provider txboard', $command);
+        $this->assertStringContainsString('install --mode machine --provider txboard --channel', $command);
+        $this->assertStringContainsString("--channel 'stable'", $command);
         $this->assertStringContainsString("--panel-url 'https://panel.example.com'", $command);
         $this->assertStringContainsString("--machine-id {$machine->id}", $command);
         $this->assertStringContainsString("--token 'machine-token-1234567890'", $command);
         $this->assertStringNotContainsString('TXBoard/main/node/deploy.sh', $command);
+    }
+    public function test_machine_creation_with_dev_channel_generates_dev_install_command(): void
+    {
+        $response = $this->postJson(
+            "/txapi/admin/{$this->securePath}/network-machines",
+            ['name' => 'Tokyo-dev', 'image_channel' => 'dev']
+        );
+        $response->assertCreated();
+        $command = (string) $response->json('data.install_command');
+        $this->assertStringContainsString("--channel 'dev'", $command);
+        $id = $response->json('data.id');
+        $this->assertSame('dev', ServerMachine::findOrFail($id)->image_channel);
+        $this->getJson("/txapi/admin/{$this->securePath}/network-machines")
+            ->assertOk()->assertJsonPath('data.0.image_channel', 'dev');
+        $this->putJson("/txapi/admin/{$this->securePath}/network-machines/{$id}",
+            ['name' => 'Tokyo-dev', 'image_channel' => 'stable'])->assertOk();
+        $this->postJson("/txapi/admin/{$this->securePath}/network-machines/{$id}/credentials")
+            ->assertOk()->assertJsonPath('data.install_command',
+                $this->getStableCommand($id));
+        $this->postJson("/txapi/admin/{$this->securePath}/network-machines",
+            ['name' => 'Invalid', 'image_channel' => 'random'])->assertStatus(422);
+    }
+
+    private function getStableCommand(int $id): string
+    {
+        $machine = ServerMachine::findOrFail($id);
+        return sprintf(
+            "curl -fsSL 'https://raw.githubusercontent.com/ANRCM0/TX-Node-Installer/main/deploy.sh' | sudo bash -s -- install --mode machine --provider txboard --channel 'stable' --panel-url 'https://panel.example.com' --machine-id %d --token '%s'",
+            $id, $machine->token
+        );
     }
 }

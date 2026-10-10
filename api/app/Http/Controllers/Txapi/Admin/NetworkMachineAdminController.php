@@ -26,7 +26,7 @@ final class NetworkMachineAdminController
         $page = ServerMachine::query()->withCount('servers')->orderBy('id')
             ->paginate((int) ($query['per_page'] ?? 100),
                 ['id', 'name', 'notes', 'is_active', 'last_seen_at',
-                    'load_status', 'created_at', 'updated_at'], 'page',
+                    'load_status', 'image_channel', 'created_at', 'updated_at'], 'page',
                 (int) ($query['page'] ?? 1));
 
         $rows = $page->getCollection()->map(static fn (ServerMachine $machine): array => [
@@ -34,6 +34,7 @@ final class NetworkMachineAdminController
             'name' => $machine->name,
             'notes' => $machine->notes,
             'is_active' => (bool) $machine->is_active,
+            'image_channel' => $machine->image_channel ?: 'stable',
             'last_seen_at' => $machine->last_seen_at,
             'load_status' => $machine->load_status,
             'servers_count' => (int) $machine->servers_count,
@@ -56,6 +57,7 @@ final class NetworkMachineAdminController
             'name' => trim($data['name']),
             'notes' => $data['notes'] ?? null,
             'is_active' => $data['is_active'] ?? true,
+            'image_channel' => $data['image_channel'] ?? 'stable',
             'token' => ServerMachine::generateToken(),
         ]);
         return $this->secretResponse($request, [
@@ -75,6 +77,7 @@ final class NetworkMachineAdminController
             $machine->name = trim($data['name']);
             if (array_key_exists('notes', $data)) $machine->notes = $data['notes'];
             if (array_key_exists('is_active', $data)) $machine->is_active = $data['is_active'];
+            if (array_key_exists('image_channel', $data)) $machine->image_channel = $data['image_channel'];
             $machine->save();
             return true;
         });
@@ -186,7 +189,7 @@ final class NetworkMachineAdminController
 
     public function updateRuntime(Request $request, MachineRuntimeUpdateService $updates): JsonResponse
     {
-        $data = $request->validate(['target' => ['required', 'in:latest']]);
+        $data = $request->validate(['target' => ['required', 'in:latest,dev']]);
         $machine = ServerMachine::query()->find((int) $request->route('id'));
         if (!$machine) return $this->missing($request);
         try {
@@ -218,6 +221,7 @@ final class NetworkMachineAdminController
             'name' => ['required', 'string', 'max:255'],
             'notes' => ['sometimes', 'nullable', 'string', 'max:2000'],
             'is_active' => ['sometimes', 'boolean'],
+            'image_channel' => ['sometimes', 'in:stable,dev'],
         ]);
         if (trim($data['name']) === '') {
             throw \Illuminate\Validation\ValidationException::withMessages([
@@ -245,8 +249,9 @@ final class NetworkMachineAdminController
         $panelUrl = rtrim((string) (admin_setting('app_url') ?: $request->getSchemeAndHttpHost()), '/');
         $installerUrl = 'https://raw.githubusercontent.com/ANRCM0/TX-Node-Installer/main/deploy.sh';
         return sprintf(
-            'curl -fsSL %s | sudo bash -s -- install --mode machine --provider txboard --panel-url %s --machine-id %d --token %s',
+            'curl -fsSL %s | sudo bash -s -- install --mode machine --provider txboard --channel %s --panel-url %s --machine-id %d --token %s',
             escapeshellarg($installerUrl),
+            escapeshellarg($machine->image_channel ?: 'stable'),
             escapeshellarg($panelUrl),
             $machine->id,
             escapeshellarg($machine->token)

@@ -22,8 +22,8 @@ class MachineRuntimeUpdateService
      */
     public function request(ServerMachine $machine, string $target): array
     {
-        if ($target !== 'latest') {
-            throw new \InvalidArgumentException('Only the latest TX-Node runtime target is supported');
+        if (!in_array($target, ['latest', 'dev'], true)) {
+            throw new \InvalidArgumentException('Only stable (latest) and development (dev) update targets are supported');
         }
         if (!$machine->is_active) {
             throw new \InvalidArgumentException('Machine is disabled');
@@ -43,6 +43,9 @@ class MachineRuntimeUpdateService
         if (!is_array($runtime) || ($runtime['updater_available'] ?? false) !== true) {
             throw new \InvalidArgumentException('Machine runtime updater is unavailable; update TX-Node Installer first');
         }
+        if ($target === 'dev' && !in_array('dev', $runtime['update_targets'] ?? [], true)) {
+            throw new \InvalidArgumentException('This Machine runtime has not advertised dev update support; update TX-Node and Installer first');
+        }
 
         $requestId = 'mup_' . Str::lower((string) Str::ulid());
         $cooldownKey = "machine_runtime_update:cooldown:{$machine->id}";
@@ -52,7 +55,7 @@ class MachineRuntimeUpdateService
 
         $published = NodeSyncService::pushMachine((int) $machine->id, self::EVENT, [
             'request_id' => $requestId,
-            'target' => 'latest',
+            'target' => $target,
         ]);
 
         if (!$published) {
@@ -63,7 +66,7 @@ class MachineRuntimeUpdateService
         return [
             'machine_id' => (int) $machine->id,
             'request_id' => $requestId,
-            'target' => 'latest',
+            'target' => $target,
             'status' => 'accepted',
         ];
     }
