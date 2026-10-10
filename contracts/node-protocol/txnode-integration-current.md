@@ -1,6 +1,6 @@
-# TXNode 对接 TXBoard 原生 Node API / WS（CURRENT）
+# TXNode HTTP / WebSocket 对接手册
 
-> TXBoard `main` 路由与服务端协议核对于 2026-10-10。**这是供 TX-Node（独立 Go/Agent 仓库）实现适配器的服务端契约**，不是已经证明两仓或生产实例互通的声明。现行唯一核心 Node 命名空间是 `/txapi/node/v1/*`；`/api/v1/server/UniProxy/*`、`/api/v2/server/*` 和旧 `/ws` 在当前 TXBoard 路由表已移除，不提供兼容兜底。
+> 接口以 `api/routes/txapi.php`、`TxNodeAuth`、`NodeProtocolController` 和 `NativeNodeWebSocket` 为准；两端实际环境联调需另行验证。
 
 ## 1. 身份与连接模式
 
@@ -14,9 +14,9 @@
 
 不要将 Bearer 放入 query string、JSON body、日志或 URL；Node / Machine 身份不得替换普通用户 Sanctum 或管理员身份。当前单节点模式使用全局配置的 `server_token`；机器模式使用独立且可轮换的 Machine Token。
 
-`X-TX-Node-ID`、`X-TX-Machine-ID` 是协议对象的 ID，不受内部数据库表名前缀 `v2_*` / `tx_*` 影响。HTTP 身份校验可返回 `401 NODE_UNAUTHORIZED`、`422 NODE_ID_REQUIRED` 或 `404 NODE_NOT_FOUND`。客户端不要靠自动猜测节点 ID 重试。
+`X-TX-Node-ID`、`X-TX-Machine-ID` 是协议对象的 ID，不依赖内部数据库表名。HTTP 身份校验可返回 `401 NODE_UNAUTHORIZED`、`422 NODE_ID_REQUIRED` 或 `404 NODE_NOT_FOUND`。客户端不要靠自动猜测节点 ID 重试。
 
-## 2. 当前 HTTP 路由矩阵
+## 2. HTTP 路由
 
 | 方法 | 完整路径 | 身份 | 关键行为 |
 | --- | --- | --- | --- |
@@ -103,7 +103,7 @@ Content-Type: application/json
 }
 ```
 
-**`queued` 不是 SQL 已结算回执。** 幂等键为 `(server_id,batch_id)`，流量、用户统计、节点统计和账本写入在事务中完成。服务端有异步队列失败/重试窗口；当前协议没有可查询的永久结算回执。上线前必须补全实际 TX-Node 持久化发送队列、异常重试、人工对账和失败任务监控的实测方案。
+**`queued` 不是 SQL 已结算回执。** 幂等键为 `(server_id,batch_id)`，流量、用户统计、节点统计和账本写入在事务中完成。服务端有异步队列失败/重试窗口；当前接口未提供可查询的永久结算回执；客户端应有持久化发送队列、相同批次重试和对账监测。
 
 仅 `status` / `alive` / `online` / `metrics` 的报告可不包含非空流量；正常返回 `settlement:"none"`。参数不合法时可能收到 `422 INVALID_REPORT`、`422 INVALID_TRAFFIC`、`422 BATCH_ID_REQUIRED`；超大 HTTP 报文为 413。
 
@@ -190,13 +190,13 @@ location = /txapi/node/v1/ws {
 
 容器化部署中 `127.0.0.1` 指向代理**自身**；若 Workerman 不在同一网络命名空间，须改成实际可解析的服务地址。不能在任意公网端口裸露 Workerman 作为 TLS 替代品。断开 WS 只需关闭开关并重启相关 Worker，不要自动删除或回滚账本。
 
-## 4. 上线前协议验收清单
+## 4. 联调检查表
 
 - Node/Machine Bearer 及 ID 隔离；禁用机器、错误节点、轮换 Token 后立即拒绝。
 - 握手能力协商正确；`/config`、`/users` 的 200/304 与 ETag 按节点隔离。
 - 带 ID 的流量批次与完全相同重试、乱序重发、一致性校验；失败队列与 SQL 故障处置。
 - 机器发现、状态、并行多个节点；WS 连接认证、HTTP 降级、心跳和重连；Agent Ops 收到/回执。
 - 正常用户订阅、节点实际核心协议和真实 TX-Node 二进制互通；生产 DNS/TLS/反代、负载均衡。
-- 当前 TXBoard 服务端有自动化 HTTP / MySQL / 合成 WS 协议测试；**跨仓真实 TX-Node 联调、生产切流和部署成功仍须分别验收**。
+- 使用实际 TXNode 客户端验证上述场景；服务端自动化测试不能代替跨组件联调。
 
-相关源码：`api/app/Http/Middleware/TxNodeAuth.php`、`api/app/Http/Controllers/Txapi/NodeProtocolController.php`、`api/app/Domains/Network/NativeNodeReport.php`、`api/app/WebSocket/NativeNodeWebSocket.php`。协议补充：[Node Native v1](./node-native-v1.md)、[Native WS v1](../../docs/architecture/native-node-websocket.md)。
+相关源码：`api/app/Http/Middleware/TxNodeAuth.php`、`api/app/Http/Controllers/Txapi/NodeProtocolController.php`、`api/app/Domains/Network/NativeNodeReport.php`、`api/app/WebSocket/NativeNodeWebSocket.php`。补充：[Machine Runtime Update v1](./machine-runtime-update-v1.md)。

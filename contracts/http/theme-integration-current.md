@@ -1,12 +1,12 @@
-# 外部主题接入 TXAPI（CURRENT）
+# 外部主题 TXAPI 对接手册
 
-> 对应 TXBoard `main`，核对日期：2026-10-10。本文是**现行服务端路由的外部主题对接指南**，不是历史 Xboard/V2 接口说明，也不代表已在第三方主题实际联调。HTTP 的权威源是 `api/routes/txapi.php` 和 `api/app/Providers/RouteServiceProvider.php`；[HTTP 路由清单](../../docs/architecture/http-route-inventory.md) 可在 CI 导出。**不存在** `/api/v1/*`、`/api/v2/*` 兼容 API。
+> 当前接口以 `api/routes/txapi.php`、`api/routes/web.php` 为准；外部部署须自行验证 HTTP 连通性。
 
 ## 1. 接入原则
 
-- 站点同源访问：`https://<panel-host>/txapi`。外部独立域名必须自行处理受信任的 HTTPS 代理/CORS；文档**不承诺**跨域自动开放。不要硬编码 `/api/v1`、`/api/v2` 或 BFF 计划中的路径。
+- 站点同源访问：`https://<panel-host>/txapi`。外部独立域名必须自行处理受信任的 HTTPS 代理/CORS；文档**不承诺**跨域自动开放。只调用当前路由表实际注册的接口。
 - 无登录的页面仅调用 `/public/*` 和公开套餐；登录后使用普通用户 Sanctum Bearer 调用 `/me/*`、`/orders/*`、`/billing/*` 等。**不要将管理员、Node、Machine、Agent 或支付提供商密钥打包进浏览器主题**。
-- 原生成功通常是 `{"data": ..., "request_id":"..."}`，分页额外带 `meta`；原生业务失败是 `{"error":{"code":"...","message":"..."},"request_id":"..."}`，并返回真实 HTTP 状态及 `X-Request-Id`。不要解析旧版 `{"status":...}`。部分框架验证/异常响应可能不同，应保留状态码和请求 ID 进行排障。
+- 原生成功通常是 `{"data": ..., "request_id":"..."}`，分页额外带 `meta`；原生业务失败是 `{"error":{"code":"...","message":"..."},"request_id":"..."}`，并返回真实 HTTP 状态及 `X-Request-Id`。请根据 HTTP 状态码与 `error.code` 判断失败。部分框架验证/异常响应可能不同，应保留状态码和请求 ID 进行排障。
 - `auth/login` 的 `data.auth_data` **已经包含** `Bearer ` 前缀，直接原样放在 `Authorization` 请求头；不要再次拼接 `Bearer `。浏览器不要持久化管理员令牌/订阅密钥，不要写进 URL 或日志。
 - 金额以 `*_minor`（最小货币单位的整数）为准，流量以 `*_bytes` 为准；日期应看字段：多数订单时间为 ISO 8601 UTC，**充值记录的 `created_at` / `paid_at` 当前为 Unix 秒时间戳**，不可统一盲转。
 - 对支付类写入，只有服务端或经过签名的支付回调能改变支付状态；浏览器不能以 `checkout` 返回为支付成功凭据。
@@ -57,9 +57,9 @@ Accept: application/json
 Authorization: Bearer <opaque-session-token>
 ```
 
-## 3. 登录后的主题业务路由（全量 user group）
+## 3. 登录后的主题业务路由
 
-这里列出 `api/routes/txapi.php` 中 `txapi.user` 身份域的路由，不含管理员、Node、Agent。除特殊注明外均为 **User Bearer**，并受 `throttle:120,1` 及具体子接口限流约束。
+以下为 `txapi.user` 身份域的业务路由。除特殊注明外均为 **User Bearer**，并受 `throttle:120,1` 及具体子接口限流约束。
 
 | 分类 | 方法 + 路径 | 关键字段/用途 |
 | --- | --- | --- |
@@ -115,7 +115,7 @@ Authorization: Bearer <opaque-session-token>
 ### 套餐购买
 
 1. `GET /txapi/plans` 展示可售套餐；登录后 `GET /txapi/plans/{planId}` 查询本人资格。
-2. `POST /txapi/orders`，例如 `{"plan_id":1,"period":"month_price"}` **仅是字段形状示例**；`period` 的合法值须从当前套餐的 `prices[].period` 选择，不能假定所有实例都接受 `month_price`。
+2. `POST /txapi/orders`，例如 `{"plan_id":1,"period":"<prices[].period>"}` 是字段形状示例；`period` 的合法值须从当前套餐的 `prices[].period` 选择，不可猜测未提供的周期。
 3. 取 `data.trade_no`，`GET /txapi/billing/payment-methods`，然后 `POST /txapi/orders/{tradeNo}/checkout` 提交选定的 `method` ID。
 4. 根据 checkout 的 `data.type` 和 `data.data` 处理重定向/支付动作，并轮询 `GET /txapi/orders/{tradeNo}` 的状态。不可用客户端金额或回跳 URL 强行标记已支付。
 
@@ -139,6 +139,6 @@ Idempotency-Key: 00000000-0000-4000-8000-000000000001
 ## 5. 错误、安全与验收
 
 - **401** 未登录/Token 失效：停止带旧令牌重试；**403** 无权限；**404** 资源隐藏或不存在；**409** 业务状态冲突；**422** 表单/字段校验失败；**429** 命中限流；**5xx** 服务端问题。除 401 外也不能以任何状态码直接判定支付成功。
-- 前端主题的用户 Token 与管理员 Token 严格隔离；管理员使用 `/txapi/admin/{admin_path}/*`，不要猜测管理员动态路径或将它写死在主题源码。
+- 前端主题的用户 Token 与管理员 Token 严格隔离；管理员使用 `/txapi/admin/{admin_path}/*`，不要猜测或硬编码管理员动态路径。
 - 所有请求均使用 TLS；敏感数据仅在受控客户端状态中处理。对 CDN、日志和第三方遥测脱敏 `Authorization`、`auth_data`、`subscribe_url`、`token`。
 - 主题开发者先验证公开配置、登录、个人中心、套餐/订单、回调后状态、工单与支付异常；生产联调另按 [发布验收](../../docs/operations/release-staging-acceptance.md)。完整**服务端注册**路由见 CI 导出的 `txboard-http-route-catalog`，未列入上述用户表的管理员/Agent/插件路由不得擅自复用。
