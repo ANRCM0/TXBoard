@@ -71,9 +71,9 @@ final class AgentAdminController
             'expires_in_days' => ['sometimes', 'integer', 'min:1', 'max:90'],
             'target_mode' => ['sometimes', 'in:all,restricted'],
             'target_node_ids' => ['sometimes', 'array', 'max:100'],
-            'target_node_ids.*' => ['integer', 'min:1', 'distinct', 'exists:v2_server,id'],
+            'target_node_ids.*' => ['integer', 'min:1', 'distinct', \Illuminate\Validation\Rule::exists(\App\Support\Database\NativeTableName::runtime('v2_server'), 'id')],
             'target_machine_ids' => ['sometimes', 'array', 'max:100'],
-            'target_machine_ids.*' => ['integer', 'min:1', 'distinct', 'exists:v2_server_machine,id'],
+            'target_machine_ids.*' => ['integer', 'min:1', 'distinct', \Illuminate\Validation\Rule::exists(\App\Support\Database\NativeTableName::runtime('v2_server_machine'), 'id')],
         ]);
         try {
             $functional = AgentAbility::validate($params['abilities'] ?? AgentAbility::DEFAULT_READ);
