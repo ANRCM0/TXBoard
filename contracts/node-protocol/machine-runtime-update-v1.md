@@ -54,7 +54,7 @@ No existing Node Ops v1 event is changed.
 
 ## Machine status extension
 
-`POST /api/v2/server/machine/status` may include an optional `runtime` object:
+`POST /txapi/node/v1/machine/status` may include an optional `runtime` object:
 
 ```json
 {
@@ -104,12 +104,13 @@ Envelope:
 
 ```json
 {
+  "protocol_version": 1,
   "event": "ops.machine.runtime.update",
+  "request_id": "native-ws-message-id",
   "data": {
     "request_id": "mup_01J...",
     "target": "latest"
-  },
-  "timestamp": 1780000000
+  }
 }
 ```
 
@@ -200,7 +201,7 @@ The action must:
 Recommended request:
 
 ```http
-POST /api/v2/{secure_path}/server/machine/runtime/update
+POST /txapi/admin/{admin_path}/network-machines/{id}/runtime/update
 Content-Type: application/json
 
 {

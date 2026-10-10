@@ -63,10 +63,10 @@ class MachineInstallCommandTest extends TestCase
         $command = (string) $response->json('data.install_command');
 
         $this->assertStringContainsString(
-            "https://raw.githubusercontent.com/PaiMonCai/TX-Node-Installer/main/deploy.sh",
+            "https://raw.githubusercontent.com/ANRCM0/TX-Node-Installer/main/deploy.sh",
             $command
         );
-        $this->assertStringContainsString('install --mode machine', $command);
+        $this->assertStringContainsString('install --mode machine --provider txboard', $command);
         $this->assertStringContainsString("--panel-url 'https://panel.example.com'", $command);
         $this->assertStringContainsString("--machine-id {$machine->id}", $command);
         $this->assertStringContainsString("--token 'machine-token-1234567890'", $command);
