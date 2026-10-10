@@ -49,6 +49,53 @@ DB::table('v2_traffic_batch')->insert([
     'payload_hash' => str_repeat('f', 64), 'created_at' => time(),
 ]);
 
+
+$owner = \App\Models\User::create([
+    'email' => 'tx-cutover-owner@example.test',
+    'password' => password_hash('fixture-only', PASSWORD_BCRYPT),
+    'uuid' => '00000000-0000-0000-0000-000000007701',
+    'token' => str_repeat('7', 32),
+    'balance' => 8450, 'commission_balance' => 275,
+    'u' => 0, 'd' => 0, 'transfer_enable' => 1073741824,
+    'created_at' => time(), 'updated_at' => time(),
+]);
+$planModel = \App\Models\Plan::create([
+    'name' => 'Cutover fidelity plan', 'group_id' => 1,
+    'transfer_enable' => 2, 'show' => 1, 'sort' => 0,
+    'sell' => 1, 'renew' => 1,
+    'prices' => [\App\Models\Plan::PERIOD_MONTHLY => 10],
+    'reset_traffic_method' => \App\Models\Plan::RESET_TRAFFIC_MONTHLY,
+    'created_at' => time(), 'updated_at' => time(),
+]);
+$payment = \App\Models\Payment::create([
+    'uuid' => 'tx-cutover-payment-7701',
+    'payment' => 'EPay', 'name' => 'Synthetic cutover gateway',
+    'enable' => true, 'config' => ['key' => 'fixture-only'],
+    'created_at' => time(), 'updated_at' => time(),
+]);
+\App\Models\Order::create([
+    'user_id' => $owner->id, 'plan_id' => $planModel->id,
+    'payment_id' => $payment->id,
+    'trade_no' => 'TX-CUTOVER-CI-ORDER-7701',
+    'period' => \App\Models\Plan::PERIOD_MONTHLY,
+    'type' => \App\Models\Order::TYPE_NEW_PURCHASE,
+    'status' => \App\Models\Order::STATUS_COMPLETED,
+    'total_amount' => 1299,
+    'created_at' => time(), 'updated_at' => time(),
+]);
+DB::table('v2_wallet_recharge')->insert([
+    'user_id' => $owner->id, 'payment_id' => $payment->id,
+    'trade_no' => 'TX-CUTOVER-CI-RECHARGE-7701',
+    'request_key' => '00000000-0000-0000-0000-000000007702',
+    'amount_minor' => 2500, 'fee_minor' => 0,
+    'status' => 0, 'created_at' => time(), 'updated_at' => time(),
+]);
+$server = \App\Models\Server::create([
+    'name' => 'cutover-ci-node', 'type' => \App\Models\Server::TYPE_VMESS,
+    'host' => '127.0.0.1', 'port' => '443', 'server_port' => 443,
+    'rate' => 2, 'group_ids' => [1], 'enabled' => true,
+]);
+
 // CI schemas are small. Full row snapshots are explicitly NOT for production.
 $fingerprint = static function (string $table): string {
     $rows = [];
@@ -104,6 +151,49 @@ try {
         }
     }
 
+
+    // Verify actual model and raw-SQL reads while every live application
+    // table has the native name. The financial amounts are in minor units.
+    $nativeOwner = \App\Models\User::findOrFail($owner->id);
+    if ((int) $nativeOwner->balance !== 8450 ||
+        (int) $nativeOwner->commission_balance !== 275 ||
+        (int) \App\Models\Order::where('trade_no', 'TX-CUTOVER-CI-ORDER-7701')->value('total_amount') !== 1299 ||
+        (int) \App\Models\WalletRecharge::where('trade_no', 'TX-CUTOVER-CI-RECHARGE-7701')->value('amount_minor') !== 2500 ||
+        (string) \App\Models\Setting::where('name', 'tx_cutover_ci_fixture')->value('value') !== 'preserved') {
+        throw new RuntimeException('Native financial or settings read-path validation failed');
+    }
+
+    // Exercise the production traffic job against tx_* tables, including
+    // idempotent replay, rather than merely checking table names.
+    $job = new \App\Jobs\TrafficBatchJob(
+        ['id' => $server->id, 'rate' => 2],
+        [$owner->id => [100, 300]],
+        'vmess',
+        strtotime(date('Y-m-d')),
+        'tx-native-settlement-7701'
+    );
+    $job->handle();
+    $job->handle();
+    $settledOwner = \App\Models\User::findOrFail($owner->id);
+    if ((int) $settledOwner->u !== 200 || (int) $settledOwner->d !== 600 ||
+        (int) \App\Models\Server::findOrFail($server->id)->u !== 100 ||
+        (int) \App\Models\Server::findOrFail($server->id)->d !== 300 ||
+        DB::table(NativeTableName::runtime('v2_traffic_batch'))
+            ->where('batch_id', 'tx-native-settlement-7701')->count() !== 1 ||
+        DB::table(NativeTableName::runtime('v2_stat_user'))
+            ->where('user_id', $owner->id)->count() !== 1 ||
+        DB::table(NativeTableName::runtime('v2_stat_server'))
+            ->where('server_id', $server->id)->count() !== 1) {
+        throw new RuntimeException('Native transaction or idempotent traffic settlement failed');
+    }
+
+    // The reverse rename must preserve successful native writes, not merely
+    // the original pre-cutover rows. Never simulate rollback by dropping data.
+    $afterNativeWrites = [];
+    foreach ($legacy as $old) {
+        $afterNativeWrites[$old] = $fingerprint(NativeTableName::resolve($old, true));
+    }
+
     if (Artisan::call('txboard:database-cutover', [
         '--plan' => $path, '--direction' => 'down', '--execute' => true
     ]) !== 0) {
@@ -113,11 +203,11 @@ try {
     Config::set('database_native.native_tables', false);
     foreach ($legacy as $old) {
         if (!Schema::hasTable($old) || Schema::hasTable(NativeTableName::resolve($old, true)) ||
-            $before[$old] !== $fingerprint($old)) {
+            $afterNativeWrites[$old] !== $fingerprint($old)) {
             throw new RuntimeException('Rollback row-level fidelity failed for ' . $old);
         }
     }
-    echo "PASS: " . count($legacy) . " real MySQL 8.4 application tables renamed in one DDL statement, rows preserved and rolled back.\n";
+    echo "PASS: " . count($legacy) . " MySQL 8.4 tables, financial rows, native traffic writes and rollback fingerprints verified.\n";
 } finally {
     if ($up) {
         // The CI DB is disposable; nevertheless try to restore its legacy shape.

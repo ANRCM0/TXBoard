@@ -4,7 +4,7 @@ The `txboard:database-cutover` command requires MySQL, a reviewed full-table pla
 
 ## CI evidence
 
-The MySQL 8.4 workflow first performs the full legacy migration replay, then the normal billing, traffic and API tests. The final `database-native-full-roundtrip.php` smoke runs only in `APP_ENV=testing` against `txboard_ci`. It seeds a setting and traffic idempotency record, builds an approved plan inside this disposable database, fingerprints every row of every live V2 table, runs a single multi-table rename, verifies Eloquent native resolution and all fingerprints, and reverses all tables with matching fingerprints. The probe does not establish production readiness.
+The MySQL 8.4 workflow first performs the full legacy migration replay, then the normal billing, traffic and API tests. The final `database-native-full-roundtrip.php` smoke runs only in `APP_ENV=testing` against `txboard_ci`. It seeds a setting, user balances, a paid order, a pending wallet recharge, a payment method, a server, and a traffic idempotency record; it builds an approved plan inside this disposable database, fingerprints every row of every live V2 table, runs a single multi-table rename, verifies Eloquent native resolution and all fingerprints, then runs the native traffic settlement job twice to validate idempotency and native writes; it reverses all tables with matching post-write fingerprints. The probe does not establish production readiness.
 
 ## Maintained production procedure
 
