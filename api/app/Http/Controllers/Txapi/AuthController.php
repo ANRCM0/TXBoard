@@ -38,8 +38,7 @@ final class AuthController
                 $limited ? 429 : 401);
         }
 
-        // AuthService is the same issuer used by V1, so old Sanctum sessions
-        // remain valid. Its legacy response contains the PRIVATE subscription
+        // AuthService issues Sanctum sessions. Its internal response contains the PRIVATE subscription
         // token and admin secure path; neither must enter the native envelope.
         $data = (new AuthService($result))->generateAuthData();
         return TxapiResponse::success($request, ['auth_data' => $data['auth_data']]);
@@ -135,8 +134,7 @@ final class AuthController
     public function oneTimeToken(Request $request, MailLinkService $service): JsonResponse
     {
         $input = $request->validate(['verify' => ['required', 'string', 'max:200']]);
-        // The same disposable TEMP_TOKEN cache is shared with legacy V1,
-        // so redeeming via either API consumes the code.
+        // The disposable TEMP_TOKEN cache is atomically consumed by this native endpoint.
         $id = $service->handleTokenLogin($input['verify']);
         if (!$id) {
             return TxapiResponse::error($request, 'TOKEN_INVALID',

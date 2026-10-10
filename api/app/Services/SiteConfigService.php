@@ -7,7 +7,7 @@ use App\Utils\Dict;
 use App\Utils\Helper;
 
 /**
- * Single source of truth for legacy and native UI settings.
+ * Single source of truth for native public and authenticated UI settings.
  * The native controllers wrap these projections in TXAPI's envelope.
  */
 final class SiteConfigService
@@ -42,7 +42,7 @@ final class SiteConfigService
         'try_out_enable' => (int) admin_setting('try_out_enable', 0),
         'try_out_plan_id' => (int) admin_setting('try_out_plan_id', 0),
         'traffic_warn_rate' => admin_setting('traffic_warn_rate', 0),
-        // 保持向后兼容
+        // Existing frontend field retained independently of the removed HTTP API.
         'is_recaptcha' => (int) admin_setting('captcha_enable', 0) ? 1 : 0,
         ];
         

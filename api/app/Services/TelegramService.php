@@ -148,7 +148,7 @@ class TelegramService
             return $data;
 
         } catch (\Exception $e) {
-            // The webhook URL embeds a digest accepted by the live V1
+            // The webhook URL embeds a digest accepted by the native Telegram
             // callback as an authentication credential. Never log it.
             $safeParams = $method === 'setWebhook' ? ['url' => '[REDACTED]'] : $params;
             Log::error('Telegram API 请求失败', [

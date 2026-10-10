@@ -10,7 +10,8 @@ export type ApiEnvelope<T> = {
 const AUTH_KEY = 'txboard_auth_data'
 const LEGACY_AUTH_KEY = 'xboard_auth_data'
 const nativeBaseURL = (import.meta.env.VITE_TXAPI_PREFIX || '/txapi').replace(/\/$/, '')
-const baseURL = (import.meta.env.VITE_API_V1_PREFIX || '/api/v1').replace(/\/$/, '')
+// Optional plugin API calls use same-origin /plugin/*, never removed V1/V2 paths.
+const baseURL = '/'
 
 export const api = axios.create({
   baseURL,

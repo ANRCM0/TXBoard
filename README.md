@@ -8,6 +8,8 @@ TXBoard 是一个模块化的网络服务 **Control Plane（控制面板）**，
 - **节点**：节点运行时由独立的 [TX-Node](https://github.com/ANRCM0/TX-Node) 提供，通过版本化 HTTP / WebSocket 契约与 TXBoard 通信。
 - **扩展**：内置 Theme / Plugin Runtime、Module Platform v1；可选插件示例见 [TXBoard-AccessAudit](https://github.com/ANRCM0/TXBoard-AccessAudit)。
 
+**开发期 API 清理说明（2026-10-10，PR #182）：** TXBoard 主仓的 Xboard `/api/v1/*` 和 `/api/v2/*` 注册路由已移除，不保留兼容入口；正式业务 API 使用 `/txapi/*`，Agent 使用 `/txapi/agent/v1/*`，支付和 Telegram 回调也使用 TXAPI。动态订阅地址 `/{subscribe_path}/{token}` 仍为必要功能。使用旧地址的外部客户端必须升级。
+
 项目源代码、生产安装器与节点运行时分别维护：
 
 | 仓库 | 用途 |

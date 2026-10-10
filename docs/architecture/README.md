@@ -2,9 +2,9 @@
 
 ## 当前（CURRENT）与目标（TARGET）
 
-- **CURRENT**：现行 Laravel API 路由仍包含 `/api/v1`、`/api/v2`；Module Platform v1、Plugin/Theme/Agent Ops 与 Node contracts 已运行。
-- **CURRENT 2026-10-10**：第一方 React Admin 后台路由已全部迁至 `/txapi/admin/{admin_path}/*`、旧 V2 Admin 注册树已删除（PR #163–#179），P1–P4 Node/账本/用户功能服务端已实现；**V1/V2 非后台外部运行接口、Agent Ops、订阅和支付商旧回调仍有效**。完整 CI 与合成恢复已通过，外部 TX-Node/支付商真实联调未验收。
-- **TARGET**：逐服务版本化跨仓协议、完成 Node/Agent/独立 Gateway 适配与真实部署验收，再审议非管理 V1/V2 退役。
+- **CURRENT (TXAPI-only 开发分支)**：已删除 `/api/v1/*`、`/api/v2/*` 注册入口与路由文件；Laravel 公开、用户、管理、节点、Agent、签名支付和 Telegram Webhook 均由 `/txapi/*` 承载。
+- **CURRENT 2026-10-10（PR #182）**：原生 React Admin、TXAPI Node HTTP/WS、`/txapi/agent/v1/*`、`/txapi/integrations/telegram/webhook` 与 `/txapi/payment/webhook/*` 是本仓注册的入口；动态订阅 `/{subscribe_path}/{token}` 是独立的核心分发功能。第三方调用者必须升级；跨组件真实联调仍未验收。
+- **TARGET**：完成跨组件协议字段验证、Agent 响应契约原生化和真实部署验收；不恢复任何 V1/V2 HTTP 兼容入口。
 
 ## 外部开发者先看（当前协议）
 
