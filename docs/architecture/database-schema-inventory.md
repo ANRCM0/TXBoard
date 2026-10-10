@@ -4,7 +4,7 @@ Run `node scripts/database-schema-inventory.mjs --root . --output artifacts/data
 
 This command **only scans source code** and produces an artifact. It never connects to MySQL, alters tables, or executes migrations. The inventory lists `v2_*` names, a proposed `tx_*` naming map, migration creators, model and SQL call sites, and dynamic table calls requiring human review. Proposed names are **not yet approved**, and the script does not authorize production renaming.
 
-The inventory is automatically tested and uploaded in the P0 workflow. The check fails for an explicit model/table reference without a matching creation migration. It does **not** prove the deployed database schema matches the source, nor does it detect dynamic/plugin SQL perfectly.
+The inventory is automatically tested and uploaded in the P0 workflow. Missing creation migrations are **warnings**, not automatic failures: existing code references \`v2_server_log\`, \`v2_server_stat\`, and \`v2_stat_order\` without a matching create migration in the current tree. These require explicit verification against MySQL before cutover. The strict check fails on mapping collisions and other hard invariants, while preserving warnings in the artifact. It does **not** prove the deployed database schema matches the source, nor does it detect dynamic/plugin SQL perfectly.
 
 ## Gates before an actual rename
 

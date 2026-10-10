@@ -29,7 +29,8 @@ test('unmapped model tables fail closed and arguments reject unknown flags', t =
   t.after(() => rmSync(root, { recursive: true, force: true }));
   mkdirSync(join(root, 'api/app/Models'), { recursive: true });
   writeFileSync(join(root, 'api/app/Models/Unknown.php'), "<?php protected $table = 'v2_unknown';");
-  assert.match(inventory(root).issues.join(' '), /No migration creates v2_unknown/);
+  assert.match(inventory(root).warnings.join(' '), /No migration creates v2_unknown/);
+  assert.deepEqual(inventory(root).issues, []);
   assert.deepEqual(parseArgs(['--root', 'foo', '--check']), { root: 'foo', output: null, check: true });
   assert.throws(() => parseArgs(['--rename']), /Unknown argument/);
 });

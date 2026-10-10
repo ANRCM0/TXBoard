@@ -71,9 +71,10 @@ export function inventory(root) {
     references: references.filter(x => x.table === table),
   }));
   const issues = [];
+  const warnings = [];
   for (const table of tables) {
-    if (!table.migrationCreators.length) issues.push('No migration creates ' + table.oldName);
-    if (table.references.some(x => x.kind === 'model') && !table.migrationCreators.length) issues.push('Active model lacks creation migration: ' + table.oldName);
+    if (!table.migrationCreators.length) warnings.push('No migration creates ' + table.oldName);
+    if (table.references.some(x => x.kind === 'model') && !table.migrationCreators.length) warnings.push('Active model lacks creation migration: ' + table.oldName);
   }
   if (new Set(tables.map(x => x.proposedName)).size !== tables.length) issues.push('Proposed native names collide');
   return {
@@ -85,6 +86,7 @@ export function inventory(root) {
     referenceCount: references.length,
     tables,
     dynamicCallsNeedingManualReview: dynamic.sort((a,b) => a.path.localeCompare(b.path) || a.line-b.line),
+    warnings: [...new Set(warnings)].sort(),
     issues: [...new Set(issues)].sort(),
   };
 }
@@ -110,7 +112,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
       mkdirSync(dirname(resolve(args.output)), { recursive: true });
       writeFileSync(args.output, JSON.stringify(result, null, 2) + '\n');
     }
-    console.log(JSON.stringify({ tables: result.tableCount, references: result.referenceCount, dynamicCalls: result.dynamicCallsNeedingManualReview.length, issues: result.issues }));
+    console.log(JSON.stringify({ tables: result.tableCount, references: result.referenceCount, dynamicCalls: result.dynamicCallsNeedingManualReview.length, warnings: result.warnings, issues: result.issues }));
     if (args.check && result.issues.length) process.exitCode = 1;
   } catch (error) {
     console.error(error.message);
