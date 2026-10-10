@@ -1397,12 +1397,12 @@ describe('native management bootstrap contract', () => {
       },
       request_id: 'native-admin-sign-in',
     } })
-    await expect(login('admin@example.test', 'pass', { turnstile: 'captcha-test' }))
+    await expect(login('admin@example.test', 'pass', { turnstile_token: 'captcha-test' }))
       .resolves.toMatchObject({ is_admin: true, secure_path: 'rotated-secret' })
     expect(seen.map(config => [config.method, config.url, config.baseURL]))
       .toEqual([['post', '/auth/admin/login', '/txapi']])
     expect(JSON.parse(String(seen[0].data))).toEqual({
-      email: 'admin@example.test', password: 'pass', turnstile: 'captcha-test',
+      email: 'admin@example.test', password: 'pass', turnstile_token: 'captcha-test',
     })
   })
 })
