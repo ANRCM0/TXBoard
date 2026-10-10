@@ -11,9 +11,9 @@
 #                       unreadable without it, so a database-only backup is not
 #                       a backup.
 #   storage-app.tar.gz  uploads and anything else under storage/app
-#   storage-theme.tar.gz  user-installed themes under storage/theme (if present)
-#   plugins.tar.gz        installed plugin packages under plugins (if present)
-#   CHECKSUMS.sha256      verify all present payloads before restoration
+#   storage-theme.tar.gz  installed user themes under storage/theme (if present)
+#   plugins.tar.gz        installed plugins under plugins (if present)
+#   CHECKSUMS.sha256      integrity for all present backed-up payloads
 #   MANIFEST            what the archive is, so a restore needs no guesswork
 #
 # Environment:
@@ -60,7 +60,6 @@ run_backup() (
     stamp=$(date -u '+%Y%m%dT%H%M%SZ')
     dest="$BACKUP_DIR/$stamp"
     mkdir -p "$dest"
-    # Any interrupted or incomplete backup is unusable and must not be retained.
     trap 'rm -rf "$dest"' EXIT
     trap 'exit 1' HUP INT TERM
 
@@ -100,12 +99,28 @@ run_backup() (
 
     log "  db.sql.gz: $(wc -c < "$dest/db.sql.gz" | tr -d ' ') bytes"
 
-    # APP_KEY is required to decrypt stored credentials on restore.
+    # APP_KEY is indispensable when restoring encrypted settings.
     if [ ! -s "$BACKUP_SOURCE_DIR/.env" ] ||
-       ! grep -Eq '^APP_KEY=.+
+       ! grep -Eq '^APP_KEY=.+$' "$BACKUP_SOURCE_DIR/.env"; then
+        log "ERROR: missing .env or APP_KEY; refusing incomplete backup"
+        return 1
+    fi
+    cp "$BACKUP_SOURCE_DIR/.env" "$dest/env"
+    chmod 600 "$dest/env"
+    log "  captured .env (contains APP_KEY)"
 
-    # User-installed themes and plugins are persisted on separate host paths
-    # from storage/app. Without these files, a database restore is incomplete.
+    if [ -d "$BACKUP_SOURCE_DIR/storage/app" ]; then
+        if ! tar -czf "$dest/storage-app.tar.gz" -C "$BACKUP_SOURCE_DIR/storage/app" . 2>/dev/null ||
+           ! gzip -t "$dest/storage-app.tar.gz"; then
+            log "ERROR: storage/app archive failed; refusing incomplete backup"
+            return 1
+        fi
+        log "  captured storage/app"
+    else
+        log "  no storage/app yet (no uploads to capture)"
+    fi
+
+    # User-installed theme and plugin source lives outside storage/app.
     for entry in "storage/theme:storage-theme.tar.gz" "plugins:plugins.tar.gz"; do
         source_dir=${entry%%:*}
         archive_name=${entry#*:}
@@ -134,9 +149,7 @@ run_backup() (
         cd "$dest" || exit 1
         set -- db.sql.gz env
         for item in storage-app.tar.gz storage-theme.tar.gz plugins.tar.gz; do
-            if [ -f "$item" ]; then
-                set -- "$@" "$item"
-            fi
+            [ ! -f "$item" ] || set -- "$@" "$item"
         done
         sha256sum "$@" > CHECKSUMS.sha256
         sha256sum -c CHECKSUMS.sha256 >/dev/null
@@ -146,46 +159,6 @@ run_backup() (
     }
     log "wrote $dest"
     trap - EXIT HUP INT TERM
-    prune
-)
-
-if [ "$BACKUP_INTERVAL" -gt 0 ] 2>/dev/null; then
-    log "periodic mode: every ${BACKUP_INTERVAL}s, retention ${BACKUP_RETENTION}"
-    while true; do
-        run_backup || log "backup failed; will retry at the next interval"
-        sleep "$BACKUP_INTERVAL"
-    done
-else
-    run_backup
-fi
- "$BACKUP_SOURCE_DIR/.env"; then
-        log "ERROR: missing .env or APP_KEY; refusing incomplete backup"
-        return 1
-    fi
-    cp "$BACKUP_SOURCE_DIR/.env" "$dest/env"
-    chmod 600 "$dest/env"
-    log "  captured .env (contains APP_KEY)"
-
-    if [ -d "$BACKUP_SOURCE_DIR/storage/app" ]; then
-        if ! tar -czf "$dest/storage-app.tar.gz" -C "$BACKUP_SOURCE_DIR/storage/app" . 2>/dev/null ||
-           ! gzip -t "$dest/storage-app.tar.gz"; then
-            log "ERROR: storage/app archive failed; refusing incomplete backup"
-            return 1
-        fi
-        log "  captured storage/app"
-    else
-        # A new installation may not have any stored uploads yet.
-        log "  no storage/app yet (no uploads to capture)"
-    fi
-
-    {
-        echo "created_at=$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
-        echo "database=$DB_DATABASE"
-        echo "db_host=$DB_HOST"
-        echo "contents=db.sql.gz env storage-app.tar.gz"
-    } > "$dest/MANIFEST"
-
-    log "wrote $dest"
     prune
 )
 
