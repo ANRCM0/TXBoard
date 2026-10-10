@@ -14,6 +14,7 @@ use Illuminate\Support\Str;
  * @property string $token 认证 Token
  * @property string|null $notes 备注
  * @property bool $is_active 是否启用
+ * @property string $image_channel stable/dev 镜像安装渠道
  * @property int|null $last_seen_at 最后心跳时间
  * @property array|null $load_status 负载状态
  * @property \Illuminate\Support\Carbon $created_at
