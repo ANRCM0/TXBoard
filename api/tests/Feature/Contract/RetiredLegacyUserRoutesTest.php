@@ -27,11 +27,11 @@ class RetiredLegacyUserRoutesTest extends TestCase
         $subscribe = $routes->first(static fn ($route) => $route->getName() === 'client.subscribe');
         $this->assertNotNull($subscribe);
         $this->assertStringContainsString(
-            \\App\\Http\\Controllers\\SubscriptionController::class, $subscribe->getActionName());
+            \App\Http\Controllers\SubscriptionController::class, $subscribe->getActionName());
         $agent = $routes->first(static fn ($route) => $route->uri() === 'txapi/agent/v1/whoami');
         $this->assertNotNull($agent);
         $this->assertStringContainsString(
-            \\App\\Http\\Controllers\\Txapi\\Agent\\AgentOpsController::class, $agent->getActionName());
+            \App\Http\Controllers\Txapi\\Agent\\AgentOpsController::class, $agent->getActionName());
     }
 
     public function test_all_required_native_replacements_are_registered(): void
