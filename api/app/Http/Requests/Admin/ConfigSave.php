@@ -140,7 +140,7 @@ class ConfigSave extends FormRequest
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator): void {
-            foreach (['server_ws_enable', 'server_ws_url', 'recaptcha_enable'] as $key) {
+            foreach (SettingModel::RETIRED_RUNTIME_KEYS as $key) {
                 if ($this->exists($key)) {
                     $validator->errors()->add($key, 'Retired setting is not supported by TXAPI.');
                 }

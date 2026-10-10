@@ -24,7 +24,7 @@ class Setting
      */
     public function get(string $key, mixed $default = null): mixed
     {
-        if (SettingModel::isRetiredAppearanceKey($key)) {
+        if (SettingModel::isRetiredKey($key)) {
             return $default;
         }
         $this->load();
@@ -86,7 +86,7 @@ class Setting
         
         foreach ($keys as $index => $item) {
             $isNumericIndex = is_numeric($index);
-            if (SettingModel::isRetiredAppearanceKey((string) ($isNumericIndex ? $item : $index))) {
+            if (SettingModel::isRetiredKey((string) ($isNumericIndex ? $item : $index))) {
                 continue;
             }
             $key = strtolower($isNumericIndex ? $item : $index);
@@ -125,7 +125,7 @@ class Setting
             });
             
             // Discard stale fields even if a shared cache predates the migration.
-            foreach (SettingModel::RETIRED_APPEARANCE_KEYS as $retiredKey) {
+            foreach (array_merge(SettingModel::RETIRED_APPEARANCE_KEYS, SettingModel::RETIRED_RUNTIME_KEYS) as $retiredKey) {
                 unset($settings[$retiredKey]);
             }
 
