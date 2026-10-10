@@ -46,6 +46,7 @@ export function MachineOpsDrawer({
   const qc = useQueryClient()
   const [credentials, setCredentials] = useState<{ token: string; command: string } | null>(null)
   const [credentialsLoading, setCredentialsLoading] = useState(false)
+  const [updateTarget, setUpdateTarget] = useState<'latest' | 'dev'>('latest')
   const hideTimer = useRef<number | undefined>()
 
   const machineId = machine?.id ?? 0
@@ -69,7 +70,7 @@ export function MachineOpsDrawer({
   })
 
   const runtimeUpdate = useMutation({
-    mutationFn: () => updateMachineRuntime(machineId),
+    mutationFn: () => updateMachineRuntime(machineId, updateTarget),
     onSuccess: async result => {
       toast.success(
         result?.request_id
@@ -82,6 +83,10 @@ export function MachineOpsDrawer({
       toast.error('更新请求未下发，请检查机器在线状态与 Installer 更新桥接能力')
     },
   })
+
+  useEffect(() => {
+    setUpdateTarget(machine?.image_channel === 'dev' ? 'dev' : 'latest')
+  }, [machineId, machine?.image_channel])
 
   useEffect(() => {
     if (!open) {
@@ -228,6 +233,13 @@ export function MachineOpsDrawer({
                   <h3>TX-Node Runtime</h3>
                   <p>Machine 级运行时生命周期；实际升级与回滚由 TX-Node Installer 执行。</p>
                 </div>
+                <div className="field">
+                  <span>升级 / 切换到</span>
+                  <select value={updateTarget} onChange={event => setUpdateTarget(event.target.value as 'latest' | 'dev')} aria-label="选择运行时镜像渠道">
+                    <option value="latest">稳定版（latest）</option>
+                    <option value="dev">开发版（dev）</option>
+                  </select>
+                </div>
                 <button
                   type="button"
                   className="button primary"
@@ -239,14 +251,14 @@ export function MachineOpsDrawer({
                   }
                   onClick={() => requestConfirm({
                     title: '更新 TX-Node Runtime',
-                    message: `确认将 ${machine.name || `Machine #${machine.id}`} 更新到 latest？更新会重启 TX-Node，当前承载的 ${Number(machine.servers_count || nodes.length || 0)} 个节点可能短暂断开。失败时 Installer 会尝试恢复之前的镜像。`,
+                    message: `确认将 ${machine.name || `Machine #${machine.id}`} 切换/更新到 ${updateTarget === "dev" ? "开发版 dev" : "稳定版 latest"}？更新会重启 TX-Node，当前承载的 ${Number(machine.servers_count || nodes.length || 0)} 个节点可能短暂断开。失败时 Installer 会尝试恢复之前的镜像。`,
                     danger: true,
-                    confirmLabel: '更新到 latest',
+                    confirmLabel: updateTarget === 'dev' ? '切换到开发版' : '切换到稳定版',
                     action: () => runtimeUpdate.mutate(),
                   })}
                 >
                   <ArrowUpCircle size={14} />
-                  {runtimeUpdate.isPending ? '下发中…' : '更新到 latest'}
+                  {runtimeUpdate.isPending ? '下发中…' : updateTarget === 'dev' ? '切换/更新到 dev' : '切换/更新到 latest'}
                 </button>
               </div>
 
