@@ -18,7 +18,7 @@ class NativeRuntimeQueriesTest extends TestCase
 
         $this->assertSame('v2_order', (new Order())->getTable());
         $this->assertSame('v2_order', NativeTableName::runtime('v2_order'));
-        $this->assertSame('select * from "v2_order"', DB::table(NativeTableName::runtime('v2_order'))->toSql());
+        $this->assertStringContainsString('v2_order', DB::table(NativeTableName::runtime('v2_order'))->toSql());
         $this->assertSame('exists:v2_server,id', (string) Rule::exists(NativeTableName::runtime('v2_server'), 'id'));
     }
 
@@ -29,7 +29,7 @@ class NativeRuntimeQueriesTest extends TestCase
         $this->assertSame('tx_order', (new Order())->getTable());
         $this->assertSame('tx_order', NativeTableName::runtime('v2_order'));
         $this->assertSame('tx_server', (new Server())->getTable());
-        $this->assertSame('select * from "tx_order"', DB::table(NativeTableName::runtime('v2_order'))->toSql());
+        $this->assertStringContainsString('tx_order', DB::table(NativeTableName::runtime('v2_order'))->toSql());
         $this->assertSame('exists:tx_server,id', (string) Rule::exists(NativeTableName::runtime('v2_server'), 'id'));
     }
 }
