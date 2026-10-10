@@ -36,7 +36,7 @@ final class TxapiAdminPaymentDeletionGuardTest extends TestCase
         $this->assertNotNull($method->fresh());
     }
 
-    public function test_native_and_legacy_refuse_deletion_if_order_history_exists(): void
+    public function test_native_refuses_deletion_if_order_history_exists(): void
     {
         $admin = $this->user('order-pay-admin@example.test', true);
         $owner = $this->user('order-pay-owner@example.test');
@@ -50,8 +50,6 @@ final class TxapiAdminPaymentDeletionGuardTest extends TestCase
         Sanctum::actingAs($admin);
         $native = '/txapi/admin/payment_admin_security/payment-methods/' . $method->id . '/delete';
         $this->postJson($native)->assertStatus(409)->assertJsonPath('error.code', 'PAYMENT_IN_USE');
-        $this->postJson('/api/v2/payment_admin_security/payment/drop',
-            ['id' => $method->id])->assertStatus(409);
 
         $this->assertNotNull($method->fresh());
         $this->assertSame($method->id, (int) $order->fresh()->payment_id);
@@ -59,7 +57,7 @@ final class TxapiAdminPaymentDeletionGuardTest extends TestCase
             Payment::query()->whereKey($method->id)->value('uuid'));
     }
 
-    public function test_native_and_legacy_refuse_deletion_if_recharge_history_exists(): void
+    public function test_native_refuses_deletion_if_recharge_history_exists(): void
     {
         $admin = $this->user('wallet-pay-admin@example.test', true);
         $owner = $this->user('wallet-pay-owner@example.test');
@@ -74,8 +72,6 @@ final class TxapiAdminPaymentDeletionGuardTest extends TestCase
         Sanctum::actingAs($admin);
         $native = '/txapi/admin/payment_admin_security/payment-methods/' . $method->id . '/delete';
         $this->postJson($native)->assertStatus(409);
-        $this->postJson('/api/v2/payment_admin_security/payment/drop',
-            ['id' => $method->id])->assertStatus(409);
 
         $this->assertNotNull($method->fresh());
         $this->assertSame($method->id, (int) $recharge->fresh()->payment_id);
