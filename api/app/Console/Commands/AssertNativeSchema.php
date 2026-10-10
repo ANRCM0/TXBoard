@@ -9,7 +9,7 @@ use Illuminate\Console\Command;
 
 final class AssertNativeSchema extends Command
 {
-    protected $signature = 'txboard:assert-native-schema';
+    protected $signature = 'txboard:assert-native-schema {--allow-unavailable : Allow first boot while database is offline}';
     protected $description = 'Refuse to boot with incompatible or partially initialized database schema';
 
     public function handle(): int
@@ -17,6 +17,13 @@ final class AssertNativeSchema extends Command
         try {
             NativeSchemaPreflight::assertReady();
             return self::SUCCESS;
+        } catch (\Illuminate\Database\QueryException|\PDOException $e) {
+            if ($this->option('allow-unavailable')) {
+                $this->warn('Database connection not ready; schema guard will run again during installation/update.');
+                return self::SUCCESS;
+            }
+            $this->error('Database unavailable: ' . $e->getMessage());
+            return self::FAILURE;
         } catch (\Throwable $e) {
             $this->error('Native schema validation failed: ' . $e->getMessage());
             return self::FAILURE;
