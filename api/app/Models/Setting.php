@@ -17,15 +17,29 @@ class Setting extends Model
         'frontend_background_url',
     ];
 
+    public const RETIRED_RUNTIME_KEYS = [
+        'server_ws_enable',
+        'server_ws_url',
+        'recaptcha_enable',
+    ];
+
     public static function isRetiredAppearanceKey(string $name): bool
     {
         return in_array(strtolower($name), self::RETIRED_APPEARANCE_KEYS, true);
     }
 
+    public static function isRetiredKey(string $name): bool
+    {
+        return self::isRetiredAppearanceKey($name)
+            || in_array(strtolower($name), self::RETIRED_RUNTIME_KEYS, true);
+    }
+
     public static function assertWritableKey(string $name): void
     {
-        if (self::isRetiredAppearanceKey($name)) {
-            throw new \InvalidArgumentException("Retired global appearance setting: {$name}");
+        if (self::isRetiredKey($name)) {
+            throw new \InvalidArgumentException(self::isRetiredAppearanceKey($name)
+                ? "Retired global appearance setting: {$name}"
+                : "Retired TXBoard runtime setting: {$name}");
         }
     }
 

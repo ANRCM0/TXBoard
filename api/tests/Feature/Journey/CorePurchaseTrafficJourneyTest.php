@@ -35,7 +35,6 @@ class CorePurchaseTrafficJourneyTest extends TestCase
         admin_setting([
             'captcha_enable' => 0,
             'server_token' => 'p0b-node-secret',
-            'server_ws_enable' => 0,
         ]);
 
         Plugin::create([
