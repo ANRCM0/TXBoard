@@ -41,28 +41,32 @@ final class TxapiAdminNetworkMachinesTest extends TestCase
         Sanctum::actingAs($this->user('machine-editor@example.test', true));
         $this->postJson(self::ROOT, ['name' => '  '])->assertStatus(422);
         $response = $this->postJson(self::ROOT, [
-            'name' => ' Tokyo-Machine ', 'notes' => 'test', 'is_active' => true,
+            'name' => ' Tokyo-Machine ', 'notes' => 'test', 'is_active' => true, 'image_channel' => 'dev',
         ])->assertStatus(201);
         $id = $response->json('data.id');
         $oldToken = (string) $response->json('data.token');
         $this->assertSame(32, strlen($oldToken));
         $this->assertStringContainsString('no-store', (string) $response->headers->get('Cache-Control'));
         $this->assertStringContainsString("install --mode machine", $response->json('data.install_command'));
+        $this->assertStringContainsString("--channel 'dev'", $response->json('data.install_command'));
         $this->assertDatabaseHas('v2_server_machine', ['id' => $id, 'name' => 'Tokyo-Machine']);
 
         $this->getJson(self::ROOT)->assertOk()
             ->assertJsonPath('data.0.name', 'Tokyo-Machine')
+            ->assertJsonPath('data.0.image_channel', 'dev')
             ->assertJsonMissingPath('data.0.token')
             ->assertJsonMissingPath('data.0.install_command');
 
         $this->putJson(self::ROOT . '/' . $id,
-            ['name' => 'Tokyo-Renamed', 'is_active' => false])->assertOk();
+            ['name' => 'Tokyo-Renamed', 'is_active' => false, 'image_channel' => 'stable'])->assertOk();
         $this->assertFalse(ServerMachine::findOrFail($id)->is_active);
+        $this->assertSame('stable', ServerMachine::findOrFail($id)->image_channel);
 
         $credentials = $this->postJson(self::ROOT . '/' . $id . '/credentials')
             ->assertOk()->json('data');
         $this->assertSame($oldToken, $credentials['token']);
         $this->assertStringContainsString("--machine-id {$id}", $credentials['install_command']);
+        $this->assertStringContainsString("--channel 'stable'", $credentials['install_command']);
         $rotated = $this->postJson(self::ROOT . '/' . $id . '/token/rotate')
             ->assertOk();
         $this->assertNotSame($oldToken, $rotated->json('data.token'));
