@@ -48,4 +48,22 @@ class MySqlSchemaInventoryTest extends TestCase
         $result = MySqlSchemaInventory::validate($tables);
         $this->assertFalse($result[1]['passed']);
     }
+
+    public function test_native_schema_enforces_the_same_billing_and_traffic_keys(): void
+    {
+        $tables = [
+            'tx_user' => ['indexes' => [['unique' => true, 'columns' => ['email']]]],
+            'tx_order' => ['indexes' => [['unique' => true, 'columns' => ['trade_no']]]],
+            'tx_traffic_batch' => ['indexes' => [['unique' => true, 'columns' => ['server_id', 'batch_id']]]],
+        ];
+        $result = MySqlSchemaInventory::validate($tables);
+        $this->assertSame(['tx_user', 'tx_order', 'tx_traffic_batch'], array_column($result, 'table'));
+        $this->assertSame([true, true, true], array_column($result, 'passed'));
+    }
+
+    public function test_mixed_legacy_and_native_user_tables_are_rejected(): void
+    {
+        $this->expectException(RuntimeException::class);
+        MySqlSchemaInventory::validate(['tx_user' => ['indexes' => []], 'v2_user' => ['indexes' => []]]);
+    }
 }

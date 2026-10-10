@@ -187,6 +187,20 @@ try {
         throw new RuntimeException('Native transaction or idempotent traffic settlement failed');
     }
 
+    // Re-run a shipped idempotent settings migration after the rename.
+    // Its table lookup must hit tx_settings; a hardcoded v2_settings would
+    // silently skip the cleanup, even when ordinary model tests pass.
+    $settingsTable = NativeTableName::runtime('v2_settings');
+    DB::table($settingsTable)->insert([
+        'name' => 'server_ws_enable', 'value' => '1',
+        'created_at' => now(), 'updated_at' => now(),
+    ]);
+    $cleanup = require dirname(__DIR__) . '/database/migrations/2026_10_10_000001_purge_retired_node_and_captcha_settings.php';
+    $cleanup->up();
+    if (DB::table($settingsTable)->where('name', 'server_ws_enable')->exists()) {
+        throw new RuntimeException('Prefix-aware native migration failed to purge obsolete settings');
+    }
+
     // The reverse rename must preserve successful native writes, not merely
     // the original pre-cutover rows. Never simulate rollback by dropping data.
     $afterNativeWrites = [];
