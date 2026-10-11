@@ -27,6 +27,7 @@ describe('Dashboard v3 chart and row displays', () => {
     expect(formatTraffic('')).toBe('—')
     expect(formatTraffic(-1)).toBe('—')
     expect(formatTraffic(0)).toBe('0 B')
+    expect(formatTraffic(0.5)).toBe('0.5 B')
     expect(formatTraffic(300)).toBe('300 B')
     expect(formatTraffic(1024)).toBe('1 KB')
     expect(formatTraffic(1048576)).toBe('1 MB')

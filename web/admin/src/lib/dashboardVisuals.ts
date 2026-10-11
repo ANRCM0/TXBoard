@@ -20,9 +20,9 @@ export function formatTraffic(value: unknown): string {
   if (!Number.isFinite(bytes) || bytes < 0) return '—'
   if (bytes === 0) return '0 B'
   const units = ['B', 'KB', 'MB', 'GB', 'TB']
-  const exponent = Math.min(4, Math.floor(Math.log(bytes) / Math.log(1024)))
+  const exponent = Math.max(0, Math.min(4, Math.floor(Math.log(bytes) / Math.log(1024))))
   const number = bytes / 1024 ** exponent
-  return new Intl.NumberFormat('zh-CN', {maximumFractionDigits: exponent === 0 ? 0 : number >= 10 ? 1 : 2}).format(number) + ' ' + units[exponent]
+  return new Intl.NumberFormat('zh-CN', {maximumFractionDigits: exponent === 0 && bytes >= 1 ? 0 : number >= 10 ? 1 : 2}).format(number) + ' ' + units[exponent]
 }
 
 export function incomeAreaPath(coords: readonly {x:number;y:number}[], baseline: number): string {
