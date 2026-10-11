@@ -162,14 +162,27 @@ final class ThemeV2PackageTest extends TestCase
                 'dist/index.js' => 'console.log("TXBoard theme")', $name => 'oops',
             ]);
             try {
-                $this->expectException(InvalidArgumentException::class);
-                (new ThemeV2Package(new ThemePackage))->validate($zip, '3.6.0','1.0.0','0.1.0');
+                try {
+                    (new ThemeV2Package(new ThemePackage))->validate($zip, '3.6.0','1.0.0','0.1.0');
+                    self::fail("Unsafe ZIP entry {$name} was accepted");
+                } catch (InvalidArgumentException $e) {
+                    self::assertStringContainsString('path', $e->getMessage());
+                }
             } finally {
                 $zip->close();
                 unlink($path);
             }
-            break;
         }
+    }
+
+    public function test_hidden_server_directive_is_rejected(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('forbidden hidden file');
+        $this->check($this->manifest(), [
+            'dist/index.js' => 'console.log("TXBoard theme")',
+            'assets/.htaccess' => 'AddHandler application/x-httpd-php .txt',
+        ]);
     }
 
     public function test_manifest_cannot_expand_public_config_authority(): void
