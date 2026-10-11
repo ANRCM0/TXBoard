@@ -107,7 +107,7 @@ describe('UI v3 NodesPage', () => {
     act(() => trigger.click())
     const copy=Array.from(document.querySelectorAll<HTMLButtonElement>('.nodes-v3-menu button')).find(b=>b.textContent==='复制')!
     await act(async () => { copy.click(); await Promise.resolve() })
-    expect(copyNode).toHaveBeenCalledWith(1)
+    expect(vi.mocked(copyNode).mock.calls[0]?.[0]).toBe(1)
     act(() => trigger.click())
     const del=Array.from(document.querySelectorAll<HTMLButtonElement>('.nodes-v3-menu button')).find(b=>b.textContent==='删除')!
     act(() => del.click())
