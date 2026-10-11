@@ -1,0 +1,634 @@
+{
+  "$schema": "http://cyclonedx.org/schema/bom-1.6.schema.json",
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.6",
+  "version": 1,
+  "serialNumber": "urn:uuid:415328ae-657d-4bb4-8c6b-6c12802bd1c0",
+  "metadata": {
+    "timestamp": "2026-10-10T21:04:20.103Z",
+    "tools": {
+      "components": [
+        {
+          "type": "application",
+          "name": "npm",
+          "version": "11.19.0"
+        },
+        {
+          "type": "application",
+          "name": "cyclonedx-npm",
+          "group": "@cyclonedx",
+          "version": "6.0.1",
+          "author": "Jan Kowalleck",
+          "description": "Create CycloneDX Software Bill of Materials (SBOM) from NPM projects.",
+          "licenses": [
+            {
+              "license": {
+                "id": "Apache-2.0"
+              }
+            }
+          ],
+          "externalReferences": [
+            {
+              "url": "git+https://github.com/CycloneDX/cyclonedx-node-npm.git",
+              "type": "vcs",
+              "comment": "as detected from PackageJson property \"repository.url\""
+            },
+            {
+              "url": "https://github.com/CycloneDX/cyclonedx-node-npm#readme",
+              "type": "website",
+              "comment": "as detected from PackageJson property \"homepage\""
+            },
+            {
+              "url": "https://github.com/CycloneDX/cyclonedx-node-npm/issues",
+              "type": "issue-tracker",
+              "comment": "as detected from PackageJson property \"bugs.url\""
+            }
+          ],
+          "properties": [
+            {
+              "name": "cdx:npm:package:constraint:engine:node",
+              "value": ">=20.18.0"
+            },
+            {
+              "name": "cdx:npm:package:constraint:engine:npm",
+              "value": ">=9"
+            }
+          ]
+        },
+        {
+          "type": "library",
+          "name": "cyclonedx-library",
+          "group": "@cyclonedx",
+          "version": "10.3.0",
+          "author": "Jan Kowalleck",
+          "description": "Core functionality of CycloneDX for JavaScript (Node.js or WebBrowser).",
+          "licenses": [
+            {
+              "license": {
+                "id": "Apache-2.0"
+              }
+            }
+          ],
+          "externalReferences": [
+            {
+              "url": "git+https://github.com/CycloneDX/cyclonedx-javascript-library.git",
+              "type": "vcs",
+              "comment": "as detected from PackageJson property \"repository.url\""
+            },
+            {
+              "url": "https://github.com/CycloneDX/cyclonedx-javascript-library#readme",
+              "type": "website",
+              "comment": "as detected from PackageJson property \"homepage\""
+            },
+            {
+              "url": "https://github.com/CycloneDX/cyclonedx-javascript-library/issues",
+              "type": "issue-tracker",
+              "comment": "as detected from PackageJson property \"bugs.url\""
+            }
+          ],
+          "properties": [
+            {
+              "name": "cdx:npm:package:constraint:engine:node",
+              "value": ">=20.18.0"
+            }
+          ]
+        }
+      ]
+    },
+    "component": {
+      "type": "application",
+      "name": "txboard-gateway-workspace",
+      "version": "0.1.0",
+      "bom-ref": "txboard-gateway-workspace@0.1.0",
+      "purl": "pkg:npm/txboard-gateway-workspace@0.1.0",
+      "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=22"
+        },
+        {
+          "name": "cdx:npm:package:private",
+          "value": "true"
+        },
+        {
+          "name": "cdx:npm:package:path",
+          "value": ""
+        }
+      ]
+    }
+  },
+  "components": [
+    {
+      "type": "library",
+      "name": "gateway",
+      "group": "@txboard",
+      "version": "0.1.0",
+      "bom-ref": "txboard-gateway-workspace@0.1.0|@txboard/gateway@0.1.0",
+      "purl": "pkg:npm/%40txboard/gateway@0.1.0",
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@txboard/gateway"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "node-server",
+      "group": "@hono",
+      "version": "1.19.17",
+      "bom-ref": "txboard-gateway-workspace@0.1.0|@hono/node-server@1.19.17",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/%40hono/node-server@1.19.17",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/@hono/node-server/-/node-server-1.19.17.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "7529de4b9aa189ab995860c278ae28ebde5777d9d4363be249908c42b8f5d1e7adafc5259f5b9c9fa6dba6138ce94ca700c32d348cd9352a4bf6f9c0489c2b3d"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@hono/node-server"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "core",
+      "group": "@hpke",
+      "version": "1.9.0",
+      "bom-ref": "txboard-gateway-workspace@0.1.0|@hpke/core@1.9.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/%40hpke/core@1.9.0",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/@hpke/core/-/core-1.9.0.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "a45c569759cd25e40249416cefe1806e51ef5c10a39fd10f37ae6f74a95842297669445a4717c630eeaf04a1aa9b56074cac2203125034423bd0f6d2a3030ff5"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@hpke/core"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "hono",
+      "version": "4.13.13",
+      "bom-ref": "txboard-gateway-workspace@0.1.0|hono@4.13.13",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/hono@4.13.13",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/hono/-/hono-4.13.13.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "090e3a53466400699b4ffe14c5dcf3189a5a70fd8878a818e1ae7fb4e23d00005ba4e31f2bbdfdc1f0d79afd6eb0293edd190a8f5850cb8fdf8e18b06b6c65ac"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/hono"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "redis",
+      "version": "5.6.0",
+      "bom-ref": "txboard-gateway-workspace@0.1.0|redis@5.6.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/redis@5.6.0",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/redis/-/redis-5.6.0.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "d31de93374a5600e5acdd3703bcaa07cc073a0ea92aabf4cfac7758688db727d190cce73b2629e30cfb3a53a7a2c863e99b42898873f4534d02ae073afc40acd"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/redis"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "zod",
+      "version": "4.1.12",
+      "bom-ref": "txboard-gateway-workspace@0.1.0|zod@4.1.12",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/zod@4.1.12",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/zod/-/zod-4.1.12.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "2489da1ce6a61bca6de7e132f241a675c01c83738bf6b78af25b5cce01d3030361332b3fe938571e2b721f1555da9ddf930fdcf8c02f0471556071590e68cc09"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/zod"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "common",
+      "group": "@hpke",
+      "version": "1.10.1",
+      "bom-ref": "txboard-gateway-workspace@0.1.0|@hpke/common@1.10.1",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/%40hpke/common@1.10.1",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/@hpke/common/-/common-1.10.1.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "9a8270866b4bb6ec62533ccda758e97c17f1f3279f2a83bd0ff44247d766c2b9dceea8c9a88775ac4b50cfe952954e5c69b5fc75a4e8312c7fec76b25ce89a17"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@hpke/common"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "bloom",
+      "group": "@redis",
+      "version": "5.6.0",
+      "bom-ref": "txboard-gateway-workspace@0.1.0|@redis/bloom@5.6.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/%40redis/bloom@5.6.0",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/@redis/bloom/-/bloom-5.6.0.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "975dff77a05a643273a20cd9244a6121e67c2748694298e4322a33a264e6ea726230d624a0fb0d38138e42e6b842c1b47c58f23e62cc0c914f029e45050b535e"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@redis/bloom"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "client",
+      "group": "@redis",
+      "version": "5.6.0",
+      "bom-ref": "txboard-gateway-workspace@0.1.0|@redis/client@5.6.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/%40redis/client@5.6.0",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/@redis/client/-/client-5.6.0.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "c263fd9021449424abe0c338fb513855c903b8de302ed89748cfc9d2b295429a5a8f1421a30722f3d44666bd8e74bb9a968c1bf12449fd1e8e8ec5eb9fd64d14"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@redis/client"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "json",
+      "group": "@redis",
+      "version": "5.6.0",
+      "bom-ref": "txboard-gateway-workspace@0.1.0|@redis/json@5.6.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/%40redis/json@5.6.0",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/@redis/json/-/json-5.6.0.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "61037d66a6920e974b7c9ab0cdc17859eb89306aeefe1e16b15ec679e36d5ec49ec908c74f20f1adde3cc577d14491afec78ad03bcc69f3747a6535e28e82b64"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@redis/json"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "search",
+      "group": "@redis",
+      "version": "5.6.0",
+      "bom-ref": "txboard-gateway-workspace@0.1.0|@redis/search@5.6.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/%40redis/search@5.6.0",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/@redis/search/-/search-5.6.0.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "b0b81097dd84c8c54d1edae2e4af10d23db1b7d73470ef4762ead7cfaebb527e31794611f81fc3c3994b1b7e72a8eed5bd5c5bf5a987268f6c016ba690a658c0"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@redis/search"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "time-series",
+      "group": "@redis",
+      "version": "5.6.0",
+      "bom-ref": "txboard-gateway-workspace@0.1.0|@redis/time-series@5.6.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/%40redis/time-series@5.6.0",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/@redis/time-series/-/time-series-5.6.0.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "b5700198dd6fbb869334bdd6238228969bf1ff98e08a5d81b37d68cef29b953fa3914a11924f32926628f4fbff329ec693afd092bff6acc8159a29ebb7fe0105"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@redis/time-series"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "cluster-key-slot",
+      "version": "1.1.2",
+      "bom-ref": "txboard-gateway-workspace@0.1.0|cluster-key-slot@1.1.2",
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/cluster-key-slot@1.1.2",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/cluster-key-slot/-/cluster-key-slot-1.1.2.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "44caf4161b5f5de9b28a7a262f886b59c609c665fa75e15d0b1a49ce10edb7180ed7e6dc0a7924fbd76bc9d2d50e600c1bb344e9a37f7e5e05eee714ffdd2000"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/cluster-key-slot"
+        }
+      ]
+    }
+  ],
+  "dependencies": [
+    {
+      "ref": "txboard-gateway-workspace@0.1.0",
+      "dependsOn": [
+        "txboard-gateway-workspace@0.1.0|@txboard/gateway@0.1.0"
+      ]
+    },
+    {
+      "ref": "txboard-gateway-workspace@0.1.0|@txboard/gateway@0.1.0",
+      "dependsOn": [
+        "txboard-gateway-workspace@0.1.0|@hono/node-server@1.19.17",
+        "txboard-gateway-workspace@0.1.0|@hpke/core@1.9.0",
+        "txboard-gateway-workspace@0.1.0|hono@4.13.13",
+        "txboard-gateway-workspace@0.1.0|redis@5.6.0",
+        "txboard-gateway-workspace@0.1.0|zod@4.1.12"
+      ]
+    },
+    {
+      "ref": "txboard-gateway-workspace@0.1.0|@hono/node-server@1.19.17",
+      "dependsOn": [
+        "txboard-gateway-workspace@0.1.0|hono@4.13.13"
+      ]
+    },
+    {
+      "ref": "txboard-gateway-workspace@0.1.0|@hpke/core@1.9.0",
+      "dependsOn": [
+        "txboard-gateway-workspace@0.1.0|@hpke/common@1.10.1"
+      ]
+    },
+    {
+      "ref": "txboard-gateway-workspace@0.1.0|hono@4.13.13"
+    },
+    {
+      "ref": "txboard-gateway-workspace@0.1.0|redis@5.6.0",
+      "dependsOn": [
+        "txboard-gateway-workspace@0.1.0|@redis/bloom@5.6.0",
+        "txboard-gateway-workspace@0.1.0|@redis/client@5.6.0",
+        "txboard-gateway-workspace@0.1.0|@redis/json@5.6.0",
+        "txboard-gateway-workspace@0.1.0|@redis/search@5.6.0",
+        "txboard-gateway-workspace@0.1.0|@redis/time-series@5.6.0"
+      ]
+    },
+    {
+      "ref": "txboard-gateway-workspace@0.1.0|zod@4.1.12"
+    },
+    {
+      "ref": "txboard-gateway-workspace@0.1.0|@hpke/common@1.10.1"
+    },
+    {
+      "ref": "txboard-gateway-workspace@0.1.0|@redis/bloom@5.6.0",
+      "dependsOn": [
+        "txboard-gateway-workspace@0.1.0|@redis/client@5.6.0"
+      ]
+    },
+    {
+      "ref": "txboard-gateway-workspace@0.1.0|@redis/client@5.6.0",
+      "dependsOn": [
+        "txboard-gateway-workspace@0.1.0|cluster-key-slot@1.1.2"
+      ]
+    },
+    {
+      "ref": "txboard-gateway-workspace@0.1.0|@redis/json@5.6.0",
+      "dependsOn": [
+        "txboard-gateway-workspace@0.1.0|@redis/client@5.6.0"
+      ]
+    },
+    {
+      "ref": "txboard-gateway-workspace@0.1.0|@redis/search@5.6.0",
+      "dependsOn": [
+        "txboard-gateway-workspace@0.1.0|@redis/client@5.6.0"
+      ]
+    },
+    {
+      "ref": "txboard-gateway-workspace@0.1.0|@redis/time-series@5.6.0",
+      "dependsOn": [
+        "txboard-gateway-workspace@0.1.0|@redis/client@5.6.0"
+      ]
+    },
+    {
+      "ref": "txboard-gateway-workspace@0.1.0|cluster-key-slot@1.1.2"
+    }
+  ]
+}

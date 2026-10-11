@@ -210,6 +210,61 @@ nginx -t  # 或 caddy validate
 # 恢复旧代理文件
 ```
 
+## 压测与故障演练
+
+### 压测脚本
+
+```bash
+# 完整压测（所有场景）
+scripts/benchmark.sh --base-url http://127.0.0.1:8787 --duration 30 --concurrency 10
+
+# 指定场景
+scripts/benchmark.sh --scenarios normal,peak
+
+# 输出 JSON 报告
+scripts/benchmark.sh --output benchmark-report.json
+```
+
+**覆盖场景：**
+- 正常负载 — 持续只读请求，验证基线性能
+- 峰值负载 — 高并发突发，验证限流和稳定性
+- 网络超时 — 上游慢响应，验证超时处理
+- 进程退出 — Gateway 容器重启，验证恢复
+- DNS 错误 — 上游 DNS 不可达，验证错误处理
+
+### 故障演练脚本
+
+```bash
+# 完整演练（所有场景）
+scripts/fault-drill.sh --auto --verbose
+
+# 指定场景
+scripts/fault-drill.sh --scenarios gateway-down,redis-failure
+
+# 输出 JSON 报告
+scripts/fault-drill.sh --output fault-drill-report.json
+```
+
+**覆盖场景：**
+- Gateway 宕机 — 停止 Gateway 容器，验证旧 API 仍可用
+- Redis 故障 — 停止 Redis，验证 Gateway fail-closed
+- 上游超时 — 模拟上游 TXBoard 不可达，验证超时处理
+
+### 回滚演练脚本
+
+```bash
+# 自动演练
+scripts/rollback-drill.sh --auto --verbose
+
+# 输出 JSON 报告（可追踪）
+scripts/rollback-drill.sh --output rollback-drill-report.json
+```
+
+**追踪功能：**
+- 每次演练生成唯一追踪 ID
+- 记录 Gateway 版本、镜像 digest、时间戳
+- 所有操作记录到日志文件
+
 ## 文件清单
 
 | 文件 | 说明 |
@@ -219,7 +274,9 @@ nginx -t  # 或 caddy validate
 | `staging/.env.example` | 环境变量模板 |
 | `staging/gateway-legacy-switchover.md` | Gateway/旧 API 切换流程文档 |
 | `scripts/staging-up.sh` | 一键启动脚本 |
-| `scripts/rollback-drill.sh` | 回滚演练脚本 |
+| `scripts/rollback-drill.sh` | 回滚演练脚本（含追踪 ID） |
+| `scripts/benchmark.sh` | 压测脚本 |
+| `scripts/fault-drill.sh` | 故障演练脚本 |
 
 ## 一键启动/回滚命令汇总
 
