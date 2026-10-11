@@ -20,3 +20,17 @@ it('distinguishes failure, loading and empty results, and offers retry', () => {
   expect(host.textContent).toContain('暂无数据')
   act(() => root.unmount()); host.remove()
 })
+
+it('offers an intentional custom empty state while keeping populated tables intact', () => {
+  ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+  const host = document.createElement('div'); document.body.append(host)
+  const root = createRoot(host)
+  const columns = [{ key: 'id', header: 'ID', render: (row: number) => row }]
+  act(() => root.render(<DataTable rows={[]} columns={columns} emptyState={<button>创建第一条记录</button>} />))
+  expect(host.querySelector('table')).toBeNull()
+  expect(host.querySelector('.table-empty-region button')?.textContent).toBe('创建第一条记录')
+  act(() => root.render(<DataTable rows={[5]} columns={columns} emptyState={<button>创建第一条记录</button>} />))
+  expect(host.querySelector('table')?.textContent).toContain('5')
+  expect(host.querySelector('.table-empty-region')).toBeNull()
+  act(() => root.unmount()); host.remove()
+})

@@ -1,13 +1,15 @@
 import { useQuery } from '@tanstack/react-query'
-import { AlertTriangle, BarChart3, Bot, MessageSquare, Server, Users, Wallet, Wifi } from 'lucide-react'
+import { AlertTriangle, ArrowRight, BarChart3, Bot, CheckCircle2, MessageSquare, Server, Users, Wallet, Wifi } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getDashboardStats, getOrderChart, getTrafficRank } from '../api/statistics'
 import { getAgentActions, getAgentFleetHealth } from '../api/agent'
 import { QueryFeedback } from '../components/ui/QueryFeedback'
+import { EmptyState } from '../components/ui/EmptyState'
 import { DashboardPeriodPicker } from '../components/dashboard/DashboardPeriodPicker'
 import { QueueDashboardSections } from '../components/dashboard/QueueDashboardSections'
 import { getPeriodDates, getPeriodTimestamps, readDashboardPeriod, saveDashboardPeriod, type DashboardPeriod } from '../lib/dashboardPeriod'
+import { attentionCount, attentionMode, hasIncomeTrend } from '../lib/dashboardAttention'
 
 export function DashboardPage() {
   const [incomePeriod, setIncomePeriod] = useState<DashboardPeriod>(() => readDashboardPeriod('income'))
@@ -45,38 +47,90 @@ export function DashboardPage() {
   })
   const fleet=useQuery({ queryKey:['agentFleetHealth'], queryFn:getAgentFleetHealth, refetchInterval:30_000, retry:1 })
   const agentActions=useQuery({ queryKey:['agentActions','pending'], queryFn:()=>getAgentActions('pending'), refetchInterval:15_000, retry:1 })
-  const s=stats.data||{}
-  const pendingAgentActions=(agentActions.data||[]).filter(item=>item.status==='pending')
-  const criticalNodes=Number(fleet.data?.summary.critical_nodes||0)
-  const degradedNodes=Number(fleet.data?.summary.degraded_nodes||0)
-  const points=(chart.data?.list||[]).map(row=>({date:String(row.date||''),value:Number(row.paid_total||0)/100}))
+  const s = stats.data || {}
+  const pendingAgentActions = (agentActions.data || []).filter(item => item.status === 'pending')
+  const criticalNodes = attentionCount(fleet.data?.summary.critical_nodes)
+  const degradedNodes = attentionCount(fleet.data?.summary.degraded_nodes)
+  const fleetAlerts = criticalNodes === null || degradedNodes === null ? null : criticalNodes + degradedNodes
+  const points = (chart.data?.list || []).map(row => ({
+    date: String(row.date || ''),
+    value: Number(row.paid_total || 0) / 100,
+  }))
+  const hasTrend = hasIncomeTrend(points)
+  const tasks = [
+    { key: 'tickets', label: '待处理工单', to: '/user/ticket',
+      count: stats.isError ? null : attentionCount(s.ticketPendingTotal),
+      sub: stats.isError ? '统计暂不可用' : '进入工单管理',
+      icon: <MessageSquare size={18} aria-hidden="true"/> },
+    { key: 'commissions', label: '待确认佣金', to: '/finance/order',
+      count: stats.isError ? null : attentionCount(s.commissionPendingTotal),
+      sub: stats.isError ? '统计暂不可用' : '进入订单管理',
+      icon: <BarChart3 size={18} aria-hidden="true"/> },
+    { key: 'nodes', label: '异常节点', to: '/system/agent-ops',
+      count: fleet.isError ? null : fleetAlerts,
+      sub: fleet.isError ? 'Fleet Health 暂不可用' : '查看节点健康状态',
+      icon: <AlertTriangle size={18} aria-hidden="true"/> },
+    { key: 'approvals', label: '待审批运维', to: '/system/agent-ops',
+      count: agentActions.isError || !agentActions.data ? null : pendingAgentActions.length,
+      sub: agentActions.isError ? '审批队列暂不可用' : '进入 Agent 运维',
+      icon: <Bot size={18} aria-hidden="true"/> },
+  ]
+  const taskMode = attentionMode(tasks.map(task => task.count))
+  const visibleTasks = taskMode === 'checking'
+    ? tasks.filter(task => task.count === null)
+    : tasks.filter(task => task.count === null || task.count > 0)
 
   return <div className="admin-dashboard">
     <QueryFeedback loading={stats.isFetching && !stats.data} error={stats.isError && !stats.data} onRetry={() => stats.refetch()} />
 
-    <section className="dashboard-ops-section">
+    <section className="dashboard-ops-section" aria-label="需要处理的事项">
       <div className="dashboard-section-heading">
         <div>
           <h2>需要处理</h2>
           <p>优先展示需要管理员介入的工单、佣金与运维异常。</p>
         </div>
       </div>
-      <div className="dashboard-stats dashboard-action-stats">
-        <Link className="dash-link" to="/user/ticket"><DashCard icon={<MessageSquare size={18}/>} label="待处理工单" value={count(s.ticketPendingTotal)} sub="进入工单管理"/></Link>
-        <Link className="dash-link" to="/finance/order"><DashCard icon={<BarChart3 size={18}/>} label="待确认佣金" value={count(s.commissionPendingTotal)} sub="进入订单管理"/></Link>
-        <Link className="dash-link" to="/system/agent-ops"><DashCard icon={<AlertTriangle size={18}/>} label="异常节点" value={fleet.isLoading || fleet.isError ? '—' : String(criticalNodes + degradedNodes)} sub={fleet.isError ? 'Fleet Health 加载失败' : fleet.isLoading ? '正在读取 Fleet Health' : `Critical ${criticalNodes} · Degraded ${degradedNodes}`}/></Link>
-        <Link className="dash-link" to="/system/agent-ops"><DashCard icon={<Bot size={18}/>} label="待审批运维" value={agentActions.isLoading || agentActions.isError ? '—' : String(pendingAgentActions.length)} sub={agentActions.isError ? '审批队列加载失败' : agentActions.isLoading ? '正在读取审批队列' : '进入 Agent 运维'}/></Link>
-      </div>
+      {taskMode === 'clear' ? (
+        <div className="dashboard-ops-clear" role="status">
+          <CheckCircle2 size={23} aria-hidden="true"/>
+          <div><strong>当前没有待处理事项</strong>
+            <p>工单、佣金、节点健康及运维审批均已检查，暂无需要介入的事项。</p>
+          </div>
+          <span>4 项检查正常</span>
+        </div>
+      ) : (
+        <>
+          {taskMode === 'checking' ? (
+            <p className="dashboard-ops-status" role="status">部分运营数据正在加载或暂不可用，尚不能确认全部正常。</p>
+          ) : null}
+          <div className="dashboard-stats dashboard-action-stats">
+            {visibleTasks.map(task => (
+              <Link className="dash-link" key={task.key} to={task.to}>
+                <DashCard icon={task.icon} label={task.label}
+                  value={task.count === null ? '—' : String(task.count)}
+                  sub={task.count === null ? '待核查 · ' + task.sub : task.sub}
+                  className={task.count === null ? 'is-unavailable' : 'is-attention'} />
+              </Link>
+            ))}
+          </div>
+        </>
+      )}
     </section>
 
-    <div className="dashboard-stats">
-      <DashCard icon={<Wallet size={18}/>} label="今日收入" value={money(s.todayIncome)} sub={growth(s.dayIncomeGrowth)}/>
-      <DashCard icon={<Wallet size={18}/>} label="本月收入" value={money(s.currentMonthIncome)} sub={growth(s.monthIncomeGrowth)}/>
-      <DashCard icon={<Users size={18}/>} label="总用户" value={count(s.totalUsers)} sub={'活跃 '+count(s.activeUsers)}/>
-      <DashCard icon={<Users size={18}/>} label="本月新用户" value={count(s.currentMonthNewUsers)} sub={growth(s.userGrowth)}/>
-      <DashCard icon={<Wifi size={18}/>} label="在线用户" value={count(s.onlineUsers)} sub={'设备 '+count(s.onlineDevices)}/>
-      <DashCard icon={<Server size={18}/>} label="在线节点" value={count(s.onlineNodes)} sub="实时快照"/>
-    </div>
+    <section className="dashboard-metrics-section" aria-label="运营概览">
+      <div className="dashboard-section-heading">
+        <h2>运营概览</h2>
+        <p>收入、用户及在线服务的核心指标。</p>
+      </div>
+      <div className="dashboard-stats">
+        <DashCard icon={<Wallet size={18} aria-hidden="true"/>} label="今日收入" value={money(s.todayIncome)} sub={growth(s.dayIncomeGrowth)}/>
+        <DashCard icon={<Wallet size={18} aria-hidden="true"/>} label="本月收入" value={money(s.currentMonthIncome)} sub={growth(s.monthIncomeGrowth)}/>
+        <DashCard icon={<Users size={18} aria-hidden="true"/>} label="总用户" value={count(s.totalUsers)} sub={'活跃 '+count(s.activeUsers)}/>
+        <DashCard icon={<Users size={18} aria-hidden="true"/>} label="本月新用户" value={count(s.currentMonthNewUsers)} sub={growth(s.userGrowth)}/>
+        <DashCard icon={<Wifi size={18} aria-hidden="true"/>} label="在线用户" value={count(s.onlineUsers)} sub={'设备 '+count(s.onlineDevices)}/>
+        <DashCard icon={<Server size={18} aria-hidden="true"/>} label="在线节点" value={count(s.onlineNodes)} sub="实时快照"/>
+      </div>
+    </section>
 
     <section className="admin-dashboard-card dashboard-chart-card">
       <div className="admin-dashboard-card-head">
@@ -89,7 +143,7 @@ export function DashboardPage() {
           <DashboardPeriodPicker label="订单收入趋势" value={incomePeriod} onChange={setIncomePeriod}/>
         </div>
       </div>
-      <div className="dash-chart">
+      <div className={"dash-chart" + (!chart.isFetching && !chart.isError && !hasTrend ? " is-empty" : "")}>
         {chart.isFetching && !chart.data ? <QueryFeedback loading /> : chart.isError ? <QueryFeedback error onRetry={() => chart.refetch()} /> : <IncomeChart points={points}/>} 
       </div>
     </section>
@@ -122,7 +176,7 @@ function IncomeChart({points}:{points:Array<{date:string;value:number}>}){
     return {width,height,inset,coordinates,line,area,max}
   },[points])
 
-  if(!chart)return <div className="dashboard-chart-empty">暂无订单收入数据</div>
+  if(!chart || !hasIncomeTrend(points)) return <EmptyState className="dashboard-chart-empty" icon={<BarChart3 size={22}/>} title="所选时间范围暂无收入趋势" description="该时段没有可展示的已支付订单金额。切换时间范围，或前往订单管理查看订单状态。" action={<Link className="button" to="/finance/order">查看订单 <ArrowRight size={15} aria-hidden="true"/></Link>}/>
 
   return <svg className="income-chart" viewBox={'0 0 '+chart.width+' '+chart.height} role="img" aria-label="订单收入趋势图">
     {[0,.25,.5,.75,1].map(step=>{
@@ -139,8 +193,8 @@ function IncomeChart({points}:{points:Array<{date:string;value:number}>}){
   </svg>
 }
 
-function DashCard({icon,label,value,sub}:{icon:React.ReactNode;label:string;value:string;sub?:string}){
-  return <div className="admin-stat-card">
+function DashCard({icon,label,value,sub,className=''}:{icon:React.ReactNode;label:string;value:string;sub?:string;className?:string}){
+  return <div className={['admin-stat-card', className].filter(Boolean).join(' ')}>
     <div className="admin-stat-card-head"><span>{label}</span><span className="admin-stat-icon">{icon}</span></div>
     <strong>{value}</strong>
     {sub?<small>{sub}</small>:null}
@@ -154,10 +208,14 @@ function Rank({title,period,onPeriodChange,rows,loading,error,onRetry}:{title:st
       <DashboardPeriodPicker label={title} value={period} onChange={onPeriodChange}/>
     </div>
     <QueryFeedback loading={loading} error={error} onRetry={onRetry}/>
-    <div className="rank-list">
-      <div className="rank-list-head"><span>#</span><span>名称</span><span>流量</span></div>
-      {rows.slice(0,10).map((r,i)=><div key={i}><span>{i+1}</span><span>{String(r.name??r.email??r.server_name??'-')}</span><strong>{bytes(Number(r.value??r.total??r.traffic??0))}</strong></div>)}
-      {!rows.length&&!error?<div className="rank-empty">{loading?'加载中…':'暂无数据'}</div>:null}
+    <div className={'rank-list' + (!rows.length ? ' is-empty' : '')}>
+      {rows.length ? (<>
+        <div className="rank-list-head"><span>#</span><span>名称</span><span>流量</span></div>
+        {rows.slice(0,10).map((r,i)=><div key={i}><span>{i+1}</span><span>{String(r.name??r.email??r.server_name??'-')}</span><strong>{bytes(Number(r.value??r.total??r.traffic??0))}</strong></div>)}
+      </>) : !loading && !error ? (
+        <EmptyState icon={<BarChart3 size={22}/>} title="暂无流量排行"
+          description="当前统计周期没有相关流量记录，可以切换时间范围后查看。" />
+      ) : null}
     </div>
   </section>
 }

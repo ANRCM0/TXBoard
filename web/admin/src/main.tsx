@@ -6,6 +6,7 @@ import { Toaster } from 'sonner'
 import { router } from './router'
 import './styles.css'
 import './form-system.css'
+import './admin-experience.css'
 
 const queryClient = new QueryClient({
   defaultOptions: {
