@@ -103,7 +103,7 @@ export function DashboardPage() {
           {taskMode === 'checking' ? (
             <p className="dashboard-ops-status" role="status">部分运营数据正在加载或暂不可用，尚不能确认全部正常。</p>
           ) : null}
-          <div className="dashboard-stats dashboard-action-stats">
+          <div className="dashboard-stats dashboard-action-stats dashboard-v2-attention">
             {visibleTasks.map(task => (
               <Link className="dash-link" key={task.key} to={task.to}>
                 <DashCard icon={task.icon} label={task.label}
@@ -122,7 +122,7 @@ export function DashboardPage() {
         <h2>运营概览</h2>
         <p>收入、用户及在线服务的核心指标。</p>
       </div>
-      <div className="dashboard-stats">
+      <div className="dashboard-stats dashboard-v2-metrics">
         <DashCard icon={<Wallet size={18} aria-hidden="true"/>} label="今日收入" value={money(s.todayIncome)} sub={growth(s.dayIncomeGrowth)}/>
         <DashCard icon={<Wallet size={18} aria-hidden="true"/>} label="本月收入" value={money(s.currentMonthIncome)} sub={growth(s.monthIncomeGrowth)}/>
         <DashCard icon={<Users size={18} aria-hidden="true"/>} label="总用户" value={count(s.totalUsers)} sub={'活跃 '+count(s.activeUsers)}/>

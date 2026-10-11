@@ -10,6 +10,7 @@ import './form-system.css'
 import './admin-experience.css'
 import './admin-density.css'
 import './admin-list-density.css'
+import './admin-monitor-density.css'
 
 const queryClient = new QueryClient({
   defaultOptions: {

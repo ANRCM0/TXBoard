@@ -12,6 +12,7 @@ type HistoryPoint = {
 }
 
 function numberOf(value: unknown): number | null {
+  if (value === null || value === undefined || value === '' || typeof value === 'boolean') return null
   const n = Number(value)
   return Number.isFinite(n) ? n : null
 }
@@ -37,7 +38,7 @@ function timeOf(value: unknown, index: number) {
   return String(index + 1)
 }
 
-function normalize(raw: unknown): HistoryPoint[] {
+export function normalizeMachineHistory(raw: unknown): HistoryPoint[] {
   const source = Array.isArray(raw)
     ? raw
     : raw && typeof raw === 'object' && Array.isArray((raw as { data?: unknown[] }).data)
@@ -61,7 +62,7 @@ export function MachineHistoryChart({ machineId }: { machineId: number }) {
     queryKey: ['machineHistory', machineId, hours],
     queryFn: () => getMachineHistory(machineId, 240, hours),
   })
-  const data = useMemo(() => normalize(query.data), [query.data])
+  const data = useMemo(() => normalizeMachineHistory(query.data), [query.data])
 
   return <div className="machine-history">
     <div className="history-toolbar">
@@ -80,16 +81,16 @@ export function MachineHistoryChart({ machineId }: { machineId: number }) {
     {query.isError ? <QueryFeedback error onRetry={() => query.refetch()} /> :
       query.isLoading ? <div className="chart-state">加载历史数据…</div> :
       data.length ? <div className="history-chart">
-        <ResponsiveContainer width="100%" height={320}>
+        <ResponsiveContainer width="100%" height={248}>
           <LineChart data={data}>
             <CartesianGrid strokeDasharray="3 3" vertical={false}/>
             <XAxis dataKey="time" minTickGap={32} tick={{ fontSize: 11 }}/>
             <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} unit="%"/>
-            <Tooltip formatter={(value) => value == null ? '-' : `${Number(value).toFixed(1)}%`}/>
-            <Legend/>
+            <Tooltip formatter={(value) => value == null ? '-' : `${Number(value).toFixed(1)}%`} contentStyle={{borderRadius:8,fontSize:12}}/>
+            <Legend verticalAlign="bottom" iconType="plainline" wrapperStyle={{fontSize:12}}/>
             <Line type="monotone" dataKey="cpu" name="CPU" stroke="#2563eb" dot={false} connectNulls/>
-            <Line type="monotone" dataKey="memory" name="Memory" stroke="#16a34a" dot={false} connectNulls/>
-            <Line type="monotone" dataKey="disk" name="Disk" stroke="#d97706" dot={false} connectNulls/>
+            <Line type="monotone" dataKey="memory" name="内存" stroke="#16a34a" dot={false} connectNulls/>
+            <Line type="monotone" dataKey="disk" name="磁盘" stroke="#d97706" dot={false} connectNulls/>
           </LineChart>
         </ResponsiveContainer>
       </div> : <div className="chart-state">该时间范围暂无历史数据。</div>}
