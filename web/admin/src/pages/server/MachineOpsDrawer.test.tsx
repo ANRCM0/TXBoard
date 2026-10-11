@@ -171,6 +171,19 @@ it('shows concise runtime and node shortcuts and only fetches nodes after openin
   expect(getMachineNodes).toHaveBeenCalledWith(55)
 })
 
+it('keeps absent machine telemetry unknown rather than reporting 0%', () => {
+  render({id:56,name:'Missing telemetry',is_active:true,last_seen_at:Date.now(),load_status:{}})
+  const overview = document.querySelector('[role="tabpanel"]')
+  expect(overview?.textContent).toContain('节点数未上报')
+  const metrics = Array.from(overview?.querySelectorAll('.machine-ops-load-row') || [])
+  expect(metrics).toHaveLength(3)
+  metrics.forEach(metric => {
+    expect(metric.querySelector('strong')?.textContent).toContain('—')
+    expect(metric.querySelector('[role="progressbar"]')?.getAttribute('aria-valuenow')).toBeNull()
+  })
+  expect(overview?.querySelector('.machine-ops-network')?.textContent).toContain('↓ —')
+})
+
 it('supports arrow, Home and End keys without exposing inactive panels', () => {
   render({ id: 16, name: 'Keyboard', is_active: true, last_seen_at: Date.now(), load_status: {} })
   const current = () => document.querySelector<HTMLButtonElement>('[role="tab"][aria-selected="true"]')

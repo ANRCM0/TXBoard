@@ -308,7 +308,7 @@ export function MachineOpsDrawer({
                   <span className="machine-ops-glance-icon"><Boxes size={17} aria-hidden="true"/></span>
                   <span className="machine-ops-glance-copy">
                     <strong>承载节点概况</strong>
-                    <small>{Number(machine.servers_count || 0)} 个节点 · 点击查看关联</small>
+                    <small>{machine.servers_count == null ? '节点数未上报' : `${machine.servers_count} 个节点`} · 点击查看关联</small>
                   </span>
                   <span className="machine-ops-glance-go">管理节点 →</span>
                 </button>
@@ -556,13 +556,14 @@ function LoadMetric({
 }
 
 function finite(value: unknown) {
+  if (value === null || value === undefined || value === '' || typeof value === 'boolean') return null
   const number = Number(value)
   return Number.isFinite(number) ? number : null
 }
 
 function bytes(value: unknown) {
-  const number = Number(value)
-  if (!Number.isFinite(number) || number < 0) return '—'
+  const number = finite(value)
+  if (number === null || number < 0) return '—'
   if (number >= 1024 ** 3) return `${(number / 1024 ** 3).toFixed(number >= 10 * 1024 ** 3 ? 1 : 2)} GB`
   if (number >= 1024 ** 2) return `${(number / 1024 ** 2).toFixed(1)} MB`
   if (number >= 1024) return `${(number / 1024).toFixed(1)} KB`
@@ -570,8 +571,8 @@ function bytes(value: unknown) {
 }
 
 function formatRate(value: unknown) {
-  const number = Number(value)
-  if (!Number.isFinite(number) || number < 0) return '—'
+  const number = finite(value)
+  if (number === null || number < 0) return '—'
   if (number >= 1024 ** 2) return `${(number / 1024 ** 2).toFixed(2)} MB/s`
   if (number >= 1024) return `${(number / 1024).toFixed(1)} KB/s`
   return `${number.toFixed(0)} B/s`
