@@ -25,4 +25,4 @@ TXBoard 的 **Agent Ops** 把部分运维能力封装为可审计的受限操作
 - [Agent Ops 架构](../architecture/agent-ops.md)
 - [安全基线](../security/README.md)
 
-> 不同历史合同可能存在尚待对齐的路径前缀。真实对接必须以当前注册路由和本镜像上的协议适配器为准，不应因为路径名称相似而猜测兼容。
+当前 Agent Ops HTTP 路径以 `/txapi/agent/v1` 为前缀；管理端使用独立的 `/txapi/admin/{admin_path}/agents`。Agent 的响应封装与普通 TXAPI 响应存在差异，集成前请核对对应接口契约和实际路由。
