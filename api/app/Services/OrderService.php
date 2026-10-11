@@ -65,63 +65,61 @@ class OrderService
         Plan $plan,
         string $period,
         ?string $couponCode = null,
+        ?string $idempotencyKey = null,
     ): Order {
         $userService = app(UserService::class);
-        $planService = new PlanService($plan);
+        $newPeriod = PlanService::getPeriodKey($period);
+        $body = [
+            'plan_id' => (int) $plan->id,
+            'period' => $newPeriod,
+            'coupon_code' => $couponCode,
+        ];
 
-        $planService->validatePurchase($user, $period);
-        HookManager::call('order.create.before', [$user, $plan, $period, $couponCode]);
-
-        return DB::transaction(function () use ($user, $plan, $period, $couponCode, $userService) {
+        return DB::transaction(function () use ($user, $plan, $newPeriod, $couponCode,
+            $userService, $idempotencyKey, $body): Order {
+            // One user lock serializes concurrent creates across TXAPI, native
+            // clients and Gateway. Claim-check always precedes order preflight.
             $user = User::lockForUpdate()->find($user->id);
             if (!$user) {
                 throw new ApiException(__('The user does not exist'));
             }
 
-            // Revalidate under the user lock; the preflight checks above can
-            // become stale while another transaction changes entitlement.
-            $plan = Plan::whereKey($plan->id)->firstOrFail();
-            (new PlanService($plan))->validatePurchase($user, $period);
+            return \App\Domains\Billing\OrderIdempotency::run(
+                (int) $user->id, $idempotencyKey, $body,
+                function () use ($user, $plan, $newPeriod, $couponCode, $userService): Order {
+                    $plan = Plan::whereKey($plan->id)->firstOrFail();
+                    (new PlanService($plan))->validatePurchase($user, $newPeriod);
+                    if ($userService->isNotCompleteOrderByUserId($user->id)) {
+                        throw new ApiException(__('You have an unpaid or pending order, please try again later or cancel it'));
+                    }
 
-            if ($userService->isNotCompleteOrderByUserId($user->id)) {
-                throw new ApiException(__('You have an unpaid or pending order, please try again later or cancel it'));
-            }
-
-            $newPeriod = PlanService::getPeriodKey($period);
-
-            $order = new Order([
-                'user_id' => $user->id,
-                'plan_id' => $plan->id,
-                'period' => $newPeriod,
-                'trade_no' => Helper::generateOrderNo(),
-                'total_amount' => (int) round((float) $plan->prices[$newPeriod] * 100),
-            ]);
-
-            $orderService = new self($order);
-
-            if ($couponCode) {
-                $orderService->applyCoupon($couponCode);
-            }
-
-            $orderService->setVipDiscount($user);
-            $orderService->setOrderType($user);
-
-            if ($user->balance && $order->total_amount > 0) {
-                $orderService->handleUserBalance($user, $userService);
-            }
-
-            $orderService->setInvite(user: $user);
-
-            if (!$order->save()) {
-                throw new ApiException(__('Failed to create order'));
-            }
-
-            HookManager::call('order.create.after', $order);
-            // 兼容旧钩子
-            HookManager::call('order.after_create', $order);
-
-            return $order;
-        });
+                    HookManager::call('order.create.before', [$user, $plan, $newPeriod, $couponCode]);
+                    $order = new Order([
+                        'user_id' => $user->id,
+                        'plan_id' => $plan->id,
+                        'period' => $newPeriod,
+                        'trade_no' => Helper::generateOrderNo(),
+                        'total_amount' => (int) round((float) $plan->prices[$newPeriod] * 100),
+                    ]);
+                    $orderService = new self($order);
+                    if ($couponCode) {
+                        $orderService->applyCoupon($couponCode);
+                    }
+                    $orderService->setVipDiscount($user);
+                    $orderService->setOrderType($user);
+                    if ($user->balance && $order->total_amount > 0) {
+                        $orderService->handleUserBalance($user, $userService);
+                    }
+                    $orderService->setInvite(user: $user);
+                    if (!$order->save()) {
+                        throw new ApiException(__('Failed to create order'));
+                    }
+                    HookManager::call('order.create.after', $order);
+                    HookManager::call('order.after_create', $order);
+                    return $order;
+                }
+            );
+        }, 3);
     }
 
     public function open(): void
