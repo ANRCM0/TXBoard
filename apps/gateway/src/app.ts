@@ -60,6 +60,7 @@ import {
   policyEnforcementMiddleware,
   resolvePolicy,
 } from './middleware/policy.js'
+import { cacheMiddleware } from './middleware/cache.js'
 
 /**
  * app.ts — the single Hono instance and the composition root.
@@ -332,6 +333,11 @@ export function createGatewayApp(
     c.header('X-Content-Type-Options', 'nosniff')
     c.header('Referrer-Policy', 'no-referrer')
     c.header('Cross-Origin-Resource-Policy', 'same-origin')
+    // GW-207: defense-in-depth for legacy UAs that ignore CSP frame-ancestors,
+    // and an explicit deny for powerful browser features on this JSON API.
+    c.header('X-Frame-Options', 'DENY')
+    c.header('Permissions-Policy',
+      'accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()')
     c.header('Content-Security-Policy', "default-src 'none'; frame-ancestors 'none'")
     c.header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
 
@@ -393,8 +399,22 @@ export function createGatewayApp(
 
       try {
         const decision = await limiter.check({ policy: route, ip: clientIp, subject })
+        // GW-208: Prometheus metrics for each rate-limit dimension.
+        const { metrics } = observabilityState()
+        // Record current counts and thresholds for both dimensions.
+        metrics.rateLimitCurrent.set({ policy: route.id, dimension: 'ip' }, decision.ipCount >= 0 ? decision.ipCount : 0)
+        metrics.rateLimitThreshold.set({ policy: route.id, dimension: 'ip' }, route.ipLimit)
+        if (route.subjectLimit && route.subjectLimit > 0) {
+          metrics.rateLimitCurrent.set({ policy: route.id, dimension: 'subject' }, decision.subjectCount >= 0 ? decision.subjectCount : 0)
+          metrics.rateLimitThreshold.set({ policy: route.id, dimension: 'subject' }, route.subjectLimit)
+        }
         if (!decision.allowed) {
           c.header('Retry-After', String(decision.retryAfterHeader))
+          const dimension = decision.limitedBy === 'subject' ? 'subject' : 'ip'
+          metrics.rateLimitRejections.inc({ policy: route.id, dimension, reason: decision.limitedBy ?? 'unknown' })
+          if (decision.limitedBy === 'missing_subject') {
+            metrics.rateLimitMissingSubject.inc({ policy: route.id })
+          }
           observer?.({ policyId: route.id, requestId, limited: true, degraded: false,
             retryAfterHeader: decision.retryAfterHeader,
             ipCount: decision.ipCount, subjectCount: decision.subjectCount,
@@ -405,6 +425,7 @@ export function createGatewayApp(
           // GW-215: a degraded (fail-open) decision must be observable to the
           // client and to alerting — never a silently unlimited request.
           c.header('X-Gateway-Rate-Limit', 'degraded')
+          metrics.rateLimitDegraded.inc({ policy: route.id })
           observer?.({ policyId: route.id, requestId, limited: false, degraded: true,
             retryAfterHeader: 0,
             ipCount: decision.ipCount, subjectCount: decision.subjectCount })
@@ -483,6 +504,11 @@ export function createGatewayApp(
     definitions: routeDefinitionsForDeployment,
     maxRequestBytes: config.maxRequestBytes,
   }))
+
+  // GW-218: public content cache. Runs AFTER policy enforcement so the
+  // resolved policy (POLICY_CONTEXT_KEY) is already set. Only routes with
+  // `cache: 'public-short'` are cached; everything else passes through.
+  app.use(`${PREFIX}/*`, cacheMiddleware({ ttlMs: config.publicCacheTtlMs }))
 
   app.get('/healthz', c => c.json({ status: 'ok', contract: CONTRACT_VERSION }))
 

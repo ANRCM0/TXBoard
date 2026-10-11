@@ -48,7 +48,7 @@
 | 账户域 | Laravel 原有登录，HPKE-only 注册、邮件验证码 | 后两项默认关闭，Laravel CAPTCHA 是最终权威 |
 | HPKE | RFC 9180 P-256/HKDF-SHA256/AES-256-GCM、AAD 绑定操作、kid、公钥发现、密文请求 | 只加密请求体；无响应加密；无密钥双版本/吊销；TLS 必需 |
 | Redis | SET NX PX 原子 nonce（121s）、Lua 计数限流、断连 503；账号键 SHA-256 | Redis 异步故障转移可丢数据；哈希不等于匿名；键 HMAC 化未做 |
-| 可信入口 | socket peer 推导客户端 IP、转发头重建、伪造 XFF/Host 在 handler 前 403、Host/Origin 精确校验 | 生产 1Panel/边缘信任链未在实网验证 |
+| 可信入口 | socket peer 推导客户端 IP、转发头重建、伪造 XFF/Host 在 handler 前 403、Host/Origin 精确校验 | 生产 1Panel/边缘信任链未在实网验证；**GW-213 代码完成（#12），296/296 测试通过** |
 | 可观测性 | `requestId` 贯穿、脱敏结构化日志、`/metrics`（带凭证）、13 条 Prometheus 告警规则、`/readyz`（不泄配置） | `/readyz` 的 upstream 探针为占位，未接真实 Laravel |
 | 韧性 | 敏感写/登录 fail-closed、只读降级、上游超时/断连受控、防重试风暴 | 生产故障注入与多副本演练未做 |
 | Docker | 私网 Compose + 可选 HPKE/Redis overlay；非 root、只读、健康检查、私钥排除镜像上下文 | 尚未接 1Panel 真实网关/生产证书；禁用自动上线 |

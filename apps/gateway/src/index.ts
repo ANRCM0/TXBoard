@@ -1,11 +1,14 @@
 import { serve } from '@hono/node-server'
+import { watch } from 'node:fs'
+import { readFile } from 'node:fs/promises'
 import { createGatewayApp } from './app.js'
 import { loadConfig } from './config/env.js'
 import { loadCryptoService } from './services/crypto.js'
 import { loadRedisSecurity } from './services/redis-security.js'
 import { loadLoginProtection } from './middleware/login-protection.js'
 import { compileIpAllowlist } from './middleware/security.js'
-import { configureObservability, type ReadinessProbes } from './middleware/observability.js'
+import { configureObservability, observabilityState, type ReadinessProbes } from './middleware/observability.js'
+import { parseRateLimitConfig, setRuntimePolicies } from './middleware/rate-limit.js'
 
 const config = loadConfig()
 // GW-204: fail closed at boot on a malformed ingress allowlist rather than at request time.
@@ -54,3 +57,43 @@ serve({ fetch: app.fetch, hostname: config.host, port: config.port }, info => {
   // Request-level __peerIp seam so tests and raw servers behave identically.
   console.info(`TXBoard Gateway v1 listening on ${config.host}:${config.port}`)
 })
+
+// GW-208: hot-reload rate-limit configuration from a JSON file.
+// The watcher checks every 30s; a successful parse atomically replaces the
+// runtime policy table. A failed parse keeps the old table and records a metric.
+const rateLimitConfigPath = process.env.GATEWAY_RATE_LIMIT_CONFIG?.trim() || undefined
+if (rateLimitConfigPath) {
+  const { metrics } = observabilityState()
+  let lastContent: string | undefined
+  const reload = async () => {
+    try {
+      const raw = await readFile(rateLimitConfigPath!, 'utf8')
+      if (raw === lastContent) return // no change
+      const policies = parseRateLimitConfig(raw)
+      if (!policies) {
+        metrics.rateLimitConfigReloads.inc({ outcome: 'parse_failed' })
+        console.warn(`Rate-limit config parse failed, keeping previous policies: ${rateLimitConfigPath}`)
+        return
+      }
+      if (!setRuntimePolicies(policies)) {
+        metrics.rateLimitConfigReloads.inc({ outcome: 'invalid' })
+        console.warn(`Rate-limit config invalid, keeping previous policies: ${rateLimitConfigPath}`)
+        return
+      }
+      lastContent = raw
+      metrics.rateLimitConfigReloads.inc({ outcome: 'success' })
+      console.info(`Rate-limit config reloaded: ${rateLimitConfigPath} (${policies.length} policies)`)
+    } catch (err) {
+      metrics.rateLimitConfigReloads.inc({ outcome: 'read_failed' })
+      console.warn(`Rate-limit config read failed: ${rateLimitConfigPath}`, err)
+    }
+  }
+  // Initial load, then watch for changes.
+  reload().catch(() => {})
+  watch(rateLimitConfigPath, { persistent: true }, () => { reload().catch(() => {}) })
+  // Periodic check as a fallback if fs.watch misses events (e.g. on some filesystems).
+  setInterval(() => { reload().catch(() => {}) }, 30_000)
+  console.info(`Rate-limit hot-reload enabled: ${rateLimitConfigPath}`)
+} else {
+  console.info('Rate-limit hot-reload disabled (GATEWAY_RATE_LIMIT_CONFIG not set)')
+}

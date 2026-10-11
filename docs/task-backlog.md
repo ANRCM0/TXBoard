@@ -87,7 +87,7 @@
 | GW-210 | P0 | GW | ADR/目标模块边界冻结，列出现状与目标态差异 | docs 架构/策略/威胁模型一致，禁止多服务串联/任意插件，现有契约不变 | 当前 main | **已合并（#9 文档 + #10 代码）** |
 | GW-211 | P1 | GW | PR-A：拆分 app、routes、adapters、services，抽取无副作用 DTO | 全部原接口/错误码/默认 flag 对照测试，TypeScript/Vitest/Playwright mock CI 绿 | GW-210 | **已合并（#10）** |
 | GW-212 | P0 | GW | PR-B：静态路由策略与不可绕过的 global baseline | 各路由策略映射快照、非法组合、未知路径、越权/敏感写入负例 | GW-211 | **已合并（#11）** |
-| GW-213 | P0 | GW + DEP | PR-C：可信入口 IP/Host 与边缘+账户双层限流 | 假 XFF/Host/Origin 绕过拒绝，多副本、429/Retry-After 与误伤测试 | GW-201/204、GW-212 | **已合并（#12）** |
+| GW-213 | P0 | GW + DEP | PR-C：可信入口 IP/Host 与边缘+账户双层限流 | 假 XFF/Host/Origin 绕过拒绝，多副本、429/Retry-After 与误伤测试 | GW-201/204、GW-212 | **已合并（#12）；296/296 测试通过** |
 | GW-214 | P0 | GW + DEP | PR-D：无敏感字段的 requestId、metrics、内部 readiness | 断连/超时/429/503 可观测；零密码/Bearer/email/body 日志；探针不泄配置 | GW-205、GW-212 | **已合并（#13）** |
 | GW-215 | P0 | GW | HPKE/Redis 共享安全状态和密钥轮换、故障切换 | nonce 跨副本原子；Redis 切主/丢状态测试；双 kid 轮换/吊销与 fail-closed | GW-212、GW-401～406 | **部分（nonce 跨副本原子已合并；双 kid 轮换/吊销未做）** |
 | GW-216 | P0 | GW + TX + DEP | PR-E：真实 TXBoard Staging 回归 + Gateway/旧 API 回滚 | Laravel/MySQL/Redis/真实 CAPTCHA、代理安全、故障注入证据；当前延期 | GW-104/105/107/109、GW-212 | **未做（按决策延期）** |
