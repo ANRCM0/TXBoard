@@ -21,6 +21,10 @@
   --shadow: 0 1px 2px rgba(16,24,40,.035), 0 4px 14px rgba(16,24,40,.035);
   --admin-header-height: 60px;
   --admin-sidebar-width: 232px;
+  --admin-sidebar-compact-width: 64px;
+  --admin-page-max-width: 1520px;
+  --admin-page-gutter: 24px;
+  --admin-page-block: 20px;
   --radius-control: 8px;
   --radius-card: 12px;
   --radius-overlay: 14px;
@@ -29,6 +33,8 @@
   --ui-font-body: 13px;
   --ui-font-secondary: 12px;
   --ui-font-heading: 15px;
+  --ui-font-page: 21px;
+  --ui-control-height: 40px;
   --ui-row-padding: 13px;
   --ui-gap: 12px;
   --ui-surface-subtle: #f1f5f9;

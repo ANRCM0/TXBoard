@@ -1,11 +1,10 @@
 /* Phase B: focused dashboard and guided empty states, loaded after legacy styles. */
-.tx-empty-state{display:flex;min-height:200px;flex-direction:column;justify-content:center;align-items:center;gap:10px;padding:28px 20px;text-align:center;color:var(--muted)}
+.tx-empty-state{display:flex;min-height:176px;flex-direction:column;justify-content:center;align-items:center;gap:10px;padding:28px 20px;text-align:center;color:var(--muted)}
 .tx-empty-state-icon{width:48px;height:48px;display:grid;place-items:center;border:1px solid var(--border);border-radius:14px;background:var(--hover);color:var(--primary)}
 .tx-empty-state>strong{color:var(--fg);font-size:15px;font-weight:650}
 .tx-empty-state>p{max-width:440px;margin:0;font-size:13px;line-height:1.65}
 .tx-empty-state-actions{display:flex;justify-content:center;align-items:center;flex-wrap:wrap;gap:10px;margin-top:6px}
 .tx-empty-state-actions .button{min-height:38px;text-decoration:none}
-.server-table-card .tx-empty-state{min-height:270px}
 .dashboard-ops-clear{display:flex;align-items:center;gap:14px;padding:16px 18px;border:1px solid var(--border);border-radius:10px;background:var(--panel);box-shadow:var(--shadow)}
 .dashboard-ops-clear>svg{flex:none;color:var(--success)}
 .dashboard-ops-clear>div{flex:1;min-width:0}
@@ -25,4 +24,4 @@
 .dashboard-chart-card .dash-chart.is-empty .tx-empty-state{min-height:198px}
 .rank-list.is-empty{min-height:0;padding-bottom:16px}
 .rank-list.is-empty .tx-empty-state{min-height:190px}
-@media(max-width:600px){.dashboard-ops-clear{align-items:flex-start;padding:14px}.dashboard-ops-clear>span{display:none}.tx-empty-state{padding:24px 16px}.server-table-card .tx-empty-state{min-height:230px}}
+@media(max-width:600px){.dashboard-ops-clear{align-items:flex-start;padding:14px}.dashboard-ops-clear>span{display:none}.tx-empty-state{min-height:152px;padding:20px 14px}}
