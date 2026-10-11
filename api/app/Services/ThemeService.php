@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\View;
 use App\Services\Theme\ThemePackage;
+use App\Services\Theme\ThemeV2Runtime;
 use Illuminate\Http\UploadedFile;
 use Exception;
 use Throwable;
@@ -22,6 +23,7 @@ class ThemeService
 
     public function __construct(
         private readonly ThemePackage $themePackage,
+        private readonly ThemeV2Runtime $themeV2,
     ) {
         $this->registerThemeViewPaths();
     }
@@ -96,6 +98,17 @@ class ThemeService
         return collect(File::directories($path))
             ->mapWithKeys(function ($dir) use ($canDelete, $activeTheme) {
                 $name = basename($dir);
+                if ($canDelete && $this->themeV2->isInstalled($name)) {
+                    try {
+                        $descriptor = $this->themeV2->inventory($name);
+                        $descriptor['can_delete'] = $name !== $activeTheme;
+                        $descriptor['is_system'] = false;
+                        return [$name => $descriptor];
+                    } catch (Throwable $e) {
+                        Log::warning('Invalid installed Theme v2 package', ['theme' => $name]);
+                        return [];
+                    }
+                }
                 if (
                     !File::exists($dir . '/' . self::CONFIG_FILE) ||
                     ($name !== self::DEFAULT_THEME && !File::exists($dir . '/dashboard.blade.php'))
@@ -233,6 +246,16 @@ class ThemeService
 
         $currentTheme = $this->getActiveTheme();
 
+        if ($this->themeV2->isInstalled($theme)) {
+            $this->themeV2->activate($theme, function () use ($theme): void {
+                admin_setting(['frontend_theme' => $theme]);
+            });
+            if ($currentTheme !== $theme) {
+                $this->cleanupThemeFiles($currentTheme);
+            }
+            return true;
+        }
+
         // The built-in theme is served by the native Vue SPA; no static Umi
         // application or Blade theme asset publication is required.
         if ($theme === self::DEFAULT_THEME) {
@@ -292,8 +315,14 @@ class ThemeService
                 throw new Exception('Theme not found');
             }
 
+            $wasV2 = $this->themeV2->isInstalled($theme);
             $this->cleanupThemeFiles($theme);
-            File::deleteDirectory($themePath);
+            if (!File::deleteDirectory($themePath)) {
+                throw new Exception('Failed to delete theme files');
+            }
+            if ($wasV2) {
+                $this->themeV2->removeHistory($theme);
+            }
             admin_setting([self::SETTING_PREFIX . $theme => null]);
             return true;
 
@@ -338,6 +367,9 @@ class ThemeService
      */
     public function getConfig(string $theme): ?array
     {
+        if ($this->themeV2->isInstalled($theme)) {
+            return $this->themeV2->getConfig($theme);
+        }
         $config = admin_setting(self::SETTING_PREFIX . $theme);
 
         if ($config === null) {
@@ -354,6 +386,9 @@ class ThemeService
      */
     public function getPublicConfig(string $theme): array
     {
+        if ($this->themeV2->isInstalled($theme)) {
+            return $this->themeV2->getPublicConfig($theme);
+        }
         $schema = $this->readConfigFile($theme);
         $values = $this->getConfig($theme) ?? [];
         if (!is_array($schema) || !is_array($values)) {
@@ -385,6 +420,10 @@ class ThemeService
      */
     public function updateConfig(string $theme, array $config): bool
     {
+        if ($this->themeV2->isInstalled($theme)) {
+            $this->themeV2->updateConfig($theme, $config);
+            return true;
+        }
 
         try {
             if (!$this->getThemePath($theme)) {
@@ -460,6 +499,10 @@ class ThemeService
     {
         try {
             $currentTheme = $this->getActiveTheme();
+            if ($this->themeV2->isInstalled($currentTheme)) {
+                $this->themeV2->republish($currentTheme);
+                return true;
+            }
 
             $themePath = $this->getThemePath($currentTheme);
             if (!$themePath) {
