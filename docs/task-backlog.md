@@ -58,7 +58,7 @@
 | GW-106 | P1 | GW | SDK 错误、AbortSignal、SSR 隔离及打包兼容 | GW-102/103 | Node+浏览器 import/exports 通过，SSR 两用户令牌隔离测试无泄漏，pack dry run 成功 |
 | GW-107 | P0 | DEP + GW | 可选 Docker 服务及入口配置，保持遗留路由原样 | GW-104 | 内网部署、HTTPS、Origin/Host 和路由隔离检查，通过开关可以立即禁用 Gateway |
 | GW-108 | P1 | TX | 内置 Vue 只读 API adapter/feature flag | GW-105/106/107 | 同一站点新旧客户端取数一致；关闭开关后原生页面无差异 |
-| GW-109 | P0 | GW + DEP | staging 压测、故障演练、版本对应和回滚预演 | GW-107/108 | 网络超时、进程退出、DNS 错误、错误码和切回路径经过演练，发布记录可追踪 |
+| GW-109 | P0 | GW + DEP | staging 压测、故障演练、版本对应和回滚预演 | GW-107/108 | 网络超时、进程退出、DNS 错误、错误码和切回路径经过演练，发布记录可追踪 | **脚本已完成（benchmark.sh / fault-drill.sh / rollback-drill.sh 增强）；待真实 staging 环境验证** |
 
 **M1 Go / No-Go：** GW-101/102/103/104/105/107/109 完成并且所有 P0 测试通过；GW-108 至少在 staging 可控，正式开关仍默认为 off。未完成不能进入生产默认流量。
 

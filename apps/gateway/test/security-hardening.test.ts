@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi, beforeEach } from 'vitest'
 import {
   compileIpAllowlist,
   evaluateRequest,
@@ -22,10 +22,19 @@ import {
 } from '../src/middleware/rate-limit.js'
 import { createGatewayApp, safeHostHeader } from '../src/app.js'
 import { loadConfig } from '../src/config/env.js'
+import { invalidateCache, resetCacheStats } from '../src/middleware/cache.js'
 
 const config = loadConfig({
   TXBOARD_UPSTREAM_URL: 'https://txboard.example/',
   GATEWAY_ALLOWED_ORIGINS: 'https://theme.example',
+})
+
+// The public-content cache is module-global and keyed only by method+path, so a
+// response cached by one test would be served to the next test that hits the
+// same path. Reset it between tests.
+beforeEach(() => {
+  invalidateCache()
+  resetCacheStats()
 })
 
 const ALLOW = compileIpAllowlist('10.0.0.0/8')

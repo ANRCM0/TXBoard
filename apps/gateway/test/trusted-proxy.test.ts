@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi, beforeEach } from 'vitest'
 import {
   compileIpAllowlist,
   evaluateRequest,
@@ -10,10 +10,19 @@ import {
 } from '../src/middleware/security.js'
 import { createGatewayApp, safeHostHeader } from '../src/app.js'
 import { loadConfig } from '../src/config/env.js'
+import { invalidateCache, resetCacheStats } from '../src/middleware/cache.js'
 
 const config = loadConfig({
   TXBOARD_UPSTREAM_URL: 'https://txboard.example/',
   GATEWAY_ALLOWED_ORIGINS: 'https://theme.example',
+})
+
+// The public-content cache is module-global and keyed only by method+path, so a
+// response cached by one test (e.g. an error or a different mock) would be
+// served to the next test that hits the same path. Reset it between tests.
+beforeEach(() => {
+  invalidateCache()
+  resetCacheStats()
 })
 
 /** Build a Request whose socket peer is `peer` (test seam used by the gateway). */
@@ -260,6 +269,9 @@ describe('GW-204 gateway enforcement', () => {
     expect(res.headers.get('strict-transport-security')).toContain('max-age=31536000')
     expect(res.headers.get('cross-origin-resource-policy')).toBe('same-origin')
     expect(res.headers.get('x-request-id')).toBeTruthy()
+    // GW-207: defense-in-depth framing and feature-policy deny.
+    expect(res.headers.get('x-frame-options')).toBe('DENY')
+    expect(res.headers.get('permissions-policy')).toContain('geolocation=()')
   })
 })
 

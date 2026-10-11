@@ -233,8 +233,9 @@ describe('GW-214 metrics', () => {
     expect((await app.request('/gateway/v1/plans')).status).toBe(502)
     // 429 — upstream rate limit is preserved verbatim
     expect((await app.request('/gateway/v1/plans')).status).toBe(429)
-    // 5xx — an upstream 500 is preserved verbatim (never collapsed to a 4xx)
-    expect((await app.request('/gateway/v1/plans')).status).toBe(500)
+    // 5xx — an upstream 500 is surfaced as a gateway 502 (bad gateway), never
+    // collapsed to a 4xx.
+    expect((await app.request('/gateway/v1/plans')).status).toBe(502)
 
     const rendered = metrics.render()
     expect(rendered).toContain('txboard_gateway_requests_total{operation="/gateway/v1/auth/login",method="POST",status_class="2xx"} 1')
@@ -491,7 +492,7 @@ describe('GW-214 /readyz', () => {
       {
         metrics,
         logger: loggerFor(l => lines.push(l)),
-        probes: { redis: () => 'up', hpke: () => 'up', upstream: () => 'up' },
+        probes: { redis: () => 'up', hpke: () => 'up', captchaChallenge: () => 'unknown', upstream: () => 'up' },
       },
     )
 
@@ -500,7 +501,7 @@ describe('GW-214 /readyz', () => {
     expect(res.headers.get('content-type')).toContain('application/json')
     const payload = await res.json() as { status: string; dependencies: Record<string, string> }
     expect(payload.status).toBe('ready')
-    expect(payload.dependencies).toEqual({ redis: 'up', hpke: 'up', upstream: 'up' })
+    expect(payload.dependencies).toEqual({ redis: 'up', hpke: 'up', captchaChallenge: 'unknown', upstream: 'up' })
 
     const blob = JSON.stringify(payload) + lines.join('\n')
     for (const forbidden of [
@@ -511,7 +512,7 @@ describe('GW-214 /readyz', () => {
     }
     // The only strings in the payload are the readiness verdict and the three
     // closed dependency states — nothing else may appear.
-    expect(Object.keys(payload.dependencies).sort()).toEqual(['hpke', 'redis', 'upstream'])
+    expect(Object.keys(payload.dependencies).sort()).toEqual(['captchaChallenge', 'hpke', 'redis', 'upstream'])
     for (const state of Object.values(payload.dependencies)) {
       expect(['up', 'down', 'unknown']).toContain(state)
     }
@@ -537,14 +538,14 @@ describe('GW-214 /readyz', () => {
     const res = await app.request('http://gateway.internal/readyz')
     const payload = await res.json() as { status: string; dependencies: Record<string, string> }
     expect(payload.status).toBe('degraded')
-    expect(payload.dependencies).toEqual({ redis: 'down', hpke: 'up', upstream: 'down' })
+    expect(payload.dependencies).toEqual({ redis: 'down', hpke: 'up', captchaChallenge: 'unknown', upstream: 'down' })
     expect(JSON.stringify(payload)).not.toContain('ECONNREFUSED')
     expect(JSON.stringify(payload)).not.toContain('6379')
   })
 
   it('checkReadiness bounds probe time and reports unknown for absent probes', async () => {
     const snapshot = await checkReadiness({})
-    expect(snapshot).toEqual({ redis: 'unknown', hpke: 'unknown', upstream: 'unknown' })
+    expect(snapshot).toEqual({ redis: 'unknown', hpke: 'unknown', captchaChallenge: 'unknown', upstream: 'unknown' })
 
     const hanging = await checkReadiness(
       { redis: () => new Promise(() => {}) },
@@ -555,11 +556,11 @@ describe('GW-214 /readyz', () => {
 
   it('readinessVerdict only blocks on an explicit down', async () => {
     const { readinessVerdict } = await import('../src/middleware/observability.js')
-    expect(readinessVerdict({ redis: 'up', hpke: 'up', upstream: 'up' })).toBe(true)
-    expect(readinessVerdict({ redis: 'unknown', hpke: 'unknown', upstream: 'unknown' })).toBe(true)
-    expect(readinessVerdict({ redis: 'down', hpke: 'up', upstream: 'up' })).toBe(false)
-    expect(readinessVerdict({ redis: 'up', hpke: 'down', upstream: 'up' })).toBe(false)
-    expect(readinessVerdict({ redis: 'up', hpke: 'up', upstream: 'down' })).toBe(false)
+    expect(readinessVerdict({ redis: 'up', hpke: 'up', captchaChallenge: 'up', upstream: 'up' })).toBe(true)
+    expect(readinessVerdict({ redis: 'unknown', hpke: 'unknown', captchaChallenge: 'unknown', upstream: 'unknown' })).toBe(true)
+    expect(readinessVerdict({ redis: 'down', hpke: 'up', captchaChallenge: 'up', upstream: 'up' })).toBe(false)
+    expect(readinessVerdict({ redis: 'up', hpke: 'down', captchaChallenge: 'up', upstream: 'up' })).toBe(false)
+    expect(readinessVerdict({ redis: 'up', hpke: 'up', captchaChallenge: 'up', upstream: 'down' })).toBe(false)
   })
 })
 

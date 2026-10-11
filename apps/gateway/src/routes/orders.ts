@@ -45,6 +45,9 @@ function parseStatusQuery(c: RouteContext): number | undefined | Response {
 /** Validate an order identifier path parameter. */
 function parseTradeNo(c: RouteContext): string | Response {
   const tradeNo = c.req.param('tradeNo')
+  if (typeof tradeNo !== 'string') {
+    return fail(c, 'VALIDATION_ERROR', 'Invalid order identifier', 400)
+  }
   if (!TRADE_NO_PATTERN.test(tradeNo)) {
     return fail(c, 'VALIDATION_ERROR', 'Invalid order identifier', 400)
   }
