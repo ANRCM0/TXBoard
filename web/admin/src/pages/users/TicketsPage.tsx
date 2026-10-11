@@ -14,6 +14,8 @@ import {
 import { Modal } from '../../components/ui/Modal'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { QueryFeedback } from '../../components/ui/QueryFeedback'
+import { EmptyState } from '../../components/ui/EmptyState'
+import { ListSurface } from '../../components/ui/ListSurface'
 import { requestConfirm } from '../../components/ui/ConfirmDialog'
 
 export function TicketsPage() {
@@ -42,6 +44,15 @@ export function TicketsPage() {
   })
 
   const rows = Array.isArray(query.data?.data) ? query.data.data : []
+  const hasFilters = Boolean(appliedEmail.trim() || replyStatus)
+  const showPagination = Number(query.data?.total || 0) > pageSize || page > 1
+
+  function clearFilters() {
+    setEmail('')
+    setAppliedEmail('')
+    setReplyStatus('')
+    setPage(1)
+  }
 
   function switchTab(next: 'open' | 'closed') {
     setStatusTab(next)
@@ -77,6 +88,7 @@ export function TicketsPage() {
     <div className="ticket-toolbar">
       <div className="order-search">
         <input
+          aria-label="按用户邮箱搜索工单"
           value={email}
           onChange={event => setEmail(event.target.value)}
           onKeyDown={event => {
@@ -92,23 +104,50 @@ export function TicketsPage() {
         </button>
       </div>
 
-      <select value={replyStatus} onChange={event => { setReplyStatus(event.target.value); setPage(1) }}>
+      <select aria-label="筛选工单回复状态" value={replyStatus} onChange={event => { setReplyStatus(event.target.value); setPage(1) }}>
         <option value="">全部回复状态</option>
         <option value="0">待回复</option>
         <option value="1">已回复</option>
       </select>
 
-      {(appliedEmail || replyStatus) && <button className="button" onClick={() => {
-        setEmail('')
-        setAppliedEmail('')
-        setReplyStatus('')
-        setPage(1)
-      }}>清除筛选</button>}
+      {hasFilters && <button type="button" className="button" onClick={clearFilters}>清除筛选</button>}
     </div>
 
-    <div className="card ticket-table-card">
-      <QueryFeedback loading={query.isFetching} error={query.isError} onRetry={() => query.refetch()} />
-      <div className="table-wrap">
+    <ListSurface
+      className="ticket-table-card" label="工单列表" count={rows.length}
+      loading={query.isFetching} error={query.isError} placeholder={query.isPlaceholderData}
+      onRetry={() => void query.refetch()}
+      emptyState={<EmptyState
+        icon={<MessageSquare size={22}/>}
+        title={hasFilters ? '没有符合条件的工单' : statusTab === 'open' ? '暂无处理中工单' : '暂无已关闭工单'}
+        description={hasFilters ? '调整邮箱或回复状态筛选条件后重试。' : '当前分类中没有需要查看的工单。'}
+        action={hasFilters
+          ? <button type="button" className="button" onClick={clearFilters}>清除筛选</button>
+          : <button type="button" className="button" onClick={() => void query.refetch()}>刷新列表</button>}
+      />}
+      pagination={showPagination ? (
+      <div className="pagination-bar">
+        <span className="pagination-meta">
+          共 {query.data?.total || 0} 条 · 第 {query.data?.current_page || page} / {query.data?.last_page || 1} 页
+        </span>
+        <div className="pagination-actions">
+          <select aria-label="每页条数" value={pageSize} onChange={event => { setPageSize(Number(event.target.value)); setPage(1) }}>
+            <option value={10}>10 / 页</option>
+            <option value={20}>20 / 页</option>
+            <option value={50}>50 / 页</option>
+          </select>
+          <button className="icon-button" aria-label="上一页" disabled={query.isFetching || page <= 1} onClick={() => setPage(value => Math.max(1, value - 1))}>
+            <ChevronLeft size={16}/>
+          </button>
+          <button
+            className="icon-button"
+            aria-label="下一页" disabled={query.isFetching || page >= Number(query.data?.last_page || 1)}
+            onClick={() => setPage(value => value + 1)}
+          ><ChevronRight size={16}/></button>
+        </div>
+      </div>
+      ) : null}
+    >
         <table className="data-table">
           <thead>
             <tr>
@@ -140,34 +179,9 @@ export function TicketsPage() {
                 </button>
               </td>
             </tr>)}
-            {!rows.length && !query.isError && <tr>
-              <td colSpan={7} className="empty-cell">{query.isLoading ? '加载中…' : '暂无工单'}</td>
-            </tr>}
           </tbody>
         </table>
-      </div>
-
-      <div className="pagination-bar">
-        <span className="pagination-meta">
-          共 {query.data?.total || 0} 条 · 第 {query.data?.current_page || page} / {query.data?.last_page || 1} 页
-        </span>
-        <div className="pagination-actions">
-          <select value={pageSize} onChange={event => { setPageSize(Number(event.target.value)); setPage(1) }}>
-            <option value={10}>10 / 页</option>
-            <option value={20}>20 / 页</option>
-            <option value={50}>50 / 页</option>
-          </select>
-          <button className="icon-button" disabled={page <= 1} onClick={() => setPage(value => Math.max(1, value - 1))}>
-            <ChevronLeft size={16}/>
-          </button>
-          <button
-            className="icon-button"
-            disabled={page >= Number(query.data?.last_page || 1)}
-            onClick={() => setPage(value => value + 1)}
-          ><ChevronRight size={16}/></button>
-        </div>
-      </div>
-    </div>
+    </ListSurface>
 
     <TicketDetailModal
       ticketId={detailId}
