@@ -1,4 +1,4 @@
-import { ChevronDown, Info } from 'lucide-react'
+import { ChevronDown, Info, Settings2 } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import type {
@@ -6,12 +6,15 @@ import type {
   MachineItem,
   NodeItem,
   NodeProtocolType,
+  NodeRateTimeRange,
   ProtocolDefinitionMeta,
   RouteItem,
 } from '../../api/server'
 import { Modal } from '../../components/ui/Modal'
 import { requestConfirm } from '../../components/ui/ConfirmDialog'
 import { ProtocolSchemaForm } from './ProtocolSchemaForm'
+import { NodeRateSchedule } from './NodeRateSchedule'
+import './NodeEditorModal.css'
 
 type JsonValue = Record<string, unknown> | unknown[]
 const GB = 1024 ** 3
@@ -271,7 +274,10 @@ function MultiPicker({
   options: Array<{ value: number; label: string }>
   onChange: (value: number[]) => void
 }) {
-  const selected = options.filter((option) => value.includes(option.value))
+  const selected = value.map(id => options.find(option => option.value === id) ?? {
+    value: id,label: 'ID ' + id,
+  })
+  const available = [...options, ...selected.filter(item => !options.some(option => option.value === item.value))]
   const toggle = (optionValue: number) => {
     onChange(value.includes(optionValue)
       ? value.filter((item) => item !== optionValue)
@@ -282,13 +288,13 @@ function MultiPicker({
     <div className="node-editor-label-row"><span>{label}</span><small>可多选</small></div>
     <details className="node-multi-picker">
       <summary>
-        <span className={selected.length ? '' : 'placeholder'}>
-          {selected.length ? selected.map((option) => option.label).join('、') : placeholder}
+        <span className={selected.length ? 'node-multi-chips' : 'placeholder'}>
+          {selected.length ? selected.map(option => <span key={option.value} className="node-multi-chip">{option.label}</span>) : placeholder}
         </span>
         <ChevronDown size={16}/>
       </summary>
       <div className="node-multi-options">
-        {options.length ? options.map((option) => <label key={option.value}>
+        {available.length ? available.map((option) => <label key={option.value}>
           <input
             type="checkbox"
             checked={value.includes(option.value)}
@@ -325,6 +331,8 @@ export function NodeEditorModal({
   onSubmit: (payload: Partial<NodeItem>) => void
 }) {
   const [draft, setDraft] = useState<Draft>(() => draftFromNode(node, protocolDefinitions))
+  const [advancedOpen,setAdvancedOpen] = useState(false)
+  const advancedRef = useRef<HTMLDetailsElement>(null)
   const jsonValidity = useRef(new Map<string, () => boolean>())
 
   const reportJsonValidity = useCallback<JsonValidityReporter>((key, report) => {
@@ -337,6 +345,7 @@ export function NodeEditorModal({
   useEffect(() => {
     if (!open) return
     setDraft(draftFromNode(node, protocolDefinitions))
+    setAdvancedOpen(false)
   }, [open, node?.id])
 
   useEffect(() => {
@@ -410,6 +419,15 @@ export function NodeEditorModal({
     if (!Number.isInteger(serverPort) || serverPort < 1 || serverPort > 65535) return toast.error('后端服务端口必须在 1-65535 之间')
     if (!Number.isFinite(rate) || rate < 0) return toast.error('倍率必须是大于等于 0 的数字')
     if (!Number.isFinite(transferLimitGb) || transferLimitGb < 0) return toast.error('流量上限必须是大于等于 0 的数字')
+    if (draft.rateTimeEnable) {
+      const rows = Array.isArray(draft.rateTimeRanges) ? draft.rateTimeRanges : []
+      if (!rows.length || rows.some(row => !isRecord(row) ||
+        !/^\\d{2}:\\d{2}(?::\\d{2})?$/.test(String(row.start ?? '')) ||
+        !/^\\d{2}:\\d{2}(?::\\d{2})?$/.test(String(row.end ?? '')) ||
+        typeof row.rate !== 'number' || !Number.isFinite(row.rate) || row.rate < 0)) {
+        return toast.error('请至少配置一个有效的分时倍率时间段')
+      }
+    }
 
     // Never discard freshly typed JSON: values are committed on blur, so an
     // unparsable field means the payload below would silently use stale data.
@@ -469,6 +487,7 @@ export function NodeEditorModal({
         value={draft.protocolSettings}
         onChange={updateProtocol}
         generatorContext={{ host: draft.host.trim() }}
+        protocolType={draft.type}
         reportJsonValidity={reportJsonValidity}
       />
     }
@@ -487,18 +506,29 @@ export function NodeEditorModal({
   return <Modal
     open={open}
     title={node ? '编辑节点' : '新建节点'}
-    subtitle="管理节点连接、协议参数与访问范围。"
+    subtitle="选择协议和内置设置，按需填写连接信息。"
     onClose={requestClose}
     wide
     className="node-editor-modal"
     bodyClassName="node-editor-body"
     headerAction={<ProtocolPicker value={draft.type} definitions={protocolDefinitions} onChange={setType}/>}
     footer={<div className="node-editor-actions">
-      <button className="button node-editor-cancel" onClick={requestClose}>取消</button>
-      <button className="button primary" disabled={saving} onClick={submit}>{saving ? '提交中…' : '提交'}</button>
+      <button type="button" className="button node-editor-advanced-trigger"
+        aria-expanded={advancedOpen} aria-controls="node-editor-advanced"
+        onClick={() => {
+          setAdvancedOpen(open => !open)
+          window.setTimeout(() => advancedRef.current?.scrollIntoView?.({block:'nearest'}), 0)
+        }}>
+        <Settings2 size={16} aria-hidden="true"/>高级设置
+      </button>
+      <span className="node-editor-footer-spacer"/>
+      <button type="button" className="button node-editor-cancel" onClick={requestClose}>取消</button>
+      <button type="button" className="button primary" aria-label={node ? '保存节点' : '创建节点'}
+        disabled={saving} onClick={submit}>{saving ? '提交中…' : '提交'}</button>
     </div>}
   >
     <div className="node-editor-form">
+      <div className="node-editor-section-label">基础信息</div>
       <div className="node-editor-grid">
         <label className="node-editor-field">
           <span>节点名称</span>
@@ -527,6 +557,11 @@ export function NodeEditorModal({
         ><span/></button>
       </div>
 
+      {draft.rateTimeEnable ? <NodeRateSchedule
+        value={Array.isArray(draft.rateTimeRanges) ? draft.rateTimeRanges as NodeRateTimeRange[] : []}
+        onChange={(rateTimeRanges) => setDraft(current => ({ ...current,rateTimeRanges }))}
+      /> : null}
+
       <div className="node-editor-grid">
         <label className="node-editor-field">
           <span>流量限制 <small>（GB）</small></span>
@@ -551,6 +586,7 @@ export function NodeEditorModal({
         onChange={(groupIds) => setDraft({ ...draft, groupIds })}
       />
 
+      <div className="node-editor-section-label">连接信息</div>
       <label className="node-editor-field node-editor-field-full">
         <span>节点地址</span>
         <input value={draft.host} onChange={(event) => setDraft({ ...draft, host: event.target.value })} placeholder="请输入节点域名或者 IP"/>
@@ -576,6 +612,7 @@ export function NodeEditorModal({
         {renderProtocolFields()}
       </section>
 
+      <div className="node-editor-section-label">访问与部署</div>
       <div className="node-editor-grid">
         <label className="node-editor-field">
           <span>父级节点</span>
@@ -612,10 +649,11 @@ export function NodeEditorModal({
         </div>
       </div>
 
-      <details className="node-editor-advanced">
+      <details className="node-editor-advanced" id="node-editor-advanced"
+        ref={advancedRef} open={advancedOpen}
+        onToggle={event => setAdvancedOpen(event.currentTarget.open)}>
         <summary><strong>高级节点模型</strong><span>IP、排除规则、自定义出站、路由与证书</span><ChevronDown size={17}/></summary>
         <div className="node-editor-advanced-body">
-          {draft.rateTimeEnable && <JsonField label="分时倍率 rate_time_ranges" value={draft.rateTimeRanges} arrayOnly onChange={(value) => setDraft({ ...draft, rateTimeRanges: value })} reportJsonValidity={reportJsonValidity}/>}
           <JsonField label="Excludes" value={draft.excludes} arrayOnly onChange={(value) => setDraft({ ...draft, excludes: value })} reportJsonValidity={reportJsonValidity}/>
           <JsonField label="IPs" value={draft.ips} arrayOnly onChange={(value) => setDraft({ ...draft, ips: value })} reportJsonValidity={reportJsonValidity}/>
           <JsonField label="Custom Outbounds" value={draft.customOutbounds} arrayOnly onChange={(value) => setDraft({ ...draft, customOutbounds: value })} reportJsonValidity={reportJsonValidity}/>
