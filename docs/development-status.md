@@ -2,6 +2,20 @@
 
 > 更新时间：**2026-10-11**；旧阶段记录为历史快照，以下新增最新 main 代码核查。此文档记录代码和 CI，**不是生产就绪证明**。默认分支 main。当前不接入真实 TXBoard 环境，真实联调的验收暂按产品决策**延期**。
 
+## 2026-10-11：GW-306 支付沙箱与对账 ADR（设计，未实施）
+
+- 新增 [adr-payment-sandbox.md](./adr-payment-sandbox.md)（待评审）：支付回调处理全管线在 **Laravel**（验签 → 归属校验 → 金额严格相等校验（分，无容差）→ 幂等 → 状态条件 UPDATE `0→1` → 事务后异步交付），Gateway **零改动、零路由**；验收原话"支付回调不走 Gateway"以结构性负例落地——`config/policies.ts` 路由表与 `allowlistedPaths` 中本就不存在回调端点，新增断言要求猜测路径（`/gateway/v1/payment/notify` 等）404/405 且零上游调用，只读订单接口在支付完成前如实返回 `status=0`（适配层禁止乐观推断）。
+- 幂等复用 GW-302 `idempotency_keys` 表（operation 扩展 `payment.notify`，不新建机制）；沙箱用例 **PS-1～12**：重复回调（恰 1 单迁移/1 条流水/1 次开通）、10 并发重复回调（唯一约束串行化）、异步晚到（期间保持 pending）、**主动查单恢复**（漏单：定时查单得 paid 后喂同一回调处理器，与迟到真实回调幂等等价）、**超时后支付**（订单已 cancelled 时 100% 不自动开通 + P0 人工队列）、支付失败、错误签名（验签失败零副作用）、金额篡改（少付/元分错位/多付一律拒绝 + 告警）、未知 trade_no（回 200 防重试风暴）、Gateway 边界、对账演练。
+- 对账三层（L1 订单态 / L2 `payment_transactions` 流水 / L3 支付商日结，日终命令，不经 Gateway）：分级处置 **A 自动补偿**（漏单/滞后——铁律：补偿永远走同一回调处理器，不建直写旁路）、**B P0 告警**（金额不一致/重复扣款/签名失败——差异 >0 即联动冻结 GW-309 灰度晋级）、**C 人工队列**（超时后支付/归属无法判定）。
+- **放量门禁**：PS-1～12 未全绿或对账差异非零时 `GATEWAY_ORDER_WRITE_ENABLED` 不得为 true（GW-309 G0 禁入条件之一）。Gateway **346/346** + SDK **32/32** 仍全绿（本次为纯文档变更，未改任何代码/CI/测试）。
+
+## 2026-10-11：GW-312 交易邮件模板与通知 ADR（设计，未实施）
+
+- 新增 [adr-transaction-notifications.md](./adr-transaction-notifications.md)（待评审）：事件驱动方案，四类交易事件（`order.created`/`order.paid`/`order.cancelled`/`order.refunded`）在 GW-305/306 交易状态机终态迁移与幂等行处产生，复用 TXBoard 既有通知服务与 SMTP 配置。
+- 边界保持：Gateway/SDK **零代码零凭据**——不持有 SMTP 账号、不渲染邮件正文、不新增路由/上游 operation；Gateway 只可能透传事件类型标识（本次设计为完全零改动）。模板安全 = 强制 HTML 转义 + 字段白名单 DTO（`TransactionEmailEvent`）+ 明文密码/长效 token 禁令（一次性安全链接替代）+ 禁止远程 HTML URL 模板执行。
+- 可靠投递：异步队列（事务提交后才入队，解耦交易）+ 指数退避重试（1s→5s→30s→5min→30min，上限 5 次 + 抖动防风暴）+ DLQ 告警 + `notification_emails.dedupe_key` 唯一约束去重（键由 GW-302 幂等行派生，不新建第二套交易幂等）；**SMTP 故障不回滚合法交易**（副作用隔离）；9 项故障注入 E2E 矩阵（重复回调/100 并发/SMTP 瞬时与持续失败/worker 重启/去重键冲突/模板 XSS 注入/凭据禁令/事务回滚不误发）。
+- **未验收**：GW-303（Laravel 事务幂等）、GW-306（支付沙箱）与 GW-309（灰度）仍未做，交易邮件事件依赖其终态语义；本文档为纯设计变更，未改任何代码/CI/测试。Gateway **346/346** + SDK **32/32** 仍全绿。
+
 ## 2026-10-11：GW-309 订单写灰度与旧 API 绕过边界验收（设计，未实施）
 
 - 新增 [order-write-rollout.md](./order-write-rollout.md)（待评审）：四级灰度 **1% → 5% → 25% → 100%**，分流在边缘/反代层（DEP 责任，优先按用户会话 cookie 固定两侧），Gateway 内不做百分比分流器；每次调比例为独立部署动作，比例归零等价于关闭 `GATEWAY_ORDER_WRITE_ENABLED`。
