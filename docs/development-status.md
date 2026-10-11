@@ -2,6 +2,13 @@
 
 > 更新时间：**2026-10-11**；旧阶段记录为历史快照，以下新增最新 main 代码核查。此文档记录代码和 CI，**不是生产就绪证明**。默认分支 main。当前不接入真实 TXBoard 环境，真实联调的验收暂按产品决策**延期**。
 
+## 2026-10-11：GW-305 checkout/cancel 交易状态机 ADR（设计，未实现路由）
+
+- 新增 [adr-checkout-cancel.md](./adr-checkout-cancel.md)（待评审）：复用 GW-302 派生幂等键与 `idempotency_keys` 表（operation 扩展 `order.checkout`/`order.cancel`，不新建幂等机制）；订单业务态状态机 `0 pending → 1 paid（checkout 成功）/ 2 cancelled（cancel，仅 pending 可取消）`，`1/2/3` 为终态锁定。
+- 不可重复扣款论证：状态条件 UPDATE（`status=0` 守卫）+ 扣款条件 UPDATE（`balance >= ?` 守卫）+ 优惠券条件 UPDATE（`used < limit` 守卫）+ `idempotency_keys` 唯一约束，四者在同一 MySQL 事务内，任一失败整体回滚；重放同键同参数在幂等层返回首次快照，到不了扣款。
+- Gateway 侧**仅设计不实现**：候选 `POST /gateway/v1/orders/:tradeNo/checkout|cancel`（`body:'none'`、无金额字段、默认 disabledWrite 405、独立 flag 评审中）；错误码位冻结增补 `ORDER_STATE_INVALID`(409) / `ORDER_NOT_FOUND`(404，不泄露存在性)，`INSUFFICIENT_BALANCE`/`COUPON_*` 复用 `ORDER_REJECTED`(422)；资金写限流 fail-closed（checkout 5/账号 15 分钟）。未改动任何代码文件。
+- **未验收**：GW-303（Laravel 事务幂等）、GW-306（支付沙箱）与 GW-309（灰度/回滚）仍未做；本文档为设计输入，生产放量门禁不变。Gateway **346/346** + SDK **32/32** 仍全绿（本次为纯文档变更）。
+
 ## 2026-10-11：GW-304 订单写入适配层（默认关闭）已实现
 
 - 新增 `routes/orders-write.ts`（`orderWrite` 策略，仅 `GATEWAY_ORDER_WRITE_ENABLED=true` 时挂载）与 `middleware/idempotency.ts`；策略表新增 `orderWrite`，`POST /gateway/v1/orders` 默认仍为 `disabledWrite`（405、零上游调用）。
