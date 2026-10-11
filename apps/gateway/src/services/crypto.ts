@@ -4,11 +4,39 @@ import { Aes256Gcm, CipherSuite, DhkemP256HkdfSha256, HkdfSha256 } from '@hpke/c
 import { GatewayFailure } from '../services/upstream.js'
 
 const info = new TextEncoder().encode('TXBOARD-GW-V1-LOGIN-HPKE')
-const aadPrefix = 'txboard-gateway:v1\nPOST\n/gateway/v1/secure/auth/'
+/**
+ * 冻结的 AAD 前缀（GW-403 D7）：协议版本 ‖ HTTP 方法 ‖ 操作路径前缀。
+ * Gateway 与 SDK 两侧字节级一致；任何漂移 → 全部请求 400。
+ */
+export const aadPrefix = 'txboard-gateway:v1\nPOST\n/gateway/v1/secure/auth/'
+/**
+ * 单步操作（login/register/email-code）的 session 段占位。多步流程
+ * （如 GW-310 快速购买）在此段绑定会话标识；占位符段与换行**不得省略**，
+ * 否则 AAD 字节位移与多步流程不兼容。
+ */
+export const singleShotSession = '-'
 const replayWindowMs = 60_000
 export type CryptoOperation = 'login' | 'register' | 'email-code'
 export interface ReplayStore {
   reserve(kid: string, nonce: string, ttlMs: number): Promise<boolean>
+}
+
+/** 受信 kid 的格式（内容寻址：序列化公钥 SHA-256 前 24 位十六进制）。 */
+const kidPattern = /^[a-f0-9]{24}$/
+
+/**
+ * 构建冻结的六段 AAD（GW-403 D7）：
+ * `txboard-gateway:v1\n{method}\n{path-prefix}{operation}\n{kid}\n{ts}\n{nonce}\n{session}`
+ * Gateway 与 SDK 共用同一实现，保证两侧字节级一致。
+ */
+export function buildAad(
+  operation: CryptoOperation,
+  kid: string,
+  ts: number,
+  nonce: string,
+  session: string = singleShotSession,
+): Uint8Array {
+  return new TextEncoder().encode(aadPrefix + operation + '\n' + kid + '\n' + ts + '\n' + nonce + '\n' + session)
 }
 
 const suite = new CipherSuite({
@@ -46,9 +74,8 @@ function fromB64(value: string, max: number): Uint8Array {
   return bytes
 }
 
-function aad(request: SealedRequest, operation: CryptoOperation) {
-  return new TextEncoder().encode(aadPrefix + operation + '\n' +
-    request.kid + '\n' + request.ts + '\n' + request.nonce)
+function aad(request: SealedRequest, operation: CryptoOperation, session?: string) {
+  return buildAad(operation, request.kid, request.ts, request.nonce, session)
 }
 
 /** 内部密钥材料。 */
@@ -66,6 +93,7 @@ export class CryptoService {
     private readonly current: KeyMaterial,
     private readonly replay: ReplayStore,
     private readonly previous?: KeyMaterial,
+    private readonly revoked: ReadonlySet<string> = new Set(),
   ) {}
 
   static async create(
@@ -74,6 +102,7 @@ export class CryptoService {
     accountWorkflows = false,
     previousJwk?: JsonWebKey,
     previousExpiresAt?: number,
+    revokedKids?: Iterable<string>,
   ): Promise<CryptoService> {
     if (jwk.kty !== 'EC' || jwk.crv !== 'P-256' || !jwk.d || !jwk.x || !jwk.y) {
       throw new Error('Gateway HPKE key must be a P-256 private JWK')
@@ -115,20 +144,34 @@ export class CryptoService {
       }
     }
 
-    return new CryptoService(current, replay, previous)
+    return new CryptoService(current, replay, previous, new Set(revokedKids))
   }
 
-  /** 公钥发现：返回当前密钥 + 未过期的旧密钥。 */
+  /** 公钥发现：返回当前密钥 + 未过期且未被吊销的旧密钥。 */
   publicKey(): KeyDiscoveryResponse {
-    const keys: KeyVersion[] = [this.current.version]
-    if (this.previous && !isExpired(this.previous.version)) {
-      keys.push(this.previous.version)
+    const keys: KeyVersion[] = []
+    const currentVisible = this.visibleVersion(this.current.version)
+    if (currentVisible) keys.push(currentVisible)
+    if (this.previous) {
+      const visible = this.visibleVersion(this.previous.version)
+      if (visible) keys.push(visible)
     }
     return {
       protocol: 'HPKE-RFC9180',
       suite: 'DHKEM(P-256,HKDF-SHA256)+HKDF-SHA256+AES-256-GCM',
       keys,
     }
+  }
+
+  /**
+   * 发现端点可见性（GW-402 D4）：吊销 kid 立即从发现端点移除（即使仍在旧
+   * 密钥窗口内）；旧密钥过期同样移除。当前密钥不可见 = 配置错误（当前密钥
+   * 被吊销时应整端点不可用，由调用方处理）。
+   */
+  private visibleVersion(version: KeyVersion): KeyVersion | null {
+    if (this.revoked.has(version.kid)) return null
+    if (isExpired(version)) return null
+    return version
   }
 
   /** 旧密钥是否已过期。 */
@@ -142,6 +185,12 @@ export class CryptoService {
     }
     if (!Number.isSafeInteger(request.ts) || Math.abs(Date.now() - request.ts) > replayWindowMs) {
       throw new GatewayFailure('VALIDATION_ERROR', 400, 'Expired encrypted request')
+    }
+
+    // 吊销检查先于任何私钥尝试（GW-402 D4）：被吊销 kid 一律拒绝，包括
+    // 尚未过期的旧密钥窗口内的 kid——吊销是强制失效，不依赖窗口。
+    if (this.revoked.has(request.kid)) {
+      throw new GatewayFailure('VALIDATION_ERROR', 400, 'Unknown encryption key')
     }
 
     // 尝试当前密钥
@@ -193,6 +242,25 @@ function intSetting(value: string | undefined, fallback: number, min: number, ma
   return parsed
 }
 
+/**
+ * 解析 `GATEWAY_HPKE_REVOKED_KIDS`（GW-402 D4）：逗号分隔的 24 位十六进制
+ * kid 列表。非法 kid 格式 fail-hard 启动（防止误拼导致"以为吊销了其实没有"）；
+ * 吊销不存在的 kid 是合法 no-op（幂等）。空白项忽略。
+ */
+export function parseRevokedKids(value: string | undefined): ReadonlySet<string> {
+  if (value === undefined || value.trim() === '') return new Set()
+  const kids = new Set<string>()
+  for (const raw of value.split(',')) {
+    const kid = raw.trim()
+    if (kid === '') continue
+    if (!kidPattern.test(kid)) {
+      throw new Error('GATEWAY_HPKE_REVOKED_KIDS entries must be 24-char hex key ids')
+    }
+    kids.add(kid)
+  }
+  return kids
+}
+
 export async function loadCryptoService(
   env: NodeJS.ProcessEnv, replay?: ReplayStore,
 ): Promise<CryptoService | undefined> {
@@ -225,5 +293,8 @@ export async function loadCryptoService(
     previousExpiresAt = Date.now() + ttlMs
   }
 
-  return CryptoService.create(jwk, replay, accountEnabled, previousJwk, previousExpiresAt)
+  // 吊销表：非法 kid 格式 fail-hard 启动（防误拼"以为吊销了其实没有"）。
+  const revokedKids = parseRevokedKids(env.GATEWAY_HPKE_REVOKED_KIDS)
+
+  return CryptoService.create(jwk, replay, accountEnabled, previousJwk, previousExpiresAt, revokedKids)
 }

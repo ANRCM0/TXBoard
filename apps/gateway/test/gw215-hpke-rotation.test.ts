@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { generateKeyPairSync } from 'node:crypto'
-import { CryptoService, loadCryptoService, type KeyDiscoveryResponse } from '../src/services/crypto.js'
+import { CryptoService, loadCryptoService, buildAad, type KeyDiscoveryResponse } from '../src/services/crypto.js'
 import { encryptForOperation, encryptLoginPayload } from '../../../packages/theme-sdk/src/crypto.js'
 
 function fakeReplay() {
@@ -91,11 +91,10 @@ describe('GW-215 HPKE dual-key rotation and kid eviction', () => {
         Uint8Array.from(atob(oldKeyData.publicKey.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0)),
       )
       const info = new TextEncoder().encode('TXBOARD-GW-V1-LOGIN-HPKE')
-      const aadPrefix = 'txboard-gateway:v1\nPOST\n/gateway/v1/secure/auth/'
       const sender = await suite.createSenderContext({ recipientPublicKey: oldPublicKey, info })
       const ts = Date.now()
       const nonce = 'aaaaaaaaaaaaaaaaaaaaaa'
-      const aad = new TextEncoder().encode(aadPrefix + 'login\n' + oldKeyData.kid + '\n' + ts + '\n' + nonce)
+      const aad = buildAad('login', oldKeyData.kid, ts, nonce)
       const plaintext = new TextEncoder().encode(JSON.stringify({ email: 'user@example.test', password: 'pass12345678' }))
       const ct = await sender.seal(plaintext, aad)
       const toB64 = (bytes: Uint8Array) =>
@@ -208,11 +207,10 @@ describe('GW-215 HPKE dual-key rotation and kid eviction', () => {
       const prevKid = (await import('node:crypto')).createHash('sha256').update(serialized).digest('hex').slice(0, 24)
 
       const info = new TextEncoder().encode('TXBOARD-GW-V1-LOGIN-HPKE')
-      const aadPrefix = 'txboard-gateway:v1\nPOST\n/gateway/v1/secure/auth/'
       const sender = await suite.createSenderContext({ recipientPublicKey: oldPublicKey, info })
       const ts = Date.now()
       const nonce = 'bbbbbbbbbbbbbbbbbbbbbb'
-      const aad = new TextEncoder().encode(aadPrefix + 'login\n' + prevKid + '\n' + ts + '\n' + nonce)
+      const aad = buildAad('login', prevKid, ts, nonce)
       const plaintext = new TextEncoder().encode(JSON.stringify({ email: 'old@example.test', password: 'pass12345678' }))
       const ct = await sender.seal(plaintext, aad)
       const toB64 = (bytes: Uint8Array) =>
