@@ -21,4 +21,4 @@ Gateway 是可选主题 API 适配器，不是 WAF、匿名化服务或端到端
 
 真实 TXBoard 环境验收按产品决策**暂缓**，不是完成或豁免正式上线门禁。只有在独立 Staging、外部审查、性能/代理故障注入和回滚全通过后，才可考虑生产放量。
 
-参阅：[开发状态](./docs/development-status.md) · [HPKE/Redis 限制](./docs/app-crypto-preview.md) · [Docker 操作与回滚](./docs/docker-deployment.md)。
+参阅：[开发状态](./docs/development-status.md) · [HPKE/Redis 限制](./docs/app-crypto-preview.md) · [Docker 操作与回滚](./docs/docker-deployment.md) · [GW-207 依赖/SBOM/签名/CSP-TLS 审计报告](./docs/security-audit-gw207.md)。
