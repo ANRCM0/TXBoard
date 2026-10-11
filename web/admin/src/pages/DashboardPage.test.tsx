@@ -93,9 +93,10 @@ it('removes both redundant summary cards while retaining the trend, rankings and
   expect(localStorage.getItem('txboard:dashboard:period:order-summary')).toBeNull()
 })
 
-it('uses the compact dashboard metric and attention grids without removing sections', () => {
-  expect(host.querySelector('.dashboard-v2-metrics')).not.toBeNull()
-  expect(host.querySelectorAll('.dashboard-v2-metrics .admin-stat-card')).toHaveLength(6)
+it('groups six metrics inside one shared compact surface without removing dashboard sections', () => {
+  expect(host.querySelector('.dashboard-v3-kpis')).not.toBeNull()
+  expect(host.querySelectorAll('.dashboard-v3-kpis .dashboard-v3-kpi')).toHaveLength(6)
+  expect(host.querySelectorAll('.dashboard-v3-kpis .admin-stat-card')).toHaveLength(0)
   expect(host.querySelector('.dashboard-chart-card')).not.toBeNull()
   expect(host.querySelectorAll('.dashboard-rank-grid .rank-card')).toHaveLength(2)
 })
@@ -175,6 +176,46 @@ it('shows guidance for empty income periods and the chart when paid income exist
     })
   })
   await flush()
-  expect(host.querySelector('svg.income-chart')).not.toBeNull()
+  expect(host.querySelector('svg.dashboard-v3-trend-svg')).not.toBeNull()
+  expect(host.querySelector('.dashboard-v3-trend-dates')?.textContent).toContain('2026-10-10')
   expect(host.querySelector('.dashboard-chart-empty')).toBeNull()
+})
+
+
+it('renders compact rank rows with readable short traffic units and long-name truncation support', async () => {
+  const qs=client.getQueryCache().findAll({queryKey:['trafficRank','user']})
+  expect(qs.length).toBeGreaterThan(0)
+  await act(async () => {
+    client.setQueryData(qs[0].queryKey, [
+      {name:'very-long@example.com',value:1048576},
+      {name:'zero@example.com',value:0},
+      {name:'missing@example.com',value:null},
+    ])
+  })
+  await flush()
+  const userRank=host.querySelectorAll('.rank-card')[0]
+  const ranked=Array.from(userRank.querySelectorAll('.dashboard-v3-rank-row'))
+  expect(ranked).toHaveLength(3)
+  expect(ranked[0].querySelector('.dashboard-v3-rank-name')?.getAttribute('title')).toBe('very-long@example.com')
+  expect(ranked[0].querySelector('strong')?.textContent).toBe('1 MB')
+  expect(ranked[1].querySelector('strong')?.textContent).toBe('0 B')
+  expect(ranked[2].querySelector('strong')?.textContent).toBe('—')
+})
+
+it('does not fabricate a zero-paid chart point when the source reports an unknown amount', async () => {
+  const q=client.getQueryCache().findAll({queryKey:['orderChart']})[0]
+  await act(async () => {
+    client.setQueryData(q.queryKey, {
+      list:[
+        {date:'2026-10-09',paid_total:null},
+        {date:'2026-10-10',paid_total:520},
+      ],
+      summary:{paid_total:520},
+    })
+  })
+  await flush()
+  const chart=host.querySelector('svg.dashboard-v3-trend-svg')
+  expect(chart).not.toBeNull()
+  expect(chart?.getAttribute('aria-label')).not.toContain('2026-10-09')
+  expect(host.querySelectorAll('.dashboard-v3-trend-svg .income-chart-dot')).toHaveLength(1)
 })
