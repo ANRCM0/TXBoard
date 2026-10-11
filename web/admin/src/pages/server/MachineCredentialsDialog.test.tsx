@@ -46,13 +46,13 @@ describe('isolated machine credential display',()=>{
   it('unmounts sensitive text after eighteen seconds',async()=>{
     const close=vi.fn()
     await act(async()=>root.render(build(7,close)))
+    vi.useFakeTimers()
     await act(async()=>pending[0]({token:'SHORT_LIVED',install_command:'install -x'}))
     expect(host.textContent).toContain('SHORT_LIVED')
-    vi.useFakeTimers()
-    // Trigger a new credential reading so the expiry timer is scheduled under fake timers.
-    const closeButton=Array.from(host.querySelectorAll<HTMLButtonElement>('button')).find(b=>b.textContent==='关闭凭据')!
-    act(()=>closeButton.click())
+    act(()=>vi.advanceTimersByTime(18_010))
     expect(close).toHaveBeenCalledOnce()
+    expect(host.textContent).not.toContain('SHORT_LIVED')
+    expect(host.querySelector('[data-testid="machine-secret-token"]')).toBeNull()
   })
   it('requires confirmation for resetting the token and never resets without click',async()=>{
     await act(async()=>root.render(build()))
