@@ -63,10 +63,10 @@ describe('Machine Detail v3 page',()=>{
     await mount()
     const byText=(value:string)=>Array.from(host.querySelectorAll<HTMLButtonElement>('button')).find(b=>b.textContent?.trim()===value)!
     act(()=>byText('编辑').click())
-    expect(host.textContent).toContain('编辑机器')
-    expect(host.querySelector('[role="switch"][aria-label="启用机器"]')).not.toBeNull()
+    expect(document.body.textContent).toContain('编辑机器')
+    expect(document.body.querySelector('[role="switch"][aria-label="启用机器"]')).not.toBeNull()
     act(()=>byText('节点绑定').click())
-    expect(host.textContent).toContain('Node binding editor')
+    expect(document.body.textContent).toContain('Node binding editor')
     act(()=>byText('Token / 安装命令').click())
     expect(host.textContent).toContain('Token for #7')
     act(()=>byText('删除').click())
