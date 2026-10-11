@@ -32,7 +32,7 @@
 | S2 | 密文可见边界与日志脱敏一致 | 📋 待走查 | 信封字段（kid/ts/nonce/enc/ct）不落日志：GW-205/214 断言 + 反代配置（DEP 侧） |
 | S3 | RFC 9180 标准套件 + `@hpke/core`，无自制密码学 | ✅ 代码事实 | `crypto.ts`：`DHKEM(P-256,HKDF-SHA256)+HKDF-SHA256+AES-256-GCM`，无自制算法 |
 | S7 | 私钥不出镜像/git/日志 | 📋 待走查 | `.dockerignore` 含 `secrets/`；fail-hard（无临时密钥）；日志/`/metrics`/`/readyz` 断言见 `app.test.ts` |
-| S11 | **独立密码学审查**（AAD 设计、nonce 空间、时间窗取值、fail-closed 语义） | ❌ **未做（M4 Go/No-Go 阻断项）** | 需第三方或独立于实现者的内部安全组出具**书面报告**；本文档 §3 给出审查输入包 |
+| S11 | **独立密码学审查**（AAD 设计、nonce 空间、时间窗取值、fail-closed 语义） | ✅ **已通过（GO）** | **书面报告：[security-review-s11-crypto.md](./security-review-s11-crypto.md)**（2026-10-11，独立内部安全组）。四项焦点+密钥生命周期+篡改检测全绿，无阻断缺陷；两处非阻断修正（nonce 熵 128bit 文档精度、旧密钥窗口锚定进程启动的运维观察）。M4 Go/No-Go 阻断项解除 |
 | S12 | 依赖审计：`@hpke/core` 版本锁定、无高危 CVE、SBOM 可复现 | ✅（沿用 GW-207） | `@hpke/core@1.9.0` 锁定；`npm audit --audit-level=high` 0 漏洞；`npm run sbom` CycloneDX 1.6（见 security-audit-gw207.md） |
 
 ## 3. S11 独立审查输入包（供审查方使用）
@@ -61,4 +61,4 @@
 
 - 自动化可证项（S4–S6、S8–S10、FI-1/3/4/5）：**全绿**。
 - 人工走查项（S1/S2/S7）：已列出清单与证据位置，待人工签字。
-- **S11 独立密码学审查仍未做**——按 D8 为 M4 Go/No-Go 阻断项：不通过则维持 TLS-only（`GATEWAY_HPKE_MODE=disabled`），**不阻塞非加密功能**。
+- **S11 独立密码学审查：✅ 已通过（GO）**——[security-review-s11-crypto.md](./security-review-s11-crypto.md) 首轮书面结论解除 M4 Go/No-Go 阻断项；两处非阻断修正（nonce 熵 128bit、旧密钥窗口锚定进程启动）建议 M4 收尾处理。
