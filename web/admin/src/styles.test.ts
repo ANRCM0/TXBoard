@@ -3,6 +3,7 @@ import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 const styles = readFileSync(resolve(process.cwd(), 'src/styles.css'), 'utf8')
+const tokens = readFileSync(resolve(process.cwd(), 'src/design-tokens.css'), 'utf8')
 
 function declarationBlock(selector: string) {
   const start = styles.indexOf(`${selector}{`)
@@ -27,7 +28,7 @@ describe('admin sidebar navigation layout', () => {
   })
 
   it('keeps the default compact rail and dashboard picker controls independently sized', () => {
-    expect(styles).toContain('--admin-sidebar-compact-width:64px')
+    expect(tokens).toContain('--admin-sidebar-compact-width: 64px;')
     expect(styles).toContain('.admin-shell.is-sidebar-collapsed .admin-main{margin-left:var(--admin-sidebar-compact-width)}')
     expect(styles).toContain('.dashboard-period-popover{')
     expect(styles).toContain('.dashboard-chart-card,')
@@ -36,7 +37,8 @@ describe('admin sidebar navigation layout', () => {
   it('keeps the main workspace centered and bounded on wide screens', () => {
     const adminPage = declarationBlock('.admin-page')
 
-    expect(adminPage).toContain('max-width:1520px')
+    expect(adminPage).toContain('max-width:var(--admin-page-max-width)')
+    expect(tokens).toContain('--admin-page-max-width: 1520px;')
     expect(adminPage).toContain('margin:0 auto')
   })
 
