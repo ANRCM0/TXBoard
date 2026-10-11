@@ -48,6 +48,12 @@ async function mount(route='/user/7') {
     )
   })
   await flush()
+  // Tickets load only after the detail request yields an email; await the
+  // dependent query instead of asserting during its legitimate loading state.
+  if (route === '/user/7') {
+    await vi.waitFor(() => expect(getTickets).toHaveBeenCalledTimes(1))
+    await flush()
+  }
 }
 
 beforeEach(()=>{
