@@ -1,0 +1,48 @@
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: var(--font);
+  color: var(--color-text);
+  background: var(--color-bg);
+  background-size: cover;
+  background-attachment: fixed;
+}
+.top {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 12px 24px; background: var(--color-surface);
+  border-bottom: 1px solid #e2e8f0;
+}
+.top nav { display: flex; gap: 16px; align-items: center; }
+.top a { color: var(--color-primary); text-decoration: none; }
+.page { max-width: 960px; margin: 0 auto; padding: 32px 16px; }
+.hero { text-align: center; padding: 48px 0; }
+.hero .logo { width: 72px; height: 72px; object-fit: contain; }
+.plans { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
+.plan-card {
+  background: var(--color-surface); border-radius: var(--radius);
+  padding: 20px; display: flex; flex-direction: column; gap: 8px;
+}
+.plan-card .price { font-size: 20px; font-weight: 600; color: var(--color-primary); }
+.panel { background: var(--color-surface); border-radius: var(--radius); padding: 24px; margin: 24px auto; max-width: 960px; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; }
+.stats dt { color: var(--color-muted); font-size: 13px; }
+.stats dd { margin: 4px 0 0; font-weight: 600; }
+.login { max-width: 360px; margin: 64px auto; display: flex; flex-direction: column; gap: 12px; }
+.login label { display: flex; flex-direction: column; gap: 4px; font-size: 14px; }
+.login input { padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 8px; }
+button.primary, .primary {
+  background: var(--color-primary); color: #fff; border: none;
+  padding: 10px 16px; border-radius: 8px; cursor: pointer; text-decoration: none;
+}
+button.secondary, .secondary {
+  background: transparent; color: var(--color-primary); border: 1px solid var(--color-primary);
+  padding: 8px 14px; border-radius: 8px; cursor: pointer;
+}
+button.link, .link { background: none; border: none; color: var(--color-primary); cursor: pointer; }
+.error, .error-state strong { color: var(--color-danger); }
+.error-state { border: 1px solid var(--color-danger); border-radius: var(--radius); padding: 16px; margin: 16px 0; }
+.notice { background: #fef9c3; border-radius: 8px; padding: 8px 12px; }
+.muted { color: var(--color-muted); }
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid #e2e8f0; }
+.request-id { font-size: 12px; color: var(--color-muted); }

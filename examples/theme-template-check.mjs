@@ -9,7 +9,7 @@ import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 
 const ROOT = new URL('..', import.meta.url).pathname
-const TEMPLATES = ['vue-theme', 'react-theme', 'next-theme']
+const TEMPLATES = ['vue-theme', 'react-theme', 'next-theme', 'my-theme']
 
 const FORBIDDEN_PATTERNS = [
   // Any direct upstream/Laravel coupling is a hard failure.
@@ -21,8 +21,13 @@ const FORBIDDEN_PATTERNS = [
   { re: /api[_-]?secret|APP_KEY|master[_-]?key/i, why: 'hard-coded secret' },
 ]
 
+// SDK package name accepts both the workspace name (@txboard/theme-sdk,
+// used by in-repo templates) and the published GitHub Packages scope
+// (@ANRCM0/theme-sdk, used by community themes built from the release).
+const SDK_SPECIFIER = /@(?:txboard|ANRCM0)\/theme-sdk/
+
 const REQUIRED = [
-  { re: /@txboard\/theme-sdk/, why: 'must use the theme SDK' },
+  { re: SDK_SPECIFIER, why: 'must use the theme SDK' },
 ]
 
 function walk(dir) {
@@ -50,7 +55,7 @@ for (const template of TEMPLATES) {
         failed++
       }
     }
-    if (/@txboard\/theme-sdk/.test(text)) hasSdkImport = true
+    if (SDK_SPECIFIER.test(text)) hasSdkImport = true
   }
   for (const { re, why } of REQUIRED) {
     if (!hasSdkImport) {
