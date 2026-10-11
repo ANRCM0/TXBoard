@@ -16,6 +16,7 @@ import { PageHeader } from '../../components/ui/PageHeader'
 import { QueryFeedback } from '../../components/ui/QueryFeedback'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { ListSurface } from '../../components/ui/ListSurface'
+import { listHasPages } from '../../components/ui/listSurfaceState'
 import { requestConfirm } from '../../components/ui/ConfirmDialog'
 
 export function TicketsPage() {
@@ -45,7 +46,7 @@ export function TicketsPage() {
 
   const rows = Array.isArray(query.data?.data) ? query.data.data : []
   const hasFilters = Boolean(appliedEmail.trim() || replyStatus)
-  const showPagination = Number(query.data?.total || 0) > pageSize || page > 1
+  const showPagination = listHasPages(query.data?.total, pageSize, page)
 
   function clearFilters() {
     setEmail('')

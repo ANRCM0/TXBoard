@@ -2,7 +2,7 @@ import { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { describe, expect, it, vi } from 'vitest'
 import { ListSurface } from './ListSurface'
-import { listSurfaceState } from './listSurfaceState'
+import { listHasPages, listSurfaceState } from './listSurfaceState'
 
 describe('shared list surface', () => {
   it('keeps populated data during refresh and treats empty errors as errors', () => {
@@ -12,6 +12,13 @@ describe('shared list surface', () => {
     expect(listSurfaceState({count:0,error:true})).toBe('error')
     expect(listSurfaceState({count:0,placeholder:true})).toBe('loading')
     expect(listSurfaceState({count:0})).toBe('empty')
+  })
+  it('hides zero and one-page pagination but preserves out-of-range navigation', () => {
+    expect(listHasPages(0, 10, 1)).toBe(false)
+    expect(listHasPages(1, 10, 1)).toBe(false)
+    expect(listHasPages(10, 10, 1)).toBe(false)
+    expect(listHasPages(11, 10, 1)).toBe(true)
+    expect(listHasPages(0, 10, 2)).toBe(true)
   })
   it('renders a light empty surface, full row content, and pagination only when passed', () => {
     ;(globalThis as {IS_REACT_ACT_ENVIRONMENT?:boolean}).IS_REACT_ACT_ENVIRONMENT = true

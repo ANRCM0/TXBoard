@@ -31,6 +31,7 @@ import { UserEditorModal } from '../../components/users/UserEditorModal'
 import { UserMailModal } from '../../components/users/UserMailModal'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { ListSurface } from '../../components/ui/ListSurface'
+import { listHasPages } from '../../components/ui/listSurfaceState'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { requestConfirm } from '../../components/ui/ConfirmDialog'
 
@@ -82,7 +83,7 @@ export function UsersPage() {
 
   const users = Array.isArray(query.data?.data) ? query.data.data : []
   const hasFilters = Boolean(appliedSearch.trim() || planId || banState)
-  const showPagination = Number(query.data?.total || 0) > pageSize || page > 1
+  const showPagination = listHasPages(query.data?.total, pageSize, page)
   const plans = Array.isArray(plansQuery.data) ? plansQuery.data : []
 
   const refresh = () => qc.invalidateQueries({ queryKey: ['adminUsers'] })

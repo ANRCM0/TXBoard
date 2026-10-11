@@ -15,6 +15,7 @@ import { OrderAssignModal } from '../../components/finance/OrderAssignModal'
 import { OrderDetailModal } from '../../components/finance/OrderDetailModal'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { ListSurface } from '../../components/ui/ListSurface'
+import { listHasPages } from '../../components/ui/listSurfaceState'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { requestConfirm } from '../../components/ui/ConfirmDialog'
 
@@ -59,7 +60,7 @@ export function OrdersPage() {
   const data = query.data
   const rows = Array.isArray(data?.data) ? data.data : []
   const hasFilters = Boolean(appliedKeyword.trim() || status || commission || commissionOnly)
-  const showPagination = Number(data?.total || 0) > pageSize || page > 1
+  const showPagination = listHasPages(data?.total, pageSize, page)
 
   const refresh = () => qc.invalidateQueries({ queryKey: ['orders'] })
 

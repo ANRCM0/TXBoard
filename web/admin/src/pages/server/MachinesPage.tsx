@@ -223,7 +223,7 @@ export function MachinesPage() {
         action={<button className="button primary" onClick={openCreate}><Plus size={16}/>添加服务器</button>}
       />
 
-      {query.data ? <div className="machine-ops-overview">
+      {query.data && rows.length > 0 ? <div className="machine-ops-overview">
         <Overview icon={<Server size={17} />} label="服务器总数" value={summary.total} />
         <Overview icon={<CircleCheckBig size={17} />} label="在线服务器" value={summary.online} tone="ok" />
         <Overview icon={<CircleX size={17} />} label="离线 / 停用" value={summary.offline} />
