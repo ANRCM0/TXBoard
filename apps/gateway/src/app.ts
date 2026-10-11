@@ -5,6 +5,7 @@ import type { CryptoService } from './services/crypto.js'
 import { GatewayFailure, type UpstreamFetcher } from './services/upstream.js'
 import type { AccountLimiter } from './services/redis-security.js'
 import type { LoginProtection } from './middleware/login-protection.js'
+import type { CaptchaChallenge } from './services/captcha-challenge.js'
 import {
   extractSubject,
   RedisRateLimiter,
@@ -97,6 +98,10 @@ export type GatewayPolicy = {
   }) => void
   /** GW-203: login anti-credential-stuffing (account + IP dual dimension). */
   loginProtection?: LoginProtection
+  /** GW-209: pluggable one-time CAPTCHA challenge store. Absent = the 428
+   *  challenge carries no challengeId and tokens are forwarded to Laravel
+   *  verbatim, exactly as before this feature existed. */
+  captchaChallenge?: CaptchaChallenge
 }
 
 export type GatewayRateObserver = NonNullable<GatewayPolicy['onRateEvent']>
@@ -307,6 +312,7 @@ export function createGatewayApp(
     hpke: Boolean(crypto),
     redis: Boolean(policy.limiter),
     accountWorkflows: Boolean(policy.accountWorkflows),
+    captchaChallenge: Boolean(policy.captchaChallenge),
   }
   validatePolicies(activeRouteDefinitions(policyEnvironment), policyEnvironment, ROUTE_OPERATIONS)
   // The frozen table, compiled once. Every layer that needs to know a route's
@@ -521,6 +527,7 @@ export function createGatewayApp(
     config, fetcher: observed, crypto,
     limiter: policy.limiter,
     loginProtection: policy.loginProtection,
+    captchaChallenge: policy.captchaChallenge,
     accountWorkflows,
   })
   registerUserRoutes(app, { config, fetcher: observed })

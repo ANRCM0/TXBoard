@@ -295,6 +295,7 @@ export type DependencyState = 'up' | 'down' | 'unknown'
 export type DependencySnapshot = {
   redis: DependencyState
   hpke: DependencyState
+  captchaChallenge: DependencyState
   upstream: DependencyState
 }
 
@@ -307,6 +308,8 @@ export type ReadinessProbes = {
   redis?: () => Promise<DependencyState> | DependencyState
   /** HPKE sealed-envelope service availability. */
   hpke?: () => Promise<DependencyState> | DependencyState
+  /** GW-209: one-time CAPTCHA challenge store reachability. Absent = unknown. */
+  captchaChallenge?: () => Promise<DependencyState> | DependencyState
   /** Upstream (Laravel) reachability. */
   upstream?: () => Promise<DependencyState> | DependencyState
 }
@@ -333,15 +336,19 @@ export async function checkReadiness(
       resolveState(probe),
       new Promise<DependencyState>(resolve => setTimeout(() => resolve('unknown'), timeoutMs)),
     ])
-  const [redis, hpke, upstream] = await Promise.all([
-    withTimeout(probes.redis), withTimeout(probes.hpke), withTimeout(probes.upstream),
+  const [redis, hpke, captchaChallenge, upstream] = await Promise.all([
+    withTimeout(probes.redis),
+    withTimeout(probes.hpke),
+    withTimeout(probes.captchaChallenge),
+    withTimeout(probes.upstream),
   ])
-  return { redis, hpke, upstream }
+  return { redis, hpke, captchaChallenge, upstream }
 }
 
 /** Readiness verdict: only an explicitly `down` dependency blocks readiness. */
 export function readinessVerdict(snapshot: DependencySnapshot): boolean {
-  return snapshot.redis !== 'down' && snapshot.hpke !== 'down' && snapshot.upstream !== 'down'
+  return snapshot.redis !== 'down' && snapshot.hpke !== 'down'
+    && snapshot.captchaChallenge !== 'down' && snapshot.upstream !== 'down'
 }
 
 /* ------------------------------------------------------------------ *

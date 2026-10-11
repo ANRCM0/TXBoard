@@ -6,6 +6,7 @@ import { loadConfig } from './config/env.js'
 import { loadCryptoService } from './services/crypto.js'
 import { loadRedisSecurity } from './services/redis-security.js'
 import { loadLoginProtection } from './middleware/login-protection.js'
+import { RedisCaptchaChallenge, type CaptchaChallenge } from './services/captcha-challenge.js'
 import { compileIpAllowlist } from './middleware/security.js'
 import { configureObservability, observabilityState, type ReadinessProbes } from './middleware/observability.js'
 import { parseRateLimitConfig, setRuntimePolicies } from './middleware/rate-limit.js'
@@ -20,6 +21,16 @@ const accountWorkflows = process.env.GATEWAY_ACCOUNT_WORKFLOWS_ENABLED === 'true
 if (accountWorkflows && (!redis || !crypto)) {
   throw new Error('Account workflows require both Redis and HPKE')
 }
+// GW-209: the one-time CAPTCHA challenge store. Opt-in
+// (GATEWAY_CAPTCHA_CHALLENGE_ENABLED) because a deployment without Redis, or
+// one that delegates challenges entirely to Laravel, must keep the legacy
+// verbatim-token behaviour untouched. Redis-backed, atomic GET+DEL, so a
+// challenge succeeds exactly once across every replica.
+let captchaChallenge: CaptchaChallenge | undefined
+if (process.env.GATEWAY_CAPTCHA_CHALLENGE_ENABLED === 'true' && process.env.GATEWAY_REDIS_URL) {
+  captchaChallenge = await RedisCaptchaChallenge.connect(process.env.GATEWAY_REDIS_URL)
+  console.info('Gateway CAPTCHA challenge store enabled (Redis)')
+}
 
 // GW-214 / PR-D: observability wiring. /metrics is reachable only with a bearer
 // token when GATEWAY_METRICS_TOKEN is set, otherwise from loopback only.
@@ -32,6 +43,12 @@ const probes: ReadinessProbes = {
   redis: () => (redis ? ((redis as unknown as { isReady: boolean }).isReady ? 'up' : 'down') : 'unknown'),
   // HPKE sealed-envelope decryption; absent when the mode is disabled.
   hpke: () => (crypto ? 'up' : 'unknown'),
+  // GW-209: the one-time CAPTCHA challenge store (Redis). 'unknown' when the
+  // feature is disabled, so readiness never reports a missing dependency for
+  // a deployment that never wired it.
+  captchaChallenge: () => (captchaChallenge
+    ? ((captchaChallenge as unknown as { client?: { isReady: boolean } }).client?.isReady ? 'up' : 'down')
+    : 'unknown'),
   // Laravel is not contacted on the readiness path; the gateway can serve
   // traffic whenever its own hard dependencies are healthy.
   upstream: () => 'up',
@@ -45,6 +62,7 @@ const app = createGatewayApp(config, fetch, crypto, {
   accountWorkflows,
   limiter: redis ?? undefined,
   loginProtection: loginProtection ?? undefined,
+  captchaChallenge,
   trustedIngress: config.trustedIngress.join(','),
   allowedHosts: config.allowedHosts.join(','),
 }, {

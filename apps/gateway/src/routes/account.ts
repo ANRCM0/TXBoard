@@ -15,6 +15,7 @@ import {
   type LoginAdmission,
   type LoginProtection,
 } from '../middleware/login-protection.js'
+import { extractChallengeToken, type CaptchaChallenge, type ChallengePurpose, challengeTtlMs } from '../services/captcha-challenge.js'
 import { readJsonRequest } from '../middleware/validation.js'
 import { fail, ok, validated, type RouteContext, type RouteDeps } from './shared.js'
 
@@ -45,6 +46,10 @@ export type AccountRouteDeps = RouteDeps & {
   crypto?: CryptoService
   limiter?: AccountLimiter
   loginProtection?: LoginProtection
+  /** GW-209: one-time CAPTCHA challenge store. When absent, the 428
+   *  challenge carries no challengeId and the token is forwarded to Laravel
+   *  verbatim, exactly as before this feature existed. */
+  captchaChallenge?: CaptchaChallenge
   accountWorkflows: boolean
 }
 
@@ -75,12 +80,19 @@ async function checkAccountLimiter(
  * the SUBMITTED email and the sanitized source IP only — never on whether the
  * account exists — so existing and unknown accounts receive byte-identical
  * statuses, codes and Retry-After headers at every step.
+ *
+ * GW-209: when a challenge store is wired, the 428 response carries a fresh
+ * one-time challengeId (5-minute login TTL). The challenge is issued AFTER
+ * the verdict, never before, so a plain 428 can never be used to farm
+ * challenges; and the upstream is never consulted, so a challenge demand
+ * itself never advances the stuffing counters.
  */
 async function applyLoginProtection(
   c: RouteContext,
   protection: LoginProtection | undefined,
   email: string,
   data: Record<string, unknown>,
+  captchaChallenge?: CaptchaChallenge,
 ): Promise<Response | null> {
   if (!protection) return null
   const clientIp = clientIpOf(c)
@@ -97,13 +109,73 @@ async function applyLoginProtection(
     return fail(c, 'RATE_LIMITED', 'Too many requests', 429)
   }
   if (verdict.verdict === 'captcha' && !hasCaptchaField(data)) {
+    if (!captchaChallenge) {
+      return fail(c, 'CAPTCHA_REQUIRED', 'Verification required to continue', 428)
+    }
+    let challengeId: string
+    try {
+      challengeId = await captchaChallenge.issueChallenge('login')
+    } catch (error) {
+      // Fail closed: a challenge that cannot be issued must not be answered
+      // as if the plain 428 flow were still in force, because the token
+      // could then never be satisfied by the client either.
+      if (error instanceof GatewayFailure) {
+        return fail(c, error.code, error.message, error.status as 400 | 428 | 503)
+      }
+      throw error
+    }
+    c.header('X-Captcha-Challenge', challengeId)
+    // The envelope stays contract-frozen: the challengeId is delivered
+    // exclusively through the X-Captcha-Challenge response header, so no
+    // theme SDK sees a new body shape and the frozen envelope never breaks.
     return fail(c, 'CAPTCHA_REQUIRED', 'Verification required to continue', 428)
   }
   return null
 }
 
+/**
+ * GW-209: atomically consume a submitted challenge before the upstream call.
+ * Returns the response to send, or null to continue. A challenge that is
+ * unknown, already consumed, expired or mismatched is REJECTED before any
+ * Laravel traffic — the consumption is the verification. When the store is
+ * unavailable this fails closed (503) rather than letting the attempt pass.
+ *
+ * The challengeId is echoed back by the client in the X-Captcha-Challenge
+ * request header (the same name the 428 response used), so no frozen request
+ * schema has to change and no body field can smuggle it in. The token is the
+ * standard captcha field, forwarded verbatim to Laravel when the challenge
+ * passes.
+ */
+async function consumeChallenge(
+  c: RouteContext,
+  captchaChallenge: CaptchaChallenge | undefined,
+  data: Record<string, unknown>,
+): Promise<Response | null> {
+  if (!captchaChallenge) return null
+  const challengeId = (c.req.header('X-Captcha-Challenge') || '').trim()
+  if (!challengeId) return null
+  const token = extractChallengeToken(data)
+  if (!token) return fail(c, 'CAPTCHA_REQUIRED', 'Verification required to continue', 428)
+  let verdict
+  try {
+    verdict = await captchaChallenge.verifyChallenge(challengeId, token)
+  } catch (error) {
+    if (error instanceof GatewayFailure) {
+      return fail(c, error.code, error.message, error.status as 400 | 428 | 503)
+    }
+    throw error
+  }
+  if (verdict !== 'valid') {
+    // One shot, cross-replica: a replay, a stale or a wrong token is refused
+    // here and never reaches Laravel. The 409 distinguishes a consumed
+    // challenge from a missing one without revealing anything about accounts.
+    return fail(c, 'CAPTCHA_INVALID', 'Challenge verification failed', 409)
+  }
+  return null
+}
+
 export function createLoginHandler(deps: AccountRouteDeps) {
-  const { config, fetcher, limiter, loginProtection } = deps
+  const { config, fetcher, limiter, loginProtection, captchaChallenge } = deps
   return async function runLogin(c: RouteContext, raw: unknown): Promise<Response> {
     const checked = loginSchema.safeParse(raw)
     if (!checked.success) return fail(c, 'VALIDATION_ERROR', 'Invalid login data', 400)
@@ -115,8 +187,15 @@ export function createLoginHandler(deps: AccountRouteDeps) {
     }
 
     const email = normalizeLoginEmail(checked.data.email)
-    const challenged = await applyLoginProtection(c, loginProtection, email, checked.data)
+    const challenged = await applyLoginProtection(c, loginProtection, email, checked.data, captchaChallenge)
     if (challenged) return challenged
+
+    // GW-209: a presented challenge is consumed atomically BEFORE the
+    // upstream call, so a replayed or wrong challenge can never reach
+    // Laravel even once. Without a store this is a no-op and the token is
+    // forwarded verbatim, exactly as before this feature existed.
+    const consumed = await consumeChallenge(c, captchaChallenge, checked.data)
+    if (consumed) return consumed
 
     let result: unknown
     try {
@@ -145,11 +224,40 @@ export function registerAccountRoutes(
   },
   deps: AccountRouteDeps,
 ): void {
-  const { config, fetcher, crypto, limiter, accountWorkflows } = deps
+  const { config, fetcher, crypto, limiter, captchaChallenge, accountWorkflows } = deps
   const runLogin = createLoginHandler(deps)
 
   app.post(`${PREFIX}/auth/login`, async c =>
     runLogin(c, await readJsonRequest(c.req.raw, config.maxRequestBytes)))
+
+  // GW-209: challenge issue. Anonymous, limiter-guarded (public policy) and
+  // never cached. Purpose selects the TTL tier: login 5min, register 10min,
+  // checkout 15min. When no challenge store is wired the route is absent —
+  // a 404 rather than a route that promises a challenge it cannot honour.
+  if (captchaChallenge) {
+    app.post(`${PREFIX}/auth/captcha/challenge`, async c => {
+      let purpose: ChallengePurpose = 'login'
+      try {
+        const raw = await readJsonRequest(c.req.raw, config.maxRequestBytes)
+        const requested = (raw as Record<string, unknown>)?.purpose
+        if (requested === 'register' || requested === 'checkout') purpose = requested
+      } catch {
+        // An unparsable body is not an error here: the default login tier
+        // applies. The strict schemas never accept a purpose field anyway.
+      }
+      let challengeId: string
+      try {
+        challengeId = await captchaChallenge.issueChallenge(purpose)
+      } catch (error) {
+        if (error instanceof GatewayFailure) {
+          return fail(c, error.code, error.message, error.status as 400 | 503)
+        }
+        throw error
+      }
+      c.header('X-Captcha-Challenge', challengeId)
+      return ok(c, { challengeId, purpose, ttlMs: challengeTtlMs(purpose) })
+    })
+  }
 
   if (crypto) {
     app.get(`${PREFIX}/crypto/key`, c => ok(c, crypto.publicKey() as KeyDiscoveryResponse))

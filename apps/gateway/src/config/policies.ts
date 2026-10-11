@@ -23,6 +23,7 @@ export type PolicyName =
   | 'secureLogin'
   | 'secureRegister'
   | 'secureEmailCode'
+  | 'captchaChallenge'
   | 'disabledWrite'
 
 export type RoutePolicy = Readonly<{
@@ -51,6 +52,9 @@ export const POLICY_DEFINITIONS: Readonly<Record<PolicyName, RoutePolicy>> = {
   secureLogin: { name: 'secureLogin', auth: 'none', body: 'hpke', limiter: 'login', cache: 'off' },
   secureRegister: { name: 'secureRegister', auth: 'none', body: 'hpke', limiter: 'register', cache: 'off' },
   secureEmailCode: { name: 'secureEmailCode', auth: 'none', body: 'hpke', limiter: 'email-code', cache: 'off' },
+  // GW-209: challenge issue. Anonymous, limiter-guarded, never cached: the
+  // returned challengeId is a bearer capability that must never be shared.
+  captchaChallenge: { name: 'captchaChallenge', auth: 'none', body: 'none', limiter: 'public', cache: 'off' },
   // The write ban. No auth, no envelope, no limiter, no cache and no upstream
   // call at all — the policy itself is the enforcement.
   disabledWrite: { name: 'disabledWrite', auth: 'none', body: 'none', limiter: 'none', cache: 'off' },
@@ -74,6 +78,10 @@ export const routeDefinitions = [
   { method: 'POST', path: `${PREFIX}/secure/auth/login`, policy: POLICY_DEFINITIONS.secureLogin },
   { method: 'POST', path: `${PREFIX}/secure/auth/register`, policy: POLICY_DEFINITIONS.secureRegister },
   { method: 'POST', path: `${PREFIX}/secure/auth/email-code`, policy: POLICY_DEFINITIONS.secureEmailCode },
+
+  // GW-209: one-time CAPTCHA challenge issue. Anonymous but limiter-guarded,
+  // so challenge farming is throttled by the same public policy as bootstrap.
+  { method: 'POST', path: `${PREFIX}/auth/captcha/challenge`, policy: POLICY_DEFINITIONS.captchaChallenge },
 
   { method: 'GET', path: `${PREFIX}/user/profile`, policy: POLICY_DEFINITIONS.userRead },
   { method: 'GET', path: `${PREFIX}/user/subscription/summary`, policy: POLICY_DEFINITIONS.userRead },
@@ -112,6 +120,7 @@ export const ROUTE_OPERATIONS: Readonly<Record<string, readonly string[]>> = {
   [routeKey('POST', `${PREFIX}/secure/auth/login`)]: ['login'],
   [routeKey('POST', `${PREFIX}/secure/auth/register`)]: ['register'],
   [routeKey('POST', `${PREFIX}/secure/auth/email-code`)]: ['sendEmailCode'],
+  [routeKey('POST', `${PREFIX}/auth/captcha/challenge`)]: [],
   [routeKey('GET', `${PREFIX}/user/profile`)]: ['userProfile'],
   [routeKey('GET', `${PREFIX}/user/subscription/summary`)]: ['userSubscription'],
   [routeKey('GET', `${PREFIX}/notices`)]: ['userNotices'],
@@ -144,6 +153,8 @@ export interface PolicyEnvironment {
   redis?: boolean
   /** GATEWAY_ACCOUNT_WORKFLOWS_ENABLED. */
   accountWorkflows?: boolean
+  /** GW-209: a CAPTCHA challenge store is wired, so the challenge route exists. */
+  captchaChallenge?: boolean
 }
 
 /** Policies that may only be unlocked by HPKE + Redis + the feature flag
@@ -181,6 +192,11 @@ export function activeRouteDefinitions(
     // when HPKE is wired, and every sealed route needs the same capability.
     if (policy.body === 'hpke' || policy.name === 'secureLogin' || path === `${PREFIX}/crypto/key`) {
       return hpkeAvailable
+    }
+    // The challenge route only exists when a challenge store is wired; without
+    // one it is a 404 rather than a route that cannot honour a challenge.
+    if (policy.name === 'captchaChallenge') {
+      return Boolean(environment.captchaChallenge)
     }
     return true
   })

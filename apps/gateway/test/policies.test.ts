@@ -69,6 +69,7 @@ const EXPECTED_MAPPING: Record<string, PolicyName> = {
   'GET /gateway/v1/theme/config': 'publicRead',
   'GET /gateway/v1/plans': 'publicRead',
   'GET /gateway/v1/crypto/key': 'publicRead',
+  'GET /gateway/v1/catalog/payment-methods': 'publicRead',
   'POST /gateway/v1/auth/login': 'login',
   'POST /gateway/v1/secure/auth/login': 'secureLogin',
   'POST /gateway/v1/secure/auth/register': 'secureRegister',
@@ -81,6 +82,7 @@ const EXPECTED_MAPPING: Record<string, PolicyName> = {
   'GET /gateway/v1/orders/:tradeNo': 'userRead',
   'GET /gateway/v1/orders/:tradeNo/status': 'userRead',
   'GET /gateway/v1/payments': 'userRead',
+  'POST /gateway/v1/auth/captcha/challenge': 'captchaChallenge',
   'POST /gateway/v1/orders': 'disabledWrite',
 }
 
@@ -100,10 +102,12 @@ describe('GW-212 route policy table', () => {
       { name: 'publicRead', auth: 'none', body: 'none', limiter: 'public', cache: 'public-short' },
       { name: 'publicRead', auth: 'none', body: 'none', limiter: 'public', cache: 'public-short' },
       { name: 'publicRead', auth: 'none', body: 'none', limiter: 'public', cache: 'public-short' },
+      { name: 'publicRead', auth: 'none', body: 'none', limiter: 'public', cache: 'public-short' },
       { name: 'login', auth: 'none', body: 'json', limiter: 'login', cache: 'off' },
       { name: 'secureLogin', auth: 'none', body: 'hpke', limiter: 'login', cache: 'off' },
       { name: 'secureRegister', auth: 'none', body: 'hpke', limiter: 'register', cache: 'off' },
       { name: 'secureEmailCode', auth: 'none', body: 'hpke', limiter: 'email-code', cache: 'off' },
+      { name: 'captchaChallenge', auth: 'none', body: 'none', limiter: 'public', cache: 'off' },
       { name: 'userRead', auth: 'bearer', body: 'none', limiter: 'public', cache: 'off' },
       { name: 'userRead', auth: 'bearer', body: 'none', limiter: 'public', cache: 'off' },
       { name: 'userRead', auth: 'bearer', body: 'none', limiter: 'public', cache: 'off' },
