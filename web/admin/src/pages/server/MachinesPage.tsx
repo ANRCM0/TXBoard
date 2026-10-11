@@ -24,6 +24,8 @@ import {
 } from '../../api/server'
 import { MachineNodeBinding } from '../../components/server/MachineNodeBinding'
 import { DataTable, type Column } from '../../components/ui/DataTable'
+import { EmptyState } from '../../components/ui/EmptyState'
+import { listSurfaceState } from '../../components/ui/listSurfaceState'
 import { Modal } from '../../components/ui/Modal'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { requestConfirm } from '../../components/ui/ConfirmDialog'
@@ -137,6 +139,7 @@ export function MachinesPage() {
     ? null
     : rows.find(row => row.id === opsMachineId) || null
 
+  const hasFilters = Boolean(search.trim())
   const filteredRows = useMemo(() => {
     const q = search.trim().toLowerCase()
     if (!q) return rows
@@ -220,13 +223,13 @@ export function MachinesPage() {
         action={<button className="button primary" onClick={openCreate}><Plus size={16}/>添加服务器</button>}
       />
 
-      <div className="machine-ops-overview">
+      {query.data && rows.length > 0 ? <div className="machine-ops-overview">
         <Overview icon={<Server size={17} />} label="服务器总数" value={summary.total} />
         <Overview icon={<CircleCheckBig size={17} />} label="在线服务器" value={summary.online} tone="ok" />
         <Overview icon={<CircleX size={17} />} label="离线 / 停用" value={summary.offline} />
         <Overview icon={<Gauge size={17} />} label="高负载" value={summary.highLoad} tone={summary.highLoad ? 'warn' : 'ok'} />
         <Overview icon={<Network size={17} />} label="节点数" value={summary.nodes} />
-      </div>
+      </div> : null}
 
       <div className="server-page-toolbar">
         <div className="server-search">
@@ -234,19 +237,33 @@ export function MachinesPage() {
           <input type="search" aria-label="搜索服务器名称、备注或 SID" value={search} onChange={event => setSearch(event.target.value)} placeholder="搜索服务器名称、备注或 SID…" />
         </div>
         <span className="toolbar-hint">高负载：CPU / 内存 ≥ 85% 或磁盘 ≥ 90%</span>
+        {hasFilters ? <button type="button" className="button" onClick={() => setSearch('')}>清除筛选</button> : null}
         <button className="button" onClick={() => query.refetch()} disabled={query.isFetching}>
           <RefreshCw size={16}/>{query.isFetching ? '刷新中…' : '刷新'}
         </button>
       </div>
 
-      <div className="server-table-card">
+      <div className={'server-table-card admin-v2-list-surface is-' + listSurfaceState({
+        count: filteredRows.length, loading: query.isLoading, error: query.isError,
+      })}>
         <DataTable
           rows={filteredRows}
           columns={columns}
           rowKey={row => row.id}
-          loading={query.isFetching}
+          loading={query.isLoading}
           error={query.isError}
           onRetry={() => query.refetch()}
+          emptyState={hasFilters ? (
+            <EmptyState className="admin-v2-list-empty" icon={<Search size={23}/>}
+              title="没有匹配的服务器"
+              description="没有找到符合名称、备注或 SID 搜索条件的机器。"
+              action={<button type="button" className="button" onClick={() => setSearch('')}>清除筛选</button>}/>
+          ) : (
+            <EmptyState className="admin-v2-list-empty" icon={<Server size={23}/>}
+              title="还没有服务器"
+              description="添加第一台 TX-Node 宿主服务器，开始管理节点与运行状态。"
+              action={<button type="button" className="button primary" onClick={openCreate}><Plus size={15}/>添加服务器</button>}/>
+          )}
         />
       </div>
 

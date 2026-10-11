@@ -17,6 +17,7 @@ import {
 import { DataTable, type Column } from '../../components/ui/DataTable'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { EmptyState } from '../../components/ui/EmptyState'
+import { listSurfaceState } from '../../components/ui/listSurfaceState'
 import { NodeEditorModal } from './NodeEditorModal'
 import { requestConfirm } from '../../components/ui/ConfirmDialog'
 
@@ -88,7 +89,7 @@ export function NodesPage(){
   const columns:Column<NodeItem>[]=[
     {key:'id',header:'ID',width:'70px',render:row=>row.id},
     {key:'name',header:'名称',render:row=><Link className="table-link server-node-name" to={`/server/node/${row.id}`}><strong>{row.name||`Node #${row.id}`}</strong></Link>},
-    {key:'type',header:'类型',render:row=><span className="badge">{row.type==='hysteria'?'hysteria2':row.type||'-'}</span>},
+    {key:'type',header:'类型',render:row=><span className="admin-v2-muted">{row.type==='hysteria'?'hysteria2':row.type||'-'}</span>},
     {key:'host',header:'地址',render:row=>row.host?(String(row.host)+(row.port?':'+row.port:'')):'-'},
     {key:'rate',header:'倍率',render:row=>row.rate??'-'},
     {key:'machine',header:'机器',render:row=>{
@@ -131,16 +132,18 @@ export function NodesPage(){
       <button className="button" disabled={query.isFetching} onClick={()=>query.refetch()}><RefreshCw size={16} className={query.isFetching?'loading-spinner':undefined}/>{query.isFetching?'刷新中…':'刷新'}</button>
     </div>
 
-    <div className="server-table-card">
+    <div className={'server-table-card admin-v2-list-surface is-' + listSurfaceState({
+      count: filtered.length, loading: query.isLoading, error: query.isError,
+    })}>
       <DataTable
         rows={filtered} columns={columns} rowKey={row=>row.id}
-        loading={query.isFetching} error={query.isError} onRetry={()=>query.refetch()}
+        loading={query.isLoading} error={query.isError} onRetry={()=>query.refetch()}
         emptyState={hasFilters ? (
-          <EmptyState icon={<Search size={23}/>} title="没有找到匹配的节点"
+          <EmptyState className="admin-v2-list-empty" icon={<Search size={23}/>} title="没有找到匹配的节点"
             description="当前搜索或机器筛选条件下没有匹配结果，请调整条件后重试。"
             action={<button type="button" className="button" onClick={clearFilters}>清除筛选</button>}/>
         ) : (
-          <EmptyState icon={<Network size={23}/>} title="还没有节点"
+          <EmptyState className="admin-v2-list-empty" icon={<Network size={23}/>} title="还没有节点"
             description="创建第一个节点并配置协议；如有需要，可以将节点关联到已接入的服务器。"
             action={<button type="button" className="button primary" onClick={createNode}><Plus size={16}/>创建第一个节点</button>}
             secondaryAction={<Link className="button" to="/server/machine">查看服务器</Link>}/>

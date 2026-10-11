@@ -1,0 +1,101 @@
+/* Batch 2: list + empty presentation. Opt-in only; styles do not affect unrelated views. */
+.admin-v2-list-surface {
+  border:1px solid var(--border);
+  border-radius:var(--radius-card);
+  background:var(--panel);
+  box-shadow:var(--shadow);
+  min-width:0;
+  overflow:hidden;
+}
+.admin-v2-list-surface.is-empty {
+  border:0;
+  background:transparent;
+  box-shadow:none;
+}
+.admin-v2-list-surface.is-loading,
+.admin-v2-list-surface.is-error {
+  border:1px solid var(--border);
+  background:transparent;
+  box-shadow:none;
+}
+.admin-v2-list-surface .table-wrap {
+  overflow-x:auto;
+  overscroll-behavior-x:contain;
+}
+/* Server node row menus are positioned within the table. Preserve their
+ * unrestricted popovers instead of clipping them inside a scroll container. */
+.server-table-card.admin-v2-list-surface.is-rows,
+.server-table-card.admin-v2-list-surface.is-rows .table-wrap {
+  overflow:visible;
+}
+.admin-v2-list-surface .data-table{
+  font-size:var(--ui-font-body,13px);
+}
+.admin-v2-list-surface .data-table th,
+.admin-v2-list-surface .data-table td {
+  padding:10px 13px;
+}
+.admin-v2-list-surface .data-table th {
+  white-space:nowrap;
+}
+.admin-v2-list-surface .data-table tbody tr:last-child td {
+  border-bottom:0;
+}
+.admin-v2-list-surface .data-table td .actions {
+  flex-wrap:nowrap;
+}
+.admin-v2-list-empty {
+  background:transparent;
+}
+.admin-v2-list-surface.is-empty .table-empty-region {
+  background:transparent;
+}
+.admin-v2-list-surface.is-empty .tx-empty-state{
+  min-height:192px;
+  padding:24px 16px;
+  background:transparent;
+  border:1px dashed var(--ui-surface-outline,var(--border));
+  border-radius:var(--radius-card);
+}
+.admin-v2-list-surface.is-empty .tx-empty-state-icon{
+  width:40px;height:40px;
+}
+.admin-v2-list-surface.is-empty .tx-empty-state>p{
+  font-size:var(--ui-font-body,13px);
+}
+.admin-v2-list-surface.is-empty .pagination-bar{
+  border:0;
+}
+.admin-v2-list-surface .pagination-bar{
+  padding:10px 13px;
+}
+.admin-v2-list-surface .status,
+.admin-v2-list-surface .machine-status{
+  font-size:var(--ui-font-secondary,12px);
+}
+.admin-v2-list-surface .user-badges {
+  color:var(--muted);
+  font-size:var(--ui-font-secondary,12px);
+}
+.admin-v2-list-surface .user-badges .admin-v2-role-text {
+  color:var(--muted);
+  font-size:var(--ui-font-secondary,12px);
+}
+.admin-v2-list-surface .user-badges .admin-v2-role-text+.admin-v2-role-text::before{
+  content:' · ';
+}
+.admin-v2-list-surface .order-table .admin-v2-order-kind{
+  color:var(--muted);
+  font-size:var(--ui-font-secondary,12px);
+}
+.admin-v2-list-surface .user-table .traffic-cell small{
+  font-size:var(--ui-font-secondary,12px);
+}
+.admin-v2-list-surface .data-table tbody tr:focus-within{
+  background:var(--hover);
+}
+@media(max-width:680px){
+  .admin-v2-list-surface .pagination-bar {gap:10px;flex-wrap:wrap}
+  .admin-v2-list-surface.is-empty .tx-empty-state{min-height:170px}
+  .admin-v2-list-surface .pagination-actions{margin-left:auto}
+}
