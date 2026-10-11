@@ -1,6 +1,20 @@
 # TXBoard Gateway 开发状态台账
 
-> 更新时间：**2026-10-11**；旧阶段记录为历史快照，以下新增最新 main 代码核查。此文档记录代码和 CI，**不是生产就绪证明**。默认分支 main。当前不接入真实 TXBoard 环境，真实联调的验收暂按产品决策**延期**。
+> 更新时间：**2026-10-11（GW-506/507 追加）**；旧阶段记录为历史快照，以下新增最新 main 代码核查。此文档记录代码和 CI，**不是生产就绪证明**。默认分支 main。当前不接入真实 TXBoard 环境，真实联调的验收暂按产品决策**延期**。
+
+## 2026-10-11：GW-506/507 Next.js SSR 安全模板与版本协商（设计交付，未实施 Gateway 改动）
+
+- 新增 [ssr-template-and-versioning.md](./ssr-template-and-versioning.md)（待评审）与 `examples/next-theme/` 骨架（Next.js 14 App Router 全 server component），并扩展 `examples/theme-template-check.mjs` 结构断言（TPL-1～5 覆盖 next-theme + SSR 专属断言，含负例验证，全部通过）。
+- **GW-506（SSR 模板）**：请求级 `createClient()`（`getToken` 经 `next/headers` `cookies()` 读当前请求 cookie）——**禁模块级 SDK 单例**（SPA 模板的模块单例写法搬到 SSR 即捕获首个请求 token 并重放给所有后续用户=跨请求 session 污染，结构断言强制拒绝）；token 只存 httpOnly+secure+sameSite=lax cookie（登录 server action 服务端消费 `auth_data`，浏览器 JS 物理不可读，XSS 偷 token 路径结构性关闭；SPA 的 localStorage 方案在 SSR 下整体消除）；`'server-only'` 标记防 token 进客户端 bundle/RSC 载荷；strict CSP（`script-src 'self'`，对齐 GW-501 §6/TP-9）；与 Vue/React SPA 模板的安全语义（CAPTCHA fail-closed、capability 门控、幂等键、错误映射、safe-url）逐字节一致，唯一分叉=会话模型（见文档 §3.2 对照表）。
+- **GW-507（版本协商）**：三维版本平面（Gateway HTTP 契约 `meta.version` 当前 '1' × SDK 包 0.1.0 × 主题 manifest `engines.gateway`/`gateway.contract` 构建期注入）独立 SemVer；`negotiateVersion()` 任一平面不符即 fail-closed 拒绝并渲染 `/version-incompatible` 页——**拒绝而非降级**（与 GW-405 禁止静默降级同构；协商先于第一个受保护调用，版本不符零上游调用）；SDK 层 `VERSION_MISMATCH` 为第二道闸（既有）；capability（bootstrap.capabilities 与 manifest capabilities）仅为 UI 可见性提示、对 Gateway 服务端策略零权重（GW-405/GW-501），真正授权=Gateway 路由策略。
+- **验证**：运行时脚本（Node type-stripping + SDK dist）13/13 通过——NEG-1～6 版本真值表（含"无静默降级分支"断言）、capability 门控真值、SSR-1 双用户 token 隔离（交错并发两个 cookie 的 client，bearer 集合零交叉）；结构断言正例+负例（注入 `/api/v1` fetch 与模块单例均非零退出）通过；Gateway **391/391** + SDK **32/32** 已重跑维持。
+- **未验收**：未真实 `next build`/联调（工作区未装 next/react，与 SPA 模板同等结构断言级）；NEG-9 真实 Gateway 契约升级演练与真实浏览器 CSP 验收待 GW-216/GW-508；`entry.type:'ssr'` 的 Runtime 安装策略仍属 GW-502 + [adr-theme-package-v2.md](./adr-theme-package-v2.md) §12 未决问题 1。**纯文档+examples 交付**：未改任何 Gateway/SDK 代码、未改 CI（`.github/workflows/` 零改动）、未接入 `npm test`、未 git commit。回滚=删除本文档与 `examples/next-theme/`。
+
+## 2026-10-11：GW-508 发布/监控/回滚/兼容性总验收方案 + GW-509 第三方开发者文档（设计，未实施放量）
+
+- 新增 [release-acceptance-gw508.md](./release-acceptance-gw508.md)（**GW-508 总验收方案，待评审**）：三发布对象（Gateway 镜像 / 主题包 v2 manifest / SDK npm tag）三段式总装与独立回滚面；**canary 分级 1%→5%→25%→100%**（分流在边缘/反代层，Gateway 内不做百分比分流器；优先按用户会话 cookie 固定两侧），每级观测时长（24h/48h/72h）与晋级/回退指标，canary 报告模板；**镜像 digest 固定**口径（基础镜像 pin sha256 抗 tag 漂移、发布镜像按 digest 部署并记入 release-checklist 台账、cosign 签验对象为 digest、回滚锚点=台账 digest；Dockerfile/compose 改动归 DEP 真实部署 PR）；**旧主题 v1 回归矩阵 RT-1～6**（核心：回滚态 = 发布前态；新旧订单路径同一 Laravel 派生幂等权威）；**SLO**：Gateway 端到端 p95 ≤30ms（[perf-hpke-baseline.md](./perf-hpke-baseline.md) 实测 9.09ms，余量 3.3×；超预算按 D6 定位分量，不调参达标）、写路径 p95 增量 ≤50ms、5xx ≤0.1%、幂等冲突率 ≈0（`IDEMPOTENCY_CONFLICT` 出现即回退，派生键下应不可能）、重复成单零容忍；**回滚三层**（边缘比例→0 秒级 / `GATEWAY_ORDER_WRITE_ENABLED=false` ≤5min / 主题切回 v1 或 SDK dist-tag 回指），T+0 止血四步（先止血后诊断）、零数据卷触碰、演练复用 `scripts/rollback-drill.sh` + 故障注入变体（Gateway kill / Redis 断连 / Laravel 慢响应）；兼容性矩阵 CMP-1～6（契约字节级兼容 / SemVer 纪律 / engines 拒绝非降级 / 三方可追溯）；总验收关卡 **GA-1～8** 逐项签署。**硬前置**：GW-503/507/216 未验收前分级全是零。
+- 新增 [developer-guide.md](./developer-guide.md)（**GW-509 第三方开发者文档，待评审**）：心智模型四条铁律（唯一数据通道=SDK→`/gateway/v1`、不持管理员 token、manifest 声明≠授权、主题配置即外观）；五分钟上手（vue-theme/react-theme 模板 + 同源代理）；**从零创建主题七步可复现演示**（init → SDK 单实例 → bootstrap/能力门控 → 只读链路 + CAPTCHA fail-closed 登录 → TPL-1～5 结构断言自检 → 最小 `txboard-theme.json` + 打包纪律 → 八项验证清单），**全程只用普通用户凭据与公开接口**（不碰管理员后台/Laravel/数据库/支付回调）；SDK 契约速查；写请求幂等键生命周期（UUID v4 刷新前持久化、同键重试、禁止自动重发）；**v1→v2 迁移指南**（迁移动机、v1↔v2 字段映射表、八步流程、红线：不改 v1 行为/声明不成权限/私密禁令/离线打包）；FAQ（403/405/404/`VERSION_MISMATCH`/管理员 token 拒绝）。
+- **纯文档交付**：两份文档 + task-backlog GW-508/509 状态更新；未改任何代码、CI（`.github/workflows/` 零改动）、测试，未 git commit。Gateway **391/391** + SDK **32/32** 基线维持（无代码变更触发条件，未重跑）。生产放量、真实联调（GW-216）、SDK 正式发布（GW-503）、Theme Runtime（GW-502）、版本协商（GW-507）仍为前置未验收项。
 
 ## 2026-10-11：GW-501/503 Theme Package v2 Manifest ADR 与 SDK 发布策略（设计，未实施）
 
