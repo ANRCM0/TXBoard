@@ -14,12 +14,11 @@ function idOf(theme: ThemeItem) {
   return String(theme.name || theme.theme || theme.title || 'unknown')
 }
 function imagesOf(theme: ThemeItem) {
-  const values = Array.isArray(theme.images)
-    ? theme.images
-    : typeof theme.images === 'string'
-      ? [theme.images]
-      : [theme.preview, theme.image]
-  return values.filter((image): image is string => typeof image === 'string' && image.trim().length > 0)
+  const candidates = [
+    ...(Array.isArray(theme.images) ? theme.images : typeof theme.images === 'string' ? [theme.images] : []),
+    theme.preview, theme.image,
+  ]
+  return [...new Set(candidates.filter((image): image is string => typeof image === 'string' && image.trim().length > 0))]
 }
 
 export function ThemeSettingsPage() {

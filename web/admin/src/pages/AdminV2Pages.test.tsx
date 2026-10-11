@@ -112,10 +112,11 @@ it('themes distinguish preview gallery from compact image-less list without losi
     themes:[
       {name:'with-preview',title:'Modern',version:'1.2.0',images:['https://example.test/cover.webp'],is_active:true,is_system:false},
       {name:'without-preview',title:'Default',version:'1.0.0',images:[' ', ''],is_active:false,is_system:false},
+      {name:'fallback-preview',title:'Legacy',version:'1.1.0',images:[],preview:'https://example.test/legacy.webp',is_active:false,is_system:false},
     ],
   })
   await mount(<ThemeSettingsPage/>)
-  expect(host.querySelectorAll('.admin-v2-theme-card')).toHaveLength(1)
+  expect(host.querySelectorAll('.admin-v2-theme-card')).toHaveLength(2)
   expect(host.querySelectorAll('.admin-v2-theme-row')).toHaveLength(1)
   expect(host.querySelector('.theme-cover')).toBeNull()
   expect(host.querySelector('.admin-v2-theme-row .admin-v2-theme-cover')).toBeNull()
