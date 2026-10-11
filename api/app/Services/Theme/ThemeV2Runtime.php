@@ -92,6 +92,7 @@ final class ThemeV2Runtime
             $backup = $this->root().'/.backup-'.bin2hex(random_bytes(8));
             $ownedBackup = false;
             $promoted = false;
+            $active = false;
             try {
                 $manifest = $this->package->validate($zip, ...$this->trustedVersions());
                 $name = $manifest['name'];
@@ -148,10 +149,22 @@ final class ThemeV2Runtime
                     // the prior publication on failure.
                     File::deleteDirectory($target);
                 }
-                if ($ownedBackup && !rename($backup, $target)) {
-                    \Illuminate\Support\Facades\Log::critical('Theme v2 previous version requires manual recovery', [
-                        'theme' => $name ?? null, 'backup' => $backup,
-                    ]);
+                if ($ownedBackup) {
+                    if (!rename($backup, $target)) {
+                        \Illuminate\Support\Facades\Log::critical('Theme v2 previous version requires manual recovery', [
+                            'theme' => $name ?? null, 'backup' => $backup,
+                        ]);
+                    } elseif ($active && $promoted) {
+                        // Publication may already have completed before a
+                        // rollback-slot persistence error. Repair it as well.
+                        try {
+                            $this->publish($name, $target);
+                        } catch (Throwable) {
+                            \Illuminate\Support\Facades\Log::critical('Theme v2 public assets need manual recovery', [
+                                'theme' => $name,
+                            ]);
+                        }
+                    }
                 }
                 throw $e;
             } finally {
@@ -292,6 +305,14 @@ final class ThemeV2Runtime
                     \Illuminate\Support\Facades\Log::critical('Theme v2 rollback needs manual recovery', [
                         'theme' => $name, 'staged' => $old,
                     ]);
+                } elseif ($active) {
+                    try {
+                        $this->publish($name, $target);
+                    } catch (Throwable) {
+                        \Illuminate\Support\Facades\Log::critical('Theme v2 rollback public assets need manual recovery', [
+                            'theme' => $name,
+                        ]);
+                    }
                 }
                 throw $e;
             }
@@ -371,7 +392,7 @@ final class ThemeV2Runtime
         $title = $e((string) ($manifest['title'] ?? $name));
         $html = '<!doctype html><html lang="zh"><head><meta charset="utf-8">'.
             '<meta name="viewport" content="width=device-width, initial-scale=1">'.
-            '<title>'.$title.'</title>'.$styles.'</head><body><div id="app"></div>'.
+            '<title>'.$title.'</title>'.$styles.'</head><body><div id="app"></div><div id="root"></div>'.
             '<script type="module" src="'.$e($url($entry)).'" integrity="'.$e($integrity).
             '" crossorigin="anonymous"></script></body></html>';
 
