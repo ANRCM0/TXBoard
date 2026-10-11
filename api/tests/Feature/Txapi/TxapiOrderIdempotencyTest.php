@@ -108,7 +108,7 @@ class TxapiOrderIdempotencyTest extends TestCase
         $this->keyedPost('intent-1', $body)->assertCreated()
             ->assertJsonPath('data.trade_no', $original);
         $this->assertSame(2, Order::count());
-        $this->postJson('/txapi/orders', $body)->assertStatus(409)
+        $this->withoutHeader('Idempotency-Key')->postJson('/txapi/orders', $body)->assertStatus(409)
             ->assertJsonPath('error.code', 'ORDER_REJECTED');
     }
 
