@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
+  Activity,
   ArrowUpCircle,
+  Boxes,
   Cable,
   Copy,
   ExternalLink,
@@ -10,9 +12,10 @@ import {
   RotateCcw,
   Server,
   ShieldAlert,
+  ShieldCheck,
   X,
 } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -30,6 +33,14 @@ import { useDialog } from '../../lib/useDialog'
 import { isMachineOnline, machineRatio } from './machineOpsModel'
 import './MachineOpsDrawer.css'
 
+type MachineSection = 'overview' | 'runtime' | 'nodes' | 'security'
+const sections = [
+  { id: 'overview', label: '概览', icon: Activity },
+  { id: 'runtime', label: '运行时', icon: ArrowUpCircle },
+  { id: 'nodes', label: '节点', icon: Boxes },
+  { id: 'security', label: '安全', icon: ShieldCheck },
+] as const
+
 export function MachineOpsDrawer({
   machine,
   onClose,
@@ -44,7 +55,9 @@ export function MachineOpsDrawer({
   const open = Boolean(machine)
   const dialogRef = useDialog(open, onClose)
   const qc = useQueryClient()
-  const [credentials, setCredentials] = useState<{ token: string; command: string } | null>(null)
+  const [credentials, setCredentials] = useState<{ machineId: number; token: string; command: string } | null>(null)
+  const [activeSection, setActiveSection] = useState<MachineSection>('overview')
+  const credentialRequestId = useRef(0)
   const [credentialsLoading, setCredentialsLoading] = useState(false)
   const [updateTarget, setUpdateTarget] = useState<'latest' | 'dev'>('latest')
   const hideTimer = useRef<number | undefined>()
@@ -53,7 +66,7 @@ export function MachineOpsDrawer({
   const nodesQuery = useQuery({
     queryKey: ['machineNodes', machineId],
     queryFn: () => getMachineNodes(machineId),
-    enabled: open && machineId > 0,
+    enabled: open && machineId > 0 && activeSection === 'nodes',
     staleTime: 15_000,
     refetchInterval: 30_000,
   })
@@ -62,7 +75,7 @@ export function MachineOpsDrawer({
     mutationFn: () => resetMachineToken(machineId),
     onSuccess: async result => {
       toast.success('Machine Token 已重置，请保存新的凭据')
-      setCredentials({ token: result.token, command: result.install_command })
+      setCredentials({ machineId, token: result.token, command: result.install_command })
       window.clearTimeout(hideTimer.current)
       hideTimer.current = window.setTimeout(() => setCredentials(null), 18_000)
       await qc.invalidateQueries({ queryKey: ['machines'] })
@@ -89,11 +102,11 @@ export function MachineOpsDrawer({
   }, [machineId, machine?.image_channel])
 
   useEffect(() => {
-    if (!open) {
-      window.clearTimeout(hideTimer.current)
-      setCredentials(null)
-      setCredentialsLoading(false)
-    }
+    credentialRequestId.current += 1
+    window.clearTimeout(hideTimer.current)
+    setCredentials(null)
+    setCredentialsLoading(false)
+    setActiveSection('overview')
   }, [open, machineId])
 
   useEffect(() => () => window.clearTimeout(hideTimer.current), [])
@@ -107,18 +120,50 @@ export function MachineOpsDrawer({
   const disk = machineRatio(machine.load_status?.disk)
   const runtime = machine.load_status?.runtime
   const lastRuntimeUpdate = runtime?.update
+  const visibleCredentials = credentials?.machineId === machineId && activeSection === 'security' ? credentials : null
+  const tabId = (section: MachineSection) => 'machine-' + machineId + '-' + section + '-tab'
+  const panelId = (section: MachineSection) => 'machine-' + machineId + '-' + section + '-panel'
+
+  function selectSection(next: MachineSection) {
+    if (next !== 'security') {
+      credentialRequestId.current += 1
+      window.clearTimeout(hideTimer.current)
+      setCredentials(null)
+      setCredentialsLoading(false)
+    }
+    setActiveSection(next)
+  }
+
+  function onTabKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
+    const index = sections.findIndex(section => section.id === activeSection)
+    let nextIndex = index
+    if (event.key === 'ArrowRight') nextIndex = (index + 1) % sections.length
+    else if (event.key === 'ArrowLeft') nextIndex = (index + sections.length - 1) % sections.length
+    else if (event.key === 'Home') nextIndex = 0
+    else if (event.key === 'End') nextIndex = sections.length - 1
+    else return
+    event.preventDefault()
+    const next = sections[nextIndex].id
+    selectSection(next)
+    dialogRef.current?.querySelector<HTMLButtonElement>('[data-machine-section="' + next + '"]')?.focus()
+  }
 
   async function showCredentials() {
     window.clearTimeout(hideTimer.current)
+    const requestId = ++credentialRequestId.current
     setCredentialsLoading(true)
     try {
       const result = await getMachineCredentials(machineId)
-      setCredentials({ token: result.token, command: result.install_command })
-      hideTimer.current = window.setTimeout(() => setCredentials(null), 18_000)
+      if (credentialRequestId.current !== requestId) return
+      setCredentials({ machineId, token: result.token, command: result.install_command })
+      hideTimer.current = window.setTimeout(() => {
+        credentialRequestId.current += 1
+        setCredentials(null)
+      }, 18_000)
     } catch {
-      toast.error('无法读取机器凭据')
+      if (credentialRequestId.current === requestId) toast.error('无法读取机器凭据')
     } finally {
-      setCredentialsLoading(false)
+      if (credentialRequestId.current === requestId) setCredentialsLoading(false)
     }
   }
 
@@ -167,6 +212,26 @@ export function MachineOpsDrawer({
             </button>
           </div>
         </header>
+
+        <nav className="machine-ops-tabs" role="tablist" aria-label="机器运维分类">
+          {sections.map(section => {
+            const Icon = section.icon
+            const selected = activeSection === section.id
+            return <button
+              type="button"
+              key={section.id}
+              id={tabId(section.id)}
+              data-machine-section={section.id}
+              role="tab"
+              aria-selected={selected}
+              aria-controls={panelId(section.id)}
+              tabIndex={selected ? 0 : -1}
+              className={'machine-ops-tab' + (selected ? ' is-active' : '')}
+              onClick={() => selectSection(section.id)}
+              onKeyDown={onTabKeyDown}
+            ><Icon size={16} aria-hidden="true"/>{section.label}</button>
+          })}
+        </nav>
 
         <div className="machine-ops-body">
           <div className="machine-ops-stack">
