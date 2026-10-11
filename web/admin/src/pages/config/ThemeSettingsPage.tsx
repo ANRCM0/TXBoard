@@ -8,14 +8,18 @@ import { normalizeThemeFields, ThemeConfigFields } from './ThemeConfigFields'
 import { Modal } from '../../components/ui/Modal'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { requestConfirm } from '../../components/ui/ConfirmDialog'
+import { EmptyState } from '../../components/ui/EmptyState'
 
 function idOf(theme: ThemeItem) {
   return String(theme.name || theme.theme || theme.title || 'unknown')
 }
 function imagesOf(theme: ThemeItem) {
-  if (Array.isArray(theme.images)) return theme.images
-  if (typeof theme.images === 'string') return [theme.images]
-  return [theme.preview, theme.image].filter(Boolean) as string[]
+  const values = Array.isArray(theme.images)
+    ? theme.images
+    : typeof theme.images === 'string'
+      ? [theme.images]
+      : [theme.preview, theme.image]
+  return values.filter((image): image is string => typeof image === 'string' && image.trim().length > 0)
 }
 
 export function ThemeSettingsPage() {
@@ -32,6 +36,8 @@ export function ThemeSettingsPage() {
   const configRequest = useRef(0)
 
   const themes = useMemo(() => query.data?.themes || [], [query.data])
+  const withImages = themes.filter(theme => imagesOf(theme).length > 0)
+  const withoutImages = themes.filter(theme => imagesOf(theme).length === 0)
 
   const refresh = () => qc.invalidateQueries({ queryKey: ['themes'] })
   const activate = useMutation({
@@ -87,6 +93,38 @@ export function ThemeSettingsPage() {
   const previewImages = preview ? imagesOf(preview) : []
   const activeImage = previewImages[previewIndex] || ''
 
+  function themeActions(theme: ThemeItem) {
+    const id = idOf(theme)
+    const active = Boolean(theme.is_active || theme.active)
+    const canDelete = theme.can_delete !== false && !theme.is_system && !active
+    return <div className="admin-v2-theme-actions">
+      <button type="button" className="icon-button" aria-label={'预览主题 ' + id}
+        title="预览" onClick={() => { setPreview(theme); setPreviewIndex(0) }}><Eye size={16}/></button>
+      <button type="button" className="button" title="配置此主题" onClick={() => void openConfig(theme)}>
+        <Settings2 size={16}/>设置
+      </button>
+      {!active ? <button type="button" className="button" disabled={activate.isPending}
+        onClick={() => activate.mutate(id)}>切换</button> : null}
+      {theme.format === 2 && theme.can_rollback ? (
+        <button type="button" className="button" disabled={rollbackV2.isPending}
+          onClick={() => requestConfirm({
+            title: '回滚 SPA 主题版本',
+            message: '确认将主题 ' + id + ' 恢复为上一版本？当前版本将保留为可再次回滚的版本。',
+            confirmLabel:'回滚', action:() => rollbackV2.mutate(id),
+          })}>
+          <RotateCcw size={16}/>回滚版本
+        </button>
+      ) : null}
+      <button type="button" className="icon-button danger" disabled={!canDelete}
+        aria-label={'删除主题 ' + id}
+        title={active ? '当前主题不能删除' : theme.is_system || theme.can_delete === false ? '系统主题不能删除' : '删除'}
+        onClick={() => requestConfirm({
+          title:'删除主题', message:'确认删除主题 ' + id + '？',
+          danger:true, confirmLabel:'删除', action:() => remove.mutate(id),
+        })}><Trash2 size={16}/></button>
+    </div>
+  }
+
   return <>
     <PageHeader
       title="主题管理"
@@ -109,42 +147,54 @@ export function ThemeSettingsPage() {
       <span>点击主题卡片的“设置”，编辑该主题专属配置；启用主题后自动应用到用户前端。</span>
     </div>
 
-    {query.isLoading ? <div className="card">加载主题…</div> : query.isError ? (
-      <div className="card" role="alert">主题列表加载失败。<button className="button" onClick={() => query.refetch()}>重试</button></div>
-    ) : <div className="theme-grid">
-      {themes.map(theme => {
-        const id = idOf(theme)
-        const image = imagesOf(theme)[0]
-        const active = Boolean(theme.is_active || theme.active)
-        const canDelete = theme.can_delete !== false && !theme.is_system && !active
-        return <article className="theme-card" key={id}>
-          <div className="theme-cover" style={image ? { backgroundImage: `url("${image}")` } : undefined}>
-            {!image && <Palette size={38}/>}
-            {active && <span className="theme-active-badge">当前主题</span>}
-          </div>
-          <div className="theme-content">
-            <div><h3>{theme.title || theme.name || theme.theme || id}</h3><p>{theme.description || '暂无描述'} · {theme.version || 'unknown'}{theme.is_system ? ' · 系统内置' : ''}{theme.format === 2 ? ' · SPA v2' : ''}</p></div>
-            <div className="theme-actions">
-              <button className="icon-button" title="预览" onClick={() => { setPreview(theme); setPreviewIndex(0) }}><Eye size={16}/></button>
-              <button className="button" title="配置此主题" onClick={() => openConfig(theme)}><Settings2 size={16}/>设置</button>
-              {!active && <button className="button" onClick={() => activate.mutate(id)}>切换</button>}
-              {theme.format === 2 && theme.can_rollback && (
-                <button className="button" disabled={rollbackV2.isPending}
-                  onClick={() => requestConfirm({
-                    title: '回滚 SPA 主题版本',
-                    message: '确认将主题 ' + id + ' 恢复为上一版本？当前版本将保留为可再次回滚的版本。',
-                    confirmLabel: '回滚',
-                    action: () => rollbackV2.mutate(id),
-                  })}>
-                  <RotateCcw size={16}/>回滚版本
-                </button>
-              )}
-              <button className="icon-button danger" disabled={!canDelete} title={active ? '当前主题不能删除' : theme.is_system || theme.can_delete === false ? '系统主题不能删除' : '删除'} onClick={() => requestConfirm({ title: '删除主题', message: `确认删除主题 ${id}？`, danger: true, confirmLabel: '删除', action: () => remove.mutate(id) })}><Trash2 size={16}/></button>
-            </div>
-          </div>
-        </article>
-      })}
-      {!themes.length && <div className="card empty-state"><strong>暂无主题数据</strong><p>可先上传主题包，或检查 /theme/getThemes 返回结构。</p></div>}
+    {query.isLoading ? <div className="admin-v2-empty" role="status" style={{padding:24}}>加载主题…</div> : query.isError ? (
+      <div className="admin-v2-empty" role="alert" style={{padding:24}}>
+        主题列表加载失败。<button type="button" className="button" onClick={() => void query.refetch()}>重试</button>
+      </div>
+    ) : !themes.length ? (
+      <EmptyState className="admin-v2-empty" icon={<Palette size={23}/>}
+        title="还没有主题" description="上传主题包后即可进行预览、配置及切换。"
+        action={<button type="button" className="button primary" onClick={() => inputRef.current?.click()}>上传主题</button>}/>
+    ) : <div className="admin-v2-theme-sections">
+      {withImages.length > 0 ? <section aria-label="有预览图的主题">
+        <h3 className="admin-v2-theme-heading">主题预览</h3>
+        <div className="admin-v2-theme-gallery">
+          {withImages.map(theme => {
+            const id = idOf(theme)
+            const image = imagesOf(theme)[0]
+            const active = Boolean(theme.is_active || theme.active)
+            return <article className="admin-v2-theme-card" key={id}>
+              <div className="admin-v2-theme-cover" style={{backgroundImage:'url("' + image + '")'}} aria-label={'主题预览：' + id}/>
+              <div className="admin-v2-theme-info">
+                <div>
+                  <h3>{theme.title || theme.name || theme.theme || id}</h3>
+                  <p>{theme.description || '暂无描述'} · v{theme.version || 'unknown'}{theme.is_system ? ' · 系统内置' : ''}{theme.format === 2 ? ' · SPA v2' : ''}</p>
+                  {active ? <span className="admin-v2-theme-current">当前主题</span> : null}
+                </div>
+                {themeActions(theme)}
+              </div>
+            </article>
+          })}
+        </div>
+      </section> : null}
+      {withoutImages.length > 0 ? <section aria-label="无预览图的主题">
+        {withImages.length > 0 ? <h3 className="admin-v2-theme-heading">其他已安装主题</h3> : null}
+        <div className="admin-v2-theme-list" role="list" aria-label="无预览图的主题列表">
+          {withoutImages.map(theme => {
+            const id = idOf(theme)
+            const active = Boolean(theme.is_active || theme.active)
+            return <article className="admin-v2-theme-row" role="listitem" key={id}>
+              <div className="admin-v2-theme-icon" aria-hidden="true"><Palette size={21}/></div>
+              <div className="admin-v2-theme-description">
+                <h3>{theme.title || theme.name || theme.theme || id}</h3>
+                <p>{theme.description || '暂无描述'} · v{theme.version || 'unknown'}{theme.is_system ? ' · 系统内置' : ''}{theme.format === 2 ? ' · SPA v2' : ''}</p>
+                {active ? <span className="admin-v2-theme-current">当前主题</span> : null}
+              </div>
+              {themeActions(theme)}
+            </article>
+          })}
+        </div>
+      </section> : null}
     </div>}
 
     <Modal open={!!preview} title={preview ? `预览：${idOf(preview)}` : '预览'} onClose={() => setPreview(null)}>
