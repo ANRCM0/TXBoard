@@ -459,6 +459,19 @@ body{font-size:16px;background:var(--bg);color:var(--fg);overflow:hidden}
   overflow:hidden;
   background:var(--bg);
 }
+.admin-skip-link{
+  position:fixed;top:10px;left:10px;z-index:100;
+  transform:translateY(calc(-100% - 20px));
+  padding:9px 13px;border:2px solid var(--focus-ring);
+  border-radius:var(--radius-control);background:var(--panel);
+  color:var(--fg);font-size:13px;font-weight:650;text-decoration:none;
+}
+.admin-skip-link:focus{transform:none}
+.admin-nav-root:focus-visible,.admin-nav-sub:focus-visible,
+.admin-nav-group-trigger:focus-visible,.admin-toolbar button:focus-visible,
+.admin-sidebar-collapse-toggle:focus-visible,.page-header-actions :is(button,a):focus-visible{
+  outline:2px solid var(--focus-ring);outline-offset:2px;
+}
 .admin-sidebar{
   position:fixed;
   inset:0 auto 0 0;
@@ -579,7 +592,7 @@ body{font-size:16px;background:var(--bg);color:var(--fg);overflow:hidden}
 .admin-nav-sub{
   position:relative;
   display:flex;
-  height:34px;
+  height:36px;
   align-items:center;
   gap:8px;
   margin:2px 2px 2px 24px;
@@ -588,7 +601,7 @@ body{font-size:16px;background:var(--bg);color:var(--fg);overflow:hidden}
   border-radius:0 6px 6px 0;
   color:var(--muted);
   text-decoration:none;
-  font-size:12px;
+  font-size:13px;
   font-weight:500;
 }
 .admin-nav-sub:hover,
@@ -630,7 +643,7 @@ body{font-size:16px;background:var(--bg);color:var(--fg);overflow:hidden}
   flex:none;
   align-items:center;
   gap:14px;
-  padding:0 28px;
+  padding:0 var(--admin-page-gutter);
   border-bottom:1px solid var(--border);
   background:var(--panel);
 }
@@ -710,14 +723,14 @@ body{font-size:16px;background:var(--bg);color:var(--fg);overflow:hidden}
 .admin-scroll{
   min-height:0;
   flex:1;
-  padding:26px 28px 40px;
+  padding:var(--admin-page-block) var(--admin-page-gutter) 32px;
   overflow-x:hidden;
   overflow-y:auto;
   scrollbar-gutter:stable;
 }
 .admin-page{
   width:100%;
-  max-width:1520px;
+  max-width:var(--admin-page-max-width);
   min-height:100%;
   margin:0 auto;
 }
@@ -728,18 +741,28 @@ body{font-size:16px;background:var(--bg);color:var(--fg);overflow:hidden}
   padding:0;
 }
 .page-header{
-  align-items:center;
-  margin-bottom:18px;
+  align-items:flex-start;
+  gap:16px;
+  margin-bottom:16px;
 }
+.page-header-copy{min-width:0;flex:1}
+.page-header-actions{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:8px;max-width:100%}
+.page-header-actions :is(button,a){white-space:normal}
+.admin-section-header{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin:0 0 12px;min-width:0}
+.admin-section-header-copy{min-width:0;flex:1}
+.admin-section-header-copy h2{margin:0;font-size:var(--ui-font-heading);font-weight:650;line-height:1.45}
+.admin-section-header-copy p{margin:3px 0 0;color:var(--muted);font-size:var(--ui-font-secondary);line-height:1.55}
+.admin-section-header-actions{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:8px;max-width:100%}
 .page-header h1{
-  font-size:22px;
-  line-height:30px;
+  font-size:var(--ui-font-page);
+  line-height:1.35;
   font-weight:650;
   letter-spacing:-.025em;
 }
 .page-header p{
   max-width:72ch;
-  margin-top:3px;
+  margin-top:4px;
+  font-size:13px;
   line-height:1.55;
 }
 .card,
@@ -823,7 +846,9 @@ body{font-size:16px;background:var(--bg);color:var(--fg);overflow:hidden}
     font-size:20px;
   }
   .admin-command-placeholder{display:none}
-  .admin-scroll{padding:18px 16px 32px}
+  .admin-scroll{padding:16px 14px 28px}
+  .page-header,.admin-section-header{flex-wrap:wrap;align-items:flex-start}
+  .page-header-actions,.admin-section-header-actions{justify-content:flex-start}
 }
 
 
@@ -2737,7 +2762,6 @@ body:has(.modal-root,.admin-command-overlay,.admin-sidebar.is-open) .admin-scrol
 
 
 /* Dashboard per-widget date pickers and compact desktop navigation. */
-:root{--admin-sidebar-compact-width:64px}
 @media(min-width:861px){
   .admin-shell.is-sidebar-collapsed .admin-sidebar{width:var(--admin-sidebar-compact-width)}
   .admin-shell.is-sidebar-collapsed .admin-main{margin-left:var(--admin-sidebar-compact-width)}

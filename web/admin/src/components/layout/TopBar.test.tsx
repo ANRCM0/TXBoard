@@ -72,6 +72,9 @@ beforeEach(() => {
 })
 afterEach(() => { act(() => root.unmount()); host.remove() })
 function key(key: string) { act(() => document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }))) }
+it('labels the compact logout control for assistive technology', () => {
+  expect(host.querySelector('.admin-avatar-button')?.getAttribute('aria-label')).toBe('退出登录')
+})
 it('supports arrow selection, Enter navigation, and closes the search', () => {
   act(() => host.querySelector<HTMLButtonElement>('.admin-command-trigger')!.click())
   expect(document.activeElement?.getAttribute('role')).toBe('combobox')

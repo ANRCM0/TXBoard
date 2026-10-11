@@ -40,6 +40,7 @@ export function AdminLayout() {
 
   return (
     <div className={`admin-shell ${expanded ? 'is-sidebar-expanded' : 'is-sidebar-collapsed'}`}>
+      <a className="admin-skip-link" href="#admin-content">跳转到主要内容</a>
       <Sidebar open={open} onClose={() => setOpen(false)} collapsed={!expanded} onExpand={() => setExpanded(true)} />
       <button
         type="button"
@@ -51,7 +52,7 @@ export function AdminLayout() {
       >
         {expanded ? <PanelLeftClose size={17} /> : <PanelLeftOpen size={17} />}
       </button>
-      <main className="admin-main">
+      <main className="admin-main" id="admin-content" tabIndex={-1}>
         <TopBar onOpenMenu={() => setOpen(true)} />
         <div ref={scrollRef} className="admin-scroll">
           <div className='admin-page'>

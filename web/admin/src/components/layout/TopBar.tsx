@@ -175,7 +175,7 @@ export function TopBar({ onOpenMenu }: { onOpenMenu: () => void }) {
           <button type="button" className="admin-toolbar-icon" aria-label={dark ? '切换浅色模式' : '切换深色模式'} title={dark ? '切换浅色模式' : '切换深色模式'} onClick={() => setDark(value => !value)}>
             {dark ? <Sun size={20} /> : <Moon size={20} />}
           </button>
-          <button type="button" className="admin-avatar-button" onClick={logout} title="退出">
+          <button type="button" className="admin-avatar-button" onClick={logout} aria-label="退出登录" title="退出登录">
             <span className="admin-avatar">A</span>
           </button>
           <button type="button" className="admin-logout-link" onClick={logout}>
