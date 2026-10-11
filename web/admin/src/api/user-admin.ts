@@ -112,7 +112,9 @@ export async function getUsers(params: {
       throw new Error('Unsupported native user sort')
     }
     query.sort = id
-    query.descending = desc
+    // Laravel's boolean validator accepts 1/0, but rejects GET strings "true"/"false".
+    // Axios serializes JS booleans in query parameters to those rejected strings.
+    query.descending = desc ? 1 : 0
   }
   const { data: envelope } = await nativeApiClient.get<NativeApiEnvelope<AdminUser[]>>(
     nativeAdminPath('users'), { params: query },

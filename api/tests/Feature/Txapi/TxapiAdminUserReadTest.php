@@ -41,7 +41,7 @@ class TxapiAdminUserReadTest extends TestCase
             'plan_id' => $plan->id, 'balance' => 1234, 'commission_balance' => 567,
             'banned' => false, 'u' => 25, 'd' => 75,
         ]);
-        $this->user('other-user@example.test', false, ['banned' => true]);
+        $other = $this->user('other-user@example.test', false, ['banned' => true]);
         Sanctum::actingAs($admin);
         $root = '/txapi/admin/users_native/users';
         $res = $this->getJson($root . '?email=native-filter&plan_id=' . $plan->id .
@@ -66,6 +66,11 @@ class TxapiAdminUserReadTest extends TestCase
 
         $this->getJson($root . '?page=1&per_page=1')
             ->assertOk()->assertJsonPath('meta.total', 3)->assertJsonPath('meta.last_page', 3);
+        // Query strings from the admin UI must use 1/0, not JS string booleans.
+        $this->getJson($root . '?page=1&per_page=10&sort=id&descending=1')
+            ->assertOk()->assertJsonPath('data.0.id', $other->id);
+        $this->getJson($root . '?page=1&per_page=10&sort=id&descending=0')
+            ->assertOk()->assertJsonPath('data.0.id', $admin->id);
         foreach (['page=0', 'per_page=101', 'sort=sql%3Araw', 'plan_id=abc', 'banned=9'] as $bad) {
             $this->getJson($root . '?' . $bad)->assertStatus(422);
         }
