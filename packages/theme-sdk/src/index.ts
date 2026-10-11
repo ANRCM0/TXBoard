@@ -73,6 +73,14 @@ export type Order = {
   [field: string]: unknown
 }
 
+export type OrderCreatePayload = {
+  plan_id: number
+  period: string
+  coupon_code?: string
+}
+
+export type OrderCreateResult = { trade_no: string; [field: string]: unknown }
+
 export class GatewayApiError extends Error {
   constructor(
     public readonly code: string,
@@ -126,6 +134,11 @@ const KNOWN_ERROR_CODES = new Set([
   'UNAUTHORIZED', 'FORBIDDEN', 'NOT_FOUND', 'VERSION_MISMATCH', 'INVALID_RESPONSE',
   'NETWORK_ERROR', 'ORIGIN_DENIED', 'VALIDATION_ERROR', 'RATE_LIMITED', 'DISABLED',
   'MAINTENANCE', 'UPSTREAM_UNAVAILABLE', 'GATEWAY_ERROR',
+  // GW-304: order-write verdicts. They are closed, well-defined outcomes —
+  // the caller knows exactly what happened and must NOT assume an unknown
+  // remote state. IDEMPOTENCY_IN_PROGRESS specifically means "retry the same
+  // key later"; ORDER_REJECTED means the order was understood and refused.
+  'IDEMPOTENCY_IN_PROGRESS', 'IDEMPOTENCY_CONFLICT', 'ORDER_REJECTED',
 ])
 
 function sleep(ms: number): Promise<void> {
@@ -192,6 +205,14 @@ export function createTXBoardClient(options: TXBoardClientOptions = {}) {
     method?: 'GET' | 'POST'
     body?: unknown
     protected?: boolean
+    /**
+     * GW-304: client-generated idempotency key for write requests. Sent as
+     * the `Idempotency-Key` header. The Gateway requires it on order writes
+     * and forwards it to Laravel, which binds it to the authenticated user +
+     * operation + request hash. Without it the write is refused with 400
+     * before any upstream call — never a silently duplicated order.
+     */
+    idempotencyKey?: string
   } = {}): Promise<T> {
     const method = options.method || 'GET'
     const isGet = method === 'GET'
@@ -204,6 +225,7 @@ export function createTXBoardClient(options: TXBoardClientOptions = {}) {
       attempt++
       const headers = new Headers({ Accept: 'application/json' })
       if (options.body !== undefined) headers.set('Content-Type', 'application/json')
+      if (options.idempotencyKey) headers.set('Idempotency-Key', options.idempotencyKey)
 
       if (options.protected) {
         const token = String(await optionsGetToken() || '').trim()
@@ -313,6 +335,20 @@ export function createTXBoardClient(options: TXBoardClientOptions = {}) {
         { protected: true },
       ),
       detail: (tradeNo: string) => invoke<Order>(`/orders/${encodeURIComponent(tradeNo)}`, { protected: true }),
+      /**
+       * GW-304: create an order. Requires an `idempotencyKey` — the Gateway
+       * rejects a write without one (400, zero upstream calls), so the caller
+       * must generate a stable key per logical order (e.g. a UUID persisted
+       * with the draft). The SDK never retries a write, so a caller that sees
+       * IDEMPOTENCY_IN_PROGRESS should back off and re-send the SAME key.
+       */
+      create: (payload: OrderCreatePayload, options: { idempotencyKey: string }) =>
+        invoke<OrderCreateResult>('/orders', {
+          method: 'POST',
+          body: payload,
+          protected: true,
+          idempotencyKey: options.idempotencyKey,
+        }),
     },
     payments: { list: () => invoke<PaymentMethod[]>('/payments', { protected: true }) },
     notices: {

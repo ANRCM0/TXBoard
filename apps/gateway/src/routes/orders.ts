@@ -62,7 +62,6 @@ export function registerOrdersRoutes(
   deps: OrdersRouteDeps,
 ): void {
   const { config, fetcher } = deps
-
   app.get(`${PREFIX}/orders`, async c => {
     const auth = requireBearer(c)
     if (auth instanceof Response) return auth
@@ -99,7 +98,13 @@ export function registerOrdersRoutes(
     return ok(c, toPublicPaymentMethods(methods))
   })
 
-  // Write ban: never proxied upstream, so no transaction side effect is possible.
-  app.post(`${PREFIX}/orders`, c =>
-    fail(c, 'METHOD_NOT_ALLOWED', 'Order creation is not available in Gateway v1 Phase 1', 405))
+  // Write ban: never proxied upstream, so no transaction side effect is
+  // possible. GW-304: when the order-write adaptation layer is enabled, the
+  // real handler is registered by routes/orders-write.ts instead — this
+  // module must not also register a 405 handler on the same path, because
+  // Hono dispatches to the FIRST match and the ban would shadow the write.
+  if (!config.orderWriteEnabled) {
+    app.post(`${PREFIX}/orders`, c =>
+      fail(c, 'METHOD_NOT_ALLOWED', 'Order creation is not available in Gateway v1 Phase 1', 405))
+  }
 }

@@ -16,6 +16,10 @@ export type GatewayConfig = {
   publicCacheTtlMs: number
   /** GW-311: enable public payment methods catalog. Default: false. */
   paymentCatalogEnabled: boolean
+  /** GW-304: enable the order-write adaptation layer. Default: false — the
+   *  payment write ban stays in force and POST /gateway/v1/orders answers 405
+   *  with zero upstream calls. */
+  orderWriteEnabled: boolean
 }
 
 function intSetting(value: string | undefined, fallback: number, min: number, max: number): number {
@@ -86,5 +90,9 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     maxResponseBytes: intSetting(env.GATEWAY_MAX_RESPONSE_BYTES, 1048576, 16384, 8388608),
     publicCacheTtlMs: intSetting(env.GATEWAY_PUBLIC_CACHE_TTL_MS, 60000, 1000, 3600000),
     paymentCatalogEnabled: env.GATEWAY_PAYMENT_CATALOG_ENABLED === 'true',
+    // GW-304: the single opt-in. Anything other than the exact string 'true'
+    // leaves the write ban in force — a typo, a '1' or an empty value can
+    // never open a transaction write path.
+    orderWriteEnabled: env.GATEWAY_ORDER_WRITE_ENABLED === 'true',
   }
 }

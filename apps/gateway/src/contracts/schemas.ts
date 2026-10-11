@@ -62,6 +62,33 @@ export type EmailCodeRequest = z.infer<typeof emailCodeSchema>
 /** Order status query accepts only the four TXBoard states. */
 export const orderStatusQueryValues: readonly string[] = ['0', '1', '2', '3']
 
+/**
+ * GW-304: POST /gateway/v1/orders request body.
+ *
+ * Deliberately minimal and strict: the Gateway validates SHAPE only. Amount
+ * (the plan price), period pricing, coupon, balance and every other business
+ * rule stay in Laravel — the Gateway must never recompute a price or decide
+ * whether the order may proceed. Unknown fields are rejected, so no parameter
+ * can be smuggled upstream.
+ */
+export const orderCreateSchema = z.strictObject({
+  plan_id: z.number().int().positive(),
+  period: z.enum(['month_price', 'quarter_price', 'half_year_price', 'year_price',
+    'two_year_price', 'three_year_price', 'onetime_price', 'reset_price']),
+  coupon_code: z.string().min(1).max(64).optional(),
+})
+
+export type OrderCreateRequest = z.infer<typeof orderCreateSchema>
+
+/**
+ * GW-304: an order creation response. Only the identifiers a theme needs to
+ * follow the order up (via the existing read routes) survive; Laravel decides
+ * what else may be shown and the Gateway does not second-guess it.
+ */
+export const orderCreateResultSchema = z.looseObject({ trade_no: z.string().min(1).max(128) })
+
+export type OrderCreateResult = z.infer<typeof orderCreateResultSchema>
+
 /* ------------------------------------------------------------------ *
  * Upstream response shapes
  * ------------------------------------------------------------------ */

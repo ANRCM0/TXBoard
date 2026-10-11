@@ -84,6 +84,23 @@ export const ROUTE_POLICIES: readonly RouteRatePolicy[] = [
     failClosed: true,
   },
   // --- authenticated reads: dual dimension, bearer-derived subject ---
+  // NOTE: `user-order-write` MUST stay declared before `user-orders`: both
+  // match the same path prefix, and resolveRoutePolicy() keeps the first
+  // entry on a length tie. The method-specific write policy has to win that
+  // tie or a POST would silently inherit the read quota.
+  // GW-304: order WRITE. A transaction write is strictly more sensitive than
+  // a read, so it is deliberately tighter than user-orders and fails CLOSED:
+  // an order that cannot be rate-limited must never be allowed through
+  // silently. Subject = the bearer, so one account cannot spread a burst
+  // across many source addresses.
+  {
+    id: 'user-order-write',
+    match: '/gateway/v1/orders',
+    method: 'POST',
+    ipLimit: 10, ipWindowMs: 60_000,
+    subjectLimit: 20, subjectWindowMs: 60_000, subjectFrom: 'bearer',
+    failClosed: true,
+  },
   {
     id: 'user-orders',
     match: '/gateway/v1/orders',

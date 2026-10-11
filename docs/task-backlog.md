@@ -36,7 +36,7 @@
 | GW-301 | 订阅、订单明细、支付展示、通知等只读适配已合并（#6） | 真实后端契约验证 |
 | GW-307 | HPKE-only 注册和邮箱验证码（默认关闭）、Laravel 透传已合并（#7） | 真实注册、验证码、邮件/邀请策略全流程验证 |
 | GW-401～407 | HPKE 密文登录与 Redis 防重放**技术预览**已合并（#6/#7） | 威胁模型、独立审计、密钥双版本轮换、Redis 故障转移、发布门槛 |
-| GW-302～306/309～311 | **未开发**：订单创建、支付流程、交易持久化幂等、快速购买 | 全部支付与交易安全前置 |
+| GW-302～306/309～311 | **未开发**：订单创建、支付流程、交易持久化幂等、快速购买（**GW-302 例外：ADR 设计文档已提交待评审**，见 [adr-order-idempotency.md](./adr-order-idempotency.md)；**GW-304 例外：Gateway 侧适配层代码已实现、默认关闭、待真实联调**） | 全部支付与交易安全前置 |
 
 > “代码已实现”不等于原任务的全部验收条件已经满足。尤其真实环境验收是用户当前选择延期，不是通过或取消生产门禁。证据与下一阶段安排见 [开发状态台账](./development-status.md)。
 
@@ -103,9 +103,9 @@
 | ID | P | 责任 | 任务 | 依赖 | 验收 / 必须产物 |
 | --- | --- | --- | --- | --- | --- |
 | GW-301 | P1 | GW + TX | 订阅、订单明细、支付方式等只读接口白名单 | M2 + API 样本 | 所有权由 Laravel 验证；私密订阅令牌不流向 guest；样本与 E2E |
-| GW-302 | P0 | TX | Laravel 订单幂等 ADR、持久化数据结构和唯一约束 | M2 | userId+operation+请求哈希、冲突/并发/存储 TTL 决策评审通过 |
+| GW-302 | P0 | TX + GW | Laravel 订单幂等 ADR、持久化数据结构和唯一约束 | M2 | userId+operation+请求哈希、冲突/并发/存储 TTL 决策评审通过 | **ADR 已提交（[docs/adr-order-idempotency.md](./adr-order-idempotency.md)，2026-10-11）：幂等键=user_id+operation+canonical body 哈希、`idempotency_keys` 表唯一约束、状态机 in_progress/succeeded/failed_retryable、24h 可配 TTL、Gateway 透传适配；待评审通过** |
 | GW-303 | P0 | TX | 旧/新 API 共用的订单创建事务幂等实现 | GW-302 | 并发 100 次同键同 body 只一单；重启/失败/不同 body 冲突正确 |
-| GW-304 | P0 | GW + TX | `POST /gateway/v1/orders` 的入参、权限、幂等键适配 | GW-303 | Gateway 不持有管理 token、不复制业务规则；无幂等键拒绝；E2E 与 SDK 覆盖 |
+| GW-304 | P0 | GW + TX | `POST /gateway/v1/orders` 的入参、权限、幂等键适配 | GW-303 | Gateway 不持有管理 token、不复制业务规则；无幂等键拒绝；E2E 与 SDK 覆盖 | **Gateway 侧代码已实现（2026-10-11，待评审/联调）：`routes/orders-write.ts` + `middleware/idempotency.ts` + `orderWrite` 策略（默认 `disabledWrite` 405，`GATEWAY_ORDER_WRITE_ENABLED` 才提升）；无幂等键 400 零上游调用；`IDEMPOTENCY_IN_PROGRESS/CONFLICT`/`ORDER_REJECTED` 错误映射；SDK `orders.create` + E2E 模拟覆盖；Gateway 346/346 + SDK 32/32 全绿。真实联调（GW-303/305/306）与生产放量（GW-309）仍未验收** |
 | GW-305 | P0 | TX | checkout/cancel 的交易状态机、金额/优惠/余额边界 | GW-302/303 | 不可重复扣款/交付；无权限 tradeNo 拒绝；错误状态稳定 |
 | GW-306 | P0 | TX + GW | 支付沙箱重复回调、异步先后、超时恢复测试 | GW-305 | 支付回调不走 Gateway；交易对账一致，无法验证时不得放量 |
 | GW-307 | P1 | GW | 用户注册、邮件验证码、身份恢复接口接入 | GW-203 | Laravel 注册/邮件策略不变；限流与验证 E2E；未启用的接口默认拒绝 |

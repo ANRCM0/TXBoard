@@ -68,6 +68,49 @@ describe('@txboard/theme-sdk v1', () => {
   })
 })
 
+describe('GW-304 order create SDK surface', () => {
+  it('sends the Idempotency-Key header and never retries a write', async () => {
+    const calls: Array<{ url: unknown; init: any }> = []
+    const fetchImpl = vi.fn(async (url: unknown, init: any) => {
+      calls.push({ url, init })
+      return response({ trade_no: 'T2026' })
+    })
+    const sdk = createTXBoardClient({ fetchImpl: fetchImpl as typeof fetch, getToken: () => 'test-user-session' })
+    const created = await sdk.orders.create(
+      { plan_id: 3, period: 'month_price' },
+      { idempotencyKey: 'draft-2026-10-11-0001' },
+    )
+    expect(created.trade_no).toBe('T2026')
+    expect(calls[0]!.url).toBe('/gateway/v1/orders')
+    expect(calls[0]!.init.method).toBe('POST')
+    expect(calls[0]!.init.headers.get('Idempotency-Key')).toBe('draft-2026-10-11-0001')
+    expect(calls[0]!.init.headers.get('Authorization')).toBe('Bearer test-user-session')
+    expect(JSON.parse(calls[0]!.init.body)).toEqual({ plan_id: 3, period: 'month_price' })
+    // A write is never auto-retried, so a transient failure cannot duplicate.
+    expect(fetchImpl).toHaveBeenCalledTimes(1)
+  })
+
+  it('classifies IDEMPOTENCY_IN_PROGRESS as a known, non-unknown-state error', async () => {
+    const fetchImpl = vi.fn(async () => Response.json({
+      ok: false,
+      error: { code: 'IDEMPOTENCY_IN_PROGRESS', message: 'An identical order is already being processed' },
+      meta: { version: '1', requestId: 'req-9' },
+    }, { status: 409, headers: { 'Retry-After': '2' } }))
+    const sdk = createTXBoardClient({ fetchImpl: fetchImpl as typeof fetch, getToken: () => 'test-user-session' })
+    const error = await sdk.orders.create(
+      { plan_id: 3, period: 'month_price' }, { idempotencyKey: 'k' },
+    ).catch(e => e as GatewayApiError)
+    expect(error).toBeInstanceOf(GatewayApiError)
+    expect(error.code).toBe('IDEMPOTENCY_IN_PROGRESS')
+    expect(error.status).toBe(409)
+    // A known verdict is a definite outcome: the caller must NOT treat it as
+    // an unknown remote state and must not re-post with a NEW key.
+    expect(error.needsStateConfirmation).toBe(false)
+    expect(error.retryable).toBe(false)
+    expect(fetchImpl).toHaveBeenCalledTimes(1)
+  })
+})
+
 describe('extended application SDK', () => {
   it('routes only authenticated app read operations', async () => {
     const calls: string[] = []

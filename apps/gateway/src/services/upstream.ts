@@ -8,6 +8,12 @@ export type GatewayFailureCode =
   | 'RATE_LIMITED'
   /** GW-203: upstream authentication is possible but a CAPTCHA must be satisfied. */
   | 'CAPTCHA_REQUIRED'
+  /** GW-304: the same order request is already being processed; retry later. */
+  | 'IDEMPOTENCY_IN_PROGRESS'
+  /** GW-304: the idempotency key is bound to different request parameters. */
+  | 'IDEMPOTENCY_CONFLICT'
+  /** GW-304: the upstream refused the order for a business reason (e.g. plan). */
+  | 'ORDER_REJECTED'
 
 export class GatewayFailure extends Error {
   constructor(
@@ -36,9 +42,27 @@ const allowlistedPaths = {
   userOrderStatus: '/api/v1/user/order/check',
   register: '/api/v1/passport/auth/register',
   sendEmailCode: '/api/v1/passport/comm/sendEmailVerify',
+  // GW-304: order creation. The ONLY mutating operation the order-write
+  // adaptation layer may reach, and only when GATEWAY_ORDER_WRITE_ENABLED is
+  // set. Laravel owns the idempotency decision; the Gateway only forwards the
+  // hint header it derives itself (see routes/orders-write.ts).
+  userOrderCreate: '/api/v1/user/order/save',
 } as const
 
 export type UpstreamOperation = keyof typeof allowlistedPaths
+
+/**
+ * GW-304: the closed set of request headers the Gateway may forward upstream
+ * on the order-write path. The client's own `Idempotency-Key` header is
+ * forwarded verbatim (the SDK sets it; the Gateway never generates one from
+ * user data); `X-Idempotency-Key-Hint` is the Gateway-derived hint from
+ * ADR §7.2. Nothing else — no Origin, no X-Forwarded-*, no credential — is
+ * ever added by this mechanism.
+ */
+export const ORDER_WRITE_FORWARDED_HEADERS: ReadonlySet<string> = new Set([
+  'idempotency-key',
+  'x-idempotency-key-hint',
+])
 
 /** Read UTF-8 JSON with a strict byte cap, including chunked bodies. */
 export async function boundedJson(
@@ -90,6 +114,42 @@ function publicErrorMessage(status: number): string {
   }
 }
 
+/**
+ * GW-304: map an upstream order-write rejection to the Gateway's frozen error
+ * vocabulary. The verdict codes are Laravel's (docs/adr-order-idempotency.md
+ * §7.3); the Gateway never invents them and never degrades an idempotency 409
+ * to a generic 502 — the client must be able to tell "retry later" from
+ * "conflict" from "the request was refused".
+ *
+ * Returns null when the failure has no order-write-specific meaning, so the
+ * caller falls back to the generic mapping.
+ */
+function mappedOrderWriteFailure(
+  record: Record<string, unknown>,
+  status: number,
+): GatewayFailure | null {
+  switch (record.code) {
+    case 'IDEMPOTENCY_IN_PROGRESS':
+      return new GatewayFailure('IDEMPOTENCY_IN_PROGRESS', 409,
+        'An identical order is already being processed')
+    case 'IDEMPOTENCY_CONFLICT':
+      return new GatewayFailure('IDEMPOTENCY_CONFLICT', 409,
+        'Idempotency key is bound to different order parameters')
+    case 'INSUFFICIENT_BALANCE':
+    case 'PLAN_NOT_FOUND':
+    case 'PLAN_NOT_AVAILABLE':
+    case 'PERIOD_NOT_ALLOWED':
+    case 'COUPON_NOT_FOUND':
+    case 'COUPON_EXPIRED':
+      // Business rejection: the order was understood and refused. Laravel
+      // owns every rule behind these; the Gateway only classifies.
+      return new GatewayFailure('ORDER_REJECTED', status,
+        publicErrorMessage(status >= 400 ? status : 422))
+    default:
+      return null
+  }
+}
+
 export async function upstreamRequest(
   config: GatewayConfig,
   fetcher: UpstreamFetcher,
@@ -101,6 +161,8 @@ export async function upstreamRequest(
     tradeNo?: string
     current?: number
     pageSize?: number
+    /** GW-304: extra headers forwarded verbatim (e.g. the idempotency hint). */
+    headers?: Record<string, string>
   } = {},
 ): Promise<unknown> {
   // No untrusted path/host input can escape this static allowlist.
@@ -121,8 +183,17 @@ export async function upstreamRequest(
   const headers = new Headers({ Accept: 'application/json' })
   if (options.auth) headers.set('Authorization', options.auth)
   const method = operation === 'login' || operation === 'register' || operation === 'sendEmailCode'
+    || operation === 'userOrderCreate'
     ? 'POST' : 'GET'
   if (method === 'POST') headers.set('Content-Type', 'application/json')
+  // GW-304: only the explicitly allowlisted forwarding headers are added, and
+  // only for the order-write operation. A caller can never widen this: the
+  // record is built by the route module, never passed through from a client.
+  for (const [name, value] of Object.entries(options.headers ?? {})) {
+    if (ORDER_WRITE_FORWARDED_HEADERS.has(name.toLowerCase())) {
+      headers.set(name, value)
+    }
+  }
   // GW-204: pin the Host we send and refuse any response that was not served
   // from the configured origin. redirect:'manual' stops follow-through; the
   // response.url check catches a proxy that rewrote the effective URL, and the
@@ -170,6 +241,12 @@ export async function upstreamRequest(
     // Never swallow a TXBoard application-level error with HTTP 200.
     if (!response.ok || record.status === 'fail') {
       const status = response.status >= 400 ? response.status : 400
+      // GW-304: the order-write verdict codes are Laravel's; map them to the
+      // frozen Gateway vocabulary instead of collapsing them into UPSTREAM_ERROR.
+      const orderWriteFailure = operation === 'userOrderCreate'
+        ? mappedOrderWriteFailure(record, status)
+        : null
+      if (orderWriteFailure) throw orderWriteFailure
       throw new GatewayFailure('UPSTREAM_ERROR', status, publicErrorMessage(status))
     }
     // An unknown status is not a TXBoard business failure. Treat its

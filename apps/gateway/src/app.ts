@@ -49,6 +49,7 @@ import { registerPublicRoutes } from './routes/public.js'
 import { registerAccountRoutes } from './routes/account.js'
 import { registerUserRoutes } from './routes/user.js'
 import { registerOrdersRoutes } from './routes/orders.js'
+import { registerOrdersWriteRoutes } from './routes/orders-write.js'
 import type { RouteContext } from './routes/shared.js'
 import {
   ROUTE_OPERATIONS,
@@ -313,6 +314,10 @@ export function createGatewayApp(
     redis: Boolean(policy.limiter),
     accountWorkflows: Boolean(policy.accountWorkflows),
     captchaChallenge: Boolean(policy.captchaChallenge),
+    // GW-304: the flag comes from configuration only. No request header,
+    // theme manifest or client capability can promote the write ban — the
+    // frozen table is the only place the route posture is decided.
+    orderWrite: config.orderWriteEnabled,
   }
   validatePolicies(activeRouteDefinitions(policyEnvironment), policyEnvironment, ROUTE_OPERATIONS)
   // The frozen table, compiled once. Every layer that needs to know a route's
@@ -456,7 +461,10 @@ export function createGatewayApp(
       }
       c.header('Access-Control-Allow-Origin', origin)
       c.header('Vary', 'Origin')
-      c.header('Access-Control-Allow-Headers', 'Authorization, Content-Type')
+      // GW-304: Idempotency-Key must be preflight-allowed so a browser theme
+      // can submit an order write. It is allowlisted by name; no other custom
+      // header is advertised to a cross-origin client.
+      c.header('Access-Control-Allow-Headers', 'Authorization, Content-Type, Idempotency-Key')
       c.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
       c.header('Access-Control-Allow-Credentials', 'false')
       c.header('Access-Control-Expose-Headers', 'X-Request-Id')
@@ -532,6 +540,15 @@ export function createGatewayApp(
   })
   registerUserRoutes(app, { config, fetcher: observed })
   registerOrdersRoutes(app, { config, fetcher: observed })
+
+  // GW-304: order-write adaptation layer. Registered ONLY when
+  // GATEWAY_ORDER_WRITE_ENABLED is set, and even then the route's policy comes
+  // from the frozen table (orderWrite, bearer + json envelope, never cached).
+  // With the flag off, POST /gateway/v1/orders stays `disabledWrite`: the
+  // policy layer answers 405 with zero upstream calls.
+  if (config.orderWriteEnabled) {
+    registerOrdersWriteRoutes(app, { config, fetcher: observed })
+  }
 
   app.notFound(c => fail(c, 'NOT_FOUND', 'Gateway route does not exist', 404))
   app.onError((error, c) => {

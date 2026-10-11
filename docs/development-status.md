@@ -1,6 +1,12 @@
 # TXBoard Gateway 开发状态台账
 
-> 更新时间：**2026-10-09**；旧阶段记录为历史快照，以下新增最新 main 代码核查。此文档记录代码和 CI，**不是生产就绪证明**。默认分支 main。当前不接入真实 TXBoard 环境，真实联调的验收暂按产品决策**延期**。
+> 更新时间：**2026-10-11**；旧阶段记录为历史快照，以下新增最新 main 代码核查。此文档记录代码和 CI，**不是生产就绪证明**。默认分支 main。当前不接入真实 TXBoard 环境，真实联调的验收暂按产品决策**延期**。
+
+## 2026-10-11：GW-304 订单写入适配层（默认关闭）已实现
+
+- 新增 `routes/orders-write.ts`（`orderWrite` 策略，仅 `GATEWAY_ORDER_WRITE_ENABLED=true` 时挂载）与 `middleware/idempotency.ts`；策略表新增 `orderWrite`，`POST /gateway/v1/orders` 默认仍为 `disabledWrite`（405、零上游调用）。
+- 边界保持：Gateway 不持有管理 token、不复制业务规则、不做本地去重——透传用户 Bearer、透传客户端 `Idempotency-Key`、自派生 `X-Idempotency-Key-Hint`（仅关联用，Laravel 以认证 user_id 派生权威键）。无幂等键 400 且零上游调用；`IDEMPOTENCY_IN_PROGRESS`/`IDEMPOTENCY_CONFLICT` 透传为 409、业务拒绝映射 `ORDER_REJECTED`（422，不回显上游原文）。
+- **未验收**：GW-303（Laravel 事务幂等）、GW-305/306（状态机与支付沙箱）与 GW-309（灰度/回滚）仍未做；本交付只是 Gateway 侧透传适配，生产放量门禁不变。Gateway **346/346** + SDK **32/32** 全绿。
 
 ## 2026-10-09：主分支 CI 回归已修复
 
@@ -80,7 +86,7 @@
 1. **P0：安全与部署边界。** 可信反代来源/Host/IP、安全头、统一脱敏日志、Redis 429/503 指标、readiness 与故障告警；Laravel 侧沿用原有 CAPTCHA 及限流。Gateway 直连公网不是目标部署形式。
 2. **P0：Redis/密钥生命周期。** 验证 Redis AOF、掉电/切主、不一致和多实例共享；实现可验证的双 key 轮换、kid 淘汰和审计，考虑运维误删数据。
 3. **P0：恢复真实联调验收。** 用 [Staging 手册](../staging/README.md) 的隔离 Laravel/MySQL/Redis、浏览器 Turnstile/reCAPTCHA 和回滚流程；产品当前允许延期，但**生产之前必须补齐**。
-4. **P0：Laravel 交易幂等。** 在 TXBoard 主仓库设计事务表/唯一键与订单状态机，100 并发、失败恢复和支付回调沙箱完成后，才能考虑 Gateway 的 POST orders/checkout/cancel。
+4. **P0：Laravel 交易幂等。** GW-302 ADR 已提交待评审（[订单幂等 ADR](./adr-order-idempotency.md)：派生幂等键 + MySQL 唯一约束 + 三态状态机 + 24h TTL）；随后在 TXBoard 主仓库设计事务表/唯一键与订单状态机，100 并发、失败恢复和支付回调沙箱完成后，才能考虑 Gateway 的 POST orders/checkout/cancel。
 5. **P1：正式 API 与主题生态。** OpenAPI 3.1、完整 fixtures、前端适配器 feature flag、SDK 发布和 Vue/React/Next 多主题兼容测试。
 
 ## 五、合并与发布规则

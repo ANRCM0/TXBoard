@@ -34,7 +34,7 @@
 | POST `/secure/auth/login` | 启用 HPKE+Redis 时密文登录 | `passport/auth/login` |
 | POST `/secure/auth/register` | **默认关闭**，需 HPKE+Redis 和账户开关 | `passport/auth/register` |
 | POST `/secure/auth/email-code` | **默认关闭**，需 HPKE+Redis 和账户开关 | `passport/comm/sendEmailVerify` |
-| POST `/orders` | **405，未实现写入** | 无 |
+| POST `/orders` | **默认 405，未实现写入**；`GATEWAY_ORDER_WRITE_ENABLED=true` 时启用订单写入适配层（GW-304），需 Bearer + `Idempotency-Key` 头 | `user/order/save`（仅 `orderWrite` 策略） |
 
 仅支付方式展示使用用户 Bearer，不代表任何“访客支付方式”已开放。
 
@@ -48,6 +48,15 @@
 **密文账户操作**：Gateway 公钥发现后使用 HPKE 请求体 `{kid,ts,nonce,enc,ct}`。AAD 绑定 `login`/`register`/`email-code` 的固定路径；密文不可跨操作直接重放。注册字段 `{email,password,invite_code?,email_code?,turnstile_token?,recaptcha_v3_token?,recaptcha_data?}`，发邮箱码字段 `{email,turnstile_token?,recaptcha_v3_token?,recaptcha_data?}`。成功注册只返回用户 `auth_data` 和可选 `is_admin`；邮箱码返回 `{sent:true}`。SDK 不把失败自动降级为明文注册/发码。
 
 **只读接口**：计划需 id/name；用户需 email；订单需 trade_no/status；付款仅公开 id/name/icon/payment/手续费字段；通知页限制 current 和 pageSize；统计固定是三个非负整数。错误或格式不符时拒绝而非强行透传。
+
+**订单写入（GW-304，默认关闭，`GATEWAY_ORDER_WRITE_ENABLED=true` 启用）**：
+
+- 请求头 `Idempotency-Key` **必填**，格式为 1–128 位 URL 安全字符（`[A-Za-z0-9._~-]`）；缺失或非法返回 `400 VALIDATION_ERROR`，**零上游调用**。
+- 请求体 strict schema：`{plan_id:正整数, period:枚举, coupon_code?:1–64位}`；未知字段 400。
+- Gateway 透传用户 Bearer（**不接受管理员 Token**），并追加自派生 `X-Idempotency-Key-Hint`（仅作日志关联，Laravel 以认证 user_id 重新派生权威键）。
+- 错误映射：上游 `IDEMPOTENCY_IN_PROGRESS` → `409 IDEMPOTENCY_IN_PROGRESS`（带 `Retry-After`，客户端退避后以**同一键**重试）；`IDEMPOTENCY_CONFLICT` → `409 IDEMPOTENCY_CONFLICT`；余额/套餐/优惠券类业务拒绝 → `422 ORDER_REJECTED`（不回显上游原文）。
+- 成功返回 `201` + 上游订单 DTO（至少含 `trade_no`）。SDK（`orders.create`）对写请求**永不自动重试**。
+- 幂等、余额、套餐、金额规则**全部由 Laravel 决定**；Gateway 不持有管理 token、不复制业务规则、不做本地去重。启用前需 GW-303/305/306 验收通过（见 [订单幂等 ADR](../docs/adr-order-idempotency.md)）。
 
 ## 界限
 

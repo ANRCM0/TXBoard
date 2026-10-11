@@ -25,6 +25,7 @@ export type PolicyName =
   | 'secureEmailCode'
   | 'captchaChallenge'
   | 'disabledWrite'
+  | 'orderWrite'
 
 export type RoutePolicy = Readonly<{
   /** Identity of the policy; the stable key used by snapshots and tests. */
@@ -56,8 +57,17 @@ export const POLICY_DEFINITIONS: Readonly<Record<PolicyName, RoutePolicy>> = {
   // returned challengeId is a bearer capability that must never be shared.
   captchaChallenge: { name: 'captchaChallenge', auth: 'none', body: 'none', limiter: 'public', cache: 'off' },
   // The write ban. No auth, no envelope, no limiter, no cache and no upstream
-  // call at all — the policy itself is the enforcement.
+  // call at all — the policy itself is the enforcement. This is the DEFAULT
+  // posture of POST /gateway/v1/orders and stays that way unless a deployment
+  // explicitly promotes the route to `orderWrite` (see activeRouteDefinitions).
   disabledWrite: { name: 'disabledWrite', auth: 'none', body: 'none', limiter: 'none', cache: 'off' },
+  // GW-304: the order-write adaptation layer, promoted onto POST
+  // /gateway/v1/orders ONLY when GATEWAY_ORDER_WRITE_ENABLED is set. Bearer
+  // required (the user's own token — never an admin token), a JSON envelope
+  // shape-checked before any handler runs, and never cached. The policy
+  // guarantees no upstream call without a credential and a well-formed body;
+  // idempotency and every business rule stay in Laravel (GW-302/303).
+  orderWrite: { name: 'orderWrite', auth: 'bearer', body: 'json', limiter: 'public', cache: 'off' },
 } as const
 
 /**
@@ -107,8 +117,14 @@ export function routeKey(method: string, path: string): string {
  * Upstream operations each route definition may talk to. Reads only, and a
  * subset of the allowlist in services/upstream.ts — that allowlist remains the
  * hard boundary, this map only makes the per-route coupling auditable in one
- * place. `disabledWrite` maps to the empty set, which is what turns the
- * payment write ban into a structural property of the table.
+ * place.
+ *
+ * GW-304: POST /gateway/v1/orders is posture-dependent. With the write ban in
+ * force the route's policy is `disabledWrite` and its operation set is EMPTY
+ * (the ban is structural: zero upstream calls are possible); only the promoted
+ * `orderWrite` posture maps to the single `userOrderCreate` operation.
+ * `operationsFor()` resolves that per definition, so the frozen table can
+ * never state one posture while mapping the operations of the other.
  */
 export const ROUTE_OPERATIONS: Readonly<Record<string, readonly string[]>> = {
   [routeKey('GET', `${PREFIX}/bootstrap`)]: ['guestConfig'],
@@ -129,15 +145,35 @@ export const ROUTE_OPERATIONS: Readonly<Record<string, readonly string[]>> = {
   [routeKey('GET', `${PREFIX}/orders/:tradeNo`)]: ['userOrderDetail'],
   [routeKey('GET', `${PREFIX}/orders/:tradeNo/status`)]: ['userOrderStatus'],
   [routeKey('GET', `${PREFIX}/payments`)]: ['userPaymentMethods'],
+  // The write ban: zero upstream operations, in every posture where the
+  // route is NOT promoted. See operationsFor().
   [routeKey('POST', `${PREFIX}/orders`)]: [],
 } as const
 
+/**
+ * GW-304: the operations a route definition may talk to, resolved for the
+ * posture that definition actually carries. The single mutating operation of
+ * the order-write layer appears ONLY when the definition's policy is
+ * `orderWrite` — a `disabledWrite` definition maps to the empty set, which is
+ * what keeps the payment write ban structural in the default deployment.
+ */
+export function operationsFor(definition: RouteDefinition): readonly string[] {
+  if (definition.policy.name === 'orderWrite') {
+    return ['userOrderCreate']
+  }
+  return ROUTE_OPERATIONS[routeKey(definition.method, definition.path)] ?? []
+}
+
 /** Upstream operations that mutate state. A `disabledWrite` route must never
- *  map to one of these, and no route definition in the table does. */
+ *  map to one of these, and no route definition in the table does. GW-304:
+ *  `orderWrite` is ALLOWED to map to a write operation — that is exactly what
+ *  the promoted policy is for — but only together with the upstream write
+ *  operation, never with the read operations. */
 const UPSTREAM_WRITE_OPERATIONS: ReadonlySet<string> = new Set<string>([
   'login',
   'register',
   'sendEmailCode',
+  'userOrderCreate',
 ])
 
 /**
@@ -155,6 +191,14 @@ export interface PolicyEnvironment {
   accountWorkflows?: boolean
   /** GW-209: a CAPTCHA challenge store is wired, so the challenge route exists. */
   captchaChallenge?: boolean
+  /**
+   * GW-304: GATEWAY_ORDER_WRITE_ENABLED. The single opt-in that promotes
+   * POST /gateway/v1/orders from the permanent `disabledWrite` ban to the
+   * `orderWrite` adaptation layer. Default false: the write ban is the
+   * shipped posture and nothing else — not a header, manifest or capability
+   * — can weaken it.
+   */
+  orderWrite?: boolean
 }
 
 /** Policies that may only be unlocked by HPKE + Redis + the feature flag
@@ -174,7 +218,12 @@ const ACCOUNT_WORKFLOW_POLICIES: ReadonlySet<PolicyName> = new Set<PolicyName>([
  *    GATEWAY_ACCOUNT_WORKFLOWS_ENABLED together;
  *  - every `secure*` route needs HPKE (with its mandatory replay store);
  *  - `/gateway/v1/crypto/key` is the HPKE public-key discovery endpoint, so it
- *    exists only when HPKE is wired.
+ *    exists only when HPKE is wired;
+ *  - GW-304: POST `/gateway/v1/orders` stays `disabledWrite` (the write ban)
+ *    unless GATEWAY_ORDER_WRITE_ENABLED is set. The policy name only ever
+ *    changes from `disabledWrite` to `orderWrite` — the route never appears
+ *    twice, never without a credential check and never without an upstream
+ *    write operation mapped to it.
  */
 export function activeRouteDefinitions(
   environment: PolicyEnvironment = {},
@@ -183,7 +232,17 @@ export function activeRouteDefinitions(
     environment.hpke && environment.redis && environment.accountWorkflows,
   )
   const hpkeAvailable = Boolean(environment.replayStore)
-  return routeDefinitions.filter(definition => {
+  // GW-304: the write ban is lifted only by the explicit deployment flag.
+  const orderWriteEnabled = Boolean(environment.orderWrite)
+  return routeDefinitions.map(definition => {
+    // The ONLY policy promotion in the whole table: the write ban becomes the
+    // order-write adaptation layer. Nothing else about the entry changes —
+    // same method, same path, same position.
+    if (definition.policy.name === 'disabledWrite' && orderWriteEnabled) {
+      return { ...definition, policy: POLICY_DEFINITIONS.orderWrite }
+    }
+    return definition
+  }).filter(definition => {
     const { policy, path } = definition
     if (policy.name === 'secureRegister' || policy.name === 'secureEmailCode') {
       return accountWorkflows
@@ -256,10 +315,27 @@ export function validatePolicies(
     if (POLICY_DEFINITIONS[policy.name] !== policy) {
       throw new Error(`Route ${key} uses a non-canonical definition for policy ${policy.name}`)
     }
-    // The payment write ban is structural, not a promise inside a handler.
-    for (const operation of operations[key] ?? []) {
+    // The payment write ban is structural, not a promise inside a handler:
+    // a `disabledWrite` route may NEVER map to an upstream write operation.
+    // `orderWrite` is the opposite by construction — the whole point of the
+    // promotion — so it is held to the complementary rule below instead.
+    // `operationsFor()` is the DEFAULT resolution (posture-aware); an explicit
+    // override map replaces it wholesale, which is what lets the unit tests
+    // inject an unsound combination and watch the boot refuse it.
+    const routeOperations = operations === ROUTE_OPERATIONS
+      ? operationsFor(definition)
+      : (operations[key] ?? [])
+    for (const operation of routeOperations) {
       if (policy.name === 'disabledWrite' && UPSTREAM_WRITE_OPERATIONS.has(operation)) {
         throw new Error(`disabledWrite route ${key} must not call upstream write operation ${operation}`)
+      }
+    }
+    // GW-304: the promotion is only sound if the order-write route maps to
+    // EXACTLY its one write operation — no reads (a write route that also
+    // reads would widen its blast radius) and no other write.
+    if (policy.name === 'orderWrite') {
+      if (routeOperations.length !== 1 || routeOperations[0] !== 'userOrderCreate') {
+        throw new Error(`orderWrite route ${key} must map to exactly ['userOrderCreate']`)
       }
     }
     // Per-user data can never be served from a shared public cache.

@@ -15,6 +15,9 @@ const email = 'user@fixture.test'
 const password = 'fixture-password-123'
 const upstreamRequests = []
 const upstreamEnvelope = data => ({ status: 'success', message: null, data, error: null })
+// GW-304: idempotency-key -> trade_no, mirroring the Laravel semantics the
+// ADR specifies (same key + same body replays the first result).
+const ordersByKey = new Map()
 
 async function startServer(handler) {
   const server = createServer(handler)
@@ -74,6 +77,30 @@ test('Chromium theme SDK works through Gateway with strict fake Laravel contract
       } else {
         result = upstreamEnvelope(path === '/api/v1/passport/comm/sendEmailVerify' ? true
           : { auth_data: TEST_BEARER, is_admin: false, secure_path: 'private-admin-route', token: 'legacy-token' })
+      }
+    } else if (path === '/api/v1/user/order/save' && req.method === 'POST') {
+      let data = ''
+      for await (const chunk of req) data += chunk
+      const submitted = JSON.parse(data)
+      // The Gateway must forward the client's Idempotency-Key verbatim and
+      // add its own hint header; neither is authoritative, both must arrive.
+      const idempotencyKey = req.headers['idempotency-key']
+      const idempotencyHint = req.headers['x-idempotency-key-hint']
+      if (!idempotencyKey || !idempotencyHint) {
+        status = 400
+        result = { status: 'fail', message: 'Idempotency-Key header is required' }
+      } else if (req.headers.authorization !== TEST_BEARER) {
+        status = 401
+        result = { status: 'fail', message: 'Expired fixture session' }
+      } else if (!(submitted.plan_id === 1 && submitted.period === 'month_price')) {
+        status = 422
+        result = { status: 'fail', message: 'Invalid fixture order' }
+      } else {
+        // Same key + same body replays the first result; a fresh key creates
+        // a new order. The fixture mirrors the Laravel semantics the ADR
+        // specifies (GW-302/303), not the Gateway's.
+        if (!ordersByKey.has(idempotencyKey)) ordersByKey.set(idempotencyKey, 'fixture-order-' + ordersByKey.size)
+        result = upstreamEnvelope({ trade_no: ordersByKey.get(idempotencyKey), status: 0 })
       }
     } else if ([
       '/api/v1/user/info', '/api/v1/user/order/fetch', '/api/v1/user/getSubscribe',
@@ -147,6 +174,10 @@ test('Chromium theme SDK works through Gateway with strict fake Laravel contract
       GATEWAY_HPKE_KEY_FILE: keyFile,
       GATEWAY_REDIS_URL: process.env.GATEWAY_TEST_REDIS_URL || 'redis://127.0.0.1:16379',
       GATEWAY_ACCOUNT_WORKFLOWS_ENABLED: 'true',
+      // GW-304: the order-write adaptation layer is opt-in; with the flag the
+      // route is the promoted orderWrite policy (bearer + Idempotency-Key),
+      // without it the permanent 405 write ban stays in force.
+      GATEWAY_ORDER_WRITE_ENABLED: 'true',
     },
     stdio: ['ignore', 'pipe', 'pipe'],
   })
@@ -196,6 +227,25 @@ test('Chromium theme SDK works through Gateway with strict fake Laravel contract
     })
     const stats = await api.dashboard.stats()
     const orderStatus = await api.orders.status('fixture-order')
+    // GW-304: order write through the adaptation layer. The SDK sends the
+    // Idempotency-Key header; the Gateway forwards it plus its own hint.
+    const orderKey = 'browser-fixture-order-1'
+    const created = await api.orders.create(
+      { plan_id: 1, period: 'month_price' }, { idempotencyKey: orderKey },
+    )
+    // Replaying the SAME key returns the SAME order (the fixture upstream
+    // mirrors the Laravel idempotency semantics, not the Gateway's).
+    const replayed = await api.orders.create(
+      { plan_id: 1, period: 'month_price' }, { idempotencyKey: orderKey },
+    )
+    let missingKeyStatus
+    try {
+      await fetch('http://127.0.0.1:' + gatewayPort + '/gateway/v1/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: session },
+        body: JSON.stringify({ plan_id: 1, period: 'month_price' }),
+      }).then(r => { missingKeyStatus = r.status })
+    } catch { /* captured below as undefined */ }
     const code = await encryptedApi.auth.sendEmailCode({ email, turnstile_token: 'fixture-captcha' })
     const registered = await encryptedApi.auth.register({ email, password, turnstile_token: 'fixture-captcha' })
     const protectedLogin = await encryptedApi.auth.login({
@@ -233,6 +283,9 @@ test('Chromium theme SDK works through Gateway with strict fake Laravel contract
       codeSent: code.sent,
       stats,
       orderStatus,
+      createdTradeNo: created.trade_no,
+      replayedTradeNo: replayed.trade_no,
+      missingKeyStatus,
       expiredStatus,
       rejectedStatus,
       persistedAuth: Object.keys(localStorage).some(k => /auth|token/i.test(k)),
@@ -256,6 +309,12 @@ test('Chromium theme SDK works through Gateway with strict fake Laravel contract
   assert.equal(result.codeSent, true)
   assert.deepEqual(result.stats, { unpaidOrders: 2, openTickets: 1, invitedUsers: 7 })
   assert.deepEqual(result.orderStatus, { tradeNo: 'fixture-order', status: 0 })
+  // GW-304: the write path. Same key + same body = same order; a missing
+  // Idempotency-Key is refused by the Gateway before any upstream call.
+  assert.equal(result.createdTradeNo, 'fixture-order-0')
+  assert.equal(result.replayedTradeNo, 'fixture-order-0')
+  assert.equal(result.missingKeyStatus, 400)
+  assert.ok(upstreamRequests.includes('/api/v1/user/order/save'))
   assert.ok(encryptedRequestBody.includes('"kid"'))
   assert.ok(encryptedRequestBody.includes('"ct"'))
   assert.ok(!encryptedRequestBody.includes(password))
