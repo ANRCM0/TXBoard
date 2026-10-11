@@ -2,6 +2,16 @@
 
 > 更新时间：**2026-10-11**；旧阶段记录为历史快照，以下新增最新 main 代码核查。此文档记录代码和 CI，**不是生产就绪证明**。默认分支 main。当前不接入真实 TXBoard 环境，真实联调的验收暂按产品决策**延期**。
 
+## 2026-10-11：GW-501/503 Theme Package v2 Manifest ADR 与 SDK 发布策略（设计，未实施）
+
+- 新增 [adr-theme-package-v2.md](./adr-theme-package-v2.md)（待评审，同一文档覆盖 GW-501 §1–§7 与 GW-503 §8–§9）：
+- **GW-501（manifest）**：独立 v2 manifest 文件 `txboard-theme.json`（`format:2` 防 v1 误装）与 v1（`config.json`+`dashboard.blade.php`）**并存、v1 加载器零改动**；冻结字段=标识 slug/语义版本/`engines`（txboard+gateway+contract 三维 SemVer 区间）、`entry.type`（spa/ssr）、编译产物与 `assets[].integrity`（sha256 SRI）、`gateway.contract:1.x` + 仅 UI 可见性提示的 capabilities、`config`（JSON Schema/defaults/public 候选公开字段）、作者/依赖（运行时依赖恒空、离线打包）/CSP（strict、禁远程代码、token 不入包不入 localStorage）。
+- **关键零权重原则**：manifest 的 capability/版本声明只用于 Runtime 兼容判定与 UI 提示，对 Gateway 服务端策略**零权重**（延续 [middleware-architecture.md](./middleware-architecture.md) 与 [GW-405](./adr-encryption-negotiation.md) 冻结语义）；公开配置最终权威是 Laravel `ThemeService::getPublicConfig` 过滤，manifest 的 `config.public` 不可扩大公开集。Gateway 零代码零路由（不解包、不访问主题 FS、不信任主题代码），安装/校验/回滚由 TXBoard Theme Runtime（GW-502，独立 TXBoard PR）负责。
+- **GW-503（SDK 发布）**：五环境兼容验收口径（npm pack dry-run/干净安装/浏览器 ESM/SSR 请求级 token 隔离/tsc 声明，多数已有 GW-103/105/106 基线）；SemVer 冻结（major=破坏性导出/线格式/错误码删除/engines 下限/Gateway 契约主版本弃支持且先发 beta；minor=纯附加；patch=无契约；0.x 期 minor 可 breaking；`1.0.0` 门槛=只读稳定集冻结，写路径不纳入承诺）；`KNOWN_ERROR_CODES` 只增不删；发版追溯 7 步（冻结→CHANGELOG→tag `theme-sdk/vX.Y.Z`→GitHub Release 记 commit/CI/provenance→`npm publish --provenance`→验证→dist-tag 回滚），tag 解析支撑 GW-507 三维协商。
+- 验收矩阵 TP-1～9 + 安全评审 S1–S5；备选否决 5 项（扩展 v1 config.json / capability 即授权 / Gateway 解析包 / 先发 1.0 再冻结 / 远程依赖）；4 项未决问题（ssr 安装策略/manifest 签名/@hpke/core 改 peer/旧 major 支持窗口）。
+- **纯文档变更**：未改任何代码、CI（`.github/workflows/` 零改动）、测试，未 git commit。Gateway **391/391** + SDK **32/32** 基线维持。Theme Runtime 实现（GW-502）与 SDK 实际发版仍待评审与后续任务。
+
+
 ## 2026-10-11：GW-405 加密灰度协商与兼容设计（设计，未实施）
 
 - 新增 [adr-encryption-negotiation.md](./adr-encryption-negotiation.md)（待评审）：operation 三级分级冻结为服务端策略属性——**必须加密** login/register/email-code（register/email-code 任何阶段都无明文路由，编译期结构保证）、**可选加密** profile/subscription/orders、**只读公开** bootstrap/plans/theme-config。
@@ -10,6 +20,14 @@
 - 旧主题兼容：TLS-only 是 P0/P1 阶段**显式运行态**（bootstrap 新增字段为纯增量，旧客户端忽略），不强制断线；灰度阶段 `GATEWAY_ENCRYPTION_PHASE` 单向收紧（`tls-only → hpke-preferred → hpke-required`，只做整条路由缺席、不做路由内换策略，与 `disabledWrite→orderWrite` 唯一提升点同构）；P2 前置 = 明文登录流量归零连续 7 天 + GW-406 独立安全复核。
 - 验收矩阵 NGF-1～8（负例）+ NCG-1～10（含 capabilities 快照、阶段切换 validatePolicies、伪造能力头零权重、明文流量归零指标）；错误码只新增一个码位 `ENCRYPTION_REQUIRED`（403，草案待评审）。
 - **未验收**：双 kid 轮换（GW-215）、真实联调（GW-216）、独立安全复核（GW-406）仍是 P2 前置；本文档为纯设计变更，未改任何代码/CI/测试。Gateway **346/346** + SDK **32/32** 仍全绿。
+
+## 2026-10-11：GW-504/505 Vue 与 React 独立主题模板（文档交付）
+
+- 新增 [theme-templates.md](./theme-templates.md)：**GW-504（Vue 3 + Vite，首选）与 GW-505（React 19 + Vite）两套独立主题模板的设计契约与完整源码骨架**，均只经 `@txboard/theme-sdk` 与 Gateway 通信（`baseURL: '/gateway/v1'`，同源 Origin 或按 `GATEWAY_ALLOWED_ORIGINS` 精确名单），**任何路径都不直连 Laravel**。
+- 两模板共用同一安全语义：bootstrap 加载（`site/theme/security.captcha/capabilities`）、CAPTCHA 缺失时 fail-closed 阻止登录（enabled=true 而 siteKey 缺失时渲染禁用按钮而非静默放行）、登录后 `auth_data` 存 localStorage 并由 `getToken` 注入（SDK 自己不存 token、公开接口零 Bearer）、套餐/用户资料/订阅/订单只读渲染、`orders.create` 仅在 `capabilities.includes('orders.create')` 时出现且携带 `Idempotency-Key`（UUID v4，刷新前持久化）并禁止 UI 自动重试（写请求永不自动重试：`IDEMPOTENCY_IN_PROGRESS` → 以同一键退避后由用户重试、`ORDER_REJECTED` → 映射为 422 业务拒绝展示）、401/429/503/网络错误/超时统一错误 UI、`GatewayApiError` 的 `requestId` 展示给用户便于排查。
+- 服务端 URL（背景图/logo/外链）一律经同源的 `safeWebUrl` 卫生函数白名单校验（禁止 `javascript:`/`data:`/凭据/跨源 http），主题配置 `theme.config` 仅作外观渲染不作权限依据；框架差异（Vue `<script setup>` + Composition API vs React hooks）只影响 UI 层，Gateway/SDK 调用与安全语义两侧字节级对齐。
+- 两份模板源码骨架位于 `examples/vue-theme/` 与 `examples/react-theme/`（含 `useThemeBootstrap`/`useAuth`/`usePlans`/`useUserData`/`useOrders` composable 与 hook、全链路页面、CSS tokens、README），并配套 `docs/theme-templates.md` 验收矩阵（含 NGF 负例）与 `examples/theme-template-check.mjs` 结构断言脚本（护栏：模板禁止出现 `laravel`/`/api/v1`/`/txapi` 直连、必须引用 theme-sdk）。
+- **未验收**：GW-503（SDK 正式发布/SemVer）与 GW-507（运行时版本协商/能力隔离）仍是前置；真实 Gateway 端到端联调（GW-216）与生产发布（GW-508）未做。本交付不改任何代码/CI/测试，Gateway **391/391** + SDK **32/32** 仍全绿。
 
 ## 2026-10-11：GW-401 应用层加密威胁模型与协议 ADR（设计，未实施）
 

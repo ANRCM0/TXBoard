@@ -135,11 +135,11 @@
 
 | ID | P | 责任 | 任务 | 依赖 | 验收 / 必须产物 |
 | --- | --- | --- | --- | --- | --- |
-| GW-501 | P0 | TX + GW | Theme Package v2 独立 manifest ADR | M1 + GW-106 | 不改变旧 `config.json`/`dashboard.blade.php`；声明版本/资源/能力/配置与安全策略 |
+| GW-501 | P0 | TX + GW | Theme Package v2 独立 manifest ADR | M1 + GW-106 | 不改变旧 `config.json`/`dashboard.blade.php`；声明版本/资源/能力/配置与安全策略 | **ADR 设计文档已提交（2026-10-11，[docs/adr-theme-package-v2.md](./adr-theme-package-v2.md) §1–§7）：新增 `txboard-theme.json` 独立 manifest 与 v1（`config.json`+`dashboard.blade.php`）并存、v1 加载器零改动；冻结字段=标识/语义版本/`engines`（txboard+gateway+contract 三维区间）、`entry.type`（spa/ssr）、编译产物与 `assets[].integrity`（sha256 SRI）、`gateway.contract:1.x` + 仅 UI 可见性提示的 capabilities、`config`（schema/defaults/public 候选公开字段，服务端 Laravel `ThemeService::getPublicConfig` 为最终权威不可被 manifest 扩大）、作者/依赖（运行时依赖恒空、离线打包）/CSP 安全要求（strict CSP、禁远程代码、token 不入包不入 localStorage）；Gateway 零代码零路由（不解包、不访问主题 FS、不信任主题代码），manifest 对策略零权重（沿用 middleware-architecture + GW-405）；验收矩阵 TP-1～9 与 S1–S5 安全评审清单；含备选否决（扩展 v1 config.json / capability 即授权 / Gateway 解析包）与 4 项未决问题；纯文档变更，未改代码/CI/测试。待评审通过，Theme Runtime 实现仍属 GW-502** | 
 | GW-502 | P0 | TX | SPA 主题上传、校验、发布、切换、回滚 Runtime | GW-501 | ZIP 安全、兼容识别、资源完整性、CSP、回滚 E2E |
-| GW-503 | P1 | GW + SDK | 稳定公开 SDK 契约、发版与 SemVer 策略 | M3 或当前只读稳定集 | npm pack/安装/浏览器/SSR、生成声明、tag/release 追溯 |
-| GW-504 | P1 | GW | Vue 独立主题模板（首选） | GW-503 | 主题初始化、主题配置、套餐、用户、订单和错误 UI 全链路 |
-| GW-505 | P1 | GW | React 独立主题模板 | GW-503 | 同接口和安全语义验证，页面无需直连 Laravel |
+| GW-503 | P1 | GW + SDK | 稳定公开 SDK 契约、发版与 SemVer 策略 | M3 或当前只读稳定集 | npm pack/安装/浏览器/SSR、生成声明、tag/release 追溯 | **策略设计文档已提交（2026-10-11，[docs/adr-theme-package-v2.md](./adr-theme-package-v2.md) §8–§9，与 GW-501 同文档）：五环境兼容验收口径（pack dry-run/干净安装/浏览器 ESM/SSR 请求级 token 隔离/tsc 声明，多数已有 GW-103/105/106 基线）；SemVer 冻结规则（major=破坏性导出/线格式/错误码删除/engines 下限/Gateway 契约主版本弃支持且先发 beta；minor=附加方法/字段/错误码；patch=无契约；0.x 期 minor 可 breaking；`1.0.0` 门槛=只读稳定集冻结，`orders.create` 等写路径不纳入承诺）；错误码纪律（KNOWN_ERROR_CODES 只增不删）；发版与追溯 7 步（冻结→CHANGELOG→tag `theme-sdk/vX.Y.Z`→GitHub Release 记 commit/CI/provenance→`npm publish --provenance`→验证→dist-tag 回滚），tag 可解析支撑 GW-507 三维协商；未改 `.github/workflows/` 与任何代码，发版门禁细节沿用 release-checklist。待评审，SDK 当前仍 0.1.0 未发布** |
+| GW-504 | P1 | GW | Vue 独立主题模板（首选） | GW-503 | 主题初始化、主题配置、套餐、用户、订单和错误 UI 全链路 | **设计文档交付（2026-10-11）**：[docs/theme-templates.md](./theme-templates.md) + `examples/vue-theme/` 骨架（Vue 3.5 + Vite + vue-router，SDK 单实例/CAPTCHA fail-closed/能力门控/幂等键/错误 UI/safe-url，同源代理）；结构断言 `examples/theme-template-check.mjs` TPL-1～5 通过（含负例）。未接入 CI、未 git commit、未真实联调（GW-216）；SDK 正式发布（GW-503）与版本协商（GW-507）仍前置 |
+| GW-505 | P1 | GW | React 独立主题模板 | GW-503 | 同接口和安全语义验证，页面无需直连 Laravel | **设计文档交付（2026-10-11）**：同上文档 + `examples/react-theme/` 骨架（React 19 + Vite + react-router-dom，hooks 版安全语义与 Vue 模板逐字节一致）；同一结构断言通过。未接入 CI、未 git commit、未真实联调；GW-503/GW-507 仍前置 |
 | GW-506 | P1 | GW | Next.js SSR 安全模板 | GW-503 | 无跨请求 session 污染；服务器 token 隔离测试 |
 | GW-507 | P0 | TX + GW | 运行时版本协商、主题能力和安全隔离 | GW-501~506 | Gateway/SDK/theme 三维版本兼容拒绝；capability 不越权 |
 | GW-508 | P0 | GW + DEP + TX | 发布/监控/回滚/兼容性总验收 | GW-507、M2/3 生产门禁 | canary 报告、旧主题回归、镜像 digest、操作手册、SLO 与 rollback |
