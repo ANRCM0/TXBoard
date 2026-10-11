@@ -12,6 +12,10 @@ export type GatewayConfig = {
   timeoutMs: number
   maxRequestBytes: number
   maxResponseBytes: number
+  /** GW-218: TTL for public content cache in milliseconds. Default: 60000 (60s). */
+  publicCacheTtlMs: number
+  /** GW-311: enable public payment methods catalog. Default: false. */
+  paymentCatalogEnabled: boolean
 }
 
 function intSetting(value: string | undefined, fallback: number, min: number, max: number): number {
@@ -80,5 +84,7 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     timeoutMs: intSetting(env.GATEWAY_UPSTREAM_TIMEOUT_MS, 8000, 500, 60000),
     maxRequestBytes: intSetting(env.GATEWAY_MAX_REQUEST_BYTES, 16384, 1024, 1048576),
     maxResponseBytes: intSetting(env.GATEWAY_MAX_RESPONSE_BYTES, 1048576, 16384, 8388608),
+    publicCacheTtlMs: intSetting(env.GATEWAY_PUBLIC_CACHE_TTL_MS, 60000, 1000, 3600000),
+    paymentCatalogEnabled: env.GATEWAY_PAYMENT_CATALOG_ENABLED === 'true',
   }
 }

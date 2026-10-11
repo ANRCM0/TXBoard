@@ -24,6 +24,7 @@ export type UpstreamFetcher = typeof fetch
 const allowlistedPaths = {
   guestConfig: '/api/v1/guest/comm/config',
   guestPlans: '/api/v1/guest/plan/fetch',
+  guestPaymentMethods: '/api/v1/guest/paymentMethods',
   login: '/api/v1/passport/auth/login',
   userProfile: '/api/v1/user/info',
   userOrders: '/api/v1/user/order/fetch',

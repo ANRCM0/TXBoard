@@ -28,7 +28,7 @@ export type ErrorStatus =
  * 502 so an unexpected backend status can never masquerade as a client error.
  */
 export const PRESERVED_STATUSES: readonly number[] =
-  [400, 401, 403, 404, 405, 409, 413, 422, 428, 429, 500, 502, 503, 504]
+  [400, 401, 403, 404, 405, 409, 413, 422, 428, 429, 502, 503, 504]
 
 /** Bearer shape check only — never authorization. */
 export const BEARER_PATTERN = /^Bearer [^\s]{8,4096}$/

@@ -68,6 +68,7 @@ export const routeDefinitions = [
   { method: 'GET', path: `${PREFIX}/theme/config`, policy: POLICY_DEFINITIONS.publicRead },
   { method: 'GET', path: `${PREFIX}/plans`, policy: POLICY_DEFINITIONS.publicRead },
   { method: 'GET', path: `${PREFIX}/crypto/key`, policy: POLICY_DEFINITIONS.publicRead },
+  { method: 'GET', path: `${PREFIX}/catalog/payment-methods`, policy: POLICY_DEFINITIONS.publicRead },
 
   { method: 'POST', path: `${PREFIX}/auth/login`, policy: POLICY_DEFINITIONS.login },
   { method: 'POST', path: `${PREFIX}/secure/auth/login`, policy: POLICY_DEFINITIONS.secureLogin },
@@ -106,6 +107,7 @@ export const ROUTE_OPERATIONS: Readonly<Record<string, readonly string[]>> = {
   [routeKey('GET', `${PREFIX}/theme/config`)]: ['guestConfig'],
   [routeKey('GET', `${PREFIX}/plans`)]: ['guestPlans'],
   [routeKey('GET', `${PREFIX}/crypto/key`)]: [],
+  [routeKey('GET', `${PREFIX}/catalog/payment-methods`)]: ['guestPaymentMethods'],
   [routeKey('POST', `${PREFIX}/auth/login`)]: ['login'],
   [routeKey('POST', `${PREFIX}/secure/auth/login`)]: ['login'],
   [routeKey('POST', `${PREFIX}/secure/auth/register`)]: ['register'],

@@ -1,7 +1,8 @@
 import type { CryptoService } from '../services/crypto.js'
 import { upstreamRequest } from '../services/upstream.js'
-import { toPublicCaptcha, toPublicSite, toPublicTheme } from '../adapters/txboard-v1.js'
-import { planListSchema } from '../contracts/schemas.js'
+import { toPublicCaptcha, toPublicPaymentMethods, toPublicSite, toPublicTheme } from '../adapters/txboard-v1.js'
+import { toLumaThemeConfig } from '../adapters/luma-theme.js'
+import { paymentMethodsSchema, planListSchema } from '../contracts/schemas.js'
 import { PREFIX } from '../middleware/request-context.js'
 import { fail, ok, requiredRecord, validated, type RouteContext, type RouteDeps } from './shared.js'
 
@@ -36,6 +37,7 @@ export function registerPublicRoutes(app: RouteRegistrar, deps: PublicRouteDeps)
         'auth.login', 'user.profile', 'plans.list', 'orders.list', 'theme.config',
         'user.subscription.summary', 'orders.detail', 'payments.methods', 'notices.list',
         'dashboard.stats', 'orders.status',
+        ...(config.paymentCatalogEnabled ? ['catalog.payment-methods'] : []),
         ...(crypto ? ['auth.login.encrypted'] : []),
         ...(accountWorkflows ? ['auth.register.encrypted', 'auth.email-code.encrypted'] : []),
       ],
@@ -50,5 +52,17 @@ export function registerPublicRoutes(app: RouteRegistrar, deps: PublicRouteDeps)
   app.get(`${PREFIX}/plans`, async c => {
     const plans = validated(planListSchema, await upstreamRequest(config, fetcher, 'guestPlans'))
     return ok(c, plans)
+  })
+
+  // GW-311: public payment methods catalog. Disabled by default; only live
+  // when GATEWAY_PAYMENT_CATALOG_ENABLED=true. Returns a safe public DTO
+  // (id/name/icon/payment/handling fees only — no provider configs or
+  // credentials).
+  app.get(`${PREFIX}/catalog/payment-methods`, async c => {
+    if (!config.paymentCatalogEnabled) {
+      return fail(c, 'NOT_FOUND', 'Gateway route does not exist', 404)
+    }
+    const methods = validated(paymentMethodsSchema, await upstreamRequest(config, fetcher, 'guestPaymentMethods'))
+    return ok(c, toPublicPaymentMethods(methods as unknown as readonly { id: number; name: string; icon?: unknown; payment?: unknown; handling_fee_fixed?: unknown; handling_fee_percent?: unknown }[]))
   })
 }
