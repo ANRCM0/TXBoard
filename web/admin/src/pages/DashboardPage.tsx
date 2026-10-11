@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { AlertTriangle, ArrowRight, BarChart3, Bot, CheckCircle2, MessageSquare, Server, Users, Wallet, Wifi } from 'lucide-react'
+import { AlertTriangle, BarChart3, Bot, CheckCircle2, MessageSquare, Server, Users, Wallet, Wifi } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getDashboardStats, getOrderChart, getTrafficRank } from '../api/statistics'
@@ -9,6 +9,9 @@ import { EmptyState } from '../components/ui/EmptyState'
 import { DashboardPeriodPicker } from '../components/dashboard/DashboardPeriodPicker'
 import { QueueDashboardSections } from '../components/dashboard/QueueDashboardSections'
 import { getPeriodDates, getPeriodTimestamps, readDashboardPeriod, saveDashboardPeriod, type DashboardPeriod } from '../lib/dashboardPeriod'
+import { normalizeIncomePoints, formatTraffic } from '../lib/dashboardVisuals'
+import { SectionHeader } from '../components/ui/SectionHeader'
+import { IncomeTrendChart } from '../components/dashboard/IncomeTrendChart'
 import { attentionCount, attentionMode, hasIncomeTrend } from '../lib/dashboardAttention'
 
 export function DashboardPage() {
@@ -52,10 +55,7 @@ export function DashboardPage() {
   const criticalNodes = attentionCount(fleet.data?.summary.critical_nodes)
   const degradedNodes = attentionCount(fleet.data?.summary.degraded_nodes)
   const fleetAlerts = criticalNodes === null || degradedNodes === null ? null : criticalNodes + degradedNodes
-  const points = (chart.data?.list || []).map(row => ({
-    date: String(row.date || ''),
-    value: Number(row.paid_total || 0) / 100,
-  }))
+  const points = normalizeIncomePoints(chart.data?.list || [])
   const hasTrend = hasIncomeTrend(points)
   const tasks = [
     { key: 'tickets', label: '待处理工单', to: '/user/ticket',
@@ -75,6 +75,14 @@ export function DashboardPage() {
       sub: agentActions.isError ? '审批队列暂不可用' : '进入 Agent 运维',
       icon: <Bot size={18} aria-hidden="true"/> },
   ]
+  const metrics = [
+    {key:'today', label:'今日收入',value:money(s.todayIncome),sub:growth(s.dayIncomeGrowth),icon:<Wallet size={17} aria-hidden="true"/>},
+    {key:'month',label:'本月收入',value:money(s.currentMonthIncome),sub:growth(s.monthIncomeGrowth),icon:<Wallet size={17} aria-hidden="true"/>},
+    {key:'users',label:'总用户',value:count(s.totalUsers),sub:'活跃 '+count(s.activeUsers),icon:<Users size={17} aria-hidden="true"/>},
+    {key:'new',label:'本月新用户',value:count(s.currentMonthNewUsers),sub:growth(s.userGrowth),icon:<Users size={17} aria-hidden="true"/>},
+    {key:'online',label:'在线用户',value:count(s.onlineUsers),sub:'设备 '+count(s.onlineDevices),icon:<Wifi size={17} aria-hidden="true"/>},
+    {key:'nodes',label:'在线节点',value:count(s.onlineNodes),sub:'实时快照',icon:<Server size={17} aria-hidden="true"/>},
+  ]
   const taskMode = attentionMode(tasks.map(task => task.count))
   const visibleTasks = taskMode === 'checking'
     ? tasks.filter(task => task.count === null)
@@ -84,12 +92,7 @@ export function DashboardPage() {
     <QueryFeedback loading={stats.isFetching && !stats.data} error={stats.isError && !stats.data} onRetry={() => stats.refetch()} />
 
     <section className="dashboard-ops-section" aria-label="需要处理的事项">
-      <div className="dashboard-section-heading">
-        <div>
-          <h2>需要处理</h2>
-          <p>优先展示需要管理员介入的工单、佣金与运维异常。</p>
-        </div>
-      </div>
+      <SectionHeader title="需要处理" description="优先展示需要管理员介入的工单、佣金与运维异常。"/>
       {taskMode === 'clear' ? (
         <div className="dashboard-ops-clear" role="status">
           <CheckCircle2 size={23} aria-hidden="true"/>
@@ -118,17 +121,16 @@ export function DashboardPage() {
     </section>
 
     <section className="dashboard-metrics-section" aria-label="运营概览">
-      <div className="dashboard-section-heading">
-        <h2>运营概览</h2>
-        <p>收入、用户及在线服务的核心指标。</p>
-      </div>
-      <div className="dashboard-stats dashboard-v2-metrics">
-        <DashCard icon={<Wallet size={18} aria-hidden="true"/>} label="今日收入" value={money(s.todayIncome)} sub={growth(s.dayIncomeGrowth)}/>
-        <DashCard icon={<Wallet size={18} aria-hidden="true"/>} label="本月收入" value={money(s.currentMonthIncome)} sub={growth(s.monthIncomeGrowth)}/>
-        <DashCard icon={<Users size={18} aria-hidden="true"/>} label="总用户" value={count(s.totalUsers)} sub={'活跃 '+count(s.activeUsers)}/>
-        <DashCard icon={<Users size={18} aria-hidden="true"/>} label="本月新用户" value={count(s.currentMonthNewUsers)} sub={growth(s.userGrowth)}/>
-        <DashCard icon={<Wifi size={18} aria-hidden="true"/>} label="在线用户" value={count(s.onlineUsers)} sub={'设备 '+count(s.onlineDevices)}/>
-        <DashCard icon={<Server size={18} aria-hidden="true"/>} label="在线节点" value={count(s.onlineNodes)} sub="实时快照"/>
+      <SectionHeader title="运营概览" description="收入、用户及在线服务的核心指标。"/>
+      <div className="dashboard-v3-kpis" role="group" aria-label="运营核心指标">
+        {metrics.map(metric => <div className="dashboard-v3-kpi" key={metric.key}>
+          <div className="dashboard-v3-kpi-heading">
+            <span>{metric.label}</span>
+            <span className="dashboard-v3-kpi-icon">{metric.icon}</span>
+          </div>
+          <strong>{metric.value}</strong>
+          <small>{metric.sub}</small>
+        </div>)}
       </div>
     </section>
 
@@ -143,8 +145,9 @@ export function DashboardPage() {
           <DashboardPeriodPicker label="订单收入趋势" value={incomePeriod} onChange={setIncomePeriod}/>
         </div>
       </div>
-      <div className={"dash-chart" + (!chart.isFetching && !chart.isError && !hasTrend ? " is-empty" : "")}>
-        {chart.isFetching && !chart.data ? <QueryFeedback loading /> : chart.isError ? <QueryFeedback error onRetry={() => chart.refetch()} /> : <IncomeChart points={points}/>} 
+      <div className={"dash-chart" + (!chart.isLoading && !chart.isError && !hasTrend ? " is-empty" : "")}>
+        <QueryFeedback loading={chart.isLoading} error={chart.isError} onRetry={() => void chart.refetch()}/>
+        {chart.isError && !chart.data ? null : chart.isLoading && !chart.data ? null : <IncomeTrendChart points={points}/>}
       </div>
     </section>
 
@@ -155,42 +158,6 @@ export function DashboardPage() {
 
     <QueueDashboardSections />
   </div>
-}
-
-function IncomeChart({points}:{points:Array<{date:string;value:number}>}){
-  const chart=useMemo(()=>{
-    if(!points.length)return null
-    const width=1000
-    const height=260
-    const inset=24
-    const max=Math.max(1,...points.map(point=>point.value))
-    const plotWidth=width-inset*2
-    const plotHeight=height-inset*2
-    const coordinates=points.map((point,index)=>({
-      ...point,
-      x:inset+(points.length===1?.5:index/(points.length-1))*plotWidth,
-      y:height-inset-(point.value/max)*plotHeight,
-    }))
-    const line=coordinates.map((point,index)=>(index?'L':'M')+' '+point.x.toFixed(1)+' '+point.y.toFixed(1)).join(' ')
-    const area='M '+coordinates[0].x.toFixed(1)+' '+(height-inset)+' '+line+' L '+coordinates.at(-1)!.x.toFixed(1)+' '+(height-inset)+' Z'
-    return {width,height,inset,coordinates,line,area,max}
-  },[points])
-
-  if(!chart || !hasIncomeTrend(points)) return <EmptyState className="dashboard-chart-empty" icon={<BarChart3 size={22}/>} title="所选时间范围暂无收入趋势" description="该时段没有可展示的已支付订单金额。切换时间范围，或前往订单管理查看订单状态。" action={<Link className="button" to="/finance/order">查看订单 <ArrowRight size={15} aria-hidden="true"/></Link>}/>
-
-  return <svg className="income-chart" viewBox={'0 0 '+chart.width+' '+chart.height} role="img" aria-label="订单收入趋势图">
-    {[0,.25,.5,.75,1].map(step=>{
-      const y=chart.inset+step*(chart.height-chart.inset*2)
-      return <line key={step} x1={chart.inset} x2={chart.width-chart.inset} y1={y} y2={y} className="income-chart-grid"/>
-    })}
-    <path d={chart.area} className="income-chart-area"/>
-    <path d={chart.line} className="income-chart-line"/>
-    {chart.coordinates.map(point=><circle key={point.date} cx={point.x} cy={point.y} r="3" className="income-chart-dot">
-      <title>{point.date}：¥ {point.value.toFixed(2)}</title>
-    </circle>)}
-    <text x={chart.inset} y={chart.height-2} className="income-chart-label">{points[0].date}</text>
-    <text x={chart.width-chart.inset} y={chart.height-2} textAnchor="end" className="income-chart-label">{points.at(-1)?.date}</text>
-  </svg>
 }
 
 function DashCard({icon,label,value,sub,className=''}:{icon:React.ReactNode;label:string;value:string;sub?:string;className?:string}){
@@ -211,7 +178,13 @@ function Rank({title,period,onPeriodChange,rows,loading,error,onRetry}:{title:st
     <div className={'rank-list' + (!rows.length ? ' is-empty' : '')}>
       {rows.length ? (<>
         <div className="rank-list-head"><span>#</span><span>名称</span><span>流量</span></div>
-        {rows.slice(0,10).map((r,i)=><div key={i}><span>{i+1}</span><span>{String(r.name??r.email??r.server_name??'-')}</span><strong>{bytes(Number(r.value??r.total??r.traffic??0))}</strong></div>)}
+        {rows.slice(0,10).map((r,i)=>{
+          const name = String(r.name??r.email??r.server_name??'-')
+          return <div className="dashboard-v3-rank-row" key={i}>
+            <span>{i+1}</span><span className="dashboard-v3-rank-name" title={name}>{name}</span>
+            <strong>{formatTraffic(r.value??r.total??r.traffic)}</strong>
+          </div>
+        })}
       </>) : !loading && !error ? (
         <EmptyState icon={<BarChart3 size={22}/>} title="暂无流量排行"
           description="当前统计周期没有相关流量记录，可以切换时间范围后查看。" />
@@ -222,4 +195,3 @@ function Rank({title,period,onPeriodChange,rows,loading,error,onRetry}:{title:st
 function count(v:unknown){return v===undefined||v===null?'—':String(v)}
 function money(v:unknown){if(v===undefined||v===null)return '—';const n=Number(v);return Number.isFinite(n)?'¥ '+(n/100).toFixed(2):'—'}
 function growth(v:unknown){if(v===undefined||v===null)return '—';const n=Number(v);return Number.isFinite(n)?(n>=0?'+':'')+n.toFixed(1)+'%':'—'}
-function bytes(v:unknown){if(v===undefined||v===null)return '—';const n=Number(v);if(!Number.isFinite(n))return '—';if(!n)return '0 B';const gb=n/1073741824;return gb>=1024?(gb/1024).toFixed(2)+' TB':gb.toFixed(gb>=10?1:2)+' GB'}
