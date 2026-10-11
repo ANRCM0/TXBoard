@@ -140,16 +140,101 @@ export const ROUTE_POLICIES: readonly RouteRatePolicy[] = [
 ]
 
 /**
+ * GW-208: runtime policy table that can be hot-reloaded without restarting
+ * the process. The compile-time `ROUTE_POLICIES` remains the default; a
+ * successful config-file reload atomically replaces the runtime copy.
+ */
+let runtimePolicies: readonly RouteRatePolicy[] | undefined
+
+/** Get the currently active policy table (runtime override or compile-time default). */
+export function getActivePolicies(): readonly RouteRatePolicy[] {
+  return runtimePolicies ?? ROUTE_POLICIES
+}
+
+/**
+ * GW-208: atomically replace the runtime policy table.
+ * Returns true on success, false if the new table is invalid.
+ * The caller is responsible for validating the structure before calling.
+ */
+export function setRuntimePolicies(policies: readonly RouteRatePolicy[]): boolean {
+  // Basic structural validation: every entry must have required fields.
+  for (const p of policies) {
+    if (!p.id || !p.match || typeof p.ipLimit !== 'number' || typeof p.ipWindowMs !== 'number') {
+      return false
+    }
+    if (p.ipLimit < 0 || p.ipWindowMs < 1000) return false
+    if (p.subjectLimit !== undefined && (p.subjectLimit < 0 || (p.subjectWindowMs ?? 0) < 1000)) return false
+  }
+  runtimePolicies = Object.freeze([...policies])
+  return true
+}
+
+/** Clear the runtime override, reverting to the compile-time default. */
+export function clearRuntimePolicies(): void {
+  runtimePolicies = undefined
+}
+
+/**
+ * GW-208: parse a rate-limit config file (JSON) into a policy array.
+ * Returns undefined on any parse or structural error.
+ */
+export function parseRateLimitConfig(raw: string): readonly RouteRatePolicy[] | undefined {
+  try {
+    const parsed = JSON.parse(raw) as unknown
+    if (!parsed || typeof parsed !== 'object' || !Array.isArray((parsed as { policies?: unknown }).policies)) {
+      return undefined
+    }
+    const policies: RouteRatePolicy[] = []
+    for (const entry of (parsed as { policies: unknown[] }).policies) {
+      if (!entry || typeof entry !== 'object') return undefined
+      const p = entry as Record<string, unknown>
+      if (typeof p.id !== 'string' || typeof p.match !== 'string') return undefined
+      if (typeof p.ipLimit !== 'number' || typeof p.ipWindowMs !== 'number') return undefined
+      if (p.ipLimit < 0 || p.ipWindowMs < 1000) return undefined
+      const policy: RouteRatePolicy = {
+        id: p.id,
+        match: p.match,
+        ipLimit: p.ipLimit,
+        ipWindowMs: p.ipWindowMs,
+        failClosed: p.failClosed === true,
+      }
+      if (p.method !== undefined) {
+        if (typeof p.method !== 'string') return undefined
+        policy.method = p.method
+      }
+      if (p.subjectLimit !== undefined) {
+        if (typeof p.subjectLimit !== 'number' || p.subjectLimit < 0) return undefined
+        policy.subjectLimit = p.subjectLimit
+      }
+      if (p.subjectWindowMs !== undefined) {
+        if (typeof p.subjectWindowMs !== 'number' || p.subjectWindowMs < 1000) return undefined
+        policy.subjectWindowMs = p.subjectWindowMs
+      }
+      if (p.subjectFrom !== undefined) {
+        if (p.subjectFrom !== 'email' && p.subjectFrom !== 'bearer') return undefined
+        policy.subjectFrom = p.subjectFrom
+      }
+      policies.push(policy)
+    }
+    return Object.freeze(policies)
+  } catch {
+    return undefined
+  }
+}
+
+/**
  * Longest-prefix route match with optional method filter.
  * Returns undefined for paths outside the limited surface (e.g. /healthz).
+ * GW-208: uses the active (runtime-override-aware) policy table by default.
  */
 export function resolveRoutePolicy(
   path: string,
   method = 'GET',
-  policies: readonly RouteRatePolicy[] = ROUTE_POLICIES,
+  policies?: readonly RouteRatePolicy[],
 ): ResolvedPolicy | undefined {
+  const active = policies ?? getActivePolicies()
   let best: ResolvedPolicy | undefined
-  for (const policy of policies) {
+  for (const policy of active) {
     if (!path.startsWith(policy.match)) continue
     if (policy.method && policy.method !== method.toUpperCase()) continue
     if (!best || policy.match.length > best.match.length) {

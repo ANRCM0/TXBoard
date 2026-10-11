@@ -318,6 +318,50 @@ export class MetricsRegistry {
     ['operation', 'policy'],
   )
 
+  /* ---------------- GW-208 rate-limit dimension families ----------------------- */
+
+  /** Current sliding-window count for a rate-limit dimension. */
+  readonly rateLimitCurrent = new Gauge(
+    'txboard_gateway_rate_limit_current',
+    'Current sliding-window count for a rate-limit dimension.',
+    ['policy', 'dimension'],
+  )
+
+  /** Configured quota threshold for a rate-limit dimension. */
+  readonly rateLimitThreshold = new Gauge(
+    'txboard_gateway_rate_limit_threshold',
+    'Configured quota threshold for a rate-limit dimension.',
+    ['policy', 'dimension'],
+  )
+
+  /** Requests rejected by the route limiter, by policy and rejecting dimension. */
+  readonly rateLimitRejections = new Counter(
+    'txboard_gateway_rate_limit_rejections_total',
+    'Requests rejected by the route limiter, by policy and rejecting dimension.',
+    ['policy', 'dimension', 'reason'],
+  )
+
+  /** Rate-limit decisions that degraded to fail-open during a Redis outage. */
+  readonly rateLimitDegraded = new Counter(
+    'txboard_gateway_rate_limit_degraded_total',
+    'Rate-limit decisions that degraded to fail-open during a Redis outage.',
+    ['policy'],
+  )
+
+  /** Requests rejected because the account dimension could not be enforced. */
+  readonly rateLimitMissingSubject = new Counter(
+    'txboard_gateway_rate_limit_missing_subject_total',
+    'Requests rejected because the account dimension could not be enforced.',
+    ['policy'],
+  )
+
+  /** Rate-limit configuration reload attempts and their outcome. */
+  readonly rateLimitConfigReloads = new Counter(
+    'txboard_gateway_rate_limit_config_reloads_total',
+    'Rate-limit configuration reload attempts and their outcome.',
+    ['outcome'],
+  )
+
   private all(): Metric[] {
     return [
       this.requests, this.requestDuration, this.upstreamDuration, this.upstreamTimeouts,
@@ -325,6 +369,8 @@ export class MetricsRegistry {
       this.redisErrors, this.contractVersion, this.breakerState, this.breakerTransitions,
       this.overloadRejections, this.queueWait, this.upstreamRetries, this.staleServed,
       this.localQuotaRejections, this.redisDegraded,
+      this.rateLimitCurrent, this.rateLimitThreshold, this.rateLimitRejections,
+      this.rateLimitDegraded, this.rateLimitMissingSubject, this.rateLimitConfigReloads,
     ]
   }
 
