@@ -89,7 +89,7 @@ final class ThemeV2PackageTest extends TestCase
         ]);
     }
 
-    public function test_legacy_files_cannot_be_smuggled_into_v2_package(): void
+    public function test_legacy_files_cannot_be_smuggled_into_new_package(): void
     {
         foreach (['config.json', 'dashboard.blade.php', '.env', 'dist/shell.php', 'assets/private.pem'] as $path) {
             try {
