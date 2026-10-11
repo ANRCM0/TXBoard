@@ -17,7 +17,7 @@ export function machinePercentage(value: unknown): number | null {
   return Number.isFinite(amount) && amount >= 0 ? amount : null
 }
 
-export function machineUtilization(resource: MachineItem['load_status'] extends never ? never : unknown): number | null {
+export function machineUtilization(resource: unknown): number | null {
   if (!resource || typeof resource !== 'object' || Array.isArray(resource)) return null
   const input = resource as Record<string, unknown>
   const used = machinePercentage(input.used)
