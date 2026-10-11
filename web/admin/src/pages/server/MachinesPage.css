@@ -1,0 +1,83 @@
+/* Admin UI v3 · /server/machine only; no legacy/global selector overrides. */
+.machines-v3-page{min-width:0}
+.machines-v3-summary{
+  display:grid;grid-template-columns:repeat(5,minmax(0,1fr));min-width:0;
+  background:var(--panel);border:1px solid var(--border);
+  border-radius:var(--radius-card);box-shadow:var(--shadow);
+  overflow:hidden;margin:0 0 14px;
+}
+.machines-v3-summary-item{
+  min-width:0;display:flex;flex-direction:column;justify-content:center;gap:4px;
+  padding:11px 15px;min-height:78px;border-right:1px solid var(--border)
+}
+.machines-v3-summary-item:last-child{border-right:0}
+.machines-v3-summary-label{color:var(--muted);font-size:12px;line-height:1.4}
+.machines-v3-summary-item strong{font-size:21px;line-height:1.25;font-weight:700;letter-spacing:-.025em;font-variant-numeric:tabular-nums;color:var(--fg)}
+.machines-v3-summary-item.is-attention strong{color:var(--warning)}
+.machines-v3-summary-item.is-alert strong{color:var(--danger)}
+.machines-v3-toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 10px}
+.machines-v3-search{
+  display:flex;align-items:center;gap:8px;flex:1 1 280px;max-width:440px;
+  min-height:40px;padding:0 11px;border:1px solid var(--border);
+  background:var(--panel);color:var(--muted);border-radius:var(--radius-control)
+}
+.machines-v3-search:focus-within{border-color:var(--focus-ring);box-shadow:0 0 0 2px color-mix(in srgb,var(--focus-ring) 14%,transparent)}
+.machines-v3-search input{flex:1;width:100%;min-width:0;border:0!important;background:transparent;box-shadow:none!important;outline:0!important;color:var(--fg);font-size:13px}
+.machines-v3-clear-search{border:0;background:transparent;color:var(--muted);border-radius:6px;min-width:28px;min-height:28px;display:grid;place-items:center;cursor:pointer}
+.machines-v3-clear-search:hover{background:var(--hover)}
+.machines-v3-clear-search:focus-visible,.machines-v3-page button:focus-visible{outline:2px solid var(--focus-ring);outline-offset:2px}
+.machines-v3-toolbar-help{color:var(--muted);font-size:12px;line-height:1.4}
+.machines-v3-toolbar-refresh{margin-left:auto}
+.machines-v3-list-meta{display:flex;justify-content:space-between;align-items:center;gap:10px;min-height:19px;margin:0 0 8px;color:var(--muted);font-size:12px}
+.server-table-card.admin-v2-list-surface.machines-v3-table.is-rows{overflow:hidden}
+.server-table-card.admin-v2-list-surface.machines-v3-table.is-rows .table-wrap{max-width:100%;overflow-x:auto;overscroll-behavior-x:contain}
+.machines-v3-table .data-table{min-width:1050px;table-layout:fixed}
+.machines-v3-table .data-table th,.machines-v3-table .data-table td{padding:10px 12px;vertical-align:middle}
+.machines-v3-table .data-table tbody tr:last-child td{border-bottom:0}
+.machines-v3-table .machine-name{min-width:0;gap:4px}
+.machines-v3-table .machine-name strong{font-size:13px;font-weight:650;line-height:1.45;overflow-wrap:anywhere}
+.machines-v3-table .machine-name small{font-size:12px;line-height:1.4;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.machines-v3-table .data-table th:last-child,.machines-v3-table .data-table td:last-child{text-align:center}
+.machines-v3-status{display:inline-flex;align-items:center;gap:7px;font-size:12px;white-space:nowrap}
+.machines-v3-status i{width:7px;height:7px;border-radius:999px;background:var(--muted);flex:none}
+.machines-v3-status.is-success i{background:var(--success)}
+.machines-v3-status.is-warning i{background:var(--warning)}
+.machines-v3-subtle{font-size:12px;color:var(--muted)}
+.machines-v3-count{font-variant-numeric:tabular-nums;font-weight:600}
+.machines-v3-load{display:flex;align-items:center;gap:12px;min-width:0}
+.machines-v3-load-metric{display:flex;flex-direction:column;gap:4px;min-width:0;flex:1}
+.machines-v3-load-label{display:flex;align-items:baseline;justify-content:space-between;gap:3px;color:var(--muted);font-size:11px}
+.machines-v3-load-label strong{font-size:12px;font-variant-numeric:tabular-nums;color:var(--fg);font-weight:600}
+.machines-v3-load-track{height:4px;border-radius:999px;overflow:hidden;background:var(--hover)}
+.machines-v3-load-track>span{height:100%;display:block;border-radius:999px;background:var(--primary)}
+.machines-v3-load-metric.is-alert .machines-v3-load-track>span{background:var(--danger)}
+.machines-v3-load-metric.is-alert .machines-v3-load-label strong{color:var(--danger)}
+.machines-v3-last{font-size:12px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.machines-v3-table .machine-ops-row-actions{display:flex;justify-content:center;gap:4px;flex-wrap:nowrap}
+.machines-v3-table .machine-ops-row-actions>.icon-button{width:34px;height:34px;min-width:34px}
+.machines-v3-scroll-hint{display:none;margin:8px 0 0;color:var(--muted);font-size:12px}
+@media(max-width:1100px){
+  .machines-v3-summary{grid-template-columns:repeat(6,minmax(0,1fr))}
+  .machines-v3-summary-item{grid-column:span 2;border-bottom:1px solid var(--border)}
+  .machines-v3-summary-item:nth-child(3){border-right:0}
+  .machines-v3-summary-item:nth-last-child(-n+2){grid-column:span 3;border-bottom:0}
+  .machines-v3-summary-item:last-child{border-right:0}
+}
+@media(max-width:800px){
+  .machines-v3-search{max-width:none;flex-basis:100%}
+  .machines-v3-toolbar-help{order:5;width:100%}
+  .machines-v3-toolbar-refresh{margin-left:auto}
+  .machines-v3-scroll-hint{display:block}
+}
+@media(max-width:560px){
+  .machines-v3-summary{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .machines-v3-summary-item{grid-column:span 1;border-right:1px solid var(--border);border-bottom:1px solid var(--border)}
+  .machines-v3-summary-item:nth-child(3){border-right:1px solid var(--border)}
+  .machines-v3-summary-item:nth-child(2n){border-right:0}
+  .machines-v3-summary-item:nth-last-child(-n+2){grid-column:span 1;border-bottom:1px solid var(--border)}
+  .machines-v3-summary-item:last-child{grid-column:span 2;border-bottom:0;border-right:0}
+  .machines-v3-summary-item{min-height:70px;padding:10px 12px}
+  .machines-v3-summary-item strong{font-size:19px}
+  .machines-v3-toolbar-refresh{flex:1}
+  .machines-v3-toolbar .machines-v3-clear-filters{flex:1}
+}
