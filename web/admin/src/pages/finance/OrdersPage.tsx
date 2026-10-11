@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { CheckCircle2, ChevronLeft, ChevronRight, Eye, Plus, Search, XCircle } from 'lucide-react'
+import { CheckCircle2, ChevronLeft, ChevronRight, Eye, Plus, ReceiptText, Search, XCircle } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -13,7 +13,8 @@ import {
 } from '../../api/finance'
 import { OrderAssignModal } from '../../components/finance/OrderAssignModal'
 import { OrderDetailModal } from '../../components/finance/OrderDetailModal'
-import { QueryFeedback } from '../../components/ui/QueryFeedback'
+import { EmptyState } from '../../components/ui/EmptyState'
+import { ListSurface } from '../../components/ui/ListSurface'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { requestConfirm } from '../../components/ui/ConfirmDialog'
 
@@ -57,6 +58,8 @@ export function OrdersPage() {
   const plansQuery = useQuery({ queryKey: ['plans'], queryFn: getPlans })
   const data = query.data
   const rows = Array.isArray(data?.data) ? data.data : []
+  const hasFilters = Boolean(appliedKeyword.trim() || status || commission || commissionOnly)
+  const showPagination = Number(data?.total || 0) > pageSize || page > 1
 
   const refresh = () => qc.invalidateQueries({ queryKey: ['orders'] })
 
@@ -148,9 +151,36 @@ export function OrdersPage() {
       {(appliedKeyword || status || commission || commissionOnly) && <button className="button" onClick={clearFilters}>清除筛选</button>}
     </div>
 
-    <div className="card order-table-card">
-      <QueryFeedback loading={query.isFetching} error={query.isError} onRetry={() => query.refetch()} />
-      <div className="table-wrap" tabIndex={0} role="region" aria-label="订单列表" aria-busy={query.isFetching}>
+    <ListSurface
+      className="order-table-card" label="订单列表" count={rows.length}
+      loading={query.isFetching} error={query.isError} placeholder={query.isPlaceholderData}
+      onRetry={() => void query.refetch()}
+      emptyState={<EmptyState
+        icon={<ReceiptText size={22}/>}
+        title={hasFilters ? '没有符合条件的订单' : '还没有订单'}
+        description={hasFilters ? '当前筛选条件下没有匹配结果，可调整搜索或订单状态。' : '创建第一笔订单，或等待用户完成购买。'}
+        action={hasFilters
+          ? <button type="button" className="button" onClick={clearFilters}>清除筛选</button>
+          : <button type="button" className="button primary" onClick={() => setAssignOpen(true)}><Plus size={15}/>创建订单</button>}
+      />}
+      pagination={showPagination ? (
+      <div className="pagination-bar">
+        <div className="pagination-meta">
+          共 {Number(data?.total || 0)} 条 · 第 {Number(data?.current_page || page)} / {Math.max(1, Number(data?.last_page || 1))} 页
+        </div>
+        <div className="pagination-actions">
+          <select aria-label="每页条数" value={pageSize} onChange={e => { setPageSize(Number(e.target.value)); setPage(1) }}>
+            <option value={10}>10 / 页</option>
+            <option value={20}>20 / 页</option>
+            <option value={50}>50 / 页</option>
+            <option value={100}>100 / 页</option>
+          </select>
+          <button className="icon-button" aria-label="上一页" disabled={query.isFetching || page <= 1} onClick={() => setPage(value => Math.max(1, value - 1))}><ChevronLeft size={16}/></button>
+          <button className="icon-button" aria-label="下一页" disabled={query.isFetching || page >= Number(data?.last_page || 1)} onClick={() => setPage(value => value + 1)}><ChevronRight size={16}/></button>
+        </div>
+      </div>
+      ) : null}
+    >
         <table className="data-table order-table">
           <thead>
             <tr>
@@ -170,7 +200,7 @@ export function OrdersPage() {
                 <button className="link-button" onClick={() => setDetailId(order.id)}>{order.trade_no}</button>
                 <small className="table-sub"><Link className="table-link" to={`/user/${order.user_id}`}>{order.user?.email || `User #${order.user_id}`}</Link></small>
               </td>
-              <td><span className="badge">{typeLabel(order.type)}</span></td>
+              <td><span className="admin-v2-order-kind">{typeLabel(order.type)}</span></td>
               <td>
                 <strong>{order.plan?.name || `Plan #${order.plan_id}`}</strong>
                 <small className="table-sub">{periodLabel(order.period)}</small>
@@ -195,27 +225,9 @@ export function OrdersPage() {
                 </div>
               </td>
             </tr>)}
-            {!rows.length && !query.isFetching && !query.isError && <tr><td colSpan={8} className="empty-cell">{query.isLoading ? '加载中…' : '没有符合条件的订单'}</td></tr>}
           </tbody>
         </table>
-      </div>
-
-      <div className="pagination-bar">
-        <div className="pagination-meta">
-          共 {Number(data?.total || 0)} 条 · 第 {Number(data?.current_page || page)} / {Math.max(1, Number(data?.last_page || 1))} 页
-        </div>
-        <div className="pagination-actions">
-          <select aria-label="每页条数" value={pageSize} onChange={e => { setPageSize(Number(e.target.value)); setPage(1) }}>
-            <option value={10}>10 / 页</option>
-            <option value={20}>20 / 页</option>
-            <option value={50}>50 / 页</option>
-            <option value={100}>100 / 页</option>
-          </select>
-          <button className="icon-button" aria-label="上一页" disabled={query.isFetching || page <= 1} onClick={() => setPage(value => Math.max(1, value - 1))}><ChevronLeft size={16}/></button>
-          <button className="icon-button" aria-label="下一页" disabled={query.isFetching || page >= Number(data?.last_page || 1)} onClick={() => setPage(value => value + 1)}><ChevronRight size={16}/></button>
-        </div>
-      </div>
-    </div>
+    </ListSurface>
 
     <OrderDetailModal orderId={detailId} onClose={() => setDetailId(null)}/>
     <OrderAssignModal
