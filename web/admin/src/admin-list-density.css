@@ -22,6 +22,12 @@
   overflow-x:auto;
   overscroll-behavior-x:contain;
 }
+/* Server node row menus are positioned within the table. Preserve their
+ * unrestricted popovers instead of clipping them inside a scroll container. */
+.server-table-card.admin-v2-list-surface.is-rows,
+.server-table-card.admin-v2-list-surface.is-rows .table-wrap {
+  overflow:visible;
+}
 .admin-v2-list-surface .data-table{
   font-size:var(--ui-font-body,13px);
 }
