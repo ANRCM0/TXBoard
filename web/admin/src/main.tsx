@@ -7,6 +7,7 @@ import { router } from './router'
 import './design-tokens.css'
 import './styles.css'
 import './form-system.css'
+import './admin-experience.css'
 
 const queryClient = new QueryClient({
   defaultOptions: {

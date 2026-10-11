@@ -129,3 +129,45 @@ it('applies custom dates only to the income trend', async () => {
   expect(picker('订单收入趋势').textContent).toContain('自定义范围')
   expect(host.querySelector('.dashboard-summary-grid')).toBeNull()
 })
+
+it('collapses four verified zero tasks into one healthy summary', async () => {
+  await act(async () => {
+    client.setQueryData(['dashboardStats'], { ticketPendingTotal: 0, commissionPendingTotal: 0 })
+    client.setQueryData(['agentFleetHealth'], { summary: { critical_nodes: 0, degraded_nodes: 0 } })
+    client.setQueryData(['agentActions', 'pending'], [])
+  })
+  await flush()
+  expect(host.querySelector('.dashboard-ops-clear')?.textContent).toContain('当前没有待处理事项')
+  expect(host.querySelector('.dashboard-action-stats')).toBeNull()
+})
+
+it('prioritizes nonzero tasks and preserves uncertainty for absent data', async () => {
+  await act(async () => {
+    client.setQueryData(['dashboardStats'], { ticketPendingTotal: 3, commissionPendingTotal: 0 })
+    client.setQueryData(['agentFleetHealth'], { summary: { critical_nodes: 0, degraded_nodes: 0 } })
+    client.setQueryData(['agentActions', 'pending'], [])
+  })
+  await flush()
+  expect(host.querySelectorAll('.dashboard-action-stats .dash-link')).toHaveLength(1)
+  expect(host.querySelector('.dashboard-action-stats')?.textContent).toContain('待处理工单')
+  await act(async () => { client.setQueryData(['dashboardStats'], {}) })
+  await flush()
+  expect(host.querySelector('.dashboard-ops-clear')).toBeNull()
+  expect(host.querySelector('.dashboard-ops-status')?.textContent).toContain('尚不能确认全部正常')
+})
+
+it('shows guidance for empty income periods and the chart when paid income exists', async () => {
+  expect(host.querySelector('.dashboard-chart-empty')?.textContent).toContain('所选时间范围暂无收入趋势')
+  expect(host.querySelector<HTMLAnchorElement>('.dashboard-chart-empty a')?.getAttribute('href')).toBe('/finance/order')
+  const chartQuery = client.getQueryCache().findAll({ queryKey: ['orderChart'] })[0]
+  expect(chartQuery).toBeDefined()
+  await act(async () => {
+    client.setQueryData(chartQuery.queryKey, {
+      list: [{ date: '2026-10-10', paid_total: 520 }],
+      summary: { paid_total: 520 },
+    })
+  })
+  await flush()
+  expect(host.querySelector('svg.income-chart')).not.toBeNull()
+  expect(host.querySelector('.dashboard-chart-empty')).toBeNull()
+})
