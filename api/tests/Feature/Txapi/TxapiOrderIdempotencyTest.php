@@ -38,6 +38,7 @@ class TxapiOrderIdempotencyTest extends TestCase
             'show' => true,
             'sell' => true,
             'renew' => true,
+            'capacity_limit' => null,
             'transfer_enable' => 2,
             'reset_traffic_method' => Plan::RESET_TRAFFIC_MONTHLY,
             'prices' => [Plan::PERIOD_MONTHLY => 10, Plan::PERIOD_QUARTERLY => 28],
