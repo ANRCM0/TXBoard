@@ -33,6 +33,16 @@ Route::get('/', function (Request $request) {
     $themeService = app(ThemeService::class);
     $theme = $themeService->getActiveTheme();
 
+    // v2 themes are isolated, validated static SPAs; they never enter Blade.
+    if (app(\App\Services\Theme\ThemeV2Runtime::class)->isInstalled($theme)) {
+        try {
+            return app(\App\Services\Theme\ThemeV2Runtime::class)->render($theme);
+        } catch (\Throwable $e) {
+            Log::error('Theme v2 SPA rendering failed', ['theme' => $theme]);
+            abort(503, '主题资源或运行时版本不可用');
+        }
+    }
+
     // TXBoard's built-in theme is the native Vue user SPA.
     if ($theme === 'TXBoard') {
         $candidates = [
