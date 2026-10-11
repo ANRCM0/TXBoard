@@ -10,6 +10,7 @@ import {
   Plus,
   Search,
   Trash2,
+  Users,
 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
@@ -28,7 +29,8 @@ import {
 } from '../../api/user-admin'
 import { UserEditorModal } from '../../components/users/UserEditorModal'
 import { UserMailModal } from '../../components/users/UserMailModal'
-import { QueryFeedback } from '../../components/ui/QueryFeedback'
+import { EmptyState } from '../../components/ui/EmptyState'
+import { ListSurface } from '../../components/ui/ListSurface'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { requestConfirm } from '../../components/ui/ConfirmDialog'
 
@@ -79,6 +81,8 @@ export function UsersPage() {
   })
 
   const users = Array.isArray(query.data?.data) ? query.data.data : []
+  const hasFilters = Boolean(appliedSearch.trim() || planId || banState)
+  const showPagination = Number(query.data?.total || 0) > pageSize || page > 1
   const plans = Array.isArray(plansQuery.data) ? plansQuery.data : []
 
   const refresh = () => qc.invalidateQueries({ queryKey: ['adminUsers'] })
@@ -240,9 +244,43 @@ export function UsersPage() {
       </div>
     </div>}
 
-    <div className="card user-table-card">
-      <QueryFeedback loading={query.isFetching} error={query.isError} onRetry={() => query.refetch()} />
-      <div className="table-wrap" tabIndex={0} role="region" aria-label="用户列表" aria-busy={query.isFetching}>
+    <ListSurface
+      className="user-table-card"
+      label="用户列表" count={users.length}
+      loading={query.isFetching} error={query.isError} placeholder={query.isPlaceholderData}
+      onRetry={() => void query.refetch()}
+      emptyState={<EmptyState
+        icon={<Users size={22}/>}
+        title={hasFilters ? '没有符合条件的用户' : '还没有用户'}
+        description={hasFilters ? '请调整邮箱、套餐或账户状态筛选条件。' : '创建第一个用户，开始管理账户与套餐。'}
+        action={hasFilters
+          ? <button type="button" className="button" onClick={clearFilters}>清除筛选</button>
+          : <button type="button" className="button primary" onClick={openCreate}><Plus size={15}/>创建用户</button>}
+      />}
+      pagination={showPagination ? (
+      <div className="pagination-bar">
+        <span className="pagination-meta">
+          共 {query.data?.total || 0} 人 · 第 {query.data?.current_page || page} / {query.data?.last_page || 1} 页
+        </span>
+        <div className="pagination-actions">
+          <select aria-label="每页条数" value={pageSize} onChange={event => { setPageSize(Number(event.target.value)); setPage(1) }}>
+            <option value={10}>10 / 页</option>
+            <option value={20}>20 / 页</option>
+            <option value={50}>50 / 页</option>
+            <option value={100}>100 / 页</option>
+          </select>
+          <button className="icon-button" aria-label="上一页" disabled={query.isFetching || page <= 1} onClick={() => setPage(value => Math.max(1, value - 1))}>
+            <ChevronLeft size={16}/>
+          </button>
+          <button
+            className="icon-button"
+            aria-label="下一页" disabled={query.isFetching || page >= Number(query.data?.last_page || 1)}
+            onClick={() => setPage(value => value + 1)}
+          ><ChevronRight size={16}/></button>
+        </div>
+      </div>
+      ) : null}
+    >
         <table className="data-table user-table">
           <thead>
             <tr>
@@ -267,9 +305,9 @@ export function UsersPage() {
                 <div className="user-identity">
                   <Link className="link-button user-detail-link" to={`/user/${user.id}`}>{user.email}</Link>
                   <div className="user-badges">
-                    {Boolean(user.is_admin) && <span className="badge">Admin</span>}
-                    {Boolean(user.is_staff) && <span className="badge">Staff</span>}
-                    {user.group?.name && <span className="badge">{user.group.name}</span>}
+                    {Boolean(user.is_admin) && <span className="admin-v2-role-text">Admin</span>}
+                    {Boolean(user.is_staff) && <span className="admin-v2-role-text">Staff</span>}
+                    {user.group?.name && <span className="admin-v2-role-text">{user.group.name}</span>}
                   </div>
                 </div>
               </td>
@@ -302,36 +340,9 @@ export function UsersPage() {
                 </div>
               </td>
             </tr>)}
-
-            {!users.length && !query.isFetching && !query.isError && <tr>
-              <td colSpan={11} className="empty-cell">{query.isLoading ? '加载中…' : '没有符合条件的用户'}</td>
-            </tr>}
           </tbody>
         </table>
-      </div>
-
-      <div className="pagination-bar">
-        <span className="pagination-meta">
-          共 {query.data?.total || 0} 人 · 第 {query.data?.current_page || page} / {query.data?.last_page || 1} 页
-        </span>
-        <div className="pagination-actions">
-          <select aria-label="每页条数" value={pageSize} onChange={event => { setPageSize(Number(event.target.value)); setPage(1) }}>
-            <option value={10}>10 / 页</option>
-            <option value={20}>20 / 页</option>
-            <option value={50}>50 / 页</option>
-            <option value={100}>100 / 页</option>
-          </select>
-          <button className="icon-button" aria-label="上一页" disabled={query.isFetching || page <= 1} onClick={() => setPage(value => Math.max(1, value - 1))}>
-            <ChevronLeft size={16}/>
-          </button>
-          <button
-            className="icon-button"
-            aria-label="下一页" disabled={query.isFetching || page >= Number(query.data?.last_page || 1)}
-            onClick={() => setPage(value => value + 1)}
-          ><ChevronRight size={16}/></button>
-        </div>
-      </div>
-    </div>
+    </ListSurface>
 
     <UserEditorModal
       open={editorOpen}
