@@ -11,8 +11,8 @@ use Tests\TestCase;
 
 /**
  * Real MySQL integration check, not a SQLite / mocked-lock simulation.
- * Ten independent processes release from the same barrier and make 100
- * attempts total. CI keeps this separate from RefreshDatabase transactions.
+ * One hundred independent MySQL sessions release from one barrier and
+ * each attempts the exact same purchase intent at the same time. CI keeps this separate from RefreshDatabase transactions.
  */
 class OrderIdempotencyMysqlConcurrencyTest extends TestCase
 {
@@ -38,8 +38,8 @@ class OrderIdempotencyMysqlConcurrencyTest extends TestCase
         $dir = sys_get_temp_dir().'/txboard-idempotency-stress-'.$suffix;
         mkdir($dir, 0700, true);
         $children = [];
-        $workerCount = 10;
-        $iterations = 10;
+        $workerCount = 100;
+        $iterations = 1;
 
         try {
             for ($worker = 0; $worker < $workerCount; $worker++) {
