@@ -1,9 +1,15 @@
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { createGatewayApp } from '../src/app.js'
 import { loadConfig } from '../src/config/env.js'
 import { CryptoService, loadCryptoService } from '../src/services/crypto.js'
 import { generateKeyPairSync } from 'node:crypto'
 import { encryptLoginPayload, encryptForOperation } from '../../../packages/theme-sdk/src/crypto.js'
+import { invalidateCache, resetCacheStats } from '../src/middleware/cache.js'
+
+beforeEach(() => {
+  invalidateCache()
+  resetCacheStats()
+})
 
 const config = loadConfig({
   TXBOARD_UPSTREAM_URL: 'https://txboard.example/',
@@ -78,6 +84,10 @@ describe('gateway security and TXBoard v1 adapters', () => {
       ['recaptcha', 'recaptcha_site_key'],
       ['recaptcha-v3', 'recaptcha_v3_site_key'],
     ] as const) {
+      // Each iteration mocks a different upstream payload for the same path;
+      // the module-global public cache would otherwise serve iteration 1's
+      // response to iterations 2 and 3.
+      invalidateCache()
       const fetcher = mockFetch(ok({
         is_captcha: 1, captcha_type: type, [field]: 'public-site-key',
         turnstile_secret_key: 'never-expose', recaptcha_key: 'never-expose',
@@ -332,7 +342,9 @@ describe('application read models and experimental HPKE login', () => {
     const fetcher = mockFetch(ok({ auth_data: token, is_admin: false, secure_path: 'never' }))
     const app = createGatewayApp(config, fetcher, service)
     const keyResponse = await app.request('/gateway/v1/crypto/key')
-    expect((await dataOf(keyResponse)).data.kid).toBe(discovery.kid)
+    const keyData = (await dataOf(keyResponse)).data
+    expect(keyData.keys).toHaveLength(1)
+    expect(keyData.keys[0].kid).toBe(discovery.keys[0].kid)
     expect(JSON.stringify(await dataOf(await app.request('/gateway/v1/crypto/key')))).not.toContain('"d":')
     const data = { email: 'user@example.test', password: 'pass12345678' }
     const encrypted = await encryptLoginPayload(discovery, data)
@@ -397,7 +409,7 @@ describe('account workflows and read-only dashboard models', () => {
     )))
     const app = createGatewayApp(config, fetcher as typeof fetch, crypto, { accountWorkflows: true, limiter })
     const discovery = crypto.publicKey()
-    expect(discovery.scope).toBe('account-workflows')
+    expect(discovery.keys[0].scope).toBe('account-workflows')
     const encryptAndSend = async (op: 'register' | 'email-code', value: unknown) => {
       const sealed = await encryptForOperation(discovery, value, op)
       return app.request('/gateway/v1/secure/auth/' + op, {

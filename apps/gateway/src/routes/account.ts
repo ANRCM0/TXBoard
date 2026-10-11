@@ -18,6 +18,18 @@ import {
 import { readJsonRequest } from '../middleware/validation.js'
 import { fail, ok, validated, type RouteContext, type RouteDeps } from './shared.js'
 
+/** Key discovery response: a list of key versions. */
+export type KeyDiscoveryResponse = {
+  protocol: 'HPKE-RFC9180'
+  suite: string
+  keys: Array<{
+    kid: string
+    publicKey: string
+    scope: 'login-only' | 'account-workflows'
+    expiresAt?: number
+  }>
+}
+
 /**
  * routes/account.ts — credential and account-workflow routes.
  *
@@ -140,7 +152,7 @@ export function registerAccountRoutes(
     runLogin(c, await readJsonRequest(c.req.raw, config.maxRequestBytes)))
 
   if (crypto) {
-    app.get(`${PREFIX}/crypto/key`, c => ok(c, crypto.publicKey()))
+    app.get(`${PREFIX}/crypto/key`, c => ok(c, crypto.publicKey() as KeyDiscoveryResponse))
 
     /** Decrypt-then-dispatch wrapper for every sealed operation. */
     const secure = (operation: CryptoOperation, handle: (c: RouteContext, data: unknown) => Promise<Response>) =>

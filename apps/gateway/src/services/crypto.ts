@@ -23,25 +23,58 @@ export type SealedRequest = {
   ct: string
 }
 
+/** 单个密钥版本的公钥信息。 */
+export type KeyVersion = {
+  kid: string
+  publicKey: string
+  scope: 'login-only' | 'account-workflows'
+  /** 旧密钥的过期时间（毫秒时间戳）。当前密钥无此字段。 */
+  expiresAt?: number
+}
+
+/** 公钥发现端点的响应。 */
+export type KeyDiscoveryResponse = {
+  protocol: 'HPKE-RFC9180'
+  suite: 'DHKEM(P-256,HKDF-SHA256)+HKDF-SHA256+AES-256-GCM'
+  keys: KeyVersion[]
+}
+
 function fromB64(value: string, max: number): Uint8Array {
   if (!/^[A-Za-z0-9_-]+$/.test(value) || value.length > max) throw new Error('Invalid base64url')
   const bytes = Buffer.from(value, 'base64url')
   if (bytes.toString('base64url') !== value) throw new Error('Invalid base64url encoding')
   return bytes
 }
+
 function aad(request: SealedRequest, operation: CryptoOperation) {
   return new TextEncoder().encode(aadPrefix + operation + '\n' +
     request.kid + '\n' + request.ts + '\n' + request.nonce)
 }
 
+/** 内部密钥材料。 */
+interface KeyMaterial {
+  privateKey: CryptoKey
+  version: KeyVersion
+}
+
+function isExpired(version: KeyVersion): boolean {
+  return version.expiresAt !== undefined && Date.now() > version.expiresAt
+}
+
 export class CryptoService {
   private constructor(
-    private readonly privateKey: CryptoKey,
+    private readonly current: KeyMaterial,
     private readonly replay: ReplayStore,
-    private readonly published: { protocol: 'HPKE-RFC9180'; suite: string; kid: string; publicKey: string; scope: 'login-only' | 'account-workflows' },
+    private readonly previous?: KeyMaterial,
   ) {}
 
-  static async create(jwk: JsonWebKey, replay: ReplayStore, accountWorkflows = false): Promise<CryptoService> {
+  static async create(
+    jwk: JsonWebKey,
+    replay: ReplayStore,
+    accountWorkflows = false,
+    previousJwk?: JsonWebKey,
+    previousExpiresAt?: number,
+  ): Promise<CryptoService> {
     if (jwk.kty !== 'EC' || jwk.crv !== 'P-256' || !jwk.d || !jwk.x || !jwk.y) {
       throw new Error('Gateway HPKE key must be a P-256 private JWK')
     }
@@ -51,30 +84,82 @@ export class CryptoService {
     const serialized = new Uint8Array(await suite.kem.serializePublicKey(publicKey))
     const kid = createHash('sha256').update(serialized).digest('hex').slice(0, 24)
     if (!replay) throw new Error('Redis replay store required for encrypted Gateway')
-    return new CryptoService(secret, replay, {
+
+    const current: KeyMaterial = {
+      privateKey: secret,
+      version: {
+        kid,
+        publicKey: Buffer.from(serialized).toString('base64url'),
+        scope: accountWorkflows ? 'account-workflows' : 'login-only',
+      },
+    }
+
+    let previous: KeyMaterial | undefined
+    if (previousJwk) {
+      if (previousJwk.kty !== 'EC' || previousJwk.crv !== 'P-256' || !previousJwk.d || !previousJwk.x || !previousJwk.y) {
+        throw new Error('Gateway previous HPKE key must be a P-256 private JWK')
+      }
+      const prevSecret = await suite.kem.importKey('jwk', previousJwk, false)
+      const prevPublicKey = await suite.kem.importKey('jwk',
+        { kty: 'EC', crv: 'P-256', x: previousJwk.x, y: previousJwk.y }, true)
+      const prevSerialized = new Uint8Array(await suite.kem.serializePublicKey(prevPublicKey))
+      const prevKid = createHash('sha256').update(prevSerialized).digest('hex').slice(0, 24)
+      previous = {
+        privateKey: prevSecret,
+        version: {
+          kid: prevKid,
+          publicKey: Buffer.from(prevSerialized).toString('base64url'),
+          scope: accountWorkflows ? 'account-workflows' : 'login-only',
+          expiresAt: previousExpiresAt,
+        },
+      }
+    }
+
+    return new CryptoService(current, replay, previous)
+  }
+
+  /** 公钥发现：返回当前密钥 + 未过期的旧密钥。 */
+  publicKey(): KeyDiscoveryResponse {
+    const keys: KeyVersion[] = [this.current.version]
+    if (this.previous && !isExpired(this.previous.version)) {
+      keys.push(this.previous.version)
+    }
+    return {
       protocol: 'HPKE-RFC9180',
       suite: 'DHKEM(P-256,HKDF-SHA256)+HKDF-SHA256+AES-256-GCM',
-      kid,
-      publicKey: Buffer.from(serialized).toString('base64url'),
-      scope: accountWorkflows ? 'account-workflows' : 'login-only',
-    } as const)
+      keys,
+    }
   }
-  publicKey() { return { ...this.published } }
+
+  /** 旧密钥是否已过期。 */
+  private isPreviousExpired(): boolean {
+    return this.previous ? isExpired(this.previous.version) : true
+  }
 
   async open(request: SealedRequest, operation: CryptoOperation = 'login'): Promise<unknown> {
-    if (operation !== 'login' && this.published.scope !== 'account-workflows') {
+    if (operation !== 'login' && this.current.version.scope !== 'account-workflows') {
       throw new GatewayFailure('VALIDATION_ERROR', 404, 'Encrypted operation is disabled')
-    }
-    if (request.kid !== this.published.kid) {
-      throw new GatewayFailure('VALIDATION_ERROR', 400, 'Unknown encryption key')
     }
     if (!Number.isSafeInteger(request.ts) || Math.abs(Date.now() - request.ts) > replayWindowMs) {
       throw new GatewayFailure('VALIDATION_ERROR', 400, 'Expired encrypted request')
     }
+
+    // 尝试当前密钥
+    if (request.kid === this.current.version.kid) {
+      return this.openWith(this.current, request, operation)
+    }
+    // 尝试旧密钥（如果未过期）
+    if (this.previous && request.kid === this.previous.version.kid && !this.isPreviousExpired()) {
+      return this.openWith(this.previous, request, operation)
+    }
+    throw new GatewayFailure('VALIDATION_ERROR', 400, 'Unknown encryption key')
+  }
+
+  private async openWith(material: KeyMaterial, request: SealedRequest, operation: CryptoOperation): Promise<unknown> {
     let plaintext: ArrayBuffer
     try {
       const recipient = await suite.createRecipientContext({
-        recipientKey: this.privateKey,
+        recipientKey: material.privateKey,
         enc: fromB64(request.enc, 500),
         info,
       })
@@ -99,6 +184,15 @@ export class CryptoService {
   }
 }
 
+function intSetting(value: string | undefined, fallback: number, min: number, max: number): number {
+  if (value === undefined || value.trim() === '') return fallback
+  const parsed = Number(value)
+  if (!Number.isSafeInteger(parsed) || parsed < min || parsed > max) {
+    throw new Error(`Invalid gateway numeric configuration (expected ${min}-${max})`)
+  }
+  return parsed
+}
+
 export async function loadCryptoService(
   env: NodeJS.ProcessEnv, replay?: ReplayStore,
 ): Promise<CryptoService | undefined> {
@@ -115,5 +209,21 @@ export async function loadCryptoService(
   const content = await readFile(keyFile, { encoding: 'utf8' })
   let jwk: JsonWebKey
   try { jwk = JSON.parse(content) } catch { throw new Error('Gateway HPKE key file is not valid JSON') }
-  return CryptoService.create(jwk, replay, accountEnabled)
+
+  // 加载旧密钥（可选）
+  let previousJwk: JsonWebKey | undefined
+  let previousExpiresAt: number | undefined
+  const previousKeyFile = env.GATEWAY_HPKE_PREVIOUS_KEY_FILE
+  if (previousKeyFile) {
+    if (!previousKeyFile.startsWith('/')) {
+      throw new Error('GATEWAY_HPKE_PREVIOUS_KEY_FILE must be an absolute Docker secret path')
+    }
+    const prevContent = await readFile(previousKeyFile, { encoding: 'utf8' })
+    try { previousJwk = JSON.parse(prevContent) } catch { throw new Error('Gateway previous HPKE key file is not valid JSON') }
+    // 旧密钥 TTL 默认 24 小时，最大 7 天
+    const ttlMs = intSetting(env.GATEWAY_HPKE_PREVIOUS_KEY_TTL_MS, 86_400_000, 60_000, 604_800_000)
+    previousExpiresAt = Date.now() + ttlMs
+  }
+
+  return CryptoService.create(jwk, replay, accountEnabled, previousJwk, previousExpiresAt)
 }
