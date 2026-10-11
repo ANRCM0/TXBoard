@@ -15,11 +15,17 @@ export function NodePresetPicker({label,value,options,onChange,allowCustom=false
   const ref=useRef<HTMLDivElement>(null)
   const trigger=useRef<HTMLButtonElement>(null)
   const search=useRef<HTMLInputElement>(null)
+  const customInput=useRef<HTMLInputElement>(null)
+  const popupId=useId()
   const listId=useId()
   const selected=options.find(item=>String(item.value)===value)
   const isUnknown=Boolean(value) && !selected
   const customMode=allowCustom && (custom || isUnknown)
   const visible=options.filter(item=>(item.label+' '+item.value).toLowerCase().includes(query.trim().toLowerCase()))
+
+  // Only move focus when the operator actively requests custom entry; never
+  // steal initial focus while displaying an existing legacy custom value.
+  useEffect(()=>{ if(custom) customInput.current?.focus() },[custom])
 
   useEffect(()=>{
     if (!open) return
@@ -52,20 +58,20 @@ export function NodePresetPicker({label,value,options,onChange,allowCustom=false
 
   return <div ref={ref} className="node-preset-picker">
     {customMode ? <div className="node-preset-custom">
-      <input aria-label={label+'自定义值'} value={value}
+      <input ref={customInput} aria-label={label+'自定义值'} value={value}
         onChange={event=>onChange(event.target.value)} placeholder={'输入自定义'+label}/>
       <button type="button" className="button" onClick={()=>{setCustom(false);setOpen(true);setQuery('')}}>
         选择预设
       </button>
       {isUnknown ? <small>已保留现有自定义配置；更换预设前不会覆盖。</small> : null}
     </div> : <button ref={trigger} type="button" className="node-preset-trigger"
-      aria-label={label} aria-haspopup="listbox" aria-expanded={open} aria-controls={open?listId:undefined}
+      aria-label={label} aria-haspopup="dialog" aria-expanded={open} aria-controls={open?popupId:undefined}
       onClick={()=>{setOpen(!open);setQuery('')}}>
       <span className="node-preset-selected">{selected?.label ?? (value || '请选择'+label)}</span>
       <ChevronDown size={16} aria-hidden="true"/>
     </button>}
 
-    {open ? <div className="node-preset-options" id={listId} role="listbox" aria-label={label+'选项'}>
+    {open ? <div className="node-preset-options" id={popupId} role="dialog" aria-label={label+'预设选择'}>
       <label className="node-preset-search">
         <Search size={15} aria-hidden="true"/>
         <input ref={search} type="search" value={query}
@@ -79,7 +85,7 @@ export function NodePresetPicker({label,value,options,onChange,allowCustom=false
             }
           }}/>
       </label>
-      <div className="node-preset-option-list">
+      <div className="node-preset-option-list" role="listbox" id={listId} aria-label={label+'选项'}>
         {visible.map(item=><button type="button" role="option"
           className={'node-preset-option'+(String(item.value)===value?' selected':'')}
           aria-selected={String(item.value)===value}
@@ -97,12 +103,12 @@ export function NodePresetPicker({label,value,options,onChange,allowCustom=false
           <span>{item.label}</span>
           {String(item.value)===value?<Check size={15} aria-hidden="true"/>:null}
         </button>)}
-        {!visible.length?<p className="node-preset-no-options">没有匹配的选项</p>:null}
-        {allowCustom ? <button type="button" className="node-preset-custom-option"
+        {!visible.length?<p className="node-preset-no-options" role="status">没有匹配的选项</p>:null}
+      </div>
+      {allowCustom ? <button type="button" className="node-preset-custom-option"
           onClick={()=>{setCustom(true);setOpen(false);setQuery('')}}>
           自定义其他值…
         </button>:null}
-      </div>
     </div>:null}
   </div>
 }
