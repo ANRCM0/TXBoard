@@ -140,7 +140,10 @@ it('presents four keyboard-accessible focused panels and only fetches nodes on d
   expect(getMachineNodes).not.toHaveBeenCalled()
   selectTab('节点')
   expect(getMachineNodes).toHaveBeenCalledWith(15)
-  await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)) })
+  await act(async () => {
+    queryClient.setQueryData(['machineNodes', 15], [])
+    await new Promise(resolve => setTimeout(resolve, 0))
+  })
   expect(document.querySelector('[role="tabpanel"]')?.textContent).toContain('该机器暂未绑定节点')
   expect(document.querySelector('[role="tabpanel"]')?.textContent).toContain('绑定节点')
   selectTab('概览')
