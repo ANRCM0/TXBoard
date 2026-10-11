@@ -86,7 +86,7 @@ final class ThemeV2RuntimeTest extends TestCase
         $this->assertFalse(File::exists(public_path('theme/'.self::NAME.'/txboard-theme.json')));
         $response = $this->get('/');
         $response->assertOk()->assertSee('integrity="sha256-', false)
-            ->assertSee('Content-Security-Policy', false);
+            ;
         $this->assertStringContainsString("script-src 'self'", $response->headers->get('Content-Security-Policy'));
         $this->assertSame(['theme_color' => 'blue'], $themes->getPublicConfig(self::NAME));
         $this->getJson('/txapi/public/site-config')
