@@ -248,7 +248,7 @@ export function UsersPage() {
     <ListSurface
       className="user-table-card"
       label="用户列表" count={users.length}
-      loading={query.isFetching} error={query.isError} placeholder={query.isPlaceholderData}
+      loading={query.isLoading} error={query.isError} placeholder={query.isPlaceholderData}
       onRetry={() => void query.refetch()}
       emptyState={<EmptyState
         icon={<Users size={22}/>}

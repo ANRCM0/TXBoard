@@ -154,7 +154,7 @@ export function OrdersPage() {
 
     <ListSurface
       className="order-table-card" label="订单列表" count={rows.length}
-      loading={query.isFetching} error={query.isError} placeholder={query.isPlaceholderData}
+      loading={query.isLoading} error={query.isError} placeholder={query.isPlaceholderData}
       onRetry={() => void query.refetch()}
       emptyState={<EmptyState
         icon={<ReceiptText size={22}/>}

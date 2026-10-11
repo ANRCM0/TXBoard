@@ -133,11 +133,11 @@ export function NodesPage(){
     </div>
 
     <div className={'server-table-card admin-v2-list-surface is-' + listSurfaceState({
-      count: filtered.length, loading: query.isFetching, error: query.isError,
+      count: filtered.length, loading: query.isLoading, error: query.isError,
     })}>
       <DataTable
         rows={filtered} columns={columns} rowKey={row=>row.id}
-        loading={query.isFetching} error={query.isError} onRetry={()=>query.refetch()}
+        loading={query.isLoading} error={query.isError} onRetry={()=>query.refetch()}
         emptyState={hasFilters ? (
           <EmptyState className="admin-v2-list-empty" icon={<Search size={23}/>} title="没有找到匹配的节点"
             description="当前搜索或机器筛选条件下没有匹配结果，请调整条件后重试。"

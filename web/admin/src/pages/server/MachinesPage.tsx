@@ -244,13 +244,13 @@ export function MachinesPage() {
       </div>
 
       <div className={'server-table-card admin-v2-list-surface is-' + listSurfaceState({
-        count: filteredRows.length, loading: query.isFetching, error: query.isError,
+        count: filteredRows.length, loading: query.isLoading, error: query.isError,
       })}>
         <DataTable
           rows={filteredRows}
           columns={columns}
           rowKey={row => row.id}
-          loading={query.isFetching}
+          loading={query.isLoading}
           error={query.isError}
           onRetry={() => query.refetch()}
           emptyState={hasFilters ? (

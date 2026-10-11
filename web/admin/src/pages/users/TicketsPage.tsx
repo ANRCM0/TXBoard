@@ -116,7 +116,7 @@ export function TicketsPage() {
 
     <ListSurface
       className="ticket-table-card" label="工单列表" count={rows.length}
-      loading={query.isFetching} error={query.isError} placeholder={query.isPlaceholderData}
+      loading={query.isLoading} error={query.isError} placeholder={query.isPlaceholderData}
       onRetry={() => void query.refetch()}
       emptyState={<EmptyState
         icon={<MessageSquare size={22}/>}
