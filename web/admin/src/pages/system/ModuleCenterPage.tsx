@@ -16,6 +16,9 @@ import {
 } from '../../api/module'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { QueryFeedback } from '../../components/ui/QueryFeedback'
+import { SummaryStrip } from '../../components/ui/SummaryStrip'
+import { StatusText } from '../../components/ui/StatusText'
+import { EmptyState } from '../../components/ui/EmptyState'
 
 export function ModuleCenterPage() {
   const [search, setSearch] = useState('')
@@ -80,13 +83,13 @@ export function ModuleCenterPage() {
       }
     />
 
-    <div className="dashboard-stats">
-      <SummaryCard icon={<Boxes size={18} />} label="模块总数" value={summary?.total} />
-      <SummaryCard icon={<CheckCircle2 size={18} />} label="健康" value={summary?.health.healthy} />
-      <SummaryCard icon={<ShieldAlert size={18} />} label="需关注" value={attention} />
-      <SummaryCard icon={<CircleDot size={18} />} label="Disabled" value={summary?.health.disabled} />
-      <SummaryCard icon={<AlertTriangle size={18} />} label="发现错误" value={summary?.discovery_errors} />
-    </div>
+    {query.data ? <SummaryStrip label="模块概览" items={[
+      { key:'total', label:'模块总数', value:summary?.total, icon:<Boxes size={15}/> },
+      { key:'healthy', label:'健康', value:summary?.health.healthy, tone:'success', icon:<CheckCircle2 size={15}/> },
+      { key:'attention', label:'需关注', value:attention, tone:attention > 0 ? 'warning' : 'neutral', icon:<ShieldAlert size={15}/> },
+      { key:'disabled', label:'已禁用', value:summary?.health.disabled, icon:<CircleDot size={15}/> },
+      { key:'errors', label:'发现错误', value:summary?.discovery_errors, tone:(summary?.discovery_errors || 0) > 0 ? 'danger' : 'neutral', icon:<AlertTriangle size={15}/> },
+    ]}/> : null}
 
     <div className="toolbar">
       <div className="actions">
@@ -120,14 +123,22 @@ export function ModuleCenterPage() {
     />
 
     <div className="form-stack">
-      {query.data ? (
-        <section className="admin-dashboard-card">
+      {query.data && rows.length === 0 ? <EmptyState
+        className="admin-v2-empty" icon={<Boxes size={22}/>}
+        title={modules.length ? '没有符合条件的模块' : 'Registry 暂无模块'}
+        description={modules.length ? '请调整搜索或筛选条件。' : '模块清单为空，请确认 Registry 状态后刷新。'}
+        action={modules.length ? <button type="button" className="button" onClick={() => {
+          setSearch(''); setType('all'); setSource('all'); setHealth('all')
+        }}>清除筛选</button> : <button type="button" className="button" onClick={() => void query.refetch()}>刷新列表</button>}
+      /> : null}
+      {query.data && rows.length ? (
+        <section className="admin-v2-module-table">
           <div className="admin-dashboard-card-head">
             <div>
               <h2>统一模块库存</h2>
               <p>显示 {rows.length} / {modules.length} 个模块。数据直接来自 Module Registry。</p>
             </div>
-            <span className="badge"><CircleDot size={13} /> Read only</span>
+            <span className="admin-v2-muted">只读库存</span>
           </div>
           <div className="table-wrap">
           <table className="data-table">
@@ -138,19 +149,11 @@ export function ModuleCenterPage() {
                 <th>版本</th>
                 <th>运行状态</th>
                 <th>健康</th>
-                <th>能力</th>
-                <th>TXBoard 兼容性</th>
+                <th>详情</th>
               </tr>
             </thead>
             <tbody>
               {rows.map(module => <ModuleRow key={module.id} module={module} />)}
-              {!rows.length ? (
-                <tr>
-                  <td colSpan={7} className="empty-cell">
-                    {modules.length ? '没有符合筛选条件的模块' : 'Registry 当前没有返回模块'}
-                  </td>
-                </tr>
-              ) : null}
             </tbody>
           </table>
           </div>
@@ -193,54 +196,36 @@ export function ModuleCenterPage() {
 }
 
 function ModuleRow({ module }: { module: ModuleDescriptor }) {
-  return <tr>
-    <td>
-      <strong>{module.name}</strong>
-      <small className="table-sub"><code>{module.id}</code></small>
-      {module.description ? <small className="table-sub">{module.description}</small> : null}
-      {module.author ? <small className="table-sub">by {module.author}</small> : null}
-    </td>
-    <td>
-      <span className="badge">{typeLabel(module.type)}</span>
-      {' '}
-      <span className="badge">{sourceLabel(module.source)}</span>
-    </td>
-    <td><code>{module.version}</code></td>
-    <td><span className={runtimeStateClass(module)}>{runtimeState(module)}</span></td>
-    <td><ModuleHealthCell module={module} /></td>
-    <td>
-      <div className="actions">
-        {module.capabilities.length
-          ? module.capabilities.map(capability => <span className="badge" key={capability}>{capability}</span>)
-          : <span className="text-muted">-</span>}
-      </div>
-    </td>
-    <td><code>{module.compatibility.txboard}</code></td>
-  </tr>
-}
-
-function ModuleHealthCell({ module }: { module: ModuleDescriptor }) {
   const checks = Object.entries(module.health_details?.checks || {})
-
-  return <div>
-    <span className={healthClass(module.health)}>{healthLabel(module.health)}</span>
-    {module.health_details?.observed_at ? (
-      <small className="table-sub">Observed {formatEpoch(module.health_details.observed_at)}</small>
-    ) : null}
-    {checks.length ? (
-      <div className="actions" style={{ marginTop: 6 }}>
-        {checks.map(([name, value]) => (
-          <span
-            className={value === true ? 'status ok' : value === false ? 'badge fleet-degraded' : 'status off'}
-            key={name}
-            title={healthCheckLabel(name)}
-          >
-            {healthCheckLabel(name)} {value === true ? '✓' : value === false ? '!' : '?'}
-          </span>
-        ))}
+  const completed = checks.filter(([, value]) => value === true).length
+  return <tr>
+    <td><div className="admin-v2-module-name">
+      <strong>{module.name}</strong>
+      <small>{module.id}{module.description ? ' · ' + module.description : ''}</small>
+    </div></td>
+    <td><span className="admin-v2-muted">{typeLabel(module.type)} · {sourceLabel(module.source)}</span></td>
+    <td><span className="admin-v2-muted">{module.version}</span></td>
+    <td><StatusText tone={module.active === true || module.enabled ? 'success' : 'neutral'}>{runtimeState(module)}</StatusText></td>
+    <td><div>
+      <StatusText tone={module.health === 'healthy' ? 'success' : module.health === 'failed' ? 'danger' : module.health === 'degraded' || module.health === 'incompatible' || module.health === 'missing_dependency' ? 'warning' : 'neutral'}>
+        {healthLabel(module.health)}
+      </StatusText>
+      {checks.length ? <small className="admin-v2-muted" style={{display:'block',marginTop:4}}>{completed} / {checks.length} 项检查通过</small> : null}
+    </div></td>
+    <td><details className="admin-v2-detail">
+      <summary>查看明细</summary>
+      <div className="admin-v2-detail-content">
+        {module.author ? <div>作者：{module.author}</div> : null}
+        <div>兼容性：{module.compatibility.txboard === '*' ? '所有版本' : module.compatibility.txboard}</div>
+        <div>能力：{module.capabilities.length ? module.capabilities.join('、') : '无'}</div>
+        {module.health_details?.observed_at ? <div>采样时间：{formatEpoch(module.health_details.observed_at)}</div> : null}
+        {checks.map(([name, value]) => <div key={name}
+          className={'admin-v2-health-check' + (value === false ? ' is-failed' : value === null ? ' is-unknown' : '')}>
+          {healthCheckLabel(name)}：{value === true ? '正常' : value === false ? '异常' : '未知'}
+        </div>)}
       </div>
-    ) : null}
-  </div>
+    </details></td>
+  </tr>
 }
 
 function formatEpoch(value: number) {
@@ -256,42 +241,11 @@ function healthCheckLabel(value: string) {
   } as Record<string, string>)[value] || value.replaceAll('_', ' ')
 }
 
-function SummaryCard({
-  icon,
-  label,
-  value,
-}: {
-  icon: React.ReactNode
-  label: string
-  value?: number
-}) {
-  return <div className="admin-stat-card">
-    <div className="admin-stat-card-head">
-      <span>{label}</span>
-      <span className="admin-stat-icon">{icon}</span>
-    </div>
-    <strong>{value ?? '—'}</strong>
-  </div>
-}
-
 function runtimeState(module: ModuleDescriptor) {
   if (module.active === true) return '当前激活'
   if (module.enabled) return '已启用'
   if (module.installed) return '已安装'
   return '已发现'
-}
-
-function runtimeStateClass(module: ModuleDescriptor) {
-  if (module.active === true || module.enabled) return 'status ok'
-  if (module.installed) return 'badge'
-  return 'status off'
-}
-
-function healthClass(value: ModuleHealth) {
-  if (value === 'healthy') return 'status ok'
-  if (value === 'disabled') return 'status off'
-  if (value === 'failed') return 'badge fleet-critical'
-  return 'badge fleet-degraded'
 }
 
 function typeLabel(value: string) {
