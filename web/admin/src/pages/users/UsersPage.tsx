@@ -13,7 +13,7 @@ import {
   Users,
 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { getPlans } from '../../api/finance'
 import {
@@ -34,19 +34,25 @@ import { ListSurface } from '../../components/ui/ListSurface'
 import { listHasPages } from '../../components/ui/listSurfaceState'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { requestConfirm } from '../../components/ui/ConfirmDialog'
+import { readUserListState, writeUserListState, type UserListState } from './userListUrlState'
+import './UsersPage.css'
 
 const GB = 1024 * 1024 * 1024
 
 export function UsersPage() {
   const qc = useQueryClient()
-  const [page, setPage] = useState(1)
-  const [pageSize, setPageSize] = useState(10)
-  const [search, setSearch] = useState('')
-  const [appliedSearch, setAppliedSearch] = useState('')
-  const [planId, setPlanId] = useState('')
-  const [banState, setBanState] = useState('')
-  const [sortField, setSortField] = useState('id')
-  const [sortDesc, setSortDesc] = useState(true)
+  const [params, setParams] = useSearchParams()
+  const listState = readUserListState(params)
+  const { page, pageSize, email: appliedSearch, planId, banState, sortField, sortDesc } = listState
+  const [search, setSearch] = useState(appliedSearch)
+
+  // URL is the source of truth: browser Back and shared links restore the list.
+  useEffect(() => { setSearch(appliedSearch) }, [appliedSearch])
+
+  function updateList(patch: Partial<UserListState>) {
+    setParams(current => writeUserListState(current, { ...readUserListState(current), ...patch }))
+  }
+
   const [selected, setSelected] = useState<Set<number>>(new Set())
   const [editorOpen, setEditorOpen] = useState(false)
   const [editing, setEditing] = useState<AdminUser | null>(null)
@@ -164,16 +170,17 @@ export function UsersPage() {
       await navigator.clipboard.writeText(url)
       toast.success('订阅链接已复制')
     } catch {
-      toast.error('复制失败')
+      toast.error('复制失败，请检查浏览器剪贴板权限后重试')
     }
+  }
+
+  function applySearch() {
+    updateList({ email: search.trim(), page: 1 })
   }
 
   function clearFilters() {
     setSearch('')
-    setAppliedSearch('')
-    setPlanId('')
-    setBanState('')
-    setPage(1)
+    updateList({ email: '', planId: '', banState: '', page: 1 })
   }
 
   return <>
@@ -186,37 +193,35 @@ export function UsersPage() {
       </div>}
     />
 
-    <div className="user-toolbar">
-      <div className="order-search">
+    <div className="user-toolbar users-v4-toolbar" role="search" aria-label="筛选用户列表">
+      <form className="order-search users-v4-search" onSubmit={event => { event.preventDefault(); applySearch() }}>
         <input
           aria-label="搜索用户邮箱"
+          type="search"
+          name="email-search"
+          spellCheck={false}
+          autoComplete="off"
           value={search}
           onChange={event => setSearch(event.target.value)}
-          onKeyDown={event => {
-            if (event.key === 'Enter') {
-              setAppliedSearch(search)
-              setPage(1)
-            }
-          }}
           placeholder="搜索邮箱…"
         />
-        <button className="button" onClick={() => { setAppliedSearch(search); setPage(1) }}>
+        <button className="button" type="submit">
           <Search size={15}/>搜索
         </button>
-      </div>
+      </form>
 
-      <select aria-label="筛选套餐" value={planId} onChange={event => { setPlanId(event.target.value); setPage(1) }}>
+      <select aria-label="筛选套餐" value={planId} onChange={event => updateList({ planId: event.target.value, page: 1 })}>
         <option value="">全部套餐</option>
         {plans.map(plan => <option key={plan.id} value={plan.id}>{plan.name}</option>)}
       </select>
 
-      <select aria-label="筛选用户状态" value={banState} onChange={event => { setBanState(event.target.value); setPage(1) }}>
+      <select aria-label="筛选用户状态" value={banState} onChange={event => updateList({ banState: event.target.value as UserListState['banState'], page: 1 })}>
         <option value="">全部状态</option>
         <option value="0">正常</option>
         <option value="1">已封禁</option>
       </select>
 
-      <select aria-label="排序字段" value={sortField} onChange={event => { setSortField(event.target.value); setPage(1) }}>
+      <select aria-label="排序字段" value={sortField} onChange={event => updateList({ sortField: event.target.value as UserListState['sortField'], page: 1 })}>
         <option value="id">按 ID</option>
         <option value="email">按邮箱</option>
         <option value="balance">按余额</option>
@@ -225,17 +230,21 @@ export function UsersPage() {
         <option value="created_at">按注册时间</option>
       </select>
 
-      <button className="button" onClick={() => setSortDesc(value => !value)}>
+      <button className="button" onClick={() => updateList({ sortDesc: !sortDesc, page: 1 })}>
         {sortDesc ? '降序' : '升序'}
       </button>
 
       {(appliedSearch || planId || banState) && <button className="button" onClick={clearFilters}>清除筛选</button>}
     </div>
+    <div className="users-v4-list-meta" aria-live="polite">
+      <span>{query.isLoading ? '正在加载用户…' : query.isError && !users.length ? '无法获取用户列表' : hasFilters ? `当前条件下共 ${query.data?.total ?? 0} 个用户` : `共 ${query.data?.total ?? 0} 个用户`}</span>
+      <span className="users-v4-scroll-hint">表格可横向滚动查看更多字段和操作</span>
+    </div>
 
     {selected.size > 0 && <div className="selection-bar">
       <span>已选择 {selected.size} 个用户</span>
       <div className="actions">
-        <button className="button" onClick={() => setMailOpen(true)}><Mail size={15}/>发送邮件</button>
+        <button type="button" className="button" onClick={() => setMailOpen(true)}><Mail size={15}/>发送邮件</button>
         <button
           className="button danger"
           disabled={banSelected.isPending || query.isPlaceholderData || query.isFetching}
@@ -246,7 +255,7 @@ export function UsersPage() {
     </div>}
 
     <ListSurface
-      className="user-table-card"
+      className="user-table-card users-v4-surface"
       label="用户列表" count={users.length}
       loading={query.isLoading} error={query.isError} placeholder={query.isPlaceholderData}
       onRetry={() => void query.refetch()}
@@ -264,30 +273,29 @@ export function UsersPage() {
           共 {query.data?.total || 0} 人 · 第 {query.data?.current_page || page} / {query.data?.last_page || 1} 页
         </span>
         <div className="pagination-actions">
-          <select aria-label="每页条数" value={pageSize} onChange={event => { setPageSize(Number(event.target.value)); setPage(1) }}>
+          <select aria-label="每页条数" value={pageSize} onChange={event => updateList({ pageSize: Number(event.target.value) as UserListState['pageSize'], page: 1 })}>
             <option value={10}>10 / 页</option>
             <option value={20}>20 / 页</option>
             <option value={50}>50 / 页</option>
             <option value={100}>100 / 页</option>
           </select>
-          <button className="icon-button" aria-label="上一页" disabled={query.isFetching || page <= 1} onClick={() => setPage(value => Math.max(1, value - 1))}>
+          <button className="icon-button" aria-label="上一页" disabled={query.isFetching || page <= 1} onClick={() => updateList({ page: Math.max(1, page - 1) })}>
             <ChevronLeft size={16}/>
           </button>
           <button
             className="icon-button"
             aria-label="下一页" disabled={query.isFetching || page >= Number(query.data?.last_page || 1)}
-            onClick={() => setPage(value => value + 1)}
+            onClick={() => updateList({ page: page + 1 })}
           ><ChevronRight size={16}/></button>
         </div>
       </div>
       ) : null}
     >
-        <table className="data-table user-table">
+        <table className="data-table user-table users-v4-table">
           <thead>
             <tr>
               <th className="select-col"><input ref={selectPageRef} aria-label="选择本页全部用户" disabled={query.isPlaceholderData || query.isFetching} type="checkbox" checked={allPageSelected} onChange={togglePage}/></th>
-              <th>ID</th>
-              <th>用户</th>
+              <th scope="col">用户</th>
               <th>套餐</th>
               <th>流量</th>
               <th>到期</th>
@@ -301,14 +309,16 @@ export function UsersPage() {
           <tbody>
             {users.map(user => <tr key={user.id}>
               <td className="select-col"><input aria-label={'选择用户 '+user.email} disabled={query.isPlaceholderData || query.isFetching} type="checkbox" checked={selected.has(user.id)} onChange={() => toggleUser(user.id)}/></td>
-              <td>{user.id}</td>
               <td>
                 <div className="user-identity">
                   <Link className="link-button user-detail-link" to={`/user/${user.id}`}>{user.email}</Link>
-                  <div className="user-badges">
-                    {Boolean(user.is_admin) && <span className="admin-v2-role-text">Admin</span>}
-                    {Boolean(user.is_staff) && <span className="admin-v2-role-text">Staff</span>}
-                    {user.group?.name && <span className="admin-v2-role-text">{user.group.name}</span>}
+                  <div className="users-v4-identity-meta">
+                    <span>#{user.id}</span>
+                    <div className="user-badges">
+                      {Boolean(user.is_admin) && <span className="admin-v2-role-text">Admin</span>}
+                      {Boolean(user.is_staff) && <span className="admin-v2-role-text">Staff</span>}
+                      {user.group?.name && <span className="admin-v2-role-text">{user.group.name}</span>}
+                    </div>
                   </div>
                 </div>
               </td>
@@ -324,17 +334,21 @@ export function UsersPage() {
               <td>{formatTime(user.created_at)}</td>
               <td>
                 <div className="actions">
-                  <button className="icon-button" title="编辑" onClick={() => openEdit(user)}><Pencil size={15}/></button>
-                  <button className="icon-button" title="复制订阅链接" onClick={() => copySubscribe(user)}><Clipboard size={15}/></button>
+                  <button type="button" className="icon-button" aria-label={'编辑用户 ' + user.email} title="编辑用户" onClick={() => openEdit(user)}><Pencil size={15} aria-hidden="true"/></button>
+                  <button type="button" className="icon-button" aria-label={'复制订阅链接 ' + user.email} title="复制订阅链接" onClick={() => copySubscribe(user)}><Clipboard size={15} aria-hidden="true"/></button>
                   <button
+                    type="button"
                     className="icon-button"
+                    aria-label={'重置订阅密钥 ' + user.email}
                     title="重置订阅密钥"
                     disabled={resetSecret.isPending}
                     onClick={() => requestConfirm({ title: '重置订阅密钥', message: '重置后原订阅链接将失效，确认继续？', danger: true, confirmLabel: '重置', action: () => resetSecret.mutate(user.id) })}
                   ><KeyRound size={15}/></button>
                   <button
+                    type="button"
                     className="icon-button danger"
-                    title="删除"
+                    aria-label={'删除用户 ' + user.email}
+                    title="删除用户"
                     disabled={remove.isPending}
                     onClick={() => requestConfirm({ title: '删除用户', message: '删除用户会清理关联数据，且后端会拒绝删除仍有余额/处理中订单的用户。确认继续？', danger: true, confirmLabel: '删除', action: () => remove.mutate(user.id) })}
                   ><Trash2 size={15}/></button>
