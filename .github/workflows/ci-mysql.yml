@@ -160,6 +160,10 @@ jobs:
         run: php artisan test tests/Feature/Payment/PaymentWebhookTest.php
       - name: P3-A2 native billing contracts and reconciliation
         run: php artisan test tests/Feature/Txapi/TxapiBillingTest.php
+      - name: GW-303 idempotency contract and crash recovery on MySQL
+        run: php artisan test tests/Feature/Txapi/TxapiOrderIdempotencyTest.php
+      - name: GW-303 real MySQL concurrent replay stress (10 workers x 10 attempts)
+        run: php artisan test tests/Feature/Billing/OrderIdempotencyMysqlConcurrencyTest.php
       - name: P3-A monetary state transitions and coupon recovery on MySQL
         run: php artisan test tests/Unit/Services/OrderServiceConcurrencyTest.php
       - name: P4-D native WS frames, scopes and cross-transport ledger
