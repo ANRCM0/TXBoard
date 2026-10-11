@@ -254,7 +254,11 @@ export function MachineOpsDrawer({
               </div>
             </section>
 
-            <div className="machine-ops-grid">
+            {activeSection === 'overview' ? <section
+              id={panelId('overview')} role="tabpanel" aria-labelledby={tabId('overview')}
+              className="machine-ops-panel"
+            >
+              <div className="machine-ops-grid">
               <section className="machine-ops-card">
                 <MachineHistoryChart machineId={machine.id} />
               </section>
@@ -290,8 +294,13 @@ export function MachineOpsDrawer({
                   </div>
                 </div>
               </section>
-            </div>
+              </div>
+            </section> : null}
 
+            {activeSection === 'runtime' ? <section
+              id={panelId('runtime')} role="tabpanel" aria-labelledby={tabId('runtime')}
+              className="machine-ops-panel"
+            >
             <section className="machine-ops-card machine-runtime-card">
               <div className="machine-ops-card-head">
                 <div>
@@ -367,14 +376,19 @@ export function MachineOpsDrawer({
                 </div>
               ) : null}
             </section>
+            </section> : null}
 
+            {activeSection === 'security' ? <section
+              id={panelId('security')} role="tabpanel" aria-labelledby={tabId('security')}
+              className="machine-ops-panel"
+            >
             <section className="machine-ops-card">
               <div className="machine-ops-card-head">
                 <div>
                   <h3>服务器 Token 与 TX-Node 接入</h3>
                   <p>凭据按需读取并在 18 秒后从界面自动隐藏。</p>
                 </div>
-                {!credentials ? (
+                {!visibleCredentials ? (
                   <button
                     type="button"
                     className="button"
@@ -386,7 +400,7 @@ export function MachineOpsDrawer({
                 ) : null}
               </div>
 
-              {!credentials ? (
+              {!visibleCredentials ? (
                 <div className="machine-ops-sensitive-note">
                   <ShieldAlert size={15} />
                   <span>Machine Token 属于高敏感凭据。仅在受信任环境中查看；重置后旧 TX-Node 进程需要重新配置。</span>
@@ -395,17 +409,17 @@ export function MachineOpsDrawer({
                 <div className="machine-ops-credentials">
                   <div>
                     <strong>Machine Token</strong>
-                    <pre className="code-block">{credentials.token || '-'}</pre>
+                    <pre className="code-block">{visibleCredentials.token || '-'}</pre>
                   </div>
                   <div>
                     <strong>安装 / 接入命令</strong>
-                    <pre className="code-block">{credentials.command || '-'}</pre>
+                    <pre className="code-block">{visibleCredentials.command || '-'}</pre>
                   </div>
                   <div className="machine-ops-credential-actions">
-                    <button className="button" onClick={() => void copyText(credentials.token, 'Token')}>
+                    <button className="button" onClick={() => void copyText(visibleCredentials.token, 'Token')}>
                       <KeyRound size={14} />复制 Token
                     </button>
-                    <button className="button primary" onClick={() => void copyText(credentials.command, '安装命令')}>
+                    <button className="button primary" onClick={() => void copyText(visibleCredentials.command, '安装命令')}>
                       <Copy size={14} />复制安装命令
                     </button>
                     <button
@@ -425,7 +439,12 @@ export function MachineOpsDrawer({
                 </div>
               )}
             </section>
+            </section> : null}
 
+            {activeSection === 'nodes' ? <section
+              id={panelId('nodes')} role="tabpanel" aria-labelledby={tabId('nodes')}
+              className="machine-ops-panel"
+            >
             <section className="machine-ops-card machine-ops-nodes">
               <div className="machine-ops-card-head">
                 <div>
@@ -476,9 +495,15 @@ export function MachineOpsDrawer({
                   </table>
                 </div>
               ) : !nodesQuery.isLoading && !nodesQuery.isError ? (
-                <div className="machine-ops-empty">该机器暂未绑定节点。</div>
+                <div className="machine-ops-empty">
+                  <Boxes size={25} aria-hidden="true"/>
+                  <strong>该机器暂未绑定节点</strong>
+                  <p>可以通过节点绑定将已有节点关联到当前服务器。</p>
+                  <button type="button" className="button" onClick={() => onBind(machine)}>绑定节点</button>
+                </div>
               ) : null}
             </section>
+            </section> : null}
           </div>
         </div>
       </aside>
@@ -500,7 +525,12 @@ function LoadMetric({
   return (
     <div className="machine-ops-load-row">
       <div><span>{label}</span><strong>{text}</strong></div>
-      <span className="machine-ops-progress"><i style={{ width: `${width}%` }} /></span>
+      <span className="machine-ops-progress" role="progressbar"
+        aria-label={label + ' 使用率'} aria-valuemin={0} aria-valuemax={100}
+        aria-valuenow={value === null ? undefined : Math.min(100, Math.max(0, value))}
+        aria-valuetext={value === null ? '暂无数据' : value.toFixed(1) + '%'}>
+        <i style={{ width: width + '%' }} />
+      </span>
     </div>
   )
 }
