@@ -1,81 +1,28 @@
 import { useMutation } from '@tanstack/react-query'
-import { useEffect, useMemo, useState } from 'react'
-import { Save, WandSparkles } from 'lucide-react'
+import { useEffect, useId, useRef, useState } from 'react'
+import { ChevronDown, ChevronUp, Save, WandSparkles } from 'lucide-react'
 import { toast } from 'sonner'
-import { savePlan, type PlanItem, type PlanPrices, type PlanSavePayload } from '../../api/finance'
+import { savePlan, type PlanItem, type PlanSavePayload } from '../../api/finance'
 import type { GroupItem } from '../../api/server'
+import { requestConfirm } from '../ui/ConfirmDialog'
 import { Modal } from '../ui/Modal'
+import {
+  discountedPlanPrices, draftFromPlan, planPayload, planPeriods, primaryPeriods, validatePlanDraft,
+  type PlanDraft, type PlanFieldError, type PlanPeriod,
+} from './planEditorModel'
+import './PlanEditor.css'
 
-const periods = [
-  ['monthly', '月付'],
-  ['quarterly', '季付'],
-  ['half_yearly', '半年付'],
-  ['yearly', '年付'],
-  ['two_yearly', '两年付'],
-  ['three_yearly', '三年付'],
-  ['onetime', '一次性'],
-  ['reset_traffic', '重置流量'],
-] as const
+const extraPeriods = planPeriods.filter(([key]) => !primaryPeriods.includes(key))
 
-type Draft = {
-  name: string
-  content: string
-  group_id: string
-  transfer_enable: string
-  speed_limit: string
-  device_limit: string
-  capacity_limit: string
-  reset_traffic_method: string
-  tags: string
-  prices: Record<string, string>
-  force_update: boolean
+function hasExtendedPricing(draft: PlanDraft) {
+  return extraPeriods.some(([key]) => draft.prices[key].trim() !== '')
 }
-
-function emptyDraft(): Draft {
-  return {
-    name: '',
-    content: '',
-    group_id: '',
-    transfer_enable: '100',
-    speed_limit: '',
-    device_limit: '',
-    capacity_limit: '',
-    reset_traffic_method: '',
-    tags: '',
-    prices: Object.fromEntries(periods.map(([key]) => [key, ''])),
-    force_update: false,
-  }
-}
-
-function toDraft(plan?: PlanItem | null): Draft {
-  if (!plan) return emptyDraft()
-  return {
-    name: plan.name || '',
-    content: plan.content || '',
-    group_id: plan.group_id == null ? '' : String(plan.group_id),
-    transfer_enable: String(plan.transfer_enable ?? ''),
-    speed_limit: plan.speed_limit == null ? '' : String(plan.speed_limit),
-    device_limit: plan.device_limit == null ? '' : String(plan.device_limit),
-    capacity_limit: plan.capacity_limit == null ? '' : String(plan.capacity_limit),
-    reset_traffic_method: plan.reset_traffic_method == null ? '' : String(plan.reset_traffic_method),
-    tags: Array.isArray(plan.tags) ? plan.tags.join(', ') : '',
-    prices: Object.fromEntries(periods.map(([key]) => [key, plan.prices?.[key] == null ? '' : String(plan.prices[key])])),
-    force_update: false,
-  }
-}
-
-function nullableNumber(value: string) {
-  if (value.trim() === '') return null
-  const n = Number(value)
-  return Number.isFinite(n) ? n : null
+function hasExtendedLimits(draft: PlanDraft) {
+  return Boolean(draft.speed_limit || draft.device_limit || draft.capacity_limit || draft.reset_traffic_method)
 }
 
 export function PlanEditor({
-  open,
-  plan,
-  groups,
-  onClose,
-  onSaved,
+  open, plan, groups, onClose, onSaved,
 }: {
   open: boolean
   plan?: PlanItem | null
@@ -83,12 +30,39 @@ export function PlanEditor({
   onClose: () => void
   onSaved: () => void
 }) {
-  const [draft, setDraft] = useState<Draft>(() => toDraft(plan))
+  const [draft, setDraft] = useState<PlanDraft>(() => draftFromPlan(plan))
+  const [attempted, setAttempted] = useState(false)
+  const [morePrices, setMorePrices] = useState(() => hasExtendedPricing(draftFromPlan(plan)))
+  const [moreLimits, setMoreLimits] = useState(() => hasExtendedLimits(draftFromPlan(plan)))
   const [preview, setPreview] = useState(false)
+  const [focusRequest, setFocusRequest] = useState(0)
+  const formRef = useRef<HTMLFormElement>(null)
+  const formId = useId()
+  const extrasId = useId()
+  const limitsId = useId()
+  const initial = draftFromPlan(plan)
+  const dirty = JSON.stringify(draft) !== JSON.stringify(initial)
+  const errors: PlanFieldError = attempted ? validatePlanDraft(draft) : {}
+  const activePrices = planPeriods.filter(([key]) => draft.prices[key].trim() !== '')
+  const unknownReset = Boolean(draft.reset_traffic_method) &&
+    !['0','1','2','3','4'].includes(draft.reset_traffic_method)
+  const groupUnknown = Boolean(draft.group_id) &&
+    !groups.some(item => String(item.id) === draft.group_id)
 
   useEffect(() => {
-    if (open) setDraft(toDraft(plan))
+    if (!open) return
+    const next = draftFromPlan(plan)
+    setDraft(next)
+    setMorePrices(hasExtendedPricing(next))
+    setMoreLimits(hasExtendedLimits(next))
+    setAttempted(false)
+    setPreview(false)
   }, [open, plan])
+
+  useEffect(() => {
+    if (focusRequest === 0) return
+    formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus()
+  }, [focusRequest])
 
   const mutation = useMutation({
     mutationFn: (payload: PlanSavePayload) => savePlan(payload),
@@ -97,163 +71,225 @@ export function PlanEditor({
       onSaved()
       onClose()
     },
+    onError: () => toast.error('保存失败，请核对表单并重试'),
   })
 
-  const activePrices = useMemo(
-    () => periods.filter(([key]) => draft.prices[key] !== ''),
-    [draft.prices],
-  )
-
-  function patch<K extends keyof Draft>(key: K, value: Draft[K]) {
-    setDraft(current => ({ ...current, [key]: value }))
+  function patch<K extends keyof PlanDraft>(key: K, value: PlanDraft[K]) {
+    setDraft(current => ({...current, [key]: value}))
+  }
+  function patchPrice(key: PlanPeriod, value: string) {
+    setDraft(current => ({...current, prices: {...current.prices, [key]: value}}))
   }
 
-  function patchPrice(key: string, value: string) {
-    setDraft(current => ({ ...current, prices: { ...current.prices, [key]: value } }))
-  }
-
-  function applyQuickPrices() {
-    const monthly = Number(draft.prices.monthly)
-    if (!Number.isFinite(monthly) || monthly <= 0) {
-      toast.error('请先填写月付价格')
-      return
-    }
-    const multipliers: Record<string, number> = {
-      quarterly: 3 * 0.95,
-      half_yearly: 6 * 0.9,
-      yearly: 12 * 0.85,
-      two_yearly: 24 * 0.8,
-      three_yearly: 36 * 0.75,
-    }
-    setDraft(current => ({
-      ...current,
-      prices: {
-        ...current.prices,
-        ...Object.fromEntries(Object.entries(multipliers).map(([key, factor]) => [key, (monthly * factor).toFixed(2)])),
-      },
-    }))
-  }
-
-  function submit() {
-    const transfer = Number(draft.transfer_enable)
-    if (!draft.name.trim()) {
-      toast.error('请输入套餐名称')
-      return
-    }
-    if (!Number.isInteger(transfer) || transfer < 1) {
-      toast.error('流量配额必须是大于 0 的整数')
-      return
-    }
-
-    const prices: PlanPrices = {}
-    for (const [key, label] of periods) {
-      const raw = draft.prices[key]
-      if (raw === '') continue
-      const n = Number(raw)
-      if (!Number.isFinite(n) || n <= 0) {
-        toast.error(`${label}价格无效，请输入大于 0 的数字`)
-        return
-      }
-      prices[key] = Number(n.toFixed(2))
-    }
-
-    mutation.mutate({
-      ...(plan ? { id: plan.id } : {}),
-      name: draft.name.trim(),
-      content: draft.content || null,
-      group_id: nullableNumber(draft.group_id),
-      transfer_enable: transfer,
-      speed_limit: nullableNumber(draft.speed_limit),
-      device_limit: nullableNumber(draft.device_limit),
-      capacity_limit: nullableNumber(draft.capacity_limit),
-      reset_traffic_method: nullableNumber(draft.reset_traffic_method),
-      prices,
-      tags: draft.tags.split(',').map(item => item.trim()).filter(Boolean),
-      ...(plan && draft.force_update ? { force_update: true } : {}),
+  function attemptClose() {
+    if (mutation.isPending) return
+    if (!dirty) return onClose()
+    requestConfirm({
+      title: '放弃未保存的套餐修改？',
+      message: '离开后本次填写的内容不会保存。',
+      confirmLabel: '放弃修改',
+      danger: true,
+      action: onClose,
     })
   }
 
-  return <Modal open={open} title={plan ? `编辑套餐：${plan.name}` : '添加套餐'} onClose={onClose}>
-    <div className="plan-editor">
-      <div className="plan-editor-grid">
-        <label className="field">
-          <span>套餐名称 *</span>
-          <input value={draft.name} onChange={e => patch('name', e.target.value)} placeholder="Pro 100G"/>
-        </label>
-        <label className="field">
-          <span>权限组</span>
-          <select value={draft.group_id} onChange={e => patch('group_id', e.target.value)}>
-            <option value="">不指定</option>
-            {groups.map(group => <option key={group.id} value={group.id}>{group.name || `Group ${group.id}`}</option>)}
-          </select>
-        </label>
-        <label className="field">
-          <span>流量配额（GB）*</span>
-          <input type="number" min="1" step="1" value={draft.transfer_enable} onChange={e => patch('transfer_enable', e.target.value)}/>
-        </label>
-        <label className="field">
-          <span>限速（Mbps）</span>
-          <input type="number" min="0" value={draft.speed_limit} onChange={e => patch('speed_limit', e.target.value)} placeholder="留空 = 不限制"/>
-        </label>
-        <label className="field">
-          <span>设备限制</span>
-          <input type="number" min="0" value={draft.device_limit} onChange={e => patch('device_limit', e.target.value)} placeholder="留空 = 不限制"/>
-        </label>
-        <label className="field">
-          <span>人数上限</span>
-          <input type="number" min="0" value={draft.capacity_limit} onChange={e => patch('capacity_limit', e.target.value)} placeholder="0 / 留空 = 不限制"/>
-        </label>
-        <label className="field">
-          <span>流量重置方式</span>
-          <select value={draft.reset_traffic_method} onChange={e => patch('reset_traffic_method', e.target.value)}>
-            <option value="">跟随系统设置</option>
-            <option value="0">每月 1 号</option>
-            <option value="1">按月重置</option>
-            <option value="2">不重置</option>
-            <option value="3">每年 1 月 1 日</option>
-            <option value="4">按年重置</option>
-          </select>
-        </label>
-        <label className="field">
-          <span>标签</span>
-          <input value={draft.tags} onChange={e => patch('tags', e.target.value)} placeholder="热门, 推荐, 高速"/>
-        </label>
-      </div>
+  function generateDiscountPrices() {
+    const result = discountedPlanPrices(draft.prices.monthly)
+    if (!result) {
+      setAttempted(true)
+      toast.error('请先填写有效的月付价格')
+      setFocusRequest(number => number + 1)
+      return
+    }
+    setDraft(current => ({...current, prices: {...current.prices, ...result}}))
+    setMorePrices(true)
+    toast.success('已根据月付价格生成折扣价，请检查后保存')
+  }
 
-      <section className="plan-editor-section">
-        <div className="section-row">
-          <div><strong>周期价格</strong><small>单位：元；留空表示不提供该周期</small></div>
-          <button className="button" type="button" onClick={applyQuickPrices}><WandSparkles size={15}/>按月价生成折扣价</button>
+  function submit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (mutation.isPending) return
+    const failures = validatePlanDraft(draft)
+    const invalid = Object.keys(failures)
+    if (invalid.length) {
+      setAttempted(true)
+      if (invalid.some(key => key.startsWith('prices.') && !primaryPeriods.includes(key.slice(7) as PlanPeriod))) {
+        setMorePrices(true)
+      }
+      if (invalid.some(key => ['speed_limit', 'device_limit', 'capacity_limit', 'reset_traffic_method'].includes(key))) {
+        setMoreLimits(true)
+      }
+      setFocusRequest(number => number + 1)
+      return
+    }
+    mutation.mutate(planPayload(draft, plan))
+  }
+
+  function errorFor(key: string) {
+    return errors[key] ? <small className="plan-v4-error" role="alert">{errors[key]}</small> : null
+  }
+  function priceField(key: PlanPeriod, label: string) {
+    const error = Boolean(errors['prices.'+key])
+    return <label className="field" key={key}>
+      <span>{label}</span>
+      <div className="plan-v4-price-input">
+        <span aria-hidden="true">¥</span>
+        <input type="number" name={'price-'+key} min="0.01" step="0.01" inputMode="decimal"
+          value={draft.prices[key]} aria-invalid={error}
+          onChange={event => patchPrice(key,event.target.value)} placeholder="不提供此周期…"/>
+      </div>
+      {errorFor('prices.'+key)}
+    </label>
+  }
+
+  return <Modal
+    open={open}
+    title={plan ? '编辑套餐：'+plan.name : '创建套餐'}
+    subtitle="先配置基础信息与售卖周期，其余设置按需展开。"
+    placement="right"
+    className="plan-v4-drawer"
+    onClose={attemptClose}
+    footer={<div className="plan-v4-footer">
+      <span className="plan-v4-dirty" role="status">{dirty ? '有未保存的修改' : '尚未修改'}</span>
+      <button type="button" className="button" onClick={attemptClose} disabled={mutation.isPending}>取消</button>
+      <button type="submit" form={formId} className="button primary" disabled={mutation.isPending}>
+        <Save size={15} aria-hidden="true"/>{mutation.isPending ? '保存中…' : '保存套餐'}
+      </button>
+    </div>}
+  >
+    <form id={formId} ref={formRef} className="plan-editor plan-v4-form" onSubmit={submit} noValidate>
+      <section className="plan-v4-section" aria-labelledby={formId+'-basic'}>
+        <div className="plan-v4-heading">
+          <strong id={formId+'-basic'}>基础信息</strong>
+          <small>套餐名称、权限组与流量额度</small>
         </div>
-        <div className="price-grid">
-          {periods.map(([key, label]) => <label className="field" key={key}>
-            <span>{label}</span>
-            <input type="number" min="0" step="0.01" value={draft.prices[key]} onChange={e => patchPrice(key, e.target.value)} placeholder="未启用"/>
-          </label>)}
+        <div className="plan-v4-grid">
+          <label className="field plan-v4-full">
+            <span>套餐名称 *</span>
+            <input name="plan-name" autoComplete="off" value={draft.name} aria-invalid={Boolean(errors.name)}
+              onChange={event => patch('name',event.target.value)} placeholder="例如：Pro 100G…"/>
+            {errorFor('name')}
+          </label>
+          <label className="field">
+            <span>权限组</span>
+            <select name="group_id" value={draft.group_id} aria-invalid={Boolean(errors.group_id)}
+              onChange={event => patch('group_id', event.target.value)}>
+              <option value="">不指定</option>
+              {groupUnknown ? <option value={draft.group_id}>现有权限组 #{draft.group_id}</option> : null}
+              {groups.map(group => <option key={group.id} value={group.id}>{group.name || 'Group '+group.id}</option>)}
+            </select>
+            {errorFor('group_id')}
+          </label>
+          <label className="field">
+            <span>流量配额（GB）*</span>
+            <input name="transfer_enable" type="number" min="1" step="1" inputMode="numeric"
+              value={draft.transfer_enable} aria-invalid={Boolean(errors.transfer_enable)}
+              onChange={event => patch('transfer_enable',event.target.value)}/>
+            {errorFor('transfer_enable')}
+          </label>
+          <label className="field plan-v4-full">
+            <span>标签</span>
+            <input name="tags" autoComplete="off" value={draft.tags}
+              onChange={event => patch('tags',event.target.value)} placeholder="例如：热门, 推荐, 高速…"/>
+            <small className="field-help">用逗号分隔；不会影响套餐的业务规则。</small>
+          </label>
         </div>
-        <div className="price-summary">{activePrices.length ? `已启用 ${activePrices.length} 个计费周期` : '尚未配置价格'}</div>
       </section>
 
-      <section className="plan-editor-section">
-        <div className="section-row">
-          <div><strong>套餐描述</strong><small>{'支持 Markdown / 模板变量：{{transfer}}、{{speed}}、{{devices}}、{{reset_method}}'}</small></div>
-          <button className="button" type="button" onClick={() => setPreview(value => !value)}>{preview ? '继续编辑' : '预览'}</button>
+      <section className="plan-v4-section" aria-labelledby={formId+'-prices'}>
+        <div className="plan-v4-heading plan-v4-heading-actions">
+          <div><strong id={formId+'-prices'}>售卖周期与价格</strong><small>留空即不提供该周期；金额单位为元。</small></div>
+          <button className="button" type="button" onClick={generateDiscountPrices}>
+            <WandSparkles size={15} aria-hidden="true"/>按月价生成
+          </button>
         </div>
-        {preview
-          ? <MarkdownLite content={draft.content}/>
-          : <textarea className="plan-content-editor" value={draft.content} onChange={e => patch('content', e.target.value)} placeholder={"# 套餐说明\n\n- 每月 {{transfer}} GB\n- 最高 {{speed}} Mbps"}/>}
+        <div className="plan-v4-grid plan-v4-prices">
+          {planPeriods.filter(([key]) => primaryPeriods.includes(key)).map(([key,label]) => priceField(key,label))}
+        </div>
+        <button className="plan-v4-disclosure" type="button" aria-expanded={morePrices}
+          aria-controls={extrasId} onClick={() => setMorePrices(value => !value)}>
+          <span>其他计费周期{hasExtendedPricing(draft) ? ' · 已设置' : ''}</span>
+          {morePrices ? <ChevronUp size={16} aria-hidden="true"/> : <ChevronDown size={16} aria-hidden="true"/>}
+        </button>
+        {morePrices ? <div id={extrasId} className="plan-v4-grid plan-v4-prices plan-v4-extra-prices">
+          {extraPeriods.map(([key,label]) => priceField(key,label))}
+        </div> : null}
+        <div className="plan-v4-summary" role="status">
+          已设置 {activePrices.length} 个周期
+          {activePrices.length === 0 ? ' · 尚未填写售卖价格' : ''}
+        </div>
       </section>
 
-      {plan && <label className="check-field force-update">
-        <input type="checkbox" checked={draft.force_update} onChange={e => patch('force_update', e.target.checked)}/>
-        <span><strong>同步更新当前套餐用户</strong><small>会同步用户的权限组、流量、限速和设备限制。</small></span>
-      </label>}
+      <section className="plan-v4-section plan-v4-section-optional">
+        <button className="plan-v4-disclosure plan-v4-disclosure-top" type="button"
+          aria-expanded={moreLimits} aria-controls={limitsId}
+          onClick={() => setMoreLimits(value => !value)}>
+          <span><strong>访问与使用限制</strong><small>限速、设备、人数与流量重置方式；默认跟随系统设置。</small></span>
+          {moreLimits ? <ChevronUp size={16} aria-hidden="true"/> : <ChevronDown size={16} aria-hidden="true"/>}
+        </button>
+        {moreLimits ? <div id={limitsId} className="plan-v4-grid plan-v4-limits">
+          <label className="field">
+            <span>限速（Mbps）</span>
+            <input name="speed_limit" type="number" min="0" step="any" inputMode="decimal"
+              aria-invalid={Boolean(errors.speed_limit)} value={draft.speed_limit}
+              onChange={event => patch('speed_limit',event.target.value)} placeholder="不限制…"/>
+            {errorFor('speed_limit')}
+          </label>
+          <label className="field">
+            <span>设备限制</span>
+            <input name="device_limit" type="number" min="0" step="1" inputMode="numeric"
+              aria-invalid={Boolean(errors.device_limit)} value={draft.device_limit}
+              onChange={event => patch('device_limit',event.target.value)} placeholder="不限制…"/>
+            {errorFor('device_limit')}
+          </label>
+          <label className="field">
+            <span>人数上限</span>
+            <input name="capacity_limit" type="number" min="0" step="1" inputMode="numeric"
+              aria-invalid={Boolean(errors.capacity_limit)} value={draft.capacity_limit}
+              onChange={event => patch('capacity_limit',event.target.value)} placeholder="不限制…"/>
+            {errorFor('capacity_limit')}
+          </label>
+          <label className="field">
+            <span>流量重置方式</span>
+            <select name="reset_traffic_method" value={draft.reset_traffic_method}
+              aria-invalid={Boolean(errors.reset_traffic_method)}
+              onChange={event => patch('reset_traffic_method',event.target.value)}>
+              <option value="">跟随系统设置</option>
+              {unknownReset ? <option value={draft.reset_traffic_method}>现有设置 #{draft.reset_traffic_method}</option> : null}
+              <option value="0">每月 1 号</option><option value="1">按月重置</option>
+              <option value="2">不重置</option><option value="3">每年 1 月 1 日</option>
+              <option value="4">按年重置</option>
+            </select>
+            {errorFor('reset_traffic_method')}
+          </label>
+        </div> : null}
+      </section>
 
-      <div className="card-actions">
-        <button className="button" onClick={onClose}>取消</button>
-        <button className="button primary" disabled={mutation.isPending} onClick={submit}><Save size={15}/>{mutation.isPending ? '保存中…' : '保存套餐'}</button>
-      </div>
-    </div>
+      <section className="plan-v4-section">
+        <div className="plan-v4-heading plan-v4-heading-actions">
+          <div><strong>套餐说明</strong><small>支持 Markdown 与已有模板变量。</small></div>
+          <button className="button" type="button" aria-pressed={preview} onClick={() => setPreview(value => !value)}>
+            {preview ? '继续编辑' : '预览说明'}
+          </button>
+        </div>
+        {preview ? <MarkdownLite content={draft.content}/> :
+          <label className="field">
+            <span className="plan-v4-sr-only">套餐描述</span>
+            <textarea name="content" className="plan-content-editor plan-v4-description"
+              value={draft.content} onChange={event => patch('content',event.target.value)}
+              placeholder={'# 套餐说明\n\n- 每月 {{transfer}} GB\n- 最高 {{speed}} Mbps'}/>
+          </label>}
+        <small className="field-help">模板变量：{'{{transfer}}'}、{'{{speed}}'}、{'{{devices}}'}、{'{{reset_method}}'}</small>
+      </section>
+
+      {plan ? <section className="plan-v4-section plan-v4-impact">
+        <label className="check-field force-update">
+          <input type="checkbox" name="force_update" checked={draft.force_update}
+            onChange={event => patch('force_update',event.target.checked)}/>
+          <span><strong>同步更新当前套餐用户</strong><small>仅在主动勾选时同步权限组、流量、限速和设备限制；请确认影响范围。</small></span>
+        </label>
+      </section> : null}
+    </form>
   </Modal>
 }
 
