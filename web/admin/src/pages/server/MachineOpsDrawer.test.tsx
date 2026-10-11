@@ -3,7 +3,7 @@ import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
-import type { MachineItem } from '../../api/server'
+import { getMachineCredentials, getMachineNodes, type MachineItem } from '../../api/server'
 import { MachineOpsDrawer } from './MachineOpsDrawer'
 
 vi.mock('../../api/server', async importOriginal => {
@@ -11,8 +11,7 @@ vi.mock('../../api/server', async importOriginal => {
   return {
     ...actual,
     getMachineNodes: vi.fn().mockResolvedValue([]),
-    getMachineToken: vi.fn().mockResolvedValue(''),
-    getInstallCommand: vi.fn().mockResolvedValue(''),
+    getMachineCredentials: vi.fn().mockResolvedValue({ token: 'secret-1', install_command: 'install-test-1' }),
     resetMachineToken: vi.fn(),
     updateMachineRuntime: vi.fn(),
   }
@@ -31,6 +30,7 @@ beforeEach(() => {
   host = document.createElement('div')
   document.body.append(host)
   root = createRoot(host)
+  vi.clearAllMocks()
   queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   })
@@ -60,6 +60,15 @@ function render(machine: MachineItem) {
   })
 }
 
+
+function selectTab(name: string) {
+  const tabs = Array.from(document.querySelectorAll<HTMLButtonElement>('.machine-ops-tab'))
+  const selected = tabs.find(tab => tab.textContent?.trim() === name)
+  if (!selected) throw new Error('Missing tab ' + name)
+  act(() => selected.click())
+  return selected
+}
+
 it('shows reported TX-Node version and enables latest update for capable machine', () => {
   render({
     id: 12,
@@ -82,6 +91,7 @@ it('shows reported TX-Node version and enables latest update for capable machine
     },
   })
 
+  selectTab('运行时')
   const drawer = document.querySelector('.machine-ops-root')
   expect(drawer?.textContent).toContain('TX-Node Runtime')
   expect(drawer?.textContent).toContain('v2.3.0')
@@ -109,6 +119,7 @@ it('keeps older Installer deployments compatible and disables remote update', ()
     },
   })
 
+  selectTab('运行时')
   const drawer = document.querySelector('.machine-ops-root')
   expect(drawer?.textContent).toContain('远程更新不可用')
   expect(drawer?.textContent).toContain('txnode upgrade')
@@ -117,4 +128,54 @@ it('keeps older Installer deployments compatible and disables remote update', ()
     item.textContent?.includes('更新到 latest'),
   )
   expect(button?.hasAttribute('disabled')).toBe(true)
+})
+
+it('presents four keyboard-accessible focused panels and only fetches nodes on demand', async () => {
+  render({ id: 15, name: 'US-01', is_active: true, last_seen_at: Date.now(), load_status: {} })
+  const tabs = document.querySelectorAll('[role="tab"]')
+  expect(tabs).toHaveLength(4)
+  expect(document.querySelectorAll('[role="tabpanel"]')).toHaveLength(1)
+  expect(document.querySelector('[role="tabpanel"]')?.textContent).toContain('当前负载')
+  expect(document.querySelector('[role="tabpanel"]')?.textContent).not.toContain('TX-Node Runtime')
+  expect(getMachineNodes).not.toHaveBeenCalled()
+  selectTab('节点')
+  await act(async () => { await Promise.resolve() })
+  expect(getMachineNodes).toHaveBeenCalledWith(15)
+  expect(document.querySelector('[role="tabpanel"]')?.textContent).toContain('该机器暂未绑定节点')
+  expect(document.querySelector('[role="tabpanel"]')?.textContent).toContain('绑定节点')
+  selectTab('概览')
+  expect(document.querySelector('[role="tabpanel"]')?.textContent).toContain('当前负载')
+})
+
+it('does not leave credentials visible after switching tabs or machines', async () => {
+  render({ id: 20, name: 'Tokyo', is_active: true, last_seen_at: Date.now(), load_status: {} })
+  selectTab('安全')
+  const show = Array.from(document.querySelectorAll<HTMLButtonElement>('.machine-ops-root button'))
+    .find(button => button.textContent?.includes('查看凭据'))
+  expect(show).toBeDefined()
+  await act(async () => { show!.click(); await Promise.resolve() })
+  expect(getMachineCredentials).toHaveBeenCalledWith(20)
+  expect(document.querySelector('.machine-ops-credentials')?.textContent).toContain('secret-1')
+  selectTab('概览')
+  expect(document.body.textContent).not.toContain('secret-1')
+  selectTab('安全')
+  expect(document.querySelector('.machine-ops-credentials')).toBeNull()
+  render({ id: 21, name: 'Osaka', is_active: true, last_seen_at: Date.now(), load_status: {} })
+  expect(document.body.textContent).not.toContain('secret-1')
+  expect(document.querySelector('[role="tab"][aria-selected="true"]')?.textContent).toContain('概览')
+})
+
+it('ignores a late credential response after leaving the security panel', async () => {
+  let resolveRequest: ((credentials: { token: string; install_command: string }) => void) | undefined
+  vi.mocked(getMachineCredentials).mockImplementationOnce(() => new Promise(resolve => { resolveRequest = resolve }))
+  render({ id: 22, name: 'SG', is_active: true, last_seen_at: Date.now(), load_status: {} })
+  selectTab('安全')
+  const show = Array.from(document.querySelectorAll<HTMLButtonElement>('.machine-ops-root button'))
+    .find(button => button.textContent?.includes('查看凭据'))!
+  act(() => show.click())
+  selectTab('概览')
+  await act(async () => { resolveRequest?.({ token: 'late-secret', install_command: 'late-command' }); await Promise.resolve() })
+  selectTab('安全')
+  expect(document.body.textContent).not.toContain('late-secret')
+  expect(document.querySelector('.machine-ops-credentials')).toBeNull()
 })

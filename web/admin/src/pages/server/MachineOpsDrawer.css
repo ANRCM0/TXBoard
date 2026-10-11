@@ -324,3 +324,25 @@
     grid-template-columns:1fr;
   }
 }
+
+/* Focused Machine operations workspace: keep actions available without a long scroll. */
+.machine-ops-tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;padding:8px 18px 0;background:var(--panel);border-bottom:1px solid var(--border)}
+.machine-ops-tab{display:inline-flex;min-width:0;min-height:44px;align-items:center;justify-content:center;gap:8px;padding:9px 12px;border:0;border-bottom:2px solid transparent;background:transparent;color:var(--muted);font-size:13px;font-weight:550;cursor:pointer}
+.machine-ops-tab:hover{color:var(--fg);background:var(--hover)}
+.machine-ops-tab.is-active{color:var(--primary);border-bottom-color:var(--primary);font-weight:650}
+.machine-ops-tab:focus-visible{outline:2px solid var(--primary);outline-offset:-3px;border-radius:5px}
+.machine-ops-panel{min-width:0}
+.machine-ops-title small,.machine-ops-context-main small,.machine-ops-card-head p,
+.machine-ops-network span,.machine-ops-overview-copy span,.machine-runtime-summary span,
+.machine-runtime-summary small{font-size:12px;line-height:1.5}
+.machine-ops-card-head h3{font-size:15px}
+.machine-ops-load-row>div,.machine-ops-load-row strong{font-size:12px}
+.machine-ops-sensitive-note,.machine-runtime-result{font-size:12px}
+.machine-runtime-result strong{font-size:11px}
+.machine-runtime-card .machine-ops-card-head{flex-wrap:wrap}
+.machine-runtime-card .machine-ops-card-head>.field{min-width:170px}
+.machine-ops-empty{display:flex;min-height:210px;flex-direction:column;align-items:center;justify-content:center;gap:9px;padding:24px;font-size:13px;text-align:center}
+.machine-ops-empty>svg{color:var(--muted)}
+.machine-ops-empty>strong{color:var(--fg);font-size:14px}
+.machine-ops-empty>p{margin:0 0 4px;line-height:1.6}
+@media(max-width:760px){.machine-ops-tabs{padding:6px 8px 0;gap:2px}.machine-ops-tab{gap:5px;padding:8px 4px;font-size:12px}}

@@ -231,7 +231,7 @@ export function MachinesPage() {
       <div className="server-page-toolbar">
         <div className="server-search">
           <Search size={15}/>
-          <input value={search} onChange={event => setSearch(event.target.value)} placeholder="搜索服务器名称、备注或 SID…" />
+          <input type="search" aria-label="搜索服务器名称、备注或 SID" value={search} onChange={event => setSearch(event.target.value)} placeholder="搜索服务器名称、备注或 SID…" />
         </div>
         <span className="toolbar-hint">高负载：CPU / 内存 ≥ 85% 或磁盘 ≥ 90%</span>
         <button className="button" onClick={() => query.refetch()} disabled={query.isFetching}>
