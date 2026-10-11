@@ -8,10 +8,12 @@
 .users-v4-toolbar>select:focus-visible,.users-v4-toolbar>.button:focus-visible {outline:2px solid var(--focus-ring);outline-offset:2px}
 .users-v4-list-meta {display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;color:var(--muted);font-size:12px;margin:0 0 10px}
 .users-v4-scroll-hint {display:none}
+.users-v4-table {min-width:1060px}
+.user-table-card.users-v4-surface .data-table th,.user-table-card.users-v4-surface .data-table td {padding:10px 12px}
 .users-v4-table .user-identity {min-width:165px;max-width:290px;gap:4px}
 .users-v4-table .user-detail-link {overflow-wrap:anywhere}
 .users-v4-identity-meta {display:flex;gap:4px 9px;align-items:center;flex-wrap:wrap;font-size:12px;line-height:1.4;color:var(--muted)}
-.users-v4-table .data-table td,.user-table-card.users-v4-surface .data-table td {vertical-align:middle}
+.user-table-card.users-v4-surface .data-table td {vertical-align:middle}
 .users-v4-table .user-badges {margin-top:0}
 .users-v4-table .user-badges .admin-v2-role-text {font-size:12px}
 .users-v4-table .actions {gap:3px;flex-wrap:nowrap}
