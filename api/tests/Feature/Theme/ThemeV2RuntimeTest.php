@@ -136,6 +136,26 @@ final class ThemeV2RuntimeTest extends TestCase
         $this->assertDirectoryDoesNotExist(base_path('storage/theme/'.self::NAME));
     }
 
+    public function test_tampered_rollback_snapshot_cannot_replace_active_theme(): void
+    {
+        $runtime = app(ThemeV2Runtime::class);
+        $themes = app(ThemeService::class);
+        $runtime->install($this->uploadedPackage('1.0.0', 'console.log("safe")'));
+        $themes->switch(self::NAME);
+        $runtime->install($this->uploadedPackage('1.1.0', 'console.log("current")'));
+        $priorBundle = base_path('storage/theme/.rollback/'.self::NAME.'/dist/index.js');
+        File::put($priorBundle, 'console.log("tampered")');
+        try {
+            $runtime->rollback(self::NAME, true);
+            $this->fail('Tampered previous version must not become active');
+        } catch (\InvalidArgumentException $e) {
+            $this->assertStringContainsString('integrity mismatch', $e->getMessage());
+        }
+        $this->assertSame('1.1.0', $runtime->manifest(self::NAME)['version']);
+        $this->assertSame('console.log("current")',
+            File::get(public_path('theme/'.self::NAME.'/dist/index.js')));
+    }
+
     public function test_incompatible_rollback_refuses_and_retains_current_theme(): void
     {
         $runtime = app(ThemeV2Runtime::class);
