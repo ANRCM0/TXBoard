@@ -213,3 +213,13 @@ export function createTXBoardClient(options: TXBoardClientOptions = {}) {
 }
 
 export type TXBoardClient = ReturnType<typeof createTXBoardClient>
+
+// Luma theme SDK methods (GW-217)
+export type { LumaThemeConfig, LumaFeatureFlag } from './luma.js'
+export {
+  extractLumaTheme,
+  discoverLumaTheme,
+  loadLumaTheme,
+  createLumaFeatureFlag,
+  supportsLumaFeature,
+} from './luma.js'
