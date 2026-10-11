@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { FileUp, Trash2, UploadCloud } from 'lucide-react'
+import { Boxes, FileUp, Trash2, UploadCloud } from 'lucide-react'
 import { useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -16,6 +16,9 @@ import {
 } from '../../api/plugin'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { requestConfirm } from '../../components/ui/ConfirmDialog'
+import { EmptyState } from '../../components/ui/EmptyState'
+import { QueryFeedback } from '../../components/ui/QueryFeedback'
+import { StatusText } from '../../components/ui/StatusText'
 
 export function PluginsPage() {
   const qc = useQueryClient()
@@ -86,13 +89,13 @@ export function PluginsPage() {
     />
 
     <div className="toolbar plugin-toolbar">
-      <input className="search-input" placeholder="搜索插件…" value={search} onChange={e => setSearch(e.target.value)}/>
-      <select value={type} onChange={e => setType(e.target.value)}>
+      <input aria-label="搜索插件" className="search-input" placeholder="搜索插件…" value={search} onChange={e => setSearch(e.target.value)}/>
+      <select aria-label="插件类型" value={type} onChange={e => setType(e.target.value)}>
         <option value="all">全部类型</option>
         <option value="feature">功能插件</option>
         <option value="payment">支付插件</option>
       </select>
-      <select value={status} onChange={e => setStatus(e.target.value)}>
+      <select aria-label="插件状态" value={status} onChange={e => setStatus(e.target.value)}>
         <option value="all">全部状态</option>
         <option value="installed">已安装</option>
         <option value="available">可安装</option>
@@ -100,62 +103,61 @@ export function PluginsPage() {
       </select>
     </div>
 
-    {query.isLoading ? <div className="card">加载插件…</div> : <div className="plugin-grid">
-      {rows.map((plugin: PluginItem) => <article className="plugin-card" key={plugin.code}>
-        <div className="plugin-card-head">
-          <div className="plugin-icon">{(plugin.name || plugin.code).slice(0, 1).toUpperCase()}</div>
-          <div className="plugin-card-title">
+    {query.isLoading ? <QueryFeedback loading /> : query.isError ? (
+      <QueryFeedback error onRetry={() => void query.refetch()} />
+    ) : !rows.length ? (
+      <EmptyState className="admin-v2-empty"
+        icon={<Boxes size={23}/>}
+        title={query.data?.length ? '没有符合条件的插件' : '还没有插件'}
+        description={query.data?.length ? '调整搜索或筛选条件，或者清除筛选。' : '可以上传 ZIP 插件包开始管理。'}
+        action={query.data?.length ? <button className="button" type="button" onClick={() => {
+          setSearch(''); setType('all'); setStatus('all')
+        }}>清除筛选</button> : <button className="button primary" type="button" onClick={() => inputRef.current?.click()}>上传插件</button>}
+      />
+    ) : <div className="admin-v2-plugin-list" role="list" aria-label="插件列表">
+      {rows.map((plugin: PluginItem) => <article className="admin-v2-plugin-row" key={plugin.code} role="listitem">
+        <div className="admin-v2-plugin-identity">
+          <div className="admin-v2-plugin-icon" aria-hidden="true">{(plugin.name || plugin.code).slice(0,1).toUpperCase()}</div>
+          <div className="admin-v2-plugin-copy">
             <h3>{plugin.name || plugin.code}</h3>
-            <span>v{plugin.version || 'unknown'}{plugin.is_protected ? ' · Core' : ''}</span>
+            <div className="admin-v2-plugin-meta">
+              <span>v{plugin.version || 'unknown'}</span>
+              <span>{plugin.type === 'payment' ? '支付插件' : '功能插件'}</span>
+              {plugin.is_protected ? <span>Core</span> : null}
+            </div>
+            <p>{plugin.description || '暂无描述'}</p>
           </div>
-          {plugin.need_upgrade && <span className="plugin-upgrade-badge">可升级</span>}
         </div>
-
-        <p>{plugin.description || '暂无描述'}</p>
-
-        <div className="plugin-meta">
-          <span>{plugin.type === 'payment' ? '支付' : '功能'}</span>
-          <span>{plugin.is_installed ? '已安装' : '未安装'}</span>
-          <span>{plugin.is_enabled ? '已启用' : '未启用'}</span>
+        <div className="admin-v2-plugin-state">
+          {plugin.is_installed ? <StatusText tone={plugin.is_enabled ? 'success' : 'neutral'}>
+            {plugin.is_enabled ? '已启用' : '已安装 · 未启用'}
+          </StatusText> : <StatusText>未安装</StatusText>}
+          {plugin.need_upgrade ? <span className="plugin-upgrade-badge">可升级</span> : null}
         </div>
-
-        <div className="card-actions plugin-card-actions">
+        <div className="admin-v2-plugin-actions">
           <Link className="button" to={`/plugins/${plugin.code}`}>详情</Link>
 
           {!plugin.is_installed ? <button
-            className="button primary"
-            disabled={action.isPending}
-            onClick={() => action.mutate({ kind: 'install', code: plugin.code })}
+            type="button" className="button primary" disabled={action.isPending}
+            onClick={() => action.mutate({kind:'install',code:plugin.code})}
           >安装</button> : <>
-            {plugin.need_upgrade && <button
-              className="button"
-              disabled={action.isPending}
-              onClick={() => action.mutate({ kind: 'upgrade', code: plugin.code })}
-            ><FileUp size={15}/>升级</button>}
-
-            <button
-              className="button"
-              disabled={action.isPending}
-              onClick={() => action.mutate({ kind: plugin.is_enabled ? 'disable' : 'enable', code: plugin.code })}
+            {plugin.need_upgrade ? <button type="button" className="button" disabled={action.isPending}
+              onClick={() => action.mutate({kind:'upgrade',code:plugin.code})}><FileUp size={15}/>升级</button> : null}
+            <button type="button" className="button" disabled={action.isPending}
+              onClick={() => action.mutate({kind:plugin.is_enabled ? 'disable' : 'enable',code:plugin.code})}
             >{plugin.is_enabled ? '禁用' : '启用'}</button>
-
-            {!plugin.is_enabled && <button
-              className="button danger"
-              disabled={action.isPending}
-              onClick={() => requestConfirm({ title: '卸载插件', message: `确认卸载插件「${plugin.name || plugin.code}」？卸载后配置将保留。`, danger: true, confirmLabel: '卸载', action: () => action.mutate({ kind: 'uninstall', code: plugin.code }) })}
-            >卸载</button>}
+            {!plugin.is_enabled ? <button type="button" className="button danger" disabled={action.isPending}
+              onClick={() => requestConfirm({title:'卸载插件',message:`确认卸载插件「${plugin.name || plugin.code}」？卸载后配置将保留。`,danger:true,confirmLabel:'卸载',action:()=>action.mutate({kind:'uninstall',code:plugin.code})})}
+            >卸载</button> : null}
           </>}
-
-          {plugin.can_be_deleted && !plugin.is_installed && <button
-            className="icon-button danger"
-            title="删除插件文件"
-            disabled={action.isPending}
-            onClick={() => requestConfirm({ title: '删除插件目录', message: '确认永久删除该插件目录？该操作不可恢复。', danger: true, confirmLabel: '删除', action: () => action.mutate({ kind: 'delete', code: plugin.code }) })}
-          ><Trash2 size={15}/></button>}
+          {plugin.can_be_deleted && !plugin.is_installed ? <button
+            type="button" className="icon-button danger" aria-label={`删除插件 ${plugin.name || plugin.code}`}
+            title="删除插件文件" disabled={action.isPending}
+            onClick={() => requestConfirm({title:'删除插件目录',message:'确认永久删除该插件目录？该操作不可恢复。',danger:true,confirmLabel:'删除',action:()=>action.mutate({kind:'delete',code:plugin.code})})}
+          ><Trash2 size={15}/></button> : null}
         </div>
       </article>)}
-
-      {!rows.length && <div className="card empty-state"><strong>没有符合条件的插件</strong></div>}
     </div>}
+
   </>
 }
