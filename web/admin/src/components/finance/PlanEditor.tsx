@@ -1,5 +1,5 @@
 import { useMutation } from '@tanstack/react-query'
-import { useEffect, useId, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState, type FormEvent } from 'react'
 import { ChevronDown, ChevronUp, Save, WandSparkles } from 'lucide-react'
 import { toast } from 'sonner'
 import { savePlan, type PlanItem, type PlanSavePayload } from '../../api/finance'
@@ -106,7 +106,7 @@ export function PlanEditor({
     toast.success('已根据月付价格生成折扣价，请检查后保存')
   }
 
-  function submit(event: React.FormEvent<HTMLFormElement>) {
+  function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (mutation.isPending) return
     const failures = validatePlanDraft(draft)
@@ -125,8 +125,9 @@ export function PlanEditor({
     mutation.mutate(planPayload(draft, plan))
   }
 
+  function errorId(key: string) { return formId + '-error-' + key.replace('.', '-') }
   function errorFor(key: string) {
-    return errors[key] ? <small className="plan-v4-error" role="alert">{errors[key]}</small> : null
+    return errors[key] ? <small id={errorId(key)} className="plan-v4-error" role="alert">{errors[key]}</small> : null
   }
   function priceField(key: PlanPeriod, label: string) {
     const error = Boolean(errors['prices.'+key])
@@ -136,6 +137,7 @@ export function PlanEditor({
         <span aria-hidden="true">¥</span>
         <input type="number" name={'price-'+key} min="0.01" step="0.01" inputMode="decimal"
           value={draft.prices[key]} aria-invalid={error}
+          aria-describedby={error ? errorId('prices.' + key) : undefined}
           onChange={event => patchPrice(key,event.target.value)} placeholder="不提供此周期…"/>
       </div>
       {errorFor('prices.'+key)}
@@ -167,12 +169,14 @@ export function PlanEditor({
           <label className="field plan-v4-full">
             <span>套餐名称 *</span>
             <input name="plan-name" autoComplete="off" value={draft.name} aria-invalid={Boolean(errors.name)}
+              aria-describedby={errors.name ? errorId('name') : undefined}
               onChange={event => patch('name',event.target.value)} placeholder="例如：Pro 100G…"/>
             {errorFor('name')}
           </label>
           <label className="field">
             <span>权限组</span>
             <select name="group_id" value={draft.group_id} aria-invalid={Boolean(errors.group_id)}
+              aria-describedby={errors.group_id ? errorId('group_id') : undefined}
               onChange={event => patch('group_id', event.target.value)}>
               <option value="">不指定</option>
               {groupUnknown ? <option value={draft.group_id}>现有权限组 #{draft.group_id}</option> : null}
@@ -184,6 +188,7 @@ export function PlanEditor({
             <span>流量配额（GB）*</span>
             <input name="transfer_enable" type="number" min="1" step="1" inputMode="numeric"
               value={draft.transfer_enable} aria-invalid={Boolean(errors.transfer_enable)}
+              aria-describedby={errors.transfer_enable ? errorId('transfer_enable') : undefined}
               onChange={event => patch('transfer_enable',event.target.value)}/>
             {errorFor('transfer_enable')}
           </label>
@@ -231,21 +236,24 @@ export function PlanEditor({
           <label className="field">
             <span>限速（Mbps）</span>
             <input name="speed_limit" type="number" min="0" step="any" inputMode="decimal"
-              aria-invalid={Boolean(errors.speed_limit)} value={draft.speed_limit}
+              aria-invalid={Boolean(errors.speed_limit)} aria-describedby={errors.speed_limit ? errorId('speed_limit') : undefined}
+              value={draft.speed_limit}
               onChange={event => patch('speed_limit',event.target.value)} placeholder="不限制…"/>
             {errorFor('speed_limit')}
           </label>
           <label className="field">
             <span>设备限制</span>
             <input name="device_limit" type="number" min="0" step="1" inputMode="numeric"
-              aria-invalid={Boolean(errors.device_limit)} value={draft.device_limit}
+              aria-invalid={Boolean(errors.device_limit)} aria-describedby={errors.device_limit ? errorId('device_limit') : undefined}
+              value={draft.device_limit}
               onChange={event => patch('device_limit',event.target.value)} placeholder="不限制…"/>
             {errorFor('device_limit')}
           </label>
           <label className="field">
             <span>人数上限</span>
             <input name="capacity_limit" type="number" min="0" step="1" inputMode="numeric"
-              aria-invalid={Boolean(errors.capacity_limit)} value={draft.capacity_limit}
+              aria-invalid={Boolean(errors.capacity_limit)} aria-describedby={errors.capacity_limit ? errorId('capacity_limit') : undefined}
+              value={draft.capacity_limit}
               onChange={event => patch('capacity_limit',event.target.value)} placeholder="不限制…"/>
             {errorFor('capacity_limit')}
           </label>
@@ -253,6 +261,7 @@ export function PlanEditor({
             <span>流量重置方式</span>
             <select name="reset_traffic_method" value={draft.reset_traffic_method}
               aria-invalid={Boolean(errors.reset_traffic_method)}
+              aria-describedby={errors.reset_traffic_method ? errorId('reset_traffic_method') : undefined}
               onChange={event => patch('reset_traffic_method',event.target.value)}>
               <option value="">跟随系统设置</option>
               {unknownReset ? <option value={draft.reset_traffic_method}>现有设置 #{draft.reset_traffic_method}</option> : null}
