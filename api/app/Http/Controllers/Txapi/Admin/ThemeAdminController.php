@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Txapi\Admin;
 
 use App\Core\Http\TxapiResponse;
 use App\Services\ThemeService;
+use App\Services\Theme\ThemeV2Runtime;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -52,6 +53,38 @@ final class ThemeAdminController
         } catch (\Throwable $e) {
             return TxapiResponse::error($request, 'THEME_PACKAGE_REJECTED',
                 'Theme package rejected or installation failed', 422);
+        }
+        return TxapiResponse::success($request, ['ok' => true])
+            ->header('Cache-Control', 'no-store');
+    }
+
+    public function uploadV2(Request $request, ThemeV2Runtime $runtime): JsonResponse
+    {
+        $data = $request->validate([
+            'file' => ['required', 'file', 'mimes:zip', 'max:10240'],
+        ]);
+        try {
+            $name = $runtime->install($data['file']);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Theme v2 upload rejected', [
+                'error_type' => get_class($e),
+            ]);
+            return TxapiResponse::error($request, 'THEME_PACKAGE_REJECTED',
+                'Theme v2 archive invalid or runtime not configured', 422);
+        }
+        return TxapiResponse::success($request, ['ok' => true, 'theme' => $name])
+            ->header('Cache-Control', 'no-store');
+    }
+
+    public function rollbackV2(Request $request, ThemeV2Runtime $runtime, ThemeService $themes): JsonResponse
+    {
+        $name = $this->name($request);
+        if (!$runtime->isInstalled($name)) return $this->missing($request);
+        try {
+            $runtime->rollback($name, $themes->getActiveTheme() === $name);
+        } catch (\Throwable $e) {
+            return TxapiResponse::error($request, 'THEME_ROLLBACK_FAILED',
+                'Previous theme version unavailable or incompatible', 409);
         }
         return TxapiResponse::success($request, ['ok' => true])
             ->header('Cache-Control', 'no-store');
