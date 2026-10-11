@@ -2,6 +2,8 @@ import { KeyRound, LoaderCircle, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { generateSecret, type ProtocolFieldGenerator, type ProtocolFormCondition, type ProtocolFormField } from '../../api/server'
+import { NodePresetPicker } from './NodePresetPicker'
+import { presetForField, selectedPresetOptions } from './nodePresetOptions'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
@@ -202,12 +204,14 @@ export function ProtocolSchemaForm({
   onChange,
   generatorContext = {},
   reportJsonValidity,
+  protocolType = '',
 }: {
   fields: ProtocolFormField[]
   value: Record<string, unknown>
   onChange: (path: string, value: unknown) => void
   generatorContext?: Record<string, unknown>
   reportJsonValidity?: JsonValidityReporter
+  protocolType?: string
 }) {
   return <div className="node-form-grid">
     {fields.filter((field) => isVisible(field, value)).map((field) => {
@@ -261,19 +265,33 @@ export function ProtocolSchemaForm({
         </label>
       }
 
+      const preset = presetForField(protocolType, field)
+      if (preset) {
+        const available = selectedPresetOptions(preset.options, current)
+        return <div key={field.key} className={'field node-select-field' + className}>
+          <span>{field.label}</span>
+          <NodePresetPicker
+            label={field.label}
+            value={scalarValue(current)}
+            options={available}
+            allowCustom={preset.allowCustom}
+            onChange={(next) => {
+              const option = field.type === 'select'
+                ? field.options?.find(item => String(item.value) === next)
+                : undefined
+              onChange(field.key, option ? option.value : next)
+            }}
+          />
+        </div>
+      }
+
       if (field.type === 'select') {
         return <label key={field.key} className={'field' + className}>
           <span>{field.label}</span>
-          <select
-            value={scalarValue(current)}
-            onChange={(event) => {
-              const option = field.options?.find((item) => String(item.value) === event.target.value)
-              onChange(field.key, option ? option.value : event.target.value)
-            }}
-          >
-            {(field.options || []).map((option) => (
-              <option key={String(option.value)} value={String(option.value)}>{option.label}</option>
-            ))}
+          <select value={scalarValue(current)}
+            onChange={(event) => onChange(field.key, event.target.value)}>
+            {(field.options || []).map(option => <option key={String(option.value)}
+              value={String(option.value)}>{option.label}</option>)}
           </select>
         </label>
       }
