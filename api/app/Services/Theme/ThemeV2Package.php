@@ -61,11 +61,20 @@ final class ThemeV2Package
             ) {
                 throw new InvalidArgumentException('Theme v2 package contains forbidden executable or secret file');
             }
+            // No hidden web-server directives (.htaccess/.user.ini), hidden
+            // executables or dotfiles may be published as theme assets.
+            if (preg_match('~(?:\\A|/)\\.[^/]+~', $relative)) {
+                throw new InvalidArgumentException('Theme v2 contains a forbidden hidden file');
+            }
             if (
                 $relative !== 'README.md' && $relative !== 'theme.config.schema.json'
                 && !preg_match('~\A(?:dist|assets)/[A-Za-z0-9._/-]+\z~D', $relative)
             ) {
                 throw new InvalidArgumentException('Theme v2 package contains a file outside the permitted directories');
+            }
+            if ((str_starts_with($relative, 'dist/') || str_starts_with($relative, 'assets/'))
+                && !preg_match('/\\.(?:js|mjs|css|json|map|svg|png|jpe?g|webp|avif|gif|ico|woff2?|ttf|otf|txt|html)\\z/iD', $relative)) {
+                throw new InvalidArgumentException('Theme v2 contains an unsupported static asset type');
             }
             if (isset($files[$relative])) {
                 throw new InvalidArgumentException('Duplicate Theme v2 asset path');
