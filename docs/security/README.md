@@ -11,6 +11,18 @@
 - 对认证、Webhook、Node、Agent、插件管理加限流/重放保护；使用负向测试覆盖跨用户资源、管理员与普通 Token 混用、旧路由旁路、并发结算、ZIP 攻击。
 - PHP/Composer、JS/npm 依赖安全更新需测试与发布审批；发现高风险权限/资金问题应阻断 release。
 
+## 管理面板安全路径恢复
+
+面板采用数据库设置 `secure_path`（不是 `.env` 中的独立环境变量）。管理员忘记安全路径时，可在具有 Docker/服务器管理权限的终端使用安装工具 `sudo txboard admin-reset-path`，或使用部署中的 Artisan 命令：
+
+```bash
+docker compose exec -T txboard php artisan txboard:admin-path-reset --no-interaction
+```
+
+该操作生成新的 128-bit 随机安全路径，写入 `tx_settings` 并通过设置服务失效 `admin_settings` 缓存。新路径在运行时由 SPA 管理入口及管理员 TXAPI 中间件使用，旧路径随即失效；不会更改管理员密码、用户凭据、订阅密钥或数据库结构。管理工具只向交互终端打印新路径，勿将包含路径的输出保存到共享日志或截图。必须先部署包含该 Artisan 命令的 TXBoard 镜像；老镜像需要更新后才能使用。
+
+安全路径不是管理员身份认证机制，仍必须保留 Bearer、RBAC 与操作审计。路径轮换后需重新打开管理员页面并更新书签。
+
 ## 反向代理信任边界（Caddy）
 
 Caddy 的可信代理默认仅允许 `127.0.0.1/8 ::1/128`，不再无条件信任 `0.0.0.0/0 ::/0`。使用 Docker Compose 时通过 `.env` 中 `TXBOARD_TRUSTED_PROXY_CIDRS` 配置上游可信 OpenResty/1Panel 代理的确切 IP/CIDR（多个以空格分隔）。不要直接填写全网或笼统地信任整个公网。修改后重建或重启 TXBoard 容器加载 Caddy 配置。

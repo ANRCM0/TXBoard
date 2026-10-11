@@ -16,6 +16,7 @@ class TxboardNamespaceTest extends TestCase
         foreach ([
             'txboard:install',
             'txboard:install-status',
+            'txboard:admin-path-reset',
             'txboard:update',
             'txboard:rollback',
             'txboard:statistics',
