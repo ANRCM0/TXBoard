@@ -17,7 +17,7 @@
 .nodes-v3-machine-filter select{background:transparent;border:0;outline:0;max-width:190px;min-width:130px;font-size:13px;color:var(--fg);cursor:pointer}
 .nodes-v3-refresh{margin-left:auto}
 .nodes-v3-list-meta{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 9px;color:var(--muted);font-size:12px}
-.nodes-v3-table.is-rows{overflow:hidden}
+.server-table-card.admin-v2-list-surface.nodes-v3-table.is-rows{overflow:hidden}
 .server-table-card.admin-v2-list-surface.nodes-v3-table.is-rows .table-wrap{
   overflow-x:auto;overflow-y:auto;max-width:100%;overscroll-behavior-x:contain
 }

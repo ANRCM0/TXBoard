@@ -149,7 +149,7 @@ export function NodesPage() {
     />
 
     <div className="nodes-v3-toolbar" role="search" aria-label="筛选节点">
-      <label className="nodes-v3-search">
+      <div className="nodes-v3-search">
         <Search size={17} aria-hidden="true"/>
         <span className="sr-only">按节点名称、协议、地址或 ID 搜索</span>
         <input aria-label="搜索节点" value={search} onChange={event => setSearch(event.target.value)}
@@ -158,7 +158,7 @@ export function NodesPage() {
           aria-label="清空节点搜索词" onClick={() => setSearch('')}>
           <X size={15} aria-hidden="true"/>
         </button> : null}
-      </label>
+      </div>
       <label className="nodes-v3-machine-filter">
         <span className="sr-only">按运行机器筛选节点</span>
         <Server size={15} aria-hidden="true"/>
