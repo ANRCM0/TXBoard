@@ -5,7 +5,7 @@ import {
   Plug,
   X,
 } from 'lucide-react'
-import { useEffect, useMemo, useState, type KeyboardEvent } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import { getModuleRegistry } from '../../api/module'
 import { coreNavigationGroups } from '../../navigation/core'
@@ -73,16 +73,6 @@ export function Sidebar({ open, onClose, collapsed, onExpand }: SidebarProps) {
     setOpenGroups(state => ({ ...state, [key]: !(state[key] ?? true) }))
   }
 
-  function preventSpaceScroll(event: KeyboardEvent<HTMLButtonElement>) {
-    if (event.key === ' ') event.preventDefault()
-  }
-
-  function toggleGroupWithSpace(event: KeyboardEvent<HTMLButtonElement>, key: string) {
-    if (event.key !== ' ') return
-    event.preventDefault()
-    toggleGroup(key)
-  }
-
   function warmRoute(path: string) {
     void preloadAdminRoute(path)
   }
@@ -128,8 +118,6 @@ export function Sidebar({ open, onClose, collapsed, onExpand }: SidebarProps) {
                   aria-controls={`admin-nav-${group.key}`}
                   aria-expanded={expanded}
                   onClick={() => collapsed && !open ? onExpand() : toggleGroup(group.key)}
-                  onKeyDown={preventSpaceScroll}
-                  onKeyUp={event => toggleGroupWithSpace(event, group.key)}
                 >
                   <GroupIcon size={18} />
                   <span>{group.title}</span>

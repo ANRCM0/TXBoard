@@ -97,6 +97,15 @@ describe('admin sidebar group state', () => {
     expect(JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}')).not.toHaveProperty('retired_group')
   })
 
+  it('does not toggle twice on Space keyup; activation uses native button click', () => {
+    mountSidebar()
+    const button = host.querySelector<HTMLButtonElement>('[aria-controls="admin-nav-system"]')!
+    act(() => button.dispatchEvent(new KeyboardEvent('keyup',{key:' ',bubbles:true,cancelable:true})))
+    expect(expanded('system')).toBe('true')
+    act(() => button.click())
+    expect(expanded('system')).toBe('false')
+  })
+
   it('falls back to expanded groups when stored JSON is malformed', () => {
     localStorage.setItem(STORAGE_KEY, '{broken')
     mountSidebar()
