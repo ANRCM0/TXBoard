@@ -9,7 +9,7 @@ import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 
 const ROOT = new URL('..', import.meta.url).pathname
-const TEMPLATES = ['vue-theme', 'react-theme']
+const TEMPLATES = ['vue-theme', 'react-theme', 'next-theme']
 
 const FORBIDDEN_PATTERNS = [
   // Any direct upstream/Laravel coupling is a hard failure.
@@ -67,13 +67,54 @@ for (const template of TEMPLATES) {
 // the security semantics is enforced here structurally).
 const EXPECTED_EXPORTS = ['createTXBoardClient']
 for (const template of TEMPLATES) {
-  const apiFile = join(ROOT, 'examples', template, 'src', 'api.ts')
+  // The Next SSR template keeps SDK access in lib/server.ts ('server-only');
+  // SPA templates keep it in src/api.ts. Both are the single SDK entry point.
+  const apiCandidates = ['src/api.ts', 'src/lib/server.ts']
+  const apiFile = apiCandidates
+    .map(p => join(ROOT, 'examples', template, p))
+    .find(p => { try { return !!readFileSync(p, 'utf8') } catch { return false } })
+  if (!apiFile) {
+    console.error(`FAIL examples/${template}: no SDK entry file (src/api.ts or src/lib/server.ts)`)
+    failed++
+    continue
+  }
   const text = readFileSync(apiFile, 'utf8')
   for (const name of EXPECTED_EXPORTS) {
     if (!text.includes(name)) {
       console.error(`FAIL ${apiFile}: expected ${name}`)
       failed++
     }
+  }
+}
+
+// SSR-specific guardrails (GW-506): the Next template must never expose the
+// session token to the browser and must never use a module-level SDK client.
+{
+  const serverFile = join(ROOT, 'examples', 'next-theme', 'src', 'lib', 'server.ts')
+  const text = readFileSync(serverFile, 'utf8')
+  if (!/'server-only'/.test(text)) {
+    console.error(`FAIL ${serverFile}: must be marked 'server-only'`)
+    failed++
+  }
+  if (!/cookies\(\)\.get\(SESSION_COOKIE\)/.test(text) && !/cookies\(\)\.get\(SESSION_COOKIE\)\?\.value/.test(text)) {
+    console.error(`FAIL ${serverFile}: token must be read per-request from cookies()`)
+    failed++
+  }
+  // No module-level createTXBoardClient() call: every client must be
+  // created inside a function (request scope).
+  if (/^const \w+ = createTXBoardClient\(/m.test(text)) {
+    console.error(`FAIL ${serverFile}: module-level SDK singleton is forbidden (cross-request pollution)`)
+    failed++
+  }
+  const cookieFile = join(ROOT, 'examples', 'next-theme', 'src', 'app', 'login', 'actions.ts')
+  const actionText = readFileSync(cookieFile, 'utf8')
+  if (!/httpOnly:\s*true/.test(actionText)) {
+    console.error(`FAIL ${cookieFile}: session cookie must be httpOnly`)
+    failed++
+  }
+  if (/localStorage/.test(actionText)) {
+    console.error(`FAIL ${cookieFile}: token must never touch localStorage in the SSR theme`)
+    failed++
   }
 }
 
