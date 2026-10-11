@@ -207,6 +207,21 @@ final class ThemeV2Package
             if (isset($config['schema']) && !isset($files['theme.config.schema.json'])) {
                 throw new InvalidArgumentException('Missing theme config schema file');
             }
+            if (array_key_exists('defaults', $config)) {
+                $defaults = $config['defaults'];
+                if (!is_array($defaults) || (array_is_list($defaults) && $defaults !== [])
+                    || count($defaults) > 100) {
+                    throw new InvalidArgumentException('Theme config defaults must be a bounded object');
+                }
+                foreach ($defaults as $field => $value) {
+                    if (!is_string($field) ||
+                        !preg_match('/\A[A-Za-z][A-Za-z0-9_]{0,79}\z/D', $field) ||
+                        !(is_scalar($value) || $value === null) ||
+                        (is_string($value) && strlen($value) > 4096)) {
+                        throw new InvalidArgumentException('Invalid theme configuration default');
+                    }
+                }
+            }
             if (isset($config['public'])) {
                 if (!is_array($config['public']) || !array_is_list($config['public'])
                     || count($config['public']) > 100) {
@@ -223,6 +238,28 @@ final class ThemeV2Package
         // Manifest claims are metadata, never permissions or a public-config
         // allowlist. A separate server-owned policy must decide disclosure.
         return $manifest;
+    }
+
+    /**
+     * Recheck installed theme compatibility against server-owned version
+     * metadata on activation and rendering. Package hints are never grants.
+     */
+    public function assertDeployedCompatibility(
+        array $manifest,
+        string $txboardVersion,
+        string $gatewayVersion,
+        string $sdkVersion
+    ): void {
+        $this->compatible($txboardVersion, $manifest['engines']['txboard'] ?? null, 'TXBoard');
+        $this->compatible($gatewayVersion, $manifest['engines']['gateway'] ?? null, 'Gateway');
+        $this->compatible($sdkVersion, $manifest['gateway']['sdk']['version'] ?? null, 'SDK');
+        if (($manifest['format'] ?? null) !== 2 ||
+            ($manifest['entry']['type'] ?? null) !== 'spa' ||
+            ($manifest['gateway']['contract'] ?? null) !== '1.x' ||
+            ($manifest['security']['csp'] ?? null) !== 'strict' ||
+            ($manifest['security']['remoteCode'] ?? null) !== false) {
+            throw new InvalidArgumentException('Incompatible installed Theme v2 manifest');
+        }
     }
 
     public function manifestEntry(ZipArchive $zip): string
