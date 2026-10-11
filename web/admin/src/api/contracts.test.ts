@@ -659,8 +659,28 @@ describe('native administrator user reads', () => {
     expect(seen[0].baseURL).toBe('/txapi')
     expect(seen[0].params).toEqual({
       page: 2, per_page: 20, email: 'test', plan_id: 3, banned: 0,
-      sort: 'total_used', descending: true,
+      sort: 'total_used', descending: 1,
     })
+  })
+
+  it('serializes both default descending and ascending sorts as Laravel-compatible 1/0', async () => {
+    setAdminSecurePath('people-admin')
+    responder = () => ({
+      data: {
+        data: [{ id: 7, email: 'test@example.test' }],
+        meta: { page: 1, per_page: 10, total: 1, last_page: 1 },
+        request_id: 'user-sort-boolean-query',
+      },
+    })
+
+    await getUsers({ current: 1, pageSize: 10, sort: [{ id: 'id', desc: true }] })
+    await getUsers({ current: 1, pageSize: 10, sort: [{ id: 'id', desc: false }] })
+
+    expect(seen[0].params).toMatchObject({ sort: 'id', descending: 1 })
+    expect(seen[1].params).toMatchObject({ sort: 'id', descending: 0 })
+    expect(nativeApiClient.getUri(seen[0])).toContain('descending=1')
+    expect(nativeApiClient.getUri(seen[1])).toContain('descending=0')
+    expect(nativeApiClient.getUri(seen[0])).not.toContain('descending=true')
   })
 
   it('reads private subscription only when the operator explicitly requests it', async () => {
