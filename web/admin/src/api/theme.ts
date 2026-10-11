@@ -31,6 +31,9 @@ export type ThemeItem = {
   configs?: ThemeConfigField[]
   can_delete?: boolean
   is_system?: boolean
+  format?: number
+  runtime?: string
+  can_rollback?: boolean
   [key: string]: unknown
 }
 
@@ -100,6 +103,20 @@ export async function uploadTheme(file: File) {
   form.append('file', file)
   return unwrapNative(nativeApiClient.post<NativeApiEnvelope<{ ok: boolean }>>(
     base() + '/upload', form, { headers: { 'Content-Type': 'multipart/form-data' } },
+  ))
+}
+
+export async function uploadThemeV2(file: File) {
+  const form = new FormData()
+  form.append('file', file)
+  return unwrapNative(nativeApiClient.post<NativeApiEnvelope<{ ok: boolean; theme: string }>>(
+    base() + '/v2/upload', form, { headers: { 'Content-Type': 'multipart/form-data' } },
+  ))
+}
+
+export async function rollbackThemeV2(theme: string) {
+  return unwrapNative(nativeApiClient.post<NativeApiEnvelope<{ ok: boolean }>>(
+    themePath(theme) + '/rollback', {},
   ))
 }
 
