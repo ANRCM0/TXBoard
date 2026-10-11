@@ -23,12 +23,12 @@
   box-shadow:-24px 0 64px rgba(15,23,42,.18);
 }
 .machine-ops-head{
-  min-height:72px;
+  min-height:64px;
   display:flex;
   align-items:center;
   justify-content:space-between;
   gap:16px;
-  padding:14px 18px;
+  padding:11px 18px;
   border-bottom:1px solid var(--border);
   background:var(--panel);
 }
@@ -58,7 +58,8 @@
   overflow:hidden;
   text-overflow:ellipsis;
   white-space:nowrap;
-  font-size:16px;
+  font-size:17px;
+  line-height:1.35;
 }
 .machine-ops-title small{color:var(--muted);font-size:12px}
 .machine-ops-head-actions{display:flex;align-items:center;gap:7px;flex:none}
@@ -67,15 +68,15 @@
   flex:1;
   overflow-y:auto;
   overscroll-behavior:contain;
-  padding:16px;
+  padding:14px;
 }
 .machine-ops-stack{display:flex;flex-direction:column;gap:12px}
 .machine-ops-context{
   display:flex;
   align-items:center;
   justify-content:space-between;
-  gap:16px;
-  padding:13px 14px;
+  gap:12px;
+  padding:10px 13px;
   border:1px solid var(--border);
   border-radius:10px;
   background:var(--panel);
@@ -102,7 +103,7 @@
   gap:12px;
 }
 .machine-ops-card{
-  padding:14px;
+  padding:12px 13px;
   border:1px solid var(--border);
   border-radius:10px;
   background:var(--panel);
@@ -113,12 +114,12 @@
   align-items:flex-start;
   justify-content:space-between;
   gap:12px;
-  margin-bottom:12px;
+  margin-bottom:10px;
 }
 .machine-ops-card-head>div{min-width:0}
 .machine-ops-card-head h3{margin:0;font-size:15px}
 .machine-ops-card-head p{margin:3px 0 0;color:var(--muted);font-size:12px;line-height:1.5}
-.machine-ops-load-list{display:flex;flex-direction:column;gap:12px}
+.machine-ops-load-list{display:flex;flex-direction:column;gap:10px}
 .machine-ops-load-row{display:flex;flex-direction:column;gap:5px}
 .machine-ops-load-row>div{
   display:flex;
@@ -128,7 +129,7 @@
   color:var(--muted);
   font-size:12px;
 }
-.machine-ops-load-row strong{color:var(--fg);font-size:12px;font-variant-numeric:tabular-nums}
+.machine-ops-load-row strong{color:var(--fg);font-size:13px;font-variant-numeric:tabular-nums}
 .machine-ops-progress{
   height:7px;
   overflow:hidden;
@@ -143,8 +144,8 @@
 }
 :root[data-theme="dark"] .machine-ops-progress i{background:#e2e8f0}
 .machine-ops-network{
-  margin-top:13px;
-  padding-top:12px;
+  margin-top:11px;
+  padding-top:10px;
   border-top:1px solid var(--border);
   display:grid;
   grid-template-columns:1fr 1fr;
@@ -252,7 +253,7 @@
   display:flex;
   flex-direction:column;
   gap:4px;
-  padding:11px 12px;
+  padding:10px 12px;
   border:1px solid var(--border);
   border-radius:8px;
   background:color-mix(in srgb,var(--hover) 34%,var(--panel));
@@ -336,13 +337,54 @@
 .machine-ops-network span,.machine-ops-overview-copy span,.machine-runtime-summary span,
 .machine-runtime-summary small{font-size:12px;line-height:1.5}
 .machine-ops-card-head h3{font-size:15px}
-.machine-ops-load-row>div,.machine-ops-load-row strong{font-size:12px}
+.machine-ops-load-row>div{font-size:12px}
+.machine-ops-load-row strong{font-size:13px}
 .machine-ops-sensitive-note,.machine-runtime-result{font-size:12px}
 .machine-runtime-result strong{font-size:11px}
 .machine-runtime-card .machine-ops-card-head{flex-wrap:wrap}
 .machine-runtime-card .machine-ops-card-head>.field{min-width:170px}
-.machine-ops-empty{display:flex;min-height:210px;flex-direction:column;align-items:center;justify-content:center;gap:9px;padding:24px;font-size:13px;text-align:center}
+.machine-ops-empty{display:flex;min-height:160px;flex-direction:column;align-items:center;justify-content:center;gap:9px;padding:24px;font-size:13px;text-align:center}
 .machine-ops-empty>svg{color:var(--muted)}
 .machine-ops-empty>strong{color:var(--fg);font-size:14px}
 .machine-ops-empty>p{margin:0 0 4px;line-height:1.6}
 @media(max-width:760px){.machine-ops-tabs{padding:6px 8px 0;gap:2px}.machine-ops-tab{gap:5px;padding:8px 4px;font-size:12px}}
+
+/* Batch 3: task-led machine overview, compact telemetry, and aligned controls. */
+.machine-ops-card .machine-history{min-height:0}
+.machine-ops-card .history-chart{min-height:248px}
+.machine-ops-card .chart-state{min-height:175px;font-size:var(--ui-font-body,13px)}
+.machine-ops-card .history-toolbar{margin-bottom:9px}
+.machine-ops-card .history-toolbar>div{gap:2px}
+.machine-ops-card .history-toolbar>div>strong{font-size:var(--ui-font-heading,15px)}
+.machine-ops-card .history-toolbar>div>span{font-size:var(--ui-font-secondary,12px)}
+.machine-ops-card .history-toolbar select{min-height:36px}
+.machine-ops-glance{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:12px}
+.machine-ops-glance-item{
+  display:flex;align-items:center;gap:10px;text-align:left;min-width:0;
+  padding:12px 13px;border:1px solid var(--border);border-radius:10px;
+  background:var(--panel);color:var(--fg);cursor:pointer;
+}
+.machine-ops-glance-item:hover{border-color:var(--primary);background:var(--hover)}
+.machine-ops-glance-item:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+.machine-ops-glance-icon{display:grid;place-items:center;flex:none;width:32px;height:32px;border-radius:8px;background:var(--hover);color:var(--muted)}
+.machine-ops-glance-copy{min-width:0;display:flex;flex:1;flex-direction:column;gap:3px}
+.machine-ops-glance-copy strong{font-size:var(--ui-font-body,13px);font-weight:650}
+.machine-ops-glance-copy small{overflow-wrap:anywhere;color:var(--muted);font-size:var(--ui-font-secondary,12px);line-height:1.4}
+.machine-ops-glance-go{flex:none;color:var(--primary);font-size:12px}
+.machine-runtime-heading{align-items:flex-end!important}
+.machine-runtime-controls{display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.machine-runtime-controls .field{display:flex;flex-direction:column;gap:4px;min-width:156px;margin:0}
+.machine-runtime-controls .field>span{font-size:var(--ui-font-secondary,12px);font-weight:600;color:var(--muted)}
+.machine-runtime-controls .field select{min-height:36px}
+.machine-runtime-controls>.button{min-height:36px;white-space:nowrap}
+.machine-runtime-summary strong{font-size:14px}
+.machine-ops-nodes.is-empty{background:transparent;border-style:dashed;box-shadow:none}
+.machine-ops-nodes.is-empty .machine-ops-empty{min-height:144px}
+@media(max-width:760px){
+  .machine-ops-glance{grid-template-columns:1fr;gap:8px}
+  .machine-ops-glance-item{padding:11px}
+  .machine-runtime-heading{align-items:flex-start!important}
+  .machine-runtime-controls{width:100%;align-items:stretch;flex-direction:column}
+  .machine-runtime-controls .field{width:100%}
+  .machine-runtime-controls>.button{width:100%}
+}

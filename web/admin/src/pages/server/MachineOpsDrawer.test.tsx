@@ -150,6 +150,40 @@ it('presents four keyboard-accessible focused panels and only fetches nodes on d
   expect(document.querySelector('[role="tabpanel"]')?.textContent).toContain('当前负载')
 })
 
+it('shows concise runtime and node shortcuts and only fetches nodes after opening them', () => {
+  render({
+    id: 55, name: 'Fleet-55', is_active: true, last_seen_at: Date.now(),
+    servers_count: 3,
+    load_status: {runtime: {version: 'v2.3.0', deployment: 'docker'}},
+  })
+  const overview = document.querySelector('[role="tabpanel"]')
+  expect(overview?.textContent).toContain('运行时概况')
+  expect(overview?.textContent).toContain('承载节点概况')
+  expect(overview?.textContent).toContain('3 个节点')
+  expect(overview?.textContent).toContain('v2.3.0')
+  expect(getMachineNodes).not.toHaveBeenCalled()
+  act(() => document.querySelector<HTMLButtonElement>('.machine-ops-glance-item')?.click())
+  expect(document.querySelector('[role="tab"][aria-selected="true"]')?.textContent).toContain('运行时')
+  expect(document.querySelector('.machine-ops-glance')).toBeNull()
+  selectTab('概览')
+  act(() => document.querySelectorAll<HTMLButtonElement>('.machine-ops-glance-item')[1]?.click())
+  expect(document.querySelector('[role="tab"][aria-selected="true"]')?.textContent).toContain('节点')
+  expect(getMachineNodes).toHaveBeenCalledWith(55)
+})
+
+it('keeps absent machine telemetry unknown rather than reporting 0%', () => {
+  render({id:56,name:'Missing telemetry',is_active:true,last_seen_at:Date.now(),load_status:{}})
+  const overview = document.querySelector('[role="tabpanel"]')
+  expect(overview?.textContent).toContain('节点数未上报')
+  const metrics = Array.from(overview?.querySelectorAll('.machine-ops-load-row') || [])
+  expect(metrics).toHaveLength(3)
+  metrics.forEach(metric => {
+    expect(metric.querySelector('strong')?.textContent).toContain('—')
+    expect(metric.querySelector('[role="progressbar"]')?.getAttribute('aria-valuenow')).toBeNull()
+  })
+  expect(overview?.querySelector('.machine-ops-network')?.textContent).toContain('↓ —')
+})
+
 it('supports arrow, Home and End keys without exposing inactive panels', () => {
   render({ id: 16, name: 'Keyboard', is_active: true, last_seen_at: Date.now(), load_status: {} })
   const current = () => document.querySelector<HTMLButtonElement>('[role="tab"][aria-selected="true"]')

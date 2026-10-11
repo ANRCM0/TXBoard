@@ -93,6 +93,13 @@ it('removes both redundant summary cards while retaining the trend, rankings and
   expect(localStorage.getItem('txboard:dashboard:period:order-summary')).toBeNull()
 })
 
+it('uses the compact dashboard metric and attention grids without removing sections', () => {
+  expect(host.querySelector('.dashboard-v2-metrics')).not.toBeNull()
+  expect(host.querySelectorAll('.dashboard-v2-metrics .admin-stat-card')).toHaveLength(6)
+  expect(host.querySelector('.dashboard-chart-card')).not.toBeNull()
+  expect(host.querySelectorAll('.dashboard-rank-grid .rank-card')).toHaveLength(2)
+})
+
 it('changes only the selected traffic ranking when its period changes', async () => {
   vi.mocked(getTrafficRank).mockClear()
   vi.mocked(getOrderChart).mockClear()

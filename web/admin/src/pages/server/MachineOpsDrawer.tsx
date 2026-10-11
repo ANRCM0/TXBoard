@@ -295,6 +295,24 @@ export function MachineOpsDrawer({
                 </div>
               </section>
               </div>
+              <div className="machine-ops-glance" aria-label="机器快捷摘要">
+                <button type="button" className="machine-ops-glance-item" onClick={() => selectSection('runtime')}>
+                  <span className="machine-ops-glance-icon"><ArrowUpCircle size={17} aria-hidden="true"/></span>
+                  <span className="machine-ops-glance-copy">
+                    <strong>运行时概况</strong>
+                    <small>{runtime?.version || '版本未上报'} · {runtime?.deployment === 'docker' ? 'Docker' : '部署方式未知'}</small>
+                  </span>
+                  <span className="machine-ops-glance-go">查看运行时 →</span>
+                </button>
+                <button type="button" className="machine-ops-glance-item" onClick={() => selectSection('nodes')}>
+                  <span className="machine-ops-glance-icon"><Boxes size={17} aria-hidden="true"/></span>
+                  <span className="machine-ops-glance-copy">
+                    <strong>承载节点概况</strong>
+                    <small>{machine.servers_count == null ? '节点数未上报' : `${machine.servers_count} 个节点`} · 点击查看关联</small>
+                  </span>
+                  <span className="machine-ops-glance-go">管理节点 →</span>
+                </button>
+              </div>
             </section> : null}
 
             {activeSection === 'runtime' ? <section
@@ -302,18 +320,19 @@ export function MachineOpsDrawer({
               className="machine-ops-panel"
             >
             <section className="machine-ops-card machine-runtime-card">
-              <div className="machine-ops-card-head">
+              <div className="machine-ops-card-head machine-runtime-heading">
                 <div>
                   <h3>TX-Node Runtime</h3>
                   <p>Machine 级运行时生命周期；实际升级与回滚由 TX-Node Installer 执行。</p>
                 </div>
-                <div className="field">
+                <div className="machine-runtime-controls">
+                  <div className="field">
                   <span>升级 / 切换到</span>
                   <select value={updateTarget} onChange={event => setUpdateTarget(event.target.value as 'latest' | 'dev')} aria-label="选择运行时镜像渠道">
                     <option value="latest">稳定版（latest）</option>
                     <option value="dev">开发版（dev）</option>
                   </select>
-                </div>
+                  </div>
                 <button
                   type="button"
                   className="button primary"
@@ -335,6 +354,7 @@ export function MachineOpsDrawer({
                   <ArrowUpCircle size={14} />
                   {runtimeUpdate.isPending ? '下发中…' : updateTarget === 'dev' ? '切换/更新到 dev' : '切换/更新到 latest'}
                 </button>
+                </div>
               </div>
 
               <div className="machine-runtime-summary">
@@ -445,7 +465,7 @@ export function MachineOpsDrawer({
               id={panelId('nodes')} role="tabpanel" aria-labelledby={tabId('nodes')}
               className="machine-ops-panel"
             >
-            <section className="machine-ops-card machine-ops-nodes">
+            <section className={'machine-ops-card machine-ops-nodes' + (!nodes.length && !nodesQuery.isLoading && !nodesQuery.isError ? ' is-empty' : '')}>
               <div className="machine-ops-card-head">
                 <div>
                   <h3>已承载节点</h3>
@@ -481,7 +501,7 @@ export function MachineOpsDrawer({
                               <strong>{node.name || `Node #${node.id}`}</strong>
                             </Link>
                           </td>
-                          <td><span className="badge">{node.type === 'hysteria' ? 'hysteria2' : node.type || '-'}</span></td>
+                          <td><span className="admin-v2-muted">{node.type === 'hysteria' ? 'hysteria2' : node.type || '-'}</span></td>
                           <td>{node.host ? `${node.host}${node.port ? ':' + node.port : ''}` : '-'}</td>
                           <td>
                             <span className="machine-status">
@@ -536,13 +556,14 @@ function LoadMetric({
 }
 
 function finite(value: unknown) {
+  if (value === null || value === undefined || value === '' || typeof value === 'boolean') return null
   const number = Number(value)
   return Number.isFinite(number) ? number : null
 }
 
 function bytes(value: unknown) {
-  const number = Number(value)
-  if (!Number.isFinite(number) || number < 0) return '—'
+  const number = finite(value)
+  if (number === null || number < 0) return '—'
   if (number >= 1024 ** 3) return `${(number / 1024 ** 3).toFixed(number >= 10 * 1024 ** 3 ? 1 : 2)} GB`
   if (number >= 1024 ** 2) return `${(number / 1024 ** 2).toFixed(1)} MB`
   if (number >= 1024) return `${(number / 1024).toFixed(1)} KB`
@@ -550,8 +571,8 @@ function bytes(value: unknown) {
 }
 
 function formatRate(value: unknown) {
-  const number = Number(value)
-  if (!Number.isFinite(number) || number < 0) return '—'
+  const number = finite(value)
+  if (number === null || number < 0) return '—'
   if (number >= 1024 ** 2) return `${(number / 1024 ** 2).toFixed(2)} MB/s`
   if (number >= 1024) return `${(number / 1024).toFixed(1)} KB/s`
   return `${number.toFixed(0)} B/s`
