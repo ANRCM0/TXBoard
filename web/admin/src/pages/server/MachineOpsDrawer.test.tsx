@@ -139,12 +139,28 @@ it('presents four keyboard-accessible focused panels and only fetches nodes on d
   expect(document.querySelector('[role="tabpanel"]')?.textContent).not.toContain('TX-Node Runtime')
   expect(getMachineNodes).not.toHaveBeenCalled()
   selectTab('节点')
-  await act(async () => { await Promise.resolve() })
   expect(getMachineNodes).toHaveBeenCalledWith(15)
+  await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)) })
   expect(document.querySelector('[role="tabpanel"]')?.textContent).toContain('该机器暂未绑定节点')
   expect(document.querySelector('[role="tabpanel"]')?.textContent).toContain('绑定节点')
   selectTab('概览')
   expect(document.querySelector('[role="tabpanel"]')?.textContent).toContain('当前负载')
+})
+
+it('supports arrow, Home and End keys without exposing inactive panels', () => {
+  render({ id: 16, name: 'Keyboard', is_active: true, last_seen_at: Date.now(), load_status: {} })
+  const current = () => document.querySelector<HTMLButtonElement>('[role="tab"][aria-selected="true"]')
+  const press = (key: string) => {
+    act(() => current()?.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true })))
+  }
+  expect(current()?.textContent).toContain('概览')
+  press('ArrowRight')
+  expect(current()?.textContent).toContain('运行时')
+  expect(document.querySelectorAll('[role="tabpanel"]')).toHaveLength(1)
+  press('End')
+  expect(current()?.textContent).toContain('安全')
+  press('Home')
+  expect(current()?.textContent).toContain('概览')
 })
 
 it('does not leave credentials visible after switching tabs or machines', async () => {
