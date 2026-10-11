@@ -28,10 +28,12 @@ export function useSettingsAutosave<T extends FieldValues>({
   watch,
   validate,
   settingKey,
+  onSaved,
 }: {
   watch: UseFormWatch<T>
   validate: (value: unknown) => ValidationResult
   settingKey: string
+  onSaved?: (payload: Settings) => void
 }) {
   const [state, setState] = useState<AutosaveState>({ kind: 'idle' })
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
@@ -40,12 +42,15 @@ export function useSettingsAutosave<T extends FieldValues>({
   const latestPayload = useRef<Settings | null>(null)
   const validateRef = useRef(validate)
   validateRef.current = validate
+  const onSavedRef = useRef(onSaved)
+  onSavedRef.current = onSaved
 
   const { mutate } = useMutation({
     scope: { id: `settings-autosave-${settingKey}` },
     mutationFn: ({ payload }: { payload: Settings; revision: number }) => saveSettings(payload),
     onSuccess: (_, request) => {
       if (request.revision !== revision.current) return
+      onSavedRef.current?.(request.payload)
       setState({ kind: 'saved' })
       toast.success('设置保存成功')
     },

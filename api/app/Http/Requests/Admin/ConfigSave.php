@@ -40,6 +40,7 @@ class ConfigSave extends FormRequest
         'traffic_warn_rate' => 'nullable|numeric',
         // site
         'logo' => 'nullable|url',
+        'admin_favicon_url' => 'nullable|string|url|max:2048',
         'force_https' => '',
         'stop_register' => '',
         'app_name' => '',
@@ -140,6 +141,14 @@ class ConfigSave extends FormRequest
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator): void {
+            // An icon URL is emitted into HTML on the administrator entry page.
+            // Only HTTPS images may be used; never emit javascript:, data: or HTTP.
+            $favicon = $this->input('admin_favicon_url');
+            if (is_string($favicon) && $favicon !== '') {
+                if (!\App\Services\AdminFavicon::isValidUrl($favicon)) {
+                    $validator->errors()->add('admin_favicon_url', 'Use a valid HTTPS icon URL (without credentials).');
+                }
+            }
             foreach (SettingModel::RETIRED_RUNTIME_KEYS as $key) {
                 if ($this->exists($key)) {
                     $validator->errors()->add($key, 'Retired setting is not supported by TXAPI.');
