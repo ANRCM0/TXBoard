@@ -92,6 +92,8 @@ Route::prefix('admin/{admin_path}')
         // in the corresponding domain service, never directly in HTTP layer.
         Route::get('themes', [ThemeAdminController::class, 'index']);
         Route::post('themes/upload', [ThemeAdminController::class, 'upload']);
+        Route::post('themes/v2/upload', [ThemeAdminController::class, 'uploadV2']);
+        Route::post('themes/{name}/rollback', [ThemeAdminController::class, 'rollbackV2']);
         Route::get('themes/{name}/config', [ThemeAdminController::class, 'config']);
         Route::put('themes/{name}/config', [ThemeAdminController::class, 'saveConfig']);
         Route::delete('themes/{name}', [ThemeAdminController::class, 'delete']);
