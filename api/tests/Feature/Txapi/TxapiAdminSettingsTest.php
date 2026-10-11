@@ -37,6 +37,25 @@ final class TxapiAdminSettingsTest extends TestCase
             ->assertJsonPath('data.site.app_name', 'TXBoard Testing');
     }
 
+    public function test_admin_favicon_is_persisted_in_site_settings_and_rejects_unsafe_urls(): void
+    {
+        Sanctum::actingAs($this->account('favicon-editor@example.test', true));
+        $this->getJson(self::ROOT . '/site')->assertOk()
+            ->assertJsonPath('data.site.admin_favicon_url', null);
+        foreach (['javascript:alert(1)', 'data:image/svg+xml;base64,AAAA',
+            'http://assets.example.test/icon.png', 'https://person:secret@assets.example.test/icon.png'] as $unsafe) {
+            $this->postJson(self::ROOT, ['admin_favicon_url' => $unsafe])->assertStatus(422);
+        }
+        $url = 'https://assets.example.test/favicon.ico?v=2';
+        $this->postJson(self::ROOT, ['admin_favicon_url' => $url])
+            ->assertOk()->assertJsonPath('data.ok', true);
+        $this->getJson(self::ROOT . '/site')->assertOk()
+            ->assertJsonPath('data.site.admin_favicon_url', $url);
+        $this->postJson(self::ROOT, ['admin_favicon_url' => ''])->assertOk();
+        $this->getJson(self::ROOT . '/site')->assertOk()
+            ->assertJsonPath('data.site.admin_favicon_url', null);
+    }
+
     public function test_retired_settings_are_absent_and_cannot_be_saved(): void
     {
         Sanctum::actingAs($this->account('retired-keys@example.test', true));

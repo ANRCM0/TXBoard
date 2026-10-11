@@ -20,6 +20,7 @@ const site = {
   app_description: 'description',
   app_url: 'https://example.test',
   logo: null,
+  admin_favicon_url: null,
   subscribe_url: null,
   tos_url: null,
   try_out_plan_id: null,
@@ -49,6 +50,7 @@ const features = {
 beforeEach(() => {
   ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
   vi.clearAllMocks()
+  document.getElementById('txboard-admin-favicon')?.remove()
   host = document.createElement('div')
   document.body.append(host)
   root = createRoot(host)
@@ -58,6 +60,7 @@ afterEach(() => {
   vi.useRealTimers()
   act(() => root.unmount())
   host.remove()
+  document.getElementById('txboard-admin-favicon')?.remove()
   client.clear()
 })
 
@@ -78,6 +81,7 @@ describe('issue #101: site settings autosave', () => {
   it('normalizes nullable site fields before validation and editing', () => {
     const normalized = normalizeSystemSettings(site)
     expect(normalized.logo).toBe('')
+    expect(normalized.admin_favicon_url).toBe('')
     expect(normalized.subscribe_url).toBe('')
     expect(normalized.tos_url).toBe('')
   })
@@ -99,6 +103,24 @@ describe('issue #101: site settings autosave', () => {
       app_name: 'New TXBoard', logo: '', subscribe_url: '', tos_url: '',
     }))
     expect(host.querySelector('.config-autosave')?.textContent).toContain('设置保存成功')
+  })
+
+  it('updates the tab icon only after a successful autosave', async () => {
+    vi.mocked(fetchSettings).mockResolvedValue(site)
+    vi.mocked(saveSettings).mockResolvedValue(true)
+    await mount(<SystemSettingsPage />)
+    const input = host.querySelector<HTMLInputElement>('input[name="admin_favicon_url"]')!
+    expect(input.value).toBe('')
+    vi.useFakeTimers()
+    act(() => { input.value = 'https://images.example.test/admin-icon.png'; Simulate.change(input) })
+    expect(document.getElementById('txboard-admin-favicon')).toBeNull()
+    await flushAutosave()
+    expect(saveSettings).toHaveBeenCalledWith(expect.objectContaining({
+      admin_favicon_url: 'https://images.example.test/admin-icon.png',
+    }))
+    expect(document.querySelector<HTMLLinkElement>('#txboard-admin-favicon')?.href)
+      .toBe('https://images.example.test/admin-icon.png')
+    document.getElementById('txboard-admin-favicon')?.remove()
   })
 
   it('flushes a pending valid edit when navigating away before the debounce completes', async () => {

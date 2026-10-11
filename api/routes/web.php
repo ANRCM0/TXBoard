@@ -1,6 +1,7 @@
 <?php
 
 use App\Services\ThemeService;
+use App\Services\AdminFavicon;
 use App\Services\VersionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -137,7 +138,7 @@ $serveAdminSpa = static function (Request $request, string $admin_path, ?string 
 
     foreach ($candidates as $indexPath) {
         if (File::exists($indexPath)) {
-            return response(File::get($indexPath), 200, [
+            return response(AdminFavicon::inject(File::get($indexPath), admin_setting('admin_favicon_url')), 200, [
                 'Content-Type' => 'text/html; charset=UTF-8',
                 'Cache-Control' => 'no-store, private',
             ]);

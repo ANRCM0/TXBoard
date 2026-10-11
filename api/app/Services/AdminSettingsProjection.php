@@ -35,6 +35,7 @@ final class AdminSettingsProjection
             ],
             'site' => [
                 'logo' => admin_setting('logo'),
+                'admin_favicon_url' => admin_setting('admin_favicon_url'),
                 'force_https' => (int) admin_setting('force_https', 0),
                 'stop_register' => (int) admin_setting('stop_register', 0),
                 'app_name' => admin_setting('app_name', 'TXBoard'),

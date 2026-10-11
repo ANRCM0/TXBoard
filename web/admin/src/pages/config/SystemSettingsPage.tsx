@@ -4,16 +4,28 @@ import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { fetchSettings, type Settings } from '../../api/config'
+import { setAdminFavicon } from '../../lib/adminFavicon'
 import { ConfigSectionFrame } from '../../components/config/ConfigSectionFrame'
 import { SettingsAutosaveStatus, useSettingsAutosave } from '../../components/config/SettingsAutosave'
 
 const optionalNumber = z.preprocess(value => value === '' ? null : value, z.coerce.number().nullish())
+
+function isValidFaviconUrl(value: string) {
+  try {
+    const url = new URL(value)
+    return url.protocol === 'https:' && Boolean(url.hostname) && !url.username && !url.password && value.length <= 2048
+  } catch {
+    return false
+  }
+}
 
 const schema = z.object({
   app_name: z.string().optional(),
   app_description: z.string().optional(),
   app_url: z.string().optional(),
   logo: z.string().optional(),
+  admin_favicon_url: z.string().refine(value => value === '' || isValidFaviconUrl(value),
+    '请输入有效的 HTTPS 图标 URL').optional(),
   subscribe_url: z.string().optional(),
   try_out_plan_id: optionalNumber,
   try_out_hour: optionalNumber,
@@ -30,7 +42,7 @@ type Values = z.infer<typeof schema>
 // Empty optional text settings are stored as null by the API. Form input
 // values must be strings; otherwise an unrelated null blocks every autosave.
 const nullableTextKeys = [
-  'app_name', 'app_description', 'app_url', 'logo',
+  'app_name', 'app_description', 'app_url', 'logo', 'admin_favicon_url',
   'subscribe_url', 'tos_url', 'currency', 'currency_symbol',
 ] as const
 
@@ -59,11 +71,14 @@ export function SystemSettingsPage() {
     watch: form.watch,
     validate: validateSystemSettings,
     settingKey: 'site',
+    onSaved: payload => setAdminFavicon(String(payload.admin_favicon_url ?? '')),
   })
 
   useEffect(() => {
     if (query.data && !form.formState.isDirty) form.reset(normalizeSystemSettings(query.data))
   }, [query.data, form])
+
+  const currentFaviconUrl = form.watch('admin_favicon_url') ?? ''
 
   function toggle(key: keyof Values) {
     form.setValue(key, !Boolean(form.getValues(key)), { shouldDirty: true })
@@ -90,6 +105,15 @@ export function SystemSettingsPage() {
               <Field label="站点描述"><input {...form.register('app_description')} /></Field>
               <Field label="站点 URL"><input {...form.register('app_url')} /></Field>
               <Field label="Logo URL"><input {...form.register('logo')} /></Field>
+              <Field label="管理端标签页图标（HTTPS URL）" className="config-field-wide">
+                <input {...form.register('admin_favicon_url')} type="url" placeholder="https://example.com/favicon.png" />
+                <small>支持 PNG、ICO、SVG 等浏览器图标格式；留空则使用浏览器默认图标。保存成功后当前标签页立即更新。</small>
+              </Field>
+              {currentFaviconUrl && isValidFaviconUrl(currentFaviconUrl) ? (
+                <div className="config-field-wide" aria-label="管理端图标预览">
+                  <img src={currentFaviconUrl} alt="管理端标签页图标预览" width={32} height={32} referrerPolicy="no-referrer" style={{ objectFit: 'contain' }} />
+                </div>
+              ) : null}
               <Field label="订阅 URL" className="config-field-wide"><textarea {...form.register('subscribe_url')} /></Field>
               <Field label="服务条款 URL"><input {...form.register('tos_url')} /></Field>
             </div>
