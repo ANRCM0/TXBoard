@@ -80,9 +80,9 @@ final class ThemeV2Runtime
      * Validated package promotion. One rollback slot per theme.
      * Upload does NOT activate a previously inactive theme.
      */
-    public function install(UploadedFile $file, bool $active = false): string
+    public function install(UploadedFile $file): string
     {
-        return $this->locked(function () use ($file, $active): string {
+        return $this->locked(function () use ($file): string {
             $zip = new ZipArchive;
             if ($zip->open($file->path()) !== true) {
                 throw new InvalidArgumentException('Invalid Theme v2 ZIP');
@@ -95,6 +95,7 @@ final class ThemeV2Runtime
             try {
                 $manifest = $this->package->validate($zip, ...$this->trustedVersions());
                 $name = $manifest['name'];
+                $active = (string) admin_setting('frontend_theme', '') === $name;
                 $target = $this->path($name);
                 if (File::exists($target)) {
                     if (!$this->isInstalled($name)) {
@@ -220,12 +221,21 @@ final class ThemeV2Runtime
                 throw new InvalidArgumentException('Invalid installed theme asset');
             }
             $assetPath = $source.'/'.$asset['path'];
-            $sum = 'sha256-'.base64_encode(hash_file('sha256', $assetPath, true) ?: '');
             if (!File::isFile($assetPath) || File::isLink($assetPath) ||
-                !hash_equals((string) ($asset['integrity'] ?? ''), $sum)) {
+                !is_string($digest = hash_file('sha256', $assetPath, true)) ||
+                !hash_equals((string) ($asset['integrity'] ?? ''), 'sha256-'.base64_encode($digest))) {
                 throw new InvalidArgumentException('Theme asset integrity mismatch');
             }
         }
+    }
+
+    public function republish(string $name): void
+    {
+        $this->locked(function () use ($name): void {
+            $manifest = $this->manifest($name);
+            $this->package->assertDeployedCompatibility($manifest, ...$this->trustedVersions());
+            $this->publish($name, $this->path($name));
+        });
     }
 
     public function activate(string $name, callable $setActive): void
