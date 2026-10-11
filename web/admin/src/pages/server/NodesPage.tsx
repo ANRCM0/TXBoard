@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Copy, MoreHorizontal, Pencil, Plus, RefreshCw, Search, Trash2 } from 'lucide-react'
+import { Copy, MoreHorizontal, Network, Pencil, Plus, RefreshCw, Search, Trash2 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -16,6 +16,7 @@ import {
 } from '../../api/server'
 import { DataTable, type Column } from '../../components/ui/DataTable'
 import { PageHeader } from '../../components/ui/PageHeader'
+import { EmptyState } from '../../components/ui/EmptyState'
 import { NodeEditorModal } from './NodeEditorModal'
 import { requestConfirm } from '../../components/ui/ConfirmDialog'
 
@@ -66,6 +67,10 @@ export function NodesPage(){
   const groupRows=Array.isArray(groups.data)?groups.data:[]
   const routeRows=Array.isArray(routes.data)?routes.data:[]
 
+  const hasFilters = Boolean(search.trim() || machineFilter)
+  const createNode = () => { setEditing(null); setOpen(true) }
+  const clearFilters = () => { setSearch(''); setMachineFilter('') }
+
   const filtered=useMemo(()=>{
     const q=search.trim().toLowerCase()
     return rows.filter(row=>{
@@ -110,7 +115,7 @@ export function NodesPage(){
     <PageHeader
       title="节点管理"
       description="管理服务节点、协议配置与运行机器；列表每 30 秒自动刷新。"
-      action={<button className="button primary" onClick={()=>{setEditing(null);setOpen(true)}}><Plus size={16}/>添加节点</button>}
+      action={<button className="button primary" onClick={createNode}><Plus size={16}/>添加节点</button>}
     />
 
     <div className="server-page-toolbar">
@@ -122,11 +127,26 @@ export function NodesPage(){
         <option value="">全部机器</option>
         {machineRows.map(machine=><option key={machine.id} value={String(machine.id)}>{machine.name||'Machine '+machine.id}</option>)}
       </select>
-      {(search||machineFilter)&&<button className="button" onClick={()=>{setSearch('');setMachineFilter('')}}>清除筛选</button>}
+      {(search||machineFilter)&&<button className="button" onClick={clearFilters}>清除筛选</button>}
       <button className="button" disabled={query.isFetching} onClick={()=>query.refetch()}><RefreshCw size={16} className={query.isFetching?'loading-spinner':undefined}/>{query.isFetching?'刷新中…':'刷新'}</button>
     </div>
 
-    <div className="server-table-card"><DataTable rows={filtered} columns={columns} rowKey={row=>row.id} loading={query.isFetching} error={query.isError} onRetry={()=>query.refetch()} empty={search||machineFilter?'没有符合条件的节点，请调整筛选条件':'还没有节点，点击“添加节点”开始配置'}/></div>
+    <div className="server-table-card">
+      <DataTable
+        rows={filtered} columns={columns} rowKey={row=>row.id}
+        loading={query.isFetching} error={query.isError} onRetry={()=>query.refetch()}
+        emptyState={hasFilters ? (
+          <EmptyState icon={<Search size={23}/>} title="没有找到匹配的节点"
+            description="当前搜索或机器筛选条件下没有匹配结果，请调整条件后重试。"
+            action={<button type="button" className="button" onClick={clearFilters}>清除筛选</button>}/>
+        ) : (
+          <EmptyState icon={<Network size={23}/>} title="还没有节点"
+            description="创建第一个节点并配置协议；如有需要，可以将节点关联到已接入的服务器。"
+            action={<button type="button" className="button primary" onClick={createNode}><Plus size={16}/>创建第一个节点</button>}
+            secondaryAction={<Link className="button" to="/server/machine">查看服务器</Link>}/>
+        )}
+      />
+    </div>
 
     <NodeEditorModal
       open={open}
