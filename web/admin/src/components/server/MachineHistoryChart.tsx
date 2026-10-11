@@ -69,7 +69,7 @@ export function MachineHistoryChart({ machineId }: { machineId: number }) {
         <strong>负载历史</strong>
         <span className="muted">CPU / 内存 / 磁盘使用率</span>
       </div>
-      <select value={hours} onChange={e => setHours(Number(e.target.value))}>
+      <select aria-label="负载历史时间范围" value={hours} onChange={e => setHours(Number(e.target.value))}>
         <option value={1}>最近 1 小时</option>
         <option value={6}>最近 6 小时</option>
         <option value={12}>最近 12 小时</option>
