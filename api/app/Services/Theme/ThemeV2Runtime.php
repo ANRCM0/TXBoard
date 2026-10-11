@@ -234,7 +234,7 @@ final class ThemeV2Runtime
                 throw new InvalidArgumentException('Invalid installed theme asset');
             }
             $assetPath = $source.'/'.$asset['path'];
-            if (!File::isFile($assetPath) || File::isLink($assetPath) ||
+            if (!File::isFile($assetPath) || is_link($assetPath) ||
                 !is_string($digest = hash_file('sha256', $assetPath, true)) ||
                 !hash_equals((string) ($asset['integrity'] ?? ''), 'sha256-'.base64_encode($digest))) {
                 throw new InvalidArgumentException('Theme asset integrity mismatch');
