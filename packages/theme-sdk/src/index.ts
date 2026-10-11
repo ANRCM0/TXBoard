@@ -79,6 +79,19 @@ export class GatewayApiError extends Error {
     public readonly status: number,
     message: string,
     public readonly requestId?: string,
+    /**
+     * Whether this error is on the retryable-status list (GET only).
+     * `true` for statuses in the retryable set (default 408, 429, 500, 502, 503, 504),
+     * or when the server explicitly signals retryability via envelope extension.
+     * `false` for all non-retryable statuses and client errors like UNAUTHORIZED.
+     */
+    public readonly retryable: boolean = false,
+    /**
+     * Whether the caller should confirm remote state before proceeding.
+     * Set when the outcome is indeterminate (e.g. timeout on a write, or an
+     * unknown error code that could indicate the operation partially succeeded).
+     */
+    public readonly needsStateConfirmation: boolean = false,
   ) {
     super(message)
     this.name = 'GatewayApiError'
@@ -94,6 +107,29 @@ export type TXBoardClientOptions = {
   timeoutMs?: number
   /** Experimental HPKE request encryption for login only. Never silently fall back. */
   encryptedLogin?: boolean
+  /** Maximum retry attempts for idempotent GET requests. Default: 3. Write requests never auto-retry. */
+  maxRetries?: number
+  /** Base delay in milliseconds for exponential backoff. Default: 500. Delay = baseRetryDelay * 2^(attempt-1). */
+  baseRetryDelay?: number
+  /** HTTP status codes that trigger retry on GET requests. Default: [408, 429, 500, 502, 503, 504]. */
+  retryableStatuses?: number[]
+}
+
+const DEFAULT_RETRYABLE_STATUSES = [408, 429, 500, 502, 503, 504] as const
+
+/**
+ * Error codes the SDK can classify with certainty. Anything outside this set is
+ * treated as an unknown state — the caller should confirm remote state before
+ * proceeding (GW-308).
+ */
+const KNOWN_ERROR_CODES = new Set([
+  'UNAUTHORIZED', 'FORBIDDEN', 'NOT_FOUND', 'VERSION_MISMATCH', 'INVALID_RESPONSE',
+  'NETWORK_ERROR', 'ORIGIN_DENIED', 'VALIDATION_ERROR', 'RATE_LIMITED', 'DISABLED',
+  'MAINTENANCE', 'UPSTREAM_UNAVAILABLE', 'GATEWAY_ERROR',
+])
+
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms))
 }
 
 export function createTXBoardClient(options: TXBoardClientOptions = {}) {
@@ -108,52 +144,130 @@ export function createTXBoardClient(options: TXBoardClientOptions = {}) {
     throw new Error('Cross-origin Gateway access requires HTTPS')
   }
 
+  const maxRetries = options.maxRetries ?? 3
+  const baseRetryDelay = options.baseRetryDelay ?? 500
+  const retryableStatuses = new Set(options.retryableStatuses ?? DEFAULT_RETRYABLE_STATUSES)
+
+  /** True when a GET request may be retried for this error. */
+  function canRetryGet(error: GatewayApiError, attempt: number): boolean {
+    if (attempt >= maxRetries) return false
+    if (error.code === 'NETWORK_ERROR') return true
+    return retryableStatuses.has(error.status)
+  }
+
+  /**
+   * Backoff delay for the given attempt (1-based). Honours a server-supplied
+   * `Retry-After` hint (seconds or HTTP-date) when present, capped so a hostile
+   * or misconfigured upstream cannot park the caller for an unbounded time.
+   */
+  const MAX_RETRY_AFTER_MS = 60000
+
+  function retryDelay(attempt: number, retryAfterHeader: string | null): number {
+    const backoff = baseRetryDelay * 2 ** (attempt - 1)
+    if (!retryAfterHeader) return backoff
+    const trimmed = retryAfterHeader.trim()
+    const seconds = Number(trimmed)
+    if (Number.isFinite(seconds) && seconds >= 0) {
+      return Math.min(Math.max(seconds * 1000, backoff), MAX_RETRY_AFTER_MS)
+    }
+    const dateMs = Date.parse(trimmed)
+    if (!Number.isNaN(dateMs)) {
+      const wait = Math.max(0, dateMs - Date.now())
+      return Math.min(Math.max(wait, backoff), MAX_RETRY_AFTER_MS)
+    }
+    return backoff
+  }
+
+  /** True when the error outcome is indeterminate and the caller should confirm remote state. */
+  function isNeedsStateConfirmation(error: GatewayApiError): boolean {
+    if (!KNOWN_ERROR_CODES.has(error.code)) return true
+    // Network errors mean the request may or may not have reached the Gateway.
+    if (error.code === 'NETWORK_ERROR') return true
+    // Retryable statuses exhausted — remote state is unknown after transient failures.
+    if (retryableStatuses.has(error.status)) return true
+    return false
+  }
+
   async function invoke<T>(path: string, options: {
     method?: 'GET' | 'POST'
     body?: unknown
     protected?: boolean
   } = {}): Promise<T> {
-    const headers = new Headers({ Accept: 'application/json' })
-    if (options.body !== undefined) headers.set('Content-Type', 'application/json')
+    const method = options.method || 'GET'
+    const isGet = method === 'GET'
+    const maxAttempts = isGet ? 1 + maxRetries : 1
 
-    if (options.protected) {
-      const token = String(await optionsGetToken() || '').trim()
-      if (!token) throw new GatewayApiError('UNAUTHORIZED', 401, 'User session is required')
-      headers.set('Authorization', /^Bearer /i.test(token) ? token : `Bearer ${token}`)
-    }
-    let response: Response
-    try {
-      response = await fetchImpl(`${baseURL}${path}`, {
-        method: options.method || 'GET',
-        headers,
-        body: options.body === undefined ? undefined : JSON.stringify(options.body),
-        redirect: 'error',
-        credentials: 'omit',
-        signal: AbortSignal.timeout(timeout),
-      })
-    } catch {
-      throw new GatewayApiError('NETWORK_ERROR', 0, 'Gateway is unavailable')
+    let attempt = 0
+    let lastError: GatewayApiError | null = null
+
+    while (attempt < maxAttempts) {
+      attempt++
+      const headers = new Headers({ Accept: 'application/json' })
+      if (options.body !== undefined) headers.set('Content-Type', 'application/json')
+
+      if (options.protected) {
+        const token = String(await optionsGetToken() || '').trim()
+        if (!token) throw new GatewayApiError('UNAUTHORIZED', 401, 'User session is required')
+        headers.set('Authorization', /^Bearer /i.test(token) ? token : `Bearer ${token}`)
+      }
+
+      let response: Response
+      try {
+        response = await fetchImpl(`${baseURL}${path}`, {
+          method,
+          headers,
+          body: options.body === undefined ? undefined : JSON.stringify(options.body),
+          redirect: 'error',
+          credentials: 'omit',
+          signal: AbortSignal.timeout(timeout),
+        })
+      } catch (err) {
+        // Write requests never auto-retry — surface as state-confirmation-required.
+        lastError = new GatewayApiError('NETWORK_ERROR', 0, 'Gateway is unavailable', undefined, isGet, true)
+        if (isGet && canRetryGet(lastError, attempt - 1)) {
+          await sleep(baseRetryDelay * 2 ** (attempt - 1))
+          continue
+        }
+        throw lastError
+      }
+      let envelope: unknown
+      try { envelope = await response.json() } catch {
+        throw new GatewayApiError('INVALID_RESPONSE', response.status, 'Invalid Gateway response')
+      }
+      if (!envelope || typeof envelope !== 'object') {
+        throw new GatewayApiError('INVALID_RESPONSE', response.status, 'Invalid Gateway response')
+      }
+      const result = envelope as Partial<GatewayEnvelope<T>>
+      if (result.meta?.version !== '1') {
+        throw new GatewayApiError('VERSION_MISMATCH', response.status, 'Unsupported Gateway contract version')
+      }
+      if (result.ok === false) {
+        const error = (result as GatewayFailure).error
+        const code = error?.code || 'GATEWAY_ERROR'
+        const message = error?.message || 'Gateway request failed'
+        const requestId = result.meta?.requestId
+        const canRetry = isGet && canRetryGet(
+          new GatewayApiError(code, response.status, message, requestId),
+          attempt - 1,
+        )
+        const retryable = canRetry
+        const needsConfirmation = !KNOWN_ERROR_CODES.has(code) || retryableStatuses.has(response.status)
+        lastError = new GatewayApiError(code, response.status, message, requestId, retryable, needsConfirmation)
+        if (canRetry) {
+          await sleep(retryDelay(attempt, response.headers.get('Retry-After')))
+          continue
+        }
+        throw lastError
+      }
+      if (!response.ok || result.ok !== true || !('data' in result)) {
+        throw new GatewayApiError('INVALID_RESPONSE', response.status, 'Unexpected Gateway response', result.meta?.requestId)
+      }
+      return result.data as T
     }
 
-    let envelope: unknown
-    try { envelope = await response.json() } catch {
-      throw new GatewayApiError('INVALID_RESPONSE', response.status, 'Invalid Gateway response')
-    }
-    if (!envelope || typeof envelope !== 'object') {
-      throw new GatewayApiError('INVALID_RESPONSE', response.status, 'Invalid Gateway response')
-    }
-    const result = envelope as Partial<GatewayEnvelope<T>>
-    if (result.meta?.version !== '1') {
-      throw new GatewayApiError('VERSION_MISMATCH', response.status, 'Unsupported Gateway contract version')
-    }
-    if (result.ok === false) {
-      const error = (result as GatewayFailure).error
-      throw new GatewayApiError(error?.code || 'GATEWAY_ERROR', response.status, error?.message || 'Gateway request failed', result.meta?.requestId)
-    }
-    if (!response.ok || result.ok !== true || !('data' in result)) {
-      throw new GatewayApiError('INVALID_RESPONSE', response.status, 'Unexpected Gateway response', result.meta?.requestId)
-    }
-    return result.data as T
+    // Unreachable in practice (maxAttempts >= 1 and every path returns or throws),
+    // but keeps the loop invariant explicit for the type checker.
+    throw lastError ?? new GatewayApiError('GATEWAY_ERROR', 0, 'Gateway request failed')
   }
 
   async function secureInvoke<T>(operation: 'register' | 'email-code', payload: unknown): Promise<T> {
