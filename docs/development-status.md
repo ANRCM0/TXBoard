@@ -2,6 +2,23 @@
 
 > 更新时间：**2026-10-11**；旧阶段记录为历史快照，以下新增最新 main 代码核查。此文档记录代码和 CI，**不是生产就绪证明**。默认分支 main。当前不接入真实 TXBoard 环境，真实联调的验收暂按产品决策**延期**。
 
+## 2026-10-11：GW-405 加密灰度协商与兼容设计（设计，未实施）
+
+- 新增 [adr-encryption-negotiation.md](./adr-encryption-negotiation.md)（待评审）：operation 三级分级冻结为服务端策略属性——**必须加密** login/register/email-code（register/email-code 任何阶段都无明文路由，编译期结构保证）、**可选加密** profile/subscription/orders、**只读公开** bootstrap/plans/theme-config。
+- 协商语义：服务端 `bootstrap.capabilities` = activeRouteDefinitions 投影（能力字段零漂移）+ `/crypto/key` 缺席即"不支持加密"；客户端经 SDK `encryptedLogin` 声明；**服务端策略对 HTTP 头/主题 manifest/DB 主题配置零权重**——协商失败只有"客户端按低级别操作继续"或"被拒绝"，不存在服务端因客户端信号切换明文策略的路径。
+- 禁止静默降级（fail-closed 矩阵 NGF-1～8）：明文 body 发往 secure 路由拒绝且零上游调用、HPKE 未接线时 secure 调用路由缺席 404、SDK 探测 `/crypto/key` 失败抛错且**禁止重发 `/auth/login`**（核心负例断言）、重放 409、Redis 断连 503。
+- 旧主题兼容：TLS-only 是 P0/P1 阶段**显式运行态**（bootstrap 新增字段为纯增量，旧客户端忽略），不强制断线；灰度阶段 `GATEWAY_ENCRYPTION_PHASE` 单向收紧（`tls-only → hpke-preferred → hpke-required`，只做整条路由缺席、不做路由内换策略，与 `disabledWrite→orderWrite` 唯一提升点同构）；P2 前置 = 明文登录流量归零连续 7 天 + GW-406 独立安全复核。
+- 验收矩阵 NGF-1～8（负例）+ NCG-1～10（含 capabilities 快照、阶段切换 validatePolicies、伪造能力头零权重、明文流量归零指标）；错误码只新增一个码位 `ENCRYPTION_REQUIRED`（403，草案待评审）。
+- **未验收**：双 kid 轮换（GW-215）、真实联调（GW-216）、独立安全复核（GW-406）仍是 P2 前置；本文档为纯设计变更，未改任何代码/CI/测试。Gateway **346/346** + SDK **32/32** 仍全绿。
+
+## 2026-10-11：GW-401 应用层加密威胁模型与协议 ADR（设计，未实施）
+
+- 新增 [adr-layer-encryption.md](./adr-layer-encryption.md)（待评审）：HPKE（RFC 9180 `DHKEM(P-256,HKDF-SHA256)+HKDF-SHA256+AES-256-GCM`，`@hpke/core`）请求体加密的正式威胁模型与密钥生命周期设计，范围为三类凭据提交操作（login/register/email-code），TLS 不可豁免、只加密请求体、响应加密归 GW-407 独立决策。
+- 威胁模型 T1–T7（代理/反代明文可见、反代与 CDN 日志泄露、前端注入窃取、算法降级与密文移植、重放、私钥泄露、时钟偏差），逐条给出残余风险；密文可见边界：请求体全密封，`kid/ts/nonce/enc/ct` 为明文信封，元数据（大小/时间/路径）如实声明不可加密。
+- TLS-only 对比：核心缺口是 TLS 终止点之后明文凭据穿过不受 Gateway 控制的日志层，属结构性缺口；本方案交换可审计的密钥生命周期与一次密码学审查，opt-in 默认 disabled、不影响旧主题。
+- 密钥生命周期：`GET /gateway/v1/crypto/key` 公钥发现（kid = 公钥 SHA-256 前 24 位，绝不回显私钥分量）；私钥 Docker Secret 文件挂载、缺失/非法 fail-hard 且绝不生成临时密钥；双版本轮换窗口（默认 24h，旧密钥窗口内密文仍可解）；kid 吊销移除发现并拒解密，但**不追溯历史密文**（历史密文防御靠 nonce + ±60s 窗口）。
+- S1–S12 安全评审清单（AAD 负例、100 并发重放、无算法降级、轮换/吊销/时钟演练、p95 增量 <2ms、独立密码学审查）；**S11 独立密码学审查是 M4 Go/No-Go 阻断项，未做**；否决备选含共享对称密码、路径/参数哈希、自制加密、全流量加密、Signal 双棘轮、客户端长期私钥。纯文档变更，未改任何代码/CI/测试，Gateway 346/346 + SDK 32/32 基线维持。
+
 ## 2026-10-11：GW-306 支付沙箱与对账 ADR（设计，未实施）
 
 - 新增 [adr-payment-sandbox.md](./adr-payment-sandbox.md)（待评审）：支付回调处理全管线在 **Laravel**（验签 → 归属校验 → 金额严格相等校验（分，无容差）→ 幂等 → 状态条件 UPDATE `0→1` → 事务后异步交付），Gateway **零改动、零路由**；验收原话"支付回调不走 Gateway"以结构性负例落地——`config/policies.ts` 路由表与 `allowlistedPaths` 中本就不存在回调端点，新增断言要求猜测路径（`/gateway/v1/payment/notify` 等）404/405 且零上游调用，只读订单接口在支付完成前如实返回 `status=0`（适配层禁止乐观推断）。

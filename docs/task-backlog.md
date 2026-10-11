@@ -35,7 +35,7 @@
 | GW-202/203/206 | Redis 原子 nonce 和账号维度限流、断连 fail-closed 测试已合并（#7） | 可信 IP/代理限流、生产失效演练、持续指标与多机故障转移 |
 | GW-301 | 订阅、订单明细、支付展示、通知等只读适配已合并（#6） | 真实后端契约验证 |
 | GW-307 | HPKE-only 注册和邮箱验证码（默认关闭）、Laravel 透传已合并（#7） | 真实注册、验证码、邮件/邀请策略全流程验证 |
-| GW-401～407 | HPKE 密文登录与 Redis 防重放**技术预览**已合并（#6/#7） | 威胁模型、独立审计、密钥双版本轮换、Redis 故障转移、发布门槛 |
+| GW-401～407 | HPKE 密文登录与 Redis 防重放**技术预览**已合并（#6/#7）；**GW-401 例外：威胁模型与协议 ADR 设计文档已提交待评审**（2026-10-11，[adr-layer-encryption.md](./adr-layer-encryption.md)：T1–T7 威胁模型、密文可见边界、TLS-only 对比、RFC 9180 算法栈、密钥生命周期设计、S1–S12 评审清单、否决备选） | 威胁模型、独立审计、密钥双版本轮换、Redis 故障转移、发布门槛 |
 | GW-302～306/309～311 | **未开发**：订单创建、支付流程、交易持久化幂等、快速购买（**GW-302 例外：ADR 设计文档已提交待评审**，见 [adr-order-idempotency.md](./adr-order-idempotency.md)；**GW-304 例外：Gateway 侧适配层代码已实现、默认关闭、待真实联调**；**GW-305/309 例外：ADR/灰度设计文档已提交待评审**；**GW-310 例外：ADR 设计文档已提交待评审**，见 [adr-quick-purchase.md](./adr-quick-purchase.md)） | 全部支付与交易安全前置 |
 
 > “代码已实现”不等于原任务的全部验收条件已经满足。尤其真实环境验收是用户当前选择延期，不是通过或取消生产门禁。证据与下一阶段安排见 [开发状态台账](./development-status.md)。
@@ -121,11 +121,11 @@
 
 | ID | P | 责任 | 任务 | 依赖 | 验收 / 必须产物 |
 | --- | --- | --- | --- | --- | --- |
-| GW-401 | P0 | GW + 安全审查 | 证明需要应用层加密的威胁模型、协议 ADR | M2 | 明确威胁、密文可见边界、对比 TLS-only、算法库、安全评审完成 |
+| GW-401 | P0 | GW + 安全审查 | 证明需要应用层加密的威胁模型、协议 ADR | M2 | 明确威胁、密文可见边界、对比 TLS-only、算法库、安全评审完成 | **ADR 设计文档已提交（2026-10-11，[docs/adr-layer-encryption.md](./adr-layer-encryption.md)）：威胁模型 T1–T7（代理可见性/日志泄露/前端注入/算法降级/重放/密钥泄露/时钟偏差，含残余风险）；密文可见边界（请求体全密封，`kid/ts/nonce/enc/ct` 明文信封，元数据如实声明不可加密）；TLS-only 对比表（缺口=终止点后明文穿过不受控日志层）；算法 RFC 9180 `DHKEM(P-256,HKDF-SHA256)+HKDF-SHA256+AES-256-GCM` + `@hpke/core`；密钥生命周期（`/crypto/key` 公钥发现、私钥 Docker Secret fail-hard 无临时密钥、双版本轮换窗口默认 24h、kid 吊销不追溯历史密文）；S1–S12 安全评审清单（S11 独立密码学审查为 M4 Go/No-Go 阻断项）；否决备选（PSK/路径哈希/自制加密/TLS-only/全流量加密/响应加密本次做/Signal/客户端长期私钥）。纯文档变更，未改任何代码/CI；待评审通过** |
 | GW-402 | P0 | GW + DEP | 公钥发现/密钥发布/安全私钥保存、轮换与吊销 | GW-401 | 当前/旧密钥双窗口、过期/错误 kid/丢失密钥可恢复，不在浏览器存长期私钥 |
 | GW-403 | P0 | GW + SDK | 标准封装/解封及 method/path/session AAD | GW-402 | 跨浏览器/Node 测试向量通过；篡改、算法降级、错误 AAD 必拒绝 |
 | GW-404 | P0 | GW + Redis | 抗重放窗口、nonce 唯一性和 fail-closed | GW-403 | 并发相同请求 100 次只处理符合协议的首次；Redis 故障敏感写拒绝 |
-| GW-405 | P0 | GW + SDK | 灰度协商、TLS-only 兼容与禁止静默降级 | GW-403/404 | 服务端强制策略生效；旧主题不被强制断线；敏感 operation 不会降级明文 |
+| GW-405 | P0 | GW + SDK | 灰度协商、TLS-only 兼容与禁止静默降级 | GW-403/404 | 服务端强制策略生效；旧主题不被强制断线；敏感 operation 不会降级明文 | **设计文档已提交（2026-10-11，待评审，[docs/adr-encryption-negotiation.md](./adr-encryption-negotiation.md)）：operation 三级分级冻结为服务端策略属性（必须加密 login/register/email-code；可选加密 profile/subscription/orders；只读公开 bootstrap/plans/theme-config），协商=服务端 bootstrap capabilities 通告（activeRouteDefinitions 投影）+ SDK 客户端声明，服务端策略零头/manifest 权重；协商失败一律 fail-closed（明文发往 secure 路由拒绝零上游调用、路由缺席 404、SDK 探测失败抛错禁止明文重发、Redis 断连 503）；旧主题 TLS-only 是 P0/P1 显式运行态不强制断线；灰度阶段 `GATEWAY_ENCRYPTION_PHASE` 单向收紧（tls-only→hpke-preferred→hpke-required，只做整条路由缺席不做路由内换策略），P2 前置明文登录流量归零 7 天；验收矩阵 NGF-1～8/NCG-1～10（含"零 /auth/login 重发"核心断言）。待评审，未实现任何代码** |
 | GW-406 | P0 | GW + 审查 | 加密性能、故障注入、安全复核 | GW-402~405 | key rotation、时钟偏差、断连/退回、额外 p95、第三方/独立安全审查 |
 | GW-407 | P2 | GW | 可选响应体加密 | GW-406 | 先决策需求，再独立测试响应密钥派生、nonce、兼容和性能 |
 
