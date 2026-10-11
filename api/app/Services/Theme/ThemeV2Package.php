@@ -180,6 +180,12 @@ final class ThemeV2Package
             if (!is_string($data) || !hash_equals($match[1], base64_encode(hash('sha256', $data, true)))) {
                 throw new InvalidArgumentException('Theme asset SHA-256 integrity mismatch');
             }
+            // Reject readily identifiable active remote-code loaders. This
+            // static check is defense-in-depth, not a JavaScript sandbox.
+            if (preg_match('/\.m?js\z/iD', $path)
+                && preg_match('~(?:\beval\s*\(|\bnew\s+Function\s*\(|\bimportScripts\s*\(|\bimport\s*\(\s*["\x27]https?://|\bnew\s+Worker\s*\(\s*["\x27]https?://)~i', $data)) {
+                throw new InvalidArgumentException('Theme v2 contains a forbidden JavaScript loader');
+            }
             $declared[$path] = true;
         }
         // The entry module is executable code: it MUST be covered by SRI,
