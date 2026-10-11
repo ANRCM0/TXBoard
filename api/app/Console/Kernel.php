@@ -42,6 +42,7 @@ class Kernel extends ConsoleKernel
         $schedule->command('reset:log')->daily()->onOneServer();
         // AccessAudit destinations/IPs are sensitive; prune older records daily.
         $schedule->command('access-audit:prune')->dailyAt('03:00')->onOneServer()->withoutOverlapping(20);
+        $schedule->command('idempotency:prune')->dailyAt('03:15')->onOneServer()->withoutOverlapping(20);
         // send
         $schedule->command('send:remindMail', ['--force'])->dailyAt('11:30')->onOneServer();
         // horizon metrics

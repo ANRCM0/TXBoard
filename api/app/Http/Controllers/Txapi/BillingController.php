@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Txapi;
 
 use App\Core\Http\TxapiResponse;
 use App\Exceptions\ApiException;
+use App\Domains\Billing\IdempotencyException;
+use App\Domains\Billing\OrderIdempotency;
 use App\Models\CommissionLog;
 use App\Models\Order;
 use App\Models\Payment;
@@ -111,8 +113,15 @@ final class BillingController
             abort(404);
         }
         try {
+            $key = OrderIdempotency::clientKey($request->header('Idempotency-Key'));
             $order = OrderService::createFromRequest(Auth::guard('sanctum')->user(),
-                $plan, $period, $params['coupon_code'] ?? null);
+                $plan, $period, $params['coupon_code'] ?? null, $key);
+        } catch (IdempotencyException $e) {
+            $response = TxapiResponse::error($request, $e->errorCode, $e->getMessage(), (int) $e->getCode());
+            if ($e->errorCode === 'IDEMPOTENCY_IN_PROGRESS') {
+                $response->headers->set('Retry-After', '2');
+            }
+            return $response;
         } catch (ApiException) {
             return TxapiResponse::error($request, 'ORDER_REJECTED',
                 'Order cannot be created under current subscription or billing state', 409);
