@@ -3,7 +3,7 @@ import {createRoot,type Root} from 'react-dom/client'
 import {QueryClient,QueryClientProvider} from '@tanstack/react-query'
 import {MemoryRouter,Route,Routes} from 'react-router-dom'
 import {afterEach,beforeEach,describe,expect,it,vi} from 'vitest'
-import {getMachines,getMachineNodes} from '../../api/server'
+import {getMachines,getMachineNodes,type MachineItem} from '../../api/server'
 import {getAgentActions,getAgentFleetHealth} from '../../api/agent'
 import {requestConfirm} from '../../components/ui/ConfirmDialog'
 import {MachineDetailPage} from './MachineDetailPage'
@@ -20,7 +20,7 @@ vi.mock('./MachineCredentialsDialog',()=>({
   MachineCredentialsDialog:({machineId}:{machineId:number})=><div role="dialog" aria-label="Credential isolation">Token for #{machineId}</div>,
 }))
 let root:Root,host:HTMLDivElement,client:QueryClient
-const sample=[{id:7,name:'Tokyo Host',is_active:true,image_channel:'dev',notes:'JP',
+const sample:MachineItem[]=[{id:7,name:'Tokyo Host',is_active:true,image_channel:'dev',notes:'JP',
   load_status:{cpu:0,mem:{used:0,total:100},disk:{used:75,total:100}}},
   {id:8,name:'Never Connected',is_active:true}]
 beforeEach(()=>{
