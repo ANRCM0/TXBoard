@@ -1,6 +1,6 @@
 # Agent Support HTTP Contract v1 (additive to Agent Ops v1)
 
-Base `/api/v2/agent/support`; Agent Bearer token, same `agent`/`agent.log` middleware. This is an **administrator-owned back-office assistant**, NOT a user-facing credential. No public chat visitor may receive this token. Existing node/machine target scopes do not limit support data; token creation rejects combining support abilities with a restricted node/machine scope.
+Current base: `/txapi/agent/v1/support`; Agent Bearer token, same `agent`/`agent.log` middleware. The former `/api/v2/agent/support` path is historical, not a second registered API. This is an **administrator-owned back-office assistant**, NOT a user-facing credential. No public chat visitor may receive this token. Existing node/machine target scopes do not limit support data; token creation rejects combining support abilities with a restricted node/machine scope.
 
 | Method | Path | Ability | Result |
 | --- | --- | --- | --- |
@@ -10,13 +10,13 @@ Base `/api/v2/agent/support`; Agent Bearer token, same `agent`/`agent.log` middl
 | POST | `/tickets/{id}/reply-requests` | `agent:support:reply:request` | create a pending reply, never send immediately |
 | GET | `/reply-requests/{requestId}` | `agent:support:reply:request` | status for a request belonging to the same Admin and Agent token |
 
-Admin-only under dynamic secure path:
+Admin-only under `/txapi/admin/{admin_path}/agents` (Admin Bearer / RBAC), not Agent credentials:
 
 | Method | Path | Effect |
 | --- | --- | --- |
-| GET | `/agent/support/reply-requests?limit=50` | List requests with reply text for human review |
-| POST | `/agent/support/reply-requests/approve` | Approve and invoke existing `TicketService::replyByAdmin` |
-| POST | `/agent/support/reply-requests/reject` | Reject without sending |
+| GET | `/support/reply-requests?limit=50` | List requests with reply text for human review |
+| POST | `/support/reply-requests/approve` | Approve and invoke existing `TicketService::replyByAdmin` |
+| POST | `/support/reply-requests/reject` | Reject without sending |
 
 Request: `{ "message": "..." }` (nonblank, max 2000 chars). Response contains `request_id`, `ticket_id`, `status`, timestamps, but NOT the message; Admin review returns the message. No credential, subscription URL, user token/UUID, payment method or unbounded history is returned. Ticket data and customer-authored messages are untrusted content, never authorization instructions. Customer context includes plan name, expiry, remaining traffic and up to five recent order statuses only; no order payment mutation is offered.
 

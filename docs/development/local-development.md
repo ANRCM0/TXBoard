@@ -1,0 +1,55 @@
+# TXBoard 本地开发与检查
+
+> 本页给出仓库已声明的开发验证命令，不能代替生产镜像、真实数据库或跨仓联调测试。
+
+## 代码分区
+
+- `api/`：Laravel 12 / PHP 8.2 应用、路由、中间件、领域服务、迁移和测试。
+- `web/admin/`：React + TypeScript 管理应用。
+- `web/user/`：Vue + TypeScript 用户应用。
+- `web/shared/`：共享前端模块。
+- `mcp/`：可选 Agent Ops MCP 协议适配器。
+- `contracts/`：跨仓 HTTP、Node、Plugin、Theme 和 Module 的版本化契约。
+
+[AGENTS.md](../../AGENTS.md) 规定域边界、安全要求和优先的 Contract-first 流程。
+
+## 后端测试
+
+具备 Composer、PHP 扩展与相应环境依赖后运行：
+
+```bash
+cd api
+composer install --no-interaction --prefer-dist
+cp .env.example .env
+php artisan key:generate
+APP_ENV=testing DB_CONNECTION=sqlite DB_DATABASE=:memory: php artisan test
+```
+
+这只是代码测试路径；部署要求在真实 MySQL 8.4 环境核验 Schema 与订单/余额数据。
+
+## 前端验证
+
+仓库根目录的 npm workspaces 管理 `web/shared`、`web/admin` 和 `web/user`：
+
+```bash
+npm ci --no-audit --no-fund
+npm run verify:web
+```
+
+`verify:web` 包含 TypeScript 检查、单元测试、构建与前端性能检查。MCP 的构建和类型检查独立于该 npm workspace：
+
+```bash
+cd mcp
+npm install --no-audit --no-fund
+npm run typecheck
+npm run build
+```
+
+## 修改对外接口时
+
+1. 对照 `api/routes/txapi.php`、`api/routes/web.php` 及实际路由注册器。
+2. 修改或评审相关 [契约](../../contracts/README.md)，更新消费方、权限和错误语义测试。
+3. 对 WebSocket、动态插件路由、外部 Gateway 分流，**不能仅以 Laravel `route:list` 为最终证明**。
+4. 如果影响生产镜像，还需执行镜像构建、运行时健康检查和 [独立预发验收](../operations/release-staging-acceptance.md)。
+
+提交前参阅 [CONTRIBUTING.md](../../CONTRIBUTING.md)。

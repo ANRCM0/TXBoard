@@ -1,6 +1,6 @@
 # Agent Ops HTTP Contract v1
 
-Base path: `/api/v2/agent`
+**Current runtime base path:** `/txapi/agent/v1` (registered by `api/routes/txapi.php` under the `/txapi` prefix). The previous `/api/v2/agent` prefix is historical and must not be used for new integrations.
 
 Authentication: `Authorization: Bearer <TXBoard Agent token>`.
 
@@ -73,7 +73,7 @@ See `contracts/agent-self-connect/v2.md` for the full enrollment/security contra
 ## Action request
 
 ```http
-POST /api/v2/agent/nodes/{nodeId}/actions
+POST /txapi/agent/v1/nodes/{nodeId}/actions
 Content-Type: application/json
 Authorization: Bearer ...
 
@@ -216,27 +216,29 @@ For example, an `ops.kernel.restart` action whose stored status is `succeeded` s
 
 ## Admin control plane
 
-Admin Agent Ops routes live under the existing secure Admin path.
+管理员操作由独立的 `/txapi/admin/{admin_path}` 鉴权与 RBAC 边界保护；不能使用 Agent Bearer 访问。
 
 Token management:
 
-- `GET /api/v2/{secure_path}/agent/abilities`
-- `GET /api/v2/{secure_path}/agent/tokens`
-- `POST /api/v2/{secure_path}/agent/tokens/create`
-- `POST /api/v2/{secure_path}/agent/tokens/revoke`
+- `GET /txapi/admin/{admin_path}/agents/abilities`
+- `GET /txapi/admin/{admin_path}/agents/tokens`
+- `POST /txapi/admin/{admin_path}/agents/tokens`
+- `DELETE /txapi/admin/{admin_path}/agents/tokens/{id}`
 
 Fleet inspection:
 
-- `GET /api/v2/{secure_path}/agent/fleet/health`
-- `GET /api/v2/{secure_path}/agent/inspections`
-- `POST /api/v2/{secure_path}/agent/inspections/run`
-- `GET /api/v2/{secure_path}/agent/nodes/{nodeId}/timeline`
+- `GET /txapi/admin/{admin_path}/agents/fleet/health`
+- `GET /txapi/admin/{admin_path}/agents/inspections`
+- `POST /txapi/admin/{admin_path}/agents/inspections`
+- `GET /txapi/admin/{admin_path}/agents/nodes/{nodeId}/timeline`
 
 Approval:
 
-- `GET /api/v2/{secure_path}/agent/actions`
-- `POST /api/v2/{secure_path}/agent/actions/approve`
-- `POST /api/v2/{secure_path}/agent/actions/reject`
+- `GET /txapi/admin/{admin_path}/agents/actions`
+- `POST /txapi/admin/{admin_path}/agents/actions/approve`
+- `POST /txapi/admin/{admin_path}/agents/actions/reject`
+
+These are the current registered route names, not the legacy `/api/v2/{secure_path}/agent/*` endpoints.
 
 ## Response envelope
 
