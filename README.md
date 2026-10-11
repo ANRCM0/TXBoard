@@ -4,6 +4,8 @@
 
 > **开发与验收状态**：以 [开发状态台账](./docs/development-status.md) 的最新记录为准。代码与 CI 通过不等于完成生产环境联调，真实部署仍须独立验收。
 
+[文档中心](./docs/README.md) · [开发与验收状态](./docs/development-status.md) · [文档维护规范](./docs/DOCUMENTATION_GUIDE.md)
+
 ## TXBoard Native 双仓协作（未来目标）
 
 Gateway 是可选的主题/用户 API BFF，未来只处理 `/txapi/bff/v1/*`；TXBoard Laravel 处理其他 `/txapi/*`，尤其 Admin、Node、Agent、支付回调。BFF v1 仍保持 SDK 的 `{ok,data,meta}` envelope，Laravel Native 的 `{data,meta,request_id}` 单独解码。现行 `/gateway/v1` 和 `/api/v1` 不因文档迁移改变。Edge 精确分流、私网固定上游、不开放通用反向代理。见 [双仓集成方案](./docs/txapi-integration.md) 和 [目标 BFF 契约](./contracts/txapi-bff-target-v1.md)。
