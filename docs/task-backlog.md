@@ -36,7 +36,7 @@
 | GW-301 | 订阅、订单明细、支付展示、通知等只读适配已合并（#6） | 真实后端契约验证 |
 | GW-307 | HPKE-only 注册和邮箱验证码（默认关闭）、Laravel 透传已合并（#7） | 真实注册、验证码、邮件/邀请策略全流程验证 |
 | GW-401～407 | HPKE 密文登录与 Redis 防重放**技术预览**已合并（#6/#7） | 威胁模型、独立审计、密钥双版本轮换、Redis 故障转移、发布门槛 |
-| GW-302～306/309～311 | **未开发**：订单创建、支付流程、交易持久化幂等、快速购买（**GW-302 例外：ADR 设计文档已提交待评审**，见 [adr-order-idempotency.md](./adr-order-idempotency.md)；**GW-304 例外：Gateway 侧适配层代码已实现、默认关闭、待真实联调**） | 全部支付与交易安全前置 |
+| GW-302～306/309～311 | **未开发**：订单创建、支付流程、交易持久化幂等、快速购买（**GW-302 例外：ADR 设计文档已提交待评审**，见 [adr-order-idempotency.md](./adr-order-idempotency.md)；**GW-304 例外：Gateway 侧适配层代码已实现、默认关闭、待真实联调**；**GW-305/309 例外：ADR/灰度设计文档已提交待评审**；**GW-310 例外：ADR 设计文档已提交待评审**，见 [adr-quick-purchase.md](./adr-quick-purchase.md)） | 全部支付与交易安全前置 |
 
 > “代码已实现”不等于原任务的全部验收条件已经满足。尤其真实环境验收是用户当前选择延期，不是通过或取消生产门禁。证据与下一阶段安排见 [开发状态台账](./development-status.md)。
 
@@ -110,8 +110,8 @@
 | GW-306 | P0 | TX + GW | 支付沙箱重复回调、异步先后、超时恢复测试 | GW-305 | 支付回调不走 Gateway；交易对账一致，无法验证时不得放量 |
 | GW-307 | P1 | GW | 用户注册、邮件验证码、身份恢复接口接入 | GW-203 | Laravel 注册/邮件策略不变；限流与验证 E2E；未启用的接口默认拒绝 |
 | GW-308 | P1 | GW + SDK | 新业务类型、重试与错误状态 SDK API | GW-304/306 | GET 可重试策略，写请求默认不自动重试；未知状态可确认 |
-| GW-309 | P0 | GW + TX + DEP | 订单写灰度 / 旧 API 绕过边界验收 | GW-303/304/306 | 新旧调用同一幂等规则；真实沙箱走完、成功禁入条件解除、回滚演练 |
-| GW-310 | P1 | TX + GW + SDK | 快速购买：注册/验证/受控认证/幂等下单一体化 | GW-203/303/304/306/307/309 | 不关闭邮箱验证/邀请码、不用管理 token；老用户不可被冒领；重放/关闭页面/重复支付回调与失败恢复 E2E 全绿；默认关闭 |
+| GW-309 | P0 | GW + TX + DEP | 订单写灰度 / 旧 API 绕过边界验收 | GW-303/304/306 | 新旧调用同一幂等规则；真实沙箱走完、成功禁入条件解除、回滚演练 | **设计文档已提交（2026-10-11，[docs/order-write-rollout.md](./order-write-rollout.md)）：1%→5%→25%→100% 四级灰度（边缘分流、Gateway 内不做百分比分流器）、新旧路径对比表（`/gateway/v1/orders` vs `/api/v1/user/order/save`，权威幂等键同为 Laravel 派生 + `idempotency_keys` 唯一约束）、8 项旧 API 绕过边界测试（BYP-1～8：直连基线/两侧重放同一 tradeNo/混合并发/提示头篡改）、四级监控指标（错误率/p95/幂等冲突率≈0/重复成单/对账）、回滚演练（≤5 分钟止血、零数据卷触碰、故障注入变体）；待评审，G0 禁入条件（GW-303/305/306 验收）未解除前 `GATEWAY_ORDER_WRITE_ENABLED` 不得为 true** |
+| GW-310 | P1 | TX + GW + SDK | 快速购买：注册/验证/受控认证/幂等下单一体化 | GW-203/303/304/306/307/309 | 不关闭邮箱验证/邀请码、不用管理 token；老用户不可被冒领；重放/关闭页面/重复支付回调与失败恢复 E2E 全绿；默认关闭 | **设计文档已提交（2026-10-11，待评审，[docs/adr-quick-purchase.md](./adr-quick-purchase.md)）：Laravel 编排 + Gateway 透传 + Purchase Ticket 方案；新增 `POST /gateway/v1/quick-purchase`（默认 `disabledWrite` 405，`GATEWAY_QUICK_PURCHASE_ENABLED` 且 `GATEWAY_ORDER_WRITE_ENABLED=true` 双 flag 才评估开启、未设则路由缺失 404）；HPKE sealed 编排载荷 + `Idempotency-Key` 透传 + `X-Idempotency-Key-Hint` 自派生；幂等沿用 GW-302 `idempotency_keys` 表（operation 新增 `quickpurchase.checkout`、三态状态机、24h TTL、15min 陈旧 CAS，不新建第二套机制）；事务内分支判定防冒领（未注册→现场注册全验证、已注册→`LOGIN_REQUIRED` 零 token 签发、响应外壳字节级一致）；`auth_token` 不落快照明文（token_ref + 重签等价令牌）；支付回调路径不改（GW-306 吸收重复回调）；Gateway 不持有管理 token/不复制业务规则/不做本地去重。未实现任何路由代码，未改 CI，未提交** |
 | GW-311 | P1 | TX + GW | 访客支付方式展示目录：安全公开 DTO、能力开关和失效策略 | GW-301、Laravel 公共字段评审 | 只展示后端许可的 id/name/icon 等非敏感字段；不公开支付商密钥、账户信息；实际结算仍由 Laravel 校验 |
 | GW-312 | P2 | TX | 复用 TXBoard 通知服务支持交易邮件模板与可靠投递 | GW-307/310 + TX 通知架构评审 | 无独立 SMTP/管理员邮件凭据；不发送明文密码；模板转义/队列重试/事件去重/故障注入 E2E |
 

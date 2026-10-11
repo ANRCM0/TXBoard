@@ -2,12 +2,28 @@
 
 > 更新时间：**2026-10-11**；旧阶段记录为历史快照，以下新增最新 main 代码核查。此文档记录代码和 CI，**不是生产就绪证明**。默认分支 main。当前不接入真实 TXBoard 环境，真实联调的验收暂按产品决策**延期**。
 
+## 2026-10-11：GW-309 订单写灰度与旧 API 绕过边界验收（设计，未实施）
+
+- 新增 [order-write-rollout.md](./order-write-rollout.md)（待评审）：四级灰度 **1% → 5% → 25% → 100%**，分流在边缘/反代层（DEP 责任，优先按用户会话 cookie 固定两侧），Gateway 内不做百分比分流器；每次调比例为独立部署动作，比例归零等价于关闭 `GATEWAY_ORDER_WRITE_ENABLED`。
+- 新旧路径对比：`POST /gateway/v1/orders`（`orderWrite` 策略，默认 `disabledWrite` 405）与 `POST /api/v1/user/order/save`（旧路径，永不关闭、渐进迁移）**权威幂等键同为 Laravel 以认证 user_id 派生**（`SHA-256(user_id‖order.create‖canonical body)` + `idempotency_keys` 唯一约束），Gateway 的 `X-Idempotency-Key-Hint` 仅关联非权威——灰度只改入口不改权威，这是可安全放量的前提。
+- 旧 API 绕过边界测试 8 项（BYP-1～8，沙箱直连 curl）：旧路径基线、同 body 两侧交叉重放必须返回**同一 trade_no**、50+50 混合并发恰一单、伪造客户端 user_id 被 strict schema 拒绝、提示头篡改仅记日志不影响判定、TTL 过期按新请求。
+- 监控指标：写错误率/p95 增量对比旧路径基线、幂等冲突率 ≈ 0（派生键设计下 `IDEMPOTENCY_CONFLICT` 应不可能出现，出现即实现 bug）、重复成单率零容忍、日终对账零差异。回滚演练判据：止血 ≤ 5 分钟、零数据卷触碰、故障注入变体（Gateway kill / Redis 断连 / Laravel 慢响应）。
+- **未验收**：G0 禁入条件（GW-303/305/306 真实沙箱验收 + 回滚演练记录）未解除前 `GATEWAY_ORDER_WRITE_ENABLED` 不得为 true。Gateway **346/346** + SDK **32/32** 仍全绿（本次为纯文档变更）。
+
+## 2026-10-11：GW-310 快速购买一体化 ADR（设计，未实现路由）
+
+- 新增 [adr-quick-purchase.md](./adr-quick-purchase.md)（待评审）：快速购买 = Laravel 编排 + Gateway 透传 + Purchase Ticket（一次性签发的用户本人令牌）。新增候选路由 `POST /gateway/v1/quick-purchase`，默认 `disabledWrite`（405、零上游调用），`GATEWAY_QUICK_PURCHASE_ENABLED` 且 `GATEWAY_ORDER_WRITE_ENABLED=true` 双 flag 才评估开启（未设则路由缺失 = 404）；HPKE sealed 编排载荷（registerSchema ∪ orderCreateSchema 字段并集，strict）+ `Idempotency-Key` 透传 + `X-Idempotency-Key-Hint` 自派生。
+- 冒领防线：Laravel 单一事务内按邮箱分支——未注册→现场注册（邀请码/邮箱验证/风控/Laravel CAPTCHA 全开），已注册→`LOGIN_REQUIRED`（409）且**零 token 签发**，老用户走受控 HPKE 登录后用同一 `Idempotency-Key` 对普通 `POST /orders` 下单；两分支响应外壳字节级一致（存在性信号评审确认）。
+- 幂等沿用 GW-302 `idempotency_keys` 表（operation 新增 `quickpurchase.checkout`，三态状态机、24h TTL、15min 陈旧 CAS 接管），**不新建第二套幂等机制**；`auth_token` 不落快照明文（token_ref + 重签等价令牌）；支付回调路径不变（GW-306 状态机吸收重复回调，快速购买只是多一条订单创建入口）。
+- 边界保持：Gateway 不持有管理 token、不代建用户、不复制业务规则、不做本地去重；限流/CAPTCHA 判定在幂等之前（负例测试要求）。
+- **未验收**：GW-303（Laravel 事务幂等）、GW-306（支付沙箱）与 GW-309（灰度）仍未做，快速购买在其后 opt-in；本文档为纯设计变更，未改任何代码/CI/测试。Gateway **346/346** + SDK **32/32** 仍全绿。
+
 ## 2026-10-11：GW-305 checkout/cancel 交易状态机 ADR（设计，未实现路由）
 
 - 新增 [adr-checkout-cancel.md](./adr-checkout-cancel.md)（待评审）：复用 GW-302 派生幂等键与 `idempotency_keys` 表（operation 扩展 `order.checkout`/`order.cancel`，不新建幂等机制）；订单业务态状态机 `0 pending → 1 paid（checkout 成功）/ 2 cancelled（cancel，仅 pending 可取消）`，`1/2/3` 为终态锁定。
 - 不可重复扣款论证：状态条件 UPDATE（`status=0` 守卫）+ 扣款条件 UPDATE（`balance >= ?` 守卫）+ 优惠券条件 UPDATE（`used < limit` 守卫）+ `idempotency_keys` 唯一约束，四者在同一 MySQL 事务内，任一失败整体回滚；重放同键同参数在幂等层返回首次快照，到不了扣款。
 - Gateway 侧**仅设计不实现**：候选 `POST /gateway/v1/orders/:tradeNo/checkout|cancel`（`body:'none'`、无金额字段、默认 disabledWrite 405、独立 flag 评审中）；错误码位冻结增补 `ORDER_STATE_INVALID`(409) / `ORDER_NOT_FOUND`(404，不泄露存在性)，`INSUFFICIENT_BALANCE`/`COUPON_*` 复用 `ORDER_REJECTED`(422)；资金写限流 fail-closed（checkout 5/账号 15 分钟）。未改动任何代码文件。
-- **未验收**：GW-303（Laravel 事务幂等）、GW-306（支付沙箱）与 GW-309（灰度/回滚）仍未做；本文档为设计输入，生产放量门禁不变。Gateway **346/346** + SDK **32/32** 仍全绿（本次为纯文档变更）。
+- **验证（纯文档变更）：** 本次仅新增/修改 docs 下 Markdown，无任何代码与 CI 改动，Gateway 346/346 基线维持（未重跑，无代码变更触发条件）。**未验收**：GW-303（Laravel 事务幂等）、GW-306（支付沙箱）与 GW-309（灰度/回滚，设计文档 order-write-rollout.md 已提交待评审，G0 禁入条件未解除）仍未做；本文档为设计输入，生产放量门禁不变。
 
 ## 2026-10-11：GW-304 订单写入适配层（默认关闭）已实现
 
