@@ -1,0 +1,134 @@
+/* TXBoard Admin UI v2 — scoped density components.
+ * No global overrides: page layouts explicitly opt into these primitives.
+ */
+.admin-v2-summary{
+  display:grid;
+  grid-template-columns:repeat(5,minmax(0,1fr));
+  border:1px solid var(--border);
+  border-radius:var(--radius-card);
+  background:var(--panel);
+  overflow:hidden;
+  margin-bottom:var(--ui-gap);
+}
+.admin-v2-summary-item{
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  gap:4px;
+  padding:12px 16px;
+  border-right:1px solid var(--border);
+}
+.admin-v2-summary-item:last-child{border-right:0}
+.admin-v2-summary-label{
+  display:flex;align-items:center;gap:7px;
+  color:var(--muted);font-size:var(--ui-font-secondary);line-height:1.4;
+}
+.admin-v2-summary-value{
+  color:var(--fg);font-size:20px;font-weight:700;line-height:1.2;
+  font-variant-numeric:tabular-nums;
+}
+.admin-v2-summary-item.is-success .admin-v2-summary-value{color:var(--success)}
+.admin-v2-summary-item.is-warning .admin-v2-summary-value{color:var(--warning)}
+.admin-v2-summary-item.is-danger .admin-v2-summary-value{color:var(--danger)}
+.admin-v2-status{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;font-size:var(--ui-font-secondary);color:var(--fg)}
+.admin-v2-status-dot{width:6px;height:6px;flex:none;border-radius:50%;background:var(--muted)}
+.admin-v2-status.is-success .admin-v2-status-dot{background:var(--success)}
+.admin-v2-status.is-warning .admin-v2-status-dot{background:var(--warning)}
+.admin-v2-status.is-danger .admin-v2-status-dot{background:var(--danger)}
+.admin-v2-empty{
+  min-height:178px;
+  border:1px dashed var(--ui-surface-outline);
+  border-radius:var(--radius-card);
+  background:transparent;
+}
+.admin-v2-empty .tx-empty-state-icon{width:40px;height:40px}
+.admin-v2-empty>p{font-size:var(--ui-font-body)}
+
+/* Module inventory — status text first, detailed metadata on demand. */
+.admin-v2-module-table{
+  border:1px solid var(--border);border-radius:var(--radius-card);
+  background:var(--panel);overflow:hidden;
+}
+.admin-v2-module-table .admin-dashboard-card-head{padding:16px 18px 12px}
+.admin-v2-module-table .data-table th,.admin-v2-module-table .data-table td{padding:12px 14px}
+.admin-v2-module-table .data-table tbody tr:last-child td{border-bottom:0}
+.admin-v2-module-name{min-width:200px;max-width:380px}
+.admin-v2-module-name>strong{display:block;font-size:14px;font-weight:650}
+.admin-v2-module-name>small{display:block;margin-top:3px;color:var(--muted);font-size:var(--ui-font-secondary);line-height:1.45;white-space:normal}
+.admin-v2-muted{color:var(--muted);font-size:var(--ui-font-secondary);line-height:1.5}
+.admin-v2-detail>summary{cursor:pointer;color:var(--primary);font-size:var(--ui-font-secondary);white-space:nowrap}
+.admin-v2-detail[open] summary{margin-bottom:8px}
+.admin-v2-detail-content{min-width:190px;max-width:260px;font-size:var(--ui-font-secondary);color:var(--muted);line-height:1.55}
+.admin-v2-detail-content div+div{margin-top:4px}
+.admin-v2-detail-content code{overflow-wrap:anywhere}
+.admin-v2-health-check.is-failed{color:var(--danger)}
+.admin-v2-health-check.is-unknown{color:var(--warning)}
+
+/* Plugin inventory — scalable compact rows, actions retain original behavior. */
+.admin-v2-plugin-list{
+  border:1px solid var(--border);border-radius:var(--radius-card);
+  background:var(--panel);overflow:hidden;
+}
+.admin-v2-plugin-row{
+  display:grid;grid-template-columns:minmax(0,1fr) auto auto;
+  align-items:center;column-gap:18px;row-gap:8px;
+  padding:var(--ui-row-padding) 16px;
+  border-bottom:1px solid var(--border);
+  min-height:76px;
+}
+.admin-v2-plugin-row:last-child{border-bottom:0}
+.admin-v2-plugin-identity{display:flex;align-items:center;gap:12px;min-width:0}
+.admin-v2-plugin-icon{
+  display:grid;place-items:center;flex:none;width:38px;height:38px;
+  border-radius:10px;background:var(--ui-surface-subtle);color:var(--fg);
+  font-size:14px;font-weight:700;
+}
+.admin-v2-plugin-copy{min-width:0}
+.admin-v2-plugin-copy h3{margin:0;font-size:14px;line-height:1.4;font-weight:650}
+.admin-v2-plugin-copy p{margin:3px 0 0;font-size:var(--ui-font-secondary);color:var(--muted);line-height:1.45;overflow-wrap:anywhere}
+.admin-v2-plugin-meta{display:flex;flex-wrap:wrap;gap:4px 9px;margin-top:3px;font-size:var(--ui-font-secondary);color:var(--muted)}
+.admin-v2-plugin-state{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.admin-v2-plugin-actions{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:6px}
+.admin-v2-plugin-actions .button{margin:0}
+.admin-v2-plugin-actions .icon-button{flex:none}
+
+/* Theme: real image gets a gallery, image-less themes get compact rows. */
+.admin-v2-theme-heading{margin:18px 0 10px;font-size:14px;font-weight:650}
+.admin-v2-theme-gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr));gap:12px}
+.admin-v2-theme-card{min-width:0;overflow:hidden;background:var(--panel);border:1px solid var(--border);border-radius:var(--radius-card)}
+.admin-v2-theme-cover{aspect-ratio:16/9;background:var(--ui-surface-subtle);background-size:cover;background-position:center;position:relative}
+.admin-v2-theme-info{display:flex;flex-direction:column;gap:10px;padding:12px}
+.admin-v2-theme-info h3{margin:0;font-size:14px;line-height:1.5}
+.admin-v2-theme-info p{margin:3px 0 0;color:var(--muted);font-size:var(--ui-font-secondary);line-height:1.5}
+.admin-v2-theme-list{border:1px solid var(--border);border-radius:var(--radius-card);background:var(--panel);overflow:hidden}
+.admin-v2-theme-row{display:flex;align-items:center;gap:12px;padding:14px 16px;min-height:80px;border-bottom:1px solid var(--border)}
+.admin-v2-theme-row:last-child{border-bottom:0}
+.admin-v2-theme-icon{display:grid;place-items:center;flex:none;width:40px;height:40px;border-radius:10px;background:var(--ui-surface-subtle);color:var(--muted)}
+.admin-v2-theme-description{flex:1;min-width:0}
+.admin-v2-theme-description h3{margin:0;font-size:14px}
+.admin-v2-theme-description p{margin:4px 0 0;color:var(--muted);font-size:var(--ui-font-secondary);line-height:1.5;overflow-wrap:anywhere}
+.admin-v2-theme-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:6px}
+.admin-v2-theme-actions .button,.admin-v2-theme-actions .icon-button{margin:0}
+.admin-v2-theme-current{display:inline-flex;align-items:center;gap:6px;color:var(--success);font-size:var(--ui-font-secondary)}
+.admin-v2-theme-current:before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor}
+.admin-v2-theme-card .admin-v2-theme-current{margin-top:4px}
+
+@media(max-width:1100px){
+  .admin-v2-summary{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .admin-v2-summary-item{border-bottom:1px solid var(--border)}
+  .admin-v2-summary-item:nth-child(3){border-right:0}
+  .admin-v2-summary-item:nth-last-child(-n+2){border-bottom:0}
+  .admin-v2-plugin-row{grid-template-columns:minmax(0,1fr) auto}
+  .admin-v2-plugin-actions{grid-column:1/-1;justify-content:flex-start;padding-left:50px}
+}
+@media(max-width:680px){
+  .admin-v2-summary{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .admin-v2-summary-item{border-right:1px solid var(--border);border-bottom:1px solid var(--border)}
+  .admin-v2-summary-item:nth-child(2n){border-right:0}
+  .admin-v2-summary-item:last-child{border:0}
+  .admin-v2-plugin-row{grid-template-columns:minmax(0,1fr)}
+  .admin-v2-plugin-actions{grid-column:auto;padding-left:0;justify-content:flex-start}
+  .admin-v2-theme-row{align-items:flex-start;flex-wrap:wrap}
+  .admin-v2-theme-actions{width:100%;justify-content:flex-start;padding-left:52px}
+}

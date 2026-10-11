@@ -8,6 +8,7 @@ import './design-tokens.css'
 import './styles.css'
 import './form-system.css'
 import './admin-experience.css'
+import './admin-density.css'
 
 const queryClient = new QueryClient({
   defaultOptions: {
