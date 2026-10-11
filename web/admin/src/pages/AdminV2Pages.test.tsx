@@ -108,6 +108,7 @@ it('plugins render compact management rows while retaining enabled actions', asy
 
 it('themes distinguish preview gallery from compact image-less list without losing actions', async () => {
   vi.mocked(getThemes).mockResolvedValue({
+    active:'with-preview',
     themes:[
       {name:'with-preview',title:'Modern',version:'1.2.0',images:['https://example.test/cover.webp'],is_active:true,is_system:false},
       {name:'without-preview',title:'Default',version:'1.0.0',images:[' ', ''],is_active:false,is_system:false},
