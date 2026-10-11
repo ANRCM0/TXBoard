@@ -1,0 +1,47 @@
+/* TXBoard Admin core design tokens.
+ * One authoritative palette for both visual themes. Keep feature-specific
+ * component rules in their respective stylesheets; avoid inline hex colors.
+ */
+:root {
+  color-scheme: light;
+  --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --bg: #f5f7fb;
+  --panel: #ffffff;
+  --fg: #182336;
+  --muted: #64748b;
+  --border: #e2e8f1;
+  --primary: #2563eb;
+  --primary-fg: #ffffff;
+  --hover: #eef3fa;
+  --danger: #dc2626;
+  --success: #15803d;
+  --warning: #b45309;
+  --sidebar: #ffffff;
+  --sidebar-fg: #253247;
+  --shadow: 0 1px 2px rgba(16,24,40,.035), 0 4px 14px rgba(16,24,40,.035);
+  --admin-header-height: 60px;
+  --admin-sidebar-width: 232px;
+  --radius-control: 8px;
+  --radius-card: 12px;
+  --radius-overlay: 14px;
+  --focus-ring: #2563eb;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0b111b;
+  --panel: #111927;
+  --fg: #f2f5f9;
+  --muted: #9aa8bc;
+  --border: #273449;
+  --primary: #60a5fa;
+  --primary-fg: #08111f;
+  --hover: #192538;
+  --danger: #f87171;
+  --success: #34d399;
+  --warning: #fbbf24;
+  --sidebar: #0e1725;
+  --sidebar-fg: #e5ebf4;
+  --shadow: 0 1px 2px -2px rgba(0,0,0,.4), 0 3px 6px rgba(0,0,0,.3);
+  --focus-ring: #93c5fd;
+}
