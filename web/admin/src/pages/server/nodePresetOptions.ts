@@ -43,5 +43,6 @@ export function presetForField(protocol: string, field: ProtocolFormField): Pres
 export function selectedPresetOptions(options:ProtocolFormOption[], current:unknown):ProtocolFormOption[] {
   const value=String(current ?? '')
   if (!value || options.some(item=>String(item.value)===value)) return options
-  return [{value,label:'当前配置：'+value},...options]
+  const original = typeof current === 'string' || typeof current === 'number' || typeof current === 'boolean' ? current : value
+  return [{value:original,label:'当前配置：'+value},...options]
 }

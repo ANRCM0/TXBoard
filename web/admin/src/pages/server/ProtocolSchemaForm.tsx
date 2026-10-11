@@ -276,6 +276,7 @@ export function ProtocolSchemaForm({
             options={available}
             allowCustom={preset.allowCustom}
             onChange={(next) => {
+              if (next === scalarValue(current)) return
               const option = field.type === 'select'
                 ? field.options?.find(item => String(item.value) === next)
                 : undefined
