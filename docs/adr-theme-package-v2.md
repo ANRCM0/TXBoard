@@ -109,7 +109,7 @@ JSON 文件，UTF-8，≤ 64 KiB，严格模式（未知字段拒绝）。
 | 资源完整性 | 每个静态资源 `integrity` sha256；运行时校验 | 拒绝启用 |
 | 远程代码 | `security.remoteCode=false` 强制；禁止远程 script/worker/WASM URL、禁止 `eval`/`new Function` | 拒绝安装（Runtime 静态扫描） |
 | CSP | 主题在 `strict` CSP（无内联脚本、仅同源资源）下必须可用 | 验收用例（GW-508） |
-| token 存储 | 用户 Bearer 必须由应用自行管理、按需通过 SDK `getToken` 回调注入；**禁止 localStorage 长期存储、禁止打包进产物**（与 [SDK README](../../packages/theme-sdk/README.md) 会话模型一致） | 安全评审阻断 |
+| token 存储 | 用户 Bearer 必须由应用自行管理、按需通过 SDK `getToken` 回调注入；**禁止 localStorage 长期存储、禁止打包进产物**（与 [SDK README](../packages/theme-sdk/README.md) 会话模型一致） | 安全评审阻断 |
 | 依赖 | 运行时依赖全部离线打包，`dependencies.runtime` 恒为空 | 拒绝安装 |
 | 信任边界 | "受 Gateway 保护"不等于恶意主题安全保证；第三方主题需独立审查（implementation-plan §5.3） | 文档红线 |
 

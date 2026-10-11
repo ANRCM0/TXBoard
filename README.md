@@ -2,7 +2,9 @@
 
 **Docker-first、可选启用的 TXBoard 用户主题 API Gateway**，独立于 Laravel 核心业务，基于 Node.js 22 / Hono / TypeScript，并提供 `@txboard/theme-sdk`。当前运行 API 以 `/gateway/v1` 为前缀；未来与 TXBoard Native 统一的 BFF 使用 `/txapi/bff/v1`，**仍为目标方案**。TXBoard Laravel 始终负责认证、验证码、账户归属、订单、余额和支付。
 
-> **截至 2026-10-09：PR #4～#13 已合并，包含目录拆分、声明式策略、可信代理、双层限流、可观测和韧性。真实 Laravel/MySQL/Redis/CAPTCHA、生产反代与回滚仍未验收，不代表可生产放量。** 参阅 [开发状态与 CI 证据](./docs/development-status.md)。
+> **开发与验收状态**：以 [开发状态台账](./docs/development-status.md) 的最新记录为准。代码与 CI 通过不等于完成生产环境联调，真实部署仍须独立验收。
+
+[文档中心](./docs/README.md) · [开发与验收状态](./docs/development-status.md) · [文档维护规范](./docs/DOCUMENTATION_GUIDE.md)
 
 ## TXBoard Native 双仓协作（未来目标）
 
