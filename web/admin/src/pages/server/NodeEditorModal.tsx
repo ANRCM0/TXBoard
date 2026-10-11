@@ -422,8 +422,8 @@ export function NodeEditorModal({
     if (draft.rateTimeEnable) {
       const rows = Array.isArray(draft.rateTimeRanges) ? draft.rateTimeRanges : []
       if (!rows.length || rows.some(row => !isRecord(row) ||
-        !/^\\d{2}:\\d{2}(?::\\d{2})?$/.test(String(row.start ?? '')) ||
-        !/^\\d{2}:\\d{2}(?::\\d{2})?$/.test(String(row.end ?? '')) ||
+        !/^\d{2}:\d{2}(?::\d{2})?$/.test(String(row.start ?? '')) ||
+        !/^\d{2}:\d{2}(?::\d{2})?$/.test(String(row.end ?? '')) ||
         typeof row.rate !== 'number' || !Number.isFinite(row.rate) || row.rate < 0)) {
         return toast.error('请至少配置一个有效的分时倍率时间段')
       }
