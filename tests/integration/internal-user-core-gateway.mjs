@@ -12,7 +12,7 @@ import { createLogger } from '../../apps/gateway/dist/middleware/observability.j
 const api = process.env.INTERNAL_CORE_API, dir = process.env.INTERNAL_FIXTURE_DIR
 assert.ok(api && dir)
 const snapshot = JSON.parse(readFileSync(`${api}/../internal-snapshot.json`))
-assert.equal(snapshot.committed_core_head, '79a38540c323b6ddd57f84e2962026bdb216534d')
+assert.equal(snapshot.committed_core_head, '60e6ecae545078e7e771aa73c429828a557b0e27')
 const actors = JSON.parse(readFileSync(`${dir}/actors.json`))
 const pki = JSON.parse(readFileSync(`${dir}/public-evidence.json`))
 const processes = [], servers = [], checks = [], nativeCalls = []
@@ -61,6 +61,7 @@ try {
   decorate('decorate')
   decorate('list-orders')
   decorate('display-reads')
+  decorate('notice-reads')
   core = child('php', ['-S', '127.0.0.1:19081', '-t', 'public', 'public/index.php'], 'core-http')
   boundary = child('node', [`${api}/internal-readonly-fixtures/tls-boundary.mjs`, `${dir}/boundary.json`], 'tls-boundary')
   await ready()
@@ -145,6 +146,42 @@ try {
     }
     assert.equal(nativeCalls.length,before)
   })
+  await check('real subscription summary equals Native and excludes private URL and credentials', async () => {
+    const before=nativeCalls.length, viaNative=await call(native,'/user/subscription/summary'), viaInternal=await call(internal,'/user/subscription/summary')
+    assert.deepEqual(viaInternal.data,viaNative.data); assert.equal(viaInternal.data.planName,'Internal Read Plan')
+    assert.equal(nativeCalls.length,before+1); assert.ok(!JSON.stringify(viaInternal).includes('subscribe_url'))
+    assert.equal((await call(internal,'/user/subscription/summary',actors.credentials.other)).data.planId,null)
+  })
+  await check('real visible notice pages equal Native while retaining sort content and tags', async () => {
+    for(const path of ['/notices?current=1&pageSize=2','/notices?current=2&pageSize=2','/notices?current=3&pageSize=2']) {
+      const before=nativeCalls.length, viaNative=await call(native,path), viaInternal=await call(internal,path)
+      assert.deepEqual(viaInternal.data,viaNative.data); assert.equal(nativeCalls.length,before+1)
+      assert.ok(!JSON.stringify(viaInternal).includes('Hidden'))
+    }
+  })
+  await check('content reads reject missing expired and Admin actors with no Native fallback', async () => {
+    const before=nativeCalls.length
+    for(const path of ['/user/subscription/summary','/notices']) {
+      await call(internal,path,null,401); await call(internal,path,actors.credentials.admin,403)
+      await call(internal,path,actors.credentials.expired,401)
+    }
+    assert.equal(nativeCalls.length,before)
+  })
+  await check('notice query bounds duplicate and unknown keys refuse before either transport', async () => {
+    const before=nativeCalls.length
+    for(const query of ['current=0','pageSize=101','current=1&current=2','status=0','user_id=1']) await call(internal,'/notices?'+query,actors.credentials.user,400)
+    assert.equal(nativeCalls.length,before)
+  })
+  await check('missing current summary plan retains Core409 through actual TLS without fallback', async () => {
+    const before=nativeCalls.length;decorate('summary-plan-missing')
+    await call(internal,'/user/subscription/summary',actors.credentials.user,409)
+    assert.equal(nativeCalls.length,before);decorate('summary-plan-restore')
+  })
+  await check('oversize visible notice refuses before release through actual TLS without fallback', async () => {
+    const before=nativeCalls.length;decorate('notice-oversize')
+    await call(internal,'/notices',actors.credentials.user,502)
+    assert.equal(nativeCalls.length,before);decorate('notice-restore')
+  })
   await check('nonselected status retains Native path', async () => {
     const before=nativeCalls.length; await call(internal,orderPath+'/status')
     assert.deepEqual(nativeCalls.slice(before),['/txapi/orders/'+actors.trade_no])
@@ -211,7 +248,7 @@ try {
   const hashes={}
   for(const file of ['apps/gateway/src/services/internal-user-client.ts','apps/gateway/src/adapters/internal-user-v2.ts','apps/gateway/src/config/internal-user.ts',
     'tests/integration/internal-user-core-gateway.mjs','tests/integration/internal-user-core-fixture.php'])hashes[file]=createHash('sha256').update(readFileSync(file)).digest('hex')
-  const report={current_only:true,phase:'B5.4',production_acceptance:false,passed:checks.length,checks,
+  const report={current_only:true,phase:'B5.5',production_acceptance:false,passed:checks.length,checks,
     committed_core_head:snapshot.committed_core_head,committed_gateway_head:JSON.parse(readFileSync('internal-user-snapshot.json')).committed_gateway_head,
     core_slice_sha256:snapshot.slice_sha256,gateway_source_sha256:hashes,database:fixture('database-version').toString(),
     runtime:{node:process.version,php:execFileSync('php',['-r','echo PHP_VERSION;']).toString()},tls:'TLSv1.3',

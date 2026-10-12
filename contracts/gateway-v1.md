@@ -81,3 +81,8 @@ B5.4 local Internal opt-in additionally maps protected `/dashboard/stats` and
 Native remains the default. Invalid actor, service trust, overflow, unexpected
 fields or transport failure does not trigger a Native fallback. This supplies
 no checkout authorization or production PKI/SC-v2 acceptance.
+
+B5.5 extends that local opt-in to the authenticated subscription summary and
+notices. Public DTOs, native visible-only content and bounded pages remain;
+credentials are excluded. Missing plan, invalid actor/trust/DTO or transport
+errors retain refusal without Native fallback. Native stays the default.

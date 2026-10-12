@@ -1,6 +1,6 @@
 <?php
 
-// Disposable B5.2/B5.3/B5.4 fixture; never registered as an HTTP endpoint.
+// Disposable B5.2/B5.3/B5.4/B5.5 fixture; never registered as an HTTP endpoint.
 $api = realpath($argv[1] ?? '');
 if (!$api || !is_file($api.'/vendor/autoload.php')) throw new RuntimeException('Pass isolated Core api');
 require $api.'/vendor/autoload.php';
@@ -31,6 +31,21 @@ match ($argv[2] ?? '') {
                 'config' => ['secret' => 'must-never-return-provider-secret']]);
         }
     })(),
+    'notice-reads' => (function (): void {
+        foreach ([['Hidden', 0, false], ['First visible', 1, true], ['Second visible', 1, true], ['Last visible', 2, true]] as [$name, $sort, $show]) {
+            $n = App\Models\Notice::create(['title' => $name, 'content' => '<p>Fixture content</p>', 'tags' => ['fixture'], 'sort' => $sort, 'show' => $show]);
+            Illuminate\Support\Facades\DB::table('tx_notice')->where('id', $n->id)->update(['created_at' => 1791763200]);
+        }
+    })(),
+    'summary-plan-missing' => $user->update(['plan_id' => $order->plan_id + 100]),
+    'summary-plan-restore' => $user->update(['plan_id' => $order->plan_id]),
+    'notice-oversize' => (function (): void {
+        $updated = Illuminate\Support\Facades\DB::table('tx_notice')->where('title', 'Second visible')->update(['content' => str_repeat('x', 64000)]);
+        // Both rows fit native TEXT while their combined response exceeds the envelope cap.
+        $updated += Illuminate\Support\Facades\DB::table('tx_notice')->where('title', 'First visible')->update(['content' => str_repeat('x', 2000)]);
+        if ($updated !== 2) throw new RuntimeException('Oversize fixture did not update both visible rows');
+    })(),
+    'notice-restore' => Illuminate\Support\Facades\DB::table('tx_notice')->whereIn('title', ['Second visible', 'First visible'])->update(['content' => '<p>Fixture content</p>']),
     'overflow' => $user->update(['u' => 9007199254740992]),
     'restore-values' => $user->update(['u' => 100]),
     'plan-missing' => $order->update(['plan_id' => $order->plan_id + 100]),

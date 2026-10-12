@@ -2,11 +2,12 @@ import { randomUUID, X509Certificate } from 'node:crypto'
 import https from 'node:https'
 import { checkServerIdentity } from 'node:tls'
 import type { GatewayConfig } from '../config/env.js'
-import { adaptInternalDisplay, adaptInternalOrderList, adaptInternalUserV2, internalError, internalSuccessV2, strictInternalJson } from '../adapters/internal-user-v2.js'
+import { adaptInternalContent, adaptInternalDisplay, adaptInternalOrderList, adaptInternalUserV2, internalError, internalSuccessV2, strictInternalJson } from '../adapters/internal-user-v2.js'
 import { GatewayFailure } from './failures.js'
 
 const operations = { userProfile: 'user.profile.get', userOrderDetail: 'user.order.get', userOrders: 'user.order.list',
-  userStats: 'user.dashboard.get', userPaymentMethods: 'user.payment-methods.list' } as const
+  userStats: 'user.dashboard.get', userPaymentMethods: 'user.payment-methods.list',
+  userSubscription: 'user.subscription-summary.get', userNotices: 'user.notice.list' } as const
 export async function internalUserRequest(config: GatewayConfig, operation: keyof typeof operations,
   options: { auth?: string; tradeNo?: string; signal?: AbortSignal; current?: number; pageSize?: number;
     status?: number; paginated?: boolean }): Promise<unknown> {
@@ -18,13 +19,13 @@ export async function internalUserRequest(config: GatewayConfig, operation: keyo
   if (operation === 'userOrderDetail' && (!options.tradeNo || !/^[A-Za-z0-9_-]{1,128}$(?![\s\S])/.test(options.tradeNo))) {
     throw new GatewayFailure('VALIDATION_ERROR', 400, 'Invalid order identifier')
   }
-  const page = options.current ?? 1, perPage = options.pageSize ?? 100
-  if (operation === 'userOrders' && (!Number.isInteger(page) || page < 1 || page > 9999
+  const page = options.current ?? 1, perPage = options.pageSize ?? (operation === 'userNotices' ? 5 : 100)
+  if ((operation === 'userOrders' || operation === 'userNotices') && (!Number.isInteger(page) || page < 1 || page > 9999
     || !Number.isInteger(perPage) || perPage < 1 || perPage > 100
-    || (options.status !== undefined && (!Number.isInteger(options.status) || options.status < 0 || options.status > 4)))) {
+    || (options.status !== undefined && (operation === 'userNotices' || !Number.isInteger(options.status) || options.status < 0 || options.status > 4)))) {
     throw new GatewayFailure('VALIDATION_ERROR', 400, 'Invalid order query')
   }
-  const input = operation === 'userProfile' || operation === 'userStats' || operation === 'userPaymentMethods' ? {} : operation === 'userOrderDetail'
+  const input = operation === 'userProfile' || operation === 'userStats' || operation === 'userPaymentMethods' || operation === 'userSubscription' ? {} : operation === 'userOrderDetail'
     ? { trade_no: options.tradeNo } : { page, per_page: perPage,
       ...(options.status === undefined ? {} : { status: options.status }) }
   if (Date.now() < Date.parse(tls.certificate.validFrom) || Date.now() >= Date.parse(tls.certificate.validTo)) {
@@ -77,7 +78,8 @@ export async function internalUserRequest(config: GatewayConfig, operation: keyo
           }
           const envelope = internalSuccessV2.safeParse(value)
           if (!envelope.success) throw new GatewayFailure('UPSTREAM_ERROR', 502, 'Unexpected Internal response')
-          finish(undefined, operation === 'userStats' || operation === 'userPaymentMethods' ? adaptInternalDisplay(operation, envelope.data.data)
+          finish(undefined, operation === 'userSubscription' || operation === 'userNotices' ? adaptInternalContent(operation, envelope.data.data, options)
+            : operation === 'userStats' || operation === 'userPaymentMethods' ? adaptInternalDisplay(operation, envelope.data.data)
             : operation === 'userOrders' ? adaptInternalOrderList(envelope.data.data, options)
             : adaptInternalUserV2(operation, envelope.data.data, options.tradeNo))
         } catch (error) {

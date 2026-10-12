@@ -33,6 +33,13 @@ const list = z.strictObject({ items: z.array(order).max(100), pagination: z.stri
 const dashboard = z.strictObject({ unpaid_orders: timestamp, open_tickets: timestamp, invited_users: timestamp })
 const methods = z.array(z.strictObject({ id, name: z.string(), provider: z.string(), icon: z.string().nullable(),
   fee_fixed_minor: unsigned, fee_percent: z.number().nonnegative().finite() }))
+const subscriptionSummary = z.strictObject({
+  plan: plan.extend({ traffic_limit_bytes: unsigned }).nullable(), reset_day: timestamp.max(31).nullable(),
+  upload_bytes: unsigned, download_bytes: unsigned, traffic_limit_bytes: unsigned, device_limit: unsigned.nullable(),
+  speed_limit_mbps: z.number().nonnegative().finite().nullable(), expired_at: timestamp.nullable(), next_reset_at: timestamp.nullable(),
+})
+const notices = z.strictObject({ items: z.array(z.strictObject({ id, title: z.string(), content: z.string(),
+  img_url: z.string().nullable(), tags: z.array(z.string()), created_at: timestamp })).max(100), pagination: list.shape.pagination })
 export const internalSuccessV2 = z.strictObject({
   data: z.unknown(), request_id: z.string().length(36).uuid(),
   meta: z.strictObject({ current_only: z.literal(true), slice: z.literal('internal-readonly/2') }),
@@ -46,6 +53,25 @@ function safe(value: string): number {
   const number = BigInt(value)
   if (number > BigInt(Number.MAX_SAFE_INTEGER) || number < BigInt(Number.MIN_SAFE_INTEGER)) fail()
   return Number(number)
+}
+export function adaptInternalContent(operation: 'userSubscription' | 'userNotices', value: unknown,
+  options: { current?: number; pageSize?: number }): unknown {
+  if (operation === 'userSubscription') {
+    const parsed = subscriptionSummary.safeParse(value); if (!parsed.success) fail()
+    const row = parsed.data
+    return { plan_id: row.plan === null ? null : safe(row.plan.id),
+      plan: row.plan === null ? null : { id: safe(row.plan.id), name: row.plan.name, traffic_limit_bytes: safe(row.plan.traffic_limit_bytes) },
+      expired_at: row.expired_at, u: safe(row.upload_bytes), d: safe(row.download_bytes),
+      transfer_enable: safe(row.traffic_limit_bytes), reset_day: row.reset_day,
+      device_limit: row.device_limit === null ? null : safe(row.device_limit), speed_limit: row.speed_limit_mbps }
+  }
+  const parsed = notices.safeParse(value); if (!parsed.success) fail()
+  const { items, pagination: page } = parsed.data
+  if (page.page !== (options.current ?? 1) || page.per_page !== (options.pageSize ?? 5)
+    || page.last_page !== Math.max(1, Math.ceil(page.total / page.per_page))
+    || items.length !== Math.max(0, Math.min(page.per_page, page.total - (page.page - 1) * page.per_page))
+    || new Set(items.map(row => row.id)).size !== items.length) fail()
+  return { data: items.map(row => ({ ...row, id: safe(row.id) })), total: page.total }
 }
 export function adaptInternalDisplay(operation: 'userStats' | 'userPaymentMethods', value: unknown): unknown {
   if (operation === 'userStats') {

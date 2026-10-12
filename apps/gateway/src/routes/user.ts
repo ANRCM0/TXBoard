@@ -45,7 +45,7 @@ export function registerUserRoutes(
   app.get(`${PREFIX}/user/subscription/summary`, async c => {
     const auth = requireBearer(c)
     if (auth instanceof Response) return auth
-    const data = requiredRecord(await upstreamRequest(config, fetcher, 'userSubscription', { auth }))
+    const data = requiredRecord(await upstreamRequest(config, fetcher, 'userSubscription', { auth, signal: c.req.raw.signal }))
     return ok(c, toPublicSubscriptionSummary(data))
   })
 
@@ -63,7 +63,7 @@ export function registerUserRoutes(
       return fail(c, 'VALIDATION_ERROR', 'Invalid notice pagination', 400)
     }
     return ok(c, validated(noticePageSchema, await upstreamRequest(config, fetcher, 'userNotices',
-      { auth, current: Number(current), pageSize: Number(pageSize) })))
+      { auth, current: Number(current), pageSize: Number(pageSize), signal: c.req.raw.signal })))
   })
 
   app.get(`${PREFIX}/dashboard/stats`, async c => {

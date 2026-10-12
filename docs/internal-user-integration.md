@@ -59,3 +59,10 @@ config nor provider initialization crosses this boundary. Fixed final Core
 `79a3854` / Gateway `6ea649b` checks passed 803 API (29 skipped), 512 Gateway,
 68 SDK and 29 actual TLS1.3 integration checks. See
 [verification evidence](../tests/integration/evidence/internal-user-display.json).
+
+B5.5 also selects `/user/subscription/summary` and bounded `/notices` via fixed
+User operations. The summary omits credentials and the private subscription
+URL; current plan failures remain Core 409. Notices retain native visibility,
+sort, content and pagination. Fixed Core `60e6eca` / Gateway `31bde17` passed
+806 API (29 skipped), 526 Gateway, 68 SDK and 35 actual TLS1.3 integration
+checks. See [verification evidence](../tests/integration/evidence/internal-user-content.json).

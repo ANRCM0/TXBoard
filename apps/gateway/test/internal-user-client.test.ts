@@ -68,6 +68,32 @@ describe('Internal client transport fences', () => {
     }
     expect(native).not.toHaveBeenCalled(); expect(vi.getTimerCount()).toBe(0)
   })
+  it.each(['userSubscription', 'userNotices'] as const)('dispatches %s and refuses absent actors without Native fallback', async operation => {
+    const native = vi.fn()
+    await expect(upstreamRequest(config, native, operation)).rejects.toMatchObject({ status: 401 })
+    expect(mock.request).not.toHaveBeenCalled()
+    const pending = upstreamRequest(config, native, operation, { auth: token, ...(operation === 'userNotices' ? { current: 2, pageSize: 5 } : {}) })
+    expect(mock.request.mock.calls[0]![0].path).toBe('/txapi/internal/v1/operations/' + (operation === 'userNotices' ? 'user.notice.list' : 'user.subscription-summary.get'))
+    expect(JSON.parse(req.end.mock.calls[0]![0].toString()).input).toEqual(operation === 'userNotices' ? { page: 2, per_page: 5 } : {})
+    expect(mock.request.mock.calls[0]![0].headers.authorization).toBe(token)
+    if(operation === 'userNotices') respond({ ...envelope, data: { items: [], pagination: { page: 2, per_page: 5, total: 0, last_page: 1 } } })
+    else respond({ ...envelope, data: { plan: null, reset_day: null, upload_bytes: '0', download_bytes: '0', traffic_limit_bytes: '0', device_limit: null,
+      speed_limit_mbps: null, expired_at: null, next_reset_at: null } })
+    await expect(pending).resolves.toMatchObject(operation === 'userNotices' ? { data: [], total: 0 } : { plan: null, u: 0, d: 0 })
+    expect(native).not.toHaveBeenCalled()
+    for (const status of [401,403,409,502]) {
+      const rejected=upstreamRequest(config,native,operation,{ auth: token })
+      const assertion=expect(rejected).rejects.toMatchObject({ status })
+      reply.statusCode=status; respond({ error: { code: 'FIXTURE_DENIED', message: 'Denied' }, request_id: envelope.request_id })
+      await assertion
+    }
+    expect(native).not.toHaveBeenCalled(); expect(vi.getTimerCount()).toBe(0)
+  })
+  it.each([{ current: 0 },{ pageSize: 101 },{ status: 0 }])('rejects invalid notice query %j before transport', async patch => {
+    const native=vi.fn()
+    await expect(upstreamRequest(config,native,'userNotices',{ auth: token,...patch })).rejects.toMatchObject({ status:400 })
+    expect(mock.request).not.toHaveBeenCalled(); expect(native).not.toHaveBeenCalled()
+  })
   it('keeps default Native and other operations unchanged without Internal network calls', async () => {
     const fetcher = vi.fn(async () => Response.json(nativeEnvelope(nativeProfile())))
     await upstreamRequest({ ...config, internalUser: undefined }, fetcher, 'userProfile', { auth: token })
