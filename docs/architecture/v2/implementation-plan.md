@@ -1,6 +1,6 @@
 # Core First v2 实施台账
 
-> 状态：B0、B1.1–B1.10 影子证据、Terms、身份旁观与固定 writer 捕获、B2.1–B2.3 单机升级、B3.1/B3.2 隔离用量、B3.3/B3.4 本地观察与持久事件桶、B4.1–B4.3 合成 Provider 与测试插件停用接入、B5.1–B5.8 本地 mTLS 读取与隔离建单、B6.1–B6.3 实验字节、离线加密与共享 owner 实验已实现；后续切片推进中。各整阶段仍按下表门禁验收。
+> 状态：B0、B1.1–B1.11 影子证据、Terms、身份旁观与固定 writer 捕获、B2.1–B2.3 单机升级、B3.1/B3.2 隔离用量、B3.3/B3.4 本地观察与持久事件桶、B4.1–B4.4 合成 Provider、插件停用接入与租约候选、B5.1–B5.9 本地 mTLS 读取、隔离建单与登录、B6.1–B6.3 实验字节、离线加密与共享 owner 实验已实现；后续切片推进中。各整阶段仍按下表门禁验收。
 
 ## 1. 批次与关键路径
 
@@ -181,6 +181,12 @@ SQLite 18 通过 / 2 跳过 / 167 断言，专用 MariaDB 20 / 0 / 182；固定 
 原MailService发送try/catch的caught Exception现在只记录固定 `MAIL_SEND_FAILED` 字符串，并把同一code写入原returned/SQL error字段；不附原message、previous或args trace。原成功模板、私有收件人与subject/config metadata、SendEmailJob release/tries/timeout和Exception捕获范围保持。try外、SQL日志保存、非Exception Error及可信插件自己的日志仍在原边界，未承诺全邮件路径保密或送达。
 
 固定Core `d3ae864` 加三文件：真实LaravelMailer+本地Array/throwing transport专项6通过/89断言，全API925通过/50引擎专测跳过/8620断言。测试先证明args0异常及previous/trace确有合成秘密，再核对三个诊断目的地固定code；成功Blade/DB渲染与原job release决定保持。[当前契约](../../../contracts/http/mail-diagnostics-current.md)及[源码和日志](mail-diagnostics-verification.json)。这是下一条隔离邮件Internal消费者的前置，尚未新增邮件Operation或外部SMTP投递。
+
+### B4.4 合成 Provider 的本地租约候选
+
+[当前契约](../../../contracts/v2/credential-provider/local-fixture-lease-candidate-v1.md)默认关闭，只把真实发行回执、ProviderBinding、Subject、Terms、周期、tariff 和 source 固定为非秘密证据；持有当前行锁后校验禁用、撤销、恢复代际与已结算配额，候选最长 60 秒并受各已知结束边界约束。相同 key 的历史重放保持原证据，当前校验的拒绝或过期状态提交保存。尚未生成授权快照、交付 Node 或授予准入。
+
+固定 Core `1cc6bf9` 加九文件：SQLite 专项 11 通过、14 项引擎条件跳过，MariaDB 专项 25 全通过（402 断言），含独立会话竞争、提交后 SIGKILL 重放及双向写入屏障；全 API 936 通过、64 跳过、8894 断言。实际迁移外键长度和测试异常分类问题已修正，失败尝试保留于[验证报告](provider-lease-candidate-verification.json)。仅验收本地可信 fixture，生产 Provider 隔离及 Node 收敛门禁仍待完成。
 
 ### B3.4 Service 自动本地事件消费者
 

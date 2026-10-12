@@ -1,0 +1,183 @@
+{
+  "scope": "local/testing default-off Core nonsecret lease candidate, no admission/Node consumer",
+  "base_commit": "1cc6bf9bd6a069758a0a8259bb472e3fb516ad88",
+  "archive_sha256": "e6722bcd168d15bfc2f31c4b20ea79eeda06388c97a5773cb9fdf06f6acae382",
+  "lock_sha256": "f47b212c2fc530a7820e370eab7c6d624d13962e7d26e4f2ddf57a11848257c0",
+  "vendor_installed_json_sha256": "8e668e456c9772ae428a038ab003fba5752ab2591980fc8396d9122851145b80",
+  "files": [
+    {
+      "path": "api/app/Domains/CredentialProviderFixture/FixtureLeaseCandidateCodec.php",
+      "sha256": "3ab5d2c9912d24f5dac5907137ab5a57ef00c8ea2ce585b490bbaa3bb98d1d94",
+      "tested_snapshot_sha256": "3ab5d2c9912d24f5dac5907137ab5a57ef00c8ea2ce585b490bbaa3bb98d1d94",
+      "post_gate_change": null
+    },
+    {
+      "path": "api/app/Domains/CredentialProviderFixture/FixtureLeaseCandidateService.php",
+      "sha256": "92ac454bd5d7c851857512a3049761a48778862461cd31de8a494bf022f28344",
+      "tested_snapshot_sha256": "92ac454bd5d7c851857512a3049761a48778862461cd31de8a494bf022f28344",
+      "post_gate_change": null
+    },
+    {
+      "path": "api/app/Domains/CredentialProviderFixture/FixtureLeaseClock.php",
+      "sha256": "f06700cb6b494ea515a139acedd0d239f1395a87797a710d497fcc23cf9c9406",
+      "tested_snapshot_sha256": "f06700cb6b494ea515a139acedd0d239f1395a87797a710d497fcc23cf9c9406",
+      "post_gate_change": null
+    },
+    {
+      "path": "api/config/credential_provider_lease_fixture.php",
+      "sha256": "b74133f09793f97b6078d6d7081911bfbe5b1181461109c8780f5bbd102b9c02",
+      "tested_snapshot_sha256": "b74133f09793f97b6078d6d7081911bfbe5b1181461109c8780f5bbd102b9c02",
+      "post_gate_change": null
+    },
+    {
+      "path": "api/database/migrations/2026_10_12_000012_create_provider_lease_candidate_fixture.php",
+      "sha256": "9145d9c4d9a4c22436392f236a8a7160391874011db1f03b8a1f0ff8709085ce",
+      "tested_snapshot_sha256": "9145d9c4d9a4c22436392f236a8a7160391874011db1f03b8a1f0ff8709085ce",
+      "post_gate_change": null
+    },
+    {
+      "path": "api/tests/Feature/CredentialProviderFixture/FixtureLeaseCandidateTest.php",
+      "sha256": "531d5ef29d4f6d73fc4abe7296449f8f6e47195d199b7e97ebc295abbd23125c",
+      "tested_snapshot_sha256": "531d5ef29d4f6d73fc4abe7296449f8f6e47195d199b7e97ebc295abbd23125c",
+      "post_gate_change": null
+    },
+    {
+      "path": "api/tests/Fixtures/CredentialProviderLease/run-linux.sh",
+      "sha256": "aceaf35d1118e50de06da6a10014d64a9a68a7f51fe316fb1d748740a72be9e0",
+      "tested_snapshot_sha256": "aceaf35d1118e50de06da6a10014d64a9a68a7f51fe316fb1d748740a72be9e0",
+      "post_gate_change": null
+    },
+    {
+      "path": "api/tests/Fixtures/CredentialProviderLease/README.md",
+      "sha256": "a99215fa1205c569681eaf9ab22a798fbe9308932ee1394aa8d8f119047b24c7",
+      "tested_snapshot_sha256": "0cf6a6d6379842c6f748e64eab652931d2b485f20d02d89480e6adabbc1dde4a",
+      "post_gate_change": "verification text only"
+    },
+    {
+      "path": "contracts/v2/credential-provider/local-fixture-lease-candidate-v1.md",
+      "sha256": "c2f1ebc23e8afdae69c9477950d33b2807cd66d616e8f0e5151f7ad3c1bba549",
+      "tested_snapshot_sha256": "8d1be05e8f9efbaa579d035861a426aefd405e781951e95087762aa63c462566",
+      "post_gate_change": "verification text only"
+    }
+  ],
+  "engine": {
+    "php": "8.4.16",
+    "database": "MariaDB11.4.12",
+    "mysql84_verified": false
+  },
+  "gates": {
+    "sqlite": {
+      "tests_total": 25,
+      "tests_passed": 11,
+      "tests_skipped": 14,
+      "assertions": 274,
+      "seconds": 13.2,
+      "log_sha256": "3e925938418283ca711f2b02a1e3a4474a245799a3a9647c197da1c76abab618"
+    },
+    "mariadb": {
+      "tests_total": 25,
+      "tests_passed": 25,
+      "tests_skipped": 0,
+      "assertions": 402,
+      "seconds": 124.47,
+      "log_sha256": "f6c6b5d6cefde834bba0cddb581585f41983432a443039178a9fec6d73b95a26"
+    },
+    "full": {
+      "tests_total": 1000,
+      "tests_passed": 936,
+      "tests_skipped": 64,
+      "assertions": 8894,
+      "seconds": 91.85,
+      "log_sha256": "d6b488554438864bf73ea287773fea7b4a17769968a8d2c445fb3040ff894d93"
+    }
+  },
+  "prior_attempts": [
+    {
+      "base_commit": "ceea19b0e8103481f68adef9cb45e518228760e2",
+      "mode": "sqlite",
+      "tests_total": 25,
+      "tests_passed": 0,
+      "assertions": 0,
+      "log_sha256": "10ad7c62349d57e86f3e6112b39c31874a64aec13e75e81b9a2d452e52927182",
+      "failure": "Real UserObserver failed on missing next_reset_at fixture column; r2 will assert actual observer dispatch and fake only NodeUserSyncJob delivery"
+    },
+    {
+      "base_commit": "d2c3026f262dffe3fbbc82fd3ef281d301e2b7f8",
+      "mode": "sqlite",
+      "tests_total": 25,
+      "tests_passed": 7,
+      "tests_skipped": 10,
+      "tests_failed": 8,
+      "assertions": 85,
+      "log_sha256": "ae28d31afa08c34f7a5fbb0c18c2018d98c4185a8e8184e8c8c34af8b2c4fc15",
+      "failure": "Seven fixture issue not-before timestamps stale before SQL locks; one expected migration RuntimeException uncaught by DomainException helper"
+    },
+    {
+      "base_commit": "d2c3026f262dffe3fbbc82fd3ef281d301e2b7f8",
+      "mode": "sqlite",
+      "tests_total": 25,
+      "tests_passed": 11,
+      "tests_skipped": 14,
+      "tests_failed": 0,
+      "assertions": 178,
+      "log_sha256": "0d879e8a1f801b8958e077b1f3f47b79ba0e3e2f928c59e40c6d0566369a022a"
+    },
+    {
+      "base_commit": "d2c3026f262dffe3fbbc82fd3ef281d301e2b7f8",
+      "mode": "mariadb",
+      "tests_total": 25,
+      "tests_passed": 0,
+      "tests_skipped": 0,
+      "tests_failed": 25,
+      "assertions": 0,
+      "log_sha256": "05683a79b84136941598215d04a5e23397b90f76f301cf52e4c8d49eb2dee925",
+      "failure": "New migration auto-generated registration foreign key identifier exceeded MariaDB64-char limit",
+      "post_failure_read_only_inventory": {
+        "database": "txboard_provider_test",
+        "tables": [],
+        "unknown_tables": [],
+        "writes": 0
+      }
+    },
+    {
+      "base_commit": "4bd18eab77b9444265685c3dd7819b2cb56b4beb",
+      "mode": "sqlite",
+      "tests_total": 25,
+      "tests_passed": 11,
+      "tests_skipped": 14,
+      "tests_failed": 0,
+      "assertions": 274,
+      "log_sha256": "0fc49e4f81a7a18a6b1753e861f400159089d52fc94501ad7b68b9c9d90772d5"
+    },
+    {
+      "base_commit": "4bd18eab77b9444265685c3dd7819b2cb56b4beb",
+      "mode": "mariadb",
+      "tests_total": 25,
+      "tests_passed": 24,
+      "tests_skipped": 0,
+      "tests_failed": 1,
+      "assertions": 402,
+      "log_sha256": "0bb7c32233967120e15e5b0d9f7da8ccf1edc2a2b1fcdb9db473b60a6b8723b5",
+      "failure": "Existing generation recovery gate raises UsageError not DomainException; fixture misclassified it as unknown. r5 asserts exact error and candidate count0."
+    }
+  ],
+  "first_approval_failure": {
+    "executed": false,
+    "command": "wsl -d TXBoard-Baseline -- sh -lc 'php -v | head -n 1; df -h /opt/txboard-baseline'",
+    "reason": "Automatic approval review failed; possible cybersecurity risk; review failure, not a determination unsafe"
+  },
+  "new_review_failures": 0,
+  "status": "runtime frozen; passed specialized/full fixed snapshots; final docs hashes differ only by verification text",
+  "final_report_sha256": "bc29e7451ecc52dccf4c0f721bda298e29202df0aaed5126bbe3699d30e24836",
+  "static_checks": {
+    "native_schema": {
+      "native_only": true,
+      "issues": 0
+    },
+    "docs": {
+      "markdown_files": 116,
+      "relative_links": 464
+    },
+    "diff_check": "passed"
+  }
+}
