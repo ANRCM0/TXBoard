@@ -6,10 +6,14 @@ use DateTimeZone;
 use Illuminate\Support\Facades\DB;
 use Throwable;
 
-/** Evidence for one existing writer. Never a shadow domain writer. */
+/** Evidence for fixed existing writers. Never a shadow domain writer. */
 final class LegacyUserMutationCapture
 {
     public const VERSION = 'legacy-user-capture/v1';
+    private const POLICIES = [
+        'admin.user.update' => ['version' => self::VERSION, 'actor_domain' => 'admin_user'],
+        'wallet.recharge.settle' => ['version' => 'wallet-recharge-capture/v1', 'actor_domain' => 'verified_payment_method'],
+    ];
     public const FIELDS = ['id', 'plan_id', 'group_id', 'transfer_enable', 'u', 'd',
         'speed_limit', 'device_limit', 'expired_at', 'last_reset_at', 'next_reset_at',
         'reset_count', 'banned', 'balance', 'commission_balance'];
@@ -19,23 +23,53 @@ final class LegacyUserMutationCapture
     /** Caller already holds the actual User exclusive lock in the original transaction. */
     public function begin(int $userId): ?array
     {
-        if (config('legacy_capture_shadow.enabled') === false) {
-            return null;
-        }
-        return $this->safe(function () use ($userId): array {
-            $context = $this->context();
-            $this->require(DB::transactionLevel() > 0, 'CAPTURE_TRANSACTION_REQUIRED');
-            return ['context' => $context, 'source' => $this->source($userId)];
-        });
+        return $this->beginWriter($userId, 'admin.user.update');
+    }
+
+    /** Called only after the native verified recharge path holds its User lock. */
+    public function beginVerifiedRecharge(int $userId, int $paymentId): ?array
+    {
+        return $this->beginWriter($userId, 'wallet.recharge.settle', $paymentId);
     }
 
     public function append(?array $before, int $actorId): void
     {
+        $this->appendWriter($before, 'admin.user.update', $actorId);
+    }
+
+    public function appendVerifiedRecharge(?array $before): void
+    {
+        $this->appendWriter($before, 'wallet.recharge.settle');
+    }
+
+    private function beginWriter(int $userId, string $kind, ?int $actorId = null): ?array
+    {
+        if (config('legacy_capture_shadow.enabled') === false) {
+            return null;
+        }
+        return $this->safe(function () use ($userId, $kind, $actorId): array {
+            $context = $this->context();
+            $this->require(DB::transactionLevel() > 0, 'CAPTURE_TRANSACTION_REQUIRED');
+            if ($actorId !== null) { $this->integer($actorId, '2147483647', true); }
+            return ['context' => $context, 'source' => $this->source($userId), 'source_kind' => $kind,
+                'source_version' => self::POLICIES[$kind]['version'], 'actor_id' => $actorId];
+        });
+    }
+
+    private function appendWriter(?array $before, string $kind, ?int $adminActorId = null): void
+    {
         if ($before === null) {
             return;
         }
-        $this->safe(function () use ($before, $actorId): void {
+        $this->safe(function () use ($before, $kind, $adminActorId): void {
             $this->require(DB::transactionLevel() > 0, 'CAPTURE_TRANSACTION_REQUIRED');
+            $this->require(count($before) === 5 && !array_diff(array_keys($before),
+                ['context', 'source', 'source_kind', 'source_version', 'actor_id'])
+                && $before['source_kind'] === $kind && $before['source_version'] === self::POLICIES[$kind]['version']
+                && ($kind === 'admin.user.update' ? $before['actor_id'] === null && $adminActorId !== null
+                    : is_int($before['actor_id']) && $adminActorId === null), 'CAPTURE_WRITER_TICKET_INVALID');
+            $actorId = $adminActorId ?? $before['actor_id'];
+            $this->integer($actorId, '2147483647', true);
             $context = $this->context();
             $this->require($context === $before['context'], 'CAPTURE_CONTEXT_DRIFT');
             $source = $this->snapshot($before['source']);
@@ -44,7 +78,6 @@ final class LegacyUserMutationCapture
             if ($source === $after) {
                 return;
             }
-            $this->integer($actorId, '2147483647', true);
             $at = time();
             $contextHash = $this->hash($context);
             DB::table('tx_legacy_capture_shadow_stream')->insertOrIgnore([
@@ -61,8 +94,8 @@ final class LegacyUserMutationCapture
             $sequence = (int) $stream->last_sequence;
             $this->require($sequence < PHP_INT_MAX, 'CAPTURE_SEQUENCE_OVERFLOW');
             $event = ['stream_id' => (string) $stream->id, 'legacy_user_id' => (string) $userId,
-                'sequence' => (string) ($sequence + 1), 'source_kind' => 'admin.user.update',
-                'source_version' => self::VERSION, 'actor_id' => (string) $actorId,
+                'sequence' => (string) ($sequence + 1), 'source_kind' => $kind,
+                'source_version' => self::POLICIES[$kind]['version'], 'actor_id' => (string) $actorId,
                 'before_snapshot' => $source, 'after_snapshot' => $after,
                 'before_hash' => $this->hash($source), 'after_hash' => $this->hash($after),
                 'previous_event_hash' => $stream->last_event_hash, 'context_hash' => $contextHash,
@@ -139,7 +172,9 @@ final class LegacyUserMutationCapture
                     $this->require($sequence <= $high, 'CAPTURE_STREAM_TAMPERED');
                     $previous = $event['content_hash']; $previousAfter = $event['after_hash'];
                     $result['events'][] = ['id' => (string) $row->id, 'sequence' => $event['sequence'],
-                        'content_hash' => $event['content_hash']];
+                        'content_hash' => $event['content_hash'], 'source_kind' => $event['source_kind'],
+                        'source_version' => $event['source_version'], 'actor_id' => $event['actor_id'],
+                        'actor_domain' => self::POLICIES[$event['source_kind']]['actor_domain']];
                     $result['next_cursor'] = (string) $sequence;
                 }
                 $this->require($result['has_more'] || $sequence === $high, 'CAPTURE_CHAIN_GAP');
@@ -290,7 +325,8 @@ final class LegacyUserMutationCapture
         }
         $this->require($payload['stream_id'] === (string) $stream->id
             && $payload['legacy_user_id'] === (string) $stream->legacy_user_id
-            && $payload['source_kind'] === 'admin.user.update' && $payload['source_version'] === self::VERSION
+            && isset(self::POLICIES[$payload['source_kind']])
+            && $payload['source_version'] === self::POLICIES[$payload['source_kind']]['version']
             && $payload['context_hash'] === $stream->context_hash
             && $payload['before_snapshot']['id'] === $payload['legacy_user_id']
             && $payload['after_snapshot']['id'] === $payload['legacy_user_id']

@@ -1,0 +1,64 @@
+{
+  "committed_core_head": "a51d572a01d2bffddbb1051238fd03835eb8abbb",
+  "snapshot": "/tmp/txboard-legacy-recharge-capture-gate-a51d572-v1",
+  "slice_sha256": {
+    "contracts/v2/legacy-user-mutation-capture-v1.md": "9eb85429389531e7655f06ada623b14c3c94d0f149b449a7e563666f8fc8de7e",
+    "api/app/Domains/Billing/WalletRechargeService.php": "38bbf1c647adb98318c44157e57a9f83ea8e5866377c0f9b2a798d0cdfdd8f7e",
+    "api/app/Domains/Billing/PaymentNotificationProcessor.php": "cdd1e8cbaeed4c6067c9627b4f1c52b61ca9ecd2dd75c9543edf2edaa8528b3d",
+    "api/app/Services/Subscription/LegacyUserMutationCapture.php": "491e533c76d53f268327b94a9a135db8d9a43df63ebd7d98a24a86ce78cc89b8",
+    "api/tests/Feature/Subscription/LegacyWalletRechargeCaptureTest.php": "be0c11cb6a9ae9f4a40f706e5286762b6119be9de437216923a379ef03abba55"
+  },
+  "composer_lock_sha256": "f47b212c2fc530a7820e370eab7c6d624d13962e7d26e4f2ddf57a11848257c0",
+  "locked_vendor_donor": "/opt/txboard-baseline/provider-final-verification/api/vendor",
+  "fixture_phpunit_sha256": "3158704df78cc339e35495e3ed21338a41c7badccba17afecd983d60c5bb3a16",
+  "fixture_public_env_sha256": "af081999d8ba7c7a89d806701792599baef5876786edfac0f4750b8d09c0178f",
+  "redis_host": "127.0.0.1",
+  "redis_port": 16379,
+  "redis_databases": [
+    16,
+    17
+  ],
+  "post_gate_documentation_only": [
+    "contracts/v2/legacy-user-mutation-capture-v1.md"
+  ],
+  "slice-sqlite": {
+    "passed": 13,
+    "skipped": 4,
+    "assertions": 177
+  },
+  "slice-mariadb": {
+    "passed": 17,
+    "skipped": 0,
+    "assertions": 222
+  },
+  "admin-sqlite": {
+    "passed": 21,
+    "skipped": 4,
+    "assertions": 230
+  },
+  "admin-mariadb": {
+    "passed": 25,
+    "skipped": 0,
+    "assertions": 271
+  },
+  "full": {
+    "passed": 799,
+    "skipped": 29,
+    "assertions": 6334
+  },
+  "route_registry_sha256": "b01ff52bed6d23e4edfc7e7f94deffe790ca2ff4ed0070320db87b4b631d4f41",
+  "logs_sha256": {
+    "legacy-recharge-capture-full.log": "9b4937f6a6c7917e3e23dbfc5cbb2c1a57b8c0b2e338b11f9736aca5c43bde27",
+    "legacy-recharge-capture-slice-sqlite.log": "da97bc7625cd0e3bbfeff5e7adeab3f1415564bdf1e4715d698e0d7c85221cb3",
+    "legacy-recharge-capture-admin-sqlite.log": "4b389953ac65b05263f3299f5ffbce5a87ab2a9f27fd2ed2ca8b6d01511d6b89",
+    "legacy-recharge-capture-admin-mariadb.log": "6febace9427d181c05ad19d86494e0b4ccb3175c8053df20db4826b3485f8322",
+    "legacy-recharge-capture-slice-mariadb.log": "23b2ab37ab4faed6ef8873cdfec3450fc63ef91b69d17ca49fdb25bef064e506"
+  },
+  "failure_log_fixture_exception_ignore_args": 0,
+  "slice": "B1.7",
+  "authority": "legacy-business-writers",
+  "isolated_data": true,
+  "production_acceptance": false,
+  "projection_applied": false,
+  "global_write_coverage": false
+}

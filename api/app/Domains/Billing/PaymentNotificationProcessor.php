@@ -8,6 +8,7 @@ use App\Models\WalletRecharge;
 use App\Services\OrderService;
 use App\Services\PaymentService;
 use App\Services\Plugin\HookManager;
+use App\Services\Subscription\LegacyCaptureShadowException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -60,6 +61,11 @@ final class PaymentNotificationProcessor
                 return ['status' => 400, 'error' => 'handle error'];
             }
             return ['status' => 200, 'body' => $verified['custom_result'] ?? 'success'];
+        } catch (LegacyCaptureShadowException) {
+            // Explicit logging bypasses ShouldntReport. Never pass the exception:
+            // its outer request frames may contain provider credentials when args are enabled.
+            Log::error('LEGACY_RECHARGE_CAPTURE_FAILED');
+            return ['status' => 500, 'error' => 'fail'];
         } catch (\Throwable $e) {
             Log::error($e);
             return ['status' => 500, 'error' => 'fail'];

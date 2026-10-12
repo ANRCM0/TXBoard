@@ -8,6 +8,7 @@ use App\Models\Payment;
 use App\Models\User;
 use App\Models\WalletRecharge;
 use App\Services\PaymentService;
+use App\Services\Subscription\LegacyUserMutationCapture;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -146,12 +147,15 @@ final class WalletRechargeService
             if (!$user || (int) $user->balance > self::MAX_BALANCE_MINOR - (int) $recharge->amount_minor) {
                 return false;
             }
+            $capture = app(LegacyUserMutationCapture::class);
+            $captureBefore = $capture->beginVerifiedRecharge((int) $user->id, $paymentId);
             $user->balance = (int) $user->balance + (int) $recharge->amount_minor;
             $user->saveOrFail();
             $recharge->status = WalletRecharge::STATUS_PAID;
             $recharge->callback_no = $callbackNo;
             $recharge->paid_at = time();
             $recharge->saveOrFail();
+            $capture->appendVerifiedRecharge($captureBefore);
             return true;
         });
     }
