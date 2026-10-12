@@ -2,6 +2,8 @@
 
 > 接口以 `api/routes/txapi.php`、`TxNodeAuth`、`NodeProtocolController` 和 `NativeNodeWebSocket` 为准；两端实际环境联调需另行验证。
 
+节点安装与主机更新统一由 TXBoard-Deploy 管理。管理员获取 Machine 凭据时，`install_command` 使用 `https://raw.githubusercontent.com/ANRCM0/TXBoard-Deploy/main/node/deploy.sh`；仍传递 Machine 模式、`txboard` provider、镜像 channel、面板 URL 和 Machine 凭据。原 TX-Node-Installer 地址仅保留兼容转发，Node HTTP/WSS 的身份与协议不变。
+
 ## 1. 身份与连接模式
 
 基础 HTTPS URL：`https://<panel-host>/txapi/node/v1`。TX-Node 作为客户端主动访问 TXBoard；公网必须使用受信任 TLS、正确反代，并允许 `Authorization` 与身份头透传。

@@ -63,7 +63,7 @@ class MachineInstallCommandTest extends TestCase
         $command = (string) $response->json('data.install_command');
 
         $this->assertStringContainsString(
-            "https://raw.githubusercontent.com/ANRCM0/TX-Node-Installer/main/deploy.sh",
+            "https://raw.githubusercontent.com/ANRCM0/TXBoard-Deploy/main/node/deploy.sh",
             $command
         );
         $this->assertStringContainsString('install --mode machine --provider txboard --channel', $command);
@@ -99,7 +99,7 @@ class MachineInstallCommandTest extends TestCase
     {
         $machine = ServerMachine::findOrFail($id);
         return sprintf(
-            "curl -fsSL 'https://raw.githubusercontent.com/ANRCM0/TX-Node-Installer/main/deploy.sh' | sudo bash -s -- install --mode machine --provider txboard --channel 'stable' --panel-url 'https://panel.example.com' --machine-id %d --token '%s'",
+            "curl -fsSL 'https://raw.githubusercontent.com/ANRCM0/TXBoard-Deploy/main/node/deploy.sh' | sudo bash -s -- install --mode machine --provider txboard --channel 'stable' --panel-url 'https://panel.example.com' --machine-id %d --token '%s'",
             $id, $machine->token
         );
     }

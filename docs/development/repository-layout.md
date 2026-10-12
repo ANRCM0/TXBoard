@@ -43,6 +43,10 @@ Gateway/Node 的发布与 `dev` 提升按组件串行，并在提升前核对当
 
 [TXBoard-Deploy](https://github.com/ANRCM0/TXBoard-Deploy) 管理 Core、Gateway、Node 的安装与生命周期。原节点安装器在该仓 `node/` 下保留；现有 `txnode` 命令、配置位置、机器更新桥和镜像名保持兼容。运行时仓内的 Compose 用于开发与构建验证，生产入口以安装仓文档为准。
 
+最终保留运行时仓与安装仓，原 TX-Node、TXBoard-Gateway、TX-Node-Installer 是迁移过渡仓，后续将删除。三组件活动 CI、Docker 上下文和管理员生成的 Node 安装命令均使用这两个主仓。Node 的稳定 Go module 名是本地模块标识，完整 checkout 中的构建不需要拉取旧 TX-Node 仓的自身源码。
+
+删除旧仓前，将已有 `tx-node` GHCR 包的 Repository source 转绑到 TXBoard，保留公开可拉取及主仓 Actions 写入权限；已安装的旧 `txnode` 脚本须先从安装仓 `node/deploy.sh` 刷新持久入口。原安装仓只在过渡期间提供兼容转发。包转绑方式见 [GitHub 官方说明](https://docs.github.com/en/packages/learn-github-packages/connecting-a-repository-to-a-package#migrating-a-package-to-another-repository)。
+
 ## 历史来源
 
 通过不 squash 的 Git subtree merge 导入；源仓提交仍是主仓祖先，可以核查完整历史。原仓没有删除或改写。

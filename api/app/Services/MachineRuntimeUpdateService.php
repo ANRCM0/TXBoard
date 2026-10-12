@@ -16,7 +16,7 @@ class MachineRuntimeUpdateService
      * Request a bounded Installer-owned TX-Node runtime update.
      *
      * TXBoard owns only orchestration. Deployment/download/rollback behavior
-     * remains authoritative in TX-Node-Installer.
+     * remains authoritative in TXBoard-Deploy's Node installer.
      *
      * @return array{machine_id:int,request_id:string,target:string,status:string}
      */
