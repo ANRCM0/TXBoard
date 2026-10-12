@@ -16,7 +16,7 @@ final class FixtureProviderService
         $this->guard();
         FixtureCodec::provider($providerId); FixtureCodec::decimal($epoch);
         sort($operations); sort($profiles);
-        if (!$operations || array_diff($operations, ['issue', 'query']) || count(array_unique($operations)) !== count($operations)
+        if (!$operations || array_diff($operations, ['issue', 'query', 'revoke']) || count(array_unique($operations)) !== count($operations)
             || $profiles !== ['synthetic-v1']) { throw new DomainException('UNSUPPORTED_OPERATION'); }
         $identity = ['provider_id' => $providerId, 'instance_epoch' => $epoch, 'runtime_code' => 'synthetic-fixture-v1',
             'script_digest' => FixtureProcess::digest(), 'operation_grants' => FixtureCodec::json($operations),
@@ -62,7 +62,7 @@ final class FixtureProviderService
                 if (!hash_equals($hash, FixtureCodec::hash($storedLogical))) { throw new DomainException('IDEMPOTENCY_CONFLICT'); }
                 return ['operation' => $existing, 'registration' => $registration, 'new' => false];
             }
-            if (!$registration->enabled) { throw new DomainException('PROVIDER_DISABLED'); }
+            FixtureLifecycleService::assertIssuable($registration, $scope->subjectId);
             if ($input['not_before_at'] < time() || $input['credential_expires_at'] <= $input['not_before_at']
                 || $input['credential_expires_at'] > time() + 3600) { throw new DomainException('PROVIDER_INPUT_INVALID'); }
             // Follow the existing B3 subject -> subscription read order; no domain mutation here.
@@ -98,6 +98,62 @@ final class FixtureProviderService
         return $this->exchange($scope, $record['registration'], $record['operation'], $record['new'] ? 'issue' : 'query', $deadline);
     }
 
+    public function revoke(FixtureScope $scope, string $businessKey, array $input, int $deadline): array
+    {
+        $this->guard(); $this->deadline($deadline); FixtureLifecycleService::businessKey($businessKey);
+        if (count($input) !== 2 || array_diff(array_keys($input), ['expected_subject_version', 'reason_code'])
+            || !in_array($input['reason_code'] ?? '', ['operator_revoke', 'provider_disable'], true)) { throw new DomainException('PROVIDER_INPUT_INVALID'); }
+        FixtureCodec::decimal($input['expected_subject_version'] ?? null);
+        $record = DB::transaction(function () use ($scope, $businessKey, $input) {
+            // A granted Core fact can fence issuance even when the registered executable is unavailable.
+            $registration = FixtureRegistration::lock($scope->providerId, 'revoke', false);
+            $logical = $input + ['provider_id' => $scope->providerId, 'provider_instance_epoch' => (string) $registration->instance_epoch,
+                'access_subject_id' => $scope->subjectId, 'actor_ref' => $scope->actorRef, 'authorization_ref' => $scope->authorizationRef];
+            $existing = DB::table('tx_credential_provider_shadow_operation')->where('registration_id', $registration->id)
+                ->where('operation', 'revoke')->where('idempotency_key', $businessKey)->lockForUpdate()->first();
+            if ($existing) {
+                $this->scope($scope, $existing); FixtureLifecycleService::assertFact($existing);
+                $stored = json_decode($existing->input_snapshot, true, flags: JSON_THROW_ON_ERROR);
+                $storedLogical = array_diff_key($stored, ['revocation_fact_version' => true, 'effective_at' => true, 'revocation_fact_domain' => true, 'known_issue' => true]);
+                if (!hash_equals(FixtureCodec::hash($logical), FixtureCodec::hash($storedLogical))) { throw new DomainException('IDEMPOTENCY_CONFLICT'); }
+                return ['registration' => $registration, 'operation' => $existing, 'new' => false];
+            }
+            if (DB::table('tx_credential_provider_shadow_revocation')->where('registration_id', $registration->id)
+                ->where('access_subject_id', $scope->subjectId)->sharedLock()->exists()) { throw new DomainException('REVOKED'); }
+            $subject = DB::table('tx_access_subject')->where('id', $scope->subjectId)->sharedLock()->first();
+            if (!$subject || $subject->provider_id !== $scope->providerId) { throw new DomainException('UNAUTHORIZED_SCOPE'); }
+            if ((string) $subject->auth_version !== $input['expected_subject_version']) { throw new DomainException('VERSION_CONFLICT'); }
+            $knownIssue = null;
+            $issue = DB::table('tx_credential_provider_shadow_operation')->where('registration_id', $registration->id)
+                ->where('access_subject_id', $scope->subjectId)->where('operation', 'issue')->sharedLock()->first();
+            if ($issue && $issue->status === 'succeeded') {
+                $result = $this->receipt($issue)['result'];
+                if (!is_array($result) || !is_string($result['credential_ref'] ?? null)
+                    || !preg_match('/^cr_[a-f0-9]{32}$/D', $result['credential_ref'])) { throw new DomainException('PROVIDER_OPERATION_DAMAGED'); }
+                $knownIssue = ['operation_ref' => $issue->operation_ref, 'credential_ref' => $result['credential_ref']];
+            }
+            $snapshot = $logical + ['revocation_fact_domain' => 'provider-subject/v1', 'known_issue' => $knownIssue,
+                'revocation_fact_version' => FixtureLifecycleService::allocateFact($registration), 'effective_at' => time()];
+            $hash = FixtureCodec::hash($snapshot);
+            $id = DB::table('tx_credential_provider_shadow_operation')->insertGetId([
+                'registration_id' => $registration->id, 'instance_epoch' => $registration->instance_epoch,
+                'access_subject_id' => $scope->subjectId, 'operation' => 'revoke', 'operation_ref' => 'op_'.bin2hex(random_bytes(16)),
+                'idempotency_key' => $businessKey, 'input_hash' => $hash, 'input_snapshot' => FixtureCodec::json($snapshot),
+                'status' => 'recorded', 'created_at' => time(), 'updated_at' => time(),
+            ]);
+            DB::table('tx_credential_provider_shadow_revocation')->insert([
+                'registration_id' => $registration->id, 'instance_epoch' => $registration->instance_epoch, 'access_subject_id' => $scope->subjectId,
+                'operation_id' => $id, 'fact_version' => $snapshot['revocation_fact_version'],
+                'expected_subject_version' => $input['expected_subject_version'], 'reason_code' => $input['reason_code'],
+                'effective_at' => $snapshot['effective_at'], 'content_hash' => $hash, 'created_at' => time(),
+            ]);
+            return ['registration' => $registration,
+                'operation' => DB::table('tx_credential_provider_shadow_operation')->where('id', $id)->lockForUpdate()->first(), 'new' => true];
+        }, 5);
+        if (in_array($record['operation']->status, ['succeeded', 'rejected'], true)) { return $this->receipt($record['operation']); }
+        return $this->exchange($scope, $record['registration'], $record['operation'], $record['new'] ? 'revoke' : 'query', $deadline);
+    }
+
     public function query(FixtureScope $scope, string $operationRef, int $deadline): array
     {
         $this->guard(); $this->deadline($deadline);
@@ -109,6 +165,7 @@ final class FixtureProviderService
             if (!$operation) { throw new DomainException('UNAUTHORIZED_SCOPE'); }
             if ((string) $operation->instance_epoch !== (string) $registration->instance_epoch) { throw new DomainException('PROVIDER_REGISTRATION_CONFLICT'); }
             $this->scope($scope, $operation);
+            if ($operation->operation === 'revoke') { FixtureLifecycleService::assertFact($operation); }
             return ['registration' => $registration, 'operation' => $operation];
         });
         if (in_array($record['operation']->status, ['succeeded', 'rejected'], true)) { return $this->receipt($record['operation']); }
@@ -132,12 +189,13 @@ final class FixtureProviderService
                     || (string) $current->instance_epoch !== (string) $operation->instance_epoch) {
                     throw new DomainException('PROVIDER_REGISTRATION_CONFLICT');
                 }
-                if ($kind === 'issue' && !$current->enabled) { throw new DomainException('PROVIDER_DISABLED'); }
+                if ($kind === 'issue') { FixtureLifecycleService::assertIssuable($current, $scope->subjectId); }
                 $row = DB::table('tx_credential_provider_shadow_operation')->where('id', $operation->id)->lockForUpdate()->first();
                 $this->scope($scope, $row);
                 if (in_array($row->status, ['succeeded', 'rejected'], true)) { return $row; }
                 $input = json_decode($row->input_snapshot, true, flags: JSON_THROW_ON_ERROR);
                 if (!hash_equals($row->input_hash, FixtureCodec::hash($input))) { throw new DomainException('PROVIDER_OPERATION_DAMAGED'); }
+                if ($row->operation === 'revoke') { FixtureLifecycleService::assertFact($row); }
                 if ($kind === 'issue') {
                     $subject = DB::table('tx_access_subject')->where('id', $scope->subjectId)->sharedLock()->first();
                     if (!$subject || $subject->provider_id !== $scope->providerId || (string) $subject->subscription_id !== $input['subscription_id']) {
@@ -157,7 +215,7 @@ final class FixtureProviderService
                     'provider_id' => $scope->providerId, 'provider_instance_epoch' => (string) $current->instance_epoch,
                     'deadline_at' => $deadline, 'input_hash' => $row->input_hash, 'input' => $input];
                 $response = $this->process->call($request);
-                $result = $this->validateResponse($request, $response);
+                $result = $this->validateResponse($request, $response, $row->operation);
                 DB::table('tx_credential_provider_shadow_operation')->where('id', $row->id)->update([
                     'status' => $response['status'] === 'pending' ? 'unknown' : $response['status'],
                     'result_snapshot' => $result === null ? null : FixtureCodec::json($result),
@@ -195,7 +253,7 @@ final class FixtureProviderService
         }
     }
 
-    private function validateResponse(array $request, array $response): ?array
+    private function validateResponse(array $request, array $response, string $originalOperation): ?array
     {
         $keys = ['contract_version', 'request_id', 'operation_id', 'provider_id', 'provider_instance_epoch', 'input_hash', 'status', 'result', 'error_code'];
         if (count($response) !== count($keys) || array_diff(array_keys($response), $keys)) { throw new DomainException('PROVIDER_INVALID_RESPONSE'); }
@@ -204,12 +262,16 @@ final class FixtureProviderService
         }
         if (!in_array($response['status'], ['succeeded', 'pending', 'rejected'], true)) { throw new DomainException('PROVIDER_INVALID_RESPONSE'); }
         if ($response['status'] !== 'succeeded') {
-            if ($response['result'] !== null || !in_array($response['error_code'], ['OPERATION_UNKNOWN', 'IDEMPOTENCY_CONFLICT', 'UNSUPPORTED_PROFILE', 'SUBJECT_BINDING_CONFLICT', 'PROVIDER_PRIVATE_LIMIT'], true)) {
+            if ($response['result'] !== null || !in_array($response['error_code'], ['OPERATION_UNKNOWN', 'IDEMPOTENCY_CONFLICT', 'UNSUPPORTED_PROFILE', 'SUBJECT_BINDING_CONFLICT', 'PROVIDER_PRIVATE_LIMIT', 'REVOKED', 'REVOCATION_VERSION_CONFLICT'], true)) {
                 throw new DomainException('PROVIDER_INVALID_RESPONSE');
             }
             return null;
         }
         $result = $response['result'];
+        if ($originalOperation === 'revoke') {
+            if ($response['error_code'] !== null) { throw new DomainException('PROVIDER_INVALID_RESPONSE'); }
+            return FixtureLifecycleService::revokeResult($request, $result);
+        }
         $keys = ['credential_ref', 'provider_subject_ref', 'credential_generation', 'issued_at', 'credential_expires_at'];
         if ($response['error_code'] !== null || !is_array($result) || count($result) !== 5 || array_diff(array_keys($result), $keys)
             || !is_string($result['credential_ref'] ?? null) || !preg_match('/^cr_[a-f0-9]{32}$/D', $result['credential_ref'])
@@ -227,22 +289,15 @@ final class FixtureProviderService
         if ($result !== null && !hash_equals($row->result_hash ?? '', FixtureCodec::hash($result))) {
             throw new DomainException('PROVIDER_OPERATION_DAMAGED');
         }
-        return ['mode' => 'local_synthetic_fixture', 'operation_ref' => $row->operation_ref,
+        $receipt = ['mode' => 'local_synthetic_fixture', 'operation_ref' => $row->operation_ref,
             'status' => $row->status === 'recorded' ? 'unknown' : $row->status, 'result' => $result, 'error_code' => $row->last_error_code];
+        if ($row->operation === 'revoke') { $receipt['node_convergence'] = 'not_implemented'; }
+        return $receipt;
     }
 
     private function registration(string $provider, string $operation): object
     {
-        $row = DB::table('tx_credential_provider_shadow_registration')->where('provider_id', $provider)->lockForUpdate()->first();
-        if (!$row) { throw new DomainException('CAPABILITY_UNAVAILABLE'); }
-        if ($row->runtime_code !== 'synthetic-fixture-v1' || !hash_equals($row->script_digest, FixtureProcess::digest())) {
-            throw new DomainException('RUNTIME_UNAVAILABLE');
-        }
-        if (!in_array($operation, json_decode($row->operation_grants, true, flags: JSON_THROW_ON_ERROR), true)) {
-            throw new DomainException('UNSUPPORTED_OPERATION');
-        }
-        if (json_decode($row->profile_grants, true, flags: JSON_THROW_ON_ERROR) !== ['synthetic-v1']) { throw new DomainException('UNSUPPORTED_PROFILE'); }
-        return $row;
+        return FixtureRegistration::lock($provider, $operation);
     }
 
     private function scope(FixtureScope $scope, object $operation): void

@@ -18,7 +18,8 @@ use Tests\TestCase;
 class FixtureProviderTest extends TestCase
 {
     private string $privateRoot;
-    private const TABLES = ['tx_credential_provider_shadow_operation', 'tx_credential_provider_shadow_registration',
+    private const TABLES = ['tx_credential_provider_shadow_revocation', 'tx_credential_provider_shadow_lifecycle',
+        'tx_credential_provider_shadow_operation', 'tx_credential_provider_shadow_registration',
         'tx_usage_adjustment', 'tx_access_subject', 'tx_legacy_subscription_map', 'tx_legacy_subscription_exception',
         'tx_migration_checkpoint', 'tx_subscription_slot', 'tx_usage_period', 'tx_subscription_terms_transition', 'tx_subscription_terms', 'tx_subscription'];
 
@@ -41,6 +42,7 @@ class FixtureProviderTest extends TestCase
             'credential_provider_fixture.wall_timeout_seconds' => 1.0, 'credential_provider_fixture.test_fault' => null]);
         (require database_path('migrations/2026_10_12_000001_create_subscription_shadow_tables.php'))->up();
         $this->migration()->up();
+        (require database_path('migrations/2026_10_12_000009_create_credential_provider_lifecycle_shadow_tables.php'))->up();
     }
 
     protected function tearDown(): void
