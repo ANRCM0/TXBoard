@@ -1,0 +1,413 @@
+{
+  "profile": "two-repository-consolidation/fixed-image-verification-v1",
+  "observed_at_utc": "2026-10-12T20:27:35.454735+00:00",
+  "runtime_repository": "ANRCM0/TXBoard",
+  "future_runtime_repository_name": "tx-core",
+  "installer_repository": "ANRCM0/TXBoard-Deploy",
+  "core": {
+    "commit": "f9b271451eb36438db946ae018ab55568d2f10d5",
+    "ci": {
+      "conclusion": "success",
+      "databaseId": 38300575376,
+      "headSha": "f9b271451eb36438db946ae018ab55568d2f10d5",
+      "name": "txboard-core-image",
+      "status": "completed",
+      "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38300575376"
+    },
+    "fixed_artifact": {
+      "tag": "dev-sha-f9b271451eb3",
+      "anonymous_pull": true,
+      "digest": "sha256:ca27ef96fe0ca969a9fe50cf8ba66e3b0b2f656900645985baac88110a0e3727",
+      "platforms": [
+        {
+          "os": "linux",
+          "architecture": "amd64",
+          "revision": "f9b271451eb36438db946ae018ab55568d2f10d5",
+          "source": "https://github.com/ANRCM0/TXBoard",
+          "manifest_digest": "sha256:a14ab98143f4da28307e2e46bb3266b398c862c486e554a91d6f59098c4f8ffe",
+          "config_digest": "sha256:ed86934e50bbd4315b06e69841c9b712e504b3c7cb32f8f0f1b9bbca002d2f41"
+        },
+        {
+          "os": "linux",
+          "architecture": "arm64",
+          "revision": "f9b271451eb36438db946ae018ab55568d2f10d5",
+          "source": "https://github.com/ANRCM0/TXBoard",
+          "manifest_digest": "sha256:83648912a2d3d6edfd49b621c720c1435d3f3c1c67eb1e2dac2498a86fa2a7bc",
+          "config_digest": "sha256:81a9f52e401fc1aaa61e4439c1d99797d26a002cd15906f2eb3d1391e8953c15"
+        }
+      ],
+      "expected_revision": true,
+      "expected_source": true,
+      "expected_platforms": true
+    },
+    "dev": {
+      "tag": "dev",
+      "anonymous_pull": true,
+      "digest": "sha256:ca27ef96fe0ca969a9fe50cf8ba66e3b0b2f656900645985baac88110a0e3727",
+      "platforms": [
+        {
+          "os": "linux",
+          "architecture": "amd64",
+          "revision": "f9b271451eb36438db946ae018ab55568d2f10d5",
+          "source": "https://github.com/ANRCM0/TXBoard",
+          "manifest_digest": "sha256:a14ab98143f4da28307e2e46bb3266b398c862c486e554a91d6f59098c4f8ffe",
+          "config_digest": "sha256:ed86934e50bbd4315b06e69841c9b712e504b3c7cb32f8f0f1b9bbca002d2f41"
+        },
+        {
+          "os": "linux",
+          "architecture": "arm64",
+          "revision": "f9b271451eb36438db946ae018ab55568d2f10d5",
+          "source": "https://github.com/ANRCM0/TXBoard",
+          "manifest_digest": "sha256:83648912a2d3d6edfd49b621c720c1435d3f3c1c67eb1e2dac2498a86fa2a7bc",
+          "config_digest": "sha256:81a9f52e401fc1aaa61e4439c1d99797d26a002cd15906f2eb3d1391e8953c15"
+        }
+      ],
+      "expected_revision": true,
+      "expected_source": true,
+      "expected_platforms": true
+    },
+    "raw_job_log_hashes": [
+      {
+        "name": "release-gate",
+        "conclusion": "success",
+        "sha256": "172c62ef235fba21a653a4b4b1dce7710dd83181c235d55761ef78c245e791e9",
+        "file": "job-114982235243.log"
+      },
+      {
+        "name": "verify",
+        "conclusion": "success",
+        "sha256": "deadf524589231c98c769602b3c7297461d78320abd6146c5c0c537f72a62e38",
+        "file": "job-114982235413.log"
+      },
+      {
+        "name": "release-recovery",
+        "conclusion": "success",
+        "sha256": "34865b02db0daed2d9781dfaf5118109d2d144f8d2ffa4677795b6667d70954d",
+        "file": "job-114982235559.log"
+      },
+      {
+        "name": "publish",
+        "conclusion": "success",
+        "sha256": "1604f347e9b00d8f431dadd64b72536191955dcc514935dffd13bf6303a3579b",
+        "file": "job-114983823733.log"
+      }
+    ]
+  },
+  "node": {
+    "commit": "0f18459250d8761fa6f426af1202580fc7a513e0",
+    "ci": {
+      "conclusion": "success",
+      "databaseId": 38302071059,
+      "headSha": "0f18459250d8761fa6f426af1202580fc7a513e0",
+      "name": "Node CI and images",
+      "status": "completed",
+      "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38302071059"
+    },
+    "fixed_artifact": {
+      "tag": "dev-sha-0f18459250d8",
+      "anonymous_pull": true,
+      "digest": "sha256:94d784af263fbd24362519bb67d18a224b78a2e1e8ff83b7d86f64f498c93b48",
+      "media_type": "application/vnd.oci.image.index.v1+json",
+      "platforms": [
+        {
+          "os": "linux",
+          "architecture": "amd64",
+          "revision": "0f18459250d8761fa6f426af1202580fc7a513e0",
+          "source": "https://github.com/ANRCM0/TXBoard",
+          "manifest_digest": "sha256:b2c644a27e6c0339f48301baf2d76f7040865af75ab299639d1beca36d69d042",
+          "config_digest": "sha256:38e12c98edf3933dfecc941ec996e1ad17c0b59b4416fe05cef0edffa20c07a4",
+          "manifest": {
+            "file": "child-b2c644a27e6c0339f48301baf2d76f7040865af75ab299639d1beca36d69d042.json",
+            "sha256": "e8af2947aeba49348f832ea053ca9bb898524f674b534c4a946dec6b54eb5221"
+          },
+          "config": {
+            "file": "config-38e12c98edf3933dfecc941ec996e1ad17c0b59b4416fe05cef0edffa20c07a4.json",
+            "sha256": "b97b4fe2408b172814b807aa1227b88182077763fddf9a19c4b713275f418f52"
+          }
+        },
+        {
+          "os": "linux",
+          "architecture": "arm64",
+          "revision": "0f18459250d8761fa6f426af1202580fc7a513e0",
+          "source": "https://github.com/ANRCM0/TXBoard",
+          "manifest_digest": "sha256:5b8eb6ec1d60c7dd564ce1e8234ccb9b26d54c782bdadb9524d2aad8e48b29bc",
+          "config_digest": "sha256:4f83e35ffeaccafe4e6ed0678e5a2550389d778d9bc78c3870aed6330dae51bd",
+          "manifest": {
+            "file": "child-5b8eb6ec1d60c7dd564ce1e8234ccb9b26d54c782bdadb9524d2aad8e48b29bc.json",
+            "sha256": "b8825f9d5306135c531f4be3c6692bef9798c6360358e225002022f5199d2e28"
+          },
+          "config": {
+            "file": "config-4f83e35ffeaccafe4e6ed0678e5a2550389d778d9bc78c3870aed6330dae51bd.json",
+            "sha256": "b2b50bed24128cdf6a93b3d99bae45f7922e864455e995333c24840b5070e96f"
+          }
+        }
+      ],
+      "index": {
+        "file": "manifest-dev-sha-0f18459250d8-20261012T202206793148Z.json",
+        "sha256": "645d84c52f995ae45c82a2b2fed0689cf55d39e3348bd5dbb9261a442d40ad6e"
+      },
+      "expected_platforms": true,
+      "expected_revision": true,
+      "expected_source": true
+    },
+    "dev": {
+      "tag": "dev",
+      "anonymous_pull": true,
+      "digest": "sha256:94d784af263fbd24362519bb67d18a224b78a2e1e8ff83b7d86f64f498c93b48",
+      "media_type": "application/vnd.oci.image.index.v1+json",
+      "platforms": [
+        {
+          "os": "linux",
+          "architecture": "amd64",
+          "revision": "0f18459250d8761fa6f426af1202580fc7a513e0",
+          "source": "https://github.com/ANRCM0/TXBoard",
+          "manifest_digest": "sha256:b2c644a27e6c0339f48301baf2d76f7040865af75ab299639d1beca36d69d042",
+          "config_digest": "sha256:38e12c98edf3933dfecc941ec996e1ad17c0b59b4416fe05cef0edffa20c07a4",
+          "manifest": {
+            "file": "child-b2c644a27e6c0339f48301baf2d76f7040865af75ab299639d1beca36d69d042.json",
+            "sha256": "e8af2947aeba49348f832ea053ca9bb898524f674b534c4a946dec6b54eb5221"
+          },
+          "config": {
+            "file": "config-38e12c98edf3933dfecc941ec996e1ad17c0b59b4416fe05cef0edffa20c07a4.json",
+            "sha256": "b97b4fe2408b172814b807aa1227b88182077763fddf9a19c4b713275f418f52"
+          }
+        },
+        {
+          "os": "linux",
+          "architecture": "arm64",
+          "revision": "0f18459250d8761fa6f426af1202580fc7a513e0",
+          "source": "https://github.com/ANRCM0/TXBoard",
+          "manifest_digest": "sha256:5b8eb6ec1d60c7dd564ce1e8234ccb9b26d54c782bdadb9524d2aad8e48b29bc",
+          "config_digest": "sha256:4f83e35ffeaccafe4e6ed0678e5a2550389d778d9bc78c3870aed6330dae51bd",
+          "manifest": {
+            "file": "child-5b8eb6ec1d60c7dd564ce1e8234ccb9b26d54c782bdadb9524d2aad8e48b29bc.json",
+            "sha256": "b8825f9d5306135c531f4be3c6692bef9798c6360358e225002022f5199d2e28"
+          },
+          "config": {
+            "file": "config-4f83e35ffeaccafe4e6ed0678e5a2550389d778d9bc78c3870aed6330dae51bd.json",
+            "sha256": "b2b50bed24128cdf6a93b3d99bae45f7922e864455e995333c24840b5070e96f"
+          }
+        }
+      ],
+      "index": {
+        "file": "manifest-dev-20261012T202206793148Z.json",
+        "sha256": "645d84c52f995ae45c82a2b2fed0689cf55d39e3348bd5dbb9261a442d40ad6e"
+      },
+      "expected_platforms": true,
+      "expected_revision": true,
+      "expected_source": true
+    },
+    "package": {
+      "id": 15837861,
+      "name": "txboard-node",
+      "package_type": "container",
+      "visibility": "public",
+      "html_url": "https://github.com/users/ANRCM0/packages/container/package/txboard-node",
+      "endpoint": "users/ANRCM0/packages/container/txboard-node",
+      "queried": true,
+      "repository": {
+        "full_name": "ANRCM0/TXBoard",
+        "html_url": "https://github.com/ANRCM0/TXBoard",
+        "private": false
+      }
+    },
+    "raw_job_log_hashes": [
+      {
+        "job": "Node runtime stability",
+        "conclusion": "success",
+        "sha256": "90bf0a8d7f6171fa1dd6a1e587201628baafac0d060eef2da45069f600a4f51e",
+        "main_tests_passed": 0,
+        "subtests_passed": 0,
+        "tests_skipped": 0,
+        "failure_lines": [],
+        "file": "job-114987134910.log"
+      },
+      {
+        "job": "Node Go tests and source guards",
+        "conclusion": "success",
+        "sha256": "c55412275f8b0f6b3c348c7309454b294443df4d9dd1b2bf33828f6593fefdad",
+        "main_tests_passed": 432,
+        "subtests_passed": 194,
+        "tests_skipped": 0,
+        "failure_lines": [],
+        "file": "job-114987135177.log"
+      },
+      {
+        "job": "Classify Node runtime changes",
+        "conclusion": "success",
+        "sha256": "f4a8c4e50be72abc999a2d1173b4434312d8c1c1160ca7db460fe6852980f796",
+        "main_tests_passed": 0,
+        "subtests_passed": 0,
+        "tests_skipped": 0,
+        "failure_lines": [],
+        "file": "job-114987135295.log"
+      },
+      {
+        "job": "Node image metadata and config compatibility",
+        "conclusion": "success",
+        "sha256": "e17e8a87543c8fff13842116c7580d37a216aa3e1760d3bda0d06a8f2c675736",
+        "main_tests_passed": 0,
+        "subtests_passed": 0,
+        "tests_skipped": 0,
+        "failure_lines": [],
+        "file": "job-114988394128.log"
+      },
+      {
+        "job": "Publish independent Node image",
+        "conclusion": "success",
+        "sha256": "5c969213a5c36f12925d4f9d250d02d5a90343ccd77e53c4b9d7a4034cfc5890",
+        "main_tests_passed": 0,
+        "subtests_passed": 0,
+        "tests_skipped": 0,
+        "failure_lines": [],
+        "file": "job-114989034826.log"
+      }
+    ],
+    "summary_sha256": "c674583c4bc319e1ee35758d49161dd05d89633d2403157cd4e58d9c28991119"
+  },
+  "gateway": {
+    "source_sha": "f9b271451eb36438db946ae018ab55568d2f10d5",
+    "run_id": 38300575445,
+    "status": "immutable_published_and_anonymous_verified; dev_promotion_pending_prior_run_lock",
+    "immutable_tag": "ghcr.io/anrcm0/txboard-gateway:dev-sha-f9b271451eb3",
+    "digest": "sha256:c14ca36e5b763d2f7e6415b277b5186cb44f69b262115f819be66effcae5fced",
+    "verified_platforms": [
+      "linux/amd64",
+      "linux/arm64"
+    ],
+    "platform_revision_matches_source": true,
+    "source_url": "https://github.com/ANRCM0/TXBoard",
+    "production_fingerprint": "bc350256f3ec3bb3b41894585d11819c51fef1cf2b857562d2d31cdb8044e3b7",
+    "real_docker_guard": {
+      "installed_entries": 14,
+      "scanned_files": 4053,
+      "result": "portable",
+      "evidence_jobs": [
+        "container",
+        "publish"
+      ]
+    },
+    "validation_counts": {
+      "portable_guard": 38,
+      "gateway": 713,
+      "sdk": 68,
+      "redis": 4,
+      "snapshot": 4
+    },
+    "timing": {
+      "publish_job_seconds": 51,
+      "build_push_step_seconds": 29
+    },
+    "job_logs": [
+      {
+        "name": "browser",
+        "job_id": 114982235689,
+        "conclusion": "success",
+        "file": "job-114982235689.log",
+        "sha256": "5aad0047f38844f3fc16853507909f14b5257f054655f4f92b90ef0ddbdab8a5"
+      },
+      {
+        "name": "container",
+        "job_id": 114982235763,
+        "conclusion": "success",
+        "file": "job-114982235763.log",
+        "sha256": "eea65c257253b2a23573f9e7d4610bed346d70a5254683238ee827f040a9df9c"
+      },
+      {
+        "name": "verify",
+        "job_id": 114982236086,
+        "conclusion": "success",
+        "file": "job-114982236086.log",
+        "sha256": "79d9adbcdd277e6f0effcb94c30d6a0632d4aa5fb6740d8c1bbba689d260cad3"
+      },
+      {
+        "name": "publish",
+        "job_id": 114982596501,
+        "conclusion": "success",
+        "file": "job-114982596501.log",
+        "sha256": "f876bcbe8f13b3c3f52378bdc1b9ce8a2643590167961ea703013029063a8bf1"
+      }
+    ],
+    "source_files_changed_after_freeze": false,
+    "actions_mutations": [],
+    "registry_writes": [],
+    "observed_at": "2026-10-12T20:05:37.7193966Z"
+  },
+  "installer_commit": "5618dd587d3479e165cbfd3e59ffd7043380e680",
+  "installer_evidence_sha256": "94b258a1ba999d9bc3b35858549eef03324d36b16e7f50dff06748e05102a0ba",
+  "installer_ci": [
+    {
+      "run_id": 38301662347,
+      "url": "https://github.com/ANRCM0/TXBoard-Deploy/actions/runs/38301662347",
+      "event": "push",
+      "conclusion": "success",
+      "jobs": [
+        {
+          "name": "verify",
+          "job_id": 114985776222,
+          "conclusion": "success",
+          "url": "https://github.com/ANRCM0/TXBoard-Deploy/actions/runs/38301662347/job/114985776222",
+          "started_at": "2026-10-12T20:02:58Z",
+          "completed_at": "2026-10-12T20:04:01Z"
+        },
+        {
+          "name": "gateway-docker",
+          "job_id": 114985776651,
+          "conclusion": "success",
+          "url": "https://github.com/ANRCM0/TXBoard-Deploy/actions/runs/38301662347/job/114985776651",
+          "started_at": "2026-10-12T20:02:58Z",
+          "completed_at": "2026-10-12T20:03:27Z"
+        },
+        {
+          "name": "smoke-install",
+          "job_id": 114985777734,
+          "conclusion": "skipped",
+          "url": "https://github.com/ANRCM0/TXBoard-Deploy/actions/runs/38301662347/job/114985777734",
+          "started_at": "2026-10-12T20:02:56Z",
+          "completed_at": "2026-10-12T20:02:56Z"
+        }
+      ]
+    },
+    {
+      "run_id": 38301661999,
+      "url": "https://github.com/ANRCM0/TXBoard-Deploy/actions/runs/38301661999",
+      "event": "push",
+      "conclusion": "success"
+    }
+  ],
+  "gateway_installed_artifact": {
+    "index": "sha256:c14ca36e5b763d2f7e6415b277b5186cb44f69b262115f819be66effcae5fced",
+    "platform": "linux/amd64",
+    "manifest": "sha256:9e164150f0089a8cdf211382fd7bd44f7240d6d932f8425a2d20d335fee5c5ed",
+    "actual_ci_image_id": "sha256:3443d5163a65af559f4d137addc31c301ef41284acdf8189d2bb1ac5d7f41ada",
+    "revision": "f9b271451eb36438db946ae018ab55568d2f10d5",
+    "source": "https://github.com/ANRCM0/TXBoard",
+    "files": [
+      {
+        "path": "gateway-oci-index.json",
+        "sha256": "c14ca36e5b763d2f7e6415b277b5186cb44f69b262115f819be66effcae5fced",
+        "bytes": 647,
+        "oci_digest": "sha256:c14ca36e5b763d2f7e6415b277b5186cb44f69b262115f819be66effcae5fced"
+      },
+      {
+        "path": "gateway-oci-amd64-manifest.json",
+        "sha256": "9e164150f0089a8cdf211382fd7bd44f7240d6d932f8425a2d20d335fee5c5ed",
+        "bytes": 1624,
+        "oci_digest": "sha256:9e164150f0089a8cdf211382fd7bd44f7240d6d932f8425a2d20d335fee5c5ed"
+      },
+      {
+        "path": "gateway-oci-amd64-config.json",
+        "sha256": "3443d5163a65af559f4d137addc31c301ef41284acdf8189d2bb1ac5d7f41ada",
+        "bytes": 8284,
+        "oci_digest": "sha256:3443d5163a65af559f4d137addc31c301ef41284acdf8189d2bb1ac5d7f41ada"
+      }
+    ],
+    "read_only": true,
+    "anonymous_pull_token_saved": false
+  },
+  "history": "Non-squashed source commits are ancestors; imported subtree trees match original trees.",
+  "retired_repositories_deleted": false,
+  "production_access": false,
+  "stable_release_tag_created": false,
+  "scope": "Fixed multi-platform publication and installer lifecycle; no production B0-B8 migration acceptance."
+}

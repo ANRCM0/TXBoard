@@ -20,7 +20,7 @@
 - **生产安装/升级/迁移/备份命令**：[TXBoard-Deploy](https://github.com/ANRCM0/TXBoard-Deploy)；不要从本目录复制另一套安装器规则。
 - **TX-Node 运行时**：[node/](../node/README.md)；节点安装统一由 TXBoard-Deploy 负责。
 - **可选主题 BFF 与 SDK**：[gateway/](../gateway/README.md)；与 Core 镜像内置 MCP 适配器分别运行。
-- **双仓结构与镜像发布**：[目录及发布规则](development/repository-layout.md)。
+- **双仓结构与镜像发布**：[目录及发布规则](development/repository-layout.md)、[本次合并与发布验收](development/consolidation-verification.md)。
 - **代码 Agent 的实现约束**：[AGENTS.md](../AGENTS.md)。
 
 ## 维护与状态
