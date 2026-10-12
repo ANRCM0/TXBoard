@@ -91,6 +91,8 @@ func (s *Service) applyUserUpdate(
 	src userStateSource,
 ) {
 	_ = ctx
+	s.observeBoundary("USER_UPDATE_BEGIN", true)
+	defer s.observeBoundary("USER_UPDATE_END", false)
 	previous := s.replaceUserState(users, newHash, src)
 
 	if !s.kernel.IsRunning() {
@@ -124,6 +126,10 @@ func (s *Service) applyUserDelta(
 	deltaUsers []model.UserSpec,
 ) {
 	_ = ctx
+	if (action == "add" || action == "remove") && len(deltaUsers) > 0 {
+		s.observeBoundary("USER_DELTA_BEGIN", true)
+		defer s.observeBoundary("USER_DELTA_END", false)
+	}
 	switch action {
 	case "add":
 		if len(deltaUsers) == 0 {

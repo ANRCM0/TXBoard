@@ -19,14 +19,14 @@ import (
 )
 
 type Config struct {
-	InstanceID string `yaml:"-"`
-	Panel   PanelConfig   `yaml:"panel"`
-	Node    NodeConfig    `yaml:"node"`
-	Kernel  KernelConfig  `yaml:"kernel"`
-	Cert    CertConfig    `yaml:"cert"`
-	Log     LogConfig     `yaml:"log"`
-	Runtime RuntimeConfig `yaml:"runtime"`
-	WS      WSConfig      `yaml:"ws"`
+	InstanceID string        `yaml:"-"`
+	Panel      PanelConfig   `yaml:"panel"`
+	Node       NodeConfig    `yaml:"node"`
+	Kernel     KernelConfig  `yaml:"kernel"`
+	Cert       CertConfig    `yaml:"cert"`
+	Log        LogConfig     `yaml:"log"`
+	Runtime    RuntimeConfig `yaml:"runtime"`
+	WS         WSConfig      `yaml:"ws"`
 	// Standalone enables a local-only node that never contacts the panel.
 	Standalone *StandaloneConfig `yaml:"standalone,omitempty"`
 	// HealthPort enables a lightweight HTTP health-check endpoint on the
@@ -49,6 +49,17 @@ type Config struct {
 	// TXBoard native Bearer node/v1 audit transport. It attaches only to sing-box.
 	// Disabled by default; omit this section to disable the reporter.
 	Audit AuditConfig `yaml:"audit,omitempty"`
+	// UsageObserver is local evidence collection only. Explicit per-instance
+	// opt-in; never inherited implicitly or used to activate a billing protocol.
+	UsageObserver UsageObserverConfig `yaml:"usage_observer,omitempty"`
+}
+
+type UsageObserverConfig struct {
+	Enabled bool `yaml:"enabled"`
+	// Directory is a persistent root. Service derives a private node/instance
+	// subdirectory; empty uses Kernel.ConfigDir. No records are garbage-collected.
+	Directory string `yaml:"directory,omitempty"`
+	MaxBytes  int64  `yaml:"max_bytes,omitempty"`
 }
 
 // MachineConfig identifies this process as a panel-managed machine that
@@ -100,7 +111,7 @@ type RuntimeConfig struct {
 }
 
 type PanelConfig struct {
-	Provider string `yaml:"provider,omitempty"` // xboard (default), txboard (native v1)
+	Provider  string `yaml:"provider,omitempty"` // xboard (default), txboard (native v1)
 	URL       string `yaml:"url"`
 	Token     string `yaml:"token"`
 	TokenEnv  string `yaml:"token_env,omitempty"`
@@ -479,7 +490,9 @@ func (c *Config) resolveEnvRefs() {
 // Fields that must be unique per instance (config_dir, cert_dir, instance_id)
 // are intentionally excluded.
 func (c *Config) inheritFrom(parent *Config) {
-	if c.Panel.Provider == "" { c.Panel.Provider = parent.Panel.Provider }
+	if c.Panel.Provider == "" {
+		c.Panel.Provider = parent.Panel.Provider
+	}
 	// Log
 	if c.Log.Level == "" {
 		c.Log.Level = parent.Log.Level

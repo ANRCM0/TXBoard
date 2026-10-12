@@ -2,11 +2,11 @@ package service
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"math"
 	"path/filepath"
-	"crypto/sha256"
-	"encoding/hex"
 	"strings"
 	"sync"
 	"time"
@@ -16,9 +16,9 @@ import (
 	"github.com/ANRCM0/TX-Node/internal/config"
 	"github.com/ANRCM0/TX-Node/internal/controlplane"
 	"github.com/ANRCM0/TX-Node/internal/kernel"
-	"github.com/ANRCM0/TX-Node/internal/kernellifecycle"
 	"github.com/ANRCM0/TX-Node/internal/kernel/singbox"
 	"github.com/ANRCM0/TX-Node/internal/kernel/xray"
+	"github.com/ANRCM0/TX-Node/internal/kernellifecycle"
 	"github.com/ANRCM0/TX-Node/internal/limiter"
 	"github.com/ANRCM0/TX-Node/internal/model"
 	"github.com/ANRCM0/TX-Node/internal/monitor"
@@ -28,6 +28,7 @@ import (
 	"github.com/ANRCM0/TX-Node/internal/pushsync"
 	"github.com/ANRCM0/TX-Node/internal/reporting"
 	"github.com/ANRCM0/TX-Node/internal/tracker"
+	"github.com/ANRCM0/TX-Node/internal/usageobserver"
 	"github.com/ANRCM0/TX-Node/internal/userstate"
 )
 
@@ -51,9 +52,9 @@ type Service struct {
 	pushInterval int // seconds
 	pullInterval int // seconds
 
-	lastConfigHash string // hash of full config for change detection
-	syncer         *nodesync.Controller
-	reporter       *reporting.Controller
+	lastConfigHash  string // hash of full config for change detection
+	syncer          *nodesync.Controller
+	reporter        *reporting.Controller
 	reporterInitErr error
 
 	push             *pushsync.Controller
@@ -67,17 +68,23 @@ type Service struct {
 	// Typed Node Ops are isolated behind a narrow runtime adapter. Service owns
 	// orchestration; nodeops.Executor owns operation dispatch/replay protection.
 	ops *nodeops.Executor
+
+	observerMu    sync.Mutex
+	observer      *usageobserver.Observer
+	observerState string
 }
 
 func NewChecked(cfg *config.Config) (*Service, error) {
- cp, err := controlplane.NewForConfigChecked(cfg)
- if err != nil { return nil, err }
- return newService(cfg, cp), nil
+	cp, err := controlplane.NewForConfigChecked(cfg)
+	if err != nil {
+		return nil, err
+	}
+	return newService(cfg, cp), nil
 }
 
 func New(cfg *config.Config) *Service {
- svc, _ := NewChecked(cfg)
- return svc
+	svc, _ := NewChecked(cfg)
+	return svc
 }
 
 // NewWithControlPlane creates a Service with an externally-provided
@@ -120,19 +127,19 @@ func newService(cfg *config.Config, cp controlplane.ControlPlane) *Service {
 	}
 	s := &Service{
 		reporterInitErr: reporterInitErr,
-		cfg:          cfg,
-		source:       cp,
-		sink:         cp,
-		kernel:       k,
-		kernelLife:   kernellifecycle.New(k),
-		tracker:      tracker.New(),
-		limiter:      l,
-		speedTracker: st,
-		certs:        certcoord.New(cfg.Cert),
-		users:        userstate.New(l, st),
-		syncer:       nodesync.New(cp),
-		push:         pushsync.New(cp),
-		reporter:     reporter,
+		cfg:             cfg,
+		source:          cp,
+		sink:            cp,
+		kernel:          k,
+		kernelLife:      kernellifecycle.New(k),
+		tracker:         tracker.New(),
+		limiter:         l,
+		speedTracker:    st,
+		certs:           certcoord.New(cfg.Cert),
+		users:           userstate.New(l, st),
+		syncer:          nodesync.New(cp),
+		push:            pushsync.New(cp),
+		reporter:        reporter,
 	}
 	s.ops = nodeops.New(serviceOpsRuntime{service: s}, s.sendOpsResult)
 	return s
@@ -142,6 +149,8 @@ func (s *Service) Run(ctx context.Context) error {
 	if s.reporterInitErr != nil {
 		return fmt.Errorf("durable traffic report spool initialization failed: %w", s.reporterInitErr)
 	}
+	s.initUsageObserver()
+	defer s.closeUsageObserver()
 	// Start cert manager (handles auto-TLS or manual cert verification)
 	if err := s.certs.Start(ctx); err != nil {
 		return fmt.Errorf("cert manager: %w", err)
@@ -152,7 +161,7 @@ func (s *Service) Run(ctx context.Context) error {
 	if err := s.initialSetup(ctx); err != nil {
 		return fmt.Errorf("initial setup: %w", err)
 	}
-	defer s.kernelLife.Stop()
+	defer s.stopKernelObserved(false)
 
 	// Set up tickers
 	trackTicker := time.NewTicker(time.Duration(s.cfg.Node.TrackInterval) * time.Second)
@@ -412,10 +421,14 @@ func (s *Service) trackAndEnforce(ctx context.Context) {
 	traffic, aliveIPs, connCount, err := s.kernel.GetUserTraffic(ctx)
 	if err != nil {
 		nlog.Core().Debug("get user traffic failed", "error", err)
+		s.observeBoundary("TRACK_ERROR", false)
 		return
 	}
 
 	s.tracker.Process(traffic, aliveIPs, connCount)
+	// Pass the exact original cumulative snapshot after v1 has consumed it.
+	// The observer neither polls meters again nor flushes/restores v1 state.
+	s.observeTraffic(traffic)
 
 	// Only log stats if there's actual traffic or connections
 	if connCount > 0 || len(traffic) > 0 {
@@ -437,6 +450,9 @@ func (s *Service) buildMetrics(status monitor.Status) map[string]interface{} {
 	}
 
 	m := make(map[string]interface{})
+	if s.cfg != nil && s.cfg.UsageObserver.Enabled {
+		m["usage_observer"] = s.usageObserverMetrics()
+	}
 	online := s.tracker.CurrentOnline()
 
 	m["uptime"] = status.Uptime

@@ -15,10 +15,13 @@ func (s *Service) startKernel(config *model.NodeSpec, users []model.UserSpec) bo
 	if s == nil || s.kernelLife == nil {
 		return false
 	}
+	s.observeBoundary("KERNEL_START_BEGIN", true)
 	if err := s.kernelLife.Start(config, users, s.certs.TLSCert()); err != nil {
+		s.observeBoundary("KERNEL_START_FAILED", false)
 		nlog.Core().Error("failed to start kernel", "error", err)
 		return false
 	}
+	s.observeBoundary("KERNEL_START_OK", false)
 
 	if s.nodeLog == nil {
 		s.nodeLog = nlog.ForNode(config.Protocol, config.ServerPort)
@@ -47,13 +50,13 @@ func (s *Service) applyChanges(ctx context.Context, configChanged, usersChanged 
 	users := s.users.Users()
 	if s.lastConfig == nil || len(users) == 0 {
 		if len(users) == 0 {
-			s.kernelLife.StopForNoUsers()
+			s.stopKernelObserved(true)
 		}
 		return
 	}
 
 	if s.kernel.IsRunning() {
-		if err := s.kernelLife.Reload(s.lastConfig, users, s.certs.TLSCert()); err != nil {
+		if err := s.reloadKernelObserved(s.lastConfig, users); err != nil {
 			nlog.Core().Warn(fmt.Sprintf("reload failed, restarting: %v", err))
 			s.startKernel(s.lastConfig, users)
 			return

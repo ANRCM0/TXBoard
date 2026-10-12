@@ -56,11 +56,7 @@ func (a serviceOpsRuntime) ReloadCurrent() error {
 	if a.service.kernelLife == nil {
 		return fmt.Errorf("kernel lifecycle coordinator is unavailable")
 	}
-	return a.service.kernelLife.Reload(
-		configSnapshot,
-		usersSnapshot,
-		a.service.certs.TLSCert(),
-	)
+	return a.service.reloadKernelObserved(configSnapshot, usersSnapshot)
 }
 
 func (a serviceOpsRuntime) KernelStatus() (string, bool) {
