@@ -2,6 +2,8 @@
 
 > 执行日期：2026-10-12，Asia/Shanghai。验证对象为本批工作前四仓基准提交及本批文档/工具改动，不是生产验收报告。
 
+后续已补齐 [Linux 运行验证](baseline-linux-verification.md)：真实 HTTP registry、API 全量、订单数据库并发、Gateway/Redis、Node 持久化和隔离数据库恢复。以下保留第一轮 Windows 实测记录；其中“未执行”是当时状态，后续结果以链接记录为准。
+
 ## 环境与提交
 
 本机为 Windows / PowerShell，Node `24.14.1`、npm `11.11.0`、Go `1.26.3 windows/386`，另有 Git Bash 和 Python。当前 PATH 没有 PHP、Composer、Docker；无法启动 Laravel、导出真实 HTTP registry、运行 API/MySQL、Redis 容器和镜像验收。现有 GitHub CI 使用 Linux/Node 22，与本机环境不同。

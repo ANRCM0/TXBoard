@@ -9,8 +9,8 @@
  * mappings must be reviewed separately.
  */
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
-import { dirname } from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { dirname, relative, resolve, sep } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 export const classify = (uri) => {
   const p = '/' + String(uri).replace(/^\/+/, '');
@@ -105,7 +105,7 @@ function escapeCell(value) {
   return String(value).replaceAll('|', '\\|').replaceAll('\n', ' ');
 }
 
-export function markdown(items) {
+export function markdown(items, integrationHref = '../../contracts/http/external-adapter-current.md') {
   const summary = new Map();
   for (const item of items) summary.set(item.family, (summary.get(item.family) || 0) + 1);
   const lines = [
@@ -120,7 +120,7 @@ export function markdown(items) {
     '| Method | Path | Family | Principal | Laravel middleware |', '|---|---|---|---|---|',
     ...items.map(x => `| ${escapeCell(x.method)} | \`${escapeCell(x.path)}\` | ${escapeCell(x.family)} | ${escapeCell(x.principal)} | \`${escapeCell(x.middleware)}\` |`),
     '', 'Integration rules, errors, security, payment callback behavior and rollout status:',
-    'see [External Adapter Integration Guide](../../contracts/http/external-adapter-current.md).', '',
+    `see [External Adapter Integration Guide](${integrationHref}).`, '',
   ];
   return lines.join('\n');
 }
@@ -152,7 +152,9 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
         scope: 'registered HTTP only; no external runtime acceptance',
         routes: data,
       }, null, 2) + '\n'],
-      [flags.markdown, markdown(data)],
+      [flags.markdown, markdown(data, flags.markdown ? relative(dirname(resolve(flags.markdown)),
+        fileURLToPath(new URL('../contracts/http/external-adapter-current.md', import.meta.url)))
+        .split(sep).join('/') : undefined)],
     ];
     for (const [file,content] of outputs) {
       if (!file) continue;

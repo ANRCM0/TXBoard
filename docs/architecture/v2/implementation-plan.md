@@ -1,6 +1,6 @@
 # Core First v2 实施台账
 
-> 状态：B0 推进中；后续运行时能力 Target。2026-10-12 起，以主仓版本化契约统一四仓工作。
+> 状态：B0 本地基线完成；B1 增量实现中，后续运行时能力 Target。2026-10-12 起，以主仓版本化契约统一四仓工作。
 
 ## 1. 批次与关键路径
 
@@ -22,14 +22,16 @@ B1 → B3 → B4 是业务身份主线；B2 必须在生产数据库权威切换
 
 | 任务 | 本地进展 | 仍需退出证据 |
 | --- | --- | --- |
-| CORE-001 | 静态清单工具、四仓盘点、当前边界和本地验证 | PHP/Laravel 注册表导出、API 测试；Linux Node 持久化测试；真实数据样本 |
+| CORE-001 | 静态盘点、真实 HTTP registry、API 全量与数据库并发、Linux Gateway/Redis/Node 验证 | 匿名化真实站点数据在 B1 演练；生产镜像在对应阶段验证 |
 | CORE-002 | Core First ADR、原生白名单、插件候选和角色边界 | 运行时迁移 PR 必须逐项遵守，文档不改变现行权限 |
 | CORE-003 | 逻辑模型、约束、单位、回填与对账规范 | B1 物理 Schema 定稿及真实周期/历史订单样本验证 |
 | CORE-004 | Provider 方法、非秘密归属、租约、撤销与卸载规范 | 授权租约时长/时钟偏差参数和隔离 Runtime 实现 |
-| CORE-005 | Manifest、兼容矩阵、检查点与恢复规范 | Installer 本地缺失；发布组件与真实恢复演练 |
+| CORE-005 | Manifest、兼容矩阵、检查点与恢复规范；Installer 已获取并通过 5 套隔离测试 | B2 发布组件与升级中断/恢复演练 |
 | CORE-006 | Internal Operation、服务身份和业务授权规范 | Operation Schema、密码字节规范、mTLS 运行时和消费者测试 |
 
 可执行的结果与限制见 [基线验证记录](baseline-verification.md)。上表不宣称六项均已生产验收。
+
+B0 补充退出证据见 [Linux 运行验证](baseline-linux-verification.md)。B0 的草案约束用于后续实现；SC-v2 字节参数和 Provider 运行时尚未实施，不因本地基线完成而标为当前能力。
 
 ## 3. B1 的第一条可验收切片
 

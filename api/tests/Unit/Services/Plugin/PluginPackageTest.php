@@ -77,6 +77,7 @@ class PluginPackageTest extends TestCase
 
         unlink($root . '/admin/dist/index.html');
         rmdir($root . '/admin/dist');
+        rmdir($root . '/admin');
         rmdir($root);
     }
 
