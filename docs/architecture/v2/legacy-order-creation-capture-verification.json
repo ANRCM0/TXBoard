@@ -1,0 +1,84 @@
+{
+  "committed_core_head": "342c12cde81aa05dab1c08aab1746b68a4b31fe2",
+  "snapshot": "/tmp/txboard-legacy-order-creation-capture-gate-342c12c-v1",
+  "composer_lock_sha256": "f47b212c2fc530a7820e370eab7c6d624d13962e7d26e4f2ddf57a11848257c0",
+  "locked_vendor_donor": "/opt/txboard-baseline/provider-final-verification/api/vendor",
+  "fixture_phpunit_sha256": "593c0f60c70cf8eb8a0c337299cc679a3e93b4c4dbb0c76126b828caea8720a8",
+  "fixture_public_env_sha256": "af081999d8ba7c7a89d806701792599baef5876786edfac0f4750b8d09c0178f",
+  "redis_host": "127.0.0.1",
+  "redis_port": 16379,
+  "redis_databases": [
+    16,
+    17
+  ],
+  "post_gate_documentation_only": [
+    "contracts/v2/legacy-user-mutation-capture-v1.md"
+  ],
+  "specialized_committed_core_head": "422e85c44d064bfb763922316acd17d0174137d4",
+  "specialized_snapshot": "/tmp/txboard-legacy-order-creation-capture-gate-422e85c-v1",
+  "specialized_gates": {
+    "slice-sqlite": {
+      "passed": 13,
+      "skipped": 4,
+      "assertions": 440
+    },
+    "slice-mariadb": {
+      "passed": 17,
+      "skipped": 0,
+      "assertions": 488
+    },
+    "existing-sqlite": {
+      "passed": 68,
+      "skipped": 13,
+      "assertions": 1035
+    },
+    "existing-mariadb": {
+      "passed": 62,
+      "skipped": 0,
+      "assertions": 854
+    },
+    "full": {
+      "passed": 854,
+      "skipped": 40,
+      "assertions": 7476
+    }
+  },
+  "specialized_logs_sha256": {
+    "legacy-order-creation-capture-existing-sqlite.log": "2b03ecdcb108ef8d02483ea0898e5f8a6a372cdc6b95e7482f2a03bb67ab41c1",
+    "legacy-order-creation-capture-full.log": "b24f94fc16ce70d4cdb4d27119f91a83229251bf1eb09df7b6bfbed98cbb19b0",
+    "legacy-order-creation-capture-slice-mariadb.log": "aa18a82a46e3abe09bf8391f09feab49c85bcf0ace2df8b533c72b98a248ebe7",
+    "legacy-order-creation-capture-slice-sqlite.log": "e8fd02b62eae1efc57ab82ae14c8d2cd8b6a470fe9cf1f4f9b38fe5ab731a792",
+    "legacy-order-creation-capture-existing-mariadb.log": "206e784959b773854251456c1bd9cf4f9ea935e64198fc75dee9a5af15a6a906"
+  },
+  "full": {
+    "passed": 859,
+    "skipped": 40,
+    "assertions": 7531
+  },
+  "full_log_sha256": "cad2be75499551e2c950144e12496c3486d616f2755a849122f7894744417e24",
+  "route_registry_sha256": "b01ff52bed6d23e4edfc7e7f94deffe790ca2ff4ed0070320db87b4b631d4f41",
+  "failure_http_fixture_exception_ignore_args": 0,
+  "capture_boundary": "transaction-only",
+  "dedicated_mysql_database_cleaned": true,
+  "stage": "B1.9 native creation transaction-only User capture",
+  "production_acceptance": false,
+  "default_enabled": false,
+  "source_role": "Legacy User remains authoritative",
+  "source_sha256": {
+    "contracts/v2/legacy-user-mutation-capture-v1.md": "7a3c73a3ddf63b99474f496e11a54dade4492b4ceff5e645227388619840a3be",
+    "api/app/Services/OrderService.php": "447499c555fc0bd381765d2a1eb13abda491545bd0aafe5d8e5118ba18a0e9a6",
+    "api/tests/Feature/Subscription/LegacyOrderCreationCaptureTest.php": "665772dad7cef13e7e5f40261e8949398c5a2e33af4497c307b4016c356e9110",
+    "api/app/Services/Subscription/LegacyUserMutationCapture.php": "fada697cabd27dee2c2cc04493f90dd1804bb9a199afd461011589f79c3cef79",
+    "api/tests/Feature/Subscription/LegacyOrderFulfillmentCaptureTest.php": "571d1704deb30daa3ca21c64b8e168908f58dc661cd76e380381035a31a2088c"
+  },
+  "verified_source_and_retained_logs": true,
+  "limits": [
+    "Four fixed writer policies; no global legacy writer coverage",
+    "Creation actor is the actual selected owner User, not Admin or payment authority",
+    "Captured User endpoint only; no Order/Commerce/Terms/usage/ledger projection",
+    "Native idempotency is sole replay authority; successful replay skips capture",
+    "Cancellation/refunds and postcommit Observer/hooks can leave visible source gaps",
+    "Commit-unknown recovery does not replay lost postcommit callbacks",
+    "Local isolated-copy-only default-off capture; no production writer cutover"
+  ]
+}

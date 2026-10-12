@@ -1,6 +1,6 @@
 # Core First v2 实施台账
 
-> 状态：B0、B1.1–B1.8 影子证据、Terms、身份旁观与固定 writer 捕获、B2.1–B2.3 单机升级、B3.1/B3.2 隔离用量、B3.3/B3.4 本地观察与持久事件桶、B4.1–B4.3 合成 Provider 与测试插件停用接入、B5.1–B5.7 本地 mTLS 读取与隔离建单、B6.1–B6.3 实验字节、离线加密与共享 owner 实验已实现；后续切片推进中。各整阶段仍按下表门禁验收。
+> 状态：B0、B1.1–B1.9 影子证据、Terms、身份旁观与固定 writer 捕获、B2.1–B2.3 单机升级、B3.1/B3.2 隔离用量、B3.3/B3.4 本地观察与持久事件桶、B4.1–B4.3 合成 Provider 与测试插件停用接入、B5.1–B5.7 本地 mTLS 读取与隔离建单、B6.1–B6.3 实验字节、离线加密与共享 owner 实验已实现；后续切片推进中。各整阶段仍按下表门禁验收。
 
 ## 1. 批次与关键路径
 
@@ -161,3 +161,11 @@ SQLite 18 通过 / 2 跳过 / 167 断言，专用 MariaDB 20 / 0 / 182；固定 
 提交后审计失败、超时或丢响应可能返回错误而订单已经提交，恢复必须使用新 transport request 和原业务键/参数。原 TTL、当前 actor、Plan 和 owned Order 可访问性仍约束重放。实际 TLS 并发同键只预扣一次；过期键替换后立即重放不再扣款；故意审计失败503后独立 SQL 检查确认一份已提交订单及 succeeded claim，再用原键恢复同一 trade。
 
 固定 Core `422e85c` / Gateway `ee1cec6` 加十四文件：全 API 845 通过 / 36 跳过 / 7085 断言，Gateway 529、SDK 68、typecheck/build 和40项真实 TLS1.3/MariaDB 联调通过。[契约](../../../contracts/v2/core-internal-api/local-user-order-create-v1.md)及[精确源码和日志证据](internal-order-write-verification.json)。未加入 checkout、履约或影子账本投影；Admin、生产 PKI 与 SC-v2 消费路径仍待验收。
+
+### B1.9 隔离副本建单预扣事务捕获
+
+在原 User/SQL幂等创建闭包内，购买预检之后、before hook之前开始捕获，两个after hook之后append；余额、优惠码使用次数、Order、幂等claim、事件和mapping失效一同提交或回滚。固定 `order.create` policy只记录实际locked owner User ID；原Native角色行为、金额算法、锁序和成功重放保持。成功同键重放不执行captureSQL，即使后来capture配置或表不可用也返回原Order。
+
+建单预扣现在能与Admin、充值和稳定履约组成连续User证据链。B1.8中未捕获建单的历史负例已改为本批覆盖检查；取消退款、提交后Observer/hooks等未覆盖writer仍显式阻断，未伪造Order/Commerce、Terms、用量或资金投影。免费/无余额且User allowlist未变的建单不会制造User事件。
+
+专项固定Core `422e85c` 加五文件：SQLite13通过/4跳过/440断言，MariaDB17/0/488；旧路径SQLite68/13/1035，MariaDB62/0/854。最终新快照基于已提交的 `342c12c`，包括Internal建单接入：全API859通过/40跳过/7531断言。真实独立session竞争、旧MVCC、提交前后SIGKILL、原键恢复和args0保密回滚均通过。[契约](../../../contracts/v2/legacy-user-mutation-capture-v1.md)及[源码与六份原始日志核验](legacy-order-creation-capture-verification.json)。capture继续默认关闭，完整writer覆盖及生产切换仍未验收。

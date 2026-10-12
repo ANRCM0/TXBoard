@@ -14,6 +14,7 @@ final class LegacyUserMutationCapture
         'admin.user.update' => ['version' => self::VERSION, 'actor_domain' => 'admin_user'],
         'wallet.recharge.settle' => ['version' => 'wallet-recharge-capture/v1', 'actor_domain' => 'verified_payment_method'],
         'order.fulfill' => ['version' => 'order-fulfillment-capture/v1', 'actor_domain' => 'system_order_fulfillment'],
+        'order.create' => ['version' => 'order-create-capture/v1', 'actor_domain' => 'authenticated_user'],
     ];
     public const FIELDS = ['id', 'plan_id', 'group_id', 'transfer_enable', 'u', 'd',
         'speed_limit', 'device_limit', 'expired_at', 'last_reset_at', 'next_reset_at',
@@ -39,6 +40,12 @@ final class LegacyUserMutationCapture
         return $this->beginWriter($userId, 'order.fulfill', $orderId);
     }
 
+    /** Native create closure only: caller holds the actual authenticated owner User lock. */
+    public function beginOrderCreation(int $userId): ?array
+    {
+        return $this->beginWriter($userId, 'order.create', $userId);
+    }
+
     public function append(?array $before, int $actorId): void
     {
         $this->appendWriter($before, 'admin.user.update', $actorId);
@@ -52,6 +59,11 @@ final class LegacyUserMutationCapture
     public function appendOrderFulfillment(?array $before): void
     {
         $this->appendWriter($before, 'order.fulfill');
+    }
+
+    public function appendOrderCreation(?array $before): void
+    {
+        $this->appendWriter($before, 'order.create');
     }
 
     private function beginWriter(int $userId, string $kind, ?int $actorId = null): ?array
@@ -86,6 +98,7 @@ final class LegacyUserMutationCapture
             $this->require($context === $before['context'], 'CAPTURE_CONTEXT_DRIFT');
             $source = $this->snapshot($before['source']);
             $userId = (int) $source['id'];
+            $this->require($kind !== 'order.create' || $actorId === $userId, 'CAPTURE_WRITER_TICKET_INVALID');
             $after = $this->source($userId);
             if ($source === $after) {
                 return;
@@ -187,7 +200,8 @@ final class LegacyUserMutationCapture
                         'content_hash' => $event['content_hash'], 'source_kind' => $event['source_kind'],
                         'source_version' => $event['source_version'], 'actor_id' => $event['actor_id'],
                         'actor_domain' => self::POLICIES[$event['source_kind']]['actor_domain']]
-                        + ($event['source_kind'] === 'order.fulfill' ? ['capture_boundary' => 'transaction-only'] : []);
+                        + (in_array($event['source_kind'], ['order.fulfill', 'order.create'], true)
+                            ? ['capture_boundary' => 'transaction-only'] : []);
                     $result['next_cursor'] = (string) $sequence;
                 }
                 $this->require($result['has_more'] || $sequence === $high, 'CAPTURE_CHAIN_GAP');
@@ -340,6 +354,7 @@ final class LegacyUserMutationCapture
             && $payload['legacy_user_id'] === (string) $stream->legacy_user_id
             && isset(self::POLICIES[$payload['source_kind']])
             && $payload['source_version'] === self::POLICIES[$payload['source_kind']]['version']
+            && ($payload['source_kind'] !== 'order.create' || $payload['actor_id'] === $payload['legacy_user_id'])
             && $payload['context_hash'] === $stream->context_hash
             && $payload['before_snapshot']['id'] === $payload['legacy_user_id']
             && $payload['after_snapshot']['id'] === $payload['legacy_user_id']
