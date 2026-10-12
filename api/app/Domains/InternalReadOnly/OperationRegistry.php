@@ -9,6 +9,7 @@ final class OperationRegistry
     public const OPERATIONS = [
         'user.profile.get' => ['service' => 'user-gateway', 'actor' => 'user', 'versions' => ['1', '2']],
         'user.order.get' => ['service' => 'user-gateway', 'actor' => 'user', 'versions' => ['1', '2']],
+        'user.order.list' => ['service' => 'user-gateway', 'actor' => 'user', 'versions' => ['2']],
         'admin.order.get' => ['service' => 'admin-gateway', 'actor' => 'admin', 'versions' => ['1']],
     ];
 
@@ -44,6 +45,18 @@ final class OperationRegistry
         $input = $body->input;
         if ($operation === 'user.profile.get') {
             StrictJson::exact($input, []);
+        } elseif ($operation === 'user.order.list') {
+            $keys = ['page', 'per_page'];
+            if (property_exists($input, 'status')) {
+                $keys[] = 'status';
+            }
+            StrictJson::exact($input, $keys);
+            if (!is_int($input->page) || $input->page < 1 || $input->page > 9999
+                || !is_int($input->per_page) || $input->per_page < 1 || $input->per_page > 100
+                || (property_exists($input, 'status')
+                    && (!is_int($input->status) || $input->status < 0 || $input->status > 4))) {
+                throw new SliceFailure('INVALID_REQUEST', 400);
+            }
         } elseif ($operation === 'user.order.get') {
             StrictJson::exact($input, ['trade_no']);
             $max = $body->contract_version === '2' ? 128 : 64;

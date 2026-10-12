@@ -1,6 +1,6 @@
 # Core First v2 实施台账
 
-> 状态：B0、B1.1–B1.6 影子证据、Terms、身份旁观与单 writer 捕获、B2.1–B2.3 单机升级、B3.1/B3.2 隔离用量、B3.3/B3.4 本地观察与持久事件桶、B4.1/B4.2 合成 Provider、B5.1/B5.2 本地只读 mTLS 接入、B6.1/B6.2 实验字节与离线加密已实现；后续切片推进中。各整阶段仍按下表门禁验收。
+> 状态：B0、B1.1–B1.6 影子证据、Terms、身份旁观与单 writer 捕获、B2.1–B2.3 单机升级、B3.1/B3.2 隔离用量、B3.3/B3.4 本地观察与持久事件桶、B4.1/B4.2 合成 Provider、B5.1–B5.3 本地只读 mTLS 接入、B6.1/B6.2 实验字节与离线加密已实现；后续切片推进中。各整阶段仍按下表门禁验收。
 
 ## 1. 批次与关键路径
 
@@ -78,6 +78,8 @@ B4.2 的 [合成 Provider 撤销与清理](../../../contracts/v2/credential-prov
 B5.1 的 [本地只读 Internal API](../../../contracts/v2/core-internal-api/current-readonly-slice-v1.md) 由真实 mTLS 边界签发服务证明，Core 重新校验当前 Sanctum actor、User/Admin 角色、Admin path 和订单归属；SQL nonce 防重放、有限服务速率及无秘密审计均已实现。三个只读 operation 默认关闭且仅 local/testing 可启用。真实 Core/MariaDB/TLS 34 项和对抗上游超时 6 项通过；固定 Core `7622cab` 加本切片全量 API 共 737 项（721 通过、16 项专测跳过）、5295 断言通过，详见 [验证报告](internal-readonly-verification.json)。完整 operation 和生产 PKI/私网拓扑门禁仍待实施。
 
 B5.2 的 [Internal User DTO v2](../../../contracts/v2/core-internal-api/current-user-dto-v2.md) 和 Gateway 本机 mTLS 客户端迁移两个现有用户 GET 的可选上游，沿用 Core 当前认证/归属与现有公网 DTO。默认 Native；只有 local/testing 显式启用才调用，错误配置启动失败，TLS/授权/DTO 错误无 fallback。固定 Core `17fbc9a` 加本片组合 API 共 764 项（745 通过、19 项引擎专测跳过）、5509 断言通过；Gateway 467 项、SDK 33 项及 typecheck/build 通过，实际 Core/Gateway mTLS 24 项通过，代码与基线见 [验证报告](internal-user-v2-verification.json)。管理员 Gateway、生产 PKI 和正式 SC-v2 仍未启用。
+
+B5.3 的 [有界 Internal 订单列表](../../../contracts/v2/core-internal-api/current-order-list-v2.md) 新增 `user.order.list` v2，复用 Core 原 owner/filter/order/pagination，并在现有本地 opt-in 下适配 Gateway list/page DTO。固定 Core `e1ed462` 加 Internal 文件全 API 767 通过、21 跳过、5973 断言；固定 Gateway `2a5d2ee` 加本片 492 项、SDK 68 项与 typecheck/build 通过。真实 Core/MariaDB/mTLS 27 项通过，包含分页/过滤/已删除套餐与用户隔离，见 [报告](internal-order-list-verification.json)。分页为实时读取，生产 PKI、其他 Operation 和 Admin Gateway 仍待实施。
 
 B6.1 的 [实验 metadata codec](../../../contracts/v2/secure-channel/metadata-codec-prototype-v1.md) 已推送 Gateway `6adea76c5259a43556dee611e7b932a72d008a3c`，提供独立 SDK 实验 subpath 与 Python/Node/Chromium 固定字节向量。固定 Linux 快照 Gateway 425 项、SDK 40 项和 typecheck/build 通过；实际 Chromium 6 项字节/hash检查、5 项拒绝检查通过。没有加密实现或业务路由，正式响应 key/nonce 构造、独立审查、共享 replay 与业务互操作仍待实施。
 

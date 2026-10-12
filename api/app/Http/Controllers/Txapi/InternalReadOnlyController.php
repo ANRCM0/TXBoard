@@ -22,21 +22,32 @@ final class InternalReadOnlyController
             if ($actor->is_admin) {
                 abort(403);
             }
-            $native = $operation['operation'] === 'user.profile.get'
-                ? app(AccountController::class)->me($request)
-                : ($version === '2'
-                    ? app(AccountController::class)->orderDetail($request, $input->trade_no)
-                    : app(AccountController::class)->order($request, $input->trade_no));
-            $data = $native->getData(true)['data'];
-            $result = $operation['operation'] === 'user.profile.get' ? self::profile($data) : self::order($data);
-            if ($version === '2') {
-                if ($operation['operation'] === 'user.profile.get') {
-                    $result['telegram_id'] = $data['telegram_id'] === null ? null : (string) $data['telegram_id'];
-                } else {
-                    $result['plan']['traffic_limit_bytes'] = (string) $data['plan']['traffic_limit_bytes'];
-                    $result['payment_id'] = $data['payment_id'] === null ? null : (string) $data['payment_id'];
-                    $result['balance_amount_minor'] = (string) $data['balance_amount_minor'];
-                    $result['discount_amount_minor'] = (string) $data['discount_amount_minor'];
+            if ($operation['operation'] === 'user.order.list') {
+                // Use the existing owner/filter/order query. A fresh GET input bag
+                // prevents the Internal envelope from becoming native query input.
+                $native = app(AccountController::class)->orders(Request::create('/txapi/orders', 'GET', (array) $input));
+                $envelope = $native->getData(true);
+                $result = [
+                    'items' => array_map(self::order(...), $envelope['data']),
+                    'pagination' => $envelope['meta'],
+                ];
+            } else {
+                $native = $operation['operation'] === 'user.profile.get'
+                    ? app(AccountController::class)->me($request)
+                    : ($version === '2'
+                        ? app(AccountController::class)->orderDetail($request, $input->trade_no)
+                        : app(AccountController::class)->order($request, $input->trade_no));
+                $data = $native->getData(true)['data'];
+                $result = $operation['operation'] === 'user.profile.get' ? self::profile($data) : self::order($data);
+                if ($version === '2') {
+                    if ($operation['operation'] === 'user.profile.get') {
+                        $result['telegram_id'] = $data['telegram_id'] === null ? null : (string) $data['telegram_id'];
+                    } else {
+                        $result['plan']['traffic_limit_bytes'] = (string) $data['plan']['traffic_limit_bytes'];
+                        $result['payment_id'] = $data['payment_id'] === null ? null : (string) $data['payment_id'];
+                        $result['balance_amount_minor'] = (string) $data['balance_amount_minor'];
+                        $result['discount_amount_minor'] = (string) $data['discount_amount_minor'];
+                    }
                 }
             }
         } else {
