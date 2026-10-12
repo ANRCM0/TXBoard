@@ -1,6 +1,12 @@
 # Upgrade Manifest：跨组件升级与恢复
 
-状态：**Target / Draft**。这是 B0 对 B2 的输入，协议标识为 `txboard.upgrade-manifest/v1`；目录 v2 表示平台架构代际。当前 Deploy `update.sh` 并不解析此 Manifest，也没有下述拟议命令。
+状态：**完整平台升级 Target / Draft；隔离影子 profile 已实现**。协议标识为 `txboard.upgrade-manifest/v1`；目录 v2 表示平台架构代际。Deploy 新增 `upgrade` 执行器，仅支持下述隔离演练切片；当前 `update.sh` 继续作为旧更新路径，并遵守新持久升级保护标记。
+
+## 已实现的 B2.1 profile
+
+`subscription-shadow/v1` 增加必填 `profile` 和 `billing` 字段，后者包含已核实的 `currency` / `billing_timezone`。仅接受 `isolated_shadow`、四阶段 `expand/backfill/verify/observe`、schema epoch 1（legacy authority）、固定的三项 migration/probe/recovery 组合与目标 OCI digest。支持签名 `plan/check/apply/status/recover/restore-check`，没有生产 authority switch、集群租约或自动整库恢复。完整字段、RSA detached envelope 和实测证据见 [Deploy 运行契约](https://github.com/ANRCM0/TXBoard-Deploy/blob/main/docs/durable-upgrade.md)。
+
+此 profile 使用单机 flock、SQLite FULL 意图/结果及单调执行 token，Core 每块数据与游标同事务提交。所有页逐户对账后仅标记演练完成，停止状态和旧镜像启动保护仍保留。部分 DDL 形状不明时保持调查；已完整 DDL 或回填批次 commit 后丢失执行器结果可探测并恢复。真实 Docker/MariaDB 的批次 commit 后 SIGKILL 演练通过，但它不满足下文整个 B2 的生产/集群退出门槛。
 
 ## 1. 当前能力和边界
 

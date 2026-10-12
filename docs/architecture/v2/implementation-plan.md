@@ -1,6 +1,6 @@
 # Core First v2 实施台账
 
-> 状态：B0 本地基线完成；B1.1 订阅影子切片完成，B1.2 商品快照与 B2 恢复切片推进中；后续能力按契约区分 Target。2026-10-12 起，以主仓版本化契约统一四仓工作。
+> 状态：B0、B1.1 订阅影子、B1.2 商品快照、B2.1 单机影子升级切片已实现；B1.3 财务证据与 B3 可靠计费推进中。各整阶段仍按下表门禁验收。
 
 ## 1. 批次与关键路径
 
@@ -36,6 +36,10 @@ B0 补充退出证据见 [Linux 运行验证](baseline-linux-verification.md)。
 ## 3. B1 的第一条可验收切片
 
 当前实现及双引擎证据见 [B1.1 订阅影子回填与对账](subscription-shadow-implementation.md)。B1.1 已交付 Schema、单槽约束、有界回填、只读核对和显式影子 DTO；整个 B1 仍需商品/订单/财务快照、真实样本、Terms 转换和链接兼容门禁。没有发布 v2 业务写入权威。
+
+B1.2 的 [商品目录影子契约](../../../contracts/v2/plan-catalog-shadow-v1.md) 已实现不可变 revision/offer、独立销售状态、有界游标与异常重试；SQLite 23 项、108 断言，MariaDB 25 项、119 断言通过。真实独立会话覆盖陈旧事务快照后的 revision/offer 和版本号读取；GiB、十进制价格、真实旧报价与 Carbon 日历周期一致性均校验。现有 User Terms 不引用当前 Plan 猜测历史。
+
+B2.1 的 [隔离升级执行器](https://github.com/ANRCM0/TXBoard-Deploy/blob/main/docs/durable-upgrade.md) 已通过 Windows/Linux 33 项 Python 测试、Linux 管理互锁，以及真实 Docker/MariaDB 提交后 SIGKILL 恢复。此阶段不执行 production writer switch；Cluster fencing、完整角色矩阵、生产副本和恢复外部增量仍待验收。
 
 首先建立只增不删的订阅/迁移映射骨架，保持现有 User 写入为唯一权威。在隔离数据库副本中，把旧用户映射到稳定 Subscription、Terms、Usage Period 与 Access Subject，再通过只读核对证明额度、有效期、用量和归属保持一致。
 
