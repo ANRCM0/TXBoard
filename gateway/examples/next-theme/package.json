@@ -1,0 +1,25 @@
+{
+  "name": "next-theme",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Next.js 14+ App Router standalone TXBoard SSR theme template (GW-506). Every request creates its own SDK client from the request-scoped cookie header; the user bearer never crosses requests and never reaches the client bundle.",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@txboard/theme-sdk": "0.1.0",
+    "next": "^14.2.5",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.5.0",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "typescript": "5.9.3"
+  }
+}

@@ -1,0 +1,39 @@
+/* Base styles — identical semantics to the Vue/React templates. */
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font);
+}
+.app { max-width: 960px; margin: 0 auto; padding: 1rem; }
+.top {
+  display: flex; align-items: center; gap: 1rem;
+  padding: 0.75rem 0; border-bottom: 1px solid #e2e8f0; margin-bottom: 1.5rem;
+}
+.brand { font-weight: 700; color: var(--color-primary); }
+.top nav { display: flex; gap: 1rem; }
+.top nav a { color: var(--color-muted); text-decoration: none; }
+.page { padding: 1rem 0; }
+.hero { text-align: center; padding: 2rem 0; }
+.logo { max-height: 64px; margin-bottom: 1rem; }
+.panel { background: var(--color-surface); border-radius: var(--radius); padding: 1.5rem; }
+.stats { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 0; }
+.stats dt { color: var(--color-muted); font-size: 0.875rem; }
+.stats dd { margin: 0; font-weight: 600; }
+.plans { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem; }
+.plan-card { background: var(--color-surface); border-radius: var(--radius); padding: 1rem; }
+.price { font-size: 1.5rem; font-weight: 700; color: var(--color-primary); }
+.login { max-width: 360px; margin: 2rem auto; display: grid; gap: 0.75rem; }
+.login label { display: grid; gap: 0.25rem; font-size: 0.875rem; }
+.login input { padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 6px; }
+button.primary {
+  background: var(--color-primary); color: #fff; border: none;
+  padding: 0.6rem 1rem; border-radius: 6px; cursor: pointer;
+}
+.error-state { background: #fef2f2; border: 1px solid #fecaca; border-radius: var(--radius); padding: 1rem; color: var(--color-danger); }
+.request-id { font-size: 0.75rem; color: var(--color-muted); }
+.notice { color: var(--color-primary); }
+.muted { color: var(--color-muted); }
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 0.5rem; border-bottom: 1px solid #e2e8f0; }

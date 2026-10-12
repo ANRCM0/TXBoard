@@ -1,0 +1,126 @@
+{
+  "stage": "B5.8 local public site and plan display over existing Internal mTLS",
+  "production_acceptance": false,
+  "default_upstream": "Native",
+  "local_testing_only": true,
+  "core_base": "a7e73b13e1a8083c9f01056b243568b39033df68",
+  "gateway_base": "8c03a781592f8466084c941258ef608a892467e2",
+  "snapshot": "/opt/txboard-baseline/internal-public-read-v1",
+  "source_sha256": {
+    "TXBoard": {
+      "api/app/Domains/InternalReadOnly/OperationRegistry.php": "7ef1d9a4cd02f3876c20160d7ad4106d91a2980dcd43e439ca35f260a6066656",
+      "api/app/Domains/InternalReadOnly/ServiceProofVerifier.php": "9f5a3f9cd05b6f3324feb258e3006c8abaf125d0868fb45b7d25cc5f4d742d05",
+      "api/app/Http/Middleware/InternalServiceProof.php": "4eebc5d2ac1e96b263d90bd65daff9ad5d38300f27ff541c21e477cf1e45b3b2",
+      "api/app/Http/Controllers/Txapi/InternalReadOnlyController.php": "4a6043737482e694bb8f6990fdae914afce620e7efb34a9b1733e21dab699f2a",
+      "api/config/internal_api_slice.php": "4b9b82ea1aa51e8031b3e94c3ac93e903340d9d1b39895e9707b5aac5088f592",
+      "api/internal-readonly-fixtures/tls-boundary.mjs": "8c25f1ee05802f3408f9179442d170db4b21475b68559c4957ba611915e93f24",
+      "api/tests/Feature/InternalReadOnly/InternalPublicReadTest.php": "362c771c432b99b6487f0ac88784d20bf3feebbd11c2880cc582315d37de4df9"
+    },
+    "TXBoard-Gateway": {
+      ".env.example": "bc3e655e905fe867bd3304e8b36b516f993be9dbdab05839e53db6af9eede1a0",
+      "apps/gateway/src/adapters/internal-user-v2.ts": "985184c2fdc2bc75688a6411dd23280a69aa1b3b18790aa993c3d5920c4e07c4",
+      "apps/gateway/src/config/env.ts": "4573c6301cbf535951ef9f5c94d681c05dadf87044049f07b9f9617e77474665",
+      "apps/gateway/src/services/internal-user-client.ts": "317471ff359d81f7234e890351bd5d6c55a47077012660a1804a7c2490caa3f2",
+      "apps/gateway/src/services/upstream.ts": "6779f620c1ba97671f38c1af35ef0a1bb4aea47bfc940715c539c161222e88a0",
+      "apps/gateway/test/internal-public-read.test.ts": "b39a4fbe3446e91f0e5af860d6ceaae7454ec5251851b24a7f7bab18d5ef0f23",
+      "tests/integration/internal-user-core-fixture.php": "5859e81e020731308eb27d59d2263010e193268bdfd271b067770155d7356ba4",
+      "tests/integration/internal-user-core-gateway.mjs": "4bb12dd771bd1fd815cf6f3d38ab258ade721a333a4431710c7116c9211199de",
+      "tests/integration/prepare-internal-user-snapshot.py": "c7c9dab8eb738fb462c2a53799bf33d56c0e9cb1733dbd55a4ec6bcedc89f908"
+    }
+  },
+  "api_focused": {
+    "passed": 13,
+    "assertions": 166,
+    "log_sha256": "cd88072058a60f74e6a90774bccdf073741848a41a66f8579c9bb40129ff6297"
+  },
+  "api_full": {
+    "passed": 872,
+    "skipped": 40,
+    "assertions": 7697,
+    "log_sha256": "4d5e55388e269afc26b4ee0755d62fef9f8614ae9dd1243e6cb28e40395f31f4"
+  },
+  "gateway_full": {
+    "gateway_passed": 596,
+    "sdk_passed": 68,
+    "typecheck": "passed",
+    "build": "passed",
+    "log_sha256": "fddd37fd079e7e2d2a01f5966edbd1864fa89eec31ee37aea3c937681807c756"
+  },
+  "real_mtls": {
+    "passed": 48,
+    "checks": [
+      "default Native profile has no Internal transport requirement",
+      "real mTLS Internal profile equals Native in every frozen display field",
+      "real full-detail Internal equals Native including payment wallet discount plan traffic status4",
+      "other user profile reflects actual actor, never supplied actor header",
+      "foreign order remains Core 404 and does not call Native fallback",
+      "missing and expired actor reject with no Native fallback",
+      "admin actor cannot use user Internal service",
+      "Core ban immediately rejects same user session",
+      "unsafe decimal bytes are rejected without precision loss or fallback",
+      "real bounded Internal list equals Native array and page with original filters and missing plan",
+      "Internal list preserves empty foreign-user scope and rejects Admin actor without fallback",
+      "unknown duplicate and out-of-bounds list queries refuse before either transport",
+      "real display reads equal Native stats and enabled ordered payment methods",
+      "display reads keep actual user scope, protected payment methods and no fallback on actor rejection",
+      "real subscription summary equals Native and excludes private URL and credentials",
+      "real visible notice pages equal Native while retaining sort content and tags",
+      "content reads reject missing expired and Admin actors with no Native fallback",
+      "notice query bounds duplicate and unknown keys refuse before either transport",
+      "missing current summary plan retains Core409 through actual TLS without fallback",
+      "oversize visible notice refuses before release through actual TLS without fallback",
+      "current status equals Native over TLS and retains missing-plan reads and ownership",
+      "public Internal default disabled refuses while public default uses Native",
+      "anonymous site theme captcha and exact plan display equal Native through actual TLS",
+      "visitor credentials are never forwarded for public reads and cannot grant protected access",
+      "existing public cache retains display TTL without another Internal or Native request",
+      "public numeric overflow and response cap reject without Native fallback",
+      "anonymous technical audit uses marker zero and service rate is still enforced",
+      "actual TLS public headers and closed input cannot weaken protected operation identity",
+      "Core write default disabled and Gateway write ban refuse without Native fallback",
+      "actual TLS order creation reserves wallet once and same-key replay returns original trade",
+      "write identity and business conflict rejects retain Core authority without fallback",
+      "expired business key replacement immediately replays new successful claim without a second debit",
+      "audit failure after business commit returns unknown result and same key recovers original order",
+      "startup rejects admin client identity",
+      "startup rejects wrong-san client identity",
+      "startup rejects multi-san client identity",
+      "startup rejects expired client identity",
+      "startup rejects nonHTTPS/visitor server identity/production flag configuration",
+      "startup rejects mistyped opt-in duplicate config keys and noncanonical HTTPS origins",
+      "public transport opt-in rejects typos missing transport and production configuration",
+      "actual untrusted client CA TLS handshake rejects without Native fallback",
+      "actual CRL-revoked client handshake rejects without Native fallback",
+      "wrong trusted server CA is rejected by actual client verification",
+      "actual server DNS SAN mismatch is rejected while CA remains trusted",
+      "Core default disabled remains authoritative without fallback",
+      "Core production 404 gate remains authoritative",
+      "revoked Core actor session fails after server restarts",
+      "TLS service offline never falls back to plaintext Native"
+    ],
+    "tls": "TLSv1.3",
+    "database": "11.4.12-MariaDB",
+    "runtime": {
+      "node": "v22.23.2",
+      "php": "8.4.16"
+    },
+    "audit": {
+      "audit_rows": 56,
+      "nonce_rows": 34
+    },
+    "log_sha256": "e28cced85e282c2f732a3332a0dba5700aeaa5b335c1cda87ec21b2a65ea25f4",
+    "temporary_secrets_removed": true
+  },
+  "post_full_gate_change": "Documentation and evidence only; sixteen runtime/test/launcher source hashes match fixed gates and actual TLS run.",
+  "limits": [
+    "Only two registered empty-input anonymous operations, user-gateway certificate and service proof still required",
+    "Additional strict default-off public read flag on both Core and Gateway; local/testing only",
+    "No Authorization header; empty-actor hash and audit actor_id zero do not create a User",
+    "Existing native public fields, trusted public theme extensions and catalog quote behavior remain authoritative",
+    "Visitor User/Admin credentials are not forwarded for public display; protected User/Admin and payment identity remains current",
+    "No fallback or automatic retry after selected Internal cache miss; existing public cache TTL can retain display across trust or flag changes",
+    "TLS fixture flushes cache for boundary assertions and separately checks one MISS then HIT with one SQL audit",
+    "Large catalog and unsafe display numbers refuse rather than truncate or reprice",
+    "No login, registration, email delivery, Admin Gateway, SC-v2 consumer or production PKI"
+  ]
+}

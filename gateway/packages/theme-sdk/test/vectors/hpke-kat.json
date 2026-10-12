@@ -1,0 +1,34 @@
+{
+  "description": "GW-403 KAT vectors: fixed keypair, fixed ts/nonce, deterministic HPKE base seal. Regeneration requires explicit review (ADR D9/AE-10).",
+  "suite": "DHKEM(P-256,HKDF-SHA256)+HKDF-SHA256+AES-256-GCM",
+  "info": "TXBOARD-GW-V1-LOGIN-HPKE",
+  "recipientJwk": {
+    "kty": "EC",
+    "x": "m4rRT5nGgpR6CMpRG-bArq69px32PU3XjdbL1PNAhI8",
+    "y": "8elg8i_ff7f8JCm4lyS8OTzg5fjFCmFZVQSgDZdn0Lc",
+    "crv": "P-256",
+    "d": "YpVbdpnwr7V9qVVV_pJt2bA-w8aTlvqTRAqN9207PlI"
+  },
+  "ephemeralJwk": {
+    "kty": "EC",
+    "x": "M0t_7hxyDEIhyqgwAlJ-_T9-n_O0NC34ctWeNDboK04",
+    "y": "F0TXz-5GyDoWCl-HbP35J5id4KtQIdWLSbEEJq8VbJE",
+    "crv": "P-256",
+    "d": "92cMV2l587cASE5RVbKwiaPXH8NQwJyW2vOftMwM1sc"
+  },
+  "payload": {
+    "email": "vector@example.test",
+    "password": "vect0r-pass"
+  },
+  "vector": {
+    "operation": "login",
+    "session": "-",
+    "kid": "9f78757f5cf7c70860c09800",
+    "publicKey": "BJuK0U-ZxoKUegjKURvmwK6uvacd9j1N143Wy9TzQISP8elg8i_ff7f8JCm4lyS8OTzg5fjFCmFZVQSgDZdn0Lc",
+    "ts": 1760000000000,
+    "nonce": "ZGV0ZXJtaW5pc3RpYy1ub25jZQ",
+    "aad": "txboard-gateway:v1\nPOST\n/gateway/v1/secure/auth/login\n9f78757f5cf7c70860c09800\n1760000000000\nZGV0ZXJtaW5pc3RpYy1ub25jZQ\n-",
+    "enc": "BDNLf-4ccgxCIcqoMAJSfv0_fp_ztDQt-HLVnjQ26CtOF0TXz-5GyDoWCl-HbP35J5id4KtQIdWLSbEEJq8VbJE",
+    "ct": "x_Wl58S2yI1KCwcRwYIr1X79820f7NPj3j9SM7hZvsQNy9ZvDLKBiBoFIBxQr8HaV6Q7ayd3xP_6iygR7kkSWmFMsSjKOLPk"
+  }
+}

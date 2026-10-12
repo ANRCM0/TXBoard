@@ -1,0 +1,24 @@
+{
+  "name": "my-theme",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "my-theme: a complete standalone TXBoard theme (Vue 3 + Vite) built on @ANRCM0/theme-sdk — talks only to the Gateway, never to Laravel. Built per docs/developer-guide.md §3.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "vue-tsc --noEmit"
+  },
+  "dependencies": {
+    "@ANRCM0/theme-sdk": "^0.1.0",
+    "vue": "^3.5.13",
+    "vue-router": "^4.5.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.2.1",
+    "typescript": "5.9.3",
+    "vite": "^6.2.0",
+    "vue-tsc": "^2.2.0"
+  }
+}

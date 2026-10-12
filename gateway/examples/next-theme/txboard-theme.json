@@ -1,0 +1,42 @@
+{
+  "format": 2,
+  "name": "next-ssr-theme",
+  "title": "Next.js SSR Theme",
+  "version": "0.1.0",
+  "entry": {
+    "type": "ssr",
+    "module": "dist/server/app/page.js"
+  },
+  "engines": {
+    "txboard": ">=3.6",
+    "gateway": ">=1 <2",
+    "contract": "1.x"
+  },
+  "gateway": {
+    "contract": "1.x",
+    "sdk": {
+      "package": "@txboard/theme-sdk",
+      "version": ">=0.1.0 <1.0.0"
+    },
+    "capabilities": [
+      "bootstrap", "plans", "theme.config", "auth.login",
+      "user.profile", "user.subscription.summary", "dashboard.stats",
+      "orders.list", "orders.detail", "orders.status"
+    ]
+  },
+  "build": {
+    "tool": "next@14",
+    "node": ">=22"
+  },
+  "assets": [
+    { "path": "dist/server/app/page.js", "integrity": "sha256-REPLACE_WITH_BUILD_OUTPUT" }
+  ],
+  "config": {
+    "schema": "theme.config.schema.json",
+    "defaults": { "theme_color": "blue" },
+    "public": ["theme_color", "siteBanner"]
+  },
+  "dependencies": { "runtime": [] },
+  "security": { "csp": "strict", "remoteCode": false, "tokenStorage": "httpOnly-cookie" },
+  "author": { "name": "TXBoard", "url": "https://example.invalid", "license": "MIT" }
+}
