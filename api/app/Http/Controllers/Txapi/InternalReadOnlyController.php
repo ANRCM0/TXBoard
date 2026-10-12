@@ -54,6 +54,9 @@ final class InternalReadOnlyController
             if ($actor->is_admin) {
                 abort(403);
             }
+            if (in_array($operation['operation'], ['user.session.list', 'user.session.revoke', 'user.session.logout'], true)) {
+                return app(\App\Domains\InternalReadOnly\InternalSessionDispatcher::class)->execute($request, $operation);
+            }
             if ($operation['operation'] === 'user.order.create') {
                 $params = ['plan_id' => (int) $input->plan_id, 'period' => $input->period];
                 if (property_exists($input, 'coupon_code')) $params['coupon_code'] = $input->coupon_code;

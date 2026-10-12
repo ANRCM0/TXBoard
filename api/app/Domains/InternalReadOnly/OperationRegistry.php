@@ -22,6 +22,9 @@ final class OperationRegistry
         'user.notice.list' => ['service' => 'user-gateway', 'actor' => 'user', 'versions' => ['2']],
         'user.order-status.get' => ['service' => 'user-gateway', 'actor' => 'user', 'versions' => ['2']],
         'user.order.create' => ['service' => 'user-gateway', 'actor' => 'user', 'versions' => ['1']],
+        'user.session.list' => ['service' => 'user-gateway', 'actor' => 'user', 'versions' => ['1']],
+        'user.session.revoke' => ['service' => 'user-gateway', 'actor' => 'user', 'versions' => ['1']],
+        'user.session.logout' => ['service' => 'user-gateway', 'actor' => 'user', 'versions' => ['1']],
         'admin.order.get' => ['service' => 'admin-gateway', 'actor' => 'admin', 'versions' => ['1']],
     ];
 
@@ -53,6 +56,10 @@ final class OperationRegistry
         }
         if ($operation === 'user.order.create' && (config('internal_api_slice.order_write_enabled') !== true
             || config('core_shadow.isolated_copy') !== true)) {
+            throw new SliceFailure('OPERATION_DISABLED', 404);
+        }
+        if (in_array($operation, ['user.session.list', 'user.session.revoke', 'user.session.logout'], true)
+            && (config('internal_api_slice.sessions_enabled') !== true || config('core_shadow.isolated_copy') !== true)) {
             throw new SliceFailure('OPERATION_DISABLED', 404);
         }
         if ($request->method() !== 'POST' || $request->getRequestUri() !== '/txapi/internal/v1/operations/'.$operation
@@ -118,7 +125,12 @@ final class OperationRegistry
                     || mb_strlen($input->coupon_code) < 1 || mb_strlen($input->coupon_code) > 64))) {
                 throw new SliceFailure('INVALID_REQUEST', 400);
             }
-        } elseif (in_array($operation, ['user.profile.get', 'user.dashboard.get', 'user.payment-methods.list', 'user.subscription-summary.get'], true)) {
+        } elseif ($operation === 'user.session.revoke') {
+            StrictJson::exact($input, ['session_id']);
+            if (!is_string($input->session_id) || !preg_match('/\A[1-9][0-9]{0,17}\z/D', $input->session_id)) {
+                throw new SliceFailure('INVALID_REQUEST', 400);
+            }
+        } elseif (in_array($operation, ['user.session.list', 'user.session.logout', 'user.profile.get', 'user.dashboard.get', 'user.payment-methods.list', 'user.subscription-summary.get'], true)) {
             StrictJson::exact($input, []);
         } elseif (in_array($operation, ['user.order.list', 'user.notice.list'], true)) {
             $keys = ['page', 'per_page'];

@@ -1,0 +1,13 @@
+# Isolated current User sessions over Internal mTLS v1
+
+Status: Current / verified isolated B5.13. See [fixed-source evidence](../../../docs/architecture/v2/internal-isolated-sessions-verification.json). Local/testing synthetic accounts only; native `/txapi/auth/logout` and `/txapi/auth/sessions` remain authoritative.
+
+Fixed `user.session.list`, `user.session.revoke` and `user.session.logout` use contract version `"1"`, `user-gateway` service identity and the actual current Sanctum Bearer. Global Internal, isolated-copy and independent default-off `CORE_INTERNAL_SESSIONS_ENABLED` gates are required. Admin, banned, expired/revoked tokens and non-User principals are refused. Only exact synthetic `@example.test` accounts enter this slice. Service proof binds the actual Authorization header, method, path and raw body; SQL nonce admission still prevents proof replay.
+
+List/logout input is exactly `{}`. Revoke input is exactly `{session_id:"<canonical positive decimal, at most 18 digits>"}`; no owner or credential can come from the body. Core delegates existing `AuthController` actions. List bounds the existing owner-scoped native query to 101 rows and refuses more than 100; it returns `data={items:[...]}` with decimal-string IDs and the native name, abilities and timestamps. Token hashes, plaintext tokens, User subscription secrets and other users' sessions are excluded. List is a bounded current view, not a snapshot across concurrent session changes.
+
+Revoke preserves the native owner-scoped delete and 404 for foreign/missing/already removed sessions. Logout deletes only the currently authenticating token; native false-delete semantics are preserved. Mutation success is HTTP200 `data={ok:true}`. All three use exact `meta={current_only:true,slice:"internal-isolated-sessions/1"}` and private/no-store delivery. No new session, all-session deletion, generic identity claim or business idempotency is introduced.
+
+Audit/deadline/lost response may conceal committed revocation. Retrying a revoked current credential fails authentication; a different valid credential may observe remaining sessions. A token already admitted before another request revokes it retains native in-flight semantics; this is not a SQL authorization fence. No automatic retry, compensation or Native fallback is added. Gateway public routes and SDK session operations are not activated by this Core slice; production, Admin Gateway and full B5/B6 remain gated.
+
+Acceptance covers real owner-scoped native behavior, current token refresh between long-lived requests, role/ban/expiry/service/body/proof rejection, partial failure and audit/deadline unknown outcomes, bounded list and credential exclusion, and actual TLS1.3/MariaDB interoperability.

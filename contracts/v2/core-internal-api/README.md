@@ -1,6 +1,6 @@
 # Core Internal API v1
 
-> 状态：Target / Draft，B0 设计基线。完整 B5 尚未交付；已有默认关闭、仅 local/testing 的 [当前只读切片](current-readonly-slice-v1.md)、[公共展示读取](local-public-display-v1.md)、另行隔离的 [订单创建切片](local-user-order-create-v1.md)、[原生账户登录](local-isolated-login-v1.md)和[内存邮件验证码](local-isolated-email-code-v1.md)和[合成账户注册](local-isolated-registration-v1.md)和[密码恢复](local-isolated-password-reset-v1.md)，其已注册路径和验收范围以 Current 文件为准。
+> 状态：Target / Draft，B0 设计基线。完整 B5 尚未交付；已有默认关闭、仅 local/testing 的 [当前只读切片](current-readonly-slice-v1.md)、[公共展示读取](local-public-display-v1.md)、另行隔离的 [订单创建切片](local-user-order-create-v1.md)、[原生账户登录](local-isolated-login-v1.md)和[内存邮件验证码](local-isolated-email-code-v1.md)和[合成账户注册](local-isolated-registration-v1.md)和[密码恢复](local-isolated-password-reset-v1.md)和[当前用户会话](local-isolated-sessions-v1.md)，其已注册路径和验收范围以 Current 文件为准。
 
 当前两个 User operation 的显式 `contract_version:"2"` 扩展见 [B5.2 User DTO](current-user-dto-v2.md)，保留 v1 与 Admin，不代表 Draft 其他操作已开放。
 

@@ -196,10 +196,11 @@ final class AuthController
         return TxapiResponse::success($request, ['ok' => true]);
     }
 
-    public function sessions(Request $request): JsonResponse
+    public function sessions(Request $request, ?int $limit = null): JsonResponse
     {
-        $items = Auth::guard('sanctum')->user()->tokens()
-            ->orderByDesc('id')->get(['id', 'name', 'abilities', 'last_used_at',
+        $query = Auth::guard('sanctum')->user()->tokens()->orderByDesc('id');
+        if ($limit !== null) $query->limit($limit);
+        $items = $query->get(['id', 'name', 'abilities', 'last_used_at',
                 'created_at', 'updated_at', 'expires_at'])
             ->map(static fn ($token): array => [
                 'id' => (int) $token->id,

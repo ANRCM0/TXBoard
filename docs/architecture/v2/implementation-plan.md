@@ -1,6 +1,6 @@
 # Core First v2 实施台账
 
-> 状态：B0、B1.1–B1.18 影子证据、Terms、身份旁观与固定 writer 捕获、B2.1–B2.3 单机升级、B3.1/B3.2 隔离用量、B3.3/B3.4 本地观察与持久事件桶、B4.1–B4.5 合成 Provider、插件停用接入、租约候选与离线签名快照、B5.1–B5.12 本地 mTLS 读取、隔离建单、登录、内存邮件验证码、隔离注册与密码恢复、B6.1–B6.3 实验字节、离线加密与共享 owner 实验已实现；两仓迁移与三镜像发布已完成，继续推进业务迁移切片。各整阶段仍按下表门禁验收。
+> 状态：B0、B1.1–B1.18 影子证据、Terms、身份旁观与固定 writer 捕获、B2.1–B2.3 单机升级、B3.1/B3.2 隔离用量、B3.3/B3.4 本地观察与持久事件桶、B4.1–B4.5 合成 Provider、插件停用接入、租约候选与离线签名快照、B5.1–B5.13 本地 mTLS 读取、隔离建单、登录、内存邮件验证码、隔离注册、密码恢复与当前会话、B6.1–B6.3 实验字节、离线加密与共享 owner 实验已实现；两仓迁移与三镜像发布已完成，继续推进业务迁移切片。各整阶段仍按下表门禁验收。
 
 2026-10-13，按仓库整合任务，将 Gateway/Node 的完整 Git 历史导入本仓 `gateway/`、`node/`，安装器集中到 TXBoard-Deploy。当前目录与三镜像 CI 见 [双仓布局](../../development/repository-layout.md)；旧基线和验证报告保持当时提交与路径。本次仓库整理独立于下列业务迁移门禁。
 
@@ -291,3 +291,11 @@ Gateway 只开放已存在的 HPKE 注册路由，必须有 nonce store 与 Redi
 Gateway/SDK 增加显式 HPKE 密码恢复 Operation、独立 Redis 限流和封闭 `{reset:true}` DTO，不发送访客凭据。重复密文与其他 Operation AAD 均拒绝，选定 Internal 后无重试或 Native 回退。密码已提交后 token 删除、钩子、code 删除、审计或响应失败可能形成未知结果；租约锁不构成 SQL fence，本片没有补偿或恢复会话。
 
 固定快照 API 全量 **1096 通过、99 引擎/独立进程专测跳过、11206 断言**，专项 **16/16、223 断言**。Gateway **799**、SDK **68** 项、类型检查和构建通过；真实 MariaDB、Redis22、TLS1.3 与 SDK/HPKE 链路 **9** 项通过，Native 回退调用为零。快照布局 4 项、原生表名和文档路径检查通过。[证据报告](internal-isolated-password-reset-verification.json)保存源码、依赖、日志 hash 以及失败夹具记录。生产账户流程与完整 B5/B6 仍待验收。
+
+### B5.13 隔离 User 会话 mTLS Operation
+
+[当前契约](../../../contracts/v2/core-internal-api/local-isolated-sessions-v1.md)增加固定 `user.session.list/revoke/logout`、默认关闭的独立 Core 开关与隔离副本门禁。只接受当前 Sanctum User Bearer 和合成账户；管理员、封禁、过期/撤销凭据、其他 token principal、错误服务和 caller owner 均拒绝。列表委托原生 owner query 并限制为 101 行，超过 100 拒绝；指定撤销保留 owner-scoped delete 与缺失/重复 404，登出只删除当前凭据。
+
+原生列表保持现有行为，Internal 返回 decimal session ID 与现有非秘密元数据，不包含 token/hash 或其他用户 session。原生 false-delete、已准入请求与事后撤销竞争保持；审计/期限/丢失响应可以隐藏已提交撤销，不添加重试、补偿或新会话。专用适配器在路由异常报告前安全渲染 SQL/领域错误。Gateway/SDK 对外会话路由尚未启用。
+
+固定 Core 全量 **1112 通过、99 引擎/独立进程专测跳过、11324 断言**；专项 **16/16、118 断言**。真实 TLS1.3/MariaDB **9** 项验证 owner 列表、服务/角色/期限拒绝、跨用户/重复撤销、SQL 删除失败与审计未知结果；最终当前用户零 session，其他用户保持一枚。运行时代码在全量与联调快照 hash 一致，PHP lint、原生表名和文档检查通过，见[证据报告](internal-isolated-sessions-verification.json)。
