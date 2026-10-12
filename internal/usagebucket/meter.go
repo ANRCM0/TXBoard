@@ -117,6 +117,8 @@ type Status struct {
 	DroppedEvents       uint64
 	FirstGap            Event
 	VolatileTailUnknown bool
+	PersistedBuckets    uint64
+	ClaimedBucket       uint64
 }
 
 type Snapshot struct {
@@ -142,6 +144,9 @@ type Meter struct {
 	degraded     string
 	dropped      uint64
 	firstGap     Event
+	claim        *bucketClaim
+	consumer     *Coordinator
+	persisted    uint64
 }
 
 // Session retains its original registration. It never looks up a current UUID
@@ -463,7 +468,26 @@ func (m *Meter) Snapshot() Snapshot {
 	for i, b := range m.sealed {
 		sealed[i] = cloneBucket(b)
 	}
-	return Snapshot{Sealed: sealed, Open: cloneBucket(m.open), Status: Status{Degraded: m.degraded != "", Reason: m.degraded, Generation: m.generation, NextSequence: m.nextSequence, SealedBuckets: len(m.sealed), DroppedEvents: m.dropped, FirstGap: m.firstGap, VolatileTailUnknown: true}}
+	return Snapshot{Sealed: sealed, Open: cloneBucket(m.open), Status: m.statusLocked()}
 }
 
 func cloneBucket(b Bucket) Bucket { b.Events = append([]Event{}, b.Events...); return b }
+
+// Status does not copy events or wait for persistence. A durable local receipt
+// cannot establish that the remaining observation tail is complete.
+func (m *Meter) Status() Status {
+	if m == nil {
+		return Status{VolatileTailUnknown: true}
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.statusLocked()
+}
+
+func (m *Meter) statusLocked() Status {
+	s := Status{Degraded: m.degraded != "", Reason: m.degraded, Generation: m.generation, NextSequence: m.nextSequence, SealedBuckets: len(m.sealed), DroppedEvents: m.dropped, FirstGap: m.firstGap, VolatileTailUnknown: true, PersistedBuckets: m.persisted}
+	if m.claim != nil {
+		s.ClaimedBucket = m.claim.bucket.Number
+	}
+	return s
+}
