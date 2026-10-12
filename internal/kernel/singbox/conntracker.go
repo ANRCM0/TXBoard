@@ -18,6 +18,7 @@ import (
 
 	"github.com/ANRCM0/TX-Node/internal/audit"
 	"github.com/ANRCM0/TX-Node/internal/nlog"
+	"github.com/ANRCM0/TX-Node/internal/usagebucket"
 )
 
 // ipPool caches ipSnapshot maps to reduce allocations.
@@ -144,6 +145,8 @@ type ConnTracker struct {
 
 	// auditor is the tx-node audit reporter (nil = disabled, zero overhead).
 	auditor *audit.Reporter
+	// Fixed at construction; nil on the ordinary runtime path.
+	eventBuckets *usagebucket.Meter
 }
 
 type trackedConnection struct {
@@ -320,7 +323,13 @@ func (t *ConnTracker) RoutedConnection(
 		ctx:         connectionCtx,
 		cancel:      cancel,
 	}
+	if t.eventBuckets != nil {
+		wrapped.bucketSession = t.eventBuckets.Bind(uid, connID, "tcp")
+	}
 	if !t.register(uuid, connID, uid, us, sourceIP, wrapped) {
+		if wrapped.bucketSession != nil {
+			wrapped.bucketSession.Close()
+		}
 		cancel()
 		_ = conn.Close()
 		return conn
@@ -384,7 +393,13 @@ func (t *ConnTracker) RoutedPacketConnection(
 		ctx:         connectionCtx,
 		cancel:      cancel,
 	}
+	if t.eventBuckets != nil {
+		wrapped.bucketSession = t.eventBuckets.Bind(uid, connID, "udp")
+	}
 	if !t.register(uuid, connID, uid, us, sourceIP, wrapped) {
+		if wrapped.bucketSession != nil {
+			wrapped.bucketSession.Close()
+		}
 		cancel()
 		_ = conn.Close()
 		return conn
@@ -647,18 +662,19 @@ func (r *RateLimitedReadCloser) Read(b []byte) (int, error) {
 
 type trackedConn struct {
 	net.Conn
-	tracker     *ConnTracker
-	us          *userStats // per-user stats (upload/download atomics + IP tracking)
-	userID      int        // user ID for device tracking
-	connID      string
-	sourceIP    string
-	auditTarget string
-	auditOnce   sync.Once
-	limiter     *rate.Limiter
-	ctx         context.Context
-	cancel      context.CancelFunc
-	closeOnce   sync.Once
-	closeErr    error
+	tracker       *ConnTracker
+	us            *userStats // per-user stats (upload/download atomics + IP tracking)
+	userID        int        // user ID for device tracking
+	connID        string
+	sourceIP      string
+	auditTarget   string
+	auditOnce     sync.Once
+	limiter       *rate.Limiter
+	ctx           context.Context
+	cancel        context.CancelFunc
+	closeOnce     sync.Once
+	closeErr      error
+	bucketSession *usagebucket.Session
 }
 
 func (c *trackedConn) reportAudit(targetIP string) {
@@ -689,10 +705,17 @@ func (c *trackedConn) Read(b []byte) (int, error) {
 			b = b[:burst]
 		}
 	}
+	var operation usagebucket.Operation
+	if c.bucketSession != nil {
+		operation = c.bucketSession.Begin()
+	}
 	n, err := c.Conn.Read(b)
 	if n > 0 {
 		if c.us != nil {
 			c.us.upload.Add(int64(n)) // 从入站读取 = 用户上传
+		}
+		if c.bucketSession != nil {
+			c.bucketSession.Complete(operation, usagebucket.TCPRead, usagebucket.Upload, usagebucket.Upload, int64(n), err != nil, true)
 		}
 		if c.limiter != nil {
 			// Non-blocking rate limiting
@@ -711,6 +734,9 @@ func (c *trackedConn) Read(b []byte) (int, error) {
 				}
 			}
 		}
+	}
+	if n == 0 && c.bucketSession != nil {
+		c.bucketSession.Complete(operation, usagebucket.TCPRead, usagebucket.Upload, usagebucket.Upload, 0, err != nil, true)
 	}
 	return n, err
 }
@@ -739,9 +765,16 @@ func (c *trackedConn) Write(b []byte) (int, error) {
 		}
 	}
 
+	var operation usagebucket.Operation
+	if c.bucketSession != nil {
+		operation = c.bucketSession.Begin()
+	}
 	n, err := c.Conn.Write(b)
 	if n > 0 && c.us != nil {
 		c.us.download.Add(int64(n)) // 向入站写入 = 用户下载
+	}
+	if c.bucketSession != nil {
+		c.bucketSession.Complete(operation, usagebucket.TCPWrite, usagebucket.Download, usagebucket.Download, int64(n), err != nil, true)
 	}
 	return n, err
 }
@@ -749,6 +782,9 @@ func (c *trackedConn) Write(b []byte) (int, error) {
 func (c *trackedConn) Close() error {
 	c.reportAudit("")
 	c.closeOnce.Do(func() {
+		if c.bucketSession != nil {
+			c.bucketSession.Close()
+		}
 		c.cancel()
 		c.closeErr = c.Conn.Close()
 		if c.us != nil {
@@ -761,12 +797,23 @@ func (c *trackedConn) Close() error {
 
 // makeCountFunc builds a CountFunc for zero-copy byte counting via sing's
 // ReadCounter/WriteCounter unwrap interfaces.
-func (c *trackedConn) makeCountFunc(counter *atomic.Int64) N.CountFunc {
+func (c *trackedConn) makeCountFunc(counter *atomic.Int64, path usagebucket.Path, direction usagebucket.Direction) N.CountFunc {
+	if c.bucketSession == nil {
+		return c.makeLegacyCountFunc(counter)
+	}
 	if c.limiter == nil {
-		return func(n int64) { counter.Add(n) }
+		return func(n int64) {
+			counter.Add(n)
+			if c.bucketSession != nil {
+				c.bucketSession.Callback(path, direction, direction, n)
+			}
+		}
 	}
 	return func(n int64) {
 		counter.Add(n)
+		if c.bucketSession != nil {
+			c.bucketSession.Callback(path, direction, direction, n)
+		}
 		// Non-blocking rate limiting with context cancellation
 		if !c.limiter.AllowN(time.Now(), int(n)) {
 			resv := c.limiter.ReserveN(time.Now(), int(n))
@@ -784,12 +831,35 @@ func (c *trackedConn) makeCountFunc(counter *atomic.Int64) N.CountFunc {
 	}
 }
 
+// Retain the original callback on the default-off path, including its closure
+// captures. No observer clock, session, allocation or mutex is introduced there.
+func (c *trackedConn) makeLegacyCountFunc(counter *atomic.Int64) N.CountFunc {
+	if c.limiter == nil {
+		return func(n int64) { counter.Add(n) }
+	}
+	return func(n int64) {
+		counter.Add(n)
+		if !c.limiter.AllowN(time.Now(), int(n)) {
+			resv := c.limiter.ReserveN(time.Now(), int(n))
+			if delay := resv.Delay(); delay > 0 {
+				timer := time.NewTimer(delay)
+				defer timer.Stop()
+				select {
+				case <-timer.C:
+				case <-c.ctx.Done():
+					resv.Cancel()
+				}
+			}
+		}
+	}
+}
+
 func (c *trackedConn) UnwrapReader() (io.Reader, []N.CountFunc) {
 	c.reportAudit("")
 	if c.us == nil {
 		return c.Conn, nil
 	}
-	return c.Conn, []N.CountFunc{c.makeCountFunc(&c.us.upload)} // 从入站读取 = 用户上传
+	return c.Conn, []N.CountFunc{c.makeCountFunc(&c.us.upload, usagebucket.TCPReadCallback, usagebucket.Upload)} // 从入站读取 = 用户上传
 }
 
 func (c *trackedConn) UnwrapWriter() (io.Writer, []N.CountFunc) {
@@ -797,7 +867,7 @@ func (c *trackedConn) UnwrapWriter() (io.Writer, []N.CountFunc) {
 	if c.us == nil {
 		return c.Conn, nil
 	}
-	return c.Conn, []N.CountFunc{c.makeCountFunc(&c.us.download)} // 向入站写入 = 用户下载
+	return c.Conn, []N.CountFunc{c.makeCountFunc(&c.us.download, usagebucket.TCPWriteCallback, usagebucket.Download)} // 向入站写入 = 用户下载
 }
 
 func (c *trackedConn) Upstream() any           { return c.Conn }
@@ -808,18 +878,19 @@ func (c *trackedConn) WriterReplaceable() bool { return true }
 
 type trackedPacketConn struct {
 	N.PacketConn
-	tracker     *ConnTracker
-	us          *userStats
-	userID      int
-	connID      string
-	sourceIP    string
-	auditTarget string
-	auditOnce   sync.Once
-	limiter     *rate.Limiter
-	ctx         context.Context
-	cancel      context.CancelFunc
-	closeOnce   sync.Once
-	closeErr    error
+	tracker       *ConnTracker
+	us            *userStats
+	userID        int
+	connID        string
+	sourceIP      string
+	auditTarget   string
+	auditOnce     sync.Once
+	limiter       *rate.Limiter
+	ctx           context.Context
+	cancel        context.CancelFunc
+	closeOnce     sync.Once
+	closeErr      error
+	bucketSession *usagebucket.Session
 }
 
 func (c *trackedPacketConn) reportAudit(targetIP string) {
@@ -841,11 +912,18 @@ func (c *trackedPacketConn) ReportTargetIP(address netip.Addr) {
 
 func (c *trackedPacketConn) ReadPacket(buffer *buf.Buffer) (singM.Socksaddr, error) {
 	c.reportAudit("")
+	var operation usagebucket.Operation
+	if c.bucketSession != nil {
+		operation = c.bucketSession.Begin()
+	}
 	dest, err := c.PacketConn.ReadPacket(buffer)
 	if err == nil {
 		n := int64(buffer.Len())
 		if c.us != nil {
 			c.us.upload.Add(n) // 从入站读取 = 用户上传
+		}
+		if c.bucketSession != nil {
+			c.bucketSession.Complete(operation, usagebucket.UDPRead, usagebucket.Upload, usagebucket.Upload, n, false, true)
 		}
 		if c.limiter != nil {
 			// Non-blocking rate limiting with context cancellation
@@ -864,6 +942,9 @@ func (c *trackedPacketConn) ReadPacket(buffer *buf.Buffer) (singM.Socksaddr, err
 				}
 			}
 		}
+	}
+	if err != nil && c.bucketSession != nil {
+		c.bucketSession.Complete(operation, usagebucket.UDPRead, usagebucket.Upload, usagebucket.Upload, 0, true, false)
 	}
 	return dest, err
 }
@@ -890,9 +971,20 @@ func (c *trackedPacketConn) WritePacket(buffer *buf.Buffer, dest singM.Socksaddr
 		}
 	}
 
+	var operation usagebucket.Operation
+	if c.bucketSession != nil {
+		operation = c.bucketSession.Begin()
+	}
 	err := c.PacketConn.WritePacket(buffer, dest)
 	if err == nil && c.us != nil {
 		c.us.download.Add(n) // 向入站写入 = 用户下载
+	}
+	if c.bucketSession != nil {
+		counted := n
+		if err != nil {
+			counted = 0
+		}
+		c.bucketSession.Complete(operation, usagebucket.UDPWrite, usagebucket.Download, usagebucket.Download, counted, err != nil, err == nil)
 	}
 	return err
 }
@@ -900,6 +992,9 @@ func (c *trackedPacketConn) WritePacket(buffer *buf.Buffer, dest singM.Socksaddr
 func (c *trackedPacketConn) Close() error {
 	c.reportAudit("")
 	c.closeOnce.Do(func() {
+		if c.bucketSession != nil {
+			c.bucketSession.Close()
+		}
 		c.cancel()
 		c.closeErr = c.PacketConn.Close()
 		if c.us != nil {
@@ -910,12 +1005,23 @@ func (c *trackedPacketConn) Close() error {
 	return c.closeErr
 }
 
-func (c *trackedPacketConn) makeCountFunc(counter *atomic.Int64) N.CountFunc {
+func (c *trackedPacketConn) makeCountFunc(counter *atomic.Int64, path usagebucket.Path, physical, legacy usagebucket.Direction) N.CountFunc {
+	if c.bucketSession == nil {
+		return c.makeLegacyCountFunc(counter)
+	}
 	if c.limiter == nil {
-		return func(n int64) { counter.Add(n) }
+		return func(n int64) {
+			counter.Add(n)
+			if c.bucketSession != nil {
+				c.bucketSession.Callback(path, physical, legacy, n)
+			}
+		}
 	}
 	return func(n int64) {
 		counter.Add(n)
+		if c.bucketSession != nil {
+			c.bucketSession.Callback(path, physical, legacy, n)
+		}
 		// Non-blocking rate limiting with context cancellation
 		if !c.limiter.AllowN(time.Now(), int(n)) {
 			resv := c.limiter.ReserveN(time.Now(), int(n))
@@ -933,12 +1039,33 @@ func (c *trackedPacketConn) makeCountFunc(counter *atomic.Int64) N.CountFunc {
 	}
 }
 
+func (c *trackedPacketConn) makeLegacyCountFunc(counter *atomic.Int64) N.CountFunc {
+	if c.limiter == nil {
+		return func(n int64) { counter.Add(n) }
+	}
+	return func(n int64) {
+		counter.Add(n)
+		if !c.limiter.AllowN(time.Now(), int(n)) {
+			resv := c.limiter.ReserveN(time.Now(), int(n))
+			if delay := resv.Delay(); delay > 0 {
+				timer := time.NewTimer(delay)
+				defer timer.Stop()
+				select {
+				case <-timer.C:
+				case <-c.ctx.Done():
+					resv.Cancel()
+				}
+			}
+		}
+	}
+}
+
 func (c *trackedPacketConn) UnwrapPacketReader() (N.PacketReader, []N.CountFunc) {
 	c.reportAudit("")
 	if c.us == nil {
 		return c.PacketConn, nil
 	}
-	return c.PacketConn, []N.CountFunc{c.makeCountFunc(&c.us.download)}
+	return c.PacketConn, []N.CountFunc{c.makeCountFunc(&c.us.download, usagebucket.UDPReadCallback, usagebucket.Upload, usagebucket.Download)}
 }
 
 func (c *trackedPacketConn) UnwrapPacketWriter() (N.PacketWriter, []N.CountFunc) {
@@ -946,7 +1073,7 @@ func (c *trackedPacketConn) UnwrapPacketWriter() (N.PacketWriter, []N.CountFunc)
 	if c.us == nil {
 		return c.PacketConn, nil
 	}
-	return c.PacketConn, []N.CountFunc{c.makeCountFunc(&c.us.upload)}
+	return c.PacketConn, []N.CountFunc{c.makeCountFunc(&c.us.upload, usagebucket.UDPWriteCallback, usagebucket.Download, usagebucket.Upload)}
 }
 
 func (c *trackedPacketConn) Upstream() any           { return c.PacketConn }
