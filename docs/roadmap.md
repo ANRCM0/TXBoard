@@ -4,6 +4,8 @@
 
 ## TXAPI Native 集成（G0–G5，目标未实施）
 
+> **2026-10-12 Core First v2 调整**：以下旧阶段目标作为历史规划保留。后续工作由 [主仓实施台账](https://github.com/ANRCM0/TXBoard/blob/main/docs/architecture/v2/implementation-plan.md) 统一，Gateway 目标调整为 User/Admin Web API + Internal API + SC-v2；旧 Theme 安装体系不另建第二套权威。当前固定旧上游路径/解码与 TXAPI 不兼容，首先完成 Operation/身份/DTO 映射；不能通过重新开放已退役 Core V1/V2 路由解决。本文旧阶段不能覆盖新的目标契约。
+
 G0 冻结双仓契约与 operation 映射 → G1 旧 Gateway/Laravel 真实 staging → G2 Laravel Native `/txapi` → G3 新 `/txapi/bff/v1` + BFF v1 SDK → G4 Edge/Deploy/主题 opt-in → G5 清理无消费者旧 URL。Laravel 仍拥有全部账户/交易/节点/插件业务权威；订单写入保持关闭。参阅 [集成开发方案](./txapi-integration.md)。
 
 ## 阶段概览
@@ -50,7 +52,7 @@ PR-A～PR-D 的**代码**已随 #10–#13 合并并通过 mock CI（Gateway 202 
 
 ## 明确不开放的操作
 
-- `POST /gateway/v1/orders` 仍为 405，不可创建新单。
+- `POST /gateway/v1/orders` 默认为 405；已有 `GATEWAY_ORDER_WRITE_ENABLED` 实验适配，真实 Core 联调与交易门禁通过前不得生产放量。
 - Gateway 没有 checkout/cancel/pay webhook、余额变更、节点、管理端和订阅原始 Token 导出。
 - 未验证真实邮件验证码、邀请、CAPTCHA 或支付沙箱，不为前端绕过 Laravel 规则。
 - HPKE **不是** TLS 替代；Redis nonce 原子性不代表故障切主时永远不丢记录。

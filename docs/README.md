@@ -4,6 +4,8 @@
 
 ## 阅读路线
 
+后续平台演进先读 [Core First v2 B0 基线](https://github.com/ANRCM0/TXBoard/blob/main/docs/architecture/v2/README.md) 和 [跨仓兼容矩阵](https://github.com/ANRCM0/TXBoard/blob/main/docs/architecture/v2/compatibility-matrix.md)。统一 User/Admin Gateway、独立前端与 SC-v2 属于目标架构；现行 BFF 行为和发布门禁仍按当前契约执行。
+
 - **开发入门**：[架构](architecture.md)、[开发者指南](developer-guide.md)、[Docker 部署](docker-deployment.md)。
 - **现有协议与 SDK**：[Gateway v1](../contracts/gateway-v1.md)、[Theme SDK](../packages/theme-sdk/README.md)、[主题模板](theme-templates.md)。
 - **部署运维**：[限流设计](rate-limiting.md)、[限流恢复](runbook-rate-limit-recovery.md)、[发布检查](release-checklist.md)。

@@ -1,6 +1,12 @@
 # TXBoard Gateway 开发状态台账
 
-> 更新时间：**2026-10-11（GW-506/507 追加）**；旧阶段记录为历史快照，以下新增最新 main 代码核查。此文档记录代码和 CI，**不是生产就绪证明**。默认分支 main。当前不接入真实 TXBoard 环境，真实联调的验收暂按产品决策**延期**。
+> 更新时间：**2026-10-12（Core First B0 文档基线）**；旧阶段记录为历史快照。此文档记录代码和 CI，**不是生产就绪证明**。默认分支 main。当前不接入真实 TXBoard 环境，真实联调的验收暂按产品决策**延期**。
+
+## 2026-10-12：Core First B0（文档与工具基线）
+
+后续平台工作改由 [主仓 B0 基线](https://github.com/ANRCM0/TXBoard/blob/main/docs/architecture/v2/README.md)、[实施台账](https://github.com/ANRCM0/TXBoard/blob/main/docs/architecture/v2/implementation-plan.md) 和 [v2 契约](https://github.com/ANRCM0/TXBoard/blob/main/contracts/v2/README.md) 统一；本次没有修改 Gateway/SDK 运行时代码或发布镜像。当前固定旧 `/api/v1` 上游与 legacy 解码不兼容本地 Core `/txapi` 和 Native envelope；需显式身份/Operation/DTO 迁移，不能只替换路径或恢复 Core 旧路由。README 已更正默认关闭的订单创建适配状态。
+
+旧 Theme 安装/可选 BFF 的目标路线保留作历史资料；统一 User/Admin Gateway、Internal API 和 SC-v2 仍为 Target/Draft。本地验证发现 Windows Docker secret 路径 fixture 失败，详细结果与 Linux/真实联调缺口以 [B0 验证记录](https://github.com/ANRCM0/TXBoard/blob/main/docs/architecture/v2/baseline-verification.md) 为准；没有据此放宽密钥加载或上线门禁。
 
 ## 2026-10-11：GW-506/507 Next.js SSR 安全模板与版本协商（设计交付，未实施 Gateway 改动）
 
