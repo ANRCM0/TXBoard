@@ -3,10 +3,12 @@
 namespace App\Http\Controllers\Txapi;
 
 use App\Core\Http\TxapiResponse;
+use App\Domains\Content\ContentReader;
 use App\Http\Controllers\Txapi\Admin\OrderAdminController;
 use App\Http\Middleware\Admin;
 use App\Http\Middleware\AdminPath;
 use App\Services\PlanService;
+use App\Services\UserService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -22,7 +24,35 @@ final class InternalReadOnlyController
             if ($actor->is_admin) {
                 abort(403);
             }
-            if ($operation['operation'] === 'user.dashboard.get') {
+            if ($operation['operation'] === 'user.subscription-summary.get') {
+                $native = app(AccountController::class)->subscription($request, app(UserService::class));
+                if ($native->getStatusCode() !== 200) {
+                    return $native;
+                }
+                $data = $native->getData(true)['data'];
+                // Closed display projection. The native private subscription URL
+                // remains inside Core and never enters this Internal response.
+                $result = [
+                    'plan' => $data['plan'] === null ? null : [
+                        'id' => (string) $data['plan']['id'], 'name' => $data['plan']['name'],
+                        'traffic_limit_bytes' => (string) $data['plan']['traffic_limit_bytes'],
+                    ],
+                    'reset_day' => $data['reset_day'], 'upload_bytes' => (string) $data['upload_bytes'],
+                    'download_bytes' => (string) $data['download_bytes'],
+                    'traffic_limit_bytes' => (string) $data['traffic_limit_bytes'],
+                    'device_limit' => $data['device_limit'] === null ? null : (string) $data['device_limit'],
+                    'speed_limit_mbps' => $data['speed_limit_mbps'],
+                    'expired_at' => self::timestamp($data['expired_at']),
+                    'next_reset_at' => self::timestamp($data['next_reset_at']),
+                ];
+            } elseif ($operation['operation'] === 'user.notice.list') {
+                $native = app(ContentController::class)->notices(Request::create('/txapi/notices', 'GET', (array) $input), app(ContentReader::class));
+                $envelope = $native->getData(true);
+                $result = ['items' => array_map(static fn (array $row): array => [
+                    'id' => (string) $row['id'], 'title' => $row['title'], 'content' => $row['content'],
+                    'img_url' => $row['img_url'], 'tags' => $row['tags'], 'created_at' => self::timestamp($row['created_at']),
+                ], $envelope['data']), 'pagination' => $envelope['meta']];
+            } elseif ($operation['operation'] === 'user.dashboard.get') {
                 $result = app(AccountController::class)->dashboardStats($request)->getData(true)['data'];
             } elseif ($operation['operation'] === 'user.payment-methods.list') {
                 $result = app(BillingController::class)->methods($request)->getData(true)['data'];

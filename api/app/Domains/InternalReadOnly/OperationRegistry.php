@@ -12,6 +12,8 @@ final class OperationRegistry
         'user.order.list' => ['service' => 'user-gateway', 'actor' => 'user', 'versions' => ['2']],
         'user.dashboard.get' => ['service' => 'user-gateway', 'actor' => 'user', 'versions' => ['2']],
         'user.payment-methods.list' => ['service' => 'user-gateway', 'actor' => 'user', 'versions' => ['2']],
+        'user.subscription-summary.get' => ['service' => 'user-gateway', 'actor' => 'user', 'versions' => ['2']],
+        'user.notice.list' => ['service' => 'user-gateway', 'actor' => 'user', 'versions' => ['2']],
         'admin.order.get' => ['service' => 'admin-gateway', 'actor' => 'admin', 'versions' => ['1']],
     ];
 
@@ -45,11 +47,11 @@ final class OperationRegistry
             throw new SliceFailure('INVALID_REQUEST', 400);
         }
         $input = $body->input;
-        if (in_array($operation, ['user.profile.get', 'user.dashboard.get', 'user.payment-methods.list'], true)) {
+        if (in_array($operation, ['user.profile.get', 'user.dashboard.get', 'user.payment-methods.list', 'user.subscription-summary.get'], true)) {
             StrictJson::exact($input, []);
-        } elseif ($operation === 'user.order.list') {
+        } elseif (in_array($operation, ['user.order.list', 'user.notice.list'], true)) {
             $keys = ['page', 'per_page'];
-            if (property_exists($input, 'status')) {
+            if ($operation === 'user.order.list' && property_exists($input, 'status')) {
                 $keys[] = 'status';
             }
             StrictJson::exact($input, $keys);

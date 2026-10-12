@@ -1,6 +1,6 @@
 # Core First v2 实施台账
 
-> 状态：B0、B1.1–B1.6 影子证据、Terms、身份旁观与单 writer 捕获、B2.1–B2.3 单机升级、B3.1/B3.2 隔离用量、B3.3/B3.4 本地观察与持久事件桶、B4.1/B4.2 合成 Provider、B5.1–B5.3 本地只读 mTLS 接入、B6.1/B6.2 实验字节与离线加密已实现；后续切片推进中。各整阶段仍按下表门禁验收。
+> 状态：B0、B1.1–B1.7 影子证据、Terms、身份旁观与固定 writer 捕获、B2.1–B2.3 单机升级、B3.1/B3.2 隔离用量、B3.3/B3.4 本地观察与持久事件桶、B4.1/B4.2 合成 Provider、B5.1–B5.5 本地只读 mTLS 接入、B6.1–B6.3 实验字节、离线加密与共享 owner 实验已实现；后续切片推进中。各整阶段仍按下表门禁验收。
 
 ## 1. 批次与关键路径
 
@@ -121,3 +121,9 @@ Gateway 的旧 BFF/Theme 路线作为历史资料保留；影响统一 Admin/Use
 ### B6.3 共享响应所有权隔离实验
 
 Gateway `6ea649b` 仅新增实验测试目录：19 单测、14 真实 Redis、1 个实际 TTL 检查通过，64 客户端/4 worker 下观察到一次响应加密。证据只适用于连续主节点且不丢失 claim 的假设；Redis 检查与 WebCrypto 非原子，未知丢失/恢复/HA 仍阻断所有真实网络或业务消费方。[合同与范围](../../../contracts/v2/secure-channel/shared-owner-experiment-v1.md)。
+
+### B5.5 订阅摘要与公告读取
+
+新增 `user.subscription-summary.get` / `user.notice.list`，委托原 Account subscription 与 ContentReader；闭合 DTO 排除私有 URL/凭据，缺失套餐仍为 409，公告原可见性/排序/内容/分页保持。Gateway 本地 mTLS opt-in 保留现有公开 DTO；当前非 Admin User 授权不变。
+
+固定 Core `60e6eca` / Gateway `31bde17`：Core API 806 通过 / 29 跳过 / 6482 断言，Gateway 526、SDK 68，typecheck/build 及 33 项真实 mTLS 联调通过。[契约](../../../contracts/v2/core-internal-api/current-user-content-v2.md)及[证据](internal-user-content-verification.json)。未迁移匿名认证/写入、Admin 或生产 PKI。
