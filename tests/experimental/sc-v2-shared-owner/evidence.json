@@ -1,0 +1,282 @@
+{
+  "slice": "sc-v2-shared-owner/local-fixture/1",
+  "status": "engineering-experiment-only",
+  "base_commit": "2a5d2ee2dd01a7568a0b121236b158fa5339fd8e",
+  "source_snapshot": "/opt/txboard-baseline/sc-owner-2a5d2ee-r1",
+  "source_manifest_sha256": "12fe35ee03a1bd0e50b05bc24b9d505c968fa86e1c1e04d7224ca7466077cc91",
+  "source_manifest_format": "UTF-8 sorted sha256 + two spaces + repository-relative path + LF; excludes evidence.json",
+  "source_sha256": {
+    "tests/experimental/sc-v2-shared-owner/README.md": "e4632bcce11d5751a8bd9bd0f22bcfeab68b994ed5ff5c30fd9647d68ac17b1d",
+    "tests/experimental/sc-v2-shared-owner/claim.lua": "c7ad114adb010db89e65c0ae52180bd46c7abb6da0f4c810ad22127539ef233e",
+    "tests/experimental/sc-v2-shared-owner/fixtures.mjs": "5de6fcccbfedf8143e18e3ed12fd5b9507e536ce32a0e20fe2dc602216e26626",
+    "tests/experimental/sc-v2-shared-owner/redis.integration.test.mjs": "5eeefdfc5e2a4d352d53a83e1210715e3c306d4bbb4fea8995609cfe0d3c11d2",
+    "tests/experimental/sc-v2-shared-owner/run-linux.sh": "de5a0cd494a99f009fed4f60922984b6e67cbf52f93cea780fb876f2541c4a9c",
+    "tests/experimental/sc-v2-shared-owner/shared-owner.mjs": "fc8c1b3334e3d26f165ca55c69d3cfa42563781aadeccf01a3b41ca9fd976c87",
+    "tests/experimental/sc-v2-shared-owner/shared-owner.test.mjs": "294873fb3be6ae78bd9be552f1355412022632a669d774611ebeef2cca34badc",
+    "tests/experimental/sc-v2-shared-owner/ttl.integration.test.mjs": "3bd1a928b052513a8776a1cc1010a4809316910dd909f87f01a8232245eacf5d",
+    "tests/experimental/sc-v2-shared-owner/verify-owner.lua": "d3f4a10593610279c5303e319d802180b79cacb285bc0f258ace76eaa3ded9ee",
+    "tests/experimental/sc-v2-shared-owner/worker.mjs": "e4e883c46672b5af28de41dfa4004cc347278d0e8a4f8c998a932c69114c7ec5"
+  },
+  "linux_dependencies_sha256": {
+    "package-lock.json": "e93bef881fc3ddddd3f0179cd2ce87a9eed191a7a8b92703150b68b6c07aa60d",
+    "packages/theme-sdk/src/experimental/sc-v2-crypto.ts": "153a57f2e9823c36ea3115c93553591efd424f1e00069237388567519567d06e",
+    "packages/theme-sdk/src/experimental/sc-v2-codec.ts": "96da8005129a30c0cc66e08dfd2ba195aa0a69b03bd9ef62388b2fb92ac9ee10",
+    "node_modules/redis/package.json": "e90da76f8bfb9bef3ce16e6dc59044a3aac506af6ec6a98a622fd30fd2a89eeb",
+    "node_modules/@redis/client/package.json": "1e5f3893ddb3a5fa9e40068666148118de3f03ddea82e4db44b5cdad4dc7e1d4",
+    "node_modules/@redis/client/dist/lib/client/commands-queue.js": "3d2f4854d82062a1ed860639673fcbda0e9f478cf64272191fc92a4090746147",
+    "node_modules/@redis/client/dist/lib/client/index.js": "d7c73771968acaadf19587a2355527150292dfbd85d02c3a141f4df1b82b50cc",
+    "node_modules/@redis/client/dist/lib/client/socket.js": "de7e583cdfdfb67d60ca2c9818945c03c7d1542dfb5b5144f6fac83472b82bd2",
+    "node_modules/@hpke/core/package.json": "1059f008709528c9d4dd81da86a0f52be3d55c4847e4d3e68a9aadcf2f35b2c9",
+    "node_modules/@hpke/common/package.json": "d3089264c766aa0fe56047705ec137010e9622ed6ad292969fd8eea7e5579941"
+  },
+  "git_provenance": {
+    "git_executable": "D:\\devTool\\Git\\cmd\\git.EXE",
+    "git_version": "git version 2.55.0.windows.2",
+    "files": {
+      "package-lock.json": {
+        "git_blob": {
+          "sha256": "a60bdbf6de2788282dfa87077316f55df950c7192e6a33960ead97dc953dc940",
+          "crlf": 0,
+          "lf": 2477,
+          "normalized_lf_sha256": "a60bdbf6de2788282dfa87077316f55df950c7192e6a33960ead97dc953dc940"
+        },
+        "git_archive_entry": {
+          "sha256": "e93bef881fc3ddddd3f0179cd2ce87a9eed191a7a8b92703150b68b6c07aa60d",
+          "crlf": 2477,
+          "lf": 2477,
+          "normalized_lf_sha256": "a60bdbf6de2788282dfa87077316f55df950c7192e6a33960ead97dc953dc940"
+        },
+        "working_tree": {
+          "sha256": "e93bef881fc3ddddd3f0179cd2ce87a9eed191a7a8b92703150b68b6c07aa60d",
+          "crlf": 2477,
+          "lf": 2477,
+          "normalized_lf_sha256": "a60bdbf6de2788282dfa87077316f55df950c7192e6a33960ead97dc953dc940"
+        },
+        "archive_forced_autocrlf_false": {
+          "sha256": "a60bdbf6de2788282dfa87077316f55df950c7192e6a33960ead97dc953dc940",
+          "crlf": 0,
+          "lf": 2477,
+          "normalized_lf_sha256": "a60bdbf6de2788282dfa87077316f55df950c7192e6a33960ead97dc953dc940"
+        }
+      },
+      "packages/theme-sdk/src/experimental/sc-v2-crypto.ts": {
+        "git_blob": {
+          "sha256": "325086f6a6d790acf6f9ac0ff91c816f6969b07d6a6adc9b0f59c23d2f3a9a06",
+          "crlf": 0,
+          "lf": 153,
+          "normalized_lf_sha256": "325086f6a6d790acf6f9ac0ff91c816f6969b07d6a6adc9b0f59c23d2f3a9a06"
+        },
+        "git_archive_entry": {
+          "sha256": "153a57f2e9823c36ea3115c93553591efd424f1e00069237388567519567d06e",
+          "crlf": 153,
+          "lf": 153,
+          "normalized_lf_sha256": "325086f6a6d790acf6f9ac0ff91c816f6969b07d6a6adc9b0f59c23d2f3a9a06"
+        },
+        "working_tree": {
+          "sha256": "325086f6a6d790acf6f9ac0ff91c816f6969b07d6a6adc9b0f59c23d2f3a9a06",
+          "crlf": 0,
+          "lf": 153,
+          "normalized_lf_sha256": "325086f6a6d790acf6f9ac0ff91c816f6969b07d6a6adc9b0f59c23d2f3a9a06"
+        },
+        "archive_forced_autocrlf_false": {
+          "sha256": "325086f6a6d790acf6f9ac0ff91c816f6969b07d6a6adc9b0f59c23d2f3a9a06",
+          "crlf": 0,
+          "lf": 153,
+          "normalized_lf_sha256": "325086f6a6d790acf6f9ac0ff91c816f6969b07d6a6adc9b0f59c23d2f3a9a06"
+        }
+      },
+      "packages/theme-sdk/src/experimental/sc-v2-codec.ts": {
+        "git_blob": {
+          "sha256": "7c7dd5ec12864663fe5540013e4d9e409f4658cf5a3eff65826249617e42643d",
+          "crlf": 0,
+          "lf": 145,
+          "normalized_lf_sha256": "7c7dd5ec12864663fe5540013e4d9e409f4658cf5a3eff65826249617e42643d"
+        },
+        "git_archive_entry": {
+          "sha256": "96da8005129a30c0cc66e08dfd2ba195aa0a69b03bd9ef62388b2fb92ac9ee10",
+          "crlf": 145,
+          "lf": 145,
+          "normalized_lf_sha256": "7c7dd5ec12864663fe5540013e4d9e409f4658cf5a3eff65826249617e42643d"
+        },
+        "working_tree": {
+          "sha256": "7c7dd5ec12864663fe5540013e4d9e409f4658cf5a3eff65826249617e42643d",
+          "crlf": 0,
+          "lf": 145,
+          "normalized_lf_sha256": "7c7dd5ec12864663fe5540013e4d9e409f4658cf5a3eff65826249617e42643d"
+        },
+        "archive_forced_autocrlf_false": {
+          "sha256": "7c7dd5ec12864663fe5540013e4d9e409f4658cf5a3eff65826249617e42643d",
+          "crlf": 0,
+          "lf": 145,
+          "normalized_lf_sha256": "7c7dd5ec12864663fe5540013e4d9e409f4658cf5a3eff65826249617e42643d"
+        }
+      }
+    },
+    "core_autocrlf": "true",
+    "gitattributes_blob_present": false,
+    "gitattributes_blob": "",
+    "effective_attributes": ""
+  },
+  "linux_git_reference_provenance": {
+    "git_executable": "/usr/bin/git",
+    "git_version": "git version 2.49.1",
+    "core_autocrlf": "",
+    "files": {
+      "package-lock.json": {
+        "git_blob": {
+          "sha256": "a60bdbf6de2788282dfa87077316f55df950c7192e6a33960ead97dc953dc940",
+          "crlf": 0,
+          "lf": 2477
+        },
+        "git_archive_entry": {
+          "sha256": "a60bdbf6de2788282dfa87077316f55df950c7192e6a33960ead97dc953dc940",
+          "crlf": 0,
+          "lf": 2477
+        }
+      },
+      "packages/theme-sdk/src/experimental/sc-v2-crypto.ts": {
+        "git_blob": {
+          "sha256": "325086f6a6d790acf6f9ac0ff91c816f6969b07d6a6adc9b0f59c23d2f3a9a06",
+          "crlf": 0,
+          "lf": 153
+        },
+        "git_archive_entry": {
+          "sha256": "325086f6a6d790acf6f9ac0ff91c816f6969b07d6a6adc9b0f59c23d2f3a9a06",
+          "crlf": 0,
+          "lf": 153
+        }
+      },
+      "packages/theme-sdk/src/experimental/sc-v2-codec.ts": {
+        "git_blob": {
+          "sha256": "7c7dd5ec12864663fe5540013e4d9e409f4658cf5a3eff65826249617e42643d",
+          "crlf": 0,
+          "lf": 145
+        },
+        "git_archive_entry": {
+          "sha256": "7c7dd5ec12864663fe5540013e4d9e409f4658cf5a3eff65826249617e42643d",
+          "crlf": 0,
+          "lf": 145
+        }
+      }
+    }
+  },
+  "lock": {
+    "git_blob_sha256": "a60bdbf6de2788282dfa87077316f55df950c7192e6a33960ead97dc953dc940",
+    "snapshot_bytes_sha256": "e93bef881fc3ddddd3f0179cd2ce87a9eed191a7a8b92703150b68b6c07aa60d",
+    "windows_archive_entry_sha256": "e93bef881fc3ddddd3f0179cd2ce87a9eed191a7a8b92703150b68b6c07aa60d",
+    "windows_working_tree_sha256": "e93bef881fc3ddddd3f0179cd2ce87a9eed191a7a8b92703150b68b6c07aa60d",
+    "normalized_lf_sha256": "a60bdbf6de2788282dfa87077316f55df950c7192e6a33960ead97dc953dc940",
+    "linux_donor": "/opt/txboard-baseline/internal-user-v2-gateway-strict/node_modules",
+    "donor_lock_sha256": "a60bdbf6de2788282dfa87077316f55df950c7192e6a33960ead97dc953dc940",
+    "normalized_bytes_equal": true,
+    "semantic_change": false
+  },
+  "provenance_note": "Git raw blobs are LF; the tested snapshot used Windows git archive with core.autocrlf=true and CRLF archive entries. This is byte conversion, not a source/dependency change. Prior LF Git evidence remains valid.",
+  "documentation_updated_after_runtime_gate": true,
+  "environment": {
+    "linux": "Alpine 3.22.6 / TXBoard-Baseline WSL",
+    "linux_node": "v22.23.2",
+    "linux_redis": "Redis server v=8.0.4 sha=00000000:1 malloc=libc bits=64 build=f9b04536a8a35f8a",
+    "redis_client": "5.6.0",
+    "hpke_core": "1.9.0",
+    "hpke_common": "1.10.1",
+    "windows_fixture": "Node Windows, private named-pipe synthetic Redis peer; no live Redis claim"
+  },
+  "tests": {
+    "windows_unit": {
+      "total": 19,
+      "passed": 19,
+      "failed": 0
+    },
+    "linux_unit": {
+      "total": 19,
+      "passed": 19,
+      "failed": 0
+    },
+    "linux_real_redis": {
+      "total": 14,
+      "passed": 14,
+      "failed": 0
+    },
+    "linux_real_ttl": {
+      "total": 1,
+      "passed": 1,
+      "failed": 0,
+      "actual_wait_seconds_at_least": 70
+    },
+    "full_workspace_check": {
+      "gateway_passed": 467,
+      "sdk_passed": 68,
+      "typecheck": "passed",
+      "build": "passed"
+    }
+  },
+  "observed_concurrency": {
+    "independent_clients": 64,
+    "workers": 4,
+    "winners": 1,
+    "losers": 63,
+    "response_exporter_hmac_blocks": 2,
+    "response_encrypt_only_aes_imports": 1,
+    "response_encrypts": 1
+  },
+  "observed_capacity": {
+    "sync_proxy_recipient_contexts": 128,
+    "claim_attempts": 128,
+    "response_exports": 0,
+    "response_encrypts": 0
+  },
+  "observed_failures": [
+    "postclaim SIGKILL: retry denied, zero response exports/encrypts",
+    "executed claim with dropped/delayed/partial-drip ACK: zero response exports/encrypts, retained tombstone",
+    "startup/claim/preseal total deadline: late completion cannot revive; no reconnect",
+    "Node-vs-Redis TIME mismatch and wall/monotonic rollback: refused/quarantined",
+    "invalid response/accessor/shared/detached/oversize/expiry/crypto import failure: claim retained, no retry",
+    "missing owner/epoch change/noeviction OOM/stopped Redis: refused, no reacquire",
+    "raw NX after record deletion demonstrates second winner WITHOUT response crypto"
+  ],
+  "limits": {
+    "continuous_primary_no_loss_assumption": true,
+    "preseal_and_webcrypto_atomic": false,
+    "strong_crypto_fence": false,
+    "network_consumer": false,
+    "business_consumer": false,
+    "production_accepted": false,
+    "formal_crypto_accepted": false,
+    "response_cache": false,
+    "unknown_redis_key_loss_blocks_adoption": true,
+    "ha_restore_power_loss_split_brain_verified": false,
+    "raw_claim_test_is_authenticated_request_proof": false
+  },
+  "cleanup": {
+    "dedicated_redis_only": true,
+    "shared_baseline_redis_untouched": true,
+    "core_databases_untouched": true,
+    "private_jwk_disk_or_logs": false,
+    "workers_stopped_joined": true,
+    "private_redis_directories_removed": true,
+    "runtime_releases_claims": false,
+    "fault_injection_deletes_fixture_records": true,
+    "teardown_deletes_only_after_shutdown": true,
+    "fixture_directories_remaining": 0,
+    "fixture_workers_remaining": 0
+  },
+  "logs": {
+    "full_check": {
+      "path": "/opt/txboard-baseline/sc-owner-full-check.log",
+      "sha256": "1ba501e999d59d3240820fb54a98277aab8b61b48449fcdd4d3e42a45e3ee9a5"
+    },
+    "unit_and_real_redis": {
+      "path": "/opt/txboard-baseline/sc-owner-real.log",
+      "sha256": "e556eae5026f622a0b311b1c5062e467a921362f3820ef52d95be2234400e35d"
+    },
+    "actual_ttl": {
+      "path": "/opt/txboard-baseline/sc-owner-ttl.log",
+      "sha256": "8cd62cc0cf5c66c611f9f85aa87fcdf957f8d4d12abfbae9ac2d97792dba03ac"
+    }
+  },
+  "windows_log": {
+    "path": "/mnt/d/my-project/TXX/.sc-v2-lab/shared-owner-windows-unit.log",
+    "sha256": "9b83238104131215c94f87163fb279b8d0c7edc05677b967a11db07dd301a80e"
+  }
+}
