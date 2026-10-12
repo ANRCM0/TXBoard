@@ -10,6 +10,7 @@ use App\Models\Subscription;
 use App\Models\SubscriptionTerms;
 use App\Services\OrderService;
 use App\Services\Subscription\PlanCatalogShadowService;
+use App\Services\Subscription\PlanCatalogShadowReconciler;
 use App\Support\Setting as RuntimeSetting;
 use Carbon\Carbon;
 use Illuminate\Database\QueryException;
@@ -17,6 +18,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use InvalidArgumentException;
 use LogicException;
 use Mockery;
 use RuntimeException;
@@ -408,6 +410,145 @@ class PlanCatalogShadowTest extends TestCase
         $result = json_decode(Artisan::output(), true, flags: JSON_THROW_ON_ERROR);
         $this->assertSame('complete', $result['phase']);
         $this->assertSame('0', $result['unresolved_count']);
+    }
+
+    public function test_reconciliation_is_read_only_and_checks_every_bounded_page(): void
+    {
+        $this->plan(); $this->plan(); $last = $this->plan();
+        $this->captureCatalog();
+        $before = $this->catalogState();
+        DB::enableQueryLog(); DB::flushQueryLog();
+        try {
+            $first = $this->reconcileCatalog(limit: 2);
+            $second = $this->reconcileCatalog(limit: 2, after: (int) $first['next_after_id']);
+            $queries = DB::getQueryLog();
+        } finally { DB::disableQueryLog(); }
+        $this->assertTrue($first['page_ok']); $this->assertTrue($first['has_more']);
+        $this->assertTrue($second['page_ok']); $this->assertFalse($second['has_more']);
+        $this->assertSame('2', $first['checked_count']); $this->assertSame('1', $second['checked_count']);
+        $this->assertSame((string) $last->id, $second['next_after_id']);
+        $this->assertSame([], array_intersect(array_column($first['results'], 'legacy_plan_id'), array_column($second['results'], 'legacy_plan_id')));
+        foreach ($queries as $query) { $this->assertMatchesRegularExpression('/^select\b/i', $query['query']); }
+        $this->assertSame($before, $this->catalogState());
+    }
+
+    public function test_reconciliation_distinguishes_source_price_and_availability_drift_without_repair(): void
+    {
+        $plan = $this->plan(); $this->captureCatalog();
+        $this->prices($plan, '{"monthly":7.29}');
+        $plan->update(['sell' => false, 'capacity_limit' => 6]);
+        $before = $this->catalogState();
+        $report = $this->reconcileCatalog();
+        $this->assertFalse($report['page_ok']);
+        $this->assertContains('CATALOG_SOURCE_CHANGED', $report['results'][0]['issues']);
+        $this->assertContains('CATALOG_AVAILABILITY_CHANGED', $report['results'][0]['issues']);
+        $this->assertSame($before, $this->catalogState());
+        $this->assertSame('revised', $this->captureCatalog(retry: $plan->id)['results'][0]['status']);
+        $this->assertTrue($this->reconcileCatalog()['page_ok']);
+    }
+
+    public function test_reconciliation_detects_deleted_source_and_missing_pointer_even_on_later_pages(): void
+    {
+        $deleted = $this->plan(); $unmapped = $this->plan(); $this->captureCatalog();
+        DB::table('tx_plan')->where('id', $deleted->id)->delete();
+        DB::table('tx_plan_catalog_shadow')->where('legacy_plan_id', $unmapped->id)->delete();
+        $first = $this->reconcileCatalog(limit: 1);
+        $second = $this->reconcileCatalog(limit: 1, after: (int) $first['next_after_id']);
+        $this->assertContains('CATALOG_LEGACY_PLAN_MISSING', $first['results'][0]['issues']);
+        $this->assertContains('CATALOG_POINTER_MISSING', $second['results'][0]['issues']);
+        DB::table('tx_plan')->where('id', $unmapped->id)->delete();
+        $this->assertSame((string) $unmapped->id, $this->reconcileCatalog(after: $deleted->id)['results'][0]['legacy_plan_id']);
+    }
+
+    public function test_reconciliation_checks_actual_immutable_columns_and_offer_hashes(): void
+    {
+        $this->plan(); $this->captureCatalog();
+        DB::table('tx_plan_revision')->update(['quota_bytes' => '123']);
+        DB::table('tx_plan_offer')->update(['price_minor' => '999']);
+        DB::table('tx_plan_catalog_shadow')->update(['source_hash' => str_repeat('0', 64)]);
+        $issues = $this->reconcileCatalog()['results'][0]['issues'];
+        foreach (['CATALOG_REVISION_FIELDS_MISMATCH', 'CATALOG_OFFER_HASH_MISMATCH',
+            'CATALOG_OFFER_FIELDS_MISMATCH', 'CATALOG_POINTER_HASH_MISMATCH'] as $code) { $this->assertContains($code, $issues); }
+        $offer = PlanOffer::query()->firstOrFail();
+        $actual = ['plan_id' => (string) $offer->plan_id, 'plan_revision_id' => (string) $offer->plan_revision_id,
+            'offer_code' => $offer->offer_code, 'version_no' => $offer->version_no, 'currency' => $offer->currency,
+            'currency_minor_exponent' => $offer->currency_minor_exponent, 'calendar_policy' => $offer->calendar_policy,
+            'price_minor' => $offer->price_minor, 'calendar_months' => $offer->calendar_months,
+            'duration_seconds' => $offer->duration_seconds, 'purchase_kind' => $offer->purchase_kind];
+        DB::table('tx_plan_offer')->where('id', $offer->id)->update(['content_hash' => app(PlanCatalogShadowService::class)->hash($actual)]);
+        $this->assertContains('CATALOG_OFFER_FIELDS_MISMATCH', $this->reconcileCatalog()['results'][0]['issues']);
+    }
+
+    public function test_reconciliation_detects_missing_quotes_availability_and_corrupt_snapshot(): void
+    {
+        $plan = $this->plan(); $this->prices($plan, '{"monthly":1,"yearly":2}'); $this->captureCatalog();
+        $offers = PlanOffer::query()->orderBy('id')->get();
+        DB::table('tx_plan_offer_availability')->where('offer_id', $offers[0]->id)->delete();
+        DB::table('tx_plan_offer_availability')->where('offer_id', $offers[1]->id)->delete();
+        DB::table('tx_plan_offer')->where('id', $offers[1]->id)->delete();
+        $issues = $this->reconcileCatalog()['results'][0]['issues'];
+        $this->assertContains('CATALOG_OFFERS_MISMATCH', $issues);
+        $this->assertContains('CATALOG_AVAILABILITY_MISSING', $issues);
+        DB::table('tx_plan_revision')->update(['source_snapshot' => '{"changed":true}']);
+        $this->assertContains('CATALOG_REVISION_HASH_MISMATCH', $this->reconcileCatalog()['results'][0]['issues']);
+    }
+
+    public function test_reconciliation_reports_global_scan_exceptions_and_high_water_growth(): void
+    {
+        $bad = $this->plan(); $this->prices($bad, '{"monthly":0.001}');
+        $this->plan(); $this->captureCatalog(limit: 1); $this->plan();
+        $before = $this->catalogState();
+        $report = $this->reconcileCatalog();
+        foreach (['CATALOG_SCAN_INCOMPLETE', 'CATALOG_HIGH_WATER_GROWTH', 'CATALOG_UNRESOLVED_EXCEPTIONS'] as $code) {
+            $this->assertContains($code, $report['global_issues']);
+        }
+        $this->assertContains('CATALOG_UNRESOLVED_EXCEPTION', $report['results'][0]['issues']);
+        $this->assertSame('2', $report['checked_count']); $this->assertSame('1', $report['unresolved_count']);
+        $this->assertFalse($report['page_ok']); $this->assertSame($before, $this->catalogState());
+    }
+
+    public function test_reconciliation_refuses_invalid_bounds_unknown_run_and_nonisolated_execution(): void
+    {
+        $this->plan(); $this->captureCatalog();
+        foreach ([[0, 0], [1001, 0], [1, -1], [1, 2]] as [$limit, $after]) {
+            try { $this->reconcileCatalog($limit, $after); $this->fail('Invalid bounds accepted.'); }
+            catch (InvalidArgumentException $error) { $this->assertMatchesRegularExpression('/^(INVALID_CATALOG_BOUNDS|CATALOG_CURSOR_OUTSIDE_HIGH_WATER)$/', $error->getMessage()); }
+        }
+        try { app(PlanCatalogShadowReconciler::class)->reconcile('unknown'); $this->fail('Missing run accepted.'); }
+        catch (RuntimeException $error) { $this->assertSame('CATALOG_RUN_NOT_FOUND', $error->getMessage()); }
+        config(['core_shadow.isolated_copy' => false]);
+        $this->expectExceptionMessage('ISOLATED_COPY_REQUIRED'); $this->reconcileCatalog();
+    }
+
+    public function test_reconciliation_cli_uses_saved_context_and_fails_on_drift(): void
+    {
+        $plan = $this->plan(); $this->captureCatalog();
+        $options = ['--isolated-copy' => true, '--reconcile' => true, '--run' => 'catalog-test', '--limit' => '1'];
+        $this->assertSame(0, Artisan::call('core:catalog-shadow', $options));
+        $report = json_decode(Artisan::output(), true, flags: JSON_THROW_ON_ERROR);
+        $this->assertTrue($report['read_only']); $this->assertSame('current-pointer-and-offers', $report['scope']);
+        $this->prices($plan, '{"monthly":5}');
+        $this->assertSame(1, Artisan::call('core:catalog-shadow', $options));
+        $this->assertFalse(json_decode(Artisan::output(), true, flags: JSON_THROW_ON_ERROR)['page_ok']);
+        $this->assertSame(1, Artisan::call('core:catalog-shadow', $options + ['--currency' => 'CNY']));
+        $this->assertSame('CATALOG_RECONCILE_OPTIONS_CONFLICT', json_decode(Artisan::output(), true, flags: JSON_THROW_ON_ERROR)['error_code']);
+    }
+
+    private function reconcileCatalog(int $limit = 100, int $after = 0): array
+    {
+        return app(PlanCatalogShadowReconciler::class)->reconcile('catalog-test', $limit, $after);
+    }
+
+    private function catalogState(): array
+    {
+        $state = [];
+        foreach (['tx_plan', 'tx_plan_revision', 'tx_plan_offer', 'tx_plan_offer_availability', 'tx_plan_catalog_shadow',
+            'tx_plan_catalog_checkpoint', 'tx_plan_catalog_exception'] as $table) {
+            $state[$table] = DB::table($table)->orderBy(match ($table) {
+                'tx_plan_offer_availability' => 'offer_id', 'tx_plan_catalog_shadow', 'tx_plan_catalog_exception' => 'legacy_plan_id', default => 'id',
+            })->get()->toJson();
+        }
+        return $state;
     }
 
     private function migration(): \Illuminate\Database\Migrations\Migration

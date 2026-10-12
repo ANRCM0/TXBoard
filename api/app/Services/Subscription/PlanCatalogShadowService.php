@@ -152,12 +152,10 @@ final class PlanCatalogShadowService
             ->settings(['monthOverflow' => $policy['month_overflow']])->addMonths($offer->calendar_months)->timestamp;
     }
 
-    private function capture(int $id, string $runKey, array $context, int $now): array
+    /** Pure current-source projection shared by capture and read-only reconciliation. */
+    public function snapshot(Plan $plan, array $context): array
     {
-        $plan = Plan::query()->lockForUpdate()->find($id);
-        if ($plan === null) {
-            throw new RuntimeException('CATALOG_LEGACY_PLAN_MISSING');
-        }
+        $id = (int) $plan->id;
         $prices = $this->priceTokens($plan->getRawOriginal('prices'));
         $quotaGiB = $this->integer($plan->getRawOriginal('transfer_enable'), true);
         if ($quotaGiB !== null && (int) $quotaGiB > intdiv(PHP_INT_MAX, 1073741824)) {
@@ -191,6 +189,18 @@ final class PlanCatalogShadowService
             'reset_policy' => ['revision' => 'legacy-current/v1', 'method' => (int) $reset,
                 'plan_method' => $rawReset === null ? null : (int) $rawReset, 'indefinite_expiry_resets' => false],
             'prices' => $offers, 'context' => $context];
+        return $source;
+    }
+
+    private function capture(int $id, string $runKey, array $context, int $now): array
+    {
+        $plan = Plan::query()->lockForUpdate()->find($id);
+        if ($plan === null) {
+            throw new RuntimeException('CATALOG_LEGACY_PLAN_MISSING');
+        }
+        $source = $this->snapshot($plan, $context);
+        $offers = $source['prices'];
+        $quotaBytes = $source['quota_bytes'];
         $hash = $this->hash($source);
         $pointer = DB::table('tx_plan_catalog_shadow')->where('legacy_plan_id', $id)->lockForUpdate()->first();
         if ($pointer !== null && hash_equals($pointer->source_hash, $hash)) {
@@ -235,8 +245,7 @@ final class PlanCatalogShadowService
 
     private function availability(PlanRevision $revision, Plan $plan, int $now): void
     {
-        $values = ['status' => 'shadow', 'show' => (int) (bool) $plan->show, 'sell' => (int) (bool) $plan->sell,
-            'renew' => (int) (bool) $plan->renew, 'capacity_limit' => $this->integer($plan->getRawOriginal('capacity_limit'), true)];
+        $values = $this->availabilitySnapshot($plan);
         foreach ($revision->offers()->orderBy('id')->sharedLock()->get() as $offer) {
             $old = DB::table('tx_plan_offer_availability')->where('offer_id', $offer->id)->lockForUpdate()->first();
             $changed = $old === null;
@@ -251,6 +260,12 @@ final class PlanCatalogShadowService
                 ]);
             }
         }
+    }
+
+    public function availabilitySnapshot(Plan $plan): array
+    {
+        return ['status' => 'shadow', 'show' => (int) (bool) $plan->show, 'sell' => (int) (bool) $plan->sell,
+            'renew' => (int) (bool) $plan->renew, 'capacity_limit' => $this->integer($plan->getRawOriginal('capacity_limit'), true)];
     }
 
     private function priceTokens(mixed $raw): array
@@ -316,7 +331,7 @@ final class PlanCatalogShadowService
         return $value;
     }
 
-    private function hash(array $value): string
+    public function hash(array $value): string
     {
         return hash('sha256', $this->json($value));
     }
