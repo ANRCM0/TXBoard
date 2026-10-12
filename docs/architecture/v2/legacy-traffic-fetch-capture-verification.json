@@ -1,0 +1,134 @@
+{
+  "profile": "legacy-traffic-fetch-capture/verification-v1",
+  "committed_base": "dc33ec189c8754adb8e22332cd6a069e9ad96186",
+  "source_sha256": {
+    "api/app/Jobs/TrafficFetchJob.php": "dc607f57f366980843a9143c47819e2838374adc92a3155c35e131cf862f9cf2",
+    "api/app/Services/Subscription/LegacyUserMutationCapture.php": "85d1cbb092199c8c931d59c98639bb2c49a98753e929ef2c767b6d64144bb0c0",
+    "api/tests/Feature/Subscription/LegacyTrafficFetchCaptureTest.php": "c4d9d06506f6245dd791b60a936dfb073a7ab6854debbfe1b87461137bcf9057",
+    "api/tests/Feature/InternalReadOnly/InternalEmailCodeTest.php": "c47caca0501b0e68be48e5cfd5b1b878ac1f22a2819693e58f8feb4763929afa"
+  },
+  "source_sha256_lf": {
+    "api/app/Jobs/TrafficFetchJob.php": "dc607f57f366980843a9143c47819e2838374adc92a3155c35e131cf862f9cf2",
+    "api/app/Services/Subscription/LegacyUserMutationCapture.php": "85d1cbb092199c8c931d59c98639bb2c49a98753e929ef2c767b6d64144bb0c0",
+    "api/tests/Feature/Subscription/LegacyTrafficFetchCaptureTest.php": "c4d9d06506f6245dd791b60a936dfb073a7ab6854debbfe1b87461137bcf9057",
+    "api/tests/Feature/InternalReadOnly/InternalEmailCodeTest.php": "c47caca0501b0e68be48e5cfd5b1b878ac1f22a2819693e58f8feb4763929afa"
+  },
+  "snapshot_manifest_sha256": "637e917e95ce805b275bf3b0fa3e2a0ab3b5f62391c463b46aab3f8f04131828",
+  "composer_lock_sha256": "f47b212c2fc530a7820e370eab7c6d624d13962e7d26e4f2ddf57a11848257c0",
+  "installed_json_sha256": "8e668e456c9772ae428a038ab003fba5752ab2591980fc8396d9122851145b80",
+  "test_configuration_sha256": "fb2bd90bd42b3fda53bcefab99866b746c8b2e002389719302dcd5c504cd5ff8",
+  "fixture_environment": {
+    "APP_ENV": "testing",
+    "APP_KEY": "base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+    "REDIS_HOST": "127.0.0.1",
+    "REDIS_PORT": "16380",
+    "REDIS_DB": "18",
+    "REDIS_CACHE_DB": "19",
+    "REDIS_PREFIX": "txboard_traffic_fetch_gate_",
+    "CACHE_PREFIX": "txboard_traffic_fetch_gate_",
+    "CACHE_DRIVER": "array",
+    "CACHE_STORE": "array",
+    "SETTING_CACHE_STORE": "array",
+    "QUEUE_CONNECTION": "sync",
+    "MAIL_MAILER": "array",
+    "SESSION_DRIVER": "array"
+  },
+  "mysql_scope": {
+    "host": "127.0.0.1",
+    "port": 13306,
+    "database": "txboard_concurrency_test"
+  },
+  "gates": {
+    "static": {
+      "mode": "static",
+      "exit_code": 0,
+      "log_sha256": "ea2589ea4b5cdc706775a28b4580815dc9a4c04cd7498e88cbe1b9c0b764a7cb",
+      "log": "static.log"
+    },
+    "slice-sqlite": {
+      "mode": "slice-sqlite",
+      "exit_code": 0,
+      "log_sha256": "20cc1e0e973b3a4093701426f5d2986d3f042a19a92db44d513561741dfadbd9",
+      "log": "slice-sqlite.log",
+      "counts": {
+        "tests": 10,
+        "skipped": 2,
+        "failures": 0,
+        "errors": 0,
+        "assertions": 78
+      }
+    },
+    "slice-mariadb": {
+      "mode": "slice-mariadb",
+      "exit_code": 0,
+      "log_sha256": "d1ad6d692f87818b005758b78e35018555d87a0e78502d50ef47f018d4c0bc8c",
+      "log": "slice-mariadb.log",
+      "counts": {
+        "tests": 10,
+        "skipped": 0,
+        "failures": 0,
+        "errors": 0,
+        "assertions": 98
+      }
+    },
+    "full": {
+      "mode": "full",
+      "exit_code": 0,
+      "log_sha256": "e7200126ceb81013399b40eb44fc5a6ba89f2fe351efa18e595bed87b8d2a3ae",
+      "log": "full.log",
+      "counts": {
+        "tests": 1115,
+        "skipped": 90,
+        "failures": 0,
+        "errors": 0,
+        "assertions": 10258
+      }
+    }
+  },
+  "gate_snapshot_versions": {
+    "static": "v2",
+    "slice-sqlite": "v1",
+    "slice-mariadb": "v1",
+    "full": "v2"
+  },
+  "specialist_snapshot_manifest_sha256": "2f704b696d0ac0042a1a931d40a5db921ad344386aa1c2d154abab2a10a331f2",
+  "specialist_runtime_and_test_unchanged": true,
+  "earlier_full_regression_failure": {
+    "result": {
+      "mode": "full",
+      "exit_code": 1,
+      "log_sha256": "8370b53a33ab5e9919365c5014a62db8764251f5d0a072b5853b0e3e2fc699ce",
+      "log": "full.log",
+      "counts": {
+        "tests": 1115,
+        "skipped": 90,
+        "failures": 1,
+        "errors": 0,
+        "assertions": 10256
+      }
+    },
+    "snapshot_manifest_sha256": "2f704b696d0ac0042a1a931d40a5db921ad344386aa1c2d154abab2a10a331f2",
+    "test": "InternalEmailCodeTest::test_deadline_after_native_side_effect_is_unknown_not_cancellation",
+    "cause": "One-second signed deadline could expire before native mail send entered.",
+    "fix": "Wait for the unchanged signed five-second deadline inside actual MessageSending; assert native entry."
+  },
+  "native_behavior": {
+    "identical_inputs_increment_twice": true,
+    "later_failure_retains_earlier_user_commit": true,
+    "unknown_committed_replay_is_not_safe": true,
+    "rate_and_database_assignment_preserved": true,
+    "statistics_and_redis_remain_outside_user_transaction": true,
+    "tries": 1,
+    "timeout_seconds": 20
+  },
+  "scope": {
+    "default_enabled": false,
+    "isolated_synthetic_only": true,
+    "legacy_authority_unchanged": true,
+    "projection_applied": false,
+    "global_writer_coverage_complete": false,
+    "migration_gate_open": false,
+    "power_loss_durability_proven": false,
+    "post_commit_notification_recovered": false
+  }
+}

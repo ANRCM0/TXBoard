@@ -19,6 +19,7 @@ final class LegacyUserMutationCapture
         'commission.transfer' => ['version' => 'commission-transfer-capture/v1', 'actor_domain' => 'authenticated_user'],
         'traffic.reset.cron' => ['version' => 'traffic-cron-reset-capture/v1', 'actor_domain' => 'system_traffic_reset'],
         'traffic.batch.settle' => ['version' => 'traffic-batch-capture/v1', 'actor_domain' => 'system_node_traffic_settlement'],
+        'traffic.fetch.apply' => ['version' => 'traffic-fetch-capture/v1', 'actor_domain' => 'system_legacy_traffic_fetch'],
     ];
     public const FIELDS = ['id', 'plan_id', 'group_id', 'transfer_enable', 'u', 'd',
         'speed_limit', 'device_limit', 'expired_at', 'last_reset_at', 'next_reset_at',
@@ -66,6 +67,12 @@ final class LegacyUserMutationCapture
     public function beginTrafficBatchSettlement(int $userId, int $serverId): ?array
     {
         return $this->beginWriter($userId, 'traffic.batch.settle', $serverId);
+    }
+
+    /** Unidentified native fetch only: caller holds this User's exclusive transaction lock. */
+    public function beginLegacyTrafficFetch(int $userId, int $queuedServerId): ?array
+    {
+        return $this->beginWriter($userId, 'traffic.fetch.apply', $queuedServerId);
     }
 
     /** At the native refund's first User-lock position, after the PENDING Order lock. */
@@ -119,6 +126,11 @@ final class LegacyUserMutationCapture
     public function appendTrafficBatchSettlement(?array $before): void
     {
         $this->appendWriter($before, 'traffic.batch.settle');
+    }
+
+    public function appendLegacyTrafficFetch(?array $before): void
+    {
+        $this->appendWriter($before, 'traffic.fetch.apply');
     }
 
     private function beginWriter(int $userId, string $kind, ?int $actorId = null, bool $exclusiveSource = false): ?array
@@ -256,7 +268,7 @@ final class LegacyUserMutationCapture
                         'content_hash' => $event['content_hash'], 'source_kind' => $event['source_kind'],
                         'source_version' => $event['source_version'], 'actor_id' => $event['actor_id'],
                         'actor_domain' => self::POLICIES[$event['source_kind']]['actor_domain']]
-                        + (in_array($event['source_kind'], ['order.fulfill', 'order.create', 'order.cancel.refund', 'commission.transfer', 'traffic.reset.cron', 'traffic.batch.settle'], true)
+                        + (in_array($event['source_kind'], ['order.fulfill', 'order.create', 'order.cancel.refund', 'commission.transfer', 'traffic.reset.cron', 'traffic.batch.settle', 'traffic.fetch.apply'], true)
                             ? ['capture_boundary' => 'transaction-only'] : []);
                     $result['next_cursor'] = (string) $sequence;
                 }

@@ -1,6 +1,6 @@
 # Core First v2 实施台账
 
-> 状态：B0、B1.1–B1.12 影子证据、Terms、身份旁观与固定 writer 捕获、B2.1–B2.3 单机升级、B3.1/B3.2 隔离用量、B3.3/B3.4 本地观察与持久事件桶、B4.1–B4.5 合成 Provider、插件停用接入、租约候选与离线签名快照、B5.1–B5.10 本地 mTLS 读取、隔离建单、登录与内存邮件验证码、B6.1–B6.3 实验字节、离线加密与共享 owner 实验已实现；两仓迁移与三镜像发布已完成，继续推进业务迁移切片。各整阶段仍按下表门禁验收。
+> 状态：B0、B1.1–B1.14 影子证据、Terms、身份旁观与固定 writer 捕获、B2.1–B2.3 单机升级、B3.1/B3.2 隔离用量、B3.3/B3.4 本地观察与持久事件桶、B4.1–B4.5 合成 Provider、插件停用接入、租约候选与离线签名快照、B5.1–B5.10 本地 mTLS 读取、隔离建单、登录与内存邮件验证码、B6.1–B6.3 实验字节、离线加密与共享 owner 实验已实现；两仓迁移与三镜像发布已完成，继续推进业务迁移切片。各整阶段仍按下表门禁验收。
 
 2026-10-13，按仓库整合任务，将 Gateway/Node 的完整 Git 历史导入本仓 `gateway/`、`node/`，安装器集中到 TXBoard-Deploy。当前目录与三镜像 CI 见 [双仓布局](../../development/repository-layout.md)；旧基线和验证报告保持当时提交与路径。本次仓库整理独立于下列业务迁移门禁。
 
@@ -243,3 +243,9 @@ Node [当前契约](https://github.com/ANRCM0/TX-Node/blob/main/docs/local-event
 原 `TrafficBatchJob` 增加固定 `traffic.batch.settle` policy，在 Server → 有序 User 原锁序内记录精确计费后端点；批次去重、全体用户及节点统计、事件和 mapping 失效共同提交或回滚。原倍率/floor/溢出及 queued 语义保持，成功批次重放在捕获配置/表失效时仍跳过。显式捕获路径的统计读取使用当前共享锁，修复已实证的陈旧 MVCC 唯一键冲突；关闭路径保留原批量读取。死锁重试的 Redis 用户列表仅取成功事务，提交后丢失的通知仍未知。
 
 固定合仓基线 `3ca3940` 加三个精确 PHP 文件：最终全 API 1017 通过 / 88 引擎专测跳过 / 10179 断言；其中专项 SQLite 13 通过 / 4 跳过 / 163 断言。MariaDB 专项 17 全通过 / 205 断言，包含真实独立会话、陈旧快照和提交前后 SIGKILL。早期数据库长度问题与 fixture 失败保留在[源码及验收报告](legacy-traffic-batch-capture-verification.json)，复现方式见[测试 fixture](../../../api/tests/Fixtures/LegacyTrafficBatchCapture/README.md)，行为见[契约](../../../contracts/v2/legacy-traffic-batch-capture-v1.md)。默认关闭，不应用 Subscription/Terms/用量/资金投影；无标识旧流量与其他未覆盖 writer 仍阻断完整迁移门禁。
+
+### B1.14 隔离副本无标识旧流量写入捕获
+
+原 `TrafficFetchJob` 默认路径保留单次 SQL 更新；显式开启捕获时，每个实际 User 的独占当前读、原倍率/数据库赋值、事件和 mapping 失效共同提交。固定 `traffic.fetch.apply` policy 只引用 queued Server 工作项，不推定 Node 认证。相同输入仍累计两次；后一个 User 失败保留前一个提交，原统计 Job/Redis、单次尝试/20秒超时和未知结果不可安全重放语义均保持。MariaDB 原 INT 舍入逐行记录，SQLite 非整数证据拒绝而不重算价格或用量。
+
+固定已推送 B1.13 `dc33ec1` 加四个精确 PHP 文件；专项 runtime/test 与 v1 验收 hash 相同。SQLite 专项 8 通过 / 2 跳过 / 78 断言；MariaDB 10 全通过 / 98 断言，包含独立会话和 User 提交前后 SIGKILL。另将既有邮件 deadline 用例改为在真实发送回调中跨过原签名期限并断言进入，保留前次失败日志。全 API 1025 通过 / 90 引擎专测跳过 / 10258 断言。[契约](../../../contracts/v2/legacy-traffic-fetch-capture-v1.md)、[fixture](../../../api/tests/Fixtures/LegacyTrafficFetchCapture/README.md)和[源码/日志报告](legacy-traffic-fetch-capture-verification.json)保留精确复现信息。两类旧流量 User 端点现有固定捕获策略；完整 writer 覆盖、历史周期归属、影子投影、无标识 pending 排空与生产权威切换仍待完成。

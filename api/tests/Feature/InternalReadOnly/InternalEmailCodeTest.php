@@ -390,12 +390,18 @@ final class InternalEmailCodeTest extends TestCase
 
     public function test_deadline_after_native_side_effect_is_unknown_not_cancellation(): void
     {
-        $this->app['events']->listen(MessageSending::class, static function (): void {
-            // Let the actual signed one-second wall deadline elapse during the
-            // native send. The operation's body/deadline is never rewritten.
-            usleep(1_100_000);
+        $deadline = time()+5;
+        $entered = false;
+        $this->app['events']->listen(MessageSending::class, static function () use ($deadline, &$entered): void {
+            $entered = true;
+            // Cross the actual signed deadline after native sending starts;
+            // the operation's body/deadline is never rewritten.
+            while (time() < $deadline) {
+                usleep(50_000);
+            }
         });
-        $this->send(deadlineAt: time()+1)->assertStatus(504)->assertJsonPath('error.code', 'DEADLINE_EXCEEDED')->assertJsonMissingPath('data');
+        $this->send(deadlineAt: $deadline)->assertStatus(504)->assertJsonPath('error.code', 'DEADLINE_EXCEEDED')->assertJsonMissingPath('data');
+        $this->assertTrue($entered);
         $this->assertCount(1, $this->transport->messages());
         $this->assertIsInt(Cache::get($this->codeKey()));
     }

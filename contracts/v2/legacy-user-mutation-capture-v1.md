@@ -10,7 +10,14 @@ That eighth policy is `traffic.batch.settle` /
 `traffic-batch-capture/v1` /
 `system_node_traffic_settlement`, referencing the locked Server as a work item.
 Existing seven-policy evidence, event hashes and stream context remain unchanged.
-Unidentified Node traffic remains uncovered.
+At that eighth-policy boundary, unidentified Node traffic remains uncovered.
+
+The ninth policy, [unidentified traffic increment](legacy-traffic-fetch-capture-v1.md),
+adds `traffic.fetch.apply` / `traffic-fetch-capture/v1` /
+`system_legacy_traffic_fetch` with a queued Server reference. It preserves
+per-User partial commits and repeated-input increments; it adds no batch dedupe,
+statistics atomicity or safe original-intent recovery. Earlier Node-coverage
+limitations below refer to the historical seven-policy slices.
 
 Seven fixed existing transactions are captured: authenticated Admin `UserEditorController::update`, verified-provider `WalletRechargeService::settleVerified`, the locked core transaction in `OrderService::open`, the native new-create closure of `OrderService::createFromRequest`, the wallet-refund branch inside `OrderService::cancel`, authenticated User `CommissionController::transfer`, and the selected standalone cron due-reset in `TrafficResetService::performReset`. The Admin dynamic path, permission checks, compare-and-swap snapshots, exact major-to-minor conversion, response, and existing hooks remain in place. Admin capture starts after the User lock, before in-transaction hooks. Post-commit hooks remain outside scope. Capture always reads the actual database row again after save.
 
