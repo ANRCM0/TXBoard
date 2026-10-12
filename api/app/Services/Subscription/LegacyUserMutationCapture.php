@@ -24,6 +24,7 @@ final class LegacyUserMutationCapture
         'gift.reward.apply' => ['version' => 'gift-reward-capture/v1', 'actor_domain' => 'system_gift_redemption'],
         'gift.invite.reward' => ['version' => 'gift-invite-capture/v1', 'actor_domain' => 'system_gift_redemption'],
         'user.schedule.observer' => ['version' => 'observer-schedule-capture/v1', 'actor_domain' => 'system_user_schedule_observer'],
+        'traffic.reset.standalone' => ['version' => 'standalone-reset-capture/v1', 'actor_domain' => 'system_legacy_traffic_reset'],
     ];
     public const FIELDS = ['id', 'plan_id', 'group_id', 'transfer_enable', 'u', 'd',
         'speed_limit', 'device_limit', 'expired_at', 'last_reset_at', 'next_reset_at',
@@ -107,6 +108,18 @@ final class LegacyUserMutationCapture
         });
     }
 
+    /** Non-nested native reset; trusted source label is not an actor credential. */
+    public function beginStandaloneReset(int $userId, string $source): ?array
+    {
+        return $this->safe(function () use ($userId, $source): array {
+            $this->require(config('legacy_standalone_reset_capture.enabled') === true
+                && config('legacy_capture_shadow.enabled') === true, 'CAPTURE_RESET_ISOLATED_REQUIRED');
+            $this->require(in_array($source, ['manual', 'auto', 'api', 'user_access', 'order', 'gift_card', 'cron'], true),
+                'CAPTURE_RESET_SOURCE_UNSUPPORTED');
+            return $this->beginWriter($userId, 'traffic.reset.standalone', $userId);
+        });
+    }
+
     /** At the native refund's first User-lock position, after the PENDING Order lock. */
     public function beginOrderCancellationRefund(int $userId, int $orderId, mixed $rawRefundMinor): ?array
     {
@@ -185,6 +198,11 @@ final class LegacyUserMutationCapture
         $this->appendWriter($before, 'user.schedule.observer');
     }
 
+    public function appendStandaloneReset(?array $before): void
+    {
+        $this->appendWriter($before, 'traffic.reset.standalone');
+    }
+
     private function beginWriter(int $userId, string $kind, ?int $actorId = null, bool $exclusiveSource = false): ?array
     {
         if (config('legacy_capture_shadow.enabled') === false) {
@@ -217,7 +235,7 @@ final class LegacyUserMutationCapture
             $this->require($context === $before['context'], 'CAPTURE_CONTEXT_DRIFT');
             $source = $this->snapshot($before['source']);
             $userId = (int) $source['id'];
-            $this->require(!in_array($kind, ['order.create', 'commission.transfer', 'traffic.reset.cron', 'user.schedule.observer'], true)
+            $this->require(!in_array($kind, ['order.create', 'commission.transfer', 'traffic.reset.cron', 'user.schedule.observer', 'traffic.reset.standalone'], true)
                 || $actorId === $userId, 'CAPTURE_WRITER_TICKET_INVALID');
             $after = $this->source($userId);
             if ($source === $after) {
@@ -320,7 +338,7 @@ final class LegacyUserMutationCapture
                         'content_hash' => $event['content_hash'], 'source_kind' => $event['source_kind'],
                         'source_version' => $event['source_version'], 'actor_id' => $event['actor_id'],
                         'actor_domain' => self::POLICIES[$event['source_kind']]['actor_domain']]
-                        + (in_array($event['source_kind'], ['order.fulfill', 'order.create', 'order.cancel.refund', 'commission.transfer', 'traffic.reset.cron', 'traffic.batch.settle', 'traffic.fetch.apply', 'commission.distribute', 'gift.reward.apply', 'gift.invite.reward', 'user.schedule.observer'], true)
+                        + (in_array($event['source_kind'], ['order.fulfill', 'order.create', 'order.cancel.refund', 'commission.transfer', 'traffic.reset.cron', 'traffic.batch.settle', 'traffic.fetch.apply', 'commission.distribute', 'gift.reward.apply', 'gift.invite.reward', 'user.schedule.observer', 'traffic.reset.standalone'], true)
                             ? ['capture_boundary' => 'transaction-only'] : []);
                     $result['next_cursor'] = (string) $sequence;
                 }

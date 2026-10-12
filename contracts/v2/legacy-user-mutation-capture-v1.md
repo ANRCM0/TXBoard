@@ -1,5 +1,12 @@
 # Legacy User mutation capture v1
 
+The additional default-off
+[standalone reset extension](legacy-standalone-reset-capture-v1.md) captures
+independent manual/user-access/other native reset transactions. Existing due
+cron selection remains unchanged, and nested Order/gift resets retain their
+outer capture ownership. Historical excluded-source statements below apply
+when this additional switch is false.
+
 The separate default-off
 [Observer schedule extension](legacy-observer-schedule-capture-v1.md) can capture
 the native after-commit follow-up under a second transaction. Original capture

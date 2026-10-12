@@ -1,6 +1,6 @@
 # Core First v2 实施台账
 
-> 状态：B0、B1.1–B1.16 影子证据、Terms、身份旁观与固定 writer 捕获、B2.1–B2.3 单机升级、B3.1/B3.2 隔离用量、B3.3/B3.4 本地观察与持久事件桶、B4.1–B4.5 合成 Provider、插件停用接入、租约候选与离线签名快照、B5.1–B5.10 本地 mTLS 读取、隔离建单、登录与内存邮件验证码、B6.1–B6.3 实验字节、离线加密与共享 owner 实验已实现；两仓迁移与三镜像发布已完成，继续推进业务迁移切片。各整阶段仍按下表门禁验收。
+> 状态：B0、B1.1–B1.17 影子证据、Terms、身份旁观与固定 writer 捕获、B2.1–B2.3 单机升级、B3.1/B3.2 隔离用量、B3.3/B3.4 本地观察与持久事件桶、B4.1–B4.5 合成 Provider、插件停用接入、租约候选与离线签名快照、B5.1–B5.10 本地 mTLS 读取、隔离建单、登录与内存邮件验证码、B6.1–B6.3 实验字节、离线加密与共享 owner 实验已实现；两仓迁移与三镜像发布已完成，继续推进业务迁移切片。各整阶段仍按下表门禁验收。
 
 2026-10-13，按仓库整合任务，将 Gateway/Node 的完整 Git 历史导入本仓 `gateway/`、`node/`，安装器集中到 TXBoard-Deploy。当前目录与三镜像 CI 见 [双仓布局](../../development/repository-layout.md)；旧基线和验证报告保持当时提交与路径。本次仓库整理独立于下列业务迁移门禁。
 
@@ -263,3 +263,9 @@ Node [当前契约](https://github.com/ANRCM0/TX-Node/blob/main/docs/local-event
 独立 `LEGACY_OBSERVER_CAPTURE_ENABLED=false` 开关在现有 local/testing 隔离捕获之上，允许 `UserObserver` 原 after-commit 重算使用单独 User 独占事务记录 `user.schedule.observer`。不移动原业务提交点；礼品卡/履约端点后可追加连续 schedule 事件，原日历/普通 Plan 读取、withoutEvents 与 Node dispatch 仍保留。新事务失败只回滚 schedule，不取消此前业务提交；未知响应与 Node 通知缺口仍待恢复机制。
 
 固定 B1.15 `cb16180` 加四个 PHP 文件；SQLite 10 通过 / 2 专测跳过 / 100 断言，MariaDB 12 全通过 / 125 断言，包含 stale model 等锁后当前读和真实跟进提交前后 SIGKILL。全 API 1050 通过 / 95 引擎专测跳过 / 10520 断言。查看[契约](../../../contracts/v2/legacy-observer-schedule-capture-v1.md)、[fixture](../../../api/tests/Fixtures/LegacyObserverCapture/README.md)和[验证报告](legacy-observer-capture-verification.json)。旧捕获单独启用仍保持历史 source gap；原始 User insert、其他独立 writer、整个迁移与投影门禁未因此完成。
+
+### B1.17 隔离副本独立流量重置捕获
+
+独立 `LEGACY_STANDALONE_RESET_CAPTURE_ENABLED=false` 开关只覆盖原 `performReset` 在 SQL level zero 且非 due-cron policy 的调用。固定 `traffic.reset.standalone` 记录当前 User 原重置端点；manual/auto/api/user_access/order/gift_card/forced-cron 标签是可信 PHP 来源，不能推定调用身份。原 Admin 鉴权/路径、locked eligibility、日历/日志/metadata/cache/hook 和 false/409 语义保持；nested Order/gift/hook reset 仍由外层 ticket 捕获，未增加内部冲突事件。
+
+固定 B1.16 `5a8f06d` 加四个 PHP 文件；SQLite 10 通过 / 2 专测跳过 / 202 断言，MariaDB 12 全通过 / 229 断言，包含 stale User 等锁后当前读、重复手动重置和真实提交前后 SIGKILL。全 API 1060 通过 / 97 引擎专测跳过 / 10722 断言。查看[契约](../../../contracts/v2/legacy-standalone-reset-capture-v1.md)、[fixture](../../../api/tests/Fixtures/LegacyStandaloneResetCapture/README.md)和[验证报告](legacy-standalone-reset-verification.json)。原 post-commit order reset 可独立接入连续链；未知结果重放仍是另一重置，force/fix-null/initial schedule、其他 writer、v2 周期投影与通知恢复仍待完成。
