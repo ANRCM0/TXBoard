@@ -14,6 +14,7 @@ final class OperationRegistry
         'user.payment-methods.list' => ['service' => 'user-gateway', 'actor' => 'user', 'versions' => ['2']],
         'user.subscription-summary.get' => ['service' => 'user-gateway', 'actor' => 'user', 'versions' => ['2']],
         'user.notice.list' => ['service' => 'user-gateway', 'actor' => 'user', 'versions' => ['2']],
+        'user.order-status.get' => ['service' => 'user-gateway', 'actor' => 'user', 'versions' => ['2']],
         'admin.order.get' => ['service' => 'admin-gateway', 'actor' => 'admin', 'versions' => ['1']],
     ];
 
@@ -61,7 +62,7 @@ final class OperationRegistry
                     && (!is_int($input->status) || $input->status < 0 || $input->status > 4))) {
                 throw new SliceFailure('INVALID_REQUEST', 400);
             }
-        } elseif ($operation === 'user.order.get') {
+        } elseif (in_array($operation, ['user.order.get', 'user.order-status.get'], true)) {
             StrictJson::exact($input, ['trade_no']);
             $max = $body->contract_version === '2' ? 128 : 64;
             if (!is_string($input->trade_no) || !preg_match('/\A[A-Za-z0-9_-]{1,'.$max.'}\z/D', $input->trade_no)) {

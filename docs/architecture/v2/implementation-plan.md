@@ -1,6 +1,6 @@
 # Core First v2 实施台账
 
-> 状态：B0、B1.1–B1.7 影子证据、Terms、身份旁观与固定 writer 捕获、B2.1–B2.3 单机升级、B3.1/B3.2 隔离用量、B3.3/B3.4 本地观察与持久事件桶、B4.1/B4.2 合成 Provider、B5.1–B5.5 本地只读 mTLS 接入、B6.1–B6.3 实验字节、离线加密与共享 owner 实验已实现；后续切片推进中。各整阶段仍按下表门禁验收。
+> 状态：B0、B1.1–B1.7 影子证据、Terms、身份旁观与固定 writer 捕获、B2.1–B2.3 单机升级、B3.1/B3.2 隔离用量、B3.3/B3.4 本地观察与持久事件桶、B4.1/B4.2 合成 Provider、B5.1–B5.6 本地只读 mTLS 接入、B6.1–B6.3 实验字节、离线加密与共享 owner 实验已实现；后续切片推进中。各整阶段仍按下表门禁验收。
 
 ## 1. 批次与关键路径
 
@@ -126,4 +126,10 @@ Gateway `6ea649b` 仅新增实验测试目录：19 单测、14 真实 Redis、1 
 
 新增 `user.subscription-summary.get` / `user.notice.list`，委托原 Account subscription 与 ContentReader；闭合 DTO 排除私有 URL/凭据，缺失套餐仍为 409，公告原可见性/排序/内容/分页保持。Gateway 本地 mTLS opt-in 保留现有公开 DTO；当前非 Admin User 授权不变。
 
-固定 Core `60e6eca` / Gateway `31bde17`：Core API 806 通过 / 29 跳过 / 6482 断言，Gateway 526、SDK 68，typecheck/build 及 33 项真实 mTLS 联调通过。[契约](../../../contracts/v2/core-internal-api/current-user-content-v2.md)及[证据](internal-user-content-verification.json)。未迁移匿名认证/写入、Admin 或生产 PKI。
+固定 Core `60e6eca` / Gateway `31bde17`：Core API 806 通过 / 29 跳过 / 6482 断言，Gateway 526、SDK 68，typecheck/build 及 35 项真实 mTLS 联调通过。[契约](../../../contracts/v2/core-internal-api/current-user-content-v2.md)及[证据](internal-user-content-verification.json)。未迁移匿名认证/写入、Admin 或生产 PKI。
+
+### B5.6 订单状态只读接入
+
+新增 `user.order-status.get`，委托原 Account order 查询，保留订单归属、0–4 状态及套餐已删除时的状态读取。Gateway 本地 mTLS opt-in 映射为现有 `{tradeNo,status}`，闭合 DTO 核对请求 trade_no，失败拒绝且无 Native 回退。至此现有 Gateway v1 受保护只读操作均可选择本地 Internal 上游；默认仍为 Native。
+
+固定 Core `dd3b4fd` / Gateway `257ff7e`：全 API 808 通过 / 29 跳过 / 6544 断言，Gateway 527、SDK 68、typecheck/build 和 35 项实际 Core/MariaDB/TLS1.3 联调通过。[契约](../../../contracts/v2/core-internal-api/current-order-status-v2.md)及[证据](internal-order-status-verification.json)。完整 Internal API、写入、Admin、生产 PKI 和 SC-v2 仍待验收。

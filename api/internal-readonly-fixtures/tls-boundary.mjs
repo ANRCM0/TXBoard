@@ -21,6 +21,7 @@ const operations = new Map([
   ['/txapi/internal/v1/operations/user.payment-methods.list', 'user-gateway'],
   ['/txapi/internal/v1/operations/user.subscription-summary.get', 'user-gateway'],
   ['/txapi/internal/v1/operations/user.notice.list', 'user-gateway'],
+  ['/txapi/internal/v1/operations/user.order-status.get', 'user-gateway'],
   ['/txapi/internal/v1/operations/admin.order.get', 'admin-gateway'],
 ]);
 const sans = new Map([

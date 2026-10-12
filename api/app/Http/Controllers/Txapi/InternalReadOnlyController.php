@@ -24,7 +24,10 @@ final class InternalReadOnlyController
             if ($actor->is_admin) {
                 abort(403);
             }
-            if ($operation['operation'] === 'user.subscription-summary.get') {
+            if ($operation['operation'] === 'user.order-status.get') {
+                $data = app(AccountController::class)->order($request, $input->trade_no)->getData(true)['data'];
+                $result = ['trade_no' => $data['trade_no'], 'status' => $data['status']];
+            } elseif ($operation['operation'] === 'user.subscription-summary.get') {
                 $native = app(AccountController::class)->subscription($request, app(UserService::class));
                 if ($native->getStatusCode() !== 200) {
                     return $native;
