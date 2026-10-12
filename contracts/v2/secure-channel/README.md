@@ -2,6 +2,8 @@
 
 > 状态：Target / Draft。本批冻结安全边界与验收要求，尚未冻结密码学字节格式；不能据此宣称 SC-v2 已实现或已获安全批准。
 
+B6.1 当前仅有 [实验 metadata codec](metadata-codec-prototype-v1.md) 与独立 Python/Node/Chromium 字节向量。它不执行加密、网络或业务授权，也不冻结正式密码协议；本页门禁继续生效。
+
 ## 1. 当前实现与目标
 
 当前 Gateway 提供可选 HPKE 请求加密（登录/注册/邮件验证码）和 Redis 防重放。响应、会话和其余业务调用尚不构成统一双向通道。现有 Theme SDK 和 `/gateway/v1` 是独立 current 协议；本契约不能悄悄改变其编码。

@@ -61,11 +61,15 @@ B3.3 的 [Node 连接管理前置切片](https://github.com/ANRCM0/TX-Node/blob/
 
 B3.3 的 [Service 本地观察器](https://github.com/ANRCM0/TX-Node/blob/main/docs/runtime-usage-observer-current.md) 已推送 `7eef49229442ef25458a9715caf056fcbdf2bb6f`。默认关闭，复用 v1 同一次采样，持久记录不可归属累计量与生命周期；容量或存储失败停止观察而保持 v1。Linux 全仓 race 376 个主测试、147 个子测试通过，无测试跳过。缓存边界、未采样尾部和恢复旧副本仍未知，未开启 v2 报送。
 
+B3.4 的 [本地原子事件桶基础](https://github.com/ANRCM0/TX-Node/blob/main/docs/local-event-buckets-current.md) 已推送 `974dd1f1d1da0dbb176b073724f6249531f16f07`。同一计数点记录不可归属事件，短锁串行封存、关闭与晚到 callback 保留原连接绑定；默认 Service 不启用。Linux 全仓 race 399 个主测试、159 个子测试通过。仅内存证据、无持久 sink；真实 sing UDP writer 绕过旧计数的覆盖缺口已实证并列为下一步修复前置。
+
 B4.1 的 [本地 Provider 合成进程切片](../../../contracts/v2/credential-provider/local-fixture-runtime-v1.md) 默认关闭，Core 先持久 operation，未知结果查询原 ID，私有秘密不进入 Core DTO/SQL。最终 SQLite 20 项、120 断言及 MariaDB 22 项、147 断言通过，固定提交快照全量 API 698 项、5012 断言通过，16 项引擎专测跳过。发行前重新校验当前授权、Subject 和 Terms 边界；此固定可信脚本是同 OS 身份进程，不能视为生产隔离 Provider，尚无 Node 秘密交付、撤销或卸载完成门禁。
 
 B4.2 的 [合成 Provider 撤销与清理](../../../contracts/v2/credential-provider/local-fixture-lifecycle-v1.md) 先提交永久 shadow fact，再执行私有清理；未知结果只查询原 operation。Disable 先阻止发行，有界游标和独立历史核验决定 fixture 清理完成，秘密删除后保留 receipts/tombstones。SQLite Provider 43 项通过、5 项跳过，MariaDB 48 项全部通过；固定 Core `8543668` 加本片全量 API 744 项、5484 断言通过，19 项引擎专测跳过且无警告。Node 收敛、生产 OS 隔离与 PluginManager 卸载仍未实现。
 
 B5.1 的 [本地只读 Internal API](../../../contracts/v2/core-internal-api/current-readonly-slice-v1.md) 由真实 mTLS 边界签发服务证明，Core 重新校验当前 Sanctum actor、User/Admin 角色、Admin path 和订单归属；SQL nonce 防重放、有限服务速率及无秘密审计均已实现。三个只读 operation 默认关闭且仅 local/testing 可启用。真实 Core/MariaDB/TLS 34 项和对抗上游超时 6 项通过；固定 Core `7622cab` 加本切片全量 API 737 项、5295 断言通过，16 项专测跳过，详见 [验证报告](internal-readonly-verification.json)。Gateway 客户端、完整 operation 和生产 PKI/私网拓扑门禁仍待实施。
+
+B6.1 的 [实验 metadata codec](../../../contracts/v2/secure-channel/metadata-codec-prototype-v1.md) 已推送 Gateway `6adea76c5259a43556dee611e7b932a72d008a3c`，提供独立 SDK 实验 subpath 与 Python/Node/Chromium 固定字节向量。固定 Linux 快照 Gateway 425 项、SDK 40 项和 typecheck/build 通过；实际 Chromium 6 项字节/hash检查、5 项拒绝检查通过。没有加密实现或业务路由，正式响应 key/nonce 构造、独立审查、共享 replay 与业务互操作仍待实施。
 
 首先建立只增不删的订阅/迁移映射骨架，保持现有 User 写入为唯一权威。在隔离数据库副本中，把旧用户映射到稳定 Subscription、Terms、Usage Period 与 Access Subject，再通过只读核对证明额度、有效期、用量和归属保持一致。
 
