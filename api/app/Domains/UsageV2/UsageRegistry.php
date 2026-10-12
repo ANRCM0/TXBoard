@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\DB;
 /** Isolated fixtures only. Epochs, tariffs and grants are always assigned by Core. */
 final class UsageRegistry
 {
-    public function __construct(private UsagePolicy $policy) {}
+    public function __construct(private UsagePolicy $policy, private ?UsageTermsBoundary $boundaries = null) {}
 
     public function source(int $nodeId, string $installationRef, int $now): object
     {
@@ -57,14 +57,14 @@ final class UsageRegistry
             if (!$subject || !$sub || !$terms || !$period || !$tariff || $subject->status !== 'active'
                 || $subject->revoked_at !== null || $sub->status !== 'active'
                 || (string) $terms->subscription_id !== (string) $sub->id || (string) $period->subscription_id !== (string) $sub->id
-                || (string) $period->terms_id !== (string) $termsId || (int) $tariff->node_id !== (int) $source->node_id
+                || (int) $tariff->node_id !== (int) $source->node_id
                 || $period->boundary_kind !== 'known' || $period->starts_at === null || $period->ends_at === null
                 || !self::covers($issued, $expires, $sub->starts_at, $sub->expires_at)
-                || !self::covers($issued, $expires, $terms->effective_from, $terms->effective_until)
                 || !self::covers($issued, $expires, $period->starts_at, $period->ends_at)
                 || !self::covers($issued, $expires, $tariff->effective_from, $tariff->effective_until)) {
                 throw new UsageError('USAGE_GRANT_OWNERSHIP_OR_COVERAGE');
             }
+            ($this->boundaries ?? app(UsageTermsBoundary::class))->freeze((string) $sub->id, (string) $termsId, $period, $issued, $expires);
             $data = ['source_id' => $sourceId, 'user_id' => (int) $sub->user_id, 'access_subject_id' => $subjectId,
                 'subscription_id' => (string) $sub->id, 'terms_id' => $termsId, 'usage_period_id' => $periodId,
                 'tariff_revision_id' => $tariffId, 'auth_version' => (string) $subject->auth_version,
@@ -78,19 +78,32 @@ final class UsageRegistry
     {
         if (!$this->policy->enabled()) { return null; }
         $this->policy->requireIsolated();
-        $source = DB::table('tx_node_usage_source')->where('node_id', $nodeId)->where('current', true)->first();
+        return DB::transaction(fn () => $this->capabilityLocked($nodeId, $now), 3);
+    }
+
+    private function capabilityLocked(int $nodeId, int $now): ?array
+    {
+        $source = DB::table('tx_node_usage_source')->where('node_id', $nodeId)->where('current', true)->sharedLock()->first();
         if (!$source) { return null; } $this->identity($source);
         $grants = []; $owners = [];
         $active = DB::table('tx_auth_snapshot')->where('source_id', $source->id)->whereNull('revoked_at')
-            ->where('issued_at', '<=', $now)->where('lease_expires_at', '>', $now)->orderBy('id')->limit(10001)->get();
+            ->where('issued_at', '<=', $now)->where('lease_expires_at', '>', $now)->orderBy('id')->limit(10001)->sharedLock()->get();
         if ($active->count() > 10000) { throw new UsageError('USAGE_GRANT_LIMIT', 503); }
         foreach ($active as $grant) {
-            $subject = DB::table('tx_access_subject')->where('id', $grant->access_subject_id)->first();
-            $sub = DB::table('tx_subscription')->where('id', $grant->subscription_id)->first();
+            $subject = DB::table('tx_access_subject')->where('id', $grant->access_subject_id)->sharedLock()->first();
+            $sub = DB::table('tx_subscription')->where('id', $grant->subscription_id)->sharedLock()->first();
             if (!$subject || !$sub || $subject->status !== 'active' || $subject->revoked_at !== null || $sub->status !== 'active'
                 || ($sub->expires_at !== null && (int) $sub->expires_at <= $now) || $sub->ended_at !== null
                 || (string) $subject->auth_version !== (string) $grant->auth_version
                 || (string) $subject->revocation_fact_version !== (string) $grant->revocation_version) { continue; }
+            $period = DB::table('tx_usage_period')->where('id', $grant->usage_period_id)->sharedLock()->first();
+            if (!$period) { throw new UsageError('USAGE_PERIOD_BOUNDARY'); }
+            try {
+                $boundary = ($this->boundaries ?? app(UsageTermsBoundary::class))->freeze((string) $sub->id, (string) $grant->terms_id, $period, $now, $now + 1);
+            } catch (UsageError $error) {
+                if (in_array($error->errorCode, ['USAGE_TERMS_BOUNDARY', 'USAGE_PERIOD_BOUNDARY'], true)) { continue; }
+                throw $error;
+            }
             $user = (string) $grant->user_id; $owner = (string) $grant->subscription_id.'\0'.(string) $grant->access_subject_id;
             if (isset($owners[$user]) && $owners[$user] !== $owner) { throw new UsageError('USAGE_GRANT_MAPPING_AMBIGUOUS', 503); }
             $owners[$user] = $owner;
@@ -99,7 +112,8 @@ final class UsageRegistry
                 'user_id' => (string) $grant->user_id, 'access_subject_id' => (string) $grant->access_subject_id,
                 'auth_snapshot_id' => (string) $grant->id, 'tariff_revision_id' => (string) $grant->tariff_revision_id,
                 'terms_id' => (string) $grant->terms_id, 'usage_period_id' => (string) $grant->usage_period_id,
-                'issued_at' => (int) $grant->issued_at, 'lease_expires_at' => (int) $grant->lease_expires_at,
+                'issued_at' => (int) $grant->issued_at, 'lease_expires_at' => min((int) $grant->lease_expires_at, (int) $period->ends_at,
+                    $boundary['terms_effective_until'] ?? PHP_INT_MAX, $sub->expires_at === null ? PHP_INT_MAX : (int) $sub->expires_at),
                 'revocation_version' => (string) $grant->revocation_version,
             ];
         }

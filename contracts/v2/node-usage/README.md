@@ -1,6 +1,6 @@
 # Node Usage v2：订阅计费与可靠批次
 
-状态：总体 **Target / Draft**。B3.1 已实现 [隔离接收切片](isolated-receipt-current.md) 和两条受隔离开关保护的 TXAPI HTTP 路由；生产权威、默认 Node Service 与 WSS 仍以 [Node v1 对接契约](../../node-protocol/txnode-integration-current.md) 为准。本文件其余目标不能视为已启用。
+状态：总体 **Target / Draft**。B3.1 已实现 [隔离接收切片](isolated-receipt-current.md) 和两条受隔离开关保护的 TXAPI HTTP 路由；B3.2 增加 [Terms 与周期半开边界对接](terms-boundary-current.md)。生产权威、默认 Node Service 与 WSS 仍以 [Node v1 对接契约](../../node-protocol/txnode-integration-current.md) 为准。本文件其余目标不能视为已启用。
 
 ## 1. 当前实现与目标
 

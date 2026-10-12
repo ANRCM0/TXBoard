@@ -8,7 +8,7 @@ use Throwable;
 
 final class UsageSettlement
 {
-    public function __construct(private UsagePolicy $policy, private ?Closure $fault = null) {}
+    public function __construct(private UsagePolicy $policy, private ?Closure $fault = null, private ?UsageTermsBoundary $boundaries = null) {}
 
     /** SQL outbox is the durable work index; duplicate scans are safe. */
     public function scan(int $limit, int $now): array
@@ -57,9 +57,10 @@ final class UsageSettlement
                     || !hash_equals($batch->payload_digest, 'sha256:'.hash('sha256', $batch->canonical_payload))) {
                     throw new UsageError('USAGE_FROZEN_EVIDENCE_CORRUPT');
                 }
-                $totals = []; $rawUp = '0'; $rawDown = '0';
+                $totals = []; $periodEntries = []; $rawUp = '0'; $rawDown = '0';
                 foreach ($entries as $entry) {
                     $pid = $entry['usage_period_id'];
+                    $periodEntries[$pid][] = $entry;
                     $totals[$pid] ??= ['up' => '0','down' => '0','billable' => '0','subscription_id' => $entry['subscription_id']];
                     $totals[$pid]['up'] = UsageMath::add($totals[$pid]['up'], $entry['billed_up_bytes']);
                     $totals[$pid]['down'] = UsageMath::add($totals[$pid]['down'], $entry['billed_down_bytes']);
@@ -76,6 +77,9 @@ final class UsageSettlement
                 foreach ($totals as $pid => $total) {
                     $period = DB::table('tx_usage_period')->where('id', $pid)->lockForUpdate()->first();
                     if (!$period || (string) $period->subscription_id !== $total['subscription_id']) { throw new UsageError('USAGE_FROZEN_PERIOD_MISSING'); }
+                    foreach ($periodEntries[$pid] as $entry) {
+                        ($this->boundaries ?? app(UsageTermsBoundary::class))->assertFrozen($entry, $period, (int) $batch->started_at, (int) $batch->ended_at);
+                    }
                     DB::table('tx_usage_period')->where('id', $pid)->update([
                         'upload_bytes' => UsageMath::add((string) $period->upload_bytes, $total['up']),
                         'download_bytes' => UsageMath::add((string) $period->download_bytes, $total['down']),

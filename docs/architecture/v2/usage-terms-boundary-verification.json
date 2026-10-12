@@ -1,0 +1,163 @@
+{
+    "stage":  "B3.2",
+    "status":  "verified_isolated_slice",
+    "verified_at_utc":  "2026-10-12T06:22:36Z",
+    "scope":  "isolated receipt/grant/settlement adapter for subscription Terms projection and period half-open boundaries",
+    "production_authority":  "legacy-v1",
+    "production_usage_v2_enabled":  false,
+    "contract":  "contracts/v2/node-usage/terms-boundary-current.md",
+    "source_provenance":  {
+                              "core_base_commit":  "03c867040563f999c2cc581d481f260c2fc3e516",
+                              "node_commit":  "51293a54371543410c06b3d4d2a71529c3a13a02",
+                              "core_slice_source_hashes":  {
+                                                               "api/app/Domains/UsageV2/UsageReceipts.php":  "e89ca0aa8615cc379fbeb01af420d14af18d9ad204b67dddbd0ed7f5dd504158",
+                                                               "api/app/Domains/UsageV2/UsageRegistry.php":  "b637d19153ec1c9bd1cede9c920e20747a08cea68e84c3a242454ec4f0c5d914",
+                                                               "api/app/Domains/UsageV2/UsageSettlement.php":  "bda8661af4ea398710dc1691ea6e0ca4d818a84301764dcd33903f1a5359637b",
+                                                               "api/app/Domains/UsageV2/UsageTermsBoundary.php":  "246ceba30e583e2eae2cac2584a59d7d03a9f8af339761158ae202de2d2933bf",
+                                                               "api/tests/Feature/UsageV2/UsageTermsBoundaryTest.php":  "d33a836cf3a40b850dcb58166cdd414ccdeb969740ac8c34340e274fb9985938",
+                                                               "contracts/v2/node-usage/terms-boundary-current.md":  "f9aed118c3142106743eaaf27cd271613e2195df75bc1a3bc79ec5e92a7c69d0",
+                                                               "contracts/v2/node-usage/README.md":  "e502c5f5afcba332a1e21a617b25735b548c2dccc84d8a075c36d6036c26c3c7"
+                                                           },
+                              "frozen_B1_4_dependency_hashes":  {
+                                                                    "api/app/Services/Subscription/SubscriptionTermsTimeline.php":  "faa83746abaed5f5e3d162d2d4ccf5c283377fafb9c40d5a7e631164dbc054fd",
+                                                                    "api/app/Services/Subscription/SubscriptionTermsShadowService.php":  "38536d5c8f6d32b795b01da3c3ba750b06f308af94421f732ff862531a06954c",
+                                                                    "api/database/migrations/2026_10_12_000005_create_subscription_terms_shadow_operations.php":  "9ec2d89192c80d772d0af75d498345ef83fbcb9fbd197f696cb004ec7e84ce81",
+                                                                    "api/tests/Feature/Subscription/SubscriptionTermsShadowTest.php":  "1c88ef2bea04610820d0945bbab4a1729de70355c08a498bb7cdbeb7d6e0fb17",
+                                                                    "contracts/v2/subscription-terms-shadow-v1.md":  "75323b5ca7eed28cd07659e96e579c47ec99a2c61c8c778b0c9eb668cdb92247"
+                                                                },
+                              "node_https_consumer_source_hashes":  {
+                                                                        "internal/usagev2/http.go":  "a57ca704d318eda03ef4841b60e577a813f01b9d88cff744c7f2180a16df105c",
+                                                                        "internal/usagev2/http_test.go":  "c68e70c98422bb02607790f397952907297a76b58306a4aa1355e9e81ed3852b",
+                                                                        "internal/usagev2/lock_linux.go":  "10e65b121f7f059b8b6377d77aab8ac06151df91bc3b9b3e88b216dac36d9092",
+                                                                        "internal/usagev2/lock_other.go":  "4fffa1ac2c1766f16e4799a145fb6d05102e5fc3de00440a19f96336fd9c622f",
+                                                                        "internal/usagev2/protocol.go":  "04b5689fbba02b0463a0172f2605a0bab72d135beb7969a84400c0c2712d4ca8",
+                                                                        "internal/usagev2/protocol_test.go":  "f2fbc151413367258af299a47666369298a5a62159fa6ee5c5109eb56981d779",
+                                                                        "internal/usagev2/reporter.go":  "1c3ae7c5228ae042a9201bd0122f5c9d79336aeab6f8c452c4052476cbb8d543",
+                                                                        "internal/usagev2/session.go":  "3ec702b8bfbd77c0be780de199c7cfc4f3ec4968fbdc7c1ab1580330bb629096",
+                                                                        "internal/usagev2/spool.go":  "4720ff9e2a4f7cdf0d4089ff9a763680316a82d84f5a2916c07a52ae373b386f",
+                                                                        "internal/usagev2/spool_test.go":  "399b3dce0e224f61dfa355de92c22a7a4e12bb53ab393702b30d283bcb1a2382"
+                                                                    },
+                              "historical_B3_1_report_preserved":  "docs/architecture/v2/usage-receipt-slice-verification.json"
+                          },
+    "verification":  {
+                         "full_api_sqlite":  {
+                                                 "passed":  678,
+                                                 "skipped":  14,
+                                                 "failures":  0,
+                                                 "assertions":  4892,
+                                                 "skipped_tests":  [
+                                                                       "Tests.Feature.Billing.OrderIdempotencyMysqlConcurrencyTest::test_concurrent_workers_serialize_one_hundred_replays_to_one_order",
+                                                                       "Tests.Feature.Subscription.CommerceShadowTest::test_real_mysql_sessions_replay_opening_once_with_database_unique_keys_and_user_locks",
+                                                                       "Tests.Feature.Subscription.PlanCatalogShadowTest::test_waiting_reader_uses_committed_revision_and_offers_after_a_stale_mysql_snapshot",
+                                                                       "Tests.Feature.Subscription.PlanCatalogShadowTest::test_revision_number_uses_current_read_after_another_session_appends_history",
+                                                                       "Tests.Feature.Subscription.SubscriptionSlotTest::test_real_mysql_sessions_race_to_one_activation_with_losing_transactions_rolled_back",
+                                                                       "Tests.Feature.Subscription.SubscriptionTermsShadowTest::test_real_sessions_with_same_expected_version_allow_exactly_one_change",
+                                                                       "Tests.Feature.Subscription.SubscriptionTermsShadowTest::test_real_sessions_same_business_key_replay_exactly_one_transition_and_adjustment",
+                                                                       "Tests.Feature.Subscription.SubscriptionTermsShadowTest::test_timeline_current_read_sees_committed_successor_inside_an_older_outer_snapshot",
+                                                                       "Tests.Feature.Subscription.SubscriptionTermsShadowTest::test_mutation_waiting_on_user_lock_sees_new_pending_evidence_and_refuses_boundary_change",
+                                                                       "Tests.Feature.UsageV2.UsageMysqlConcurrencyTest::test_real_mysql_receipt_races_worker_races_and_process_crash_preserve_one_atomic_settlement",
+                                                                       "Tests.Feature.UsageV2.UsageMysqlConcurrencyTest::test_registry_reuses_current_rows_inside_an_older_repeatable_read_snapshot",
+                                                                       "Tests.Feature.UsageV2.UsageTermsBoundaryTest::test_real_mysql_receipt_and_boundary_writers_serialize_without_reassigning_accepted_usage",
+                                                                       "Tests.Feature.UsageV2.UsageTermsBoundaryTest::test_real_mysql_pending_settlement_and_reset_preserve_closed_period_totals",
+                                                                       "Tests.Feature.UsageV2.UsageTermsBoundaryTest::test_real_mysql_old_repeatable_read_view_cannot_authorize_superseded_terms"
+                                                                   ]
+                                             },
+                         "usage_sqlite":  {
+                                              "passed":  45,
+                                              "skipped":  5,
+                                              "failures":  0,
+                                              "assertions":  213,
+                                              "skipped_tests":  [
+                                                                    "Tests.Feature.UsageV2.UsageMysqlConcurrencyTest::test_real_mysql_receipt_races_worker_races_and_process_crash_preserve_one_atomic_settlement",
+                                                                    "Tests.Feature.UsageV2.UsageMysqlConcurrencyTest::test_registry_reuses_current_rows_inside_an_older_repeatable_read_snapshot",
+                                                                    "Tests.Feature.UsageV2.UsageTermsBoundaryTest::test_real_mysql_receipt_and_boundary_writers_serialize_without_reassigning_accepted_usage",
+                                                                    "Tests.Feature.UsageV2.UsageTermsBoundaryTest::test_real_mysql_pending_settlement_and_reset_preserve_closed_period_totals",
+                                                                    "Tests.Feature.UsageV2.UsageTermsBoundaryTest::test_real_mysql_old_repeatable_read_view_cannot_authorize_superseded_terms"
+                                                                ]
+                                          },
+                         "terms_adapter_mariadb":  {
+                                                       "passed":  17,
+                                                       "skipped":  0,
+                                                       "failures":  0,
+                                                       "assertions":  176,
+                                                       "skipped_tests":  [
+
+                                                                         ]
+                                                   },
+                         "existing_usage_mariadb":  {
+                                                        "passed":  33,
+                                                        "skipped":  0,
+                                                        "failures":  0,
+                                                        "assertions":  254,
+                                                        "skipped_tests":  [
+
+                                                                          ]
+                                                    },
+                         "real_https_interoperation":  {
+                                                           "core_handshake_grants":  1,
+                                                           "https_verified":  true,
+                                                           "node_spool_restart_replay":  true,
+                                                           "payload_retained":  true,
+                                                           "same_batch_id":  "c07738e1bf945f7c6fb8f7d9404d263c",
+                                                           "same_payload_digest":  "sha256:e6fcfccf811a5fb12958f2d717e1bfb964999552108368052cd03cf50ee23cf9",
+                                                           "settlement_status":  "settled",
+                                                           "sql_receipt_id":  "receipt_476428e1-b5bb-44d8-98ac-1fab870afded"
+                                                       },
+                         "routes":  {
+                                        "registered_routes":  289,
+                                        "txapi_routes":  252,
+                                        "retired_routes":  0
+                                    },
+                         "documentation":  {
+                                               "passed":  true,
+                                               "markdown_files":  97,
+                                               "checked_relative_links":  378
+                                           },
+                         "native_schema":  {
+                                               "passed":  true,
+                                               "issues":  0
+                                           },
+                         "git_diff_check":  "passed",
+                         "independent_terms_sessions":  {
+                                                            "submit_vs_advance_or_reset":  "6 simultaneous two-session races; exactly one writer succeeds, failed receive has no persisted ACK or outbox",
+                                                            "settlement_vs_reset":  "original pending receipt settles exactly once into old closed period; expected-version retry if reset loses race",
+                                                            "old_repeatable_read_view":  "ordinary read proved stale after peer commit; grant, submit, settle and capability consumed current historical timeline"
+                                                        },
+                         "frozen_receipt_compatibility":  "retained B3.1 evidence without new marker settles after legal transition; original receipt replay bypasses current policy",
+                         "isolation_database":  "txboard_usage_test; exclusive test-only user; no concurrency_test or production database changes",
+                         "evidence_sha256":  {
+                                                 "core-usage-terms-full.xml":  "b574bb3be143b68ce6181c3df0a5fafad09118e89eebc8bf8bf77499cccd943b",
+                                                 "core-usage-terms-https.json":  "c76faf40858d9cc8c65158d1b73684d4eca240f2e7db46d43fcc8683b6413c40",
+                                                 "core-usage-terms-mysql.xml":  "9e100cb0363082b9d5b2a9738614f6568ab6dfcd3cb6ebc9378a3f98328cb955",
+                                                 "core-usage-terms-regression-mysql.xml":  "9e7e2c25cf6ba725c128becaf9d78bd9e2a28d16b5fd631fa3588cd6555f9453",
+                                                 "core-usage-terms-routes.json":  "a6f2456cbd103d0cb52264095c8299eaf0165ab483a0ca1ab323900f04c9dcee",
+                                                 "core-usage-terms-sqlite.xml":  "2c7cfee0657b3629ef01812714bb6ebbf4f923fc4a84df118a21f5196c360548"
+                                             },
+                         "local_evidence_directory":  ".usage-v2-lab/terms-evidence"
+                     },
+    "behavior":  [
+                     "immutable predecessor Terms row stays unchanged; transition caps its projected end",
+                     "end equal to predecessor boundary and start equal to successor boundary are accepted in separate batches",
+                     "new Terms grant may reference same-subscription period creation Terms without resetting allowance",
+                     "capability omits superseded grants and clamps remaining lease to known projected bounds",
+                     "gaps, overlap, unknown period evidence and corrupted timeline fail closed before first ACK",
+                     "legitimate reset and late/pending historical traffic retain original period, Terms and frozen tariff",
+                     "accepted crossing intervals in all five receipt states block Terms changes and resets",
+                     "boundary damage quarantines with original payload/receipt retained; audited repair can settle once"
+                 ],
+    "not_activated":  [
+                          "production authority switch",
+                          "default NodeService interval collector",
+                          "Provider issuance/runtime enforcement",
+                          "v2 WSS",
+                          "historical machine reassignment credentials",
+                          "notification outbox consumer",
+                          "payload/receipt automatic GC"
+                      ],
+    "limits":  [
+                   "Oracle MySQL 8 was not run; SQL race verification used MariaDB 11.4.12",
+                   "no production deployment or Octane/WSS runtime verification",
+                   "timeline and related period evidence are bounded to 1000 rows; larger or unknown histories require separate evidence/recovery",
+                   "full SQLite skipped engine-specific tests; usage equivalents ran separately here, other-domain MariaDB results belong to their stage reports"
+               ]
+}

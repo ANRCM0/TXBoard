@@ -9,7 +9,8 @@ use Illuminate\Support\Str;
 /** Redis/queue dispatch is never a prerequisite for a persisted ACK. */
 final class UsageReceipts
 {
-    public function __construct(private UsagePolicy $policy, private UsageRegistry $registry, private ?Closure $fault = null) {}
+    public function __construct(private UsagePolicy $policy, private UsageRegistry $registry, private ?Closure $fault = null,
+        private ?UsageTermsBoundary $boundaries = null) {}
 
     public function submit(int $nodeId, array $parsed, int $now): array
     {
@@ -112,10 +113,9 @@ final class UsageReceipts
         if (!$subject || !$sub || !$terms || !$period || !$tariff
             || (string) $sub->user_id !== (string) $grant->user_id || (int) $tariff->node_id !== (int) $source->node_id
             || (string) $subject->subscription_id !== (string) $sub->id || (string) $terms->subscription_id !== (string) $sub->id
-            || (string) $period->subscription_id !== (string) $sub->id || (string) $period->terms_id !== (string) $terms->id
+            || (string) $period->subscription_id !== (string) $sub->id
             || $period->boundary_kind !== 'known' || $period->starts_at === null || $period->ends_at === null
             || !UsageRegistry::covers($start, $end, $grant->issued_at, $grant->lease_expires_at)
-            || !UsageRegistry::covers($start, $end, $terms->effective_from, $terms->effective_until)
             || !UsageRegistry::covers($start, $end, $period->starts_at, $period->ends_at)
             || !UsageRegistry::covers($start, $end, $tariff->effective_from, $tariff->effective_until)
             || !UsageRegistry::covers($start, $end, $sub->starts_at, $sub->expires_at)
@@ -129,7 +129,8 @@ final class UsageReceipts
         if ((string) $subject->auth_version !== (string) $grant->auth_version && $subject->revoked_at === null) { throw new UsageError('USAGE_AUTH_VERSION_AMBIGUOUS'); }
         if ($subject->status !== 'active' && $subject->revoked_at === null) { throw new UsageError('USAGE_REVOCATION_TIME_UNKNOWN'); }
         if ($tariff->rounding_revision !== 'floor-per-direction-v1') { throw new UsageError('USAGE_ROUNDING_UNSUPPORTED'); }
-        return $entry + [
+        $boundary = ($this->boundaries ?? app(UsageTermsBoundary::class))->freeze((string) $sub->id, (string) $terms->id, $period, $start, $end);
+        return $entry + $boundary + [
             'subscription_id' => (string) $grant->subscription_id, 'user_id' => (string) $grant->user_id,
             'billed_up_bytes' => UsageMath::floor($entry['raw_up_bytes'], (string) $tariff->numerator, (string) $tariff->denominator),
             'billed_down_bytes' => UsageMath::floor($entry['raw_down_bytes'], (string) $tariff->numerator, (string) $tariff->denominator),
