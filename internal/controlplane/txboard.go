@@ -11,6 +11,7 @@ import (
  "github.com/ANRCM0/TX-Node/internal/nlog"
  "github.com/ANRCM0/TX-Node/internal/panel"
  "github.com/ANRCM0/TX-Node/internal/txboard"
+ "github.com/ANRCM0/TX-Node/internal/usagev2"
 )
 
 // TXBoardControlPlane speaks the native node/v1 protocol. Xboard transport
@@ -122,6 +123,14 @@ func (p *TXBoardControlPlane)Report(payload ReportPayload)error{
  return p.client.PostReport(body)
 }
 func (p *TXBoardControlPlane)ReportDevices(_ PushClient,_ map[int][]string){}
+
+// UsageV2Reporter negotiates a fresh authenticated handshake explicitly for a
+// bounded v2 collector. It never changes the existing v1 Service report path.
+func (p *TXBoardControlPlane)UsageV2Reporter(spoolDir,legacyPendingPath string,countersEmpty bool)(*usagev2.Reporter,error){
+ hs,err:=p.client.Handshake();if err!=nil{return nil,err}
+ return p.client.NewUsageV2Reporter(hs,spoolDir,legacyPendingPath,countersEmpty)
+}
+
 
 // TranslateTXBoardEvent turns native frame data into the runtime's provider-neutral model.
 func TranslateTXBoardEvent(raw txboard.Event,k config.KernelConfig)(Event,error){

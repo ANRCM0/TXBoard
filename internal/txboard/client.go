@@ -32,6 +32,8 @@ type Handshake struct {
   Enabled bool `json:"enabled"`
   Path string `json:"path"`
  } `json:"websocket"`
+ // Optional capability; the explicit v2 reporter validates it. Service remains v1.
+ UsageV2 json.RawMessage `json:"usage_v2,omitempty"`
 }
 type NodeList struct {
  Nodes []panel.MachineNode `json:"nodes"`
