@@ -276,17 +276,18 @@ class LegacyOrderFulfillmentCaptureTest extends TestCase
         $this->assertSame(['admin.user.update', 'order.create', 'order.fulfill'], array_column($report['events'], 'source_kind'));
     }
 
-    public function test_actual_uncaptured_cancellation_refund_remains_source_gap_and_blocks_fulfillment(): void
+    public function test_actual_cancellation_refund_closes_creation_chain_before_stable_fulfillment(): void
     {
         $user = $this->user(['balance' => 2000]); Sanctum::actingAs($user);
         $response = $this->postJson('/txapi/orders', ['plan_id' => $this->plan->id, 'period' => 'monthly'])->assertCreated();
         $created = Order::query()->where('trade_no', $response->json('data.trade_no'))->firstOrFail();
         $this->postJson('/txapi/orders/'.$created->trade_no.'/cancel')->assertOk();
         $this->assertSame(2000, (int) $user->fresh()->balance);
-        $this->assertContains('CAPTURE_SOURCE_GAP', $this->capture()->verify($user->id)['issues']);
-        $processing = $this->order($user); $before = $this->state();
-        $this->assertFailure('CAPTURE_SOURCE_GAP', fn () => $this->fulfill($processing));
-        $this->assertSame($before, $this->state());
+        $this->assertTrue($this->capture()->verify($user->id)['page_ok']);
+        $processing = $this->order($user); $this->fulfill($processing);
+        $report = $this->capture()->verify($user->id);
+        $this->assertTrue($report['page_ok']);
+        $this->assertSame(['order.create', 'order.cancel.refund', 'order.fulfill'], array_column($report['events'], 'source_kind'));
     }
 
     public function test_mixed_existing_writer_hashes_remain_unchanged_and_bounded_recovery_is_select_only(): void

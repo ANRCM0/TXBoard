@@ -15,6 +15,7 @@ final class LegacyUserMutationCapture
         'wallet.recharge.settle' => ['version' => 'wallet-recharge-capture/v1', 'actor_domain' => 'verified_payment_method'],
         'order.fulfill' => ['version' => 'order-fulfillment-capture/v1', 'actor_domain' => 'system_order_fulfillment'],
         'order.create' => ['version' => 'order-create-capture/v1', 'actor_domain' => 'authenticated_user'],
+        'order.cancel.refund' => ['version' => 'order-cancel-refund-capture/v1', 'actor_domain' => 'system_order_cancellation'],
     ];
     public const FIELDS = ['id', 'plan_id', 'group_id', 'transfer_enable', 'u', 'd',
         'speed_limit', 'device_limit', 'expired_at', 'last_reset_at', 'next_reset_at',
@@ -46,6 +47,19 @@ final class LegacyUserMutationCapture
         return $this->beginWriter($userId, 'order.create', $userId);
     }
 
+    /** At the native refund's first User-lock position, after the PENDING Order lock. */
+    public function beginOrderCancellationRefund(int $userId, int $orderId, mixed $rawRefundMinor): ?array
+    {
+        if (config('legacy_capture_shadow.enabled') === false) {
+            return null;
+        }
+        return $this->safe(function () use ($userId, $orderId, $rawRefundMinor): array {
+            $this->context();
+            $this->integer($rawRefundMinor, '2147483647', true);
+            return $this->beginWriter($userId, 'order.cancel.refund', $orderId, true);
+        });
+    }
+
     public function append(?array $before, int $actorId): void
     {
         $this->appendWriter($before, 'admin.user.update', $actorId);
@@ -66,16 +80,21 @@ final class LegacyUserMutationCapture
         $this->appendWriter($before, 'order.create');
     }
 
-    private function beginWriter(int $userId, string $kind, ?int $actorId = null): ?array
+    public function appendOrderCancellationRefund(?array $before): void
+    {
+        $this->appendWriter($before, 'order.cancel.refund');
+    }
+
+    private function beginWriter(int $userId, string $kind, ?int $actorId = null, bool $exclusiveSource = false): ?array
     {
         if (config('legacy_capture_shadow.enabled') === false) {
             return null;
         }
-        return $this->safe(function () use ($userId, $kind, $actorId): array {
+        return $this->safe(function () use ($userId, $kind, $actorId, $exclusiveSource): array {
             $context = $this->context();
             $this->require(DB::transactionLevel() > 0, 'CAPTURE_TRANSACTION_REQUIRED');
             if ($actorId !== null) { $this->integer($actorId, '2147483647', true); }
-            return ['context' => $context, 'source' => $this->source($userId), 'source_kind' => $kind,
+            return ['context' => $context, 'source' => $this->source($userId, $exclusiveSource), 'source_kind' => $kind,
                 'source_version' => self::POLICIES[$kind]['version'], 'actor_id' => $actorId];
         });
     }
@@ -200,7 +219,7 @@ final class LegacyUserMutationCapture
                         'content_hash' => $event['content_hash'], 'source_kind' => $event['source_kind'],
                         'source_version' => $event['source_version'], 'actor_id' => $event['actor_id'],
                         'actor_domain' => self::POLICIES[$event['source_kind']]['actor_domain']]
-                        + (in_array($event['source_kind'], ['order.fulfill', 'order.create'], true)
+                        + (in_array($event['source_kind'], ['order.fulfill', 'order.create', 'order.cancel.refund'], true)
                             ? ['capture_boundary' => 'transaction-only'] : []);
                     $result['next_cursor'] = (string) $sequence;
                 }
@@ -267,9 +286,10 @@ final class LegacyUserMutationCapture
         return $issues;
     }
 
-    private function source(int $userId): array
+    private function source(int $userId, bool $exclusive = false): array
     {
-        $row = DB::table('tx_user')->where('id', $userId)->select(self::FIELDS)->sharedLock()->first();
+        $query = DB::table('tx_user')->where('id', $userId)->select(self::FIELDS);
+        $row = ($exclusive ? $query->lockForUpdate() : $query->sharedLock())->first();
         $this->require($row !== null, 'CAPTURE_SOURCE_MISSING');
         return $this->snapshot((array) $row);
     }

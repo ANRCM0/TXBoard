@@ -11,6 +11,7 @@ use App\Models\TrafficResetLog;
 use App\Models\User;
 use App\Services\Plugin\HookManager;
 use App\Services\Subscription\LegacyUserMutationCapture;
+use App\Services\Subscription\LegacyCaptureShadowException;
 use App\Utils\Helper;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
@@ -426,7 +427,12 @@ class OrderService
                 if (!$order->save()) {
                     throw new \RuntimeException('Failed to save order status.');
                 }
+                $capture = null;
+                $captureBefore = null;
                 if ($order->balance_amount) {
+                    $capture = app(LegacyUserMutationCapture::class);
+                    $captureBefore = $capture->beginOrderCancellationRefund(
+                        (int) $order->user_id, (int) $order->id, $order->getRawOriginal('balance_amount'));
                     $userService = new UserService();
                     if (!$userService->addBalance($order->user_id, $order->balance_amount)) {
                         throw new \RuntimeException('Failed to add balance.');
@@ -443,6 +449,7 @@ class OrderService
                         $coupon->saveOrFail();
                     }
                 }
+                $capture?->appendOrderCancellationRefund($captureBefore);
                 return $order;
             });
 
@@ -453,6 +460,9 @@ class OrderService
             $this->order = $cancelledOrder;
             HookManager::call('order.cancel.after', $cancelledOrder);
             return true;
+        } catch (LegacyCaptureShadowException) {
+            Log::error('LEGACY_ORDER_CANCELLATION_CAPTURE_FAILED');
+            return false;
         } catch (\Exception $e) {
             Log::error($e);
             return false;

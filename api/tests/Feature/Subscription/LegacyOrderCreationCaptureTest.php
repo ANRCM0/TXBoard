@@ -195,7 +195,9 @@ class LegacyOrderCreationCaptureTest extends TestCase
         DB::enableQueryLog(); DB::flushQueryLog();
         for ($i = 0; $i < 100; $i++) { $this->keyedPost('replay-original')->assertCreated()->assertJsonPath('data.trade_no', $order->trade_no); }
         $this->assertCaptureSqlAbsent(); $this->assertSame(1, $calls); $this->assertSame($state, $this->state());
+        config(['legacy_capture_shadow.currency' => 'USD', 'legacy_capture_shadow.enabled' => true]);
         $this->postJson('/txapi/orders/'.$order->trade_no.'/cancel')->assertOk();
+        config(['legacy_capture_shadow.currency' => 'CNY', 'legacy_capture_shadow.enabled' => 'invalid']);
         DB::table('tx_order')->where('id', $order->id)->update(['status' => Order::STATUS_COMPLETED]);
         Schema::drop('tx_legacy_capture_shadow_event'); Schema::drop('tx_legacy_capture_shadow_stream');
         DB::flushQueryLog(); $this->keyedPost('replay-original')->assertCreated()->assertJsonPath('data.trade_no', $order->trade_no);
