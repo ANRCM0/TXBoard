@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Txapi;
 
 use App\Core\Http\TxapiResponse;
 use App\Models\User;
+use App\Services\Subscription\LegacyUserMutationCapture;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -26,9 +27,12 @@ final class CommissionController
             if ($amount > (int) $user->commission_balance) {
                 return 'INSUFFICIENT_COMMISSION';
             }
+            $capture = app(LegacyUserMutationCapture::class);
+            $captureBefore = $capture->beginCommissionTransfer((int) $user->id);
             $user->commission_balance -= $amount;
             $user->balance += $amount;
             $user->saveOrFail();
+            $capture->appendCommissionTransfer($captureBefore);
             return 'OK';
         });
         if ($result !== 'OK') {

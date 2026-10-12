@@ -176,6 +176,12 @@ SQLite 18 通过 / 2 跳过 / 167 断言，专用 MariaDB 20 / 0 / 182；固定 
 
 固定 Core `a7e73b1` / Gateway `8c03a78` 加十六文件：专项13通过/166断言，全API872通过/40引擎专测跳过/7697断言，Gateway596、SDK68、typecheck/build及48项真实MariaDB/TLS1.3联调通过。边界检查先清公共缓存，另验证一次MISS/HIT只生成一条审计；缓存仍遵守原TTL，不作为当前授权事实。数值溢出、超大响应、证书拒绝和断线均在cache miss时失败而无Native回退。[契约](../../../contracts/v2/core-internal-api/local-public-display-v1.md)及[精确源码和日志证据](internal-public-read-verification.json)。匿名登录/注册/邮件、Admin、生产PKI与SC-v2仍待实施。
 
+### B1.11 隔离副本佣金转余额事务捕获
+
+在原CommissionController单次User事务内，原最低金额/资金拒绝之后、余额变化之前开始捕获，save后append；两账户变化、事件和mapping失效共同提交或回滚。固定 `commission.transfer` policy只引用实际owner User，原金额、最低额继承/rounding、角色和响应保持。原请求没有幂等键，足够资金时相同POST可合法划转两次；未知提交不能被当作安全重试，事件未应用到资金/Terms/用量投影。
+
+专项Core `ceea19b` 加四文件：SQLite14通过/4跳过/300断言，MariaDB18/0/348；旧五类writer和原路径SQLite107/23/1837、MariaDB100/0/1727。最终新快照基于已推送 `d2c3026`：全API920通过/50引擎专测跳过/8537断言。真实one/two winner、旧MVCC当前充值tail、SIGKILL提交前后、bearer args0保密回滚及旧hash/context通过。[契约](../../../contracts/v2/legacy-user-mutation-capture-v1.md)及[两个冻结来源、源码和六份原始日志](legacy-commission-transfer-capture-verification.json)。捕获默认关闭，完整writer覆盖与生产切换仍未验收。
+
 ### B5.9 隔离原生账户登录 mTLS 接入
 
 新增固定 `auth.login` version1，Core/Gateway 各有额外严格默认关闭开关，要求local/testing和隔离副本。委托真实AuthLogin、AuthController、LoginService及Sanctum，保留密码空格、旧hash算法、封禁、原密码预算和10次domain/IP限流；技术审计actor为0。只接受确认关闭的CAPTCHA策略，缓存/已加载策略漂移或读取失败拒绝，不访问外部验证码服务。原生Admin账户仍可按原登录语义发行会话，但受保护User操作拒绝Admin，未开放Admin Gateway。
