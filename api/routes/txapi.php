@@ -56,6 +56,11 @@ use App\Http\Controllers\Txapi\TicketController;
 use App\Http\Controllers\Txapi\PublicController;
 use Illuminate\Support\Facades\Route;
 
+// Local/testing-only current read slice. Service proof + final Core actor authorization are both required.
+Route::prefix('internal/v1')->middleware(\App\Http\Middleware\InternalServiceProof::class)->group(function () {
+    Route::post('operations/{id}', [\App\Http\Controllers\Txapi\InternalReadOnlyController::class, 'execute']);
+});
+
 // Versioned TX-Node control plane; scoped bearer credentials, separate from user
 // auth. Never expose node credentials in URLs. No V1/V2 adapter is registered.
 Route::prefix('node/v1')->middleware(TxNodeAuth::class)->group(function () {

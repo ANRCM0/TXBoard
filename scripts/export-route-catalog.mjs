@@ -15,6 +15,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 export const classify = (uri) => {
   const p = '/' + String(uri).replace(/^\/+/, '');
   if (p.startsWith('/txapi/admin/')) return ['TXAPI admin', 'admin'];
+  if (p.startsWith('/txapi/internal/')) return ['TXAPI Internal service', 'internal-service'];
   if (p.startsWith('/txapi/node/v1/') || p.startsWith('/txapi/node/v2/usage/')) return ['TXAPI Node HTTP', 'node'];
   if (p.startsWith('/txapi/payment/webhook/')) return ['Native payment callback', 'provider-signature'];
   if (p.startsWith('/txapi/agent/v1/')) return ['TXAPI Agent runtime', 'agent'];
@@ -94,12 +95,15 @@ export function assertCurrentBoundaries(items) {
   });
   const unguardedNodes = items.filter(x => x.family === 'TXAPI Node HTTP' &&
     !x.middleware.split(',').some(v => v.trim() === 'App\\Http\\Middleware\\TxNodeAuth'));
-  if (missing.length || obsolete.length || unguarded.length || unguardedNodes.length) {
+  const unguardedInternal = items.filter(x => x.family === 'TXAPI Internal service' &&
+    !x.middleware.split(',').some(v => v.trim() === 'App\\Http\\Middleware\\InternalServiceProof'));
+  if (missing.length || obsolete.length || unguarded.length || unguardedNodes.length || unguardedInternal.length) {
     throw new Error(JSON.stringify({
       missing_current_routes: missing,
       legacy_routes: obsolete.map(x => x.method+' '+x.path),
       unguarded_native_admin: unguarded.map(x => x.method+' '+x.path),
       unguarded_native_node: unguardedNodes.map(x => x.method+' '+x.path),
+      unguarded_internal_service: unguardedInternal.map(x => x.method+' '+x.path),
     }, null, 2));
   }
 }
