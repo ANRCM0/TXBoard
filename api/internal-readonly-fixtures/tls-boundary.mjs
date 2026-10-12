@@ -14,6 +14,7 @@ if (initial.environment !== 'testing' || initial.listen_host !== '127.0.0.1'
   throw new Error('Only fixed loopback testing ports are supported');
 }
 const operations = new Map([
+  ['/txapi/internal/v1/operations/auth.login', 'user-gateway'],
   ['/txapi/internal/v1/operations/public.site-config.get', 'user-gateway'],
   ['/txapi/internal/v1/operations/public.plan.list', 'user-gateway'],
   ['/txapi/internal/v1/operations/user.profile.get', 'user-gateway'],
@@ -27,7 +28,7 @@ const operations = new Map([
   ['/txapi/internal/v1/operations/user.order.create', 'user-gateway'],
   ['/txapi/internal/v1/operations/admin.order.get', 'admin-gateway'],
 ]);
-const anonymousOperations = new Set(['/txapi/internal/v1/operations/public.site-config.get', '/txapi/internal/v1/operations/public.plan.list']);
+const anonymousOperations = new Set(['/txapi/internal/v1/operations/public.site-config.get', '/txapi/internal/v1/operations/public.plan.list', '/txapi/internal/v1/operations/auth.login']);
 const sans = new Map([
   ['DNS:user-gateway.internal', 'user-gateway'],
   ['DNS:admin-gateway.internal', 'admin-gateway'],

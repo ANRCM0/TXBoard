@@ -25,7 +25,7 @@ final class InternalServiceProof
         try {
             $operation = OperationRegistry::request($request);
             $identity = app(ServiceProofVerifier::class)->verify($request, $operation);
-            $anonymous = $operation['definition']['actor'] === 'anonymous';
+            $anonymous = in_array($operation['definition']['actor'], ['anonymous', 'login'], true);
             if ($anonymous) {
                 // Guest hooks must not inherit a previous long-lived request's cached User.
                 Auth::forgetGuards();
@@ -47,6 +47,8 @@ final class InternalServiceProof
             $request->attributes->set('internal.readonly.identity', $identity);
             try {
                 $response = $anonymous ? $next($request) : app(TxapiUser::class)->handle($request, $next);
+            } catch (SliceFailure $failure) {
+                $response = TxapiResponse::error($request, $failure->errorCode, 'Internal operation rejected', $failure->status);
             } catch (\Throwable $exception) {
                 $response = TxapiErrorRenderer::render($request, $exception);
             }
@@ -60,12 +62,14 @@ final class InternalServiceProof
             app(ServiceState::class)->audit($identity, $operation['operation'], $anonymous ? 0 : (int) $actor->id,
                 TxapiResponse::requestId($request), $response->getStatusCode(), $payload['error']['code'] ?? null);
         } catch (SliceFailure $failure) {
-            $response = TxapiResponse::error($request, $failure->errorCode, 'Internal operation rejected', $failure->status);
+            $code = isset($operation) && $operation['definition']['actor'] === 'login' && $failure->errorCode === 'RATE_LIMITED'
+                ? 'SERVICE_RATE_LIMITED' : $failure->errorCode;
+            $response = TxapiResponse::error($request, $code, 'Internal operation rejected', $failure->status);
         } catch (\Throwable) {
             // Database/config/cryptographic errors never leak through logs or debug envelopes.
             $response = TxapiResponse::error($request, 'DEPENDENCY_UNAVAILABLE', 'Internal operation unavailable', 503);
         }
-        if ($response->getStatusCode() === 429) {
+        if ($response->getStatusCode() === 429 && !$response->headers->has('Retry-After')) {
             $response->headers->set('Retry-After', (string) (60 - time() % 60));
         }
         return $response->header('Cache-Control', 'private, no-store');

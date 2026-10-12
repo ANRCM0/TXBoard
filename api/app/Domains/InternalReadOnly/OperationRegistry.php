@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 final class OperationRegistry
 {
     public const OPERATIONS = [
+        'auth.login' => ['service' => 'user-gateway', 'actor' => 'login', 'versions' => ['1']],
         'public.site-config.get' => ['service' => 'user-gateway', 'actor' => 'anonymous', 'versions' => ['1']],
         'public.plan.list' => ['service' => 'user-gateway', 'actor' => 'anonymous', 'versions' => ['1']],
         'user.profile.get' => ['service' => 'user-gateway', 'actor' => 'user', 'versions' => ['1', '2']],
@@ -29,6 +30,10 @@ final class OperationRegistry
             throw new SliceFailure('UNKNOWN_OPERATION', 400);
         }
         if ($definition['actor'] === 'anonymous' && config('internal_api_slice.public_read_enabled') !== true) {
+            throw new SliceFailure('OPERATION_DISABLED', 404);
+        }
+        if ($definition['actor'] === 'login' && (config('internal_api_slice.login_enabled') !== true
+            || config('core_shadow.isolated_copy') !== true)) {
             throw new SliceFailure('OPERATION_DISABLED', 404);
         }
         if ($operation === 'user.order.create' && (config('internal_api_slice.order_write_enabled') !== true
@@ -58,7 +63,20 @@ final class OperationRegistry
             throw new SliceFailure('INVALID_REQUEST', 400);
         }
         $input = $body->input;
-        if ($definition['actor'] === 'anonymous') {
+        if ($definition['actor'] === 'login') {
+            $keys = ['email', 'password'];
+            $limits = ['email' => 254, 'password' => 1024, 'turnstile_token' => 4096,
+                'recaptcha_v3_token' => 4096, 'recaptcha_data' => 4096, 'email_code' => 128];
+            foreach ($limits as $field => $max) {
+                if (property_exists($input, $field)) {
+                    if (!in_array($field, $keys, true)) $keys[] = $field;
+                    if (!is_string($input->$field) || mb_strlen($input->$field) > $max) {
+                        throw new SliceFailure('INVALID_REQUEST', 400);
+                    }
+                }
+            }
+            StrictJson::exact($input, $keys);
+        } elseif ($definition['actor'] === 'anonymous') {
             StrictJson::exact($input, []);
         } elseif ($operation === 'user.order.create') {
             $keys = ['plan_id', 'period', 'idempotency_key'];

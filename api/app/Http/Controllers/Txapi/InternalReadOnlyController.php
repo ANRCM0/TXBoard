@@ -19,6 +19,9 @@ final class InternalReadOnlyController
         $operation = $request->attributes->get('internal.readonly.operation');
         $input = $operation['body']->input;
         $version = $operation['body']->contract_version;
+        if ($operation['definition']['actor'] === 'login') {
+            return app(\App\Domains\InternalReadOnly\InternalLoginDispatcher::class)->execute($request, $input);
+        }
         $actor = $operation['definition']['actor'] === 'anonymous' ? null : Auth::guard('sanctum')->user();
         if ($operation['definition']['actor'] === 'anonymous') {
             if ($operation['operation'] === 'public.site-config.get') {

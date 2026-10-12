@@ -176,6 +176,12 @@ SQLite 18 通过 / 2 跳过 / 167 断言，专用 MariaDB 20 / 0 / 182；固定 
 
 固定 Core `a7e73b1` / Gateway `8c03a78` 加十六文件：专项13通过/166断言，全API872通过/40引擎专测跳过/7697断言，Gateway596、SDK68、typecheck/build及48项真实MariaDB/TLS1.3联调通过。边界检查先清公共缓存，另验证一次MISS/HIT只生成一条审计；缓存仍遵守原TTL，不作为当前授权事实。数值溢出、超大响应、证书拒绝和断线均在cache miss时失败而无Native回退。[契约](../../../contracts/v2/core-internal-api/local-public-display-v1.md)及[精确源码和日志证据](internal-public-read-verification.json)。匿名登录/注册/邮件、Admin、生产PKI与SC-v2仍待实施。
 
+### B5.9 隔离原生账户登录 mTLS 接入
+
+新增固定 `auth.login` version1，Core/Gateway 各有额外严格默认关闭开关，要求local/testing和隔离副本。委托真实AuthLogin、AuthController、LoginService及Sanctum，保留密码空格、旧hash算法、封禁、原密码预算和10次domain/IP限流；技术审计actor为0。只接受确认关闭的CAPTCHA策略，缓存/已加载策略漂移或读取失败拒绝，不访问外部验证码服务。原生Admin账户仍可按原登录语义发行会话，但受保护User操作拒绝Admin，未开放Admin Gateway。
+
+固定Core `ceea19b` / Gateway `19cf371` 加二十文件：专项19通过/237断言，全API906通过/46引擎专测跳过/8237断言，Gateway671、SDK68、typecheck/build及57项真实MariaDB/TLS1.3联调通过。首次测试定位并修复内层Laravel路由提前处理异常的问题：本地执行器先返回安全策略/异常结果，参数trace不进入全局报告，原生处理不变。真实TLS保留原伪造代理头403，提交后审计失败503可留下已提交的未知会话，现有会话撤销已实证；无自动重试、token receipt或原token恢复。[契约](../../../contracts/v2/core-internal-api/local-isolated-login-v1.md)及[源码、两快照和原始日志证据](internal-isolated-login-verification.json)。注册/邮件/恢复、真实CAPTCHA、生产PKI与SC-v2仍待验收。
+
 ### B1.10 隔离副本取消退款事务捕获
 
 在原PENDING Order → User → Coupon事务内记录实际 `balance_amount` 退款，状态、退款、优惠码名额、事件和mapping失效共同提交或回滚。取消采用exclusive current User读取，旧四类writer保持shared current读取；固定Order工作项actor不推定发起User/Admin或资金来源。原取消false/409、支付状态竞争、两小时任务和零退款路径保持，capture继续默认关闭。
