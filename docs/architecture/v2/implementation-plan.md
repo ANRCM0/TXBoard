@@ -106,8 +106,18 @@ B6.2 的 [离线加密实验](../../../contracts/v2/secure-channel/offline-crypt
 
 Gateway 的旧 BFF/Theme 路线作为历史资料保留；影响统一 Admin/User Gateway、独立 Frontend 和 SC-v2 的旧目标，以本台账及对应版本化契约为后续实施依据。
 
-### B1.7 ??????????
+### B1.7 隔离副本充值结算捕获
 
-`WalletRechargeService::settleVerified` ?? Recharge ? User ????????????????????????????????? ACK ???? local/testing ??????? payment actor domain??????????????????????????????????? Subscription/????????????????
+`WalletRechargeService::settleVerified` 在原 Recharge → User 事务锁序中记录已验签充值的余额变化，保持本金、手续费、重复回调及原 ACK 语义。仅 local/testing 显式启用；固定 payment actor domain，不记录回调、商户密钥或请求正文。同事务使影子映射失效，证据尚未应用到 Subscription/钱包投影，完整写入覆盖仍待补齐。
 
-???? `a51d572`??? SQLite 13 ?? / 4 ?? / 177 ???MariaDB 17 / 0 / 222?? Admin ?? SQLite 21 / 4 / 230?MariaDB 25 / 0 / 271?? API 799 ?? / 29 ?? / 6334 ???????????? SIGKILL??????????????????[???????](legacy-recharge-capture-verification.json)?
+固定基线 `a51d572`：充值 SQLite 13 通过 / 4 跳过 / 177 断言，MariaDB 17 / 0 / 222；原 Admin 捕获 SQLite 21 / 4 / 230，MariaDB 25 / 0 / 271；全 API 799 通过 / 29 跳过 / 6334 断言。独立并发、提交前后 SIGKILL、开启异常参数后的日志保密检查通过。[源码及验收证据](legacy-recharge-capture-verification.json)。
+
+### B5.4 用户统计与支付方式只读接入
+
+新增 `user.dashboard.get` / `user.payment-methods.list`，委托原 Account/Billing 查询；Gateway 保留公开 DTO，支付方式仍要求当前非 Admin User，不初始化 Provider 或重算收费。local/testing 显式 mTLS opt-in，生产入口仍关闭。
+
+最终组合固定基线 Core `79a3854`、Gateway `6ea649b`：Core API 803 通过 / 29 跳过 / 6422 断言，Gateway 512、SDK 68，typecheck/build 及 29 项实际本机 mTLS 联调通过。[契约](../../../contracts/v2/core-internal-api/current-user-display-v2.md)及[验收](internal-user-display-verification.json)。其余 Operation、生产 PKI、Admin 接入仍待完成。
+
+### B6.3 共享响应所有权隔离实验
+
+Gateway `6ea649b` 仅新增实验测试目录：19 单测、14 真实 Redis、1 个实际 TTL 检查通过，64 客户端/4 worker 下观察到一次响应加密。证据只适用于连续主节点且不丢失 claim 的假设；Redis 检查与 WebCrypto 非原子，未知丢失/恢复/HA 仍阻断所有真实网络或业务消费方。[合同与范围](../../../contracts/v2/secure-channel/shared-owner-experiment-v1.md)。

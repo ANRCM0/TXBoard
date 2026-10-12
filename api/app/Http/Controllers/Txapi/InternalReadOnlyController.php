@@ -22,7 +22,16 @@ final class InternalReadOnlyController
             if ($actor->is_admin) {
                 abort(403);
             }
-            if ($operation['operation'] === 'user.order.list') {
+            if ($operation['operation'] === 'user.dashboard.get') {
+                $result = app(AccountController::class)->dashboardStats($request)->getData(true)['data'];
+            } elseif ($operation['operation'] === 'user.payment-methods.list') {
+                $result = app(BillingController::class)->methods($request)->getData(true)['data'];
+                foreach ($result as &$method) {
+                    $method['id'] = (string) $method['id'];
+                    $method['fee_fixed_minor'] = (string) $method['fee_fixed_minor'];
+                }
+                unset($method);
+            } elseif ($operation['operation'] === 'user.order.list') {
                 // Use the existing owner/filter/order query. A fresh GET input bag
                 // prevents the Internal envelope from becoming native query input.
                 $native = app(AccountController::class)->orders(Request::create('/txapi/orders', 'GET', (array) $input));

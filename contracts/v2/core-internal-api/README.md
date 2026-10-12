@@ -92,3 +92,5 @@ Gateway 负责 Web 传输、SC-v2、请求结构及 DTO 适配。Core 负责登�
 - 真实 Core/MySQL/Redis + Gateway 验收通过，Operation allow-list 和旧调用退出清单齐备，才能迁移对应 Web 入口。
 
 [领域模型](../../../docs/architecture/v2/core-domain-model.md) · [升级契约](../upgrade-manifest/README.md) · [SC-v2](../secure-channel/README.md)
+
+B5.4: [local User dashboard and payment-method display reads](current-user-display-v2.md), with the same version-2 User identity and local/testing gates.

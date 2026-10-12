@@ -10,6 +10,8 @@ final class OperationRegistry
         'user.profile.get' => ['service' => 'user-gateway', 'actor' => 'user', 'versions' => ['1', '2']],
         'user.order.get' => ['service' => 'user-gateway', 'actor' => 'user', 'versions' => ['1', '2']],
         'user.order.list' => ['service' => 'user-gateway', 'actor' => 'user', 'versions' => ['2']],
+        'user.dashboard.get' => ['service' => 'user-gateway', 'actor' => 'user', 'versions' => ['2']],
+        'user.payment-methods.list' => ['service' => 'user-gateway', 'actor' => 'user', 'versions' => ['2']],
         'admin.order.get' => ['service' => 'admin-gateway', 'actor' => 'admin', 'versions' => ['1']],
     ];
 
@@ -43,7 +45,7 @@ final class OperationRegistry
             throw new SliceFailure('INVALID_REQUEST', 400);
         }
         $input = $body->input;
-        if ($operation === 'user.profile.get') {
+        if (in_array($operation, ['user.profile.get', 'user.dashboard.get', 'user.payment-methods.list'], true)) {
             StrictJson::exact($input, []);
         } elseif ($operation === 'user.order.list') {
             $keys = ['page', 'per_page'];
