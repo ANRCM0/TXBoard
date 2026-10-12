@@ -1,6 +1,6 @@
 # Core Data Model v2
 
-> 状态：Target / Draft · 更新：2026-10-12 · 本文件是逻辑数据与不变量规范，尚无对应 Models/Migrations；B1 分批实现，B3/B4 补齐流量及凭据协议，财务实现需独立验收。
+> 状态：总体 Target / Draft · 更新：2026-10-12 · 订阅影子 Schema/Models 已按 [B1.1](subscription-shadow-implementation.md) 实现；本文件其余逻辑目标不表示运行时已启用。B3/B4 补齐流量及凭据协议，财务实现需独立验收。
 
 ## 当前数据与统一单位
 

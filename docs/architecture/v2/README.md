@@ -1,6 +1,6 @@
 # Core First v2：B0 架构与实施基线
 
-> 2026-10-12。方向：Core First。实现状态：B0 文档、静态盘点和本地验证；v2 业务、协议与部署仍为 Target / Draft。
+> 2026-10-12。方向：Core First。B0 本地基线与 B1.1 隔离订阅影子切片已实现；其余 v2 能力按各契约区分 Current / Target。
 
 这轮建设从现有 Laravel、前端、Gateway、Node 和 Deploy 演进。Core 是唯一业务与数据权威；先补齐契约、兼容检测和恢复能力，再切换写入与调用，最后清理没有消费者的旧实现。
 
@@ -10,7 +10,7 @@
 | --- | --- | --- |
 | CORE-001 当前业务与数据库清查 | [完整静态清单](baseline-inventory.md)、[JSON](baseline-inventory.json)、[基线验证](baseline-verification.md) | 静态扫描不代替真实路由注册表、数据库与动态调用图 |
 | CORE-002 Core v2 领域边界 | [Core First ADR 与边界](core-boundaries.md)、[运行角色](runtime-topology.md) | 当前权限和 v1 包格式继续生效 |
-| CORE-003 数据模型 v2 | [模型规范](core-domain-model.md)、[增量演进](core-evolution.md) | 没有新增 Migration 或执行回填 |
+| CORE-003 数据模型 v2 | [模型规范](core-domain-model.md)、[增量演进](core-evolution.md)、[B1.1 实现](subscription-shadow-implementation.md) | 新模型只用于隔离回填，不切换生产权威 |
 | CORE-004 Credential Provider v1 | [插件平台](plugin-platform.md)、[Provider 契约](../../../contracts/v2/credential-provider/README.md) | 新生命周期、租约与隔离运行尚未实现 |
 | CORE-005 版本和升级契约 | [兼容矩阵](compatibility-matrix.md)、[Upgrade Manifest](../../../contracts/v2/upgrade-manifest/README.md) | 拟议 CLI 不等于当前可执行命令 |
 | CORE-006 Core Internal API v1 | [Internal API](../../../contracts/v2/core-internal-api/README.md)、[SC-v2 边界](../../../contracts/v2/secure-channel/README.md) | 尚未开放内部服务身份或管理员 Gateway |
