@@ -13,6 +13,32 @@ if (!$app->environment('testing') || config('database.default') !== 'mysql'
 $user = App\Models\User::query()->where('email', 'internal-user@example.test')->firstOrFail();
 $order = App\Models\Order::query()->where('trade_no', 'internal-discounted-order')->firstOrFail();
 match ($argv[2] ?? '') {
+    'email-prepare' => admin_setting(['captcha_enable' => 0, 'email_whitelist_enable' => 0,
+        'email_whitelist_suffix' => ['example.test'], 'email_host' => '',
+        'app_name' => 'Local Email Fixture', 'app_url' => 'https://example.test']),
+    'email-whitelist' => admin_setting(['captcha_enable' => 0, 'email_whitelist_enable' => 1,
+        'email_whitelist_suffix' => ['other.test']]),
+    'email-state' => (function (): void {
+        $email = 'internal-user@example.test';
+        $codeKey = App\Utils\CacheKey::get('EMAIL_VERIFY_CODE', $email);
+        $cooldownKey = App\Utils\CacheKey::get('LAST_SEND_EMAIL_VERIFY_TIMESTAMP', $email);
+        $cache = Illuminate\Support\Facades\Cache::store('redis');
+        $prefix = $cache->getStore()->getPrefix();
+        $redis = $cache->getStore()->connection();
+        $code = $cache->get($codeKey);
+        $audits = Illuminate\Support\Facades\DB::table('tx_internal_readonly_audits')
+            ->where('operation', 'auth.email-code.send')->get();
+        if ($audits->contains(fn ($row) => (int) $row->actor_id !== 0)) {
+            throw new RuntimeException('Invalid email audit actor');
+        }
+        echo json_encode(['mail_rows' => App\Models\MailLog::count(),
+            'audit_rows' => $audits->count(), 'audit_actor_ids' => $audits->isEmpty() ? [] : [0],
+            'code_present' => (is_int($code) || is_string($code)) && preg_match('/\A[0-9]{6}\z/', (string) $code) === 1,
+            'code_ttl' => (int) $redis->ttl($prefix.$codeKey), 'cooldown_ttl' => (int) $redis->ttl($prefix.$cooldownKey),
+            'business' => ['users' => App\Models\User::count(), 'orders' => App\Models\Order::count(),
+                'sessions' => Laravel\Sanctum\PersonalAccessToken::count(),
+                'balances' => App\Models\User::orderBy('id')->get(['id', 'balance', 'commission_balance'])->toArray()]]); exit;
+    })(),
     'login-prepare' => admin_setting(['captcha_enable' => 0, 'password_limit_enable' => 1,
         'password_limit_count' => 5, 'password_limit_expire' => 60, 'stop_register' => 1,
         'login_with_mail_link_enable' => 0, 'try_out_plan_id' => 0]),

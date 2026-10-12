@@ -13,7 +13,7 @@ import { invalidateCache } from '../../apps/gateway/dist/middleware/cache.js'
 const api = process.env.INTERNAL_CORE_API, dir = process.env.INTERNAL_FIXTURE_DIR
 assert.ok(api && dir)
 const snapshot = JSON.parse(readFileSync(`${api}/../internal-snapshot.json`))
-assert.equal(snapshot.committed_core_head, 'ceea19b0e8103481f68adef9cb45e518228760e2')
+assert.equal(snapshot.committed_core_head, 'e33ba63e9a7c3aa97fde02c41ba5dc76d230f3cf')
 const actors = JSON.parse(readFileSync(`${dir}/actors.json`))
 const pki = JSON.parse(readFileSync(`${dir}/public-evidence.json`))
 const processes = [], servers = [], checks = [], nativeCalls = []

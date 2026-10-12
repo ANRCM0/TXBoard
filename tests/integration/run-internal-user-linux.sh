@@ -30,8 +30,8 @@ PY
 trap cleanup_fixture_secrets EXIT
 export APP_ENV=testing APP_DEBUG=false DB_CONNECTION=mysql
 export CORE_INTERNAL_READONLY_ENABLED=true CORE_INTERNAL_READONLY_TRUST_FILE="$INTERNAL_FIXTURE_DIR/core-trust.json"
-export CACHE_DRIVER=array SETTING_CACHE_STORE=array SESSION_DRIVER=array QUEUE_CONNECTION=sync MAIL_MAILER=array
-export REDIS_HOST=127.0.0.1 REDIS_PORT=16379 REDIS_DB=14 REDIS_CACHE_DB=15
+export CACHE_DRIVER=array SETTING_CACHE_STORE=array SESSION_DRIVER=array QUEUE_CONNECTION=sync MAIL_DRIVER=array MAIL_MAILER=array
+export REDIS_HOST=127.0.0.1 REDIS_PORT="${INTERNAL_EMAIL_REDIS_PORT:-16380}" REDIS_DB=14 REDIS_CACHE_DB=15
 export APP_KEY='base64:ZdD07lazsdQQmdBAJ2tA5WjufeI2hP8xlP6zgmvCMZs='
 python3 "$INTERNAL_CORE_API/../scripts/tests/internal-readonly/generate-pki.py" "$INTERNAL_FIXTURE_DIR"
 (cd "$INTERNAL_CORE_API" && php artisan migrate --force --no-interaction) > "$INTERNAL_FIXTURE_DIR/migrations.log"

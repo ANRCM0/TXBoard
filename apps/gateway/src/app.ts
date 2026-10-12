@@ -303,6 +303,9 @@ export function createGatewayApp(
   if (config.internalLoginEnabled === true && policy.accountWorkflows) {
     throw new Error('Isolated Internal login cannot enable account workflows')
   }
+  if (config.internalEmailCodeEnabled === true && (policy.accountWorkflows || !crypto || !policy.limiter)) {
+    throw new Error('Isolated Internal email requires HPKE and Redis with account workflows disabled')
+  }
   if (policy.accountWorkflows && (!crypto || !policy.limiter)) {
     throw new Error('Account workflows require both encryption and Redis rate limiter')
   }
@@ -316,6 +319,7 @@ export function createGatewayApp(
     hpke: Boolean(crypto),
     redis: Boolean(policy.limiter),
     accountWorkflows: Boolean(policy.accountWorkflows),
+    isolatedEmailCode: config.internalEmailCodeEnabled === true,
     captchaChallenge: Boolean(policy.captchaChallenge),
     // GW-304: the flag comes from configuration only. No request header,
     // theme manifest or client capability can promote the write ban — the

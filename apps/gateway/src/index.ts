@@ -21,6 +21,9 @@ const accountWorkflows = process.env.GATEWAY_ACCOUNT_WORKFLOWS_ENABLED === 'true
 if (config.internalLoginEnabled === true && accountWorkflows) {
   throw new Error('Isolated Internal login cannot enable account workflows')
 }
+if (config.internalEmailCodeEnabled === true && (accountWorkflows || !redis || !crypto)) {
+  throw new Error('Isolated Internal email requires HPKE and Redis with account workflows disabled')
+}
 if (accountWorkflows && (!redis || !crypto)) {
   throw new Error('Account workflows require both Redis and HPKE')
 }

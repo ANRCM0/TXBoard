@@ -29,6 +29,8 @@ export type GatewayConfig = {
   internalPublicReadEnabled?: boolean
   /** Separate isolated local account login; does not enable mail or registration. */
   internalLoginEnabled?: boolean
+  /** Separate encrypted email-only isolated mode, with HPKE and Redis required at boot. */
+  internalEmailCodeEnabled?: boolean
 }
 
 function intSetting(value: string | undefined, fallback: number, min: number, max: number): number {
@@ -97,6 +99,11 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     && (login !== 'true' || !internalUser || !['local', 'testing'].includes(env.APP_ENV ?? ''))) {
     throw new Error('Invalid local Internal login configuration')
   }
+  const emailCode = env.GATEWAY_INTERNAL_EMAIL_CODE_ENABLED
+  if (emailCode !== undefined && emailCode !== '' && emailCode !== 'false'
+    && (emailCode !== 'true' || !internalUser || !['local', 'testing'].includes(env.APP_ENV ?? ''))) {
+    throw new Error('Invalid local Internal email-code configuration')
+  }
   return {
     host: env.GATEWAY_HOST || '127.0.0.1',
     port: intSetting(env.GATEWAY_PORT, 8787, 1, 65535),
@@ -117,5 +124,6 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     internalUser,
     internalPublicReadEnabled: publicRead === 'true',
     internalLoginEnabled: login === 'true',
+    internalEmailCodeEnabled: emailCode === 'true',
   }
 }

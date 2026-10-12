@@ -268,7 +268,11 @@ export async function loadCryptoService(
   if (!['disabled', 'optional'].includes(mode)) throw new Error('Unsupported GATEWAY_HPKE_MODE')
   if (mode === 'disabled') return undefined
   if (!replay) throw new Error('Redis replay protection is required for HPKE mode')
+  const emailOnly = env.GATEWAY_INTERNAL_EMAIL_CODE_ENABLED === 'true'
   const accountEnabled = env.GATEWAY_ACCOUNT_WORKFLOWS_ENABLED === 'true'
+  if (emailOnly && (accountEnabled || !['local', 'testing'].includes(env.APP_ENV ?? ''))) {
+    throw new Error('Invalid isolated email HPKE scope configuration')
+  }
   const keyFile = env.GATEWAY_HPKE_KEY_FILE
   if (!keyFile || !keyFile.startsWith('/')) {
     throw new Error('GATEWAY_HPKE_KEY_FILE must be an absolute Docker secret path')
@@ -296,5 +300,7 @@ export async function loadCryptoService(
   // 吊销表：非法 kid 格式 fail-hard 启动（防误拼"以为吊销了其实没有"）。
   const revokedKids = parseRevokedKids(env.GATEWAY_HPKE_REVOKED_KIDS)
 
-  return CryptoService.create(jwk, replay, accountEnabled, previousJwk, previousExpiresAt, revokedKids)
+  // Existing key scope is broader than the email-only route allowlist. It does
+  // not authorize registration; the policy table and Core operation remain final.
+  return CryptoService.create(jwk, replay, accountEnabled || emailOnly, previousJwk, previousExpiresAt, revokedKids)
 }

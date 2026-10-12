@@ -37,7 +37,7 @@
 | GET `/crypto/key` | 仅启用 HPKE 时公开 kid/suite/公钥/scope | Gateway 本地 |
 | POST `/secure/auth/login` | 启用 HPKE+Redis 时密文登录 | `/txapi/auth/login` |
 | POST `/secure/auth/register` | **默认关闭**，需 HPKE+Redis 和账户开关 | `/txapi/auth/register` |
-| POST `/secure/auth/email-code` | **默认关闭**，需 HPKE+Redis 和账户开关 | `/txapi/auth/email-code` |
+| POST `/secure/auth/email-code` | **默认关闭**，需 HPKE+Redis 和账户开关；另有独立本地隔离 Internal 邮件开关 | `/txapi/auth/email-code`；隔离 opt-in 为 `auth.email-code.send` |
 | POST `/orders` | **默认 405、零上游调用**；`GATEWAY_ORDER_WRITE_ENABLED=true` 时启用订单写入适配层（GW-304），需 Bearer + `Idempotency-Key` 头 | `/txapi/orders`（仅 `orderWrite` 策略） |
 
 仅支付方式展示使用用户 Bearer，不代表任何“访客支付方式”已开放。
@@ -79,6 +79,8 @@ Native 金额已是分，不再次乘 100；ISO 时间转现有 Unix 秒；套�
 - 当前隔离 Core fixtures 与 HTTP 正负例已验证；OpenAPI 3.1、完整安全审查、目标 BFF、正式部署与 SDK 发布仍待完成。
 
 [当前代码/CI 状态](../docs/development-status.md) · [HPKE/Redis 设计](../docs/app-crypto-preview.md) · [主题 SDK](../packages/theme-sdk/README.md)。
+
+本地 B5.10 的额外 `GATEWAY_INTERNAL_EMAIL_CODE_ENABLED=true` 要求已配置的 local/testing Internal mTLS、HPKE 和 Redis，且账户工作流关闭。它仅开放加密 email-code 路由，注册与明文 email-code 仍为404；Core 另要求隔离副本和邮件 opt-in，并只接受原生规范化后的精确 `@example.test` 域。Gateway 保留现有 `{sent:true}` DTO，不交付验证码、正文或收件人。任意 Internal401和服务预算429是基础设施503；原生校验/冷却/频控保持相应拒绝。选定 Internal 后不自动重试或回退 Native，未知结果可能已产生本地消息与缓存code。实际消息只使用 ArrayTransport，成功不代表外部送达。见[邮件切片证据](../docs/internal-email-code-core-verification.json)。
 
 B5.4 local Internal opt-in additionally maps protected `/dashboard/stats` and
 `/payments` to fixed empty-input User operations, retaining their public DTOs.

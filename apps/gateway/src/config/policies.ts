@@ -192,6 +192,8 @@ export interface PolicyEnvironment {
   redis?: boolean
   /** GATEWAY_ACCOUNT_WORKFLOWS_ENABLED. */
   accountWorkflows?: boolean
+  /** Extra local Internal flag enables only secureEmailCode, never registration. */
+  isolatedEmailCode?: boolean
   /** GW-209: a CAPTCHA challenge store is wired, so the challenge route exists. */
   captchaChallenge?: boolean
   /**
@@ -247,8 +249,10 @@ export function activeRouteDefinitions(
     return definition
   }).filter(definition => {
     const { policy, path } = definition
-    if (policy.name === 'secureRegister' || policy.name === 'secureEmailCode') {
-      return accountWorkflows
+    if (policy.name === 'secureRegister') return accountWorkflows
+    if (policy.name === 'secureEmailCode') {
+      return accountWorkflows || Boolean(environment.hpke && environment.redis
+        && environment.replayStore && environment.isolatedEmailCode)
     }
     // crypto/key is the HPKE public-key discovery endpoint: it exists only
     // when HPKE is wired, and every sealed route needs the same capability.
@@ -361,9 +365,10 @@ export function validatePolicies(
     if (ACCOUNT_WORKFLOW_POLICIES.has(policy.name)) {
       // A single boolean must never unlock an account workflow: HPKE and Redis
       // and GATEWAY_ACCOUNT_WORKFLOWS_ENABLED have to be present together.
-      const unlocked = Boolean(
-        environment.hpke && environment.redis && environment.accountWorkflows,
-      )
+      const emailOnly = policy.name === 'secureEmailCode' && environment.isolatedEmailCode
+        && !environment.accountWorkflows
+      const unlocked = Boolean(environment.hpke && environment.redis
+        && (environment.accountWorkflows || emailOnly))
       const halfUnlocked = Boolean(environment.hpke || environment.redis
         || environment.accountWorkflows) && !unlocked
       if (halfUnlocked) {

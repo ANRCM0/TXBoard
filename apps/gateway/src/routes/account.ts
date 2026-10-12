@@ -285,7 +285,9 @@ export function registerAccountRoutes(
         return ok(c, validated(loginResultSchema,
           await upstreamRequest(config, fetcher, 'register', { body: parsed.data })))
       }))
+    }
 
+    if ((accountWorkflows || config.internalEmailCodeEnabled === true) && limiter) {
       app.post(`${PREFIX}/secure/auth/email-code`, secure('email-code', async (c, data) => {
         const parsed = emailCodeSchema.safeParse(data)
         if (!parsed.success) return fail(c, 'VALIDATION_ERROR', 'Invalid verification request', 400)

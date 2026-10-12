@@ -1,6 +1,6 @@
 # User Internal mTLS 当前本机接入
 
-状态：Current / local-testing-only，B5.2–B5.9 已验收，订单创建与登录另限隔离测试副本。现有 Gateway v1 受保护只读操作均可选择本地 Internal 上游，公共展示读取有额外 opt-in。完整 B5/B6、管理员 Gateway、SC-v2 和生产门禁仍未完成。
+状态：Current / local-testing-only，B5.2–B5.10 已验收，订单创建、登录与邮件另限隔离测试副本。现有 Gateway v1 受保护只读操作均可选择本地 Internal 上游，公共展示读取有额外 opt-in。完整 B5/B6、管理员 Gateway、SC-v2 和生产门禁仍未完成。
 
 `GATEWAY_INTERNAL_USER_ENABLED` 默认 false；undefined、空串和精确 false 关闭，其他非空误值启动失败；只有精确字符串 true 且 `APP_ENV=local/testing` 才可启用。启用后 profile/detail、orders list/page/status、dashboard、payment-methods、subscription-summary、notices 调用固定 User operation，request contract_version=2。登录仍使用原路径；公共元数据和订单创建的额外开关见下文。
 
@@ -90,3 +90,18 @@ B5.8 固定 Core `a7e73b1` / Gateway `8c03a78` 加十六文件：872项API通过
 B5.9 额外精确 `GATEWAY_INTERNAL_LOGIN_ENABLED=true` 选择固定 `auth.login` v1；Core另需 `CORE_INTERNAL_LOGIN_ENABLED=true` 与隔离副本标记。原生密码、FormRequest、限流及Sanctum会话权威保持，密码空格保留；登录不转发访客Bearer，要求已确认关闭的CAPTCHA策略。配置与账户工作流同时启用拒绝启动，服务预算/身份失败不当作密码失败；无自动重试或Native回退。审计失败/超时可留下未返回token的已提交会话，清理依现有会话撤销或过期；重复主动登录会发行另一个会话。
 
 固定Core `ceea19b` / Gateway `19cf371` 加二十文件：Core专项19/237断言，全API906通过/46引擎专测跳过/8237断言，Gateway671、SDK68、typecheck/build及57项实际TLS1.3/MariaDB检查通过。[证据](../tests/integration/evidence/internal-isolated-login.json)保留源码和原始日志hash、两快照差异和秘密清理结果。注册/邮件/恢复、真实CAPTCHA、Admin、生产PKI及SC-v2仍待验收。
+
+B5.10 增加独立、默认关闭的 `GATEWAY_INTERNAL_EMAIL_CODE_ENABLED=true`。该模式要求 local/testing、已配置的 Internal mTLS、HPKE 和真实 Redis；账户工作流必须关闭。只有 `/secure/auth/email-code` 路由启用，注册与明文邮件路由仍为404。现有SDK发现公钥、加密并消费 `{sent:true}`，访客Token不进入请求。既有 `account-workflows` 公钥 scope 只表示SDK选钥能力，不能开放注册路由。
+
+邮件选择固定 v1 `auth.email-code.send`；Core仍要求额外邮件开关、隔离副本与已知关闭的CAPTCHA，只接受原生规范化后精确的 `@example.test` 域。原生FormRequest、白名单、60秒冷却、300秒code、共享10次/分钟Core限流及同步Job保持。当前只允许真实ArrayTransport；HTTP成功表示本地原生流程返回，不代表外部投递。审计失败或断线可隐藏已发本地消息和code，无自动重试、业务幂等或Native回退。任意邮件Internal401与服务预算429映射503，避免误归类为用户凭据失败。
+
+固定 Core `e33ba63e9a7c3aa97fde02c41ba5dc76d230f3cf` 加邮件10文件与 Gateway `dfd6122f77b7ab110768caa1af40a0863b1c9518` 加邮件源码/fixture：Core19项/336断言，全API955通过、64引擎专测跳过、9230断言；Gateway713、SDK68、typecheck/build通过。相同runtime/test源码的新fixture快照通过原有57项TLS回归和15项真实邮件检查，包含真实SDK HPKE、Redis重放、实际socket TLS1.3、ArrayTransport rendered-code/cache精确一致、actor0审计及未知结果不重试。完整源码/日志hash和早期fixture失败留存见[邮件验收证据](internal-email-code-core-verification.json)。MySQL8、生产SMTP、外部CAPTCHA和生产PKI不在此次验收范围。
+
+邮件重现使用全新受控快照和空的专属 `txboard_internal_test`；runner不删库、不改用户或权限。由调用者提供专属测试DB凭据，Core14/15与Gateway22均使用额外本地Redis16380。每轮只清本slice这三个专用测试DB，既有57项回归只用Core14/15。临时证书、proof私钥、访客Token和HPKE私钥在结束后清理；witness仅落消息数和布尔值，不写收件人、验证码或正文。
+
+```bash
+DB_DATABASE=txboard_internal_test DB_HOST=127.0.0.1 DB_PORT=13306 \
+DB_USERNAME=fixture-user DB_PASSWORD=fixture-password \
+INTERNAL_EMAIL_REDIS_PORT=16380 \
+bash tests/integration/run-internal-email-linux.sh /path/to/fixed-email-core/api
+```
