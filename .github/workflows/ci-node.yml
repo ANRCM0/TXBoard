@@ -87,7 +87,7 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         working-directory: .
         env:
-          TXBOARD_IMAGE_REPO: ghcr.io/anrcm0/tx-node
+          TXBOARD_IMAGE_REPO: ghcr.io/anrcm0/txboard-node
         run: bash scripts/resolve-image-tags.sh
       - uses: actions/setup-go@v5
         with:
@@ -192,20 +192,20 @@ jobs:
           docker build --build-arg VERSION="$BUILD_VERSION" \
             --build-arg COMMIT="$GITHUB_SHA" --build-arg BUILD_TIME="$build_time" \
             --build-arg SOURCE_URL="https://github.com/$GITHUB_REPOSITORY" \
-            -t tx-node:config-path-ci .
-          test "$(docker run --rm tx-node:config-path-ci -v)" = "tx-node $BUILD_VERSION (built $build_time)"
-          test "$(docker image inspect tx-node:config-path-ci --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}')" = "$GITHUB_SHA"
-          test "$(docker image inspect tx-node:config-path-ci --format '{{ index .Config.Labels "org.opencontainers.image.source" }}')" = "https://github.com/$GITHUB_REPOSITORY"
+            -t txboard-node:config-path-ci .
+          test "$(docker run --rm txboard-node:config-path-ci -v)" = "tx-node $BUILD_VERSION (built $build_time)"
+          test "$(docker image inspect txboard-node:config-path-ci --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}')" = "$GITHUB_SHA"
+          test "$(docker image inspect txboard-node:config-path-ci --format '{{ index .Config.Labels "org.opencontainers.image.source" }}')" = "https://github.com/$GITHUB_REPOSITORY"
       - name: Verify canonical image command
         run: |
           set -euo pipefail
-          test "$(docker image inspect tx-node:config-path-ci --format '{{json .Config.Cmd}}')" = '["-c","/etc/txnode/config.yml"]'
+          test "$(docker image inspect txboard-node:config-path-ci --format '{{json .Config.Cmd}}')" = '["-c","/etc/txnode/config.yml"]'
       - name: Verify old Compose mount fallback
         run: |
           set -euo pipefail
           legacy_cfg="$(mktemp)"
           printf 'invalid: [\n' > "$legacy_cfg"
-          output="$(docker run --rm -v "$legacy_cfg:/etc/xboard-node/config.yml:ro" tx-node:config-path-ci 2>&1 || true)"
+          output="$(docker run --rm -v "$legacy_cfg:/etc/xboard-node/config.yml:ro" txboard-node:config-path-ci 2>&1 || true)"
           printf '%s\n' "$output"
           grep -Fq 'using legacy container config path /etc/xboard-node/config.yml' <<<"$output"
       - name: Verify canonical path wins
@@ -218,7 +218,7 @@ jobs:
           output="$(docker run --rm \
             -v "$canonical_cfg:/etc/txnode/config.yml:ro" \
             -v "$legacy_cfg:/etc/xboard-node/config.yml:ro" \
-            tx-node:config-path-ci 2>&1 || true)"
+            txboard-node:config-path-ci 2>&1 || true)"
           printf '%s\n' "$output"
           if grep -Fq 'using legacy container config path' <<<"$output"; then
             echo "Legacy fallback won despite canonical config being mounted" >&2
@@ -276,7 +276,7 @@ jobs:
         id: channel
         working-directory: .
         env:
-          TXBOARD_IMAGE_REPO: ghcr.io/anrcm0/tx-node
+          TXBOARD_IMAGE_REPO: ghcr.io/anrcm0/txboard-node
         run: bash scripts/resolve-image-tags.sh
       - name: Select immutable build tags and metadata
         id: build
@@ -347,8 +347,8 @@ jobs:
             echo "Node runtime advanced; retain immutable image without rolling dev back"
             exit 0
           fi
-          docker buildx imagetools create --tag ghcr.io/anrcm0/tx-node:dev \
-            "ghcr.io/anrcm0/tx-node:dev-sha-${GITHUB_SHA:0:12}"
+          docker buildx imagetools create --tag ghcr.io/anrcm0/txboard-node:dev \
+            "ghcr.io/anrcm0/txboard-node:dev-sha-${GITHUB_SHA:0:12}"
 
   release-assets:
     name: Attach Node binaries to unified release
@@ -363,7 +363,7 @@ jobs:
         id: channel
         working-directory: .
         env:
-          TXBOARD_IMAGE_REPO: ghcr.io/anrcm0/tx-node
+          TXBOARD_IMAGE_REPO: ghcr.io/anrcm0/txboard-node
         run: bash scripts/resolve-image-tags.sh
       - uses: actions/download-artifact@v4
         with:

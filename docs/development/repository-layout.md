@@ -8,7 +8,7 @@
 | --- | --- | --- | --- |
 | TXBoard Core | 根目录 `api/`、`web/`、`mcp/`；保留现有 Composer/npm locks | 根目录；排除 `gateway/`、`node/` | `ghcr.io/anrcm0/txboard-core` |
 | Gateway | `gateway/`，独立 npm workspaces 和 lock | `gateway/` | `ghcr.io/anrcm0/txboard-gateway` |
-| Node | `node/`，独立 `go.mod`、`go.sum` | `node/` | `ghcr.io/anrcm0/tx-node` |
+| Node | `node/`，独立 `go.mod`、`go.sum` | `node/` | `ghcr.io/anrcm0/txboard-node` |
 
 Core 继续发布 `ghcr.io/anrcm0/txboard` 别名供已有安装使用；新安装使用 `txboard-core`。Go module `github.com/ANRCM0/TX-Node` 与现有内部 import 暂不改名；从统一仓克隆后进入 `node/` 构建即可。SDK 包名与接口也保持现行版本，合仓不自动发布新的 npm 包。
 
@@ -35,17 +35,17 @@ cd ../node && go test ./...
 
 同一个 `v*` 标签触发三个组件各自的验证及发布；它必须指向已在 `main` 的提交。组件镜像独立发布，没有跨 GHCR 包的原子提交，部署前需确认三个目标 digest 和全部相关 CI。GitHub Release 的附件为 Node 二进制；正式部署仍使用验证过的固定版本或 digest。文档更新不发布开发镜像，组件工作流仍可能运行相应验证。
 
-Gateway/Node 的发布与 `dev` 提升按组件串行，并在提升前核对当前 main 的运行时代码，防止旧构建覆盖新镜像。文档或测试变化不会取消正在进行的运行时发布。Core 保留现有分通道并发策略；包写权限只授予镜像 publish job。
+Gateway 的不可变镜像构建可并行，`dev` 提升按组件串行；Node 的整个 publish job 按通道串行。两者提升前都核对当前 main 的运行时代码，防止旧构建覆盖新镜像。文档或测试变化不会取消正在进行的运行时发布。Core 保留现有分通道并发策略；包写权限只授予镜像 publish job 与 Gateway 的 promote-dev job。
 
-工作流通过 `github.repository` 生成 OCI 来源标签，通过仓库 owner 生成小写镜像路径，不依赖主仓名称。后续重命名 GitHub 仓库不会改变三个镜像名。首次从统一仓发布旧 `tx-node` 包时，GHCR 必须允许统一仓的 Actions 访问该已有包；CI 发布失败时应修复包的 Actions 权限，不跳过门禁。
+工作流通过 `github.repository` 生成 OCI 来源标签，通过仓库 owner 生成小写镜像路径，不依赖主仓名称。后续重命名 GitHub 仓库不会改变三个镜像名。主仓新建 `txboard-node` 包，保留旧 `tx-node` 包且不向它写入标签；无需将旧包转绑到主仓。
 
 ## 唯一安装仓
 
-[TXBoard-Deploy](https://github.com/ANRCM0/TXBoard-Deploy) 管理 Core、Gateway、Node 的安装与生命周期。原节点安装器在该仓 `node/` 下保留；现有 `txnode` 命令、配置位置、机器更新桥和镜像名保持兼容。运行时仓内的 Compose 用于开发与构建验证，生产入口以安装仓文档为准。
+[TXBoard-Deploy](https://github.com/ANRCM0/TXBoard-Deploy) 管理 Core、Gateway、Node 的安装与生命周期。原节点安装器在该仓 `node/` 下保留；现有 `txnode` 命令、配置位置和机器更新桥保持兼容。Node 新镜像包的选择和已有容器升级由安装仓管理，运行时发布不会自动替换已运行容器。运行时仓内的 Compose 用于开发与构建验证，生产入口以安装仓文档为准。
 
 最终保留运行时仓与安装仓，原 TX-Node、TXBoard-Gateway、TX-Node-Installer 是迁移过渡仓，后续将删除。三组件活动 CI、Docker 上下文和管理员生成的 Node 安装命令均使用这两个主仓。Node 的稳定 Go module 名是本地模块标识，完整 checkout 中的构建不需要拉取旧 TX-Node 仓的自身源码。
 
-删除旧仓前，将已有 `tx-node` GHCR 包的 Repository source 转绑到 TXBoard，保留公开可拉取及主仓 Actions 写入权限；已安装的旧 `txnode` 脚本须先从安装仓 `node/deploy.sh` 刷新持久入口。原安装仓只在过渡期间提供兼容转发。包转绑方式见 [GitHub 官方说明](https://docs.github.com/en/packages/learn-github-packages/connecting-a-repository-to-a-package#migrating-a-package-to-another-repository)。
+主仓只发布新 `ghcr.io/anrcm0/txboard-node` 包，旧 `ghcr.io/anrcm0/tx-node` 包不迁移、转绑或覆盖；旧包的可用性不由新 CI 保证。已安装的旧 `txnode` 脚本须先从安装仓 `node/deploy.sh` 刷新持久入口。原安装仓只在过渡期间提供兼容转发。
 
 ## 历史来源
 

@@ -11,6 +11,7 @@ test-results/
 staging/
 tests/
 docs/
-scripts/
+scripts/*
+!scripts/validate-portable-dependencies.mjs
 sbom/
 *.log

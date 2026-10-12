@@ -1,4 +1,4 @@
-FROM node:22.23.2-alpine AS builder
+FROM --platform=$BUILDPLATFORM node:22.23.2-alpine AS builder
 WORKDIR /srv
 COPY package.json package-lock.json ./
 COPY apps/gateway/package.json apps/gateway/package.json
@@ -9,6 +9,8 @@ COPY apps/gateway/tsconfig.json apps/gateway/tsconfig.json
 COPY apps/gateway/src apps/gateway/src
 RUN npm run build --workspace @txboard/gateway
 RUN npm prune --omit=dev --no-audit --no-fund
+COPY scripts/validate-portable-dependencies.mjs scripts/validate-portable-dependencies.mjs
+RUN node scripts/validate-portable-dependencies.mjs
 
 FROM node:22.23.2-alpine
 WORKDIR /srv

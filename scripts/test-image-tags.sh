@@ -33,7 +33,7 @@ reject refs/tags/v01.2.3
 reject refs/tags/dev
 output="$(env -u GITHUB_OUTPUT GITHUB_REF=refs/heads/main GITHUB_SHA="$sha" TXBOARD_IMAGE_REPO=ghcr.io/ANRCM0/txboard-core TXBOARD_IMAGE_ALIASES=ghcr.io/ANRCM0/txboard bash "$resolver")"
 [[ "$output" == $'channel=dev\nghcr.io/anrcm0/txboard-core:dev\nghcr.io/anrcm0/txboard-core:dev-sha-0123456789ab\nghcr.io/anrcm0/txboard:dev\nghcr.io/anrcm0/txboard:dev-sha-0123456789ab' ]]
-for component in txboard-core txboard-gateway tx-node; do
+for component in txboard-core txboard-gateway txboard-node; do
   output="$(env -u GITHUB_OUTPUT -u TXBOARD_IMAGE_ALIASES GITHUB_REF=refs/tags/v1.2.3 GITHUB_SHA="$sha" TXBOARD_IMAGE_REPO="ghcr.io/anrcm0/$component" bash "$resolver")"
   [[ "$output" == "$(printf 'channel=stable\nghcr.io/anrcm0/%s:latest\nghcr.io/anrcm0/%s:v1.2.3' "$component" "$component")" ]]
 done

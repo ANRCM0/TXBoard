@@ -86,6 +86,8 @@ jobs:
         run: node scripts/check-docs.mjs
       - name: Verify legacy and monorepo snapshot isolation
         run: python3 -m unittest discover -s tests/integration -p test_snapshot_layout.py
+      - name: Validate portable production dependency guard
+        run: node --test scripts/tests/validate-portable-dependencies.test.mjs
       - name: Restore pinned dependencies
         run: npm ci --no-audit --no-fund
       - name: Typecheck, test and build Gateway and SDK
@@ -221,13 +223,13 @@ jobs:
     if: github.event_name == 'push' && needs.verify.outputs.publish_image == 'true'
     needs: [verify, container, browser]
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       contents: read
       packages: write
-    concurrency:
-      # Serialize builds and their mutable alias promotion across main SHAs.
-      group: gateway-publish-${{ github.ref_type == 'branch' && 'dev' || (contains(github.ref_name, '-') && 'preview' || 'stable') }}
-      cancel-in-progress: false
+    outputs:
+      image: ${{ steps.channel.outputs.image }}
+      digest: ${{ steps.image.outputs.digest }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -284,12 +286,43 @@ jobs:
             org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.version=${{ steps.build.outputs.version }}
           provenance: false
+      - name: Report immutable image publication
+        env:
+          RELEASE_CHANNEL: ${{ steps.channel.outputs.channel }}
+          RELEASE_TAGS: ${{ steps.build.outputs.tags }}
+        run: |
+          {
+            echo "### Published Gateway ${RELEASE_CHANNEL} image"
+            echo
+            printf '%s\n' "$RELEASE_TAGS" | sed 's/^/- `/; s/$/`/'
+          } >> "$GITHUB_STEP_SUMMARY"
+  promote-dev:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: write
+    concurrency:
+      # Keep the same lock as earlier publishers while immutable builds run independently.
+      group: gateway-publish-dev
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/setup-buildx-action@v3
       - name: Promote unchanged current main runtime to dev
         id: promotion
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         env:
-          IMAGE_REPO: ${{ steps.channel.outputs.image }}
-          IMAGE_DIGEST: ${{ steps.image.outputs.digest }}
+          IMAGE_REPO: ${{ needs.publish.outputs.image }}
+          IMAGE_DIGEST: ${{ needs.publish.outputs.digest }}
         run: |
           printf 'promoted=false\n' >> "$GITHUB_OUTPUT"
           source scripts/image-runtime-path.sh
@@ -310,20 +343,17 @@ jobs:
           [[ "$IMAGE_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]] || { echo 'Missing immutable image digest' >&2; exit 1; }
           docker buildx imagetools create --tag "$IMAGE_REPO:dev" "$IMAGE_REPO@$IMAGE_DIGEST"
           printf 'promoted=true\n' >> "$GITHUB_OUTPUT"
-      - name: Report published channel
+      - name: Report dev promotion
         env:
-          RELEASE_CHANNEL: ${{ steps.channel.outputs.channel }}
-          RELEASE_TAGS: ${{ steps.build.outputs.tags }}
           DEV_PROMOTED: ${{ steps.promotion.outputs.promoted }}
-          IMAGE_REPO: ${{ steps.channel.outputs.image }}
+          IMAGE_REPO: ${{ needs.publish.outputs.image }}
         run: |
           {
-            echo "### Published Gateway ${RELEASE_CHANNEL} image"
+            echo "### Gateway dev promotion"
             echo
-            printf '%s\n' "$RELEASE_TAGS" | sed 's/^/- `/; s/$/`/'
             if [[ "$DEV_PROMOTED" == true ]]; then
               printf -- '- `%s:dev` (current runtime)\n' "$IMAGE_REPO"
-            elif [[ "$RELEASE_CHANNEL" == dev ]]; then
+            else
               echo 'Current main runtime changed; dev was not updated.'
             fi
           } >> "$GITHUB_STEP_SUMMARY"

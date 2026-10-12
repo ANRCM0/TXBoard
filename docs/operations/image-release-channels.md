@@ -1,6 +1,6 @@
 # TXBoard 镜像发布通道（CURRENT）
 
-运行时统一在本仓发布，支持 `linux/amd64` / `linux/arm64`：Core 为 `ghcr.io/anrcm0/txboard-core`（保留 `txboard` 兼容别名），Gateway 为 `ghcr.io/anrcm0/txboard-gateway`，Node 为 `ghcr.io/anrcm0/tx-node`。目录和历史来源见 [双仓布局](../development/repository-layout.md)。
+运行时统一在本仓发布，支持 `linux/amd64` / `linux/arm64`：Core 为 `ghcr.io/anrcm0/txboard-core`（保留 `txboard` 兼容别名），Gateway 为 `ghcr.io/anrcm0/txboard-gateway`，Node 为新包 `ghcr.io/anrcm0/txboard-node`。Node 旧 `ghcr.io/anrcm0/tx-node` 包不迁移、转绑或覆盖；CLI 和二进制名仍为 `tx-node`。目录和历史来源见 [双仓布局](../development/repository-layout.md)。
 
 | 场景 | Git 触发条件 | 推送的 GHCR 标签 | 是否覆盖正式版 |
 | --- | --- | --- | --- |

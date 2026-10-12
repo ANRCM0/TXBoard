@@ -29,6 +29,8 @@ main 先发布不可变的 `dev-sha-*`；发布完成后重新读取 main，只�
 
 本地构建从主仓运行 `docker build -f gateway/Dockerfile gateway`，或进入 `gateway/` 使用原 Compose 命令。部署仓统一安装器选择独立镜像，生产宜固定经过验收的 digest。基础 Compose、crypto 和 Redis overlay 继续默认关闭账户写入；公网仍只由既有 HTTPS 入口精确分流。
 
+Gateway 的 TypeScript builder 在 `BUILDPLATFORM` 上运行，最终 Node 容器仍使用目标平台。`npm prune --omit=dev` 后，[便携依赖校验](../scripts/validate-portable-dependencies.mjs) 固定已审阅的生产 lock 图（含版本、integrity 与依赖），并检查实际安装包、工作区链接、平台元数据、安装钩子及原生二进制。当前审阅图也禁止未审阅的 WASM 文件；这不表示 WASM 本身依赖 CPU 架构。生产依赖新增或升级必须重新审阅并更新校验指纹；开发依赖可独立调整。仅该校验脚本进入 Docker 上下文，不扩大其他脚本或私钥的打包范围。它验证当前跨架构复制前提，多架构镜像仍需通过实际容器与发布门禁。
+
 ## 隔离快照与真实 Core 联调
 
 Native 联调的 `TXBOARD_CORE_REPO` 指向主仓根目录，`TXBOARD_CORE_VENDOR` 指向其 `api/vendor`。`tests/integration/run-linux.sh` 仍归档 committed Core，再从 `gateway/` 构建消费者，不读取未提交的 Core 业务改动。
