@@ -176,6 +176,12 @@ SQLite 18 通过 / 2 跳过 / 167 断言，专用 MariaDB 20 / 0 / 182；固定 
 
 固定 Core `a7e73b1` / Gateway `8c03a78` 加十六文件：专项13通过/166断言，全API872通过/40引擎专测跳过/7697断言，Gateway596、SDK68、typecheck/build及48项真实MariaDB/TLS1.3联调通过。边界检查先清公共缓存，另验证一次MISS/HIT只生成一条审计；缓存仍遵守原TTL，不作为当前授权事实。数值溢出、超大响应、证书拒绝和断线均在cache miss时失败而无Native回退。[契约](../../../contracts/v2/core-internal-api/local-public-display-v1.md)及[精确源码和日志证据](internal-public-read-verification.json)。匿名登录/注册/邮件、Admin、生产PKI与SC-v2仍待实施。
 
+### B3.4 Service 自动本地事件消费者
+
+Node [当前契约](https://github.com/ANRCM0/TX-Node/blob/main/docs/local-event-runtime-current.md)已推送 `b6bd28d`。默认关闭，仅一个Service取得永久进程owner、一个异步worker和有界meter/存储；旧kernel Close及cancel后开始5秒单tracker monotonic退休，迟到callback保留原绑定，2秒shutdown超时保留原FD/flock并拒绝替代worker。原v1累计用量及限速保持，记录仍不可归属、恢复/尾部未知，无v2上报或租约准入。
+
+固定Node `4094fe0` 加16个Go文件：四受影响包Linux race173主测试/68子测试通过，无失败/跳过，同四包vet通过。实际Service.Run、原ConnTracker、内存TCP/loopbackUDP、同步停滞/immutable fsync/退休/容量和原进程死亡恢复回归均覆盖，不宣称live VLESS或面板互通。[冻结源码与日志证据](https://github.com/ANRCM0/TX-Node/blob/main/docs/local-event-runtime-verification.json)。首次两次审批未执行，用户授权正常重申请后专项与必要回归获批通过。
+
 ### B1.11 隔离副本佣金转余额事务捕获
 
 在原CommissionController单次User事务内，原最低金额/资金拒绝之后、余额变化之前开始捕获，save后append；两账户变化、事件和mapping失效共同提交或回滚。固定 `commission.transfer` policy只引用实际owner User，原金额、最低额继承/rounding、角色和响应保持。原请求没有幂等键，足够资金时相同POST可合法划转两次；未知提交不能被当作安全重试，事件未应用到资金/Terms/用量投影。
