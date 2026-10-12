@@ -70,6 +70,10 @@ export const internalOrderWriteSuccess = internalSuccessV2.extend({
 export const internalPublicSuccess = internalSuccessV2.extend({
   meta: z.strictObject({ current_only: z.literal(true), slice: z.literal('internal-public-readonly/1') }),
 })
+export const internalLoginSuccess = internalSuccessV2.extend({
+  data: z.strictObject({ auth_data: z.string().regex(/^Bearer [A-Za-z0-9|._-]{8,4089}$(?![\s\S])/) }),
+  meta: z.strictObject({ current_only: z.literal(true), slice: z.literal('internal-isolated-login/1') }),
+})
 export function adaptInternalPublic(operation: 'guestConfig' | 'guestPlans', value: unknown): unknown {
   if (operation === 'guestConfig') {
     const parsed = publicSite.safeParse(value); if (!parsed.success) fail()

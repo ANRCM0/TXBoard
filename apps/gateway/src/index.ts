@@ -18,6 +18,9 @@ const redis = await loadRedisSecurity(process.env)
 const loginProtection = await loadLoginProtection(process.env)
 const crypto = await loadCryptoService(process.env, redis)
 const accountWorkflows = process.env.GATEWAY_ACCOUNT_WORKFLOWS_ENABLED === 'true'
+if (config.internalLoginEnabled === true && accountWorkflows) {
+  throw new Error('Isolated Internal login cannot enable account workflows')
+}
 if (accountWorkflows && (!redis || !crypto)) {
   throw new Error('Account workflows require both Redis and HPKE')
 }

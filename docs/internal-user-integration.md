@@ -1,6 +1,6 @@
 # User Internal mTLS 当前本机接入
 
-状态：Current / local-testing-only，B5.2–B5.8 已验收，订单创建另限隔离测试副本。现有 Gateway v1 受保护只读操作均可选择本地 Internal 上游，公共展示读取有额外 opt-in。完整 B5/B6、管理员 Gateway、SC-v2 和生产门禁仍未完成。
+状态：Current / local-testing-only，B5.2–B5.9 已验收，订单创建与登录另限隔离测试副本。现有 Gateway v1 受保护只读操作均可选择本地 Internal 上游，公共展示读取有额外 opt-in。完整 B5/B6、管理员 Gateway、SC-v2 和生产门禁仍未完成。
 
 `GATEWAY_INTERNAL_USER_ENABLED` 默认 false；undefined、空串和精确 false 关闭，其他非空误值启动失败；只有精确字符串 true 且 `APP_ENV=local/testing` 才可启用。启用后 profile/detail、orders list/page/status、dashboard、payment-methods、subscription-summary、notices 调用固定 User operation，request contract_version=2。登录仍使用原路径；公共元数据和订单创建的额外开关见下文。
 
@@ -85,4 +85,8 @@ B5.8 的额外 `GATEWAY_INTERNAL_PUBLIC_READ_ENABLED=true` 只选择 `/bootstrap
 
 公开 DTO、原主题扩展和套餐价格/可见性不变；响应先经闭合 schema 与安全整数校验。现有公共缓存遵守原 TTL，缓存元数据不代表当前授权；被选中的 Internal cache miss 失败无 Native 回退。联调固定端口另增加19589，边界用例先清共享缓存，单独验证 MISS/HIT 只生成一条 SQL 审计。
 
-B5.8 固定 Core `a7e73b1` / Gateway `8c03a78` 加十六文件：872项API通过（40项引擎专测跳过、7697断言），596项Gateway、68项SDK、typecheck/build及48项真实TLS1.3/MariaDB检查通过。[验收证据](../tests/integration/evidence/internal-public-read.json)保存源码和日志hash、匿名actor marker、缓存检查与秘密清理结果；登录/注册/邮件和生产PKI仍待实现。
+B5.8 固定 Core `a7e73b1` / Gateway `8c03a78` 加十六文件：872项API通过（40项引擎专测跳过、7697断言），596项Gateway、68项SDK、typecheck/build及48项真实TLS1.3/MariaDB检查通过。[验收证据](../tests/integration/evidence/internal-public-read.json)保存源码和日志hash、匿名actor marker、缓存检查与秘密清理结果。
+
+B5.9 额外精确 `GATEWAY_INTERNAL_LOGIN_ENABLED=true` 选择固定 `auth.login` v1；Core另需 `CORE_INTERNAL_LOGIN_ENABLED=true` 与隔离副本标记。原生密码、FormRequest、限流及Sanctum会话权威保持，密码空格保留；登录不转发访客Bearer，要求已确认关闭的CAPTCHA策略。配置与账户工作流同时启用拒绝启动，服务预算/身份失败不当作密码失败；无自动重试或Native回退。审计失败/超时可留下未返回token的已提交会话，清理依现有会话撤销或过期；重复主动登录会发行另一个会话。
+
+固定Core `ceea19b` / Gateway `19cf371` 加二十文件：Core专项19/237断言，全API906通过/46引擎专测跳过/8237断言，Gateway671、SDK68、typecheck/build及57项实际TLS1.3/MariaDB检查通过。[证据](../tests/integration/evidence/internal-isolated-login.json)保留源码和原始日志hash、两快照差异和秘密清理结果。注册/邮件/恢复、真实CAPTCHA、Admin、生产PKI及SC-v2仍待验收。

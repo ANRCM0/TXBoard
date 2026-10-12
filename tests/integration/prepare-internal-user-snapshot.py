@@ -25,6 +25,7 @@ target.mkdir(parents=True, mode=0o700)
 with tarfile.open(fileobj=io.BytesIO(archive)) as bundle:
     bundle.extractall(target, filter='data')
 overlays = [
+    'apps/gateway/src/app.ts', 'apps/gateway/src/index.ts', 'apps/gateway/test/internal-login.test.ts',
     'apps/gateway/src/config/env.ts', 'apps/gateway/src/config/internal-user.ts',
     'apps/gateway/src/adapters/internal-user-v2.ts', 'apps/gateway/src/services/internal-user-client.ts',
     'apps/gateway/src/services/upstream.ts', 'apps/gateway/src/routes/user.ts', 'apps/gateway/src/routes/orders.ts',

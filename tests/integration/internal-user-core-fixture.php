@@ -13,6 +13,21 @@ if (!$app->environment('testing') || config('database.default') !== 'mysql'
 $user = App\Models\User::query()->where('email', 'internal-user@example.test')->firstOrFail();
 $order = App\Models\Order::query()->where('trade_no', 'internal-discounted-order')->firstOrFail();
 match ($argv[2] ?? '') {
+    'login-prepare' => admin_setting(['captcha_enable' => 0, 'password_limit_enable' => 1,
+        'password_limit_count' => 5, 'password_limit_expire' => 60, 'stop_register' => 1,
+        'login_with_mail_link_enable' => 0, 'try_out_plan_id' => 0]),
+    'login-captcha' => admin_setting(['captcha_enable' => 1, 'captcha_type' => 'turnstile']),
+    'login-rate-reset' => Illuminate\Support\Facades\Cache::store('redis')->flush(),
+    'login-state' => (function () use ($user): void {
+        $rows = $user->tokens()->orderBy('id')->get();
+        $last = $rows->last();
+        foreach ($rows as $token) {
+            if (!preg_match('/\A[0-9a-f]{64}\z/D', $token->token)) throw new RuntimeException('Unexpected persisted token shape');
+        }
+        echo json_encode(['user_tokens' => $rows->count(), 'last_id' => $last?->id,
+            'last_year_ttl' => $last && $last->expires_at && $last->expires_at->diffInDays(now(), true) >= 364,
+            'last_abilities' => $last?->abilities, 'last_login_at' => $user->fresh()->last_login_at]); exit;
+    })(),
     'public-prepare' => (function (): void {
         App\Models\Plan::whereKey(1)->update(['capacity_limit' => null]);
         foreach ([['Public second', true, true, null, 2], ['Hidden public plan', false, true, null, 0],

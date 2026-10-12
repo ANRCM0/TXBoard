@@ -124,6 +124,7 @@ export async function upstreamRequest(
   } = {},
 ): Promise<unknown> {
   if (config.internalUser && ((config.internalPublicReadEnabled === true && (operation === 'guestConfig' || operation === 'guestPlans'))
+    || (config.internalLoginEnabled === true && operation === 'login')
     || operation === 'userProfile' || operation === 'userOrderDetail' || operation === 'userOrders'
     || operation === 'userStats' || operation === 'userPaymentMethods' || operation === 'userSubscription' || operation === 'userNotices' || operation === 'userOrderStatus' || operation === 'userOrderCreate')) {
     return internalUserRequest(config, operation, options)

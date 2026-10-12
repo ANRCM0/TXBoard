@@ -27,6 +27,8 @@ export type GatewayConfig = {
   internalUser?: InternalUserConfig
   /** Additional local public-read opt-in; cannot enable authentication operations. */
   internalPublicReadEnabled?: boolean
+  /** Separate isolated local account login; does not enable mail or registration. */
+  internalLoginEnabled?: boolean
 }
 
 function intSetting(value: string | undefined, fallback: number, min: number, max: number): number {
@@ -90,6 +92,11 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     && (publicRead !== 'true' || !internalUser || !['local', 'testing'].includes(env.APP_ENV ?? ''))) {
     throw new Error('Invalid local Internal public-read configuration')
   }
+  const login = env.GATEWAY_INTERNAL_LOGIN_ENABLED
+  if (login !== undefined && login !== '' && login !== 'false'
+    && (login !== 'true' || !internalUser || !['local', 'testing'].includes(env.APP_ENV ?? ''))) {
+    throw new Error('Invalid local Internal login configuration')
+  }
   return {
     host: env.GATEWAY_HOST || '127.0.0.1',
     port: intSetting(env.GATEWAY_PORT, 8787, 1, 65535),
@@ -109,5 +116,6 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     orderWriteEnabled: env.GATEWAY_ORDER_WRITE_ENABLED === 'true',
     internalUser,
     internalPublicReadEnabled: publicRead === 'true',
+    internalLoginEnabled: login === 'true',
   }
 }

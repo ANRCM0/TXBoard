@@ -300,6 +300,9 @@ export function createGatewayApp(
   config: GatewayConfig, fetcher: UpstreamFetcher = fetch, crypto?: CryptoService,
   policy: GatewayPolicy = {}, observability: GatewayObservability = {},
 ) {
+  if (config.internalLoginEnabled === true && policy.accountWorkflows) {
+    throw new Error('Isolated Internal login cannot enable account workflows')
+  }
   if (policy.accountWorkflows && (!crypto || !policy.limiter)) {
     throw new Error('Account workflows require both encryption and Redis rate limiter')
   }

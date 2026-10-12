@@ -13,10 +13,11 @@ import { invalidateCache } from '../../apps/gateway/dist/middleware/cache.js'
 const api = process.env.INTERNAL_CORE_API, dir = process.env.INTERNAL_FIXTURE_DIR
 assert.ok(api && dir)
 const snapshot = JSON.parse(readFileSync(`${api}/../internal-snapshot.json`))
-assert.equal(snapshot.committed_core_head, 'a7e73b13e1a8083c9f01056b243568b39033df68')
+assert.equal(snapshot.committed_core_head, 'ceea19b0e8103481f68adef9cb45e518228760e2')
 const actors = JSON.parse(readFileSync(`${dir}/actors.json`))
 const pki = JSON.parse(readFileSync(`${dir}/public-evidence.json`))
 const processes = [], servers = [], checks = [], nativeCalls = []
+const loginSecrets = []
 let core, boundary
 const fixture = (...args) => execFileSync('php', [`${api}/internal-readonly-fixtures/fixture.php`, ...args], { env: process.env })
 const decorate = (action) => execFileSync('php', ['tests/integration/internal-user-core-fixture.php', api, action], { env: process.env })
@@ -52,6 +53,15 @@ async function call(port, path, token = actors.credentials.user, expected = 200,
   return json
 }
 async function check(name, run) { await run(); checks.push(name); process.stdout.write(`ok ${checks.length}: ${name}\n`) }
+async function accountLogin(port, email = 'internal-user@example.test', password = 'fixture-password-only', expected = 200, headers = {}) {
+  const response = await fetch(`http://127.0.0.1:${port}/gateway/v1/auth/login`, {method:'POST',
+    headers:{'content-type':'application/json',...headers},body:JSON.stringify({email,password}),signal:AbortSignal.timeout(7000)})
+  const result = await response.json()
+  assert.equal(response.status,expected,`login expected${expected}, got${response.status} ${result.error?.code??''}`)
+  if(expected===200){assert.deepEqual(Object.keys(result.data),['auth_data']);loginSecrets.push(result.data.auth_data)}
+  for(const secret of ['private-subscribe-token','secure_path',password,email])assert.ok(!JSON.stringify(result).includes(secret))
+  return result
+}
 async function createOrder(port, token, key, body, expected) {
   const response=await fetch(`http://127.0.0.1:${port}/gateway/v1/orders`,{method:'POST',headers:{authorization:token,
     'content-type':'application/json','idempotency-key':key},body:JSON.stringify(body),signal:AbortSignal.timeout(7000)})
@@ -273,6 +283,83 @@ try {
     assert.equal((await directTlsOperation('public.plan.list',{},'user','{"actor_id":"1"}')).status,400)
     assert.equal((await directTlsOperation('public.plan.list',{},'user','{"field":1,"field":2}')).status,400)
   })
+  const loginInternal=gateway({...gatewayConfig(),internalLoginEnabled:true},19590)
+  await check('login has an independent default-off Core gate and no Native fallback',async()=>{
+    const before=nativeCalls.length,state=JSON.parse(decorate('login-state'))
+    await accountLogin(loginInternal,undefined,undefined,404)
+    assert.deepEqual(JSON.parse(decorate('login-state')),state);assert.equal(nativeCalls.length,before)
+  })
+  stop(core);await sleep(200);core=child('php',['-S','127.0.0.1:19081','-t','public','public/index.php'],'core-http',
+    {CORE_INTERNAL_PUBLIC_READ_ENABLED:'true',CORE_INTERNAL_LOGIN_ENABLED:'true',CORE_SHADOW_ISOLATED_COPY:'true',CACHE_DRIVER:'redis'})
+  await ready();fixture('rate-reset');decorate('login-rate-reset')
+  await check('actual enabled CAPTCHA refuses login before token issuance without supplier call',async()=>{
+    const state=JSON.parse(decorate('login-state')),before=nativeCalls.length
+    await accountLogin(loginInternal,undefined,undefined,400)
+    assert.deepEqual(JSON.parse(decorate('login-state')),state);assert.equal(nativeCalls.length,before)
+  })
+  decorate('login-prepare');decorate('login-rate-reset')
+  let knownLoginToken
+  await check('actual TLS login issues one native hashed year session and preserves protected identity',async()=>{
+    const before=nativeCalls.length,state=JSON.parse(decorate('login-state'))
+    await accountLogin(loginInternal,undefined,undefined,403,{'x-forwarded-for':'198.51.100.9'})
+    assert.deepEqual(JSON.parse(decorate('login-state')),state);assert.equal(nativeCalls.length,before)
+    knownLoginToken=(await accountLogin(loginInternal,undefined,undefined,200,{authorization:actors.credentials.admin})).data.auth_data
+    const after=JSON.parse(decorate('login-state'))
+    assert.equal(after.user_tokens,state.user_tokens+1);assert.equal(after.last_year_ttl,true);assert.deepEqual(after.last_abilities,['*'])
+    assert.equal((await call(internal,'/user/profile',knownLoginToken)).data.email,'internal-user@example.test')
+    const admin=(await accountLogin(loginInternal,'internal-admin@example.test')).data.auth_data
+    await call(internal,'/user/profile',admin,403);assert.equal(nativeCalls.length,before)
+  })
+  await check('wrong unknown and banned credentials keep native rejection without token or Native call',async()=>{
+    decorate('login-rate-reset');const state=JSON.parse(decorate('login-state')),before=nativeCalls.length
+    await accountLogin(loginInternal,undefined,'incorrect-fixture-password',401)
+    await accountLogin(loginInternal,'nobody-login@example.test',undefined,401)
+    fixture('mutate','user','ban')
+    try{await accountLogin(loginInternal,undefined,undefined,401)}finally{fixture('mutate','user','unban')}
+    assert.deepEqual(JSON.parse(decorate('login-state')),state);assert.equal(nativeCalls.length,before)
+  })
+  await check('actual TLS absent Authorization and exact input keep native FormRequest validation',async()=>{
+    decorate('login-rate-reset');const state=JSON.parse(decorate('login-state'))
+    const input=JSON.stringify({email:'internal-user@example.test',password:'fixture-password-only'})
+    for(const authorization of ['',actors.credentials.user])assert.equal((await directTlsOperation('auth.login',{authorization},'user',input)).status,400)
+    assert.equal((await directTlsOperation('auth.login',{},'user','{"email":"not-email","password":"long-enough"}')).status,422)
+    assert.equal((await directTlsOperation('auth.login',{},'user','{"email":"internal-user@example.test","password":"short"}')).status,422)
+    assert.equal((await directTlsOperation('auth.login',{},'user','{"email":"x","email":"y","password":"long-enough"}')).status,400)
+    assert.deepEqual(JSON.parse(decorate('login-state')),state)
+  })
+  await check('Native and Internal login share the real Redis observed-IP ten-attempt budget',async()=>{
+    decorate('login-rate-reset');const before=nativeCalls.length,state=JSON.parse(decorate('login-state'))
+    for(let i=0;i<10;i++){
+      if(i%2===0)await accountLogin(loginInternal,'no-such-budget@example.test',undefined,401)
+      else{
+        const response=await fetch('http://127.0.0.1:19081/txapi/auth/login',{method:'POST',headers:{'content-type':'application/json'},
+          body:JSON.stringify({email:'no-such-budget@example.test',password:'fixture-password-only'})})
+        assert.equal(response.status,401);await response.arrayBuffer()
+      }
+    }
+    await accountLogin(loginInternal,'no-such-budget@example.test',undefined,429)
+    assert.deepEqual(JSON.parse(decorate('login-state')),state);assert.equal(nativeCalls.length,before);decorate('login-rate-reset')
+  })
+  await check('service budget login rejection is infrastructure failure without burning credential outcome',async()=>{
+    fixture('rate-fill');const state=JSON.parse(decorate('login-state'))
+    try{await accountLogin(loginInternal,undefined,undefined,503)}finally{fixture('rate-reset')}
+    assert.deepEqual(JSON.parse(decorate('login-state')),state)
+  })
+  await check('audit failure after login leaves an unknown hashed session and native session revoke cleans it',async()=>{
+    const state=JSON.parse(decorate('login-state'));decorate('audit-write-fail')
+    try{await accountLogin(loginInternal,undefined,undefined,503)}finally{decorate('audit-write-restore')}
+    const after=JSON.parse(decorate('login-state'));assert.equal(after.user_tokens,state.user_tokens+1)
+    const revoke=await fetch('http://127.0.0.1:19081/txapi/auth/sessions/'+after.last_id,{method:'DELETE',headers:{authorization:knownLoginToken}})
+    assert.equal(revoke.status,200);await revoke.arrayBuffer()
+    assert.equal(JSON.parse(decorate('login-state')).user_tokens,state.user_tokens)
+    decorate('login-rate-reset')
+  })
+  await check('login opt-in refuses typos missing transport production and account-workflow conflict',async()=>{
+    for(const value of ['TRUE','1',' true '])assert.throws(()=>loadConfig({...serverConfig,GATEWAY_INTERNAL_LOGIN_ENABLED:value}))
+    assert.throws(()=>loadConfig({...serverConfig,GATEWAY_INTERNAL_LOGIN_ENABLED:'true'}))
+    assert.throws(()=>loadConfig({...serverConfig,APP_ENV:'production',GATEWAY_INTERNAL_LOGIN_ENABLED:'true'}))
+    assert.throws(()=>createGatewayApp({...gatewayConfig(),internalLoginEnabled:true},nativeFetcher,undefined,{accountWorkflows:true}))
+  })
   const writing=gateway({...gatewayConfig(),orderWriteEnabled:true},19588)
   const purchase={plan_id:1,period:'month_price'},businessKey='fixture-original-key'
   await check('Core write default disabled and Gateway write ban refuse without Native fallback',async()=>{
@@ -373,14 +460,15 @@ try {
     await call(port,'/theme/config',null,502)
   })
   await check('Core default disabled remains authoritative without fallback', async () => {
-    stop(core); await sleep(200); core=child('php',['-S','127.0.0.1:19081','-t','public','public/index.php'],'core-http',{CORE_INTERNAL_READONLY_ENABLED:'false',CORE_INTERNAL_PUBLIC_READ_ENABLED:'true'})
+    stop(core); await sleep(200); core=child('php',['-S','127.0.0.1:19081','-t','public','public/index.php'],'core-http',{CORE_INTERNAL_READONLY_ENABLED:'false',CORE_INTERNAL_PUBLIC_READ_ENABLED:'true',CORE_INTERNAL_LOGIN_ENABLED:'true',CORE_SHADOW_ISOLATED_COPY:'true'})
     await ready(); const before=nativeCalls.length; await call(internal,'/user/profile',actors.credentials.user,404)
-    await call(publicInternal,'/theme/config',null,404);assert.equal(nativeCalls.length,before)
+    await call(publicInternal,'/theme/config',null,404);await accountLogin(loginInternal,undefined,undefined,404);assert.equal(nativeCalls.length,before)
   })
   await check('Core production 404 gate remains authoritative', async () => {
-    stop(core); await sleep(200); core=child('php',['-S','127.0.0.1:19081','-t','public','public/index.php'],'core-http',{APP_ENV:'production',CORE_INTERNAL_READONLY_ENABLED:'true',CORE_INTERNAL_PUBLIC_READ_ENABLED:'true'})
+    stop(core); await sleep(200); core=child('php',['-S','127.0.0.1:19081','-t','public','public/index.php'],'core-http',{APP_ENV:'production',CORE_INTERNAL_READONLY_ENABLED:'true',CORE_INTERNAL_PUBLIC_READ_ENABLED:'true',CORE_INTERNAL_LOGIN_ENABLED:'true',CORE_SHADOW_ISOLATED_COPY:'true'})
     await ready(); await call(internal,'/user/profile',actors.credentials.user,404)
     await call(publicInternal,'/theme/config',null,404)
+    await accountLogin(loginInternal,undefined,undefined,404)
   })
   await check('revoked Core actor session fails after server restarts', async () => {
     stop(core); await sleep(200); core=child('php',['-S','127.0.0.1:19081','-t','public','public/index.php'],'core-http')
@@ -389,14 +477,18 @@ try {
   await check('TLS service offline never falls back to plaintext Native', async () => {
     stop(boundary); await sleep(200); const before=nativeCalls.length; await call(internal,'/user/profile',actors.credentials.other,502)
     await call(publicInternal,'/theme/config',null,502)
+    await accountLogin(loginInternal,undefined,undefined,502)
     assert.equal(nativeCalls.length,before)
   })
   const log=readFileSync(`${dir}/gateway-requests.log`,'utf8')
-  for(const secret of [...Object.values(actors.credentials),'PRIVATE KEY','private-subscribe-token'])assert.ok(!log.includes(secret))
+  for(const file of readdirSync(dir).filter(name=>name.endsWith('.log'))){
+    const contents=readFileSync(`${dir}/${file}`,'utf8')
+    for(const secret of [...Object.values(actors.credentials),...loginSecrets,'fixture-password-only','incorrect-fixture-password','PRIVATE KEY','private-subscribe-token'])assert.ok(!contents.includes(secret))
+  }
   const hashes={}
   for(const file of ['apps/gateway/src/services/internal-user-client.ts','apps/gateway/src/adapters/internal-user-v2.ts','apps/gateway/src/config/internal-user.ts',
     'tests/integration/internal-user-core-gateway.mjs','tests/integration/internal-user-core-fixture.php'])hashes[file]=createHash('sha256').update(readFileSync(file)).digest('hex')
-  const report={current_only:true,phase:'B5.8',production_acceptance:false,passed:checks.length,checks,
+  const report={current_only:true,phase:'B5.9',production_acceptance:false,passed:checks.length,checks,
     committed_core_head:snapshot.committed_core_head,committed_gateway_head:JSON.parse(readFileSync('internal-user-snapshot.json')).committed_gateway_head,
     core_slice_sha256:snapshot.slice_sha256,gateway_source_sha256:hashes,database:fixture('database-version').toString(),
     runtime:{node:process.version,php:execFileSync('php',['-r','echo PHP_VERSION;']).toString()},tls:'TLSv1.3',
