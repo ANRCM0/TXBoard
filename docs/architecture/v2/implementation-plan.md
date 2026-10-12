@@ -1,6 +1,6 @@
 # Core First v2 实施台账
 
-> 状态：B0、B1.1–B1.8 影子证据、Terms、身份旁观与固定 writer 捕获、B2.1–B2.3 单机升级、B3.1/B3.2 隔离用量、B3.3/B3.4 本地观察与持久事件桶、B4.1/B4.2 合成 Provider、B5.1–B5.6 本地只读 mTLS 接入、B6.1–B6.3 实验字节、离线加密与共享 owner 实验已实现；后续切片推进中。各整阶段仍按下表门禁验收。
+> 状态：B0、B1.1–B1.8 影子证据、Terms、身份旁观与固定 writer 捕获、B2.1–B2.3 单机升级、B3.1/B3.2 隔离用量、B3.3/B3.4 本地观察与持久事件桶、B4.1–B4.3 合成 Provider 与测试插件停用接入、B5.1–B5.6 本地只读 mTLS 接入、B6.1–B6.3 实验字节、离线加密与共享 owner 实验已实现；后续切片推进中。各整阶段仍按下表门禁验收。
 
 ## 1. 批次与关键路径
 
@@ -141,3 +141,9 @@ Gateway `6ea649b` 仅新增实验测试目录：19 单测、14 真实 Redis、1 
 证据明确限定为 `transaction-only`：提交后 Observer/openEvent/hooks 的变化仍在原时序执行，会被核对识别为来源断链；未捕获的建单预扣同样阻断后续 append。已完成订单重试不恢复丢失的提交后 callback，不声称完整 writer 覆盖或影子投影。
 
 固定 Core `79a3854` 加五文件：履约 SQLite 14 通过 / 5 跳过 / 306 断言，MariaDB 19 / 0 / 355；原路径 SQLite 45 / 8 / 453，原 Admin/充值 MariaDB 42 / 0 / 493；全 API 815 / 34 / 6686。独立并发、旧 MVCC、提交前后 SIGKILL、真实 Redis 三次重试与日志保密通过。[契约](../../../contracts/v2/legacy-user-mutation-capture-v1.md)及[源码和日志证据](legacy-order-fulfillment-capture-verification.json)。
+
+### B4.3 合成 Provider 的插件停用接入
+
+固定可信 `credential_provider_fixture` 插件显式绑定一份 registration/epoch；PluginManager 按 plugin → binding → registration → lifecycle 锁序，在同一事务提交 plugin disabled 和停止发行。私有清理在事务外有界执行并恢复原 operation；停用后不允许重启、替换或丢失 binding 后重新注册，普通 v1 插件不查询 fixture SQL。
+
+SQLite 18 通过 / 2 跳过 / 167 断言，专用 MariaDB 20 / 0 / 182；固定 Core `60e6eca` 加切片全 API 821 / 31 / 6589。实际 Module adapter、双状态 SQL 回滚、发行竞争、丢 ACK 与提交后 SIGKILL 通过。已加载 PHP 的跨 worker 中断、Node 收敛、租约和待交付/结算尚未实现，因此即使 fixture 清理完成，卸载/删除仍拒绝并保留资产与历史。[契约](../../../contracts/v2/credential-provider/local-fixture-plugin-boundary-v1.md)及[精确源码和验收证据](../../../api/tests/Fixtures/CredentialProviderPlugin/verification.json)。

@@ -1,0 +1,8 @@
+{
+  "name": "Credential Provider Boundary Fixture",
+  "code": "credential_provider_fixture",
+  "version": "1.0.0",
+  "description": "Trusted local lifecycle test plugin; no production credential operations.",
+  "author": "TXBoard",
+  "type": "feature"
+}

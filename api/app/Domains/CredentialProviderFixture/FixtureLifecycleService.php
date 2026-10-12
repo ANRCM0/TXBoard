@@ -69,24 +69,45 @@ final class FixtureLifecycleService
         return DB::transaction(function () use ($providerId, $businessKey) {
             // Core can fence a broken/unavailable runtime; cleanup still requires current runtime grants.
             $registration = FixtureRegistration::lock($providerId, null, false);
-            $lifecycle = self::lockedState($registration);
-            $input = ['provider_id' => $providerId, 'provider_instance_epoch' => (string) $registration->instance_epoch,
-                'actor_ref' => 'local-fixture-operator', 'authorization_ref' => 'local-fixture-grant/v1', 'policy' => 'disable-fixture-cleanup/v1'];
-            if ($lifecycle->disable_key !== null) {
-                $this->checkDisable($lifecycle, $businessKey, $input);
-                return $this->progress($registration, $lifecycle, '0');
-            }
-            $last = DB::table('tx_credential_provider_shadow_operation')->where('registration_id', $registration->id)
-                ->where('operation', 'issue')->orderByDesc('id')->sharedLock()->first();
-            DB::table('tx_credential_provider_shadow_registration')->where('id', $registration->id)->update(['enabled' => false]);
-            DB::table('tx_credential_provider_shadow_lifecycle')->where('id', $lifecycle->id)->update([
-                'state' => 'disabling', 'version_no' => self::increment((string) $lifecycle->version_no),
-                'disable_operation_ref' => 'dl_'.bin2hex(random_bytes(16)), 'disable_key' => $businessKey,
-                'disable_input' => FixtureCodec::json($input), 'disable_hash' => FixtureCodec::hash($input),
-                'high_water_id' => $last->id ?? 0, 'cursor_id' => 0, 'started_at' => time(), 'updated_at' => time(),
-            ]);
-            return $this->progress($registration, self::lockedState($registration), '0');
+            return $this->disableLocked($registration, $businessKey);
         }, 5);
+    }
+
+    /** SQL-only primitive: the Plugin boundary holds plugin/binding before taking this registration lock. */
+    public function fenceLockedRegistration(object $registration, string $businessKey): array
+    {
+        $this->guard(true); self::businessKey($businessKey);
+        if (DB::transactionLevel() === 0 || config('credential_provider_fixture.plugin_bridge_enabled') !== true) {
+            throw new DomainException('PROVIDER_OUTER_TRANSACTION_UNSUPPORTED');
+        }
+        $current = FixtureRegistration::lock($registration->provider_id, null, false);
+        if ((string) $current->id !== (string) $registration->id
+            || (string) $current->instance_epoch !== (string) $registration->instance_epoch) {
+            throw new DomainException('PROVIDER_REGISTRATION_CONFLICT');
+        }
+        return $this->disableLocked($current, $businessKey);
+    }
+
+    private function disableLocked(object $registration, string $businessKey): array
+    {
+        $providerId = $registration->provider_id;
+        $lifecycle = self::lockedState($registration);
+        $input = ['provider_id' => $providerId, 'provider_instance_epoch' => (string) $registration->instance_epoch,
+            'actor_ref' => 'local-fixture-operator', 'authorization_ref' => 'local-fixture-grant/v1', 'policy' => 'disable-fixture-cleanup/v1'];
+        if ($lifecycle->disable_key !== null) {
+            $this->checkDisable($lifecycle, $businessKey, $input);
+            return $this->progress($registration, $lifecycle, '0');
+        }
+        $last = DB::table('tx_credential_provider_shadow_operation')->where('registration_id', $registration->id)
+            ->where('operation', 'issue')->orderByDesc('id')->sharedLock()->first();
+        DB::table('tx_credential_provider_shadow_registration')->where('id', $registration->id)->update(['enabled' => false]);
+        DB::table('tx_credential_provider_shadow_lifecycle')->where('id', $lifecycle->id)->update([
+            'state' => 'disabling', 'version_no' => self::increment((string) $lifecycle->version_no),
+            'disable_operation_ref' => 'dl_'.bin2hex(random_bytes(16)), 'disable_key' => $businessKey,
+            'disable_input' => FixtureCodec::json($input), 'disable_hash' => FixtureCodec::hash($input),
+            'high_water_id' => $last->id ?? 0, 'cursor_id' => 0, 'started_at' => time(), 'updated_at' => time(),
+        ]);
+        return $this->progress($registration, self::lockedState($registration), '0');
     }
 
     public function status(string $providerId, string $businessKey): array
@@ -300,11 +321,11 @@ final class FixtureLifecycleService
         if (!preg_match('/^fixture_[a-z0-9_-]{1,96}$/D', $key)) { throw new DomainException('PROVIDER_INPUT_INVALID'); }
     }
 
-    private function guard(): void
+    private function guard(bool $allowOuterTransaction = false): void
     {
         if (!config('credential_provider_fixture.enabled') || !config('core_shadow.isolated_copy') || !app()->environment('local', 'testing')) {
             throw new DomainException('CAPABILITY_UNAVAILABLE');
         }
-        if (DB::transactionLevel() > 0) { throw new DomainException('PROVIDER_OUTER_TRANSACTION_UNSUPPORTED'); }
+        if (!$allowOuterTransaction && DB::transactionLevel() > 0) { throw new DomainException('PROVIDER_OUTER_TRANSACTION_UNSUPPORTED'); }
     }
 }

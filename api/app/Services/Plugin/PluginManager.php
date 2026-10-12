@@ -3,6 +3,8 @@
 namespace App\Services\Plugin;
 
 use App\Http\Middleware\EnsurePluginEnabled;
+use App\Domains\CredentialProviderFixture\FixturePluginBinding;
+use App\Domains\CredentialProviderFixture\FixturePluginLifecycleGate;
 use App\Models\Plugin;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Facades\DB;
@@ -25,6 +27,14 @@ class PluginManager
     ) {
         $this->pluginPath = base_path('plugins');
         $this->corePluginPath = base_path('plugins-core');
+    }
+
+    /** Closed fixed scope: ordinary v1 plugins never resolve the fixture service or query fixture SQL. */
+    private function fixtureBoundary(string $pluginCode): ?FixturePluginLifecycleGate
+    {
+        // MySQL collations may equate uppercase/accented or space-suffixed aliases with the reserved DB code.
+        if (!preg_match('/\A[a-z0-9_]+\z/D', $pluginCode)) { throw new \InvalidArgumentException('Invalid plugin code'); }
+        return $pluginCode === FixturePluginBinding::CODE ? app(FixturePluginLifecycleGate::class) : null;
     }
 
     /**
@@ -175,6 +185,7 @@ class PluginManager
      */
     public function install(string $pluginCode): bool
     {
+        $this->fixtureBoundary($pluginCode)?->refuseReactivation();
         $configFile = $this->getPluginPath($pluginCode) . '/config.json';
 
         if (!File::exists($configFile)) {
@@ -304,6 +315,7 @@ class PluginManager
      */
     public function publishAssets(string $pluginCode): void
     {
+        $this->fixtureBoundary($pluginCode)?->refuseReactivation();
         // Asset publication has the same owner boundaries as the plugin ID.
         $this->pluginPackage->publicAssetBase($pluginCode);
         $pluginPath = $this->getPluginPath($pluginCode);
@@ -433,6 +445,7 @@ class PluginManager
      */
     public function enable(string $pluginCode): bool
     {
+        $this->fixtureBoundary($pluginCode)?->refuseReactivation();
         $dbPlugin = Plugin::query()->where('code', $pluginCode)->first();
         if (!$dbPlugin) {
             throw new \RuntimeException('Plugin is not installed: ' . $pluginCode);
@@ -496,6 +509,16 @@ class PluginManager
      */
     public function disable(string $pluginCode): bool
     {
+        if ($gate = $this->fixtureBoundary($pluginCode)) {
+            $this->assertNoActiveDependents($pluginCode);
+            $wasEnabled = $gate->disable(); // Commit both fences before any PHP cleanup.
+            HookManager::removeOwner($pluginCode);
+            if ($wasEnabled) {
+                try { $this->loadPlugin($pluginCode)?->cleanup(); }
+                catch (\Throwable) { Log::warning('Fixture plugin cleanup failed after durable disable', ['plugin' => $pluginCode]); }
+            }
+            return true;
+        }
         $dbPlugin = Plugin::query()->where('code', $pluginCode)->first();
         if (!$dbPlugin) {
             throw new \RuntimeException('Plugin is not installed: ' . $pluginCode);
@@ -528,6 +551,7 @@ class PluginManager
     {
         $this->assertNoActiveDependents($pluginCode);
         $this->disable($pluginCode);
+        $this->fixtureBoundary($pluginCode)?->refuseRemoval();
         // Uninstall removes runtime registration and owned assets, but does
         // not drop user/business tables. Database migrations are retained so
         // accidental uninstalls cannot destroy plugin-owned persistent data.
@@ -546,6 +570,10 @@ class PluginManager
      */
     public function delete(string $pluginCode): bool
     {
+        if ($gate = $this->fixtureBoundary($pluginCode)) {
+            $this->uninstall($pluginCode); // Never reaches filesystem removal, including missing installation history.
+            $gate->refuseRemoval();
+        }
         if ($this->isCorePlugin($pluginCode)) {
             throw new \Exception('核心插件不允许删除');
         }
@@ -636,6 +664,7 @@ class PluginManager
      */
     public function update(string $pluginCode): bool
     {
+        $this->fixtureBoundary($pluginCode)?->refuseReactivation();
         $dbPlugin = Plugin::where('code', $pluginCode)->first();
         if (!$dbPlugin) {
             throw new \Exception('Plugin not installed: ' . $pluginCode);
@@ -773,6 +802,10 @@ class PluginManager
             File::deleteDirectory($extractPath);
             throw $e;
         }
+        if ($gate = $this->fixtureBoundary($code)) {
+            File::deleteDirectory($extractPath);
+            $gate->refuseReactivation(); // Before staging, promotion or rollback boot.
+        }
         $targetPath = $this->getUserPluginPath($code);
         $existingRow = Plugin::query()->where('code', $code)->first();
 
@@ -866,6 +899,7 @@ class PluginManager
         foreach ($enabledPlugins as $dbPlugin) {
             try {
                 $pluginCode = $dbPlugin->code;
+                $this->fixtureBoundary($pluginCode)?->assertBootable();
 
                 $pluginInstance = $this->loadPlugin($pluginCode);
                 if (!$pluginInstance) {
@@ -885,6 +919,7 @@ class PluginManager
                     $this->registerPluginCommands($pluginCode, $pluginInstance);
                     $pluginInstance->boot();
                 });
+                $this->fixtureBoundary($pluginCode)?->assertBootable();
 
             } catch (\Throwable $e) {
                 HookManager::removeOwner($dbPlugin->code);
@@ -908,6 +943,7 @@ class PluginManager
             ->get()
             ->each(function ($dbPlugin) use ($schedule) {
                 try {
+                    $this->fixtureBoundary($dbPlugin->code)?->assertBootable();
                     $pluginInstance = $this->loadPlugin($dbPlugin->code);
                     if (!$pluginInstance) {
                         return;
@@ -940,6 +976,14 @@ class PluginManager
         $enabledPluginCodes = Plugin::where('is_enabled', true)
             ->pluck('code')
             ->all();
+
+        if (in_array(FixturePluginBinding::CODE, $enabledPluginCodes, true)) {
+            try { $this->fixtureBoundary(FixturePluginBinding::CODE)->assertBootable(); }
+            catch (\Throwable) {
+                HookManager::removeOwner(FixturePluginBinding::CODE);
+                $enabledPluginCodes = array_values(array_diff($enabledPluginCodes, [FixturePluginBinding::CODE]));
+            }
+        }
 
         return array_intersect_key($this->loadedPlugins, array_flip($enabledPluginCodes));
     }
