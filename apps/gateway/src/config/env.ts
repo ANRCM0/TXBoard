@@ -1,3 +1,5 @@
+import { loadInternalUserConfig, type InternalUserConfig } from './internal-user.js'
+
 export type GatewayConfig = {
   host: string
   port: number
@@ -21,6 +23,8 @@ export type GatewayConfig = {
    *  payment write ban stays in force and POST /gateway/v1/orders answers 405
    *  with zero upstream calls. */
   orderWriteEnabled: boolean
+  /** Local/testing-only mTLS read slice; absence preserves Native behavior. */
+  internalUser?: InternalUserConfig
 }
 
 function intSetting(value: string | undefined, fallback: number, min: number, max: number): number {
@@ -95,5 +99,6 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     // leaves the write ban in force — a typo, a '1' or an empty value can
     // never open a transaction write path.
     orderWriteEnabled: env.GATEWAY_ORDER_WRITE_ENABLED === 'true',
+    internalUser: loadInternalUserConfig(env),
   }
 }

@@ -39,7 +39,7 @@ export function registerUserRoutes(
   app.get(`${PREFIX}/user/profile`, async c => {
     const auth = requireBearer(c)
     if (auth instanceof Response) return auth
-    return ok(c, validated(userProfileSchema, await upstreamRequest(config, fetcher, 'userProfile', { auth })))
+    return ok(c, validated(userProfileSchema, await upstreamRequest(config, fetcher, 'userProfile', { auth, signal: c.req.raw.signal })))
   })
 
   app.get(`${PREFIX}/user/subscription/summary`, async c => {

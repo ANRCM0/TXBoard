@@ -1,6 +1,7 @@
 import type { GatewayConfig } from '../config/env.js'
 import { adaptNativeData, nativeErrorEnvelope, nativeSuccessEnvelope } from '../adapters/txapi-native.js'
 import { GatewayFailure } from './failures.js'
+import { internalUserRequest } from './internal-user-client.js'
 export { GatewayFailure, type GatewayFailureCode } from './failures.js'
 
 export type UpstreamFetcher = typeof fetch
@@ -142,10 +143,14 @@ export async function upstreamRequest(
     pageSize?: number
     /** Separate paged DTO; the existing list response remains an array. */
     paginated?: boolean
+    signal?: AbortSignal
     /** GW-304: extra headers forwarded verbatim (e.g. the idempotency hint). */
     headers?: Record<string, string>
   } = {},
 ): Promise<unknown> {
+  if (config.internalUser && (operation === 'userProfile' || operation === 'userOrderDetail')) {
+    return internalUserRequest(config, operation, options)
+  }
   // No untrusted path/host input can escape this static allowlist.
   const path = allowlistedPaths[operation]
   if (path === null) throw new GatewayFailure('UPSTREAM_ERROR', 404, 'Public payment catalog unavailable')
