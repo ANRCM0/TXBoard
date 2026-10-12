@@ -1,3 +1,4 @@
+import { requestId, nativeError } from './native-fixtures.js'
 import { describe, expect, it, vi } from 'vitest'
 import { createGatewayApp } from '../src/app.js'
 import { loadConfig } from '../src/config/env.js'
@@ -48,13 +49,13 @@ function testConfig(overrides: Record<string, string> = {}) {
 
 /** A TXBoard success envelope. */
 function okEnvelope(data: unknown) {
-  return { status: 'success', message: null, data, error: null }
+  return { request_id: requestId, data }
 }
 
 /** A TXBoard failure envelope with a business code (Laravel's vocabulary). */
 function failEnvelope(code: string, status = 422) {
   return vi.fn(async () => Response.json(
-    { status: 'fail', message: 'refused', data: null, error: null, code },
+    nativeError(code),
     { status, headers: status === 409 ? { 'Retry-After': '2' } : undefined },
   ))
 }
@@ -270,7 +271,7 @@ describe('GW-304 input validation', () => {
     expect(res.status).toBe(201)
     expect((await res.json() as { data: unknown }).data).toEqual({ trade_no: 'T42' })
     const [url, init] = upstreamCall(fetcher)
-    expect(url).toBe('https://txboard.example/api/v1/user/order/save')
+    expect(url).toBe('https://txboard.example/txapi/orders')
     expect(init.method).toBe('POST')
     expect(JSON.parse(init.body as string)).toEqual({
       plan_id: 7, period: 'year_price', coupon_code: 'SAVE10',

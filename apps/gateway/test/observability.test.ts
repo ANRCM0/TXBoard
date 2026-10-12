@@ -1,3 +1,4 @@
+import { requestId, nativeError, nativeOrder } from './native-fixtures.js'
 /**
  * test/observability.test.ts — GW-214 / PR-D.
  *
@@ -66,9 +67,9 @@ function loggerFor(sink: (line: string) => void) {
 }
 
 /** Upstream answer that satisfies the login adapter. */
-const loginPayload = () => ({ status: 'success', data: { auth_data: 'Bearer upstream-token-value-123' } })
+const loginPayload = () => ({ request_id: requestId, data: { auth_data: 'Bearer upstream-token-value-123' } })
 /** Upstream answer that satisfies the order-detail adapter. */
-const orderPayload = () => ({ status: 'success', data: { trade_no: 'T-1', status: 1 } })
+const orderPayload = (tradeNo = SECRETS.orderId) => ({ request_id: requestId, data: nativeOrder({ trade_no: tradeNo, status: 1 }) })
 
 describe('GW-214 structured log redaction', () => {
   it('never logs the password, bearer, captcha, email, codes or request body', async () => {
@@ -148,7 +149,7 @@ describe('GW-214 structured log redaction', () => {
     const logs = captureLogs()
     const app = createGatewayApp(
       config,
-      vi.fn(async () => Response.json({ status: 'fail' }, { status: 502 })),
+      vi.fn(async () => Response.json(nativeError(), { status: 502 })),
       undefined,
       {},
       { logger: loggerFor(logs.lines.push.bind(logs.lines)) },
@@ -209,9 +210,9 @@ describe('GW-214 metrics', () => {
       vi.fn()
         .mockResolvedValueOnce(Response.json(loginPayload()))
         .mockResolvedValueOnce(Response.json(orderPayload()))
-        .mockResolvedValueOnce(Response.json({ status: 'fail' }, { status: 502 }))
-        .mockResolvedValueOnce(Response.json({ status: 'fail', message: 'Too many attempts' }, { status: 429 }))
-        .mockResolvedValueOnce(Response.json({ status: 'fail' }, { status: 500 })),
+        .mockResolvedValueOnce(Response.json(nativeError(), { status: 502 }))
+        .mockResolvedValueOnce(Response.json(nativeError('REJECTED', 'Too many attempts'), { status: 429 }))
+        .mockResolvedValueOnce(Response.json(nativeError(), { status: 500 })),
       undefined,
       {},
       { metrics },
@@ -259,10 +260,10 @@ describe('GW-214 metrics', () => {
     const app = createGatewayApp(
       config,
       vi.fn()
-        .mockResolvedValueOnce(Response.json(orderPayload()))
-        .mockResolvedValueOnce(Response.json(orderPayload()))
-        .mockResolvedValueOnce(Response.json(orderPayload()))
-        .mockResolvedValueOnce(Response.json({ status: 'success', data: 1 })),
+        .mockResolvedValueOnce(Response.json(orderPayload(SECRETS.orderId)))
+        .mockResolvedValueOnce(Response.json(orderPayload('ANOTHER-ORDER-ID')))
+        .mockResolvedValueOnce(Response.json(orderPayload('third-order-id-3')))
+        .mockResolvedValueOnce(Response.json({ request_id: requestId, data: nativeOrder({ trade_no: SECRETS.orderId, status: 1 }) })),
       undefined,
       {},
       { metrics },
@@ -298,6 +299,7 @@ describe('GW-214 metrics', () => {
     // Method is part of the identity.
     expect(routeTemplate('/gateway/v1/orders', 'POST')).toBe('/gateway/v1/orders')
     expect(routeTemplate('/gateway/v1/orders', 'GET')).toBe('/gateway/v1/orders')
+    expect(routeTemplate('/gateway/v1/orders/page?current=2', 'GET')).toBe('/gateway/v1/orders/page')
   })
 
   it('classifies statuses into a bounded enum', () => {
@@ -658,7 +660,7 @@ describe('GW-214 upstream failure observability', () => {
           throw new GatewayFailure('UPSTREAM_ERROR', 502, 'Upstream request failed')
         })
         // A genuine upstream 429 is preserved verbatim.
-        .mockResolvedValueOnce(Response.json({ status: 'fail', message: 'Too many attempts' }, { status: 429 })),
+        .mockResolvedValueOnce(Response.json(nativeError('REJECTED', 'Too many attempts'), { status: 429 })),
       undefined,
       {},
       { metrics },

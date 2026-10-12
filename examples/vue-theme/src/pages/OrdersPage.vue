@@ -24,6 +24,12 @@
     </table>
     <p v-else-if="!loading && !error" class="muted">暂无订单。</p>
     <p v-if="loading" role="status">加载中…</p>
+    <nav v-if="total !== null" aria-label="订单分页">
+      <button :disabled="loading || current === 1" @click="changePage(current - 1)">上一页</button>
+      <span>第 {{ current }} / {{ lastPage }} 页，共 {{ total }} 条</span>
+      <button :disabled="loading || current >= lastPage" @click="changePage(current + 1)">下一页</button>
+    </nav>
+    <p v-else-if="!loading" class="muted">此 Gateway 未提供分页总数；当前列表可能不含完整历史。</p>
   </section>
 </template>
 
@@ -34,18 +40,31 @@ import { api, newIdempotencyKey } from '../api'
 import { formatMoney } from '../lib/format'
 import ErrorState from '../components/ErrorState.vue'
 
-const STATUS_LABELS: Record<number, string> = { 0: '待支付', 1: '已支付', 2: '已取消', 3: '其他' }
+const STATUS_LABELS: Record<number, string> = { 0: '待支付', 1: '开通中', 2: '已取消', 3: '已完成', 4: '已折抵' }
 
 const orders = ref<Order[]>([])
 const loading = ref(true)
 const error = ref<Error | null>(null)
 const createNotice = ref('')
+const current = ref(1)
+const lastPage = ref(1)
+const total = ref<number | null>(null)
 
 async function load() {
   loading.value = true
   error.value = null
   try {
-    orders.value = await api.orders.list()
+    const bootstrap = await api.bootstrap()
+    if (bootstrap.capabilities.includes('orders.page')) {
+      const page = await api.orders.page({ current: current.value, page_size: 20 })
+      orders.value = page.items
+      lastPage.value = page.lastPage
+      total.value = page.total
+    } else {
+      orders.value = await api.orders.list()
+      lastPage.value = 1
+      total.value = null
+    }
   } catch (err) {
     error.value = err as Error
   } finally {
@@ -89,6 +108,11 @@ async function createOrder(planId: number, period: string, draftKey: string) {
       error.value = gerr
     }
   }
+}
+
+async function changePage(page: number) {
+  current.value = page
+  await load()
 }
 
 onMounted(load)

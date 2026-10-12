@@ -22,7 +22,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import type { Plan } from '@txboard/theme-sdk'
 import { api, hasCapability } from '../api'
@@ -39,7 +39,7 @@ const caps = ref<string[]>([])
 const loading = ref(true)
 const error = ref<Error | null>(null)
 
-const safeLogo = () => site.value?.logo ? safeWebUrl(site.value.logo) : null
+const safeLogo = computed(() => site.value?.logo ? safeWebUrl(site.value.logo) : null)
 
 async function load() {
   loading.value = true

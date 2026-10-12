@@ -1,52 +1,31 @@
 import type { GatewayConfig } from '../config/env.js'
-
-export type GatewayFailureCode =
-  | 'UPSTREAM_UNAVAILABLE'
-  | 'UPSTREAM_ERROR'
-  | 'PAYLOAD_TOO_LARGE'
-  | 'VALIDATION_ERROR'
-  | 'RATE_LIMITED'
-  /** GW-203: upstream authentication is possible but a CAPTCHA must be satisfied. */
-  | 'CAPTCHA_REQUIRED'
-  /** GW-304: the same order request is already being processed; retry later. */
-  | 'IDEMPOTENCY_IN_PROGRESS'
-  /** GW-304: the idempotency key is bound to different request parameters. */
-  | 'IDEMPOTENCY_CONFLICT'
-  /** GW-304: the upstream refused the order for a business reason (e.g. plan). */
-  | 'ORDER_REJECTED'
-
-export class GatewayFailure extends Error {
-  constructor(
-    public readonly code: GatewayFailureCode,
-    public readonly status: number,
-    message: string,
-  ) {
-    super(message)
-  }
-}
+import { adaptNativeData, nativeErrorEnvelope, nativeSuccessEnvelope } from '../adapters/txapi-native.js'
+import { GatewayFailure } from './failures.js'
+export { GatewayFailure, type GatewayFailureCode } from './failures.js'
 
 export type UpstreamFetcher = typeof fetch
 
 const allowlistedPaths = {
-  guestConfig: '/api/v1/guest/comm/config',
-  guestPlans: '/api/v1/guest/plan/fetch',
-  guestPaymentMethods: '/api/v1/guest/paymentMethods',
-  login: '/api/v1/passport/auth/login',
-  userProfile: '/api/v1/user/info',
-  userOrders: '/api/v1/user/order/fetch',
-  userOrderDetail: '/api/v1/user/order/detail',
-  userSubscription: '/api/v1/user/getSubscribe',
-  userPaymentMethods: '/api/v1/user/order/getPaymentMethod',
-  userNotices: '/api/v1/user/notice/fetch',
-  userStats: '/api/v1/user/getStat',
-  userOrderStatus: '/api/v1/user/order/check',
-  register: '/api/v1/passport/auth/register',
-  sendEmailCode: '/api/v1/passport/comm/sendEmailVerify',
+  guestConfig: '/txapi/public/site-config',
+  guestPlans: '/txapi/plans',
+  // No anonymous counterpart exists. Checked before URL creation or fetch.
+  guestPaymentMethods: null,
+  login: '/txapi/auth/login',
+  userProfile: '/txapi/me',
+  userOrders: '/txapi/orders',
+  userOrderDetail: '/txapi/orders/',
+  userSubscription: '/txapi/me/subscription',
+  userPaymentMethods: '/txapi/billing/payment-methods',
+  userNotices: '/txapi/notices',
+  userStats: '/txapi/me/dashboard-stats',
+  userOrderStatus: '/txapi/orders/',
+  register: '/txapi/auth/register',
+  sendEmailCode: '/txapi/auth/email-code',
   // GW-304: order creation. The ONLY mutating operation the order-write
   // adaptation layer may reach, and only when GATEWAY_ORDER_WRITE_ENABLED is
   // set. Laravel owns the idempotency decision; the Gateway only forwards the
   // hint header it derives itself (see routes/orders-write.ts).
-  userOrderCreate: '/api/v1/user/order/save',
+  userOrderCreate: '/txapi/orders',
 } as const
 
 export type UpstreamOperation = keyof typeof allowlistedPaths
@@ -126,9 +105,8 @@ function publicErrorMessage(status: number): string {
  */
 function mappedOrderWriteFailure(
   record: Record<string, unknown>,
-  status: number,
 ): GatewayFailure | null {
-  switch (record.code) {
+  switch (asRecord(record.error).code) {
     case 'IDEMPOTENCY_IN_PROGRESS':
       return new GatewayFailure('IDEMPOTENCY_IN_PROGRESS', 409,
         'An identical order is already being processed')
@@ -141,10 +119,11 @@ function mappedOrderWriteFailure(
     case 'PERIOD_NOT_ALLOWED':
     case 'COUPON_NOT_FOUND':
     case 'COUPON_EXPIRED':
+    case 'ORDER_REJECTED':
+    case 'INVALID_PERIOD':
       // Business rejection: the order was understood and refused. Laravel
       // owns every rule behind these; the Gateway only classifies.
-      return new GatewayFailure('ORDER_REJECTED', status,
-        publicErrorMessage(status >= 400 ? status : 422))
+      return new GatewayFailure('ORDER_REJECTED', 422, publicErrorMessage(422))
     default:
       return null
   }
@@ -161,27 +140,33 @@ export async function upstreamRequest(
     tradeNo?: string
     current?: number
     pageSize?: number
+    /** Separate paged DTO; the existing list response remains an array. */
+    paginated?: boolean
     /** GW-304: extra headers forwarded verbatim (e.g. the idempotency hint). */
     headers?: Record<string, string>
   } = {},
 ): Promise<unknown> {
   // No untrusted path/host input can escape this static allowlist.
-  const target = new URL(allowlistedPaths[operation], config.upstream)
-  if (operation === 'userOrders' && options.status !== undefined) {
-    target.searchParams.set('status', String(options.status))
+  const path = allowlistedPaths[operation]
+  if (path === null) throw new GatewayFailure('UPSTREAM_ERROR', 404, 'Public payment catalog unavailable')
+  const target = new URL(path, config.upstream)
+  if (operation === 'userOrders') {
+    if (options.status !== undefined) target.searchParams.set('status', String(options.status))
+    target.searchParams.set('page', String(options.current ?? 1))
+    target.searchParams.set('per_page', String(options.pageSize ?? 100))
   }
-  if (operation === 'userOrderStatus' && options.tradeNo) {
-    target.searchParams.set('trade_no', options.tradeNo)
-  }
-  if (operation === 'userOrderDetail' && options.tradeNo) {
-    target.searchParams.set('trade_no', options.tradeNo)
+  if (operation === 'userOrderStatus' || operation === 'userOrderDetail') {
+    if (!options.tradeNo || !/^[a-zA-Z0-9_-]{1,128}$/.test(options.tradeNo)) {
+      throw new GatewayFailure('VALIDATION_ERROR', 400, 'Invalid order identifier')
+    }
+    target.pathname += encodeURIComponent(options.tradeNo) + (operation === 'userOrderDetail' ? '/detail' : '')
   }
   if (operation === 'userNotices') {
-    target.searchParams.set('current', String(options.current ?? 1))
-    target.searchParams.set('pageSize', String(options.pageSize ?? 5))
+    target.searchParams.set('page', String(options.current ?? 1))
+    target.searchParams.set('per_page', String(options.pageSize ?? 5))
   }
   const headers = new Headers({ Accept: 'application/json' })
-  if (options.auth) headers.set('Authorization', options.auth)
+  if (operation.startsWith('user') && options.auth) headers.set('Authorization', options.auth)
   const method = operation === 'login' || operation === 'register' || operation === 'sendEmailCode'
     || operation === 'userOrderCreate'
     ? 'POST' : 'GET'
@@ -190,7 +175,7 @@ export async function upstreamRequest(
   // only for the order-write operation. A caller can never widen this: the
   // record is built by the route module, never passed through from a client.
   for (const [name, value] of Object.entries(options.headers ?? {})) {
-    if (ORDER_WRITE_FORWARDED_HEADERS.has(name.toLowerCase())) {
+    if (operation === 'userOrderCreate' && ORDER_WRITE_FORWARDED_HEADERS.has(name.toLowerCase())) {
       headers.set(name, value)
     }
   }
@@ -238,37 +223,25 @@ export async function upstreamRequest(
       throw error
     }
     const record = asRecord(payload)
-    // Never swallow a TXBoard application-level error with HTTP 200.
-    if (!response.ok || record.status === 'fail') {
-      const status = response.status >= 400 ? response.status : 400
+    // Only current Native envelopes are accepted. Error messages and fields
+    // are never exposed, even when Core returns an error with HTTP 200.
+    const failure = nativeErrorEnvelope.safeParse(payload)
+    if (!response.ok || Object.hasOwn(record, 'error')) {
+      if (!failure.success) {
+        throw new GatewayFailure('UPSTREAM_ERROR', 502, 'Unexpected upstream error shape')
+      }
+      const status = response.status >= 400 ? response.status : 502
       // GW-304: the order-write verdict codes are Laravel's; map them to the
       // frozen Gateway vocabulary instead of collapsing them into UPSTREAM_ERROR.
-      const orderWriteFailure = operation === 'userOrderCreate'
-        ? mappedOrderWriteFailure(record, status)
+      const orderWriteFailure = operation === 'userOrderCreate' && [409, 422].includes(response.status)
+        ? mappedOrderWriteFailure(record)
         : null
       if (orderWriteFailure) throw orderWriteFailure
       throw new GatewayFailure('UPSTREAM_ERROR', status, publicErrorMessage(status))
     }
-    // An unknown status is not a TXBoard business failure. Treat its
-    // response as a broken contract rather than manufacturing HTTP 400.
-    if (Object.hasOwn(record, 'status') && record.status !== 'success') {
-      throw new GatewayFailure('UPSTREAM_ERROR', 502, 'Unexpected upstream response shape')
-    }
-    if (record.status === 'success') {
-      if (!Object.hasOwn(record, 'data')) {
-        throw new GatewayFailure('UPSTREAM_ERROR', 502, 'Invalid upstream success response')
-      }
-      return record.data
-    }
-    // Only the known legacy paginator format may omit a status envelope.
-    // Unknown successful bodies must not masquerade as valid domain data.
-    if (Array.isArray(record.data) && typeof record.total === 'number'
-      && Number.isFinite(record.total) && record.total >= 0) {
-      return operation === 'userNotices'
-        ? { data: record.data, total: record.total }
-        : record.data
-    }
-    throw new GatewayFailure('UPSTREAM_ERROR', 502, 'Unexpected upstream response shape')
+    const success = nativeSuccessEnvelope.safeParse(payload)
+    if (!success.success) throw new GatewayFailure('UPSTREAM_ERROR', 502, 'Unexpected upstream response shape')
+    return adaptNativeData(operation, success.data.data, success.data.meta, options)
   } catch (err) {
     if (err instanceof GatewayFailure) return Promise.reject(err)
     if (err instanceof Error && (err.name === 'TimeoutError' || err.name === 'AbortError')) {

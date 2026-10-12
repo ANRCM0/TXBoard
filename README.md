@@ -4,13 +4,13 @@
 
 > **开发与验收状态**：以 [开发状态台账](./docs/development-status.md) 的最新记录为准。代码与 CI 通过不等于完成生产环境联调，真实部署仍须独立验收。
 
-> **Core First v2 演进**：后续工作以 [主仓 B0 基线](https://github.com/ANRCM0/TXBoard/blob/main/docs/architecture/v2/README.md) 和 [v2 契约](https://github.com/ANRCM0/TXBoard/blob/main/contracts/v2/README.md) 为目标。当前 Gateway 仍调用旧 `/api/v1/*` 并使用 legacy 上游解码，与已切换 `/txapi/*` 的 Core 存在兼容缺口；未通过真实联调前不能直接宣称两仓当前版本兼容。
+> **Core First v2 演进**：后续工作以 [主仓 B0 基线](https://github.com/ANRCM0/TXBoard/blob/main/docs/architecture/v2/README.md) 和 [v2 契约](https://github.com/ANRCM0/TXBoard/blob/main/contracts/v2/README.md) 为目标。当前 14 项操作已适配 Core `/txapi/*` 与 Native 信封，并通过隔离 HTTP 联调；匿名支付目录无对应接口，固定关闭。此项属于 B5/B6 准备，统一 User/Admin Gateway、目标 BFF、生产部署与 SDK 发布仍待完成，见 [Native 适配与联调](./docs/native-core-integration.md)。
 
 [文档中心](./docs/README.md) · [开发与验收状态](./docs/development-status.md) · [文档维护规范](./docs/DOCUMENTATION_GUIDE.md)
 
 ## 现行 BFF 与双仓演进
 
-Gateway 当前是可选主题/用户 API BFF，公开前缀为 `/gateway/v1`，SDK 使用 `{ok,data,meta}` envelope；固定上游仍为旧 `/api/v1/*`。当前 Core 已提供 `/txapi/*` 和 `{data,meta?,request_id}`，旧路径及旧解码不能直接对接。此前 `/txapi/bff/v1/*` 的可选 BFF 设计仍留在 [双仓集成方案](./docs/txapi-integration.md) 和 [目标 BFF 契约](./contracts/txapi-bff-target-v1.md) 中，后续统一 User/Admin Gateway 以 Core First v2 契约推进。Edge 精确分流、私网固定上游、不开放通用反向代理。
+Gateway 当前是可选主题/用户 API BFF，公开前缀为 `/gateway/v1`，SDK 使用 `{ok,data,meta}` envelope；固定上游为 Core `/txapi/*`。适配层严格校验 Native `{data,meta?,request_id}` 信封和各操作 DTO，再投影为当前外部字段。此前 `/txapi/bff/v1/*` 的可选 BFF 设计仍留在 [双仓集成方案](./docs/txapi-integration.md) 和 [目标 BFF 契约](./contracts/txapi-bff-target-v1.md) 中，后续统一 User/Admin Gateway 以 Core First v2 契约推进。Edge 精确分流、私网固定上游、不开放通用反向代理。
 
 ## 功能概览
 
@@ -18,12 +18,12 @@ Gateway 当前是可选主题/用户 API BFF，公开前缀为 `/gateway/v1`，S
 | --- | --- | --- |
 | 站点/主题引导和 CAPTCHA 公开元数据 | `bootstrap`、`theme.config` | 已实现 |
 | 套餐、登录与用户资料 | `plans.list`、`auth.login`、`user.profile` | 已实现 |
-| 订单列表、详情、状态 | `orders.list`、`orders.detail`、`orders.status` | **只读** |
+| 订单列表、分页、详情、状态 | `orders.list`、`orders.page`、`orders.detail`、`orders.status` | **只读**；支持状态 0..4，列表默认最多 100 条 |
 | 订阅用量概览、支付方式展示、通知、账户计数 | `user.subscription`、`payments.list`、`notices.list`、`dashboard.stats` | 已实现 |
 | HPKE 密文登录 | `auth.login` 搭配 `encryptedLogin: true` | 可选，默认关闭 |
 | HPKE 加密注册、发送邮件验证码 | `auth.register`、`auth.sendEmailCode` | **默认关闭**；必须启用 Redis/HPKE |
 | Redis nonce 防重放 + 邮箱维度限流 | `SET NX PX` / Lua | 已实现并通过 CI；非生产安全批准 |
-| 创建订单 | `POST /gateway/v1/orders` | 已有透传适配，**默认关闭、真实联调未验收** |
+| 创建订单 | `POST /gateway/v1/orders` | 已有透传适配，**默认关闭**；隔离 Core 幂等/权限联调已验证，生产验收待完成 |
 | checkout/cancel、支付回调、管理端、订阅原文令牌、节点 | 无 Gateway 接口 | **未开放** |
 
 **入口边界：**Gateway 仅处理 `/gateway/v1/*`；当前 Core 的 Admin、Agent、Node、支付回调、私密订阅链接、插件和 WebSocket 使用各自原生入口及鉴权。不得为了适配 Gateway 重新注册 Core 已退役的 `/api/v1/*` 或 `/api/v2/*`。Gateway 不是通用路径代理，也不使用管理员 Token。

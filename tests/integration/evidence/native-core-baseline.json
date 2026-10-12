@@ -1,0 +1,32 @@
+{
+  "result": "passed",
+  "checks": 70,
+  "core_head": "537a2c82996329ca29c86942996482306e9166e9",
+  "database": "txboard_gateway_test",
+  "database_version": "11.4.12-MariaDB",
+  "real_http": true,
+  "discounted_history_orders": 101,
+  "operations": [
+    "POST /txapi/auth/register",
+    "POST /txapi/auth/login",
+    "POST /txapi/auth/email-code",
+    "GET /txapi/public/site-config",
+    "GET /txapi/plans",
+    "GET /txapi/me",
+    "GET /txapi/orders",
+    "GET /txapi/orders/{tradeNo}",
+    "GET /txapi/orders/{tradeNo}/detail",
+    "GET /txapi/me/subscription",
+    "GET /txapi/billing/payment-methods",
+    "GET /txapi/notices",
+    "GET /txapi/me/dashboard-stats",
+    "POST /txapi/orders"
+  ],
+  "limitations": [
+    "B5/B6 not complete",
+    "No anonymous payment catalog",
+    "Invites/knowledge Core-only checks",
+    "Unpaged list returns first 100; use orders.page for complete traversal",
+    "No production deployment"
+  ]
+}

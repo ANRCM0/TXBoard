@@ -1,3 +1,4 @@
+import { requestId } from './native-fixtures.js'
 import { describe, expect, it, beforeEach, vi } from 'vitest'
 import { createGatewayApp } from '../src/app.js'
 import { loadConfig } from '../src/config/env.js'
@@ -22,7 +23,7 @@ const token = 'Bearer usertoken_longer_than_eight'
 function mockFetch(payload: unknown, status = 200) {
   return vi.fn(async () => Response.json(payload, { status }))
 }
-function ok(data: unknown) { return { status: 'success', message: null, data } }
+function ok(data: unknown) { return { request_id: requestId, data } }
 function fakeReplay() {
   const seen = new Set<string>()
   return { reserve: async (kid: string, nonce: string) => {

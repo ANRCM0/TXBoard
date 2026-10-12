@@ -17,6 +17,7 @@
     "test": "npm run test --workspaces",
     "smoke:staging": "node scripts/smoke-gateway.mjs",
     "check": "npm run typecheck && npm run test && npm run build",
+    "test:core": "bash tests/integration/run-linux.sh",
     "test:browser": "node --test tests/browser/mock-gateway.test.mjs",
     "test:redis": "node --test tests/redis/redis-security.test.mjs",
     "audit:ci": "npm audit --audit-level=high",

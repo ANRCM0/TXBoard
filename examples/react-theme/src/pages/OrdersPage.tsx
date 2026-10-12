@@ -6,11 +6,11 @@ import { hasCapability } from '../api'
 import { formatMoney } from '../lib/format'
 import { ErrorState } from '../components/ErrorState'
 
-const STATUS_LABELS: Record<number, string> = { 0: '待支付', 1: '已支付', 2: '已取消', 3: '其他' }
+const STATUS_LABELS: Record<number, string> = { 0: '待支付', 1: '开通中', 2: '已取消', 3: '已完成', 4: '已折抵' }
 
 export function OrdersPage() {
   const auth = useAuth()
-  const { orders, error, loading, notice, refreshStatus, createOrder } = useOrders()
+  const { orders, error, loading, notice, current, lastPage, total, setCurrent, refreshStatus, createOrder } = useOrders()
   const [canCreate] = useState(false)
 
   return (
@@ -51,6 +51,14 @@ export function OrdersPage() {
           </tbody>
         </table>
       )}
+      {total !== null && (
+        <nav aria-label="订单分页">
+          <button disabled={loading || current === 1} onClick={() => setCurrent(current - 1)}>上一页</button>
+          <span>第 {current} / {lastPage} 页，共 {total} 条</span>
+          <button disabled={loading || current >= lastPage} onClick={() => setCurrent(current + 1)}>下一页</button>
+        </nav>
+      )}
+      {total === null && !loading && <p className="muted">此 Gateway 未提供分页总数；当前列表可能不含完整历史。</p>}
     </section>
   )
 }

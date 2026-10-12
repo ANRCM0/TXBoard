@@ -1,3 +1,4 @@
+import { requestId } from './native-fixtures.js'
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import {
   compileIpAllowlist,
@@ -201,7 +202,7 @@ describe('GW-204 Host validation', () => {
 
 describe('GW-204 gateway enforcement', () => {
   it('drops forged proxy headers from an untrusted peer before any handler runs', async () => {
-    const fetcher = vi.fn(async () => Response.json({ status: 'success', data: {} }))
+    const fetcher = vi.fn(async () => Response.json({ request_id: requestId, data: {} }))
     const app = createGatewayApp(config, fetcher as any, undefined, { trustedIngress: '10.0.0.0/8' })
     const res = await app.request(requestFromPeer('203.0.113.9', {
       headers: { 'X-Forwarded-For': '10.0.0.1', 'X-Real-IP': '10.0.0.1' },
@@ -212,20 +213,20 @@ describe('GW-204 gateway enforcement', () => {
   })
 
   it('accepts forwarded headers from an allowlisted ingress', async () => {
-    const fetcher = vi.fn(async () => Response.json({ status: 'success', data: {} }))
+    const fetcher = vi.fn(async () => Response.json({ request_id: requestId, data: {} }))
     const app = createGatewayApp(config, fetcher as any, undefined, { trustedIngress: '10.0.0.0/8' })
     const res = await app.request(requestFromPeer('10.0.0.7', { headers: { 'X-Forwarded-For': '1.2.3.4' } }))
     expect(res.status).toBe(200)
   })
 
   it('treats every peer as untrusted when the ingress allowlist is empty', async () => {
-    const app = createGatewayApp(config, vi.fn(async () => Response.json({ status: 'success', data: {} })) as any)
+    const app = createGatewayApp(config, vi.fn(async () => Response.json({ request_id: requestId, data: {} })) as any)
     const res = await app.request(requestFromPeer('127.0.0.1', { headers: { 'X-Forwarded-For': '1.2.3.4' } }))
     expect(res.status).toBe(403)
   })
 
   it('rejects a malformed or disallowed Host header', async () => {
-    const fetcher = vi.fn(async () => Response.json({ status: 'success', data: {} }))
+    const fetcher = vi.fn(async () => Response.json({ request_id: requestId, data: {} }))
     const app = createGatewayApp(config, fetcher as any, undefined, { allowedHosts: 'gateway.example.com' })
     const ok = await app.request(requestFromPeer('10.0.0.7', { headers: { Host: 'gateway.example.com' } }))
     expect(ok.status).toBe(200)
@@ -241,7 +242,7 @@ describe('GW-204 gateway enforcement', () => {
   })
 
   it('never reflects an arbitrary CORS origin', async () => {
-    const fetcher = vi.fn(async () => Response.json({ status: 'success', data: {} }))
+    const fetcher = vi.fn(async () => Response.json({ request_id: requestId, data: {} }))
     const app = createGatewayApp(config, fetcher as any, undefined, { trustedIngress: '10.0.0.0/8' })
     const spoofed = await app.request(requestFromPeer('10.0.0.7', { headers: { Origin: 'https://evil.test' } }))
     expect(spoofed.status).toBe(403)
@@ -260,7 +261,7 @@ describe('GW-204 gateway enforcement', () => {
   })
 
   it('emits hardened boundary headers on every response', async () => {
-    const fetcher = vi.fn(async () => Response.json({ status: 'success', data: {} }))
+    const fetcher = vi.fn(async () => Response.json({ request_id: requestId, data: {} }))
     const app = createGatewayApp(config, fetcher as any, undefined, { trustedIngress: '10.0.0.0/8' })
     const res = await app.request(requestFromPeer('10.0.0.7'))
     expect(res.headers.get('x-content-type-options')).toBe('nosniff')
@@ -294,8 +295,8 @@ describe('GW-204 upstream access hardening', () => {
     // A custom fetcher (or undici internals) that ignores redirect:'manual'
     // returns a response whose url points at the final, different origin.
     const fetcher = vi.fn(async () => {
-      const body = Response.json({ status: 'success', data: {} })
-      Object.defineProperty(body, 'url', { value: 'https://evil.test/api/v1/guest/comm/config' })
+      const body = Response.json({ request_id: requestId, data: {} })
+      Object.defineProperty(body, 'url', { value: 'https://evil.test/txapi/public/site-config' })
       return body
     })
     const app = createGatewayApp(upstream, fetcher as any, undefined, { trustedIngress: '10.0.0.0/8' })
@@ -306,7 +307,7 @@ describe('GW-204 upstream access hardening', () => {
 
   it('accepts a response from the configured origin', async () => {
     const fetcher = vi.fn(async () => Response.json(
-      { status: 'success', data: {} },
+      { request_id: requestId, data: {} },
       { headers: { 'content-type': 'application/json' } },
     ))
     const app = createGatewayApp(upstream, fetcher as any, undefined, { trustedIngress: '10.0.0.0/8' })

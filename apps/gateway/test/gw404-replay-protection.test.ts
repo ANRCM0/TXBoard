@@ -1,3 +1,4 @@
+import { requestId } from './native-fixtures.js'
 import { describe, expect, it, vi } from 'vitest'
 import { generateKeyPairSync } from 'node:crypto'
 import { Aes256Gcm, CipherSuite, DhkemP256HkdfSha256, HkdfSha256 } from '@hpke/core'
@@ -27,7 +28,7 @@ const config = loadConfig({
   GATEWAY_ALLOWED_ORIGINS: 'https://theme.example',
 })
 const token = 'Bearer usertoken_longer_than_eight'
-function ok(data: unknown) { return { status: 'success', message: null, data } }
+function ok(data: unknown) { return { request_id: requestId, data } }
 function loginOk() { return vi.fn(async () => Response.json(ok({ auth_data: token, is_admin: false }))) }
 async function dataOf(response: Response) { return await response.json() as any }
 

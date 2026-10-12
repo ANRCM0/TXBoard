@@ -1,3 +1,4 @@
+import { requestId, nativePlan, nativeProfile } from './native-fixtures.js'
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import {
   compileIpAllowlist,
@@ -130,7 +131,7 @@ function policy(overrides: Partial<RouteRatePolicy>): ResolvedPolicy {
   return { ...merged, subjectWindow: merged.subjectWindowMs ?? merged.ipWindowMs }
 }
 
-const upstreamOk = () => Response.json({ status: 'success', data: {} })
+const upstreamOk = () => Response.json({ request_id: requestId, data: {} })
 
 // ---------------------------------------------------------------------------
 // GW-213 / GW-215 (a): forged forwarded headers from an untrusted peer
@@ -282,7 +283,7 @@ describe('GW-213 origin policy', () => {
   })
 
   it('a missing Origin does not authorize an authenticated route', async () => {
-    const fetcher = vi.fn(async () => Response.json({ status: 'success', data: { email: 'a@b.test' } }))
+    const fetcher = vi.fn(async () => Response.json({ request_id: requestId, data: nativeProfile({ email: 'a@b.test' }) }))
     const app = createGatewayApp(config, fetcher as never, undefined, { trustedIngress: '10.0.0.0/8' })
     // No Origin header at all on an account-bearing route: rejected for the
     // missing credential, never served because the (absent) Origin "passed".
@@ -440,7 +441,7 @@ describe('GW-215 Redis failure posture', () => {
   it('public routes degrade, and the degradation is observable rather than silent', async () => {
     const limiter = RedisRateLimiter.withClient(fakeRedis(() => { throw new Error('timeout') }))
     const events: { limited: boolean; degraded: boolean }[] = []
-    const fetcher = vi.fn(async () => Response.json({ status: 'success', data: [{ id: 1, name: 'Monthly', month_price: 1200 }] }))
+    const fetcher = vi.fn(async () => Response.json({ request_id: requestId, data: [nativePlan({ id: 1, name: 'Monthly', prices: [{ period: 'monthly', amount_minor: 1200 }] })] }))
     const app = createGatewayApp(config, fetcher as never, undefined, {
       rateLimiter: limiter, onRateEvent: e => events.push(e),
     })

@@ -1,3 +1,4 @@
+import { requestId } from './native-fixtures.js'
 /**
  * test/gw208-rate-limit-metrics.test.ts — GW-208.
  *
@@ -225,7 +226,7 @@ describe('GW-208 Prometheus rate-limit metrics in gateway', () => {
     const limiter = RedisRateLimiter.withClient(fakeRedis(() => [0, 0, 3, 3]))
     const app = createGatewayApp(
       config,
-      vi.fn(async () => Response.json({ status: 'success', data: [] })),
+      vi.fn(async () => Response.json({ request_id: requestId, data: [] })),
       undefined,
       { rateLimiter: limiter },
       { metrics },
@@ -245,7 +246,7 @@ describe('GW-208 Prometheus rate-limit metrics in gateway', () => {
     const limiter = RedisRateLimiter.withClient(fakeRedis(() => [1, 30_000, 60, 60]))
     const app = createGatewayApp(
       config,
-      vi.fn(async () => Response.json({ status: 'success', data: [] })),
+      vi.fn(async () => Response.json({ request_id: requestId, data: [] })),
       undefined,
       { rateLimiter: limiter },
       { metrics },
@@ -263,7 +264,7 @@ describe('GW-208 Prometheus rate-limit metrics in gateway', () => {
     const limiter = RedisRateLimiter.withClient(fakeRedis(() => [1, 30_000, 1, 120]))
     const app = createGatewayApp(
       config,
-      vi.fn(async () => Response.json({ status: 'success', data: [] })),
+      vi.fn(async () => Response.json({ request_id: requestId, data: [] })),
       undefined,
       { rateLimiter: limiter },
       { metrics },
@@ -284,7 +285,7 @@ describe('GW-208 Prometheus rate-limit metrics in gateway', () => {
     const limiter = RedisRateLimiter.withClient(fakeRedis(() => [0, 0, 1, -1]))
     const app = createGatewayApp(
       config,
-      vi.fn(async () => Response.json({ status: 'success', data: [] })),
+      vi.fn(async () => Response.json({ request_id: requestId, data: [] })),
       undefined,
       { rateLimiter: limiter },
       { metrics },
@@ -310,7 +311,7 @@ describe('GW-208 Prometheus rate-limit metrics in gateway', () => {
     const limiter = RedisRateLimiter.withClient(fakeRedis(() => { throw new Error('down') }))
     const app = createGatewayApp(
       config,
-      vi.fn(async () => Response.json({ status: 'success', data: [] })),
+      vi.fn(async () => Response.json({ request_id: requestId, data: [] })),
       undefined,
       { rateLimiter: limiter },
       { metrics },
@@ -350,7 +351,7 @@ describe('GW-208 Prometheus rate-limit metrics in gateway', () => {
     const limiter = RedisRateLimiter.withClient(fakeRedis(() => [0, 0, 5, 5]))
     const app = createGatewayApp(
       config,
-      vi.fn(async () => Response.json({ status: 'success', data: [] })),
+      vi.fn(async () => Response.json({ request_id: requestId, data: [] })),
       undefined,
       { rateLimiter: limiter },
       { metrics },

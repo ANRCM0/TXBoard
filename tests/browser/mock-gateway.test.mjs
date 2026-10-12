@@ -14,7 +14,10 @@ const SITE = 'fixture-site-key'
 const email = 'user@fixture.test'
 const password = 'fixture-password-123'
 const upstreamRequests = []
-const upstreamEnvelope = data => ({ status: 'success', message: null, data, error: null })
+const requestId = '12345678-1234-4234-8234-123456789abc'
+const upstreamEnvelope = (data, meta) => ({ data, request_id: requestId, ...(meta ? { meta } : {}) })
+const upstreamError = message => ({ error: { code: 'REJECTED', message }, request_id: requestId })
+const orderFixture = { id: 1, trade_no: 'fixture-order', status: 4, plan_id: 1, period: 'monthly', type: 1, amount_minor: 1200, plan: { id: 1, name: 'Fixture Pro', traffic_limit_bytes: 100 }, paid_at: null, created_at: '2026-10-12T00:00:00+00:00', payment_id: null, balance_amount_minor: 0, discount_amount_minor: 0 }
 // GW-304: idempotency-key -> trade_no, mirroring the Laravel semantics the
 // ADR specifies (same key + same body replays the first result).
 const ordersByKey = new Map()
@@ -55,30 +58,30 @@ test('Chromium theme SDK works through Gateway with strict fake Laravel contract
     res.setHeader('Content-Type', 'application/json')
     let status = 200
     let result
-    if (path === '/api/v1/guest/comm/config') {
+    if (path === '/txapi/public/site-config') {
       result = upstreamEnvelope({
         app_name: 'Fixture TXBoard', frontend_theme: 'TXBoard', theme_config: { accent: 'blue' },
         is_captcha: 1, captcha_type: 'turnstile', turnstile_site_key: SITE,
         turnstile_secret_key: 'not-public',
       })
-    } else if (path === '/api/v1/guest/plan/fetch') {
-      result = upstreamEnvelope([{ id: 1, name: 'Monthly', month_price: 1200 }])
+    } else if (path === '/txapi/plans') {
+      result = upstreamEnvelope([{ id: 1, name: 'Monthly', content: '', tags: [], traffic_limit_bytes: 1073741824, speed_limit_mbps: null, device_limit: null, capacity_limit: null, reset_traffic_method: null, prices: [{ period: 'monthly', amount_minor: 1200 }], renewable: true }])
     } else if ([
-      '/api/v1/passport/auth/login', '/api/v1/passport/auth/register',
-      '/api/v1/passport/comm/sendEmailVerify',
+      '/txapi/auth/login', '/txapi/auth/register',
+      '/txapi/auth/email-code',
     ].includes(path) && req.method === 'POST') {
       let data = ''
       for await (const chunk of req) data += chunk
       const submitted = JSON.parse(data)
       if (submitted.email !== email || submitted.turnstile_token !== 'fixture-captcha'
-        || (path !== '/api/v1/passport/comm/sendEmailVerify' && submitted.password !== password)) {
+        || (path !== '/txapi/auth/email-code' && submitted.password !== password)) {
         status = 422
-        result = { status: 'fail', message: 'Invalid fixture test credentials' }
+        result = upstreamError('Invalid fixture test credentials')
       } else {
-        result = upstreamEnvelope(path === '/api/v1/passport/comm/sendEmailVerify' ? true
+        result = upstreamEnvelope(path === '/txapi/auth/email-code' ? { ok: true }
           : { auth_data: TEST_BEARER, is_admin: false, secure_path: 'private-admin-route', token: 'legacy-token' })
       }
-    } else if (path === '/api/v1/user/order/save' && req.method === 'POST') {
+    } else if (path === '/txapi/orders' && req.method === 'POST') {
       let data = ''
       for await (const chunk of req) data += chunk
       const submitted = JSON.parse(data)
@@ -88,13 +91,13 @@ test('Chromium theme SDK works through Gateway with strict fake Laravel contract
       const idempotencyHint = req.headers['x-idempotency-key-hint']
       if (!idempotencyKey || !idempotencyHint) {
         status = 400
-        result = { status: 'fail', message: 'Idempotency-Key header is required' }
+        result = upstreamError('Idempotency-Key header is required')
       } else if (req.headers.authorization !== TEST_BEARER) {
         status = 401
-        result = { status: 'fail', message: 'Expired fixture session' }
+        result = upstreamError('Expired fixture session')
       } else if (!(submitted.plan_id === 1 && submitted.period === 'month_price')) {
         status = 422
-        result = { status: 'fail', message: 'Invalid fixture order' }
+        result = upstreamError('Invalid fixture order')
       } else {
         // Same key + same body replays the first result; a fresh key creates
         // a new order. The fixture mirrors the Laravel semantics the ADR
@@ -103,36 +106,36 @@ test('Chromium theme SDK works through Gateway with strict fake Laravel contract
         result = upstreamEnvelope({ trade_no: ordersByKey.get(idempotencyKey), status: 0 })
       }
     } else if ([
-      '/api/v1/user/info', '/api/v1/user/order/fetch', '/api/v1/user/getSubscribe',
-      '/api/v1/user/order/detail', '/api/v1/user/order/getPaymentMethod',
-      '/api/v1/user/notice/fetch', '/api/v1/user/getStat', '/api/v1/user/order/check',
+      '/txapi/me', '/txapi/orders', '/txapi/me/subscription',
+      '/txapi/orders/fixture-order/detail', '/txapi/billing/payment-methods',
+      '/txapi/notices', '/txapi/me/dashboard-stats', '/txapi/orders/fixture-order',
     ].includes(path)) {
       if (req.headers.authorization !== TEST_BEARER) {
         status = 401
-        result = { status: 'fail', message: 'Expired fixture session' }
-      } else if (path.endsWith('/info')) {
-        result = upstreamEnvelope({ email, balance: 1000 })
-      } else if (path.endsWith('/getStat')) {
-        result = upstreamEnvelope([2, 1, 7])
-      } else if (path.endsWith('/order/check')) {
-        result = upstreamEnvelope(0)
-      } else if (path.endsWith('/getSubscribe')) {
+        result = upstreamError('Expired fixture session')
+      } else if (path === '/txapi/me') {
+        result = upstreamEnvelope({ id: 1, email, plan_id: null, uuid: 'private', balance_minor: 1000, commission_balance_minor: 0, expired_at: null, telegram_id: null, traffic: { upload_bytes: 0, download_bytes: 0, limit_bytes: 0 } })
+      } else if (path.endsWith('/dashboard-stats')) {
+        result = upstreamEnvelope({ unpaid_orders: 2, open_tickets: 1, invited_users: 7 })
+      } else if (path === '/txapi/orders/fixture-order') {
+        result = upstreamEnvelope(orderFixture)
+      } else if (path.endsWith('/subscription')) {
         result = upstreamEnvelope({
-          plan_id: 1, plan: { name: 'Fixture Pro' }, u: 10, d: 20,
-          transfer_enable: 100, token: 'must-never-leak', subscribe_url: 'https://private.test',
+          plan: { id: 1, name: 'Fixture Pro', traffic_limit_bytes: 100 }, upload_bytes: 10, download_bytes: 20,
+          traffic_limit_bytes: 100, expired_at: null, next_reset_at: null, device_limit: null, speed_limit_mbps: null, reset_day: null, token: 'must-never-leak', subscribe_url: 'https://private.test',
         })
-      } else if (path.endsWith('/order/detail')) {
-        result = upstreamEnvelope({ trade_no: 'fixture-order', status: 0, total_amount: 1200 })
-      } else if (path.endsWith('/getPaymentMethod')) {
-        result = upstreamEnvelope([{ id: 2, name: 'Fixture Card', config: { secret: 'private-payment-key' } }])
-      } else if (path.endsWith('/notice/fetch')) {
-        result = { data: [{ id: 7, title: 'Fixture Notice' }], total: 1 }
+      } else if (path.endsWith('/detail')) {
+        result = upstreamEnvelope(orderFixture)
+      } else if (path.endsWith('/payment-methods')) {
+        result = upstreamEnvelope([{ id: 2, name: 'Fixture Card', provider: 'Stripe', icon: null, fee_fixed_minor: 0, fee_percent: 0, config: { secret: 'private-payment-key' } }])
+      } else if (path.endsWith('/notices')) {
+        result = upstreamEnvelope([{ id: 7, title: 'Fixture Notice', content: '', tags: [], img_url: null, created_at: '2026-10-12T00:00:00+00:00' }], { page: 1, per_page: 5, total: 1, last_page: 1 })
       } else {
-        result = upstreamEnvelope([{ trade_no: 'fixture-order', status: 0, plan_id: 1, period: 'month_price', total_amount: 1200 }])
+        result = upstreamEnvelope([orderFixture], { page: 1, per_page: 100, total: 1, last_page: 1 })
       }
     } else {
       status = 404
-      result = { status: 'fail', message: 'Unknown upstream route' }
+      result = upstreamError('Unknown upstream route')
     }
     res.statusCode = status
     res.end(JSON.stringify(result))
@@ -196,7 +199,10 @@ test('Chromium theme SDK works through Gateway with strict fake Laravel contract
   })
   await waitHealth('http://127.0.0.1:' + gatewayPort + '/healthz', gateway)
 
-  const browser = await chromium.launch({ headless: true })
+  const browser = await chromium.launch({
+    headless: true,
+    executablePath: process.env.GATEWAY_TEST_CHROMIUM_PATH || undefined,
+  })
   t.after(() => browser.close())
   const page = await browser.newPage()
   await page.goto('http://127.0.0.1:' + frontend.port)
@@ -216,7 +222,8 @@ test('Chromium theme SDK works through Gateway with strict fake Laravel contract
     const login = await api.auth.login({ email, password, turnstile_token: 'fixture-captcha' })
     session = login.auth_data
     const profile = await api.user.profile()
-    const orders = await api.orders.list({ status: 0 })
+    const orders = await api.orders.list({ status: 4 })
+    const orderPage = await api.orders.page({ status: 4, current: 1, page_size: 100 })
     const subscription = await api.user.subscription()
     const detail = await api.orders.detail('fixture-order')
     const payments = await api.payments.list()
@@ -272,6 +279,8 @@ test('Chromium theme SDK works through Gateway with strict fake Laravel contract
       loginKeys: Object.keys(login).sort(),
       profileEmail: profile.email,
       orderNumber: orders[0]?.trade_no,
+      orderState: orders[0]?.status,
+      orderPage,
       subscriptionName: subscription.planName,
       leakedSubscriptionToken: JSON.stringify(subscription).includes('must-never-leak'),
       detailNumber: detail.trade_no,
@@ -295,26 +304,30 @@ test('Chromium theme SDK works through Gateway with strict fake Laravel contract
   assert.deepEqual(result.captcha, { enabled: true, type: 'turnstile', siteKey: SITE })
   assert.deepEqual(result.theme, { name: 'TXBoard', config: { accent: 'blue' } })
   assert.equal(result.plans[0].month_price, 1200)
-  assert.deepEqual(result.loginKeys, ['auth_data', 'is_admin'])
+  assert.deepEqual(result.loginKeys, ['auth_data'])
   assert.equal(result.profileEmail, email)
   assert.equal(result.orderNumber, 'fixture-order')
+  assert.equal(result.orderState, 4)
+  assert.equal(result.orderPage.items[0]?.status, 4)
+  assert.equal(result.orderPage.total, 1)
+  assert.equal(result.orderPage.lastPage, 1)
   assert.equal(result.subscriptionName, 'Fixture Pro')
   assert.equal(result.leakedSubscriptionToken, false)
   assert.equal(result.detailNumber, 'fixture-order')
   assert.equal(result.paymentName, 'Fixture Card')
   assert.equal(result.leakedPaymentKey, false)
   assert.equal(result.noticeTotal, 1)
-  assert.deepEqual(result.encryptedLoginKeys, ['auth_data', 'is_admin'])
-  assert.deepEqual(result.registrationKeys, ['auth_data', 'is_admin'])
+  assert.deepEqual(result.encryptedLoginKeys, ['auth_data'])
+  assert.deepEqual(result.registrationKeys, ['auth_data'])
   assert.equal(result.codeSent, true)
   assert.deepEqual(result.stats, { unpaidOrders: 2, openTickets: 1, invitedUsers: 7 })
-  assert.deepEqual(result.orderStatus, { tradeNo: 'fixture-order', status: 0 })
+  assert.deepEqual(result.orderStatus, { tradeNo: 'fixture-order', status: 4 })
   // GW-304: the write path. Same key + same body = same order; a missing
   // Idempotency-Key is refused by the Gateway before any upstream call.
   assert.equal(result.createdTradeNo, 'fixture-order-0')
   assert.equal(result.replayedTradeNo, 'fixture-order-0')
   assert.equal(result.missingKeyStatus, 400)
-  assert.ok(upstreamRequests.includes('/api/v1/user/order/save'))
+  assert.ok(upstreamRequests.includes('/txapi/orders'))
   assert.ok(encryptedRequestBody.includes('"kid"'))
   assert.ok(encryptedRequestBody.includes('"ct"'))
   assert.ok(!encryptedRequestBody.includes(password))
@@ -322,7 +335,7 @@ test('Chromium theme SDK works through Gateway with strict fake Laravel contract
   assert.equal(result.expiredStatus, 401)
   assert.equal(result.rejectedStatus, 422)
   assert.equal(result.persistedAuth, false)
-  assert.ok(upstreamRequests.includes('/api/v1/user/order/fetch'))
+  assert.ok(upstreamRequests.includes('/txapi/orders'))
   assert.ok(!upstreamRequests.some(path => path.startsWith('/api/v2/')))
   assert.ok(!childOutput.join('').includes(password))
 })

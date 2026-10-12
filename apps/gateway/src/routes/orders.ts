@@ -8,6 +8,9 @@ import {
 import {
   orderDetailSchema,
   orderListSchema,
+  orderPageSchema,
+  noticeCurrentPattern,
+  noticePageSizePattern,
   orderStatusSchema,
   paymentMethodsSchema,
 } from '../contracts/schemas.js'
@@ -17,9 +20,8 @@ import { fail, ok, validated, type RouteContext, type RouteDeps } from './shared
 /**
  * routes/orders.ts — order and payment read routes plus the write ban.
  *
- * Order creation is permanently disabled at the Gateway (fixed 405), so no
- * order POST, charge, checkout or callback can ever reach upstream. Order
- * ownership itself is decided by Laravel, not here.
+ * Order creation defaults to a local 405; the explicit order-write opt-in
+ * registers its separate handler. Order ownership is decided by Core.
  */
 
 export type OrdersRouteDeps = RouteDeps
@@ -30,16 +32,19 @@ function requireBearer(c: RouteContext): string | Response {
   return auth
 }
 
-/** Validate and normalize the single optional `status` query parameter. */
-function parseStatusQuery(c: RouteContext): number | undefined | Response {
+/** Explicit bounded pagination; no unchecked query parameter is forwarded. */
+function parseOrderQuery(c: RouteContext): { status?: number; current: number; pageSize: number } | Response {
   const status = c.req.query('status')
-  const keys = Object.keys(c.req.queries())
-  if (keys.some(key => key !== 'status')
+  const params = c.req.queries()
+  const current = c.req.query('current') ?? '1'
+  const pageSize = c.req.query('page_size') ?? '100'
+  if (Object.keys(params).some(key => !['status', 'current', 'page_size'].includes(key))
     || (status !== undefined && !ORDER_STATUSES.has(status))
-    || (status !== undefined && c.req.queries('status')?.length !== 1)) {
+    || Object.values(params).some(values => values.length !== 1)
+    || !noticeCurrentPattern.test(current) || !noticePageSizePattern.test(pageSize)) {
     return fail(c, 'VALIDATION_ERROR', 'Invalid order query', 400)
   }
-  return status === undefined ? undefined : Number(status)
+  return { ...(status === undefined ? {} : { status: Number(status) }), current: Number(current), pageSize: Number(pageSize) }
 }
 
 /** Validate an order identifier path parameter. */
@@ -65,10 +70,21 @@ export function registerOrdersRoutes(
   app.get(`${PREFIX}/orders`, async c => {
     const auth = requireBearer(c)
     if (auth instanceof Response) return auth
-    const status = parseStatusQuery(c)
-    if (status instanceof Response) return status
+    const query = parseOrderQuery(c)
+    if (query instanceof Response) return query
     return ok(c, validated(orderListSchema, await upstreamRequest(config, fetcher, 'userOrders',
-      { auth, status })))
+      { auth, ...query })))
+  })
+
+  // Additive paged response; keeps the v1 envelope and /orders array intact.
+  // Register before the identifier route so "page" is not treated as an ID.
+  app.get(`${PREFIX}/orders/page`, async c => {
+    const auth = requireBearer(c)
+    if (auth instanceof Response) return auth
+    const query = parseOrderQuery(c)
+    if (query instanceof Response) return query
+    return ok(c, validated(orderPageSchema, await upstreamRequest(config, fetcher, 'userOrders',
+      { auth, ...query, paginated: true })))
   })
 
   app.get(`${PREFIX}/orders/:tradeNo`, async c => {

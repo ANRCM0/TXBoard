@@ -1,3 +1,4 @@
+import { requestId, nativeError } from './native-fixtures.js'
 import { describe, expect, it, vi } from 'vitest'
 import { createGatewayApp } from '../src/app.js'
 import { loadConfig } from '../src/config/env.js'
@@ -35,9 +36,9 @@ const config = loadConfig({
   GATEWAY_ALLOWED_ORIGINS: 'https://theme.example',
 })
 const token = 'Bearer usertoken_longer_than_eight'
-function ok(data: unknown) { return { status: 'success', message: null, data } }
+function ok(data: unknown) { return { request_id: requestId, data } }
 function loginOk() { return vi.fn(async () => Response.json(ok({ auth_data: token, is_admin: false }))) }
-function loginRejected() { return vi.fn(async () => Response.json({ status: 'fail', message: 'Bad credentials' }, { status: 401 })) }
+function loginRejected() { return vi.fn(async () => Response.json(nativeError('REJECTED', 'Bad credentials'), { status: 401 })) }
 async function dataOf(response: Response) { return await response.json() as any }
 
 /** Two failures arm the GW-203 challenge; a third attempt without a token is 428. */

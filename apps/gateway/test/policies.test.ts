@@ -1,3 +1,4 @@
+import { requestId } from './native-fixtures.js'
 import { describe, expect, it, vi } from 'vitest'
 import { createGatewayApp } from '../src/app.js'
 import { loadConfig } from '../src/config/env.js'
@@ -34,7 +35,7 @@ const config = loadConfig({
 
 const token = 'Bearer usertoken_longer_than_eight'
 
-function ok(data: unknown) { return { status: 'success', message: null, data } }
+function ok(data: unknown) { return { request_id: requestId, data } }
 
 function mockFetch(payload: unknown, status = 200) {
   return vi.fn(async () => Response.json(payload, { status }))
@@ -79,6 +80,7 @@ const EXPECTED_MAPPING: Record<string, PolicyName> = {
   'GET /gateway/v1/notices': 'userRead',
   'GET /gateway/v1/dashboard/stats': 'userRead',
   'GET /gateway/v1/orders': 'userRead',
+  'GET /gateway/v1/orders/page': 'userRead',
   'GET /gateway/v1/orders/:tradeNo': 'userRead',
   'GET /gateway/v1/orders/:tradeNo/status': 'userRead',
   'GET /gateway/v1/payments': 'userRead',
@@ -108,6 +110,7 @@ describe('GW-212 route policy table', () => {
       { name: 'secureRegister', auth: 'none', body: 'hpke', limiter: 'register', cache: 'off' },
       { name: 'secureEmailCode', auth: 'none', body: 'hpke', limiter: 'email-code', cache: 'off' },
       { name: 'captchaChallenge', auth: 'none', body: 'none', limiter: 'public', cache: 'off' },
+      { name: 'userRead', auth: 'bearer', body: 'none', limiter: 'public', cache: 'off' },
       { name: 'userRead', auth: 'bearer', body: 'none', limiter: 'public', cache: 'off' },
       { name: 'userRead', auth: 'bearer', body: 'none', limiter: 'public', cache: 'off' },
       { name: 'userRead', auth: 'bearer', body: 'none', limiter: 'public', cache: 'off' },

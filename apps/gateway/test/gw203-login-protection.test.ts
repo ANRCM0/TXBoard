@@ -1,3 +1,4 @@
+import { requestId, nativeError } from './native-fixtures.js'
 import { describe, expect, it, vi } from 'vitest'
 import { createGatewayApp } from '../src/app.js'
 import { loadConfig } from '../src/config/env.js'
@@ -29,15 +30,15 @@ const config = loadConfig({
   GATEWAY_ALLOWED_ORIGINS: 'https://theme.example',
 })
 const token = 'Bearer usertoken_longer_than_eight'
-function ok(data: unknown) { return { status: 'success', message: null, data } }
+function ok(data: unknown) { return { request_id: requestId, data } }
 function loginOk() { return vi.fn(async () => Response.json(ok({ auth_data: token, is_admin: false }))) }
-function loginRejected() { return vi.fn(async () => Response.json({ status: 'fail', message: 'Bad credentials' }, { status: 401 })) }
+function loginRejected() { return vi.fn(async () => Response.json(nativeError('REJECTED', 'Bad credentials'), { status: 401 })) }
 /** A CAPTCHA-bearing attempt with a valid token succeeds; everything else 401s. */
 function captchaGatedLogin() {
   return vi.fn(async (_url: string, init: RequestInit) => {
     const body = JSON.parse(init.body as string)
     if (body.turnstile_token) return Response.json(ok({ auth_data: token, is_admin: false }))
-    return Response.json({ status: 'fail', message: 'Bad credentials' }, { status: 401 })
+    return Response.json(nativeError('REJECTED', 'Bad credentials'), { status: 401 })
   })
 }
 async function dataOf(response: Response) { return await response.json() as any }
@@ -88,7 +89,7 @@ describe('GW-203 login anti-credential-stuffing', () => {
     expect(await login(app)).toMatchObject({ status: 401 })
     expect(await login(app)).toMatchObject({ status: 401 })
     // Two captcha-bearing attempts still fail upstream; the 4th failure locks.
-    const rejected = vi.fn(async () => Response.json({ status: 'fail', message: 'Bad credentials' }, { status: 401 }))
+    const rejected = vi.fn(async () => Response.json(nativeError('REJECTED', 'Bad credentials'), { status: 401 }))
     const app2 = createGatewayApp(config, rejected, undefined, { loginProtection: limiter })
     expect(await login(app2, { turnstile_token: 'stale' })).toMatchObject({ status: 401 }) // fails=3
     expect(await login(app2, { turnstile_token: 'stale' })).toMatchObject({ status: 401 }) // fails=4 -> locked

@@ -1,3 +1,4 @@
+import { requestId, nativePlan, nativeProfile } from './native-fixtures.js'
 import { describe, expect, it, vi } from 'vitest'
 import {
   CircuitBreaker, LocalQuota, OverloadGuard, PublicReadGuard, SafetyGuard,
@@ -227,7 +228,7 @@ describe('GW-206 upstream slow / broken handling', () => {
     const client = new UpstreamClient(
       config,
       scriptedFetcher([
-        () => Response.json({ status: 'success', data: [{ id: 1, name: 'Plan' }] }),
+        () => Response.json({ request_id: requestId, data: [nativePlan({ id: 1, name: 'Plan', prices: [{ period: 'monthly', amount_minor: 1200 }] })] }),
         () => { throw up(500) },
       ]),
       breaker,
@@ -238,7 +239,7 @@ describe('GW-206 upstream slow / broken handling', () => {
     await client.call('guestPlans')
     // Second call: upstream 500 then retry succeeds — no throw escapes.
     const result = await client.call('guestPlans')
-    expect(result).toEqual([{ id: 1, name: 'Plan' }])
+    expect(result).toMatchObject([{ id: 1, name: 'Plan', month_price: 1200 }])
     expect(metrics.upstreamRetries.get({ operation: 'guestPlans' })).toBe(1)
     expect(events).toContain(RESILIENCE_EVENTS.upstreamRetry)
   })
@@ -250,7 +251,7 @@ describe('GW-206 upstream slow / broken handling', () => {
     let clock = 0
     const breaker = new CircuitBreaker({ failureThreshold: 100, cooldownMs: 10_000, now: () => clock })
     const fetcher = scriptedFetcher([
-      () => Response.json({ status: 'success', data: { frontend_theme: 'Nova', theme_config: {} } }),
+      () => Response.json({ request_id: requestId, data: { frontend_theme: 'Nova', theme_config: {} } }),
       () => { throw up(500) },
       () => { throw up(500) },
     ])
@@ -272,7 +273,7 @@ describe('GW-206 upstream slow / broken handling', () => {
     let clock = 0
     const breaker = new CircuitBreaker({ failureThreshold: 100, cooldownMs: 1000, now: () => clock })
     const fetcher = scriptedFetcher([
-      () => Response.json({ status: 'success', data: { email: 'alice@example.test' } }),
+      () => Response.json({ request_id: requestId, data: nativeProfile() }),
       () => { throw up(500) },
       () => { throw up(500) },
     ])
@@ -344,7 +345,7 @@ describe('GW-206 resilience stack wiring', () => {
 
   it('wires the overload guard around the whole request path', async () => {
     const stack = createResilienceStack(
-      config, scriptedFetcher([() => Response.json({ status: 'success', data: [] })]),
+      config, scriptedFetcher([() => Response.json({ request_id: requestId, data: [] })]),
       { metrics: new MetricsRegistry(), logger: nullLogger(),
         maxConcurrent: 1, maxQueue: 0, queueWaitMs: 1, tickMs: 1 },
     )
@@ -368,7 +369,7 @@ describe('GW-206 resilience stack wiring', () => {
 describe('GW-206 metrics exposition', () => {
   it('uses canonical, alertable metric names once resilience paths fire', async () => {
     const metrics = new MetricsRegistry()
-    const fetcher = scriptedFetcher([() => Response.json({ status: 'success', data: [] })])
+    const fetcher = scriptedFetcher([() => Response.json({ request_id: requestId, data: {} })])
     const client = new UpstreamClient(
       config, fetcher, new CircuitBreaker({ failureThreshold: 1, cooldownMs: 10_000 }),
       { maxAttempts: 2, baseDelayMs: 1, sleep: async () => {} },
@@ -381,7 +382,7 @@ describe('GW-206 metrics exposition', () => {
     // the second call fails twice (exhausted retries) and serves stale.
     const failing = scriptedFetcher([
       () => { throw up(500) },
-      () => Response.json({ status: 'success', data: [{ id: 1, name: 'Plan' }] }),
+      () => Response.json({ request_id: requestId, data: [nativePlan({ id: 1, name: 'Plan', prices: [{ period: 'monthly', amount_minor: 1200 }] })] }),
       () => { throw up(500) },
       () => { throw up(500) },
     ])
@@ -391,7 +392,7 @@ describe('GW-206 metrics exposition', () => {
       metrics, nullLogger(), 30_000,
     )
     await retryClient.call('guestPlans')
-    expect(await retryClient.call('guestPlans')).toEqual([{ id: 1, name: 'Plan' }])
+    expect(await retryClient.call('guestPlans')).toMatchObject([{ id: 1, name: 'Plan', month_price: 1200 }])
     const after = metrics.render()
     expect(after).toContain(RESILIENCE_METRICS.upstreamRetries)
     expect(after).toContain(RESILIENCE_METRICS.staleServed)

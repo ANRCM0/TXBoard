@@ -1,4 +1,4 @@
-# Vue theme bootstrap: single SDK client + bootstrap load (GW-504)
+// Vue theme bootstrap: single SDK client + bootstrap load (GW-504)
 import { createTXBoardClient } from '@txboard/theme-sdk'
 import type { BootstrapData } from '@txboard/theme-sdk'
 

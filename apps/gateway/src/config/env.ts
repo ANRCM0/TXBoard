@@ -14,7 +14,8 @@ export type GatewayConfig = {
   maxResponseBytes: number
   /** GW-218: TTL for public content cache in milliseconds. Default: 60000 (60s). */
   publicCacheTtlMs: number
-  /** GW-311: enable public payment methods catalog. Default: false. */
+  /** Historical GW-311 setting, default false. Native Core has no anonymous
+   *  counterpart: this flag cannot enable the catalog in the current adapter. */
   paymentCatalogEnabled: boolean
   /** GW-304: enable the order-write adaptation layer. Default: false — the
    *  payment write ban stays in force and POST /gateway/v1/orders answers 405

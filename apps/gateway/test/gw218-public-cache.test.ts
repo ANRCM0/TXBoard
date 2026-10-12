@@ -1,3 +1,4 @@
+import { requestId, nativeError, nativePlan } from './native-fixtures.js'
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import {
   createGatewayApp,
@@ -39,10 +40,10 @@ function testConfig(overrides: Partial<ReturnType<typeof loadConfig>> = {}) {
 }
 
 // Helper: create a mock fetcher that counts calls.
-// Returns a TXBoard-shaped envelope: { status: 'success', data: ... }.
+// Returns a TXBoard-shaped envelope: { request_id: requestId, data: ... }.
 function createMockFetcher(responseData: unknown) {
   const fn = vi.fn(async () => {
-    return Response.json({ status: 'success', data: responseData })
+    return Response.json({ request_id: requestId, data: responseData })
   })
   return fn
 }
@@ -150,7 +151,7 @@ describe('GW-218: cache middleware integration', () => {
 
   it('caches plans route responses', async () => {
     const config = testConfig()
-    const fetcher = createMockFetcher([{ id: 1, name: 'Basic' }])
+    const fetcher = createMockFetcher([nativePlan({ id: 1, name: 'Basic', prices: [{ period: 'monthly', amount_minor: 1200 }] })])
     const app = createGatewayApp(config, fetcher)
 
     const res1 = await app.request('/gateway/v1/plans')
@@ -199,7 +200,7 @@ describe('GW-218: cache middleware integration', () => {
   it('does not cache non-200 responses', async () => {
     const config = testConfig()
     const fetcher = vi.fn(async () => {
-      return Response.json({ status: 'fail', message: 'error' }, { status: 500 })
+      return Response.json(nativeError(), { status: 500 })
     })
     const app = createGatewayApp(config, fetcher)
 
@@ -224,7 +225,7 @@ describe('GW-218: cache middleware integration', () => {
     const config = testConfig()
     // /plans is schema-validated (array of {id,name}), so the mock must return
     // a valid plan list or the route answers 502 and nothing is cacheable.
-    const fetcher = createMockFetcher([{ id: 1, name: 'Basic' }])
+    const fetcher = createMockFetcher([nativePlan({ id: 1, name: 'Basic', prices: [{ period: 'monthly', amount_minor: 1200 }] })])
     const app = createGatewayApp(config, fetcher)
 
     // Same path, different query = different cache entries

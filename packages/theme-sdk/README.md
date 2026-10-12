@@ -14,13 +14,16 @@ const { site, theme, security } = await api.bootstrap()
 const plans = await api.plans.list()
 const profile = await api.user.profile()
 const subscription = await api.user.subscription()
-const orders = await api.orders.list({status: 0})
+const orders = await api.orders.list({status: 0}) // default first page, up to 100 rows
+const page = await api.orders.page({status: 4, current: 2, page_size: 20})
 const detail = await api.orders.detail('ORDER-EXAMPLE')
 const status = await api.orders.status('ORDER-EXAMPLE')
 const stats = await api.dashboard.stats()
 const notices = await api.notices.list({current: 1, pageSize: 5})
 const payments = await api.payments.list()
 ```
+
+`orders.list({status?,current?,page_size?})` 保留数组形状；默认仅第 1 页最多 100 条。完整历史使用新增 `orders.page()`，先发现 bootstrap 的 `orders.page` 能力；返回 `{items,current,pageSize,total,lastPage}`。`current` 为 1..9999，`page_size` 为 1..100。订单状态精确支持 0 待支付、1 开通中、2 已取消、3 已完成、4 已折抵。
 
 登录：
 ```ts

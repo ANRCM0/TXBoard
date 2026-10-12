@@ -5,6 +5,20 @@ function response(data: unknown, status = 200) {
   return Response.json({ ok: true, data, meta: { version: '1', requestId: 'test-id' } }, { status })
 }
 describe('@txboard/theme-sdk v1', () => {
+  it('exposes discounted orders and explicit pages without changing the list array route', async () => {
+    const result = { items: [{ trade_no: 'historical', status: 4 }], current: 2, pageSize: 100, total: 101, lastPage: 2 }
+    const fetchImpl = vi.fn(async (url: unknown) => response(String(url).includes('/orders/page') ? result : result.items))
+    const sdk = createTXBoardClient({ fetchImpl: fetchImpl as typeof fetch, getToken: () => 'user-session-long-enough' })
+    expect(await sdk.orders.page({ status: 4, current: 2, page_size: 100 })).toEqual(result)
+    expect(await sdk.orders.list({ status: 4, current: 2, page_size: 100 })).toEqual(result.items)
+    expect(await sdk.orders.list()).toEqual(result.items)
+    expect(fetchImpl.mock.calls.map(call => call[0])).toEqual([
+      '/gateway/v1/orders/page?status=4&current=2&page_size=100',
+      '/gateway/v1/orders?status=4&current=2&page_size=100', '/gateway/v1/orders',
+    ])
+    for (const call of fetchImpl.mock.calls as any[]) expect(call[1].headers.get('Authorization')).toBe('Bearer user-session-long-enough')
+  })
+
   it('loads bootstrap and plans without sending bearer tokens', async () => {
     const fetchImpl = vi.fn(async (url: unknown) => {
       if (String(url).endsWith('bootstrap')) return response({

@@ -48,7 +48,10 @@ export type NoticePage = { data: Notice[]; total: number }
 export type RegistrationPayload = LoginPayload & { invite_code?: string }
 export type EmailCodePayload = Pick<LoginPayload, 'email' | 'turnstile_token' | 'recaptcha_v3_token' | 'recaptcha_data'>
 export type DashboardStats = { unpaidOrders: number; openTickets: number; invitedUsers: number }
-export type OrderStatus = { tradeNo: string; status: number }
+export type OrderState = 0 | 1 | 2 | 3 | 4
+export type OrderStatus = { tradeNo: string; status: OrderState }
+export type OrderQuery = { status?: OrderState; current?: number; page_size?: number }
+export type OrderPage = { items: Order[]; current: number; pageSize: number; total: number; lastPage: number }
 export type UserAuth = { auth_data: string; is_admin?: boolean | number }
 export type UserProfile = {
   email: string
@@ -66,7 +69,7 @@ export type Plan = {
 }
 export type Order = {
   trade_no: string
-  status: number
+  status: OrderState
   plan_id: number
   period: string
   total_amount: number
@@ -330,10 +333,22 @@ export function createTXBoardClient(options: TXBoardClientOptions = {}) {
     dashboard: { stats: () => invoke<DashboardStats>('/dashboard/stats', { protected: true }) },
     orders: {
       status: (tradeNo: string) => invoke<OrderStatus>(`/orders/${encodeURIComponent(tradeNo)}/status`, { protected: true }),
-      list: (query: { status?: 0 | 1 | 2 | 3 } = {}) => invoke<Order[]>(
-        query.status === undefined ? '/orders' : `/orders?status=${query.status}`,
-        { protected: true },
-      ),
+      /** Bounded page as the historical array shape. Default first 100 rows. */
+      list: (query: OrderQuery = {}) => {
+        const params = new URLSearchParams()
+        if (query.status !== undefined) params.set('status', String(query.status))
+        if (query.current !== undefined) params.set('current', String(query.current))
+        if (query.page_size !== undefined) params.set('page_size', String(query.page_size))
+        return invoke<Order[]>('/orders' + (params.size ? '?' + params.toString() : ''), { protected: true })
+      },
+      /** Discover orders.page capability before using this additive endpoint. */
+      page: (query: OrderQuery = {}) => {
+        const params = new URLSearchParams()
+        if (query.status !== undefined) params.set('status', String(query.status))
+        if (query.current !== undefined) params.set('current', String(query.current))
+        if (query.page_size !== undefined) params.set('page_size', String(query.page_size))
+        return invoke<OrderPage>('/orders/page' + (params.size ? '?' + params.toString() : ''), { protected: true })
+      },
       detail: (tradeNo: string) => invoke<Order>(`/orders/${encodeURIComponent(tradeNo)}`, { protected: true }),
       /**
        * GW-304: create an order. Requires an `idempotencyKey` — the Gateway

@@ -36,5 +36,5 @@ export const BEARER_PATTERN = /^Bearer [^\s]{8,4096}$/
 /** Order identifiers are bounded safe tokens; anything else is rejected. */
 export const TRADE_NO_PATTERN = /^[a-zA-Z0-9_-]{1,128}$/
 
-/** Order status query accepts only the four TXBoard states. */
-export const ORDER_STATUSES: ReadonlySet<string> = new Set(['0', '1', '2', '3'])
+/** All Core states; 4 is discounted, distinct from cancelled/completed. */
+export const ORDER_STATUSES: ReadonlySet<string> = new Set(['0', '1', '2', '3', '4'])

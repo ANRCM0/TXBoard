@@ -1,3 +1,4 @@
+import { requestId, nativeEnvelope, nativeError, nativePlan, nativeProfile, nativeOrder } from './native-fixtures.js'
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { createGatewayApp } from '../src/app.js'
 import { loadConfig } from '../src/config/env.js'
@@ -18,7 +19,7 @@ const config = loadConfig({
 function mockFetch(payload: unknown, status = 200) {
   return vi.fn(async () => Response.json(payload, { status }))
 }
-function ok(data: unknown) { return { status: 'success', message: null, data } }
+function ok(data: unknown) { return { request_id: requestId, data } }
 async function dataOf(response: Response) { return await response.json() as any }
 const token = 'Bearer usertoken_longer_than_eight'
 function fakeReplay() {
@@ -64,11 +65,11 @@ describe('gateway security and TXBoard v1 adapters', () => {
       capabilities: [
         'auth.login', 'user.profile', 'plans.list', 'orders.list', 'theme.config',
         'user.subscription.summary', 'orders.detail', 'payments.methods', 'notices.list',
-        'dashboard.stats', 'orders.status',
+        'dashboard.stats', 'orders.status', 'orders.page',
       ],
     })
     expect(res.headers.get('access-control-allow-origin')).toBe('https://theme.example')
-    expect((fetcher.mock.calls[0] as any)[0]).toBe('https://txboard.example/api/v1/guest/comm/config')
+    expect((fetcher.mock.calls[0] as any)[0]).toBe('https://txboard.example/txapi/public/site-config')
     expect((fetcher.mock.calls[0] as any)[1].headers.has('Authorization')).toBe(false)
   })
 
@@ -109,10 +110,10 @@ describe('gateway security and TXBoard v1 adapters', () => {
   })
 
   it('keeps plan prices as upstream cents and never unwraps arbitrary data structures', async () => {
-    const fetcher = mockFetch(ok([{ id: 1, name: 'Monthly', month_price: 1200 }]))
+    const fetcher = mockFetch(ok([nativePlan({ id: 1, name: 'Monthly', prices: [{ period: 'monthly', amount_minor: 1200 }] })]))
     const res = await createGatewayApp(config, fetcher).request('/gateway/v1/plans')
-    expect((await dataOf(res)).data).toEqual([{ id: 1, name: 'Monthly', month_price: 1200 }])
-    expect((fetcher.mock.calls[0] as any)[0]).toContain('/api/v1/guest/plan/fetch')
+    expect((await dataOf(res)).data[0]).toMatchObject({ id: 1, name: 'Monthly', month_price: 1200 })
+    expect((fetcher.mock.calls[0] as any)[0]).toContain('/txapi/plans')
   })
 
   it('translates login and allowed CAPTCHA fields without sending an admin token', async () => {
@@ -124,7 +125,7 @@ describe('gateway security and TXBoard v1 adapters', () => {
     })
     expect((await dataOf(res)).data.auth_data).toBe(token)
     const [url, init] = fetcher.mock.calls[0] as any[]
-    expect(url).toContain('/api/v1/passport/auth/login')
+    expect(url).toContain('/txapi/auth/login')
     expect(init.headers.has('Authorization')).toBe(false)
     expect(JSON.parse(init.body)).toEqual({ email: 'user@example.test', password: 'pass12345678', turnstile_token: 'captcha-token' })
   })
@@ -138,7 +139,7 @@ describe('gateway security and TXBoard v1 adapters', () => {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: 'admin@example.test', password: 'pass12345678' }),
     })
-    expect((await dataOf(res)).data).toEqual({ auth_data: token, is_admin: true })
+    expect((await dataOf(res)).data).toEqual({ auth_data: token })
   })
 
   it('blocks unknown login properties and invalid JSON before reaching upstream', async () => {
@@ -168,7 +169,7 @@ describe('gateway security and TXBoard v1 adapters', () => {
   })
 
   it('requires user bearer and forwards it only to known protected endpoints', async () => {
-    const fetcher = mockFetch(ok({ email: 'alice@example.test' }))
+    const fetcher = mockFetch(ok(nativeProfile()))
     const app = createGatewayApp(config, fetcher)
     expect((await app.request('/gateway/v1/user/profile')).status).toBe(401)
     expect(fetcher).not.toHaveBeenCalled()
@@ -176,17 +177,17 @@ describe('gateway security and TXBoard v1 adapters', () => {
     expect(res.status).toBe(200)
     expect((await dataOf(res)).data.email).toBe('alice@example.test')
     const [url, init] = fetcher.mock.calls[0] as any[]
-    expect(url).toBe('https://txboard.example/api/v1/user/info')
+    expect(url).toBe('https://txboard.example/txapi/me')
     expect(init.headers.get('Authorization')).toBe(token)
   })
 
   it('passes only validated order status and rejects arbitrary query parameters', async () => {
-    const fetcher = mockFetch(ok([{ trade_no: 'abc', status: 0 }]))
+    const fetcher = mockFetch(nativeEnvelope([nativeOrder({ trade_no: 'abc' })], { page: 1, per_page: 100, total: 1, last_page: 1 }))
     const app = createGatewayApp(config, fetcher)
     const res = await app.request('/gateway/v1/orders?status=0', { headers: { Authorization: token } })
     expect((await dataOf(res)).data[0].trade_no).toBe('abc')
-    expect((fetcher.mock.calls[0] as any)[0]).toBe('https://txboard.example/api/v1/user/order/fetch?status=0')
-    expect((await app.request('/gateway/v1/orders?status=4', { headers: { Authorization: token } })).status).toBe(400)
+    expect((fetcher.mock.calls[0] as any)[0]).toBe('https://txboard.example/txapi/orders?status=0&page=1&per_page=100')
+    expect((await app.request('/gateway/v1/orders?status=5', { headers: { Authorization: token } })).status).toBe(400)
     expect((await app.request('/gateway/v1/orders?admin_path=secret', { headers: { Authorization: token } })).status).toBe(400)
     expect((await app.request('/gateway/v1/orders?status=0&status=1', { headers: { Authorization: token } })).status).toBe(400)
     expect(fetcher).toHaveBeenCalledTimes(1)
@@ -223,16 +224,16 @@ describe('gateway security and TXBoard v1 adapters', () => {
   })
 
   it('converts app-level and HTTP upstream errors rather than treating them as success', async () => {
-    const fetcher = mockFetch({ status: 'fail', message: 'Invalid credentials', data: null })
+    const fetcher = mockFetch(nativeError('INVALID_CREDENTIALS', 'Invalid credentials'))
     const res = await createGatewayApp(config, fetcher).request('/gateway/v1/plans')
-    expect(res.status).toBe(400)
+    expect(res.status).toBe(502)
     const payload = await dataOf(res)
     expect(payload.ok).toBe(false)
-    expect(payload.error.message).toBe('Upstream request rejected')
+    expect(payload.error.message).toBe('Upstream request failed')
   })
 
   it('does not echo credential-shaped data from upstream error messages', async () => {
-    const fetcher = mockFetch({ status: 'fail', message: 'password=secret admin_key=private' }, 422)
+    const fetcher = mockFetch(nativeError('REJECTED', 'password=secret admin_key=private'), 422)
     const res = await createGatewayApp(config, fetcher).request('/gateway/v1/plans')
     expect(res.status).toBe(422)
     expect((await dataOf(res)).error.message).toBe('Invalid request data')
@@ -240,8 +241,8 @@ describe('gateway security and TXBoard v1 adapters', () => {
 
   it('rejects malformed successful envelopes and invalid core business fields', async () => {
     for (const payload of [
-      { status: 1, data: [{ id: 1, name: 'Plan' }] },
-      { data: [{ id: 1, name: 'Plan' }] },
+      { status: 1, data: [nativePlan({ id: 1, name: 'Plan', prices: [{ period: 'monthly', amount_minor: 1200 }] })] },
+      { data: [nativePlan({ id: 1, name: 'Plan', prices: [{ period: 'monthly', amount_minor: 1200 }] })] },
       ok({ invalid: true }),
       ok([{ id: 'not-numeric', name: 'Plan' }]),
     ]) {
@@ -253,12 +254,12 @@ describe('gateway security and TXBoard v1 adapters', () => {
   })
 
   it('preserves backend rate limiting and validation errors as distinct statuses', async () => {
-    const limited = mockFetch({ status: 'fail', message: 'Too many attempts' }, 429)
+    const limited = mockFetch(nativeError('REJECTED', 'Too many attempts'), 429)
     const result = await createGatewayApp(config, limited).request('/gateway/v1/plans')
     expect(result.status).toBe(429)
     expect((await dataOf(result)).error.message).toBe('Too many requests')
 
-    const validation = mockFetch({ status: 'fail', message: 'Invalid input' }, 422)
+    const validation = mockFetch(nativeError('REJECTED', 'Invalid input'), 422)
     const rejected = await createGatewayApp(config, validation).request('/gateway/v1/plans')
     expect(rejected.status).toBe(422)
   })
@@ -281,9 +282,9 @@ describe('gateway security and TXBoard v1 adapters', () => {
 describe('application read models and experimental HPKE login', () => {
   it('never leaks subscription credentials and applies user Bearer', async () => {
     const fetcher = mockFetch(ok({
-      plan_id: 10, plan: { name: 'Pro', private_note: 'secret' },
+      plan: { id: 10, name: 'Pro', traffic_limit_bytes: 100, private_note: 'secret' },
       token: 'full-subscription-secret', subscribe_url: 'https://secret', uuid: 'secret-uuid',
-      u: 5, d: 7, transfer_enable: 100, expired_at: 999, reset_day: 5,
+      upload_bytes: 5, download_bytes: 7, traffic_limit_bytes: 100, expired_at: '1970-01-01T00:16:39+00:00', reset_day: 5, device_limit: null, speed_limit_mbps: null, next_reset_at: null,
     }))
     const app = createGatewayApp(config, fetcher)
     expect((await app.request('/gateway/v1/user/subscription/summary')).status).toBe(401)
@@ -294,18 +295,18 @@ describe('application read models and experimental HPKE login', () => {
     expect(JSON.stringify(payload)).not.toContain('full-subscription-secret')
     expect(JSON.stringify(payload)).not.toContain('secret-uuid')
     expect(JSON.stringify(payload)).not.toContain('https://secret')
-    expect((fetcher.mock.calls[0] as any)[0]).toBe('https://txboard.example/api/v1/user/getSubscribe')
+    expect((fetcher.mock.calls[0] as any)[0]).toBe('https://txboard.example/txapi/me/subscription')
   })
 
   it('restricts order-detail query and display payment DTO', async () => {
-    const detailFetcher = mockFetch(ok({ trade_no: 'T123', status: 0, total_amount: 500 }))
+    const detailFetcher = mockFetch(ok(nativeOrder({ trade_no: 'T123', status: 0, amount_minor: 500 })))
     const app = createGatewayApp(config, detailFetcher)
     const res = await app.request('/gateway/v1/orders/T123', { headers: { Authorization: token } })
     expect((await dataOf(res)).data.trade_no).toBe('T123')
-    expect((detailFetcher.mock.calls[0] as any)[0]).toBe('https://txboard.example/api/v1/user/order/detail?trade_no=T123')
+    expect((detailFetcher.mock.calls[0] as any)[0]).toBe('https://txboard.example/txapi/orders/T123/detail')
     expect((await app.request('/gateway/v1/orders/bad%2Furl', { headers: { Authorization: token } })).status).not.toBe(200)
-    const payFetcher = mockFetch(ok([{ id: 3, name: 'Stripe', payment: 'StripeCredit', icon: 'icon',
-      handling_fee_fixed: 20, handling_fee_percent: 1.5, config: { secret: 'never-allow' } }]))
+    const payFetcher = mockFetch(ok([{ id: 3, name: 'Stripe', provider: 'StripeCredit', icon: 'icon',
+      fee_fixed_minor: 20, fee_percent: 1.5, config: { secret: 'never-allow' } }]))
     const paymentResponse = await createGatewayApp(config, payFetcher)
       .request('/gateway/v1/payments', { headers: { Authorization: token } })
     const payload = await dataOf(paymentResponse)
@@ -317,11 +318,11 @@ describe('application read models and experimental HPKE login', () => {
   })
 
   it('keeps legacy notice pagination and prevents unbounded queries', async () => {
-    const fetcher = mockFetch({ data: [{ id: 12, title: 'Update' }], total: 1 })
+    const fetcher = mockFetch(nativeEnvelope([], { page: 2, per_page: 10, total: 1, last_page: 1 }))
     const app = createGatewayApp(config, fetcher)
     const res = await app.request('/gateway/v1/notices?current=2&pageSize=10', { headers: { Authorization: token } })
-    expect((await dataOf(res)).data).toEqual({ data: [{ id: 12, title: 'Update' }], total: 1 })
-    expect((fetcher.mock.calls[0] as any)[0]).toContain('current=2&pageSize=10')
+    expect((await dataOf(res)).data).toEqual({ data: [], total: 1 })
+    expect((fetcher.mock.calls[0] as any)[0]).toContain('page=2&per_page=10')
     for (const q of ['?pageSize=500', '?current=0', '?current=1&current=2', '?key=unknown']) {
       expect((await app.request('/gateway/v1/notices' + q, { headers: { Authorization: token } })).status).toBe(400)
     }
@@ -367,16 +368,16 @@ describe('application read models and experimental HPKE login', () => {
 
 describe('account workflows and read-only dashboard models', () => {
   it('fetches account stats and order status only for the requesting Laravel user', async () => {
-    const fetcher = mockFetch(ok([2, 1, 9]))
+    const fetcher = mockFetch(ok({ unpaid_orders: 2, open_tickets: 1, invited_users: 9 }))
     const app = createGatewayApp(config, fetcher)
     expect((await app.request('/gateway/v1/dashboard/stats')).status).toBe(401)
     const res = await app.request('/gateway/v1/dashboard/stats', { headers: { Authorization: token } })
     expect((await dataOf(res)).data).toEqual({ unpaidOrders: 2, openTickets: 1, invitedUsers: 9 })
-    expect((fetcher.mock.calls[0] as any)[0]).toBe('https://txboard.example/api/v1/user/getStat')
-    const check = mockFetch(ok(0))
+    expect((fetcher.mock.calls[0] as any)[0]).toBe('https://txboard.example/txapi/me/dashboard-stats')
+    const check = mockFetch(ok(nativeOrder({ trade_no: 'O-7' })))
     const checked = await createGatewayApp(config, check).request('/gateway/v1/orders/O-7/status', { headers: { Authorization: token } })
     expect((await dataOf(checked)).data).toEqual({ tradeNo: 'O-7', status: 0 })
-    expect((check.mock.calls[0] as any)[0]).toBe('https://txboard.example/api/v1/user/order/check?trade_no=O-7')
+    expect((check.mock.calls[0] as any)[0]).toBe('https://txboard.example/txapi/orders/O-7')
     expect((await createGatewayApp(config, check).request('/gateway/v1/orders/not%2Fallowed/status', {
       headers: { Authorization: token },
     })).status).not.toBe(200)
@@ -405,7 +406,7 @@ describe('account workflows and read-only dashboard models', () => {
     const fetcher = vi.fn(async (url: string) => Response.json(ok(
       url.endsWith('/auth/register')
         ? { auth_data: token, token: 'private-token', secure_path: 'private-admin' }
-        : true,
+        : { ok: true },
     )))
     const app = createGatewayApp(config, fetcher as typeof fetch, crypto, { accountWorkflows: true, limiter })
     const discovery = crypto.publicKey()
@@ -425,8 +426,8 @@ describe('account workflows and read-only dashboard models', () => {
     const emailRes = await encryptAndSend('email-code', { email: 'new@example.test', turnstile_token: 'captcha-token' })
     expect((await dataOf(emailRes)).data).toEqual({ sent: true })
     expect(check.mock.calls.map(([kind]) => kind)).toEqual(['register', 'email-code'])
-    expect((fetcher.mock.calls[0] as any)[0]).toContain('/passport/auth/register')
-    expect((fetcher.mock.calls[1] as any)[0]).toContain('/passport/comm/sendEmailVerify')
+    expect((fetcher.mock.calls[0] as any)[0]).toContain('/txapi/auth/register')
+    expect((fetcher.mock.calls[1] as any)[0]).toContain('/txapi/auth/email-code')
     expect((fetcher.mock.calls[0] as any)[1].headers.has('Authorization')).toBe(false)
   })
   it('binds HPKE ciphertext to the registered operation route', async () => {

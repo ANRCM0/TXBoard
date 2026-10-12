@@ -1,10 +1,10 @@
 // Vue theme router: hash-based navigation for a statically served SPA.
 // Theme appearance (colors, background, logo) is applied from bootstrap.
 import { createRouter, createWebHashHistory } from 'vue-router'
-import HomePage from '../pages/HomePage.vue'
-import LoginPage from '../pages/LoginPage.vue'
-import UserPage from '../pages/UserPage.vue'
-import OrdersPage from '../pages/OrdersPage.vue'
+import HomePage from './pages/HomePage.vue'
+import LoginPage from './pages/LoginPage.vue'
+import UserPage from './pages/UserPage.vue'
+import OrdersPage from './pages/OrdersPage.vue'
 
 export const router = createRouter({
   history: createWebHashHistory(),

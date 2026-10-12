@@ -8,18 +8,31 @@ export function useOrders() {
   const [error, setError] = useState<Error | null>(null)
   const [loading, setLoading] = useState(true)
   const [notice, setNotice] = useState('')
+  const [current, setCurrent] = useState(1)
+  const [lastPage, setLastPage] = useState(1)
+  const [total, setTotal] = useState<number | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
-      setOrders(await api.orders.list())
+      const bootstrap = await api.bootstrap()
+      if (bootstrap.capabilities.includes('orders.page')) {
+        const page = await api.orders.page({ current, page_size: 20 })
+        setOrders(page.items)
+        setLastPage(page.lastPage)
+        setTotal(page.total)
+      } else {
+        setOrders(await api.orders.list())
+        setLastPage(1)
+        setTotal(null)
+      }
     } catch (err) {
       setError(err as Error)
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [current])
 
   const refreshStatus = useCallback(async (tradeNo: string) => {
     try {
@@ -58,5 +71,5 @@ export function useOrders() {
 
   useEffect(() => { void load() }, [load])
 
-  return { orders, error, loading, notice, reload: load, refreshStatus, createOrder }
+  return { orders, error, loading, notice, current, lastPage, total, setCurrent, reload: load, refreshStatus, createOrder }
 }

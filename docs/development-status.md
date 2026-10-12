@@ -1,6 +1,21 @@
 # TXBoard Gateway 开发状态台账
 
-> 更新时间：**2026-10-12（Core First B0 文档基线）**；旧阶段记录为历史快照。此文档记录代码和 CI，**不是生产就绪证明**。默认分支 main。当前不接入真实 TXBoard 环境，真实联调的验收暂按产品决策**延期**。
+> 更新时间：**2026-10-12（当前 Native 适配与隔离 HTTP 联调）**；旧阶段记录为历史快照。此文档记录代码和验证，**不是生产就绪证明**。默认分支 main。当前 14 项操作已通过真实 Core 的隔离联调，正式部署和目标 B5/B6 总验收仍待完成。
+
+## 2026-10-12：当前 Native 适配与隔离 Core 联调（B5/B6 准备）
+
+当前固定 14 项操作由退休 `/api/v1` 迁移到 Core `/txapi`，严格解码 Native 信封与 DTO，保留外部 `/gateway/v1` 和 `{ok,data,meta}`。匿名支付目录没有 Native 对应项，固定 404、零上游调用；受保护支付展示仍需调用用户 Bearer，默认订单创建仍 405。认证与公开请求不转发 Bearer；没有共享管理员凭据。金额保留分单位、日期转换为现有秒时间戳，私密 UUID、订阅地址和未知扩展字段过滤。
+
+订单状态精确支持 0..4，包括已折抵历史订单。原数组 `/orders` 新增可选 `current/page_size`，默认第 1 页最多 100 条；新增 `/orders/page` 与 `orders.page` 能力，SDK 和 Vue/React 示例用总数及末页翻页。原 v1 信封和数组形状保持兼容。实测构建还修复 Vue 示例原有的错误注释、页面导入与 logo 计算类型。
+
+- Linux `npm run check` 全绿：Gateway **425/425**、SDK **33/33**，类型检查与构建通过。POSIX Docker secret 路径测试在 Linux 验证，没有放宽生产密钥加载规则。
+- 真实 PHP HTTP + Core-issued Sanctum 会话 + Redis HPKE 防重放：**70 项检查通过**，Core committed HEAD **537a2c82996329ca29c86942996482306e9166e9**。环境为 Alpine 3.22、PHP 8.4.16、Node 22.23.2、**MariaDB 11.4.12**，数据库只用 `txboard_gateway_test`、Redis DB 12；不等于 MySQL 8.4 验证。
+- 验证两用户隔离、缺失/非法 Bearer、他人订单 404、注销失效、匿名目录与默认禁写零上游调用、幂等重放/冲突、CAPTCHA 拒绝、Core 429、可见通知、邀请归属、无订阅/有订阅知识库权限。101 条状态 4 历史订单两页覆盖完整且无重复，混合状态的普通列表也通过。
+- Chromium 浏览器 SDK 测试 **1/1** 通过（Native 模拟 Core，不冒充真实浏览器到生产 Core）；HPKE、登录、状态 4、分页 DTO、错误与隐私过滤通过。React/Vue 实际 `typecheck`、`build` 和全部主题结构检查通过。
+
+复现脚本、权限边界与限制见 [Native Core 联调](./native-core-integration.md)；脱敏结果为 [native-core-baseline.json](../tests/integration/evidence/native-core-baseline.json)。本地完整证据位于 `/opt/txboard-baseline/gateway-integration/gateway-native.Ir13kf/`，全量检查和浏览器日志位于其父目录；临时 tar、debug、结果草稿已从仓库清理。
+
+这次是当前适配修复，**B5/B6 未完成**。统一 User/Admin Gateway、目标 BFF、Internal API、版本协商、OpenAPI 3.1、正式 SDK/镜像发布、生产部署、支付 Provider/回调和生产数据回归仍待推进。邮箱仅使用 log 驱动，第三方 CAPTCHA 成功校验与真实外部投递未验证。邀请/知识库在 Core 直接验证，Gateway 路由没有扩大。
 
 ## 2026-10-12：Core First B0（文档与工具基线）
 

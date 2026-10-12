@@ -1,3 +1,4 @@
+import { requestId } from './native-fixtures.js'
 import { describe, expect, it, vi } from 'vitest'
 import {
   ROUTE_POLICIES,
@@ -210,7 +211,7 @@ describe('GW-202 limiter engine', () => {
 
 describe('GW-202 gateway middleware integration', () => {
   function gatewayWithLimiter(limiter: RedisRateLimiter, events: any[] = []) {
-    return createGatewayApp(config, vi.fn(async () => Response.json({ status: 'success', data: [] })),
+    return createGatewayApp(config, vi.fn(async () => Response.json({ request_id: requestId, data: [] })),
       undefined, {
         rateLimiter: limiter,
         onRateEvent: e => events.push(e),
@@ -219,7 +220,7 @@ describe('GW-202 gateway middleware integration', () => {
 
   it('returns 429 with Retry-After header and never calls upstream', async () => {
     const limiter = RedisRateLimiter.withClient(fakeRedis(() => [1, 30_000, 60, 60]))
-    const fetcher = vi.fn(async () => Response.json({ status: 'success', data: [] }))
+    const fetcher = vi.fn(async () => Response.json({ request_id: requestId, data: [] }))
     const app = createGatewayApp(config, fetcher as any, undefined, { rateLimiter: limiter })
     const res = await app.request('/gateway/v1/plans')
     expect(res.status).toBe(429)
@@ -230,7 +231,7 @@ describe('GW-202 gateway middleware integration', () => {
 
   it('passes allowed requests through to upstream and does not set Retry-After', async () => {
     const limiter = RedisRateLimiter.withClient(fakeRedis(() => [0, 0, 1, 1]))
-    const fetcher = vi.fn(async () => Response.json({ status: 'success', data: [] }))
+    const fetcher = vi.fn(async () => Response.json({ request_id: requestId, data: [] }))
     const app = createGatewayApp(config, fetcher as any, undefined, { rateLimiter: limiter })
     const res = await app.request('/gateway/v1/plans')
     expect(res.status).toBe(200)
@@ -277,7 +278,7 @@ describe('GW-202 gateway middleware integration', () => {
     const redis = fakeRedis(() => [0, 0, 1, 1])
     const limiter = RedisRateLimiter.withClient(redis)
     const app = createGatewayApp(config, vi.fn(async () => Response.json({
-      status: 'success', data: { auth_data: 'Bearer ' + 'x'.repeat(30) },
+      request_id: requestId, data: { auth_data: 'Bearer ' + 'x'.repeat(30) },
     })) as any, undefined, { rateLimiter: limiter })
     const res = await app.request('/gateway/v1/auth/login', {
       method: 'POST',

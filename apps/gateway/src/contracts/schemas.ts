@@ -59,8 +59,8 @@ export const emailCodeSchema = z.strictObject({ email: z.email().max(254), ...ca
 
 export type EmailCodeRequest = z.infer<typeof emailCodeSchema>
 
-/** Order status query accepts only the four TXBoard states. */
-export const orderStatusQueryValues: readonly string[] = ['0', '1', '2', '3']
+/** All current Core states, including 4 (discounted historical orders). */
+export const orderStatusQueryValues: readonly string[] = ['0', '1', '2', '3', '4']
 
 /**
  * GW-304: POST /gateway/v1/orders request body.
@@ -99,10 +99,16 @@ export type Plan = z.infer<typeof planListSchema>[number]
 export const userProfileSchema = z.looseObject({ email: z.email() })
 export type UserProfile = z.infer<typeof userProfileSchema>
 
-export const orderListSchema = z.array(z.looseObject({ trade_no: z.string(), status: z.number().int() }))
+export const orderListSchema = z.array(z.looseObject({ trade_no: z.string(), status: z.number().int().min(0).max(4) }))
 export type OrderSummary = z.infer<typeof orderListSchema>[number]
 
-export const orderDetailSchema = z.looseObject({ trade_no: z.string(), status: z.number().int() })
+export const orderPageSchema = z.object({
+  items: orderListSchema, current: z.number().int().positive(),
+  pageSize: z.number().int().min(1).max(100), total: z.number().int().nonnegative(),
+  lastPage: z.number().int().positive(),
+})
+
+export const orderDetailSchema = z.looseObject({ trade_no: z.string(), status: z.number().int().min(0).max(4) })
 export type OrderDetail = z.infer<typeof orderDetailSchema>
 
 export const paymentMethodsSchema = z.array(z.looseObject({ id: z.number().int(), name: z.string() }))
@@ -121,7 +127,7 @@ export const statsSchema = z.tuple([
 ])
 export type StatsTuple = z.infer<typeof statsSchema>
 
-export const orderStatusSchema = z.number().int().min(0).max(3)
+export const orderStatusSchema = z.number().int().min(0).max(4)
 
 export const loginResultSchema = z.object({
   auth_data: z.string().regex(/^Bearer \S{8,}$/),
