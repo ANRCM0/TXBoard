@@ -1,14 +1,14 @@
 # 认识 TXBoard
 
-TXBoard 是订阅业务与节点资源的**控制平面**，管理用户、套餐、订单、余额、节点、机器、后台配置和扩展系统。它不承担代理内核的数据转发：对应职责属于独立的 [TX-Node](https://github.com/ANRCM0/TX-Node)。
+TXBoard Core 是订阅业务与节点资源的**控制平面**，管理用户、套餐、订单、余额、节点、机器、后台配置和扩展系统。代理内核的数据转发由独立进程 [TX-Node](../../node/README.md) 负责；源码统一在本仓 `node/`。
 
 ## 一张图理解组件
 
 - **TXBoard 主应用**：Laravel TXAPI、Admin（React）、User（Vue）、MySQL、Redis、模块/插件/主题以及受控的 Agent Ops。
-- **TXBoard-Deploy**：面向服务器的安装器和运维工具，按镜像部署，而不是构建源码。
+- **TXBoard-Deploy**：Core、Gateway、Node 的统一安装器和运维工具，按镜像部署。
 - **TX-Node**：独立的 Go Agent / Data Plane，向面板报告运行与流量状态。
 - **内置 MCP Gateway**：可选的 Agent Ops 协议适配器，所有操作仍经 TXBoard 的权限、范围、审批及审计。
-- **TXBoard-Gateway**：另一个独立、可选的**用户主题 API BFF** 项目，不接管管理员、支付回调或 Node 身份。
+- **TXBoard-Gateway**：`gateway/` 内独立构建的可选**用户主题 API BFF**，不接管管理员、支付回调或 Node 身份。
 
 [架构与职责详解](../architecture/README.md) · [接口协议](../../contracts/README.md)
 

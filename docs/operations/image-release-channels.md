@@ -1,6 +1,6 @@
 # TXBoard 镜像发布通道（CURRENT）
 
-GHCR 仓库：`ghcr.io/anrcm0/txboard`，支持 `linux/amd64` / `linux/arm64`。
+运行时统一在本仓发布，支持 `linux/amd64` / `linux/arm64`：Core 为 `ghcr.io/anrcm0/txboard-core`（保留 `txboard` 兼容别名），Gateway 为 `ghcr.io/anrcm0/txboard-gateway`，Node 为 `ghcr.io/anrcm0/tx-node`。目录和历史来源见 [双仓布局](../development/repository-layout.md)。
 
 | 场景 | Git 触发条件 | 推送的 GHCR 标签 | 是否覆盖正式版 |
 | --- | --- | --- | --- |
@@ -9,8 +9,8 @@ GHCR 仓库：`ghcr.io/anrcm0/txboard`，支持 `linux/amd64` / `linux/arm64`。
 | 正式版 | 推送 `v1.2.3` | `latest`, `v1.2.3` | 是（更新 latest） |
 | Pull Request | 向 main 发起 PR | 无，仅测试 | 否 |
 
-镜像发布前必须通过完整 API/Web/MCP 回归、隔离 MySQL 备份恢复、Docker 容器构建与运行时冒烟检查。PR 只执行相关 CI、合成恢复检查与容器冒烟，不推送镜像。
-文档或无关文件的 main 提交不再重复构建开发镜像。手动 `workflow_dispatch` 不触发镜像发布；只有匹配构建路径的 main 提交或符合命名规范的版本 Git 标签可以发布。
+Core 镜像发布前必须通过完整 API/Web/MCP 回归、隔离 MySQL 备份恢复、Docker 容器构建与运行时冒烟检查。Gateway 经过类型检查、Gateway/SDK 测试、Redis、浏览器和容器检查；Node 经过 Go 测试、运行时稳定性与容器配置路径检查。PR 执行相关验证，不推送镜像。
+文档或无关文件的 main 提交不重复发布开发镜像。Core/Gateway 不通过手动 `workflow_dispatch` 发布；Node 允许对已经在 main 的版本标签重新验证与发布。正常发布由匹配构建路径的 main push 或符合命名规范的版本标签 push 触发。
 发布 Git 标签所指向的提交必须已在 `main` 中，避免绕过 PR 验证。错误的 `v*` 标签会被拒绝。
 构建成功后可在 Actions 摘要中查看通道及实际推送的镜像标签。
 
@@ -19,7 +19,7 @@ GHCR 仓库：`ghcr.io/anrcm0/txboard`，支持 `linux/amd64` / `linux/arm64`。
 ### 开发版（自动）
 
 每次合并或推送涉及 API、Web、MCP、容器或发布脚本的变更至 `main`，自动构建
-`ghcr.io/anrcm0/txboard:dev`，并同时推送独立提交标签（如
+`ghcr.io/anrcm0/txboard-core:dev` 及旧 `txboard:dev` 别名，并同时推送独立提交标签（如
 `dev-sha-0123456789ab`）。**不会移动 `latest`。**
 
 ### 预览版（主动打标签）
@@ -45,6 +45,8 @@ git push origin v1.2.3
 ```
 
 GHCR 标签：`latest` 和 `v1.2.3`。
+
+同一版本标签触发三个组件独立验证与发布，部署前核对全部目标 digest。新镜像包在第一次正式版本发布前只有开发通道；安装测试需显式选择 `dev`，不能假设 `latest` 已存在。
 
 **不要随意重建/强推现有正式版本 Git 标签。** 正式部署建议固定版本
 `v1.2.3` 或镜像 digest，预发布固定 `v1.2.3-rc.1`；开发环境可

@@ -13,7 +13,7 @@
 #   # 不要加 -v，不要删除 TXBoard 数据卷
 #
 # 注意：
-#   - 所有相对路径（如 secrets/）以仓库根目录为基准
+#   - Compose 相对路径以本文件目录 staging/ 为基准
 #   - gateway 通过 depends_on 等待 Redis 健康检查通过后再启动
 #   - HPKE 私钥通过 Docker secrets 注入，不进入镜像层
 
@@ -105,4 +105,4 @@ volumes:
 
 secrets:
   gateway-hpke:
-    file: ${GATEWAY_HPKE_SECRET_FILE:-./secrets/gateway-hpke.json}
+    file: ${GATEWAY_HPKE_SECRET_FILE:-../secrets/gateway-hpke.json}

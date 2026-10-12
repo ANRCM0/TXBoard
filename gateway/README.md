@@ -1,10 +1,12 @@
 # TXBoard Gateway
 
+源码位于主仓 `gateway/`，镜像仍独立构建与部署。以下命令均在 `gateway/` 执行；从主仓根目录先运行 `cd gateway`。工作流、统一版本镜像及 SDK 边界见 [合仓运行约定](./docs/monorepo-current.md)。
+
 **Docker-first、可选启用的 TXBoard 用户主题 API Gateway**，独立于 Laravel 核心业务，基于 Node.js 22 / Hono / TypeScript，并提供 `@txboard/theme-sdk`。当前运行 API 以 `/gateway/v1` 为前缀；未来与 TXBoard Native 统一的 BFF 使用 `/txapi/bff/v1`，**仍为目标方案**。TXBoard Laravel 始终负责认证、验证码、账户归属、订单、余额和支付。
 
 > **开发与验收状态**：以 [开发状态台账](./docs/development-status.md) 的最新记录为准。代码与 CI 通过不等于完成生产环境联调，真实部署仍须独立验收。
 
-> **Core First v2 演进**：后续工作以 [主仓 B0 基线](https://github.com/ANRCM0/TXBoard/blob/main/docs/architecture/v2/README.md) 和 [v2 契约](https://github.com/ANRCM0/TXBoard/blob/main/contracts/v2/README.md) 为目标。当前 14 项操作已适配 Core `/txapi/*` 与 Native 信封，并通过隔离 HTTP 联调；匿名支付目录无对应接口，固定关闭。此项属于 B5/B6 准备，统一 User/Admin Gateway、目标 BFF、生产部署与 SDK 发布仍待完成，见 [Native 适配与联调](./docs/native-core-integration.md)。
+> **Core First v2 演进**：后续工作以 [主仓 B0 基线](../docs/architecture/v2/README.md) 和 [v2 契约](../contracts/v2/README.md) 为目标。当前 14 项操作已适配 Core `/txapi/*` 与 Native 信封，并通过隔离 HTTP 联调；匿名支付目录无对应接口，固定关闭。此项属于 B5/B6 准备，统一 User/Admin Gateway、目标 BFF、生产部署与 SDK 发布仍待完成，见 [Native 适配与联调](./docs/native-core-integration.md)。
 
 [文档中心](./docs/README.md) · [开发与验收状态](./docs/development-status.md) · [文档维护规范](./docs/DOCUMENTATION_GUIDE.md)
 

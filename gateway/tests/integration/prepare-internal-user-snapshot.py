@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Full committed Gateway + only current Internal User files; excludes parallel work."""
+"""Archive a Gateway tree, then overlay the current Internal slice only.
+
+Usage: <gateway-source> <new-target> <dependency-source> [revision] [source-prefix]
+The prefix defaults to the source's path below its Git root (gateway/ in the
+monorepo). Pass an explicit empty prefix for a pre-merge Gateway revision.
+"""
 import hashlib
 import io
 import json
@@ -15,12 +20,24 @@ target = pathlib.Path(sys.argv[2]).resolve()
 dependencies = pathlib.Path(sys.argv[3]).resolve()
 if target.exists() or not (dependencies/'node_modules').is_dir():
     raise SystemExit('Expected new snapshot and existing Linux dependencies')
-git = ['git', '-c', f'safe.directory={source}', '-C', str(source)]
+git_root = next((path for path in (source, *source.parents) if (path/'.git').exists()), None)
+if git_root is None:
+    raise SystemExit('Gateway source must belong to a Git checkout')
+git = ['git', '-c', f'safe.directory={git_root}', '-C', str(git_root)]
+source_prefix = sys.argv[5] if len(sys.argv) > 5 else source.relative_to(git_root).as_posix()
+if source_prefix == '.':
+    source_prefix = ''
+if source_prefix not in ('', 'gateway'):
+    raise SystemExit('Source prefix must be gateway or empty for a pre-merge revision')
 revision = sys.argv[4] if len(sys.argv) > 4 else 'HEAD'
 if revision != 'HEAD' and re.fullmatch(r'[0-9a-f]{40}', revision) is None:
     raise SystemExit('Optional baseline must be a full committed SHA')
 head = subprocess.check_output([*git, 'rev-parse', revision], text=True).strip()
-archive = subprocess.check_output([*git, 'archive', head])
+tree = f'{head}:{source_prefix}' if source_prefix else f'{head}^{{tree}}'
+tree_id = subprocess.check_output([*git, 'rev-parse', tree], text=True).strip()
+# A wrong baseline/prefix must fail before creating a partial snapshot.
+subprocess.check_call([*git, 'cat-file', '-e', f'{tree_id}:packages/theme-sdk/package.json'])
+archive = subprocess.check_output([*git, 'archive', tree_id])
 target.mkdir(parents=True, mode=0o700)
 with tarfile.open(fileobj=io.BytesIO(archive)) as bundle:
     bundle.extractall(target, filter='data')
@@ -52,5 +69,7 @@ shutil.copytree(dependencies/'node_modules', target/'node_modules', symlinks=Tru
 for manifest in dependencies.glob('apps/*/node_modules'):
     relative = manifest.relative_to(dependencies)
     if not (target/relative).exists(): shutil.copytree(manifest, target/relative, symlinks=True)
-(target/'internal-user-snapshot.json').write_text(json.dumps({'committed_gateway_head': head, 'slice_sha256': hashes}, indent=2))
-print(json.dumps({'snapshot': str(target), 'committed_gateway_head': head}))
+metadata = {'committed_gateway_head': head, 'committed_gateway_tree': tree_id,
+            'gateway_source_prefix': source_prefix, 'slice_sha256': hashes}
+(target/'internal-user-snapshot.json').write_text(json.dumps(metadata, indent=2))
+print(json.dumps({'snapshot': str(target), **metadata}))

@@ -10,7 +10,9 @@ These instructions apply to coding agents working in this repository.
 
 TXBoard is the Control Plane.
 
-TX-Node is a separate Agent / Data Plane repository. Do not copy TX-Node runtime or installer responsibilities into TXBoard.
+This repository contains three independently built runtimes: TXBoard Core at the root (`api/`, `web/`, `mcp/`), Gateway in `gateway/`, and TX-Node in `node/`. The repository is being prepared for the name `tx-core`.
+
+Repository consolidation does not merge runtime authority: TXBoard remains the Control Plane, Gateway is an optional BFF, and TX-Node remains the Agent / Data Plane. Keep their dependency locks, Docker contexts, credentials and release gates separate. Host installation and lifecycle scripts belong exclusively to TXBoard-Deploy; do not introduce another installer here. Nested `.github/workflows` do not run: active component workflows live in the root `.github/workflows/`.
 
 The project is evolving toward a **Modular Control Plane Platform**.
 

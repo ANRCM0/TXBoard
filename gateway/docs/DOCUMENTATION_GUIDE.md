@@ -14,7 +14,7 @@
 2. `/gateway/v1` 是当前接口；`/txapi/bff/v1` 的目标设计不应被写成生产实现。
 3. 变更 SDK、主题示例、认证或 API 时，更新对应实现、测试、协议和开发者文档。
 4. 不在 README 多处维护 PR 列表/测试计数；在状态台账更新时注明验证证据与未验证边界。
-5. 每个 Markdown 文档只有一个 H1，目录内使用相对链接；跨仓使用完整 GitHub URL。
+5. 每个 Markdown 文档只有一个 H1，同仓 Core/Gateway/Node 使用相对链接；真实跨仓使用完整 GitHub URL。历史固定 commit/PR/验收证据不重写。
 6. 执行 `node scripts/check-docs.mjs` 检查公开文档相对路径。此工具不验证外部 URL、锚点和代码执行结果。
 
 真实数据库、CAPTCHA、生产反代与回滚仍需独立验收；设计完成、CI 通过或合并 PR 不意味着已经放量。

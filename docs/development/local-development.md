@@ -9,9 +9,12 @@
 - `web/user/`：Vue + TypeScript 用户应用。
 - `web/shared/`：共享前端模块。
 - `mcp/`：可选 Agent Ops MCP 协议适配器。
+- `gateway/`：独立 npm workspaces、用户 BFF 和 Theme SDK。
+- `node/`：独立 Go module、节点运行时与内核管理。
 - `contracts/`：跨仓 HTTP、Node、Plugin、Theme 和 Module 的版本化契约。
 
 [AGENTS.md](../../AGENTS.md) 规定域边界、安全要求和优先的 Contract-first 流程。
+三组件构建与镜像发布规则见 [双仓布局](repository-layout.md)。
 
 ## 后端测试
 

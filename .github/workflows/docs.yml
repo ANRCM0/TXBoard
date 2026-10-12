@@ -5,6 +5,7 @@ on:
     paths:
       - 'README*.md'
       - 'CONTRIBUTING.md'
+      - 'AGENTS.md'
       - 'docs/**'
       - 'contracts/**'
       - 'api/docs/**'
@@ -15,6 +16,7 @@ on:
     paths:
       - 'README*.md'
       - 'CONTRIBUTING.md'
+      - 'AGENTS.md'
       - 'docs/**'
       - 'contracts/**'
       - 'api/docs/**'

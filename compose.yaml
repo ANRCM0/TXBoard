@@ -35,7 +35,7 @@ services:
   txboard:
     # One application image contains the API, both SPAs, Caddy, Horizon,
     # embedded Redis, WebSocket server and the optional MCP Gateway.
-    image: ${TXBOARD_IMAGE:-ghcr.io/anrcm0/txboard:latest}
+    image: ${TXBOARD_IMAGE:-ghcr.io/anrcm0/txboard-core:latest}
     build:
       context: .
       dockerfile: Dockerfile

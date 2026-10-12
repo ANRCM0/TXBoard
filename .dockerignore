@@ -13,6 +13,8 @@ sync-gateway.sh
 .env.example
 contracts
 docs
+gateway
+node
 
 # API local/runtime state.
 api/tests

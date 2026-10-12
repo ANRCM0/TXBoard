@@ -1,5 +1,7 @@
 # Gateway 真实 TXBoard Staging 联调入口（GW-104 / GW-105 / GW-216）
 
+合仓后先 `cd gateway`；下列路径均相对此 workspace。完整 staging Compose 的默认 HPKE 文件为 `gateway/secrets/gateway-hpke.json`，相对其文件所在目录写作 `../secrets/gateway-hpke.json`。
+
 > **不是生产部署手册，也不是已完成的真实端到端联调证明。**  
 > 本目录仅为已有隔离 TXBoard 环境提供 opt-in Gateway 接入，  
 > 与 CI 中基于伪造 Laravel HTTP 服务的 Chromium 测试不同。

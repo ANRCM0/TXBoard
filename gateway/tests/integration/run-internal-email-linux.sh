@@ -8,6 +8,9 @@ if [ "${DB_DATABASE:-}" != txboard_internal_test ]; then
   exit 2
 fi
 : "${DB_HOST:?}" "${DB_USERNAME:?}" "${DB_PASSWORD:?}"
+: "${INTERNAL_EXPECTED_CORE_COMMIT:?Pass the fixed Core snapshot commit}"
+[[ "$INTERNAL_EXPECTED_CORE_COMMIT" =~ ^[0-9a-f]{40}$ ]] || { echo 'Invalid Core snapshot commit' >&2; exit 2; }
+export INTERNAL_EXPECTED_CORE_COMMIT
 : "${INTERNAL_EMAIL_REDIS_PORT:=16380}"
 export INTERNAL_FIXTURE_DIR=$(mktemp -d /tmp/txboard-internal-user-gateway.XXXXXX)
 chmod 700 "$INTERNAL_FIXTURE_DIR"

@@ -1,5 +1,7 @@
 # TXBoard Gateway Docker / 1Panel 部署与恢复 Runbook
 
+当前源码位于主仓 `gateway/`，下列命令先 `cd gateway`。根 Actions 独立构建 `ghcr.io/<owner>/txboard-gateway`，统一版本规则见 [合仓运行约定](monorepo-current.md)；合并源码不改变原部署开关。
+
 > 当前代码支持容器化配置，但**没有在真实 TXBoard 服务器执行部署或验收**。用于本地与隔离环境；生产之前必须完成安全/数据/回滚审核。以下仅操作 Gateway 自身，不影响旧 Laravel 容器、MySQL、Redis 或支付回调。
 
 ## Future: 与 TXBoard Native 的 TXAPI 集成（尚未部署）

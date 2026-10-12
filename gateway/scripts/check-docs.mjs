@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 // Dependency-free local Markdown relative-path validation.
-// Scope intentionally stays on public-facing docs; external URLs, anchor IDs,
+// Scope covers Gateway docs, contracts and SDK/staging entry points; external URLs, anchor IDs,
 // reference-style links and generated paths require human review.
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { dirname, extname, isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const inputs = ['README.md', 'docs'];
+const inputs = ['README.md', 'docs', 'contracts', 'packages/theme-sdk/README.md', 'staging'];
 const files = [];
 const errors = [];
 let checked = 0;

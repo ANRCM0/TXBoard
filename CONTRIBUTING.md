@@ -12,6 +12,8 @@
 
 本地环境与命令参阅 [本地开发指南](docs/development/local-development.md)。
 
+组件目录与 CI 入口见 [双仓布局](docs/development/repository-layout.md)。Gateway 的 npm 命令在 `gateway/` 执行，Go 命令在 `node/` 执行；不要将它们加入 Core 的 npm workspaces 或 Docker 构建上下文。安装器修改提交到 TXBoard-Deploy。
+
 后端（在 `api/`）执行相应的 Composer / Artisan 测试；前端（根目录）执行：
 
 ```bash

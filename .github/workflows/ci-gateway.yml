@@ -1,0 +1,328 @@
+name: gateway-image
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+    paths:
+      - 'gateway/**'
+      - 'contracts/http/**'
+      - 'contracts/v2/core-internal-api/**'
+      - 'contracts/v2/secure-channel/**'
+      - 'scripts/resolve-image-tags.sh'
+      - 'scripts/test-image-tags.sh'
+      - '.github/workflows/ci-gateway.yml'
+  pull_request:
+    paths:
+      - 'gateway/**'
+      - 'contracts/http/**'
+      - 'contracts/v2/core-internal-api/**'
+      - 'contracts/v2/secure-channel/**'
+      - 'scripts/resolve-image-tags.sh'
+      - 'scripts/test-image-tags.sh'
+      - '.github/workflows/ci-gateway.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: gateway
+    shell: bash
+
+# Documentation commits must not cancel a preceding runtime publication.
+# PR validation may be superseded; release channels serialize across tags.
+concurrency:
+  group: gateway-image-${{ github.event_name == 'pull_request' && github.ref || (github.ref_type == 'branch' && github.sha || (contains(github.ref_name, '-') && 'preview' || 'stable')) }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    outputs:
+      publish_image: ${{ steps.image_changes.outputs.runtime }}
+    services:
+      redis:
+        image: redis:7.4-alpine
+        ports: ['16379:6379']
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-retries 10
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Classify image changes without republishing documentation
+        id: image_changes
+        env:
+          BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          source scripts/image-runtime-path.sh
+          runtime=false
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            runtime=true
+          elif [[ "$GITHUB_EVENT_NAME" == push ]]; then
+            if [[ "$BEFORE_SHA" =~ ^0{40}$ ]]; then
+              runtime=true
+            else
+              [[ "$BEFORE_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo 'Invalid previous commit' >&2; exit 1; }
+              changes=$(mktemp "$RUNNER_TEMP/gateway-changes.XXXXXX")
+              trap 'rm -f -- "$changes"' EXIT
+              git diff --no-renames --name-only -z "$BEFORE_SHA" "$GITHUB_SHA" > "$changes"
+              while IFS= read -r -d '' path; do
+                if gateway_image_runtime_path "$path"; then runtime=true; fi
+              done < "$changes"
+            fi
+          fi
+          printf 'runtime=%s\n' "$runtime" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22.23.2'
+          cache: npm
+          cache-dependency-path: gateway/package-lock.json
+      - name: Validate Gateway documentation links
+        run: node scripts/check-docs.mjs
+      - name: Verify legacy and monorepo snapshot isolation
+        run: python3 -m unittest discover -s tests/integration -p test_snapshot_layout.py
+      - name: Restore pinned dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Typecheck, test and build Gateway and SDK
+        run: npm run check
+      - name: Live Redis multi-connection replay and throttle tests
+        env:
+          GATEWAY_TEST_REDIS_URL: redis://127.0.0.1:16379
+        run: npm run test:redis
+      - name: Validate SDK package contents
+        run: npm pack --dry-run --workspace @txboard/theme-sdk
+      - name: Smoke-test compiled service startup validation
+        run: |
+          if TXBOARD_UPSTREAM_URL= node apps/gateway/dist/index.js >/tmp/txboard-gateway-boot.log 2>&1; then
+            echo 'Gateway unexpectedly started without upstream URL'
+            exit 1
+          fi
+          grep -q 'TXBOARD_UPSTREAM_URL is required' /tmp/txboard-gateway-boot.log
+  container:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - name: Validate isolated staging Compose contract
+        env:
+          TXBOARD_STAGING_NETWORK: txboard-staging-test-network
+          GATEWAY_STAGING_ALLOWED_ORIGINS: https://staging.example.test
+        run: |
+          docker compose -f staging/compose.gateway.yaml config --quiet
+          ! docker compose -f staging/compose.gateway.yaml config | grep -Eq 'published:|host_port:'
+      - name: Validate Docker-only deployment and optional crypto overlay
+        env:
+          GATEWAY_DOCKER_NETWORK: txboard-gateway-test-network
+          TXBOARD_UPSTREAM_URL: https://txboard.example
+          GATEWAY_ALLOWED_ORIGINS: https://theme.example
+          GATEWAY_REDIS_URL: redis://gateway-redis:6379
+          TXBOARD_STAGING_NETWORK: txboard-staging-test-network
+          TXBOARD_STAGING_UPSTREAM_URL: http://txboard
+          GATEWAY_STAGING_ALLOWED_ORIGINS: https://staging.example.test
+        run: |
+          docker compose -f compose.yaml config --quiet
+          mkdir -p secrets
+          printf '%s\n' '{"kty":"EC","crv":"P-256","x":"fixture","y":"fixture","d":"fixture"}' > secrets/gateway-hpke.json
+          docker compose -f compose.yaml -f compose.crypto.yaml config --quiet
+          docker compose -f compose.yaml -f compose.crypto.yaml -f compose.redis.yaml config --quiet
+          docker compose -f staging/docker-compose.staging.yml config --quiet
+          docker compose -f staging/docker-compose.staging.yml config --format json | python3 -c 'import json,pathlib,sys; c=json.load(sys.stdin); assert pathlib.Path(c["secrets"]["gateway-hpke"]["file"]) == pathlib.Path.cwd()/"secrets/gateway-hpke.json"; assert all("ports" not in s for s in c["services"].values())'
+          # The bundled Redis overlay works without an external Redis URL.
+          env -u GATEWAY_REDIS_URL docker compose -f compose.yaml -f compose.crypto.yaml -f compose.redis.yaml config --quiet
+          test "$(env -u GATEWAY_REDIS_URL docker compose -f compose.yaml -f compose.crypto.yaml -f compose.redis.yaml config --format json | python3 -c 'import json,sys; print(json.load(sys.stdin)["services"]["gateway"]["environment"]["GATEWAY_REDIS_URL"])')" = 'redis://gateway-redis:6379'
+          ! docker compose -f compose.yaml config | grep -Eq 'published:|host_port:'
+          ! docker compose -f compose.yaml -f compose.crypto.yaml config | grep -Eq 'published:|host_port:'
+          # This fixture is not an HPKE key; remove it before the real key smoke.
+          rm -f secrets/gateway-hpke.json
+      - name: Ensure Docker build context never includes private key material
+        run: |
+          test -f .dockerignore
+          grep -Fxq 'secrets/' .dockerignore
+          grep -Fxq '.env' .dockerignore
+      - name: Build production Docker image
+        run: docker build -t txboard-gateway:phase1 .
+      - name: Container boots with fixed upstream configuration
+        run: |
+          docker run -d --name txboard-gateway-test \
+            -e GATEWAY_HOST=0.0.0.0 \
+            -e TXBOARD_UPSTREAM_URL=https://txboard.example \
+            -p 127.0.0.1:18787:8787 txboard-gateway:phase1
+          trap 'docker rm -f txboard-gateway-test >/dev/null 2>&1 || true' EXIT
+          for i in $(seq 1 20); do
+            if curl --silent --fail http://127.0.0.1:18787/healthz | grep -q '"contract":"1"'; then exit 0; fi
+            sleep 1
+          done
+          docker logs txboard-gateway-test
+          exit 1
+      - name: Docker HPKE private file mounts with non-root service
+        run: |
+          mkdir -p secrets
+          # Create the key outside the build context; do not print the file.
+          docker run --rm -v "$PWD:/work" -w /work node:22.23.2-alpine \
+            node scripts/generate-hpke-key.mjs
+          sudo chown 1000:1000 secrets/gateway-hpke.json
+          sudo chmod 600 secrets/gateway-hpke.json
+          docker network create gateway-ci-private
+          docker run -d --network gateway-ci-private --name gateway-ci-redis redis:7.4-alpine
+          docker run -d --name txboard-gateway-hpke-test --network gateway-ci-private \
+            --read-only --cap-drop ALL \
+            -v "$PWD/secrets/gateway-hpke.json:/run/secrets/gateway-hpke.json:ro" \
+            -e GATEWAY_HOST=0.0.0.0 \
+            -e GATEWAY_HPKE_MODE=optional \
+            -e GATEWAY_REDIS_URL=redis://gateway-ci-redis:6379 \
+            -e GATEWAY_HPKE_KEY_FILE=/run/secrets/gateway-hpke.json \
+            -e TXBOARD_UPSTREAM_URL=https://txboard.example \
+            -p 127.0.0.1:18788:8787 txboard-gateway:phase1
+          trap 'docker rm -f txboard-gateway-hpke-test gateway-ci-redis >/dev/null 2>&1 || true; docker network rm gateway-ci-private >/dev/null 2>&1 || true; rm -f secrets/gateway-hpke.json' EXIT
+          for i in $(seq 1 20); do
+            if curl -fsS http://127.0.0.1:18788/gateway/v1/crypto/key | \
+              grep -q '"protocol":"HPKE-RFC9180"'; then exit 0; fi
+            sleep 1
+          done
+          docker logs txboard-gateway-hpke-test
+          exit 1
+  browser:
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:7.4-alpine
+        ports: ['16379:6379']
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-retries 10
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22.23.2'
+          cache: npm
+          cache-dependency-path: gateway/package-lock.json
+      - name: Restore pinned dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Build Gateway and Theme SDK
+        run: npm run build
+      - name: Browser mock-contract E2E (not real TXBoard staging)
+        env:
+          GATEWAY_TEST_REDIS_URL: redis://127.0.0.1:16379
+        run: npm run test:browser
+      - name: Experimental metadata codec byte vectors in Chromium
+        run: node scripts/test-sc-v2-codec-browser.mjs
+      - name: Offline SC-v2 crypto Node and Chromium interoperability
+        run: node scripts/test-sc-v2-crypto-browser.mjs
+  publish:
+    if: github.event_name == 'push' && needs.verify.outputs.publish_image == 'true'
+    needs: [verify, container, browser]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    concurrency:
+      group: gateway-publish-${{ github.ref_type == 'branch' && github.sha || (contains(github.ref_name, '-') && 'preview' || 'stable') }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Resolve unified dev / preview / stable image tags
+        id: channel
+        run: |
+          export TXBOARD_IMAGE_REPO="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/txboard-gateway"
+          printf 'image=%s\n' "$TXBOARD_IMAGE_REPO" >> "$GITHUB_OUTPUT"
+          bash "$GITHUB_WORKSPACE/scripts/resolve-image-tags.sh"
+      - name: Select immutable main tags and image version
+        id: build
+        env:
+          CHANNEL: ${{ steps.channel.outputs.channel }}
+          CHANNEL_TAGS: ${{ steps.channel.outputs.tags }}
+        run: |
+          tags="$CHANNEL_TAGS"
+          version="$GITHUB_REF_NAME"
+          if [[ "$CHANNEL" == dev ]]; then
+            tags="$(grep -F ':dev-sha-' <<< "$CHANNEL_TAGS")"
+            version="dev-sha-${GITHUB_SHA:0:12}"
+          fi
+          {
+            printf 'tags<<GATEWAY_BUILD_TAGS\n%s\nGATEWAY_BUILD_TAGS\n' "$tags"
+            printf 'version=%s\n' "$version"
+          } >> "$GITHUB_OUTPUT"
+      - name: Reject release tags not contained in main
+        if: github.ref_type == 'tag'
+        run: |
+          git fetch origin main
+          if ! git merge-base --is-ancestor HEAD origin/main; then
+            echo "::error::Release Git tags must reference a commit already on main."
+            exit 1
+          fi
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        id: image
+        with:
+          context: ./gateway
+          file: ./gateway/Dockerfile
+          push: true
+          platforms: linux/amd64,linux/arm64
+          cache-from: type=gha,scope=txboard-gateway
+          cache-to: type=gha,mode=max,scope=txboard-gateway
+          tags: ${{ steps.build.outputs.tags }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ steps.build.outputs.version }}
+          provenance: false
+      - name: Promote unchanged current main runtime to dev
+        id: promotion
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          IMAGE_REPO: ${{ steps.channel.outputs.image }}
+          IMAGE_DIGEST: ${{ steps.image.outputs.digest }}
+        run: |
+          printf 'promoted=false\n' >> "$GITHUB_OUTPUT"
+          source scripts/image-runtime-path.sh
+          git fetch --no-tags origin main
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo 'main no longer contains this commit; retain immutable image only'
+            exit 0
+          fi
+          changes=$(mktemp "$RUNNER_TEMP/gateway-promotion.XXXXXX")
+          trap 'rm -f -- "$changes"' EXIT
+          git diff --no-renames --name-only -z "$GITHUB_SHA" origin/main > "$changes"
+          while IFS= read -r -d '' path; do
+            if gateway_image_runtime_path "$path"; then
+              echo 'Gateway runtime advanced; retain immutable image without rolling dev back'
+              exit 0
+            fi
+          done < "$changes"
+          [[ "$IMAGE_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]] || { echo 'Missing immutable image digest' >&2; exit 1; }
+          docker buildx imagetools create --tag "$IMAGE_REPO:dev" "$IMAGE_REPO@$IMAGE_DIGEST"
+          printf 'promoted=true\n' >> "$GITHUB_OUTPUT"
+      - name: Report published channel
+        env:
+          RELEASE_CHANNEL: ${{ steps.channel.outputs.channel }}
+          RELEASE_TAGS: ${{ steps.build.outputs.tags }}
+          DEV_PROMOTED: ${{ steps.promotion.outputs.promoted }}
+          IMAGE_REPO: ${{ steps.channel.outputs.image }}
+        run: |
+          {
+            echo "### Published Gateway ${RELEASE_CHANNEL} image"
+            echo
+            printf '%s\n' "$RELEASE_TAGS" | sed 's/^/- `/; s/$/`/'
+            if [[ "$DEV_PROMOTED" == true ]]; then
+              printf -- '- `%s:dev` (current runtime)\n' "$IMAGE_REPO"
+            elif [[ "$RELEASE_CHANNEL" == dev ]]; then
+              echo 'Current main runtime changed; dev was not updated.'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

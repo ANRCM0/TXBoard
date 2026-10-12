@@ -33,6 +33,8 @@ B5.3 list input 固定 page 1–9999、per_page 1–100 与可选 status 0–4�
 
 ## 复现
 
+合仓后的新快照与历史复现方式见 [合仓运行约定](monorepo-current.md)。两套 TLS launcher 现在要求显式 `INTERNAL_EXPECTED_CORE_COMMIT`，与 Core snapshot manifest 完全相等；以下旧 commit 和报告保留原验收身份。
+
 本次验收建立固定 Core `422e85c44d064bfb763922316acd17d0174137d4` 完整 snapshot，叠加当前 Internal changes，使用 Core prepare-snapshot.py 与 locked vendor；Gateway 用 `tests/integration/prepare-internal-user-snapshot.py <source> <new-target> <linux-dependency-source> ee1cec6251dbc52368f4b7dfd9fcdb4d49d8954a` 建立 committed Gateway + Internal only 快照。两份 snapshot 保存真实 commit/hash，排除并行工作；源码清单见下方 B5.7 证据。
 
 准备独占空 `txboard_internal_test`（重跑只能明确核验并清此 fixture 库，脚本不会 migrate:fresh）；Core fixture 签发用户会话，Gateway 联调另通过真实 /txapi/auth/login 获取用户 Bearer。密钥、token 只留临时目录/进程内存，结尾删秘密并停止服务。Redis固定实验室16379 DB14/cache15。

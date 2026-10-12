@@ -1,4 +1,4 @@
-name: txboard-image
+name: txboard-core-image
 
 on:
   # Runtime/build changes on main update the dev image; documentation-only commits do not.
@@ -350,7 +350,9 @@ jobs:
       - name: Resolve dev / preview / stable image tags
         id: channel
         env:
-          TXBOARD_IMAGE_REPO: ghcr.io/anrcm0/txboard
+          TXBOARD_IMAGE_REPO: ghcr.io/${{ github.repository_owner }}/txboard-core
+          # Keep existing installations on the previous repository working.
+          TXBOARD_IMAGE_ALIASES: ghcr.io/${{ github.repository_owner }}/txboard
         run: bash scripts/resolve-image-tags.sh
       - name: Reject release tags not contained in main
         if: github.ref_type == 'tag'

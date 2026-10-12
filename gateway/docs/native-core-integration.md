@@ -12,6 +12,8 @@
 
 ## 复现隔离 HTTP 联调
 
+合仓后先进入主仓 `gateway/`；`TXBOARD_CORE_REPO` 指主仓根目录，vendor 仍在根目录 `api/vendor`。源码路径和发布约定见 [合仓运行约定](monorepo-current.md)。
+
 需要 Linux、Git、PHP 8.4、已安装 Core Composer vendor、Node 22、MariaDB/MySQL CLI、OpenSSL、`flock`、独立数据库服务及 Redis。该脚本只授权专用 `txboard_gateway_test` 数据库，既不连接生产数据库，也不运行 Gateway 数据库代码。固定测试端口和 fixture 设置由独占文件锁保护，禁止同时运行两个副本。
 
 ```sh

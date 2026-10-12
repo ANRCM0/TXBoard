@@ -27,7 +27,7 @@
 
 ```bash
 # 1. 克隆仓库并安装 SDK（workspace 内）
-cd TXBoard-Gateway
+cd /path/to/main-repository/gateway
 npm install
 
 # 2. 起本地 Gateway（见 docker-deployment.md，私网 + 同源代理）

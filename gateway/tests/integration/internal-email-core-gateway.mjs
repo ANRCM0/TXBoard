@@ -17,7 +17,9 @@ const api = process.env.INTERNAL_CORE_API
 const dir = process.env.INTERNAL_FIXTURE_DIR
 assert.ok(api && dir)
 const snapshot = JSON.parse(readFileSync(`${api}/../internal-snapshot.json`, 'utf8'))
-assert.equal(snapshot.committed_core_head, 'e33ba63e9a7c3aa97fde02c41ba5dc76d230f3cf')
+const expectedCoreCommit = process.env.INTERNAL_EXPECTED_CORE_COMMIT
+assert.match(expectedCoreCommit || '', /^[0-9a-f]{40}$/, 'An explicit fixed Core commit is required')
+assert.equal(snapshot.committed_core_head, expectedCoreCommit)
 const actors = JSON.parse(readFileSync(`${dir}/actors.json`, 'utf8'))
 const processes = []
 const servers = []

@@ -7,7 +7,7 @@ image=ghcr.io/anrcm0/txboard
 
 check() {
   local ref="$1" expected="$2" output
-  output="$(env -u GITHUB_OUTPUT GITHUB_REF="$ref" GITHUB_SHA="$sha" TXBOARD_IMAGE_REPO="$image" bash "$resolver")"
+  output="$(env -u GITHUB_OUTPUT -u TXBOARD_IMAGE_ALIASES GITHUB_REF="$ref" GITHUB_SHA="$sha" TXBOARD_IMAGE_REPO="$image" bash "$resolver")"
   if [[ "$output" != "$expected" ]]; then
     printf 'FAIL %s\nexpected:\n%s\nactual:\n%s\n' "$ref" "$expected" "$output" >&2
     exit 1
@@ -31,4 +31,13 @@ reject refs/tags/v1.2.3-hotfix.1
 reject refs/tags/v1.2.3-rc.0
 reject refs/tags/v01.2.3
 reject refs/tags/dev
+output="$(env -u GITHUB_OUTPUT GITHUB_REF=refs/heads/main GITHUB_SHA="$sha" TXBOARD_IMAGE_REPO=ghcr.io/ANRCM0/txboard-core TXBOARD_IMAGE_ALIASES=ghcr.io/ANRCM0/txboard bash "$resolver")"
+[[ "$output" == $'channel=dev\nghcr.io/anrcm0/txboard-core:dev\nghcr.io/anrcm0/txboard-core:dev-sha-0123456789ab\nghcr.io/anrcm0/txboard:dev\nghcr.io/anrcm0/txboard:dev-sha-0123456789ab' ]]
+for component in txboard-core txboard-gateway tx-node; do
+  output="$(env -u GITHUB_OUTPUT -u TXBOARD_IMAGE_ALIASES GITHUB_REF=refs/tags/v1.2.3 GITHUB_SHA="$sha" TXBOARD_IMAGE_REPO="ghcr.io/anrcm0/$component" bash "$resolver")"
+  [[ "$output" == "$(printf 'channel=stable\nghcr.io/anrcm0/%s:latest\nghcr.io/anrcm0/%s:v1.2.3' "$component" "$component")" ]]
+done
+if env -u GITHUB_OUTPUT GITHUB_REF=refs/heads/main GITHUB_SHA="$sha" TXBOARD_IMAGE_ALIASES='bad:tag' bash "$resolver" >/dev/null 2>&1; then
+  echo 'FAIL: malformed alias accepted' >&2; exit 1
+fi
 echo "Image channel resolver: all cases passed."

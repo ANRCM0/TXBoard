@@ -1,8 +1,8 @@
-# TXBoard
+# TX Core（原 TXBoard 主仓）
 
 **面向订阅业务与节点管理的模块化 Control Plane。**
 
-TXBoard 管理用户、套餐与订阅、订单与支付、节点/机器以及插件和主题；节点运行时由独立的 [TX-Node](https://github.com/ANRCM0/TX-Node) 负责。TXBoard 不是节点代理内核，也不把服务器任意命令执行能力交给 AI Agent。
+本仓集中维护 TXBoard Core、[Gateway 与 Theme SDK](gateway/README.md)、[TX-Node](node/README.md)，后续仓库名为 `tx-core`。TXBoard Core 管理用户、套餐与订阅、订单与支付、节点/机器以及插件和主题；TX-Node 独立运行节点代理内核。三个组件分别构建、发布镜像，业务与凭据边界保持独立。
 
 [快速部署](#快速部署) · [文档中心](docs/README.md) · [架构说明](docs/architecture/README.md) · [接口契约](contracts/README.md) · [参与贡献](CONTRIBUTING.md)
 
@@ -33,19 +33,21 @@ TXBoard 管理用户、套餐与订阅、订单与支付、节点/机器以及�
                           TX-Node
                     Agent / Data Plane
 
-  TXBoard-Deploy  → 安装、升级和运维 TXBoard 应用镜像
-  TXBoard-Gateway → 另一个**可选的用户主题 API BFF**，不是 MCP Gateway
+  TXBoard-Deploy  → 统一安装、升级和运维 Core / Gateway / Node
+  gateway/       → 可选的用户主题 API BFF，与内置 MCP 分开运行
 ```
 
-| 仓库 | 职责 |
+| 位置 | 职责 |
 | --- | --- |
-| [TXBoard](https://github.com/ANRCM0/TXBoard) | 主应用、控制平面、Admin/User UI 与接口契约 |
-| [TXBoard-Deploy](https://github.com/ANRCM0/TXBoard-Deploy) | 公开安装器、升级、备份及服务器运维 |
-| [TX-Node](https://github.com/ANRCM0/TX-Node) | Go 节点运行时、代理内核与流量上报 |
-| [TXBoard-Gateway](https://github.com/ANRCM0/TXBoard-Gateway) | 可选的用户 API Gateway / Theme SDK；独立于内置 MCP |
+| 本仓根目录 `api/`、`web/`、`mcp/` | Core、Admin/User UI、内置 MCP 与权威接口契约 |
+| [gateway/](gateway/README.md) | 可选用户 API Gateway / Theme SDK；独立依赖和 Docker 上下文 |
+| [node/](node/README.md) | Go 节点运行时、代理内核与流量上报；独立 Go module |
+| [TXBoard-Deploy](https://github.com/ANRCM0/TXBoard-Deploy) | 三组件唯一安装器、升级、备份及服务器运维 |
 | [TXBoard-AccessAudit](https://github.com/ANRCM0/TXBoard-AccessAudit) | 独立审计扩展及兼容集成 |
 
 [进一步了解系统边界 →](docs/architecture/README.md)
+
+目录、历史来源、镜像标签与 CI 规则见 [双仓布局与发布](docs/development/repository-layout.md)。旧独立仓保留为历史来源，后续代码修改与发布在本仓进行。
 
 ## 快速部署
 

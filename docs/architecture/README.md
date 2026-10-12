@@ -1,6 +1,6 @@
 # 系统架构与仓库职责
 
-**TXBoard = Control Plane；TX-Node = Agent / Data Plane。** 不应在主仓库重复实现节点运行时或 TX-Node 安装器。
+**TXBoard Core = Control Plane；TX-Node = Agent / Data Plane。** 源码统一在本仓，运行时分别构建；安装器统一在 TXBoard-Deploy。目录与历史来源见 [双仓布局](../development/repository-layout.md)。
 
 ## 组件与信任边界
 
@@ -11,8 +11,8 @@
 | Module Platform | Registry 提供只读清单与健康，Lifecycle 委托 Plugin/Theme 专有运行时修改状态 | [模块架构](module-platform-v1.md) |
 | Agent Ops | 固定能力、授权、范围、审批及审计的操作层 | [Agent Ops 架构](agent-ops.md) |
 | 内置 MCP Gateway | Agent Ops 的可选协议适配器，不能直接访问 MySQL / Redis / TX-Node | [MCP 使用](../guides/agent-mcp.md) |
-| TX-Node | Go Runtime、代理内核、机器/节点同步与上报 | [TX-Node](https://github.com/ANRCM0/TX-Node) |
-| 可选 TXBoard-Gateway | 独立用户主题 API BFF / SDK；不是 MCP | [Gateway](https://github.com/ANRCM0/TXBoard-Gateway) |
+| TX-Node | Go Runtime、代理内核、机器/节点同步与上报 | [node/](../../node/README.md) |
+| 可选 TXBoard-Gateway | 独立用户主题 API BFF / SDK；不是 MCP | [gateway/](../../gateway/README.md) |
 | TXBoard-Deploy | 独立部署和升级脚本；不是 Laravel 应用仓库 | [Deploy](https://github.com/ANRCM0/TXBoard-Deploy) |
 
 ## 规范来源

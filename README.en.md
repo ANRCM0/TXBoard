@@ -1,8 +1,8 @@
-# TXBoard
+# TX Core (formerly the TXBoard repository)
 
 **A modular control plane for subscription services and managed network nodes.**
 
-TXBoard owns accounts, plans, billing, nodes/machines, the admin and user applications, and extension runtimes. [TX-Node](https://github.com/ANRCM0/TX-Node) is the separate agent/data plane.
+This repository contains TXBoard Core, [Gateway](gateway/README.md) and [TX-Node](node/README.md), each with its own build context and runtime boundary. It is prepared for the repository name `tx-core`. TXBoard Core owns accounts, plans, billing, nodes/machines, the admin and user applications, and extension runtimes. TX-Node remains the separate agent/data plane process.
 
 > **Status:** Actively evolving. CI and image publication are not proof of production readiness. Validate database migrations, payments, node integration and extensions in an isolated environment before rollout.
 
@@ -10,13 +10,15 @@ TXBoard owns accounts, plans, billing, nodes/machines, the admin and user applic
 
 | Repository | Responsibility |
 | --- | --- |
-| [TXBoard](https://github.com/ANRCM0/TXBoard) | Core control plane, Laravel TXAPI, React Admin, Vue User, contracts |
-| [TXBoard-Deploy](https://github.com/ANRCM0/TXBoard-Deploy) | Public install/upgrade/backup/operations scripts |
-| [TX-Node](https://github.com/ANRCM0/TX-Node) | Go agent/data plane, proxy runtimes and traffic reporting |
-| [TXBoard-Gateway](https://github.com/ANRCM0/TXBoard-Gateway) | Optional theme/user API BFF and SDK; **not** the embedded MCP adapter |
+| Root `api/`, `web/`, `mcp/` | Core control plane, Laravel TXAPI, React Admin, Vue User, contracts |
+| [TXBoard-Deploy](https://github.com/ANRCM0/TXBoard-Deploy) | Sole installer and lifecycle manager for Core, Gateway and Node |
+| [node/](node/README.md) | Go agent/data plane, proxy runtimes and traffic reporting |
+| [gateway/](gateway/README.md) | Optional theme/user API BFF and SDK; **not** the embedded MCP adapter |
 | [TXBoard-AccessAudit](https://github.com/ANRCM0/TXBoard-AccessAudit) | Independent audit integration |
 
 ## Installation
+
+See [repository layout and release rules](docs/development/repository-layout.md). Old standalone repositories remain historical sources; active runtime development and image publication happen here.
 
 Use the public installer described in [TXBoard-Deploy](https://github.com/ANRCM0/TXBoard-Deploy). On a trusted Linux amd64/arm64 host, inspect the installer before executing it:
 

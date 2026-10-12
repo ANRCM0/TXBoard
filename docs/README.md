@@ -18,8 +18,9 @@
 
 - **API 方法、鉴权、错误语义**：[contracts/](../contracts/README.md) 与注册路由；WebSocket 和动态插件路由还需要在各自运行时验证。
 - **生产安装/升级/迁移/备份命令**：[TXBoard-Deploy](https://github.com/ANRCM0/TXBoard-Deploy)；不要从本目录复制另一套安装器规则。
-- **TX-Node 运行时和安装**：[TX-Node](https://github.com/ANRCM0/TX-Node)；TX-Node 与 TXBoard 不共用部署职责。
-- **可选主题 BFF 与 SDK**：[TXBoard-Gateway](https://github.com/ANRCM0/TXBoard-Gateway)；与 TXBoard 镜像内置 MCP Gateway 不是同一组件。
+- **TX-Node 运行时**：[node/](../node/README.md)；节点安装统一由 TXBoard-Deploy 负责。
+- **可选主题 BFF 与 SDK**：[gateway/](../gateway/README.md)；与 Core 镜像内置 MCP 适配器分别运行。
+- **双仓结构与镜像发布**：[目录及发布规则](development/repository-layout.md)。
 - **代码 Agent 的实现约束**：[AGENTS.md](../AGENTS.md)。
 
 ## 维护与状态

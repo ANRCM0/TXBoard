@@ -4,7 +4,9 @@
 
 ## 阅读路线
 
-后续平台演进先读 [Core First v2 B0 基线](https://github.com/ANRCM0/TXBoard/blob/main/docs/architecture/v2/README.md) 和 [跨仓兼容矩阵](https://github.com/ANRCM0/TXBoard/blob/main/docs/architecture/v2/compatibility-matrix.md)。统一 User/Admin Gateway、独立前端与 SC-v2 属于目标架构；现行 BFF 行为和发布门禁仍按当前契约执行。
+- **合仓入口**：[源码目录、CI、独立镜像与 SDK 边界](monorepo-current.md)。开发和 Compose 命令均在主仓 `gateway/` 执行。
+
+后续平台演进先读 [Core First v2 B0 基线](../../docs/architecture/v2/README.md) 和 [跨仓兼容矩阵](../../docs/architecture/v2/compatibility-matrix.md)。统一 User/Admin Gateway、独立前端与 SC-v2 属于目标架构；现行 BFF 行为和发布门禁仍按当前契约执行。
 
 - **开发入门**：[架构](architecture.md)、[开发者指南](developer-guide.md)、[Docker 部署](docker-deployment.md)。
 - **现有协议与 SDK**：[Gateway v1](../contracts/gateway-v1.md)、[Theme SDK](../packages/theme-sdk/README.md)、[主题模板](theme-templates.md)。
@@ -22,4 +24,4 @@
 
 **唯一的当前进展来源是 [development-status.md](development-status.md)**。README 只保留稳定的产品介绍和入口，不维护另一份容易过时的 PR / 测试数字。
 
-[返回 TXBoard 文档中心](https://github.com/ANRCM0/TXBoard/blob/main/docs/README.md)。
+[返回 TXBoard 文档中心](../../docs/README.md)。
