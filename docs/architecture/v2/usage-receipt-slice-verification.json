@@ -1,0 +1,201 @@
+{
+    "stage":  "B3.1",
+    "status":  "verified_isolated_slice",
+    "verified_at_utc":  "2026-10-12T05:32:16Z",
+    "scope":  "isolated-copy HTTP durable receipt and SQL settlement slice",
+    "production_authority":  "legacy-v1",
+    "production_usage_v2_enabled":  false,
+    "contract":  "contracts/v2/node-usage/isolated-receipt-current.md",
+    "source_provenance":  {
+                              "node_commit":  "d458f694029d32df66747824ec71a631fc44ba5e",
+                              "core_base_commit":  "1d55a5728050c255f6407606a42a570d5e1d7fff",
+                              "core_source_hashes":  {
+                                                         "api/app/Console/Commands/CoreUsageV2.php":  "13ef2ab4617b54b14f9a4dfc68082d31ceac98a56d746cb149d235fb00440c63",
+                                                         "api/app/Domains/UsageV2/UsageError.php":  "e018d4d8fe5bb03abb1c094fcaa38a6aa4be8dc939a28107076da1f02e03738c",
+                                                         "api/app/Domains/UsageV2/UsageMath.php":  "e905c47ce863b36cf0afe17096d74dc97a65a9b17cb84039ffd9e3f7d9a07933",
+                                                         "api/app/Domains/UsageV2/UsagePayload.php":  "374504383f4c2718b3aaf35621e5b25d26c6f3a7c9d3325fe28f84fc386a7a4d",
+                                                         "api/app/Domains/UsageV2/UsagePolicy.php":  "87331cc59aea15e6873de3e56e9e231eafdb509371de76902bf6263daecebb4f",
+                                                         "api/app/Domains/UsageV2/UsageReceipts.php":  "456c2a152517c6221ef7de462efde7374f3ec26f632a8130edf927abaa650b79",
+                                                         "api/app/Domains/UsageV2/UsageRegistry.php":  "4c7e7308fca97738feb7474b1257fbf4b94b70ce1890ded3868e536910722373",
+                                                         "api/app/Domains/UsageV2/UsageSettlement.php":  "6b84e4772838501f1f68bad5b7e7d731d963f27270e5fbf04696049f468e0880",
+                                                         "api/app/Http/Controllers/Txapi/NodeProtocolController.php":  "f2d5adf090150702fe5738700c136f2c6bc91594348a865252617ba3865fc938",
+                                                         "api/app/Http/Controllers/Txapi/NodeUsageV2Controller.php":  "d4e501711589f6f7eb979e47c7e90304fefb62ca38f5e998919b83f212e077f6",
+                                                         "api/config/core_usage_v2.php":  "f68edebdd6c9317139c6268eccec1ba7b83e9c2545404be4fab81d127d23ac14",
+                                                         "api/database/migrations/2026_10_12_000003_create_node_usage_v2_tables.php":  "5b73d10b548929cd85c0541e9c12ec16646bf7831fa6f151d257e694c2fdcff3",
+                                                         "api/routes/txapi.php":  "660266213b00ee5e64f20c9241a16bff12f718651a91cafd7022e10d696a4f88",
+                                                         "api/tests/Feature/UsageV2/UsageMysqlConcurrencyTest.php":  "b395c8ce90e8d5f8fe73d267e37c5692d81a64fbc0e09e1b0a50155d9938fbec",
+                                                         "api/tests/Feature/UsageV2/UsageReceiptsTest.php":  "d61bc464114382da382cef1aa247d6354def299d995b7b24a9e38da2efcb1472",
+                                                         "api/tests/Support/UsageV2Fixture.php":  "46961e057710d1f34c40f6af5b573f7cdb320548c717bcc1729112f131c2720e",
+                                                         "api/tests/Unit/UsageV2/UsagePayloadTest.php":  "aa887002ef88c060fa69387c9622e57bf896ea163943022cd0cf125b3fa3519b",
+                                                         "contracts/node-protocol/txnode-integration-current.md":  "80a353e7136ca991c3671ac3be17ebc6747ca998078464267236ca41610de69a",
+                                                         "contracts/v2/node-usage/golden-vector.json":  "c1ea7dae3f7eafce5182c552da3929460f540f5c8ef46fbbfa33eff627c4df4a",
+                                                         "contracts/v2/node-usage/isolated-receipt-current.md":  "f86a48e263e9a104084e5251d63e1aaee1fb9285b919cbe54201dd1ac4de743d",
+                                                         "contracts/v2/node-usage/README.md":  "16950e06bdeaa733aa9f05cd5bfc549ebd120094807ef4e18faf3ceb4a7d5bda",
+                                                         "scripts/export-route-catalog.mjs":  "52b4ed345efdd2b312221caad0c10a3fa30a76e21323cb8b3d549ac3e839093d",
+                                                         "scripts/tests/export-route-catalog.test.mjs":  "20a064f78c88e362116e557ab317ac41687203705ac3ec83dc9733af7941183f",
+                                                         "scripts/tests/usage-v2-interop/fixture.php":  "77e6743080c09f7dabca3bd88d775a67340468fa3a258f745a883fd4b705d4f1",
+                                                         "scripts/tests/usage-v2-interop/node-client.go":  "2d7206ae9e274e32c58bd112c67fbfd28e4f4c4c8ebfea90a07fecde89819572",
+                                                         "scripts/tests/usage-v2-interop/README.md":  "4efb05c97b33e77ef868a02815e7e20254996ef14d0c36ef6b11edc00c63d997",
+                                                         "scripts/tests/usage-v2-interop/run.sh":  "d0898a89c1c7868da66144368d1716592df9a51cbc806d7f02b8499d727b315a",
+                                                         "scripts/tests/usage-v2-interop/tls-proxy.py":  "351df0ec21417e83f26131415c128fb3fba161c5e0f50b19c1a41f8dc2f170b4"
+                                                     },
+                              "node_source_hashes":  {
+                                                         "docs/usage-v2-current.md":  "64c808ddd5a9db9422d8134a8be95edab1095e04194e20e67c13d7c629f391fe",
+                                                         "go.mod":  "1ad86fa4fad2a4cf6bbab23c6d13fcc553dc86b62bd098aa76177a9346fbcbd8",
+                                                         "go.sum":  "5326100d3465cc59f135d1b29932a02ca8f58e1e6eea35cb51899a1265f15263",
+                                                         "internal/controlplane/txboard.go":  "585942a2211e66b0e46dbc29bc703c294766c40f8eec5340d2cae23458328f17",
+                                                         "internal/txboard/client.go":  "b7789cb53da4711475294286edcdac9997389e9399617042057915692edefdb9",
+                                                         "internal/txboard/usage_v2.go":  "1ebea358beb94bd280a3b63b78a510476ab05914bc77e03e9627a6b3e1360b66",
+                                                         "internal/txboard/usage_v2_test.go":  "076ba7c00ed4b0fdf5f87eda7c798731f0fd9882928f10441433d71dfa19ef10",
+                                                         "internal/usagev2/http.go":  "a57ca704d318eda03ef4841b60e577a813f01b9d88cff744c7f2180a16df105c",
+                                                         "internal/usagev2/http_test.go":  "c68e70c98422bb02607790f397952907297a76b58306a4aa1355e9e81ed3852b",
+                                                         "internal/usagev2/lock_linux.go":  "10e65b121f7f059b8b6377d77aab8ac06151df91bc3b9b3e88b216dac36d9092",
+                                                         "internal/usagev2/lock_other.go":  "4fffa1ac2c1766f16e4799a145fb6d05102e5fc3de00440a19f96336fd9c622f",
+                                                         "internal/usagev2/protocol.go":  "04b5689fbba02b0463a0172f2605a0bab72d135beb7969a84400c0c2712d4ca8",
+                                                         "internal/usagev2/protocol_test.go":  "f2fbc151413367258af299a47666369298a5a62159fa6ee5c5109eb56981d779",
+                                                         "internal/usagev2/reporter.go":  "1c3ae7c5228ae042a9201bd0122f5c9d79336aeab6f8c452c4052476cbb8d543",
+                                                         "internal/usagev2/session.go":  "3ec702b8bfbd77c0be780de199c7cfc4f3ec4968fbdc7c1ab1580330bb629096",
+                                                         "internal/usagev2/spool.go":  "4720ff9e2a4f7cdf0d4089ff9a763680316a82d84f5a2916c07a52ae373b386f",
+                                                         "internal/usagev2/spool_test.go":  "399b3dce0e224f61dfa355de92c22a7a4e12bb53ab393702b30d283bcb1a2382"
+                                                     }
+                          },
+    "environment":  {
+                        "php":  "8.4.16",
+                        "production_deployed":  false,
+                        "exclusive_database":  "txboard_usage_test",
+                        "go":  "1.26.3",
+                        "database_server":  "MariaDB 11.4.12 via Laravel mysql driver",
+                        "linux":  "Alpine 3.22.6 amd64 in task-specific WSL2"
+                    },
+    "tests":  {
+                  "native_schema_violations":  0,
+                  "git_diff_check":  "passed",
+                  "route_exporter":  {
+                                         "passed":  8,
+                                         "failed":  0
+                                     },
+                  "mysql_concurrency_and_old_mvcc":  {
+                                                         "passed":  2,
+                                                         "skipped":  0,
+                                                         "failures":  0,
+                                                         "assertions":  129,
+                                                         "skipped_tests":  [
+
+                                                                           ]
+                                                     },
+                  "usage_unit_and_feature_mariadb":  {
+                                                         "passed":  31,
+                                                         "skipped":  0,
+                                                         "failures":  0,
+                                                         "assertions":  125,
+                                                         "skipped_tests":  [
+
+                                                                           ]
+                                                     },
+                  "node_root_verification":  {
+                                                 "vet":  true,
+                                                 "race":  true,
+                                                 "main_tests_passed":  56,
+                                                 "evidence":  "Root tool invocation on committed TX-Node d458f694029d32df66747824ec71a631fc44ba5e: go test -race -count=1 and go vet exited 0",
+                                                 "packages":  [
+                                                                  "./internal/usagev2",
+                                                                  "./internal/txboard",
+                                                                  "./internal/controlplane",
+                                                                  "./internal/reporting"
+                                                              ],
+                                                 "skipped":  0,
+                                                 "subtests_passed":  39
+                                             },
+                  "full_api_sqlite":  {
+                                          "passed":  633,
+                                          "skipped":  7,
+                                          "failures":  0,
+                                          "assertions":  4585,
+                                          "skipped_tests":  [
+                                                                "Tests.Feature.Billing.OrderIdempotencyMysqlConcurrencyTest::test_concurrent_workers_serialize_one_hundred_replays_to_one_order",
+                                                                "Tests.Feature.Subscription.CommerceShadowTest::test_real_mysql_sessions_replay_opening_once_with_database_unique_keys_and_user_locks",
+                                                                "Tests.Feature.Subscription.PlanCatalogShadowTest::test_waiting_reader_uses_committed_revision_and_offers_after_a_stale_mysql_snapshot",
+                                                                "Tests.Feature.Subscription.PlanCatalogShadowTest::test_revision_number_uses_current_read_after_another_session_appends_history",
+                                                                "Tests.Feature.Subscription.SubscriptionSlotTest::test_real_mysql_sessions_race_to_one_activation_with_losing_transactions_rolled_back",
+                                                                "Tests.Feature.UsageV2.UsageMysqlConcurrencyTest::test_real_mysql_receipt_races_worker_races_and_process_crash_preserve_one_atomic_settlement",
+                                                                "Tests.Feature.UsageV2.UsageMysqlConcurrencyTest::test_registry_reuses_current_rows_inside_an_older_repeatable_read_snapshot"
+                                                            ]
+                                      }
+              },
+    "concurrency_scenarios":  {
+                                  "settlement_scanners":  16,
+                                  "old_repeatable_read_view_observed_after_independent_session_commit":  true,
+                                  "actual_process_exit_before_commit":  true,
+                                  "conflicting_digest_sessions":  12,
+                                  "stale_fence_rejected":  true,
+                                  "same_digest_submit_sessions":  24
+                              },
+    "http_interoperation":  {
+                                "core_handshake_grants":  1,
+                                "https_verified":  true,
+                                "node_spool_restart_replay":  true,
+                                "payload_retained":  true,
+                                "same_batch_id":  "a4321a6fb03e94406083ee4b1b7d7bbb",
+                                "same_payload_digest":  "sha256:95ce7147d4cc6ee912891e2aadfab1d6f34fefe73b2f59a4d9fa73cbb725470f",
+                                "settlement_status":  "settled",
+                                "sql_receipt_id":  "receipt_5f2f0c49-ac19-4789-a025-45b54253c00e"
+                            },
+    "route_registry":  {
+                           "registered_routes":  289,
+                           "txapi_routes":  252,
+                           "retired_routes":  0,
+                           "usage_v2_routes":  [
+                                                   {
+                                                       "domain":  null,
+                                                       "method":  "POST",
+                                                       "uri":  "txapi/node/v2/usage/batch/get",
+                                                       "name":  null,
+                                                       "action":  "App\\Http\\Controllers\\Txapi\\NodeUsageV2Controller@get",
+                                                       "middleware":  [
+                                                                          "api",
+                                                                          "App\\Http\\Middleware\\TxapiRequestId",
+                                                                          "App\\Http\\Middleware\\TxNodeAuth"
+                                                                      ]
+                                                   },
+                                                   {
+                                                       "domain":  null,
+                                                       "method":  "POST",
+                                                       "uri":  "txapi/node/v2/usage/submit",
+                                                       "name":  null,
+                                                       "action":  "App\\Http\\Controllers\\Txapi\\NodeUsageV2Controller@submit",
+                                                       "middleware":  [
+                                                                          "api",
+                                                                          "App\\Http\\Middleware\\TxapiRequestId",
+                                                                          "App\\Http\\Middleware\\TxNodeAuth"
+                                                                      ]
+                                                   }
+                                               ],
+                           "registered_http_methods":  290
+                       },
+    "evidence":  {
+                     "workspace_copy":  ".usage-v2-lab/evidence",
+                     "sha256":  {
+                                    "core-usage-v2-final-full.xml":  "9fd98813e356cc9555f1bfb4cceb24a762ed3b3ec57fe9c852d166b8988b0875",
+                                    "core-usage-v2-final-https.json":  "c698d307ca26fcd3e7e2dd12562bff97d77042119f6b97135b78f74919a9d4f0",
+                                    "core-usage-v2-final-mysql-concurrency.xml":  "dab28261329ce06ce0af3af2d2d64e023084b2c75ed9d7f1e08d9be789ff8a59",
+                                    "core-usage-v2-final-mysql.xml":  "7f84af29ef60bb85bab2b99d6c843f781757c1ac5b144a9359674918e3a14cb8",
+                                    "core-usage-v2-final-routes.json":  "a6f2456cbd103d0cb52264095c8299eaf0165ab483a0ca1ab323900f04c9dcee",
+                                    "exported-routes.json":  "143682c5dc053724b92e141427852033f66f10fcb3cd684a3650642189ae0444",
+                                    "exported-routes.md":  "09ff25da10905128481c4fdbc9bc68d214c04ebe4a7288d83cb94dc1dcc6f6ab"
+                                },
+                     "lab_directory":  "/opt/txboard-baseline/evidence"
+                 },
+    "coverage_limits":  [
+                            "Oracle MySQL 8 was not run; JSON object key reordering and whitespace changes were simulated on SQLite and MariaDB, and changed content was quarantined.",
+                            "Full SQLite suite skips seven engine-specific MySQL tests; the two Usage v2 tests passed separately with MariaDB, while B0/B1 evidence owns the remaining five.",
+                            "Production Docker/Octane deployment and v2 WSS were not exercised by this slice."
+                        ],
+    "not_activated":  [
+                          "Production writer cutover and default TX-Node Service v2 interval collection",
+                          "Credential Provider runtime, signed grants, admission/connection expiry and revocation synchronization",
+                          "Legacy v1 bounded identity mapping and pending conversion",
+                          "Administrator RBAC query/recover and retired-node historical credentials",
+                          "usage.settled notification delivery/consumer acknowledgements",
+                          "Automatic receipt/payload garbage collection and full backup restore reconciliation"
+                      ]
+}

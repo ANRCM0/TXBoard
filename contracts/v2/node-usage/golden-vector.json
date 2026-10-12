@@ -1,0 +1,4 @@
+{
+  "canonical_payload": "{\"batch_id\":\"node42_20261012_000001\",\"ended_at\":1791770460,\"entries\":[{\"access_subject_id\":\"9001\",\"auth_snapshot_id\":\"7001\",\"raw_down_bytes\":\"2048\",\"raw_up_bytes\":\"1024\",\"tariff_revision_id\":\"301\",\"terms_id\":\"6001\",\"usage_period_id\":\"8001\"}],\"node_id\":\"42\",\"protocol_version\":2,\"source_epoch\":\"1\",\"started_at\":1791770400}",
+  "payload_digest": "sha256:d7a022a63a0937d08be73abb133abf633350e187b128d8dc40485c74619c5eee"
+}

@@ -227,3 +227,7 @@ location = /txapi/node/v1/ws {
 - 使用实际 TXNode 客户端验证上述场景；服务端自动化测试不能代替跨组件联调。
 
 相关源码：`api/app/Http/Middleware/TxNodeAuth.php`、`api/app/Http/Controllers/Txapi/NodeProtocolController.php`、`api/app/Domains/Network/NativeNodeReport.php`、`api/app/WebSocket/NativeNodeWebSocket.php`。补充：[Machine Runtime Update v1](./machine-runtime-update-v1.md)。
+
+## B3.1 隔离 Usage v2 切片
+
+Core 已注册 `POST /txapi/node/v2/usage/submit` 与 `POST /txapi/node/v2/usage/batch/get`，复用当前 Node/Machine Bearer 与节点范围。只有 local/testing 和显式 isolated-copy 开关同时成立时可执行；v1 handshake 仅在隔离 source 存在时附加非秘密 `usage_v2` capability。生产权威、默认 TX-Node Service、v1 HTTP/WSS report 与 queued ACK 语义保持现行协议。HTTP 持久接收、SQL 结算、当前限制与未启用路径见 [B3.1 Current 契约](../v2/node-usage/isolated-receipt-current.md)。

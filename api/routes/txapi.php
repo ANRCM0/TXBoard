@@ -35,6 +35,7 @@ use App\Http\Controllers\Txapi\AccountController;
 use App\Http\Controllers\Txapi\ServerController;
 use App\Http\Controllers\Txapi\TrafficController;
 use App\Http\Controllers\Txapi\NodeProtocolController;
+use App\Http\Controllers\Txapi\NodeUsageV2Controller;
 use App\Http\Middleware\TxNodeAuth;
 use App\Http\Controllers\Txapi\BillingController;
 use App\Http\Controllers\Txapi\WalletRechargeController;
@@ -66,6 +67,12 @@ Route::prefix('node/v1')->middleware(TxNodeAuth::class)->group(function () {
     Route::post('audit/report', [NodeProtocolController::class, 'auditReport'])->middleware('throttle:120,1');
     Route::get('machine/nodes', [NodeProtocolController::class, 'machineNodes']);
     Route::post('machine/status', [NodeProtocolController::class, 'machineStatus']);
+});
+
+// Isolated-copy receipt slice. Existing node credentials and node scope still apply.
+Route::prefix('node/v2/usage')->middleware(TxNodeAuth::class)->group(function () {
+    Route::post('submit', [NodeUsageV2Controller::class, 'submit']);
+    Route::post('batch/get', [NodeUsageV2Controller::class, 'get']);
 });
 
 // Native provider callback is intentionally not JSON-wrapped. It goes through

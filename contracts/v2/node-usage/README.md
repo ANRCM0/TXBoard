@@ -1,6 +1,6 @@
 # Node Usage v2：订阅计费与可靠批次
 
-状态：**Target / Draft**。B0 设计基线，供 B1/B3 与 TX-Node 实现评审；本文件没有注册新 HTTP 路由或启用新协议。当前接口仍以 [Node v1 对接契约](../../node-protocol/txnode-integration-current.md) 为准。
+状态：总体 **Target / Draft**。B3.1 已实现 [隔离接收切片](isolated-receipt-current.md) 和两条受隔离开关保护的 TXAPI HTTP 路由；生产权威、默认 Node Service 与 WSS 仍以 [Node v1 对接契约](../../node-protocol/txnode-integration-current.md) 为准。本文件其余目标不能视为已启用。
 
 ## 1. 当前实现与目标
 

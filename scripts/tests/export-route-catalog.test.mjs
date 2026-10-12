@@ -19,7 +19,7 @@ const required = [
   ['POST', 'txapi/integrations/telegram/webhook'],
   ['GET|HEAD', 'txapi/payment/webhook/{method}/{uuid}'],
   ['POST', 'txapi/payment/webhook/{method}/{uuid}'],
-].map(([method,uri,middleware]) => ({method,uri,middleware:middleware || []}));
+].map(([method,uri,middleware]) => ({method,uri,middleware:middleware || (uri.startsWith('txapi/node/') ? ['api','App\\Http\\Middleware\\TxNodeAuth'] : [])}));
 
 test('can export deterministic Laravel route registry and critical control-plane boundaries', () => {
   const out = inventory(required);
@@ -44,6 +44,12 @@ test('rejects native Admin missing AdminPath or Admin guard', () => {
 test('classifies native Agent and Telegram endpoints', () => {
   assert.equal(classify('txapi/integrations/telegram/webhook')[0], 'Native Telegram webhook');
   assert.equal(classify('txapi/node/v1/handshake')[0], 'TXAPI Node HTTP');
+  assert.equal(classify('txapi/node/v2/usage/submit')[1], 'node');
+  assert.equal(classify('txapi/node/v2/usage/batch/get')[1], 'node');
+});
+test('requires node guard for the isolated usage receipt routes', () => {
+  const routes = inventory([...required, {method:'POST',uri:'txapi/node/v2/usage/submit',middleware:['api']}]);
+  assert.throws(() => assertCurrentBoundaries(routes), /unguarded_native_node/);
 });
 test('rejects duplicate route verbs and malformed input', () => {
   assert.throws(() => inventory([...required, ...required.slice(0,1)]), /Duplicate/);

@@ -8,6 +8,8 @@ use App\Domains\Network\MachineTelemetry;
 use App\Domains\Network\NativeNodeReport;
 use App\Domains\Network\NativeAccessAudit;
 use App\Domains\Network\NodeReportError;
+use App\Domains\UsageV2\UsageRegistry;
+use App\Domains\UsageV2\UsageError;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -16,7 +18,7 @@ final class NodeProtocolController
     public function handshake(Request $request): JsonResponse
     {
         $node = $request->attributes->get('txnode.node');
-        return TxapiResponse::success($request, [
+        $data = [
             'protocol_version' => 1,
             'node_id' => $node ? (int) $node->id : null,
             'mode' => $node ? 'node' : 'machine',
@@ -29,7 +31,17 @@ final class NodeProtocolController
                 'heartbeat_interval_seconds' => 55,
             ],
             'settings' => $this->intervals(),
-        ]);
+        ];
+        if ($node) {
+            try {
+                $capability = app(UsageRegistry::class)->capability((int) $node->id, time());
+                if ($capability !== null) { $data['usage_v2'] = $capability; }
+            } catch (UsageError $error) {
+                // Optional isolated capability cannot interrupt the authoritative v1 handshake.
+                $data['usage_error'] = ['code' => $error->errorCode];
+            }
+        }
+        return TxapiResponse::success($request, $data);
     }
 
     public function config(Request $request): JsonResponse

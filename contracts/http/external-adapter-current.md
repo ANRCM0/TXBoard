@@ -7,6 +7,7 @@
 | 订单、余额、充值和工单 | `/txapi/orders/*`、`/txapi/billing/*`、`/txapi/tickets/*` | 用户 Sanctum Bearer |
 | 管理员 | `/txapi/admin/{admin_path}/*` | 管理员 Bearer、动态路径与 RBAC |
 | TXNode HTTP | `/txapi/node/v1/*` | Node/Machine Bearer + 节点/机器身份头 |
+| Node Usage v2 隔离接收 | `/txapi/node/v2/usage/*` | 同一 Node/Machine 身份；仅显式 local/testing 副本启用，生产拒绝 |
 | TXNode WS | `wss://<host>/txapi/node/v1/ws` | Workerman Upgrade、专用身份头、功能开关 |
 | Agent 运行时 | `/txapi/agent/v1/*` | Agent Bearer、目标范围和 abilities；配对入口单独限流 |
 | 支付商回调 | `GET/POST /txapi/payment/webhook/{method}/{uuid}` | 提供商签名，原始 ACK |
@@ -25,3 +26,5 @@
 - [真实环境对接检查](../../docs/operations/release-staging-acceptance.md)
 
 HTTP 路由由 `api/routes/txapi.php` 和 `RouteServiceProvider.php` 注册；Workerman WebSocket、插件动态路由以及反向代理规则不包含在 Laravel route-list 内。
+
+Node Usage v2 的已实现范围与回执契约见 [隔离接收切片](../v2/node-usage/isolated-receipt-current.md)。TX-Node 默认 Service 和生产计费仍使用 v1，注册隔离路由不构成运行路径切换。
