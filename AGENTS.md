@@ -4,6 +4,10 @@ These instructions apply to coding agents working in this repository.
 
 ## 1. Product boundary
 
+### Core First v2 演进基线
+
+2026-10-12 起，后续架构演进参考 `docs/architecture/v2/README.md`、`docs/architecture/v2/core-boundaries.md` 与 `contracts/v2/README.md`。这些文件标明 Target/Draft 能力与迁移门禁；当前代码、权限及 v1 契约继续生效。不得依据目标方案提前开放管理员 Gateway、删除 User 字段或 Theme/Agent/MCP、改变插件包格式。跨仓改动先核对 v2 兼容矩阵和对应 Current 契约，按 Operation/数据迁移阶段逐项实施。
+
 TXBoard is the Control Plane.
 
 TX-Node is a separate Agent / Data Plane repository. Do not copy TX-Node runtime or installer responsibilities into TXBoard.

@@ -11,3 +11,5 @@
 - [Agent Ops v1](http/agent-ops-v1.md)、[Agent Support v1](http/agent-support-v1.md)。
 
 实际可用的 URL、Method、鉴权以当前服务端路由及协议处理器为准。WebSocket 与插件动态路由须单独核实。
+
+下一轮跨仓演进参考 [Core First v2 契约目录](v2/README.md)（Target/Draft）和 [B0 兼容矩阵](../docs/architecture/v2/compatibility-matrix.md)。当前契约不会因为目标规范建立而自动失效。

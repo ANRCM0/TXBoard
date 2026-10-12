@@ -23,3 +23,7 @@
 - [AGENTS.md 开发边界](../../AGENTS.md)
 
 设计草案或未来目标必须标为 `Target`/`Draft`，不得仅凭文档声称已经上线。
+
+## Core First v2 演进
+
+下一轮开发由 [B0 架构基线](v2/README.md)、[Core First ADR](v2/core-boundaries.md)、[实施台账](v2/implementation-plan.md) 和 [v2 契约](../../contracts/v2/README.md) 统一。当前架构继续按上表运行；目标模型、统一 User/Admin Gateway、插件隔离与升级编排尚未落地。
