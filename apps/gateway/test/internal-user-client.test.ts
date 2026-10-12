@@ -46,6 +46,21 @@ describe('Internal client transport fences', () => {
     await upstreamRequest({ ...config, internalUser: undefined }, fetcher, 'userProfile', { auth: token })
     expect(fetcher).toHaveBeenCalled(); expect(mock.request).not.toHaveBeenCalled()
   })
+  it('posts the bounded list input and validates the paged result without Native calls', async () => {
+    const native = vi.fn()
+    const pending = upstreamRequest(config, native, 'userOrders', { auth: token, current: 2, pageSize: 2, status: 4, paginated: true })
+    expect(mock.request.mock.calls[0]![0].path).toBe('/txapi/internal/v1/operations/user.order.list')
+    expect(JSON.parse(req.end.mock.calls[0]![0].toString()).input).toEqual({ page: 2, per_page: 2, status: 4 })
+    respond({ ...envelope, data: { items: [], pagination: { page: 2, per_page: 2, total: 0, last_page: 1 } } })
+    await expect(pending).resolves.toEqual({ items: [], current: 2, pageSize: 2, total: 0, lastPage: 1 })
+    expect(native).not.toHaveBeenCalled(); expect(req.destroy).toHaveBeenCalled(); expect(vi.getTimerCount()).toBe(0)
+  })
+  it.each([{ current: 0 }, { current: 10000 }, { current: 1.1 }, { pageSize: 101 }, { pageSize: 0 }, { status: 5 }, { status: NaN }])
+    ('refuses invalid list input %j before network', async patch => {
+      const native = vi.fn()
+      await expect(upstreamRequest(config, native, 'userOrders', { auth: token, ...patch })).rejects.toMatchObject({ status: 400 })
+      expect(mock.request).not.toHaveBeenCalled(); expect(native).not.toHaveBeenCalled()
+    })
   it('fails closed for TLS error without plaintext fallback or secret reflection', async () => {
     const native = vi.fn(); const pending = upstreamRequest(config, native, 'userProfile', { auth: token })
     const assertion = expect(pending).rejects.toMatchObject({ code: 'UPSTREAM_UNAVAILABLE', status: 502, message: 'Internal connection failed' })

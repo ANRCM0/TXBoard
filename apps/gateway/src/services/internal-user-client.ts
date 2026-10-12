@@ -2,12 +2,13 @@ import { randomUUID, X509Certificate } from 'node:crypto'
 import https from 'node:https'
 import { checkServerIdentity } from 'node:tls'
 import type { GatewayConfig } from '../config/env.js'
-import { adaptInternalUserV2, internalError, internalSuccessV2, strictInternalJson } from '../adapters/internal-user-v2.js'
+import { adaptInternalOrderList, adaptInternalUserV2, internalError, internalSuccessV2, strictInternalJson } from '../adapters/internal-user-v2.js'
 import { GatewayFailure } from './failures.js'
 
-const operations = { userProfile: 'user.profile.get', userOrderDetail: 'user.order.get' } as const
+const operations = { userProfile: 'user.profile.get', userOrderDetail: 'user.order.get', userOrders: 'user.order.list' } as const
 export async function internalUserRequest(config: GatewayConfig, operation: keyof typeof operations,
-  options: { auth?: string; tradeNo?: string; signal?: AbortSignal }): Promise<unknown> {
+  options: { auth?: string; tradeNo?: string; signal?: AbortSignal; current?: number; pageSize?: number;
+    status?: number; paginated?: boolean }): Promise<unknown> {
   const tls = config.internalUser
   if (!tls || !Object.hasOwn(operations, operation)) throw new GatewayFailure('UPSTREAM_ERROR', 502, 'Internal operation unavailable')
   if (!options.auth || !/^Bearer [A-Za-z0-9|._-]{1,4089}$(?![\s\S])/.test(options.auth)) {
@@ -16,11 +17,20 @@ export async function internalUserRequest(config: GatewayConfig, operation: keyo
   if (operation === 'userOrderDetail' && (!options.tradeNo || !/^[A-Za-z0-9_-]{1,128}$(?![\s\S])/.test(options.tradeNo))) {
     throw new GatewayFailure('VALIDATION_ERROR', 400, 'Invalid order identifier')
   }
+  const page = options.current ?? 1, perPage = options.pageSize ?? 100
+  if (operation === 'userOrders' && (!Number.isInteger(page) || page < 1 || page > 9999
+    || !Number.isInteger(perPage) || perPage < 1 || perPage > 100
+    || (options.status !== undefined && (!Number.isInteger(options.status) || options.status < 0 || options.status > 4)))) {
+    throw new GatewayFailure('VALIDATION_ERROR', 400, 'Invalid order query')
+  }
+  const input = operation === 'userProfile' ? {} : operation === 'userOrderDetail'
+    ? { trade_no: options.tradeNo } : { page, per_page: perPage,
+      ...(options.status === undefined ? {} : { status: options.status }) }
   if (Date.now() < Date.parse(tls.certificate.validFrom) || Date.now() >= Date.parse(tls.certificate.validTo)) {
     throw new GatewayFailure('UPSTREAM_UNAVAILABLE', 502, 'Internal service unavailable')
   }
   const body = Buffer.from(JSON.stringify({ contract_version: '2', request_id: randomUUID(),
-    deadline_at: Math.floor(Date.now() / 1000) + 5, input: operation === 'userProfile' ? {} : { trade_no: options.tradeNo } }))
+    deadline_at: Math.floor(Date.now() / 1000) + 5, input }))
   return new Promise((resolve, reject) => {
     let finished = false
     let timer: ReturnType<typeof setTimeout> | undefined
@@ -66,7 +76,8 @@ export async function internalUserRequest(config: GatewayConfig, operation: keyo
           }
           const envelope = internalSuccessV2.safeParse(value)
           if (!envelope.success) throw new GatewayFailure('UPSTREAM_ERROR', 502, 'Unexpected Internal response')
-          finish(undefined, adaptInternalUserV2(operation, envelope.data.data, options.tradeNo))
+          finish(undefined, operation === 'userOrders' ? adaptInternalOrderList(envelope.data.data, options)
+            : adaptInternalUserV2(operation, envelope.data.data, options.tradeNo))
         } catch (error) {
           finish(error instanceof GatewayFailure ? error : new GatewayFailure('UPSTREAM_ERROR', 502, 'Unexpected Internal response'))
         }

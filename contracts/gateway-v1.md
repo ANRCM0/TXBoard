@@ -13,7 +13,7 @@
 - 核心错误：400（入参）、401（缺 Token/上游未授权）、403（Origin）、404（未找到）、405（订单写入禁用）、409（HPKE 重放）、413（请求过大）、422（Laravel 校验）、429（账号限流或上游限流）、502/504（坏网关/超时）、503（Redis 安全存储不可用）、500（内部错误）。
 - 上游仅接受 Native `{data,meta?,request_id}` / `{error:{code,message,fields?},request_id}` 信封，并按操作校验 DTO；退休的 `status:success` 与旧 paginator 不再接受。错误正文不公开上游内部信息。
 - **权限判断始终以 Laravel 为准**。用户 GET 路由需 `Authorization: Bearer <user-token>`；无用户身份的页面不允许向 Gateway 提交管理员 Token。
-- 默认 Native 保持上述当前行为；仅 local/testing 明确启用 `GATEWAY_INTERNAL_USER_ENABLED=true` 时，现有 profile/detail 两路径使用版本2只读 Internal mTLS 上游，DTO不变，失败无fallback。配置与限制见 [B5.2 Current记录](../docs/internal-user-integration.md)，没有新增管理员 Gateway。
+- 默认 Native 保持上述当前行为；仅 local/testing 明确启用 `GATEWAY_INTERNAL_USER_ENABLED=true` 时，现有 profile/detail/orders list/page 使用版本2只读 Internal mTLS 上游，DTO不变，失败无fallback。配置与限制见 [B5.2/B5.3 Current记录](../docs/internal-user-integration.md)，没有新增管理员 Gateway。
 
 ## 固定路由矩阵
 

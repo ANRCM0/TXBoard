@@ -10,6 +10,24 @@ fi
 : "${DB_HOST:?}" "${DB_USERNAME:?}" "${DB_PASSWORD:?}"
 export INTERNAL_FIXTURE_DIR=$(mktemp -d /tmp/txboard-internal-user-gateway.XXXXXX)
 chmod 700 "$INTERNAL_FIXTURE_DIR"
+cleanup_fixture_secrets() {
+  python3 - <<'PY'
+import os
+from pathlib import Path
+import shutil
+path = Path(os.environ['INTERNAL_FIXTURE_DIR']).resolve()
+if path.parent != Path('/tmp') or not path.name.startswith('txboard-internal-user-gateway.'):
+    raise SystemExit('Unexpected fixture cleanup directory')
+for item in path.iterdir():
+    if item.name.endswith('.log') or item.name in ['result.json', 'public-evidence.json']:
+        continue
+    if item.is_dir() and not item.is_symlink():
+        shutil.rmtree(item)
+    else:
+        item.unlink()
+PY
+}
+trap cleanup_fixture_secrets EXIT
 export APP_ENV=testing APP_DEBUG=false DB_CONNECTION=mysql
 export CORE_INTERNAL_READONLY_ENABLED=true CORE_INTERNAL_READONLY_TRUST_FILE="$INTERNAL_FIXTURE_DIR/core-trust.json"
 export CACHE_DRIVER=array SETTING_CACHE_STORE=array SESSION_DRIVER=array QUEUE_CONNECTION=sync MAIL_MAILER=array

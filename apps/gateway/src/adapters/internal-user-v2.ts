@@ -24,6 +24,12 @@ const detail = z.strictObject({
   balance_amount_minor: unsigned, discount_amount_minor: unsigned,
   paid_at: timestamp.nullable(), created_at: timestamp,
 })
+const order = detail.omit({ payment_id: true, balance_amount_minor: true, discount_amount_minor: true })
+  .extend({ plan: plan.nullable() })
+const list = z.strictObject({ items: z.array(order).max(100), pagination: z.strictObject({
+  page: z.number().int().min(1).max(9999), per_page: z.number().int().min(1).max(100),
+  total: z.number().int().nonnegative().safe(), last_page: z.number().int().min(1).safe(),
+}) })
 export const internalSuccessV2 = z.strictObject({
   data: z.unknown(), request_id: z.string().length(36).uuid(),
   meta: z.strictObject({ current_only: z.literal(true), slice: z.literal('internal-readonly/2') }),
@@ -37,6 +43,26 @@ function safe(value: string): number {
   const number = BigInt(value)
   if (number > BigInt(Number.MAX_SAFE_INTEGER) || number < BigInt(Number.MIN_SAFE_INTEGER)) fail()
   return Number(number)
+}
+export function adaptInternalOrderList(value: unknown,
+  options: { current?: number; pageSize?: number; status?: number; paginated?: boolean }): unknown {
+  const parsed = list.safeParse(value); if (!parsed.success) fail()
+  const { items, pagination: page } = parsed.data
+  if (page.page !== (options.current ?? 1) || page.per_page !== (options.pageSize ?? 100)
+    || page.last_page !== Math.max(1, Math.ceil(page.total / page.per_page))
+    || items.length !== Math.max(0, Math.min(page.per_page, page.total - (page.page - 1) * page.per_page))
+    || new Set(items.map(row => row.id)).size !== items.length
+    || new Set(items.map(row => row.trade_no)).size !== items.length) fail()
+  const rows = items.map(row => {
+    if (options.status !== undefined && row.status !== options.status) fail()
+    return { id: safe(row.id), trade_no: row.trade_no, plan_id: safe(row.plan_id), period: periods[row.period],
+      type: row.type, status: row.status, total_amount: safe(row.amount_minor),
+      plan: row.plan === null ? null : { id: safe(row.plan.id), name: row.plan.name },
+      paid_at: row.paid_at, created_at: row.created_at }
+  })
+  return options.paginated
+    ? { items: rows, current: page.page, pageSize: page.per_page, total: page.total, lastPage: page.last_page }
+    : rows
 }
 export function adaptInternalUserV2(operation: 'userProfile' | 'userOrderDetail', value: unknown, tradeNo?: string): unknown {
   if (operation === 'userProfile') {

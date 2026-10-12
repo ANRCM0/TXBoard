@@ -73,7 +73,7 @@ export function registerOrdersRoutes(
     const query = parseOrderQuery(c)
     if (query instanceof Response) return query
     return ok(c, validated(orderListSchema, await upstreamRequest(config, fetcher, 'userOrders',
-      { auth, ...query })))
+      { auth, ...query, signal: c.req.raw.signal })))
   })
 
   // Additive paged response; keeps the v1 envelope and /orders array intact.
@@ -84,7 +84,7 @@ export function registerOrdersRoutes(
     const query = parseOrderQuery(c)
     if (query instanceof Response) return query
     return ok(c, validated(orderPageSchema, await upstreamRequest(config, fetcher, 'userOrders',
-      { auth, ...query, paginated: true })))
+      { auth, ...query, paginated: true, signal: c.req.raw.signal })))
   })
 
   app.get(`${PREFIX}/orders/:tradeNo`, async c => {
