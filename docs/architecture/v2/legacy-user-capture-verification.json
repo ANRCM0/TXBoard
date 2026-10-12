@@ -1,0 +1,58 @@
+{
+  "committed_core_head": "12985477ed0d2bd78e24f82a26525b9af3de1c94",
+  "snapshot": "/tmp/txboard-legacy-capture-gate-12985477-v1",
+  "slice_sha256": {
+    "contracts/v2/legacy-user-mutation-capture-v1.md": "6ac1ed907dfa5ccd3d75cbd96fc2ad1b7c753248751cadbf42a0ceee29063962",
+    "api/config/legacy_capture_shadow.php": "b6d2b429ea9c1102ff37c6d769fe78928f2d11ab489dbf3675455f73003782e3",
+    "api/app/Services/Subscription/LegacyCaptureShadowException.php": "a66600e29f5b8505b48b74ca6a10dd16c0fc240584ddd0c953f28edac0ac09ca",
+    "api/app/Models/LegacyCaptureShadowEvent.php": "14e5eec901a1873625f726712706eabf8ff637c46679ec2c09ed2b4aef8d508e",
+    "api/database/migrations/2026_10_12_000010_create_legacy_capture_shadow_tables.php": "40e717d750940ec5859c68872616fcdcf29f4d973aeb9f8d2fec7d4b00e399b2",
+    "api/app/Services/Subscription/LegacyUserMutationCapture.php": "869b66cb4cc51751c323fd2a9d7ae4b190a5f13d4fde2170be1b802682319e6e",
+    "api/app/Console/Commands/CoreLegacyCaptureShadow.php": "9b540130267ab668eaa1dd024a88f9256d8d50bf9fd54bc922af2e7328202631",
+    "api/app/Http/Controllers/Txapi/Admin/UserEditorController.php": "668eb6d9dd55cf70d5136d8d859fc2bee3bbd231704c498b17e6e4ef3a49ca42",
+    "api/tests/Feature/Subscription/LegacyUserMutationCaptureTest.php": "68024defda60bd295f52aa31ab5a249d429994840515909fb67c0d580e273187"
+  },
+  "composer_lock_sha256": "f47b212c2fc530a7820e370eab7c6d624d13962e7d26e4f2ddf57a11848257c0",
+  "locked_vendor_donor": "/opt/txboard-baseline/provider-final-verification/api/vendor",
+  "fixture_phpunit_sha256": "9b1621d004539972871f04b4b0c15003dc488fac8d57d238c852779cf70b0c72",
+  "fixture_public_env_sha256": "af081999d8ba7c7a89d806701792599baef5876786edfac0f4750b8d09c0178f",
+  "redis_host": "127.0.0.1",
+  "redis_port": 16379,
+  "redis_databases": [
+    16,
+    17
+  ],
+  "post_gate_documentation_only": [
+    "contracts/v2/legacy-user-mutation-capture-v1.md"
+  ],
+  "slice-sqlite": {
+    "passed": 21,
+    "skipped": 4,
+    "assertions": 230
+  },
+  "slice-mariadb": {
+    "passed": 25,
+    "skipped": 0,
+    "assertions": 271
+  },
+  "full": {
+    "passed": 786,
+    "skipped": 25,
+    "assertions": 6157
+  },
+  "route_registry_sha256": "b01ff52bed6d23e4edfc7e7f94deffe790ca2ff4ed0070320db87b4b631d4f41",
+  "logs_sha256": {
+    "legacy-capture-full.log": "1af1450d2e8f80aef8a726b24dd770882e51ec00336c54ee0f8103cb61db648b",
+    "legacy-capture-slice-mariadb.log": "8fcbba6aac804ddc03c3d427c2fdb7cbe2399838b202aca5819392e07fd96c6d",
+    "legacy-capture-slice-sqlite.log": "62100a68c2bf49677730d6d66c570f5b93b0cc0dd3746bd8f1dca00e60614023"
+  },
+  "stage": "B1.6 isolated Admin User update evidence",
+  "production_acceptance": false,
+  "projection_applied": false,
+  "migration_gate_open": false,
+  "global_coverage_complete": false,
+  "original_user_writer_authoritative": true,
+  "additional_current_changes_excluded": [
+    "B5.3 Internal order list"
+  ]
+}

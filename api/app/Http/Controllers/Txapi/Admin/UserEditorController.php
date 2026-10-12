@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\AuthService;
 use App\Services\Plugin\HookManager;
 use App\Services\UserService;
+use App\Services\Subscription\LegacyUserMutationCapture;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -76,6 +77,8 @@ final class UserEditorController
 
         [$user, $applied] = DB::transaction(static function () use ($request, $id, $fields): array {
             $user = User::query()->lockForUpdate()->findOrFail($id);
+            $capture = app(LegacyUserMutationCapture::class);
+            $captureBefore = $capture->begin($id);
             foreach (['balance' => 'expected_balance_minor',
                          'commission_balance' => 'expected_commission_balance_minor'] as $key => $expectedKey) {
                 if (array_key_exists($key, $fields) &&
@@ -149,6 +152,7 @@ final class UserEditorController
             ]);
             $wasBanned = (bool) $user->banned;
             $user->fill($changes)->saveOrFail();
+            $capture->append($captureBefore, (int) $request->user()->id);
             if ((!$wasBanned && (bool) $user->banned) || array_key_exists('password', $changes)) {
                 (new AuthService($user))->removeAllSessions();
             }
