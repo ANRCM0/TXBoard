@@ -149,3 +149,5 @@ jobs:
         run: npm run test:browser
       - name: Experimental metadata codec byte vectors in Chromium
         run: node scripts/test-sc-v2-codec-browser.mjs
+      - name: Offline SC-v2 crypto Node and Chromium interoperability
+        run: node scripts/test-sc-v2-crypto-browser.mjs

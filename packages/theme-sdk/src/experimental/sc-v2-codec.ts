@@ -1,6 +1,6 @@
 /** Experimental metadata bytes only. This module performs no encryption or I/O. */
 export const prototype = 'txboard.sc-v2-codec/1' as const
-export const suiteIds = [0x0010, 0x0001, 0x0002] as const
+export const suiteIds = Object.freeze([0x0010, 0x0001, 0x0002] as const)
 export type Domain = 'user' | 'admin'
 export type RequestMetadata = {
   version: 2
@@ -132,7 +132,7 @@ export function requestDigestInput(metadata: RequestMetadata, enc: Uint8Array, c
   // Elliptic-curve membership/authentication remains the HPKE implementation's job.
   return tuple([encoder.encode(`${prototype}/request-digest`), requestAad(metadata), enc, ciphertext])
 }
-/** Exporter labels are separate and bounded to the existing library's 128-byte input. */
+/** Separate exporter labels stay below this experiment's 128-byte framing limit. */
 export function responseExporterContext(requestDigest: string, purpose: 'key' | 'nonce'): Uint8Array {
   requireValue(purpose === 'key' || purpose === 'nonce')
   return tuple([encoder.encode(`${prototype}/response/${purpose}`), fromBase64url(requestDigest, 32)])

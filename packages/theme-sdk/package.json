@@ -19,6 +19,10 @@
     "./experimental/sc-v2-codec": {
       "types": "./dist/experimental/sc-v2-codec.d.ts",
       "import": "./dist/experimental/sc-v2-codec.js"
+    },
+    "./experimental/sc-v2-crypto": {
+      "types": "./dist/experimental/sc-v2-crypto.d.ts",
+      "import": "./dist/experimental/sc-v2-crypto.js"
     }
   },
   "engines": {

@@ -11,8 +11,9 @@ AES-256-GCM, with IDs 0x0010/0x0001/0x0002 in base mode 0. These are candidate
 parameters for the experiment; no encrypted SC-v2 traffic is accepted. HPKE is
 unidirectional; its [RFC 9180 exporter](https://www.rfc-editor.org/rfc/rfc9180.html#section-5.3)
 is the interface for separate response material, rather than encrypting with a
-recipient HPKE context. The existing library caps exporter context at 128 bytes;
-the prototype binds a 32-byte request digest inside direction-specific labels.
+recipient HPKE context. The prototype keeps exporter context below 128 bytes and
+binds a 32-byte request digest inside direction-specific labels. This is an
+experiment limit; locked `@hpke/common` 1.10.1 permits up to 8192 input bytes.
 It does not implement or approve response key/nonce derivation. In particular,
 these bytes alone do not establish safe single-response ownership or nonce reuse
 protection across retries, workers, faults or key rotations.
