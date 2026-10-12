@@ -1,6 +1,6 @@
 # Core First v2 实施台账
 
-> 状态：B0、B1.1–B1.4 影子证据与 Terms、B2.1–B2.3 单机升级、B3.1/B3.2 隔离用量、B3.3/B3.4 连接观察与事件桶、B4.1/B4.2 合成 Provider、B5.1/B5.2 本地只读 mTLS 接入、B6.1 实验字节 codec 已实现；后续切片推进中。各整阶段仍按下表门禁验收。
+> 状态：B0、B1.1–B1.5 影子证据、Terms 与身份旁观、B2.1–B2.3 单机升级、B3.1/B3.2 隔离用量、B3.3/B3.4 连接观察与事件桶、B4.1/B4.2 合成 Provider、B5.1/B5.2 本地只读 mTLS 接入、B6.1 实验字节 codec 已实现；后续切片推进中。各整阶段仍按下表门禁验收。
 
 ## 1. 批次与关键路径
 
@@ -47,6 +47,8 @@ B1.3 后续对账增加双对象分页、源增长/全局异常/上下文门禁�
 
 B1.4 的 [Terms 转换与周期契约](../../../contracts/v2/subscription-terms-shadow-v1.md) 实现不可变半开时间线、同订阅续期/限额/报价证据、签名 quota adjustment 和显式 reset；正常 Terms 变化保留既有用量。SQLite 23 项、143 断言通过，4 项 MariaDB 专测跳过；MariaDB 27 项、192 断言全部通过。独立会话验证版本竞争、同键重放、旧 MVCC 当前读与锁等待后 accepted usage 阻断；失败完整回滚。仅限隔离服务，未接入旧 writer 或生产业务路由。
 
+B1.5 的 [旧订阅身份旁观读取](../../../contracts/v2/subscription-identity-compatibility-v1.md) 默认关闭，仅在隔离副本请求中核验已认证 User 对应的稳定 Subscription/Subject IDs，永远 `authorizes=false`。原链接认证、query token 优先、11 类原生配置渲染、SS2022、凭据 rotate 和 Node UUID 输出回归均通过；影子缺失或冲突不改变原响应。SQLite 20 通过、2 跳过、418 断言；MariaDB 22 通过、429 断言。固定 Core `846a181` 加本片全 API 765 通过、21 跳过、5927 断言，无失败或警告，详见 [验证报告](subscription-identity-verification.json)。历史链接归属、Provider import 与 live writer fence 仍待实施。
+
 B2.1 的 [隔离升级执行器](https://github.com/ANRCM0/TXBoard-Deploy/blob/main/docs/durable-upgrade.md) 已通过 Windows/Linux 33 项 Python 测试、Linux 管理互锁，以及真实 Docker/MariaDB 提交后 SIGKILL 恢复。此阶段不执行 production writer switch；Cluster fencing、完整角色矩阵、生产副本和恢复外部增量仍待验收。
 
 B2.2 商品目录 profile 已推送 Deploy `617cb939589def56e7560db639dd7aa6df3094f5`，Windows/Linux 40 项升级测试通过。真实固定 Core 镜像与 MariaDB 验证回填提交后、journal result 前 SIGKILL，恢复无重复映射、逐页只读对账通过且旧 binary guard 保留。演练为合成隔离副本，未切换生产权威。
@@ -62,6 +64,8 @@ B3.3 的 [Node 连接管理前置切片](https://github.com/ANRCM0/TX-Node/blob/
 B3.3 的 [Service 本地观察器](https://github.com/ANRCM0/TX-Node/blob/main/docs/runtime-usage-observer-current.md) 已推送 `7eef49229442ef25458a9715caf056fcbdf2bb6f`。默认关闭，复用 v1 同一次采样，持久记录不可归属累计量与生命周期；容量或存储失败停止观察而保持 v1。Linux 全仓 race 376 个主测试、147 个子测试通过，无测试跳过。缓存边界、未采样尾部和恢复旧副本仍未知，未开启 v2 报送。
 
 B3.4 的 [本地原子事件桶基础](https://github.com/ANRCM0/TX-Node/blob/main/docs/local-event-buckets-current.md) 已推送 `974dd1f1d1da0dbb176b073724f6249531f16f07`。同一计数点记录不可归属事件，短锁串行封存、关闭与晚到 callback 保留原连接绑定；默认 Service 不启用。Linux 全仓 race 399 个主测试、159 个子测试通过。仅内存证据、无持久 sink；真实 sing UDP writer 绕过旧计数的覆盖缺口已实证并列为下一步修复前置。
+
+B3.4 的 [UDP writer 漏计数修复](https://github.com/ANRCM0/TX-Node/blob/main/docs/udp-writer-accounting-current.md) 已推送 `22fc0c933d92f509c7f60629a66cbef688005e73`。普通 pinned sing CopyPacket 现在对成功写包恰好调用一个原计数器，保留原 legacy upload 映射，观察器另记 physical download。真实 UDP/cached/失败写与 Close 取消验证通过；完整 internal race 403 个主测试、167 个子测试通过，无跳过。回调限速仍在写入之后，不构成租约门禁；事件桶观察默认关闭。
 
 B4.1 的 [本地 Provider 合成进程切片](../../../contracts/v2/credential-provider/local-fixture-runtime-v1.md) 默认关闭，Core 先持久 operation，未知结果查询原 ID，私有秘密不进入 Core DTO/SQL。最终 SQLite 20 项、120 断言及 MariaDB 22 项、147 断言通过，固定提交快照全量 API 698 项、5012 断言通过，16 项引擎专测跳过。发行前重新校验当前授权、Subject 和 Terms 边界；此固定可信脚本是同 OS 身份进程，不能视为生产隔离 Provider，尚无 Node 秘密交付、撤销或卸载完成门禁。
 

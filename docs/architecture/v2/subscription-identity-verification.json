@@ -1,0 +1,48 @@
+{
+  "committed_core_head": "846a1818c96a075853631b9a6bab72b0f18342ce",
+  "snapshot": "/tmp/txboard-subscription-identity-gate-846a181-v1",
+  "slice_sha256": {
+    "api/app/Services/Subscription/LegacySubscriptionIdentityReader.php": "22c7e22cb1a69b8a7cf3ce83bc4ac0e0b5bcbcc48c752390a6a3a1eb64502f3b",
+    "api/app/Http/Middleware/SubscriptionIdentityShadow.php": "6cdf8f11bee008d38edab7451ceaf4738bf0098c64b5194ec9f0d00428b7c31e",
+    "api/config/core_shadow.php": "bc33ad1e0f9cf5cba1ce0f089662049525a5d9e24102d80c9a35d98a4f86a511",
+    "api/routes/web.php": "2a7d786f86a708fb393b5c6a35a3084775ef60a2fa18d0f3e6d68a0b208ea0ce",
+    "api/tests/Feature/Subscription/LegacySubscriptionIdentityTest.php": "ab13f4db6d4308acbb02941685fd8e87ea7ad58796149db47cd860e5e1483680",
+    "contracts/v2/subscription-identity-compatibility-v1.md": "6e2f8f86f5cfeed5d240b4fb25ee7808ab9d6f0b43f12d40d7548648045dc1ff"
+  },
+  "composer_lock_sha256": "f47b212c2fc530a7820e370eab7c6d624d13962e7d26e4f2ddf57a11848257c0",
+  "locked_vendor_donor": "/opt/txboard-baseline/provider-final-verification/api/vendor",
+  "fixture_phpunit_sha256": "aa9aa739e88b7401ad0ab387c106b9ad178c10e2c64bda54d5763319d45e1d95",
+  "fixture_public_env_sha256": "af081999d8ba7c7a89d806701792599baef5876786edfac0f4750b8d09c0178f",
+  "redis_host": "127.0.0.1",
+  "redis_port": 16379,
+  "redis_databases": [
+    16,
+    17
+  ],
+  "post_gate_documentation_only": [
+    "contracts/v2/subscription-identity-compatibility-v1.md"
+  ],
+  "gate_result": {
+    "passed": 765,
+    "skipped": 21,
+    "assertions": 5927,
+    "failures": 0,
+    "warnings": 0
+  },
+  "identity_sqlite": {
+    "passed": 20,
+    "skipped": 2,
+    "assertions": 418
+  },
+  "identity_mariadb": {
+    "passed": 22,
+    "skipped": 0,
+    "assertions": 429
+  },
+  "route_registry_sha256": "b01ff52bed6d23e4edfc7e7f94deffe790ca2ff4ed0070320db87b4b631d4f41",
+  "logs_sha256": {
+    "subscription-identity-full.log": "5f1cc9943280398266e5e56f90a84b22b653fac879db438fffb5cf797bd0004e",
+    "subscription-identity-slice-sqlite.log": "8a4abd33fcb03ec874e51bc79666bce3b62cca8766a6a1a3d2db9704e6cedcee",
+    "subscription-identity-slice-mariadb.log": "124ad87e6421b26955abe101e158e0ff2b6cd9daaadc4c14fcb243c511ba2a0e"
+  }
+}
