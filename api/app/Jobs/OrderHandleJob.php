@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Models\Order;
 use App\Services\OrderService;
+use App\Services\Subscription\LegacyCaptureShadowException;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -26,6 +27,10 @@ class OrderHandleJob implements ShouldQueue
 
     public function failed(?\Throwable $exception): void
     {
+        if ($exception instanceof LegacyCaptureShadowException) {
+            Log::error('LEGACY_ORDER_FULFILLMENT_CAPTURE_RETRIES_EXHAUSTED');
+            return;
+        }
         Log::error('Order fulfillment job exhausted its retries', [
             'trade_no' => $this->tradeNo,
             'error' => $exception?->getMessage(),
@@ -62,6 +67,9 @@ class OrderHandleJob implements ShouldQueue
             case Order::STATUS_PROCESSING:
                 try {
                     $orderService->open();
+                } catch (LegacyCaptureShadowException $exception) {
+                    Log::error('LEGACY_ORDER_FULFILLMENT_CAPTURE_FAILED');
+                    throw $exception;
                 } catch (\Throwable $exception) {
                     Log::error('Order fulfillment attempt failed', [
                         'trade_no' => $this->tradeNo,

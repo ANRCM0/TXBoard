@@ -13,6 +13,7 @@ final class LegacyUserMutationCapture
     private const POLICIES = [
         'admin.user.update' => ['version' => self::VERSION, 'actor_domain' => 'admin_user'],
         'wallet.recharge.settle' => ['version' => 'wallet-recharge-capture/v1', 'actor_domain' => 'verified_payment_method'],
+        'order.fulfill' => ['version' => 'order-fulfillment-capture/v1', 'actor_domain' => 'system_order_fulfillment'],
     ];
     public const FIELDS = ['id', 'plan_id', 'group_id', 'transfer_enable', 'u', 'd',
         'speed_limit', 'device_limit', 'expired_at', 'last_reset_at', 'next_reset_at',
@@ -32,6 +33,12 @@ final class LegacyUserMutationCapture
         return $this->beginWriter($userId, 'wallet.recharge.settle', $paymentId);
     }
 
+    /** Transaction-only: caller holds the actual PROCESSING Order and User locks. */
+    public function beginOrderFulfillment(int $userId, int $orderId): ?array
+    {
+        return $this->beginWriter($userId, 'order.fulfill', $orderId);
+    }
+
     public function append(?array $before, int $actorId): void
     {
         $this->appendWriter($before, 'admin.user.update', $actorId);
@@ -40,6 +47,11 @@ final class LegacyUserMutationCapture
     public function appendVerifiedRecharge(?array $before): void
     {
         $this->appendWriter($before, 'wallet.recharge.settle');
+    }
+
+    public function appendOrderFulfillment(?array $before): void
+    {
+        $this->appendWriter($before, 'order.fulfill');
     }
 
     private function beginWriter(int $userId, string $kind, ?int $actorId = null): ?array
@@ -174,7 +186,8 @@ final class LegacyUserMutationCapture
                     $result['events'][] = ['id' => (string) $row->id, 'sequence' => $event['sequence'],
                         'content_hash' => $event['content_hash'], 'source_kind' => $event['source_kind'],
                         'source_version' => $event['source_version'], 'actor_id' => $event['actor_id'],
-                        'actor_domain' => self::POLICIES[$event['source_kind']]['actor_domain']];
+                        'actor_domain' => self::POLICIES[$event['source_kind']]['actor_domain']]
+                        + ($event['source_kind'] === 'order.fulfill' ? ['capture_boundary' => 'transaction-only'] : []);
                     $result['next_cursor'] = (string) $sequence;
                 }
                 $this->require($result['has_more'] || $sequence === $high, 'CAPTURE_CHAIN_GAP');

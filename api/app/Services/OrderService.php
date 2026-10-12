@@ -10,6 +10,7 @@ use App\Models\Plan;
 use App\Models\TrafficResetLog;
 use App\Models\User;
 use App\Services\Plugin\HookManager;
+use App\Services\Subscription\LegacyUserMutationCapture;
 use App\Utils\Helper;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
@@ -139,6 +140,9 @@ class OrderService
 
             $this->user = User::lockForUpdate()->find($order->user_id);
 
+            $capture = app(LegacyUserMutationCapture::class);
+            $captureBefore = $capture->beginOrderFulfillment((int) $order->user_id, (int) $order->id);
+
             if ($order->surplus_credit) {
                 $this->user->balance += $order->surplus_credit;
             }
@@ -165,6 +169,8 @@ class OrderService
             if (!$order->save()) {
                 throw new \RuntimeException('订单信息保存失败');
             }
+
+            $capture->appendOrderFulfillment($captureBefore);
 
             return $order;
         });
