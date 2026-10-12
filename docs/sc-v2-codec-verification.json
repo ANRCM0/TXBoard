@@ -1,0 +1,42 @@
+{
+  "stage": "B6.1 metadata codec experiment",
+  "enabled_transport": false,
+  "baseline_gateway_commit": "8310a4c715759f7f1e609cb55d3eb513738e8d4f",
+  "linux_gate": {
+    "node": "22.23.2",
+    "typecheck": "passed",
+    "build": "passed",
+    "gateway_tests": 425,
+    "sdk_tests": 40,
+    "snapshot": "/opt/txboard-baseline/sc-v2-codec-verification",
+    "log_sha256": "c14e4427ac3a727d3e60c47189cc82133c54b422ce13b43130e256ac70d463d0"
+  },
+  "windows_gate": {
+    "sdk_tests": 40,
+    "typecheck": "passed",
+    "chromium": "155.0.0.0",
+    "browser_positive_checks": 6,
+    "browser_rejections": 5
+  },
+  "post_gate_changes": [
+    "documentation verification paragraph",
+    "existing browser CI job now executes the verified codec browser script"
+  ],
+  "limitations": [
+    "metadata only; no HPKE or AEAD in codec",
+    "no registered route or Core call",
+    "response key/nonce construction and one-shot ownership not implemented or reviewed",
+    "no raw JSON duplicate-field parser or plaintext schema",
+    "no key lifecycle or shared replay transport"
+  ],
+  "source_sha256": {
+    "packages/theme-sdk/src/experimental/sc-v2-codec.ts": "228a31d271be84a784c568f34bf9452e60d495247fb4df6866544185eaa31142",
+    "packages/theme-sdk/test/sc-v2-codec.test.ts": "76c829f7874d29124a4e7bc2bc7e2a4558072baf163f6bbe7de0f240f17edbec",
+    "packages/theme-sdk/test/vectors/sc-v2-codec.json": "0a8012eaaf80682bd8ac301a730bd00f9a6bb3094ccfba63a2b62bfe84db553c",
+    "packages/theme-sdk/package.json": "89983bb1c19ddc4e361a7bfb8eba3d791a0f6ed395005268c11e18232897a4cb",
+    "scripts/generate-sc-v2-codec-vectors.py": "32df5cad864a132a5b6c3d20a59fb716aff699dad01f10400d5362a5334339f9",
+    "scripts/test-sc-v2-codec-browser.mjs": "37a1c20d61da642331844f355080274994cb2f6c3a630d1b08d3cbffaca5b0b9",
+    "docs/sc-v2-codec-experimental.md": "6b15c77380860d801e21b602a38ad34103baa4fdcb112fd2f8b841851360812e",
+    ".github/workflows/ci.yml": "269da947885051ad8150b96cc3f31aaf8b6fe1e6e3ccb8941b8d9fced04b455c"
+  }
+}

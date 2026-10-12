@@ -147,3 +147,5 @@ jobs:
         env:
           GATEWAY_TEST_REDIS_URL: redis://127.0.0.1:16379
         run: npm run test:browser
+      - name: Experimental metadata codec byte vectors in Chromium
+        run: node scripts/test-sc-v2-codec-browser.mjs

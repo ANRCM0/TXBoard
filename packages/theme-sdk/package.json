@@ -15,6 +15,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./experimental/sc-v2-codec": {
+      "types": "./dist/experimental/sc-v2-codec.d.ts",
+      "import": "./dist/experimental/sc-v2-codec.js"
     }
   },
   "engines": {
