@@ -248,14 +248,14 @@ func (c *onePacketConn) WritePacket(buffer *buf.Buffer, destination singM.Socksa
 	return c.PacketConn.WritePacket(buffer, destination)
 }
 
-// This hides replacement upstream traversal but preserves the pinned counter
-// interface. It tests the supported callback contract, not default writer coverage.
+// This outer boundary preserves the pinned counter interface. Both the ordinary
+// tracked writer and this extra wrapper must have the same single count owner.
 type packetCounterBoundary struct{ N.PacketWriteCounter }
 
 func (c packetCounterBoundary) WriterReplaceable() bool { return false }
 
 func TestEventBucketsPinnedSingPacketCopyDirectionAndWriterCoverage(t *testing.T) {
-	for _, mode := range []string{"reader", "default_writer_bypass", "counter_writer"} {
+	for _, mode := range []string{"reader", "default_writer", "counter_writer"} {
 		t.Run(mode, func(t *testing.T) {
 			tracker := eventTracker(t, usagebucket.Options{})
 			open := func() net.PacketConn {
@@ -297,13 +297,6 @@ func TestEventBucketsPinnedSingPacketCopyDirectionAndWriterCoverage(t *testing.T
 				t.Fatalf("actual copied packet %q %v", data[:n], err)
 			}
 			events := countEvents(tracker)
-			if mode == "default_writer_bypass" {
-				assertV1(t, tracker, [2]int64{})
-				if len(events) != 0 {
-					t.Fatal("observer invented a skipped legacy count site")
-				}
-				return
-			}
 			if len(events) != 1 || !events[0].DirectionMismatch || !events[0].IntervalUnknown || events[0].HasIOStart {
 				t.Fatalf("packet callback ownership: %+v", events)
 			}

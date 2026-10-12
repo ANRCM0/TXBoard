@@ -38,15 +38,15 @@ increment the legacy download atomic although the physical method reads upload;
 writer callbacks increment the legacy upload atomic for physical download. Events
 retain both directions and mark `DirectionMismatch`, leaving v1 behavior intact.
 
-Pinned sing 0.8.2 has another coverage gap: `UnwrapCountPacketWriter` first unwraps
-replaceable writers, and the current trackedPacketConn is replaceable with an
-underlying Upstream. Actual `CopyPacket` can therefore bypass its writer counter
-entirely. The regression test proves that this route delivers a real loopback UDP
-packet while both the existing writer totals and observation events stay zero.
-An explicit counter-interface boundary tests the supported writer callback without
-claiming ordinary CopyPacket uses it. A fix to writer traversal/accounting is a
-separate prerequisite before the second B3.4 slice; this evidence must never be
-presented as a complete or billing-ready event stream.
+The initial slice recorded a pinned sing 0.8.2 writer coverage gap:
+`UnwrapCountPacketWriter` first unwraps replaceable writers, which bypassed the
+trackedPacketConn counter. Its historical report proves a delivered UDP packet
+with zero writer totals and events. The separate
+[UDP writer traversal fix](udp-writer-accounting-current.md) now keeps that boundary
+and restores ordinary `CopyPacket` counting in the existing legacy upload
+direction. Current tests assert one writer callback per successful packet. The
+initial verification report remains the evidence for the original slice; this
+fix has its own report. These observations still form no billing-ready stream.
 
 One mutex per meter serializes clock observations, append, checked bucket totals,
 local cuts, generation changes and close fences. It performs no network I/O,

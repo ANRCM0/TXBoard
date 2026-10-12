@@ -1078,4 +1078,8 @@ func (c *trackedPacketConn) UnwrapPacketWriter() (N.PacketWriter, []N.CountFunc)
 
 func (c *trackedPacketConn) Upstream() any           { return c.PacketConn }
 func (c *trackedPacketConn) ReaderReplaceable() bool { return true }
-func (c *trackedPacketConn) WriterReplaceable() bool { return true }
+
+// sing 0.8.2 unwraps replaceable packet writers before looking for their
+// PacketWriteCounter. Keep this boundary so CopyPacket extracts our counter
+// once through UnwrapPacketWriter instead of silently bypassing it.
+func (c *trackedPacketConn) WriterReplaceable() bool { return false }
