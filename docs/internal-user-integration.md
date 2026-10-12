@@ -1,8 +1,8 @@
 # User Internal mTLS 当前本机接入
 
-状态：Current / local-testing-only，B5.2–B5.6。现有 Gateway v1 受保护只读操作均可选择本地 Internal 上游。完整 B5/B6、写入、管理员 Gateway、SC-v2 和生产门禁仍未完成。
+状态：Current / local-testing-only，B5.2–B5.7 已验收，订单创建另限隔离测试副本。现有 Gateway v1 受保护只读操作均可选择本地 Internal 上游。完整 B5/B6、管理员 Gateway、SC-v2 和生产门禁仍未完成。
 
-`GATEWAY_INTERNAL_USER_ENABLED` 默认 false；undefined、空串和精确 false 关闭，其他非空误值启动失败；只有精确字符串 true 且 `APP_ENV=local/testing` 才可启用。启用后 profile/detail、orders list/page/status、dashboard、payment-methods、subscription-summary、notices 调用固定 User operation，request contract_version=2。公开元数据、登录和写入仍使用原路径。
+`GATEWAY_INTERNAL_USER_ENABLED` 默认 false；undefined、空串和精确 false 关闭，其他非空误值启动失败；只有精确字符串 true 且 `APP_ENV=local/testing` 才可启用。启用后 profile/detail、orders list/page/status、dashboard、payment-methods、subscription-summary、notices 调用固定 User operation，request contract_version=2。公开元数据和登录仍使用原路径；订单创建的单独开关与隔离约束见下文。
 
 启用时必须设置服务器本地绝对 `GATEWAY_INTERNAL_USER_CONFIG_FILE`，内容精确为：
 
@@ -23,7 +23,7 @@
 
 Gateway 只传用户的真实 Authorization Bearer 和新建版本2正文，不签服务 proof、不持有 proof key、不访问 Core 数据库。身份/证书/actor header 无授权意义，也不会转发。Core 自己验证 Sanctum 当前账号/会话、封禁、管理员拒绝、订单归属、计划缺失。客户端证书不是用户授权。
 
-请求路径只允许固定八个 user operation，POST JSON 包含服务器 UUID、UTC deadline≤5 秒和封闭 input。Authorization≤4KiB，body 为固定≤16KiB结构，response≤64KiB；总 walltime≤5 秒，连续 chunk 不延长期限。超时/错误/超大响应/异常 close/AbortSignal 都清 timer 并 destroy transport。每阶段的期限不代表取消 Core 阻塞 SQL；业务同步 handler 仍可能继续到返回。
+请求路径只允许固定 User operation，POST JSON 包含服务器 UUID、UTC deadline≤5 秒和封闭 input。Authorization≤4KiB，body 为固定≤16KiB结构，response≤64KiB；总 walltime≤5 秒，连续 chunk 不延长期限。超时/错误/超大响应/异常 close/AbortSignal 都清 timer 并 destroy transport。每阶段的期限不代表取消 Core 阻塞 SQL；业务同步 handler 仍可能继续到返回。
 
 不跟随 redirect，不自动重试 Internal，不发生 Native/明文 fallback。TLS、Core404、授权失败、格式错误、超大/错误 UTF8/重复键、未知 DTO 或数值溢出均返回拒绝；错误不公开 Core message、proof、私钥或 actor credential。默认关闭不产生 Internal 网络调用。
 
@@ -33,7 +33,7 @@ B5.3 list input 固定 page 1–9999、per_page 1–100 与可选 status 0–4�
 
 ## 复现
 
-建立固定 Core `e1ed462232404596eb48b0a2b7ef5bebbf2fe146` 完整 snapshot，叠加当前 Internal changes，使用 Core prepare-snapshot.py 与 locked vendor；Gateway 用 `tests/integration/prepare-internal-user-snapshot.py <source> <new-target> <linux-dependency-source> 2a5d2ee2dd01a7568a0b121236b158fa5339fd8e` 建立 committed Gateway + Internal only 快照。两份 snapshot 保存真实 commit/hash，排除并行工作。
+本次验收建立固定 Core `422e85c44d064bfb763922316acd17d0174137d4` 完整 snapshot，叠加当前 Internal changes，使用 Core prepare-snapshot.py 与 locked vendor；Gateway 用 `tests/integration/prepare-internal-user-snapshot.py <source> <new-target> <linux-dependency-source> ee1cec6251dbc52368f4b7dfd9fcdb4d49d8954a` 建立 committed Gateway + Internal only 快照。两份 snapshot 保存真实 commit/hash，排除并行工作；源码清单见下方 B5.7 证据。
 
 准备独占空 `txboard_internal_test`（重跑只能明确核验并清此 fixture 库，脚本不会 migrate:fresh）；Core fixture 签发用户会话，Gateway 联调另通过真实 /txapi/auth/login 获取用户 Bearer。密钥、token 只留临时目录/进程内存，结尾删秘密并停止服务。Redis固定实验室16379 DB14/cache15。
 
@@ -45,7 +45,7 @@ DB_USERNAME=fixture-user DB_PASSWORD=fixture-password \
 bash tests/integration/run-internal-user-linux.sh /path/to/core-snapshot/api
 ```
 
-固定 loopback 端口 Core19081/TLS19443/Gateway19582–19587，以及错误 server SAN fixture19445；请确保没有其他进程占用。正向逐字段比较 Native/Internal profile、detail、list/page/filter/missing-plan；负向覆盖真实 CA/CRL/SAN、身份角色、owner404、expired/revoked/banned、BIGINT 字节数 overflow、default-off/production404及 TLS offline no fallback，并检查日志没有秘密。金额、ID、telegram 的溢出及非规范十进制由定向测试覆盖。结果只保留 source hash、runtime、公开 fingerprint、case 和 sanitized audit 统计。
+固定 loopback 端口 Core19081/TLS19443/Gateway19582–19588，以及错误 server SAN fixture19445；请确保没有其他进程占用。正向逐字段比较 Native/Internal profile、detail、list/page/filter/missing-plan；负向覆盖真实 CA/CRL/SAN、身份角色、owner404、expired/revoked/banned、BIGINT 字节数 overflow、default-off/production404及 TLS offline no fallback，并检查日志没有秘密。金额、ID、telegram 的溢出及非规范十进制由定向测试覆盖。结果只保留 source hash、runtime、公开 fingerprint、case 和 sanitized audit 统计。
 
 MySQL8.4、生产网络/PKI自动轮换、细粒度 RBAC、cluster/Redis failover、Gateway 全部 operation、SC-v2 与生产发布仍需独立验证。
 
@@ -74,3 +74,9 @@ number and retains `{tradeNo,status}`. Fixed Core `dd3b4fd` / Gateway `257ff7e`
 passed 808 API (29 skipped), 527 Gateway, 68 SDK, typecheck/build and 35 actual
 TLS1.3 integration checks. See
 [verification evidence](../tests/integration/evidence/internal-order-status.json).
+
+B5.7 仅在现有 `GATEWAY_ORDER_WRITE_ENABLED=true` 和本地 Internal transport 同时启用时，选择 `user.order.create` version1。Core 还要求严格启用 `CORE_INTERNAL_ORDER_WRITE_ENABLED=true`、隔离副本标记和原 local/testing gate。默认关闭仍返回 405；Internal 写入口关闭返回 Core404，不回退 Native。
+
+请求正文绑定原客户端 Idempotency-Key；适配器只映射 Plan ID、周期、可选优惠码，不计算金额或扣款。原 BillingController/OrderService 的 SQL 幂等与 User 锁继续权威，成功只接受 HTTP201 和封闭 `internal-order-write/1` DTO。Core/Gateway 不自动重试；提交后超时、断线或审计失败可能返回错误但已建单，客户端用新 transport request 和原业务键/参数恢复。原 TTL、当前 actor、Plan 和 owned Order 可访问性仍约束恢复；删除 Plan 后原重放继续404。公共 JSON parser 的既有重复字段处理未改变，Core 对实际 Internal 字节单独拒绝重复字段。
+
+B5.7 固定 Core `422e85c` / Gateway `ee1cec6` 加十四文件：845项API通过（36项按引擎跳过、7085断言），529项Gateway、68项SDK、typecheck/build及40项真实TLS1.3/MariaDB检查通过。同键并发只预扣一次、过期键替换后立即重放、审计503后独立确认已提交再原键恢复均已验证。[验收证据](../tests/integration/evidence/internal-order-write.json)记录精确源码、原始日志hash和秘密清理结果。

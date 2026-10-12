@@ -91,6 +91,7 @@ export function registerOrdersWriteRoutes(
       data = await upstreamRequest(config, fetcher, 'userOrderCreate', {
         auth,
         body: checked.data,
+        signal: c.req.raw.signal,
         headers: {
           'Idempotency-Key': keyVerdict.key,
           'X-Idempotency-Key-Hint': hint,

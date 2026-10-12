@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { GatewayFailure } from '../services/failures.js'
+import { orderCreateSchema } from '../contracts/schemas.js'
 
 // JS `$` also matches before a final line break; the lookahead requires absolute end.
 const unsigned = z.string().regex(/^(?:0|[1-9][0-9]{0,19})$(?![\s\S])/)
@@ -49,6 +50,21 @@ export const internalError = z.strictObject({
   error: z.strictObject({ code: z.string().min(1).max(64), message: z.string(), fields: z.array(z.string()).optional() }),
   request_id: z.string().length(36).uuid(),
 })
+export const internalOrderWriteSuccess = internalSuccessV2.extend({
+  data: z.strictObject({ trade_no: detail.shape.trade_no }),
+  meta: z.strictObject({ current_only: z.literal(true), slice: z.literal('internal-order-write/1') }),
+})
+export function internalOrderCreateInput(value: unknown, key: unknown): Record<string, string> {
+  const parsed = orderCreateSchema.safeParse(value)
+  if (!parsed.success || !Number.isSafeInteger(parsed.data.plan_id) || parsed.data.plan_id > 2147483647
+    || typeof key !== 'string' || !/^[A-Za-z0-9._~-]{1,128}$(?![\s\S])/.test(key)) {
+    throw new GatewayFailure('VALIDATION_ERROR', 400, 'Invalid order request')
+  }
+  const period = Object.entries(periods).find(([, native]) => native === parsed.data.period)?.[0]
+  if (!period) fail()
+  return { plan_id: String(parsed.data.plan_id), period, idempotency_key: key,
+    ...(parsed.data.coupon_code === undefined ? {} : { coupon_code: parsed.data.coupon_code }) }
+}
 function fail(): never { throw new GatewayFailure('UPSTREAM_ERROR', 502, 'Unexpected Internal response') }
 function safe(value: string): number {
   const number = BigInt(value)

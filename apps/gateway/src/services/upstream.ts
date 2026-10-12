@@ -2,6 +2,7 @@ import type { GatewayConfig } from '../config/env.js'
 import { adaptNativeData, nativeErrorEnvelope, nativeSuccessEnvelope } from '../adapters/txapi-native.js'
 import { GatewayFailure } from './failures.js'
 import { internalUserRequest } from './internal-user-client.js'
+import { mappedOrderWriteFailure } from './order-write-failure.js'
 export { GatewayFailure, type GatewayFailureCode } from './failures.js'
 
 export type UpstreamFetcher = typeof fetch
@@ -104,32 +105,6 @@ function publicErrorMessage(status: number): string {
  * Returns null when the failure has no order-write-specific meaning, so the
  * caller falls back to the generic mapping.
  */
-function mappedOrderWriteFailure(
-  record: Record<string, unknown>,
-): GatewayFailure | null {
-  switch (asRecord(record.error).code) {
-    case 'IDEMPOTENCY_IN_PROGRESS':
-      return new GatewayFailure('IDEMPOTENCY_IN_PROGRESS', 409,
-        'An identical order is already being processed')
-    case 'IDEMPOTENCY_CONFLICT':
-      return new GatewayFailure('IDEMPOTENCY_CONFLICT', 409,
-        'Idempotency key is bound to different order parameters')
-    case 'INSUFFICIENT_BALANCE':
-    case 'PLAN_NOT_FOUND':
-    case 'PLAN_NOT_AVAILABLE':
-    case 'PERIOD_NOT_ALLOWED':
-    case 'COUPON_NOT_FOUND':
-    case 'COUPON_EXPIRED':
-    case 'ORDER_REJECTED':
-    case 'INVALID_PERIOD':
-      // Business rejection: the order was understood and refused. Laravel
-      // owns every rule behind these; the Gateway only classifies.
-      return new GatewayFailure('ORDER_REJECTED', 422, publicErrorMessage(422))
-    default:
-      return null
-  }
-}
-
 export async function upstreamRequest(
   config: GatewayConfig,
   fetcher: UpstreamFetcher,
@@ -149,7 +124,7 @@ export async function upstreamRequest(
   } = {},
 ): Promise<unknown> {
   if (config.internalUser && (operation === 'userProfile' || operation === 'userOrderDetail' || operation === 'userOrders'
-    || operation === 'userStats' || operation === 'userPaymentMethods' || operation === 'userSubscription' || operation === 'userNotices' || operation === 'userOrderStatus')) {
+    || operation === 'userStats' || operation === 'userPaymentMethods' || operation === 'userSubscription' || operation === 'userNotices' || operation === 'userOrderStatus' || operation === 'userOrderCreate')) {
     return internalUserRequest(config, operation, options)
   }
   // No untrusted path/host input can escape this static allowlist.
@@ -240,7 +215,7 @@ export async function upstreamRequest(
       // GW-304: the order-write verdict codes are Laravel's; map them to the
       // frozen Gateway vocabulary instead of collapsing them into UPSTREAM_ERROR.
       const orderWriteFailure = operation === 'userOrderCreate' && [409, 422].includes(response.status)
-        ? mappedOrderWriteFailure(record)
+        ? mappedOrderWriteFailure(asRecord(record.error).code)
         : null
       if (orderWriteFailure) throw orderWriteFailure
       throw new GatewayFailure('UPSTREAM_ERROR', status, publicErrorMessage(status))

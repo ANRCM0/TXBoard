@@ -53,6 +53,8 @@
 
 **订单写入（GW-304，默认关闭，`GATEWAY_ORDER_WRITE_ENABLED=true` 启用）**：
 
+同时启用 local/testing Internal User transport 时，订单创建选择固定 `user.order.create`；Core 的独立写入开关与隔离标记仍须成立，HTTP201/写入 DTO 严格校验、失败无 Native 回退。未启用 Internal 时保留现有 Native 上游。B5.7 已通过隔离验收，配置/提交未知恢复边界见 [当前接入记录](../docs/internal-user-integration.md)。
+
 - 请求头 `Idempotency-Key` **必填**，格式为 1–128 位 URL 安全字符（`[A-Za-z0-9._~-]`）；缺失或非法返回 `400 VALIDATION_ERROR`，**零上游调用**。
 - 请求体 strict schema：`{plan_id:正整数, period:枚举, coupon_code?:1–64位}`；未知字段 400。
 - Gateway 透传用户 Bearer（**不接受管理员 Token**），并追加自派生 `X-Idempotency-Key-Hint`（仅作日志关联，Laravel 以认证 user_id 重新派生权威键）。

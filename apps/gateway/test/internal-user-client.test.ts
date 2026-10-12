@@ -107,6 +107,40 @@ describe('Internal client transport fences', () => {
     await expect(upstreamRequest(config,native,'userOrderStatus',{ auth:token,tradeNo:'T-1\n' })).rejects.toMatchObject({status:400})
     expect(native).not.toHaveBeenCalled();expect(vi.getTimerCount()).toBe(0)
   })
+  it('binds write inputs and original business key and accepts only exact HTTP201 write receipt', async () => {
+    const native=vi.fn(), writing={...config,orderWriteEnabled:true}
+    const options={auth:token,body:{plan_id:7,period:'month_price'},headers:{'Idempotency-Key':'original-key','X-Actor-Id':'admin'}}
+    const pending=upstreamRequest(writing,native,'userOrderCreate',options)
+    expect(mock.request.mock.calls[0]![0].path).toBe('/txapi/internal/v1/operations/user.order.create')
+    const request=JSON.parse(req.end.mock.calls[0]![0].toString())
+    expect(request).toMatchObject({contract_version:'1',input:{plan_id:'7',period:'monthly',idempotency_key:'original-key'}})
+    expect(mock.request.mock.calls[0]![0].headers['X-Actor-Id']).toBeUndefined()
+    reply.statusCode=201;respond({data:{trade_no:'T-new'},request_id:envelope.request_id,meta:{current_only:true,slice:'internal-order-write/1'}})
+    await expect(pending).resolves.toEqual({trade_no:'T-new'})
+    for (const [status,meta,data] of [[200,{current_only:true,slice:'internal-order-write/1'},{trade_no:'T-new'}],
+      [201,envelope.meta,{trade_no:'T-new'}],[201,{current_only:true,slice:'internal-order-write/1'},{trade_no:'T-new',callback_no:'private'}]] as const) {
+      const pending=upstreamRequest(writing,native,'userOrderCreate',options)
+      const assertion=expect(pending).rejects.toMatchObject({status:502});reply.statusCode=status
+      respond({data,request_id:envelope.request_id,meta});await assertion
+    }
+    expect(native).not.toHaveBeenCalled();expect(vi.getTimerCount()).toBe(0)
+  })
+  it('keeps business conflict codes and disables invalid writes without transport or fallback', async () => {
+    const native=vi.fn(),writing={...config,orderWriteEnabled:true}
+    const options={auth:token,body:{plan_id:7,period:'month_price'},headers:{'Idempotency-Key':'original-key'}}
+    for(const code of ['IDEMPOTENCY_CONFLICT','IDEMPOTENCY_IN_PROGRESS']) {
+      const pending=upstreamRequest(writing,native,'userOrderCreate',options)
+      const assertion=expect(pending).rejects.toMatchObject({status:409,code});reply.statusCode=409
+      respond({error:{code,message:'private Core message'},request_id:envelope.request_id});await assertion
+    }
+    const calls=mock.request.mock.calls.length
+    await expect(upstreamRequest(config,native,'userOrderCreate',options)).rejects.toMatchObject({status:405})
+    for(const patch of [{headers:{}},{headers:{'Idempotency-Key':'key\n'}},{body:{plan_id:2147483648,period:'month_price'}},
+      {body:{plan_id:7,period:'monthly'}},{body:{plan_id:7,period:'month_price',owner_id:1}}]) {
+      await expect(upstreamRequest(writing,native,'userOrderCreate',{...options,...patch})).rejects.toMatchObject({status:400})
+    }
+    expect(mock.request.mock.calls.length).toBe(calls);expect(native).not.toHaveBeenCalled();expect(vi.getTimerCount()).toBe(0)
+  })
   it('keeps default Native and other operations unchanged without Internal network calls', async () => {
     const fetcher = vi.fn(async () => Response.json(nativeEnvelope(nativeProfile())))
     await upstreamRequest({ ...config, internalUser: undefined }, fetcher, 'userProfile', { auth: token })

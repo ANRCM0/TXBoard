@@ -12,7 +12,7 @@ import { createLogger } from '../../apps/gateway/dist/middleware/observability.j
 const api = process.env.INTERNAL_CORE_API, dir = process.env.INTERNAL_FIXTURE_DIR
 assert.ok(api && dir)
 const snapshot = JSON.parse(readFileSync(`${api}/../internal-snapshot.json`))
-assert.equal(snapshot.committed_core_head, 'dd3b4fd3c8ea9dd40a960c9826c714c4cbdf5f85')
+assert.equal(snapshot.committed_core_head, '422e85c44d064bfb763922316acd17d0174137d4')
 const actors = JSON.parse(readFileSync(`${dir}/actors.json`))
 const pki = JSON.parse(readFileSync(`${dir}/public-evidence.json`))
 const processes = [], servers = [], checks = [], nativeCalls = []
@@ -49,6 +49,13 @@ async function call(port, path, token = actors.credentials.user, expected = 200,
   return json
 }
 async function check(name, run) { await run(); checks.push(name); process.stdout.write(`ok ${checks.length}: ${name}\n`) }
+async function createOrder(port, token, key, body, expected) {
+  const response=await fetch(`http://127.0.0.1:${port}/gateway/v1/orders`,{method:'POST',headers:{authorization:token,
+    'content-type':'application/json','idempotency-key':key},body:JSON.stringify(body),signal:AbortSignal.timeout(7000)})
+  const result=await response.json();assert.equal(response.status,expected,`write expected${expected}, got${response.status} ${result.error?.code??''}`)
+  for(const secret of [...Object.values(actors.credentials),'PRIVATE KEY','private-subscribe-token',key])assert.ok(!JSON.stringify(result).includes(secret))
+  return result
+}
 async function ready() {
   for (let i=0;i<40;i++) { try { const r=await fetch('http://127.0.0.1:19081/txapi/public/site-config'); if (r.ok) return } catch {} await sleep(100) }
   throw new Error('Core fixture failed readiness')
@@ -190,6 +197,52 @@ try {
     const unchanged=nativeCalls.length;await call(internal,orderPath+'/status',actors.credentials.other,404)
     await call(internal,orderPath+'/status',actors.credentials.admin,403);assert.equal(nativeCalls.length,unchanged)
   })
+  const writing=gateway({...gatewayConfig(),orderWriteEnabled:true},19588)
+  const purchase={plan_id:1,period:'month_price'},businessKey='fixture-original-key'
+  await check('Core write default disabled and Gateway write ban refuse without Native fallback',async()=>{
+    const before=nativeCalls.length
+    await createOrder(internal,actors.credentials.user,businessKey,purchase,405)
+    await createOrder(writing,actors.credentials.user,businessKey,purchase,404)
+    assert.equal(nativeCalls.length,before)
+  })
+  stop(core);await sleep(200);core=child('php',['-S','127.0.0.1:19081','-t','public','public/index.php'],'core-http',
+    {CORE_INTERNAL_ORDER_WRITE_ENABLED:'true',CORE_SHADOW_ISOLATED_COPY:'true'})
+  await ready();fixture('rate-reset');decorate('write-prepare')
+  let createdTrade
+  await check('actual TLS order creation reserves wallet once and same-key replay returns original trade',async()=>{
+    const before=nativeCalls.length
+    const created=await createOrder(writing,actors.credentials.user,businessKey,purchase,201);createdTrade=created.data.trade_no
+    const copies=await Promise.all(Array.from({length:5},()=>createOrder(writing,actors.credentials.user,businessKey,purchase,201)))
+    for(const result of copies)assert.equal(result.data.trade_no,createdTrade)
+    assert.deepEqual(JSON.parse(decorate('write-state')),{balance:0,trade_no:createdTrade,wallet_reserved:300,provider_due:900,claims:1})
+    assert.equal(nativeCalls.length,before)
+  })
+  await check('write identity and business conflict rejects retain Core authority without fallback',async()=>{
+    const before=nativeCalls.length
+    const conflict=await createOrder(writing,actors.credentials.user,businessKey,{...purchase,coupon_code:'different-private-coupon'},409)
+    assert.equal(conflict.error.code,'IDEMPOTENCY_CONFLICT')
+    await createOrder(writing,actors.credentials.admin,businessKey,purchase,403)
+    await createOrder(writing,actors.credentials.expired,businessKey,purchase,401)
+    assert.equal(JSON.parse(decorate('write-state')).claims,1);assert.equal(nativeCalls.length,before)
+  })
+  await check('expired business key replacement immediately replays new successful claim without a second debit',async()=>{
+    decorate('write-expire');const before=nativeCalls.length
+    const replaced=await createOrder(writing,actors.credentials.user,businessKey,purchase,201)
+    assert.notEqual(replaced.data.trade_no,createdTrade)
+    assert.equal((await createOrder(writing,actors.credentials.user,businessKey,purchase,201)).data.trade_no,replaced.data.trade_no)
+    assert.deepEqual(JSON.parse(decorate('write-state')),{balance:0,trade_no:replaced.data.trade_no,wallet_reserved:300,provider_due:900,claims:1})
+    assert.equal(nativeCalls.length,before)
+  })
+  await check('audit failure after business commit returns unknown result and same key recovers original order',async()=>{
+    const key='fixture-audit-unknown',before=nativeCalls.length
+    decorate('audit-write-fail')
+    try{await createOrder(writing,actors.credentials.other,key,purchase,503)}finally{decorate('audit-write-restore')}
+    const committed=JSON.parse(decorate('write-other-state'));assert.equal(committed.orders,1);assert.equal(committed.claims,1)
+    const recovered=await createOrder(writing,actors.credentials.other,key,purchase,201)
+    assert.equal(recovered.data.trade_no,committed.trade_no)
+    assert.equal((await createOrder(writing,actors.credentials.other,key,purchase,201)).data.trade_no,recovered.data.trade_no)
+    assert.equal(nativeCalls.length,before)
+  })
   for (const cert of ['admin','wrong-san','multi-san','expired']) {
     await check(`startup rejects ${cert} client identity`, () => assert.throws(()=>gatewayConfig(cert),/Invalid local\/testing Internal User configuration/))
   }
@@ -252,7 +305,7 @@ try {
   const hashes={}
   for(const file of ['apps/gateway/src/services/internal-user-client.ts','apps/gateway/src/adapters/internal-user-v2.ts','apps/gateway/src/config/internal-user.ts',
     'tests/integration/internal-user-core-gateway.mjs','tests/integration/internal-user-core-fixture.php'])hashes[file]=createHash('sha256').update(readFileSync(file)).digest('hex')
-  const report={current_only:true,phase:'B5.6',production_acceptance:false,passed:checks.length,checks,
+  const report={current_only:true,phase:'B5.7',production_acceptance:false,passed:checks.length,checks,
     committed_core_head:snapshot.committed_core_head,committed_gateway_head:JSON.parse(readFileSync('internal-user-snapshot.json')).committed_gateway_head,
     core_slice_sha256:snapshot.slice_sha256,gateway_source_sha256:hashes,database:fixture('database-version').toString(),
     runtime:{node:process.version,php:execFileSync('php',['-r','echo PHP_VERSION;']).toString()},tls:'TLSv1.3',

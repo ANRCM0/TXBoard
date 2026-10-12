@@ -46,6 +46,32 @@ match ($argv[2] ?? '') {
         if ($updated !== 2) throw new RuntimeException('Oversize fixture did not update both visible rows');
     })(),
     'notice-restore' => Illuminate\Support\Facades\DB::table('tx_notice')->whereIn('title', ['Second visible', 'First visible'])->update(['content' => '<p>Fixture content</p>']),
+    'write-prepare' => (function () use ($user): void {
+        Illuminate\Support\Facades\DB::table('tx_order')->where('user_id', $user->id)->whereIn('status', [0, 1])->update(['status' => 2]);
+        $user->update(['balance' => 300]);
+        App\Models\Plan::query()->update(['capacity_limit' => null]);
+    })(),
+    'write-state' => (function () use ($user): void {
+        $order = App\Models\Order::where('user_id', $user->id)->orderByDesc('id')->firstOrFail();
+        echo json_encode(['balance' => (int) $user->fresh()->balance, 'trade_no' => $order->trade_no,
+            'wallet_reserved' => (int) $order->balance_amount, 'provider_due' => (int) $order->total_amount,
+            'claims' => Illuminate\Support\Facades\DB::table('idempotency_keys')->where('user_id', $user->id)->count()]);
+        exit;
+    })(),
+    'write-other-state' => (function (): void {
+        $other = App\Models\User::where('email', 'internal-other@example.test')->firstOrFail();
+        $orders = App\Models\Order::where('user_id', $other->id)->get();
+        echo json_encode(['orders' => $orders->count(), 'trade_no' => $orders->first()?->trade_no,
+            'claims' => Illuminate\Support\Facades\DB::table('idempotency_keys')->where('user_id', $other->id)->count()]);
+        exit;
+    })(),
+    'write-expire' => (function () use ($user): void {
+        $order = App\Models\Order::where('user_id', $user->id)->orderByDesc('id')->firstOrFail();
+        if (!(new App\Services\OrderService($order))->cancel()) throw new RuntimeException('Fixture order cancellation failed');
+        Illuminate\Support\Facades\DB::table('idempotency_keys')->where('user_id', $user->id)->update(['expires_at' => time()-1]);
+    })(),
+    'audit-write-fail' => Illuminate\Support\Facades\DB::unprepared("CREATE TRIGGER internal_write_audit_fault BEFORE INSERT ON tx_internal_readonly_audits FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'fixture-audit-failure'"),
+    'audit-write-restore' => Illuminate\Support\Facades\DB::unprepared('DROP TRIGGER internal_write_audit_fault'),
     'overflow' => $user->update(['u' => 9007199254740992]),
     'restore-values' => $user->update(['u' => 100]),
     'plan-missing' => $order->update(['plan_id' => $order->plan_id + 100]),
