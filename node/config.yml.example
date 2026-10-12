@@ -1,0 +1,69 @@
+# TX-Node 配置示例（一个文件启用一种模式；不要同时启用下列互斥配置）
+# 默认展示 TXBoard 原生单节点。运行前请替换 URL、ID 和 Token。
+# 保存为 config.yml，或使用 TX-Node-Installer 生成正式部署配置。
+
+# 方案 A（当前启用）：TXBoard 原生 Node
+panel:
+  provider: txboard
+  url: "https://panel.example.com"
+  token: "REPLACE_WITH_NODE_TOKEN"
+  node_id: 1
+
+kernel:
+  type: singbox  # 可选 singbox 或 xray
+log:
+  level: info
+audit:
+  enabled: false  # 可选访问审计（TXBoard 原生 API 或 Xboard 旧插件）；默认关闭
+
+# 方案 B：TXBoard 原生 Machine（替换上面的 panel，并增加 machine；删除 panel.token/node_id）
+# panel:
+#   provider: txboard
+#   url: "https://panel.example.com"
+# machine:
+#   machine_id: 2
+#   token: "REPLACE_WITH_MACHINE_TOKEN"
+# kernel:
+#   type: singbox
+# audit:
+#   enabled: false
+
+# 方案 C：Xboard 兼容单节点（替换方案 A 的 panel）
+# panel:
+#   provider: xboard  # 省略 provider 也是 xboard
+#   url: "https://xboard.example.com"
+#   token: "REPLACE_WITH_XBOARD_SERVER_TOKEN"
+#   node_id: 3
+
+# 方案 D：多面板实例（替换顶层 panel 后启用 instances）
+# 顶层 kernel/log 可作为默认值，每个 instance 可单独覆盖。
+# instances:
+#   - panel:
+#       provider: txboard
+#       url: "https://txboard.example.com"
+#       token: "REPLACE_WITH_TXBOARD_NODE_TOKEN"
+#       node_id: 4
+#   - panel:
+#       provider: xboard
+#       url: "https://xboard.example.com"
+#       token: "REPLACE_WITH_XBOARD_SERVER_TOKEN"
+#       node_id: 5
+#   - panel:
+#       provider: txboard
+#       url: "https://txboard.example.com"
+#     machine:
+#       machine_id: 6
+#       token: "REPLACE_WITH_TXBOARD_MACHINE_TOKEN"
+
+# 可选嵌入式访问审计：需 sing-box；Xboard 使用已安装的旧插件，TXBoard 使用原生 TXAPI。
+# 两者共用采集与规则匹配；仅在确认面板端已更新并做好隐私策略后开启。
+# audit:
+#   enabled: true
+#   report_all: false   # false 只上报命中规则的事件，空规则集不产生上报
+#   batch_max: 50
+#   flush_interval: 15
+#   rules_refresh: 5
+#   queue_cap: 5000
+#
+# 运行时待确认流量批次和证书等数据位于 kernel.config_dir（默认配置文件目录）。
+# Docker 部署请使用 Installer 提供的 /etc/txnode 持久化目录，避免重建容器丢数据。
