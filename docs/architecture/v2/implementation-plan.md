@@ -1,6 +1,6 @@
 # Core First v2 实施台账
 
-> 状态：B0、B1.1–B1.12 影子证据、Terms、身份旁观与固定 writer 捕获、B2.1–B2.3 单机升级、B3.1/B3.2 隔离用量、B3.3/B3.4 本地观察与持久事件桶、B4.1–B4.5 合成 Provider、插件停用接入、租约候选与离线签名快照、B5.1–B5.10 本地 mTLS 读取、隔离建单、登录与内存邮件验证码、B6.1–B6.3 实验字节、离线加密与共享 owner 实验已实现；当前收尾后进行两仓迁移。各整阶段仍按下表门禁验收。
+> 状态：B0、B1.1–B1.12 影子证据、Terms、身份旁观与固定 writer 捕获、B2.1–B2.3 单机升级、B3.1/B3.2 隔离用量、B3.3/B3.4 本地观察与持久事件桶、B4.1–B4.5 合成 Provider、插件停用接入、租约候选与离线签名快照、B5.1–B5.10 本地 mTLS 读取、隔离建单、登录与内存邮件验证码、B6.1–B6.3 实验字节、离线加密与共享 owner 实验已实现；两仓迁移与三镜像发布已完成，继续推进业务迁移切片。各整阶段仍按下表门禁验收。
 
 2026-10-13，按仓库整合任务，将 Gateway/Node 的完整 Git 历史导入本仓 `gateway/`、`node/`，安装器集中到 TXBoard-Deploy。当前目录与三镜像 CI 见 [双仓布局](../../development/repository-layout.md)；旧基线和验证报告保持当时提交与路径。本次仓库整理独立于下列业务迁移门禁。
 
@@ -237,3 +237,9 @@ Node [当前契约](https://github.com/ANRCM0/TX-Node/blob/main/docs/local-event
 当前三条切片已分别提交并推送：B4.5 Core `15a5feb`、B1.12 Core `40a2733`、B5.10 Core `b8d58bd` / Gateway `4d36e3b`。随后以已提交 Core `b8d58bd` 的完整 Git archive 新建快照，不叠加工作区文件；组合 API 1004 项通过、84 项 MariaDB/独立进程专测跳过、10016 断言，无失败、警告或 risky。适用的双引擎专项和真实跨仓联调证据保留在各切片报告中，[收尾报告](pre-monorepo-closure-verification.json)另记录组合源码、依赖和日志哈希。
 
 本轮收尾完成后，按用户决定准备两个仓库：运行代码包含 Core、Node、Gateway 与现有前端/SDK/契约，部署代码包含 Deploy 和 Node Installer。此次收尾未移动仓库、改写历史或合并运行职责；迁移时保留组件边界、构建产物、版本与旧安装入口兼容。B1–B8 的未完成生产门禁继续生效，不因仓库收尾完成而关闭。
+
+### B1.13 隔离副本标识流量批次结算捕获
+
+原 `TrafficBatchJob` 增加固定 `traffic.batch.settle` policy，在 Server → 有序 User 原锁序内记录精确计费后端点；批次去重、全体用户及节点统计、事件和 mapping 失效共同提交或回滚。原倍率/floor/溢出及 queued 语义保持，成功批次重放在捕获配置/表失效时仍跳过。显式捕获路径的统计读取使用当前共享锁，修复已实证的陈旧 MVCC 唯一键冲突；关闭路径保留原批量读取。死锁重试的 Redis 用户列表仅取成功事务，提交后丢失的通知仍未知。
+
+固定合仓基线 `3ca3940` 加三个精确 PHP 文件：最终全 API 1017 通过 / 88 引擎专测跳过 / 10179 断言；其中专项 SQLite 13 通过 / 4 跳过 / 163 断言。MariaDB 专项 17 全通过 / 205 断言，包含真实独立会话、陈旧快照和提交前后 SIGKILL。早期数据库长度问题与 fixture 失败保留在[源码及验收报告](legacy-traffic-batch-capture-verification.json)，复现方式见[测试 fixture](../../../api/tests/Fixtures/LegacyTrafficBatchCapture/README.md)，行为见[契约](../../../contracts/v2/legacy-traffic-batch-capture-v1.md)。默认关闭，不应用 Subscription/Terms/用量/资金投影；无标识旧流量与其他未覆盖 writer 仍阻断完整迁移门禁。

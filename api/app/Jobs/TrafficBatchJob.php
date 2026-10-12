@@ -3,6 +3,8 @@
 namespace App\Jobs;
 
 use App\Services\TrafficUsage;
+use App\Services\Subscription\LegacyCaptureShadowException;
+use App\Services\Subscription\LegacyUserMutationCapture;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -30,6 +32,13 @@ class TrafficBatchJob implements ShouldQueue
         return [5, 20, 60];
     }
 
+    public function failed(?\Throwable $exception): void
+    {
+        if ($exception instanceof LegacyCaptureShadowException) {
+            Log::error('LEGACY_TRAFFIC_BATCH_CAPTURE_RETRIES_EXHAUSTED');
+        }
+    }
+
     public function __construct(
         private readonly array $server,
         private readonly array $data,
@@ -55,6 +64,8 @@ class TrafficBatchJob implements ShouldQueue
         $acceptedUsers = [];
 
         $settled = DB::transaction(function () use ($serverId, $rate, $hash, $data, &$acceptedUsers) {
+            // A deadlock retry must notify only the successful transaction's users.
+            $acceptedUsers = [];
             // Serialise batches for one server and prevent duplicate stat rows
             // even on databases without composite unique statistics indexes.
             $server = DB::table('tx_server')->where('id', $serverId)->lockForUpdate()->first();
@@ -80,6 +91,10 @@ class TrafficBatchJob implements ShouldQueue
                 return false;
             }
 
+            // Native duplicates bypass capture even if its context or schema later becomes unavailable.
+            $capture = config('legacy_capture_shadow.enabled') === false
+                ? null : app(LegacyUserMutationCapture::class);
+
             // P4: one indexed SELECT per bounded chunk, not one SELECT for
             // every individual user and statistics row. Lock users in ID order
             // to preserve deterministic lock acquisition across replay batches.
@@ -99,8 +114,10 @@ class TrafficBatchJob implements ShouldQueue
                     $usersById[(int) $user->id] = $user;
                 }
 
-                $stats = DB::table('tx_stat_user')->where($statKey)
-                    ->whereIn('user_id', $ids)->get(['id', 'user_id']);
+                $statsQuery = DB::table('tx_stat_user')->where($statKey)->whereIn('user_id', $ids);
+                // An explicit capture transaction may enter with an older MVCC
+                // snapshot. Current rows are needed under its existing User fence.
+                $stats = ($capture === null ? $statsQuery : $statsQuery->sharedLock())->get(['id', 'user_id']);
                 foreach ($stats as $stat) {
                     $statsByUser[(int) $stat->user_id] = $stat;
                 }
@@ -119,6 +136,8 @@ class TrafficBatchJob implements ShouldQueue
                     || $billedDown > PHP_INT_MAX - (int) $user->d) {
                     throw new RuntimeException('User traffic counter overflow');
                 }
+
+                $before = $capture?->beginTrafficBatchSettlement((int) $uid, $serverId);
 
                 DB::table('tx_user')->where('id', $uid)->incrementEach([
                     'u' => $billedUp, 'd' => $billedDown,
@@ -142,6 +161,8 @@ class TrafficBatchJob implements ShouldQueue
                     ]);
                 }
 
+                $capture?->appendTrafficBatchSettlement($before);
+
                 $rawUp += $up;
                 $rawDown += $down;
                 $acceptedUsers[] = (int) $uid;
@@ -162,7 +183,8 @@ class TrafficBatchJob implements ShouldQueue
                 'record_at' => $this->recordAt,
                 'record_type' => 'd',
             ];
-            $stat = DB::table('tx_stat_server')->where($where)->first();
+            $statQuery = DB::table('tx_stat_server')->where($where);
+            $stat = ($capture === null ? $statQuery : $statQuery->sharedLock())->first();
             if ($stat) {
                 DB::table('tx_stat_server')->where('id', $stat->id)->incrementEach([
                     'u' => $rawUp, 'd' => $rawDown,

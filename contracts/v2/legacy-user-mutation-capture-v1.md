@@ -4,6 +4,14 @@ Status: isolated local/testing implementation slice. Legacy User remains authori
 
 ## Writer and configuration
 
+The original seven policies below are extended by
+[identified traffic batch settlement](legacy-traffic-batch-capture-v1.md).
+That eighth policy is `traffic.batch.settle` /
+`traffic-batch-capture/v1` /
+`system_node_traffic_settlement`, referencing the locked Server as a work item.
+Existing seven-policy evidence, event hashes and stream context remain unchanged.
+Unidentified Node traffic remains uncovered.
+
 Seven fixed existing transactions are captured: authenticated Admin `UserEditorController::update`, verified-provider `WalletRechargeService::settleVerified`, the locked core transaction in `OrderService::open`, the native new-create closure of `OrderService::createFromRequest`, the wallet-refund branch inside `OrderService::cancel`, authenticated User `CommissionController::transfer`, and the selected standalone cron due-reset in `TrafficResetService::performReset`. The Admin dynamic path, permission checks, compare-and-swap snapshots, exact major-to-minor conversion, response, and existing hooks remain in place. Admin capture starts after the User lock, before in-transaction hooks. Post-commit hooks remain outside scope. Capture always reads the actual database row again after save.
 
 Recharge retains the existing provider signature/amount verification boundary and Recharge → User lock order. Capture starts only after its existing successful User lock and balance headroom check; it appends after both User credit and Recharge PAID saves, before the original transaction returns. Principal alone is credited; fee arithmetic, native replay checks, callback persistence and raw HTTP ACK remain authoritative. Recharge creation/checkout produce no wallet credit or settlement event. Replayed paid callbacks return their native result without another event. Capture failure rolls the entire settlement back; `PaymentNotificationProcessor` catches only the fixed capture exception separately, logs its code as a plain string without Throwable/context/trace/arguments, and returns the existing 500/fail response. Other errors follow their original handling.
