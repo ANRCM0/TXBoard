@@ -159,7 +159,7 @@ jobs:
             echo "Retired binary artifacts were reintroduced" >&2
             exit 1
           fi
-          if grep -Fq "$legacy_docker_alias" Makefile Dockerfile; then
+          if grep -Eq "(^|[^[:alnum:]_.-])${legacy_docker_alias}([^[:alnum:]_.-]|$)" Makefile Dockerfile; then
             echo "Retired Docker alias was reintroduced" >&2
             exit 1
           fi

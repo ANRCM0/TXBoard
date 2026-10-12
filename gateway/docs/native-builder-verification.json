@@ -1,0 +1,290 @@
+{
+  "status": "local_native_builder_gates_passed; real image gates pending remote CI",
+  "base_commit": "84629cd8caecff60c156fd63846506dd58be757b",
+  "source_overlay": {
+    "gateway/Dockerfile": "386a0f18cc48c657d11b0e1a5a9736bf06aa8c82f2cbef4b34a24eeb0898cb0b",
+    "gateway/.dockerignore": "09303357a9ee5ae7ebbde5435a5eb9e9c6d1c24bfce9cc205cc1f4cb3ed4c41a",
+    "gateway/scripts/validate-portable-dependencies.mjs": "0623311d43c29bde8f390908cc8c6dc29c80b7fde3159c20d171658e6901040b",
+    "gateway/scripts/tests/validate-portable-dependencies.test.mjs": "7d2764b77582d2878938ab32330ed63e38f7ccdfd37ba9f439395ade06825de0",
+    "gateway/scripts/image-runtime-path.sh": "726a49ca8b8c2058d95e4cc15290dce8eb2c0f980125af7384670b6c83964c7b",
+    "gateway/docs/monorepo-current.md": "41db7a08be2d617a28abfd54b2cfdf68e8461c7d0f0f00330ce8e4b01ea2fbcb"
+  },
+  "snapshot_v1": "/opt/txboard-baseline/gateway-native-builder-84629-v1",
+  "snapshot_v2": "/opt/txboard-baseline/gateway-native-builder-84629-v2/repository/gateway",
+  "snapshot_source_files": 300,
+  "unchanged_source_between_attempts": true,
+  "package_lock_sha256": "a60bdbf6de2788282dfa87077316f55df950c7192e6a33960ead97dc953dc940",
+  "production_graph_fingerprint": "bc350256f3ec3bb3b41894585d11819c51fef1cf2b857562d2d31cdb8044e3b7",
+  "environment": {
+    "os": "Alpine Linux 3.22.6 in task-specific WSL2",
+    "architecture": "linux/amd64",
+    "node": "22.23.2",
+    "npm": "11.6.4",
+    "network": "offline cached npm packages; no Core/SMTP/Redis/Docker daemon contacted"
+  },
+  "checks": {
+    "guard_tests": {
+      "windows": {
+        "passed": 38,
+        "skipped": 0
+      },
+      "linux": {
+        "passed": 38,
+        "skipped": 0
+      },
+      "main_tests": 7,
+      "subtests": 31,
+      "coverage": [
+        "reviewed tree accepted",
+        "dev-only changes accepted",
+        "production version/integrity/graph and installed declaration drift rejected",
+        "platform metadata and install/prepare hooks rejected",
+        "native suffixes and ELF/PE/Mach-O magic rejected",
+        "missing/wrong/dev packages rejected",
+        "bin and symlink indirection rejected"
+      ]
+    },
+    "existing_check": {
+      "gateway_tests": 713,
+      "sdk_tests": 68,
+      "typecheck": "passed",
+      "build": "passed",
+      "attempt": "v1; unchanged source reused for v2 narrow checks"
+    },
+    "real_builder_sequence": {
+      "scope": "real local Alpine amd64 Docker-order npm ci/build/prune/guard; not a Docker image or ARM64 runtime",
+      "offline_ci": true,
+      "production_lock_entries_exactly_equal": true,
+      "source_lock_unchanged": true,
+      "dist_extensions": [
+        ".js",
+        ".map",
+        ".ts"
+      ]
+    },
+    "prune_guard": {
+      "result": "portable",
+      "production_fingerprint": "bc350256f3ec3bb3b41894585d11819c51fef1cf2b857562d2d31cdb8044e3b7",
+      "installed_entries": 14,
+      "scanned_files": 4053
+    },
+    "npm_production_dependency_tree": "npm ls --omit=dev --all --json exit 0",
+    "documentation": {
+      "markdown_files": 49,
+      "relative_links": 290,
+      "attempt": "v2 with committed root context; Windows actual monorepo also passed"
+    },
+    "static": [
+      "Node syntax passed",
+      "runtime classifier selects guard and excludes tests/docs",
+      "Docker context permits only guard script",
+      "post-prune guard precedes target-platform runtime stage",
+      "Bash syntax and git diff --check passed"
+    ]
+  },
+  "retained_failures": [
+    {
+      "attempt": "v1 docs",
+      "result": "7 missing monorepo root links in gateway-only test snapshot",
+      "resolution": "v2 added six committed root context files; product unchanged"
+    },
+    {
+      "attempt": "v1 byte-exact build-local lock assertion",
+      "result": "npm rewrote 10 development optional-package libc metadata fields",
+      "resolution": "read-only diff proved all 17 complete production entries equal; v2 asserts exact known dev-only metadata removal, source lock unchanged, and original production fingerprint"
+    }
+  ],
+  "lock_metadata_inspection": {
+    "production_entries_exactly_equal": true,
+    "source_lock_unchanged": true,
+    "build_local_dev_metadata_changes": [
+      {
+        "path": "node_modules/@rolldown/binding-linux-arm64-gnu",
+        "only_removed_key": "libc",
+        "dev": true
+      },
+      {
+        "path": "node_modules/@rolldown/binding-linux-arm64-musl",
+        "only_removed_key": "libc",
+        "dev": true
+      },
+      {
+        "path": "node_modules/@rolldown/binding-linux-ppc64-gnu",
+        "only_removed_key": "libc",
+        "dev": true
+      },
+      {
+        "path": "node_modules/@rolldown/binding-linux-s390x-gnu",
+        "only_removed_key": "libc",
+        "dev": true
+      },
+      {
+        "path": "node_modules/@rolldown/binding-linux-x64-gnu",
+        "only_removed_key": "libc",
+        "dev": true
+      },
+      {
+        "path": "node_modules/@rolldown/binding-linux-x64-musl",
+        "only_removed_key": "libc",
+        "dev": true
+      },
+      {
+        "path": "node_modules/lightningcss-linux-arm64-gnu",
+        "only_removed_key": "libc",
+        "dev": true
+      },
+      {
+        "path": "node_modules/lightningcss-linux-arm64-musl",
+        "only_removed_key": "libc",
+        "dev": true
+      },
+      {
+        "path": "node_modules/lightningcss-linux-x64-gnu",
+        "only_removed_key": "libc",
+        "dev": true
+      },
+      {
+        "path": "node_modules/lightningcss-linux-x64-musl",
+        "only_removed_key": "libc",
+        "dev": true
+      }
+    ]
+  },
+  "evidence": [
+    {
+      "file": ".tmp/gateway-native-builder-evidence/v1/builder-ci.log",
+      "sha256": "148022a0333d97ad0f2a64c421b881008f1be7618c8748d9fec07f4b360d76d4"
+    },
+    {
+      "file": ".tmp/gateway-native-builder-evidence/v1/builder-ci.result.json",
+      "sha256": "6b849595a84c7670e9b0d905ad91af4fabdb04397ee6f5ff16651b3df181ddf2"
+    },
+    {
+      "file": ".tmp/gateway-native-builder-evidence/v1/builder-portable.log",
+      "sha256": "355f00f9cf522ac2998858d46d2e9c3bc6c4437832c48e420ff457e0f3814f11"
+    },
+    {
+      "file": ".tmp/gateway-native-builder-evidence/v1/builder-portable.result.json",
+      "sha256": "5501bdf1f3e5823e3f259ee60010644b3c7f2884238cc92687c3e30fe51b737a"
+    },
+    {
+      "file": ".tmp/gateway-native-builder-evidence/v1/builder-prune.log",
+      "sha256": "796a84f39d99ff056d30852c11bb059afe774370a21957fd66ad47ac1bfe838a"
+    },
+    {
+      "file": ".tmp/gateway-native-builder-evidence/v1/builder-prune.result.json",
+      "sha256": "bd89a655033c0a55b4d2e25cdb52e6ca26c5b98fad1a5c4c4e61feadc9a768ff"
+    },
+    {
+      "file": ".tmp/gateway-native-builder-evidence/v1/builder-tsc.log",
+      "sha256": "88bcad0cc1fdef1449df051fef84564644555a837fe8b54f2bfb32f98be9ce9f"
+    },
+    {
+      "file": ".tmp/gateway-native-builder-evidence/v1/builder-tsc.result.json",
+      "sha256": "c28eb9fdd7c1e98b6e321b89d91cc777f4a952af8345640cbef46b6b8a6f3017"
+    },
+    {
+      "file": ".tmp/gateway-native-builder-evidence/v1/check.log",
+      "sha256": "b7c77e6b94194e34850ab01eb16da2d20fe1f03665a068ed9c4f04bf37fb719d"
+    },
+    {
+      "file": ".tmp/gateway-native-builder-evidence/v1/check.result.json",
+      "sha256": "d96115ee550d21cd30944f11d0540d5f593cc3c5ebe14ceb1db227d21aecc299"
+    },
+    {
+      "file": ".tmp/gateway-native-builder-evidence/v1/docs.log",
+      "sha256": "0c9f9bdea25000c85b82dc2c891f56238cbc45159327f3507c6b562aacd49a47"
+    },
+    {
+      "file": ".tmp/gateway-native-builder-evidence/v1/docs.result.json",
+      "sha256": "baa6f1a0dfdaab759d53165e24dc666a9c226219b57d0c3856c353ddec0033be"
+    },
+    {
+      "file": ".tmp/gateway-native-builder-evidence/v1/lock-metadata-inspection.json",
+      "sha256": "a9cb9593daf989b9368e7de464dcb77d057b473e6563ad0bb11bf03ea46da8f3"
+    },
+    {
+      "file": ".tmp/gateway-native-builder-evidence/v1/portable-tests.log",
+      "sha256": "25039389cb42f11d94dd86bd5a174cc80eddfe078b40a1c9aefbd1a78a92a855"
+    },
+    {
+      "file": ".tmp/gateway-native-builder-evidence/v1/portable-tests.result.json",
+      "sha256": "ebd49fb650a513e5ebe4f05e1adc12666f4dae09678d6d1b268dd1b7a84cccd1"
+    },
+    {
+      "file": ".tmp/gateway-native-builder-evidence/v1/source-freeze.json",
+      "sha256": "42edc6a373cb50260fd04ab0957a8b9a9056aa86bc8c352e0867dbffc6bf61bc"
+    },
+    {
+      "file": ".tmp/gateway-native-builder-evidence/v2/builder-ci.log",
+      "sha256": "ab08c188fbc58f911c52ec4532e3bac409715faf60024d0b0b3c93d02619f629"
+    },
+    {
+      "file": ".tmp/gateway-native-builder-evidence/v2/builder-ci.result.json",
+      "sha256": "83704e515d03aa5206c04448b49ad1144a42ccd24dd1c8880c52be15512aad04"
+    },
+    {
+      "file": ".tmp/gateway-native-builder-evidence/v2/builder-ls.log",
+      "sha256": "5761b96f2b7663a4cc8f2bffa748aa10a208f5e921d0be02b750cadf2e800ceb"
+    },
+    {
+      "file": ".tmp/gateway-native-builder-evidence/v2/builder-ls.result.json",
+      "sha256": "519d0d8c72363427b0f16e1019f938fe4f5cdc5b7f75a55d62b74c084a68b34d"
+    },
+    {
+      "file": ".tmp/gateway-native-builder-evidence/v2/builder-portable.log",
+      "sha256": "355f00f9cf522ac2998858d46d2e9c3bc6c4437832c48e420ff457e0f3814f11"
+    },
+    {
+      "file": ".tmp/gateway-native-builder-evidence/v2/builder-portable.result.json",
+      "sha256": "d8d45aaadd36d0708b2a7a4aeea688efc8c493208abd7dd6130af371f03821de"
+    },
+    {
+      "file": ".tmp/gateway-native-builder-evidence/v2/builder-prune.log",
+      "sha256": "07346a8ef2e213424383c3e436af29bf637d89b1f7beb8dae8abd9e2bb8c9738"
+    },
+    {
+      "file": ".tmp/gateway-native-builder-evidence/v2/builder-prune.result.json",
+      "sha256": "fdc98e91ed7cffd53152bf765a8ca5d88dc5cc45dd65fd7a49d31de26b69c157"
+    },
+    {
+      "file": ".tmp/gateway-native-builder-evidence/v2/builder-result.json",
+      "sha256": "df72ca844d605a7c612183517a3e1778e5af866c924287052799bd2ce633d74c"
+    },
+    {
+      "file": ".tmp/gateway-native-builder-evidence/v2/builder-tsc.log",
+      "sha256": "88bcad0cc1fdef1449df051fef84564644555a837fe8b54f2bfb32f98be9ce9f"
+    },
+    {
+      "file": ".tmp/gateway-native-builder-evidence/v2/builder-tsc.result.json",
+      "sha256": "e57232e7428435c56eba7375b6d81dc6f34dc9c9ab55a921e87602673ec8b606"
+    },
+    {
+      "file": ".tmp/gateway-native-builder-evidence/v2/docs-corrected.log",
+      "sha256": "05f72a85194d9cffb555555cf2f7af925f52eba96fa35e9cf4cb33806869b6eb"
+    },
+    {
+      "file": ".tmp/gateway-native-builder-evidence/v2/docs-corrected.result.json",
+      "sha256": "96283e554857a7c90901bddd9c835b9dff60085f78cb11fbedd773d4de23fba6"
+    },
+    {
+      "file": ".tmp/gateway-native-builder-evidence/v2/lock-metadata-inspection.json",
+      "sha256": "a38219465b7926d97c6fabaaf2f8e3ed287eadbe4cbed5c397820fd9f09f817e"
+    },
+    {
+      "file": ".tmp/gateway-native-builder-evidence/v2/root-link-context.json",
+      "sha256": "0964109ae3791b9d37333ef9a90877fc040140be7e062c34f813447928fddda8"
+    },
+    {
+      "file": ".tmp/gateway-native-builder-evidence/v2/source-freeze.json",
+      "sha256": "44b24c6f80b88f8743ff8a949800d87d3324329c5bb3c878de5aec6e26fa0e60"
+    }
+  ],
+  "limits": [
+    "local fixture follows Docker npm input/order but does not claim a Docker image build",
+    "ARM64 runtime, GHCR publication and anonymous manifest availability require remote CI",
+    "WebAssembly is rejected for this closed reviewed graph, not classified universally architecture-dependent",
+    "production package upgrades/additions require review and fingerprint update; repository lock and application code unchanged",
+    "no API, Node, live Core, external mail or production checks repeated for this build-only change"
+  ]
+}
