@@ -2,7 +2,7 @@
 
 > 状态：Target / Draft。本批冻结安全边界与验收要求，尚未冻结密码学字节格式；不能据此宣称 SC-v2 已实现或已获安全批准。
 
-B6.1 当前仅有 [实验 metadata codec](metadata-codec-prototype-v1.md) 与独立 Python/Node/Chromium 字节向量。它不执行加密、网络或业务授权，也不冻结正式密码协议；本页门禁继续生效。
+B6.1 已有 [实验 metadata codec](metadata-codec-prototype-v1.md) 与独立 Python/Node/Chromium 字节向量；B6.2 增加 [离线加密实验](offline-crypto-experiment-v1.md) 和 Node/浏览器互通。两者都没有网络或业务消费者，不冻结正式密码协议；共享响应所有权与本页其他门禁继续生效。
 
 ## 1. 当前实现与目标
 

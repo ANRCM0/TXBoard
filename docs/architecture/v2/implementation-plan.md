@@ -1,6 +1,6 @@
 # Core First v2 实施台账
 
-> 状态：B0、B1.1–B1.5 影子证据、Terms 与身份旁观、B2.1–B2.3 单机升级、B3.1/B3.2 隔离用量、B3.3/B3.4 连接观察与事件桶、B4.1/B4.2 合成 Provider、B5.1/B5.2 本地只读 mTLS 接入、B6.1 实验字节 codec 已实现；后续切片推进中。各整阶段仍按下表门禁验收。
+> 状态：B0、B1.1–B1.5 影子证据、Terms 与身份旁观、B2.1–B2.3 单机升级、B3.1/B3.2 隔离用量、B3.3/B3.4 连接观察与事件桶、B4.1/B4.2 合成 Provider、B5.1/B5.2 本地只读 mTLS 接入、B6.1/B6.2 实验字节与离线加密已实现；后续切片推进中。各整阶段仍按下表门禁验收。
 
 ## 1. 批次与关键路径
 
@@ -76,6 +76,8 @@ B5.1 的 [本地只读 Internal API](../../../contracts/v2/core-internal-api/cur
 B5.2 的 [Internal User DTO v2](../../../contracts/v2/core-internal-api/current-user-dto-v2.md) 和 Gateway 本机 mTLS 客户端迁移两个现有用户 GET 的可选上游，沿用 Core 当前认证/归属与现有公网 DTO。默认 Native；只有 local/testing 显式启用才调用，错误配置启动失败，TLS/授权/DTO 错误无 fallback。固定 Core `17fbc9a` 加本片组合 API 共 764 项（745 通过、19 项引擎专测跳过）、5509 断言通过；Gateway 467 项、SDK 33 项及 typecheck/build 通过，实际 Core/Gateway mTLS 24 项通过，代码与基线见 [验证报告](internal-user-v2-verification.json)。管理员 Gateway、生产 PKI 和正式 SC-v2 仍未启用。
 
 B6.1 的 [实验 metadata codec](../../../contracts/v2/secure-channel/metadata-codec-prototype-v1.md) 已推送 Gateway `6adea76c5259a43556dee611e7b932a72d008a3c`，提供独立 SDK 实验 subpath 与 Python/Node/Chromium 固定字节向量。固定 Linux 快照 Gateway 425 项、SDK 40 项和 typecheck/build 通过；实际 Chromium 6 项字节/hash检查、5 项拒绝检查通过。没有加密实现或业务路由，正式响应 key/nonce 构造、独立审查、共享 replay 与业务互操作仍待实施。
+
+B6.2 的 [离线加密实验](../../../contracts/v2/secure-channel/offline-crypto-experiment-v1.md) 已推送 Gateway `2a5d2ee2dd01a7568a0b121236b158fa5339fd8e`。独立实验 subpath 实现 HPKE 请求、域分离 Exporter 响应和先占用后执行的一次性闭包。固定 Linux 源码 Gateway 467 项、SDK 68 项及 typecheck/build 通过，实际 Chromium/Node 四组双向互通及固定向量通过。仅每个闭包有一次性保证；重复打开同一请求仍可派生相同响应材料。共享 owner、防重放、密钥信任/吊销、业务授权与正式密码审查未完成，尚无网络消费者。
 
 首先建立只增不删的订阅/迁移映射骨架，保持现有 User 写入为唯一权威。在隔离数据库副本中，把旧用户映射到稳定 Subscription、Terms、Usage Period 与 Access Subject，再通过只读核对证明额度、有效期、用量和归属保持一致。
 

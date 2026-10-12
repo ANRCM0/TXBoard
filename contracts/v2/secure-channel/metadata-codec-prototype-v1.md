@@ -12,7 +12,8 @@ labels and canonical binary integer/UUID/key/digest values. Secret plaintext is
 outside these public metadata bytes. A request digest binds the complete request
 AAD, encapsulation and ciphertext; response metadata additionally binds its type
 and status. Separate candidate exporter labels include that digest and fit the
-locked HPKE library's 128-byte context limit. The codec performs no cryptographic
+experiment's 128-byte framing limit (locked common 1.10.1 permits 8192 bytes).
+The codec performs no cryptographic
 key/nonce derivation or AEAD. It rejects ambiguous value encodings, but raw JSON
 duplicate rejection must precede it in any future transport.
 
