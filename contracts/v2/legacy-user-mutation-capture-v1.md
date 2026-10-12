@@ -1,5 +1,12 @@
 # Legacy User mutation capture v1
 
+The isolated reward extension is documented in
+[commission and gift reward capture](legacy-reward-capture-v1.md). Its fixed
+three policies cover actual per-Order distribution and primary/inviter gift
+transaction endpoints; native duplicate work, ignored code-save results and
+after-commit Observer source gaps remain explicit. Historical coverage statements
+below retain their original slice scope.
+
 Status: isolated local/testing implementation slice. Legacy User remains authoritative.
 
 ## Writer and configuration

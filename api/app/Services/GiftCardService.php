@@ -10,6 +10,7 @@ use App\Models\GiftCardUsage;
 use App\Models\Plan;
 use App\Models\TrafficResetLog;
 use App\Models\User;
+use App\Services\Subscription\LegacyUserMutationCapture;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -129,7 +130,10 @@ class GiftCardService
                 $this->code->setActualRewards($actualRewards);
             }
 
+            $capture = app(LegacyUserMutationCapture::class);
+            $captureBefore = $capture->beginGiftReward((int) $this->user->id, (int) $this->code->id);
             $this->giveRewards($actualRewards);
+            $capture->appendGiftReward($captureBefore);
 
             $inviteRewards = null;
             if ($this->user->invite_user_id && isset($actualRewards['invite_reward_rate'])) {
@@ -223,6 +227,9 @@ class GiftCardService
         $rate = $rewards['invite_reward_rate'] ?? 0.2;
         $inviteRewards = [];
 
+        $capture = app(LegacyUserMutationCapture::class);
+        $captureBefore = $capture->beginGiftInviteReward((int) $inviteUser->id, (int) $this->code->id);
+
         $userService = app(UserService::class);
 
         // 邀请人余额奖励
@@ -246,6 +253,7 @@ class GiftCardService
             }
         }
 
+        $capture->appendGiftInviteReward($captureBefore);
         return $inviteRewards;
     }
 

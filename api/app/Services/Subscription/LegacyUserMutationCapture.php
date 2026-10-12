@@ -20,6 +20,9 @@ final class LegacyUserMutationCapture
         'traffic.reset.cron' => ['version' => 'traffic-cron-reset-capture/v1', 'actor_domain' => 'system_traffic_reset'],
         'traffic.batch.settle' => ['version' => 'traffic-batch-capture/v1', 'actor_domain' => 'system_node_traffic_settlement'],
         'traffic.fetch.apply' => ['version' => 'traffic-fetch-capture/v1', 'actor_domain' => 'system_legacy_traffic_fetch'],
+        'commission.distribute' => ['version' => 'commission-distribution/v1', 'actor_domain' => 'system_commission_distribution'],
+        'gift.reward.apply' => ['version' => 'gift-reward-capture/v1', 'actor_domain' => 'system_gift_redemption'],
+        'gift.invite.reward' => ['version' => 'gift-invite-capture/v1', 'actor_domain' => 'system_gift_redemption'],
     ];
     public const FIELDS = ['id', 'plan_id', 'group_id', 'transfer_enable', 'u', 'd',
         'speed_limit', 'device_limit', 'expired_at', 'last_reset_at', 'next_reset_at',
@@ -73,6 +76,24 @@ final class LegacyUserMutationCapture
     public function beginLegacyTrafficFetch(int $userId, int $queuedServerId): ?array
     {
         return $this->beginWriter($userId, 'traffic.fetch.apply', $queuedServerId);
+    }
+
+    /** Native distribution transaction: locked inviter, referenced queued Order, no new dedupe. */
+    public function beginCommissionDistribution(int $userId, int $orderId): ?array
+    {
+        return $this->beginWriter($userId, 'commission.distribute', $orderId);
+    }
+
+    /** Native redemption transaction, after code/template/User locks and eligibility checks. */
+    public function beginGiftReward(int $userId, int $codeId): ?array
+    {
+        return $this->beginWriter($userId, 'gift.reward.apply', $codeId);
+    }
+
+    /** Same redemption transaction, after the actual inviter User lock. */
+    public function beginGiftInviteReward(int $userId, int $codeId): ?array
+    {
+        return $this->beginWriter($userId, 'gift.invite.reward', $codeId);
     }
 
     /** At the native refund's first User-lock position, after the PENDING Order lock. */
@@ -131,6 +152,21 @@ final class LegacyUserMutationCapture
     public function appendLegacyTrafficFetch(?array $before): void
     {
         $this->appendWriter($before, 'traffic.fetch.apply');
+    }
+
+    public function appendCommissionDistribution(?array $before): void
+    {
+        $this->appendWriter($before, 'commission.distribute');
+    }
+
+    public function appendGiftReward(?array $before): void
+    {
+        $this->appendWriter($before, 'gift.reward.apply');
+    }
+
+    public function appendGiftInviteReward(?array $before): void
+    {
+        $this->appendWriter($before, 'gift.invite.reward');
     }
 
     private function beginWriter(int $userId, string $kind, ?int $actorId = null, bool $exclusiveSource = false): ?array
@@ -268,7 +304,7 @@ final class LegacyUserMutationCapture
                         'content_hash' => $event['content_hash'], 'source_kind' => $event['source_kind'],
                         'source_version' => $event['source_version'], 'actor_id' => $event['actor_id'],
                         'actor_domain' => self::POLICIES[$event['source_kind']]['actor_domain']]
-                        + (in_array($event['source_kind'], ['order.fulfill', 'order.create', 'order.cancel.refund', 'commission.transfer', 'traffic.reset.cron', 'traffic.batch.settle', 'traffic.fetch.apply'], true)
+                        + (in_array($event['source_kind'], ['order.fulfill', 'order.create', 'order.cancel.refund', 'commission.transfer', 'traffic.reset.cron', 'traffic.batch.settle', 'traffic.fetch.apply', 'commission.distribute', 'gift.reward.apply', 'gift.invite.reward'], true)
                             ? ['capture_boundary' => 'transaction-only'] : []);
                     $result['next_cursor'] = (string) $sequence;
                 }

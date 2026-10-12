@@ -6,6 +6,7 @@ use App\Models\CommissionLog;
 use Illuminate\Console\Command;
 use App\Models\Order;
 use App\Models\User;
+use App\Services\Subscription\LegacyUserMutationCapture;
 use Illuminate\Support\Facades\DB;
 
 class CheckCommission extends Command
@@ -98,11 +99,15 @@ class CheckCommission extends Command
             ];
         }
         for ($l = 0; $l < $level; $l++) {
-            $inviter = User::find($inviteUserId);
+            $inviter = config('legacy_capture_shadow.enabled') === false
+                ? User::find($inviteUserId)
+                : User::lockForUpdate()->find($inviteUserId);
             if (!$inviter) continue;
             if (!isset($commissionShareLevels[$l])) continue;
             $commissionBalance = $order->commission_balance * ($commissionShareLevels[$l] / 100);
             if (!$commissionBalance) continue;
+            $capture = app(LegacyUserMutationCapture::class);
+            $captureBefore = $capture->beginCommissionDistribution((int) $inviter->id, (int) $order->id);
             if ((int)admin_setting('withdraw_close_enable', 0)) {
                 $inviter->increment('balance', $commissionBalance);
             } else {
@@ -122,6 +127,7 @@ class CheckCommission extends Command
             $inviteUserId = $inviter->invite_user_id;
             // update order actual commission balance
             $order->actual_commission_balance = $order->actual_commission_balance + $commissionBalance;
+            $capture->appendCommissionDistribution($captureBefore);
         }
         return true;
     }
