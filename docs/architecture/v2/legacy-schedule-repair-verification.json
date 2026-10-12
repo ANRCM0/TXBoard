@@ -1,0 +1,109 @@
+{
+  "profile": "legacy-schedule-repair-capture/verification-v1",
+  "committed_base": "e47a775798cdf24af0c78e5957a1e02975937a27",
+  "source_sha256": {
+    "api/app/Services/TrafficResetService.php": "f9bbea534e86fbd8a6831cc58ca6d612b7831c5375af1453d73efb22d15f356b",
+    "api/app/Console/Commands/ResetTraffic.php": "677e6c52dc97dfac8b5c5858fe753b2328151194babad17fe9897a9bb2135cc4",
+    "api/app/Services/Subscription/LegacyUserMutationCapture.php": "fa05452caa9d468544857f62b0f0c6372fbad582fe9a87052ae17e8cd2749104",
+    "api/tests/Feature/Subscription/LegacyScheduleRepairCaptureTest.php": "f085eb1682e59600003e5a1cb17d6b683dd9709f75cd02c985cb9acfdfe0687c"
+  },
+  "source_sha256_lf": {
+    "api/app/Services/TrafficResetService.php": "f9bbea534e86fbd8a6831cc58ca6d612b7831c5375af1453d73efb22d15f356b",
+    "api/app/Console/Commands/ResetTraffic.php": "677e6c52dc97dfac8b5c5858fe753b2328151194babad17fe9897a9bb2135cc4",
+    "api/app/Services/Subscription/LegacyUserMutationCapture.php": "fa05452caa9d468544857f62b0f0c6372fbad582fe9a87052ae17e8cd2749104",
+    "api/tests/Feature/Subscription/LegacyScheduleRepairCaptureTest.php": "f085eb1682e59600003e5a1cb17d6b683dd9709f75cd02c985cb9acfdfe0687c"
+  },
+  "snapshot_manifest_sha256": "ee6ba97e100f28c08b8242d157bc21404e41cf7a70d99152cf0b73444fdeaa13",
+  "composer_lock_sha256": "f47b212c2fc530a7820e370eab7c6d624d13962e7d26e4f2ddf57a11848257c0",
+  "installed_json_sha256": "8e668e456c9772ae428a038ab003fba5752ab2591980fc8396d9122851145b80",
+  "test_configuration_sha256": "2cf7e39168bbf54f1c82cf8e845549237c8a202c36b220595c241d62e2cdb3b6",
+  "fixture_environment": {
+    "APP_ENV": "testing",
+    "APP_KEY": "base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+    "REDIS_HOST": "127.0.0.1",
+    "REDIS_PORT": "16380",
+    "REDIS_DB": "18",
+    "REDIS_CACHE_DB": "19",
+    "REDIS_PREFIX": "txboard_schedule_repair_gate_",
+    "CACHE_PREFIX": "txboard_schedule_repair_gate_",
+    "CACHE_DRIVER": "array",
+    "CACHE_STORE": "array",
+    "SETTING_CACHE_STORE": "array",
+    "QUEUE_CONNECTION": "sync",
+    "MAIL_MAILER": "array",
+    "SESSION_DRIVER": "array"
+  },
+  "mysql_scope": {
+    "host": "127.0.0.1",
+    "port": 13306,
+    "database": "txboard_concurrency_test"
+  },
+  "gates": {
+    "static": {
+      "mode": "static",
+      "exit_code": 0,
+      "log_sha256": "6aaea6483a21f29353f907919ccff8898b9d894526e5f81a46bc7a3498f1927b",
+      "log": "static.log"
+    },
+    "slice-sqlite": {
+      "mode": "slice-sqlite",
+      "exit_code": 0,
+      "log_sha256": "cd08bd84bba240649ea8fbd0850b6fae8cf4d5ca9f1f8198a1356b90e2e93784",
+      "log": "slice-sqlite.log",
+      "counts": {
+        "tests": 9,
+        "skipped": 2,
+        "failures": 0,
+        "errors": 0,
+        "assertions": 73
+      }
+    },
+    "slice-mariadb": {
+      "mode": "slice-mariadb",
+      "exit_code": 0,
+      "log_sha256": "040d04d08b72ce15152a34aeae547eae3b355b4129e46fdd48e3d4b946e78cad",
+      "log": "slice-mariadb.log",
+      "counts": {
+        "tests": 9,
+        "skipped": 0,
+        "failures": 0,
+        "errors": 0,
+        "assertions": 94
+      }
+    },
+    "full": {
+      "mode": "full",
+      "exit_code": 0,
+      "log_sha256": "92b3d44d466b5467d4547cd64c3846b99a4af8809c3295f3661786cb9b02c80e",
+      "log": "full.log",
+      "counts": {
+        "tests": 1166,
+        "skipped": 99,
+        "failures": 0,
+        "errors": 0,
+        "assertions": 10795
+      }
+    }
+  },
+  "native_behavior": {
+    "explicit_cli_marker_only": true,
+    "no_marker_path_unchanged": true,
+    "current_user_eligibility_rechecked": true,
+    "per_user_transaction": true,
+    "schedule_only": true,
+    "later_failure_retains_earlier_commit": true,
+    "native_partial_batch_success_exit_preserved": true,
+    "ignored_save_false_does_not_manufacture_event": true,
+    "fix_null_replay_is_noop": true
+  },
+  "scope": {
+    "default_enabled": false,
+    "isolated_synthetic_only": true,
+    "legacy_authority_unchanged": true,
+    "projection_applied": false,
+    "global_writer_coverage_complete": false,
+    "migration_gate_open": false,
+    "power_loss_durability_proven": false,
+    "post_commit_notification_recovered": false
+  }
+}

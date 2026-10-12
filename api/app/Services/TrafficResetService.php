@@ -402,6 +402,30 @@ class TrafficResetService
     }
   }
 
+  /** Explicit isolated CLI repair, preserving original schedule-only calculation. */
+  public function repairScheduleCaptured(int $userId, bool $onlyMissing): bool
+  {
+    if (DB::transactionLevel() !== 0) {
+      throw new LegacyCaptureShadowException('CAPTURE_SCHEDULE_OUTER_TRANSACTION_UNSUPPORTED');
+    }
+    return DB::transaction(function () use ($userId, $onlyMissing): bool {
+      $user = User::whereKey($userId)->lockForUpdate()->first();
+      if (!$user || !$user->isActive() || ($onlyMissing && $user->next_reset_at !== null)) {
+        return false;
+      }
+      $capture = app(LegacyUserMutationCapture::class);
+      $before = $capture->beginScheduleRepair((int) $user->id);
+      $nextResetTime = $this->calculateNextResetTime($user);
+      if (!$nextResetTime) {
+        return false;
+      }
+      $user->next_reset_at = $nextResetTime->timestamp;
+      $user->save();
+      $capture->appendScheduleRepair($before);
+      return true;
+    });
+  }
+
   /**
    * Get the user's traffic reset history.
    */

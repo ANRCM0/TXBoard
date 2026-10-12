@@ -1,5 +1,10 @@
 # Legacy User mutation capture v1
 
+Explicit [schedule-repair CLI capture](legacy-schedule-repair-capture-v1.md)
+extends fix-null/force only with `--capture-schedule`; their unmarked historical
+paths remain unchanged. It is separate from counter reset and after-commit
+Observer capture, and does not prove all legacy writer coverage.
+
 The additional default-off
 [standalone reset extension](legacy-standalone-reset-capture-v1.md) captures
 independent manual/user-access/other native reset transactions. Existing due

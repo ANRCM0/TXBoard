@@ -1,6 +1,6 @@
 # Core First v2 实施台账
 
-> 状态：B0、B1.1–B1.17 影子证据、Terms、身份旁观与固定 writer 捕获、B2.1–B2.3 单机升级、B3.1/B3.2 隔离用量、B3.3/B3.4 本地观察与持久事件桶、B4.1–B4.5 合成 Provider、插件停用接入、租约候选与离线签名快照、B5.1–B5.10 本地 mTLS 读取、隔离建单、登录与内存邮件验证码、B6.1–B6.3 实验字节、离线加密与共享 owner 实验已实现；两仓迁移与三镜像发布已完成，继续推进业务迁移切片。各整阶段仍按下表门禁验收。
+> 状态：B0、B1.1–B1.18 影子证据、Terms、身份旁观与固定 writer 捕获、B2.1–B2.3 单机升级、B3.1/B3.2 隔离用量、B3.3/B3.4 本地观察与持久事件桶、B4.1–B4.5 合成 Provider、插件停用接入、租约候选与离线签名快照、B5.1–B5.10 本地 mTLS 读取、隔离建单、登录与内存邮件验证码、B6.1–B6.3 实验字节、离线加密与共享 owner 实验已实现；两仓迁移与三镜像发布已完成，继续推进业务迁移切片。各整阶段仍按下表门禁验收。
 
 2026-10-13，按仓库整合任务，将 Gateway/Node 的完整 Git 历史导入本仓 `gateway/`、`node/`，安装器集中到 TXBoard-Deploy。当前目录与三镜像 CI 见 [双仓布局](../../development/repository-layout.md)；旧基线和验证报告保持当时提交与路径。本次仓库整理独立于下列业务迁移门禁。
 
@@ -269,3 +269,9 @@ Node [当前契约](https://github.com/ANRCM0/TX-Node/blob/main/docs/local-event
 独立 `LEGACY_STANDALONE_RESET_CAPTURE_ENABLED=false` 开关只覆盖原 `performReset` 在 SQL level zero 且非 due-cron policy 的调用。固定 `traffic.reset.standalone` 记录当前 User 原重置端点；manual/auto/api/user_access/order/gift_card/forced-cron 标签是可信 PHP 来源，不能推定调用身份。原 Admin 鉴权/路径、locked eligibility、日历/日志/metadata/cache/hook 和 false/409 语义保持；nested Order/gift/hook reset 仍由外层 ticket 捕获，未增加内部冲突事件。
 
 固定 B1.16 `5a8f06d` 加四个 PHP 文件；SQLite 10 通过 / 2 专测跳过 / 202 断言，MariaDB 12 全通过 / 229 断言，包含 stale User 等锁后当前读、重复手动重置和真实提交前后 SIGKILL。全 API 1060 通过 / 97 引擎专测跳过 / 10722 断言。查看[契约](../../../contracts/v2/legacy-standalone-reset-capture-v1.md)、[fixture](../../../api/tests/Fixtures/LegacyStandaloneResetCapture/README.md)和[验证报告](legacy-standalone-reset-verification.json)。原 post-commit order reset 可独立接入连续链；未知结果重放仍是另一重置，force/fix-null/initial schedule、其他 writer、v2 周期投影与通知恢复仍待完成。
+
+### B1.18 隔离副本显式重置时间修正捕获
+
+原 `reset:traffic --fix-null/--force` 只在新增 `--capture-schedule` marker 下使用每 User 独占事务、当前资格重查和固定 `user.schedule.repair` 证据；原候选遍历、日历、save false 和部分成功 exit 行为保持。只修正 next_reset_at，不能推定 counter reset、原始创建、CLI 授权或全局停写。无 marker 路径零捕获 SQL；失败 User 回滚，已完成 User 保留，固定日志不带秘密上下文。
+
+固定 B1.17 `e47a775` 加四个 PHP 文件；SQLite 7 通过 / 2 专测跳过 / 73 断言，MariaDB 9 全通过 / 94 断言，包含等锁后 fix-null 已不符合条件跳过及真实修正提交前后 SIGKILL。全 API 1067 通过 / 99 引擎专测跳过 / 10795 断言。查看[契约](../../../contracts/v2/legacy-schedule-repair-capture-v1.md)、[fixture](../../../api/tests/Fixtures/LegacyScheduleRepairCapture/README.md)和[验证报告](legacy-schedule-repair-verification.json)。其余 creation/deletion/plugin/initial schedule writer、影子投影和生产权威切换仍未完成。
