@@ -6,6 +6,8 @@ TX-Node 支持 `sing-box` / `xray-core` 双内核。安装、升级、回滚与�
 
 运行时职责收口规则见 [`docs/runtime-boundary.md`](docs/runtime-boundary.md)。
 
+下一轮 Core First 演进参考 [主仓 B0 基线](https://github.com/ANRCM0/TXBoard/blob/main/docs/architecture/v2/README.md)、[Node Usage v2](https://github.com/ANRCM0/TXBoard/blob/main/contracts/v2/node-usage/README.md) 与 [Credential Provider v1](https://github.com/ANRCM0/TXBoard/blob/main/contracts/v2/credential-provider/README.md)（Target/Draft）。订阅计费身份、持久接收 ACK、授权租约与撤销版本尚未替代现行 v1；当前 202/queued 仅代表入队。
+
 项目起源于 [cedar2025/Xboard-Node](https://github.com/cedar2025/Xboard-Node)。TX-Node 保留 Xboard 面板 API、认证字段和现有节点配置的协议兼容，但不再以周期性同步上游作为开发模式；上游后续修复会按需审查并选择性移植。独立维护策略见 [`docs/standalone.md`](docs/standalone.md)。
 
 ## Control Plane Provider 支持状态
