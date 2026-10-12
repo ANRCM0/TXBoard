@@ -17,6 +17,7 @@ final class LegacyUserMutationCapture
         'order.create' => ['version' => 'order-create-capture/v1', 'actor_domain' => 'authenticated_user'],
         'order.cancel.refund' => ['version' => 'order-cancel-refund-capture/v1', 'actor_domain' => 'system_order_cancellation'],
         'commission.transfer' => ['version' => 'commission-transfer-capture/v1', 'actor_domain' => 'authenticated_user'],
+        'traffic.reset.cron' => ['version' => 'traffic-cron-reset-capture/v1', 'actor_domain' => 'system_traffic_reset'],
     ];
     public const FIELDS = ['id', 'plan_id', 'group_id', 'transfer_enable', 'u', 'd',
         'speed_limit', 'device_limit', 'expired_at', 'last_reset_at', 'next_reset_at',
@@ -52,6 +53,12 @@ final class LegacyUserMutationCapture
     public function beginCommissionTransfer(int $userId): ?array
     {
         return $this->beginWriter($userId, 'commission.transfer', $userId);
+    }
+
+    /** Standalone due cron transaction only; caller holds the actual User exclusive lock. */
+    public function beginCronTrafficReset(int $userId): ?array
+    {
+        return $this->beginWriter($userId, 'traffic.reset.cron', $userId);
     }
 
     /** At the native refund's first User-lock position, after the PENDING Order lock. */
@@ -97,6 +104,11 @@ final class LegacyUserMutationCapture
         $this->appendWriter($before, 'commission.transfer');
     }
 
+    public function appendCronTrafficReset(?array $before): void
+    {
+        $this->appendWriter($before, 'traffic.reset.cron');
+    }
+
     private function beginWriter(int $userId, string $kind, ?int $actorId = null, bool $exclusiveSource = false): ?array
     {
         if (config('legacy_capture_shadow.enabled') === false) {
@@ -129,7 +141,7 @@ final class LegacyUserMutationCapture
             $this->require($context === $before['context'], 'CAPTURE_CONTEXT_DRIFT');
             $source = $this->snapshot($before['source']);
             $userId = (int) $source['id'];
-            $this->require(!in_array($kind, ['order.create', 'commission.transfer'], true)
+            $this->require(!in_array($kind, ['order.create', 'commission.transfer', 'traffic.reset.cron'], true)
                 || $actorId === $userId, 'CAPTURE_WRITER_TICKET_INVALID');
             $after = $this->source($userId);
             if ($source === $after) {
@@ -232,7 +244,7 @@ final class LegacyUserMutationCapture
                         'content_hash' => $event['content_hash'], 'source_kind' => $event['source_kind'],
                         'source_version' => $event['source_version'], 'actor_id' => $event['actor_id'],
                         'actor_domain' => self::POLICIES[$event['source_kind']]['actor_domain']]
-                        + (in_array($event['source_kind'], ['order.fulfill', 'order.create', 'order.cancel.refund', 'commission.transfer'], true)
+                        + (in_array($event['source_kind'], ['order.fulfill', 'order.create', 'order.cancel.refund', 'commission.transfer', 'traffic.reset.cron'], true)
                             ? ['capture_boundary' => 'transaction-only'] : []);
                     $result['next_cursor'] = (string) $sequence;
                 }
@@ -387,7 +399,7 @@ final class LegacyUserMutationCapture
             && $payload['legacy_user_id'] === (string) $stream->legacy_user_id
             && isset(self::POLICIES[$payload['source_kind']])
             && $payload['source_version'] === self::POLICIES[$payload['source_kind']]['version']
-            && (!in_array($payload['source_kind'], ['order.create', 'commission.transfer'], true)
+            && (!in_array($payload['source_kind'], ['order.create', 'commission.transfer', 'traffic.reset.cron'], true)
                 || $payload['actor_id'] === $payload['legacy_user_id'])
             && $payload['context_hash'] === $stream->context_hash
             && $payload['before_snapshot']['id'] === $payload['legacy_user_id']

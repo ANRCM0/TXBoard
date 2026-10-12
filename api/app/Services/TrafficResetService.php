@@ -10,6 +10,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
 use App\Services\Plugin\HookManager;
+use App\Services\Subscription\LegacyCaptureShadowException;
+use App\Services\Subscription\LegacyUserMutationCapture;
 
 /**
  * Service for handling traffic reset.
@@ -37,8 +39,12 @@ class TrafficResetService
     array $metadata = [],
     bool $recheckDue = false
   ): bool {
+    // Only this native standalone due transaction owns a cron capture ticket.
+    // Nested order/gift resets retain their original outer transaction ownership.
+    $captureCron = DB::transactionLevel() === 0
+      && $triggerSource === TrafficResetLog::SOURCE_CRON && $recheckDue === true;
     try {
-      return DB::transaction(function () use ($user, $triggerSource, $metadata, $recheckDue) {
+      return DB::transaction(function () use ($user, $triggerSource, $metadata, $recheckDue, $captureCron) {
         // Lock and refresh in the same SQL transaction as traffic reporting.
         // An earlier read can be stale while the Node has reported usage.
         $user = User::query()->with('plan')->lockForUpdate()->findOrFail($user->id);
@@ -48,6 +54,8 @@ class TrafficResetService
         if ($triggerSource === TrafficResetLog::SOURCE_MANUAL && !$this->canReset($user)) {
           return false;
         }
+        $capture = $captureCron ? app(LegacyUserMutationCapture::class) : null;
+        $captureBefore = $capture?->beginCronTrafficReset((int) $user->id);
         $oldUpload = (int) ($user->u ?? 0);
         $oldDownload = $user->d ?? 0;
         $oldTotal = $oldUpload + $oldDownload;
@@ -76,8 +84,12 @@ class TrafficResetService
 
         $this->clearUserCache($user);
         HookManager::call('traffic.reset.after', $user);
+        $capture?->appendCronTrafficReset($captureBefore);
         return true;
       });
+    } catch (LegacyCaptureShadowException) {
+      Log::error('LEGACY_CRON_TRAFFIC_RESET_CAPTURE_FAILED');
+      return false;
     } catch (\Exception $e) {
       Log::error(__('traffic_reset.reset_failed'), [
         'user_id' => $user->id,

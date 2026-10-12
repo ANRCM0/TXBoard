@@ -1,6 +1,6 @@
 # Core First v2 实施台账
 
-> 状态：B0、B1.1–B1.11 影子证据、Terms、身份旁观与固定 writer 捕获、B2.1–B2.3 单机升级、B3.1/B3.2 隔离用量、B3.3/B3.4 本地观察与持久事件桶、B4.1–B4.5 合成 Provider、插件停用接入、租约候选与离线签名快照、B5.1–B5.9 本地 mTLS 读取、隔离建单与登录、B6.1–B6.3 实验字节、离线加密与共享 owner 实验已实现；当前收尾后进行两仓迁移。各整阶段仍按下表门禁验收。
+> 状态：B0、B1.1–B1.12 影子证据、Terms、身份旁观与固定 writer 捕获、B2.1–B2.3 单机升级、B3.1/B3.2 隔离用量、B3.3/B3.4 本地观察与持久事件桶、B4.1–B4.5 合成 Provider、插件停用接入、租约候选与离线签名快照、B5.1–B5.9 本地 mTLS 读取、隔离建单与登录、B6.1–B6.3 实验字节、离线加密与共享 owner 实验已实现；当前收尾后进行两仓迁移。各整阶段仍按下表门禁验收。
 
 ## 1. 批次与关键路径
 
@@ -217,3 +217,9 @@ Node [当前契约](https://github.com/ANRCM0/TX-Node/blob/main/docs/local-event
 [当前契约](../../../contracts/v2/credential-provider/local-fixture-authorization-snapshot-v1.md)要求真实合成发行回执和未过期候选，在同一事务内把精确 pending Subject 初始绑定到该发行结果，并保存不可变 RSA3072/RS256 签名证据。签名失败、晚到过期、配置变化或 SQL 失败会同时回滚绑定与快照。当前校验锁读安装身份、业务版本、配额和撤销状态，终态拒绝持久保存；同键历史重放始终返回原始签名字节。独立公钥 CLI 不启动 Laravel，也不连接数据库或读取私钥。
 
 固定 Core `e33ba63` 加十三文件：SQLite 专项 41 通过、29 项引擎条件跳过、703 断言；MariaDB 70 项全部通过、965 断言，含原 B4.4 的 25 项和新增 45 项；全 API 966 通过、79 跳过、9323 断言。独立进程竞争、双向变更屏障、SIGKILL、安装身份损坏和原始历史重放通过，早期 fixture 失败与环境修正保留于[验证报告](provider-authorization-snapshot-verification.json)。默认关闭，仅 local/testing 合成数据；`admission_granted=false`，未产生 Node 授权、秘密交付或生产 PKI 验收。
+
+### B1.12 隔离副本独立定时流量重置捕获
+
+仅在方法入口没有外层事务、来源为 cron 且要求重新检查到期条件时，原 User 独占锁后开始捕获，原计数重置、日志和 after hook 之后追加事件；SQL 状态、事件和 mapping 失效共同提交或回滚。固定工作项引用实际 User，保留原计划读取、调度、手动/强制重置与嵌套订单行为。捕获继续默认关闭，不应用 Terms、用量或财务投影；缓存、hook 和提交后 Observer 的外部影响仍在原边界。
+
+专项基于 Core `d3ae864` 加四文件：SQLite 19 通过、5 跳过、357 断言，MariaDB 24 全通过、414 断言；旧六类 writer 和原生路径 SQLite 127 通过、27 跳过、2185 断言，MariaDB 118 全通过、2075 断言。最终固定 `e33ba63` 加同四文件全 API 955 通过、69 跳过、9251 断言；独立竞争、陈旧快照、提交前后 SIGKILL 及旧链验证通过。[契约](../../../contracts/v2/legacy-user-mutation-capture-v1.md)和[冻结来源、日志与验收范围](legacy-cron-traffic-reset-capture-verification.json)保留实际证据；完整 writer 覆盖和生产切换门禁仍未完成。
