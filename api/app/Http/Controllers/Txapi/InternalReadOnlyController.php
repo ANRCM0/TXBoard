@@ -24,7 +24,17 @@ final class InternalReadOnlyController
             if ($actor->is_admin) {
                 abort(403);
             }
-            if ($operation['operation'] === 'user.order-status.get') {
+            if ($operation['operation'] === 'user.order.create') {
+                $params = ['plan_id' => (int) $input->plan_id, 'period' => $input->period];
+                if (property_exists($input, 'coupon_code')) $params['coupon_code'] = $input->coupon_code;
+                $nativeRequest = Request::create('/txapi/orders', 'POST', $params);
+                $nativeRequest->headers->set('Idempotency-Key', $input->idempotency_key);
+                $nativeRequest->attributes->set('txapi.request_id', TxapiResponse::requestId($request));
+                $native = app(BillingController::class)->createOrder($nativeRequest);
+                if ($native->getStatusCode() !== 201) return $native;
+                return TxapiResponse::success($request, $native->getData(true)['data'],
+                    ['current_only' => true, 'slice' => 'internal-order-write/1'], 201);
+            } elseif ($operation['operation'] === 'user.order-status.get') {
                 $data = app(AccountController::class)->order($request, $input->trade_no)->getData(true)['data'];
                 $result = ['trade_no' => $data['trade_no'], 'status' => $data['status']];
             } elseif ($operation['operation'] === 'user.subscription-summary.get') {

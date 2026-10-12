@@ -1,6 +1,6 @@
 # Core First v2 实施台账
 
-> 状态：B0、B1.1–B1.8 影子证据、Terms、身份旁观与固定 writer 捕获、B2.1–B2.3 单机升级、B3.1/B3.2 隔离用量、B3.3/B3.4 本地观察与持久事件桶、B4.1–B4.3 合成 Provider 与测试插件停用接入、B5.1–B5.6 本地只读 mTLS 接入、B6.1–B6.3 实验字节、离线加密与共享 owner 实验已实现；后续切片推进中。各整阶段仍按下表门禁验收。
+> 状态：B0、B1.1–B1.8 影子证据、Terms、身份旁观与固定 writer 捕获、B2.1–B2.3 单机升级、B3.1/B3.2 隔离用量、B3.3/B3.4 本地观察与持久事件桶、B4.1–B4.3 合成 Provider 与测试插件停用接入、B5.1–B5.7 本地 mTLS 读取与隔离建单、B6.1–B6.3 实验字节、离线加密与共享 owner 实验已实现；后续切片推进中。各整阶段仍按下表门禁验收。
 
 ## 1. 批次与关键路径
 
@@ -153,3 +153,11 @@ SQLite 18 通过 / 2 跳过 / 167 断言，专用 MariaDB 20 / 0 / 182；固定 
 建单预扣回归发现原 mutable SQL builder 在删除旧过期记录后保留其 ID 条件，导致替换键新建单成功而 claim 未标记 succeeded。各 lookup/delete/update 现在从干净 base clone，原 User 事务锁、金额算法、TTL、错误和 prune 不变；立即同键重放返回新原订单，不再次扣款。
 
 固定 Core `1d27469` 加两文件：SQLite/MariaDB 各 8 通过 / 270 断言，相关资金/优惠回归 24 / 441，100 个真实独立会话检查 1 / 106；全 API 840 通过 / 36 跳过 / 7030 断言。[精确源码与日志证据](native-idempotency-fix-verification.json)。
+
+### B5.7 隔离订单创建 mTLS 接入
+
+新增固定 `user.order.create` version1，额外要求严格写入开关和隔离副本标记。原 BillingController/OrderService 继续决定身份、预检、价格、优惠、余额和 SQL 幂等；Gateway 只绑定原业务键和购买参数，接受 HTTP201 的闭合写入回执。默认关闭、无自动重试和 Native 回退；原生公开建单行为不变。
+
+提交后审计失败、超时或丢响应可能返回错误而订单已经提交，恢复必须使用新 transport request 和原业务键/参数。原 TTL、当前 actor、Plan 和 owned Order 可访问性仍约束重放。实际 TLS 并发同键只预扣一次；过期键替换后立即重放不再扣款；故意审计失败503后独立 SQL 检查确认一份已提交订单及 succeeded claim，再用原键恢复同一 trade。
+
+固定 Core `422e85c` / Gateway `ee1cec6` 加十四文件：全 API 845 通过 / 36 跳过 / 7085 断言，Gateway 529、SDK 68、typecheck/build 和40项真实 TLS1.3/MariaDB 联调通过。[契约](../../../contracts/v2/core-internal-api/local-user-order-create-v1.md)及[精确源码和日志证据](internal-order-write-verification.json)。未加入 checkout、履约或影子账本投影；Admin、生产 PKI 与 SC-v2 消费路径仍待验收。

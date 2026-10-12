@@ -15,6 +15,7 @@ final class OperationRegistry
         'user.subscription-summary.get' => ['service' => 'user-gateway', 'actor' => 'user', 'versions' => ['2']],
         'user.notice.list' => ['service' => 'user-gateway', 'actor' => 'user', 'versions' => ['2']],
         'user.order-status.get' => ['service' => 'user-gateway', 'actor' => 'user', 'versions' => ['2']],
+        'user.order.create' => ['service' => 'user-gateway', 'actor' => 'user', 'versions' => ['1']],
         'admin.order.get' => ['service' => 'admin-gateway', 'actor' => 'admin', 'versions' => ['1']],
     ];
 
@@ -24,6 +25,10 @@ final class OperationRegistry
         $definition = self::OPERATIONS[$operation] ?? null;
         if ($definition === null) {
             throw new SliceFailure('UNKNOWN_OPERATION', 400);
+        }
+        if ($operation === 'user.order.create' && (config('internal_api_slice.order_write_enabled') !== true
+            || config('core_shadow.isolated_copy') !== true)) {
+            throw new SliceFailure('OPERATION_DISABLED', 404);
         }
         if ($request->method() !== 'POST' || $request->getRequestUri() !== '/txapi/internal/v1/operations/'.$operation
             || !preg_match('/\Aapplication\/json(?:;\s*charset=utf-8)?\z/iD', $request->header('Content-Type', ''))) {
@@ -48,7 +53,19 @@ final class OperationRegistry
             throw new SliceFailure('INVALID_REQUEST', 400);
         }
         $input = $body->input;
-        if (in_array($operation, ['user.profile.get', 'user.dashboard.get', 'user.payment-methods.list', 'user.subscription-summary.get'], true)) {
+        if ($operation === 'user.order.create') {
+            $keys = ['plan_id', 'period', 'idempotency_key'];
+            if (property_exists($input, 'coupon_code')) $keys[] = 'coupon_code';
+            StrictJson::exact($input, $keys);
+            if (!is_string($input->plan_id) || !preg_match('/\A[1-9][0-9]{0,9}\z/D', $input->plan_id)
+                || (int) $input->plan_id > 2147483647
+                || !is_string($input->period) || !in_array($input->period, \App\Services\PlanService::getNewPeriods(), true)
+                || !is_string($input->idempotency_key) || !preg_match('/\A[A-Za-z0-9._~-]{1,128}\z/D', $input->idempotency_key)
+                || (property_exists($input, 'coupon_code') && (!is_string($input->coupon_code)
+                    || mb_strlen($input->coupon_code) < 1 || mb_strlen($input->coupon_code) > 64))) {
+                throw new SliceFailure('INVALID_REQUEST', 400);
+            }
+        } elseif (in_array($operation, ['user.profile.get', 'user.dashboard.get', 'user.payment-methods.list', 'user.subscription-summary.get'], true)) {
             StrictJson::exact($input, []);
         } elseif (in_array($operation, ['user.order.list', 'user.notice.list'], true)) {
             $keys = ['page', 'per_page'];

@@ -1,6 +1,6 @@
 # Core Internal API v1
 
-> 状态：Target / Draft，B0 设计基线。完整 B5 尚未交付；已有默认关闭、仅 local/testing 的 [当前只读切片](current-readonly-slice-v1.md)，其已注册路径和验收范围以 Current 文件为准。
+> 状态：Target / Draft，B0 设计基线。完整 B5 尚未交付；已有默认关闭、仅 local/testing 的 [当前只读切片](current-readonly-slice-v1.md)和另行隔离的 [订单创建切片](local-user-order-create-v1.md)，其已注册路径和验收范围以 Current 文件为准。
 
 当前两个 User operation 的显式 `contract_version:"2"` 扩展见 [B5.2 User DTO](current-user-dto-v2.md)，保留 v1 与 Admin，不代表 Draft 其他操作已开放。
 
@@ -98,3 +98,7 @@ B5.4: [local User dashboard and payment-method display reads](current-user-displ
 B5.5: [local subscription summary and notices](current-user-content-v2.md), preserving current User authority and public display fields.
 
 B5.6: [local current order status](current-order-status-v2.md), preserving current ownership and missing-Plan reads.
+
+B5.7: [isolated local order creation](local-user-order-create-v1.md), delegating
+native Core business/SQL idempotency and retaining original-key recovery after
+an unknown result. Additional write and isolated-copy gates default off.
