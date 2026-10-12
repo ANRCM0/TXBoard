@@ -42,6 +42,19 @@ const subscriptionSummary = z.strictObject({
 const notices = z.strictObject({ items: z.array(z.strictObject({ id, title: z.string(), content: z.string(),
   img_url: z.string().nullable(), tags: z.array(z.string()), created_at: timestamp })).max(100), pagination: list.shape.pagination })
 const orderStatus = z.strictObject({ trade_no: detail.shape.trade_no, status: detail.shape.status })
+const publicSite = z.strictObject({
+  app_name: z.string().optional(), app_description: z.string().nullable().optional(),
+  app_url: z.string().nullable().optional(), logo: z.string().nullable().optional(), frontend_theme: z.string().optional(),
+  theme_config: z.union([z.record(z.string(), z.unknown()), z.tuple([]).transform(() => ({}))]).optional(),
+  is_captcha: z.union([z.boolean(), z.literal(0), z.literal(1), z.literal('0'), z.literal('1')]).optional(),
+  captcha_type: z.string().nullable().optional(), turnstile_site_key: z.string().nullable().optional(),
+  recaptcha_site_key: z.string().nullable().optional(), recaptcha_v3_site_key: z.string().nullable().optional(),
+})
+const publicPlan = z.strictObject({ id, name: z.string(), content: z.string(), tags: z.array(z.string()),
+  traffic_limit_bytes: unsigned, speed_limit_mbps: unsigned.nullable(), device_limit: unsigned.nullable(),
+  capacity_limit: unsigned.nullable(), reset_traffic_method: unsigned.nullable(), renewable: z.boolean(),
+  prices: z.array(z.strictObject({ period, amount_minor: unsigned })).max(8),
+})
 export const internalSuccessV2 = z.strictObject({
   data: z.unknown(), request_id: z.string().length(36).uuid(),
   meta: z.strictObject({ current_only: z.literal(true), slice: z.literal('internal-readonly/2') }),
@@ -54,6 +67,32 @@ export const internalOrderWriteSuccess = internalSuccessV2.extend({
   data: z.strictObject({ trade_no: detail.shape.trade_no }),
   meta: z.strictObject({ current_only: z.literal(true), slice: z.literal('internal-order-write/1') }),
 })
+export const internalPublicSuccess = internalSuccessV2.extend({
+  meta: z.strictObject({ current_only: z.literal(true), slice: z.literal('internal-public-readonly/1') }),
+})
+export function adaptInternalPublic(operation: 'guestConfig' | 'guestPlans', value: unknown): unknown {
+  if (operation === 'guestConfig') {
+    const parsed = publicSite.safeParse(value); if (!parsed.success) fail()
+    return parsed.data
+  }
+  const parsed = z.array(publicPlan).safeParse(value); if (!parsed.success) fail()
+  if (new Set(parsed.data.map(row => row.id)).size !== parsed.data.length) fail()
+  return parsed.data.map(row => {
+    const prices: Record<string, number | null> = Object.fromEntries(Object.values(periods).map(key => [key, null]))
+    for (const price of row.prices) {
+      const key = periods[price.period]
+      if (prices[key] !== null) fail()
+      prices[key] = safe(price.amount_minor)
+    }
+    return { id: safe(row.id), name: row.name, content: row.content, tags: row.tags,
+      transfer_enable: safe(row.traffic_limit_bytes) / 1073741824,
+      speed_limit: row.speed_limit_mbps === null ? null : safe(row.speed_limit_mbps),
+      device_limit: row.device_limit === null ? null : safe(row.device_limit),
+      capacity_limit: row.capacity_limit === null ? null : safe(row.capacity_limit),
+      reset_traffic_method: row.reset_traffic_method === null ? null : safe(row.reset_traffic_method),
+      renew: row.renewable, ...prices }
+  })
+}
 export function internalOrderCreateInput(value: unknown, key: unknown): Record<string, string> {
   const parsed = orderCreateSchema.safeParse(value)
   if (!parsed.success || !Number.isSafeInteger(parsed.data.plan_id) || parsed.data.plan_id > 2147483647

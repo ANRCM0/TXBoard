@@ -25,6 +25,8 @@ export type GatewayConfig = {
   orderWriteEnabled: boolean
   /** Local/testing-only mTLS read slice; absence preserves Native behavior. */
   internalUser?: InternalUserConfig
+  /** Additional local public-read opt-in; cannot enable authentication operations. */
+  internalPublicReadEnabled?: boolean
 }
 
 function intSetting(value: string | undefined, fallback: number, min: number, max: number): number {
@@ -82,6 +84,12 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
   const upstreamHosts = (env.GATEWAY_UPSTREAM_HOSTS || upstream.hostname)
     .split(',').map(s => s.trim().toLowerCase()).filter(Boolean)
 
+  const internalUser = loadInternalUserConfig(env)
+  const publicRead = env.GATEWAY_INTERNAL_PUBLIC_READ_ENABLED
+  if (publicRead !== undefined && publicRead !== '' && publicRead !== 'false'
+    && (publicRead !== 'true' || !internalUser || !['local', 'testing'].includes(env.APP_ENV ?? ''))) {
+    throw new Error('Invalid local Internal public-read configuration')
+  }
   return {
     host: env.GATEWAY_HOST || '127.0.0.1',
     port: intSetting(env.GATEWAY_PORT, 8787, 1, 65535),
@@ -99,6 +107,7 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     // leaves the write ban in force — a typo, a '1' or an empty value can
     // never open a transaction write path.
     orderWriteEnabled: env.GATEWAY_ORDER_WRITE_ENABLED === 'true',
-    internalUser: loadInternalUserConfig(env),
+    internalUser,
+    internalPublicReadEnabled: publicRead === 'true',
   }
 }

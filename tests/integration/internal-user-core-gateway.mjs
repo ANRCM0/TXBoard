@@ -8,11 +8,12 @@ import { serve } from '@hono/node-server'
 import { createGatewayApp } from '../../apps/gateway/dist/app.js'
 import { loadConfig } from '../../apps/gateway/dist/config/env.js'
 import { createLogger } from '../../apps/gateway/dist/middleware/observability.js'
+import { invalidateCache } from '../../apps/gateway/dist/middleware/cache.js'
 
 const api = process.env.INTERNAL_CORE_API, dir = process.env.INTERNAL_FIXTURE_DIR
 assert.ok(api && dir)
 const snapshot = JSON.parse(readFileSync(`${api}/../internal-snapshot.json`))
-assert.equal(snapshot.committed_core_head, '422e85c44d064bfb763922316acd17d0174137d4')
+assert.equal(snapshot.committed_core_head, 'a7e73b13e1a8083c9f01056b243568b39033df68')
 const actors = JSON.parse(readFileSync(`${dir}/actors.json`))
 const pki = JSON.parse(readFileSync(`${dir}/public-evidence.json`))
 const processes = [], servers = [], checks = [], nativeCalls = []
@@ -39,6 +40,8 @@ function gateway(config, port) {
   const server = serve({ fetch: app.fetch, hostname: '127.0.0.1', port }); servers.push(server); return port
 }
 async function call(port, path, token = actors.credentials.user, expected = 200, headers = {}) {
+  // Multiple fixture apps share the process cache. Force each boundary assertion to reach its selected upstream.
+  if (['/bootstrap','/theme/config','/plans','/catalog/payment-methods'].includes(path.split('?')[0])) invalidateCache()
   const response = await fetch(`http://127.0.0.1:${port}/gateway/v1${path}`, {
     headers: { ...(token ? { authorization: token } : {}), ...headers }, signal: AbortSignal.timeout(7000) })
   const json = await response.json(); assert.equal(response.status, expected, `${path}: expected ${expected}, got ${response.status} ${json.error?.code ?? ''}`)
@@ -55,6 +58,18 @@ async function createOrder(port, token, key, body, expected) {
   const result=await response.json();assert.equal(response.status,expected,`write expected${expected}, got${response.status} ${result.error?.code??''}`)
   for(const secret of [...Object.values(actors.credentials),'PRIVATE KEY','private-subscribe-token',key])assert.ok(!JSON.stringify(result).includes(secret))
   return result
+}
+function directTlsOperation(operation, headers = {}, cert = 'user', rawInput = '{}') {
+  const tls = gatewayConfig(cert).internalUser
+  const body=Buffer.from('{"contract_version":"1","request_id":"00000000-0000-4000-8000-000000000000","deadline_at":'+(Math.floor(Date.now()/1000)+5)+',"input":'+rawInput+'}')
+  return new Promise((resolve,reject)=>{
+    const request=https.request({hostname:'127.0.0.1',port:19443,servername:tls.servername,
+      ca:tls.ca,crl:tls.crl,cert:tls.cert,key:tls.key,rejectUnauthorized:true,minVersion:'TLSv1.3',maxVersion:'TLSv1.3',agent:false,
+      method:'POST',path:'/txapi/internal/v1/operations/'+operation,
+      headers:{'content-type':'application/json','content-length':body.length,...headers}},reply=>{
+        const output=[];reply.on('data',v=>output.push(v));reply.on('end',()=>resolve({status:reply.statusCode,body:JSON.parse(Buffer.concat(output))}))
+    });request.setTimeout(5000,()=>request.destroy(new Error('Fixture TLS timeout')));request.on('error',reject);request.end(body)
+  })
 }
 async function ready() {
   for (let i=0;i<40;i++) { try { const r=await fetch('http://127.0.0.1:19081/txapi/public/site-config'); if (r.ok) return } catch {} await sleep(100) }
@@ -197,6 +212,67 @@ try {
     const unchanged=nativeCalls.length;await call(internal,orderPath+'/status',actors.credentials.other,404)
     await call(internal,orderPath+'/status',actors.credentials.admin,403);assert.equal(nativeCalls.length,unchanged)
   })
+  const publicInternal=gateway({...gatewayConfig(),internalPublicReadEnabled:true},19589)
+  await check('public Internal default disabled refuses while public default uses Native',async()=>{
+    const before=nativeCalls.length
+    await call(publicInternal,'/bootstrap',null,404)
+    await call(publicInternal,'/plans',null,404)
+    await call(internal,'/bootstrap',null)
+    assert.equal(nativeCalls.length,before+1)
+  })
+  stop(core);await sleep(200);core=child('php',['-S','127.0.0.1:19081','-t','public','public/index.php'],'core-http',
+    {CORE_INTERNAL_PUBLIC_READ_ENABLED:'true'})
+  await ready();fixture('rate-reset');decorate('public-prepare')
+  await check('anonymous site theme captcha and exact plan display equal Native through actual TLS',async()=>{
+    for(const path of ['/bootstrap','/theme/config','/plans']){
+      const before=nativeCalls.length,viaNative=await call(native,path,null),viaInternal=await call(publicInternal,path,null)
+      assert.deepEqual(viaInternal.data,viaNative.data);assert.equal(nativeCalls.length,before+1)
+      if(path==='/plans'){
+        assert.deepEqual(viaInternal.data.map(row=>row.name),['Internal Read Plan','Public second'])
+        assert.equal(viaInternal.data[1].month_price,317)
+      }
+    }
+  })
+  await check('visitor credentials are never forwarded for public reads and cannot grant protected access',async()=>{
+    const before=nativeCalls.length
+    await call(publicInternal,'/theme/config',actors.credentials.admin)
+    await call(publicInternal,'/plans','Bearer not-a-valid-actor')
+    await call(publicInternal,'/user/profile',null,401)
+    await call(publicInternal,'/payments',null,401)
+    await call(publicInternal,'/catalog/payment-methods',null,404)
+    assert.equal(nativeCalls.length,before)
+  })
+  await check('existing public cache retains display TTL without another Internal or Native request',async()=>{
+    invalidateCache();const before=nativeCalls.length,auditBefore=JSON.parse(decorate('public-audit')).public_audit_rows
+    const first=await fetch(`http://127.0.0.1:${publicInternal}/gateway/v1/plans`),second=await fetch(`http://127.0.0.1:${publicInternal}/gateway/v1/plans`)
+    assert.equal(first.status,200);assert.equal(second.status,200)
+    assert.equal(first.headers.get('x-cache'),'MISS');assert.equal(second.headers.get('x-cache'),'HIT')
+    assert.deepEqual((await first.json()).data,(await second.json()).data);assert.equal(nativeCalls.length,before)
+    assert.equal(JSON.parse(decorate('public-audit')).public_audit_rows,auditBefore+1)
+    invalidateCache()
+  })
+  await check('public numeric overflow and response cap reject without Native fallback',async()=>{
+    const before=nativeCalls.length;decorate('public-overflow')
+    try{await call(publicInternal,'/plans',null,502)}finally{decorate('public-restore')}
+    decorate('public-oversize')
+    try{await call(publicInternal,'/plans',null,502)}finally{decorate('public-restore')}
+    assert.equal(nativeCalls.length,before)
+  })
+  await check('anonymous technical audit uses marker zero and service rate is still enforced',async()=>{
+    assert.deepEqual(JSON.parse(decorate('public-audit')).actor_ids,[0])
+    fixture('rate-fill');const before=nativeCalls.length
+    try{await call(publicInternal,'/theme/config',null,429)}finally{fixture('rate-reset')}
+    assert.equal(nativeCalls.length,before)
+  })
+  await check('actual TLS public headers and closed input cannot weaken protected operation identity',async()=>{
+    for(const authorization of ['',actors.credentials.user]){
+      assert.equal((await directTlsOperation('public.site-config.get',{authorization})).status,400)
+    }
+    assert.equal((await directTlsOperation('user.profile.get')).status,400)
+    assert.equal((await directTlsOperation('public.site-config.get',{'x-actor-id':actors.user_id,'x-service-identity':'admin-gateway'})).status,200)
+    assert.equal((await directTlsOperation('public.plan.list',{},'user','{"actor_id":"1"}')).status,400)
+    assert.equal((await directTlsOperation('public.plan.list',{},'user','{"field":1,"field":2}')).status,400)
+  })
   const writing=gateway({...gatewayConfig(),orderWriteEnabled:true},19588)
   const purchase={plan_id:1,period:'month_price'},businessKey='fixture-original-key'
   await check('Core write default disabled and Gateway write ban refuse without Native fallback',async()=>{
@@ -206,7 +282,7 @@ try {
     assert.equal(nativeCalls.length,before)
   })
   stop(core);await sleep(200);core=child('php',['-S','127.0.0.1:19081','-t','public','public/index.php'],'core-http',
-    {CORE_INTERNAL_ORDER_WRITE_ENABLED:'true',CORE_SHADOW_ISOLATED_COPY:'true'})
+    {CORE_INTERNAL_ORDER_WRITE_ENABLED:'true',CORE_SHADOW_ISOLATED_COPY:'true',CORE_INTERNAL_PUBLIC_READ_ENABLED:'true'})
   await ready();fixture('rate-reset');decorate('write-prepare')
   let createdTrade
   await check('actual TLS order creation reserves wallet once and same-key replay returns original trade',async()=>{
@@ -264,14 +340,25 @@ try {
     assert.throws(()=>loadConfig({...serverConfig,GATEWAY_INTERNAL_USER_ENABLED:'true',GATEWAY_INTERNAL_USER_CONFIG_FILE:file}))
     writeFileSync(file,original)
   })
-  const wrongCA=gateway(gatewayConfig('bad-client'),19584), revoked=gateway(gatewayConfig('revoked'),19585)
-  await check('actual untrusted client CA TLS handshake rejects without Native fallback', async () => {
-    const before=nativeCalls.length; await call(wrongCA,'/user/profile',actors.credentials.user,502); assert.equal(nativeCalls.length,before)
+  await check('public transport opt-in rejects typos missing transport and production configuration',()=>{
+    const file=`${dir}/gateway-user.json`
+    for(const flag of ['1','TRUE',' true','false '])assert.throws(()=>loadConfig({...serverConfig,GATEWAY_INTERNAL_PUBLIC_READ_ENABLED:flag}))
+    assert.throws(()=>loadConfig({...serverConfig,GATEWAY_INTERNAL_PUBLIC_READ_ENABLED:'true'}))
+    assert.throws(()=>loadConfig({...serverConfig,APP_ENV:'production',GATEWAY_INTERNAL_PUBLIC_READ_ENABLED:'true',GATEWAY_INTERNAL_USER_ENABLED:'true',GATEWAY_INTERNAL_USER_CONFIG_FILE:file}))
+    assert.equal(loadConfig({...serverConfig,GATEWAY_INTERNAL_PUBLIC_READ_ENABLED:'false'}).internalPublicReadEnabled,false)
   })
-  await check('actual CRL-revoked client handshake rejects without Native fallback', () => call(revoked,'/user/profile',actors.credentials.user,502))
+  const wrongCA=gateway({...gatewayConfig('bad-client'),internalPublicReadEnabled:true},19584), revoked=gateway({...gatewayConfig('revoked'),internalPublicReadEnabled:true},19585)
+  await check('actual untrusted client CA TLS handshake rejects without Native fallback', async () => {
+    const before=nativeCalls.length; await call(wrongCA,'/user/profile',actors.credentials.user,502)
+    await call(wrongCA,'/theme/config',null,502);assert.equal(nativeCalls.length,before)
+  })
+  await check('actual CRL-revoked client handshake rejects without Native fallback', async () => {
+    await call(revoked,'/user/profile',actors.credentials.user,502);await call(revoked,'/theme/config',null,502)
+  })
   await check('wrong trusted server CA is rejected by actual client verification', async () => {
-    const port=gateway(gatewayConfig('user',{ca_path:`${dir}/bad-ca.pem`}),19586)
+    const port=gateway({...gatewayConfig('user',{ca_path:`${dir}/bad-ca.pem`}),internalPublicReadEnabled:true},19586)
     await call(port,'/user/profile',actors.credentials.user,502)
+    await call(port,'/theme/config',null,502)
   })
   await check('actual server DNS SAN mismatch is rejected while CA remains trusted', async () => {
     const ext=`${dir}/wrong-server.ext`
@@ -281,16 +368,19 @@ try {
     const wrongServer=https.createServer({key:readFileSync(`${dir}/wrong-server.key`),cert:readFileSync(`${dir}/wrong-server.pem`),
       ca:readFileSync(`${dir}/ca.pem`),requestCert:true,rejectUnauthorized:true,minVersion:'TLSv1.3',maxVersion:'TLSv1.3'},(_req,res)=>res.end('{}'))
     wrongServer.on('tlsClientError',()=>{}); await new Promise(resolve=>wrongServer.listen(19445,'127.0.0.1',resolve)); servers.push(wrongServer)
-    const port=gateway(gatewayConfig('user',{origin:'https://127.0.0.1:19445'}),19587)
+    const port=gateway({...gatewayConfig('user',{origin:'https://127.0.0.1:19445'}),internalPublicReadEnabled:true},19587)
     await call(port,'/user/profile',actors.credentials.user,502)
+    await call(port,'/theme/config',null,502)
   })
   await check('Core default disabled remains authoritative without fallback', async () => {
-    stop(core); await sleep(200); core=child('php',['-S','127.0.0.1:19081','-t','public','public/index.php'],'core-http',{CORE_INTERNAL_READONLY_ENABLED:'false'})
-    await ready(); const before=nativeCalls.length; await call(internal,'/user/profile',actors.credentials.user,404); assert.equal(nativeCalls.length,before)
+    stop(core); await sleep(200); core=child('php',['-S','127.0.0.1:19081','-t','public','public/index.php'],'core-http',{CORE_INTERNAL_READONLY_ENABLED:'false',CORE_INTERNAL_PUBLIC_READ_ENABLED:'true'})
+    await ready(); const before=nativeCalls.length; await call(internal,'/user/profile',actors.credentials.user,404)
+    await call(publicInternal,'/theme/config',null,404);assert.equal(nativeCalls.length,before)
   })
   await check('Core production 404 gate remains authoritative', async () => {
-    stop(core); await sleep(200); core=child('php',['-S','127.0.0.1:19081','-t','public','public/index.php'],'core-http',{APP_ENV:'production',CORE_INTERNAL_READONLY_ENABLED:'true'})
+    stop(core); await sleep(200); core=child('php',['-S','127.0.0.1:19081','-t','public','public/index.php'],'core-http',{APP_ENV:'production',CORE_INTERNAL_READONLY_ENABLED:'true',CORE_INTERNAL_PUBLIC_READ_ENABLED:'true'})
     await ready(); await call(internal,'/user/profile',actors.credentials.user,404)
+    await call(publicInternal,'/theme/config',null,404)
   })
   await check('revoked Core actor session fails after server restarts', async () => {
     stop(core); await sleep(200); core=child('php',['-S','127.0.0.1:19081','-t','public','public/index.php'],'core-http')
@@ -298,6 +388,7 @@ try {
   })
   await check('TLS service offline never falls back to plaintext Native', async () => {
     stop(boundary); await sleep(200); const before=nativeCalls.length; await call(internal,'/user/profile',actors.credentials.other,502)
+    await call(publicInternal,'/theme/config',null,502)
     assert.equal(nativeCalls.length,before)
   })
   const log=readFileSync(`${dir}/gateway-requests.log`,'utf8')
@@ -305,7 +396,7 @@ try {
   const hashes={}
   for(const file of ['apps/gateway/src/services/internal-user-client.ts','apps/gateway/src/adapters/internal-user-v2.ts','apps/gateway/src/config/internal-user.ts',
     'tests/integration/internal-user-core-gateway.mjs','tests/integration/internal-user-core-fixture.php'])hashes[file]=createHash('sha256').update(readFileSync(file)).digest('hex')
-  const report={current_only:true,phase:'B5.7',production_acceptance:false,passed:checks.length,checks,
+  const report={current_only:true,phase:'B5.8',production_acceptance:false,passed:checks.length,checks,
     committed_core_head:snapshot.committed_core_head,committed_gateway_head:JSON.parse(readFileSync('internal-user-snapshot.json')).committed_gateway_head,
     core_slice_sha256:snapshot.slice_sha256,gateway_source_sha256:hashes,database:fixture('database-version').toString(),
     runtime:{node:process.version,php:execFileSync('php',['-r','echo PHP_VERSION;']).toString()},tls:'TLSv1.3',

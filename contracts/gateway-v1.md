@@ -14,6 +14,7 @@
 - 上游仅接受 Native `{data,meta?,request_id}` / `{error:{code,message,fields?},request_id}` 信封，并按操作校验 DTO；退休的 `status:success` 与旧 paginator 不再接受。错误正文不公开上游内部信息。
 - **权限判断始终以 Laravel 为准**。用户 GET 路由需 `Authorization: Bearer <user-token>`；无用户身份的页面不允许向 Gateway 提交管理员 Token。
 - 默认 Native 保持上述当前行为；仅 local/testing 明确启用 `GATEWAY_INTERNAL_USER_ENABLED=true` 时，现有受保护只读操作使用版本2 Internal mTLS 上游，DTO不变，失败无fallback。配置与限制见 [B5.2–B5.6 Current记录](../docs/internal-user-integration.md)，没有新增管理员 Gateway。
+- B5.8 额外精确启用 `GATEWAY_INTERNAL_PUBLIC_READ_ENABLED=true` 后，站点/主题和套餐展示可选择固定匿名 Internal mTLS operation；浏览器 Bearer 不转发，服务证书和 proof 仍必需。默认 Native、公共 DTO 和缓存 TTL 保持，Internal cache miss 失败无回退。[当前接入与验收](../docs/internal-user-integration.md)。
 
 ## 固定路由矩阵
 

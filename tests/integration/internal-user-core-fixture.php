@@ -13,6 +13,28 @@ if (!$app->environment('testing') || config('database.default') !== 'mysql'
 $user = App\Models\User::query()->where('email', 'internal-user@example.test')->firstOrFail();
 $order = App\Models\Order::query()->where('trade_no', 'internal-discounted-order')->firstOrFail();
 match ($argv[2] ?? '') {
+    'public-prepare' => (function (): void {
+        App\Models\Plan::whereKey(1)->update(['capacity_limit' => null]);
+        foreach ([['Public second', true, true, null, 2], ['Hidden public plan', false, true, null, 0],
+                  ['Unsold public plan', true, false, null, 0], ['Full public plan', true, true, 0, 0]] as [$name, $show, $sell, $cap, $sort]) {
+            App\Models\Plan::create(['name' => $name, 'group_id' => 1, 'transfer_enable' => 2,
+                'show' => $show, 'sell' => $sell, 'renew' => true, 'capacity_limit' => $cap, 'sort' => $sort,
+                'content' => 'Public fixture content', 'tags' => ['public'], 'prices' => ['monthly' => 3.17, 'quarterly' => 9]]);
+        }
+        admin_setting(['app_name' => 'Internal public fixture', 'captcha_enable' => 1, 'captcha_type' => 'turnstile',
+            'turnstile_site_key' => 'public-site-key', 'turnstile_secret_key' => 'must-never-return-provider-secret']);
+    })(),
+    'public-overflow' => App\Models\Plan::whereKey(1)->update(['transfer_enable' => 10000000]),
+    'public-restore' => App\Models\Plan::whereKey(1)->update(['transfer_enable' => 1, 'content' => '']),
+    'public-oversize' => (function (): void {
+        App\Models\Plan::whereKey(1)->update(['content' => str_repeat('x', 64000)]);
+        App\Models\Plan::where('name', 'Public second')->update(['content' => str_repeat('y', 3000)]);
+    })(),
+    'public-audit' => (function (): void {
+        $rows = Illuminate\Support\Facades\DB::table('tx_internal_readonly_audits')->whereIn('operation', ['public.site-config.get', 'public.plan.list'])->get();
+        if ($rows->isEmpty() || $rows->contains(fn ($row) => (int) $row->actor_id !== 0)) throw new RuntimeException('Anonymous audit marker invalid');
+        echo json_encode(['public_audit_rows' => $rows->count(), 'actor_ids' => [0]]); exit;
+    })(),
     'decorate' => (function () use ($user, $order): void {
         $user->update(['telegram_id' => -1234567, 'plan_id' => $order->plan_id, 'balance' => 1234,
             'commission_balance' => 567, 'u' => 100, 'd' => 200, 'transfer_enable' => 1073741824, 'expired_at' => time()+86400]);

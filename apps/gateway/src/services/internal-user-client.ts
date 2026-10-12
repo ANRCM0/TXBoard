@@ -2,11 +2,12 @@ import { randomUUID, X509Certificate } from 'node:crypto'
 import https from 'node:https'
 import { checkServerIdentity } from 'node:tls'
 import type { GatewayConfig } from '../config/env.js'
-import { adaptInternalContent, adaptInternalDisplay, adaptInternalOrderList, adaptInternalOrderStatus, adaptInternalUserV2, internalError, internalSuccessV2, internalOrderCreateInput, internalOrderWriteSuccess, strictInternalJson } from '../adapters/internal-user-v2.js'
+import { adaptInternalContent, adaptInternalDisplay, adaptInternalOrderList, adaptInternalOrderStatus, adaptInternalUserV2, adaptInternalPublic, internalPublicSuccess, internalError, internalSuccessV2, internalOrderCreateInput, internalOrderWriteSuccess, strictInternalJson } from '../adapters/internal-user-v2.js'
 import { GatewayFailure } from './failures.js'
 import { mappedOrderWriteFailure } from './order-write-failure.js'
 
-const operations = { userProfile: 'user.profile.get', userOrderDetail: 'user.order.get', userOrders: 'user.order.list',
+const operations = { guestConfig: 'public.site-config.get', guestPlans: 'public.plan.list',
+  userProfile: 'user.profile.get', userOrderDetail: 'user.order.get', userOrders: 'user.order.list',
   userStats: 'user.dashboard.get', userPaymentMethods: 'user.payment-methods.list',
   userSubscription: 'user.subscription-summary.get', userNotices: 'user.notice.list', userOrderStatus: 'user.order-status.get',
   userOrderCreate: 'user.order.create' } as const
@@ -15,7 +16,11 @@ export async function internalUserRequest(config: GatewayConfig, operation: keyo
     status?: number; paginated?: boolean; body?: unknown; headers?: Record<string, string> }): Promise<unknown> {
   const tls = config.internalUser
   if (!tls || !Object.hasOwn(operations, operation)) throw new GatewayFailure('UPSTREAM_ERROR', 502, 'Internal operation unavailable')
-  if (!options.auth || !/^Bearer [A-Za-z0-9|._-]{1,4089}$(?![\s\S])/.test(options.auth)) {
+  const anonymous = operation === 'guestConfig' || operation === 'guestPlans'
+  if (anonymous && (config.internalPublicReadEnabled !== true || options.auth !== undefined)) {
+    throw new GatewayFailure('UPSTREAM_ERROR', 400, 'Internal public operation unavailable')
+  }
+  if (!anonymous && (!options.auth || !/^Bearer [A-Za-z0-9|._-]{1,4089}$(?![\s\S])/.test(options.auth))) {
     throw new GatewayFailure('UPSTREAM_ERROR', 401, 'Authentication required')
   }
   const write = operation === 'userOrderCreate'
@@ -29,14 +34,14 @@ export async function internalUserRequest(config: GatewayConfig, operation: keyo
     || (options.status !== undefined && (operation === 'userNotices' || !Number.isInteger(options.status) || options.status < 0 || options.status > 4)))) {
     throw new GatewayFailure('VALIDATION_ERROR', 400, 'Invalid order query')
   }
-  const input = write ? internalOrderCreateInput(options.body, options.headers?.['Idempotency-Key'])
+  const input = anonymous ? {} : write ? internalOrderCreateInput(options.body, options.headers?.['Idempotency-Key'])
     : operation === 'userProfile' || operation === 'userStats' || operation === 'userPaymentMethods' || operation === 'userSubscription' ? {} : operation === 'userOrderDetail' || operation === 'userOrderStatus'
     ? { trade_no: options.tradeNo } : { page, per_page: perPage,
       ...(options.status === undefined ? {} : { status: options.status }) }
   if (Date.now() < Date.parse(tls.certificate.validFrom) || Date.now() >= Date.parse(tls.certificate.validTo)) {
     throw new GatewayFailure('UPSTREAM_UNAVAILABLE', 502, 'Internal service unavailable')
   }
-  const body = Buffer.from(JSON.stringify({ contract_version: write ? '1' : '2', request_id: randomUUID(),
+  const body = Buffer.from(JSON.stringify({ contract_version: write || anonymous ? '1' : '2', request_id: randomUUID(),
     deadline_at: Math.floor(Date.now() / 1000) + 5, input }))
   return new Promise((resolve, reject) => {
     let finished = false
@@ -57,7 +62,7 @@ export async function internalUserRequest(config: GatewayConfig, operation: keyo
         return new Error('Invalid Internal server identity')
       },
       method: 'POST', path: '/txapi/internal/v1/operations/' + operations[operation],
-      headers: { authorization: options.auth!, 'content-type': 'application/json', accept: 'application/json', 'content-length': body.length },
+      headers: { ...(anonymous ? {} : { authorization: options.auth! }), 'content-type': 'application/json', accept: 'application/json', 'content-length': body.length },
     }, response => {
       if (finished) { response.destroy(); return }
       const chunks: Buffer[] = []; let bytes = 0
@@ -88,6 +93,11 @@ export async function internalUserRequest(config: GatewayConfig, operation: keyo
             const receipt = internalOrderWriteSuccess.safeParse(value)
             if (!receipt.success) throw new GatewayFailure('UPSTREAM_ERROR', 502, 'Unexpected Internal response')
             finish(undefined, receipt.data.data); return
+          }
+          if (anonymous) {
+            const envelope = internalPublicSuccess.safeParse(value)
+            if (!envelope.success) throw new GatewayFailure('UPSTREAM_ERROR', 502, 'Unexpected Internal response')
+            finish(undefined, adaptInternalPublic(operation, envelope.data.data)); return
           }
           const envelope = internalSuccessV2.safeParse(value)
           if (!envelope.success) throw new GatewayFailure('UPSTREAM_ERROR', 502, 'Unexpected Internal response')

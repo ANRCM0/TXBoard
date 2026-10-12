@@ -1,8 +1,8 @@
 # User Internal mTLS 当前本机接入
 
-状态：Current / local-testing-only，B5.2–B5.7 已验收，订单创建另限隔离测试副本。现有 Gateway v1 受保护只读操作均可选择本地 Internal 上游。完整 B5/B6、管理员 Gateway、SC-v2 和生产门禁仍未完成。
+状态：Current / local-testing-only，B5.2–B5.8 已验收，订单创建另限隔离测试副本。现有 Gateway v1 受保护只读操作均可选择本地 Internal 上游，公共展示读取有额外 opt-in。完整 B5/B6、管理员 Gateway、SC-v2 和生产门禁仍未完成。
 
-`GATEWAY_INTERNAL_USER_ENABLED` 默认 false；undefined、空串和精确 false 关闭，其他非空误值启动失败；只有精确字符串 true 且 `APP_ENV=local/testing` 才可启用。启用后 profile/detail、orders list/page/status、dashboard、payment-methods、subscription-summary、notices 调用固定 User operation，request contract_version=2。公开元数据和登录仍使用原路径；订单创建的单独开关与隔离约束见下文。
+`GATEWAY_INTERNAL_USER_ENABLED` 默认 false；undefined、空串和精确 false 关闭，其他非空误值启动失败；只有精确字符串 true 且 `APP_ENV=local/testing` 才可启用。启用后 profile/detail、orders list/page/status、dashboard、payment-methods、subscription-summary、notices 调用固定 User operation，request contract_version=2。登录仍使用原路径；公共元数据和订单创建的额外开关见下文。
 
 启用时必须设置服务器本地绝对 `GATEWAY_INTERNAL_USER_CONFIG_FILE`，内容精确为：
 
@@ -80,3 +80,9 @@ B5.7 仅在现有 `GATEWAY_ORDER_WRITE_ENABLED=true` 和本地 Internal transpor
 请求正文绑定原客户端 Idempotency-Key；适配器只映射 Plan ID、周期、可选优惠码，不计算金额或扣款。原 BillingController/OrderService 的 SQL 幂等与 User 锁继续权威，成功只接受 HTTP201 和封闭 `internal-order-write/1` DTO。Core/Gateway 不自动重试；提交后超时、断线或审计失败可能返回错误但已建单，客户端用新 transport request 和原业务键/参数恢复。原 TTL、当前 actor、Plan 和 owned Order 可访问性仍约束恢复；删除 Plan 后原重放继续404。公共 JSON parser 的既有重复字段处理未改变，Core 对实际 Internal 字节单独拒绝重复字段。
 
 B5.7 固定 Core `422e85c` / Gateway `ee1cec6` 加十四文件：845项API通过（36项按引擎跳过、7085断言），529项Gateway、68项SDK、typecheck/build及40项真实TLS1.3/MariaDB检查通过。同键并发只预扣一次、过期键替换后立即重放、审计503后独立确认已提交再原键恢复均已验证。[验收证据](../tests/integration/evidence/internal-order-write.json)记录精确源码、原始日志hash和秘密清理结果。
+
+B5.8 的额外 `GATEWAY_INTERNAL_PUBLIC_READ_ENABLED=true` 只选择 `/bootstrap`、`/theme/config`、`/plans` 的两个固定匿名展示 operation；要求上述 local/testing Internal transport，误值、缺配置或生产启用均启动失败。Core 另要求 `CORE_INTERNAL_PUBLIC_READ_ENABLED=true`。浏览器 Bearer 不转发，实际 Internal Authorization 必须不存在；user-gateway 证书和 proof 仍必需，支付等受保护接口仍要求当前 User。
+
+公开 DTO、原主题扩展和套餐价格/可见性不变；响应先经闭合 schema 与安全整数校验。现有公共缓存遵守原 TTL，缓存元数据不代表当前授权；被选中的 Internal cache miss 失败无 Native 回退。联调固定端口另增加19589，边界用例先清共享缓存，单独验证 MISS/HIT 只生成一条 SQL 审计。
+
+B5.8 固定 Core `a7e73b1` / Gateway `8c03a78` 加十六文件：872项API通过（40项引擎专测跳过、7697断言），596项Gateway、68项SDK、typecheck/build及48项真实TLS1.3/MariaDB检查通过。[验收证据](../tests/integration/evidence/internal-public-read.json)保存源码和日志hash、匿名actor marker、缓存检查与秘密清理结果；登录/注册/邮件和生产PKI仍待实现。

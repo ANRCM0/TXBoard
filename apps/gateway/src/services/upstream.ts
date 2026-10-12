@@ -123,7 +123,8 @@ export async function upstreamRequest(
     headers?: Record<string, string>
   } = {},
 ): Promise<unknown> {
-  if (config.internalUser && (operation === 'userProfile' || operation === 'userOrderDetail' || operation === 'userOrders'
+  if (config.internalUser && ((config.internalPublicReadEnabled === true && (operation === 'guestConfig' || operation === 'guestPlans'))
+    || operation === 'userProfile' || operation === 'userOrderDetail' || operation === 'userOrders'
     || operation === 'userStats' || operation === 'userPaymentMethods' || operation === 'userSubscription' || operation === 'userNotices' || operation === 'userOrderStatus' || operation === 'userOrderCreate')) {
     return internalUserRequest(config, operation, options)
   }
