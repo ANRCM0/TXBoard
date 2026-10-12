@@ -128,6 +128,8 @@ Disable 的目标是停止新发行与新授权，已存在的有限租约不会
 
 B4.3 的[本地 Plugin 停用接入](local-fixture-plugin-boundary-v1.md)仅适用于固定可信测试插件：Plugin 状态与 Provider 发行 fence 原子提交，私有清理保留原 operation；卸载与删除继续等待 Node/租约/交付/结算门禁。它不改变下述 v2 Target 的完成要求。
 
+B4.4 的[本地租约候选](local-fixture-lease-candidate-v1.md)和 B4.5 的[初始绑定与离线签名快照](local-fixture-authorization-snapshot-v1.md)默认关闭，只适用于 local/testing 的固定合成 Provider。后者原子保存初始 Subject 绑定和签名历史，公钥 CLI 只验证离线证据；两者均不授予 Node 准入，不完成秘密交付或全网撤销。
+
 B4 契约测试覆盖七个 operation、超时后成功、同键冲突、重复导入/重复轮换、Provider 失联、Core 提交前后失败、停用与发行并发、卸载与 enable 并发、Node 离线/时间回拨/撤销回退、运行时移除后晚到 usage、跨 Provider 错绑和秘密泄漏。Node 控制与使用量故障测试独立证明 auth lease 和计费归属；只有 PHP 单元测试通过不能证明沙箱或全网撤销。
 
 尚需定稿：JSON Schema、输入规范化摘要算法、独立 runtime transport/服务身份、Node 加密材料封装、有限租约/时钟预算、具体 retention、批量 revoke 分页与 checkpoint 存储。实现开始前将这些细节落入 Schema/DTO/Node 消费端及测试；当前 API/Plugin v1 权限边界在 [Core First ADR](../../../docs/architecture/v2/core-boundaries.md) 门禁前保持。

@@ -1,0 +1,289 @@
+{
+  "schema": "txboard/local-provider-authorization-verification/1",
+  "status": "isolated_fixture_verified",
+  "production_acceptance": false,
+  "scope": "B4.5 initial Core binding plus fixed offline signed snapshot for trusted synthetic Provider only",
+  "source": {
+    "base_commit": "e33ba63e9a7c3aa97fde02c41ba5dc76d230f3cf",
+    "snapshot": "/opt/txboard-baseline/provider-authorization-e33ba63-r4",
+    "complete_repository_archive_sha256": "56c5f2750523705710788035555e4f49642409576704cbe2f0c72c54cc515b27",
+    "overlay_count": 13,
+    "overlay_byte_hashes": [
+      {
+        "path": "api/app/Domains/CredentialProviderFixture/FixtureLeaseCandidateService.php",
+        "sha256": "815eee29552bf6587223eb9745b3d7b4aab442c42c8fd5641fcee6233c6289da"
+      },
+      {
+        "path": "api/app/Domains/CredentialProviderFixture/FixtureLeaseCurrentBoundary.php",
+        "sha256": "8b8a7d0ce485b96e107ad5d980808c61e024476cc78ef6a89d66543121f95374"
+      },
+      {
+        "path": "api/app/Domains/CredentialProviderFixture/FixtureAuthorizationCodec.php",
+        "sha256": "fe17454a33b56369f4a1affd5d9dd6d7b40b51101febefe22f7584d029916c5e"
+      },
+      {
+        "path": "api/app/Domains/CredentialProviderFixture/FixtureAuthorizationSigner.php",
+        "sha256": "affeeec53c0079378c0db7b505dbfcc691c784455a299eb460ed316c1c57540e"
+      },
+      {
+        "path": "api/app/Domains/CredentialProviderFixture/FixtureAuthorizationVerifier.php",
+        "sha256": "f489b9664981af23eb6cfcec39b731acb6b576046eb2c94a486f958bb5bb054b"
+      },
+      {
+        "path": "api/app/Domains/CredentialProviderFixture/FixtureAuthorizationService.php",
+        "sha256": "95192261f55194c58d671ded1e5a9f3607189ba9efb886bb6b1ac01a73a96ed5"
+      },
+      {
+        "path": "api/config/credential_provider_authorization_fixture.php",
+        "sha256": "a8f3f7b2396849b53a5fabd6a3f15747d6624419f989f0130ec1f47ce356010d"
+      },
+      {
+        "path": "api/database/migrations/2026_10_12_000013_create_provider_authorization_fixture.php",
+        "sha256": "bb1cc695eca1dea37a8a4d14a24e796a3569538180b957f4f6790d510949d3f0"
+      },
+      {
+        "path": "api/tests/Feature/CredentialProviderFixture/FixtureAuthorizationSnapshotTest.php",
+        "sha256": "6b4497590318068c467951e4021bc29e06cbb15daca27617d9e66d9853001135"
+      },
+      {
+        "path": "api/tests/Fixtures/CredentialProviderAuthorization/verify.php",
+        "sha256": "ad09f5aa9d915ad3ba6546e960a5abbc627a4032e491ccf0bf4e1e2e21e1208e"
+      },
+      {
+        "path": "api/tests/Fixtures/CredentialProviderAuthorization/run-linux.sh",
+        "sha256": "d5cfdcf9f23d9e4dc624e40146bf7dae71ccd0aa4f4eadb68dd7a567400ef1d8"
+      },
+      {
+        "path": "api/tests/Fixtures/CredentialProviderAuthorization/README.md",
+        "sha256": "da03ea457cdce856c3e064023ee382caf6cc52dc4d8361330b0bdb874bf5ddd5"
+      },
+      {
+        "path": "contracts/v2/credential-provider/local-fixture-authorization-snapshot-v1.md",
+        "sha256": "c1d7da906ec3122f2f49abeb4853953482b23101b52ff34d0b0825c02ac09d2d"
+      }
+    ],
+    "overlay_aggregate_sha256": "c62c399dfe4e7bdd20a8eea4daf29d657e10d42186529f1d4ca2bedc8b4ce9c1",
+    "aggregate_encoding": "SHA256(JSON files array, keys sorted, compact separators)",
+    "composer_lock_sha256": "f47b212c2fc530a7820e370eab7c6d624d13962e7d26e4f2ddf57a11848257c0",
+    "vendor_installed_json_sha256": "8e668e456c9772ae428a038ab003fba5752ab2591980fc8396d9122851145b80",
+    "vendor_copied": true,
+    "vendor_symlinked": false,
+    "composer_scripts_executed": false,
+    "live_internal_email_and_subscription_overlay_included": false,
+    "scope_sha256": "4f4b34aea0fed62b104f21de6bd7693edbcb3f1ff4384b0f45c53b8d621c2139",
+    "launcher_sha256": "7db47b6622c053e367481268c3b0760bc9d680fc9126db7391c889cd517113b2",
+    "collector_sha256": "e70872c3632e0f8b2cd754a88ed104d50fef7cb8250d2b3b2a70a0eb4401854b",
+    "raw_results_sha256": "3a6c47145e1db0fd36ebbf864cbbb705cbf5cec76cc44744bc959f89fabecb23"
+  },
+  "gates": {
+    "sqlite": {
+      "tests_total": 70,
+      "tests_passed": 41,
+      "tests_skipped": 29,
+      "tests_failed": 0,
+      "assertions": 703,
+      "duration_seconds": 50.42,
+      "raw_summary": "29 skipped, 41 passed (703 assertions)",
+      "log_path": "/opt/txboard-baseline/logs/provider-authorization-r4-sqlite-attempt01.log",
+      "log_sha256": "10784f7fceb998c1bcd8ba42e2cc7765fdf684955e21cd3cd93a1e51eabd9539"
+    },
+    "mariadb": {
+      "tests_total": 70,
+      "tests_passed": 70,
+      "tests_skipped": 0,
+      "tests_failed": 0,
+      "assertions": 965,
+      "duration_seconds": 556.74,
+      "raw_summary": "70 passed (965 assertions)",
+      "log_path": "/opt/txboard-baseline/logs/provider-authorization-r4-mariadb-attempt01.log",
+      "log_sha256": "16a02fd6ca7ba52d7f2f02a0b0f0bd25fafcfc1c232c436b5bbcb123b4b99884"
+    },
+    "full": {
+      "tests_total": 1045,
+      "tests_passed": 966,
+      "tests_skipped": 79,
+      "tests_failed": 0,
+      "assertions": 9323,
+      "duration_seconds": 148.96,
+      "raw_summary": "79 skipped, 966 passed (9323 assertions)",
+      "log_path": "/opt/txboard-baseline/logs/provider-authorization-r4-full-attempt01.log",
+      "log_sha256": "bebc872edc869cb0c08984268ab2360dbd25545ac04e0e574c3b1cde7874e3a4"
+    }
+  },
+  "counting": {
+    "tests_total": "passed + skipped + failed; never equate total with passed",
+    "specialized_tests_total": 70,
+    "new_authorization_cases": 45,
+    "unchanged_candidate_regression_cases": 25,
+    "sqlite_new_passed": 30,
+    "sqlite_new_skipped": 15,
+    "sqlite_candidate_passed": 11,
+    "sqlite_candidate_skipped": 14,
+    "mariadb_new_passed": 45,
+    "mariadb_candidate_passed": 25,
+    "skipped_reason": "Separate MariaDB sessions and pcntl are required; equivalent cases passed on the MariaDB gate"
+  },
+  "boundary_evidence": {
+    "default_enabled": false,
+    "allowed_environments": [
+      "local",
+      "testing"
+    ],
+    "required_isolation_and_flags": [
+      "credential_provider_authorization_fixture.enabled",
+      "credential_provider_lease_fixture.enabled",
+      "credential_provider_fixture.enabled",
+      "credential_provider_fixture.plugin_bridge_enabled",
+      "core_shadow.isolated_copy",
+      "UsagePolicy.requireIsolated"
+    ],
+    "trusted_provider_profile": "synthetic-v1",
+    "actor_scope": "local-fixture-operator / local-fixture-grant/v1",
+    "initial_subject": "pending + exact core_pending_fixture + original issue auth_version + unrevoked",
+    "atomic_sql_commit": [
+      "issue ps_ref accepted",
+      "Subject status active",
+      "auth_version + 1",
+      "row_version + 1",
+      "immutable signature evidence"
+    ],
+    "first_late_time_trust_signing_sql_failure": "both new Subject binding and evidence rolled back",
+    "same_key_replay": "original historical signature/ref/version/expiry; no resign or activation",
+    "different_key": "same candidate/issue/Subject cannot bind twice",
+    "current_installation_identity": "same already-held source row lockForUpdate read compared with signed installation_ref",
+    "current_failure": "durable expired/refused terminal return commits; never reopens",
+    "unknown_database_failure": "no successful current result; cannot promise terminal persistence",
+    "tx_auth_snapshot_writes": false,
+    "capability_or_node_consumer_added": false,
+    "admission_granted": false,
+    "node_ack_or_convergence": "not_implemented",
+    "secret_delivery_or_parsing": "not_implemented",
+    "legacy_credentials_or_subjects_migrated": false,
+    "php_process_sandbox_claim": false
+  },
+  "signature": {
+    "library": "firebase/php-jwt",
+    "locked_version": "v6.11.1",
+    "algorithm": "RS256",
+    "rsa_bits": 3072,
+    "jws_type": "txboard-fixture-authorization+jws",
+    "issuer": "txboard:local-synthetic-authority",
+    "audience": "txboard:offline-fixture-verifier",
+    "max_compact_bytes": 16384,
+    "trust_keys_max": 2,
+    "private_file_mode": "0600 within disposable 0700 fixture root",
+    "jwt_global_clock_leeway_changed_by_runtime": false,
+    "jwt_standard_time_claims_accepted": false,
+    "custom_explicit_window_fields": [
+      "issued_at",
+      "lease_expires_at"
+    ],
+    "cli_entrypoint": "api/tests/Fixtures/CredentialProviderAuthorization/verify.php",
+    "cli_public_only_trust_actually_verified": true,
+    "cli_laravel_boot": false,
+    "cli_database_or_redis": false,
+    "cli_private_material_required": false,
+    "cli_window_or_live_eligibility_evaluated": false,
+    "signature_math_separate_from_current_trust_window_authority": true,
+    "private_or_provider_secrets_persisted_or_returned": false
+  },
+  "runtime_tests": {
+    "actual_user_observer_and_dispatch": true,
+    "only_node_delivery_job_faked": "NodeUserSyncJob",
+    "trusted_test_clock": "not_before=time()+2 for original Provider contract; controlled wall/monotonic fixture, no Node clock proof",
+    "new_two_order_mutation_barriers": 12,
+    "unchanged_candidate_two_order_barriers": 12,
+    "independent_db_clients": true,
+    "same_and_different_key_concurrent_winners_checked": true,
+    "sigkill_after_sql_commit_checked_for_both_slices": true,
+    "crypto_negative_cases": [
+      "signature tamper",
+      "algorithm/type/kid/extra/duplicate fields",
+      "audience",
+      "canonical decimal/newline",
+      "expiry and observed clock regression",
+      "public/private mismatch",
+      "revoked/removed predecessor key",
+      "rehashed evidence",
+      "installation damage"
+    ],
+    "original_immutable_issue_and_candidate_preserved": true,
+    "short_restrictive_foreign_keys_and_additive_repair_checked": true,
+    "sql_faults_and_secret_exception_args_checked": true
+  },
+  "preserved_failures": [
+    {
+      "revision": "r2",
+      "phase": "preflight",
+      "attempt": "attempt01",
+      "executed_tests": false,
+      "evidence": ".tmp/b4-5-gate-r2/preflight-failure-attempt01.json"
+    },
+    {
+      "revision": "r2",
+      "phase": "sqlite",
+      "attempt": "attempt02",
+      "tests_total": 69,
+      "tests_passed": 38,
+      "tests_skipped": 29,
+      "tests_failed": 2,
+      "assertions": 677,
+      "duration_seconds": 39.54,
+      "log_path": "/opt/txboard-baseline/logs/provider-authorization-r2-sqlite-attempt02.log",
+      "log_sha256": "ae2dbeb13603026aad6413271f19c2c7e85f23c88ac4d5afdcf336a4f1f540b6",
+      "failures": "Exact-schema extra issue fails LEASE_EVIDENCE_INVALID; same-process generation config advancement fails immutable signed binding AUTHORIZATION_BINDING_CHANGED. Both expected codes corrected, no weakened current gates."
+    },
+    {
+      "revision": "r3",
+      "phase": "sqlite",
+      "attempt": "attempt01",
+      "tests_total": 70,
+      "tests_passed": 40,
+      "tests_skipped": 29,
+      "tests_failed": 1,
+      "assertions": 692,
+      "duration_seconds": 41.34,
+      "log_path": "/opt/txboard-baseline/logs/provider-authorization-r3-sqlite-attempt01.log",
+      "log_sha256": "b8765af1f4f87a5fa3481760140cb2313136a45782ddf3597bb889c65bf7ecbd",
+      "failure": "New fixture attempted nonexistent operation status failed; original database CHECK correctly rejected before service call. r4 uses legal rejected and still asserts LEASE_ISSUE_INVALID."
+    }
+  ],
+  "failure_provenance": {
+    "original_failed_logs_exist_and_hash_verified": true,
+    "preflight_evidence": ".tmp/b4-5-gate-r2/preflight-failure-attempt01.json",
+    "preflight_sha256": "c5dcd7d9cd94bfc2a4885af267d6cb07b72e1feecd161b9be89f5a5bc4451b51",
+    "preflight_tests_executed": false,
+    "original_redis_port": 16379,
+    "correction": "Root started separate Redis16380 with64 databases and no persistence; existing16379 unchanged",
+    "original_b4_4_automatic_approval_failure": "Preserved in .tmp/b4-4-gate/scope.json, not executed; retries used explicitly authorized normal require_escalated",
+    "no_failed_snapshot_repaired_in_place": true,
+    "no_failed_log_overwritten": true,
+    "no_weakened_failure_or_schema_assertions": true
+  },
+  "post_gate": {
+    "mariadb_version": "11.4.12-MariaDB",
+    "database": "txboard_provider_test",
+    "database_tables": 0,
+    "redis_host": "127.0.0.1",
+    "redis_port": 16380,
+    "redis_dbsize": {
+      "20": 8,
+      "21": 6
+    },
+    "redis_cleanup_performed": false,
+    "collector_sql_mutations": 0
+  },
+  "open_gates": [
+    "Node service identity/admission/enforcement",
+    "private delivery/credential parsing",
+    "per-source revocation domain mapping",
+    "session termination/ACK/offline convergence",
+    "pending traffic/quota reservations",
+    "unobserved clock rollback",
+    "SQL and external trust replacement atomicity",
+    "HA/failover/database restore fencing",
+    "production and legacy migration"
+  ],
+  "report_only_change_after_gate": true,
+  "runtime_or_fixture_changes_after_gate": false
+}
