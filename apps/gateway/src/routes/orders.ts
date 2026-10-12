@@ -102,7 +102,7 @@ export function registerOrdersRoutes(
     const tradeNo = parseTradeNo(c)
     if (tradeNo instanceof Response) return tradeNo
     const status = validated(orderStatusSchema,
-      await upstreamRequest(config, fetcher, 'userOrderStatus', { auth, tradeNo }))
+      await upstreamRequest(config, fetcher, 'userOrderStatus', { auth, tradeNo, signal: c.req.raw.signal }))
     return ok(c, toPublicOrderStatus(tradeNo, status))
   })
 

@@ -1,8 +1,8 @@
 # User Internal mTLS 当前本机接入
 
-状态：Current / local-testing-only，B5.2/B5.3。迁移 profile、detail 和有界 orders list/page 的可选上游，不开放管理员 Gateway、不增加公网路由、不实现 SC-v2。完整 B5/B6 和生产门禁仍未完成。
+状态：Current / local-testing-only，B5.2–B5.6。现有 Gateway v1 受保护只读操作均可选择本地 Internal 上游。完整 B5/B6、写入、管理员 Gateway、SC-v2 和生产门禁仍未完成。
 
-`GATEWAY_INTERNAL_USER_ENABLED` 默认 false；undefined、空串和精确 false 关闭，其他非空误值启动失败；只有精确字符串 true 且 `APP_ENV=local/testing` 才可启用。默认现有用户路径继续 Native 请求。启用后 profile/detail 分别调用固定 Core `user.profile.get` / `user.order.get`，orders list/page 调用 `user.order.list`，request contract_version=2。status、订阅、支付、登录和写入保留当前 Native 行为。
+`GATEWAY_INTERNAL_USER_ENABLED` 默认 false；undefined、空串和精确 false 关闭，其他非空误值启动失败；只有精确字符串 true 且 `APP_ENV=local/testing` 才可启用。启用后 profile/detail、orders list/page/status、dashboard、payment-methods、subscription-summary、notices 调用固定 User operation，request contract_version=2。公开元数据、登录和写入仍使用原路径。
 
 启用时必须设置服务器本地绝对 `GATEWAY_INTERNAL_USER_CONFIG_FILE`，内容精确为：
 
@@ -23,7 +23,7 @@
 
 Gateway 只传用户的真实 Authorization Bearer 和新建版本2正文，不签服务 proof、不持有 proof key、不访问 Core 数据库。身份/证书/actor header 无授权意义，也不会转发。Core 自己验证 Sanctum 当前账号/会话、封禁、管理员拒绝、订单归属、计划缺失。客户端证书不是用户授权。
 
-请求路径只允许固定三个 user operation，POST JSON 包含服务器 UUID、UTC deadline≤5 秒和封闭 input。Authorization≤4KiB，body 为固定≤16KiB结构，response≤64KiB；总 walltime≤5 秒，连续 chunk 不延长期限。超时/错误/超大响应/异常 close/AbortSignal 都清 timer 并 destroy transport。每阶段的期限不代表取消 Core 阻塞 SQL；业务同步 handler 仍可能继续到返回。
+请求路径只允许固定八个 user operation，POST JSON 包含服务器 UUID、UTC deadline≤5 秒和封闭 input。Authorization≤4KiB，body 为固定≤16KiB结构，response≤64KiB；总 walltime≤5 秒，连续 chunk 不延长期限。超时/错误/超大响应/异常 close/AbortSignal 都清 timer 并 destroy transport。每阶段的期限不代表取消 Core 阻塞 SQL；业务同步 handler 仍可能继续到返回。
 
 不跟随 redirect，不自动重试 Internal，不发生 Native/明文 fallback。TLS、Core404、授权失败、格式错误、超大/错误 UTF8/重复键、未知 DTO 或数值溢出均返回拒绝；错误不公开 Core message、proof、私钥或 actor credential。默认关闭不产生 Internal 网络调用。
 
@@ -66,3 +66,11 @@ URL; current plan failures remain Core 409. Notices retain native visibility,
 sort, content and pagination. Fixed Core `60e6eca` / Gateway `31bde17` passed
 806 API (29 skipped), 526 Gateway, 68 SDK and 35 actual TLS1.3 integration
 checks. See [verification evidence](../tests/integration/evidence/internal-user-content.json).
+
+B5.6 also selects `/orders/{trade_no}/status` via `user.order-status.get` with
+exact trade input. Native ownership, statuses and reads after Plan deletion
+remain unchanged. Gateway binds the closed status DTO to the requested trade
+number and retains `{tradeNo,status}`. Fixed Core `dd3b4fd` / Gateway `257ff7e`
+passed 808 API (29 skipped), 527 Gateway, 68 SDK, typecheck/build and 35 actual
+TLS1.3 integration checks. See
+[verification evidence](../tests/integration/evidence/internal-order-status.json).

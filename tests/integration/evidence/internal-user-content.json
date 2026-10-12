@@ -1,5 +1,5 @@
 {
-  "stage": "B5.3 bounded user.order.list over existing local Internal mTLS",
+  "stage": "B5.5 current subscription summary and notices over existing local Internal mTLS",
   "production_acceptance": false,
   "default_upstream": "Native",
   "local_testing_only": true,

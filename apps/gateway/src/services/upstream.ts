@@ -149,7 +149,7 @@ export async function upstreamRequest(
   } = {},
 ): Promise<unknown> {
   if (config.internalUser && (operation === 'userProfile' || operation === 'userOrderDetail' || operation === 'userOrders'
-    || operation === 'userStats' || operation === 'userPaymentMethods' || operation === 'userSubscription' || operation === 'userNotices')) {
+    || operation === 'userStats' || operation === 'userPaymentMethods' || operation === 'userSubscription' || operation === 'userNotices' || operation === 'userOrderStatus')) {
     return internalUserRequest(config, operation, options)
   }
   // No untrusted path/host input can escape this static allowlist.

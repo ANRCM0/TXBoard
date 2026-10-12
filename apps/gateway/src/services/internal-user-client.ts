@@ -2,12 +2,12 @@ import { randomUUID, X509Certificate } from 'node:crypto'
 import https from 'node:https'
 import { checkServerIdentity } from 'node:tls'
 import type { GatewayConfig } from '../config/env.js'
-import { adaptInternalContent, adaptInternalDisplay, adaptInternalOrderList, adaptInternalUserV2, internalError, internalSuccessV2, strictInternalJson } from '../adapters/internal-user-v2.js'
+import { adaptInternalContent, adaptInternalDisplay, adaptInternalOrderList, adaptInternalOrderStatus, adaptInternalUserV2, internalError, internalSuccessV2, strictInternalJson } from '../adapters/internal-user-v2.js'
 import { GatewayFailure } from './failures.js'
 
 const operations = { userProfile: 'user.profile.get', userOrderDetail: 'user.order.get', userOrders: 'user.order.list',
   userStats: 'user.dashboard.get', userPaymentMethods: 'user.payment-methods.list',
-  userSubscription: 'user.subscription-summary.get', userNotices: 'user.notice.list' } as const
+  userSubscription: 'user.subscription-summary.get', userNotices: 'user.notice.list', userOrderStatus: 'user.order-status.get' } as const
 export async function internalUserRequest(config: GatewayConfig, operation: keyof typeof operations,
   options: { auth?: string; tradeNo?: string; signal?: AbortSignal; current?: number; pageSize?: number;
     status?: number; paginated?: boolean }): Promise<unknown> {
@@ -16,7 +16,7 @@ export async function internalUserRequest(config: GatewayConfig, operation: keyo
   if (!options.auth || !/^Bearer [A-Za-z0-9|._-]{1,4089}$(?![\s\S])/.test(options.auth)) {
     throw new GatewayFailure('UPSTREAM_ERROR', 401, 'Authentication required')
   }
-  if (operation === 'userOrderDetail' && (!options.tradeNo || !/^[A-Za-z0-9_-]{1,128}$(?![\s\S])/.test(options.tradeNo))) {
+  if ((operation === 'userOrderDetail' || operation === 'userOrderStatus') && (!options.tradeNo || !/^[A-Za-z0-9_-]{1,128}$(?![\s\S])/.test(options.tradeNo))) {
     throw new GatewayFailure('VALIDATION_ERROR', 400, 'Invalid order identifier')
   }
   const page = options.current ?? 1, perPage = options.pageSize ?? (operation === 'userNotices' ? 5 : 100)
@@ -25,7 +25,7 @@ export async function internalUserRequest(config: GatewayConfig, operation: keyo
     || (options.status !== undefined && (operation === 'userNotices' || !Number.isInteger(options.status) || options.status < 0 || options.status > 4)))) {
     throw new GatewayFailure('VALIDATION_ERROR', 400, 'Invalid order query')
   }
-  const input = operation === 'userProfile' || operation === 'userStats' || operation === 'userPaymentMethods' || operation === 'userSubscription' ? {} : operation === 'userOrderDetail'
+  const input = operation === 'userProfile' || operation === 'userStats' || operation === 'userPaymentMethods' || operation === 'userSubscription' ? {} : operation === 'userOrderDetail' || operation === 'userOrderStatus'
     ? { trade_no: options.tradeNo } : { page, per_page: perPage,
       ...(options.status === undefined ? {} : { status: options.status }) }
   if (Date.now() < Date.parse(tls.certificate.validFrom) || Date.now() >= Date.parse(tls.certificate.validTo)) {
@@ -78,7 +78,8 @@ export async function internalUserRequest(config: GatewayConfig, operation: keyo
           }
           const envelope = internalSuccessV2.safeParse(value)
           if (!envelope.success) throw new GatewayFailure('UPSTREAM_ERROR', 502, 'Unexpected Internal response')
-          finish(undefined, operation === 'userSubscription' || operation === 'userNotices' ? adaptInternalContent(operation, envelope.data.data, options)
+          finish(undefined, operation === 'userOrderStatus' ? adaptInternalOrderStatus(envelope.data.data, options.tradeNo)
+            : operation === 'userSubscription' || operation === 'userNotices' ? adaptInternalContent(operation, envelope.data.data, options)
             : operation === 'userStats' || operation === 'userPaymentMethods' ? adaptInternalDisplay(operation, envelope.data.data)
             : operation === 'userOrders' ? adaptInternalOrderList(envelope.data.data, options)
             : adaptInternalUserV2(operation, envelope.data.data, options.tradeNo))

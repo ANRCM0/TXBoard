@@ -12,7 +12,7 @@ import { createLogger } from '../../apps/gateway/dist/middleware/observability.j
 const api = process.env.INTERNAL_CORE_API, dir = process.env.INTERNAL_FIXTURE_DIR
 assert.ok(api && dir)
 const snapshot = JSON.parse(readFileSync(`${api}/../internal-snapshot.json`))
-assert.equal(snapshot.committed_core_head, '60e6ecae545078e7e771aa73c429828a557b0e27')
+assert.equal(snapshot.committed_core_head, 'dd3b4fd3c8ea9dd40a960c9826c714c4cbdf5f85')
 const actors = JSON.parse(readFileSync(`${dir}/actors.json`))
 const pki = JSON.parse(readFileSync(`${dir}/public-evidence.json`))
 const processes = [], servers = [], checks = [], nativeCalls = []
@@ -182,9 +182,13 @@ try {
     await call(internal,'/notices',actors.credentials.user,502)
     assert.equal(nativeCalls.length,before);decorate('notice-restore')
   })
-  await check('nonselected status retains Native path', async () => {
-    const before=nativeCalls.length; await call(internal,orderPath+'/status')
-    assert.deepEqual(nativeCalls.slice(before),['/txapi/orders/'+actors.trade_no])
+  await check('current status equals Native over TLS and retains missing-plan reads and ownership', async () => {
+    const before=nativeCalls.length, viaNative=await call(native,orderPath+'/status'), viaInternal=await call(internal,orderPath+'/status')
+    assert.deepEqual(viaInternal.data,viaNative.data);assert.equal(nativeCalls.length,before+1)
+    const statusPath='/orders/internal-list-missing-plan/status'
+    assert.deepEqual((await call(internal,statusPath)).data,{tradeNo:'internal-list-missing-plan',status:4})
+    const unchanged=nativeCalls.length;await call(internal,orderPath+'/status',actors.credentials.other,404)
+    await call(internal,orderPath+'/status',actors.credentials.admin,403);assert.equal(nativeCalls.length,unchanged)
   })
   for (const cert of ['admin','wrong-san','multi-san','expired']) {
     await check(`startup rejects ${cert} client identity`, () => assert.throws(()=>gatewayConfig(cert),/Invalid local\/testing Internal User configuration/))
@@ -248,7 +252,7 @@ try {
   const hashes={}
   for(const file of ['apps/gateway/src/services/internal-user-client.ts','apps/gateway/src/adapters/internal-user-v2.ts','apps/gateway/src/config/internal-user.ts',
     'tests/integration/internal-user-core-gateway.mjs','tests/integration/internal-user-core-fixture.php'])hashes[file]=createHash('sha256').update(readFileSync(file)).digest('hex')
-  const report={current_only:true,phase:'B5.5',production_acceptance:false,passed:checks.length,checks,
+  const report={current_only:true,phase:'B5.6',production_acceptance:false,passed:checks.length,checks,
     committed_core_head:snapshot.committed_core_head,committed_gateway_head:JSON.parse(readFileSync('internal-user-snapshot.json')).committed_gateway_head,
     core_slice_sha256:snapshot.slice_sha256,gateway_source_sha256:hashes,database:fixture('database-version').toString(),
     runtime:{node:process.version,php:execFileSync('php',['-r','echo PHP_VERSION;']).toString()},tls:'TLSv1.3',

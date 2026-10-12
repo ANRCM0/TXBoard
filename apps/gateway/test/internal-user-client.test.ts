@@ -94,6 +94,19 @@ describe('Internal client transport fences', () => {
     await expect(upstreamRequest(config,native,'userNotices',{ auth: token,...patch })).rejects.toMatchObject({ status:400 })
     expect(mock.request).not.toHaveBeenCalled(); expect(native).not.toHaveBeenCalled()
   })
+  it('dispatches lightweight status and rejects identity mismatch without fallback', async () => {
+    const native=vi.fn()
+    const pending=upstreamRequest(config,native,'userOrderStatus',{ auth:token,tradeNo:'T-1' })
+    expect(mock.request.mock.calls[0]![0].path).toBe('/txapi/internal/v1/operations/user.order-status.get')
+    expect(JSON.parse(req.end.mock.calls[0]![0].toString()).input).toEqual({ trade_no:'T-1' })
+    respond({...envelope,data:{trade_no:'T-1',status:4}});await expect(pending).resolves.toBe(4)
+    for(const data of [{trade_no:'T-2',status:4},{trade_no:'T-1',status:5},{trade_no:'T-1',status:0,callback_no:'secret'}]) {
+      const pending=upstreamRequest(config,native,'userOrderStatus',{ auth:token,tradeNo:'T-1' })
+      const assertion=expect(pending).rejects.toMatchObject({status:502});respond({...envelope,data});await assertion
+    }
+    await expect(upstreamRequest(config,native,'userOrderStatus',{ auth:token,tradeNo:'T-1\n' })).rejects.toMatchObject({status:400})
+    expect(native).not.toHaveBeenCalled();expect(vi.getTimerCount()).toBe(0)
+  })
   it('keeps default Native and other operations unchanged without Internal network calls', async () => {
     const fetcher = vi.fn(async () => Response.json(nativeEnvelope(nativeProfile())))
     await upstreamRequest({ ...config, internalUser: undefined }, fetcher, 'userProfile', { auth: token })

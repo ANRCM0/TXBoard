@@ -40,6 +40,7 @@ const subscriptionSummary = z.strictObject({
 })
 const notices = z.strictObject({ items: z.array(z.strictObject({ id, title: z.string(), content: z.string(),
   img_url: z.string().nullable(), tags: z.array(z.string()), created_at: timestamp })).max(100), pagination: list.shape.pagination })
+const orderStatus = z.strictObject({ trade_no: detail.shape.trade_no, status: detail.shape.status })
 export const internalSuccessV2 = z.strictObject({
   data: z.unknown(), request_id: z.string().length(36).uuid(),
   meta: z.strictObject({ current_only: z.literal(true), slice: z.literal('internal-readonly/2') }),
@@ -53,6 +54,11 @@ function safe(value: string): number {
   const number = BigInt(value)
   if (number > BigInt(Number.MAX_SAFE_INTEGER) || number < BigInt(Number.MIN_SAFE_INTEGER)) fail()
   return Number(number)
+}
+export function adaptInternalOrderStatus(value: unknown, tradeNo?: string): number {
+  const parsed = orderStatus.safeParse(value)
+  if (!parsed.success || parsed.data.trade_no !== tradeNo) fail()
+  return parsed.data.status
 }
 export function adaptInternalContent(operation: 'userSubscription' | 'userNotices', value: unknown,
   options: { current?: number; pageSize?: number }): unknown {
