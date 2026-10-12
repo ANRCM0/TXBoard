@@ -28,7 +28,12 @@ final class CoreCommerceShadow extends Command
             }
             if ($this->option('reconcile') !== null) {
                 $result = $commerce->reconcile((string) $this->option('run'), (string) $this->option('reconcile'), (string) $this->option('cursor'), $limit);
-                $ok = $result['difference_count'] === '0';
+                if (($this->option('snapshot') !== null && $result['snapshot_key'] !== $this->option('snapshot'))
+                    || ($this->option('currency') !== null && $result['currency'] !== $this->option('currency'))) {
+                    $result['global_issues'][] = 'COMMERCE_CONTEXT_CHANGED';
+                    $result['page_ok'] = false;
+                }
+                $ok = $result['page_ok'] === true;
             } else {
                 $type = $userRetry !== null ? 'user' : ($orderRetry !== null ? 'order' : null);
                 $result = $commerce->run((string) $this->option('run'), $limit,

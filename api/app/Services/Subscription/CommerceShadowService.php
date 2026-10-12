@@ -110,26 +110,73 @@ final class CommerceShadowService
     public function reconcile(string $runKey, string $type, string $cursor, int $limit): array
     {
         $this->guard($runKey, $limit);
+        if (DB::transactionLevel() !== 0) {
+            throw new RuntimeException('COMMERCE_RECONCILE_OUTER_TRANSACTION_UNSUPPORTED');
+        }
         if (!in_array($type, ['user', 'order'], true)) {
             throw new InvalidArgumentException('INVALID_COMMERCE_RECONCILE_TYPE');
         }
         $cursor = CommerceShadowCodec::integer($cursor);
         return DB::transaction(function () use ($runKey, $type, $cursor, $limit) {
-            $checkpoint = DB::table('tx_commerce_shadow_checkpoint')->where('run_key', $runKey)->first();
+            $checkpoint = DB::table('tx_commerce_shadow_checkpoint')->where('run_key', $runKey)->sharedLock()->first();
             if (!$checkpoint) {
                 throw new RuntimeException('COMMERCE_RUN_MISSING');
             }
-            $context = json_decode($checkpoint->details, true, flags: JSON_THROW_ON_ERROR)['context'];
-            $high = $checkpoint->{'high_water_'.$type.'_id'};
+            $global = []; $context = null;
+            try {
+                $details = json_decode($checkpoint->details, true, 16, JSON_THROW_ON_ERROR);
+                if (!is_array($details) || count($details) !== 2 || array_diff(array_keys($details), ['context', 'started_at'])
+                    || !is_array($details['context'] ?? null) || !is_int($details['started_at'] ?? null)
+                    || CommerceShadowCodec::timestamp($details['started_at']) !== CommerceShadowCodec::timestamp($checkpoint->created_at)) {
+                    throw new RuntimeException('COMMERCE_CONTEXT_INVALID');
+                }
+                $context = $this->context($details['context']);
+                if (!hash_equals(CommerceShadowCodec::hash($context), CommerceShadowCodec::hash($details['context']))) {
+                    throw new RuntimeException('COMMERCE_CONTEXT_INVALID');
+                }
+            } catch (Throwable) {
+                $global[] = 'COMMERCE_CONTEXT_INVALID';
+                $context = null;
+            }
+            if ($checkpoint->phase !== 'complete') { $global[] = 'COMMERCE_SCAN_INCOMPLETE'; }
+            $highWaters = []; $sourceHighWaters = [];
+            foreach (['user', 'order'] as $sourceType) {
+                $highWaters[$sourceType] = CommerceShadowCodec::integer($checkpoint->{'high_water_'.$sourceType.'_id'});
+                // This service owns a fresh transaction, so the ordinary read view is fresh.
+                // Do not prelock an Order/exception before the owning User row.
+                $sourceHighWaters[$sourceType] = CommerceShadowCodec::integer(DB::table('tx_'.$sourceType)->orderByDesc('id')->value('id') ?? 0);
+                if ((int) $sourceHighWaters[$sourceType] > (int) $highWaters[$sourceType]) {
+                    $global[] = 'COMMERCE_'.strtoupper($sourceType).'_HIGH_WATER_GROWTH';
+                }
+            }
+            $unresolved = (string) DB::table('tx_commerce_shadow_exception')->where('state', 'unresolved')->count();
+            if ($unresolved !== '0') { $global[] = 'COMMERCE_UNRESOLVED_EXCEPTIONS'; }
+            $high = $highWaters[$type];
             $shadowTable = $type === 'user' ? 'tx_commerce_shadow_user_opening' : 'tx_commerce_shadow_order';
-            $sourceIds = DB::table('tx_'.$type)->select('id as legacy_id')->where('id', '>', $cursor)->where('id', '<=', $high);
-            $shadowIds = DB::table($shadowTable)->select('legacy_'.$type.'_id as legacy_id')->where('currency', $context['currency'])
-                ->where('legacy_'.$type.'_id', '>', $cursor)->where('legacy_'.$type.'_id', '<=', $high);
-            $ids = DB::query()->fromSub($sourceIds->union($shadowIds), 'commerce_ids')->orderBy('legacy_id')->limit($limit)->pluck('legacy_id');
+            // Include all currencies and exception-only IDs, including evidence above the frozen
+            // high water. Never hide them behind a clean empty page or a currency predicate.
+            // ID selection is a nonlocking read: prelocking Orders here would reverse User->Order.
+            $sourceIds = DB::table('tx_'.$type)->select('id as legacy_id')->where('id', '>', $cursor)->orderBy('id')->limit($limit + 1);
+            $shadowIds = DB::table($shadowTable)->select('legacy_'.$type.'_id as legacy_id')->where('legacy_'.$type.'_id', '>', $cursor)
+                ->orderBy('legacy_'.$type.'_id')->limit($limit + 1);
+            $exceptionIds = DB::table('tx_commerce_shadow_exception')->select('legacy_id')->distinct()->where('aggregate_type', $type)->where('legacy_id', '>', $cursor)
+                ->orderBy('legacy_id')->limit($limit + 1);
+            $ids = DB::query()->fromSub($sourceIds->union($shadowIds)->union($exceptionIds), 'commerce_ids')
+                ->orderBy('legacy_id')->limit($limit + 1)->pluck('legacy_id');
+            $hasMore = $ids->count() > $limit;
+            $ids = $ids->take($limit);
             $results = [];
             foreach ($ids as $legacyId) {
-                $id = (string) $legacyId;
+                $id = CommerceShadowCodec::integer($legacyId, positive: true);
                 $differences = [];
+                if ((int) $id > (int) $high) {
+                    $differences[] = ['field' => 'scope.high_water', 'error_code' => 'COMMERCE_EVIDENCE_OUTSIDE_HIGH_WATER'];
+                }
+                if ($context === null) {
+                    $results[] = ['aggregate_type' => $type, 'legacy_id' => $id, 'status' => 'different',
+                        'differences' => [...$differences, ['field' => 'run.context', 'error_code' => 'COMMERCE_CONTEXT_INVALID']]];
+                    continue;
+                }
                 try {
                     if ($type === 'user') {
                         $legacy = DB::table('tx_user')->where('id', $id)->lockForUpdate()->first();
@@ -140,17 +187,36 @@ final class CommerceShadowService
                             $this->lockUser(CommerceShadowCodec::integer($pre->user_id, positive: true));
                         }
                         $legacy = DB::table('tx_order')->where('id', $id)->lockForUpdate()->first();
+                        if ($legacy && (!$pre || (string) $legacy->user_id !== (string) $pre->user_id)) {
+                            throw new RuntimeException('COMMERCE_ORDER_OWNER_CHANGED');
+                        }
                         $current = $legacy ? $this->orderSource($legacy, $context['currency']) : null;
                     }
                     $shadow = DB::table($shadowTable)->where('legacy_'.$type.'_id', $id)
-                        ->where('currency', $context['currency'])->sharedLock()->first();
+                        ->sharedLock()->first();
+                    $exceptions = DB::table('tx_commerce_shadow_exception')->where('aggregate_type', $type)->where('legacy_id', $id)
+                        ->orderBy('id')->limit(11)->sharedLock()->get(['currency', 'state']);
+                    if ($exceptions->count() > 10) {
+                        $differences[] = ['field' => 'exception', 'error_code' => 'COMMERCE_EXCEPTION_EVIDENCE_LIMIT'];
+                    }
+                    foreach ($exceptions->take(10) as $exception) {
+                        if ($exception->state === 'unresolved') {
+                            $differences[] = ['field' => 'exception.state', 'error_code' => 'COMMERCE_UNRESOLVED_EXCEPTION'];
+                        }
+                        if ($exception->currency !== $context['currency']) {
+                            $differences[] = ['field' => 'exception.currency', 'error_code' => 'COMMERCE_EXCEPTION_CURRENCY_MISMATCH'];
+                        }
+                    }
                     if ($current === null) {
                         $differences[] = ['field' => 'source', 'error_code' => 'COMMERCE_SOURCE_MISSING'];
-                    } elseif ($shadow === null) {
+                    }
+                    if ($shadow === null) {
                         $differences[] = ['field' => 'shadow', 'error_code' => 'COMMERCE_SHADOW_MISSING'];
-                    } else {
+                    } elseif ($shadow->currency !== $context['currency']) {
+                        $differences[] = ['field' => 'shadow.currency', 'error_code' => 'COMMERCE_SHADOW_CURRENCY_MISMATCH'];
+                    } elseif ($current !== null) {
                         $stored = json_decode($shadow->source_snapshot, true, flags: JSON_THROW_ON_ERROR);
-                        $differences = CommerceShadowCodec::differences($current, $stored, 'source.', reverse: true);
+                        $differences = [...$differences, ...CommerceShadowCodec::differences($current, $stored, 'source.', reverse: true)];
                         $expectedHash = CommerceShadowCodec::hash($stored);
                         if (!hash_equals($expectedHash, $shadow->content_hash) || $shadow->schema_version !== self::VERSION
                             || (string) $shadow->created_at !== (string) $shadow->captured_at) {
@@ -172,10 +238,18 @@ final class CommerceShadowService
                 }
                 $results[] = ['aggregate_type' => $type, 'legacy_id' => $id, 'status' => $differences ? 'different' : 'match', 'differences' => $differences];
             }
+            $next = $ids->isEmpty() ? $cursor : (string) $ids->last();
+            $different = (string) count(array_filter($results, fn ($result) => $result['status'] !== 'match'));
             return ['mode' => 'isolated_shadow', 'legacy_authority' => 'retained', 'run_key' => $runKey,
-                'aggregate_type' => $type, 'cursor' => $ids->isEmpty() ? $cursor : (string) $ids->last(),
-                'high_water_id' => (string) $high, 'checked_count' => (string) count($results),
-                'difference_count' => (string) count(array_filter($results, fn ($result) => $result['status'] !== 'match')), 'results' => $results];
+                'read_only' => true, 'scope' => 'current-user-order-evidence',
+                'aggregate_type' => $type, 'run_phase' => $checkpoint->phase, 'checkpoint_version' => (string) $checkpoint->row_version,
+                'context_hash' => $context === null ? null : CommerceShadowCodec::hash($context),
+                'currency' => $context['currency'] ?? null, 'snapshot_key' => $context['snapshot_key'] ?? null,
+                'after_cursor' => $cursor, 'next_cursor' => $next, 'cursor' => $next, 'has_more' => $hasMore,
+                'high_water_id' => $high, 'high_water_user_id' => $highWaters['user'], 'high_water_order_id' => $highWaters['order'],
+                'source_high_water_user_id' => $sourceHighWaters['user'], 'source_high_water_order_id' => $sourceHighWaters['order'],
+                'checked_count' => (string) count($results), 'difference_count' => $different, 'unresolved_count' => $unresolved,
+                'global_issues' => $global, 'page_ok' => $global === [] && $different === '0', 'results' => $results];
         });
     }
 

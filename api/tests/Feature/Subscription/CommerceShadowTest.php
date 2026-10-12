@@ -634,6 +634,234 @@ class CommerceShadowTest extends TestCase
         }
     }
 
+    public function test_readonly_gate_distinguishes_empty_exact_and_multiple_sparse_pages(): void
+    {
+        $this->capture();
+        foreach (['user', 'order'] as $type) {
+            $empty = $this->service()->reconcile('commerce-test', $type, '0', 2);
+            $this->assertTrue($empty['read_only']);
+            $this->assertTrue($empty['page_ok']);
+            $this->assertFalse($empty['has_more']);
+            $this->assertSame('0', $empty['checked_count']);
+            $this->assertSame('0', $empty['next_cursor']);
+        }
+        foreach ([2, 100, 900] as $id) { $this->user(['id' => $id]); }
+        $this->capture('sparse');
+        $first = $this->service()->reconcile('sparse', 'user', '0', 2);
+        $this->assertSame(['2', '100'], array_column($first['results'], 'legacy_id'));
+        $this->assertTrue($first['has_more']);
+        $this->assertTrue($first['page_ok']);
+        $this->assertSame('0', $first['after_cursor']);
+        $this->assertSame('100', $first['next_cursor']);
+        $last = $this->service()->reconcile('sparse', 'user', $first['next_cursor'], 2);
+        $this->assertSame(['900'], array_column($last['results'], 'legacy_id'));
+        $this->assertFalse($last['has_more']);
+        $this->assertTrue($last['page_ok']);
+        $exact = $this->service()->reconcile('sparse', 'user', '2', 2);
+        $this->assertSame(['100', '900'], array_column($exact['results'], 'legacy_id'));
+        $this->assertFalse($exact['has_more'], 'A page exactly at the limit must not invent another page.');
+        $this->assertSame($first['context_hash'], $last['context_hash']);
+    }
+
+    public function test_exception_only_rows_are_in_the_union_even_when_resolved_or_above_high_water(): void
+    {
+        $this->capture();
+        $this->exception('user', '10', 'resolved');
+        foreach (['CNY', 'EUR', 'HKD'] as $currency) { $this->exception('user', '10', 'resolved', $currency); }
+        $this->exception('user', '30', 'unresolved');
+        $first = $this->service()->reconcile('commerce-test', 'user', '0', 1);
+        $this->assertSame(['10'], array_column($first['results'], 'legacy_id'));
+        $this->assertTrue($first['has_more']);
+        $this->assertFalse($first['page_ok']);
+        $this->assertContains('COMMERCE_UNRESOLVED_EXCEPTIONS', $first['global_issues']);
+        $codes = array_column($first['results'][0]['differences'], 'error_code');
+        foreach (['COMMERCE_EVIDENCE_OUTSIDE_HIGH_WATER', 'COMMERCE_SOURCE_MISSING', 'COMMERCE_SHADOW_MISSING'] as $code) {
+            $this->assertContains($code, $codes);
+        }
+        $last = $this->service()->reconcile('commerce-test', 'user', '10', 1);
+        $this->assertSame(['30'], array_column($last['results'], 'legacy_id'));
+        $this->assertFalse($last['has_more']);
+        $this->assertContains('COMMERCE_UNRESOLVED_EXCEPTION', array_column($last['results'][0]['differences'], 'error_code'));
+    }
+
+    public function test_global_exceptions_in_another_run_type_currency_or_page_block_an_empty_page(): void
+    {
+        $this->user(); $this->capture();
+        $this->exception('order', '999', 'unresolved', 'CNY', 'other-run');
+        $report = $this->service()->reconcile('commerce-test', 'user', '999', 1);
+        $this->assertSame('0', $report['checked_count']);
+        $this->assertFalse($report['has_more']);
+        $this->assertFalse($report['page_ok']);
+        $this->assertSame('1', $report['unresolved_count']);
+        $this->assertSame(['COMMERCE_UNRESOLVED_EXCEPTIONS'], $report['global_issues']);
+    }
+
+    public function test_incomplete_run_blocks_a_matching_page_and_the_cli_even_when_difference_count_is_zero(): void
+    {
+        $this->user(); $this->user(); $this->capture(limit: 1);
+        $page = $this->service()->reconcile('commerce-test', 'user', '0', 1);
+        $this->assertSame('0', $page['difference_count']);
+        $this->assertContains('COMMERCE_SCAN_INCOMPLETE', $page['global_issues']);
+        $this->assertFalse($page['page_ok']);
+        $this->assertTrue($page['has_more']);
+        $this->assertSame(1, Artisan::call('core:commerce-shadow', ['--isolated-copy' => true, '--run' => 'commerce-test',
+            '--reconcile' => 'user', '--limit' => 1]));
+        $this->assertFalse(json_decode(Artisan::output(), true)['page_ok']);
+    }
+
+    public function test_both_source_high_waters_are_rechecked_after_pagination_and_late_rows_are_visible(): void
+    {
+        $first = $this->user(); $second = $this->user(); $this->capture();
+        $page = $this->service()->reconcile('commerce-test', 'user', '0', 1);
+        $this->assertTrue($page['page_ok']);
+        $this->assertTrue($page['has_more']);
+        $late = $this->user(); $lateOrder = $this->order($first);
+        $next = $this->service()->reconcile('commerce-test', 'user', $page['next_cursor'], 1);
+        $this->assertSame((string) $second, $next['next_cursor']);
+        $this->assertTrue($next['has_more']);
+        $this->assertFalse($next['page_ok']);
+        $this->assertSame('0', $next['difference_count']);
+        $this->assertContains('COMMERCE_USER_HIGH_WATER_GROWTH', $next['global_issues']);
+        $this->assertContains('COMMERCE_ORDER_HIGH_WATER_GROWTH', $next['global_issues']);
+        $this->assertSame((string) $late, $next['source_high_water_user_id']);
+        $this->assertSame((string) $lateOrder, $next['source_high_water_order_id']);
+        $last = $this->service()->reconcile('commerce-test', 'user', $next['next_cursor'], 1);
+        $this->assertSame([(string) $late], array_column($last['results'], 'legacy_id'));
+        $this->assertContains('COMMERCE_SHADOW_MISSING', array_column($last['results'][0]['differences'], 'error_code'));
+        $empty = $this->service()->reconcile('commerce-test', 'user', $last['next_cursor'], 1);
+        $this->assertFalse($empty['page_ok']);
+        $this->assertSame('0', $empty['checked_count']);
+    }
+
+    public function test_late_exception_and_source_field_changes_are_observed_in_subsequent_fresh_pages(): void
+    {
+        $this->user(); $lastUser = $this->user(); $this->capture();
+        $first = $this->service()->reconcile('commerce-test', 'user', '0', 1);
+        $this->assertTrue($first['page_ok']);
+        DB::table('tx_user')->where('id', $lastUser)->update(['balance' => 17]);
+        $this->exception('order', '999', 'unresolved');
+        $last = $this->service()->reconcile('commerce-test', 'user', $first['next_cursor'], 1);
+        $this->assertFalse($last['page_ok']);
+        $this->assertContains('COMMERCE_UNRESOLVED_EXCEPTIONS', $last['global_issues']);
+        $this->assertContains('source.wallet_minor', array_column($last['results'][0]['differences'], 'field'));
+    }
+
+    public function test_wrong_currency_shadow_and_exception_rows_cannot_be_hidden_by_currency_filter(): void
+    {
+        $user = $this->user(); $this->capture();
+        DB::table('tx_commerce_shadow_user_opening')->where('legacy_user_id', $user)->update(['currency' => 'CNY']);
+        $this->exception('user', (string) $user, 'resolved', 'CNY');
+        $report = $this->service()->reconcile('commerce-test', 'user', '0', 1);
+        $this->assertFalse($report['page_ok']);
+        $codes = array_column($report['results'][0]['differences'], 'error_code');
+        $this->assertContains('COMMERCE_SHADOW_CURRENCY_MISMATCH', $codes);
+        $this->assertContains('COMMERCE_EXCEPTION_CURRENCY_MISMATCH', $codes);
+    }
+
+    public function test_context_fields_and_capture_boundary_are_validated_before_any_page_is_clean(): void
+    {
+        $this->user(); $this->capture();
+        $details = json_decode(DB::table('tx_commerce_shadow_checkpoint')->value('details'), true);
+        $invalid = [];
+        foreach (['mapping_version', 'boundary', 'legacy_amount_unit', 'currency', 'snapshot_key'] as $field) {
+            $changed = $details;
+            $changed['context'][$field] = $field === 'snapshot_key' ? 'invalid/snapshot' : 'invalid-context-fixture';
+            $invalid[] = $changed;
+        }
+        $extra = $details; $extra['context']['unexpected'] = true; $invalid[] = $extra;
+        $badTime = $details; $badTime['started_at']++; $invalid[] = $badTime;
+        $invalid[] = ['context' => null, 'started_at' => $details['started_at']];
+        foreach ($invalid as $changed) {
+            DB::table('tx_commerce_shadow_checkpoint')->update(['details' => CommerceShadowCodec::json($changed)]);
+            $report = $this->service()->reconcile('commerce-test', 'user', '0', 1);
+            $this->assertFalse($report['page_ok']);
+            $this->assertContains('COMMERCE_CONTEXT_INVALID', $report['global_issues']);
+            $this->assertNull($report['context_hash']);
+            $this->assertSame('1', $report['difference_count']);
+        }
+    }
+
+    public function test_missing_shadow_and_deleted_source_remain_visible_and_every_reconcile_query_is_readonly(): void
+    {
+        $deleted = $this->user(['balance' => 10]); $missing = $this->user(); $this->capture();
+        DB::table('tx_user')->where('id', $deleted)->delete();
+        DB::table('tx_commerce_shadow_user_opening')->where('legacy_user_id', $missing)->delete();
+        $before = $this->databaseSnapshot();
+        DB::enableQueryLog(); DB::flushQueryLog();
+        $report = $this->service()->reconcile('commerce-test', 'user', '0', 100);
+        $queries = DB::getQueryLog(); DB::disableQueryLog();
+        $this->assertFalse($report['page_ok']);
+        $this->assertSame('2', $report['difference_count']);
+        $this->assertSame('COMMERCE_SOURCE_MISSING', $report['results'][0]['differences'][0]['error_code']);
+        $this->assertSame('COMMERCE_SHADOW_MISSING', $report['results'][1]['differences'][0]['error_code']);
+        foreach ($queries as $query) { $this->assertMatchesRegularExpression('/^select\b/i', trim($query['query'])); }
+        $this->assertNotEmpty($queries);
+        $this->assertEquals($before, $this->databaseSnapshot());
+    }
+
+    public function test_reconciliation_refuses_an_outer_transaction_instead_of_reusing_its_old_union_read_view(): void
+    {
+        $this->user(); $this->capture();
+        DB::beginTransaction();
+        try {
+            DB::table('tx_commerce_shadow_exception')->count();
+            $this->service()->reconcile('commerce-test', 'user', '0', 100);
+            $this->fail('Reconciler inherited an outer read view');
+        } catch (RuntimeException $error) {
+            $this->assertSame('COMMERCE_RECONCILE_OUTER_TRANSACTION_UNSUPPORTED', $error->getMessage());
+        } finally { DB::rollBack(); }
+    }
+
+    public function test_cli_checks_expected_snapshot_and_currency_on_matching_and_empty_pages(): void
+    {
+        $this->user(); $this->capture();
+        foreach ([['--snapshot' => 'another-copy'], ['--currency' => 'CNY']] as $expected) {
+            $this->assertSame(1, Artisan::call('core:commerce-shadow', $expected + ['--isolated-copy' => true,
+                '--run' => 'commerce-test', '--reconcile' => 'order']));
+            $result = json_decode(Artisan::output(), true);
+            $this->assertSame('0', $result['checked_count']);
+            $this->assertFalse($result['page_ok']);
+            $this->assertContains('COMMERCE_CONTEXT_CHANGED', $result['global_issues']);
+        }
+        $this->assertSame(0, Artisan::call('core:commerce-shadow', ['--isolated-copy' => true,
+            '--run' => 'commerce-test', '--reconcile' => 'user', '--snapshot' => $this->context['snapshot_key'], '--currency' => 'USD']));
+        $this->assertTrue(json_decode(Artisan::output(), true)['page_ok']);
+    }
+
+    public function test_all_user_order_and_exception_pages_have_select_only_logs_and_identical_database_snapshots(): void
+    {
+        $first = $this->user(['balance' => 50]); $second = $this->user();
+        $this->order($first); $this->order($second); $this->capture();
+        $this->exception('order', '99', 'resolved', 'USD', 'other-run');
+        $before = $this->databaseSnapshot();
+        DB::enableQueryLog(); DB::flushQueryLog();
+        foreach (['user', 'order'] as $type) {
+            $cursor = '0';
+            do {
+                $report = $this->service()->reconcile('commerce-test', $type, $cursor, 1);
+                $cursor = $report['next_cursor'];
+            } while ($report['has_more']);
+        }
+        $queries = DB::getQueryLog(); DB::disableQueryLog();
+        $this->assertNotEmpty($queries);
+        foreach ($queries as $query) { $this->assertMatchesRegularExpression('/^select\b/i', trim($query['query'])); }
+        $this->assertEquals($before, $this->databaseSnapshot());
+    }
+
+    private function exception(string $type, string $id, string $state, string $currency = 'USD', string $run = 'commerce-test'): void
+    {
+        DB::table('tx_commerce_shadow_exception')->insert(['aggregate_type' => $type, 'legacy_id' => $id, 'state' => $state,
+            'currency' => $currency, 'run_key' => $run, 'error_code' => 'COMMERCE_TEST_EXCEPTION', 'attempts' => 1,
+            'created_at' => time(), 'updated_at' => time()]);
+    }
+
+    private function databaseSnapshot(): array
+    {
+        $snapshot = [];
+        foreach (self::TABLES as $table) { $snapshot[$table] = DB::table($table)->orderBy('id')->get()->all(); }
+        return $snapshot;
+    }
+
     private function capture(string $run = 'commerce-test', int $limit = 100, ?string $retryType = null, ?string $retryId = null): array
     {
         return $this->service()->run($run, $limit, $this->context, $retryType, $retryId);
