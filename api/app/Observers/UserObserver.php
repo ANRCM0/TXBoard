@@ -5,6 +5,9 @@ namespace App\Observers;
 use App\Jobs\NodeUserSyncJob;
 use App\Models\User;
 use App\Services\TrafficResetService;
+use App\Services\Subscription\LegacyCaptureShadowException;
+use App\Services\Subscription\LegacyUserMutationCapture;
+use Illuminate\Support\Facades\DB;
 
 class UserObserver
 {
@@ -50,6 +53,24 @@ class UserObserver
    */
   private function recalculateNextResetAt(User $user): void
   {
+    if (config('legacy_observer_capture.enabled') !== false) {
+      if (DB::transactionLevel() !== 0) {
+        throw new LegacyCaptureShadowException('CAPTURE_OBSERVER_TRANSACTION_UNSUPPORTED');
+      }
+      DB::transaction(function () use ($user): void {
+        $current = User::whereKey($user->id)->lockForUpdate()->firstOrFail();
+        $capture = app(LegacyUserMutationCapture::class);
+        $before = $capture->beginObserverSchedule((int) $current->id);
+        User::withoutEvents(function () use ($current): void {
+          $nextResetTime = $this->trafficResetService->calculateNextResetTime($current);
+          $current->next_reset_at = $nextResetTime?->timestamp;
+          $current->save();
+        });
+        $capture->appendObserverSchedule($before);
+      });
+      $user->refresh();
+      return;
+    }
     $user->refresh();
     User::withoutEvents(function () use ($user) {
       $nextResetTime = $this->trafficResetService->calculateNextResetTime($user);

@@ -1,6 +1,6 @@
 # Core First v2 实施台账
 
-> 状态：B0、B1.1–B1.15 影子证据、Terms、身份旁观与固定 writer 捕获、B2.1–B2.3 单机升级、B3.1/B3.2 隔离用量、B3.3/B3.4 本地观察与持久事件桶、B4.1–B4.5 合成 Provider、插件停用接入、租约候选与离线签名快照、B5.1–B5.10 本地 mTLS 读取、隔离建单、登录与内存邮件验证码、B6.1–B6.3 实验字节、离线加密与共享 owner 实验已实现；两仓迁移与三镜像发布已完成，继续推进业务迁移切片。各整阶段仍按下表门禁验收。
+> 状态：B0、B1.1–B1.16 影子证据、Terms、身份旁观与固定 writer 捕获、B2.1–B2.3 单机升级、B3.1/B3.2 隔离用量、B3.3/B3.4 本地观察与持久事件桶、B4.1–B4.5 合成 Provider、插件停用接入、租约候选与离线签名快照、B5.1–B5.10 本地 mTLS 读取、隔离建单、登录与内存邮件验证码、B6.1–B6.3 实验字节、离线加密与共享 owner 实验已实现；两仓迁移与三镜像发布已完成，继续推进业务迁移切片。各整阶段仍按下表门禁验收。
 
 2026-10-13，按仓库整合任务，将 Gateway/Node 的完整 Git 历史导入本仓 `gateway/`、`node/`，安装器集中到 TXBoard-Deploy。当前目录与三镜像 CI 见 [双仓布局](../../development/repository-layout.md)；旧基线和验证报告保持当时提交与路径。本次仓库整理独立于下列业务迁移门禁。
 
@@ -257,3 +257,9 @@ Node [当前契约](https://github.com/ANRCM0/TX-Node/blob/main/docs/local-event
 固定 B1.14 `9cc8c0c` 加四个 PHP 文件，SQLite 15 通过 / 3 专测跳过 / 162 断言；MariaDB 18 全通过 / 193 断言，包括真实 stale 返佣候选再次发放、single-use gift 并发仲裁及提交前后 SIGKILL。全 API 1040 通过 / 93 引擎专测跳过 / 10420 断言。最终审阅补充跨 policy 票据拒绝和原 code 保存 false 被忽略的真实行为，前次失败及成功版本均保留在[报告](legacy-reward-capture-verification.json)，[契约](../../../contracts/v2/legacy-reward-capture-v1.md)及[fixture](../../../api/tests/Fixtures/LegacyRewardCapture/README.md)说明边界。
 
 未引入 live ledger 或幂等性：原返佣缺少 Order 当前锁/状态重查，stale work 可以再次发放；原 `markAsUsed` false 不阻止奖励提交，可能再次兑换；expiry/plan 后的 Observer 仍独立写 next_reset_at 并产生明确 source gap。这些证据不能证明整阶段完成，后续继续覆盖 Observer/其他 writer、投影和权威切换门禁。
+
+### B1.16 隔离副本 Observer 重置时间跟进捕获
+
+独立 `LEGACY_OBSERVER_CAPTURE_ENABLED=false` 开关在现有 local/testing 隔离捕获之上，允许 `UserObserver` 原 after-commit 重算使用单独 User 独占事务记录 `user.schedule.observer`。不移动原业务提交点；礼品卡/履约端点后可追加连续 schedule 事件，原日历/普通 Plan 读取、withoutEvents 与 Node dispatch 仍保留。新事务失败只回滚 schedule，不取消此前业务提交；未知响应与 Node 通知缺口仍待恢复机制。
+
+固定 B1.15 `cb16180` 加四个 PHP 文件；SQLite 10 通过 / 2 专测跳过 / 100 断言，MariaDB 12 全通过 / 125 断言，包含 stale model 等锁后当前读和真实跟进提交前后 SIGKILL。全 API 1050 通过 / 95 引擎专测跳过 / 10520 断言。查看[契约](../../../contracts/v2/legacy-observer-schedule-capture-v1.md)、[fixture](../../../api/tests/Fixtures/LegacyObserverCapture/README.md)和[验证报告](legacy-observer-capture-verification.json)。旧捕获单独启用仍保持历史 source gap；原始 User insert、其他独立 writer、整个迁移与投影门禁未因此完成。

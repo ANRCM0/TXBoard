@@ -1,0 +1,125 @@
+{
+  "profile": "legacy-observer-schedule-capture/verification-v1",
+  "committed_base": "cb16180ba4ddd40c1a7aaf28667cd73d9c27bda7",
+  "source_sha256": {
+    "api/app/Observers/UserObserver.php": "c00e375e69bf6795af922d57be336921039c8046ba8919832e985d4258cd8a0e",
+    "api/config/legacy_observer_capture.php": "ce6e55df8a85b8d9e2816aa450ba5407aa03b9de851d3a875ffea6d259ad6eef",
+    "api/app/Services/Subscription/LegacyUserMutationCapture.php": "b6610bf9ecadfc939b72058d5bd3428c665fc0c2269997df60f15d0ef2914fe6",
+    "api/tests/Feature/Subscription/LegacyObserverCaptureTest.php": "a8f659a4252cd2afd0e526f694902ec31b2beff65934c1ed8b60d85245e12f57"
+  },
+  "source_sha256_lf": {
+    "api/app/Observers/UserObserver.php": "c00e375e69bf6795af922d57be336921039c8046ba8919832e985d4258cd8a0e",
+    "api/config/legacy_observer_capture.php": "ce6e55df8a85b8d9e2816aa450ba5407aa03b9de851d3a875ffea6d259ad6eef",
+    "api/app/Services/Subscription/LegacyUserMutationCapture.php": "b6610bf9ecadfc939b72058d5bd3428c665fc0c2269997df60f15d0ef2914fe6",
+    "api/tests/Feature/Subscription/LegacyObserverCaptureTest.php": "a8f659a4252cd2afd0e526f694902ec31b2beff65934c1ed8b60d85245e12f57"
+  },
+  "snapshot_manifest_sha256": "7e7d2be1332172d2b797b1381803fb34de1391b7f7017daff955600b031eacd5",
+  "composer_lock_sha256": "f47b212c2fc530a7820e370eab7c6d624d13962e7d26e4f2ddf57a11848257c0",
+  "installed_json_sha256": "8e668e456c9772ae428a038ab003fba5752ab2591980fc8396d9122851145b80",
+  "test_configuration_sha256": "5468d6d37c22d6cc3f41490690554619d7f80198c3709ccb46e868d16522da5d",
+  "fixture_environment": {
+    "APP_ENV": "testing",
+    "APP_KEY": "base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+    "REDIS_HOST": "127.0.0.1",
+    "REDIS_PORT": "16380",
+    "REDIS_DB": "18",
+    "REDIS_CACHE_DB": "19",
+    "REDIS_PREFIX": "txboard_observer_gate_",
+    "CACHE_PREFIX": "txboard_observer_gate_",
+    "CACHE_DRIVER": "array",
+    "CACHE_STORE": "array",
+    "SETTING_CACHE_STORE": "array",
+    "QUEUE_CONNECTION": "sync",
+    "MAIL_MAILER": "array",
+    "SESSION_DRIVER": "array"
+  },
+  "mysql_scope": {
+    "host": "127.0.0.1",
+    "port": 13306,
+    "database": "txboard_concurrency_test"
+  },
+  "gates": {
+    "static": {
+      "mode": "static",
+      "exit_code": 0,
+      "log_sha256": "78889aeed9dff4b8e1fc24be0a4c9d507cbbe93e13be00bf49bec953f18c5ecf",
+      "log": "static.log"
+    },
+    "slice-sqlite": {
+      "mode": "slice-sqlite",
+      "exit_code": 0,
+      "log_sha256": "5987aee4ba29f120b18179c9a3db05a4fc5cc8bf6756f5e5aa586f06d9860fbe",
+      "log": "slice-sqlite.log",
+      "counts": {
+        "tests": 12,
+        "skipped": 2,
+        "failures": 0,
+        "errors": 0,
+        "assertions": 100
+      }
+    },
+    "slice-mariadb": {
+      "mode": "slice-mariadb",
+      "exit_code": 0,
+      "log_sha256": "fc755bab97fb08e845a23d233ec64d21a5632cd69f73d6cadc9fc02a0918765e",
+      "log": "slice-mariadb.log",
+      "counts": {
+        "tests": 12,
+        "skipped": 0,
+        "failures": 0,
+        "errors": 0,
+        "assertions": 125
+      }
+    },
+    "full": {
+      "mode": "full",
+      "exit_code": 0,
+      "log_sha256": "e41b52386614b048dc4eabd9fdd68a50a08129f9f91f809877df1b7a029d9d96",
+      "log": "full.log",
+      "counts": {
+        "tests": 1145,
+        "skipped": 95,
+        "failures": 0,
+        "errors": 0,
+        "assertions": 10520
+      }
+    }
+  },
+  "earlier_failure": {
+    "snapshot_manifest_sha256": "b418cf6da8939cf7c3cfe52a0f71f632d53c0ef64479ab89f02b0290deceded7",
+    "result": {
+      "mode": "slice-sqlite",
+      "exit_code": 1,
+      "log_sha256": "ebd53ec6bd20463f88795513298150a7cafe8ec92f062fe611cd2ccf6fa2da45",
+      "log": "slice-sqlite.log",
+      "counts": {
+        "tests": 9,
+        "skipped": 0,
+        "failures": 1,
+        "errors": 0,
+        "assertions": 90
+      }
+    },
+    "resolution": "Native no-op schedule does not append or remove an existing source gap; fixture asserts unchanged gap rather than expecting an exception."
+  },
+  "native_behavior": {
+    "original_after_commit_timing_preserved": true,
+    "separate_default_false_switch": true,
+    "business_and_schedule_are_two_transactions": true,
+    "failed_schedule_does_not_cancel_business_commit": true,
+    "no_new_notification_recovery_receipt": true,
+    "without_events_bypasses_model_listeners": true,
+    "no_op_does_not_rebase_gap": true,
+    "created_schedule_event_does_not_capture_original_user_insert": true
+  },
+  "scope": {
+    "default_enabled": false,
+    "isolated_synthetic_only": true,
+    "legacy_authority_unchanged": true,
+    "projection_applied": false,
+    "global_writer_coverage_complete": false,
+    "migration_gate_open": false,
+    "power_loss_durability_proven": false,
+    "post_commit_notification_recovered": false
+  }
+}

@@ -23,6 +23,7 @@ final class LegacyUserMutationCapture
         'commission.distribute' => ['version' => 'commission-distribution/v1', 'actor_domain' => 'system_commission_distribution'],
         'gift.reward.apply' => ['version' => 'gift-reward-capture/v1', 'actor_domain' => 'system_gift_redemption'],
         'gift.invite.reward' => ['version' => 'gift-invite-capture/v1', 'actor_domain' => 'system_gift_redemption'],
+        'user.schedule.observer' => ['version' => 'observer-schedule-capture/v1', 'actor_domain' => 'system_user_schedule_observer'],
     ];
     public const FIELDS = ['id', 'plan_id', 'group_id', 'transfer_enable', 'u', 'd',
         'speed_limit', 'device_limit', 'expired_at', 'last_reset_at', 'next_reset_at',
@@ -94,6 +95,16 @@ final class LegacyUserMutationCapture
     public function beginGiftInviteReward(int $userId, int $codeId): ?array
     {
         return $this->beginWriter($userId, 'gift.invite.reward', $codeId);
+    }
+
+    /** Separate after-commit schedule transaction under the actual User exclusive lock. */
+    public function beginObserverSchedule(int $userId): ?array
+    {
+        return $this->safe(function () use ($userId): array {
+            $this->require(config('legacy_observer_capture.enabled') === true
+                && config('legacy_capture_shadow.enabled') === true, 'CAPTURE_OBSERVER_ISOLATED_REQUIRED');
+            return $this->beginWriter($userId, 'user.schedule.observer', $userId);
+        });
     }
 
     /** At the native refund's first User-lock position, after the PENDING Order lock. */
@@ -169,6 +180,11 @@ final class LegacyUserMutationCapture
         $this->appendWriter($before, 'gift.invite.reward');
     }
 
+    public function appendObserverSchedule(?array $before): void
+    {
+        $this->appendWriter($before, 'user.schedule.observer');
+    }
+
     private function beginWriter(int $userId, string $kind, ?int $actorId = null, bool $exclusiveSource = false): ?array
     {
         if (config('legacy_capture_shadow.enabled') === false) {
@@ -201,7 +217,7 @@ final class LegacyUserMutationCapture
             $this->require($context === $before['context'], 'CAPTURE_CONTEXT_DRIFT');
             $source = $this->snapshot($before['source']);
             $userId = (int) $source['id'];
-            $this->require(!in_array($kind, ['order.create', 'commission.transfer', 'traffic.reset.cron'], true)
+            $this->require(!in_array($kind, ['order.create', 'commission.transfer', 'traffic.reset.cron', 'user.schedule.observer'], true)
                 || $actorId === $userId, 'CAPTURE_WRITER_TICKET_INVALID');
             $after = $this->source($userId);
             if ($source === $after) {
@@ -304,7 +320,7 @@ final class LegacyUserMutationCapture
                         'content_hash' => $event['content_hash'], 'source_kind' => $event['source_kind'],
                         'source_version' => $event['source_version'], 'actor_id' => $event['actor_id'],
                         'actor_domain' => self::POLICIES[$event['source_kind']]['actor_domain']]
-                        + (in_array($event['source_kind'], ['order.fulfill', 'order.create', 'order.cancel.refund', 'commission.transfer', 'traffic.reset.cron', 'traffic.batch.settle', 'traffic.fetch.apply', 'commission.distribute', 'gift.reward.apply', 'gift.invite.reward'], true)
+                        + (in_array($event['source_kind'], ['order.fulfill', 'order.create', 'order.cancel.refund', 'commission.transfer', 'traffic.reset.cron', 'traffic.batch.settle', 'traffic.fetch.apply', 'commission.distribute', 'gift.reward.apply', 'gift.invite.reward', 'user.schedule.observer'], true)
                             ? ['capture_boundary' => 'transaction-only'] : []);
                     $result['next_cursor'] = (string) $sequence;
                 }

@@ -1,5 +1,11 @@
 # Legacy User mutation capture v1
 
+The separate default-off
+[Observer schedule extension](legacy-observer-schedule-capture-v1.md) can capture
+the native after-commit follow-up under a second transaction. Original capture
+alone retains historical source-gap behavior; it never retroactively extends an
+earlier business ticket or certifies notification delivery.
+
 The isolated reward extension is documented in
 [commission and gift reward capture](legacy-reward-capture-v1.md). Its fixed
 three policies cover actual per-Order distribution and primary/inviter gift
