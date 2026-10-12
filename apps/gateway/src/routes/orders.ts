@@ -110,7 +110,7 @@ export function registerOrdersRoutes(
     const auth = requireBearer(c)
     if (auth instanceof Response) return auth
     const methods = validated(paymentMethodsSchema,
-      await upstreamRequest(config, fetcher, 'userPaymentMethods', { auth }))
+      await upstreamRequest(config, fetcher, 'userPaymentMethods', { auth, signal: c.req.raw.signal }))
     return ok(c, toPublicPaymentMethods(methods))
   })
 

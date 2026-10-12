@@ -41,6 +41,33 @@ describe('Internal client transport fences', () => {
     respond(); await expect(pending).resolves.toMatchObject({ email: 'user@example.test' }); expect(native).not.toHaveBeenCalled()
     expect(req.destroy).toHaveBeenCalled(); expect(vi.getTimerCount()).toBe(0)
   })
+  it.each([
+    ['userStats', 'user.dashboard.get', { unpaid_orders: 1, open_tickets: 2, invited_users: 3 }, [1, 2, 3]],
+    ['userPaymentMethods', 'user.payment-methods.list', [{ id: '2', name: 'Fixture', provider: 'Fixture', icon: null,
+      fee_fixed_minor: '17', fee_percent: 2.5 }], [{ id: 2, name: 'Fixture', payment: 'Fixture', icon: null,
+      handling_fee_fixed: 17, handling_fee_percent: 2.5 }]],
+  ] as const)('dispatches %s with exact empty input and actual actor', async (operation, id, data, expected) => {
+    const native = vi.fn()
+    const pending = upstreamRequest(config, native, operation, { auth: token })
+    expect(mock.request.mock.calls[0]![0].path).toBe('/txapi/internal/v1/operations/' + id)
+    expect(mock.request.mock.calls[0]![0].headers.authorization).toBe(token)
+    expect(JSON.parse(req.end.mock.calls[0]![0].toString()).input).toEqual({})
+    respond({ ...envelope, data }); await expect(pending).resolves.toEqual(expected)
+    expect(native).not.toHaveBeenCalled(); expect(vi.getTimerCount()).toBe(0)
+  })
+  it.each(['userStats', 'userPaymentMethods'] as const)('preserves %s actor and transport failures without fallback', async operation => {
+    const native = vi.fn()
+    await expect(upstreamRequest(config, native, operation)).rejects.toMatchObject({ status: 401 })
+    expect(mock.request).not.toHaveBeenCalled()
+    for (const status of [401, 403, 502]) {
+      const pending = upstreamRequest(config, native, operation, { auth: token })
+      const assertion = expect(pending).rejects.toMatchObject({ status })
+      reply.statusCode = status
+      respond({ error: { code: 'FIXTURE_DENIED', message: 'Denied' }, request_id: envelope.request_id })
+      await assertion
+    }
+    expect(native).not.toHaveBeenCalled(); expect(vi.getTimerCount()).toBe(0)
+  })
   it('keeps default Native and other operations unchanged without Internal network calls', async () => {
     const fetcher = vi.fn(async () => Response.json(nativeEnvelope(nativeProfile())))
     await upstreamRequest({ ...config, internalUser: undefined }, fetcher, 'userProfile', { auth: token })

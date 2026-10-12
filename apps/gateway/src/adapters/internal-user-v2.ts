@@ -30,6 +30,9 @@ const list = z.strictObject({ items: z.array(order).max(100), pagination: z.stri
   page: z.number().int().min(1).max(9999), per_page: z.number().int().min(1).max(100),
   total: z.number().int().nonnegative().safe(), last_page: z.number().int().min(1).safe(),
 }) })
+const dashboard = z.strictObject({ unpaid_orders: timestamp, open_tickets: timestamp, invited_users: timestamp })
+const methods = z.array(z.strictObject({ id, name: z.string(), provider: z.string(), icon: z.string().nullable(),
+  fee_fixed_minor: unsigned, fee_percent: z.number().nonnegative().finite() }))
 export const internalSuccessV2 = z.strictObject({
   data: z.unknown(), request_id: z.string().length(36).uuid(),
   meta: z.strictObject({ current_only: z.literal(true), slice: z.literal('internal-readonly/2') }),
@@ -43,6 +46,17 @@ function safe(value: string): number {
   const number = BigInt(value)
   if (number > BigInt(Number.MAX_SAFE_INTEGER) || number < BigInt(Number.MIN_SAFE_INTEGER)) fail()
   return Number(number)
+}
+export function adaptInternalDisplay(operation: 'userStats' | 'userPaymentMethods', value: unknown): unknown {
+  if (operation === 'userStats') {
+    const parsed = dashboard.safeParse(value); if (!parsed.success) fail()
+    const row = parsed.data
+    return [row.unpaid_orders, row.open_tickets, row.invited_users]
+  }
+  const parsed = methods.safeParse(value); if (!parsed.success) fail()
+  if (new Set(parsed.data.map(row => row.id)).size !== parsed.data.length) fail()
+  return parsed.data.map(row => ({ id: safe(row.id), name: row.name, payment: row.provider, icon: row.icon,
+    handling_fee_fixed: safe(row.fee_fixed_minor), handling_fee_percent: row.fee_percent }))
 }
 export function adaptInternalOrderList(value: unknown,
   options: { current?: number; pageSize?: number; status?: number; paginated?: boolean }): unknown {

@@ -50,3 +50,12 @@ bash tests/integration/run-internal-user-linux.sh /path/to/core-snapshot/api
 MySQL8.4、生产网络/PKI自动轮换、细粒度 RBAC、cluster/Redis failover、Gateway 全部 operation、SC-v2 与生产发布仍需独立验证。
 
 历史 B5.2 的 [脱敏验证记录](../tests/integration/evidence/internal-user-baseline.json) 保留 24 项真实 Core/Gateway 检查与原始 source hash。B5.3 的 [列表验证记录](../tests/integration/evidence/internal-order-list.json) 记录 27 项真实联调、767 项 API（另 21 项跳过）、492 项 Gateway 和 68 项 SDK，以及固定基线和精确源码。Launcher 在 setup 失败时也清理临时证书/会话材料，只保留脱敏 evidence/log。
+
+B5.4 also selects authenticated `/dashboard/stats` and `/payments` using exact
+empty-input `user.dashboard.get` / `user.payment-methods.list`. Existing public
+camelCase display DTOs, enabled method ordering and native numeric fees are
+preserved. Payment reads require the current non-admin User; neither method
+config nor provider initialization crosses this boundary. Fixed final Core
+`79a3854` / Gateway `6ea649b` checks passed 803 API (29 skipped), 512 Gateway,
+68 SDK and 29 actual TLS1.3 integration checks. See
+[verification evidence](../tests/integration/evidence/internal-user-display.json).

@@ -12,7 +12,7 @@ import { createLogger } from '../../apps/gateway/dist/middleware/observability.j
 const api = process.env.INTERNAL_CORE_API, dir = process.env.INTERNAL_FIXTURE_DIR
 assert.ok(api && dir)
 const snapshot = JSON.parse(readFileSync(`${api}/../internal-snapshot.json`))
-assert.equal(snapshot.committed_core_head, 'e1ed462232404596eb48b0a2b7ef5bebbf2fe146')
+assert.equal(snapshot.committed_core_head, '79a38540c323b6ddd57f84e2962026bdb216534d')
 const actors = JSON.parse(readFileSync(`${dir}/actors.json`))
 const pki = JSON.parse(readFileSync(`${dir}/public-evidence.json`))
 const processes = [], servers = [], checks = [], nativeCalls = []
@@ -43,7 +43,7 @@ async function call(port, path, token = actors.credentials.user, expected = 200,
     headers: { ...(token ? { authorization: token } : {}), ...headers }, signal: AbortSignal.timeout(7000) })
   const json = await response.json(); assert.equal(response.status, expected, `${path}: expected ${expected}, got ${response.status} ${json.error?.code ?? ''}`)
   const text = JSON.stringify(json)
-  for (const secret of [...Object.values(actors.credentials), 'private-subscribe-token', 'must-never-return-callback', 'PRIVATE KEY']) {
+  for (const secret of [...Object.values(actors.credentials), 'private-subscribe-token', 'must-never-return-callback', 'must-never-return-provider-secret', 'PRIVATE KEY']) {
     assert.ok(!text.includes(secret))
   }
   return json
@@ -60,6 +60,7 @@ async function boundaryReady(port) {
 try {
   decorate('decorate')
   decorate('list-orders')
+  decorate('display-reads')
   core = child('php', ['-S', '127.0.0.1:19081', '-t', 'public', 'public/index.php'], 'core-http')
   boundary = child('node', [`${api}/internal-readonly-fixtures/tls-boundary.mjs`, `${dir}/boundary.json`], 'tls-boundary')
   await ready()
@@ -124,6 +125,23 @@ try {
     const before=nativeCalls.length
     for(const query of ['current=0','current=10000','page_size=101','status=5','current=1&current=2','user_id=1']) {
       await call(internal,'/orders?'+query,actors.credentials.user,400)
+    }
+    assert.equal(nativeCalls.length,before)
+  })
+  await check('real display reads equal Native stats and enabled ordered payment methods', async () => {
+    for(const path of ['/dashboard/stats','/payments']) {
+      const before=nativeCalls.length, viaNative=await call(native,path), viaInternal=await call(internal,path)
+      assert.deepEqual(viaInternal.data,viaNative.data); assert.equal(nativeCalls.length,before+1)
+      if(path==='/dashboard/stats') assert.deepEqual(viaInternal.data,{unpaidOrders:1,openTickets:1,invitedUsers:1})
+      else { assert.deepEqual(viaInternal.data.map(row=>row.name),['Zero method','Fixed method']); assert.equal(viaInternal.data[1].handlingFeeFixed,17) }
+    }
+  })
+  await check('display reads keep actual user scope, protected payment methods and no fallback on actor rejection', async () => {
+    const before=nativeCalls.length
+    assert.deepEqual((await call(internal,'/dashboard/stats',actors.credentials.other)).data,{unpaidOrders:0,openTickets:0,invitedUsers:0})
+    for(const path of ['/dashboard/stats','/payments']) {
+      await call(internal,path,null,401); await call(internal,path,actors.credentials.admin,403)
+      await call(internal,path,actors.credentials.expired,401)
     }
     assert.equal(nativeCalls.length,before)
   })
@@ -193,7 +211,7 @@ try {
   const hashes={}
   for(const file of ['apps/gateway/src/services/internal-user-client.ts','apps/gateway/src/adapters/internal-user-v2.ts','apps/gateway/src/config/internal-user.ts',
     'tests/integration/internal-user-core-gateway.mjs','tests/integration/internal-user-core-fixture.php'])hashes[file]=createHash('sha256').update(readFileSync(file)).digest('hex')
-  const report={current_only:true,phase:'B5.3',production_acceptance:false,passed:checks.length,checks,
+  const report={current_only:true,phase:'B5.4',production_acceptance:false,passed:checks.length,checks,
     committed_core_head:snapshot.committed_core_head,committed_gateway_head:JSON.parse(readFileSync('internal-user-snapshot.json')).committed_gateway_head,
     core_slice_sha256:snapshot.slice_sha256,gateway_source_sha256:hashes,database:fixture('database-version').toString(),
     runtime:{node:process.version,php:execFileSync('php',['-r','echo PHP_VERSION;']).toString()},tls:'TLSv1.3',

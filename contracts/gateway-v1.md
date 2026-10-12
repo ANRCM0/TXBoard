@@ -75,3 +75,9 @@ Native 金额已是分，不再次乘 100；ISO 时间转现有 Unix 秒；套�
 - 当前隔离 Core fixtures 与 HTTP 正负例已验证；OpenAPI 3.1、完整安全审查、目标 BFF、正式部署与 SDK 发布仍待完成。
 
 [当前代码/CI 状态](../docs/development-status.md) · [HPKE/Redis 设计](../docs/app-crypto-preview.md) · [主题 SDK](../packages/theme-sdk/README.md)。
+
+B5.4 local Internal opt-in additionally maps protected `/dashboard/stats` and
+`/payments` to fixed empty-input User operations, retaining their public DTOs.
+Native remains the default. Invalid actor, service trust, overflow, unexpected
+fields or transport failure does not trigger a Native fallback. This supplies
+no checkout authorization or production PKI/SC-v2 acceptance.

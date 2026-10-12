@@ -69,7 +69,7 @@ export function registerUserRoutes(
   app.get(`${PREFIX}/dashboard/stats`, async c => {
     const auth = requireBearer(c)
     if (auth instanceof Response) return auth
-    const counts = validated(statsSchema, await upstreamRequest(config, fetcher, 'userStats', { auth }))
+    const counts = validated(statsSchema, await upstreamRequest(config, fetcher, 'userStats', { auth, signal: c.req.raw.signal }))
     return ok(c, toPublicDashboardStats(counts))
   })
 }

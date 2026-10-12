@@ -1,6 +1,6 @@
 <?php
 
-// Disposable B5.2/B5.3 fixture; never registered as an HTTP endpoint.
+// Disposable B5.2/B5.3/B5.4 fixture; never registered as an HTTP endpoint.
 $api = realpath($argv[1] ?? '');
 if (!$api || !is_file($api.'/vendor/autoload.php')) throw new RuntimeException('Pass isolated Core api');
 require $api.'/vendor/autoload.php';
@@ -17,6 +17,19 @@ match ($argv[2] ?? '') {
         $user->update(['telegram_id' => -1234567, 'plan_id' => $order->plan_id, 'balance' => 1234,
             'commission_balance' => 567, 'u' => 100, 'd' => 200, 'transfer_enable' => 1073741824, 'expired_at' => time()+86400]);
         $order->update(['payment_id' => 7, 'balance_amount' => 300, 'discount_amount' => 150]);
+    })(),
+    'display-reads' => (function () use ($user): void {
+        foreach ([[$user->id, 0], [$user->id, 1], [$user->id+100, 0]] as [$owner, $status]) {
+            App\Models\Ticket::create(['user_id' => $owner, 'subject' => 'Fixture ticket', 'level' => 1, 'status' => $status]);
+        }
+        App\Models\User::create(['email' => 'internal-invited@example.test', 'password' => 'fixture-only',
+            'uuid' => (string) Illuminate\Support\Str::uuid(), 'token' => 'private-invited-token', 'invite_user_id' => $user->id]);
+        foreach ([['Disabled', false, 0, 0, 0], ['Fixed method', true, 2, 17, 2.5], ['Zero method', true, 1, 0, 0]]
+                 as [$name, $enabled, $sort, $fee, $percent]) {
+            App\Models\Payment::create(['uuid' => str_replace('-', '', (string) Illuminate\Support\Str::uuid()), 'name' => $name, 'payment' => 'NotAProvider', 'enable' => $enabled,
+                'sort' => $sort, 'handling_fee_fixed' => $fee, 'handling_fee_percent' => $percent,
+                'config' => ['secret' => 'must-never-return-provider-secret']]);
+        }
     })(),
     'overflow' => $user->update(['u' => 9007199254740992]),
     'restore-values' => $user->update(['u' => 100]),

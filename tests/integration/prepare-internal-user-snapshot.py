@@ -29,7 +29,7 @@ overlays = [
     'apps/gateway/src/adapters/internal-user-v2.ts', 'apps/gateway/src/services/internal-user-client.ts',
     'apps/gateway/src/services/upstream.ts', 'apps/gateway/src/routes/user.ts', 'apps/gateway/src/routes/orders.ts',
     'apps/gateway/test/internal-user-v2.test.ts', 'apps/gateway/test/internal-user-client.test.ts',
-    'apps/gateway/test/internal-order-list.test.ts',
+    'apps/gateway/test/internal-order-list.test.ts', 'apps/gateway/test/internal-user-display.test.ts',
     'tests/integration/internal-user-core-fixture.php', 'tests/integration/internal-user-core-gateway.mjs',
     'tests/integration/run-internal-user-linux.sh', 'tests/integration/prepare-internal-user-snapshot.py',
     '.env.example', 'contracts/gateway-v1.md', 'docs/internal-user-integration.md',

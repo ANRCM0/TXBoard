@@ -2,10 +2,11 @@ import { randomUUID, X509Certificate } from 'node:crypto'
 import https from 'node:https'
 import { checkServerIdentity } from 'node:tls'
 import type { GatewayConfig } from '../config/env.js'
-import { adaptInternalOrderList, adaptInternalUserV2, internalError, internalSuccessV2, strictInternalJson } from '../adapters/internal-user-v2.js'
+import { adaptInternalDisplay, adaptInternalOrderList, adaptInternalUserV2, internalError, internalSuccessV2, strictInternalJson } from '../adapters/internal-user-v2.js'
 import { GatewayFailure } from './failures.js'
 
-const operations = { userProfile: 'user.profile.get', userOrderDetail: 'user.order.get', userOrders: 'user.order.list' } as const
+const operations = { userProfile: 'user.profile.get', userOrderDetail: 'user.order.get', userOrders: 'user.order.list',
+  userStats: 'user.dashboard.get', userPaymentMethods: 'user.payment-methods.list' } as const
 export async function internalUserRequest(config: GatewayConfig, operation: keyof typeof operations,
   options: { auth?: string; tradeNo?: string; signal?: AbortSignal; current?: number; pageSize?: number;
     status?: number; paginated?: boolean }): Promise<unknown> {
@@ -23,7 +24,7 @@ export async function internalUserRequest(config: GatewayConfig, operation: keyo
     || (options.status !== undefined && (!Number.isInteger(options.status) || options.status < 0 || options.status > 4)))) {
     throw new GatewayFailure('VALIDATION_ERROR', 400, 'Invalid order query')
   }
-  const input = operation === 'userProfile' ? {} : operation === 'userOrderDetail'
+  const input = operation === 'userProfile' || operation === 'userStats' || operation === 'userPaymentMethods' ? {} : operation === 'userOrderDetail'
     ? { trade_no: options.tradeNo } : { page, per_page: perPage,
       ...(options.status === undefined ? {} : { status: options.status }) }
   if (Date.now() < Date.parse(tls.certificate.validFrom) || Date.now() >= Date.parse(tls.certificate.validTo)) {
@@ -76,7 +77,8 @@ export async function internalUserRequest(config: GatewayConfig, operation: keyo
           }
           const envelope = internalSuccessV2.safeParse(value)
           if (!envelope.success) throw new GatewayFailure('UPSTREAM_ERROR', 502, 'Unexpected Internal response')
-          finish(undefined, operation === 'userOrders' ? adaptInternalOrderList(envelope.data.data, options)
+          finish(undefined, operation === 'userStats' || operation === 'userPaymentMethods' ? adaptInternalDisplay(operation, envelope.data.data)
+            : operation === 'userOrders' ? adaptInternalOrderList(envelope.data.data, options)
             : adaptInternalUserV2(operation, envelope.data.data, options.tradeNo))
         } catch (error) {
           finish(error instanceof GatewayFailure ? error : new GatewayFailure('UPSTREAM_ERROR', 502, 'Unexpected Internal response'))
