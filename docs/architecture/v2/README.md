@@ -13,7 +13,7 @@
 | CORE-003 数据模型 v2 | [模型规范](core-domain-model.md)、[增量演进](core-evolution.md)、[B1.1 实现](subscription-shadow-implementation.md) | 新模型只用于隔离回填，不切换生产权威 |
 | CORE-004 Credential Provider v1 | [插件平台](plugin-platform.md)、[Provider 契约](../../../contracts/v2/credential-provider/README.md) | 合成发行/撤销进程已实现；生产 OS 隔离、秘密交付与 Node 收敛待验收 |
 | CORE-005 版本和升级契约 | [兼容矩阵](compatibility-matrix.md)、[Upgrade Manifest](../../../contracts/v2/upgrade-manifest/README.md) | 订阅、商品、财务单机影子 CLI 已实现；完整生产切换仍为 Target |
-| CORE-006 Core Internal API v1 | [Internal API](../../../contracts/v2/core-internal-api/README.md)、[SC-v2 边界](../../../contracts/v2/secure-channel/README.md) | 本地只读 mTLS 和独立隔离建单已实现；管理员 Gateway 与正式 SC-v2 未启用 |
+| CORE-006 Core Internal API v1 | [Internal API](../../../contracts/v2/core-internal-api/README.md)、[SC-v2 边界](../../../contracts/v2/secure-channel/README.md) | 本地用户/公共展示 mTLS 读取和独立隔离建单已实现；管理员 Gateway 与正式 SC-v2 未启用 |
 
 ## 当前需先解决的跨仓差异
 

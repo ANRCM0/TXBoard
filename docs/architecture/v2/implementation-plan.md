@@ -1,6 +1,6 @@
 # Core First v2 实施台账
 
-> 状态：B0、B1.1–B1.9 影子证据、Terms、身份旁观与固定 writer 捕获、B2.1–B2.3 单机升级、B3.1/B3.2 隔离用量、B3.3/B3.4 本地观察与持久事件桶、B4.1–B4.3 合成 Provider 与测试插件停用接入、B5.1–B5.7 本地 mTLS 读取与隔离建单、B6.1–B6.3 实验字节、离线加密与共享 owner 实验已实现；后续切片推进中。各整阶段仍按下表门禁验收。
+> 状态：B0、B1.1–B1.9 影子证据、Terms、身份旁观与固定 writer 捕获、B2.1–B2.3 单机升级、B3.1/B3.2 隔离用量、B3.3/B3.4 本地观察与持久事件桶、B4.1–B4.3 合成 Provider 与测试插件停用接入、B5.1–B5.8 本地 mTLS 读取与隔离建单、B6.1–B6.3 实验字节、离线加密与共享 owner 实验已实现；后续切片推进中。各整阶段仍按下表门禁验收。
 
 ## 1. 批次与关键路径
 
@@ -169,3 +169,9 @@ SQLite 18 通过 / 2 跳过 / 167 断言，专用 MariaDB 20 / 0 / 182；固定 
 建单预扣现在能与Admin、充值和稳定履约组成连续User证据链。B1.8中未捕获建单的历史负例已改为本批覆盖检查；取消退款、提交后Observer/hooks等未覆盖writer仍显式阻断，未伪造Order/Commerce、Terms、用量或资金投影。免费/无余额且User allowlist未变的建单不会制造User事件。
 
 专项固定Core `422e85c` 加五文件：SQLite13通过/4跳过/440断言，MariaDB17/0/488；旧路径SQLite68/13/1035，MariaDB62/0/854。最终新快照基于已提交的 `342c12c`，包括Internal建单接入：全API859通过/40跳过/7531断言。真实独立session竞争、旧MVCC、提交前后SIGKILL、原键恢复和args0保密回滚均通过。[契约](../../../contracts/v2/legacy-user-mutation-capture-v1.md)及[源码与六份原始日志核验](legacy-order-creation-capture-verification.json)。capture继续默认关闭，完整writer覆盖及生产切换仍未验收。
+
+### B5.8 公共站点与套餐展示 mTLS 读取
+
+新增固定 `public.site-config.get` / `public.plan.list` version1，仅允许没有 Authorization 的匿名请求，仍要求 user-gateway 服务证书和 proof。Core/Gateway 各有严格默认关闭开关，限 local/testing；原站点公开字段、可信主题扩展、套餐可见性/容量/排序和价格展示保持。匿名请求清理缓存身份，审计使用 actor_id=0；保护接口、支付方式与 User/Admin 认证没有扩大。
+
+固定 Core `a7e73b1` / Gateway `8c03a78` 加十六文件：专项13通过/166断言，全API872通过/40引擎专测跳过/7697断言，Gateway596、SDK68、typecheck/build及48项真实MariaDB/TLS1.3联调通过。边界检查先清公共缓存，另验证一次MISS/HIT只生成一条审计；缓存仍遵守原TTL，不作为当前授权事实。数值溢出、超大响应、证书拒绝和断线均在cache miss时失败而无Native回退。[契约](../../../contracts/v2/core-internal-api/local-public-display-v1.md)及[精确源码和日志证据](internal-public-read-verification.json)。匿名登录/注册/邮件、Admin、生产PKI与SC-v2仍待实施。

@@ -7,6 +7,8 @@ use Illuminate\Http\Request;
 final class OperationRegistry
 {
     public const OPERATIONS = [
+        'public.site-config.get' => ['service' => 'user-gateway', 'actor' => 'anonymous', 'versions' => ['1']],
+        'public.plan.list' => ['service' => 'user-gateway', 'actor' => 'anonymous', 'versions' => ['1']],
         'user.profile.get' => ['service' => 'user-gateway', 'actor' => 'user', 'versions' => ['1', '2']],
         'user.order.get' => ['service' => 'user-gateway', 'actor' => 'user', 'versions' => ['1', '2']],
         'user.order.list' => ['service' => 'user-gateway', 'actor' => 'user', 'versions' => ['2']],
@@ -25,6 +27,9 @@ final class OperationRegistry
         $definition = self::OPERATIONS[$operation] ?? null;
         if ($definition === null) {
             throw new SliceFailure('UNKNOWN_OPERATION', 400);
+        }
+        if ($definition['actor'] === 'anonymous' && config('internal_api_slice.public_read_enabled') !== true) {
+            throw new SliceFailure('OPERATION_DISABLED', 404);
         }
         if ($operation === 'user.order.create' && (config('internal_api_slice.order_write_enabled') !== true
             || config('core_shadow.isolated_copy') !== true)) {
@@ -53,7 +58,9 @@ final class OperationRegistry
             throw new SliceFailure('INVALID_REQUEST', 400);
         }
         $input = $body->input;
-        if ($operation === 'user.order.create') {
+        if ($definition['actor'] === 'anonymous') {
+            StrictJson::exact($input, []);
+        } elseif ($operation === 'user.order.create') {
             $keys = ['plan_id', 'period', 'idempotency_key'];
             if (property_exists($input, 'coupon_code')) $keys[] = 'coupon_code';
             StrictJson::exact($input, $keys);

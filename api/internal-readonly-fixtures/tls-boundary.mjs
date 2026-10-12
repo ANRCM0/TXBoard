@@ -14,6 +14,8 @@ if (initial.environment !== 'testing' || initial.listen_host !== '127.0.0.1'
   throw new Error('Only fixed loopback testing ports are supported');
 }
 const operations = new Map([
+  ['/txapi/internal/v1/operations/public.site-config.get', 'user-gateway'],
+  ['/txapi/internal/v1/operations/public.plan.list', 'user-gateway'],
   ['/txapi/internal/v1/operations/user.profile.get', 'user-gateway'],
   ['/txapi/internal/v1/operations/user.order.get', 'user-gateway'],
   ['/txapi/internal/v1/operations/user.order.list', 'user-gateway'],
@@ -25,6 +27,7 @@ const operations = new Map([
   ['/txapi/internal/v1/operations/user.order.create', 'user-gateway'],
   ['/txapi/internal/v1/operations/admin.order.get', 'admin-gateway'],
 ]);
+const anonymousOperations = new Set(['/txapi/internal/v1/operations/public.site-config.get', '/txapi/internal/v1/operations/public.plan.list']);
 const sans = new Map([
   ['DNS:user-gateway.internal', 'user-gateway'],
   ['DNS:admin-gateway.internal', 'admin-gateway'],
@@ -66,7 +69,8 @@ const server = https.createServer({
     // Forbid ambiguity in security-critical headers. All caller identity/proof headers are dropped.
     const names = req.rawHeaders.filter((_, i) => i % 2 === 0).map((name) => name.toLowerCase());
     if (['authorization', 'content-type', 'content-length'].some((name) => names.filter((v) => v === name).length > 1)
-      || names.includes('transfer-encoding') || !/^Bearer [A-Za-z0-9|._-]{1,4089}$/.test(req.headers.authorization ?? '')
+      || names.includes('transfer-encoding') || (anonymousOperations.has(req.url) ? names.includes('authorization')
+        : !/^Bearer [A-Za-z0-9|._-]{1,4089}$(?![\s\S])/.test(req.headers.authorization ?? ''))
       || !/^application\/json(?:;\s*charset=utf-8)?$/i.test(req.headers['content-type'] ?? '')) {
       fail(res, 400, 'INVALID_REQUEST'); req.resume(); return;
     }
@@ -104,7 +108,7 @@ const server = https.createServer({
       const payload = Buffer.from(JSON.stringify({
         v: 'internal-readonly/1', epoch: key.epoch, iss: 'txboard-local-tls-boundary', aud: 'txboard-core-local',
         service: identity, cert_sha256: fingerprint, method: req.method, path: req.url,
-        body_sha256: sha(body), actor_sha256: sha(req.headers.authorization),
+        body_sha256: sha(body), actor_sha256: sha(req.headers.authorization ?? ''),
         iat: now, nbf: now - 2, exp, jti: randomBytes(16).toString('hex'),
       })).toString('base64url');
       const signed = `${header}.${payload}`;
@@ -120,7 +124,7 @@ const server = https.createServer({
         if (!res.writableEnded && !res.destroyed) fail(res, status, code);
       };
       const upstream = http.request({ hostname: '127.0.0.1', port: initial.core_port, method: 'POST', path: req.url,
-        headers: { authorization: req.headers.authorization, 'content-type': 'application/json',
+        headers: { ...(anonymousOperations.has(req.url) ? {} : { authorization: req.headers.authorization }), 'content-type': 'application/json',
           'content-length': body.length, 'x-txboard-service-proof': proof }, timeout: 5000,
       }, (reply) => {
         if (upstreamDone) { reply.destroy(); return; }

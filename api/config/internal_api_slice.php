@@ -3,6 +3,7 @@
 // This is a local/testing rehearsal, never a production activation switch.
 return [
     'enabled' => env('CORE_INTERNAL_READONLY_ENABLED', false),
+    'public_read_enabled' => env('CORE_INTERNAL_PUBLIC_READ_ENABLED', false),
     'order_write_enabled' => env('CORE_INTERNAL_ORDER_WRITE_ENABLED', false),
     // Operator-controlled absolute file, not supplied by HTTP callers.
     'trust_file' => env('CORE_INTERNAL_READONLY_TRUST_FILE'),

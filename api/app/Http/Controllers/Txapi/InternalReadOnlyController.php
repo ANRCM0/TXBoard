@@ -19,8 +19,26 @@ final class InternalReadOnlyController
         $operation = $request->attributes->get('internal.readonly.operation');
         $input = $operation['body']->input;
         $version = $operation['body']->contract_version;
-        $actor = Auth::guard('sanctum')->user();
-        if ($operation['definition']['actor'] === 'user') {
+        $actor = $operation['definition']['actor'] === 'anonymous' ? null : Auth::guard('sanctum')->user();
+        if ($operation['definition']['actor'] === 'anonymous') {
+            if ($operation['operation'] === 'public.site-config.get') {
+                $data = app(PublicController::class)->siteConfig($request, app(\App\Services\SiteConfigService::class))->getData(true)['data'];
+                $result = array_intersect_key($data, array_flip(['app_name', 'app_description', 'app_url', 'logo',
+                    'frontend_theme', 'theme_config', 'is_captcha', 'captcha_type', 'turnstile_site_key',
+                    'recaptcha_site_key', 'recaptcha_v3_site_key']));
+            } else {
+                $result = app(PublicController::class)->plans($request, app(\App\Domains\Subscription\PlanCatalog::class))->getData(true)['data'];
+                foreach ($result as &$plan) {
+                    foreach (['id', 'traffic_limit_bytes', 'speed_limit_mbps', 'device_limit', 'capacity_limit', 'reset_traffic_method'] as $field) {
+                        if ($plan[$field] !== null) $plan[$field] = (string) $plan[$field];
+                    }
+                    foreach ($plan['prices'] as &$price) $price['amount_minor'] = (string) $price['amount_minor'];
+                    unset($price);
+                }
+                unset($plan);
+            }
+            return TxapiResponse::success($request, $result, ['current_only' => true, 'slice' => 'internal-public-readonly/1']);
+        } elseif ($operation['definition']['actor'] === 'user') {
             if ($actor->is_admin) {
                 abort(403);
             }

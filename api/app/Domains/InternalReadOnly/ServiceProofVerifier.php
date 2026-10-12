@@ -12,9 +12,11 @@ final class ServiceProofVerifier
     {
         $proof = $request->header('X-TXBoard-Service-Proof', '');
         $authorization = $request->header('Authorization', '');
+        $anonymous = $operation['definition']['actor'] === 'anonymous';
         if (!is_string($proof) || strlen($proof) > config('internal_api_slice.max_proof_bytes')
             || !is_string($authorization) || strlen($authorization) > config('internal_api_slice.max_authorization_bytes')
-            || !preg_match('/\ABearer [A-Za-z0-9|._-]{1,4089}\z/D', $authorization)) {
+            || ($anonymous ? $request->headers->has('Authorization')
+                : !preg_match('/\ABearer [A-Za-z0-9|._-]{1,4089}\z/D', $authorization))) {
             throw new SliceFailure('SERVICE_UNAUTHORIZED', 401);
         }
         try {
