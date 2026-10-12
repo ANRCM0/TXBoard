@@ -265,10 +265,10 @@ jobs:
     permissions:
       contents: read
       packages: write
-    # Serialize mutable stable/preview aliases. Main builds retain a distinct
-    # group per SHA, so documentation pushes cannot cancel a runtime build.
+    # Serialize the build and alias promotion together across main SHAs.
+    # Documentation pushes do not enter this job or cancel its running build.
     concurrency:
-      group: node-image-${{ github.ref_type == 'tag' && (contains(github.ref_name, '-') && 'preview' || 'stable') || github.sha }}
+      group: node-image-${{ github.ref_type == 'tag' && (contains(github.ref_name, '-') && 'preview' || 'stable') || 'dev' }}
       cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4

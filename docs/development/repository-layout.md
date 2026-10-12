@@ -33,7 +33,9 @@ cd ../node && go test ./...
 | `vX.Y.Z` | `latest`、`vX.Y.Z` |
 | `vX.Y.Z-rc.N` / `-beta.N` / `-preview.N` | `preview`、完整预发布标签 |
 
-同一个 `v*` 标签触发三个组件各自的验证及发布；它必须指向已在 `main` 的提交。组件镜像独立发布，没有跨 GHCR 包的原子提交，部署前需确认三个目标 digest 和全部相关 CI。GitHub Release 的附件为 Node 二进制；正式部署仍使用验证过的固定版本或 digest。文档更新只触发文档校验，不发布开发镜像。
+同一个 `v*` 标签触发三个组件各自的验证及发布；它必须指向已在 `main` 的提交。组件镜像独立发布，没有跨 GHCR 包的原子提交，部署前需确认三个目标 digest 和全部相关 CI。GitHub Release 的附件为 Node 二进制；正式部署仍使用验证过的固定版本或 digest。文档更新不发布开发镜像，组件工作流仍可能运行相应验证。
+
+Gateway/Node 的发布与 `dev` 提升按组件串行，并在提升前核对当前 main 的运行时代码，防止旧构建覆盖新镜像。文档或测试变化不会取消正在进行的运行时发布。Core 保留现有分通道并发策略；包写权限只授予镜像 publish job。
 
 工作流通过 `github.repository` 生成 OCI 来源标签，通过仓库 owner 生成小写镜像路径，不依赖主仓名称。后续重命名 GitHub 仓库不会改变三个镜像名。首次从统一仓发布旧 `tx-node` 包时，GHCR 必须允许统一仓的 Actions 访问该已有包；CI 发布失败时应修复包的 Actions 权限，不跳过门禁。
 

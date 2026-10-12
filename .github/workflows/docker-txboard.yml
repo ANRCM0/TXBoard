@@ -41,7 +41,6 @@ on:
 
 permissions:
   contents: read
-  packages: write
 
 # Branch builds cannot replace stable or preview; different release tags are
 # serialized by channel so a slower older tag cannot overwrite the channel.
@@ -343,6 +342,9 @@ jobs:
     if: github.event_name == 'push'
     needs: [release-gate, release-recovery, verify]
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     steps:
       - uses: actions/checkout@v4
         with:
