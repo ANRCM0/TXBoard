@@ -89,6 +89,7 @@ func (s *Service) observeTraffic(traffic map[int][2]int64) {
 }
 
 func (s *Service) observeBoundary(event string, advance bool) {
+	s.localEventBoundary(advance)
 	if o := s.observationWriter(); o != nil {
 		s.observationFailed(o.Boundary(event, advance))
 	}

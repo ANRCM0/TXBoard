@@ -585,7 +585,11 @@ func (s *Store) persistClaim(claim *bucketClaim) (durableReceipt, error) {
 		return durableReceipt{}, err
 	}
 	capture := claim.status
-	r := journalRecord{Version: 1, StoreID: s.storeID, ProcessID: s.processID, Sequence: s.sequence + 1, PreviousDigest: s.digest, Kind: "BUCKET", Attribution: "unattributable", RestoreUnknown: true, TailUnknown: true, Reasons: []string{"AUTHORIZATION_BOUNDARY_UNKNOWN", "UNSYNCED_TAIL_UNKNOWN"}, Bucket: &b, Capture: &diskCapture{capture.Degraded, capture.Reason, capture.Generation, capture.NextSequence, capture.DroppedEvents, eventToDisk(capture.FirstGap), true}, Receipt: &localReceipt{"local_receipt", "local:" + s.storeID + ":" + fmt.Sprint(s.sequence+1), false, digest, "unattributable", true}}
+	reasons := []string{"AUTHORIZATION_BOUNDARY_UNKNOWN", "UNSYNCED_TAIL_UNKNOWN"}
+	if capture.Stopped {
+		reasons = append(reasons, capture.StopReason)
+	}
+	r := journalRecord{Version: 1, StoreID: s.storeID, ProcessID: s.processID, Sequence: s.sequence + 1, PreviousDigest: s.digest, Kind: "BUCKET", Attribution: "unattributable", RestoreUnknown: true, TailUnknown: true, Reasons: reasons, Bucket: &b, Capture: &diskCapture{capture.Degraded, capture.Reason, capture.Generation, capture.NextSequence, capture.DroppedEvents, eventToDisk(capture.FirstGap), true}, Receipt: &localReceipt{"local_receipt", "local:" + s.storeID + ":" + fmt.Sprint(s.sequence+1), false, digest, "unattributable", true}}
 	_, err := s.persistRecord(r, false)
 	if err != nil {
 		s.failed = err
@@ -632,6 +636,14 @@ func (s *Store) Read(sequence uint64) (StoredRecord, error) {
 		result.LocalReceiptID = r.Receipt.ID
 		result.BucketDigest = r.Receipt.BucketDigest
 		result.Capture = &Status{Degraded: r.Capture.Degraded, Reason: r.Capture.Reason, Generation: r.Capture.Generation, NextSequence: r.Capture.Next, DroppedEvents: r.Capture.Dropped, FirstGap: r.Capture.FirstGap.memory(), VolatileTailUnknown: true}
+		// Runtime stop metadata uses existing reason labels; the fixed disk
+		// schema and every older record stay readable without rewriting hashes.
+		for _, reason := range r.Reasons {
+			if reason == "RETIRED_TAIL_UNKNOWN" || reason == "SHUTDOWN_TAIL_UNKNOWN" {
+				result.Capture.Stopped = true
+				result.Capture.StopReason = reason
+			}
+		}
 	}
 	return result, nil
 }

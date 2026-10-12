@@ -52,6 +52,15 @@ type Config struct {
 	// UsageObserver is local evidence collection only. Explicit per-instance
 	// opt-in; never inherited implicitly or used to activate a billing protocol.
 	UsageObserver UsageObserverConfig `yaml:"usage_observer,omitempty"`
+	// UsageEventStore is default-off local sing-box evidence. One supported
+	// Service per process owns its consumer; no billing protocol is activated.
+	UsageEventStore UsageEventStoreConfig `yaml:"usage_event_store,omitempty"`
+}
+
+type UsageEventStoreConfig struct {
+	Enabled   bool   `yaml:"enabled"`
+	Directory string `yaml:"directory,omitempty"`
+	MaxBytes  int64  `yaml:"max_bytes,omitempty"`
 }
 
 type UsageObserverConfig struct {

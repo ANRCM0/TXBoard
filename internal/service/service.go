@@ -28,6 +28,7 @@ import (
 	"github.com/ANRCM0/TX-Node/internal/pushsync"
 	"github.com/ANRCM0/TX-Node/internal/reporting"
 	"github.com/ANRCM0/TX-Node/internal/tracker"
+	"github.com/ANRCM0/TX-Node/internal/usagebucket"
 	"github.com/ANRCM0/TX-Node/internal/usageobserver"
 	"github.com/ANRCM0/TX-Node/internal/userstate"
 )
@@ -72,6 +73,12 @@ type Service struct {
 	observerMu    sync.Mutex
 	observer      *usageobserver.Observer
 	observerState string
+
+	eventConsumerMu    sync.Mutex
+	eventConsumer      *usagebucket.Coordinator
+	eventConsumerState string
+	eventOwner         *usagebucket.ProcessOwner
+	eventFactory       func(string, usagebucket.StoreOptions, usagebucket.CoordinatorOptions) (*usagebucket.Coordinator, error)
 }
 
 func NewChecked(cfg *config.Config) (*Service, error) {
@@ -151,6 +158,8 @@ func (s *Service) Run(ctx context.Context) error {
 	}
 	s.initUsageObserver()
 	defer s.closeUsageObserver()
+	s.initLocalEventConsumer()
+	defer s.closeLocalEventConsumer()
 	// Start cert manager (handles auto-TLS or manual cert verification)
 	if err := s.certs.Start(ctx); err != nil {
 		return fmt.Errorf("cert manager: %w", err)
@@ -452,6 +461,9 @@ func (s *Service) buildMetrics(status monitor.Status) map[string]interface{} {
 	m := make(map[string]interface{})
 	if s.cfg != nil && s.cfg.UsageObserver.Enabled {
 		m["usage_observer"] = s.usageObserverMetrics()
+	}
+	if s.cfg != nil && s.cfg.UsageEventStore.Enabled {
+		m["usage_event_store"] = s.localEventMetrics()
 	}
 	online := s.tracker.CurrentOnline()
 

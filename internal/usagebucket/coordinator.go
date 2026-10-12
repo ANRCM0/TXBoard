@@ -21,11 +21,12 @@ type CoordinatorStatus struct {
 	Authorizes            bool
 	Attribution           string
 	RestoreUnknown        bool
+	Opening               bool
 }
 
 // Coordinator has one worker, at most eight meter references and one wakeup
 // slot. The retained queue stays inside each bounded meter until durable ACK.
-// There is no automatic Service consumer in this foundation slice.
+// Runtime consumers use the same worker for asynchronous store opening.
 type Coordinator struct {
 	mu        sync.Mutex
 	store     *Store
@@ -37,41 +38,53 @@ type Coordinator struct {
 	done      chan struct{}
 	status    CoordinatorStatus
 	err       error
+	runtime   bool
+	opener    func() (*Store, error)
+	deadline  time.Time
+	halted    bool
 }
 
 func NewCoordinator(store *Store, options CoordinatorOptions) (*Coordinator, error) {
 	if store == nil {
 		return nil, ErrStoreEvidence
 	}
-	if options.MaxMeters == 0 {
-		options.MaxMeters = 8
+	c, err := makeCoordinator(options)
+	if err != nil {
+		return nil, err
 	}
-	if options.MaxMeters < 1 || options.MaxMeters > 8 {
-		return nil, ErrCoordinatorCapacity
+	if err := c.attachStore(store); err != nil {
+		return nil, err
 	}
+	go c.run()
+	return c, nil
+}
+
+func (c *Coordinator) attachStore(store *Store) error {
 	store.statusMu.Lock()
 	attached := store.attached
 	store.statusMu.Unlock()
 	if attached {
-		return nil, ErrStoreOwner
+		return ErrStoreOwner
 	}
-	c := &Coordinator{store: store, maxMeters: options.MaxMeters, wake: make(chan struct{}, 1), stop: make(chan struct{}), done: make(chan struct{}), status: CoordinatorStatus{Attribution: "unattributable", RestoreUnknown: true}}
 	store.writeMu.Lock()
 	if store.closed || store.failed != nil {
 		store.writeMu.Unlock()
-		return nil, ErrStoreClosed
+		return ErrStoreClosed
 	}
 	if store.owner != nil {
 		store.writeMu.Unlock()
-		return nil, ErrStoreOwner
+		return ErrStoreOwner
 	}
 	store.owner = c
 	store.statusMu.Lock()
 	store.attached = true
 	store.statusMu.Unlock()
 	store.writeMu.Unlock()
-	go c.run()
-	return c, nil
+	c.mu.Lock()
+	c.store = store
+	c.status.Opening = false
+	c.mu.Unlock()
+	return nil
 }
 
 func (c *Coordinator) Add(meter *Meter) error {
@@ -141,7 +154,7 @@ func (c *Coordinator) choose() (*bucketClaim, error) {
 	if c.err != nil {
 		return nil, c.err
 	}
-	if c.status.Closing {
+	if c.status.Closing && (!c.runtime || !time.Now().Before(c.deadline)) {
 		return nil, nil
 	}
 	for i := 0; i < len(c.meters); i++ {
@@ -163,18 +176,37 @@ func (c *Coordinator) choose() (*bucketClaim, error) {
 
 func (c *Coordinator) run() {
 	defer func() {
-		c.store.writeMu.Lock()
-		err := c.store.closeLocked()
-		c.store.writeMu.Unlock()
+		var err error
+		if c.store != nil {
+			c.store.writeMu.Lock()
+			err = c.store.closeLocked()
+			c.store.writeMu.Unlock()
+		}
 		c.mu.Lock()
 		if err != nil {
 			c.failLocked(err)
 		}
 		c.status.InFlight = false
 		c.status.Closed = true
+		c.status.Opening = false
 		c.mu.Unlock()
 		close(c.done)
 	}()
+	if c.opener != nil {
+		store, err := c.opener()
+		if err == nil {
+			err = c.attachStore(store)
+			if err != nil {
+				_ = store.Close()
+			}
+		}
+		if err != nil {
+			c.mu.Lock()
+			c.failLocked(err)
+			c.mu.Unlock()
+			return
+		}
+	}
 	ticker := time.NewTicker(20 * time.Millisecond)
 	defer ticker.Stop()
 	for {
@@ -182,6 +214,11 @@ func (c *Coordinator) run() {
 		case <-c.stop:
 			return
 		default:
+		}
+		if c.runtime {
+			if c.pollRuntime() {
+				return
+			}
 		}
 		claim, err := c.choose()
 		if err != nil {
@@ -231,6 +268,9 @@ func (c *Coordinator) Status() CoordinatorStatus { c.mu.Lock(); defer c.mu.Unloc
 // A timeout leaves the one worker and lock alive while it finishes the existing
 // syscall. It does not spawn a replacement, interrupt the FD, or permit retry.
 func (c *Coordinator) Close(ctx context.Context) error {
+	if c.runtime {
+		return c.closeRuntime(ctx)
+	}
 	c.mu.Lock()
 	if !c.status.Closing {
 		c.status.Closing = true

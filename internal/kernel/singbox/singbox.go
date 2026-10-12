@@ -23,6 +23,7 @@ import (
 	"github.com/ANRCM0/TX-Node/internal/kernel"
 	"github.com/ANRCM0/TX-Node/internal/model"
 	"github.com/ANRCM0/TX-Node/internal/nlog"
+	"github.com/ANRCM0/TX-Node/internal/usagebucket"
 )
 
 // drainTimeout is how long stop() waits for in-flight connections to finish
@@ -49,7 +50,8 @@ type SingBox struct {
 	// connTracker is our lightweight in-process byte/IP tracker.
 	// Created fresh on every Start (full restart).
 	// Survives Reload (hot-swap) since live connections persist.
-	connTracker *ConnTracker
+	connTracker        *ConnTracker
+	localEventConsumer *usagebucket.Coordinator
 
 	// auditor is the tx-node audit reporter, forwarded to every new
 	// ConnTracker at Start (like speedLimitFunc). nil = disabled.
@@ -145,7 +147,7 @@ func (s *SingBox) Start(nodeConfig *model.NodeSpec, users []model.UserSpec, tls 
 	s.tls = tls
 
 	// Fresh tracker on full restart.
-	s.connTracker = NewConnTracker(0)
+	s.connTracker = newRuntimeConnTracker(s.localEventConsumer)
 	s.connTracker.SetUserMap(buildUserMap(users))
 	if s.auditor != nil {
 		s.connTracker.SetAuditor(s.auditor)
@@ -162,7 +164,7 @@ func (s *SingBox) Start(nodeConfig *model.NodeSpec, users []model.UserSpec, tls 
 
 	// Recycle old instance in background — drain then close.
 	if oldBox != nil {
-		go recycleOldBox(oldBox, oldCancel, oldCtx, oldTracker)
+		go recycleOldBox(oldBox, oldCancel, oldCtx, oldTracker, s.localEventConsumer)
 	}
 
 	nlog.Core().Debug("sing-box started", "users", len(users))
@@ -172,7 +174,7 @@ func (s *SingBox) Start(nodeConfig *model.NodeSpec, users []model.UserSpec, tls 
 // recycleOldBox gracefully shuts down a previous sing-box instance in the
 // background. It closes listen sockets first, waits for connections to drain,
 // then hard-closes. This avoids blocking the new instance's startup.
-func recycleOldBox(oldBox *box.Box, oldCancel context.CancelFunc, oldCtx context.Context, oldTracker *ConnTracker) {
+func recycleOldBox(oldBox *box.Box, oldCancel context.CancelFunc, oldCtx context.Context, oldTracker *ConnTracker, consumer *usagebucket.Coordinator) {
 	// Step 1: close listen sockets so no new connections arrive on old ports.
 	if im := service.FromContext[adapter.InboundManager](oldCtx); im != nil {
 		_ = im.Close()
@@ -194,6 +196,7 @@ func recycleOldBox(oldBox *box.Box, oldCancel context.CancelFunc, oldCtx context
 	if oldCancel != nil {
 		oldCancel()
 	}
+	retireLocalTracker(consumer, oldTracker)
 	nlog.Core().Debug("sing-box: old instance recycled")
 }
 
@@ -392,6 +395,7 @@ func (s *SingBox) stop() {
 		s.cancel()
 		s.cancel = nil
 	}
+	retireLocalTracker(s.localEventConsumer, s.connTracker)
 	s.ctx = nil
 }
 

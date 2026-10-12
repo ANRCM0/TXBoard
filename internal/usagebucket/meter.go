@@ -1,5 +1,5 @@
 // Package usagebucket records bounded local accounting events. Callback time is
-// not packet time; all buckets remain unattributable and volatile in this slice.
+// not packet time; even durably retained local buckets remain unattributable.
 package usagebucket
 
 import (
@@ -119,6 +119,9 @@ type Status struct {
 	VolatileTailUnknown bool
 	PersistedBuckets    uint64
 	ClaimedBucket       uint64
+	Stopped             bool
+	StopReason          string
+	Retiring            bool
 }
 
 type Snapshot struct {
@@ -147,6 +150,9 @@ type Meter struct {
 	claim        *bucketClaim
 	consumer     *Coordinator
 	persisted    uint64
+	stopped      string
+	retiring     bool
+	retireAt     int64
 }
 
 // Session retains its original registration. It never looks up a current UUID
@@ -226,11 +232,14 @@ func (s *Session) Begin() Operation {
 	m := s.meter
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if m.degraded != "" {
+	if m.degraded != "" || m.stopped != "" {
 		return Operation{}
 	}
 	at, ok := m.stamp()
 	if !ok {
+		return Operation{}
+	}
+	if m.checkRetirement(at) {
 		return Operation{}
 	}
 	return Operation{session: s, started: at, generation: m.generation, cutVersion: m.cutVersion, clockEra: m.clockEra, startedClosed: s.closed, valid: true}
@@ -312,7 +321,7 @@ func (m *Meter) stamp() (Stamp, bool) {
 }
 
 func (m *Meter) add(e Event) {
-	if m.degraded != "" {
+	if m.degraded != "" || m.stopped != "" {
 		m.drop()
 		return
 	}
@@ -323,6 +332,10 @@ func (m *Meter) add(e Event) {
 		return
 	}
 	e.Completed = at
+	if m.checkRetirement(at) {
+		m.drop()
+		return
+	}
 	e.ObservationGeneration = m.generation
 	e.ClockEra = m.clockEra
 	if e.HasIOStart && (e.startCutVersion != m.cutVersion || e.startClockEra != m.clockEra) {
@@ -407,7 +420,7 @@ func (m *Meter) Cut(reason SealReason, advanceGeneration bool) bool {
 	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if m.degraded != "" {
+	if m.degraded != "" || m.stopped != "" {
 		return false
 	}
 	if reason != ManualFence && reason != LifecycleFence {
@@ -415,6 +428,9 @@ func (m *Meter) Cut(reason SealReason, advanceGeneration bool) bool {
 	}
 	at, ok := m.stamp()
 	if !ok {
+		return false
+	}
+	if m.checkRetirement(at) {
 		return false
 	}
 	if advanceGeneration && m.generation == math.MaxUint64 {
@@ -457,7 +473,8 @@ func (m *Meter) drop() {
 }
 
 // Snapshot makes independent copies. Callers cannot mutate retained sealed data.
-// No persistence/ACK/GC exists in this first slice; its volatile tail is unknown.
+// A snapshot does not acknowledge persistence. Only the private coordinator ACK
+// can release retained sealed buckets; the remaining volatile tail is unknown.
 func (m *Meter) Snapshot() Snapshot {
 	if m == nil {
 		return Snapshot{Status: Status{VolatileTailUnknown: true}}
@@ -485,7 +502,7 @@ func (m *Meter) Status() Status {
 }
 
 func (m *Meter) statusLocked() Status {
-	s := Status{Degraded: m.degraded != "", Reason: m.degraded, Generation: m.generation, NextSequence: m.nextSequence, SealedBuckets: len(m.sealed), DroppedEvents: m.dropped, FirstGap: m.firstGap, VolatileTailUnknown: true, PersistedBuckets: m.persisted}
+	s := Status{Degraded: m.degraded != "", Reason: m.degraded, Generation: m.generation, NextSequence: m.nextSequence, SealedBuckets: len(m.sealed), DroppedEvents: m.dropped, FirstGap: m.firstGap, VolatileTailUnknown: true, PersistedBuckets: m.persisted, Stopped: m.stopped != "", StopReason: m.stopped, Retiring: m.retiring}
 	if m.claim != nil {
 		s.ClaimedBucket = m.claim.bucket.Number
 	}
