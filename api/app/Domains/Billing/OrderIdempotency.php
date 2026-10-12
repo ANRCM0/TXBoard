@@ -73,14 +73,14 @@ final class OrderIdempotency
         $ttlSeconds = max(3600, min(604800, (int) config('idempotency.ttl_hours', 24) * 3600));
         $timeout = max(60, (int) config('idempotency.in_progress_timeout_seconds', 900));
         $table = DB::table(self::TABLE);
-        $record = $table->where('user_id', $userId)
+        $record = (clone $table)->where('user_id', $userId)
             ->where('operation', $operation)
             ->where('key_hash', $keyHash)
             ->lockForUpdate()->first();
 
         if ($record && (int) $record->expires_at <= $now) {
             // A physically retained expired key must not block new attempts.
-            $table->where('id', $record->id)->delete();
+            (clone $table)->where('id', $record->id)->delete();
             $record = null;
         }
 
@@ -103,7 +103,7 @@ final class OrderIdempotency
             }
             // In-progress leases become recoverable after timeout. A failed
             // transaction rolls back the transition, allowing another retry.
-            $table->where('id', $record->id)->update([
+            (clone $table)->where('id', $record->id)->update([
                 'status' => 'in_progress',
                 'updated_at' => $now,
                 'expires_at' => $now + $ttlSeconds,
@@ -127,7 +127,7 @@ final class OrderIdempotency
         // A failure or process termination rolls back both row and order:
         // there cannot be a committed successful order without its ledger.
         $order = $create();
-        $table->where('id', $id)->update([
+        (clone $table)->where('id', $id)->update([
             'status' => 'succeeded',
             'trade_no' => $order->trade_no,
             'result_snapshot' => json_encode(['trade_no' => $order->trade_no], JSON_THROW_ON_ERROR),

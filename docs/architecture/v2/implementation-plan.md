@@ -147,3 +147,9 @@ Gateway `6ea649b` 仅新增实验测试目录：19 单测、14 真实 Redis、1 
 固定可信 `credential_provider_fixture` 插件显式绑定一份 registration/epoch；PluginManager 按 plugin → binding → registration → lifecycle 锁序，在同一事务提交 plugin disabled 和停止发行。私有清理在事务外有界执行并恢复原 operation；停用后不允许重启、替换或丢失 binding 后重新注册，普通 v1 插件不查询 fixture SQL。
 
 SQLite 18 通过 / 2 跳过 / 167 断言，专用 MariaDB 20 / 0 / 182；固定 Core `60e6eca` 加切片全 API 821 / 31 / 6589。实际 Module adapter、双状态 SQL 回滚、发行竞争、丢 ACK 与提交后 SIGKILL 通过。已加载 PHP 的跨 worker 中断、Node 收敛、租约和待交付/结算尚未实现，因此即使 fixture 清理完成，卸载/删除仍拒绝并保留资产与历史。[契约](../../../contracts/v2/credential-provider/local-fixture-plugin-boundary-v1.md)及[精确源码和验收证据](../../../api/tests/Fixtures/CredentialProviderPlugin/verification.json)。
+
+### 原订单幂等过期键修复
+
+建单预扣回归发现原 mutable SQL builder 在删除旧过期记录后保留其 ID 条件，导致替换键新建单成功而 claim 未标记 succeeded。各 lookup/delete/update 现在从干净 base clone，原 User 事务锁、金额算法、TTL、错误和 prune 不变；立即同键重放返回新原订单，不再次扣款。
+
+固定 Core `1d27469` 加两文件：SQLite/MariaDB 各 8 通过 / 270 断言，相关资金/优惠回归 24 / 441，100 个真实独立会话检查 1 / 106；全 API 840 通过 / 36 跳过 / 7030 断言。[精确源码与日志证据](native-idempotency-fix-verification.json)。

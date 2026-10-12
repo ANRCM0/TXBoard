@@ -178,16 +178,28 @@ class TxapiOrderIdempotencyTest extends TestCase
 
     public function test_expired_claim_can_be_reused_and_pruned(): void
     {
-        $user = $this->buyer();
+        $user = $this->buyer(2000);
         $plan = $this->plan();
         Sanctum::actingAs($user);
         $body = $this->payload($plan);
         $trade = $this->keyedPost('expire-key', $body)->assertCreated()->json('data.trade_no');
+        $this->assertSame(1000, (int) $user->fresh()->balance);
         $this->postJson("/txapi/orders/{$trade}/cancel")->assertOk();
+        $this->assertSame(2000, (int) $user->fresh()->balance);
         DB::table('idempotency_keys')->update(['expires_at' => time() - 1]);
         $second = $this->keyedPost('expire-key', $body)->assertCreated()->json('data.trade_no');
         $this->assertNotSame($trade, $second);
         $this->assertSame(2, Order::count());
+        $this->assertSame(1000, (int) $user->fresh()->balance);
+        $this->assertSame(1000, (int) Order::query()->where('trade_no', $second)->value('balance_amount'));
+        $this->assertSame(1, DB::table('idempotency_keys')->count());
+        $this->assertSame('succeeded', DB::table('idempotency_keys')->value('status'));
+        $this->keyedPost('expire-key', $body)->assertCreated()->assertJsonPath('data.trade_no', $second);
+        $this->keyedPost('expire-key', $this->payload($plan, ['period' => Plan::PERIOD_QUARTERLY]))
+            ->assertStatus(409)->assertJsonPath('error.code', 'IDEMPOTENCY_CONFLICT');
+        $this->assertSame(2, Order::count());
+        $this->assertSame(1, DB::table('idempotency_keys')->count());
+        $this->assertSame(1000, (int) $user->fresh()->balance);
         DB::table('idempotency_keys')->update(['expires_at' => time() - 1]);
         $this->artisan('idempotency:prune')->assertExitCode(0);
         $this->assertSame(0, DB::table('idempotency_keys')->count());
