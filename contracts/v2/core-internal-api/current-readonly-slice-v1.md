@@ -1,6 +1,6 @@
 # Internal API 当前只读切片 v1
 
-状态：Current / local-testing-only，B5.1 最小验证切片。此文件只描述本次实现；完整 B5、B6、SC-v2 和生产上线门禁仍未完成。Gateway 暂未切换到此入口。
+状态：Current / local-testing-only，B5.1 最小验证切片。此文件描述 request version 1；[B5.2 User DTO version 2](current-user-dto-v2.md) 的 Gateway opt-in 独立描述。完整 B5、B6、SC-v2 和生产上线门禁仍未完成。
 
 实际注册入口为 `POST /txapi/internal/v1/operations/{id}`。Draft 的 `/internal/v1/operations/{operation}` 改为 `/txapi/internal/v1/operations/{id}`，遵循仓库 AGENTS.md 的已注册 TXAPI 路由要求。没有任意 URL、类名、方法名或查询参数透传。
 

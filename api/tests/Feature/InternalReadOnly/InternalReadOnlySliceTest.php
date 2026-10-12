@@ -219,7 +219,7 @@ final class InternalReadOnlySliceTest extends TestCase
     public function test_request_unknown_fields_duplicate_keys_sizes_and_deadline_are_bounded(): void
     {
         foreach ([
-            ['contract_version' => '2'], ['deadline_at' => time() + 100], ['request_id' => 'not-uuid'],
+            ['contract_version' => '3'], ['deadline_at' => time() + 100], ['request_id' => 'not-uuid'],
             ['input' => ['actor_id' => '1']], ['input' => []], ['actor' => 'admin'],
         ] as $patch) {
             $raw = $this->body([], $patch);

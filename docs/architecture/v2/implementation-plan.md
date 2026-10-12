@@ -1,6 +1,6 @@
 # Core First v2 实施台账
 
-> 状态：B0、B1.1–B1.4 影子证据与 Terms、B2.1–B2.3 单机升级、B3.1/B3.2 隔离用量、B3.3 连接管理与观察、B4.1/B4.2 合成 Provider、B5.1 本地只读服务身份切片已实现；后续切片推进中。各整阶段仍按下表门禁验收。
+> 状态：B0、B1.1–B1.4 影子证据与 Terms、B2.1–B2.3 单机升级、B3.1/B3.2 隔离用量、B3.3/B3.4 连接观察与事件桶、B4.1/B4.2 合成 Provider、B5.1/B5.2 本地只读 mTLS 接入、B6.1 实验字节 codec 已实现；后续切片推进中。各整阶段仍按下表门禁验收。
 
 ## 1. 批次与关键路径
 
@@ -67,7 +67,9 @@ B4.1 的 [本地 Provider 合成进程切片](../../../contracts/v2/credential-p
 
 B4.2 的 [合成 Provider 撤销与清理](../../../contracts/v2/credential-provider/local-fixture-lifecycle-v1.md) 先提交永久 shadow fact，再执行私有清理；未知结果只查询原 operation。Disable 先阻止发行，有界游标和独立历史核验决定 fixture 清理完成，秘密删除后保留 receipts/tombstones。SQLite Provider 43 项通过、5 项跳过，MariaDB 48 项全部通过；固定 Core `8543668` 加本片全量 API 744 项、5484 断言通过，19 项引擎专测跳过且无警告。Node 收敛、生产 OS 隔离与 PluginManager 卸载仍未实现。
 
-B5.1 的 [本地只读 Internal API](../../../contracts/v2/core-internal-api/current-readonly-slice-v1.md) 由真实 mTLS 边界签发服务证明，Core 重新校验当前 Sanctum actor、User/Admin 角色、Admin path 和订单归属；SQL nonce 防重放、有限服务速率及无秘密审计均已实现。三个只读 operation 默认关闭且仅 local/testing 可启用。真实 Core/MariaDB/TLS 34 项和对抗上游超时 6 项通过；固定 Core `7622cab` 加本切片全量 API 737 项、5295 断言通过，16 项专测跳过，详见 [验证报告](internal-readonly-verification.json)。Gateway 客户端、完整 operation 和生产 PKI/私网拓扑门禁仍待实施。
+B5.1 的 [本地只读 Internal API](../../../contracts/v2/core-internal-api/current-readonly-slice-v1.md) 由真实 mTLS 边界签发服务证明，Core 重新校验当前 Sanctum actor、User/Admin 角色、Admin path 和订单归属；SQL nonce 防重放、有限服务速率及无秘密审计均已实现。三个只读 operation 默认关闭且仅 local/testing 可启用。真实 Core/MariaDB/TLS 34 项和对抗上游超时 6 项通过；固定 Core `7622cab` 加本切片全量 API 共 737 项（721 通过、16 项专测跳过）、5295 断言通过，详见 [验证报告](internal-readonly-verification.json)。完整 operation 和生产 PKI/私网拓扑门禁仍待实施。
+
+B5.2 的 [Internal User DTO v2](../../../contracts/v2/core-internal-api/current-user-dto-v2.md) 和 Gateway 本机 mTLS 客户端迁移两个现有用户 GET 的可选上游，沿用 Core 当前认证/归属与现有公网 DTO。默认 Native；只有 local/testing 显式启用才调用，错误配置启动失败，TLS/授权/DTO 错误无 fallback。固定 Core `17fbc9a` 加本片组合 API 共 764 项（745 通过、19 项引擎专测跳过）、5509 断言通过；Gateway 467 项、SDK 33 项及 typecheck/build 通过，实际 Core/Gateway mTLS 24 项通过，代码与基线见 [验证报告](internal-user-v2-verification.json)。管理员 Gateway、生产 PKI 和正式 SC-v2 仍未启用。
 
 B6.1 的 [实验 metadata codec](../../../contracts/v2/secure-channel/metadata-codec-prototype-v1.md) 已推送 Gateway `6adea76c5259a43556dee611e7b932a72d008a3c`，提供独立 SDK 实验 subpath 与 Python/Node/Chromium 固定字节向量。固定 Linux 快照 Gateway 425 项、SDK 40 项和 typecheck/build 通过；实际 Chromium 6 项字节/hash检查、5 项拒绝检查通过。没有加密实现或业务路由，正式响应 key/nonce 构造、独立审查、共享 replay 与业务互操作仍待实施。
 

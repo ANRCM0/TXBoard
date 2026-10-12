@@ -2,6 +2,8 @@
 
 > 状态：Target / Draft，B0 设计基线。完整 B5 尚未交付；已有默认关闭、仅 local/testing 的 [当前只读切片](current-readonly-slice-v1.md)，其已注册路径和验收范围以 Current 文件为准。
 
+当前两个 User operation 的显式 `contract_version:"2"` 扩展见 [B5.2 User DTO](current-user-dto-v2.md)，保留 v1 与 Admin，不代表 Draft 其他操作已开放。
+
 ## 1. 业务与安全权威
 
 Gateway 负责 Web 传输、SC-v2、请求结构及 DTO 适配。Core 负责登录验证、账户归属、管理员身份、RBAC、价格、优惠、余额、订单状态、节点权限、幂等与审计。Gateway 不使用共享管理员 Token，不缓存业务授权结果为最终判定，不访问业务 MySQL 或发布节点控制消息。

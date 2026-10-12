@@ -1,0 +1,246 @@
+{
+  "phase": "B5.2",
+  "status": "current-only/local-testing/read-only",
+  "production_acceptance": false,
+  "committed_core_head": "17fbc9a8c47a8749689a56c7dc15163b23e4772f",
+  "committed_gateway_head": "8310a4c715759f7f1e609cb55d3eb513738e8d4f",
+  "environment": {
+    "distribution": "Alpine 3.22.6",
+    "node": "v22.23.2",
+    "php": "8.4.16",
+    "database_version": "11.4.12-MariaDB",
+    "database": "txboard_internal_test",
+    "redis": "127.0.0.1:16379, DB14/cache15",
+    "tls": "TLSv1.3"
+  },
+  "source_sha256": {
+    "TXBoard": {
+      "api/app/Domains/InternalReadOnly/OperationRegistry.php": "5a1dc427cacf0036dec92384d79695c7244db902505a5ed03be4c7eee882346c",
+      "api/app/Http/Controllers/Txapi/InternalReadOnlyController.php": "8f98a407eb6416fecf69b3ce768ae0a2d0e46f83eee7f99f97c1581a1fe0ad65",
+      "api/tests/Feature/InternalReadOnly/InternalReadOnlySliceTest.php": "354654d42c315a05f38d02b692e7efb61e31c9f5a650aaa82f89b8d394a27026",
+      "api/tests/Feature/InternalReadOnly/InternalReadOnlyV2Test.php": "8066e465c62d245d7944af1964bfcc2bdcd70731096180e81336277db9216bcb",
+      "contracts/v2/core-internal-api/README.md": "7232bfc2e2f374d16e23e94b01f416d7226d65d7c6549f698600678da34682d9",
+      "contracts/v2/core-internal-api/current-readonly-slice-v1.md": "dca4407bb88668ebdf9bbcf43a731084eb40f41b6251c5469d60334ee754bb3c",
+      "contracts/v2/core-internal-api/current-user-dto-v2.md": "afe623de39b63ecac49ab635eca6de5dcb308901316d5caa3d12a6405af3e3e1"
+    },
+    "TXBoard-Gateway": {
+      ".env.example": "f1c6f7fb47f33d63cbe28951ace0c165ae19169caaa01ea83854cee7782516ec",
+      "apps/gateway/src/config/env.ts": "bfabc0065137deff1c3b8fac0553a89715d5fd04e9340f37af5a2530f1040540",
+      "apps/gateway/src/config/internal-user.ts": "a60d15dc42a810268332495ba234af2c17ff177e543924b4664d9a1ebb68895b",
+      "apps/gateway/src/adapters/internal-user-v2.ts": "02ae21de7d748d189f88ad3fef70a87aa589414aa52f7c0e38ae43748277ac49",
+      "apps/gateway/src/services/internal-user-client.ts": "17cdad7fb898fc7ff96d21802320d28b6947c50d484cf2dac696ab5a7ba677a1",
+      "apps/gateway/src/services/upstream.ts": "9ffa3a43a72ad1905d90fc873fec8f48da0a3f6ac4e18263d3fa40e511b65206",
+      "apps/gateway/src/routes/user.ts": "7c9860afb538690a7eb2cc96464aef0a46157bb83d50fe215de82fac2b3aa5f9",
+      "apps/gateway/src/routes/orders.ts": "d5b0982cd4cf8b90798b3d29765ee2d0c23abc655091ec65f16db33f458d43b1",
+      "apps/gateway/test/internal-user-v2.test.ts": "95b95b4cdc995f646c0bac6d632d335890b125c3da403ec7d8413133dabe270c",
+      "apps/gateway/test/internal-user-client.test.ts": "d6ec4448b4a240eda1a537312b80fcf122996a1eb99167a7fde7759e04fc83bd",
+      "tests/integration/internal-user-core-fixture.php": "59ff72ec43b2e6e31c976e81bbda5d2c29d25e8e6920acf1662c861033fad9b3",
+      "tests/integration/internal-user-core-gateway.mjs": "b5584051d8743547323ae994e99f4283746ff303271a5812507f861759610e4a",
+      "tests/integration/run-internal-user-linux.sh": "fccf0000cc61717acb99acfe865e3aad9ebeb95e0b51714d31dcb2ed9d5e29cb",
+      "tests/integration/prepare-internal-user-snapshot.py": "e6e72213f00916b3109f47dd0c71a524d157b432b02a6d953b308e776e9165a2",
+      "docs/internal-user-integration.md": "41d034ccf76f988707a1264b930a1259559de6b759cf4fc8f6e8b83f23a8fce9",
+      "contracts/gateway-v1.md": "0fdbb7f23e982c6e2643d50681c61c9df316bcb455af90f59d4a24fbf47ec22b"
+    }
+  },
+  "locked_dependencies": {
+    "composer_lock_sha256": "f47b212c2fc530a7820e370eab7c6d624d13962e7d26e4f2ddf57a11848257c0",
+    "package_lock_sha256": "a60bdbf6de2788282dfa87077316f55df950c7192e6a33960ead97dc953dc940",
+    "php_vendor_donor": "/opt/txboard-baseline/TXBoard/api/vendor",
+    "linux_node_modules_donor": "/opt/txboard-baseline/TXBoard-Gateway/node_modules"
+  },
+  "api_full_gate": {
+    "source_base": "17fbc9a8c47a8749689a56c7dc15163b23e4772f",
+    "snapshot": "/opt/txboard-baseline/internal-user-v2-combined-17fbc9a",
+    "log": "/opt/txboard-baseline/internal-user-v2-combined-17fbc9a-fullgate.log",
+    "database": "SQLite :memory:",
+    "tests": 764,
+    "assertions": 5509,
+    "skipped": 19,
+    "result": "passed with explicit skips; tests_total includes skipped cases",
+    "scope": "Full git archive of committed base plus exactly eight frozen Core B5.2 files; no other live uncommitted files.",
+    "testing_env_sha256": "10c83a96ab86222a626f235e46a2992055f4d67a1f31fc69060091507fa6eb34",
+    "composer_lock_sha256": "f47b212c2fc530a7820e370eab7c6d624d13962e7d26e4f2ddf57a11848257c0",
+    "snapshot_overlay_sha256": {
+      "api/app/Domains/InternalReadOnly/OperationRegistry.php": "5a1dc427cacf0036dec92384d79695c7244db902505a5ed03be4c7eee882346c",
+      "api/app/Http/Controllers/Txapi/InternalReadOnlyController.php": "8f98a407eb6416fecf69b3ce768ae0a2d0e46f83eee7f99f97c1581a1fe0ad65",
+      "api/tests/Feature/InternalReadOnly/InternalReadOnlySliceTest.php": "354654d42c315a05f38d02b692e7efb61e31c9f5a650aaa82f89b8d394a27026",
+      "api/tests/Feature/InternalReadOnly/InternalReadOnlyV2Test.php": "8066e465c62d245d7944af1964bfcc2bdcd70731096180e81336277db9216bcb",
+      "contracts/v2/core-internal-api/README.md": "7232bfc2e2f374d16e23e94b01f416d7226d65d7c6549f698600678da34682d9",
+      "contracts/v2/core-internal-api/current-readonly-slice-v1.md": "dca4407bb88668ebdf9bbcf43a731084eb40f41b6251c5469d60334ee754bb3c",
+      "contracts/v2/core-internal-api/current-user-dto-v2.md": "afe623de39b63ecac49ab635eca6de5dcb308901316d5caa3d12a6405af3e3e1",
+      "docs/architecture/v2/internal-user-v2-verification.json": "5160053153b3ca4f9aa8584a6e770786626395ac61997b468f1feca18e912f54"
+    },
+    "tests_total": 764,
+    "tests_skipped": 19,
+    "tests_passed": 745
+  },
+  "gateway_full_gate": {
+    "source_base": "8310a4c715759f7f1e609cb55d3eb513738e8d4f",
+    "snapshot": "/opt/txboard-baseline/internal-user-v2-gateway-strict",
+    "log": "/opt/txboard-baseline/internal-user-v2-gateway-strict-check.log",
+    "gateway_tests": 467,
+    "sdk_tests": 33,
+    "typecheck": "both workspaces passed",
+    "build": "both workspaces passed",
+    "focused_internal_tests": 42,
+    "scope": "Committed Gateway and existing SDK plus only reviewed B5.2 files; parallel experimental SC-v2 SDK work excluded."
+  },
+  "native_schema_checker": {
+    "native_only": true,
+    "issues": 0
+  },
+  "route_contract_tests": {
+    "passed": 13
+  },
+  "real_integration": {
+    "passed": 24,
+    "checks": [
+      "default Native profile has no Internal transport requirement",
+      "real mTLS Internal profile equals Native in every frozen display field",
+      "real full-detail Internal equals Native including payment wallet discount plan traffic status4",
+      "other user profile reflects actual actor, never supplied actor header",
+      "foreign order remains Core 404 and does not call Native fallback",
+      "missing and expired actor reject with no Native fallback",
+      "admin actor cannot use user Internal service",
+      "Core ban immediately rejects same user session",
+      "unsafe decimal bytes are rejected without precision loss or fallback",
+      "nonselected orders list and status retain Native path",
+      "startup rejects admin client identity",
+      "startup rejects wrong-san client identity",
+      "startup rejects multi-san client identity",
+      "startup rejects expired client identity",
+      "startup rejects nonHTTPS/visitor server identity/production flag configuration",
+      "startup rejects mistyped opt-in duplicate config keys and noncanonical HTTPS origins",
+      "actual untrusted client CA TLS handshake rejects without Native fallback",
+      "actual CRL-revoked client handshake rejects without Native fallback",
+      "wrong trusted server CA is rejected by actual client verification",
+      "actual server DNS SAN mismatch is rejected while CA remains trusted",
+      "Core default disabled remains authoritative without fallback",
+      "Core production 404 gate remains authoritative",
+      "revoked Core actor session fails after server restarts",
+      "TLS service offline never falls back to plaintext Native"
+    ],
+    "evidence_path": "/tmp/txboard-internal-user-gateway.A3Gky0/result.json",
+    "log": "/opt/txboard-baseline/internal-user-v2-strict-integration.log",
+    "public_pki": {
+      "generated_at": 1791791607,
+      "tls": "TLSv1.3",
+      "certificates": {
+        "server": "2e7a23a22bc7927cc5acd1abfaf3e1b964d4e4c2c314a8a5fdb556b9d699ccc4",
+        "user": "0378f15cf407c4f7e274d1f5710af668e4b3b630ab210c794ee42f5e06b688d0",
+        "admin": "a3c39e82a093c64d2e369d934bbedc812e021c726d34044efbc8463fc6b7bd7e",
+        "short": "eec1b8c5b51b95d141c385278e048d75db01a94ffe69d8d026015c744a66ae6e",
+        "revoked": "b2148b1aab3288c0ea7beb160f405270f8d6ba589814d1746bc6b4b9aaf53c52"
+      },
+      "short_certificate_expires_at": 1791791667,
+      "proof_algorithm": "RS256",
+      "proof_key_epochs": [
+        1,
+        2
+      ]
+    },
+    "audit": {
+      "audit_rows": 9,
+      "nonce_rows": 9
+    },
+    "snapshot_core_sha256": {
+      "api/app/Domains/InternalReadOnly/OperationRegistry.php": "5a1dc427cacf0036dec92384d79695c7244db902505a5ed03be4c7eee882346c",
+      "api/app/Domains/InternalReadOnly/ServiceProofVerifier.php": "4f60e45a6171bb4d9f8313f6b0a21599d449ef25fd592a276e86187f3f0f9bf1",
+      "api/app/Domains/InternalReadOnly/ServiceState.php": "e7309b07d75cdf85ab5479479de97d5f9f47a9cadab77236896dd21f2fb7c429",
+      "api/app/Domains/InternalReadOnly/SliceFailure.php": "d6c41f840c3c16868ff824052129b9bc2c089e488cd3948352d9bbab8a44d5a4",
+      "api/app/Domains/InternalReadOnly/StrictJson.php": "60c070c15a76b26e7c86a8219a957adf8a133e73a7e28e1c3e709b218e9d975e",
+      "api/app/Http/Middleware/InternalServiceProof.php": "13616e473e672d74c10d4e18e4d032764ad4ca140d3e3fdb195d459fa9430957",
+      "api/app/Http/Controllers/Txapi/InternalReadOnlyController.php": "8f98a407eb6416fecf69b3ce768ae0a2d0e46f83eee7f99f97c1581a1fe0ad65",
+      "api/config/internal_api_slice.php": "a7a5d2de7578c465cedb685f2bbba9361751affcd90253109b73c0d20dea0fd6",
+      "api/database/migrations/2026_10_12_000008_create_internal_readonly_slice_state.php": "85a523e9b37129e44aa1e428da4eaefbe2e45fc86ae8bf402a8aeb97d3f95596",
+      "api/tests/Feature/InternalReadOnly/InternalReadOnlySliceTest.php": "354654d42c315a05f38d02b692e7efb61e31c9f5a650aaa82f89b8d394a27026",
+      "api/tests/Feature/InternalReadOnly/InternalReadOnlyV2Test.php": "8066e465c62d245d7944af1964bfcc2bdcd70731096180e81336277db9216bcb",
+      "api/internal-readonly-fixtures/fixture.php": "459729b5907d2b3e8201eb414f6795eca7ac1cfbc45eacc74d968002e8248e89",
+      "api/internal-readonly-fixtures/tls-boundary.mjs": "687777f5af7a6ad5e7e710b22d535fca4bca232faa1a990619191716d3b9a951",
+      "scripts/tests/internal-readonly/README.md": "8fdef07a19e0f5a29aba768d32094f0f9e943a067f2f00998879a73ac2ea77dc",
+      "scripts/tests/internal-readonly/generate-pki.py": "2e607cb023581c365fb368f0b80483988ba0f1b7468326cdb9befd921283ffa1",
+      "scripts/tests/internal-readonly/integration.mjs": "41b71f908f409cce941dcaac7b591e82dcd3bb81e1a457f1ada9effd481dba24",
+      "scripts/tests/internal-readonly/prepare-snapshot.py": "d9ed0d956c4d997c3644372499a41b1f6e56385e1d5feae74f541e80af61f80b",
+      "scripts/tests/internal-readonly/reset-local-fixture.py": "435d40a50b71bee3d8549f83a1f0af992a3d4c384b0b59144941bdc9aff1e9c8",
+      "scripts/tests/internal-readonly/run-local-baseline.py": "c5972ce5488ae98c44963411834ee057d1f10547b1e0d5b1c2896c9e47d4927c",
+      "scripts/tests/internal-readonly/run.sh": "484000eed2f4063e9121adc083cdf78594283ff969d00ace88605205c5d89cbd",
+      "scripts/tests/internal-readonly/timeout-boundary.mjs": "bf13161a609cef2027dcadc08187fb3b95946957deccf2a04b523a7997d61c67",
+      "api/routes/txapi.php": "9c73c700482169a80d3aabe67ffa1d15cedcbb1dd6781af3e41faa0c3e299dbe",
+      "contracts/v2/core-internal-api/README.md": "7232bfc2e2f374d16e23e94b01f416d7226d65d7c6549f698600678da34682d9",
+      "contracts/v2/core-internal-api/current-readonly-slice-v1.md": "dca4407bb88668ebdf9bbcf43a731084eb40f41b6251c5469d60334ee754bb3c",
+      "contracts/v2/core-internal-api/current-user-dto-v2.md": "0580a8aadd51bd6ebd6d09fc0d097c202a3bb5d6bfe6f9c7923253921614b41f"
+    },
+    "snapshot_gateway_sha256": {
+      "apps/gateway/src/config/env.ts": "bfabc0065137deff1c3b8fac0553a89715d5fd04e9340f37af5a2530f1040540",
+      "apps/gateway/src/config/internal-user.ts": "a60d15dc42a810268332495ba234af2c17ff177e543924b4664d9a1ebb68895b",
+      "apps/gateway/src/adapters/internal-user-v2.ts": "02ae21de7d748d189f88ad3fef70a87aa589414aa52f7c0e38ae43748277ac49",
+      "apps/gateway/src/services/internal-user-client.ts": "17cdad7fb898fc7ff96d21802320d28b6947c50d484cf2dac696ab5a7ba677a1",
+      "apps/gateway/src/services/upstream.ts": "9ffa3a43a72ad1905d90fc873fec8f48da0a3f6ac4e18263d3fa40e511b65206",
+      "apps/gateway/src/routes/user.ts": "7c9860afb538690a7eb2cc96464aef0a46157bb83d50fe215de82fac2b3aa5f9",
+      "apps/gateway/src/routes/orders.ts": "d5b0982cd4cf8b90798b3d29765ee2d0c23abc655091ec65f16db33f458d43b1",
+      "apps/gateway/test/internal-user-v2.test.ts": "95b95b4cdc995f646c0bac6d632d335890b125c3da403ec7d8413133dabe270c",
+      "apps/gateway/test/internal-user-client.test.ts": "d6ec4448b4a240eda1a537312b80fcf122996a1eb99167a7fde7759e04fc83bd",
+      "tests/integration/internal-user-core-fixture.php": "59ff72ec43b2e6e31c976e81bbda5d2c29d25e8e6920acf1662c861033fad9b3",
+      "tests/integration/internal-user-core-gateway.mjs": "b5584051d8743547323ae994e99f4283746ff303271a5812507f861759610e4a",
+      "tests/integration/run-internal-user-linux.sh": "fccf0000cc61717acb99acfe865e3aad9ebeb95e0b51714d31dcb2ed9d5e29cb",
+      "tests/integration/prepare-internal-user-snapshot.py": "e6e72213f00916b3109f47dd0c71a524d157b432b02a6d953b308e776e9165a2",
+      ".env.example": "f1c6f7fb47f33d63cbe28951ace0c165ae19169caaa01ea83854cee7782516ec",
+      "contracts/gateway-v1.md": "0fdbb7f23e982c6e2643d50681c61c9df316bcb455af90f59d4a24fbf47ec22b",
+      "docs/internal-user-integration.md": "41d034ccf76f988707a1264b930a1259559de6b759cf4fc8f6e8b83f23a8fce9"
+    },
+    "tested_gateway_sha256": {
+      "apps/gateway/src/services/internal-user-client.ts": "17cdad7fb898fc7ff96d21802320d28b6947c50d484cf2dac696ab5a7ba677a1",
+      "apps/gateway/src/adapters/internal-user-v2.ts": "02ae21de7d748d189f88ad3fef70a87aa589414aa52f7c0e38ae43748277ac49",
+      "apps/gateway/src/config/internal-user.ts": "a60d15dc42a810268332495ba234af2c17ff177e543924b4664d9a1ebb68895b",
+      "tests/integration/internal-user-core-gateway.mjs": "b5584051d8743547323ae994e99f4283746ff303271a5812507f861759610e4a",
+      "tests/integration/internal-user-core-fixture.php": "59ff72ec43b2e6e31c976e81bbda5d2c29d25e8e6920acf1662c861033fad9b3"
+    },
+    "committed_core_head": "8543668ccf7c53174f4ce1e9f4d0f25856fe2855",
+    "committed_gateway_head": "8310a4c715759f7f1e609cb55d3eb513738e8d4f"
+  },
+  "database_preparation": "Explicitly reset only txboard_internal_test after verifying exactly the three fixture user emails and one order; fresh nonce/audit. Runtime does not delete unexpired nonce. No production database or automatic migrate:fresh.",
+  "cleanup": {
+    "retained": "Sanitized logs, result.json and public-evidence.json only; private keys, actor plaintext credentials, trust files and CA private state removed. Isolated DB retained.",
+    "fixture_listeners_remaining": 0,
+    "ports": [
+      19081,
+      19443,
+      19445,
+      19582,
+      19583,
+      19584,
+      19585,
+      19586,
+      19587
+    ]
+  },
+  "limitations": [
+    "Actual database is MariaDB 11.4.12; MySQL 8.4 is unverified.",
+    "Local/testing opt-in for only existing public user profile and order-detail routes. No admin Gateway, write operations, arbitrary upstream, plaintext/Native fallback or production acceptance.",
+    "Core v1/Admin DTOs and production 404 remain. Default Gateway Native behavior and other operations remain unchanged.",
+    "Core authority is current Sanctum, TxapiUser, is_admin/AdminPath and owner queries; no new granular RBAC model.",
+    "Gateway certificate/config material is loaded at startup; rotation requires restart. Each call opens a fresh TLS1.3 connection and rechecks local leaf expiry. No production PKI/cluster/Redis failover acceptance.",
+    "Client total walltime is bounded independently of chunks; synchronous Core handler/SQL cannot be cancelled by this deadline and may continue until it returns.",
+    "Pre-admission proof/invalid actor/replay/rate/storage failures have no operation audit; admitted banned/role/path/owner rejections are audited as in B5.1.",
+    "Real overflow case uses BIGINT traffic bytes. Money, IDs, signed telegram and noncanonical decimal rejection are covered by focused adapter tests.",
+    "Full B5/B6, SC-v2, all-operation migration and production rollout remain unfinished."
+  ],
+  "prior_api_full_gate": {
+    "source_base": "8543668ccf7c53174f4ce1e9f4d0f25856fe2855",
+    "snapshot": "/opt/txboard-baseline/internal-user-v2-core-final",
+    "log": "/opt/txboard-baseline/internal-user-v2-core-final-fullgate.log",
+    "database": "SQLite :memory:",
+    "tests": 738,
+    "assertions": 5320,
+    "skipped": 16,
+    "result": "passed with explicit skips; tests_total includes skipped cases",
+    "tests_total": 738,
+    "tests_skipped": 16,
+    "tests_passed": 722
+  },
+  "verification_bases": "Full combined API gate uses committed Core17fbc9a plus eight frozen B5.2 files; real mTLS integration separately uses committed Core8543668 and Gateway8310a4c plus reviewed B5.2 sources. These are separate verified snapshots, not a claim that the TLS run used the combined Core base.",
+  "strict_string_boundaries": {
+    "focused_internal_tests": 42,
+    "checks": "Final LF/CRLF/CR/U+2028/U+2029 rejected in decimal values, telegram, trade number, UUID and Bearer. Invalid outgoing Bearer/trade number opens zero HTTPS or Native requests. Response UUID requires exactly36 characters."
+  }
+}

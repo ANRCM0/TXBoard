@@ -16,6 +16,7 @@ final class InternalReadOnlyController
     {
         $operation = $request->attributes->get('internal.readonly.operation');
         $input = $operation['body']->input;
+        $version = $operation['body']->contract_version;
         $actor = Auth::guard('sanctum')->user();
         if ($operation['definition']['actor'] === 'user') {
             if ($actor->is_admin) {
@@ -23,9 +24,21 @@ final class InternalReadOnlyController
             }
             $native = $operation['operation'] === 'user.profile.get'
                 ? app(AccountController::class)->me($request)
-                : app(AccountController::class)->order($request, $input->trade_no);
+                : ($version === '2'
+                    ? app(AccountController::class)->orderDetail($request, $input->trade_no)
+                    : app(AccountController::class)->order($request, $input->trade_no));
             $data = $native->getData(true)['data'];
             $result = $operation['operation'] === 'user.profile.get' ? self::profile($data) : self::order($data);
+            if ($version === '2') {
+                if ($operation['operation'] === 'user.profile.get') {
+                    $result['telegram_id'] = $data['telegram_id'] === null ? null : (string) $data['telegram_id'];
+                } else {
+                    $result['plan']['traffic_limit_bytes'] = (string) $data['plan']['traffic_limit_bytes'];
+                    $result['payment_id'] = $data['payment_id'] === null ? null : (string) $data['payment_id'];
+                    $result['balance_amount_minor'] = (string) $data['balance_amount_minor'];
+                    $result['discount_amount_minor'] = (string) $data['discount_amount_minor'];
+                }
+            }
         } else {
             // Existing Core admin role + dynamic path are the authority. No invented RBAC permissions.
             $request->route()->setParameter('admin_path', $input->admin_path);
@@ -40,7 +53,7 @@ final class InternalReadOnlyController
             $result = self::order($data);
             $result['user_id'] = (string) $data['user_id'];
         }
-        return TxapiResponse::success($request, $result, ['current_only' => true, 'slice' => 'internal-readonly/1']);
+        return TxapiResponse::success($request, $result, ['current_only' => true, 'slice' => 'internal-readonly/'.$version]);
     }
 
     private static function profile(array $data): array

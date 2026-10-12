@@ -2,11 +2,19 @@
 
 状态：**完整平台升级 Target / Draft；隔离影子 profile 已实现**。协议标识为 `txboard.upgrade-manifest/v1`；目录 v2 表示平台架构代际。Deploy 新增 `upgrade` 执行器，仅支持下述隔离演练切片；当前 `update.sh` 继续作为旧更新路径，并遵守新持久升级保护标记。
 
-## 已实现的 B2.1 profile
+## 已实现的单机影子 profiles
 
 `subscription-shadow/v1` 增加必填 `profile` 和 `billing` 字段，后者包含已核实的 `currency` / `billing_timezone`。仅接受 `isolated_shadow`、四阶段 `expand/backfill/verify/observe`、schema epoch 1（legacy authority）、固定的三项 migration/probe/recovery 组合与目标 OCI digest。支持签名 `plan/check/apply/status/recover/restore-check`，没有生产 authority switch、集群租约或自动整库恢复。完整字段、RSA detached envelope 和实测证据见 [Deploy 运行契约](https://github.com/ANRCM0/TXBoard-Deploy/blob/main/docs/durable-upgrade.md)。
 
 此 profile 使用单机 flock、SQLite FULL 意图/结果及单调执行 token，Core 每块数据与游标同事务提交。所有页逐户对账后仅标记演练完成，停止状态和旧镜像启动保护仍保留。部分 DDL 形状不明时保持调查；已完整 DDL 或回填批次 commit 后丢失执行器结果可探测并恢复。真实 Docker/MariaDB 的批次 commit 后 SIGKILL 演练通过，但它不满足下文整个 B2 的生产/集群退出门槛。
+
+| 已实现 profile | 捕获与核对范围 | Deploy 提交 |
+| --- | --- | --- |
+| `subscription-shadow/v1`（B2.1） | 稳定订阅、Terms、周期和 Subject 映射；全部用户分页核对 | `cf511b9`、`3f31744` |
+| `plan-catalog-shadow/v1`（B2.2） | 当前 Plan revision/offers 与销售状态；全部当前商品分页核对 | `617cb93` |
+| `commerce-shadow/v1`（B2.3） | wallet/commission 期初平衡分录与当前订单证据；user/order 双游标分页核对 | `ac9b811` |
+
+三个 profile 的 migration/probe/recovery ID 各自封闭，不能混用。商品和财务 profile 仍使用固定的 expand/backfill/verify/observe、legacy authority 与停止副本；都已通过真实固定 Core/MariaDB 的批次 commit 后 SIGKILL 恢复，重复映射或期初分录为零。财务证据不代表真实付款或退款账本，商品证据不验证 superseded history。完整命令、固定制品和测试限制见 [Deploy 运行契约](https://github.com/ANRCM0/TXBoard-Deploy/blob/main/docs/durable-upgrade.md)。
 
 ## 1. 当前能力和边界
 
