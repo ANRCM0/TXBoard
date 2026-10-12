@@ -16,6 +16,7 @@ if (initial.environment !== 'testing' || initial.listen_host !== '127.0.0.1'
 const operations = new Map([
   ['/txapi/internal/v1/operations/auth.login', 'user-gateway'],
   ['/txapi/internal/v1/operations/auth.register', 'user-gateway'],
+  ['/txapi/internal/v1/operations/auth.password.reset', 'user-gateway'],
   ['/txapi/internal/v1/operations/auth.email-code.send', 'user-gateway'],
   ['/txapi/internal/v1/operations/public.site-config.get', 'user-gateway'],
   ['/txapi/internal/v1/operations/public.plan.list', 'user-gateway'],
@@ -30,7 +31,7 @@ const operations = new Map([
   ['/txapi/internal/v1/operations/user.order.create', 'user-gateway'],
   ['/txapi/internal/v1/operations/admin.order.get', 'admin-gateway'],
 ]);
-const anonymousOperations = new Set(['/txapi/internal/v1/operations/public.site-config.get', '/txapi/internal/v1/operations/public.plan.list', '/txapi/internal/v1/operations/auth.login', '/txapi/internal/v1/operations/auth.email-code.send', '/txapi/internal/v1/operations/auth.register']);
+const anonymousOperations = new Set(['/txapi/internal/v1/operations/public.site-config.get', '/txapi/internal/v1/operations/public.plan.list', '/txapi/internal/v1/operations/auth.login', '/txapi/internal/v1/operations/auth.email-code.send', '/txapi/internal/v1/operations/auth.register', '/txapi/internal/v1/operations/auth.password.reset']);
 const sans = new Map([
   ['DNS:user-gateway.internal', 'user-gateway'],
   ['DNS:admin-gateway.internal', 'admin-gateway'],

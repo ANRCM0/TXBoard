@@ -27,7 +27,7 @@ function fromB64(value: string): Uint8Array {
 function toB64(bytes: Uint8Array): string {
   return btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
 }
-export type CryptoOperation = 'login' | 'register' | 'email-code'
+export type CryptoOperation = 'login' | 'register' | 'email-code' | 'password-reset'
 
 /**
  * 单步操作的 session 段占位（GW-403 D7）：ASCII 连字符，字节格式固定——

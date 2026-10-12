@@ -54,6 +54,11 @@ export const registerSchema = z.strictObject({
 
 export type RegisterRequest = z.infer<typeof registerSchema>
 
+export const passwordResetSchema = z.strictObject({
+  email: z.email().max(254), password: z.string().min(8).max(1024),
+  email_code: z.string().regex(/^\d{6}$/), ...captchaFields,
+})
+
 /** POST /gateway/v1/secure/auth/email-code body (after decryption). */
 export const emailCodeSchema = z.strictObject({ email: z.email().max(254), ...captchaFields })
 

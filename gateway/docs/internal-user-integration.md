@@ -1,6 +1,6 @@
 # User Internal mTLS 当前本机接入
 
-状态：Current / local-testing-only，B5.2–B5.10 已验收，订单创建、登录与邮件另限隔离测试副本。现有 Gateway v1 受保护只读操作均可选择本地 Internal 上游，公共展示读取有额外 opt-in。完整 B5/B6、管理员 Gateway、SC-v2 和生产门禁仍未完成。
+状态：Current / local-testing-only，B5.2–B5.12 已验收，订单创建、登录、邮件、注册与密码恢复另限隔离测试副本。现有 Gateway v1 受保护只读操作均可选择本地 Internal 上游，公共展示读取有额外 opt-in。完整 B5/B6、管理员 Gateway、SC-v2 和生产门禁仍未完成。
 
 `GATEWAY_INTERNAL_USER_ENABLED` 默认 false；undefined、空串和精确 false 关闭，其他非空误值启动失败；只有精确字符串 true 且 `APP_ENV=local/testing` 才可启用。启用后 profile/detail、orders list/page/status、dashboard、payment-methods、subscription-summary、notices 调用固定 User operation，request contract_version=2。登录仍使用原路径；公共元数据和订单创建的额外开关见下文。
 
@@ -112,3 +112,9 @@ bash tests/integration/run-internal-email-linux.sh /path/to/fixed-email-core/api
 B5.11 adds the default-off `GATEWAY_INTERNAL_REGISTER_ENABLED` local/testing consumer for `auth.register`. It requires the configured Internal TLS boundary, HPKE and Redis limiter while full account workflows are disabled. Only `/gateway/v1/secure/auth/register` is opened; email-code has its own flag. Core also requires `CORE_INTERNAL_REGISTER_ENABLED` and an isolated copy. HTTP201 must carry the closed registration envelope. Native register rules and partial outcomes remain Core's authority, with no retry/fallback after selection. See the [registration contract](../../contracts/v2/core-internal-api/local-isolated-registration-v1.md).
 
 Run `bash tests/integration/run-internal-register-linux.sh <fixed-core-api>` only against the dedicated disposable `txboard_internal_test`. The fixture proves SDK HPKE, real mTLS, native trial/invite/code/session behavior, replay rejection and the unknown outcome of an audit failure. It is not production registration acceptance.
+
+## Isolated password recovery
+
+B5.12 adds independent default-off `GATEWAY_INTERNAL_PASSWORD_RESET_ENABLED` for local/testing. Configured Internal mTLS, HPKE, replay storage and Redis rate limits are required, with full account workflows disabled. Only `/gateway/v1/secure/auth/password-reset` is opened; SDK `auth.resetPassword` sends no visitor token and returns `{reset:true}`. Core separately requires `CORE_INTERNAL_PASSWORD_RESET_ENABLED`, the isolated-copy marker and exact synthetic `@example.test` accounts. It delegates the original FormRequest, shared native throttle, per-email reset lock, failed-code budget, password update and session revocation.
+
+There is no automatic retry or Native fallback. Password can change before token deletion, hooks, code deletion or audit fail. SDK treats dependency failures after POST as requiring state confirmation; it does not reconstruct credentials or issue a new session. See the [password recovery contract](../../contracts/v2/core-internal-api/local-isolated-password-reset-v1.md). Run `bash tests/integration/run-internal-password-reset-linux.sh <fixed-core-api>` only with dedicated disposable MariaDB/Redis fixtures; this does not enable production account workflows.

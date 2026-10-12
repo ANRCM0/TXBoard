@@ -46,6 +46,7 @@ export type PaymentMethod = {
 export type Notice = { id: number; [field: string]: unknown }
 export type NoticePage = { data: Notice[]; total: number }
 export type RegistrationPayload = LoginPayload & { invite_code?: string }
+export type PasswordResetPayload = LoginPayload & { email_code: string }
 export type EmailCodePayload = Pick<LoginPayload, 'email' | 'turnstile_token' | 'recaptcha_v3_token' | 'recaptcha_data'>
 export type DashboardStats = { unpaidOrders: number; openTickets: number; invitedUsers: number }
 export type OrderState = 0 | 1 | 2 | 3 | 4
@@ -295,7 +296,7 @@ export function createTXBoardClient(options: TXBoardClientOptions = {}) {
     throw lastError ?? new GatewayApiError('GATEWAY_ERROR', 0, 'Gateway request failed')
   }
 
-  async function secureInvoke<T>(operation: 'register' | 'email-code', payload: unknown): Promise<T> {
+  async function secureInvoke<T>(operation: 'register' | 'email-code' | 'password-reset', payload: unknown): Promise<T> {
     const discovery = await invoke<import('./crypto.js').KeyDiscovery>('/crypto/key')
     const { encryptForOperation } = await import('./crypto.js')
     const sealed = await encryptForOperation(discovery, payload, operation)
@@ -318,6 +319,7 @@ export function createTXBoardClient(options: TXBoardClientOptions = {}) {
       /** Account writes are encrypted-only and require opt-in Redis+HPKE Gateway. */
       register: (payload: RegistrationPayload) => secureInvoke<UserAuth>('register', payload),
       sendEmailCode: (payload: EmailCodePayload) => secureInvoke<{ sent: boolean }>('email-code', payload),
+      resetPassword: (payload: PasswordResetPayload) => secureInvoke<{ reset: boolean }>('password-reset', payload),
       login: async (payload: LoginPayload) => {
         if (!options.encryptedLogin) return invoke<UserAuth>('/auth/login', { method: 'POST', body: payload })
         const discovery = await invoke<import('./crypto.js').KeyDiscovery>('/crypto/key')

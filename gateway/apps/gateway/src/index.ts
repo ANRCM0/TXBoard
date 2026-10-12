@@ -27,6 +27,9 @@ if (config.internalEmailCodeEnabled === true && (accountWorkflows || !redis || !
 if (config.internalRegisterEnabled === true && (accountWorkflows || !redis || !crypto)) {
   throw new Error('Isolated Internal registration requires HPKE and Redis with account workflows disabled')
 }
+if (config.internalPasswordResetEnabled === true && (accountWorkflows || !redis || !crypto)) {
+  throw new Error('Isolated password recovery requires HPKE and Redis with account workflows disabled')
+}
 if (accountWorkflows && (!redis || !crypto)) {
   throw new Error('Account workflows require both Redis and HPKE')
 }

@@ -110,7 +110,7 @@ export function adaptNativeData(
         renew: row.renewable, ...prices }
     })
     case 'login': case 'register': return checked(auth, data)
-    case 'sendEmailCode': checked(z.object({ ok: z.literal(true) }), data); return true
+    case 'sendEmailCode': case 'resetPassword': checked(z.object({ ok: z.literal(true) }), data); return true
     case 'userProfile': {
       const row = checked(profile, data)
       return { id: row.id, email: row.email, plan_id: row.plan_id, balance: row.balance_minor,

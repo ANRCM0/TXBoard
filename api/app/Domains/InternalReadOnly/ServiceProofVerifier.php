@@ -12,7 +12,7 @@ final class ServiceProofVerifier
     {
         $proof = $request->header('X-TXBoard-Service-Proof', '');
         $authorization = $request->header('Authorization', '');
-        $anonymous = in_array($operation['definition']['actor'], ['anonymous', 'login', 'email-code', 'register'], true);
+        $anonymous = in_array($operation['definition']['actor'], ['anonymous', 'login', 'email-code', 'register', 'password-reset'], true);
         if (!is_string($proof) || strlen($proof) > config('internal_api_slice.max_proof_bytes')
             || !is_string($authorization) || strlen($authorization) > config('internal_api_slice.max_authorization_bytes')
             || ($anonymous ? $request->headers->has('Authorization')

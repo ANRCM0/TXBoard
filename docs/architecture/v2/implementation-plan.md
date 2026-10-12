@@ -1,6 +1,6 @@
 # Core First v2 实施台账
 
-> 状态：B0、B1.1–B1.18 影子证据、Terms、身份旁观与固定 writer 捕获、B2.1–B2.3 单机升级、B3.1/B3.2 隔离用量、B3.3/B3.4 本地观察与持久事件桶、B4.1–B4.5 合成 Provider、插件停用接入、租约候选与离线签名快照、B5.1–B5.11 本地 mTLS 读取、隔离建单、登录、内存邮件验证码与隔离注册、B6.1–B6.3 实验字节、离线加密与共享 owner 实验已实现；两仓迁移与三镜像发布已完成，继续推进业务迁移切片。各整阶段仍按下表门禁验收。
+> 状态：B0、B1.1–B1.18 影子证据、Terms、身份旁观与固定 writer 捕获、B2.1–B2.3 单机升级、B3.1/B3.2 隔离用量、B3.3/B3.4 本地观察与持久事件桶、B4.1–B4.5 合成 Provider、插件停用接入、租约候选与离线签名快照、B5.1–B5.12 本地 mTLS 读取、隔离建单、登录、内存邮件验证码、隔离注册与密码恢复、B6.1–B6.3 实验字节、离线加密与共享 owner 实验已实现；两仓迁移与三镜像发布已完成，继续推进业务迁移切片。各整阶段仍按下表门禁验收。
 
 2026-10-13，按仓库整合任务，将 Gateway/Node 的完整 Git 历史导入本仓 `gateway/`、`node/`，安装器集中到 TXBoard-Deploy。当前目录与三镜像 CI 见 [双仓布局](../../development/repository-layout.md)；旧基线和验证报告保持当时提交与路径。本次仓库整理独立于下列业务迁移门禁。
 
@@ -283,3 +283,11 @@ Node [当前契约](https://github.com/ANRCM0/TX-Node/blob/main/docs/local-event
 Gateway 只开放已存在的 HPKE 注册路由，必须有 nonce store 与 Redis 限流；不开放邮件码或完整 account workflows。消费者验证 HTTP201 和封闭 DTO；选定 Internal 后无重试或 Native 回退。邀请码先消费后保存失败、用户先创建后钩子失败、审计/期限隐藏成功等原生部分提交行为已验证，不能视为全事务或注册幂等。
 
 固定快照 API 全量 **1080 通过、99 引擎/独立进程专测跳过、10983 断言**，Gateway **755**、SDK **68** 项以及类型检查/构建通过。真实 MariaDB、Redis22、TLS1.3、SDK/HPKE 完整链路 **9** 项通过，Native 回退调用为零；测试布局 4 项和文档路径检查通过。[证据报告](internal-isolated-registration-verification.json)保留先前夹具/断言失败和最终源码、依赖、日志 hash。无生产注册或全 B5/B6 放量。
+
+### B5.12 隔离密码恢复 mTLS 接入
+
+[当前契约](../../../contracts/v2/core-internal-api/local-isolated-password-reset-v1.md)加入固定 `auth.password.reset`、独立默认关闭的 Core/Gateway 开关与匿名 actor。Core 复用原 `AuthForget`、共享原生 10/min 限流、15 秒邮件锁、三次验证码错误预算、密码更新与全部 Sanctum 会话撤销；原代码删除返回值、钩子和事务边界保持。仅合成 `@example.test` 账户允许进入，已启用或未知 CAPTCHA 不调用外部 Provider。
+
+Gateway/SDK 增加显式 HPKE 密码恢复 Operation、独立 Redis 限流和封闭 `{reset:true}` DTO，不发送访客凭据。重复密文与其他 Operation AAD 均拒绝，选定 Internal 后无重试或 Native 回退。密码已提交后 token 删除、钩子、code 删除、审计或响应失败可能形成未知结果；租约锁不构成 SQL fence，本片没有补偿或恢复会话。
+
+固定快照 API 全量 **1096 通过、99 引擎/独立进程专测跳过、11206 断言**，专项 **16/16、223 断言**。Gateway **799**、SDK **68** 项、类型检查和构建通过；真实 MariaDB、Redis22、TLS1.3 与 SDK/HPKE 链路 **9** 项通过，Native 回退调用为零。快照布局 4 项、原生表名和文档路径检查通过。[证据报告](internal-isolated-password-reset-verification.json)保存源码、依赖、日志 hash 以及失败夹具记录。生产账户流程与完整 B5/B6 仍待验收。

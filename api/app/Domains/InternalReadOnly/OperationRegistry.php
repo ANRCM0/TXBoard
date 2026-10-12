@@ -9,6 +9,7 @@ final class OperationRegistry
     public const OPERATIONS = [
         'auth.login' => ['service' => 'user-gateway', 'actor' => 'login', 'versions' => ['1']],
         'auth.register' => ['service' => 'user-gateway', 'actor' => 'register', 'versions' => ['1']],
+        'auth.password.reset' => ['service' => 'user-gateway', 'actor' => 'password-reset', 'versions' => ['1']],
         'auth.email-code.send' => ['service' => 'user-gateway', 'actor' => 'email-code', 'versions' => ['1']],
         'public.site-config.get' => ['service' => 'user-gateway', 'actor' => 'anonymous', 'versions' => ['1']],
         'public.plan.list' => ['service' => 'user-gateway', 'actor' => 'anonymous', 'versions' => ['1']],
@@ -43,6 +44,10 @@ final class OperationRegistry
             throw new SliceFailure('OPERATION_DISABLED', 404);
         }
         if ($definition['actor'] === 'register' && (config('internal_api_slice.register_enabled') !== true
+            || config('core_shadow.isolated_copy') !== true)) {
+            throw new SliceFailure('OPERATION_DISABLED', 404);
+        }
+        if ($definition['actor'] === 'password-reset' && (config('internal_api_slice.password_reset_enabled') !== true
             || config('core_shadow.isolated_copy') !== true)) {
             throw new SliceFailure('OPERATION_DISABLED', 404);
         }
@@ -84,8 +89,9 @@ final class OperationRegistry
                 }
             }
             StrictJson::exact($input, $keys);
-        } elseif (in_array($definition['actor'], ['login', 'register'], true)) {
+        } elseif (in_array($definition['actor'], ['login', 'register', 'password-reset'], true)) {
             $keys = ['email', 'password'];
+            if ($definition['actor'] === 'password-reset') $keys[] = 'email_code';
             $limits = ['email' => 254, 'password' => 1024, 'turnstile_token' => 4096,
                 'recaptcha_v3_token' => 4096, 'recaptcha_data' => 4096, 'email_code' => 128];
             if ($definition['actor'] === 'register') $limits['invite_code'] = 128;

@@ -3,13 +3,14 @@ import { createClient } from 'redis'
 import { GatewayFailure } from '../services/upstream.js'
 import type { ReplayStore } from '../services/crypto.js'
 
-export type AccountAction = 'login' | 'register' | 'email-code'
+export type AccountAction = 'login' | 'register' | 'email-code' | 'password-reset'
 export interface AccountLimiter { check(action: AccountAction, email: string, clientIp?: string): Promise<void> }
 
 const policies: Record<AccountAction, { limit: number; ms: number }> = {
   login: { limit: 8, ms: 60_000 },
   register: { limit: 3, ms: 600_000 },
   'email-code': { limit: 2, ms: 600_000 },
+  'password-reset': { limit: 3, ms: 300_000 },
 }
 
 // Atomic count+expiry. No GET/INCR race between Gateway replicas.
@@ -93,7 +94,7 @@ export class RedisSecurity implements ReplayStore, AccountLimiter {
       if (typeof ipUsed !== 'number' || !Number.isSafeInteger(ipUsed)) {
         throw new GatewayFailure('UPSTREAM_UNAVAILABLE', 503, 'Redis safety store unavailable')
       }
-      const ipPolicy: Record<AccountAction, number> = { login: 30, register: 10, 'email-code': 6 }
+      const ipPolicy: Record<AccountAction, number> = { login: 30, register: 10, 'email-code': 6, 'password-reset': 12 }
       if (ipUsed > ipPolicy[action]) {
         throw new GatewayFailure('RATE_LIMITED', 429, 'Too many requests')
       }

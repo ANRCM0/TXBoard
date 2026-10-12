@@ -13,6 +13,38 @@ if (!$app->environment('testing') || config('database.default') !== 'mysql'
 $user = App\Models\User::query()->where('email', 'internal-user@example.test')->firstOrFail();
 $order = App\Models\Order::query()->where('trade_no', 'internal-discounted-order')->firstOrFail();
 match ($argv[2] ?? '') {
+    'password-reset-prepare' => (function () use ($user): void {
+        admin_setting(['captcha_enable' => 0]);
+        $user->update(['password' => Illuminate\Support\Facades\Hash::make('fixture-old-password'),
+            'password_algo' => 'md5', 'password_salt' => 'test-salt']);
+        $user->createToken('fixture-extra-one'); $user->createToken('fixture-extra-two');
+        Illuminate\Support\Facades\Cache::put(App\Utils\CacheKey::get('EMAIL_VERIFY_CODE', $user->email), 123456, 300);
+    })(),
+    'password-reset-code' => (function () use ($user): void {
+        Illuminate\Support\Facades\Cache::forget(App\Utils\CacheKey::get('FORGET_REQUEST_LIMIT', $user->email));
+        Illuminate\Support\Facades\Cache::put(App\Utils\CacheKey::get('EMAIL_VERIFY_CODE', $user->email), 123456, 300);
+    })(),
+    'password-reset-lock' => (function () use ($user): void {
+        if (!Illuminate\Support\Facades\Cache::lock('password-reset:'.hash('sha256', $user->email), 15)->get()) {
+            throw new RuntimeException('Fixture lock unavailable');
+        }
+    })(),
+    'password-reset-unlock' => Illuminate\Support\Facades\Cache::lock('password-reset:'.hash('sha256', $user->email), 15)->forceRelease(),
+    'password-reset-state' => (function () use ($user): void {
+        $user->refresh();
+        $audits = Illuminate\Support\Facades\DB::table('tx_internal_readonly_audits')->where('operation', 'auth.password.reset')->get();
+        echo json_encode(['old_password_matches' => Illuminate\Support\Facades\Hash::check('fixture-old-password', $user->password),
+            'new_password_matches' => Illuminate\Support\Facades\Hash::check('fixture-new-password', $user->password),
+            'second_password_matches' => Illuminate\Support\Facades\Hash::check('fixture-second-password', $user->password),
+            'sessions' => $user->tokens()->count(), 'old_algorithm_cleared' => $user->password_algo === null && $user->password_salt === null,
+            'code_present' => Illuminate\Support\Facades\Cache::has(App\Utils\CacheKey::get('EMAIL_VERIFY_CODE', $user->email)),
+            'code_errors' => (int) Illuminate\Support\Facades\Cache::get(App\Utils\CacheKey::get('FORGET_REQUEST_LIMIT', $user->email)),
+            'audit_rows' => $audits->count(), 'audit_actors_guest' => $audits->every(fn ($row) => (int) $row->actor_id === 0),
+            'users' => App\Models\User::count(), 'orders' => App\Models\Order::count()]); exit;
+    })(),
+    'password-reset-audit-reject' => Illuminate\Support\Facades\DB::unprepared(
+        "CREATE TRIGGER reject_password_reset_audit BEFORE INSERT ON tx_internal_readonly_audits FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'fixture-audit-failure'"),
+    'password-reset-audit-allow' => Illuminate\Support\Facades\DB::unprepared('DROP TRIGGER reject_password_reset_audit'),
     'registration-prepare' => (function () use ($user): void {
         admin_setting(['captcha_enable' => 0, 'email_whitelist_enable' => 0, 'stop_register' => 0,
             'invite_force' => 1, 'invite_never_expire' => 0, 'email_verify' => 1,

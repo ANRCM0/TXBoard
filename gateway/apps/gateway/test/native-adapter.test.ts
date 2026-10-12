@@ -12,6 +12,7 @@ const fixtures: Array<[UpstreamOperation, string, unknown, unknown?]> = [
   ['login', '/txapi/auth/login', { auth_data: bearer, secure_path: 'secret', is_admin: true }],
   ['register', '/txapi/auth/register', { auth_data: bearer }],
   ['sendEmailCode', '/txapi/auth/email-code', { ok: true }],
+  ['resetPassword', '/txapi/auth/password/forgot', { ok: true }],
   ['userProfile', '/txapi/me', nativeProfile()],
   ['userSubscription', '/txapi/me/subscription', nativeSubscription()],
   ['userStats', '/txapi/me/dashboard-stats', { unpaid_orders: 2, open_tickets: 1, invited_users: 3 }],
@@ -41,7 +42,7 @@ describe('current Native Core adapter', () => {
     if (operation === 'login') expect(result).toEqual({ auth_data: bearer })
     if (operation === 'userStats') expect(result).toEqual([2, 1, 3])
     if (operation === 'userOrderStatus') expect(result).toBe(0)
-    if (operation === 'sendEmailCode') expect(result).toBe(true)
+    if (operation === 'sendEmailCode' || operation === 'resetPassword') expect(result).toBe(true)
   })
   it('preserves minor amounts and converts ISO dates to Unix seconds without exposing UUIDs', async () => {
     const fetcher = vi.fn(async () => Response.json(nativeEnvelope(nativeProfile({

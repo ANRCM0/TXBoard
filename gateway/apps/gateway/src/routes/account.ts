@@ -1,11 +1,12 @@
 import { GatewayFailure, upstreamRequest } from '../services/upstream.js'
-import type { AccountLimiter } from '../services/redis-security.js'
+import type { AccountAction, AccountLimiter } from '../services/redis-security.js'
 import type { CryptoOperation, CryptoService, SealedRequest } from '../services/crypto.js'
 import {
   emailCodeSchema,
   loginResultSchema,
   loginSchema,
   registerSchema,
+  passwordResetSchema,
   sealedRequestSchema,
 } from '../contracts/schemas.js'
 import { PREFIX } from '../middleware/request-context.js'
@@ -62,7 +63,7 @@ function clientIpOf(c: RouteContext): string | undefined {
  *  remains the authority for password and CAPTCHA and also needs own limits. */
 async function checkAccountLimiter(
   c: RouteContext, limiter: AccountLimiter,
-  action: 'login' | 'register' | 'email-code', email: string,
+  action: AccountAction, email: string,
 ): Promise<Response | null> {
   try {
     await limiter.check(action, email, clientIpOf(c))
@@ -275,6 +276,18 @@ export function registerAccountRoutes(
       }
 
     app.post(`${PREFIX}/secure/auth/login`, secure('login', runLogin))
+
+    if (config.internalPasswordResetEnabled === true && limiter) {
+      app.post(`${PREFIX}/secure/auth/password-reset`, secure('password-reset', async (c, data) => {
+        const parsed = passwordResetSchema.safeParse(data)
+        if (!parsed.success) return fail(c, 'VALIDATION_ERROR', 'Invalid recovery request', 400)
+        const rejected = await checkAccountLimiter(c, limiter, 'password-reset', parsed.data.email)
+        if (rejected) return rejected
+        const result = await upstreamRequest(config, fetcher, 'resetPassword', { body: parsed.data })
+        if (result !== true) throw new GatewayFailure('UPSTREAM_ERROR', 502, 'Unexpected upstream response shape')
+        return ok(c, { reset: true })
+      }))
+    }
 
     if ((accountWorkflows || config.internalRegisterEnabled === true) && limiter) {
       app.post(`${PREFIX}/secure/auth/register`, secure('register', async (c, data) => {

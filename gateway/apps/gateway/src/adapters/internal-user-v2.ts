@@ -81,6 +81,9 @@ export const internalEmailCodeSuccess = internalSuccessV2.extend({
 export const internalRegisterSuccess = internalLoginSuccess.extend({
   meta: z.strictObject({ current_only: z.literal(true), slice: z.literal('internal-isolated-registration/1') }),
 })
+export const internalPasswordResetSuccess = internalEmailCodeSuccess.extend({
+  meta: z.strictObject({ current_only: z.literal(true), slice: z.literal('internal-isolated-password-reset/1') }),
+})
 export function adaptInternalPublic(operation: 'guestConfig' | 'guestPlans', value: unknown): unknown {
   if (operation === 'guestConfig') {
     const parsed = publicSite.safeParse(value); if (!parsed.success) fail()

@@ -23,6 +23,7 @@ export type PolicyName =
   | 'secureLogin'
   | 'secureRegister'
   | 'secureEmailCode'
+  | 'securePasswordReset'
   | 'captchaChallenge'
   | 'disabledWrite'
   | 'orderWrite'
@@ -53,6 +54,7 @@ export const POLICY_DEFINITIONS: Readonly<Record<PolicyName, RoutePolicy>> = {
   secureLogin: { name: 'secureLogin', auth: 'none', body: 'hpke', limiter: 'login', cache: 'off' },
   secureRegister: { name: 'secureRegister', auth: 'none', body: 'hpke', limiter: 'register', cache: 'off' },
   secureEmailCode: { name: 'secureEmailCode', auth: 'none', body: 'hpke', limiter: 'email-code', cache: 'off' },
+  securePasswordReset: { name: 'securePasswordReset', auth: 'none', body: 'hpke', limiter: 'public', cache: 'off' },
   // GW-209: challenge issue. Anonymous, limiter-guarded, never cached: the
   // returned challengeId is a bearer capability that must never be shared.
   captchaChallenge: { name: 'captchaChallenge', auth: 'none', body: 'none', limiter: 'public', cache: 'off' },
@@ -87,6 +89,7 @@ export const routeDefinitions = [
   { method: 'POST', path: `${PREFIX}/auth/login`, policy: POLICY_DEFINITIONS.login },
   { method: 'POST', path: `${PREFIX}/secure/auth/login`, policy: POLICY_DEFINITIONS.secureLogin },
   { method: 'POST', path: `${PREFIX}/secure/auth/register`, policy: POLICY_DEFINITIONS.secureRegister },
+  { method: 'POST', path: `${PREFIX}/secure/auth/password-reset`, policy: POLICY_DEFINITIONS.securePasswordReset },
   { method: 'POST', path: `${PREFIX}/secure/auth/email-code`, policy: POLICY_DEFINITIONS.secureEmailCode },
 
   // GW-209: one-time CAPTCHA challenge issue. Anonymous but limiter-guarded,
@@ -138,6 +141,7 @@ export const ROUTE_OPERATIONS: Readonly<Record<string, readonly string[]>> = {
   [routeKey('POST', `${PREFIX}/secure/auth/login`)]: ['login'],
   [routeKey('POST', `${PREFIX}/secure/auth/register`)]: ['register'],
   [routeKey('POST', `${PREFIX}/secure/auth/email-code`)]: ['sendEmailCode'],
+  [routeKey('POST', `${PREFIX}/secure/auth/password-reset`)]: ['resetPassword'],
   [routeKey('POST', `${PREFIX}/auth/captcha/challenge`)]: [],
   [routeKey('GET', `${PREFIX}/user/profile`)]: ['userProfile'],
   [routeKey('GET', `${PREFIX}/user/subscription/summary`)]: ['userSubscription'],
@@ -176,6 +180,7 @@ const UPSTREAM_WRITE_OPERATIONS: ReadonlySet<string> = new Set<string>([
   'login',
   'register',
   'sendEmailCode',
+  'resetPassword',
   'userOrderCreate',
 ])
 
@@ -195,6 +200,7 @@ export interface PolicyEnvironment {
   /** Extra local Internal flag enables only secureEmailCode, never registration. */
   isolatedEmailCode?: boolean
   isolatedRegister?: boolean
+  isolatedPasswordReset?: boolean
   /** GW-209: a CAPTCHA challenge store is wired, so the challenge route exists. */
   captchaChallenge?: boolean
   /**
@@ -212,6 +218,7 @@ export interface PolicyEnvironment {
 const ACCOUNT_WORKFLOW_POLICIES: ReadonlySet<PolicyName> = new Set<PolicyName>([
   'secureRegister',
   'secureEmailCode',
+  'securePasswordReset',
 ])
 
 /**
@@ -250,6 +257,10 @@ export function activeRouteDefinitions(
     return definition
   }).filter(definition => {
     const { policy, path } = definition
+    if (policy.name === 'securePasswordReset') {
+      return Boolean(environment.hpke && environment.redis && environment.replayStore
+        && environment.isolatedPasswordReset && !environment.accountWorkflows)
+    }
     if (policy.name === 'secureRegister') {
       return accountWorkflows || Boolean(environment.hpke && environment.redis
         && environment.replayStore && environment.isolatedRegister)
@@ -373,8 +384,10 @@ export function validatePolicies(
         && !environment.accountWorkflows
       const registerOnly = policy.name === 'secureRegister' && environment.isolatedRegister
         && !environment.accountWorkflows
+      const resetOnly = policy.name === 'securePasswordReset' && environment.isolatedPasswordReset
+        && !environment.accountWorkflows
       const unlocked = Boolean(environment.hpke && environment.redis
-        && (environment.accountWorkflows || emailOnly || registerOnly))
+        && (policy.name === 'securePasswordReset' ? resetOnly : environment.accountWorkflows || emailOnly || registerOnly))
       const halfUnlocked = Boolean(environment.hpke || environment.redis
         || environment.accountWorkflows) && !unlocked
       if (halfUnlocked) {

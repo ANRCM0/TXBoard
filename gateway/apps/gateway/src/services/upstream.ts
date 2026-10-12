@@ -23,6 +23,7 @@ const allowlistedPaths = {
   userOrderStatus: '/txapi/orders/',
   register: '/txapi/auth/register',
   sendEmailCode: '/txapi/auth/email-code',
+  resetPassword: '/txapi/auth/password/forgot',
   // GW-304: order creation. The ONLY mutating operation the order-write
   // adaptation layer may reach, and only when GATEWAY_ORDER_WRITE_ENABLED is
   // set. Laravel owns the idempotency decision; the Gateway only forwards the
@@ -131,6 +132,9 @@ export async function upstreamRequest(
     || operation === 'userStats' || operation === 'userPaymentMethods' || operation === 'userSubscription' || operation === 'userNotices' || operation === 'userOrderStatus' || operation === 'userOrderCreate')) {
     return internalUserRequest(config, operation, options)
   }
+  if (config.internalPasswordResetEnabled === true && operation === 'resetPassword') {
+    return internalUserRequest(config, operation, options)
+  }
   // No untrusted path/host input can escape this static allowlist.
   const path = allowlistedPaths[operation]
   if (path === null) throw new GatewayFailure('UPSTREAM_ERROR', 404, 'Public payment catalog unavailable')
@@ -152,7 +156,7 @@ export async function upstreamRequest(
   }
   const headers = new Headers({ Accept: 'application/json' })
   if (operation.startsWith('user') && options.auth) headers.set('Authorization', options.auth)
-  const method = operation === 'login' || operation === 'register' || operation === 'sendEmailCode'
+  const method = operation === 'login' || operation === 'register' || operation === 'sendEmailCode' || operation === 'resetPassword'
     || operation === 'userOrderCreate'
     ? 'POST' : 'GET'
   if (method === 'POST') headers.set('Content-Type', 'application/json')

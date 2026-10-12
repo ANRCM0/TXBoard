@@ -25,7 +25,7 @@ final class InternalServiceProof
         try {
             $operation = OperationRegistry::request($request);
             $identity = app(ServiceProofVerifier::class)->verify($request, $operation);
-            $anonymous = in_array($operation['definition']['actor'], ['anonymous', 'login', 'email-code', 'register'], true);
+            $anonymous = in_array($operation['definition']['actor'], ['anonymous', 'login', 'email-code', 'register', 'password-reset'], true);
             if ($anonymous) {
                 // Guest hooks must not inherit a previous long-lived request's cached User.
                 Auth::forgetGuards();
@@ -62,7 +62,7 @@ final class InternalServiceProof
             app(ServiceState::class)->audit($identity, $operation['operation'], $anonymous ? 0 : (int) $actor->id,
                 TxapiResponse::requestId($request), $response->getStatusCode(), $payload['error']['code'] ?? null);
         } catch (SliceFailure $failure) {
-            $code = isset($operation) && in_array($operation['definition']['actor'], ['login', 'email-code', 'register'], true) && $failure->errorCode === 'RATE_LIMITED'
+            $code = isset($operation) && in_array($operation['definition']['actor'], ['login', 'email-code', 'register', 'password-reset'], true) && $failure->errorCode === 'RATE_LIMITED'
                 ? 'SERVICE_RATE_LIMITED' : $failure->errorCode;
             $response = TxapiResponse::error($request, $code, 'Internal operation rejected', $failure->status);
         } catch (\Throwable) {
