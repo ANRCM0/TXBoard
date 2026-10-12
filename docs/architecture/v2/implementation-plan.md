@@ -229,3 +229,9 @@ Node [当前契约](https://github.com/ANRCM0/TX-Node/blob/main/docs/local-event
 固定 `auth.email-code.send` version1 默认关闭，仅 local/testing 隔离副本可启用。Core 复用原输入校验、匿名限流、收件策略、冷却、验证码生成与邮件 Job，另外要求真实同步队列和 ArrayTransport；只允许 `@example.test` 收件地址，无外部 SMTP。Gateway 邮件开关独立于登录/注册，要求 HPKE 和 Redis，以 mTLS 调用 Core；没有访客 Authorization、自动重试或 Native 回退。原成功只说明执行已返回，审计或缓存阶段失败可留下已发送的未知结果。
 
 固定 Core `e33ba63` 加十文件：专项 19 项通过、336 断言，全 API 955 通过、64 项引擎专测跳过、9230 断言。固定 Gateway `dfd6122` 加邮件切片：Gateway 713 项、SDK 68 项、typecheck/build 通过；真实 SDK/HPKE/Redis/mTLS/原邮件链路 15 项和原有 57 项联调均通过。邮件正文与缓存六位验证码精确一致、300 秒有效期和 60 秒冷却、匿名审计、共享限流、重放拒绝、未知结果不重试均已实证。[契约](../../../contracts/v2/core-internal-api/local-isolated-email-code-v1.md)与[源码及分批验收报告](internal-isolated-email-code-verification.json)保留 fixture 修正前的失败证据；生产邮件、真实 CAPTCHA、正式 SC-v2 与完整账户流程仍待验收。
+
+### 2026-10-13 两仓迁移前收尾
+
+当前三条切片已分别提交并推送：B4.5 Core `15a5feb`、B1.12 Core `40a2733`、B5.10 Core `b8d58bd` / Gateway `4d36e3b`。随后以已提交 Core `b8d58bd` 的完整 Git archive 新建快照，不叠加工作区文件；组合 API 1004 项通过、84 项 MariaDB/独立进程专测跳过、10016 断言，无失败、警告或 risky。适用的双引擎专项和真实跨仓联调证据保留在各切片报告中，[收尾报告](pre-monorepo-closure-verification.json)另记录组合源码、依赖和日志哈希。
+
+本轮收尾完成后，按用户决定准备两个仓库：运行代码包含 Core、Node、Gateway 与现有前端/SDK/契约，部署代码包含 Deploy 和 Node Installer。此次收尾未移动仓库、改写历史或合并运行职责；迁移时保留组件边界、构建产物、版本与旧安装入口兼容。B1–B8 的未完成生产门禁继续生效，不因仓库收尾完成而关闭。

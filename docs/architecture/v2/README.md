@@ -29,4 +29,6 @@
 
 [实施台账与下一批](implementation-plan.md) 记录依赖、验收与退出条件；[假设及证据](assumptions.md) 单列尚未验证的事项。跨仓引用本目录及 [v2 契约](../../../contracts/v2/README.md)，当前行为仍引用对应 Current 契约。
 
+2026-10-13 的[两仓迁移前收尾报告](pre-monorepo-closure-verification.json)记录 B1.12、B4.5、B5.10 的独立提交与组合回归。当前切片已收尾，整套方案的生产迁移门禁仍按实施台账逐项验收。
+
 静态清单刷新/漂移检查命令会记录在 [CORE-001 清单](baseline-inventory.md) 中。本地验证结果和未运行项目以 [baseline-verification.md](baseline-verification.md) 为准，不能从文档数量推断 B0 或生产验收全部完成。
