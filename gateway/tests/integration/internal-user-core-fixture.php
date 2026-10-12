@@ -13,6 +13,39 @@ if (!$app->environment('testing') || config('database.default') !== 'mysql'
 $user = App\Models\User::query()->where('email', 'internal-user@example.test')->firstOrFail();
 $order = App\Models\Order::query()->where('trade_no', 'internal-discounted-order')->firstOrFail();
 match ($argv[2] ?? '') {
+    'registration-prepare' => (function () use ($user): void {
+        admin_setting(['captcha_enable' => 0, 'email_whitelist_enable' => 0, 'stop_register' => 0,
+            'invite_force' => 1, 'invite_never_expire' => 0, 'email_verify' => 1,
+            'register_limit_by_ip_enable' => 0, 'try_out_plan_id' => 1, 'try_out_hour' => 2]);
+        App\Models\InviteCode::forceCreate(['user_id' => $user->id, 'code' => 'fixture-registration-invite', 'status' => 0]);
+        foreach (['registered-owner@example.test', 'unknown-result@example.test'] as $email) {
+            Illuminate\Support\Facades\Cache::put(App\Utils\CacheKey::get('EMAIL_VERIFY_CODE', $email), 123456, 300);
+        }
+    })(),
+    'registration-duplicate-code' => Illuminate\Support\Facades\Cache::put(
+        App\Utils\CacheKey::get('EMAIL_VERIFY_CODE', 'registered-owner@example.test'), 123456, 300),
+    'registration-open-invite' => admin_setting(['invite_force' => 0]),
+    'registration-stop' => admin_setting(['stop_register' => 1]),
+    'registration-state' => (function () use ($user): void {
+        $owner = App\Models\User::where('email', 'registered-owner@example.test')->first();
+        $unknown = App\Models\User::where('email', 'unknown-result@example.test')->first();
+        $audits = Illuminate\Support\Facades\DB::table('tx_internal_readonly_audits')->where('operation', 'auth.register')->get();
+        echo json_encode(['owner_exists' => $owner !== null, 'unknown_exists' => $unknown !== null,
+            'owner_sessions' => $owner?->tokens()->count() ?? 0, 'unknown_sessions' => $unknown?->tokens()->count() ?? 0,
+            'password_matches' => $owner !== null && Illuminate\Support\Facades\Hash::check('fixture-registration-password', $owner->password),
+            'invite_matches' => $owner !== null && (int) $owner->invite_user_id === (int) $user->id,
+            'invite_used' => (bool) App\Models\InviteCode::where('code', 'fixture-registration-invite')->value('status'),
+            'trial_matches' => $owner !== null && (int) $owner->plan_id === 1
+                && (int) $owner->transfer_enable === (int) App\Models\Plan::findOrFail(1)->transfer_enable*1073741824,
+            'verification_code_present' => Illuminate\Support\Facades\Cache::has(
+                App\Utils\CacheKey::get('EMAIL_VERIFY_CODE', 'registered-owner@example.test')),
+            'audit_rows' => $audits->count(), 'audit_actors_guest' => $audits->every(fn ($row) => (int) $row->actor_id === 0),
+            'business' => ['users' => App\Models\User::count(), 'orders' => App\Models\Order::count(),
+                'sessions' => Laravel\Sanctum\PersonalAccessToken::count()]]); exit;
+    })(),
+    'registration-audit-reject' => Illuminate\Support\Facades\DB::unprepared(
+        "CREATE TRIGGER reject_registration_audit BEFORE INSERT ON tx_internal_readonly_audits FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'fixture-audit-failure'"),
+    'registration-audit-allow' => Illuminate\Support\Facades\DB::unprepared('DROP TRIGGER reject_registration_audit'),
     'email-prepare' => admin_setting(['captcha_enable' => 0, 'email_whitelist_enable' => 0,
         'email_whitelist_suffix' => ['example.test'], 'email_host' => '',
         'app_name' => 'Local Email Fixture', 'app_url' => 'https://example.test']),

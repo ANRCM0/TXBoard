@@ -107,3 +107,8 @@ DB_USERNAME=fixture-user DB_PASSWORD=fixture-password \
 INTERNAL_EMAIL_REDIS_PORT=16380 \
 bash tests/integration/run-internal-email-linux.sh /path/to/fixed-email-core/api
 ```
+## Isolated registration
+
+B5.11 adds the default-off `GATEWAY_INTERNAL_REGISTER_ENABLED` local/testing consumer for `auth.register`. It requires the configured Internal TLS boundary, HPKE and Redis limiter while full account workflows are disabled. Only `/gateway/v1/secure/auth/register` is opened; email-code has its own flag. Core also requires `CORE_INTERNAL_REGISTER_ENABLED` and an isolated copy. HTTP201 must carry the closed registration envelope. Native register rules and partial outcomes remain Core's authority, with no retry/fallback after selection. See the [registration contract](../../contracts/v2/core-internal-api/local-isolated-registration-v1.md).
+
+Run `bash tests/integration/run-internal-register-linux.sh <fixed-core-api>` only against the dedicated disposable `txboard_internal_test`. The fixture proves SDK HPKE, real mTLS, native trial/invite/code/session behavior, replay rejection and the unknown outcome of an audit failure. It is not production registration acceptance.

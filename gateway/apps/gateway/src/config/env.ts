@@ -31,6 +31,8 @@ export type GatewayConfig = {
   internalLoginEnabled?: boolean
   /** Separate encrypted email-only isolated mode, with HPKE and Redis required at boot. */
   internalEmailCodeEnabled?: boolean
+  /** Independent synthetic registration over the local Internal boundary. */
+  internalRegisterEnabled?: boolean
 }
 
 function intSetting(value: string | undefined, fallback: number, min: number, max: number): number {
@@ -104,6 +106,11 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     && (emailCode !== 'true' || !internalUser || !['local', 'testing'].includes(env.APP_ENV ?? ''))) {
     throw new Error('Invalid local Internal email-code configuration')
   }
+  const registration = env.GATEWAY_INTERNAL_REGISTER_ENABLED
+  if (registration !== undefined && registration !== '' && registration !== 'false'
+    && (registration !== 'true' || !internalUser || !['local', 'testing'].includes(env.APP_ENV ?? ''))) {
+    throw new Error('Invalid local Internal registration configuration')
+  }
   return {
     host: env.GATEWAY_HOST || '127.0.0.1',
     port: intSetting(env.GATEWAY_PORT, 8787, 1, 65535),
@@ -125,5 +132,6 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     internalPublicReadEnabled: publicRead === 'true',
     internalLoginEnabled: login === 'true',
     internalEmailCodeEnabled: emailCode === 'true',
+    internalRegisterEnabled: registration === 'true',
   }
 }

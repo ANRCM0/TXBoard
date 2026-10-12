@@ -269,9 +269,10 @@ export async function loadCryptoService(
   if (mode === 'disabled') return undefined
   if (!replay) throw new Error('Redis replay protection is required for HPKE mode')
   const emailOnly = env.GATEWAY_INTERNAL_EMAIL_CODE_ENABLED === 'true'
+  const registerOnly = env.GATEWAY_INTERNAL_REGISTER_ENABLED === 'true'
   const accountEnabled = env.GATEWAY_ACCOUNT_WORKFLOWS_ENABLED === 'true'
-  if (emailOnly && (accountEnabled || !['local', 'testing'].includes(env.APP_ENV ?? ''))) {
-    throw new Error('Invalid isolated email HPKE scope configuration')
+  if ((emailOnly || registerOnly) && (accountEnabled || !['local', 'testing'].includes(env.APP_ENV ?? ''))) {
+    throw new Error('Invalid isolated account HPKE scope configuration')
   }
   const keyFile = env.GATEWAY_HPKE_KEY_FILE
   if (!keyFile || !keyFile.startsWith('/')) {
@@ -302,5 +303,5 @@ export async function loadCryptoService(
 
   // Existing key scope is broader than the email-only route allowlist. It does
   // not authorize registration; the policy table and Core operation remain final.
-  return CryptoService.create(jwk, replay, accountEnabled || emailOnly, previousJwk, previousExpiresAt, revokedKids)
+  return CryptoService.create(jwk, replay, accountEnabled || emailOnly || registerOnly, previousJwk, previousExpiresAt, revokedKids)
 }

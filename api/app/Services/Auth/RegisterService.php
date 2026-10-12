@@ -42,7 +42,7 @@ class RegisterService
         }
 
         // 检查验证码
-        $captchaService = app(CaptchaService::class);
+        $captchaService = $this->captcha();
         [$captchaValid, $captchaError] = $captchaService->verify($request);
         if (!$captchaValid) {
             return [false, $captchaError];
@@ -100,6 +100,12 @@ class RegisterService
         }
 
         return [true, null];
+    }
+
+    /** Native callers keep their container binding; adapters can supply request-local verification. */
+    protected function captcha(): CaptchaService
+    {
+        return app(CaptchaService::class);
     }
 
     /**

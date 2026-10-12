@@ -8,6 +8,7 @@ final class OperationRegistry
 {
     public const OPERATIONS = [
         'auth.login' => ['service' => 'user-gateway', 'actor' => 'login', 'versions' => ['1']],
+        'auth.register' => ['service' => 'user-gateway', 'actor' => 'register', 'versions' => ['1']],
         'auth.email-code.send' => ['service' => 'user-gateway', 'actor' => 'email-code', 'versions' => ['1']],
         'public.site-config.get' => ['service' => 'user-gateway', 'actor' => 'anonymous', 'versions' => ['1']],
         'public.plan.list' => ['service' => 'user-gateway', 'actor' => 'anonymous', 'versions' => ['1']],
@@ -38,6 +39,10 @@ final class OperationRegistry
             throw new SliceFailure('OPERATION_DISABLED', 404);
         }
         if ($definition['actor'] === 'email-code' && (config('internal_api_slice.email_code_enabled') !== true
+            || config('core_shadow.isolated_copy') !== true)) {
+            throw new SliceFailure('OPERATION_DISABLED', 404);
+        }
+        if ($definition['actor'] === 'register' && (config('internal_api_slice.register_enabled') !== true
             || config('core_shadow.isolated_copy') !== true)) {
             throw new SliceFailure('OPERATION_DISABLED', 404);
         }
@@ -79,10 +84,11 @@ final class OperationRegistry
                 }
             }
             StrictJson::exact($input, $keys);
-        } elseif ($definition['actor'] === 'login') {
+        } elseif (in_array($definition['actor'], ['login', 'register'], true)) {
             $keys = ['email', 'password'];
             $limits = ['email' => 254, 'password' => 1024, 'turnstile_token' => 4096,
                 'recaptcha_v3_token' => 4096, 'recaptcha_data' => 4096, 'email_code' => 128];
+            if ($definition['actor'] === 'register') $limits['invite_code'] = 128;
             foreach ($limits as $field => $max) {
                 if (property_exists($input, $field)) {
                     if (!in_array($field, $keys, true)) $keys[] = $field;

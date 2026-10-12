@@ -276,7 +276,7 @@ export function registerAccountRoutes(
 
     app.post(`${PREFIX}/secure/auth/login`, secure('login', runLogin))
 
-    if (accountWorkflows && limiter) {
+    if ((accountWorkflows || config.internalRegisterEnabled === true) && limiter) {
       app.post(`${PREFIX}/secure/auth/register`, secure('register', async (c, data) => {
         const parsed = registerSchema.safeParse(data)
         if (!parsed.success) return fail(c, 'VALIDATION_ERROR', 'Invalid registration data', 400)

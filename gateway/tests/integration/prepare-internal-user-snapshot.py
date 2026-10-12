@@ -43,7 +43,7 @@ with tarfile.open(fileobj=io.BytesIO(archive)) as bundle:
     bundle.extractall(target, filter='data')
 overlays = [
     'apps/gateway/src/app.ts', 'apps/gateway/src/index.ts', 'apps/gateway/test/internal-login.test.ts',
-    'apps/gateway/test/internal-email-code.test.ts', 'apps/gateway/src/config/policies.ts',
+    'apps/gateway/test/internal-email-code.test.ts', 'apps/gateway/test/internal-register.test.ts', 'apps/gateway/src/config/policies.ts',
     'apps/gateway/src/routes/account.ts', 'apps/gateway/src/routes/public.ts', 'apps/gateway/src/services/crypto.ts',
     'apps/gateway/src/config/env.ts', 'apps/gateway/src/config/internal-user.ts',
     'apps/gateway/src/adapters/internal-user-v2.ts', 'apps/gateway/src/services/internal-user-client.ts',
@@ -52,6 +52,7 @@ overlays = [
     'apps/gateway/test/internal-user-v2.test.ts', 'apps/gateway/test/internal-user-client.test.ts', 'apps/gateway/test/internal-public-read.test.ts',
     'apps/gateway/test/internal-order-list.test.ts', 'apps/gateway/test/internal-user-display.test.ts', 'apps/gateway/test/internal-user-content.test.ts',
     'tests/integration/internal-user-core-fixture.php', 'tests/integration/internal-user-core-gateway.mjs',
+    'tests/integration/internal-register-core-gateway.mjs', 'tests/integration/run-internal-register-linux.sh',
     'tests/integration/internal-email-router.php', 'tests/integration/internal-email-core-gateway.mjs',
     'tests/integration/run-internal-user-linux.sh', 'tests/integration/run-internal-email-linux.sh',
     'tests/integration/prepare-internal-user-snapshot.py',

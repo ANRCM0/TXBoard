@@ -19,6 +19,9 @@ final class InternalReadOnlyController
         $operation = $request->attributes->get('internal.readonly.operation');
         $input = $operation['body']->input;
         $version = $operation['body']->contract_version;
+        if ($operation['definition']['actor'] === 'register') {
+            return app(\App\Domains\InternalReadOnly\InternalRegisterDispatcher::class)->execute($request, $input);
+        }
         if ($operation['definition']['actor'] === 'login') {
             return app(\App\Domains\InternalReadOnly\InternalLoginDispatcher::class)->execute($request, $input);
         }

@@ -180,7 +180,7 @@ final class InternalEmailCodeTest extends TestCase
         }
         $this->send(input: [], operation: 'user.profile.get', version: '2')->assertUnauthorized();
         $this->send(operation: 'admin.order.get', input: ['id' => '1', 'admin_path' => 'admin'])->assertUnauthorized();
-        $this->send(operation: 'auth.register')->assertStatus(400)->assertJsonPath('error.code', 'UNKNOWN_OPERATION');
+        $this->send(operation: 'auth.register')->assertNotFound()->assertJsonPath('error.code', 'OPERATION_DISABLED');
         $this->assertSame(0, DB::table('tx_internal_readonly_nonces')->count());
         $this->assertNoDelivery();
     }

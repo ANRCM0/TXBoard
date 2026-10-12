@@ -194,6 +194,7 @@ export interface PolicyEnvironment {
   accountWorkflows?: boolean
   /** Extra local Internal flag enables only secureEmailCode, never registration. */
   isolatedEmailCode?: boolean
+  isolatedRegister?: boolean
   /** GW-209: a CAPTCHA challenge store is wired, so the challenge route exists. */
   captchaChallenge?: boolean
   /**
@@ -249,7 +250,10 @@ export function activeRouteDefinitions(
     return definition
   }).filter(definition => {
     const { policy, path } = definition
-    if (policy.name === 'secureRegister') return accountWorkflows
+    if (policy.name === 'secureRegister') {
+      return accountWorkflows || Boolean(environment.hpke && environment.redis
+        && environment.replayStore && environment.isolatedRegister)
+    }
     if (policy.name === 'secureEmailCode') {
       return accountWorkflows || Boolean(environment.hpke && environment.redis
         && environment.replayStore && environment.isolatedEmailCode)
@@ -367,8 +371,10 @@ export function validatePolicies(
       // and GATEWAY_ACCOUNT_WORKFLOWS_ENABLED have to be present together.
       const emailOnly = policy.name === 'secureEmailCode' && environment.isolatedEmailCode
         && !environment.accountWorkflows
+      const registerOnly = policy.name === 'secureRegister' && environment.isolatedRegister
+        && !environment.accountWorkflows
       const unlocked = Boolean(environment.hpke && environment.redis
-        && (environment.accountWorkflows || emailOnly))
+        && (environment.accountWorkflows || emailOnly || registerOnly))
       const halfUnlocked = Boolean(environment.hpke || environment.redis
         || environment.accountWorkflows) && !unlocked
       if (halfUnlocked) {
