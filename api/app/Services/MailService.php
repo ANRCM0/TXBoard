@@ -304,8 +304,8 @@ class MailService
             }
             $error = null;
         } catch (\Exception $e) {
-            Log::error($e);
-            $error = $e->getMessage();
+            Log::error('MAIL_SEND_FAILED');
+            $error = 'MAIL_SEND_FAILED';
         }
         $log = [
             'email' => $params['email'],

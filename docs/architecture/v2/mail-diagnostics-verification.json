@@ -1,0 +1,31 @@
+{
+  "stage": "Native mail-send caught-exception diagnostic privacy prerequisite",
+  "core_base": "d3ae8644dbd4db390fb0e8f6258e005c40345357",
+  "snapshot": "/opt/txboard-baseline/mail-diagnostics-d3ae864",
+  "source_sha256": {
+    "contracts/http/mail-diagnostics-current.md": "d5abed9f1350dbe62dde3eebeabf64d8e996a8aba469916bf79a21a7badf0569",
+    "api/app/Services/MailService.php": "d071de0d82f7f45fb8d584cf178ed15a5b87bc575dcffb4f42ff08fce0a35592",
+    "api/tests/Feature/Mail/MailLogRedactionTest.php": "88c7ce73d73280eaf2f9132b04e9abe35c58ce7ff5683af5cdfa2b3b5d8df3a7"
+  },
+  "focused": {
+    "passed": 6,
+    "assertions": 89,
+    "log_sha256": "14751bff0df52700259dcd7adeb307777362897570bb399c08dd724166b1b460"
+  },
+  "api_full": {
+    "passed": 925,
+    "skipped": 50,
+    "assertions": 8620,
+    "log_sha256": "c300985a5fe6610f2b29d98fff14c69c470a0dd57996b1b23831c468a409b036"
+  },
+  "runtime": "PHP8.4 locked dependencies, real LaravelMailer with local ArrayTransport and throwing Symfony-compatible transport",
+  "post_gate_changes": "Contract acceptance and tracker/report only; two runtime/test PHP hashes remain unchanged.",
+  "limits": [
+    "Only caught Exception in original MailService send try/catch; fixed one-argument error log and fixed MAIL_SEND_FAILED return/database error",
+    "Fixture first proves exception message/previous/argument trace contain sentinels with zend.exception_ignore_args=0",
+    "Recipient, subject and original config host/port/encryption remain private diagnostic metadata",
+    "Real successful Blade/DB rendering and original job release decision, tries3/timeout10 preserved",
+    "No SMTP, external delivery, queue-worker retry, delivery receipt or business idempotency claim",
+    "Pre-try template/config/cache/SQL, post-try MailLog insertion, uncaught Error, other mail methods and trusted plugin logs remain unchanged"
+  ]
+}

@@ -176,6 +176,12 @@ SQLite 18 通过 / 2 跳过 / 167 断言，专用 MariaDB 20 / 0 / 182；固定 
 
 固定 Core `a7e73b1` / Gateway `8c03a78` 加十六文件：专项13通过/166断言，全API872通过/40引擎专测跳过/7697断言，Gateway596、SDK68、typecheck/build及48项真实MariaDB/TLS1.3联调通过。边界检查先清公共缓存，另验证一次MISS/HIT只生成一条审计；缓存仍遵守原TTL，不作为当前授权事实。数值溢出、超大响应、证书拒绝和断线均在cache miss时失败而无Native回退。[契约](../../../contracts/v2/core-internal-api/local-public-display-v1.md)及[精确源码和日志证据](internal-public-read-verification.json)。匿名登录/注册/邮件、Admin、生产PKI与SC-v2仍待实施。
 
+### 邮件诊断保密前置
+
+原MailService发送try/catch的caught Exception现在只记录固定 `MAIL_SEND_FAILED` 字符串，并把同一code写入原returned/SQL error字段；不附原message、previous或args trace。原成功模板、私有收件人与subject/config metadata、SendEmailJob release/tries/timeout和Exception捕获范围保持。try外、SQL日志保存、非Exception Error及可信插件自己的日志仍在原边界，未承诺全邮件路径保密或送达。
+
+固定Core `d3ae864` 加三文件：真实LaravelMailer+本地Array/throwing transport专项6通过/89断言，全API925通过/50引擎专测跳过/8620断言。测试先证明args0异常及previous/trace确有合成秘密，再核对三个诊断目的地固定code；成功Blade/DB渲染与原job release决定保持。[当前契约](../../../contracts/http/mail-diagnostics-current.md)及[源码和日志](mail-diagnostics-verification.json)。这是下一条隔离邮件Internal消费者的前置，尚未新增邮件Operation或外部SMTP投递。
+
 ### B3.4 Service 自动本地事件消费者
 
 Node [当前契约](https://github.com/ANRCM0/TX-Node/blob/main/docs/local-event-runtime-current.md)已推送 `b6bd28d`。默认关闭，仅一个Service取得永久进程owner、一个异步worker和有界meter/存储；旧kernel Close及cancel后开始5秒单tracker monotonic退休，迟到callback保留原绑定，2秒shutdown超时保留原FD/flock并拒绝替代worker。原v1累计用量及限速保持，记录仍不可归属、恢复/尾部未知，无v2上报或租约准入。
