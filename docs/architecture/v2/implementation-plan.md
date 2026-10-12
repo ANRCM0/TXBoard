@@ -1,6 +1,6 @@
 # Core First v2 实施台账
 
-> 状态：B0、B1.1–B1.12 影子证据、Terms、身份旁观与固定 writer 捕获、B2.1–B2.3 单机升级、B3.1/B3.2 隔离用量、B3.3/B3.4 本地观察与持久事件桶、B4.1–B4.5 合成 Provider、插件停用接入、租约候选与离线签名快照、B5.1–B5.9 本地 mTLS 读取、隔离建单与登录、B6.1–B6.3 实验字节、离线加密与共享 owner 实验已实现；当前收尾后进行两仓迁移。各整阶段仍按下表门禁验收。
+> 状态：B0、B1.1–B1.12 影子证据、Terms、身份旁观与固定 writer 捕获、B2.1–B2.3 单机升级、B3.1/B3.2 隔离用量、B3.3/B3.4 本地观察与持久事件桶、B4.1–B4.5 合成 Provider、插件停用接入、租约候选与离线签名快照、B5.1–B5.10 本地 mTLS 读取、隔离建单、登录与内存邮件验证码、B6.1–B6.3 实验字节、离线加密与共享 owner 实验已实现；当前收尾后进行两仓迁移。各整阶段仍按下表门禁验收。
 
 ## 1. 批次与关键路径
 
@@ -223,3 +223,9 @@ Node [当前契约](https://github.com/ANRCM0/TX-Node/blob/main/docs/local-event
 仅在方法入口没有外层事务、来源为 cron 且要求重新检查到期条件时，原 User 独占锁后开始捕获，原计数重置、日志和 after hook 之后追加事件；SQL 状态、事件和 mapping 失效共同提交或回滚。固定工作项引用实际 User，保留原计划读取、调度、手动/强制重置与嵌套订单行为。捕获继续默认关闭，不应用 Terms、用量或财务投影；缓存、hook 和提交后 Observer 的外部影响仍在原边界。
 
 专项基于 Core `d3ae864` 加四文件：SQLite 19 通过、5 跳过、357 断言，MariaDB 24 全通过、414 断言；旧六类 writer 和原生路径 SQLite 127 通过、27 跳过、2185 断言，MariaDB 118 全通过、2075 断言。最终固定 `e33ba63` 加同四文件全 API 955 通过、69 跳过、9251 断言；独立竞争、陈旧快照、提交前后 SIGKILL 及旧链验证通过。[契约](../../../contracts/v2/legacy-user-mutation-capture-v1.md)和[冻结来源、日志与验收范围](legacy-cron-traffic-reset-capture-verification.json)保留实际证据；完整 writer 覆盖和生产切换门禁仍未完成。
+
+### B5.10 隔离内存邮件验证码 mTLS 接入
+
+固定 `auth.email-code.send` version1 默认关闭，仅 local/testing 隔离副本可启用。Core 复用原输入校验、匿名限流、收件策略、冷却、验证码生成与邮件 Job，另外要求真实同步队列和 ArrayTransport；只允许 `@example.test` 收件地址，无外部 SMTP。Gateway 邮件开关独立于登录/注册，要求 HPKE 和 Redis，以 mTLS 调用 Core；没有访客 Authorization、自动重试或 Native 回退。原成功只说明执行已返回，审计或缓存阶段失败可留下已发送的未知结果。
+
+固定 Core `e33ba63` 加十文件：专项 19 项通过、336 断言，全 API 955 通过、64 项引擎专测跳过、9230 断言。固定 Gateway `dfd6122` 加邮件切片：Gateway 713 项、SDK 68 项、typecheck/build 通过；真实 SDK/HPKE/Redis/mTLS/原邮件链路 15 项和原有 57 项联调均通过。邮件正文与缓存六位验证码精确一致、300 秒有效期和 60 秒冷却、匿名审计、共享限流、重放拒绝、未知结果不重试均已实证。[契约](../../../contracts/v2/core-internal-api/local-isolated-email-code-v1.md)与[源码及分批验收报告](internal-isolated-email-code-verification.json)保留 fixture 修正前的失败证据；生产邮件、真实 CAPTCHA、正式 SC-v2 与完整账户流程仍待验收。

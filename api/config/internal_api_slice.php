@@ -5,6 +5,7 @@ return [
     'enabled' => env('CORE_INTERNAL_READONLY_ENABLED', false),
     'public_read_enabled' => env('CORE_INTERNAL_PUBLIC_READ_ENABLED', false),
     'login_enabled' => env('CORE_INTERNAL_LOGIN_ENABLED', false),
+    'email_code_enabled' => env('CORE_INTERNAL_EMAIL_CODE_ENABLED', false),
     'order_write_enabled' => env('CORE_INTERNAL_ORDER_WRITE_ENABLED', false),
     // Operator-controlled absolute file, not supplied by HTTP callers.
     'trust_file' => env('CORE_INTERNAL_READONLY_TRUST_FILE'),

@@ -22,6 +22,9 @@ final class InternalReadOnlyController
         if ($operation['definition']['actor'] === 'login') {
             return app(\App\Domains\InternalReadOnly\InternalLoginDispatcher::class)->execute($request, $input);
         }
+        if ($operation['definition']['actor'] === 'email-code') {
+            return app(\App\Domains\InternalReadOnly\InternalEmailCodeDispatcher::class)->execute($request, $input);
+        }
         $actor = $operation['definition']['actor'] === 'anonymous' ? null : Auth::guard('sanctum')->user();
         if ($operation['definition']['actor'] === 'anonymous') {
             if ($operation['operation'] === 'public.site-config.get') {
