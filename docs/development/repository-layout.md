@@ -2,7 +2,7 @@
 
 2026-10-13 起，运行时代码集中到当前 TXBoard 主仓，后续仓库名为 `tx-core`；安装和主机运维统一到 TXBoard-Deploy。仓库合并不改变 Core 的业务权威、Gateway 的用户 BFF 边界或 Node 的独立进程和凭据。
 
-2026-10-13 最新范围：当前主仓只开发 Core、Gateway、Node。管理前端和用户前端均暂缓，后续新开独立项目并单独成库；安装器保持独立仓库。现有 `web/`、Theme 及其 CI/镜像构建依赖保留兼容，不代表在本仓开始新前端项目。
+2026-10-13 最新范围：当前主仓只开发 Core、Gateway、Node。管理前端和用户前端均暂缓，后续集中到独立 `TX-F` 项目，只本地提交、不推送；安装器保持独立仓库。现有 `web/`、Theme 及其 CI/镜像构建依赖保留兼容，不代表在本仓开始新前端项目。
 
 ## 运行时仓
 
@@ -45,7 +45,7 @@ Gateway 的不可变镜像构建可并行，`dev` 提升按组件串行；Node �
 
 [TXBoard-Deploy](https://github.com/ANRCM0/TXBoard-Deploy) 管理 Core、Gateway、Node 的安装与生命周期。原节点安装器在该仓 `node/` 下保留；现有 `txnode` 命令、配置位置和机器更新桥保持兼容。Node 新镜像包的选择和已有容器升级由安装仓管理，运行时发布不会自动替换已运行容器。运行时仓内的 Compose 用于开发与构建验证，生产入口以安装仓文档为准。
 
-当前整合保留运行时仓与安装仓；未来新前端另建仓库。原 TX-Node、TXBoard-Gateway、TX-Node-Installer 是迁移过渡仓，后续将删除。三组件活动 CI、Docker 上下文和管理员生成的 Node 安装命令均使用这两个主仓。Node 的稳定 Go module 名是本地模块标识，完整 checkout 中的构建不需要拉取旧 TX-Node 仓的自身源码。
+当前整合保留运行时仓与安装仓；未来新前端在独立 `TX-F` 项目开发，只本地提交、不推送。原 TX-Node、TXBoard-Gateway、TX-Node-Installer 是迁移过渡仓，后续将删除。三组件活动 CI、Docker 上下文和管理员生成的 Node 安装命令均使用这两个主仓。Node 的稳定 Go module 名是本地模块标识，完整 checkout 中的构建不需要拉取旧 TX-Node 仓的自身源码。
 
 主仓只发布新 `ghcr.io/anrcm0/txboard-node` 包，旧 `ghcr.io/anrcm0/tx-node` 包不迁移、转绑或覆盖；旧包的可用性不由新 CI 保证。已安装的旧 `txnode` 脚本须先从安装仓 `node/deploy.sh` 刷新持久入口。原安装仓只在过渡期间提供兼容转发。
 
