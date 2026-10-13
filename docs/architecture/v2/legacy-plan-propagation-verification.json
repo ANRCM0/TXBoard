@@ -78,5 +78,34 @@
   },
   "global_writer_coverage": false,
   "migration_gate_open": false,
-  "remote_ci": "pending"
+  "remote_ci": {
+    "commit": "bddaf7e2f1be93c840d1c63f1676f8c17b0ea38f",
+    "core_image_run": 38340335453,
+    "core_image_result": "success",
+    "mysql_run": 38340335468,
+    "native_mysql_regression": "success",
+    "isolated_money_projection": "success",
+    "plan_capture_result": "failure",
+    "cause": "MySQL 8.4 reorders JSON object members; an order-sensitive fixture assertion rejected identical scalar values. Runtime canonical hashing was already order-independent.",
+    "followup": "pending"
+  },
+  "fixture_object_order_correction": {
+    "runtime_changed": false,
+    "base_commit": "bddaf7e2f1be93c840d1c63f1676f8c17b0ea38f",
+    "snapshot": "/opt/txboard-baseline/plan-order-r1",
+    "test_sha256": "df8a194e19c24fb45cdab2f670131feeb93ca33e00bd8054d8634e0bbc649d36",
+    "comparison": "Sort only decoded JSON object keys; preserve exact scalar types and decimal strings.",
+    "sqlite": {
+      "passed": 12,
+      "skipped": 2,
+      "assertions": 128,
+      "log_sha256": "41778b43d830fec173c4156e24688c40950d0abd6cdb225ec3d06459f3b10ada"
+    },
+    "mariadb": {
+      "version": "11.4.12",
+      "passed": 14,
+      "assertions": 149,
+      "log_sha256": "183b6f7ef1830517c8b72307352054a3ba9709746f3109949746d2fc8ef90aeb"
+    }
+  }
 }

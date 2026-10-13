@@ -59,8 +59,8 @@ class LegacyPlanPropagationCaptureTest extends TestCase
             $after = $this->source($user);
             $this->assertSame('3221225472', $after['transfer_enable']); $this->assertSame('2', $after['group_id']);
             $this->assertNull($after['speed_limit']); $this->assertSame('4', $after['device_limit']);
-            $this->assertSame($before[$index], json_decode($rows[$index]->before_snapshot, true));
-            $this->assertSame($after, json_decode($rows[$index]->after_snapshot, true));
+            $this->assertSame($before[$index], $this->decodedSource($rows[$index]->before_snapshot));
+            $this->assertSame($after, $this->decodedSource($rows[$index]->after_snapshot));
             foreach (['u','d','expired_at','last_reset_at','next_reset_at','reset_count','banned','balance','commission_balance','plan_id'] as $key)
                 $this->assertSame($before[$index][$key], $after[$key]);
             $this->assertSame('source_changed', DB::table('tx_legacy_subscription_map')->where('legacy_user_id', $user->id)->value('state'));
@@ -258,6 +258,13 @@ class LegacyPlanPropagationCaptureTest extends TestCase
     {
         $row=(array)DB::table('tx_user')->where('id',$user->id)->select(LegacyUserMutationCapture::FIELDS)->first();
         foreach ($row as $key=>$value) $row[$key]=$key === 'banned' ? (bool)$value : ($value === null ? null : (string)$value);
+        ksort($row,SORT_STRING); return $row;
+    }
+    private function decodedSource(string $raw): array
+    {
+        // MySQL JSON sorts object members; compare exact scalar types and
+        // decimal strings after normalizing object order, as the runtime does.
+        $row=json_decode($raw,true,flags:JSON_THROW_ON_ERROR);
         ksort($row,SORT_STRING); return $row;
     }
     private function state(bool $ignoreTimestamps=false): array
