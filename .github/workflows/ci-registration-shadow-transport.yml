@@ -47,6 +47,7 @@ jobs:
       INTERNAL_REGISTRATION_SHADOW_VERIFY: 'true'
       INTERNAL_EXPECTED_CORE_COMMIT: ${{ github.sha }}
       INTERNAL_EMAIL_REDIS_PORT: '16380'
+      INTERNAL_REGISTRATION_REDIS_DB: '12'
       REDIS_PREFIX: 'registration-transport-ci-fixture:'
     steps:
       - uses: actions/checkout@v5

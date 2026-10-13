@@ -126,7 +126,9 @@ try {
   boundary = child('node', [`${api}/internal-readonly-fixtures/tls-boundary.mjs`, `${dir}/boundary.json`], 'boundary-registration')
   await ready('http://127.0.0.1:19081/txapi/public/site-config')
   const redisUrl = process.env.GATEWAY_REDIS_URL
-  assert.match(redisUrl, /\/22$/)
+  const redisDatabase = Number(process.env.INTERNAL_REGISTRATION_REDIS_DB ?? '22')
+  assert.ok(Number.isInteger(redisDatabase) && redisDatabase >= 0 && redisDatabase <= 99)
+  assert.equal(new URL(redisUrl).pathname, '/' + redisDatabase)
   redis = await RedisSecurity.connect(redisUrl)
   const key = generateKeyPairSync('ec', { namedCurve: 'prime256v1' }).privateKey.export({ format: 'jwk' })
   writeFileSync(`${dir}/hpke.jwk`, JSON.stringify(key), { mode: 0o600 })
@@ -258,7 +260,7 @@ try {
   }
   writeFileSync(`${dir}/result.json`, JSON.stringify({ current_only: true, phase: shadowVerification ? 'B1.25' : 'B5.11', production_acceptance: false,
     passed: checks.length, checks, core_base: expectedCoreCommit, observed_tls_protocols: [...observedTls],
-    redis_database: 22, native_fallback_calls: nativeCalls.length, final_state: decorate('registration-state'),
+    redis_database: redisDatabase, native_fallback_calls: nativeCalls.length, final_state: decorate('registration-state'),
     ...(shadowVerification ? { creation_evidence: decorate('registration-shadow-state'), synthetic_only: true, formal_sc_v2: false } : {}),
     cleanup: 'Fixture processes stopped and credentials removed.' }, null, 2))
   process.stdout.write(`PASS ${checks.length} registration Core/Gateway checks\n`)

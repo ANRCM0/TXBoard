@@ -45,7 +45,10 @@ export CORE_SHADOW_ISOLATED_COPY=true
 export CORE_INTERNAL_REGISTER_ENABLED=true
 export CACHE_DRIVER=redis SETTING_CACHE_STORE=redis SESSION_DRIVER=array QUEUE_CONNECTION=sync MAIL_DRIVER=array MAIL_MAILER=array
 export REDIS_HOST=127.0.0.1 REDIS_PORT="$INTERNAL_EMAIL_REDIS_PORT" REDIS_DB=14 REDIS_CACHE_DB=15
-export GATEWAY_REDIS_URL="redis://127.0.0.1:${INTERNAL_EMAIL_REDIS_PORT}/22"
+: "${INTERNAL_REGISTRATION_REDIS_DB:=22}"
+[[ "$INTERNAL_REGISTRATION_REDIS_DB" =~ ^(0|[1-9][0-9]?)$ ]] || { echo 'Invalid fixed registration Redis database' >&2; exit 2; }
+export INTERNAL_REGISTRATION_REDIS_DB
+export GATEWAY_REDIS_URL="redis://127.0.0.1:${INTERNAL_EMAIL_REDIS_PORT}/${INTERNAL_REGISTRATION_REDIS_DB}"
 export APP_KEY='base64:ZdD07lazsdQQmdBAJ2tA5WjufeI2hP8xlP6zgmvCMZs='
 python3 "$INTERNAL_CORE_API/../scripts/tests/internal-readonly/generate-pki.py" "$INTERNAL_FIXTURE_DIR"
 (cd "$INTERNAL_CORE_API" && php artisan migrate --force --no-interaction) > "$INTERNAL_FIXTURE_DIR/migrations.log"

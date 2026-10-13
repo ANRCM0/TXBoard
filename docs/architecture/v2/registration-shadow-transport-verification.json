@@ -161,12 +161,270 @@
     "no_frontend_implementation": true
   },
   "remote_ci": {
-    "status": "pending-after-push"
+    "status": "initial-transport-ci-failed-redis-index",
+    "commit": "5c55adb29b46cae074f921e15550cb24cdb54664",
+    "observed_runs": [
+      {
+        "conclusion": "success",
+        "databaseId": 38421163744,
+        "headSha": "5c55adb29b46cae074f921e15550cb24cdb54664",
+        "name": "api-ci",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38421163744"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 38421164223,
+        "headSha": "5c55adb29b46cae074f921e15550cb24cdb54664",
+        "name": "api-mysql-ci",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38421164223"
+      },
+      {
+        "conclusion": "",
+        "databaseId": 38421164229,
+        "headSha": "5c55adb29b46cae074f921e15550cb24cdb54664",
+        "name": "txboard-core-image",
+        "status": "in_progress",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38421164229"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 38421163865,
+        "headSha": "5c55adb29b46cae074f921e15550cb24cdb54664",
+        "name": "internal-admin-identity",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38421163865"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 38421164072,
+        "headSha": "5c55adb29b46cae074f921e15550cb24cdb54664",
+        "name": "gateway-image",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38421164072"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 38421164296,
+        "headSha": "5c55adb29b46cae074f921e15550cb24cdb54664",
+        "name": "provider-offline-proof",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38421164296"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 38421164284,
+        "headSha": "5c55adb29b46cae074f921e15550cb24cdb54664",
+        "name": "internal-admin-login",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38421164284"
+      },
+      {
+        "conclusion": "failure",
+        "databaseId": 38421163854,
+        "headSha": "5c55adb29b46cae074f921e15550cb24cdb54664",
+        "name": "registration-shadow-transport",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38421163854"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 38421163726,
+        "headSha": "5c55adb29b46cae074f921e15550cb24cdb54664",
+        "name": "internal-admin-users",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38421163726"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 38421163646,
+        "headSha": "5c55adb29b46cae074f921e15550cb24cdb54664",
+        "name": "internal-session-consumer",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38421163646"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 38421164008,
+        "headSha": "5c55adb29b46cae074f921e15550cb24cdb54664",
+        "name": "internal-admin-dashboard",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38421164008"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 38421164100,
+        "headSha": "5c55adb29b46cae074f921e15550cb24cdb54664",
+        "name": "internal-admin-sessions",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38421164100"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 38421164073,
+        "headSha": "5c55adb29b46cae074f921e15550cb24cdb54664",
+        "name": "internal-admin-order-list",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38421164073"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 38421164348,
+        "headSha": "5c55adb29b46cae074f921e15550cb24cdb54664",
+        "name": "internal-admin-consumer",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38421164348"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 38421163894,
+        "headSha": "5c55adb29b46cae074f921e15550cb24cdb54664",
+        "name": "registration-creation-shadow",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38421163894"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 38421163876,
+        "headSha": "5c55adb29b46cae074f921e15550cb24cdb54664",
+        "name": "admin-creation-shadow",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38421163876"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 38421163800,
+        "headSha": "5c55adb29b46cae074f921e15550cb24cdb54664",
+        "name": "internal-admin-plan-list",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38421163800"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 38421164094,
+        "headSha": "5c55adb29b46cae074f921e15550cb24cdb54664",
+        "name": "Documentation",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38421164094"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 38421163535,
+        "headSha": "5c55adb29b46cae074f921e15550cb24cdb54664",
+        "name": "admin-deletion-shadow",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38421163535"
+      }
+    ],
+    "transport_failure_run": 38421163854,
+    "failure": "GitHub Redis defaults to 16 databases; original fixture selected22 and failed before business checks"
   },
   "limitations": [
     "Current legacy Gateway HPKE and local TLS fixture do not certify formal SC-v2 or production PKI",
     "Initial evidence source changes from after-commit native schedule remain explicit and are not overwritten",
     "Synthetic successful/unknown-result accounts and sessions remain in exclusive disposable database as evidence; private credentials removed",
     "Actual Provider/Node authorization, all writer coverage and authoritative migration gates remain unverified"
-  ]
+  ],
+  "ci_redis_fix": {
+    "status": "verified-locally-awaiting-remote",
+    "base_commit": "5c55adb29b46cae074f921e15550cb24cdb54664",
+    "source_sha256": {
+      ".github/workflows/ci-registration-shadow-transport.yml": "c0a3cb947568f68adf4d6862619f411bc51397d18917d6d61756c78331e959f8",
+      "gateway/tests/integration/internal-register-core-gateway.mjs": "79d009edc01d391af916028bec5e5d64974da867fcfaaba68f88bf91d7afaac7",
+      "gateway/tests/integration/run-internal-register-linux.sh": "7f8c708861c70539a1033e06848a772f7dbf384b9c0d265a0d72c9a8fb9d7765"
+    },
+    "tests": {
+      "check": {
+        "mode": "check",
+        "exit_code": 0,
+        "log_sha256": "2165d196c922ed1aea3b0cab774142db71f64fb5ebdaf7be5a9865ef052107a2",
+        "snapshot": "/opt/txboard-baseline/registration-transport-r3"
+      },
+      "tls": {
+        "mode": "tls",
+        "exit_code": 0,
+        "log_sha256": "64fcee618fdb16c7130c73e5b170760f4068ab8279fe32928ad75a35b3d80b04",
+        "snapshot": "/opt/txboard-baseline/registration-transport-r3"
+      }
+    },
+    "tls_receipt": {
+      "current_only": true,
+      "phase": "B1.25",
+      "production_acceptance": false,
+      "passed": 12,
+      "checks": [
+        "SDK HPKE to real TLS1.3 Core creates the native invited trial account and session",
+        "real SDK Gateway Core registration commits a closed self-bound initial anchor",
+        "real Redis nonce replay rejects the captured ciphertext before another registration",
+        "native duplicate account rejects a deliberately new request without another token",
+        "real HPKE operation binding and unknown role fail before Core execution",
+        "real mTLS rejects admin service and explicit visitor actor, strict Core JSON rejects duplicate keys",
+        "independent flags keep email-code and plaintext registration absent",
+        "audit failure hides a committed synthetic account and token, SDK exposes an unknown outcome",
+        "real audit failure retains committed account session and initial evidence without automatic retry",
+        "real evidence INSERT rejection rolls back the registration through SDK Gateway and mTLS",
+        "native registration stop still rejects before another account is created",
+        "offline TLS boundary produces one unknown outcome without native fallback"
+      ],
+      "core_base": "5c55adb29b46cae074f921e15550cb24cdb54664",
+      "observed_tls_protocols": [
+        "TLSv1.3"
+      ],
+      "redis_database": 12,
+      "native_fallback_calls": 0,
+      "final_state": {
+        "owner_exists": true,
+        "unknown_exists": true,
+        "owner_sessions": 1,
+        "unknown_sessions": 1,
+        "password_matches": true,
+        "invite_matches": true,
+        "invite_used": true,
+        "trial_matches": true,
+        "verification_code_present": true,
+        "audit_rows": 5,
+        "audit_actors_guest": true,
+        "business": {
+          "users": 5,
+          "orders": 1,
+          "sessions": 6
+        }
+      },
+      "creation_evidence": {
+        "row_count": 2,
+        "owner": {
+          "kind": "user.register",
+          "version": "registration-creation-shadow/v1",
+          "self_bound": true,
+          "closed_snapshot": true,
+          "secret_excluded": true,
+          "evidence_valid": true,
+          "source_matches_initial": false,
+          "migration_gate_open": false
+        },
+        "unknown": {
+          "kind": "user.register",
+          "version": "registration-creation-shadow/v1",
+          "self_bound": true,
+          "closed_snapshot": true,
+          "secret_excluded": true,
+          "evidence_valid": true,
+          "source_matches_initial": false,
+          "migration_gate_open": false
+        },
+        "failed_exists": false
+      },
+      "synthetic_only": true,
+      "formal_sc_v2": false,
+      "cleanup": "Fixture processes stopped and credentials removed."
+    },
+    "previous_successful_fixture_receipt": {
+      "synthetic_only": true,
+      "database": "txboard_registration_transport_test",
+      "dump_sha256": "4e8d7ce35ff5db0ad503082e6f0eea41418626f6a1a7ef37007d39dba280968a",
+      "retained_path": "/opt/txboard-baseline/registration-transport-r2/successful-fixture.sql"
+    },
+    "change": "Explicit registration Redis database; preserve original default22, use12 for standard CI and matching local rerun. No runtime API change."
+  }
 }
