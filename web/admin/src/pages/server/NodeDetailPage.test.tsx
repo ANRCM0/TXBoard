@@ -4,7 +4,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { getNodes, getMachines, getGroups, getRoutes, getProtocolDefinitions } from '../../api/server'
-import { getAgentActions, getAgentFleetHealth } from '../../api/agent'
 import { requestConfirm } from '../../components/ui/ConfirmDialog'
 import { NodeDetailPage } from './NodeDetailPage'
 
@@ -12,9 +11,6 @@ vi.mock('../../api/server',()=>({
   getNodes:vi.fn(),getMachines:vi.fn(),getGroups:vi.fn(),getRoutes:vi.fn(),
   getProtocolDefinitions:vi.fn(),saveNode:vi.fn().mockResolvedValue({}),
   copyNode:vi.fn().mockResolvedValue(3),deleteNode:vi.fn().mockResolvedValue({}),
-}))
-vi.mock('../../api/agent',()=>({
-  getAgentActions:vi.fn(),getAgentFleetHealth:vi.fn(),
 }))
 vi.mock('../../components/ui/ConfirmDialog',()=>({requestConfirm:vi.fn()}))
 vi.mock('sonner',()=>({toast:{success:vi.fn(),error:vi.fn()}}))
@@ -51,11 +47,6 @@ beforeEach(()=>{
   vi.mocked(getGroups).mockResolvedValue([{id:7,name:'VIP'}])
   vi.mocked(getRoutes).mockResolvedValue([{id:8,remarks:'Direct'}])
   vi.mocked(getProtocolDefinitions).mockResolvedValue([])
-  vi.mocked(getAgentFleetHealth).mockResolvedValue({
-    status:'healthy',summary:{status:'healthy',total_nodes:1,healthy_nodes:1,degraded_nodes:0,critical_nodes:0,warning_count:0},
-    generated_at:123,nodes:[{node_id:2,name:'Tokyo',status:'healthy',online:true,websocket:true,kernel_running:null,warnings:[]}],
-  })
-  vi.mocked(getAgentActions).mockResolvedValue([])
   client=new QueryClient({defaultOptions:{queries:{retry:false}}})
   host=document.createElement('div')
   document.body.append(host)
@@ -68,7 +59,7 @@ afterEach(()=>{
   host.remove()
 })
 describe('Node Detail UI v3',()=>{
-  it('presents a compact overview and preserves machine/parent/child links and Fleet status',async()=>{
+  it('presents a compact overview and preserves machine/parent/child links',async()=>{
     await mount()
     expect(host.querySelectorAll('.node-detail-v3-summary>div')).toHaveLength(4)
     expect(host.textContent).toContain('[2001:db8::1]:8443')
@@ -80,9 +71,9 @@ describe('Node Detail UI v3',()=>{
     expect(host.querySelector('a[href="/server/machine/9"]')).not.toBeNull()
     expect(host.querySelector('a[href="/server/node/1"]')).not.toBeNull()
     expect(host.querySelector('a[href="/server/node/4"]')).not.toBeNull()
-    expect(host.textContent).toContain('未上报')
+    expect(host.textContent).toContain('状态未知')
     expect(host.querySelectorAll('.node-detail-v3-actions .data-table')).toHaveLength(0)
-    expect(host.textContent).toContain('暂无 Agent 动作')
+    expect(host.textContent).not.toContain('Agent')
   })
   it('does not mount secret protocol config until explicitly requested, then auto-hides',async()=>{
     await mount()

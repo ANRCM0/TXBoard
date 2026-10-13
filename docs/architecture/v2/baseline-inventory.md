@@ -22,10 +22,10 @@ JSON 的 `sourceManifest` 是完整覆盖文件列表及 SHA-256。`core.depende
 | Model | 显式表 | Eloquent 关系声明数 | 来源 |
 | --- | --- | --- | --- |
 | AdminAuditLog | `tx_admin_audit_log` | 1 | [TXBoard/api/app/Models/AdminAuditLog.php](../../../api/app/Models/AdminAuditLog.php) |
-| AgentAction | `tx_agent_action` | 3 | [TXBoard/api/app/Models/AgentAction.php](../../../api/app/Models/AgentAction.php) |
-| AgentAuditLog | `tx_agent_audit_log` | 1 | [TXBoard/api/app/Models/AgentAuditLog.php](../../../api/app/Models/AgentAuditLog.php) |
-| AgentInspection | `tx_agent_inspection` | 0 | [TXBoard/api/app/Models/AgentInspection.php](../../../api/app/Models/AgentInspection.php) |
-| AgentSupportReplyRequest | `tx_agent_support_reply_request` | 0 | [TXBoard/api/app/Models/AgentSupportReplyRequest.php](../../../api/app/Models/AgentSupportReplyRequest.php) |
+| AgentAction | `tx_agent_action` | 3 | [TXBoard/api/app/Models/AgentAction.php](https://github.com/ANRCM0/TXBoard/blob/0c70d5a60503f6291cc079ce5002bd07f8d5e90a/api/app/Models/AgentAction.php) |
+| AgentAuditLog | `tx_agent_audit_log` | 1 | [TXBoard/api/app/Models/AgentAuditLog.php](https://github.com/ANRCM0/TXBoard/blob/0c70d5a60503f6291cc079ce5002bd07f8d5e90a/api/app/Models/AgentAuditLog.php) |
+| AgentInspection | `tx_agent_inspection` | 0 | [TXBoard/api/app/Models/AgentInspection.php](https://github.com/ANRCM0/TXBoard/blob/0c70d5a60503f6291cc079ce5002bd07f8d5e90a/api/app/Models/AgentInspection.php) |
+| AgentSupportReplyRequest | `tx_agent_support_reply_request` | 0 | [TXBoard/api/app/Models/AgentSupportReplyRequest.php](https://github.com/ANRCM0/TXBoard/blob/0c70d5a60503f6291cc079ce5002bd07f8d5e90a/api/app/Models/AgentSupportReplyRequest.php) |
 | CommissionLog | `tx_commission_log` | 0 | [TXBoard/api/app/Models/CommissionLog.php](../../../api/app/Models/CommissionLog.php) |
 | Coupon | `tx_coupon` | 0 | [TXBoard/api/app/Models/Coupon.php](../../../api/app/Models/Coupon.php) |
 | GiftCardCode | `tx_gift_card_code` | 3 | [TXBoard/api/app/Models/GiftCardCode.php](../../../api/app/Models/GiftCardCode.php) |

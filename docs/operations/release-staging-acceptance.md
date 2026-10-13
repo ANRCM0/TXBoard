@@ -99,10 +99,10 @@ bash scripts/staging-readonly-smoke.sh https://<staging-domain>
 
 **支付回调不能手工向真实商户“模拟成功”。** 应使用供应商沙盒或完整独立的测试商户；如供应商没有沙盒，该项标记为阻塞并单独做受控小额验收及财务审计，不能伪称 CI 已完成。
 
-## 5. Node / Agent / Machine、主题与插件
+## 5. Node / Machine、主题与插件
 
 - **Node/Machine**：安装器连至预发地址 → 鉴权 → 下发配置 → WebSocket 上线 → 流量上报两次使用同一 batch ID → 只结算一次 → 重绑节点 → 更新运行时并能回滚；管理员轮换机器 Token 后旧 WebSocket 会话须按新安全约定失效。如果独立 TX-Node 尚未适配此版本 TXBoard 合同，将此项标记为 BLOCKED，不得算通过。
-- **Agent**：管理员签发最小权限 Token → 限定节点作用域 → 审批一项测试运维操作 → 核对执行/拒绝/审计 → 撤销 Token → 新请求拒绝；验证未授权节点无法执行、并发审批与重放不会二次执行。客服 Agent 回复需人工核对送达与敏感字段脱敏。
+- **退役凭据**：旧 Agent Token 无法调用 User/Admin，旧 Agent/MCP 入口拒绝；历史审计保留。
 - **插件/主题**：安装可信 ZIP → 启用并访问静态资源 → 升级 → 禁用 → 从完整备份恢复旧版本。检验恶意路径穿越、超大 ZIP、重复包被拒绝。若插件升级有不可逆 SQL 迁移，必须用**隔离实例完整 DB + 文件恢复**证明回滚；不能仅回滚 ZIP。
 - **运行时**：1Panel 代理信任 CIDR 与 TLS、WebSocket 透传、Redis/Horizon 队列失败处理、计划任务、Octane 进程重启及回滚。进行一段稳定的测试期，记录延迟（p50/p95/p99）、MySQL 慢查询、锁等待、队列积压、CPU/内存，和原环境相同数据规模比较；没有测量则不填写“性能提升”。
 
@@ -125,7 +125,7 @@ bash scripts/staging-readonly-smoke.sh https://<staging-domain>
 ## 日常运行监控与故障判定
 
 - 应用探针 `GET /txapi/health`、`GET /api/health` 只验证基本存活，不能代替 MySQL、Redis/Horizon、支付商、TXNode 的端到端健康检查。
-- 观察 API p95、5xx、MySQL 死锁和慢查询、失败任务与队列 backlog、Node/Machine 连接、Agent 审批、支付/钱包/佣金对账；结合 `traffic_queue_unavailable`、`traffic_queue_backlog_high` 告警。
+- 观察 API p95、5xx、MySQL 死锁和慢查询、失败任务与队列 backlog、Node/Machine 连接、支付/钱包/佣金对账；结合 `traffic_queue_unavailable`、`traffic_queue_backlog_high` 告警。
 - 可用运行时中执行 `php artisan traffic:health --json`，检查持久流量批次 ledger 与队列；HTTP 202 或 WS `traffic.ack` 的 `queued` 是接收确认，不代表 SQL 最终结算。
 - 同 `traffic_batch_id` 重试不能重复计费，同 ID 但不同计数必须拒绝；故障后以持久账本核对，并确认失败任务可恢复。回退镜像不会自动撤销 DDL 或资金交易，必须按备份与对账计划处理。
 - 按 [镜像发布通道](image-release-channels.md) 使用不可变 digest。部署的数据库必须符合 [TXBoard 原生数据库结构](native-schema.md)；任何已有旧库的数据转换均属于独立运维工作，不属于镜像升级。

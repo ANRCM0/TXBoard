@@ -9,7 +9,7 @@
 | 正式版 | 推送 `v1.2.3` | `latest`, `v1.2.3` | 是（更新 latest） |
 | Pull Request | 向 main 发起 PR | 无，仅测试 | 否 |
 
-Core 镜像发布前必须通过完整 API/Web/MCP 回归、隔离 MySQL 备份恢复、Docker 容器构建与运行时冒烟检查。Gateway 经过类型检查、Gateway/SDK 测试、Redis、浏览器和容器检查；Node 经过 Go 测试、运行时稳定性与容器配置路径检查。PR 执行相关验证，不推送镜像。
+Core 镜像发布前必须通过完整 API/Web 回归、隔离 MySQL 备份恢复、Docker 容器构建与运行时冒烟检查。Gateway 经过类型检查、Gateway/SDK 测试、Redis、浏览器和容器检查；Node 经过 Go 测试、运行时稳定性与容器配置路径检查。PR 执行相关验证，不推送镜像。
 文档或无关文件的 main 提交不重复发布开发镜像。Core/Gateway 不通过手动 `workflow_dispatch` 发布；Node 允许对已经在 main 的版本标签重新验证与发布。正常发布由匹配构建路径的 main push 或符合命名规范的版本标签 push 触发。
 发布 Git 标签所指向的提交必须已在 `main` 中，避免绕过 PR 验证。错误的 `v*` 标签会被拒绝。
 构建成功后可在 Actions 摘要中查看通道及实际推送的镜像标签。
@@ -18,7 +18,7 @@ Core 镜像发布前必须通过完整 API/Web/MCP 回归、隔离 MySQL 备份�
 
 ### 开发版（自动）
 
-每次合并或推送涉及 API、Web、MCP、容器或发布脚本的变更至 `main`，自动构建
+每次合并或推送涉及 API、Web、容器或发布脚本的变更至 `main`，自动构建
 `ghcr.io/anrcm0/txboard-core:dev` 及旧 `txboard:dev` 别名，并同时推送独立提交标签（如
 `dev-sha-0123456789ab`）。**不会移动 `latest`。**
 
@@ -55,6 +55,6 @@ GHCR 标签：`latest` 和 `v1.2.3`。
 
 若 Docker buildx 跨架构环境遇到 esbuild 的 ETXTBSY，Web 静态文件阶段已
 改为使用 BuildKit `BUILDPLATFORM` 原生构建并对 npm 缓存加锁，避免让
-跨架构 QEMU 参与 Vite/esbuild 的安装/构建；MCP 仍依目标架构保留依赖。
+跨架构 QEMU 参与 Vite/esbuild 的安装/构建。
 
 源代码 Compose 用于开发；真实服务器应通过 TXBoard-Deploy 更新镜像标签。发布镜像不代表真实数据库恢复、支付沙盒或 TXNode 跨仓联调已通过。

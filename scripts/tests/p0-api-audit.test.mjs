@@ -24,7 +24,7 @@ test('scan locates old callers but never exposes source lines or secrets', () =>
  } finally {rmSync(root,{recursive:true,force:true});}
 });
 
-test('route inventory guards payment, user, admin, agent and node contracts',()=>{
+test('route inventory guards payment, user, admin and node contracts',()=>{
  const input=[
   {uri:'api/health',method:'GET|HEAD'},
   {uri:'txapi/auth/login',method:'POST'},
@@ -34,19 +34,17 @@ test('route inventory guards payment, user, admin, agent and node contracts',()=
   {uri:'txapi/auth/admin/login',method:'POST'},
   {uri:'txapi/public/site-config',method:'GET|HEAD'},
   {uri:'txapi/admin/{admin_path}/settings',method:'GET|HEAD',middleware:['api','admin.path','admin']},
-  {uri:'txapi/agent/v1/whoami',method:'GET|HEAD',middleware:['api','agent']},
   {uri:'txapi/integrations/telegram/webhook',method:'POST'},
   {uri:'other/path',method:'GET'}
  ];
  const routes=collectRoutes(input);
- assert.equal(routes.length,10);
+ assert.equal(routes.length,9);
  assert.deepEqual(verifyCriticalRoutes(routes),[]);
  const expanded={
   'txapi.user':'App\\Http\\Middleware\\TxapiUser',
   txnode:'App\\Http\\Middleware\\TxNodeAuth',
   'admin.path':'App\\Http\\Middleware\\AdminPath',
-  admin:'App\\Http\\Middleware\\Admin',
-  agent:'App\\Http\\Middleware\\AgentAuth'
+  admin:'App\\Http\\Middleware\\Admin'
  };
  const resolved=routes.map(r=>({...r,middleware:r.middleware.map(m=>expanded[m]||m)}));
  assert.deepEqual(verifyCriticalRoutes(resolved),[]);
@@ -60,7 +58,7 @@ test('route inventory guards payment, user, admin, agent and node contracts',()=
  assert.ok(!JSON.stringify(hidden).includes('secret-admin-path'));
  assert.throws(()=>collectRoutes({bad:1}),/must be an array/);
  const queue=buildReviewQueue(routes);
- assert.equal(queue.length,10);
+ assert.equal(queue.length,9);
  assert.ok(queue.every(r=>r.review_status==='unverified'&&r.removal_allowed===false));
  assert.equal(queue.find(r=>r.uri.includes('payment/webhook')).risk,'critical');
  assert.equal(queue.find(r=>r.uri.includes('admin_path')).controller_file,null);

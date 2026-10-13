@@ -2,7 +2,7 @@
 
 Module Package v1 defines the **common metadata contract** used by TXBoard's future Module Registry.
 
-It does not replace the existing Plugin Package v1 runtime contract. Plugin, Theme and Agent integrations keep their own specialized runtime behavior; adapters will normalize them into this common Module model.
+It does not replace the existing Plugin Package v1 runtime contract. Plugin and Theme integrations keep their own specialized runtime behavior; adapters will normalize them into this common Module model.
 
 Current schema version: **1**.
 
@@ -256,7 +256,7 @@ A future Plugin Package v2 may adopt Module Manifest fields directly, but that i
 
 Theme Package v1 preserves the specialized `config.json + dashboard.blade.php` package boundary and maps package metadata into Module descriptors through `ThemeModuleAdapter`. Theme runtime state continues to come from `ThemeService`.
 
-Agent Ops registers as a system Agent/Integration module. Its bounded runtime health projection is defined by [Agent Ops Module Integration Contract v1](../agent-ops-module/README.md). MCP remains an optional protocol adapter and does not become a generic plugin runtime.
+The built-in Agent Ops module and MCP runtime were retired on2026-10-13. Reserved descriptor vocabulary is retained for v1 package compatibility; it does not register or execute Agent capabilities.
 
 ## PR A scope
 

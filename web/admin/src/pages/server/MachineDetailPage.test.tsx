@@ -4,14 +4,12 @@ import {QueryClient,QueryClientProvider} from '@tanstack/react-query'
 import {MemoryRouter,Route,Routes} from 'react-router-dom'
 import {afterEach,beforeEach,describe,expect,it,vi} from 'vitest'
 import {getMachines,getMachineNodes,type MachineItem} from '../../api/server'
-import {getAgentActions,getAgentFleetHealth} from '../../api/agent'
 import {requestConfirm} from '../../components/ui/ConfirmDialog'
 import {MachineDetailPage} from './MachineDetailPage'
 vi.mock('../../api/server',()=>({
   getMachines:vi.fn(),getMachineNodes:vi.fn(),saveMachine:vi.fn().mockResolvedValue({}),
   deleteMachine:vi.fn().mockResolvedValue({}),
 }))
-vi.mock('../../api/agent',()=>({getAgentActions:vi.fn(),getAgentFleetHealth:vi.fn()}))
 vi.mock('sonner',()=>({toast:{success:vi.fn(),error:vi.fn()}}))
 vi.mock('../../components/ui/ConfirmDialog',()=>({requestConfirm:vi.fn()}))
 vi.mock('../../components/server/MachineHistoryChart',()=>({MachineHistoryChart:()=> <div>History chart</div>}))
@@ -28,12 +26,6 @@ beforeEach(()=>{
   vi.clearAllMocks()
   vi.mocked(getMachines).mockResolvedValue(sample)
   vi.mocked(getMachineNodes).mockResolvedValue([{id:17,name:'Node J',host:'::1',port:8443,type:'hysteria',enabled:true,show:true}])
-  vi.mocked(getAgentFleetHealth).mockResolvedValue({
-    status:'healthy',summary:{status:'healthy',total_nodes:1,healthy_nodes:1,degraded_nodes:0,critical_nodes:0,warning_count:0},
-    nodes:[{node_id:17,name:'Node J',status:'healthy',online:true,websocket:true,kernel_running:true,warnings:[]}],
-    generated_at:0,
-  })
-  vi.mocked(getAgentActions).mockResolvedValue([])
   host=document.createElement('div');document.body.append(host);root=createRoot(host)
   client=new QueryClient({defaultOptions:{queries:{retry:false}}})
 })
@@ -55,7 +47,7 @@ describe('Machine Detail v3 page',()=>{
     expect(host.textContent).toContain('未上报')
     expect(host.textContent).toContain('[::1]:8443')
     expect(host.querySelector('a[href="/server/node/17"]')).not.toBeNull()
-    expect(host.textContent).toContain('暂无 Agent 动作')
+    expect(host.textContent).not.toContain('Agent')
     expect(host.querySelectorAll('.machine-detail-v3 .data-table')).toHaveLength(1)
     expect(host.textContent).toContain('History chart')
   })

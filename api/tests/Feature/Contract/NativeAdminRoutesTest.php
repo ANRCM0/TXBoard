@@ -41,7 +41,7 @@ final class NativeAdminRoutesTest extends TestCase
         }
 
         // Do not accidentally retire signed external Wire boundaries with admin routes.
-        foreach (['txapi/agent/v1/whoami', 'txapi/payment/webhook/{method}/{uuid}',
+        foreach (['txapi/payment/webhook/{method}/{uuid}',
             'txapi/node/v1/handshake'] as $uri) {
             $this->assertTrue($routes->contains(static fn ($route): bool => $route->uri() === $uri),
                 $uri . ' is an external/runtime protocol, not an admin route');

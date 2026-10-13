@@ -21,8 +21,8 @@
 
 - [ ] 阅读 [节点管理指南](../guides/node-management.md)，只按对应协议配置 TX-Node。
 - [ ] 插件和主题在预发环境先验证来源、包约束、升级和停用行为；PHP 插件不是沙箱。
-- [ ] 按需启用 MCP/Agent Ops；检查 ability、target scope、审批与审计，默认不授予高风险权限。
+- [ ] 验证旧 Agent Token 无法认证；Agent/MCP 已退役。
 
 ## 4. 上线之前
 
-按 [完整发布验收 Runbook](../operations/release-staging-acceptance.md) 完成隔离环境的数据库恢复、真实 HTTPS/反代、支付沙盒、Node/Agent 及故障恢复验证。CI 和页面能打开都不能取代这一步。
+按 [完整发布验收 Runbook](../operations/release-staging-acceptance.md) 完成隔离环境的数据库恢复、真实 HTTPS/反代、支付沙盒、Node/Machine 及故障恢复验证。CI 和页面能打开都不能取代这一步。

@@ -7,7 +7,6 @@ import { AuthGuard } from './components/layout/AuthGuard'
 const SignInPage = lazy(() => import('./pages/SignInPage').then(module => ({ default: module.SignInPage })))
 const DashboardPage = lazy(() => import('./pages/DashboardPage').then(module => ({ default: module.DashboardPage })))
 const AuditLogPage = lazy(() => import('./pages/system/AuditLogPage').then(module => ({ default: module.AuditLogPage })))
-const AgentOpsPage = lazy(() => import('./pages/system/AgentOpsPage').then(module => ({ default: module.AgentOpsPage })))
 const ModuleCenterPage = lazy(() => import('./pages/system/ModuleCenterPage').then(module => ({ default: module.ModuleCenterPage })))
 const SystemSettingsPage = lazy(() => import('./pages/config/SystemSettingsPage').then(module => ({ default: module.SystemSettingsPage })))
 const FeatureEntrySettingsPage = lazy(() => import('./pages/config/FeatureEntrySettingsPage').then(module => ({ default: module.FeatureEntrySettingsPage })))
@@ -65,7 +64,6 @@ export const router = createAppRouter([
         children: [
           { index: true, element: <DashboardPage /> },
           { path: 'system/audit-log', element: <AuditLogPage /> },
-          { path: 'system/agent-ops', element: <AgentOpsPage /> },
           { path: 'system/modules', element: <ModuleCenterPage /> },
           { path: 'config/system', element: <SystemSettingsPage /> },
           { path: 'config/system/features', element: <FeatureEntrySettingsPage /> },

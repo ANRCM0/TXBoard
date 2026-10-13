@@ -13,7 +13,7 @@
 | 生产安装、更新、备份与 XBoard 导入命令 | [TXBoard-Deploy](https://github.com/ANRCM0/TXBoard-Deploy) |
 | TX-Node 运行时和安装器 | [TX-Node](https://github.com/ANRCM0/TX-Node) 与 TX-Node-Installer |
 | 用户主题 API BFF / SDK | [TXBoard-Gateway](https://github.com/ANRCM0/TXBoard-Gateway) |
-| Agent Ops MCP 适配器 | 本仓库 `mcp/` 与 Agent Ops 契约 |
+| 已退役 Agent/MCP | [范围决定](architecture/v2/admin-only-scope.md)，旧契约只保留历史入口 |
 
 不要在多个 README 中维护可变的菜单编号、全部环境变量、接口完整列表或重复的发布快照。其他位置给出简要说明并链接到权威文档。
 

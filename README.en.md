@@ -10,10 +10,10 @@ This repository contains TXBoard Core, [Gateway](gateway/README.md) and [TX-Node
 
 | Repository | Responsibility |
 | --- | --- |
-| Root `api/`, `web/`, `mcp/` | Core control plane, Laravel TXAPI, React Admin, Vue User, contracts |
+| Root `api/`, `web/` | Core control plane, Laravel TXAPI, React Admin, Vue User, contracts |
 | [TXBoard-Deploy](https://github.com/ANRCM0/TXBoard-Deploy) | Sole installer and lifecycle manager for Core, Gateway and Node |
 | [node/](node/README.md) | Go agent/data plane, proxy runtimes and traffic reporting |
-| [gateway/](gateway/README.md) | Optional theme/user API BFF and SDK; **not** the embedded MCP adapter |
+| [gateway/](gateway/README.md) | Optional theme/user API BFF and SDK |
 | [TXBoard-AccessAudit](https://github.com/ANRCM0/TXBoard-AccessAudit) | Independent audit integration |
 
 ## Installation

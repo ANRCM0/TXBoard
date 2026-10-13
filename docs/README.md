@@ -19,7 +19,7 @@
 - **API 方法、鉴权、错误语义**：[contracts/](../contracts/README.md) 与注册路由；WebSocket 和动态插件路由还需要在各自运行时验证。
 - **生产安装/升级/迁移/备份命令**：[TXBoard-Deploy](https://github.com/ANRCM0/TXBoard-Deploy)；不要从本目录复制另一套安装器规则。
 - **TX-Node 运行时**：[node/](../node/README.md)；节点安装统一由 TXBoard-Deploy 负责。
-- **可选主题 BFF 与 SDK**：[gateway/](../gateway/README.md)；与 Core 镜像内置 MCP 适配器分别运行。
+- **可选主题 BFF 与 SDK**：[gateway/](../gateway/README.md)。
 - **双仓结构与镜像发布**：[目录及发布规则](development/repository-layout.md)、[本次合并与发布验收](development/consolidation-verification.md)。
 - **代码 Agent 的实现约束**：[AGENTS.md](../AGENTS.md)。
 
@@ -29,4 +29,4 @@
 
 [文档贡献规范与责任边界](DOCUMENTATION_GUIDE.md) 约定 Markdown 格式、来源、状态标签以及变更时应同步的文件。跨仓设计中的 `Target`、`Draft`、`Experimental` 不代表生产可用。
 
-**验收边界**：CI 通过不代表真实数据库恢复、支付沙盒、外部反向代理、TX-Node 和 Agent 联调已完成。部署前参照 [发布验收 Runbook](operations/release-staging-acceptance.md)。
+**验收边界**：CI 通过不代表真实数据库恢复、支付沙盒、外部反向代理、TX-Node 联调已完成。部署前参照 [发布验收 Runbook](operations/release-staging-acceptance.md)。

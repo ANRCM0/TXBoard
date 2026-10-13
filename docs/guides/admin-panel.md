@@ -17,7 +17,6 @@
 | 套餐与订单 | 定价、订阅规则、订单与金额一致性 | [支付与订单](payments.md) |
 | 节点管理 | Node/Machine 配对身份、分组路由、流量上报 | [节点与机器](node-management.md) |
 | 插件 / 主题 | 可信包来源、依赖、激活与升级回滚 | [模块扩展](plugins-and-themes.md) |
-| Agent | Token ability、目标范围、审批与审计 | [Agent Ops / MCP](agent-mcp.md) |
 
 ## 安全路径恢复
 

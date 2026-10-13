@@ -3,7 +3,6 @@ import { ArrowLeft, Cable, KeyRound, Pencil, Trash2, Server } from 'lucide-react
 import { useState, type ReactNode } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
-import { getAgentActions, getAgentFleetHealth } from '../../api/agent'
 import { deleteMachine, getMachineNodes, getMachines, saveMachine, type MachineItem, type NodeItem } from '../../api/server'
 import { MachineHistoryChart } from '../../components/server/MachineHistoryChart'
 import { MachineNodeBinding } from '../../components/server/MachineNodeBinding'
@@ -16,7 +15,7 @@ import { SectionHeader } from '../../components/ui/SectionHeader'
 import { requestConfirm } from '../../components/ui/ConfirmDialog'
 import { MachineCredentialsDialog } from './MachineCredentialsDialog'
 import {
-  machineActionSummary, machineDetailAddress, machineDetailPercent,
+  machineDetailAddress, machineDetailPercent,
   machineDetailPresence, machineDetailRate, machineDetailRatio,
   machineDetailSize, machineDetailTime,
 } from './machineDetailPresentation'
@@ -43,25 +42,9 @@ export function MachineDetailPage() {
     queryKey: ['machineNodes',machineId], queryFn: () => getMachineNodes(machineId),
     refetchInterval: 30_000, enabled: validMachineId,
   })
-  const fleetQuery = useQuery({
-    queryKey: ['agentFleetHealth'], queryFn: getAgentFleetHealth,
-    refetchInterval: 30_000, retry: 1, enabled: validMachineId,
-  })
-  const actionsQuery = useQuery({
-    queryKey: ['agentActions'], queryFn: () => getAgentActions(),
-    refetchInterval: 15_000, retry: 1, enabled: validMachineId,
-  })
-
   const machines = Array.isArray(machinesQuery.data) ? machinesQuery.data : []
   const machine = machines.find(item => item.id === machineId)
   const nodes = Array.isArray(nodesQuery.data) ? nodesQuery.data : []
-  const nodeIds = new Set(nodes.map(item => item.id))
-  const fleetNodes = (fleetQuery.data?.nodes || []).filter(item => nodeIds.has(item.node_id))
-  const healthy = fleetNodes.filter(item => item.status === 'healthy').length
-  const degraded = fleetNodes.filter(item => item.status === 'degraded').length
-  const critical = fleetNodes.filter(item => item.status === 'critical').length
-  const actions = (actionsQuery.data || []).filter(item => nodeIds.has(item.node_id)).slice(0,8)
-
   const save=useMutation({
     mutationFn: () => saveMachine({id:machineId,name,notes,is_active:active,image_channel:imageChannel}),
     onSuccess: async () => {
@@ -123,26 +106,7 @@ export function MachineDetailPage() {
       {node.enabled===false?'已停用':node.enabled===undefined?'未上报':'已启用'}</span>},
     {key:'show',header:'订阅',render:node=><span className="muted">
       {node.show==null?'未知':node.show?'可见':'隐藏'}</span>},
-    {key:'fleet',header:'健康',render:node=>{
-      const finding=fleetNodes.find(item=>item.node_id===node.id)
-      return <span>{finding ? (finding.status==='healthy'?'正常':
-        finding.status==='degraded'?'需关注':'严重'):'未上报'}</span>
-    }},
   ]
-  const actionColumns:Column<(typeof actions)[number]>[]=[
-    {key:'node',header:'节点',render:item=>{
-      const target=nodes.find(node=>node.id===item.node_id)
-      return <Link className="table-link" to={`/server/node/${item.node_id}`}>
-        {target?.name || `Node #${item.node_id}`}</Link>
-    }},
-    {key:'action',header:'动作',render:item=><code>{item.action}</code>},
-    {key:'risk',header:'风险',render:item=><span className="muted">{item.risk_level || '—'}</span>},
-    {key:'state',header:'状态',render:item=><span>{item.status || '未知'}</span>},
-    {key:'time',header:'时间',render:item=>machineDetailTime(item.created_at ? item.created_at*1000 : null)},
-    {key:'result',header:'结果',render:item=><span className="machine-detail-v3-result">
-      {item.error_code || machineActionSummary(item.result)}</span>},
-  ]
-
   return <div className="machine-detail-v3">
     <PageHeader title={machine.name || `Machine #${machine.id}`}
       description={`Machine #${machine.id} · 服务器详情`}
@@ -191,27 +155,6 @@ export function MachineDetailPage() {
           <Meta label="备注" value={machine.notes || '无'} wide/>
         </dl>
       </section>
-      <section className="machine-detail-v3-section">
-        <SectionHeader title="Fleet 健康" description="汇总当前机器所承载节点的 Agent 健康信息。"
-          action={<Link className="button" to="/system/agent-ops">Agent 运维</Link>}/>
-        <QueryFeedback loading={fleetQuery.isLoading || nodesQuery.isLoading}
-          error={fleetQuery.isError || nodesQuery.isError}
-          onRetry={()=>{void fleetQuery.refetch();void nodesQuery.refetch()}}/>
-        {!nodesQuery.isLoading && !nodesQuery.isError && !fleetQuery.isLoading && !fleetQuery.isError ?
-          <div className="machine-detail-v3-fleet">
-            {[
-              ['正常',healthy],['需关注',degraded],['严重',critical],
-              ['未上报',Math.max(0,nodes.length-fleetNodes.length)],
-            ].map(([label,value])=><div key={label}><span>{label}</span><strong>{value}</strong></div>)}
-          </div>:null}
-        {fleetNodes.some(item=>item.warnings.length) ? <div className="entity-warning-list">
-          {fleetNodes.filter(item=>item.warnings.length).map(item=><div key={item.node_id}>
-            <Link className="table-link" to={`/server/node/${item.node_id}`}>
-              {item.name || `Node #${item.node_id}`}</Link>
-            <span>{item.warnings.map(w=>`${w.code}（${w.severity}）`).join('、')}</span>
-          </div>)}
-        </div>:null}
-      </section>
     </div>
 
     <section className="machine-detail-v3-section is-full">
@@ -226,19 +169,6 @@ export function MachineDetailPage() {
     <section className="machine-detail-v3-section is-full machine-detail-v3-history">
       <MachineHistoryChart machineId={machineId}/>
     </section>
-    <section className="machine-detail-v3-section is-full">
-      <SectionHeader title="最近 Agent 动作" description="当前机器下所有节点最近的审批与运维动作。"
-        action={<Link className="button" to="/system/agent-ops">查看全部</Link>}/>
-      <DataTable label="最近 Agent 动作" rows={actions} columns={actionColumns}
-        rowKey={item=>item.request_id}
-        loading={nodesQuery.isLoading || actionsQuery.isLoading}
-        error={nodesQuery.isError || actionsQuery.isError}
-        onRetry={()=>{void nodesQuery.refetch();void actionsQuery.refetch()}}
-        emptyState={<EmptyState icon={<Server size={22}/>} title="暂无 Agent 动作"
-          description="机器关联节点尚无审批或运维动作记录。"
-          action={<Link className="button" to="/system/agent-ops">前往 Agent 运维</Link>}/>}/>
-    </section>
-
     <Modal open={editorOpen} title="编辑机器" onClose={()=>setEditorOpen(false)}>
       <div className="form-stack">
         <label className="field"><span>机器名称</span>

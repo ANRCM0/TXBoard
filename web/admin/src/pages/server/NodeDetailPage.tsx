@@ -3,12 +3,10 @@ import { ArrowLeft, Copy, Eye, EyeOff, Pencil, Trash2 } from 'lucide-react'
 import { useEffect, useState, type ReactNode } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
-import { getAgentActions, getAgentFleetHealth } from '../../api/agent'
 import {
   copyNode, deleteNode, getGroups, getMachines, getNodes, getProtocolDefinitions,
   getRoutes, saveNode, type NodeItem,
 } from '../../api/server'
-import { DataTable, type Column } from '../../components/ui/DataTable'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { QueryFeedback } from '../../components/ui/QueryFeedback'
@@ -17,7 +15,6 @@ import { requestConfirm } from '../../components/ui/ConfirmDialog'
 import { NodeEditorModal } from './NodeEditorModal'
 import {
   nodeDetailAddress, nodeDetailMachineStatus, nodeDetailPresence, nodeDetailTraffic,
-  redactActionResult,
 } from './nodeDetailPresentation'
 import './NodeDetailPage.css'
 
@@ -53,15 +50,6 @@ export function NodeDetailPage() {
     queryKey: ['protocol-definitions'], queryFn: getProtocolDefinitions,
     staleTime: 300_000, retry: 1, enabled: validNodeId,
   })
-  const fleetQuery = useQuery({
-    queryKey: ['agentFleetHealth'], queryFn: getAgentFleetHealth,
-    refetchInterval: 30_000, retry: 1, enabled: validNodeId,
-  })
-  const actionsQuery = useQuery({
-    queryKey: ['agentActions'], queryFn: () => getAgentActions(),
-    refetchInterval: 15_000, retry: 1, enabled: validNodeId,
-  })
-
   const nodes = Array.isArray(nodesQuery.data) ? nodesQuery.data : []
   const machines = Array.isArray(machinesQuery.data) ? machinesQuery.data : []
   const groups = Array.isArray(groupsQuery.data) ? groupsQuery.data : []
@@ -70,8 +58,6 @@ export function NodeDetailPage() {
   const machine = machines.find(item => item.id === node?.machine_id)
   const parent = nodes.find(item => item.id === node?.parent_id)
   const children = node ? nodes.filter(item => item.parent_id === node.id) : []
-  const fleet = fleetQuery.data?.nodes.find(item => item.node_id === nodeId)
-  const actions = (actionsQuery.data || []).filter(item => item.node_id === nodeId).slice(0,8)
 
   const save = useMutation({
     mutationFn: (payload: Partial<NodeItem>) => saveNode(payload),
@@ -81,7 +67,6 @@ export function NodeDetailPage() {
       setRawVisible(false)
       await Promise.all([
         qc.invalidateQueries({queryKey:['nodes']}),
-        qc.invalidateQueries({queryKey:['agentFleetHealth']}),
       ])
     },
   })
@@ -126,17 +111,6 @@ export function NodeDetailPage() {
   const traffic = nodeDetailTraffic(node)
 
   const editor = () => { setRawVisible(false); setEditorOpen(true) }
-  const actionColumns: Column<(typeof actions)[number]>[] = [
-    { key:'request', header:'请求 ID', render:a => <code>{a.request_id}</code> },
-    { key:'name', header:'动作', render:a => <span className="node-detail-v3-code">{a.action}</span> },
-    { key:'risk', header:'风险', render:a => <span className="node-detail-v3-muted">{a.risk_level || '—'}</span> },
-    { key:'state', header:'状态', render:a => <span>{a.status || '未知'}</span> },
-    { key:'time', header:'时间', render:a => formatEpoch(a.created_at) },
-    { key:'result', header:'结果', render:a => <span className="node-detail-v3-result">
-      {a.error_code || redactActionResult(a.result)}
-    </span> },
-  ]
-
   return <div className="node-detail-v3">
     <PageHeader
       title={node.name || `Node #${node.id}`}
@@ -163,11 +137,6 @@ export function NodeDetailPage() {
         {node.show === undefined || node.show === null ? '订阅可见性未上报'
           : node.show ? '订阅可见' : '订阅隐藏'}
       </span>
-      {fleet ? <><span className="node-detail-v3-separator">·</span>
-        <span className={'node-detail-v3-fleet-status is-'+fleet.status}>
-          <i aria-hidden="true"/>Fleet {fleetLabel(fleet.status)}
-        </span>
-      </> : null}
     </div>
 
     <div className="node-detail-v3-summary" aria-label="节点核心信息">
@@ -204,22 +173,6 @@ export function NodeDetailPage() {
           <Meta label="自定义代码" value={node.code || '无'}/>
         </dl>
       </section>
-      <section className="node-detail-v3-section">
-        <SectionHeader title="Fleet 健康" description="来自 Agent Ops 的节点健康报告。"
-          action={<Link className="button" to="/system/agent-ops">Agent 运维</Link>}/>
-        <QueryFeedback loading={fleetQuery.isLoading} error={fleetQuery.isError}
-          onRetry={() => void fleetQuery.refetch()}/>
-        {fleet ? <dl className="node-detail-v3-facts">
-          <Meta label="健康状态" value={<span className={'node-detail-v3-fleet-status is-'+fleet.status}>
-            <i aria-hidden="true"/>{fleetLabel(fleet.status)}</span>}/>
-          <Meta label="Agent 在线" value={fleet.online ? '在线' : '离线'}/>
-          <Meta label="WebSocket" value={fleet.websocket ? '已连接' : '未连接'}/>
-          <Meta label="Kernel" value={fleet.kernel_running == null ? '未上报' : fleet.kernel_running ? '运行中' : '已停止'}/>
-          <Meta label="告警" wide value={fleet.warnings?.length
-            ? fleet.warnings.map(w => `${w.code}（${w.severity}）`).join('、') : '无'}/>
-        </dl> : !fleetQuery.isLoading && !fleetQuery.isError
-          ? <div className="node-detail-v3-empty"><p>Fleet 暂无此节点的健康记录。</p></div> : null}
-      </section>
     </div>
 
     <section className="node-detail-v3-section node-detail-v3-actions">
@@ -241,18 +194,6 @@ export function NodeDetailPage() {
       </div>
     </section>
 
-    <section className="node-detail-v3-section node-detail-v3-actions">
-      <SectionHeader title="最近 Agent 动作" description="最近针对该节点发起的审批或运维请求。"
-        action={<Link className="button" to="/system/agent-ops">查看全部</Link>}/>
-      <DataTable label="最近 Agent 动作" rows={actions} columns={actionColumns}
-        rowKey={row=>row.request_id}
-        loading={actionsQuery.isLoading} error={actionsQuery.isError}
-        onRetry={() => void actionsQuery.refetch()}
-        emptyState={<EmptyState icon={<ArrowLeft size={20}/>}
-          title="暂无 Agent 动作" description="这个节点目前没有记录到审批或运维动作。"
-          action={<Link className="button" to="/system/agent-ops">前往 Agent 运维</Link>}/>}/>
-    </section>
-
     <NodeEditorModal open={editorOpen} node={node} nodes={nodes} machines={machines}
       groups={groups} routes={routes}
       protocolDefinitions={Array.isArray(protocolsQuery.data) ? protocolsQuery.data : []}
@@ -266,14 +207,6 @@ function Summary({label,value,sub}: {label:string;value:ReactNode;sub:string}) {
 }
 function Meta({label,value,wide=false}: {label:string;value:ReactNode;wide?:boolean}) {
   return <div className={wide ? 'is-wide' : undefined}><dt>{label}</dt><dd>{value}</dd></div>
-}
-function fleetLabel(value:string) {
-  return value==='healthy' ? '正常' : value==='degraded' ? '需关注' : value==='critical' ? '严重' : value
-}
-function formatEpoch(value:number|null|undefined) {
-  if (value == null || !Number.isFinite(value) || value<=0) return '—'
-  const date = new Date(value*1000)
-  return Number.isFinite(date.getTime()) ? date.toLocaleString('zh-CN') : '—'
 }
 function safeJson(value:unknown) {
   try { return JSON.stringify(value ?? {},null,2) ?? '{}' } catch { return '{}' }

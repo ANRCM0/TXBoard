@@ -16,7 +16,6 @@ describe('core admin navigation', () => {
     expect(coreNavigationGroups.map(item => item.title)).toEqual([
       '系统管理',
       '扩展中心',
-      '智能运维',
       '节点管理',
       '商业管理',
       '用户管理',
@@ -39,10 +38,8 @@ describe('core admin navigation', () => {
     ])
   })
 
-  it('separates Agent Ops, commerce and content management', () => {
-    expect(routes('operations')).toEqual([
-      ['/system/agent-ops', 'Agent 运维'],
-    ])
+  it('keeps commerce and content management', () => {
+    expect(coreNavigationGroups.map(item => item.key)).not.toContain('operations')
     expect(routes('commerce')).toEqual([
       ['/finance/plan', '套餐管理'],
       ['/finance/order', '订单管理'],

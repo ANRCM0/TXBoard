@@ -43,7 +43,7 @@ Gateway 负责 Web 传输、SC-v2、请求结构及 DTO 适配。Core 负责登�
 | `platform.modules.lifecycle` | admin | 固定生命周期命令、审批及适配器 | 固定 allow-list、Core 持久任务 ID |
 | `network.nodes.list` | admin | Node/Machine 范围与秘密过滤 | 只读，有界分页 |
 
-这是第一轮命名和安全分类，并非全部已存在 API 的等价替代。B5 逐项映射当前 Controller → Domain/Service → Operation；未经映射和契约测试的操作保持不可用。Agent、Node HTTP/WSS、支付商/Telegram 回调仍由各自专用身份和协议处理，不进入通用 Web Operation 分发。
+这是第一轮命名和安全分类，并非全部已存在 API 的等价替代。B5 逐项映射当前 Controller → Domain/Service → Operation；未经映射和契约测试的操作保持不可用。Node HTTP/WSS、支付商/Telegram 回调仍由各自专用身份和协议处理，不进入通用 Web Operation 分发。
 
 ## 3. 请求与 DTO
 

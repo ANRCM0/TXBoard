@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 
 const scanDirs = ['api/app','api/routes','api/plugins','api/plugins-core',
  'api/database/migrations','api/resources','api/.docker',
- 'web/admin/src','web/user/src','web/shared','mcp'];
+ 'web/admin/src','web/user/src','web/shared'];
 const types = new Set(['.php','.ts','.tsx','.js','.jsx','.vue','.json']);
 const marks = [
  ['legacy_api',/\/api\/v[12](?=\/|['"?\s]|$)/gi],
@@ -25,14 +25,12 @@ const required = [
  ['POST','txapi/auth/admin/login',[]],
  ['GET','txapi/public/site-config',[]],
  ['GET','txapi/admin/{admin_path}/settings',['admin.path','admin']],
- ['GET','txapi/agent/v1/whoami',['agent']],
  ['POST','txapi/integrations/telegram/webhook',[]],
 ];
 function owner(path) {
  if(path.startsWith('web/admin/')) return 'Admin web';
  if(path.startsWith('web/user/')) return 'User web';
  if(path.startsWith('web/shared/')) return 'Web shared';
- if(path.startsWith('mcp/')) return 'MCP';
  if(path.startsWith('api/database/')) return 'Database';
  if(path.startsWith('api/.docker/')) return 'Runtime';
  if(path.startsWith('api/plugins') || path.startsWith('api/resources/')) return 'Extension';
@@ -93,7 +91,6 @@ const expandedMiddleware = {
  txnode: 'App\\Http\\Middleware\\TxNodeAuth',
  'admin.path': 'App\\Http\\Middleware\\AdminPath',
  admin: 'App\\Http\\Middleware\\Admin',
- agent: 'App\\Http\\Middleware\\AgentAuth',
 };
 export function verifyCriticalRoutes(routes) {
  const failures=[];

@@ -13,7 +13,7 @@ export USAGE_INTEROP_DIR=$(mktemp -d /tmp/txboard-usage-interop.XXXXXX)
 chmod 700 "$USAGE_INTEROP_DIR"
 export APP_ENV=testing DB_CONNECTION=mysql
 export CORE_USAGE_V2_ISOLATED_COPY=true CORE_USAGE_V2_INSTANCE_ID=core_instance_test_0001 CORE_USAGE_V2_RECEIPT_GENERATION=1
-export CACHE_DRIVER=array SETTING_CACHE_STORE=array AGENT_OPS_PAIRING_CACHE_STORE=array SESSION_DRIVER=array MAIL_MAILER=array QUEUE_CONNECTION=sync
+export CACHE_DRIVER=array SETTING_CACHE_STORE=array SESSION_DRIVER=array MAIL_MAILER=array QUEUE_CONNECTION=sync
 export APP_KEY='base64:ZdD07lazsdQQmdBAJ2tA5WjufeI2hP8xlP6zgmvCMZs='
 mkdir "$USAGE_INTEROP_DIR/node"
 (cd "$node_source" && tar -cf - go.mod go.sum internal/usagev2) | tar -xf - -C "$USAGE_INTEROP_DIR/node"

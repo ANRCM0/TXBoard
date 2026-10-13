@@ -2,7 +2,7 @@
 
 Module Registry v1 is the read-only Admin inventory for TXBoard Module Platform.
 
-It normalizes existing Plugin, Theme and Agent Ops subsystems into the common Module Descriptor model. It does not own install/enable/disable/switch/approval lifecycle operations.
+It normalizes existing Plugin and Theme subsystems into the common Module Descriptor model. It does not own install/enable/disable/switch/approval lifecycle operations.
 
 Base path:
 
@@ -63,8 +63,8 @@ Descriptors may optionally project validated intrinsic `description` / `author` 
 
 ```json
 {
-  "id": "agent_ops",
-  "description": "TXBoard AI-native operations and approval control plane",
+  "id": "example_plugin",
+  "description": "Example optional plugin health metadata",
   "author": "TXBoard",
   "health": "degraded",
   "health_details": {
@@ -185,14 +185,6 @@ Theme names are mapped to stable Module IDs such as:
 TXBoard -> theme.txboard
 ```
 
-### Agent Ops
+### Retired Agent Ops
 
-Agent Ops is registered as the system module:
-
-```text
-agent_ops
-```
-
-It describes the existing Agent Ops HTTP/Admin capability. Phase H additionally derives `healthy/degraded` state and bounded `health_details.checks` from the existing Agent Ops system-status service. Health collection failures keep the system Module discoverable and use a fixed non-secret diagnostic.
-
-MCP remains optional and outside the Registry execution path.
+The built-in `agent_ops` module was removed on2026-10-13. Registry does not register it and no Agent or MCP runtime is provided. Historical contract and verification snapshots remain in Git.

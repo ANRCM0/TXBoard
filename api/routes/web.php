@@ -103,21 +103,6 @@ Route::get('/', function (Request $request) {
     }
 });
 
-// Version-matched public onboarding guide for external AI Agents. The guide
-// contains no credentials and is intentionally available without an Admin session.
-Route::get('/.well-known/txboard-agent-connect.md', static function () {
-    $guidePath = resource_path('agent/txboard-agent-connect.md');
-    if (!File::exists($guidePath)) {
-        abort(404);
-    }
-
-    return response(File::get($guidePath), 200, [
-        'Content-Type' => 'text/markdown; charset=UTF-8',
-        'Cache-Control' => 'public, max-age=300',
-        'X-Content-Type-Options' => 'nosniff',
-    ]);
-});
-
 // Subscription links must win before the dynamic admin catch-all.
 Route::get('/' . (admin_setting('subscribe_path', 's')) . '/{token}', [\App\Http\Controllers\SubscriptionController::class, 'subscribe'])
     ->middleware(['client', \App\Http\Middleware\SubscriptionIdentityShadow::class])

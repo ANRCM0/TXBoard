@@ -6,11 +6,11 @@ These instructions apply to coding agents working in this repository.
 
 ### Core First v2 演进基线
 
-2026-10-12 起，后续架构演进参考 `docs/architecture/v2/README.md`、`docs/architecture/v2/core-boundaries.md` 与 `contracts/v2/README.md`。这些文件标明 Target/Draft 能力与迁移门禁；当前代码、权限及 v1 契约继续生效。不得依据目标方案提前开放管理员 Gateway、删除 User 字段或 Theme/Agent/MCP、改变插件包格式。跨仓改动先核对 v2 兼容矩阵和对应 Current 契约，按 Operation/数据迁移阶段逐项实施。
+2026-10-12 起，后续架构演进参考 `docs/architecture/v2/README.md`、`docs/architecture/v2/core-boundaries.md` 与 `contracts/v2/README.md`。2026-10-13 用户调整范围：独立前端只开发管理端，新用户前端延期；清理 Agent/MCP，取消插件迁移，见 `docs/architecture/v2/admin-only-scope.md`。不得依据目标方案提前开放管理员 Gateway、删除 User 字段或 Theme、改变插件包格式。跨仓改动先核对对应 Current 契约，按 Operation/数据迁移阶段逐项实施。
 
 TXBoard is the Control Plane.
 
-This repository contains three independently built runtimes: TXBoard Core at the root (`api/`, `web/`, `mcp/`), Gateway in `gateway/`, and TX-Node in `node/`. The repository is being prepared for the name `tx-core`.
+This repository contains three independently built runtimes: TXBoard Core at the root (`api/`, `web/`), Gateway in `gateway/`, and TX-Node in `node/`. The repository is being prepared for the name `tx-core`.
 
 Repository consolidation does not merge runtime authority: TXBoard remains the Control Plane, Gateway is an optional BFF, and TX-Node remains the Agent / Data Plane. Keep their dependency locks, Docker contexts, credentials and release gates separate. Host installation and lifecycle scripts belong exclusively to TXBoard-Deploy; do not introduce another installer here. Nested `.github/workflows` do not run: active component workflows live in the root `.github/workflows/`.
 
@@ -19,17 +19,17 @@ The project is evolving toward a **Modular Control Plane Platform**.
 Read first:
 
 - `docs/architecture/module-platform-v1.md`
-- `docs/architecture/agent-ops.md`
+- `docs/architecture/v2/admin-only-scope.md`
 - `docs/README.md`
 - relevant files under `contracts/`
 
 ## TXAPI 与跨仓接口边界
 
 - TXBoard 应用 API 统一使用已注册的 `/txapi/*` 路由；不要新建未注册的 V1/V2 入口。
-- User、Admin、Node/Machine、Agent 与支付商回调使用各自独立的凭据和鉴权中间件；不得互相借用。
+- User、Admin、Node/Machine 与支付商回调使用各自独立的凭据和鉴权中间件；不得互相借用。退役 Agent 凭据始终拒绝。
 - 当前 HTTP 路由以 `api/routes/txapi.php`、`api/routes/web.php` 和 `api/app/Providers/RouteServiceProvider.php` 为准；TXNode WSS 由 Workerman 管理，不属于 Laravel HTTP registry。
 - 跨仓修改优先阅读 `contracts/http/external-adapter-current.md`、`contracts/http/theme-integration-current.md`、`contracts/node-protocol/txnode-integration-current.md`。
-- 可选独立 Gateway 不持有 Laravel 用户/订单/资金/Node 状态，也不能接管管理员、Agent、支付 Webhook 或订阅密钥。
+- 可选独立 Gateway 不持有 Laravel 用户/订单/资金/Node 状态，也不能接管当前管理员入口、支付 Webhook 或订阅密钥。
 - 对外协议修改必须同时更新对应契约和真实消费者，按现有回归测试验证权限、事务及重试语义。
 
 ## 2. Module Platform
@@ -56,7 +56,6 @@ Good Module candidates include:
 - payment provider;
 - notification provider;
 - external integration;
-- Agent integration.
 
 Do not modularize Core domains merely to increase modularity.
 
@@ -87,7 +86,6 @@ Use adapters to normalize them:
 ```text
 PluginManager  -> Plugin adapter -> Module Platform
 ThemeService   -> Theme adapter  -> Module Platform
-Agent Ops      -> Agent adapter  -> Module Platform
 ```
 
 Adapters may describe and delegate. They must not duplicate domain logic.
@@ -124,20 +122,9 @@ TXBoard
 
 Theme Admin, user rendering and Module Registry must resolve the same effective theme.
 
-## 8. Agent Ops / MCP rules
+## 8. Retired Agent / MCP
 
-MCP is a protocol adapter, not a second control plane.
-
-Never add:
-
-- direct MCP -> MySQL access;
-- direct MCP -> Redis publish;
-- direct MCP -> TX-Node connection;
-- generic shell;
-- generic filesystem access;
-- automatic approval bypass.
-
-Agent actions continue through Agent Ops permissions, target scope, approval and audit.
+Agent/MCP is removed under the 2026-10-13 product decision. Do not restore its API, token issuance, scheduled inspections, UI, embedded process or CI. Historical migrations/audit rows remain; legacy Agent tokens are denied by Sanctum. Independent frontend work is Admin-only; preserve the existing User UI during the compatibility window.
 
 ## 9. Module Registry rules
 
@@ -246,7 +233,7 @@ Do not require third-party plugins to modify TXBoard React source.
 
 Admin requests use `/txapi/admin/{admin_path}/*` with validated dynamic `secure_path`, Admin Bearer, RBAC and audit. User API, Agent and Node credentials cannot authorize Admin operations.
 
-Laravel TXAPI success responses normally have `data` and `request_id`; errors use `error.code`. Agent runtime and signed webhook bodies have their own explicit contract.
+Laravel TXAPI success responses normally have `data` and `request_id`; errors use `error.code`. Signed webhook bodies have their own explicit contract.
 
 Do not create generic Module mutation endpoints until lifecycle contracts and adapters are stable.
 
@@ -317,20 +304,15 @@ Module Management API
     -> ModuleLifecycle
     -> specialized Plugin / Theme runtime
 
-Agent Ops / MCP
-    -> Agent Ops API
-    -> permission / target scope / approval / audit
-    -> TXBoard domain service
-    -> TX-Node typed operation
 ```
 
 Stabilization work must preserve these invariants:
 
-- do not create a second source of truth for Plugin, Theme, Agent Ops or Core domains;
+- do not create a second source of truth for Plugin, Theme or Core domains;
 - keep Plugin Package v1, Theme Package v1 and Admin Bridge v1 compatibility;
 - keep Registry reads side-effect free;
 - keep lifecycle mutations behind specialized adapters;
-- keep Agent Ops API usable without MCP and preserve permission/scope/approval/audit;
+- keep retired Agent tokens invalid and preserve historical audit records;
 - keep health details bounded, runtime-derived and non-secret;
 - do not add direct Module/MCP access to MySQL, Redis, TX-Node, SSH, Docker, shell or arbitrary filesystem;
 - do not add a Module database table unless runtime state cannot be reliably derived;
@@ -348,13 +330,13 @@ cd api && php artisan route:list --json > ../route-list.json
 cd .. && node scripts/export-route-catalog.mjs --routes route-list.json --json artifacts/routes.json --markdown artifacts/routes.md --check
 ```
 
-- 访问控制按匿名、用户、管理员、Node/Machine、Agent、支付/Telegram 回调分别校验；不得仅以 URL 前缀判断授权。跨仓变更同时更新消费方和 `contracts/`。
+- 访问控制按匿名、用户、管理员、Node/Machine、支付/Telegram 回调分别校验，并验证退役 Agent 凭据拒绝；不得仅以 URL 前缀判断授权。跨仓变更同时更新消费方和 `contracts/`。
 
-## 20. 新增 Module / Agent 能力的验收规则
+## 20. 新增 Module 能力的验收规则
 
 - **Module**：先明确稳定 ID、type、version、capabilities、依赖、配置归属、运行时状态、升级/回滚方式和管理权限；capability 只描述产品能力，不代表管理员权限或 Agent ability。Health 检查必须只读、有界、可预测，enabled 不等于 healthy。
 - **Theme / Plugin**：保持现有包格式与 Admin Bridge 协商规则；对依赖冲突、系统/当前主题保护、禁用后 stale route、坏包、失败升级、Octane worker 缓存做负向测试。若引入持久化表，先证明不能从既有数据安全派生状态。
-- **Agent**：分类 READ、INSIGHT、OPERATE、DANGEROUS；敏感操作默认进入服务端审批，Agent 不能直接标记 approved/running/succeeded。每个 READ 端点按 ability + target scope 过滤，每个操作还须经过输入 allow-list 和目标范围校验。
+- **Agent/MCP**：已退役；需要重建时先建立独立版本契约，不恢复旧接口或旧凭据。
 - **Node operation**：先定义 `operation/input/output/timeout/error_code/idempotency/verification` 契约，再实现固定类型操作；同一 request_id 不得重复执行非幂等动作，`ops.result` 只说明执行报告，独立观测通过后才能称为恢复成功，未知状态返回 inconclusive。
 - **安全输入与审计**：禁止任意 URL、内网元数据探测、文件路径、命令行或进程名注入；诊断只允许固定来源和有界参数。审计包含 actor/client/protocol/tool/target/risk/request_id/status/error code，敏感 token、password、authorization、private key 和输入内容须脱敏。验证 403 scope/ability、404 目标丢失、422 策略/参数拒绝、重放和撤销的负向用例。
 

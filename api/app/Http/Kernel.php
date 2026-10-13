@@ -42,8 +42,6 @@ class Kernel extends HttpKernel
         'txapi.request-id' => \App\Http\Middleware\TxapiRequestId::class,
         'admin' => \App\Http\Middleware\Admin::class,
         'admin.path' => \App\Http\Middleware\AdminPath::class,
-        'agent' => \App\Http\Middleware\AgentAuth::class,
-        'agent.log' => \App\Http\Middleware\AgentRequestLog::class,
         'client' => \App\Http\Middleware\Client::class,
         'staff' => \App\Http\Middleware\Staff::class,
         'log' => \App\Http\Middleware\RequestLog::class,

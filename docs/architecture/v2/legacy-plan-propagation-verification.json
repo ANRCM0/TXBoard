@@ -106,6 +106,12 @@
       "passed": 14,
       "assertions": 149,
       "log_sha256": "183b6f7ef1830517c8b72307352054a3ba9709746f3109949746d2fc8ef90aeb"
+    },
+    "remote_mysql_8_4": {
+      "commit": "cd3647171250bd4876b6676f25e8a42ac3919ee2",
+      "run": 38342592660,
+      "result": "success",
+      "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38342592660"
     }
   }
 }

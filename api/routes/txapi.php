@@ -27,9 +27,7 @@ use App\Http\Controllers\Txapi\Admin\NetworkNodeSecretController;
 use App\Http\Controllers\Txapi\Admin\NetworkMachineAdminController;
 use App\Http\Controllers\Txapi\Admin\ThemeAdminController;
 use App\Http\Controllers\Txapi\Admin\PluginAdminController;
-use App\Http\Controllers\Txapi\Admin\AgentAdminController;
 use App\Http\Controllers\Txapi\Admin\AnalyticsAdminController;
-use App\Http\Controllers\Txapi\Admin\AgentSupportAdminController;
 use App\Http\Controllers\Txapi\Admin\PaymentManagementController;
 use App\Http\Controllers\Txapi\AccountController;
 use App\Http\Controllers\Txapi\ServerController;
@@ -46,9 +44,6 @@ use App\Http\Controllers\Txapi\StripeConfigController;
 use App\Http\Controllers\Txapi\InvitePageViewController;
 use App\Http\Controllers\Txapi\WithdrawalController;
 use App\Http\Controllers\Txapi\PaymentWebhookController;
-use App\Http\Controllers\Txapi\Agent\AgentOpsController;
-use App\Http\Controllers\Txapi\Agent\AgentSupportController;
-use App\Http\Controllers\Txapi\Agent\AgentPairingController;
 use App\Http\Controllers\Txapi\TelegramWebhookController;
 use App\Http\Controllers\Txapi\AuthController;
 use App\Http\Controllers\Txapi\ContentController;
@@ -110,8 +105,6 @@ Route::prefix('admin/{admin_path}')
         Route::put('themes/{name}/config', [ThemeAdminController::class, 'saveConfig']);
         Route::delete('themes/{name}', [ThemeAdminController::class, 'delete']);
 
-        // Agent management is admin-only. The separate Agent bearer API is
-        // a different execution boundary and is not proxied by this namespace.
         // Dashboard, ranking and accounting reads share the audited native
         // admin boundary and enforce server-side reporting bounds.
         // Native Module Registry: inventory and explicit lifecycle actions.
@@ -131,21 +124,6 @@ Route::prefix('admin/{admin_path}')
         Route::get('analytics/nodes/rank/{period}', [AnalyticsAdminController::class, 'serverRank'])
             ->where('period', 'today|yesterday');
 
-        Route::get('agents/abilities', [AgentAdminController::class, 'abilities']);
-        Route::get('agents/tokens', [AgentAdminController::class, 'tokens']);
-        Route::post('agents/tokens', [AgentAdminController::class, 'createToken']);
-        Route::delete('agents/tokens/{id}', [AgentAdminController::class, 'revokeToken'])->whereNumber('id');
-        Route::get('agents/fleet/health', [AgentAdminController::class, 'fleetHealth']);
-        Route::get('agents/inspections', [AgentAdminController::class, 'inspections']);
-        Route::post('agents/inspections', [AgentAdminController::class, 'runInspection']);
-        Route::get('agents/nodes/{nodeId}/timeline', [AgentAdminController::class, 'nodeTimeline'])
-            ->whereNumber('nodeId');
-        Route::get('agents/actions', [AgentAdminController::class, 'actions']);
-        Route::post('agents/actions/approve', [AgentAdminController::class, 'approveAction']);
-        Route::post('agents/actions/reject', [AgentAdminController::class, 'rejectAction']);
-        Route::get('agents/support/reply-requests', [AgentSupportAdminController::class, 'replies']);
-        Route::post('agents/support/reply-requests/approve', [AgentSupportAdminController::class, 'approve']);
-        Route::post('agents/support/reply-requests/reject', [AgentSupportAdminController::class, 'reject']);
 
         Route::get('plugins/types', [PluginAdminController::class, 'types']);
         Route::get('plugins', [PluginAdminController::class, 'index']);
@@ -348,33 +326,6 @@ Route::middleware(['txapi.user', 'throttle:120,1'])->group(function () {
     Route::get('orders', [AccountController::class, 'orders']);
     Route::get('orders/{tradeNo}/detail', [AccountController::class, 'orderDetail']);
     Route::get('orders/{tradeNo}', [AccountController::class, 'order']);
-});
-
-// TXAPI-only Agent runtime operations. Laravel remains the authorization authority.
-Route::post('agent/v1/pairings/redeem', [AgentPairingController::class, 'redeem'])->middleware('throttle:10,1');
-Route::prefix('agent/v1')->middleware(['agent', 'agent.log', 'throttle:120,1'])->group(function () {
-            Route::get('/support/overview', [AgentSupportController::class, 'overview']);
-            Route::get('/support/tickets', [AgentSupportController::class, 'tickets']);
-            Route::get('/support/tickets/{ticketId}', [AgentSupportController::class, 'ticket']);
-            Route::post('/support/tickets/{ticketId}/reply-requests', [AgentSupportController::class, 'requestReply']);
-            Route::get('/support/reply-requests/{requestId}', [AgentSupportController::class, 'replyStatus']);
-            Route::get('/whoami', [AgentOpsController::class, 'whoami']);
-            Route::get('/system/status', [AgentOpsController::class, 'systemStatus']);
-            Route::get('/machines', [AgentOpsController::class, 'machines']);
-            Route::get('/nodes', [AgentOpsController::class, 'nodes']);
-            Route::get('/nodes/{nodeId}/metrics', [AgentOpsController::class, 'nodeMetrics']);
-            Route::get('/nodes/{nodeId}/diagnose', [AgentOpsController::class, 'diagnoseNode']);
-            Route::get('/fleet/health', [AgentOpsController::class, 'fleetHealth']);
-            Route::get('/inspections', [AgentOpsController::class, 'inspectionHistory']);
-            Route::get('/nodes/{nodeId}/remediation', [AgentOpsController::class, 'remediationPlan']);
-            Route::get('/nodes/{nodeId}/timeline', [AgentOpsController::class, 'incidentTimeline']);
-            Route::get('/traffic/summary', [AgentOpsController::class, 'trafficSummary']);
-            Route::get('/queue/status', [AgentOpsController::class, 'queueStatus']);
-            Route::get('/audit', [AgentOpsController::class, 'auditLogs']);
-            Route::post('/nodes/{nodeId}/actions', [AgentOpsController::class, 'createNodeAction']);
-            Route::get('/actions/{requestId}', [AgentOpsController::class, 'actionStatus']);
-            Route::get('/actions/{requestId}/verify', [AgentOpsController::class, 'verifyAction']);
-
 });
 
 // Telegram registration uses this native callback; the digest is validated by the controller.

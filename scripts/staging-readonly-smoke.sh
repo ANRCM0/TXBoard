@@ -62,4 +62,4 @@ if [[ "$status" -lt 400 ]]; then
   exit 1
 fi
 echo "PASS retired V2 administrator route (HTTP $status)"
-echo "Read-only staging HTTP smoke passed; authentication, payments and Node/Agent still require manual E2E."
+echo "Read-only staging HTTP smoke passed; authentication, payments and Node still require manual E2E."

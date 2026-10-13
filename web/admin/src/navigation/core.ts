@@ -1,6 +1,6 @@
 import {
   Bell,
-  Bot,
+
   BookOpen,
   Boxes,
   CreditCard,
@@ -43,14 +43,6 @@ export const coreNavigationGroups = [
       ['/system/modules', '模块中心', Boxes],
       ['/config/plugin', '插件管理', Plug],
       ['/config/theme', '主题管理', Package],
-    ],
-  },
-  {
-    key: 'operations',
-    title: '智能运维',
-    icon: Bot,
-    items: [
-      ['/system/agent-ops', 'Agent 运维', Bot],
     ],
   },
   {

@@ -14,8 +14,6 @@ const required = [
   ['POST', 'txapi/node/v1/report'],
   ['GET|HEAD', 'txapi/node/v1/machine/nodes'],
   ['POST', 'txapi/node/v1/machine/status'],
-  ['GET|HEAD', 'txapi/agent/v1/whoami', ['api', 'agent']],
-  ['POST', 'txapi/agent/v1/pairings/redeem'],
   ['POST', 'txapi/integrations/telegram/webhook'],
   ['GET|HEAD', 'txapi/payment/webhook/{method}/{uuid}'],
   ['POST', 'txapi/payment/webhook/{method}/{uuid}'],
@@ -25,7 +23,6 @@ test('can export deterministic Laravel route registry and critical control-plane
   const out = inventory(required);
   assertCurrentBoundaries(out);
   assert.equal(out.filter(x => x.path === '/txapi/health').length, 1);
-  assert.equal(out.find(x => x.path.endsWith('/whoami')).principal, 'agent');
   assert.equal(out.find(x => x.path === '/txapi/node/v1/report').principal, 'node');
   assert.match(markdown(out), /TXBoard HTTP 路由快照/);
   assert.ok(markdown(out).includes('external-adapter-current.md'));
@@ -41,11 +38,19 @@ test('rejects native Admin missing AdminPath or Admin guard', () => {
     ? {...r,middleware:['api','admin.path']} : r));
   assert.throws(() => assertCurrentBoundaries(routes), /unguarded_native_admin/);
 });
-test('classifies native Agent and Telegram endpoints', () => {
+test('classifies native Node and Telegram endpoints', () => {
   assert.equal(classify('txapi/integrations/telegram/webhook')[0], 'Native Telegram webhook');
   assert.equal(classify('txapi/node/v1/handshake')[0], 'TXAPI Node HTTP');
   assert.equal(classify('txapi/node/v2/usage/submit')[1], 'node');
   assert.equal(classify('txapi/node/v2/usage/batch/get')[1], 'node');
+});
+test('rejects registered retired Agent endpoints and guide', () => {
+  for (const uri of ['txapi/agent/v1/whoami', 'txapi/agent/v1/pairings/redeem',
+    'txapi/admin/{admin_path}/agents', 'txapi/admin/{admin_path}/agents/actions',
+    '.well-known/txboard-agent-connect', '.well-known/txboard-agent-connect.md']) {
+    assert.equal(classify(uri)[1], 'forbidden');
+    assert.throws(() => assertCurrentBoundaries(inventory([...required, {method:'GET',uri}])), /legacy_routes/);
+  }
 });
 test('requires node guard for the isolated usage receipt routes', () => {
   const routes = inventory([...required, {method:'POST',uri:'txapi/node/v2/usage/submit',middleware:['api']}]);
@@ -68,6 +73,8 @@ test('split Caddy exposes only the native TX-Node WebSocket Upgrade path', () =>
   const caddy = readFileSync(new URL('../../api/.docker/caddy/Caddyfile.split', import.meta.url), 'utf8');
   assert.match(caddy, /@nativeNodeWs path \/txapi\/node\/v1\/ws/);
   assert.doesNotMatch(caddy, /@ws path \/ws(?:\s|$)/);
+  assert.match(caddy, /@retiredMcp path \/mcp \/mcp\/\*/);
+  assert.match(caddy, /respond @retiredMcp 404/);
 });
 
 test('route classifier never labels removed V1/V2 routes as current', () => {

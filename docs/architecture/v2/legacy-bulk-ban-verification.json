@@ -21,7 +21,17 @@
   },
   "global_writer_coverage": false,
   "migration_gate_open": false,
-  "remote_ci": "pending",
+  "remote_ci": {
+    "commit": "0ba06e0420cd76ca6386e0272e579db5e9960e09",
+    "api": 38343061637,
+    "mysql_8_4": 38343061660,
+    "core_image": 38343061570,
+    "session_consumer": 38343061694,
+    "provider_offline_proof": 38343061599,
+    "documentation": 38343061608,
+    "result": "success",
+    "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38343061660"
+  },
   "sqlite": {
     "mode": "sqlite",
     "exit_code": 0,

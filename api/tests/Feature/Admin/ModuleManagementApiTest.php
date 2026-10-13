@@ -50,10 +50,7 @@ class ModuleManagementApiTest extends TestCase
                 ->assertJsonPath('data.module_id', 'theme.customtheme')
                 ->assertJsonPath('data.operations', ['enable', 'uninstall']);
 
-            $this->getJson("/txapi/admin/{$this->securePath}/modules/agent_ops/operations")
-                ->assertOk()
-                ->assertJsonPath('data.module_id', 'agent_ops')
-                ->assertJsonPath('data.operations', []);
+            $this->getJson("/txapi/admin/{$this->securePath}/modules/agent_ops/operations")->assertNotFound();
 
             $this->getJson("/txapi/admin/{$this->securePath}/modules/epay/operations")
                 ->assertOk()
@@ -104,14 +101,14 @@ class ModuleManagementApiTest extends TestCase
                         ->assertJsonPath('error.code', 'MODULE_OPERATION_CONFLICT');
     }
 
-    public function test_module_without_lifecycle_adapter_returns_conflict(): void
+    public function test_retired_agent_module_cannot_be_enabled(): void
     {
         $response = $this->postJson(
             "/txapi/admin/{$this->securePath}/modules/agent_ops/operations/enable"
         );
 
-        $response->assertStatus(409)
-            ->assertJsonPath('error.code', 'MODULE_OPERATION_CONFLICT');
+        $response->assertNotFound()
+            ->assertJsonPath('error.code', 'MODULE_NOT_FOUND');
     }
 
     public function test_unknown_module_and_invalid_operation_have_stable_http_failures(): void

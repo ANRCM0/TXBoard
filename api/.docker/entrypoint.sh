@@ -26,13 +26,6 @@ fi
 export OCTANE_HOST OCTANE_PORT WS_HOST WS_PORT
 export OCTANE_INTERNAL_PORT="${OCTANE_PORT}"
 
-# The embedded MCP Gateway stays loopback-only and continues to consume the
-# Agent Ops HTTP API. It never receives direct Redis/MySQL/TX-Node access.
-: "${MCP_HOST:=127.0.0.1}"
-: "${MCP_PORT:=3000}"
-: "${TXBOARD_BASE_URL:=http://127.0.0.1:${OCTANE_PORT}}"
-export MCP_HOST MCP_PORT TXBOARD_BASE_URL
-
 # ---------------------------------------------------------------------------
 # Auto-tune worker counts based on the host (CPU + memory).
 #
@@ -220,7 +213,7 @@ else
     echo "[entrypoint] Skipping txboard:update (database has no administrator yet or is unavailable)."
 fi
 
-echo "[entrypoint] Starting services (caddy=${ENABLE_CADDY} web=${ENABLE_WEB} horizon=${ENABLE_HORIZON} ws=${ENABLE_WS_SERVER} mcp=${ENABLE_MCP})..."
+echo "[entrypoint] Starting services (caddy=${ENABLE_CADDY} web=${ENABLE_WEB} horizon=${ENABLE_HORIZON} ws=${ENABLE_WS_SERVER})..."
 # Drop stale Octane/WorkerMan state files so the new master does not signal
 # PIDs left over from a previous container run (causes Swoole kill EPERM).
 rm -f /www/storage/logs/octane-server-state.json \

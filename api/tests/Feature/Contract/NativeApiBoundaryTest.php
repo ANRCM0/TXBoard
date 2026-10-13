@@ -20,7 +20,6 @@ class NativeApiBoundaryTest extends TestCase
         $this->assertRoute('POST', 'txapi/auth/admin/login');
         $this->assertRoute('GET', 'txapi/public/site-config');
         $this->assertRoute('GET', 'txapi/admin/{admin_path}/settings', ['admin.path', 'admin']);
-        $this->assertRoute('GET', 'txapi/agent/v1/whoami', ['agent']);
     }
 
     private function assertRoute(string $method, string $uri, array $guards = []): void

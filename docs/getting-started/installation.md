@@ -33,6 +33,6 @@ sudo bash install.sh
 - **不要**直接使用开发版镜像运营真实支付与用户数据；`latest` 也不是开发分支最新提交的同义词。见 [镜像发布通道](../operations/image-release-channels.md)。
 - **不要**用全新安装器覆盖已有 TXBoard/XBoard 生产目录、数据卷或数据库。
 - **不要**认为原生 `tx_*` 结构会自动转换历史表；需在离线快照及独立目标库验证，详见 [数据库边界](../operations/native-schema.md)。
-- 开启第三方 Node、Agent、插件、外部支付商之前按具体合同和运行时分别验证鉴权与行为。
+- 开启第三方 Node、插件、外部支付商之前按具体合同和运行时分别验证鉴权与行为。
 
 完整安装参数、升级/回滚与旧版导入以 [TXBoard-Deploy 文档](https://github.com/ANRCM0/TXBoard-Deploy#readme) 为准。

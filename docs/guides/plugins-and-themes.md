@@ -28,4 +28,4 @@ TXBoard 的扩展体系基于 **Plugin、Theme 与 Module Platform**。Runtime �
 - [Module Platform 架构](../architecture/module-platform-v1.md)
 - [安全基线](../security/README.md)
 
-可选的 [TXBoard-Gateway](https://github.com/ANRCM0/TXBoard-Gateway) 是独立用户主题 API BFF，并非 Plugin/Theme Registry，也不同于内置 MCP Gateway。
+可选的 [TXBoard-Gateway](https://github.com/ANRCM0/TXBoard-Gateway) 是独立用户主题 API BFF，并非 Plugin/Theme Registry；Agent/MCP 已退役。

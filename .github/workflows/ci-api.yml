@@ -68,7 +68,6 @@ jobs:
       QUEUE_CONNECTION: sync
       SESSION_DRIVER: array
       SETTING_CACHE_STORE: array
-      AGENT_OPS_PAIRING_CACHE_STORE: array
     defaults:
       run:
         working-directory: api

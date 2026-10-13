@@ -44,21 +44,9 @@ class ModuleRegistryApiTest extends TestCase
 
         $modules = collect($response->json('data.modules'))->keyBy('id');
 
-        $this->assertTrue($modules->has('agent_ops'));
+        $this->assertFalse($modules->has('agent_ops'));
         $this->assertTrue($modules->has('theme.txboard'));
         $this->assertTrue($modules->has('epay'));
-
-        $this->assertSame('agent', $modules['agent_ops']['type']);
-        $this->assertSame('system', $modules['agent_ops']['source']);
-        $this->assertSame('TXBoard AI-native operations and approval control plane', $modules['agent_ops']['description']);
-        $this->assertSame('TXBoard', $modules['agent_ops']['author']);
-        $this->assertSame(['agent.api', 'agent.admin'], $modules['agent_ops']['capabilities']);
-        $this->assertContains($modules['agent_ops']['health'], ['healthy', 'degraded']);
-        $this->assertSame(
-            ['schedule', 'horizon', 'websocket_server'],
-            array_keys($modules['agent_ops']['health_details']['checks'])
-        );
-        $this->assertGreaterThan(0, $modules['agent_ops']['health_details']['observed_at']);
 
         $this->assertSame('theme', $modules['theme.txboard']['type']);
         $this->assertTrue($modules['theme.txboard']['active']);
@@ -219,12 +207,12 @@ class ModuleRegistryApiTest extends TestCase
     }
     public function test_system_module_identity_cannot_be_shadowed_by_user_plugin(): void
     {
-        $path = base_path('plugins/AgentOps');
+        $path = base_path('plugins/ShadowTheme');
         File::ensureDirectoryExists($path);
 
         file_put_contents($path . '/config.json', json_encode([
-            'name' => 'Shadow Agent Ops',
-            'code' => 'agent_ops',
+            'name' => 'Shadow Theme',
+            'code' => 'theme.txboard',
             'version' => '9.9.9',
             'description' => 'Should not replace the system module identity',
             'author' => 'test',
@@ -235,11 +223,11 @@ class ModuleRegistryApiTest extends TestCase
             $response->assertOk();
 
             $modules = collect($response->json('data.modules'))->keyBy('id');
-            $this->assertSame('agent', $modules['agent_ops']['type']);
-            $this->assertSame('system', $modules['agent_ops']['source']);
+            $this->assertSame('theme', $modules['theme.txboard']['type']);
+            $this->assertSame('system', $modules['theme.txboard']['source']);
 
             $collision = collect($response->json('data.errors'))
-                ->first(fn (array $error) => ($error['module_id'] ?? null) === 'agent_ops'
+                ->first(fn (array $error) => ($error['module_id'] ?? null) === 'theme.txboard'
                     && ($error['adapter'] ?? null) === 'plugin');
 
             $this->assertNotNull($collision);

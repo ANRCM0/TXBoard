@@ -6,7 +6,7 @@
 
 [快速部署](#快速部署) · [文档中心](docs/README.md) · [架构说明](docs/architecture/README.md) · [接口契约](contracts/README.md) · [参与贡献](CONTRIBUTING.md)
 
-> **项目状态**：仓库持续开发中。CI、镜像构建和单元测试不等于真实环境生产验收；特别是数据库迁移、支付、节点接入、Agent 操作和第三方扩展，请按 [上线验收清单](docs/operations/release-staging-acceptance.md) 独立验证。不要直接将开发标签用于生产。
+> **项目状态**：仓库持续开发中。CI、镜像构建和单元测试不等于真实环境生产验收；特别是数据库迁移、支付、节点接入和第三方扩展，请按 [上线验收清单](docs/operations/release-staging-acceptance.md) 独立验证。不要直接将开发标签用于生产。
 
 ## 核心能力
 
@@ -15,7 +15,6 @@
 - **节点管理**：Node / Machine / Group / Route 与 TX-Node 控制平面协作。
 - **管理后台与用户端**：独立的 Admin（React）和 User（Vue）应用。
 - **扩展体系**：Plugin、Theme、Module Registry / Lifecycle，依据版本化契约运行。
-- **Agent Ops / MCP**：受权限、目标范围、审批和审计约束的可选自动化接口。
 
 功能是否在指定版本可用，应以真实运行时、[已注册的接口](contracts/README.md) 及对应发布说明为准；设计文档不等于已交付功能。
 
@@ -25,8 +24,8 @@
                          TXBoard（Control Plane）
            ┌────────────────────────────────────────────┐
            │ Admin / User UI · Laravel TXAPI · MySQL    │
-           │ Module / Plugin / Theme · Agent Ops        │
-           │ 可选内置 MCP 适配器 · Redis / WebSocket      │
+           │ Module / Plugin / Theme        │
+           │ Redis / WebSocket      │
            └───────────────────┬────────────────────────┘
                                │ 原生 / 兼容协议
                                ▼
@@ -34,12 +33,12 @@
                     Agent / Data Plane
 
   TXBoard-Deploy  → 统一安装、升级和运维 Core / Gateway / Node
-  gateway/       → 可选的用户主题 API BFF，与内置 MCP 分开运行
+  gateway/       → 可选的用户主题 API BFF
 ```
 
 | 位置 | 职责 |
 | --- | --- |
-| 本仓根目录 `api/`、`web/`、`mcp/` | Core、Admin/User UI、内置 MCP 与权威接口契约 |
+| 本仓根目录 `api/`、`web/` | Core、Admin/User UI 与权威接口契约 |
 | [gateway/](gateway/README.md) | 可选用户 API Gateway / Theme SDK；独立依赖和 Docker 上下文 |
 | [node/](node/README.md) | Go 节点运行时、代理内核与流量上报；独立 Go module |
 | [TXBoard-Deploy](https://github.com/ANRCM0/TXBoard-Deploy) | 三组件唯一安装器、升级、备份及服务器运维 |
@@ -79,7 +78,6 @@ sudo bash install.sh
 | 管理端 | React、TypeScript、Vite |
 | 用户端 | Vue 3、TypeScript、Vite |
 | 数据及进程 | MySQL、Redis、Horizon、WebSocket |
-| 可选 Agent 接口 | 内置 MCP 协议适配器，委托 Agent Ops API |
 
 开发者从 [本地开发说明](docs/development/local-development.md)、[CONTRIBUTING.md](CONTRIBUTING.md) 与 [AGENTS.md](AGENTS.md) 开始。公开 HTTP/Node/Module 交互以 [contracts/](contracts/README.md) 及当前服务端实现为准。
 

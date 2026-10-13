@@ -1,6 +1,6 @@
 # TXBoard Module Platform
 
-Module Platform 为 Plugin、Theme、Agent Ops 等扩展提供**统一只读目录、能力和健康信息，以及经过授权的生命周期委托**。它不复制用户、订阅、订单、支付、Node/Machine 等 Core 领域。
+Module Platform 为 Plugin、Theme 等扩展提供**统一只读目录、能力和健康信息，以及经过授权的生命周期委托**。它不复制用户、订阅、订单、支付、Node/Machine 等 Core 领域。
 
 ## 组件关系
 
@@ -8,7 +8,6 @@ Module Platform 为 Plugin、Theme、Agent Ops 等扩展提供**统一只读目�
 Module Registry (read-only)
   -> Plugin adapter -> PluginManager
   -> Theme adapter  -> ThemeService
-  -> Agent Ops adapter -> Agent Ops services
 
 Module Management (authorized mutations)
   -> ModuleLifecycle
@@ -40,7 +39,7 @@ Module Management (authorized mutations)
 - Theme 包：[Theme Package v1](../../contracts/theme-package/README.md)。ThemeService 决定唯一活跃主题 `frontend_theme`；管理员禁止卸载当前活跃或系统主题。
 - 统一模块包：[Module Package v1](../../contracts/module-package/README.md)；生命周期：[Module Lifecycle v1](../../contracts/module-lifecycle/README.md)。
 - PHP 插件在 Laravel/Octane 进程中执行，不是安全沙箱；只安装可信来源，解压前验证路径、文件类型、总量、元数据。插件故障不应绕开 enabled guard。
-- Agent/MCP 仍执行自身 abilities、target scopes、审批与审计，不通过 Module Registry 自动授予权限。
+- Agent/MCP 已退役；Module Registry 不注册内置 Agent Ops。
 
 ## 变更规则
 
@@ -52,4 +51,4 @@ Module Management (authorized mutations)
 - 模块 `capability`、Admin permission、Agent ability/target scope 是不同授权层次，不能相互等同；Bridge 消息和 Admin 导航路径要进行版本校验及安全限制。
 - Module Health 为只读、有限、可预测的检查，可包含 manifest、依赖、兼容性、Admin 资源和配置状态；禁止任意 HTTP 请求、脚本或不受限扫描。模块可以 enabled 但 degraded；可选模块错误应独立暴露，不能拖垮 Core。
 - 插件/主题升级通过各自 runtime 处理：依赖关系、已有包兼容、活跃系统主题保护、Octane 缓存失效与 Worker 重启行为都需要回归测试；数据库变更不能创建第二套真相。
-- 变更清单必须验证包 Schema / DTO、Registry API、Lifecycle 权限、Admin UI、插件/主题兼容性、Agent 作用域以及镜像运行时；具体测试与约束由 [AGENTS.md](../../AGENTS.md) 维护。
+- 变更清单必须验证包 Schema / DTO、Registry API、Lifecycle 权限、Admin UI、插件/主题兼容性以及镜像运行时；具体测试与约束由 [AGENTS.md](../../AGENTS.md) 维护。

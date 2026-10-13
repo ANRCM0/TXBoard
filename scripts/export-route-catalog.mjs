@@ -14,11 +14,13 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 export const classify = (uri) => {
   const p = '/' + String(uri).replace(/^\/+/, '');
+  if (/^\/txapi\/agent(?:\/|$)/.test(p) ||
+      /^\/txapi\/admin\/[^/]+\/agents(?:\/|$)/.test(p) ||
+      /^\/\.well-known\/txboard-agent-connect(?:\.md)?$/.test(p)) return ['Forbidden retired route', 'forbidden'];
   if (p.startsWith('/txapi/admin/')) return ['TXAPI admin', 'admin'];
   if (p.startsWith('/txapi/internal/')) return ['TXAPI Internal service', 'internal-service'];
   if (p.startsWith('/txapi/node/v1/') || p.startsWith('/txapi/node/v2/usage/')) return ['TXAPI Node HTTP', 'node'];
   if (p.startsWith('/txapi/payment/webhook/')) return ['Native payment callback', 'provider-signature'];
-  if (p.startsWith('/txapi/agent/v1/')) return ['TXAPI Agent runtime', 'agent'];
   if (p === '/txapi/integrations/telegram/webhook') return ['Native Telegram webhook', 'telegram-digest'];
   if (p.startsWith('/txapi/auth/')) return ['TXAPI authentication', 'mixed'];
   if (p.startsWith('/txapi/public/') || p === '/txapi/plans' || p === '/txapi/health') return ['TXAPI public', 'public'];
@@ -74,14 +76,12 @@ export function assertCurrentBoundaries(items) {
     'POST /txapi/node/v1/report',
     'GET /txapi/node/v1/machine/nodes',
     'POST /txapi/node/v1/machine/status',
-    'GET /txapi/agent/v1/whoami',
-    'POST /txapi/agent/v1/pairings/redeem',
     'POST /txapi/integrations/telegram/webhook',
     'GET /txapi/payment/webhook/{method}/{uuid}',
     'POST /txapi/payment/webhook/{method}/{uuid}',
   ];
   const missing = required.filter(x => !paths.has(x));
-  const obsolete = items.filter(x => /^\/api\/v[12](?:\/|$)/.test(x.path));
+  const obsolete = items.filter(x => x.principal === 'forbidden');
   // Laravel route:list --json expands middleware aliases to class names.
   // Compare both spellings instead of falsely treating all native routes as unguarded.
   const unguarded = items.filter(x => {

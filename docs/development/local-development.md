@@ -8,7 +8,6 @@
 - `web/admin/`：React + TypeScript 管理应用。
 - `web/user/`：Vue + TypeScript 用户应用。
 - `web/shared/`：共享前端模块。
-- `mcp/`：可选 Agent Ops MCP 协议适配器。
 - `gateway/`：独立 npm workspaces、用户 BFF 和 Theme SDK。
 - `node/`：独立 Go module、节点运行时与内核管理。
 - `contracts/`：跨仓 HTTP、Node、Plugin、Theme 和 Module 的版本化契约。
@@ -39,14 +38,7 @@ npm ci --no-audit --no-fund
 npm run verify:web
 ```
 
-`verify:web` 包含 TypeScript 检查、单元测试、构建与前端性能检查。MCP 的构建和类型检查独立于该 npm workspace：
-
-```bash
-cd mcp
-npm install --no-audit --no-fund
-npm run typecheck
-npm run build
-```
+`verify:web` 包含 TypeScript 检查、现有 Admin/User 单元测试、构建与前端性能检查。后续独立前端只推进管理端；新用户前端延期。Agent/MCP 已清理。
 
 ## 修改对外接口时
 

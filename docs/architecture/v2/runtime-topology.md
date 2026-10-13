@@ -16,7 +16,7 @@
 | User/Admin Frontend | 静态应用、标准 SDK、独立构建版本 | HTTPS/CDN，浏览器不持有 Core 服务私钥 |
 | TX-Node | 数据面、租约授权、稳定批次、持久 pending | 独立主机/部署，通过 Node Control 主动 HTTP/WSS 连接 |
 
-部署一个完整可访问平台必须运行上述服务角色；纯 Core 的无插件启动验收可以不启用 Gateway/前端，但不能宣称具备完整 Web 入口。Credential Provider、支付 Provider、通知、AgentOps/MCP 是可选插件 Runtime；无 Credential Provider 时 Core 仍可管理账户/订单/套餐/节点，发行新的代理访问凭据返回能力不可用。
+部署一个完整可访问平台必须运行上述服务角色；纯 Core 的无插件启动验收可以不启用 Gateway/前端，但不能宣称具备完整 Web 入口。Credential Provider、支付 Provider、通知 是可选插件 Runtime；无 Credential Provider 时 Core 仍可管理账户/订单/套餐/节点，发行新的代理访问凭据返回能力不可用。
 
 ```mermaid
 flowchart LR

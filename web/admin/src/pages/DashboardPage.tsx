@@ -1,9 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
-import { AlertTriangle, BarChart3, Bot, CheckCircle2, MessageSquare, Server, Users, Wallet, Wifi } from 'lucide-react'
+import { BarChart3, CheckCircle2, MessageSquare, Server, Users, Wallet, Wifi } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getDashboardStats, getOrderChart, getTrafficRank } from '../api/statistics'
-import { getAgentActions, getAgentFleetHealth } from '../api/agent'
 import { QueryFeedback } from '../components/ui/QueryFeedback'
 import { EmptyState } from '../components/ui/EmptyState'
 import { DashboardPeriodPicker } from '../components/dashboard/DashboardPeriodPicker'
@@ -48,13 +47,7 @@ export function DashboardPage() {
     },
     refetchInterval: 300_000,
   })
-  const fleet=useQuery({ queryKey:['agentFleetHealth'], queryFn:getAgentFleetHealth, refetchInterval:30_000, retry:1 })
-  const agentActions=useQuery({ queryKey:['agentActions','pending'], queryFn:()=>getAgentActions('pending'), refetchInterval:15_000, retry:1 })
   const s = stats.data || {}
-  const pendingAgentActions = (agentActions.data || []).filter(item => item.status === 'pending')
-  const criticalNodes = attentionCount(fleet.data?.summary.critical_nodes)
-  const degradedNodes = attentionCount(fleet.data?.summary.degraded_nodes)
-  const fleetAlerts = criticalNodes === null || degradedNodes === null ? null : criticalNodes + degradedNodes
   const points = normalizeIncomePoints(chart.data?.list || [])
   const hasTrend = hasIncomeTrend(points)
   const tasks = [
@@ -66,14 +59,6 @@ export function DashboardPage() {
       count: stats.isError ? null : attentionCount(s.commissionPendingTotal),
       sub: stats.isError ? '统计暂不可用' : '进入订单管理',
       icon: <BarChart3 size={18} aria-hidden="true"/> },
-    { key: 'nodes', label: '异常节点', to: '/system/agent-ops',
-      count: fleet.isError ? null : fleetAlerts,
-      sub: fleet.isError ? 'Fleet Health 暂不可用' : '查看节点健康状态',
-      icon: <AlertTriangle size={18} aria-hidden="true"/> },
-    { key: 'approvals', label: '待审批运维', to: '/system/agent-ops',
-      count: agentActions.isError || !agentActions.data ? null : pendingAgentActions.length,
-      sub: agentActions.isError ? '审批队列暂不可用' : '进入 Agent 运维',
-      icon: <Bot size={18} aria-hidden="true"/> },
   ]
   const metrics = [
     {key:'today', label:'今日收入',value:money(s.todayIncome),sub:growth(s.dayIncomeGrowth),icon:<Wallet size={17} aria-hidden="true"/>},

@@ -4,6 +4,8 @@
 
 TXBoard 是业务与数据权威。Gateway、Deploy、TX-Node 与可选插件按本目录的版本化契约协作，不能分别定义订单、授权、流量与升级的业务真相。`v2` 是平台演进目录；其中每项协议有自己的版本，不代表全部协议同时升到第二版。
 
+2026-10-13 [当前范围](../../docs/architecture/v2/admin-only-scope.md)：独立前端只推进管理端，新用户前端延期，Agent/MCP 已退役。当前 User UI/Theme 保留兼容；Admin 迁移仍要求独立服务身份、Core 当前授权与通道验收。
+
 | 契约 | 负责边界 | 实施批次 |
 | --- | --- | --- |
 | [Core Internal API v1](core-internal-api/README.md) | 服务身份、最终用户授权、Operation、DTO、幂等 | B5 |

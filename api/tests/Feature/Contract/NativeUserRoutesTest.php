@@ -28,10 +28,6 @@ class NativeUserRoutesTest extends TestCase
         $this->assertNotNull($subscribe);
         $this->assertStringContainsString(
             \App\Http\Controllers\SubscriptionController::class, $subscribe->getActionName());
-        $agent = $routes->first(static fn ($route) => $route->uri() === 'txapi/agent/v1/whoami');
-        $this->assertNotNull($agent);
-        $this->assertStringContainsString(
-            \App\Http\Controllers\Txapi\Agent\AgentOpsController::class, $agent->getActionName());
     }
 
     public function test_all_required_native_replacements_are_registered(): void
@@ -40,7 +36,7 @@ class NativeUserRoutesTest extends TestCase
         foreach (['txapi/auth/login', 'txapi/auth/register', 'txapi/public/site-config',
             'txapi/me', 'txapi/plans', 'txapi/knowledge/categories',
             'txapi/orders', 'txapi/billing/wallet', 'txapi/payment/webhook/{method}/{uuid}',
-            'txapi/agent/v1/whoami', 'txapi/integrations/telegram/webhook',
+            'txapi/integrations/telegram/webhook',
             'txapi/node/v1/handshake'] as $path) {
             $this->assertContains($path, $paths, 'Required native route missing: ' . $path);
         }

@@ -16,12 +16,6 @@ vi.mock('../components/dashboard/QueueDashboardSections', () => ({
   QueueDashboardSections: () => <div data-testid="queue-monitoring">队列状态 · 作业详情</div>,
 }))
 
-vi.mock('../api/agent', () => ({
-  getAgentActions: vi.fn().mockResolvedValue([]),
-  getAgentFleetHealth: vi.fn().mockResolvedValue({
-    summary: { critical_nodes: 0, degraded_nodes: 0 },
-  }),
-}))
 
 let host: HTMLDivElement
 let root: Root
@@ -138,11 +132,9 @@ it('applies custom dates only to the income trend', async () => {
   expect(host.querySelector('.dashboard-summary-grid')).toBeNull()
 })
 
-it('collapses four verified zero tasks into one healthy summary', async () => {
+it('collapses verified zero tasks into one healthy summary', async () => {
   await act(async () => {
     client.setQueryData(['dashboardStats'], { ticketPendingTotal: 0, commissionPendingTotal: 0 })
-    client.setQueryData(['agentFleetHealth'], { summary: { critical_nodes: 0, degraded_nodes: 0 } })
-    client.setQueryData(['agentActions', 'pending'], [])
   })
   await flush()
   expect(host.querySelector('.dashboard-ops-clear')?.textContent).toContain('当前没有待处理事项')
@@ -152,8 +144,6 @@ it('collapses four verified zero tasks into one healthy summary', async () => {
 it('prioritizes nonzero tasks and preserves uncertainty for absent data', async () => {
   await act(async () => {
     client.setQueryData(['dashboardStats'], { ticketPendingTotal: 3, commissionPendingTotal: 0 })
-    client.setQueryData(['agentFleetHealth'], { summary: { critical_nodes: 0, degraded_nodes: 0 } })
-    client.setQueryData(['agentActions', 'pending'], [])
   })
   await flush()
   expect(host.querySelectorAll('.dashboard-action-stats .dash-link')).toHaveLength(1)

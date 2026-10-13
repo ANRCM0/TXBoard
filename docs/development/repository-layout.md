@@ -6,7 +6,7 @@
 
 | 组件 | 源码与依赖 | Docker 上下文 | 镜像 |
 | --- | --- | --- | --- |
-| TXBoard Core | 根目录 `api/`、`web/`、`mcp/`；保留现有 Composer/npm locks | 根目录；排除 `gateway/`、`node/` | `ghcr.io/anrcm0/txboard-core` |
+| TXBoard Core | 根目录 `api/`、`web/`；保留现有 Composer/npm locks | 根目录；排除 `gateway/`、`node/` | `ghcr.io/anrcm0/txboard-core` |
 | Gateway | `gateway/`，独立 npm workspaces 和 lock | `gateway/` | `ghcr.io/anrcm0/txboard-gateway` |
 | Node | `node/`，独立 `go.mod`、`go.sum` | `node/` | `ghcr.io/anrcm0/txboard-node` |
 
@@ -25,7 +25,7 @@ cd ../node && go test ./...
 
 ## CI 与发布
 
-所有活动工作流都在根目录 `.github/workflows/`。API、MySQL、Web、MCP 保留现有专项；Core 镜像保留全量回归、恢复演练和容器健康/PDO/Octane/MCP 门禁。Gateway 和 Node 在各自工作目录验证后发布，镜像上下文不能互换。
+所有活动工作流都在根目录 `.github/workflows/`。API、MySQL、Web 保留现有专项；Core 镜像保留全量回归、恢复演练和容器健康/PDO/Octane 门禁。Gateway 和 Node 在各自工作目录验证后发布，镜像上下文不能互换。
 
 | Git ref | 各组件镜像标签 |
 | --- | --- |

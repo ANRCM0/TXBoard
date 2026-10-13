@@ -63,7 +63,7 @@ Examples:
 
 - Plugin modules expose operations according to installation/enabled state: install before installation; enable when installed and disabled; disable when enabled; upgrade/uninstall when installed.
 - Theme modules expose `enable`, plus `uninstall` only for inactive user themes.
-- Agent Ops currently exposes no generic Module lifecycle operations.
+- The retired Agent Ops module is not registered; absent modules return404.
 
 Unknown Module IDs return HTTP 404.
 

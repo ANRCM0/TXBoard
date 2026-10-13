@@ -30,7 +30,6 @@ import { getUsers, getUserDetail, getUserSubscriptionLink, resetUserSecret, dest
 import { copyNode, generateSecret, getProtocolDefinitions, getNodes, saveNode, updateNode, batchUpdateNodes, saveNodeOrder, deleteNode } from './server'
 import { resolvePluginAppUrl, resolvePluginCrudApiPath, fetchPluginCrudList, savePluginCrudRecord } from './plugin'
 import { getThemes, getThemeConfig, saveThemeConfig, deleteTheme, uploadTheme } from './theme'
-import { getAgentTokens, createAgentToken, revokeAgentToken, getAgentAbilities, getAgentActions, approveAgentAction, rejectAgentAction, getAgentFleetHealth, getAgentInspections, runAgentInspection, getAgentSupportReplies, approveAgentSupportReply, rejectAgentSupportReply } from './agent'
 import { getPlugins, installPlugin, uninstallPlugin, enablePlugin, disablePlugin, upgradePlugin, deletePlugin, getPluginConfig, updatePluginConfig, uploadPlugin } from './plugin'
 import { getModuleRegistry } from './module'
 import { login } from './auth'
@@ -1196,89 +1195,6 @@ describe('native machine management contract', () => {
 })
 
 
-describe('native Agent administrator contract', () => {
-  it('uses only rotating TXAPI paths and paginates the admin-owned token inventory', async () => {
-    setAdminSecurePath('agent-native')
-    responder = config => {
-      const page = Number((config.params as { page?: number })?.page)
-      return { data: {
-        data: page === 1 ? [{ id: 1, client_name: 'owner', abilities: ['nodes.read'] }]
-          : [{ id: 2, client_name: 'scoped', abilities: ['nodes.read'] }],
-        meta: { page, per_page: 100, total: 2, last_page: 2 },
-        request_id: 'agent-list',
-      } }
-    }
-    await expect(getAgentTokens()).resolves.toHaveLength(2)
-    expect(seen.map(config => [config.method, config.url, (config.params as { page?: number })?.page]))
-      .toEqual([
-        ['get', '/admin/agent-native/agents/tokens', 1],
-        ['get', '/admin/agent-native/agents/tokens', 2],
-      ])
-    expect(seen.every(config => config.baseURL === '/txapi')).toBe(true)
-  })
-
-  it('creates one-time token, scopes abilities and revokes via DELETE not V2 POST', async () => {
-    setAdminSecurePath('agent-native')
-    responder = () => ({ data: {
-      data: { id: 7, client_name: 'agent', plain_text_token: 'once-only', abilities: ['nodes.read'], pairing: null },
-      request_id: 'agent-created',
-    } })
-    await expect(createAgentToken({
-      client_name: 'agent', abilities: ['nodes.read'],
-      expires_in_days: 7, target_mode: 'restricted', target_node_ids: [8],
-    })).resolves.toHaveProperty('plain_text_token', 'once-only')
-    await revokeAgentToken(7)
-    expect(seen.map(config => [config.method, config.url])).toEqual([
-      ['post', '/admin/agent-native/agents/tokens'],
-      ['delete', '/admin/agent-native/agents/tokens/7'],
-    ])
-    expect(JSON.parse(String(seen[0].data)).target_node_ids).toEqual([8])
-    expect(seen.every(config => config.baseURL === '/txapi')).toBe(true)
-    expect(() => revokeAgentToken(0)).toThrow('Invalid Agent token ID')
-  })
-
-  it('routes actions, support approvals and fleet insight through native administrator scope', async () => {
-    setAdminSecurePath('agent-native')
-    responder = config => ({ data: {
-      data: config.url?.endsWith('/abilities') ? { default_read: [], all: [] }
-        : config.url?.endsWith('/fleet/health') ? { status: 'healthy', summary: {}, nodes: [], generated_at: 1 }
-          : config.url?.endsWith('/inspections') && config.method === 'post'
-            ? { inspection_id: 'inspection1', status: 'healthy' }
-            : config.url?.includes('/support/reply-requests') && config.method === 'post'
-              ? { request_id: 'reply1', ticket_id: 4, status: 'rejected', message: 'reviewed', created_at: 1 }
-              : config.url?.includes('/actions/') ? { request_id: 'action1', status: 'rejected' }
-                : [],
-      request_id: 'agent-actions',
-    } })
-    await getAgentAbilities()
-    await getAgentActions('pending')
-    await approveAgentAction('action1')
-    await rejectAgentAction('action1', 'not approved')
-    await getAgentFleetHealth()
-    await getAgentInspections(5)
-    await runAgentInspection()
-    await getAgentSupportReplies()
-    await approveAgentSupportReply('reply1')
-    await rejectAgentSupportReply('reply1')
-    expect(seen.map(config => config.url)).toEqual([
-      '/admin/agent-native/agents/abilities',
-      '/admin/agent-native/agents/actions',
-      '/admin/agent-native/agents/actions/approve',
-      '/admin/agent-native/agents/actions/reject',
-      '/admin/agent-native/agents/fleet/health',
-      '/admin/agent-native/agents/inspections',
-      '/admin/agent-native/agents/inspections',
-      '/admin/agent-native/agents/support/reply-requests',
-      '/admin/agent-native/agents/support/reply-requests/approve',
-      '/admin/agent-native/agents/support/reply-requests/reject',
-    ])
-    expect(seen.every(config => config.baseURL === '/txapi')).toBe(true)
-    expect(seen[1].params).toEqual({ status: 'pending', limit: 50 })
-    expect(JSON.parse(String(seen[3].data))).toEqual({ request_id: 'action1', reason: 'not approved' })
-  })
-})
-
-
 describe('native analytics administrator API contracts', () => {
   it('reads dashboard cards, order history and node/user traffic rank through TXAPI', async () => {
     setAdminSecurePath('analytics-dynamic')
@@ -1331,7 +1247,7 @@ describe('strict native administrator closeout contracts', () => {
   it('reads module registry under rotating TXAPI administrator prefix', async () => {
     setAdminSecurePath('cutover')
     responder = () => ({ data: {
-      data: { modules: [{ id: 'agent_ops', type: 'agent' }], errors: [], summary: { total: 1 } },
+      data: { modules: [{ id: 'epay', type: 'plugin' }], errors: [], summary: { total: 1 } },
       request_id: 'modules-native',
     } })
     await expect(getModuleRegistry()).resolves.toHaveProperty('summary.total', 1)

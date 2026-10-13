@@ -68,9 +68,9 @@ afterEach(() => {
 it('module center shows a compact five-item summary with diagnostics available via details', async () => {
   vi.mocked(getModuleRegistry).mockResolvedValue({
     modules: [{
-      id:'agent.ops', name:'Agent Ops', version:'1.0.0', type:'agent', source:'system',
+      id:'epay', name:'EPay', version:'1.0.0', type:'plugin', source:'bundled',
       description:'Runtime operations', author:'TXBoard', installed:true, enabled:true, active:true,
-      health:'healthy', capabilities:['agent.api','agent.admin'],
+      health:'healthy', capabilities:['payment.provider'],
       compatibility:{txboard:'*'},
       health_details:{checks:{schedule:true,websocket_server:true},observed_at:1720000000},
     }],
@@ -82,7 +82,7 @@ it('module center shows a compact five-item summary with diagnostics available v
   expect(host.querySelector('.dashboard-stats')).toBeNull()
   expect(host.querySelector('.admin-v2-module-table')).not.toBeNull()
   const details = host.querySelector('details.admin-v2-detail')
-  expect(details?.textContent).toContain('agent.api')
+  expect(details?.textContent).toContain('payment.provider')
   expect(details?.textContent).toContain('Scheduler：正常')
   expect(details?.textContent).toContain('所有版本')
   expect(host.querySelectorAll('.admin-v2-module-table .badge')).toHaveLength(0)

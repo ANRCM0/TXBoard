@@ -9,7 +9,6 @@ on:
     paths:
       - "api/**"
       - "web/**"
-      - "mcp/**"
       - "Dockerfile"
       - ".dockerignore"
       - "package.json"
@@ -26,7 +25,6 @@ on:
     paths:
       - "api/**"
       - "web/**"
-      - "mcp/**"
       - "Dockerfile"
       - ".dockerignore"
       - "package.json"
@@ -73,7 +71,6 @@ jobs:
       QUEUE_CONNECTION: sync
       SESSION_DRIVER: array
       SETTING_CACHE_STORE: array
-      AGENT_OPS_PAIRING_CACHE_STORE: array
     steps:
       - uses: actions/checkout@v4
       - uses: shivammathur/setup-php@v2
@@ -101,18 +98,6 @@ jobs:
         run: npm ci --no-audit --no-fund
       - name: Verify web typecheck, tests, build and performance budget
         run: npm run verify:web
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-      - name: Install MCP dependencies
-        working-directory: mcp
-        run: npm install --no-audit --no-fund
-      - name: Verify MCP typecheck and build
-        working-directory: mcp
-        run: |
-          npm run typecheck
-          npm run build
-
   release-recovery:
     # Protect stable/preview publishing with a MySQL upgrade+restore check.
     # This is synthetic CI evidence, not an operator's real backup/rollback.
@@ -146,7 +131,6 @@ jobs:
       QUEUE_CONNECTION: sync
       SESSION_DRIVER: array
       SETTING_CACHE_STORE: array
-      AGENT_OPS_PAIRING_CACHE_STORE: array
     steps:
       - uses: actions/checkout@v4
       - uses: shivammathur/setup-php@v2
@@ -209,12 +193,12 @@ jobs:
         run: |
           docker run --rm --entrypoint sh txboard-ci:pr -c \
             'test -f /opt/txboard/healthcheck.php'
-      - name: Verify embedded MCP runtime
+      - name: Verify retired MCP runtime is absent
         run: |
           docker run --rm --entrypoint sh txboard-ci:pr -c '
-            test -f /opt/txboard-mcp/dist/index.js
-            test -d /opt/txboard-mcp/node_modules
-            node -e "const major=Number(process.versions.node.split(\".\")[0]); if (major < 20) process.exit(1)"
+            test ! -e /opt/txboard-mcp
+            ! command -v node
+            ! grep -Fq "[program:mcp]" /etc/supervisor/conf.d/supervisord.conf
           '
       - name: Verify PHP database runtime dependencies
         run: |
@@ -297,45 +281,11 @@ jobs:
             $status = fgets($socket);
             fclose($socket);
             if (!is_string($status) || !str_contains($status, " 404 ")) {
-                fwrite(STDERR, "Expected disabled /mcp to return 404, got: ".($status ?: "<none>")."\n");
+                fwrite(STDERR, "Expected retired /mcp to return 404, got: ".($status ?: "<none>")."\n");
                 exit(1);
             }
           '
           docker rm -f txboard-smoke
-      - name: Smoke-test embedded MCP gateway
-        shell: bash
-        run: |
-          docker run -d --name txboard-mcp-smoke \
-            -e DB_CONNECTION=sqlite \
-            -e DB_DATABASE=/tmp/txboard-mcp-smoke.sqlite \
-            -e ENABLE_HORIZON=false \
-            -e ENABLE_WS_SERVER=false \
-            -e ENABLE_MCP=true \
-            txboard-ci:pr
-          ok=0
-          for i in {1..30}; do
-            if docker exec txboard-mcp-smoke php /opt/txboard/healthcheck.php; then
-              ok=1
-              break
-            fi
-            sleep 1
-          done
-          if [ "$ok" -ne 1 ]; then
-            docker logs txboard-mcp-smoke
-            exit 1
-          fi
-          docker exec txboard-mcp-smoke php -r '
-            $socket = fsockopen("127.0.0.1", 80, $errno, $errstr, 2);
-            fwrite($socket, "GET /mcp HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n");
-            $status = fgets($socket);
-            fclose($socket);
-            if (!is_string($status) || !str_contains($status, " 401 ")) {
-                fwrite(STDERR, "Expected enabled /mcp without bearer token to return 401, got: ".($status ?: "<none>")."\n");
-                exit(1);
-            }
-          '
-          docker rm -f txboard-mcp-smoke
-
   publish:
     # PRs validate but never push. Only a main commit or a vetted semver Git
     # tag may publish; neither can overwrite the other channel.
