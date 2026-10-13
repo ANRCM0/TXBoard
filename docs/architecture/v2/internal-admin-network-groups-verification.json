@@ -1,0 +1,131 @@
+{
+  "phase": "B5.23",
+  "status": "verified-isolated-current",
+  "base_commit": "dc47812db0e96f4a79c5c4bfbe2de89d9b622e0e",
+  "source_sha256": {
+    ".github/workflows/ci-internal-admin-network-groups.yml": "3be0cce01662583025e27724f7f01affcb1415546c8d582a8be649716f8bd0c5",
+    "api/app/Domains/InternalReadOnly/InternalAdminNetworkGroupsDispatcher.php": "95489f16427354df5c012cd0f3a8843c2f774e96878b8f178abeb86cc06f639a",
+    "api/app/Domains/InternalReadOnly/OperationRegistry.php": "0d0efeaafbcf1a1e94778d83fb207ad1e17dd23300043400f3b6fffa4d6b768b",
+    "api/app/Domains/Network/NetworkGroupReader.php": "9b16e7b3ebb302eb86fc8ccf5d4f299ad8e68ac52993aeaf2141863e7dd9e99a",
+    "api/app/Http/Controllers/Txapi/Admin/NetworkGroupAdminController.php": "b30a017b107fda21676e2439f7626f48a870e40ae53307cc0426c74348067b5a",
+    "api/app/Http/Controllers/Txapi/InternalReadOnlyController.php": "30e5cdb738409dda9d53d85e621c3335e363606742956dde92ba4698457e3c38",
+    "api/config/internal_api_slice.php": "6b9ff8221c6ddc69b18fd2f82e1473269782e1715e5426b56fac70b50b6f4bd1",
+    "api/internal-readonly-fixtures/tls-boundary.mjs": "9e35e7d606bcb89c7f7f021c97034b7e843f88f0aca4b5dbf0b2ea01143ac8fd",
+    "api/tests/Feature/InternalReadOnly/InternalAdminNetworkGroupsTest.php": "9cce060c59bbfa471f60b7a05206299a374f4f60fcb5b56ac92743c943a0f876",
+    "contracts/v2/core-internal-api/local-admin-network-groups-v1.md": "ebc07290cb0c2e7111a6fed589de3d4b11f47312ab0e2aec3149ab28c338b16b",
+    "gateway/apps/gateway/src/adapters/internal-admin-v1.ts": "e66b6c762a1360f6454d7cd73fd75e2a76dc015236380d63a39876db569f0d5c",
+    "gateway/apps/gateway/src/services/internal-admin-client.ts": "ca72af4a865e682361e560e79b0e40201b1b3cc0b44e0aea834bc824ece64843",
+    "gateway/apps/gateway/test/internal-admin-client.test.ts": "411462ad7c0cdcbd426356d559921c2de8f2ae44d9b2aa73db129df1e7dba281",
+    "scripts/tests/internal-admin-network-groups/README.md": "ccd28cdf37bbb8eb63f5fe8d80d2f2d90a82b75ccc21ddaf3ef3704ac7ec6357",
+    "scripts/tests/internal-admin-network-groups/cleanup.py": "dd6acf7707ab66661a1e38d2671a87990e413d8397062a25ff66a480ba7c4316",
+    "scripts/tests/internal-admin-network-groups/fixture.php": "00b649422be0d4c8a0ceabacf33e0f600fe1f1c3f1ab555fed87f414328e9002",
+    "scripts/tests/internal-admin-network-groups/integration.mjs": "5abe566a225e84fc4e26f3c025669d65991b1104808dc2c5c2531861853d71ba",
+    "scripts/tests/internal-admin-network-groups/run-local-baseline.py": "b4398990afcca6c783d7976ede4009e42cbbd0194a7c1b377958ec9bbdbd1220",
+    "scripts/tests/internal-admin-network-groups/run.sh": "d301d5bc43c27376495f2aa65631e8b81c4d40266870bf3be0f87cfb83ee43f1"
+  },
+  "dependencies": {
+    "composer_lock_sha256": "f47b212c2fc530a7820e370eab7c6d624d13962e7d26e4f2ddf57a11848257c0",
+    "installed_json_sha256": "8e668e456c9772ae428a038ab003fba5752ab2591980fc8396d9122851145b80",
+    "gateway_lock_sha256": "a60bdbf6de2788282dfa87077316f55df950c7192e6a33960ead97dc953dc940"
+  },
+  "tests": {
+    "targeted": {
+      "mode": "targeted",
+      "exit_code": 0,
+      "log_sha256": "e11e4e82caefcabf3faac1f9d69ae13af8a5433e1d47bc020a1b0e966a9a5eda",
+      "snapshot": "/opt/txboard-baseline/internal-admin-network-groups-r2"
+    },
+    "gateway_check": {
+      "mode": "check",
+      "exit_code": 0,
+      "log_sha256": "3d5bf7c4aee25a04d46db8191bfdf9de668ee043476fea7b622b45ede7059f57",
+      "snapshot": "/opt/txboard-baseline/internal-admin-network-groups-r1"
+    },
+    "build": {
+      "mode": "build",
+      "exit_code": 0,
+      "log_sha256": "fb7bc2852af672205d99f8f2470eca2afc722cfb9eeff1f243d0c69545b0cc1a",
+      "snapshot": "/opt/txboard-baseline/internal-admin-network-groups-r2"
+    },
+    "tls": {
+      "mode": "tls",
+      "exit_code": 0,
+      "log_sha256": "b96172042d2947a1959898909ccc03b037be1feb5a8ed76cf51c667c1594bd84",
+      "snapshot": "/opt/txboard-baseline/internal-admin-network-groups-r2"
+    },
+    "full": {
+      "mode": "full",
+      "exit_code": 0,
+      "log_sha256": "cc931d95e365e4c4fa1477e8b9ae48addddfaa48ef28ada91c72b52f86f059fa",
+      "snapshot": "/opt/txboard-baseline/internal-admin-network-groups-r2"
+    }
+  },
+  "coverage": {
+    "new_core_tests": 13,
+    "targeted_passed": 17,
+    "targeted_assertions": 186,
+    "new_gateway_tests": 8,
+    "gateway_passed": 923,
+    "sdk_passed": 123,
+    "typecheck": "passed",
+    "build": "passed",
+    "real_tls_core_mysql_passed": 14,
+    "full_passed": 1279,
+    "full_skipped": 110,
+    "full_assertions": 13280
+  },
+  "tls_receipt": {
+    "checks": [
+      "dedicated Admin certificate and config; User and production identity refused",
+      "real Gateway client Admin native login private credential delivery",
+      "issued credential reaches current Core identity",
+      "Gateway preserves greater-than-53-bit dashboard bytes without Number conversion",
+      "ordinary User and staff cannot obtain management credentials",
+      "guest auth caller role and extra parameters reject before Core nonce admission",
+      "native memberships current relations and group pages remain exact and read only",
+      "closed group input rejected before transport and current role required",
+      "current ban prevents identity and cached dashboard then current demotion rejects",
+      "unknown current management path is absent",
+      "wrong current group management path is rejected",
+      "audit failure rejects the group read without mutating business state",
+      "real audit failure hides committed login; no client retry or compensation",
+      "current native credential revocation invalidates subsequent reads"
+    ],
+    "passed": 14,
+    "token_count": 0,
+    "audit_count": 15,
+    "database_version": "11.4.12-MariaDB",
+    "synthetic_only": true,
+    "no_public_admin_route": true,
+    "no_native_fallback": true,
+    "no_business_state_in_gateway": true
+  },
+  "regression": {
+    "native_network_group_routes": "passed",
+    "native_schema": "passed",
+    "docs_links": "passed",
+    "actionlint": "passed",
+    "integrated_api_full": "passed-on-frozen-slice"
+  },
+  "scope": {
+    "isolated_only": true,
+    "default_off": true,
+    "business_tables_read_only": true,
+    "public_admin_gateway_route": false,
+    "production_activation": false,
+    "global_node_scan_bounded": false,
+    "coherent_transaction_snapshot": false
+  },
+  "notes": [
+    "Shared reader preserves native complete list, integer IDs, no-store/private header, descending groups and chunked node membership aggregation.",
+    "New isolated operation paginates groups but node membership aggregation scans all current nodes in chunks of 250; deadline/response size bounds do not impose a SQL scan limit.",
+    "Counts include hidden or disabled nodes, deduplicate integer/string membership IDs after native integer casting, and count current User/Plan references including banned users/hidden plans.",
+    "Group pagination and relation counts are separate live queries and may change during concurrent writes; they confer no subscription/authorization authority.",
+    "Snapshot overlays only explicitly assigned paths onto dc47812 baseline and excludes other agents uncommitted app/node files; root owns integrated full API acceptance.",
+    "r1 targeted failure was an incorrect fixture header assertion (Symfony adds private to no-store); r1 source/log retained. Runtime API/Gateway hashes match r2; r2 targeted and real mTLS pass.",
+    "Oracle MySQL 8.4 CI workflow prepared but not executed remotely until parent commits and pushes."
+  ],
+  "remote_ci": {
+    "status": "pending-after-push"
+  }
+}

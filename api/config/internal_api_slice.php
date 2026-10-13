@@ -15,6 +15,7 @@ return [
     'admin_order_list_enabled' => env('CORE_INTERNAL_ADMIN_ORDER_LIST_ENABLED', false),
     'admin_plan_list_enabled' => env('CORE_INTERNAL_ADMIN_PLAN_LIST_ENABLED', false),
     'admin_sessions_enabled' => env('CORE_INTERNAL_ADMIN_SESSIONS_ENABLED', false),
+    'admin_network_groups_enabled' => env('CORE_INTERNAL_ADMIN_NETWORK_GROUPS_ENABLED', false),
     'admin_users_enabled' => env('CORE_INTERNAL_ADMIN_USERS_ENABLED', false),
     'order_write_enabled' => env('CORE_INTERNAL_ORDER_WRITE_ENABLED', false),
     // Operator-controlled absolute file, not supplied by HTTP callers.

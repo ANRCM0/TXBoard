@@ -1,6 +1,6 @@
 # Core First v2 实施台账
 
-> 状态：B0、B1.1–B1.26 影子证据、Terms、身份旁观、固定 writer 捕获、套餐批量同步、批量封禁、管理员创建/删除、注册初始记录与余额端点投影、B2.1–B2.4 单机升级、B3.1/B3.2 隔离用量、B3.3/B3.4 本地观察与持久事件桶、B4.1–B4.7 合成 Provider、插件停用接入、租约候选、离线签名快照与Go公钥诊断、B5.1–B5.22 本地 mTLS 读取、隔离建单、登录、内存邮件验证码、隔离注册、密码恢复、当前会话与管理读取、B6.1–B6.4 实验字节、离线加密、共享 owner 与独立响应随机值候选及 B7.1 Agent/MCP 退役已实现；两仓迁移与三镜像发布已完成，继续推进业务迁移切片。各整阶段仍按下表门禁验收。
+> 状态：B0、B1.1–B1.26 影子证据、Terms、身份旁观、固定 writer 捕获、套餐批量同步、批量封禁、管理员创建/删除、注册初始记录与余额端点投影、B2.1–B2.4 单机升级、B3.1/B3.2 隔离用量、B3.3/B3.4 本地观察与持久事件桶、B4.1–B4.7 合成 Provider、插件停用接入、租约候选、离线签名快照与Go公钥诊断、B5.1–B5.23 本地 mTLS 读取、隔离建单、登录、内存邮件验证码、隔离注册、密码恢复、当前会话与管理读取、B6.1–B6.4 实验字节、离线加密、共享 owner 与独立响应随机值候选及 B7.1 Agent/MCP 退役已实现；两仓迁移与三镜像发布已完成，继续推进业务迁移切片。各整阶段仍按下表门禁验收。
 
 2026-10-13，按仓库整合任务，将 Gateway/Node 的完整 Git 历史导入本仓 `gateway/`、`node/`，安装器集中到 TXBoard-Deploy。当前目录与三镜像 CI 见 [双仓布局](../../development/repository-layout.md)；旧基线和验证报告保持当时提交与路径。本次仓库整理独立于下列业务迁移门禁。
 
@@ -457,3 +457,9 @@ B1.25 的初次Oracle MySQL8.4 CI使用原夹具Redis22，默认16库容器拒�
 [当前契约](../../../contracts/v2/credential-provider/node-offline-window-proof-v1.md)在已有公钥签名诊断上增加仅进程内的UTC/单调时间窗口。只能从原签名statement构造，处理前后检查时间，保留纳秒余量；UTC回退、单调时间回退、期限越界、同kid信任的epoch/SPKI/有效期变化、移除和撤销均永久终止实例。Check与Close同锁，无定时器、worker或网络请求；只返回独立诊断副本，admission_granted始终false。
 
 固定 `dc47812` 加本批Node源码：Linux Go1.26.3 race **14主测试、56子测试通过**，其中窗口新增7主/26子，vet通过。纯Go的1项真实Core条件跳过由既有PHP初始绑定/签名夹具单独补跑，**1项通过、6断言**，覆盖原签名最后一纳秒、精确到期及之后恢复仍拒绝。源码/依赖和日志hash见[报告](../../../node/docs/provider-window-verification.json)。该API目前只有测试调用，未接入Service、计量绑定、凭据交付或v2准入；外部可信时间、恢复fence、完整业务证据与撤销收敛继续待验收。由开发代理实现，协调者核对冻结源码后分批提交；现有Node和Provider CI负责后续远端验收。
+
+### B5.23 隔离管理网络权限组读取
+
+[当前契约](../../../contracts/v2/core-internal-api/local-admin-network-groups-v1.md)增加默认关闭的admin.network-group.list v1，专用Admin服务、当前Sanctum/封禁/角色和管理路径由Core每次核对。提取原生查询为共享reader，原HTTP仍返回完整列表与整数ID；Internal按组分页并返回闭集字符串ID/计数/时间。节点成员仍沿原250条chunk扫描全表，混合整数/字符串去重、隐藏/停用节点与当前User/Plan计数保持；不声称全局扫描有界或查询快照一致。
+
+固定 `dc47812` 加本批源码：Core新专项和原网络组回归 **17项、186断言**，Gateway **923**、SDK **123**及类型/构建通过；实际Core/Gateway/MariaDB/mTLS **14项**通过，业务表hash不变、最终Token为0。协调者补跑固定切片全API **1279通过、110项引擎/工具链跳过、13280断言**。[报告](internal-admin-network-groups-verification.json)记录精确源码/依赖、失败header夹具及修正后日志；冻结快照未混入其他代理未完成代码。开发代理交付后经协调者审查分批提交，独立Oracle MySQL8.4 CI已加入；未开放公开Admin、生产PKI、正式SC-v2或前端开发。

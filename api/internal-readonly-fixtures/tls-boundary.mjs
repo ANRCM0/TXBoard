@@ -38,6 +38,7 @@ const operations = new Map([
   ['/txapi/internal/v1/operations/admin.dashboard.get', 'admin-gateway'],
   ['/txapi/internal/v1/operations/admin.order.list', 'admin-gateway'],
   ['/txapi/internal/v1/operations/admin.plan.list', 'admin-gateway'],
+  ['/txapi/internal/v1/operations/admin.network-group.list', 'admin-gateway'],
   ['/txapi/internal/v1/operations/admin.session.list', 'admin-gateway'],
   ['/txapi/internal/v1/operations/admin.session.revoke', 'admin-gateway'],
   ['/txapi/internal/v1/operations/admin.session.logout', 'admin-gateway'],

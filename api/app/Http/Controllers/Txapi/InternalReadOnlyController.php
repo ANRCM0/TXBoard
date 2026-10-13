@@ -25,6 +25,9 @@ final class InternalReadOnlyController
         if (in_array($operation['operation'], ['admin.session.list', 'admin.session.revoke', 'admin.session.logout'], true)) {
             return app(\App\Domains\InternalReadOnly\InternalSessionDispatcher::class)->executeAdmin($request, $operation);
         }
+        if ($operation['operation'] === 'admin.network-group.list') {
+            return app(\App\Domains\InternalReadOnly\InternalAdminNetworkGroupsDispatcher::class)->execute($request, $input);
+        }
         if ($operation['operation'] === 'admin.plan.list') {
             return app(\App\Domains\InternalReadOnly\InternalAdminPlanListDispatcher::class)->execute($request, $input);
         }

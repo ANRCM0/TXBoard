@@ -9,7 +9,7 @@ import { GatewayFailure } from './failures.js'
 
 const operations = { login: 'auth.admin.login', identity: 'admin.identity.get', dashboard: 'admin.dashboard.get', orders: 'admin.order.list',
   plans: 'admin.plan.list', sessions: 'admin.session.list', revokeSession: 'admin.session.revoke', logout: 'admin.session.logout',
-  users: 'admin.user.list', user: 'admin.user.get' } as const
+  networkGroups: 'admin.network-group.list', users: 'admin.user.list', user: 'admin.user.get' } as const
 type Options = { auth?: string; input: unknown; signal?: AbortSignal }
 
 /** Isolated server-side consumer only. No public route, role cache or Native fallback. */
@@ -23,7 +23,7 @@ export async function internalAdminRequest<K extends AdminOperation>(config: Int
     throw new GatewayFailure('VALIDATION_ERROR', login ? 400 : 401, 'Invalid Internal Admin credential')
   }
   const input = (login ? adminLoginInput : operation === 'orders' ? adminOrderListInput
-    : operation === 'plans' ? adminPlanListInput : operation === 'revokeSession' ? adminSessionRevokeInput
+    : (operation === 'plans' || operation === 'networkGroups') ? adminPlanListInput : operation === 'revokeSession' ? adminSessionRevokeInput
     : operation === 'users' ? adminUserListInput : operation === 'user' ? adminUserGetInput : adminReadInput).safeParse(options.input)
   if (!input.success) throw new GatewayFailure('VALIDATION_ERROR', 400, 'Invalid Internal Admin input')
   if (Date.now() < Date.parse(config.certificate.validFrom) || Date.now() >= Date.parse(config.certificate.validTo)) {
@@ -82,9 +82,9 @@ export async function internalAdminRequest<K extends AdminOperation>(config: Int
             }
             const parsed = adminResponses[operation].safeParse(value)
             if (!parsed.success) throw new GatewayFailure('UPSTREAM_ERROR', 502, 'Unexpected Internal Admin response')
-            if (operation === 'orders' || operation === 'plans') {
+            if (operation === 'orders' || operation === 'plans' || operation === 'networkGroups') {
               const expected = adminOrderListInput.parse(input.data)
-              const { items, pagination } = (parsed.data as AdminResponses['orders'] | AdminResponses['plans']).data
+              const { items, pagination } = (parsed.data as AdminResponses['orders'] | AdminResponses['plans'] | AdminResponses['networkGroups']).data
               if (pagination.page !== expected.page || pagination.per_page !== expected.per_page
                 || pagination.last_page !== Math.max(1, Math.ceil(pagination.total / pagination.per_page))
                 || items.length > expected.per_page) {

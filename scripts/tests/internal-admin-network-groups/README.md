@@ -1,0 +1,3 @@
+# Isolated Admin network groups integration
+
+Run `bash scripts/tests/internal-admin-network-groups/run.sh "$PWD/api"` after locked Composer/npm restoration and Gateway build. Requires the exclusively owned `txboard_admin_network_groups_test` database; the fixture refuses shared/production databases and nonempty User tables. Local wrapper grants a synthetic user only this database. Real TLS 1.3 mTLS, native login, current role/ban/path/revocation, membership deduplication, relation counts and page boundaries are tested with the real Gateway consumer. Private keys/actor/config material is removed; sanitized result remains. No public Admin route or production flag is activated.

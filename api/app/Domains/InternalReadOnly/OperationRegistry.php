@@ -30,6 +30,7 @@ final class OperationRegistry
         'admin.identity.get' => ['service' => 'admin-gateway', 'actor' => 'admin', 'versions' => ['1']],
         'admin.dashboard.get' => ['service' => 'admin-gateway', 'actor' => 'admin', 'versions' => ['1']],
         'admin.order.list' => ['service' => 'admin-gateway', 'actor' => 'admin', 'versions' => ['1']],
+        'admin.network-group.list' => ['service' => 'admin-gateway', 'actor' => 'admin', 'versions' => ['1']],
         'admin.plan.list' => ['service' => 'admin-gateway', 'actor' => 'admin', 'versions' => ['1']],
         'admin.session.list' => ['service' => 'admin-gateway', 'actor' => 'admin', 'versions' => ['1']],
         'admin.session.revoke' => ['service' => 'admin-gateway', 'actor' => 'admin', 'versions' => ['1']],
@@ -54,6 +55,10 @@ final class OperationRegistry
             throw new SliceFailure('OPERATION_DISABLED', 404);
         }
         if ($operation === 'admin.order.list' && (config('internal_api_slice.admin_order_list_enabled') !== true
+            || config('core_shadow.isolated_copy') !== true)) {
+            throw new SliceFailure('OPERATION_DISABLED', 404);
+        }
+        if ($operation === 'admin.network-group.list' && (config('internal_api_slice.admin_network_groups_enabled') !== true
             || config('core_shadow.isolated_copy') !== true)) {
             throw new SliceFailure('OPERATION_DISABLED', 404);
         }
@@ -212,7 +217,7 @@ final class OperationRegistry
             if (!is_string($input->trade_no) || !preg_match('/\A[A-Za-z0-9_-]{1,'.$max.'}\z/D', $input->trade_no)) {
                 throw new SliceFailure('INVALID_REQUEST', 400);
             }
-        } elseif (in_array($operation, ['admin.order.list', 'admin.plan.list'], true)) {
+        } elseif (in_array($operation, ['admin.order.list', 'admin.plan.list', 'admin.network-group.list'], true)) {
             $keys = ['admin_path', 'page', 'per_page'];
             if ($operation === 'admin.order.list' && property_exists($input, 'status')) $keys[] = 'status';
             StrictJson::exact($input, $keys);

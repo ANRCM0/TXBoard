@@ -75,6 +75,30 @@ describe('isolated Admin Internal consumer', () => {
     const assertion = expect(pending).rejects.toMatchObject({ status: 502 })
     respond(envelope({ ...userItem, invite_user: null }, 'internal-admin-users/1'));await assertion
   })
+  it('reads only native Admin network groups with closed counts and matched pages', async () => {
+    const item = { id: '2147483647', name: 'Native group', users_count: 3, plans_count: 1, server_count: 2, created_at: null, updated_at: 1791849600 }
+    const pending = internalAdminRequest(config, 'networkGroups', { auth, input: { ...input, page: 1, per_page: 1 } })
+    expect(mock.request.mock.calls[0]![0].path).toBe('/txapi/internal/v1/operations/admin.network-group.list')
+    const payload = envelope({ items: [item], pagination: { page: 1, per_page: 1, total: 2, last_page: 2 } }, 'internal-admin-network-groups/1')
+    respond(payload); await expect(pending).resolves.toEqual(payload)
+  })
+  it.each([{ page: '1' }, { page: 10000 }, { per_page: 101 }, { sort: 'asc' }, { status: 0 }, { actor_id: '1' }])
+    ('rejects network group query %j before transport', async patch => {
+      await expect(internalAdminRequest(config, 'networkGroups', { auth, input: { ...input, page: 1, per_page: 1, ...patch } }))
+        .rejects.toMatchObject({ status: 400 });expect(mock.request).not.toHaveBeenCalled()
+    })
+  it('rejects group page mismatch duplicate order counts ID dates and private fields', async () => {
+    const item = { id: '2', name: 'Group', users_count: 0, plans_count: 0, server_count: 1, created_at: null, updated_at: 1791849600 }
+    const pagination = { page: 1, per_page: 2, total: 2, last_page: 1 }
+    for (const data of [{ items: [item], pagination: { ...pagination, page: 2 } }, { items: [item], pagination: { ...pagination, last_page: 2 } },
+      { items: [item, item], pagination }, { items: [{ ...item, id: '1' }, item], pagination },
+      ...[{ id: '2147483648' }, { server_count: '1' }, { users_count: -1 }, { plans_count: 1.5 }, { token: 'private' }, { updated_at: '1791849600' }]
+        .map(patch => ({ items: [{ ...item, ...patch }], pagination }))]) {
+      const pending = internalAdminRequest(config, 'networkGroups', { auth, input: { ...input, page: 1, per_page: 2 } })
+      const assertion = expect(pending).rejects.toMatchObject({ status: 502 })
+      respond(envelope(data, 'internal-admin-network-groups/1'));await assertion
+    }
+  })
   it('reads only a closed ordered Admin session list with exact decimal IDs', async () => {
     const pending = internalAdminRequest(config, 'sessions', { auth, input })
     expect(mock.request.mock.calls[0]![0].path).toBe('/txapi/internal/v1/operations/admin.session.list')
@@ -297,7 +321,7 @@ describe('isolated Admin Internal consumer', () => {
     const expired = { ...config, certificate: { validFrom: '2000-01-01', validTo: '2001-01-01' } as X509Certificate }
     await expect(internalAdminRequest(expired, 'identity', { auth, input })).rejects.toMatchObject({ status: 502 })
     await expect(internalAdminRequest(config, 'login', { input: { email: 'admin@example.test', password: 'private-password',
-      turnstile_token: 'ç•Œ'.repeat(4096), recaptcha_v3_token: 'ç•Œ'.repeat(4096) } })).rejects.toMatchObject({ status: 400 })
+      turnstile_token: '½ç'.repeat(4096), recaptcha_v3_token: '½ç'.repeat(4096) } })).rejects.toMatchObject({ status: 400 })
     expect(mock.request).not.toHaveBeenCalled()
   })
 })

@@ -99,9 +99,14 @@ export const adminUserListSuccess = success.extend({ data: z.strictObject({ item
   pagination: z.strictObject({ page: z.number().int().min(1).max(9999), per_page: z.number().int().min(1).max(100),
     total: count, last_page: z.number().int().min(1).safe() }) }),
   meta: z.strictObject({ current_only: z.literal(true), slice: z.literal('internal-admin-users/1') }) })
+export const adminNetworkGroupListSuccess = success.extend({ data: z.strictObject({ items: z.array(z.strictObject({
+  id: nativeId, name: z.string(), users_count: count, plans_count: count, server_count: count, created_at: date.nullable(), updated_at: date.nullable(),
+})).max(100).refine(items => items.every((item, index) => index === 0 || BigInt(items[index-1]!.id) > BigInt(item.id))),
+  pagination: z.strictObject({ page: z.number().int().min(1).max(9999), per_page: z.number().int().min(1).max(100), total: count, last_page: z.number().int().min(1).safe() }) }),
+  meta: z.strictObject({ current_only: z.literal(true), slice: z.literal('internal-admin-network-groups/1') }) })
 export const adminResponses = { login: adminLoginSuccess, identity: adminIdentitySuccess, dashboard: adminDashboardSuccess,
   orders: adminOrderListSuccess, plans: adminPlanListSuccess, sessions: adminSessionListSuccess,
   revokeSession: adminSessionMutationSuccess, logout: adminSessionMutationSuccess,
-  users: adminUserListSuccess, user: adminUserGetSuccess }
+  networkGroups: adminNetworkGroupListSuccess, users: adminUserListSuccess, user: adminUserGetSuccess }
 export type AdminOperation = keyof typeof adminResponses
 export type AdminResponses = { [K in AdminOperation]: z.infer<(typeof adminResponses)[K]> }

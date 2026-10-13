@@ -15,29 +15,7 @@ final class NetworkGroupAdminController
 {
     public function index(Request $request): JsonResponse
     {
-        // Count node memberships with one bounded projection rather than one
-        // JSON query for every group (the old V2 controller had N+1 counts).
-        $counts = [];
-        Server::query()->select(['id', 'group_ids'])->orderBy('id')
-            ->chunkById(250, function ($nodes) use (&$counts): void {
-                foreach ($nodes as $node) {
-                    foreach (array_unique(array_map('intval', $node->group_ids ?? [])) as $id) {
-                        if ($id > 0) $counts[$id] = ($counts[$id] ?? 0) + 1;
-                    }
-                }
-            });
-
-        $groups = ServerGroup::query()->withCount(['users', 'plans'])
-            ->orderByDesc('id')->get(['id', 'name', 'created_at', 'updated_at']);
-        $data = $groups->map(static fn (ServerGroup $group): array => [
-            'id' => $group->id,
-            'name' => $group->name,
-            'users_count' => $group->users_count,
-            'plans_count' => $group->plans_count,
-            'server_count' => $counts[$group->id] ?? 0,
-            'created_at' => $group->created_at,
-            'updated_at' => $group->updated_at,
-        ])->all();
+        $data = app(\App\Domains\Network\NetworkGroupReader::class)->read()['items'];
 
         return TxapiResponse::success($request, $data)->header('Cache-Control', 'no-store');
     }
