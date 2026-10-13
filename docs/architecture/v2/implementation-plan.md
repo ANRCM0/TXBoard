@@ -544,7 +544,7 @@ B1.28 远端收尾修正：`7ac24c1` 的 Oracle MySQL8.4 专项18通过/1失败�
 
 提交后通过原NodeUserSyncJob交接；队列成功只代表handed_off，不代表Node已送达。入队后结果丢失保持processing/unknown和固定次数重试，不承诺exactly-once外部效果。真实业务事务commit/rollback/SIGKILL、真实连接KILL提交失败，以及原队列入队后SIGKILL恢复均验收；root proof滞留和PDO强持有两项真实缺陷先复现后修正，原失败日志保留。
 
-最终专项SQLite **79通过、32项引擎/进程条件跳过、1034断言**；专用MariaDB **20全部通过、218断言**，含五项独立进程用例。协调者固定 `b914536` 加二十六个冻结源码，完整API **1378通过、141项条件跳过、14532断言**。[报告](authority-native-writers-verification.json)记录r9源/依赖hash、独立快照、失败复现及最终同源回归。独立Oracle MySQL8.4 CI已加入，推送后核对。默认关闭保留原生SQL/Observer/计费兼容；注册/auth/bootstrap/CLI、可信插件直写及外部Node/Provider效果仍需覆盖，全局writer coverage/drain、target authority和migration gate继续false。
+最终专项SQLite **79通过、32项引擎/进程条件跳过、1034断言**；专用MariaDB **20全部通过、218断言**，含五项独立进程用例。协调者固定 `b914536` 加二十六个冻结源码，完整API **1378通过、141项条件跳过、14532断言**。[报告](authority-native-writers-verification.json)记录r9源/依赖hash、独立快照、失败复现及最终同源回归。独立Oracle MySQL8.4原生writer专项、API/MySQL、Core镜像、Service用量等30项触发CI已在 `84b00ce` 全部通过。默认关闭保留原生SQL/Observer/计费兼容；注册/auth/bootstrap/CLI、可信插件直写及外部Node/Provider效果仍需覆盖，全局writer coverage/drain、target authority和migration gate继续false。
 
 ### B3.8 真实 VLESS/VMESS 会话与单用量链路
 
@@ -555,3 +555,5 @@ B1.28 远端收尾修正：`7ac24c1` 的 Oracle MySQL8.4 专项18通过/1失败�
 代理固定 `b914536` 及协调者固定已推送 `84b00ce` Core加八个冻结源码/夹具分别完成VLESS/VMESS真实联调。完整Node race **473主测试、332子测试通过，3项真实Core条件跳过、0失败**；本批协议条件测试已另行两协议执行，受影响包vet、actionlint通过。[报告](../../../node/docs/live-protocol-service-verification.json)记录两批实际载荷、SQL/回执、定时心跳与源码hash。每次重建仅专用txboard_live_protocol_test，先核对确切已settled批次并保存0600 SQL备份；两协议公共制品分别保留，未导出私钥/SQL/可执行文件。Oracle MySQL8.4/Redis7.4独立matrix CI已加入，推送后核对。
 
 开放连接上的原生轮询变更、租约到期、UDP/mux拒绝、恢复代际与新Core epoch接续仍需后续实际验收；本批正向真实协议互通不代表完整B3、生产Provider交付/撤销、trusted time/restore、全局handoff/drain或权威切换已完成。
+
+B3.8 远端收尾：`519e763` 的 VLESS/VMESS Oracle MySQL8.4 matrix、Service和bounded互通均通过；完整Node发布门禁发现真实协议测试直接import原先indirect的sing-vmess，go mod tidy-diff要求分类为direct。仅移动既有固定版本声明，全部版本、go.sum、runtime和协议源码不变；固定 `519e763` 加该声明，go mod tidy-diff、go mod verify及完整Node race **473主/332子测试通过、3项条件跳过、0失败**。原失败日志保留，修正推送后复验Node发布门禁，不跳过依赖验证。

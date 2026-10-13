@@ -188,9 +188,7 @@
       "log_sha256": "e51592cfe807a0c834f9179a6c366ce19a63c245909cfdcb7366f5ded68d9541"
     }
   ],
-  "pending": [
-    "Remote Oracle MySQL8.4 native-writer CI after push"
-  ],
+  "pending": [],
   "integration_base": "b9145368165820a1586f7ac34e04ce3b41f8c5be",
   "coordinator_review": {
     "frozen_owned_paths": 26,
@@ -229,6 +227,53 @@
     }
   },
   "remote_ci": {
-    "status": "pending-after-push"
+    "status": "passed",
+    "head_sha": "84b00ce67d6c2617b902228847c22b57f3652030",
+    "verified_date_local": "2026-10-14",
+    "all_triggered_runs": 30,
+    "all_triggered_runs_success": true,
+    "evidence_sha256": "9335158133b364b33bbde417e52b1ac4b330bee25b358c4b45c2b4d01a62ff32",
+    "runs": [
+      {
+        "conclusion": "success",
+        "databaseId": 38456062459,
+        "headSha": "84b00ce67d6c2617b902228847c22b57f3652030",
+        "name": "authority-native-writers",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38456062459"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 38456062310,
+        "headSha": "84b00ce67d6c2617b902228847c22b57f3652030",
+        "name": "api-ci",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38456062310"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 38456062311,
+        "headSha": "84b00ce67d6c2617b902228847c22b57f3652030",
+        "name": "api-mysql-ci",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38456062311"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 38456062247,
+        "headSha": "84b00ce67d6c2617b902228847c22b57f3652030",
+        "name": "txboard-core-image",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38456062247"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 38456062232,
+        "headSha": "84b00ce67d6c2617b902228847c22b57f3652030",
+        "name": "node-service-core-usage",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38456062232"
+      }
+    ]
   }
 }
