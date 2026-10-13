@@ -1,6 +1,6 @@
 # Core First v2 实施台账
 
-> 状态：B0、B1.1–B1.27 影子证据、Terms、身份旁观、固定 writer 捕获、套餐批量同步、批量封禁、管理员创建/删除、注册初始记录与余额端点投影、B2.1–B2.5 单机升级、B3.1/B3.2 隔离用量、B3.3–B3.6 本地观察与持久事件桶、B4.1–B4.7 合成 Provider、插件停用接入、租约候选、离线签名快照与Go公钥诊断、B5.1–B5.24 本地 mTLS 读取、隔离建单、登录、内存邮件验证码、隔离注册、密码恢复、当前会话与管理读取、B6.1–B6.4 实验字节、离线加密、共享 owner 与独立响应随机值候选及 B7.1 Agent/MCP 退役已实现；两仓迁移与三镜像发布已完成，继续推进业务迁移切片。各整阶段仍按下表门禁验收。
+> 状态：B0、B1.1–B1.27 影子证据、Terms、身份旁观、固定 writer 捕获、套餐批量同步、批量封禁、管理员创建/删除、注册初始记录与余额端点投影、B2.1–B2.6 单机升级、B3.1/B3.2 隔离用量、B3.3–B3.6 本地观察与持久事件桶、B4.1–B4.7 合成 Provider、插件停用接入、租约候选、离线签名快照与Go公钥诊断、B5.1–B5.24 本地 mTLS 读取、隔离建单、登录、内存邮件验证码、隔离注册、密码恢复、当前会话与管理读取、B6.1–B6.4 实验字节、离线加密、共享 owner 与独立响应随机值候选及 B7.1 Agent/MCP 退役已实现；两仓迁移与三镜像发布已完成，继续推进业务迁移切片。各整阶段仍按下表门禁验收。
 
 2026-10-13，按仓库整合任务，将 Gateway/Node 的完整 Git 历史导入本仓 `gateway/`、`node/`，安装器集中到 TXBoard-Deploy。当前目录与三镜像 CI 见 [双仓布局](../../development/repository-layout.md)；旧基线和验证报告保持当时提交与路径。本次仓库整理独立于下列业务迁移门禁。
 
@@ -497,3 +497,9 @@ Core新专项及原建单/Billing回归 **19项、198断言**；Gateway **939**�
 [当前契约](../../../contracts/v2/node-usage/bounded-tcp-core-interop-v1.md)以实际ConnTracker采集的11上传/7下载经journal/spool、原Node HTTPS握手与Reporter送入真实Laravel接收。正常TLS1.3/CA/SAN校验与Native Node Bearer/NodeID保持独立；不是Admin/Internal mTLS。客户端先读真实persisted响应再注入丢响应，Reporter查询原batch恢复pending回执；SQL独立确认batch/digest/outbox已经提交，再由原UsageSettlement按冻结3/2倍率分方向floor得到16/10、总26。重复原批次返回同回执，改相同batch的canonical载荷409，wrongBearer/Node拒绝。
 
 固定 `7737662` 加专属测试源码，在专用MariaDB11.4/PHP8.4/Go1.26.3完成真实两阶段链路；Node helper race构建、vet和PHP syntax通过。关闭/重启journal/spool后真实HTTPS查询settled并重放原批次，最终SQL仍为1 batch/1 entry/26 billable bytes，后续scan为空。新实际Session、载荷、pending/settled receipt、journal/spool和SQL摘要的脱敏制品与hash见[报告](../../../node/docs/bounded-core-interop-verification.json)。为避免冷构建耗尽原有限grant，runner改为先编译再seed，保持原租约长度，第二份全新隔离夹具复验通过；原库和r1证据dump/hash保留。独立Oracle MySQL8.4/Redis7.4组合CI已加入，尚待远端结果；默认Service、生产handoff、准入/撤销/恢复gate未开启，不允许v1/v2双权威计费。
+
+### B2.6 同一围栏的闭合写入清单扩展
+
+[当前契约](../../../contracts/v2/authority-writer-inventory-expand-v2.md)使用同一authority单例，显式expand从旧legacy/open epoch1升级固定inventory的新legacy/open epoch2，再prepare为prepared epoch3；旧prepared epoch2/原回执保持原hash与恢复结果，拒绝expand和隐式reopen。新增nullable inventory_hash在v1哈希中排除，upgrade receipt绑定prior/expanded状态、版本和固定代码清单；新prepare还交叉核对原expanded-state hash，重算单个receipt hash不能跳过关联。旧进程scope/version/epoch声明拒绝新状态，只读status/recover可以核对历史。
+
+七项inventory覆盖原Admin create/update、删除、凭据轮换、批量封禁、Plan save/force和TrafficBatch；authority admission均在原事务第一句，先于User/Plan/Server等业务锁。flags/sort/delete、Order/wallet/Gift、其他writer/可信插件和提交后Observer仍未覆盖，global coverage/drain和target authority/migration gate保持false。固定 `04482a7` 加本批十五个候选源码：SQLite及原围栏/删除/套餐/流量回归 **54通过、14项引擎条件跳过、575断言**；专用MariaDB **22全部通过、284断言**，含8个独立进程的锁等待、commit/rollback/SIGKILL与输出丢失恢复。协调者固定 `6fa00ee` 加冻结扩展源码全API **1333通过、125项引擎/工具链跳过、13872断言**。[报告](authority-inventory-expand-verification.json)记录精确来源、旧v1真实记录兼容和各次失败夹具；独立Oracle MySQL8.4 CI已加入，生产切换继续等待完整事务与副作用排空。

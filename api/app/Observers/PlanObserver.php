@@ -16,6 +16,9 @@ class PlanObserver
         if (!$plan->isDirty('reset_traffic_method')) {
             return;
         }
+        if (config('authority_writer_fence.enabled') !== false && \Illuminate\Support\Facades\DB::transactionLevel() === 0) {
+            throw new \App\Domains\AuthorityMigration\AuthorityFenceException('AUTHORITY_PLAN_OBSERVER_OUTER_TRANSACTION_REQUIRED');
+        }
         $trafficResetService = app(TrafficResetService::class);
         User::where('plan_id', $plan->id)
             ->where('banned', 0)

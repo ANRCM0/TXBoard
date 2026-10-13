@@ -67,6 +67,7 @@ final class AccountMutationController
         if ($ids === []) return TxapiResponse::success($request, ['updated' => 0]);
 
         $updated = DB::transaction(static function () use ($ids, $request): int {
+            app(\App\Domains\AuthorityMigration\AuthorityWriterFence::class)->admit('admin.user.bulk-ban');
             $users = User::query()->whereIn('id', $ids)->orderBy('id')
                 ->lockForUpdate()->get();
             if ($users->count() !== count($ids) ||

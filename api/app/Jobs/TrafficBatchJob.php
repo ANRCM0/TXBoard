@@ -34,6 +34,10 @@ class TrafficBatchJob implements ShouldQueue
 
     public function failed(?\Throwable $exception): void
     {
+        if ($exception instanceof \App\Domains\AuthorityMigration\AuthorityFenceException) {
+            Log::error('AUTHORITY_TRAFFIC_BATCH_FENCE_REJECTED');
+            return;
+        }
         if ($exception instanceof LegacyCaptureShadowException) {
             Log::error('LEGACY_TRAFFIC_BATCH_CAPTURE_RETRIES_EXHAUSTED');
         }
@@ -64,6 +68,7 @@ class TrafficBatchJob implements ShouldQueue
         $acceptedUsers = [];
 
         $settled = DB::transaction(function () use ($serverId, $rate, $hash, $data, &$acceptedUsers) {
+            app(\App\Domains\AuthorityMigration\AuthorityWriterFence::class)->admit('traffic.batch.settle');
             // A deadlock retry must notify only the successful transaction's users.
             $acceptedUsers = [];
             // Serialise batches for one server and prevent duplicate stat rows

@@ -46,6 +46,7 @@ final class PlanMutationController
         if (array_key_exists('prices', $input)) $attributes['prices'] = $prices;
         $force = $request->boolean('force_update');
         $id = DB::transaction(static function () use ($request, $input, $attributes, $force): int {
+            app(\App\Domains\AuthorityMigration\AuthorityWriterFence::class)->admit('admin.plan.save');
             if (isset($input['id'])) {
                 $plan = Plan::query()->lockForUpdate()->findOrFail((int) $input['id']);
                 if ($force) {
