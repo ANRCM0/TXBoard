@@ -1,0 +1,86 @@
+{
+  "phase": "B5.18",
+  "status": "verified-isolated-current",
+  "base_commit": "a3ed2fcfcd83fcbc0f9b7fddcc3b849511efc079",
+  "source_sha256": {
+    "gateway/apps/gateway/src/adapters/internal-admin-v1.ts": "611190b83cbe14964b400d33e0a240296fe4e34cb3d8af4a3c22679b410ad8ae",
+    "gateway/apps/gateway/src/config/internal-admin.ts": "9586319a78702b8f39bbbc7e90edff6da317ee4223d13acd505d7d5e6672f0a2",
+    "gateway/apps/gateway/src/services/internal-admin-client.ts": "bab6b58fe37143944708cedb5ef88f1bf8c542fde058bc0839be69b088e62a47",
+    "gateway/apps/gateway/test/internal-admin-client.test.ts": "782154ad6f81e431bc7b66a0a9052eda6fbd9d32aa0dacc0fcd24f32d609791c",
+    "scripts/tests/internal-admin-consumer/README.md": "dc33fc0e897031f1641e45be7f4c31120439983a814b97db4252e29abc370ff4",
+    "scripts/tests/internal-admin-consumer/cleanup.py": "3ff1f0073de8a1e9777356dfb40c172d5213c84131cbe727f1df1a77c994e08d",
+    "scripts/tests/internal-admin-consumer/fixture.php": "b09425fae779dbd2387665a26cf14377cee0b66d4fffa1a8c37c55866ecf34b4",
+    "scripts/tests/internal-admin-consumer/integration.mjs": "efd82ca31619eed931951078ebabe2b47989d7ca02fba08be0fb887875f7242a",
+    "scripts/tests/internal-admin-consumer/run-local-baseline.py": "618df4b5dea0a14707cf5970a169949de2fcd2751f1863f80902ebc648daed6a",
+    "scripts/tests/internal-admin-consumer/run.sh": "0bdf6f1b4bf17752f32df9708a7ed0b56ddaa27f0a60169bbf1949b67dbd98b6"
+  },
+  "dependencies": {
+    "composer_lock_sha256": "f47b212c2fc530a7820e370eab7c6d624d13962e7d26e4f2ddf57a11848257c0",
+    "installed_json_sha256": "8e668e456c9772ae428a038ab003fba5752ab2591980fc8396d9122851145b80",
+    "gateway_lock_sha256": "a60bdbf6de2788282dfa87077316f55df950c7192e6a33960ead97dc953dc940"
+  },
+  "tests": {
+    "check": {
+      "mode": "check",
+      "exit_code": 0,
+      "log_sha256": "b8cb2ee93e6f4730d8a7e1e25520622499d2f980e93f1de3fc6ce4434a8c781f",
+      "snapshot": "/opt/txboard-baseline/internal-admin-consumer-r2"
+    },
+    "tls": {
+      "mode": "tls",
+      "exit_code": 0,
+      "log_sha256": "bb86900202684d4e2325d4bbf4e71bebbec585d321a98bb3b6244f41046e35a0",
+      "snapshot": "/opt/txboard-baseline/internal-admin-consumer-r2"
+    }
+  },
+  "coverage": {
+    "new_gateway_tests": 43,
+    "gateway_passed": 875,
+    "sdk_passed": 123,
+    "typecheck": "passed",
+    "build": "passed",
+    "real_tls_core_mysql_passed": 10
+  },
+  "tls_receipt": {
+    "checks": [
+      "dedicated Admin certificate and config; User and production identity refused",
+      "real Gateway client Admin native login private credential delivery",
+      "issued credential reaches current Core identity",
+      "Gateway preserves greater-than-53-bit dashboard bytes without Number conversion",
+      "ordinary User and staff cannot obtain management credentials",
+      "guest auth caller role and extra parameters reject before Core nonce admission",
+      "current ban prevents identity and cached dashboard then current demotion rejects",
+      "unknown current management path is absent",
+      "real audit failure hides committed login; no client retry or compensation",
+      "current native credential revocation invalidates subsequent reads"
+    ],
+    "passed": 10,
+    "token_count": 0,
+    "audit_count": 9,
+    "database_version": "11.4.12-MariaDB",
+    "synthetic_only": true,
+    "no_public_admin_route": true,
+    "no_native_fallback": true,
+    "no_business_state_in_gateway": true
+  },
+  "ci_workflow_sha256": "72f39a2f969fbd161b58a1f976370ca4f3c62c038d10ce2c247d46dae63112c7",
+  "review": {
+    "actionlint": "passed",
+    "no_public_admin_route": true,
+    "no_user_service_identity_reuse": true,
+    "no_native_fallback": true,
+    "no_number_conversion_of_decimal_bytes_money": true,
+    "no_automatic_login_retry": true,
+    "no_sc_v2_enablement": true,
+    "no_production_enablement": true
+  },
+  "remote_ci": {
+    "status": "pending-after-push"
+  },
+  "limitations": [
+    "No public Admin Gateway or new frontend yet",
+    "Native login can commit session before audit failure",
+    "No fine-grained RBAC",
+    "No formal SC-v2 or production PKI/private-network verification"
+  ]
+}

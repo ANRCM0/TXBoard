@@ -103,7 +103,70 @@
     "native_statistics_authoritative": true
   },
   "remote_ci": {
-    "status": "pending-after-push"
+    "status": "completed-success",
+    "commit": "a3ed2fcfcd83fcbc0f9b7fddcc3b849511efc079",
+    "runs": [
+      {
+        "workflow": "internal-admin-dashboard",
+        "run_id": 38358536502,
+        "conclusion": "success",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38358536502"
+      },
+      {
+        "workflow": "internal-admin-login",
+        "run_id": 38358536470,
+        "conclusion": "success",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38358536470"
+      },
+      {
+        "workflow": "internal-admin-identity",
+        "run_id": 38358536492,
+        "conclusion": "success",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38358536492"
+      },
+      {
+        "workflow": "api-ci",
+        "run_id": 38358536516,
+        "conclusion": "success",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38358536516"
+      },
+      {
+        "workflow": "api-mysql-ci",
+        "run_id": 38358536446,
+        "conclusion": "success",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38358536446"
+      },
+      {
+        "workflow": "txboard-core-image",
+        "run_id": 38358536509,
+        "conclusion": "success",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38358536509"
+      },
+      {
+        "workflow": "gateway-image",
+        "run_id": 38358536503,
+        "conclusion": "success",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38358536503"
+      },
+      {
+        "workflow": "internal-session-consumer",
+        "run_id": 38358536481,
+        "conclusion": "success",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38358536481"
+      },
+      {
+        "workflow": "provider-offline-proof",
+        "run_id": 38358536436,
+        "conclusion": "success",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38358536436"
+      },
+      {
+        "workflow": "Documentation",
+        "run_id": 38358536452,
+        "conclusion": "success",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38358536452"
+      }
+    ]
   },
   "limitations": [
     "Native aggregation precision/range and 15-second cache retained",

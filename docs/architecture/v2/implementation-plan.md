@@ -1,6 +1,6 @@
 # Core First v2 实施台账
 
-> 状态：B0、B1.1–B1.21 影子证据、Terms、身份旁观、固定 writer 捕获、套餐批量同步、批量封禁与余额端点投影、B2.1–B2.4 单机升级、B3.1/B3.2 隔离用量、B3.3/B3.4 本地观察与持久事件桶、B4.1–B4.6 合成 Provider、插件停用接入、租约候选、离线签名快照与Go公钥诊断、B5.1–B5.17 本地 mTLS 读取、隔离建单、登录、内存邮件验证码、隔离注册、密码恢复、当前会话与管理身份读取、B6.1–B6.4 实验字节、离线加密、共享 owner 与独立响应随机值候选及 B7.1 Agent/MCP 退役已实现；两仓迁移与三镜像发布已完成，继续推进业务迁移切片。各整阶段仍按下表门禁验收。
+> 状态：B0、B1.1–B1.21 影子证据、Terms、身份旁观、固定 writer 捕获、套餐批量同步、批量封禁与余额端点投影、B2.1–B2.4 单机升级、B3.1/B3.2 隔离用量、B3.3/B3.4 本地观察与持久事件桶、B4.1–B4.6 合成 Provider、插件停用接入、租约候选、离线签名快照与Go公钥诊断、B5.1–B5.18 本地 mTLS 读取、隔离建单、登录、内存邮件验证码、隔离注册、密码恢复、当前会话与管理身份读取、B6.1–B6.4 实验字节、离线加密、共享 owner 与独立响应随机值候选及 B7.1 Agent/MCP 退役已实现；两仓迁移与三镜像发布已完成，继续推进业务迁移切片。各整阶段仍按下表门禁验收。
 
 2026-10-13，按仓库整合任务，将 Gateway/Node 的完整 Git 历史导入本仓 `gateway/`、`node/`，安装器集中到 TXBoard-Deploy。当前目录与三镜像 CI 见 [双仓布局](../../development/repository-layout.md)；旧基线和验证报告保持当时提交与路径。本次仓库整理独立于下列业务迁移门禁。
 
@@ -371,3 +371,11 @@ Deploy `34fd467` 修正host MySQL临时socket服务就绪竞争，[完整部署C
 固定 `6c5ed4c` 加本批源码：专项 **37项、346断言**，全API **1147通过、106项引擎/工具链跳过、12029断言**。实际Core/MariaDB11.4/TLS1.3 **12项**通过，验证超过53位的字节、业务记录读取不变、服务/actor隔离、当前路径/封禁/降权、SQL防重放、审计故障隐藏结果及会话撤销。首轮夹具遗漏StatServer必填server_type，已修正并保留失败快照/数据库；初始化失败也清理测试私钥。[报告](internal-admin-dashboard-verification.json)记录最终源码、依赖、脱敏receipt和日志hash。独立MySQL8.4 CI已加入，远端结果另行核对。
 
 管理页退役收尾 `4e169a9` 将健康摘要修正为实际工单/佣金两项，Web共享8、Admin287、既有User兼容63项及类型、构建和体积门禁通过；远端Web和Core镜像CI通过。完整管理前端、其余Operation、SC-v2、生产私网和迁移切换仍待完成。
+
+提交 `a3ed2fc` 的[独立MySQL8.4管理仪表盘联调](https://github.com/ANRCM0/TXBoard/actions/runs/38358536502)、管理登录/身份、API/MySQL原回归、Core镜像、公钥、会话和文档CI全部通过，远端证据已写入上述报告。
+
+### B5.18 Gateway 隔离管理客户端
+
+[当前契约](../../../contracts/v2/core-internal-api/local-admin-consumer-v1.md)增加独立默认关闭的管理配置加载和固定Internal客户端，限local/testing及Admin服务证书，仅消费登录、身份、仪表盘三种Operation。闭集DTO、严格JSON、双向TLS1.3、Core SAN、CRL、5秒壁钟和响应大小门禁拒绝歧义或不完整结果；金额/流量字符串不转Number，错误不反射私有输入。没有公开Admin路由、原生回退、管理角色缓存或登录重试。
+
+固定 `a3ed2fc` 加本批源码：新专项 **43项**，Gateway **875项**、SDK **123项**及类型/构建全部通过；实际Gateway客户端/Core/MariaDB11.4/mTLS **10项**验证登录→当前身份→精确大整数仪表盘，普通User/staff、额外身份输入、封禁/降权、错误路径和撤销均拒绝。真实审计503隐藏一次已提交会话，客户端不重试或补偿；最终token为0。[证据报告](internal-admin-consumer-verification.json)保留固定源码/依赖/日志hash和脱敏receipt；独立Oracle MySQL8.4 CI已加入。正式浏览器入口、SC-v2、管理前端、细粒度权限与生产私网仍待完成。

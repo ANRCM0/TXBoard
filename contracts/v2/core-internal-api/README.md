@@ -110,3 +110,5 @@ native Core business/SQL idempotency and retaining original-key recovery after
 an unknown result. Additional write and isolated-copy gates default off.
 
 B5.17: [隔离管理仪表盘](local-admin-dashboard-v1.md)复用原生统计与当前管理授权，金额/流量使用十进制字符串，独立默认关闭。
+
+B5.18: [隔离管理客户端](local-admin-consumer-v1.md)使用独立管理服务证书消费登录、身份和仪表盘，尚未开放公开Admin路由。
