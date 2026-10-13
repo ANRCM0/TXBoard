@@ -296,7 +296,7 @@ class TxboardInstall extends Command
         $user->uuid = Helper::guid(true);
         $user->token = Helper::guid();
         $user->is_admin = 1;
-        return $user->save();
+        return app(\App\Services\Subscription\LegacyBootstrapCreationShadow::class)->persist($user);
     }
 
     private function set_env_var($key, $value)

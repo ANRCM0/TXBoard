@@ -11,6 +11,7 @@ final class LegacyUserCreationEvidence
     private const POLICIES = [
         'admin.user.create' => ['version' => 'admin-creation-shadow/v1', 'flag' => 'legacy_admin_creation_shadow.enabled'],
         'user.register' => ['version' => self::REGISTRATION_VERSION, 'flag' => 'legacy_registration_creation_shadow.enabled'],
+        'install.admin.create' => ['version' => 'bootstrap-creation-shadow/v1', 'flag' => 'legacy_bootstrap_creation_shadow.enabled'],
     ];
 
     public function begin(string $kind, int $actorId): ?array
@@ -19,7 +20,7 @@ final class LegacyUserCreationEvidence
         if (config(self::POLICIES[$kind]['flag']) === false) return null;
         return $this->safe(function () use ($kind, $actorId): array {
             $context = $this->context($kind);
-            $this->require($kind === 'user.register' ? $actorId === 0 : $actorId > 0 && $actorId <= 2147483647,
+            $this->require(in_array($kind, ['user.register', 'install.admin.create'], true) ? $actorId === 0 : $actorId > 0 && $actorId <= 2147483647,
                 'CREATION_SHADOW_ACTOR_INVALID');
             return ['source_kind' => $kind, 'source_version' => self::POLICIES[$kind]['version'],
                 'actor_id' => (string) $actorId, 'context' => $context];
@@ -34,12 +35,12 @@ final class LegacyUserCreationEvidence
             $this->require(count($ticket) === 4 && !array_diff(array_keys($ticket),
                 ['source_kind', 'source_version', 'actor_id', 'context']) && $ticket['source_kind'] === $kind
                 && $ticket['source_version'] === self::POLICIES[$kind]['version'] && $this->json($ticket['context']) === $this->json($context)
-                && is_string($ticket['actor_id']) && ($kind === 'user.register' ? $ticket['actor_id'] === '0'
+                && is_string($ticket['actor_id']) && (in_array($kind, ['user.register', 'install.admin.create'], true) ? $ticket['actor_id'] === '0'
                     : preg_match('/\A[1-9][0-9]{0,9}\z/D', $ticket['actor_id']) && (int) $ticket['actor_id'] <= 2147483647), 'CREATION_SHADOW_TICKET_INVALID');
             $source = app(LegacyUserMutationCapture::class)->initialEvidenceSource($userId);
             $row = ['legacy_user_id' => (string) $userId, 'source_kind' => $ticket['source_kind'],
                 'source_version' => self::POLICIES[$kind]['version'],
-                'actor_id' => $kind === 'user.register' ? $source['id'] : $ticket['actor_id'], 'context' => $context,
+                'actor_id' => in_array($kind, ['user.register', 'install.admin.create'], true) ? $source['id'] : $ticket['actor_id'], 'context' => $context,
                 'context_hash' => $this->hash($context), 'initial_snapshot' => $source,
                 'initial_hash' => $this->hash($source), 'captured_at' => (string) time()];
             $row['content_hash'] = $this->hash($row);
@@ -69,7 +70,7 @@ final class LegacyUserCreationEvidence
                 $payload['initial_snapshot'] = json_decode($row->initial_snapshot, true, 16, JSON_THROW_ON_ERROR);
                 app(LegacyUserMutationCapture::class)->initialEvidenceSnapshot($payload['initial_snapshot']);
                 $this->require($payload['source_kind'] === $kind && $payload['source_version'] === self::POLICIES[$kind]['version']
-                    && ($kind !== 'user.register' || $payload['actor_id'] === (string) $userId)
+                    && (!in_array($kind, ['user.register', 'install.admin.create'], true) || $payload['actor_id'] === (string) $userId)
                     && preg_match('/\A[1-9][0-9]{0,9}\z/D', $payload['actor_id']) && (int) $payload['actor_id'] <= 2147483647
                     && preg_match('/\A[1-9][0-9]{0,18}\z/D', $payload['captured_at'])
                     && (strlen($payload['captured_at']) < 19 || strcmp($payload['captured_at'], '9223372036854775807') <= 0)

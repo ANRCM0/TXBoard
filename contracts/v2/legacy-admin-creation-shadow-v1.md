@@ -13,3 +13,5 @@ Failure rolls back the native User insertion and evidence together. There is no 
 Acceptance requires native permission/default-off regressions, exact persistent snapshot and secrets exclusion, insertion rollback on evidence failure, after-commit endpoint change visibility, compatible mutation anchoring, additive schema/down refusal, and real MySQL transaction verification. Production writers and full B1 remain gated.
 
 The shared physical initial-evidence table may also retain separately versioned registration records. This Admin facade/verifier remains restricted to `admin.user.create`; its own flag, ticket shape, version and existing hashes stay unchanged. Registration uses its [separate isolated contract](legacy-registration-creation-shadow-v1.md) and verifier.
+
+Core installer bootstrap records are likewise separately gated and versioned under the [bootstrap creation contract](legacy-bootstrap-creation-shadow-v1.md). The authenticated Admin facade never accepts a self-creation ticket or another source policy.
