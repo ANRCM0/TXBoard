@@ -183,10 +183,12 @@ final class UserEditorController
         if (!empty($fields['plan_id']) && !Plan::query()->whereKey($fields['plan_id'])->exists()) {
             throw ValidationException::withMessages(['plan_id' => 'Subscription plan not found']);
         }
-        $user = DB::transaction(static function () use ($fields, $email, $service): User {
+        $user = DB::transaction(static function () use ($fields, $email, $service, $request): User {
             if (User::byEmail($email)->exists()) {
                 throw ValidationException::withMessages(['email_prefix' => 'Email already exists']);
             }
+            $creation = app(\App\Services\Subscription\LegacyAdminCreationShadow::class);
+            $ticket = $creation->begin((int) $request->user()->id);
             $user = $service->createUser([
                 'email' => $email,
                 'password' => $fields['password'],
@@ -194,6 +196,7 @@ final class UserEditorController
                 'expired_at' => $fields['expired_at'] ?? null,
             ]);
             $user->saveOrFail();
+            $creation->append($ticket, (int) $user->id);
             return $user;
         });
         // Do not echo credentials, UUID or subscription token in a bulk

@@ -35,6 +35,58 @@ final class LegacyUserMutationCapture
     private const NULLABLE = ['plan_id', 'group_id', 'speed_limit', 'device_limit',
         'expired_at', 'last_reset_at', 'next_reset_at'];
 
+    /** Initial creation evidence shares canonical nonsecret source/context vocabulary. */
+    public function initialEvidenceContext(): array
+    {
+        return $this->safe(function (): array {
+            $this->require(DB::transactionLevel() > 0, 'CAPTURE_TRANSACTION_REQUIRED');
+            return $this->context();
+        });
+    }
+
+    public function initialEvidenceSource(int $userId): array
+    {
+        return $this->safe(function () use ($userId): array {
+            $this->initialEvidenceContext();
+            $this->integer($userId, '2147483647', true);
+            return $this->source($userId);
+        });
+    }
+
+    public function initialEvidenceSnapshot(array $raw): array
+    {
+        return $this->safe(function () use ($raw): array {
+            $this->initialEvidenceContext();
+            $canonical = $this->snapshot($raw);
+            $this->require($this->json($canonical) === $this->json($raw), 'CAPTURE_SOURCE_INVALID');
+            return $canonical;
+        });
+    }
+
+    /** Validates at most one first event; neither the tail nor the full chain is certified. */
+    public function initialMutationBeforeHash(int $userId): ?string
+    {
+        return $this->safe(function () use ($userId): ?string {
+            $context = $this->initialEvidenceContext();
+            $this->integer($userId, '2147483647', true);
+            $stream = $this->streams()->where('legacy_user_id', $userId)->sharedLock()->first();
+            if ($stream === null) {
+                $this->require(!$this->events()->where('legacy_user_id', $userId)->exists(), 'CAPTURE_STREAM_TAMPERED');
+                return null;
+            }
+            $this->validateStream($stream, $context, $userId);
+            $row = $this->events()->where('stream_id', $stream->id)->where('sequence', 1)->sharedLock()->first();
+            if ((string) $stream->last_sequence === '0') {
+                $this->require($row === null, 'CAPTURE_STREAM_TAMPERED');
+                return null;
+            }
+            $this->require($row !== null, 'CAPTURE_CHAIN_GAP');
+            $event = $this->event($row, $stream);
+            $this->require($event['previous_event_hash'] === null, 'CAPTURE_CHAIN_GAP');
+            return $event['before_hash'];
+        });
+    }
+
     /** Caller already holds the actual User exclusive lock in the original transaction. */
     public function begin(int $userId): ?array
     {

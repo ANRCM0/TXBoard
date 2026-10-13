@@ -23,7 +23,7 @@
 
 1. Gateway Native 适配已改为真实 `/txapi/*` 与 DTO/envelope；Internal API 逐 operation 迁移和 User/Admin 完整授权仍需验证。
 2. 默认 Node 仍使用 v1 queued ACK；隔离 v2 已有 SQL 持久回执、整数结算和 spool，runtime 租约、完整计数覆盖及权威交接未启用。
-3. User 仍持有套餐、配额、用量、到期时间和 UUID；当前影子 Schema、商品/财务证据和 Terms 转换尚未接管 live writer。
+3. User 仍持有套餐、配额、用量、到期时间和 UUID；当前影子 Schema、商品/财务证据、管理员创建初始记录和 Terms 转换尚未接管 live writer。
 4. 当前 PHP 插件仍在进程内运行；固定可信合成 Provider 能发行/撤销并保留清理证据，不能代替生产隔离和 Node 撤销 ACK。
 5. 单机影子升级已有签名、持久检查点和提交后恢复；部分 DDL 仍需调查，集群 fencing 与生产 writer switch 尚未实现。
 
