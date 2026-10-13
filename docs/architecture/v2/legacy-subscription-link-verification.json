@@ -1,6 +1,6 @@
 {
   "phase": "B1.28",
-  "status": "verified-isolated-ci-corrections-remote-pending",
+  "status": "verified-isolated-ci-corrections-and-remote",
   "base_commit": "614acb8db1ea0a725d57082de3934280a10ac453",
   "source_sha256": {
     ".github/workflows/ci-legacy-subscription-links.yml": "d6cf17f85435782eb86846c02dcefa38ec69d7fce9fed46162c19a4785046b91",
@@ -159,12 +159,48 @@
     }
   ],
   "remote_ci": {
-    "status": "pending-after-ci-fix-push"
+    "status": "passed",
+    "verified_date_local": "2026-10-14",
+    "head_sha": "3efbc660e48603d7f25bcd7b3528bd31abb75f51",
+    "all_triggered_runs": 27,
+    "all_triggered_runs_success": true,
+    "evidence_sha256": "d75cfabfe9d68f14152844dd98ddbb4fd9dd9b208d141cf6b905f5ebf792b008",
+    "runs": [
+      {
+        "conclusion": "success",
+        "databaseId": 38451886600,
+        "headSha": "3efbc660e48603d7f25bcd7b3528bd31abb75f51",
+        "name": "legacy-subscription-links-shadow",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38451886600"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 38451886779,
+        "headSha": "3efbc660e48603d7f25bcd7b3528bd31abb75f51",
+        "name": "api-ci",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38451886779"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 38451886796,
+        "headSha": "3efbc660e48603d7f25bcd7b3528bd31abb75f51",
+        "name": "api-mysql-ci",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38451886796"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 38451886738,
+        "headSha": "3efbc660e48603d7f25bcd7b3528bd31abb75f51",
+        "name": "txboard-core-image",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38451886738"
+      }
+    ]
   },
-  "pending": [
-    "Remote OracleMySQL8.4 normalized JSON acceptance",
-    "Remote PHP8.3 API and Core release regression gates"
-  ],
+  "pending": [],
   "initial_source_sha256": {
     ".github/workflows/ci-legacy-subscription-links.yml": "d6cf17f85435782eb86846c02dcefa38ec69d7fce9fed46162c19a4785046b91",
     "api/app/Console/Commands/CoreLegacyLinksBackfill.php": "92f323af262320f2314c770d09bad5a82a1b69bbe822df4a2591f4a981814b59",

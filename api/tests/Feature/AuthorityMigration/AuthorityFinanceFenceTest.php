@@ -185,7 +185,7 @@ class AuthorityFinanceFenceTest extends TestCase
         $this->v2();$this->assertSame(0,Artisan::call('core:authority-fence',['operation'=>'extend-finance','--key'=>'finance-fixture','--expected-epoch'=>'2','--isolated-copy'=>true]));$this->newWorker();
         $this->fence()->prepare('closed-prepare','3');$before=$this->history();
         DB::enableQueryLog();DB::flushQueryLog();$this->fence()->status();$this->fence()->recover('closed-prepare','3');$this->fence()->recoverFinance('finance-fixture','2');
-        $queries=DB::getQueryLog();DB::disableQueryLog();$this->assertCount(15,$queries);foreach($queries as$query)$this->assertMatchesRegularExpression('/\Aselect\b/i',$query['query']);
+        $queries=DB::getQueryLog();DB::disableQueryLog();$this->assertCount(18,$queries);foreach($queries as$query)$this->assertMatchesRegularExpression('/\Aselect\b/i',$query['query']);
         $this->assertSame($before,$this->history());$receipt=AuthorityFinanceUpgrade::findOrFail('finance-fixture');
         $this->refused(fn()=>$receipt->update(['expected_epoch'=>3]),'AUTHORITY_FINANCE_RECEIPT_IMMUTABLE');$this->refused(fn()=>$receipt->delete(),'AUTHORITY_FINANCE_RECEIPT_IMMUTABLE');
         $migration=require database_path('migrations/2026_10_14_000003_extend_finance_authority_inventory.php');$migration->up();$this->assertSame($before,$this->history());

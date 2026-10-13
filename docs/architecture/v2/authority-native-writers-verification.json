@@ -1,0 +1,234 @@
+{
+  "phase": "B2.8",
+  "status": "isolated-final-r9-specialist-and-full-verified",
+  "base_commit": "389c5a75c07bb75cc283419858018680ddf6f780",
+  "source_sha256": {
+    ".github/workflows/ci-authority-native-writers.yml": "af2d26caf39a2a8406ed8f17ed65c666e5db329c1a547b9fd8e13e8f7f82d70a",
+    "api/app/Console/Commands/CheckCommission.php": "2a4541d9b918b63f6c071fb3a6373a0361db489f51bc7ee62f49cc29299b6778",
+    "api/app/Console/Commands/CoreAuthorityFence.php": "ebbee05b131ca7976f0bdf3645bfb1e97bffa341bd41b2e23cfe7d671e4bc1f9",
+    "api/app/Console/Commands/CoreAuthorityPostcommit.php": "215c474e9ba10ef28bf7c9534bfc21ff762968b9a60dccc3340276df84523a25",
+    "api/app/Console/Commands/ResetTraffic.php": "8b2187a6c101f692485f550f43cf7f6f18d9056e3c5e533b0a41c199cbbb1b91",
+    "api/app/Domains/AuthorityMigration/AuthorityAdmission.php": "752f9db0f10566f4fa2eac014934d25c0a72353e493134695dc267c4f037f9ac",
+    "api/app/Domains/AuthorityMigration/AuthorityAdmissionRegistry.php": "0a1b0a43851226f37a870bcafa5495a0404acd996d8d014732cb5972eb903d4b",
+    "api/app/Domains/AuthorityMigration/AuthorityNativeInventory.php": "23923edad83534f4f5025361d1e6aeb64ac39d29a6fec335685d583f9728645d",
+    "api/app/Domains/AuthorityMigration/AuthorityNativeUpgrade.php": "fb5f8db6cc8ea5c7029a59b63011d782c3ae9fafa2460391cb04e91744163efa",
+    "api/app/Domains/AuthorityMigration/AuthorityPostcommitHandoff.php": "7feead36c060958ea458f14abeb1182a05f74135726debe5126680a1c9a71019",
+    "api/app/Domains/AuthorityMigration/AuthorityPostcommitIntent.php": "f98d20d0fd66dc40669cf649587c1ab6f6b5d71d26aa232cc4af78ed7674b85b",
+    "api/app/Domains/AuthorityMigration/AuthorityWriterFence.php": "0b8c0bc8b9806aa5437e5460aac9599bd9779612e3d745ddda2b628a96c4c323",
+    "api/app/Domains/AuthorityMigration/FencedUserPostcommit.php": "72338f55ce8a8273aad4add1f284f1821f5a674ae3c89e688df94f8cddeb602a",
+    "api/app/Http/Controllers/Txapi/Admin/OrderOperationsAdminController.php": "3de5363a6b9571ae091be0af758c8d75a9146f7e121a8f9093c915626a678e07",
+    "api/app/Http/Controllers/Txapi/Admin/PlanMutationController.php": "12b475c2cde9aae1b3e773d2d696e49969286a2bd10225899bc518cbde65c281",
+    "api/app/Jobs/TrafficFetchJob.php": "e4612310deb6a2d94c93b53408d223ab797aa535e772fb7e4eddb0f7d7126aaf",
+    "api/app/Observers/UserObserver.php": "f901012edbb55393ed6627d19aa2d0d40afe67402f5aec0782bd2dd6d202edb5",
+    "api/app/Providers/EventServiceProvider.php": "049807a422a1039de0d0709031057dee59f573fed8de5105bf33242d269833bf",
+    "api/app/Services/TrafficResetService.php": "82cf7397e259c8489c8f344e3561d01ce6408067b131c94360df6fbbb1821067",
+    "api/app/Services/UserService.php": "c02f0adb869dd73536000c1e49e71ae5bc098aebdf1fd1d0bacd502c1d6252ac",
+    "api/database/migrations/2026_10_14_000005_extend_native_writer_authority_and_schedule_intents.php": "7e91d2dcb127db35942836f3461cdc49acc41df78854bd7cc6732c1ef65e16a3",
+    "api/tests/Feature/AuthorityMigration/AuthorityFinanceFenceTest.php": "3e4c860cec6541737eac5faea25d523f876a9a76e634c4cac66c8f3684cbe534",
+    "api/tests/Feature/AuthorityMigration/AuthorityInventoryExpandTest.php": "4e8759bac64eafec3ef0fdafd7f66bf2803177cc12db1b8f5e57f4bff57de1af",
+    "api/tests/Feature/AuthorityMigration/AuthorityNativeWritersTest.php": "aab79df74746a64a5b0c98b8572af348bd700b0486ed4be90579ebfffaf5185d",
+    "api/tests/Feature/AuthorityMigration/AuthorityWriterFenceTest.php": "8601af7fef89a27ace10fc240d52619fc421ec9380c2765342c1aed647874ace",
+    "contracts/v2/authority-native-writers-v4.md": "a97d2f0436412b0d6513ccd1084efe39defccebab0d2dee67771132e9c5ac0d9"
+  },
+  "dependencies": {
+    "composer_lock_sha256": "f47b212c2fc530a7820e370eab7c6d624d13962e7d26e4f2ddf57a11848257c0",
+    "installed_json_sha256": "8e668e456c9772ae428a038ab003fba5752ab2591980fc8396d9122851145b80"
+  },
+  "snapshot": "/opt/txboard-baseline/authority-native-r9",
+  "database": {
+    "engine": "MariaDB",
+    "version": "11.4.12",
+    "dedicated_database": "txboard_native_fence_test",
+    "synthetic_only": true
+  },
+  "coverage": {
+    "targeted": {
+      "passed": 79,
+      "skipped": 32,
+      "assertions": 1034,
+      "includes_existing_authority_finance_observer_reward_regressions": true,
+      "duration_seconds": 73.52
+    },
+    "mysql": {
+      "passed": 20,
+      "skipped": 0,
+      "assertions": 218,
+      "duration_seconds": 329.56,
+      "dedicated_synthetic_database": "txboard_native_fence_test",
+      "actual_process_cases": 5,
+      "physical_PDO_purge_release_verified": true
+    },
+    "full": {
+      "passed": 1378,
+      "skipped": 141,
+      "assertions": 14532
+    }
+  },
+  "new_sqlite_passed": 15,
+  "new_sqlite_skipped": 5,
+  "tests": {
+    "targeted": {
+      "mode": "targeted",
+      "exit_code": 0,
+      "log_sha256": "de4ad065318a63b27d566ca181a6b0fd065bd44b052902917ba5beaa21b1a51d",
+      "snapshot": "/opt/txboard-baseline/authority-native-r9"
+    },
+    "mysql": {
+      "mode": "mysql",
+      "exit_code": 0,
+      "log_sha256": "aa299dd2bd4da5ec784242c5e3b23c13ce5ef47d075219a03393032325c8f3de",
+      "snapshot": "/opt/txboard-baseline/authority-native-r9"
+    },
+    "full": {
+      "mode": "full",
+      "exit_code": 0,
+      "log_sha256": "e51592cfe807a0c834f9179a6c366ce19a63c245909cfdcb7366f5ded68d9541",
+      "snapshot": "/opt/txboard-baseline/authority-native-integrated-r2"
+    }
+  },
+  "review": {
+    "native_schema_issues": 0,
+    "workflow_actionlint": "passed",
+    "documentation_paths": "passed",
+    "twenty_six_fixed_root_writers_authority_first": true,
+    "manual_commission_and_enabled_only_per_user_bridges_preserve_native_boundaries": true,
+    "old_declaration_cannot_bypass_published_inventory_via_default_branch": true,
+    "proof_binds_actual_PDO_PID_outer_DatabaseTransactionRecord": true,
+    "rollback_rebegin_equal_depth_nested_first_admission_alternate_connection_aftercommit_reject": true,
+    "actual_retry3_transaction_identity_changes_and_prior_intents_do_not_dispatch": true,
+    "producer_model_original_changes_preserved_with_independent_schedule_model": true,
+    "actual_producer_then_ObserverSchedule_capture_sequence_and_hash_endpoints_checked": true,
+    "independent_event_IDs_multiple_saves_successive_transactions_old_groups_checked": true,
+    "savepoint_rollback_and_cancelled_model_do_not_commit_events_or_duplicate_callback": true,
+    "own_committing_callback_error_explicit_actual_PDO_rollback_checked": true,
+    "queue_accepted_output_lost_unknown_fixed_max_three_attempts_not_Node_delivery": true,
+    "immutable_nonsecret_intent_separate_mutable_delivery": true,
+    "default_off_original_aftercommit_and_zero_native_store_SQL": true,
+    "root_admission_and_lookup_prune_closed_outer_records": true,
+    "PDO_identity_is_nonowning_and_purge_releases_physical_transaction": true,
+    "actual_WeakReference_release_after_successive_v1_commit_rollback_checked": true,
+    "real_MariaDB_mutex_schedule_commit_wait_SIGKILL_and_connection_kill_passed": true,
+    "durable_original_NodeUserSync_enqueue_then_SIGKILL_and_finite_duplicate_retry_passed": true,
+    "specialist_snapshot_and_coordinator_latest_HEAD_overlay_hashes_match": true
+  },
+  "limits": {
+    "authority": "legacy",
+    "scope": "native-sql-writers/v4",
+    "version": "authority-writer-fence/v4",
+    "fixed_writer_count": 26,
+    "global_writer_coverage_complete": false,
+    "global_drain_complete": false,
+    "target_authority_active": false,
+    "migration_gate_open": false,
+    "queue_handoff_only": true,
+    "node_delivery_verified": false,
+    "retry_policy": "finite SQL lease+attempt-token fencing; up to3fixed queue handoff attempts may enqueue duplicate original NodeUserSync jobs",
+    "outside_inventory": [
+      "Registration/auth/bootstrap/password/preferences/credential CLI",
+      "Unknown trusted plugin/rawSQL or alternate connections",
+      "External Node/Provider delivery acknowledgement and production cluster drain"
+    ],
+    "schedule_timing": "Only declared enabled v4 model events stage immutable intent; actual schedule SQL+ObserverSchedule capture flush at TransactionCommitting before original PDO commit, after all producer captures",
+    "locked_framework_limit": "Laravel does not universally rollback every arbitrary external committing-listener error. Own listener explicitly rolls back its failures; proof checks both actual lifetime objects and physical+framework state. Unreviewed plugin listeners remain excluded.",
+    "producer_fact_future_boundary": "Final committing handler is a future fact integration boundary only. Current User event hashes do not reconstruct financial parent/phase/quote/payment classifications or applied v2 projections.",
+    "production_data_used": false,
+    "production_migration_ready": false,
+    "hashes": "Consistency evidence, not signatures"
+  },
+  "attempt_history": [
+    {
+      "snapshot": "r1",
+      "outcome": "PHPUnit startup refused testfixture extra closingparenthesis; no tests executed"
+    },
+    {
+      "snapshot": "r2",
+      "outcome": "75passed32engine-specificskips3fail: oldflagisolatedinventory expectation plus2null-expiryfixture assumptions; correctedfixture and closed older-process branches"
+    },
+    {
+      "snapshot": "r3",
+      "outcome": "77passed32skips1oldPlan.show fixture assumedtrue; changedassert to unchangednativevalue"
+    },
+    {
+      "snapshot": "r4",
+      "outcome": "SQLite78passed32skips1024assertions; prior Maria runner absent at takeover, empty mysql log preserved; unused QueueManager forget call corrected in next fixture"
+    },
+    {
+      "snapshot": "r5",
+      "outcome": "SQLite78passed32skips1024assertions; actual Maria wrapper reached600s timeout after dedicated SQL metadata wait; not counted passed; confirmed PDO-release failure reproduced inr8; runner/SQL sessions absent at cleanup, emptylog retained"
+    },
+    {
+      "snapshot": "r6-repro",
+      "outcome": "Real successive v1 transaction WeakReference test1fail78pass32skip1027assertions proves closed proof retention",
+      "log_sha256": "8e81bf98b94420f8d03845bc75f498cbf47225c42936e1f56e01286bafe8bb20"
+    },
+    {
+      "snapshot": "r7",
+      "outcome": "Root admission and lookup prune ended outer records; SQLite79pass32skip1031assertions; PDO ownership not yet corrected",
+      "log_sha256": "1523b7ddcaa06af877a206e197a582e0980e6cd1ad5a20edf8c9d518664a5b75"
+    },
+    {
+      "snapshot": "r8-repro",
+      "outcome": "Focused physical PDO purge-release test1fail10assertions proves a strongly held proof keeps the PDO transaction alive",
+      "log_sha256": "12c5f64168fe542acebc7e2954f54f710163f79aee7a2fd2ce39c63c96fb6bc2"
+    },
+    {
+      "snapshot": "r9",
+      "outcome": "Final candidate uses weak PDO identity and prunes closed records; SQLite79pass32conditional-skip1034assertions73.52s; dedicated Maria20pass0skip218assertions329.56s incl5realprocesscases",
+      "log_sha256": "de4ad065318a63b27d566ca181a6b0fd065bd44b052902917ba5beaa21b1a51d",
+      "mysql_log_sha256": "aa299dd2bd4da5ec784242c5e3b23c13ce5ef47d075219a03393032325c8f3de"
+    },
+    {
+      "snapshot": "authority-native-integrated-r1",
+      "outcome": "Earlier r5source full1377passed141skip14522assertions retained; followed by separately reproduced strong-record/PDO retention fixes; final accepted source rerun independently",
+      "log_sha256": "84934a7c4a708810a51f6f36f60c4b512f5d7848ce7acea3839aca9fd87737ad"
+    },
+    {
+      "snapshot": "authority-native-integrated-r2",
+      "outcome": "Final r9source full1378passed141conditionalskips14532assertions379.44s; exact26-source hashes match specialist",
+      "log_sha256": "e51592cfe807a0c834f9179a6c366ce19a63c245909cfdcb7366f5ded68d9541"
+    }
+  ],
+  "pending": [
+    "Remote Oracle MySQL8.4 native-writer CI after push"
+  ],
+  "integration_base": "b9145368165820a1586f7ac34e04ce3b41f8c5be",
+  "coordinator_review": {
+    "frozen_owned_paths": 26,
+    "source_hashes_match_r9_specialist_and_final_full_snapshot": true,
+    "full_snapshot_excludes_live_protocol_unaccepted_candidates": true,
+    "same_SQL_singleton_and_v1_v2_v3_receipt_hash_compatibility_reviewed": true,
+    "root_admission_before_existing_domain_locks_and_nested_actual_transaction_proof_reviewed": true,
+    "actual_producer_schedule_SQL_and_capture_sequence_before_PDO_commit_reviewed": true,
+    "queue_handoff_pending_unknown_retry_does_not_claim_Node_delivery": true,
+    "proof_does_not_own_PDO_and_prunes_finished_outer_records": true,
+    "default_off_native_compatibility_full_regression_passed": true,
+    "global_writer_coverage_drain_and_target_authority_remain_false": true,
+    "native_schema_issues": 0,
+    "actionlint": "passed",
+    "git_eol_normalization": {
+      "policy": ".gitattributes text=auto eol=lf",
+      "runtime_bytes_change": "CRLF to LF only; verified snapshot originals retained",
+      "paths": {
+        "api/app/Domains/AuthorityMigration/AuthorityAdmission.php": {
+          "verified_snapshot_sha256": "752f9db0f10566f4fa2eac014934d25c0a72353e493134695dc267c4f037f9ac",
+          "git_LF_sha256": "09bd26aff02781faf079416278f8de122abec8b8a449756c76defdb19bc60b39"
+        },
+        "api/app/Domains/AuthorityMigration/AuthorityAdmissionRegistry.php": {
+          "verified_snapshot_sha256": "0a1b0a43851226f37a870bcafa5495a0404acd996d8d014732cb5972eb903d4b",
+          "git_LF_sha256": "e7a30b218192141bb54221afbc4517c79d94a81fd12f7ed074b371e8b687ec58"
+        },
+        "api/tests/Feature/AuthorityMigration/AuthorityNativeWritersTest.php": {
+          "verified_snapshot_sha256": "aab79df74746a64a5b0c98b8572af348bd700b0486ed4be90579ebfffaf5185d",
+          "git_LF_sha256": "d2136e8c22e8ed010047fbd7ce153894211d5e8d3c85ee49f9dad249eee7ddc3"
+        },
+        "contracts/v2/authority-native-writers-v4.md": {
+          "verified_snapshot_sha256": "a97d2f0436412b0d6513ccd1084efe39defccebab0d2dee67771132e9c5ac0d9",
+          "git_LF_sha256": "7db4e5b227135d3d9a33766a09cb227572def170a59ee639b2a3e1a33692428d"
+        }
+      }
+    }
+  },
+  "remote_ci": {
+    "status": "pending-after-push"
+  }
+}

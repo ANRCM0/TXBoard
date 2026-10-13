@@ -80,6 +80,7 @@ final class PlanMutationController
             return TxapiResponse::error($request, 'FLAGS_REQUIRED', 'At least one flag is required', 422);
         }
         DB::transaction(static function () use ($request, $params): void {
+            app(\App\Domains\AuthorityMigration\AuthorityWriterFence::class)->admit('admin.plan.flags');
             $plan = Plan::query()->lockForUpdate()->findOrFail((int) $request->route('id'));
             foreach ($params as $field => $value) $plan->$field = (bool) $value;
             $plan->saveOrFail();
@@ -95,6 +96,7 @@ final class PlanMutationController
         ]);
         $ids = array_map('intval', $params['ids']);
         DB::transaction(static function () use ($ids): void {
+            app(\App\Domains\AuthorityMigration\AuthorityWriterFence::class)->admit('admin.plan.sort');
             $found = Plan::query()->whereIn('id', $ids)->lockForUpdate()->get(['id'])->pluck('id')->all();
             if (count($found) !== count($ids)) {
                 throw ValidationException::withMessages(['ids' => 'Unknown subscription plan']);
@@ -110,6 +112,7 @@ final class PlanMutationController
     {
         $id = (int) $request->route('id');
         $deleted = DB::transaction(static function () use ($id): bool {
+            app(\App\Domains\AuthorityMigration\AuthorityWriterFence::class)->admit('admin.plan.delete');
             $plan = Plan::query()->lockForUpdate()->findOrFail($id);
             if (Order::query()->where('plan_id', $id)->exists() ||
                 User::query()->where('plan_id', $id)->exists()) {

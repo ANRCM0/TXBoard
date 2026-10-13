@@ -41,12 +41,17 @@ class TrafficResetService
   ): bool {
     // Only this native standalone due transaction owns a cron capture ticket.
     // Nested order/gift resets retain their original outer transaction ownership.
+    $ownsFence = DB::transactionLevel() === 0;
     $captureCron = DB::transactionLevel() === 0
       && $triggerSource === TrafficResetLog::SOURCE_CRON && $recheckDue === true;
     $captureStandalone = DB::transactionLevel() === 0 && !$captureCron
       && config('legacy_standalone_reset_capture.enabled') !== false;
     try {
-      return DB::transaction(function () use ($user, $triggerSource, $metadata, $recheckDue, $captureCron, $captureStandalone) {
+      return DB::transaction(function () use ($user, $triggerSource, $metadata, $recheckDue, $captureCron, $captureStandalone, $ownsFence) {
+        if (config('authority_writer_fence.enabled') !== false) {
+          if ($ownsFence) app(\App\Domains\AuthorityMigration\AuthorityWriterFence::class)->admit('traffic.reset');
+          else app(\App\Domains\AuthorityMigration\AuthorityAdmissionRegistry::class)->current()->assertValid();
+        }
         // Lock and refresh in the same SQL transaction as traffic reporting.
         // An earlier read can be stale while the Node has reported usage.
         $user = User::query()->with('plan')->lockForUpdate()->findOrFail($user->id);
@@ -94,6 +99,9 @@ class TrafficResetService
         }
         return true;
       });
+    } catch (\App\Domains\AuthorityMigration\AuthorityFenceException) {
+      Log::error('AUTHORITY_TRAFFIC_RESET_FENCE_REJECTED');
+      return false;
     } catch (LegacyCaptureShadowException) {
       Log::error($captureStandalone ? 'LEGACY_STANDALONE_TRAFFIC_RESET_CAPTURE_FAILED' : 'LEGACY_CRON_TRAFFIC_RESET_CAPTURE_FAILED');
       return false;
@@ -403,12 +411,27 @@ class TrafficResetService
   }
 
   /** Explicit isolated CLI repair, preserving original schedule-only calculation. */
+  /** Enabled per-User bridge for the original default CLI schedule-only save. */
+  public function repairScheduleFenced(int $userId, bool $onlyMissing): bool
+  {
+    if (DB::transactionLevel() !== 0) throw new \App\Domains\AuthorityMigration\AuthorityFenceException('AUTHORITY_SCHEDULE_OUTER_TRANSACTION_UNSUPPORTED');
+    return DB::transaction(function () use ($userId, $onlyMissing): bool {
+      app(\App\Domains\AuthorityMigration\AuthorityWriterFence::class)->admit('user.schedule.repair');
+      $user = User::whereKey($userId)->lockForUpdate()->first();
+      if (!$user || !$user->isActive() || ($onlyMissing && $user->next_reset_at !== null)) return false;
+      $next = $this->calculateNextResetTime($user);
+      if (!$next) return false;
+      $user->next_reset_at = $next->timestamp; $user->saveOrFail(); return true;
+    });
+  }
+
   public function repairScheduleCaptured(int $userId, bool $onlyMissing): bool
   {
     if (DB::transactionLevel() !== 0) {
       throw new LegacyCaptureShadowException('CAPTURE_SCHEDULE_OUTER_TRANSACTION_UNSUPPORTED');
     }
     return DB::transaction(function () use ($userId, $onlyMissing): bool {
+      if (config('authority_writer_fence.enabled') !== false) app(\App\Domains\AuthorityMigration\AuthorityWriterFence::class)->admit('user.schedule.repair');
       $user = User::whereKey($userId)->lockForUpdate()->first();
       if (!$user || !$user->isActive() || ($onlyMissing && $user->next_reset_at !== null)) {
         return false;

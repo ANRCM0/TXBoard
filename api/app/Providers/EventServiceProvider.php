@@ -29,6 +29,8 @@ class EventServiceProvider extends ServiceProvider
     public function boot()
     {
         parent::boot();
+        $this->app->scoped(\App\Domains\AuthorityMigration\AuthorityAdmissionRegistry::class);
+        Event::listen(\Illuminate\Database\Events\TransactionCommitting::class, [\App\Domains\AuthorityMigration\FencedUserPostcommit::class, 'handle']);
 
         User::observe(UserObserver::class);
         Plan::observe(PlanObserver::class);

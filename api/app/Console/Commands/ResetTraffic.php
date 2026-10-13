@@ -178,12 +178,19 @@ class ResetTraffic extends Command
           $fixedCount += (int) $this->trafficResetService->repairScheduleCaptured((int) $user->id, true);
           continue;
         }
+        if (config('authority_writer_fence.enabled') !== false) {
+          $fixedCount += (int) $this->trafficResetService->repairScheduleFenced((int)$user->id, (bool)$this->option('fix-null'));
+          continue;
+        }
         $nextResetTime = $this->trafficResetService->calculateNextResetTime($user);
         if ($nextResetTime) {
           $user->next_reset_at = $nextResetTime->timestamp;
           $user->save();
           $fixedCount++;
         }
+      } catch (\App\Domains\AuthorityMigration\AuthorityFenceException) {
+        $errors[] = ['error' => 'AUTHORITY_SCHEDULE_FENCE_REJECTED'];
+        Log::error('AUTHORITY_SCHEDULE_FENCE_REJECTED');
       } catch (LegacyCaptureShadowException) {
         $errors[] = ['error' => 'LEGACY_SCHEDULE_REPAIR_CAPTURE_FAILED'];
         Log::error('LEGACY_SCHEDULE_REPAIR_CAPTURE_FAILED');
@@ -234,12 +241,19 @@ class ResetTraffic extends Command
           $fixedCount += (int) $this->trafficResetService->repairScheduleCaptured((int) $user->id, false);
           continue;
         }
+        if (config('authority_writer_fence.enabled') !== false) {
+          $fixedCount += (int) $this->trafficResetService->repairScheduleFenced((int)$user->id, (bool)$this->option('fix-null'));
+          continue;
+        }
         $nextResetTime = $this->trafficResetService->calculateNextResetTime($user);
         if ($nextResetTime) {
           $user->next_reset_at = $nextResetTime->timestamp;
           $user->save();
           $fixedCount++;
         }
+      } catch (\App\Domains\AuthorityMigration\AuthorityFenceException) {
+        $errors[] = ['error' => 'AUTHORITY_SCHEDULE_FENCE_REJECTED'];
+        Log::error('AUTHORITY_SCHEDULE_FENCE_REJECTED');
       } catch (LegacyCaptureShadowException) {
         $errors[] = ['error' => 'LEGACY_SCHEDULE_REPAIR_CAPTURE_FAILED'];
         Log::error('LEGACY_SCHEDULE_REPAIR_CAPTURE_FAILED');

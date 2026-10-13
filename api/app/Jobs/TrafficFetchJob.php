@@ -40,7 +40,7 @@ class TrafficFetchJob implements ShouldQueue
 
         foreach ($data as $uid => $v) {
             $increments = ['u' => $v[0] * $this->server['rate'], 'd' => $v[1] * $this->server['rate']];
-            if (config('legacy_capture_shadow.enabled') === false) {
+            if (config('legacy_capture_shadow.enabled') === false && config('authority_writer_fence.enabled') === false) {
                 User::where('id', $uid)->incrementEach($increments, ['t' => time()]);
             } else {
                 $this->captureIncrement((int) $uid, $increments);
@@ -57,7 +57,12 @@ class TrafficFetchJob implements ShouldQueue
     {
         // Keep the native per-User commit boundary; no batch identity or dedupe exists here.
         DB::transaction(function () use ($userId, $increments): void {
+            if (config('authority_writer_fence.enabled') !== false) app(\App\Domains\AuthorityMigration\AuthorityWriterFence::class)->admit('traffic.fetch.apply');
             if (User::where('id', $userId)->lockForUpdate()->first(['id']) === null) {
+                return;
+            }
+            if (config('legacy_capture_shadow.enabled') === false) {
+                User::where('id', $userId)->incrementEach($increments, ['t' => time()]);
                 return;
             }
             $reference = $this->server['id'] ?? null;
@@ -75,6 +80,7 @@ class TrafficFetchJob implements ShouldQueue
 
     public function failed(?\Throwable $exception): void
     {
+        if ($exception instanceof \App\Domains\AuthorityMigration\AuthorityFenceException) { Log::error('AUTHORITY_TRAFFIC_FETCH_FENCE_REJECTED'); return; }
         if ($exception instanceof LegacyCaptureShadowException) {
             Log::error('LEGACY_TRAFFIC_FETCH_CAPTURE_FAILED');
         }

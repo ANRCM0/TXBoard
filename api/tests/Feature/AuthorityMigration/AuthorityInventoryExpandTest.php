@@ -150,7 +150,7 @@ class AuthorityInventoryExpandTest extends TestCase
         $this->expand();$this->fence()->prepare('bounded-prepare','2');$before=$this->history();
         DB::enableQueryLog();DB::flushQueryLog();$this->fence()->status();$this->fence()->recover('bounded-prepare','2');
         $this->fence()->recoverExpand('inventory-fixture','1');$queries=DB::getQueryLog();DB::disableQueryLog();
-        $this->assertCount(15,$queries);foreach($queries as$query)$this->assertMatchesRegularExpression('/\Aselect\b/i',$query['query']);
+        $this->assertCount(18,$queries);foreach($queries as$query)$this->assertMatchesRegularExpression('/\Aselect\b/i',$query['query']);
         $this->assertSame($before,$this->history());
     }
     public function test_upgrade_schema_replay_immutable_receipt_down_guard_and_invalid_nullable_column_are_checked():void
@@ -161,14 +161,14 @@ class AuthorityInventoryExpandTest extends TestCase
         $this->refused(fn()=>$receipt->delete(),'AUTHORITY_INVENTORY_RECEIPT_IMMUTABLE');
         try{$migration->down();$this->fail('Expected populated down refusal');}catch(\RuntimeException $error){$this->assertSame('AUTHORITY_INVENTORY_POPULATED_ROLLBACK_REFUSED',$error->getMessage());}
     }
-    public function test_direct_plan_observer_has_no_late_authority_admission_and_flags_are_outside_inventory():void
+    public function test_direct_plan_observer_has_no_late_authority_admission_and_new_flags_require_native_inventory():void
     {
         $this->expand();$plan=$this->plan();
         $plan->reset_traffic_method=Plan::RESET_TRAFFIC_FIRST_DAY_MONTH;
         $this->refused(fn()=>(new \App\Observers\PlanObserver())->updated($plan),'AUTHORITY_PLAN_OBSERVER_OUTER_TRANSACTION_REQUIRED');
-        $this->fence()->prepare('plan-prepared','2');
-        $this->postJson('/txapi/admin/inventory_fixture/plans/'.$plan->id.'/flags',['show'=>false])->assertOk();
-        $this->assertFalse((bool)$plan->fresh()->show);
+        $this->fence()->prepare('plan-prepared','2');$showBefore=(bool)$plan->fresh()->show;
+        $this->postJson('/txapi/admin/inventory_fixture/plans/'.$plan->id.'/flags',['show'=>false])->assertStatus(409);
+        $this->assertSame($showBefore,(bool)$plan->fresh()->show);
     }
     public function test_cli_new_operations_strict_config_shapes_and_unknown_writer_are_refused():void
     {

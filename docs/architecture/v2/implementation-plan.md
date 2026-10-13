@@ -1,6 +1,6 @@
 # Core First v2 实施台账
 
-> 状态：B0、B1.1–B1.28 影子证据、Terms、身份旁观、固定 writer 捕获、套餐批量同步、批量封禁、管理员创建/删除、注册初始记录与余额端点投影、B2.1–B2.7 单机升级、B3.1/B3.2 隔离用量、B3.3–B3.7 本地观察、持久事件桶与隔离Service接入、B4.1–B4.7 合成 Provider、插件停用接入、租约候选、离线签名快照与Go公钥诊断、B5.1–B5.24 本地 mTLS 读取、隔离建单、登录、内存邮件验证码、隔离注册、密码恢复、当前会话与管理读取、B6.1–B6.4 实验字节、离线加密、共享 owner 与独立响应随机值候选及 B7.1 Agent/MCP 退役已实现；两仓迁移与三镜像发布已完成，继续推进业务迁移切片。各整阶段仍按下表门禁验收。
+> 状态：B0、B1.1–B1.28 影子证据、Terms、身份旁观、固定 writer 捕获、套餐批量同步、批量封禁、管理员创建/删除、注册初始记录与余额端点投影、B2.1–B2.8 单机升级、B3.1/B3.2 隔离用量、B3.3–B3.7 本地观察、持久事件桶与隔离Service接入、B4.1–B4.7 合成 Provider、插件停用接入、租约候选、离线签名快照与Go公钥诊断、B5.1–B5.24 本地 mTLS 读取、隔离建单、登录、内存邮件验证码、隔离注册、密码恢复、当前会话与管理读取、B6.1–B6.4 实验字节、离线加密、共享 owner 与独立响应随机值候选及 B7.1 Agent/MCP 退役已实现；两仓迁移与三镜像发布已完成，继续推进业务迁移切片。各整阶段仍按下表门禁验收。
 
 2026-10-13，按仓库整合任务，将 Gateway/Node 的完整 Git 历史导入本仓 `gateway/`、`node/`，安装器集中到 TXBoard-Deploy。当前目录与三镜像 CI 见 [双仓布局](../../development/repository-layout.md)；旧基线和验证报告保持当时提交与路径。本次仓库整理独立于下列业务迁移门禁。
 
@@ -524,7 +524,7 @@ Core新专项及原建单/Billing回归 **19项、198断言**；Gateway **939**�
 
 该切片仍要求 local/testing isolated-copy，token/密钥变化只阻断影子观察而不重写原生凭据。正式密钥生命周期、凭据导入/授权切换、完整业务事实与Terms/资金投影和明文旧 token 退役仍待实现；projection_applied、global coverage和migration gate继续关闭。
 
-B1.28 远端收尾修正：`7ac24c1` 的 Oracle MySQL8.4 专项18通过/1失败，原因是原生JSON存储已消除同值重复字段，旧测试错误地假设能读取原始重复语法。API及Core发布门禁各捕获一项PHP文件权限缓存问题。新增每次密钥读取前的metadata刷新，实际验证私有→公开拒绝→私有重新验证；原始JSON严格拒绝、规范化对象的闭集/hash验证和额外字段拒绝均保留。固定 `7ac24c1` 加最终三源码及报告，完整API **1363通过、136项条件跳过、14351断言**，专用MariaDB **19通过、222断言**。原失败run/夹具日志保留，修正后再次推送核对Oracle/发布gate；未改变原生鉴权、链接、Schema或渲染来源。
+B1.28 远端收尾修正：`7ac24c1` 的 Oracle MySQL8.4 专项18通过/1失败，原因是原生JSON存储已消除同值重复字段，旧测试错误地假设能读取原始重复语法。API及Core发布门禁各捕获一项PHP文件权限缓存问题。新增每次密钥读取前的metadata刷新，实际验证私有→公开拒绝→私有重新验证；原始JSON严格拒绝、规范化对象的闭集/hash验证和额外字段拒绝均保留。固定 `7ac24c1` 加最终三源码及报告，完整API **1363通过、136项条件跳过、14351断言**，专用MariaDB **19通过、222断言**。原失败run/夹具日志保留，修正提交 `3efbc66` 的 Oracle 专项、API/MySQL、Core镜像等27项触发CI全部通过，收尾证据已记录；未改变原生鉴权、链接、Schema或渲染来源。
 
 ### B3.7 Node 主服务接入持久用量链路
 
@@ -532,6 +532,16 @@ B1.28 远端收尾修正：`7ac24c1` 的 Oracle MySQL8.4 专项18通过/1失败�
 
 显式模式仍发送原heartbeat/online，省略Traffic，不建第二条v1计费队列。未知归属、UDP、租约到期、配置/身份变化或持久化/回执失败关闭模式，不自动回退；主循环租约可独立于阻塞worker关闭连接。停止的未封存尾部保持未知；两秒join超时保留原FD/flock/process owner，既有载荷与回执不删除。同source epoch重启拒绝，须Core另行授权更高epoch。
 
-代理r6与协调者冻结同源复验：Linux九个完整受影响包race **239主测试、152子测试通过**，唯一真实Core条件用例单独实际执行，vet通过。协调者固定已发布 `7ac24c1` Core加冻结Node，用真实Service.Run、原config/users/handshake、生产ConnTracker memory TCP及Node TLS1.3/CA/SAN/Bearer链路产生 **11上传/7下载**，Core冻结3/2按方向floor结算 **16/10，共26**。持久ACK、结算、关闭后查询及原批次重放，SQL保持 **1 batch/1 entry**，旧User u/d **0/0**；真实Service进程SIGKILL和worker阻塞租约测试保留owner/证据并拒绝同epoch恢复。[报告](../../../node/docs/service-usage-v2-verification.json)保存协调者独立snapshot、原库0600备份与新实际批次/回执hash。独立Oracle MySQL8.4/Redis7.4 Service组合CI已加入，推送后核对；全Node仓回归由既有Node CI负责。
+代理r6与协调者冻结同源复验：Linux九个完整受影响包race **239主测试、152子测试通过**，唯一真实Core条件用例单独实际执行，vet通过。协调者固定已发布 `7ac24c1` Core加冻结Node，用真实Service.Run、原config/users/handshake、生产ConnTracker memory TCP及Node TLS1.3/CA/SAN/Bearer链路产生 **11上传/7下载**，Core冻结3/2按方向floor结算 **16/10，共26**。持久ACK、结算、关闭后查询及原批次重放，SQL保持 **1 batch/1 entry**，旧User u/d **0/0**；真实Service进程SIGKILL和worker阻塞租约测试保留owner/证据并拒绝同epoch恢复。[报告](../../../node/docs/service-usage-v2-verification.json)保存协调者独立snapshot、原库0600备份与新实际批次/回执hash。独立Oracle MySQL8.4/Redis7.4 Service组合CI、旧bounded互通、完整Node仓回归/镜像及文档共4项触发CI已在 `b914536` 全部通过，结果已记录。
 
 本片实际Service链路使用注入kernel生命周期的memory TCP；真实sing-box Start安装/二次Start拒绝另有专项，尚未声称真实VLESS/VMESS协议会话通过。B3整阶段、生产Provider交付/撤销、trusted time/restore、全局handoff/drain和授权切换仍未完成；Node生产v2准入保持关闭。
+
+### B2.8 原生写入事务与提交前 schedule
+
+[当前契约](../../../contracts/v2/authority-native-writers-v4.md)在同一 authority 单例扩展固定v4 inventory，共二十六个root writer。新增套餐flags/sort/delete、管理员订单assign/commission-review、佣金cron review/distribute、独立流量reset、schedule repair和legacy TrafficFetch；准入均在原事务取得业务锁前。显式 extend-native 从v3 legacy/open3进入v4 open4，再prepare5；旧v1/v2/v3 prepared状态及回执hash保持可恢复，禁止扩展或reopen。
+
+内部准入凭据绑定实际PDO弱引用、PID、Connection及Laravel outer transaction对象，根准入和查找清理已结束记录；嵌套reset/UserService/佣金helper验证实际外层准入，不在已持业务锁后首次获取authority。仅启用声明v4的原生User事件在同事务记录独立不可变Node意图，真实TransactionCommitting在PDO提交前计算schedule，以独立current User抑制事件，不覆盖producer原wasChanged/group。显式ObserverSchedule capture接在producer capture之后；每个model event有独立身份，rollback/savepoint取消不留已提交意图。
+
+提交后通过原NodeUserSyncJob交接；队列成功只代表handed_off，不代表Node已送达。入队后结果丢失保持processing/unknown和固定次数重试，不承诺exactly-once外部效果。真实业务事务commit/rollback/SIGKILL、真实连接KILL提交失败，以及原队列入队后SIGKILL恢复均验收；root proof滞留和PDO强持有两项真实缺陷先复现后修正，原失败日志保留。
+
+最终专项SQLite **79通过、32项引擎/进程条件跳过、1034断言**；专用MariaDB **20全部通过、218断言**，含五项独立进程用例。协调者固定 `b914536` 加二十六个冻结源码，完整API **1378通过、141项条件跳过、14532断言**。[报告](authority-native-writers-verification.json)记录r9源/依赖hash、独立快照、失败复现及最终同源回归。独立Oracle MySQL8.4 CI已加入，推送后核对。默认关闭保留原生SQL/Observer/计费兼容；注册/auth/bootstrap/CLI、可信插件直写及外部Node/Provider效果仍需覆盖，全局writer coverage/drain、target authority和migration gate继续false。

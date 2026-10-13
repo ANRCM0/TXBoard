@@ -16,6 +16,7 @@ class UserObserver
   public function __construct(
     private readonly TrafficResetService $trafficResetService
   ) {
+    $this->afterCommit = !\App\Domains\AuthorityMigration\AuthorityNativeInventory::declared();
   }
 
   public function updated(User $user): void
@@ -26,6 +27,11 @@ class UserObserver
     $needsSync = $user->wasChanged($syncFields);
     $oldGroupId = $user->wasChanged('group_id') ? $user->getOriginal('group_id') : null;
 
+    if (\App\Domains\AuthorityMigration\AuthorityNativeInventory::declared()) {
+      $schedule = $user->wasChanged(['plan_id', 'expired_at']);
+      if ($schedule || $needsSync) app(\App\Domains\AuthorityMigration\FencedUserPostcommit::class)->stage($user, 'updated', $oldGroupId, $schedule);
+      return;
+    }
     if ($user->wasChanged(['plan_id', 'expired_at'])) {
       $this->recalculateNextResetAt($user);
     }
@@ -37,12 +43,20 @@ class UserObserver
 
   public function created(User $user): void
   {
+    if (\App\Domains\AuthorityMigration\AuthorityNativeInventory::declared()) {
+      app(\App\Domains\AuthorityMigration\FencedUserPostcommit::class)->stage($user, 'created', null, true);
+      return;
+    }
     $this->recalculateNextResetAt($user);
     NodeUserSyncJob::dispatch($user->id, 'created');
   }
 
   public function deleted(User $user): void
   {
+    if (\App\Domains\AuthorityMigration\AuthorityNativeInventory::declared()) {
+      if ($user->group_id) app(\App\Domains\AuthorityMigration\FencedUserPostcommit::class)->stage($user, 'deleted', (int)$user->group_id, false);
+      return;
+    }
     if ($user->group_id) {
       NodeUserSyncJob::dispatch($user->id, 'deleted', $user->group_id);
     }

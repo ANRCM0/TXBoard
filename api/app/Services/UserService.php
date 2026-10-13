@@ -89,6 +89,7 @@ class UserService
 
     public function addBalance(int $userId, int $balance): bool
     {
+        if (config('authority_writer_fence.enabled') !== false) app(\App\Domains\AuthorityMigration\AuthorityAdmissionRegistry::class)->current()->assertValid();
         $user = User::lockForUpdate()->find($userId);
         if (!$user) {
             return false;
@@ -252,6 +253,7 @@ class UserService
      */
     public function assignPlan(User $user, Plan $plan, int $validityDays): User
     {
+        if (config('authority_writer_fence.enabled') !== false) app(\App\Domains\AuthorityMigration\AuthorityAdmissionRegistry::class)->current()->assertValid();
         $user->plan_id = $plan->id;
         $user->group_id = $plan->group_id;
         $user->transfer_enable = $plan->transfer_enable * 1073741824;
