@@ -58,6 +58,45 @@ describe('isolated Admin Internal consumer', () => {
     const payload = envelope({ auth_data: auth, is_admin: true, secure_path: path }, 'internal-isolated-admin-login/1')
     respond(payload); await expect(pending).resolves.toEqual(payload)
   })
+  it('dispatches bounded native Admin order list and preserves orphan/discounted exact money', async () => {
+    const input = { admin_path: path, page: 2, per_page: 1, status: 4 }
+    const pending = internalAdminRequest(config, 'orders', { auth, input })
+    expect(mock.request.mock.calls[0]![0].path).toBe('/txapi/internal/v1/operations/admin.order.list')
+    expect(JSON.parse(req.end.mock.calls[0]![0].toString()).input).toEqual(input)
+    const payload = envelope({ items: [{ id: '1', trade_no: 'T-1', user_id: '2', plan_id: '3', plan: null, user: null,
+      period: 'monthly', type: 1, status: 4, amount_minor: '9007199254740993', handling_amount_minor: '17',
+      balance_amount_minor: '100', discount_amount_minor: '25', paid_at: null, created_at: 1791763200, updated_at: 1791763200 }],
+      pagination: { page: 2, per_page: 1, total: 2, last_page: 2 } }, 'internal-admin-order-list/1')
+    respond(payload); await expect(pending).resolves.toEqual(payload)
+  })
+  it.each([{ page: 0 }, { page: 10000 }, { per_page: 101 }, { status: 5 }, { status: '4' }, { callback_no: 'private' }])
+    ('refuses invalid order query %j before any connection', async patch => {
+      await expect(internalAdminRequest(config, 'orders', { auth, input: { admin_path: path, page: 1, per_page: 20, ...patch } }))
+        .rejects.toMatchObject({ status: 400 })
+      expect(mock.request).not.toHaveBeenCalled()
+    })
+  it('refuses private order references even in authenticated Core response', async () => {
+    const pending = internalAdminRequest(config, 'orders', { auth, input: { admin_path: path, page: 1, per_page: 20 } })
+    const assertion = expect(pending).rejects.toMatchObject({ status: 502 })
+    respond(envelope({ items: [{ callback_no: 'private' }], pagination: { page: 1, per_page: 20, total: 1, last_page: 1 } }, 'internal-admin-order-list/1'))
+    await assertion
+  })
+  it('binds native order pagination filter and associated IDs to the requested DTO', async () => {
+    const item = { id: '1', trade_no: 'T-1', user_id: '2', plan_id: '3', plan: null, user: null,
+      period: 'monthly', type: 1, status: 4, amount_minor: '1234', handling_amount_minor: '17',
+      balance_amount_minor: '100', discount_amount_minor: '25', paid_at: null, created_at: 1791763200, updated_at: 1791763200 }
+    const pagination = { page: 1, per_page: 1, total: 2, last_page: 2 }
+    for (const data of [{ items: [item], pagination: { ...pagination, page: 2 } },
+      { items: [item], pagination: { ...pagination, per_page: 2 } },
+      { items: [item], pagination: { ...pagination, last_page: 1 } },
+      { items: [item, item], pagination }, { items: [{ ...item, status: 0 }], pagination },
+      { items: [{ ...item, plan: { id: '4', name: 'Wrong' } }], pagination },
+      { items: [{ ...item, user: { id: '4', email: 'wrong@example.test' } }], pagination }]) {
+      const pending = internalAdminRequest(config, 'orders', { auth, input: { admin_path: path, page: 1, per_page: 1, status: 4 } })
+      const assertion = expect(pending).rejects.toMatchObject({ status: 502 })
+      respond(envelope(data, 'internal-admin-order-list/1')); await assertion
+    }
+  })
   it('preserves signed and greater-than-53-bit native money and traffic strings', async () => {
     const pending = internalAdminRequest(config, 'dashboard', { auth, input })
     expect(mock.request.mock.calls[0]![0].path).toBe('/txapi/internal/v1/operations/admin.dashboard.get')

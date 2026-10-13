@@ -75,7 +75,52 @@
     "no_production_enablement": true
   },
   "remote_ci": {
-    "status": "pending-after-push"
+    "status": "completed-success",
+    "commit": "504274476e64bba92f3f1eaa8b2a9582cf7a34e9",
+    "runs": [
+      {
+        "workflow": "gateway-image",
+        "run_id": 38361734380,
+        "conclusion": "success",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38361734380"
+      },
+      {
+        "workflow": "Documentation",
+        "run_id": 38361734449,
+        "conclusion": "success",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38361734449"
+      },
+      {
+        "workflow": "internal-admin-identity",
+        "run_id": 38361734407,
+        "conclusion": "success",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38361734407"
+      },
+      {
+        "workflow": "internal-admin-dashboard",
+        "run_id": 38361734319,
+        "conclusion": "success",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38361734319"
+      },
+      {
+        "workflow": "internal-admin-consumer",
+        "run_id": 38361734295,
+        "conclusion": "success",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38361734295"
+      },
+      {
+        "workflow": "internal-admin-login",
+        "run_id": 38361734387,
+        "conclusion": "success",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38361734387"
+      },
+      {
+        "workflow": "internal-session-consumer",
+        "run_id": 38361734285,
+        "conclusion": "success",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38361734285"
+      }
+    ]
   },
   "limitations": [
     "No public Admin Gateway or new frontend yet",

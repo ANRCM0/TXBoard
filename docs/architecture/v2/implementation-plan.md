@@ -1,6 +1,6 @@
 # Core First v2 实施台账
 
-> 状态：B0、B1.1–B1.21 影子证据、Terms、身份旁观、固定 writer 捕获、套餐批量同步、批量封禁与余额端点投影、B2.1–B2.4 单机升级、B3.1/B3.2 隔离用量、B3.3/B3.4 本地观察与持久事件桶、B4.1–B4.6 合成 Provider、插件停用接入、租约候选、离线签名快照与Go公钥诊断、B5.1–B5.18 本地 mTLS 读取、隔离建单、登录、内存邮件验证码、隔离注册、密码恢复、当前会话与管理身份读取、B6.1–B6.4 实验字节、离线加密、共享 owner 与独立响应随机值候选及 B7.1 Agent/MCP 退役已实现；两仓迁移与三镜像发布已完成，继续推进业务迁移切片。各整阶段仍按下表门禁验收。
+> 状态：B0、B1.1–B1.21 影子证据、Terms、身份旁观、固定 writer 捕获、套餐批量同步、批量封禁与余额端点投影、B2.1–B2.4 单机升级、B3.1/B3.2 隔离用量、B3.3/B3.4 本地观察与持久事件桶、B4.1–B4.6 合成 Provider、插件停用接入、租约候选、离线签名快照与Go公钥诊断、B5.1–B5.19 本地 mTLS 读取、隔离建单、登录、内存邮件验证码、隔离注册、密码恢复、当前会话与管理读取、B6.1–B6.4 实验字节、离线加密、共享 owner 与独立响应随机值候选及 B7.1 Agent/MCP 退役已实现；两仓迁移与三镜像发布已完成，继续推进业务迁移切片。各整阶段仍按下表门禁验收。
 
 2026-10-13，按仓库整合任务，将 Gateway/Node 的完整 Git 历史导入本仓 `gateway/`、`node/`，安装器集中到 TXBoard-Deploy。当前目录与三镜像 CI 见 [双仓布局](../../development/repository-layout.md)；旧基线和验证报告保持当时提交与路径。本次仓库整理独立于下列业务迁移门禁。
 
@@ -379,3 +379,11 @@ Deploy `34fd467` 修正host MySQL临时socket服务就绪竞争，[完整部署C
 [当前契约](../../../contracts/v2/core-internal-api/local-admin-consumer-v1.md)增加独立默认关闭的管理配置加载和固定Internal客户端，限local/testing及Admin服务证书，仅消费登录、身份、仪表盘三种Operation。闭集DTO、严格JSON、双向TLS1.3、Core SAN、CRL、5秒壁钟和响应大小门禁拒绝歧义或不完整结果；金额/流量字符串不转Number，错误不反射私有输入。没有公开Admin路由、原生回退、管理角色缓存或登录重试。
 
 固定 `a3ed2fc` 加本批源码：新专项 **43项**，Gateway **875项**、SDK **123项**及类型/构建全部通过；实际Gateway客户端/Core/MariaDB11.4/mTLS **10项**验证登录→当前身份→精确大整数仪表盘，普通User/staff、额外身份输入、封禁/降权、错误路径和撤销均拒绝。真实审计503隐藏一次已提交会话，客户端不重试或补偿；最终token为0。[证据报告](internal-admin-consumer-verification.json)保留固定源码/依赖/日志hash和脱敏receipt；独立Oracle MySQL8.4 CI已加入。正式浏览器入口、SC-v2、管理前端、细粒度权限与生产私网仍待完成。
+
+提交 `5042744` 的独立MySQL8.4管理消费者、管理登录/身份/仪表盘、Gateway镜像构建发布、会话和文档CI全部通过，远端结果已记入上述报告。
+
+### B5.19 隔离管理订单列表
+
+[当前契约](../../../contracts/v2/core-internal-api/local-admin-order-list-v1.md)增加默认关闭的 `admin.order.list` version1，委托原生管理订单查询、状态过滤、稳定排序和当前User/Plan关联。闭集分页DTO移除callback、返佣策略及历史折抵引用，金额和ID保留字符串。Gateway固定orders调用核对请求页码、状态、分页范围和关联ID；当前角色、封禁与管理路径仍由Core每次重查。
+
+固定 `5042744` 加本批源码：Core专项 **37项、377断言**，全API **1159通过、106项引擎/工具链跳过、12163断言**；Gateway **884项**、SDK **123项**及类型/构建通过。最终客户端与实际Core/MariaDB/mTLS **12项**通过，包含过滤分页、孤儿关联、SQL/审计失败、角色变化和撤销；最终测试token为0。全量API与最终联调的API源码hash一致，后续只修正夹具断言并补充客户端验证。[报告](internal-admin-order-list-verification.json)保留源码、依赖、失败快照与最终日志hash。原MySQL金额32位字段未扩大；未开放公开Admin入口、正式SC-v2或生产运行。独立Oracle MySQL8.4 CI已加入，远端结果另行核验。

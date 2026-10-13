@@ -6,6 +6,8 @@ const count = z.number().int().nonnegative().safe()
 const traffic = z.strictObject({ upload: decimal, download: decimal, total: decimal })
 export const adminPath = z.string().regex(/^[A-Za-z0-9_-]{1,128}$(?![\s\S])/)
 export const adminReadInput = z.strictObject({ admin_path: adminPath })
+export const adminOrderListInput = adminReadInput.extend({ page: z.number().int().min(1).max(9999),
+  per_page: z.number().int().min(1).max(100), status: z.number().int().min(0).max(4).optional() })
 export const adminLoginInput = z.strictObject({
   email: z.email().max(254).refine(value => value.endsWith('@example.test')),
   password: z.string().min(8).max(1024),
@@ -39,6 +41,20 @@ export const adminDashboardSuccess = success.extend({
   }),
   meta: z.strictObject({ current_only: z.literal(true), slice: z.literal('internal-admin-dashboard/1') }),
 })
-export const adminResponses = { login: adminLoginSuccess, identity: adminIdentitySuccess, dashboard: adminDashboardSuccess }
+const id = z.string().regex(/^[1-9][0-9]{0,17}$(?![\s\S])/)
+const date = z.number().int().nonnegative().safe()
+export const adminOrderListSuccess = success.extend({
+  data: z.strictObject({ items: z.array(z.strictObject({
+    id, trade_no: z.string().min(1).max(128), user_id: id, plan_id: id,
+    plan: z.strictObject({ id, name: z.string() }).nullable(), user: z.strictObject({ id, email: z.email() }).nullable(),
+    period: z.enum(['monthly','quarterly','half_yearly','yearly','two_yearly','three_yearly','onetime','reset_traffic']),
+    type: z.number().int().min(1).max(4), status: z.number().int().min(0).max(4),
+    amount_minor: decimal, handling_amount_minor: decimal, balance_amount_minor: decimal, discount_amount_minor: decimal,
+    paid_at: date.nullable(), created_at: date, updated_at: date,
+  })).max(100), pagination: z.strictObject({ page: z.number().int().min(1).max(9999), per_page: z.number().int().min(1).max(100),
+    total: count, last_page: z.number().int().min(1).safe() }) }),
+  meta: z.strictObject({ current_only: z.literal(true), slice: z.literal('internal-admin-order-list/1') }),
+})
+export const adminResponses = { login: adminLoginSuccess, identity: adminIdentitySuccess, dashboard: adminDashboardSuccess, orders: adminOrderListSuccess }
 export type AdminOperation = keyof typeof adminResponses
 export type AdminResponses = { [K in AdminOperation]: z.infer<(typeof adminResponses)[K]> }

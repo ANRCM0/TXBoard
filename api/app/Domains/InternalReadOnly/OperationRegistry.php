@@ -29,6 +29,7 @@ final class OperationRegistry
         'admin.order.get' => ['service' => 'admin-gateway', 'actor' => 'admin', 'versions' => ['1']],
         'admin.identity.get' => ['service' => 'admin-gateway', 'actor' => 'admin', 'versions' => ['1']],
         'admin.dashboard.get' => ['service' => 'admin-gateway', 'actor' => 'admin', 'versions' => ['1']],
+        'admin.order.list' => ['service' => 'admin-gateway', 'actor' => 'admin', 'versions' => ['1']],
     ];
 
     public static function request(Request $request): array
@@ -43,6 +44,10 @@ final class OperationRegistry
             throw new SliceFailure('OPERATION_DISABLED', 404);
         }
         if ($operation === 'admin.dashboard.get' && (config('internal_api_slice.admin_dashboard_enabled') !== true
+            || config('core_shadow.isolated_copy') !== true)) {
+            throw new SliceFailure('OPERATION_DISABLED', 404);
+        }
+        if ($operation === 'admin.order.list' && (config('internal_api_slice.admin_order_list_enabled') !== true
             || config('core_shadow.isolated_copy') !== true)) {
             throw new SliceFailure('OPERATION_DISABLED', 404);
         }
@@ -163,6 +168,16 @@ final class OperationRegistry
             StrictJson::exact($input, ['trade_no']);
             $max = $body->contract_version === '2' ? 128 : 64;
             if (!is_string($input->trade_no) || !preg_match('/\A[A-Za-z0-9_-]{1,'.$max.'}\z/D', $input->trade_no)) {
+                throw new SliceFailure('INVALID_REQUEST', 400);
+            }
+        } elseif ($operation === 'admin.order.list') {
+            $keys = ['admin_path', 'page', 'per_page'];
+            if (property_exists($input, 'status')) $keys[] = 'status';
+            StrictJson::exact($input, $keys);
+            if (!is_string($input->admin_path) || !preg_match('/\A[A-Za-z0-9_-]{1,128}\z/D', $input->admin_path)
+                || !is_int($input->page) || $input->page < 1 || $input->page > 9999
+                || !is_int($input->per_page) || $input->per_page < 1 || $input->per_page > 100
+                || (property_exists($input, 'status') && (!is_int($input->status) || $input->status < 0 || $input->status > 4))) {
                 throw new SliceFailure('INVALID_REQUEST', 400);
             }
         } elseif (in_array($operation, ['admin.identity.get', 'admin.dashboard.get'], true)) {

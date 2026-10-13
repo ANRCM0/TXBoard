@@ -3,11 +3,11 @@ import https from 'node:https'
 import type { ClientRequest } from 'node:http'
 import { checkServerIdentity } from 'node:tls'
 import type { InternalAdminConfig } from '../config/internal-admin.js'
-import { adminLoginInput, adminReadInput, adminResponses, type AdminOperation, type AdminResponses } from '../adapters/internal-admin-v1.js'
+import { adminLoginInput, adminReadInput, adminOrderListInput, adminResponses, type AdminOperation, type AdminResponses } from '../adapters/internal-admin-v1.js'
 import { internalError, strictInternalJson } from '../adapters/internal-user-v2.js'
 import { GatewayFailure } from './failures.js'
 
-const operations = { login: 'auth.admin.login', identity: 'admin.identity.get', dashboard: 'admin.dashboard.get' } as const
+const operations = { login: 'auth.admin.login', identity: 'admin.identity.get', dashboard: 'admin.dashboard.get', orders: 'admin.order.list' } as const
 type Options = { auth?: string; input: unknown; signal?: AbortSignal }
 
 /** Isolated server-side consumer only. No public route, role cache or Native fallback. */
@@ -20,7 +20,7 @@ export async function internalAdminRequest<K extends AdminOperation>(config: Int
   if (login ? options.auth !== undefined : !/^Bearer [A-Za-z0-9|._-]{1,4089}$(?![\s\S])/.test(options.auth ?? '')) {
     throw new GatewayFailure('VALIDATION_ERROR', login ? 400 : 401, 'Invalid Internal Admin credential')
   }
-  const input = (login ? adminLoginInput : adminReadInput).safeParse(options.input)
+  const input = (login ? adminLoginInput : operation === 'orders' ? adminOrderListInput : adminReadInput).safeParse(options.input)
   if (!input.success) throw new GatewayFailure('VALIDATION_ERROR', 400, 'Invalid Internal Admin input')
   if (Date.now() < Date.parse(config.certificate.validFrom) || Date.now() >= Date.parse(config.certificate.validTo)) {
     throw new GatewayFailure('UPSTREAM_UNAVAILABLE', 502, 'Internal Admin service unavailable')
@@ -78,6 +78,18 @@ export async function internalAdminRequest<K extends AdminOperation>(config: Int
             }
             const parsed = adminResponses[operation].safeParse(value)
             if (!parsed.success) throw new GatewayFailure('UPSTREAM_ERROR', 502, 'Unexpected Internal Admin response')
+          if (operation === 'orders') {
+            const expected = adminOrderListInput.parse(input.data)
+            const { items, pagination } = (parsed.data as AdminResponses['orders']).data
+            if (pagination.page !== expected.page || pagination.per_page !== expected.per_page
+              || pagination.last_page !== Math.max(1, Math.ceil(pagination.total / pagination.per_page))
+              || items.length > expected.per_page
+              || items.some(item => expected.status !== undefined && item.status !== expected.status
+                || item.plan !== null && item.plan.id !== item.plan_id
+                || item.user !== null && item.user.id !== item.user_id)) {
+              throw new GatewayFailure('UPSTREAM_ERROR', 502, 'Unexpected Internal Admin response')
+            }
+          }
             finish(undefined, parsed.data as AdminResponses[K])
           } catch (error) {
             finish(error instanceof GatewayFailure ? error : new GatewayFailure('UPSTREAM_ERROR', 502, 'Unexpected Internal Admin response'))
