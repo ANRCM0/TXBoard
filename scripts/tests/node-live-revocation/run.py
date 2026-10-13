@@ -3,7 +3,7 @@
 from pathlib import Path
 import hashlib,json,os,shutil,socket,ssl,subprocess,sys,time,urllib.error,urllib.request
 
-CASES={'ban-baseline','ban','speed','config','shutdown','history'}
+CASES={'ban-baseline','ban','speed','config','shutdown','history','expiry'}
 if len(sys.argv)!=6 or sys.argv[4] not in {'vless','vmess'} or sys.argv[5] not in CASES:
     raise SystemExit('usage: run.py API NODE NEW_EVIDENCE vless|vmess CASE')
 api,node,evidence=(Path(p).resolve()for p in sys.argv[1:4]);protocol,case=sys.argv[4:6]
@@ -85,7 +85,31 @@ try:
     pending=json.loads(run('sql-pending',[php,str(scripts/'fixture.php'),'assert-pending'],api))
     settlement=json.loads(run('sql-settlement',[php,str(scripts/'fixture.php'),'settle'],api))
     mutation=None
-    if case!='history':
+    expiry_grant=None
+    if case=='expiry':
+        code=test.wait(timeout=12);test_log.close();test_log=None
+        if code:
+            print((evidence/'node-history-tail.log').read_text(errors='replace')[-8000:])
+            raise SystemExit('LIVE_REVOCATION_HISTORY_CHILD_FAILED')
+        source=json.loads(run('expiry-source',[php,'artisan','core:usage-v2','source','--node='+fixture['node_id'],'--installation=live_revocation_expiry_0001'],api))
+        issued=int(time.time())+1;expires=issued+4
+        grant=json.loads(run('expiry-grant',[php,'artisan','core:usage-v2','grant','--source='+str(source['id']),
+          '--subject='+fixture['subject_id'],'--terms='+fixture['terms_id'],'--period='+fixture['period_id'],
+          '--tariff='+fixture['tariff_id'],'--from='+str(issued),'--until='+str(expires)],api))
+        expiry_grant={'source_id':str(source['id']),'source_epoch':str(source['source_epoch']),
+          'installation_ref':source['installation_ref'],'grant_id':str(grant['id']),
+          'issued_at':int(grant['issued_at']),'lease_expires_at':int(grant['lease_expires_at'])}
+        if expiry_grant['lease_expires_at']!=expires or expiry_grant['source_epoch']!='2':
+            raise SystemExit('LIVE_REVOCATION_CORE_FINITE_GRANT_MISMATCH')
+        (evidence/'expiry-issued.json').write_text(json.dumps(expiry_grant,indent=2)+'\n')
+        os.chmod(evidence/'expiry-issued.json',0o600)
+        while time.time()<issued:
+            time.sleep(0.01)
+        env['TXBOARD_LIVE_REVOCATION_PHASE']='expiry'
+        test_log=(evidence/'node-expiry.log').open('wb')
+        test=subprocess.Popen([str(evidence/'node-live-revocation-test'),'-test.run=^TestServiceUsageV2LiveRevocation$',
+          '-test.v','-test.timeout=80s'],cwd=node,env=env,stdout=test_log,stderr=subprocess.STDOUT)
+    if case not in {'history','expiry'}:
         wait_file('tail-ready.json')
         if case=='shutdown':
             (evidence/'trigger.json').write_text('{"action":"normal-context-cancel"}\n')
@@ -111,12 +135,15 @@ try:
             if mutation['status']!=200 or(case.startswith('ban')and mutation['response'].get('data',{}).get('updated')!=1):
                 raise SystemExit('LIVE_REVOCATION_NATIVE_MUTATION_REJECTED')
             (evidence/'native-mutation.json').write_text(json.dumps(mutation,indent=2)+'\n')
-    code=test.wait(timeout=25);test_log.close();test_log=None
+    code=test.wait(timeout=25)
+    if test_log is not None:
+        test_log.close();test_log=None
     if case=='ban-baseline':
         if code==0 or not(evidence/'baseline-ignored-empty.json').is_file():
             print((evidence/'node-history-tail.log').read_text(errors='replace')[-8000:]);raise SystemExit('LIVE_REVOCATION_BASELINE_DID_NOT_REPRODUCE')
     elif code:
-        print((evidence/'node-history-tail.log').read_text(errors='replace')[-8000:]);raise SystemExit('LIVE_REVOCATION_NODE_BOUNDARY_FAILED')
+        failed_log=evidence/('node-expiry.log' if case=='expiry' else 'node-history-tail.log')
+        print(failed_log.read_text(errors='replace')[-8000:]);raise SystemExit('LIVE_REVOCATION_NODE_BOUNDARY_FAILED')
     final=json.loads(run('sql-final',[php,str(scripts/'fixture.php'),'assert-final'],api))
 finally:
     for process in [test,tls_server,http_server]:
@@ -127,7 +154,7 @@ finally:
     if test_log is not None:test_log.close()
     http_log.close();tls_log.close()
 sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
-public_names={'cert.pem','fixture.json','history-capture.json','history-ready.json','tail-ready.json',
+public_names={'cert.pem','fixture.json','history-capture.json','history-ready.json','tail-ready.json','expiry-issued.json','expiry-boundary-result.json',
  'boundary-result.json','baseline-ignored-empty.json','native-mutation.json','sql-pending.log','sql-settlement.log','sql-final.log','native-observations.jsonl'}
 records={str(p.relative_to(evidence)):sha(p)for p in evidence.rglob('*')if p.is_file()and
  (p.name in public_names or p.relative_to(evidence).parts[0]=='mode')and p.name not in {'.usage-lock','.interval-lock'}}
@@ -136,5 +163,8 @@ result={'status':'reproduced-real-empty-poll-defect'if case=='ban-baseline'else'
  'native_mutation':mutation,'historical_persisted_ack_sql':pending,'historical_settlement':settlement,'final_sql':final,
  'boundary':json.loads((evidence/('baseline-ignored-empty.json'if case=='ban-baseline'else'boundary-result.json')).read_text())if case!='history'else{'actual_history_retained':True},
  'artifacts_sha256':records,'production_authorization':False,'private_material_exported':False,'test_exit_code':code}
+if expiry_grant is not None:
+    result['core_issued_expiry_grant']=expiry_grant
+    result['expiry_boundary']=json.loads((evidence/'expiry-boundary-result.json').read_text())
 (evidence/'result.json').write_text(json.dumps(result,indent=2)+'\n');os.chmod(evidence/'result.json',0o600)
 print(json.dumps({'status':result['status'],'case':case,'protocol':protocol,'historical_billable_bytes':'182','test_exit_code':code,'evidence':str(evidence)}))

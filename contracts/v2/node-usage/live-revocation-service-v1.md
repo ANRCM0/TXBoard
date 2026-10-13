@@ -25,6 +25,13 @@ grant and generation commands are the provisioners. No caller rewrites source
 numbers, prior immutable grants or local source markers. Compilation and Core/TLS
 warming precede finite grant issuance; timing failures remain failures.
 
+The expiry acceptance first settles the real historical batch, then stops that
+Service process before provisioning source epoch 2 and its four-second Core grant.
+A separate process reopens the same mode directory, accepts a real VLESS or VMess
+flow with a measured unfinished tail, and must close the connection and listener
+at expiry with at most 1.5 seconds of scheduler observation allowance. The old
+settled receipt and SQL totals remain unchanged; the tail creates no batch.
+
 Genuine UDP, XUDP and classicTCPmux requests are separate protocol cases. Unsupported
 traffic must not reach an origin, create an accepted usage batch or fall back to
 v1. A detected mux admission hole remains a failed gate until a reviewed runtime
