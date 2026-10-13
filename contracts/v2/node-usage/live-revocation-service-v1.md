@@ -38,6 +38,11 @@ v1. A detected mux admission hole remains a failed gate until a reviewed runtime
 fix establishes a reliable boundary; one packet rejection does not prove all mux
 families rejected. Collector/tail predicates are not weakened to pass tests.
 
+The UDP and XUDP cases use the locked VLESS/VMess clients and an exact loopback UDP
+origin route. They accept either a pre-auth protocol rejection or bounded tracker
+fail-stop after packet admission, but require zero origin datagrams and unchanged
+settled history. Classic TCP CommandMux remains a separate acceptance boundary.
+
 A higher Core-issued source can retain and replay original older batches unchanged
 while starting a fresh timeline. Core instance/receipt-generation drift requires
 recovery and refuses old storage before listeners. Restoring the dedicated SQL DB
