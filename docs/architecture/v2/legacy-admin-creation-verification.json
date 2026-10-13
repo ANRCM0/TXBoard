@@ -74,7 +74,130 @@
     "production_switch_default_off": true
   },
   "remote_ci": {
-    "status": "pending-after-push"
+    "status": "all-triggered-runs-passed",
+    "commit": "d6fac98b5967b90f6bc565bd37e0433fe9ae2491",
+    "runs": [
+      {
+        "conclusion": "success",
+        "databaseId": 38381919773,
+        "headSha": "d6fac98b5967b90f6bc565bd37e0433fe9ae2491",
+        "name": "admin-creation-shadow",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38381919773"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 38381919844,
+        "headSha": "d6fac98b5967b90f6bc565bd37e0433fe9ae2491",
+        "name": "api-ci",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38381919844"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 38381919574,
+        "headSha": "d6fac98b5967b90f6bc565bd37e0433fe9ae2491",
+        "name": "Documentation",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38381919574"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 38381919597,
+        "headSha": "d6fac98b5967b90f6bc565bd37e0433fe9ae2491",
+        "name": "provider-offline-proof",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38381919597"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 38381919586,
+        "headSha": "d6fac98b5967b90f6bc565bd37e0433fe9ae2491",
+        "name": "internal-session-consumer",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38381919586"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 38381919589,
+        "headSha": "d6fac98b5967b90f6bc565bd37e0433fe9ae2491",
+        "name": "internal-admin-login",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38381919589"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 38381919646,
+        "headSha": "d6fac98b5967b90f6bc565bd37e0433fe9ae2491",
+        "name": "internal-admin-identity",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38381919646"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 38381919650,
+        "headSha": "d6fac98b5967b90f6bc565bd37e0433fe9ae2491",
+        "name": "internal-admin-dashboard",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38381919650"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 38381919571,
+        "headSha": "d6fac98b5967b90f6bc565bd37e0433fe9ae2491",
+        "name": "internal-admin-consumer",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38381919571"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 38381919576,
+        "headSha": "d6fac98b5967b90f6bc565bd37e0433fe9ae2491",
+        "name": "internal-admin-order-list",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38381919576"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 38381919598,
+        "headSha": "d6fac98b5967b90f6bc565bd37e0433fe9ae2491",
+        "name": "internal-admin-sessions",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38381919598"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 38381919577,
+        "headSha": "d6fac98b5967b90f6bc565bd37e0433fe9ae2491",
+        "name": "internal-admin-plan-list",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38381919577"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 38381919615,
+        "headSha": "d6fac98b5967b90f6bc565bd37e0433fe9ae2491",
+        "name": "internal-admin-users",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38381919615"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 38381919629,
+        "headSha": "d6fac98b5967b90f6bc565bd37e0433fe9ae2491",
+        "name": "txboard-core-image",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38381919629"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 38381919587,
+        "headSha": "d6fac98b5967b90f6bc565bd37e0433fe9ae2491",
+        "name": "api-mysql-ci",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38381919587"
+      }
+    ]
   },
   "limitations": [
     "Only existing native Admin create is captured; registration, bootstrap, trusted plugins and other lifecycle writers remain outside scope",

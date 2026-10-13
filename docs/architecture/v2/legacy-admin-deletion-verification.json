@@ -1,0 +1,122 @@
+{
+  "phase": "B1.23",
+  "status": "verified-isolated-current",
+  "base_commit": "f1b0291f324ec2f1d4dcd81e762aba032ed8406e",
+  "source_sha256": {
+    ".github/workflows/ci-admin-deletion-shadow.yml": "318d3e770742fd98b82e2a72d0b690fe935a8680c815a2c241216670b1161c7d",
+    "api/app/Console/Commands/CoreAdminDeletionShadowVerify.php": "3bfcde354f85bb1236a68b898cf36053a8c84d9c5ab2e58d8cd7f60f86ee72e8",
+    "api/app/Domains/Identity/AdminAccountProtection.php": "5c72efa94286ac9398f0bfe1a9973a19657f82a06935b83cc95a0ce79422455c",
+    "api/app/Models/LegacyUserDeletionShadow.php": "9bfda46dfd7069b64f7e47c927117a604fa75521af6338a49069069058f4223f",
+    "api/app/Services/Subscription/LegacyAdminDeletionShadow.php": "5e40158f4e3baf9eea601779d245309d6a5c21d5679f34ac9945f737ae813d1c",
+    "api/config/legacy_admin_deletion_shadow.php": "4633e439d72d3c52389ae77f22b957566a63065af048a5e1ae425aa93815ba8f",
+    "api/database/migrations/2026_10_13_000003_create_legacy_user_deletion_shadow.php": "3305a819392c9e66b544b0bd17287f0dc3df2018f1befecdab458b27a25c4643",
+    "api/tests/Feature/Subscription/LegacyAdminDeletionShadowTest.php": "fe6213295f3ea9d3a9202e66c3dcdf23b2c56c84a7f92d3fb1a5d9ea75089697"
+  },
+  "dependencies": {
+    "composer_lock_sha256": "f47b212c2fc530a7820e370eab7c6d624d13962e7d26e4f2ddf57a11848257c0",
+    "installed_json_sha256": "8e668e456c9772ae428a038ab003fba5752ab2591980fc8396d9122851145b80"
+  },
+  "tests": {
+    "targeted": {
+      "mode": "targeted",
+      "exit_code": 0,
+      "log_sha256": "8944689c7fd47d33b0beb9bd07949bd746fa5436f59c886eafb7563a98d91d45",
+      "snapshot": "/opt/txboard-baseline/admin-deletion-r3"
+    },
+    "mysql": {
+      "mode": "mysql",
+      "exit_code": 0,
+      "log_sha256": "3ee2b81f65507040dd5b4336f58cad8bc02c12d1349c724f318bbb90b6d3b07d",
+      "snapshot": "/opt/txboard-baseline/admin-deletion-r3"
+    },
+    "full": {
+      "mode": "full",
+      "exit_code": 0,
+      "log_sha256": "8d8cbccad53d3de9f78eb9836c0b0d2d28970c19c1efa37d3ee8c3dbb2fc3263",
+      "snapshot": "/opt/txboard-baseline/admin-deletion-r3"
+    }
+  },
+  "coverage": {
+    "targeted": {
+      "passed": 41,
+      "skipped": 2,
+      "assertions": 353
+    },
+    "mysql": {
+      "passed": 19,
+      "skipped": 0,
+      "assertions": 179
+    },
+    "full": {
+      "passed": 1241,
+      "skipped": 108,
+      "assertions": 12919
+    }
+  },
+  "new_sqlite_passed": 18,
+  "new_sqlite_skipped": 1,
+  "database": {
+    "engine": "MariaDB",
+    "version": "11.4.12",
+    "dedicated_database": "txboard_admin_deletion_test",
+    "synthetic_only": true
+  },
+  "previous_results": {
+    "r1_targeted": {
+      "mode": "targeted",
+      "exit_code": 0,
+      "log_sha256": "2eef34a39ccc3497b593ad08c8cd412864c64ac293cbd504b4894f705fd6bd9c",
+      "snapshot": "/opt/txboard-baseline/admin-deletion-r1"
+    },
+    "r1_mysql": {
+      "mode": "mysql",
+      "exit_code": 2,
+      "log_sha256": "685e8e1f2e7fc895d6a04f72bd9139be5803806f0e8be02c8adee3f18f5d077b",
+      "snapshot": "/opt/txboard-baseline/admin-deletion-r1"
+    },
+    "r1_full": {
+      "mode": "full",
+      "exit_code": 0,
+      "log_sha256": "1e6a53cd54d148849d53155783de3c03d6ea6edbbb39c73f7007922e72cf4033",
+      "snapshot": "/opt/txboard-baseline/admin-deletion-r1"
+    },
+    "r2_mysql": {
+      "mode": "mysql",
+      "exit_code": 1,
+      "log_sha256": "0b9fc77ac118546e4318b17349465684fb3a1aba0f441585af83e678fcdf924d",
+      "snapshot": "/opt/txboard-baseline/admin-deletion-r2"
+    },
+    "r2_full": {
+      "mode": "full",
+      "exit_code": 0,
+      "log_sha256": "41d41bb8c5e0520c73d08b8e11b1572d9e15aefdd6942ed06cf903935a4cc321",
+      "snapshot": "/opt/txboard-baseline/admin-deletion-r2"
+    }
+  },
+  "previous_failures": [
+    "r1 synthetic token exceeded native CHAR(32); shortened fixture only",
+    "r2 real MariaDB exposed pre-existing User parent_id query on schema without the field. Native protection now queries parent references only when actual column exists. Added explicit existing-column linked-child protection; no new business field was added."
+  ],
+  "review": {
+    "actionlint": "passed",
+    "native_schema_issues": 0,
+    "api_source_matches_final_snapshot": true,
+    "select_only_cli": true,
+    "native_cancelled_delete_preserved": true,
+    "admission_snapshot_not_final_predelete_state": true,
+    "creation_and_mutation_history_retained": true,
+    "uncommitted_delete_not_visible_to_independent_session": true,
+    "user_sessions_and_evidence_atomic": true,
+    "production_capture_default_off": true
+  },
+  "remote_ci": {
+    "status": "pending-after-push"
+  },
+  "limitations": [
+    "Only native eligible Admin deletion is captured; historical deletes and other writers are not reconstructed",
+    "Trusted hook effects and after-commit Node sync are outside SQL rollback guarantees",
+    "After-commit failure can hide committed deletion; no automatic retry or compensation",
+    "Hashes are not signatures or independent historical evidence",
+    "No final pre-delete endpoint, full chain, Provider/Node convergence, authoritative projection or migration gate"
+  ]
+}

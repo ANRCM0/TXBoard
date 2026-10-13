@@ -38,7 +38,7 @@ npm ci --no-audit --no-fund
 npm run verify:web
 ```
 
-`verify:web` 包含 TypeScript 检查、现有 Admin/User 单元测试、构建与前端性能检查。后续独立前端只推进管理端；新用户前端延期。Agent/MCP 已清理。
+`verify:web` 包含 TypeScript 检查、现有 Admin/User 单元测试、构建与前端性能检查。新管理前端与用户前端均暂缓；后续新增开发在独立 `TX-F` 项目进行，只本地提交、不推送。当前 `verify:web` 继续验证兼容入口。Agent/MCP 已清理。
 
 ## 修改对外接口时
 

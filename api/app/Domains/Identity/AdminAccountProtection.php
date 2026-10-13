@@ -10,6 +10,7 @@ use App\Services\Plugin\HookManager;
 use App\Utils\Helper;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * Shared V2/native Admin boundary: never erase financial, support or usage history
@@ -33,11 +34,14 @@ final class AdminAccountProtection
                 || $user->trafficResetLogs()->exists()
                 || Order::query()->where('invite_user_id', $userId)->exists()
                 || User::query()->where('invite_user_id', $userId)->exists()
-                || User::query()->where('parent_id', $userId)->exists()
+                || (Schema::hasColumn('tx_user', 'parent_id')
+                    && User::query()->where('parent_id', $userId)->exists())
             ) {
                 return null;
             }
 
+            $capture = app(\App\Services\Subscription\LegacyAdminDeletionShadow::class);
+            $ticket = $capture->begin($userId, (int) $request->user()->id);
             HookManager::call('admin.user.destroy.before', [
                 'user' => $user, 'request' => $request,
             ]);
@@ -45,6 +49,7 @@ final class AdminAccountProtection
             // A deleted account must not leave active admin/user API sessions.
             (new AuthService($user))->removeAllSessions();
             $user->delete();
+            $capture->append($ticket);
             return $user;
         });
         if ($deleted === null) {
