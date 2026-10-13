@@ -1,6 +1,6 @@
 # Core First v2 实施台账
 
-> 状态：B0、B1.1–B1.21 影子证据、Terms、身份旁观、固定 writer 捕获、套餐批量同步、批量封禁与余额端点投影、B2.1–B2.4 单机升级、B3.1/B3.2 隔离用量、B3.3/B3.4 本地观察与持久事件桶、B4.1–B4.6 合成 Provider、插件停用接入、租约候选、离线签名快照与Go公钥诊断、B5.1–B5.14 本地 mTLS 读取、隔离建单、登录、内存邮件验证码、隔离注册、密码恢复与当前会话、B6.1–B6.4 实验字节、离线加密、共享 owner 与独立响应随机值候选及 B7.1 Agent/MCP 退役已实现；两仓迁移与三镜像发布已完成，继续推进业务迁移切片。各整阶段仍按下表门禁验收。
+> 状态：B0、B1.1–B1.21 影子证据、Terms、身份旁观、固定 writer 捕获、套餐批量同步、批量封禁与余额端点投影、B2.1–B2.4 单机升级、B3.1/B3.2 隔离用量、B3.3/B3.4 本地观察与持久事件桶、B4.1–B4.6 合成 Provider、插件停用接入、租约候选、离线签名快照与Go公钥诊断、B5.1–B5.15 本地 mTLS 读取、隔离建单、登录、内存邮件验证码、隔离注册、密码恢复、当前会话与管理身份读取、B6.1–B6.4 实验字节、离线加密、共享 owner 与独立响应随机值候选及 B7.1 Agent/MCP 退役已实现；两仓迁移与三镜像发布已完成，继续推进业务迁移切片。各整阶段仍按下表门禁验收。
 
 2026-10-13，按仓库整合任务，将 Gateway/Node 的完整 Git 历史导入本仓 `gateway/`、`node/`，安装器集中到 TXBoard-Deploy。当前目录与三镜像 CI 见 [双仓布局](../../development/repository-layout.md)；旧基线和验证报告保持当时提交与路径。本次仓库整理独立于下列业务迁移门禁。
 
@@ -350,4 +350,10 @@ Deploy `34fd467` 修正host MySQL临时socket服务就绪竞争，[完整部署C
 
 [范围决定](admin-only-scope.md)将独立前端限定为管理端，延期新用户前端，取消 Agent/MCP 插件拆分。删除 Agent API、配对、巡检、内置模块、管理页面、Node AI executor、MCP 进程和构建/CI；旧 Agent 名称或作用域的 Sanctum 凭据拒绝，历史迁移/审计行保留。正常 Node 同步、上报和安装器 Machine runtime update 继续运行。Compact/Split 边缘显式拒绝 `/mcp` 及子路径；安装器移除启用与管理选项，旧 CLI 参数在 Docker 调用前失败。
 
-固定 `0ba06e0` 加清理源码：全 API **1114通过、106项引擎/跨工具链跳过、11735断言**；退役与基础边界专项 **28项、719断言**；Node 全仓 race **660测试、28包**及相关 vet 通过。Web 共享 **8**、Admin **287**、既有 User 兼容 **63**项及类型/构建/体积门禁通过；实际注册 **254** HTTP methods，外部契约和退役路由门禁通过。安装器12套相关回归及旧参数拒绝通过；[源码与日志报告](agent-retirement-verification.json)保留修正前夹具失败和固定快照。镜像 Docker/PDO/Octane 与远端发布结果继续单独核验。独立管理前端、Admin Operation 与正式 SC-v2 尚未完成。
+固定 `0ba06e0` 加清理源码：全 API **1114通过、106项引擎/跨工具链跳过、11735断言**；退役与基础边界专项 **28项、719断言**；Node 全仓 race **660测试、28包**及相关 vet 通过。Web 共享 **8**、Admin **287**、既有 User 兼容 **63**项及类型/构建/体积门禁通过；实际注册 **254** HTTP methods，外部契约和退役路由门禁通过。安装器12套相关回归及旧参数拒绝通过；[源码与日志报告](agent-retirement-verification.json)保留修正前夹具失败和固定快照。提交 `3417670` 的 API/MySQL、前端、会话、公钥及文档 CI 全部通过；[Core 镜像](https://github.com/ANRCM0/TXBoard/actions/runs/38349216051)验证 MCP/Node.js/旧 Supervisor 程序缺失、PDO/Octane smoke 和发布，[Node 镜像](https://github.com/ANRCM0/TXBoard/actions/runs/38349216127)构建/配置兼容、发布和 dev 提升通过。Deploy `aaacd54` 的[主 CI](https://github.com/ANRCM0/TXBoard-Deploy/actions/runs/38349237512)通过；仅 PR/dispatch 的历史镜像安装 smoke 本轮未运行。独立管理前端、完整 Admin Operation 与正式 SC-v2 尚未完成。
+
+### B5.15 隔离管理身份读取
+
+[当前契约](../../../contracts/v2/core-internal-api/local-admin-identity-v1.md)增加固定 `admin.identity.get` version1，要求专用 `admin-gateway` proof、当前 Sanctum Bearer、原生封禁/管理路径/管理员角色检查；独立严格默认关闭，限 local/testing 隔离副本。输出仅 decimal ID、当前邮箱和 `is_admin=true`，无秘密或路径；Core 保持最终授权，不把本次身份结果缓存为未来权限。普通 User、仅 staff、过期/撤销、退役 Agent 和 User service 均拒绝；没有开放 Admin Gateway。
+
+固定 `3417670` 加本批源码：专项 **24项、462断言**，包含10项新管理测试和原服务/退役边界；全API **1124通过、106项引擎/工具链条件跳过、11820断言**。真实 Core/MariaDB11.4/TLS1.3 **12项**通过，覆盖服务/actor交叉拒绝、路径轮换、SQL防重放、真实审计INSERT失败503及当前凭据撤销。初版拒绝分支被内层路由渲染为500，已改为固定403并在报告保留失败源码/日志；修正后的固定快照通过全部验收，[证据报告](internal-admin-identity-verification.json)记录源码、依赖与日志hash。新增独立MySQL8.4联调CI，远端结果另行核对；Admin登录、其余管理操作、细粒度RBAC、SC-v2和生产私网仍待完成。

@@ -26,6 +26,7 @@ final class OperationRegistry
         'user.session.revoke' => ['service' => 'user-gateway', 'actor' => 'user', 'versions' => ['1']],
         'user.session.logout' => ['service' => 'user-gateway', 'actor' => 'user', 'versions' => ['1']],
         'admin.order.get' => ['service' => 'admin-gateway', 'actor' => 'admin', 'versions' => ['1']],
+        'admin.identity.get' => ['service' => 'admin-gateway', 'actor' => 'admin', 'versions' => ['1']],
     ];
 
     public static function request(Request $request): array
@@ -34,6 +35,10 @@ final class OperationRegistry
         $definition = self::OPERATIONS[$operation] ?? null;
         if ($definition === null) {
             throw new SliceFailure('UNKNOWN_OPERATION', 400);
+        }
+        if ($operation === 'admin.identity.get' && (config('internal_api_slice.admin_identity_enabled') !== true
+            || config('core_shadow.isolated_copy') !== true)) {
+            throw new SliceFailure('OPERATION_DISABLED', 404);
         }
         if ($definition['actor'] === 'anonymous' && config('internal_api_slice.public_read_enabled') !== true) {
             throw new SliceFailure('OPERATION_DISABLED', 404);
@@ -148,6 +153,11 @@ final class OperationRegistry
             StrictJson::exact($input, ['trade_no']);
             $max = $body->contract_version === '2' ? 128 : 64;
             if (!is_string($input->trade_no) || !preg_match('/\A[A-Za-z0-9_-]{1,'.$max.'}\z/D', $input->trade_no)) {
+                throw new SliceFailure('INVALID_REQUEST', 400);
+            }
+        } elseif ($operation === 'admin.identity.get') {
+            StrictJson::exact($input, ['admin_path']);
+            if (!is_string($input->admin_path) || !preg_match('/\A[A-Za-z0-9_-]{1,128}\z/D', $input->admin_path)) {
                 throw new SliceFailure('INVALID_REQUEST', 400);
             }
         } else {

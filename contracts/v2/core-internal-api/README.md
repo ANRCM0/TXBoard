@@ -6,6 +6,8 @@
 
 B5.3 增量 [有界订单列表](current-order-list-v2.md) 复用原 owner/query 与分页，仅扩展 local/testing User 服务白名单；生产私网与其余 Operation 门禁不变。
 
+B5.15 增量 [管理身份读取](local-admin-identity-v1.md) 在独立默认关闭开关下，由 `admin-gateway` proof 与当前 Core Sanctum/AdminPath/Admin 共同核对，只返回闭合身份 DTO。仅隔离 local/testing，尚未开放 Admin Gateway 或正式 SC-v2。
+
 B5.14 的独立 [Gateway/SDK 会话消费者](local-isolated-session-consumer-v1.md)接通本地当前用户会话 list/revoke/logout；额外开关、HPKE 与 Redis 门禁不因 Core operation 存在而自动开放。
 
 ## 1. 业务与安全权威

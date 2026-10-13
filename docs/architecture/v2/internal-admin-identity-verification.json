@@ -1,0 +1,93 @@
+{
+  "phase": "B5.15",
+  "status": "verified-isolated-current",
+  "base_commit": "341767001f9bb83177768e9dcce78ad05b080985",
+  "source_sha256": {
+    "api/app/Domains/InternalReadOnly/OperationRegistry.php": "700d07f97d3fda86dc21c3eb86db5f741b4ccf8c2a074ab09e6b5d63c2709b2b",
+    "api/app/Domains/InternalReadOnly/InternalAdminIdentityDispatcher.php": "034eac56e8537746838f4b6fc91424f57e58dba4cc42ed37e7367f370497f44c",
+    "api/app/Http/Controllers/Txapi/InternalReadOnlyController.php": "f48509892e31718f9e07f89795b9b0ce496709e5473c4f8638c7b97e7a9fe752",
+    "api/config/internal_api_slice.php": "b4e8b1b794489e7608ea0af748fb618c1d0aabffdce840fc1895f6679ca08b74",
+    "api/tests/Feature/InternalReadOnly/InternalAdminIdentityTest.php": "7b1409f1cbd5eabc0d1fe7435f8dfdc1098fe5e9634de0a3dc43fb92f8b53a40",
+    "api/internal-readonly-fixtures/tls-boundary.mjs": "d129a5d5bbf69189d8a32d96f0bc5e89a4bd321ec72c1f9a1a301de907de49bc",
+    "contracts/v2/core-internal-api/local-admin-identity-v1.md": "cc1321287b428c200db0df5aeab876573c7254583a952fcf34d92b9801e0d872",
+    "scripts/tests/internal-admin-identity/fixture.php": "54b507963ba645ab9256da94956bd19d10f0baa99382f76e8ff34f583edd4e17",
+    "scripts/tests/internal-admin-identity/integration.mjs": "5afc41dddb7c0e5ee6503d48643e685bf6196fb266c29353c1d2a4d2c9b7a286",
+    "scripts/tests/internal-admin-identity/README.md": "4edfd7a344bd217917e612239fd6fa8af54f6236f6f3bf54f551caa7c209548e",
+    "scripts/tests/internal-admin-identity/run-local-baseline.py": "3a8de14064b694bed54a52642a571443367ec626e258d13a66cd7c8c7ad026eb",
+    "scripts/tests/internal-admin-identity/run.sh": "0bbe2519631033664636ebd945b93a5a96535dff85e80112d92e884ca138f3e1"
+  },
+  "dependencies": {
+    "composer_lock_sha256": "f47b212c2fc530a7820e370eab7c6d624d13962e7d26e4f2ddf57a11848257c0",
+    "installed_json_sha256": "8e668e456c9772ae428a038ab003fba5752ab2591980fc8396d9122851145b80"
+  },
+  "tests": {
+    "targeted": {
+      "mode": "targeted",
+      "exit_code": 0,
+      "log_sha256": "0fd01e581d03a7acaad30c0264dbdea559ca9c241f645eae812864565508ce8f",
+      "snapshot": "/opt/txboard-baseline/internal-admin-identity-r2",
+      "passed": 24,
+      "assertions": 462,
+      "new_admin_tests": 10
+    },
+    "full": {
+      "mode": "full",
+      "exit_code": 0,
+      "log_sha256": "166cd7a34081eff9a93800ed84f4a84ca68b78667208c590d816b7045c74d8e7",
+      "snapshot": "/opt/txboard-baseline/internal-admin-identity-r2",
+      "passed": 1124,
+      "skipped": 106,
+      "assertions": 11820
+    },
+    "tls": {
+      "mode": "tls",
+      "exit_code": 0,
+      "log_sha256": "37c0dbefd249a5e8ef5a3e7d9d38af72ebb3a8a42dcf7c506113c0cc0f21f19e",
+      "snapshot": "/opt/txboard-baseline/internal-admin-identity-r2"
+    }
+  },
+  "tls_receipt": {
+    "checks": [
+      "real Admin mTLS and current Core identity",
+      "User service certificate cannot call Admin operation",
+      "ordinary User and staff credentials cannot borrow Admin service",
+      "expired and retired Agent credentials cannot authenticate",
+      "wrong management path is absent and never echoed",
+      "caller identity and duplicate input fields rejected",
+      "current ban and demotion rechecked across requests",
+      "native management path rotation takes effect",
+      "direct unsigned Core request cannot bypass mTLS proof",
+      "bound proof replay rejected without another audit",
+      "real audit INSERT failure hides identity with fixed 503",
+      "current Admin token revocation rejects subsequent admission"
+    ],
+    "passed": 12,
+    "tls": "TLSv1.3",
+    "core_operation": "admin.identity.get",
+    "audit_rows": 12,
+    "nonce_rows": 13,
+    "database_version": "11.4.12-MariaDB",
+    "synthetic_only": true,
+    "no_gateway_admin_route": true
+  },
+  "production_enabled": false,
+  "gateway_admin_route_enabled": false,
+  "remote_ci": "pending",
+  "earlier_failed_snapshot": {
+    "snapshot": "/opt/txboard-baseline/internal-admin-identity-r1",
+    "targeted": {
+      "mode": "targeted",
+      "exit_code": 1,
+      "log_sha256": "9b2c61b7bc5a02babd3aabfae118400c692beb44240601d7d62e60926f6a1132",
+      "snapshot": "/opt/txboard-baseline/internal-admin-identity-r1"
+    },
+    "tls": {
+      "mode": "tls",
+      "exit_code": 1,
+      "log_sha256": "f4d0e05c64f5b0974a2dadc26c7758b61ad075b8f357fd46b0aa87fb72976a33",
+      "snapshot": "/opt/txboard-baseline/internal-admin-identity-r1"
+    },
+    "reason": "Initial dispatcher threw SliceFailure through Laravel inner routing pipeline, yielding 500 rather than 403. Dispatcher now returns fixed authorization error and renders exceptions before reporting. Envelope key fixture now compares JSON key set rather than member order."
+  },
+  "limits": "Current native administrator role and path only; no new RBAC, login, SC-v2, production PKI, or future cached authority. Reads retain native token last_used_at plus technical nonce/window/audit writes."
+}

@@ -1,11 +1,25 @@
 {
   "phase": "B7.1",
-  "status": "verified-local-retirement",
+  "status": "verified-local-and-remote-retirement",
   "base_commit": "0ba06e0420cd76ca6386e0272e579db5e9960e09",
   "scope": "Admin-only future frontend; retire Agent/MCP and AI node executor; retain current User UI, native control plane and Installer Machine runtime update.",
   "production_migration": false,
   "historical_schema_preserved": true,
-  "remote_ci": "pending",
+  "remote_ci": {
+    "commit": "341767001f9bb83177768e9dcce78ad05b080985",
+    "api": 38349215871,
+    "mysql": 38349216008,
+    "core_image": 38349216051,
+    "node_image": 38349216127,
+    "web": 38349216156,
+    "session_consumer": 38349215983,
+    "provider_offline_proof": 38349215995,
+    "gateway_verification_only": 38349215967,
+    "documentation": 38349215997,
+    "result": "success",
+    "core_image_smoke": "MCP directory/node binary/supervisor program absent; PDO and Octane pass; immutable main image published.",
+    "node_image_publish": "Runtime image build/config checks and independent publication/dev promotion passed."
+  },
   "source_sha256": {
     "api/.env.example": "38ef3c7514c424d7c5864da0b9c474a0748dc444019aebbb9745c591c54a8c68",
     "api/app/Console/Kernel.php": "f652cc1f33334bf5a74d6ab1719ab5277bbb068500e3d32cab9cdd164a82ad90",
@@ -121,7 +135,7 @@
     "web_r2": "Four stale navigation/DTO fixtures corrected after removed Agent UI.",
     "web_r4": "TypeScript literal union in navigation absence test corrected; no product change."
   },
-  "image_validation": "Workflow retains real Docker/PDO/Octane smoke gates and adds MCP absence; remote result pending.",
+  "image_validation": "Real remote Docker absence, PDO and Octane smoke and Core/Node image publication passed for 3417670.",
   "static_checks": [
     {
       "command": [
