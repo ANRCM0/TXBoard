@@ -114,3 +114,5 @@ B5.17: [隔离管理仪表盘](local-admin-dashboard-v1.md)复用原生统计与
 B5.18: [隔离管理客户端](local-admin-consumer-v1.md)使用独立管理服务证书消费登录、身份和仪表盘，尚未开放公开Admin路由。
 
 B5.19: [隔离管理订单列表](local-admin-order-list-v1.md)委托原生查询和当前关联，Gateway消费闭集分页DTO并保留整数金额字符串，独立默认关闭。
+
+B5.20: [隔离管理套餐列表](local-admin-plan-list-v1.md)委托原管理目录，保留隐藏状态、当前权限组/用户计数、GiB单位与原生主要币值价格字符串，不构造报价。

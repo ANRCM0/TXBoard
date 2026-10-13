@@ -6,6 +6,8 @@ const count = z.number().int().nonnegative().safe()
 const traffic = z.strictObject({ upload: decimal, download: decimal, total: decimal })
 export const adminPath = z.string().regex(/^[A-Za-z0-9_-]{1,128}$(?![\s\S])/)
 export const adminReadInput = z.strictObject({ admin_path: adminPath })
+export const adminPlanListInput = adminReadInput.extend({ page: z.number().int().min(1).max(9999),
+  per_page: z.number().int().min(1).max(100) })
 export const adminOrderListInput = adminReadInput.extend({ page: z.number().int().min(1).max(9999),
   per_page: z.number().int().min(1).max(100), status: z.number().int().min(0).max(4).optional() })
 export const adminLoginInput = z.strictObject({
@@ -55,6 +57,23 @@ export const adminOrderListSuccess = success.extend({
     total: count, last_page: z.number().int().min(1).safe() }) }),
   meta: z.strictObject({ current_only: z.literal(true), slice: z.literal('internal-admin-order-list/1') }),
 })
-export const adminResponses = { login: adminLoginSuccess, identity: adminIdentitySuccess, dashboard: adminDashboardSuccess, orders: adminOrderListSuccess }
+const period = z.enum(['monthly','quarterly','half_yearly','yearly','two_yearly','three_yearly','onetime','reset_traffic'])
+const nativePrice = z.string().max(128).regex(/^(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]{1,4})?$(?![\s\S])/).nullable()
+export const adminPlanListSuccess = success.extend({
+  data: z.strictObject({ items: z.array(z.strictObject({
+    id, name: z.string(), content: z.string().nullable(), group_id: id.nullable(),
+    group: z.strictObject({ id, name: z.string() }).nullable(),
+    traffic_limit_gib: decimal.refine(value => BigInt(value) >= 0n),
+    speed_limit_mbps: count.nullable(), device_limit: count.nullable(), capacity_limit: count.nullable(),
+    reset_traffic_method: z.number().int().min(0).max(4).nullable(),
+    native_prices_major: z.partialRecord(period, nativePrice), tags: z.array(z.string()),
+    show: z.boolean(), sell: z.boolean(), renew: z.boolean(), sort: z.number().int().safe(),
+    users_count: count, active_users_count: count,
+  })).max(100), pagination: z.strictObject({ page: z.number().int().min(1).max(9999), per_page: z.number().int().min(1).max(100),
+    total: count, last_page: z.number().int().min(1).safe() }) }),
+  meta: z.strictObject({ current_only: z.literal(true), slice: z.literal('internal-admin-plan-list/1') }),
+})
+export const adminResponses = { login: adminLoginSuccess, identity: adminIdentitySuccess, dashboard: adminDashboardSuccess,
+  orders: adminOrderListSuccess, plans: adminPlanListSuccess }
 export type AdminOperation = keyof typeof adminResponses
 export type AdminResponses = { [K in AdminOperation]: z.infer<(typeof adminResponses)[K]> }

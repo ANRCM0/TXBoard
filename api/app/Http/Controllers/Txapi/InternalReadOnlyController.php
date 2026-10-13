@@ -19,6 +19,9 @@ final class InternalReadOnlyController
         $operation = $request->attributes->get('internal.readonly.operation');
         $input = $operation['body']->input;
         $version = $operation['body']->contract_version;
+        if ($operation['operation'] === 'admin.plan.list') {
+            return app(\App\Domains\InternalReadOnly\InternalAdminPlanListDispatcher::class)->execute($request, $input);
+        }
         if ($operation['operation'] === 'admin.order.list') {
             return app(\App\Domains\InternalReadOnly\InternalAdminOrderListDispatcher::class)->execute($request, $input);
         }

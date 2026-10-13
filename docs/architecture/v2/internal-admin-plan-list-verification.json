@@ -1,0 +1,122 @@
+{
+  "phase": "B5.20",
+  "status": "verified-isolated-current",
+  "base_commit": "5f2e680fc76a7ef36b354bd153eb943e19bd844b",
+  "source_sha256": {
+    ".github/workflows/ci-internal-admin-plan-list.yml": "a067fc993e095e099a5aa176367d230832468910f15d4979e4f9d78fb9d527dd",
+    "api/app/Domains/InternalReadOnly/InternalAdminPlanListDispatcher.php": "a8daf15c393f89b139fab8c7e2cf8a47ba742e87e8e4fb46930728c9ef8badcc",
+    "api/app/Domains/InternalReadOnly/OperationRegistry.php": "09c09c57099abacfe7c1cef3258599f05ba2ec16a0080e3fb0860b81c62f33d2",
+    "api/app/Http/Controllers/Txapi/InternalReadOnlyController.php": "e4964bbdd040afc0f2d336ec779ecb5fa56d10dadde906f4f36e1c27a853d8fe",
+    "api/config/internal_api_slice.php": "9e14411c4b092e82837741604f31550c76245539cf67b2698bae1d6227350b8a",
+    "api/internal-readonly-fixtures/tls-boundary.mjs": "51433a371f456b1c65682a83a765757008b685b6c8405e71fe1ac5cb83cdd0c6",
+    "api/tests/Feature/InternalReadOnly/InternalAdminPlanListTest.php": "cad69c2dae672734fed9910056175c7068c76cde539d87f6947772cb280c47c2",
+    "gateway/apps/gateway/src/adapters/internal-admin-v1.ts": "0d3a9de83d46c423f50829d6a92f9de958c6956bf88d7eeabed365b5d1651dca",
+    "gateway/apps/gateway/src/services/internal-admin-client.ts": "f0c70be2de05eb61a74e67052fa2c0500127dc9dcd7b1f738a92ead2501affd6",
+    "gateway/apps/gateway/test/internal-admin-client.test.ts": "cab1139929c0ef3d5e1562efe78a24275171618479dd80c44334ac671a89e50a",
+    "scripts/tests/internal-admin-plan-list/README.md": "ecb95022ab66051903862ec6d7c38534b8e7c46b8303238902ffc3803533a95f",
+    "scripts/tests/internal-admin-plan-list/cleanup.py": "b29506c7b971b7e7787c0b3fd86b88b8ae5f896ce7b3fba394ba54b5d2c15cb1",
+    "scripts/tests/internal-admin-plan-list/fixture.php": "875e7eae36331e5dc110f76d9c659ed5a299b64bae24a30ba6d202ba98afd6bc",
+    "scripts/tests/internal-admin-plan-list/integration.mjs": "132d1d92c2d8cb6e93a62a95dbbc9cd8549db14b61fa791d0a7dccf2240a8a6b",
+    "scripts/tests/internal-admin-plan-list/run-local-baseline.py": "deb8849720b51ea6ae923b8c9f38ca72c9160e37866278c4da6e4e1bb9023613",
+    "scripts/tests/internal-admin-plan-list/run.sh": "830b98f51e654b4c7bed9279c9009dd28023ac787ee636d7071cc4a25cd9ddb7"
+  },
+  "dependencies": {
+    "composer_lock_sha256": "f47b212c2fc530a7820e370eab7c6d624d13962e7d26e4f2ddf57a11848257c0",
+    "installed_json_sha256": "8e668e456c9772ae428a038ab003fba5752ab2591980fc8396d9122851145b80",
+    "gateway_lock_sha256": "a60bdbf6de2788282dfa87077316f55df950c7192e6a33960ead97dc953dc940"
+  },
+  "tests": {
+    "full": {
+      "mode": "full",
+      "exit_code": 0,
+      "log_sha256": "14fb3e3d9560936a2caf8039586816acb99228b43b6f0cd35ff5f4fc45d97644",
+      "snapshot": "/opt/txboard-baseline/internal-admin-plan-list-r3"
+    },
+    "check": {
+      "mode": "check",
+      "exit_code": 0,
+      "log_sha256": "561da951476b8e57bfb10fb4e3270938a067a64da5da2a69683a629495100ceb",
+      "snapshot": "/opt/txboard-baseline/internal-admin-plan-list-r3"
+    },
+    "build": {
+      "mode": "build",
+      "exit_code": 0,
+      "log_sha256": "fb7bc2852af672205d99f8f2470eca2afc722cfb9eeff1f243d0c69545b0cc1a",
+      "snapshot": "/opt/txboard-baseline/internal-admin-plan-list-r4"
+    },
+    "tls": {
+      "mode": "tls",
+      "exit_code": 0,
+      "log_sha256": "6f3bff4c20899a0cc06eb9a2b904b4ad1a4c7810e2c3ae1494ebb1574914457a",
+      "snapshot": "/opt/txboard-baseline/internal-admin-plan-list-r4"
+    }
+  },
+  "coverage": {
+    "new_core_tests": 14,
+    "full_passed": 1173,
+    "full_skipped": 106,
+    "full_assertions": 12328,
+    "new_gateway_tests": 9,
+    "gateway_passed": 893,
+    "sdk_passed": 123,
+    "typecheck": "passed",
+    "build": "passed",
+    "real_tls_core_mysql_passed": 14
+  },
+  "tls_receipt": {
+    "checks": [
+      "dedicated Admin certificate and config; User and production identity refused",
+      "real Gateway client Admin native login private credential delivery",
+      "issued credential reaches current Core identity",
+      "Gateway preserves greater-than-53-bit dashboard bytes without Number conversion",
+      "Core native filtered list and orphan relations reach exact closed Gateway DTO",
+      "Admin order query input and denied current role cannot bypass Core",
+      "native hidden plans, exact display price strings, GiB units and current counts reach Gateway",
+      "Admin plan list rejects extra query fields and rechecks current Core role",
+      "ordinary User and staff cannot obtain management credentials",
+      "guest auth caller role and extra parameters reject before Core nonce admission",
+      "current ban prevents identity and cached dashboard then current demotion rejects",
+      "unknown current management path is absent",
+      "real audit failure hides committed login; no client retry or compensation",
+      "current native credential revocation invalidates subsequent reads"
+    ],
+    "passed": 14,
+    "token_count": 0,
+    "audit_count": 15,
+    "database_version": "11.4.12-MariaDB",
+    "synthetic_only": true,
+    "no_public_admin_route": true,
+    "no_native_fallback": true,
+    "no_business_state_in_gateway": true
+  },
+  "previous_results": {
+    "tls": {
+      "mode": "tls",
+      "exit_code": 1,
+      "log_sha256": "d87e19861cf7a1588916c526017a012d4daf518f0c8f983f0fd18d5f08c1af0d",
+      "snapshot": "/opt/txboard-baseline/internal-admin-plan-list-r3"
+    }
+  },
+  "previous_failure": "Existing order plan fixture had SQL NULL sort and correctly preceded negative sort. Set explicit sort=100 on that fixture, preserved failed logs/database, and used a new corrected synthetic database.",
+  "review": {
+    "full_api_source_matches_final_tls": true,
+    "gateway_check_source_matches_final_tls": true,
+    "actionlint": "passed",
+    "native_schema_issues": 0,
+    "no_public_admin_route": true,
+    "no_native_fallback": true,
+    "no_production_enablement": true,
+    "no_sc_v2_enablement": true,
+    "no_price_recalculation": true,
+    "native_gib_unit_retained": true
+  },
+  "remote_ci": {
+    "status": "pending-after-push"
+  },
+  "limitations": [
+    "Native numeric prices already passed through PHP JSON parsing; this is not lexical database precision preservation",
+    "Display major-unit price strings do not establish quote or Offer facts",
+    "Response 64KiB limit can reject a page with large descriptions",
+    "No public Admin Gateway, fine-grained RBAC, new frontend, formal SC-v2 or production PKI"
+  ]
+}

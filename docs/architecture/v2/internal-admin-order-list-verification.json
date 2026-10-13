@@ -100,7 +100,82 @@
   },
   "previous_failure": "TLS fixture expected zero daily income despite adding native status-4 orders. Native sum was correct; assertion corrected. Prior logs and synthetic database preserved.",
   "remote_ci": {
-    "status": "pending-after-push"
+    "status": "completed-success",
+    "commit": "5f2e680fc76a7ef36b354bd153eb943e19bd844b",
+    "runs": [
+      {
+        "workflow": "internal-session-consumer",
+        "run_id": 38367315699,
+        "conclusion": "success",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38367315699"
+      },
+      {
+        "workflow": "internal-admin-order-list",
+        "run_id": 38367315795,
+        "conclusion": "success",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38367315795"
+      },
+      {
+        "workflow": "internal-admin-consumer",
+        "run_id": 38367315719,
+        "conclusion": "success",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38367315719"
+      },
+      {
+        "workflow": "gateway-image",
+        "run_id": 38367315591,
+        "conclusion": "success",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38367315591"
+      },
+      {
+        "workflow": "api-ci",
+        "run_id": 38367315646,
+        "conclusion": "success",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38367315646"
+      },
+      {
+        "workflow": "api-mysql-ci",
+        "run_id": 38367315709,
+        "conclusion": "success",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38367315709"
+      },
+      {
+        "workflow": "txboard-core-image",
+        "run_id": 38367315860,
+        "conclusion": "success",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38367315860"
+      },
+      {
+        "workflow": "internal-admin-dashboard",
+        "run_id": 38367315799,
+        "conclusion": "success",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38367315799"
+      },
+      {
+        "workflow": "internal-admin-login",
+        "run_id": 38367315792,
+        "conclusion": "success",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38367315792"
+      },
+      {
+        "workflow": "Documentation",
+        "run_id": 38367315664,
+        "conclusion": "success",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38367315664"
+      },
+      {
+        "workflow": "internal-admin-identity",
+        "run_id": 38367315638,
+        "conclusion": "success",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38367315638"
+      },
+      {
+        "workflow": "provider-offline-proof",
+        "run_id": 38367315757,
+        "conclusion": "success",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38367315757"
+      }
+    ]
   },
   "limitations": [
     "Native MySQL money columns remain signed 32-bit; SQLite large-value test is not schema expansion",

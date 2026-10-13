@@ -22,6 +22,10 @@ const dashboard = { todayIncome: '9007199254740993', currentMonthIncome: '0', la
 const requestId = '00000000-0000-4000-8000-000000000000'
 const envelope = (data: unknown, slice: string) => ({ data, request_id: requestId, meta: { current_only: true, slice } })
 const identity = envelope({ id: '1', email: 'admin@example.test', is_admin: true }, 'internal-admin-identity/1')
+const planItem = { id: '1', name: 'Hidden plan', content: null, group_id: '2', group: { id: '2', name: 'Current group' },
+  traffic_limit_gib: '2', speed_limit_mbps: null, device_limit: 2, capacity_limit: 0, reset_traffic_method: null,
+  native_prices_major: { monthly: '9007199254740993.12', yearly: '1e3', quarterly: '0', onetime: null },
+  tags: ['native'], show: false, sell: false, renew: false, sort: -10, users_count: 3, active_users_count: 2 }
 let req: EventEmitter & { destroy: ReturnType<typeof vi.fn>; end: ReturnType<typeof vi.fn> }
 let reply: EventEmitter & { destroy: ReturnType<typeof vi.fn>; statusCode: number; headers: Record<string,string>; complete: boolean }
 let callback: (response: unknown) => void
@@ -35,6 +39,43 @@ afterEach(() => vi.useRealTimers())
 function respond(data: unknown = identity) { callback(reply); reply.emit('data', Buffer.from(JSON.stringify(data))); reply.emit('end') }
 
 describe('isolated Admin Internal consumer', () => {
+  it('consumes native hidden Admin plans without quoting prices or converting GiB to bytes', async () => {
+    const input = { admin_path: path, page: 1, per_page: 1 }
+    const pending = internalAdminRequest(config, 'plans', { auth, input })
+    expect(mock.request.mock.calls[0]![0].path).toBe('/txapi/internal/v1/operations/admin.plan.list')
+    expect(JSON.parse(req.end.mock.calls[0]![0].toString()).input).toEqual(input)
+    const payload = envelope({ items: [planItem], pagination: { page: 1, per_page: 1, total: 1, last_page: 1 } }, 'internal-admin-plan-list/1')
+    respond(payload); await expect(pending).resolves.toEqual(payload)
+  })
+  it.each([{ page: 0 }, { page: 10000 }, { per_page: 101 }, { per_page: '1' }, { status: 4 }, { show: true }])
+    ('refuses plan query %j before transport', async patch => {
+      await expect(internalAdminRequest(config, 'plans', { auth, input: { admin_path: path, page: 1, per_page: 1, ...patch } }))
+        .rejects.toMatchObject({ status: 400 })
+      expect(mock.request).not.toHaveBeenCalled()
+    })
+  it('rejects invalid native plan prices units and unclosed DTOs without repairing them', async () => {
+    for (const patch of [{ native_prices_major: { unexpected: '12' } }, { native_prices_major: { monthly: 12 } },
+      { native_prices_major: { monthly: '-12' } }, { native_prices_major: { monthly: 'NaN' } },
+      { native_prices_major: { monthly: '1\n' } }, { native_prices_major: { monthly: '1'.repeat(129) } },
+      { native_prices_major: [] }, { traffic_limit_gib: 2 }, { traffic_limit_gib: '-2' }, { private_token: 'private' }]) {
+      const pending = internalAdminRequest(config, 'plans', { auth, input: { admin_path: path, page: 1, per_page: 1 } })
+      const assertion = expect(pending).rejects.toMatchObject({ status: 502 })
+      respond(envelope({ items: [{ ...planItem, ...patch }], pagination: { page: 1, per_page: 1, total: 1, last_page: 1 } }, 'internal-admin-plan-list/1'))
+      await assertion
+    }
+  })
+  it('binds plan page count group association and native user counts to the response', async () => {
+    const pagination = { page: 1, per_page: 1, total: 2, last_page: 2 }
+    for (const data of [{ items: [planItem], pagination: { ...pagination, page: 2 } },
+      { items: [planItem], pagination: { ...pagination, per_page: 2 } },
+      { items: [planItem], pagination: { ...pagination, last_page: 1 } }, { items: [planItem, planItem], pagination },
+      { items: [{ ...planItem, group: { id: '3', name: 'Wrong group' } }], pagination },
+      { items: [{ ...planItem, active_users_count: 4 }], pagination }]) {
+      const pending = internalAdminRequest(config, 'plans', { auth, input: { admin_path: path, page: 1, per_page: 1 } })
+      const assertion = expect(pending).rejects.toMatchObject({ status: 502 })
+      respond(envelope(data, 'internal-admin-plan-list/1')); await assertion
+    }
+  })
   it('uses only fixed verified Admin TLS operation and actual credential', async () => {
     const pending = internalAdminRequest(config, 'identity', { auth, input })
     const options = mock.request.mock.calls[0]![0]
