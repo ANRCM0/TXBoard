@@ -1,6 +1,6 @@
 # Core First v2 实施台账
 
-> 状态：B0、B1.1–B1.27 影子证据、Terms、身份旁观、固定 writer 捕获、套餐批量同步、批量封禁、管理员创建/删除、注册初始记录与余额端点投影、B2.1–B2.6 单机升级、B3.1/B3.2 隔离用量、B3.3–B3.6 本地观察与持久事件桶、B4.1–B4.7 合成 Provider、插件停用接入、租约候选、离线签名快照与Go公钥诊断、B5.1–B5.24 本地 mTLS 读取、隔离建单、登录、内存邮件验证码、隔离注册、密码恢复、当前会话与管理读取、B6.1–B6.4 实验字节、离线加密、共享 owner 与独立响应随机值候选及 B7.1 Agent/MCP 退役已实现；两仓迁移与三镜像发布已完成，继续推进业务迁移切片。各整阶段仍按下表门禁验收。
+> 状态：B0、B1.1–B1.27 影子证据、Terms、身份旁观、固定 writer 捕获、套餐批量同步、批量封禁、管理员创建/删除、注册初始记录与余额端点投影、B2.1–B2.7 单机升级、B3.1/B3.2 隔离用量、B3.3–B3.6 本地观察与持久事件桶、B4.1–B4.7 合成 Provider、插件停用接入、租约候选、离线签名快照与Go公钥诊断、B5.1–B5.24 本地 mTLS 读取、隔离建单、登录、内存邮件验证码、隔离注册、密码恢复、当前会话与管理读取、B6.1–B6.4 实验字节、离线加密、共享 owner 与独立响应随机值候选及 B7.1 Agent/MCP 退役已实现；两仓迁移与三镜像发布已完成，继续推进业务迁移切片。各整阶段仍按下表门禁验收。
 
 2026-10-13，按仓库整合任务，将 Gateway/Node 的完整 Git 历史导入本仓 `gateway/`、`node/`，安装器集中到 TXBoard-Deploy。当前目录与三镜像 CI 见 [双仓布局](../../development/repository-layout.md)；旧基线和验证报告保持当时提交与路径。本次仓库整理独立于下列业务迁移门禁。
 
@@ -490,16 +490,26 @@ B1.27 `3156b0d` 的[Oracle MySQL8.4生命周期专项](https://github.com/ANRCM0
 
 [当前契约](../../../contracts/v2/core-internal-api/local-order-cancel-v1.md)新增独立默认关闭的user.order.cancel v1及Gateway/SDK固定消费者。Core委托原BillingController/OrderService当前owner查询和PENDING事务，退款、优惠券名额、可选capture和钩子时机保持；不存在新取消幂等或自动补偿。Gateway handler仅local/testing且Internal User mTLS配置有效时注册，闭集输入/输出、当前Bearer/角色/封禁/归属每次重查，无Native回退；SDK只尝试一次，将409、5xx、网络/坏回执标为需确认当前状态。取消Exception诊断改为固定code，保留false与Exception范围，不返回原args/previous。
 
-Core新专项及原建单/Billing回归 **19项、198断言**；Gateway **939**、SDK **138**及类型/构建通过；实际SDK/Gateway/Core/TLS1.3/MariaDB **13项**验证真实预扣和名额、退款恢复一次、重复409、before异常回滚、after异常409已提交、审计503隐藏退款、native capture以及撤销拒绝，最终Token为0。协调者固定 `7737662` 加本批冻结源码组合全API **1319通过、117项引擎/工具链跳过、13669断言**。[报告](internal-order-cancel-verification.json)保留早期schema/夹具/路由/配置/响应ID/日志位置失败和最终同源验收。Core响应ID仍服务端生成，客户端核对响应头/body一致；默认父级writeban可能405，未启用生产或正式SC-v2。独立Oracle MySQL8.4真实组合CI已加入，后续远端结果单独核对。
+Core新专项及原建单/Billing回归 **19项、198断言**；Gateway **939**、SDK **138**及类型/构建通过；实际SDK/Gateway/Core/TLS1.3/MariaDB **13项**验证真实预扣和名额、退款恢复一次、重复409、before异常回滚、after异常409已提交、审计503隐藏退款、native capture以及撤销拒绝，最终Token为0。协调者固定 `7737662` 加本批冻结源码组合全API **1319通过、117项引擎/工具链跳过、13669断言**。[报告](internal-order-cancel-verification.json)保留早期schema/夹具/路由/配置/响应ID/日志位置失败和最终同源验收。Core响应ID仍服务端生成，客户端核对响应头/body一致；默认父级writeban可能405，未启用生产或正式SC-v2。独立Oracle MySQL8.4真实组合CI已在 `614acb8` 通过，远端结果已记录到报告。
 
 ### B3.6 实际Node与Core持久接收/结算互通
 
 [当前契约](../../../contracts/v2/node-usage/bounded-tcp-core-interop-v1.md)以实际ConnTracker采集的11上传/7下载经journal/spool、原Node HTTPS握手与Reporter送入真实Laravel接收。正常TLS1.3/CA/SAN校验与Native Node Bearer/NodeID保持独立；不是Admin/Internal mTLS。客户端先读真实persisted响应再注入丢响应，Reporter查询原batch恢复pending回执；SQL独立确认batch/digest/outbox已经提交，再由原UsageSettlement按冻结3/2倍率分方向floor得到16/10、总26。重复原批次返回同回执，改相同batch的canonical载荷409，wrongBearer/Node拒绝。
 
-固定 `7737662` 加专属测试源码，在专用MariaDB11.4/PHP8.4/Go1.26.3完成真实两阶段链路；Node helper race构建、vet和PHP syntax通过。关闭/重启journal/spool后真实HTTPS查询settled并重放原批次，最终SQL仍为1 batch/1 entry/26 billable bytes，后续scan为空。新实际Session、载荷、pending/settled receipt、journal/spool和SQL摘要的脱敏制品与hash见[报告](../../../node/docs/bounded-core-interop-verification.json)。为避免冷构建耗尽原有限grant，runner改为先编译再seed，保持原租约长度，第二份全新隔离夹具复验通过；原库和r1证据dump/hash保留。独立Oracle MySQL8.4/Redis7.4组合CI已加入，尚待远端结果；默认Service、生产handoff、准入/撤销/恢复gate未开启，不允许v1/v2双权威计费。
+固定 `7737662` 加专属测试源码，在专用MariaDB11.4/PHP8.4/Go1.26.3完成真实两阶段链路；Node helper race构建、vet和PHP syntax通过。关闭/重启journal/spool后真实HTTPS查询settled并重放原批次，最终SQL仍为1 batch/1 entry/26 billable bytes，后续scan为空。新实际Session、载荷、pending/settled receipt、journal/spool和SQL摘要的脱敏制品与hash见[报告](../../../node/docs/bounded-core-interop-verification.json)。为避免冷构建耗尽原有限grant，runner改为先编译再seed，保持原租约长度，第二份全新隔离夹具复验通过；原库和r1证据dump/hash保留。独立Oracle MySQL8.4/Redis7.4组合CI已在 `614acb8` 通过，原 `7c119c1` 运行被新提交并发取消的历史保留；默认Service、生产handoff、准入/撤销/恢复gate未开启，不允许v1/v2双权威计费。
 
 ### B2.6 同一围栏的闭合写入清单扩展
 
 [当前契约](../../../contracts/v2/authority-writer-inventory-expand-v2.md)使用同一authority单例，显式expand从旧legacy/open epoch1升级固定inventory的新legacy/open epoch2，再prepare为prepared epoch3；旧prepared epoch2/原回执保持原hash与恢复结果，拒绝expand和隐式reopen。新增nullable inventory_hash在v1哈希中排除，upgrade receipt绑定prior/expanded状态、版本和固定代码清单；新prepare还交叉核对原expanded-state hash，重算单个receipt hash不能跳过关联。旧进程scope/version/epoch声明拒绝新状态，只读status/recover可以核对历史。
 
-七项inventory覆盖原Admin create/update、删除、凭据轮换、批量封禁、Plan save/force和TrafficBatch；authority admission均在原事务第一句，先于User/Plan/Server等业务锁。flags/sort/delete、Order/wallet/Gift、其他writer/可信插件和提交后Observer仍未覆盖，global coverage/drain和target authority/migration gate保持false。固定 `04482a7` 加本批十五个候选源码：SQLite及原围栏/删除/套餐/流量回归 **54通过、14项引擎条件跳过、575断言**；专用MariaDB **22全部通过、284断言**，含8个独立进程的锁等待、commit/rollback/SIGKILL与输出丢失恢复。协调者固定 `6fa00ee` 加冻结扩展源码全API **1333通过、125项引擎/工具链跳过、13872断言**。[报告](authority-inventory-expand-verification.json)记录精确来源、旧v1真实记录兼容和各次失败夹具；独立Oracle MySQL8.4 CI已加入，生产切换继续等待完整事务与副作用排空。
+七项inventory覆盖原Admin create/update、删除、凭据轮换、批量封禁、Plan save/force和TrafficBatch；authority admission均在原事务第一句，先于User/Plan/Server等业务锁。flags/sort/delete、Order/wallet/Gift、其他writer/可信插件和提交后Observer仍未覆盖，global coverage/drain和target authority/migration gate保持false。固定 `04482a7` 加本批十五个候选源码：SQLite及原围栏/删除/套餐/流量回归 **54通过、14项引擎条件跳过、575断言**；专用MariaDB **22全部通过、284断言**，含8个独立进程的锁等待、commit/rollback/SIGKILL与输出丢失恢复。协调者固定 `6fa00ee` 加冻结扩展源码全API **1333通过、125项引擎/工具链跳过、13872断言**。[报告](authority-inventory-expand-verification.json)记录精确来源、旧v1真实记录兼容和各次失败夹具；独立Oracle MySQL8.4 CI已在 `614acb8` 通过，该提交25个触发CI全部成功；生产切换继续等待完整事务与副作用排空。
+
+### B2.7 原生金融事务写入保护
+
+[当前契约](../../../contracts/v2/authority-finance-inventory-v3.md)在同一 authority 单例上扩展固定金融清单，保留原七项并增加订单创建、支付、履约、取消、结账，充值创建与入账、佣金转移、礼品卡兑换，共十六项。显式 extend-finance 从 v2 legacy/open epoch2 原子升级到 v3 open epoch3，再 prepare 为 prepared epoch4；不可变回执绑定原 inventory 回执及新旧状态。旧 v1/v2 prepared 状态及 hash 不变，只读恢复保持兼容，拒绝扩展或隐式 reopen。
+
+九个准入都位于原事务第一句，先于 User、Order、Recharge、Code 等业务锁；退款、Coupon 名额、付款去重、原 OrderHandleJob 与失败重试仍委托原生服务。支付网络与提交后钩子保持原事务边界；免费结账的两段事务之间可能完成 prepare，保留原生部分完成与409，不引入自动补偿。专用 MariaDB 的独立事务与 SIGKILL 验证金额写入提交或回滚后 prepare 才能完成，升级/prepare 提交后丢输出可恢复同一回执。
+
+固定 `614acb8` 加十七个冻结源码：SQLite 专项及既有财务回归 **104通过、40项引擎/进程条件跳过、1741断言**；专用 MariaDB **22全部通过、362断言**，含九项独立进程并发/崩溃用例；协调者最终源码全 API **1346通过、134项引擎/工具链条件跳过、14135断言**。实际 Laravel registry 254 个 HTTP methods、User 49 条和 Node 8 条边界校验通过。[报告](authority-finance-fence-verification.json)保留原支付夹具字段长度修正、各次失败与最终精确源码/日志证据。独立 Oracle MySQL8.4 CI 已加入，远端验收在推送后记录。
+
+当前仍为 legacy 权威。提交后 Observer/Node/Provider 效果、独立 UserService/reset helper、剩余注册/auth/CLI/cron/legacy traffic writer 和可信插件直写继续待覆盖；global writer coverage、global drain、target authority 与 migration gate 均为 false。新管理/用户前端仍延期，TX-F 只本地提交。

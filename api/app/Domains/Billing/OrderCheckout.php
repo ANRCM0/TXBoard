@@ -22,6 +22,7 @@ final class OrderCheckout
         $prepared = DB::transaction(static function () use (
             $userId, $tradeNo, $paymentMethod
         ): array {
+            app(\App\Domains\AuthorityMigration\AuthorityWriterFence::class)->admit('order.checkout');
             $order = Order::query()->where('user_id', $userId)
                 ->where('trade_no', $tradeNo)->lockForUpdate()->first();
             if (!$order) {

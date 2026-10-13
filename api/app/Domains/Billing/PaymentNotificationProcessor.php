@@ -61,6 +61,9 @@ final class PaymentNotificationProcessor
                 return ['status' => 400, 'error' => 'handle error'];
             }
             return ['status' => 200, 'body' => $verified['custom_result'] ?? 'success'];
+        } catch (\App\Domains\AuthorityMigration\AuthorityFenceException) {
+            Log::error('AUTHORITY_PAYMENT_SETTLEMENT_FENCE_REJECTED');
+            return ['status' => 500, 'error' => 'fail'];
         } catch (LegacyCaptureShadowException) {
             // Explicit logging bypasses ShouldntReport. Never pass the exception:
             // its outer request frames may contain provider credentials when args are enabled.

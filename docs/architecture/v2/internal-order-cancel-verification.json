@@ -153,6 +153,37 @@
   ],
   "integration_base": "7737662d8154d5e8a86c7140f39987d36d5ff0c4",
   "remote_ci": {
-    "status": "pending-after-push"
+    "status": "passed",
+    "verified_date_local": "2026-10-14",
+    "head_sha": "614acb8db1ea0a725d57082de3934280a10ac453",
+    "all_triggered_runs": 25,
+    "all_triggered_runs_success": true,
+    "evidence_sha256": "00d8596cbe3cc79163e3e04ba566c38f4c0e1203b8f413ae7eebd9e2d94f67d2",
+    "runs": [
+      {
+        "name": "internal-order-cancel",
+        "databaseId": 38440704285,
+        "headSha": "614acb8db1ea0a725d57082de3934280a10ac453",
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38440704285"
+      },
+      {
+        "name": "api-ci",
+        "databaseId": 38440704272,
+        "headSha": "614acb8db1ea0a725d57082de3934280a10ac453",
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38440704272"
+      },
+      {
+        "name": "api-mysql-ci",
+        "databaseId": 38440704140,
+        "headSha": "614acb8db1ea0a725d57082de3934280a10ac453",
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38440704140"
+      }
+    ]
   }
 }

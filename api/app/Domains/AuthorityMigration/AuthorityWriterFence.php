@@ -34,7 +34,8 @@ final class AuthorityWriterFence
             if ($row === null) {
                 $this->require(DB::table('tx_authority_writer_fence')->lockForUpdate()->first(['id']) === null
                     && DB::table('tx_authority_prepare_receipt')->lockForUpdate()->first(['prepare_key']) === null
-                    && DB::table('tx_authority_inventory_upgrade')->lockForUpdate()->first(['upgrade_key']) === null, 'AUTHORITY_FENCE_STATE_INVALID');
+                    && DB::table('tx_authority_inventory_upgrade')->lockForUpdate()->first(['upgrade_key']) === null
+                    && DB::table('tx_authority_finance_upgrade')->lockForUpdate()->first(['upgrade_key']) === null, 'AUTHORITY_FENCE_STATE_INVALID');
                 $state = ['id'=>'1','scope'=>self::SCOPE,'version'=>self::VERSION,'authority'=>'legacy','phase'=>'open',
                     'authority_epoch'=>'1','prepare_key'=>null,'row_version'=>'1','updated_at'=>(string)time()];
                 $state['content_hash'] = $this->hash($state); DB::table('tx_authority_writer_fence')->insert($state);
@@ -61,7 +62,7 @@ final class AuthorityWriterFence
             $this->require($expectedEpoch !== '9223372036854775807', 'AUTHORITY_FENCE_EPOCH_EXHAUSTED');
             $prepared = $state; unset($prepared['content_hash']);
             $prepared['phase'] = 'prepared'; $prepared['authority_epoch'] = (string)((int)$expectedEpoch+1);
-            $prepared['prepare_key'] = $key; $prepared['row_version'] = $state['scope'] === self::SCOPE ? '2' : '3'; $prepared['updated_at'] = (string)time();
+            $prepared['prepare_key'] = $key; $prepared['row_version'] = $this->preparedEpoch($state); $prepared['updated_at'] = (string)time();
             $prepared['content_hash'] = $this->hash($prepared);
             $receipt = ['prepare_key'=>$key,'scope'=>$state['scope'],'version'=>$state['version'],'expected_epoch'=>$expectedEpoch,
                 'prepared_epoch'=>$prepared['authority_epoch'],'request_hash'=>$this->requestHash($key,$expectedEpoch,$state['scope'],$state['version']),
@@ -129,11 +130,46 @@ final class AuthorityWriterFence
             return $this->result($state)+['read_only'=>true,'recovery_status'=>'committed_expand','upgrade_receipt'=>$upgrade];
         });
     }
+    public function extendFinance(string $key,string $expectedEpoch):array
+    {
+        $this->key($key);$expectedEpoch=$this->epoch($expectedEpoch);
+        return $this->control(function()use($key,$expectedEpoch):array{
+            $state=$this->state(true);$history=$this->evidence($state);$finance=$history['finance'];
+            if($finance!==null){
+                $this->require($finance['upgrade_key']===$key && $finance['expected_epoch']===$expectedEpoch,'AUTHORITY_FINANCE_REQUEST_CONFLICT');
+                return $this->result($state)+['replayed'=>true,'finance_receipt'=>$finance];
+            }
+            $this->require($state['scope']===AuthorityInventory::SCOPE && $state['phase']==='open','AUTHORITY_FINANCE_EXTEND_REFUSED');
+            $this->require($expectedEpoch==='2' && $state['authority_epoch']===$expectedEpoch,'AUTHORITY_FENCE_STALE_EPOCH');
+            $expanded=$state;unset($expanded['content_hash']);$expanded['scope']=AuthorityFinanceInventory::SCOPE;$expanded['version']=AuthorityFinanceInventory::VERSION;
+            $expanded['inventory_hash']=app(AuthorityFinanceInventory::class)->inventoryHash();$expanded['authority_epoch']='3';$expanded['row_version']='3';$expanded['updated_at']=(string)time();
+            $expanded['content_hash']=$this->hash($expanded);$receipt=app(AuthorityFinanceInventory::class)->make($state,$expanded,$history['upgrade'],$key);
+            $this->require(DB::table('tx_authority_writer_fence')->where('id',1)->update($expanded)===1,'AUTHORITY_FENCE_STATE_INVALID');
+            DB::table('tx_authority_finance_upgrade')->insert($receipt);
+            return $this->result($expanded)+['replayed'=>false,'finance_receipt'=>$receipt];
+        });
+    }
+    public function recoverFinance(string $key,string $expectedEpoch):array
+    {
+        $this->key($key);$expectedEpoch=$this->epoch($expectedEpoch);
+        return $this->control(function()use($key,$expectedEpoch):array{
+            $state=$this->state(false);$finance=$this->evidence($state)['finance'];
+            if($finance===null){
+                $this->require($state['scope']===AuthorityInventory::SCOPE && $state['phase']==='open' && $expectedEpoch==='2','AUTHORITY_FINANCE_EXTEND_REFUSED');
+                return $this->result($state)+['read_only'=>true,'recovery_status'=>'inconclusive_no_committed_finance','finance_receipt'=>null];
+            }
+            $this->require($finance['upgrade_key']===$key && $finance['expected_epoch']===$expectedEpoch,'AUTHORITY_FINANCE_REQUEST_CONFLICT');
+            return $this->result($state)+['read_only'=>true,'recovery_status'=>'committed_finance','finance_receipt'=>$finance];
+        });
+    }
+
     private function evidence(array $state):array
     {
-        $prepare=$this->preparedReceipt($state); $upgrade=app(AuthorityInventory::class)->verified($state);
-        if($upgrade!==null && $prepare!==null) $this->require($prepare['prior_state_hash']===$upgrade['expanded_state_hash'],'AUTHORITY_FENCE_RECEIPT_INVALID');
-        return ['prepare'=>$prepare,'upgrade'=>$upgrade];
+        $prepare=$this->preparedReceipt($state); $finance=app(AuthorityFinanceInventory::class)->inspect($state);
+        $upgrade=app(AuthorityInventory::class)->verified($finance['prior_state']??$state);
+        if($finance['receipt']!==null) $this->require($upgrade!==null && $finance['receipt']['parent_inventory_upgrade_hash']===$upgrade['content_hash'],'AUTHORITY_FINANCE_EVIDENCE_INVALID');
+        if($upgrade!==null && $prepare!==null) $this->require($prepare['prior_state_hash']===($finance['receipt']['expanded_state_hash']??$upgrade['expanded_state_hash']),'AUTHORITY_FENCE_RECEIPT_INVALID');
+        return ['prepare'=>$prepare,'upgrade'=>$upgrade,'finance'=>$finance['receipt']];
     }
     private function declaration():array
     {
@@ -147,7 +183,10 @@ final class AuthorityWriterFence
         $this->require($state['scope']===$declaration['scope'] && $state['version']===$declaration['version'],'AUTHORITY_FENCE_SCOPE_REJECTED');
     }
     private function writers(array $state):array
-    {return $state['scope']===self::SCOPE?['admin.user.create','admin.user.update']:AuthorityInventory::WRITERS;}
+    {return match($state['scope']){self::SCOPE=>['admin.user.create','admin.user.update'],AuthorityInventory::SCOPE=>AuthorityInventory::WRITERS,AuthorityFinanceInventory::SCOPE=>AuthorityFinanceInventory::WRITERS};}
+    private function openEpoch(array $state):string
+    {return match($state['scope']){self::SCOPE=>'1',AuthorityInventory::SCOPE=>'2',AuthorityFinanceInventory::SCOPE=>'3'};}
+    private function preparedEpoch(array $state):string{return (string)((int)$this->openEpoch($state)+1);}
 
     private function state(bool $exclusive): array
     {
@@ -159,14 +198,18 @@ final class AuthorityWriterFence
         foreach(['id','authority_epoch','row_version','updated_at']as$key)$state[$key]=$this->epoch($state[$key]);
         $inventory=$state['inventory_hash'];
         if($state['scope']===self::SCOPE){$this->require($inventory===null,'AUTHORITY_FENCE_STATE_INVALID');unset($state['inventory_hash']);}
-        else $this->require($state['scope']===AuthorityInventory::SCOPE && $state['version']===AuthorityInventory::VERSION
-            && $inventory===app(AuthorityInventory::class)->inventoryHash(),'AUTHORITY_FENCE_STATE_INVALID');
+        else {
+            $this->require(($state['scope']===AuthorityInventory::SCOPE && $state['version']===AuthorityInventory::VERSION)
+                ||($state['scope']===AuthorityFinanceInventory::SCOPE && $state['version']===AuthorityFinanceInventory::VERSION),'AUTHORITY_FENCE_STATE_INVALID');
+            $this->require($inventory===($state['scope']===AuthorityInventory::SCOPE?app(AuthorityInventory::class)->inventoryHash():app(AuthorityFinanceInventory::class)->inventoryHash()),'AUTHORITY_FENCE_STATE_INVALID');
+        }
         $hash=$state['content_hash'];unset($state['content_hash']);
         $this->require($state['id']==='1' && (($state['scope']===self::SCOPE && $state['version']===self::VERSION)
-                || ($state['scope']===AuthorityInventory::SCOPE && $state['version']===AuthorityInventory::VERSION)) && $state['authority']==='legacy'
+                || ($state['scope']===AuthorityInventory::SCOPE && $state['version']===AuthorityInventory::VERSION)
+                || ($state['scope']===AuthorityFinanceInventory::SCOPE && $state['version']===AuthorityFinanceInventory::VERSION)) && $state['authority']==='legacy'
             && in_array($state['phase'],['open','prepared'],true) && is_string($hash) && preg_match('/\A[0-9a-f]{64}\z/D',$hash)
             && $hash===$this->hash($state), 'AUTHORITY_FENCE_STATE_INVALID');
-        $openEpoch=$state['scope']===self::SCOPE?'1':'2'; $preparedEpoch=$state['scope']===self::SCOPE?'2':'3';
+        $openEpoch=$this->openEpoch($state); $preparedEpoch=$this->preparedEpoch($state);
         if($state['phase']==='open')$this->require($state['authority_epoch']===$openEpoch && $state['row_version']===$openEpoch && $state['prepare_key']===null, 'AUTHORITY_FENCE_STATE_INVALID');
         else {$this->key($state['prepare_key']);$this->require($state['authority_epoch']===$preparedEpoch && $state['row_version']===$preparedEpoch, 'AUTHORITY_FENCE_STATE_INVALID');}
         return $state+['content_hash'=>$hash];
@@ -187,8 +230,9 @@ final class AuthorityWriterFence
             $this->require(is_string($receipt[$key]) && preg_match('/\A[0-9a-f]{64}\z/D',$receipt[$key]),'AUTHORITY_FENCE_RECEIPT_INVALID');
         $old=$receipt['scope']===self::SCOPE && $receipt['version']===self::VERSION;
         $new=$receipt['scope']===AuthorityInventory::SCOPE && $receipt['version']===AuthorityInventory::VERSION;
-        $this->require(($old||$new) && $receipt['expected_epoch']===($old?'1':'2')
-            && $receipt['prepared_epoch']===($old?'2':'3') && $receipt['request_hash']===$this->requestHash($receipt['prepare_key'],$receipt['expected_epoch'],$receipt['scope'],$receipt['version'])
+        $finance=$receipt['scope']===AuthorityFinanceInventory::SCOPE && $receipt['version']===AuthorityFinanceInventory::VERSION;
+        $this->require(($old||$new||$finance) && $receipt['expected_epoch']===($old?'1':($new?'2':'3'))
+            && $receipt['prepared_epoch']===($old?'2':($new?'3':'4')) && $receipt['request_hash']===$this->requestHash($receipt['prepare_key'],$receipt['expected_epoch'],$receipt['scope'],$receipt['version'])
             && $hash===$this->hash($receipt),'AUTHORITY_FENCE_RECEIPT_INVALID');
         return $receipt+['content_hash'=>$hash];
     }
@@ -207,7 +251,8 @@ final class AuthorityWriterFence
         $this->epoch($settings['worker_epoch']);
         $declaration=$this->declaration();
         $this->require(($declaration['scope']===self::SCOPE&&$declaration['version']===self::VERSION)
-            ||($declaration['scope']===AuthorityInventory::SCOPE&&$declaration['version']===AuthorityInventory::VERSION),'AUTHORITY_FENCE_SCOPE_INVALID');
+            ||($declaration['scope']===AuthorityInventory::SCOPE&&$declaration['version']===AuthorityInventory::VERSION)
+            ||($declaration['scope']===AuthorityFinanceInventory::SCOPE&&$declaration['version']===AuthorityFinanceInventory::VERSION),'AUTHORITY_FENCE_SCOPE_INVALID');
         $this->require($settings['worker_role']==='legacy','AUTHORITY_FENCE_ROLE_REJECTED');
     }
     private function control(callable $operation): array

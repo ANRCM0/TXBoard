@@ -137,9 +137,7 @@
       "outcome": "Final SQLite54passed14engine-specificskips575assertions; dedicated MariaDB22passed284assertions including8independentprocess shared/exclusive/crash cases"
     }
   ],
-  "pending": [
-    "Remote Oracle MySQL8.4 CI after push"
-  ],
+  "pending": [],
   "integration_base": "6fa00ee4b3b36f2f1435e67391fdf2a81becff83",
   "coordinator_review": {
     "frozen_source_hashes_verified": true,
@@ -150,6 +148,53 @@
     "full_api": "passed"
   },
   "remote_ci": {
-    "status": "pending-after-push"
+    "status": "passed",
+    "verified_date_local": "2026-10-14",
+    "head_sha": "614acb8db1ea0a725d57082de3934280a10ac453",
+    "all_triggered_runs": 25,
+    "all_triggered_runs_success": true,
+    "evidence_sha256": "00d8596cbe3cc79163e3e04ba566c38f4c0e1203b8f413ae7eebd9e2d94f67d2",
+    "runs": [
+      {
+        "name": "authority-inventory-expand",
+        "databaseId": 38440704001,
+        "headSha": "614acb8db1ea0a725d57082de3934280a10ac453",
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38440704001"
+      },
+      {
+        "name": "authority-writer-fence",
+        "databaseId": 38440703769,
+        "headSha": "614acb8db1ea0a725d57082de3934280a10ac453",
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38440703769"
+      },
+      {
+        "name": "api-ci",
+        "databaseId": 38440704272,
+        "headSha": "614acb8db1ea0a725d57082de3934280a10ac453",
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38440704272"
+      },
+      {
+        "name": "api-mysql-ci",
+        "databaseId": 38440704140,
+        "headSha": "614acb8db1ea0a725d57082de3934280a10ac453",
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38440704140"
+      },
+      {
+        "name": "txboard-core-image",
+        "databaseId": 38440703815,
+        "headSha": "614acb8db1ea0a725d57082de3934280a10ac453",
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38440703815"
+      }
+    ]
   }
 }

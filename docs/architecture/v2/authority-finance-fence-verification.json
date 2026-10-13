@@ -1,0 +1,195 @@
+{
+  "phase": "B2.7",
+  "status": "isolated-targeted-mysql-and-full-verified",
+  "base_commit": "614acb8db1ea0a725d57082de3934280a10ac453",
+  "source_sha256": {
+    ".github/workflows/ci-authority-finance-fence.yml": "9e3954c978bdb7b99cd55d4b15b2e4138672cc93f0448290cb52dd7e3b4e4d9b",
+    "api/app/Console/Commands/CoreAuthorityFence.php": "3f7e1b8782f7de6ad3fd1f6ebefd503f098ff34b6e36199cb712fd58db4501de",
+    "api/app/Domains/AuthorityMigration/AuthorityFinanceInventory.php": "0e907b853f63ac6924949b139aa3690705dda775c9e4c3082109b5ce65a7c012",
+    "api/app/Domains/AuthorityMigration/AuthorityFinanceUpgrade.php": "fe6dfe7f964ae2a2a387845ea0a791ae5dbaafb28a73fc4d7d923cd43136ca63",
+    "api/app/Domains/AuthorityMigration/AuthorityWriterFence.php": "fd2351d9acd3c043209779fcb26ae2a597691b8b3a6e6d99808239caa180ce62",
+    "api/app/Domains/Billing/OrderCheckout.php": "0104b31d1e63ffc0ac0cd8f575cef78e5373bb495b09e2f2d07f538810801da4",
+    "api/app/Domains/Billing/PaymentNotificationProcessor.php": "f3ab3645b5a32c70e27307eeb968b9ad2a2cebdcaead72a5db393972c626b7af",
+    "api/app/Domains/Billing/WalletRechargeService.php": "27f10fdbb2eab010e23e948b1904fb1a5ccc2594691d5c67e1599b32bfc03d98",
+    "api/app/Http/Controllers/Txapi/CommissionController.php": "d1e4f7d8fbc393df108767ceb7ef0cdb2fc336e69685446cdf8aa71ebbad3f60",
+    "api/app/Jobs/OrderHandleJob.php": "a11243b71ce79b6d9a5990ebd988939591893d826cb680cd50a5700b0bc97e5e",
+    "api/app/Services/GiftCardService.php": "88406fe2598c162f8b0ef7e01ef9cd074affedbe6d6d3dabfdbcd25416ab1fd3",
+    "api/app/Services/OrderService.php": "aafa274da2ff72fe28198ff8cf34e6da36c5279c0409e839d7fd7b23cb38a244",
+    "api/database/migrations/2026_10_14_000003_extend_finance_authority_inventory.php": "846901b3857e5346c5f3ad0e6012b05e9038aa800314d66a9f544c1de85e65f3",
+    "api/tests/Feature/AuthorityMigration/AuthorityFinanceFenceTest.php": "a432c4c2df25325ccfc83f7a4d3874b1b13c8b515028e29bc411d86dd56ead60",
+    "api/tests/Feature/AuthorityMigration/AuthorityInventoryExpandTest.php": "3a260e64ba49230c91f14b6a8ce981119c335192dbf6b4c92702c782a3a21501",
+    "api/tests/Feature/AuthorityMigration/AuthorityWriterFenceTest.php": "e7b0c10169a0f708715d5ab8f0010190cacd2bb31544f64546bfaebb65435603",
+    "contracts/v2/authority-finance-inventory-v3.md": "90c0c50dd5a6e66a9ab10ddd98dc0962bd06e0d5c076c5435d30e36cf35ea8dc"
+  },
+  "dependencies": {
+    "composer_lock_sha256": "f47b212c2fc530a7820e370eab7c6d624d13962e7d26e4f2ddf57a11848257c0",
+    "installed_json_sha256": "8e668e456c9772ae428a038ab003fba5752ab2591980fc8396d9122851145b80"
+  },
+  "snapshot": "/opt/txboard-baseline/authority-finance-r3",
+  "database": {
+    "engine": "MariaDB",
+    "version": "11.4.12",
+    "dedicated_database": "txboard_finance_fence_test",
+    "synthetic_only": true
+  },
+  "coverage": {
+    "targeted": {
+      "passed": 104,
+      "skipped": 40,
+      "assertions": 1741,
+      "includes_existing_authority_wallet_order_cancel_fulfillment_commission_gift_regressions": true
+    },
+    "mysql": {
+      "passed": 22,
+      "skipped": 0,
+      "assertions": 362
+    },
+    "full": {
+      "passed": 1346,
+      "skipped": 134,
+      "assertions": 14135
+    }
+  },
+  "new_sqlite_passed": 13,
+  "new_sqlite_skipped": 9,
+  "tests": {
+    "targeted": {
+      "mode": "targeted",
+      "exit_code": 0,
+      "log_sha256": "eda85145b9b42143dc659fbc1eaf077befcdba782112febb7e206c6803c51f42",
+      "snapshot": "/opt/txboard-baseline/authority-finance-r3"
+    },
+    "mysql": {
+      "mode": "mysql",
+      "exit_code": 0,
+      "log_sha256": "40d4e359042dfd4fcf68bbde19543ff00f2f5813da16dd75e590fb851a73fe4c",
+      "snapshot": "/opt/txboard-baseline/authority-finance-r3"
+    },
+    "full": {
+      "mode": "full",
+      "exit_code": 0,
+      "log_sha256": "65648238cfb50b160c2da18bfb7df9414a32dbd647c13405ef38686a0e230a07",
+      "snapshot": "/opt/txboard-baseline/authority-finance-integrated-r2"
+    }
+  },
+  "review": {
+    "native_schema_issues": 0,
+    "workflow_actionlint": "passed",
+    "documentation_paths": "passed",
+    "nine_original_finance_transaction_admissions_before_domain_locks": true,
+    "actual_HTTP_order_create_cancel_wallet_commission_gift_delegate_native_rules": true,
+    "verified_synthetic_payment_webhook_order_and_recharge_retained": true,
+    "original_OrderHandleJob_fulfillment_and_retry_contract_retained": true,
+    "no_second_wallet_credit_or_Coupon_refund_on_native_retry": true,
+    "prepared4_blocks_all_nine_with_no_business_change": true,
+    "default_off_missing_authority_schema_preserves_finance_SQL_paths": true,
+    "old_v1_and_v2_prepared_receipts_historical_hashes_recover_unchanged": true,
+    "old_prepared_cannot_extend_or_reopen": true,
+    "same_singleton_finance_upgrade_parent_association_checked_even_with_recomputed_contenthash": true,
+    "exact_finance_and_prepare_replay_retains_immutable_receipts": true,
+    "fixed_nonsecret_Authority_exception_logs_preserve_native_false_ACK_rethrow": true,
+    "checkout_prepare_window_explicit_network_outside_transaction": true,
+    "free_checkout_two_original_transactions_prepare_window_keeps_pending_and_native409": true,
+    "readonly_recovery_bounded_once_per_three_closed_receipt_stores": true,
+    "additive_schema_replay_receipt_immutable_populated_down_refused": true,
+    "real_admitted_cancel_commit_before_prepare_refunds_once": true,
+    "real_cancel_rollback_and_SIGKILL_leave_original_wallet_before_prepare": true,
+    "real_recharge_credit_commit_before_prepare_and_SIGKILL_credit_rollback": true,
+    "finance_extend_SIGKILL_before_commit_exactretry_and_committed_outputloss_same_receipt": true,
+    "prepare4_SIGKILL_before_commit_open3_and_committed_outputloss_recovery": true,
+    "actual_independent_MariaDB_processes_used": true
+  },
+  "limits": {
+    "authority": "legacy",
+    "scope": "native-sql-writers/v3",
+    "version": "authority-writer-fence/v3",
+    "covered_writers": [
+      "admin.user.create",
+      "admin.user.update",
+      "admin.user.delete",
+      "admin.user.credentials.rotate",
+      "admin.user.bulk-ban",
+      "admin.plan.save",
+      "traffic.batch.settle",
+      "order.create",
+      "order.paid",
+      "order.fulfill",
+      "order.cancel",
+      "order.checkout",
+      "wallet.recharge.create",
+      "wallet.recharge.settle",
+      "commission.transfer",
+      "gift.redeem"
+    ],
+    "global_writer_coverage_complete": false,
+    "global_drain_complete": false,
+    "target_authority_active": false,
+    "migration_gate_open": false,
+    "outside_inventory": [
+      "Independent UserService/reset helpers",
+      "commission cron distribution",
+      "registration/bootstrap/auth/CLI writers",
+      "legacy TrafficFetch",
+      "after-commit Observer/Node/provider network effects",
+      "independent plugin directSQL"
+    ],
+    "old_history": "All v1/v2 state and receipt source/hash recipes preserved; finance links original inventory upgrade via parent hash",
+    "epoch_paths": [
+      "v1prepared2 no extension",
+      "v2prepared3 no extension",
+      "v2open2 -> v3open3 -> v3prepared4"
+    ],
+    "checkout_partial": "Original binding/free-preflight commits before external call or separatepaid; prepare can occur between them. No auto compensation or giant transaction added.",
+    "production_data_used": false,
+    "production_payment_used": false,
+    "production_migration_ready": false,
+    "hashes": "Consistency association, not signatures"
+  },
+  "attempt_history": [
+    {
+      "snapshot": "r1",
+      "outcome": "99passed40engine-specificskips5fixture failures: no-purchase capacity(default0), commissionminimum and payment pluginboot directcall; fixed tests with explicit capacitynull, minimum0, local pluginboot; no businessruleschanged"
+    },
+    {
+      "snapshot": "r2",
+      "outcome": "Final SQLite104passed40engine-specificskips1741assertions; dedicated MariaDB22cases running"
+    },
+    {
+      "snapshot": "r2",
+      "outcome": "SQLite104passed40engine-specificskips1741assertions; MariaDB12passed10test-fixture failures146assertions: native Payment.uuid isvarchar32, corrected36char fixtureto32. All runtimehashesunchanged, previouslogs preserved"
+    },
+    {
+      "snapshot": "r3",
+      "outcome": "Final r3 SQLite104passed40engine-specificskips1741assertions; dedicatedMariaDB22passed362assertions incl9independentIPC/financialrollback/SIGKILL cases"
+    },
+    {
+      "snapshot": "authority-finance-integrated-r1",
+      "outcome": "Original r2fixture full regression passed1346/134skipped/14135assertions; retained after fixture32char correction; final source reverified independently"
+    },
+    {
+      "snapshot": "authority-finance-integrated-r2",
+      "outcome": "Final r3source full API passed1346/134engine-specificskips/14135assertions;17frozenpaths exactlymatchspecialist"
+    }
+  ],
+  "pending": [
+    "Remote Oracle MySQL8.4 CI after push"
+  ],
+  "integration_base": "614acb8db1ea0a725d57082de3934280a10ac453",
+  "coordinator_review": {
+    "frozen_owned_paths": 17,
+    "source_hashes_match_specialist_and_final_full_snapshot": true,
+    "full_snapshot_excludes_other_agents_unaccepted_candidates": true,
+    "same_SQL_singleton_and_historical_receipt_recipes_reviewed": true,
+    "original_financial_transaction_lock_order_and_safe_failure_paths_reviewed": true,
+    "external_provider_and_aftercommit_effects_remain_outside_global_drain": true,
+    "actual_HTTP_registry_methods": 254,
+    "external_user_routes": 49,
+    "native_Node_routes": 8,
+    "route_boundaries": "passed",
+    "actionlint": "passed",
+    "native_schema_issues": 0
+  },
+  "remote_ci": {
+    "status": "pending-after-push"
+  }
+}

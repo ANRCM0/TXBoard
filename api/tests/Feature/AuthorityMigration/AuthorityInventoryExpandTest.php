@@ -150,7 +150,7 @@ class AuthorityInventoryExpandTest extends TestCase
         $this->expand();$this->fence()->prepare('bounded-prepare','2');$before=$this->history();
         DB::enableQueryLog();DB::flushQueryLog();$this->fence()->status();$this->fence()->recover('bounded-prepare','2');
         $this->fence()->recoverExpand('inventory-fixture','1');$queries=DB::getQueryLog();DB::disableQueryLog();
-        $this->assertCount(12,$queries);foreach($queries as$query)$this->assertMatchesRegularExpression('/\Aselect\b/i',$query['query']);
+        $this->assertCount(15,$queries);foreach($queries as$query)$this->assertMatchesRegularExpression('/\Aselect\b/i',$query['query']);
         $this->assertSame($before,$this->history());
     }
     public function test_upgrade_schema_replay_immutable_receipt_down_guard_and_invalid_nullable_column_are_checked():void

@@ -79,6 +79,7 @@ class OrderService
 
         return DB::transaction(function () use ($user, $plan, $newPeriod, $couponCode,
             $userService, $idempotencyKey, $body): Order {
+            app(\App\Domains\AuthorityMigration\AuthorityWriterFence::class)->admit('order.create');
             // One user lock serializes concurrent creates across TXAPI, native
             // clients and Gateway. Claim-check always precedes order preflight.
             $user = User::lockForUpdate()->find($user->id);
@@ -131,6 +132,7 @@ class OrderService
     public function open(): void
     {
         $openedOrder = DB::transaction(function () {
+            app(\App\Domains\AuthorityMigration\AuthorityWriterFence::class)->admit('order.fulfill');
             $order = $this->lockCurrentOrderWhenStatus(Order::STATUS_PROCESSING);
             if (!$order) {
                 return null;
@@ -347,6 +349,7 @@ class OrderService
     {
         try {
             [$order, $shouldDispatch] = DB::transaction(function () use ($callbackNo, $paymentId, $verifiedAmountMinor) {
+                app(\App\Domains\AuthorityMigration\AuthorityWriterFence::class)->admit('order.paid');
                 $order = $this->lockCurrentOrder();
                 if (!$order) {
                     throw new \RuntimeException('Order not found.');
@@ -405,6 +408,9 @@ class OrderService
                     ]);
                 }
             }
+        } catch (\App\Domains\AuthorityMigration\AuthorityFenceException) {
+            Log::error('AUTHORITY_ORDER_PAID_FENCE_REJECTED');
+            return false;
         } catch (\Exception $e) {
             Log::error($e);
             return false;
@@ -416,6 +422,7 @@ class OrderService
     {
         try {
             $cancelledOrder = DB::transaction(function () {
+                app(\App\Domains\AuthorityMigration\AuthorityWriterFence::class)->admit('order.cancel');
                 $order = $this->lockCurrentOrderWhenStatus(Order::STATUS_PENDING);
                 if (!$order) {
                     return null;
@@ -460,6 +467,9 @@ class OrderService
             $this->order = $cancelledOrder;
             HookManager::call('order.cancel.after', $cancelledOrder);
             return true;
+        } catch (\App\Domains\AuthorityMigration\AuthorityFenceException) {
+            Log::error('AUTHORITY_ORDER_CANCEL_FENCE_REJECTED');
+            return false;
         } catch (LegacyCaptureShadowException) {
             Log::error('LEGACY_ORDER_CANCELLATION_CAPTURE_FAILED');
             return false;

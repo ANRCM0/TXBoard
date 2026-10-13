@@ -19,6 +19,7 @@ final class CommissionController
         ]);
         $amount = (int) $input['transfer_amount'];
         $result = DB::transaction(function () use ($request, $amount): string {
+            app(\App\Domains\AuthorityMigration\AuthorityWriterFence::class)->admit('commission.transfer');
             $user = User::query()->lockForUpdate()->findOrFail(Auth::guard('sanctum')->id());
             $minimum = admin_transfer_minimum();
             if ($minimum > 0 && $amount < (int) round($minimum * 100)) {

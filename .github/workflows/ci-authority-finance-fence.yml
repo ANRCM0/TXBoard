@@ -1,0 +1,64 @@
+name: authority-finance-fence
+
+on:
+  push:
+    branches: [main]
+    paths: ['api/**', 'contracts/v2/authority-finance-inventory-v3.md', '.github/workflows/ci-authority-finance-fence.yml']
+  pull_request:
+    paths: ['api/**', 'contracts/v2/authority-finance-inventory-v3.md', '.github/workflows/ci-authority-finance-fence.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: authority-finance-fence-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  isolated:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: txboard-ci-authority-fence-root-only
+          MYSQL_DATABASE: txboard_finance_fence_test
+          MYSQL_USER: txboard_finance_fence
+          MYSQL_PASSWORD: txboard-ci-authority-fence-only
+        ports: ['13306:3306']
+        options: >-
+          --health-cmd "mysqladmin ping -h 127.0.0.1 -uroot -ptxboard-ci-authority-fence-root-only"
+          --health-interval 5s --health-retries 20
+    env:
+      APP_ENV: testing
+      CORE_FINANCE_FENCE_TEST_MYSQL: '1'
+      DB_CONNECTION: mysql
+      DB_HOST: 127.0.0.1
+      DB_PORT: '13306'
+      DB_DATABASE: txboard_finance_fence_test
+      DB_USERNAME: txboard_finance_fence
+      DB_PASSWORD: txboard-ci-authority-fence-only
+      CACHE_DRIVER: array
+      SETTING_CACHE_STORE: array
+      SESSION_DRIVER: array
+      QUEUE_CONNECTION: sync
+    defaults:
+      run:
+        working-directory: api
+    steps:
+      - uses: actions/checkout@v5
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, pdo_mysql, bcmath, pcntl, posix
+          coverage: none
+      - name: Restore locked Core dependencies
+        run: composer install --no-interaction --prefer-dist
+      - name: Prepare disposable synthetic fixture
+        run: |
+          touch .env
+          mkdir -p storage/framework/{cache/data,sessions,views} storage/logs bootstrap/cache
+      - name: Same authority inventory expansion, old receipt compatibility, native writers and crash recovery
+        run: php artisan test --filter=AuthorityFinanceFenceTest

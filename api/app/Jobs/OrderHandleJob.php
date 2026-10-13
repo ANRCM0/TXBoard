@@ -27,6 +27,10 @@ class OrderHandleJob implements ShouldQueue
 
     public function failed(?\Throwable $exception): void
     {
+        if ($exception instanceof \App\Domains\AuthorityMigration\AuthorityFenceException) {
+            Log::error('AUTHORITY_ORDER_FULFILLMENT_FENCE_RETRIES_EXHAUSTED');
+            return;
+        }
         if ($exception instanceof LegacyCaptureShadowException) {
             Log::error('LEGACY_ORDER_FULFILLMENT_CAPTURE_RETRIES_EXHAUSTED');
             return;
@@ -67,6 +71,9 @@ class OrderHandleJob implements ShouldQueue
             case Order::STATUS_PROCESSING:
                 try {
                     $orderService->open();
+                } catch (\App\Domains\AuthorityMigration\AuthorityFenceException $exception) {
+                    Log::error('AUTHORITY_ORDER_FULFILLMENT_FENCE_REJECTED');
+                    throw $exception;
                 } catch (LegacyCaptureShadowException $exception) {
                     Log::error('LEGACY_ORDER_FULFILLMENT_CAPTURE_FAILED');
                     throw $exception;
