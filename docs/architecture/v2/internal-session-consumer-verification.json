@@ -244,12 +244,37 @@
       "status": "failure",
       "reason": "Redis DB22 exceeds the default sixteen databases; CI now explicitly uses dedicated fixture DB12"
     },
-    "remote_fixed_run": "pending separate verification",
-    "mysql_8_4_acceptance": false,
+    "remote_fixed_run": {
+      "commit": "651bdbce775d600335641e6855658b6675a430eb",
+      "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38329369187",
+      "conclusion": "success",
+      "passed": 12,
+      "services": [
+        "Oracle MySQL8.4",
+        "Redis7.4"
+      ],
+      "gateway_workflow_url": "https://github.com/ANRCM0/TXBoard/actions/runs/38329369230",
+      "gateway_validation": "success",
+      "image_publish": "skipped: fixture/CI-only change"
+    },
+    "mysql_8_4_acceptance": true,
     "local_failure_preserved": {
       "version": "v5",
       "log_sha256": "8cd33cfcc460a18204fd26929dc50b4f7cff020e8494a1b8ec8a9e52db10f411",
       "reason": "Local helper reused a pre-B5.14 baseline after its source overlay had been committed; v6 freezes the actual B5.14 commit instead."
     }
+  },
+  "gateway_runtime_image": {
+    "commit": "18c7d1a3d519dd02942a5f4b19891fe681fc1923",
+    "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38328505166",
+    "conclusion": "success",
+    "jobs": {
+      "container": "success",
+      "verify": "success",
+      "browser": "success",
+      "publish": "success",
+      "promote-dev": "success"
+    },
+    "separate_fixture_followup_did_not_publish": true
   }
 }
