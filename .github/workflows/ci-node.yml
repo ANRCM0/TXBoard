@@ -110,14 +110,20 @@ jobs:
       - name: Enforce ANRCM0-owned pinned kernel dependencies
         run: |
           set -euo pipefail
-          grep -Eq '^replace github.com/sagernet/sing-box => github.com/ANRCM0/sing-box v' go.mod
           grep -Eq '^replace github.com/xtls/xray-core => github.com/ANRCM0/Xray-core v' go.mod
           if grep -E 'github.com/PaiMonCai/(sing-box|Xray-core)' go.mod go.sum; then
             echo "Old-account kernel fork dependency has reappeared" >&2
             exit 1
           fi
-          grep -Eq '^github.com/ANRCM0/sing-box v[^ ]+ h1:' go.sum
           grep -Eq '^github.com/ANRCM0/Xray-core v[^ ]+ h1:' go.sum
+          if grep -Fxq 'replace github.com/sagernet/sing-box => ./internal/deps/sing-box' go.mod; then
+            grep -Fq 'github.com/ANRCM0/sing-box` commit' internal/deps/sing-box/TXNODE-PATCH.md
+            grep -Fq '20260917154452-6184aa2cd055' internal/deps/sing-box/TXNODE-PATCH.md
+            grep -Fq 'AdmitRoutedConnection' internal/deps/sing-box/route/route.go
+          else
+            grep -Eq '^replace github.com/sagernet/sing-box => github.com/ANRCM0/sing-box v' go.mod
+            grep -Eq '^github.com/ANRCM0/sing-box v[^ ]+ h1:' go.sum
+          fi
           go mod tidy -diff
       - name: Validate retained historical Node release notes
         run: |
