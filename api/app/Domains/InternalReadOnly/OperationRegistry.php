@@ -8,6 +8,7 @@ final class OperationRegistry
 {
     public const OPERATIONS = [
         'auth.login' => ['service' => 'user-gateway', 'actor' => 'login', 'versions' => ['1']],
+        'auth.admin.login' => ['service' => 'admin-gateway', 'actor' => 'admin-login', 'versions' => ['1']],
         'auth.register' => ['service' => 'user-gateway', 'actor' => 'register', 'versions' => ['1']],
         'auth.password.reset' => ['service' => 'user-gateway', 'actor' => 'password-reset', 'versions' => ['1']],
         'auth.email-code.send' => ['service' => 'user-gateway', 'actor' => 'email-code', 'versions' => ['1']],
@@ -37,6 +38,10 @@ final class OperationRegistry
             throw new SliceFailure('UNKNOWN_OPERATION', 400);
         }
         if ($operation === 'admin.identity.get' && (config('internal_api_slice.admin_identity_enabled') !== true
+            || config('core_shadow.isolated_copy') !== true)) {
+            throw new SliceFailure('OPERATION_DISABLED', 404);
+        }
+        if ($definition['actor'] === 'admin-login' && (config('internal_api_slice.admin_login_enabled') !== true
             || config('core_shadow.isolated_copy') !== true)) {
             throw new SliceFailure('OPERATION_DISABLED', 404);
         }
@@ -101,7 +106,7 @@ final class OperationRegistry
                 }
             }
             StrictJson::exact($input, $keys);
-        } elseif (in_array($definition['actor'], ['login', 'register', 'password-reset'], true)) {
+        } elseif (in_array($definition['actor'], ['login', 'admin-login', 'register', 'password-reset'], true)) {
             $keys = ['email', 'password'];
             if ($definition['actor'] === 'password-reset') $keys[] = 'email_code';
             $limits = ['email' => 254, 'password' => 1024, 'turnstile_token' => 4096,

@@ -1,6 +1,6 @@
 # Core First v2 实施台账
 
-> 状态：B0、B1.1–B1.21 影子证据、Terms、身份旁观、固定 writer 捕获、套餐批量同步、批量封禁与余额端点投影、B2.1–B2.4 单机升级、B3.1/B3.2 隔离用量、B3.3/B3.4 本地观察与持久事件桶、B4.1–B4.6 合成 Provider、插件停用接入、租约候选、离线签名快照与Go公钥诊断、B5.1–B5.15 本地 mTLS 读取、隔离建单、登录、内存邮件验证码、隔离注册、密码恢复、当前会话与管理身份读取、B6.1–B6.4 实验字节、离线加密、共享 owner 与独立响应随机值候选及 B7.1 Agent/MCP 退役已实现；两仓迁移与三镜像发布已完成，继续推进业务迁移切片。各整阶段仍按下表门禁验收。
+> 状态：B0、B1.1–B1.21 影子证据、Terms、身份旁观、固定 writer 捕获、套餐批量同步、批量封禁与余额端点投影、B2.1–B2.4 单机升级、B3.1/B3.2 隔离用量、B3.3/B3.4 本地观察与持久事件桶、B4.1–B4.6 合成 Provider、插件停用接入、租约候选、离线签名快照与Go公钥诊断、B5.1–B5.16 本地 mTLS 读取、隔离建单、登录、内存邮件验证码、隔离注册、密码恢复、当前会话与管理身份读取、B6.1–B6.4 实验字节、离线加密、共享 owner 与独立响应随机值候选及 B7.1 Agent/MCP 退役已实现；两仓迁移与三镜像发布已完成，继续推进业务迁移切片。各整阶段仍按下表门禁验收。
 
 2026-10-13，按仓库整合任务，将 Gateway/Node 的完整 Git 历史导入本仓 `gateway/`、`node/`，安装器集中到 TXBoard-Deploy。当前目录与三镜像 CI 见 [双仓布局](../../development/repository-layout.md)；旧基线和验证报告保持当时提交与路径。本次仓库整理独立于下列业务迁移门禁。
 
@@ -356,4 +356,10 @@ Deploy `34fd467` 修正host MySQL临时socket服务就绪竞争，[完整部署C
 
 [当前契约](../../../contracts/v2/core-internal-api/local-admin-identity-v1.md)增加固定 `admin.identity.get` version1，要求专用 `admin-gateway` proof、当前 Sanctum Bearer、原生封禁/管理路径/管理员角色检查；独立严格默认关闭，限 local/testing 隔离副本。输出仅 decimal ID、当前邮箱和 `is_admin=true`，无秘密或路径；Core 保持最终授权，不把本次身份结果缓存为未来权限。普通 User、仅 staff、过期/撤销、退役 Agent 和 User service 均拒绝；没有开放 Admin Gateway。
 
-固定 `3417670` 加本批源码：专项 **24项、462断言**，包含10项新管理测试和原服务/退役边界；全API **1124通过、106项引擎/工具链条件跳过、11820断言**。真实 Core/MariaDB11.4/TLS1.3 **12项**通过，覆盖服务/actor交叉拒绝、路径轮换、SQL防重放、真实审计INSERT失败503及当前凭据撤销。初版拒绝分支被内层路由渲染为500，已改为固定403并在报告保留失败源码/日志；修正后的固定快照通过全部验收，[证据报告](internal-admin-identity-verification.json)记录源码、依赖与日志hash。新增独立MySQL8.4联调CI，远端结果另行核对；Admin登录、其余管理操作、细粒度RBAC、SC-v2和生产私网仍待完成。
+固定 `3417670` 加本批源码：专项 **24项、462断言**，包含10项新管理测试和原服务/退役边界；全API **1124通过、106项引擎/工具链条件跳过、11820断言**。真实 Core/MariaDB11.4/TLS1.3 **12项**通过，覆盖服务/actor交叉拒绝、路径轮换、SQL防重放、真实审计INSERT失败503及当前凭据撤销。初版拒绝分支被内层路由渲染为500，已改为固定403并在报告保留失败源码/日志；修正后的固定快照通过全部验收，[证据报告](internal-admin-identity-verification.json)记录源码、依赖与日志hash。提交 `e9281b7` 的[独立MySQL8.4联调](https://github.com/ANRCM0/TXBoard/actions/runs/38351881362)及API/MySQL原回归、Core镜像、公钥、会话和文档均通过；其余管理操作、细粒度RBAC、SC-v2和生产私网仍待完成。
+
+### B5.16 隔离管理登录
+
+[当前契约](../../../contracts/v2/core-internal-api/local-admin-login-v1.md)增加固定 `auth.admin.login` version1，专用 `admin-gateway` 身份且拒绝任何Authorization头，独立默认关闭、local/testing隔离副本和合成邮箱门禁。复用原生FormRequest、TrimStrings、共享10/min限流、密码预算/旧hash、CAPTCHA已知停用检查、LoginService与管理角色检查；只有实际管理员才能收到真实Sanctum会话及引导管理路径。原native last_login_at/hook先于角色检查的副作用保持，审计503可隐藏已提交会话，未引入补偿或登录幂等。
+
+固定 `e9281b7` 加本批源码：专项 **51项、514断言**，包含11项新管理登录测试及原User登录/身份/service边界；全API **1135通过、106项引擎/跨工具链跳过、11910断言**。实际Core/MariaDB11.4/TLS1.3 **12项**验证登录→当前身份、服务与User/staff隔离、guest头拒绝、封禁/降权、proof重放、CAPTCHA拒绝、真实审计失败隐藏会话和撤销；最终token为0。[报告](internal-admin-login-verification.json)保留首次缓存预加载夹具失败及最终源码/依赖/日志hash。已新增独立MySQL8.4 CI，远端结果另行核对；Admin Gateway/SDK消费者、新管理前端、正式SC-v2与生产PKI仍未启用。

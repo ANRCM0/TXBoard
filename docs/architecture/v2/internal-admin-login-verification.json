@@ -1,0 +1,89 @@
+{
+  "phase": "B5.16",
+  "status": "verified-isolated-current",
+  "base_commit": "e9281b78870af1b4c4480432943015a199528c44",
+  "source_sha256": {
+    "api/app/Domains/InternalReadOnly/OperationRegistry.php": "faa948789b67aed3b2b8365b776cfe0d3870b25b53a6cb9c6b2465573e8a0c92",
+    "api/app/Domains/InternalReadOnly/ServiceProofVerifier.php": "bd80ec877fda02c1c57c7ed21dfb2884d0366a67f770cc205f7d4c287c2eda53",
+    "api/app/Domains/InternalReadOnly/InternalLoginDispatcher.php": "2d6385873014b95e2e7f4c4a51635e2b56e8058e9f71d76812792b9451a73601",
+    "api/app/Http/Middleware/InternalServiceProof.php": "45907f43a3cf04ccee428513cb570313b8f9d11ab23b04ac0724f3a9e9698956",
+    "api/app/Http/Controllers/Txapi/InternalReadOnlyController.php": "ecd63df25bbe7a31d4cc05f05d780c813cee0aebcced3268375069645415c72c",
+    "api/config/internal_api_slice.php": "b6a196f8dd421bc4aa89dbb5862bf11f0f1e6c927ed4e79139d8337b29a96ac3",
+    "api/tests/Feature/InternalReadOnly/InternalAdminLoginTest.php": "f11a1f11c1d390d0175a2026db94369206d0952f8238b8fa58ddc61028ef95ff",
+    "api/internal-readonly-fixtures/tls-boundary.mjs": "0e50e24646ec6c453385e6fd5efc59f95207c951b74271964fb6fbb7e1c3fc6d",
+    "contracts/v2/core-internal-api/local-admin-login-v1.md": "c81f12dacad3c52099be98fea4eaff44596c16dfac311f4998814e0783e1d760",
+    "scripts/tests/internal-admin-login/fixture.php": "c25a9453ec3687cdf4a0da3e2bd5ac22b9a4dddbad2801b6f5df2ecfa8b4e90f",
+    "scripts/tests/internal-admin-login/integration.mjs": "f964671dcbd39b87922c57bc6e388646df4da6340fa0ae39e6578a9e6c851a9b",
+    "scripts/tests/internal-admin-login/README.md": "1dd619b11c3212a407db451a4d9fe8455e590ba9f8857c755796b4a568b88153",
+    "scripts/tests/internal-admin-login/run-local-baseline.py": "20f3543ca617f90988451b4f534893b732d2cfde432714f84e106b3c8e4df314",
+    "scripts/tests/internal-admin-login/run.sh": "1db0656fc83576e4520f638ce27fbff74efab294c84d205f27a222d50cce9984"
+  },
+  "dependencies": {
+    "composer_lock_sha256": "f47b212c2fc530a7820e370eab7c6d624d13962e7d26e4f2ddf57a11848257c0",
+    "installed_json_sha256": "8e668e456c9772ae428a038ab003fba5752ab2591980fc8396d9122851145b80"
+  },
+  "tests": {
+    "targeted": {
+      "mode": "targeted",
+      "exit_code": 0,
+      "log_sha256": "7a9a6d059f78fcfd6254c04148e173feb4f8a653276a8fa57506343f652dd226",
+      "snapshot": "/opt/txboard-baseline/internal-admin-login-r2",
+      "passed": 51,
+      "assertions": 514,
+      "new_admin_tests": 11
+    },
+    "full": {
+      "mode": "full",
+      "exit_code": 0,
+      "log_sha256": "2efd2bf08edc9b655c7da1f58f40f438f4235acb75c358f7d7b2fd6ce63ece7e",
+      "snapshot": "/opt/txboard-baseline/internal-admin-login-r2",
+      "passed": 1135,
+      "skipped": 106,
+      "assertions": 11910
+    },
+    "tls": {
+      "mode": "tls",
+      "exit_code": 0,
+      "log_sha256": "ca111564e5d556abf6894f09344ae70d1320f0e5ad45ffc68b6058b46d2db0c1",
+      "snapshot": "/opt/txboard-baseline/internal-admin-login-r2"
+    }
+  },
+  "tls_receipt": {
+    "checks": [
+      "real Admin mTLS native login private credential delivery",
+      "issued credential reaches current Admin identity",
+      "User certificate cannot reach Admin login",
+      "ordinary User and staff never receive admin credential",
+      "any Authorization header rejected on guest login",
+      "wrong password and banned admin reject without new session",
+      "caller role unknown input and nonsynthetic account refused",
+      "verified proof replay cannot issue another session",
+      "demoted admin cannot receive management path",
+      "enabled CAPTCHA never contacts external service",
+      "real audit failure hides committed credential without rollback",
+      "revocation invalidates prior successful management credential"
+    ],
+    "passed": 12,
+    "tls": "TLSv1.3",
+    "token_count": 0,
+    "audit_count": 10,
+    "database_version": "11.4.12-MariaDB",
+    "synthetic_only": true,
+    "no_gateway_admin_route": true,
+    "unknown_result_session_preserved": true
+  },
+  "production_enabled": false,
+  "gateway_admin_route_enabled": false,
+  "remote_ci": "pending",
+  "earlier_failed_snapshot": {
+    "snapshot": "/opt/txboard-baseline/internal-admin-login-r1",
+    "targeted": {
+      "mode": "targeted",
+      "exit_code": 1,
+      "log_sha256": "701a3d5339f3fa33f11c5a0d788e855d0e57a917a7d5ab5a39925b40185e8a16",
+      "snapshot": "/opt/txboard-baseline/internal-admin-login-r1"
+    },
+    "reason": "One cache-drift fixture populated shared cache before native settings preload, so both loaded/cache policies agreed enabled and correctly yielded CAPTCHA_INVALID400. Preload known disabled setting before explicit cache drift; runtime unchanged."
+  },
+  "limits": "Synthetic accounts only; known disabled CAPTCHA. Native last_login_at/hook precede role rejection. SQL audit/deadline/lost response can hide committed Sanctum issuance; no retry/compensation/idempotency claim. No Admin Gateway, SC-v2 or production PKI."
+}

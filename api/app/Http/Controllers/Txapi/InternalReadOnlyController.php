@@ -22,6 +22,9 @@ final class InternalReadOnlyController
         if ($operation['operation'] === 'admin.identity.get') {
             return app(\App\Domains\InternalReadOnly\InternalAdminIdentityDispatcher::class)->execute($request, $input);
         }
+        if ($operation['definition']['actor'] === 'admin-login') {
+            return app(\App\Domains\InternalReadOnly\InternalLoginDispatcher::class)->executeAdmin($request, $input);
+        }
         if ($operation['definition']['actor'] === 'password-reset') {
             return app(\App\Domains\InternalReadOnly\InternalPasswordResetDispatcher::class)->execute($request, $input);
         }

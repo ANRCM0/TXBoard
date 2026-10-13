@@ -72,7 +72,18 @@
   },
   "production_enabled": false,
   "gateway_admin_route_enabled": false,
-  "remote_ci": "pending",
+  "remote_ci": {
+    "commit": "e9281b78870af1b4c4480432943015a199528c44",
+    "admin_identity_mysql8_4": 38351881362,
+    "api": 38351881284,
+    "mysql_existing": 38351881271,
+    "core_image": 38351881249,
+    "session_consumer": 38351881301,
+    "provider_offline_proof": 38351881298,
+    "gateway_verification_only": 38351881278,
+    "documentation": 38351881274,
+    "result": "success"
+  },
   "earlier_failed_snapshot": {
     "snapshot": "/opt/txboard-baseline/internal-admin-identity-r1",
     "targeted": {
