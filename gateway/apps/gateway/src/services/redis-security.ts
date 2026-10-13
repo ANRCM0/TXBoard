@@ -3,7 +3,7 @@ import { createClient } from 'redis'
 import { GatewayFailure } from '../services/upstream.js'
 import type { ReplayStore } from '../services/crypto.js'
 
-export type AccountAction = 'login' | 'register' | 'email-code' | 'password-reset'
+export type AccountAction = 'login' | 'register' | 'email-code' | 'password-reset' | 'sessions'
 export interface AccountLimiter { check(action: AccountAction, email: string, clientIp?: string): Promise<void> }
 
 const policies: Record<AccountAction, { limit: number; ms: number }> = {
@@ -11,6 +11,7 @@ const policies: Record<AccountAction, { limit: number; ms: number }> = {
   register: { limit: 3, ms: 600_000 },
   'email-code': { limit: 2, ms: 600_000 },
   'password-reset': { limit: 3, ms: 300_000 },
+  sessions: { limit: 30, ms: 60_000 },
 }
 
 // Atomic count+expiry. No GET/INCR race between Gateway replicas.
@@ -60,7 +61,7 @@ export class RedisSecurity implements ReplayStore, AccountLimiter {
   async check(action: AccountAction, email: string, clientIp?: string): Promise<void> {
     this.ready()
     const policy = policies[action]
-    const digest = createHash('sha256').update(email.trim().toLowerCase()).digest('hex')
+    const digest = createHash('sha256').update(action === 'sessions' ? email : email.trim().toLowerCase()).digest('hex')
     const key = 'txbgw:v1:rate:' + action + ':' + digest
     let used: unknown
     try {
@@ -94,7 +95,7 @@ export class RedisSecurity implements ReplayStore, AccountLimiter {
       if (typeof ipUsed !== 'number' || !Number.isSafeInteger(ipUsed)) {
         throw new GatewayFailure('UPSTREAM_UNAVAILABLE', 503, 'Redis safety store unavailable')
       }
-      const ipPolicy: Record<AccountAction, number> = { login: 30, register: 10, 'email-code': 6, 'password-reset': 12 }
+      const ipPolicy: Record<AccountAction, number> = { login: 30, register: 10, 'email-code': 6, 'password-reset': 12, sessions: 60 }
       if (ipUsed > ipPolicy[action]) {
         throw new GatewayFailure('RATE_LIMITED', 429, 'Too many requests')
       }

@@ -48,6 +48,7 @@ import {
 import { registerPublicRoutes } from './routes/public.js'
 import { registerAccountRoutes } from './routes/account.js'
 import { registerUserRoutes } from './routes/user.js'
+import { registerSessionRoutes } from './routes/sessions.js'
 import { registerOrdersRoutes } from './routes/orders.js'
 import { registerOrdersWriteRoutes } from './routes/orders-write.js'
 import type { RouteContext } from './routes/shared.js'
@@ -312,6 +313,9 @@ export function createGatewayApp(
   if (config.internalPasswordResetEnabled === true && (policy.accountWorkflows || !crypto || !policy.limiter)) {
     throw new Error('Isolated password recovery requires HPKE and Redis with account workflows disabled')
   }
+  if (config.internalSessionsEnabled === true && (policy.accountWorkflows || !config.internalUser || !crypto || !policy.limiter)) {
+    throw new Error('Isolated sessions require Internal mTLS, HPKE and Redis with account workflows disabled')
+  }
   if (policy.accountWorkflows && (!crypto || !policy.limiter)) {
     throw new Error('Account workflows require both encryption and Redis rate limiter')
   }
@@ -328,6 +332,7 @@ export function createGatewayApp(
     isolatedEmailCode: config.internalEmailCodeEnabled === true,
     isolatedRegister: config.internalRegisterEnabled === true,
     isolatedPasswordReset: config.internalPasswordResetEnabled === true,
+    isolatedSessions: config.internalSessionsEnabled === true,
     captchaChallenge: Boolean(policy.captchaChallenge),
     // GW-304: the flag comes from configuration only. No request header,
     // theme manifest or client capability can promote the write ban — the
@@ -554,6 +559,9 @@ export function createGatewayApp(
     accountWorkflows,
   })
   registerUserRoutes(app, { config, fetcher: observed })
+  if (config.internalSessionsEnabled === true && crypto && policy.limiter) {
+    registerSessionRoutes(app, { config, crypto, limiter: policy.limiter })
+  }
   registerOrdersRoutes(app, { config, fetcher: observed })
 
   // GW-304: order-write adaptation layer. Registered ONLY when

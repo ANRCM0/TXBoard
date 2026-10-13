@@ -34,6 +34,8 @@ export type GatewayConfig = {
   /** Independent synthetic registration over the local Internal boundary. */
   internalRegisterEnabled?: boolean
   internalPasswordResetEnabled?: boolean
+  /** Independent local/testing current User session consumer. */
+  internalSessionsEnabled?: boolean
 }
 
 function intSetting(value: string | undefined, fallback: number, min: number, max: number): number {
@@ -117,6 +119,11 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     && (passwordReset !== 'true' || !internalUser || !['local', 'testing'].includes(env.APP_ENV ?? ''))) {
     throw new Error('Invalid local Internal password-reset configuration')
   }
+  const sessions = env.GATEWAY_INTERNAL_SESSIONS_ENABLED
+  if (sessions !== undefined && sessions !== '' && sessions !== 'false'
+    && (sessions !== 'true' || !internalUser || !['local', 'testing'].includes(env.APP_ENV ?? ''))) {
+    throw new Error('Invalid local Internal sessions configuration')
+  }
   return {
     host: env.GATEWAY_HOST || '127.0.0.1',
     port: intSetting(env.GATEWAY_PORT, 8787, 1, 65535),
@@ -140,5 +147,6 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     internalEmailCodeEnabled: emailCode === 'true',
     internalRegisterEnabled: registration === 'true',
     internalPasswordResetEnabled: passwordReset === 'true',
+    internalSessionsEnabled: sessions === 'true',
   }
 }

@@ -53,6 +53,10 @@ export type OrderState = 0 | 1 | 2 | 3 | 4
 export type OrderStatus = { tradeNo: string; status: OrderState }
 export type OrderQuery = { status?: OrderState; current?: number; page_size?: number }
 export type OrderPage = { items: Order[]; current: number; pageSize: number; total: number; lastPage: number }
+export type UserSession = {
+  id: string; name: string; abilities: string[]
+  last_used_at: string | null; created_at: string | null; updated_at: string | null; expires_at: string | null
+}
 export type UserAuth = { auth_data: string; is_admin?: boolean | number }
 export type UserProfile = {
   email: string
@@ -217,6 +221,8 @@ export function createTXBoardClient(options: TXBoardClientOptions = {}) {
      * before any upstream call — never a silently duplicated order.
      */
     idempotencyKey?: string
+    /** Request-local credential already read for an encrypted session mutation. */
+    authorization?: string
   } = {}): Promise<T> {
     const method = options.method || 'GET'
     const isGet = method === 'GET'
@@ -232,7 +238,7 @@ export function createTXBoardClient(options: TXBoardClientOptions = {}) {
       if (options.idempotencyKey) headers.set('Idempotency-Key', options.idempotencyKey)
 
       if (options.protected) {
-        const token = String(await optionsGetToken() || '').trim()
+        const token = options.authorization ?? String(await optionsGetToken() || '').trim()
         if (!token) throw new GatewayApiError('UNAUTHORIZED', 401, 'User session is required')
         headers.set('Authorization', /^Bearer /i.test(token) ? token : `Bearer ${token}`)
       }
@@ -303,6 +309,22 @@ export function createTXBoardClient(options: TXBoardClientOptions = {}) {
     return invoke<T>(`/secure/auth/${operation}`, { method: 'POST', body: sealed })
   }
 
+  async function sessionMutation(operation: 'session-revoke' | 'session-logout', payload: unknown): Promise<{ ok: true }> {
+    const token = String(await optionsGetToken() || '').trim()
+    if (!token) throw new GatewayApiError('UNAUTHORIZED', 401, 'User session is required')
+    const discovery = await invoke<import('./crypto.js').KeyDiscovery>('/crypto/key')
+    const { encryptForOperation } = await import('./crypto.js')
+    const sealed = await encryptForOperation(discovery, payload, operation)
+    try {
+      return await invoke(`/secure/auth/${operation}`, { method: 'POST', body: sealed, protected: true, authorization: token })
+    } catch (error) {
+      if (error instanceof GatewayApiError && ['INVALID_RESPONSE', 'VERSION_MISMATCH'].includes(error.code)) {
+        throw new GatewayApiError(error.code, error.status, error.message, error.requestId, false, true)
+      }
+      throw error
+    }
+  }
+
   async function optionsGetToken() {
     return options.getToken ? options.getToken() : undefined
   }
@@ -316,6 +338,17 @@ export function createTXBoardClient(options: TXBoardClientOptions = {}) {
       list: () => invoke<Plan[]>('/plans'),
     },
     auth: {
+      /** Default-off isolated session consumer; token state remains caller-owned. */
+      sessions: {
+        list: () => invoke<{ items: UserSession[] }>('/user/sessions', { protected: true }),
+        revoke: (sessionId: string) => {
+          if (typeof sessionId !== 'string' || !/^[1-9][0-9]{0,17}$(?![\s\S])/.test(sessionId)) {
+            throw new GatewayApiError('VALIDATION_ERROR', 400, 'Invalid session identifier')
+          }
+          return sessionMutation('session-revoke', { session_id: sessionId })
+        },
+      },
+      logout: () => sessionMutation('session-logout', {}),
       /** Account writes are encrypted-only and require opt-in Redis+HPKE Gateway. */
       register: (payload: RegistrationPayload) => secureInvoke<UserAuth>('register', payload),
       sendEmailCode: (payload: EmailCodePayload) => secureInvoke<{ sent: boolean }>('email-code', payload),

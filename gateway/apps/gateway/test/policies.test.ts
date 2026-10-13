@@ -76,6 +76,9 @@ const EXPECTED_MAPPING: Record<string, PolicyName> = {
   'POST /gateway/v1/secure/auth/register': 'secureRegister',
   'POST /gateway/v1/secure/auth/password-reset': 'securePasswordReset',
   'POST /gateway/v1/secure/auth/email-code': 'secureEmailCode',
+  'GET /gateway/v1/user/sessions': 'isolatedSessionRead',
+  'POST /gateway/v1/secure/auth/session-revoke': 'secureSessionMutation',
+  'POST /gateway/v1/secure/auth/session-logout': 'secureSessionMutation',
   'GET /gateway/v1/user/profile': 'userRead',
   'GET /gateway/v1/user/subscription/summary': 'userRead',
   'GET /gateway/v1/notices': 'userRead',
@@ -112,6 +115,9 @@ describe('GW-212 route policy table', () => {
       { name: 'securePasswordReset', auth: 'none', body: 'hpke', limiter: 'public', cache: 'off' },
       { name: 'secureEmailCode', auth: 'none', body: 'hpke', limiter: 'email-code', cache: 'off' },
       { name: 'captchaChallenge', auth: 'none', body: 'none', limiter: 'public', cache: 'off' },
+      { name: 'isolatedSessionRead', auth: 'bearer', body: 'none', limiter: 'public', cache: 'off' },
+      { name: 'secureSessionMutation', auth: 'bearer', body: 'hpke', limiter: 'public', cache: 'off' },
+      { name: 'secureSessionMutation', auth: 'bearer', body: 'hpke', limiter: 'public', cache: 'off' },
       { name: 'userRead', auth: 'bearer', body: 'none', limiter: 'public', cache: 'off' },
       { name: 'userRead', auth: 'bearer', body: 'none', limiter: 'public', cache: 'off' },
       { name: 'userRead', auth: 'bearer', body: 'none', limiter: 'public', cache: 'off' },
@@ -204,7 +210,8 @@ describe('GW-212 illegal policy combinations are rejected', () => {
     // secureLogin is live as soon as HPKE is wired, so it is held to the
     // replay-store rule.
     const live = routeDefinitions.filter(d => d.policy.name !== 'secureRegister'
-      && d.policy.name !== 'secureEmailCode' && d.policy.name !== 'securePasswordReset')
+      && d.policy.name !== 'secureEmailCode' && d.policy.name !== 'securePasswordReset'
+      && d.policy.name !== 'isolatedSessionRead' && d.policy.name !== 'secureSessionMutation')
     expect(() => validatePolicies(live, { hpke: true })).toThrow(/replay store/)
     // With a store the same table validates.
     expect(() => validatePolicies(live, { hpke: true, replayStore: true })).not.toThrow()

@@ -24,6 +24,8 @@ export type PolicyName =
   | 'secureRegister'
   | 'secureEmailCode'
   | 'securePasswordReset'
+  | 'isolatedSessionRead'
+  | 'secureSessionMutation'
   | 'captchaChallenge'
   | 'disabledWrite'
   | 'orderWrite'
@@ -55,6 +57,8 @@ export const POLICY_DEFINITIONS: Readonly<Record<PolicyName, RoutePolicy>> = {
   secureRegister: { name: 'secureRegister', auth: 'none', body: 'hpke', limiter: 'register', cache: 'off' },
   secureEmailCode: { name: 'secureEmailCode', auth: 'none', body: 'hpke', limiter: 'email-code', cache: 'off' },
   securePasswordReset: { name: 'securePasswordReset', auth: 'none', body: 'hpke', limiter: 'public', cache: 'off' },
+  isolatedSessionRead: { name: 'isolatedSessionRead', auth: 'bearer', body: 'none', limiter: 'public', cache: 'off' },
+  secureSessionMutation: { name: 'secureSessionMutation', auth: 'bearer', body: 'hpke', limiter: 'public', cache: 'off' },
   // GW-209: challenge issue. Anonymous, limiter-guarded, never cached: the
   // returned challengeId is a bearer capability that must never be shared.
   captchaChallenge: { name: 'captchaChallenge', auth: 'none', body: 'none', limiter: 'public', cache: 'off' },
@@ -96,6 +100,9 @@ export const routeDefinitions = [
   // so challenge farming is throttled by the same public policy as bootstrap.
   { method: 'POST', path: `${PREFIX}/auth/captcha/challenge`, policy: POLICY_DEFINITIONS.captchaChallenge },
 
+  { method: 'GET', path: `${PREFIX}/user/sessions`, policy: POLICY_DEFINITIONS.isolatedSessionRead },
+  { method: 'POST', path: `${PREFIX}/secure/auth/session-revoke`, policy: POLICY_DEFINITIONS.secureSessionMutation },
+  { method: 'POST', path: `${PREFIX}/secure/auth/session-logout`, policy: POLICY_DEFINITIONS.secureSessionMutation },
   { method: 'GET', path: `${PREFIX}/user/profile`, policy: POLICY_DEFINITIONS.userRead },
   { method: 'GET', path: `${PREFIX}/user/subscription/summary`, policy: POLICY_DEFINITIONS.userRead },
   { method: 'GET', path: `${PREFIX}/notices`, policy: POLICY_DEFINITIONS.userRead },
@@ -143,6 +150,9 @@ export const ROUTE_OPERATIONS: Readonly<Record<string, readonly string[]>> = {
   [routeKey('POST', `${PREFIX}/secure/auth/email-code`)]: ['sendEmailCode'],
   [routeKey('POST', `${PREFIX}/secure/auth/password-reset`)]: ['resetPassword'],
   [routeKey('POST', `${PREFIX}/auth/captcha/challenge`)]: [],
+  [routeKey('GET', `${PREFIX}/user/sessions`)]: ['userSessionList'],
+  [routeKey('POST', `${PREFIX}/secure/auth/session-revoke`)]: ['userSessionRevoke'],
+  [routeKey('POST', `${PREFIX}/secure/auth/session-logout`)]: ['userSessionLogout'],
   [routeKey('GET', `${PREFIX}/user/profile`)]: ['userProfile'],
   [routeKey('GET', `${PREFIX}/user/subscription/summary`)]: ['userSubscription'],
   [routeKey('GET', `${PREFIX}/notices`)]: ['userNotices'],
@@ -182,6 +192,8 @@ const UPSTREAM_WRITE_OPERATIONS: ReadonlySet<string> = new Set<string>([
   'sendEmailCode',
   'resetPassword',
   'userOrderCreate',
+  'userSessionRevoke',
+  'userSessionLogout',
 ])
 
 /**
@@ -201,6 +213,7 @@ export interface PolicyEnvironment {
   isolatedEmailCode?: boolean
   isolatedRegister?: boolean
   isolatedPasswordReset?: boolean
+  isolatedSessions?: boolean
   /** GW-209: a CAPTCHA challenge store is wired, so the challenge route exists. */
   captchaChallenge?: boolean
   /**
@@ -257,6 +270,10 @@ export function activeRouteDefinitions(
     return definition
   }).filter(definition => {
     const { policy, path } = definition
+    if (policy.name === 'isolatedSessionRead' || policy.name === 'secureSessionMutation') {
+      return Boolean(environment.hpke && environment.redis && environment.replayStore
+        && environment.isolatedSessions && !environment.accountWorkflows)
+    }
     if (policy.name === 'securePasswordReset') {
       return Boolean(environment.hpke && environment.redis && environment.replayStore
         && environment.isolatedPasswordReset && !environment.accountWorkflows)
@@ -376,6 +393,11 @@ export function validatePolicies(
 
     if (policy.body === 'hpke' && !environment.replayStore) {
       throw new Error(`Policy ${policy.name} accepts an HPKE envelope without a replay store`)
+    }
+    if ((policy.name === 'isolatedSessionRead' || policy.name === 'secureSessionMutation')
+      && !(environment.hpke && environment.redis && environment.replayStore
+        && environment.isolatedSessions && !environment.accountWorkflows)) {
+      throw new Error('Isolated session policies require HPKE, Redis and the independent local flag')
     }
     if (ACCOUNT_WORKFLOW_POLICIES.has(policy.name)) {
       // A single boolean must never unlock an account workflow: HPKE and Redis

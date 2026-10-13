@@ -6,6 +6,8 @@
 
 B5.3 增量 [有界订单列表](current-order-list-v2.md) 复用原 owner/query 与分页，仅扩展 local/testing User 服务白名单；生产私网与其余 Operation 门禁不变。
 
+B5.14 的独立 [Gateway/SDK 会话消费者](local-isolated-session-consumer-v1.md)接通本地当前用户会话 list/revoke/logout；额外开关、HPKE 与 Redis 门禁不因 Core operation 存在而自动开放。
+
 ## 1. 业务与安全权威
 
 Gateway 负责 Web 传输、SC-v2、请求结构及 DTO 适配。Core 负责登录验证、账户归属、管理员身份、RBAC、价格、优惠、余额、订单状态、节点权限、幂等与审计。Gateway 不使用共享管理员 Token，不缓存业务授权结果为最终判定，不访问业务 MySQL 或发布节点控制消息。

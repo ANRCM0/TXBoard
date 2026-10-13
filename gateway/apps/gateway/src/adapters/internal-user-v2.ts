@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { GatewayFailure } from '../services/failures.js'
-import { orderCreateSchema } from '../contracts/schemas.js'
+import { orderCreateSchema, sessionIdSchema } from '../contracts/schemas.js'
 
 // JS `$` also matches before a final line break; the lookahead requires absolute end.
 const unsigned = z.string().regex(/^(?:0|[1-9][0-9]{0,19})$(?![\s\S])/)
@@ -83,6 +83,17 @@ export const internalRegisterSuccess = internalLoginSuccess.extend({
 })
 export const internalPasswordResetSuccess = internalEmailCodeSuccess.extend({
   meta: z.strictObject({ current_only: z.literal(true), slice: z.literal('internal-isolated-password-reset/1') }),
+})
+const sessionDate = z.iso.datetime({ offset: true }).nullable()
+const sessionItem = z.strictObject({ id: sessionIdSchema, name: z.string().max(255),
+  abilities: z.array(z.string().max(255)).max(100), last_used_at: sessionDate,
+  created_at: sessionDate, updated_at: sessionDate, expires_at: sessionDate })
+export const internalSessionMutationSuccess = internalEmailCodeSuccess.extend({
+  meta: z.strictObject({ current_only: z.literal(true), slice: z.literal('internal-isolated-sessions/1') }),
+})
+export const internalSessionListSuccess = internalSessionMutationSuccess.extend({
+  data: z.strictObject({ items: z.array(sessionItem).max(100).refine(items =>
+    items.every((item, index) => index === 0 || BigInt(items[index - 1]!.id) > BigInt(item.id))) }),
 })
 export function adaptInternalPublic(operation: 'guestConfig' | 'guestPlans', value: unknown): unknown {
   if (operation === 'guestConfig') {

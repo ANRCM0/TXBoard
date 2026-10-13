@@ -2,8 +2,8 @@ import { randomUUID, X509Certificate } from 'node:crypto'
 import https from 'node:https'
 import { checkServerIdentity } from 'node:tls'
 import type { GatewayConfig } from '../config/env.js'
-import { emailCodeSchema, loginSchema, registerSchema, passwordResetSchema } from '../contracts/schemas.js'
-import { adaptInternalContent, adaptInternalDisplay, adaptInternalOrderList, adaptInternalOrderStatus, adaptInternalUserV2, adaptInternalPublic, internalPublicSuccess, internalLoginSuccess, internalEmailCodeSuccess, internalRegisterSuccess, internalPasswordResetSuccess, internalError, internalSuccessV2, internalOrderCreateInput, internalOrderWriteSuccess, strictInternalJson } from '../adapters/internal-user-v2.js'
+import { emailCodeSchema, loginSchema, registerSchema, passwordResetSchema, sessionRevokeSchema, sessionEmptySchema } from '../contracts/schemas.js'
+import { adaptInternalContent, adaptInternalDisplay, adaptInternalOrderList, adaptInternalOrderStatus, adaptInternalUserV2, adaptInternalPublic, internalPublicSuccess, internalLoginSuccess, internalEmailCodeSuccess, internalRegisterSuccess, internalPasswordResetSuccess, internalSessionListSuccess, internalSessionMutationSuccess, internalError, internalSuccessV2, internalOrderCreateInput, internalOrderWriteSuccess, strictInternalJson } from '../adapters/internal-user-v2.js'
 import { GatewayFailure } from './failures.js'
 import { mappedOrderWriteFailure } from './order-write-failure.js'
 
@@ -11,7 +11,8 @@ const operations = { login: 'auth.login', register: 'auth.register', resetPasswo
   userProfile: 'user.profile.get', userOrderDetail: 'user.order.get', userOrders: 'user.order.list',
   userStats: 'user.dashboard.get', userPaymentMethods: 'user.payment-methods.list',
   userSubscription: 'user.subscription-summary.get', userNotices: 'user.notice.list', userOrderStatus: 'user.order-status.get',
-  userOrderCreate: 'user.order.create' } as const
+  userOrderCreate: 'user.order.create', userSessionList: 'user.session.list',
+  userSessionRevoke: 'user.session.revoke', userSessionLogout: 'user.session.logout' } as const
 export async function internalUserRequest(config: GatewayConfig, operation: keyof typeof operations,
   options: { auth?: string; tradeNo?: string; signal?: AbortSignal; current?: number; pageSize?: number;
     status?: number; paginated?: boolean; body?: unknown; headers?: Record<string, string> }): Promise<unknown> {
@@ -21,6 +22,8 @@ export async function internalUserRequest(config: GatewayConfig, operation: keyo
   const emailCode = operation === 'sendEmailCode'
   const registration = operation === 'register'
   const passwordReset = operation === 'resetPassword'
+  const session = operation === 'userSessionList' || operation === 'userSessionRevoke' || operation === 'userSessionLogout'
+  if (session && config.internalSessionsEnabled !== true) throw new GatewayFailure('UPSTREAM_ERROR', 404, 'Internal sessions unavailable')
   const publicRead = operation === 'guestConfig' || operation === 'guestPlans'
   const anonymous = publicRead || login || emailCode || registration || passwordReset
   const anonymousEnabled = publicRead ? config.internalPublicReadEnabled
@@ -50,14 +53,16 @@ export async function internalUserRequest(config: GatewayConfig, operation: keyo
     || (options.status !== undefined && (operation === 'userNotices' || !Number.isInteger(options.status) || options.status < 0 || options.status > 4)))) {
     throw new GatewayFailure('VALIDATION_ERROR', 400, 'Invalid order query')
   }
-  const input = login ? credentials!.data : emailCode ? emailInput!.data : registration ? registerInput!.data : passwordReset ? resetInput!.data : publicRead ? {} : write ? internalOrderCreateInput(options.body, options.headers?.['Idempotency-Key'])
+  const sessionInput = session ? (operation === 'userSessionRevoke' ? sessionRevokeSchema : sessionEmptySchema).safeParse(options.body === undefined ? {} : options.body) : undefined
+  if (sessionInput && !sessionInput.success) throw new GatewayFailure('VALIDATION_ERROR', 400, 'Invalid session request')
+  const input = session ? sessionInput!.data : login ? credentials!.data : emailCode ? emailInput!.data : registration ? registerInput!.data : passwordReset ? resetInput!.data : publicRead ? {} : write ? internalOrderCreateInput(options.body, options.headers?.['Idempotency-Key'])
     : operation === 'userProfile' || operation === 'userStats' || operation === 'userPaymentMethods' || operation === 'userSubscription' ? {} : operation === 'userOrderDetail' || operation === 'userOrderStatus'
     ? { trade_no: options.tradeNo } : { page, per_page: perPage,
       ...(options.status === undefined ? {} : { status: options.status }) }
   if (Date.now() < Date.parse(tls.certificate.validFrom) || Date.now() >= Date.parse(tls.certificate.validTo)) {
     throw new GatewayFailure('UPSTREAM_UNAVAILABLE', 502, 'Internal service unavailable')
   }
-  const body = Buffer.from(JSON.stringify({ contract_version: write || anonymous ? '1' : '2', request_id: randomUUID(),
+  const body = Buffer.from(JSON.stringify({ contract_version: write || anonymous || session ? '1' : '2', request_id: randomUUID(),
     deadline_at: Math.floor(Date.now() / 1000) + 5, input }))
   if (body.length > 16384) throw new GatewayFailure('VALIDATION_ERROR', 400, 'Internal request too large')
   return new Promise((resolve, reject) => {
@@ -110,6 +115,11 @@ export async function internalUserRequest(config: GatewayConfig, operation: keyo
             if (mapped) throw mapped
             throw new GatewayFailure('UPSTREAM_ERROR', status >= 400 && status <= 599 ? status : 502,
               status === 401 ? 'Authentication failed' : status === 403 ? 'Access denied' : status === 404 ? 'Resource not found' : 'Internal request rejected')
+          }
+          if (session) {
+            const envelope = (operation === 'userSessionList' ? internalSessionListSuccess : internalSessionMutationSuccess).safeParse(value)
+            if (!envelope.success) throw new GatewayFailure('UPSTREAM_ERROR', 502, 'Unexpected Internal response')
+            finish(undefined, envelope.data.data); return
           }
           if (write) {
             const receipt = internalOrderWriteSuccess.safeParse(value)

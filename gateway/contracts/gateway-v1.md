@@ -27,6 +27,9 @@
 | GET `/plans` | 公开套餐列表；金额遵循 Laravel 分单位 | `/txapi/plans` |
 | POST `/auth/login` | 邮箱/密码、可选 CAPTCHA；兼容普通登录 | `/txapi/auth/login` |
 | GET `/user/profile` | 用户资料 | `/txapi/me` |
+| GET `/user/sessions` | 默认关闭，本地 Internal 会话开关；当前 User Bearer、有界 owner 列表 | 固定 Internal `user.session.list` v1 |
+| POST `/secure/auth/session-revoke` | 默认关闭，当前 User Bearer + HPKE；指定 decimal-string session ID | 固定 Internal `user.session.revoke` v1 |
+| POST `/secure/auth/session-logout` | 默认关闭，当前 User Bearer + HPKE；只删除当前凭据 | 固定 Internal `user.session.logout` v1 |
 | GET `/user/subscription/summary` | 订阅使用概览，不返回 token/uuid/subscribe_url | `/txapi/me/subscription` |
 | GET `/dashboard/stats` | `{unpaidOrders,openTickets,invitedUsers}` | `/txapi/me/dashboard-stats` |
 | GET `/orders` | 当前用户订单数组；可选 `status=0..4,current=1..9999,page_size=1..100`，默认第 1 页 100 条 | `/txapi/orders?page=&per_page=&status=` |

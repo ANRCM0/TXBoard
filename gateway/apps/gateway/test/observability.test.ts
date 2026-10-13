@@ -289,6 +289,9 @@ describe('GW-214 metrics', () => {
   })
 
   it('routeTemplate collapses dynamic segments and bounds unknown paths', () => {
+    expect(routeTemplate('/gateway/v1/user/sessions', 'GET')).toBe('/gateway/v1/user/sessions')
+    expect(routeTemplate('/gateway/v1/secure/auth/session-revoke', 'POST')).toBe('/gateway/v1/secure/auth/session-revoke')
+    expect(routeTemplate('/gateway/v1/secure/auth/session-logout', 'POST')).toBe('/gateway/v1/secure/auth/session-logout')
     expect(routeTemplate('/gateway/v1/orders/2025-ORDER-0001', 'GET')).toBe('/gateway/v1/orders/:id')
     expect(routeTemplate('/gateway/v1/orders/2025-ORDER-0001/status', 'GET')).toBe('/gateway/v1/orders/:id/status')
     expect(routeTemplate('/gateway/v1/plans', 'GET')).toBe('/gateway/v1/plans')

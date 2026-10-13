@@ -1,6 +1,6 @@
 # Core First v2 实施台账
 
-> 状态：B0、B1.1–B1.18 影子证据、Terms、身份旁观与固定 writer 捕获、B2.1–B2.3 单机升级、B3.1/B3.2 隔离用量、B3.3/B3.4 本地观察与持久事件桶、B4.1–B4.5 合成 Provider、插件停用接入、租约候选与离线签名快照、B5.1–B5.13 本地 mTLS 读取、隔离建单、登录、内存邮件验证码、隔离注册、密码恢复与当前会话、B6.1–B6.4 实验字节、离线加密、共享 owner 与独立响应随机值候选已实现；两仓迁移与三镜像发布已完成，继续推进业务迁移切片。各整阶段仍按下表门禁验收。
+> 状态：B0、B1.1–B1.18 影子证据、Terms、身份旁观与固定 writer 捕获、B2.1–B2.3 单机升级、B3.1/B3.2 隔离用量、B3.3/B3.4 本地观察与持久事件桶、B4.1–B4.5 合成 Provider、插件停用接入、租约候选与离线签名快照、B5.1–B5.14 本地 mTLS 读取、隔离建单、登录、内存邮件验证码、隔离注册、密码恢复与当前会话、B6.1–B6.4 实验字节、离线加密、共享 owner 与独立响应随机值候选已实现；两仓迁移与三镜像发布已完成，继续推进业务迁移切片。各整阶段仍按下表门禁验收。
 
 2026-10-13，按仓库整合任务，将 Gateway/Node 的完整 Git 历史导入本仓 `gateway/`、`node/`，安装器集中到 TXBoard-Deploy。当前目录与三镜像 CI 见 [双仓布局](../../development/repository-layout.md)；旧基线和验证报告保持当时提交与路径。本次仓库整理独立于下列业务迁移门禁。
 
@@ -305,3 +305,9 @@ Gateway/SDK 增加显式 HPKE 密码恢复 Operation、独立 Redis 限流和封
 现有 B6.3 在 Redis 记录丢失后可能重新分配响应 owner，旧确定性响应材料不能因此进入业务通道。本片[候选契约](../../../contracts/v2/secure-channel/response-salt-experiment-v1.md)采用 RFC9458 的随机响应 nonce/HKDF 派生方式，并用独立 HPKE info/exporter/AAD 标签区分原实验；没有自行开启网络消费者。每枚响应由 recipient CSPRNG 生成 32 字节 nonce，不接受 caller override，仍遵守单次 closure 和失败后不重建上下文。
 
 固定快照 Gateway **799**、SDK **105** 项、类型检查和构建通过，新专项 **37** 项；同一请求的 32 个 recipient 产生 32 组实测不同响应 salt/key/nonce。旧协议向量与主 SDK 字节不变，独立 Python 验证摘要/HKDF/AAD 五项，真实 Chromium142/Node 旧新向量与双方向各四次互通通过。CI 已加入 Python 与新浏览器验收，[证据报告](../../../gateway/docs/sc-v2-response-salt-verification.json)保留失败统计与源码/依赖/日志 hash。该片不证明 RNG 健康、共享业务重放、恢复安全或正式密码审查；完整 B6 与网络消费者仍待实施。
+
+### B5.14 Gateway/SDK 当前会话消费者
+
+[当前契约](../../../contracts/v2/core-internal-api/local-isolated-session-consumer-v1.md)在独立 local/testing 开关下，接通 owner 会话列表、加密指定撤销和当前登出。Gateway/SDK 保持 decimal-string ID，只转发实际当前 User Bearer；Core 决定角色、归属和原生删除。闭合信封与有界 DTO 排除凭据，三个入口共享 Redis 凭据/IP 频控，存储失败拒绝，所有新路由默认关闭。SDK 不保存或清除应用 token，不重试 POST，也没有 Native 回退。
+
+固定 Gateway **832**、SDK **123** 项、类型检查和构建通过，新增专项分别 **33** 与 **18** 项。真实 SDK→Gateway→TLS1.3→Core/MariaDB/Redis **12** 项通过，涵盖 100/101 列表边界、跨用户/角色拒绝、密文重放与错误 AAD、原生重复 404、删除 SQL 失败和审计503隐藏已提交登出；另一枚凭据确认后可撤销最终会话，其他用户保持一枚。固定全量与联调 runtime/test hash 相同，Core API tree 与已验收 B5.13 完全相同，未把旧全量结果称为重跑。新 CI 使用合成 MySQL8.4/Redis 服务，远端结果另行核验；见[证据报告](internal-session-consumer-verification.json)。这是现有 v1 请求 HPKE，SC-v2 和生产门禁仍未通过。
