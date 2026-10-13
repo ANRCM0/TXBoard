@@ -1,6 +1,6 @@
 # Core First v2 实施台账
 
-> 状态：B0、B1.1–B1.19 影子证据、Terms、身份旁观、固定 writer 捕获与余额端点投影、B2.1–B2.3 单机升级、B3.1/B3.2 隔离用量、B3.3/B3.4 本地观察与持久事件桶、B4.1–B4.6 合成 Provider、插件停用接入、租约候选、离线签名快照与Go公钥诊断、B5.1–B5.14 本地 mTLS 读取、隔离建单、登录、内存邮件验证码、隔离注册、密码恢复与当前会话、B6.1–B6.4 实验字节、离线加密、共享 owner 与独立响应随机值候选已实现；两仓迁移与三镜像发布已完成，继续推进业务迁移切片。各整阶段仍按下表门禁验收。
+> 状态：B0、B1.1–B1.19 影子证据、Terms、身份旁观、固定 writer 捕获与余额端点投影、B2.1–B2.4 单机升级、B3.1/B3.2 隔离用量、B3.3/B3.4 本地观察与持久事件桶、B4.1–B4.6 合成 Provider、插件停用接入、租约候选、离线签名快照与Go公钥诊断、B5.1–B5.14 本地 mTLS 读取、隔离建单、登录、内存邮件验证码、隔离注册、密码恢复与当前会话、B6.1–B6.4 实验字节、离线加密、共享 owner 与独立响应随机值候选已实现；两仓迁移与三镜像发布已完成，继续推进业务迁移切片。各整阶段仍按下表门禁验收。
 
 2026-10-13，按仓库整合任务，将 Gateway/Node 的完整 Git 历史导入本仓 `gateway/`、`node/`，安装器集中到 TXBoard-Deploy。当前目录与三镜像 CI 见 [双仓布局](../../development/repository-layout.md)；旧基线和验证报告保持当时提交与路径。本次仓库整理独立于下列业务迁移门禁。
 
@@ -325,3 +325,9 @@ B5.14 的 CI Redis 测试库改为显式12，当前源码本地12项真实链路
 [当前契约](../../../contracts/v2/credential-provider/node-offline-signature-proof-v1.md)增加独立Go诊断包，只接受显式受信任公钥和原Core合成签名域。固定RSA3072/RS256、SPKI/epoch/时间元数据、闭合外层与有界严格JSON均校验；未知key、重复字段、算法混淆、损坏或非规范编码返回固定错误。诊断始终不授予接入，嵌套业务语义、有效窗口和当前Core资格明确未评估，不返回credential或usage grant；默认Node Service没有导入。
 
 固定 `ddbc7e3` 加本批源码，Go1.26.3 **7个主测试、30个子测试**及race/vet通过，纯Go轮次明确跳过一项需真实Core的用例。另以实际Core初始绑定和完整PHP校验后的原始签名、公钥运行Go互操作，**1项、6断言**通过，原始payload/签名摘要和时间精确一致。全API **1125通过、102项引擎/跨工具链跳过、11509断言**。源码/依赖/日志hash、早期工具链及缓存环境失败见[验证报告](provider-offline-proof-verification.json)；已接入单独CI。该片未实现Node授权、秘密交付、可信时钟、租约执行或撤销ACK。
+
+### B2.4 捕获余额影子升级恢复
+
+Deploy `71cb340` 增加封闭 `captured-money-shadow/v1`，签名绑定单User、捕获run/stream/高水位/尾hash及billing。原来源逐次检查，变更拒绝；内置三表migration、每页100事件及从0完整只读扫描，禁止自动extend和业务权威切换。Windows/Linux各 **58项** 编排测试及原管理互锁通过。
+
+真实固定Core `63f99cf` 工程镜像、Docker28.3.3/MariaDB11.4合成演练包含 **205** 事件；首100已提交后SIGKILL，持久journal缺失result，恢复到205并全页核对，重复步骤和不平衡步骤均 **0**，旧binary guard保留。原数据库dump/restore字节相同；[制品/源码和范围证据](https://github.com/ANRCM0/TXBoard-Deploy/blob/main/docs/captured-money-upgrade-verification.json)区分本地OCI工程镜像和正式发布验收。生产writer fence、全站迁移、集群租约和外部增量恢复仍未完成。

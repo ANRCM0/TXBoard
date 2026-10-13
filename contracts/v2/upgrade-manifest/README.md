@@ -13,8 +13,16 @@
 | `subscription-shadow/v1`（B2.1） | 稳定订阅、Terms、周期和 Subject 映射；全部用户分页核对 | `cf511b9`、`3f31744` |
 | `plan-catalog-shadow/v1`（B2.2） | 当前 Plan revision/offers 与销售状态；全部当前商品分页核对 | `617cb93` |
 | `commerce-shadow/v1`（B2.3） | wallet/commission 期初平衡分录与当前订单证据；user/order 双游标分页核对 | `ac9b811` |
+| `captured-money-shadow/v1`（B2.4） | 签名范围内单User捕获余额端点；固定事件高水位分页投影/核对 | `71cb340` |
 
-三个 profile 的 migration/probe/recovery ID 各自封闭，不能混用。商品和财务 profile 仍使用固定的 expand/backfill/verify/observe、legacy authority 与停止副本；都已通过真实固定 Core/MariaDB 的批次 commit 后 SIGKILL 恢复，重复映射或期初分录为零。财务证据不代表真实付款或退款账本，商品证据不验证 superseded history。完整命令、固定制品和测试限制见 [Deploy 运行契约](https://github.com/ANRCM0/TXBoard-Deploy/blob/main/docs/durable-upgrade.md)。
+四个 profile 的 migration/probe/recovery ID 各自封闭，不能混用。商品和财务 profile 仍使用固定的 expand/backfill/verify/observe、legacy authority 与停止副本；都已通过真实固定 Core/MariaDB 的批次 commit 后 SIGKILL 恢复，重复映射或期初分录为零。财务证据不代表真实付款或退款账本，商品证据不验证 superseded history。完整命令、固定制品和测试限制见 [Deploy 运行契约](https://github.com/ANRCM0/TXBoard-Deploy/blob/main/docs/durable-upgrade.md)。
+
+B2.4 必须另含封闭 `capture {legacy_user_id,run_key,stream_id,high_water,last_event_hash}`，
+与既有捕获上下文的billing一起签名。CoreB1.19及原捕获stream事先存在，逐次probe检查
+精确来源；变更拒绝，不自动extend。固定余额三表migration、每页100事件和从0重新全页对账
+只由内置代码选择。205事件合成Docker/Core/MariaDB演练在首100提交后强杀执行器，恢复
+核对205，重复/不平衡均0；Windows/Linux各58项和管理互锁通过。仍是单User影子证据，
+不代表全站追平或权威切换，见[Deploy验证报告](https://github.com/ANRCM0/TXBoard-Deploy/blob/main/docs/captured-money-upgrade-verification.json)。
 
 ## 1. 当前能力和边界
 
