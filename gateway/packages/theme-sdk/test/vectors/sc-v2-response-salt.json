@@ -1,0 +1,39 @@
+{
+  "description": "Deterministic locked-library reference only; reuses public fixture keys from hpke-kat.json. No production security approval.",
+  "info": "txboard.sc-v2-response-salt/1/request",
+  "key_fixture": "hpke-kat.json",
+  "envelope": {
+    "metadata": {
+      "version": 2,
+      "mode": 0,
+      "domain": "user",
+      "kid": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      "operation": "user.profile.get",
+      "operation_version": "1",
+      "request_id": "12345678-1234-4234-8234-123456789abc",
+      "issued_at": 1791770400,
+      "expires_at": 1791770460,
+      "nonce": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+      "origin": "https://gateway.example.test",
+      "path": "/gateway/v2/channel/user"
+    },
+    "enc": "BDNLf-4ccgxCIcqoMAJSfv0_fp_ztDQt-HLVnjQ26CtOF0TXz-5GyDoWCl-HbP35J5id4KtQIdWLSbEEJq8VbJE",
+    "ct": "T5U-04Kze3vrI8LWaHmz79n4sKrapVZq6PMuSnjskHbQ"
+  },
+  "request_plaintext_hex": "e7a6bbe7babfe5ad97e88a82f09f9a8000",
+  "response": {
+    "request_digest": "_pdZdXWp3BASYUESwa5uIi0xMUAPcpPqro8M1OeIZuI",
+    "kind": "error",
+    "status": 403,
+    "response_nonce": "AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA",
+    "ct": "loOgn-Gi1Er4AEUdiIoGhr3qkjCw3NWdxT06F46EgEq35zzpATbF-zK8jhcNGB8xjRi_DAa9DQ"
+  },
+  "response_plaintext_hex": "e59bbae5ae9ae99499e8afafe5ad97e88a82efbc8ce4b88de698afe4b89ae58aa1e5938de5ba94",
+  "public_fixture_derivation": {
+    "exported_hex": "a82f4d8514716b89a3377b3e38cab645fec426ae64ca655ea21406e3c29cf431",
+    "salt_hex": "04334b7fee1c720c4221caa83002527efd3f7e9ff3b4342df872d59e3436e82b4e1744d7cfee46c83a160a5f876cfdf927989de0ab5021d58b49b10426af156c910102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+    "key_hex": "91ac4c6d72ad86a4aaa48a4b2c86b8692bb6867b8fa0bbf9768c7094f4cf687e",
+    "nonce_hex": "ed6a15c21849abb1801bd0eb",
+    "aad_hex": "00217478626f6172642e73632d76322d726573706f6e73652d73616c742f312f616164012200227478626f6172642e73632d76322d636f6465632f312f726573706f6e73652d616164000200020002000000020010000200010002000200047573657200200123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0010757365722e70726f66696c652e676574000131001012345678123442348234123456789abc0008000000006acc3f200008000000006acc3f5c0020000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f001c68747470733a2f2f676174657761792e6578616d706c652e7465737400182f676174657761792f76322f6368616e6e656c2f757365720020fe97597575a9dc1012614112c1ae6e222d3131400f7293eaae8f0cd4e78866e200056572726f720002019300200102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20"
+  }
+}

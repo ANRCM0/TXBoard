@@ -59,3 +59,5 @@ SC 防重放不替代业务幂等。响应丢失时，SDK 使用新的合法加�
 [内部身份与 Operation](../core-internal-api/README.md) · [实施台账](../../../docs/architecture/v2/implementation-plan.md)
 
 B6.3 的 [共享响应所有权工程实验](shared-owner-experiment-v1.md) 仅验证隔离 local/testing fixture 的连续主节点假设；未知数据丢失、HA/恢复及真实网络或业务采用的门禁仍未通过。
+
+B6.4 的[响应随机值候选](response-salt-experiment-v1.md)使用独立字节格式及 RFC9458 派生方式，已通过离线向量/浏览器验收；共享业务重放、恢复和协议审查门禁仍保留，未开放业务通道。

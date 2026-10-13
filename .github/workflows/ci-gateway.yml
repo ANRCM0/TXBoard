@@ -219,6 +219,10 @@ jobs:
         run: node scripts/test-sc-v2-codec-browser.mjs
       - name: Offline SC-v2 crypto Node and Chromium interoperability
         run: node scripts/test-sc-v2-crypto-browser.mjs
+      - name: Offline response salt derivation and Chromium interoperability
+        run: |
+          python3 scripts/verify-sc-v2-response-salt-vector.py
+          node scripts/test-sc-v2-response-salt-browser.mjs
   publish:
     if: github.event_name == 'push' && needs.verify.outputs.publish_image == 'true'
     needs: [verify, container, browser]

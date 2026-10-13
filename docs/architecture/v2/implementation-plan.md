@@ -1,6 +1,6 @@
 # Core First v2 实施台账
 
-> 状态：B0、B1.1–B1.18 影子证据、Terms、身份旁观与固定 writer 捕获、B2.1–B2.3 单机升级、B3.1/B3.2 隔离用量、B3.3/B3.4 本地观察与持久事件桶、B4.1–B4.5 合成 Provider、插件停用接入、租约候选与离线签名快照、B5.1–B5.13 本地 mTLS 读取、隔离建单、登录、内存邮件验证码、隔离注册、密码恢复与当前会话、B6.1–B6.3 实验字节、离线加密与共享 owner 实验已实现；两仓迁移与三镜像发布已完成，继续推进业务迁移切片。各整阶段仍按下表门禁验收。
+> 状态：B0、B1.1–B1.18 影子证据、Terms、身份旁观与固定 writer 捕获、B2.1–B2.3 单机升级、B3.1/B3.2 隔离用量、B3.3/B3.4 本地观察与持久事件桶、B4.1–B4.5 合成 Provider、插件停用接入、租约候选与离线签名快照、B5.1–B5.13 本地 mTLS 读取、隔离建单、登录、内存邮件验证码、隔离注册、密码恢复与当前会话、B6.1–B6.4 实验字节、离线加密、共享 owner 与独立响应随机值候选已实现；两仓迁移与三镜像发布已完成，继续推进业务迁移切片。各整阶段仍按下表门禁验收。
 
 2026-10-13，按仓库整合任务，将 Gateway/Node 的完整 Git 历史导入本仓 `gateway/`、`node/`，安装器集中到 TXBoard-Deploy。当前目录与三镜像 CI 见 [双仓布局](../../development/repository-layout.md)；旧基线和验证报告保持当时提交与路径。本次仓库整理独立于下列业务迁移门禁。
 
@@ -299,3 +299,9 @@ Gateway/SDK 增加显式 HPKE 密码恢复 Operation、独立 Redis 限流和封
 原生列表保持现有行为，Internal 返回 decimal session ID 与现有非秘密元数据，不包含 token/hash 或其他用户 session。原生 false-delete、已准入请求与事后撤销竞争保持；审计/期限/丢失响应可以隐藏已提交撤销，不添加重试、补偿或新会话。专用适配器在路由异常报告前安全渲染 SQL/领域错误。Gateway/SDK 对外会话路由尚未启用。
 
 固定 Core 全量 **1112 通过、99 引擎/独立进程专测跳过、11324 断言**；专项 **16/16、118 断言**。真实 TLS1.3/MariaDB **9** 项验证 owner 列表、服务/角色/期限拒绝、跨用户/重复撤销、SQL 删除失败与审计未知结果；最终当前用户零 session，其他用户保持一枚。运行时代码在全量与联调快照 hash 一致，PHP lint、原生表名和文档检查通过，见[证据报告](internal-isolated-sessions-verification.json)。
+
+### B6.4 独立响应随机值离线候选
+
+现有 B6.3 在 Redis 记录丢失后可能重新分配响应 owner，旧确定性响应材料不能因此进入业务通道。本片[候选契约](../../../contracts/v2/secure-channel/response-salt-experiment-v1.md)采用 RFC9458 的随机响应 nonce/HKDF 派生方式，并用独立 HPKE info/exporter/AAD 标签区分原实验；没有自行开启网络消费者。每枚响应由 recipient CSPRNG 生成 32 字节 nonce，不接受 caller override，仍遵守单次 closure 和失败后不重建上下文。
+
+固定快照 Gateway **799**、SDK **105** 项、类型检查和构建通过，新专项 **37** 项；同一请求的 32 个 recipient 产生 32 组实测不同响应 salt/key/nonce。旧协议向量与主 SDK 字节不变，独立 Python 验证摘要/HKDF/AAD 五项，真实 Chromium142/Node 旧新向量与双方向各四次互通通过。CI 已加入 Python 与新浏览器验收，[证据报告](../../../gateway/docs/sc-v2-response-salt-verification.json)保留失败统计与源码/依赖/日志 hash。该片不证明 RNG 健康、共享业务重放、恢复安全或正式密码审查；完整 B6 与网络消费者仍待实施。

@@ -23,6 +23,10 @@
     "./experimental/sc-v2-crypto": {
       "types": "./dist/experimental/sc-v2-crypto.d.ts",
       "import": "./dist/experimental/sc-v2-crypto.js"
+    },
+    "./experimental/sc-v2-response-salt": {
+      "types": "./dist/experimental/sc-v2-response-salt.d.ts",
+      "import": "./dist/experimental/sc-v2-response-salt.js"
     }
   },
   "engines": {

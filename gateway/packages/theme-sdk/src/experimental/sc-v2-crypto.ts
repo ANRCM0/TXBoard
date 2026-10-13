@@ -2,14 +2,17 @@
 import { Aes256Gcm, CipherSuite, DhkemP256HkdfSha256, HkdfSha256 } from '@hpke/core'
 import { fromBase64url, requestAad, requestDigestInput, responseAad, responseExporterContext,
   toBase64url, validateTimeWindow, type RequestMetadata, type ResponseBinding } from './sc-v2-codec.js'
+import { saltedResponseAad, responseSaltPrototype, type SaltedResponseBinding } from './sc-v2-response-salt-codec.js'
 
 export class ExperimentalCryptoFailure extends Error {
   constructor() { super('SC_EXPERIMENT_INVALID'); this.name = 'ExperimentalCryptoFailure' }
 }
 export type ExperimentalRequest = Readonly<{ metadata: Readonly<RequestMetadata>; enc: string; ct: string }>
 export type ExperimentalResponse = Readonly<ResponseBinding & { ct: string }>
+export type SaltedExperimentalResponse = Readonly<SaltedResponseBinding & { ct: string }>
 const suite = new CipherSuite({ kem: new DhkemP256HkdfSha256(), kdf: new HkdfSha256(), aead: new Aes256Gcm() })
 const info = new TextEncoder().encode('txboard.sc-v2-crypto-experiment/1/request')
+const saltedInfo = new TextEncoder().encode(`${responseSaltPrototype}/request`)
 const fields = ['version', 'mode', 'domain', 'kid', 'operation', 'operation_version', 'request_id',
   'issued_at', 'expires_at', 'nonce', 'origin', 'path']
 const typedArray = Object.getPrototypeOf(Uint8Array.prototype) as object
@@ -76,13 +79,32 @@ async function responseMaterial(context: Exporter, requestDigest: string, usage:
   } finally { rawKey.fill(0) }
 }
 
+async function saltedMaterial(context: Exporter, enc: Uint8Array, responseNonce: string, usage: 'encrypt' | 'decrypt') {
+  const exported = new Uint8Array(await context.export(new TextEncoder().encode(`${responseSaltPrototype}/response`), 32))
+  let rawKey: Uint8Array<ArrayBuffer> | undefined
+  try {
+    const hkdf = await crypto.subtle.importKey('raw', exported, 'HKDF', false, ['deriveBits'])
+    const salt = new Uint8Array(97)
+    salt.set(enc); salt.set(fromBase64url(responseNonce, 32), 65)
+    const parameters = { name: 'HKDF', hash: 'SHA-256', salt }
+    rawKey = new Uint8Array(await crypto.subtle.deriveBits({ ...parameters, info: new TextEncoder().encode('key') }, hkdf, 256))
+    const key = await crypto.subtle.importKey('raw', rawKey, 'AES-GCM', false, [usage])
+    const nonce = new Uint8Array(await crypto.subtle.deriveBits({ ...parameters, info: new TextEncoder().encode('nonce') }, hkdf, 96))
+    return { key, nonce }
+  } finally { exported.fill(0); rawKey?.fill(0) }
+}
+
+function responseBytes(snapshot: RequestMetadata, binding: ResponseBinding | SaltedResponseBinding, salted: boolean) {
+  return bytes(salted ? saltedResponseAad(snapshot, binding as SaltedResponseBinding) : responseAad(snapshot, binding), 4096)
+}
+
 /** Fresh HPKE sender. Trusted key and caller metadata provide no actor authorization. */
-export async function createExperimentalRequest(publicKey: CryptoKey, inputMetadata: RequestMetadata, plaintext: Uint8Array) {
+async function createRequest(publicKey: CryptoKey, inputMetadata: RequestMetadata, plaintext: Uint8Array, salted: boolean) {
   let copy: Uint8Array<ArrayBuffer> | undefined
   try {
     const snapshot = metadata(inputMetadata)
     copy = bytes(plaintext, 3056); current(snapshot); key(publicKey, 'public')
-    let sender: Awaited<ReturnType<typeof suite.createSenderContext>> | undefined = await suite.createSenderContext({ recipientPublicKey: publicKey, info })
+    let sender: Awaited<ReturnType<typeof suite.createSenderContext>> | undefined = await suite.createSenderContext({ recipientPublicKey: publicKey, info: salted ? saltedInfo : info })
     const ct = new Uint8Array(await sender.seal(copy, requestAad(snapshot)))
     const enc = new Uint8Array(sender.enc)
     const requestDigest = await digest(snapshot, enc, ct)
@@ -98,12 +120,14 @@ export async function createExperimentalRequest(publicKey: CryptoKey, inputMetad
       try {
         current(snapshot)
         requireValue(owner)
-        const row = object(input, ['request_digest', 'kind', 'status', 'ct'])
-        const binding = { request_digest: row.request_digest, kind: row.kind, status: row.status } as ResponseBinding
-        const aad = bytes(responseAad(snapshot, binding), 4096)
+        const row = object(input, ['request_digest', 'kind', 'status', ...(salted ? ['response_nonce'] : []), 'ct'])
+        const binding = { request_digest: row.request_digest, kind: row.kind, status: row.status,
+          ...(salted ? { response_nonce: row.response_nonce } : {}) } as ResponseBinding | SaltedResponseBinding
+        const aad = responseBytes(snapshot, binding, salted)
         requireValue(binding.request_digest === requestDigest)
         const ciphertextBytes = ciphertext(row.ct)
-        const material = await responseMaterial(owner, requestDigest, 'decrypt'); nonce = material.nonce
+        const material = salted ? await saltedMaterial(owner, enc, (binding as SaltedResponseBinding).response_nonce, 'decrypt')
+          : await responseMaterial(owner, requestDigest, 'decrypt'); nonce = material.nonce
         decrypted = new Uint8Array(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: nonce, additionalData: aad, tagLength: 128 }, material.key, ciphertextBytes))
         current(snapshot)
         const result = new Uint8Array(decrypted); decrypted.fill(0)
@@ -116,14 +140,14 @@ export async function createExperimentalRequest(publicKey: CryptoKey, inputMetad
 }
 
 /** No replay claim: a second call for this envelope creates another response owner. */
-export async function openExperimentalRequest(trustedKeyPair: CryptoKeyPair, input: unknown) {
+async function openRequest(trustedKeyPair: CryptoKeyPair, input: unknown, salted: boolean) {
   try {
     const pair = object(trustedKeyPair, ['privateKey', 'publicKey']) as unknown as CryptoKeyPair
     key(pair.privateKey, 'private'); key(pair.publicKey, 'public')
     const row = object(input, ['metadata', 'enc', 'ct'])
     const snapshot = metadata(row.metadata); current(snapshot)
     const enc = bytes(fromBase64url(row.enc, 65), 65), ct = ciphertext(row.ct)
-    let recipient: Awaited<ReturnType<typeof suite.createRecipientContext>> | undefined = await suite.createRecipientContext({ recipientKey: pair, enc, info })
+    let recipient: Awaited<ReturnType<typeof suite.createRecipientContext>> | undefined = await suite.createRecipientContext({ recipientKey: pair, enc, info: salted ? saltedInfo : info })
     const opened = new Uint8Array(await recipient.open(ct, requestAad(snapshot)))
     try {
       const requestDigest = await digest(snapshot, enc, ct); current(snapshot)
@@ -138,10 +162,12 @@ export async function openExperimentalRequest(trustedKeyPair: CryptoKeyPair, inp
           current(snapshot)
           requireValue(owner)
           const row = object(inputBinding, ['kind', 'status'])
-          const binding = { request_digest: requestDigest, kind: row.kind, status: row.status } as ResponseBinding
-          const aad = bytes(responseAad(snapshot, binding), 4096)
           copy = bytes(inputBytes, 3056)
-          const material = await responseMaterial(owner, requestDigest, 'encrypt'); nonce = material.nonce
+          const binding = { request_digest: requestDigest, kind: row.kind, status: row.status,
+            ...(salted ? { response_nonce: toBase64url(crypto.getRandomValues(new Uint8Array(32))) } : {}) } as ResponseBinding | SaltedResponseBinding
+          const aad = responseBytes(snapshot, binding, salted)
+          const material = salted ? await saltedMaterial(owner, enc, (binding as SaltedResponseBinding).response_nonce, 'encrypt')
+            : await responseMaterial(owner, requestDigest, 'encrypt'); nonce = material.nonce
           const encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv: nonce, additionalData: aad, tagLength: 128 }, material.key, copy)
           current(snapshot)
           return Object.freeze({ ...binding, ct: toBase64url(new Uint8Array(encrypted)) })
@@ -150,4 +176,22 @@ export async function openExperimentalRequest(trustedKeyPair: CryptoKeyPair, inp
       } })
     } finally { opened.fill(0) }
   } catch { throw new ExperimentalCryptoFailure() }
+}
+
+/** Unchanged B6.2 labels and deterministic response derivation. No network adoption. */
+export function createExperimentalRequest(publicKey: CryptoKey, metadata: RequestMetadata, plaintext: Uint8Array) {
+  return createRequest(publicKey, metadata, plaintext, false)
+}
+export function openExperimentalRequest(keyPair: CryptoKeyPair, input: unknown) {
+  return openRequest(keyPair, input, false)
+}
+/** Separate offline response-salt candidate; no shared business replay claim. */
+export function createSaltedExperimentalRequest(publicKey: CryptoKey, metadata: RequestMetadata, plaintext: Uint8Array) {
+  return createRequest(publicKey, metadata, plaintext, true)
+}
+export function openSaltedExperimentalRequest(keyPair: CryptoKeyPair, input: unknown) {
+  return openRequest(keyPair, input, true).then(opened => Object.freeze({
+    plaintext: opened.plaintext,
+    sealResponse: opened.sealResponse as (bytes: Uint8Array, binding: Pick<ResponseBinding, 'kind' | 'status'>) => Promise<SaltedExperimentalResponse>,
+  }))
 }
