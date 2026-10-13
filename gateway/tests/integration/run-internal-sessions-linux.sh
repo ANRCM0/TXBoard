@@ -12,6 +12,12 @@ fi
 [[ "$INTERNAL_EXPECTED_CORE_COMMIT" =~ ^[0-9a-f]{40}$ ]] || { echo 'Invalid Core snapshot commit' >&2; exit 2; }
 export INTERNAL_EXPECTED_CORE_COMMIT
 : "${INTERNAL_EMAIL_REDIS_PORT:=16380}"
+: "${INTERNAL_GATEWAY_REDIS_DB:=22}"
+case "$INTERNAL_GATEWAY_REDIS_DB" in
+  12|22) ;;
+  *) echo 'Expected dedicated Gateway fixture Redis database 12 or 22.' >&2; exit 2 ;;
+esac
+export INTERNAL_GATEWAY_REDIS_DB
 export INTERNAL_FIXTURE_DIR=$(mktemp -d /tmp/txboard-internal-user-gateway.XXXXXX)
 chmod 700 "$INTERNAL_FIXTURE_DIR"
 cleanup_fixture_secrets() {
@@ -39,7 +45,7 @@ export CORE_SHADOW_ISOLATED_COPY=true
 export CORE_INTERNAL_SESSIONS_ENABLED=true
 export CACHE_DRIVER=redis SETTING_CACHE_STORE=redis SESSION_DRIVER=array QUEUE_CONNECTION=sync MAIL_DRIVER=array MAIL_MAILER=array
 export REDIS_HOST=127.0.0.1 REDIS_PORT="$INTERNAL_EMAIL_REDIS_PORT" REDIS_DB=14 REDIS_CACHE_DB=15
-export GATEWAY_REDIS_URL="redis://127.0.0.1:${INTERNAL_EMAIL_REDIS_PORT}/22"
+export GATEWAY_REDIS_URL="redis://127.0.0.1:${INTERNAL_EMAIL_REDIS_PORT}/${INTERNAL_GATEWAY_REDIS_DB}"
 export APP_KEY='base64:ZdD07lazsdQQmdBAJ2tA5WjufeI2hP8xlP6zgmvCMZs='
 python3 "$INTERNAL_CORE_API/../scripts/tests/internal-readonly/generate-pki.py" "$INTERNAL_FIXTURE_DIR"
 (cd "$INTERNAL_CORE_API" && php artisan migrate --force --no-interaction) > "$INTERNAL_FIXTURE_DIR/migrations.log"

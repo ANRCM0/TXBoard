@@ -178,7 +178,7 @@ try {
   const logs = readdirSync(dir).filter(name => name.endsWith('.log')).map(name => readFileSync(`${dir}/${name}`, 'utf8')).join('\n')
   for (const secret of [remaining, ...Object.values(actors.credentials), 'PRIVATE KEY', 'fixture-private-session-sql-error']) assert.ok(!logs.includes(secret))
   writeFileSync(`${dir}/result.json`, JSON.stringify({ phase: 'B5.14', production_acceptance: false, passed: checks.length, checks,
-    core_base: manifest.base, observed_tls_protocols: [...tlsVersions], redis_database: 22, native_fallback_calls: nativeCalls.length,
+    core_base: manifest.base, observed_tls_protocols: [...tlsVersions], redis_database: Number(process.env.INTERNAL_GATEWAY_REDIS_DB), native_fallback_calls: nativeCalls.length,
     final_state: decorate('state'), audit: JSON.parse(mutate('audit-check')) }, null, 2))
   process.stdout.write(`PASS ${checks.length} real session Gateway/Core checks\n`)
 } finally {

@@ -182,5 +182,74 @@
     "gateway/contracts/gateway-v1.md": "72b983f92116fc49332192460a846e453bfe2bf756a42fa1a4549f6f8fbe424b",
     "gateway/docs/internal-user-integration.md": "e9c982bc28a145ac118378afa640bf1b9b43fef4af50dcc52a960a10f71c1374",
     "gateway/packages/theme-sdk/README.md": "974cb27f4c7a1c05d6c27e4b5097287d58378ec91ac3498407cad9c99d5e397a"
+  },
+  "ci_fixture_followup": {
+    "base": "18c7d1a3d519dd02942a5f4b19891fe681fc1923",
+    "source_sha256": {
+      ".github/workflows/ci-internal-sessions.yml": "4c09be864c6b061fe7cfb1a2a46aa1780d338d21b2ce98c38f4481c6f97fe99a",
+      "gateway/tests/integration/internal-sessions-core-gateway.mjs": "f04d6c184640664823075261914b4389864640f1de7873f4925dd15c9ea52d34",
+      "gateway/tests/integration/run-internal-sessions-linux.sh": "296bca7abdb61e6050f687643a814635110a123d8fa0428dc04cb8ed15fdaa28"
+    },
+    "runtime_and_unit_sources_unchanged": true,
+    "snapshot": "/opt/txboard-baseline/session-consumer-v6",
+    "build": {
+      "mode": "build",
+      "exit_code": 0,
+      "log": "build.log",
+      "log_sha256": "fb7bc2852af672205d99f8f2470eca2afc722cfb9eeff1f243d0c69545b0cc1a"
+    },
+    "real_interoperability": {
+      "mode": "integration",
+      "exit_code": 0,
+      "log": "integration.log",
+      "log_sha256": "2f67bd9bcba521c83815a6a05a6e5bd28d0819eac6d721bba03ac00b01050347",
+      "integration": {
+        "phase": "B5.14",
+        "production_acceptance": false,
+        "passed": 12,
+        "checks": [
+          "independent default-off routes and plaintext mutations are absent without Native calls",
+          "real SDK Gateway TLS1.3 Core owner list has bounded decimal metadata and no credentials",
+          "actual User authorization refuses admin, expired, banned and bare Core before mutation",
+          "real 101-row owner list is refused and exactly 100 rows remain accepted without truncation",
+          "foreign owner revoke retains native 404 and preserves both users sessions",
+          "actual encrypted revoke succeeds once, replay and wrong AAD reject, repeated native ID is 404",
+          "SQL delete failure remains private, with the same native current credential usable",
+          "real Redis credential and IP budgets fail closed and retain case-sensitive credential keys",
+          "audit failure conceals committed logout and another actual credential confirms deletion without retry",
+          "successful final logout keeps SDK token caller-owned and leaves other user untouched",
+          "disabled Core gate and offline TLS cannot reach Native fallback",
+          "closed Redis safety store refuses before any business transport"
+        ],
+        "core_base": "18c7d1a3d519dd02942a5f4b19891fe681fc1923",
+        "observed_tls_protocols": [
+          "TLSv1.3"
+        ],
+        "redis_database": 12,
+        "native_fallback_calls": 0,
+        "final_state": {
+          "user_sessions": 0,
+          "other_sessions": 1,
+          "users": 3,
+          "orders": 1
+        },
+        "audit": {
+          "audit_rows": 19,
+          "nonce_rows": 20
+        }
+      }
+    },
+    "remote_first_run": {
+      "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38328504984",
+      "status": "failure",
+      "reason": "Redis DB22 exceeds the default sixteen databases; CI now explicitly uses dedicated fixture DB12"
+    },
+    "remote_fixed_run": "pending separate verification",
+    "mysql_8_4_acceptance": false,
+    "local_failure_preserved": {
+      "version": "v5",
+      "log_sha256": "8cd33cfcc460a18204fd26929dc50b4f7cff020e8494a1b8ec8a9e52db10f411",
+      "reason": "Local helper reused a pre-B5.14 baseline after its source overlay had been committed; v6 freezes the actual B5.14 commit instead."
+    }
   }
 }

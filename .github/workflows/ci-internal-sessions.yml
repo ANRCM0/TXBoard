@@ -45,6 +45,7 @@ jobs:
       DB_USERNAME: txboard_internal_list
       DB_PASSWORD: txboard-ci-session-fixture-only
       INTERNAL_EMAIL_REDIS_PORT: '16380'
+      INTERNAL_GATEWAY_REDIS_DB: '12'
     steps:
       - uses: actions/checkout@v5
       - uses: shivammathur/setup-php@v2
