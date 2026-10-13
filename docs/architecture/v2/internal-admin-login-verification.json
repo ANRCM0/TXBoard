@@ -74,7 +74,66 @@
   },
   "production_enabled": false,
   "gateway_admin_route_enabled": false,
-  "remote_ci": "pending",
+  "remote_ci": {
+    "commit": "6c5ed4ca49b866b0e3b7f4dc6a1354806b02e62c",
+    "status": "completed-success",
+    "runs": [
+      {
+        "workflow": "internal-admin-login",
+        "run_id": 38354883073,
+        "conclusion": "success",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38354883073"
+      },
+      {
+        "workflow": "internal-admin-identity",
+        "run_id": 38354882982,
+        "conclusion": "success",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38354882982"
+      },
+      {
+        "workflow": "api-ci",
+        "run_id": 38354882975,
+        "conclusion": "success",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38354882975"
+      },
+      {
+        "workflow": "api-mysql-ci",
+        "run_id": 38354883019,
+        "conclusion": "success",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38354883019"
+      },
+      {
+        "workflow": "txboard-core-image",
+        "run_id": 38354882969,
+        "conclusion": "success",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38354882969"
+      },
+      {
+        "workflow": "gateway-image",
+        "run_id": 38354882972,
+        "conclusion": "success",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38354882972"
+      },
+      {
+        "workflow": "internal-session-consumer",
+        "run_id": 38354883001,
+        "conclusion": "success",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38354883001"
+      },
+      {
+        "workflow": "provider-offline-proof",
+        "run_id": 38354883004,
+        "conclusion": "success",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38354883004"
+      },
+      {
+        "workflow": "Documentation",
+        "run_id": 38354882995,
+        "conclusion": "success",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38354882995"
+      }
+    ]
+  },
   "earlier_failed_snapshot": {
     "snapshot": "/opt/txboard-baseline/internal-admin-login-r1",
     "targeted": {

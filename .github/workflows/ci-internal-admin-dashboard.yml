@@ -1,0 +1,69 @@
+name: internal-admin-dashboard
+
+on:
+  push:
+    branches: [main]
+    paths: ['api/**', 'scripts/tests/internal-admin-dashboard/**', 'scripts/tests/internal-readonly/**', 'contracts/v2/core-internal-api/**', '.github/workflows/ci-internal-admin-dashboard.yml']
+  pull_request:
+    paths: ['api/**', 'scripts/tests/internal-admin-dashboard/**', 'scripts/tests/internal-readonly/**', 'contracts/v2/core-internal-api/**', '.github/workflows/ci-internal-admin-dashboard.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: internal-admin-dashboard-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  isolated:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: txboard-ci-admin-root-fixture-only
+          MYSQL_ROOT_HOST: '%'
+          MYSQL_DATABASE: txboard_admin_dashboard_test
+          MYSQL_USER: txboard_admin_dashboard
+          MYSQL_PASSWORD: txboard-ci-admin-fixture-only
+        ports: ['13306:3306']
+        options: >-
+          --health-cmd "mysqladmin ping -h 127.0.0.1 -uroot -ptxboard-ci-admin-root-fixture-only"
+          --health-interval 5s --health-retries 20
+    env:
+      DB_HOST: 127.0.0.1
+      DB_PORT: '13306'
+      DB_DATABASE: txboard_admin_dashboard_test
+      DB_USERNAME: txboard_admin_dashboard
+      DB_PASSWORD: txboard-ci-admin-fixture-only
+    steps:
+      - uses: actions/checkout@v5
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, pdo_mysql, bcmath
+          coverage: none
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22.23.2'
+      - name: Restore locked Core dependencies
+        run: composer install --working-dir=api --no-interaction --prefer-dist
+      - name: Permit synthetic audit fault trigger
+        run: |
+          php -r '$db = new PDO("mysql:host=127.0.0.1;port=13306;dbname=txboard_admin_dashboard_test", "root", "txboard-ci-admin-root-fixture-only", [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]); $db->exec("SET GLOBAL log_bin_trust_function_creators=1");'
+      - name: Prepare fixture storage
+        run: |
+          touch api/.env
+          mkdir -p api/storage/framework/{cache/data,sessions,views} api/storage/logs api/bootstrap/cache
+      - name: Real Admin service mTLS Core MySQL dashboard boundary
+        run: bash scripts/tests/internal-admin-dashboard/run.sh "$PWD/api"
+      - name: Preserve sanitized integration receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: internal-admin-dashboard-evidence
+          path: /tmp/txboard-internal-admin-dashboard.*/result.json
+          if-no-files-found: warn
+          retention-days: 14

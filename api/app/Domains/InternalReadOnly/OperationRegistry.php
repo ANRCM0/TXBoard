@@ -28,6 +28,7 @@ final class OperationRegistry
         'user.session.logout' => ['service' => 'user-gateway', 'actor' => 'user', 'versions' => ['1']],
         'admin.order.get' => ['service' => 'admin-gateway', 'actor' => 'admin', 'versions' => ['1']],
         'admin.identity.get' => ['service' => 'admin-gateway', 'actor' => 'admin', 'versions' => ['1']],
+        'admin.dashboard.get' => ['service' => 'admin-gateway', 'actor' => 'admin', 'versions' => ['1']],
     ];
 
     public static function request(Request $request): array
@@ -38,6 +39,10 @@ final class OperationRegistry
             throw new SliceFailure('UNKNOWN_OPERATION', 400);
         }
         if ($operation === 'admin.identity.get' && (config('internal_api_slice.admin_identity_enabled') !== true
+            || config('core_shadow.isolated_copy') !== true)) {
+            throw new SliceFailure('OPERATION_DISABLED', 404);
+        }
+        if ($operation === 'admin.dashboard.get' && (config('internal_api_slice.admin_dashboard_enabled') !== true
             || config('core_shadow.isolated_copy') !== true)) {
             throw new SliceFailure('OPERATION_DISABLED', 404);
         }
@@ -160,7 +165,7 @@ final class OperationRegistry
             if (!is_string($input->trade_no) || !preg_match('/\A[A-Za-z0-9_-]{1,'.$max.'}\z/D', $input->trade_no)) {
                 throw new SliceFailure('INVALID_REQUEST', 400);
             }
-        } elseif ($operation === 'admin.identity.get') {
+        } elseif (in_array($operation, ['admin.identity.get', 'admin.dashboard.get'], true)) {
             StrictJson::exact($input, ['admin_path']);
             if (!is_string($input->admin_path) || !preg_match('/\A[A-Za-z0-9_-]{1,128}\z/D', $input->admin_path)) {
                 throw new SliceFailure('INVALID_REQUEST', 400);

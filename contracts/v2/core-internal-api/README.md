@@ -108,3 +108,5 @@ B5.6: [local current order status](current-order-status-v2.md), preserving curre
 B5.7: [isolated local order creation](local-user-order-create-v1.md), delegating
 native Core business/SQL idempotency and retaining original-key recovery after
 an unknown result. Additional write and isolated-copy gates default off.
+
+B5.17: [隔离管理仪表盘](local-admin-dashboard-v1.md)复用原生统计与当前管理授权，金额/流量使用十进制字符串，独立默认关闭。

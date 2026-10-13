@@ -11,6 +11,7 @@ return [
     'sessions_enabled' => env('CORE_INTERNAL_SESSIONS_ENABLED', false),
     'admin_identity_enabled' => env('CORE_INTERNAL_ADMIN_IDENTITY_ENABLED', false),
     'admin_login_enabled' => env('CORE_INTERNAL_ADMIN_LOGIN_ENABLED', false),
+    'admin_dashboard_enabled' => env('CORE_INTERNAL_ADMIN_DASHBOARD_ENABLED', false),
     'order_write_enabled' => env('CORE_INTERNAL_ORDER_WRITE_ENABLED', false),
     // Operator-controlled absolute file, not supplied by HTTP callers.
     'trust_file' => env('CORE_INTERNAL_READONLY_TRUST_FILE'),
