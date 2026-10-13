@@ -26,6 +26,7 @@ final class LegacyUserMutationCapture
         'user.schedule.observer' => ['version' => 'observer-schedule-capture/v1', 'actor_domain' => 'system_user_schedule_observer'],
         'traffic.reset.standalone' => ['version' => 'standalone-reset-capture/v1', 'actor_domain' => 'system_legacy_traffic_reset'],
         'user.schedule.repair' => ['version' => 'schedule-repair-capture/v1', 'actor_domain' => 'system_user_schedule_repair'],
+        'admin.plan.propagate' => ['version' => 'plan-propagation-capture/v1', 'actor_domain' => 'admin_user'],
     ];
     public const FIELDS = ['id', 'plan_id', 'group_id', 'transfer_enable', 'u', 'd',
         'speed_limit', 'device_limit', 'expired_at', 'last_reset_at', 'next_reset_at',
@@ -128,6 +129,29 @@ final class LegacyUserMutationCapture
             $this->require(config('legacy_capture_shadow.enabled') === true, 'CAPTURE_SCHEDULE_ISOLATED_REQUIRED');
             return $this->beginWriter($userId, 'user.schedule.repair', $userId);
         });
+    }
+
+    /** Also validates the isolated context for an empty subscriber set. */
+    public function assertPlanPropagationContext(): void
+    {
+        $this->safe(function (): void {
+            $this->require(config('legacy_plan_propagation_capture.enabled') === true
+                && config('legacy_capture_shadow.enabled') === true, 'CAPTURE_PLAN_ISOLATED_REQUIRED');
+            $this->context();
+            $this->require(DB::transactionLevel() > 0, 'CAPTURE_TRANSACTION_REQUIRED');
+        });
+    }
+
+    /** Called after the current Plan and sorted selected User locks. */
+    public function beginPlanPropagation(int $userId, int $adminId): ?array
+    {
+        $this->assertPlanPropagationContext();
+        return $this->beginWriter($userId, 'admin.plan.propagate', $adminId);
+    }
+
+    public function appendPlanPropagation(?array $before): void
+    {
+        $this->appendWriter($before, 'admin.plan.propagate');
     }
 
     /** At the native refund's first User-lock position, after the PENDING Order lock. */

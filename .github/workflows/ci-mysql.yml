@@ -232,3 +232,5 @@ jobs:
           mkdir -p storage/framework/{cache/data,sessions,views} storage/logs bootstrap/cache
       - name: Captured money projection, concurrent sessions and crash recovery on MySQL 8.4
         run: php artisan test --filter=LegacyMoneyShadowTest
+      - name: Captured Plan bulk propagation, atomic set and crash recovery on MySQL 8.4
+        run: php artisan test --filter=LegacyPlanPropagationCaptureTest

@@ -1,6 +1,6 @@
 # Core First v2 实施台账
 
-> 状态：B0、B1.1–B1.19 影子证据、Terms、身份旁观、固定 writer 捕获与余额端点投影、B2.1–B2.4 单机升级、B3.1/B3.2 隔离用量、B3.3/B3.4 本地观察与持久事件桶、B4.1–B4.6 合成 Provider、插件停用接入、租约候选、离线签名快照与Go公钥诊断、B5.1–B5.14 本地 mTLS 读取、隔离建单、登录、内存邮件验证码、隔离注册、密码恢复与当前会话、B6.1–B6.4 实验字节、离线加密、共享 owner 与独立响应随机值候选已实现；两仓迁移与三镜像发布已完成，继续推进业务迁移切片。各整阶段仍按下表门禁验收。
+> 状态：B0、B1.1–B1.20 影子证据、Terms、身份旁观、固定 writer 捕获、套餐批量同步与余额端点投影、B2.1–B2.4 单机升级、B3.1/B3.2 隔离用量、B3.3/B3.4 本地观察与持久事件桶、B4.1–B4.6 合成 Provider、插件停用接入、租约候选、离线签名快照与Go公钥诊断、B5.1–B5.14 本地 mTLS 读取、隔离建单、登录、内存邮件验证码、隔离注册、密码恢复与当前会话、B6.1–B6.4 实验字节、离线加密、共享 owner 与独立响应随机值候选已实现；两仓迁移与三镜像发布已完成，继续推进业务迁移切片。各整阶段仍按下表门禁验收。
 
 2026-10-13，按仓库整合任务，将 Gateway/Node 的完整 Git 历史导入本仓 `gateway/`、`node/`，安装器集中到 TXBoard-Deploy。当前目录与三镜像 CI 见 [双仓布局](../../development/repository-layout.md)；旧基线和验证报告保持当时提交与路径。本次仓库整理独立于下列业务迁移门禁。
 
@@ -331,3 +331,11 @@ B5.14 的 CI Redis 测试库改为显式12，当前源码本地12项真实链路
 Deploy `71cb340` 增加封闭 `captured-money-shadow/v1`，签名绑定单User、捕获run/stream/高水位/尾hash及billing。原来源逐次检查，变更拒绝；内置三表migration、每页100事件及从0完整只读扫描，禁止自动extend和业务权威切换。Windows/Linux各 **58项** 编排测试及原管理互锁通过。
 
 真实固定Core `63f99cf` 工程镜像、Docker28.3.3/MariaDB11.4合成演练包含 **205** 事件；首100已提交后SIGKILL，持久journal缺失result，恢复到205并全页核对，重复步骤和不平衡步骤均 **0**，旧binary guard保留。原数据库dump/restore字节相同；[制品/源码和范围证据](https://github.com/ANRCM0/TXBoard-Deploy/blob/main/docs/captured-money-upgrade-verification.json)区分本地OCI工程镜像和正式发布验收。生产writer fence、全站迁移、集群租约和外部增量恢复仍未完成。
+
+Deploy `34fd467` 修正host MySQL临时socket服务就绪竞争，[完整部署CI](https://github.com/ANRCM0/TXBoard-Deploy/actions/runs/38338365530)通过58项编排、真实MySQL8.4.11渲染/历史转换和固定Gateway安装回退。该CI未重跑实际Core205事件强杀演练，各验收范围独立记录。
+
+### B1.20 隔离套餐批量同步捕获
+
+[当前契约](../../../contracts/v2/legacy-plan-propagation-capture-v1.md)在独立默认关闭开关下，接入原Admin套餐force-update。原Plan事务先锁Plan，再选定有序且最多1000个当前User；原批量SQL只更新冻结集合，不触发User Observer/钩子。固定Admin身份policy记录精确before/after，链、mapping失效、全体User及Plan同事务；later gap或storage失败整批回滚。晚到新订阅者明确不属于选定集合，不能推定全站停写。原Plan saving返回false被调用方忽略的行为保持，捕获仅记录真实User端点。
+
+固定Core `77f819c` 加本批源码：SQLite **12通过、2项引擎条件跳过、128断言**；MariaDB **14全部通过、149断言**，包括真实Plan锁等待后成员重查和提交前后SIGKILL。全API **1137通过、104项引擎/工具链条件跳过、11637断言**。原生表名及文档检查通过；前次夹具主键/外键问题及最终源码/依赖/日志hash见[报告](legacy-plan-propagation-verification.json)。已加入独立MySQL8.4 CI，远端结果待核验。User创建/删除、其他writer、Terms/周期投影与权威切换仍未完成。

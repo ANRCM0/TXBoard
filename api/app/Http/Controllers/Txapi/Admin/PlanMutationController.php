@@ -6,6 +6,7 @@ use App\Core\Http\TxapiResponse;
 use App\Models\Order;
 use App\Models\Plan;
 use App\Models\User;
+use App\Services\Subscription\LegacyPlanPropagationCapture;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -44,11 +45,11 @@ final class PlanMutationController
         $attributes = collect($input)->except(['id','force_update'])->all();
         if (array_key_exists('prices', $input)) $attributes['prices'] = $prices;
         $force = $request->boolean('force_update');
-        $id = DB::transaction(static function () use ($input, $attributes, $force): int {
+        $id = DB::transaction(static function () use ($request, $input, $attributes, $force): int {
             if (isset($input['id'])) {
                 $plan = Plan::query()->lockForUpdate()->findOrFail((int) $input['id']);
                 if ($force) {
-                    User::query()->where('plan_id', $plan->id)->update([
+                    app(LegacyPlanPropagationCapture::class)->apply((int) $plan->id, (int) $request->user()->id, [
                         'group_id' => array_key_exists('group_id', $attributes) ? $attributes['group_id'] : $plan->group_id,
                         'transfer_enable' => (int) $attributes['transfer_enable'] * 1073741824,
                         'speed_limit' => array_key_exists('speed_limit', $attributes) ? $attributes['speed_limit'] : $plan->speed_limit,
