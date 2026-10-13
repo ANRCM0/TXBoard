@@ -83,11 +83,19 @@ final class SubscriptionShadowReconcile
                     $differences[] = ['legacy_user_id' => (string) $id, 'code' => $code, 'fields' => array_values(array_unique($fields))];
                 }
             }
+            $lifecycle = [];
+            if (config('legacy_lifecycle_reconcile.enabled') !== false) {
+                $lifecycle = app(LegacyLifecycleShadowReconcile::class)->page($ids, $context);
+                foreach ($lifecycle['issues'] as $issue) {
+                    $differences[] = $issue + ['fields' => ['lifecycle']];
+                }
+            }
             $next = $ids ? (int) end($ids) : $afterId;
 
             return ['run_key' => $runKey, 'authority' => 'legacy', 'passed' => !$differences,
                 'checked_count' => (string) count($ids), 'after_id' => (string) $afterId,
-                'next_cursor' => (string) $next, 'complete' => !$hasMore, 'differences' => $differences];
+                'next_cursor' => (string) $next, 'complete' => !$hasMore, 'differences' => $differences]
+                + ($lifecycle ? ['lifecycle' => $lifecycle] : []);
         });
     }
 

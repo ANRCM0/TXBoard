@@ -1,6 +1,6 @@
 # Isolated Admin network groups v1
 
-Status: Candidate. Default off, local/testing and isolated synthetic copy only.
+Status: Current isolated slice. Default off, local/testing and isolated synthetic copy only.
 
 `admin.network-group.list` version `1` is restricted to the dedicated `admin-gateway` service and a current native Admin credential. `CORE_INTERNAL_ADMIN_NETWORK_GROUPS_ENABLED` is strictly boolean true, independently gated by the global Internal slice and isolated-copy flag. Core checks current ban, role and management path each request. No public Gateway Admin route is added.
 

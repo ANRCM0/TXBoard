@@ -1,0 +1,139 @@
+{
+  "phase": "B1.27",
+  "status": "verified-isolated-current",
+  "base_commit": "0ab072ef3cffbfbc187abb3bc37bacf2910d01b4",
+  "source_sha256": {
+    ".github/workflows/ci-lifecycle-shadow-reconcile.yml": "86dac5906b64175a86f0194c7cd1baca67c4e1065921b3f35d13fd9afe9f814d",
+    "api/app/Console/Commands/CoreLifecycleShadowReconcile.php": "ff55b32cf294b1699bbe96ba78b08d09a9540efc766d216b54ad4ce977061b82",
+    "api/app/Services/Subscription/LegacyLifecycleShadowReconcile.php": "1af9c7cd1321be904018a53dea48c38e5a79baf7d5826d108623e2d6b189f14b",
+    "api/app/Services/Subscription/SubscriptionShadowReconcile.php": "d9ee614113db44ab990ef63edcf2e3628c2ce7d34a1452ee4ceadb16a7d3d03b",
+    "api/config/legacy_lifecycle_reconcile.php": "b812bad7b68b6c6baf67920791a926712b0c9f693bd6eb8c1d38b1020d290362",
+    "api/tests/Feature/Subscription/LegacyLifecycleShadowReconcileTest.php": "9de8cdabfc192b49241a39c9bba955d26c916032991c4c9a345e409ee42d2bb1",
+    "contracts/v2/legacy-lifecycle-reconcile-v1.md": "70818c4ea0ea87ee307cca71571d949539c4ad7d0375fa801df1975f76949cb2"
+  },
+  "dependencies": {
+    "composer_lock_sha256": "f47b212c2fc530a7820e370eab7c6d624d13962e7d26e4f2ddf57a11848257c0",
+    "installed_json_sha256": "8e668e456c9772ae428a038ab003fba5752ab2591980fc8396d9122851145b80"
+  },
+  "snapshot": "/opt/txboard-baseline/lifecycle-reconcile-r6",
+  "database": {
+    "engine": "MariaDB",
+    "version": "11.4.12",
+    "dedicated_database": "txboard_lifecycle_reconcile_test",
+    "synthetic_only": true
+  },
+  "coverage": {
+    "targeted": {
+      "passed": 31,
+      "skipped": 2,
+      "assertions": 246,
+      "includes_original_backfill_tests": 13
+    },
+    "mysql": {
+      "passed": 20,
+      "skipped": 0,
+      "assertions": 166
+    },
+    "full": {
+      "passed": 1297,
+      "skipped": 112,
+      "assertions": 13445
+    }
+  },
+  "new_sqlite_passed": 18,
+  "new_sqlite_skipped": 2,
+  "review": {
+    "actionlint": "passed",
+    "native_schema_issues": 0,
+    "docs_links": "passed",
+    "SELECT_only_queries_checked": true,
+    "source_and_projection_history_unchanged_checked": true,
+    "original_source_missing_block_preserved": true,
+    "known_deletion_does_not_release_active_subscription_or_slot": true,
+    "creation_and_deletion_immutable_anchors_preserved": true,
+    "native_JSON_member_reorder_checked": true,
+    "late_exception_independent_session_current_read_checked": true,
+    "default_off_original_response_and_queries_preserved": true,
+    "ordered_unique_bounded_IDs_checked": true,
+    "billing_contexts_must_match_with_separate_run_keys": true,
+    "canonical_positive_INT64_mapping_and_slot_references_checked": true,
+    "recomputed_hash_cannot_waive_closed_snapshot_or_selfactor_checked": true
+  },
+  "limits": {
+    "authority": "legacy",
+    "mutation_chain_verified": false,
+    "global_coverage_complete": false,
+    "projection_applied": false,
+    "projection_verified": false,
+    "migration_gate_open": false,
+    "page_consistent": "bounded lifecycle evidence and mapping ID/state/ownership associations only; original subscription reconciliation keeps complete projection checks",
+    "range": "union snapshot plus per-ID locking current observations; not a global or cross-page stable snapshot",
+    "hashes": "consistency checks, not signed independent historical proof",
+    "production_data_used": false,
+    "production_migration_ready": false
+  },
+  "attempt_history": [
+    {
+      "snapshot": "r1",
+      "outcome": "24 passed,1skipped,1negative-fixture FK failure; corrected test to explicitly disable constraints only for deliberate corrupt association"
+    },
+    {
+      "snapshot": "r2",
+      "outcome": "SQLite26passed1skipped; MariaDB12passed2state-comparison fixture failures: slot has no id, fixed ordering to user_id; JSON reorder passed"
+    },
+    {
+      "snapshot": "r3",
+      "outcome": "SQLite28passed1skipped; added source changes across pages and initial mutation gap checks"
+    },
+    {
+      "snapshot": "r4",
+      "outcome": "SQLite28passed1skipped; MariaDB16passed145assertions; final review requested current exception read and independent session fixture"
+    },
+    {
+      "snapshot": "r5",
+      "outcome": "final SQLite28passed2engine-specificskips225assertions; MariaDB17passed149assertions"
+    },
+    {
+      "snapshot": "r6",
+      "outcome": "Cross-review corrected positive canonical INT64 mapping IDs and slot associations; final SQLite31passed2engine-specificskips246assertions; final dedicated MariaDB20passed166assertions"
+    }
+  ],
+  "pending": [
+    "Remote Oracle MySQL8.4 CI after push"
+  ],
+  "tests": {
+    "targeted": {
+      "mode": "targeted",
+      "exit_code": 0,
+      "log_sha256": "e971a61808996d1a7eb9d589de4021c63a3de26a2d3191ddaff15a67a8229d83",
+      "snapshot": "/opt/txboard-baseline/lifecycle-reconcile-r6"
+    },
+    "mysql": {
+      "mode": "mysql",
+      "exit_code": 0,
+      "log_sha256": "fb4d7a99957c8d91fc6f39b29f8f5f172d98c7e73ea20df2f97a1b89c662446b",
+      "snapshot": "/opt/txboard-baseline/lifecycle-reconcile-r6"
+    },
+    "full": {
+      "mode": "full",
+      "exit_code": 0,
+      "log_sha256": "36eedf52f102530284b1a86dd10d4c44f51944361bcd319114da76fafddbf94f",
+      "snapshot": "/opt/txboard-baseline/lifecycle-integrated-r2"
+    }
+  },
+  "integration_base": "851bb6c9f861f8ddf9d011233bc4e7b7683e1977",
+  "coordinator_review": {
+    "exact_frozen_source_verified": true,
+    "cross_review": "Node and Gateway reviewed; current-read exception and positive INT64 mapping checks added and retested",
+    "integrated_with_published_node_gateway": true
+  },
+  "remote_ci": {
+    "status": "pending-after-push"
+  },
+  "previous_integrated_full": {
+    "mode": "full",
+    "exit_code": 0,
+    "log_sha256": "fd275f8f20e1f2f9ef8761164c909e4c2f5033d994227fc701fa942ec630ab1e",
+    "snapshot": "/opt/txboard-baseline/lifecycle-integrated-r1"
+  }
+}

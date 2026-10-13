@@ -126,6 +126,177 @@
     "Oracle MySQL 8.4 CI workflow prepared but not executed remotely until parent commits and pushes."
   ],
   "remote_ci": {
-    "status": "pending-after-push"
+    "status": "all-triggered-runs-passed",
+    "commit": "851bb6c9f861f8ddf9d011233bc4e7b7683e1977",
+    "runs": [
+      {
+        "conclusion": "success",
+        "databaseId": 38429326644,
+        "headSha": "851bb6c9f861f8ddf9d011233bc4e7b7683e1977",
+        "name": "internal-admin-consumer",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38429326644"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 38429326368,
+        "headSha": "851bb6c9f861f8ddf9d011233bc4e7b7683e1977",
+        "name": "bootstrap-creation-shadow",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38429326368"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 38429326422,
+        "headSha": "851bb6c9f861f8ddf9d011233bc4e7b7683e1977",
+        "name": "registration-shadow-transport",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38429326422"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 38429326359,
+        "headSha": "851bb6c9f861f8ddf9d011233bc4e7b7683e1977",
+        "name": "internal-admin-sessions",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38429326359"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 38429326604,
+        "headSha": "851bb6c9f861f8ddf9d011233bc4e7b7683e1977",
+        "name": "registration-creation-shadow",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38429326604"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 38429326456,
+        "headSha": "851bb6c9f861f8ddf9d011233bc4e7b7683e1977",
+        "name": "internal-admin-plan-list",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38429326456"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 38429326360,
+        "headSha": "851bb6c9f861f8ddf9d011233bc4e7b7683e1977",
+        "name": "internal-admin-order-list",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38429326360"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 38429326534,
+        "headSha": "851bb6c9f861f8ddf9d011233bc4e7b7683e1977",
+        "name": "admin-deletion-shadow",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38429326534"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 38429326555,
+        "headSha": "851bb6c9f861f8ddf9d011233bc4e7b7683e1977",
+        "name": "internal-admin-network-groups",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38429326555"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 38429326678,
+        "headSha": "851bb6c9f861f8ddf9d011233bc4e7b7683e1977",
+        "name": "admin-creation-shadow",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38429326678"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 38429326451,
+        "headSha": "851bb6c9f861f8ddf9d011233bc4e7b7683e1977",
+        "name": "internal-admin-users",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38429326451"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 38429326545,
+        "headSha": "851bb6c9f861f8ddf9d011233bc4e7b7683e1977",
+        "name": "gateway-image",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38429326545"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 38429326269,
+        "headSha": "851bb6c9f861f8ddf9d011233bc4e7b7683e1977",
+        "name": "Documentation",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38429326269"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 38429326477,
+        "headSha": "851bb6c9f861f8ddf9d011233bc4e7b7683e1977",
+        "name": "provider-offline-proof",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38429326477"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 38429326271,
+        "headSha": "851bb6c9f861f8ddf9d011233bc4e7b7683e1977",
+        "name": "internal-admin-identity",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38429326271"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 38429326432,
+        "headSha": "851bb6c9f861f8ddf9d011233bc4e7b7683e1977",
+        "name": "internal-admin-dashboard",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38429326432"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 38429326252,
+        "headSha": "851bb6c9f861f8ddf9d011233bc4e7b7683e1977",
+        "name": "internal-session-consumer",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38429326252"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 38429326270,
+        "headSha": "851bb6c9f861f8ddf9d011233bc4e7b7683e1977",
+        "name": "internal-admin-login",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38429326270"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 38429326272,
+        "headSha": "851bb6c9f861f8ddf9d011233bc4e7b7683e1977",
+        "name": "api-ci",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38429326272"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 38429326381,
+        "headSha": "851bb6c9f861f8ddf9d011233bc4e7b7683e1977",
+        "name": "api-mysql-ci",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38429326381"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 38429326375,
+        "headSha": "851bb6c9f861f8ddf9d011233bc4e7b7683e1977",
+        "name": "txboard-core-image",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38429326375"
+      }
+    ]
   }
 }
