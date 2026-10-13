@@ -1,0 +1,91 @@
+name: node-live-protocol-core-usage
+
+on:
+  push:
+    branches: [main]
+    paths: ['api/**', 'node/internal/**', 'node/go.mod', 'node/go.sum', 'scripts/tests/node-live-protocol/**', 'contracts/v2/node-usage/**', '.github/workflows/ci-node-live-protocol.yml']
+  pull_request:
+    paths: ['api/**', 'node/internal/**', 'node/go.mod', 'node/go.sum', 'scripts/tests/node-live-protocol/**', 'contracts/v2/node-usage/**', '.github/workflows/ci-node-live-protocol.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: node-live-protocol-core-usage-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  isolated-live-protocol:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        protocol: [vless, vmess]
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: txboard-ci-live-protocol-root-only
+          MYSQL_DATABASE: txboard_live_protocol_test
+          MYSQL_USER: txboard_live_protocol
+          MYSQL_PASSWORD: txboard-ci-live-protocol-only
+        ports: ['13306:3306']
+        options: >-
+          --health-cmd "mysqladmin ping -h 127.0.0.1 -uroot -ptxboard-ci-live-protocol-root-only"
+          --health-interval 5s --health-retries 20
+      redis:
+        image: redis:7.4-alpine
+        ports: ['16379:6379']
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-retries 20
+    env:
+      APP_ENV: testing
+      DB_CONNECTION: mysql
+      DB_HOST: 127.0.0.1
+      DB_PORT: '13306'
+      DB_DATABASE: txboard_live_protocol_test
+      DB_USERNAME: txboard_live_protocol
+      DB_PASSWORD: txboard-ci-live-protocol-only
+      REDIS_HOST: 127.0.0.1
+      REDIS_PORT: '16379'
+      REDIS_DB: '8'
+      REDIS_CACHE_DB: '9'
+      GOTOOLCHAIN: local
+      LIVE_PROTOCOL_CASE: ${{ matrix.protocol }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, pdo_mysql, bcmath, redis
+          coverage: none
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: node/go.mod
+          cache-dependency-path: node/go.sum
+      - name: Install local fixture prerequisites
+        run: sudo apt-get update && sudo apt-get install -y mariadb-client openssl
+      - name: Restore locked Core fixtures and Node dependencies
+        run: |
+          composer install --working-dir=api --no-interaction --prefer-dist
+          cd node
+          go mod download
+      - name: Prepare disposable Core storage
+        run: |
+          touch api/.env
+          mkdir -p api/storage/framework/{cache/data,sessions,views} api/storage/logs api/bootstrap/cache
+      - name: Actual protocol Service heartbeat capture settlement and replay
+        # Each matrix job owns a fresh database and compiles before the finite
+        # grant. It refuses populated DBs and observes the scheduled heartbeat.
+        run: python3 scripts/tests/node-live-protocol/run.py "$PWD/api" "$PWD/node" "$RUNNER_TEMP/node-live-protocol-evidence" "$LIVE_PROTOCOL_CASE"
+      - name: Preserve sanitized protocol settlement evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: node-live-protocol-${{ matrix.protocol }}-receipt
+          path: ${{ runner.temp }}/node-live-protocol-evidence/result.json
+          if-no-files-found: warn
+          retention-days: 14

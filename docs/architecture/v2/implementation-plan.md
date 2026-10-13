@@ -1,6 +1,6 @@
 # Core First v2 实施台账
 
-> 状态：B0、B1.1–B1.28 影子证据、Terms、身份旁观、固定 writer 捕获、套餐批量同步、批量封禁、管理员创建/删除、注册初始记录与余额端点投影、B2.1–B2.8 单机升级、B3.1/B3.2 隔离用量、B3.3–B3.7 本地观察、持久事件桶与隔离Service接入、B4.1–B4.7 合成 Provider、插件停用接入、租约候选、离线签名快照与Go公钥诊断、B5.1–B5.24 本地 mTLS 读取、隔离建单、登录、内存邮件验证码、隔离注册、密码恢复、当前会话与管理读取、B6.1–B6.4 实验字节、离线加密、共享 owner 与独立响应随机值候选及 B7.1 Agent/MCP 退役已实现；两仓迁移与三镜像发布已完成，继续推进业务迁移切片。各整阶段仍按下表门禁验收。
+> 状态：B0、B1.1–B1.28 影子证据、Terms、身份旁观、固定 writer 捕获、套餐批量同步、批量封禁、管理员创建/删除、注册初始记录与余额端点投影、B2.1–B2.8 单机升级、B3.1/B3.2 隔离用量、B3.3–B3.8 本地观察、持久事件桶、隔离Service与真实协议接入、B4.1–B4.7 合成 Provider、插件停用接入、租约候选、离线签名快照与Go公钥诊断、B5.1–B5.24 本地 mTLS 读取、隔离建单、登录、内存邮件验证码、隔离注册、密码恢复、当前会话与管理读取、B6.1–B6.4 实验字节、离线加密、共享 owner 与独立响应随机值候选及 B7.1 Agent/MCP 退役已实现；两仓迁移与三镜像发布已完成，继续推进业务迁移切片。各整阶段仍按下表门禁验收。
 
 2026-10-13，按仓库整合任务，将 Gateway/Node 的完整 Git 历史导入本仓 `gateway/`、`node/`，安装器集中到 TXBoard-Deploy。当前目录与三镜像 CI 见 [双仓布局](../../development/repository-layout.md)；旧基线和验证报告保持当时提交与路径。本次仓库整理独立于下列业务迁移门禁。
 
@@ -545,3 +545,13 @@ B1.28 远端收尾修正：`7ac24c1` 的 Oracle MySQL8.4 专项18通过/1失败�
 提交后通过原NodeUserSyncJob交接；队列成功只代表handed_off，不代表Node已送达。入队后结果丢失保持processing/unknown和固定次数重试，不承诺exactly-once外部效果。真实业务事务commit/rollback/SIGKILL、真实连接KILL提交失败，以及原队列入队后SIGKILL恢复均验收；root proof滞留和PDO强持有两项真实缺陷先复现后修正，原失败日志保留。
 
 最终专项SQLite **79通过、32项引擎/进程条件跳过、1034断言**；专用MariaDB **20全部通过、218断言**，含五项独立进程用例。协调者固定 `b914536` 加二十六个冻结源码，完整API **1378通过、141项条件跳过、14532断言**。[报告](authority-native-writers-verification.json)记录r9源/依赖hash、独立快照、失败复现及最终同源回归。独立Oracle MySQL8.4 CI已加入，推送后核对。默认关闭保留原生SQL/Observer/计费兼容；注册/auth/bootstrap/CLI、可信插件直写及外部Node/Provider效果仍需覆盖，全局writer coverage/drain、target authority和migration gate继续false。
+
+### B3.8 真实 VLESS/VMESS 会话与单用量链路
+
+[当前契约](../../../contracts/v2/node-usage/live-protocol-service-v1.md)使用正常 NewChecked/Service.Run 创建的真实sing-box listener/router以及锁定VLESS和AEAD VMESS客户端，不注入内核、直接调用tracker或提供计数map。仅prepared bounded模式在box.New前校验整个入站集合并固定127.0.0.1；原v1监听配置保持。专用合成夹具使用精确TCP/127.0.0.1/单origin端口的AND规则，保留原私网防护。
+
+两协议各自实际43字节上传、79字节下载，以真实TCP FIN/EOF完成在途读写后由常规worker封存原interval。关闭前真实5秒Service报告ticker取得Core **202 accepted / settlement none**，请求无Traffic或traffic_batch_id。Core持久ACK、accepted outbox、冻结3/2分方向floor结算 **64/118，共182**；重放后每种协议独立SQL仍为 **1 batch/1 entry**，旧User u/d **0/0**且旧traffic batch表为空。错误UUID未达origin，相同batch改payload实际409，同source epoch重启在新监听前拒绝。
+
+代理固定 `b914536` 及协调者固定已推送 `84b00ce` Core加八个冻结源码/夹具分别完成VLESS/VMESS真实联调。完整Node race **473主测试、332子测试通过，3项真实Core条件跳过、0失败**；本批协议条件测试已另行两协议执行，受影响包vet、actionlint通过。[报告](../../../node/docs/live-protocol-service-verification.json)记录两批实际载荷、SQL/回执、定时心跳与源码hash。每次重建仅专用txboard_live_protocol_test，先核对确切已settled批次并保存0600 SQL备份；两协议公共制品分别保留，未导出私钥/SQL/可执行文件。Oracle MySQL8.4/Redis7.4独立matrix CI已加入，推送后核对。
+
+开放连接上的原生轮询变更、租约到期、UDP/mux拒绝、恢复代际与新Core epoch接续仍需后续实际验收；本批正向真实协议互通不代表完整B3、生产Provider交付/撤销、trusted time/restore、全局handoff/drain或权威切换已完成。
