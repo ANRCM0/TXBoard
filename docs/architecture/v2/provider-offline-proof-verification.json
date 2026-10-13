@@ -97,12 +97,50 @@
   ],
   "ci": {
     "workflow": ".github/workflows/ci-provider-proof.yml",
-    "status": "pending push and remote verification"
+    "status": "success",
+    "commit": "63f99cf0d090e8b50c626ac5dac457f4ea5bcf7c",
+    "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38334101126",
+    "job": "actual-core-to-go"
   },
   "limitations": [
     "Offline signature diagnostic only; no semantic equivalence to full PHP nested business validator",
     "No Node Service import, admission, lease enforcement, secret delivery or revocation convergence",
     "Trust provisioning/refresh, intended recipient and clock health remain caller/operator responsibilities",
     "Historical signature proof is distinct from eligibility; revoked flag is explicit and no window verdict is made"
-  ]
+  ],
+  "remote_checks": {
+    "api-ci": {
+      "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38334101038",
+      "conclusion": "success"
+    },
+    "api-mysql-ci": {
+      "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38334101076",
+      "conclusion": "success"
+    },
+    "internal-session-consumer": {
+      "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38334101058",
+      "conclusion": "success"
+    },
+    "Documentation": {
+      "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38334101057",
+      "conclusion": "success"
+    },
+    "txboard-core-image": {
+      "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38334101112",
+      "conclusion": "success"
+    }
+  },
+  "node_ci_and_image": {
+    "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38334101032",
+    "conclusion": "success",
+    "jobs": {
+      "Classify Node runtime changes": "success",
+      "Node Go tests and source guards": "success",
+      "Node runtime stability": "success",
+      "Node image metadata and config compatibility": "success",
+      "Publish independent Node image": "success",
+      "Node release binaries": "skipped",
+      "Attach Node binaries to unified release": "skipped"
+    }
+  }
 }
