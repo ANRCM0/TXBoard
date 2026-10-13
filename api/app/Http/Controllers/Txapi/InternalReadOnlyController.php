@@ -19,6 +19,9 @@ final class InternalReadOnlyController
         $operation = $request->attributes->get('internal.readonly.operation');
         $input = $operation['body']->input;
         $version = $operation['body']->contract_version;
+        if (in_array($operation['operation'], ['admin.user.list', 'admin.user.get'], true)) {
+            return app(\App\Domains\InternalReadOnly\InternalAdminUsersDispatcher::class)->execute($request, $operation);
+        }
         if (in_array($operation['operation'], ['admin.session.list', 'admin.session.revoke', 'admin.session.logout'], true)) {
             return app(\App\Domains\InternalReadOnly\InternalSessionDispatcher::class)->executeAdmin($request, $operation);
         }

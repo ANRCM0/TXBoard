@@ -34,6 +34,8 @@ final class OperationRegistry
         'admin.session.list' => ['service' => 'admin-gateway', 'actor' => 'admin', 'versions' => ['1']],
         'admin.session.revoke' => ['service' => 'admin-gateway', 'actor' => 'admin', 'versions' => ['1']],
         'admin.session.logout' => ['service' => 'admin-gateway', 'actor' => 'admin', 'versions' => ['1']],
+        'admin.user.list' => ['service' => 'admin-gateway', 'actor' => 'admin', 'versions' => ['1']],
+        'admin.user.get' => ['service' => 'admin-gateway', 'actor' => 'admin', 'versions' => ['1']],
     ];
 
     public static function request(Request $request): array
@@ -61,6 +63,10 @@ final class OperationRegistry
         }
         if (in_array($operation, ['admin.session.list', 'admin.session.revoke', 'admin.session.logout'], true)
             && (config('internal_api_slice.admin_sessions_enabled') !== true || config('core_shadow.isolated_copy') !== true)) {
+            throw new SliceFailure('OPERATION_DISABLED', 404);
+        }
+        if (in_array($operation, ['admin.user.list', 'admin.user.get'], true)
+            && (config('internal_api_slice.admin_users_enabled') !== true || config('core_shadow.isolated_copy') !== true)) {
             throw new SliceFailure('OPERATION_DISABLED', 404);
         }
         if ($definition['actor'] === 'admin-login' && (config('internal_api_slice.admin_login_enabled') !== true
@@ -155,6 +161,24 @@ final class OperationRegistry
                 || !is_string($input->idempotency_key) || !preg_match('/\A[A-Za-z0-9._~-]{1,128}\z/D', $input->idempotency_key)
                 || (property_exists($input, 'coupon_code') && (!is_string($input->coupon_code)
                     || mb_strlen($input->coupon_code) < 1 || mb_strlen($input->coupon_code) > 64))) {
+                throw new SliceFailure('INVALID_REQUEST', 400);
+            }
+        } elseif ($operation === 'admin.user.list') {
+            $keys = ['admin_path', 'page', 'per_page'];
+            foreach (['banned', 'plan_id'] as $key) if (property_exists($input, $key)) $keys[] = $key;
+            StrictJson::exact($input, $keys);
+            if (!is_string($input->admin_path) || !preg_match('/\A[A-Za-z0-9_-]{1,128}\z/D', $input->admin_path)
+                || !is_int($input->page) || $input->page < 1 || $input->page > 9999
+                || !is_int($input->per_page) || $input->per_page < 1 || $input->per_page > 100
+                || (property_exists($input, 'banned') && !is_bool($input->banned))
+                || (property_exists($input, 'plan_id') && (!is_string($input->plan_id)
+                    || !preg_match('/\A[1-9][0-9]{0,9}\z/D', $input->plan_id) || (int) $input->plan_id > 2147483647))) {
+                throw new SliceFailure('INVALID_REQUEST', 400);
+            }
+        } elseif ($operation === 'admin.user.get') {
+            StrictJson::exact($input, ['admin_path', 'id']);
+            if (!is_string($input->admin_path) || !preg_match('/\A[A-Za-z0-9_-]{1,128}\z/D', $input->admin_path)
+                || !is_string($input->id) || !preg_match('/\A[1-9][0-9]{0,9}\z/D', $input->id) || (int) $input->id > 2147483647) {
                 throw new SliceFailure('INVALID_REQUEST', 400);
             }
         } elseif ($operation === 'admin.session.revoke') {

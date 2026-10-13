@@ -28,6 +28,11 @@ const planItem = { id: '1', name: 'Hidden plan', content: null, group_id: '2', g
   tags: ['native'], show: false, sell: false, renew: false, sort: -10, users_count: 3, active_users_count: 2 }
 const sessionItem = { id: '9007199254740993', name: 'Current session', abilities: ['*'],
   last_used_at: null, created_at: '2026-10-13T00:00:00+00:00', updated_at: null, expires_at: null }
+const userItem = { id: '2', email: 'user@example.test', plan_id: '3', group_id: '4', plan: { id: '3', name: 'Plan' },
+  group: { id: '4', name: 'Group' }, balance_minor: '2147483647', commission_balance_minor: '1234',
+  traffic: { upload_bytes: '9007199254740993', download_bytes: '23', limit_bytes: '500000000000000001' },
+  expired_at: null, created_at: 1791849600, next_reset_at: null, last_reset_at: null, last_login_at: null,
+  reset_count: 0, speed_limit_mbps: null, device_limit: null, banned: false, is_admin: false, is_staff: false, remarks: null }
 let req: EventEmitter & { destroy: ReturnType<typeof vi.fn>; end: ReturnType<typeof vi.fn> }
 let reply: EventEmitter & { destroy: ReturnType<typeof vi.fn>; statusCode: number; headers: Record<string,string>; complete: boolean }
 let callback: (response: unknown) => void
@@ -41,6 +46,35 @@ afterEach(() => vi.useRealTimers())
 function respond(data: unknown = identity) { callback(reply); reply.emit('data', Buffer.from(JSON.stringify(data))); reply.emit('end') }
 
 describe('isolated Admin Internal consumer', () => {
+  it('reads Admin current users without converting precise money or byte strings', async () => {
+    const pending = internalAdminRequest(config, 'users', { auth, input: { ...input, page: 1, per_page: 1, plan_id: '3', banned: false } })
+    expect(mock.request.mock.calls[0]![0].path).toBe('/txapi/internal/v1/operations/admin.user.list')
+    const payload = envelope({ items: [userItem], pagination: { page: 1, per_page: 1, total: 1, last_page: 1 } }, 'internal-admin-users/1')
+    respond(payload);await expect(pending).resolves.toEqual(payload)
+  })
+  it('binds exact current User detail to the requested ID', async () => {
+    const pending = internalAdminRequest(config, 'user', { auth, input: { ...input, id: userItem.id } })
+    expect(mock.request.mock.calls[0]![0].path).toBe('/txapi/internal/v1/operations/admin.user.get')
+    const payload = envelope({ ...userItem, invite_user: null }, 'internal-admin-users/1')
+    respond(payload);await expect(pending).resolves.toEqual(payload)
+  })
+  it.each([{ plan_id: 1 }, { plan_id: '01' }, { plan_id: '2147483648' }, { banned: 'false' }, { email: 'private' }, { sort: 'balance' }])
+    ('rejects Admin User input %j before transport', async patch => {
+      await expect(internalAdminRequest(config, 'users', { auth, input: { ...input, page: 1, per_page: 1, ...patch } }))
+        .rejects.toMatchObject({ status: 400 });expect(mock.request).not.toHaveBeenCalled()
+    })
+  it('refuses User response mismatch filters association and secret or rounded fields', async () => {
+    const pagination = { page: 1, per_page: 1, total: 1, last_page: 1 }
+    for (const patch of [{ balance_minor: 2147483647 }, { traffic: { ...userItem.traffic, upload_bytes: 9007199254740992 } },
+      { banned: true }, { plan_id: '5' }, { group: { id: '5', name: 'Wrong' } }, { token: 'private' }]) {
+      const pending = internalAdminRequest(config, 'users', { auth, input: { ...input, page: 1, per_page: 1, banned: false, plan_id: '3' } })
+      const assertion = expect(pending).rejects.toMatchObject({ status: 502 })
+      respond(envelope({ items: [{ ...userItem, ...patch }], pagination }, 'internal-admin-users/1'));await assertion
+    }
+    const pending = internalAdminRequest(config, 'user', { auth, input: { ...input, id: '1' } })
+    const assertion = expect(pending).rejects.toMatchObject({ status: 502 })
+    respond(envelope({ ...userItem, invite_user: null }, 'internal-admin-users/1'));await assertion
+  })
   it('reads only a closed ordered Admin session list with exact decimal IDs', async () => {
     const pending = internalAdminRequest(config, 'sessions', { auth, input })
     expect(mock.request.mock.calls[0]![0].path).toBe('/txapi/internal/v1/operations/admin.session.list')

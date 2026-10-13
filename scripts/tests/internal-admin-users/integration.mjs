@@ -1,0 +1,179 @@
+import assert from 'node:assert/strict';
+import {execFileSync,spawn} from 'node:child_process';
+import {closeSync,openSync,readFileSync,writeFileSync} from 'node:fs';
+import {setTimeout as sleep} from 'node:timers/promises';
+import {loadInternalAdminConfig} from '../../../gateway/apps/gateway/dist/config/internal-admin.js';
+import {internalAdminRequest} from '../../../gateway/apps/gateway/dist/services/internal-admin-client.js';
+
+const api=process.env.INTERNAL_CORE_API,dir=process.env.INTERNAL_FIXTURE_DIR;
+assert.ok(api&&dir);
+const actors=JSON.parse(readFileSync(`${dir}/actors.json`,'utf8'));
+const processes=[],checks=[];
+let credential,path;
+function start(command,args,label){
+  const log=openSync(`${dir}/${label}.log`,'a',0o600);
+  const child=spawn(command,args,{cwd:api,env:{...process.env},detached:true,stdio:['ignore',log,log]});
+  closeSync(log);processes.push(child);
+}
+function mutate(...args){return execFileSync('php',[new URL('./fixture.php',import.meta.url).pathname,...args],{cwd:api,env:process.env,encoding:'utf8'});}
+function configuration(role){
+  const file=`${dir}/${role}-config.json`;
+  writeFileSync(file,JSON.stringify({origin:'https://127.0.0.1:19443',servername:'internal-core.local',
+    ca_path:`${dir}/ca.pem`,crl_path:`${dir}/ca.crl`,cert_path:`${dir}/${role}.pem`,key_path:`${dir}/${role}.key`}),{mode:0o600});
+  return loadInternalAdminConfig({APP_ENV:'testing',GATEWAY_INTERNAL_ADMIN_ENABLED:'true',GATEWAY_INTERNAL_ADMIN_CONFIG_FILE:file});
+}
+async function check(name,run){await run();checks.push(name);process.stdout.write(`ok ${checks.length}: ${name}\n`);}
+const loginInput=(role='admin')=>({email:`login-${role}@example.test`,password:'fixture-admin-password'});
+async function rejected(promise,status){
+  let caught;
+  try{await promise;}catch(error){caught=error;}
+  assert.ok(caught,'Operation must reject');assert.equal(caught.status,status);
+  for(const secret of [credential,path,'fixture-admin-password','private-subscription','PRIVATE KEY','synthetic-private']){
+    if(secret)assert.ok(!String(caught).includes(secret),'Error must stay private');
+  }
+}
+try{
+  const config=configuration('admin');
+  start('php',['-S','127.0.0.1:19081','-t','public','public/index.php'],'core-http');
+  start('node',[`${api}/internal-readonly-fixtures/tls-boundary.mjs`,`${dir}/boundary.json`],'tls-boundary');
+  for(let i=0;i<60;i++){
+    try{if((await fetch('http://127.0.0.1:19081/api/health')).ok)break;}catch{}
+    if(i===59)throw new Error('Loopback Core fixture failed readiness');await sleep(100);
+  }
+  await check('dedicated Admin certificate and config; User and production identity refused',async()=>{
+    assert.equal(config.certificate.subjectAltName,'DNS:admin-gateway.internal');
+    assert.throws(()=>configuration('user'),/Invalid local\/testing Internal Admin configuration/);
+    assert.throws(()=>loadInternalAdminConfig({APP_ENV:'production',GATEWAY_INTERNAL_ADMIN_ENABLED:'true',
+      GATEWAY_INTERNAL_ADMIN_CONFIG_FILE:`${dir}/admin-config.json`}),/Invalid local\/testing/);
+  });
+  await check('real Gateway client Admin native login private credential delivery',async()=>{
+    const result=await internalAdminRequest(config,'login',{input:loginInput()});
+    assert.equal(result.data.is_admin,true);assert.match(result.data.auth_data,/^Bearer /);
+    credential=result.data.auth_data;path=result.data.secure_path;
+  });
+  await check('issued credential reaches current Core identity',async()=>{
+    const result=await internalAdminRequest(config,'identity',{auth:credential,input:{admin_path:path}});
+    assert.deepEqual(result.data,{id:actors.ids.admin,email:'login-admin@example.test',is_admin:true});
+  });
+  await check('Gateway preserves greater-than-53-bit dashboard bytes without Number conversion',async()=>{
+    const result=await internalAdminRequest(config,'dashboard',{auth:credential,input:{admin_path:path}});
+    assert.deepEqual(result.data.todayTraffic,{upload:'9007199254740993',download:'13',total:'9007199254741006'});
+    assert.equal(result.data.totalUsers,3);assert.equal(result.data.todayIncome,'4294967294');
+  });
+  await check('Core native filtered list and orphan relations reach exact closed Gateway DTO',async()=>{
+    const input={admin_path:path,page:1,per_page:1,status:4};
+    const result=await internalAdminRequest(config,'orders',{auth:credential,input});
+    assert.deepEqual(result.data.pagination,{page:1,per_page:1,total:2,last_page:2});
+    assert.equal(result.data.items[0].trade_no,'admin-list-orphan');
+    assert.equal(result.data.items[0].plan,null);assert.equal(result.data.items[0].user,null);
+    assert.equal(result.data.items[0].amount_minor,'2147483647');assert.equal(result.data.items[0].period,'monthly');
+    for(const secret of ['callback_no','private-callback','surplus_order_ids','private-surplus'])assert.ok(!JSON.stringify(result).includes(secret));
+    const second=await internalAdminRequest(config,'orders',{auth:credential,input:{...input,page:2}});
+    assert.equal(second.data.items[0].trade_no,'admin-list-old');assert.equal(second.data.items[0].user.id,actors.ids.user);
+  });
+  await check('Admin order query input and denied current role cannot bypass Core',async()=>{
+    await rejected(internalAdminRequest(config,'orders',{auth:credential,input:{admin_path:path,page:1,per_page:101}}),400);
+    mutate('mutate','demote');
+    await rejected(internalAdminRequest(config,'orders',{auth:credential,input:{admin_path:path,page:1,per_page:20}}),403);
+    mutate('mutate','promote');
+  });
+  await check('native hidden plans, exact display price strings, GiB units and current counts reach Gateway',async()=>{
+    const result=await internalAdminRequest(config,'plans',{auth:credential,input:{admin_path:path,page:1,per_page:1}});
+    assert.deepEqual(result.data.pagination,{page:1,per_page:1,total:3,last_page:3});
+    const item=result.data.items[0];assert.equal(item.name,'Hidden native plan');assert.equal(item.traffic_limit_gib,'2');
+    assert.equal(item.show,false);assert.equal(item.sell,false);assert.equal(item.renew,false);
+    assert.equal(item.users_count,3);assert.equal(item.active_users_count,2);assert.equal(item.group.name,'Plan fixture group');
+    assert.deepEqual(item.native_prices_major,{monthly:'9007199254740993.12',yearly:'12.5',quarterly:'0',onetime:null});
+    const next=await internalAdminRequest(config,'plans',{auth:credential,input:{admin_path:path,page:2,per_page:1}});
+    assert.equal(next.data.items[0].group,null);assert.deepEqual(next.data.items[0].native_prices_major,{});
+  });
+  await check('Admin plan list rejects extra query fields and rechecks current Core role',async()=>{
+    await rejected(internalAdminRequest(config,'plans',{auth:credential,input:{admin_path:path,page:1,per_page:1,status:4}}),400);
+    mutate('mutate','demote');
+    await rejected(internalAdminRequest(config,'plans',{auth:credential,input:{admin_path:path,page:1,per_page:1}}),403);
+    mutate('mutate','promote');
+  });
+  await check('native current User directory and detail keep precise raw money and traffic without secrets',async()=>{
+    const before=mutate('business-hash');
+    const listed=await internalAdminRequest(config,'users',{auth:credential,input:{admin_path:path,page:1,per_page:1,banned:false}});
+    assert.deepEqual(listed.data.pagination,{page:1,per_page:1,total:3,last_page:3});assert.equal(listed.data.items[0].id,actors.ids.staff);
+    const item=await internalAdminRequest(config,'user',{auth:credential,input:{admin_path:path,id:actors.ids.user}});
+    assert.equal(item.data.balance_minor,'2147483647');assert.equal(item.data.commission_balance_minor,'1234');
+    assert.deepEqual(item.data.traffic,{upload_bytes:'9007199254740993',download_bytes:'23',limit_bytes:'500000000000000001'});
+    assert.equal(item.data.group.name,'Plan fixture group');assert.equal(item.data.invite_user,null);
+    for(const secret of ['private-subscription','password','uuid','subscribe_url'])assert.ok(!JSON.stringify(item).includes(secret));
+    assert.equal(mutate('business-hash'),before);
+    await rejected(internalAdminRequest(config,'user',{auth:credential,input:{admin_path:path,id:'2147483647'}}),404);
+  });
+  await check('Admin User query rejects caller identity or dynamic sorting and rechecks demotion',async()=>{
+    await rejected(internalAdminRequest(config,'users',{auth:credential,input:{admin_path:path,page:1,per_page:1,sort:'balance'}}),400);
+    mutate('mutate','demote');
+    await rejected(internalAdminRequest(config,'user',{auth:credential,input:{admin_path:path,id:actors.ids.user}}),403);
+    mutate('mutate','promote');
+  });
+  await check('ordinary User and staff cannot obtain management credentials',async()=>{
+    const before=JSON.parse(mutate('state')).token_count;
+    for(const role of ['user','staff'])await rejected(internalAdminRequest(config,'login',{input:loginInput(role)}),403);
+    assert.equal(JSON.parse(mutate('state')).token_count,before);
+  });
+  await check('guest auth caller role and extra parameters reject before Core nonce admission',async()=>{
+    const before=JSON.parse(mutate('state')).audit_count;
+    await rejected(internalAdminRequest(config,'login',{auth:credential,input:loginInput()}),400);
+    await rejected(internalAdminRequest(config,'identity',{auth:credential,input:{admin_path:path,actor_id:actors.ids.admin}}),400);
+    await rejected(internalAdminRequest(config,'login',{input:{...loginInput(),email:'admin@example.com'}}),400);
+    assert.equal(JSON.parse(mutate('state')).audit_count,before);
+  });
+  await check('current ban prevents identity and cached dashboard then current demotion rejects',async()=>{
+    mutate('mutate','ban');
+    for(const operation of ['identity','dashboard'])await rejected(internalAdminRequest(config,operation,{auth:credential,input:{admin_path:path}}),403);
+    mutate('mutate','unban');mutate('mutate','demote');
+    await rejected(internalAdminRequest(config,'dashboard',{auth:credential,input:{admin_path:path}}),403);
+    mutate('mutate','promote');
+  });
+  await check('unknown current management path is absent',()=>rejected(internalAdminRequest(config,'dashboard',
+    {auth:credential,input:{admin_path:'wrong-fixture-path'}}),404));
+  await check('real audit failure hides committed login; no client retry or compensation',async()=>{
+    const before=JSON.parse(mutate('state')).token_count;mutate('audit-fail');
+    await rejected(internalAdminRequest(config,'login',{input:loginInput()}),503);
+    assert.equal(JSON.parse(mutate('state')).token_count,before+1);mutate('audit-restore');
+  });
+  await check('Admin native owner session list and foreign-session revoke protection',async()=>{
+    const foreign=JSON.parse(mutate('seed-session','staff'));
+    const extra=JSON.parse(mutate('seed-session','admin'));
+    const result=await internalAdminRequest(config,'sessions',{auth:credential,input:{admin_path:path}});
+    assert.equal(result.data.items.length,3);assert.equal(result.data.items[0].id,extra.id);
+    assert.ok(!JSON.stringify(result).includes(credential));assert.ok(!result.data.items.some(item=>item.id===foreign.id));
+    await rejected(internalAdminRequest(config,'revokeSession',{auth:credential,input:{admin_path:path,session_id:foreign.id}}),404);
+    const revoked=await internalAdminRequest(config,'revokeSession',{auth:credential,input:{admin_path:path,session_id:extra.id}});
+    assert.deepEqual(revoked.data,{ok:true});
+    await rejected(internalAdminRequest(config,'revokeSession',{auth:credential,input:{admin_path:path,session_id:extra.id}}),404);
+  });
+  await check('Admin current path and role prevent session deletion',async()=>{
+    const before=JSON.parse(mutate('state')).token_count;
+    await rejected(internalAdminRequest(config,'logout',{auth:credential,input:{admin_path:'wrong-fixture-path'}}),404);
+    mutate('mutate','demote');
+    await rejected(internalAdminRequest(config,'logout',{auth:credential,input:{admin_path:path}}),403);
+    mutate('mutate','promote');assert.equal(JSON.parse(mutate('state')).token_count,before);
+  });
+  await check('real audit failure hides committed Admin logout and next call refreshes credential',async()=>{
+    const before=JSON.parse(mutate('state')).token_count;mutate('audit-fail');
+    await rejected(internalAdminRequest(config,'logout',{auth:credential,input:{admin_path:path}}),503);
+    assert.equal(JSON.parse(mutate('state')).token_count,before-1);mutate('audit-restore');
+    await rejected(internalAdminRequest(config,'sessions',{auth:credential,input:{admin_path:path}}),401);
+    const login=await internalAdminRequest(config,'login',{input:loginInput()});credential=login.data.auth_data;
+    const done=await internalAdminRequest(config,'logout',{auth:credential,input:{admin_path:path}});assert.deepEqual(done.data,{ok:true});
+    await rejected(internalAdminRequest(config,'sessions',{auth:credential,input:{admin_path:path}}),401);
+    const replacement=await internalAdminRequest(config,'login',{input:loginInput()});credential=replacement.data.auth_data;
+  });
+  await check('current native credential revocation invalidates subsequent reads',async()=>{
+    mutate('mutate','revoke');
+    for(const operation of ['identity','dashboard'])await rejected(internalAdminRequest(config,operation,{auth:credential,input:{admin_path:path}}),401);
+    mutate('revoke-all');assert.equal(JSON.parse(mutate('state')).token_count,0);assert.equal(mutate('audit-check'),'safe');
+  });
+  writeFileSync(`${dir}/result.json`,JSON.stringify({checks,passed:checks.length,...JSON.parse(mutate('state')),
+    synthetic_only:true,no_public_admin_route:true,no_native_fallback:true,no_business_state_in_gateway:true},null,2)+'\n');
+  process.stdout.write(`Passed ${checks.length} real Core/Gateway Admin consumer checks; sanitized evidence retained.\n`);
+}finally{
+  for(const process of processes){try{globalThis.process.kill(-process.pid,'SIGTERM');}catch{}}
+  await sleep(100);
+}

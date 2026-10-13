@@ -44,6 +44,9 @@ export const adminDashboardSuccess = success.extend({
   meta: z.strictObject({ current_only: z.literal(true), slice: z.literal('internal-admin-dashboard/1') }),
 })
 const id = z.string().regex(/^[1-9][0-9]{0,17}$(?![\s\S])/)
+const nativeId = id.refine(value => BigInt(value) <= 2147483647n)
+export const adminUserGetInput = adminReadInput.extend({ id: nativeId })
+export const adminUserListInput = adminPlanListInput.extend({ banned: z.boolean().optional(), plan_id: nativeId.optional() })
 export const adminSessionRevokeInput = adminReadInput.extend({ session_id: id })
 const date = z.number().int().nonnegative().safe()
 export const adminOrderListSuccess = success.extend({
@@ -81,8 +84,24 @@ export const adminSessionListSuccess = adminSessionMutationSuccess.extend({ data
   id, name: z.string().max(255), abilities: z.array(z.string().max(255)).max(100),
   last_used_at: sessionDate, created_at: sessionDate, updated_at: sessionDate, expires_at: sessionDate,
 })).max(100).refine(items => items.every((item, index) => index === 0 || BigInt(items[index-1]!.id) > BigInt(item.id))) }) })
+const userItem = z.strictObject({
+  id: nativeId, email: z.email().max(254), plan_id: nativeId.nullable(), group_id: nativeId.nullable(),
+  plan: z.strictObject({ id: nativeId, name: z.string() }).nullable(), group: z.strictObject({ id: nativeId, name: z.string() }).nullable(),
+  balance_minor: decimal, commission_balance_minor: decimal,
+  traffic: z.strictObject({ upload_bytes: decimal, download_bytes: decimal, limit_bytes: decimal }),
+  expired_at: date.nullable(), created_at: date, next_reset_at: date.nullable(), last_reset_at: date.nullable(), last_login_at: date.nullable(),
+  reset_count: count, speed_limit_mbps: z.number().finite().nullable(), device_limit: count.nullable(),
+  banned: z.boolean(), is_admin: z.boolean(), is_staff: z.boolean(), remarks: z.string().nullable(),
+})
+export const adminUserGetSuccess = success.extend({ data: userItem.extend({ invite_user: z.strictObject({ id: nativeId, email: z.email() }).nullable() }),
+  meta: z.strictObject({ current_only: z.literal(true), slice: z.literal('internal-admin-users/1') }) })
+export const adminUserListSuccess = success.extend({ data: z.strictObject({ items: z.array(userItem).max(100),
+  pagination: z.strictObject({ page: z.number().int().min(1).max(9999), per_page: z.number().int().min(1).max(100),
+    total: count, last_page: z.number().int().min(1).safe() }) }),
+  meta: z.strictObject({ current_only: z.literal(true), slice: z.literal('internal-admin-users/1') }) })
 export const adminResponses = { login: adminLoginSuccess, identity: adminIdentitySuccess, dashboard: adminDashboardSuccess,
   orders: adminOrderListSuccess, plans: adminPlanListSuccess, sessions: adminSessionListSuccess,
-  revokeSession: adminSessionMutationSuccess, logout: adminSessionMutationSuccess }
+  revokeSession: adminSessionMutationSuccess, logout: adminSessionMutationSuccess,
+  users: adminUserListSuccess, user: adminUserGetSuccess }
 export type AdminOperation = keyof typeof adminResponses
 export type AdminResponses = { [K in AdminOperation]: z.infer<(typeof adminResponses)[K]> }

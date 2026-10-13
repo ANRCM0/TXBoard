@@ -1,6 +1,6 @@
 # Core First v2 实施台账
 
-> 状态：B0、B1.1–B1.21 影子证据、Terms、身份旁观、固定 writer 捕获、套餐批量同步、批量封禁与余额端点投影、B2.1–B2.4 单机升级、B3.1/B3.2 隔离用量、B3.3/B3.4 本地观察与持久事件桶、B4.1–B4.6 合成 Provider、插件停用接入、租约候选、离线签名快照与Go公钥诊断、B5.1–B5.21 本地 mTLS 读取、隔离建单、登录、内存邮件验证码、隔离注册、密码恢复、当前会话与管理读取、B6.1–B6.4 实验字节、离线加密、共享 owner 与独立响应随机值候选及 B7.1 Agent/MCP 退役已实现；两仓迁移与三镜像发布已完成，继续推进业务迁移切片。各整阶段仍按下表门禁验收。
+> 状态：B0、B1.1–B1.21 影子证据、Terms、身份旁观、固定 writer 捕获、套餐批量同步、批量封禁与余额端点投影、B2.1–B2.4 单机升级、B3.1/B3.2 隔离用量、B3.3/B3.4 本地观察与持久事件桶、B4.1–B4.6 合成 Provider、插件停用接入、租约候选、离线签名快照与Go公钥诊断、B5.1–B5.22 本地 mTLS 读取、隔离建单、登录、内存邮件验证码、隔离注册、密码恢复、当前会话与管理读取、B6.1–B6.4 实验字节、离线加密、共享 owner 与独立响应随机值候选及 B7.1 Agent/MCP 退役已实现；两仓迁移与三镜像发布已完成，继续推进业务迁移切片。各整阶段仍按下表门禁验收。
 
 2026-10-13，按仓库整合任务，将 Gateway/Node 的完整 Git 历史导入本仓 `gateway/`、`node/`，安装器集中到 TXBoard-Deploy。当前目录与三镜像 CI 见 [双仓布局](../../development/repository-layout.md)；旧基线和验证报告保持当时提交与路径。本次仓库整理独立于下列业务迁移门禁。
 
@@ -403,3 +403,11 @@ Deploy `34fd467` 修正host MySQL临时socket服务就绪竞争，[完整部署C
 [当前契约](../../../contracts/v2/core-internal-api/local-admin-sessions-v1.md)增加默认关闭的管理会话list/revoke/logout，使用独立管理服务与实际当前凭据。委托原生Sanctum owner查询和删除，保留100项上限、缺失/跨owner/重复撤销404与当前Token退出；每次核对当前管理路径、角色和封禁。Gateway消费闭集降序字符串ID及非秘密会话元数据，不自动重试或补偿未知提交。
 
 固定 `6213318` 加本批源码：18项新Core专项与原User会话/身份共 **44项、337断言**，全API **1191通过、106项引擎/工具链跳过、12462断言**；Gateway **906项**、SDK **123项**及类型/构建通过。实际Core/Gateway/MariaDB/mTLS **17项**通过，包含owner隔离、当前路径/降权拒绝、真实审计失败隐藏已提交退出、刷新鉴权与成功退出；最终测试Token为0。[报告](internal-admin-sessions-verification.json)记录固定源码、依赖、日志hash与脱敏收据。原生并发进行中请求和模型拒绝delete语义保留，不称为SQL授权fence；独立Oracle MySQL8.4 CI已加入。公开Admin、新管理前端、正式SC-v2与生产门禁仍未启用。
+
+提交 `5f51d34` 的独立Oracle MySQL8.4管理会话、其余管理联调、API/MySQL原回归、Core/Gateway镜像、公钥、既有会话和文档CI均通过，结果已写入上述报告。
+
+### B5.22 隔离管理用户读取
+
+[当前契约](../../../contracts/v2/core-internal-api/local-admin-users-v1.md)增加独立默认关闭的管理User目录/详情，抽取原查询到Core共享reader，保留既有HTTP的筛选、排序、分页和编辑器DTO。新Internal DTO直接读取原持久INT余额与字节，避免经主要币值浮点数逆算；只返回闭集当前字段与关联，不含密码、UUID、Token或订阅链接。Gateway核对请求id、分页/筛选、降序唯一ID及当前关联。
+
+固定 `5f51d34` 加本批源码：14项新Core专项进入全API，**1205通过、106项引擎/工具链跳过、12599断言**；Gateway **915项**、SDK **123项**及类型/构建通过。实际Core/Gateway/MariaDB/mTLS **19项**通过，包含INT余额上界、超过53位的原生字节、业务行hash不变、当前关联/孤儿、缺失404、服务/角色拒绝与会话生命周期。首次测试辅助方法重名及无Plan关联的SQL失败夹具已修正，失败源码/日志保留。Gateway检查源码与最终联调hash一致，[报告](internal-admin-users-verification.json)记录最终源码、依赖和脱敏收据。原金额字段未扩容；公开Admin、新管理前端、SC-v2与生产门禁继续保留，独立Oracle MySQL8.4 CI已加入。
