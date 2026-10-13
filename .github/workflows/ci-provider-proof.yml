@@ -1,0 +1,65 @@
+name: provider-offline-proof
+
+on:
+  push:
+    branches: [main]
+    paths: ['api/**', 'node/internal/providerproof/**', 'node/go.mod', 'node/go.sum', 'contracts/v2/credential-provider/**', '.github/workflows/ci-provider-proof.yml']
+  pull_request:
+    paths: ['api/**', 'node/internal/providerproof/**', 'node/go.mod', 'node/go.sum', 'contracts/v2/credential-provider/**', '.github/workflows/ci-provider-proof.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: provider-offline-proof-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  actual-core-to-go:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      redis:
+        image: redis:7.4-alpine
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-retries 10
+    env:
+      APP_ENV: testing
+      DB_CONNECTION: sqlite
+      DB_DATABASE: ':memory:'
+      CACHE_DRIVER: array
+      SETTING_CACHE_STORE: array
+      SESSION_DRIVER: array
+      QUEUE_CONNECTION: sync
+      REDIS_PREFIX: 'provider-go-proof-ci:'
+      GOTOOLCHAIN: local
+    steps:
+      - uses: actions/checkout@v5
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, pdo_sqlite, sqlite3, redis, bcmath
+          coverage: none
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: node/go.mod
+          cache-dependency-path: node/go.sum
+      - name: Restore locked Core dependencies
+        run: composer install --working-dir=api --no-interaction --prefer-dist
+      - name: Prepare isolated runtime
+        run: |
+          touch api/.env
+          mkdir -p api/storage/framework/{cache/data,sessions,views} api/storage/logs api/bootstrap/cache
+      - name: Pure Go public signature diagnostics and races
+        working-directory: node
+        run: |
+          go test -race -count=1 ./internal/providerproof
+          go vet ./internal/providerproof
+      - name: Actual Core binding and original signed statement verified by Go
+        working-directory: api
+        env:
+          CORE_PROVIDER_GO_PROOF_INTEROP: '1'
+        run: php artisan test --filter=test_go_offline_signature_diagnostic_interoperates_with_actual_core_binding

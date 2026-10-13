@@ -1,5 +1,15 @@
 # Provider initial-binding and offline signature fixture
 
+The additional opt-in `CORE_PROVIDER_GO_PROOF_INTEROP=1` test
+`test_go_offline_signature_diagnostic_interoperates_with_actual_core_binding`
+invokes an actual initial binding, validates its full profile/signature in PHP,
+then passes only its public trust and original signed bytes to the monorepo Go
+diagnostic. It needs Go1.26 and runs `go test -race` with dependency networking
+disabled. Its public fixture lives inside the same disposable root and is removed
+by normal teardown. Normal API runs explicitly skip this cross-toolchain test.
+See the [Go diagnostic contract](../../../../contracts/v2/credential-provider/node-offline-signature-proof-v1.md);
+it does not validate business eligibility or grant Node admission.
+
 Local/testing engineering slice only. Default disabled. A real successful
 synthetic Provider issue and B4.4 candidate precede one atomic pending Subject
 binding plus signed evidence. No Node, Gateway, Internal or HTTP consumer exists;

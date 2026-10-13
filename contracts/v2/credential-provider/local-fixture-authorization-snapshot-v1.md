@@ -1,6 +1,11 @@
 # Local Provider authorization snapshot v1
 
-Status: implementation scope, verification pending. Local/testing, strict default
+The later [Go offline signature diagnostic](node-offline-signature-proof-v1.md)
+can independently inspect original signatures without granting Node admission.
+The no-consumer statements below retain the original B4.5 runtime scope; no
+network, lease or credential consumer is added by that diagnostic.
+
+Status: verified isolated implementation slice. Local/testing, strict default
 off, fixed trusted synthetic Provider only. This commits an initial Core Subject
 binding and an offline-verifiable signed statement. It authorizes no Node or
 production use and does not implement secret delivery, credential parsing,

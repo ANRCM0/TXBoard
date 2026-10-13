@@ -119,6 +119,33 @@ final class FixtureAuthorizationSnapshotTest extends TestCase
         $this->assertTrue($verified['signature_verified']); $this->assertFalse($verified['admission_granted']);
         $this->assertSame('not_evaluated',$verified['live_core_eligibility']); $this->assertStringNotContainsString($secret,$process->getOutput());
     }
+    public function test_go_offline_signature_diagnostic_interoperates_with_actual_core_binding(): void
+    {
+        if (getenv('CORE_PROVIDER_GO_PROOF_INTEROP') !== '1') {
+            $this->markTestSkipped('Opt-in actual Core to Go public-only signature interoperability fixture.');
+        }
+        $r = $this->commit();
+        $this->assertTrue($this->verifier()->verifySignature($r['signed_snapshot'])['signature_verified']);
+        $key = $this->trust['keys'][0];
+        $parts = explode('.', $r['signed_snapshot']);
+        $public = ['kid' => $key['kid'], 'epoch' => $key['epoch'], 'spki_sha256' => $key['spki_sha256'],
+            'public_pem' => file_get_contents($key['public_key_path']), 'not_before' => $key['not_before'],
+            'not_after' => $key['not_after'], 'revoked' => $key['revoked']];
+        $path = $this->root.'/go-public-proof.json';
+        file_put_contents($path, FixtureCodec::json(['version' => 'node-offline-signature-fixture/1',
+            'trusted_keys' => [$public], 'token' => $r['signed_snapshot'], 'expected' => [
+                'snapshot_ref' => $r['payload']['snapshot_ref'], 'signed_statement_sha256' => hash('sha256', $r['signed_snapshot']),
+                'payload_sha256' => hash('sha256', base64_decode(strtr($parts[1], '-_', '+/'), true)),
+                'issued_at' => $r['payload']['issued_at'], 'lease_expires_at' => $r['payload']['lease_expires_at']]]));
+        chmod($path, 0600);
+        $process = new \Symfony\Component\Process\Process(['go', 'test', '-race', '-count=1',
+            './internal/providerproof', '-run', '^TestCoreFixtureInterop$'], base_path('../node'),
+            ['TXBOARD_PROVIDER_PROOF_FIXTURE' => $path, 'GOTOOLCHAIN' => 'local', 'GOPROXY' => 'off', 'GOSUMDB' => 'off']);
+        $process->setTimeout(120); $process->mustRun();
+        $this->assertStringContainsString('ok', $process->getOutput());
+        $this->assertFalse($r['admission_granted']);
+    }
+
     public function test_default_off_production_outer_transaction_and_unknown_schema_are_closed(): void
     {
         foreach(['credential_provider_authorization_fixture.enabled','credential_provider_lease_fixture.enabled','credential_provider_fixture.enabled',
