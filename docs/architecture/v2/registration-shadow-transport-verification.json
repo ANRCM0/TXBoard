@@ -1,0 +1,172 @@
+{
+  "phase": "B1.25",
+  "status": "verified-isolated-current",
+  "base_commit": "9f0c644abda982d9bb85ae6f18492b9e3c53bbd5",
+  "source_sha256": {
+    ".github/workflows/ci-registration-shadow-transport.yml": "a91c24787d4c474666175661f424beb4f329cfea06cd6fd0ab1d6c57f3c6e143",
+    "api/internal-readonly-fixtures/fixture.php": "94a226528841acc1337f3664e547edebcfda7bc4fdef7b1148870e4ce44fc1c6",
+    "gateway/tests/integration/internal-email-router.php": "c58bbef3923f6fed5d0f3d3afb213bb5d14b8d86161a46e60b2ef9a31bc719a4",
+    "gateway/tests/integration/internal-register-core-gateway.mjs": "32ad1917a00a0f54feff4c2a494b0730aae6a1adac317b97bb7383d542b3dc59",
+    "gateway/tests/integration/internal-user-core-fixture.php": "bbcacdb1fbc5a6729a30ecdd2c230b24ece8ac77f530acb9ae2c8704d8595b7c",
+    "gateway/tests/integration/run-internal-register-linux.sh": "31415097782d717bea85e7f151b730c43e98f5d8b82065521237ec443e8afaad"
+  },
+  "dependencies": {
+    "composer_lock_sha256": "f47b212c2fc530a7820e370eab7c6d624d13962e7d26e4f2ddf57a11848257c0",
+    "installed_json_sha256": "8e668e456c9772ae428a038ab003fba5752ab2591980fc8396d9122851145b80",
+    "gateway_lock_sha256": "a60bdbf6de2788282dfa87077316f55df950c7192e6a33960ead97dc953dc940"
+  },
+  "tests": {
+    "full": {
+      "mode": "full",
+      "exit_code": 0,
+      "log_sha256": "a0d051392c9543816e2077e8082daaa441b67635c8d0c6927e489aea271673a4",
+      "snapshot": "/opt/txboard-baseline/registration-transport-r2"
+    },
+    "check": {
+      "mode": "check",
+      "exit_code": 0,
+      "log_sha256": "7ae0652d4afecfcf02b9a9a3697ae7fc921212c86dff54dc4a1b961c04722aa9",
+      "snapshot": "/opt/txboard-baseline/registration-transport-r2"
+    },
+    "tls": {
+      "mode": "tls",
+      "exit_code": 0,
+      "log_sha256": "324ee164a6da99bccaa57ef7b67f269e80ec37093156f4a2d5d31d5e09488034",
+      "snapshot": "/opt/txboard-baseline/registration-transport-r2"
+    }
+  },
+  "coverage": {
+    "full_api_passed": 1255,
+    "full_api_skipped": 109,
+    "full_api_assertions": 13037,
+    "gateway_passed": 915,
+    "sdk_passed": 123,
+    "typecheck": "passed",
+    "build": "passed",
+    "actual_tls_core_mysql_checks": 12
+  },
+  "tls_receipt": {
+    "current_only": true,
+    "phase": "B1.25",
+    "production_acceptance": false,
+    "passed": 12,
+    "checks": [
+      "SDK HPKE to real TLS1.3 Core creates the native invited trial account and session",
+      "real SDK Gateway Core registration commits a closed self-bound initial anchor",
+      "real Redis nonce replay rejects the captured ciphertext before another registration",
+      "native duplicate account rejects a deliberately new request without another token",
+      "real HPKE operation binding and unknown role fail before Core execution",
+      "real mTLS rejects admin service and explicit visitor actor, strict Core JSON rejects duplicate keys",
+      "independent flags keep email-code and plaintext registration absent",
+      "audit failure hides a committed synthetic account and token, SDK exposes an unknown outcome",
+      "real audit failure retains committed account session and initial evidence without automatic retry",
+      "real evidence INSERT rejection rolls back the registration through SDK Gateway and mTLS",
+      "native registration stop still rejects before another account is created",
+      "offline TLS boundary produces one unknown outcome without native fallback"
+    ],
+    "core_base": "9f0c644abda982d9bb85ae6f18492b9e3c53bbd5",
+    "observed_tls_protocols": [
+      "TLSv1.3"
+    ],
+    "redis_database": 22,
+    "native_fallback_calls": 0,
+    "final_state": {
+      "owner_exists": true,
+      "unknown_exists": true,
+      "owner_sessions": 1,
+      "unknown_sessions": 1,
+      "password_matches": true,
+      "invite_matches": true,
+      "invite_used": true,
+      "trial_matches": true,
+      "verification_code_present": true,
+      "audit_rows": 5,
+      "audit_actors_guest": true,
+      "business": {
+        "users": 5,
+        "orders": 1,
+        "sessions": 6
+      }
+    },
+    "creation_evidence": {
+      "row_count": 2,
+      "owner": {
+        "kind": "user.register",
+        "version": "registration-creation-shadow/v1",
+        "self_bound": true,
+        "closed_snapshot": true,
+        "secret_excluded": true,
+        "evidence_valid": true,
+        "source_matches_initial": false,
+        "migration_gate_open": false
+      },
+      "unknown": {
+        "kind": "user.register",
+        "version": "registration-creation-shadow/v1",
+        "self_bound": true,
+        "closed_snapshot": true,
+        "secret_excluded": true,
+        "evidence_valid": true,
+        "source_matches_initial": false,
+        "migration_gate_open": false
+      },
+      "failed_exists": false
+    },
+    "synthetic_only": true,
+    "formal_sc_v2": false,
+    "cleanup": "Fixture processes stopped and credentials removed."
+  },
+  "database": {
+    "engine": "MariaDB",
+    "version": "11.4.12",
+    "dedicated_database": "txboard_registration_transport_test",
+    "synthetic_only": true
+  },
+  "previous_results": {
+    "check": {
+      "mode": "check",
+      "exit_code": 0,
+      "log_sha256": "12915c8e93176ae27a534e5090f9c1c4ca704f03e44fa8965f5c3560db89c691",
+      "snapshot": "/opt/txboard-baseline/registration-transport-r1"
+    },
+    "full": {
+      "mode": "full",
+      "exit_code": 0,
+      "log_sha256": "1c9267c18120a1106cf0785f76ea88f65af75664028e38ae0ff692a92882e9a0",
+      "snapshot": "/opt/txboard-baseline/registration-transport-r1"
+    },
+    "tls": {
+      "mode": "tls",
+      "exit_code": 1,
+      "log_sha256": "19da587a9201c88c7a508c688d12f957173719d29f8209b96154c85a58bab766",
+      "snapshot": "/opt/txboard-baseline/registration-transport-r1"
+    }
+  },
+  "failed_database_receipt": {
+    "synthetic_only": true,
+    "database": "txboard_registration_transport_test",
+    "dump_sha256": "2f80a95890bb96c2166da252296327f6aee3ebc80b94b59d8f2c9d79d18fca9c",
+    "retained_path": "/opt/txboard-baseline/registration-transport-r1/failed-fixture.sql"
+  },
+  "previous_failure": "Initial new database was refused by shared test HTTP router retaining old exact database name. Added fixed profile-specific database guard; source/logs and synthetic dump retained before fixture reset. First round executed no registration checks.",
+  "review": {
+    "native_schema_issues": 0,
+    "actionlint": "passed",
+    "runtime_default_flags_unchanged": true,
+    "original_integration_profile_retained": true,
+    "fixture_credentials_removed": true,
+    "no_native_fallback": true,
+    "formal_sc_v2": false,
+    "migration_gate_open": false,
+    "no_frontend_implementation": true
+  },
+  "remote_ci": {
+    "status": "pending-after-push"
+  },
+  "limitations": [
+    "Current legacy Gateway HPKE and local TLS fixture do not certify formal SC-v2 or production PKI",
+    "Initial evidence source changes from after-commit native schedule remain explicit and are not overwritten",
+    "Synthetic successful/unknown-result accounts and sessions remain in exclusive disposable database as evidence; private credentials removed",
+    "Actual Provider/Node authorization, all writer coverage and authoritative migration gates remain unverified"
+  ]
+}

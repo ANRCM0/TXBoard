@@ -3,8 +3,14 @@ set -euo pipefail
 script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 export INTERNAL_CORE_API=$(cd -- "${1:?Pass fixed isolated Core api}" && pwd)
 gateway_root=$(cd -- "$script_dir/../.." && pwd)
-if [ "${DB_DATABASE:-}" != txboard_internal_test ]; then
-  echo 'Exclusive disposable txboard_internal_test required.' >&2
+expected_database=txboard_internal_test
+if [[ "${INTERNAL_REGISTRATION_SHADOW_VERIFY:-false}" == true ]]; then
+  expected_database=txboard_registration_transport_test
+  export LEGACY_REGISTRATION_CREATION_SHADOW_ENABLED=true LEGACY_CAPTURE_SHADOW_ENABLED=true
+  export LEGACY_CAPTURE_SHADOW_RUN=registration-transport-fixture LEGACY_CAPTURE_SHADOW_TIMEZONE=UTC LEGACY_CAPTURE_SHADOW_CURRENCY=USD
+fi
+if [ "${DB_DATABASE:-}" != "$expected_database" ]; then
+  echo 'Expected exclusive disposable registration fixture database.' >&2
   exit 2
 fi
 : "${DB_HOST:?}" "${DB_USERNAME:?}" "${DB_PASSWORD:?}"

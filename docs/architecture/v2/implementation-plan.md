@@ -1,6 +1,6 @@
 # Core First v2 实施台账
 
-> 状态：B0、B1.1–B1.24 影子证据、Terms、身份旁观、固定 writer 捕获、套餐批量同步、批量封禁、管理员创建/删除、注册初始记录与余额端点投影、B2.1–B2.4 单机升级、B3.1/B3.2 隔离用量、B3.3/B3.4 本地观察与持久事件桶、B4.1–B4.6 合成 Provider、插件停用接入、租约候选、离线签名快照与Go公钥诊断、B5.1–B5.22 本地 mTLS 读取、隔离建单、登录、内存邮件验证码、隔离注册、密码恢复、当前会话与管理读取、B6.1–B6.4 实验字节、离线加密、共享 owner 与独立响应随机值候选及 B7.1 Agent/MCP 退役已实现；两仓迁移与三镜像发布已完成，继续推进业务迁移切片。各整阶段仍按下表门禁验收。
+> 状态：B0、B1.1–B1.25 影子证据、Terms、身份旁观、固定 writer 捕获、套餐批量同步、批量封禁、管理员创建/删除、注册初始记录与余额端点投影、B2.1–B2.4 单机升级、B3.1/B3.2 隔离用量、B3.3/B3.4 本地观察与持久事件桶、B4.1–B4.6 合成 Provider、插件停用接入、租约候选、离线签名快照与Go公钥诊断、B5.1–B5.22 本地 mTLS 读取、隔离建单、登录、内存邮件验证码、隔离注册、密码恢复、当前会话与管理读取、B6.1–B6.4 实验字节、离线加密、共享 owner 与独立响应随机值候选及 B7.1 Agent/MCP 退役已实现；两仓迁移与三镜像发布已完成，继续推进业务迁移切片。各整阶段仍按下表门禁验收。
 
 2026-10-13，按仓库整合任务，将 Gateway/Node 的完整 Git 历史导入本仓 `gateway/`、`node/`，安装器集中到 TXBoard-Deploy。当前目录与三镜像 CI 见 [双仓布局](../../development/repository-layout.md)；旧基线和验证报告保持当时提交与路径。本次仓库整理独立于下列业务迁移门禁。
 
@@ -435,3 +435,11 @@ Deploy `34fd467` 修正host MySQL临时socket服务就绪竞争，[完整部署C
 [当前契约](../../../contracts/v2/legacy-registration-creation-shadow-v1.md)在独立默认关闭门禁下，接入原生RegisterService实际保存新User的路径。只将User INSERT与初始证据放入同一事务，验证成功后沿原顺序执行Observer、注册后钩子及会话发行；关闭时仍直接调用原save，不添加事务。共享初始证据表新增固定user.register策略，actor引用绑定实际新User ID；Admin创建版本、hash与ticket形状保留，两个开关/校验器互相拒绝错误策略。邀请码消费仍先于保存事务，失败时不补造回滚保证。
 
 固定 `1edf030` 加本批源码：注册新SQLite专项 **14通过、1项引擎条件跳过**，与原Admin创建/删除及原认证兼容回归共 **54通过、3项跳过、477断言**；MariaDB **15全部通过、124断言**，包含实际注册INSERT提交前独立会话不可见、提交后User/证据共同可见。全API **1255通过、109项引擎/工具链条件跳过、13037断言**。覆盖试用套餐实际初始字节、排期后续捕获、取消saving、邀请码原顺序、存储/context失败回滚、提交后钩子隐藏已提交账户、跨策略拒绝及只读CLI；[源码与日志报告](legacy-registration-creation-verification.json)记录固定依赖和验收范围。现有Internal注册的本次capture开关仍按原默认关闭回归，尚未验收其opt-in mTLS组合；Installer初始化、可信直接writer、完整投影和生产切换仍待完成，独立Oracle MySQL8.4 CI已加入。
+
+提交 `9f0c644` 的独立Oracle MySQL8.4注册/管理员创建/删除证据、其余管理联调、API/MySQL原回归、Core镜像、公钥、会话和文档共17个触发CI全部通过，结果已记入上述报告。
+
+### B1.25 注册证据与现有通道组合验收
+
+[注册证据契约](../../../contracts/v2/legacy-registration-creation-shadow-v1.md)新增仅测试使用的明确profile，在独占合成库启用现有两项capture门禁。保留原SDK/Gateway注册与真实Core mTLS测试，补充成功注册初始证据、真实审计INSERT失败隐藏已提交账户/会话/证据、实际证据INSERT触发器故障回滚User及零Native回退。测试seed/mutation/router使用明确库名，临时PKI及凭据清理；没有新增生产API或启用正式SC-v2。
+
+固定 `9f0c644` 加本批测试源码：Gateway **915**、SDK **123**及类型/构建通过；真实Core/MariaDB/Redis/Gateway/TLS1.3 **12项**通过。最终快照全API **1255通过、109项引擎/工具链条件跳过、13037断言**。两条初始证据验证有效并保留原排期变更造成的source_changed，未覆盖改写初始状态；故障账户不存在。首轮HTTP test router仍拒绝新库名导致就绪失败，注册断言未执行；已修正固定profile库名检查并保留失败源码/日志和合成dump校验和。[验收报告](registration-shadow-transport-verification.json)记录最终源码、依赖和脱敏receipt。独立Oracle MySQL8.4组合CI已加入，生产PKI、完整writer投影、Node/Provider收敛及正式SC-v2继续待验收。

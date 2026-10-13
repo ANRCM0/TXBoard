@@ -5,7 +5,8 @@ require getenv('INTERNAL_CORE_API').'/vendor/autoload.php';
 $app = require getenv('INTERNAL_CORE_API').'/bootstrap/app.php';
 $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
 if (!$app->environment('testing') || config('database.default') !== 'mysql'
-    || config('database.connections.mysql.database') !== 'txboard_internal_test') {
+    || config('database.connections.mysql.database') !== (getenv('INTERNAL_REGISTRATION_SHADOW_VERIFY') === 'true'
+        ? 'txboard_registration_transport_test' : 'txboard_internal_test')) {
     throw new RuntimeException('Exclusive disposable txboard_internal_test required');
 }
 $mode = $argv[1] ?? 'seed';
