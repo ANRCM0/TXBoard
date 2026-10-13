@@ -1,6 +1,6 @@
 # Core First v2 实施台账
 
-> 状态：B0、B1.1–B1.26 影子证据、Terms、身份旁观、固定 writer 捕获、套餐批量同步、批量封禁、管理员创建/删除、注册初始记录与余额端点投影、B2.1–B2.4 单机升级、B3.1/B3.2 隔离用量、B3.3/B3.4 本地观察与持久事件桶、B4.1–B4.6 合成 Provider、插件停用接入、租约候选、离线签名快照与Go公钥诊断、B5.1–B5.22 本地 mTLS 读取、隔离建单、登录、内存邮件验证码、隔离注册、密码恢复、当前会话与管理读取、B6.1–B6.4 实验字节、离线加密、共享 owner 与独立响应随机值候选及 B7.1 Agent/MCP 退役已实现；两仓迁移与三镜像发布已完成，继续推进业务迁移切片。各整阶段仍按下表门禁验收。
+> 状态：B0、B1.1–B1.26 影子证据、Terms、身份旁观、固定 writer 捕获、套餐批量同步、批量封禁、管理员创建/删除、注册初始记录与余额端点投影、B2.1–B2.4 单机升级、B3.1/B3.2 隔离用量、B3.3/B3.4 本地观察与持久事件桶、B4.1–B4.7 合成 Provider、插件停用接入、租约候选、离线签名快照与Go公钥诊断、B5.1–B5.22 本地 mTLS 读取、隔离建单、登录、内存邮件验证码、隔离注册、密码恢复、当前会话与管理读取、B6.1–B6.4 实验字节、离线加密、共享 owner 与独立响应随机值候选及 B7.1 Agent/MCP 退役已实现；两仓迁移与三镜像发布已完成，继续推进业务迁移切片。各整阶段仍按下表门禁验收。
 
 2026-10-13，按仓库整合任务，将 Gateway/Node 的完整 Git 历史导入本仓 `gateway/`、`node/`，安装器集中到 TXBoard-Deploy。当前目录与三镜像 CI 见 [双仓布局](../../development/repository-layout.md)；旧基线和验证报告保持当时提交与路径。本次仓库整理独立于下列业务迁移门禁。
 
@@ -451,3 +451,9 @@ Deploy `34fd467` 修正host MySQL临时socket服务就绪竞争，[完整部署C
 固定 `5c55adb` 加本批源码：新SQLite专项 **11通过、1项引擎条件跳过**，与注册、Admin创建和原认证兼容回归共 **47通过、3项跳过、409断言**；MariaDB **12全部通过、109断言**，包含原初始化保存事务提交前独立会话不可见、提交后User/证据共同可见。全API **1266通过、110项引擎/工具链条件跳过、13140断言**。取消saving、短密码、context/storage失败、重复邮箱不重建凭据、跨policy拒绝、有界只读CLI和来源变化/缺失均验收；[源码与日志报告](legacy-bootstrap-creation-verification.json)记录固定依赖。原完整安装settings/plugin/文件系统/控制台输出仍在原边界，宿主安装生命周期归TXBoard-Deploy；可信直接writer、权威投影和生产迁移继续待完成，独立Oracle MySQL8.4 CI已加入。
 
 B1.25 的初次Oracle MySQL8.4 CI使用原夹具Redis22，默认16库容器拒绝；`01a5f0a`将CI改为显式Redis12并保留原profile默认22，本地12项真实链路复验通过。提交 `0ab072e` 的[Oracle MySQL8.4/Redis7.4组合联调](https://github.com/ANRCM0/TXBoard/actions/runs/38423939013)现已通过；初始化管理员专项及API/MySQL、Core镜像、管理读取、会话、公钥和文档共19个触发CI全部通过，两份报告保留原失败和最终收尾证据。
+
+### B4.7 Node离线时间窗口核对
+
+[当前契约](../../../contracts/v2/credential-provider/node-offline-window-proof-v1.md)在已有公钥签名诊断上增加仅进程内的UTC/单调时间窗口。只能从原签名statement构造，处理前后检查时间，保留纳秒余量；UTC回退、单调时间回退、期限越界、同kid信任的epoch/SPKI/有效期变化、移除和撤销均永久终止实例。Check与Close同锁，无定时器、worker或网络请求；只返回独立诊断副本，admission_granted始终false。
+
+固定 `dc47812` 加本批Node源码：Linux Go1.26.3 race **14主测试、56子测试通过**，其中窗口新增7主/26子，vet通过。纯Go的1项真实Core条件跳过由既有PHP初始绑定/签名夹具单独补跑，**1项通过、6断言**，覆盖原签名最后一纳秒、精确到期及之后恢复仍拒绝。源码/依赖和日志hash见[报告](../../../node/docs/provider-window-verification.json)。该API目前只有测试调用，未接入Service、计量绑定、凭据交付或v2准入；外部可信时间、恢复fence、完整业务证据与撤销收敛继续待验收。由开发代理实现，协调者核对冻结源码后分批提交；现有Node和Provider CI负责后续远端验收。

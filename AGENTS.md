@@ -292,6 +292,16 @@ Before merge:
 
 Use merge commits for project PRs unless explicitly instructed otherwise.
 
+## Parallel development
+
+2026-10-13 用户明确授权在开发中派代理并行加速。可以将契约已明确、文件范围不重叠的 Core/Gateway/Node 或独立安装器工作交给开发代理；协调者负责依赖、边界、验收和提交推送，不以代理数量替代检查。
+
+- 分配前确定每个代理的文件所有权、依赖和实际验收范围。共享注册表、契约词汇、迁移号和中央台账的修改须协调；不得覆盖他人未完成代码。
+- 每条切片先更新契约，保留独立固定源码快照、依赖锁和合成数据证据；各代理使用独立专用测试库和夹具，不并发删除共享数据库。
+- 开发代理冻结可评审结果后由协调者审查。协调者运行适当整合回归，精确暂存已验收文件，每条完成切片单独提交/推送，并核对远端CI；不要将未验收代理文件一起提交。
+- 此授权适用于开发协作，不恢复产品中已退役的 Agent/MCP 功能，也不解除生产写入、凭据或迁移门禁。
+- TX-F 的管理/用户前端仍暂缓；该独立项目只本地提交，不推送。其他仓库的推送授权不能扩展到 TX-F。
+
 ## 18. Module Platform v1 stabilization rules
 
 The implemented control flow remains:
