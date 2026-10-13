@@ -1,0 +1,84 @@
+name: bounded-node-core-usage
+
+on:
+  push:
+    branches: [main]
+    paths: ['api/**', 'node/internal/kernel/singbox/**', 'node/internal/usageinterval/**', 'node/internal/usagev2/**', 'node/go.mod', 'node/go.sum', 'scripts/tests/node-usage-boundary/**', 'contracts/v2/node-usage/**', '.github/workflows/ci-bounded-node-usage.yml']
+  pull_request:
+    paths: ['api/**', 'node/internal/kernel/singbox/**', 'node/internal/usageinterval/**', 'node/internal/usagev2/**', 'node/go.mod', 'node/go.sum', 'scripts/tests/node-usage-boundary/**', 'contracts/v2/node-usage/**', '.github/workflows/ci-bounded-node-usage.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bounded-node-core-usage-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  isolated:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: txboard-ci-bounded-usage-root-only
+          MYSQL_DATABASE: txboard_bounded_usage_test
+          MYSQL_USER: txboard_bounded_usage
+          MYSQL_PASSWORD: txboard-ci-bounded-usage-only
+        ports: ['13306:3306']
+        options: >-
+          --health-cmd "mysqladmin ping -h 127.0.0.1 -uroot -ptxboard-ci-bounded-usage-root-only"
+          --health-interval 5s --health-retries 20
+      redis:
+        image: redis:7.4-alpine
+        ports: ['16379:6379']
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-retries 20
+    env:
+      APP_ENV: testing
+      DB_CONNECTION: mysql
+      DB_HOST: 127.0.0.1
+      DB_PORT: '13306'
+      DB_DATABASE: txboard_bounded_usage_test
+      DB_USERNAME: txboard_bounded_usage
+      DB_PASSWORD: txboard-ci-bounded-usage-only
+      REDIS_HOST: 127.0.0.1
+      REDIS_PORT: '16379'
+      REDIS_DB: '8'
+      REDIS_CACHE_DB: '9'
+      GOTOOLCHAIN: local
+    steps:
+      - uses: actions/checkout@v5
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, pdo_mysql, bcmath, redis
+          coverage: none
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: node/go.mod
+          cache-dependency-path: node/go.sum
+      - name: Install fixture SQL client
+        run: sudo apt-get update && sudo apt-get install -y mariadb-client
+      - name: Restore locked Core and Node dependencies
+        run: |
+          composer install --working-dir=api --no-interaction --prefer-dist
+          cd node
+          go mod download
+      - name: Prepare disposable runtime storage
+        run: |
+          touch api/.env
+          mkdir -p api/storage/framework/{cache/data,sessions,views} api/storage/logs api/bootstrap/cache
+      - name: Actual TCP tracker journal spool Node HTTPS Core ACK and SQL settlement
+        run: python3 scripts/tests/node-usage-boundary/run.py "$PWD/api" "$PWD/node" "$RUNNER_TEMP/bounded-node-usage-evidence"
+      - name: Preserve sanitized actual settlement receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bounded-node-core-usage-receipt
+          path: ${{ runner.temp }}/bounded-node-usage-evidence/result.json
+          if-no-files-found: warn
+          retention-days: 14
