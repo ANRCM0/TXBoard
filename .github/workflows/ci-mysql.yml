@@ -234,3 +234,5 @@ jobs:
         run: php artisan test --filter=LegacyMoneyShadowTest
       - name: Captured Plan bulk propagation, atomic set and crash recovery on MySQL 8.4
         run: php artisan test --filter=LegacyPlanPropagationCaptureTest
+      - name: Captured Admin bulk ban and session rollback on MySQL 8.4
+        run: php artisan test --filter=LegacyBulkBanCaptureTest

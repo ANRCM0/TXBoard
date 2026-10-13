@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Txapi\Admin;
 use App\Core\Http\TxapiResponse;
 use App\Domains\Identity\AdminAccountProtection;
 use App\Models\User;
-use App\Services\AuthService;
+use App\Services\Subscription\LegacyBulkBanCapture;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -74,10 +74,7 @@ final class AccountMutationController
                     || $u->id === (int) $request->user()->id)) {
                 throw ValidationException::withMessages(['user_ids' => 'Selection contains missing or protected users']);
             }
-            User::query()->whereIn('id', $ids)->update(['banned' => 1]);
-            foreach ($users as $user) {
-                (new AuthService($user))->removeAllSessions();
-            }
+            app(LegacyBulkBanCapture::class)->apply($users, (int) $request->user()->id);
             return $users->count();
         });
         return TxapiResponse::success($request, ['updated' => $updated]);

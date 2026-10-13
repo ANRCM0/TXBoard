@@ -27,6 +27,7 @@ final class LegacyUserMutationCapture
         'traffic.reset.standalone' => ['version' => 'standalone-reset-capture/v1', 'actor_domain' => 'system_legacy_traffic_reset'],
         'user.schedule.repair' => ['version' => 'schedule-repair-capture/v1', 'actor_domain' => 'system_user_schedule_repair'],
         'admin.plan.propagate' => ['version' => 'plan-propagation-capture/v1', 'actor_domain' => 'admin_user'],
+        'admin.user.bulk-ban' => ['version' => 'bulk-ban-capture/v1', 'actor_domain' => 'admin_user'],
     ];
     public const FIELDS = ['id', 'plan_id', 'group_id', 'transfer_enable', 'u', 'd',
         'speed_limit', 'device_limit', 'expired_at', 'last_reset_at', 'next_reset_at',
@@ -152,6 +153,21 @@ final class LegacyUserMutationCapture
     public function appendPlanPropagation(?array $before): void
     {
         $this->appendWriter($before, 'admin.plan.propagate');
+    }
+
+    /** Current role protection and sorted User locks are held by native Admin ban. */
+    public function beginBulkBan(int $userId, int $adminId): ?array
+    {
+        return $this->safe(function () use ($userId, $adminId): ?array {
+            $this->require(config('legacy_bulk_ban_capture.enabled') === true
+                && config('legacy_capture_shadow.enabled') === true, 'CAPTURE_BULK_BAN_ISOLATED_REQUIRED');
+            return $this->beginWriter($userId, 'admin.user.bulk-ban', $adminId);
+        });
+    }
+
+    public function appendBulkBan(?array $before): void
+    {
+        $this->appendWriter($before, 'admin.user.bulk-ban');
     }
 
     /** At the native refund's first User-lock position, after the PENDING Order lock. */
