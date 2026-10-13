@@ -22,7 +22,13 @@ final class InternalSessionDispatcher
         }
     }
 
-    private function dispatch(Request $request, array $operation)
+    public function executeAdmin(Request $request, array $operation)
+    {
+        return app(InternalAdminAccess::class)->run($request, $operation['body']->input,
+            fn (Request $request) => $this->dispatch($request, $operation, true));
+    }
+
+    private function dispatch(Request $request, array $operation, bool $admin = false)
     {
         $actor = Auth::guard('sanctum')->user();
         if (!str_ends_with($actor->email, '@example.test')) {
@@ -30,19 +36,19 @@ final class InternalSessionDispatcher
         }
         $controller = app(AuthController::class);
         $native = match ($operation['operation']) {
-            'user.session.list' => $controller->sessions($request, 101),
-            'user.session.revoke' => $controller->revoke($request, (int) $operation['body']->input->session_id),
-            'user.session.logout' => $controller->logout($request),
+            'user.session.list', 'admin.session.list' => $controller->sessions($request, 101),
+            'user.session.revoke', 'admin.session.revoke' => $controller->revoke($request, (int) $operation['body']->input->session_id),
+            'user.session.logout', 'admin.session.logout' => $controller->logout($request),
         };
         if ($native->getStatusCode() !== 200) return $native;
         $data = $native->getData(true)['data'];
-        if ($operation['operation'] === 'user.session.list') {
+        if (in_array($operation['operation'], ['user.session.list', 'admin.session.list'], true)) {
             if (count($data) > 100) throw new SliceFailure('SESSION_LIST_TOO_LARGE', 409);
             foreach ($data as &$item) $item['id'] = (string) $item['id'];
             unset($item);
             $data = ['items' => $data];
         }
         return TxapiResponse::success($request, $data,
-            ['current_only' => true, 'slice' => 'internal-isolated-sessions/1']);
+            ['current_only' => true, 'slice' => $admin ? 'internal-isolated-admin-sessions/1' : 'internal-isolated-sessions/1']);
     }
 }

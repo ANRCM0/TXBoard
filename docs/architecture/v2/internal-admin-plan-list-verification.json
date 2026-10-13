@@ -111,7 +111,88 @@
     "native_gib_unit_retained": true
   },
   "remote_ci": {
-    "status": "pending-after-push"
+    "status": "completed-success",
+    "commit": "6213318d554d6e70c982e8d3317a7b3ddd0cf2b2",
+    "runs": [
+      {
+        "workflow": "gateway-image",
+        "run_id": 38374159291,
+        "conclusion": "success",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38374159291"
+      },
+      {
+        "workflow": "api-ci",
+        "run_id": 38374159205,
+        "conclusion": "success",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38374159205"
+      },
+      {
+        "workflow": "api-mysql-ci",
+        "run_id": 38374159133,
+        "conclusion": "success",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38374159133"
+      },
+      {
+        "workflow": "Documentation",
+        "run_id": 38374159140,
+        "conclusion": "success",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38374159140"
+      },
+      {
+        "workflow": "provider-offline-proof",
+        "run_id": 38374159176,
+        "conclusion": "success",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38374159176"
+      },
+      {
+        "workflow": "internal-admin-identity",
+        "run_id": 38374159165,
+        "conclusion": "success",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38374159165"
+      },
+      {
+        "workflow": "internal-session-consumer",
+        "run_id": 38374159093,
+        "conclusion": "success",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38374159093"
+      },
+      {
+        "workflow": "internal-admin-login",
+        "run_id": 38374159238,
+        "conclusion": "success",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38374159238"
+      },
+      {
+        "workflow": "internal-admin-dashboard",
+        "run_id": 38374159128,
+        "conclusion": "success",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38374159128"
+      },
+      {
+        "workflow": "internal-admin-plan-list",
+        "run_id": 38374159127,
+        "conclusion": "success",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38374159127"
+      },
+      {
+        "workflow": "internal-admin-order-list",
+        "run_id": 38374159136,
+        "conclusion": "success",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38374159136"
+      },
+      {
+        "workflow": "internal-admin-consumer",
+        "run_id": 38374159168,
+        "conclusion": "success",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38374159168"
+      },
+      {
+        "workflow": "txboard-core-image",
+        "run_id": 38374159115,
+        "conclusion": "success",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38374159115"
+      }
+    ]
   },
   "limitations": [
     "Native numeric prices already passed through PHP JSON parsing; this is not lexical database precision preservation",

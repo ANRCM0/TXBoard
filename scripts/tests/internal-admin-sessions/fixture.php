@@ -1,0 +1,80 @@
+<?php
+
+require getenv('INTERNAL_CORE_API').'/vendor/autoload.php';
+$app = require getenv('INTERNAL_CORE_API').'/bootstrap/app.php';
+$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+if (!$app->environment('testing') || config('database.default') !== 'mysql'
+    || !in_array(config('database.connections.mysql.database'), ['txboard_admin_sessions_test', 'txboard_admin_sessions_retry_test', 'txboard_admin_sessions_final_test', 'txboard_admin_sessions_corrected_test'], true)) {
+    throw new RuntimeException('Exclusive synthetic txboard_admin_sessions_test required');
+}
+$mode = $argv[1] ?? 'seed';
+if ($mode === 'revoke-all') {
+    Laravel\Sanctum\PersonalAccessToken::query()->delete(); exit;
+}
+if ($mode === 'state') {
+    echo json_encode(['token_count' => Laravel\Sanctum\PersonalAccessToken::count(),
+        'audit_count' => Illuminate\Support\Facades\DB::table('tx_internal_readonly_audits')->count(),
+        'database_version' => Illuminate\Support\Facades\DB::selectOne('SELECT VERSION() AS version')->version]);
+    exit;
+}
+if ($mode === 'seed-session') {
+    $user = App\Models\User::query()->where('email', 'login-'.($argv[2] ?? '').'@example.test')->firstOrFail();
+    $token = $user->createToken('fixture-extra-session', ['*'], now()->addHour());
+    echo json_encode(['id' => (string) $token->accessToken->id], JSON_THROW_ON_ERROR); exit;
+}
+if ($mode === 'mutate') {
+    $user = App\Models\User::query()->where('email', 'login-admin@example.test')->firstOrFail();
+    match ($argv[2] ?? '') {
+        'ban' => $user->update(['banned' => true]), 'unban' => $user->update(['banned' => false]),
+        'demote' => $user->update(['is_admin' => false]), 'promote' => $user->update(['is_admin' => true]),
+        'revoke' => $user->tokens()->delete(),
+        'captcha-on' => admin_setting(['captcha_enable' => 1, 'captcha_type' => 'turnstile']),
+        'captcha-off' => admin_setting(['captcha_enable' => 0]),
+        default => throw new RuntimeException('Unknown fixed mutation'),
+    };
+    exit;
+}
+if ($mode === 'audit-fail') {
+    Illuminate\Support\Facades\DB::unprepared("CREATE TRIGGER admin_sessions_audit_failure BEFORE INSERT ON tx_internal_readonly_audits FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'synthetic-private-admin-failure'"); exit;
+}
+if ($mode === 'audit-restore') {
+    Illuminate\Support\Facades\DB::unprepared('DROP TRIGGER admin_sessions_audit_failure'); exit;
+}
+if ($mode === 'audit-check') {
+    $json = Illuminate\Support\Facades\DB::table('tx_internal_readonly_audits')->get()->toJson();
+    foreach (['Bearer ', 'fixture-admin-password', 'private-admin-path', '@example.test', 'private-subscription'] as $secret) {
+        if (str_contains($json, $secret)) throw new RuntimeException('Audit leaked fixture secret');
+    }
+    echo 'safe'; exit;
+}
+if ($mode !== 'seed' || App\Models\User::query()->exists()) throw new RuntimeException('Seed requires empty synthetic tables');
+admin_setting(['captcha_enable' => 0, 'password_limit_enable' => true, 'password_limit_count' => 5,
+    'password_limit_expire' => 60, 'secure_path' => 'private-admin-path']);
+$ids = [];
+foreach (['admin','user','staff'] as $role) {
+    $user = App\Models\User::create(['email' => 'login-'.$role.'@example.test',
+        'password' => Illuminate\Support\Facades\Hash::make('fixture-admin-password'),
+        'uuid' => (string) Illuminate\Support\Str::uuid(), 'token' => 'private-subscription-'.$role,
+        'is_admin' => $role === 'admin', 'is_staff' => $role === 'staff', 'banned' => false]);
+    $ids[$role] = (string) $user->id;
+}
+App\Models\StatServer::create(['server_id' => 1, 'server_type' => 'txnode', 'u' => '9007199254740993', 'd' => 13,
+    'record_type' => 'd', 'record_at' => time() - 1]);
+$plan = App\Models\Plan::create(['name' => 'Admin Plan List Plan', 'group_id' => 1, 'transfer_enable' => 1, 'sort' => 100,
+    'show' => true, 'sell' => true, 'renew' => true, 'prices' => [App\Models\Plan::PERIOD_MONTHLY => 12]]);
+foreach ([['old',4,$plan->id],['pending',0,$plan->id],['orphan',4,2147483647]] as [$name,$status,$planId]) {
+    App\Models\Order::create(['user_id' => $name === 'orphan' ? 2147483647 : (int) $ids['user'],
+        'plan_id' => $planId, 'trade_no' => 'admin-list-'.$name, 'period' => App\Models\Plan::PERIOD_MONTHLY,
+        'type' => 1, 'status' => $status, 'total_amount' => 2147483647, 'handling_amount' => 17,
+        'balance_amount' => 100, 'discount_amount' => 25, 'created_at' => time()-1, 'updated_at' => time()-1,
+        'callback_no' => 'private-callback-reference', 'surplus_order_ids' => ['private-surplus-reference']]);
+}
+$group = Illuminate\Support\Facades\DB::table('tx_server_group')->insertGetId(['name' => 'Plan fixture group', 'created_at' => time(), 'updated_at' => time()]);
+$hidden = App\Models\Plan::create(['name' => 'Hidden native plan', 'group_id' => $group, 'transfer_enable' => 2, 'sort' => -10,
+    'show' => false, 'sell' => false, 'renew' => false, 'prices' => ['monthly' => '9007199254740993.12', 'yearly' => 12.5, 'quarterly' => 0, 'onetime' => null], 'tags' => ['native']]);
+App\Models\Plan::create(['name' => 'Orphan plan', 'group_id' => 2147483647, 'transfer_enable' => 3, 'sort' => -10,
+    'show' => true, 'sell' => true, 'renew' => true, 'prices' => [], 'tags' => []]);
+foreach (['admin' => time()+3600, 'user' => null, 'staff' => time()-3600] as $role => $expiry) {
+    App\Models\User::findOrFail($ids[$role])->update(['plan_id' => $hidden->id, 'expired_at' => $expiry]);
+}
+echo json_encode(['ids' => $ids], JSON_THROW_ON_ERROR);

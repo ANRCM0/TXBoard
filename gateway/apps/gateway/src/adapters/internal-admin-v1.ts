@@ -44,6 +44,7 @@ export const adminDashboardSuccess = success.extend({
   meta: z.strictObject({ current_only: z.literal(true), slice: z.literal('internal-admin-dashboard/1') }),
 })
 const id = z.string().regex(/^[1-9][0-9]{0,17}$(?![\s\S])/)
+export const adminSessionRevokeInput = adminReadInput.extend({ session_id: id })
 const date = z.number().int().nonnegative().safe()
 export const adminOrderListSuccess = success.extend({
   data: z.strictObject({ items: z.array(z.strictObject({
@@ -73,7 +74,15 @@ export const adminPlanListSuccess = success.extend({
     total: count, last_page: z.number().int().min(1).safe() }) }),
   meta: z.strictObject({ current_only: z.literal(true), slice: z.literal('internal-admin-plan-list/1') }),
 })
+const sessionDate = z.iso.datetime({ offset: true }).nullable()
+export const adminSessionMutationSuccess = success.extend({ data: z.strictObject({ ok: z.literal(true) }),
+  meta: z.strictObject({ current_only: z.literal(true), slice: z.literal('internal-isolated-admin-sessions/1') }) })
+export const adminSessionListSuccess = adminSessionMutationSuccess.extend({ data: z.strictObject({ items: z.array(z.strictObject({
+  id, name: z.string().max(255), abilities: z.array(z.string().max(255)).max(100),
+  last_used_at: sessionDate, created_at: sessionDate, updated_at: sessionDate, expires_at: sessionDate,
+})).max(100).refine(items => items.every((item, index) => index === 0 || BigInt(items[index-1]!.id) > BigInt(item.id))) }) })
 export const adminResponses = { login: adminLoginSuccess, identity: adminIdentitySuccess, dashboard: adminDashboardSuccess,
-  orders: adminOrderListSuccess, plans: adminPlanListSuccess }
+  orders: adminOrderListSuccess, plans: adminPlanListSuccess, sessions: adminSessionListSuccess,
+  revokeSession: adminSessionMutationSuccess, logout: adminSessionMutationSuccess }
 export type AdminOperation = keyof typeof adminResponses
 export type AdminResponses = { [K in AdminOperation]: z.infer<(typeof adminResponses)[K]> }

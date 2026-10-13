@@ -116,3 +116,5 @@ B5.18: [隔离管理客户端](local-admin-consumer-v1.md)使用独立管理服�
 B5.19: [隔离管理订单列表](local-admin-order-list-v1.md)委托原生查询和当前关联，Gateway消费闭集分页DTO并保留整数金额字符串，独立默认关闭。
 
 B5.20: [隔离管理套餐列表](local-admin-plan-list-v1.md)委托原管理目录，保留隐藏状态、当前权限组/用户计数、GiB单位与原生主要币值价格字符串，不构造报价。
+
+B5.21: [隔离管理会话](local-admin-sessions-v1.md)委托原生owner会话列表、撤销和退出，当前角色与管理路径每次核对，未知提交结果不自动重试。

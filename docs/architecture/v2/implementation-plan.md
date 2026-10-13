@@ -1,6 +1,6 @@
 # Core First v2 实施台账
 
-> 状态：B0、B1.1–B1.21 影子证据、Terms、身份旁观、固定 writer 捕获、套餐批量同步、批量封禁与余额端点投影、B2.1–B2.4 单机升级、B3.1/B3.2 隔离用量、B3.3/B3.4 本地观察与持久事件桶、B4.1–B4.6 合成 Provider、插件停用接入、租约候选、离线签名快照与Go公钥诊断、B5.1–B5.20 本地 mTLS 读取、隔离建单、登录、内存邮件验证码、隔离注册、密码恢复、当前会话与管理读取、B6.1–B6.4 实验字节、离线加密、共享 owner 与独立响应随机值候选及 B7.1 Agent/MCP 退役已实现；两仓迁移与三镜像发布已完成，继续推进业务迁移切片。各整阶段仍按下表门禁验收。
+> 状态：B0、B1.1–B1.21 影子证据、Terms、身份旁观、固定 writer 捕获、套餐批量同步、批量封禁与余额端点投影、B2.1–B2.4 单机升级、B3.1/B3.2 隔离用量、B3.3/B3.4 本地观察与持久事件桶、B4.1–B4.6 合成 Provider、插件停用接入、租约候选、离线签名快照与Go公钥诊断、B5.1–B5.21 本地 mTLS 读取、隔离建单、登录、内存邮件验证码、隔离注册、密码恢复、当前会话与管理读取、B6.1–B6.4 实验字节、离线加密、共享 owner 与独立响应随机值候选及 B7.1 Agent/MCP 退役已实现；两仓迁移与三镜像发布已完成，继续推进业务迁移切片。各整阶段仍按下表门禁验收。
 
 2026-10-13，按仓库整合任务，将 Gateway/Node 的完整 Git 历史导入本仓 `gateway/`、`node/`，安装器集中到 TXBoard-Deploy。当前目录与三镜像 CI 见 [双仓布局](../../development/repository-layout.md)；旧基线和验证报告保持当时提交与路径。本次仓库整理独立于下列业务迁移门禁。
 
@@ -395,3 +395,11 @@ Deploy `34fd467` 修正host MySQL临时socket服务就绪竞争，[完整部署C
 [当前契约](../../../contracts/v2/core-internal-api/local-admin-plan-list-v1.md)增加独立默认关闭的 `admin.plan.list` version1，委托原生管理目录及sort/id升序。保留隐藏/停售/不可续费套餐、当前权限组与用户计数；GiB整数和原生主要币值价格用字符串传输，不转换Offer或重算报价。闭集DTO、分页与关联核对、当前授权和失败拒绝由Core/Gateway共同验证。
 
 固定 `5f2e680` 加本批源码：14项新Core专项进入全API，**1173通过、106项引擎/工具链跳过、12328断言**；Gateway **893项**、SDK **123项**及类型/构建通过。实际Core/MariaDB/Gateway/mTLS **14项**通过，包含隐藏状态、稳定排序、孤儿group、到期计数、超过53位的原生字符串价格、零/null价格及降权。首轮夹具未给旧套餐设置sort，SQL NULL正确排在负数前；已修正显式sort并换新合成库，失败记录保留。全量API和Gateway检查源码与最终联调hash一致，[证据报告](internal-admin-plan-list-verification.json)记录依赖、日志和脱敏收据。数字价格已经过PHP JSON解析，不能称为数据库词法精度保留；尚未开放公开Admin、正式SC-v2或生产运行。独立Oracle MySQL8.4 CI已加入。
+
+提交 `6213318` 的独立Oracle MySQL8.4套餐列表、订单列表与其余管理联调、API/MySQL原回归、Core/Gateway镜像、公钥、会话和文档CI均通过，远端结果已记入上述报告。
+
+### B5.21 隔离管理会话
+
+[当前契约](../../../contracts/v2/core-internal-api/local-admin-sessions-v1.md)增加默认关闭的管理会话list/revoke/logout，使用独立管理服务与实际当前凭据。委托原生Sanctum owner查询和删除，保留100项上限、缺失/跨owner/重复撤销404与当前Token退出；每次核对当前管理路径、角色和封禁。Gateway消费闭集降序字符串ID及非秘密会话元数据，不自动重试或补偿未知提交。
+
+固定 `6213318` 加本批源码：18项新Core专项与原User会话/身份共 **44项、337断言**，全API **1191通过、106项引擎/工具链跳过、12462断言**；Gateway **906项**、SDK **123项**及类型/构建通过。实际Core/Gateway/MariaDB/mTLS **17项**通过，包含owner隔离、当前路径/降权拒绝、真实审计失败隐藏已提交退出、刷新鉴权与成功退出；最终测试Token为0。[报告](internal-admin-sessions-verification.json)记录固定源码、依赖、日志hash与脱敏收据。原生并发进行中请求和模型拒绝delete语义保留，不称为SQL授权fence；独立Oracle MySQL8.4 CI已加入。公开Admin、新管理前端、正式SC-v2与生产门禁仍未启用。

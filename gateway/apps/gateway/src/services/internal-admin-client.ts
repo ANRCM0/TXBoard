@@ -3,11 +3,12 @@ import https from 'node:https'
 import type { ClientRequest } from 'node:http'
 import { checkServerIdentity } from 'node:tls'
 import type { InternalAdminConfig } from '../config/internal-admin.js'
-import { adminLoginInput, adminReadInput, adminOrderListInput, adminPlanListInput, adminResponses, type AdminOperation, type AdminResponses } from '../adapters/internal-admin-v1.js'
+import { adminLoginInput, adminReadInput, adminOrderListInput, adminPlanListInput, adminSessionRevokeInput, adminResponses, type AdminOperation, type AdminResponses } from '../adapters/internal-admin-v1.js'
 import { internalError, strictInternalJson } from '../adapters/internal-user-v2.js'
 import { GatewayFailure } from './failures.js'
 
-const operations = { login: 'auth.admin.login', identity: 'admin.identity.get', dashboard: 'admin.dashboard.get', orders: 'admin.order.list', plans: 'admin.plan.list' } as const
+const operations = { login: 'auth.admin.login', identity: 'admin.identity.get', dashboard: 'admin.dashboard.get', orders: 'admin.order.list',
+  plans: 'admin.plan.list', sessions: 'admin.session.list', revokeSession: 'admin.session.revoke', logout: 'admin.session.logout' } as const
 type Options = { auth?: string; input: unknown; signal?: AbortSignal }
 
 /** Isolated server-side consumer only. No public route, role cache or Native fallback. */
@@ -21,7 +22,7 @@ export async function internalAdminRequest<K extends AdminOperation>(config: Int
     throw new GatewayFailure('VALIDATION_ERROR', login ? 400 : 401, 'Invalid Internal Admin credential')
   }
   const input = (login ? adminLoginInput : operation === 'orders' ? adminOrderListInput
-    : operation === 'plans' ? adminPlanListInput : adminReadInput).safeParse(options.input)
+    : operation === 'plans' ? adminPlanListInput : operation === 'revokeSession' ? adminSessionRevokeInput : adminReadInput).safeParse(options.input)
   if (!input.success) throw new GatewayFailure('VALIDATION_ERROR', 400, 'Invalid Internal Admin input')
   if (Date.now() < Date.parse(config.certificate.validFrom) || Date.now() >= Date.parse(config.certificate.validTo)) {
     throw new GatewayFailure('UPSTREAM_UNAVAILABLE', 502, 'Internal Admin service unavailable')

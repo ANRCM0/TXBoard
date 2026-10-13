@@ -38,6 +38,9 @@ const operations = new Map([
   ['/txapi/internal/v1/operations/admin.dashboard.get', 'admin-gateway'],
   ['/txapi/internal/v1/operations/admin.order.list', 'admin-gateway'],
   ['/txapi/internal/v1/operations/admin.plan.list', 'admin-gateway'],
+  ['/txapi/internal/v1/operations/admin.session.list', 'admin-gateway'],
+  ['/txapi/internal/v1/operations/admin.session.revoke', 'admin-gateway'],
+  ['/txapi/internal/v1/operations/admin.session.logout', 'admin-gateway'],
 ]);
 const anonymousOperations = new Set(['/txapi/internal/v1/operations/public.site-config.get', '/txapi/internal/v1/operations/public.plan.list', '/txapi/internal/v1/operations/auth.login', '/txapi/internal/v1/operations/auth.admin.login', '/txapi/internal/v1/operations/auth.email-code.send', '/txapi/internal/v1/operations/auth.register', '/txapi/internal/v1/operations/auth.password.reset']);
 const sans = new Map([

@@ -26,6 +26,8 @@ const planItem = { id: '1', name: 'Hidden plan', content: null, group_id: '2', g
   traffic_limit_gib: '2', speed_limit_mbps: null, device_limit: 2, capacity_limit: 0, reset_traffic_method: null,
   native_prices_major: { monthly: '9007199254740993.12', yearly: '1e3', quarterly: '0', onetime: null },
   tags: ['native'], show: false, sell: false, renew: false, sort: -10, users_count: 3, active_users_count: 2 }
+const sessionItem = { id: '9007199254740993', name: 'Current session', abilities: ['*'],
+  last_used_at: null, created_at: '2026-10-13T00:00:00+00:00', updated_at: null, expires_at: null }
 let req: EventEmitter & { destroy: ReturnType<typeof vi.fn>; end: ReturnType<typeof vi.fn> }
 let reply: EventEmitter & { destroy: ReturnType<typeof vi.fn>; statusCode: number; headers: Record<string,string>; complete: boolean }
 let callback: (response: unknown) => void
@@ -39,6 +41,41 @@ afterEach(() => vi.useRealTimers())
 function respond(data: unknown = identity) { callback(reply); reply.emit('data', Buffer.from(JSON.stringify(data))); reply.emit('end') }
 
 describe('isolated Admin Internal consumer', () => {
+  it('reads only a closed ordered Admin session list with exact decimal IDs', async () => {
+    const pending = internalAdminRequest(config, 'sessions', { auth, input })
+    expect(mock.request.mock.calls[0]![0].path).toBe('/txapi/internal/v1/operations/admin.session.list')
+    const payload = envelope({ items: [sessionItem] }, 'internal-isolated-admin-sessions/1')
+    respond(payload); await expect(pending).resolves.toEqual(payload)
+  })
+  it.each(['logout','revokeSession'] as const)('delegates %s once with current path and credential', async operation => {
+    const params = operation === 'logout' ? input : { ...input, session_id: sessionItem.id }
+    const pending = internalAdminRequest(config, operation, { auth, input: params })
+    expect(mock.request.mock.calls[0]![0].path).toBe('/txapi/internal/v1/operations/admin.session.'+(operation === 'logout' ? 'logout' : 'revoke'))
+    expect(JSON.parse(req.end.mock.calls[0]![0].toString()).input).toEqual(params)
+    const payload = envelope({ ok: true }, 'internal-isolated-admin-sessions/1')
+    respond(payload); await expect(pending).resolves.toEqual(payload);expect(mock.request).toHaveBeenCalledOnce()
+  })
+  it.each([undefined, 1, '0', '01', '-1', '1.0', '1\n', '1000000000000000000'])
+    ('refuses invalid session ID %s before transport', async session_id => {
+      await expect(internalAdminRequest(config, 'revokeSession', { auth, input: { ...input, session_id } }))
+        .rejects.toMatchObject({ status: 400 })
+      expect(mock.request).not.toHaveBeenCalled()
+    })
+  it('rejects duplicate unordered oversized or private Admin session metadata', async () => {
+    for (const items of [[sessionItem,sessionItem], [{ ...sessionItem, id: '1' },sessionItem],
+      Array.from({ length: 101 }, () => sessionItem), [{ ...sessionItem, token: 'private-token' }],
+      [{ ...sessionItem, expires_at: 'invalid' }]]) {
+      const pending = internalAdminRequest(config, 'sessions', { auth, input })
+      const assertion = expect(pending).rejects.toMatchObject({ status: 502 })
+      respond(envelope({ items }, 'internal-isolated-admin-sessions/1'));await assertion
+    }
+  })
+  it('never retries a rejected or unknown committed Admin logout', async () => {
+    const pending = internalAdminRequest(config, 'logout', { auth, input })
+    const assertion = expect(pending).rejects.toMatchObject({ status: 503 })
+    reply.statusCode = 503;respond({ request_id: requestId, error: { code: 'DEPENDENCY_UNAVAILABLE', message: 'private input' } })
+    await assertion;expect(mock.request).toHaveBeenCalledOnce()
+  })
   it('consumes native hidden Admin plans without quoting prices or converting GiB to bytes', async () => {
     const input = { admin_path: path, page: 1, per_page: 1 }
     const pending = internalAdminRequest(config, 'plans', { auth, input })

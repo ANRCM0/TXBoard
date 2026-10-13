@@ -31,6 +31,9 @@ final class OperationRegistry
         'admin.dashboard.get' => ['service' => 'admin-gateway', 'actor' => 'admin', 'versions' => ['1']],
         'admin.order.list' => ['service' => 'admin-gateway', 'actor' => 'admin', 'versions' => ['1']],
         'admin.plan.list' => ['service' => 'admin-gateway', 'actor' => 'admin', 'versions' => ['1']],
+        'admin.session.list' => ['service' => 'admin-gateway', 'actor' => 'admin', 'versions' => ['1']],
+        'admin.session.revoke' => ['service' => 'admin-gateway', 'actor' => 'admin', 'versions' => ['1']],
+        'admin.session.logout' => ['service' => 'admin-gateway', 'actor' => 'admin', 'versions' => ['1']],
     ];
 
     public static function request(Request $request): array
@@ -54,6 +57,10 @@ final class OperationRegistry
         }
         if ($operation === 'admin.plan.list' && (config('internal_api_slice.admin_plan_list_enabled') !== true
             || config('core_shadow.isolated_copy') !== true)) {
+            throw new SliceFailure('OPERATION_DISABLED', 404);
+        }
+        if (in_array($operation, ['admin.session.list', 'admin.session.revoke', 'admin.session.logout'], true)
+            && (config('internal_api_slice.admin_sessions_enabled') !== true || config('core_shadow.isolated_copy') !== true)) {
             throw new SliceFailure('OPERATION_DISABLED', 404);
         }
         if ($definition['actor'] === 'admin-login' && (config('internal_api_slice.admin_login_enabled') !== true
@@ -150,6 +157,12 @@ final class OperationRegistry
                     || mb_strlen($input->coupon_code) < 1 || mb_strlen($input->coupon_code) > 64))) {
                 throw new SliceFailure('INVALID_REQUEST', 400);
             }
+        } elseif ($operation === 'admin.session.revoke') {
+            StrictJson::exact($input, ['admin_path', 'session_id']);
+            if (!is_string($input->admin_path) || !preg_match('/\A[A-Za-z0-9_-]{1,128}\z/D', $input->admin_path)
+                || !is_string($input->session_id) || !preg_match('/\A[1-9][0-9]{0,17}\z/D', $input->session_id)) {
+                throw new SliceFailure('INVALID_REQUEST', 400);
+            }
         } elseif ($operation === 'user.session.revoke') {
             StrictJson::exact($input, ['session_id']);
             if (!is_string($input->session_id) || !preg_match('/\A[1-9][0-9]{0,17}\z/D', $input->session_id)) {
@@ -185,7 +198,7 @@ final class OperationRegistry
                 || (property_exists($input, 'status') && (!is_int($input->status) || $input->status < 0 || $input->status > 4))) {
                 throw new SliceFailure('INVALID_REQUEST', 400);
             }
-        } elseif (in_array($operation, ['admin.identity.get', 'admin.dashboard.get'], true)) {
+        } elseif (in_array($operation, ['admin.identity.get', 'admin.dashboard.get', 'admin.session.list', 'admin.session.logout'], true)) {
             StrictJson::exact($input, ['admin_path']);
             if (!is_string($input->admin_path) || !preg_match('/\A[A-Za-z0-9_-]{1,128}\z/D', $input->admin_path)) {
                 throw new SliceFailure('INVALID_REQUEST', 400);
