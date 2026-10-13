@@ -67,7 +67,16 @@
   "new_mysql_8_4_ci": {
     "workflow": ".github/workflows/ci-mysql.yml",
     "job": "isolated-money-shadow",
-    "status": "pending remote push and verification"
+    "status": "success",
+    "commit": "ddbc7e372a487e807241cfac2bde9bedbf30f90a",
+    "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38331535095",
+    "jobs": {
+      "mysql-regression": "success",
+      "isolated-money-shadow": "success"
+    },
+    "passed": 15,
+    "assertions": 203,
+    "duration_seconds": 70.43
   },
   "limitations": [
     "Captured anchor is not historical cash evidence or authoritative live ledger",
@@ -77,5 +86,29 @@
     "No existing User, Order, Terms, usage, Commerce opening or mapping state is repaired or switched"
   ],
   "global_coverage_complete": false,
-  "migration_gate_open": false
+  "migration_gate_open": false,
+  "other_remote_checks": {
+    "api-ci": {
+      "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38331535129",
+      "conclusion": "success"
+    },
+    "internal-session-consumer": {
+      "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38331535228",
+      "conclusion": "success"
+    },
+    "Documentation": {
+      "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38331535244",
+      "conclusion": "success"
+    },
+    "txboard-core-image": {
+      "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38331535159",
+      "conclusion": "success",
+      "jobs": {
+        "release-gate": "success",
+        "verify": "success",
+        "release-recovery": "success",
+        "publish": "success"
+      }
+    }
+  }
 }

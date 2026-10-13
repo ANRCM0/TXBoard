@@ -318,4 +318,4 @@ B5.14 的 CI Redis 测试库改为显式12，当前源码本地12项真实链路
 
 [当前契约](../../../contracts/v2/legacy-money-shadow-v1.md)在独立默认关闭开关下，将已验证捕获事件的余额/佣金端点写入三张独立证据表。首事件before作为观察锚点，不补造历史收款；每个非零整数差额生成两条平衡分录，另一侧明确为未分类捕获过渡账户。非财务事件只推进端点。首次冻结高水位，分页原子保存事件/分录/游标，完成后显式extend再接新事件；不会修复旧map或切换任何业务权威。
 
-固定 Core `651bdbc` 加本批六个PHP文件：SQLite专项 **13通过、2项引擎条件跳过、182断言**，MariaDB **15全部通过、203断言**，全API **1125通过、101项引擎条件跳过、11506断言**。真实独立会话验证User锁等待，提交前后SIGKILL分别留下零/一页，重启无重复分录；逐页对账仅执行SELECT，损坏证据、上下文漂移、源缺口及SQL失败拒绝或整页回滚。源码、依赖和日志hash见[验证报告](legacy-money-shadow-verification.json)，重现范围见[测试夹具](../../../api/tests/Fixtures/LegacyMoneyShadow/README.md)。独立MySQL8.4 CI已接入，结果另行核验。完整writer覆盖、订单/支付事实、Terms/周期投影与生产切换仍待完成。
+固定 Core `651bdbc` 加本批六个PHP文件：SQLite专项 **13通过、2项引擎条件跳过、182断言**，MariaDB **15全部通过、203断言**，全API **1125通过、101项引擎条件跳过、11506断言**。真实独立会话验证User锁等待，提交前后SIGKILL分别留下零/一页，重启无重复分录；逐页对账仅执行SELECT，损坏证据、上下文漂移、源缺口及SQL失败拒绝或整页回滚。源码、依赖和日志hash见[验证报告](legacy-money-shadow-verification.json)，重现范围见[测试夹具](../../../api/tests/Fixtures/LegacyMoneyShadow/README.md)。提交 `ddbc7e3` 的独立Oracle MySQL8.4 CI **15项、203断言**通过，API、MySQL原回归、真实会话链路和Core镜像发布流程均成功。完整writer覆盖、订单/支付事实、Terms/周期投影与生产切换仍待完成。
