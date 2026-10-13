@@ -1,6 +1,6 @@
 # Core First v2 实施台账
 
-> 状态：B0、B1.1–B1.18 影子证据、Terms、身份旁观与固定 writer 捕获、B2.1–B2.3 单机升级、B3.1/B3.2 隔离用量、B3.3/B3.4 本地观察与持久事件桶、B4.1–B4.5 合成 Provider、插件停用接入、租约候选与离线签名快照、B5.1–B5.14 本地 mTLS 读取、隔离建单、登录、内存邮件验证码、隔离注册、密码恢复与当前会话、B6.1–B6.4 实验字节、离线加密、共享 owner 与独立响应随机值候选已实现；两仓迁移与三镜像发布已完成，继续推进业务迁移切片。各整阶段仍按下表门禁验收。
+> 状态：B0、B1.1–B1.19 影子证据、Terms、身份旁观、固定 writer 捕获与余额端点投影、B2.1–B2.3 单机升级、B3.1/B3.2 隔离用量、B3.3/B3.4 本地观察与持久事件桶、B4.1–B4.5 合成 Provider、插件停用接入、租约候选与离线签名快照、B5.1–B5.14 本地 mTLS 读取、隔离建单、登录、内存邮件验证码、隔离注册、密码恢复与当前会话、B6.1–B6.4 实验字节、离线加密、共享 owner 与独立响应随机值候选已实现；两仓迁移与三镜像发布已完成，继续推进业务迁移切片。各整阶段仍按下表门禁验收。
 
 2026-10-13，按仓库整合任务，将 Gateway/Node 的完整 Git 历史导入本仓 `gateway/`、`node/`，安装器集中到 TXBoard-Deploy。当前目录与三镜像 CI 见 [双仓布局](../../development/repository-layout.md)；旧基线和验证报告保持当时提交与路径。本次仓库整理独立于下列业务迁移门禁。
 
@@ -311,3 +311,11 @@ Gateway/SDK 增加显式 HPKE 密码恢复 Operation、独立 Redis 限流和封
 [当前契约](../../../contracts/v2/core-internal-api/local-isolated-session-consumer-v1.md)在独立 local/testing 开关下，接通 owner 会话列表、加密指定撤销和当前登出。Gateway/SDK 保持 decimal-string ID，只转发实际当前 User Bearer；Core 决定角色、归属和原生删除。闭合信封与有界 DTO 排除凭据，三个入口共享 Redis 凭据/IP 频控，存储失败拒绝，所有新路由默认关闭。SDK 不保存或清除应用 token，不重试 POST，也没有 Native 回退。
 
 固定 Gateway **832**、SDK **123** 项、类型检查和构建通过，新增专项分别 **33** 与 **18** 项。真实 SDK→Gateway→TLS1.3→Core/MariaDB/Redis **12** 项通过，涵盖 100/101 列表边界、跨用户/角色拒绝、密文重放与错误 AAD、原生重复 404、删除 SQL 失败和审计503隐藏已提交登出；另一枚凭据确认后可撤销最终会话，其他用户保持一枚。固定全量与联调 runtime/test hash 相同，Core API tree 与已验收 B5.13 完全相同，未把旧全量结果称为重跑。新 CI 使用合成 MySQL8.4/Redis 服务，远端结果另行核验；见[证据报告](internal-session-consumer-verification.json)。这是现有 v1 请求 HPKE，SC-v2 和生产门禁仍未通过。
+
+B5.14 的 CI Redis 测试库改为显式12，当前源码本地12项真实链路重跑通过；提交 `651bdbc` 的 [Oracle MySQL8.4/Redis7.4 真实链路](https://github.com/ANRCM0/TXBoard/actions/runs/38329369187) 12项全部通过。Gateway运行时提交 `18c7d1a` 的镜像构建、浏览器验收、固定标签发布和dev提升均成功；后续纯夹具/CI修改按规则跳过镜像发布。先前失败与本地快照修正保留在报告，未覆盖原证据。
+
+### B1.19 隔离余额端点影子投影
+
+[当前契约](../../../contracts/v2/legacy-money-shadow-v1.md)在独立默认关闭开关下，将已验证捕获事件的余额/佣金端点写入三张独立证据表。首事件before作为观察锚点，不补造历史收款；每个非零整数差额生成两条平衡分录，另一侧明确为未分类捕获过渡账户。非财务事件只推进端点。首次冻结高水位，分页原子保存事件/分录/游标，完成后显式extend再接新事件；不会修复旧map或切换任何业务权威。
+
+固定 Core `651bdbc` 加本批六个PHP文件：SQLite专项 **13通过、2项引擎条件跳过、182断言**，MariaDB **15全部通过、203断言**，全API **1125通过、101项引擎条件跳过、11506断言**。真实独立会话验证User锁等待，提交前后SIGKILL分别留下零/一页，重启无重复分录；逐页对账仅执行SELECT，损坏证据、上下文漂移、源缺口及SQL失败拒绝或整页回滚。源码、依赖和日志hash见[验证报告](legacy-money-shadow-verification.json)，重现范围见[测试夹具](../../../api/tests/Fixtures/LegacyMoneyShadow/README.md)。独立MySQL8.4 CI已接入，结果另行核验。完整writer覆盖、订单/支付事实、Terms/周期投影与生产切换仍待完成。

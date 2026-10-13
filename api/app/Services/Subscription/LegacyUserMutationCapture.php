@@ -365,6 +365,50 @@ final class LegacyUserMutationCapture
         });
     }
 
+    /** Internal bounded money evidence, under the consumer's already-held User fence. Never an HTTP DTO. */
+    public function moneyEvidencePage(int $userId, int $after, int $limit, ?int $high = null): array
+    {
+        return $this->safe(function () use ($userId, $after, $limit, $high): array {
+            $context = $this->context();
+            $this->integer($userId, '2147483647', true);
+            $this->require(DB::transactionLevel() > 0, 'CAPTURE_TRANSACTION_REQUIRED');
+            $this->require($after >= 0 && $limit >= 1 && $limit <= 100, 'CAPTURE_PAGE_INVALID');
+            $current = $this->source($userId);
+            $stream = $this->streams()->where('legacy_user_id', $userId)->sharedLock()->first();
+            $this->require($stream !== null, 'CAPTURE_STREAM_MISSING');
+            $this->validateStream($stream, $context, $userId);
+            $tail = $this->tail($stream);
+            $this->require($tail !== null, 'CAPTURE_STREAM_EMPTY');
+            $this->require($this->hash($current) === $stream->last_after_hash, 'CAPTURE_SOURCE_GAP');
+            $high ??= (int) $stream->last_sequence;
+            $this->require($high > 0 && $after <= $high && $high <= (int) $stream->last_sequence, 'CAPTURE_CURSOR_AHEAD');
+            $one = function (int $sequence) use ($stream): array {
+                $row = $this->events()->where('stream_id', $stream->id)->where('sequence', $sequence)->sharedLock()->first();
+                $this->require($row !== null, 'CAPTURE_CHAIN_GAP');
+                return ['id' => (string) $row->id] + $this->event($row, $stream);
+            };
+            $first = $one(1); $boundary = $one($high); $anchor = $after === 0 ? null : $one($after);
+            $this->require($first['previous_event_hash'] === null, 'CAPTURE_CHAIN_GAP');
+            $previous = $anchor['content_hash'] ?? null;
+            $previousAfter = $anchor['after_hash'] ?? $first['before_hash'];
+            $rows = $this->events()->where('stream_id', $stream->id)->where('sequence', '>', $after)
+                ->where('sequence', '<=', $high)->orderBy('sequence')->limit($limit)->sharedLock()->get();
+            $events = []; $sequence = $after;
+            foreach ($rows as $row) {
+                $event = $this->event($row, $stream);
+                $this->require((int) $event['sequence'] === ++$sequence && $event['previous_event_hash'] === $previous
+                    && $event['before_hash'] === $previousAfter, 'CAPTURE_CHAIN_GAP');
+                $events[] = ['id' => (string) $row->id] + $event;
+                $previous = $event['content_hash']; $previousAfter = $event['after_hash'];
+            }
+            $this->require($sequence === $after + min($limit, $high - $after), 'CAPTURE_CHAIN_GAP');
+            return ['stream_id' => (string) $stream->id, 'context_hash' => $stream->context_hash,
+                'currency' => $context['currency'], 'first' => $first, 'anchor' => $anchor,
+                'high_water' => (string) $high, 'high_event_hash' => $boundary['content_hash'],
+                'stream_high_water' => (string) $stream->last_sequence, 'events' => $events];
+        });
+    }
+
     private function projection(int $userId): array
     {
         $slot = DB::table('tx_subscription_slot')->where('user_id', $userId)->sharedLock()->first();

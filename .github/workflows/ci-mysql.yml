@@ -174,3 +174,61 @@ jobs:
         run: php artisan test tests/Feature/Server/TrafficBatchSettlementTest.php
       - name: MySQL order recovery regression
         run: php artisan test tests/Feature/Order/CheckOrderRecoveryTest.php
+
+  isolated-money-shadow:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: txboard-ci-money-root-only
+          MYSQL_DATABASE: txboard_concurrency_test
+          MYSQL_USER: txboard_test
+          MYSQL_PASSWORD: txboard-ci-money-fixture-only
+        ports: ['13306:3306']
+        options: >-
+          --health-cmd "mysqladmin ping -h 127.0.0.1 -uroot -ptxboard-ci-money-root-only"
+          --health-interval 5s --health-retries 20
+      redis:
+        image: redis:7.4-alpine
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-retries 10
+    env:
+      APP_ENV: testing
+      CORE_CAPTURE_TEST_MYSQL: '1'
+      DB_CONNECTION: mysql
+      DB_HOST: 127.0.0.1
+      DB_PORT: '13306'
+      DB_DATABASE: txboard_concurrency_test
+      DB_USERNAME: txboard_test
+      DB_PASSWORD: txboard-ci-money-fixture-only
+      REDIS_HOST: 127.0.0.1
+      REDIS_PORT: '6379'
+      REDIS_PREFIX: 'money-shadow-ci-fixture:'
+      CACHE_DRIVER: array
+      SETTING_CACHE_STORE: array
+      SESSION_DRIVER: array
+      QUEUE_CONNECTION: sync
+    defaults:
+      run:
+        working-directory: api
+    steps:
+      - uses: actions/checkout@v5
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, pdo_mysql, redis, bcmath, pcntl, posix
+          coverage: none
+      - name: Restore locked Core dependencies
+        run: composer install --no-interaction --prefer-dist
+      - name: Prepare disposable fixture runtime
+        run: |
+          touch .env
+          mkdir -p storage/framework/{cache/data,sessions,views} storage/logs bootstrap/cache
+      - name: Captured money projection, concurrent sessions and crash recovery on MySQL 8.4
+        run: php artisan test --filter=LegacyMoneyShadowTest

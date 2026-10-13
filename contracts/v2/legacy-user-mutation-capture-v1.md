@@ -1,5 +1,11 @@
 # Legacy User mutation capture v1
 
+The independent default-off [captured money endpoint consumer](legacy-money-shadow-v1.md)
+can project wallet/commission differences into separate evidence tables under
+the same isolated User fence. It does not repair a mapping or apply Subscription,
+Terms, usage or authoritative financial state. Existing verification flags and
+payload hashes below remain unchanged.
+
 Explicit [schedule-repair CLI capture](legacy-schedule-repair-capture-v1.md)
 extends fix-null/force only with `--capture-schedule`; their unmarked historical
 paths remain unchanged. It is separate from counter reset and after-commit

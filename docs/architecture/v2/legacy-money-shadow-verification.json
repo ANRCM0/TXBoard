@@ -1,0 +1,81 @@
+{
+  "phase": "B1.19",
+  "status": "verified-isolated-current",
+  "production_acceptance": false,
+  "base": "651bdbce775d600335641e6855658b6675a430eb",
+  "snapshot": "/opt/txboard-baseline/money-shadow-r1",
+  "archive_sha256": "64eee7081d3b156cdbac7ee23b59adefb6392879810fc36684d62f2710b6d414",
+  "runtime_test_config_migration_sha256": {
+    "api/app/Console/Commands/CoreLegacyMoneyShadow.php": "92818ccf7104f589163796cec9668fecc24537d5b03ac9edcdafd75d5903b8fa",
+    "api/app/Services/Subscription/LegacyMoneyShadow.php": "32e46bb11ce5a1022d33a8dcf561ee3cccd9bd1b9568f9ed54c3815a51b8e9a0",
+    "api/app/Services/Subscription/LegacyUserMutationCapture.php": "a1590e6cdfdb30e9fba4cc24454ad2f5eec6186ff2b9f14da9c776960b94b6ae",
+    "api/config/legacy_money_shadow.php": "c53777a9561a6713825d96330f39670ce81e2244e4670ad2d5330ed407dd2c9c",
+    "api/database/migrations/2026_10_13_000001_create_legacy_money_shadow_tables.php": "8a612579cbf3824c92918ce72b392d919626447dfa5e62bb392a064593746c3c",
+    "api/tests/Feature/Subscription/LegacyMoneyShadowTest.php": "31156043c3eabd2e7ed8ce82b56ef61aa0e2f483fcafef4cb606809f79d67314"
+  },
+  "identical_runtime_in_sqlite_mariadb_and_full_api": true,
+  "dependencies": {
+    "composer_lock_sha256": "f47b212c2fc530a7820e370eab7c6d624d13962e7d26e4f2ddf57a11848257c0",
+    "installed_json_sha256": "8e668e456c9772ae428a038ab003fba5752ab2591980fc8396d9122851145b80"
+  },
+  "environment": {
+    "php": "8.4.16",
+    "local_mysql_family": "MariaDB11.4.12",
+    "mode": "local synthetic isolated only"
+  },
+  "verification": {
+    "sqlite": {
+      "mode": "sqlite",
+      "exit_code": 0,
+      "log_sha256": "a25587a751a3f137306021451c6ea56a05a32ca05aec4c94515baa3b8eeb860d",
+      "snapshot": "/opt/txboard-baseline/money-shadow-r1",
+      "summary": "2 skipped, 13 passed (182 assertions)"
+    },
+    "mysql": {
+      "mode": "mysql",
+      "exit_code": 0,
+      "log_sha256": "a10876207fa3f2d35c9ba7b1351f9cdca138dde3c6f62689ee8aec83668f84c4",
+      "snapshot": "/opt/txboard-baseline/money-shadow-r1",
+      "summary": "15 passed (203 assertions)"
+    },
+    "full": {
+      "mode": "full",
+      "exit_code": 0,
+      "log_sha256": "19fc743efd9f552362a206ca4d2a4735ea3f5840560fdfbc0a2b580512a67be0",
+      "snapshot": "/opt/txboard-baseline/money-shadow-r1",
+      "summary": "101 skipped, 1125 passed (11506 assertions)"
+    }
+  },
+  "engine_specific_skips": {
+    "sqlite_specialized": 2,
+    "full_api": 101,
+    "mariadb_specialized": 0
+  },
+  "checks": [
+    "Actual native Admin wallet/commission edits and unchanged legacy/shadow authority tables",
+    "Balanced nonzero integer delta lines to separately named unclassified capture clearing purposes",
+    "Nonmoney events advance endpoint cursor without zero postings or invented opening transactions",
+    "Frozen high-water paging, durable resume, completed no-op and explicit extension",
+    "SELECT-only per-page exact reconciliation, checkpoint totals and bounded pagination",
+    "Strict environment/config/isolated marker, cursor and outer transaction rejection",
+    "Context/source gaps and corrupt capture/checkpoint/postings fail without repair",
+    "Whole-page SQL rollback and safe retry after post-insert fault",
+    "Independent MariaDB session blocked by actual User lock then advances next page once",
+    "Real SIGKILL before/after commit leaves zero/one durable page with no duplicate postings",
+    "Additive schema replay preserves data and populated rollback refuses"
+  ],
+  "new_mysql_8_4_ci": {
+    "workflow": ".github/workflows/ci-mysql.yml",
+    "job": "isolated-money-shadow",
+    "status": "pending remote push and verification"
+  },
+  "limitations": [
+    "Captured anchor is not historical cash evidence or authoritative live ledger",
+    "Clearing does not infer bank receipts, taxes, fees, payment or refund classification",
+    "Each verification page is separate; all pages must be read, with no global cross-page snapshot claim",
+    "Uncaptured writers and same-endpoint changes remain outside capture coverage",
+    "No existing User, Order, Terms, usage, Commerce opening or mapping state is repaired or switched"
+  ],
+  "global_coverage_complete": false,
+  "migration_gate_open": false
+}
