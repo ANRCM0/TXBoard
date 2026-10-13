@@ -172,7 +172,7 @@ class RegisterService
         ]);
 
         // 保存用户
-        if (!$user->save()) {
+        if (!app(\App\Services\Subscription\LegacyRegistrationCreationShadow::class)->persist($user)) {
             return [false, [500, __('Register failed')]];
         }
 

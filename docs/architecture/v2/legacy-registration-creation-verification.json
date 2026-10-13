@@ -1,0 +1,88 @@
+{
+  "phase": "B1.24",
+  "status": "verified-isolated-current",
+  "base_commit": "1edf030a604ad42fab2fa16e8285862df1699364",
+  "source_sha256": {
+    ".github/workflows/ci-registration-creation-shadow.yml": "74164a21bd17b0590189163d6094bc27597c81ea4511c9a82c08de241048a235",
+    "api/app/Console/Commands/CoreRegistrationCreationShadowVerify.php": "da4b0f3c9629939871f73a92df409843c0fdf247ddef4f00c6370712c0016547",
+    "api/app/Services/Auth/RegisterService.php": "c2f0a5b0e5dee35c8da87f81eb5514b23b8d1c65a98f815ccb3c6438a0ec7960",
+    "api/app/Services/Subscription/LegacyAdminCreationShadow.php": "69fb05414c560f406c9edaa65e40468293757a152c1ebcf0b0adfc09e029accb",
+    "api/app/Services/Subscription/LegacyRegistrationCreationShadow.php": "5334003e871642c6841f3d86c3bb629a31215dfe8433dc482c18121a069473e9",
+    "api/app/Services/Subscription/LegacyUserCreationEvidence.php": "1484ee789b56cb75133b413794bfb7acd01ef3d17d119280831fc2f66eb684cf",
+    "api/config/legacy_registration_creation_shadow.php": "ead62e6c75b25be6d94d6b60b3e69526bab2ddb579d4b4dd76326968771a355f",
+    "api/tests/Feature/Subscription/LegacyRegistrationCreationShadowTest.php": "c793c73816c86b20f0ba6149dd415b243a3c9742ae06b54ea9ba03512e146e30"
+  },
+  "dependencies": {
+    "composer_lock_sha256": "f47b212c2fc530a7820e370eab7c6d624d13962e7d26e4f2ddf57a11848257c0",
+    "installed_json_sha256": "8e668e456c9772ae428a038ab003fba5752ab2591980fc8396d9122851145b80"
+  },
+  "tests": {
+    "targeted": {
+      "mode": "targeted",
+      "exit_code": 0,
+      "log_sha256": "783a3fa0c0596143334d0164f8d7a5faf2554fda03ec01c096fe850ae30e3bb4",
+      "snapshot": "/opt/txboard-baseline/registration-creation-r1"
+    },
+    "mysql": {
+      "mode": "mysql",
+      "exit_code": 0,
+      "log_sha256": "9e2baf143bac6f75733210d0a92c63c07a4a692bfc00434c5785d3c17b6364f1",
+      "snapshot": "/opt/txboard-baseline/registration-creation-r1"
+    },
+    "full": {
+      "mode": "full",
+      "exit_code": 0,
+      "log_sha256": "d01ad2d2f5cc7a9b9dcd0361012bbdc0e53357d07d6faf5a3ca629178f0cb77a",
+      "snapshot": "/opt/txboard-baseline/registration-creation-r1"
+    }
+  },
+  "coverage": {
+    "targeted": {
+      "passed": 54,
+      "skipped": 3,
+      "assertions": 477
+    },
+    "mysql": {
+      "passed": 15,
+      "skipped": 0,
+      "assertions": 124
+    },
+    "full": {
+      "passed": 1255,
+      "skipped": 109,
+      "assertions": 13037
+    }
+  },
+  "new_sqlite_passed": 14,
+  "new_sqlite_skipped": 1,
+  "database": {
+    "engine": "MariaDB",
+    "version": "11.4.12",
+    "dedicated_database": "txboard_registration_creation_test",
+    "synthetic_only": true
+  },
+  "review": {
+    "actionlint": "passed",
+    "native_schema_issues": 0,
+    "api_source_matches_verified_snapshot": true,
+    "existing_admin_policy_hash_and_ticket_shape_preserved": true,
+    "registration_self_binding_from_persisted_user": true,
+    "default_off_uses_original_save_without_added_transaction": true,
+    "user_and_initial_evidence_atomic": true,
+    "native_invite_consumption_remains_before_transaction": true,
+    "native_cancelled_save_returns_false": true,
+    "select_only_verifier": true,
+    "no_frontend_development": true,
+    "no_production_writer_switch": true
+  },
+  "remote_ci": {
+    "status": "pending-after-push"
+  },
+  "limitations": [
+    "Only actual new User save in native RegisterService is captured; bootstrap and trusted direct-create writers remain uncovered",
+    "Invitation consumption, email code cleanup, IP counters, hooks and session issuance retain original non-atomic boundaries",
+    "Observer or after hook failure can hide a committed account; no automatic retry or compensation",
+    "No new live Terms, grants, financial journals, mapping or global migration gate",
+    "Local native HTTP and CLI opt-in verified; existing Internal registration regression remains default-off for this capture"
+  ]
+}
