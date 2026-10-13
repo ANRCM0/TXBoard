@@ -76,7 +76,162 @@
     "production_enablement": false
   },
   "remote_ci": {
-    "status": "pending-after-push"
+    "status": "all-triggered-runs-passed",
+    "commit": "0ab072ef3cffbfbc187abb3bc37bacf2910d01b4",
+    "runs": [
+      {
+        "conclusion": "success",
+        "databaseId": 38423938938,
+        "headSha": "0ab072ef3cffbfbc187abb3bc37bacf2910d01b4",
+        "name": "Documentation",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38423938938"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 38423938911,
+        "headSha": "0ab072ef3cffbfbc187abb3bc37bacf2910d01b4",
+        "name": "internal-admin-users",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38423938911"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 38423939134,
+        "headSha": "0ab072ef3cffbfbc187abb3bc37bacf2910d01b4",
+        "name": "registration-creation-shadow",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38423939134"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 38423939010,
+        "headSha": "0ab072ef3cffbfbc187abb3bc37bacf2910d01b4",
+        "name": "internal-admin-order-list",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38423939010"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 38423939015,
+        "headSha": "0ab072ef3cffbfbc187abb3bc37bacf2910d01b4",
+        "name": "internal-admin-plan-list",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38423939015"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 38423938872,
+        "headSha": "0ab072ef3cffbfbc187abb3bc37bacf2910d01b4",
+        "name": "internal-admin-sessions",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38423938872"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 38423938837,
+        "headSha": "0ab072ef3cffbfbc187abb3bc37bacf2910d01b4",
+        "name": "internal-admin-consumer",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38423938837"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 38423939286,
+        "headSha": "0ab072ef3cffbfbc187abb3bc37bacf2910d01b4",
+        "name": "internal-admin-dashboard",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38423939286"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 38423938897,
+        "headSha": "0ab072ef3cffbfbc187abb3bc37bacf2910d01b4",
+        "name": "internal-admin-login",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38423938897"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 38423939019,
+        "headSha": "0ab072ef3cffbfbc187abb3bc37bacf2910d01b4",
+        "name": "internal-admin-identity",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38423939019"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 38423939028,
+        "headSha": "0ab072ef3cffbfbc187abb3bc37bacf2910d01b4",
+        "name": "provider-offline-proof",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38423939028"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 38423939013,
+        "headSha": "0ab072ef3cffbfbc187abb3bc37bacf2910d01b4",
+        "name": "registration-shadow-transport",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38423939013"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 38423939135,
+        "headSha": "0ab072ef3cffbfbc187abb3bc37bacf2910d01b4",
+        "name": "admin-creation-shadow",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38423939135"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 38423938803,
+        "headSha": "0ab072ef3cffbfbc187abb3bc37bacf2910d01b4",
+        "name": "bootstrap-creation-shadow",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38423938803"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 38423938891,
+        "headSha": "0ab072ef3cffbfbc187abb3bc37bacf2910d01b4",
+        "name": "internal-session-consumer",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38423938891"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 38423938958,
+        "headSha": "0ab072ef3cffbfbc187abb3bc37bacf2910d01b4",
+        "name": "admin-deletion-shadow",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38423938958"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 38423938794,
+        "headSha": "0ab072ef3cffbfbc187abb3bc37bacf2910d01b4",
+        "name": "api-mysql-ci",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38423938794"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 38423938884,
+        "headSha": "0ab072ef3cffbfbc187abb3bc37bacf2910d01b4",
+        "name": "api-ci",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38423938884"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 38423938870,
+        "headSha": "0ab072ef3cffbfbc187abb3bc37bacf2910d01b4",
+        "name": "txboard-core-image",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38423938870"
+      }
+    ]
   },
   "limitations": [
     "Only actual TxboardInstall registerAdmin save is covered; full settings/plugin/filesystem installer lifecycle is separate",

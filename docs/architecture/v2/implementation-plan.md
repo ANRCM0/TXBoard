@@ -449,3 +449,5 @@ Deploy `34fd467` 修正host MySQL临时socket服务就绪竞争，[完整部署C
 [当前契约](../../../contracts/v2/legacy-bootstrap-creation-shadow-v1.md)接入Core TxboardInstall::registerAdmin实际保存User的路径，不运行完整宿主安装器。独立严格默认关闭开关，关闭时沿用原save且不添加事务；启用时仅新User和初始证据同事务。固定install.admin.create策略、自引用实际新User ID、原生密码hash/角色/UUID/Token/默认值和取消saving语义保留，不给安装账户补造试用套餐、会话或其他权益。共享保存组件只允许两个固定自身创建来源，注册和Admin既有版本/hash/ticket形状不变。
 
 固定 `5c55adb` 加本批源码：新SQLite专项 **11通过、1项引擎条件跳过**，与注册、Admin创建和原认证兼容回归共 **47通过、3项跳过、409断言**；MariaDB **12全部通过、109断言**，包含原初始化保存事务提交前独立会话不可见、提交后User/证据共同可见。全API **1266通过、110项引擎/工具链条件跳过、13140断言**。取消saving、短密码、context/storage失败、重复邮箱不重建凭据、跨policy拒绝、有界只读CLI和来源变化/缺失均验收；[源码与日志报告](legacy-bootstrap-creation-verification.json)记录固定依赖。原完整安装settings/plugin/文件系统/控制台输出仍在原边界，宿主安装生命周期归TXBoard-Deploy；可信直接writer、权威投影和生产迁移继续待完成，独立Oracle MySQL8.4 CI已加入。
+
+B1.25 的初次Oracle MySQL8.4 CI使用原夹具Redis22，默认16库容器拒绝；`01a5f0a`将CI改为显式Redis12并保留原profile默认22，本地12项真实链路复验通过。提交 `0ab072e` 的[Oracle MySQL8.4/Redis7.4组合联调](https://github.com/ANRCM0/TXBoard/actions/runs/38423939013)现已通过；初始化管理员专项及API/MySQL、Core镜像、管理读取、会话、公钥和文档共19个触发CI全部通过，两份报告保留原失败和最终收尾证据。
