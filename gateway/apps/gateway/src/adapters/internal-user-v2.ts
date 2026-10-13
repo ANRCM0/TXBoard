@@ -209,6 +209,11 @@ export function adaptInternalUserV2(operation: 'userProfile' | 'userOrderDetail'
     balance_amount: safe(row.balance_amount_minor), discount_amount: safe(row.discount_amount_minor) }
 }
 
+export const internalOrderCancelSuccess = z.strictObject({
+  data: z.strictObject({ ok: z.literal(true) }), request_id: z.string().length(36).uuid(),
+  meta: z.strictObject({ current_only: z.literal(true), slice: z.literal('internal-order-cancel/1') }),
+})
+
 /** Standard JSON parsing plus duplicate decoded key rejection; input is byte/depth bounded by transport. */
 export function strictInternalJson(text: string): unknown {
   let offset = 0

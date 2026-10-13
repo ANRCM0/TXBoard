@@ -94,8 +94,9 @@ export function resolvePolicy(
 
     // Match on path-segment boundaries only: /gateway/v1/ordersX must never
     // match the /gateway/v1/orders entry.
-    const isPrefix = normalizedPath === entryPath
-      || normalizedPath.startsWith(entryPath.endsWith('/') ? entryPath : `${entryPath}/`)
+    const isPrefix = entryPath === `${PREFIX}/orders/:tradeNo/cancel`
+      ? /^\/gateway\/v1\/orders\/[^/]+\/cancel$/.test(normalizedPath)
+      : normalizedPath === entryPath || normalizedPath.startsWith(entryPath.endsWith('/') ? entryPath : `${entryPath}/`)
     if (!isPrefix) continue
 
     const isMethodSpecific = entryMethod !== '*'

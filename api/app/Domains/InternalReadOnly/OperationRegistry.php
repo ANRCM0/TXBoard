@@ -22,6 +22,7 @@ final class OperationRegistry
         'user.subscription-summary.get' => ['service' => 'user-gateway', 'actor' => 'user', 'versions' => ['2']],
         'user.notice.list' => ['service' => 'user-gateway', 'actor' => 'user', 'versions' => ['2']],
         'user.order-status.get' => ['service' => 'user-gateway', 'actor' => 'user', 'versions' => ['2']],
+        'user.order.cancel' => ['service' => 'user-gateway', 'actor' => 'user', 'versions' => ['1']],
         'user.order.create' => ['service' => 'user-gateway', 'actor' => 'user', 'versions' => ['1']],
         'user.session.list' => ['service' => 'user-gateway', 'actor' => 'user', 'versions' => ['1']],
         'user.session.revoke' => ['service' => 'user-gateway', 'actor' => 'user', 'versions' => ['1']],
@@ -94,6 +95,10 @@ final class OperationRegistry
             throw new SliceFailure('OPERATION_DISABLED', 404);
         }
         if ($definition['actor'] === 'password-reset' && (config('internal_api_slice.password_reset_enabled') !== true
+            || config('core_shadow.isolated_copy') !== true)) {
+            throw new SliceFailure('OPERATION_DISABLED', 404);
+        }
+        if ($operation === 'user.order.cancel' && (config('internal_api_slice.order_cancel_enabled') !== true
             || config('core_shadow.isolated_copy') !== true)) {
             throw new SliceFailure('OPERATION_DISABLED', 404);
         }
@@ -211,9 +216,9 @@ final class OperationRegistry
                     && (!is_int($input->status) || $input->status < 0 || $input->status > 4))) {
                 throw new SliceFailure('INVALID_REQUEST', 400);
             }
-        } elseif (in_array($operation, ['user.order.get', 'user.order-status.get'], true)) {
+        } elseif (in_array($operation, ['user.order.get', 'user.order-status.get', 'user.order.cancel'], true)) {
             StrictJson::exact($input, ['trade_no']);
-            $max = $body->contract_version === '2' ? 128 : 64;
+            $max = $body->contract_version === '2' || $operation === 'user.order.cancel' ? 128 : 64;
             if (!is_string($input->trade_no) || !preg_match('/\A[A-Za-z0-9_-]{1,'.$max.'}\z/D', $input->trade_no)) {
                 throw new SliceFailure('INVALID_REQUEST', 400);
             }

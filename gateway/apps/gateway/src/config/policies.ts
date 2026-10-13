@@ -29,6 +29,7 @@ export type PolicyName =
   | 'captchaChallenge'
   | 'disabledWrite'
   | 'orderWrite'
+  | 'isolatedOrderCancel'
 
 export type RoutePolicy = Readonly<{
   /** Identity of the policy; the stable key used by snapshots and tests. */
@@ -73,6 +74,7 @@ export const POLICY_DEFINITIONS: Readonly<Record<PolicyName, RoutePolicy>> = {
   // shape-checked before any handler runs, and never cached. The policy
   // guarantees no upstream call without a credential and a well-formed body;
   // idempotency and every business rule stay in Laravel (GW-302/303).
+  isolatedOrderCancel: { name: 'isolatedOrderCancel', auth: 'bearer', body: 'json', limiter: 'public', cache: 'off' },
   orderWrite: { name: 'orderWrite', auth: 'bearer', body: 'json', limiter: 'public', cache: 'off' },
 } as const
 
@@ -114,6 +116,7 @@ export const routeDefinitions = [
   { method: 'GET', path: `${PREFIX}/payments`, policy: POLICY_DEFINITIONS.userRead },
 
   // Payment write ban: fixed 405, structurally zero upstream calls.
+  { method: 'POST', path: `${PREFIX}/orders/:tradeNo/cancel`, policy: POLICY_DEFINITIONS.isolatedOrderCancel },
   { method: 'POST', path: `${PREFIX}/orders`, policy: POLICY_DEFINITIONS.disabledWrite },
 ] as const
 
@@ -164,6 +167,7 @@ export const ROUTE_OPERATIONS: Readonly<Record<string, readonly string[]>> = {
   [routeKey('GET', `${PREFIX}/payments`)]: ['userPaymentMethods'],
   // The write ban: zero upstream operations, in every posture where the
   // route is NOT promoted. See operationsFor().
+  [routeKey('POST', `${PREFIX}/orders/:tradeNo/cancel`)]: ['userOrderCancel'],
   [routeKey('POST', `${PREFIX}/orders`)]: [],
 } as const
 
@@ -192,6 +196,7 @@ const UPSTREAM_WRITE_OPERATIONS: ReadonlySet<string> = new Set<string>([
   'sendEmailCode',
   'resetPassword',
   'userOrderCreate',
+  'userOrderCancel',
   'userSessionRevoke',
   'userSessionLogout',
 ])
@@ -223,6 +228,7 @@ export interface PolicyEnvironment {
    * shipped posture and nothing else — not a header, manifest or capability
    * — can weaken it.
    */
+  isolatedOrderCancel?: boolean
   orderWrite?: boolean
 }
 
@@ -270,6 +276,7 @@ export function activeRouteDefinitions(
     return definition
   }).filter(definition => {
     const { policy, path } = definition
+    if (policy.name === 'isolatedOrderCancel') return environment.isolatedOrderCancel === true
     if (policy.name === 'isolatedSessionRead' || policy.name === 'secureSessionMutation') {
       return Boolean(environment.hpke && environment.redis && environment.replayStore
         && environment.isolatedSessions && !environment.accountWorkflows)

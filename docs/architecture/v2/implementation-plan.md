@@ -1,6 +1,6 @@
 # Core First v2 实施台账
 
-> 状态：B0、B1.1–B1.27 影子证据、Terms、身份旁观、固定 writer 捕获、套餐批量同步、批量封禁、管理员创建/删除、注册初始记录与余额端点投影、B2.1–B2.5 单机升级、B3.1/B3.2 隔离用量、B3.3–B3.5 本地观察与持久事件桶、B4.1–B4.7 合成 Provider、插件停用接入、租约候选、离线签名快照与Go公钥诊断、B5.1–B5.23 本地 mTLS 读取、隔离建单、登录、内存邮件验证码、隔离注册、密码恢复、当前会话与管理读取、B6.1–B6.4 实验字节、离线加密、共享 owner 与独立响应随机值候选及 B7.1 Agent/MCP 退役已实现；两仓迁移与三镜像发布已完成，继续推进业务迁移切片。各整阶段仍按下表门禁验收。
+> 状态：B0、B1.1–B1.27 影子证据、Terms、身份旁观、固定 writer 捕获、套餐批量同步、批量封禁、管理员创建/删除、注册初始记录与余额端点投影、B2.1–B2.5 单机升级、B3.1/B3.2 隔离用量、B3.3–B3.5 本地观察与持久事件桶、B4.1–B4.7 合成 Provider、插件停用接入、租约候选、离线签名快照与Go公钥诊断、B5.1–B5.24 本地 mTLS 读取、隔离建单、登录、内存邮件验证码、隔离注册、密码恢复、当前会话与管理读取、B6.1–B6.4 实验字节、离线加密、共享 owner 与独立响应随机值候选及 B7.1 Agent/MCP 退役已实现；两仓迁移与三镜像发布已完成，继续推进业务迁移切片。各整阶段仍按下表门禁验收。
 
 2026-10-13，按仓库整合任务，将 Gateway/Node 的完整 Git 历史导入本仓 `gateway/`、`node/`，安装器集中到 TXBoard-Deploy。当前目录与三镜像 CI 见 [双仓布局](../../development/repository-layout.md)；旧基线和验证报告保持当时提交与路径。本次仓库整理独立于下列业务迁移门禁。
 
@@ -485,3 +485,9 @@ B1.27 `3156b0d` 的[Oracle MySQL8.4生命周期专项](https://github.com/ANRCM0
 [当前契约](../../../contracts/v2/node-usage/bounded-tcp-collector-v1.md)增加显式sing-box tracker构造，以冻结Core Session/User绑定和实际Read/Write Begin/Complete构造非零v2批次。私有net.Conn视图阻止zero-copy/Count/Upstream绕过；Pinned sing Copy和extended writer沿实际计数入口。整数半开秒边界使未完成或跨界I/O留在原区间等待下一边界，partial error保留实际正字节；身份、lease、clock、容量、late/closed及UDP未知均fail-stop。journal先持久原Session、I/O evidence与随机batch，再导出既有spool，ConfirmCapture核对owner和原回执并重确认file/directory fsync，恢复不重建旧live timeline或未知tail。
 
 固定 `3156b0d` 加本批冻结源码：Linux Go1.26.3五个完整受影响包race **185主测试、152子测试通过，无跳过/失败**，vet通过；六个真实SIGKILL点、八类journal同步故障和spool重确认故障通过。实际memory TCP验11 upload/7 download、partial7/2和Copy13/0及0/13；Reporter使用进程内synthetic持久回执模拟丢响应后查询原batch。[精确报告](../../../node/docs/bounded-usage-verification.json)保留失败快照、锁及源码hash。默认Service仍不用该构造，v1累计仍在原权威路径；未完成真实Core TLS接收/结算、准入/撤销或生产handoff，不能双份计费。旧不可归属事件bucket不被提升为确定区间；新source marker要求更高Core epoch才能新live collector，旧sealed记录保持原身份。
+
+### B5.24 原生取消订单的隔离业务调用
+
+[当前契约](../../../contracts/v2/core-internal-api/local-order-cancel-v1.md)新增独立默认关闭的user.order.cancel v1及Gateway/SDK固定消费者。Core委托原BillingController/OrderService当前owner查询和PENDING事务，退款、优惠券名额、可选capture和钩子时机保持；不存在新取消幂等或自动补偿。Gateway handler仅local/testing且Internal User mTLS配置有效时注册，闭集输入/输出、当前Bearer/角色/封禁/归属每次重查，无Native回退；SDK只尝试一次，将409、5xx、网络/坏回执标为需确认当前状态。取消Exception诊断改为固定code，保留false与Exception范围，不返回原args/previous。
+
+Core新专项及原建单/Billing回归 **19项、198断言**；Gateway **939**、SDK **138**及类型/构建通过；实际SDK/Gateway/Core/TLS1.3/MariaDB **13项**验证真实预扣和名额、退款恢复一次、重复409、before异常回滚、after异常409已提交、审计503隐藏退款、native capture以及撤销拒绝，最终Token为0。协调者固定 `7737662` 加本批冻结源码组合全API **1319通过、117项引擎/工具链跳过、13669断言**。[报告](internal-order-cancel-verification.json)保留早期schema/夹具/路由/配置/响应ID/日志位置失败和最终同源验收。Core响应ID仍服务端生成，客户端核对响应头/body一致；默认父级writeban可能405，未启用生产或正式SC-v2。独立Oracle MySQL8.4真实组合CI已加入，后续远端结果单独核对。

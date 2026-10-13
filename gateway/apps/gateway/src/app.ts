@@ -50,6 +50,7 @@ import { registerAccountRoutes } from './routes/account.js'
 import { registerUserRoutes } from './routes/user.js'
 import { registerSessionRoutes } from './routes/sessions.js'
 import { registerOrdersRoutes } from './routes/orders.js'
+import { registerOrderCancelRoutes } from './routes/order-cancel.js'
 import { registerOrdersWriteRoutes } from './routes/orders-write.js'
 import type { RouteContext } from './routes/shared.js'
 import {
@@ -313,6 +314,10 @@ export function createGatewayApp(
   if (config.internalPasswordResetEnabled === true && (policy.accountWorkflows || !crypto || !policy.limiter)) {
     throw new Error('Isolated password recovery requires HPKE and Redis with account workflows disabled')
   }
+  if (config.internalOrderCancelEnabled === true && (!config.internalUser
+    || !['local', 'testing'].includes(config.internalOrderCancelEnvironment ?? ''))) {
+    throw new Error('Isolated order cancellation requires local/testing Internal mTLS')
+  }
   if (config.internalSessionsEnabled === true && (policy.accountWorkflows || !config.internalUser || !crypto || !policy.limiter)) {
     throw new Error('Isolated sessions require Internal mTLS, HPKE and Redis with account workflows disabled')
   }
@@ -337,6 +342,7 @@ export function createGatewayApp(
     // GW-304: the flag comes from configuration only. No request header,
     // theme manifest or client capability can promote the write ban — the
     // frozen table is the only place the route posture is decided.
+    isolatedOrderCancel: config.internalOrderCancelEnabled === true,
     orderWrite: config.orderWriteEnabled,
   }
   validatePolicies(activeRouteDefinitions(policyEnvironment), policyEnvironment, ROUTE_OPERATIONS)
@@ -569,6 +575,7 @@ export function createGatewayApp(
   // from the frozen table (orderWrite, bearer + json envelope, never cached).
   // With the flag off, POST /gateway/v1/orders stays `disabledWrite`: the
   // policy layer answers 405 with zero upstream calls.
+  if (config.internalOrderCancelEnabled === true) registerOrderCancelRoutes(app, { config, fetcher })
   if (config.orderWriteEnabled) {
     registerOrdersWriteRoutes(app, { config, fetcher: observed })
   }

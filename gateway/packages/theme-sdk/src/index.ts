@@ -385,6 +385,27 @@ export function createTXBoardClient(options: TXBoardClientOptions = {}) {
         return invoke<OrderPage>('/orders/page' + (params.size ? '?' + params.toString() : ''), { protected: true })
       },
       detail: (tradeNo: string) => invoke<Order>(`/orders/${encodeURIComponent(tradeNo)}`, { protected: true }),
+      /** Isolated legacy cancellation: POST is never retried; unknown outcome needs state confirmation. */
+      cancel: async (tradeNo: string) => {
+        if (!/^[A-Za-z0-9_-]{1,128}$(?![\s\S])/.test(tradeNo)) throw new GatewayApiError('VALIDATION_ERROR', 400, 'Invalid order identifier')
+        let value: unknown
+        try {
+          value = await invoke<unknown>('/orders/' + encodeURIComponent(tradeNo) + '/cancel', { method: 'POST', body: {}, protected: true })
+        } catch (error) {
+          if (error instanceof GatewayApiError && [401, 403, 404].includes(error.status)) {
+            throw new GatewayApiError(error.code, error.status, error.message, error.requestId, false, false)
+          }
+          if (error instanceof GatewayApiError && (error.status === 409 || error.status >= 500
+            || ['NETWORK_ERROR', 'INVALID_RESPONSE', 'VERSION_MISMATCH'].includes(error.code))) {
+            throw new GatewayApiError(error.code, error.status, error.message, error.requestId, false, true)
+          }
+          throw error
+        }
+        if (!value || typeof value !== 'object' || Array.isArray(value) || Object.keys(value).length !== 1 || (value as { ok?: unknown }).ok !== true) {
+          throw new GatewayApiError('INVALID_RESPONSE', 502, 'Unexpected cancellation response', undefined, false, true)
+        }
+        return { ok: true as const }
+      },
       /**
        * GW-304: create an order. Requires an `idempotencyKey` — the Gateway
        * rejects a write without one (400, zero upstream calls), so the caller

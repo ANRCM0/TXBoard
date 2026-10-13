@@ -207,6 +207,7 @@ const ROUTE_TEMPLATES: ReadonlyArray<readonly [string, string]> = [
   ['GET', '/gateway/v1/orders/page'],
   ['GET', '/gateway/v1/orders/:id'],
   ['GET', '/gateway/v1/orders/:id/status'],
+  ['POST', '/gateway/v1/orders/:tradeNo/cancel'],
   ['POST', '/gateway/v1/orders'],
   ['POST', '/gateway/v1/auth/login'],
   ['POST', '/gateway/v1/secure/auth/login'],

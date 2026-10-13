@@ -35,6 +35,8 @@ export type GatewayConfig = {
   internalRegisterEnabled?: boolean
   internalPasswordResetEnabled?: boolean
   /** Independent local/testing current User session consumer. */
+  internalOrderCancelEnabled?: boolean
+  internalOrderCancelEnvironment?: 'local' | 'testing'
   internalSessionsEnabled?: boolean
 }
 
@@ -124,6 +126,11 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     && (sessions !== 'true' || !internalUser || !['local', 'testing'].includes(env.APP_ENV ?? ''))) {
     throw new Error('Invalid local Internal sessions configuration')
   }
+  const cancel = env.GATEWAY_INTERNAL_ORDER_CANCEL_ENABLED
+  if (cancel !== undefined && cancel !== '' && cancel !== 'false'
+    && (cancel !== 'true' || !internalUser || !['local', 'testing'].includes(env.APP_ENV ?? ''))) {
+    throw new Error('Invalid local Internal order cancellation configuration')
+  }
   return {
     host: env.GATEWAY_HOST || '127.0.0.1',
     port: intSetting(env.GATEWAY_PORT, 8787, 1, 65535),
@@ -147,6 +154,8 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     internalEmailCodeEnabled: emailCode === 'true',
     internalRegisterEnabled: registration === 'true',
     internalPasswordResetEnabled: passwordReset === 'true',
+    internalOrderCancelEnabled: cancel === 'true',
+    internalOrderCancelEnvironment: cancel === 'true' ? env.APP_ENV as 'local' | 'testing' : undefined,
     internalSessionsEnabled: sessions === 'true',
   }
 }

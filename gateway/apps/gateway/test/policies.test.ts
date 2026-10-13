@@ -89,6 +89,7 @@ const EXPECTED_MAPPING: Record<string, PolicyName> = {
   'GET /gateway/v1/orders/:tradeNo/status': 'userRead',
   'GET /gateway/v1/payments': 'userRead',
   'POST /gateway/v1/auth/captcha/challenge': 'captchaChallenge',
+  'POST /gateway/v1/orders/:tradeNo/cancel': 'isolatedOrderCancel',
   'POST /gateway/v1/orders': 'disabledWrite',
 }
 
@@ -127,6 +128,7 @@ describe('GW-212 route policy table', () => {
       { name: 'userRead', auth: 'bearer', body: 'none', limiter: 'public', cache: 'off' },
       { name: 'userRead', auth: 'bearer', body: 'none', limiter: 'public', cache: 'off' },
       { name: 'userRead', auth: 'bearer', body: 'none', limiter: 'public', cache: 'off' },
+      { name: 'isolatedOrderCancel', auth: 'bearer', body: 'json', limiter: 'public', cache: 'off' },
       { name: 'disabledWrite', auth: 'none', body: 'none', limiter: 'none', cache: 'off' },
     ])
   })

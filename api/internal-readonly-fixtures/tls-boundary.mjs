@@ -30,6 +30,7 @@ const operations = new Map([
   ['/txapi/internal/v1/operations/user.notice.list', 'user-gateway'],
   ['/txapi/internal/v1/operations/user.order-status.get', 'user-gateway'],
   ['/txapi/internal/v1/operations/user.order.create', 'user-gateway'],
+  ['/txapi/internal/v1/operations/user.order.cancel', 'user-gateway'],
   ['/txapi/internal/v1/operations/user.session.list', 'user-gateway'],
   ['/txapi/internal/v1/operations/user.session.revoke', 'user-gateway'],
   ['/txapi/internal/v1/operations/user.session.logout', 'user-gateway'],

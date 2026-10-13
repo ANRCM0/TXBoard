@@ -464,7 +464,7 @@ class OrderService
             Log::error('LEGACY_ORDER_CANCELLATION_CAPTURE_FAILED');
             return false;
         } catch (\Exception $e) {
-            Log::error($e);
+            Log::error('ORDER_CANCELLATION_FAILED');
             return false;
         }
     }

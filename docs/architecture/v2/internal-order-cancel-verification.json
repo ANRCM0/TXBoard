@@ -1,0 +1,158 @@
+{
+  "phase": "B5.24",
+  "status": "verified-isolated-current",
+  "base_commit": "3156b0d6a3357d88937e01edf0f7ffe8dca44a91",
+  "source_sha256": {
+    ".github/workflows/ci-internal-order-cancel.yml": "1439d0d57d4efe4f6e1fc68ea12c6b5c2fd6a862ab9f404c4a62bc98846c8a14",
+    "api/app/Domains/InternalReadOnly/InternalOrderCancelDispatcher.php": "412491c6ca644c67a6f958776696d50eb1462b65af1d7045c24f56e0520c2a69",
+    "api/app/Domains/InternalReadOnly/OperationRegistry.php": "7f643388723a65c82aa7fb7e498a9423f0d999425bcf9a98588e99c24fb43441",
+    "api/app/Http/Controllers/Txapi/InternalReadOnlyController.php": "95702f77618b798e95ee6e9c2e2268e73c86b1f44f96b8066d425253eee4f374",
+    "api/app/Services/OrderService.php": "35feea978e98613367cff9ebef43fa6adce3019be1f2f4eb1ccc17d1640ce0a2",
+    "api/config/internal_api_slice.php": "a3d6bf1a88100aeb8e1927cde716a001c9127d79f9a464882205c541e16f898a",
+    "api/internal-readonly-fixtures/tls-boundary.mjs": "a2754eab5640d3e89b0b021ffbe94ac1c781ac794a517561fa7321982ab8d9e1",
+    "api/tests/Feature/InternalReadOnly/InternalOrderCancelTest.php": "1ed7ee0c4aa3a4c5d41f6b7d1430b101b389166740100731d292351c0e02d453",
+    "contracts/v2/core-internal-api/local-order-cancel-v1.md": "7da3a67e76c83084cde971635e8fee3d14cdf9601b9713a973c6ac28484f8584",
+    "gateway/apps/gateway/src/adapters/internal-user-v2.ts": "ceac6c56d6e3c4137b12347418a7a2609be474f818c556e279e04e13ae4f6fbb",
+    "gateway/apps/gateway/src/app.ts": "f2d3a777f593e7a841b21aed291267708ea2921669c76db77e9f029c9cd16ce8",
+    "gateway/apps/gateway/src/config/env.ts": "03843595dde04aa6008c9d673dd9dd4f37dd7b3eb64fa28455fe3fa312eb8e7d",
+    "gateway/apps/gateway/src/config/policies.ts": "bb3ae0ac886eb912e793d05ad6f2fe90488f15017280418b6819028caef388ea",
+    "gateway/apps/gateway/src/middleware/observability.ts": "ee811be8caa88eee393e52aecbc7bb5cd0368a422b147c51158f6ab66392fca3",
+    "gateway/apps/gateway/src/middleware/policy.ts": "ede5dc616bdda29d13068a459f1ffb84365a46f22d729965733c8ab8f618c50f",
+    "gateway/apps/gateway/src/routes/order-cancel.ts": "46917a2ae97dc6612edb27b1bcdbaef30006e2fae6c26ed95bb461b5ae7ecd77",
+    "gateway/apps/gateway/src/services/internal-user-client.ts": "215f014391b2fc4e2cf1027282328a26fd6df0f769cc2cc27b1e9c8d21b933a2",
+    "gateway/apps/gateway/test/internal-order-cancel.test.ts": "140e8b4d402d40a4e7587f43e2e93d7bc347f23c9113e9f138e94464a77ff09c",
+    "gateway/apps/gateway/test/policies.test.ts": "e94d9024d8bc79f79046cdf18d2c35be0317e140f6bd0de1ec8f40b343d3ede0",
+    "gateway/packages/theme-sdk/src/index.ts": "a956a39242f6f229828ce27e6b6a6ce752c45af674caafb59b7d3305a1fba857",
+    "gateway/packages/theme-sdk/test/order-cancel.test.ts": "618b086af26e8569a118ad51489d6713005bcd0f09f262d7487782d43ef9629d",
+    "scripts/tests/internal-order-cancel/README.md": "c9d1a212c88fdd5a374e510be39904d01510b414df1931fd6f1457a2f1c0ef3a",
+    "scripts/tests/internal-order-cancel/cleanup.py": "7984934e3c72cff54704692272868767e0588a2b3c90ff5f6e0920b6e5bc008f",
+    "scripts/tests/internal-order-cancel/fixture.php": "32b887ba1e07ece7c83dd824f8fbd0d2a96cf546a976fbe5bbd317cc48427305",
+    "scripts/tests/internal-order-cancel/integration.mjs": "d7701ba877e721ad5079cc0da8299f6e7a8900c3096746634f83921ca787853e",
+    "scripts/tests/internal-order-cancel/run-local-baseline.py": "78996d26fe58f611d38c8a0ceb199c60f809d7a88f173c865a3ba4cc521f886a",
+    "scripts/tests/internal-order-cancel/run.sh": "1dd100bde5551eddce02f0502b259edb74f34a84d3c566c616328a2adf42c47e",
+    "scripts/tests/internal-order-cancel/server-router.php": "15308d7863e27b18fdd672a3c1fc6b2c547008605885e63fa2b4ffdbb0c04eb6"
+  },
+  "dependencies": {
+    "composer_lock_sha256": "f47b212c2fc530a7820e370eab7c6d624d13962e7d26e4f2ddf57a11848257c0",
+    "installed_json_sha256": "8e668e456c9772ae428a038ab003fba5752ab2591980fc8396d9122851145b80",
+    "gateway_lock_sha256": "a60bdbf6de2788282dfa87077316f55df950c7192e6a33960ead97dc953dc940"
+  },
+  "tests": {
+    "targeted": {
+      "mode": "targeted",
+      "exit_code": 0,
+      "log_sha256": "8adc76bf196b8f39bb344ca890f94ffbee8fb5e20cf1117d410efbbb85025d78",
+      "snapshot": "/opt/txboard-baseline/internal-order-cancel-r4"
+    },
+    "gateway_check": {
+      "mode": "check",
+      "exit_code": 0,
+      "log_sha256": "91d48b6a809ff170599651d21ace0e6c5dcb266a5c5c69d8b637adb35a4fd5d4",
+      "snapshot": "/opt/txboard-baseline/internal-order-cancel-r9"
+    },
+    "build": {
+      "mode": "build",
+      "exit_code": 0,
+      "log_sha256": "fb7bc2852af672205d99f8f2470eca2afc722cfb9eeff1f243d0c69545b0cc1a",
+      "snapshot": "/opt/txboard-baseline/internal-order-cancel-r10"
+    },
+    "tls": {
+      "mode": "tls",
+      "exit_code": 0,
+      "log_sha256": "5672b1ca750caf7244c6a4ca17f05da8124e59eff6aa6b9c69050cec3151852d",
+      "snapshot": "/opt/txboard-baseline/internal-order-cancel-r10"
+    },
+    "full": {
+      "mode": "full",
+      "exit_code": 0,
+      "log_sha256": "22453f6d7d3c8c0eafab7246c2d250a247bbca35111baedcb813205d656df03a",
+      "snapshot": "/opt/txboard-baseline/cancel-integrated-r1"
+    }
+  },
+  "coverage": {
+    "new_core_tests": 10,
+    "targeted_passed": 19,
+    "targeted_assertions": 198,
+    "new_gateway_tests": 16,
+    "gateway_passed": 939,
+    "new_sdk_tests": 15,
+    "sdk_passed": 138,
+    "typecheck": "passed",
+    "build": "passed",
+    "real_tls_core_mysql_passed": 13,
+    "full_passed": 1319,
+    "full_skipped": 117,
+    "full_assertions": 13669
+  },
+  "tls_receipt": {
+    "checks": [
+      "strict independent local flag and production configuration refuse",
+      "real native creation reserves wallet and coupon through fixed Internal operation",
+      "foreign missing and Admin actors cannot cancel owner order",
+      "current ban and promotion are rechecked at Core each attempt",
+      "SDK legacy route restores prepaid wallet and one coupon slot exactly once",
+      "duplicate cancellation returns409 once and does not refund or restore twice",
+      "closed query body and absent Bearer reject before Core audit",
+      "before-hook Exception rolls back and diagnostic remains fixed",
+      "after-hook Exception yields native409 after commit without automatic compensation",
+      "real audit503 hides committed refund and SDK sends one attempt",
+      "strict isolated native capture can record cancellation without a new writer",
+      "current credential revocation refuses pending cancellation without mutation",
+      "fixed service diagnostics audit and final temporary credential cleanup remain private"
+    ],
+    "passed": 13,
+    "balance": 800,
+    "coupon_slots": 1,
+    "order_statuses": [
+      2,
+      0,
+      2,
+      2,
+      2,
+      0
+    ],
+    "token_count": 0,
+    "audit_count": 13,
+    "capture_events": 1,
+    "database_version": "11.4.12-MariaDB",
+    "synthetic_only": true,
+    "no_native_fallback": true,
+    "no_auto_retry": true,
+    "public_route_default_off": true,
+    "scv2Claim": false
+  },
+  "regression": {
+    "native_billing_and_order_creation": "passed",
+    "native_schema": "passed",
+    "docs_links": "passed",
+    "actionlint": "passed",
+    "integrated_api_full": "passed-on-final-combination"
+  },
+  "scope": {
+    "isolated_only": true,
+    "default_off": true,
+    "native_controller_service_delegation": true,
+    "public_user_cancel_route_default_off": true,
+    "public_admin_gateway_route": false,
+    "production_activation": false,
+    "scv2Claim": false,
+    "automatic_retry": false,
+    "compensation": false,
+    "new_cancellation_idempotency": false
+  },
+  "notes": [
+    "Native BillingController owner lookup and OrderService pending transaction/refund/coupon/capture/hook timing preserved; only the existing cancel Exception catch diagnostic changes to a fixed constant without exception args/previous chain.",
+    "Real native creation reserves wallet and a coupon slot; cancellation refunds reserved wallet and restores exactly one slot. Duplicate cancellation returns409 without another refund or restore.",
+    "Native after-hook Exception returns409 after committed cancellation; SDK needsStateConfirmation=true, one POST attempt. Audit503 likewise hides committed refund and is never retried or compensated.",
+    "Current 401/403/404 access/ownership refusal stays clear in SDK; ambiguous409/5xx/network/invalid receipt is marked for current-state confirmation.",
+    "Core response UUID remains server-generated independent of input request_id; cancellation client binds response body UUID to X-Request-Id. Fixed route template keeps actual trade numbers out of metrics/logs.",
+    "r10 API source hashes equal r4 targeted pass, and all API/Gateway source/test hashes equal r9 completecheck pass; final change in r10 only pins synthetic LOG_CHANNEL=single for deterministic diagnostic verification.",
+    "Snapshots/failed logs r1/r2/r4/r5/r6/r7/r8/r9 retained. Corrected initial coupon flag, transaction-aware fixture assertion, optional route param typing, static policy snapshot, config env names, test-router Request bootstrap, native Plan capacity default, improper response-ID assumption and daily-log fixture filename.",
+    "Whitelist snapshot overlays only assigned files onto3156b0d, excluding other agents uncommitted work. Parent owns combined full API verification on the updated base and precise commit/push.",
+    "Oracle MySQL8.4 CI prepared but pending remote execution; actual isolated MariaDB11.4.12 TLS13 checks pass. Production authorization fencing/PKI/SC-v2 remain separate gates."
+  ],
+  "integration_base": "7737662d8154d5e8a86c7140f39987d36d5ff0c4",
+  "remote_ci": {
+    "status": "pending-after-push"
+  }
+}
