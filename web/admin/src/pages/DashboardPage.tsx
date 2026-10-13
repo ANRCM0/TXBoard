@@ -82,9 +82,9 @@ export function DashboardPage() {
         <div className="dashboard-ops-clear" role="status">
           <CheckCircle2 size={23} aria-hidden="true"/>
           <div><strong>当前没有待处理事项</strong>
-            <p>工单、佣金、节点健康及运维审批均已检查，暂无需要介入的事项。</p>
+            <p>工单和佣金均已检查，暂无需要介入的事项。</p>
           </div>
-          <span>4 项检查正常</span>
+          <span>2 项检查正常</span>
         </div>
       ) : (
         <>
