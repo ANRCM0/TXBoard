@@ -11,7 +11,11 @@ final class KeyMaterial
         $settings = config('legacy_subscription_links');
         Canonical::require(is_array($settings) && count($settings) === 2 && !array_diff(array_keys($settings), ['enabled','key_file']), 'LINK_CONFIG_INVALID');
         $path = $settings['key_file'];
-        Canonical::require(is_string($path) && str_starts_with($path, '/') && !is_link($path) && is_file($path), 'LINK_KEY_FILE_INVALID');
+        Canonical::require(is_string($path) && str_starts_with($path, '/'), 'LINK_KEY_FILE_INVALID');
+        // A long-lived worker must observe permission changes and replacement,
+        // including after a prior denied read. Cached metadata is not trust.
+        clearstatcache(true, $path);
+        Canonical::require(!is_link($path) && is_file($path), 'LINK_KEY_FILE_INVALID');
         $stat = @lstat($path);
         Canonical::require(is_array($stat) && ($stat['mode'] & 077) === 0 && $stat['size'] > 0 && $stat['size'] <= 4096, 'LINK_KEY_FILE_INVALID');
         $bytes = @file_get_contents($path);

@@ -62,7 +62,9 @@ final class LegacySubscriptionLinkTest extends TestCase
     }
     public function test_private_key_file_shape_permissions_duplicate_keys_and_generation_are_refused():void
     {
-        chmod($this->directory.'/key.json',0644);$this->refused(fn()=>KeyMaterial::load(),'LINK_KEY_FILE_INVALID');chmod($this->directory.'/key.json',0600);
+        $this->assertInstanceOf(KeyMaterial::class,KeyMaterial::load());
+        chmod($this->directory.'/key.json',0644);$this->refused(fn()=>KeyMaterial::load(),'LINK_KEY_FILE_INVALID');
+        chmod($this->directory.'/key.json',0600);$this->assertInstanceOf(KeyMaterial::class,KeyMaterial::load());
         foreach([['generation'=>1],['generation'=>'01'],['key_hex'=>'private'],['extra'=>'private'],['version'=>'wrong']]as$patch){
             $this->keyFile($patch);$this->refused(fn()=>KeyMaterial::load(),'LINK_KEY_DATA_INVALID');
         }
@@ -180,12 +182,22 @@ final class LegacySubscriptionLinkTest extends TestCase
         $this->assertTrue($this->service()->reconcile('links')['page_consistent']);$this->assertSame($hash,DB::table('tx_legacy_subscription_link_shadow')->value('content_hash'));
         $this->assertInstanceOf(LinkAssociation::class,$this->service()->observe($user));
     }
-    public function test_context_duplicate_members_and_added_secret_fields_are_refused_even_when_values_match():void
+    public function test_raw_duplicate_context_is_refused_and_normalized_storage_keeps_closed_semantics():void
     {
         $user=$this->user();$this->backfill();$row=DB::table('tx_legacy_subscription_link_shadow')->first();
         $duplicate=str_replace('{','{"key_id":"synthetic-key",',$row->context);
+        // Raw input always goes through the strict parser. Oracle MySQL's
+        // binary JSON normalizes identical duplicate keys before SELECT can
+        // return them; MariaDB/SQLite preserve those original bytes.
+        $this->refused(fn()=>Canonical::object($duplicate),'LINK_EVIDENCE_INVALID');
         DB::table('tx_legacy_subscription_link_shadow')->update(['context'=>$duplicate]);
-        $this->refused(fn()=>$this->service()->observe($user),'LINK_EVIDENCE_INVALID');
+        $stored=DB::table('tx_legacy_subscription_link_shadow')->value('context');
+        if(substr_count($stored,'"key_id"')>1){
+            $this->refused(fn()=>$this->service()->observe($user),'LINK_EVIDENCE_INVALID');
+        }else{
+            $this->assertSame(Canonical::json(Canonical::object($row->context)),Canonical::json(Canonical::object($stored)));
+            $this->assertInstanceOf(LinkAssociation::class,$this->service()->observe($user));
+        }
         $context=json_decode($row->context,true);$context['private_url']='synthetic-private-url';
         DB::table('tx_legacy_subscription_link_shadow')->update(['context'=>json_encode($context)]);
         $this->refused(fn()=>$this->service()->observe($user),'LINK_SOURCE_OR_CONTEXT_CHANGED');

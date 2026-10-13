@@ -523,3 +523,5 @@ Core新专项及原建单/Billing回归 **19项、198断言**；Gateway **939**�
 代理冻结专项 SQLite **17通过、2项MySQL条件跳过、212断言**，专用 MariaDB **19全部通过、218断言**。协调者固定 `389c5a7` 加本批及原动态路由断言修正，全 API **1363通过、136项引擎/工具链条件跳过、14347断言**。[报告](legacy-subscription-link-verification.json)保留专用夹具、首轮路由精确中间件期望失败及最终16源码路径hash；原动态路径、URL、Client先于两个观察器的顺序和实际响应断言继续有效。独立 Oracle MySQL8.4 CI 已加入，推送后核对结果。
 
 该切片仍要求 local/testing isolated-copy，token/密钥变化只阻断影子观察而不重写原生凭据。正式密钥生命周期、凭据导入/授权切换、完整业务事实与Terms/资金投影和明文旧 token 退役仍待实现；projection_applied、global coverage和migration gate继续关闭。
+
+B1.28 远端收尾修正：`7ac24c1` 的 Oracle MySQL8.4 专项18通过/1失败，原因是原生JSON存储已消除同值重复字段，旧测试错误地假设能读取原始重复语法。API及Core发布门禁各捕获一项PHP文件权限缓存问题。新增每次密钥读取前的metadata刷新，实际验证私有→公开拒绝→私有重新验证；原始JSON严格拒绝、规范化对象的闭集/hash验证和额外字段拒绝均保留。固定 `7ac24c1` 加最终三源码及报告，完整API **1363通过、136项条件跳过、14351断言**，专用MariaDB **19通过、222断言**。原失败run/夹具日志保留，修正后再次推送核对Oracle/发布gate；未改变原生鉴权、链接、Schema或渲染来源。

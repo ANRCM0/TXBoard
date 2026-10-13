@@ -1,13 +1,13 @@
 {
   "phase": "B1.28",
-  "status": "verified-isolated-targeted-mysql-and-full",
+  "status": "verified-isolated-ci-corrections-remote-pending",
   "base_commit": "614acb8db1ea0a725d57082de3934280a10ac453",
   "source_sha256": {
     ".github/workflows/ci-legacy-subscription-links.yml": "d6cf17f85435782eb86846c02dcefa38ec69d7fce9fed46162c19a4785046b91",
     "api/app/Console/Commands/CoreLegacyLinksBackfill.php": "92f323af262320f2314c770d09bad5a82a1b69bbe822df4a2591f4a981814b59",
     "api/app/Console/Commands/CoreLegacyLinksReconcile.php": "9af7fb132e4473f84a7c66224cc88306bce657b1a8b84945c32535420ed967f7",
     "api/app/Domains/LegacyLinks/Canonical.php": "365300c8e229e77fa42238c486f3a5dccdba99cdc480f11988bbb61c07b10890",
-    "api/app/Domains/LegacyLinks/KeyMaterial.php": "63591df9d8cad2572c28bcd25c80ea700206a3b3f98dd699f1c8a0d8df874647",
+    "api/app/Domains/LegacyLinks/KeyMaterial.php": "2903ee40256a41dfb4f0164a27049073ccca8ec99af95c84b8d021ed0aa7d300",
     "api/app/Domains/LegacyLinks/LinkAssociation.php": "ffd6b2d982cebbd7a5715194e7f0e67c3714a5dc766701dac9453ec41a2ecf38",
     "api/app/Domains/LegacyLinks/LinkFailure.php": "ac0b517a95e04d95a039a8e161f63e9e0a55f9f7d8447efb9c6379c255eacae7",
     "api/app/Domains/LegacyLinks/LinkService.php": "84909ddb5af96dcc3acab5542b73a7d54ddb8c1caadc6923546f8439cae7895e",
@@ -16,47 +16,35 @@
     "api/config/legacy_subscription_links.php": "ce179bd6441fc70305cff514377538e78c21375b4a5afdfd715671b6f2e41cd8",
     "api/database/migrations/2026_10_14_000004_create_legacy_subscription_link_shadow.php": "98b79b01f00d47d9b2b3bf5129d9d3ff8afc5741edffb8b00785446d33fbd2e6",
     "api/routes/web.php": "5e77ccfcff60280e1703f1a0398518d26f35ac3155d39472cdbab006e7bdad57",
-    "api/tests/Feature/LegacyLinks/LegacySubscriptionLinkTest.php": "0e317b672ffd084e46a3491589508f42f2235e2d432451449fd6c4ef31311350",
-    "contracts/v2/legacy-subscription-link-digest-v1.md": "e5a13a1009411ab79fb39509ab687443cd9ae1cfd3777b04f2641f26f2ae9a43"
+    "api/tests/Feature/LegacyLinks/LegacySubscriptionLinkTest.php": "36cdf416ce1e0fce5cdc54b1a399f7588e54de63a7214fcdea1b78aff9e92323",
+    "api/tests/Feature/Subscription/LegacySubscriptionIdentityTest.php": "35b26cfce0efce3d808c7a7f5733ff5cdc1af9cb9bdccb8b21d31bfde8e09c08",
+    "contracts/v2/legacy-subscription-link-digest-v1.md": "f30808a24a8631430abebf14ec5594923a2f72ab5dc7ffa8bf24e0993024c2a1"
   },
   "dependencies": {
     "composer_lock_sha256": "f47b212c2fc530a7820e370eab7c6d624d13962e7d26e4f2ddf57a11848257c0",
     "installed_json_sha256": "8e668e456c9772ae428a038ab003fba5752ab2591980fc8396d9122851145b80"
   },
   "tests": {
-    "targeted": {
-      "mode": "targeted",
+    "full": {
+      "mode": "full",
       "exit_code": 0,
-      "log_sha256": "3ff301a06d3ca8a700afa02d0deb2db4bf674a2ead1c61919becbce668aae34d",
-      "snapshot": "/opt/txboard-baseline/legacy-link-r4"
-    },
-    "mysql-smoke": {
-      "mode": "mysql-smoke",
-      "exit_code": 0,
-      "log_sha256": "8c22b5599d16440d68ee959b681710fa19c6c08c46f31461c3bafc72e7597133",
-      "snapshot": "/opt/txboard-baseline/legacy-link-r4"
+      "log_sha256": "6b76a718e24b3a4016eecfa3b078426956320149bea24c63ea58ef71aba5d357",
+      "snapshot": "/opt/txboard-baseline/legacy-link-integrated-r5"
     },
     "mysql": {
       "mode": "mysql",
       "exit_code": 0,
-      "log_sha256": "4e189cd89e6f4301066b8859fcb425e03d81ef308897fb36b897793a0b290c56",
-      "snapshot": "/opt/txboard-baseline/legacy-link-r4"
-    },
-    "full": {
-      "mode": "full",
-      "exit_code": 0,
-      "log_sha256": "1418202fabbfeb2bc1b8e3788ee6842028cd57113f21a492eebd80c75d9e1fb5",
-      "snapshot": "/opt/txboard-baseline/legacy-link-integrated-r2"
+      "log_sha256": "54ce0e0ebfb89b07e4bd42cd80cf6d489b040b65ce8a8dd43a97628317de6bab",
+      "snapshot": "/opt/txboard-baseline/legacy-link-integrated-r5"
     }
   },
   "coverage": {
     "new_tests": 19,
     "sqlite_passed": 17,
     "sqlite_skipped": 2,
-    "sqlite_assertions": 212,
     "mariadb_passed": 19,
     "mariadb_skipped": 0,
-    "mariadb_assertions": 218,
+    "mariadb_assertions": 222,
     "native_http_body_headers_uuid": "passed",
     "actual_native_credential_rotation": "passed",
     "native_collation_collision": "passed",
@@ -69,8 +57,9 @@
     "integrated_api_full": {
       "passed": 1363,
       "skipped": 136,
-      "assertions": 14347
-    }
+      "assertions": 14351
+    },
+    "sqlite_latest_validation": "17passed/2MySQL-specificskips covered by finalfull; no separate assertion recount"
   },
   "scope": {
     "isolated_only": true,
@@ -108,7 +97,7 @@
     "Snapshot whitelist overlays only this slice onto614acb8, excluding other agents finance/Node changes. Parent owns combined full API gate, exact staging and push. OracleMySQL8.4 CI prepared, not remotely executed yet.",
     "No key rotation lifecycle, production key distribution, signed historical credential proof, Provider grants, new token writer, invalidation hook or removal of raw legacy token compatibility is claimed."
   ],
-  "integration_base": "389c5a75c07bb75cc283419858018680ddf6f780",
+  "integration_base": "7ac24c11d8b3c913709b83d3e193c6542ff14b14",
   "coordinator_review": {
     "frozen_source_paths": 16,
     "source_sha256": {
@@ -116,7 +105,7 @@
       "api/app/Console/Commands/CoreLegacyLinksBackfill.php": "92f323af262320f2314c770d09bad5a82a1b69bbe822df4a2591f4a981814b59",
       "api/app/Console/Commands/CoreLegacyLinksReconcile.php": "9af7fb132e4473f84a7c66224cc88306bce657b1a8b84945c32535420ed967f7",
       "api/app/Domains/LegacyLinks/Canonical.php": "365300c8e229e77fa42238c486f3a5dccdba99cdc480f11988bbb61c07b10890",
-      "api/app/Domains/LegacyLinks/KeyMaterial.php": "63591df9d8cad2572c28bcd25c80ea700206a3b3f98dd699f1c8a0d8df874647",
+      "api/app/Domains/LegacyLinks/KeyMaterial.php": "2903ee40256a41dfb4f0164a27049073ccca8ec99af95c84b8d021ed0aa7d300",
       "api/app/Domains/LegacyLinks/LinkAssociation.php": "ffd6b2d982cebbd7a5715194e7f0e67c3714a5dc766701dac9453ec41a2ecf38",
       "api/app/Domains/LegacyLinks/LinkFailure.php": "ac0b517a95e04d95a039a8e161f63e9e0a55f9f7d8447efb9c6379c255eacae7",
       "api/app/Domains/LegacyLinks/LinkService.php": "84909ddb5af96dcc3acab5542b73a7d54ddb8c1caadc6923546f8439cae7895e",
@@ -125,9 +114,9 @@
       "api/config/legacy_subscription_links.php": "ce179bd6441fc70305cff514377538e78c21375b4a5afdfd715671b6f2e41cd8",
       "api/database/migrations/2026_10_14_000004_create_legacy_subscription_link_shadow.php": "98b79b01f00d47d9b2b3bf5129d9d3ff8afc5741edffb8b00785446d33fbd2e6",
       "api/routes/web.php": "5e77ccfcff60280e1703f1a0398518d26f35ac3155d39472cdbab006e7bdad57",
-      "api/tests/Feature/LegacyLinks/LegacySubscriptionLinkTest.php": "0e317b672ffd084e46a3491589508f42f2235e2d432451449fd6c4ef31311350",
+      "api/tests/Feature/LegacyLinks/LegacySubscriptionLinkTest.php": "36cdf416ce1e0fce5cdc54b1a399f7588e54de63a7214fcdea1b78aff9e92323",
       "api/tests/Feature/Subscription/LegacySubscriptionIdentityTest.php": "35b26cfce0efce3d808c7a7f5733ff5cdc1af9cb9bdccb8b21d31bfde8e09c08",
-      "contracts/v2/legacy-subscription-link-digest-v1.md": "e5a13a1009411ab79fb39509ab687443cd9ae1cfd3777b04f2641f26f2ae9a43"
+      "contracts/v2/legacy-subscription-link-digest-v1.md": "f30808a24a8631430abebf14ec5594923a2f72ab5dc7ffa8bf24e0993024c2a1"
     },
     "original_Client_before_identity_and_link_observers": true,
     "native_route_path_URL_HTTP_output_compatibility_retained": true,
@@ -152,12 +141,99 @@
       "snapshot": "legacy-link-integrated-r2",
       "exit_code": 0,
       "reason": "Original test retains exact middleware order, configured path, generated URL and actual mapped HTTP body checks"
+    },
+    {
+      "snapshot": "legacy-link-integrated-r3",
+      "exit_code": 2,
+      "reason": "Transient root helper path rewrite also changed synthetic SQL password; no assertions or application/database mutations; log retained"
+    },
+    {
+      "snapshot": "legacy-link-integrated-r4",
+      "exit_code": 0,
+      "reason": "Corrected fixture credential; JSON acceptance19MariaDBpassed220assertions"
+    },
+    {
+      "snapshot": "legacy-link-integrated-r5",
+      "exit_code": 0,
+      "reason": "Final actual key metadata fix and complete API/MariaDB reverified; exact manifest retained"
     }
   ],
   "remote_ci": {
-    "status": "pending-after-push"
+    "status": "pending-after-ci-fix-push"
   },
   "pending": [
-    "Remote Oracle MySQL8.4 legacy link compatibility CI"
-  ]
+    "Remote OracleMySQL8.4 normalized JSON acceptance",
+    "Remote PHP8.3 API and Core release regression gates"
+  ],
+  "initial_source_sha256": {
+    ".github/workflows/ci-legacy-subscription-links.yml": "d6cf17f85435782eb86846c02dcefa38ec69d7fce9fed46162c19a4785046b91",
+    "api/app/Console/Commands/CoreLegacyLinksBackfill.php": "92f323af262320f2314c770d09bad5a82a1b69bbe822df4a2591f4a981814b59",
+    "api/app/Console/Commands/CoreLegacyLinksReconcile.php": "9af7fb132e4473f84a7c66224cc88306bce657b1a8b84945c32535420ed967f7",
+    "api/app/Domains/LegacyLinks/Canonical.php": "365300c8e229e77fa42238c486f3a5dccdba99cdc480f11988bbb61c07b10890",
+    "api/app/Domains/LegacyLinks/KeyMaterial.php": "63591df9d8cad2572c28bcd25c80ea700206a3b3f98dd699f1c8a0d8df874647",
+    "api/app/Domains/LegacyLinks/LinkAssociation.php": "ffd6b2d982cebbd7a5715194e7f0e67c3714a5dc766701dac9453ec41a2ecf38",
+    "api/app/Domains/LegacyLinks/LinkFailure.php": "ac0b517a95e04d95a039a8e161f63e9e0a55f9f7d8447efb9c6379c255eacae7",
+    "api/app/Domains/LegacyLinks/LinkService.php": "84909ddb5af96dcc3acab5542b73a7d54ddb8c1caadc6923546f8439cae7895e",
+    "api/app/Http/Controllers/SubscriptionController.php": "5a857df3dc11edf17892c49746b70b62a7bba32d86be2317c64799e0c058c908",
+    "api/app/Http/Middleware/LegacySubscriptionLinkShadow.php": "bf150897f77017963bf420c9d777e94278028c9f25e39993ef1f257a4ae32e5b",
+    "api/config/legacy_subscription_links.php": "ce179bd6441fc70305cff514377538e78c21375b4a5afdfd715671b6f2e41cd8",
+    "api/database/migrations/2026_10_14_000004_create_legacy_subscription_link_shadow.php": "98b79b01f00d47d9b2b3bf5129d9d3ff8afc5741edffb8b00785446d33fbd2e6",
+    "api/routes/web.php": "5e77ccfcff60280e1703f1a0398518d26f35ac3155d39472cdbab006e7bdad57",
+    "api/tests/Feature/LegacyLinks/LegacySubscriptionLinkTest.php": "0e317b672ffd084e46a3491589508f42f2235e2d432451449fd6c4ef31311350",
+    "contracts/v2/legacy-subscription-link-digest-v1.md": "e5a13a1009411ab79fb39509ab687443cd9ae1cfd3777b04f2641f26f2ae9a43"
+  },
+  "initial_tests": {
+    "targeted": {
+      "mode": "targeted",
+      "exit_code": 0,
+      "log_sha256": "3ff301a06d3ca8a700afa02d0deb2db4bf674a2ead1c61919becbce668aae34d",
+      "snapshot": "/opt/txboard-baseline/legacy-link-r4"
+    },
+    "mysql-smoke": {
+      "mode": "mysql-smoke",
+      "exit_code": 0,
+      "log_sha256": "8c22b5599d16440d68ee959b681710fa19c6c08c46f31461c3bafc72e7597133",
+      "snapshot": "/opt/txboard-baseline/legacy-link-r4"
+    },
+    "mysql": {
+      "mode": "mysql",
+      "exit_code": 0,
+      "log_sha256": "4e189cd89e6f4301066b8859fcb425e03d81ef308897fb36b897793a0b290c56",
+      "snapshot": "/opt/txboard-baseline/legacy-link-r4"
+    },
+    "full": {
+      "mode": "full",
+      "exit_code": 0,
+      "log_sha256": "1418202fabbfeb2bc1b8e3788ee6842028cd57113f21a492eebd80c75d9e1fb5",
+      "snapshot": "/opt/txboard-baseline/legacy-link-integrated-r2"
+    }
+  },
+  "ci_correction": {
+    "base": "7ac24c11d8b3c913709b83d3e193c6542ff14b14",
+    "permission_runtime_fix": "Fresh clearstatcache before every file trust check; private-public-private transitions tested; disabled HTTP branch still no adapterIO",
+    "json_storage_acceptance": "Strict raw JSON remains duplicate-rejecting; Oracle nativeJSON may normalize identical duplicate members before read; resulting exact closed semantic object/hash must match. Stored extra fields or changed values refuse.",
+    "runtime_change_only": "Key file metadata freshness; no schema/token/authorization/URL/rendering changes",
+    "all_frozen_runtime_other_than_KeyMaterial_unchanged": true,
+    "full_snapshot_excludes_native_fence_and_Node_candidates": true,
+    "remote_attempts": [
+      {
+        "name": "legacy-subscription-links-shadow",
+        "run_id": 38448633042,
+        "conclusion": "failure",
+        "reason": "Oracle nativeJSON normalized identical duplicate members before adapter read;18passed1test-expectationfailure"
+      },
+      {
+        "name": "api-ci",
+        "run_id": 38448632911,
+        "conclusion": "failure",
+        "reason": "File metadata remained cached across chmod transition;1362passed1failure"
+      },
+      {
+        "name": "txboard-core-image",
+        "run_id": 38448633338,
+        "conclusion": "failure",
+        "reason": "Release API regression gate caught same key permission metadata issue; no image released"
+      }
+    ]
+  }
 }
