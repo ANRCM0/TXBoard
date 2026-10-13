@@ -1,6 +1,6 @@
 # Core First v2 实施台账
 
-> 状态：B0、B1.1–B1.27 影子证据、Terms、身份旁观、固定 writer 捕获、套餐批量同步、批量封禁、管理员创建/删除、注册初始记录与余额端点投影、B2.1–B2.5 单机升级、B3.1/B3.2 隔离用量、B3.3/B3.4 本地观察与持久事件桶、B4.1–B4.7 合成 Provider、插件停用接入、租约候选、离线签名快照与Go公钥诊断、B5.1–B5.23 本地 mTLS 读取、隔离建单、登录、内存邮件验证码、隔离注册、密码恢复、当前会话与管理读取、B6.1–B6.4 实验字节、离线加密、共享 owner 与独立响应随机值候选及 B7.1 Agent/MCP 退役已实现；两仓迁移与三镜像发布已完成，继续推进业务迁移切片。各整阶段仍按下表门禁验收。
+> 状态：B0、B1.1–B1.27 影子证据、Terms、身份旁观、固定 writer 捕获、套餐批量同步、批量封禁、管理员创建/删除、注册初始记录与余额端点投影、B2.1–B2.5 单机升级、B3.1/B3.2 隔离用量、B3.3–B3.5 本地观察与持久事件桶、B4.1–B4.7 合成 Provider、插件停用接入、租约候选、离线签名快照与Go公钥诊断、B5.1–B5.23 本地 mTLS 读取、隔离建单、登录、内存邮件验证码、隔离注册、密码恢复、当前会话与管理读取、B6.1–B6.4 实验字节、离线加密、共享 owner 与独立响应随机值候选及 B7.1 Agent/MCP 退役已实现；两仓迁移与三镜像发布已完成，继续推进业务迁移切片。各整阶段仍按下表门禁验收。
 
 2026-10-13，按仓库整合任务，将 Gateway/Node 的完整 Git 历史导入本仓 `gateway/`、`node/`，安装器集中到 TXBoard-Deploy。当前目录与三镜像 CI 见 [双仓布局](../../development/repository-layout.md)；旧基线和验证报告保持当时提交与路径。本次仓库整理独立于下列业务迁移门禁。
 
@@ -477,3 +477,11 @@ B1.25 的初次Oracle MySQL8.4 CI使用原夹具Redis22，默认16库容器拒�
 [当前契约](../../../contracts/v2/authority-writer-fence-v1.md)在独立严格默认关闭门禁下接入原Admin账户创建/更新事务第一步。共享authority当前锁先于User/capture锁，保留到业务commit/rollback/连接死亡；固定prepare取得同一单例排他锁，等待已接纳事务结束后原子提交prepared、epoch2与不可变回执。显式init不随DDL或writer自动执行；status/recover只读有界核对，同key输出丢失恢复原回执，precommit死亡保留inconclusive，不自动reopen或发布v2。
 
 固定 `3156b0d` 加十个冻结候选文件：SQLite及原创建证据回归 **30通过、6项引擎条件跳过、274断言**；专用MariaDB **17全部通过、186断言**，包含实际原HTTP更新commit/rollback/SIGKILL与prepare顺序，prepare提交前/后强杀、同key重试和坏/缺回执存储拒绝。协调者全API **1309通过、117项引擎/工具链跳过、13570断言**。[报告](authority-writer-fence-verification.json)保留guest401预期与原403语义的夹具修正、独立进程和日志hash；独立Oracle MySQL8.4 CI已加入。仅两条已声明writer受控，其他业务/可信插件直写/提交后Node效果未排空；global coverage/drain、target authority和migration gate均false。后续需统一接入所有已知写入事务和升级编排，不能凭此foundation切生产权限。
+
+B1.27 `3156b0d` 的[Oracle MySQL8.4生命周期专项](https://github.com/ANRCM0/TXBoard/actions/runs/38431743759)及其余Admin、创建/删除、注册通道、API/MySQL、Provider、公钥、Node/Core/Gateway镜像和文档共23个触发CI全部通过，结果已记入生命周期报告。当前仍为隔离迁移核对，不由绿色CI解除全局writer、权威切换或生产数据门禁。
+
+### B3.5 实际TCP区间采集与持久v2归属桥
+
+[当前契约](../../../contracts/v2/node-usage/bounded-tcp-collector-v1.md)增加显式sing-box tracker构造，以冻结Core Session/User绑定和实际Read/Write Begin/Complete构造非零v2批次。私有net.Conn视图阻止zero-copy/Count/Upstream绕过；Pinned sing Copy和extended writer沿实际计数入口。整数半开秒边界使未完成或跨界I/O留在原区间等待下一边界，partial error保留实际正字节；身份、lease、clock、容量、late/closed及UDP未知均fail-stop。journal先持久原Session、I/O evidence与随机batch，再导出既有spool，ConfirmCapture核对owner和原回执并重确认file/directory fsync，恢复不重建旧live timeline或未知tail。
+
+固定 `3156b0d` 加本批冻结源码：Linux Go1.26.3五个完整受影响包race **185主测试、152子测试通过，无跳过/失败**，vet通过；六个真实SIGKILL点、八类journal同步故障和spool重确认故障通过。实际memory TCP验11 upload/7 download、partial7/2和Copy13/0及0/13；Reporter使用进程内synthetic持久回执模拟丢响应后查询原batch。[精确报告](../../../node/docs/bounded-usage-verification.json)保留失败快照、锁及源码hash。默认Service仍不用该构造，v1累计仍在原权威路径；未完成真实Core TLS接收/结算、准入/撤销或生产handoff，不能双份计费。旧不可归属事件bucket不被提升为确定区间；新source marker要求更高Core epoch才能新live collector，旧sealed记录保持原身份。
