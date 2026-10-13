@@ -43,6 +43,17 @@ origin route. They accept either a pre-auth protocol rejection or bounded tracke
 fail-stop after packet admission, but require zero origin datagrams and unchanged
 settled history. Classic TCP CommandMux remains a separate acceptance boundary.
 
+Classic TCP CommandMux uses a real authenticated outer VLESS/VMess command and the
+locked sing-vmess address serializer and frame constants. Any TCP connection to the
+synthetic origin is a failed acceptance result, retained with its decoded payload
+hash; UDP/XUDP rejection does not satisfy this check.
+
+In bounded usage mode, TX-Node rejects an inbound TCP stream whose remote address
+is an invalid `Socksaddr` before outbound routing. The locked classic mux server
+represents its logical streams this way; those streams cannot use the ordinary
+socket-bound accounting path. The tracker fails closed and stops the isolated
+Service. Normal socket-backed TCP streams remain eligible for accounting.
+
 A higher Core-issued source can retain and replay original older batches unchanged
 while starting a fresh timeline. Core instance/receipt-generation drift requires
 recovery and refuses old storage before listeners. Restoring the dedicated SQL DB

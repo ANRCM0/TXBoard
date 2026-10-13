@@ -3,7 +3,7 @@
 from pathlib import Path
 import hashlib,json,os,shutil,socket,ssl,subprocess,sys,time,urllib.error,urllib.request
 
-CASES={'ban-baseline','ban','speed','config','shutdown','history','expiry','udp','xudp'}
+CASES={'ban-baseline','ban','speed','config','shutdown','history','expiry','udp','xudp','tcp-mux'}
 if len(sys.argv)!=6 or sys.argv[4] not in {'vless','vmess'} or sys.argv[5] not in CASES:
     raise SystemExit('usage: run.py API NODE NEW_EVIDENCE vless|vmess CASE')
 api,node,evidence=(Path(p).resolve()for p in sys.argv[1:4]);protocol,case=sys.argv[4:6]
@@ -109,7 +109,7 @@ try:
         test_log=(evidence/'node-expiry.log').open('wb')
         test=subprocess.Popen([str(evidence/'node-live-revocation-test'),'-test.run=^TestServiceUsageV2LiveRevocation$',
           '-test.v','-test.timeout=80s'],cwd=node,env=env,stdout=test_log,stderr=subprocess.STDOUT)
-    if case not in {'history','expiry','udp','xudp'}:
+    if case not in {'history','expiry','udp','xudp','tcp-mux'}:
         wait_file('tail-ready.json')
         if case=='shutdown':
             (evidence/'trigger.json').write_text('{"action":"normal-context-cancel"}\n')
