@@ -1,6 +1,6 @@
 # Core First v2 实施台账
 
-> 状态：B0、B1.1–B1.27 影子证据、Terms、身份旁观、固定 writer 捕获、套餐批量同步、批量封禁、管理员创建/删除、注册初始记录与余额端点投影、B2.1–B2.7 单机升级、B3.1/B3.2 隔离用量、B3.3–B3.6 本地观察与持久事件桶、B4.1–B4.7 合成 Provider、插件停用接入、租约候选、离线签名快照与Go公钥诊断、B5.1–B5.24 本地 mTLS 读取、隔离建单、登录、内存邮件验证码、隔离注册、密码恢复、当前会话与管理读取、B6.1–B6.4 实验字节、离线加密、共享 owner 与独立响应随机值候选及 B7.1 Agent/MCP 退役已实现；两仓迁移与三镜像发布已完成，继续推进业务迁移切片。各整阶段仍按下表门禁验收。
+> 状态：B0、B1.1–B1.28 影子证据、Terms、身份旁观、固定 writer 捕获、套餐批量同步、批量封禁、管理员创建/删除、注册初始记录与余额端点投影、B2.1–B2.7 单机升级、B3.1/B3.2 隔离用量、B3.3–B3.6 本地观察与持久事件桶、B4.1–B4.7 合成 Provider、插件停用接入、租约候选、离线签名快照与Go公钥诊断、B5.1–B5.24 本地 mTLS 读取、隔离建单、登录、内存邮件验证码、隔离注册、密码恢复、当前会话与管理读取、B6.1–B6.4 实验字节、离线加密、共享 owner 与独立响应随机值候选及 B7.1 Agent/MCP 退役已实现；两仓迁移与三镜像发布已完成，继续推进业务迁移切片。各整阶段仍按下表门禁验收。
 
 2026-10-13，按仓库整合任务，将 Gateway/Node 的完整 Git 历史导入本仓 `gateway/`、`node/`，安装器集中到 TXBoard-Deploy。当前目录与三镜像 CI 见 [双仓布局](../../development/repository-layout.md)；旧基线和验证报告保持当时提交与路径。本次仓库整理独立于下列业务迁移门禁。
 
@@ -510,6 +510,16 @@ Core新专项及原建单/Billing回归 **19项、198断言**；Gateway **939**�
 
 九个准入都位于原事务第一句，先于 User、Order、Recharge、Code 等业务锁；退款、Coupon 名额、付款去重、原 OrderHandleJob 与失败重试仍委托原生服务。支付网络与提交后钩子保持原事务边界；免费结账的两段事务之间可能完成 prepare，保留原生部分完成与409，不引入自动补偿。专用 MariaDB 的独立事务与 SIGKILL 验证金额写入提交或回滚后 prepare 才能完成，升级/prepare 提交后丢输出可恢复同一回执。
 
-固定 `614acb8` 加十七个冻结源码：SQLite 专项及既有财务回归 **104通过、40项引擎/进程条件跳过、1741断言**；专用 MariaDB **22全部通过、362断言**，含九项独立进程并发/崩溃用例；协调者最终源码全 API **1346通过、134项引擎/工具链条件跳过、14135断言**。实际 Laravel registry 254 个 HTTP methods、User 49 条和 Node 8 条边界校验通过。[报告](authority-finance-fence-verification.json)保留原支付夹具字段长度修正、各次失败与最终精确源码/日志证据。独立 Oracle MySQL8.4 CI 已加入，远端验收在推送后记录。
+固定 `614acb8` 加十七个冻结源码：SQLite 专项及既有财务回归 **104通过、40项引擎/进程条件跳过、1741断言**；专用 MariaDB **22全部通过、362断言**，含九项独立进程并发/崩溃用例；协调者最终源码全 API **1346通过、134项引擎/工具链条件跳过、14135断言**。实际 Laravel registry 254 个 HTTP methods、User 49 条和 Node 8 条边界校验通过。[报告](authority-finance-fence-verification.json)保留原支付夹具字段长度修正、各次失败与最终精确源码/日志证据。独立 Oracle MySQL8.4 金融专项及 API/MySQL、Core/Node镜像等27项触发CI已在 `389c5a7` 全部通过，远端验收已记录。
 
 当前仍为 legacy 权威。提交后 Observer/Node/Provider 效果、独立 UserService/reset helper、剩余注册/auth/CLI/cron/legacy traffic writer 和可信插件直写继续待覆盖；global writer coverage、global drain、target authority 与 migration gate 均为 false。新管理/用户前端仍延期，TX-F 只本地提交。
+
+### B1.28 旧订阅链接摘要兼容
+
+[当前契约](../../../contracts/v2/legacy-subscription-link-digest-v1.md)新增独立默认关闭的旧链接摘要影子适配。原 Client 仍先使用原生 token 认证，保留 query token 优先、动态路径和 UUID 协议渲染；适配器只观察该原生 User 的稳定 User/Subscription/map 归属。typed association 在原可用性检查后校验同一 User，始终 authorizes=false，不生成凭据、不改链接与原响应。
+
+操作员私有文件提供闭集随机密钥，摘要使用指定域分隔 HMAC 字节；SQL 只保存非秘密引用、摘要和固定上下文，不新增原始 token、URL、UUID、密码或密钥。回填独立冻结既有已完成 mapping run 和 high-water，savepoint 异常只能显式重试，旧证据冲突不能覆盖；只读核对重新验证当前 token、原生 collation、map/Subscription/密钥上下文。凭据原生轮换使旧 URL 失效，摘要不自动重绑；晚创建账户不自动加入原 run。
+
+代理冻结专项 SQLite **17通过、2项MySQL条件跳过、212断言**，专用 MariaDB **19全部通过、218断言**。协调者固定 `389c5a7` 加本批及原动态路由断言修正，全 API **1363通过、136项引擎/工具链条件跳过、14347断言**。[报告](legacy-subscription-link-verification.json)保留专用夹具、首轮路由精确中间件期望失败及最终16源码路径hash；原动态路径、URL、Client先于两个观察器的顺序和实际响应断言继续有效。独立 Oracle MySQL8.4 CI 已加入，推送后核对结果。
+
+该切片仍要求 local/testing isolated-copy，token/密钥变化只阻断影子观察而不重写原生凭据。正式密钥生命周期、凭据导入/授权切换、完整业务事实与Terms/资金投影和明文旧 token 退役仍待实现；projection_applied、global coverage和migration gate继续关闭。

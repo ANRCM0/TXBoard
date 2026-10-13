@@ -171,9 +171,7 @@
       "outcome": "Final r3source full API passed1346/134engine-specificskips/14135assertions;17frozenpaths exactlymatchspecialist"
     }
   ],
-  "pending": [
-    "Remote Oracle MySQL8.4 CI after push"
-  ],
+  "pending": [],
   "integration_base": "614acb8db1ea0a725d57082de3934280a10ac453",
   "coordinator_review": {
     "frozen_owned_paths": 17,
@@ -190,6 +188,53 @@
     "native_schema_issues": 0
   },
   "remote_ci": {
-    "status": "pending-after-push"
+    "status": "passed",
+    "head_sha": "389c5a75c07bb75cc283419858018680ddf6f780",
+    "verified_date_local": "2026-10-14",
+    "all_triggered_runs": 27,
+    "all_triggered_runs_success": true,
+    "evidence_sha256": "0eff0779baf041c6416e15e19732389b7f3f3bfe743fba6c3e24c1a8d347de90",
+    "runs": [
+      {
+        "conclusion": "success",
+        "databaseId": 38446574836,
+        "headSha": "389c5a75c07bb75cc283419858018680ddf6f780",
+        "name": "authority-finance-fence",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38446574836"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 38446574163,
+        "headSha": "389c5a75c07bb75cc283419858018680ddf6f780",
+        "name": "api-ci",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38446574163"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 38446574546,
+        "headSha": "389c5a75c07bb75cc283419858018680ddf6f780",
+        "name": "api-mysql-ci",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38446574546"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 38446574222,
+        "headSha": "389c5a75c07bb75cc283419858018680ddf6f780",
+        "name": "txboard-core-image",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38446574222"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 38446574191,
+        "headSha": "389c5a75c07bb75cc283419858018680ddf6f780",
+        "name": "Node CI and images",
+        "status": "completed",
+        "url": "https://github.com/ANRCM0/TXBoard/actions/runs/38446574191"
+      }
+    ]
   }
 }

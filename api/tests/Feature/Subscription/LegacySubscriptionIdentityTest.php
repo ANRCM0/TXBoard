@@ -4,6 +4,7 @@ namespace Tests\Feature\Subscription;
 
 use App\Http\Controllers\SubscriptionController;
 use App\Http\Middleware\SubscriptionIdentityShadow;
+use App\Http\Middleware\LegacySubscriptionLinkShadow;
 use App\Models\Plan;
 use App\Models\Server;
 use App\Models\User;
@@ -408,7 +409,7 @@ class LegacySubscriptionIdentityTest extends TestCase
         $route = Route::getRoutes()->getByName('client.subscribe');
         $this->assertSame('private_fixture_links/{token}', $route->uri());
         $this->assertStringContainsString(SubscriptionController::class, $route->getActionName());
-        $this->assertSame(['web', 'client', SubscriptionIdentityShadow::class], $route->gatherMiddleware());
+        $this->assertSame(['web', 'client', SubscriptionIdentityShadow::class, LegacySubscriptionLinkShadow::class], $route->gatherMiddleware());
         $url = Helper::getSubscribeUrl($user->token, 'https://links.fixture.invalid');
         $this->assertStringContainsString('/private_fixture_links/'.$user->token, $url);
         $this->get($url, ['User-Agent' => 'v2rayn/6.40'])->assertOk();
