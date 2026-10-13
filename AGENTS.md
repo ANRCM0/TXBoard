@@ -6,7 +6,7 @@ These instructions apply to coding agents working in this repository.
 
 ### Core First v2 演进基线
 
-2026-10-12 起，后续架构演进参考 `docs/architecture/v2/README.md`、`docs/architecture/v2/core-boundaries.md` 与 `contracts/v2/README.md`。2026-10-13 用户调整范围：独立前端只开发管理端，新用户前端延期；清理 Agent/MCP，取消插件迁移，见 `docs/architecture/v2/admin-only-scope.md`。不得依据目标方案提前开放管理员 Gateway、删除 User 字段或 Theme、改变插件包格式。跨仓改动先核对对应 Current 契约，按 Operation/数据迁移阶段逐项实施。
+2026-10-12 起，后续架构演进参考 `docs/architecture/v2/README.md`、`docs/architecture/v2/core-boundaries.md` 与 `contracts/v2/README.md`。2026-10-13 用户最新调整范围：管理前端与用户前端均暂缓，后续作为独立项目另建仓库；本仓只推进 Core、Gateway、Node，安装器仍独立成库。清理 Agent/MCP，取消插件迁移，见 `docs/architecture/v2/admin-only-scope.md`。不得依据目标方案提前开放管理员 Gateway、删除 User 字段或 Theme、改变插件包格式。跨仓改动先核对对应 Current 契约，按 Operation/数据迁移阶段逐项实施。
 
 TXBoard is the Control Plane.
 
@@ -124,7 +124,7 @@ Theme Admin, user rendering and Module Registry must resolve the same effective 
 
 ## 8. Retired Agent / MCP
 
-Agent/MCP is removed under the 2026-10-13 product decision. Do not restore its API, token issuance, scheduled inspections, UI, embedded process or CI. Historical migrations/audit rows remain; legacy Agent tokens are denied by Sanctum. Independent frontend work is Admin-only; preserve the existing User UI during the compatibility window.
+Agent/MCP is removed under the 2026-10-13 product decision. Do not restore its API, token issuance, scheduled inspections, UI, embedded process or CI. Historical migrations/audit rows remain; legacy Agent tokens are denied by Sanctum. New Admin and User frontend development is deferred to separate future repositories. This repository develops Core, Gateway and Node; installation belongs to TXBoard-Deploy. Preserve the existing bundled Admin/User UI and Theme during the compatibility window.
 
 ## 9. Module Registry rules
 

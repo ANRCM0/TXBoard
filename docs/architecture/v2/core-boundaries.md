@@ -31,7 +31,7 @@ Core 是唯一业务与持久数据权威，基于现有 Laravel 演进。User �
 3. Access Subject 是非秘密计费身份，不是 Bearer，不是代理密码，也不授权调用 Core。Provider 的产品能力声明不授予 Admin permission 。
 4. Core 仅保存 Provider 的非秘密引用和归属、状态、版本；禁止通过任意 JSON 配置/DTO/事件/日志回传代理密码、私钥、完整 UUID 凭据或可直接授权的凭据材料。Core 自身登录、服务身份和链接验证的必要安全材料不属于插件任意秘密，仍按对应身份边界保护。
 5. 插件不能直接修改 Core 表、发布节点控制命令、读取其他插件秘密、执行通用 shell 或调用任意内网 URL。此项是 v2 隔离运行目标；现有可信 PHP 插件具有进程内执行能力，不能声称当前已强制禁止其访问。
-6. 2026-10-13 用户取消 Agent/MCP 插件迁移并清理功能，历史审计保留、旧凭据拒绝。独立前端仅开发管理端，详见[当前范围](admin-only-scope.md)。
+6. 2026-10-13 用户取消 Agent/MCP 插件迁移并清理功能，历史审计保留、旧凭据拒绝。管理前端与用户前端均暂缓，后续作为独立项目单独成库；当前主仓仅开发 Core、Gateway、Node，详见[当前范围](admin-only-scope.md)。
 
 ## 与当前边界的衔接
 
@@ -43,7 +43,7 @@ Core 是唯一业务与持久数据权威，基于现有 Laravel 演进。User �
 | Core/插件隔离 | PHP Plugin v1 可信进程内执行；包 code、生命周期、`admin/dist`、Admin Bridge 与现有主题保持兼容 | B4 独立运行时、能力授权、秘密隔离、撤销/排空与故障恢复实现并验收；破坏性包变更使用新版本 |
 | User → Subscription | User 旧字段及当前订单开通服务仍是权威 | B1 回填、余额/配额/期限/归属对账、单有效订阅并发约束；写入切换与恢复演练通过 |
 | User 流量 → Subject 流量 | 现有 Node 协议、旧批次去重及用户写入路径保持可用 | B3 持久 ACK、订阅级结算、旧节点映射、重放冲突和故障注入通过 |
-| 独立管理前端 | 既有 User UI/Theme 兼容，新 User UI 延期；Agent/MCP 清理 | B5 Admin 授权与 B6 通道门禁；管理端完整回归 |
+| 独立前端（延期，后续另建仓库） | 既有 Admin/User UI/Theme 兼容；Agent/MCP 清理 | 未来前端依赖 B5 授权与 B6 通道门禁；当前主仓验收 Core/Gateway/Node |
 
 目标部署是[运行拓扑](runtime-topology.md)中的 Compact/Standard/Cluster；每种拓扑都要满足同一契约和权限边界，合并进程不能成为放宽授权的理由。新接口见 [Core Internal API](../../../contracts/v2/core-internal-api/README.md)、[Secure Channel](../../../contracts/v2/secure-channel/README.md)，不得仅因文档存在启用未注册路径。
 

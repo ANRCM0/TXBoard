@@ -15,10 +15,10 @@
 | B4 | Plugin v2、Credential Provider、租约及撤销 | B1 Access Subject；B3 授权与结算归属 | 无 Provider Core 可启动；停用/卸载含离线节点和待结算验收 |
 | B5 | Internal API、服务身份、mTLS 与 Operation | B0 契约可先设计；领域服务逐项可调用 | Core 最终授权，User/Admin 交叉拒绝；真实私网联调 |
 | B6 | SC-v2、统一 Gateway 与 SDK | 字节规范和审查；B5 业务接口 | 各端互操作、轮换/吊销、防重放、无明文回退和真实 Core 联调 |
-| B7 | 独立管理前端；清理 Agent/MCP；新用户前端延期 | 管理前端依赖 B5/B6 及 Admin 权限契约 | 管理端完整业务回归；既有用户入口兼容；Agent/MCP 退役后基础业务正常 |
+| B7 | 新管理/用户前端均延期，后续另建独立仓库；清理 Agent/MCP | 未来前端依赖 B5/B6 及对应权限契约 | 当前验收既有前端兼容与 Agent/MCP 退役后基础业务；新前端不计入当前交付 |
 | B8 | 整合、对账、性能、灰度和旧实现退役 | 所有对应新路径通过迁移门禁 | Compact/Standard/Cluster 验收；旧调用无消费者；回退演练 |
 
-B1 → B3 → B4 是业务身份主线；B2 必须在生产数据库权威切换前完成。B5 可在 B1 期间开发读取 Operation；B6 的协议字节规范、测试向量可以提前开展，业务放量等待 B5。2026-10-13 用户调整 B7：仅推进独立管理前端，延期新用户前端，直接清理 Agent/MCP 并取消插件迁移；现有前端和 Theme 兼容保留。[当前范围](admin-only-scope.md)优先于早期方案中的 Agent/MCP 保留约束。
+B1 → B3 → B4 是业务身份主线；B2 必须在生产数据库权威切换前完成。B5 可在 B1 期间开发读取 Operation；B6 的协议字节规范、测试向量可以提前开展，业务放量等待 B5。2026-10-13 用户最新调整 B7：新管理前端和用户前端均延期，后续独立项目单独成库；当前主仓只开发 Core、Gateway、Node，安装器维持独立仓库。直接清理 Agent/MCP 并取消插件迁移；现有前端和 Theme 兼容保留。[当前范围](admin-only-scope.md)优先于早期方案中的 Agent/MCP 保留约束。
 
 ## 2. B0 状态
 
@@ -346,9 +346,9 @@ Deploy `34fd467` 修正host MySQL临时socket服务就绪竞争，[完整部署C
 
 固定Core `bddaf7e` 加本批源码和JSON夹具修正：SQLite **12通过、2项引擎条件跳过、113断言**；MariaDB **14全部通过、140断言**，包括独立锁等待后staff保护和提交前后SIGKILL。全API **1149通过、106项引擎/工具链条件跳过、11750断言**。源码/依赖和日志hash见[报告](legacy-bulk-ban-verification.json)。提交 `0ba06e0` 的[独立MySQL8.4 CI](https://github.com/ANRCM0/TXBoard/actions/runs/38343061660)、API、Core镜像、会话联调、公钥诊断和文档均通过。创建/删除及其他writer、Terms/周期、全局覆盖和生产迁移门禁仍未完成。
 
-### B7.1 管理端范围与 Agent/MCP 退役
+### B7.1 前端范围调整与 Agent/MCP 退役
 
-[范围决定](admin-only-scope.md)将独立前端限定为管理端，延期新用户前端，取消 Agent/MCP 插件拆分。删除 Agent API、配对、巡检、内置模块、管理页面、Node AI executor、MCP 进程和构建/CI；旧 Agent 名称或作用域的 Sanctum 凭据拒绝，历史迁移/审计行保留。正常 Node 同步、上报和安装器 Machine runtime update 继续运行。Compact/Split 边缘显式拒绝 `/mcp` 及子路径；安装器移除启用与管理选项，旧 CLI 参数在 Docker 调用前失败。
+[最新范围决定](admin-only-scope.md)延期两个新前端，未来另建仓库；已完成的 Agent/MCP 清理继续有效，取消插件拆分。删除 Agent API、配对、巡检、内置模块、管理页面、Node AI executor、MCP 进程和构建/CI；旧 Agent 名称或作用域的 Sanctum 凭据拒绝，历史迁移/审计行保留。正常 Node 同步、上报和安装器 Machine runtime update 继续运行。Compact/Split 边缘显式拒绝 `/mcp` 及子路径；安装器移除启用与管理选项，旧 CLI 参数在 Docker 调用前失败。
 
 固定 `0ba06e0` 加清理源码：全 API **1114通过、106项引擎/跨工具链跳过、11735断言**；退役与基础边界专项 **28项、719断言**；Node 全仓 race **660测试、28包**及相关 vet 通过。Web 共享 **8**、Admin **287**、既有 User 兼容 **63**项及类型/构建/体积门禁通过；实际注册 **254** HTTP methods，外部契约和退役路由门禁通过。安装器12套相关回归及旧参数拒绝通过；[源码与日志报告](agent-retirement-verification.json)保留修正前夹具失败和固定快照。提交 `3417670` 的 API/MySQL、前端、会话、公钥及文档 CI 全部通过；[Core 镜像](https://github.com/ANRCM0/TXBoard/actions/runs/38349216051)验证 MCP/Node.js/旧 Supervisor 程序缺失、PDO/Octane smoke 和发布，[Node 镜像](https://github.com/ANRCM0/TXBoard/actions/runs/38349216127)构建/配置兼容、发布和 dev 提升通过。Deploy `aaacd54` 的[主 CI](https://github.com/ANRCM0/TXBoard-Deploy/actions/runs/38349237512)通过；仅 PR/dispatch 的历史镜像安装 smoke 本轮未运行。独立管理前端、完整 Admin Operation 与正式 SC-v2 尚未完成。
 
