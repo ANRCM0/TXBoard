@@ -1,0 +1,131 @@
+{
+  "phase": "B2.5",
+  "status": "verified-isolated-current",
+  "base_commit": "3156b0d6a3357d88937e01edf0f7ffe8dca44a91",
+  "source_sha256": {
+    ".github/workflows/ci-authority-writer-fence.yml": "78f48cb961982600717e8b9838ab6bd81f42edc024afae73e09690281dd6c467",
+    "api/app/Console/Commands/CoreAuthorityFence.php": "aac7ef4fd8f59d065d511687b4db6a8d1a147fc1a65ef2a23cd5bb70cbbeec37",
+    "api/app/Domains/AuthorityMigration/AuthorityFenceException.php": "038a5ed99224bb919756c1b514290323f22597abafba8e87eaf68f971ebd735e",
+    "api/app/Domains/AuthorityMigration/AuthorityPrepareReceipt.php": "5c479cc72f76620a84f29c69b444d02be1f55d31c747c8a0bab7927a253e0c63",
+    "api/app/Domains/AuthorityMigration/AuthorityWriterFence.php": "7e20fc21bebb1e0fb2eb2cdd01473f0760bcc9f214f80b5a440fc4a679c64fa9",
+    "api/app/Http/Controllers/Txapi/Admin/UserEditorController.php": "6c3bdfb885eb7f40455785eef179dcb82991837e7be1126e48108ca74b43bc2c",
+    "api/config/authority_writer_fence.php": "deb96d37a3ee56a5e110788bd8849d8ae52e50304ac0208b75183943c22592ba",
+    "api/database/migrations/2026_10_14_000001_create_authority_writer_fence.php": "da72f651f3b1d510c2ecb27d4495ccd42af920ddaeb9b04386109afd39a49760",
+    "api/tests/Feature/AuthorityMigration/AuthorityWriterFenceTest.php": "ca72310e497bea776d2e7333af84c9adfa8475f18ac047f92c0cb359f2fcfa6d",
+    "contracts/v2/authority-writer-fence-v1.md": "510bc80800c96aa8633a2b775a02206e296d196612dbda2e2c02033aca5546e2"
+  },
+  "dependencies": {
+    "composer_lock_sha256": "f47b212c2fc530a7820e370eab7c6d624d13962e7d26e4f2ddf57a11848257c0",
+    "installed_json_sha256": "8e668e456c9772ae428a038ab003fba5752ab2591980fc8396d9122851145b80"
+  },
+  "snapshot": "/opt/txboard-baseline/authority-fence-r3",
+  "database": {
+    "engine": "MariaDB",
+    "version": "11.4.12",
+    "dedicated_database": "txboard_authority_fence_test",
+    "synthetic_only": true
+  },
+  "coverage": {
+    "targeted": {
+      "passed": 30,
+      "skipped": 6,
+      "assertions": 274,
+      "includes_original_admin_creation_tests": 19
+    },
+    "mysql": {
+      "passed": 17,
+      "skipped": 0,
+      "assertions": 186
+    },
+    "full": {
+      "passed": 1309,
+      "skipped": 117,
+      "assertions": 13570
+    }
+  },
+  "tests": {
+    "targeted": {
+      "mode": "targeted",
+      "exit_code": 0,
+      "log_sha256": "dfc4d675369001a3ac25e2976cba7fb1cb5c3338648e4b3eadb6f9071aea8c98",
+      "snapshot": "/opt/txboard-baseline/authority-fence-r3"
+    },
+    "mysql": {
+      "mode": "mysql",
+      "exit_code": 0,
+      "log_sha256": "d450ea73e5290e40770f4264fe9b4b5c3c4bbeef914b75330c918c2295e2569a",
+      "snapshot": "/opt/txboard-baseline/authority-fence-r3"
+    },
+    "full": {
+      "mode": "full",
+      "exit_code": 0,
+      "log_sha256": "8942339ca4cb947b6c246cfb55ac9b656b32ba33aec44d90f3dffb8c4679e08e",
+      "snapshot": "/opt/txboard-baseline/authority-fence-r3"
+    }
+  },
+  "review": {
+    "actionlint": "passed",
+    "documentation_paths": "passed",
+    "own_native_schema_issues": 0,
+    "default_off_zero_authority_SQL": true,
+    "native_create_update_authority_admission_precedes_User_SQL": true,
+    "receipt_storage_missing_or_orphan_blocks_actual_create": true,
+    "replayed_prepare_closed_receipt_history_checked": true,
+    "status_recover_SELECT_only_and_bounded": true,
+    "migration_empty_manual_init_only": true,
+    "model_receipt_immutable": true,
+    "schema_replay_preserves_history": true,
+    "populated_down_refused": true,
+    "real_native_update_shared_authority_lock_blocks_exclusive_prepare_until_commit": true,
+    "native_update_rollback_unblocks_prepare_without_mutation": true,
+    "killed_native_update_rolls_back_then_prepare_commits": true,
+    "prepare_SIGKILL_before_commit_recovers_inconclusive_and_exact_retry_succeeds": true,
+    "prepare_commit_then_output_loss_recovers_same_receipt": true,
+    "actual_independent_MariaDB_processes_used": true
+  },
+  "limits": {
+    "authority": "legacy",
+    "covered_writers": [
+      "admin.user.create",
+      "admin.user.update"
+    ],
+    "global_writer_coverage_complete": false,
+    "global_drain_complete": false,
+    "target_authority_active": false,
+    "migration_gate_open": false,
+    "production_data_used": false,
+    "production_migration_ready": false,
+    "epoch_lifecycle": "Only explicit legacy/open1 -> legacy/prepared2; no reopen or new-authority publication",
+    "outside_fence": "All other native writers, trusted plugin direct SQL, after-commit Node/Observer/external effects",
+    "hashes": "Consistency association, not signatures or independent historical proof",
+    "SQLite": "Does not establish shared/exclusive lock ordering; real independent MariaDB sessions required"
+  },
+  "attempt_history": [
+    {
+      "snapshot": "r1",
+      "outcome": "Prepared only; review added prepare replay closed cardinality check before testing"
+    },
+    {
+      "snapshot": "r2",
+      "outcome": "29passed6engine-specificskips1fixture failure: expected guest401 but native Admin403; corrected assertion only; native-only scanner v2 output key renamed target_authority_active"
+    },
+    {
+      "snapshot": "r3",
+      "outcome": "Final SQLite30passed6engine-specificskips274assertions; realMariaDB17passed186assertions including native shared/exclusive lock ordering, rollback and SIGKILL before/after prepare commit"
+    }
+  ],
+  "pending": [
+    "Remote Oracle MySQL8.4 CI after push"
+  ],
+  "new_sqlite_passed": 12,
+  "new_sqlite_skipped": 5,
+  "coordinator_review": {
+    "fixed_source_matches_manifest": true,
+    "admission_and_replay_validate_closed_receipts": true,
+    "current_shared_lock_before_user_mutation": true,
+    "full_api": "passed"
+  },
+  "remote_ci": {
+    "status": "pending-after-push"
+  }
+}

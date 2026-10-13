@@ -76,6 +76,7 @@ final class UserEditorController
         }
 
         [$user, $applied] = DB::transaction(static function () use ($request, $id, $fields): array {
+            app(\App\Domains\AuthorityMigration\AuthorityWriterFence::class)->admit('admin.user.update');
             $user = User::query()->lockForUpdate()->findOrFail($id);
             $capture = app(LegacyUserMutationCapture::class);
             $captureBefore = $capture->begin($id);
@@ -184,6 +185,7 @@ final class UserEditorController
             throw ValidationException::withMessages(['plan_id' => 'Subscription plan not found']);
         }
         $user = DB::transaction(static function () use ($fields, $email, $service, $request): User {
+            app(\App\Domains\AuthorityMigration\AuthorityWriterFence::class)->admit('admin.user.create');
             if (User::byEmail($email)->exists()) {
                 throw ValidationException::withMessages(['email_prefix' => 'Email already exists']);
             }
