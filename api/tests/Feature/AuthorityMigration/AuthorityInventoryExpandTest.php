@@ -153,7 +153,8 @@ class AuthorityInventoryExpandTest extends TestCase
         $this->expand();$this->fence()->prepare('bounded-prepare','2');$before=$this->history();
         DB::enableQueryLog();DB::flushQueryLog();$this->fence()->status();$this->fence()->recover('bounded-prepare','2');
         $this->fence()->recoverExpand('inventory-fixture','1');$queries=DB::getQueryLog();DB::disableQueryLog();
-        $this->assertCount(21,$queries);$this->assertCount(3,array_filter($queries,fn(array $query):bool=>str_contains($query['query'],'tx_authority_identity_upgrade')));
+        $this->assertCount(24,$queries);$this->assertCount(3,array_filter($queries,fn(array $query):bool=>str_contains($query['query'],'tx_authority_identity_upgrade')));
+        $this->assertCount(3,array_filter($queries,fn(array $query):bool=>str_contains($query['query'],'tx_authority_ticket_upgrade')));
         foreach($queries as$query)$this->assertMatchesRegularExpression('/\Aselect\b/i',$query['query']);
         $this->assertSame($before,$this->history());
     }

@@ -93,7 +93,8 @@ class AuthorityWriterFenceTest extends TestCase
         $this->fence()->initialize();$this->fence()->prepare('read-only','1');$before=$this->fenceState();
         DB::enableQueryLog();DB::flushQueryLog();$status=$this->fence()->status();$recover=$this->fence()->recover('read-only','1');$queries=DB::getQueryLog();DB::disableQueryLog();
         foreach($queries as$query)$this->assertMatchesRegularExpression('/\Aselect\b/i',$query['query']);
-        $this->assertCount(14,$queries);$this->assertCount(2,array_filter($queries,fn(array $query):bool=>str_contains($query['query'],'tx_authority_identity_upgrade')));
+        $this->assertCount(16,$queries);$this->assertCount(2,array_filter($queries,fn(array $query):bool=>str_contains($query['query'],'tx_authority_identity_upgrade')));
+        $this->assertCount(2,array_filter($queries,fn(array $query):bool=>str_contains($query['query'],'tx_authority_ticket_upgrade')));
         $this->assertSame($before,$this->fenceState());$this->assertSame('committed_prepare',$recover['recovery_status']);
         foreach(['global_writer_coverage_complete','global_drain_complete','target_authority_active','migration_gate_open']as$key)$this->assertFalse($status[$key]);
         $this->assertSame(['admin.user.create','admin.user.update'],$status['covered_writers']);

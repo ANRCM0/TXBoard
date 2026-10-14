@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Txapi\Admin;
 
 use App\Core\Http\TxapiResponse;
+use App\Domains\AuthorityMigration\AuthorityTicketSqlPhase;
 use App\Models\Ticket;
 use App\Models\TicketMessage;
 use App\Services\TicketService;
@@ -75,13 +76,18 @@ final class TicketAdminController
     public function close(Request $request): JsonResponse
     {
         $id = (int) $request->route('id');
-        DB::transaction(static function () use ($id): void {
+        $phase = static function () use ($id): void {
             $ticket = Ticket::query()->lockForUpdate()->findOrFail((int) $id);
             if ((int) $ticket->status !== Ticket::STATUS_CLOSED) {
                 $ticket->status = Ticket::STATUS_CLOSED;
                 $ticket->saveOrFail();
             }
-        });
+        };
+        if (AuthorityTicketSqlPhase::enabled()) {
+            app(AuthorityTicketSqlPhase::class)->run(AuthorityTicketSqlPhase::ADMIN_TICKET_CLOSE, $phase);
+        } else {
+            DB::transaction($phase);
+        }
         return TxapiResponse::success($request, ['ok' => true]);
     }
 

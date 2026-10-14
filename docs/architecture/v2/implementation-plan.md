@@ -1,6 +1,6 @@
 # Core First v2 实施台账
 
-> 状态：B0、B1.1–B1.28 影子证据、Terms、身份旁观、固定 writer 捕获、套餐批量同步、批量封禁、管理员创建/删除、注册初始记录与余额端点投影、B2.1–B2.9 单机升级与原生 SQL 围栏、B3.1/B3.2 隔离用量、B3.3–B3.9 本地观察、持久事件桶、隔离Service与真实协议接入、B4.1–B4.7 合成 Provider、插件停用接入、租约候选、离线签名快照与Go公钥诊断、B5.1–B5.24 本地 mTLS 读取、隔离建单、登录、内存邮件验证码、隔离注册、密码恢复、当前会话与管理读取、B6.1–B6.4 实验字节、离线加密、共享 owner 与独立响应随机值候选及 B7.1 Agent/MCP 退役已实现；两仓迁移与三镜像发布已完成，继续推进业务迁移切片。各整阶段仍按下表门禁验收。
+> 状态：B0、B1.1–B1.28 影子证据、Terms、身份旁观、固定 writer 捕获、套餐批量同步、批量封禁、管理员创建/删除、注册初始记录与余额端点投影、B2.1–B2.10 单机升级与原生 SQL 围栏、B3.1/B3.2 隔离用量、B3.3–B3.9 本地观察、持久事件桶、隔离Service与真实协议接入、B4.1–B4.7 合成 Provider、插件停用接入、租约候选、离线签名快照与Go公钥诊断、B5.1–B5.24 本地 mTLS 读取、隔离建单、登录、内存邮件验证码、隔离注册、密码恢复、当前会话与管理读取、B6.1–B6.4 实验字节、离线加密、共享 owner 与独立响应随机值候选及 B7.1 Agent/MCP 退役已实现；两仓迁移与三镜像发布已完成，继续推进业务迁移切片。各整阶段仍按下表门禁验收。
 
 2026-10-13，按仓库整合任务，将 Gateway/Node 的完整 Git 历史导入本仓 `gateway/`、`node/`，安装器集中到 TXBoard-Deploy。当前目录与三镜像 CI 见 [双仓布局](../../development/repository-layout.md)；旧基线和验证报告保持当时提交与路径。本次仓库整理独立于下列业务迁移门禁。
 
@@ -582,3 +582,12 @@ source延续在新夹具另行复验两协议；同Go源码完整race **475主/3
 PHP8.4语法、254项真实HTTP methods、User49/Node8契约边界、原生schema与workflow检查通过。通用工单、网络/遥测、内容/支付管理、清理任务、可信插件/其他连接和进程/队列/外部效果仍需逐项覆盖；全局coverage/drain、target authority和migration gate仍false。下一批候选为六项原生工单操作，当前仅完成源码设计，未开始实施。
 
 `40253c9` 的33个触发workflow已全部成功，包括完整API1421通过/146跳过/15103断言、独立Oracle MySQL8.4身份写入专项47全部通过/750断言、v1-v4围栏兼容、Internal消费者、Node用量/真实协议/八恢复案例和Core镜像构建发布；最终远端日志摘要与各run ID已补入B2.9报告。该验收仅完成当前切片，下一阶段尚未开始。
+
+
+### B2.10 原生工单 SQL 写入准入
+
+[当前契约](../../../contracts/v2/authority-ticket-writers-v6.md)增加用户创建/回复/关闭、管理员回复/关闭和定时逐工单关闭六项owner，共59项固定声明。独立receipt绑定完整旧父链，显式v5 open5 → v6 open6 → prepare7；旧v1-v5 hash和prepared状态保持不变。generic helper仅接受实际固定父proof，未知/无关/过期proof及异常worker声明不能授权SQL。
+
+创建Ticket/首条message原子提交，用户reply hook留在原事务内，admin/create hook和邮件cache/dispatch在提交后，cron保持逐条部分提交。enabled子事务失败不消耗提现祖先，v5/v6原生提现继续同root；admin reply和cron准入后锁读当前Ticket，闭单后拒绝回复。普通创建未新增User锁或unique约束，不声明跨隔离级别单工单保证；queue/cache仍不是送达证据。
+
+固定 `ee38166` 加最终r2冻结源码：完整API **1450通过、151项条件跳过、15620断言**；专用MariaDB **34全部通过、679断言**，含三项创建commit/rollback/SIGKILL和两项真实Ticket锁顺序竞争。相同runtime既有专项129通过/32跳过/1679断言；所有旧hash实现、254项HTTP method和User49/Node8边界核对通过。[报告](authority-ticket-writers-verification.json)记录源码/依赖/日志hash，[实现边界](authority-ticket-writers.md)明确当前59项为封闭子集。完整Oracle MySQL8.4 CI待推送核对，全局coverage/drain/target authority/migration gate继续false。

@@ -3,6 +3,7 @@
 namespace App\Domains\Support;
 
 use App\Exceptions\ApiException;
+use App\Domains\AuthorityMigration\AuthorityTicketSqlPhase;
 use App\Models\Ticket;
 use App\Models\TicketMessage;
 use App\Services\Plugin\HookManager;
@@ -47,7 +48,7 @@ final class TicketWorkflow
         // Central business service remains authoritative for one-open-ticket
         // enforcement, transaction boundaries and initial message creation.
         try {
-            $ticket = app(TicketService::class)->createTicket($userId, $subject, $level, $message);
+            $ticket = app(TicketService::class)->createUserTicket($userId, $subject, $level, $message);
         } catch (ApiException $exception) {
             // Central service denies another open ticket. Never leak internal
             // exception text through the native API.
@@ -59,7 +60,7 @@ final class TicketWorkflow
 
     public function reply(int $userId, int $id, string $message): void
     {
-        DB::transaction(function () use ($userId, $id, $message): void {
+        $phase = function () use ($userId, $id, $message): void {
             $ticket = Ticket::query()->where('user_id', $userId)
                 ->whereKey($id)->lockForUpdate()->first();
             if ($ticket === null) {
@@ -79,12 +80,17 @@ final class TicketWorkflow
                 abort(409);
             }
             HookManager::call('ticket.reply.user.after', $ticket);
-        });
+        };
+        if (AuthorityTicketSqlPhase::enabled()) {
+            app(AuthorityTicketSqlPhase::class)->run(AuthorityTicketSqlPhase::USER_TICKET_REPLY, $phase);
+        } else {
+            DB::transaction($phase);
+        }
     }
 
     public function close(int $userId, int $id): void
     {
-        DB::transaction(static function () use ($userId, $id): void {
+        $phase = static function () use ($userId, $id): void {
             $ticket = Ticket::query()->where('user_id', $userId)
                 ->whereKey($id)->lockForUpdate()->first();
             if (!$ticket) {
@@ -95,7 +101,12 @@ final class TicketWorkflow
             }
             $ticket->status = Ticket::STATUS_CLOSED;
             $ticket->saveOrFail();
-        });
+        };
+        if (AuthorityTicketSqlPhase::enabled()) {
+            app(AuthorityTicketSqlPhase::class)->run(AuthorityTicketSqlPhase::USER_TICKET_CLOSE, $phase);
+        } else {
+            DB::transaction($phase);
+        }
     }
 
     private static function dto(Ticket $ticket): array
