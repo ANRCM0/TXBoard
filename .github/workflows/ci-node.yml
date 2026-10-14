@@ -211,6 +211,18 @@ jobs:
         run: |
           set -euo pipefail
           test "$(docker image inspect txboard-node:config-path-ci --format '{{json .Config.Cmd}}')" = '["-c","/etc/txnode/config.yml"]'
+      - name: Verify offline Installer capability in the exact built image
+        run: |
+          docker run --rm --network none txboard-node:config-path-ci --capabilities > "$RUNNER_TEMP/node-capabilities.json"
+          python3 - "$GITHUB_SHA" "$RUNNER_TEMP/node-capabilities.json" <<'PY'
+          import json,sys
+          with open(sys.argv[2]) as source:
+              proof=json.load(source)
+          assert proof['protocol_version']==1 and proof['runtime']=='tx-node'
+          assert proof['commit']==sys.argv[1]
+          assert 'node_authorization_snapshot_v1' in proof['capabilities']
+          print('Exact-image offline authorization capability passed')
+          PY
       - name: Verify old Compose mount fallback
         run: |
           set -euo pipefail
