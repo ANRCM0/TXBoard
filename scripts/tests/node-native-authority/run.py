@@ -31,8 +31,16 @@ php = shutil.which('php84') or shutil.which('php')
 mysql = shutil.which('mariadb') or shutil.which('mysql')
 if not php or not mysql or not shutil.which('go') or not shutil.which('openssl'):
     raise SystemExit('NATIVE_AUTHORITY_TOOLS_REQUIRED')
+# Resolve tool defaults before isolating application environment. setup-go may
+# derive module/cache locations from HOME instead of exporting GOPATH.
+go_defaults = json.loads(subprocess.check_output(
+    ['go', 'env', '-json', 'GOPATH', 'GOMODCACHE', 'GOCACHE', 'CGO_ENABLED'], text=True))
+if any(not isinstance(go_defaults.get(key), str) or not go_defaults[key]
+       for key in ('GOPATH', 'GOMODCACHE', 'GOCACHE')) or go_defaults.get('CGO_ENABLED') != '1':
+    raise SystemExit('NATIVE_AUTHORITY_GO_RACE_ENVIRONMENT_REQUIRED')
 # Do not inherit migration/Provider/v2 flags, authentication or production settings.
-env = {k: os.environ[k] for k in ('PATH', 'LANG', 'LC_ALL', 'TMPDIR', 'GOPATH', 'GOMODCACHE', 'GOCACHE', 'GOTOOLCHAIN', 'CGO_ENABLED') if k in os.environ}
+env = {k: os.environ[k] for k in ('PATH', 'LANG', 'LC_ALL', 'TMPDIR', 'GOTOOLCHAIN') if k in os.environ}
+env.update(go_defaults)
 env.update(expected | {'DB_PASSWORD': os.environ['DB_PASSWORD'], 'DB_PORT': os.environ.get('DB_PORT', '13306'),
     'APP_DEBUG': 'false', 'CACHE_DRIVER': 'array', 'SETTING_CACHE_STORE': 'array', 'SESSION_DRIVER': 'array',
     'QUEUE_CONNECTION': 'sync', 'MAIL_MAILER': 'array',

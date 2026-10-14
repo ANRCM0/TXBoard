@@ -54,6 +54,7 @@ jobs:
       REDIS_DB: '8'
       REDIS_CACHE_DB: '9'
       GOTOOLCHAIN: local
+      CGO_ENABLED: '1'
       NATIVE_CONTROL_PROTOCOL: ${{ matrix.protocol }}
     steps:
       - uses: actions/checkout@v5
