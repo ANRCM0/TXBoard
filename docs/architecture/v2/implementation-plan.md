@@ -606,3 +606,10 @@ PHP8.4语法、254项真实HTTP methods、User49/Node8契约边界、原生schem
 固定 `0d6f68c` 加冻结runtime：完整API **1468通过、151条件跳过、15770断言**；专项 **145通过、8条件跳过、1562断言**。最终r2仅调整测试token长度与独立清库后schema-cache隔离，runtimehash不变；专用MariaDB **18全部通过、151断言**。红测与绿测及依赖/sourcehash见[报告](basic-account-authority-verification.json)。Redis publish测试仅证明选中正确节点与顺序，不证明真实Node已应用；下一批完成Node明确权威拒绝、配置可靠重试与实际数据面闭环。
 
 `64a48f6` 的36个触发workflow全部成功，包括基础账户Oracle MySQL8.4专项、完整API、所有围栏/Observer/注册/节点互通、Gateway与Core/Node镜像门禁。最终run ID与日志摘要写入P0.1报告；下一批推进原生Node身份拒绝与实际停止/尾量保留。
+
+
+### P0.2 Node 原生权威拒绝与尾量保护
+
+[当前契约](../../../contracts/node-protocol/native-authority-denial-v1.md)将完整且受限的原生 `401 NODE_UNAUTHORIZED`/节点作用域 `404 NODE_NOT_FOUND`传到Node主循环；网络、TLS、代理HTML、5xx和普通WS断开仍按重试处理。节点作用域拒绝只停止对应listener，Machine拒绝由主循环取消并等待所有子节点，避免子节点自停死锁。
+
+停止前先关闭数据面、采集最终累计meter，并把新尾量写入独立fsync terminal batch；已有pending batch原ID/原正文保持不变，重启先恢复pending再恢复terminal，成功前不开放listener。完整Go race **所有Node包通过**，非race、vet、Linux build通过；transport 14/55、runtime真实VLESS listener与终止尾量、Machine取消和reporting30测试均通过。这个切片不宣称完成ETag完整快照重试、desired/applied确认、有限离线租约、Xray强撤销或生产Provider交付。[报告](../../../node/docs/native-authority-denial-verification.json)。
