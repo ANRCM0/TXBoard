@@ -626,3 +626,5 @@ P0.2普通native-v1真实Core联调已在固定 `50dc526` 加runner修正的独�
 最终固定 `d27f738` 加r4冻结源码：全Node race **536主测试、420子测试通过、6项独立环境跳过、0失败**；独立协议leaf race **5项通过**，跨更新AEAD replay、慢握手、legacy刷新/幂等关闭均通过；go mod tidy-diff/verify、全vet、发布tags Linux构建通过。真实连接测试验证503后304恢复新端口、占用端口后同desired重试、旧poll不能重新加入已撤销UUID。普通真实Core/TLS/admin disable双协议复验均保留精确43/79尾量、关闭连接/监听、旧身份重启拒绝；专用数据库各自0600备份后重置。[报告](../../../node/docs/native-snapshot-application-verification.json)记录源码/依赖/hash和具体门禁。
 
 这仍不是整套基础控制或生产切换完成：真实Workerman/Machine完整联调、有限离线授权、custom-outbound正确重载、Xray强撤销、Core持久applied确认和全局排空门禁继续待完成。
+
+`0b86c79` 的8个触发workflow全部成功，包括Node全量race、依赖/容器/镜像发布、普通native真实VLESS/VMess拒绝停止、isolated usage-v2真实协议、Service和八案例恢复矩阵及Provider离线证明。P0.3报告已记录精确head与各run ID。后续P0.4继续分别补齐sing-box完整构造重建与Xray强撤销，不将当前测试扩展成全协议/全拓扑声明。
