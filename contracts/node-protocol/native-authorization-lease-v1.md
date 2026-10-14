@@ -1,4 +1,4 @@
-# Native Node authorization lease v1 (Candidate)
+# Native Node authorization lease v1 (Opt-in implementation)
 
 This contract defines a finite, signed authorization snapshot for an opted-in TX-Node. It reuses current Core account, plan, group, quota and kernel logic. It does not replace Provider credential issuance, activate isolated Usage v2, or treat `traffic_period` as an authorization lease.
 

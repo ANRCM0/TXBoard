@@ -19,6 +19,7 @@ on:
       - "scripts/ci-release-recovery.sh"
       - "scripts/resolve-image-tags.sh"
       - "scripts/test-image-tags.sh"
+      - "contracts/node-protocol/native-authorization-lease-v1.md"
       - ".github/workflows/docker-txboard.yml"
   pull_request:
     branches: [main]
@@ -35,6 +36,7 @@ on:
       - "scripts/ci-release-recovery.sh"
       - "scripts/resolve-image-tags.sh"
       - "scripts/test-image-tags.sh"
+      - "contracts/node-protocol/native-authorization-lease-v1.md"
       - ".github/workflows/docker-txboard.yml"
 
 permissions:
