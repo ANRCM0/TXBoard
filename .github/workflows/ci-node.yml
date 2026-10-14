@@ -124,6 +124,9 @@ jobs:
             grep -Eq '^replace github.com/sagernet/sing-box => github.com/ANRCM0/sing-box v' go.mod
             grep -Eq '^github.com/ANRCM0/sing-box v[^ ]+ h1:' go.sum
           fi
+          grep -Fxq 'replace github.com/sagernet/sing-vmess => ./internal/deps/sing-vmess' go.mod
+          grep -Fq '3aed155119a1' internal/deps/sing-vmess/TXNODE-PATCH.md
+          test -s internal/deps/sing-vmess/LICENSE
           go mod tidy -diff
       - name: Validate retained historical Node release notes
         run: |
@@ -151,6 +154,8 @@ jobs:
           }
       - name: Run full Node tests
         run: make test
+      - name: Verify pinned protocol authentication publication and replay history
+        run: go test -race -count=1 github.com/sagernet/sing-vmess github.com/sagernet/sing-vmess/vless
       - name: Check Go types and diagnostics
         run: go vet ./...
       - name: Enforce legacy retirement boundary

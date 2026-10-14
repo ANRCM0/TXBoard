@@ -13,3 +13,5 @@ TXNode 通过 HTTPS/WSS 主动连接 TXBoard，使用独立 Node/Machine 凭据�
 修改核心协议时同时更新 TXBoard 校验、测试和 TXNode 适配器，实际联调需验证认证、ETag、账本幂等、故障重试和 WSS 降级。
 
 - Native authority denial and terminal tail boundary: [contract](native-authority-denial-v1.md) and [verification](../../node/docs/native-authority-denial-verification.json).
+
+- Native full-snapshot and confirmed-application retry: [contract](native-snapshot-application-v1.md), [implementation](../../node/docs/native-snapshot-application.md) and [verification](../../node/docs/native-snapshot-application-verification.json).

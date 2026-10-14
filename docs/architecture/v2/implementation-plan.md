@@ -615,3 +615,14 @@ PHP8.4语法、254项真实HTTP methods、User49/Node8契约边界、原生schem
 停止前先关闭数据面、采集最终累计meter，并把新尾量写入独立fsync terminal batch；已有pending batch原ID/原正文保持不变，重启先恢复pending再恢复terminal，成功前不开放listener。完整Go race **所有Node包通过**，非race、vet、Linux build通过；transport 14/55、runtime真实VLESS listener与终止尾量、Machine取消和reporting30测试均通过。这个切片不宣称完成ETag完整快照重试、desired/applied确认、有限离线租约、Xray强撤销或生产Provider交付。[报告](../../../node/docs/native-authority-denial-verification.json)。
 
 P0.2普通native-v1真实Core联调已在固定 `50dc526` 加runner修正的独立快照验证VLESS/VMess：真实管理员HTTP禁用节点，SQLenabled=false，Core实际404 NODE_NOT_FOUND，旧listener/已建立TCP关闭，终止尾量分别精确43/79字节；旧身份重启握手拒绝且原tail字节保持不变。两份数据库分别0600备份后仅重置专用合成库。独立MySQL8.4双协议CI已加入；Machine全部节点与真实Workerman WS仍待后续验收。
+
+
+### P0.3 Node完整快照与真实应用重试
+
+[契约](../../../contracts/node-protocol/native-snapshot-application-v1.md)在原生Client完整缓存200正文及ETag，304可重交完整desired；配置先成功、users后失败不再丢状态。Service区分desired/applied，应用失败保持重试，无法确认的用户部分变更停止内核；迟到poll不能覆盖较新本地push，terminal拒绝优先，一次性证书更新在成功前保持pending。
+
+实际VLESS/VMess并发连接暴露认证map更新race：固定local sing-vmess源码发布不可变认证索引，保留原VMess replayFilter/算法和协议字节，inbound持有同代不可变身份。另一个启动race使早到连接未计量；普通/bounded tracker现在均在listener开放前配置注册，失败替换不覆盖原meter。原失败日志保留，测试不删并发探测。
+
+最终固定 `d27f738` 加r4冻结源码：全Node race **536主测试、420子测试通过、6项独立环境跳过、0失败**；独立协议leaf race **5项通过**，跨更新AEAD replay、慢握手、legacy刷新/幂等关闭均通过；go mod tidy-diff/verify、全vet、发布tags Linux构建通过。真实连接测试验证503后304恢复新端口、占用端口后同desired重试、旧poll不能重新加入已撤销UUID。普通真实Core/TLS/admin disable双协议复验均保留精确43/79尾量、关闭连接/监听、旧身份重启拒绝；专用数据库各自0600备份后重置。[报告](../../../node/docs/native-snapshot-application-verification.json)记录源码/依赖/hash和具体门禁。
+
+这仍不是整套基础控制或生产切换完成：真实Workerman/Machine完整联调、有限离线授权、custom-outbound正确重载、Xray强撤销、Core持久applied确认和全局排空门禁继续待完成。
