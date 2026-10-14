@@ -604,3 +604,5 @@ PHP8.4语法、254项真实HTTP methods、User49/Node8契约边界、原生schem
 按[基础优先级](development-priorities.md)修复当前可复现的账户/授权问题：已封禁管理员旧Bearer拒403；模型与Node全量快照统一严格到期秒；真实用户事件在同步触发时冻结旧组/决策，事务提交后通知，重复保存不串用最后模型状态，rollback/savepoint不派发。组JSON同时接受已有整数与字符串，保留原权限、计费与公开接口；原手工Observer capture的nested拒绝不放宽。
 
 固定 `0d6f68c` 加冻结runtime：完整API **1468通过、151条件跳过、15770断言**；专项 **145通过、8条件跳过、1562断言**。最终r2仅调整测试token长度与独立清库后schema-cache隔离，runtimehash不变；专用MariaDB **18全部通过、151断言**。红测与绿测及依赖/sourcehash见[报告](basic-account-authority-verification.json)。Redis publish测试仅证明选中正确节点与顺序，不证明真实Node已应用；下一批完成Node明确权威拒绝、配置可靠重试与实际数据面闭环。
+
+`64a48f6` 的36个触发workflow全部成功，包括基础账户Oracle MySQL8.4专项、完整API、所有围栏/Observer/注册/节点互通、Gateway与Core/Node镜像门禁。最终run ID与日志摘要写入P0.1报告；下一批推进原生Node身份拒绝与实际停止/尾量保留。
