@@ -628,3 +628,10 @@ P0.2普通native-v1真实Core联调已在固定 `50dc526` 加runner修正的独�
 这仍不是整套基础控制或生产切换完成：真实Workerman/Machine完整联调、有限离线授权、custom-outbound正确重载、Xray强撤销、Core持久applied确认和全局排空门禁继续待完成。
 
 `0b86c79` 的8个触发workflow全部成功，包括Node全量race、依赖/容器/镜像发布、普通native真实VLESS/VMess拒绝停止、isolated usage-v2真实协议、Service和八案例恢复矩阵及Provider离线证明。P0.3报告已记录精确head与各run ID。后续P0.4继续分别补齐sing-box完整构造重建与Xray强撤销，不将当前测试扩展成全协议/全拓扑声明。
+
+
+### P0.4 两内核配置应用与强撤销
+
+sing-box完整生成构造变化明确要求Stop→Start重建，原地仅处理相同构造下用户变更；raw路由等引用不存在出站时在修改前固定拒绝，不能误记applied。恢复到此前成功配置时，dirty/stopped内核不再用历史hash过滤恢复快照。Xray完整desired用户先校验，部分Add错误不推进本地users/limits/hash；子集删除/UUID重绑要求实际停止重建，最后用户删除停止原实例。真实stream关闭与当前用户恢复通过；Xray逐用户强关capability仍false，重建会干扰其他流并由当前授权重连。Stop后保留最终累计stats，重启不清历史meter。
+
+固定 `34dbf10` 加r2冻结源码：全Node race **554主测试、465子测试通过，6项独立环境跳过、0失败**；真实Service专项 **3主/8子项全部通过**，实际VLESS/VMess经SOCKS A→B并核对旧目标不再接收新流量、非法目标拒绝后合法配置恢复、旧协议端口关闭、Xray旧连接撤销/旧UUID拒绝/新与无关用户恢复及尾量保留；全vet、发布tags Linux构建通过。[报告](../../../node/docs/kernel-application-verification.json)与[边界](../../../contracts/node-protocol/kernel-application-boundary-v1.md)。下一批用真实Core/Workerman/Machine双节点验证共享socket范围及完整闭环；当前不声明finite lease、全协议、HA或全局切换完成。

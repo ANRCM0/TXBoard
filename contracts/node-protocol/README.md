@@ -15,3 +15,5 @@ TXNode 通过 HTTPS/WSS 主动连接 TXBoard，使用独立 Node/Machine 凭据�
 - Native authority denial and terminal tail boundary: [contract](native-authority-denial-v1.md) and [verification](../../node/docs/native-authority-denial-verification.json).
 
 - Native full-snapshot and confirmed-application retry: [contract](native-snapshot-application-v1.md), [implementation](../../node/docs/native-snapshot-application.md) and [verification](../../node/docs/native-snapshot-application-verification.json).
+
+- Kernel configuration and strong revocation: [contract](kernel-application-boundary-v1.md), [implementation](../../node/docs/kernel-application.md), [verification](../../node/docs/kernel-application-verification.json).
