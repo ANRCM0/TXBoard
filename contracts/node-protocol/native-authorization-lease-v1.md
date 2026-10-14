@@ -26,6 +26,8 @@ Core serializes per-node revision allocation in `tx_node_authorization_state`, s
 
 Each enrolled node state is bound to its original Machine scope. Changing that scope refuses further signing; it does not delete or silently reset the revision ledger. Controlled scope re-enrollment and key-rotation overlap remain separate recovery gates. With multiple `instances`, enrollment and public pins must be specified inside each instance; a top-level enabled authorization block is rejected rather than silently dropped during expansion.
 
+Installer enrollment checks the exact selected Node runtime with `tx-node --capabilities` before applying a pin. This read-only CLI emits `protocol_version:1`, `runtime:"tx-node"`, build version/commit and the `node_authorization_snapshot_v1` capability on Linux; it does not load configuration, contact Core, initialize durable state or open listeners. An old runtime lacking this entrypoint or capability is refused. Existing installations are checked by their actual immutable running image ID, rather than by a potentially newer channel tag.
+
 ## Node enforcement
 
 Node verifies the pinned trust, signature, audience, Core identity, target scope, complete list, revision and finite time window before applying users or opening a listener. It atomically persists the accepted high-water revision, key epoch, issuance and payload digest with restrictive permissions and directory fsync. Lower revisions, key rollback, issuance rollback, state corruption or persistence failure stop admission. A same-revision identical digest may be retried without extending its deadline.

@@ -21,8 +21,6 @@ P0.5 在真实 Core、Workerman、Redis、专用 SQL 和受信 TLS 下验证双�
 
 P0.6 用真实 VLESS/VMess 流量和 Redis worker 验证丢 ACK、丢队列、Node 实际进程重启、worker 提交前后 SIGKILL、超额停止及管理员 reset。旧周期延迟报告/延迟结算只计入历史周期，新周期当前额度不被旧流量消耗。最终本地 API 1526项通过，Node race 595主测试和508子测试通过；条件跳过分别154项和8项，独立数据库及真实协议门禁另有证据。Node在`b4dfdad`的8个workflow及相同API源码在`4c425b6`的29个Core workflow均通过，镜像已发布。
 
-## 实现范围与剩余验收
-
 ## P0.7 有限签名授权阶段
 
 Core 可通过默认关闭的原生开关，为完整 Node 用户快照签发独立 Ed25519 授权。Node 在显式固定 Core/key 公钥身份后验证 Node 与 Machine 子节点绑定、完整用户集、单调 revision 和期限；签名快照版本持久化后才能用于准入。有限离线时间最多120秒，独立30秒刷新不依赖管理员拉取周期；WS用户/配置消息仅触发完整签名快照重取。授权到期的内核I/O关闭绕过 Service、reporting、observer 和内核结构锁，随后沿原终止 checkpoint 保存原批次尾量；重启必须在线取得新 revision，旧周期与批次正文保持不变。
@@ -30,6 +28,14 @@ Core 可通过默认关闭的原生开关，为完整 Node 用户快照签发独
 专项证据：Core授权专项12项/101断言通过，Node全量race 613主测试/577子测试通过（13项条件跳过），完整API回归1692项/16347断言通过（154项条件跳过）；Node vet、构建通过。真实 Linux Core/Machine 联调的 sing-box 和 Xray 均通过，涵盖 VLESS/VMess 实流、一个共享 Machine WSS、子节点封禁后兄弟继续、离线至签名到期关闭现有流和监听、不同进程离线重启拒绝旧快照、在线恢复，以及两批原 traffic spool 的ID/正文/观察周期恢复结算。真实证据见[授权验收](../../../node/docs/native-authorization-verification.json)。
 
 本阶段交付的是 opt-in 原生完整快照有限租约，不包含生产 Provider 凭据签发/秘密自动分发、自动密钥重叠轮换、受控Machine迁移重绑定、硬件时钟/磁盘回滚保护、HA或全部协议/平台矩阵；这些仍是生产启用前的独立门禁。多实例必须逐实例配置授权 pin，顶层授权随instances会明确报错，不静默降级。
+
+## P1.1 安装器授权配置接入
+
+TXBoard-Deploy 可显式接收完整 Core/key 公钥 pin，为 Node/Machine 或新增实例生成有限授权配置。安装前通过 Node 新增的只读 `--capabilities` 确认所选镜像支持 `node_authorization_snapshot_v1`；现有容器以实际 image ID 验证。能力缺失、部分pin、非规范公钥、非HTTPS origin、普通覆写删除已有授权、原地改变已授权目标会拒绝。私钥不进入 Node 安装器，状态目录由运行时按实例派生，防止多个Core共享版本。
+
+隔离 Linux 中12套安装/维护/升级保护回归、生产Node配置加载器消费单/多实例配置、Node CLI race/构建和实际能力查询通过。该切片仅证明配置接入与能力门禁；固定发布镜像的实际Docker安装、更新、备份恢复尚需下一切片验证，不能记为P1整个单机交付完成。上一P0.7的`9af2b28`仍待受保护默认分支的明确发布授权和精确commit CI。
+
+## 实现范围与剩余验收
 
 | 范围 | 当前状态 |
 | --- | --- |
