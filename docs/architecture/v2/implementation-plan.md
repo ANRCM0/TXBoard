@@ -6,6 +6,14 @@
 
 ## 2026-10-14 基础功能优先
 
+## 2026-10-15 P0.7 有限签名授权验收
+
+P0.7 增加默认关闭、显式 pin 的 Core Ed25519 完整 Node 用户快照与有限期限，并让 Node 验证目标/版本、持久 high-water、独立续期以及到期关闭现有 I/O。HTTP users 签名快照不走 ETag；Machine child 的授权独立绑定；WS users/config 仅触发 HTTP 完整签名快照。过期时先独立关闭内核 I/O，再由原 checkpoint 路径保存流量尾量；重启须在线取得更高版本，spool ID/body/观察周期保持不变。
+
+验收：Core 专项12项/101断言；全 API 1692项/16347断言，154项既有条件跳过；Node race 613主测试/577子测试，8个既有条件跳过；Node vet/build、runner 6项自测通过。隔离真实 Core/Machine + sing-box/Xray 各覆盖 VLESS/VMess、共享 WSS、在线封禁/子节点隔离、期限前后真实既有/新连接、签名期限到点关闭、不同进程离线重启拒绝、重新在线恢复和2个原始 traffic batches 结算。每种内核实测流/监听关闭偏差约0.7–12.5毫秒（容许观察窗2秒）。证据：[Node/Core有限授权验收](../../../node/docs/native-authorization-verification.json)。本地提交后的精确 commit CI 是本阶段最后一个交付检查。
+
+适用边界：新配置 opt-in；现有未 enrollment TXBoard/Xboard 路径保持原有行为。Provider自动交付、生产PKI/secret delivery、key overlap、Machine迁移重绑定、硬件/磁盘 anti-rollback、HA、完整协议矩阵及全局 writer cutover 并未由此验收。
+
 用户调整：先完成基础账户与授权、节点管理/配置控制、流量/配额和凭据生命周期的真实闭环，再补安装交付、必要Gateway/Internal API、正式安全恢复与基础购买支付；优惠券、礼品卡等商业扩展后移。具体顺序及完成条件见[基础功能优先级](development-priorities.md)。该调整覆盖此前“下一批优惠券”的候选建议；历史验收不重写，生产切换仍需完整writer/进程/队列/外部效果门禁。
 
 截至2026-10-14，P0.1–P0.6基础切片已完成；当前摘要见[开发进度](current-progress.md)，P0.5/P0.6的详细记录在本台账末尾。下表中的 B1–B8 是完整演进方案，基础切片完成不自动开启其生产切换门禁。

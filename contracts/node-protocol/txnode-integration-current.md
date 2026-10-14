@@ -24,7 +24,7 @@
 | --- | --- | --- | --- |
 | POST | `/txapi/node/v1/handshake` | Node 或 Machine | 协商 `protocol_version:1`、`mode`、intervals、WS 能力；无需额外请求字段 |
 | GET | `/txapi/node/v1/config` | 指定 Node | 节点 `config`、`base_config`；支持 `ETag`、`If-None-Match` / 304 |
-| GET | `/txapi/node/v1/users` | 指定 Node | `users` 可用用户快照；支持 `ETag` / 304 |
+| GET | `/txapi/node/v1/users` | 指定 Node | 默认 `ETag` / 304；有限签名授权启用时每次完整签发，`no-store`，304不续期 |
 | POST | `/txapi/node/v1/report` | 指定 Node | 统计流量/在线/状态/指标；默认先持久接收再HTTP202，仍待结算 |
 | GET | `/txapi/node/v1/audit/rules` | 指定 Node | 可选 AccessAudit 已启用规则快照；TXAPI JSON envelope |
 | POST | `/txapi/node/v1/audit/report` | 指定 Node | 可选访问审计事件，最多 200 条/批、1 MiB，按节点/事件 ID 幂等；HTTP 200 |

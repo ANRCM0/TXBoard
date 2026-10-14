@@ -21,3 +21,5 @@ TXNode 通过 HTTPS/WSS 主动连接 TXBoard，使用独立 Node/Machine 凭据�
 - Native shared Machine control: [contract](native-machine-control-v1.md), [implementation](../../node/docs/native-machine-control.md), [verification](../../node/docs/native-machine-control-verification.json).
 
 - Native durable traffic, quota and observed reset periods: [traffic contract](native-traffic-quota-v1.md), [period contract](native-traffic-period-v1.md), [implementation](../../node/docs/native-traffic-quota.md), [verification](../../node/docs/native-traffic-quota-verification.json).
+
+- Opt-in finite signed Node authorization: [contract](native-authorization-lease-v1.md), [implementation](../../node/docs/native-authorization.md), [verification](../../node/docs/native-authorization-verification.json). Signing authority and traffic observation periods have separate versions and deadlines.
