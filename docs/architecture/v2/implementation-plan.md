@@ -557,3 +557,11 @@ B1.28 远端收尾修正：`7ac24c1` 的 Oracle MySQL8.4 专项18通过/1失败�
 开放连接上的原生轮询变更、租约到期、UDP/mux拒绝、恢复代际与新Core epoch接续仍需后续实际验收；本批正向真实协议互通不代表完整B3、生产Provider交付/撤销、trusted time/restore、全局handoff/drain或权威切换已完成。
 
 B3.8 远端收尾：`519e763` 的 VLESS/VMESS Oracle MySQL8.4 matrix、Service和bounded互通均通过；完整Node发布门禁发现真实协议测试直接import原先indirect的sing-vmess，go mod tidy-diff要求分类为direct。仅移动既有固定版本声明，全部版本、go.sum、runtime和协议源码不变；固定 `519e763` 加该声明，go mod tidy-diff、go mod verify及完整Node race **473主/332子测试通过、3项条件跳过、0失败**。原失败日志保留，修正推送后复验Node发布门禁，不跳过依赖验证。
+
+### B3.9 真实协议撤销边界与 source 延续
+
+经典 TCP CommandMux 的 VLESS/VMESS 实测已在隔离 r19 通过；本地固定 sing-box patch 在 sniff、规则匹配和 outbound 前拒绝不能归属普通 socket tracker 的逻辑流，零 origin 连接且历史182字节保持不变。`f0ce8d3` 及依赖门禁修正 `4779b32` 已推送；Node、Core/Node 互通、协议、用量、文档及镜像构建发布 CI 全部成功。
+
+[恢复契约](../../../contracts/v2/node-usage/live-revocation-service-v1.md)与[报告](../../../node/docs/live-recovery-service-verification.json)增加 source 延续实测：固定 `4779b32` 加四个冻结源码，r22 两协议分别完成真实历史182字节结算、正常停进程、Core幂等分配epoch2及有限grant、新进程保留mode目录并查询旧receipt。新流量37/19字节独立结算55/28，SQL两batch/两entry、累计119/146共265字节；历史本地JSON和SQL batch/entry整行哈希不变，没有隐式旧batch提交，原生User u/d仍0/0。两协议各保留0600完整SQL备份后仅重建专用合成测试库。
+
+同Go源码完整Node race **475主测试、334子测试通过，4项环境条件跳过、0失败**，真实两协议另行运行通过；受影响包vet、Python编译和actionlint通过，新增Oracle MySQL8.4恢复matrix待推送核对。Core实例/回执代际漂移及真实SQL恢复后的已确认回执缺失仍待后续验收；本段不代表B3整阶段、生产v2、全局handoff/drain或权威切换完成。

@@ -62,6 +62,17 @@ local original record then requires recovery and must not silently re-submit.
 Original source/grant/Terms/period/tariff identity and exact per-direction billing
 remain immutable during all recovery checks.
 
+The source-continuation acceptance stops the original Service after its historical
+batch settles, then provisions epoch 2 with Core's source and grant commands. An
+idempotent installation replay must return the same source. A fresh process opens
+the retained directory, queries the old settled receipt and captures a completed
+37-byte upload/19-byte download through the real protocol. Frozen 3:2 directional
+floor billing adds 55/28 bytes, yielding 119/146 bytes (265 total) across exactly
+two batches and entries. Original local JSON hashes and full historical SQL batch
+and entry hashes remain identical. Observed requests after the new process starts
+must contain no implicit submission of the historical batch. The old epoch,
+digest and receipt remain distinct from the new epoch, batch and receipt.
+
 The runner requires APP_ENV=testing, mysql,127.0.0.1, exact dedicated database
 `txboard_live_revocation_test` and principal `txboard_live_revocation`, zero tables
 beforeDDL and a new evidence directory. Any reset/restore is separately explicit,

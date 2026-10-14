@@ -45,6 +45,13 @@ class Proxy(http.server.BaseHTTPRequestHandler):
                 snapshot=json.loads(body).get('data',{});record['user_count']=len(snapshot.get('users',[]));record['user_ids']=[u['id']for u in snapshot.get('users',[])]
             if self.path.endswith('/config') and response.status==200:
                 record['server_port']=json.loads(body).get('data',{}).get('config',{}).get('server_port')
+            if self.path == '/txapi/node/v2/usage/batch/get' and response.status==200:
+                receipt=json.loads(body).get('data',{})
+                record.update({key:receipt.get(key) for key in ('source_epoch','batch_id','payload_digest','receipt_id')})
+            if self.path == '/txapi/node/v2/usage/submit':
+                submission=json.loads(data)
+                record.update({key:submission.get('payload',{}).get(key) for key in ('source_epoch','batch_id')})
+                record['payload_digest']=submission.get('payload_digest')
             if self.path == '/txapi/node/v1/report':
                 request = json.loads(data); ack = json.loads(body).get('data', {})
                 record.update({'traffic_present': bool(request.get('traffic')),
