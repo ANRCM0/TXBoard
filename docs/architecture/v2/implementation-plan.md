@@ -591,3 +591,5 @@ PHP8.4语法、254项真实HTTP methods、User49/Node8契约边界、原生schem
 创建Ticket/首条message原子提交，用户reply hook留在原事务内，admin/create hook和邮件cache/dispatch在提交后，cron保持逐条部分提交。enabled子事务失败不消耗提现祖先，v5/v6原生提现继续同root；admin reply和cron准入后锁读当前Ticket，闭单后拒绝回复。普通创建未新增User锁或unique约束，不声明跨隔离级别单工单保证；queue/cache仍不是送达证据。
 
 固定 `ee38166` 加最终r2冻结源码：完整API **1450通过、151项条件跳过、15620断言**；专用MariaDB **34全部通过、679断言**，含三项创建commit/rollback/SIGKILL和两项真实Ticket锁顺序竞争。相同runtime既有专项129通过/32跳过/1679断言；所有旧hash实现、254项HTTP method和User49/Node8边界核对通过。[报告](authority-ticket-writers-verification.json)记录源码/依赖/日志hash，[实现边界](authority-ticket-writers.md)明确当前59项为封闭子集。完整Oracle MySQL8.4 CI待推送核对，全局coverage/drain/target authority/migration gate继续false。
+
+`6dc6bad` 的33个触发workflow全部成功：完整API1450通过/151跳过/15620断言，最终Oracle MySQL8.4工单专项34全部通过/679断言；旧围栏/身份/财务/Observer、Internal消费者、Node真实协议与恢复矩阵、Core镜像构建发布也通过。最终run ID与日志摘要已写入B2.10报告。下一批候选是五项优惠券管理写入，目前仅做源码设计。
