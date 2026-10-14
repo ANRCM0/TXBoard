@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use Workerman\Connection\TcpConnection;
+use Illuminate\Support\Facades\Log;
 
 /**
  * In-memory registry for active WebSocket node connections.
@@ -18,18 +19,84 @@ class NodeRegistry
 
     public static function add(int $nodeId, TcpConnection $conn): void
     {
-        if (isset(self::$connections[$nodeId]) && self::$connections[$nodeId] !== $conn) {
-            self::$connections[$nodeId]->close();
-        }
+        if (!empty($conn->machineId) && (self::getMachine((int) $conn->machineId) !== $conn
+            || !in_array($nodeId, array_map('intval', $conn->machineNodeIds ?? []), true))) return;
+        $old = self::$connections[$nodeId] ?? null;
+        if ($old === $conn) return;
+        // Install first, so mandatory registry transition survives cache faults.
         self::$connections[$nodeId] = $conn;
+        if ($old === null) return;
+        if (!empty($old->machineId)) {
+            self::forgetSocketMember($nodeId, $old);
+            if ((int) $old->machineId !== (int) ($conn->machineId ?? 0)) self::withdrawNativeFacts($nodeId, $old);
+        } else {
+            $old->close();
+        }
     }
 
     public static function addMachine(int $machineId, TcpConnection $conn): void
     {
-        if (isset(self::$machineConnections[$machineId]) && self::$machineConnections[$machineId] !== $conn) {
-            self::$machineConnections[$machineId]->close();
-        }
+        $old = self::$machineConnections[$machineId] ?? null;
+        if ($old === $conn) return;
+        $newIds = array_values(array_unique(array_filter(array_map('intval', $conn->machineNodeIds ?? []), static fn (int $id): bool => $id > 0)));
+        $oldIds = $old?->machineNodeIds ?? [];
+        $displaced = [];
+        // The complete successor registry is installed before any cleanup/close.
         self::$machineConnections[$machineId] = $conn;
+        $conn->machineNodeIds = $newIds;
+        foreach ($newIds as $nodeId) {
+            $previous = self::$connections[$nodeId] ?? null;
+            if ($previous !== null && $previous !== $conn) $displaced[$nodeId] = $previous;
+            self::$connections[$nodeId] = $conn;
+        }
+        try {
+            foreach ($displaced as $nodeId => $previous) {
+                if (!empty($previous->machineId)) {
+                    self::forgetSocketMember($nodeId, $previous);
+                    // Same-machine replacement keeps current node device facts.
+                    if ((int) $previous->machineId !== $machineId) self::withdrawNativeFacts($nodeId, $previous);
+                } else {
+                    $previous->close();
+                }
+            }
+            if ($old !== null) {
+                foreach (array_diff($oldIds, $newIds) as $nodeId) self::detachNode((int) $nodeId, $old);
+                $old->machineNodeIds = [];
+            }
+        } finally {
+            if ($old !== null) $old->close();
+        }
+    }
+
+    private static function forgetSocketMember(int $nodeId, TcpConnection $conn): void
+    {
+        $conn->machineNodeIds = array_values(array_filter($conn->machineNodeIds ?? [], static fn ($id): bool => (int) $id !== $nodeId));
+    }
+
+    private static function withdrawNativeFacts(int $nodeId, TcpConnection $expected): void
+    {
+        if (empty($expected->txnodeNative)) return;
+        try { NodeSyncService::markNodeOffline($nodeId); }
+        catch (\Throwable $e) { Log::warning('[WS] Native node cleanup failed', ['node_id' => $nodeId, 'failure_code' => 'NATIVE_NODE_ONLINE_CLEANUP_FAILED']); }
+        try { app(DeviceStateService::class)->clearAllNodeDevices($nodeId); }
+        catch (\Throwable $e) { Log::warning('[WS] Native node cleanup failed', ['node_id' => $nodeId, 'failure_code' => 'NATIVE_NODE_DEVICE_CLEANUP_FAILED']); }
+    }
+
+    /** Withdraw one expected mapping and its native facts, never a successor's. */
+    public static function detachNode(int $nodeId, TcpConnection $expected): bool
+    {
+        // Membership metadata is local to the old socket even when its node
+        // mapping was already replaced; stale close/refresh may still see it.
+        if (!empty($expected->machineId)) {
+            $expected->machineNodeIds = array_values(array_filter($expected->machineNodeIds ?? [],
+                static fn ($id): bool => (int) $id !== $nodeId));
+        }
+        if ((self::$connections[$nodeId] ?? null) !== $expected) return false;
+        unset(self::$connections[$nodeId]);
+        // The generic registry remains usable without cache/device providers.
+        // Only authenticated native session withdrawal owns these side effects.
+        self::withdrawNativeFacts($nodeId, $expected);
+        return true;
     }
 
     /**
@@ -97,14 +164,14 @@ class NodeRegistry
 
         $oldNodeIds = $conn->machineNodeIds ?? [];
 
-        // Remove nodes no longer on this machine
-        foreach (array_diff($oldNodeIds, $newNodeIds) as $removedId) {
-            self::remove($removedId, $conn);
-        }
-
-        // Add newly assigned nodes (via add() to close any stale standalone connection)
+        $newNodeIds = array_values(array_unique(array_map('intval', $newNodeIds)));
+        foreach (array_diff($oldNodeIds, $newNodeIds) as $removedId) self::detachNode((int) $removedId, $conn);
+        $conn->machineNodeIds = $newNodeIds;
         foreach ($newNodeIds as $nodeId) {
+            // add() detaches shared siblings safely and closes only a replaced
+            // standalone connection, after the successor mapping is installed.
             self::add($nodeId, $conn);
+            if (!empty($conn->txnodeNative)) NodeSyncService::markNodeOnline($nodeId);
         }
 
         $conn->machineNodeIds = $newNodeIds;

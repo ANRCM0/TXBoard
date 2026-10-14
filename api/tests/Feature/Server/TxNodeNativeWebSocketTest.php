@@ -65,6 +65,28 @@ class TxNodeNativeWebSocketTest extends TestCase
         return new WsRequest($headers."\r\n");
     }
 
+    public function test_empty_device_snapshot_is_a_json_map_and_can_clear_node_state(): void
+    {
+        $node = $this->node();
+        $conn = Mockery::mock(TcpConnection::class);
+        $frames = [];
+        $conn->shouldReceive('send')->once()->andReturnUsing(function ($raw) use (&$frames): bool {
+            $frames[] = json_decode($raw, false, 32, JSON_THROW_ON_ERROR);
+            return true;
+        });
+        $service = Mockery::mock(DeviceStateService::class);
+        $service->shouldReceive('getUsersDevices')->once()->with([])->andReturn([]);
+        NodeRegistry::add((int) $node->id, $conn);
+        try {
+            \App\WebSocket\NativeNodePush::pushDeviceStateToNode((int) $node->id, $service);
+            $this->assertSame('sync.devices', $frames[0]->event);
+            $this->assertInstanceOf(\stdClass::class, $frames[0]->data->users);
+            $this->assertSame([], get_object_vars($frames[0]->data->users));
+        } finally {
+            NodeRegistry::remove((int) $node->id, $conn);
+        }
+    }
+
     public function test_worker_rejects_old_upgrade_and_unversioned_frames(): void
     {
         $worker = new \App\WebSocket\NodeWorker('127.0.0.1', 8077);

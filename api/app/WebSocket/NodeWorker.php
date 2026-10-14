@@ -138,27 +138,7 @@ class NodeWorker
             }
 
             try {
-                $machine = ServerMachine::find($machineId);
-                if (!$machine || !$machine->is_active
-                    || !hash_equals((string) ($conn->txnodeCredentialHash ?? ''),
-                            hash('sha256', (string) $machine->token))) {
-                    $conn->close();
-                    continue;
-                }
-                $nodes = ServerService::getMachineNodes($machine);
-                $newIds = $nodes->pluck('id')->map(fn ($id) => (int) $id)->all();
-                $oldIds = $conn->machineNodeIds ?? [];
-                if ($oldIds !== $newIds) {
-                    NodeRegistry::refreshMachineNodes($machineId, $newIds);
-                    NodeRegistry::sendMachine($machineId, 'sync.nodes', [
-                        'nodes' => $nodes->map(fn ($node) => [
-                            'id' => $node->id, 'type' => $node->type, 'name' => $node->name,
-                        ])->all(),
-                    ]);
-                    foreach (array_diff($oldIds, $newIds) as $removedId) {
-                        NodeSyncService::markNodeOffline((int) $removedId);
-                    }
-                }
+                $this->synchronizeMachine($machineId);
             } catch (\Throwable $e) {
                 Log::warning('[WS] Machine reconciliation failed', [
                     'machine_id' => $machineId, 'error' => $e->getMessage(),
@@ -177,6 +157,11 @@ class NodeWorker
                     continue;
                 }
                 $node = Server::find($nodeId);
+                if (!empty($conn->machineId) && (!$node || !$node->enabled || (int) $node->machine_id !== (int) $conn->machineId)) {
+                    $this->synchronizeMachine((int) $conn->machineId, true);
+                    NodeRegistry::detachNode((int) $nodeId, $conn);
+                    continue;
+                }
                 if (!$node || !$node->enabled) {
                     $conn->close();
                     continue;
@@ -199,6 +184,31 @@ class NodeWorker
                 ]);
             }
         }
+    }
+
+    /** Authenticate and re-read desired membership rather than trust queued Redis data. */
+    private function synchronizeMachine(int $machineId, bool $force = false): bool
+    {
+        $conn = NodeRegistry::getMachine($machineId);
+        if (!$conn || empty($conn->txnodeNative)) return false;
+        $machine = ServerMachine::find($machineId);
+        if (!$machine || !$machine->is_active || !hash_equals((string) ($conn->txnodeCredentialHash ?? ''), hash('sha256', (string) $machine->token))) {
+            $conn->close();
+            return false;
+        }
+        $nodes = ServerService::getMachineNodes($machine);
+        $newIds = $nodes->pluck('id')->map(static fn ($id): int => (int) $id)->all();
+        $oldIds = $conn->machineNodeIds ?? [];
+        if ($force || $oldIds !== $newIds) {
+            NodeRegistry::refreshMachineNodes($machineId, $newIds);
+            NodeRegistry::sendMachine($machineId, 'sync.nodes', ['nodes' => $nodes->map(static fn ($node): array => [
+                'id' => (int) $node->id, 'type' => (string) $node->type, 'name' => (string) $node->name,
+            ])->all()]);
+            foreach ($nodes as $node) {
+                if (!in_array((int) $node->id, $oldIds, true)) NativeNodePush::pushFullSync($node);
+            }
+        }
+        return true;
     }
 
     public function onConnect(TcpConnection $conn): void
@@ -236,7 +246,7 @@ class NodeWorker
 
     public function onClose(TcpConnection $conn): void
     {
-        $service = app(DeviceStateService::class);
+        if (empty($conn->txnodeNative)) return;
 
         // 机器模式：清理所有关联节点。machineId also covers empty machines.
         if (!empty($conn->machineId)) {
@@ -249,11 +259,7 @@ class NodeWorker
                 if (NodeRegistry::get((int) $nodeId) !== $conn) {
                     continue;
                 }
-                NodeRegistry::remove($nodeId, $conn);
-                NodeSyncService::markNodeOffline((int) $nodeId);
-
-                // clearAllNodeDevices already refreshes each affected user's count.
-                $service->clearAllNodeDevices($nodeId);
+                NodeRegistry::detachNode((int) $nodeId, $conn);
             }
 
             if (!empty($conn->machineId)) {
@@ -275,15 +281,10 @@ class NodeWorker
             if (NodeRegistry::get((int) $nodeId) !== $conn) {
                 return;
             }
-            NodeRegistry::remove($nodeId, $conn);
-            NodeSyncService::markNodeOffline((int) $nodeId);
-
-            // clearAllNodeDevices performs the per-user online-count update.
-            $affectedUserIds = $service->clearAllNodeDevices($nodeId);
+            NodeRegistry::detachNode((int) $nodeId, $conn);
 
             Log::debug("[WS] Node#{$nodeId} disconnected", [
                 'total' => NodeRegistry::count(),
-                'affected_users' => count($affectedUserIds),
             ]);
         }
     }
@@ -315,37 +316,78 @@ class NodeWorker
                 return;
             }
 
-            $event = $payload['event'] ?? '';
-            $data = $payload['data'] ?? [];
-
-            // Machine-level events (e.g., sync.nodes)
-            $machineId = $payload['machine_id'] ?? null;
-            if ($machineId && $event) {
-                // Update server-side registry when node membership changes
-                if ($event === 'sync.nodes') {
-                    $nodeIds = array_map('intval', array_column($data['nodes'] ?? [], 'id'));
-                    NodeRegistry::refreshMachineNodes((int) $machineId, $nodeIds);
-                }
-
-                $sent = NodeRegistry::sendMachine((int) $machineId, $event, $data);
-                if ($sent) {
-                    Log::debug("[WS] Pushed {$event} to machine#{$machineId}");
-                }
-                return;
-            }
-
-            // Per-node events
-            $nodeId = $payload['node_id'] ?? null;
-            if (!$nodeId || !$event) {
-                return;
-            }
-
-            $sent = NodeRegistry::send((int) $nodeId, $event, $data);
-            if ($sent) {
-                Log::debug("[WS] Pushed {$event} to node#{$nodeId}");
-            }
+            $this->dispatchRedisPush($payload);
         });
 
         Log::info("[WS] Subscribed to Redis channel: {$channel}");
+    }
+    /** Redis only identifies a changed domain; current Core state supplies data. */
+    private function dispatchRedisPush(array $payload): void
+    {
+        $event = $payload['event'] ?? null;
+        if (!is_string($event)) return;
+        $machineId = $payload['machine_id'] ?? null;
+        if (is_int($machineId) && $machineId > 0) {
+            if ($event === 'sync.nodes') {
+                $this->synchronizeMachine($machineId, true);
+                return;
+            }
+            // Preserve the existing Installer-owned bounded update operation,
+            // but only for a currently authenticated Machine and live request.
+            if ($event === \App\Services\MachineRuntimeUpdateService::EVENT && $this->synchronizeMachine($machineId)) {
+                $data = $payload['data'] ?? [];
+                $requestId = is_array($data) ? ($data['request_id'] ?? null) : null;
+                $target = is_array($data) ? ($data['target'] ?? null) : null;
+                if (is_string($requestId) && preg_match('/^mup_[a-z0-9]{26}$/D', $requestId)
+                    && in_array($target, ['latest', 'dev'], true)
+                    && Cache::get("machine_runtime_update:cooldown:{$machineId}") === $requestId) {
+                    NodeRegistry::sendMachine($machineId, $event, ['request_id' => $requestId, 'target' => $target]);
+                }
+            }
+            return;
+        }
+        $nodeId = $payload['node_id'] ?? null;
+        if (!is_int($nodeId) || $nodeId <= 0) return;
+        $conn = NodeRegistry::get($nodeId);
+        if (!$conn || empty($conn->txnodeNative)) return;
+        $node = Server::find($nodeId);
+        if (!empty($conn->machineId)) {
+            $machine = ServerMachine::find((int) $conn->machineId);
+            if (!$machine || !$machine->is_active || !is_string($machine->token) || $machine->token === ''
+                || !hash_equals((string) ($conn->txnodeCredentialHash ?? ''), hash('sha256', $machine->token))) {
+                $conn->close();
+                return;
+            }
+            if (!$node || !$node->enabled || (int) $node->machine_id !== (int) $conn->machineId) {
+                $previousMachine = (int) $conn->machineId;
+                $this->synchronizeMachine($previousMachine, true);
+                // Reassigned nodes may attach to a currently authenticated new
+                // Machine session. Old session receives only its current list.
+                if ($node && $node->enabled && $node->machine_id && (int) $node->machine_id !== $previousMachine) {
+                    $this->synchronizeMachine((int) $node->machine_id, true);
+                }
+                return;
+            }
+        } else {
+            $credential = (string) admin_setting('server_token', '');
+            if (!$node || !$node->enabled || $credential === ''
+                || !hash_equals((string) ($conn->txnodeCredentialHash ?? ''), hash('sha256', $credential))) {
+                $conn->close();
+                return;
+            }
+        }
+        if (!in_array($event, ['sync.config', 'sync.users', 'sync.user.delta', 'sync.devices'], true)) {
+            if (!empty($conn->machineId)) $this->synchronizeMachine((int) $conn->machineId);
+            Log::warning('[WS] Native node push dropped', ['node_id' => $nodeId, 'failure_code' => 'NATIVE_NODE_PUSH_EVENT_UNSUPPORTED']);
+            return;
+        }
+        // Queued payloads can be old or malicious; never forward their bodies.
+        if ($event === 'sync.config') {
+            NodeRegistry::send($nodeId, 'sync.config', ['config' => ServerService::buildNodeConfig($node)]);
+        } elseif ($event === 'sync.devices') {
+            NativeNodePush::pushDeviceStateToNode($nodeId, app(DeviceStateService::class));
+        } else {
+            NodeRegistry::send($nodeId, 'sync.users', ['users' => ServerService::getAvailableUsers($node)->toArray()]);
+        }
     }
 }

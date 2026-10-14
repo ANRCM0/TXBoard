@@ -24,7 +24,7 @@ final class NativeNodePush
         $devices = $service->getUsersDevices($userIds);
 
         NodeRegistry::send($nodeId, 'sync.devices', [
-            'users' => $devices
+            'users' => (object) $devices
         ]);
 
         Log::debug("[WS] Pushed device state to node#{$nodeId}: " . count($devices) . " users");

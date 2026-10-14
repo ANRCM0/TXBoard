@@ -7,60 +7,56 @@ use App\Services\NodeSyncService;
 
 class ServerObserver
 {
-    public bool $afterCommit = true;
+    // Capture save-time changes explicitly; the adapter owns the deferred callback.
+    public bool $afterCommit = false;
 
-    public function created(Server $server): void
+    public function onCreated(Server $server): void
     {
-        $this->notifyMachineNodesChanged($server->machine_id);
+        $machineId = $server->machine_id === null ? null : (int) $server->machine_id;
+        $server->getConnection()->afterCommit(function () use ($machineId): void {
+            $this->notifyMachineChange($machineId, null);
+        });
     }
 
-    public function updated(Server $server): void
+    public function onUpdated(Server $server): void
     {
-        if ($server->wasChanged('group_ids')) {
-            NodeSyncService::notifyFullSync($server->id);
-        } elseif ($server->wasChanged([
-            'server_port',
-            'protocol_settings',
-            'type',
-            'route_ids',
-            'custom_outbounds',
-            'custom_routes',
-            'cert_config',
-        ])) {
-            NodeSyncService::notifyConfigUpdated($server->id);
-        }
-
-        if ($server->wasChanged(['machine_id', 'enabled'])) {
-            $this->notifyMachineChange(
-                $server->machine_id,
-                $server->getOriginal('machine_id')
-            );
-        }
+        $nodeId = (int) $server->id;
+        $newMachineId = $server->machine_id === null ? null : (int) $server->machine_id;
+        $oldMachine = $server->getRawOriginal('machine_id');
+        $oldMachineId = $oldMachine === null ? null : (int) $oldMachine;
+        $groupChanged = $server->wasChanged('group_ids');
+        $configChanged = $server->wasChanged(['server_port', 'protocol_settings', 'type', 'route_ids', 'custom_outbounds', 'custom_routes', 'cert_config']);
+        $membershipChanged = $server->wasChanged(['machine_id', 'enabled']);
+        if (!$groupChanged && !$configChanged && !$membershipChanged) return;
+        $server->getConnection()->afterCommit(function () use ($nodeId, $newMachineId, $oldMachineId, $groupChanged, $configChanged, $membershipChanged): void {
+            // Deliver current desired state, but decide which effects belong to
+            // this event using its frozen flags and original owner.
+            if ($groupChanged) {
+                NodeSyncService::notifyFullSync($nodeId);
+            } elseif ($configChanged) {
+                NodeSyncService::notifyConfigUpdated($nodeId);
+            }
+            if ($membershipChanged) $this->notifyMachineChange($newMachineId, $oldMachineId);
+        });
     }
 
-    public function deleted(Server $server): void
+    public function onDeleted(Server $server): void
     {
-        $this->notifyMachineChange(null, $server->getOriginal('machine_id') ?: $server->machine_id);
+        $oldMachine = $server->getRawOriginal('machine_id') ?? $server->machine_id;
+        $machineId = $oldMachine === null ? null : (int) $oldMachine;
+        $server->getConnection()->afterCommit(function () use ($machineId): void {
+            $this->notifyMachineChange(null, $machineId);
+        });
     }
+
+    // Explicit direct-call adapters retain existing observer consumers.
+    public function created(Server $server): void { $this->onCreated($server); }
+    public function updated(Server $server): void { $this->onUpdated($server); }
+    public function deleted(Server $server): void { $this->onDeleted($server); }
 
     private function notifyMachineChange(?int $newMachineId, ?int $oldMachineId): void
     {
-        $notified = [];
-
-        if ($newMachineId) {
-            NodeSyncService::notifyMachineNodesChanged($newMachineId);
-            $notified[] = $newMachineId;
-        }
-
-        if ($oldMachineId && !in_array($oldMachineId, $notified, true)) {
-            NodeSyncService::notifyMachineNodesChanged($oldMachineId);
-        }
-    }
-
-    private function notifyMachineNodesChanged(?int $machineId): void
-    {
-        if ($machineId) {
-            NodeSyncService::notifyMachineNodesChanged($machineId);
-        }
+        if ($newMachineId) NodeSyncService::notifyMachineNodesChanged($newMachineId);
+        if ($oldMachineId && $oldMachineId !== $newMachineId) NodeSyncService::notifyMachineNodesChanged($oldMachineId);
     }
 }
