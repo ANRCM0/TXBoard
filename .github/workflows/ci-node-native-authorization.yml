@@ -2,7 +2,7 @@ name: node-native-authorization-control
 
 on:
   push:
-    branches: [main]
+    branches: [main, feat/installer-node-authorization-preflight]
     paths:
       - 'api/**'
       - 'node/internal/**'

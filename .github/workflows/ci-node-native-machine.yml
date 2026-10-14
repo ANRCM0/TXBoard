@@ -2,7 +2,7 @@ name: node-native-machine-control
 
 on:
   push:
-    branches: [main]
+    branches: [main, feat/installer-node-authorization-preflight]
     paths: ['api/**', 'node/internal/**', 'node/go.mod', 'node/go.sum', 'scripts/tests/node-native-machine/**', 'contracts/node-protocol/native-machine-control-v1.md', '.github/workflows/ci-node-native-machine.yml']
   pull_request:
     paths: ['api/**', 'node/internal/**', 'node/go.mod', 'node/go.sum', 'scripts/tests/node-native-machine/**', 'contracts/node-protocol/native-machine-control-v1.md', '.github/workflows/ci-node-native-machine.yml']

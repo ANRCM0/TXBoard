@@ -2,7 +2,7 @@ name: Node CI and images
 
 on:
   push:
-    branches: [main]
+    branches: [main, feat/installer-node-authorization-preflight]
     tags: ["v*"]
     paths:
       - "node/**"
