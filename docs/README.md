@@ -25,7 +25,9 @@
 
 ## 维护与状态
 
-**Core First v2 开发**：从 [B0 基线](architecture/v2/README.md) 查看当前依赖、跨仓兼容差异、领域模型和契约，再按 [实施台账](architecture/v2/implementation-plan.md) 推进。这里的 Target/Draft 不代表当前运行时已改变。
+**开发进度**：先看[当前进度与下一步](architecture/v2/current-progress.md)和[基础功能优先级](architecture/v2/development-priorities.md)。P0.5 Node/Machine控制与P0.6流量配额切片已完成，下一优先项是凭据生命周期与有限离线授权。
+
+**Core First v2开发**：[B0基线](architecture/v2/README.md)说明完整演进方向，[实施台账](architecture/v2/implementation-plan.md)保留提交和验收证据。Target/Draft设计和已实现的原生基础切片分别按其状态阅读。
 
 [文档贡献规范与责任边界](DOCUMENTATION_GUIDE.md) 约定 Markdown 格式、来源、状态标签以及变更时应同步的文件。跨仓设计中的 `Target`、`Draft`、`Experimental` 不代表生产可用。
 

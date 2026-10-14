@@ -1,6 +1,6 @@
 # Core First v2：B0 架构与实施基线
 
-> 2026-10-12。方向：Core First。B0 基线与多条隔离切片已实现，实际提交、验证和剩余门禁见 [实施台账](implementation-plan.md)。各整阶段仍待逐项验收。
+> 基线建立于2026-10-12，当前进度更新于2026-10-14。P0.1–P0.6基础切片已完成；[当前进度与下一步](current-progress.md)提供完成范围，[实施台账](implementation-plan.md)保留历史与验收证据。完整方案的生产迁移门禁仍待逐项验收。
 
 这轮建设从现有 Laravel、前端、Gateway、Node 和 Deploy 演进。Core 是唯一业务与数据权威；先补齐契约、兼容检测和恢复能力，再切换写入与调用，最后清理没有消费者的旧实现。
 
@@ -22,7 +22,7 @@
 ## 当前需先解决的跨仓差异
 
 1. Gateway Native 适配已改为真实 `/txapi/*` 与 DTO/envelope；Internal API 逐 operation 迁移和 User/Admin 完整授权仍需验证。
-2. 默认 Node 仍使用 v1 queued ACK；隔离 v2 已有 SQL 持久回执、整数结算和 spool，runtime 租约、完整计数覆盖及权威交接未启用。
+2. 原生v1报告默认已启用SQL持久接收和签名观察周期；202/queued表示已接收、仍待结算。P0.5/P0.6真实控制和流量闭环已验收；隔离Usage v2未接管默认业务，有限离线租约、完整协议覆盖及权威交接仍待完成。
 3. User 仍持有套餐、配额、用量、到期时间和 UUID；当前影子 Schema、商品/财务证据、管理员创建初始记录和 Terms 转换尚未接管 live writer。
 4. 当前 PHP 插件仍在进程内运行；固定可信合成 Provider 能发行/撤销并保留清理证据，不能代替生产隔离和 Node 撤销 ACK。
 5. 单机影子升级已有签名、持久检查点和提交后恢复；部分 DDL 仍需调查，集群 fencing 与生产 writer switch 尚未实现。

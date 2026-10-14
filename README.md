@@ -8,12 +8,18 @@
 
 > **项目状态**：仓库持续开发中。CI、镜像构建和单元测试不等于真实环境生产验收；特别是数据库迁移、支付、节点接入和第三方扩展，请按 [上线验收清单](docs/operations/release-staging-acceptance.md) 独立验证。不要直接将开发标签用于生产。
 
+## 当前开发进度
+
+2026-10-14，Node/Machine真实控制与原生流量配额两个基础阶段已完成，包含持久接收、原批次去重、超额撤销、观察周期补报和进程崩溃恢复。sing-box/Xray双内核继续保留，具体协议与验收范围见[Node说明](node/README.md#协议接入与验收范围)。
+
+接下来优先推进凭据生命周期与有限离线授权，之后依次推进独立安装器、必要Gateway/Internal API及生产安全/基础支付。新前端暂缓，优惠券等新增扩展后移。详见[开发进度](docs/architecture/v2/current-progress.md)和[基础优先级](docs/architecture/v2/development-priorities.md)。
+
 ## 核心能力
 
 - **用户与订阅**：用户账户、套餐、订阅与流量管理。
 - **订单与结算**：订单、充值、支付渠道及关联管理能力。
 - **节点管理**：Node / Machine / Group / Route 与 TX-Node 控制平面协作。
-- **管理后台与用户端**：独立的 Admin（React）和 User（Vue）应用。
+- **既有管理后台与用户端**：保留当前Admin（React）和User（Vue）；新前端开发延期，后续统一由独立TX-F承接。
 - **扩展体系**：Plugin、Theme、Module Registry / Lifecycle，依据版本化契约运行。
 
 功能是否在指定版本可用，应以真实运行时、[已注册的接口](contracts/README.md) 及对应发布说明为准；设计文档不等于已交付功能。
