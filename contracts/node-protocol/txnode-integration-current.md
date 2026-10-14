@@ -233,3 +233,11 @@ location = /txapi/node/v1/ws {
 ## B3.1 隔离 Usage v2 切片
 
 Core 已注册 `POST /txapi/node/v2/usage/submit` 与 `POST /txapi/node/v2/usage/batch/get`，复用当前 Node/Machine Bearer 与节点范围。只有 local/testing 和显式 isolated-copy 开关同时成立时可执行；v1 handshake 仅在隔离 source 存在时附加非秘密 `usage_v2` capability。生产权威、默认 TX-Node Service、v1 HTTP/WSS report 与 queued ACK 语义保持现行协议。HTTP 持久接收、SQL 结算、当前限制与未启用路径见 [B3.1 Current 契约](../v2/node-usage/isolated-receipt-current.md)。
+
+## 用户资格与到期边界
+
+Node全量与增量用户快照采用同一原生资格：当前有套餐且未封禁、配额大于零、已用流量小于配额，且到期时间为空或严格晚于当前UTC秒。`expired_at == now` 已到期，不能重新加入节点。基础账户可登录或购买续费的资格不等于Node使用资格，不能以流量耗尽为由禁止用户续费。
+
+## 用户权限组变更的提交后同步
+
+原生用户模型事件在事务提交后通知节点；每次事件的旧权限组、是否需要同步/重算及模型字段必须在事件发生时冻结，不能读取后续保存已经覆盖的 original/changes。真实事务回滚不发同步任务。同一事务内多次变更分别保留各次旧组。NodeUserSyncJob执行时按当前User状态决定新组add/remove，先从旧组节点移除；JSON组ID为整数或十进制字符串的现有节点都必须收到对应通知。

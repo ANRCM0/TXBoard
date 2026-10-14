@@ -32,7 +32,9 @@ class EventServiceProvider extends ServiceProvider
         $this->app->scoped(\App\Domains\AuthorityMigration\AuthorityAdmissionRegistry::class);
         Event::listen(\Illuminate\Database\Events\TransactionCommitting::class, [\App\Domains\AuthorityMigration\FencedUserPostcommit::class, 'handle']);
 
-        User::observe(UserObserver::class);
+        User::created([UserObserver::class, 'onCreated']);
+        User::updated([UserObserver::class, 'onUpdated']);
+        User::deleted([UserObserver::class, 'onDeleted']);
         Plan::observe(PlanObserver::class);
         Server::observe(ServerObserver::class);
         ServerRoute::observe(ServerRouteObserver::class);

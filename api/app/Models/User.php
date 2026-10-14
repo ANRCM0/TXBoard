@@ -160,7 +160,7 @@ use HasApiTokens;
     public function isActive(): bool
     {
         return !$this->banned && 
-               ($this->expired_at === null || $this->expired_at > time()) &&
+               ($this->expired_at === null || $this->expired_at > now()->timestamp) &&
                $this->plan_id !== null;
     }
 

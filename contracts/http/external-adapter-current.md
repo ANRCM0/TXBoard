@@ -27,3 +27,7 @@
 HTTP 路由由 `api/routes/txapi.php` 和 `RouteServiceProvider.php` 注册；Workerman WebSocket、插件动态路由以及反向代理规则不包含在 Laravel route-list 内。
 
 Node Usage v2 的已实现范围与回执契约见 [隔离接收切片](../v2/node-usage/isolated-receipt-current.md)。TX-Node 默认 Service 和生产计费仍使用 v1，注册隔离路由不构成运行路径切换。
+
+## 基础账户状态即时授权
+
+管理员入口除校验当前 `is_admin`、动态路径和 RBAC 外，必须拒绝当前已封禁账户，返回403。封禁前已发行且未过期的普通管理员 Bearer 不得绕过当前账户状态；退役Agent凭据仍拒绝。此校验适用于原生管理员入口，并不开放管理员Gateway。

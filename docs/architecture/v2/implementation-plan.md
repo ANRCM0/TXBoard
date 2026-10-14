@@ -597,3 +597,10 @@ PHP8.4语法、254项真实HTTP methods、User49/Node8契约边界、原生schem
 固定 `ee38166` 加最终r2冻结源码：完整API **1450通过、151项条件跳过、15620断言**；专用MariaDB **34全部通过、679断言**，含三项创建commit/rollback/SIGKILL和两项真实Ticket锁顺序竞争。相同runtime既有专项129通过/32跳过/1679断言；所有旧hash实现、254项HTTP method和User49/Node8边界核对通过。[报告](authority-ticket-writers-verification.json)记录源码/依赖/日志hash，[实现边界](authority-ticket-writers.md)明确当前59项为封闭子集。完整Oracle MySQL8.4 CI待推送核对，全局coverage/drain/target authority/migration gate继续false。
 
 `6dc6bad` 的33个触发workflow全部成功：完整API1450通过/151跳过/15620断言，最终Oracle MySQL8.4工单专项34全部通过/679断言；旧围栏/身份/财务/Observer、Internal消费者、Node真实协议与恢复矩阵、Core镜像构建发布也通过。最终run ID与日志摘要已写入B2.10报告。下一批候选是五项优惠券管理写入，目前仅做源码设计。
+
+
+### P0.1 基础账户与节点资格修复
+
+按[基础优先级](development-priorities.md)修复当前可复现的账户/授权问题：已封禁管理员旧Bearer拒403；模型与Node全量快照统一严格到期秒；真实用户事件在同步触发时冻结旧组/决策，事务提交后通知，重复保存不串用最后模型状态，rollback/savepoint不派发。组JSON同时接受已有整数与字符串，保留原权限、计费与公开接口；原手工Observer capture的nested拒绝不放宽。
+
+固定 `0d6f68c` 加冻结runtime：完整API **1468通过、151条件跳过、15770断言**；专项 **145通过、8条件跳过、1562断言**。最终r2仅调整测试token长度与独立清库后schema-cache隔离，runtimehash不变；专用MariaDB **18全部通过、151断言**。红测与绿测及依赖/sourcehash见[报告](basic-account-authority-verification.json)。Redis publish测试仅证明选中正确节点与顺序，不证明真实Node已应用；下一批完成Node明确权威拒绝、配置可靠重试与实际数据面闭环。

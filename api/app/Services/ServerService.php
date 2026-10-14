@@ -102,7 +102,7 @@ class ServerService
             ->where('transfer_enable', '>', 0)
             ->whereRaw('COALESCE(u, 0) + COALESCE(d, 0) < transfer_enable')
             ->where(function ($query) {
-                $query->where('expired_at', '>=', time())
+                $query->where('expired_at', '>', now()->timestamp)
                     ->orWhere('expired_at', NULL);
             })
             ->where('banned', 0)

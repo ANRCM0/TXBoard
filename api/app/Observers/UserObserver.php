@@ -11,34 +11,28 @@ use Illuminate\Support\Facades\DB;
 
 class UserObserver
 {
-  public bool $afterCommit = true;
+  public bool $afterCommit = false;
 
   public function __construct(
     private readonly TrafficResetService $trafficResetService
   ) {
-    $this->afterCommit = !\App\Domains\AuthorityMigration\AuthorityPostcommitVersionPolicy::declared();
   }
 
   public function updated(User $user): void
   {
-    // With $afterCommit = true, isDirty() is always false after commit.
-    // Use wasChanged() to detect what was actually modified.
+    // Capture each completed save before finishSave() synchronizes the model.
+    // Deferred callbacks must not share a model that a later save can mutate.
     $syncFields = ['group_id', 'uuid', 'speed_limit', 'device_limit', 'banned', 'expired_at', 'transfer_enable', 'u', 'd', 'plan_id'];
     $needsSync = $user->wasChanged($syncFields);
-    $oldGroupId = $user->wasChanged('group_id') ? $user->getOriginal('group_id') : null;
+    $oldGroup = $user->wasChanged('group_id') ? $user->getRawOriginal('group_id') : null;
+    $oldGroupId = $oldGroup === null ? null : (int) $oldGroup;
 
     if (\App\Domains\AuthorityMigration\AuthorityPostcommitVersionPolicy::declared()) {
       $schedule = $user->wasChanged(['plan_id', 'expired_at']);
       if ($schedule || $needsSync) app(\App\Domains\AuthorityMigration\FencedUserPostcommit::class)->stage($user, 'updated', $oldGroupId, $schedule);
       return;
     }
-    if ($user->wasChanged(['plan_id', 'expired_at'])) {
-      $this->recalculateNextResetAt($user);
-    }
-
-    if ($needsSync) {
-      NodeUserSyncJob::dispatch($user->id, 'updated', $oldGroupId);
-    }
+    $this->nativeUpdated($user, $oldGroupId, $needsSync, $user->wasChanged(['plan_id', 'expired_at']));
   }
 
   public function created(User $user): void
@@ -58,8 +52,56 @@ class UserObserver
       return;
     }
     if ($user->group_id) {
-      NodeUserSyncJob::dispatch($user->id, 'deleted', $user->group_id);
+      NodeUserSyncJob::dispatch($user->id, 'deleted', (int) $user->group_id);
     }
+  }
+
+  /** Eloquent adapters freeze one event before later saves mutate its source model. */
+  public function onUpdated(User $user): void
+  {
+    if (\App\Domains\AuthorityMigration\AuthorityPostcommitVersionPolicy::declared()) {
+      $this->updated($user);
+      return;
+    }
+    $needsSync = $user->wasChanged(['group_id', 'uuid', 'speed_limit', 'device_limit', 'banned', 'expired_at', 'transfer_enable', 'u', 'd', 'plan_id']);
+    $schedule = $user->wasChanged(['plan_id', 'expired_at']);
+    if (!$schedule && !$needsSync) return;
+    $oldGroup = $user->wasChanged('group_id') ? $user->getRawOriginal('group_id') : null;
+    $oldGroupId = $oldGroup === null ? null : (int) $oldGroup;
+    $snapshot = $user->getConnection()->transactionLevel() === 0 ? $user : clone $user;
+    $user->getConnection()->afterCommit(function () use ($snapshot, $oldGroupId, $needsSync, $schedule): void {
+      $this->nativeUpdated($snapshot, $oldGroupId, $needsSync, $schedule);
+    });
+  }
+
+  public function onCreated(User $user): void
+  {
+    if (\App\Domains\AuthorityMigration\AuthorityPostcommitVersionPolicy::declared()) {
+      $this->created($user);
+      return;
+    }
+    $snapshot = $user->getConnection()->transactionLevel() === 0 ? $user : clone $user;
+    $user->getConnection()->afterCommit(function () use ($snapshot): void {
+      $this->created($snapshot);
+    });
+  }
+
+  public function onDeleted(User $user): void
+  {
+    if (\App\Domains\AuthorityMigration\AuthorityPostcommitVersionPolicy::declared()) {
+      $this->deleted($user);
+      return;
+    }
+    $snapshot = clone $user;
+    $user->getConnection()->afterCommit(function () use ($snapshot): void {
+      $this->deleted($snapshot);
+    });
+  }
+
+  private function nativeUpdated(User $user, ?int $oldGroupId, bool $needsSync, bool $schedule): void
+  {
+    if ($schedule) $this->recalculateNextResetAt($user);
+    if ($needsSync) NodeUserSyncJob::dispatch($user->id, 'updated', $oldGroupId);
   }
 
   /**
