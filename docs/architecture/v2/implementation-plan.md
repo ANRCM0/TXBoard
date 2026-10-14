@@ -580,3 +580,5 @@ source延续在新夹具另行复验两协议；同Go源码完整race **475主/3
 固定 `b1d172e` 加冻结 runtime：完整API **1421通过、146项条件跳过、15103断言**，原 fence/finance/native/Observer 专项 **80通过、32项引擎条件跳过、1063断言**。最终r4只修正测试盐样本长度与外键删除顺序，runtime逐文件hash保持相同；最终SQLite专项 **42通过、5项MySQL专测跳过、541断言**。专用MariaDB初次47案例为45通过、2夹具失败；修正后两项另行通过，5项独立进程 commit/rollback/SIGKILL 通过。此处明确保留两个运行，不将其写成一次全绿；完整最终Oracle MySQL8.4 CI推送后核对。[报告](authority-identity-writers-verification.json)记录所有源码/依赖hash、失败日志和最终证据，[实现边界](authority-identity-writers.md)说明具体语义。
 
 PHP8.4语法、254项真实HTTP methods、User49/Node8契约边界、原生schema与workflow检查通过。通用工单、网络/遥测、内容/支付管理、清理任务、可信插件/其他连接和进程/队列/外部效果仍需逐项覆盖；全局coverage/drain、target authority和migration gate仍false。下一批候选为六项原生工单操作，当前仅完成源码设计，未开始实施。
+
+`40253c9` 的33个触发workflow已全部成功，包括完整API1421通过/146跳过/15103断言、独立Oracle MySQL8.4身份写入专项47全部通过/750断言、v1-v4围栏兼容、Internal消费者、Node用量/真实协议/八恢复案例和Core镜像构建发布；最终远端日志摘要与各run ID已补入B2.9报告。该验收仅完成当前切片，下一阶段尚未开始。
