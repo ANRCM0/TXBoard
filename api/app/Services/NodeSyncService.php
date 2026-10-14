@@ -78,7 +78,7 @@ class NodeSyncService
             if (!self::isNodeOnline($server->id))
                 continue;
 
-            $users = ServerService::getAvailableUsers($server)->toArray();
+            $users = ServerService::getNativeAvailableUsers($server)->toArray();
             self::push($server->id, 'sync.users', ['users' => $users]);
         }
     }
@@ -108,6 +108,7 @@ class NodeSyncService
                             'uuid' => $user->uuid,
                             'speed_limit' => $user->speed_limit,
                             'device_limit' => $user->device_limit,
+                            ...(config('native_traffic_periods.enabled', true) && config('native_traffic_receipts.enabled', true) ? ['traffic_period' => app(\App\Domains\Network\NativeTrafficPeriod::class)->issue((int) $user->id, (int) ($user->reset_count ?? 0))] : []),
                         ]
                     ],
                 ]);
@@ -156,7 +157,7 @@ class NodeSyncService
 
         self::push($nodeId, 'sync.config', ['config' => ServerService::buildNodeConfig($node)]);
 
-        $users = ServerService::getAvailableUsers($node)->toArray();
+        $users = ServerService::getNativeAvailableUsers($node)->toArray();
         self::push($nodeId, 'sync.users', ['users' => $users]);
     }
 
@@ -185,19 +186,21 @@ class NodeSyncService
     /**
      * Publish a push command to Redis — picked up by the Workerman WS server
      */
-    public static function push(int $nodeId, string $event, array $data): void
+    public static function push(int $nodeId, string $event, array $data): bool
     {
         try {
-            Redis::publish('node:push', json_encode([
+            $subscribers = Redis::publish('node:push', json_encode([
                 'node_id' => $nodeId,
                 'event' => $event,
                 'data' => $data,
             ]));
+            return (int) $subscribers > 0;
         } catch (\Throwable $e) {
             Log::warning("[NodePush] Redis publish failed: {$e->getMessage()}", [
                 'node_id' => $nodeId,
                 'event' => $event,
             ]);
+            return false;
         }
     }
 

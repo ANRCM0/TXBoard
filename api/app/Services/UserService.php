@@ -115,23 +115,26 @@ class UserService
         return true;
     }
 
-    public function trafficFetch(Server $server, string $protocol, array $data, ?string $batchId = null)
+    /** Prepare the existing hook-normalized input without dispatching jobs. */
+    public function prepareTrafficInput(Server $server, string $protocol, array $data): array
     {
         $server->rate = $server->getCurrentRate();
         $server = $server->toArray();
 
         list($server, $protocol, $data) = HookManager::filter('traffic.process.before', [$server, $protocol, $data]);
-        // Compatible with legacy hook
         list($server, $protocol, $data) = HookManager::filter('traffic.before_process', [$server, $protocol, $data]);
-
-        // Hooks are untrusted input too. Revalidate after both hook layers,
-        // before any account or statistics job can observe the payload.
         $data = TrafficUsage::normalize($data, $server['rate'] ?? null);
-        if ($data === []) {
-            return;
-        }
+        return ['server' => $server, 'protocol' => $protocol, 'data' => $data, 'record_at' => strtotime(date('Y-m-d'))];
+    }
 
-        $timestamp = strtotime(date('Y-m-d'));
+    public function trafficFetch(Server $server, string $protocol, array $data, ?string $batchId = null)
+    {
+        $prepared = $this->prepareTrafficInput($server, $protocol, $data);
+        $server = $prepared['server'];
+        $protocol = $prepared['protocol'];
+        $data = $prepared['data'];
+        $timestamp = $prepared['record_at'];
+        if ($data === []) return;
         if ($batchId !== null) {
             // The complete report must be settled as one atomic, idempotent
             // unit, not three independent retryable statistics jobs.

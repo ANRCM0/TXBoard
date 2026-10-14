@@ -32,6 +32,10 @@ final class NodeProtocolController
             ],
             'settings' => $this->intervals(),
         ];
+        if (config('native_traffic_receipts.enabled') === true) {
+            $data['capabilities'][] = 'traffic_receipt_durable_v1';
+            if (config('native_traffic_periods.enabled', true) === true) $data['capabilities'][] = 'traffic_period_v1';
+        }
         if ($node) {
             try {
                 $capability = app(UsageRegistry::class)->capability((int) $node->id, time());
@@ -57,7 +61,7 @@ final class NodeProtocolController
     {
         $node = $request->attributes->get('txnode.node');
         ServerService::touchNode($node);
-        $users = collect(ServerService::getAvailableUsers($node))->values()->toArray();
+        $users = collect(ServerService::getNativeAvailableUsers($node))->values()->toArray();
         return $this->etagResponse($request, [
             'protocol_version' => 1,
             'node_id' => (int) $node->id,
@@ -106,7 +110,9 @@ final class NodeProtocolController
         try {
             $result = app(NativeNodeReport::class)->submit($node, $request->all());
         } catch (NodeReportError $e) {
-            return TxapiResponse::error($request, $e->errorCode, $e->getMessage(), 422);
+            return TxapiResponse::error($request, $e->errorCode, $e->getMessage(), match ($e->errorCode) {
+                'TRAFFIC_BATCH_CONFLICT' => 409, 'TRAFFIC_DURABILITY_UNAVAILABLE' => 503, default => 422,
+            });
         }
         return TxapiResponse::success($request, $result, status: 202);
     }

@@ -6,6 +6,7 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Schema;
 
 class TrafficHealth extends Command
 {
@@ -47,12 +48,40 @@ class TrafficHealth extends Command
             $alerts[] = 'traffic_queue_backlog_high';
         }
 
+        $receiptPending = null;
+        $receiptFailed = null;
+        $oldestReceiptAt = null;
+        $quotaPending = null;
+        if (Schema::hasTable('tx_native_traffic_receipt')) {
+            $pending = DB::table('tx_native_traffic_receipt')->where('status', 'pending');
+            $receiptPending = (clone $pending)->count();
+            $quotaPending = DB::table('tx_native_traffic_receipt')->where('status', 'settled')->whereNull('quota_checked_at')->count();
+            $receiptFailed = (clone $pending)->whereNotNull('last_error_code')->count();
+            $oldestReceiptAt = (clone $pending)->min('accepted_at');
+            if ($receiptFailed > 0) $alerts[] = 'native_traffic_recovery_failed';
+            if ($oldestReceiptAt !== null && (int) $oldestReceiptAt <= $cutoff) {
+                $alerts[] = 'native_traffic_receipt_backlog_old';
+            }
+        } elseif (config('native_traffic_receipts.enabled', true)) {
+            $alerts[] = 'native_traffic_receipt_schema_unavailable';
+        }
+        $failedJobs = Schema::hasTable('failed_jobs')
+            ? DB::table('failed_jobs')->where('queue', 'traffic_fetch')->count() : null;
+        if ($failedJobs > 0) $alerts[] = 'traffic_failed_jobs_present';
+
         $metrics = [
             'window_minutes' => (int) $minutes,
             'settled_batches' => $settled,
             'active_servers' => $nodes,
             'last_settled_at' => $lastSettledAt === null ? null : (int) $lastSettledAt,
             'pending_traffic_jobs' => $queuePending,
+            'pending_native_receipts' => $receiptPending,
+            'failed_native_receipts' => $receiptFailed,
+            'pending_native_quota_notifications' => $quotaPending,
+            'oldest_pending_receipt_at' => $oldestReceiptAt === null ? null : (int) $oldestReceiptAt,
+            'failed_traffic_jobs' => $failedJobs,
+            // Queue/SQL observations cannot attest all external Node spools.
+            'global_drain_proven' => false,
             'alerts' => $alerts,
         ];
 

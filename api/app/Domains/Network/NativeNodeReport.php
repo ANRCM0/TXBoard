@@ -5,12 +5,14 @@ namespace App\Domains\Network;
 use App\Models\Server;
 use App\Services\ServerService;
 use App\Services\TrafficUsage;
+use App\Utils\CacheKey;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Validator;
 use RuntimeException;
 
 /**
  * One ingress for native HTTP and WebSocket usage reports.
- * ACK means dispatched to the queue, never committed to the SQL ledger.
+ * A nonempty ACK follows durable SQL reception, never certifies billing.
  */
 final class NativeNodeReport
 {
@@ -20,6 +22,7 @@ final class NativeNodeReport
             'protocol_version' => ['required', 'integer', 'in:1'],
             'traffic_batch_id' => ['nullable', 'string', 'regex:/^[A-Za-z0-9:_-]{8,80}$/D'],
             'traffic' => ['sometimes', 'array', 'max:10000'],
+            'traffic_segments' => ['sometimes', 'array', 'max:10000'],
             'alive' => ['sometimes', 'array', 'max:10000'],
             'online' => ['sometimes', 'array', 'max:10000'],
             'status' => ['sometimes', 'array'],
@@ -34,15 +37,37 @@ final class NativeNodeReport
         if ($traffic !== [] && !$batch) {
             throw new NodeReportError('BATCH_ID_REQUIRED', 'Traffic reports require a stable batch ID');
         }
-        if ($traffic !== [] && count(TrafficUsage::normalize($traffic, $node->getCurrentRate())) !== count($traffic)) {
+        if ($traffic !== [] && count(TrafficUsage::normalize($traffic, 1)) !== count($traffic)) {
             throw new NodeReportError('INVALID_TRAFFIC', 'Traffic entries must be unsigned byte pairs');
         }
 
-        // No side effects until the complete input has passed validation.
-        ServerService::touchNode($node);
-        if ($traffic !== []) {
-            ServerService::processTraffic($node, $traffic, $batch);
+        $segments = array_key_exists('traffic_segments', $params) ? $params['traffic_segments'] : null;
+        if ($segments !== null) {
+            if ($traffic === []) throw new NodeReportError('INVALID_TRAFFIC_SEGMENTS', 'Segments require nonempty traffic');
+            $segments = NativeTrafficSegments::canonical($segments, TrafficUsage::normalize($traffic, 1));
+            if (config('native_traffic_receipts.enabled') !== true) throw new NodeReportError('TRAFFIC_DURABILITY_UNAVAILABLE', 'Period traffic requires durable acceptance');
         }
+
+        // Durable acceptance precedes every nonempty report ACK and ancillary
+        // status effects. Redis dispatch is only a recoverable wakeup.
+        $receipt = null;
+        if ($traffic !== []) {
+            if (config('native_traffic_receipts.enabled') === true) {
+                $receipt = app(NativeTrafficReceipt::class)->accept($node, $batch, $traffic, $segments);
+                // Preserve native processTraffic's operational metadata without
+                // dispatching again or invoking mutable billing hooks twice.
+                $type = strtoupper((string) $node->type);
+                Cache::put(CacheKey::get("SERVER_{$type}_ONLINE_USER", (int) $node->id), count($traffic), 3600);
+                Cache::put(CacheKey::get("SERVER_{$type}_LAST_PUSH_AT", (int) $node->id), time(), 3600);
+            } elseif (config('native_traffic_receipts.enabled') === false) {
+                // Explicit compatibility/testing mode advertises queued-only
+                // reception. It is never certified as durable acceptance.
+                ServerService::processTraffic($node, $traffic, $batch);
+            } else {
+                throw new NodeReportError('TRAFFIC_DURABILITY_UNAVAILABLE', 'Durable traffic acceptance unavailable');
+            }
+        }
+        ServerService::touchNode($node);
         if (!empty($params['alive'])) {
             ServerService::processAlive((int) $node->id, $params['alive']);
         }
@@ -60,6 +85,8 @@ final class NativeNodeReport
             'accepted' => true,
             'traffic_batch_id' => $batch,
             'settlement' => $traffic === [] ? 'none' : 'queued',
+            'receipt_status' => $receipt === null ? ($traffic === [] ? 'none' : 'queued_only') : 'persisted',
+            'receipt_id' => $receipt === null ? null : (string) $receipt->id,
         ];
     }
 }

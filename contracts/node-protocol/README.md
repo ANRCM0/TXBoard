@@ -19,3 +19,5 @@ TXNode 通过 HTTPS/WSS 主动连接 TXBoard，使用独立 Node/Machine 凭据�
 - Kernel configuration and strong revocation: [contract](kernel-application-boundary-v1.md), [implementation](../../node/docs/kernel-application.md), [verification](../../node/docs/kernel-application-verification.json).
 
 - Native shared Machine control: [contract](native-machine-control-v1.md), [implementation](../../node/docs/native-machine-control.md), [verification](../../node/docs/native-machine-control-verification.json).
+
+- Native durable traffic, quota and observed reset periods: [traffic contract](native-traffic-quota-v1.md), [period contract](native-traffic-period-v1.md), [implementation](../../node/docs/native-traffic-quota.md), [verification](../../node/docs/native-traffic-quota-verification.json).

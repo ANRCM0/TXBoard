@@ -3,6 +3,8 @@
 namespace App\Jobs;
 
 use App\Services\TrafficUsage;
+use App\Domains\Network\NativeTrafficSegments;
+use App\Domains\Network\NativeTrafficPeriod;
 use App\Services\Subscription\LegacyCaptureShadowException;
 use App\Services\Subscription\LegacyUserMutationCapture;
 use Illuminate\Bus\Queueable;
@@ -48,7 +50,9 @@ class TrafficBatchJob implements ShouldQueue
         private readonly array $data,
         private readonly string $protocol,
         private readonly int $recordAt,
-        private readonly string $batchId
+        private readonly string $batchId,
+        private readonly ?int $nativeReceiptId = null,
+        private readonly ?array $trafficSegments = null
     ) {
         $this->onQueue('traffic_fetch');
     }
@@ -63,11 +67,17 @@ class TrafficBatchJob implements ShouldQueue
 
         // Sort before hashing so map iteration order does not change identity.
         ksort($data, SORT_NUMERIC);
-        $hash = hash('sha256', json_encode([$rate, $data], JSON_THROW_ON_ERROR));
+        $segments = $this->trafficSegments === null ? null : NativeTrafficSegments::canonical($this->trafficSegments, $data);
+        $segmentsByUser = [];
+        foreach ($segments ?? [] as $segment) $segmentsByUser[$segment['user_id']][] = $segment;
+        $hash = NativeTrafficSegments::ledgerHash($rate, $data, $segments);
         $serverId = (int) $this->server['id'];
+        if ($this->nativeReceiptId !== null) {
+            app(\App\Domains\Network\NativeTrafficReceipt::class)->verifySettlementInput($this->nativeReceiptId, $this->server, $data, $this->protocol, $this->recordAt, $this->batchId, $segments);
+        }
         $acceptedUsers = [];
 
-        $settled = DB::transaction(function () use ($serverId, $rate, $hash, $data, &$acceptedUsers) {
+        $settled = DB::transaction(function () use ($serverId, $rate, $hash, $data, $segments, $segmentsByUser, &$acceptedUsers) {
             app(\App\Domains\AuthorityMigration\AuthorityWriterFence::class)->admit('traffic.batch.settle');
             // A deadlock retry must notify only the successful transaction's users.
             $acceptedUsers = [];
@@ -114,15 +124,20 @@ class TrafficBatchJob implements ShouldQueue
             foreach (array_chunk(array_keys($data), 400) as $ids) {
                 $users = DB::table('tx_user')->whereIn('id', $ids)
                     ->orderBy('id')->lockForUpdate()
-                    ->get(['id', 'u', 'd']);
+                    ->get($segments === null ? ['id', 'u', 'd'] : ['id', 'u', 'd', 'reset_count']);
                 foreach ($users as $user) {
                     $usersById[(int) $user->id] = $user;
                 }
+            }
 
+            // Acquire every sorted User fence before any statistics range lock.
+            // This keeps the same lock scope/query count while preventing a
+            // later User chunk from waiting behind a competing stat insertion.
+            foreach (array_chunk(array_keys($data), 400) as $ids) {
                 $statsQuery = DB::table('tx_stat_user')->where($statKey)->whereIn('user_id', $ids);
-                // An explicit capture transaction may enter with an older MVCC
-                // snapshot. Current rows are needed under its existing User fence.
-                $stats = ($capture === null ? $statsQuery : $statsQuery->sharedLock())->get(['id', 'user_id']);
+                // Always use a current read: a prior chunk may establish an
+                // older repeatable-read snapshot before this User lock waits.
+                $stats = $statsQuery->sharedLock()->get(['id', 'user_id', 'u', 'd']);
                 foreach ($stats as $stat) {
                     $statsByUser[(int) $stat->user_id] = $stat;
                 }
@@ -135,18 +150,37 @@ class TrafficBatchJob implements ShouldQueue
                     continue;
                 }
 
-                $billedUp = (int) floor($up * (float) $rate);
-                $billedDown = (int) floor($down * (float) $rate);
-                if ($billedUp > PHP_INT_MAX - (int) $user->u
-                    || $billedDown > PHP_INT_MAX - (int) $user->d) {
-                    throw new RuntimeException('User traffic counter overflow');
+                $currentUp = $currentDown = 0;
+                if ($segments === null) {
+                    $billedUp = (int) floor($up * (float) $rate);
+                    $billedDown = (int) floor($down * (float) $rate);
+                    $currentUp = $billedUp; $currentDown = $billedDown;
+                } else {
+                    $billedUp = $billedDown = 0;
+                    foreach ($segmentsByUser[(int) $uid] ?? [] as $segment) {
+                        $epoch = app(NativeTrafficPeriod::class)->verify($segment['period'], (int) $uid, (int) $user->reset_count);
+                        $segmentUp = (int) floor($segment['upload'] * (float) $rate);
+                        $segmentDown = (int) floor($segment['download'] * (float) $rate);
+                        if ($segmentUp > PHP_INT_MAX - $billedUp || $segmentDown > PHP_INT_MAX - $billedDown) throw new RuntimeException('Traffic period counter overflow');
+                        $billedUp += $segmentUp; $billedDown += $segmentDown;
+                        if ($epoch === (int) $user->reset_count) { $currentUp += $segmentUp; $currentDown += $segmentDown; }
+                        $periodRow = DB::table('tx_native_traffic_period_usage')->where(['user_id' => $uid, 'reset_count' => $epoch])->lockForUpdate()->first();
+                        $increments = ['raw_upload' => $segment['upload'], 'raw_download' => $segment['download'], 'billed_upload' => $segmentUp, 'billed_download' => $segmentDown];
+                        if ($periodRow) {
+                            foreach ($increments as $column => $value) {
+                                if ($value > PHP_INT_MAX - (int) $periodRow->$column) throw new RuntimeException('Traffic period counter overflow');
+                            }
+                            DB::table('tx_native_traffic_period_usage')->where('id', $periodRow->id)->incrementEach($increments, ['updated_at' => time()]);
+                        } else {
+                            DB::table('tx_native_traffic_period_usage')->insert(['user_id' => $uid, 'reset_count' => $epoch, 'updated_at' => time()] + $increments);
+                        }
+                    }
                 }
-
-                $before = $capture?->beginTrafficBatchSettlement((int) $uid, $serverId);
-
-                DB::table('tx_user')->where('id', $uid)->incrementEach([
-                    'u' => $billedUp, 'd' => $billedDown,
-                ], ['t' => time()]);
+                if ($currentUp > PHP_INT_MAX - (int) $user->u || $currentDown > PHP_INT_MAX - (int) $user->d) throw new RuntimeException('User traffic counter overflow');
+                $before = $currentUp > 0 || $currentDown > 0 || $segments === null ? $capture?->beginTrafficBatchSettlement((int) $uid, $serverId) : null;
+                if ($currentUp > 0 || $currentDown > 0 || $segments === null) {
+                    DB::table('tx_user')->where('id', $uid)->incrementEach(['u' => $currentUp, 'd' => $currentDown], ['t' => time()]);
+                }
 
                 $where = [
                     'user_id' => $uid,
@@ -156,6 +190,9 @@ class TrafficBatchJob implements ShouldQueue
                 ];
                 $stat = $statsByUser[(int) $uid] ?? null;
                 if ($stat) {
+                    if ($billedUp > PHP_INT_MAX - (int) $stat->u || $billedDown > PHP_INT_MAX - (int) $stat->d) {
+                        throw new RuntimeException('User traffic statistic overflow');
+                    }
                     DB::table('tx_stat_user')->where('id', $stat->id)->incrementEach([
                         'u' => $billedUp, 'd' => $billedDown,
                     ], ['updated_at' => time()]);
@@ -166,7 +203,7 @@ class TrafficBatchJob implements ShouldQueue
                     ]);
                 }
 
-                $capture?->appendTrafficBatchSettlement($before);
+                if ($before !== null) $capture?->appendTrafficBatchSettlement($before);
 
                 $rawUp += $up;
                 $rawDown += $down;
@@ -189,8 +226,11 @@ class TrafficBatchJob implements ShouldQueue
                 'record_type' => 'd',
             ];
             $statQuery = DB::table('tx_stat_server')->where($where);
-            $stat = ($capture === null ? $statQuery : $statQuery->sharedLock())->first();
+            $stat = $statQuery->sharedLock()->first();
             if ($stat) {
+                if ($rawUp > PHP_INT_MAX - (int) $stat->u || $rawDown > PHP_INT_MAX - (int) $stat->d) {
+                    throw new RuntimeException('Server traffic statistic overflow');
+                }
                 DB::table('tx_stat_server')->where('id', $stat->id)->incrementEach([
                     'u' => $rawUp, 'd' => $rawDown,
                 ], ['updated_at' => time()]);
@@ -207,6 +247,7 @@ class TrafficBatchJob implements ShouldQueue
             Log::info('Duplicate traffic batch skipped', [
                 'server_id' => $serverId, 'batch_id' => $this->batchId,
             ]);
+            $this->completeNativeReceipt($serverId, $hash);
             return;
         }
 
@@ -222,5 +263,13 @@ class TrafficBatchJob implements ShouldQueue
                 ]);
             }
         }
+        $this->completeNativeReceipt($serverId, $hash);
     }
+    private function completeNativeReceipt(int $serverId, string $payloadHash): void
+    {
+        if ($this->nativeReceiptId !== null) {
+            app(\App\Domains\Network\NativeTrafficReceipt::class)->completeFromLedger($this->nativeReceiptId, $serverId, $this->batchId, $payloadHash);
+        }
+    }
+
 }

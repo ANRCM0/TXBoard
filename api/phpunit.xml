@@ -19,6 +19,8 @@
     </source>
     <php>
         <env name="APP_ENV" value="testing"/>
+        <!-- Legacy route regressions use rollback fixtures, not durable acceptance. -->
+        <env name="NATIVE_TRAFFIC_RECEIPTS_ENABLED" value="false" force="true"/>
         <env name="APP_KEY" value="base64:ZdD07lazsdQQmdBAJ2tA5WjufeI2hP8xlP6zgmvCMZs="/>
         <env name="APP_DEBUG" value="true"/>
         <env name="BCRYPT_ROUNDS" value="4"/>

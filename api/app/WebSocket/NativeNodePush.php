@@ -19,7 +19,7 @@ final class NativeNodePush
         $node = Server::find($nodeId);
         if (!$node) return;
 
-        $users = ServerService::getAvailableUsers($node);
+        $users = ServerService::getNativeAvailableUsers($node);
         $userIds = $users->pluck('id')->toArray();
         $devices = $service->getUsersDevices($userIds);
 
@@ -44,7 +44,7 @@ final class NativeNodePush
         ]);
 
         // Push users
-        $users = ServerService::getAvailableUsers($node)->toArray();
+        $users = ServerService::getNativeAvailableUsers($node)->toArray();
         NodeRegistry::send($nodeId, 'sync.users', [
             'users' => $users,
         ]);

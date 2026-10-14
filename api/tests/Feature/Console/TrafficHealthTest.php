@@ -45,6 +45,20 @@ class TrafficHealthTest extends TestCase
             ->assertExitCode(1);
     }
 
+    public function test_failed_worker_job_is_visible_even_when_queue_is_empty(): void
+    {
+        Queue::shouldReceive('connection')->once()->with('redis')->andReturn(
+            new class { public function size(string $queue): int { return 0; } }
+        );
+        DB::table('failed_jobs')->insert([
+            'connection' => 'redis', 'queue' => 'traffic_fetch',
+            'payload' => '{}', 'exception' => 'synthetic worker failure', 'failed_at' => now(),
+        ]);
+        $this->artisan('traffic:health', ['--json' => true])
+            ->expectsOutputToContain('traffic_failed_jobs_present')->assertExitCode(1);
+        $this->assertSame(1, DB::table('failed_jobs')->count());
+    }
+
     public function test_invalid_window_fails_closed(): void
     {
         $this->artisan('traffic:health', ['--minutes' => 0])->assertExitCode(1);

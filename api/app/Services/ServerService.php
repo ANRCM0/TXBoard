@@ -117,6 +117,25 @@ class ServerService
         return HookManager::filter('server.users.get', $users, $node);
     }
 
+    /** Native sampling epochs are separate from the legacy panel DTO. */
+    public static function getNativeAvailableUsers(Server $node)
+    {
+        $users = self::getAvailableUsers($node);
+        if (!config('native_traffic_periods.enabled', true) || !config('native_traffic_receipts.enabled', true)) return $users;
+        $epochs = User::query()->whereIn('id', $users->pluck('id')->all())
+            ->get(['id', 'reset_count'])->keyBy('id');
+        $periods = app(\App\Domains\Network\NativeTrafficPeriod::class);
+        return $users->map(static function ($user) use ($epochs, $periods) {
+            $identity = is_array($user) ? ($user['id'] ?? null) : ($user->id ?? null);
+            $epoch = $epochs->get($identity);
+            if ($epoch === null) throw new \RuntimeException('NATIVE_TRAFFIC_PERIOD_USER_UNAVAILABLE');
+            $token = $periods->issue((int) $identity, (int) ($epoch->reset_count ?? 0));
+            if (is_array($user)) $user['traffic_period'] = $token;
+            else { $user = clone $user; $user->traffic_period = $token; }
+            return $user;
+        });
+    }
+
     // 获取路由规则
     public static function getRoutes(array $routeIds)
     {

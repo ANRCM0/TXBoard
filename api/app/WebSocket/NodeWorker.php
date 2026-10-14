@@ -387,7 +387,7 @@ class NodeWorker
         } elseif ($event === 'sync.devices') {
             NativeNodePush::pushDeviceStateToNode($nodeId, app(DeviceStateService::class));
         } else {
-            NodeRegistry::send($nodeId, 'sync.users', ['users' => ServerService::getAvailableUsers($node)->toArray()]);
+            NodeRegistry::send($nodeId, 'sync.users', ['users' => ServerService::getNativeAvailableUsers($node)->toArray()]);
         }
     }
 }
