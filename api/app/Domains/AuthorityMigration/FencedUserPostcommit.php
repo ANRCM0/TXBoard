@@ -43,7 +43,7 @@ final class FencedUserPostcommit
     }
     private function flush(TransactionCommitting $event):void
     {
-        if(!AuthorityNativeInventory::declared()||$event->connection->transactionLevel()!==1)return;
+        if(!AuthorityPostcommitVersionPolicy::declared()||$event->connection->transactionLevel()!==1)return;
         $proof=app(AuthorityAdmissionRegistry::class)->find($event->connection);if(!$proof)return;$proof->assertValid();
         foreach($proof->intents as$id=>$record){
             $row=DB::table('tx_authority_postcommit_intent')->where('intent_id',$id)->sharedLock()->first(self::COLUMNS);
@@ -80,9 +80,8 @@ final class FencedUserPostcommit
         if($payload['old_group_id']!==null)$payload['old_group_id']=$this->integer($payload['old_group_id'],'2147483647',true);
         $this->require(in_array($payload['schedule_required'],[true,false,0,1,'0','1'],true),'AUTHORITY_POSTCOMMIT_INTENT_INVALID');
         $payload['schedule_required']=(bool)$payload['schedule_required'];
-        $this->require($payload['scope']===AuthorityNativeInventory::SCOPE&&$payload['version']===AuthorityNativeInventory::VERSION
-            &&$payload['authority_epoch']==='4'&&(int)$payload['event_sequence']<=1000
-            &&in_array($payload['writer'],AuthorityNativeInventory::WRITERS,true)
+        $this->require(AuthorityPostcommitVersionPolicy::valid($payload['scope'],$payload['version'],$payload['authority_epoch'],$payload['writer'])
+            &&(int)$payload['event_sequence']<=1000
             &&in_array($payload['action'],['created','updated','deleted'],true)
             &&is_string($payload['intent_id'])&&preg_match('/\A[0-9a-f]{32}\z/D',$payload['intent_id'])
             &&is_string($payload['source_hash'])&&preg_match('/\A[0-9a-f]{64}\z/D',$payload['source_hash'])

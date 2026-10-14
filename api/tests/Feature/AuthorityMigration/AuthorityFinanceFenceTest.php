@@ -49,7 +49,9 @@ class AuthorityFinanceFenceTest extends TestCase
         $this->withoutMiddleware(\Illuminate\Routing\Middleware\ThrottleRequests::class);
         Plugin::create(['name'=>'EPay','code'=>'epay','type'=>'payment','version'=>'1.0.0','is_enabled'=>true,'config'=>'{}']);
         $this->app->forgetInstance(PluginManager::class);app(PluginManager::class)->initializeEnabledPlugins();
+        config(['authority_writer_fence.enabled'=>false]);
         admin_setting(['commission_transfer_limit'=>0,'commission_withdraw_limit'=>0]);
+        config(['authority_writer_fence.enabled'=>true]);
         $this->log=new TestHandler();Log::swap(new Logger('finance-fence',[$this->log]));
     }
     protected function tearDown():void
@@ -185,7 +187,9 @@ class AuthorityFinanceFenceTest extends TestCase
         $this->v2();$this->assertSame(0,Artisan::call('core:authority-fence',['operation'=>'extend-finance','--key'=>'finance-fixture','--expected-epoch'=>'2','--isolated-copy'=>true]));$this->newWorker();
         $this->fence()->prepare('closed-prepare','3');$before=$this->history();
         DB::enableQueryLog();DB::flushQueryLog();$this->fence()->status();$this->fence()->recover('closed-prepare','3');$this->fence()->recoverFinance('finance-fixture','2');
-        $queries=DB::getQueryLog();DB::disableQueryLog();$this->assertCount(18,$queries);foreach($queries as$query)$this->assertMatchesRegularExpression('/\Aselect\b/i',$query['query']);
+        $queries=DB::getQueryLog();DB::disableQueryLog();$this->assertCount(21,$queries);
+        $this->assertCount(3,array_filter($queries,fn(array $query):bool=>str_contains($query['query'],'tx_authority_identity_upgrade')));
+        foreach($queries as$query)$this->assertMatchesRegularExpression('/\Aselect\b/i',$query['query']);
         $this->assertSame($before,$this->history());$receipt=AuthorityFinanceUpgrade::findOrFail('finance-fixture');
         $this->refused(fn()=>$receipt->update(['expected_epoch'=>3]),'AUTHORITY_FINANCE_RECEIPT_IMMUTABLE');$this->refused(fn()=>$receipt->delete(),'AUTHORITY_FINANCE_RECEIPT_IMMUTABLE');
         $migration=require database_path('migrations/2026_10_14_000003_extend_finance_authority_inventory.php');$migration->up();$this->assertSame($before,$this->history());

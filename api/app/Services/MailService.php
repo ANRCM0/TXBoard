@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Jobs\SendEmailJob;
+use App\Domains\AuthorityMigration\AuthorityIdentitySqlPhase;
 use App\Models\MailLog;
 use App\Models\MailTemplate;
 use App\Models\User;
@@ -320,7 +321,18 @@ class MailService
                 'encryption' => config('mail.encryption'),
             ], JSON_UNESCAPED_SLASHES)
         ];
-        MailLog::create($log);
+        if (AuthorityIdentitySqlPhase::enabled()) {
+            // SMTP has already finished. Refused/unknown logging must never
+            // make the queue retry a successfully sent external email.
+            try {
+                app(AuthorityIdentitySqlPhase::class)->run(AuthorityIdentitySqlPhase::MAIL_LOG_APPEND,
+                    static fn () => MailLog::create($log));
+            } catch (\Throwable) {
+                Log::warning('AUTHORITY_MAIL_LOG_APPEND_UNKNOWN');
+            }
+        } else {
+            MailLog::create($log);
+        }
         return $log;
     }
 

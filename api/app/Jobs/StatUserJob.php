@@ -4,6 +4,7 @@
 namespace App\Jobs;
 
 use App\Models\StatUser;
+use App\Domains\AuthorityMigration\AuthorityIdentitySqlPhase;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -63,7 +64,17 @@ class StatUserJob implements ShouldQueue
 
     protected function processUserStat(int $uid, array $v, int $recordAt): void
     {
-        $driver = config('database.default');
+        if (AuthorityIdentitySqlPhase::enabled()) {
+            $driver = DB::connection()->getDriverName();
+            app(AuthorityIdentitySqlPhase::class)->run(AuthorityIdentitySqlPhase::STATS_USER_APPLY,
+                fn () => $this->applyUserStat($driver, $uid, $v, $recordAt), $driver === 'sqlite' ? 3 : 1);
+            return;
+        }
+        $this->applyUserStat(config('database.default'), $uid, $v, $recordAt);
+    }
+
+    private function applyUserStat(string $driver, int $uid, array $v, int $recordAt): void
+    {
         if ($driver === 'sqlite') {
             $this->processUserStatForSqlite($uid, $v, $recordAt);
         } elseif ($driver === 'pgsql') {

@@ -5,6 +5,7 @@ namespace App\Jobs;
 
 use App\Models\Server;
 use App\Models\StatServer;
+use App\Domains\AuthorityMigration\AuthorityIdentitySqlPhase;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -70,6 +71,16 @@ class StatServerJob implements ShouldQueue
 
     protected function updateServerTraffic(int $u, int $d): void
     {
+        if (AuthorityIdentitySqlPhase::enabled()) {
+            app(AuthorityIdentitySqlPhase::class)->run(AuthorityIdentitySqlPhase::STATS_SERVER_TRAFFIC,
+                fn () => $this->applyServerTraffic($u, $d));
+            return;
+        }
+        $this->applyServerTraffic($u, $d);
+    }
+
+    private function applyServerTraffic(int $u, int $d): void
+    {
         DB::table('tx_server')
             ->where('id', $this->server['id'])
             ->incrementEach(
@@ -80,7 +91,17 @@ class StatServerJob implements ShouldQueue
 
     protected function processServerStat(int $u, int $d, int $recordAt): void
     {
-        $driver = config('database.default');
+        if (AuthorityIdentitySqlPhase::enabled()) {
+            $driver = DB::connection()->getDriverName();
+            app(AuthorityIdentitySqlPhase::class)->run(AuthorityIdentitySqlPhase::STATS_SERVER_APPLY,
+                fn () => $this->applyServerStat($driver, $u, $d, $recordAt), $driver === 'sqlite' ? 3 : 1);
+            return;
+        }
+        $this->applyServerStat(config('database.default'), $u, $d, $recordAt);
+    }
+
+    private function applyServerStat(string $driver, int $u, int $d, int $recordAt): void
+    {
         if ($driver === 'sqlite') {
             $this->processServerStatForSqlite($u, $d, $recordAt);
         } elseif ($driver === 'pgsql') {

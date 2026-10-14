@@ -59,9 +59,9 @@ final class AuthorityPostcommitHandoff
     }
     private function context():void
     {
-        $this->require(AuthorityNativeInventory::declared()&&app()->environment(['local','testing'])&&config('core_shadow.isolated_copy')===true,'AUTHORITY_HANDOFF_ISOLATED_REQUIRED');
+        $this->require(AuthorityPostcommitVersionPolicy::declared()&&app()->environment(['local','testing'])&&config('core_shadow.isolated_copy')===true,'AUTHORITY_HANDOFF_ISOLATED_REQUIRED');
         $state=app(AuthorityWriterFence::class)->status();
-        $this->require($state['scope']===AuthorityNativeInventory::SCOPE,'AUTHORITY_HANDOFF_ISOLATED_REQUIRED');
+        $this->require(in_array($state['scope'],[AuthorityNativeInventory::SCOPE,AuthorityIdentityInventory::SCOPE],true),'AUTHORITY_HANDOFF_ISOLATED_REQUIRED');
     }
     private function result(string $id,string $status):array
     {return['intent_id'=>$id,'handoff_status'=>$status,'node_delivery_verified'=>false,'global_drain_complete'=>false,'migration_gate_open'=>false];}

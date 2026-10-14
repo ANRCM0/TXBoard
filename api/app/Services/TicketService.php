@@ -3,6 +3,9 @@ namespace App\Services;
 
 
 use App\Exceptions\ApiException;
+use App\Domains\AuthorityMigration\AuthorityIdentitySqlPhase;
+use App\Domains\AuthorityMigration\AuthorityAdmissionRegistry;
+use App\Domains\AuthorityMigration\AuthorityFenceException;
 use App\Jobs\SendEmailJob;
 use App\Models\Ticket;
 use App\Models\TicketMessage;
@@ -13,6 +16,23 @@ use App\Services\Plugin\HookManager;
 
 class TicketService
 {
+    /** Withdrawal already owns the outer User transaction and its admission. */
+    public function createWithdrawalTicket($userId, $subject, $level, $message)
+    {
+        if (!AuthorityIdentitySqlPhase::enabled()) {
+            return $this->createTicket($userId, $subject, $level, $message);
+        }
+        $proof = app(AuthorityAdmissionRegistry::class)->current();
+        $proof->assertValid();
+        if ($proof->writer !== AuthorityIdentitySqlPhase::WITHDRAWAL_REQUEST) {
+            throw new AuthorityFenceException('AUTHORITY_WITHDRAWAL_ADMISSION_REQUIRED');
+        }
+        return app(AuthorityIdentitySqlPhase::class)->run(
+            AuthorityIdentitySqlPhase::WITHDRAWAL_REQUEST,
+            fn () => $this->createTicket($userId, $subject, $level, $message)
+        );
+    }
+
     public function reply($ticket, $message, $userId)
     {
         try {

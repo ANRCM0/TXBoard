@@ -16,7 +16,7 @@ class UserObserver
   public function __construct(
     private readonly TrafficResetService $trafficResetService
   ) {
-    $this->afterCommit = !\App\Domains\AuthorityMigration\AuthorityNativeInventory::declared();
+    $this->afterCommit = !\App\Domains\AuthorityMigration\AuthorityPostcommitVersionPolicy::declared();
   }
 
   public function updated(User $user): void
@@ -27,7 +27,7 @@ class UserObserver
     $needsSync = $user->wasChanged($syncFields);
     $oldGroupId = $user->wasChanged('group_id') ? $user->getOriginal('group_id') : null;
 
-    if (\App\Domains\AuthorityMigration\AuthorityNativeInventory::declared()) {
+    if (\App\Domains\AuthorityMigration\AuthorityPostcommitVersionPolicy::declared()) {
       $schedule = $user->wasChanged(['plan_id', 'expired_at']);
       if ($schedule || $needsSync) app(\App\Domains\AuthorityMigration\FencedUserPostcommit::class)->stage($user, 'updated', $oldGroupId, $schedule);
       return;
@@ -43,7 +43,7 @@ class UserObserver
 
   public function created(User $user): void
   {
-    if (\App\Domains\AuthorityMigration\AuthorityNativeInventory::declared()) {
+    if (\App\Domains\AuthorityMigration\AuthorityPostcommitVersionPolicy::declared()) {
       app(\App\Domains\AuthorityMigration\FencedUserPostcommit::class)->stage($user, 'created', null, true);
       return;
     }
@@ -53,7 +53,7 @@ class UserObserver
 
   public function deleted(User $user): void
   {
-    if (\App\Domains\AuthorityMigration\AuthorityNativeInventory::declared()) {
+    if (\App\Domains\AuthorityMigration\AuthorityPostcommitVersionPolicy::declared()) {
       if ($user->group_id) app(\App\Domains\AuthorityMigration\FencedUserPostcommit::class)->stage($user, 'deleted', (int)$user->group_id, false);
       return;
     }

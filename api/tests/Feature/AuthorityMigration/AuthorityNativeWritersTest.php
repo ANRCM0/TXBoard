@@ -5,6 +5,7 @@ namespace Tests\Feature\AuthorityMigration;
 use App\Console\Commands\CheckCommission;
 use App\Domains\AuthorityMigration\AuthorityAdmissionRegistry;
 use App\Domains\AuthorityMigration\AuthorityFenceException;
+use App\Domains\AuthorityMigration\AuthorityIdentityInventory;
 use App\Domains\AuthorityMigration\AuthorityNativeInventory;
 use App\Domains\AuthorityMigration\AuthorityPostcommitHandoff;
 use App\Domains\AuthorityMigration\AuthorityPostcommitIntent;
@@ -44,7 +45,7 @@ class AuthorityNativeWritersTest extends TestCase
             'legacy_capture_shadow.enabled'=>false,'legacy_admin_creation_shadow.enabled'=>false,'legacy_admin_deletion_shadow.enabled'=>false,
             'legacy_observer_capture.enabled'=>false,'legacy_standalone_reset_capture.enabled'=>false,'legacy_plan_propagation_capture.enabled'=>false,
             'legacy_bulk_ban_capture.enabled'=>false]);
-        admin_setting(['secure_path'=>'native_fixture','commission_transfer_limit'=>0,'commission_withdraw_limit'=>0,'try_out_plan_id'=>0]);
+        $this->fixtureSettings(['secure_path'=>'native_fixture','commission_transfer_limit'=>0,'commission_withdraw_limit'=>0,'try_out_plan_id'=>0]);
         $this->admin=$this->user(['is_admin'=>true]);Sanctum::actingAs($this->admin);
         $this->withoutMiddleware(\Illuminate\Routing\Middleware\ThrottleRequests::class);
         Redis::shouldReceive('sadd')->zeroOrMoreTimes()->andReturn(1);
@@ -61,6 +62,26 @@ class AuthorityNativeWritersTest extends TestCase
         $this->refused(fn()=>$this->fence()->extendNative('different','3'),'AUTHORITY_NATIVE_REQUEST_CONFLICT');
         $this->assertSame($before['finance'],$this->history()['finance']);
         foreach(['global_writer_coverage_complete','global_drain_complete','target_authority_active','migration_gate_open']as$key)$this->assertFalse($status[$key]);
+    }
+    public function test_identity_extension_receipt_roundtrips_and_admits_only_declared_epoch5_writers():void
+    {
+        $this->native();$this->assertSame('4',$this->fence()->status()['authority_epoch']);
+        $extended=$this->fence()->extendIdentity('identity-fixture','4');
+        $this->assertSame('5',$extended['authority_epoch']);$this->assertFalse($extended['replayed']);
+        $status=$this->fence()->status();$this->assertSame('5',$status['authority_epoch']);
+        $this->assertSame(AuthorityIdentityInventory::SCOPE,$status['scope']);
+        $this->assertTrue($status['read_only']);$this->assertSame(1,DB::table('tx_authority_identity_upgrade')->count());
+        $replay=$this->fence()->extendIdentity('identity-fixture','4');
+        $this->assertTrue($replay['replayed']);$this->assertSame($extended['identity_receipt'],$replay['identity_receipt']);
+
+        config(['authority_writer_fence'=>['enabled'=>true,'worker_epoch'=>'5','worker_role'=>'legacy',
+            'worker_scope'=>AuthorityIdentityInventory::SCOPE,'worker_version'=>AuthorityIdentityInventory::VERSION]]);
+        DB::transaction(function():void{$this->assertSame('5',$this->fence()->admit('user.login.touch')->epoch);});
+        DB::transaction(fn()=>$this->refused(fn()=>$this->fence()->admit('unknown.identity.writer'),'AUTHORITY_FENCE_WRITER_INVALID'));
+        $prepared=$this->fence()->prepare('identity-stop','5');$this->assertSame('6',$prepared['authority_epoch']);
+        $recovered=$this->fence()->recoverIdentity('identity-fixture','4');
+        $this->assertSame('committed_identity',$recovered['recovery_status']);$this->assertTrue($recovered['read_only']);
+        $this->assertSame($extended['identity_receipt'],$recovered['identity_receipt']);
     }
     public function test_actual_plan_and_admin_order_original_transactions_admit_and_prepared5_blocks_without_mutation():void
     {
@@ -83,7 +104,7 @@ class AuthorityNativeWritersTest extends TestCase
     public function test_actual_commission_manual_transaction_and_bulk_review_keep_native_money_and_fixed_prepared_cli_failure():void
     {
         $this->native();$buyer=$this->user();$inviter=$this->user();$order=$this->order($buyer,$inviter,['commission_status'=>0,'updated_at'=>time()-4*86400]);
-        admin_setting(['commission_auto_check_enable'=>1,'commission_distribution_enable'=>0,'withdraw_close_enable'=>0]);
+        $this->fixtureSettings(['commission_auto_check_enable'=>1,'commission_distribution_enable'=>0,'withdraw_close_enable'=>0]);
         $this->assertSame(0,Artisan::call('check:commission'));$this->assertSame(100,(int)$inviter->fresh()->commission_balance);
         $this->assertSame(2,(int)$order->fresh()->commission_status);$this->assertSame(1,DB::table('tx_commission_log')->count());
         $this->fence()->prepare('cron-stop','4');$this->declare('5');
@@ -327,6 +348,12 @@ class AuthorityNativeWritersTest extends TestCase
     private function history():array{$out=[];foreach(['tx_authority_writer_fence','tx_authority_prepare_receipt','tx_authority_inventory_upgrade','tx_authority_finance_upgrade','tx_authority_native_upgrade']as$table)$out[str_contains($table,'finance')?'finance':$table]=DB::table($table)->get()->toJson();return$out;}
     private function business():array{$out=[];foreach(['tx_user','tx_plan','tx_order','tx_commission_log','tx_authority_postcommit_intent','tx_authority_postcommit_delivery']as$table)$out[$table]=DB::table($table)->orderBy($table==='tx_authority_postcommit_intent'||$table==='tx_authority_postcommit_delivery'?'intent_id':'id')->get()->toJson();return$out;}
     private function refused(callable $call,string $code):void{try{$call();$this->fail('Expected refusal');}catch(AuthorityFenceException $e){$this->assertSame($code,$e->getMessage());$this->assertNull($e->getPrevious());}}
+    /** Seed inputs under native settings policy, then restore the tested v4/v5 declaration. */
+    private function fixtureSettings(array $settings):void
+    {
+        $enabled=config('authority_writer_fence.enabled');config(['authority_writer_fence.enabled'=>false]);
+        try{admin_setting($settings);}finally{config(['authority_writer_fence.enabled'=>$enabled]);}
+    }
     private function mysql():bool{return getenv('CORE_NATIVE_FENCE_TEST_MYSQL')==='1';}
     private function connection():string{return$this->mysql()?'native_fence_mysql':'native_fence_sqlite';}
     private function clearMysql():void{if(DB::connection()->getDatabaseName()!=='txboard_native_fence_test')throw new \RuntimeException('Native fence needs its dedicated database.');Schema::disableForeignKeyConstraints();try{foreach(Schema::getTableListing()as$table)Schema::drop($table);}finally{Schema::enableForeignKeyConstraints();}}

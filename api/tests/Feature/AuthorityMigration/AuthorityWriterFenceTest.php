@@ -25,7 +25,10 @@ class AuthorityWriterFenceTest extends TestCase
         if($this->mysql())$this->clearMysql();$this->assertSame(0,Artisan::call('migrate',['--force'=>true]));Bus::fake();
         config(['authority_writer_fence'=>['enabled'=>true,'worker_epoch'=>'1','worker_role'=>'legacy'],'core_shadow.isolated_copy'=>true,
             'legacy_capture_shadow.enabled'=>false,'legacy_admin_creation_shadow.enabled'=>false,'legacy_observer_capture.enabled'=>false]);
+        // Fixture settings predate the v1 declaration; they are not v1 writers.
+        config(['authority_writer_fence.enabled'=>false]);
         admin_setting(['secure_path'=>'authority_fixture','try_out_plan_id'=>0]);
+        config(['authority_writer_fence.enabled'=>true]);
         $this->admin=$this->user(['is_admin'=>true]);Sanctum::actingAs($this->admin);HookManager::reset();
     }
     protected function tearDown():void
@@ -90,7 +93,8 @@ class AuthorityWriterFenceTest extends TestCase
         $this->fence()->initialize();$this->fence()->prepare('read-only','1');$before=$this->fenceState();
         DB::enableQueryLog();DB::flushQueryLog();$status=$this->fence()->status();$recover=$this->fence()->recover('read-only','1');$queries=DB::getQueryLog();DB::disableQueryLog();
         foreach($queries as$query)$this->assertMatchesRegularExpression('/\Aselect\b/i',$query['query']);
-        $this->assertCount(12,$queries);$this->assertSame($before,$this->fenceState());$this->assertSame('committed_prepare',$recover['recovery_status']);
+        $this->assertCount(14,$queries);$this->assertCount(2,array_filter($queries,fn(array $query):bool=>str_contains($query['query'],'tx_authority_identity_upgrade')));
+        $this->assertSame($before,$this->fenceState());$this->assertSame('committed_prepare',$recover['recovery_status']);
         foreach(['global_writer_coverage_complete','global_drain_complete','target_authority_active','migration_gate_open']as$key)$this->assertFalse($status[$key]);
         $this->assertSame(['admin.user.create','admin.user.update'],$status['covered_writers']);
     }

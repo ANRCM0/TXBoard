@@ -32,7 +32,10 @@ class AuthorityInventoryExpandTest extends TestCase
             'core_shadow.isolated_copy'=>true,'legacy_capture_shadow.enabled'=>false,'legacy_admin_creation_shadow.enabled'=>false,
             'legacy_admin_deletion_shadow.enabled'=>false,'legacy_observer_capture.enabled'=>false,
             'legacy_bulk_ban_capture.enabled'=>false,'legacy_plan_propagation_capture.enabled'=>false]);
-        admin_setting(['secure_path'=>'inventory_fixture','try_out_plan_id'=>0]);$this->admin=$this->user(['is_admin'=>true]);Sanctum::actingAs($this->admin);
+        config(['authority_writer_fence.enabled'=>false]);
+        admin_setting(['secure_path'=>'inventory_fixture','try_out_plan_id'=>0]);
+        config(['authority_writer_fence.enabled'=>true]);
+        $this->admin=$this->user(['is_admin'=>true]);Sanctum::actingAs($this->admin);
         Redis::shouldReceive('sadd')->zeroOrMoreTimes()->andReturn(1);
     }
     protected function tearDown():void
@@ -150,7 +153,8 @@ class AuthorityInventoryExpandTest extends TestCase
         $this->expand();$this->fence()->prepare('bounded-prepare','2');$before=$this->history();
         DB::enableQueryLog();DB::flushQueryLog();$this->fence()->status();$this->fence()->recover('bounded-prepare','2');
         $this->fence()->recoverExpand('inventory-fixture','1');$queries=DB::getQueryLog();DB::disableQueryLog();
-        $this->assertCount(18,$queries);foreach($queries as$query)$this->assertMatchesRegularExpression('/\Aselect\b/i',$query['query']);
+        $this->assertCount(21,$queries);$this->assertCount(3,array_filter($queries,fn(array $query):bool=>str_contains($query['query'],'tx_authority_identity_upgrade')));
+        foreach($queries as$query)$this->assertMatchesRegularExpression('/\Aselect\b/i',$query['query']);
         $this->assertSame($before,$this->history());
     }
     public function test_upgrade_schema_replay_immutable_receipt_down_guard_and_invalid_nullable_column_are_checked():void

@@ -20,6 +20,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
+use App\Domains\AuthorityMigration\AuthorityIdentitySqlPhase as IdentityPhase;
 
 final class AuthController
 {
@@ -74,7 +75,7 @@ final class AuthController
             return TxapiResponse::error($request, 'ADMIN_ACCESS_DENIED',
                 'Administrator access required', 403)->header('Cache-Control', 'no-store');
         }
-        $auth = (new AuthService($result))->generateAuthData();
+        $auth = (new AuthService($result))->generateAuthData(true);
         return TxapiResponse::success($request, [
             'auth_data' => $auth['auth_data'],
             'is_admin' => true,
@@ -191,7 +192,12 @@ final class AuthController
     {
         $current = Auth::guard('sanctum')->user()->currentAccessToken();
         if ($current && method_exists($current, 'delete')) {
-            $current->delete();
+            app(IdentityPhase::class)->run(IdentityPhase::SESSION_REVOKE, function () use ($current): void {
+                if (!IdentityPhase::enabled()) { $current->delete(); return; }
+                $user = User::query()->whereKey(Auth::guard('sanctum')->id())->lockForUpdate()->firstOrFail();
+                $token = $user->tokens()->whereKey($current->getKey())->lockForUpdate()->first();
+                if ($token) $token->delete();
+            });
         }
         return TxapiResponse::success($request, ['ok' => true]);
     }
@@ -216,8 +222,11 @@ final class AuthController
 
     public function revoke(Request $request, int $sessionId): JsonResponse
     {
-        $deleted = Auth::guard('sanctum')->user()->tokens()
-            ->whereKey($sessionId)->delete();
+        $deleted = app(IdentityPhase::class)->run(IdentityPhase::SESSION_REVOKE, function () use ($sessionId): int {
+            $user = Auth::guard('sanctum')->user();
+            if (IdentityPhase::enabled()) $user = User::query()->whereKey($user->getKey())->lockForUpdate()->firstOrFail();
+            return $user->tokens()->whereKey($sessionId)->delete();
+        });
         if (!$deleted) {
             abort(404);
         }
@@ -259,17 +268,31 @@ final class AuthController
             return TxapiResponse::error($request, 'INVALID_CREDENTIALS',
                 'Invalid current password', 400);
         }
-        $user->password = password_hash($params['new_password'], PASSWORD_DEFAULT);
-        $user->password_algo = null;
-        $user->password_salt = null;
-        $user->saveOrFail();
+        $saved = app(IdentityPhase::class)->run(IdentityPhase::USER_PASSWORD_CHANGE, function () use (&$user, $params): bool {
+            if (IdentityPhase::enabled()) {
+                $currentToken = $user->currentAccessToken();
+                $user = User::query()->whereKey($user->getKey())->lockForUpdate()->firstOrFail();
+                $user->withAccessToken($currentToken);
+                if (!Helper::multiPasswordVerify($user->password_algo, $user->password_salt, $params['old_password'], $user->password)) return false;
+            }
+            $user->password = password_hash($params['new_password'], PASSWORD_DEFAULT);
+            $user->password_algo = null;
+            $user->password_salt = null;
+            $user->saveOrFail();
+            return true;
+        });
+        if (!$saved) return TxapiResponse::error($request, 'INVALID_CREDENTIALS', 'Invalid current password', 400);
 
         $current = $user->currentAccessToken();
-        if ($current && method_exists($current, 'getKey')) {
-            $user->tokens()->where('id', '!=', $current->getKey())->delete();
-        } else {
-            $user->tokens()->delete();
-        }
+        app(IdentityPhase::class)->run(IdentityPhase::SESSION_REVOKE, function () use ($user, $current): void {
+            $owner = IdentityPhase::enabled() ? User::query()->whereKey($user->getKey())->lockForUpdate()->firstOrFail() : $user;
+            if ($current && method_exists($current, 'getKey')) {
+                if (IdentityPhase::enabled() && !$owner->tokens()->whereKey($current->getKey())->lockForUpdate()->first()) abort(401);
+                $owner->tokens()->where('id', '!=', $current->getKey())->delete();
+            } else {
+                $owner->tokens()->delete();
+            }
+        });
         return TxapiResponse::success($request, ['ok' => true]);
     }
 }

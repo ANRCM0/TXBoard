@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Services\StatisticalService;
+use App\Domains\AuthorityMigration\AuthorityIdentitySqlPhase;
 use Illuminate\Console\Command;
 use App\Models\Stat;
 use Illuminate\Support\Facades\Log;
@@ -60,16 +61,29 @@ class TxboardStatistics extends Command
             $data = $statisticalService->generateStatData();
             $data['record_at'] = $startAt;
             $data['record_type'] = 'd';
-            $statistic = Stat::where('record_at', $startAt)
-                ->where('record_type', 'd')
-                ->first();
-            if ($statistic) {
-                $statistic->update($data);
-                return;
+            $phase = static function () use ($startAt, $data): void {
+                $query = Stat::where('record_at', $startAt)->where('record_type', 'd');
+                if (AuthorityIdentitySqlPhase::enabled()) {
+                    $query->lockForUpdate();
+                }
+                $statistic = $query->first();
+                if ($statistic) {
+                    $statistic->update($data);
+                    return;
+                }
+                Stat::create($data);
+            };
+            if (AuthorityIdentitySqlPhase::enabled()) {
+                app(AuthorityIdentitySqlPhase::class)->run(AuthorityIdentitySqlPhase::STATS_DAILY_APPLY, $phase);
+            } else {
+                $phase();
             }
-            Stat::create($data);
         } catch (\Exception $e) {
-            Log::error($e->getMessage(), ['exception' => $e]);
+            if (AuthorityIdentitySqlPhase::enabled()) {
+                Log::error('AUTHORITY_DAILY_STATS_WRITE_UNKNOWN');
+            } else {
+                Log::error($e->getMessage(), ['exception' => $e]);
+            }
         }
     }
 }

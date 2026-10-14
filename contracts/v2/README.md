@@ -28,3 +28,5 @@ TXBoard 是业务与数据权威。Gateway、Deploy、TX-Node 与可选插件按
 - 示例是非秘密的目标格式；没有执行迁移或开放接口。
 
 [B0 入口与状态](../../docs/architecture/v2/README.md) · [实施顺序](../../docs/architecture/v2/implementation-plan.md)
+
+[Identity SQL writers v5](authority-identity-writers-v5.md) adds a default-disabled isolated-copy subset to the existing authority inventory. Its [implementation and verification](../../docs/architecture/v2/authority-identity-writers.md) preserve legacy authority and keep global cutover gates closed.

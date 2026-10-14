@@ -15,6 +15,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use App\Models\User;
 use App\Utils\Helper;
+use App\Domains\AuthorityMigration\AuthorityIdentitySqlPhase as IdentityPhase;
 
 final class AccountController
 {
@@ -84,14 +85,17 @@ final class AccountController
     {
         // Mutates a private subscription secret; never expose this as GET.
         // Serialize concurrent rotations and preserve existing Sanctum sessions.
-        $newUrl = DB::transaction(static function (): string {
+        $phase = static function (): string {
             $user = User::query()->whereKey(Auth::guard('sanctum')->id())
                 ->lockForUpdate()->firstOrFail();
             $user->uuid = Helper::guid(true);
             $user->token = Helper::guid();
             $user->saveOrFail();
             return Helper::getSubscribeUrl($user->token);
-        });
+        };
+        $newUrl = IdentityPhase::enabled()
+            ? app(IdentityPhase::class)->run(IdentityPhase::USER_ACCOUNT_CREDENTIALS_ROTATE, $phase)
+            : DB::transaction($phase);
         return TxapiResponse::success($request, ['subscribe_url' => $newUrl]);
     }
 
@@ -117,10 +121,13 @@ final class AccountController
         }
         $user = Auth::guard('sanctum')->user();
         // Explicit allowlist; cannot mutate balance, role or subscription tokens.
-        foreach ($values as $key => $value) {
-            $user->$key = (bool) $value;
-        }
-        $user->saveOrFail();
+        app(IdentityPhase::class)->run(IdentityPhase::USER_ACCOUNT_PREFERENCES, function () use (&$user, $values): void {
+            if (IdentityPhase::enabled()) $user = User::query()->whereKey($user->getKey())->lockForUpdate()->firstOrFail();
+            foreach ($values as $key => $value) {
+                $user->$key = (bool) $value;
+            }
+            $user->saveOrFail();
+        });
         return TxapiResponse::success($request, self::preferencesDto($user));
     }
 

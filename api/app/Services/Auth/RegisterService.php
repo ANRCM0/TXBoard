@@ -14,6 +14,7 @@ use App\Utils\Dict;
 use App\Utils\Helper;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use App\Domains\AuthorityMigration\AuthorityIdentitySqlPhase as IdentityPhase;
 
 class RegisterService
 {
@@ -116,23 +117,25 @@ class RegisterService
      */
     public function handleInviteCode(string $inviteCode): int|null
     {
-        $inviteCodeModel = InviteCode::where('code', $inviteCode)
-            ->where('status', InviteCode::STATUS_UNUSED)
-            ->first();
+        return app(IdentityPhase::class)->run(IdentityPhase::USER_REGISTER_INVITE_CONSUME, function () use ($inviteCode): ?int {
+            $query = InviteCode::where('code', $inviteCode)->where('status', InviteCode::STATUS_UNUSED);
+            if (IdentityPhase::enabled()) $query->lockForUpdate();
+            $inviteCodeModel = $query->first();
 
-        if (!$inviteCodeModel) {
-            if ((int) admin_setting('invite_force', 0)) {
-                throw new ApiException(__('Invalid invitation code'));
+            if (!$inviteCodeModel) {
+                if ((int) admin_setting('invite_force', 0)) {
+                    throw new ApiException(__('Invalid invitation code'));
+                }
+                return null;
             }
-            return null;
-        }
 
-        if (!(int) admin_setting('invite_never_expire', 0)) {
-            $inviteCodeModel->status = InviteCode::STATUS_USED;
-            $inviteCodeModel->save();
-        }
+            if (!(int) admin_setting('invite_never_expire', 0)) {
+                $inviteCodeModel->status = InviteCode::STATUS_USED;
+                $inviteCodeModel->save();
+            }
 
-        return $inviteCodeModel->user_id;
+            return $inviteCodeModel->user_id;
+        });
     }
 
 
@@ -184,8 +187,15 @@ class RegisterService
         }
 
         // 更新最近登录时间
-        $user->last_login_at = time();
-        $user->save();
+        app(IdentityPhase::class)->run(IdentityPhase::USER_REGISTER_TOUCH, function () use (&$user): void {
+            if (IdentityPhase::enabled()) {
+                $dirty = $user->getDirty();
+                $user = User::query()->whereKey($user->getKey())->lockForUpdate()->firstOrFail();
+                $user->forceFill($dirty);
+            }
+            $user->last_login_at = time();
+            $user->save();
+        });
 
         // 更新IP注册计数
         if ((int) admin_setting('register_limit_by_ip_enable', 0)) {

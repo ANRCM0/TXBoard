@@ -5,6 +5,9 @@ namespace App\Providers;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 use Illuminate\Support\Facades\Gate;
 use Laravel\Sanctum\Sanctum;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Auth\RequestGuard;
+use App\Domains\Identity\FencedSanctumGuard;
 
 class AuthServiceProvider extends ServiceProvider
 {
@@ -23,6 +26,19 @@ class AuthServiceProvider extends ServiceProvider
     public function boot()
     {
         $this->registerPolicies();
+
+        // Same factory and request-refresh lifecycle as the locked Sanctum provider.
+        // The subclass delegates to the parent without new IO while disabled.
+        Auth::resolved(static function ($auth): void {
+            $auth->extend('sanctum', static function ($app, $name, array $config) use ($auth) {
+                return tap(new RequestGuard(
+                    new FencedSanctumGuard($auth, config('sanctum.expiration'), $config['provider']),
+                    request(), $auth->createUserProvider($config['provider'] ?? null)
+                ), static function ($guard): void {
+                    app()->refresh('request', $guard, 'setRequest');
+                });
+            });
+        });
 
         // Retired Agent credentials must not become ordinary User/Admin tokens.
         // This is a pure token policy: it stores no request state in Octane workers

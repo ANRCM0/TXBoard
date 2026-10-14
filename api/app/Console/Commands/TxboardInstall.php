@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Services\InstallState;
+use App\Domains\AuthorityMigration\AuthorityIdentitySqlPhase;
 use App\Support\Database\NativeSchemaPreflight;
 use App\Services\Plugin\PluginManager;
 use Illuminate\Console\Command;
@@ -279,6 +280,14 @@ class TxboardInstall extends Command
         ];
 
         foreach ($defaults as $name => $value) {
+            if (AuthorityIdentitySqlPhase::enabled()) {
+                app(AuthorityIdentitySqlPhase::class)->run(AuthorityIdentitySqlPhase::INSTALL_SETTINGS_SEED, static function () use ($name, $value): void {
+                    if (!SettingModel::query()->where('name', $name)->lockForUpdate()->first()) {
+                        SettingModel::createOrUpdate($name, $value);
+                    }
+                });
+                continue;
+            }
             if (!SettingModel::query()->where('name', $name)->exists()) {
                 SettingModel::createOrUpdate($name, $value);
             }

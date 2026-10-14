@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Txapi;
 
 use App\Core\Http\TxapiResponse;
+use App\Domains\AuthorityMigration\AuthorityIdentitySqlPhase;
 use App\Models\User;
 use App\Models\Ticket;
 use Illuminate\Support\Facades\DB;
@@ -31,7 +32,7 @@ final class WithdrawalController
         // Serialize requests by user. TicketService only locks an existing open
         // ticket; when none exists its empty-row check alone cannot prevent
         // two concurrent withdrawal requests from creating duplicate tickets.
-        $result = DB::transaction(function () use ($data): array {
+        $phase = function () use ($data): array {
             $user = User::query()->lockForUpdate()->findOrFail(Auth::guard('sanctum')->id());
             if ((float) admin_setting('commission_withdraw_limit', 100) > ((int) $user->commission_balance / 100)) {
                 return ['error' => 'WITHDRAW_MINIMUM_NOT_MET'];
@@ -40,13 +41,16 @@ final class WithdrawalController
                 ->where('status', Ticket::STATUS_OPENING)->exists()) {
                 return ['error' => 'WITHDRAWAL_PENDING'];
             }
-            $ticket = (new TicketService())->createTicket($user->id,
+            $ticket = (new TicketService())->createWithdrawalTicket($user->id,
                 __('[Commission Withdrawal Request] This ticket is opened by the system'),
                 2,
                 __('Withdrawal method') . '：' . $data['withdraw_method'] . "\r\n"
                     . __('Withdrawal account') . '：' . $data['withdraw_account']);
             return ['ticket' => $ticket];
-        });
+        };
+        $result = AuthorityIdentitySqlPhase::enabled()
+            ? app(AuthorityIdentitySqlPhase::class)->run(AuthorityIdentitySqlPhase::WITHDRAWAL_REQUEST, $phase)
+            : DB::transaction($phase);
         if (isset($result['error'])) {
             $conflict = $result['error'] === 'WITHDRAWAL_PENDING';
             return TxapiResponse::error($request, $result['error'],

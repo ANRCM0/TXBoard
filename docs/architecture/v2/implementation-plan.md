@@ -1,6 +1,6 @@
 # Core First v2 实施台账
 
-> 状态：B0、B1.1–B1.28 影子证据、Terms、身份旁观、固定 writer 捕获、套餐批量同步、批量封禁、管理员创建/删除、注册初始记录与余额端点投影、B2.1–B2.8 单机升级、B3.1/B3.2 隔离用量、B3.3–B3.8 本地观察、持久事件桶、隔离Service与真实协议接入、B4.1–B4.7 合成 Provider、插件停用接入、租约候选、离线签名快照与Go公钥诊断、B5.1–B5.24 本地 mTLS 读取、隔离建单、登录、内存邮件验证码、隔离注册、密码恢复、当前会话与管理读取、B6.1–B6.4 实验字节、离线加密、共享 owner 与独立响应随机值候选及 B7.1 Agent/MCP 退役已实现；两仓迁移与三镜像发布已完成，继续推进业务迁移切片。各整阶段仍按下表门禁验收。
+> 状态：B0、B1.1–B1.28 影子证据、Terms、身份旁观、固定 writer 捕获、套餐批量同步、批量封禁、管理员创建/删除、注册初始记录与余额端点投影、B2.1–B2.9 单机升级与原生 SQL 围栏、B3.1/B3.2 隔离用量、B3.3–B3.9 本地观察、持久事件桶、隔离Service与真实协议接入、B4.1–B4.7 合成 Provider、插件停用接入、租约候选、离线签名快照与Go公钥诊断、B5.1–B5.24 本地 mTLS 读取、隔离建单、登录、内存邮件验证码、隔离注册、密码恢复、当前会话与管理读取、B6.1–B6.4 实验字节、离线加密、共享 owner 与独立响应随机值候选及 B7.1 Agent/MCP 退役已实现；两仓迁移与三镜像发布已完成，继续推进业务迁移切片。各整阶段仍按下表门禁验收。
 
 2026-10-13，按仓库整合任务，将 Gateway/Node 的完整 Git 历史导入本仓 `gateway/`、`node/`，安装器集中到 TXBoard-Deploy。当前目录与三镜像 CI 见 [双仓布局](../../development/repository-layout.md)；旧基线和验证报告保持当时提交与路径。本次仓库整理独立于下列业务迁移门禁。
 
@@ -568,4 +568,15 @@ B3.8 远端收尾：`519e763` 的 VLESS/VMESS Oracle MySQL8.4 matrix、Service�
 
 B3.9 后续恢复切片见[报告](../../../node/docs/live-recovery-boundaries-verification.json)：固定 `64309e8` 加五个冻结源码的r24，两协议分别验证Core显式generation2握手与旧generation1本地绑定拒绝、同库Core实例配置漂移的真实usage_error拒绝，均在listener前停止且历史182字节SQL/本地记录不变。真实SQL恢复则先保存历史capture前与settled后的0600全库快照，实际导入早期快照并核对零用量；Core另行发放epoch2/grant后，新Service正常worker收到原已确认receipt的404 BATCH_NOT_FOUND并停止listener，转发前审计证明零submit尝试，原本地JSON不变、SQL仍零计费。此案例允许listener先启动，不与初始化拒绝混称；合法新Core实例的本地storage身份比较仍未由同库配置漂移证明。
 
-source延续在新夹具另行复验两协议；同Go源码完整race **475主/334子测试通过，5项环境跳过、0失败**，vet、PHP/Python、actionlint与文档链接检查通过。`64309e8` 六个远端workflow已全部成功，扩展八案例Oracle MySQL8.4 matrix待本批推送核对。恢复案例通过不等于B3生产交付、可信时间、全局writer coverage/drain或authority切换完成。
+source延续在新夹具另行复验两协议；同Go源码完整race **475主/334子测试通过，5项环境跳过、0失败**，vet、PHP/Python、actionlint与文档链接检查通过。`64309e8` 与 `b1d172e` 各六个远端workflow已全部成功，包括扩展八案例Oracle MySQL8.4恢复matrix。恢复案例通过不等于B3生产交付、可信时间、全局writer coverage/drain或authority切换完成。
+
+
+### B2.9 身份、会话与辅助 SQL 写入准入
+
+[当前契约](../../../contracts/v2/authority-identity-writers-v5.md)在同一单例增加27项原生身份/会话、设置、统计、审计和邮件日志 SQL owner，共53项。显式 v4 open4 → extend-identity → v5 open5 → prepare6；旧 v1-v4 回执和 prepared 状态不重写、不重开。继承事务必须持有当前 Connection/PDO/PID/outer record 的实际证明；严格默认关闭路径不增加 authority/receipt IO。
+
+注册、密码、设置多 key、Server统计与traffic保持原生独立提交边界；真正 Bearer 经过父 Sanctum 认证、事件和原 last_used 写入。已审阅旧管理员 update/delete/bulk-ban 的事务内会话删除保留原准入，独立旧会话 owner 不因此放开。创建证据先于提交时 schedule；v4 pending intent 可在 v5 下按原 hash handoff，enqueue 仍不是 Node delivery。SMTP/审计/缓存等提交后未知结果不撤回已完成 SQL。
+
+固定 `b1d172e` 加冻结 runtime：完整API **1421通过、146项条件跳过、15103断言**，原 fence/finance/native/Observer 专项 **80通过、32项引擎条件跳过、1063断言**。最终r4只修正测试盐样本长度与外键删除顺序，runtime逐文件hash保持相同；最终SQLite专项 **42通过、5项MySQL专测跳过、541断言**。专用MariaDB初次47案例为45通过、2夹具失败；修正后两项另行通过，5项独立进程 commit/rollback/SIGKILL 通过。此处明确保留两个运行，不将其写成一次全绿；完整最终Oracle MySQL8.4 CI推送后核对。[报告](authority-identity-writers-verification.json)记录所有源码/依赖hash、失败日志和最终证据，[实现边界](authority-identity-writers.md)说明具体语义。
+
+PHP8.4语法、254项真实HTTP methods、User49/Node8契约边界、原生schema与workflow检查通过。通用工单、网络/遥测、内容/支付管理、清理任务、可信插件/其他连接和进程/队列/外部效果仍需逐项覆盖；全局coverage/drain、target authority和migration gate仍false。下一批候选为六项原生工单操作，当前仅完成源码设计，未开始实施。

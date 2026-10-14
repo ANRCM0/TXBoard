@@ -7,6 +7,7 @@ use App\Utils\Helper;
 use Illuminate\Console\Command;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use App\Domains\AuthorityMigration\AuthorityIdentitySqlPhase as IdentityPhase;
 
 class ResetUser extends Command
 {
@@ -49,9 +50,12 @@ class ResetUser extends Command
         $users = User::all();
         foreach ($users as $user)
         {
-            $user->token = Helper::guid();
-            $user->uuid = Helper::guid(true);
-            $user->save();
+            app(IdentityPhase::class)->run(IdentityPhase::CLI_USER_CREDENTIALS_ROTATE, function () use (&$user): void {
+                if (IdentityPhase::enabled()) $user = User::query()->whereKey($user->getKey())->lockForUpdate()->firstOrFail();
+                $user->token = Helper::guid();
+                $user->uuid = Helper::guid(true);
+                $user->save();
+            });
             $this->info("已重置用户{$user->email}的安全信息");
         }
     }

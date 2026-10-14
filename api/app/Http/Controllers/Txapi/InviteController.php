@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Txapi;
 
 use App\Core\Http\TxapiResponse;
+use App\Domains\AuthorityMigration\AuthorityIdentitySqlPhase;
 use App\Models\CommissionLog;
 use App\Models\InviteCode;
 use App\Models\Order;
@@ -42,7 +43,7 @@ final class InviteController
 
     public function store(Request $request): JsonResponse
     {
-        $created = DB::transaction(function () use ($request): bool {
+        $phase = function () use ($request): bool {
             $user = User::query()->lockForUpdate()->findOrFail(Auth::guard('sanctum')->id());
             if (InviteCode::query()->where('user_id', $user->id)
                 ->where('status', 0)->count() >= (int) admin_setting('invite_gen_limit', 5)) {
@@ -52,7 +53,10 @@ final class InviteController
             $code->user_id = $user->id;
             $code->code = Helper::randomChar(8);
             return $code->save();
-        });
+        };
+        $created = AuthorityIdentitySqlPhase::enabled()
+            ? app(AuthorityIdentitySqlPhase::class)->run(AuthorityIdentitySqlPhase::INVITE_CREATE, $phase)
+            : DB::transaction($phase);
         if (!$created) {
             return TxapiResponse::error($request, 'INVITE_LIMIT_REACHED', 'Invitation code limit reached', 409);
         }

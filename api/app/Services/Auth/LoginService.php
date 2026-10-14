@@ -7,6 +7,8 @@ use App\Services\Plugin\HookManager;
 use App\Utils\CacheKey;
 use App\Utils\Helper;
 use Illuminate\Support\Facades\Cache;
+use App\Domains\AuthorityMigration\AuthorityIdentitySqlPhase as IdentityPhase;
+use App\Services\AuthService;
 
 class LoginService
 {
@@ -68,8 +70,27 @@ class LoginService
         }
 
         // 更新最后登录时间
-        $user->last_login_at = time();
-        $user->save();
+        $result = app(IdentityPhase::class)->run(IdentityPhase::USER_LOGIN_TOUCH, function () use (&$user, $email, $password): array {
+            if (IdentityPhase::enabled()) {
+                $current = User::byEmail($email)->whereKey($user->getKey())->lockForUpdate()->first();
+                if (!$current) return [false, [400, __('Incorrect email or password')]];
+                if (!Helper::multiPasswordVerify($current->password_algo, $current->password_salt, $password, $current->password))
+                    return [false, [400, __('Incorrect email or password')], true];
+                if ($current->banned) return [false, [400, __('Your account has been suspended')]];
+                $user = $current;
+            }
+            $user->last_login_at = time();
+            $user->save();
+            return [true, $user];
+        });
+        if (!$result[0]) {
+            // Keep the advisory error counter outside the original SQL phase.
+            if (($result[2] ?? false) && (int) admin_setting('password_limit_enable', true)) {
+                $count = (int) Cache::get(CacheKey::get('PASSWORD_ERROR_LIMIT', $email), 0);
+                Cache::put(CacheKey::get('PASSWORD_ERROR_LIMIT', $email), $count + 1, 60 * (int) admin_setting('password_limit_expire', 60));
+            }
+            return [$result[0], $result[1]];
+        }
 
         HookManager::call('user.login.after', $user);
         return [true, $user];
@@ -111,17 +132,22 @@ class LoginService
             }
 
             // 更新密码
-            $user->password = password_hash($password, PASSWORD_DEFAULT);
-            $user->password_algo = NULL;
-            $user->password_salt = NULL;
-
-            if (!$user->save()) {
+            $saved = app(IdentityPhase::class)->run(IdentityPhase::USER_PASSWORD_RECOVER, function () use (&$user, $email, $password): bool {
+                if (IdentityPhase::enabled()) {
+                    $user = User::byEmail($email)->whereKey($user->getKey())->lockForUpdate()->firstOrFail();
+                }
+                $user->password = password_hash($password, PASSWORD_DEFAULT);
+                $user->password_algo = NULL;
+                $user->password_salt = NULL;
+                return $user->save();
+            });
+            if (!$saved) {
                 return [false, [500, __('Reset failed')]];
             }
 
             // A recovered password invalidates all existing sessions, even for
             // V1 clients using this same service.
-            $user->tokens()->delete();
+            (new AuthService($user))->removeAllSessions();
             HookManager::call('user.password.reset.after', $user);
 
             // 清除邮箱验证码

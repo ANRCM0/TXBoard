@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Models\Setting as SettingModel;
+use App\Domains\AuthorityMigration\AuthorityIdentitySqlPhase;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Contracts\Cache\Repository;
@@ -37,7 +38,7 @@ class Setting
     public function set(string $key, mixed $value = null): bool
     {
         SettingModel::assertWritableKey($key);
-        SettingModel::createOrUpdate(strtolower($key), $value);
+        $this->writeKey(strtolower($key), $value);
         $this->flush();
         return true;
     }
@@ -52,7 +53,7 @@ class Setting
             SettingModel::assertWritableKey((string) $key);
         }
         foreach ($settings as $key => $value) {
-            SettingModel::createOrUpdate(strtolower($key), $value);
+            $this->writeKey(strtolower($key), $value);
         }
         $this->flush();
         return true;
@@ -63,7 +64,14 @@ class Setting
      */
     public function remove(string $key): bool
     {
-        SettingModel::where('name', $key)->delete();
+        if (AuthorityIdentitySqlPhase::enabled()) {
+            app(AuthorityIdentitySqlPhase::class)->run(AuthorityIdentitySqlPhase::SETTINGS_REMOVE, static function () use ($key): void {
+                SettingModel::where('name', $key)->lockForUpdate()->first();
+                SettingModel::where('name', $key)->delete();
+            });
+        } else {
+            SettingModel::where('name', $key)->delete();
+        }
         $this->flush();
         return true;
     }
@@ -74,6 +82,18 @@ class Setting
     public function update(string $key, $value): bool
     {
         return $this->set($key, $value);
+    }
+
+    private function writeKey(string $key, mixed $value): void
+    {
+        if (!AuthorityIdentitySqlPhase::enabled()) {
+            SettingModel::createOrUpdate($key, $value);
+            return;
+        }
+        app(AuthorityIdentitySqlPhase::class)->run(AuthorityIdentitySqlPhase::SETTINGS_WRITE, static function () use ($key, $value): void {
+            SettingModel::where('name', $key)->lockForUpdate()->first();
+            SettingModel::createOrUpdate($key, $value);
+        });
     }
     
     /**
@@ -157,6 +177,10 @@ class Setting
         try {
             $this->cache->forget(self::CACHE_KEY);
         } catch (\Throwable) {
+            if (AuthorityIdentitySqlPhase::enabled()) {
+                $this->loadedSettings = null;
+                throw new \RuntimeException('AUTHORITY_SETTINGS_CACHE_OUTCOME_UNKNOWN');
+            }
             // Cache unavailable; the next load() will fall back to defaults.
         }
         $this->loadedSettings = null;
