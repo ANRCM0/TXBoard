@@ -32,7 +32,7 @@ mysql = shutil.which('mariadb') or shutil.which('mysql')
 if not php or not mysql or not shutil.which('go') or not shutil.which('openssl'):
     raise SystemExit('NATIVE_AUTHORITY_TOOLS_REQUIRED')
 # Do not inherit migration/Provider/v2 flags, authentication or production settings.
-env = {k: os.environ[k] for k in ('PATH', 'LANG', 'LC_ALL', 'TMPDIR', 'GOPATH', 'GOCACHE', 'GOTOOLCHAIN') if k in os.environ}
+env = {k: os.environ[k] for k in ('PATH', 'LANG', 'LC_ALL', 'TMPDIR', 'GOPATH', 'GOMODCACHE', 'GOCACHE', 'GOTOOLCHAIN', 'CGO_ENABLED') if k in os.environ}
 env.update(expected | {'DB_PASSWORD': os.environ['DB_PASSWORD'], 'DB_PORT': os.environ.get('DB_PORT', '13306'),
     'APP_DEBUG': 'false', 'CACHE_DRIVER': 'array', 'SETTING_CACHE_STORE': 'array', 'SESSION_DRIVER': 'array',
     'QUEUE_CONNECTION': 'sync', 'MAIL_MAILER': 'array',
@@ -195,7 +195,7 @@ try:
         try:
             status, _ = request('/txapi/node/v1/handshake', 'POST', {}, {})
             if status == 401: break
-        except (OSError, urllib.error.URLError): pass
+        except (OSError, urllib.error.URLError, json.JSONDecodeError): pass
         time.sleep(.1)
     else: raise RuntimeError('NATIVE_AUTHORITY_CORE_READY_TIMEOUT')
     status, login = request('/txapi/auth/admin/login', 'POST',

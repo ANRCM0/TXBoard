@@ -613,3 +613,5 @@ PHP8.4语法、254项真实HTTP methods、User49/Node8契约边界、原生schem
 [当前契约](../../../contracts/node-protocol/native-authority-denial-v1.md)将完整且受限的原生 `401 NODE_UNAUTHORIZED`/节点作用域 `404 NODE_NOT_FOUND`传到Node主循环；网络、TLS、代理HTML、5xx和普通WS断开仍按重试处理。节点作用域拒绝只停止对应listener，Machine拒绝由主循环取消并等待所有子节点，避免子节点自停死锁。
 
 停止前先关闭数据面、采集最终累计meter，并把新尾量写入独立fsync terminal batch；已有pending batch原ID/原正文保持不变，重启先恢复pending再恢复terminal，成功前不开放listener。完整Go race **所有Node包通过**，非race、vet、Linux build通过；transport 14/55、runtime真实VLESS listener与终止尾量、Machine取消和reporting30测试均通过。这个切片不宣称完成ETag完整快照重试、desired/applied确认、有限离线租约、Xray强撤销或生产Provider交付。[报告](../../../node/docs/native-authority-denial-verification.json)。
+
+P0.2普通native-v1真实Core联调已在固定 `50dc526` 加runner修正的独立快照验证VLESS/VMess：真实管理员HTTP禁用节点，SQLenabled=false，Core实际404 NODE_NOT_FOUND，旧listener/已建立TCP关闭，终止尾量分别精确43/79字节；旧身份重启握手拒绝且原tail字节保持不变。两份数据库分别0600备份后仅重置专用合成库。独立MySQL8.4双协议CI已加入；Machine全部节点与真实Workerman WS仍待后续验收。
