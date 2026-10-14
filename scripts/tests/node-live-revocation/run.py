@@ -3,7 +3,8 @@
 from pathlib import Path
 import hashlib,json,os,shutil,socket,ssl,subprocess,sys,time,urllib.error,urllib.request
 
-CASES={'ban-baseline','ban','speed','config','shutdown','history','expiry','udp','xudp','tcp-mux','source-continue'}
+RECOVERY_CASES={'generation-drift','instance-drift','receipt-missing'}
+CASES={'ban-baseline','ban','speed','config','shutdown','history','expiry','udp','xudp','tcp-mux','source-continue'}|RECOVERY_CASES
 if len(sys.argv)!=6 or sys.argv[4] not in {'vless','vmess'} or sys.argv[5] not in CASES:
     raise SystemExit('usage: run.py API NODE NEW_EVIDENCE vless|vmess CASE')
 api,node,evidence=(Path(p).resolve()for p in sys.argv[1:4]);protocol,case=sys.argv[4:6]
@@ -34,6 +35,17 @@ def run(name,command,cwd,timeout=180):
 def port():
     with socket.socket()as sock:sock.bind(('127.0.0.1',0));return sock.getsockname()[1]
 
+def database_dump(name):
+    path=evidence/(name+'.sql')
+    if path.exists():raise SystemExit('LIVE_REVOCATION_PREVIOUS_BACKUP_PRESERVED')
+    with path.open('xb') as out:
+        os.chmod(path,0o600)
+        subprocess.run(['mariadb-dump','--protocol=tcp','-h127.0.0.1','-P'+env.get('DB_PORT','13306'),
+            '-u'+env['DB_USERNAME'],'--single-transaction','--skip-lock-tables','--no-tablespaces',env['DB_DATABASE']],
+            env=env|{'MYSQL_PWD':env['DB_PASSWORD']},stdout=out,check=True,timeout=120)
+    if path.stat().st_size<1000:raise SystemExit('LIVE_REVOCATION_DATABASE_BACKUP_INCOMPLETE')
+    return {'database':env['DB_DATABASE'],'path':path.name,'mode':'0600','sha256':hashlib.sha256(path.read_bytes()).hexdigest()}
+
 probe=subprocess.check_output(['mariadb','--protocol=tcp','-h127.0.0.1','-P'+env.get('DB_PORT','13306'),
  '-u'+env['DB_USERNAME'],'-N','-e',"SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='txboard_live_revocation_test'"],
  env=env|{'MYSQL_PWD':env['DB_PASSWORD']},text=True).strip()
@@ -50,6 +62,7 @@ env.update({'LIVE_REVOCATION_HTTP_PORT':str(http_port),'LIVE_REVOCATION_TLS_PORT
  'TXBOARD_LIVE_REVOCATION_CASE':case,'TXBOARD_LIVE_REVOCATION_PHASE':'history'})
 fixture=json.loads(run('seed',[php,str(scripts/'fixture.php'),'seed'],api))
 (evidence/'fixture.json').write_text(json.dumps(fixture)+'\n');os.chmod(evidence/'fixture.json',0o600)
+if case=='receipt-missing':restore_before=database_dump('before-history-database')
 run('certificate',['openssl','req','-x509','-newkey','rsa:2048','-nodes','-days','1',
  '-keyout',str(evidence/'key.pem'),'-out',str(evidence/'cert.pem'),'-subj','/CN=localhost',
  '-addext','subjectAltName=IP:127.0.0.1,DNS:localhost'],api);os.chmod(evidence/'key.pem',0o600)
@@ -86,6 +99,50 @@ try:
     settlement=json.loads(run('sql-settlement',[php,str(scripts/'fixture.php'),'settle'],api))
     mutation=None
     expiry_grant=None
+    if case in RECOVERY_CASES:
+        code=test.wait(timeout=25);test_log.close();test_log=None
+        if code:raise SystemExit('LIVE_REVOCATION_HISTORY_CHILD_FAILED')
+        frozen=json.loads(run('sql-history-frozen',[php,str(scripts/'fixture.php'),'freeze-history'],api))
+        (evidence/'history-frozen.json').write_text(json.dumps(frozen,indent=2)+'\n')
+        http_server.terminate();http_server.wait(timeout=5)
+        if case=='generation-drift':
+            env['CORE_USAGE_V2_RECEIPT_GENERATION']='2'
+            generation=json.loads(run('generation-issued',[php,'artisan','core:usage-v2','generation','--node='+fixture['node_id'],'--reason=DATABASE_RESTORE_RECONCILED'],api))
+            if str(generation['receipt_generation'])!='2' or str(generation['source_epoch'])!='1':
+                raise SystemExit('LIVE_REVOCATION_GENERATION_ISSUANCE_MISMATCH')
+        elif case=='instance-drift':env['CORE_USAGE_V2_INSTANCE_ID']='live_revocation_core_fixture_2'
+        else:
+            restore_after=database_dump('after-settlement-database')
+            path=evidence/restore_before['path']
+            if hashlib.sha256(path.read_bytes()).hexdigest()!=restore_before['sha256']:
+                raise SystemExit('LIVE_REVOCATION_RESTORE_BACKUP_CHANGED')
+            with path.open('rb') as restored:
+                subprocess.run(['mariadb','--protocol=tcp','-h127.0.0.1','-P'+env.get('DB_PORT','13306'),
+                    '-u'+env['DB_USERNAME'],env['DB_DATABASE']],env=env|{'MYSQL_PWD':env['DB_PASSWORD']},stdin=restored,check=True,timeout=120)
+            run('sql-restored-before-restart',[php,str(scripts/'fixture.php'),'assert-restored'],api)
+            source=json.loads(run('restore-source',[php,'artisan','core:usage-v2','source','--node='+fixture['node_id'],'--installation=live_revocation_restored_0001'],api))
+            if str(source['source_epoch'])!='2':raise SystemExit('LIVE_REVOCATION_RESTORE_HIGHER_SOURCE_REQUIRED')
+            issued=int(time.time())+1
+            run('restore-grant',[php,'artisan','core:usage-v2','grant','--source='+str(source['id']),
+                '--subject='+fixture['subject_id'],'--terms='+fixture['terms_id'],'--period='+fixture['period_id'],
+                '--tariff='+fixture['tariff_id'],'--from='+str(issued),'--until='+str(issued+300)],api)
+            restore_proof={'before_history':restore_before,'after_settlement':restore_after,'restored_source_epoch':'2'}
+            (evidence/'database-restore-proof.json').write_text(json.dumps(restore_proof,indent=2)+'\n')
+            while time.time()<issued:time.sleep(.01)
+        http_server=subprocess.Popen([php,'-S','127.0.0.1:'+str(http_port),'-t','public','public/index.php'],cwd=api,env=env,stdout=http_log,stderr=subprocess.STDOUT)
+        ready=False
+        for _ in range(30):
+            if http_server.poll()is not None:break
+            try:
+                request=urllib.request.Request(endpoint+'/txapi/node/v1/handshake',data=b'{}',headers={'Content-Type':'application/json'})
+                urllib.request.urlopen(request,context=context,timeout=1);ready=True;break
+            except urllib.error.HTTPError:ready=True;break
+            except(OSError,urllib.error.URLError):time.sleep(.1)
+        if not ready:raise SystemExit('LIVE_REVOCATION_CORE_RESTART_FAILED')
+        recovery_observation_offset=len((evidence/'native-observations.jsonl').read_text().splitlines())
+        test_log=(evidence/'node-recovery.log').open('wb')
+        test=subprocess.Popen([str(evidence/'node-live-revocation-test'),'-test.run=^TestServiceUsageV2LiveRecovery$',
+            '-test.v','-test.timeout=30s'],cwd=node,env=env,stdout=test_log,stderr=subprocess.STDOUT)
     if case=='expiry':
         code=test.wait(timeout=12);test_log.close();test_log=None
         if code:
@@ -134,7 +191,7 @@ try:
         wait_file('continuation-ready.json',15)
         run('sql-continuation-settlement',[php,str(scripts/'fixture.php'),'settle-continuation'],api)
         (evidence/'continuation-settled.json').write_text('{"settled":true}\n')
-    if case not in {'history','expiry','udp','xudp','tcp-mux','source-continue'}:
+    if case not in {'history','expiry','udp','xudp','tcp-mux','source-continue'}|RECOVERY_CASES:
         wait_file('tail-ready.json')
         if case=='shutdown':
             (evidence/'trigger.json').write_text('{"action":"normal-context-cancel"}\n')
@@ -167,7 +224,7 @@ try:
         if code==0 or not(evidence/'baseline-ignored-empty.json').is_file():
             print((evidence/'node-history-tail.log').read_text(errors='replace')[-8000:]);raise SystemExit('LIVE_REVOCATION_BASELINE_DID_NOT_REPRODUCE')
     elif code:
-        failed_log=evidence/('node-expiry.log' if case=='expiry' else ('node-continuation.log' if case=='source-continue' else 'node-history-tail.log'))
+        failed_log=evidence/('node-recovery.log' if case in RECOVERY_CASES else ('node-expiry.log' if case=='expiry' else ('node-continuation.log' if case=='source-continue' else 'node-history-tail.log')))
         print(failed_log.read_text(errors='replace')[-8000:]);raise SystemExit('LIVE_REVOCATION_NODE_BOUNDARY_FAILED')
     if case=='source-continue':
         if any(hashlib.sha256((evidence/p).read_bytes()).hexdigest()!=h for p,h in old_files.items()):
@@ -178,6 +235,16 @@ try:
                and o.get('batch_id')==history['batch_id'] for o in observed):
             raise SystemExit('LIVE_REVOCATION_ORIGINAL_BATCH_IMPLICITLY_RESUBMITTED')
         final=json.loads(run('sql-final',[php,str(scripts/'fixture.php'),'assert-continuation'],api))
+    elif case in RECOVERY_CASES:
+        observed=[json.loads(line) for line in (evidence/'native-observations.jsonl').read_text().splitlines()[recovery_observation_offset:]]
+        if any(o['path']=='/txapi/node/v2/usage/submit' for o in observed):
+            raise SystemExit('LIVE_REVOCATION_RECOVERY_IMPLICIT_SUBMIT')
+        handshakes=[o for o in observed if o['path']=='/txapi/node/v1/handshake' and o['status']==200]
+        if case=='generation-drift' and not any(o.get('usage_v2_identity',{}).get('receipt_generation')=='2' for o in handshakes):
+            raise SystemExit('LIVE_REVOCATION_REAL_GENERATION_HANDSHAKE_REQUIRED')
+        if case=='instance-drift' and not any(o.get('usage_error_code')=='CORE_INSTANCE_RECOVERY_REQUIRED' for o in handshakes):
+            raise SystemExit('LIVE_REVOCATION_REAL_INSTANCE_REJECTION_REQUIRED')
+        final=json.loads(run('sql-final',[php,str(scripts/'fixture.php'),'assert-restored' if case=='receipt-missing' else 'assert-retained'],api))
     else:final=json.loads(run('sql-final',[php,str(scripts/'fixture.php'),'assert-final'],api))
 finally:
     for process in [test,tls_server,http_server]:
@@ -190,13 +257,14 @@ finally:
 sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
 public_names={'cert.pem','fixture.json','history-capture.json','history-ready.json','tail-ready.json','expiry-issued.json','expiry-boundary-result.json',
  'continuation-issued.json','continuation-capture.json','continuation-ready.json','continuation-result.json','sql-continuation-settlement.log','history-frozen.json',
+ 'recovery-result.json','database-restore-proof.json','sql-restored-before-restart.log','generation-issued.log',
  'boundary-result.json','baseline-ignored-empty.json','native-mutation.json','sql-pending.log','sql-settlement.log','sql-final.log','native-observations.jsonl'}
 records={str(p.relative_to(evidence)):sha(p)for p in evidence.rglob('*')if p.is_file()and
  (p.name in public_names or p.relative_to(evidence).parts[0]=='mode')and p.name not in {'.usage-lock','.interval-lock'}}
 result={'status':'reproduced-real-empty-poll-defect'if case=='ban-baseline'else'verified-isolated-live-boundary',
  'case':case,'protocol':protocol,'actual_service_run':True,'actual_singbox_kernel':True,
  'native_mutation':mutation,'historical_persisted_ack_sql':pending,'historical_settlement':settlement,'final_sql':final,
- 'boundary':json.loads((evidence/('baseline-ignored-empty.json'if case=='ban-baseline'else ('continuation-result.json' if case=='source-continue' else 'boundary-result.json'))).read_text())if case!='history'else{'actual_history_retained':True},
+ 'boundary':json.loads((evidence/('recovery-result.json' if case in RECOVERY_CASES else ('baseline-ignored-empty.json'if case=='ban-baseline'else ('continuation-result.json' if case=='source-continue' else 'boundary-result.json')))).read_text())if case!='history'else{'actual_history_retained':True},
  'artifacts_sha256':records,'production_authorization':False,'private_material_exported':False,'test_exit_code':code}
 if expiry_grant is not None:
     result['core_issued_expiry_grant']=expiry_grant

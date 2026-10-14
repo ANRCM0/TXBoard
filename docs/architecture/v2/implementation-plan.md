@@ -565,3 +565,7 @@ B3.8 远端收尾：`519e763` 的 VLESS/VMESS Oracle MySQL8.4 matrix、Service�
 [恢复契约](../../../contracts/v2/node-usage/live-revocation-service-v1.md)与[报告](../../../node/docs/live-recovery-service-verification.json)增加 source 延续实测：固定 `4779b32` 加四个冻结源码，r22 两协议分别完成真实历史182字节结算、正常停进程、Core幂等分配epoch2及有限grant、新进程保留mode目录并查询旧receipt。新流量37/19字节独立结算55/28，SQL两batch/两entry、累计119/146共265字节；历史本地JSON和SQL batch/entry整行哈希不变，没有隐式旧batch提交，原生User u/d仍0/0。两协议各保留0600完整SQL备份后仅重建专用合成测试库。
 
 同Go源码完整Node race **475主测试、334子测试通过，4项环境条件跳过、0失败**，真实两协议另行运行通过；受影响包vet、Python编译和actionlint通过，新增Oracle MySQL8.4恢复matrix待推送核对。Core实例/回执代际漂移及真实SQL恢复后的已确认回执缺失仍待后续验收；本段不代表B3整阶段、生产v2、全局handoff/drain或权威切换完成。
+
+B3.9 后续恢复切片见[报告](../../../node/docs/live-recovery-boundaries-verification.json)：固定 `64309e8` 加五个冻结源码的r24，两协议分别验证Core显式generation2握手与旧generation1本地绑定拒绝、同库Core实例配置漂移的真实usage_error拒绝，均在listener前停止且历史182字节SQL/本地记录不变。真实SQL恢复则先保存历史capture前与settled后的0600全库快照，实际导入早期快照并核对零用量；Core另行发放epoch2/grant后，新Service正常worker收到原已确认receipt的404 BATCH_NOT_FOUND并停止listener，转发前审计证明零submit尝试，原本地JSON不变、SQL仍零计费。此案例允许listener先启动，不与初始化拒绝混称；合法新Core实例的本地storage身份比较仍未由同库配置漂移证明。
+
+source延续在新夹具另行复验两协议；同Go源码完整race **475主/334子测试通过，5项环境跳过、0失败**，vet、PHP/Python、actionlint与文档链接检查通过。`64309e8` 六个远端workflow已全部成功，扩展八案例Oracle MySQL8.4 matrix待本批推送核对。恢复案例通过不等于B3生产交付、可信时间、全局writer coverage/drain或authority切换完成。

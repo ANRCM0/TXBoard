@@ -8,6 +8,11 @@ ALLOWED = {ADMIN+'/users/ban',ADMIN+'/users/7/update','/txapi/node/v1/handshake'
            '/txapi/node/v2/usage/submit', '/txapi/node/v2/usage/batch/get'}
 root = Path(os.environ['LIVE_REVOCATION_DIR'])
 
+def observe(record):
+    with (root / 'native-observations.jsonl').open('a', encoding='utf-8') as output:
+        output.write(json.dumps(record, sort_keys=True) + '\n')
+        output.flush(); os.fsync(output.fileno())
+
 class Proxy(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
         return self.forward()
@@ -25,6 +30,13 @@ class Proxy(http.server.BaseHTTPRequestHandler):
         if len(data) != int(length):
             self.send_error(400); return
         started = time.time()
+        if self.path == '/txapi/node/v2/usage/submit':
+            submission=json.loads(data)
+            observe({'path':self.path,'method':self.command,'status':0,'phase':'request-attempt',
+                     'started_at':started,'request_sha256':hashlib.sha256(data).hexdigest(),
+                     'source_epoch':submission.get('payload',{}).get('source_epoch'),
+                     'batch_id':submission.get('payload',{}).get('batch_id'),
+                     'payload_digest':submission.get('payload_digest')})
         connection = http.client.HTTPConnection('127.0.0.1', int(os.environ['LIVE_REVOCATION_HTTP_PORT']), timeout=5)
         try:
             headers = {k: v for k, v in self.headers.items() if k.lower() not in {'host','connection','transfer-encoding'}}
@@ -32,11 +44,6 @@ class Proxy(http.server.BaseHTTPRequestHandler):
             response = connection.getresponse(); body = response.read(1048577)
             if len(body) > 1048576:
                 self.send_error(502); return
-            self.send_response(response.status)
-            for key, value in response.getheaders():
-                if key.lower() not in {'connection','transfer-encoding','content-length'}:
-                    self.send_header(key, value)
-            self.send_header('Content-Length', str(len(body))); self.end_headers(); self.wfile.write(body)
             record = {'path': self.path, 'method': self.command, 'status': response.status,
                       'started_at': started, 'completed_at': time.time(),
                       'request_sha256': hashlib.sha256(data).hexdigest(),
@@ -45,9 +52,16 @@ class Proxy(http.server.BaseHTTPRequestHandler):
                 snapshot=json.loads(body).get('data',{});record['user_count']=len(snapshot.get('users',[]));record['user_ids']=[u['id']for u in snapshot.get('users',[])]
             if self.path.endswith('/config') and response.status==200:
                 record['server_port']=json.loads(body).get('data',{}).get('config',{}).get('server_port')
-            if self.path == '/txapi/node/v2/usage/batch/get' and response.status==200:
-                receipt=json.loads(body).get('data',{})
-                record.update({key:receipt.get(key) for key in ('source_epoch','batch_id','payload_digest','receipt_id')})
+            if self.path == '/txapi/node/v1/handshake' and response.status==200:
+                handshake=json.loads(body).get('data',{})
+                record['usage_error_code']=handshake.get('usage_error',{}).get('code')
+                record['usage_v2_identity']={key:handshake.get('usage_v2',{}).get(key) for key in ('core_instance_id','receipt_generation','source_epoch')}
+            if self.path == '/txapi/node/v2/usage/batch/get':
+                query=json.loads(data)
+                record.update({key:query.get(key) for key in ('source_epoch','batch_id','payload_digest')})
+                decoded=json.loads(body)
+                if response.status==200:record['receipt_id']=decoded.get('data',{}).get('receipt_id')
+                else:record['error_code']=decoded.get('error',{}).get('code')
             if self.path == '/txapi/node/v2/usage/submit':
                 submission=json.loads(data)
                 record.update({key:submission.get('payload',{}).get(key) for key in ('source_epoch','batch_id')})
@@ -59,9 +73,14 @@ class Proxy(http.server.BaseHTTPRequestHandler):
                                'protocol_version': ack.get('protocol_version'),
                                'accepted': ack.get('accepted') is True,
                                'settlement': ack.get('settlement')})
-            with (root / 'native-observations.jsonl').open('a', encoding='utf-8') as output:
-                output.write(json.dumps(record, sort_keys=True) + '\n')
-                output.flush(); os.fsync(output.fileno())
+            observe(record)
+            self.send_response(response.status)
+            for key, value in response.getheaders():
+                if key.lower() not in {'connection','transfer-encoding','content-length'}:
+                    self.send_header(key, value)
+            self.send_header('Content-Length', str(len(body))); self.end_headers()
+            try:self.wfile.write(body)
+            except (BrokenPipeError,ConnectionResetError):pass
         finally:
             connection.close()
     def log_message(self, *args):

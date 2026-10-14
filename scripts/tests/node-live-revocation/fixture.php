@@ -145,15 +145,32 @@ if ($mode==='seed') {
         'historical_billable_bytes'=>'182','new_billable_bytes'=>'83','billable_bytes'=>'265',
         'historical_receipt'=>$old->receipt_id,'new_receipt'=>$fresh->receipt_id,'original_sql_history_unchanged'=>true,
         'billed_up_bytes'=>'119','billed_down_bytes'=>'146','legacy_user_u'=>'0','legacy_user_d'=>'0'],JSON_THROW_ON_ERROR);
-} elseif ($mode==='assert-final') {
+} elseif ($mode==='assert-restored') {
+    assertLegacyUnbilled();
+    if (DB::table('tx_usage_batch')->count()!==0||DB::table('tx_usage_entry')->count()!==0
+        ||DB::table('tx_usage_outbox')->count()!==0||(string)DB::table('tx_usage_period')->value('billable_bytes')!=='0'
+        ||(string)DB::table('tx_usage_period')->value('upload_bytes')!=='0'||(string)DB::table('tx_usage_period')->value('download_bytes')!=='0'
+        ||DB::table('tx_node_usage_stat')->count()!==0||app(UsageSettlement::class)->scan(10,time())!==[])
+        throw new RuntimeException('LIVE_REVOCATION_RESTORED_DATABASE_REBILLED');
+    echo json_encode(['batch_rows'=>'0','entry_rows'=>'0','outbox_rows'=>'0','billable_bytes'=>'0',
+        'legacy_user_u'=>'0','legacy_user_d'=>'0','missing_confirmed_receipt'=>true,'implicit_resubmit'=>false],JSON_THROW_ON_ERROR);
+} elseif ($mode==='assert-final' || $mode==='assert-retained') {
     $capture=decodedArtifact($directory.'/history-capture.json');$p=validateCapture($capture);assertLegacyUnbilled();
     $batch=DB::table('tx_usage_batch')->where('node_id',$p['node_id'])->where('source_epoch',$p['source_epoch'])->where('batch_id',$p['batch_id'])->first();
     $period=DB::table('tx_usage_period')->where('id',$p['entries'][0]['usage_period_id'])->first();
     $stat=DB::table('tx_node_usage_stat')->where('node_id',$p['node_id'])->first();
     if (!$batch||$batch->status!=='settled'||$batch->receipt_id!==$capture['pending_receipt']['receipt_id']||DB::table('tx_usage_batch')->count()!==1
-        ||DB::table('tx_usage_entry')->count()!==1||(string)$period->billable_bytes!=='182'||(string)$stat->raw_up_bytes!=='43'
+        ||DB::table('tx_usage_entry')->count()!==1||(string)$period->billable_bytes!=='182'
+        ||(string)$period->upload_bytes!=='64'||(string)$period->download_bytes!=='118'||(string)$stat->raw_up_bytes!=='43'
         ||(string)$stat->raw_down_bytes!=='79'||app(UsageSettlement::class)->scan(10,time())!==[])
         throw new RuntimeException('LIVE_REVOCATION_UNKNOWN_TAIL_COUNTED');
+    if ($mode==='assert-retained') {
+        $frozen=decodedArtifact($directory.'/history-frozen.json');
+        $entry=DB::table('tx_usage_entry')->where('batch_id',$batch->id)->first();
+        if (hash('sha256',json_encode($batch,JSON_THROW_ON_ERROR))!==$frozen['batch_sha256']
+            ||hash('sha256',json_encode($entry,JSON_THROW_ON_ERROR))!==$frozen['entry_sha256'])
+            throw new RuntimeException('LIVE_REVOCATION_ORIGINAL_SQL_HISTORY_CHANGED');
+    }
     echo json_encode(['status'=>'settled','batch_rows'=>'1','entry_rows'=>'1','billable_bytes'=>'182','legacy_batch_rows'=>'0',
         'legacy_user_u'=>'0','legacy_user_d'=>'0','historical_receipt'=>$batch->receipt_id,'unknown_tail_successful_batch'=>false],JSON_THROW_ON_ERROR);
 } else {throw new RuntimeException('LIVE_REVOCATION_FIXTURE_ACTION_INVALID');}

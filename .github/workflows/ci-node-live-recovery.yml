@@ -23,7 +23,7 @@ jobs:
       fail-fast: false
       matrix:
         protocol: [vless, vmess]
-        case: [source-continue]
+        case: [source-continue, generation-drift, instance-drift, receipt-missing]
     services:
       mysql:
         image: mysql:8.4
@@ -77,7 +77,7 @@ jobs:
         run: |
           touch api/.env
           mkdir -p api/storage/framework/{cache/data,sessions,views} api/storage/logs api/bootstrap/cache
-      - name: Actual Service source continuation and immutable history
+      - name: Actual Service continuation identity drift and SQL restore
         # Each job owns a fresh exclusive database; no shared DB reset is needed.
         run: python3 scripts/tests/node-live-revocation/run.py "$PWD/api" "$PWD/node" "$RUNNER_TEMP/node-live-recovery-evidence" "${{ matrix.protocol }}" "${{ matrix.case }}"
       - name: Preserve sanitized recovery summary

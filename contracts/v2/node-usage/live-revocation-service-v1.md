@@ -73,6 +73,28 @@ and entry hashes remain identical. Observed requests after the new process start
 must contain no implicit submission of the historical batch. The old epoch,
 digest and receipt remain distinct from the new epoch, batch and receipt.
 
+Generation drift uses Core's explicit generation command with a new configured
+receipt generation, then restarts the actual Core HTTP process. Its real handshake
+must advertise generation 2 while local history remains generation 1. The retained
+directory refuses binding and Service initialization stops before kernel startup.
+Changing only the Core instance configuration over the original SQL database is
+a separate Core-side rejection: the native handshake returns the explicit
+CORE_INSTANCE_RECOVERY_REQUIRED usage error, and isolated Service initialization
+stops without a listener. It does not prove a new legitimate Core instance's local
+storage comparison; no persisted source identity is rewritten to pass this case.
+
+The missing-receipt acceptance saves a complete 0600 SQL dump after seeding and
+before any historical capture, and another dump after the original batch settles.
+It stops the original Service and Core HTTP process, restores the earlier dump into
+the verified exclusive test database and checks zero batch/entry/outbox rows and
+zero billing. Core then provisions epoch 2 and a finite grant so same-epoch restart
+refusal cannot mask the receipt check. The new real Service may start its listener;
+its normal worker must query the original confirmed receipt, observe an authentic
+404 BATCH_NOT_FOUND and fail-stop with its listener closed. No usage submit is
+permitted after restart, original local JSON remains unchanged, and restored SQL
+must still contain zero usage rows and zero billing. This is a runtime rejection,
+not an assertion that the listener never opened.
+
 The runner requires APP_ENV=testing, mysql,127.0.0.1, exact dedicated database
 `txboard_live_revocation_test` and principal `txboard_live_revocation`, zero tables
 beforeDDL and a new evidence directory. Any reset/restore is separately explicit,
