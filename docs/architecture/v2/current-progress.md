@@ -27,6 +27,8 @@ Core 可通过默认关闭的原生开关，为完整 Node 用户快照签发独
 
 专项证据：Core授权专项12项/101断言通过，Node全量race 613主测试/577子测试通过（13项条件跳过），完整API回归1692项/16347断言通过（154项条件跳过）；Node vet、构建通过。真实 Linux Core/Machine 联调的 sing-box 和 Xray 均通过，涵盖 VLESS/VMess 实流、一个共享 Machine WSS、子节点封禁后兄弟继续、离线至签名到期关闭现有流和监听、不同进程离线重启拒绝旧快照、在线恢复，以及两批原 traffic spool 的ID/正文/观察周期恢复结算。真实证据见[授权验收](../../../node/docs/native-authorization-verification.json)。
 
+精确审阅分支 `b480f9f` 的 Core API、Node runtime/stability、Machine、traffic及authorization两内核真实workflow全部成功；Core镜像 workflow 验证了容器内 Ed25519、数据库恢复和Octane smoke，Node image workflow实际构建并检查了匹配 commit 的离线 enrollment capability。两个 workflow 的publish job均按审阅分支策略跳过。TXBoard-Deploy 配置切片精确提交 `6209c6b` 的12套 Linux安装/升级保护与 Node 配置消费者CI成功。两仓PR创建权限当前不足，分支未合并/未发布；真实Docker安装器与授权状态全备份恢复尚待下一切片。
+
 本阶段交付的是 opt-in 原生完整快照有限租约，不包含生产 Provider 凭据签发/秘密自动分发、自动密钥重叠轮换、受控Machine迁移重绑定、硬件时钟/磁盘回滚保护、HA或全部协议/平台矩阵；这些仍是生产启用前的独立门禁。多实例必须逐实例配置授权 pin，顶层授权随instances会明确报错，不静默降级。
 
 ## P1.1 安装器授权配置接入
@@ -48,7 +50,7 @@ TXBoard-Deploy 可显式接收完整 Core/key 公钥 pin，为 Node/Machine 或�
 
 ## 下一步顺序
 
-1. **P1：独立安装器单机交付**。由TXBoard-Deploy完成三组件安装、配置、固定版本更新、备份恢复和失败恢复。
+1. **P1：独立安装器单机交付**。配置pin与镜像能力预检已在 TXBoard-Deploy 审阅分支完成；仍需真实Node容器安装/更新以及授权状态和traffic spool全备份恢复。
 2. **P1：必要Gateway/Internal API**。围绕基础业务补齐真实调用与当前权限；管理员Gateway启用仍须对应契约和门禁。
 3. **P1：生产安全、恢复及基础购买支付**。继续整合已有业务，逐项验证生产证书/密钥、恢复保护与支付账务。
 4. **P2：商业扩展和高级拓扑**。优惠券、礼品卡、复杂佣金、Cluster/HA等按后续独立切片推进。
