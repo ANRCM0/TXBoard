@@ -79,6 +79,7 @@ jobs:
           DB_DATABASE: ':memory:'
           CACHE_DRIVER: array
           SETTING_CACHE_STORE: array
+          NATIVE_TRAFFIC_RECEIPTS_ENABLED: 'false'
         run: cd api && php vendor/bin/phpunit --filter 'NativeMachineRegistryLifecycleTest|NativeServerMachineSyncTest|NativeMachineSuccessorAtomicTest|NativeRedisPushAuthorityTest|TxNodeNativeWebSocketTest'
       - name: True Core Workerman Machine control and durable replay
         run: python3 scripts/tests/node-native-machine/run.py "$PWD/api" "$PWD/node" "$RUNNER_TEMP/native-machine-evidence"
