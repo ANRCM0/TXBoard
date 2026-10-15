@@ -64,3 +64,5 @@ Linux 全包 race 31 个包、1,203 个主/子测试项通过，另有8项条件
 完整顺序和完成条件见[基础功能优先级](development-priorities.md)。P0.7属隔离合成环境验收，不代表生产密钥自动配置、PKI/HA或完整迁移门禁通过。
 
 2026-10-15 用户确认采用[批次开发与集中验收](../../development/development-workflow.md)：连续实现一个或多个相关阶段，集中测试修复后提交推送。当前文档调整不增加功能完成度，也不把尚未执行的发布验收记为通过。
+
+2026-10-15 已定义[多团队PR协作方案](../../development/multi-team-development.md)，Core/Node/Gateway/Deploy按边界分工，统一接口与数据库协调；后续贡献经PR审阅合并，沿用批次集中验收。团队账号、CODEOWNERS及远端保护由维护者后续配置；文档更新不代表这些设置已生效。

@@ -281,7 +281,16 @@ For relevant production-image changes, preserve these checks at batch/release ac
 
 Whenever Module Package contract changes, keep JSON Schema, PHP vocabulary/DTOs, examples and tests in sync.
 
-## 17. PR discipline
+## 17. PR 与多团队协作（2026-10-15 用户最新决定）
+
+后续团队通过 PR 贡献源码、契约与协作文档；主题分支推送后经审阅合并，不直接推送默认分支。一个 PR 对应一个连贯功能批次，可包含多个相关阶段。完整分工和合并流程见[多团队方案](docs/development/multi-team-development.md)。
+
+- 按 Core、Node、Gateway、Deploy 划分工作线；共享模型、数据库迁移、接口契约和根 CI 由相关负责人协调，实际团队账号未指定前由维护者分配审阅人。
+- 每任务使用独立分支和工作目录；跨仓或 stacked PR 标明 base、依赖与发布顺序，不把未合入审阅分支当作稳定默认基线。
+- 可提前开 Draft 讨论契约；完成相关阶段后集中验收修复再请求正式审阅，不能把开 PR 当作重复全量测试的理由。
+- 至少一名非作者领域审阅人批准；跨团队接口须双方确认，权限/资金/迁移/发布变更加相关领域或集成负责人确认。实质修改后复审受影响部分。
+- 合并须依赖就绪、意见处理和相关CI/已配置required checks满足，由获授权维护者执行；提交/推送授权不自动扩大到自审自合、默认分支合并或镜像发布。
+- 使用[PR模板](.github/pull_request_template.md)说明实际行为、影响、依赖、验证和恢复条件。CODEOWNERS与远端分支保护需维护者配置，不能把协作文档当作已生效的权限控制。
 
 Prefer one architecture concern per PR.
 
