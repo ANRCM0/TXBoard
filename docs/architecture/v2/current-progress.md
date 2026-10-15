@@ -58,7 +58,7 @@ Linux 全包 race 31 个包、1,203 个主/子测试项通过，另有8项条件
 
 Core C1 候选已新增正式 `tx_order_purchase_terms`，用户建单与管理员手工分配均在同一事务内冻结订单身份、应付金额、币种、购买额度/分组/限速、周期与开通事件。`purchase_terms_version` 区分新旧订单；读取时验证完整性和归属，快照缺失/损坏拒绝履约，Plan后续修改或删除不会改变已有购买额度。手工报价显式标明来源，不要求对应目录价格。重置策略仅记录为后续订阅权威输入，当前持续重置仍由原生Plan/system策略负责。
 
-C1尚在PR审阅，不代表Core完成。集中验证88项（86通过、2项既有独立MySQL条件跳过）、654条断言；涉及真实MySQL迁移的远端检查仍待PR最终源码复验。接口见[Core Commerce v1](../../../contracts/v2/core-commerce-v1.md)。下一批按[Core完成计划](core-completion-plan.md)推进正式Subscription/Terms生命周期、用量账务和必要Internal API。
+C1已完成实现与本地批次验收，仍通过PR #247审阅，不代表Core完成或已发布。收尾修复MySQL百并发测试的快照清理顺序，保留正式外键删除保护，并验证100个独立会话只生成一笔订单和一份快照（108条断言），清理后无残留。独立MariaDB执行生产迁移及原88项相关回归（86通过、2项既有独立连接条件跳过、654条断言）；新增快照失败回滚、重置失败重试、一次性套餐与换套餐4项SQLite回归通过（39条断言）。现有MySQL 8.4 CI已加入购买快照、权益校验与真实履约专项；最终远端检查及合并状态以PR最终提交为准，不将本地MariaDB等同MySQL 8.4。详细范围见[收尾验收记录](core-c1-closeout-verification.json)，接口见[Core Commerce v1](../../../contracts/v2/core-commerce-v1.md)。下一批按[Core完成计划](core-completion-plan.md)推进正式Subscription/Terms生命周期、用量账务和必要Internal API。
 
 
 ## 下一步顺序

@@ -1,0 +1,76 @@
+{
+  "schema": "tx-core.c1-closeout-verification/v1",
+  "date": "2026-10-15",
+  "implementation_base": "7a0853f421b21e2aa7eef30564ca0359ece237fe",
+  "pull_request": 247,
+  "scope": "Purchased order terms, real legacy fulfillment, rollback and idempotency",
+  "changes": [
+    "Keep the purchase-evidence foreign key restricted; remove only the concurrency fixture's snapshots before its orders.",
+    "Assert that one hundred concurrent purchase replays produce one marked order and one purchase snapshot.",
+    "Cover capture failure after insertion, frozen reset-event failure and retry, perpetual purchase, and plan upgrade.",
+    "Run purchase snapshot, grant validation and real fulfillment tests in the existing MySQL 8.4 CI job."
+  ],
+  "local_environment": {
+    "runtime": "WSL Linux, PHP 8.4.16",
+    "database": "MariaDB 11.4.12, independent temporary data directory, Unix socket only",
+    "production_or_shared_database_modified": false,
+    "mysql_8_4_equivalence_claimed": false
+  },
+  "local_results": [
+    {
+      "check": "All production-schema migrations",
+      "result": "passed",
+      "evidence": "/tmp/tx-c1-closeout-foc3uvl3/migrations.log"
+    },
+    {
+      "check": "One hundred independent database sessions, order and snapshot idempotency",
+      "tests": 1,
+      "passed": 1,
+      "assertions": 108,
+      "result": "passed",
+      "evidence": "/tmp/tx-c1-closeout-foc3uvl3/concurrency.log"
+    },
+    {
+      "check": "Fixture cleanup after concurrent creation",
+      "remaining_orders": 0,
+      "remaining_purchase_terms": 0,
+      "remaining_idempotency_records": 0,
+      "result": "passed",
+      "evidence": "/tmp/tx-c1-closeout-foc3uvl3/fixture-cleanup.log"
+    },
+    {
+      "check": "Existing purchase, grant, fulfillment, monetary transitions, admin assignment, idempotency and shared catalog regression",
+      "tests": 88,
+      "passed": 86,
+      "skipped": 2,
+      "assertions": 654,
+      "skip_reason": "Existing independent-connection MySQL fixtures require their separate opt-in environment.",
+      "result": "passed with documented skips",
+      "evidence": "/tmp/tx-c1-closeout-foc3uvl3/purchased-terms-mysql.log"
+    },
+    {
+      "check": "Added capture rollback, reset rollback/retry, perpetual purchase and upgrade tests",
+      "database": "SQLite in memory",
+      "tests": 4,
+      "passed": 4,
+      "assertions": 39,
+      "result": "passed",
+      "evidence": ".tmp/c1-closeout-boundaries.log in the parent workspace"
+    }
+  ],
+  "review": {
+    "independent_read_only_code_review": "No additional high-confidence production defect found.",
+    "human_non_author_approval": "Still required under the repository PR workflow."
+  },
+  "remote_gate": {
+    "prior_failure": "The MySQL stress test completed its purchase assertions but failed while deleting an order referenced by purchase evidence.",
+    "final_source_of_truth": "PR #247 checks for its final head, including MySQL 8.4, API and image verification.",
+    "merge_or_release_claimed": false
+  },
+  "boundaries": [
+    "C1 does not switch User or Subscription authority.",
+    "Ongoing reset scheduling still uses the existing native Plan and system policy.",
+    "Payment ledger, refunds, production Provider secrets and formal Internal API remain in C2-C5.",
+    "The branch is submitted for review; merging and publishing remain maintainer actions."
+  ]
+}

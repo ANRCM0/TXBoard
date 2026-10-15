@@ -251,6 +251,95 @@ class PurchasedTermsFulfillmentTest extends TestCase
         }
     }
 
+    public function test_failed_snapshot_capture_rolls_back_order_wallet_and_idempotency(): void
+    {
+        $user = $this->user(['balance' => 400]);
+        $plan = $this->plan();
+        $before = $this->state();
+        new OrderPurchaseTerms();
+        $dispatcher = OrderPurchaseTerms::getEventDispatcher();
+        OrderPurchaseTerms::setEventDispatcher(clone $dispatcher);
+        OrderPurchaseTerms::created(static function (): void {
+            throw new \RuntimeException('snapshot capture failed after insert');
+        });
+        $caught = null;
+        try {
+            OrderService::createFromRequest($user, $plan, Plan::PERIOD_MONTHLY, null, 'failed-purchase-snapshot');
+        } catch (\App\Exceptions\ApiException $exception) {
+            $caught = $exception;
+        } finally {
+            OrderPurchaseTerms::setEventDispatcher($dispatcher);
+        }
+        $this->assertNotNull($caught);
+        $this->assertSame($before, $this->state());
+        $this->assertSame(0, DB::table('idempotency_keys')->where('user_id', $user->id)->count());
+    }
+
+    public function test_failed_frozen_open_event_rolls_back_and_retry_applies_once(): void
+    {
+        $plan = $this->plan();
+        $user = $this->user(['plan_id' => $plan->id, 'group_id' => 7,
+            'transfer_enable' => 2 * 1073741824, 'expired_at' => time() + 86400, 'u' => 17, 'd' => 23]);
+        admin_setting(['renew_order_event_id' => 1]);
+        $order = $this->create($user, $plan);
+        $this->markPaid($order);
+        $this->mock(\App\Services\TrafficResetService::class, function ($mock): void {
+            $mock->shouldReceive('performReset')->once()->andReturn(false);
+        });
+
+        $this->assertOpenRefusedWithoutMutation($order);
+
+        $this->app->forgetInstance(\App\Services\TrafficResetService::class);
+        (new OrderService($order->fresh()))->open();
+        $this->assertSame(Order::STATUS_COMPLETED, (int) $order->fresh()->status);
+        $this->assertSame(0, (int) $user->fresh()->u);
+        $this->assertSame(0, (int) $user->fresh()->d);
+        $this->assertSame(1, (int) $user->fresh()->reset_count);
+        $before = $this->state();
+        (new OrderService($order->fresh()))->open();
+        $this->assertSame($before, $this->state());
+    }
+
+    public function test_one_time_purchase_uses_frozen_grant_and_remains_perpetual(): void
+    {
+        $user = $this->user(['u' => 17, 'd' => 23]);
+        $plan = $this->plan(['prices' => ['onetime' => 11]]);
+        $order = OrderService::createFromRequest($user, $plan, Plan::PERIOD_ONETIME);
+        $this->assertSame('perpetual', $this->terms($order)->purchase_kind);
+        $plan->update(['transfer_enable' => 99, 'group_id' => 99, 'speed_limit' => 1, 'device_limit' => 1]);
+
+        $this->payAndOpen($order);
+
+        $this->assertGrant($user, (int) $plan->id);
+        $this->assertNull($user->fresh()->expired_at);
+        $this->assertSame(0, (int) $user->fresh()->u);
+        $this->assertSame(0, (int) $user->fresh()->d);
+        $this->assertSame(Order::STATUS_COMPLETED, (int) $order->fresh()->status);
+    }
+
+    public function test_upgrade_uses_frozen_target_grant_and_restarts_its_duration(): void
+    {
+        admin_setting(['surplus_enable' => 0]);
+        $previous = $this->plan();
+        $oldExpiry = time() + 365 * 86400;
+        $user = $this->user(['plan_id' => $previous->id, 'group_id' => 3,
+            'transfer_enable' => 1073741824, 'expired_at' => $oldExpiry, 'u' => 17, 'd' => 23]);
+        $target = $this->plan();
+        $order = $this->create($user, $target);
+        $this->assertSame(Order::TYPE_UPGRADE, (int) $order->type);
+        $target->update(['transfer_enable' => 99, 'group_id' => 99, 'speed_limit' => 1, 'device_limit' => 1]);
+        $before = time();
+
+        $this->payAndOpen($order);
+
+        $this->assertGrant($user, (int) $target->id);
+        $this->assertGreaterThanOrEqual($before + 28 * 86400, (int) $user->fresh()->expired_at);
+        $this->assertLessThan($oldExpiry, (int) $user->fresh()->expired_at);
+        $this->assertSame(17, (int) $user->fresh()->u);
+        $this->assertSame(23, (int) $user->fresh()->d);
+        $this->assertSame(Order::STATUS_COMPLETED, (int) $order->fresh()->status);
+    }
+
     private function assertOpenRefusedWithoutMutation(Order $order): void
     {
         $before = $this->state();
