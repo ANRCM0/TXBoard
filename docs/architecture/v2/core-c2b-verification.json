@@ -39,6 +39,17 @@
   },
   "results": [
     {
+      "check": "Remote MySQL idempotency regression repair",
+      "initial_remote_run": 38792264895,
+      "initial_failure": "The locked successful idempotency claim was newer than the ordinary order lookup's repeatable-read snapshot.",
+      "repair": "Load the replayed order with a locking current read under the existing account/idempotency transaction.",
+      "local_retest": "100 independent MariaDB sessions converged on one order and one purchase snapshot.",
+      "tests": 1,
+      "assertions": 108,
+      "result": "local retest passed; new remote CI pending",
+      "evidence": "/tmp/tx-c2-acceptance-vs_l4w2v/mysql-k88uqnrh/mysql-native-domain.log"
+    },
+    {
       "check": "Affected subscription, usage, billing, installation and adapter regression sweep",
       "tests": 699,
       "passed": 622,
