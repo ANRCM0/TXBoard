@@ -217,3 +217,21 @@ settlement. It must reject replayed legacy work and demonstrate the required
 writer/queue drain for the installation. No schema relabel, process flag,
 hand-edited and rehashed `native/open` row, or test admission substitute meets
 these prerequisites in this version.
+
+## C2-C1 Provider issuance boundary
+
+The real Provider issue/query/subject-revoke slice is specified in
+[native-issuance-v1.md](credential-provider/native-issuance-v1.md).
+Core durably records operations and pending native AccessSubjects before
+external calls, recovers unknown outcomes by querying the same operation, and
+rechecks ownership and entitlement before binding non-secret receipts.
+Late issue success after local revocation or entitlement change produces an
+orphan operation and a persisted compensating revocation. Stored success
+requires intact receipts; a missing receipt is not reconstructed from mutable
+Subject metadata.
+
+The Provider's separately executed runtime owns real UUID material and private
+storage. Its Core endpoint exports no material, and no Node/renderer consumes
+it yet. Native runtime remains initializing. Neither native Subject activation
+inside an admission-substituted domain test nor real mTLS issuance activates
+the installation or completes C2.
