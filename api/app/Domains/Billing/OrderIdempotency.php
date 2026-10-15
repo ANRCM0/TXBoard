@@ -90,8 +90,10 @@ final class OrderIdempotency
                     409, 'IDEMPOTENCY_CONFLICT');
             }
             if ($record->status === 'succeeded') {
+                // Match the locked claim's current view, even if earlier metadata
+                // inspection established a repeatable-read snapshot before it committed.
                 $order = Order::query()->where('user_id', $userId)
-                    ->where('trade_no', $record->trade_no)->first();
+                    ->where('trade_no', $record->trade_no)->lockForUpdate()->first();
                 if (!$order) {
                     throw new IdempotencyException('Original order is not available', 409, 'ORDER_CONFLICT');
                 }
