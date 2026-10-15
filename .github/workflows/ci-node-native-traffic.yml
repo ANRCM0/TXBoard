@@ -70,7 +70,17 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y mariadb-client openssl
       - name: Restore locked Core fixtures and Node dependencies
         run: |
-          composer install --working-dir=api --no-interaction --prefer-dist
+          # Keep the lock and package sources fixed. GitHub dist downloads can
+          # fail transiently even when the same pinned commit is available.
+          for attempt in 1 2 3; do
+            if composer install --working-dir=api --no-interaction --prefer-dist; then
+              break
+            else
+              result=$?
+              if [ "$attempt" -eq 3 ]; then exit "$result"; fi
+              sleep "$((attempt * 5))"
+            fi
+          done
           cd node
           go mod download
       - name: Prepare disposable Core storage
@@ -128,7 +138,18 @@ jobs:
           extensions: mbstring, pdo_mysql, pdo_sqlite, bcmath, redis, pcntl, posix
           coverage: none
       - name: Restore locked Core fixtures
-        run: composer install --working-dir=api --no-interaction --prefer-dist
+        run: |
+          # Keep the lock and package sources fixed. GitHub dist downloads can
+          # fail transiently even when the same pinned commit is available.
+          for attempt in 1 2 3; do
+            if composer install --working-dir=api --no-interaction --prefer-dist; then
+              break
+            else
+              result=$?
+              if [ "$attempt" -eq 3 ]; then exit "$result"; fi
+              sleep "$((attempt * 5))"
+            fi
+          done
       - name: Prepare disposable Core storage
         run: |
           touch api/.env
