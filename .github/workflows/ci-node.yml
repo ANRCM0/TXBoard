@@ -221,6 +221,7 @@ jobs:
           assert proof['protocol_version']==1 and proof['runtime']=='tx-node'
           assert proof['commit']==sys.argv[1]
           assert 'node_authorization_snapshot_v1' in proof['capabilities']
+          assert 'node_runtime_checkpoint_v1' in proof['capabilities']
           print('Exact-image offline authorization capability passed')
           PY
       - name: Verify old Compose mount fallback
