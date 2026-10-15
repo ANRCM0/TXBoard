@@ -13,7 +13,16 @@ class SubscriptionTerms extends ImmutableSubscriptionRecord
     {
         parent::booted();
         static::creating(function (self $terms) {
-            if ($terms->plan_revision_id !== null) {
+            if ($terms->schema_version === 'core-subscription-terms/v1') {
+                $subscription = \Illuminate\Support\Facades\DB::table('tx_subscription')
+                    ->where('id', $terms->subscription_id)->first();
+                if ($subscription === null) {
+                    throw new LogicException('Native subscription owner is missing.');
+                }
+                app(\App\Services\Subscription\NativeSubscriptionStore::class)
+                    ->verifyTerms((object) $terms->getAttributes(), $subscription);
+            } elseif ($terms->plan_revision_id !== null || $terms->schema_version !== null
+                || $terms->source_order_id !== null || $terms->source_snapshot !== null) {
                 throw new LogicException('Catalog revision references are unavailable in subscription shadow v1.');
             }
         });
@@ -26,6 +35,7 @@ class SubscriptionTerms extends ImmutableSubscriptionRecord
             'effective_from' => 'integer', 'effective_until' => 'integer', 'quota_bytes' => 'string',
             'group_id' => 'integer', 'speed_limit_mbps' => 'integer', 'device_limit' => 'integer',
             'reset_policy' => 'array', 'legacy_snapshot' => 'array',
+            'source_order_id' => 'integer', 'source_snapshot' => 'array',
         ];
     }
 

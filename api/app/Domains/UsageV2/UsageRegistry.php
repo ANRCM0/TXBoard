@@ -4,7 +4,7 @@ namespace App\Domains\UsageV2;
 
 use Illuminate\Support\Facades\DB;
 
-/** Isolated fixtures only. Epochs, tariffs and grants are always assigned by Core. */
+/** Epochs, tariffs and grants are always assigned by Core. */
 final class UsageRegistry
 {
     public function __construct(private UsagePolicy $policy, private ?UsageTermsBoundary $boundaries = null) {}
@@ -14,6 +14,7 @@ final class UsageRegistry
         $this->policy->requireIsolated();
         if (!preg_match('/^[A-Za-z0-9:_-]{8,80}$/D', $installationRef)) { throw new UsageError('USAGE_INSTALLATION_INVALID'); }
         return DB::transaction(function () use ($nodeId, $installationRef, $now) {
+            $this->policy->requireTransaction();
             // Lock a stable node row even when this is its first source allocation.
             if (!DB::table('tx_server')->where('id', $nodeId)->lockForUpdate()->exists()) { throw new UsageError('USAGE_NODE_MISSING', 404); }
             $existing = DB::table('tx_node_usage_source')->where('node_id', $nodeId)->where('installation_ref', $installationRef)->lockForUpdate()->first();
@@ -38,8 +39,11 @@ final class UsageRegistry
         if ($from >= $until || !DB::table('tx_server')->where('id', $nodeId)->exists()) { throw new UsageError('USAGE_TARIFF_INVALID'); }
         $data = ['node_id' => $nodeId, 'numerator' => $numerator, 'denominator' => $denominator,
             'effective_from' => $from, 'effective_until' => $until, 'rounding_revision' => 'floor-per-direction-v1'];
-        $id = DB::table('tx_tariff_revision')->insertGetId($data + ['content_hash' => self::hash($data), 'created_at' => time()]);
-        return DB::table('tx_tariff_revision')->where('id', $id)->first();
+        return DB::transaction(function () use ($data) {
+            $this->policy->requireTransaction();
+            $id = DB::table('tx_tariff_revision')->insertGetId($data + ['content_hash' => self::hash($data), 'created_at' => time()]);
+            return DB::table('tx_tariff_revision')->where('id', $id)->first();
+        }, 3);
     }
 
     public function grant(int $sourceId, int $subjectId, int $termsId, int $periodId, int $tariffId, int $issued, int $expires): object
@@ -47,6 +51,7 @@ final class UsageRegistry
         $this->policy->requireIsolated(); UsagePayload::time($issued); UsagePayload::time($expires);
         if ($issued >= $expires) { throw new UsageError('USAGE_LEASE_INVALID'); }
         return DB::transaction(function () use ($sourceId, $subjectId, $termsId, $periodId, $tariffId, $issued, $expires) {
+            $this->policy->requireTransaction();
             $source = DB::table('tx_node_usage_source')->where('id', $sourceId)->lockForUpdate()->first();
             if (!$source || !$source->current) { throw new UsageError('USAGE_SOURCE_INVALID'); } $this->identity($source);
             $subject = DB::table('tx_access_subject')->where('id', $subjectId)->lockForUpdate()->first();
@@ -64,6 +69,7 @@ final class UsageRegistry
                 || !self::covers($issued, $expires, $tariff->effective_from, $tariff->effective_until)) {
                 throw new UsageError('USAGE_GRANT_OWNERSHIP_OR_COVERAGE');
             }
+            $this->policy->assertSubscription($sub);
             ($this->boundaries ?? app(UsageTermsBoundary::class))->freeze((string) $sub->id, (string) $termsId, $period, $issued, $expires);
             $data = ['source_id' => $sourceId, 'user_id' => (int) $sub->user_id, 'access_subject_id' => $subjectId,
                 'subscription_id' => (string) $sub->id, 'terms_id' => $termsId, 'usage_period_id' => $periodId,
@@ -83,6 +89,7 @@ final class UsageRegistry
 
     private function capabilityLocked(int $nodeId, int $now): ?array
     {
+        $this->policy->requireTransaction();
         $source = DB::table('tx_node_usage_source')->where('node_id', $nodeId)->where('current', true)->sharedLock()->first();
         if (!$source) { return null; } $this->identity($source);
         $grants = []; $owners = [];
@@ -96,6 +103,7 @@ final class UsageRegistry
                 || ($sub->expires_at !== null && (int) $sub->expires_at <= $now) || $sub->ended_at !== null
                 || (string) $subject->auth_version !== (string) $grant->auth_version
                 || (string) $subject->revocation_fact_version !== (string) $grant->revocation_version) { continue; }
+            $this->policy->assertSubscription($sub);
             $period = DB::table('tx_usage_period')->where('id', $grant->usage_period_id)->sharedLock()->first();
             if (!$period) { throw new UsageError('USAGE_PERIOD_BOUNDARY'); }
             try {
@@ -131,6 +139,7 @@ final class UsageRegistry
         $this->policy->requireIsolated();
         if (!preg_match('/^[A-Z][A-Z0-9_]{2,79}$/D', $reason)) { throw new UsageError('USAGE_RECOVERY_REASON_INVALID'); }
         return DB::transaction(function () use ($nodeId, $reason) {
+            $this->policy->requireTransaction();
             $source = DB::table('tx_node_usage_source')->where('node_id', $nodeId)->where('current', true)->lockForUpdate()->first();
             if (!$source || $source->core_instance_id !== config('core_usage_v2.core_instance_id')
                 || UsagePayload::compare((string) config('core_usage_v2.receipt_generation'), (string) $source->receipt_generation) <= 0) {

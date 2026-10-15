@@ -14,6 +14,7 @@ final class ServerController
 {
     public function index(Request $request, UserService $users): JsonResponse
     {
+        app(\App\Domains\Installation\InstallationAuthority::class)->assertRuntime();
         $user = User::query()->findOrFail(Auth::guard('sanctum')->id());
         $servers = $users->isAvailable($user)
             ? ServerService::getAvailableServers($user) : [];

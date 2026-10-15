@@ -1,0 +1,114 @@
+{
+  "schema": "tx-core.c2b-verification/v1",
+  "date": "2026-10-16",
+  "branch": "feat/core-native-subscriptions",
+  "implementation_base": "ee8e4b7",
+  "unmerged_dependency": {
+    "pull_request": 247,
+    "head": "5e03dbcb33ba44cd1896a1c54053ae128868fe79",
+    "state_checked": "OPEN on 2026-10-16",
+    "required_order": "C1 must merge before the C2 branch."
+  },
+  "scope": [
+    "Published-offer purchases and immutable v2 purchase evidence without legacy wallet adjustments.",
+    "Atomic native fulfillment, persistent account slots, append-only terms and operation receipts.",
+    "Versioned suspend, resume, revoke, expire and reset; bounded scheduled boundary catch-up.",
+    "Shared non-secret entitlement projection and native ownership checks in usage receipt and settlement transactions.",
+    "Authenticated order and administrator adapters, with no legacy UUID entitlement fallback.",
+    "Bounded rotating native order recovery, paid-order redispatch and two-hour pending reservation expiry.",
+    "Primary/current installation reads and account-scoped ordered subscription locking."
+  ],
+  "status": {
+    "c2b_implementation": "implemented with local batch acceptance",
+    "complete_c2": false,
+    "native_ready": false,
+    "activation_operation_available": false,
+    "merged": false,
+    "published": false,
+    "remote_ci": "Pending review-branch CI; the new MySQL 8.4 job is configured but not claimed as accepted here."
+  },
+  "environment": {
+    "php": "8.4.16",
+    "databases": ["SQLite in memory", "MariaDB 11.4.12"],
+    "database_isolation": "Disposable MariaDB data directories and Unix sockets; no shared or production database.",
+    "redis_isolation": "Private Unix-socket Redis with persistence and TCP disabled.",
+    "dependencies": "Existing locked vendor contents; no dependency update.",
+    "mariadb_claimed_as_mysql_8_4": false,
+    "fixture_root": "/tmp/tx-c2-acceptance-vs_l4w2v",
+    "native_domain_admission": "Substituted only in domain fixtures; production remains native/initializing and rejects business admission."
+  },
+  "results": [
+    {
+      "check": "Affected subscription, usage, billing, installation and adapter regression sweep",
+      "tests": 699,
+      "passed": 622,
+      "skipped": 76,
+      "errors": 1,
+      "assertions": 6758,
+      "evidence": "/tmp/tx-c2-acceptance-vs_l4w2v/c2b-related-regression.log",
+      "resolution": "The one error was a missing private Redis fixture, repaired in subsequent focused runs. Existing independent-database/process opt-ins account for skips. This was not a single green full-API run."
+    },
+    {
+      "check": "Focused repair run with private Redis, current-read admission and purchase changes",
+      "tests": 111,
+      "passed": 103,
+      "skipped": 8,
+      "assertions": 1004,
+      "result": "passed",
+      "evidence": "Recorded command output; the temporary runner log was subsequently overwritten."
+    },
+    {
+      "check": "Final native domain, migration, recovery, entitlement and adapter suite after lock-scope repair",
+      "tests": 90,
+      "passed": 88,
+      "skipped": 2,
+      "assertions": 949,
+      "result": "passed",
+      "skip_reason": "The two independent MySQL capacity cases run separately on a dedicated database.",
+      "evidence": "/tmp/tx-c2-acceptance-vs_l4w2v/c2b-repairs-1792091140954627128.log"
+    },
+    {
+      "check": "Initial production migrations and native domain transactions on MariaDB",
+      "tests": 54,
+      "assertions": 734,
+      "result": "passed before final lock-scope and recovery changes",
+      "evidence": "/tmp/tx-c2-acceptance-vs_l4w2v/mysql-v915v7wd/mysql-native-domain.log"
+    },
+    {
+      "check": "Final production migrations and affected MariaDB capacity, recovery, entitlement and usage cases",
+      "tests": 20,
+      "assertions": 285,
+      "result": "passed",
+      "evidence": "/tmp/tx-c2-acceptance-vs_l4w2v/mysql-4zspxeyd/mysql-native-domain.log"
+    },
+    {
+      "check": "PHP syntax and workflow YAML",
+      "php_files": 45,
+      "result": "passed",
+      "evidence": "/tmp/tx-c2-acceptance-vs_l4w2v/c2b-php-lint.log"
+    },
+    {
+      "check": "Live registered HTTP routes, source naming and external interface audit",
+      "http_methods": 256,
+      "route_families": 10,
+      "route_script_tests": 10,
+      "result": "passed"
+    }
+  ],
+  "repairs": [
+    "Do not propagate later native Plan reset edits to legacy User entitlement fields.",
+    "Compare replay result objects canonically while preserving strict value types.",
+    "Apply the same complete history validation to entitlement reads and mutation paths.",
+    "Acquire the Plan lock before a fresh purchase establishes a repeatable-read business snapshot.",
+    "Force the additive (user_id,id) subscription index to avoid locking another account through a primary-key scan.",
+    "Restore native order recovery and rotate bounded scans so failed low-ID orders do not starve later work.",
+    "Use primary order status and stored purchase markers when recovering jobs and routing fulfillment."
+  ],
+  "remaining": [
+    "C2-C explicit readiness transition and verified real Provider credential issuance/rotation.",
+    "Native Node REST/WS/full/delta and subscription delivery consuming the common entitlement authority.",
+    "End-to-end real credential authorization, traffic transport and durable usage settlement.",
+    "Production writer coverage and legacy queue drain evidence before activation.",
+    "Non-author review, dependency merge, required remote CI and authorized release."
+  ]
+}

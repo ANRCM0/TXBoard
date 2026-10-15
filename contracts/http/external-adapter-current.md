@@ -18,9 +18,17 @@
 普通 TXAPI JSON 响应包含 `data`、`request_id`，分页可含 `meta`；错误通常为 `error.code`、`error.message` 和 `request_id`，响应头包含 `X-Request-Id`。第三方回调有各自响应约定。存活检查：`GET /txapi/health`。
 
 存活检查与安装就绪分开：`/api/health`、`/txapi/health`不依赖数据库；
-`/txapi/readiness`在安装权威校验后返回`data.ready=true`。C2-A的native安装
+`/txapi/readiness`在安装权威校验后返回`data.ready=true`。C2-A/C2-B的native安装
 始终处于`initializing`，业务HTTP请求统一拒绝；不能通过修改环境变量回legacy绕过。
 既有未初始化legacy部署保持原业务模式。边界见[Core Subscription v1](../v2/core-subscription-v1.md)。
+
+C2-B已注册原生订阅应用适配，但仍受上述安装门禁约束：
+`POST /txapi/orders`在native模式只接受`offer_id`并要求`Idempotency-Key`；
+`POST /txapi/admin/{admin_path}/subscriptions/{id}/operations/{operation}`要求管理员身份、
+`expected_version`和`Idempotency-Key`，操作仅限暂停、恢复、撤销、到期及重置。
+账户归属由Core读取，不能通过请求选择。账户权益读取返回非秘密订阅投影，
+不返回旧UUID作为原生代理凭据。legacy安装的订单与账户契约保持现状；
+生产原生Node授权、Provider凭据及订阅分发须完成C2-C后才可启用。
 
 ## 具体对接
 

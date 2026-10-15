@@ -6,6 +6,7 @@ use App\Models\Order;
 use App\Models\OrderPurchaseTerms;
 use App\Models\Plan;
 use App\Services\OrderService;
+use App\Services\Subscription\PlanPublicationService;
 use DateTimeZone;
 use JsonException;
 use RuntimeException;
@@ -19,20 +20,23 @@ final class PurchasedOrderGrant
         if ($terms === null && $order->purchase_terms_version === null) {
             return null;
         }
-        $this->require($terms !== null && $order->purchase_terms_version === 'tx-core.purchase-terms/v1');
+        $this->require($terms !== null && in_array($order->purchase_terms_version,
+            ['tx-core.purchase-terms/v1', 'tx-core.purchase-terms/v2'], true));
+        $published = $order->purchase_terms_version === 'tx-core.purchase-terms/v2';
         try {
             $snapshot = $terms->source_snapshot;
             $this->require(is_array($snapshot) && !array_is_list($snapshot));
-            $this->keys($snapshot, ['schema', 'order_id', 'user_id', 'plan_id', 'plan_name', 'period',
+            $expectedKeys = ['schema', 'order_id', 'user_id', 'plan_id', 'plan_name', 'period',
                 'order_type', 'quote_source', 'list_price_minor', 'price_minor', 'currency', 'currency_minor_exponent',
                 'quota_bytes', 'group_id', 'speed_limit_mbps', 'device_limit', 'reset_policy',
-                'duration_months', 'calendar_policy', 'purchase_kind', 'open_event_id', 'content_hash']);
+                'duration_months', 'calendar_policy', 'purchase_kind', 'open_event_id', 'content_hash'];
+            $this->keys($snapshot, $published ? [...$expectedKeys, 'catalog'] : $expectedKeys);
             $hash = $snapshot['content_hash'] ?? null;
             $this->require(is_string($hash) && preg_match('/^[a-f0-9]{64}$/D', $hash) === 1);
             unset($snapshot['content_hash']);
             $this->require(hash_equals($hash, (string) $terms->content_hash)
                 && hash_equals($hash, hash('sha256', $this->canonical($snapshot))));
-            $this->require(($snapshot['schema'] ?? null) === 'tx-core.purchase-terms/v1');
+            $this->require(($snapshot['schema'] ?? null) === $order->purchase_terms_version);
             foreach (['order_id', 'user_id', 'plan_id'] as $field) {
                 $identity = $field === 'order_id' ? $order->id : $order->{$field};
                 $this->require($this->integer($snapshot[$field] ?? null, true) === $this->integer($identity, true)
@@ -92,8 +96,39 @@ final class PurchasedOrderGrant
             $this->require($calendar['timezone'] === 'UTC' && is_bool($calendar['month_overflow']));
             $this->require(in_array($this->integer($snapshot['open_event_id']), ['0', '1'], true));
             $snapshot['content_hash'] = $hash;
+            if ($published) {
+                $this->verifyPublished($order, $snapshot);
+            }
             return $snapshot;
         } catch (JsonException|\TypeError|\ValueError $error) {
+            throw new RuntimeException('ORDER_PURCHASE_TERMS_INVALID', previous: $error);
+        }
+    }
+
+    private function verifyPublished(Order $order, array $snapshot): void
+    {
+        foreach (['balance_amount', 'surplus_amount', 'surplus_credit', 'discount_amount', 'commission_balance',
+            'actual_commission_balance', 'commission_rate', 'commission_status', 'commission_auto_check',
+            'coupon_id', 'invite_user_id'] as $field) {
+            $value = $order->getAttribute($field);
+            $this->require($value === null || $value === 0 || $value === '0');
+        }
+        $this->require($order->surplus_order_ids === null || $order->surplus_order_ids === []);
+        $binding = $snapshot['catalog'];
+        $this->require(is_array($binding));
+        $this->keys($binding, ['revision_id', 'offer_id', 'publication_hash']);
+        $this->require(is_string($binding['revision_id']) && is_string($binding['offer_id'])
+            && is_string($binding['publication_hash'])
+            && preg_match('/^[a-f0-9]{64}$/D', $binding['publication_hash']) === 1);
+        $this->integer($binding['revision_id'], true);
+        $offerId = (int) $this->integer($binding['offer_id'], true);
+        try {
+            // Publication evidence is immutable. Do not acquire current Plan/availability locks
+            // while fulfillment holds the subscription aggregate and purchased terms.
+            $publication = app(PlanPublicationService::class)->verifiedOffer($offerId);
+            $expected = app(OrderPurchaseTermsSnapshot::class)->buildPublished($order, $publication);
+            $this->require($this->canonical($expected) === $this->canonical($snapshot));
+        } catch (\InvalidArgumentException|RuntimeException $error) {
             throw new RuntimeException('ORDER_PURCHASE_TERMS_INVALID', previous: $error);
         }
     }

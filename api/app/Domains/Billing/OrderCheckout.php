@@ -7,6 +7,7 @@ use App\Models\Order;
 use App\Models\Payment;
 use App\Services\OrderService;
 use App\Services\PaymentService;
+use App\Services\Subscription\PublishedOrderService;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -19,13 +20,24 @@ final class OrderCheckout
     public function start(int $userId, string $tradeNo, ?int $paymentMethod = null,
         ?string $paymentToken = null): array
     {
-        $prepared = DB::transaction(static function () use (
+        $locator = Order::query()->useWritePdo()->where('user_id', $userId)->where('trade_no', $tradeNo)->first();
+        if ($locator === null) throw new ApiException('Order does not exist', 404);
+        $native = $locator?->purchase_terms_version === PublishedOrderService::VERSION;
+        $prepare = static function (?Order $order = null) use (
             $userId, $tradeNo, $paymentMethod
         ): array {
-            app(\App\Domains\AuthorityMigration\AuthorityWriterFence::class)->admit('order.checkout');
-            $order = Order::query()->where('user_id', $userId)
-                ->where('trade_no', $tradeNo)->lockForUpdate()->first();
+            if ($order === null) {
+                app(\App\Domains\AuthorityMigration\AuthorityWriterFence::class)->admit('order.checkout');
+                $order = Order::query()->where('user_id', $userId)
+                    ->where('trade_no', $tradeNo)->lockForUpdate()->first();
+                if ($order?->purchase_terms_version === PublishedOrderService::VERSION) {
+                    throw new ApiException('Native order requires native checkout admission', 409);
+                }
+            }
             if (!$order) {
+                throw new ApiException('Order does not exist', 404);
+            }
+            if ((int) $order->user_id !== $userId || $order->trade_no !== $tradeNo) {
                 throw new ApiException('Order does not exist', 404);
             }
             if ((int) $order->status !== Order::STATUS_PENDING) {
@@ -59,7 +71,10 @@ final class OrderCheckout
             $order->payment_id = $paymentMethod;
             $order->saveOrFail();
             return ['kind' => 'paid', 'order' => $order, 'provider' => $provider];
-        });
+        };
+        $prepared = $native
+            ? app(PublishedOrderService::class)->transitionOrder((int) $locator->id, $prepare)
+            : DB::transaction(fn () => $prepare());
 
         /** @var Order $order */
         $order = $prepared['order'];

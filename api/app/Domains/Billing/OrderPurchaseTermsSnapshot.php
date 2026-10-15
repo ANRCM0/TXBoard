@@ -70,6 +70,61 @@ final class OrderPurchaseTermsSnapshot
         $purchase = $this->build($order, $plan, (string) admin_setting('currency', 'CNY'),
             $plan->reset_traffic_method === null ? (int) admin_setting('reset_traffic_method', Plan::RESET_TRAFFIC_MONTHLY) : (int) $plan->reset_traffic_method,
             (string) config('app.timezone', 'UTC'), $this->eventFor($order), $manualAssignment);
+        return $this->persist($order, $purchase);
+    }
+
+    /** Build v2 only from a fully verified immutable publication, never the current Plan. */
+    public function buildPublished(Order $order, array $published): array
+    {
+        $offer = $published['offer'];
+        $revision = $published['revision'];
+        $source = $published['source'];
+        if ($order->id <= 0 || $order->user_id <= 0
+            || (string) $order->plan_id !== (string) $revision->plan_id
+            || (string) $order->plan_id !== (string) $offer->plan_id
+            || (string) $order->period !== $offer->offer_code
+            || (string) $order->total_amount !== (string) $offer->price_minor
+            || (string) $order->purchase_terms_version !== 'tx-core.purchase-terms/v2'
+            || ($offer->offer_code === Plan::PERIOD_RESET_TRAFFIC) !== ((int) $order->type === Order::TYPE_RESET_TRAFFIC)) {
+            throw new InvalidArgumentException('ORDER_PURCHASE_TERMS_IDENTITY_INVALID');
+        }
+        $event = match ((int) $order->type) {
+            Order::TYPE_NEW_PURCHASE => $source['open_events']['new_order_event_id'],
+            Order::TYPE_RENEWAL => $source['open_events']['renew_order_event_id'],
+            Order::TYPE_UPGRADE => $source['open_events']['change_order_event_id'],
+            Order::TYPE_RESET_TRAFFIC => 0,
+            default => throw new InvalidArgumentException('ORDER_PURCHASE_TERMS_TYPE_INVALID'),
+        };
+        $snapshot = [
+            'schema' => 'tx-core.purchase-terms/v2', 'order_id' => (string) $order->id,
+            'user_id' => (string) $order->user_id, 'plan_id' => (string) $order->plan_id,
+            'plan_name' => $source['name'], 'period' => $offer->offer_code, 'order_type' => (int) $order->type,
+            'quote_source' => 'catalog', 'list_price_minor' => (string) $offer->price_minor,
+            'price_minor' => (string) $offer->price_minor, 'currency' => $offer->currency, 'currency_minor_exponent' => 2,
+            'quota_bytes' => $source['quota_bytes'],
+            'group_id' => $source['group_id'] === null ? null : (int) $source['group_id'],
+            'speed_limit_mbps' => $source['speed_limit_mbps'] === null ? null : (int) $source['speed_limit_mbps'],
+            'device_limit' => $source['device_limit'] === null ? null : (int) $source['device_limit'],
+            'reset_policy' => $source['reset_policy'],
+            'duration_months' => $offer->calendar_months === null ? null : (int) $offer->calendar_months,
+            'calendar_policy' => $source['calendar_policy'], 'purchase_kind' => $offer->purchase_kind,
+            'open_event_id' => $event,
+            'catalog' => ['revision_id' => (string) $revision->id, 'offer_id' => (string) $offer->id,
+                'publication_hash' => (string) $revision->content_hash],
+        ];
+        return $snapshot + ['content_hash' => $this->catalog->hash($snapshot)];
+    }
+
+    public function capturePublished(Order $order, array $published): OrderPurchaseTerms
+    {
+        if (DB::transactionLevel() === 0 || $order->purchase_terms_version !== 'tx-core.purchase-terms/v2') {
+            throw new RuntimeException('ORDER_PURCHASE_TERMS_TRANSACTION_REQUIRED');
+        }
+        return $this->persist($order, $this->buildPublished($order, $published));
+    }
+
+    private function persist(Order $order, array $purchase): OrderPurchaseTerms
+    {
         return OrderPurchaseTerms::query()->create([
             'order_id' => $order->id, 'user_id' => $order->user_id, 'plan_id' => $order->plan_id,
             'period' => $purchase['period'], 'order_type' => $purchase['order_type'],

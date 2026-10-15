@@ -153,6 +153,93 @@ class InstallationAuthorityTest extends TestCase
         $this->reject('WORKER_MISMATCH', fn () => DB::transaction(fn () => $this->authority()->assertLegacyWriter()));
     }
 
+    public function test_native_domain_admission_does_not_activate_preparation_or_legacy(): void
+    {
+        foreach (['assertNativeMutation', 'assertNativeRead'] as $method) {
+            $this->reject('TRANSACTION_REQUIRED', fn () => $this->authority()->$method());
+            $this->reject('NATIVE_NOT_READY', fn () => DB::transaction(fn () => $this->authority()->$method()));
+        }
+        $this->authority()->initialize(self::ID, 'native', 'domain-preparation');
+        config(['core_installation.mode' => 'native', 'authority_writer_fence.enabled' => false]);
+        foreach (['assertNativeMutation', 'assertNativeRead'] as $method) {
+            $this->reject('NATIVE_NOT_READY', fn () => DB::transaction(fn () => $this->authority()->$method()));
+        }
+        $this->assertSame('initializing', $this->authority()->inspect()['phase']);
+        config(['core_installation.mode' => 'legacy']);
+        $this->reject('WORKER_MISMATCH', fn () => DB::transaction(fn () => $this->authority()->assertNativeMutation()));
+        config(['core_installation.mode' => 'native', 'core_installation.worker_epoch' => '2']);
+        foreach (['assertNativeMutation', 'assertNativeRead'] as $method) {
+            $this->reject('WORKER_MISMATCH', fn () => DB::transaction(fn () => $this->authority()->$method()));
+        }
+    }
+
+    public function test_runtime_admission_reads_primary_even_when_replica_has_not_seen_initialization(): void
+    {
+        $replica = new \PDO('sqlite::memory:');
+        foreach (DB::selectFromWriteConnection("SELECT sql FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'") as $table) {
+            $replica->exec($table->sql);
+        }
+        DB::connection()->setReadPdo($replica);
+        $state = $this->authority()->initialize(self::ID, 'native', 'primary-authority');
+        $this->assertSame(0, (int) $replica->query('SELECT COUNT(*) FROM tx_authority_writer_fence')->fetchColumn());
+        $this->assertSame($state, $this->authority()->inspect());
+        config(['authority_writer_fence.enabled' => false]);
+        $this->reject('WORKER_MISMATCH', fn () => $this->authority()->assertRuntime());
+        config(['core_installation.mode' => 'native']);
+        $this->reject('NATIVE_NOT_READY', fn () => $this->authority()->assertRuntime());
+
+        DB::table('tx_authority_prepare_receipt')->insert(['id' => 1]);
+        $this->reject('HISTORICAL_FENCE_PRESENT', fn () => $this->authority()->inspect());
+    }
+
+    public function test_rehashed_native_open_record_cannot_activate_domain_or_runtime(): void
+    {
+        $this->authority()->initialize(self::ID, 'native', 'native-preparation');
+        $state = (array) DB::table('tx_authority_writer_fence')->first();
+        $state['phase'] = 'open';
+        unset($state['content_hash']);
+        foreach (['id', 'authority_epoch', 'row_version', 'updated_at', 'schema_version', 'domain_version'] as $field) {
+            $state[$field] = (string) $state[$field];
+        }
+        ksort($state, SORT_STRING);
+        $state['content_hash'] = hash('sha256', json_encode($state, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES));
+        DB::table('tx_authority_writer_fence')->where('id', 1)->update($state);
+        config(['core_installation.mode' => 'native', 'authority_writer_fence.enabled' => false]);
+        $this->reject('STATE_INVALID', fn () => $this->authority()->assertRuntime());
+        foreach (['assertNativeMutation', 'assertNativeRead'] as $method) {
+            $this->reject('STATE_INVALID', fn () => DB::transaction(fn () => $this->authority()->$method()));
+        }
+    }
+
+    public function test_transactional_inspection_uses_current_read_before_aggregate_locks(): void
+    {
+        $expected = $this->authority()->initialize(self::ID, 'native', 'current-read');
+        $connection = DB::connection();
+        $originalGrammar = $connection->getQueryGrammar();
+        $grammar = new class($connection) extends \Illuminate\Database\Query\Grammars\SQLiteGrammar {
+            public array $authorityReads = [];
+
+            public function compileSelect(\Illuminate\Database\Query\Builder $query)
+            {
+                if ($query->from === 'tx_authority_writer_fence') {
+                    $this->authorityReads[] = ['lock' => $query->lock, 'primary' => $query->useWritePdo];
+                }
+                return parent::compileSelect($query);
+            }
+        };
+        $connection->setQueryGrammar($grammar);
+        try {
+            $this->assertSame($expected, $this->authority()->inspect());
+            $this->assertSame($expected, DB::transaction(fn () => $this->authority()->inspect()));
+            $this->assertSame([
+                ['lock' => null, 'primary' => true],
+                ['lock' => false, 'primary' => true],
+            ], $grammar->authorityReads);
+        } finally {
+            $connection->setQueryGrammar($originalGrammar);
+        }
+    }
+
     public function test_missing_native_record_and_invalid_worker_mode_fail_closed(): void
     {
         config(['core_installation.mode' => 'native']);

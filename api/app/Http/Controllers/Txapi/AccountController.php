@@ -22,6 +22,14 @@ final class AccountController
     public function me(Request $request): JsonResponse
     {
         $user = Auth::guard('sanctum')->user();
+        if (app(\App\Domains\Installation\InstallationAuthority::class)->inspect()['mode'] === 'native') {
+            $entitlement = app(\App\Services\Subscription\SubscriptionEntitlementResolver::class)->resolve((int) $user->id);
+            return TxapiResponse::success($request, [
+                'id' => (int) $user->id, 'email' => (string) $user->email,
+                'telegram_id' => $user->telegram_id === null ? null : (int) $user->telegram_id,
+                'subscription' => $entitlement, 'credential_status' => 'provider_not_integrated',
+            ]);
+        }
         return TxapiResponse::success($request, [
             'id' => (int) $user->id,
             'email' => (string) $user->email,
@@ -41,6 +49,13 @@ final class AccountController
 
     public function subscription(Request $request, UserService $service): JsonResponse
     {
+        if (app(\App\Domains\Installation\InstallationAuthority::class)->inspect()['mode'] === 'native') {
+            $entitlement = app(\App\Services\Subscription\SubscriptionEntitlementResolver::class)
+                ->resolve((int) Auth::guard('sanctum')->id());
+            return TxapiResponse::success($request, $entitlement + [
+                'subscribe_url' => null, 'credential_status' => 'provider_not_integrated',
+            ]);
+        }
         // Only the authenticated subscriber may see their private subscription
         // URL. Never expose the underlying raw token in the response.
         $user = User::query()->findOrFail(Auth::guard('sanctum')->id());

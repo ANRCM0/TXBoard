@@ -27,6 +27,11 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
+        if (app(\App\Domains\Installation\InstallationAuthority::class)->inspect()['mode'] === 'native') {
+            $schedule->command('core:subscriptions-tick --limit=100')->everyMinute()->onOneServer()->withoutOverlapping(5);
+            $schedule->command('check:order --limit=100')->everyMinute()->onOneServer()->withoutOverlapping(5);
+            return;
+        }
         Cache::put(CacheKey::get('SCHEDULE_LAST_CHECK_AT', null), time());
         // TXBoard daily statistics
         $schedule->command('txboard:statistics')->dailyAt('0:10')->onOneServer();

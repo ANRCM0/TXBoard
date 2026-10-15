@@ -6,6 +6,8 @@ use App\Core\Http\TxapiResponse;
 use App\Exceptions\ApiException;
 use App\Domains\Billing\IdempotencyException;
 use App\Domains\Billing\OrderIdempotency;
+use App\Domains\Installation\InstallationAuthority;
+use App\Domains\Installation\InstallationAuthorityException;
 use App\Models\CommissionLog;
 use App\Models\Order;
 use App\Models\Payment;
@@ -13,6 +15,7 @@ use App\Models\Plan;
 use App\Services\CouponService;
 use App\Services\OrderService;
 use App\Services\PlanService;
+use App\Services\Subscription\PublishedOrderService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -99,6 +102,9 @@ final class BillingController
 
     public function createOrder(Request $request): JsonResponse
     {
+        if (app(InstallationAuthority::class)->inspect()['mode'] === 'native') {
+            return $this->createPublishedOrder($request);
+        }
         $params = $request->validate([
             'plan_id' => ['required', 'integer', 'min:1'],
             'period' => ['required', 'string', 'max:40'],
@@ -129,6 +135,36 @@ final class BillingController
         return TxapiResponse::success($request, ['trade_no' => $order->trade_no], status: 201);
     }
 
+    private function createPublishedOrder(Request $request): JsonResponse
+    {
+        $unsupported = array_values(array_diff(array_keys($request->all()), ['offer_id']));
+        if ($unsupported !== []) {
+            return TxapiResponse::error($request, 'NATIVE_PURCHASE_INPUT_INVALID',
+                'Native purchases accept only a published offer', 422, $unsupported);
+        }
+        $params = $request->validate(['offer_id' => ['required', 'integer', 'min:1', 'max:'.PHP_INT_MAX]]);
+        try {
+            $key = OrderIdempotency::clientKey($request->header('Idempotency-Key'));
+            if ($key === null) {
+                return TxapiResponse::error($request, 'IDEMPOTENCY_KEY_REQUIRED',
+                    'Idempotency-Key is required for native purchases', 400);
+            }
+            $order = app(PublishedOrderService::class)->create((int) Auth::guard('sanctum')->id(),
+                (int) $params['offer_id'], $key);
+        } catch (IdempotencyException $error) {
+            $response = TxapiResponse::error($request, $error->errorCode, $error->getMessage(), (int) $error->getCode());
+            if ($error->errorCode === 'IDEMPOTENCY_IN_PROGRESS') $response->headers->set('Retry-After', '2');
+            return $response;
+        } catch (InstallationAuthorityException) {
+            return TxapiResponse::error($request, 'INSTALLATION_NATIVE_NOT_READY', 'Core installation is not ready', 503);
+        } catch (\DomainException|\RuntimeException) {
+            return TxapiResponse::error($request, 'ORDER_REJECTED',
+                'Order cannot be created under current subscription or publication state', 409);
+        }
+        return TxapiResponse::success($request, ['trade_no' => $order->trade_no], status: 201)
+            ->header('Cache-Control', 'no-store');
+    }
+
     public function checkout(Request $request, string $tradeNo): JsonResponse
     {
         $params = $request->validate([
@@ -148,6 +184,10 @@ final class BillingController
                 : ($status === 422 ? 'PAYMENT_METHOD_INVALID'
                 : ($status === 502 ? 'GATEWAY_FAILED' : 'ORDER_CONFLICT')),
                 'Checkout could not be completed', $status);
+        } catch (InstallationAuthorityException) {
+            return TxapiResponse::error($request, 'INSTALLATION_NATIVE_NOT_READY', 'Core installation is not ready', 503);
+        } catch (\DomainException|\RuntimeException) {
+            return TxapiResponse::error($request, 'ORDER_CONFLICT', 'Checkout could not be completed', 409);
         }
         return TxapiResponse::success($request, $result);
     }

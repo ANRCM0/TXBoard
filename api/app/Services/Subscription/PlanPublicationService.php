@@ -157,6 +157,59 @@ final class PlanPublicationService
         }, 3);
     }
 
+    /**
+     * Immutable evidence reads do not depend on the current Plan or availability.
+     * Purchase preflight requests locks after User/Slot; historical grant reads do not.
+     *
+     * @return array{revision:object,offer:object,source:array,availability:?object}
+     */
+    public function verifiedOffer(int $offerId, bool $lock = false, bool $requirePublished = false): array
+    {
+        if ($offerId <= 0 || ($requirePublished && !$lock) || ($lock && DB::transactionLevel() === 0)) {
+            throw new RuntimeException('PUBLICATION_OFFER_READ_INVALID');
+        }
+        $locator = DB::table('tx_plan_offer')->where('id', $offerId)->first();
+        if (!$locator) {
+            throw new RuntimeException('PUBLICATION_OFFER_MISSING');
+        }
+        if ($lock && !DB::table('tx_plan')->where('id', $locator->plan_id)->lockForUpdate()->first()) {
+            throw new RuntimeException('PUBLICATION_PLAN_MISSING');
+        }
+        $revisions = DB::table('tx_plan_revision')->where('id', $locator->plan_revision_id);
+        $offers = DB::table('tx_plan_offer')->where('plan_revision_id', $locator->plan_revision_id)->orderBy('id');
+        if ($lock) {
+            $revisions->lockForUpdate();
+            $offers->lockForUpdate();
+        }
+        $revision = $revisions->first();
+        $ownedOffers = $offers->get();
+        $offer = $ownedOffers->firstWhere('id', $offerId);
+        if (!$revision || !$offer || $revision->schema_version !== self::SCHEMA
+            || (string) $revision->plan_id !== (string) $locator->plan_id
+            || (string) $offer->plan_id !== (string) $locator->plan_id) {
+            throw new RuntimeException('PUBLICATION_OFFER_NOT_PUBLISHED');
+        }
+        $this->verifyPublication($revision, $ownedOffers->all());
+        $availability = null;
+        if ($requirePublished) {
+            $availability = DB::table('tx_plan_offer_availability')->where('offer_id', $offerId)
+                ->lockForUpdate()->first();
+            if (!$availability || $availability->status !== 'published') {
+                throw new RuntimeException('PUBLICATION_OFFER_NOT_PUBLISHED');
+            }
+            foreach (['show', 'sell', 'renew'] as $field) {
+                $this->boolean($availability->$field);
+            }
+            $this->integer($availability->capacity_limit, true, 4294967295);
+            if ($this->integer($availability->row_version) === '0') {
+                throw new RuntimeException('PUBLICATION_AVAILABILITY_INVALID');
+            }
+        }
+        return ['revision' => $revision, 'offer' => $offer,
+            'source' => json_decode($revision->source_snapshot, true, flags: JSON_THROW_ON_ERROR),
+            'availability' => $availability];
+    }
+
     private function source(object $plan, string $currency, string $timezone): array
     {
         $quota = $this->integer($plan->transfer_enable);
@@ -220,9 +273,16 @@ final class PlanPublicationService
         try {
             $source = json_decode($revision->source_snapshot, true, flags: JSON_THROW_ON_ERROR);
             $reset = json_decode($revision->reset_policy, true, flags: JSON_THROW_ON_ERROR);
-            if (!is_array($source) || ($source['schema'] ?? null) !== self::SCHEMA
+            if ($revision->schema_version !== self::SCHEMA
+                || !is_string($revision->publication_key)
+                || !preg_match('/^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/D', $revision->publication_key)
+                || !is_array($source) || ($source['schema'] ?? null) !== self::SCHEMA
                 || !hash_equals((string) $revision->content_hash, $this->values->hash($source))
                 || !hash_equals((string) $revision->publication_request_hash, (string) $revision->content_hash)) {
+                throw new RuntimeException('PUBLICATION_EVIDENCE_DAMAGED');
+            }
+            $this->verifySource($source);
+            if ($this->integer($revision->id) === '0' || $this->integer($revision->revision_no) === '0') {
                 throw new RuntimeException('PUBLICATION_EVIDENCE_DAMAGED');
             }
             foreach (['plan_id', 'group_id', 'quota_bytes', 'speed_limit_mbps', 'device_limit', 'billing_timezone'] as $field) {
@@ -244,17 +304,77 @@ final class PlanPublicationService
         }
     }
 
+    private function verifySource(array $source): void
+    {
+        $this->keys($source, ['schema', 'plan_id', 'name', 'content', 'tags', 'group_id',
+            'quota_bytes', 'speed_limit_mbps', 'device_limit', 'reset_policy', 'billing_timezone',
+            'currency', 'currency_minor_exponent', 'calendar_policy', 'open_events', 'prices']);
+        if (!is_string($source['plan_id']) || $this->integer($source['plan_id']) === '0'
+            || !is_string($source['name']) || ($source['content'] !== null && !is_string($source['content']))
+            || !is_array($source['tags']) || !array_is_list($source['tags'])
+            || count(array_filter($source['tags'], 'is_string')) !== count($source['tags'])
+            || !in_array($source['currency'], self::CURRENCIES, true) || $source['currency_minor_exponent'] !== 2
+            || !is_string($source['billing_timezone'])
+            || !in_array($source['billing_timezone'], DateTimeZone::listIdentifiers(), true)
+            || !is_string($source['quota_bytes']) || (int) $this->integer($source['quota_bytes']) % 1073741824 !== 0) {
+            throw new RuntimeException('PUBLICATION_EVIDENCE_DAMAGED');
+        }
+        foreach (['group_id' => 2147483647, 'speed_limit_mbps' => 4294967295, 'device_limit' => 4294967295] as $field => $maximum) {
+            if ($source[$field] !== $this->integer($source[$field], true, $maximum)) {
+                throw new RuntimeException('PUBLICATION_EVIDENCE_DAMAGED');
+            }
+        }
+        if (!is_array($source['reset_policy']) || !is_array($source['calendar_policy'])
+            || !is_array($source['open_events']) || !is_array($source['prices']) || !$source['prices']) {
+            throw new RuntimeException('PUBLICATION_EVIDENCE_DAMAGED');
+        }
+        $this->keys($source['reset_policy'], ['revision', 'method', 'timezone']);
+        $this->keys($source['calendar_policy'], ['timezone', 'month_overflow']);
+        $this->keys($source['open_events'], ['new_order_event_id', 'renew_order_event_id', 'change_order_event_id']);
+        if ($source['reset_policy']['revision'] !== 'purchased-reset/v1'
+            || !in_array($source['reset_policy']['method'], [0, 1, 2, 3, 4], true)
+            || $source['reset_policy']['timezone'] !== $source['billing_timezone']
+            || $source['calendar_policy']['timezone'] !== 'UTC'
+            || !is_bool($source['calendar_policy']['month_overflow'])) {
+            throw new RuntimeException('PUBLICATION_EVIDENCE_DAMAGED');
+        }
+        foreach ($source['open_events'] as $event) {
+            if (!in_array($event, [0, 1], true)) {
+                throw new RuntimeException('PUBLICATION_EVIDENCE_DAMAGED');
+            }
+        }
+        foreach ($source['prices'] as $code => $price) {
+            if (!array_key_exists($code, self::MONTHS) || !is_string($price)
+                || $this->integer($price) !== $price) {
+                throw new RuntimeException('PUBLICATION_EVIDENCE_DAMAGED');
+            }
+        }
+    }
+
+    private function keys(array $value, array $expected): void
+    {
+        $actual = array_keys($value);
+        sort($actual, SORT_STRING);
+        sort($expected, SORT_STRING);
+        if ($actual !== $expected) {
+            throw new RuntimeException('PUBLICATION_EVIDENCE_DAMAGED');
+        }
+    }
+
     private function verifyOffers(object $revision, array $offers, array $source): void
     {
         if (count($offers) !== count($source['prices'])) {
             throw new RuntimeException('PUBLICATION_EVIDENCE_DAMAGED');
         }
+        $seen = [];
         foreach ($offers as $stored) {
             if (!isset($source['prices'][$stored->offer_code])
+                || isset($seen[$stored->offer_code])
                 || !array_key_exists($stored->offer_code, self::MONTHS)
                 || !is_string($source['prices'][$stored->offer_code])) {
                 throw new RuntimeException('PUBLICATION_EVIDENCE_DAMAGED');
             }
+            $seen[$stored->offer_code] = true;
             $expected = $this->offer((int) $revision->plan_id, (int) $revision->id,
                 (int) $revision->revision_no, $stored->offer_code, $source['prices'][$stored->offer_code], $source);
             foreach ($expected as $key => $value) {

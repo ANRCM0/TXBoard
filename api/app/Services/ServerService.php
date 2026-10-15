@@ -56,6 +56,8 @@ class ServerService
      */
     public static function getAvailableServers(User $user): array
     {
+        // This renderer still owns legacy UUID material, not Provider delivery.
+        app(\App\Domains\Installation\InstallationAuthority::class)->assertRuntime();
         $servers = Server::whereJsonContains('group_ids', (string) $user->group_id)
             ->where('show', true)
             ->where(function ($query) {

@@ -16,6 +16,10 @@ class PlanObserver
         if (!$plan->isDirty('reset_traffic_method')) {
             return;
         }
+        if (app(\App\Domains\Installation\InstallationAuthority::class)->inspect()['mode'] === 'native') {
+            // Native reset policy changes take effect through successor published Terms.
+            return;
+        }
         if (config('authority_writer_fence.enabled') !== false && \Illuminate\Support\Facades\DB::transactionLevel() === 0) {
             throw new \App\Domains\AuthorityMigration\AuthorityFenceException('AUTHORITY_PLAN_OBSERVER_OUTER_TRANSACTION_REQUIRED');
         }

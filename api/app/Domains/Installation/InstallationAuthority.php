@@ -82,7 +82,8 @@ class InstallationAuthority
     public function inspect(): array
     {
         return $this->storage(function (): array {
-            $state = $this->read();
+            // Do not establish an RR snapshot before the caller takes aggregate locks.
+            $state = $this->read(DB::transactionLevel() > 0);
             return $state === null ? $this->legacyResult() : $this->result($state);
         });
     }
@@ -116,13 +117,41 @@ class InstallationAuthority
         });
     }
 
+    public function assertNativeMutation(): array
+    {
+        return $this->assertNativeDomain();
+    }
+
+    public function assertNativeRead(): array
+    {
+        return $this->assertNativeDomain();
+    }
+
+    private function assertNativeDomain(): array
+    {
+        return $this->storage(function (): array {
+            $this->require(DB::transactionLevel() > 0, 'TRANSACTION_REQUIRED');
+            $state = $this->read(true);
+            $this->assertExpected($state);
+            // No version of this release can create a ready native record.
+            // Domain integration must not turn catalog preparation into activation.
+            $this->require($state !== null && $state['authority'] === 'native'
+                && $state['phase'] === 'open', 'NATIVE_NOT_READY');
+            return $this->result($state);
+        });
+    }
+
     private function read(bool $locked = false): ?array
     {
         if (!$this->hasSchema()) {
             if (Schema::hasTable(self::TABLE)) {
                 $this->require(Schema::hasColumns(self::TABLE, ['scope', 'version', 'authority']), 'STATE_INVALID');
                 $metadata = array_values(array_intersect(self::METADATA, Schema::getColumnListing(self::TABLE)));
-                $rows = DB::table(self::TABLE)->limit(2)->get(['scope', 'version', 'authority', ...$metadata]);
+                $query = DB::table(self::TABLE)->useWritePdo()->limit(2);
+                if ($locked && DB::transactionLevel() > 0) {
+                    $query->sharedLock();
+                }
+                $rows = $query->get(['scope', 'version', 'authority', ...$metadata]);
                 $this->require($rows->count() <= 1, 'STATE_INVALID');
                 foreach ($rows as $row) {
                     $this->require($this->historical((array) $row)
@@ -133,7 +162,8 @@ class InstallationAuthority
             $this->require(config('core_installation.mode', 'legacy') === 'legacy', 'RECORD_REQUIRED');
             return null;
         }
-        $query = DB::table(self::TABLE)->orderBy('id')->limit(2);
+        // Runtime admission cannot trust a replica that has not observed native initialization.
+        $query = DB::table(self::TABLE)->useWritePdo()->orderBy('id')->limit(2);
         if ($locked && DB::transactionLevel() > 0) {
             $query->sharedLock();
         }
@@ -220,7 +250,7 @@ class InstallationAuthority
         foreach (['tx_authority_prepare_receipt', 'tx_authority_inventory_upgrade', 'tx_authority_finance_upgrade',
             'tx_authority_native_upgrade', 'tx_authority_identity_upgrade', 'tx_authority_ticket_upgrade'] as $table) {
             if (Schema::hasTable($table)) {
-                $query = DB::table($table);
+                $query = DB::table($table)->useWritePdo();
                 if (DB::transactionLevel() > 0) {
                     $exclusive ? $query->lockForUpdate() : $query->sharedLock();
                 }
