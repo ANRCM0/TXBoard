@@ -35,7 +35,7 @@ Core 可通过默认关闭的原生开关，为完整 Node 用户快照签发独
 
 TXBoard-Deploy 可显式接收完整 Core/key 公钥 pin，为 Node/Machine 或新增实例生成有限授权配置。安装前通过 Node 新增的只读 `--capabilities` 确认所选镜像支持 `node_authorization_snapshot_v1`；现有容器以实际 image ID 验证。能力缺失、部分pin、非规范公钥、非HTTPS origin、普通覆写删除已有授权、原地改变已授权目标会拒绝。私钥不进入 Node 安装器，状态目录由运行时按实例派生，防止多个Core共享版本。
 
-隔离 Linux 中12套安装/维护/升级保护回归、生产Node配置加载器消费单/多实例配置、Node CLI race/构建和实际能力查询通过。该切片仅证明配置接入与能力门禁；固定发布镜像的实际Docker安装、更新、备份恢复尚需下一切片验证，不能记为P1整个单机交付完成。上一P0.7的`9af2b28`仍待受保护默认分支的明确发布授权和精确commit CI。
+隔离 Linux 中12套安装/维护/升级保护回归、生产Node配置加载器消费单/多实例配置、Node CLI race/构建和实际能力查询通过。该切片仅证明配置接入与能力门禁；固定发布镜像的实际Docker安装、更新、备份恢复尚需下一切片验证，不能记为P1整个单机交付完成。P0.7 的最终审阅提交 `edd7539` 和 Deploy 审阅提交 `aa47747` 的精确 CI 均已成功；默认分支尚未合入，镜像未发布。逐项完成审计见[验收收尾记录](p0-authorization-completion.json)。
 
 ## 实现范围与剩余验收
 
