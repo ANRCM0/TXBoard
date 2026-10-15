@@ -52,6 +52,7 @@ final class ShadowSchemaV1
                 throw new RuntimeException("Shadow primary key mismatch: {$table}");
             }
             if ($column->type === 'enum') {
+                $column->allowed = $this->versionedEnum($table, $column->name, $column->allowed);
                 $enums[] = $column;
             }
         }
@@ -113,6 +114,28 @@ final class ShadowSchemaV1
                 }
             }
         }
+    }
+
+    private function versionedEnum(string $table, string $column, array $allowed): array
+    {
+        // Replay old DDL without narrowing the explicitly versioned C2 extensions.
+        // Arbitrary enum supersets remain a schema mismatch.
+        if ($table === 'tx_authority_writer_fence'
+            && Schema::hasColumns($table, ['installation_id', 'bootstrap_key',
+                'bootstrap_request_hash', 'schema_version', 'domain_version'])) {
+            if ($column === 'authority' && $allowed === ['legacy']) {
+                return ['legacy', 'native'];
+            }
+            if ($column === 'phase' && $allowed === ['open', 'prepared']) {
+                return ['open', 'prepared', 'initializing'];
+            }
+        }
+        if ($table === 'tx_plan_offer_availability' && $column === 'status'
+            && $allowed === ['shadow', 'superseded']
+            && Schema::hasColumns('tx_plan_revision', ['publication_key', 'publication_request_hash'])) {
+            return ['shadow', 'superseded', 'published'];
+        }
+        return $allowed;
     }
 
     private function alter(string $table, Closure $alter, array $enums): void

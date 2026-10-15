@@ -23,7 +23,7 @@ export const classify = (uri) => {
   if (p.startsWith('/txapi/payment/webhook/')) return ['Native payment callback', 'provider-signature'];
   if (p === '/txapi/integrations/telegram/webhook') return ['Native Telegram webhook', 'telegram-digest'];
   if (p.startsWith('/txapi/auth/')) return ['TXAPI authentication', 'mixed'];
-  if (p.startsWith('/txapi/public/') || p === '/txapi/plans' || p === '/txapi/health') return ['TXAPI public', 'public'];
+  if (p.startsWith('/txapi/public/') || p === '/txapi/plans' || p === '/txapi/health' || p === '/txapi/readiness') return ['TXAPI public', 'public'];
   if (p.startsWith('/txapi/')) return ['TXAPI user/application', 'user'];
   // Retired versions are recognized only to report an accidental regression.
   if (/^\/api\/v[12](?:\/|$)/.test(p)) return ['Forbidden retired route', 'forbidden'];
@@ -67,6 +67,7 @@ export function assertCurrentBoundaries(items) {
   const paths = new Set(items.map(x => x.method + ' ' + x.path));
   const required = [
     'GET /txapi/health',
+    'GET /txapi/readiness',
     'GET /txapi/public/site-config',
     'POST /txapi/auth/admin/login',
     'GET /txapi/admin/{admin_path}/users',

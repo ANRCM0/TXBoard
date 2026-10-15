@@ -91,6 +91,7 @@ class ServerService
      */
     public static function getAvailableUsers(Server $node)
     {
+        app(\App\Domains\Installation\InstallationAuthority::class)->assertRuntime();
         $groupIds = $node->group_ids ?? [];
         if (empty($groupIds)) {
             return collect();

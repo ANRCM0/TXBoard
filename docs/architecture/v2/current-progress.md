@@ -62,12 +62,21 @@ C1已完成实现与本地批次验收，通过PR #247提交审阅，不代表Co
 
 2026-10-15已核实最终代码提交`ea5c4c4`的54个远端检查：52成功，`release-gate`与`publish`两项按审阅分支策略跳过，无失败或未完成项。MySQL 8.4专项、API回归和Core镜像验证/恢复均通过，精确运行号见[收尾验收记录](core-c1-closeout-verification.json)；这里的MySQL证据来自远端CI，不是把本地MariaDB等同MySQL。收尾文档不改变已验证源码，不重复启动全量应用测试。非作者领域批准、维护者合并及镜像发布仍分别待完成；PR最终head的检查以远端为准，不把跳过的发布任务记为已发布。接口见[Core Commerce v1](../../../contracts/v2/core-commerce-v1.md)。
 
-C1开发与批次验收已收尾，下一批按[Core完成计划](core-completion-plan.md)推进C2正式Subscription/Terms生命周期、共同权益读取及用量权威。C2若在C1合并前启动，必须明确依赖PR #247和基线，不将审阅分支当作已交付的默认分支。
+C1开发与批次验收已收尾；C2已按[Core完成计划](core-completion-plan.md)开始开发。C2分支`feat/core-native-subscriptions`基于C1最终提交`5e03dbc`，明确依赖尚未合入的PR #247，不将审阅分支当作已交付的默认分支。
 
+## Core C2-A：安装权威与套餐发布准备
+
+首批实现持久安装权威及套餐发布基础，复用`tx_authority_writer_fence`单例和现有Revision/Offer/Availability规范表。安装身份、模式、版本、epoch与初始化业务键持久校验；native初始化逐表拒绝业务数据和历史演练证据，仅允许明确列举的配置元数据及无业务资产的引导管理员。HTTP、队列、业务CLI和已有命名写入者执行准入校验，关闭旧演练fence或将环境配置改回legacy都不能绕过已持久化的native记录。
+
+新增`/txapi/readiness`，失败返回有界非秘密503；`/api/health`和`/txapi/health`保持不依赖数据库的存活检查。镜像准备与Octane进程可以启动，但业务仍逐项拒绝；entrypoint不对native准备实例运行旧更新器。套餐发布冻结精确价格、额度、日历、重置与开通策略，重复业务键不重置销售状态；独立Availability使用版本CAS，并在重放/变更前验证完整发布证据。
+
+独立MariaDB生产迁移、安装/发布运行时及C1履约30项/194断言通过；12个独立进程初始化通过77条断言，仅生成一个不可变安装记录。初次API全量扫描的夹具缺失和旧断言冲突已逐项定位，补齐契约、现有入口HTML及私有Redis后执行330项相关复测：294通过、35条件跳过；剩余一处SQLite元数据断言修正后单项复测通过15条断言。未重复运行已通过用例，不把分批修复记录称为一次最终全绿的本地全量运行。真实路由255个HTTP方法/10类及14项路由脚本测试通过，MySQL 8.4与镜像门禁保留远端CI验收。详见[C2-A验收记录](core-c2a-verification.json)和[Core Subscription v1](../../../contracts/v2/core-subscription-v1.md)。
+
+**C2整体仍在开发，native始终为`initializing`，本批没有激活操作。** 真实Subscription/Terms履约、生命周期、共同权益读取、Node完整/增量授权、UsagePeriod结算及可用Provider尚待接入同一业务链；未开放新的管理员发布HTTP入口，不把影子模型或合成Provider视为已交付。C2-A尚未合并或发布，先依赖C1合入并完成非作者审阅和相关CI。
 
 ## 下一步顺序
 
-1. **Core优先：订阅与权益权威**。C1购买快照已完成开发及批次验收，待非作者审阅和维护者合并；下一批C2实现新购/续费/换套餐/重置、共同权益读取和新安装实例的持久权威选择，不再用新增影子表代替主业务接入。
+1. **Core优先：订阅与权益权威**。C1待非作者审阅和维护者合并；C2-A已实现安装权威和套餐发布准备。接下来实现新购/续费/换套餐/重置、共同权益读取、真实Node/Provider授权和用量结算，不再用新增影子表代替主业务接入；完整链验收前保持native不可就绪。
 2. **Core：支付事实、账务与退款**。复用已有支付验证和交易入口，补齐payment attempts、账本及退款状态闭环。
 3. **Core：正式Internal API与凭据生命周期**。在当前权限与服务边界内逐批开放，保留未完成生产秘密交付的状态。
 4. **Core集中交付后收口安装器**。基础安装、启动、正常更新及关联恢复验收；Node/安装器边缘测试不阻塞Core主线。新前端和P2商业/HA扩展继续后移。

@@ -3,6 +3,7 @@
 | 功能 | 接口 | 身份要求 |
 | --- | --- | --- |
 | 公开页面、套餐 | `/txapi/public/*`、`GET /txapi/plans` | 匿名 |
+| 安装就绪 | `GET /txapi/readiness` | 匿名、只读；安装权威未就绪或不匹配返回503，不公开安装标识或诊断明细 |
 | 登录、账户 | `/txapi/auth/*`、`/txapi/me/*` | 登录/注册按接口校验，账户需用户 Bearer |
 | 订单、余额、充值和工单 | `/txapi/orders/*`、`/txapi/billing/*`、`/txapi/tickets/*` | 用户 Sanctum Bearer |
 | 管理员 | `/txapi/admin/{admin_path}/*` | 管理员 Bearer、动态路径与 RBAC |
@@ -15,6 +16,11 @@
 | 动态插件接口 | 插件自行注册的接口 | 由实际插件负责鉴权与路由 |
 
 普通 TXAPI JSON 响应包含 `data`、`request_id`，分页可含 `meta`；错误通常为 `error.code`、`error.message` 和 `request_id`，响应头包含 `X-Request-Id`。第三方回调有各自响应约定。存活检查：`GET /txapi/health`。
+
+存活检查与安装就绪分开：`/api/health`、`/txapi/health`不依赖数据库；
+`/txapi/readiness`在安装权威校验后返回`data.ready=true`。C2-A的native安装
+始终处于`initializing`，业务HTTP请求统一拒绝；不能通过修改环境变量回legacy绕过。
+既有未初始化legacy部署保持原业务模式。边界见[Core Subscription v1](../v2/core-subscription-v1.md)。
 
 ## 具体对接
 

@@ -246,7 +246,14 @@ class AuthorityNativeWritersTest extends TestCase
         $user=$this->user();$plan=$this->plan();DB::enableQueryLog();DB::flushQueryLog();
         $this->postJson('/txapi/admin/native_fixture/users/'.$user->id.'/update',['plan_id'=>$plan->id,'expected_plan_id'=>null,
             'expired_at'=>time()+86400,'expected_expired_at'=>null])->assertOk();
-        $queries=DB::getQueryLog();DB::disableQueryLog();foreach($queries as$q)$this->assertStringNotContainsString('tx_authority_',$q['query']);
+        $queries=DB::getQueryLog();DB::disableQueryLog();
+        foreach($queries as$q){
+            if(str_contains($q['query'],'sqlite_master')||str_contains($q['query'],'information_schema')
+                ||str_contains($q['query'],'pragma_table_xinfo'))continue;
+            // The reused singleton is now also the installation admission record.
+            if(preg_match('/^select .* from ["`]tx_authority_writer_fence["`] order by /i',$q['query']))continue;
+            $this->assertStringNotContainsString('tx_authority_',$q['query']);
+        }
         $this->assertNotNull($user->fresh()->next_reset_at);Bus::assertDispatched(NodeUserSyncJob::class);
     }
     public function test_intents_are_closed_nonsecret_immutable_schema_replay_safe_and_cli_handoff_bounded():void

@@ -194,6 +194,8 @@ else
 fi
 if echo " $* " | grep -q ' txboard:install '; then
     echo "[entrypoint] Skipping txboard:update while running the installer."
+elif php /www/artisan core:installation native-preparing --no-interaction >/dev/null 2>&1; then
+    echo "[entrypoint] Native installation is preparing; legacy updater is not applicable."
 elif php /www/artisan txboard:install-status --no-interaction >/dev/null 2>&1; then
     if redis_reachable; then
         echo "[entrypoint] Running txboard:update (installed database confirmed, redis reachable)..."

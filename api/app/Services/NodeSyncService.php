@@ -88,6 +88,7 @@ class NodeSyncService
      */
     public static function notifyUserChanged(User $user): void
     {
+        app(\App\Domains\Installation\InstallationAuthority::class)->assertRuntime();
         if (!$user->group_id)
             return;
 
