@@ -2,7 +2,7 @@ name: api-ci
 
 on:
   push:
-    branches: [main]
+    branches: [main, feat/installer-node-authorization-preflight]
     paths:
       - "api/**"
       - "contracts/module-package/**"
@@ -12,6 +12,7 @@ on:
       - "contracts/http/external-adapter-current.md"
       - "contracts/http/theme-integration-current.md"
       - "contracts/node-protocol/txnode-integration-current.md"
+      - "contracts/node-protocol/native-authorization-lease-v1.md"
       - "scripts/p0-api-audit.mjs"
       - "scripts/export-route-catalog.mjs"
       - "scripts/check-native-schema-only.mjs"
@@ -34,6 +35,7 @@ on:
       - "contracts/http/external-adapter-current.md"
       - "contracts/http/theme-integration-current.md"
       - "contracts/node-protocol/txnode-integration-current.md"
+      - "contracts/node-protocol/native-authorization-lease-v1.md"
       - "scripts/p0-api-audit.mjs"
       - "scripts/export-route-catalog.mjs"
       - "scripts/check-native-schema-only.mjs"
@@ -49,6 +51,9 @@ on:
 concurrency:
   group: api-ci-${{ github.ref }}
   cancel-in-progress: true
+
+permissions:
+  contents: read
 
 jobs:
   test:
@@ -76,7 +81,7 @@ jobs:
       - uses: shivammathur/setup-php@v2
         with:
           php-version: "8.2"
-          extensions: mbstring, sqlite3, pdo_sqlite, redis
+          extensions: mbstring, sqlite3, pdo_sqlite, redis, sodium
           coverage: none
       - name: Install dependencies
         run: composer install --no-interaction --prefer-dist

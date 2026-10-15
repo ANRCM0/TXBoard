@@ -1,5 +1,7 @@
 # 开发文档
 
+- [多团队开发与 PR 协作](multi-team-development.md)
+- [开发与批次验收流程](development-workflow.md)（2026-10-15：相关阶段完成后集中测试、统一修复）
 - [本地开发与验证](local-development.md)
 - [双仓布局与镜像发布](repository-layout.md)
 - [插件开发指南入口](plugin-development.md)

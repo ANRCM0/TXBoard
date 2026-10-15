@@ -5,13 +5,16 @@ namespace App\Http\Controllers\Txapi;
 use App\Core\Http\TxapiResponse;
 use App\Services\ServerService;
 use App\Domains\Network\MachineTelemetry;
+use App\Domains\Network\NativeNodeAuthorization;
 use App\Domains\Network\NativeNodeReport;
 use App\Domains\Network\NativeAccessAudit;
 use App\Domains\Network\NodeReportError;
 use App\Domains\UsageV2\UsageRegistry;
 use App\Domains\UsageV2\UsageError;
+use App\Models\Server;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 final class NodeProtocolController
 {
@@ -32,6 +35,17 @@ final class NodeProtocolController
             ],
             'settings' => $this->intervals(),
         ];
+        $authorization = app(NativeNodeAuthorization::class);
+        if ($authorization->enabled()) {
+            try {
+                $data['capabilities'][] = NativeNodeAuthorization::CAPABILITY;
+                $data['authorization_trust'] = $authorization->publicTrust();
+                $data['authorization_refresh_interval_seconds'] = 30;
+            } catch (\DomainException) {
+                return TxapiResponse::error($request, 'NODE_AUTHORIZATION_UNAVAILABLE',
+                    'Node authorization is temporarily unavailable', 503)->header('Cache-Control', 'no-store');
+            }
+        }
         if (config('native_traffic_receipts.enabled') === true) {
             $data['capabilities'][] = 'traffic_receipt_durable_v1';
             if (config('native_traffic_periods.enabled', true) === true) $data['capabilities'][] = 'traffic_period_v1';
@@ -61,6 +75,24 @@ final class NodeProtocolController
     {
         $node = $request->attributes->get('txnode.node');
         ServerService::touchNode($node);
+        $authorization = app(NativeNodeAuthorization::class);
+        if ($authorization->enabled()) {
+            try {
+                $data = DB::transaction(function () use ($node, $authorization) {
+                    $locked = Server::query()->whereKey($node->id)->lockForUpdate()->first();
+                    if (!$locked || !$locked->enabled || $locked->machine_id !== $node->machine_id) {
+                        throw new \DomainException('NATIVE_NODE_AUTHORIZATION_TARGET_INVALID');
+                    }
+                    $users = collect(ServerService::getNativeAvailableUsers($locked))->values()->toArray();
+                    return ['protocol_version' => 1, 'node_id' => (int) $node->id, 'users' => $users,
+                        'authorization' => $authorization->issueLocked($locked, $users, time())];
+                }, 3);
+                return TxapiResponse::success($request, $data)->header('Cache-Control', 'no-store, private');
+            } catch (\Throwable) {
+                return TxapiResponse::error($request, 'NODE_AUTHORIZATION_UNAVAILABLE',
+                    'Node authorization is temporarily unavailable', 503)->header('Cache-Control', 'no-store, private');
+            }
+        }
         $users = collect(ServerService::getNativeAvailableUsers($node))->values()->toArray();
         return $this->etagResponse($request, [
             'protocol_version' => 1,

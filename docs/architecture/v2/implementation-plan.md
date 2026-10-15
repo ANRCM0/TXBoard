@@ -4,7 +4,23 @@
 
 2026-10-13，按仓库整合任务，将 Gateway/Node 的完整 Git 历史导入本仓 `gateway/`、`node/`，安装器集中到 TXBoard-Deploy。当前目录与三镜像 CI 见 [双仓布局](../../development/repository-layout.md)；旧基线和验证报告保持当时提交与路径。本次仓库整理独立于下列业务迁移门禁。
 
+## 2026-10-15 多团队 PR 协作
+
+后续按Core、Node、Gateway、Deploy工作线并行开发，统一公共契约/数据库迁移和集成协调；团队通过主题分支或fork提交PR，不直推默认分支。相关阶段完成后集中验收修复，非作者领域审阅通过且依赖与CI就绪后由维护者合并。具体分工、跨仓顺序和待配置权限见[多团队方案](../../development/multi-team-development.md)。本次更新不改变业务完成度，不代表远端保护已经启用。
+
+## 2026-10-15 开发节奏调整
+
+用户确认一个完整功能或多个相关阶段完成后统一测试、集中修复，再按批次提交推送；实现期间仅做必要检查。完整矩阵和复杂恢复验收集中到发布前或相关实现变更时。该约定覆盖历史台账中每条小切片独立全量验收的执行节奏，不改写已有证据和发布/迁移门禁。见[开发与批次验收流程](../../development/development-workflow.md)。
+
 ## 2026-10-14 基础功能优先
+
+## 2026-10-15 P0.7 有限签名授权验收
+
+P0.7 增加默认关闭、显式 pin 的 Core Ed25519 完整 Node 用户快照与有限期限，并让 Node 验证目标/版本、持久 high-water、独立续期以及到期关闭现有 I/O。HTTP users 签名快照不走 ETag；Machine child 的授权独立绑定；WS users/config 仅触发 HTTP 完整签名快照。过期时先独立关闭内核 I/O，再由原 checkpoint 路径保存流量尾量；重启须在线取得更高版本，spool ID/body/观察周期保持不变。
+
+验收：Core 专项12项/101断言；全 API 1692项/16347断言，154项既有条件跳过；Node race 613主测试/577子测试，8个既有条件跳过；Node vet/build、runner 6项自测通过。隔离真实 Core/Machine + sing-box/Xray 各覆盖 VLESS/VMess、共享 WSS、在线封禁/子节点隔离、期限前后真实既有/新连接、签名期限到点关闭、不同进程离线重启拒绝、重新在线恢复和2个原始 traffic batches 结算。每种内核实测流/监听关闭偏差约0.7–12.5毫秒（容许观察窗2秒）。审阅提交 `b480f9f` 的Core API/镜像、Node全量/镜像、Machine、traffic、authorization两内核workflow全部成功；Deploy提交`6209c6b` 的独立CI成功。PR创建权限不足，故尚未合并或发布；两镜像workflow仅对审阅分支运行验证，publish按门禁跳过。详细验收数据见[Node/Core有限授权验收](../../../node/docs/native-authorization-verification.json)；Deploy针对此协议的安装器CI状态在TXBoard-Deploy的独立验收报告维护。
+
+适用边界：新配置 opt-in；现有未 enrollment TXBoard/Xboard 路径保持原有行为。Provider自动交付、生产PKI/secret delivery、key overlap、Machine迁移重绑定、硬件/磁盘 anti-rollback、HA、完整协议矩阵及全局 writer cutover 并未由此验收。
 
 用户调整：先完成基础账户与授权、节点管理/配置控制、流量/配额和凭据生命周期的真实闭环，再补安装交付、必要Gateway/Internal API、正式安全恢复与基础购买支付；优惠券、礼品卡等商业扩展后移。具体顺序及完成条件见[基础功能优先级](development-priorities.md)。该调整覆盖此前“下一批优惠券”的候选建议；历史验收不重写，生产切换仍需完整writer/进程/队列/外部效果门禁。
 

@@ -3,7 +3,7 @@ name: txboard-core-image
 on:
   # Runtime/build changes on main update the dev image; documentation-only commits do not.
   push:
-    branches: [main]
+    branches: [main, feat/installer-node-authorization-preflight]
     tags:
       - "v*"
     paths:
@@ -19,6 +19,7 @@ on:
       - "scripts/ci-release-recovery.sh"
       - "scripts/resolve-image-tags.sh"
       - "scripts/test-image-tags.sh"
+      - "contracts/node-protocol/native-authorization-lease-v1.md"
       - ".github/workflows/docker-txboard.yml"
   pull_request:
     branches: [main]
@@ -35,6 +36,7 @@ on:
       - "scripts/ci-release-recovery.sh"
       - "scripts/resolve-image-tags.sh"
       - "scripts/test-image-tags.sh"
+      - "contracts/node-protocol/native-authorization-lease-v1.md"
       - ".github/workflows/docker-txboard.yml"
 
 permissions:
@@ -43,7 +45,7 @@ permissions:
 # Branch builds cannot replace stable or preview; different release tags are
 # serialized by channel so a slower older tag cannot overwrite the channel.
 concurrency:
-  group: txboard-image-${{ github.event_name == 'pull_request' && github.ref || (github.ref_type == 'branch' && 'dev' || (contains(github.ref_name, '-') && 'preview' || 'stable')) }}
+  group: txboard-image-${{ github.event_name == 'pull_request' && github.ref || (github.ref_type == 'branch' && (github.ref == 'refs/heads/main' && 'dev' || github.ref) || (contains(github.ref_name, '-') && 'preview' || 'stable')) }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' || github.ref_type == 'branch' }}
 
 jobs:
@@ -76,7 +78,7 @@ jobs:
       - uses: shivammathur/setup-php@v2
         with:
           php-version: "8.2"
-          extensions: mbstring, sqlite3, pdo_sqlite, redis
+          extensions: mbstring, sqlite3, pdo_sqlite, redis, sodium
           coverage: none
       - name: Install API dependencies
         working-directory: api
@@ -212,6 +214,16 @@ jobs:
             }
             echo "PDO drivers: ".implode(", ", $drivers)."\\n";
           '
+      - name: Verify dedicated Node authorization crypto in the runtime image
+        run: |
+          docker run --rm --network none --entrypoint php txboard-ci:pr -r '
+            if (!extension_loaded("sodium")) { exit(1); }
+            $pair = sodium_crypto_sign_seed_keypair(str_repeat("s", SODIUM_CRYPTO_SIGN_SEEDBYTES));
+            $body = "tx-node-native-authorization-v1";
+            $signature = sodium_crypto_sign_detached($body, sodium_crypto_sign_secretkey($pair));
+            if (!sodium_crypto_sign_verify_detached($signature, $body, sodium_crypto_sign_publickey($pair))) { exit(1); }
+            echo "Dedicated Ed25519 runtime roundtrip passed\n";
+          '
       - name: Report image footprint
         shell: bash
         run: |
@@ -289,7 +301,7 @@ jobs:
   publish:
     # PRs validate but never push. Only a main commit or a vetted semver Git
     # tag may publish; neither can overwrite the other channel.
-    if: github.event_name == 'push'
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || startsWith(github.ref, 'refs/tags/v')
     needs: [release-gate, release-recovery, verify]
     runs-on: ubuntu-latest
     permissions:

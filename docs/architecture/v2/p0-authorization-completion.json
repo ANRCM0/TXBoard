@@ -1,0 +1,305 @@
+{
+  "objective": "P0 native credential lifecycle and finite offline authorization foundation",
+  "status": "development-and-isolated-acceptance-complete",
+  "recorded_local_date": "2026-10-15",
+  "qualified_runtime_commit": "b480f9f560b605da8e25ef6f20bf660a18d8d22f",
+  "final_inspected_core_commit": "edd753992f9ca14ee00e097df9fbe883d34d2ff2",
+  "final_inspected_deploy_commit": "aa477474930cbe20123f4e2ef41c27ecf2bcdc93",
+  "runtime_and_ci_sources_match_qualified_commit": true,
+  "requirements": [
+    {
+      "requirement": "Core native issuance and delivery",
+      "result": "passed",
+      "implementation": [
+        "api/app/Domains/Network/NativeNodeAuthorization.php",
+        "api/app/Http/Controllers/Txapi/NodeProtocolController.php"
+      ],
+      "evidence": "signed complete snapshots and public trust verified by native-authorization-control on both kernels"
+    },
+    {
+      "requirement": "finite lease, offline expiry and online revocation convergence",
+      "result": "passed",
+      "implementation": [
+        "node/internal/authorization/authorization.go",
+        "node/internal/service/authorization_adapter.go"
+      ],
+      "maximum_lease_seconds": 120,
+      "evidence": "signed withdrawal, expiry cutoff and unchanged sibling live traffic; exact account expiry boundary additionally covered by Core eligibility regressions"
+    },
+    {
+      "requirement": "restart cannot revive cached or revoked authorization",
+      "result": "passed",
+      "implementation": [
+        "node/internal/authorization/persistence_linux_test.go",
+        "node/internal/service/authorization_adapter_test.go"
+      ],
+      "evidence": "persisted high-water, same-revision rejection after restart and three distinct real process phases per kernel"
+    },
+    {
+      "requirement": "original traffic reports survive stop and recovery",
+      "result": "passed",
+      "evidence": "real replay of original batch ID/body/observed period; existing durable reporting and Node controls reused"
+    },
+    {
+      "requirement": "staged commits and pushes",
+      "result": "passed",
+      "core_branch": "feat/installer-node-authorization-preflight",
+      "core_commit": "edd753992f9ca14ee00e097df9fbe883d34d2ff2",
+      "deploy_branch": "feat/node-native-authorization-pins",
+      "deploy_commit": "aa477474930cbe20123f4e2ef41c27ecf2bcdc93"
+    },
+    {
+      "requirement": "exact-commit CI",
+      "result": "passed",
+      "evidence": "eight successful matching-SHA runs inspected, including final Core/Node and Deploy branch commits"
+    }
+  ],
+  "local_evidence": [
+    {
+      "requirement": "isolated actual signed lifecycle and recovery",
+      "kernel": "singbox",
+      "protocols": [
+        "vless",
+        "vmess"
+      ],
+      "result": "passed",
+      "distinct_processes": 3,
+      "original_batch_replays": 2
+    },
+    {
+      "requirement": "isolated actual signed lifecycle and recovery",
+      "kernel": "xray",
+      "protocols": [
+        "vless",
+        "vmess"
+      ],
+      "result": "passed",
+      "distinct_processes": 3,
+      "original_batch_replays": 2
+    },
+    {
+      "requirement": "recorded local regression",
+      "artifact": ".tmp/native-authorization-integrated-r2/full-result.json",
+      "sha256": "53f34b60ca218719e7fa55aebfe9a0a786e5baf0c9b9413dec28fa8922831407",
+      "result": "passed"
+    },
+    {
+      "requirement": "recorded local regression",
+      "artifact": ".tmp/native-authorization-final-r1/focused-result.json",
+      "sha256": "c501827051ad4d2ea3be870b2be893e85467dc130140797fa16215b12b160c2d",
+      "result": "passed"
+    },
+    {
+      "requirement": "recorded local regression",
+      "artifact": ".tmp/native-authorization-live-r1/php-full-result.json",
+      "sha256": "a009cf8861bbbaf197bdb1c944e0e951667bf32d03ad04b166807251f80251da",
+      "result": "passed"
+    },
+    {
+      "requirement": "recorded local regression",
+      "artifact": ".tmp/installer-authorization-r6/result.json",
+      "sha256": "aaa36f2f23203a77c684f7a403c595ada64120099759f5d060b5671b1f2bfc8d",
+      "result": "passed"
+    }
+  ],
+  "exact_commit_ci": [
+    {
+      "repository": "ANRCM0/TXBoard",
+      "run_id": 38629196566,
+      "commit": "b480f9f560b605da8e25ef6f20bf660a18d8d22f",
+      "result": "success",
+      "jobs": [
+        {
+          "name": "test",
+          "conclusion": "success"
+        }
+      ],
+      "evidence_sha256": "18a8cd94bc455d71f63758f754fd3f13eb6e8f673e9e8ea23c1139bfb5862f5b"
+    },
+    {
+      "repository": "ANRCM0/TXBoard",
+      "run_id": 38629196434,
+      "commit": "b480f9f560b605da8e25ef6f20bf660a18d8d22f",
+      "result": "success",
+      "jobs": [
+        {
+          "name": "Node Go tests and source guards",
+          "conclusion": "success"
+        },
+        {
+          "name": "Classify Node runtime changes",
+          "conclusion": "success"
+        },
+        {
+          "name": "Node runtime stability",
+          "conclusion": "success"
+        },
+        {
+          "name": "Node image metadata and config compatibility",
+          "conclusion": "success"
+        },
+        {
+          "name": "Publish independent Node image",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "Node release binaries",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "Attach Node binaries to unified release",
+          "conclusion": "skipped"
+        }
+      ],
+      "evidence_sha256": "bf9596d9481773380aeda1ff5407a6c5f7eced93f93cba254952e07f48906db6"
+    },
+    {
+      "repository": "ANRCM0/TXBoard",
+      "run_id": 38629196471,
+      "commit": "b480f9f560b605da8e25ef6f20bf660a18d8d22f",
+      "result": "success",
+      "jobs": [
+        {
+          "name": "release-recovery",
+          "conclusion": "success"
+        },
+        {
+          "name": "verify",
+          "conclusion": "success"
+        },
+        {
+          "name": "release-gate",
+          "conclusion": "success"
+        },
+        {
+          "name": "publish",
+          "conclusion": "skipped"
+        }
+      ],
+      "evidence_sha256": "b5970cd92ef61325c18a67540bca83e50dfd7668b2bf206cb04dbe3eb56d42c9"
+    },
+    {
+      "repository": "ANRCM0/TXBoard",
+      "run_id": 38629196396,
+      "commit": "b480f9f560b605da8e25ef6f20bf660a18d8d22f",
+      "result": "success",
+      "jobs": [
+        {
+          "name": "native-authorization-control (singbox)",
+          "conclusion": "success"
+        },
+        {
+          "name": "native-authorization-control (xray)",
+          "conclusion": "success"
+        }
+      ],
+      "evidence_sha256": "a0f5c1be962da1ac011368582b372f7d324bf7f44e4e3178902196247c1100fc"
+    },
+    {
+      "repository": "ANRCM0/TXBoard",
+      "run_id": 38629196369,
+      "commit": "b480f9f560b605da8e25ef6f20bf660a18d8d22f",
+      "result": "success",
+      "jobs": [
+        {
+          "name": "native-machine-control",
+          "conclusion": "success"
+        }
+      ],
+      "evidence_sha256": "8d30d20b32f05523202642c9203be65c2783652c5d7767fed2025019b9b633db"
+    },
+    {
+      "repository": "ANRCM0/TXBoard",
+      "run_id": 38629196455,
+      "commit": "b480f9f560b605da8e25ef6f20bf660a18d8d22f",
+      "result": "success",
+      "jobs": [
+        {
+          "name": "native-traffic-control (vmess)",
+          "conclusion": "success"
+        },
+        {
+          "name": "native-traffic-control (vless)",
+          "conclusion": "success"
+        },
+        {
+          "name": "native-period-session-order",
+          "conclusion": "success"
+        }
+      ],
+      "evidence_sha256": "382529040c04b3455d7ceddc76b812f1f32f976a994274347d5690f29678f94c"
+    },
+    {
+      "repository": "ANRCM0/TXBoard",
+      "run_id": 38636244662,
+      "commit": "edd753992f9ca14ee00e097df9fbe883d34d2ff2",
+      "result": "success",
+      "jobs": [
+        {
+          "name": "Node runtime stability",
+          "conclusion": "success"
+        },
+        {
+          "name": "Node Go tests and source guards",
+          "conclusion": "success"
+        },
+        {
+          "name": "Classify Node runtime changes",
+          "conclusion": "success"
+        },
+        {
+          "name": "Node image metadata and config compatibility",
+          "conclusion": "success"
+        },
+        {
+          "name": "Node release binaries",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "Publish independent Node image",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "Attach Node binaries to unified release",
+          "conclusion": "skipped"
+        }
+      ],
+      "evidence_sha256": "6b5d3338798d5d97577c65c690a50f5b448cd818bef1c27704fbcce7508a5c43"
+    },
+    {
+      "repository": "ANRCM0/TXBoard-Deploy",
+      "run_id": 38633900755,
+      "commit": "aa477474930cbe20123f4e2ef41c27ecf2bcdc93",
+      "result": "success",
+      "jobs": [
+        {
+          "name": "verify",
+          "conclusion": "success"
+        },
+        {
+          "name": "gateway-docker",
+          "conclusion": "success"
+        },
+        {
+          "name": "smoke-install",
+          "conclusion": "skipped"
+        }
+      ],
+      "evidence_sha256": "6b40bd886115755b3e11b8d28836eabc08dcfcb2526fbc11750aa691609cfa2b"
+    }
+  ],
+  "scope": "Opt-in native Core/Node signed authorization; isolated synthetic data; real VLESS/VMess on sing-box and Xray. Provider fixtures remain isolated and are not claimed as production secret delivery.",
+  "release_state": {
+    "default_branch_merge": false,
+    "images_published_by_review_runs": false,
+    "pull_request": "GitHub API lacks collaborator permission; review branches remain available"
+  },
+  "later_gates": [
+    "production Provider secret delivery",
+    "key provisioning and rotation overlap",
+    "controlled Machine scope re-enrollment",
+    "full enrolled-node backup/restore",
+    "HA and disk/hardware anti-rollback",
+    "full protocol matrix"
+  ]
+}

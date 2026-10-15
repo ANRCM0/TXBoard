@@ -242,9 +242,20 @@ Module HTTP contracts:
 - read-only Registry: `contracts/http/module-registry-v1.md`;
 - controlled lifecycle management: `contracts/http/module-management-v1.md`.
 
-## 16. Testing requirements
+## 16. 开发与批次验收（2026-10-15 用户最新决定）
 
-For API changes:
+- 一个完整功能或多个相关阶段可以合为一批：连续开发 → 集中验收 → 汇总修复 → 相关复测 → 提交推送。此约定覆盖旧的每条小切片独立全量测试、提交和推送要求。
+- 日常实现只做必要的语法、编译、类型和明显错误检查；文档修改只检查差异、引用和一致性，不启动应用、Docker 或数据库测试。
+- 批次验收围绕新增功能、主要业务链路和直接受影响行为。达到标准后收尾；没有新改动、实际失败或未解决问题，不重复运行已通过的全量测试。
+- 权限、扣费、支付和数据库写入的关键变更保留必要的针对性检查；发现权限绕过、丢数据或基础接口阻断时及时处理，不等待依赖工作堆积。
+- 完整协议/双内核矩阵、复杂故障注入与备份恢复边缘组合集中到发布验收或相关实现变更时；已有协议不为测试而重新开发。
+- 不关闭现有 required CI 或发布/迁移门禁。以批次末尾提交推送减少重复 CI；记录结果的文档不得造成无意义的相同组件复验循环。
+- 代理负责各自实现与必要检查，协调者统一安排批次集成；不得默认让每个代理重复跑完整环境和相同回归。
+- 进度以可用功能、实际问题与剩余工作为主；明确区分开发完成、已验证和已发布，延后验收的范围继续列出。
+
+完整执行约定见 [开发与批次验收流程](docs/development/development-workflow.md)。以下是按本批影响范围选用的命令，不能理解为每次修改均需运行所有命令。
+
+For API batch acceptance when relevant:
 
 ```bash
 cd api
@@ -254,14 +265,14 @@ php artisan key:generate
 APP_ENV=testing DB_CONNECTION=sqlite DB_DATABASE=:memory: php artisan test
 ```
 
-For web changes:
+For web batch acceptance when relevant (frontend development remains deferred):
 
 ```bash
 npm ci --no-audit --no-fund
 npm run verify:web
 ```
 
-For production-image-sensitive changes, preserve:
+For relevant production-image changes, preserve these checks at batch/release acceptance:
 
 - Docker build;
 - embedded healthcheck;
@@ -270,7 +281,16 @@ For production-image-sensitive changes, preserve:
 
 Whenever Module Package contract changes, keep JSON Schema, PHP vocabulary/DTOs, examples and tests in sync.
 
-## 17. PR discipline
+## 17. PR 与多团队协作（2026-10-15 用户最新决定）
+
+后续团队通过 PR 贡献源码、契约与协作文档；主题分支推送后经审阅合并，不直接推送默认分支。一个 PR 对应一个连贯功能批次，可包含多个相关阶段。完整分工和合并流程见[多团队方案](docs/development/multi-team-development.md)。
+
+- 按 Core、Node、Gateway、Deploy 划分工作线；共享模型、数据库迁移、接口契约和根 CI 由相关负责人协调，实际团队账号未指定前由维护者分配审阅人。
+- 每任务使用独立分支和工作目录；跨仓或 stacked PR 标明 base、依赖与发布顺序，不把未合入审阅分支当作稳定默认基线。
+- 可提前开 Draft 讨论契约；完成相关阶段后集中验收修复再请求正式审阅，不能把开 PR 当作重复全量测试的理由。
+- 至少一名非作者领域审阅人批准；跨团队接口须双方确认，权限/资金/迁移/发布变更加相关领域或集成负责人确认。实质修改后复审受影响部分。
+- 合并须依赖就绪、意见处理和相关CI/已配置required checks满足，由获授权维护者执行；提交/推送授权不自动扩大到自审自合、默认分支合并或镜像发布。
+- 使用[PR模板](.github/pull_request_template.md)说明实际行为、影响、依赖、验证和恢复条件。CODEOWNERS与远端分支保护需维护者配置，不能把协作文档当作已生效的权限控制。
 
 Prefer one architecture concern per PR.
 
@@ -297,8 +317,8 @@ Use merge commits for project PRs unless explicitly instructed otherwise.
 2026-10-13 用户明确授权在开发中派代理并行加速。可以将契约已明确、文件范围不重叠的 Core/Gateway/Node 或独立安装器工作交给开发代理；协调者负责依赖、边界、验收和提交推送，不以代理数量替代检查。
 
 - 分配前确定每个代理的文件所有权、依赖和实际验收范围。共享注册表、契约词汇、迁移号和中央台账的修改须协调；不得覆盖他人未完成代码。
-- 每条切片先更新契约，保留独立固定源码快照、依赖锁和合成数据证据；各代理使用独立专用测试库和夹具，不并发删除共享数据库。
-- 开发代理冻结可评审结果后由协调者审查。协调者运行适当整合回归，精确暂存已验收文件，每条完成切片单独提交/推送，并核对远端CI；不要将未验收代理文件一起提交。
+- 先明确本批契约和文件边界；需要真实环境验收时统一固定本批源码、依赖锁和必要证据，不要求每个小修改或代理独立重复整套验收。各代理使用独立专用测试库和夹具，不并发删除共享数据库。
+- 开发代理冻结可评审结果后由协调者审查。协调者在一个或多个相关阶段完成后统一安排适当的集成验收与修复，精确暂存已验收文件，按批次提交/推送并核对远端CI；不要将未验收的独立代理改动一起提交。
 - 此授权适用于开发协作，不恢复产品中已退役的 Agent/MCP 功能，也不解除生产写入、凭据或迁移门禁。
 - TX-F 的管理/用户前端仍暂缓；该独立项目只本地提交，不推送。其他仓库的推送授权不能扩展到 TX-F。
 

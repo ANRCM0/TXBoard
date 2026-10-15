@@ -27,7 +27,8 @@ FROM phpswoole/swoole:6.2.2-php8.2-alpine
 
 COPY --from=mlocati/php-extension-installer /usr/bin/install-php-extensions /usr/local/bin/
 
-RUN install-php-extensions pcntl bcmath zip redis && \
+RUN install-php-extensions pcntl bcmath zip redis sodium && \
+    php -r 'if (!extension_loaded("sodium") || !function_exists("sodium_crypto_sign_detached")) { exit(1); }' && \
     apk add --no-cache sqlite-libs mariadb-connector-c supervisor redis caddy && \
     addgroup -S -g 1000 www && adduser -S -G www -u 1000 www && \
     (getent group redis || addgroup -S redis) && \

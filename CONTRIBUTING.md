@@ -2,6 +2,12 @@
 
 欢迎以 Issue、文档更正和独立 PR 参与 TXBoard。修改前建议先阅读 [项目介绍](README.md)、[文档中心](docs/README.md) 与 [AGENTS.md](AGENTS.md) 的安全、架构及兼容性约束。
 
+## 团队参与与 PR
+
+后续团队通过主题分支或 fork 提交 PR，不直接推送默认分支。分工、公共接口协调、依赖 PR、审阅人与合并规则见[多团队开发方案](docs/development/multi-team-development.md)。一个连贯功能或多个相关阶段可组成一批，完成后集中验收修复；跨团队准备工作可提前开 Draft。
+
+使用[PR模板](.github/pull_request_template.md)描述结果、范围、依赖及验证。至少由一名非作者领域负责人批准，跨团队接口由生产者和消费者共同确认；合并由获授权维护者执行，使用merge commit。实际账号、CODEOWNERS及远端分支保护由维护者配置，不能假设文档已启用强制审批。
+
 ## 选择修改范围
 
 - **文档修改**：优先修订已有页面及链接，遵循 [文档维护规范](docs/DOCUMENTATION_GUIDE.md)；不要在多个仓库复制同一套命令和状态。
@@ -14,12 +20,7 @@
 
 组件目录与 CI 入口见 [双仓布局](docs/development/repository-layout.md)。Gateway 的 npm 命令在 `gateway/` 执行，Go 命令在 `node/` 执行；不要将它们加入 Core 的 npm workspaces 或 Docker 构建上下文。安装器修改提交到 TXBoard-Deploy。
 
-后端（在 `api/`）执行相应的 Composer / Artisan 测试；前端（根目录）执行：
-
-```bash
-npm ci --no-audit --no-fund
-npm run verify:web
-```
+遵循[批次开发与集中验收](docs/development/development-workflow.md)，按新增功能和影响范围选择相关检查。后端命令在 `api/` 执行；前端开发仍暂缓，只有影响现有前端构建时才选用本地指南中的相关验证。无需每个提交或每个团队重复全量测试。
 
 仅修改文档时，检查内部链接：
 
