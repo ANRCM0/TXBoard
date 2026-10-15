@@ -41,7 +41,7 @@ TXBoard-Deploy 可显式接收完整 Core/key 公钥 pin，为 Node/Machine 或�
 
 Node 已增加只读布局探测与有限安全停机检查点；安装器已实现配置、Compose、完整 data 的私密归档，保留当前较新的授权高水位和原流量文件，冲突拒绝及中断恢复保护。恢复固定原 image ID 并保持停止，后续启动重新取得在线授权。安装器拥有生命周期和归档，Node 复用已有尾量持久化逻辑。
 
-Linux 全包 race 31 个包、1,203 个主/子测试项通过，另有8项条件跳过。安装器16套 shell 回归、27项归档/故障恢复及19项 Docker 编排模拟通过；本地真实 sing-box/Xray 容器的 VLESS、进程回执、备份恢复、中断保护和原batch/周期重放已通过。该 Docker 夹具使用合成 HTTP 控制端，仍需真实 Core/TLS/有限授权与 VMess 链路及完整安装/更新/回滚验收。详见 [P1 验收记录](p1-runtime-backup-verification.json)。P1整体仍在进行。
+Linux 全包 race 31 个包、1,203 个主/子测试项通过，另有8项条件跳过。安装器16套 shell 回归、27项归档/故障恢复及19项 Docker 编排模拟通过；本地真实 sing-box/Xray 容器的 VLESS、进程回执、备份恢复、中断保护和原batch/周期重放已通过。该 Docker 夹具使用合成 HTTP 控制端，仍需真实 Core/TLS/有限授权与 VMess 链路及完整安装/更新/回滚验收。详见 [P1 验收记录](p1-runtime-backup-verification.json)。Node运行时代码 `91fb762`、Installer `a7d4817` 已提交推送；Node全量/镜像、授权、Machine、流量与安装器CI全部通过。流量下载抖动通过仅CI修复 `ad74757` 复验；精确运行号见 [远端验收记录](p1-runtime-backup-ci.json)。P1整体仍在进行。
 
 ## 实现范围与剩余验收
 
