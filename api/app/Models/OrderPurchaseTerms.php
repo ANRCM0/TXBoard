@@ -25,18 +25,8 @@ class OrderPurchaseTerms extends Model
     protected static function booted(): void
     {
         static::creating(static function (self $terms): void {
-            $snapshot = is_array($terms->source_snapshot) ? $terms->source_snapshot : [];
-            $hash = $snapshot['content_hash'] ?? null;
-            unset($snapshot['content_hash']);
-            if (!is_string($hash) || !hash_equals($hash, app(\App\Services\Subscription\PlanCatalogShadowService::class)->hash($snapshot))
-                || !hash_equals($hash, (string) $terms->content_hash)
-                || (string) ($snapshot['price_minor'] ?? '') !== (string) $terms->price_minor
-                || (string) ($snapshot['currency'] ?? '') !== (string) $terms->currency
-                || (string) ($snapshot['period'] ?? '') !== (string) $terms->period
-                || (string) ($snapshot['plan_id'] ?? '') !== (string) $terms->plan_id
-                || (string) ($snapshot['order_type'] ?? '') !== (string) $terms->order_type) {
-                throw new LogicException('Order purchase terms content hash mismatch.');
-            }
+            $order = Order::query()->findOrFail($terms->order_id);
+            app(\App\Domains\Billing\PurchasedOrderGrant::class)->resolve($order, $terms);
         });
         static::updating(static function (): void { throw new LogicException('Order purchase terms are immutable.'); });
         static::deleting(static function (): void { throw new LogicException('Order purchase terms cannot be deleted.'); });

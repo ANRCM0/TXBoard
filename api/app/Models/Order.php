@@ -60,6 +60,16 @@ protected $table = 'tx_order';
     const STATUS_COMPLETED = 3; // 已完成
     const STATUS_DISCOUNTED = 4; // 已折抵
 
+    protected static function booted(): void
+    {
+        static::updating(static function (self $order): void {
+            if ($order->getRawOriginal('purchase_terms_version') !== null
+                && $order->isDirty(['purchase_terms_version', 'user_id', 'plan_id', 'period', 'type', 'total_amount'])) {
+                throw new \LogicException('Purchased order identity and terms cannot change.');
+            }
+        });
+    }
+
     public static $statusMap = [
         self::STATUS_PENDING => '待支付',
         self::STATUS_PROCESSING => '开通中',

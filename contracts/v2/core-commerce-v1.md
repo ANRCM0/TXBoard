@@ -4,9 +4,9 @@
 
 ## Purpose
 
-Every newly created order stores an immutable purchase-terms snapshot in `tx_order_purchase_terms` in the same database transaction as the legacy order. The snapshot records the price actually charged and the plan entitlement that the order is intended to grant. Order fulfillment consumes the snapshot when it exists; older orders without a snapshot retain the legacy fulfillment path.
+New user-created and manually assigned orders carry `purchase_terms_version=tx-core.purchase-terms/v1` and store an immutable purchase-terms snapshot in `tx_order_purchase_terms` in the same database transaction as the legacy order. The snapshot records the price actually charged and the plan entitlement that the order is intended to grant. Order fulfillment consumes the snapshot when it exists; older orders without a snapshot retain the legacy fulfillment path.
 
-This prevents a Plan edit between order creation and payment fulfillment from changing the already purchased quota, group, speed, device limit or reset policy.
+This prevents a Plan edit between order creation and payment fulfillment from changing the already purchased quota, group, speed or device limit. Calendar duration/overflow and the order-open reset event are frozen as well. The reset policy is recorded for later subscription authority; ongoing scheduled resets deliberately retain the current native Plan/system policy in this slice.
 
 ## Snapshot fields
 
@@ -20,7 +20,7 @@ The immutable record is bound one-to-one to `order_id` and includes:
 - calendar duration and purchase kind;
 - normalized source snapshot and SHA-256 `content_hash`.
 
-The record cannot be updated or deleted. Its foreign key prevents deleting the order while the purchase evidence exists. A failed snapshot insert rolls back order creation.
+Both insertion and fulfillment validate the closed versioned snapshot, recursive canonical hash, scalar projections and binding to order/user/plan/period/type/final amount. Missing or corrupt evidence on a marked order refuses fulfillment; only unmarked orders without evidence use legacy behavior. Existing marked order identity and purchased fields cannot be edited through Eloquent. The record cannot be updated or deleted. Its foreign key prevents deleting the order while the purchase evidence exists. A failed snapshot insert rolls back order creation.
 
 ## Authority boundary
 
@@ -31,3 +31,7 @@ Discounts, coupons, surplus credit and invitation calculations remain in the exi
 ## Compatibility and rollout
 
 Existing orders without a snapshot continue through the current legacy fulfillment path. New orders require the snapshot. A future authority migration must update writers and readers together under the existing writer fence; simply deleting the legacy fallback is prohibited. New routes are not required for this slice; existing order APIs may expose only the non-secret snapshot summary when the relation is explicitly loaded.
+
+The site currency follows the existing SiteConfigService default (`CNY`) when unset; the recorded currency does not relabel historical orders. This slice supports the existing ten two-decimal currencies; catalog prices that cannot be represented exactly in minor units are rejected transactionally rather than rounded into ambiguous purchase evidence. `price_minor` is the remaining external amount after existing discounts/wallet/surplus calculations, not a new gross consideration ledger.
+
+Manual administrator assignments preserve their existing ability to choose a supported period and negotiated/free amount even when the catalog has no price for that period. Their snapshot declares `quote_source=manual_assignment` and `list_price_minor=null`; catalog purchases declare `quote_source=catalog` and retain the exact list price. No catalog price is fabricated for a manual assignment.

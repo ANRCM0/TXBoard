@@ -11,6 +11,7 @@ use App\Models\TrafficResetLog;
 use App\Models\User;
 use App\Models\OrderPurchaseTerms;
 use App\Domains\Billing\OrderPurchaseTermsSnapshot;
+use App\Domains\Billing\PurchasedOrderGrant;
 use App\Services\Plugin\HookManager;
 use App\Services\Subscription\LegacyUserMutationCapture;
 use App\Services\Subscription\LegacyCaptureShadowException;
@@ -33,6 +34,7 @@ class OrderService
     ];
     public $order;
     public $user;
+    private ?array $purchasedGrant = null;
 
     public function __construct(Order $order)
     {
@@ -108,6 +110,7 @@ class OrderService
                         'period' => $newPeriod,
                         'trade_no' => Helper::generateOrderNo(),
                         'total_amount' => (int) round((float) $plan->prices[$newPeriod] * 100),
+                        'purchase_terms_version' => 'tx-core.purchase-terms/v1',
                     ]);
                     $orderService = new self($order);
                     if ($couponCode) {
@@ -122,25 +125,11 @@ class OrderService
                     if (!$order->save()) {
                         throw new ApiException(__('Failed to create order'));
                     }
-                    $purchase = app(OrderPurchaseTermsSnapshot::class)->build(
-                        $order,
-                        $plan,
-                        (string) admin_setting('currency', 'CNY'),
-                        $plan->reset_traffic_method === null
-                            ? (int) admin_setting('reset_traffic_method', Plan::RESET_TRAFFIC_MONTHLY)
-                            : (int) $plan->reset_traffic_method,
-                        (string) config('app.timezone', 'UTC'),
-                    );
-                    OrderPurchaseTerms::query()->create([
-                        'order_id' => $order->id, 'user_id' => $order->user_id, 'plan_id' => $plan->id,
-                        'period' => $newPeriod, 'order_type' => (int) $order->type,
-                        'price_minor' => (string) $order->total_amount, 'currency' => (string) admin_setting('currency', 'CNY'),
-                        'currency_minor_exponent' => 2, 'quota_bytes' => $purchase['quota_bytes'],
-                        'group_id' => $purchase['group_id'], 'speed_limit_mbps' => $purchase['speed_limit_mbps'],
-                        'device_limit' => $purchase['device_limit'], 'reset_policy' => $purchase['reset_policy'],
-                        'duration_months' => $purchase['duration_months'], 'purchase_kind' => $purchase['purchase_kind'],
-                        'source_snapshot' => $purchase, 'content_hash' => $purchase['content_hash'], 'created_at' => time(),
-                    ]);
+                    try {
+                        app(OrderPurchaseTermsSnapshot::class)->capture($order, $plan);
+                    } catch (\InvalidArgumentException|\RuntimeException $exception) {
+                        throw new ApiException('The selected plan cannot produce valid purchased terms', 409);
+                    }
                     HookManager::call('order.create.after', $order);
                     HookManager::call('order.after_create', $order);
                     $capture->appendOrderCreation($captureBefore);
@@ -159,25 +148,18 @@ class OrderService
                 return null;
             }
 
-            $plan = Plan::find($order->plan_id);
+            $terms = OrderPurchaseTerms::query()->where('order_id', $order->id)->first();
+            $resolver = app(PurchasedOrderGrant::class);
+            $this->purchasedGrant = $resolver->resolve($order, $terms);
+            $plan = $this->purchasedGrant === null ? Plan::find($order->plan_id) : $resolver->plan($order, $terms);
             if (!$plan) {
                 throw new \RuntimeException('订阅不存在');
-            }
-            $purchaseTerms = OrderPurchaseTerms::query()->where('order_id', $order->id)->first();
-            if ($purchaseTerms !== null) {
-                $snapshot = is_array($purchaseTerms->source_snapshot) ? $purchaseTerms->source_snapshot : [];
-                $plan->transfer_enable = $snapshot['quota_bytes'] === null ? null : intdiv((int) $snapshot['quota_bytes'], 1073741824);
-                $plan->group_id = $snapshot['group_id'];
-                $plan->speed_limit = $snapshot['speed_limit_mbps'];
-                $plan->device_limit = $snapshot['device_limit'];
-                $plan->reset_traffic_method = $snapshot['reset_policy']['method'] ?? $plan->reset_traffic_method;
             }
 
             HookManager::call('order.open.before', $order);
 
             $this->user = User::lockForUpdate()->find($order->user_id);
 
-            $this->user->setRelation('plan', $plan);
             $capture = app(LegacyUserMutationCapture::class);
             $captureBefore = $capture->beginOrderFulfillment((int) $order->user_id, (int) $order->id);
 
@@ -192,7 +174,7 @@ class OrderService
 
             match ((string) $order->period) {
                 Plan::PERIOD_ONETIME => $this->buyByOneTime($plan),
-                Plan::PERIOD_RESET_TRAFFIC => app(TrafficResetService::class)->performReset($this->user, TrafficResetLog::SOURCE_ORDER),
+                Plan::PERIOD_RESET_TRAFFIC => $this->resetPurchasedTraffic(),
                 default => $this->buyByPeriod($order, $plan),
             };
 
@@ -203,6 +185,12 @@ class OrderService
                 throw new \RuntimeException('用户信息保存失败');
             }
 
+            if ($this->purchasedGrant !== null && $this->purchasedGrant['open_event_id'] === 1) {
+                if (!app(TrafficResetService::class)->performReset($this->user, TrafficResetLog::SOURCE_ORDER)) {
+                    throw new \RuntimeException('ORDER_PURCHASE_RESET_FAILED');
+                }
+                $this->user->refresh();
+            }
             $order->status = Order::STATUS_COMPLETED;
             if (!$order->save()) {
                 throw new \RuntimeException('订单信息保存失败');
@@ -227,7 +215,7 @@ class OrderService
             default => 0,
         };
 
-        if ($eventId) {
+        if ($this->purchasedGrant === null && $eventId) {
             $this->openEvent($eventId);
         }
 
@@ -520,6 +508,15 @@ class OrderService
         $this->user->device_limit = $deviceLimit;
     }
 
+    private function resetPurchasedTraffic(): bool
+    {
+        $result = app(TrafficResetService::class)->performReset($this->user, TrafficResetLog::SOURCE_ORDER);
+        if ($this->purchasedGrant !== null && !$result) {
+            throw new \RuntimeException('ORDER_PURCHASE_RESET_FAILED');
+        }
+        return $result;
+    }
+
     private function buyByPeriod(Order $order, Plan $plan)
     {
         // change plan process
@@ -529,7 +526,7 @@ class OrderService
         $this->user->transfer_enable = $plan->transfer_enable * 1073741824;
         // 从一次性转换到循环或者新购的时候，重置流量
         if ($this->user->expired_at === NULL || $order->type === Order::TYPE_NEW_PURCHASE)
-            app(TrafficResetService::class)->performReset($this->user, TrafficResetLog::SOURCE_ORDER);
+            $this->resetPurchasedTraffic();
         $this->user->plan_id = $plan->id;
         $this->user->group_id = $plan->group_id;
         $this->user->expired_at = $this->getTime($order->period, $this->user->expired_at);
@@ -537,7 +534,7 @@ class OrderService
 
     private function buyByOneTime(Plan $plan)
     {
-        app(TrafficResetService::class)->performReset($this->user, TrafficResetLog::SOURCE_ORDER);
+        $this->resetPurchasedTraffic();
         $this->user->transfer_enable = $plan->transfer_enable * 1073741824;
         $this->user->plan_id = $plan->id;
         $this->user->group_id = $plan->group_id;
@@ -554,6 +551,12 @@ class OrderService
     private function getTime(string $periodKey, ?int $timestamp = null): int
     {
         $timestamp = $timestamp < time() ? time() : $timestamp;
+        if ($this->purchasedGrant !== null) {
+            $policy = $this->purchasedGrant['calendar_policy'];
+            return Carbon::createFromTimestamp($timestamp, $policy['timezone'])
+                ->settings(['monthOverflow' => $policy['month_overflow']])
+                ->addMonths($this->purchasedGrant['duration_months'])->timestamp;
+        }
         $periodKey = PlanService::getPeriodKey($periodKey);
 
         if (isset(self::STR_TO_TIME[$periodKey])) {

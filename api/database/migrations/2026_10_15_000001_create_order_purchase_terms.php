@@ -8,11 +8,14 @@ use Illuminate\Support\Facades\DB;
 return new class extends Migration {
     public function up(): void
     {
+        Schema::table('tx_order', function (Blueprint $table): void {
+            $table->string('purchase_terms_version', 40)->nullable();
+        });
         Schema::create('tx_order_purchase_terms', function (Blueprint $table): void {
             $table->bigIncrements('id');
-            $table->unsignedBigInteger('order_id');
-            $table->unsignedBigInteger('user_id');
-            $table->unsignedBigInteger('plan_id');
+            $table->integer('order_id');
+            $table->integer('user_id');
+            $table->integer('plan_id');
             $table->string('period', 32);
             $table->unsignedTinyInteger('order_type');
             $table->unsignedBigInteger('price_minor');
@@ -36,9 +39,11 @@ return new class extends Migration {
 
     public function down(): void
     {
-        if (Schema::hasTable('tx_order_purchase_terms') && DB::table('tx_order_purchase_terms')->exists()) {
+        if ((Schema::hasTable('tx_order_purchase_terms') && DB::table('tx_order_purchase_terms')->exists())
+            || DB::table('tx_order')->whereNotNull('purchase_terms_version')->exists()) {
             throw new \RuntimeException('Order purchase terms exist; fix forward or restore a verified backup.');
         }
         Schema::dropIfExists('tx_order_purchase_terms');
+        Schema::table('tx_order', function (Blueprint $table): void { $table->dropColumn('purchase_terms_version'); });
     }
 };

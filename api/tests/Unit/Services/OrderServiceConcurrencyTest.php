@@ -84,13 +84,13 @@ class OrderServiceConcurrencyTest extends TestCase
     {
         $user = $this->makeUser(['balance' => 0, 'expired_at' => 0, 'transfer_enable' => 0]);
         $plan = $this->makePlan(['transfer_enable' => 2, 'group_id' => 7, 'speed_limit' => 30, 'device_limit' => 4]);
-        $order = $this->makeOrder($user, $plan, ['status' => Order::STATUS_PROCESSING, 'total_amount' => 1100]);
+        $order = $this->makeOrder($user, $plan, ['status' => Order::STATUS_PROCESSING, 'total_amount' => 1100, 'purchase_terms_version' => 'tx-core.purchase-terms/v1']);
         $purchase = app(\App\Domains\Billing\OrderPurchaseTermsSnapshot::class)->build($order, $plan, 'CNY', 1, 'Asia/Shanghai');
         \App\Models\OrderPurchaseTerms::create([
             'order_id' => $order->id, 'user_id' => $user->id, 'plan_id' => $plan->id, 'period' => 'monthly',
             'order_type' => Order::TYPE_NEW_PURCHASE, 'price_minor' => '1100', 'currency' => 'CNY',
             'currency_minor_exponent' => 2, 'quota_bytes' => $purchase['quota_bytes'], 'group_id' => 7,
-            'speed_limit_mbps' => 30, 'device_limit' => 4, 'reset_policy' => ['revision' => 'legacy-current/v1', 'method' => 1, 'timezone' => 'Asia/Shanghai'],
+            'speed_limit_mbps' => 30, 'device_limit' => 4, 'reset_policy' => $purchase['reset_policy'],
             'duration_months' => 1, 'purchase_kind' => 'subscription', 'source_snapshot' => $purchase,
             'content_hash' => $purchase['content_hash'], 'created_at' => time(),
         ]);

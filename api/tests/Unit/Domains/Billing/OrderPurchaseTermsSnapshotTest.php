@@ -28,7 +28,7 @@ class OrderPurchaseTermsSnapshotTest extends TestCase
         self::assertMatchesRegularExpression('/^[a-f0-9]{64}$/', $snapshot['content_hash']);
     }
 
-    public function test_snapshot_rejects_unsupported_currency_and_non_exact_price(): void
+    public function test_snapshot_rejects_unsupported_currency(): void
     {
         $plan = new Plan(['transfer_enable' => 1, 'prices' => ['monthly' => '10.001']]);
         $plan->id = 1;
@@ -36,6 +36,16 @@ class OrderPurchaseTermsSnapshotTest extends TestCase
         $order->id = 1;
         $this->expectException(InvalidArgumentException::class);
         app(OrderPurchaseTermsSnapshot::class)->build($order, $plan, 'JPY', 1);
+    }
+
+    public function test_snapshot_refuses_a_catalog_price_that_cannot_be_expressed_in_minor_units(): void
+    {
+        $plan = new Plan(['transfer_enable' => 1, 'prices' => ['monthly' => '10.001']]);
+        $plan->id = 1;
+        $order = new Order(['user_id' => 1, 'plan_id' => 1, 'period' => 'monthly', 'type' => Order::TYPE_NEW_PURCHASE, 'total_amount' => 1000]);
+        $order->id = 1;
+        $this->expectException(\RuntimeException::class);
+        app(OrderPurchaseTermsSnapshot::class)->build($order, $plan, 'CNY', 1);
     }
 
     public function test_snapshot_rejects_plan_identity_mismatch(): void

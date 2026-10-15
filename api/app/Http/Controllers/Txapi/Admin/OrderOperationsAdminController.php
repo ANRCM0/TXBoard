@@ -60,7 +60,9 @@ final class OrderOperationsAdminController
                 $order->type = Order::TYPE_NEW_PURCHASE;
             }
             (new OrderService($order))->setInvite($user);
+            $order->purchase_terms_version = 'tx-core.purchase-terms/v1';
             $order->save();
+            app(\App\Domains\Billing\OrderPurchaseTermsSnapshot::class)->capture($order, $plan, manualAssignment: true);
             return (string) $order->trade_no;
         }, 3);
 

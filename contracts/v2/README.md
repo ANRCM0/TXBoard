@@ -8,6 +8,7 @@ TXBoard 是业务与数据权威。Gateway、Deploy、TX-Node 与可选插件按
 
 | 契约 | 负责边界 | 实施批次 |
 | --- | --- | --- |
+| [Core Commerce v1](core-commerce-v1.md) | 正式订单购买快照与履约输入；不等于订阅/账务权威切换 | Core C1 |
 | [Core Internal API v1](core-internal-api/README.md) | 服务身份、最终用户授权、Operation、DTO、幂等 | B5 |
 | [Credential Provider v1](credential-provider/README.md) | 秘密归属、发行、租约、撤销、生命周期 | B4 |
 | [Node Usage v2](node-usage/README.md) | 计费主体、持久接收、结算、重放 | B3 |
