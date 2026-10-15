@@ -87,6 +87,11 @@ protected $table = 'tx_order';
         return $this->belongsTo(Payment::class, 'payment_id', 'id');
     }
 
+    public function purchaseTerms(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(OrderPurchaseTerms::class, 'order_id');
+    }
+
     /**
      * 获取与订单关联的用户
      */

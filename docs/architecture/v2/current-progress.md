@@ -54,6 +54,10 @@ Linux 全包 race 31 个包、1,203 个主/子测试项通过，另有8项条件
 | 旧无周期报告 | 保持接收周期语义，原文件不重贴当前签名周期 |
 | 生产切换 | Production PKI、密钥恢复、完整协议矩阵、HA和全局writer/queue排空仍待验收 |
 
+## Core C1：订单购买权益快照
+
+Core 已新增正式 `tx_order_purchase_terms`，订单创建在同一事务内冻结最终价格、币种、套餐额度、分组、速率、设备上限、重置策略和购买种类；履约优先消费该快照，避免管理员在支付等待期间修改 Plan 导致已购买权益改变。旧订单无快照时继续使用兼容路径；本批不切换 Subscription/User authority、不引入新账本，也不启用生产 Internal API。聚焦测试 14 项、58 条断言通过，详见 `contracts/v2/core-commerce-v1.md`。下一批继续补正式 Subscription/Terms 履约与受控 Internal API。
+
 ## 下一步顺序
 
 1. **P1：独立安装器单机交付**。配置pin、完整运行备份恢复与合成Docker冒烟批次已收尾。下一批优先基础安装、启动与正常更新，完成相关交付功能后统一测试修复。VMess恢复不另开独立测试批次；真实Core/TLS/有限授权、VMess恢复及安装更新失败回滚的剩余证据安排在关联批次或发布验收。

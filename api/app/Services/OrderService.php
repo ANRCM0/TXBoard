@@ -9,6 +9,8 @@ use App\Models\Coupon;
 use App\Models\Plan;
 use App\Models\TrafficResetLog;
 use App\Models\User;
+use App\Models\OrderPurchaseTerms;
+use App\Domains\Billing\OrderPurchaseTermsSnapshot;
 use App\Services\Plugin\HookManager;
 use App\Services\Subscription\LegacyUserMutationCapture;
 use App\Services\Subscription\LegacyCaptureShadowException;
@@ -120,6 +122,25 @@ class OrderService
                     if (!$order->save()) {
                         throw new ApiException(__('Failed to create order'));
                     }
+                    $purchase = app(OrderPurchaseTermsSnapshot::class)->build(
+                        $order,
+                        $plan,
+                        (string) admin_setting('currency', 'CNY'),
+                        $plan->reset_traffic_method === null
+                            ? (int) admin_setting('reset_traffic_method', Plan::RESET_TRAFFIC_MONTHLY)
+                            : (int) $plan->reset_traffic_method,
+                        (string) config('app.timezone', 'UTC'),
+                    );
+                    OrderPurchaseTerms::query()->create([
+                        'order_id' => $order->id, 'user_id' => $order->user_id, 'plan_id' => $plan->id,
+                        'period' => $newPeriod, 'order_type' => (int) $order->type,
+                        'price_minor' => (string) $order->total_amount, 'currency' => (string) admin_setting('currency', 'CNY'),
+                        'currency_minor_exponent' => 2, 'quota_bytes' => $purchase['quota_bytes'],
+                        'group_id' => $purchase['group_id'], 'speed_limit_mbps' => $purchase['speed_limit_mbps'],
+                        'device_limit' => $purchase['device_limit'], 'reset_policy' => $purchase['reset_policy'],
+                        'duration_months' => $purchase['duration_months'], 'purchase_kind' => $purchase['purchase_kind'],
+                        'source_snapshot' => $purchase, 'content_hash' => $purchase['content_hash'], 'created_at' => time(),
+                    ]);
                     HookManager::call('order.create.after', $order);
                     HookManager::call('order.after_create', $order);
                     $capture->appendOrderCreation($captureBefore);
@@ -142,11 +163,21 @@ class OrderService
             if (!$plan) {
                 throw new \RuntimeException('订阅不存在');
             }
+            $purchaseTerms = OrderPurchaseTerms::query()->where('order_id', $order->id)->first();
+            if ($purchaseTerms !== null) {
+                $snapshot = is_array($purchaseTerms->source_snapshot) ? $purchaseTerms->source_snapshot : [];
+                $plan->transfer_enable = $snapshot['quota_bytes'] === null ? null : intdiv((int) $snapshot['quota_bytes'], 1073741824);
+                $plan->group_id = $snapshot['group_id'];
+                $plan->speed_limit = $snapshot['speed_limit_mbps'];
+                $plan->device_limit = $snapshot['device_limit'];
+                $plan->reset_traffic_method = $snapshot['reset_policy']['method'] ?? $plan->reset_traffic_method;
+            }
 
             HookManager::call('order.open.before', $order);
 
             $this->user = User::lockForUpdate()->find($order->user_id);
 
+            $this->user->setRelation('plan', $plan);
             $capture = app(LegacyUserMutationCapture::class);
             $captureBefore = $capture->beginOrderFulfillment((int) $order->user_id, (int) $order->id);
 
