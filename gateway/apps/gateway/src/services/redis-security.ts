@@ -59,7 +59,7 @@ export class RedisSecurity implements ReplayStore, AccountLimiter {
   async check(action: AccountAction, email: string, clientIp?: string): Promise<void> {
     this.ready()
     const policy = policies[action]
-    const digest = createHash('sha256').update(action === 'sessions' ? email : email.trim().toLowerCase()).digest('hex')
+    const digest = createHash('sha256').update(email.trim().toLowerCase()).digest('hex')
     const key = 'txbgw:v1:rate:' + action + ':' + digest
     let used: unknown
     try {
