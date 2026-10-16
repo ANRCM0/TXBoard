@@ -50,6 +50,54 @@ final class NativeRuntimeUsageTest extends NativeRuntimeTestCase
         $this->assertSame($snapshot['usage_v2']['source_epoch'], $this->snapshot()['usage_v2']['source_epoch']);
     }
 
+    public function test_frozen_entries_without_terms_boundary_are_quarantined_without_losing_receipt_or_reservation(): void
+    {
+        $this->activate();
+        [, $subscription] = $this->subscribe();
+        $snapshot = $this->snapshot();
+        $payload = $this->payload($snapshot);
+        $receipts = app(UsageReceipts::class);
+        $receipt = $receipts->submit((int) $this->node->id, $payload, $snapshot['issued_at'] + 2);
+        $batch = DB::table('tx_usage_batch')->first();
+        $entries = json_decode($batch->frozen_entries, true, 32, JSON_THROW_ON_ERROR);
+        foreach ($entries as &$entry) {
+            foreach (['boundary_revision', 'period_creation_terms_id', 'terms_effective_from',
+                'terms_effective_until', 'terms_ending_transition_id'] as $field) {
+                $this->assertArrayHasKey($field, $entry);
+                unset($entry[$field]);
+            }
+        }
+        unset($entry);
+        DB::table('tx_usage_batch')->where('id', $batch->id)->update([
+            'frozen_entries' => json_encode($entries, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES),
+            'frozen_hash' => UsageRegistry::hash($entries),
+        ]);
+        $damaged = DB::table('tx_usage_batch')->where('id', $batch->id)->first();
+        $this->assertSame($damaged->frozen_hash,
+            UsageRegistry::hash(json_decode($damaged->frozen_entries, true, 32, JSON_THROW_ON_ERROR)));
+        $period = DB::table('tx_usage_period')->where('id', $subscription['usage_period_id'])->first();
+
+        $this->assertSame(['quarantined'], array_values(app(UsageSettlement::class)->scan(10, $snapshot['issued_at'] + 3)));
+        $this->assertSame('USAGE_FROZEN_TERMS_BOUNDARY',
+            DB::table('tx_usage_batch')->where('id', $batch->id)->value('reason_code'));
+        $this->assertEquals($period, DB::table('tx_usage_period')->where('id', $subscription['usage_period_id'])->first());
+        $this->assertSame('0', (string) $period->billable_bytes);
+        $this->assertSame(0, DB::table('tx_usage_entry')->count());
+        $this->assertSame(0, DB::table('tx_node_usage_stat')->count());
+        $this->assertSame('11', (string) DB::table('tx_native_usage_reservation')->value('reserved_bytes'));
+
+        $replay = $receipts->submit((int) $this->node->id, $payload, $snapshot['issued_at'] + 300);
+        $this->assertSame($receipt['receipt_id'], $replay['receipt_id']);
+        $this->assertSame('quarantined', $replay['settlement_status']);
+        $this->assertSame('USAGE_FROZEN_TERMS_BOUNDARY', $replay['reason_code']);
+        $this->assertSame($replay, $receipts->query((int) $this->node->id,
+            array_intersect_key($payload['payload'], array_flip(['node_id', 'source_epoch', 'batch_id']))
+                + ['payload_digest' => $payload['digest']]));
+        $this->assertSame(1, DB::table('tx_usage_batch')->count());
+        $this->assertSame(1, DB::table('tx_native_usage_reservation')->count());
+        $this->assertSame('11', (string) DB::table('tx_native_usage_reservation')->value('reserved_bytes'));
+    }
+
     public function test_perpetual_subscription_has_finite_grants_and_bills_its_open_period(): void
     {
         $this->activate();

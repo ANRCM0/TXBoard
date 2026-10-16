@@ -88,14 +88,38 @@ final class NativeSubscriptionUsageTest extends NativeSubscriptionTestCase
         $this->assertSame($renewed['terms_id'], $state['terms_id']);
     }
 
-    public function test_reset_cannot_cut_through_an_already_accepted_interval(): void
+    public function test_reset_and_renewal_cannot_reassign_an_accepted_interval_in_any_receipt_state(): void
     {
         $f = $this->fixture;
         app(UsageReceipts::class)->submit(1, $this->payload(80), $f['now'] + 80);
-        $this->expectException(DomainException::class);
-        $this->expectExceptionMessage('NATIVE_ACCEPTED_USAGE_WOULD_BE_REASSIGNED');
-        app(SubscriptionLifecycleService::class)->reset($f['user']->id,
-            (int) $f['opened']['subscription_id'], 'unsafe-reset', $f['opened']['subscription_version'], $f['now'] + 40);
+        $order = app(PublishedOrderService::class)->create($f['user']->id, $f['offer'], 'unsafe-renewal');
+        $order->update(['status' => Order::STATUS_PROCESSING]);
+        $subscription = DB::table('tx_subscription')->where('id', $f['opened']['subscription_id'])->first();
+        $period = DB::table('tx_usage_period')->where('id', $f['opened']['usage_period_id'])->first();
+        $operations = DB::table('tx_subscription_operation')->count();
+
+        foreach (['pending', 'processing', 'retry_wait', 'quarantined', 'settled'] as $state) {
+            DB::table('tx_usage_batch')->update(['status' => $state]);
+            foreach ([
+                fn () => app(SubscriptionLifecycleService::class)->reset($f['user']->id,
+                    (int) $f['opened']['subscription_id'], 'unsafe-reset',
+                    $f['opened']['subscription_version'], $f['now'] + 40),
+                fn () => app(SubscriptionFulfillmentService::class)->fulfill($order->id, $f['now'] + 40),
+            ] as $mutate) {
+                try {
+                    $mutate();
+                    $this->fail('Accepted usage was reassigned in receipt state '.$state);
+                } catch (DomainException $error) {
+                    $this->assertSame('NATIVE_ACCEPTED_USAGE_WOULD_BE_REASSIGNED', $error->getMessage());
+                }
+                $this->assertEquals($subscription, DB::table('tx_subscription')->where('id', $subscription->id)->first());
+                $this->assertEquals($period, DB::table('tx_usage_period')->where('id', $period->id)->first());
+                $this->assertSame(1, DB::table('tx_subscription_terms')->count());
+                $this->assertSame(0, DB::table('tx_subscription_terms_transition')->count());
+                $this->assertSame($operations, DB::table('tx_subscription_operation')->count());
+                $this->assertSame(Order::STATUS_PROCESSING, (int) $order->fresh()->status);
+            }
+        }
     }
 
     public function test_admission_failure_cannot_change_settlement_or_receipt_state(): void

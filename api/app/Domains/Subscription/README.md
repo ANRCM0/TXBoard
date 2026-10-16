@@ -45,6 +45,12 @@ UsageV2 remains responsible for accepted usage reservations and settlement;
 subscription transitions consume that authority instead of maintaining a second
 usage balance.
 
+Legacy Terms shadow writers are retired. Changes to purchased Terms go through
+published-order fulfillment; resets and lifecycle changes go through
+`SubscriptionLifecycleService`. `SubscriptionTermsTimeline` is a shared read-only
+projection, not an alternative mutation entry. Usage settlement requires the
+complete current frozen boundary evidence and never infers missing legacy fields.
+
 Moving these services does not change database tables, wire contracts or lock
 semantics. Historical shadow reservation helpers are not current domain entry
 points.

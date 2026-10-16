@@ -1,6 +1,6 @@
 # Node Usage v2：订阅计费与可靠批次
 
-状态：总体 **Target / Draft**。B3.1 已实现 [隔离接收切片](isolated-receipt-current.md) 和两条受隔离开关保护的 TXAPI HTTP 路由；B3.2 增加 [Terms 与周期半开边界对接](terms-boundary-current.md)。生产权威、默认 Node Service 与 WSS 仍以 [Node v1 对接契约](../../node-protocol/txnode-integration-current.md) 为准。本文件其余目标不能视为已启用。
+状态：当前 native 实现以 [Native C2 Runtime](../native-c2-runtime-v1.md) 和 [Terms/周期边界](terms-boundary-current.md) 为准。Core 通过持久回执、原周期预留与结算处理 native 用量；Node 使用签名授权中的同一计量身份。下文保留 B3 的历史目标说明，其中旧 User ID 映射、兼容适配和生产切换条件不是当前开发要求，未实现的传输/平台矩阵也不因此变成已交付。B3.1 的[隔离接收切片](isolated-receipt-current.md)仍可查证历史；条款影子 mutation 服务已退役。
 
 ## 1. 当前实现与目标
 
