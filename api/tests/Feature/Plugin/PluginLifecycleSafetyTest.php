@@ -29,7 +29,7 @@ class PluginLifecycleSafetyTest extends TestCase
             app(PluginManager::class)->enable('phase3_unavailable');
             $this->fail('Enabling a missing implementation must fail.');
         } catch (\RuntimeException $e) {
-            $this->assertStringContainsString('unavailable', $e->getMessage());
+            $this->assertSame('Invalid current plugin package', $e->getMessage());
         }
 
         $row = Plugin::query()->where('code', 'phase3_unavailable')->firstOrFail();
@@ -79,6 +79,7 @@ class PluginLifecycleSafetyTest extends TestCase
             'version' => '1.0.0',
             'description' => 'Dependency test',
             'author' => 'TXBoard',
+            'package' => ['schema' => 1],
             'require' => ['not_installed' => '>=1.0.0'],
         ], JSON_THROW_ON_ERROR));
 
@@ -102,6 +103,7 @@ class PluginLifecycleSafetyTest extends TestCase
             'version' => '1.0.0',
             'description' => 'Repeated install safety',
             'author' => 'TXBoard',
+            'package' => ['schema' => 1],
         ], JSON_THROW_ON_ERROR));
 
         try {

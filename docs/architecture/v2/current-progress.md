@@ -1,7 +1,7 @@
 # 当前开发进度与下一步
 
 
-2026-10-16 清理状态：开发基线和前四批清理（PR #252—#256）已合入 main `6fbb7ad`。第五批移除 Core/Gateway 隔离 Internal API、专用 SDK 消费者、夹具与 11 条手动 CI；严格 JSON 校验归入 Gateway 当前加密认证安全层，正式 Internal API 仍属 C4 待交付。第五批验收待候选 CI；详见 [Core 清理](../../development/core-cleanup.md)。
+2026-10-16 清理状态：前四批（PR #252—#256）已合入 main `6fbb7ad`；第五批 Internal API 退役候选 PR #257 的精确提交 `0ea0adf` CI 已通过，尚未合并。接续三批并行清理旧订阅/Node、隔离 UsageV2、Plugin/Theme 包，并将 native 订单状态机归入 Billing。此三批仍为待 CI 验收候选；详见 [Core 清理](../../development/core-cleanup.md)。
 > 更新：2026-10-16 · 代码基线：`main` 的 `6fbb7ad640a1ddb005eeb06bb9c01199c2b65804`。
 >
 > C1、C2 已完成合并（PR #247—#251）；下一阶段为 C3 支付与资金闭环。合并不等于生产发布，C3—C5 和完整协议/平台矩阵仍未完成。

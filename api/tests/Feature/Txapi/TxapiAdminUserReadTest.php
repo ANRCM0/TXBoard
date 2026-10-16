@@ -21,7 +21,6 @@ class TxapiAdminUserReadTest extends TestCase
         $this->getJson($url)->assertStatus(403);
         Sanctum::actingAs($normal);
         $this->getJson($url)->assertStatus(403);
-        $this->getJson($url . '/' . $admin->id . '/subscription-link')->assertStatus(403);
         Sanctum::actingAs($admin);
         $this->getJson('/txapi/admin/guessed/users')->assertStatus(404);
         $this->getJson($url)->assertOk()->assertJsonPath('meta.total', 2);
@@ -60,9 +59,6 @@ class TxapiAdminUserReadTest extends TestCase
             ->assertJsonPath('data.id', $user->id)
             ->assertJsonPath('data.balance', 12.34)
             ->assertJsonMissingPath('data.token');
-        $secret = $this->getJson($root . '/' . $user->id . '/subscription-link');
-        $secret->assertOk()->assertJsonStructure(['data' => ['subscribe_url'], 'request_id']);
-        $this->assertStringContainsString($user->token, (string) $secret->json('data.subscribe_url'));
 
         $this->getJson($root . '?page=1&per_page=1')
             ->assertOk()->assertJsonPath('meta.total', 3)->assertJsonPath('meta.last_page', 3);
@@ -75,7 +71,6 @@ class TxapiAdminUserReadTest extends TestCase
             $this->getJson($root . '?' . $bad)->assertStatus(422);
         }
         $this->getJson($root . '/999999')->assertStatus(404);
-        $this->getJson($root . '/999999/subscription-link')->assertStatus(404);
     }
 
     private function user(string $email, bool $admin, array $more = []): User

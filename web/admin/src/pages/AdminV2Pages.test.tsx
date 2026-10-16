@@ -27,9 +27,8 @@ vi.mock('../api/theme', () => ({
   getThemeConfig: vi.fn().mockResolvedValue({}),
   deleteTheme: vi.fn().mockResolvedValue({}),
   saveThemeConfig: vi.fn().mockResolvedValue({}),
-  uploadTheme: vi.fn().mockResolvedValue({}),
-  uploadThemeV2: vi.fn().mockResolvedValue({theme:'example'}),
-  rollbackThemeV2: vi.fn().mockResolvedValue({}),
+  uploadTheme: vi.fn().mockResolvedValue({theme:'example'}),
+  rollbackTheme: vi.fn().mockResolvedValue({}),
 }))
 vi.mock('../api/config', () => ({ saveSettings: vi.fn().mockResolvedValue({}) }))
 vi.mock('../components/ui/ConfirmDialog', () => ({ requestConfirm: vi.fn() }))

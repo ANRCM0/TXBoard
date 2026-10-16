@@ -6,7 +6,6 @@ use App\Core\Http\TxapiResponse;
 use App\Models\Order;
 use App\Models\Plan;
 use App\Models\Ticket;
-use App\Services\UserService;
 use App\Services\SiteConfigService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -14,7 +13,6 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use App\Models\User;
-use App\Utils\Helper;
 use App\Domains\Identity\AccountSqlPhase as IdentityPhase;
 
 final class AccountController
@@ -34,7 +32,6 @@ final class AccountController
             'id' => (int) $user->id,
             'email' => (string) $user->email,
             'plan_id' => $user->plan_id === null ? null : (int) $user->plan_id,
-            'uuid' => (string) $user->uuid,
             'balance_minor' => (int) $user->balance,
             'commission_balance_minor' => (int) $user->commission_balance,
             'expired_at' => $user->expired_at ? Carbon::createFromTimestampUTC((int) $user->expired_at)->toIso8601String() : null,
@@ -47,42 +44,14 @@ final class AccountController
         ]);
     }
 
-    public function subscription(Request $request, UserService $service): JsonResponse
+    public function subscription(Request $request): JsonResponse
     {
-        if (app(\App\Domains\Installation\InstallationAuthority::class)->inspect()['mode'] === 'native') {
-            $entitlement = app(\App\Domains\Subscription\Services\SubscriptionEntitlementResolver::class)
-                ->resolve((int) Auth::guard('sanctum')->id());
-            return TxapiResponse::success($request, $entitlement + [
-                'subscribe_url' => null, 'credential_status' => 'provider_managed',
-                'delivery_formats' => [\App\Domains\CredentialProvider\RenderGrantCodec::FORMAT],
-                'delivery_endpoint' => '/txapi/me/subscription-deliveries',
-            ]);
-        }
-        // Only the authenticated subscriber may see their private subscription
-        // URL. Never expose the underlying raw token in the response.
-        $user = User::query()->findOrFail(Auth::guard('sanctum')->id());
-        $plan = $user->plan_id ? Plan::query()->find($user->plan_id) : null;
-        if ($user->plan_id && $plan === null) {
-            return TxapiResponse::error($request, 'PLAN_UNAVAILABLE',
-                'Subscription plan unavailable', 409);
-        }
-        return TxapiResponse::success($request, [
-            'subscribe_url' => Helper::getSubscribeUrl((string) $user->token),
-            'reset_day' => $service->getResetDay($user),
-            'plan' => $plan ? [
-                'id' => (int) $plan->id,
-                'name' => (string) $plan->name,
-                'traffic_limit_bytes' => (int) $plan->transfer_enable * 1073741824,
-            ] : null,
-            'upload_bytes' => (int) ($user->u ?? 0),
-            'download_bytes' => (int) ($user->d ?? 0),
-            'traffic_limit_bytes' => (int) ($user->transfer_enable ?? 0),
-            'device_limit' => $user->device_limit === null ? null : (int) $user->device_limit,
-            'speed_limit_mbps' => $user->speed_limit === null ? null : (float) $user->speed_limit,
-            'expired_at' => $user->expired_at
-                ? Carbon::createFromTimestampUTC((int) $user->expired_at)->toIso8601String() : null,
-            'next_reset_at' => $user->next_reset_at
-                ? Carbon::createFromTimestampUTC((int) $user->next_reset_at)->toIso8601String() : null,
+        $entitlement = app(\App\Domains\Subscription\Services\SubscriptionEntitlementResolver::class)
+            ->resolve((int) Auth::guard('sanctum')->id());
+        return TxapiResponse::success($request, $entitlement + [
+            'credential_status' => 'provider_managed',
+            'delivery_formats' => [\App\Domains\CredentialProvider\RenderGrantCodec::FORMAT],
+            'delivery_endpoint' => '/txapi/me/subscription-deliveries',
         ]);
     }
 
@@ -98,26 +67,6 @@ final class AccountController
         ]);
     }
 
-    public function rotateSubscriptionCredentials(Request $request): JsonResponse
-    {
-        if (app(\App\Domains\Installation\InstallationAuthority::class)->inspect()['mode'] === 'native') {
-            return TxapiResponse::error($request, 'NATIVE_PROVIDER_ROTATION_REQUIRED',
-                'Rotate the owned access subject through the Provider operation', 409)
-                ->header('Cache-Control', 'no-store');
-        }
-        // Mutates a private subscription secret; never expose this as GET.
-        // Serialize concurrent rotations and preserve existing Sanctum sessions.
-        $phase = static function (): string {
-            $user = User::query()->whereKey(Auth::guard('sanctum')->id())
-                ->lockForUpdate()->firstOrFail();
-            $user->uuid = Helper::guid(true);
-            $user->token = Helper::guid();
-            $user->saveOrFail();
-            return Helper::getSubscribeUrl($user->token);
-        };
-        $newUrl = app(IdentityPhase::class)->run(IdentityPhase::USER_ACCOUNT_CREDENTIALS_ROTATE, $phase);
-        return TxapiResponse::success($request, ['subscribe_url' => $newUrl]);
-    }
 
     public function userConfig(Request $request, SiteConfigService $settings): JsonResponse
     {

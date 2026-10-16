@@ -1,4 +1,4 @@
-import { requestId, nativeEnvelope, nativeError, nativePlan, nativeProfile, nativeOrder } from './native-fixtures.js'
+import { requestId, nativeEnvelope, nativeError, nativePlan, nativeProfile, nativeOrder, nativeSubscription } from './native-fixtures.js'
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { createGatewayApp } from '../src/app.js'
 import { loadConfig } from '../src/config/env.js'
@@ -283,17 +283,16 @@ describe('gateway security and TXBoard v1 adapters', () => {
 
 describe('application read models and experimental HPKE login', () => {
   it('never leaks subscription credentials and applies user Bearer', async () => {
-    const fetcher = mockFetch(ok({
-      plan: { id: 10, name: 'Pro', traffic_limit_bytes: 100, private_note: 'secret' },
+    const fetcher = mockFetch(ok(nativeSubscription({
       token: 'full-subscription-secret', subscribe_url: 'https://secret', uuid: 'secret-uuid',
-      upload_bytes: 5, download_bytes: 7, traffic_limit_bytes: 100, expired_at: '1970-01-01T00:16:39+00:00', reset_day: 5, device_limit: null, speed_limit_mbps: null, next_reset_at: null,
-    }))
+    })))
     const app = createGatewayApp(config, fetcher)
     expect((await app.request('/gateway/v1/user/subscription/summary')).status).toBe(401)
     const res = await app.request('/gateway/v1/user/subscription/summary', { headers: { Authorization: token } })
     const payload = await dataOf(res)
-    expect(payload.data.planName).toBe('Pro')
-    expect(payload.data.upload).toBe(5)
+    expect(payload.data.schema).toBe('core-entitlement/v1')
+    expect(payload.data.subscription_id).toBe('1')
+    expect(payload.data.upload_bytes).toBe('5')
     expect(JSON.stringify(payload)).not.toContain('full-subscription-secret')
     expect(JSON.stringify(payload)).not.toContain('secret-uuid')
     expect(JSON.stringify(payload)).not.toContain('https://secret')

@@ -14,16 +14,6 @@ export async function updateUserPreferences(payload: UserPreferences): Promise<U
   return nativeRequest<UserPreferences>(nativeApi.patch('/me/preferences', payload))
 }
 
-export async function resetSecurity() {
-  const result = await nativeRequest<{ subscribe_url: string }>(
-    nativeApi.post('/me/subscription-credentials/rotate'),
-  )
-  if (!result || typeof result.subscribe_url !== 'string' || !result.subscribe_url) {
-    throw new Error('Invalid TXAPI subscription rotation response')
-  }
-  return result.subscribe_url
-}
-
 export type ActiveSession = {
   id: number
   name: string

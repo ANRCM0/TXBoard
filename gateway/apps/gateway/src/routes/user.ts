@@ -4,12 +4,13 @@ import {
   noticePageSchema,
   noticePageSizePattern,
   statsSchema,
+  subscriptionSummarySchema,
   userProfileSchema,
 } from '../contracts/schemas.js'
-import { toPublicDashboardStats, toPublicSubscriptionSummary } from '../adapters/txboard-v1.js'
+import { toPublicDashboardStats } from '../adapters/txboard-v1.js'
 import { authBearer } from '../middleware/auth.js'
 import { PREFIX } from '../middleware/request-context.js'
-import { fail, ok, requiredRecord, validated, type RouteContext, type RouteDeps } from './shared.js'
+import { fail, ok, validated, type RouteContext, type RouteDeps } from './shared.js'
 
 /**
  * routes/user.ts — authenticated `userRead` routes.
@@ -45,8 +46,7 @@ export function registerUserRoutes(
   app.get(`${PREFIX}/user/subscription/summary`, async c => {
     const auth = requireBearer(c)
     if (auth instanceof Response) return auth
-    const data = requiredRecord(await upstreamRequest(config, fetcher, 'userSubscription', { auth, signal: c.req.raw.signal }))
-    return ok(c, toPublicSubscriptionSummary(data))
+    return ok(c, validated(subscriptionSummarySchema, await upstreamRequest(config, fetcher, 'userSubscription', { auth, signal: c.req.raw.signal })))
   })
 
   app.get(`${PREFIX}/notices`, async c => {

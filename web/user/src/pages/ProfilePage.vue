@@ -1,13 +1,11 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
-import { changePassword, getActiveSessions, getQuickLoginUrl, getUserPreferences, removeActiveSession, resetSecurity, updateUserPreferences, type ActiveSession } from '../api/profile'
+import { changePassword, getActiveSessions, getQuickLoginUrl, getUserPreferences, removeActiveSession, updateUserPreferences, type ActiveSession } from '../api/profile'
 import { errorMessage } from '../api/client'
 import { useAuthStore } from '../stores/auth'
 import { useI18n } from '../i18n'
 
 const auth=useAuthStore()
-const router=useRouter()
 const {t,locale}=useI18n()
 const sessions=ref<ActiveSession[]>([])
 const error=ref('')
@@ -58,15 +56,6 @@ async function revoke(session:ActiveSession){
   acting.value=true
   try{await removeActiveSession(String(session.id));sessions.value=await getActiveSessions()}catch(e){error.value=errorMessage(e)}finally{acting.value=false}
 }
-async function reset(){
-  if(!confirm(t('profile.confirmReset')))return
-  acting.value=true
-  try{
-    const result=await resetSecurity()
-    success.value=t('profile.securityReset')
-    quickUrl.value=result||''
-  }catch(e){error.value=errorMessage(e)}finally{acting.value=false}
-}
 async function quickLogin(){
   acting.value=true
   try{
@@ -87,25 +76,11 @@ function date(value:string|null){
     <div v-if="error" class="page-alert">{{ error }}</div>
     <div v-if="success" class="page-alert success">{{ success }}</div>
 
-    <section class="txboard-card profile-wallet-card">
-      <header class="txboard-card-header">{{ t('profile.balance') }}</header>
-      <div class="txboard-card-body">
-        <div class="profile-wallet-value">
-          <strong>¥ {{ (Number(auth.user?.balance||0)/100).toFixed(2) }}</strong>
-          <span>CNY</span>
-        </div>
-        <p>{{ t('dashboard.balanceHint') }}</p>
-        <button class="primary-btn small-btn" @click="router.push('/wallet')">{{ locale==='en-US'?'Add funds':'充值余额' }}</button>
-      </div>
-    </section>
 
     <section class="txboard-card profile-section-card">
       <header class="txboard-card-header">{{ t('profile.account') }}</header>
       <div class="txboard-card-body">
         <div class="account-row"><span>{{ t('profile.email') }}</span><strong>{{ auth.user?.email||'-' }}</strong></div>
-        <div class="account-row"><span>UUID</span><strong class="mono">{{ auth.user?.uuid||'-' }}</strong></div>
-        <div class="account-row"><span>{{ t('profile.planId') }}</span><strong>{{ auth.user?.plan_id??'-' }}</strong></div>
-        <div class="account-row"><span>{{ t('profile.commissionBalance') }}</span><strong>¥ {{ (Number(auth.user?.commission_balance||0)/100).toFixed(2) }}</strong></div>
       </div>
     </section>
 
@@ -154,12 +129,5 @@ function date(value:string|null){
       </div>
     </section>
 
-    <section class="txboard-card profile-section-card">
-      <header class="txboard-card-header">{{ t('profile.security') }}</header>
-      <div class="txboard-card-body">
-        <div class="profile-warning">{{ t('profile.securityDesc') }}</div>
-        <button class="secondary-btn danger small-btn profile-reset-btn" :disabled="acting" @click="reset">{{ t('profile.resetSecurity') }}</button>
-      </div>
-    </section>
   </div>
 </template>

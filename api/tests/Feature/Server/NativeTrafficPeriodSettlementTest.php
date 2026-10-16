@@ -209,29 +209,6 @@ class NativeTrafficPeriodSettlementTest extends TestCase
         $this->assertSame(0, DB::table('tx_native_traffic_period_usage')->count());
         $this->assertSame([0, 0], [(int) $node->fresh()->u, (int) $node->fresh()->d]);
     }
-    public function test_native_http_users_emit_current_period_and_negotiated_capability(): void
-    {
-        [$node, $user] = $this->fixture(1);
-        admin_setting(['server_token' => 'period-native-http-fixture']);
-        config(['native_traffic_periods.enabled' => true]);
-        $headers = ['Authorization' => 'Bearer period-native-http-fixture', 'X-TX-Node-ID' => (string) $node->id];
-        $capabilities = $this->postJson('/txapi/node/v1/handshake', [], $headers)->assertOk()->json('data.capabilities');
-        $this->assertContains('traffic_period_v1', $capabilities);
-        $first = $this->getJson('/txapi/node/v1/users', $headers)->assertOk();
-        $token = $first->json('data.users.0.traffic_period');
-        $this->assertSame(app(NativeTrafficPeriod::class)->issue($user->id, 1), $token);
-        $etag = $first->headers->get('ETag');
-        $this->assertTrue(app(TrafficResetService::class)->performReset($user, TrafficResetLog::SOURCE_MANUAL));
-        $updated = $this->getJson('/txapi/node/v1/users', $headers + ['If-None-Match' => $etag])->assertOk();
-        $this->assertNotSame($etag, $updated->headers->get('ETag'));
-        $this->assertSame(app(NativeTrafficPeriod::class)->issue($user->id, 2), $updated->json('data.users.0.traffic_period'));
-        config(['native_traffic_receipts.enabled' => false]);
-        $legacyCaps = $this->postJson('/txapi/node/v1/handshake', [], $headers)->assertOk()->json('data.capabilities');
-        $this->assertNotContains('traffic_period_v1', $legacyCaps);
-        try { $this->submit($node, $user, 'period-legacy-disabled', 1, 2, [$this->segment($user, 2, 1, 2)]); $this->fail('period input lost through legacy queued path'); }
-        catch (NodeReportError $error) { $this->assertSame('TRAFFIC_DURABILITY_UNAVAILABLE', $error->errorCode); }
-    }
-
     public function test_late_period_user_statistics_overflow_rolls_back_every_settlement_effect(): void
     {
         $this->assertLateStatisticsOverflow('tx_stat_user', 'User traffic statistic overflow');

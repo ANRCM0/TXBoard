@@ -97,6 +97,8 @@ class PluginManager
             return $this->loadedPlugins[$pluginCode];
         }
 
+        $this->assertCurrentPackage($pluginCode);
+
         $pluginClass = $this->getPluginNamespace($pluginCode) . '\\Plugin';
 
         if (!class_exists($pluginClass)) {
@@ -117,6 +119,17 @@ class PluginManager
         $this->loadedPlugins[$pluginCode] = $plugin;
 
         return $plugin;
+    }
+
+    private function assertCurrentPackage(string $pluginCode): void
+    {
+        $manifestFile = $this->getPluginPath($pluginCode).'/config.json';
+        $manifest = File::isFile($manifestFile) ? json_decode((string) File::get($manifestFile), true) : null;
+        if (!is_array($manifest) || !$this->validateConfig($manifest) || ($manifest['code'] ?? null) !== $pluginCode) {
+            throw new \RuntimeException('Invalid current plugin package');
+        }
+        $this->pluginPackage->assertDeclaredAdminAppsExist($this->getPluginPath($pluginCode), $manifest);
+
     }
 
     /**
@@ -320,11 +333,11 @@ class PluginManager
         $this->assertPluginCode($pluginCode);
         // Asset publication has the same owner boundaries as the plugin ID.
         $this->pluginPackage->publicAssetBase($pluginCode);
+        $this->assertCurrentPackage($pluginCode);
         $pluginPath = $this->getPluginPath($pluginCode);
-        $legacyAssetsPath = $pluginPath . '/resources/assets';
         $adminDistPath = $pluginPath . '/admin/dist';
         $publishPath = public_path('plugins/' . $pluginCode);
-        $hasAssets = File::isDirectory($legacyAssetsPath) || File::isDirectory($adminDistPath);
+        $hasAssets = File::isDirectory($adminDistPath);
 
         if (!$hasAssets) {
             // A newer package may no longer own any public assets.
@@ -341,10 +354,6 @@ class PluginManager
 
         try {
             File::ensureDirectoryExists($staging);
-            if (File::isDirectory($legacyAssetsPath)
-                && !File::copyDirectory($legacyAssetsPath, $staging)) {
-                throw new \RuntimeException('Failed to stage plugin resources');
-            }
             if (File::isDirectory($adminDistPath)) {
                 File::ensureDirectoryExists($staging . '/admin');
                 if (!File::copyDirectory($adminDistPath, $staging . '/admin')) {

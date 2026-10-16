@@ -42,19 +42,14 @@ class TxNodeNativeProtocolTest extends TestCase
         ];
     }
 
-    public function test_header_auth_responds_with_native_versioned_handshake_and_no_token_echo(): void
+    public function test_unconfigured_provider_cannot_fall_back_to_unsigned_node_authority(): void
     {
         $node = $this->node();
         $response = $this->postJson('/txapi/node/v1/handshake', [], $this->headers($node));
-        $response->assertOk()
-            ->assertJsonPath('data.protocol_version', 1)
-            ->assertJsonPath('data.node_id', $node->id)
-            ->assertJsonPath('data.websocket.enabled', false)
-            ->assertJsonPath('data.settings.push_interval', 60);
-        $this->assertContains('traffic_batch_v1', $response->json('data.capabilities'));
-        $this->assertSame($response->json('request_id'),
-            $response->headers->get('X-Request-Id'));
+        $response->assertStatus(503)->assertJsonPath('error.code', 'NODE_AUTHORIZATION_UNAVAILABLE');
         $this->assertStringNotContainsString('native-test-global-token', $response->getContent());
+        $this->getJson('/txapi/node/v1/users', $this->headers($node))
+            ->assertStatus(503)->assertJsonPath('error.code', 'NODE_AUTHORIZATION_UNAVAILABLE');
     }
 
     public function test_query_or_body_tokens_are_never_accepted_and_unknown_nodes_fail(): void
@@ -91,13 +86,12 @@ class TxNodeNativeProtocolTest extends TestCase
         $this->getJson('/txapi/node/v1/machine/nodes', $headers)->assertOk()
             ->assertJsonCount(1, 'data.nodes')
             ->assertJsonPath('data.nodes.0.id', $node->id);
-        $this->postJson('/txapi/node/v1/handshake', [], $headers)->assertOk()
-            ->assertJsonPath('data.mode', 'node');
+        $this->postJson('/txapi/node/v1/handshake', [], $headers)->assertStatus(503)
+            ->assertJsonPath('error.code', 'NODE_AUTHORIZATION_UNAVAILABLE');
         $this->postJson('/txapi/node/v1/handshake', [], [
             'Authorization' => 'Bearer machine-native-credential',
             'X-TX-Machine-ID' => (string) $machine->id,
-        ])->assertOk()->assertJsonPath('data.mode', 'machine')
-            ->assertJsonPath('data.node_id', null);
+        ])->assertStatus(503)->assertJsonPath('error.code', 'NODE_AUTHORIZATION_UNAVAILABLE');
 
         $foreign = $this->node(['machine_id' => $other->id, 'name' => 'denied-node']);
         $headers['X-TX-Node-ID'] = (string) $foreign->id;
@@ -152,7 +146,7 @@ class TxNodeNativeProtocolTest extends TestCase
             ->assertStatus(401);
     }
 
-    public function test_etags_scope_configuration_and_user_snapshot_to_node(): void
+    public function test_config_etag_is_independent_of_unavailable_provider_authorization(): void
     {
         $node = $this->node();
         $headers = $this->headers($node);
@@ -164,7 +158,7 @@ class TxNodeNativeProtocolTest extends TestCase
         $this->getJson('/txapi/node/v1/config', $headers + ['If-None-Match' => $tag])
             ->assertStatus(304);
         $this->getJson('/txapi/node/v1/users', $headers)
-            ->assertOk()->assertJsonPath('data.users', []);
+            ->assertStatus(503)->assertJsonPath('error.code', 'NODE_AUTHORIZATION_UNAVAILABLE');
     }
 
     public function test_report_requires_stable_batch_and_acknowledges_only_enqueue(): void

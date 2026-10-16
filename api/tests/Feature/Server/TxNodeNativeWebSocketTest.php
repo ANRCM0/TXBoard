@@ -65,28 +65,6 @@ class TxNodeNativeWebSocketTest extends TestCase
         return new WsRequest($headers."\r\n");
     }
 
-    public function test_empty_device_snapshot_is_a_json_map_and_can_clear_node_state(): void
-    {
-        $node = $this->node();
-        $conn = Mockery::mock(TcpConnection::class);
-        $frames = [];
-        $conn->shouldReceive('send')->once()->andReturnUsing(function ($raw) use (&$frames): bool {
-            $frames[] = json_decode($raw, false, 32, JSON_THROW_ON_ERROR);
-            return true;
-        });
-        $service = Mockery::mock(DeviceStateService::class);
-        $service->shouldReceive('getUsersDevices')->once()->with([])->andReturn([]);
-        NodeRegistry::add((int) $node->id, $conn);
-        try {
-            \App\WebSocket\NativeNodePush::pushDeviceStateToNode((int) $node->id, $service);
-            $this->assertSame('sync.devices', $frames[0]->event);
-            $this->assertInstanceOf(\stdClass::class, $frames[0]->data->users);
-            $this->assertSame([], get_object_vars($frames[0]->data->users));
-        } finally {
-            NodeRegistry::remove((int) $node->id, $conn);
-        }
-    }
-
     public function test_worker_rejects_old_upgrade_and_unversioned_frames(): void
     {
         $worker = new \App\WebSocket\NodeWorker('127.0.0.1', 8077);
@@ -105,20 +83,6 @@ class TxNodeNativeWebSocketTest extends TestCase
                 (json_decode((string) $frame, true)['data']['code'] ?? null) === 'UNAUTHORIZED'
         ));
         $worker->onMessage($notAuthenticated, '{"event":"pong"}');
-    }
-
-    public function test_handshake_advertises_ws_only_when_configured(): void
-    {
-        $node = $this->node();
-        $headers = ['Authorization' => 'Bearer native-ws-test-token',
-            'X-TX-Node-ID' => (string) $node->id];
-        config()->set('node_ws.native_enabled', false);
-        $this->postJson('/txapi/node/v1/handshake', [], $headers)
-            ->assertOk()->assertJsonPath('data.websocket.enabled', false);
-        config()->set('node_ws.native_enabled', true);
-        $this->postJson('/txapi/node/v1/handshake', [], $headers)
-            ->assertOk()->assertJsonPath('data.websocket.enabled', true)
-            ->assertJsonPath('data.websocket.path', '/txapi/node/v1/ws');
     }
 
     public function test_native_frame_has_bounded_versioned_envelope(): void
@@ -153,8 +117,10 @@ class TxNodeNativeWebSocketTest extends TestCase
             $this->assertSame('session.ready', $sent[0]['event']);
             $this->assertSame(1, $sent[0]['protocol_version']);
             $this->assertSame('node', $sent[0]['data']['mode']);
-            $this->assertContains('sync.devices', $sent[0]['data']['capabilities']);
-            $this->assertContains('sync.config', array_column($sent, 'event'));
+            $this->assertNotContains('sync.devices', $sent[0]['data']['capabilities']);
+            $this->assertNotContains('sync.user.delta', $sent[0]['data']['capabilities']);
+            $this->assertNotContains('sync.config', array_column($sent, 'event'));
+            $this->assertTrue($sent[1]['data']['refresh_required']);
             $this->assertContains('sync.users', array_column($sent, 'event'));
             $this->assertStringNotContainsString('native-ws-test-token', json_encode($sent));
 

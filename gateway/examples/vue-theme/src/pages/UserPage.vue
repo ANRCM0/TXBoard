@@ -9,9 +9,9 @@
     <template v-else>
       <dl class="stats">
         <div><dt>邮箱</dt><dd>{{ profile?.email }}</dd></div>
-        <div><dt>当前套餐</dt><dd>{{ subscription?.planName ?? '无订阅' }}</dd></div>
-        <div><dt>到期时间</dt><dd>{{ subscription?.expiredAt ? formatDate(subscription.expiredAt) : '—' }}</dd></div>
-        <div><dt>剩余流量</dt><dd>{{ formatBytes(subscription?.transferEnable) }}</dd></div>
+        <div><dt>当前订阅</dt><dd>{{ subscription?.authorized ? '#' + subscription.subscription_id : '无订阅' }}</dd></div>
+        <div><dt>到期时间</dt><dd>{{ subscription?.authorized ? formatDate(subscription.expires_at) : '—' }}</dd></div>
+        <div><dt>剩余流量</dt><dd>{{ formatBytes(subscription?.authorized ? subscription.remaining_bytes : null) }}</dd></div>
       </dl>
     </template>
   </section>

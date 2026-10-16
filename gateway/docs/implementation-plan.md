@@ -1,3 +1,5 @@
+> Current Core theme baseline (2026-10-16): the static SPA package is the sole third-party loader. Earlier v1 coexistence notes below are historical; see [current package contract](../../contracts/theme-package/README.md).
+
 # TXBoard Gateway 后续开发实施方案（Phase 1 之后）
 
 > 文档版本：2026-10-08 / 规划草案 v1.1（在原规划上补充进度校准）  

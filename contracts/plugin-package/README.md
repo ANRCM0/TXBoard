@@ -27,9 +27,6 @@ YourPlugin/
 ├── database/
 │   └── migrations/
 │
-├── resources/
-│   └── assets/               # optional static assets
-│
 └── admin/
     └── dist/                 # Plugin Package v1 Admin App
         ├── index.html
@@ -50,7 +47,8 @@ TXBoard **不会**在安装插件时运行 npm、Vite 或任意前端构建命�
   "type": "feature",
   "version": "1.0.0",
   "description": "Example TXBoard plugin",
-  "author": "Example Author"
+  "author": "Example Author",
+  "package": {"schema": 1}
 }
 ```
 
@@ -60,11 +58,11 @@ TXBoard **不会**在安装插件时运行 npm、Vite 或任意前端构建命�
 - `version`：SemVer 三段式 `x.y.z`
 - `type`：当前支持 `feature`、`payment`
 
-旧插件如果不使用 Plugin Package v1 Admin App，可以继续使用原有 manifest。
+所有插件都必须声明整数 `package.schema: 1`，包括只提供支付或配置表单的插件。不声明 `package` 的旧包不再安装、启用或加载。配置完整示例与字段校验见 [schema-v1.json](schema-v1.json)。
 
 ## Declaring Plugin Package v1
 
-使用插件自带 Admin App 时必须声明：
+所有插件必须声明 `package.schema`；自带 Admin App 可附加以下固定布局信息：
 
 ```json
 {
@@ -88,6 +86,7 @@ TXBoard **不会**在安装插件时运行 npm、Vite 或任意前端构建命�
 {
   "admin_menus": [
     {
+      "id": "dashboard",
       "title": "Dashboard",
       "path": "dashboard",
       "app": "admin/index.html#/dashboard"
@@ -122,23 +121,11 @@ TXBoard 仍然支持宿主渲染：
 
 - `config`：动态 Settings 表单；
 - `admin_crud`：Schema-driven CRUD；
-- `admin_menus[].component/url/embed`：兼容入口。
-
-推荐优先级：
-
-```text
-Settings / CRUD schema
-        ↓
-Plugin Package v1 admin/dist
-        ↓
-component / embed
-```
-
-宿主原生 renderer 是 TXBoard 自身的例外扩展点，不是独立插件的发布接口。
+`admin_menus` 只声明静态应用页面，每项必须包含 `id`、`title`、安全相对 `path` 与 `app`；可选 `icon`、`order`、`description`。ID 和 path 必须唯一，不再从 path 生成 ID、从 label 补 title 或修剪路径。`component`、`url`、`embed`、`renderer` 和 `label` 入口已删除。Settings / CRUD 不需要制造菜单页或空的 Admin App。
 
 ## Asset publishing
 
-安装、升级、启用或容器启动迁移时，TXBoard 会将：
+安装、升级、启用或容器启动时，TXBoard 会将：
 
 ```text
 plugin/admin/dist/*
@@ -148,7 +135,7 @@ plugin/admin/dist/*
 /plugins/{code}/admin/*
 ```
 
-插件前端应使用**相对资源 URL**，例如：
+`resources/assets` 的旧资源合并发布已移除；当前只发布 `admin/dist`。插件前端应使用**相对资源 URL**，例如：
 
 ```html
 <script type="module" src="./assets/app.js"></script>
@@ -197,7 +184,7 @@ window.parent.postMessage(
 含义：
 
 - `api.root`：同源根 API 基址，适用于插件自有 `/plugin/*` 等路径；
-- `api.admin`：当前实例的 `/api/v2/{secure_path}` 前缀；
+- `api.admin`：当前实例的 `/txapi/admin/{secure_path}` 前缀；
 - `auth.authorization`：当前管理员 Bearer Authorization；
 - `route.path`：当前宿主插件页面 path。
 

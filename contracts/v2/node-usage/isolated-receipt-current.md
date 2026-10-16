@@ -1,5 +1,7 @@
 # Node Usage v2：B3.1 隔离接收切片
 
+> 已退役（2026-10-16）：本文保留隔离原型的历史设计和当时验收记录。对应开关、Registry/CLI、运行器和专属 CI 已删除；正文 Current/isolated 状态不描述现行运行时。当前用量边界见 [当前 native 契约](README.md)。
+
 状态：**Current / isolated-copy only**。本切片实现可运行的 HTTP 持久接收、SQL 结算、查询与本地恢复工具。生产流量权威和 TX-Node 默认 Service 仍使用 v1；[完整 Node Usage v2](README.md) 的其余要求继续是 Target。
 
 ## 入口与启用条件

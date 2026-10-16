@@ -22,7 +22,7 @@ final class NativeNodeAuthorizationConfigTest extends TestCase
                 $_SERVER[$name] = (string) $raw;
                 $parsed = require dirname(__DIR__, 2).'/config/native_node_authorization.php';
                 self::assertSame($expected, $parsed['enabled'], (string) $raw);
-                self::assertSame('native-node-authorization/v1', $parsed['policy_version']);
+                self::assertSame('native-provider-authorization/v1', $parsed['policy_version']);
                 self::assertSame(30, $parsed['refresh_interval_seconds']);
                 self::assertSame(120, $parsed['max_lease_seconds']);
             }

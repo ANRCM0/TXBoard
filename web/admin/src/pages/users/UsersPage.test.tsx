@@ -14,8 +14,6 @@ vi.mock('../../api/finance', () => ({ getPlans: vi.fn() }))
 vi.mock('../../api/user-admin', () => ({
   getUsers: vi.fn(),
   getUserDetail: vi.fn(),
-  getUserSubscriptionLink: vi.fn(),
-  resetUserSecret: vi.fn(),
   destroyUser: vi.fn(),
   banUsers: vi.fn(),
 }))
@@ -94,8 +92,8 @@ describe('UsersPage UX v4', () => {
   it('labels each icon-only operation and preserves destructive confirmation', async () => {
     await mount()
     expect(host.querySelector('[aria-label="编辑用户 first@example.com"]')).not.toBeNull()
-    expect(host.querySelector('[aria-label="复制订阅链接 first@example.com"]')).not.toBeNull()
-    expect(host.querySelector('[aria-label="重置订阅密钥 first@example.com"]')).not.toBeNull()
+    expect(host.querySelector('[aria-label="复制订阅链接 first@example.com"]')).toBeNull()
+    expect(host.querySelector('[aria-label="重置订阅密钥 first@example.com"]')).toBeNull()
     const remove = host.querySelector<HTMLButtonElement>('[aria-label="删除用户 first@example.com"]')!
     await act(async () => remove.click())
     expect(requestConfirm).toHaveBeenCalledWith(expect.objectContaining({title:'删除用户',danger:true}))

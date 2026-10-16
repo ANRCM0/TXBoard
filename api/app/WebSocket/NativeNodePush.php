@@ -3,69 +3,13 @@
 namespace App\WebSocket;
 
 use App\Models\Server;
-use App\Domains\Installation\InstallationAuthority;
-use App\Services\DeviceStateService;
 use App\Services\NodeRegistry;
-use App\Services\ServerService;
-use Illuminate\Support\Facades\Log;
 
-/** Outbound native TX-Node synchronization helpers only. */
+/** Socket events only request a fresh signed HTTP authorization snapshot. */
 final class NativeNodePush
 {
-    /**
-     * Push device state to node
-     */
-    public static function pushDeviceStateToNode(int $nodeId, DeviceStateService $service): void
-    {
-        if (self::nativeInstallation()) {
-            NodeRegistry::send($nodeId, 'sync.users', ['refresh_required' => true]);
-            return;
-        }
-        $node = Server::find($nodeId);
-        if (!$node) return;
-
-        $users = ServerService::getNativeAvailableUsers($node);
-        $userIds = $users->pluck('id')->toArray();
-        $devices = $service->getUsersDevices($userIds);
-
-        NodeRegistry::send($nodeId, 'sync.devices', [
-            'users' => (object) $devices
-        ]);
-
-        Log::debug("[WS] Pushed device state to node#{$nodeId}: " . count($devices) . " users");
-    }
-
-    /**
-     * Publish full config + users through the active registry connection
-     */
     public static function pushFullSync(Server $node): void
     {
-        $nodeId = (int) $node->id;
-        if (self::nativeInstallation()) {
-            NodeRegistry::send($nodeId, 'sync.users', ['refresh_required' => true]);
-            return;
-        }
-
-        // Push config
-        $config = ServerService::buildNodeConfig($node);
-        NodeRegistry::send($nodeId, 'sync.config', [
-            'config' => $config,
-        ]);
-
-        // Push users
-        $users = ServerService::getNativeAvailableUsers($node)->toArray();
-        NodeRegistry::send($nodeId, 'sync.users', [
-            'users' => $users,
-        ]);
-
-        Log::info("[WS] Full sync pushed to node#{$nodeId}", [
-            'users' => count($users),
-        ]);
-    }
-
-    private static function nativeInstallation(): bool
-    {
-        return config('core_installation.mode') === 'native'
-            || app(InstallationAuthority::class)->inspect()['mode'] === 'native';
+        NodeRegistry::send((int) $node->id, 'sync.users', ['refresh_required' => true]);
     }
 }

@@ -31,6 +31,7 @@ RETIRED_WORKFLOWS |= {
                  "admin-network-groups", "admin-order-list", "admin-plan-list",
                  "admin-sessions", "admin-users", "order-cancel", "sessions")
 }
+RETIRED_WORKFLOWS |= {'ci-node-native-authorization.yml', 'ci-node-native-traffic.yml', 'ci-node-native-machine.yml', 'ci-basic-account-authority.yml', 'ci-bounded-node-usage.yml', 'ci-node-native-authority.yml', 'ci-node-live-recovery.yml', 'ci-node-service-usage.yml', 'ci-node-live-protocol.yml'}
 
 
 class WorkflowLoader(yaml.SafeLoader):
@@ -149,7 +150,7 @@ def main():
     require(not RETIRED_WORKFLOWS & {path.name for path in files},
             "A retired prototype workflow was restored")
     workflows = {path.name: validate_workflow(path) for path in files}
-    for owner in ("ci-api.yml", "ci-mysql.yml", "docker-txboard.yml"):
+    for owner in ("ci-api.yml", "ci-mysql.yml", "ci-node.yml", "ci-web.yml", "docker-txboard.yml"):
         trigger = workflows[owner]["on"]["pull_request"]
         require(not any(key in trigger for key in ("branches", "branches-ignore")),
                 f"{owner}: Core acceptance must also run for stacked pull requests")

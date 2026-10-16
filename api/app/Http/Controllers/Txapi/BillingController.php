@@ -14,6 +14,7 @@ use App\Models\Payment;
 use App\Models\Plan;
 use App\Services\CouponService;
 use App\Services\OrderService;
+use App\Domains\Billing\NativeOrderLifecycle;
 use App\Services\PlanService;
 use App\Domains\Subscription\Services\PublishedOrderService;
 use Illuminate\Http\JsonResponse;
@@ -194,12 +195,14 @@ final class BillingController
 
     public function cancelOrder(Request $request, string $tradeNo): JsonResponse
     {
-        $order = Order::query()->where('user_id', Auth::guard('sanctum')->id())
+        $order = Order::query()->useWritePdo()->where('user_id', Auth::guard('sanctum')->id())
             ->where('trade_no', $tradeNo)->first();
         if (!$order) {
             abort(404);
         }
-        if (!(new OrderService($order))->cancel()) {
+        $lifecycle = $order->purchase_terms_version === PublishedOrderService::VERSION
+            ? new NativeOrderLifecycle($order) : new OrderService($order);
+        if (!$lifecycle->cancel()) {
             return TxapiResponse::error($request, 'ORDER_CONFLICT',
                 'Only an unpaid order may be cancelled', 409);
         }

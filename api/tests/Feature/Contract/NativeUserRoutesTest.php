@@ -32,10 +32,8 @@ class NativeUserRoutesTest extends TestCase
             $this->assertFileDoesNotExist(app_path('Http/Middleware/' . $class . '.php'));
         }
         $routes = collect(Route::getRoutes()->getRoutes());
-        $subscribe = $routes->first(static fn ($route) => $route->getName() === 'client.subscribe');
-        $this->assertNotNull($subscribe);
-        $this->assertStringContainsString(
-            \App\Http\Controllers\SubscriptionController::class, $subscribe->getActionName());
+        $this->assertNull($routes->first(static fn ($route) => $route->getName() === 'client.subscribe'));
+        $this->assertNull($routes->first(static fn ($route) => $route->uri() === 'txapi/me/nodes'));
     }
 
     public function test_all_required_native_replacements_are_registered(): void
@@ -45,7 +43,7 @@ class NativeUserRoutesTest extends TestCase
             'txapi/me', 'txapi/plans', 'txapi/knowledge/categories',
             'txapi/orders', 'txapi/billing/wallet', 'txapi/payment/webhook/{method}/{uuid}',
             'txapi/integrations/telegram/webhook',
-            'txapi/node/v1/handshake'] as $path) {
+            'txapi/node/v1/handshake', 'txapi/me/subscription-deliveries'] as $path) {
             $this->assertContains($path, $paths, 'Required native route missing: ' . $path);
         }
     }

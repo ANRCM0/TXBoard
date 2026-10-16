@@ -6,7 +6,7 @@ use App\Console\Kernel;
 use App\Domains\Installation\InstallationAuthority;
 use App\Jobs\OrderHandleJob;
 use App\Models\Order;
-use App\Services\OrderService;
+use App\Domains\Billing\NativeOrderLifecycle;
 use App\Domains\Subscription\Services\PublishedOrderService;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Facades\Bus;
@@ -27,7 +27,7 @@ final class NativeOrderRecoveryTest extends NativeSubscriptionTestCase
         $order = $this->pending();
         $dispatcher = Bus::getFacadeRoot()->dispatcher;
         Bus::shouldReceive('dispatch')->once()->andThrow(new RuntimeException('fixture queue unavailable'));
-        $this->assertTrue((new OrderService($order))->paid('recovery-callback'));
+        $this->assertTrue((new NativeOrderLifecycle($order))->paid('recovery-callback'));
         $this->assertSame(Order::STATUS_PROCESSING, (int) $order->fresh()->status);
         Bus::swap($dispatcher);
         Bus::fake();

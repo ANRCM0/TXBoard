@@ -260,7 +260,7 @@ def main(closeout=False):
             if closeout:
                 node_config["authorization"]["policy_version"] = "native-provider-authorization/v2"
                 node_config["usage_v2"] = {
-                    "enabled": True, "isolated_copy": False,
+                    "enabled": True,
                     "directory": str(root / "node-usage"), "ca_file": str(root / "ca.pem"),
                 }
             (root / "node.json").write_text(json.dumps(node_config))

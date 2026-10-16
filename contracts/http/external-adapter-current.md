@@ -12,7 +12,7 @@
 | TXNode WS | `wss://<host>/txapi/node/v1/ws` | Workerman Upgrade、专用身份头、功能开关 |
 | 支付商回调 | `GET/POST /txapi/payment/webhook/{method}/{uuid}` | 提供商签名，原始 ACK |
 | Telegram 回调 | `POST /txapi/integrations/telegram/webhook` | Telegram 验证摘要 |
-| 订阅链接 | `GET /{subscribe_path}/{token}` | 私密 URL |
+| 订阅交付 | `POST /txapi/me/subscription-deliveries` | User Bearer + 客户端 PoP，Provider 直出材料 |
 | 动态插件接口 | 插件自行注册的接口 | 由实际插件负责鉴权与路由 |
 
 普通 TXAPI JSON 响应包含 `data`、`request_id`，分页可含 `meta`；错误通常为 `error.code`、`error.message` 和 `request_id`，响应头包含 `X-Request-Id`。第三方回调有各自响应约定。存活检查：`GET /txapi/health`。

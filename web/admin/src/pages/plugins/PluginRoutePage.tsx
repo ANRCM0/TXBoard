@@ -100,7 +100,7 @@ export function PluginRoutePage() {
               if (!path) return null
               return <Link className="runtime-link" key={item.id || `${path}-${index}`} to={`/plugins/${plugin.code}/${path}`}>
                 <span className="runtime-icon">{item.icon || 'M'}</span>
-                <span><strong>{item.title || path}</strong><small>{item.description || item.label || '插件菜单页面'}</small></span>
+                <span><strong>{item.title || path}</strong><small>{item.description || '插件菜单页面'}</small></span>
                 <ChevronRight size={16}/>
               </Link>
             })}

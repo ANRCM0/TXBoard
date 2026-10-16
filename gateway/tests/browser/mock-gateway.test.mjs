@@ -114,15 +114,18 @@ test('Chromium theme SDK works through Gateway with strict fake Laravel contract
         status = 401
         result = upstreamError('Expired fixture session')
       } else if (path === '/txapi/me') {
-        result = upstreamEnvelope({ id: 1, email, plan_id: null, uuid: 'private', balance_minor: 1000, commission_balance_minor: 0, expired_at: null, telegram_id: null, traffic: { upload_bytes: 0, download_bytes: 0, limit_bytes: 0 } })
+        result = upstreamEnvelope({ id: 1, email, telegram_id: null, credential_status: 'provider_managed' })
       } else if (path.endsWith('/dashboard-stats')) {
         result = upstreamEnvelope({ unpaid_orders: 2, open_tickets: 1, invited_users: 7 })
       } else if (path === '/txapi/orders/fixture-order') {
         result = upstreamEnvelope(orderFixture)
       } else if (path.endsWith('/subscription')) {
         result = upstreamEnvelope({
-          plan: { id: 1, name: 'Fixture Pro', traffic_limit_bytes: 100 }, upload_bytes: 10, download_bytes: 20,
-          traffic_limit_bytes: 100, expired_at: null, next_reset_at: null, device_limit: null, speed_limit_mbps: null, reset_day: null, token: 'must-never-leak', subscribe_url: 'https://private.test',
+          schema: 'core-entitlement/v1', authorized: true, reason: 'ENTITLEMENT_GRANTED',
+          subscription_id: '1', plan_id: '1', quota_bytes: '100', consumed_bytes: '30', remaining_bytes: '70',
+          upload_bytes: '10', download_bytes: '20', expires_at: null, next_reset_at: null,
+          device_limit: null, speed_limit_mbps: null, token: 'must-never-leak',
+          credential_status: 'provider_managed',
         })
       } else if (path.endsWith('/detail')) {
         result = upstreamEnvelope(orderFixture)
@@ -281,7 +284,8 @@ test('Chromium theme SDK works through Gateway with strict fake Laravel contract
       orderNumber: orders[0]?.trade_no,
       orderState: orders[0]?.status,
       orderPage,
-      subscriptionName: subscription.planName,
+      subscriptionId: subscription.subscription_id,
+      remainingBytes: subscription.remaining_bytes,
       leakedSubscriptionToken: JSON.stringify(subscription).includes('must-never-leak'),
       detailNumber: detail.trade_no,
       paymentName: payments[0]?.name,
@@ -311,7 +315,8 @@ test('Chromium theme SDK works through Gateway with strict fake Laravel contract
   assert.equal(result.orderPage.items[0]?.status, 4)
   assert.equal(result.orderPage.total, 1)
   assert.equal(result.orderPage.lastPage, 1)
-  assert.equal(result.subscriptionName, 'Fixture Pro')
+  assert.equal(result.subscriptionId, '1')
+  assert.equal(result.remainingBytes, '70')
   assert.equal(result.leakedSubscriptionToken, false)
   assert.equal(result.detailNumber, 'fixture-order')
   assert.equal(result.paymentName, 'Fixture Card')

@@ -6,6 +6,7 @@ use App\Models\Order;
 use App\Models\Payment;
 use App\Models\WalletRecharge;
 use App\Services\OrderService;
+use App\Domains\Subscription\Services\PublishedOrderService;
 use App\Services\PaymentService;
 use App\Services\Plugin\HookManager;
 use Illuminate\Http\Request;
@@ -71,7 +72,7 @@ final class PaymentNotificationProcessor
 
     private function settle(array $verified, Payment $payment): bool
     {
-        $order = Order::query()->where('trade_no', $verified['trade_no'])->first();
+        $order = Order::query()->useWritePdo()->where('trade_no', $verified['trade_no'])->first();
         if (!$order || (int) $order->payment_id !== (int) $payment->id) {
             return false;
         }
@@ -108,9 +109,9 @@ final class PaymentNotificationProcessor
                 && hash_equals((string) $order->callback_no, $verified['callback_no']);
         }
 
-        if (!(new OrderService($order))->paid(
-            $verified['callback_no'], (int) $payment->id, $signedAmount
-        )) {
+        $lifecycle = $order->purchase_terms_version === PublishedOrderService::VERSION
+            ? new NativeOrderLifecycle($order) : new OrderService($order);
+        if (!$lifecycle->paid($verified['callback_no'], (int) $payment->id, $signedAmount)) {
             return false;
         }
 

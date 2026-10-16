@@ -3,8 +3,6 @@ import {
   Ban,
   ChevronLeft,
   ChevronRight,
-  Clipboard,
-  KeyRound,
   Mail,
   Pencil,
   Plus,
@@ -21,8 +19,6 @@ import {
   destroyUser,
   getUserDetail,
   getUsers,
-  getUserSubscriptionLink,
-  resetUserSecret,
   type AdminUser,
   type UserFilter,
   type UserSort,
@@ -94,13 +90,6 @@ export function UsersPage() {
 
   const refresh = () => qc.invalidateQueries({ queryKey: ['adminUsers'] })
 
-  const resetSecret = useMutation({
-    mutationFn: resetUserSecret,
-    onSuccess: () => {
-      toast.success('订阅密钥已重置')
-      refresh()
-    },
-  })
 
   const remove = useMutation({
     mutationFn: destroyUser,
@@ -163,16 +152,7 @@ export function UsersPage() {
     }
   }
 
-  async function copySubscribe(user: AdminUser) {
-    try {
-      const url = await getUserSubscriptionLink(user.id)
-      if (!url) throw new Error('Missing subscribe URL')
-      await navigator.clipboard.writeText(url)
-      toast.success('订阅链接已复制')
-    } catch {
-      toast.error('复制失败，请检查浏览器剪贴板权限后重试')
-    }
-  }
+
 
   function applySearch() {
     updateList({ email: search.trim(), page: 1 })
@@ -335,15 +315,6 @@ export function UsersPage() {
               <td>
                 <div className="actions">
                   <button type="button" className="icon-button" aria-label={'编辑用户 ' + user.email} title="编辑用户" onClick={() => openEdit(user)}><Pencil size={15} aria-hidden="true"/></button>
-                  <button type="button" className="icon-button" aria-label={'复制订阅链接 ' + user.email} title="复制订阅链接" onClick={() => copySubscribe(user)}><Clipboard size={15} aria-hidden="true"/></button>
-                  <button
-                    type="button"
-                    className="icon-button"
-                    aria-label={'重置订阅密钥 ' + user.email}
-                    title="重置订阅密钥"
-                    disabled={resetSecret.isPending}
-                    onClick={() => requestConfirm({ title: '重置订阅密钥', message: '重置后原订阅链接将失效，确认继续？', danger: true, confirmLabel: '重置', action: () => resetSecret.mutate(user.id) })}
-                  ><KeyRound size={15}/></button>
                   <button
                     type="button"
                     className="icon-button danger"

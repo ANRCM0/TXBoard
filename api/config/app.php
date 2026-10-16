@@ -178,7 +178,6 @@ return [
         App\Providers\OctaneServiceProvider::class,
         App\Providers\PluginServiceProvider::class,
         App\Providers\ModuleServiceProvider::class,
-        App\Providers\ProtocolServiceProvider::class,
 
     ],
 

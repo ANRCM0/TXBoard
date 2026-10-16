@@ -84,3 +84,14 @@ test('route classifier never labels removed V1/V2 routes as current', () => {
   assert.equal(classify('api/v2/server/handshake')[1], 'forbidden');
   assert.equal(classify('api/v1/user/info')[1], 'forbidden');
 });
+
+test('rejects retired reusable subscription and duplicate theme entrypoints', () => {
+  for (const uri of ['s/{token}', '{subscribe_path}/{token}', 'txapi/me/nodes',
+    'txapi/me/subscription-credentials/rotate',
+    'txapi/admin/{admin_path}/users/{id}/subscription-link',
+    'txapi/admin/{admin_path}/users/{id}/subscription-credentials/rotate',
+    'txapi/admin/{admin_path}/themes/v2/upload']) {
+    assert.equal(classify(uri)[1], 'forbidden');
+    assert.throws(() => assertCurrentBoundaries(inventory([...required, {method:'GET', uri}])), /legacy_routes/);
+  }
+});

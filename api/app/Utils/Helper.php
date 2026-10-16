@@ -120,27 +120,6 @@ class Helper
         }
     }
 
-    public static function getSubscribeUrl(string $token, $subscribeUrl = null)
-    {
-        $path = route('client.subscribe', ['token' => $token], false);
-        
-        if ($subscribeUrl) {
-            $finalUrl = rtrim($subscribeUrl, '/') . $path;
-            return HookManager::filter('subscribe.url', $finalUrl);
-        }
-        
-        $urlString = (string)admin_setting('subscribe_url', '');
-        $subscribeUrlList = $urlString ? explode(',', $urlString) : [];
-        
-        if (empty($subscribeUrlList)) {
-            return HookManager::filter('subscribe.url', url($path));
-        }
-        
-        $selectedUrl = self::replaceByPattern(Arr::random($subscribeUrlList));
-        $finalUrl = rtrim($selectedUrl, '/') . $path;
-        
-        return HookManager::filter('subscribe.url', $finalUrl);
-    }
 
     public static function randomPort($range): int {
         $portRange = explode('-', (string) $range, 2);

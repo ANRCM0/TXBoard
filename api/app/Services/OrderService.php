@@ -136,13 +136,6 @@ class OrderService
 
     public function open(): void
     {
-        // Dispatch from the stored marker, not a possibly stale queued Order.
-        // Native fulfillment owns its account-first transaction and admission.
-        if (Order::query()->useWritePdo()->whereKey($this->order->id)->value('purchase_terms_version') === PublishedOrderService::VERSION) {
-            app(\App\Domains\Subscription\Services\SubscriptionFulfillmentService::class)->fulfill((int) $this->order->id);
-            $this->order = Order::query()->findOrFail($this->order->id);
-            return;
-        }
         $openedOrder = DB::transaction(function () {
             app(\App\Domains\Installation\InstallationAuthority::class)->assertLegacyWriter();
             $order = $this->lockCurrentOrderWhenStatus(Order::STATUS_PROCESSING);
@@ -367,15 +360,11 @@ class OrderService
     public function paid(string $callbackNo, ?int $paymentId = null, ?int $verifiedAmountMinor = null)
     {
         try {
-            $native = Order::query()->useWritePdo()->whereKey($this->order->id)
-                ->value('purchase_terms_version') === PublishedOrderService::VERSION;
-            $transition = function (?Order $order = null) use ($callbackNo, $paymentId, $verifiedAmountMinor, $native) {
-                if (!$native) {
-                    app(\App\Domains\Installation\InstallationAuthority::class)->assertLegacyWriter();
-                    $order = $this->lockCurrentOrder();
-                    if ($order?->purchase_terms_version === PublishedOrderService::VERSION) {
-                        throw new \RuntimeException('Native order requires native payment admission');
-                    }
+            $transition = function () use ($callbackNo, $paymentId, $verifiedAmountMinor) {
+                app(\App\Domains\Installation\InstallationAuthority::class)->assertLegacyWriter();
+                $order = $this->lockCurrentOrder();
+                if ($order?->purchase_terms_version === PublishedOrderService::VERSION) {
+                    throw new \RuntimeException('Native order requires native payment admission');
                 }
                 if (!$order) {
                     throw new \RuntimeException('Order not found.');
@@ -414,9 +403,7 @@ class OrderService
 
                 return [$order, true];
             };
-            [$order, $shouldDispatch] = $native
-                ? app(PublishedOrderService::class)->transitionOrder((int) $this->order->id, $transition)
-                : DB::transaction(fn () => $transition());
+            [$order, $shouldDispatch] = DB::transaction($transition);
 
             $this->order = $order;
 
@@ -450,19 +437,6 @@ class OrderService
     public function cancel(): bool
     {
         try {
-            if (Order::query()->useWritePdo()->whereKey($this->order->id)
-                ->value('purchase_terms_version') === PublishedOrderService::VERSION) {
-                $cancelled = app(PublishedOrderService::class)->transitionOrder((int) $this->order->id,
-                    static function (Order $order): ?Order {
-                        if ((int) $order->status !== Order::STATUS_PENDING) return null;
-                        $order->status = Order::STATUS_CANCELLED;
-                        $order->saveOrFail();
-                        return $order;
-                    });
-                if ($cancelled === null) return false;
-                $this->order = $cancelled;
-                return true;
-            }
             $cancelledOrder = DB::transaction(function () {
                 app(\App\Domains\Installation\InstallationAuthority::class)->assertLegacyWriter();
                 $order = $this->lockCurrentOrderWhenStatus(Order::STATUS_PENDING);

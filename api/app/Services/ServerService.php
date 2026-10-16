@@ -5,11 +5,8 @@ namespace App\Services;
 use App\Models\Server;
 use App\Models\ServerMachine;
 use App\Models\ServerRoute;
-use App\Models\User;
 use App\Protocols\ProtocolRegistry;
-use App\Services\Plugin\HookManager;
 use App\Utils\CacheKey;
-use App\Utils\Helper;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Collection;
@@ -47,96 +44,6 @@ class ServerService
             ->where('enabled', true)
             ->orderBy('sort', 'ASC')
             ->get();
-    }
-
-    /**
-     * 获取指定用户可用的服务器列表
-     * @param User $user
-     * @return array
-     */
-    public static function getAvailableServers(User $user): array
-    {
-        // This renderer still owns legacy UUID material, not Provider delivery.
-        app(\App\Domains\Installation\InstallationAuthority::class)->assertRuntime();
-        $servers = Server::whereJsonContains('group_ids', (string) $user->group_id)
-            ->where('show', true)
-            ->where(function ($query) {
-                $query->whereNull('transfer_enable')
-                    ->orWhere('transfer_enable', 0)
-                    ->orWhereRaw('u + d < transfer_enable');
-            })
-            ->orderBy('sort', 'ASC')
-            ->get()
-            ->append(['last_check_at', 'last_push_at', 'online', 'is_online', 'available_status', 'cache_key', 'server_key']);
-
-        $servers = collect($servers)->map(function ($server) use ($user) {
-            // 判断动态端口
-            if (str_contains($server->port, '-')) {
-                $port = $server->port;
-                $server->port = (int) Helper::randomPort($port);
-                $server->ports = $port;
-            } else {
-                $server->port = (int) $server->port;
-            }
-            $server->password = $server->generateServerPassword($user);
-            $server->rate = $server->getCurrentRate();
-            return $server;
-        })->toArray();
-
-        return $servers;
-    }
-
-    /**
-     * 根据权限组获取可用的用户列表
-     * @param array $groupIds
-     * @return Collection
-     */
-    public static function getAvailableUsers(Server $node)
-    {
-        app(\App\Domains\Installation\InstallationAuthority::class)->assertRuntime();
-        $groupIds = $node->group_ids ?? [];
-        if (empty($groupIds)) {
-            return collect();
-        }
-        $users = User::toBase()
-            ->whereIn('group_id', $groupIds)
-            // The REST snapshot must agree with User::isAvailable() used by WS.
-            ->whereNotNull('plan_id')
-            ->where('transfer_enable', '>', 0)
-            ->whereRaw('COALESCE(u, 0) + COALESCE(d, 0) < transfer_enable')
-            ->where(function ($query) {
-                $query->where('expired_at', '>', now()->timestamp)
-                    ->orWhere('expired_at', NULL);
-            })
-            ->where('banned', 0)
-            ->select([
-                'id',
-                'uuid',
-                'speed_limit',
-                'device_limit'
-            ])
-            ->orderBy('id')
-            ->get();
-        return HookManager::filter('server.users.get', $users, $node);
-    }
-
-    /** Native sampling epochs are separate from the legacy panel DTO. */
-    public static function getNativeAvailableUsers(Server $node)
-    {
-        $users = self::getAvailableUsers($node);
-        if (!config('native_traffic_periods.enabled', true) || !config('native_traffic_receipts.enabled', true)) return $users;
-        $epochs = User::query()->whereIn('id', $users->pluck('id')->all())
-            ->get(['id', 'reset_count'])->keyBy('id');
-        $periods = app(\App\Domains\Network\NativeTrafficPeriod::class);
-        return $users->map(static function ($user) use ($epochs, $periods) {
-            $identity = is_array($user) ? ($user['id'] ?? null) : ($user->id ?? null);
-            $epoch = $epochs->get($identity);
-            if ($epoch === null) throw new \RuntimeException('NATIVE_TRAFFIC_PERIOD_USER_UNAVAILABLE');
-            $token = $periods->issue((int) $identity, (int) ($epoch->reset_count ?? 0));
-            if (is_array($user)) $user['traffic_period'] = $token;
-            else { $user = clone $user; $user->traffic_period = $token; }
-            return $user;
-        });
     }
 
     // 获取路由规则

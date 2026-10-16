@@ -33,7 +33,6 @@ $app->afterBootstrapping(LoadConfiguration::class, static function ($app) use ($
         ],
         'native_subscription_delivery.providers.primary-provider.endpoint' => getenv('NATIVE_PROVIDER_NODE_RENDER').'/subscription-render',
         'core_usage_v2.core_instance_id' => '11111111-1111-4111-8111-111111111111',
-        'core_usage_v2.isolated_copy' => false,
         'cache.stores.redis' => ['driver' => 'array'],
         'database.redis.default.database' => 14, 'database.redis.cache.database' => 15,
         'queue.default' => 'redis', 'node_ws.native_enabled' => false,

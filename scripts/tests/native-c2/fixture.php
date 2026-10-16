@@ -1,7 +1,7 @@
 <?php
 
 use App\Domains\Installation\InstallationAuthority;
-use App\Domains\UsageV2\UsageRegistry;
+use App\Domains\UsageV2\UsageEvidence;
 use App\Models\Order;
 use App\Models\Plan;
 use App\Models\Server;
@@ -268,7 +268,7 @@ try {
             if ($batch->reason_code !== 'USAGE_NATIVE_AUTHORIZATION_CUTOFF' || $batch->settled_at !== null
                 || DB::table('tx_usage_entry')->where('batch_id', $batch->id)->exists()
                 || count($frozen) !== count($payload['entries']) || $frozen === []
-                || UsageRegistry::hash($frozen) !== $batch->frozen_hash
+                || UsageEvidence::hash($frozen) !== $batch->frozen_hash
                 || 'sha256:'.hash('sha256', $batch->canonical_payload) !== $batch->payload_digest) {
                 throw new RuntimeException('NATIVE_C2_QUARANTINE_PROOF_INVALID');
             }
@@ -343,8 +343,8 @@ try {
                 ->where('source_epoch', $payload['source_epoch'])->where('batch_id', $payload['batch_id'])->first();
             if (!$batch || $batch->status !== 'quarantined' || isset($capture['local_quarantine'])
                 || $batch->payload_digest !== $capture['submission']['payload_digest']
-                || UsageRegistry::hash(json_decode($batch->canonical_payload, true, 32, JSON_THROW_ON_ERROR))
-                    !== UsageRegistry::hash($payload)
+                || UsageEvidence::hash(json_decode($batch->canonical_payload, true, 32, JSON_THROW_ON_ERROR))
+                    !== UsageEvidence::hash($payload)
                 || ($receipt['receipt_status'] ?? null) !== 'persisted'
                 || ($receipt['settlement_status'] ?? null) !== 'quarantined'
                 || ($receipt['reason_code'] ?? null) !== 'USAGE_NATIVE_AUTHORIZATION_CUTOFF'

@@ -5,7 +5,6 @@ namespace Tests\Feature\Txapi;
 use App\Domains\Installation\InstallationAuthority;
 use App\Domains\Installation\InstallationAuthorityException;
 use App\Http\Controllers\Txapi\AccountController;
-use App\Services\UserService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Laravel\Sanctum\Sanctum;
@@ -18,16 +17,15 @@ class TxapiNativeSubscriptionAdapterTest extends NativeSubscriptionTestCase
         $user = $this->user(['u' => 111, 'd' => 222, 'transfer_enable' => 99999,
             'expired_at' => time() + 3600]);
         Sanctum::actingAs($user);
-        app(InstallationAuthority::class)->shouldReceive('inspect')->once()->andReturn(['mode' => 'native']);
         $response = app(AccountController::class)->subscription(
-            Request::create('/txapi/me/subscription'), app(UserService::class));
+            Request::create('/txapi/me/subscription'));
         $data = $response->getData(true);
         $this->assertSame(200, $response->getStatusCode());
         $this->assertNotEmpty($data['request_id']);
         $this->assertSame([
             'schema' => 'core-entitlement/v1', 'authorized' => false,
             'reason' => 'ENTITLEMENT_SLOT_MISSING', 'user_id' => (string) $user->id,
-            'subscribe_url' => null, 'credential_status' => 'provider_managed',
+            'credential_status' => 'provider_managed',
             'delivery_formats' => ['native-connection-bundle/v1'],
             'delivery_endpoint' => '/txapi/me/subscription-deliveries',
         ], $data['data']);
@@ -40,14 +38,13 @@ class TxapiNativeSubscriptionAdapterTest extends NativeSubscriptionTestCase
     {
         Sanctum::actingAs($this->user());
         $authority = \Mockery::mock(InstallationAuthority::class);
-        $authority->shouldReceive('inspect')->once()->andReturn(['mode' => 'native']);
         $authority->shouldReceive('assertNativeRead')->once()
             ->andThrow(new InstallationAuthorityException('INSTALLATION_AUTHORITY_NATIVE_NOT_READY'));
         $this->app->instance(InstallationAuthority::class, $authority);
         $this->expectException(InstallationAuthorityException::class);
         $this->expectExceptionMessage('INSTALLATION_AUTHORITY_NATIVE_NOT_READY');
         app(AccountController::class)->subscription(
-            Request::create('/txapi/me/subscription'), app(UserService::class));
+            Request::create('/txapi/me/subscription'));
     }
 
     public function test_account_identity_read_does_not_serialize_legacy_entitlements_or_proxy_secret(): void

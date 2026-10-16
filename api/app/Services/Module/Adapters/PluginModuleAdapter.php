@@ -69,7 +69,7 @@ final class PluginModuleAdapter implements ModuleAdapter
                 }
 
                 try {
-                    $manifest = ModuleManifest::fromArray($this->manifestFromLegacyConfig($directory, $config));
+                    $manifest = ModuleManifest::fromArray($this->manifestFromPackage($directory, $config));
                 } catch (Throwable) {
                     $errors[] = new ModuleDiscoveryError(
                         adapter: $this->name(),
@@ -129,7 +129,7 @@ final class PluginModuleAdapter implements ModuleAdapter
         }
     }
 
-    private function manifestFromLegacyConfig(string $directory, array $config): array
+    private function manifestFromPackage(string $directory, array $config): array
     {
         foreach (['name', 'code', 'version', 'description', 'author'] as $field) {
             if (!is_string($config[$field] ?? null) || trim($config[$field]) === '') {
@@ -153,7 +153,8 @@ final class PluginModuleAdapter implements ModuleAdapter
         $capabilities = [];
 
         $menus = $config['admin_menus'] ?? [];
-        $navigation = $this->legacyAdminNavigation($menus);
+        $navigation = array_map(static fn (array $menu): array => array_intersect_key($menu,
+            array_flip(['id', 'title', 'path', 'icon', 'order'])), $menus);
         if ($navigation !== []) {
             $capabilities[] = ModuleCapability::ADMIN_MENU;
         }
@@ -230,119 +231,4 @@ final class PluginModuleAdapter implements ModuleAdapter
         return $manifest;
     }
 
-    /**
-     * @return list<array{id: string, title: string, path: string, icon?: string, order?: int}>
-     */
-    private function legacyAdminNavigation(mixed $menus): array
-    {
-        if (!is_array($menus) || !array_is_list($menus)) {
-            return [];
-        }
-
-        $navigation = [];
-        $seenIds = [];
-
-        foreach ($menus as $index => $menu) {
-            if (!is_array($menu) || array_is_list($menu)) {
-                continue;
-            }
-
-            $path = $this->safeLegacyNavigationPath($menu['path'] ?? null);
-            if ($path === null) {
-                continue;
-            }
-
-            $title = null;
-            foreach (['title', 'label'] as $field) {
-                if (is_string($menu[$field] ?? null) && trim($menu[$field]) !== '') {
-                    $candidate = trim($menu[$field]);
-                    if (strlen($candidate) <= 120) {
-                        $title = $candidate;
-                        break;
-                    }
-                }
-            }
-            $title ??= $path;
-
-            $id = $this->legacyNavigationId($menu['id'] ?? null, $path, $index);
-            while (isset($seenIds[$id])) {
-                $suffix = '-' . substr(hash('sha256', $path . ':' . $index . ':' . $id), 0, 8);
-                $id = substr($id, 0, max(1, 64 - strlen($suffix))) . $suffix;
-            }
-            $seenIds[$id] = true;
-
-            $item = [
-                'id' => $id,
-                'title' => $title,
-                'path' => $path,
-            ];
-
-            if (
-                is_string($menu['icon'] ?? null)
-                && trim($menu['icon']) !== ''
-                && strlen(trim($menu['icon'])) <= 80
-            ) {
-                $item['icon'] = trim($menu['icon']);
-            }
-
-            if (
-                is_int($menu['order'] ?? null)
-                && $menu['order'] >= -100000
-                && $menu['order'] <= 100000
-            ) {
-                $item['order'] = $menu['order'];
-            }
-
-            $navigation[] = $item;
-        }
-
-        return $navigation;
-    }
-
-    private function safeLegacyNavigationPath(mixed $value): ?string
-    {
-        if (!is_string($value)) {
-            return null;
-        }
-
-        $path = trim($value);
-        if (
-            $path === ''
-            || str_contains($path, '\\')
-            || preg_match('/^[a-z][a-z0-9+.-]*:/i', $path)
-        ) {
-            return null;
-        }
-
-        $path = trim($path, '/');
-        if (
-            $path === ''
-            || !preg_match('/^[A-Za-z0-9_-]+(?:\/[A-Za-z0-9_-]+)*$/', $path)
-        ) {
-            return null;
-        }
-
-        return $path;
-    }
-
-    private function legacyNavigationId(mixed $value, string $path, int $index): string
-    {
-        if (
-            is_string($value)
-            && preg_match('/^[A-Za-z0-9_-]+$/', trim($value))
-            && strlen(trim($value)) <= 64
-        ) {
-            return trim($value);
-        }
-
-        $candidate = str_replace('/', '-', $path);
-        $candidate = preg_replace('/[^A-Za-z0-9_-]+/', '-', $candidate) ?? '';
-        $candidate = trim($candidate, '-_');
-
-        if ($candidate === '') {
-            $candidate = 'nav-' . substr(hash('sha256', $path . ':' . $index), 0, 12);
-        }
-
-        return substr($candidate, 0, 64);
-    }
 }

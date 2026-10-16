@@ -240,7 +240,7 @@ external
 
 Plugin Package v1 remains the current stable publishing contract for plugins.
 
-The migration model is:
+The normalization flow is:
 
 ```text
 Plugin Package v1 config.json
@@ -248,13 +248,13 @@ Plugin Package v1 config.json
         -> ModuleDescriptor
 ```
 
-Existing plugins are **not** required to add `manifest.json` or change their runtime lifecycle in Module Platform v1.
+Plugins use `config.json` with mandatory integer `package.schema: 1`; Registry does not require a separate `manifest.json`. Menu IDs and titles are explicit, and only current static `admin/dist` app entries are accepted. Runtime lifecycle remains specialized.
 
 A future Plugin Package v2 may adopt Module Manifest fields directly, but that is explicitly outside this contract step.
 
 ## Relationship to Theme and Agent Ops
 
-Theme Package v1 preserves the specialized `config.json + dashboard.blade.php` package boundary and maps package metadata into Module descriptors through `ThemeModuleAdapter`. Theme runtime state continues to come from `ThemeService`.
+Third-party themes use the current `txboard-theme.json` static SPA package. `ThemeModuleAdapter` describes ThemeService inventory without a second Blade package parser. The built-in TXBoard user SPA is system-owned.
 
 The built-in Agent Ops module and MCP runtime were retired on2026-10-13. Reserved descriptor vocabulary is retained for v1 package compatibility; it does not register or execute Agent capabilities.
 

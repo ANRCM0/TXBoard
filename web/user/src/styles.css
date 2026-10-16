@@ -303,10 +303,6 @@ button:disabled{opacity:.5;cursor:not-allowed}
 .auth-or span{height:1px;background:var(--u-border);flex:1}
 .telegram-widget{display:flex;justify-content:center}
 .protocol-grid{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
-.client-import-list{display:flex;flex-direction:column;gap:7px}
-.client-import-btn{display:flex;justify-content:space-between;align-items:center;gap:10px;border:1px solid var(--u-border);background:var(--u-panel);color:var(--u-text);border-radius:9px;padding:10px 11px}
-.client-import-btn:hover{background:var(--u-soft)}
-.client-import-btn small{color:var(--u-muted);font-size:9px}
 
 
 .withdraw-grid{display:grid;grid-template-columns:220px minmax(0,1fr);gap:10px}

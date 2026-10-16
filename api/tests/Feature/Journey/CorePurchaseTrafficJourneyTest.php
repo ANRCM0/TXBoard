@@ -28,7 +28,7 @@ class CorePurchaseTrafficJourneyTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_login_purchase_signed_payment_fulfilment_node_and_traffic_are_consistent(): void
+    public function test_existing_paid_purchase_and_legacy_traffic_remain_consistent_without_native_grants(): void
     {
         Bus::fake();
         Redis::shouldReceive('sadd')->zeroOrMoreTimes()->andReturn(1);
@@ -146,14 +146,12 @@ class CorePurchaseTrafficJourneyTest extends TestCase
             'host' => '127.0.0.1', 'port' => '443', 'server_port' => 443,
             'rate' => 2, 'group_ids' => ['1'], 'show' => true, 'enabled' => true,
         ]);
-        $this->getJson('/txapi/me/nodes', $headers)
-            ->assertOk()->assertJsonPath('data.0.id', $server->id);
         $nodeHeaders = [
             'Authorization' => 'Bearer p0b-node-secret',
             'X-TX-Node-ID' => (string) $server->id,
         ];
         $this->postJson('/txapi/node/v1/handshake', [], $nodeHeaders)
-            ->assertOk()->assertJsonPath('data.websocket.enabled', false);
+            ->assertStatus(503)->assertJsonPath('error.code', 'NODE_AUTHORIZATION_UNAVAILABLE');
 
         $report = [
             'protocol_version' => 1, 'traffic_batch_id' => 'p0b-traffic-0001',

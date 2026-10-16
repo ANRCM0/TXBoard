@@ -18,8 +18,12 @@ class PluginAssetPublicationTest extends TestCase
 
     public function test_republish_is_idempotent_replaces_only_owned_assets_and_cleans_removed_files(): void
     {
-        $source = base_path('plugins/Phase3AssetFixture/resources/assets');
+        $source = base_path('plugins/Phase3AssetFixture/admin/dist');
         File::ensureDirectoryExists($source);
+        File::put(base_path('plugins/Phase3AssetFixture/config.json'), json_encode([
+            'name' => 'Asset fixture', 'code' => 'phase3_asset_fixture', 'version' => '1.0.0',
+            'description' => 'Current static assets', 'author' => 'TXBoard', 'package' => ['schema' => 1],
+        ], JSON_THROW_ON_ERROR));
         File::put($source . '/version.txt', 'v1');
         File::put($source . '/old.txt', 'legacy');
         $other = public_path('plugins/another_plugin');
@@ -29,15 +33,15 @@ class PluginAssetPublicationTest extends TestCase
         $manager = app(PluginManager::class);
         $manager->publishAssets('phase3_asset_fixture');
         $published = public_path('plugins/phase3_asset_fixture');
-        $this->assertSame('v1', File::get($published . '/version.txt'));
+        $this->assertSame('v1', File::get($published . '/admin/version.txt'));
 
         File::delete($source . '/old.txt');
         File::put($source . '/version.txt', 'v2');
         $manager->publishAssets('phase3_asset_fixture');
         $manager->publishAssets('phase3_asset_fixture');
 
-        $this->assertSame('v2', File::get($published . '/version.txt'));
-        $this->assertFileDoesNotExist($published . '/old.txt');
+        $this->assertSame('v2', File::get($published . '/admin/version.txt'));
+        $this->assertFileDoesNotExist($published . '/admin/old.txt');
         $this->assertSame('another module', File::get($other . '/keep.txt'));
     }
 

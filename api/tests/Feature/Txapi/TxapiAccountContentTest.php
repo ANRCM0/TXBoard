@@ -25,7 +25,6 @@ class TxapiAccountContentTest extends TestCase
         $response = $this->getJson('/txapi/me');
         $response->assertOk()->assertJsonPath('data.balance_minor', 1250)
             ->assertJsonPath('data.commission_balance_minor', 675)
-            ->assertJsonPath('data.uuid', $user->uuid)
             ->assertJsonPath('data.traffic.limit_bytes', 1073741824);
         $this->assertMatchesRegularExpression('/^\d{4}-\d{2}-\d{2}T/',
             $response->json('data.expired_at'));

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { api, nativeApi, saveAuthData } from './client'
-import { getQuickLoginUrl, getUserPreferences, resetSecurity, updateUserPreferences } from './profile'
+import { getQuickLoginUrl, getUserPreferences, updateUserPreferences } from './profile'
 
 const oldNative = nativeApi.defaults.adapter
 const oldLegacy = api.defaults.adapter
@@ -37,15 +37,6 @@ describe('LR-06 native user preferences', () => {
 })
 
 describe('LR-07 native security actions', () => {
-  it('rotates private subscription credentials over POST, never legacy GET', async () => {
-    nativeApi.defaults.adapter = async config => {
-      seen.push(config)
-      return { data: { data: { subscribe_url: 'https://board.example/subscribe/new-token' },
-        request_id: 'security-trace' }, status: 200, statusText: 'OK', headers: {}, config } as never
-    }
-    await expect(resetSecurity()).resolves.toBe('https://board.example/subscribe/new-token')
-    expect(seen[0]).toMatchObject({ baseURL: '/txapi', url: '/me/subscription-credentials/rotate', method: 'post' })
-  })
   it('issues quick links through the native authenticated URL', async () => {
     nativeApi.defaults.adapter = async config => {
       seen.push(config)
@@ -58,7 +49,6 @@ describe('LR-07 native security actions', () => {
   it('rejects incomplete native security responses', async () => {
     nativeApi.defaults.adapter = async config => ({ data: { data: { ok: true },
       request_id: 'security-trace' }, status: 200, statusText: 'OK', headers: {}, config } as never)
-    await expect(resetSecurity()).rejects.toThrow('Invalid TXAPI subscription rotation response')
     await expect(getQuickLoginUrl()).rejects.toThrow('Invalid TXAPI quick login response')
   })
 })

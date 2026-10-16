@@ -6,8 +6,7 @@ import { asRecord } from '../services/upstream.js'
  * Every function here is a PURE transformation: no I/O, no config access, no
  * clock, no randomness. None of them returns a raw internal upstream field to
  * a theme client — the allowlist of exposed fields is the security boundary.
- * The public JSON shape of every DTO is contract-frozen (see
- * contracts/gateway-v1.md); renaming or adding fields is a breaking change.
+ * Current public shapes are documented in contracts/gateway-v1.md.
  */
 
 /** Public theme reference. Only the two display fields survive. */
@@ -83,39 +82,6 @@ export function toPublicPaymentMethods(methods: readonly RawPaymentMethod[]): Pu
     handlingFeeFixed: typeof m.handling_fee_fixed === 'number' ? m.handling_fee_fixed : 0,
     handlingFeePercent: typeof m.handling_fee_percent === 'number' ? m.handling_fee_percent : 0,
   }))
-}
-
-export type PublicSubscriptionSummary = {
-  planId: number | null
-  planName: string | null
-  expiredAt: number | null
-  upload: number | null
-  download: number | null
-  transferEnable: number | null
-  resetDay: number | null
-  deviceLimit: number | null
-  speedLimit: number | null
-}
-
-/**
- * TXBoard getSubscribe includes the user token, UUID and subscribe_url. This
- * endpoint is safe for an account overview, NOT a full subscription export —
- * those three fields are deliberately dropped here.
- */
-export function toPublicSubscriptionSummary(data: Record<string, unknown>): PublicSubscriptionSummary {
-  const optionalNumber = (v: unknown) => typeof v === 'number' && Number.isFinite(v) ? v : null
-  const plan = asRecord(data.plan)
-  return {
-    planId: optionalNumber(data.plan_id),
-    planName: typeof plan.name === 'string' ? plan.name : null,
-    expiredAt: optionalNumber(data.expired_at),
-    upload: optionalNumber(data.u),
-    download: optionalNumber(data.d),
-    transferEnable: optionalNumber(data.transfer_enable),
-    resetDay: optionalNumber(data.reset_day),
-    deviceLimit: optionalNumber(data.device_limit),
-    speedLimit: optionalNumber(data.speed_limit),
-  }
 }
 
 export type PublicDashboardStats = { unpaidOrders: number; openTickets: number; invitedUsers: number }

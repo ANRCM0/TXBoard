@@ -62,24 +62,15 @@ A navigation declaration does not override permissions or runtime status.
 
 ## Plugin Package v1 navigation
 
-Existing Plugin Package v1 plugins keep using `config.json -> admin_menus`.
+Current Plugin Package v1 uses `config.json -> admin_menus` with explicit,
+unique `id`, `title`, safe relative `path` and static `app` fields. Optional
+`icon` and `order` are projected directly into Module navigation. No ID
+generation, label fallback or path repair is performed.
 
-They are not required to add `manifest.json` or change package layout.
-
-`PluginModuleAdapter` may conservatively project declared plugin menu fields into Module navigation:
-
-```text
-admin_menus[].id     -> admin.navigation[].id, when valid
-admin_menus[].title  -> admin.navigation[].title
-admin_menus[].label  -> title fallback
-admin_menus[].path   -> admin.navigation[].path
-admin_menus[].icon   -> admin.navigation[].icon
-admin_menus[].order  -> admin.navigation[].order
-```
-
-Plugin rendering metadata such as `app`, `component`, `embed`, `renderer` and CRUD/config schemas remain Plugin Runtime concerns. The Navigation Registry does not copy or execute them.
-
-A plugin menu with an unsafe navigation path is omitted from the unified navigation projection. It must not make an otherwise valid Plugin disappear from Module Registry.
+Invalid navigation is reported as invalid plugin metadata; old `component`,
+`url`, `embed` and `renderer` declarations are rejected by PluginPackage.
+Registry never executes the static app or copies rendering metadata into the
+navigation contract. Host-owned settings and CRUD schema remain separate.
 
 ## Host route resolution
 

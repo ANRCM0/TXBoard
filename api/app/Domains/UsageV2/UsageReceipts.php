@@ -9,66 +9,61 @@ use Illuminate\Support\Str;
 /** Redis/queue dispatch is never a prerequisite for a persisted ACK. */
 final class UsageReceipts
 {
-    public function __construct(private UsagePolicy $policy, private UsageRegistry $registry, private ?Closure $fault = null,
+    public function __construct(private UsagePolicy $policy, private ?Closure $fault = null,
         private ?UsageTermsBoundary $boundaries = null) {}
 
     public function submit(int $nodeId, array $parsed, int $now): array
     {
-        $this->policy->requireIsolated(); $p = $parsed['payload'];
+        $this->policy->requireNative(); $p = $parsed['payload'];
         if ((string) $nodeId !== $p['node_id']) { throw new UsageError('USAGE_NODE_SCOPE', 403); }
         try {
-            $native = NativeUsageLedger::enabled();
-            $locators = [];
-            if ($native) {
-                $replay = DB::transaction(function () use ($p, $parsed): ?array {
-                    $this->policy->requireTransaction();
-                    $existing = $this->find($p);
-                    return $existing ? $this->matching($existing, $parsed['digest']) : null;
-                }, 3);
-                if ($replay !== null) { return $replay; }
-                $locators = app(NativeUsageLedger::class)->grantLocators($p['entries']);
-            }
-            return DB::transaction(function () use ($nodeId, $parsed, $p, $now, $native, $locators) {
-            $this->policy->requireTransaction();
-            if ($native) { app(NativeUsageLedger::class)->lockOwners($locators); }
-            $source = DB::table('tx_node_usage_source')->where('node_id', $nodeId)->where('source_epoch', $p['source_epoch'])->lockForUpdate()->first();
-            if (!$source) { throw new UsageError('USAGE_SOURCE_UNKNOWN', 403); }
-            // Historical replay precedes current generation/authorization checks.
-            $existing = $this->find($p);
-            if ($existing) { return $this->matching($existing, $parsed['digest']); }
-            $this->registry->identity($source);
-            if ($p['ended_at'] > $now + (int) config('core_usage_v2.max_future_seconds')
-                || $p['ended_at'] < $now - (int) config('core_usage_v2.max_late_report_seconds')) { throw new UsageError('USAGE_INTERVAL_OUTSIDE_RETENTION'); }
-            if (DB::table('tx_usage_batch')->where('source_id', $source->id)->where('started_at', '<', $p['ended_at'])
-                ->where('ended_at', '>', $p['started_at'])->exists()) { throw new UsageError('USAGE_INTERVAL_OVERLAP', 409); }
-            $frozen = []; $rawUp = '0'; $rawDown = '0'; $billed = '0'; $authorizationCutoff = false;
-            foreach ($p['entries'] as $entry) {
-                [$evidence, $cutoff] = $this->freeze($source, $entry, $p); $frozen[] = $evidence;
-                $authorizationCutoff = $authorizationCutoff || $cutoff;
-                $rawUp = UsageMath::add($rawUp, $evidence['raw_up_bytes']);
-                $rawDown = UsageMath::add($rawDown, $evidence['raw_down_bytes']);
-                $billed = UsageMath::add($billed, $evidence['billed_up_bytes'], $evidence['billed_down_bytes']);
-            }
-            // A fully proven cutoff remains durable evidence and consumes the original Period's quota.
-            $encoded = json_encode($frozen, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES);
-            $id = DB::table('tx_usage_batch')->insertGetId([
-                'source_id' => $source->id, 'node_id' => $nodeId, 'source_epoch' => $p['source_epoch'], 'batch_id' => $p['batch_id'],
-                'core_instance_id' => $source->core_instance_id, 'receipt_generation' => $source->receipt_generation,
-                'receipt_id' => 'receipt_'.Str::uuid(), 'payload_digest' => $parsed['digest'], 'canonical_payload' => $parsed['canonical'],
-                'frozen_entries' => $encoded, 'frozen_hash' => UsageRegistry::hash($frozen),
-                'started_at' => $p['started_at'], 'ended_at' => $p['ended_at'],
-                'status' => $authorizationCutoff ? 'quarantined' : 'pending',
-                'reason_code' => $authorizationCutoff ? 'USAGE_NATIVE_AUTHORIZATION_CUTOFF' : null,
-                'accepted_at' => $now, 'updated_at' => $now,
-            ]);
-            if ($native) { NativeUsageReservations::reserveLocked($id, $frozen, $now); }
-            ($this->fault ?? static fn () => null)('after_payload');
-            DB::table('tx_usage_outbox')->insert([
-                'batch_id' => $id, 'event_key' => 'usage.accepted:'.$id, 'kind' => 'usage.accepted', 'status' => 'pending',
-                'body' => json_encode(['batch_row_id' => (string) $id, 'payload_digest' => $parsed['digest']], JSON_THROW_ON_ERROR), 'created_at' => $now,
-            ]);
-            ($this->fault ?? static fn () => null)('after_outbox');
-            if ($native) {
+            $replay = DB::transaction(function () use ($p, $parsed): ?array {
+                $this->policy->requireTransaction();
+                $existing = $this->find($p);
+                return $existing ? $this->matching($existing, $parsed['digest']) : null;
+            }, 3);
+            if ($replay !== null) { return $replay; }
+            $locators = app(NativeUsageLedger::class)->grantLocators($p['entries']);
+            return DB::transaction(function () use ($nodeId, $parsed, $p, $now, $locators) {
+                $this->policy->requireTransaction();
+                app(NativeUsageLedger::class)->lockOwners($locators);
+                $source = DB::table('tx_node_usage_source')->where('node_id', $nodeId)->where('source_epoch', $p['source_epoch'])->lockForUpdate()->first();
+                if (!$source) { throw new UsageError('USAGE_SOURCE_UNKNOWN', 403); }
+                // Historical replay precedes current generation/authorization checks.
+                $existing = $this->find($p);
+                if ($existing) { return $this->matching($existing, $parsed['digest']); }
+                UsageEvidence::assertIdentity($source);
+                if ($p['ended_at'] > $now + (int) config('core_usage_v2.max_future_seconds')
+                    || $p['ended_at'] < $now - (int) config('core_usage_v2.max_late_report_seconds')) { throw new UsageError('USAGE_INTERVAL_OUTSIDE_RETENTION'); }
+                if (DB::table('tx_usage_batch')->where('source_id', $source->id)->where('started_at', '<', $p['ended_at'])
+                    ->where('ended_at', '>', $p['started_at'])->exists()) { throw new UsageError('USAGE_INTERVAL_OVERLAP', 409); }
+                $frozen = []; $rawUp = '0'; $rawDown = '0'; $billed = '0'; $authorizationCutoff = false;
+                foreach ($p['entries'] as $entry) {
+                    [$evidence, $cutoff] = $this->freeze($source, $entry, $p); $frozen[] = $evidence;
+                    $authorizationCutoff = $authorizationCutoff || $cutoff;
+                    $rawUp = UsageMath::add($rawUp, $evidence['raw_up_bytes']);
+                    $rawDown = UsageMath::add($rawDown, $evidence['raw_down_bytes']);
+                    $billed = UsageMath::add($billed, $evidence['billed_up_bytes'], $evidence['billed_down_bytes']);
+                }
+                // A fully proven cutoff remains durable evidence and consumes the original Period's quota.
+                $encoded = json_encode($frozen, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES);
+                $id = DB::table('tx_usage_batch')->insertGetId([
+                    'source_id' => $source->id, 'node_id' => $nodeId, 'source_epoch' => $p['source_epoch'], 'batch_id' => $p['batch_id'],
+                    'core_instance_id' => $source->core_instance_id, 'receipt_generation' => $source->receipt_generation,
+                    'receipt_id' => 'receipt_'.Str::uuid(), 'payload_digest' => $parsed['digest'], 'canonical_payload' => $parsed['canonical'],
+                    'frozen_entries' => $encoded, 'frozen_hash' => UsageEvidence::hash($frozen),
+                    'started_at' => $p['started_at'], 'ended_at' => $p['ended_at'],
+                    'status' => $authorizationCutoff ? 'quarantined' : 'pending',
+                    'reason_code' => $authorizationCutoff ? 'USAGE_NATIVE_AUTHORIZATION_CUTOFF' : null,
+                    'accepted_at' => $now, 'updated_at' => $now,
+                ]);
+                NativeUsageReservations::reserveLocked($id, $frozen, $now);
+                ($this->fault ?? static fn () => null)('after_payload');
+                DB::table('tx_usage_outbox')->insert([
+                    'batch_id' => $id, 'event_key' => 'usage.accepted:'.$id, 'kind' => 'usage.accepted', 'status' => 'pending',
+                    'body' => json_encode(['batch_row_id' => (string) $id, 'payload_digest' => $parsed['digest']], JSON_THROW_ON_ERROR), 'created_at' => $now,
+                ]);
+                ($this->fault ?? static fn () => null)('after_outbox');
                 // Recovery must evaluate reserved quota even before a pending batch is settled.
                 $subscriptions = [];
                 foreach ($frozen as $entry) { $subscriptions[$entry['subscription_id']] = $entry['user_id']; }
@@ -80,9 +75,9 @@ final class UsageReceipts
                         'status' => 'pending', 'created_at' => $now,
                     ]);
                 }
-            }
-            return self::receipt(DB::table('tx_usage_batch')->where('id', $id)->first());
-        }, 3); } catch (UsageError $error) {
+                return self::receipt(DB::table('tx_usage_batch')->where('id', $id)->first());
+            }, 3);
+        } catch (UsageError $error) {
             if ($error->errorCode === 'BATCH_PAYLOAD_CONFLICT') { $this->conflictAudit($p, $parsed['digest'], $now); }
             throw $error;
         }
@@ -90,7 +85,7 @@ final class UsageReceipts
 
     public function query(int $nodeId, array $query): array
     {
-        $this->policy->requireIsolated();
+        $this->policy->requireNative();
         if ((string) $nodeId !== $query['node_id']) { throw new UsageError('USAGE_NODE_SCOPE', 403); }
         try { return DB::transaction(function () use ($query) {
             $this->policy->requireTransaction();
@@ -136,9 +131,7 @@ final class UsageReceipts
     {
         $grant = DB::table('tx_auth_snapshot')->where('id', $entry['auth_snapshot_id'])->lockForUpdate()->first();
         if (!$grant || (string) $grant->source_id !== (string) $source->id) { throw new UsageError('USAGE_GRANT_SOURCE'); }
-        NativeUsageLedger::verifyGrant($grant);
-        $native = NativeUsageLedger::enabled();
-        $proof = $native ? app(NativeUsageLedger::class)->verifyNativeGrant($grant) : null;
+        $proof = app(NativeUsageLedger::class)->verifyNativeGrant($grant);
         foreach (['access_subject_id','tariff_revision_id','terms_id','usage_period_id'] as $key) {
             if ((string) $grant->$key !== $entry[$key]) { throw new UsageError('USAGE_GRANT_OWNERSHIP_OR_COVERAGE'); }
         }
@@ -158,29 +151,23 @@ final class UsageReceipts
             || (string) $subject->subscription_id !== (string) $sub->id || (string) $terms->subscription_id !== (string) $sub->id
             || (string) $period->subscription_id !== (string) $sub->id
             || $period->boundary_kind !== 'known' || $period->starts_at === null
-            || !UsageRegistry::covers($start, $end, $grant->issued_at, $grant->lease_expires_at)
-            || !UsageRegistry::covers($start, $end, $tariff->effective_from, $tariff->effective_until)) {
+            || !UsageEvidence::covers($start, $end, $grant->issued_at, $grant->lease_expires_at)
+            || !UsageEvidence::covers($start, $end, $tariff->effective_from, $tariff->effective_until)) {
             throw new UsageError('USAGE_GRANT_OWNERSHIP_OR_COVERAGE');
         }
         $this->policy->assertSubscription($sub);
         NativeUsageLedger::verifyTariff($tariff);
         $boundaries = $this->boundaries ?? app(UsageTermsBoundary::class);
-        $authorizationCutoff = false;
-        if ($native) {
-            $cutoff = $boundaries->nativeCutoff($grant, $sub, $subject, $period, $proof['coverage']);
-            $authorizationCutoff = $cutoff !== null && $end > $cutoff;
-        }
-        if (!$authorizationCutoff && (!UsageRegistry::covers($start, $end, $period->starts_at, $period->ends_at)
-            || !UsageRegistry::covers($start, $end, $sub->starts_at, $sub->expires_at)
+        $cutoff = $boundaries->nativeCutoff($grant, $sub, $subject, $period, $proof['coverage']);
+        $authorizationCutoff = $cutoff !== null && $end > $cutoff;
+        if (!$authorizationCutoff && (!UsageEvidence::covers($start, $end, $period->starts_at, $period->ends_at)
+            || !UsageEvidence::covers($start, $end, $sub->starts_at, $sub->expires_at)
             || ($sub->ended_at !== null && $end > (int) $sub->ended_at)
             || ($grant->revoked_at !== null && $end > (int) $grant->revoked_at)
             || ($subject->revoked_at !== null && $end > (int) $subject->revoked_at))) {
             throw new UsageError('USAGE_GRANT_OWNERSHIP_OR_COVERAGE');
         }
-        // A revoked subject can report traffic strictly within its former authorization.
-        // A changed auth version without an effective revocation timestamp cannot establish a safe interval.
-        if (!$native && (string) $subject->auth_version !== (string) $grant->auth_version && $subject->revoked_at === null) { throw new UsageError('USAGE_AUTH_VERSION_AMBIGUOUS'); }
-        if ($subject->status !== 'active' && $subject->revoked_at === null && (!$native || $grant->revoked_at === null)) {
+        if ($subject->status !== 'active' && $subject->revoked_at === null && $grant->revoked_at === null) {
             throw new UsageError('USAGE_REVOCATION_TIME_UNKNOWN');
         }
         if ($tariff->rounding_revision !== 'floor-per-direction-v1') { throw new UsageError('USAGE_ROUNDING_UNSUPPORTED'); }

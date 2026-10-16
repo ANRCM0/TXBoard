@@ -2,7 +2,6 @@
 
 use App\Services\ThemeService;
 use App\Services\AdminFavicon;
-use App\Services\VersionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Log;
@@ -62,51 +61,8 @@ Route::get('/', function (Request $request) {
         abort(503, '用户前台资源不可用');
     }
 
-    try {
-        if (!$themeService->exists($theme)) {
-            if ($theme !== 'TXBoard') {
-                Log::warning('Theme not found, switching to default theme', ['theme' => $theme]);
-                $theme = 'TXBoard';
-                admin_setting(['frontend_theme' => $theme]);
-            }
-            $themeService->switch($theme);
-        }
-
-        if (!$themeService->getThemeViewPath($theme)) {
-            throw new Exception('主题视图文件不存在');
-        }
-
-        $publicThemePath = public_path('theme/' . $theme);
-        if (!File::exists($publicThemePath)) {
-            $themePath = $themeService->getThemePath($theme);
-            if (!$themePath || !File::copyDirectory($themePath, $publicThemePath)) {
-                throw new Exception('主题初始化失败');
-            }
-            Log::info('Theme initialized in public directory', ['theme' => $theme]);
-        }
-
-        $renderParams = [
-            'title' => admin_setting('app_name', 'TXBoard'),
-            'theme' => $theme,
-            'version' => app(VersionService::class)->getCurrentVersion(),
-            'description' => admin_setting('app_description', 'TXBoard control plane'),
-            'logo' => admin_setting('logo'),
-            'theme_config' => $themeService->getConfig($theme)
-        ];
-        return view('theme::' . $theme . '.dashboard', $renderParams);
-    } catch (Exception $e) {
-        Log::error('Theme rendering failed', [
-            'theme' => $theme,
-            'error' => $e->getMessage()
-        ]);
-        abort(500, '主题加载失败');
-    }
+    abort(503, 'Theme resources unavailable');
 });
-
-// Subscription links must win before the dynamic admin catch-all.
-Route::get('/' . (admin_setting('subscribe_path', 's')) . '/{token}', [\App\Http\Controllers\SubscriptionController::class, 'subscribe'])
-    ->middleware('client')
-    ->name('client.subscribe');
 
 /*
 |--------------------------------------------------------------------------

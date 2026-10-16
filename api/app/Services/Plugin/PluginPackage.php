@@ -23,37 +23,50 @@ final class PluginPackage
 
     public function assertManifestExtension(array $config): void
     {
-        $menus = $config['admin_menus'] ?? [];
-        if (!is_array($menus)) {
-            throw new InvalidArgumentException('admin_menus must be an array');
-        }
-
-        $appReferences = [];
-        foreach ($menus as $menu) {
-            if (!is_array($menu)) {
-                throw new InvalidArgumentException('admin_menus entries must be objects');
-            }
-            if (array_key_exists('app', $menu)) {
-                if (!is_string($menu['app']) || trim($menu['app']) === '') {
-                    throw new InvalidArgumentException('admin menu app must be a non-empty string');
-                }
-                $appReferences[] = trim($menu['app']);
-            }
-        }
-
         $package = $config['package'] ?? null;
-        if ($package === null && $appReferences === []) {
-            return; // legacy package: keep backward compatibility
-        }
-
-        if (!is_array($package) || (int) ($package['schema'] ?? 0) !== self::SCHEMA_VERSION) {
+        if (!is_array($package) || ($package['schema'] ?? null) !== self::SCHEMA_VERSION) {
             throw new InvalidArgumentException('Plugin Package v1 requires package.schema=1');
         }
-
-        foreach ($appReferences as $reference) {
-            if (!$this->isSafeAdminAppReference($reference)) {
-                throw new InvalidArgumentException("Invalid plugin admin app reference: {$reference}");
+        $menus = $config['admin_menus'] ?? [];
+        if (!is_array($menus) || !array_is_list($menus)) {
+            throw new InvalidArgumentException('admin_menus must be an array');
+        }
+        $ids = [];
+        $paths = [];
+        foreach ($menus as $menu) {
+            if (!is_array($menu) || array_is_list($menu) ||
+                array_diff(array_keys($menu), ['id', 'title', 'path', 'icon', 'order', 'description', 'app']) !== []) {
+                throw new InvalidArgumentException('Invalid admin menu declaration');
             }
+            foreach (['id' => '/\A[A-Za-z0-9_-]{1,64}\z/D',
+                'path' => '/\A[A-Za-z0-9_-]+(?:\/[A-Za-z0-9_-]+)*\z/D'] as $key => $pattern) {
+                if (!is_string($menu[$key] ?? null) || !preg_match($pattern, $menu[$key])) {
+                    throw new InvalidArgumentException('Invalid admin menu '.$key);
+                }
+            }
+            if (strlen($menu['path']) > 240 || isset($ids[$menu['id']]) || isset($paths[$menu['path']])) {
+                throw new InvalidArgumentException('Admin menu identities and paths must be unique');
+            }
+            $ids[$menu['id']] = true;
+            $paths[$menu['path']] = true;
+            if (!is_string($menu['title'] ?? null) || trim($menu['title']) === '' || strlen($menu['title']) > 120) {
+                throw new InvalidArgumentException('Admin menu title is required');
+            }
+            if (!is_string($menu['app'] ?? null) || !$this->isSafeAdminAppReference($menu['app'])) {
+                throw new InvalidArgumentException('Invalid plugin admin app reference');
+            }
+            if (isset($menu['icon']) && (!is_string($menu['icon']) || trim($menu['icon']) === '' || strlen($menu['icon']) > 80)) {
+                throw new InvalidArgumentException('Invalid admin menu icon');
+            }
+            if (isset($menu['order']) && (!is_int($menu['order']) || abs($menu['order']) > 100000)) {
+                throw new InvalidArgumentException('Invalid admin menu order');
+            }
+        }
+        if (isset($package['admin']) && (!is_array($package['admin']) ||
+            ($package['admin']['format'] ?? null) !== 'static-app' ||
+            ($package['admin']['dist'] ?? null) !== 'admin/dist' ||
+            array_diff(array_keys($package['admin']), ['format', 'dist']) !== [])) {
+            throw new InvalidArgumentException('Plugin admin package must use admin/dist static-app');
         }
     }
 

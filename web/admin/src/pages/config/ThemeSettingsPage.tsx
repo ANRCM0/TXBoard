@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ChevronLeft, ChevronRight, Eye, Palette, RotateCcw, Settings2, Trash2, Upload } from 'lucide-react'
 import { useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
-import { deleteTheme, getThemeConfig, getThemes, saveThemeConfig, uploadTheme, uploadThemeV2, rollbackThemeV2, type ThemeItem } from '../../api/theme'
+import { deleteTheme, getThemeConfig, getThemes, saveThemeConfig, uploadTheme, rollbackTheme, type ThemeItem } from '../../api/theme'
 import { saveSettings } from '../../api/config'
 import { normalizeThemeFields, ThemeConfigFields } from './ThemeConfigFields'
 import { Modal } from '../../components/ui/Modal'
@@ -24,7 +24,6 @@ function imagesOf(theme: ThemeItem) {
 export function ThemeSettingsPage() {
   const qc = useQueryClient()
   const inputRef = useRef<HTMLInputElement>(null)
-  const inputV2Ref = useRef<HTMLInputElement>(null)
   const query = useQuery({ queryKey: ['themes'], queryFn: getThemes })
   const [preview, setPreview] = useState<ThemeItem | null>(null)
   const [previewIndex, setPreviewIndex] = useState(0)
@@ -49,15 +48,11 @@ export function ThemeSettingsPage() {
   })
   const upload = useMutation({
     mutationFn: uploadTheme,
-    onSuccess: () => { toast.success('主题上传成功'); refresh() },
-  })
-  const uploadV2 = useMutation({
-    mutationFn: uploadThemeV2,
     onSuccess: result => { toast.success(`SPA 主题 ${result.theme} 已安装，请显式切换启用`); refresh() },
-    onError: () => toast.error('Theme v2 上传失败，请检查包完整性或运行时版本'),
+    onError: () => toast.error('主题上传失败，请检查包完整性或运行时版本'),
   })
-  const rollbackV2 = useMutation({
-    mutationFn: rollbackThemeV2,
+  const rollback = useMutation({
+    mutationFn: rollbackTheme,
     onSuccess: () => { toast.success('上一版本已恢复'); refresh() },
     onError: () => toast.error('回滚失败：上一版本不存在或不兼容'),
   })
@@ -105,11 +100,11 @@ export function ThemeSettingsPage() {
       {!active ? <button type="button" className="button" disabled={activate.isPending}
         onClick={() => activate.mutate(id)}>切换</button> : null}
       {theme.format === 2 && theme.can_rollback ? (
-        <button type="button" className="button" disabled={rollbackV2.isPending}
+        <button type="button" className="button" disabled={rollback.isPending}
           onClick={() => requestConfirm({
             title: '回滚 SPA 主题版本',
             message: '确认将主题 ' + id + ' 恢复为上一版本？当前版本将保留为可再次回滚的版本。',
-            confirmLabel:'回滚', action:() => rollbackV2.mutate(id),
+            confirmLabel:'回滚', action:() => rollback.mutate(id),
           })}>
           <RotateCcw size={16}/>回滚版本
         </button>
@@ -132,13 +127,7 @@ export function ThemeSettingsPage() {
         const file = e.target.files?.[0]
         if (file) upload.mutate(file)
         e.currentTarget.value = ''
-      }}/><button className="button primary" onClick={() => inputRef.current?.click()} disabled={upload.isPending}><Upload size={16}/>{upload.isPending ? '上传中…' : '上传主题'}</button><input ref={inputV2Ref} type="file" accept=".zip" hidden onChange={e => {
-        const file = e.target.files?.[0]
-        if (file) uploadV2.mutate(file)
-        e.currentTarget.value = ''
-      }}/><button className="button" onClick={() => inputV2Ref.current?.click()} disabled={uploadV2.isPending}>
-        <Upload size={16}/>{uploadV2.isPending ? '安装中…' : '上传 SPA v2'}
-      </button></>}
+      }}/><button className="button primary" onClick={() => inputRef.current?.click()} disabled={upload.isPending}><Upload size={16}/>{upload.isPending ? '上传中…' : '上传主题'}</button></>}
     />
 
     <div className="theme-management-heading">

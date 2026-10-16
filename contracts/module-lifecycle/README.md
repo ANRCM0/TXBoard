@@ -130,7 +130,7 @@ Plugin Package v1 remains unchanged.
 
 Phase C does not require existing plugins to add a Module manifest, rename their code, move `admin/dist`, rebuild TXBoard Admin, or rewrite lifecycle methods.
 
-Phase D preserves the existing Theme Package `config.json + dashboard.blade.php` boundary. Existing themes do not need a generic `manifest.json` to participate in Module Registry.
+Theme lifecycle delegates to the current static SPA package runtime through ThemeService. Third-party packages use `txboard-theme.json`; the retired Blade format is rejected. Registry does not install or mutate themes.
 
 ## Runtime scope
 

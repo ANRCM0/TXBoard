@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Txapi\Admin;
 
 use App\Core\Http\TxapiResponse;
 use App\Models\User;
-use App\Utils\Helper;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -24,16 +23,6 @@ final class UserReadController
         return TxapiResponse::success($request, self::dto($user, true));
     }
 
-    public function subscriptionLink(Request $request): JsonResponse
-    {
-        $id = (int) $request->route('id');
-        // Only a privileged explicit operation can retrieve a subscription URL;
-        // never fan out private per-user credentials through the list response.
-        $user = User::query()->findOrFail($id, ['id', 'token']);
-        return TxapiResponse::success($request, [
-            'subscribe_url' => Helper::getSubscribeUrl((string) $user->token),
-        ]);
-    }
 
     private static function dto(User $user, bool $detail = false): array
     {

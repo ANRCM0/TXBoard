@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Models\Server;
 use App\Models\ServerMachine;
-use App\Models\User;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Redis;
@@ -64,87 +63,6 @@ class NodeSyncService
     }
 
     /**
-     * Push all users to all nodes in the group
-     */
-    public static function notifyUsersUpdatedByGroup(int $groupId): void
-    {
-        $servers = Server::where(static function ($query) use ($groupId): void {
-            $query->whereJsonContains('group_ids', (string) $groupId)
-                ->orWhereJsonContains('group_ids', $groupId);
-        })
-            ->get();
-
-        foreach ($servers as $server) {
-            if (!self::isNodeOnline($server->id))
-                continue;
-
-            $users = ServerService::getNativeAvailableUsers($server)->toArray();
-            self::push($server->id, 'sync.users', ['users' => $users]);
-        }
-    }
-
-    /**
-     * Push user changes (add/remove) to affected nodes
-     */
-    public static function notifyUserChanged(User $user): void
-    {
-        app(\App\Domains\Installation\InstallationAuthority::class)->assertRuntime();
-        if (!$user->group_id)
-            return;
-
-        $servers = Server::where(static function ($query) use ($user): void {
-            $query->whereJsonContains('group_ids', (string) $user->group_id)
-                ->orWhereJsonContains('group_ids', (int) $user->group_id);
-        })->get();
-        foreach ($servers as $server) {
-            if (!self::isNodeOnline($server->id))
-                continue;
-
-            if ($user->isAvailable()) {
-                self::push($server->id, 'sync.user.delta', [
-                    'action' => 'add',
-                    'users' => [
-                        [
-                            'id' => $user->id,
-                            'uuid' => $user->uuid,
-                            'speed_limit' => $user->speed_limit,
-                            'device_limit' => $user->device_limit,
-                            ...(config('native_traffic_periods.enabled', true) && config('native_traffic_receipts.enabled', true) ? ['traffic_period' => app(\App\Domains\Network\NativeTrafficPeriod::class)->issue((int) $user->id, (int) ($user->reset_count ?? 0))] : []),
-                        ]
-                    ],
-                ]);
-            } else {
-                self::push($server->id, 'sync.user.delta', [
-                    'action' => 'remove',
-                    'users' => [['id' => $user->id]],
-                ]);
-            }
-        }
-    }
-
-    /**
-     * Push user removal from a specific group's nodes
-     */
-    public static function notifyUserRemovedFromGroup(int $userId, int $groupId): void
-    {
-        $servers = Server::where(static function ($query) use ($groupId): void {
-            $query->whereJsonContains('group_ids', (string) $groupId)
-                ->orWhereJsonContains('group_ids', $groupId);
-        })
-            ->get();
-
-        foreach ($servers as $server) {
-            if (!self::isNodeOnline($server->id))
-                continue;
-
-            self::push($server->id, 'sync.user.delta', [
-                'action' => 'remove',
-                'users' => [['id' => $userId]],
-            ]);
-        }
-    }
-
-    /**
      * Full sync: push config + users to a node
      */
     public static function notifyFullSync(int $nodeId): void
@@ -158,8 +76,7 @@ class NodeSyncService
 
         self::push($nodeId, 'sync.config', ['config' => ServerService::buildNodeConfig($node)]);
 
-        $users = ServerService::getNativeAvailableUsers($node)->toArray();
-        self::push($nodeId, 'sync.users', ['users' => $users]);
+        self::push($nodeId, 'sync.users', ['refresh_required' => true]);
     }
 
     /**

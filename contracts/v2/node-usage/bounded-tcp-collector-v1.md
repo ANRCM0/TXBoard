@@ -1,5 +1,7 @@
 # Explicit bounded TCP collector v1
 
+> 已退役（2026-10-16）：本文保留隔离原型的历史设计和当时验收记录。对应开关、Registry/CLI、运行器和专属 CI 已删除；正文 Current/isolated 状态不描述现行运行时。当前用量边界见 [当前 native 契约](README.md)。
+
 Status: verified isolated producer/consumer prototype. Default Node Service does
 not call this constructor. Existing v1 billing/reporting remain authoritative.
 Core grants must come from the separately authenticated Core usage-v2 Session;

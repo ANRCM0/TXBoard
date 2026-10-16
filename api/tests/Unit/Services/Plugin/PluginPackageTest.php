@@ -16,11 +16,11 @@ class PluginPackageTest extends TestCase
         $this->package = new PluginPackage();
     }
 
-    public function test_native_plugin_without_optional_admin_app_remains_valid(): void
+    public function test_current_plugin_requires_explicit_package_schema(): void
     {
-        $this->assertTrue($this->package->validateManifestExtension([
-            'admin_menus' => [['path' => 'dashboard', 'component' => 'plugin.dashboard']],
-        ]));
+        $this->assertFalse($this->package->validateManifestExtension([]));
+        $this->assertTrue($this->package->validateManifestExtension(['package' => ['schema' => 1]]));
+        $this->assertFalse($this->package->validateManifestExtension(['package' => ['schema' => '1']]));
     }
 
     public function test_v1_plugin_admin_app_is_valid(): void
@@ -28,7 +28,7 @@ class PluginPackageTest extends TestCase
         $config = [
             'package' => ['schema' => 1],
             'admin_menus' => [
-                ['path' => 'dashboard', 'app' => 'admin/index.html#/dashboard'],
+                ['id' => 'dashboard', 'title' => 'Dashboard', 'path' => 'dashboard', 'app' => 'admin/index.html#/dashboard'],
             ],
         ];
 
@@ -39,8 +39,25 @@ class PluginPackageTest extends TestCase
     public function test_admin_app_requires_package_v1(): void
     {
         $this->assertFalse($this->package->validateManifestExtension([
-            'admin_menus' => [['path' => 'dashboard', 'app' => 'admin/index.html']],
+            'admin_menus' => [['id' => 'dashboard', 'title' => 'Dashboard', 'path' => 'dashboard', 'app' => 'admin/index.html']],
         ]));
+    }
+
+    public function test_old_menu_aliases_and_missing_explicit_identity_are_rejected(): void
+    {
+        $valid = ['id' => 'dashboard', 'title' => 'Dashboard', 'path' => 'dashboard', 'app' => 'admin/index.html'];
+        foreach (['label', 'component', 'url', 'embed', 'renderer'] as $alias) {
+            $this->assertFalse($this->package->validateManifestExtension([
+                'package' => ['schema' => 1], 'admin_menus' => [array_merge($valid, [$alias => 'old'])],
+            ]));
+        }
+        foreach (['id', 'title', 'path', 'app'] as $field) {
+            $menu = $valid;
+            unset($menu[$field]);
+            $this->assertFalse($this->package->validateManifestExtension([
+                'package' => ['schema' => 1], 'admin_menus' => [$menu],
+            ]));
+        }
     }
 
     public function test_external_absolute_and_traversal_entries_are_rejected(): void
@@ -68,7 +85,7 @@ class PluginPackageTest extends TestCase
         $config = [
             'package' => ['schema' => 1],
             'admin_menus' => [
-                ['path' => 'dashboard', 'app' => 'admin/index.html#/dashboard'],
+                ['id' => 'dashboard', 'title' => 'Dashboard', 'path' => 'dashboard', 'app' => 'admin/index.html#/dashboard'],
             ],
         ];
 
@@ -88,7 +105,7 @@ class PluginPackageTest extends TestCase
         $this->package->assertDeclaredAdminAppsExist(sys_get_temp_dir(), [
             'package' => ['schema' => 1],
             'admin_menus' => [
-                ['path' => 'dashboard', 'app' => 'admin/index.html'],
+                ['id' => 'dashboard', 'title' => 'Dashboard', 'path' => 'dashboard', 'app' => 'admin/index.html'],
             ],
         ]);
     }

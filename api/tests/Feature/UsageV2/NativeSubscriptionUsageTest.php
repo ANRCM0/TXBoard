@@ -5,7 +5,6 @@ namespace Tests\Feature\UsageV2;
 use App\Domains\UsageV2\UsagePayload;
 use App\Domains\UsageV2\UsagePolicy;
 use App\Domains\UsageV2\UsageReceipts;
-use App\Domains\UsageV2\UsageRegistry;
 use App\Domains\UsageV2\UsageSettlement;
 use App\Models\Order;
 use App\Domains\Subscription\Services\PublishedOrderService;
@@ -13,41 +12,25 @@ use App\Domains\Subscription\Services\SubscriptionEntitlementResolver;
 use App\Domains\Subscription\Services\SubscriptionFulfillmentService;
 use App\Domains\Subscription\Services\SubscriptionLifecycleService;
 use DomainException;
-use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
-use Tests\Support\NativeSubscriptionTestCase;
+use Tests\Support\NativeRuntimeTestCase;
+use Tests\Support\UsageV2Fixture;
 
-final class NativeSubscriptionUsageTest extends NativeSubscriptionTestCase
+final class NativeSubscriptionUsageTest extends NativeRuntimeTestCase
 {
+    use UsageV2Fixture;
+
     private array $fixture;
 
     protected function setUp(): void
     {
         parent::setUp();
-        config(['core_usage_v2.isolated_copy' => false, 'core_usage_v2.core_instance_id' => 'native_core_fixture',
-            'core_usage_v2.receipt_generation' => '1']);
-        Schema::create('tx_server', fn (Blueprint $table) => $table->integer('id')->primary());
-        DB::table('tx_server')->insert(['id' => 1]);
-        $migrationFiles = glob(database_path('migrations/2026_10_12_000003_*.php'));
-        $this->assertCount(1, $migrationFiles);
-        (require $migrationFiles[0])->up();
-        $now = time();
-        $user = $this->user(['transfer_enable' => 17, 'u' => 9, 'd' => 8]);
-        $offer = $this->publishedOffer($this->plan());
-        $order = app(PublishedOrderService::class)->create($user->id, $offer, 'usage-purchase');
-        $order->update(['status' => Order::STATUS_PROCESSING]);
-        $opened = app(SubscriptionFulfillmentService::class)->fulfill($order->id, $now);
-        // This fixture supplies only a non-secret subject; it is not production Provider issuance.
-        $subject = DB::table('tx_access_subject')->insertGetId(['subscription_id' => $opened['subscription_id'],
-            'provider_id' => 'native-test', 'provider_subject_ref' => 'native-test-subject', 'status' => 'active',
-            'created_at' => $now, 'updated_at' => $now]);
-        $registry = app(UsageRegistry::class);
-        $source = $registry->source(1, 'native_node_fixture', $now);
-        $tariff = $registry->tariff(1, '3', '2', $now, $now + 3600);
-        $grant = $registry->grant($source->id, $subject, (int) $opened['terms_id'],
-            (int) $opened['usage_period_id'], $tariff->id, $now, $now + 120);
-        $this->fixture = compact('now', 'user', 'offer', 'opened', 'subject', 'source', 'tariff', 'grant');
+        $f = $this->usageFixture();
+        $offer = (int) collect($this->offers)->firstWhere('offer_code', 'monthly')['offer_id'];
+        $opened = ['subscription_id' => $f['sub'], 'terms_id' => $f['terms'],
+            'usage_period_id' => $f['period'], 'subscription_version' =>
+                (string) DB::table('tx_subscription')->where('id', $f['sub'])->value('row_version')];
+        $this->fixture = $f + compact('opened', 'offer');
     }
 
     public function test_accepted_traffic_after_reset_settles_original_period_exactly_once(): void
@@ -56,6 +39,7 @@ final class NativeSubscriptionUsageTest extends NativeSubscriptionTestCase
         $payload = $this->payload();
         $receipts = app(UsageReceipts::class);
         $first = $receipts->submit(1, $payload, $f['now'] + 30);
+        $this->awaitHistoricalInterval();
         $reset = app(SubscriptionLifecycleService::class)->reset($f['user']->id,
             (int) $f['opened']['subscription_id'], 'manual-reset', $f['opened']['subscription_version'], $f['now'] + 40);
         $this->assertNotSame($f['opened']['usage_period_id'], $reset['usage_period_id']);
@@ -65,7 +49,7 @@ final class NativeSubscriptionUsageTest extends NativeSubscriptionTestCase
         $this->assertSame('11', (string) DB::table('tx_usage_period')->where('id', $f['opened']['usage_period_id'])->value('billable_bytes'));
         $this->assertSame('0', (string) DB::table('tx_usage_period')->where('id', $reset['usage_period_id'])->value('billable_bytes'));
         $this->assertSame(1, DB::table('tx_usage_entry')->count());
-        $this->assertSame(9, (int) $f['user']->fresh()->u);
+        $this->assertSame(0, (int) $f['user']->fresh()->u);
         $state = app(SubscriptionEntitlementResolver::class)->resolve($f['user']->id, $f['now'] + 60);
         $this->assertTrue($state['authorized']);
         $this->assertSame('0', $state['consumed_bytes']);
@@ -75,6 +59,7 @@ final class NativeSubscriptionUsageTest extends NativeSubscriptionTestCase
     {
         $f = $this->fixture;
         app(UsageReceipts::class)->submit(1, $this->payload(), $f['now'] + 30);
+        $this->awaitHistoricalInterval();
         $order = app(PublishedOrderService::class)->create($f['user']->id, $f['offer'], 'usage-renew');
         $order->update(['status' => Order::STATUS_PROCESSING]);
         $renewed = app(SubscriptionFulfillmentService::class)->fulfill($order->id, $f['now'] + 40);
@@ -122,19 +107,6 @@ final class NativeSubscriptionUsageTest extends NativeSubscriptionTestCase
         }
     }
 
-    public function test_admission_failure_cannot_change_settlement_or_receipt_state(): void
-    {
-        $this->denyNativeAdmission = true;
-        try {
-            app(UsageReceipts::class)->submit(1, $this->payload(), $this->fixture['now'] + 30);
-            $this->fail('Native admission was bypassed');
-        } catch (\RuntimeException $error) {
-            $this->assertSame('INSTALLATION_NATIVE_NOT_READY', $error->getMessage());
-        }
-        $this->assertSame(0, DB::table('tx_usage_batch')->count());
-        $this->assertSame(0, DB::table('tx_usage_entry')->count());
-    }
-
     public function test_settlement_failure_rolls_back_period_and_ledger_then_recovers(): void
     {
         $f = $this->fixture;
@@ -149,11 +121,19 @@ final class NativeSubscriptionUsageTest extends NativeSubscriptionTestCase
         $this->assertSame('11', (string) DB::table('tx_usage_period')->value('billable_bytes'));
     }
 
-    private function payload(int $end = 20): array
+    private function awaitHistoricalInterval(): void
+    {
+        // Credential synchronization records real whole-second cutoffs, including after a reset or renewal.
+        $deadline = microtime(true) + 3;
+        while (time() <= $this->fixture['now'] && microtime(true) < $deadline) { usleep(20000); }
+        $this->assertGreaterThan($this->fixture['now'], time());
+    }
+
+    private function payload(int $end = 1): array
     {
         $f = $this->fixture;
         $payload = ['protocol_version' => 2, 'node_id' => '1', 'source_epoch' => (string) $f['source']->source_epoch,
-            'batch_id' => 'native_usage_batch_0001', 'started_at' => $f['now'] + 10, 'ended_at' => $f['now'] + $end,
+            'batch_id' => 'native_usage_batch_0001', 'started_at' => $f['now'], 'ended_at' => $f['now'] + $end,
             'entries' => [['access_subject_id' => (string) $f['subject'], 'auth_snapshot_id' => (string) $f['grant']->id,
                 'tariff_revision_id' => (string) $f['tariff']->id, 'terms_id' => $f['opened']['terms_id'],
                 'usage_period_id' => $f['opened']['usage_period_id'], 'raw_up_bytes' => '3', 'raw_down_bytes' => '5']]];

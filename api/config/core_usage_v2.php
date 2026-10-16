@@ -1,8 +1,6 @@
 <?php
 
 return [
-    // Isolated prototype admission stays separate from the signed native C2 runtime.
-    'isolated_copy' => (bool) env('CORE_USAGE_V2_ISOLATED_COPY', false),
     'core_instance_id' => env('CORE_USAGE_V2_INSTANCE_ID'),
     'receipt_generation' => env('CORE_USAGE_V2_RECEIPT_GENERATION', '1'),
     'retention_seconds' => 604800,

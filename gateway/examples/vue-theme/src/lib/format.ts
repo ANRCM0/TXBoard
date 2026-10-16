@@ -3,7 +3,7 @@
 export const formatMoney = (minor: number | null | undefined): string =>
   ((minor ?? 0) / 100).toFixed(2)
 
-export const formatBytes = (value: number | null | undefined): string => {
+export const formatBytes = (value: string | number | null | undefined): string => {
   const n = Number(value ?? 0)
   if (!n) return '0 B'
   const units = ['B', 'KB', 'MB', 'GB', 'TB']
@@ -11,8 +11,8 @@ export const formatBytes = (value: number | null | undefined): string => {
   return `${(n / 1024 ** power).toFixed(power > 1 ? 2 : 0)} ${units[power]}`
 }
 
-export const formatDate = (epochSeconds: number | null | undefined): string => {
+export const formatDate = (epochSeconds: string | number | null | undefined): string => {
   if (!epochSeconds) return '—'
-  const ms = new Date(epochSeconds * 1000)
+  const ms = new Date(Number(epochSeconds) * 1000)
   return Number.isFinite(ms.getTime()) ? ms.toLocaleDateString('zh-CN') : '—'
 }

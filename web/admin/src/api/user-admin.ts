@@ -32,7 +32,6 @@ export type AdminUser = {
   is_admin?: boolean | number
   is_staff?: boolean | number
   remarks?: string | null
-  subscribe_url?: string
   [key: string]: unknown
 }
 
@@ -140,16 +139,6 @@ export async function getUserDetail(id: number) {
   return data.data
 }
 
-export async function getUserSubscriptionLink(id: number) {
-  const { data } = await nativeApiClient.get<NativeApiEnvelope<{ subscribe_url: string }>>(
-    adminUserResource(id) + '/subscription-link',
-  )
-  if (!data?.request_id || typeof data.data?.subscribe_url !== 'string') {
-    throw new Error('Invalid native user subscription response')
-  }
-  return data.data.subscribe_url
-}
-
 export async function updateUser(payload: UserUpdatePayload) {
   if (payload.balance !== undefined &&
       !Number.isSafeInteger(payload.expected_balance_minor)) {
@@ -166,14 +155,6 @@ export async function updateUser(payload: UserUpdatePayload) {
   if (!data?.request_id || data.data?.ok !== true || data.data?.id !== id) {
     throw new Error('Native user update not acknowledged')
   }
-  return true
-}
-
-export async function resetUserSecret(id: number) {
-  const { data } = await nativeApiClient.post<NativeApiEnvelope<{ ok: boolean }>>(
-    adminUserResource(id) + '/subscription-credentials/rotate',
-  )
-  if (!data?.request_id || data.data?.ok !== true) throw new Error('Native credential rotation not acknowledged')
   return true
 }
 

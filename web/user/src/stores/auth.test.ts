@@ -14,17 +14,7 @@ vi.mock('../api/user', () => ({
   fetchUserInfo: vi.fn(),
 }))
 
-const user = {
-  email: 'operator@txboard.local',
-  transfer_enable: 0,
-  u: 0,
-  d: 0,
-  expired_at: null,
-  plan_id: null,
-  balance: 0,
-  commission_balance: 0,
-  uuid: 'test-user',
-}
+const user = { id: 1, email: 'operator@txboard.local', telegram_id: null }
 
 describe('auth store request deduplication', () => {
   beforeEach(() => {

@@ -4,6 +4,8 @@ namespace App\Jobs;
 
 use App\Models\Order;
 use App\Services\OrderService;
+use App\Domains\Billing\NativeOrderLifecycle;
+use App\Domains\Subscription\Services\PublishedOrderService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -55,7 +57,8 @@ class OrderHandleJob implements ShouldQueue
     {
         $order = Order::query()->useWritePdo()->where('trade_no', $this->tradeNo)->first();
         if (!$order) return;
-        $orderService = new OrderService($order);
+        $orderService = $order->purchase_terms_version === PublishedOrderService::VERSION
+            ? new NativeOrderLifecycle($order) : new OrderService($order);
         switch ($order->status) {
             // cancel
             case Order::STATUS_PENDING:

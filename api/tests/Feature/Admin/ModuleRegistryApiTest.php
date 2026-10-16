@@ -61,100 +61,31 @@ class ModuleRegistryApiTest extends TestCase
         $this->assertSame(count($modules), $response->json('data.summary.total'));
     }
 
-    public function test_legacy_plugin_navigation_is_projected_safely_into_module_descriptor(): void
+    public function test_current_plugin_navigation_uses_explicit_identity_without_aliases(): void
     {
         $path = base_path('plugins/NavFixture');
-        File::ensureDirectoryExists($path);
-
-        file_put_contents($path . '/config.json', json_encode([
-            'name' => 'Navigation Fixture',
-            'code' => 'nav_fixture',
-            'version' => '1.0.0',
-            'description' => 'Navigation projection fixture',
-            'author' => 'TXBoard tests',
-            'admin_menus' => [
-                [
-                    'id' => 'dashboard',
-                    'title' => 'Dashboard',
-                    'path' => '/dashboard/',
-                    'icon' => 'layout-dashboard',
-                    'order' => 20,
-                ],
-                [
-                    'id' => 'unsafe',
-                    'title' => 'Unsafe',
-                    'path' => '../config',
-                ],
-            ],
+        File::ensureDirectoryExists($path.'/admin/dist');
+        File::put($path.'/admin/dist/index.html', '<!doctype html>');
+        File::put($path.'/config.json', json_encode([
+            'name' => 'Navigation Fixture', 'code' => 'nav_fixture', 'version' => '1.0.0',
+            'description' => 'Current navigation fixture', 'author' => 'TXBoard tests',
+            'package' => ['schema' => 1],
+            'admin_menus' => [[
+                'id' => 'dashboard', 'title' => 'Dashboard', 'path' => 'dashboard',
+                'icon' => 'layout-dashboard', 'order' => 20, 'app' => 'admin/index.html',
+            ]],
         ], JSON_THROW_ON_ERROR));
-
-        Plugin::create([
-            'name' => 'Navigation Fixture',
-            'code' => 'nav_fixture',
-            'version' => '1.0.0',
-            // Config-only fixture has no executable Plugin.php; do not boot it.
-            'is_enabled' => false,
-            'config' => null,
-            'installed_at' => now(),
-        ]);
-
         try {
-            $response = $this->getJson("/txapi/admin/{$this->securePath}/modules/nav_fixture");
-
-            $response->assertOk()
-                ->assertJsonPath('data.id', 'nav_fixture')
-                ->assertJsonPath('data.installed', true)
-                ->assertJsonPath('data.enabled', false)
-                ->assertJsonPath('data.admin.navigation.0.id', 'dashboard')
-                ->assertJsonPath('data.admin.navigation.0.title', 'Dashboard')
+            $this->getJson("/txapi/admin/{$this->securePath}/modules/nav_fixture")
+                ->assertOk()->assertJsonPath('data.admin.navigation.0.id', 'dashboard')
                 ->assertJsonPath('data.admin.navigation.0.path', 'dashboard')
-                ->assertJsonPath('data.admin.navigation.0.icon', 'layout-dashboard')
                 ->assertJsonPath('data.admin.navigation.0.order', 20);
-
-            $this->assertCount(1, $response->json('data.admin.navigation'));
-            $this->assertContains('admin.menu', $response->json('data.capabilities'));
-        } finally {
-            File::deleteDirectory($path);
-        }
-    }
-
-    public function test_invalid_legacy_navigation_is_omitted_without_hiding_plugin(): void
-    {
-        $path = base_path('plugins/InvalidNavFixture');
-        File::ensureDirectoryExists($path);
-
-        file_put_contents($path . '/config.json', json_encode([
-            'name' => 'Invalid Navigation Fixture',
-            'code' => 'invalid_nav_fixture',
-            'version' => '1.0.0',
-            'description' => 'Invalid navigation projection fixture',
-            'author' => 'TXBoard tests',
-            'admin_menus' => [
-                [
-                    'id' => 'escape',
-                    'title' => 'Escape',
-                    'path' => '../config',
-                ],
-            ],
-        ], JSON_THROW_ON_ERROR));
-
-        Plugin::create([
-            'name' => 'Invalid Navigation Fixture',
-            'code' => 'invalid_nav_fixture',
-            'version' => '1.0.0',
-            'is_enabled' => false,
-            'config' => null,
-            'installed_at' => now(),
-        ]);
-
-        try {
-            $response = $this->getJson("/txapi/admin/{$this->securePath}/modules/invalid_nav_fixture");
-
-            $response->assertOk()
-                ->assertJsonPath('data.id', 'invalid_nav_fixture')
-                ->assertJsonMissingPath('data.admin');
-
-            $this->assertNotContains('admin.menu', $response->json('data.capabilities'));
+            $config = json_decode(File::get($path.'/config.json'), true);
+            $config['admin_menus'][0]['path'] = '/dashboard/';
+            File::put($path.'/config.json', json_encode($config, JSON_THROW_ON_ERROR));
+            $response = $this->getJson("/txapi/admin/{$this->securePath}/modules")->assertOk();
+            $this->assertNotContains('nav_fixture', array_column($response->json('data.modules'), 'id'));
+            $this->assertContains('Plugin metadata is invalid', array_column($response->json('data.errors'), 'message'));
         } finally {
             File::deleteDirectory($path);
         }
@@ -175,7 +106,7 @@ class ModuleRegistryApiTest extends TestCase
             'description' => 'Missing admin app reference',
             'author' => 'TXBoard tests',
             'package' => ['schema' => 1],
-            'admin_menus' => [['app' => "admin/{$secret}.html"]],
+            'admin_menus' => [['id' => 'page', 'title' => 'Page', 'path' => 'page', 'app' => "admin/{$secret}.html"]],
         ], JSON_THROW_ON_ERROR));
         file_put_contents($invalidIdPath . '/config.json', json_encode([
             'name' => 'Invalid Module ID Fixture',
@@ -183,6 +114,7 @@ class ModuleRegistryApiTest extends TestCase
             'version' => '1.0.0',
             'description' => 'Invalid module identity',
             'author' => 'TXBoard tests',
+            'package' => ['schema' => 1],
         ], JSON_THROW_ON_ERROR));
 
         try {
@@ -216,6 +148,7 @@ class ModuleRegistryApiTest extends TestCase
             'version' => '9.9.9',
             'description' => 'Should not replace the system module identity',
             'author' => 'test',
+            'package' => ['schema' => 1],
         ], JSON_THROW_ON_ERROR));
 
         try {

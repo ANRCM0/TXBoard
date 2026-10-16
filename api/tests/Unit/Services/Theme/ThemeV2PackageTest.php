@@ -2,7 +2,6 @@
 
 namespace Tests\Unit\Services\Theme;
 
-use App\Services\Theme\ThemePackage;
 use App\Services\Theme\ThemeV2Package;
 use InvalidArgumentException;
 use PHPUnit\Framework\TestCase;
@@ -57,7 +56,7 @@ final class ThemeV2PackageTest extends TestCase
     {
         [$path, $zip] = $this->archive($manifest, $files, $prefix);
         try {
-            return (new ThemeV2Package(new ThemePackage))->validate($zip, $tx, $gw, $sdk);
+            return (new ThemeV2Package)->validate($zip, $tx, $gw, $sdk);
         } finally {
             $zip->close();
             unlink($path);
@@ -163,18 +162,56 @@ final class ThemeV2PackageTest extends TestCase
         // No routes, authorization or server settings are changed by validate().
     }
 
-    public function test_absolute_paths_and_traversal_are_rejected_by_shared_v1_zip_guard(): void
+    public function test_absolute_paths_and_traversal_are_rejected_by_current_zip_guard(): void
     {
-        foreach (['../secret.php', '/etc/.env', 'C:/private.pem'] as $name) {
+        foreach (['../secret.php', '/etc/.env', 'C:/private.pem', 'Theme\\bad.js'] as $name) {
             [$path, $zip] = $this->archive($this->manifest(), [
                 'dist/index.js' => 'console.log("TXBoard theme")', $name => 'oops',
             ]);
             try {
                 try {
-                    (new ThemeV2Package(new ThemePackage))->validate($zip, '3.6.0','1.0.0','0.1.0');
+                    (new ThemeV2Package)->validate($zip, '3.6.0','1.0.0','0.1.0');
                     self::fail("Unsafe ZIP entry {$name} was accepted");
                 } catch (InvalidArgumentException $e) {
                     self::assertStringContainsString('path', $e->getMessage());
+                }
+            } finally {
+                $zip->close();
+                unlink($path);
+            }
+        }
+    }
+
+    public function test_symlink_and_ambiguous_roots_are_rejected_before_extraction(): void
+    {
+        [$path, $zip] = $this->archive($this->manifest(), ['dist/index.js' => 'console.log("TXBoard theme")']);
+        $zip->close();
+        $writer = new ZipArchive;
+        self::assertTrue($writer->open($path));
+        $writer->addFromString('assets/link.js', 'outside');
+        $writer->setExternalAttributesName('assets/link.js', ZipArchive::OPSYS_UNIX, 0120777 << 16);
+        $writer->close();
+        $zip = new ZipArchive;
+        self::assertTrue($zip->open($path));
+        try {
+            try {
+                (new ThemeV2Package)->assertSafeArchive($zip);
+                self::fail('Symbolic links must be rejected');
+            } catch (InvalidArgumentException $e) {
+                self::assertStringContainsString('symbolic links', $e->getMessage());
+            }
+        } finally {
+            $zip->close();
+            unlink($path);
+        }
+        foreach (['Other/txboard-theme.json', 'Outer/Inner/txboard-theme.json'] as $extra) {
+            [$path, $zip] = $this->archive($this->manifest(), [$extra => '{}']);
+            try {
+                try {
+                    (new ThemeV2Package)->manifestEntry($zip);
+                    self::fail('Multiple or nested manifest roots must be rejected');
+                } catch (InvalidArgumentException $e) {
+                    self::assertStringContainsString('exactly one root manifest', $e->getMessage());
                 }
             } finally {
                 $zip->close();
@@ -199,7 +236,7 @@ final class ThemeV2PackageTest extends TestCase
         $manifest['config'] = ['public' => ['smtp_password', 'admin_token']];
         $validated = $this->check($manifest, ['dist/index.js' => 'console.log("TXBoard theme")']);
         // Public candidates must be intersected with a server-managed allowlist by
-        // the future installer/config adapter, never blindly exposed.
+        // the runtime/config adapter, never blindly exposed.
         self::assertSame(['smtp_password', 'admin_token'], $validated['config']['public']);
     }
 }

@@ -9,9 +9,8 @@ export const nativePlan = (overrides: Record<string, unknown> = {}) => ({
   reset_traffic_method: null, prices: [], renewable: true, ...overrides,
 })
 export const nativeProfile = (overrides: Record<string, unknown> = {}) => ({
-  id: 1, email: 'alice@example.test', plan_id: null, uuid: 'private-uuid',
-  balance_minor: 0, commission_balance_minor: 0, expired_at: null, telegram_id: null,
-  traffic: { upload_bytes: 0, download_bytes: 0, limit_bytes: 0 }, ...overrides,
+  id: 1, email: 'alice@example.test', telegram_id: null,
+  credential_status: 'provider_managed', ...overrides,
 })
 export const nativeOrder = (overrides: Record<string, unknown> = {}) => ({
   id: 1, trade_no: 'T-1', plan_id: 1, period: 'monthly', type: 1, status: 0,
@@ -20,9 +19,11 @@ export const nativeOrder = (overrides: Record<string, unknown> = {}) => ({
   payment_id: null, balance_amount_minor: 0, discount_amount_minor: 0, ...overrides,
 })
 export const nativeSubscription = (overrides: Record<string, unknown> = {}) => ({
-  plan: null, subscribe_url: 'https://private.test/subscription-secret', reset_day: null,
-  upload_bytes: 0, download_bytes: 0, traffic_limit_bytes: 0, device_limit: null,
-  speed_limit_mbps: null, expired_at: null, next_reset_at: null, ...overrides,
+  schema: 'core-entitlement/v1', authorized: true, reason: 'ENTITLEMENT_GRANTED',
+  user_id: '1', subscription_id: '1', plan_id: '1',
+  quota_bytes: '1073741824', consumed_bytes: '12', remaining_bytes: '1073741812',
+  upload_bytes: '5', download_bytes: '7', expires_at: null, next_reset_at: null,
+  device_limit: null, speed_limit_mbps: null, credential_status: 'provider_managed', ...overrides,
 })
 export const nativeNotice = (overrides: Record<string, unknown> = {}) => ({
   id: 1, title: 'Update', content: '', img_url: null, tags: [], created_at: '2026-10-12T00:00:00+00:00', ...overrides,

@@ -29,12 +29,10 @@ final class TxapiAdminExtensionsTest extends TestCase
         $this->getJson(self::ROOT . '/themes')->assertStatus(403);
         $this->getJson(self::ROOT . '/plugins')->assertStatus(403);
         $this->postJson(self::ROOT . '/plugins/demo/actions/install')->assertStatus(403);
-        $this->postJson(self::ROOT . '/themes/v2/upload')->assertStatus(403);
         $this->postJson(self::ROOT . '/themes/notinstalled/rollback')->assertStatus(403);
         Sanctum::actingAs($this->user('extensions-user@example.test'));
         $this->getJson(self::ROOT . '/plugins')->assertStatus(403);
         $this->postJson(self::ROOT . '/themes/upload')->assertStatus(403);
-        $this->postJson(self::ROOT . '/themes/v2/upload')->assertStatus(403);
         $this->postJson(self::ROOT . '/themes/notinstalled/rollback')->assertStatus(403);
 
         Sanctum::actingAs($this->user('extensions-admin@example.test', true));
@@ -58,7 +56,6 @@ final class TxapiAdminExtensionsTest extends TestCase
         $this->deleteJson(self::ROOT . '/themes/nonexistent')->assertStatus(404);
         $this->getJson(self::ROOT . '/themes/invalid.name/config')->assertStatus(422);
         $this->postJson(self::ROOT . '/themes/upload', [])->assertStatus(422);
-        $this->postJson(self::ROOT . '/themes/v2/upload', [])->assertStatus(422);
         $this->postJson(self::ROOT . '/themes/notinstalled/rollback')->assertStatus(404);
         $this->postJson(self::ROOT . '/themes/upload', [
             'file' => UploadedFile::fake()->create('invalid.txt', 10, 'text/plain'),
@@ -96,6 +93,7 @@ final class TxapiAdminExtensionsTest extends TestCase
     {
         $uris = collect(Route::getRoutes()->getRoutes())
             ->map(static fn ($route) => $route->uri())->all();
+        $this->assertNotContains('txapi/admin/{admin_path}/themes/v2/upload', $uris);
         foreach (['theme/getThemes', 'theme/getThemeConfig', 'theme/saveThemeConfig',
             'theme/upload', 'theme/delete', 'plugin/getPlugins', 'plugin/types',
             'plugin/install', 'plugin/uninstall', 'plugin/enable', 'plugin/disable',

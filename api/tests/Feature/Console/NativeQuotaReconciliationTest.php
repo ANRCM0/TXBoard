@@ -33,7 +33,7 @@ class NativeQuotaReconciliationTest extends TestCase
         Redis::shouldReceive('srandmember')->once()->with('traffic:pending_check', 100)->andReturn([(string) $user->id]);
         Redis::shouldReceive('publish')->twice()->with('node:push', \Mockery::on(function ($json): bool {
             $frame = json_decode($json, true);
-            return $frame['event'] === 'sync.users' && $frame['data']['users'] === [];
+            return $frame['event'] === 'sync.users' && $frame['data'] === ['refresh_required' => true];
         }))->andReturn(1);
         Redis::shouldReceive('srem')->once()->with('traffic:pending_check', $user->id)->andReturn(1);
         $this->artisan('check:traffic-exceeded')->assertExitCode(0);

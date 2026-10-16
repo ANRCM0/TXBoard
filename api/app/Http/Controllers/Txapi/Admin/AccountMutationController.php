@@ -12,11 +12,6 @@ use Illuminate\Validation\ValidationException;
 
 final class AccountMutationController
 {
-    public function rotate(Request $request, AdminAccountProtection $accounts): JsonResponse
-    {
-        $accounts->rotateCredentials((int) $request->route('id'), $request);
-        return TxapiResponse::success($request, ['ok' => true]);
-    }
 
     public function delete(Request $request, AdminAccountProtection $accounts): JsonResponse
     {

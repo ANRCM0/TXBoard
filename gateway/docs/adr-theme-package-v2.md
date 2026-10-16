@@ -1,3 +1,5 @@
+> Current Core baseline (2026-10-16): only the static SPA package is accepted. The old Blade loader and duplicate upload route are retired; see [current Core package contract](../../contracts/theme-package/README.md). Historical comparisons below describe the original proposal.
+
 # ADR：Theme Package v2 独立 Manifest 与 SDK 发布策略（GW-501 / GW-503）
 
 - 状态：**已提出，待评审**

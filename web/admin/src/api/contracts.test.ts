@@ -26,7 +26,7 @@ import {
   saveKnowledge, toggleKnowledge, sortKnowledge, deleteKnowledge,
   getNoticePage, getNoticeAll, saveNotice, toggleNotice, sortNotice, deleteNotice,
 } from './content'
-import { getUsers, getUserDetail, getUserSubscriptionLink, resetUserSecret, destroyUser, banUsers, updateUser, generateUser, sendUsersMail } from './user-admin'
+import { getUsers, getUserDetail, destroyUser, banUsers, updateUser, generateUser, sendUsersMail } from './user-admin'
 import { copyNode, generateSecret, getProtocolDefinitions, getNodes, saveNode, updateNode, batchUpdateNodes, saveNodeOrder, deleteNode } from './server'
 import { resolvePluginAppUrl, resolvePluginCrudApiPath, fetchPluginCrudList, savePluginCrudRecord } from './plugin'
 import { getThemes, getThemeConfig, saveThemeConfig, deleteTheme, uploadTheme } from './theme'
@@ -682,22 +682,6 @@ describe('native administrator user reads', () => {
     expect(nativeApiClient.getUri(seen[0])).not.toContain('descending=true')
   })
 
-  it('reads private subscription only when the operator explicitly requests it', async () => {
-    setAdminSecurePath('people-admin')
-    responder = config => ({ data: {
-      data: config.url?.endsWith('/subscription-link')
-        ? { subscribe_url: 'https://example.test/s/secret' }
-        : { id: 7, email: 'test@example.test' },
-      request_id: 'native-user-detail',
-    } })
-    const user = await getUserDetail(7)
-    expect(user.id).toBe(7)
-    const link = await getUserSubscriptionLink(7)
-    expect(link).toBe('https://example.test/s/secret')
-    expect(seen[0].url).toBe('/admin/people-admin/users/7')
-    expect(seen[1].url).toBe('/admin/people-admin/users/7/subscription-link')
-    await expect(getUserSubscriptionLink(0)).rejects.toThrow('Invalid admin user ID')
-  })
 
   it('rejects unknown filter fields before issuing requests', async () => {
     setAdminSecurePath('people-admin')
@@ -840,16 +824,14 @@ describe('native administrator order detail and state actions', () => {
 })
 
 describe('native guarded administrator account mutations', () => {
-  it('never sends user deletion or secret rotation to legacy V2', async () => {
+  it('sends deletion only to the scoped administrator endpoint', async () => {
     setAdminSecurePath('security-admin')
     responder = () => ({ data: { data: { ok: true }, request_id: 'native-mutation' } })
-    await expect(resetUserSecret(7)).resolves.toBe(true)
     await expect(destroyUser(7)).resolves.toBe(true)
     expect(seen.map(x => x.url)).toEqual([
-      '/admin/security-admin/users/7/subscription-credentials/rotate',
       '/admin/security-admin/users/7/delete',
     ])
-    expect(seen.map(x => x.method)).toEqual(['post', 'post'])
+    expect(seen.map(x => x.method)).toEqual(['post'])
     await expect(destroyUser(0)).rejects.toThrow('Invalid admin user ID')
   })
 

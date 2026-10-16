@@ -25,7 +25,7 @@ final class NativeRuntimeWorker
                 $batch = DB::table('tx_usage_batch')->where('id', $event->batch_id)->first();
                 if (!$batch || $batch->status !== 'settled') { throw new UsageError('USAGE_NOTIFICATION_BATCH_INVALID'); }
                 $entries = json_decode($batch->frozen_entries, true, 32, JSON_THROW_ON_ERROR);
-                if (!is_array($entries) || !hash_equals($batch->frozen_hash, UsageRegistry::hash($entries))) {
+                if (!is_array($entries) || !hash_equals($batch->frozen_hash, UsageEvidence::hash($entries))) {
                     throw new UsageError('USAGE_NOTIFICATION_EVIDENCE_INVALID');
                 }
                 $owners = [];

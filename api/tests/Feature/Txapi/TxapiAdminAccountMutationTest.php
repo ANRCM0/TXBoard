@@ -26,7 +26,6 @@ class TxapiAdminAccountMutationTest extends TestCase
         $root = '/txapi/admin/safe_account_admin/users';
         $this->postJson($root . '/' . $user->id . '/delete')->assertStatus(403);
         Sanctum::actingAs($user);
-        $this->postJson($root . '/' . $user->id . '/subscription-credentials/rotate')->assertStatus(403);
         $this->postJson($root . '/ban', ['scope' => 'selected', 'user_ids' => [$admin->id]])->assertStatus(403);
         Sanctum::actingAs($admin);
         $this->postJson('/txapi/admin/guessed/users/' . $user->id . '/delete')->assertStatus(404);
@@ -100,22 +99,6 @@ class TxapiAdminAccountMutationTest extends TestCase
         }
     }
 
-    public function test_secret_rotation_preserves_hook_and_never_reveals_new_secret(): void
-    {
-        $admin = $this->user('secret-admin@example.test', true);
-        $target = $this->user('secret-target@example.test');
-        $oldToken = $target->token;
-        $called = [];
-        HookManager::register('admin.user.secret.reset', function (array $payload) use (&$called): void {
-            $called[] = $payload['user']->id;
-        });
-        Sanctum::actingAs($admin);
-        $url = '/txapi/admin/safe_account_admin/users/' . $target->id . '/subscription-credentials/rotate';
-        $response = $this->postJson($url)->assertOk()->assertJsonPath('data.ok', true);
-        $this->assertNotSame($oldToken, $target->fresh()->token);
-        $this->assertSame([$target->id], $called);
-        $this->assertStringNotContainsString($target->fresh()->token, $response->getContent());
-    }
 
     public function test_native_ban_invalidates_sessions_and_does_not_allow_staff_or_admin(): void
     {

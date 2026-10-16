@@ -91,6 +91,7 @@ PLUGIN
             'version' => $version,
             'description' => 'Phase 3 failure testing',
             'author' => 'TXBoard',
+            'package' => ['schema' => 1],
         ];
     }
 }

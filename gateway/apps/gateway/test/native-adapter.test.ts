@@ -43,13 +43,13 @@ describe('current Native Core adapter', () => {
     if (operation === 'userOrderStatus') expect(result).toBe(0)
     if (operation === 'sendEmailCode') expect(result).toBe(true)
   })
-  it('preserves minor amounts and converts ISO dates to Unix seconds without exposing UUIDs', async () => {
+  it('projects only common identity fields without financial or credential extensions', async () => {
     const fetcher = vi.fn(async () => Response.json(nativeEnvelope(nativeProfile({
       balance_minor: 12345, expired_at: '2026-10-12T08:00:00+08:00',
       uuid: 'private-uuid', auth_data: 'secret', password: 'secret',
     }))))
     const result = await upstreamRequest(config, fetcher, 'userProfile', { auth: bearer })
-    expect(result).toMatchObject({ balance: 12345, expired_at: 1791763200 })
+    expect(result).toEqual({ id: 1, email: 'alice@example.test', telegram_id: null })
     expect(result).not.toHaveProperty('uuid')
     expect(result).not.toHaveProperty('password')
     expect(result).not.toHaveProperty('auth_data')
@@ -114,7 +114,35 @@ describe('current Native Core adapter', () => {
       .rejects.toMatchObject({ status: 502 })
   })
   it('rejects malformed Native subscription timestamps instead of coercing them to null', async () => {
-    await expect(upstreamRequest(config, async () => Response.json(nativeEnvelope(nativeSubscription({ expired_at: 'tomorrow' }))), 'userSubscription', { auth: bearer }))
+    await expect(upstreamRequest(config, async () => Response.json(nativeEnvelope(nativeSubscription({ expires_at: 'tomorrow' }))), 'userSubscription', { auth: bearer }))
+      .rejects.toMatchObject({ status: 502 })
+  })
+  it('retains exact entitlement decimals and strips internal evidence and credentials', async () => {
+    const row = nativeSubscription({
+      quota_bytes: '9007199254740993', consumed_bytes: '12',
+      remaining_bytes: '9007199254740981', subscription_version: '4',
+      token: 'private', uuid: 'private', delivery_endpoint: '/private',
+    })
+    const result = await upstreamRequest(config, async () => Response.json(nativeEnvelope(row)), 'userSubscription', { auth: bearer })
+    expect(result).toMatchObject({ schema: 'core-entitlement/v1', quota_bytes: '9007199254740993', remaining_bytes: '9007199254740981' })
+    for (const key of ['token', 'uuid', 'user_id', 'subscription_version', 'delivery_endpoint']) {
+      expect(result).not.toHaveProperty(key)
+    }
+  })
+  it('projects a denied current entitlement without fabricating a subscription', async () => {
+    const result = await upstreamRequest(config, async () => Response.json(nativeEnvelope({
+      schema: 'core-entitlement/v1', authorized: false, reason: 'ENTITLEMENT_SLOT_MISSING',
+      user_id: '1', credential_status: 'provider_managed',
+    })), 'userSubscription', { auth: bearer })
+    expect(result).toEqual({ schema: 'core-entitlement/v1', authorized: false, reason: 'ENTITLEMENT_SLOT_MISSING' })
+  })
+  it.each([
+    { plan: null, upload_bytes: 0, download_bytes: 0, traffic_limit_bytes: 0 },
+    nativeSubscription({ quota_bytes: 100 }), nativeSubscription({ quota_bytes: '01' }),
+    nativeSubscription({ authorized: 'true' }), nativeSubscription({ reason: 'ENTITLEMENT_SLOT_MISSING' }),
+    nativeSubscription({ subscription_id: undefined }), nativeSubscription({ remaining_bytes: '-1' }),
+  ])('rejects retired or malformed entitlement DTOs without fallback', async row => {
+    await expect(upstreamRequest(config, async () => Response.json(nativeEnvelope(row)), 'userSubscription', { auth: bearer }))
       .rejects.toMatchObject({ status: 502 })
   })
   it('normalizes only an empty PHP array as public theme config', async () => {

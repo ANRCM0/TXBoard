@@ -1,11 +1,8 @@
 <?php
 namespace Tests\Feature\Server;
 
-use App\Models\Plan;
 use App\Models\Server;
-use App\Models\ServerGroup;
 use App\Models\ServerMachine;
-use App\Models\User;
 use App\Services\DeviceStateService;
 use App\Services\NodeRegistry;
 use App\WebSocket\NodeWorker;
@@ -48,14 +45,15 @@ final class NativeRedisPushAuthorityTest extends TestCase
         foreach($this->sent as$record){$frame=$record['frame'];if($record['machine_id']===$a->id){$this->assertSame('sync.nodes',$frame['event']);$this->assertStringNotContainsString('PRIVATE-CURRENT-CREDENTIAL',json_encode($frame));}}
         $this->assertSame($current,NodeRegistry::get($node->id));$this->assertSame($old,NodeRegistry::get($sibling->id));
     }
-    public function test_queued_delta_is_replaced_with_current_full_users_and_unknown_event_is_dropped(): void
+    public function test_user_changes_only_request_signed_refresh_and_retired_delta_is_dropped(): void
     {
         $machine=$this->machine('current-machine-secret');$node=$this->node($machine->id);$conn=$this->socket($machine,[$node->id]);$conn->shouldNotReceive('close');NodeRegistry::addMachine($machine->id,$conn);NodeRegistry::add($node->id,$conn);
-        $group=ServerGroup::unguarded(fn()=>ServerGroup::create(['name'=>'current-group']));$plan=Plan::create(['name'=>'current-plan','group_id'=>$group->id,'transfer_enable'=>1,'prices'=>[Plan::PERIOD_MONTHLY=>1],'reset_traffic_method'=>Plan::RESET_TRAFFIC_NEVER]);
-        $node->group_ids=[(string)$group->id];$node->saveQuietly();$user=User::withoutEvents(fn()=>User::create(['email'=>'current-user@example.test','password'=>'synthetic','uuid'=>'00112233-4455-6677-8899-aabbccddeeff','token'=>'synthetic-private','plan_id'=>$plan->id,'group_id'=>$group->id,'u'=>0,'d'=>0,'transfer_enable'=>1024,'expired_at'=>time()+3600,'banned'=>false]));
-        $this->dispatch(['node_id'=>$node->id,'event'=>'sync.user.delta','data'=>['action'=>'remove','users'=>[['id'=>$user->id]]]]);
-        $frame=$this->sent[0]['frame'];$this->assertSame('sync.users',$frame['event']);$this->assertSame([$user->id],array_column($frame['data']['users'],'id'));
-        $count=count($this->sent);$this->dispatch(['node_id'=>$node->id,'event'=>'unknown.secret','data'=>['uuid'=>'DO-NOT-FORWARD']]);$this->assertCount($count,$this->sent);
+        $this->dispatch(['node_id'=>$node->id,'event'=>'sync.users','data'=>['users'=>[['id'=>991,'uuid'=>'DO-NOT-FORWARD']]]]);
+        $frame=$this->sent[0]['frame'];$this->assertSame('sync.users',$frame['event']);$this->assertSame(['refresh_required'=>true,'node_id'=>$node->id],$frame['data']);
+        $count=count($this->sent);
+        foreach(['sync.user.delta','sync.devices','unknown.secret']as$event){$this->dispatch(['node_id'=>$node->id,'event'=>$event,'data'=>['uuid'=>'DO-NOT-FORWARD']]);}
+        $this->assertCount($count,$this->sent);
+        $this->assertStringNotContainsString('DO-NOT-FORWARD',json_encode($this->sent));
     }
     public function test_rotated_machine_credential_drops_queued_node_payload_and_closes_session(): void
     {

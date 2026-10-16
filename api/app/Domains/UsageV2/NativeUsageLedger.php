@@ -43,7 +43,7 @@ final class NativeUsageLedger
         if (!$tariff) {
             $data = ['node_id' => (int) $node->id, 'numerator' => $numerator, 'denominator' => '100',
                 'effective_from' => $now, 'effective_until' => 9007199254740991, 'rounding_revision' => 'floor-per-direction-v1'];
-            $id = DB::table('tx_tariff_revision')->insertGetId($data + ['content_hash' => UsageRegistry::hash($data), 'created_at' => $now]);
+            $id = DB::table('tx_tariff_revision')->insertGetId($data + ['content_hash' => UsageEvidence::hash($data), 'created_at' => $now]);
             $tariff = DB::table('tx_tariff_revision')->where('id', $id)->first();
         }
         self::verifyTariff($tariff);
@@ -59,7 +59,7 @@ final class NativeUsageLedger
                 'tariff_revision_id' => (int) $tariff->id, 'auth_version' => (string) $subject->auth_version,
                 'revocation_version' => (string) $subject->revocation_fact_version,
                 'issued_at' => $now, 'lease_expires_at' => $expires];
-            $id = DB::table('tx_auth_snapshot')->insertGetId($data + ['content_hash' => UsageRegistry::hash($data), 'created_at' => $now]);
+            $id = DB::table('tx_auth_snapshot')->insertGetId($data + ['content_hash' => UsageEvidence::hash($data), 'created_at' => $now]);
             $subscription = DB::table('tx_subscription')->where('id', $e['subscription_id'])->sharedLock()->first();
             $period = DB::table('tx_usage_period')->where('id', $e['usage_period_id'])->sharedLock()->first();
             $coverage = app(UsageTermsBoundary::class)->freeze($e['subscription_id'], $e['terms_id'], $period, $now, $expires)
@@ -71,7 +71,7 @@ final class NativeUsageLedger
                 'credential_expires_at' => $row['credential_expires_at'], 'operation_ref' => $operation->operation_ref,
                 'receipt_hash' => $operation->result_hash, 'coverage' => $coverage];
             DB::table('tx_native_usage_grant')->insert(['grant_id' => $id, 'installation_id' => $instance,
-                'binding_snapshot' => json_encode($binding, JSON_THROW_ON_ERROR), 'binding_hash' => UsageRegistry::hash($binding),
+                'binding_snapshot' => json_encode($binding, JSON_THROW_ON_ERROR), 'binding_hash' => UsageEvidence::hash($binding),
                 'created_at' => $now]);
             $grants[] = ['user_id' => $e['user_id'], 'access_subject_id' => $input['access_subject_id'],
                 'auth_snapshot_id' => (string) $id, 'tariff_revision_id' => (string) $tariff->id,
@@ -96,7 +96,7 @@ final class NativeUsageLedger
             $binding['authorization_digest'] = $digest;
             DB::table('tx_native_usage_grant')->where('grant_id', $row->grant_id)->update([
                 'authorization_digest' => $digest, 'binding_snapshot' => json_encode($binding, JSON_THROW_ON_ERROR),
-                'binding_hash' => UsageRegistry::hash($binding)]);
+                'binding_hash' => UsageEvidence::hash($binding)]);
         }
     }
 
@@ -145,10 +145,10 @@ final class NativeUsageLedger
             && is_string($proof->authorization_digest) && preg_match('/\A[0-9a-f]{64}\z/D', $proof->authorization_digest) === 1,
             'NATIVE_GRANT_PROOF_MISSING');
         $binding = json_decode($proof->binding_snapshot, true, 32, JSON_THROW_ON_ERROR);
-        $this->require(is_array($binding) && hash_equals($proof->binding_hash, UsageRegistry::hash($binding))
+        $this->require(is_array($binding) && hash_equals($proof->binding_hash, UsageEvidence::hash($binding))
             && ($binding['authorization_digest'] ?? null) === $proof->authorization_digest
             && ($binding['installation_id'] ?? null) === $installation['installation_id']
-            && UsageRegistry::hash($binding['grant'] ?? []) === $grant->content_hash, 'NATIVE_GRANT_PROOF_INVALID');
+            && UsageEvidence::hash($binding['grant'] ?? []) === $grant->content_hash, 'NATIVE_GRANT_PROOF_INVALID');
         $operation = DB::table('tx_credential_provider_operation')->where('operation_ref', $binding['operation_ref'])->first();
         $this->require($operation !== null && $operation->status === 'succeeded'
             && (string) $operation->access_subject_id === (string) $grant->access_subject_id
@@ -156,7 +156,7 @@ final class NativeUsageLedger
             && (string) $operation->user_id === (string) $grant->user_id
             && $operation->result_hash === $binding['receipt_hash'], 'NATIVE_GRANT_CREDENTIAL_INVALID');
         $receipt = json_decode($operation->result_snapshot, true, 32, JSON_THROW_ON_ERROR);
-        $this->require(hash_equals($operation->result_hash, UsageRegistry::hash($receipt)), 'NATIVE_GRANT_CREDENTIAL_INVALID');
+        $this->require(hash_equals($operation->result_hash, UsageEvidence::hash($receipt)), 'NATIVE_GRANT_CREDENTIAL_INVALID');
         foreach (['access_subject_id', 'credential_ref', 'credential_generation', 'provider_subject_ref', 'credential_profile_id'] as $field) {
             $this->require(($receipt[$field] ?? null) === ($binding['credential'][$field] ?? null), 'NATIVE_GRANT_CREDENTIAL_INVALID');
         }
@@ -168,7 +168,7 @@ final class NativeUsageLedger
             ['period_started_at', 'period_ended_at'], ['terms_effective_from', 'terms_effective_until']] as [$from, $until]) {
             $this->require(isset($coverage[$from]) && array_key_exists($until, $coverage)
                 && is_int($coverage[$from]) && ($coverage[$until] === null || is_int($coverage[$until]))
-                && UsageRegistry::covers((int) $grant->issued_at, (int) $grant->lease_expires_at, $coverage[$from], $coverage[$until]),
+                && UsageEvidence::covers((int) $grant->issued_at, (int) $grant->lease_expires_at, $coverage[$from], $coverage[$until]),
                 'NATIVE_GRANT_PROOF_INVALID');
         }
         return $binding;
@@ -181,7 +181,7 @@ final class NativeUsageLedger
             $data[$field] = (int) $grant->$field;
         }
         foreach (['subscription_id', 'auth_version', 'revocation_version'] as $field) { $data[$field] = (string) $grant->$field; }
-        if (!hash_equals($grant->content_hash, UsageRegistry::hash($data))) { throw new UsageError('USAGE_GRANT_EVIDENCE_INVALID'); }
+        if (!hash_equals($grant->content_hash, UsageEvidence::hash($data))) { throw new UsageError('USAGE_GRANT_EVIDENCE_INVALID'); }
     }
 
     public static function verifyTariff(object $tariff): void
@@ -189,7 +189,7 @@ final class NativeUsageLedger
         $data = ['node_id' => (int) $tariff->node_id, 'numerator' => (string) $tariff->numerator,
             'denominator' => (string) $tariff->denominator, 'effective_from' => (int) $tariff->effective_from,
             'effective_until' => (int) $tariff->effective_until, 'rounding_revision' => $tariff->rounding_revision];
-        if (!hash_equals($tariff->content_hash, UsageRegistry::hash($data))) { throw new UsageError('USAGE_TARIFF_EVIDENCE_INVALID'); }
+        if (!hash_equals($tariff->content_hash, UsageEvidence::hash($data))) { throw new UsageError('USAGE_TARIFF_EVIDENCE_INVALID'); }
     }
 
     private function require(bool $valid, string $code): void

@@ -30,7 +30,6 @@ use App\Http\Controllers\Txapi\Admin\PluginAdminController;
 use App\Http\Controllers\Txapi\Admin\AnalyticsAdminController;
 use App\Http\Controllers\Txapi\Admin\PaymentManagementController;
 use App\Http\Controllers\Txapi\AccountController;
-use App\Http\Controllers\Txapi\ServerController;
 use App\Http\Controllers\Txapi\TrafficController;
 use App\Http\Controllers\Txapi\NodeProtocolController;
 use App\Http\Controllers\Txapi\NodeUsageV2Controller;
@@ -99,8 +98,7 @@ Route::prefix('admin/{admin_path}')
         // in the corresponding domain service, never directly in HTTP layer.
         Route::get('themes', [ThemeAdminController::class, 'index']);
         Route::post('themes/upload', [ThemeAdminController::class, 'upload']);
-        Route::post('themes/v2/upload', [ThemeAdminController::class, 'uploadV2']);
-        Route::post('themes/{name}/rollback', [ThemeAdminController::class, 'rollbackV2']);
+        Route::post('themes/{name}/rollback', [ThemeAdminController::class, 'rollback']);
         Route::get('themes/{name}/config', [ThemeAdminController::class, 'config']);
         Route::put('themes/{name}/config', [ThemeAdminController::class, 'saveConfig']);
         Route::delete('themes/{name}', [ThemeAdminController::class, 'delete']);
@@ -228,8 +226,6 @@ Route::prefix('admin/{admin_path}')
         Route::post('users', [UserEditorController::class, 'create']);
         Route::post('users/{id}/update', [UserEditorController::class, 'update'])->whereNumber('id');
         Route::get('users/{id}', [UserReadController::class, 'show'])->whereNumber('id');
-        Route::get('users/{id}/subscription-link', [UserReadController::class, 'subscriptionLink'])->whereNumber('id');
-        Route::post('users/{id}/subscription-credentials/rotate', [AccountMutationController::class, 'rotate'])->whereNumber('id');
         Route::post('users/{id}/delete', [AccountMutationController::class, 'delete'])->whereNumber('id');
         Route::post('users/ban', [AccountMutationController::class, 'ban']);
         Route::post('users/mail', [UserMailAdminController::class, 'send']);
@@ -291,7 +287,6 @@ Route::middleware(['txapi.user', 'throttle:120,1'])->group(function () {
         ->where('operation_ref', 'cp_[a-f0-9]{32}');
     Route::get('me/dashboard-stats', [AccountController::class, 'dashboardStats']);
     Route::get('me/site-config', [AccountController::class, 'userConfig']);
-    Route::get('me/nodes', [ServerController::class, 'index']);
     Route::get('me/preferences', [AccountController::class, 'preferences']);
     Route::patch('me/preferences', [AccountController::class, 'updatePreferences']);
     Route::get('traffic/logs', [TrafficController::class, 'index']);
@@ -299,11 +294,9 @@ Route::middleware(['txapi.user', 'throttle:120,1'])->group(function () {
     Route::get('auth/sessions', [AuthController::class, 'sessions']);
     Route::delete('auth/sessions/{sessionId}', [AuthController::class, 'revoke'])->whereNumber('sessionId');
     Route::post('auth/password', [AuthController::class, 'password']);
-    // Sensitive self-service actions; legacy endpoints remain while callers migrate.
+    // Sensitive self-service actions.
     Route::post('auth/quick-login', [AuthController::class, 'quickLogin'])
         ->middleware('throttle:5,1');
-    Route::post('me/subscription-credentials/rotate', [AccountController::class, 'rotateSubscriptionCredentials'])
-        ->middleware('throttle:3,1');
     Route::get('notices', [ContentController::class, 'notices']);
     Route::get('knowledge', [ContentController::class, 'knowledge']);
     Route::get('knowledge/categories', [ContentController::class, 'categories']);
