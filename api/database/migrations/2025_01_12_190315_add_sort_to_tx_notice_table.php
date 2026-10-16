@@ -24,6 +24,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('tx_notice', function (Blueprint $table) {
+            $table->dropIndex(['sort']);
             $table->dropColumn('sort');
         });
     }

@@ -34,13 +34,13 @@ final class NativeRechargeService
             $this->require(!(bool) ($user->banned ?? false), 'RECHARGE_ACCOUNT_UNAVAILABLE');
             $payment = DB::table('tx_payment')->where('id', $paymentId)->lockForUpdate()->first();
             $this->require($payment !== null, 'RECHARGE_PROVIDER_UNAVAILABLE');
+            $this->require(preg_match('/\A0(?:\.0+)?\z/D', (string) ($payment->handling_fee_fixed ?? '0')) === 1
+                && preg_match('/\A0(?:\.0+)?\z/D', (string) ($payment->handling_fee_percent ?? '0')) === 1,
+                'RECHARGE_FEES_UNSUPPORTED');
             $provider = app(NativePaymentProviderRegistry::class)->forPayment($payment, true);
             $provider->adapter->accountRef($payment);
             $this->require(in_array('CNY', $provider->adapter->capabilities()['currencies'], true),
                 'RECHARGE_PROVIDER_UNAVAILABLE');
-            $this->require(preg_match('/\A0(?:\.0+)?\z/D', (string) ($payment->handling_fee_fixed ?? '0')) === 1
-                && preg_match('/\A0(?:\.0+)?\z/D', (string) ($payment->handling_fee_percent ?? '0')) === 1,
-                'RECHARGE_FEES_UNSUPPORTED');
             $this->require(DB::table('tx_native_recharge')->where('installation_id', $installation['installation_id'])
                 ->where('user_id', $userId)->where('status', 'pending')->orderBy('id')->limit(20)
                 ->lockForUpdate()->get(['id'])->count() < 20,

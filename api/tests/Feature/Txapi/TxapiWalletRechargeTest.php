@@ -271,6 +271,8 @@ final class TxapiWalletRechargeTest extends NativePaymentTestCase
             Payment::query()->where('uuid', 'percent-fee-wallet')->firstOrFail()] as $method) {
             $response = $this->postJson(self::ROOT, ['amount_minor' => '1000', 'payment_method_id' => (string) $method->id],
                 ['Idempotency-Key' => (string) Str::uuid()])->assertStatus($method->id === $unsupported->id ? 409 : 422)
+                ->assertJsonPath('error.code', $method->id === $unsupported->id
+                    ? 'NATIVE_PAYMENT_PROVIDER_UNSUPPORTED' : 'RECHARGE_FEES_UNSUPPORTED')
                 ->assertHeader('Cache-Control', 'no-store, private');
             $this->assertStringNotContainsString(self::SECRET, $response->getContent());
             $this->assertStringNotContainsString('never-return-provider-secret', $response->getContent());
