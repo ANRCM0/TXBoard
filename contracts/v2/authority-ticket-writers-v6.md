@@ -1,5 +1,7 @@
 ﻿# Authority support-ticket writers v6 (Candidate)
 
+> Retired on 2026-10-16: the isolated authority migration prototype, CLI, configuration and dedicated tests/workflows have been removed. This document preserves historical protocol evidence only. Current installation admission and domain writes are described in [Core cleanup](../../docs/development/core-cleanup.md). Historical database rows and migrations are retained and cannot authorize native initialization.
+
 Default-disabled local/testing isolated-copy SQL subset. Legacy Core remains authoritative. Extend the same singleton only from v5 open5 via explicit extend-ticket(expected5,key) to v6 open6, then prepare7. Append an immutable ticket upgrade receipt binding the unchanged identity receipt, complete preceding evidence chain, prior state and exact v6 inventory. Old v1-v5 hash recipes and prepared states remain unchanged; replay validates the full chain before returning the original receipt. All global coverage/drain/target authority/migration flags remain false.
 
 The exact inventory is the unchanged 53 AuthorityIdentityInventory writers plus six source constants in order:

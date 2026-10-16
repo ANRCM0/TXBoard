@@ -280,14 +280,6 @@ class TxboardInstall extends Command
         ];
 
         foreach ($defaults as $name => $value) {
-            if (AccountSqlPhase::enabled()) {
-                app(AccountSqlPhase::class)->run(AccountSqlPhase::INSTALL_SETTINGS_SEED, static function () use ($name, $value): void {
-                    if (!SettingModel::query()->where('name', $name)->lockForUpdate()->first()) {
-                        SettingModel::createOrUpdate($name, $value);
-                    }
-                });
-                continue;
-            }
             if (!SettingModel::query()->where('name', $name)->exists()) {
                 SettingModel::createOrUpdate($name, $value);
             }

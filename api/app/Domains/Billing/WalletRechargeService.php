@@ -33,7 +33,7 @@ final class WalletRechargeService
         return DB::transaction(static function () use (
             $userId, $amountMinor, $paymentId, $requestKey
         ): WalletRecharge {
-            app(\App\Domains\AuthorityMigration\AuthorityWriterFence::class)->admit('wallet.recharge.create');
+            app(\App\Domains\Installation\InstallationAuthority::class)->assertLegacyWriter();
             // Serialize create requests per user so the pending limit cannot
             // be evaded by concurrent POSTs.
             $user = User::query()->whereKey($userId)->lockForUpdate()->firstOrFail();
@@ -125,7 +125,7 @@ final class WalletRechargeService
         return DB::transaction(static function () use (
             $tradeNo, $paymentId, $callbackNo, $paidAmountMinor
         ): bool {
-            app(\App\Domains\AuthorityMigration\AuthorityWriterFence::class)->admit('wallet.recharge.settle');
+            app(\App\Domains\Installation\InstallationAuthority::class)->assertLegacyWriter();
             $recharge = WalletRecharge::query()->where('trade_no', $tradeNo)
                 ->lockForUpdate()->first();
             if (!$recharge || (int) $recharge->payment_id !== $paymentId ||

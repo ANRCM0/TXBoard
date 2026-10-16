@@ -17,7 +17,6 @@ if (app()->environment() !== 'testing' || config('database.default') !== 'mysql'
     || !in_array(DB::connection()->getDatabaseName(), ['txboard_native_authorization_test_singbox', 'txboard_native_authorization_test_xray'], true)
     || config('database.connections.mysql.host') !== '127.0.0.1'
     || config('database.connections.mysql.username') !== 'txboard_native_authorization'
-    || config('authority_writer_fence.enabled') !== false
     || config('node_ws.native_enabled') !== true
     || config('native_node_authorization.enabled') !== true
     || config('native_traffic_receipts.enabled') !== true

@@ -30,7 +30,7 @@ final class OrderOperationsAdminController
         ]);
 
         $result = DB::transaction(function () use ($data): ?string {
-            app(\App\Domains\AuthorityMigration\AuthorityWriterFence::class)->admit('admin.order.assign');
+            app(\App\Domains\Installation\InstallationAuthority::class)->assertLegacyWriter();
             $user = User::query()->where('email', $data['email'])
                 ->lockForUpdate()->first();
             if (!$user) return null;
@@ -90,7 +90,7 @@ final class OrderOperationsAdminController
         ]);
         $tradeNo = (string) $request->route('tradeNo');
         $result = DB::transaction(function () use ($tradeNo, $data): string {
-            app(\App\Domains\AuthorityMigration\AuthorityWriterFence::class)->admit('admin.order.commission-review');
+            app(\App\Domains\Installation\InstallationAuthority::class)->assertLegacyWriter();
             $order = Order::query()->where('trade_no', $tradeNo)
                 ->lockForUpdate()->first();
             if (!$order) return 'missing';

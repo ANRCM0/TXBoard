@@ -86,7 +86,7 @@ def main():
         'DB_PORT': os.environ.get('DB_PORT', '13306'), 'DB_PASSWORD': os.environ['DB_PASSWORD'],
         'APP_DEBUG': 'false', 'CACHE_DRIVER': 'redis', 'SETTING_CACHE_STORE': 'redis',
         'SESSION_DRIVER': 'array', 'QUEUE_CONNECTION': 'redis', 'MAIL_MAILER': 'array',
-        'AUTHORITY_WRITER_FENCE_ENABLED': 'false', 'CORE_USAGE_V2_ISOLATED_COPY': 'false',
+        'CORE_USAGE_V2_ISOLATED_COPY': 'false',
         'TXBOARD_NATIVE_NODE_WS_ENABLED': 'true', 'NATIVE_TRAFFIC_RECEIPTS_ENABLED': 'true',
         'NATIVE_NODE_AUTHORIZATION_ENABLED': 'true',
         'NATIVE_NODE_AUTHORIZATION_CORE_INSTANCE_ID': 'isolated-native-authorization-core',

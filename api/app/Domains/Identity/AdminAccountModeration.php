@@ -2,7 +2,7 @@
 
 namespace App\Domains\Identity;
 
-use App\Domains\AuthorityMigration\AuthorityWriterFence;
+use App\Domains\Installation\InstallationAuthority;
 use App\Models\User;
 use App\Services\AuthService;
 use Illuminate\Support\Facades\DB;
@@ -20,7 +20,7 @@ final class AdminAccountModeration
         }
 
         return DB::transaction(static function () use ($userIds, $adminId): int {
-            app(AuthorityWriterFence::class)->admit('admin.user.bulk-ban');
+            app(InstallationAuthority::class)->assertLegacyWriter();
             $users = User::query()->whereIn('id', $userIds)->orderBy('id')
                 ->lockForUpdate()->get();
             if ($users->count() !== count($userIds)

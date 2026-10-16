@@ -106,7 +106,7 @@ class GiftCardService
         }
 
         return DB::transaction(function () use ($options) {
-            app(\App\Domains\AuthorityMigration\AuthorityWriterFence::class)->admit('gift.redeem');
+            app(\App\Domains\Installation\InstallationAuthority::class)->assertLegacyWriter();
             $this->code = GiftCardCode::whereKey($this->code->id)
                 ->lockForUpdate()
                 ->first()

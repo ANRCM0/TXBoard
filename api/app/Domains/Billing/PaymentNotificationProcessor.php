@@ -60,8 +60,8 @@ final class PaymentNotificationProcessor
                 return ['status' => 400, 'error' => 'handle error'];
             }
             return ['status' => 200, 'body' => $verified['custom_result'] ?? 'success'];
-        } catch (\App\Domains\AuthorityMigration\AuthorityFenceException) {
-            Log::error('AUTHORITY_PAYMENT_SETTLEMENT_FENCE_REJECTED');
+        } catch (\App\Domains\Installation\InstallationAuthorityException) {
+            Log::error('INSTALLATION_PAYMENT_SETTLEMENT_REJECTED');
             return ['status' => 500, 'error' => 'fail'];
         } catch (\Throwable $e) {
             Log::error($e);

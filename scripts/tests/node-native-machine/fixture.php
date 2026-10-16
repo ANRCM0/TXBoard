@@ -16,8 +16,7 @@ use App\Services\DeviceStateService;
 if (!app()->environment('testing') || config('database.default') !== 'mysql'
  || DB::connection()->getDatabaseName() !== 'txboard_native_machine_test'
  || config('database.connections.mysql.host') !== '127.0.0.1'
- || config('database.connections.mysql.username') !== 'txboard_native_machine'
- || config('authority_writer_fence.enabled') !== false || config('node_ws.native_enabled') !== true
+ || config('database.connections.mysql.username') !== 'txboard_native_machine' || config('node_ws.native_enabled') !== true
  || config('cache.default') !== 'redis' || config('cache.setting_store') !== 'redis') {
  fwrite(STDERR,"NATIVE_MACHINE_EXCLUSIVE_FIXTURE_REQUIRED\n"); exit(2);
 }

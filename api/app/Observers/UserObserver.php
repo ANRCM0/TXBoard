@@ -24,30 +24,17 @@ class UserObserver
     $oldGroup = $user->wasChanged('group_id') ? $user->getRawOriginal('group_id') : null;
     $oldGroupId = $oldGroup === null ? null : (int) $oldGroup;
 
-    if (\App\Domains\AuthorityMigration\AuthorityPostcommitVersionPolicy::declared()) {
-      $schedule = $user->wasChanged(['plan_id', 'expired_at']);
-      if ($schedule || $needsSync) app(\App\Domains\AuthorityMigration\FencedUserPostcommit::class)->stage($user, 'updated', $oldGroupId, $schedule);
-      return;
-    }
     $this->nativeUpdated($user, $oldGroupId, $needsSync, $user->wasChanged(['plan_id', 'expired_at']));
   }
 
   public function created(User $user): void
   {
-    if (\App\Domains\AuthorityMigration\AuthorityPostcommitVersionPolicy::declared()) {
-      app(\App\Domains\AuthorityMigration\FencedUserPostcommit::class)->stage($user, 'created', null, true);
-      return;
-    }
     $this->recalculateNextResetAt($user);
     NodeUserSyncJob::dispatch($user->id, 'created');
   }
 
   public function deleted(User $user): void
   {
-    if (\App\Domains\AuthorityMigration\AuthorityPostcommitVersionPolicy::declared()) {
-      if ($user->group_id) app(\App\Domains\AuthorityMigration\FencedUserPostcommit::class)->stage($user, 'deleted', (int)$user->group_id, false);
-      return;
-    }
     if ($user->group_id) {
       NodeUserSyncJob::dispatch($user->id, 'deleted', (int) $user->group_id);
     }
@@ -56,10 +43,6 @@ class UserObserver
   /** Eloquent adapters freeze one event before later saves mutate its source model. */
   public function onUpdated(User $user): void
   {
-    if (\App\Domains\AuthorityMigration\AuthorityPostcommitVersionPolicy::declared()) {
-      $this->updated($user);
-      return;
-    }
     $needsSync = $user->wasChanged(['group_id', 'uuid', 'speed_limit', 'device_limit', 'banned', 'expired_at', 'transfer_enable', 'u', 'd', 'plan_id']);
     $schedule = $user->wasChanged(['plan_id', 'expired_at']);
     if (!$schedule && !$needsSync) return;
@@ -73,10 +56,6 @@ class UserObserver
 
   public function onCreated(User $user): void
   {
-    if (\App\Domains\AuthorityMigration\AuthorityPostcommitVersionPolicy::declared()) {
-      $this->created($user);
-      return;
-    }
     $snapshot = $user->getConnection()->transactionLevel() === 0 ? $user : clone $user;
     $user->getConnection()->afterCommit(function () use ($snapshot): void {
       $this->created($snapshot);
@@ -85,10 +64,6 @@ class UserObserver
 
   public function onDeleted(User $user): void
   {
-    if (\App\Domains\AuthorityMigration\AuthorityPostcommitVersionPolicy::declared()) {
-      $this->deleted($user);
-      return;
-    }
     $snapshot = clone $user;
     $user->getConnection()->afterCommit(function () use ($snapshot): void {
       $this->deleted($snapshot);

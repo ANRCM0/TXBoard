@@ -207,10 +207,15 @@ class NativeTrafficReceiptTest extends TestCase
         $this->assertSame(0, DB::table('tx_native_traffic_receipt')->count()); Bus::assertNotDispatched(TrafficBatchJob::class);
     }
 
-    public function test_fence_failure_prevents_acceptance_and_dispatch(): void
+    public function test_native_installation_refuses_legacy_receipt_acceptance_and_dispatch(): void
     {
-        $node = $this->node(); config(['authority_writer_fence.enabled' => true]);
-        try { $this->submit($node, 'native-fence-blocked', [7 => [1, 2]]); $this->fail('fenced receipt accepted'); }
+        app(\App\Domains\Installation\InstallationAuthority::class)->initialize(
+            '550e8400-e29b-41d4-a716-446655440000', 'native', 'receipt-refusal');
+        config(['core_installation.mode' => 'native']);
+        $node = $this->node();
+        // Exercise the receipt service directly: the report ingress also rejects
+        // this legacy accounting path, but must not be its only authority gate.
+        try { app(NativeTrafficReceipt::class)->accept($node, 'native-authority-blocked', [7 => [1, 2]]); $this->fail('legacy receipt accepted by native installation'); }
         catch (NodeReportError $error) { $this->assertSame('TRAFFIC_DURABILITY_UNAVAILABLE', $error->errorCode); }
         $this->assertSame(0, DB::table('tx_native_traffic_receipt')->count()); Bus::assertNotDispatched(TrafficBatchJob::class);
     }

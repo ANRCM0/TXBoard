@@ -38,11 +38,7 @@ class TrafficFetchJob implements ShouldQueue
 
         foreach ($data as $uid => $v) {
             $increments = ['u' => $v[0] * $this->server['rate'], 'd' => $v[1] * $this->server['rate']];
-            if (config('authority_writer_fence.enabled') === false) {
-                User::where('id', $uid)->incrementEach($increments, ['t' => time()]);
-            } else {
-                $this->applyIncrement((int) $uid, $increments);
-            }
+            $this->applyIncrement((int) $uid, $increments);
             $userIds[] = $uid;
         }
 
@@ -53,9 +49,9 @@ class TrafficFetchJob implements ShouldQueue
 
     private function applyIncrement(int $userId, array $increments): void
     {
-        // Keep the native per-User commit boundary; no batch identity or dedupe exists here.
+        // Each User commits independently; this queue has no batch identity or dedupe.
         DB::transaction(function () use ($userId, $increments): void {
-            if (config('authority_writer_fence.enabled') !== false) app(\App\Domains\AuthorityMigration\AuthorityWriterFence::class)->admit('traffic.fetch.apply');
+            app(\App\Domains\Installation\InstallationAuthority::class)->assertLegacyWriter();
             if (User::where('id', $userId)->lockForUpdate()->first(['id']) === null) {
                 return;
             }
@@ -65,6 +61,6 @@ class TrafficFetchJob implements ShouldQueue
 
     public function failed(?\Throwable $exception): void
     {
-        if ($exception instanceof \App\Domains\AuthorityMigration\AuthorityFenceException) { Log::error('AUTHORITY_TRAFFIC_FETCH_FENCE_REJECTED'); return; }
+        if ($exception instanceof \App\Domains\Installation\InstallationAuthorityException) { Log::error('INSTALLATION_TRAFFIC_FETCH_REJECTED'); return; }
     }
 }

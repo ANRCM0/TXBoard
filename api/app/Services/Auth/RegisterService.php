@@ -119,7 +119,7 @@ class RegisterService
     {
         return app(IdentityPhase::class)->run(IdentityPhase::USER_REGISTER_INVITE_CONSUME, function () use ($inviteCode): ?int {
             $query = InviteCode::where('code', $inviteCode)->where('status', InviteCode::STATUS_UNUSED);
-            if (IdentityPhase::enabled()) $query->lockForUpdate();
+            $query->lockForUpdate();
             $inviteCodeModel = $query->first();
 
             if (!$inviteCodeModel) {
@@ -203,11 +203,9 @@ class RegisterService
 
         // 更新最近登录时间
         app(IdentityPhase::class)->run(IdentityPhase::USER_REGISTER_TOUCH, function () use (&$user): void {
-            if (IdentityPhase::enabled()) {
-                $dirty = $user->getDirty();
-                $user = User::query()->whereKey($user->getKey())->lockForUpdate()->firstOrFail();
-                $user->forceFill($dirty);
-            }
+            $dirty = $user->getDirty();
+            $user = User::query()->whereKey($user->getKey())->lockForUpdate()->firstOrFail();
+            $user->forceFill($dirty);
             $user->last_login_at = time();
             $user->save();
         });

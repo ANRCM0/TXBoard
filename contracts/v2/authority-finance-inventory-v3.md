@@ -1,5 +1,7 @@
 # Authority finance inventory v3
 
+> Retired on 2026-10-16: the isolated authority migration prototype, CLI, configuration and dedicated tests/workflows have been removed. This document preserves historical protocol evidence only. Current installation admission and domain writes are described in [Core cleanup](../../docs/development/core-cleanup.md). Historical database rows and migrations are retained and cannot authorize native initialization.
+
 Status: Candidate isolated native financial transaction admission. This fixed third inventory extends the [v2 inventory](authority-writer-inventory-expand-v2.md) on the same singleton SQL authority row. It remains legacy authority, a known-writer subset and default-off; no production cutover or global drain is claimed.
 
 Fixed CLI `extend-finance --key=<id> --expected-epoch=2 --isolated-copy` takes the singleton exclusive lock, validates v2 legacy/open epoch2 plus all closed receipt stores, and atomically changes scope/version to `native-sql-writers/v3` / `authority-writer-fence/v3`, open epoch3, with fixed code inventory hash and one immutable finance upgrade receipt. V3 prepare accepts original expected epoch3 and commits prepared epoch4. Old v1 prepared2 and v2 prepared3 are never extended or reopened. V1 open1 must explicitly complete the original v2 expand first. Exact same key/expected-epoch replay returns the retained original upgrade receipt; changed input refuses. `recover-finance` is bounded SELECT-only and reports committed or inconclusive absence, without changing state.

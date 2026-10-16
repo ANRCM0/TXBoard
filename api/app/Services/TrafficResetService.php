@@ -37,14 +37,9 @@ class TrafficResetService
     array $metadata = [],
     bool $recheckDue = false
   ): bool {
-    // Nested order/gift resets retain their outer transaction's admission.
-    $ownsFence = DB::transactionLevel() === 0;
     try {
-      return DB::transaction(function () use ($user, $triggerSource, $metadata, $recheckDue, $ownsFence) {
-        if (config('authority_writer_fence.enabled') !== false) {
-          if ($ownsFence) app(\App\Domains\AuthorityMigration\AuthorityWriterFence::class)->admit('traffic.reset');
-          else app(\App\Domains\AuthorityMigration\AuthorityAdmissionRegistry::class)->current()->assertValid();
-        }
+      return DB::transaction(function () use ($user, $triggerSource, $metadata, $recheckDue) {
+        app(\App\Domains\Installation\InstallationAuthority::class)->assertLegacyWriter();
         // Lock and refresh in the same SQL transaction as traffic reporting.
         // An earlier read can be stale while the Node has reported usage.
         $user = User::query()->with('plan')->lockForUpdate()->findOrFail($user->id);
@@ -84,8 +79,8 @@ class TrafficResetService
         HookManager::call('traffic.reset.after', $user);
         return true;
       });
-    } catch (\App\Domains\AuthorityMigration\AuthorityFenceException) {
-      Log::error('AUTHORITY_TRAFFIC_RESET_FENCE_REJECTED');
+    } catch (\App\Domains\Installation\InstallationAuthorityException) {
+      Log::error('INSTALLATION_TRAFFIC_RESET_REJECTED');
       return false;
     } catch (\Exception $e) {
       Log::error(__('traffic_reset.reset_failed'), [
@@ -393,16 +388,17 @@ class TrafficResetService
   }
 
   /** Repair a schedule under the same admission and User lock as other writers. */
-  public function repairScheduleFenced(int $userId, bool $onlyMissing): bool
+  public function repairSchedule(int $userId, bool $onlyMissing): bool
   {
-    if (DB::transactionLevel() !== 0) throw new \App\Domains\AuthorityMigration\AuthorityFenceException('AUTHORITY_SCHEDULE_OUTER_TRANSACTION_UNSUPPORTED');
     return DB::transaction(function () use ($userId, $onlyMissing): bool {
-      app(\App\Domains\AuthorityMigration\AuthorityWriterFence::class)->admit('user.schedule.repair');
+      app(\App\Domains\Installation\InstallationAuthority::class)->assertLegacyWriter();
       $user = User::whereKey($userId)->lockForUpdate()->first();
       if (!$user || !$user->isActive() || ($onlyMissing && $user->next_reset_at !== null)) return false;
       $next = $this->calculateNextResetTime($user);
       if (!$next) return false;
-      $user->next_reset_at = $next->timestamp; $user->saveOrFail(); return true;
+      $user->next_reset_at = $next->timestamp;
+      $user->saveOrFail();
+      return true;
     });
   }
 

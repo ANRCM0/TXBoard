@@ -34,6 +34,4 @@ TXBoard 是业务与数据权威。Gateway、Deploy、TX-Node 与可选插件按
 
 [B0 入口与状态](../../docs/architecture/v2/README.md) · [实施顺序](../../docs/architecture/v2/implementation-plan.md)
 
-[Identity SQL writers v5](authority-identity-writers-v5.md) adds a default-disabled isolated-copy subset to the existing authority inventory. Its [implementation and verification](../../docs/architecture/v2/authority-identity-writers.md) preserve legacy authority and keep global cutover gates closed.
-
-[Support-ticket SQL writers v6](authority-ticket-writers-v6.md) adds six isolated native support owners. Its [implementation boundary](../../docs/architecture/v2/authority-ticket-writers.md) preserves transactional/effect ordering and keeps global cutover gates closed.
+[Identity SQL writers v5](authority-identity-writers-v5.md) and [Support-ticket SQL writers v6](authority-ticket-writers-v6.md) are retired historical protocols. Their isolated migration runtime, CLI and dedicated CI have been removed. Current identity/session and support transactions use their actual domain owners and installation admission; the retained verification reports describe earlier evidence only.

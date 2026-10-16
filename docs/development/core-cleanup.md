@@ -20,10 +20,10 @@
 - 创建存储异常使用固定 `ACCOUNT_CREATION_FAILED` 内部错误，不再返回已退役捕获异常的 409；底层异常内容不传入响应，writer admission 拒绝继续使用原有安全错误。
 - 批量封禁由 `Identity/AdminAccountModeration` 执行，保留 500 个账户的现有接口上限、完整目标锁定、管理员/员工/自身保护及同事务会话撤销。
 - 套餐账户投影由 `Subscription/Services/PlanAccountPropagation` 执行。先锁定固定目标集合，再分批更新，同一事务任一批失败则全部回滚；删除仅服务于影子采集的 1000 账户上限。已购买的不可变 Terms 不受此投影修改。
-- Observer 保留冻结事件快照、提交后通知、当前行锁定和调度重算。仍使用的 fenced postcommit/outbox 保留原有哈希字段、提交时调度和失败回滚。
+- Observer 保留冻结事件快照、提交后通知、当前行锁定和调度重算。第二批当时保留的 isolated fenced postcommit/outbox 已在第四批连同迁移原型退役。
 - 账户删除被 Eloquent 事件拒绝时，回滚已进行的会话撤销，不调用删除后的 Hook。订单退款的正整数金额约束、流量溢出检查、幂等和已提交结果语义继续保留。
 
-三个定向回归覆盖删除事件拒绝、1001 账户第二批更新失败的全量回滚及重试、提交时调度失败的账户/intents/delivery 回滚。运行结果以本批候选 PR 的 CI 为准。
+第二批当时的三个定向回归覆盖删除事件拒绝、1001 账户第二批更新失败的全量回滚及重试、提交时调度失败的账户/intents/delivery 回滚。最后一项仅针对隔离迁移原型，第四批随原型删除，不作为普通 afterCommit 回调的保证。
 
 ## 第三批：条款影子写入与回执格式
 
@@ -33,7 +33,20 @@
 
 沿用已有 native 购买、续订、重置、历史结算及授权截止验证，不重建旧影子矩阵。新增一个真实 native 回归验证缺字段且摘要有效的批次隔离、零记账、预留保留和回执重放；已有跨界区间测试扩展至五种接收状态，并通过实际 reset 与续订履约验证完整拒绝。运行结果以第三批 PR 的 CI 为准。
 
-本批不删除数据库迁移或历史行，也不新增影子服务的 native 适配器。PHP 默认测试配置只保留 AuthorityMigration 和 InternalReadOnly 两个历史目录排除项。
+本批不删除数据库迁移或历史行，也不新增影子服务的 native 适配器。第三批通过 CI 后，第四批进一步删除 AuthorityMigration 专属测试，PHP 默认配置只保留 InternalReadOnly 一个历史目录排除项。
+
+## 第四批：安装权限与领域事务
+
+删除整个 `AuthorityMigration` 迁移原型，包括隔离副本的 writer/inventory/upgrade、事务对象 proof、v4-v6 postcommit intents/handoff、两条 CLI、配置、专属历史测试和 6 条手动 CI。没有把原型整体改名搬进其他领域，也不引入新的兼容入口。
+
+- 订单、支付、钱包、管理员和流量的实际旧写入在原事务位置直接调用 `InstallationAuthority::assertLegacyWriter()`，安装权威检查仍先于业务行锁。native 不能绕过此拒绝逻辑。
+- `AccountSqlPhase` 使用当前身份操作集合与受管理事务；认证、密码、偏好和会话锁定当前账户。删除 worker scope/version/epoch 矩阵及 enabled 分支。设置、统计、模板和安装默认设置不再借用身份域的迁移清单。
+- Sanctum 会话元数据由 `Identity/AccountSessionGuard` 按账户、token 顺序锁定与重验证；保留失效及退役 Agent token 拒绝、Sanctum 认证生命周期。
+- 工单实际服务归入 `Support/TicketService`，创建、回复和关闭统一受管理事务及当前安装权限。创建仍按账户锁串行化“最多一个未关闭工单”；子事务失败不能回滚调用方父事务。
+- `UserObserver` 只保留当前冻结事件与 connection afterCommit 路径；外事务或保存点回滚不会发送对应同步。调度重算仍在提交后的独立事务执行，不声称调度失败能回滚已提交账户。正式 native runtime outbox 继续服务于当前订阅和凭据同步。
+- Installation 自身保留六组历史 scope/version 标识、历史证据表拒绝、fresh database、schema/hash、authority/epoch 和 readiness 检查。历史记录与数据库迁移保持原样，不能被当作全新 native 安装重写或接纳。
+
+现有普通账户冻结回调、管理员删除 veto、套餐批量回滚、native 权限与真实 C2 回归继续由各 CI 所有者执行；不再执行退役版本矩阵。第四批结果以候选提交的 CI 为准。
 
 ## 当前领域入口
 
@@ -48,10 +61,11 @@
 | Network | Node/Machine 身份、目标绑定、授权签名及下发 |
 | UsageV2 | 原始 Session/Period 归属、持久接收、配额预留及结算 |
 | Installation | 安装权威、admission/epoch、readiness 与共用 Schema 校验 |
+| Support | 工单创建、回复、关闭和实际事务；权限、消息与通知规则 |
 
 ## 仍需后续处理
 
-`AuthorityMigration` 中的 writer fence、postcommit/outbox 等实现仍被当前消费者使用，不能按历史名称整目录删除。身份 SQL 阶段已迁入 Identity；后续继续区分当前事务基础设施与旧切换工具，再迁入实际所属域。
+隔离 authority 迁移原型已在第四批删除。当前安装状态仍使用既有 `tx_authority_writer_fence` 表名；这不是保留旧迁移运行器。正式 native runtime outbox 与旧隔离 postcommit handoff 是不同机制。
 
 旧写入口的实际业务与 `UserObserver` 尚存，capture hooks 已移除。旧 Client/User 渲染入口及隔离 Internal API 尚未整体替换。
 

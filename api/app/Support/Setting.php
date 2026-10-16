@@ -3,7 +3,6 @@
 namespace App\Support;
 
 use App\Models\Setting as SettingModel;
-use App\Domains\Identity\AccountSqlPhase;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Contracts\Cache\Repository;
@@ -64,14 +63,7 @@ class Setting
      */
     public function remove(string $key): bool
     {
-        if (AccountSqlPhase::enabled()) {
-            app(AccountSqlPhase::class)->run(AccountSqlPhase::SETTINGS_REMOVE, static function () use ($key): void {
-                SettingModel::where('name', $key)->lockForUpdate()->first();
-                SettingModel::where('name', $key)->delete();
-            });
-        } else {
-            SettingModel::where('name', $key)->delete();
-        }
+        SettingModel::where('name', $key)->delete();
         $this->flush();
         return true;
     }
@@ -86,14 +78,7 @@ class Setting
 
     private function writeKey(string $key, mixed $value): void
     {
-        if (!AccountSqlPhase::enabled()) {
-            SettingModel::createOrUpdate($key, $value);
-            return;
-        }
-        app(AccountSqlPhase::class)->run(AccountSqlPhase::SETTINGS_WRITE, static function () use ($key, $value): void {
-            SettingModel::where('name', $key)->lockForUpdate()->first();
-            SettingModel::createOrUpdate($key, $value);
-        });
+        SettingModel::createOrUpdate($key, $value);
     }
     
     /**
@@ -177,10 +162,6 @@ class Setting
         try {
             $this->cache->forget(self::CACHE_KEY);
         } catch (\Throwable) {
-            if (AccountSqlPhase::enabled()) {
-                $this->loadedSettings = null;
-                throw new \RuntimeException('AUTHORITY_SETTINGS_CACHE_OUTCOME_UNKNOWN');
-            }
             // Cache unavailable; the next load() will fall back to defaults.
         }
         $this->loadedSettings = null;

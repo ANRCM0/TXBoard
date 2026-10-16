@@ -321,17 +321,12 @@ class MailService
                 'encryption' => config('mail.encryption'),
             ], JSON_UNESCAPED_SLASHES)
         ];
-        if (AccountSqlPhase::enabled()) {
-            // SMTP has already finished. Refused/unknown logging must never
-            // make the queue retry a successfully sent external email.
-            try {
-                app(AccountSqlPhase::class)->run(AccountSqlPhase::MAIL_LOG_APPEND,
-                    static fn () => MailLog::create($log));
-            } catch (\Throwable) {
-                Log::warning('AUTHORITY_MAIL_LOG_APPEND_UNKNOWN');
-            }
-        } else {
-            MailLog::create($log);
+        // SMTP has already finished; a log failure must not retry the email.
+        try {
+            app(AccountSqlPhase::class)->run(AccountSqlPhase::MAIL_LOG_APPEND,
+                static fn () => MailLog::create($log));
+        } catch (\Throwable) {
+            Log::warning('MAIL_LOG_APPEND_UNKNOWN');
         }
         return $log;
     }

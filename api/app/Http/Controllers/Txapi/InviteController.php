@@ -54,9 +54,7 @@ final class InviteController
             $code->code = Helper::randomChar(8);
             return $code->save();
         };
-        $created = AccountSqlPhase::enabled()
-            ? app(AccountSqlPhase::class)->run(AccountSqlPhase::INVITE_CREATE, $phase)
-            : DB::transaction($phase);
+        $created = app(AccountSqlPhase::class)->run(AccountSqlPhase::INVITE_CREATE, $phase);
         if (!$created) {
             return TxapiResponse::error($request, 'INVITE_LIMIT_REACHED', 'Invitation code limit reached', 409);
         }

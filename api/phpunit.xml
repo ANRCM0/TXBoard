@@ -11,7 +11,6 @@
         <testsuite name="Feature">
             <directory>tests/Feature</directory>
             <!-- Historical transition suites are opt-in by explicit test path. -->
-            <exclude>tests/Feature/AuthorityMigration</exclude>
             <exclude>tests/Feature/InternalReadOnly</exclude>
         </testsuite>
     </testsuites>

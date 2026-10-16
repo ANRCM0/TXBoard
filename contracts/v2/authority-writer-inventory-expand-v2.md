@@ -1,5 +1,7 @@
 # Authority writer inventory expand v2
 
+> Retired on 2026-10-16: the isolated authority migration prototype, CLI, configuration and dedicated tests/workflows have been removed. This document preserves historical protocol evidence only. Current installation admission and domain writes are described in [Core cleanup](../../docs/development/core-cleanup.md). Historical database rows and migrations are retained and cannot authorize native initialization.
+
 Status: Current isolated slice isolated explicit inventory expansion. This is a reviewed seven-writer subset, not a global fence or production authority switch. Existing [authority v1](authority-writer-fence-v1.md) records and prepare receipt hashes remain readable without rewriting history.
 
 The same `tx_authority_writer_fence.id=1` retains authority `legacy`. Fixed CLI `expand --key=<id> --expected-epoch=1 --isolated-copy` takes its exclusive lock, validates old scope/version/open epoch1 plus both closed receipt stores and atomically publishes `native-sql-writers/v2`, `authority-writer-fence/v2`, open epoch2 with fixed code inventory hash and one immutable upgrade receipt. It refuses old prepared epoch2 and never reopens it. New prepare accepts expected epoch2 and changes the same row to prepared epoch3, preserving the original prepare receipt table and version-specific request/hash semantics. Exact expand replay returns its original upgrade receipt; different key/epoch refuses. Lost expand output is diagnosed by fixed SELECT-only `recover-expand`; no recovery command changes state.

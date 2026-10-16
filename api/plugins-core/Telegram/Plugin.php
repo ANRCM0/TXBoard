@@ -8,7 +8,7 @@ use App\Models\User;
 use App\Services\Plugin\AbstractPlugin;
 use App\Services\Plugin\HookManager;
 use App\Services\TelegramService;
-use App\Services\TicketService;
+use App\Domains\Support\TicketService;
 use App\Utils\Helper;
 use Illuminate\Support\Facades\Log;
 

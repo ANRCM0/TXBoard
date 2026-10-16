@@ -14,11 +14,7 @@ final class InvitePageViewController
     {
         $data = $request->validate(['invite_code' => ['required', 'string', 'max:64']]);
         $phase = static fn () => InviteCode::query()->where('code', $data['invite_code'])->increment('pv');
-        if (AccountSqlPhase::enabled()) {
-            app(AccountSqlPhase::class)->run(AccountSqlPhase::INVITE_PAGE_VIEW, $phase);
-        } else {
-            $phase();
-        }
+        app(AccountSqlPhase::class)->run(AccountSqlPhase::INVITE_PAGE_VIEW, $phase);
         return TxapiResponse::success($request, true);
     }
 }

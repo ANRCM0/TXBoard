@@ -1,5 +1,7 @@
 # Authority native writers and producer schedule v4
 
+> Retired on 2026-10-16: the isolated authority migration prototype, CLI, configuration and dedicated tests/workflows have been removed. This document preserves historical protocol evidence only. Current installation admission and domain writes are described in [Core cleanup](../../docs/development/core-cleanup.md). Historical database rows and migrations are retained and cannot authorize native initialization.
+
 Status: Current isolated implementation contract; verification is recorded separately. Default-off and legacy authority remain mandatory. This fourth fixed inventory extends v3 on the same singleton. No registered inventory is global writer coverage or global drain proof.
 
 Fixed `extend-native --key=<id> --expected-epoch=3 --isolated-copy` exclusively changes legacy/v3/open3 to legacy/v4/open4; prepare from original expected4 commits prepared5. V1 prepared2, v2 prepared3 and v3 prepared4 stay unchanged and cannot extend/reopen. A new immutable native upgrade receipt binds the original finance receipt, prior v3 expanded state, fixed v4 writer/effect inventory and target state. All earlier hash recipes remain intact. Read-only recovery uses closed bounded probes; SQL/actions/scopes cannot be provided by rows or CLI.

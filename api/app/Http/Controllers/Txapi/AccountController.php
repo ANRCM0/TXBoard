@@ -115,9 +115,7 @@ final class AccountController
             $user->saveOrFail();
             return Helper::getSubscribeUrl($user->token);
         };
-        $newUrl = IdentityPhase::locksAccount()
-            ? app(IdentityPhase::class)->run(IdentityPhase::USER_ACCOUNT_CREDENTIALS_ROTATE, $phase)
-            : DB::transaction($phase);
+        $newUrl = app(IdentityPhase::class)->run(IdentityPhase::USER_ACCOUNT_CREDENTIALS_ROTATE, $phase);
         return TxapiResponse::success($request, ['subscribe_url' => $newUrl]);
     }
 
@@ -144,7 +142,7 @@ final class AccountController
         $user = Auth::guard('sanctum')->user();
         // Explicit allowlist; cannot mutate balance, role or subscription tokens.
         app(IdentityPhase::class)->run(IdentityPhase::USER_ACCOUNT_PREFERENCES, function () use (&$user, $values): void {
-            if (IdentityPhase::locksAccount()) $user = User::query()->whereKey($user->getKey())->lockForUpdate()->firstOrFail();
+            $user = User::query()->whereKey($user->getKey())->lockForUpdate()->firstOrFail();
             foreach ($values as $key => $value) {
                 $user->$key = (bool) $value;
             }

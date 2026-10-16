@@ -2,7 +2,6 @@
 
 namespace Tests\Feature\Installation;
 
-use App\Domains\AuthorityMigration\AuthorityWriterFence;
 use App\Domains\Installation\InstallationAuthority;
 use App\Domains\Installation\InstallationAuthorityException;
 use App\Models\Server;
@@ -33,7 +32,7 @@ class InstallationRuntimeTest extends TestCase
     {
         parent::setUp();
         config(['core_installation.mode' => 'legacy', 'core_installation.worker_epoch' => '1',
-            'authority_writer_fence.enabled' => false, 'cache.stores.redis' => ['driver' => 'array']]);
+            'cache.stores.redis' => ['driver' => 'array']]);
         // Laravel disables command events in PHPUnit; exercise the real CLI admission bridge.
         $kernel = app(\Illuminate\Contracts\Console\Kernel::class);
         $kernel->rerouteSymfonyCommandEvents();
@@ -121,11 +120,11 @@ class InstallationRuntimeTest extends TestCase
         }
     }
 
-    public function test_fence_disabled_does_not_allow_old_writer_or_node_snapshot_and_delta(): void
+    public function test_native_authority_rejects_legacy_writer_and_node_snapshot_and_delta(): void
     {
         $this->native();
         $this->refuses('NATIVE_WRITER_REJECTED',
-            fn () => DB::transaction(fn () => app(AuthorityWriterFence::class)->admit('order.fulfill')));
+            fn () => DB::transaction(fn () => app(InstallationAuthority::class)->assertLegacyWriter()));
         $this->refuses('NATIVE_NOT_READY', fn () => ServerService::getNativeAvailableUsers(new Server()));
         $this->refuses('NATIVE_NOT_READY', fn () => NodeSyncService::notifyUserChanged(new User()));
     }
@@ -167,7 +166,7 @@ class InstallationRuntimeTest extends TestCase
         $record = $authority->initialize(self::ID, 'legacy', 'legacy-runtime');
         $this->assertSame('open', $record['phase']);
         $this->getJson('/txapi/readiness')->assertOk();
-        DB::transaction(fn () => app(AuthorityWriterFence::class)->admit('order.create'));
+        DB::transaction(fn () => $authority->assertLegacyWriter());
         $this->refuses('CATALOG_REJECTED', fn () => DB::transaction(fn () => $authority->assertCatalogMutation()));
         $this->assertSame(0, DB::table('tx_subscription')->count());
     }

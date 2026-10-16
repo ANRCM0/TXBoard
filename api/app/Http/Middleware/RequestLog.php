@@ -39,17 +39,9 @@ class RequestLog
                 'updated_at' => time(),
             ];
             $phase = static fn () => AdminAuditLog::insert($row);
-            if (AccountSqlPhase::enabled()) {
-                app(AccountSqlPhase::class)->run(AccountSqlPhase::ADMIN_AUDIT_APPEND, $phase);
-            } else {
-                $phase();
-            }
+            app(AccountSqlPhase::class)->run(AccountSqlPhase::ADMIN_AUDIT_APPEND, $phase);
         } catch (\Throwable $e) {
-            if (AccountSqlPhase::enabled()) {
-                \Log::warning('AUTHORITY_ADMIN_AUDIT_APPEND_UNKNOWN');
-            } else {
-                \Log::warning('Audit log write failed: ' . $e->getMessage());
-            }
+            \Log::warning('ADMIN_AUDIT_APPEND_UNKNOWN');
         }
 
         return $response;

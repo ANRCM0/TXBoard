@@ -15,7 +15,6 @@ if (!app()->environment('testing') || config('database.default') !== 'mysql'
     || DB::connection()->getDatabaseName() !== 'txboard_native_control_test'
     || config('database.connections.mysql.host') !== '127.0.0.1'
     || config('database.connections.mysql.username') !== 'txboard_native_control'
-    || config('authority_writer_fence.enabled') !== false
     || config('node_ws.native_enabled') !== false) {
     fwrite(STDERR, "NATIVE_AUTHORITY_EXCLUSIVE_FIXTURE_REQUIRED\n"); exit(2);
 }
