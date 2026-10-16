@@ -40,10 +40,39 @@ class ProviderTransport
             && !in_array($request['input']['credential_profile_id'], $configuration['profiles'], true)) {
             throw new ProviderError('PROVIDER_PROFILE_UNSUPPORTED');
         }
+        $response = $this->exchange($configuration, $request, ProviderCodec::MAX_BYTES, $request['deadline_at'] - time());
+        return ProviderCodec::decodeResponse($response, $request, $registration['original_request'] ?? null);
+    }
+
+    public function metadata(array $registration, array $request): array
+    {
+        ProviderMetadataCodec::validateRequest($request);
+        $providerId = $registration['provider_id'] ?? null;
+        if (!is_string($providerId) || $providerId !== $request['provider_id']) {
+            throw new ProviderError('PROVIDER_REGISTRATION_MISMATCH');
+        }
+        $configuration = $this->operatorConfiguration($providerId);
+        if (($registration['provider_instance_epoch'] ?? null) !== $configuration['instance_epoch']
+            || $request['provider_instance_epoch'] !== $configuration['instance_epoch']
+            || !is_string($registration['config_digest'] ?? null)
+            || !hash_equals($configuration['config_digest'], $registration['config_digest'])) {
+            throw new ProviderError('PROVIDER_REGISTRATION_MISMATCH');
+        }
+        foreach ($request['subjects'] as $subject) {
+            if (!in_array($subject['credential_profile_id'], $configuration['profiles'], true)) {
+                throw new ProviderError('PROVIDER_PROFILE_UNSUPPORTED');
+            }
+        }
+        $configuration['endpoint'] = substr($configuration['endpoint'], 0, -strlen('/operations')).'/credential-metadata';
+        return ProviderMetadataCodec::decodeResponse(
+            $this->exchange($configuration, $request, ProviderMetadataCodec::MAX_BYTES, 25), $request);
+    }
+
+    private function exchange(array $configuration, array $request, int $maxBytes, int $remaining): string
+    {
         if (!extension_loaded('curl') || !defined('CURL_SSLVERSION_TLSv1_3')) {
             throw new ProviderError('PROVIDER_TRANSPORT_UNAVAILABLE');
         }
-        $remaining = $request['deadline_at'] - time();
         if ($remaining <= 0 || $remaining > 30) {
             throw new ProviderError('PROVIDER_DEADLINE_EXCEEDED', true);
         }
@@ -75,17 +104,17 @@ class ProviderTransport
                 CURLOPT_CONNECTTIMEOUT_MS => min(5000, $remaining * 1000),
                 CURLOPT_TIMEOUT_MS => $remaining * 1000,
                 CURLOPT_NOSIGNAL => true,
-                CURLOPT_HEADERFUNCTION => static function ($curl, string $chunk) use (&$headerBytes, &$tooLarge): int {
+                CURLOPT_HEADERFUNCTION => static function ($curl, string $chunk) use (&$headerBytes, &$tooLarge, $maxBytes): int {
                     $headerBytes += strlen($chunk);
-                    if ($headerBytes > ProviderCodec::MAX_BYTES) {
+                    if ($headerBytes > $maxBytes) {
                         $tooLarge = true;
                         return 0;
                     }
                     return strlen($chunk);
                 },
-                CURLOPT_WRITEFUNCTION => static function ($curl, string $chunk) use (&$response, &$responseBytes, &$tooLarge): int {
+                CURLOPT_WRITEFUNCTION => static function ($curl, string $chunk) use (&$response, &$responseBytes, &$tooLarge, $maxBytes): int {
                     $responseBytes += strlen($chunk);
-                    if ($responseBytes > ProviderCodec::MAX_BYTES) {
+                    if ($responseBytes > $maxBytes) {
                         $tooLarge = true;
                         return 0;
                     }
@@ -107,7 +136,7 @@ class ProviderTransport
             if (!is_string($contentType) || preg_match('/^application\/json(?:\s*;|$)/i', $contentType) !== 1) {
                 throw new ProviderError('PROVIDER_INVALID_RESPONSE', true);
             }
-            return ProviderCodec::decodeResponse($response, $request, $registration['original_request'] ?? null);
+            return $response;
         } catch (ProviderError $error) {
             throw $error;
         } catch (Throwable) {

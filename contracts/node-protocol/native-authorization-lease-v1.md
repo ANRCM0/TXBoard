@@ -2,6 +2,11 @@
 
 This contract defines a finite, signed authorization snapshot for an opted-in TX-Node. It reuses current Core account, plan, group, quota and kernel logic. It does not replace Provider credential issuance, activate isolated Usage v2, or treat `traffic_period` as an authorization lease.
 
+The distinct [Provider-backed policy](../v2/credential-provider/native-node-delivery-v1.md)
+uses non-secret Core commitments and direct Provider material retrieval with
+the same finite enforcement. Its policy and closed payload are not accepted
+as this legacy signed mode; native activation and usage remain gated.
+
 ## Trust and snapshot
 
 Core signs with a dedicated Ed25519 key, separate from Laravel `APP_KEY`, Node/Machine Bearer credentials, Provider fixture keys and Usage receipt keys. The private seed is configured as a secret and is never stored in SQL, logs or DTOs. A native handshake advertises the public trust tuple `{core_instance_id,key_id,key_epoch,algorithm,public_key}` and `node_authorization_snapshot_v1` only when the feature is enabled and trust is valid. Node configuration must pin that tuple before claiming finite offline authorization. Xboard and explicitly unenrolled TXBoard nodes remain online-only and do not claim this guarantee.

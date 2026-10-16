@@ -171,6 +171,55 @@ final class NativeCredentialProviderService
             fn ($operation, $subject): array => $this->publicOperation($operation, $subject), true);
     }
 
+    /** Caller locks every candidate account/history and Subject before the shared registration. */
+    public function authorizationRegistrationLocked(string $providerId, string $installationId): array
+    {
+        $this->require(DB::transactionLevel() > 0, 'TRANSACTION_REQUIRED');
+        $installation = app(InstallationAuthority::class)->assertNativeRead();
+        $this->require($installation['installation_id'] === $installationId, 'REGISTRATION_INVALID');
+        $row = DB::table(self::REGISTRATIONS)->where('provider_id', $providerId)->sharedLock()->first();
+        $this->verifyRegistration($row, $installationId);
+        return (array) $row + ['profiles_decoded' => $this->decode($row->profiles)];
+    }
+
+    /** Read-only verification of an already locked Subject against its original successful receipt. */
+    public function authorizationBindingLocked(object $subject, array $entitlement, array $registration): array
+    {
+        $this->require(DB::transactionLevel() > 0, 'TRANSACTION_REQUIRED');
+        $installation = app(InstallationAuthority::class)->assertNativeRead();
+        $this->require(($entitlement['authorized'] ?? false) === true, 'ENTITLEMENT_DENIED');
+        $this->verifySubject($subject, (object) ['id' => $entitlement['subscription_id']], $installation['installation_id']);
+        $this->verifyRegistration((object) $registration, $installation['installation_id']);
+        $this->require((string) $subject->provider_registration_id === (string) $registration['id']
+            && $subject->provider_id === $registration['provider_id']
+            && in_array($subject->credential_profile_id, $registration['profiles_decoded'], true), 'SUBJECT_INVALID');
+        $operations = DB::table(self::OPERATIONS)->where('access_subject_id', $subject->id)
+            ->where('kind', 'issue')->orderBy('id')->limit(2)->sharedLock()->get();
+        $this->require($operations->count() === 1, 'OPERATION_DAMAGED');
+        $operation = $operations->first();
+        $this->verifyOperation($operation);
+        $this->require($operation->status === 'succeeded'
+            && (string) $operation->user_id === $entitlement['user_id']
+            && (string) $operation->subscription_id === $entitlement['subscription_id']
+            && (string) $operation->access_subject_id === (string) $subject->id
+            && (string) $operation->provider_registration_id === (string) $registration['id'], 'OPERATION_DAMAGED');
+        $wire = $this->decode($operation->wire_request);
+        $this->require($wire['provider_id'] === $registration['provider_id']
+            && $wire['provider_instance_epoch'] === (string) $registration['provider_instance_epoch']
+            && $wire['input']['installation_id'] === $installation['installation_id']
+            && $wire['input']['provider_subject_ref'] === $subject->provider_subject_ref, 'OPERATION_DAMAGED');
+        $this->verifyReceiptBinding($operation, $subject, $wire);
+        $this->require($subject->status === 'active' && (string) $subject->revocation_fact_version === '0'
+            && $subject->revoked_at === null && $subject->provider_revoked_at === null, 'SUBJECT_INVALID');
+        return [
+            'installation_id' => $installation['installation_id'], 'access_subject_id' => (string) $subject->id,
+            'subscription_id' => (string) $subject->subscription_id, 'terms_id' => (string) $subject->bound_terms_id,
+            'provider_subject_ref' => $subject->provider_subject_ref, 'credential_ref' => $subject->credential_ref,
+            'credential_generation' => (string) $subject->credential_generation,
+            'credential_profile_id' => $subject->credential_profile_id,
+        ];
+    }
+
     private function drive(int $userId, string $reference, bool $recovery = false): array
     {
         $attempt = $this->withOperation($userId, $reference, function ($operation, $subject, $registration): array {

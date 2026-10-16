@@ -235,3 +235,18 @@ storage. Its Core endpoint exports no material, and no Node/renderer consumes
 it yet. Native runtime remains initializing. Neither native Subject activation
 inside an admission-substituted domain test nor real mTLS issuance activates
 the installation or completes C2.
+
+## C2-C2 Node material consumer
+
+[Native Node delivery](credential-provider/native-node-delivery-v1.md) connects
+the shared entitlement reader, valid issuance receipts and existing finite
+Node enforcement. Core signs non-secret commitments for the authenticated
+Node/Machine and configured recipient certificate; Node independently obtains
+UUID material from the Provider. Metadata calls are outside SQL transactions,
+followed by current account/Subject/target/credential revalidation.
+
+This policy refuses legacy traffic billing and does not enable Usage v2,
+subscription rendering, rotation or production activation. Unknown evidence
+cannot authorize material, and a known empty complete cohort can close Node
+users without Provider availability. Actual integration acceptance is tracked
+separately from implementation and syntax checks.

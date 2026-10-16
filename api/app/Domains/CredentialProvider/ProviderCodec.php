@@ -30,6 +30,22 @@ final class ProviderCodec
         ]));
     }
 
+    public static function decodeObject(#[\SensitiveParameter] string $json, int $maxBytes): array
+    {
+        try {
+            self::require(strlen($json) <= $maxBytes && $json !== '');
+            $decoded = json_decode($json, false, 32, JSON_THROW_ON_ERROR | JSON_BIGINT_AS_STRING);
+            self::require($decoded instanceof stdClass);
+            $position = 0;
+            self::scanValue($json, $position);
+            self::space($json, $position);
+            self::require($position === strlen($json));
+            return self::arrays($decoded);
+        } catch (\Throwable) {
+            throw new ProviderError('PROVIDER_INVALID_RESPONSE', true);
+        }
+    }
+
     public static function validateRequest(#[\SensitiveParameter] array $request, ?int $now = null): void
     {
         $now ??= time();
