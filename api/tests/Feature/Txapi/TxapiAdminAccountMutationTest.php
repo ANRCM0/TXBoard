@@ -72,6 +72,34 @@ class TxapiAdminAccountMutationTest extends TestCase
         $this->postJson('/txapi/admin/safe_account_admin/users/' . $id . '/delete')->assertStatus(404);
     }
 
+    public function test_deleting_event_veto_rolls_back_session_revocation_and_does_not_call_after_hook(): void
+    {
+        $admin = $this->user('veto-admin@example.test', true);
+        $target = $this->user('veto-delete@example.test');
+        $token = $target->createToken('retained-session')->accessToken;
+        $afterCalls = 0;
+        HookManager::register('admin.user.destroy.after', function () use (&$afterCalls): void {
+            ++$afterCalls;
+        });
+        $dispatcher = User::getEventDispatcher();
+        User::setEventDispatcher(clone $dispatcher);
+        User::deleting(fn (User $user) => $user->id === $target->id ? false : null);
+
+        try {
+            Sanctum::actingAs($admin);
+            $this->postJson('/txapi/admin/safe_account_admin/users/' . $target->id . '/delete')
+                ->assertStatus(422);
+            $this->assertNotNull($target->fresh());
+            $this->assertDatabaseHas('personal_access_tokens', [
+                'id' => $token->id, 'tokenable_type' => User::class, 'tokenable_id' => $target->id,
+            ]);
+            $this->assertSame(0, $afterCalls);
+        } finally {
+            User::setEventDispatcher($dispatcher);
+            HookManager::reset();
+        }
+    }
+
     public function test_secret_rotation_preserves_hook_and_never_reveals_new_secret(): void
     {
         $admin = $this->user('secret-admin@example.test', true);

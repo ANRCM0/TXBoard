@@ -1,5 +1,7 @@
 # Legacy registration creation evidence v1
 
+> Retired: 2026-10-16 native development cleanup removes this capture runtime, flags and verifier entry points. The text below records historical behavior only. Database migrations and existing evidence remain; current account writes do not emit this shadow evidence. See [Core cleanup](../../docs/development/core-cleanup.md).
+
 Status: Current isolated slice. Covers only the actual new User save in native RegisterService. Validation, registration policy, before hook, invitation handling and UserService defaults retain their original order. Installer/bootstrap and trusted direct-create writers remain outside scope.
 
 Strict default-off `LEGACY_REGISTRATION_CREATION_SHADOW_ENABLED` requires local/testing, the existing capture context and explicit isolated-copy gate. Disabled mode delegates the original save directly, without an added transaction, context validation or evidence SQL. Enabled mode rejects an outer transaction and encloses only the actual new User INSERT and initial evidence in one SQL transaction. Native saving cancellation returns false and creates no evidence. After-commit Observer runs after this transaction and before the original registration-after hook.

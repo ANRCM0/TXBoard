@@ -8,7 +8,6 @@ if($mode==='state'){
  echo json_encode(['balance'=>(int)App\Models\User::query()->where('email','cancel-user@example.test')->value('balance'),
   'coupon_slots'=>(int)App\Models\Coupon::query()->value('limit_use'),'order_statuses'=>$orders->pluck('status')->all(),
   'token_count'=>Laravel\Sanctum\PersonalAccessToken::count(),'audit_count'=>Illuminate\Support\Facades\DB::table('tx_internal_readonly_audits')->count(),
-  'capture_events'=>Illuminate\Support\Facades\DB::table('tx_legacy_capture_shadow_event')->count(),
   'database_version'=>Illuminate\Support\Facades\DB::selectOne('SELECT VERSION() AS version')->version],JSON_THROW_ON_ERROR);exit;
 }
 if($mode==='audit-fail'){Illuminate\Support\Facades\DB::unprepared("CREATE TRIGGER cancel_audit_failure BEFORE INSERT ON tx_internal_readonly_audits FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='private-cancel-audit-failure'");exit;}
@@ -16,16 +15,6 @@ if($mode==='audit-restore'){Illuminate\Support\Facades\DB::unprepared('DROP TRIG
 if($mode==='hook'){
  $value=$argv[2]??'';if(!in_array($value,['none','before-fail','after-fail'],true))throw new RuntimeException('Invalid fixed hook');
  file_put_contents(getenv('INTERNAL_FIXTURE_DIR').'/hook-mode',$value);exit;
-}
-if($mode==='capture'){
- $value=$argv[2]??'';if(!in_array($value,['off','on'],true))throw new RuntimeException('Invalid capture gate');
- file_put_contents(getenv('INTERNAL_FIXTURE_DIR').'/capture-mode',$value);exit;
-}
-if($mode==='capture-check'){
- config(['legacy_capture_shadow.enabled'=>true,'legacy_capture_shadow.run_key'=>'transport-cancel','legacy_capture_shadow.billing_timezone'=>'UTC','legacy_capture_shadow.currency'=>'USD']);
- $id=(int)App\Models\User::query()->where('email','cancel-user@example.test')->value('id');
- $report=app(App\Services\Subscription\LegacyUserMutationCapture::class)->verify($id);
- if(!$report['page_ok'])throw new RuntimeException('Invalid capture chain');echo 'valid';exit;
 }
 if($mode==='mutate'){
  $user=App\Models\User::query()->where('email','cancel-user@example.test')->firstOrFail();

@@ -16,12 +16,7 @@ import { encryptForOperation } from '../../packages/theme-sdk/dist/crypto.js'
 const api = process.env.INTERNAL_CORE_API
 const dir = process.env.INTERNAL_FIXTURE_DIR
 assert.ok(api && dir)
-const shadowVerification = process.env.INTERNAL_REGISTRATION_SHADOW_VERIFY === 'true'
-if (shadowVerification) {
-  assert.equal(process.env.DB_DATABASE, 'txboard_registration_transport_test')
-  assert.equal(process.env.LEGACY_REGISTRATION_CREATION_SHADOW_ENABLED, 'true')
-  assert.equal(process.env.LEGACY_CAPTURE_SHADOW_ENABLED, 'true')
-}
+assert.equal(process.env.DB_DATABASE, 'txboard_internal_test')
 const snapshot = JSON.parse(readFileSync(`${api}/../manifest.json`, 'utf8'))
 const expectedCoreCommit = process.env.INTERNAL_EXPECTED_CORE_COMMIT
 assert.match(expectedCoreCommit || '', /^[0-9a-f]{40}$/, 'An explicit fixed Core commit is required')
@@ -165,13 +160,6 @@ try {
     assert.equal(state.audit_rows, before.audit_rows + 1)
     assert.equal(nativeCalls.length, 0)
   })
-  if (shadowVerification) await check('real SDK Gateway Core registration commits a closed self-bound initial anchor', async () => {
-    const state = decorate('registration-shadow-state')
-    assert.equal(state.row_count, 1); assert.equal(state.unknown, null); assert.equal(state.failed_exists, false)
-    assert.equal(state.owner.kind, 'user.register'); assert.equal(state.owner.version, 'registration-creation-shadow/v1')
-    for (const key of ['self_bound', 'closed_snapshot', 'secret_excluded', 'evidence_valid']) assert.equal(state.owner[key], true)
-    assert.equal(state.owner.migration_gate_open, false)
-  })
   await check('real Redis nonce replay rejects the captured ciphertext before another registration', async () => {
     const state = decorate('registration-state')
     const response = await fetch('http://127.0.0.1:19591/gateway/v1/secure/auth/register', {
@@ -222,25 +210,6 @@ try {
     assert.equal(state.unknown_exists, true); assert.equal(state.unknown_sessions, 1)
     assert.equal(sdkRequests.length, count + 2); assert.equal(nativeCalls.length, 0)
   })
-  if (shadowVerification) {
-    await check('real audit failure retains committed account session and initial evidence without automatic retry', async () => {
-      const state = decorate('registration-shadow-state')
-      assert.equal(state.row_count, 2)
-      for (const key of ['self_bound', 'closed_snapshot', 'secret_excluded', 'evidence_valid']) assert.equal(state.unknown[key], true)
-      assert.equal(state.unknown.migration_gate_open, false)
-    })
-    await check('real evidence INSERT rejection rolls back the registration through SDK Gateway and mTLS', async () => {
-      const state = decorate('registration-state'); const shadow = decorate('registration-shadow-state')
-      const count = sdkRequests.length; decorate('registration-shadow-reject')
-      try {
-        await assert.rejects(() => sdk.auth.register({ email: 'capture-failure@example.test', password: input.password, email_code: '123456' }),
-          error => error?.status === 409)
-      } finally { decorate('registration-shadow-allow') }
-      assert.deepEqual(decorate('registration-state').business, state.business)
-      assert.deepEqual(decorate('registration-shadow-state'), shadow)
-      assert.equal(sdkRequests.length, count + 2); assert.equal(nativeCalls.length, 0)
-    })
-  }
   await check('native registration stop still rejects before another account is created', async () => {
     decorate('registration-stop')
     const state = decorate('registration-state')
@@ -258,10 +227,9 @@ try {
   for (const secret of [...Object.values(actors.credentials), ...Object.values(input), 'unknown-result@example.test', 'PRIVATE KEY']) {
     assert.ok(!logText.includes(secret), `Secret leaked to local logs`)
   }
-  writeFileSync(`${dir}/result.json`, JSON.stringify({ current_only: true, phase: shadowVerification ? 'B1.25' : 'B5.11', production_acceptance: false,
+  writeFileSync(`${dir}/result.json`, JSON.stringify({ current_only: true, phase: 'B5.11', production_acceptance: false,
     passed: checks.length, checks, core_base: expectedCoreCommit, observed_tls_protocols: [...observedTls],
     redis_database: redisDatabase, native_fallback_calls: nativeCalls.length, final_state: decorate('registration-state'),
-    ...(shadowVerification ? { creation_evidence: decorate('registration-shadow-state'), synthetic_only: true, formal_sc_v2: false } : {}),
     cleanup: 'Fixture processes stopped and credentials removed.' }, null, 2))
   process.stdout.write(`PASS ${checks.length} registration Core/Gateway checks\n`)
 } finally {

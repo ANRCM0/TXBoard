@@ -4,7 +4,6 @@ namespace App\Jobs;
 
 use App\Models\Order;
 use App\Services\OrderService;
-use App\Services\Subscription\LegacyCaptureShadowException;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -29,10 +28,6 @@ class OrderHandleJob implements ShouldQueue
     {
         if ($exception instanceof \App\Domains\AuthorityMigration\AuthorityFenceException) {
             Log::error('AUTHORITY_ORDER_FULFILLMENT_FENCE_RETRIES_EXHAUSTED');
-            return;
-        }
-        if ($exception instanceof LegacyCaptureShadowException) {
-            Log::error('LEGACY_ORDER_FULFILLMENT_CAPTURE_RETRIES_EXHAUSTED');
             return;
         }
         Log::error('Order fulfillment job exhausted its retries', [
@@ -73,9 +68,6 @@ class OrderHandleJob implements ShouldQueue
                     $orderService->open();
                 } catch (\App\Domains\AuthorityMigration\AuthorityFenceException $exception) {
                     Log::error('AUTHORITY_ORDER_FULFILLMENT_FENCE_REJECTED');
-                    throw $exception;
-                } catch (LegacyCaptureShadowException $exception) {
-                    Log::error('LEGACY_ORDER_FULFILLMENT_CAPTURE_FAILED');
                     throw $exception;
                 } catch (\Throwable $exception) {
                     Log::error('Order fulfillment attempt failed', [

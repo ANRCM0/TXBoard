@@ -3,7 +3,7 @@
 namespace App\Support;
 
 use App\Models\Setting as SettingModel;
-use App\Domains\AuthorityMigration\AuthorityIdentitySqlPhase;
+use App\Domains\Identity\AccountSqlPhase;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Contracts\Cache\Repository;
@@ -64,8 +64,8 @@ class Setting
      */
     public function remove(string $key): bool
     {
-        if (AuthorityIdentitySqlPhase::enabled()) {
-            app(AuthorityIdentitySqlPhase::class)->run(AuthorityIdentitySqlPhase::SETTINGS_REMOVE, static function () use ($key): void {
+        if (AccountSqlPhase::enabled()) {
+            app(AccountSqlPhase::class)->run(AccountSqlPhase::SETTINGS_REMOVE, static function () use ($key): void {
                 SettingModel::where('name', $key)->lockForUpdate()->first();
                 SettingModel::where('name', $key)->delete();
             });
@@ -86,11 +86,11 @@ class Setting
 
     private function writeKey(string $key, mixed $value): void
     {
-        if (!AuthorityIdentitySqlPhase::enabled()) {
+        if (!AccountSqlPhase::enabled()) {
             SettingModel::createOrUpdate($key, $value);
             return;
         }
-        app(AuthorityIdentitySqlPhase::class)->run(AuthorityIdentitySqlPhase::SETTINGS_WRITE, static function () use ($key, $value): void {
+        app(AccountSqlPhase::class)->run(AccountSqlPhase::SETTINGS_WRITE, static function () use ($key, $value): void {
             SettingModel::where('name', $key)->lockForUpdate()->first();
             SettingModel::createOrUpdate($key, $value);
         });
@@ -177,7 +177,7 @@ class Setting
         try {
             $this->cache->forget(self::CACHE_KEY);
         } catch (\Throwable) {
-            if (AuthorityIdentitySqlPhase::enabled()) {
+            if (AccountSqlPhase::enabled()) {
                 $this->loadedSettings = null;
                 throw new \RuntimeException('AUTHORITY_SETTINGS_CACHE_OUTCOME_UNKNOWN');
             }

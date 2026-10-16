@@ -15,7 +15,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use App\Models\User;
 use App\Utils\Helper;
-use App\Domains\AuthorityMigration\AuthorityIdentitySqlPhase as IdentityPhase;
+use App\Domains\Identity\AccountSqlPhase as IdentityPhase;
 
 final class AccountController
 {

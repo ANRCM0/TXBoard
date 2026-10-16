@@ -3,16 +3,18 @@
 namespace App\Domains\AuthorityMigration;
 
 use App\Models\User;
-use App\Services\Subscription\LegacyUserMutationCapture;
 use App\Services\TrafficResetService;
 use Illuminate\Database\Events\TransactionCommitting;
 use Illuminate\Support\Facades\DB;
 
-/** Concrete model events stage independently; producer capture finishes before commit-time schedule SQL. */
+/** Concrete model events stage independently before commit-time schedule SQL. */
 final class FencedUserPostcommit
 {
     public const COLUMNS=['intent_id','scope','version','authority_epoch','writer','event_sequence','legacy_user_id','action',
         'old_group_id','schedule_required','source_hash','captured_at','content_hash'];
+    private const SOURCE_FIELDS = ['id', 'plan_id', 'group_id', 'transfer_enable', 'u', 'd',
+        'speed_limit', 'device_limit', 'expired_at', 'last_reset_at', 'next_reset_at',
+        'reset_count', 'banned', 'balance', 'commission_balance'];
     public function stage(User $user,string $action,?int $oldGroup,bool $schedule):void
     {
         $proof=app(AuthorityAdmissionRegistry::class)->current();$proof->assertValid();
@@ -58,12 +60,10 @@ final class FencedUserPostcommit
                 $this->require($delivery->schedule_state==='pending','AUTHORITY_POSTCOMMIT_DELIVERY_INVALID');
                 $current=User::query()->lockForUpdate()->find($intent['legacy_user_id']);
                 if($current){
-                    $capture=config('legacy_observer_capture.enabled')===false?null:app(LegacyUserMutationCapture::class);
-                    $before=$capture?->beginObserverSchedule((int)$current->id);
                     User::withoutEvents(function()use($current):void{
                         $next=app(TrafficResetService::class)->calculateNextResetTime($current);
                         $current->next_reset_at=$next?->timestamp;$current->saveOrFail();
-                    });$capture?->appendObserverSchedule($before);
+                    });
                     $scheduleHash=$this->sourceHash($current);$scheduleState='applied';
                 }else{$scheduleHash=$this->hash(['legacy_user_id'=>$intent['legacy_user_id'],'state'=>'removed_before_commit']);$scheduleState='not_required';}
                 DB::table('tx_authority_postcommit_delivery')->where('intent_id',$id)->update(['schedule_state'=>$scheduleState,'schedule_hash'=>$scheduleHash,'updated_at'=>time()]);
@@ -91,7 +91,7 @@ final class FencedUserPostcommit
     public function sourceHash(User $user):string
     {
         $source=[];$attributes=$user->getAttributes();
-        foreach(LegacyUserMutationCapture::FIELDS as$key){$value=$attributes[$key]??null;$source[$key]=$key==='banned'?(bool)$value:($value===null?null:(string)$value);}
+        foreach(self::SOURCE_FIELDS as$key){$value=$attributes[$key]??null;$source[$key]=$key==='banned'?(bool)$value:($value===null?null:(string)$value);}
         return$this->hash($source);
     }
     public function hash(array $value):string{ksort($value,SORT_STRING);return hash('sha256',json_encode($value,JSON_THROW_ON_ERROR|JSON_UNESCAPED_SLASHES));}

@@ -182,19 +182,6 @@ final class InternalOrderCancelTest extends TestCase
         $this->assertSame(0,(int)$this->user->fresh()->balance);$this->assertStringNotContainsString('private-sql',$response->getContent());
     }
 
-    public function test_native_capture_defaults_off_and_isolated_refund_capture_stays_in_same_transaction(): void
-    {
-        $order=$this->pending();config(['legacy_capture_shadow.enabled'=>false]);$this->cancel($order)->assertOk();
-        $this->assertDatabaseCount('tx_legacy_capture_shadow_event',0);
-        config(['legacy_capture_shadow.enabled'=>true,'legacy_capture_shadow.run_key'=>'cancel-native-fixture',
-            'legacy_capture_shadow.billing_timezone'=>'UTC','legacy_capture_shadow.currency'=>'USD']);
-        $next=$this->pending();$this->cancel($next)->assertOk();
-        $this->assertDatabaseCount('tx_legacy_capture_shadow_event',1);
-        $this->assertSame(400,(int)$this->user->fresh()->balance);
-        $capture = app(\App\Services\Subscription\LegacyUserMutationCapture::class);
-        $this->assertNotNull($capture->initialMutationBeforeHash($this->user->id));
-        $this->assertSame($capture->initialEvidenceSource($this->user->id), $capture->initialEvidenceSnapshot(json_decode(DB::table('tx_legacy_capture_shadow_event')->value('after_snapshot'), true)));
-    }
 
     private function rejectAudit(): void
     {

@@ -38,7 +38,7 @@ try{
   fixture('mutate','ban');await rejected(cancel(actors.credentials.user,trade),403);fixture('mutate','unban');fixture('mutate','promote');await rejected(cancel(actors.credentials.user,trade),403);fixture('mutate','demote');assert.deepEqual(state().order_statuses,[0]);
  });
  await check('SDK legacy route restores prepaid wallet and one coupon slot exactly once',async()=>{
-  assert.deepEqual(await sdk.orders.cancel(trade),{ok:true});assert.equal(attempts,1);assert.equal(state().balance,500);assert.equal(state().coupon_slots,1);assert.deepEqual(state().order_statuses,[2]);assert.equal(state().capture_events,0);
+  assert.deepEqual(await sdk.orders.cancel(trade),{ok:true});assert.equal(attempts,1);assert.equal(state().balance,500);assert.equal(state().coupon_slots,1);assert.deepEqual(state().order_statuses,[2]);
  });
  await check('duplicate cancellation returns409 once and does not refund or restore twice',async()=>{
   const before=attempts;await rejected(sdk.orders.cancel(trade),409);assert.equal(attempts,before+1);assert.equal(state().balance,500);assert.equal(state().coupon_slots,1);
@@ -58,11 +58,8 @@ try{
  await check('real audit503 hides committed refund and SDK sends one attempt',async()=>{
   const next=JSON.parse(fixture('new-order')).trade_no;const before=attempts;fixture('audit-fail');await rejected(sdk.orders.cancel(next),503);fixture('audit-restore');assert.equal(attempts,before+1);assert.equal(state().balance,700);assert.equal(state().order_statuses.at(-1),2);await rejected(cancel(actors.credentials.user,next),409);assert.equal(state().balance,700);
  });
- await check('strict isolated native capture can record cancellation without a new writer',async()=>{
-  const next=JSON.parse(fixture('new-order')).trade_no;fixture('capture','on');assert.deepEqual(await cancel(actors.credentials.user,next),{ok:true});fixture('capture','off');assert.equal(state().balance,800);assert.equal(state().capture_events,1);assert.equal(fixture('capture-check'),'valid');
- });
  await check('current credential revocation refuses pending cancellation without mutation',async()=>{
-  const next=JSON.parse(fixture('new-order')).trade_no;fixture('mutate','revoke');await rejected(cancel(actors.credentials.user,next),401);assert.equal(state().balance,800);assert.equal(state().order_statuses.at(-1),0);
+  const next=JSON.parse(fixture('new-order')).trade_no;fixture('mutate','revoke');await rejected(cancel(actors.credentials.user,next),401);assert.equal(state().balance,700);assert.equal(state().order_statuses.at(-1),0);
  });
  await check('fixed service diagnostics audit and final temporary credential cleanup remain private',async()=>{
   const log=readFileSync(`${api}/storage/logs/laravel.log`,'utf8');assert.ok(log.includes('ORDER_CANCELLATION_FAILED'));

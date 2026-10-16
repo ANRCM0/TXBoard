@@ -34,7 +34,7 @@
 | `docker-txboard.yml` | Core 镜像、Compose、运行时依赖及启动/健康实物检查；正式标签另做发布资格检查 |
 | `docs.yml` | 文档引用及 CI 策略静态检查，不启动业务环境 |
 
-自动工作流保持 8 条。本批移除两条已无实现的 legacy-links/lifecycle-shadow 专属工作流后，共保留 42 条工作流，其中 34 条为手动入口。早期名称带 native 的账户、Machine、授权及流量实物链仍以旧 `User.uuid/transfer_enable/u/d` 为业务权威，亦归入手动历史工具；不能据此宣称当前 Subscription 模型已验收完整 Machine/WS/Xray 矩阵。当前 PHP/MySQL 的相关权限与事务回归、Node 共享组件 race 及 C2 原生真实闭环继续自动验证。
+自动工作流保持 8 条。两批清理移除已无实现的 legacy-links/lifecycle-shadow 及账户捕获专属工作流后，共保留 37 条工作流，其中 29 条为手动入口。早期名称带 native 的账户、Machine、授权及流量实物链仍以旧 `User.uuid/transfer_enable/u/d` 为业务权威，亦归入手动历史工具；不能据此宣称当前 Subscription 模型已验收完整 Machine/WS/Xray 矩阵。当前 PHP/MySQL 的相关权限与事务回归、Node 共享组件 race 及 C2 原生真实闭环继续自动验证。
 
 同一批次内不再由 Provider 切片、C2、API 和 Docker 各自重复一遍相同 PHP/Go 测试。日常 PR 不执行十轮随机稳定性测试和旧站升级恢复矩阵；这些保留为显式手动或正式发布专项。镜像测试与源码测试验证的对象不同，不视为重复。
 

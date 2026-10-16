@@ -1,5 +1,7 @@
 # Standalone legacy reset capture v1
 
+> Retired: 2026-10-16 native development cleanup removes this capture runtime, flags and verifier entry points. The text below records historical behavior only. Database migrations and existing evidence remain; current account writes do not emit this shadow evidence. See [Core cleanup](../../docs/development/core-cleanup.md).
+
 Status: isolated local/testing extension. A separate strict
 `LEGACY_STANDALONE_RESET_CAPTURE_ENABLED=false` preserves original behavior by
 default. Enabling also requires existing legacy capture and isolated context.
@@ -37,4 +39,4 @@ No durable follow-up/Node delivery recovery is certified. Original manual/servic
 false handling and HTTP envelopes stay native. Force/fix-null/initial schedule
 writers are not this counter-reset operation and remain separate coverage.
 
-See [synthetic fixture](../../api/tests/Fixtures/LegacyStandaloneResetCapture/README.md).
+See synthetic fixture（夹具已退役）.

@@ -3,7 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Services\InstallState;
-use App\Domains\AuthorityMigration\AuthorityIdentitySqlPhase;
+use App\Domains\Identity\AccountSqlPhase;
 use App\Support\Database\NativeSchemaPreflight;
 use App\Services\Plugin\PluginManager;
 use Illuminate\Console\Command;
@@ -280,8 +280,8 @@ class TxboardInstall extends Command
         ];
 
         foreach ($defaults as $name => $value) {
-            if (AuthorityIdentitySqlPhase::enabled()) {
-                app(AuthorityIdentitySqlPhase::class)->run(AuthorityIdentitySqlPhase::INSTALL_SETTINGS_SEED, static function () use ($name, $value): void {
+            if (AccountSqlPhase::enabled()) {
+                app(AccountSqlPhase::class)->run(AccountSqlPhase::INSTALL_SETTINGS_SEED, static function () use ($name, $value): void {
                     if (!SettingModel::query()->where('name', $name)->lockForUpdate()->first()) {
                         SettingModel::createOrUpdate($name, $value);
                     }
@@ -305,7 +305,7 @@ class TxboardInstall extends Command
         $user->uuid = Helper::guid(true);
         $user->token = Helper::guid();
         $user->is_admin = 1;
-        return app(\App\Services\Subscription\LegacyBootstrapCreationShadow::class)->persist($user);
+        return app(\App\Domains\Identity\AccountCreationService::class)->persist($user, AccountSqlPhase::INSTALL_ADMIN_CREATE);
     }
 
     private function set_env_var($key, $value)

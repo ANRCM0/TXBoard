@@ -1,5 +1,7 @@
 # Legacy Admin bulk ban capture v1
 
+> Retired: 2026-10-16 native development cleanup removes this capture runtime, flags and verifier entry points. The text below records historical behavior only. Database migrations and existing evidence remain; current account writes do not emit this shadow evidence. See [Core cleanup](../../docs/development/core-cleanup.md).
+
 Status: isolated implementation candidate. The existing Admin
 `POST /txapi/admin/{admin_path}/users/ban` remains authoritative. Its role/path,
 selected/filtered input, at most500 IDs, missing/protected User rejection and

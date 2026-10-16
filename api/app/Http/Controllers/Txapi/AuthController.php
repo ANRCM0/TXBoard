@@ -20,7 +20,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
-use App\Domains\AuthorityMigration\AuthorityIdentitySqlPhase as IdentityPhase;
+use App\Domains\Identity\AccountSqlPhase as IdentityPhase;
 
 final class AuthController
 {

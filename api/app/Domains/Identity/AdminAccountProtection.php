@@ -11,6 +11,7 @@ use App\Utils\Helper;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Shared V2/native Admin boundary: never erase financial, support or usage history
@@ -41,16 +42,15 @@ final class AdminAccountProtection
                 return null;
             }
 
-            $capture = app(\App\Services\Subscription\LegacyAdminDeletionShadow::class);
-            $ticket = $capture->begin($userId, (int) $request->user()->id);
             HookManager::call('admin.user.destroy.before', [
                 'user' => $user, 'request' => $request,
             ]);
 
             // A deleted account must not leave active admin/user API sessions.
             (new AuthService($user))->removeAllSessions();
-            $user->delete();
-            $capture->append($ticket);
+            if ($user->delete() !== true) {
+                throw ValidationException::withMessages(['user' => 'The account could not be deleted']);
+            }
             return $user;
         });
         if ($deleted === null) {

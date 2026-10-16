@@ -11,9 +11,6 @@ if(in_array($mode,['before-fail','after-fail'],true)){
   throw new RuntimeException('private-hook-argument-'.$order->trade_no,0,new RuntimeException('Bearer private-previous-secret'));
  });
 }
-if(is_file($dir.'/capture-mode')&&file_get_contents($dir.'/capture-mode')==='on'){
- config(['legacy_capture_shadow.enabled'=>true,'legacy_capture_shadow.run_key'=>'transport-cancel','legacy_capture_shadow.billing_timezone'=>'UTC','legacy_capture_shadow.currency'=>'USD']);
-}
 $response=$kernel->handle($request);
 if($response->getStatusCode()>=400){
  $payload=json_decode($response->getContent(),true);$fields=$payload['error']['fields']??[];

@@ -7,8 +7,7 @@ require $api.'/vendor/autoload.php';
 $app = require $api.'/bootstrap/app.php';
 $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
 if (!$app->environment('testing') || config('database.default') !== 'mysql'
-    || config('database.connections.mysql.database') !== (getenv('INTERNAL_REGISTRATION_SHADOW_VERIFY') === 'true'
-        ? 'txboard_registration_transport_test' : 'txboard_internal_test')) {
+    || config('database.connections.mysql.database') !== 'txboard_internal_test') {
     throw new RuntimeException('Exclusive disposable txboard_internal_test required');
 }
 $user = App\Models\User::query()->where('email', 'internal-user@example.test')->firstOrFail();
@@ -46,40 +45,6 @@ match ($argv[2] ?? '') {
     'password-reset-audit-reject' => Illuminate\Support\Facades\DB::unprepared(
         "CREATE TRIGGER reject_password_reset_audit BEFORE INSERT ON tx_internal_readonly_audits FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'fixture-audit-failure'"),
     'password-reset-audit-allow' => Illuminate\Support\Facades\DB::unprepared('DROP TRIGGER reject_password_reset_audit'),
-    'registration-shadow-state' => (function (): void {
-        if (getenv('INTERNAL_REGISTRATION_SHADOW_VERIFY') !== 'true'
-            || config('legacy_registration_creation_shadow.enabled') !== true
-            || config('legacy_capture_shadow.enabled') !== true || config('core_shadow.isolated_copy') !== true) {
-            throw new RuntimeException('Explicit registration shadow fixture required');
-        }
-        $read = function (string $email): ?array {
-            $owner = App\Models\User::byEmail($email)->first();
-            if (!$owner) return null;
-            $row = Illuminate\Support\Facades\DB::table('tx_legacy_user_creation_shadow')->where('legacy_user_id', $owner->id)->first();
-            if (!$row) throw new RuntimeException('Expected registration evidence missing');
-            $snapshot = json_decode($row->initial_snapshot, true, flags: JSON_THROW_ON_ERROR);
-            $safe = true;
-            foreach ([$owner->email, $owner->password, $owner->uuid, $owner->token] as $secret) {
-                $safe = $safe && !str_contains(json_encode($row), $secret);
-            }
-            $report = app(App\Services\Subscription\LegacyRegistrationCreationShadow::class)->verify($owner->id);
-            return ['kind' => $row->source_kind, 'version' => $row->source_version,
-                'self_bound' => (string) $row->actor_id === (string) $owner->id && $snapshot['id'] === (string) $owner->id,
-                'closed_snapshot' => count($snapshot) === count(App\Services\Subscription\LegacyUserMutationCapture::FIELDS)
-                    && !array_diff(array_keys($snapshot), App\Services\Subscription\LegacyUserMutationCapture::FIELDS),
-                'secret_excluded' => $safe, 'evidence_valid' => $report['evidence_valid'],
-                'source_matches_initial' => $report['source_matches_initial'], 'migration_gate_open' => $report['migration_gate_open']];
-        };
-        echo json_encode(['row_count' => Illuminate\Support\Facades\DB::table('tx_legacy_user_creation_shadow')->count(),
-            'owner' => $read('registered-owner@example.test'), 'unknown' => $read('unknown-result@example.test'),
-            'failed_exists' => App\Models\User::byEmail('capture-failure@example.test')->exists()]); exit;
-    })(),
-    'registration-shadow-reject' => (function (): void {
-        if (getenv('INTERNAL_REGISTRATION_SHADOW_VERIFY') !== 'true') throw new RuntimeException('Explicit registration shadow fixture required');
-        Illuminate\Support\Facades\Cache::put(App\Utils\CacheKey::get('EMAIL_VERIFY_CODE', 'capture-failure@example.test'), 123456, 300);
-        Illuminate\Support\Facades\DB::unprepared("CREATE TRIGGER reject_registration_shadow BEFORE INSERT ON tx_legacy_user_creation_shadow FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'fixture-shadow-failure'");
-    })(),
-    'registration-shadow-allow' => Illuminate\Support\Facades\DB::unprepared('DROP TRIGGER reject_registration_shadow'),
     'registration-prepare' => (function () use ($user): void {
         admin_setting(['captcha_enable' => 0, 'email_whitelist_enable' => 0, 'stop_register' => 0,
             'invite_force' => 1, 'invite_never_expire' => 0, 'email_verify' => 1,

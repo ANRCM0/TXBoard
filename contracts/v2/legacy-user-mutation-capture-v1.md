@@ -1,5 +1,7 @@
 # Legacy User mutation capture v1
 
+> Retired: 2026-10-16 native development cleanup removes this capture runtime, flags and verifier entry points. The text below records historical behavior only. Database migrations and existing evidence remain; current account writes do not emit this shadow evidence. See [Core cleanup](../../docs/development/core-cleanup.md).
+
 The independent default-off [captured money endpoint consumer](legacy-money-shadow-v1.md)
 can project wallet/commission differences into separate evidence tables under
 the same isolated User fence. It does not repair a mapping or apply Subscription,

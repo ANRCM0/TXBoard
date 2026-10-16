@@ -4,7 +4,7 @@ namespace App\Http\Middleware;
 
 use App\Models\AdminAuditLog;
 use App\Core\Security\AdminAuditSanitizer;
-use App\Domains\AuthorityMigration\AuthorityIdentitySqlPhase;
+use App\Domains\Identity\AccountSqlPhase;
 use Closure;
 
 class RequestLog
@@ -39,13 +39,13 @@ class RequestLog
                 'updated_at' => time(),
             ];
             $phase = static fn () => AdminAuditLog::insert($row);
-            if (AuthorityIdentitySqlPhase::enabled()) {
-                app(AuthorityIdentitySqlPhase::class)->run(AuthorityIdentitySqlPhase::ADMIN_AUDIT_APPEND, $phase);
+            if (AccountSqlPhase::enabled()) {
+                app(AccountSqlPhase::class)->run(AccountSqlPhase::ADMIN_AUDIT_APPEND, $phase);
             } else {
                 $phase();
             }
         } catch (\Throwable $e) {
-            if (AuthorityIdentitySqlPhase::enabled()) {
+            if (AccountSqlPhase::enabled()) {
                 \Log::warning('AUTHORITY_ADMIN_AUDIT_APPEND_UNKNOWN');
             } else {
                 \Log::warning('Audit log write failed: ' . $e->getMessage());

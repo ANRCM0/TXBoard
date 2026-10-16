@@ -34,7 +34,6 @@ class NativeUserGroupSyncTest extends TestCase
             'database.default' => 'group_sync_fixture',
             'database.connections.group_sync_fixture' => $connection,
             'authority_writer_fence.enabled' => false,
-            'legacy_observer_capture.enabled' => false,
             'cache.default' => 'array',
         ]);
         DB::purge('group_sync_fixture');

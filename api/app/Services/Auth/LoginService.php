@@ -7,7 +7,7 @@ use App\Services\Plugin\HookManager;
 use App\Utils\CacheKey;
 use App\Utils\Helper;
 use Illuminate\Support\Facades\Cache;
-use App\Domains\AuthorityMigration\AuthorityIdentitySqlPhase as IdentityPhase;
+use App\Domains\Identity\AccountSqlPhase as IdentityPhase;
 use App\Services\AuthService;
 
 class LoginService

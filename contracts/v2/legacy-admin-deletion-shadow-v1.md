@@ -1,5 +1,7 @@
 # Legacy Admin account deletion evidence v1
 
+> Retired: 2026-10-16 native development cleanup removes this capture runtime, flags and verifier entry points. The text below records historical behavior only. Database migrations and existing evidence remain; current account writes do not emit this shadow evidence. See [Core cleanup](../../docs/development/core-cleanup.md).
+
 Status: Current isolated slice. Covers only the existing `AdminAccountProtection::deleteUnused` transaction. Historical deletions, trusted plugins, cascades and other writers are not reconstructed.
 
 Strict default-off `LEGACY_ADMIN_DELETION_SHADOW_ENABLED` requires the existing local/testing isolated capture context. Native User lock, current Admin path/role, self protection and account-in-use checks remain authoritative. The native parent-account reference check now consults actual Schema: current migrations have no User parent_id; when an existing database has that optional column, its linked-child protection remains enforced. All mandatory native history checks still run. After native eligibility passes and before the trusted destroy hook, begin records the actual nonsecret persistent admission snapshot and current Admin reference. Session deletion, native Eloquent delete and its events retain their order. Append checks actual User absence in the same transaction after the native delete; a cancelled model delete that leaves the User present produces no deletion evidence and retains native response/session semantics.

@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Txapi;
 
 use App\Core\Http\TxapiResponse;
-use App\Domains\AuthorityMigration\AuthorityIdentitySqlPhase;
+use App\Domains\Identity\AccountSqlPhase;
 use App\Models\User;
 use App\Models\Ticket;
 use Illuminate\Support\Facades\DB;
@@ -48,8 +48,8 @@ final class WithdrawalController
                     . __('Withdrawal account') . '：' . $data['withdraw_account']);
             return ['ticket' => $ticket];
         };
-        $result = AuthorityIdentitySqlPhase::enabled()
-            ? app(AuthorityIdentitySqlPhase::class)->run(AuthorityIdentitySqlPhase::WITHDRAWAL_REQUEST, $phase)
+        $result = AccountSqlPhase::enabled()
+            ? app(AccountSqlPhase::class)->run(AccountSqlPhase::WITHDRAWAL_REQUEST, $phase)
             : DB::transaction($phase);
         if (isset($result['error'])) {
             $conflict = $result['error'] === 'WITHDRAWAL_PENDING';

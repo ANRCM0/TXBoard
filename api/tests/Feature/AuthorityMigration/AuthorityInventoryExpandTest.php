@@ -29,9 +29,7 @@ class AuthorityInventoryExpandTest extends TestCase
             array_replace(config('database.connections.sqlite'),['database'=>':memory:'])]);DB::purge($name);
         if($this->mysql())$this->clearMysql();$this->assertSame(0,Artisan::call('migrate',['--force'=>true]));Bus::fake();HookManager::reset();
         config(['authority_writer_fence'=>['enabled'=>true,'worker_epoch'=>'1','worker_role'=>'legacy'],
-            'core_shadow.isolated_copy'=>true,'legacy_capture_shadow.enabled'=>false,'legacy_admin_creation_shadow.enabled'=>false,
-            'legacy_admin_deletion_shadow.enabled'=>false,'legacy_observer_capture.enabled'=>false,
-            'legacy_bulk_ban_capture.enabled'=>false,'legacy_plan_propagation_capture.enabled'=>false]);
+            'core_shadow.isolated_copy'=>true]);
         config(['authority_writer_fence.enabled'=>false]);
         admin_setting(['secure_path'=>'inventory_fixture','try_out_plan_id'=>0]);
         config(['authority_writer_fence.enabled'=>true]);

@@ -4,7 +4,7 @@ namespace Tests\Feature\AuthorityMigration;
 
 use App\Domains\AuthorityMigration\AuthorityAdmissionRegistry;
 use App\Domains\AuthorityMigration\AuthorityFenceException;
-use App\Domains\AuthorityMigration\AuthorityIdentitySqlPhase;
+use App\Domains\Identity\AccountSqlPhase;
 use App\Models\Setting as SettingModel;
 use App\Models\User;
 use App\Services\AuthService;
@@ -34,10 +34,7 @@ class AuthorityIdentityConcurrencyTest extends TestCase
         $this->configureIdentityDatabase();
         $this->databaseConfigured = true;
         config(['authority_writer_fence.enabled' => false, 'core_shadow.isolated_copy' => true,
-            'cache.default' => 'array', 'cache.setting_store' => 'array',
-            'legacy_capture_shadow.enabled' => false, 'legacy_observer_capture.enabled' => false,
-            'legacy_admin_creation_shadow.enabled' => false, 'legacy_registration_creation_shadow.enabled' => false,
-            'legacy_bootstrap_creation_shadow.enabled' => false, 'legacy_admin_deletion_shadow.enabled' => false]);
+            'cache.default' => 'array', 'cache.setting_store' => 'array']);
         $this->assertSame(0, Artisan::call('migrate', ['--force' => true]));
         Bus::fake();
         HookManager::reset();
@@ -85,7 +82,7 @@ class AuthorityIdentityConcurrencyTest extends TestCase
         $user = $this->user();
         $key = 'identity_concurrency_fixture';
         SettingModel::createOrUpdate($key, 'original');
-        $owner = $kind === 'session' ? AuthorityIdentitySqlPhase::SESSION_ISSUE : AuthorityIdentitySqlPhase::SETTINGS_WRITE;
+        $owner = $kind === 'session' ? AccountSqlPhase::SESSION_ISSUE : AccountSqlPhase::SETTINGS_WRITE;
         $domainTable = $kind === 'session' ? 'tx_user' : 'tx_settings';
         $mutationTable = $kind === 'session' ? $user->tokens()->getRelated()->getTable() : 'tx_settings';
         $name = $this->identityConnection();

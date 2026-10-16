@@ -5,8 +5,6 @@ namespace App\Jobs;
 use App\Services\TrafficUsage;
 use App\Domains\Network\NativeTrafficSegments;
 use App\Domains\Network\NativeTrafficPeriod;
-use App\Services\Subscription\LegacyCaptureShadowException;
-use App\Services\Subscription\LegacyUserMutationCapture;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -39,9 +37,6 @@ class TrafficBatchJob implements ShouldQueue
         if ($exception instanceof \App\Domains\AuthorityMigration\AuthorityFenceException) {
             Log::error('AUTHORITY_TRAFFIC_BATCH_FENCE_REJECTED');
             return;
-        }
-        if ($exception instanceof LegacyCaptureShadowException) {
-            Log::error('LEGACY_TRAFFIC_BATCH_CAPTURE_RETRIES_EXHAUSTED');
         }
     }
 
@@ -105,10 +100,6 @@ class TrafficBatchJob implements ShouldQueue
                 }
                 return false;
             }
-
-            // Native duplicates bypass capture even if its context or schema later becomes unavailable.
-            $capture = config('legacy_capture_shadow.enabled') === false
-                ? null : app(LegacyUserMutationCapture::class);
 
             // P4: one indexed SELECT per bounded chunk, not one SELECT for
             // every individual user and statistics row. Lock users in ID order
@@ -177,7 +168,6 @@ class TrafficBatchJob implements ShouldQueue
                     }
                 }
                 if ($currentUp > PHP_INT_MAX - (int) $user->u || $currentDown > PHP_INT_MAX - (int) $user->d) throw new RuntimeException('User traffic counter overflow');
-                $before = $currentUp > 0 || $currentDown > 0 || $segments === null ? $capture?->beginTrafficBatchSettlement((int) $uid, $serverId) : null;
                 if ($currentUp > 0 || $currentDown > 0 || $segments === null) {
                     DB::table('tx_user')->where('id', $uid)->incrementEach(['u' => $currentUp, 'd' => $currentDown], ['t' => time()]);
                 }
@@ -202,8 +192,6 @@ class TrafficBatchJob implements ShouldQueue
                         'created_at' => time(), 'updated_at' => time(),
                     ]);
                 }
-
-                if ($before !== null) $capture?->appendTrafficBatchSettlement($before);
 
                 $rawUp += $up;
                 $rawDown += $down;

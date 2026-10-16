@@ -1,5 +1,7 @@
 # Legacy schedule repair capture v1
 
+> Retired: 2026-10-16 native development cleanup removes this capture runtime, flags and verifier entry points. The text below records historical behavior only. Database migrations and existing evidence remain; current account writes do not emit this shadow evidence. See [Core cleanup](../../docs/development/core-cleanup.md).
+
 Status: explicit isolated CLI path. `reset:traffic --fix-null --capture-schedule`
 or `--force --capture-schedule` extends the original schedule-only repair.
 Without the new flag all native paths remain unchanged and add zero capture SQL.
@@ -29,4 +31,4 @@ The original save false result is not promoted to proof: capture records only
 actual persisted changes. Complete v2 projection, notification recovery,
 production cutover, cluster fencing and power-loss durability remain separate.
 
-See [synthetic fixture](../../api/tests/Fixtures/LegacyScheduleRepairCapture/README.md).
+See synthetic fixture（夹具已退役）.

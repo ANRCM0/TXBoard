@@ -1,5 +1,7 @@
 # Legacy commission and gift reward capture v1
 
+> Retired: 2026-10-16 native development cleanup removes this capture runtime, flags and verifier entry points. The text below records historical behavior only. Database migrations and existing evidence remain; current account writes do not emit this shadow evidence. See [Core cleanup](../../docs/development/core-cleanup.md).
+
 Status: default-off, isolated local/testing evidence. Legacy User balances and
 entitlements remain authoritative. This extends the
 [fixed writer capture](legacy-user-mutation-capture-v1.md), without creating a
@@ -74,5 +76,5 @@ failure is preserved and tested, not certified as successful code consumption.
 Bounded verification is SELECT-only and labels events transaction-only. Complete
 legacy writer coverage, financial/payment facts, production cutover, restoration,
 power-loss durability and notification recovery remain independent gates. The
-[synthetic fixture](../../api/tests/Fixtures/LegacyRewardCapture/README.md)
+synthetic fixture（夹具已退役）
 records Linux/MariaDB process and transaction evidence.

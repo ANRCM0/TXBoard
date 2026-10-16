@@ -2,7 +2,7 @@
 
 namespace Tests\Feature\AuthorityMigration;
 
-use App\Domains\AuthorityMigration\AuthorityIdentitySqlPhase;
+use App\Domains\Identity\AccountSqlPhase;
 use App\Domains\AuthorityMigration\AuthorityIdentityUpgrade;
 use App\Services\AuthService;
 use Illuminate\Support\Facades\Artisan;
@@ -19,8 +19,7 @@ class AuthorityIdentityEvidenceTest extends TestCase
     {
         parent::setUp();
         $this->configureIdentityDatabase();
-        config(['authority_writer_fence.enabled'=>false, 'core_shadow.isolated_copy'=>true,
-            'legacy_capture_shadow.enabled'=>false, 'legacy_observer_capture.enabled'=>false]);
+        config(['authority_writer_fence.enabled'=>false, 'core_shadow.isolated_copy'=>true]);
         $this->assertSame(0, Artisan::call('migrate', ['--force'=>true]));
         Bus::fake();
         config(['authority_writer_fence'=>['enabled'=>true, 'worker_epoch'=>'1', 'worker_role'=>'legacy']]);
@@ -79,7 +78,7 @@ class AuthorityIdentityEvidenceTest extends TestCase
         foreach ([null, 'false', 0] as $flag) {
             config(['authority_writer_fence.enabled'=>$flag]);
             $entered=false;
-            $this->refused(fn()=>app(AuthorityIdentitySqlPhase::class)->run(AuthorityIdentitySqlPhase::SESSION_ISSUE,
+            $this->refused(fn()=>app(AccountSqlPhase::class)->run(AccountSqlPhase::SESSION_ISSUE,
                 function()use(&$entered):void{$entered=true;}), 'AUTHORITY_FENCE_ISOLATED_REQUIRED');
             $this->assertFalse($entered);
         }

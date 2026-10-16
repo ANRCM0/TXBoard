@@ -5,13 +5,12 @@ namespace App\Console\Commands;
 use App\Models\User;
 use App\Models\TrafficResetLog;
 use App\Services\TrafficResetService;
-use App\Services\Subscription\LegacyCaptureShadowException;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
 class ResetTraffic extends Command
 {
-  protected $signature = 'reset:traffic {--fix-null : 修正模式，重新计算next_reset_at为null的用户} {--force : 强制模式，重新计算所有用户的重置时间} {--capture-schedule : 仅隔离副本，原修正模式同时捕获User变更证据}';
+  protected $signature = 'reset:traffic {--fix-null : 修正模式，重新计算next_reset_at为null的用户} {--force : 强制模式，重新计算所有用户的重置时间}';
 
   protected $description = '流量重置 - 处理所有需要重置的用户';
 
@@ -25,10 +24,6 @@ class ResetTraffic extends Command
   {
     $fixNull = $this->option('fix-null');
     $force = $this->option('force');
-    if ($this->option('capture-schedule') && !$fixNull && !$force) {
-      $this->error('CAPTURE_SCHEDULE_REPAIR_MODE_REQUIRED');
-      return self::FAILURE;
-    }
 
     $this->info('🚀 开始执行流量重置任务...');
 
@@ -174,10 +169,6 @@ class ResetTraffic extends Command
 
     foreach ($nullUsers as $user) {
       try {
-        if ($this->option('capture-schedule')) {
-          $fixedCount += (int) $this->trafficResetService->repairScheduleCaptured((int) $user->id, true);
-          continue;
-        }
         if (config('authority_writer_fence.enabled') !== false) {
           $fixedCount += (int) $this->trafficResetService->repairScheduleFenced((int)$user->id, (bool)$this->option('fix-null'));
           continue;
@@ -191,9 +182,6 @@ class ResetTraffic extends Command
       } catch (\App\Domains\AuthorityMigration\AuthorityFenceException) {
         $errors[] = ['error' => 'AUTHORITY_SCHEDULE_FENCE_REJECTED'];
         Log::error('AUTHORITY_SCHEDULE_FENCE_REJECTED');
-      } catch (LegacyCaptureShadowException) {
-        $errors[] = ['error' => 'LEGACY_SCHEDULE_REPAIR_CAPTURE_FAILED'];
-        Log::error('LEGACY_SCHEDULE_REPAIR_CAPTURE_FAILED');
       } catch (\Exception $e) {
         $errors[] = [
           'user_id' => $user->id,
@@ -237,10 +225,6 @@ class ResetTraffic extends Command
 
     foreach ($allUsers as $user) {
       try {
-        if ($this->option('capture-schedule')) {
-          $fixedCount += (int) $this->trafficResetService->repairScheduleCaptured((int) $user->id, false);
-          continue;
-        }
         if (config('authority_writer_fence.enabled') !== false) {
           $fixedCount += (int) $this->trafficResetService->repairScheduleFenced((int)$user->id, (bool)$this->option('fix-null'));
           continue;
@@ -254,9 +238,6 @@ class ResetTraffic extends Command
       } catch (\App\Domains\AuthorityMigration\AuthorityFenceException) {
         $errors[] = ['error' => 'AUTHORITY_SCHEDULE_FENCE_REJECTED'];
         Log::error('AUTHORITY_SCHEDULE_FENCE_REJECTED');
-      } catch (LegacyCaptureShadowException) {
-        $errors[] = ['error' => 'LEGACY_SCHEDULE_REPAIR_CAPTURE_FAILED'];
-        Log::error('LEGACY_SCHEDULE_REPAIR_CAPTURE_FAILED');
       } catch (\Exception $e) {
         $errors[] = [
           'user_id' => $user->id,

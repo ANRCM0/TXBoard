@@ -3,7 +3,7 @@
 namespace App\Domains\Identity;
 
 use App\Domains\AuthorityMigration\AuthorityFenceException;
-use App\Domains\AuthorityMigration\AuthorityIdentitySqlPhase as IdentityPhase;
+use App\Domains\Identity\AccountSqlPhase as IdentityPhase;
 use App\Models\User;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Support\Facades\DB;
