@@ -12,33 +12,39 @@ if (!is_string($directory) || !str_starts_with($directory, '/tmp/tx-native-provi
 }
 require $api.'/vendor/autoload.php';
 $app = require $api.'/bootstrap/app.php';
+// Route registration reads settings during provider boot, so the private
+// database and cache must be configured before any settings service is loaded.
+$app->afterBootstrapping(
+    Illuminate\Foundation\Bootstrap\LoadConfiguration::class,
+    static function ($app) use ($directory): void {
+        $app->make('config')->set([
+            'database.connections.sqlite.database' => $directory.'/core.sqlite',
+            'credential_provider.providers.primary-provider' => [
+                'endpoint' => getenv('NATIVE_PROVIDER_NODE_PROVIDER').'/operations',
+                'instance_epoch' => '1', 'profiles' => ['vless-uuid/v1', 'vmess-uuid/v1'],
+                'ca_file' => $directory.'/ca.pem', 'client_cert' => $directory.'/core.pem',
+                'client_key' => $directory.'/core.key',
+            ],
+            'native_node_authorization.enabled' => true,
+            'native_node_authorization.policy_version' => 'native-provider-authorization/v1',
+            'native_node_authorization.core_instance_id' => '11111111-1111-4111-8111-111111111111',
+            'native_node_authorization.key_id' => 'provider-node-key',
+            'native_node_authorization.key_epoch' => '1',
+            'native_node_authorization.private_seed' => getenv('NATIVE_NODE_AUTHORIZATION_PRIVATE_SEED'),
+            'native_node_authorization.lease_seconds' => 30,
+            'native_node_authorization.max_clock_skew_seconds' => 1,
+            'native_provider_node.provider_id' => 'primary-provider',
+            'native_provider_node.recipients' => [
+                1 => ['machine_id' => null, 'recipient_sha256' => getenv('NATIVE_PROVIDER_NODE_FINGERPRINT')],
+                2 => ['machine_id' => null, 'recipient_sha256' => getenv('NATIVE_PROVIDER_NODE_FINGERPRINT')],
+            ],
+            'cache.stores.redis' => ['driver' => 'array'],
+            'node_ws.native_enabled' => false,
+            'native_traffic_receipts.enabled' => false,
+        ]);
+    },
+);
 $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
-config([
-    'database.connections.sqlite.database' => $directory.'/core.sqlite',
-    'credential_provider.providers.primary-provider' => [
-        'endpoint' => getenv('NATIVE_PROVIDER_NODE_PROVIDER').'/operations',
-        'instance_epoch' => '1', 'profiles' => ['vless-uuid/v1', 'vmess-uuid/v1'],
-        'ca_file' => $directory.'/ca.pem', 'client_cert' => $directory.'/core.pem',
-        'client_key' => $directory.'/core.key',
-    ],
-    'native_node_authorization.enabled' => true,
-    'native_node_authorization.policy_version' => 'native-provider-authorization/v1',
-    'native_node_authorization.core_instance_id' => '11111111-1111-4111-8111-111111111111',
-    'native_node_authorization.key_id' => 'provider-node-key',
-    'native_node_authorization.key_epoch' => '1',
-    'native_node_authorization.private_seed' => getenv('NATIVE_NODE_AUTHORIZATION_PRIVATE_SEED'),
-    'native_node_authorization.lease_seconds' => 30,
-    'native_node_authorization.max_clock_skew_seconds' => 1,
-    'native_provider_node.provider_id' => 'primary-provider',
-    'native_provider_node.recipients' => [
-        1 => ['machine_id' => null, 'recipient_sha256' => getenv('NATIVE_PROVIDER_NODE_FINGERPRINT')],
-        2 => ['machine_id' => null, 'recipient_sha256' => getenv('NATIVE_PROVIDER_NODE_FINGERPRINT')],
-    ],
-    'cache.stores.redis' => ['driver' => 'array'],
-    'node_ws.native_enabled' => false,
-    'native_traffic_receipts.enabled' => false,
-]);
-DB::purge('sqlite');
 
 // Only the not-yet-open installation admission is substituted. Routes, Node
 // credentials, SQL domain operations, signatures and both runtimes remain real.
