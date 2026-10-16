@@ -19,7 +19,8 @@
     "One signed policy binds Node access, Provider material and finite native usage Session.",
     "Durable original-session I/O evidence, bounded completed-operation aggregation and restart replay.",
     "Core receipts, immutable billing evidence, original Period settlement and SQL recovery work.",
-    "Known authorization-cutoff rejections retain local quarantine without a fabricated receipt."
+    "Pending and quarantined native batches reserve validated bytes against the original Period until atomic settlement.",
+    "Proven authorization cutoffs retain genuine persisted/quarantined receipts; older cutoff-only rejections retain local evidence without a fabricated receipt."
   ],
   "test_location_policy": {
     "heavy": "GitHub Actions only, following the user's instruction.",
@@ -45,7 +46,7 @@
     "mysql": "MySQL 8.4 production migrations and dedicated native transaction fixtures.",
     "node": "Provider, shared protocols, authorization, native usage, actual kernel adapters and Service under Go race.",
     "live": "Actual native activation without admission substitution, HTTP registration/login, Redis queue fulfillment, direct render consumer, two VLESS Nodes, expiry, original-period restart replay, reset, renewal, rotation, revoke and account ban.",
-    "sql_evidence": "Each settled batch's canonical entries match frozen evidence, ledger ownership and exact original Period counters."
+    "sql_evidence": "Each settled batch's canonical entries match frozen evidence, ledger ownership and exact original Period counters; pending/quarantined reservations remain in original-Period quota admission and release only with real settlement."
   },
   "remaining_release_scope": [
     "C3 money ledger, payment attempts and refunds.",

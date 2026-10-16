@@ -94,6 +94,14 @@ backups. Restart requires a fresh online signed grant; replay retains the old
 batch ID, original Session, period and digest. Do not remove unknown or
 quarantined evidence to force reopening.
 
+Core reserves each persisted native batch's validated bytes against its
+original Period until real settlement succeeds. The available quota includes
+pending and quarantined reservations, so rotating or reissuing a credential
+does not restore consumed quota. A cutoff batch has a genuine persisted,
+quarantined receipt; it remains retained for recovery. Recovery does not
+release its reservation before settlement. A later legitimate Period retains
+its independent quota.
+
 ## Direct client delivery
 
 Authenticate through the normal user API and use the returned bearer from a

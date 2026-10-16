@@ -78,7 +78,16 @@ final class UsageSettlement
                     if ($native) {
                         $grant = DB::table('tx_auth_snapshot')->where('id', $entry['auth_snapshot_id'])->first();
                         if (!$grant) { throw new UsageError('USAGE_NATIVE_GRANT_MISSING'); }
-                        app(NativeUsageLedger::class)->verifyNativeGrant($grant);
+                        $proof = app(NativeUsageLedger::class)->verifyNativeGrant($grant);
+                        $subscription = DB::table('tx_subscription')->where('id', $grant->subscription_id)->first();
+                        $subject = DB::table('tx_access_subject')->where('id', $grant->access_subject_id)->first();
+                        $period = DB::table('tx_usage_period')->where('id', $grant->usage_period_id)->first();
+                        if (!$subscription || !$subject || !$period) { throw new UsageError('USAGE_NATIVE_GRANT_MISSING'); }
+                        $cutoff = ($this->boundaries ?? app(UsageTermsBoundary::class))
+                            ->nativeCutoff($grant, $subscription, $subject, $period, $proof['coverage']);
+                        if ($cutoff !== null && (int) $batch->ended_at > $cutoff) {
+                            throw new UsageError('USAGE_NATIVE_AUTHORIZATION_CUTOFF');
+                        }
                     }
                     $pid = $entry['usage_period_id'];
                     $periodEntries[$pid][] = $entry;
@@ -123,6 +132,7 @@ final class UsageSettlement
                     'raw_down_bytes' => UsageMath::add((string) $stat->raw_down_bytes, $rawDown), 'updated_at' => $now,
                 ]);
                 ($this->fault ?? static fn () => null)('after_ledger');
+                if ($native) { NativeUsageReservations::releaseLocked($batchId, $totals); }
                 DB::table('tx_usage_batch')->where('id', $batchId)->update(['status' => 'settled', 'settled_at' => max($now, (int) $batch->accepted_at),
                     'updated_at' => max($now, (int) $batch->updated_at, (int) $batch->accepted_at), 'processing_lease_until' => null, 'reason_code' => null]);
                 DB::table('tx_usage_outbox')->where('batch_id', $batchId)->where('kind', 'usage.accepted')->update(['status' => 'completed', 'completed_at' => $now]);

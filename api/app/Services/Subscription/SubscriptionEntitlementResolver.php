@@ -3,6 +3,7 @@
 namespace App\Services\Subscription;
 
 use App\Domains\Installation\InstallationAuthority;
+use App\Domains\UsageV2\NativeUsageReservations;
 use DomainException;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
@@ -159,7 +160,7 @@ final class SubscriptionEntitlementResolver
             || ($period->next_reset_at !== null && (int) $period->next_reset_at <= $at)) {
             return $this->denied($userId, 'ENTITLEMENT_PERIOD_EXPIRED');
         }
-        $consumed = SubscriptionTermsTimeline::decimal($period->billable_bytes);
+        $consumed = NativeUsageReservations::consumed($period);
         if ($quota === '0' || (int) $consumed >= (int) $quota) {
             return $this->denied($userId, 'ENTITLEMENT_QUOTA_EXHAUSTED');
         }

@@ -149,6 +149,9 @@ def main(closeout=False):
             else:
                 raise RuntimeError("Core HTTP startup timed out")
 
+            node_one_requests = {"active": 0}
+            node_one_lock = threading.Lock()
+
             class Handler(BaseHTTPRequestHandler):
                 def log_message(self, *arguments):
                     pass
@@ -162,9 +165,27 @@ def main(closeout=False):
                     self.wfile.write(content)
 
                 def handle_core(self):
-                    if (root / "offline").exists() and self.headers.get("X-TX-Node-ID") == "1":
+                    node_one = self.headers.get("X-TX-Node-ID") == "1"
+                    with node_one_lock:
+                        blocked = node_one and (root / "offline").exists()
+                        if closeout and node_one:
+                            if blocked:
+                                if (self.command == "GET" and self.path == "/txapi/node/v1/users"
+                                        and node_one_requests["active"] == 0):
+                                    (root / "offline-ready").touch(mode=0o600)
+                            else:
+                                node_one_requests["active"] += 1
+                    if blocked:
                         self.unavailable()
                         return
+                    try:
+                        self.forward_core()
+                    finally:
+                        if closeout and node_one:
+                            with node_one_lock:
+                                node_one_requests["active"] -= 1
+
+                def forward_core(self):
                     if not self.path.startswith("/txapi/node/v1/") and not (closeout and self.path.startswith("/txapi/")):
                         self.send_error(404)
                         return

@@ -182,16 +182,30 @@ completed writes consume an unbounded journal. Batch intervals still cover
 the full original observation window; aggregation never moves bytes across
 authorization or Period boundaries.
 
-An authenticated Core may refuse a newly submitted historical batch with the
-specific `USAGE_NATIVE_AUTHORIZATION_CUTOFF` code after verifying its original
-ownership/proof/lease and establishing a later effective cutoff. All entries
-and billing arithmetic must validate before this batch-level classification;
-an invalid entry remains a hard error regardless of entry order. Native Node
-retains that exact batch and Session in local quarantine without a receipt or
-settlement claim. It does not change the batch ID, drop the bytes or charge a
-new period. A refusal affecting the active Session closes its I/O and requires
-a newer signed grant before reopening. Authentication, scope, digest, corrupt
-proof and missing previously confirmed receipts remain terminal failures.
+When a fully proven historical batch crosses a later effective cutoff, Core
+persists its original payload, digest and frozen evidence with a real
+`persisted` receipt, `settlement_status="quarantined"` and
+`reason_code="USAGE_NATIVE_AUTHORIZATION_CUTOFF"`. All entries and billing
+arithmetic must validate before this batch-level classification; an invalid
+entry remains a hard error regardless of entry order and writes no batch or
+reservation. Node retains the exact batch and Session. It does not change the
+batch ID, drop the bytes or charge a new period. A cutoff receipt affecting
+the active Session closes its I/O and requires a newer signed grant before
+reopening. Older authenticated cutoff-only 422 responses remain supported as
+local evidence without inventing a persisted receipt. Authentication, scope,
+digest, corrupt proof and missing previously confirmed receipts remain
+terminal failures.
+
+Every persisted native batch reserves its validated billed bytes against
+each original Period before returning a receipt, including pending and
+quarantined batches. New Node grants, client delivery, credential issue and
+rotation use settled consumption plus these reservations for quota admission.
+Repeating rotation or revocation/reissue cannot make unbilled traffic
+disappear from the available quota. Reservation is not settlement or a charge
+to another Period. A successful settlement atomically adds the original
+ledger entries and releases the corresponding reservation; retries,
+quarantine and recovery retain it. A later legitimate Period uses its own
+quota and does not inherit a historical reservation.
 
 The existing authenticated `/txapi/node/v2/usage/submit` and `batch/get`
 perform current-read native ownership checks and retain the same batch ID,

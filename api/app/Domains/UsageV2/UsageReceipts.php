@@ -49,22 +49,38 @@ final class UsageReceipts
                 $rawDown = UsageMath::add($rawDown, $evidence['raw_down_bytes']);
                 $billed = UsageMath::add($billed, $evidence['billed_up_bytes'], $evidence['billed_down_bytes']);
             }
-            // Only a fully validated batch can authorize Node's durable cutoff quarantine.
-            if ($authorizationCutoff) { throw new UsageError('USAGE_NATIVE_AUTHORIZATION_CUTOFF'); }
+            // A fully proven cutoff remains durable evidence and consumes the original Period's quota.
             $encoded = json_encode($frozen, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES);
             $id = DB::table('tx_usage_batch')->insertGetId([
                 'source_id' => $source->id, 'node_id' => $nodeId, 'source_epoch' => $p['source_epoch'], 'batch_id' => $p['batch_id'],
                 'core_instance_id' => $source->core_instance_id, 'receipt_generation' => $source->receipt_generation,
                 'receipt_id' => 'receipt_'.Str::uuid(), 'payload_digest' => $parsed['digest'], 'canonical_payload' => $parsed['canonical'],
                 'frozen_entries' => $encoded, 'frozen_hash' => UsageRegistry::hash($frozen),
-                'started_at' => $p['started_at'], 'ended_at' => $p['ended_at'], 'status' => 'pending', 'accepted_at' => $now, 'updated_at' => $now,
+                'started_at' => $p['started_at'], 'ended_at' => $p['ended_at'],
+                'status' => $authorizationCutoff ? 'quarantined' : 'pending',
+                'reason_code' => $authorizationCutoff ? 'USAGE_NATIVE_AUTHORIZATION_CUTOFF' : null,
+                'accepted_at' => $now, 'updated_at' => $now,
             ]);
+            if ($native) { NativeUsageReservations::reserveLocked($id, $frozen, $now); }
             ($this->fault ?? static fn () => null)('after_payload');
             DB::table('tx_usage_outbox')->insert([
                 'batch_id' => $id, 'event_key' => 'usage.accepted:'.$id, 'kind' => 'usage.accepted', 'status' => 'pending',
                 'body' => json_encode(['batch_row_id' => (string) $id, 'payload_digest' => $parsed['digest']], JSON_THROW_ON_ERROR), 'created_at' => $now,
             ]);
             ($this->fault ?? static fn () => null)('after_outbox');
+            if ($native) {
+                // Recovery must evaluate reserved quota even before a pending batch is settled.
+                $subscriptions = [];
+                foreach ($frozen as $entry) { $subscriptions[$entry['subscription_id']] = $entry['user_id']; }
+                foreach ($subscriptions as $subscriptionId => $userId) {
+                    DB::table('tx_native_runtime_outbox')->insert([
+                        'event_key' => 'usage.quota:'.$id.':'.$subscriptionId, 'kind' => 'credential.sync',
+                        'user_id' => $userId, 'subscription_id' => $subscriptionId,
+                        'subscription_version' => DB::table('tx_subscription')->where('id', $subscriptionId)->value('row_version'),
+                        'status' => 'pending', 'created_at' => $now,
+                    ]);
+                }
+            }
             return self::receipt(DB::table('tx_usage_batch')->where('id', $id)->first());
         }, 3); } catch (UsageError $error) {
             if ($error->errorCode === 'BATCH_PAYLOAD_CONFLICT') { $this->conflictAudit($p, $parsed['digest'], $now); }

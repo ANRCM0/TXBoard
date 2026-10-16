@@ -31,6 +31,16 @@ return new class extends Migration {
             $table->unsignedBigInteger('created_at');
             $table->foreign('grant_id')->references('id')->on('tx_auth_snapshot')->restrictOnDelete();
         });
+        Schema::create('tx_native_usage_reservation', function (Blueprint $table): void {
+            $table->unsignedBigInteger('batch_id');
+            $table->unsignedBigInteger('usage_period_id');
+            $table->unsignedBigInteger('reserved_bytes');
+            $table->unsignedBigInteger('created_at');
+            $table->primary(['batch_id', 'usage_period_id'], 'tx_native_usage_reservation_pk');
+            $table->index(['usage_period_id', 'batch_id'], 'tx_native_usage_reservation_period_idx');
+            $table->foreign('batch_id')->references('id')->on('tx_usage_batch')->restrictOnDelete();
+            $table->foreign('usage_period_id')->references('id')->on('tx_usage_period')->restrictOnDelete();
+        });
         Schema::create('tx_native_runtime_outbox', function (Blueprint $table): void {
             $table->bigIncrements('id');
             $table->string('event_key', 128)->unique();
@@ -50,12 +60,13 @@ return new class extends Migration {
 
     public function down(): void
     {
-        foreach (['tx_native_runtime_activation', 'tx_native_usage_grant', 'tx_native_runtime_outbox'] as $table) {
+        foreach (['tx_native_runtime_activation', 'tx_native_usage_grant', 'tx_native_usage_reservation', 'tx_native_runtime_outbox'] as $table) {
             if (DB::table($table)->exists()) {
                 throw new RuntimeException('NATIVE_RUNTIME_POPULATED_ROLLBACK_REFUSED');
             }
         }
         Schema::drop('tx_native_runtime_outbox');
+        Schema::drop('tx_native_usage_reservation');
         Schema::drop('tx_native_usage_grant');
         Schema::drop('tx_native_runtime_activation');
         Schema::table('tx_auth_snapshot', function (Blueprint $table): void {

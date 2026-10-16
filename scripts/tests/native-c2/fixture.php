@@ -1,6 +1,7 @@
 <?php
 
 use App\Domains\Installation\InstallationAuthority;
+use App\Domains\UsageV2\UsageRegistry;
 use App\Models\Order;
 use App\Models\Plan;
 use App\Models\Server;
@@ -171,7 +172,16 @@ try {
         nativeC2Request('me/access-subjects/'.$fixture['subject_id'].'/rotate',
             ['expected_version' => (string) $subject->row_version], file_get_contents($directory.'/user-bearer'), 'native-c2-manual-rotate');
         nativeC2Work();
-        echo "Native HTTP immediate rotation completed.\n";
+        $cutoffs = DB::table('tx_auth_snapshot as snapshot')
+            ->join('tx_node_usage_source as source', 'source.id', '=', 'snapshot.source_id')
+            ->where('snapshot.subscription_id', $fixture['subscription_id'])->where('source.node_id', 1)
+            ->whereNotNull('snapshot.revoked_at')->orderBy('snapshot.id')->get([
+                'snapshot.id', 'snapshot.revoked_at', 'snapshot.usage_period_id', 'source.source_epoch',
+            ])->map(fn ($grant) => [
+                'auth_snapshot_id' => (string) $grant->id, 'cutoff_at' => (int) $grant->revoked_at,
+                'usage_period_id' => (string) $grant->usage_period_id, 'source_epoch' => (string) $grant->source_epoch,
+            ])->all();
+        echo json_encode(['cutoffs' => $cutoffs], JSON_THROW_ON_ERROR)."\n";
         exit(0);
     }
     if (in_array($mode, ['reset', 'revoke'], true)) {
@@ -201,6 +211,7 @@ try {
             'generation' => (string) $subject->credential_generation,
             'settled_batches' => DB::table('tx_usage_batch')->where('status', 'settled')->count(),
             'quarantined_batches' => DB::table('tx_usage_batch')->where('status', 'quarantined')->count(),
+            'reservation_count' => DB::table('tx_native_usage_reservation')->count(),
         ];
         if ($mode === 'state') {
             echo json_encode($state, JSON_THROW_ON_ERROR)."\n";
@@ -209,7 +220,8 @@ try {
         $user = User::query()->findOrFail($fixture['user_id']);
         if ($user->uuid !== '' || $user->token !== '' || (int) $user->u !== 0 || (int) $user->d !== 0
             || (int) $user->transfer_enable !== 0 || (int) $state['billable_bytes'] <= 0
-            || $state['settled_batches'] < 2 || $state['period_count'] < 2 || $state['quarantined_batches'] !== 0
+            || $state['settled_batches'] < 2 || $state['period_count'] < 2 || $state['quarantined_batches'] < 1
+            || DB::table('tx_usage_batch')->whereNotIn('status', ['settled', 'quarantined'])->exists()
             || DB::table('tx_native_runtime_activation')->count() !== 1
             || app(InstallationAuthority::class)->inspect()['phase'] !== 'open') {
             throw new RuntimeException('NATIVE_C2_FINAL_EVIDENCE_INVALID');
@@ -249,6 +261,56 @@ try {
                 $totals[$pid]['down'] = bcadd($totals[$pid]['down'], (string) $entry['billed_down_bytes'], 0);
             }
         }
+        $reservationCount = 0;
+        foreach (DB::table('tx_usage_batch')->where('status', 'quarantined')->orderBy('id')->get() as $batch) {
+            $frozen = json_decode($batch->frozen_entries, true, 32, JSON_THROW_ON_ERROR);
+            $payload = json_decode($batch->canonical_payload, true, 32, JSON_THROW_ON_ERROR);
+            if ($batch->reason_code !== 'USAGE_NATIVE_AUTHORIZATION_CUTOFF' || $batch->settled_at !== null
+                || DB::table('tx_usage_entry')->where('batch_id', $batch->id)->exists()
+                || count($frozen) !== count($payload['entries']) || $frozen === []
+                || UsageRegistry::hash($frozen) !== $batch->frozen_hash
+                || 'sha256:'.hash('sha256', $batch->canonical_payload) !== $batch->payload_digest) {
+                throw new RuntimeException('NATIVE_C2_QUARANTINE_PROOF_INVALID');
+            }
+            $reserved = [];
+            $cutoff = false;
+            foreach ($frozen as $index => $entry) {
+                foreach ($payload['entries'][$index] as $field => $value) {
+                    if ((string) $entry[$field] !== (string) $value) {
+                        throw new RuntimeException('NATIVE_C2_QUARANTINE_SOURCE_INVALID');
+                    }
+                }
+                $periodId = (string) $entry['usage_period_id'];
+                $grant = DB::table('tx_auth_snapshot')->where('id', $entry['auth_snapshot_id'])->first();
+                if (!isset($totals[$periodId]) || (string) $entry['subscription_id'] !== $fixture['subscription_id']
+                    || (string) $entry['billed_up_bytes'] !== (string) $entry['raw_up_bytes']
+                    || (string) $entry['billed_down_bytes'] !== (string) $entry['raw_down_bytes']
+                    || !$grant || (string) $grant->usage_period_id !== $periodId
+                    || (string) $grant->subscription_id !== $fixture['subscription_id']
+                    || (string) $grant->terms_id !== (string) $entry['terms_id']
+                    || (int) $batch->started_at < (int) $grant->issued_at
+                    || (int) $batch->ended_at > (int) $grant->lease_expires_at) {
+                    throw new RuntimeException('NATIVE_C2_QUARANTINE_ORIGINAL_GRANT_INVALID');
+                }
+                $cutoff = $cutoff || ($grant->revoked_at !== null && (int) $batch->ended_at > (int) $grant->revoked_at);
+                $reserved[$periodId] = bcadd($reserved[$periodId] ?? '0',
+                    bcadd((string) $entry['billed_up_bytes'], (string) $entry['billed_down_bytes'], 0), 0);
+            }
+            $rows = DB::table('tx_native_usage_reservation')->where('batch_id', $batch->id)->get();
+            if (!$cutoff || $rows->count() !== count($reserved)) {
+                throw new RuntimeException('NATIVE_C2_QUARANTINE_RESERVATION_COUNT_INVALID');
+            }
+            foreach ($rows as $row) {
+                if (!isset($reserved[(string) $row->usage_period_id])
+                    || (string) $row->reserved_bytes !== $reserved[(string) $row->usage_period_id]) {
+                    throw new RuntimeException('NATIVE_C2_QUARANTINE_RESERVATION_INVALID');
+                }
+                $reservationCount++;
+            }
+        }
+        if ($state['reservation_count'] !== $reservationCount) {
+            throw new RuntimeException('NATIVE_C2_SETTLED_RESERVATION_NOT_RELEASED');
+        }
         foreach ($periods as $period) {
             $total = $totals[(string) $period->id];
             if ((string) $period->upload_bytes !== $total['up'] || (string) $period->download_bytes !== $total['down']
@@ -270,7 +332,34 @@ try {
                 throw new RuntimeException('NATIVE_C2_REPLAY_DESTINATION_INVALID');
             }
         }
-        echo "Every settled batch matches its original frozen ledger and Period totals; old-period replay verified.\n";
+        $captures = json_decode(file_get_contents($directory.'/rotation-quarantine.json'), true, 64, JSON_THROW_ON_ERROR);
+        if (!is_array($captures) || $captures === []) {
+            throw new RuntimeException('NATIVE_C2_ROTATION_CUTOFF_CAPTURE_MISSING');
+        }
+        foreach ($captures as $capture) {
+            $payload = $capture['submission']['payload'];
+            $receipt = $capture['receipt'] ?? [];
+            $batch = DB::table('tx_usage_batch')->where('node_id', $payload['node_id'])
+                ->where('source_epoch', $payload['source_epoch'])->where('batch_id', $payload['batch_id'])->first();
+            if (!$batch || $batch->status !== 'quarantined' || isset($capture['local_quarantine'])
+                || $batch->payload_digest !== $capture['submission']['payload_digest']
+                || UsageRegistry::hash(json_decode($batch->canonical_payload, true, 32, JSON_THROW_ON_ERROR))
+                    !== UsageRegistry::hash($payload)
+                || ($receipt['receipt_status'] ?? null) !== 'persisted'
+                || ($receipt['settlement_status'] ?? null) !== 'quarantined'
+                || ($receipt['reason_code'] ?? null) !== 'USAGE_NATIVE_AUTHORIZATION_CUTOFF'
+                || ($receipt['receipt_id'] ?? null) !== $batch->receipt_id
+                || ($receipt['payload_digest'] ?? null) !== $batch->payload_digest
+                || ($receipt['accepted_at'] ?? null) !== (int) $batch->accepted_at
+                || (string) $capture['session']['node_id'] !== (string) $batch->node_id
+                || (string) $capture['session']['source_epoch'] !== (string) $batch->source_epoch
+                || count($capture['session']['grants']) !== 1
+                || $capture['session']['grants'][0]['auth_snapshot_id'] !== $payload['entries'][0]['auth_snapshot_id']
+                || $capture['session']['grants'][0]['usage_period_id'] !== $payload['entries'][0]['usage_period_id']) {
+                throw new RuntimeException('NATIVE_C2_REAL_CUTOFF_RECEIPT_MISMATCH');
+            }
+        }
+        echo "Settled batches match original Period ledgers; cutoff captures retain real Core receipts and exact original-period reservations.\n";
         exit(0);
     }
     throw new RuntimeException('NATIVE_C2_FIXTURE_MODE_INVALID');

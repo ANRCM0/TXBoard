@@ -7,6 +7,7 @@ use App\Domains\CredentialProvider\ProviderError;
 use App\Domains\CredentialProvider\ProviderTransport;
 use App\Domains\Installation\InstallationAuthority;
 use App\Domains\Installation\NativeRuntimeAdmission;
+use App\Domains\UsageV2\NativeUsageReservations;
 use DomainException;
 use Illuminate\Support\Facades\DB;
 use Throwable;
@@ -816,7 +817,7 @@ final class NativeCredentialProviderService
         $this->require($period !== null && (int) $period->starts_at <= $now
             && ($period->ends_at === null || (int) $period->ends_at > $now)
             && ($period->next_reset_at === null || (int) $period->next_reset_at > $now)
-            && (int) $period->billable_bytes < (int) $period->quota_bytes, 'ENTITLEMENT_DENIED');
+            && (int) NativeUsageReservations::consumed($period) < (int) $period->quota_bytes, 'ENTITLEMENT_DENIED');
     }
 
     private function verifyRegistration(?object $row, string $installationId): void

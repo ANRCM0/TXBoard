@@ -56,6 +56,7 @@ final class NativeRuntimeReadiness
             'tx_native_runtime_activation' => ['installation_id', 'business_key', 'runtime_version', 'request_hash',
                 'configuration_snapshot', 'configuration_hash', 'authority_epoch', 'activated_at'],
             'tx_native_usage_grant' => ['grant_id', 'installation_id', 'binding_snapshot', 'binding_hash', 'authorization_digest'],
+            'tx_native_usage_reservation' => ['batch_id', 'usage_period_id', 'reserved_bytes', 'created_at'],
             'tx_native_runtime_outbox' => ['event_key', 'kind', 'user_id', 'subscription_id', 'subscription_version', 'status', 'attempts'],
             'tx_usage_batch' => ['source_id', 'node_id', 'source_epoch', 'batch_id', 'canonical_payload',
                 'payload_digest', 'frozen_entries', 'frozen_hash', 'status', 'fencing_token', 'processing_lease_until'],
@@ -73,6 +74,8 @@ final class NativeRuntimeReadiness
             && Schema::hasIndex('tx_usage_batch', ['node_id', 'source_epoch', 'batch_id'], 'unique'), 'SCHEMA_REQUIRED');
         foreach ([
             ['tx_native_usage_grant', ['grant_id'], 'tx_auth_snapshot', ['id']],
+            ['tx_native_usage_reservation', ['batch_id'], 'tx_usage_batch', ['id']],
+            ['tx_native_usage_reservation', ['usage_period_id'], 'tx_usage_period', ['id']],
             ['tx_native_runtime_outbox', ['subscription_id', 'user_id'], 'tx_subscription', ['id', 'user_id']],
             ['tx_access_subject', ['current_credential_operation_ref', 'id', 'subscription_id', 'provider_registration_id'],
                 'tx_credential_provider_operation', ['operation_ref', 'access_subject_id', 'subscription_id', 'provider_registration_id']],
@@ -89,7 +92,7 @@ final class NativeRuntimeReadiness
         }
         $configuration = $this->configuration($installationId);
         foreach (['tx_subscription', 'tx_access_subject', 'tx_order', 'tx_auth_snapshot', 'tx_node_usage_source',
-            'tx_usage_batch', 'tx_native_usage_grant', 'tx_credential_provider_operation'] as $table) {
+            'tx_usage_batch', 'tx_native_usage_grant', 'tx_native_usage_reservation', 'tx_credential_provider_operation'] as $table) {
             $this->require(!DB::table($table)->sharedLock()->exists(), 'FRESH_NATIVE_REQUIRED');
         }
         $registration = DB::table('tx_credential_provider_registration')

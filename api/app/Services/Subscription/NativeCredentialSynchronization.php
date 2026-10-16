@@ -4,6 +4,7 @@ namespace App\Services\Subscription;
 
 use App\Domains\Installation\InstallationAuthority;
 use App\Domains\Installation\NativeRuntimeAdmission;
+use App\Domains\UsageV2\NativeUsageReservations;
 use Illuminate\Support\Facades\DB;
 use Throwable;
 
@@ -16,8 +17,10 @@ final class NativeCredentialSynchronization
         $subscription = DB::table('tx_subscription')->where('id', $subscriptionId)->where('user_id', $userId)->lockForUpdate()->first();
         if (!$subscription) { throw new \DomainException('NATIVE_SYNCHRONIZATION_OWNER_INVALID'); }
         $user = DB::table('tx_user')->where('id', $userId)->first();
-        $exhausted = DB::table('tx_usage_period')->where('subscription_id', $subscriptionId)->where('status', 'open')
-            ->whereColumn('billable_bytes', '>=', 'quota_bytes')->exists();
+        $periods = DB::table('tx_usage_period')->where('subscription_id', $subscriptionId)->where('status', 'open')
+            ->orderBy('id')->lockForUpdate()->get();
+        $exhausted = $periods->contains(static fn (object $period): bool =>
+            (int) NativeUsageReservations::consumed($period) >= (int) $period->quota_bytes);
         $references = [];
         if ($subscription->status === 'active' && $user && !(bool) $user->banned && !$exhausted) {
             $references = app(NativeCredentialProviderService::class)->recordRotationLocked($userId, $subscriptionId);
@@ -85,7 +88,7 @@ final class NativeCredentialSynchronization
             ->join('tx_user as account', 'account.id', '=', 'subscription.user_id')
             ->join('tx_usage_period as period', 'period.subscription_id', '=', 'subscription.id')
             ->where('subscription.status', 'active')
-            ->where('account.banned', false)->where('period.status', 'open')->whereColumn('period.billable_bytes', '<', 'period.quota_bytes')
+            ->where('account.banned', false)->where('period.status', 'open')
             ->where('subscription.starts_at', '<=', time())
             ->where(fn ($query) => $query->whereNull('subscription.expires_at')->orWhere('subscription.expires_at', '>', time()))
             ->whereNotExists(fn ($query) => $query->selectRaw('1')->from('tx_native_runtime_outbox as work')
@@ -96,7 +99,9 @@ final class NativeCredentialSynchronization
                     ->orWhereExists(fn ($subquery) => $subquery->selectRaw('1')->from('tx_access_subject as subject')
                         ->whereColumn('subject.subscription_id', 'subscription.id')->where('subject.status', 'active')
                         ->where('subject.credential_expires_at', '<=', time() + 120));
-            })->orderBy('subscription.id')->limit($limit)->get(['subscription.id', 'subscription.user_id']);
+            });
+        NativeUsageReservations::constrainAvailable($candidates);
+        $candidates = $candidates->orderBy('subscription.id')->limit($limit)->get(['subscription.id', 'subscription.user_id']);
         foreach ($candidates as $candidate) {
             if (isset($results[(string) $candidate->id])) { continue; }
             DB::transaction(function () use ($candidate): void {
