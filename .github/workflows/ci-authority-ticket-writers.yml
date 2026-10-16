@@ -1,11 +1,7 @@
 name: authority-ticket-writers
 
 on:
-  push:
-    branches: [main]
-    paths: ['api/**', 'contracts/v2/authority-ticket-writers-v6.md', '.github/workflows/ci-authority-ticket-writers.yml']
-  pull_request:
-    paths: ['api/**', 'contracts/v2/authority-ticket-writers-v6.md', '.github/workflows/ci-authority-ticket-writers.yml']
+  # Historical migration/prototype evidence; outside the native development gate.
   workflow_dispatch:
 
 permissions:
@@ -62,4 +58,4 @@ jobs:
           touch .env
           mkdir -p storage/framework/{cache/data,sessions,views} storage/logs bootstrap/cache
       - name: Native support-ticket owners, compatibility, independent lock waits and crash recovery
-        run: php artisan test --filter='AuthorityTicketWritersTest|AuthorityTicketConcurrencyTest|AuthorityTicketEvidenceTest|AuthorityTicketCurrentRowTest'
+        run: php artisan test --configuration phpunit-historical.xml --filter='AuthorityTicketWritersTest|AuthorityTicketConcurrencyTest|AuthorityTicketEvidenceTest|AuthorityTicketCurrentRowTest'

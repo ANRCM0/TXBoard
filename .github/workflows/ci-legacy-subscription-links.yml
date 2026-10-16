@@ -1,11 +1,7 @@
 name: legacy-subscription-links-shadow
 
 on:
-  push:
-    branches: [main]
-    paths: ['api/**', 'contracts/v2/legacy-subscription-link-digest-v1.md', '.github/workflows/ci-legacy-subscription-links.yml']
-  pull_request:
-    paths: ['api/**', 'contracts/v2/legacy-subscription-link-digest-v1.md', '.github/workflows/ci-legacy-subscription-links.yml']
+  # Historical migration/prototype evidence; outside the native development gate.
   workflow_dispatch:
 
 permissions:
@@ -65,4 +61,4 @@ jobs:
           touch .env
           mkdir -p storage/framework/{cache/data,sessions,views} storage/logs bootstrap/cache
       - name: Native legacy URL compatibility and digest backfill with MySQL JSON
-        run: php artisan test --filter=LegacySubscriptionLinkTest
+        run: php artisan test --configuration phpunit-historical.xml --filter=LegacySubscriptionLinkTest

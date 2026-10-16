@@ -1,11 +1,7 @@
 name: node-live-protocol-core-usage
 
 on:
-  push:
-    branches: [main]
-    paths: ['api/**', 'node/internal/**', 'node/go.mod', 'node/go.sum', 'scripts/tests/node-live-protocol/**', 'contracts/v2/node-usage/**', '.github/workflows/ci-node-live-protocol.yml']
-  pull_request:
-    paths: ['api/**', 'node/internal/**', 'node/go.mod', 'node/go.sum', 'scripts/tests/node-live-protocol/**', 'contracts/v2/node-usage/**', '.github/workflows/ci-node-live-protocol.yml']
+  # Historical migration/prototype evidence; outside the native development gate.
   workflow_dispatch:
 
 permissions:

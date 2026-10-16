@@ -1,11 +1,7 @@
 name: internal-admin-consumer
 
 on:
-  push:
-    branches: [main]
-    paths: ['api/**', 'gateway/**', 'scripts/tests/internal-admin-consumer/**', 'scripts/tests/internal-readonly/**', 'contracts/v2/core-internal-api/**', '.github/workflows/ci-internal-admin-consumer.yml']
-  pull_request:
-    paths: ['api/**', 'gateway/**', 'scripts/tests/internal-admin-consumer/**', 'scripts/tests/internal-readonly/**', 'contracts/v2/core-internal-api/**', '.github/workflows/ci-internal-admin-consumer.yml']
+  # Historical migration/prototype evidence; outside the native development gate.
   workflow_dispatch:
 
 permissions:

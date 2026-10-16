@@ -1,11 +1,7 @@
 name: internal-admin-network-groups
 
 on:
-  push:
-    branches: [main]
-    paths: ['api/**', 'gateway/**', 'scripts/tests/internal-admin-network-groups/**', 'scripts/tests/internal-readonly/**', 'contracts/v2/core-internal-api/**', '.github/workflows/ci-internal-admin-network-groups.yml']
-  pull_request:
-    paths: ['api/**', 'gateway/**', 'scripts/tests/internal-admin-network-groups/**', 'scripts/tests/internal-readonly/**', 'contracts/v2/core-internal-api/**', '.github/workflows/ci-internal-admin-network-groups.yml']
+  # Historical migration/prototype evidence; outside the native development gate.
   workflow_dispatch:
 
 permissions:

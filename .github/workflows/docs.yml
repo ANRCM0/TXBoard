@@ -3,25 +3,21 @@ name: Documentation
 on:
   pull_request:
     paths:
-      - 'README*.md'
-      - 'CONTRIBUTING.md'
-      - 'AGENTS.md'
-      - 'docs/**'
-      - 'contracts/**'
-      - 'api/docs/**'
+      - '**/*.md'
       - 'scripts/check-docs.mjs'
-      - '.github/workflows/docs.yml'
+      - 'scripts/check-ci-policy.py'
+      - '.github/workflows/**'
+      - 'node/Makefile'
+      - 'api/phpunit*.xml'
   push:
     branches: [main]
     paths:
-      - 'README*.md'
-      - 'CONTRIBUTING.md'
-      - 'AGENTS.md'
-      - 'docs/**'
-      - 'contracts/**'
-      - 'api/docs/**'
+      - '**/*.md'
       - 'scripts/check-docs.mjs'
-      - '.github/workflows/docs.yml'
+      - 'scripts/check-ci-policy.py'
+      - '.github/workflows/**'
+      - 'node/Makefile'
+      - 'api/phpunit*.xml'
 
 permissions:
   contents: read
@@ -36,3 +32,10 @@ jobs:
           node-version: '22'
       - name: Validate local documentation links
         run: node scripts/check-docs.mjs
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install pinned workflow parser
+        run: python -m pip install PyYAML==6.0.3
+      - name: Validate native development CI policy
+        run: python scripts/check-ci-policy.py

@@ -1,11 +1,7 @@
 name: registration-shadow-transport
 
 on:
-  push:
-    branches: [main]
-    paths: ['api/**', 'gateway/**', 'scripts/tests/internal-readonly/**', '.github/workflows/ci-registration-shadow-transport.yml']
-  pull_request:
-    paths: ['api/**', 'gateway/**', 'scripts/tests/internal-readonly/**', '.github/workflows/ci-registration-shadow-transport.yml']
+  # Historical migration/prototype evidence; outside the native development gate.
   workflow_dispatch:
 
 permissions:

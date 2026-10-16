@@ -1,11 +1,7 @@
 name: provider-offline-proof
 
 on:
-  push:
-    branches: [main]
-    paths: ['api/**', 'node/internal/providerproof/**', 'node/go.mod', 'node/go.sum', 'contracts/v2/credential-provider/**', '.github/workflows/ci-provider-proof.yml']
-  pull_request:
-    paths: ['api/**', 'node/internal/providerproof/**', 'node/go.mod', 'node/go.sum', 'contracts/v2/credential-provider/**', '.github/workflows/ci-provider-proof.yml']
+  # Historical migration/prototype evidence; outside the native development gate.
   workflow_dispatch:
 
 permissions:
@@ -62,4 +58,4 @@ jobs:
         working-directory: api
         env:
           CORE_PROVIDER_GO_PROOF_INTEROP: '1'
-        run: php artisan test --filter=test_go_offline_signature_diagnostic_interoperates_with_actual_core_binding
+        run: php artisan test --configuration phpunit-historical.xml --filter=test_go_offline_signature_diagnostic_interoperates_with_actual_core_binding

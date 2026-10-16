@@ -6,6 +6,7 @@ on:
     tags: ['v*']
     paths:
       - 'gateway/**'
+      - '!gateway/**/*.md'
       - 'contracts/http/**'
       - 'contracts/v2/core-internal-api/**'
       - 'contracts/v2/secure-channel/**'
@@ -15,6 +16,7 @@ on:
   pull_request:
     paths:
       - 'gateway/**'
+      - '!gateway/**/*.md'
       - 'contracts/http/**'
       - 'contracts/v2/core-internal-api/**'
       - 'contracts/v2/secure-channel/**'

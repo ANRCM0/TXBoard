@@ -1,11 +1,7 @@
 name: authority-native-writers
 
 on:
-  push:
-    branches: [main]
-    paths: ['api/**', 'contracts/v2/authority-native-writers-v4.md', '.github/workflows/ci-authority-native-writers.yml']
-  pull_request:
-    paths: ['api/**', 'contracts/v2/authority-native-writers-v4.md', '.github/workflows/ci-authority-native-writers.yml']
+  # Historical migration/prototype evidence; outside the native development gate.
   workflow_dispatch:
 
 permissions:
@@ -61,4 +57,4 @@ jobs:
           touch .env
           mkdir -p storage/framework/{cache/data,sessions,views} storage/logs bootstrap/cache
       - name: Same authority inventory expansion, old receipt compatibility, native writers and crash recovery
-        run: php artisan test --filter=AuthorityNativeWritersTest
+        run: php artisan test --configuration phpunit-historical.xml --filter=AuthorityNativeWritersTest

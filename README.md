@@ -10,9 +10,9 @@
 
 ## 当前开发进度
 
-2026-10-14，Node/Machine真实控制与原生流量配额两个基础阶段已完成，包含持久接收、原批次去重、超额撤销、观察周期补报和进程崩溃恢复。sing-box/Xray双内核继续保留，具体协议与验收范围见[Node说明](node/README.md#协议接入与验收范围)。
+2026-10-16，C1 购买权益和 C2 原生订阅闭环已合入 main，包含真实 Provider 签发/轮换、直接渲染、有限授权、持久用量和原周期结算。C2 仅开放免费 Offer，有界支持 Linux sing-box VLESS/VMess direct TCP；其他已有内核与协议不代表完整 native 验收。
 
-接下来优先推进凭据生命周期与有限离线授权，之后依次推进独立安装器、必要Gateway/Internal API及生产安全/基础支付。新前端暂缓，优惠券等新增扩展后移。详见[开发进度](docs/architecture/v2/current-progress.md)和[基础优先级](docs/architecture/v2/development-priorities.md)。
+项目尚未接入正式测试，不再承担旧版本过渡兼容；以 native 为开发基线，接口、Schema 和真实消费者可以同步调整。CI 按当前组件收敛，旧迁移和影子矩阵仅保留手动入口。下一阶段为 C3 支付/资金/退款，其后是 C4 正式接口与凭据生命周期、C5 安装发布。新前端继续延期至 TX-F。详见[开发基线与 CI 分工](docs/development/native-development-baseline.md)、[当前进度](docs/architecture/v2/current-progress.md)和[交付计划](docs/architecture/v2/core-completion-plan.md)。
 
 ## 核心能力
 
@@ -33,7 +33,7 @@
            │ Module / Plugin / Theme        │
            │ Redis / WebSocket      │
            └───────────────────┬────────────────────────┘
-                               │ 原生 / 兼容协议
+                               │ 当前版本节点协议
                                ▼
                           TX-Node
                     Agent / Data Plane

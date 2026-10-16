@@ -1,12 +1,13 @@
 name: node-native-authority-control
 
+# Historical legacy-model control proof; run only when explicitly requested.
 on:
-  push:
-    branches: [main]
-    paths: ['api/**', 'node/internal/**', 'node/go.mod', 'node/go.sum', 'scripts/tests/node-native-authority/**', 'contracts/node-protocol/native-authority-denial-v1.md', '.github/workflows/ci-node-native-authority.yml']
-  pull_request:
-    paths: ['api/**', 'node/internal/**', 'node/go.mod', 'node/go.sum', 'scripts/tests/node-native-authority/**', 'contracts/node-protocol/native-authority-denial-v1.md', '.github/workflows/ci-node-native-authority.yml']
   workflow_dispatch:
+    inputs:
+      full_matrix:
+        description: Run the complete retained protocol/kernel matrix
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -22,7 +23,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        protocol: [vless, vmess]
+        protocol: ${{ fromJSON(github.event_name == 'workflow_dispatch' && inputs.full_matrix && '["vless","vmess"]' || '["vless"]') }}
     services:
       mysql:
         image: mysql:8.4

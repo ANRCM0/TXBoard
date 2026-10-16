@@ -1,26 +1,13 @@
 name: node-native-authorization-control
 
+# Historical legacy-model control proof; run only when explicitly requested.
 on:
-  push:
-    branches: [main, feat/installer-node-authorization-preflight]
-    paths:
-      - 'api/**'
-      - 'node/internal/**'
-      - 'node/go.mod'
-      - 'node/go.sum'
-      - 'scripts/tests/node-native-authorization/**'
-      - 'contracts/node-protocol/native-authorization-lease-v1.md'
-      - '.github/workflows/ci-node-native-authorization.yml'
-  pull_request:
-    paths:
-      - 'api/**'
-      - 'node/internal/**'
-      - 'node/go.mod'
-      - 'node/go.sum'
-      - 'scripts/tests/node-native-authorization/**'
-      - 'contracts/node-protocol/native-authorization-lease-v1.md'
-      - '.github/workflows/ci-node-native-authorization.yml'
   workflow_dispatch:
+    inputs:
+      full_matrix:
+        description: Run the complete retained protocol/kernel matrix
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -36,7 +23,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        kernel: [singbox, xray]
+        kernel: ${{ fromJSON(github.event_name == 'workflow_dispatch' && inputs.full_matrix && '["singbox","xray"]' || '["singbox"]') }}
     services:
       mysql:
         image: mysql:8.4
@@ -91,20 +78,6 @@ jobs:
         run: |
           touch api/.env
           mkdir -p api/storage/framework/{cache/data,sessions,views} api/storage/logs api/bootstrap/cache
-      - name: Signed snapshots, target scope and rollback regressions on SQLite memory
-        env:
-          DB_CONNECTION: sqlite
-          DB_DATABASE: ':memory:'
-          CACHE_DRIVER: array
-          SETTING_CACHE_STORE: array
-          NATIVE_TRAFFIC_RECEIPTS_ENABLED: 'false'
-        run: cd api && php vendor/bin/phpunit --filter NativeNodeAuthorizationSnapshotTest
-      - name: Durable Node authority and independent expiry regressions
-        working-directory: node
-        run: |
-          go test -race ./internal/authorization -count=1
-          go test -race ./internal/config ./internal/txboard -run 'Authorization|Authorized' -count=1
-          go test -race ./internal/service -run '^TestSignedAuthorization' -count=1
       - name: Validate transparent observation and exclusive fixture preflight
         run: python3 -B scripts/tests/node-native-authorization/test_runner.py
       - name: True signed Core Machine admission, finite offline expiry and original traffic replay

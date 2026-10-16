@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - "api/**"
+      - "!api/**/*.md"
       - "scripts/compare-critical-data-snapshots.mjs"
       - "scripts/tests/compare-critical-data-snapshots.test.mjs"
       - ".github/workflows/ci-mysql.yml"
@@ -12,9 +13,11 @@ on:
     branches: [main]
     paths:
       - "api/**"
+      - "!api/**/*.md"
       - "scripts/compare-critical-data-snapshots.mjs"
       - "scripts/tests/compare-critical-data-snapshots.test.mjs"
       - ".github/workflows/ci-mysql.yml"
+  workflow_dispatch:
 
 concurrency:
   group: api-mysql-ci-${{ github.ref }}
@@ -22,6 +25,7 @@ concurrency:
 
 jobs:
   mysql-regression:
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     services:
       mysql:
@@ -85,7 +89,7 @@ jobs:
             echo "MySQL core schema verified" . PHP_EOL;
           '
       - name: Verify P0 metadata normalization
-        run: php artisan test tests/Unit/Support/Audit/MySqlSchemaInventoryTest.php
+        run: php artisan test --configuration phpunit-historical.xml tests/Unit/Support/Audit/MySqlSchemaInventoryTest.php
       - name: Capture read-only MySQL schema and uniqueness evidence
         run: php scripts/p0-schema-inventory.php --output=artifacts/p0-schema.json
       - uses: actions/setup-node@v4
@@ -118,11 +122,11 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
       - name: P0-B synthetic MySQL HTTP-to-worker journey
-        run: php artisan test tests/Feature/Journey/CorePurchaseTrafficJourneyTest.php
+        run: php artisan test --configuration phpunit-historical.xml tests/Feature/Journey/CorePurchaseTrafficJourneyTest.php
       - name: P0-B synthetic MySQL read-path baseline
         env:
           P0_BASELINE_OUTPUT: ${{ github.workspace }}/api/artifacts/p0b-read-path-mysql.json
-        run: php artisan test tests/Feature/Performance/P0ReadPathBaselineTest.php
+        run: php artisan test --configuration phpunit-historical.xml tests/Feature/Performance/P0ReadPathBaselineTest.php
       - name: Preserve P0-B synthetic benchmark artifact
         if: always()
         uses: actions/upload-artifact@v4
@@ -132,17 +136,17 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
       - name: P2-E native user auth and token lifecycle on MySQL
-        run: php artisan test tests/Feature/Txapi/TxapiNativeAuthTest.php
+        run: php artisan test --configuration phpunit-historical.xml tests/Feature/Txapi/TxapiNativeAuthTest.php
       - name: P2-D native support ticket contract on MySQL
-        run: php artisan test tests/Feature/Txapi/TxapiTicketWorkflowTest.php
+        run: php artisan test --configuration phpunit-historical.xml tests/Feature/Txapi/TxapiTicketWorkflowTest.php
       - name: P2-C native account content contracts on MySQL
-        run: php artisan test tests/Feature/Txapi/TxapiAccountContentTest.php
+        run: php artisan test --configuration phpunit-historical.xml tests/Feature/Txapi/TxapiAccountContentTest.php
       - name: P2-A native plan catalog and renewal permissions on MySQL
-        run: php artisan test tests/Feature/Txapi/TxapiPlanCatalogTest.php
+        run: php artisan test --configuration phpunit-historical.xml tests/Feature/Txapi/TxapiPlanCatalogTest.php
       - name: P1-A native TXAPI read/auth contract on MySQL
-        run: php artisan test tests/Feature/Txapi/TxapiCoreContractTest.php
+        run: php artisan test --configuration phpunit-historical.xml tests/Feature/Txapi/TxapiCoreContractTest.php
       - name: P3 financial invariant audit regression
-        run: php artisan test tests/Feature/Billing/FinancialInvariantAuditTest.php
+        run: php artisan test --configuration phpunit-historical.xml tests/Feature/Billing/FinancialInvariantAuditTest.php
       - name: Capture P3 read-only billing invariant artifact
         run: php scripts/p3-billing-audit.php --output=artifacts/p3-billing-audit.json
       - name: Upload P3 billing invariant artifact
@@ -154,33 +158,33 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
       - name: P3-A3 shared checkout and native checkout boundary on MySQL
-        run: php artisan test tests/Feature/Txapi/TxapiCheckoutTest.php
+        run: php artisan test --configuration phpunit-historical.xml tests/Feature/Txapi/TxapiCheckoutTest.php
       - name: P3-B dual-webhook signed notification and replay on MySQL
-        run: php artisan test tests/Feature/Payment/PaymentWebhookTest.php
+        run: php artisan test --configuration phpunit-historical.xml tests/Feature/Payment/PaymentWebhookTest.php
       - name: P3-A2 native billing contracts and reconciliation
-        run: php artisan test tests/Feature/Txapi/TxapiBillingTest.php
+        run: php artisan test --configuration phpunit-historical.xml tests/Feature/Txapi/TxapiBillingTest.php
       - name: GW-303 idempotency contract and crash recovery on MySQL
-        run: php artisan test tests/Feature/Txapi/TxapiOrderIdempotencyTest.php
+        run: php artisan test --configuration phpunit-historical.xml tests/Feature/Txapi/TxapiOrderIdempotencyTest.php
       - name: C1 purchased terms validation and fulfillment on MySQL
         run: >-
-          php artisan test
+          php artisan test --configuration phpunit-historical.xml
           tests/Unit/Domains/Billing/OrderPurchaseTermsSnapshotTest.php
           tests/Unit/Domains/Billing/PurchasedOrderGrantTest.php
           tests/Feature/Billing/PurchasedTermsFulfillmentTest.php
       - name: GW-303 real MySQL 100-concurrent-request idempotency stress
-        run: php artisan test tests/Feature/Billing/OrderIdempotencyMysqlConcurrencyTest.php
+        run: php artisan test --configuration phpunit-historical.xml tests/Feature/Billing/OrderIdempotencyMysqlConcurrencyTest.php
       - name: C2 installation admission and native catalog preparation on MySQL
-        run: php artisan test tests/Feature/Installation/InstallationRuntimeTest.php
+        run: php artisan test --configuration phpunit-historical.xml tests/Feature/Installation/InstallationRuntimeTest.php
       - name: P3-A monetary state transitions and coupon recovery on MySQL
-        run: php artisan test tests/Unit/Services/OrderServiceConcurrencyTest.php
+        run: php artisan test --configuration phpunit-historical.xml tests/Unit/Services/OrderServiceConcurrencyTest.php
       - name: P4-D native WS frames, scopes and cross-transport ledger
-        run: php artisan test tests/Feature/Server/TxNodeNativeWebSocketTest.php
+        run: php artisan test --configuration phpunit-historical.xml tests/Feature/Server/TxNodeNativeWebSocketTest.php
       - name: P4 native node authentication and protocol contract on MySQL
-        run: php artisan test tests/Feature/Server/TxNodeNativeProtocolTest.php
+        run: php artisan test --configuration phpunit-historical.xml tests/Feature/Server/TxNodeNativeProtocolTest.php
       - name: P4 optimized traffic batch query budget and settlement correctness
-        run: php artisan test tests/Feature/Server/TrafficBatchSettlementTest.php
+        run: php artisan test --configuration phpunit-historical.xml tests/Feature/Server/TrafficBatchSettlementTest.php
       - name: MySQL order recovery regression
-        run: php artisan test tests/Feature/Order/CheckOrderRecoveryTest.php
+        run: php artisan test --configuration phpunit-historical.xml tests/Feature/Order/CheckOrderRecoveryTest.php
 
   installation-bootstrap:
     runs-on: ubuntu-latest
@@ -220,7 +224,7 @@ jobs:
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
-          extensions: mbstring, pdo_mysql
+          extensions: mbstring, pdo_mysql, pdo_sqlite, curl, openssl, sodium, redis, bcmath, pcntl, posix
           coverage: none
       - name: Install locked dependencies
         run: composer install --no-interaction --prefer-dist
@@ -271,7 +275,7 @@ jobs:
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
-          extensions: mbstring, pdo_mysql, bcmath, pcntl, posix
+          extensions: mbstring, pdo_mysql, pdo_sqlite, curl, openssl, sodium, redis, bcmath, pcntl, posix
           coverage: none
       - name: Install locked dependencies
         run: composer install --no-interaction --prefer-dist
@@ -279,6 +283,8 @@ jobs:
         run: |
           cp .env.example .env
           php artisan key:generate
+      - name: Apply native production schema
+        run: php artisan migrate --force --no-interaction
       - name: Native domain transactions and application adapters on MySQL 8.4
         run: >-
           php artisan test
@@ -290,8 +296,16 @@ jobs:
           tests/Feature/UsageV2/NativeSubscriptionUsageTest.php
           tests/Feature/Txapi/TxapiNativeSubscriptionOperationsTest.php
           tests/Feature/Txapi/TxapiPublishedOrderAdapterTest.php
+          tests/Feature/Subscription/NativeCredentialProviderTest.php
+          tests/Feature/Subscription/NativeProviderNodeAuthorizationTest.php
+          tests/Feature/Subscription/NativeSubscriptionDeliveryTest.php
+          tests/Feature/Subscription/NativeRuntimeCommerceTest.php
+          tests/Feature/Subscription/NativeIdentityAndCatalogTest.php
+          tests/Feature/Installation/NativeRuntimeReadinessTest.php
+          tests/Feature/UsageV2/NativeRuntimeUsageTest.php
 
   isolated-money-shadow:
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -347,8 +361,8 @@ jobs:
           touch .env
           mkdir -p storage/framework/{cache/data,sessions,views} storage/logs bootstrap/cache
       - name: Captured money projection, concurrent sessions and crash recovery on MySQL 8.4
-        run: php artisan test --filter=LegacyMoneyShadowTest
+        run: php artisan test --configuration phpunit-historical.xml --filter=LegacyMoneyShadowTest
       - name: Captured Plan bulk propagation, atomic set and crash recovery on MySQL 8.4
-        run: php artisan test --filter=LegacyPlanPropagationCaptureTest
+        run: php artisan test --configuration phpunit-historical.xml --filter=LegacyPlanPropagationCaptureTest
       - name: Captured Admin bulk ban and session rollback on MySQL 8.4
-        run: php artisan test --filter=LegacyBulkBanCaptureTest
+        run: php artisan test --configuration phpunit-historical.xml --filter=LegacyBulkBanCaptureTest
