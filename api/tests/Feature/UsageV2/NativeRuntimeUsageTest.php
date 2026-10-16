@@ -7,7 +7,7 @@ use App\Domains\UsageV2\NativeUsageReservations;
 use App\Domains\UsageV2\UsagePayload;
 use App\Domains\UsageV2\UsagePolicy;
 use App\Domains\UsageV2\UsageReceipts;
-use App\Domains\UsageV2\UsageRegistry;
+use App\Domains\UsageV2\UsageEvidence;
 use App\Domains\UsageV2\UsageSettlement;
 use App\Domains\Subscription\Services\NativeCredentialSynchronization;
 use App\Domains\Subscription\Services\NativeCredentialProviderService;
@@ -70,11 +70,11 @@ final class NativeRuntimeUsageTest extends NativeRuntimeTestCase
         unset($entry);
         DB::table('tx_usage_batch')->where('id', $batch->id)->update([
             'frozen_entries' => json_encode($entries, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES),
-            'frozen_hash' => UsageRegistry::hash($entries),
+            'frozen_hash' => UsageEvidence::hash($entries),
         ]);
         $damaged = DB::table('tx_usage_batch')->where('id', $batch->id)->first();
         $this->assertSame($damaged->frozen_hash,
-            UsageRegistry::hash(json_decode($damaged->frozen_entries, true, 32, JSON_THROW_ON_ERROR)));
+            UsageEvidence::hash(json_decode($damaged->frozen_entries, true, 32, JSON_THROW_ON_ERROR)));
         $period = DB::table('tx_usage_period')->where('id', $subscription['usage_period_id'])->first();
 
         $this->assertSame(['quarantined'], array_values(app(UsageSettlement::class)->scan(10, $snapshot['issued_at'] + 3)));
@@ -333,7 +333,7 @@ final class NativeRuntimeUsageTest extends NativeRuntimeTestCase
             'denominator' => (string) $tariff->denominator, 'effective_from' => (int) $tariff->effective_from,
             'effective_until' => (int) $tariff->effective_until, 'rounding_revision' => $tariff->rounding_revision], $changes);
         DB::table('tx_tariff_revision')->where('id', $tariff->id)
-            ->update($changed + ['content_hash' => UsageRegistry::hash($changed)]);
+            ->update($changed + ['content_hash' => UsageEvidence::hash($changed)]);
         $payload = $this->payload($snapshot, overrides: ['ended_at' => $cutoff + 1]);
         $this->assertRejectedWithoutUsageWrites($payload, $cutoff + 2, $expected);
     }
@@ -503,7 +503,7 @@ final class NativeRuntimeUsageTest extends NativeRuntimeTestCase
             'effective_from' => (int) $tariff->effective_from, 'effective_until' => (int) $tariff->effective_until,
             'rounding_revision' => $tariff->rounding_revision];
         DB::table('tx_tariff_revision')->where('id', $tariff->id)
-            ->update($tariffData + ['content_hash' => UsageRegistry::hash($tariffData)]);
+            ->update($tariffData + ['content_hash' => UsageEvidence::hash($tariffData)]);
         foreach ([0, 1] as $number) {
             $payload = $this->payload($snapshot, '1000000000000000', '0', [
                 'batch_id' => 'runtime-overflow-'.$number, 'started_at' => $cutoff + $number, 'ended_at' => $cutoff + $number + 1]);

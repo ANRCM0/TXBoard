@@ -96,8 +96,16 @@ final class ThemeV2RuntimeTest extends TestCase
 
         $themes->updateConfig(self::NAME, ['theme_color' => 'green', 'smtp_password' => 'secret']);
         $this->assertSame(['theme_color' => 'green'], $themes->getPublicConfig(self::NAME));
+        try {
+            $themes->delete(self::NAME);
+            $this->fail('Current theme must not be deleted');
+        } catch (\InvalidArgumentException $e) {
+            $this->assertSame('Current theme cannot be deleted', $e->getMessage());
+        }
         $themes->switch('TXBoard');
         $this->assertSame('TXBoard', $themes->getActiveTheme());
+        $this->assertDirectoryDoesNotExist(public_path('theme/'.self::NAME));
+        $this->assertTrue($themes->exists(self::NAME));
     }
 
     public function test_active_upgrade_then_rollback_preserves_prior_bundle(): void

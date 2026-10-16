@@ -43,7 +43,6 @@ class Kernel extends HttpKernel
         'txapi.request-id' => \App\Http\Middleware\TxapiRequestId::class,
         'admin' => \App\Http\Middleware\Admin::class,
         'admin.path' => \App\Http\Middleware\AdminPath::class,
-        'client' => \App\Http\Middleware\Client::class,
         'staff' => \App\Http\Middleware\Staff::class,
         'log' => \App\Http\Middleware\RequestLog::class,
         'abilities' => \Laravel\Sanctum\Http\Middleware\CheckAbilities::class,

@@ -14,7 +14,6 @@ const SafeSettingsPage = lazy(() => import('./pages/config/SafeSettingsPage').th
 const SubscribeSettingsPage = lazy(() => import('./pages/config/SubscribeSettingsPage').then(module => ({ default: module.SubscribeSettingsPage })))
 const InviteSettingsPage = lazy(() => import('./pages/config/InviteSettingsPage').then(module => ({ default: module.InviteSettingsPage })))
 const ServerSettingsPage = lazy(() => import('./pages/config/ServerSettingsPage').then(module => ({ default: module.ServerSettingsPage })))
-const SubscribeTemplatePage = lazy(() => import('./pages/config/SubscribeTemplatePage').then(module => ({ default: module.SubscribeTemplatePage })))
 const EmailSettingsPage = lazy(() => import('./pages/config/EmailSettingsPage').then(module => ({ default: module.EmailSettingsPage })))
 const TelegramSettingsPage = lazy(() => import('./pages/config/TelegramSettingsPage').then(module => ({ default: module.TelegramSettingsPage })))
 const ThemeSettingsPage = lazy(() => import('./pages/config/ThemeSettingsPage').then(module => ({ default: module.ThemeSettingsPage })))
@@ -80,7 +79,6 @@ export const router = createAppRouter([
           { path: 'config/notice', element: <NoticeSettingsPage /> },
           { path: 'config/knowledge', element: <KnowledgeSettingsPage /> },
           { path: 'config/plugin', element: <PluginsPage /> },
-          { path: 'config/subscribe-template', element: <SubscribeTemplatePage /> },
           { path: 'server/manage', element: <NodesPage /> },
           { path: 'server/node/:nodeId', element: <NodeDetailPage /> },
           { path: 'server/machine', element: <MachinesPage /> },

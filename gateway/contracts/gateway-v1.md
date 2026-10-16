@@ -23,8 +23,8 @@
 | GET `/theme/config` | 公开主题配置 | `/txapi/public/site-config` |
 | GET `/plans` | 公开套餐列表；金额遵循 Laravel 分单位 | `/txapi/plans` |
 | POST `/auth/login` | 邮箱/密码、可选 CAPTCHA；兼容普通登录 | `/txapi/auth/login` |
-| GET `/user/profile` | 用户资料 | `/txapi/me` |
-| GET `/user/subscription/summary` | 订阅使用概览，不返回 token/uuid/subscribe_url | `/txapi/me/subscription` |
+| GET `/user/profile` | 当前账户身份 `{id,email,telegram_id}` | `/txapi/me` |
+| GET `/user/subscription/summary` | `core-entitlement/v1` 当前权益摘要，十进制字符串保留精度，无订阅凭据 | `/txapi/me/subscription` |
 | GET `/dashboard/stats` | `{unpaidOrders,openTickets,invitedUsers}` | `/txapi/me/dashboard-stats` |
 | GET `/orders` | 当前用户订单数组；可选 `status=0..4,current=1..9999,page_size=1..100`，默认第 1 页 100 条 | `/txapi/orders?page=&per_page=&status=` |
 | GET `/orders/page` | 同样查询；返回 `{items,current,pageSize,total,lastPage}`，能力 `orders.page` | `/txapi/orders?page=&per_page=&status=` |
@@ -77,3 +77,16 @@ Native 金额已是分，不再次乘 100；ISO 时间转现有 Unix 秒；套�
 - 当前隔离 Core fixtures 与 HTTP 正负例已验证；OpenAPI 3.1、完整安全审查、目标 BFF、正式部署与 SDK 发布仍待完成。
 
 [当前代码/CI 状态](../docs/development-status.md) · [HPKE/Redis 设计](../docs/app-crypto-preview.md) · [主题 SDK](../packages/theme-sdk/README.md)。
+
+## Current entitlement summary
+
+`user.subscription()` returns the current `core-entitlement/v1` discriminated union.
+Denied summaries contain only `schema`, `authorized: false` and the Core `reason`.
+Authorized summaries contain `authorized: true`, `reason: ENTITLEMENT_GRANTED`,
+`subscription_id`, `plan_id`, `expires_at`, `next_reset_at`, `quota_bytes`,
+`consumed_bytes`, `remaining_bytes`, `upload_bytes`, `download_bytes`,
+`speed_limit_mbps` and `device_limit`. Identifiers, byte counts, limits and Unix
+seconds remain decimal strings; nullable timestamps and limits remain null.
+No legacy plan-name/reset-day projection or reusable subscription URL is emitted.
+Profile reads expose only the common account identity and do not derive balances
+or credentials from entitlement. Core remains the authority for financial reads.

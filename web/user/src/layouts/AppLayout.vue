@@ -32,7 +32,6 @@ const navGroups=computed<NavGroup[]>(()=>{
 
   const subscription:NavItem[]=[
     {to:'/plan',label:t('nav.plan'),icon:'◇'},
-    {to:'/node',label:t('nav.node'),icon:'◎'},
   ]
 
   const account:NavItem[]=[{to:'/profile',label:t('nav.profile'),icon:'○'}]

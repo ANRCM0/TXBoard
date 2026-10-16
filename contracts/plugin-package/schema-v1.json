@@ -1,0 +1,108 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:txboard:plugin-package:v1",
+  "type": "object",
+  "required": [
+    "name",
+    "code",
+    "version",
+    "description",
+    "author",
+    "package"
+  ],
+  "properties": {
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "code": {
+      "type": "string",
+      "pattern": "^[a-z0-9_]+$"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1
+    },
+    "author": {
+      "type": "string",
+      "minLength": 1
+    },
+    "package": {
+      "type": "object",
+      "required": [
+        "schema"
+      ],
+      "properties": {
+        "schema": {
+          "const": 1
+        },
+        "admin": {
+          "type": "object",
+          "properties": {
+            "format": {
+              "const": "static-app"
+            },
+            "dist": {
+              "const": "admin/dist"
+            }
+          },
+          "required": [
+            "format",
+            "dist"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    "admin_menus": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,64}$"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "path": {
+            "type": "string",
+            "maxLength": 240,
+            "pattern": "^[A-Za-z0-9_-]+(/[A-Za-z0-9_-]+)*$"
+          },
+          "app": {
+            "type": "string",
+            "pattern": "^admin/[A-Za-z0-9._/-]+\\.[hH][tT][mM][lL]([?#].*)?$"
+          },
+          "icon": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "order": {
+            "type": "integer",
+            "minimum": -100000,
+            "maximum": 100000
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "path",
+          "app"
+        ],
+        "additionalProperties": false
+      }
+    }
+  }
+}

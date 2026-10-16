@@ -9,7 +9,7 @@ use App\Domains\Subscription\CatalogValue;
 use App\Models\Order;
 use App\Models\OrderPurchaseTerms;
 use App\Models\Plan;
-use App\Services\OrderService;
+use App\Domains\Billing\NativeOrderLifecycle;
 use App\Services\Plugin\HookManager;
 use App\Jobs\OrderHandleJob;
 use App\Domains\Subscription\Services\PlanPublicationService;
@@ -114,9 +114,9 @@ class PublishedOrderPurchaseTest extends NativeSubscriptionTestCase
         $first = $this->service()->create($this->user()->id, $offer, 'first');
         $other = $this->user();
         $this->reject(fn () => $this->service()->create($other->id, $offer, 'second'), 'PUBLISHED_ORDER_CAPACITY_EXHAUSTED');
-        $this->assertTrue((new OrderService($first))->cancel());
-        $this->assertFalse((new OrderService($first))->cancel());
-        $this->assertFalse((new OrderService($first))->paid('late-callback'));
+        $this->assertTrue((new NativeOrderLifecycle($first))->cancel());
+        $this->assertFalse((new NativeOrderLifecycle($first))->cancel());
+        $this->assertFalse((new NativeOrderLifecycle($first))->paid('late-callback'));
         $second = $this->service()->create($other->id, $offer, 'second');
         $this->assertNotSame($first->id, $second->id);
         $this->assertSame(2, OrderPurchaseTerms::query()->count());
@@ -360,7 +360,7 @@ class PublishedOrderPurchaseTest extends NativeSubscriptionTestCase
         $this->assertSame(1, DB::table('tx_subscription')->count());
         $this->assertSame(1, DB::table('tx_subscription_operation')->count());
         $this->assertSame($before, $user->fresh()->getAttributes());
-        $this->assertTrue((new OrderService($order))->paid($order->trade_no));
+        $this->assertTrue((new NativeOrderLifecycle($order))->paid($order->trade_no));
         Bus::assertDispatchedTimes(OrderHandleJob::class, 1);
     }
 
@@ -370,13 +370,13 @@ class PublishedOrderPurchaseTest extends NativeSubscriptionTestCase
         $order = $this->service()->create($user->id, $this->publishedOffer($this->plan()), 'verified-payment');
         DB::table('tx_order')->where('id', $order->id)->update(['payment_id' => 11, 'handling_amount' => 100]);
         $before = $user->fresh()->getAttributes();
-        $this->assertFalse((new OrderService($order))->paid('provider-receipt', 12, 1334));
-        $this->assertFalse((new OrderService($order))->paid('provider-receipt', 11, 1234));
+        $this->assertFalse((new NativeOrderLifecycle($order))->paid('provider-receipt', 12, 1334));
+        $this->assertFalse((new NativeOrderLifecycle($order))->paid('provider-receipt', 11, 1234));
         $this->assertSame(Order::STATUS_PENDING, (int) $order->fresh()->status);
-        $this->assertTrue((new OrderService($order))->paid('provider-receipt', 11, 1334));
-        $this->assertTrue((new OrderService($order))->paid('provider-receipt', 11, 1334));
-        $this->assertFalse((new OrderService($order))->paid('different-receipt', 11, 1334));
-        $this->assertFalse((new OrderService($order))->cancel());
+        $this->assertTrue((new NativeOrderLifecycle($order))->paid('provider-receipt', 11, 1334));
+        $this->assertTrue((new NativeOrderLifecycle($order))->paid('provider-receipt', 11, 1334));
+        $this->assertFalse((new NativeOrderLifecycle($order))->paid('different-receipt', 11, 1334));
+        $this->assertFalse((new NativeOrderLifecycle($order))->cancel());
         Bus::assertDispatchedTimes(OrderHandleJob::class, 1);
         $this->assertSame(Order::STATUS_PROCESSING, (int) $order->fresh()->status);
         $this->assertSame($before, $user->fresh()->getAttributes());
@@ -393,12 +393,35 @@ class PublishedOrderPurchaseTest extends NativeSubscriptionTestCase
             'status' => Order::STATUS_PROCESSING, 'paid_at' => time(),
         ]);
 
-        (new OrderService($stale))->open();
+        (new NativeOrderLifecycle($stale))->open();
 
         $this->assertSame(Order::STATUS_COMPLETED, (int) $order->fresh()->status);
         $this->assertSame(1, DB::table('tx_subscription')->count());
         $this->assertSame(1, DB::table('tx_subscription_operation')->count());
         $this->assertSame($before, $user->fresh()->getAttributes());
+    }
+
+    public function test_legacy_lifecycle_cannot_forward_a_native_order_with_a_stale_model_marker(): void
+    {
+        $user = $this->user(['balance' => 5000, 'transfer_enable' => 999, 'u' => 40]);
+        $order = $this->service()->create($user->id, $this->publishedOffer($this->plan()), 'legacy-owner-refused');
+        $stale = clone $order;
+        $stale->purchase_terms_version = null;
+        $before = $user->fresh()->getAttributes();
+        app(\App\Domains\Installation\InstallationAuthority::class)
+            ->shouldReceive('assertLegacyWriter')->andReturnNull();
+
+        $legacy = new \App\Services\OrderService($stale);
+        $this->assertFalse($legacy->paid('legacy-callback'));
+        $this->assertFalse($legacy->cancel());
+        $this->assertSame(Order::STATUS_PENDING, (int) $order->fresh()->status);
+        DB::table('tx_order')->where('id', $order->id)->update(['status' => Order::STATUS_PROCESSING]);
+        $this->reject(fn () => $legacy->open(), 'Native order requires native fulfillment admission');
+
+        $this->assertSame(Order::STATUS_PROCESSING, (int) $order->fresh()->status);
+        $this->assertSame($before, $user->fresh()->getAttributes());
+        $this->assertSame(0, DB::table('tx_subscription')->count());
+        Bus::assertNotDispatched(OrderHandleJob::class);
     }
 
     public function test_native_cancellation_avoids_legacy_hooks_wallets_and_coupon_writers(): void
@@ -410,7 +433,7 @@ class PublishedOrderPurchaseTest extends NativeSubscriptionTestCase
             HookManager::register($hook, static function (): void { throw new \RuntimeException('Legacy cancellation hook reached'); });
         }
         try {
-            $this->assertTrue((new OrderService($order))->cancel());
+            $this->assertTrue((new NativeOrderLifecycle($order))->cancel());
         } finally {
             HookManager::reset();
         }
@@ -426,13 +449,13 @@ class PublishedOrderPurchaseTest extends NativeSubscriptionTestCase
         $order = $this->service()->create($user->id,
             $this->publishedOffer($this->plan(['prices' => ['monthly' => '0']])), 'refused');
         $this->denyNativeAdmission = true;
-        $this->assertFalse((new OrderService($order))->paid('receipt'));
-        $this->assertFalse((new OrderService($order))->cancel());
+        $this->assertFalse((new NativeOrderLifecycle($order))->paid('receipt'));
+        $this->assertFalse((new NativeOrderLifecycle($order))->cancel());
         $this->reject(fn () => app(OrderCheckout::class)->start($user->id, $order->trade_no), 'INSTALLATION_NATIVE_NOT_READY');
         $this->denyNativeAdmission = false;
         DB::table('tx_order')->where('id', $order->id)->update(['surplus_credit' => 50]);
-        $this->assertFalse((new OrderService($order))->paid('receipt'));
-        $this->assertFalse((new OrderService($order))->cancel());
+        $this->assertFalse((new NativeOrderLifecycle($order))->paid('receipt'));
+        $this->assertFalse((new NativeOrderLifecycle($order))->cancel());
         $this->reject(fn () => app(OrderCheckout::class)->start($user->id, $order->trade_no), 'ORDER_PURCHASE_TERMS_INVALID');
         $this->assertSame(Order::STATUS_PENDING, (int) $order->fresh()->status);
         $this->assertSame(0, DB::table('tx_subscription')->count());

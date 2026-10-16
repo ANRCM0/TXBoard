@@ -42,7 +42,6 @@ class TxboardNamespaceTest extends TestCase
         $this->assertTrue($themes->exists('TXBoard'));
         $this->assertFalse($themes->exists('Xboard'));
 
-        $path = str_replace('\\', '/', (string) $themes->getThemePath('TXBoard'));
-        $this->assertStringEndsWith('/theme/TXBoard', $path);
+        $this->assertSame('builtin-spa', $themes->getList()['TXBoard']['runtime']);
     }
 }

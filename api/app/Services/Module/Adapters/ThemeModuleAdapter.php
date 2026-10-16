@@ -11,7 +11,6 @@ use App\Services\Module\ModuleHealth;
 use App\Services\Module\ModuleId;
 use App\Services\Module\ModuleManifest;
 use App\Services\Module\ModuleSource;
-use App\Services\Theme\ThemePackageManifest;
 use App\Services\ThemeService;
 use Throwable;
 
@@ -39,37 +38,16 @@ final class ThemeModuleAdapter implements ModuleAdapter
             }
 
             $moduleId = ModuleId::theme((string) $key);
-            try {
-                $package = ThemePackageManifest::fromArray($config);
-            } catch (Throwable) {
-                $errors[] = new ModuleDiscoveryError(
-                    adapter: $this->name(),
-                    moduleId: $moduleId,
-                    message: 'Theme Package metadata is invalid',
-                );
-                continue;
-            }
-
-            $displayName = $package->name;
-            $version = $package->version;
-
             $module = [
                 'id' => $moduleId,
-                'name' => $displayName !== '' ? $displayName : (string) $key,
-                'version' => $version,
+                'name' => (string) ($config['title'] ?? $config['name'] ?? $key),
+                'version' => (string) ($config['version'] ?? ''),
                 'type' => 'theme',
             ];
-
-            $description = $package->description
-                ?? trim((string) ($config['description'] ?? ''));
-            if ($description !== '') {
-                $module['description'] = $description;
-            }
-
-            $author = $package->author
-                ?? trim((string) ($config['author'] ?? ''));
-            if ($author !== '') {
-                $module['author'] = $author;
+            foreach (['description', 'author'] as $field) {
+                if (is_string($config[$field] ?? null) && $config[$field] !== '') {
+                    $module[$field] = $config[$field];
+                }
             }
 
             try {
@@ -77,7 +55,7 @@ final class ThemeModuleAdapter implements ModuleAdapter
                     'schema' => ModuleManifest::SCHEMA_VERSION,
                     'module' => $module,
                     'compatibility' => [
-                        'txboard' => $package->txboardCompatibility,
+                        'txboard' => $config['compatibility']['txboard'] ?? '*',
                     ],
                     'capabilities' => [ModuleCapability::THEME],
                 ]);

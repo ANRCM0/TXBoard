@@ -202,14 +202,6 @@ abstract class AbstractPlugin
     }
 
     /**
-     * 获取插件资源路径
-     */
-    protected function getAssetsPath(): string
-    {
-        return $this->basePath . '/resources/assets';
-    }
-
-    /**
      * Register plugin scheduled tasks. Plugins can override this method.
      *
      * @param \Illuminate\Console\Scheduling\Schedule $schedule

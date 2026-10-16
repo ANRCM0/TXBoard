@@ -58,3 +58,9 @@ const registered = await api.auth.register({
 [HTTP v1 契约](../../contracts/gateway-v1.md) · [Docker 运行方式](../../docs/docker-deployment.md) · [当前状态](../../docs/development-status.md)。
 
 2026-10-16 已移除只服务隔离 Internal 原型的密码恢复、会话列表/撤销/登出和订单取消方法。当前 SDK 只暴露 Gateway 实际提供的操作；账户令牌的保存和清除仍由应用负责。
+
+`user.profile()` returns only `{id,email,telegram_id}`. `user.subscription()`
+returns the current `core-entitlement/v1` union; check `authorized` before reading
+`subscription_id`, `remaining_bytes` or `expires_at`. Byte counts, identifiers,
+limits and Unix seconds are decimal strings and remain exact across transport.
+A denied summary exposes the Core reason without any credential or reusable URL.

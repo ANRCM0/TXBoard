@@ -1,5 +1,7 @@
 # Live Service revocation and recovery v1
 
+> 已退役（2026-10-16）：本文保留隔离原型的历史设计和当时验收记录。对应开关、Registry/CLI、运行器和专属 CI 已删除；正文 Current/isolated 状态不描述现行运行时。当前用量边界见 [当前 native 契约](README.md)。
+
 Status: B3.9 current candidate, isolated-copy only. This slice keeps the bounded
 TCP, finite grant, immutable receipt, no-fallback and production gates unchanged.
 

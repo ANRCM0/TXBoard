@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { getOrders, getPlans } from '../../api/finance'
 import { getTickets } from '../../api/ticket'
 import { getUserTrafficResetHistory, resetUserTraffic } from '../../api/traffic-reset'
-import { getUserDetail, getUserSubscriptionLink, resetUserSecret } from '../../api/user-admin'
+import { getUserDetail } from '../../api/user-admin'
 import { requestConfirm } from '../../components/ui/ConfirmDialog'
 import { UserDetailPage } from './UserDetailPage'
 
@@ -14,7 +14,7 @@ vi.mock('../../api/finance', () => ({getOrders:vi.fn(), getPlans:vi.fn()}))
 vi.mock('../../api/ticket', () => ({getTickets:vi.fn()}))
 vi.mock('../../api/traffic-reset', () => ({getUserTrafficResetHistory:vi.fn(), resetUserTraffic:vi.fn()}))
 vi.mock('../../api/user-admin', () => ({
-  getUserDetail:vi.fn(), getUserSubscriptionLink:vi.fn(), resetUserSecret:vi.fn(),
+  getUserDetail:vi.fn(),
 }))
 vi.mock('../../components/users/UserEditorModal', () => ({UserEditorModal:()=>null}))
 vi.mock('../../components/finance/OrderDetailModal', () => ({
@@ -66,8 +66,6 @@ beforeEach(()=>{
   vi.mocked(getUserTrafficResetHistory).mockResolvedValue({
     user:{id:7,email:user.email,reset_count:3,last_reset_at:null,next_reset_at:null}, history:[],
   })
-  vi.mocked(getUserSubscriptionLink).mockResolvedValue('https://subscription.example.test/secret')
-  vi.mocked(resetUserSecret).mockResolvedValue(true)
   vi.mocked(resetUserTraffic).mockResolvedValue({user_id:7,email:user.email,reset_time:'2026-10-12',next_reset_at:null})
   host=document.createElement('div');document.body.append(host);root=createRoot(host)
   client=new QueryClient({defaultOptions:{queries:{retry:false},mutations:{retry:false}}})
@@ -124,20 +122,14 @@ describe('User detail UI v4',()=>{
     expect(host.querySelector('[role="dialog"]')?.textContent).toContain('订单详情 #11')
   })
 
-  it('requires explicit confirmation before rotation and traffic reset',async()=>{
+  it('requires explicit confirmation before traffic reset',async()=>{
     await mount()
-    const resetKey=Array.from(host.querySelectorAll<HTMLButtonElement>('button'))
-      .find(x=>x.textContent?.includes('重置订阅密钥'))!
     const resetTrafficButton=Array.from(host.querySelectorAll<HTMLButtonElement>('button'))
       .find(x=>x.textContent?.includes('重置已用流量'))!
-    await act(async()=>{resetKey.click();resetTrafficButton.click()})
-    expect(requestConfirm).toHaveBeenCalledWith(expect.objectContaining({
-      title:'重置订阅密钥',danger:true,confirmLabel:'重置密钥',
-    }))
+    await act(async()=>{resetTrafficButton.click()})
     expect(requestConfirm).toHaveBeenCalledWith(expect.objectContaining({
       title:'重置用户流量',danger:true,confirmLabel:'执行重置',
     }))
-    expect(resetUserSecret).not.toHaveBeenCalled()
     expect(resetUserTraffic).not.toHaveBeenCalled()
   })
 

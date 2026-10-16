@@ -55,7 +55,7 @@ final class UsageTermsBoundary
     {
         if ((string) $period->subscription_id !== $subscription || $period->boundary_kind !== 'known'
             || $period->starts_at === null || $start >= $end
-            || !UsageRegistry::covers($start, $end, $period->starts_at, $period->ends_at)) {
+            || !UsageEvidence::covers($start, $end, $period->starts_at, $period->ends_at)) {
             throw new UsageError('USAGE_PERIOD_BOUNDARY');
         }
         try {
@@ -82,7 +82,7 @@ final class UsageTermsBoundary
         if (!$creation) {
             throw new UsageError('USAGE_PERIOD_TERMS_OWNERSHIP');
         }
-        if (!$selected || !UsageRegistry::covers($start, $end, $selected['effective_from'], $selected['effective_until'])) {
+        if (!$selected || !UsageEvidence::covers($start, $end, $selected['effective_from'], $selected['effective_until'])) {
             throw new UsageError('USAGE_TERMS_BOUNDARY');
         }
         return ['boundary_revision' => self::REVISION, 'period_creation_terms_id' => (string) $period->terms_id,
@@ -97,11 +97,11 @@ final class UsageTermsBoundary
             || !isset($entry['period_creation_terms_id'], $entry['terms_effective_from'])
             || !array_key_exists('terms_effective_until', $entry)
             || !array_key_exists('terms_ending_transition_id', $entry)
-            || !UsageRegistry::covers($start, $end, $entry['terms_effective_from'], $entry['terms_effective_until'])) {
+            || !UsageEvidence::covers($start, $end, $entry['terms_effective_from'], $entry['terms_effective_until'])) {
             throw new UsageError('USAGE_FROZEN_TERMS_BOUNDARY');
         }
         if ((string) $period->terms_id !== $entry['period_creation_terms_id']
-            || !UsageRegistry::covers($start, $end, $entry['period_started_at'], $entry['period_ended_at'])) {
+            || !UsageEvidence::covers($start, $end, $entry['period_started_at'], $entry['period_ended_at'])) {
             throw new UsageError('USAGE_FROZEN_PERIOD_BOUNDARY');
         }
         $this->freeze($entry['subscription_id'], $entry['terms_id'], $period, $start, $end);

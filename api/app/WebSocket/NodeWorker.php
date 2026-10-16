@@ -4,7 +4,6 @@ namespace App\WebSocket;
 
 use App\Models\Server;
 use App\Models\ServerMachine;
-use App\Services\DeviceStateService;
 use App\Services\NodeRegistry;
 use App\Services\NodeSyncService;
 use App\Services\ServerService;
@@ -119,11 +118,10 @@ class NodeWorker
                 return;
             }
 
-            $service = app(DeviceStateService::class);
             foreach ($pendingNodeIds as $nodeId) {
                 $nodeId = (int) $nodeId;
                 if (NodeRegistry::get($nodeId) !== null) {
-                    NativeNodePush::pushDeviceStateToNode($nodeId, $service);
+                    NodeRegistry::send($nodeId, 'sync.users', ['refresh_required' => true]);
                 }
             }
         });
@@ -376,7 +374,7 @@ class NodeWorker
                 return;
             }
         }
-        if (!in_array($event, ['sync.config', 'sync.users', 'sync.user.delta', 'sync.devices'], true)) {
+        if (!in_array($event, ['sync.config', 'sync.users'], true)) {
             if (!empty($conn->machineId)) $this->synchronizeMachine((int) $conn->machineId);
             Log::warning('[WS] Native node push dropped', ['node_id' => $nodeId, 'failure_code' => 'NATIVE_NODE_PUSH_EVENT_UNSUPPORTED']);
             return;
@@ -384,10 +382,8 @@ class NodeWorker
         // Queued payloads can be old or malicious; never forward their bodies.
         if ($event === 'sync.config') {
             NodeRegistry::send($nodeId, 'sync.config', ['config' => ServerService::buildNodeConfig($node)]);
-        } elseif ($event === 'sync.devices') {
-            NativeNodePush::pushDeviceStateToNode($nodeId, app(DeviceStateService::class));
         } else {
-            NodeRegistry::send($nodeId, 'sync.users', ['users' => ServerService::getNativeAvailableUsers($node)->toArray()]);
+            NodeRegistry::send($nodeId, 'sync.users', ['refresh_required' => true]);
         }
     }
 }

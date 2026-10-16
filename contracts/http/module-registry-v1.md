@@ -171,7 +171,7 @@ Module Registry is an inventory and normalization layer, not a replacement contr
 
 ### Plugin
 
-Plugin Package v1 entries are normalized conservatively from `config.json`, package layout and `tx_plugins` installation state.
+Current Plugin Package v1 entries require explicit `package.schema: 1`. Navigation uses declared IDs, titles and safe relative paths without legacy normalization. Descriptors derive metadata from `config.json`, package layout and `tx_plugins` installation state; invalid package declarations become bounded discovery or failed-health details.
 
 The adapter does not load `Plugin.php`, call `boot()` or execute plugin lifecycle code during discovery.
 

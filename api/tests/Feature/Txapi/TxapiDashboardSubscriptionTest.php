@@ -22,15 +22,6 @@ class TxapiDashboardSubscriptionTest extends TestCase
         $invited->invite_user_id = $owner->id;
         $invited->save();
         Sanctum::actingAs($owner);
-        $sub = $this->getJson('/txapi/me/subscription');
-        $sub->assertOk()->assertJsonPath('data.upload_bytes', 111)
-            ->assertJsonPath('data.download_bytes', 222)
-            ->assertJsonPath('data.traffic_limit_bytes', 10000)
-            ->assertJsonPath('data.plan', null);
-        $this->assertStringContainsString($owner->token, $sub->json('data.subscribe_url'));
-        $this->assertStringNotContainsString($other->token, $sub->getContent());
-        $this->assertArrayNotHasKey('token', $sub->json('data'));
-        $this->assertArrayNotHasKey('uuid', $sub->json('data'));
         $this->getJson('/txapi/me/dashboard-stats')->assertOk()
             ->assertJsonPath('data.unpaid_orders', 0)
             ->assertJsonPath('data.open_tickets', 0)

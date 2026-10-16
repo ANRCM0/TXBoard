@@ -190,9 +190,9 @@ class NativeMachineRegistryLifecycleTest extends TestCase
         (new \ReflectionMethod($worker, 'synchronizeMachine'))->invoke($worker, $machine->id, true);
         $this->assertSame('sync.nodes', $sent[0]['event']);
         $this->assertSame([$sibling->id, $new->id], array_column($sent[0]['data']['nodes'], 'id'));
-        $this->assertSame(['sync.nodes', 'sync.config', 'sync.users'], array_column($sent, 'event'));
+        $this->assertSame(['sync.nodes', 'sync.users'], array_column($sent, 'event'));
+        $this->assertTrue($sent[1]['data']['refresh_required']);
         $this->assertSame($new->id, $sent[1]['data']['node_id']);
-        $this->assertSame($new->id, $sent[2]['data']['node_id']);
         $this->assertNull(NodeRegistry::get($old->id)); $this->assertSame($conn, NodeRegistry::get($new->id));
         $this->assertFalse(NodeSyncService::isNodeOnline($old->id)); $this->assertTrue(NodeSyncService::isNodeOnline($new->id));
         $this->assertSame([$old->id], $this->cleared);

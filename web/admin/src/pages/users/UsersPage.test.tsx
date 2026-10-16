@@ -14,8 +14,6 @@ vi.mock('../../api/finance', () => ({ getPlans: vi.fn() }))
 vi.mock('../../api/user-admin', () => ({
   getUsers: vi.fn(),
   getUserDetail: vi.fn(),
-  getUserSubscriptionLink: vi.fn(),
-  resetUserSecret: vi.fn(),
   destroyUser: vi.fn(),
   banUsers: vi.fn(),
 }))

@@ -57,7 +57,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property-read \Illuminate\Database\Eloquent\Collection<int, Ticket> $tickets 工单列表
  * @property-read \Illuminate\Database\Eloquent\Collection<int, TrafficResetLog> $trafficResetLogs 流量重置记录
  * @property-read User|null $parent 父账户
- * @property-read string $subscribe_url 订阅链接（动态生成）
  */
 class User extends Authenticatable
 {

@@ -6,11 +6,11 @@ This directory contains a **non-executing validator** for the proposed
 ## Implemented in this phase
 
 - Strict, one-per-archive txboard-theme.json discovery (root or one top-level directory)
-- Shared v1 ZIP path, symlink, entry-count and 50 MiB uncompressed-size guards
+- ZIP path, symlink, entry-count and 50 MiB uncompressed-size guards
 - Additional v2 restriction to dist/, assets/, metadata and schema
 - Reject PHP/shell/binary executable files, .env, private-key extensions and
   hidden server directives
-- Strict manifest field vocabulary, package identity, SemVer, v1/v2 separation
+- Strict manifest field vocabulary, package identity, SemVer, rejection of retired Blade package files
 - Independently compare **trusted deployed** TXBoard, Gateway and SDK versions
   against manifest ranges; reject malformed, unknown and incompatible versions
 - SHA-256 SRI verification for **every** bundled static asset, including JS entry
@@ -23,22 +23,13 @@ production-installable archives. They include placeholder SRI values and
 might not list every bundled resource. They must be finalized when producing
 a distributable ZIP.
 
-## Deliberately NOT implemented yet
+## Runtime delegation
 
-This phase **does not** modify ThemeService, Theme Package v1, public
-routing, controller permissions, admin UI, Module Registry or Gateway.
-It does not upload, install, activate, publish assets, render SPA/SSR,
-provide version rollback or expose any v2 theme configuration.
-
-Integration must wait until:
-1. The Gateway ADR and SDK release/version metadata become authoritative.
-2. Laravel obtains trusted TXBoard/Gateway/SDK versions independently of ZIP.
-3. A server-owned public-field allowlist is specified. Never expose a
-   field merely because a ZIP declares it in config.public.
-4. A staging/atomic promotion and rollback policy is defined with a tested
-   failure path (without touching user, order or traffic data).
-5. SSR has an isolated, per-request credential model. Never run uploaded
-   server JavaScript within Laravel or share SSR user credentials.
+The validator never installs, publishes or executes package contents. The
+current [static runtime](v2-runtime.md) owns installation, activation,
+publication and rollback; ThemeService owns the canonical active selection.
+Trusted TXBoard/Gateway/SDK versions and public config policy are server-owned.
+SSR execution is refused. There is no old-package compatibility loader.
 
 The validator checks declared metadata and package contents but **does not
 sandbox JavaScript**. SHA-256 detects mismatches against the uploaded

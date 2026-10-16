@@ -1,8 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   ArrowLeft,
-  Clipboard,
-  KeyRound,
   Pencil,
   RefreshCcw,
 } from 'lucide-react'
@@ -13,7 +11,7 @@ import { toast } from 'sonner'
 import { getOrders, getPlans } from '../../api/finance'
 import { getTickets, type TicketItem } from '../../api/ticket'
 import { getUserTrafficResetHistory, resetUserTraffic } from '../../api/traffic-reset'
-import { getUserDetail, getUserSubscriptionLink, resetUserSecret } from '../../api/user-admin'
+import { getUserDetail } from '../../api/user-admin'
 import { OrderDetailModal } from '../../components/finance/OrderDetailModal'
 import { UserEditorModal } from '../../components/users/UserEditorModal'
 import { PageHeader } from '../../components/ui/PageHeader'
@@ -68,14 +66,6 @@ export function UserDetailPage() {
     enabled: validUserId,
   })
 
-  const resetSecret = useMutation({
-    mutationFn: () => resetUserSecret(userId),
-    onSuccess: async () => {
-      toast.success('订阅密钥已重置')
-      await qc.invalidateQueries({ queryKey: ['adminUserDetail', userId] })
-      await qc.invalidateQueries({ queryKey: ['adminUsers'] })
-    },
-  })
 
   const resetTraffic = useMutation({
     mutationFn: () => resetUserTraffic(userId, '管理员从用户详情中心手动重置'),
@@ -97,16 +87,7 @@ export function UserDetailPage() {
   const tickets = ticketsQuery.data?.data || []
   const resetHistory = resetHistoryQuery.data?.history || []
 
-  async function copySubscribe() {
-    try {
-      const url = await getUserSubscriptionLink(userId)
-      if (!url) throw new Error('Missing subscribe URL')
-      await navigator.clipboard.writeText(url)
-      toast.success('订阅链接已复制')
-    } catch {
-      toast.error('复制失败，请检查剪贴板权限后重试')
-    }
-  }
+
 
   if (!validUserId) {
     return <div className="user-detail-v4-error" role="alert"><p>无效的用户 ID。</p><Link className="button" to="/user/manage">返回用户管理</Link></div>
@@ -134,7 +115,6 @@ export function UserDetailPage() {
       description={`UID #${user.id} · 用户详情中心`}
       action={<div className="actions">
         <button className="button" type="button" onClick={() => navigate('/user/manage')}><ArrowLeft size={15}/>返回用户管理</button>
-        <button className="button" type="button" onClick={() => void copySubscribe()}><Clipboard size={15}/>复制订阅</button>
         <button className="button" type="button" onClick={() => setEditorOpen(true)}><Pencil size={15}/>编辑用户</button>
       </div>}
     />
@@ -161,18 +141,6 @@ export function UserDetailPage() {
           <p>管理员处理订阅、限速、设备和邀请关系时需要的核心状态。</p>
         </div>
         <div className="actions">
-          <button
-            className="button"
-            type="button"
-            disabled={resetSecret.isPending}
-            onClick={() => requestConfirm({
-              title: '重置订阅密钥',
-              message: `确认重置 ${user.email} 的订阅密钥？原订阅链接会立即失效。`,
-              danger: true,
-              confirmLabel: '重置密钥',
-              action: () => resetSecret.mutate(),
-            })}
-          ><KeyRound size={15}/>{resetSecret.isPending ? '重置中…' : '重置订阅密钥'}</button>
           <button
             className="button danger"
             type="button"

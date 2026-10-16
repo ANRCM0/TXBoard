@@ -58,6 +58,11 @@ RETIRED_CLASSES = (
     "FencedSanctumGuard",
     "InternalReadOnlyController",
     "InternalServiceProof",
+    "UsageRegistry",
+    "NodeUserSyncJob",
+    "ProtocolManager",
+    "ProtocolServiceProvider",
+    "SubscribeTemplate",
 )
 RETIRED_PATHS = (
     "api/app/Domains/CredentialProviderFixture",
@@ -104,6 +109,15 @@ RETIRED_PATHS = (
     "gateway/apps/gateway/src/services/internal-admin-client.ts",
     "gateway/apps/gateway/src/config/internal-user.ts",
     "gateway/apps/gateway/src/config/internal-admin.ts",
+    "api/app/Console/Commands/CoreUsageV2.php",
+    "api/app/Console/Commands/PanelSubscribePath.php",
+    "api/app/Http/Controllers/SubscriptionController.php",
+    "api/app/Http/Controllers/Txapi/ServerController.php",
+    "api/app/Http/Middleware/Client.php",
+    "api/app/Services/Theme/ThemePackage.php",
+    "api/app/Services/Theme/ThemePackageManifest.php",
+    "node/internal/txboard/usage_v2.go",
+    "node/internal/service/usage_v2_adapter.go",
     "api/phpunit-historical.xml",
 )
 RETIRED_CONFIGS = (

@@ -1,8 +1,8 @@
 # Theme v2 SPA Runtime — GW-502 phase 2
 
-This is an **opt-in standalone SPA runtime** layered on top of the
-non-executing Theme Package v2 validator in Phase 1 (PR #221).
-It preserves Theme Package v1 and the native TXBoard user SPA.
+This is the current standalone static SPA theme runtime. It is the only
+third-party theme format; the native TXBoard user SPA remains built in.
+The old Blade package loader and duplicate `/themes/v2/upload` entry are removed.
 
 ## Trusted version sources (required)
 
@@ -22,9 +22,8 @@ verified version until the 1.0 public release is available.
 
 ## Installation and activation
 
-- POST /txapi/admin/{admin_path}/themes/v2/upload — Admin Bearer + secure path,
+- POST /txapi/admin/{admin_path}/themes/upload — Admin Bearer + secure path,
   multipart form-data file=ZIP, maximum 10 MiB compressed.
-- Existing POST /txapi/admin/{admin_path}/themes/upload retains legacy v1 behavior.
 - Upload validates the ZIP before extraction and stages all contents under
   storage/theme/.unpack-*/.stage-* on the same filesystem.
 - Fresh uploads remain **inactive**. Existing active v2 themes publish their
@@ -90,4 +89,4 @@ No new direct access to admin or Gateway authorization is granted.
     php artisan test --filter=ThemeV2RuntimeTest
     php artisan test --filter=ThemeV2PackageTest
 
-Then run api-ci, api-mysql-ci, web-ci and txboard-image on the PR commit.
+Batch acceptance runs the affected API, MySQL, Web and image checks in GitHub Actions; do not repeat local heavy tests.

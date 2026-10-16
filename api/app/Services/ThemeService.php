@@ -2,634 +2,149 @@
 
 namespace App\Services;
 
+use App\Services\Theme\ThemeV2Runtime;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\View;
-use App\Services\Theme\ThemePackage;
-use App\Services\Theme\ThemeV2Runtime;
-use Illuminate\Http\UploadedFile;
-use Exception;
+use InvalidArgumentException;
+use RuntimeException;
 use Throwable;
-use ZipArchive;
 
 class ThemeService
 {
-    private const SYSTEM_THEME_DIR = 'theme/';
-    private const USER_THEME_DIR = '/storage/theme/';
-    private const CONFIG_FILE = 'config.json';
-    private const SETTING_PREFIX = 'theme_';
-    private const SYSTEM_THEMES = ['TXBoard'];
     private const DEFAULT_THEME = 'TXBoard';
 
-    public function __construct(
-        private readonly ThemePackage $themePackage,
-        private readonly ThemeV2Runtime $themeV2,
-    ) {
-        $this->registerThemeViewPaths();
-    }
-
-
-    /**
-     * Register theme view paths
-     */
-    private function registerThemeViewPaths(): void
+    public function __construct(private readonly ThemeV2Runtime $runtime)
     {
-        $systemPath = base_path(self::SYSTEM_THEME_DIR);
-        if (File::exists($systemPath)) {
-            View::addNamespace('theme', $systemPath);
-        }
-
-        $userPath = base_path(self::USER_THEME_DIR);
-        if (File::exists($userPath)) {
-            View::prependNamespace('theme', $userPath);
-        }
     }
 
-    /**
-     * Get theme view path
-     */
-    public function getThemeViewPath(string $theme): ?string
-    {
-        $themePath = $this->getThemePath($theme);
-        if (!$themePath) {
-            return null;
-        }
-        return $themePath . '/dashboard.blade.php';
-    }
-
-    /** Only frontend_theme selects the active theme. */
+    /** Only frontend_theme selects the active theme. Registry reads never persist it. */
     public function getActiveTheme(): string
     {
         $theme = trim((string) admin_setting('frontend_theme', ''));
         return $theme !== '' && $this->exists($theme) ? $theme : self::DEFAULT_THEME;
     }
 
-    /**
-     * Get all available themes
-     */
     public function getList(): array
     {
-        $themes = [];
-
-        // 获取系统主题
-        $systemPath = base_path(self::SYSTEM_THEME_DIR);
-        if (File::exists($systemPath)) {
-            $themes = $this->getThemesFromPath($systemPath, false);
+        $themes = [self::DEFAULT_THEME => array_merge($this->builtinConfig(), [
+            'runtime' => 'builtin-spa', 'can_delete' => false, 'is_system' => true,
+        ])];
+        $root = base_path('storage/theme');
+        if (!File::isDirectory($root)) return $themes;
+        $active = $this->getActiveTheme();
+        foreach (File::directories($root) as $directory) {
+            $name = basename($directory);
+            if (!$this->runtime->isInstalled($name)) continue;
+            try {
+                $themes[$name] = array_merge($this->runtime->inventory($name), [
+                    'can_delete' => $name !== $active, 'is_system' => false,
+                ]);
+            } catch (Throwable) {
+                Log::warning('Invalid installed static theme package', ['theme' => $name]);
+            }
         }
-
-        // 获取用户主题
-        $userPath = base_path(self::USER_THEME_DIR);
-        if (File::exists($userPath)) {
-            // System theme identities remain authoritative if a user
-            // directory collides with the same exact runtime name.
-            $themes += $this->getThemesFromPath($userPath, true);
-        }
-
         return $themes;
     }
 
-    /**
-     * Get themes from specified path
-     */
-    private function getThemesFromPath(string $path, bool $canDelete): array
-    {
-        $activeTheme = $this->getActiveTheme();
-
-        return collect(File::directories($path))
-            ->mapWithKeys(function ($dir) use ($canDelete, $activeTheme) {
-                $name = basename($dir);
-                if ($canDelete && $this->themeV2->isInstalled($name)) {
-                    try {
-                        $descriptor = $this->themeV2->inventory($name);
-                        $descriptor['can_delete'] = $name !== $activeTheme;
-                        $descriptor['is_system'] = false;
-                        return [$name => $descriptor];
-                    } catch (Throwable $e) {
-                        Log::warning('Invalid installed Theme v2 package', ['theme' => $name]);
-                        return [];
-                    }
-                }
-                if (
-                    !File::exists($dir . '/' . self::CONFIG_FILE) ||
-                    ($name !== self::DEFAULT_THEME && !File::exists($dir . '/dashboard.blade.php'))
-                ) {
-                    return [];
-                }
-                $config = $this->readConfigFile($name);
-                if (!$config) {
-                    return [];
-                }
-
-                $config['can_delete'] = $canDelete && $name !== $activeTheme;
-                $config['is_system'] = !$canDelete;
-                return [$name => $config];
-            })->toArray();
-    }
-
-    /**
-     * Upload new theme
-     */
-    public function upload(UploadedFile $file): bool
-    {
-        $zip = new ZipArchive;
-        $tmpPath = storage_path('tmp/' . uniqid('', true));
-        $opened = false;
-
-        try {
-            if ($zip->open($file->path()) !== true) {
-                throw new Exception('Invalid theme package');
-            }
-            $opened = true;
-
-            $this->themePackage->assertSafeArchive($zip);
-            $configEntry = $this->themePackage->configEntry($zip);
-
-            if (!$zip->extractTo($tmpPath)) {
-                throw new Exception('Failed to extract theme package');
-            }
-
-            $sourcePath = $this->themePackage->sourcePath($tmpPath, $configEntry);
-            $manifest = $this->themePackage->manifestFromFile(
-                $sourcePath . '/' . self::CONFIG_FILE
-            );
-            $this->themePackage->assertRequiredFiles($sourcePath);
-
-            if ($this->isSystemTheme($manifest->name)) {
-                throw new Exception('Cannot upload theme with same name as system theme');
-            }
-
-            $userThemePath = base_path(self::USER_THEME_DIR);
-            if (!File::exists($userThemePath)) {
-                File::makeDirectory($userThemePath, 0755, true);
-            }
-
-            $targetPath = $userThemePath . $manifest->name;
-            if (File::exists($targetPath)) {
-                $oldConfigFile = $targetPath . '/' . self::CONFIG_FILE;
-                if (!File::exists($oldConfigFile)) {
-                    throw new Exception('Existing theme missing config file');
-                }
-
-                $oldConfig = json_decode((string) File::get($oldConfigFile), true);
-                $oldVersion = is_array($oldConfig) && is_string($oldConfig['version'] ?? null)
-                    ? $oldConfig['version']
-                    : '0.0.0';
-
-                if (!version_compare($manifest->version, $oldVersion, '>')) {
-                    throw new Exception('Theme exists and not a newer version');
-                }
-
-                // Never remove the working theme before the newer package has
-                // copied successfully. Stage on the same filesystem to make
-                // the promotion reversible if anything fails.
-                $backup = $userThemePath . '.backup-' . bin2hex(random_bytes(8));
-                $staging = $userThemePath . '.staging-' . bin2hex(random_bytes(8));
-                try {
-                    if (!File::copyDirectory($sourcePath, $staging)) {
-                        throw new Exception('Failed to stage theme upgrade');
-                    }
-                    if (!rename($targetPath, $backup)) {
-                        throw new Exception('Failed to back up current theme');
-                    }
-                    if (!rename($staging, $targetPath)) {
-                        throw new Exception('Failed to activate upgraded theme');
-                    }
-
-                    $this->initConfig($manifest->name, true);
-                    if ($manifest->name === $this->getActiveTheme()
-                        && !$this->refreshCurrentTheme()) {
-                        throw new Exception('Failed to publish upgraded active theme');
-                    }
-                } catch (Throwable $e) {
-                    File::deleteDirectory($staging);
-                    if (File::isDirectory($backup)) {
-                        File::deleteDirectory($targetPath);
-                        if (!rename($backup, $targetPath)) {
-                            Log::critical('Theme upgrade rollback needs manual recovery', [
-                                'theme' => $manifest->name, 'backup' => $backup,
-                            ]);
-                        }
-                        if ($manifest->name === $this->getActiveTheme()) {
-                            $this->refreshCurrentTheme();
-                        }
-                    }
-                    throw $e;
-                }
-                File::deleteDirectory($backup);
-                return true;
-            }
-
-            if (!File::copyDirectory($sourcePath, $targetPath)) {
-                throw new Exception('Failed to install theme files');
-            }
-            $this->initConfig($manifest->name);
-
-            return true;
-        } finally {
-            if ($opened) {
-                $zip->close();
-            }
-            if (File::exists($tmpPath)) {
-                File::deleteDirectory($tmpPath);
-            }
-        }
-    }
-
-    /**
-     * Switch theme
-     */
-    public function switch(string|null $theme): bool
-    {
-        if ($theme === null) {
-            return true;
-        }
-
-        $currentTheme = $this->getActiveTheme();
-
-        if ($this->themeV2->isInstalled($theme)) {
-            $this->themeV2->activate($theme, function () use ($theme): void {
-                admin_setting(['frontend_theme' => $theme]);
-            });
-            if ($currentTheme !== $theme) {
-                $this->cleanupThemeFiles($currentTheme);
-            }
-            return true;
-        }
-
-        // The built-in theme is served by the native Vue SPA; no static Umi
-        // application or Blade theme asset publication is required.
-        if ($theme === self::DEFAULT_THEME) {
-            admin_setting(['frontend_theme' => $theme]);
-            if ($currentTheme !== self::DEFAULT_THEME) {
-                $this->cleanupThemeFiles($currentTheme);
-            }
-            return true;
-        }
-
-        try {
-            $themePath = $this->getThemePath($theme);
-            if (!$themePath) {
-                throw new Exception('Theme not found');
-            }
-
-            if (!File::exists($this->getThemeViewPath($theme))) {
-                throw new Exception('Theme view file not found');
-            }
-
-            $this->publishThemeAssets($theme, $themePath, function () use ($theme): void {
-                admin_setting(['frontend_theme' => $theme]);
-            });
-
-            if ($currentTheme && $currentTheme !== $theme) {
-                $this->cleanupThemeFiles($currentTheme);
-            }
-            return true;
-
-        } catch (Exception $e) {
-            Log::error('Theme switch failed', ['theme' => $theme, 'error' => $e->getMessage()]);
-            throw $e;
-        }
-    }
-
-    /**
-     * Delete theme
-     */
-    public function delete(string $theme): bool
-    {
-
-        try {
-            if (!$this->isSafeThemeName($theme)) {
-                throw new Exception('Invalid theme name');
-            }
-
-            if ($this->isSystemTheme($theme)) {
-                throw new Exception('System theme cannot be deleted');
-            }
-
-            if ($theme === $this->getActiveTheme()) {
-                throw new Exception('Current theme cannot be deleted');
-            }
-
-            $themePath = base_path(self::USER_THEME_DIR . $theme);
-            if (!File::exists($themePath)) {
-                throw new Exception('Theme not found');
-            }
-
-            $wasV2 = $this->themeV2->isInstalled($theme);
-            $this->cleanupThemeFiles($theme);
-            if (!File::deleteDirectory($themePath)) {
-                throw new Exception('Failed to delete theme files');
-            }
-            if ($wasV2) {
-                $this->themeV2->removeHistory($theme);
-            }
-            admin_setting([self::SETTING_PREFIX . $theme => null]);
-            return true;
-
-        } catch (Exception $e) {
-            Log::error('Theme deletion failed', ['theme' => $theme, 'error' => $e->getMessage()]);
-            throw $e;
-        }
-    }
-
-    /**
-     * Check if theme exists
-     */
     public function exists(string $theme): bool
     {
-        return $this->getThemePath($theme) !== null;
+        return $theme === self::DEFAULT_THEME || $this->runtime->isInstalled($theme);
     }
 
-    /**
-     * Get theme path
-     */
-    public function getThemePath(string $theme): ?string
+    public function switch(?string $theme): bool
     {
-        if (!$this->isSafeThemeName($theme)) {
-            return null;
+        if ($theme === null) return true;
+        if (!$this->exists($theme)) throw new InvalidArgumentException('Theme not found');
+        $current = $this->getActiveTheme();
+        if ($theme === self::DEFAULT_THEME) {
+            admin_setting(['frontend_theme' => $theme]);
+        } else {
+            $this->runtime->activate($theme, fn () => admin_setting(['frontend_theme' => $theme]));
         }
-
-        $systemPath = base_path(self::SYSTEM_THEME_DIR . $theme);
-        if (File::exists($systemPath)) {
-            return $systemPath;
-        }
-
-        $userPath = base_path(self::USER_THEME_DIR . $theme);
-        if (File::exists($userPath)) {
-            return $userPath;
-        }
-
-        return null;
+        if ($current !== $theme) $this->cleanupThemeFiles($current);
+        return true;
     }
 
-    /**
-     * Get theme config
-     */
+    public function delete(string $theme): bool
+    {
+        if (!$this->isSafeThemeName($theme)) throw new InvalidArgumentException('Invalid theme name');
+        if (strcasecmp($theme, self::DEFAULT_THEME) === 0) throw new InvalidArgumentException('System theme cannot be deleted');
+        if ($theme === $this->getActiveTheme()) throw new InvalidArgumentException('Current theme cannot be deleted');
+        if (!$this->runtime->isInstalled($theme)) throw new InvalidArgumentException('Theme not found');
+        $this->cleanupThemeFiles($theme);
+        if (!File::deleteDirectory(base_path('storage/theme/'.$theme))) {
+            throw new RuntimeException('Failed to delete theme files');
+        }
+        $this->runtime->removeHistory($theme);
+        admin_setting(['theme_'.$theme => null]);
+        return true;
+    }
+
     public function getConfig(string $theme): ?array
     {
-        if ($this->themeV2->isInstalled($theme)) {
-            return $this->themeV2->getConfig($theme);
+        if ($theme !== self::DEFAULT_THEME) return $this->runtime->getConfig($theme);
+        $defaults = [];
+        foreach ($this->builtinConfig()['configs'] as $field) {
+            $defaults[$field['field_name']] = $field['default_value'] ?? '';
         }
-        $config = admin_setting(self::SETTING_PREFIX . $theme);
-
-        if ($config === null) {
-            $this->initConfig($theme);
-            $config = admin_setting(self::SETTING_PREFIX . $theme);
-        }
-
-        return $config;
+        $stored = admin_setting('theme_TXBoard');
+        return array_replace($defaults, is_array($stored) ? $stored : []);
     }
 
-    /**
-     * Export only public presentation fields declared by the theme manifest.
-     * Server-only and credential settings must never reach guest clients.
-     */
     public function getPublicConfig(string $theme): array
     {
-        if ($this->themeV2->isInstalled($theme)) {
-            return $this->themeV2->getPublicConfig($theme);
-        }
-        $schema = $this->readConfigFile($theme);
+        if ($theme !== self::DEFAULT_THEME) return $this->runtime->getPublicConfig($theme);
         $values = $this->getConfig($theme) ?? [];
-        if (!is_array($schema) || !is_array($values)) {
-            return [];
-        }
-
         $public = [];
-        foreach ($schema['configs'] ?? [] as $field) {
-            if (!is_array($field) || !is_string($field['field_name'] ?? null)) {
-                continue;
-            }
-            if (($field['public'] ?? true) === false) {
-                continue;
-            }
-            if (in_array(strtolower((string) ($field['field_type'] ?? '')), ['password', 'secret', 'hidden'], true)) {
-                continue;
-            }
-            $name = $field['field_name'];
-            if (array_key_exists($name, $values)) {
-                $public[$name] = $values[$name];
-            }
+        foreach ($this->builtinConfig()['configs'] as $field) {
+            if (($field['public'] ?? true) === false ||
+                in_array(strtolower((string) ($field['field_type'] ?? '')), ['password', 'secret', 'hidden'], true)) continue;
+            $key = $field['field_name'];
+            if (array_key_exists($key, $values)) $public[$key] = $values[$key];
         }
-
         return $public;
     }
 
-    /**
-     * Update theme config
-     */
     public function updateConfig(string $theme, array $config): bool
     {
-        if ($this->themeV2->isInstalled($theme)) {
-            $this->themeV2->updateConfig($theme, $config);
-            return true;
+        if ($theme !== self::DEFAULT_THEME) {
+            $this->runtime->updateConfig($theme, $config);
+        } else {
+            $keys = array_column($this->builtinConfig()['configs'], 'field_name');
+            admin_setting(['theme_TXBoard' => array_replace($this->getConfig($theme) ?? [],
+                array_intersect_key($config, array_flip($keys)))]);
         }
-
-        try {
-            if (!$this->getThemePath($theme)) {
-                throw new Exception('Theme not found');
-            }
-
-            $schema = $this->readConfigFile($theme);
-            if (!$schema) {
-                throw new Exception('Invalid theme config file');
-            }
-
-            $validFields = collect($schema['configs'] ?? [])->pluck('field_name')->toArray();
-            $validConfig = collect($config)
-                ->only($validFields)
-                ->toArray();
-
-            $currentConfig = $this->getConfig($theme) ?? [];
-            $newConfig = array_merge($currentConfig, $validConfig);
-
-            admin_setting([self::SETTING_PREFIX . $theme => $newConfig]);
-            return true;
-
-        } catch (Exception $e) {
-            Log::error('Config update failed', ['theme' => $theme, 'error' => $e->getMessage()]);
-            throw $e;
-        }
+        return true;
     }
 
-    /**
-     * Read theme config file
-     */
-    private function readConfigFile(string $theme): ?array
-    {
-        $themePath = $this->getThemePath($theme);
-        if (!$themePath) {
-            return null;
-        }
-
-        $file = $themePath . '/' . self::CONFIG_FILE;
-        return File::exists($file) ? json_decode(File::get($file), true) : null;
-    }
-
-    /**
-     * Clean up theme files including public directory
-     */
     public function cleanupThemeFiles(string $theme): void
     {
-        try {
-            $publicThemePath = public_path('theme/' . $theme);
-            if (File::exists($publicThemePath)) {
-                File::deleteDirectory($publicThemePath);
-                Log::info('Cleaned up public theme files', ['theme' => $theme, 'path' => $publicThemePath]);
-            }
-
-            $cacheKey = "theme_{$theme}_assets";
-            if (cache()->has($cacheKey)) {
-                cache()->forget($cacheKey);
-                Log::info('Cleaned up theme cache', ['theme' => $theme, 'cache_key' => $cacheKey]);
-            }
-
-        } catch (Exception $e) {
-            Log::warning('Failed to cleanup theme files', [
-                'theme' => $theme,
-                'error' => $e->getMessage()
-            ]);
+        if (!$this->isSafeThemeName($theme)) throw new InvalidArgumentException('Invalid theme name');
+        $path = public_path('theme/'.$theme);
+        if (File::isDirectory($path) && !File::deleteDirectory($path)) {
+            throw new RuntimeException('Failed to remove theme publication');
         }
     }
 
-    /**
-     * Force refresh current theme public files
-     */
     public function refreshCurrentTheme(): bool
     {
         try {
-            $currentTheme = $this->getActiveTheme();
-            if ($this->themeV2->isInstalled($currentTheme)) {
-                $this->themeV2->republish($currentTheme);
-                return true;
-            }
-
-            $themePath = $this->getThemePath($currentTheme);
-            if (!$themePath) {
-                throw new Exception('Current theme path not found');
-            }
-
-            $this->publishThemeAssets($currentTheme, $themePath);
-
-            Log::info('Refreshed current theme files', ['theme' => $currentTheme]);
+            $theme = $this->getActiveTheme();
+            if ($theme !== self::DEFAULT_THEME) $this->runtime->republish($theme);
             return true;
-
-        } catch (Exception $e) {
-            Log::error('Failed to refresh current theme', [
-                'theme' => $currentTheme,
-                'error' => $e->getMessage()
-            ]);
+        } catch (Throwable) {
+            Log::error('Failed to refresh current theme');
             return false;
         }
     }
 
-    /**
-     * Publish into an owner-scoped directory through staging and rename.
-     * Preserve the previous publication if copy, activation or setting
-     * persistence fails. Never touch a different theme's assets.
-     */
-    private function publishThemeAssets(string $theme, string $source, ?callable $afterPublish = null): void
+    private function builtinConfig(): array
     {
-        if (!$this->isSafeThemeName($theme)) {
-            throw new Exception('Invalid theme name');
-        }
-        $parent = public_path('theme');
-        File::ensureDirectoryExists($parent);
-
-        $target = $parent . '/' . $theme;
-        $staged = $parent . '/.staging-' . bin2hex(random_bytes(8));
-        $backup = $parent . '/.backup-' . bin2hex(random_bytes(8));
-        $savedOld = false;
-        $published = false;
-
-        try {
-            if (!File::copyDirectory($source, $staged)) {
-                throw new Exception('Failed to stage theme assets');
-            }
-
-            if (File::isDirectory($target)) {
-                if (!rename($target, $backup)) {
-                    throw new Exception('Failed to back up theme assets');
-                }
-                $savedOld = true;
-            }
-            if (!rename($staged, $target)) {
-                throw new Exception('Failed to publish theme assets');
-            }
-            $published = true;
-
-            if ($afterPublish !== null) {
-                $afterPublish();
-            }
-        } catch (Throwable $e) {
-            File::deleteDirectory($staged);
-            if ($savedOld) {
-                File::deleteDirectory($target);
-                if (!rename($backup, $target)) {
-                    Log::critical('Published theme assets need manual recovery', [
-                        'theme' => $theme, 'backup' => $backup,
-                    ]);
-                }
-            } elseif ($published) {
-                // Staging or backup failed before publication: the original
-                // target still belongs to the active theme and must survive.
-                File::deleteDirectory($target);
-            }
-            throw $e;
-        }
-
-        if ($savedOld) {
-            File::deleteDirectory($backup);
-        }
-        cache()->forget("theme_{$theme}_assets");
+        return json_decode((string) File::get(base_path('theme/TXBoard/config.json')), true, flags: JSON_THROW_ON_ERROR);
     }
 
-    /**
-     * Initialize theme config
-     * 
-     * @param string $theme 主题名称
-     * @param bool $preserveExisting 是否保留现有配置（更新主题时使用）
-     */
-    private function initConfig(string $theme, bool $preserveExisting = false): void
-    {
-        $config = $this->readConfigFile($theme);
-        if (!$config) {
-            return;
-        }
-
-        $defaults = collect($config['configs'] ?? [])
-            ->mapWithKeys(fn($col) => [$col['field_name'] => $col['default_value'] ?? ''])
-            ->toArray();
-
-        if ($preserveExisting) {
-            $existingConfig = admin_setting(self::SETTING_PREFIX . $theme) ?? [];
-            $mergedConfig = array_merge($defaults, $existingConfig);
-            admin_setting([self::SETTING_PREFIX . $theme => $mergedConfig]);
-        } else {
-            admin_setting([self::SETTING_PREFIX . $theme => $defaults]);
-        }
-    }
     private function isSafeThemeName(string $theme): bool
     {
-        $name = trim($theme);
-
-        return $name !== ''
-            && strlen($name) <= 120
-            && !str_contains($name, chr(0))
-            && !str_contains($name, '/')
-            && !str_contains($name, '\\')
-            && !in_array($name, ['.', '..'], true);
+        return $theme === self::DEFAULT_THEME || preg_match('/\A[a-z0-9][a-z0-9-]{0,62}[a-z0-9]\z/D', $theme) === 1;
     }
-
-    private function isSystemTheme(string $theme): bool
-    {
-        foreach (self::SYSTEM_THEMES as $systemTheme) {
-            if (strcasecmp($theme, $systemTheme) === 0) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
 }

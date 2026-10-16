@@ -13,7 +13,7 @@ final class UsageSettlement
     /** SQL outbox is the durable work index; duplicate scans are safe. */
     public function scan(int $limit, int $now): array
     {
-        $this->policy->requireIsolated();
+        $this->policy->requireNative();
         if ($limit < 1 || $limit > 1000) { throw new UsageError('USAGE_SCAN_LIMIT'); }
         $results = [];
         $eligible = DB::table('tx_usage_batch')->select('id')->whereIn('status', ['pending','processing','retry_wait'])
@@ -29,7 +29,7 @@ final class UsageSettlement
 
     public function claim(int $batchId, int $now): ?string
     {
-        $this->policy->requireIsolated();
+        $this->policy->requireNative();
         return DB::transaction(function () use ($batchId, $now) {
             $this->policy->requireTransaction();
             $batch = DB::table('tx_usage_batch')->where('id', $batchId)->lockForUpdate()->first();
@@ -46,48 +46,42 @@ final class UsageSettlement
 
     public function settle(int $batchId, string $fence, int $now): string
     {
-        $this->policy->requireIsolated();
+        $this->policy->requireNative();
         try {
-            $native = NativeUsageLedger::enabled();
-            $locatorHash = null; $locators = [];
-            if ($native) {
-                $locator = DB::table('tx_usage_batch')->useWritePdo()->where('id', $batchId)->first();
-                if (!$locator) { return 'stale'; }
-                $entries = json_decode($locator->frozen_entries, true, 32, JSON_THROW_ON_ERROR);
-                if (!is_array($entries) || !hash_equals($locator->frozen_hash, UsageRegistry::hash($entries))) {
-                    throw new UsageError('USAGE_FROZEN_EVIDENCE_CORRUPT');
-                }
-                $locatorHash = $locator->frozen_hash;
-                $locators = app(NativeUsageLedger::class)->grantLocators($entries);
+            $locator = DB::table('tx_usage_batch')->useWritePdo()->where('id', $batchId)->first();
+            if (!$locator) { return 'stale'; }
+            $entries = json_decode($locator->frozen_entries, true, 32, JSON_THROW_ON_ERROR);
+            if (!is_array($entries) || !hash_equals($locator->frozen_hash, UsageEvidence::hash($entries))) {
+                throw new UsageError('USAGE_FROZEN_EVIDENCE_CORRUPT');
             }
-            return DB::transaction(function () use ($batchId, $fence, $now, $native, $locatorHash, $locators) {
+            $locatorHash = $locator->frozen_hash;
+            $locators = app(NativeUsageLedger::class)->grantLocators($entries);
+            return DB::transaction(function () use ($batchId, $fence, $now, $locatorHash, $locators) {
                 $this->policy->requireTransaction();
-                if ($native) { app(NativeUsageLedger::class)->lockOwners($locators); }
+                app(NativeUsageLedger::class)->lockOwners($locators);
                 $batch = DB::table('tx_usage_batch')->where('id', $batchId)->lockForUpdate()->first();
                 if (!$batch || $batch->status !== 'processing' || (string) $batch->fencing_token !== $fence
                     || (int) $batch->processing_lease_until <= $now) { return 'stale'; }
                 $entries = json_decode($batch->frozen_entries, true, 32, JSON_THROW_ON_ERROR);
                 if (!is_array($entries) || !array_is_list($entries) || !$entries
-                    || !hash_equals($batch->frozen_hash, UsageRegistry::hash($entries))
-                    || ($native && !hash_equals($batch->frozen_hash, $locatorHash))
+                    || !hash_equals($batch->frozen_hash, UsageEvidence::hash($entries))
+                    || !hash_equals($batch->frozen_hash, $locatorHash)
                     || !hash_equals($batch->payload_digest, 'sha256:'.hash('sha256', $batch->canonical_payload))) {
                     throw new UsageError('USAGE_FROZEN_EVIDENCE_CORRUPT');
                 }
                 $totals = []; $periodEntries = []; $rawUp = '0'; $rawDown = '0';
                 foreach ($entries as $entry) {
-                    if ($native) {
-                        $grant = DB::table('tx_auth_snapshot')->where('id', $entry['auth_snapshot_id'])->first();
-                        if (!$grant) { throw new UsageError('USAGE_NATIVE_GRANT_MISSING'); }
-                        $proof = app(NativeUsageLedger::class)->verifyNativeGrant($grant);
-                        $subscription = DB::table('tx_subscription')->where('id', $grant->subscription_id)->first();
-                        $subject = DB::table('tx_access_subject')->where('id', $grant->access_subject_id)->first();
-                        $period = DB::table('tx_usage_period')->where('id', $grant->usage_period_id)->first();
-                        if (!$subscription || !$subject || !$period) { throw new UsageError('USAGE_NATIVE_GRANT_MISSING'); }
-                        $cutoff = ($this->boundaries ?? app(UsageTermsBoundary::class))
-                            ->nativeCutoff($grant, $subscription, $subject, $period, $proof['coverage']);
-                        if ($cutoff !== null && (int) $batch->ended_at > $cutoff) {
-                            throw new UsageError('USAGE_NATIVE_AUTHORIZATION_CUTOFF');
-                        }
+                    $grant = DB::table('tx_auth_snapshot')->where('id', $entry['auth_snapshot_id'])->first();
+                    if (!$grant) { throw new UsageError('USAGE_NATIVE_GRANT_MISSING'); }
+                    $proof = app(NativeUsageLedger::class)->verifyNativeGrant($grant);
+                    $subscription = DB::table('tx_subscription')->where('id', $grant->subscription_id)->first();
+                    $subject = DB::table('tx_access_subject')->where('id', $grant->access_subject_id)->first();
+                    $period = DB::table('tx_usage_period')->where('id', $grant->usage_period_id)->first();
+                    if (!$subscription || !$subject || !$period) { throw new UsageError('USAGE_NATIVE_GRANT_MISSING'); }
+                    $cutoff = ($this->boundaries ?? app(UsageTermsBoundary::class))
+                        ->nativeCutoff($grant, $subscription, $subject, $period, $proof['coverage']);
+                    if ($cutoff !== null && (int) $batch->ended_at > $cutoff) {
+                        throw new UsageError('USAGE_NATIVE_AUTHORIZATION_CUTOFF');
                     }
                     $pid = $entry['usage_period_id'];
                     $periodEntries[$pid][] = $entry;
@@ -132,7 +126,7 @@ final class UsageSettlement
                     'raw_down_bytes' => UsageMath::add((string) $stat->raw_down_bytes, $rawDown), 'updated_at' => $now,
                 ]);
                 ($this->fault ?? static fn () => null)('after_ledger');
-                if ($native) { NativeUsageReservations::releaseLocked($batchId, $totals); }
+                NativeUsageReservations::releaseLocked($batchId, $totals);
                 DB::table('tx_usage_batch')->where('id', $batchId)->update(['status' => 'settled', 'settled_at' => max($now, (int) $batch->accepted_at),
                     'updated_at' => max($now, (int) $batch->updated_at, (int) $batch->accepted_at), 'processing_lease_until' => null, 'reason_code' => null]);
                 DB::table('tx_usage_outbox')->where('batch_id', $batchId)->where('kind', 'usage.accepted')->update(['status' => 'completed', 'completed_at' => $now]);
@@ -160,7 +154,7 @@ final class UsageSettlement
 
     public function recover(int $batchId, string $reason, int $now): void
     {
-        $this->policy->requireIsolated();
+        $this->policy->requireNative();
         if (!preg_match('/^[A-Z][A-Z0-9_]{2,79}$/D', $reason)) { throw new UsageError('USAGE_RECOVERY_REASON_INVALID'); }
         DB::transaction(function () use ($batchId, $reason, $now) {
             $this->policy->requireTransaction();

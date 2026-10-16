@@ -8,7 +8,6 @@ use App\Models\WalletRecharge;
 use App\Models\User;
 use App\Services\AuthService;
 use App\Services\Plugin\HookManager;
-use App\Utils\Helper;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -63,19 +62,4 @@ final class AdminAccountProtection
         return true;
     }
 
-    public function rotateCredentials(int $userId, Request $request): void
-    {
-        $user = DB::transaction(static function () use ($userId): User {
-            app(InstallationAuthority::class)->assertLegacyWriter();
-            $user = User::query()->lockForUpdate()->findOrFail($userId);
-            $user->token = Helper::guid();
-            $user->uuid = Helper::guid(true);
-            $user->saveOrFail();
-            return $user;
-        });
-
-        HookManager::call('admin.user.secret.reset', [
-            'user' => $user, 'request' => $request,
-        ]);
-    }
 }

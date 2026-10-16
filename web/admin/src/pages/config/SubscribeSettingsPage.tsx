@@ -17,11 +17,8 @@ const fields: SettingField[] = [
   { key: 'default_remind_expire', label: '默认开启到期提醒', type: 'switch', section: '流量' },
   { key: 'default_remind_traffic', label: '默认开启流量提醒', type: 'switch', section: '流量' },
 
-  { key: 'show_info_to_server_enable', label: '向节点下发用户信息', type: 'switch', section: '节点下发' },
-  { key: 'show_protocol_to_server_enable', label: '向节点下发协议信息', type: 'switch', section: '节点下发' },
-  { key: 'subscribe_path', label: '订阅路径', section: '订阅入口', placeholder: 's', description: '例如 s，对应订阅 URL 中的路径段。' },
 ]
 
 export function SubscribeSettingsPage() {
-  return <SettingsForm settingKey="subscribe" title="订阅设置" description="包含套餐变更、流量重置、事件 ID、节点下发和订阅路径。" fields={fields}/>
+  return <SettingsForm settingKey="subscribe" title="订阅设置" description="包含套餐变更、流量重置、事件 ID、当前订阅业务设置。" fields={fields}/>
 }

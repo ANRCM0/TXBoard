@@ -100,7 +100,7 @@ final class ThemeV2Runtime
                 $target = $this->path($name);
                 if (File::exists($target)) {
                     if (!$this->isInstalled($name)) {
-                        throw new InvalidArgumentException('Theme name already belongs to a v1 theme');
+                        throw new InvalidArgumentException('Theme directory does not contain a current static package');
                     }
                     if (!version_compare($manifest['version'], $this->manifest($name)['version'], '>')) {
                         throw new InvalidArgumentException('Theme v2 upgrade must have a newer version');

@@ -120,13 +120,11 @@ class InstallationRuntimeTest extends TestCase
         }
     }
 
-    public function test_native_authority_rejects_legacy_writer_and_node_snapshot_and_delta(): void
+    public function test_native_authority_rejects_legacy_writer(): void
     {
         $this->native();
         $this->refuses('NATIVE_WRITER_REJECTED',
             fn () => DB::transaction(fn () => app(InstallationAuthority::class)->assertLegacyWriter()));
-        $this->refuses('NATIVE_NOT_READY', fn () => ServerService::getNativeAvailableUsers(new Server()));
-        $this->refuses('NATIVE_NOT_READY', fn () => NodeSyncService::notifyUserChanged(new User()));
     }
 
     public function test_operator_initialization_command_is_idempotent_and_has_no_native_activation(): void

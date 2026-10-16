@@ -18,6 +18,10 @@ export const classify = (uri) => {
       /^\/txapi\/internal(?:\/|$)/.test(p) ||
       /^\/txapi\/admin\/[^/]+\/agents(?:\/|$)/.test(p) ||
       /^\/\.well-known\/txboard-agent-connect(?:\.md)?$/.test(p)) return ['Forbidden retired route', 'forbidden'];
+  if (/^\/(?:s|\{[^}]+\})\/\{token\}$/.test(p) ||
+      /\/subscription-credentials\/rotate$/.test(p) ||
+      /^\/txapi\/admin\/[^/]+\/users\/[^/]+\/subscription-link$/.test(p) ||
+      p === '/txapi/me/nodes' || p.endsWith('/themes/v2/upload')) return ['Forbidden retired route', 'forbidden'];
   if (p.startsWith('/txapi/admin/')) return ['TXAPI admin', 'admin'];
   if (p.startsWith('/txapi/node/v1/') || p.startsWith('/txapi/node/v2/usage/')) return ['TXAPI Node HTTP', 'node'];
   if (p.startsWith('/txapi/payment/webhook/')) return ['Native payment callback', 'provider-signature'];
@@ -27,7 +31,6 @@ export const classify = (uri) => {
   if (p.startsWith('/txapi/')) return ['TXAPI user/application', 'user'];
   // Retired versions are recognized only to report an accidental regression.
   if (/^\/api\/v[12](?:\/|$)/.test(p)) return ['Forbidden retired route', 'forbidden'];
-  if (/^\/(?:s|\{[^}]+\})\/\{token\}$/.test(p)) return ['Subscription delivery', 'subscription-credential'];
   return ['Web/other', 'mixed'];
 };
 

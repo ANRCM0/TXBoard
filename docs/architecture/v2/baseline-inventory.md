@@ -51,7 +51,7 @@ JSON 的 `sourceManifest` 是完整覆盖文件列表及 SHA-256。`core.depende
 | Stat | `tx_stat` | 0 | [TXBoard/api/app/Models/Stat.php](../../../api/app/Models/Stat.php) |
 | StatServer | `tx_stat_server` | 1 | [TXBoard/api/app/Models/StatServer.php](../../../api/app/Models/StatServer.php) |
 | StatUser | `tx_stat_user` | 0 | [TXBoard/api/app/Models/StatUser.php](../../../api/app/Models/StatUser.php) |
-| SubscribeTemplate | `tx_subscribe_templates` | 0 | [TXBoard/api/app/Models/SubscribeTemplate.php](../../../api/app/Models/SubscribeTemplate.php) |
+| SubscribeTemplate | `tx_subscribe_templates` | 0 | Historical model removed in cleanup batch 6; table retained |
 | Ticket | `tx_ticket` | 3 | [TXBoard/api/app/Models/Ticket.php](../../../api/app/Models/Ticket.php) |
 | TicketMessage | `tx_ticket_message` | 1 | [TXBoard/api/app/Models/TicketMessage.php](../../../api/app/Models/TicketMessage.php) |
 | TrafficResetLog | `tx_traffic_reset_logs` | 1 | [TXBoard/api/app/Models/TrafficResetLog.php](../../../api/app/Models/TrafficResetLog.php) |

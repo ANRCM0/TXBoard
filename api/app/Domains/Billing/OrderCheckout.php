@@ -85,7 +85,9 @@ final class OrderCheckout
         /** @var Order $order */
         $order = $prepared['order'];
         if ($prepared['kind'] === 'free') {
-            if (!(new OrderService($order))->paid($order->trade_no)) {
+            $lifecycle = $order->purchase_terms_version === PublishedOrderService::VERSION
+                ? new NativeOrderLifecycle($order) : new OrderService($order);
+            if (!$lifecycle->paid($order->trade_no)) {
                 throw new ApiException('Payment transition conflict', 409);
             }
             return ['type' => -1, 'data' => true];

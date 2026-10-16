@@ -42,12 +42,12 @@ class ModuleManagementApiTest extends TestCase
             ->assertJsonPath('data.module_id', 'theme.txboard')
             ->assertJsonPath('data.operations', []);
 
-        $this->createTheme('CustomTheme');
+        $this->createTheme('custom-theme');
 
         try {
-            $this->getJson("/txapi/admin/{$this->securePath}/modules/theme.customtheme/operations")
+            $this->getJson("/txapi/admin/{$this->securePath}/modules/theme.custom-theme/operations")
                 ->assertOk()
-                ->assertJsonPath('data.module_id', 'theme.customtheme')
+                ->assertJsonPath('data.module_id', 'theme.custom-theme')
                 ->assertJsonPath('data.operations', ['enable', 'uninstall']);
 
             $this->getJson("/txapi/admin/{$this->securePath}/modules/agent_ops/operations")->assertNotFound();
@@ -60,34 +60,34 @@ class ModuleManagementApiTest extends TestCase
                     'uninstall',
                 ]);
         } finally {
-            File::deleteDirectory(base_path('storage/theme/CustomTheme'));
+            File::deleteDirectory(base_path('storage/theme/custom-theme'));
         }
     }
 
     public function test_theme_enable_executes_through_module_lifecycle_and_returns_refreshed_state(): void
     {
-        $this->createTheme('CustomTheme');
+        $this->createTheme('custom-theme');
         admin_setting(['frontend_theme' => 'TXBoard']);
 
         try {
             $response = $this->postJson(
-                "/txapi/admin/{$this->securePath}/modules/theme.customtheme/operations/enable"
+                "/txapi/admin/{$this->securePath}/modules/theme.custom-theme/operations/enable"
             );
 
             $response->assertOk()
                                 ->assertJsonPath('data.operation', 'enable')
                 ->assertJsonPath('data.success', true)
-                ->assertJsonPath('data.module.id', 'theme.customtheme')
+                ->assertJsonPath('data.module.id', 'theme.custom-theme')
                 ->assertJsonPath('data.module.active', true)
                 ->assertJsonPath('data.error', null);
 
-            $this->assertSame('CustomTheme', admin_setting('frontend_theme'));
+            $this->assertSame('custom-theme', admin_setting('frontend_theme'));
 
-            $this->getJson("/txapi/admin/{$this->securePath}/modules/theme.customtheme/operations")
+            $this->getJson("/txapi/admin/{$this->securePath}/modules/theme.custom-theme/operations")
                 ->assertOk()
                 ->assertJsonPath('data.operations', []);
         } finally {
-            File::deleteDirectory(base_path('storage/theme/CustomTheme'));
+            File::deleteDirectory(base_path('storage/theme/custom-theme'));
         }
     }
 
@@ -135,16 +135,20 @@ class ModuleManagementApiTest extends TestCase
         $path = base_path('storage/theme/' . $name);
         File::ensureDirectoryExists($path);
 
-        file_put_contents($path . '/config.json', json_encode([
-            'name' => $name,
-            'description' => $name . ' test theme',
-            'author' => 'TXBoard tests',
-            'version' => '1.0.0',
-            'compatibility' => ['txboard' => '*'],
-            'configs' => [],
+        File::ensureDirectoryExists($path.'/dist');
+        $js = 'console.log("theme")';
+        File::put($path.'/dist/index.js', $js);
+        File::put($path.'/txboard-theme.json', json_encode([
+            'format' => 2, 'name' => $name, 'version' => '1.0.0',
+            'entry' => ['type' => 'spa', 'module' => 'dist/index.js'],
+            'engines' => ['txboard' => '*', 'gateway' => '*', 'contract' => '1.x'],
+            'gateway' => ['contract' => '1.x', 'sdk' => ['package' => '@txboard/theme-sdk', 'version' => '*'], 'capabilities' => []],
+            'dependencies' => ['runtime' => []],
+            'security' => ['csp' => 'strict', 'remoteCode' => false],
+            'assets' => [['path' => 'dist/index.js', 'integrity' => 'sha256-'.base64_encode(hash('sha256', $js, true))]],
         ], JSON_THROW_ON_ERROR));
-
-        file_put_contents($path . '/dashboard.blade.php', '<div>test theme</div>');
+        config()->set(['theme_v2.txboard_version' => '3.6.0',
+            'theme_v2.gateway_version' => '1.0.0', 'theme_v2.sdk_version' => '0.1.0']);
     }
 
     private function makeAdmin(): User

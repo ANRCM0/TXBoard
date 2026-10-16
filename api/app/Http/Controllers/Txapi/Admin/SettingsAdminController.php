@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Txapi\Admin;
 
 use App\Core\Http\TxapiResponse;
 use App\Http\Requests\Admin\ConfigSave;
-use App\Models\SubscribeTemplate;
 use App\Services\AdminSettingsProjection;
 use App\Services\ThemeService;
 use App\Services\TelegramService;
@@ -35,21 +34,8 @@ final class SettingsAdminController
     public function save(ConfigSave $request): JsonResponse
     {
         $data = $request->validated();
-        $templateKeys = [
-            'subscribe_template_singbox' => 'singbox',
-            'subscribe_template_clash' => 'clash',
-            'subscribe_template_clashmeta' => 'clashmeta',
-            'subscribe_template_stash' => 'stash',
-            'subscribe_template_surge' => 'surge',
-            'subscribe_template_surfboard' => 'surfboard',
-        ];
-
         // Persist only the validated native settings; retired keys are rejected.
         foreach ($data as $key => $value) {
-            if (isset($templateKeys[$key])) {
-                SubscribeTemplate::setContent($templateKeys[$key], $value);
-                continue;
-            }
             if ($key === 'frontend_theme') {
                 app(ThemeService::class)->switch($value);
                 continue;

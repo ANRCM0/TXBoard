@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react'
 import { useState } from 'react'
 import {
-  AppWindow,
   Cable,
   Check,
   ChevronDown,
@@ -24,7 +23,6 @@ const sections = [
   { to: '/config/server', label: '节点配置', icon: Server },
   { to: '/config/email', label: '邮件设置', icon: Mail },
   { to: '/config/telegram', label: 'Telegram 设置', icon: Send },
-  { to: '/config/subscribe-template', label: '订阅模板', icon: AppWindow },
 ] as const
 
 function matches(pathname: string, section: (typeof sections)[number]) {

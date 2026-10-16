@@ -6,7 +6,6 @@ use App\Domains\Network\NativeTrafficReceipt;
 use App\Models\Server;
 use App\Models\User;
 use App\Services\NodeSyncService;
-use App\Services\ServerService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -79,10 +78,8 @@ class CheckTrafficExceeded extends Command
         })->get();
         foreach ($servers as $server) {
             if (!NodeSyncService::isNodeOnline((int) $server->id)) continue;
-            // Send current desired state; Workerman rechecks it again at send
-            // time, so delayed quota work cannot overwrite a later reset/grant.
             if (!NodeSyncService::push((int) $server->id, 'sync.users', [
-                'users' => ServerService::getNativeAvailableUsers($server)->values()->all(),
+                'refresh_required' => true,
             ])) throw new \RuntimeException('QUOTA_PUBLICATION_FAILED');
         }
     }

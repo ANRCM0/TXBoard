@@ -21,7 +21,6 @@ YourPlugin/
 ├── Services/
 ├── Commands/
 ├── database/migrations/
-├── resources/assets/
 └── admin/dist/               # optional Plugin Package v1 Admin App
 ```
 
@@ -37,6 +36,7 @@ YourPlugin/
   "version": "1.0.0",
   "description": "My TXBoard plugin",
   "author": "Your Name",
+  "package": {"schema": 1},
   "config": {
     "api_key": {
       "type": "string",
@@ -47,7 +47,7 @@ YourPlugin/
 }
 ```
 
-支持的常用配置类型包括 `string`、`number`、`boolean`、`json`、`yaml`、`select` 等。后台 Settings 页面由 TXBoard 根据 Schema 生成。
+支持的常用配置类型包括 `string`、`number`、`boolean`、`json`、`yaml`、`select` 等。后台 Settings 页面由 TXBoard 根据 Schema 生成。所有插件必须声明 `package.schema: 1`；旧包格式和旧菜单 component/url/embed/renderer 不再加载。
 
 ## 3. Plugin.php
 
@@ -180,6 +180,7 @@ Manifest：
   },
   "admin_menus": [
     {
+      "id": "dashboard",
       "title": "Dashboard",
       "path": "dashboard",
       "app": "admin/index.html#/dashboard"

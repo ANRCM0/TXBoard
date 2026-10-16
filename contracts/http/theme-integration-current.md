@@ -30,7 +30,7 @@
 | POST | `/auth/password/forgot` | 无，限流/CAPTCHA | 找回密码 |
 | POST | `/auth/admin/login` | **仅管理员登录界面** | 返回专用管理员授权数据与 `secure_path`；普通主题不使用 |
 
-`/public/site-config` 的 `theme_config` 仅含允许公开的主题字段。第三方主题的 ZIP 格式、`config.json`、`dashboard.blade.php` 仍遵守 [Theme Package v1](../theme-package/README.md)。`GET /` 由当前主题提供首页（内置 `TXBoard` 为用户 SPA）；不要把 `GET /` 当成业务 JSON API。
+`/public/site-config` 的 `theme_config` 仅含允许公开的主题字段。第三方主题使用 `txboard-theme.json` 与静态 SPA 资源，遵守 [当前 Theme Package](../theme-package/README.md)；旧 Blade 包和 `/themes/v2/upload` 重复入口已删除，唯一上传入口为管理员 `/themes/upload`。`GET /` 由当前主题提供首页（内置 `TXBoard` 为用户 SPA）；不要把 `GET /` 当成业务 JSON API。
 
 **匿名开始的最低调用：**
 
@@ -67,9 +67,7 @@ Authorization: Bearer <opaque-session-token>
 | 用户 | GET `/me/subscription` | 用户自己的订阅链接、当前套餐和流量、重置日；**敏感 URL** |
 | 用户 | GET `/me/dashboard-stats` | 未付款订单、未关闭工单、邀请人数 |
 | 用户 | GET `/me/site-config` | 仅登录用户可见的站点配置 |
-| 用户 | GET `/me/nodes` | 面向主题的安全节点列表，不返回节点密钥/证书 |
 | 用户 | GET / PATCH `/me/preferences` | 偏好；PATCH 只支持 `remind_expire`、`remind_traffic` |
-| 用户 | POST `/me/subscription-credentials/rotate` | 轮换订阅凭据；旧链接立刻失效，强限流 |
 | 原生凭据 | POST `/me/access-subjects` | `subscription_id,provider_id,credential_profile_id,expected_version`；必需 `Idempotency-Key`，仅准备完成后的 native 领域可签发 |
 | 原生凭据 | POST `/me/access-subjects/{id}/revoke` | `expected_version` 与 `Idempotency-Key`；先本地拒绝，再协调 Provider 撤销 |
 | 原生凭据 | POST `/me/access-subjects/{id}/rotate` | `expected_version` 与 `Idempotency-Key`；保留 Subject、递增凭据代次并拒绝旧代次 |
@@ -142,11 +140,11 @@ Idempotency-Key: 00000000-0000-4000-8000-000000000001
 
 ### 用户订阅
 
-`GET /txapi/me/subscription` 获取本人的 `subscribe_url`；客户端订阅下载真正走 `GET /{subscribe_path}/{token}`，由站点配置动态决定 `subscribe_path`。这不是普通主题拉取节点明文凭据的接口。生成二维码时应避免把完整订阅地址发给外部分析服务。
+`GET /txapi/me/subscription` 返回共同权益摘要（`core-entitlement/v1`），不返回代理 UUID 或长期订阅链接。连接配置通过 `POST /txapi/me/subscription-deliveries` 提交当前客户端 PoP 公钥，换取短期、绑定客户端的 Provider 渲染授权；获取实际连接材料由受信客户端直连 Provider，参见 [当前分发契约](../v2/native-c2-runtime-v1.md)。旧 token URL、节点枚举和 User UUID 轮换入口已删除。
 
 ## 5. 错误、安全与验收
 
 - **401** 未登录/Token 失效：停止带旧令牌重试；**403** 无权限；**404** 资源隐藏或不存在；**409** 业务状态冲突；**422** 表单/字段校验失败；**429** 命中限流；**5xx** 服务端问题。除 401 外也不能以任何状态码直接判定支付成功。
 - 前端主题的用户 Token 与管理员 Token 严格隔离；管理员使用 `/txapi/admin/{admin_path}/*`，不要猜测或硬编码管理员动态路径。
-- 所有请求均使用 TLS；敏感数据仅在受控客户端状态中处理。对 CDN、日志和第三方遥测脱敏 `Authorization`、`auth_data`、`subscribe_url`、`token`。
+- 所有请求均使用 TLS；敏感数据仅在受控客户端状态中处理。对 CDN、日志和第三方遥测脱敏 `Authorization`、`auth_data`、`token`。
 - 主题开发者先验证公开配置、登录、个人中心、套餐/订单、回调后状态、工单与支付异常；生产联调另按 [发布验收](../../docs/operations/release-staging-acceptance.md)。完整**服务端注册**路由见 CI 导出的 `txboard-http-route-catalog`，未列入上述用户表的管理员/Agent/插件路由不得擅自复用。

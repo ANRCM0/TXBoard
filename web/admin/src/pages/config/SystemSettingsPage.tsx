@@ -26,7 +26,6 @@ const schema = z.object({
   logo: z.string().optional(),
   admin_favicon_url: z.string().refine(value => value === '' || isValidFaviconUrl(value),
     '请输入有效的 HTTPS 图标 URL').optional(),
-  subscribe_url: z.string().optional(),
   try_out_plan_id: optionalNumber,
   try_out_hour: optionalNumber,
   tos_url: z.string().optional(),
@@ -43,7 +42,7 @@ type Values = z.infer<typeof schema>
 // values must be strings; otherwise an unrelated null blocks every autosave.
 const nullableTextKeys = [
   'app_name', 'app_description', 'app_url', 'logo', 'admin_favicon_url',
-  'subscribe_url', 'tos_url', 'currency', 'currency_symbol',
+  'tos_url', 'currency', 'currency_symbol',
 ] as const
 
 export function normalizeSystemSettings(settings: Settings): Values {
@@ -114,7 +113,6 @@ export function SystemSettingsPage() {
                   <img src={currentFaviconUrl} alt="管理端标签页图标预览" width={32} height={32} referrerPolicy="no-referrer" style={{ objectFit: 'contain' }} />
                 </div>
               ) : null}
-              <Field label="订阅 URL" className="config-field-wide"><textarea {...form.register('subscribe_url')} /></Field>
               <Field label="服务条款 URL"><input {...form.register('tos_url')} /></Field>
             </div>
           </section>

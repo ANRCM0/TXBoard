@@ -21,7 +21,6 @@ const site = {
   app_url: 'https://example.test',
   logo: null,
   admin_favicon_url: null,
-  subscribe_url: null,
   tos_url: null,
   try_out_plan_id: null,
   try_out_hour: 1,
@@ -43,7 +42,6 @@ const features = {
   announcement_enable: true,
   register_enable: true,
   logo: null,
-  subscribe_url: null,
   tos_url: null,
 }
 
@@ -82,7 +80,6 @@ describe('issue #101: site settings autosave', () => {
     const normalized = normalizeSystemSettings(site)
     expect(normalized.logo).toBe('')
     expect(normalized.admin_favicon_url).toBe('')
-    expect(normalized.subscribe_url).toBe('')
     expect(normalized.tos_url).toBe('')
   })
 
@@ -100,7 +97,7 @@ describe('issue #101: site settings autosave', () => {
 
     expect(saveSettings).toHaveBeenCalledTimes(1)
     expect(saveSettings).toHaveBeenCalledWith(expect.objectContaining({
-      app_name: 'New TXBoard', logo: '', subscribe_url: '', tos_url: '',
+      app_name: 'New TXBoard', logo: '', tos_url: '',
     }))
     expect(host.querySelector('.config-autosave')?.textContent).toContain('设置保存成功')
   })

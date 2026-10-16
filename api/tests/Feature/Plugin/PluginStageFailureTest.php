@@ -70,6 +70,7 @@ class PluginStageFailureTest extends TestCase
             'version' => $version,
             'description' => 'Safe staging test',
             'author' => 'TXBoard',
+            'package' => ['schema' => 1],
         ];
     }
 }

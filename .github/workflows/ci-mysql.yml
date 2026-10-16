@@ -302,3 +302,5 @@ jobs:
           tests/Feature/Subscription/NativeIdentityAndCatalogTest.php
           tests/Feature/Installation/NativeRuntimeReadinessTest.php
           tests/Feature/UsageV2/NativeRuntimeUsageTest.php
+      - name: Native receipt concurrency and SQL crash recovery on MySQL 8.4
+        run: php artisan test tests/Feature/UsageV2/UsageMysqlConcurrencyTest.php

@@ -36,7 +36,6 @@ class EventServiceProvider extends ServiceProvider
 
         User::created([UserObserver::class, 'onCreated']);
         User::updated([UserObserver::class, 'onUpdated']);
-        User::deleted([UserObserver::class, 'onDeleted']);
         Plan::observe(PlanObserver::class);
         Server::created([ServerObserver::class, 'onCreated']);
         Server::updated([ServerObserver::class, 'onUpdated']);

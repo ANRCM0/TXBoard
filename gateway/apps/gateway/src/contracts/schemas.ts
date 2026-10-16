@@ -96,8 +96,28 @@ export type OrderCreateResult = z.infer<typeof orderCreateResultSchema>
 export const planListSchema = z.array(z.looseObject({ id: z.number().int(), name: z.string() }))
 export type Plan = z.infer<typeof planListSchema>[number]
 
-export const userProfileSchema = z.looseObject({ email: z.email() })
+export const userProfileSchema = z.object({
+  id: z.number().int().positive().safe(), email: z.email(),
+  telegram_id: z.number().int().safe().nullable(),
+})
 export type UserProfile = z.infer<typeof userProfileSchema>
+
+// Core decimal strings retain exact byte counts and identifiers at the SDK boundary.
+const decimal = z.string().regex(/^(0|[1-9][0-9]{0,19})$/)
+const positiveDecimal = decimal.refine(value => value !== '0')
+const entitlementBase = { schema: z.literal('core-entitlement/v1'), reason: z.string().regex(/^ENTITLEMENT_[A-Z_]+$/) }
+export const subscriptionSummarySchema = z.discriminatedUnion('authorized', [
+  z.object({ ...entitlementBase, authorized: z.literal(false) }),
+  z.object({
+    ...entitlementBase, authorized: z.literal(true), reason: z.literal('ENTITLEMENT_GRANTED'),
+    subscription_id: positiveDecimal, plan_id: positiveDecimal,
+    expires_at: decimal.nullable(), next_reset_at: decimal.nullable(),
+    quota_bytes: decimal, consumed_bytes: decimal, remaining_bytes: decimal,
+    upload_bytes: decimal, download_bytes: decimal,
+    speed_limit_mbps: decimal.nullable(), device_limit: decimal.nullable(),
+  }),
+])
+export type SubscriptionSummary = z.infer<typeof subscriptionSummarySchema>
 
 export const orderListSchema = z.array(z.looseObject({ trade_no: z.string(), status: z.number().int().min(0).max(4) }))
 export type OrderSummary = z.infer<typeof orderListSchema>[number]

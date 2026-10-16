@@ -35,9 +35,14 @@ export type LoginPayload = {
   email_code?: string
 }
 export type SubscriptionSummary = {
-  planId: number | null; planName: string | null; expiredAt: number | null
-  upload: number | null; download: number | null; transferEnable: number | null
-  resetDay: number | null; speedLimit: number | null; deviceLimit: number | null
+  schema: 'core-entitlement/v1'; authorized: false; reason: string
+} | {
+  schema: 'core-entitlement/v1'; authorized: true; reason: 'ENTITLEMENT_GRANTED'
+  subscription_id: string; plan_id: string
+  expires_at: string | null; next_reset_at: string | null
+  quota_bytes: string; consumed_bytes: string; remaining_bytes: string
+  upload_bytes: string; download_bytes: string
+  speed_limit_mbps: string | null; device_limit: string | null
 }
 export type PaymentMethod = {
   id: number; name: string; icon: string | null; payment: string | null
@@ -54,11 +59,9 @@ export type OrderQuery = { status?: OrderState; current?: number; page_size?: nu
 export type OrderPage = { items: Order[]; current: number; pageSize: number; total: number; lastPage: number }
 export type UserAuth = { auth_data: string; is_admin?: boolean | number }
 export type UserProfile = {
+  id: number
   email: string
-  balance?: number
-  plan_id?: number | null
-  expired_at?: number | null
-  [field: string]: unknown
+  telegram_id: number | null
 }
 export type Plan = {
   id: number

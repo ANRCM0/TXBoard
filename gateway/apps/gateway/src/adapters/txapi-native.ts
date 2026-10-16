@@ -1,9 +1,10 @@
 import { z } from 'zod'
+import { subscriptionSummarySchema, userProfileSchema } from '../contracts/schemas.js'
 import { GatewayFailure } from '../services/failures.js'
 import type { UpstreamOperation } from '../services/upstream.js'
 
-// Native Core DTOs are validated before projection into the frozen Gateway v1
-// display contract. z.object strips extension fields; none are passed through.
+// Native Core DTOs are validated before the Gateway display projection.
+// z.object strips extension fields; none are passed through.
 const integer = z.number().int().min(0).max(Number.MAX_SAFE_INTEGER)
 const id = integer.min(1)
 const nullableLimit = integer.nullable()
@@ -21,18 +22,6 @@ const plan = z.object({
   traffic_limit_bytes: integer, speed_limit_mbps: nullableLimit, device_limit: nullableLimit,
   capacity_limit: nullableLimit, reset_traffic_method: nullableLimit,
   prices: z.array(z.object({ period, amount_minor: integer })), renewable: z.boolean(),
-})
-const profile = z.object({
-  id, email: z.email(), plan_id: id.nullable(), balance_minor: integer,
-  commission_balance_minor: integer, expired_at: nullableDate, telegram_id: z.number().int().safe().nullable(),
-  traffic: z.object({ upload_bytes: integer, download_bytes: integer, limit_bytes: integer }),
-})
-const subscription = z.object({
-  plan: planRef.extend({ traffic_limit_bytes: integer }).nullable(),
-  reset_day: integer.max(31).nullable(), upload_bytes: integer, download_bytes: integer,
-  traffic_limit_bytes: integer, device_limit: nullableLimit,
-  speed_limit_mbps: z.number().nonnegative().finite().nullable(), expired_at: nullableDate,
-  next_reset_at: nullableDate,
 })
 const order = z.object({
   id, trade_no: z.string().regex(/^[a-zA-Z0-9_-]{1,128}$/), plan_id: id,
@@ -111,20 +100,8 @@ export function adaptNativeData(
     })
     case 'login': case 'register': return checked(auth, data)
     case 'sendEmailCode': checked(z.object({ ok: z.literal(true) }), data); return true
-    case 'userProfile': {
-      const row = checked(profile, data)
-      return { id: row.id, email: row.email, plan_id: row.plan_id, balance: row.balance_minor,
-        commission_balance: row.commission_balance_minor, expired_at: seconds(row.expired_at),
-        telegram_id: row.telegram_id, u: row.traffic.upload_bytes,
-        d: row.traffic.download_bytes, transfer_enable: row.traffic.limit_bytes }
-    }
-    case 'userSubscription': {
-      const row = checked(subscription, data)
-      return { plan_id: row.plan?.id ?? null, plan: row.plan,
-        expired_at: seconds(row.expired_at), u: row.upload_bytes, d: row.download_bytes,
-        transfer_enable: row.traffic_limit_bytes, reset_day: row.reset_day,
-        device_limit: row.device_limit, speed_limit: row.speed_limit_mbps }
-    }
+    case 'userProfile': return checked(userProfileSchema, data)
+    case 'userSubscription': return checked(subscriptionSummarySchema, data)
     case 'userStats': {
       const row = checked(stats, data)
       return [row.unpaid_orders, row.open_tickets, row.invited_users]

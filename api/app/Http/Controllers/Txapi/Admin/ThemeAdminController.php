@@ -41,24 +41,7 @@ final class ThemeAdminController
         }
     }
 
-    public function upload(Request $request, ThemeService $themes): JsonResponse
-    {
-        $data = $request->validate([
-            'file' => ['required', 'file', 'mimes:zip', 'max:10240'],
-        ]);
-        try {
-            // ThemeService validates ZIP entry traversal, package metadata,
-            // system theme protections and rollback-safe upgrade promotion.
-            $themes->upload($data['file']);
-        } catch (\Throwable $e) {
-            return TxapiResponse::error($request, 'THEME_PACKAGE_REJECTED',
-                'Theme package rejected or installation failed', 422);
-        }
-        return TxapiResponse::success($request, ['ok' => true])
-            ->header('Cache-Control', 'no-store');
-    }
-
-    public function uploadV2(Request $request, ThemeV2Runtime $runtime): JsonResponse
+    public function upload(Request $request, ThemeV2Runtime $runtime): JsonResponse
     {
         $data = $request->validate([
             'file' => ['required', 'file', 'mimes:zip', 'max:10240'],
@@ -76,7 +59,7 @@ final class ThemeAdminController
             ->header('Cache-Control', 'no-store');
     }
 
-    public function rollbackV2(Request $request, ThemeV2Runtime $runtime, ThemeService $themes): JsonResponse
+    public function rollback(Request $request, ThemeV2Runtime $runtime, ThemeService $themes): JsonResponse
     {
         $name = $this->name($request);
         if (!$runtime->isInstalled($name)) return $this->missing($request);

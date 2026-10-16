@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Txapi\Admin;
 use App\Core\Http\TxapiResponse;
 use App\Models\Order;
 use App\Services\OrderService;
+use App\Domains\Billing\NativeOrderLifecycle;
+use App\Domains\Subscription\Services\PublishedOrderService;
 use App\Services\PlanService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -60,13 +62,15 @@ final class OrderAdminController
 
     public function paid(Request $request): JsonResponse
     {
-        $order = Order::query()->where('trade_no', (string) $request->route('tradeNo'))->firstOrFail();
+        $order = Order::query()->useWritePdo()->where('trade_no', (string) $request->route('tradeNo'))->firstOrFail();
         if ((int) $order->status !== Order::STATUS_PENDING || (int) $order->total_amount < 0) {
             return TxapiResponse::error($request, 'ORDER_CONFLICT', 'Order cannot be marked paid', 409);
         }
         // Reuse the locked, idempotent billing state machine; not a direct
         // status column update. Its internal callback id is not provider proof.
-        if (!(new OrderService($order))->paid('manual_operation')) {
+        $lifecycle = $order->purchase_terms_version === PublishedOrderService::VERSION
+            ? new NativeOrderLifecycle($order) : new OrderService($order);
+        if (!$lifecycle->paid('manual_operation')) {
             return TxapiResponse::error($request, 'ORDER_CONFLICT', 'Order cannot be marked paid', 409);
         }
         return TxapiResponse::success($request, ['ok' => true]);
@@ -74,8 +78,10 @@ final class OrderAdminController
 
     public function cancel(Request $request): JsonResponse
     {
-        $order = Order::query()->where('trade_no', (string) $request->route('tradeNo'))->firstOrFail();
-        if (!(new OrderService($order))->cancel()) {
+        $order = Order::query()->useWritePdo()->where('trade_no', (string) $request->route('tradeNo'))->firstOrFail();
+        $lifecycle = $order->purchase_terms_version === PublishedOrderService::VERSION
+            ? new NativeOrderLifecycle($order) : new OrderService($order);
+        if (!$lifecycle->cancel()) {
             return TxapiResponse::error($request, 'ORDER_CONFLICT', 'Only pending orders can be cancelled', 409);
         }
         return TxapiResponse::success($request, ['ok' => true]);

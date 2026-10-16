@@ -7,10 +7,9 @@ use JsonException;
 use ZipArchive;
 
 /**
- * Isolated Theme Package v2 admission validator.
+ * Current static Theme Package admission validator.
  *
  * This class does not install, execute, publish, or authorize a theme.
- * Legacy Theme Package v1 remains owned by ThemePackage.
  */
 final class ThemeV2Package
 {
@@ -19,9 +18,64 @@ final class ThemeV2Package
     private const NAME_PATTERN = '/\A[a-z0-9][a-z0-9-]{0,62}[a-z0-9]\z/D';
     private const SEMVER = '/\A(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?\z/D';
 
-    public function __construct(private readonly ThemePackage $legacyPackage)
+    private const MAX_ARCHIVE_ENTRIES = 2000;
+    private const MAX_UNCOMPRESSED_BYTES = 50 * 1024 * 1024;
+
+    public function assertSafeArchive(ZipArchive $zip): void
     {
+        if ($zip->numFiles > self::MAX_ARCHIVE_ENTRIES) {
+            throw new InvalidArgumentException('Theme package contains too many files');
+        }
+
+        $uncompressed = 0;
+        $seenEntries = [];
+        for ($i = 0; $i < $zip->numFiles; $i++) {
+            $stat = $zip->statIndex($i);
+            $name = (string) ($stat['name'] ?? '');
+            if (str_contains($name, '\\')) {
+                throw new InvalidArgumentException('Theme package contains an invalid file path');
+            }
+            $normalized = $name;
+
+            if (
+                $normalized === ''
+                || str_contains($normalized, chr(0))
+                || str_starts_with($normalized, '/')
+                || preg_match('/^[A-Za-z]:\//', $normalized)
+            ) {
+                throw new InvalidArgumentException('Theme package contains an invalid file path');
+            }
+
+            foreach (explode('/', rtrim($normalized, '/')) as $segment) {
+                if ($segment === '..') {
+                    throw new InvalidArgumentException('Theme package contains path traversal');
+                }
+                if ($segment === '' || $segment === '.') {
+                    throw new InvalidArgumentException('Theme archive contains unsafe path segments');
+                }
+            }
+            $entryId = strtolower(rtrim($normalized, '/'));
+            if (isset($seenEntries[$entryId])) {
+                throw new InvalidArgumentException('Theme archive contains duplicate paths');
+            }
+            $seenEntries[$entryId] = true;
+
+            $uncompressed += (int) ($stat['size'] ?? 0);
+            if ($uncompressed > self::MAX_UNCOMPRESSED_BYTES) {
+                throw new InvalidArgumentException('Theme package uncompressed size exceeds 50MB');
+            }
+
+            $opsys = 0;
+            $attributes = 0;
+            if ($zip->getExternalAttributesIndex($i, $opsys, $attributes)) {
+                $mode = ($attributes >> 16) & 0170000;
+                if ($mode === 0120000) {
+                    throw new InvalidArgumentException('Theme package must not contain symbolic links');
+                }
+            }
+        }
     }
+
 
     /**
      * Validate a v2 ZIP without extracting files or modifying settings.
@@ -31,7 +85,7 @@ final class ThemeV2Package
      */
     public function validate(ZipArchive $zip, string $txboardVersion, string $gatewayVersion, string $sdkVersion): array
     {
-        $this->legacyPackage->assertSafeArchive($zip);
+        $this->assertSafeArchive($zip);
         $entry = $this->manifestEntry($zip);
         $prefix = substr($entry, 0, -strlen(self::MANIFEST));
         $files = [];

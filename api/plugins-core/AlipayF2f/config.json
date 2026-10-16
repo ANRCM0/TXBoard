@@ -1,4 +1,5 @@
 {
+    "package": {"schema": 1},
     "name": "AlipayF2F",
     "code": "alipay_f2f",
     "type": "payment",

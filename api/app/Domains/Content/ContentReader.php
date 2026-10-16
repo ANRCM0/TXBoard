@@ -7,7 +7,6 @@ use App\Models\Notice;
 use App\Models\User;
 use App\Services\Plugin\HookManager;
 use App\Services\UserService;
-use App\Utils\Helper;
 use Illuminate\Support\Carbon;
 
 /**
@@ -70,13 +69,7 @@ final class ContentReader
                 '<div class="txboard-no-access">'.__('You must have a valid subscription to view content in this area').'</div>',
                 $body);
         }
-        $subscription = Helper::getSubscribeUrl($user->token);
-        $body = str_replace(
-            ['{{siteName}}', '{{subscribeUrl}}', '{{urlEncodeSubscribeUrl}}', '{{safeBase64SubscribeUrl}}'],
-            [admin_setting('app_name', 'TXBoard'), $subscription, urlencode($subscription),
-                str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($subscription))],
-            $body
-        );
+        $body = str_replace('{{siteName}}', admin_setting('app_name', 'TXBoard'), $body);
 
         $data = [
             'id' => (int) $article->id,

@@ -46,7 +46,6 @@ class ConfigSave extends FormRequest
         'app_name' => '',
         'app_description' => '',
         'app_url' => 'nullable|url',
-        'subscribe_url' => 'nullable',
         'try_out_enable' => '',
         'try_out_plan_id' => 'integer',
         'try_out_hour' => 'numeric',
@@ -61,9 +60,6 @@ class ConfigSave extends FormRequest
         'new_order_event_id' => '',
         'renew_order_event_id' => '',
         'change_order_event_id' => '',
-        'show_info_to_server_enable' => '',
-        'show_protocol_to_server_enable' => '',
-        'subscribe_path' => '',
         // server
         'server_token' => 'nullable|min:16',
         'server_pull_interval' => 'integer',
@@ -117,12 +113,6 @@ class ConfigSave extends FormRequest
         'password_limit_expire' => 'integer',
         'default_remind_expire' => 'boolean',
         'default_remind_traffic' => 'boolean',
-        'subscribe_template_singbox' => 'nullable',
-        'subscribe_template_clash' => 'nullable',
-        'subscribe_template_clashmeta' => 'nullable',
-        'subscribe_template_stash' => 'nullable',
-        'subscribe_template_surge' => 'nullable',
-        'subscribe_template_surfboard' => 'nullable'
     ];
     /**
      * Get the validation rules that apply to the request.
@@ -167,7 +157,6 @@ class ConfigSave extends FormRequest
         // illiteracy prompt
         return [
             'app_url.url' => '站点URL格式不正确，必须携带http(s)://',
-            'subscribe_url.url' => '订阅URL格式不正确，必须携带http(s)://',
             'server_token.min' => '通讯密钥长度必须大于16位',
             'tos_url.url' => '服务条款URL格式不正确，必须携带http(s)://',
             'telegram_webhook_url.url' => 'Telegram Webhook地址格式不正确，必须携带http(s)://',

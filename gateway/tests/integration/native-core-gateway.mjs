@@ -125,9 +125,6 @@ const password = 'integration-password-2026'
   assert.equal(historyDetail.data.status, 4)
   await call(gateway, prefix + '/orders/' + history.trade_no, { token: tokenB }, 404)
   await call(gateway, prefix + '/orders/' + history.trade_no + '/status', { token: tokenB }, 404)
-  const subscription = await call(gateway, prefix + '/user/subscription/summary', { token: tokenA })
-  assert.equal(subscription.data.planId, null)
-  assert.ok(!JSON.stringify(subscription).includes('subscribe_url'))
   for (const path of ['/user/profile', '/user/subscription/summary', '/orders', '/orders/page', '/payments', '/notices', '/dashboard/stats']) {
     const before = reached.length
     await call(gateway, prefix + path, {}, 401); assert.equal(reached.length, before)
@@ -177,12 +174,6 @@ const password = 'integration-password-2026'
   const article = await call(core, '/txapi/knowledge/' + seeded.article_id, { token: tokenA })
   assert.ok(!article.data.body.includes('paid-fixture-secret'))
   fixture('activate-subscription', profileB.data.id, seeded.plan_id)
-  const subscribed = await call(gateway, prefix + '/user/subscription/summary', { token: tokenB })
-  assert.equal(subscribed.data.planId, seeded.plan_id)
-  assert.equal(subscribed.data.transferEnable, 10 * 1073741824)
-  assert.equal(subscribed.data.upload, 123); assert.equal(subscribed.data.download, 456)
-  assert.equal(subscribed.data.deviceLimit, 2); assert.equal(subscribed.data.speedLimit, 100)
-  assert.ok(!JSON.stringify(subscribed.data).includes('subscribe_url'))
   const paidArticle = await call(core, '/txapi/knowledge/' + seeded.article_id, { token: tokenB })
   assert.ok(paidArticle.data.body.includes('paid-fixture-secret'))
   await call(gateway, prefix + '/invites', { token: tokenA }, 404)
@@ -191,7 +182,7 @@ const password = 'integration-password-2026'
   await call(core, '/txapi/auth/logout', { token: tokenA, method: 'POST' })
   await call(gateway, prefix + '/user/profile', { token: tokenA }, 401)
   assert.ok(reached.every(item => item.path.startsWith('/txapi/')))
-  console.log(JSON.stringify({ result: 'passed', checks, core_head: sourceHead, database: 'txboard_gateway_test', database_version: seeded.database_version, real_http: true, discounted_history_orders: history.count, operations: [...new Set(reached.map(item => `${item.method} ${item.path.replace(/^\/txapi\/orders\/[^/]+/, '/txapi/orders/{tradeNo}')}`))], limitations: ['B5/B6 not complete', 'No anonymous payment catalog', 'Invites/knowledge Core-only checks', 'Unpaged list returns first 100; use orders.page for complete traversal', 'No production deployment'] }, null, 2))
+  console.log(JSON.stringify({ result: 'passed', checks, core_head: sourceHead, database: 'txboard_gateway_test', database_version: seeded.database_version, real_http: true, discounted_history_orders: history.count, operations: [...new Set(reached.map(item => `${item.method} ${item.path.replace(/^\/txapi\/orders\/[^/]+/, '/txapi/orders/{tradeNo}')}`))], limitations: ['Legacy financial fixtures do not provide native subscription entitlement; native-c2 covers authoritative Core entitlement', 'B5/B6 not complete', 'No anonymous payment catalog', 'Invites/knowledge Core-only checks', 'Unpaged list returns first 100; use orders.page for complete traversal', 'No production deployment'] }, null, 2))
 } finally {
   try { fixture('captcha-off') } catch { /* Resource cleanup still must run. */ }
   await Promise.all(servers.map(server => new Promise(resolveClose => server.close(resolveClose))))

@@ -14,11 +14,12 @@ beforeEach(() => {
     seen.push(config)
     const data = config.url === '/me/subscription'
       ? {
-          subscribe_url: 'https://board.example/sub/secret',
-          reset_day: null, plan: null, upload_bytes: 111,
-          download_bytes: 222, traffic_limit_bytes: 1000,
+          schema: 'core-entitlement/v1', authorized: true,
+          reason: 'ENTITLEMENT_GRANTED', subscription_id: '7',
+          credential_status: 'provider_managed', upload_bytes: '111',
+          download_bytes: '222', quota_bytes: '1000',
           device_limit: null, speed_limit_mbps: null,
-          expired_at: null, next_reset_at: null,
+          expires_at: null, next_reset_at: null,
         }
       : { unpaid_orders: 2, open_tickets: 3, invited_users: 4 }
     return { data: { data, request_id: 'dashboard-trace' },
@@ -36,10 +37,10 @@ afterEach(() => {
 describe('LR-10 native dashboard and subscription', () => {
   it('reads private subscription without raw token field', async () => {
     const item = await fetchSubscribe()
-    expect(item.subscribe_url).toContain('/sub/secret')
+    expect(item).not.toHaveProperty('subscribe_url')
     expect(item).not.toHaveProperty('token')
     expect(item.u).toBe(111)
-    expect(item.plan).toBeNull()
+    expect(item.subscription_id).toBe('7')
     expect(seen[0]).toMatchObject({ url: '/me/subscription', baseURL: '/txapi', method: 'get' })
   })
   it('maps named stat counters into existing dashboard order', async () => {

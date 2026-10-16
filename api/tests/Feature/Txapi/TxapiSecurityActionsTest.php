@@ -36,7 +36,6 @@ class TxapiSecurityActionsTest extends TestCase
     public function test_quick_login_requires_user_token_validates_redirect_and_uses_one_time_login_service(): void
     {
         $this->postJson('/txapi/auth/quick-login')->assertStatus(401);
-        $this->postJson('/txapi/me/subscription-credentials/rotate')->assertStatus(401);
         $user = $this->user('security-owner@example.test');
         Sanctum::actingAs($user);
         foreach (['https://example.net', '//example.net', '../profile', '/profile?next=https://evil.net'] as $redirect) {
@@ -55,25 +54,6 @@ class TxapiSecurityActionsTest extends TestCase
         $this->assertSame($user->id, app(MailLinkService::class)->handleTokenLogin($token));
         $this->assertNull(app(MailLinkService::class)->handleTokenLogin($token));
         $this->assertNull(Cache::get(CacheKey::get('TEMP_TOKEN', $token)));
-    }
-
-    public function test_rotation_changes_only_current_users_subscription_credential(): void
-    {
-        $owner = $this->user('rotate-owner@example.test');
-        $other = $this->user('rotate-other@example.test');
-        $old = $owner->token;
-        $uuid = $owner->uuid;
-        $unrelatedToken = $other->token;
-        Sanctum::actingAs($owner);
-        $this->getJson('/txapi/me/subscription-credentials/rotate')->assertStatus(404);
-        $result = $this->postJson('/txapi/me/subscription-credentials/rotate');
-        $result->assertOk()->assertJsonStructure(['data' => ['subscribe_url'], 'request_id']);
-        $owner->refresh();
-        $this->assertNotSame($old, $owner->token);
-        $this->assertNotSame($uuid, $owner->uuid);
-        $this->assertSame($unrelatedToken, $other->fresh()->token);
-        $this->assertStringContainsString($owner->token, (string) $result->json('data.subscribe_url'));
-        $this->assertArrayNotHasKey('token', $result->json('data'));
     }
 
     private function user(string $email): User

@@ -15,7 +15,7 @@ final class NodeUsageV2Controller
     public function submit(Request $request, UsagePolicy $policy, UsagePayload $parser, UsageReceipts $receipts): JsonResponse
     {
         try {
-            $policy->requireIsolated();
+            $policy->requireNative();
             return TxapiResponse::success($request, $receipts->submit(
                 (int) $request->attributes->get('txnode.node')->id, $parser->submission($request->getContent()), time()
             ))->header('Cache-Control', 'no-store');
@@ -27,7 +27,7 @@ final class NodeUsageV2Controller
     public function get(Request $request, UsagePolicy $policy, UsagePayload $parser, UsageReceipts $receipts): JsonResponse
     {
         try {
-            $policy->requireIsolated();
+            $policy->requireNative();
             return TxapiResponse::success($request, $receipts->query(
                 (int) $request->attributes->get('txnode.node')->id, $parser->query($request->getContent())
             ))->header('Cache-Control', 'no-store');

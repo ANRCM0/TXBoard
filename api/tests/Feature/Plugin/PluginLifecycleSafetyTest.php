@@ -79,6 +79,7 @@ class PluginLifecycleSafetyTest extends TestCase
             'version' => '1.0.0',
             'description' => 'Dependency test',
             'author' => 'TXBoard',
+            'package' => ['schema' => 1],
             'require' => ['not_installed' => '>=1.0.0'],
         ], JSON_THROW_ON_ERROR));
 
@@ -102,6 +103,7 @@ class PluginLifecycleSafetyTest extends TestCase
             'version' => '1.0.0',
             'description' => 'Repeated install safety',
             'author' => 'TXBoard',
+            'package' => ['schema' => 1],
         ], JSON_THROW_ON_ERROR));
 
         try {

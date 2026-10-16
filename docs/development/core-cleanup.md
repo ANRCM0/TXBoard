@@ -59,6 +59,24 @@
 
 Core API、MySQL、native C2 与镜像继续验证当前行为；Gateway/SDK、Redis、容器及浏览器由现有 Gateway CI 集中验证。本地只做静态检查，不重建原型环境。
 
+## 第六批：订阅与 Node 单一交付链
+
+删除旧 token 订阅下载、User UUID 渲染器、协议注册门面、旧节点列表与凭据轮换入口，以及生成这些链接的 helper、管理端、用户页和知识库替换。旧订阅模板的设置、页面和规则资源一并删除；历史表及迁移保留。当前客户端通过短期 PoP 渲染授权直接向 Provider 获取材料。
+
+TXBoard Node 消费者只接受 Provider 签名授权和完整刷新，删除 unsigned 用户快照、缓存、delta/device 事件及旧孤立用量客户端。WebSocket 只推刷新提示，实际完整授权仍由当前身份和权益重新生成。独立 Xboard 外部适配器仍有实际消费者，不属于本次 Core 过渡兼容。
+
+## 第七批：UsageV2 native 收敛
+
+删除隔离模式配置、手工 Registry 发行命令与旧 Service/Node 夹具。`UsageEvidence` 只拥有共享摘要、覆盖区间和来源身份校验；接收与结算严格要求 native admission、Provider 证据与签名授权。保留原 Period 配额预留、不可变回执、重复提交、SQL 恢复、代际重放和结算锁定。
+
+有价值的回执及 MySQL 并发/进程崩溃覆盖迁移到真实激活、订阅和签名 grant 夹具，删除纯原型矩阵。9 条失去消费者的手动工作流退出，保留 8 条自动组件/集成流程和 3 条显式手动 Provider 工具。Node/Web 自动 CI 同时支持叠加 PR，不通过未触发检查冒充验收。
+
+## 第八批：包格式与订单 owner
+
+Plugin 必须使用当前 `package.schema: 1`，明确声明菜单及 Admin app；删除旧菜单别名、字段修复、renderer 与资源合并入口。Theme 只保留系统 TXBoard SPA 和当前静态包 runtime，删除 Blade 包类与重复上传路由。保留 ZIP 路径/软链/大小限制、SRI、版本依赖、CSP、活动主题保护与回滚补偿；PHP Plugin 仍为可信进程内代码。
+
+Billing 的 `NativeOrderLifecycle` 负责当前 native 订单付款、取消与履约入口，调用方从主库当前 marker 选择 owner。旧 `OrderService` 拒绝 native 订单，保持账户优先锁、付款金额/支付商校验、回调幂等、提交后队列故障的 SQL 恢复。
+
 ## 当前领域入口
 
 订阅服务的具体职责、事务要求和跨域边界见 [Subscription domain](../../api/app/Domains/Subscription/README.md)。
@@ -67,7 +85,7 @@ Core API、MySQL、native C2 与镜像继续验证当前行为；Gateway/SDK、R
 | --- | --- |
 | Identity | 账户创建、身份 SQL 阶段、管理员账户保护和封禁、认证与会话 |
 | Subscription | 不可变目录、发布 Offer、购买协调、订阅履约及生命周期、共同权益、非秘密 Provider 协调、有限分发授权 |
-| Billing | 订单购买证据、幂等及已有支付入口；C3 真实资金账本与退款仍待实现 |
+| Billing | native 订单状态机、订单购买证据、幂等及已有支付入口；C3 真实资金账本与退款仍待实现 |
 | CredentialProvider | mTLS 传输、Provider 协议及非秘密回执；实际代理凭据留在独立 Provider |
 | Network | Node/Machine 身份、目标绑定、授权签名及下发 |
 | UsageV2 | 原始 Session/Period 归属、持久接收、配额预留及结算 |
@@ -76,13 +94,9 @@ Core API、MySQL、native C2 与镜像继续验证当前行为；Gateway/SDK、R
 
 ## 仍需后续处理
 
-隔离 authority 迁移原型已在第四批删除。当前安装状态仍使用既有 `tx_authority_writer_fence` 表名；这不是保留旧迁移运行器。正式 native runtime outbox 与旧隔离 postcommit handoff 是不同机制。
+本轮三批实现是候选，验收以同一提交的 CI 为准。数据库历史迁移、表和既有验证 JSON 未删除或改写；它们不代表仍有原型运行入口。
 
-旧写入口的实际业务与 `UserObserver` 尚存，capture hooks 已移除。旧 Client/User 订阅渲染及旧 Node 用户增量链仍需按真实消费者清理。隔离 Internal API 已在第五批候选中退役；正式 C4 接口尚未交付。
-
-条款影子写入已在第三批删除。旧 UsageV2 的隔离接收配置、手动 Registry 工具及其共享实现仍有测试或历史夹具消费者，不能把本批理解为所有旧 Node 链路均已清除。Plugin/Theme 的旧包格式与适配分支也需与当前包生产者、消费者同步收敛。
-
-这些剩余实现不构成旧版本支持承诺，也不要求为它们继续添加兼容功能。C3—C5 的业务交付范围保持原计划。
+旧付费购买、余额、佣金、退款及其账户投影仍有真实业务消费者，native admission 继续拒绝未交付能力；不能通过删除安全门禁或改名伪装成 C3 已完成。后续 C3 以正式资金模型接管这些业务并清理剩余旧业务服务。C4 正式服务接口、PKI 与长期订阅交付、C5 发布仍按原计划推进。
 
 ## 验证
 

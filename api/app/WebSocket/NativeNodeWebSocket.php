@@ -194,8 +194,7 @@ final class NativeNodeWebSocket
             'machine_id' => $machineId,
             'heartbeat_interval_seconds' => 55,
             'heartbeat_timeout_seconds' => NodeSyncService::WS_TTL_SECONDS,
-            'capabilities' => ['sync.config', 'sync.users', 'sync.user.delta',
-                'sync.nodes', 'sync.devices', 'traffic.report', 'traffic.ack',
+            'capabilities' => ['sync.config', 'sync.users', 'sync.nodes', 'traffic.report', 'traffic.ack',
                 'heartbeat.ping'],
         ]);
     }

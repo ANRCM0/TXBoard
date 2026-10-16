@@ -251,12 +251,7 @@ class NativeTrafficReceiptTest extends TestCase
         $this->assertSame(1, DB::table('tx_native_traffic_receipt')->count());
         $this->assertSame(0, Artisan::call('traffic:native-recover'));
         $this->assertSame('settled', $this->row($ack['receipt_id'])->status);
-        $headers = ['Authorization' => 'Bearer native-receipt-global-fixture', 'X-TX-Node-ID' => (string) $node->id];
-        $caps = $this->postJson('/txapi/node/v1/handshake', [], $headers)->assertOk()->json('data.capabilities');
-        $this->assertNotContains('traffic_receipt_durable_v1', $caps);
-        config(['native_traffic_receipts.enabled' => true]);
-        $caps = $this->postJson('/txapi/node/v1/handshake', [], $headers)->assertOk()->json('data.capabilities');
-        $this->assertContains('traffic_receipt_durable_v1', $caps);
+
     }
     public function test_accept_commit_fault_rolls_back_physical_transaction_and_returns_no_ack(): void
     {

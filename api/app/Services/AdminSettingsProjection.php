@@ -41,7 +41,6 @@ final class AdminSettingsProjection
                 'app_name' => admin_setting('app_name', 'TXBoard'),
                 'app_description' => admin_setting('app_description', 'TXBoard control plane'),
                 'app_url' => admin_setting('app_url'),
-                'subscribe_url' => admin_setting('subscribe_url'),
                 'try_out_plan_id' => (int) admin_setting('try_out_plan_id', 0),
                 'try_out_hour' => (int) admin_setting('try_out_hour', 1),
                 'tos_url' => admin_setting('tos_url'),
@@ -60,11 +59,8 @@ final class AdminSettingsProjection
                 'new_order_event_id' => (int) admin_setting('new_order_event_id', 0),
                 'renew_order_event_id' => (int) admin_setting('renew_order_event_id', 0),
                 'change_order_event_id' => (int) admin_setting('change_order_event_id', 0),
-                'show_info_to_server_enable' => (bool) admin_setting('show_info_to_server_enable', 0),
-                'show_protocol_to_server_enable' => (bool) admin_setting('show_protocol_to_server_enable', 0),
                 'default_remind_expire' => (bool) admin_setting('default_remind_expire', 1),
                 'default_remind_traffic' => (bool) admin_setting('default_remind_traffic', 1),
-                'subscribe_path' => admin_setting('subscribe_path', 's'),
             ],
             // Only the selected theme remains global; appearance belongs to the
             // selected theme's config.json + theme_<name> values.
@@ -124,44 +120,9 @@ final class AdminSettingsProjection
                 'password_limit_expire' => admin_setting('password_limit_expire', 60)
 
             ],
-            'subscribe_template' => [
-                'subscribe_template_singbox' => $this->formatTemplateContent(
-                    subscribe_template('singbox') ?? '',
-                    'json'
-                ),
-                'subscribe_template_clash' => subscribe_template('clash') ?? '',
-                'subscribe_template_clashmeta' => subscribe_template('clashmeta') ?? '',
-                'subscribe_template_stash' => subscribe_template('stash') ?? '',
-                'subscribe_template_surge' => subscribe_template('surge') ?? '',
-                'subscribe_template_surfboard' => subscribe_template('surfboard') ?? ''
-            ]
+
         ];
     }
 
-
-    private function formatTemplateContent(mixed $content, string $format = 'string'): string
-    {
-        return match ($format) {
-            'json' => match (true) {
-                    is_array($content) => json_encode(
-                        value: $content,
-                        flags: JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
-                    ),
-
-                    is_string($content) && str($content)->isJson() => rescue(
-                        callback: fn() => json_encode(
-                            value: json_decode($content, associative: true, flags: JSON_THROW_ON_ERROR),
-                            flags: JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
-                        ),
-                        rescue: $content,
-                        report: false
-                    ),
-
-                    default => str($content)->toString()
-                },
-
-            default => str($content)->toString()
-        };
-    }
 
 }

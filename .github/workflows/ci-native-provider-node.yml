@@ -47,7 +47,6 @@ jobs:
           tests/Feature/Subscription/NativeCredentialProviderTest.php
           tests/Feature/Subscription/NativeSubscriptionEntitlementTest.php
           tests/Feature/Installation/NativeProviderPreparationTest.php
-          tests/Feature/Server/NativeNodeAuthorizationSnapshotTest.php
           tests/Feature/Server/TxNodeNativeProtocolTest.php
           tests/Feature/Server/TxNodeNativeWebSocketTest.php
           tests/Unit/NativeNodeAuthorizationConfigTest.php

@@ -1,5 +1,7 @@
 # Bounded TCP collector and actual Core interoperability v1
 
+> 已退役（2026-10-16）：本文保留隔离原型的历史设计和当时验收记录。对应开关、Registry/CLI、运行器和专属 CI 已删除；正文 Current/isolated 状态不描述现行运行时。当前用量边界见 [当前 native 契约](README.md)。
+
 Status: verified isolated producer/consumer interoperability slice. This is an
 actual producer/consumer fixture for the [explicit TCP collector](bounded-tcp-collector-v1.md),
 not a production v2 Service handoff or admission system.

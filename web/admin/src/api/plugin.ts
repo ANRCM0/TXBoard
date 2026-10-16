@@ -20,17 +20,12 @@ export type PluginConfigField = {
 }
 
 export type PluginAdminMenu = {
-  id?: string
-  title?: string
-  label?: string
-  path?: string
+  id: string
+  title: string
+  path: string
   icon?: string
   description?: string
-  url?: string
-  embed?: string
-  component?: string
-  renderer?: string
-  app?: string
+  app: string
 }
 
 export type PluginAdminCrudColumn = {
@@ -107,7 +102,7 @@ export function normalizePluginPath(path?: string) {
 }
 
 
-export function resolvePluginAppUrl(plugin: Pick<PluginItem, 'code' | 'asset_base'>, menu: PluginAdminMenu) {
+export function resolvePluginAppUrl(plugin: Pick<PluginItem, 'code' | 'asset_base'>, menu: Pick<PluginAdminMenu, 'app'>) {
   const app = menu.app?.trim()
   if (!app) return null
   if (
@@ -168,37 +163,6 @@ export async function savePluginCrudRecord(path: string, payload: Record<string,
 export async function deletePluginCrudRecord(path: string, payload: Record<string, unknown>) {
   const { data } = await pluginApiClient.post(checkedPluginApiPath(path), payload)
   return unwrap(data)
-}
-
-export async function fetchPluginMenuHtml(component?: string): Promise<string | null> {
-  const path = component?.trim()
-  if (!path || /^https?:\/\//i.test(path)) return null
-
-  if (!isPluginApiPath(path) &&
-      !/^\/plugins\/[A-Za-z0-9_-]+(?:\/[A-Za-z0-9_.-]+)*\/?$/.test(path)) return null
-
-  try {
-    const response = await pluginApiClient.get(path, {
-      headers: { Accept: 'text/html,application/json' },
-      responseType: 'text',
-      transformResponse: [(value) => value],
-    })
-    const data: unknown = response.data
-
-    if (typeof data !== 'string') return null
-    const trimmed = data.trim()
-    if (!trimmed) return null
-    if (trimmed.startsWith('<')) return trimmed
-
-    try {
-      const parsed = JSON.parse(trimmed) as { data?: { html?: string }; html?: string }
-      return parsed.data?.html ?? parsed.html ?? null
-    } catch {
-      return null
-    }
-  } catch {
-    return null
-  }
 }
 
 function normalizeCrudPage(raw: unknown, current = 1, pageSize = 20): PluginCrudPage {
