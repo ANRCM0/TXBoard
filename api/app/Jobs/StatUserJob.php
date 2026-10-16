@@ -4,7 +4,6 @@
 namespace App\Jobs;
 
 use App\Models\StatUser;
-use App\Domains\Identity\AccountSqlPhase;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -64,13 +63,7 @@ class StatUserJob implements ShouldQueue
 
     protected function processUserStat(int $uid, array $v, int $recordAt): void
     {
-        if (AccountSqlPhase::enabled()) {
-            $driver = DB::connection()->getDriverName();
-            app(AccountSqlPhase::class)->run(AccountSqlPhase::STATS_USER_APPLY,
-                fn () => $this->applyUserStat($driver, $uid, $v, $recordAt), $driver === 'sqlite' ? 3 : 1);
-            return;
-        }
-        $this->applyUserStat(config('database.default'), $uid, $v, $recordAt);
+        $this->applyUserStat(DB::connection()->getDriverName(), $uid, $v, $recordAt);
     }
 
     private function applyUserStat(string $driver, int $uid, array $v, int $recordAt): void

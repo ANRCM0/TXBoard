@@ -26,8 +26,8 @@ class OrderHandleJob implements ShouldQueue
 
     public function failed(?\Throwable $exception): void
     {
-        if ($exception instanceof \App\Domains\AuthorityMigration\AuthorityFenceException) {
-            Log::error('AUTHORITY_ORDER_FULFILLMENT_FENCE_RETRIES_EXHAUSTED');
+        if ($exception instanceof \App\Domains\Installation\InstallationAuthorityException) {
+            Log::error('INSTALLATION_ORDER_FULFILLMENT_RETRIES_EXHAUSTED');
             return;
         }
         Log::error('Order fulfillment job exhausted its retries', [
@@ -66,8 +66,8 @@ class OrderHandleJob implements ShouldQueue
             case Order::STATUS_PROCESSING:
                 try {
                     $orderService->open();
-                } catch (\App\Domains\AuthorityMigration\AuthorityFenceException $exception) {
-                    Log::error('AUTHORITY_ORDER_FULFILLMENT_FENCE_REJECTED');
+                } catch (\App\Domains\Installation\InstallationAuthorityException $exception) {
+                    Log::error('INSTALLATION_ORDER_FULFILLMENT_REJECTED');
                     throw $exception;
                 } catch (\Throwable $exception) {
                     Log::error('Order fulfillment attempt failed', [

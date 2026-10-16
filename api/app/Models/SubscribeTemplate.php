@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Domains\Identity\AccountSqlPhase;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
 
@@ -29,20 +28,10 @@ protected $table = 'tx_subscribe_templates';
 
     public static function setContent(string $name, ?string $content): void
     {
-        $phase = static fn () => self::updateOrCreate(
+        self::updateOrCreate(
             ['name' => $name], ['content' => $content]
         );
-        if (!AccountSqlPhase::enabled()) {
-            $phase();
-            Cache::store('redis')->forget(self::$cachePrefix . $name);
-            return;
-        }
-        app(AccountSqlPhase::class)->run(AccountSqlPhase::SETTINGS_SUBSCRIBE_TEMPLATE_WRITE, $phase);
-        try {
-            Cache::store('redis')->forget(self::$cachePrefix . $name);
-        } catch (\Throwable) {
-            throw new \RuntimeException('AUTHORITY_TEMPLATE_CACHE_OUTCOME_UNKNOWN');
-        }
+        Cache::store('redis')->forget(self::$cachePrefix . $name);
     }
 
     public static function getAllContents(): array

@@ -5,7 +5,6 @@ namespace App\Jobs;
 
 use App\Models\Server;
 use App\Models\StatServer;
-use App\Domains\Identity\AccountSqlPhase;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -71,11 +70,6 @@ class StatServerJob implements ShouldQueue
 
     protected function updateServerTraffic(int $u, int $d): void
     {
-        if (AccountSqlPhase::enabled()) {
-            app(AccountSqlPhase::class)->run(AccountSqlPhase::STATS_SERVER_TRAFFIC,
-                fn () => $this->applyServerTraffic($u, $d));
-            return;
-        }
         $this->applyServerTraffic($u, $d);
     }
 
@@ -91,13 +85,7 @@ class StatServerJob implements ShouldQueue
 
     protected function processServerStat(int $u, int $d, int $recordAt): void
     {
-        if (AccountSqlPhase::enabled()) {
-            $driver = DB::connection()->getDriverName();
-            app(AccountSqlPhase::class)->run(AccountSqlPhase::STATS_SERVER_APPLY,
-                fn () => $this->applyServerStat($driver, $u, $d, $recordAt), $driver === 'sqlite' ? 3 : 1);
-            return;
-        }
-        $this->applyServerStat(config('database.default'), $u, $d, $recordAt);
+        $this->applyServerStat(DB::connection()->getDriverName(), $u, $d, $recordAt);
     }
 
     private function applyServerStat(string $driver, int $u, int $d, int $recordAt): void

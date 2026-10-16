@@ -34,11 +34,11 @@
 | `docker-txboard.yml` | Core 镜像、Compose、运行时依赖及启动/健康实物检查；正式标签另做发布资格检查 |
 | `docs.yml` | 文档引用及 CI 策略静态检查，不启动业务环境 |
 
-自动工作流保持 8 条。两批清理移除已无实现的 legacy-links/lifecycle-shadow 及账户捕获专属工作流后，共保留 37 条工作流，其中 29 条为手动入口。早期名称带 native 的账户、Machine、授权及流量实物链仍以旧 `User.uuid/transfer_enable/u/d` 为业务权威，亦归入手动历史工具；不能据此宣称当前 Subscription 模型已验收完整 Machine/WS/Xray 矩阵。当前 PHP/MySQL 的相关权限与事务回归、Node 共享组件 race 及 C2 原生真实闭环继续自动验证。
+自动工作流保持 8 条。清理移除已无实现的 legacy-links/lifecycle-shadow、账户捕获及隔离 authority 原型专属工作流后，共保留 31 条工作流，其中 23 条为手动入口。早期名称带 native 的账户、Machine、授权及流量实物链仍以旧 `User.uuid/transfer_enable/u/d` 为业务权威，亦归入手动历史工具；不能据此宣称当前 Subscription 模型已验收完整 Machine/WS/Xray 矩阵。当前 PHP/MySQL 的相关权限与事务回归、Node 共享组件 race 及 C2 原生真实闭环继续自动验证。
 
 同一批次内不再由 Provider 切片、C2、API 和 Docker 各自重复一遍相同 PHP/Go 测试。日常 PR 不执行十轮随机稳定性测试和旧站升级恢复矩阵；这些保留为显式手动或正式发布专项。镜像测试与源码测试验证的对象不同，不视为重复。
 
-默认 `api/phpunit.xml` 只排除仍有实现的 AuthorityMigration 和 InternalReadOnly 两个历史目录，仍覆盖当前业务、共享实现和安全边界。条款影子服务及专属测试已移除，native 生命周期与用量回归保留。已删除的工具及合成 Provider 原型不再保留空排除项。手动历史工具显式使用 `api/phpunit-historical.xml`，避免 `--filter=Legacy...` 在默认集合中找不到测试。历史证据保留便于查证；已退役工具的源码与专属测试按依赖一并移除，不将其过去的成功结果冒充当前 native 验收。清理范围、领域归属与剩余项见 [Core 清理](core-cleanup.md)。
+默认 `api/phpunit.xml` 只排除仍有实现的 InternalReadOnly 一个历史目录，仍覆盖当前业务、共享实现和安全边界。条款影子服务及专属测试已移除，native 生命周期与用量回归保留。已删除的工具及合成 Provider 原型不再保留空排除项。手动历史工具显式使用 `api/phpunit-historical.xml`，避免 `--filter=Legacy...` 在默认集合中找不到测试。历史证据保留便于查证；已退役工具的源码与专属测试按依赖一并移除，不将其过去的成功结果冒充当前 native 验收。清理范围、领域归属与剩余项见 [Core 清理](core-cleanup.md)。
 
 `python scripts/check-ci-policy.py` 静态检查工作流 YAML、自动/手动归属、任务依赖和 PHP 测试选择，阻止历史矩阵意外重新成为自动门禁。新增正式业务时应更新实际组件的检查范围；C3/C4 的当前测试不能一直归入历史目录。
 

@@ -1,5 +1,7 @@
 # Authority identity writers v5 (Candidate)
 
+> Retired on 2026-10-16: the isolated authority migration prototype, CLI, configuration and dedicated tests/workflows have been removed. This document preserves historical protocol evidence only. Current installation admission and domain writes are described in [Core cleanup](../../docs/development/core-cleanup.md). Historical database rows and migrations are retained and cannot authorize native initialization.
+
 Strict local/testing isolated-copy SQL subset, default disabled. Core remains legacy authority. Same physical singleton id1: explicit v4 open4 -> extend-identity(expected4,key) -> v5 open5 -> prepare6. Immutable parent-native receipt binds unchanged v4 state/history to exact v5 inventory. Old v1-v4 prepared states cannot extend or reopen; old hash recipes are unchanged. Read-only bounded recovery cannot certify global writer/drain completion.
 
 The exact SQL inventory is all26 AuthorityNativeInventory::WRITERS plus these27 code constants:

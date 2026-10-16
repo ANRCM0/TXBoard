@@ -44,8 +44,8 @@ class CheckCommission extends Command
         try {
             $this->autoCheck();
             $this->autoPayCommission();
-        } catch (\App\Domains\AuthorityMigration\AuthorityFenceException) {
-            $this->error('AUTHORITY_COMMISSION_FENCE_REJECTED');
+        } catch (\App\Domains\Installation\InstallationAuthorityException) {
+            $this->error('INSTALLATION_COMMISSION_REJECTED');
             return self::FAILURE;
         }
     }
@@ -53,26 +53,16 @@ class CheckCommission extends Command
     public function autoCheck()
     {
         if ((int)admin_setting('commission_auto_check_enable', 1)) {
-            if (config('authority_writer_fence.enabled') !== false) {
-                DB::transaction(function (): void {
-                    app(\App\Domains\AuthorityMigration\AuthorityWriterFence::class)->admit('commission.review.cron');
-            Order::where('commission_status', 0)
-                ->where('invite_user_id', '!=', NULL)
-                ->where('status', 3)
-                ->where('updated_at', '<=', strtotime('-3 day', time()))
-                ->update([
-                    'commission_status' => 1
-                ]);
-                });
-            } else {
-            Order::where('commission_status', 0)
-                ->where('invite_user_id', '!=', NULL)
-                ->where('status', 3)
-                ->where('updated_at', '<=', strtotime('-3 day', time()))
-                ->update([
-                    'commission_status' => 1
-                ]);
-            }
+            DB::transaction(function (): void {
+                app(\App\Domains\Installation\InstallationAuthority::class)->assertLegacyWriter();
+                Order::where('commission_status', 0)
+                    ->where('invite_user_id', '!=', NULL)
+                    ->where('status', 3)
+                    ->where('updated_at', '<=', strtotime('-3 day', time()))
+                    ->update([
+                        'commission_status' => 1
+                    ]);
+            });
         }
     }
 
@@ -84,7 +74,7 @@ class CheckCommission extends Command
         foreach ($orders as $order) {
             try{
                 DB::beginTransaction();
-                if (config('authority_writer_fence.enabled') !== false) app(\App\Domains\AuthorityMigration\AuthorityWriterFence::class)->admit('commission.distribute');
+                app(\App\Domains\Installation\InstallationAuthority::class)->assertLegacyWriter();
                 if (!$this->payHandle($order->invite_user_id, $order)) {
                     DB::rollBack();
                     continue;
@@ -95,9 +85,9 @@ class CheckCommission extends Command
                     continue;
                 }
                 DB::commit();
-            } catch (\App\Domains\AuthorityMigration\AuthorityFenceException $e) {
+            } catch (\App\Domains\Installation\InstallationAuthorityException $e) {
                 if (DB::transactionLevel() > 0) DB::rollBack();
-                \Illuminate\Support\Facades\Log::error('AUTHORITY_COMMISSION_FENCE_REJECTED');
+                \Illuminate\Support\Facades\Log::error('INSTALLATION_COMMISSION_REJECTED');
                 throw $e;
             } catch (\Exception $e){
                 DB::rollBack();
@@ -108,7 +98,6 @@ class CheckCommission extends Command
 
     public function payHandle($inviteUserId, Order $order)
     {
-        if (config('authority_writer_fence.enabled') !== false) app(\App\Domains\AuthorityMigration\AuthorityAdmissionRegistry::class)->current()->assertValid();
         $level = 3;
         if ((int)admin_setting('commission_distribution_enable', 0)) {
             $commissionShareLevels = [

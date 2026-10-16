@@ -3,7 +3,8 @@
 namespace App\Console\Commands;
 
 use App\Models\Ticket;
-use App\Domains\AuthorityMigration\AuthorityTicketSqlPhase;
+use App\Domains\Installation\InstallationAuthority;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Console\Command;
 
 class CheckTicket extends Command
@@ -45,26 +46,18 @@ class CheckTicket extends Command
             ->where('reply_status', Ticket::REPLY_STATUS_REPLIED)
             ->lazyById(200)
             ->each(function ($ticket) use ($cutoff) {
-                if (AuthorityTicketSqlPhase::enabled()) {
-                    app(AuthorityTicketSqlPhase::class)->run(
-                        AuthorityTicketSqlPhase::TICKET_CLOSE_CRON,
-                        static function () use ($ticket, $cutoff): void {
-                            $current = Ticket::query()->whereKey($ticket->id)->lockForUpdate()->first();
-                            if ($current === null || (int) $current->status !== Ticket::STATUS_OPENING
-                                || (int) $current->updated_at > $cutoff
-                                || (int) $current->reply_status !== Ticket::REPLY_STATUS_REPLIED
-                                || $current->user_id === $current->last_reply_user_id) {
-                                return;
-                            }
-                            $current->status = Ticket::STATUS_CLOSED;
-                            $current->save();
-                        }
-                    );
-                    return;
-                }
-                if ($ticket->user_id === $ticket->last_reply_user_id) return;
-                $ticket->status = Ticket::STATUS_CLOSED;
-                $ticket->save();
+                DB::transaction(static function () use ($ticket, $cutoff): void {
+                    app(InstallationAuthority::class)->assertLegacyWriter();
+                    $current = Ticket::query()->whereKey($ticket->id)->lockForUpdate()->first();
+                    if ($current === null || (int) $current->status !== Ticket::STATUS_OPENING
+                        || (int) $current->updated_at > $cutoff
+                        || (int) $current->reply_status !== Ticket::REPLY_STATUS_REPLIED
+                        || (int) $current->user_id === (int) $current->last_reply_user_id) {
+                        return;
+                    }
+                    $current->status = Ticket::STATUS_CLOSED;
+                    $current->saveOrFail();
+                });
             });
     }
 }

@@ -46,7 +46,7 @@ final class PlanMutationController
         if (array_key_exists('prices', $input)) $attributes['prices'] = $prices;
         $force = $request->boolean('force_update');
         $id = DB::transaction(static function () use ($input, $attributes, $force): int {
-            app(\App\Domains\AuthorityMigration\AuthorityWriterFence::class)->admit('admin.plan.save');
+            app(\App\Domains\Installation\InstallationAuthority::class)->assertLegacyWriter();
             if (isset($input['id'])) {
                 $plan = Plan::query()->lockForUpdate()->findOrFail((int) $input['id']);
                 if ($force) {
@@ -80,7 +80,7 @@ final class PlanMutationController
             return TxapiResponse::error($request, 'FLAGS_REQUIRED', 'At least one flag is required', 422);
         }
         DB::transaction(static function () use ($request, $params): void {
-            app(\App\Domains\AuthorityMigration\AuthorityWriterFence::class)->admit('admin.plan.flags');
+            app(\App\Domains\Installation\InstallationAuthority::class)->assertLegacyWriter();
             $plan = Plan::query()->lockForUpdate()->findOrFail((int) $request->route('id'));
             foreach ($params as $field => $value) $plan->$field = (bool) $value;
             $plan->saveOrFail();
@@ -96,7 +96,7 @@ final class PlanMutationController
         ]);
         $ids = array_map('intval', $params['ids']);
         DB::transaction(static function () use ($ids): void {
-            app(\App\Domains\AuthorityMigration\AuthorityWriterFence::class)->admit('admin.plan.sort');
+            app(\App\Domains\Installation\InstallationAuthority::class)->assertLegacyWriter();
             $found = Plan::query()->whereIn('id', $ids)->lockForUpdate()->get(['id'])->pluck('id')->all();
             if (count($found) !== count($ids)) {
                 throw ValidationException::withMessages(['ids' => 'Unknown subscription plan']);
@@ -112,7 +112,7 @@ final class PlanMutationController
     {
         $id = (int) $request->route('id');
         $deleted = DB::transaction(static function () use ($id): bool {
-            app(\App\Domains\AuthorityMigration\AuthorityWriterFence::class)->admit('admin.plan.delete');
+            app(\App\Domains\Installation\InstallationAuthority::class)->assertLegacyWriter();
             $plan = Plan::query()->lockForUpdate()->findOrFail($id);
             if (Order::query()->where('plan_id', $id)->exists() ||
                 User::query()->where('plan_id', $id)->exists()) {

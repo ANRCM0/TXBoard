@@ -44,7 +44,7 @@ env.update(go_defaults)
 env.update(expected | {'DB_PASSWORD': os.environ['DB_PASSWORD'], 'DB_PORT': os.environ.get('DB_PORT', '13306'),
     'APP_DEBUG': 'false', 'CACHE_DRIVER': 'array', 'SETTING_CACHE_STORE': 'array', 'SESSION_DRIVER': 'array',
     'QUEUE_CONNECTION': 'sync', 'MAIL_MAILER': 'array',
-    'AUTHORITY_WRITER_FENCE_ENABLED': 'false', 'CORE_USAGE_V2_ISOLATED_COPY': 'false',
+    'CORE_USAGE_V2_ISOLATED_COPY': 'false',
     'TXBOARD_NATIVE_NODE_WS_ENABLED': 'false',
     'APP_KEY': 'base64:ZdD07lazsdQQmdBAJ2tA5WjufeI2hP8xlP6zgmvCMZs=',
     'REDIS_HOST': '127.0.0.1', 'REDIS_PORT': os.environ.get('REDIS_PORT', '16379'),

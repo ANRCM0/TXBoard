@@ -64,8 +64,7 @@ class InstallationAuthorityTest extends TestCase
     public function test_native_initialization_is_durable_in_production_and_never_runtime_ready(): void
     {
         $this->app->detectEnvironment(fn () => 'production');
-        config(['core_shadow.isolated_copy' => false, 'authority_writer_fence.enabled' => false,
-            'core_installation.mode' => 'native']);
+        config(['core_installation.mode' => 'native']);
         DB::table('tx_user')->insert(['is_admin' => true]);
         DB::table('tx_settings')->insert(['id' => 1]);
         DB::table('tx_subscribe_templates')->insert(['id' => 1]);
@@ -160,7 +159,7 @@ class InstallationAuthorityTest extends TestCase
             $this->reject('NATIVE_NOT_READY', fn () => DB::transaction(fn () => $this->authority()->$method()));
         }
         $this->authority()->initialize(self::ID, 'native', 'domain-preparation');
-        config(['core_installation.mode' => 'native', 'authority_writer_fence.enabled' => false]);
+        config(['core_installation.mode' => 'native']);
         foreach (['assertNativeMutation', 'assertNativeRead'] as $method) {
             $this->reject('NATIVE_NOT_READY', fn () => DB::transaction(fn () => $this->authority()->$method()));
         }
@@ -183,7 +182,6 @@ class InstallationAuthorityTest extends TestCase
         $state = $this->authority()->initialize(self::ID, 'native', 'primary-authority');
         $this->assertSame(0, (int) $replica->query('SELECT COUNT(*) FROM tx_authority_writer_fence')->fetchColumn());
         $this->assertSame($state, $this->authority()->inspect());
-        config(['authority_writer_fence.enabled' => false]);
         $this->reject('WORKER_MISMATCH', fn () => $this->authority()->assertRuntime());
         config(['core_installation.mode' => 'native']);
         $this->reject('NATIVE_NOT_READY', fn () => $this->authority()->assertRuntime());
@@ -204,7 +202,7 @@ class InstallationAuthorityTest extends TestCase
         ksort($state, SORT_STRING);
         $state['content_hash'] = hash('sha256', json_encode($state, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES));
         DB::table('tx_authority_writer_fence')->where('id', 1)->update($state);
-        config(['core_installation.mode' => 'native', 'authority_writer_fence.enabled' => false]);
+        config(['core_installation.mode' => 'native']);
         $this->reject('STATE_INVALID', fn () => $this->authority()->assertRuntime());
         foreach (['assertNativeMutation', 'assertNativeRead'] as $method) {
             $this->reject('STATE_INVALID', fn () => DB::transaction(fn () => $this->authority()->$method()));
@@ -265,15 +263,27 @@ class InstallationAuthorityTest extends TestCase
 
     public function test_historical_fence_is_not_reinitialized_or_rewritten(): void
     {
-        $historical = ['id' => 1, 'scope' => 'admin-user-editor/v1', 'version' => 'authority-writer-fence/v1',
-            'authority' => 'legacy', 'phase' => 'open', 'authority_epoch' => 1, 'prepare_key' => null,
-            'row_version' => 1, 'updated_at' => 1, 'content_hash' => str_repeat('a', 64)];
-        DB::table('tx_authority_writer_fence')->insert($historical);
-        $before = (array) DB::table('tx_authority_writer_fence')->first();
-        $this->reject('HISTORICAL_FENCE_PRESENT', fn () => $this->authority()->initialize(self::ID, 'legacy', 'legacy-install'));
-        $this->authority()->assertRuntime();
-        $this->authority()->assertLegacyWriter();
-        $this->assertSame($before, (array) DB::table('tx_authority_writer_fence')->first());
+        foreach ([
+            'admin-user-editor/v1' => 'authority-writer-fence/v1',
+            'native-sql-writers/v2' => 'authority-writer-fence/v2',
+            'native-sql-writers/v3' => 'authority-writer-fence/v3',
+            'native-sql-writers/v4' => 'authority-writer-fence/v4',
+            'native-sql-writers/v5' => 'authority-writer-fence/v5',
+            'native-sql-writers/v6' => 'authority-writer-fence/v6',
+        ] as $scope => $version) {
+            $historical = ['id' => 1, 'scope' => $scope, 'version' => $version,
+                'authority' => 'legacy', 'phase' => 'open', 'authority_epoch' => 1, 'prepare_key' => null,
+                'row_version' => 1, 'updated_at' => 1, 'content_hash' => str_repeat('a', 64)];
+            DB::table('tx_authority_writer_fence')->insert($historical);
+            $before = (array) DB::table('tx_authority_writer_fence')->first();
+            foreach (['legacy', 'native'] as $mode) {
+                $this->reject('HISTORICAL_FENCE_PRESENT', fn () => $this->authority()->initialize(self::ID, $mode, 'historical-install'));
+            }
+            $this->authority()->assertRuntime();
+            $this->authority()->assertLegacyWriter();
+            $this->assertSame($before, (array) DB::table('tx_authority_writer_fence')->first());
+            DB::table('tx_authority_writer_fence')->delete();
+        }
     }
 
     public function test_orphaned_historical_receipts_prevent_both_initialization_modes(): void

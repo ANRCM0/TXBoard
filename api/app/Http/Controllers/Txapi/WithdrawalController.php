@@ -8,7 +8,7 @@ use App\Models\User;
 use App\Models\Ticket;
 use Illuminate\Support\Facades\DB;
 use App\Services\Plugin\HookManager;
-use App\Services\TicketService;
+use App\Domains\Support\TicketService;
 use App\Utils\Dict;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -41,16 +41,14 @@ final class WithdrawalController
                 ->where('status', Ticket::STATUS_OPENING)->exists()) {
                 return ['error' => 'WITHDRAWAL_PENDING'];
             }
-            $ticket = (new TicketService())->createWithdrawalTicket($user->id,
+            $ticket = (new TicketService())->createTicket($user->id,
                 __('[Commission Withdrawal Request] This ticket is opened by the system'),
                 2,
                 __('Withdrawal method') . '：' . $data['withdraw_method'] . "\r\n"
                     . __('Withdrawal account') . '：' . $data['withdraw_account']);
             return ['ticket' => $ticket];
         };
-        $result = AccountSqlPhase::enabled()
-            ? app(AccountSqlPhase::class)->run(AccountSqlPhase::WITHDRAWAL_REQUEST, $phase)
-            : DB::transaction($phase);
+        $result = app(AccountSqlPhase::class)->run(AccountSqlPhase::WITHDRAWAL_REQUEST, $phase);
         if (isset($result['error'])) {
             $conflict = $result['error'] === 'WITHDRAWAL_PENDING';
             return TxapiResponse::error($request, $result['error'],

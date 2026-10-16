@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Gate;
 use Laravel\Sanctum\Sanctum;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Auth\RequestGuard;
-use App\Domains\Identity\FencedSanctumGuard;
+use App\Domains\Identity\AccountSessionGuard;
 
 class AuthServiceProvider extends ServiceProvider
 {
@@ -28,11 +28,11 @@ class AuthServiceProvider extends ServiceProvider
         $this->registerPolicies();
 
         // Same factory and request-refresh lifecycle as the locked Sanctum provider.
-        // The subclass delegates to the parent without new IO while disabled.
+        // Session metadata uses the same account lock order as issue and revoke.
         Auth::resolved(static function ($auth): void {
             $auth->extend('sanctum', static function ($app, $name, array $config) use ($auth) {
                 return tap(new RequestGuard(
-                    new FencedSanctumGuard($auth, config('sanctum.expiration'), $config['provider']),
+                    new AccountSessionGuard($auth, config('sanctum.expiration'), $config['provider']),
                     request(), $auth->createUserProvider($config['provider'] ?? null)
                 ), static function ($guard): void {
                     app()->refresh('request', $guard, 'setRequest');

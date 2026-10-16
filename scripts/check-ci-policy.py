@@ -21,8 +21,12 @@ AUTOMATIC = {
     "docs.yml",
 }
 HISTORICAL_DIRS = {
-    "tests/Feature/AuthorityMigration",
     "tests/Feature/InternalReadOnly",
+}
+RETIRED_WORKFLOWS = {
+    f"ci-authority-{name}.yml"
+    for name in ("writer-fence", "inventory-expand", "finance-fence",
+                 "native-writers", "identity-writers", "ticket-writers")
 }
 
 
@@ -148,6 +152,8 @@ def validate_suites():
 def main():
     files = sorted((ROOT / ".github/workflows").glob("*.yml"))
     require(AUTOMATIC <= {path.name for path in files}, "An automatic workflow is missing")
+    require(not RETIRED_WORKFLOWS & {path.name for path in files},
+            "A retired authority prototype workflow was restored")
     workflows = {path.name: validate_workflow(path) for path in files}
     for owner in ("ci-api.yml", "ci-mysql.yml", "docker-txboard.yml"):
         trigger = workflows[owner]["on"]["pull_request"]

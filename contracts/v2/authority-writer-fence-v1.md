@@ -1,5 +1,7 @@
 # Authority writer fence v1
 
+> Retired on 2026-10-16: the isolated authority migration prototype, CLI, configuration and dedicated tests/workflows have been removed. This document preserves historical protocol evidence only. Current installation admission and domain writes are described in [Core cleanup](../../docs/development/core-cleanup.md). Historical database rows and migrations are retained and cannot authorize native initialization.
+
 Status: Current isolated SQL writer-admission slice. Scope is only the existing native Admin UserEditorController create and update transactions. It is not a global migration fence, production cutover or new v2 business authority.
 
 Strict default-off `AUTHORITY_WRITER_FENCE_ENABLED` retains native behavior with zero fence/context SQL when false. Enabled requires local/testing and the existing explicit isolated-copy marker. Worker authority role `legacy` and canonical positive INT64 epoch are process configuration, never an HTTP argument or a cached Redis assertion. The additive migration creates an initially empty singleton authority table plus immutable bounded prepare receipts; it does not initialize authority during DDL. Explicit isolated CLI init installs scope `admin-user-editor/v1`, legacy/open epoch1. The writer never initializes missing authority.

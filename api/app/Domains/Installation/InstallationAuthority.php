@@ -2,12 +2,6 @@
 
 namespace App\Domains\Installation;
 
-use App\Domains\AuthorityMigration\AuthorityWriterFence;
-use App\Domains\AuthorityMigration\AuthorityInventory;
-use App\Domains\AuthorityMigration\AuthorityFinanceInventory;
-use App\Domains\AuthorityMigration\AuthorityNativeInventory;
-use App\Domains\AuthorityMigration\AuthorityIdentityInventory;
-use App\Domains\AuthorityMigration\AuthorityTicketInventory;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Throwable;
@@ -20,6 +14,15 @@ class InstallationAuthority
     private const COLUMNS = ['id', 'scope', 'version', 'authority', 'phase', 'authority_epoch', 'prepare_key',
         'row_version', 'updated_at', 'content_hash', 'inventory_hash', ...self::METADATA];
     private const BOOTSTRAP_METADATA = ['migrations', 'tx_settings', 'tx_subscribe_templates'];
+    // Recognize retained prototype records without retaining their runtime.
+    private const HISTORICAL_FENCE_VERSIONS = [
+        'admin-user-editor/v1' => 'authority-writer-fence/v1',
+        'native-sql-writers/v2' => 'authority-writer-fence/v2',
+        'native-sql-writers/v3' => 'authority-writer-fence/v3',
+        'native-sql-writers/v4' => 'authority-writer-fence/v4',
+        'native-sql-writers/v5' => 'authority-writer-fence/v5',
+        'native-sql-writers/v6' => 'authority-writer-fence/v6',
+    ];
 
     public function initialize(string $installationId, string $mode, string $bootstrapKey): array
     {
@@ -297,16 +300,8 @@ class InstallationAuthority
 
     private function historical(array $row): bool
     {
-        $versions = [
-            AuthorityWriterFence::SCOPE => AuthorityWriterFence::VERSION,
-            AuthorityInventory::SCOPE => AuthorityInventory::VERSION,
-            AuthorityFinanceInventory::SCOPE => AuthorityFinanceInventory::VERSION,
-            AuthorityNativeInventory::SCOPE => AuthorityNativeInventory::VERSION,
-            AuthorityIdentityInventory::SCOPE => AuthorityIdentityInventory::VERSION,
-            AuthorityTicketInventory::SCOPE => AuthorityTicketInventory::VERSION,
-        ];
         return $row['authority'] === 'legacy'
-            && ($versions[$row['scope']] ?? null) === $row['version'];
+            && (self::HISTORICAL_FENCE_VERSIONS[$row['scope']] ?? null) === $row['version'];
     }
 
     private function validate(array $state): array

@@ -9,7 +9,7 @@ use App\Models\Plan;
 use App\Models\Server;
 use App\Models\ServerGroup;
 use App\Models\User;
-if(!app()->environment('testing')||config('database.default')!=='mysql'||DB::connection()->getDatabaseName()!=='txboard_native_traffic_test'||config('database.connections.mysql.host')!=='127.0.0.1'||config('database.connections.mysql.username')!=='txboard_native_traffic'||config('authority_writer_fence.enabled')!==false||config('node_ws.native_enabled')!==true||config('native_traffic_receipts.enabled')!==true||config('queue.default')!=='redis'||config('cache.default')!=='redis')throw new RuntimeException('NATIVE_TRAFFIC_EXCLUSIVE_FIXTURE_REQUIRED');
+if(!app()->environment('testing')||config('database.default')!=='mysql'||DB::connection()->getDatabaseName()!=='txboard_native_traffic_test'||config('database.connections.mysql.host')!=='127.0.0.1'||config('database.connections.mysql.username')!=='txboard_native_traffic'||config('node_ws.native_enabled')!==true||config('native_traffic_receipts.enabled')!==true||config('queue.default')!=='redis'||config('cache.default')!=='redis')throw new RuntimeException('NATIVE_TRAFFIC_EXCLUSIVE_FIXTURE_REQUIRED');
 $mode=$argv[1]??'';$directory=getenv('NATIVE_TRAFFIC_DIR');
 if($mode==='seed'){
  foreach(['tx_user','tx_plan','tx_server','tx_server_group','tx_traffic_batch','tx_native_traffic_receipt']as $table)if(DB::table($table)->exists())throw new RuntimeException('NATIVE_TRAFFIC_NONEMPTY_FIXTURE_REFUSED');

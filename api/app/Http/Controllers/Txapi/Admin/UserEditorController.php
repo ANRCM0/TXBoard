@@ -75,7 +75,7 @@ final class UserEditorController
         }
 
         [$user, $applied] = DB::transaction(static function () use ($request, $id, $fields): array {
-            app(\App\Domains\AuthorityMigration\AuthorityWriterFence::class)->admit('admin.user.update');
+            app(\App\Domains\Installation\InstallationAuthority::class)->assertLegacyWriter();
             $user = User::query()->lockForUpdate()->findOrFail($id);
             foreach (['balance' => 'expected_balance_minor',
                          'commission_balance' => 'expected_commission_balance_minor'] as $key => $expectedKey) {
@@ -181,7 +181,7 @@ final class UserEditorController
             throw ValidationException::withMessages(['plan_id' => 'Subscription plan not found']);
         }
         $user = DB::transaction(static function () use ($fields, $email, $service): User {
-            app(\App\Domains\AuthorityMigration\AuthorityWriterFence::class)->admit('admin.user.create');
+            app(\App\Domains\Installation\InstallationAuthority::class)->assertLegacyWriter();
             if (User::byEmail($email)->exists()) {
                 throw ValidationException::withMessages(['email_prefix' => 'Email already exists']);
             }

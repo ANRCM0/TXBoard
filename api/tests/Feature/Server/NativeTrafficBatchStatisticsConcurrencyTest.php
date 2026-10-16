@@ -25,7 +25,7 @@ class NativeTrafficBatchStatisticsConcurrencyTest extends TestCase
         config(['database.connections.native_traffic_statistics_mysql_fixture' => ['driver' => 'mysql', 'host' => '127.0.0.1',
             'port' => getenv('NATIVE_TRAFFIC_PERIOD_PORT') ?: '13306', 'database' => 'txboard_native_period_test',
             'username' => 'txboard_native_period', 'password' => $password, 'charset' => 'utf8mb4', 'collation' => 'utf8mb4_unicode_ci', 'prefix' => '', 'strict' => true],
-            'database.default' => 'native_traffic_statistics_mysql_fixture', 'authority_writer_fence.enabled' => false,
+            'database.default' => 'native_traffic_statistics_mysql_fixture',
              'cache.default' => 'array']);
         DB::purge('native_traffic_statistics_mysql_fixture');
         $this->assertSame('txboard_native_period_test', DB::connection()->getDatabaseName());

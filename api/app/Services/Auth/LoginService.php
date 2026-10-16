@@ -71,14 +71,12 @@ class LoginService
 
         // 更新最后登录时间
         $result = app(IdentityPhase::class)->run(IdentityPhase::USER_LOGIN_TOUCH, function () use (&$user, $email, $password): array {
-            if (IdentityPhase::locksAccount()) {
-                $current = User::byEmail($email)->whereKey($user->getKey())->lockForUpdate()->first();
-                if (!$current) return [false, [400, __('Incorrect email or password')]];
-                if (!Helper::multiPasswordVerify($current->password_algo, $current->password_salt, $password, $current->password))
-                    return [false, [400, __('Incorrect email or password')], true];
-                if ($current->banned) return [false, [400, __('Your account has been suspended')]];
-                $user = $current;
-            }
+            $current = User::byEmail($email)->whereKey($user->getKey())->lockForUpdate()->first();
+            if (!$current) return [false, [400, __('Incorrect email or password')]];
+            if (!Helper::multiPasswordVerify($current->password_algo, $current->password_salt, $password, $current->password))
+                return [false, [400, __('Incorrect email or password')], true];
+            if ($current->banned) return [false, [400, __('Your account has been suspended')]];
+            $user = $current;
             $user->last_login_at = time();
             $user->save();
             return [true, $user];
@@ -133,9 +131,7 @@ class LoginService
 
             // 更新密码
             $saved = app(IdentityPhase::class)->run(IdentityPhase::USER_PASSWORD_RECOVER, function () use (&$user, $email, $password): bool {
-                if (IdentityPhase::locksAccount()) {
-                    $user = User::byEmail($email)->whereKey($user->getKey())->lockForUpdate()->firstOrFail();
-                }
+                $user = User::byEmail($email)->whereKey($user->getKey())->lockForUpdate()->firstOrFail();
                 $user->password = password_hash($password, PASSWORD_DEFAULT);
                 $user->password_algo = NULL;
                 $user->password_salt = NULL;

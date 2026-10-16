@@ -2,22 +2,19 @@
 
 namespace App\Domains\Identity;
 
-use App\Domains\AuthorityMigration\AuthorityAdmissionRegistry;
-use App\Domains\AuthorityMigration\AuthorityFenceException;
-use App\Domains\AuthorityMigration\AuthorityIdentityInventory;
-use App\Domains\AuthorityMigration\AuthorityNativeInventory;
-use App\Domains\AuthorityMigration\AuthorityWriterFence;
-
+use App\Domains\Installation\InstallationAuthority;
+use App\Domains\Installation\InstallationAuthorityException;
+use App\Models\User;
+use DomainException;
 use Illuminate\Support\Facades\DB;
 
-/** Identity writes share the same transaction, installation and writer admission. */
+/** Identity writes share the current installation and managed transaction. */
 final class AccountSqlPhase
 {
     public const USER_REGISTER_INVITE_CONSUME='user.register.invite-consume';
     public const USER_REGISTER_CREATE='user.register.create';
     public const USER_REGISTER_TOUCH='user.register.touch';
     public const INSTALL_ADMIN_CREATE='install.admin.create';
-    public const INSTALL_SETTINGS_SEED='install.settings.seed';
     public const USER_LOGIN_TOUCH='user.login.touch';
     public const USER_PASSWORD_RECOVER='user.password.recover';
     public const USER_PASSWORD_CHANGE='user.password.change';
@@ -31,44 +28,39 @@ final class AccountSqlPhase
     public const INVITE_CREATE='invite.create';
     public const INVITE_PAGE_VIEW='invite.page-view';
     public const WITHDRAWAL_REQUEST='withdrawal.request';
-    public const SETTINGS_WRITE='settings.write';
-    public const SETTINGS_SUBSCRIBE_TEMPLATE_WRITE='settings.subscribe-template.write';
-    public const SETTINGS_REMOVE='settings.remove';
-    public const STATS_USER_APPLY='stats.user.apply';
-    public const STATS_SERVER_APPLY='stats.server.apply';
-    public const STATS_SERVER_TRAFFIC='stats.server.traffic';
-    public const STATS_DAILY_APPLY='stats.daily.apply';
     public const ADMIN_AUDIT_APPEND='admin.audit.append';
     public const MAIL_LOG_APPEND='mail.log.append';
 
-    public static function enabled():bool { return config('authority_writer_fence.enabled')!==false; }
-    public static function locksAccount(): bool
-    {
-        return self::enabled() || config('core_installation.mode') === 'native';
-    }
+    private const WRITERS = [
+        self::USER_REGISTER_INVITE_CONSUME, self::USER_REGISTER_CREATE, self::USER_REGISTER_TOUCH,
+        self::INSTALL_ADMIN_CREATE, self::USER_LOGIN_TOUCH,
+        self::USER_PASSWORD_RECOVER, self::USER_PASSWORD_CHANGE, self::USER_ACCOUNT_PREFERENCES,
+        self::USER_ACCOUNT_CREDENTIALS_ROTATE, self::SESSION_ISSUE, self::SESSION_REVOKE,
+        self::SESSION_LAST_USED, self::CLI_PASSWORD_RESET, self::CLI_USER_CREDENTIALS_ROTATE,
+        self::INVITE_CREATE, self::INVITE_PAGE_VIEW, self::WITHDRAWAL_REQUEST, self::ADMIN_AUDIT_APPEND, self::MAIL_LOG_APPEND,
+    ];
 
-    public function run(string $writer,callable $phase,int $attempts=1):mixed
+    public function run(string $writer, callable $phase, int $attempts = 1): mixed
     {
-        if(!in_array($writer,array_diff(AuthorityIdentityInventory::WRITERS,AuthorityNativeInventory::WRITERS),true))
-            throw new AuthorityFenceException('AUTHORITY_IDENTITY_WRITER_INVALID');
-        if (app(\App\Domains\Installation\InstallationAuthority::class)->inspect()['mode'] === 'native') {
+        if (!in_array($writer, self::WRITERS, true)) {
+            throw new DomainException('ACCOUNT_WRITER_INVALID');
+        }
+        if (app(InstallationAuthority::class)->inspect()['mode'] === 'native') {
             if (!in_array($writer, [
                 self::USER_LOGIN_TOUCH, self::USER_PASSWORD_RECOVER, self::USER_PASSWORD_CHANGE,
                 self::USER_ACCOUNT_PREFERENCES, self::SESSION_ISSUE, self::SESSION_REVOKE,
                 self::SESSION_LAST_USED, self::ADMIN_AUDIT_APPEND, self::MAIL_LOG_APPEND,
             ], true)) {
-                throw new AuthorityFenceException('AUTHORITY_NATIVE_IDENTITY_WRITER_REJECTED');
+                throw new InstallationAuthorityException('INSTALLATION_NATIVE_IDENTITY_WRITER_REJECTED');
             }
             return DB::transaction(function () use ($phase): mixed {
-                app(\App\Domains\Installation\InstallationAuthority::class)->assertNativeMutation();
-                return \App\Models\User::withoutEvents($phase);
+                app(InstallationAuthority::class)->assertNativeMutation();
+                return User::withoutEvents($phase);
             }, $attempts);
         }
-        if(!self::enabled())return $phase();
-        if(DB::transactionLevel()>0){
-            app(AuthorityAdmissionRegistry::class)->current()->assertValid();
-            return DB::transaction(function()use($writer,$phase){app(AuthorityWriterFence::class)->admit($writer);return $phase();},$attempts);
-        }
-        return DB::transaction(function()use($writer,$phase){app(AuthorityWriterFence::class)->admit($writer);return $phase();},$attempts);
+        return DB::transaction(function () use ($phase): mixed {
+            app(InstallationAuthority::class)->assertLegacyWriter();
+            return $phase();
+        }, $attempts);
     }
 }

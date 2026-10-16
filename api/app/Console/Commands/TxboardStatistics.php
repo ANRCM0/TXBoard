@@ -3,7 +3,6 @@
 namespace App\Console\Commands;
 
 use App\Services\StatisticalService;
-use App\Domains\Identity\AccountSqlPhase;
 use Illuminate\Console\Command;
 use App\Models\Stat;
 use Illuminate\Support\Facades\Log;
@@ -63,9 +62,6 @@ class TxboardStatistics extends Command
             $data['record_type'] = 'd';
             $phase = static function () use ($startAt, $data): void {
                 $query = Stat::where('record_at', $startAt)->where('record_type', 'd');
-                if (AccountSqlPhase::enabled()) {
-                    $query->lockForUpdate();
-                }
                 $statistic = $query->first();
                 if ($statistic) {
                     $statistic->update($data);
@@ -73,17 +69,9 @@ class TxboardStatistics extends Command
                 }
                 Stat::create($data);
             };
-            if (AccountSqlPhase::enabled()) {
-                app(AccountSqlPhase::class)->run(AccountSqlPhase::STATS_DAILY_APPLY, $phase);
-            } else {
-                $phase();
-            }
+            $phase();
         } catch (\Exception $e) {
-            if (AccountSqlPhase::enabled()) {
-                Log::error('AUTHORITY_DAILY_STATS_WRITE_UNKNOWN');
-            } else {
-                Log::error($e->getMessage(), ['exception' => $e]);
-            }
+            Log::error('DAILY_STATS_WRITE_FAILED');
         }
     }
 }

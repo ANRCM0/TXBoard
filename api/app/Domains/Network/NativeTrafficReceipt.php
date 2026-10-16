@@ -2,7 +2,7 @@
 
 namespace App\Domains\Network;
 
-use App\Domains\AuthorityMigration\AuthorityWriterFence;
+use App\Domains\Installation\InstallationAuthority;
 use App\Jobs\TrafficBatchJob;
 use App\Models\Server;
 use App\Services\TrafficUsage;
@@ -30,7 +30,7 @@ final class NativeTrafficReceipt
         $nodeId = (int) $authenticatedNode->id;
         try {
             $receipt = $this->transaction(function () use ($nodeId, $batchId, $raw, $rawHash, $segments): object {
-                app(AuthorityWriterFence::class)->admit('traffic.batch.settle');
+                app(InstallationAuthority::class)->assertLegacyWriter();
                 // Match the original settlement lock order: authority, server,
                 // batch. Serializing first acceptance prevents repeated hooks.
                 $node = Server::query()->whereKey($nodeId)->lockForUpdate()->first();
@@ -132,7 +132,7 @@ final class NativeTrafficReceipt
     {
         if (DB::transactionLevel() !== 0) throw new RuntimeException('NATIVE_TRAFFIC_SETTLEMENT_TRANSACTION_UNSUPPORTED');
         $this->transaction(function () use ($receiptId, $nodeId, $batchId, $payloadHash): void {
-            app(AuthorityWriterFence::class)->admit('traffic.batch.settle');
+            app(InstallationAuthority::class)->assertLegacyWriter();
             // Preserve the shared original lock order across settlement/accept.
             DB::table('tx_server')->where('id', $nodeId)->lockForUpdate()->first();
             $row = DB::table(self::TABLE)->where('id', $receiptId)->lockForUpdate()->first();
@@ -148,7 +148,7 @@ final class NativeTrafficReceipt
     public function recordRecoveryFailure(int $receiptId): void
     {
         $this->transaction(function () use ($receiptId): void {
-            app(AuthorityWriterFence::class)->admit('traffic.batch.settle');
+            app(InstallationAuthority::class)->assertLegacyWriter();
             $row = DB::table(self::TABLE)->where('id', $receiptId)->lockForUpdate()->first();
             if ($row === null || $row->status !== 'pending') return;
             DB::table(self::TABLE)->where('id', $receiptId)->increment('attempts', 1, ['last_error_code' => 'NATIVE_TRAFFIC_RECOVERY_FAILED']);
@@ -172,7 +172,7 @@ final class NativeTrafficReceipt
     {
         if (DB::transactionLevel() !== 0) throw new RuntimeException('NATIVE_TRAFFIC_QUOTA_TRANSACTION_UNSUPPORTED');
         $this->transaction(function () use ($receiptId): void {
-            app(AuthorityWriterFence::class)->admit('traffic.batch.settle');
+            app(InstallationAuthority::class)->assertLegacyWriter();
             $row = DB::table(self::TABLE)->where('id', $receiptId)->lockForUpdate()->first();
             if ($row === null) throw new RuntimeException('NATIVE_TRAFFIC_RECEIPT_MISSING');
             $this->settledUserIds($row);

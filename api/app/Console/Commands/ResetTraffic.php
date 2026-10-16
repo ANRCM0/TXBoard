@@ -169,19 +169,10 @@ class ResetTraffic extends Command
 
     foreach ($nullUsers as $user) {
       try {
-        if (config('authority_writer_fence.enabled') !== false) {
-          $fixedCount += (int) $this->trafficResetService->repairScheduleFenced((int)$user->id, (bool)$this->option('fix-null'));
-          continue;
-        }
-        $nextResetTime = $this->trafficResetService->calculateNextResetTime($user);
-        if ($nextResetTime) {
-          $user->next_reset_at = $nextResetTime->timestamp;
-          $user->save();
-          $fixedCount++;
-        }
-      } catch (\App\Domains\AuthorityMigration\AuthorityFenceException) {
-        $errors[] = ['error' => 'AUTHORITY_SCHEDULE_FENCE_REJECTED'];
-        Log::error('AUTHORITY_SCHEDULE_FENCE_REJECTED');
+        $fixedCount += (int) $this->trafficResetService->repairSchedule((int) $user->id, true);
+      } catch (\App\Domains\Installation\InstallationAuthorityException) {
+        $errors[] = ['error' => 'INSTALLATION_SCHEDULE_REJECTED'];
+        Log::error('INSTALLATION_SCHEDULE_REJECTED');
       } catch (\Exception $e) {
         $errors[] = [
           'user_id' => $user->id,
@@ -225,19 +216,10 @@ class ResetTraffic extends Command
 
     foreach ($allUsers as $user) {
       try {
-        if (config('authority_writer_fence.enabled') !== false) {
-          $fixedCount += (int) $this->trafficResetService->repairScheduleFenced((int)$user->id, (bool)$this->option('fix-null'));
-          continue;
-        }
-        $nextResetTime = $this->trafficResetService->calculateNextResetTime($user);
-        if ($nextResetTime) {
-          $user->next_reset_at = $nextResetTime->timestamp;
-          $user->save();
-          $fixedCount++;
-        }
-      } catch (\App\Domains\AuthorityMigration\AuthorityFenceException) {
-        $errors[] = ['error' => 'AUTHORITY_SCHEDULE_FENCE_REJECTED'];
-        Log::error('AUTHORITY_SCHEDULE_FENCE_REJECTED');
+        $fixedCount += (int) $this->trafficResetService->repairSchedule((int) $user->id, false);
+      } catch (\App\Domains\Installation\InstallationAuthorityException) {
+        $errors[] = ['error' => 'INSTALLATION_SCHEDULE_REJECTED'];
+        Log::error('INSTALLATION_SCHEDULE_REJECTED');
       } catch (\Exception $e) {
         $errors[] = [
           'user_id' => $user->id,

@@ -1,5 +1,7 @@
 # Core support-ticket SQL admission
 
+> Historical evidence only. The isolated v1-v6 authority prototype and its dedicated CI were retired on 2026-10-16. The behavior and results below describe the former implementation, not current runtime support. See [current Core boundaries](../../development/core-cleanup.md).
+
 The [v6 contract](../../../contracts/v2/authority-ticket-writers-v6.md) extends the same isolated-copy authority singleton with six native support operations. The fixed inventory contains the preceding 53 owners plus user ticket create/reply/close, admin reply/close and per-ticket cron close. The legacy runtime remains authoritative; admission is disabled by default and global cutover flags remain false.
 
 A separate immutable ticket receipt binds the verified v5 parent chain and unchanged historical hashes. Only v5 open5 can extend to v6 open6; prepare produces7. Earlier prepared versions cannot reopen or change meaning. Replay and recovery validate the complete receipt chain, including parent hashes, before returning the original result. Bounded recovery remains SELECT-only.
@@ -20,7 +22,7 @@ Enabled admin reply and cron use fresh locked records. A concurrent close may th
 
 The v6 postcommit policy retains exact v4/v5 intent hashes and adds the exact v6 scope/version/epoch tuple. Existing User owners under v6 retain synchronous observer capture and committing schedule calculation. Old pending intents can hand off under v6 without rehashing; Node delivery remains separate evidence.
 
-Acceptance uses actual native HTTP/CLI, real Bearer authentication, original default-disabled consumers, immutable source/dependency snapshots and independent MySQL processes. The dedicated [MySQL8.4 workflow](../../../.github/workflows/ci-authority-ticket-writers.yml) verifies the native owners, receipt integrity, lock waits, rollback and SIGKILL. Receipts contain no ticket subjects/messages, email addresses or credentials.
+Acceptance uses actual native HTTP/CLI, real Bearer authentication, original default-disabled consumers, immutable source/dependency snapshots and independent MySQL processes. The former dedicated MySQL8.4 workflow verified the native owners, receipt integrity, lock waits, rollback and SIGKILL. Receipts contain no ticket subjects/messages, email addresses or credentials.
 
 This is a closed native subset. Network/control writers, commerce/content administration, retention, trusted plugins and alternate connections remain separate. SMTP, notification cache, process restart and queue ready/reserved/delayed/failed outcomes still require independently verified drain evidence before any production authority switch.
 

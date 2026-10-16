@@ -29,7 +29,7 @@ final class OrderCheckout
             $userId, $tradeNo, $paymentMethod, $native
         ): array {
             if ($order === null) {
-                app(\App\Domains\AuthorityMigration\AuthorityWriterFence::class)->admit('order.checkout');
+                app(\App\Domains\Installation\InstallationAuthority::class)->assertLegacyWriter();
                 $order = Order::query()->where('user_id', $userId)
                     ->where('trade_no', $tradeNo)->lockForUpdate()->first();
                 if ($order?->purchase_terms_version === PublishedOrderService::VERSION) {

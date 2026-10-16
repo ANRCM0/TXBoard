@@ -3,10 +3,10 @@
 namespace App\Http\Controllers\Txapi\Admin;
 
 use App\Core\Http\TxapiResponse;
-use App\Domains\AuthorityMigration\AuthorityTicketSqlPhase;
+use App\Domains\Installation\InstallationAuthority;
 use App\Models\Ticket;
 use App\Models\TicketMessage;
-use App\Services\TicketService;
+use App\Domains\Support\TicketService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -77,17 +77,14 @@ final class TicketAdminController
     {
         $id = (int) $request->route('id');
         $phase = static function () use ($id): void {
+            app(InstallationAuthority::class)->assertLegacyWriter();
             $ticket = Ticket::query()->lockForUpdate()->findOrFail((int) $id);
             if ((int) $ticket->status !== Ticket::STATUS_CLOSED) {
                 $ticket->status = Ticket::STATUS_CLOSED;
                 $ticket->saveOrFail();
             }
         };
-        if (AuthorityTicketSqlPhase::enabled()) {
-            app(AuthorityTicketSqlPhase::class)->run(AuthorityTicketSqlPhase::ADMIN_TICKET_CLOSE, $phase);
-        } else {
-            DB::transaction($phase);
-        }
+        DB::transaction($phase);
         return TxapiResponse::success($request, ['ok' => true]);
     }
 

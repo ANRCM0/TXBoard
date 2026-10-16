@@ -51,7 +51,7 @@ class ResetUser extends Command
         foreach ($users as $user)
         {
             app(IdentityPhase::class)->run(IdentityPhase::CLI_USER_CREDENTIALS_ROTATE, function () use (&$user): void {
-                if (IdentityPhase::enabled()) $user = User::query()->whereKey($user->getKey())->lockForUpdate()->firstOrFail();
+                $user = User::query()->whereKey($user->getKey())->lockForUpdate()->firstOrFail();
                 $user->token = Helper::guid();
                 $user->uuid = Helper::guid(true);
                 $user->save();

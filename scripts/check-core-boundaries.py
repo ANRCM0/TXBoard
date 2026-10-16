@@ -55,6 +55,7 @@ RETIRED_CLASSES = (
     "LegacyUserCreationShadow",
     "LegacyUserDeletionShadow",
     "SubscriptionTermsShadowService",
+    "FencedSanctumGuard",
 )
 RETIRED_PATHS = (
     "api/app/Domains/CredentialProviderFixture",
@@ -82,6 +83,14 @@ RETIRED_PATHS = (
     "api/app/Services/Subscription",
     "api/tests/Feature/Subscription/SubscriptionTermsShadowTest.php",
     "api/tests/Feature/UsageV2/UsageTermsBoundaryTest.php",
+    "api/app/Domains/AuthorityMigration",
+    "api/app/Console/Commands/CoreAuthorityFence.php",
+    "api/app/Console/Commands/CoreAuthorityPostcommit.php",
+    "api/tests/Feature/AuthorityMigration",
+    "api/tests/Support/AuthorityIdentityFixture.php",
+    "api/tests/Support/AuthorityTicketFixture.php",
+    "api/tests/Feature/Identity/AccountPostcommitBoundaryTest.php",
+    "api/app/Services/TicketService.php",
 )
 RETIRED_CONFIGS = (
     "legacy_capture_shadow",
@@ -95,6 +104,7 @@ RETIRED_CONFIGS = (
     "legacy_bulk_ban_capture",
     "legacy_money_shadow",
     "legacy_lifecycle_reconcile",
+    "authority_writer_fence",
 )
 
 
@@ -119,7 +129,8 @@ def validate():
                 f"Retired runtime path restored: {relative}")
     retired = re.compile(r"\b(?:" + "|".join(RETIRED_CLASSES) + r")\b")
     old_namespace = re.compile(r"App\\Services\\Subscription\\")
-    retired_namespace = re.compile(r"App\\Domains\\(?:CredentialProviderFixture|LegacyLinks)\\")
+    retired_namespace = re.compile(r"App\\Domains\\(?:CredentialProviderFixture|LegacyLinks|AuthorityMigration)\\")
+    retired_ticket = re.compile(r"App\\Services\\TicketService\b")
     retired_config = re.compile(
         r"""['"](?:""" + "|".join(RETIRED_CONFIGS) + r""")(?:\.|['"])"""
     )
@@ -129,7 +140,7 @@ def validate():
         files.extend((ROOT / area).rglob("*.php"))
     for path in files:
         text = path.read_text(encoding="utf-8-sig")
-        for pattern in (retired, old_namespace, retired_namespace, retired_config):
+        for pattern in (retired, old_namespace, retired_namespace, retired_ticket, retired_config):
             match = pattern.search(text)
             require(match is None,
                     f"Obsolete runtime reference in {path.relative_to(ROOT)}: "
@@ -138,10 +149,13 @@ def validate():
             "Missing canonical subscription record model")
     require((ROOT / "api/app/Domains/Installation/SchemaReplayValidator.php").is_file(),
             "Missing shared installation schema validator")
-    for name in ("AccountSqlPhase", "AccountCreationService", "AdminAccountModeration"):
+    for name in ("AccountSqlPhase", "AccountCreationService", "AdminAccountModeration", "AccountSessionGuard"):
         path = ROOT / f"api/app/Domains/Identity/{name}.php"
         require(path.is_file() and "namespace App\\Domains\\Identity;" in path.read_text(encoding="utf-8"),
                 f"Missing identity domain owner: {name}")
+    ticket = ROOT / "api/app/Domains/Support/TicketService.php"
+    require(ticket.is_file() and "namespace App\\Domains\\Support;" in ticket.read_text(encoding="utf-8"),
+            "Missing support domain ticket service")
     return len(files)
 
 

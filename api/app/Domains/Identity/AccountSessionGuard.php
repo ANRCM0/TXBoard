@@ -2,27 +2,22 @@
 
 namespace App\Domains\Identity;
 
-use App\Domains\AuthorityMigration\AuthorityFenceException;
 use App\Domains\Identity\AccountSqlPhase as IdentityPhase;
 use App\Models\User;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Support\Facades\DB;
 use Laravel\Sanctum\Guard;
 
-/** Parent authentication, policy and event order; only its last-used SQL is fenced. */
-final class FencedSanctumGuard extends Guard
+/** Preserve Sanctum authentication while serializing session metadata with its owner. */
+final class AccountSessionGuard extends Guard
 {
     protected function updateLastUsedAt($accessToken)
     {
-        if (!IdentityPhase::locksAccount()) {
-            parent::updateLastUsedAt($accessToken);
-            return;
-        }
         $connection = $accessToken->getConnection();
         $owner = $accessToken->tokenable;
         if (!$owner instanceof User || $connection->getName() !== DB::connection()->getName()
             || $owner->getConnection()->getName() !== $connection->getName()) {
-            throw new AuthorityFenceException('AUTHORITY_IDENTITY_TOKEN_CONNECTION_UNSUPPORTED');
+            throw new \LogicException('ACCOUNT_SESSION_CONNECTION_UNSUPPORTED');
         }
         $tracksModification = method_exists($connection, 'hasModifiedRecords') && method_exists($connection, 'setRecordModificationState');
         $modified = $tracksModification ? $connection->hasModifiedRecords() : null;

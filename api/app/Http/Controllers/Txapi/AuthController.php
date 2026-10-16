@@ -193,7 +193,6 @@ final class AuthController
         $current = Auth::guard('sanctum')->user()->currentAccessToken();
         if ($current && method_exists($current, 'delete')) {
             app(IdentityPhase::class)->run(IdentityPhase::SESSION_REVOKE, function () use ($current): void {
-                if (!IdentityPhase::locksAccount()) { $current->delete(); return; }
                 $user = User::query()->whereKey(Auth::guard('sanctum')->id())->lockForUpdate()->firstOrFail();
                 $token = $user->tokens()->whereKey($current->getKey())->lockForUpdate()->first();
                 if ($token) $token->delete();
@@ -224,7 +223,7 @@ final class AuthController
     {
         $deleted = app(IdentityPhase::class)->run(IdentityPhase::SESSION_REVOKE, function () use ($sessionId): int {
             $user = Auth::guard('sanctum')->user();
-            if (IdentityPhase::locksAccount()) $user = User::query()->whereKey($user->getKey())->lockForUpdate()->firstOrFail();
+            $user = User::query()->whereKey($user->getKey())->lockForUpdate()->firstOrFail();
             return $user->tokens()->whereKey($sessionId)->delete();
         });
         if (!$deleted) {
@@ -269,12 +268,10 @@ final class AuthController
                 'Invalid current password', 400);
         }
         $saved = app(IdentityPhase::class)->run(IdentityPhase::USER_PASSWORD_CHANGE, function () use (&$user, $params): bool {
-            if (IdentityPhase::locksAccount()) {
-                $currentToken = $user->currentAccessToken();
-                $user = User::query()->whereKey($user->getKey())->lockForUpdate()->firstOrFail();
-                $user->withAccessToken($currentToken);
-                if (!Helper::multiPasswordVerify($user->password_algo, $user->password_salt, $params['old_password'], $user->password)) return false;
-            }
+            $currentToken = $user->currentAccessToken();
+            $user = User::query()->whereKey($user->getKey())->lockForUpdate()->firstOrFail();
+            $user->withAccessToken($currentToken);
+            if (!Helper::multiPasswordVerify($user->password_algo, $user->password_salt, $params['old_password'], $user->password)) return false;
             $user->password = password_hash($params['new_password'], PASSWORD_DEFAULT);
             $user->password_algo = null;
             $user->password_salt = null;
@@ -285,9 +282,9 @@ final class AuthController
 
         $current = $user->currentAccessToken();
         app(IdentityPhase::class)->run(IdentityPhase::SESSION_REVOKE, function () use ($user, $current): void {
-            $owner = IdentityPhase::locksAccount() ? User::query()->whereKey($user->getKey())->lockForUpdate()->firstOrFail() : $user;
+            $owner = User::query()->whereKey($user->getKey())->lockForUpdate()->firstOrFail();
             if ($current && method_exists($current, 'getKey')) {
-                if (IdentityPhase::locksAccount() && !$owner->tokens()->whereKey($current->getKey())->lockForUpdate()->first()) abort(401);
+                if (!$owner->tokens()->whereKey($current->getKey())->lockForUpdate()->first()) abort(401);
                 $owner->tokens()->where('id', '!=', $current->getKey())->delete();
             } else {
                 $owner->tokens()->delete();

@@ -2,6 +2,7 @@
 
 namespace App\Domains\Identity;
 
+use App\Domains\Installation\InstallationAuthority;
 use App\Models\Order;
 use App\Models\WalletRecharge;
 use App\Models\User;
@@ -22,7 +23,7 @@ final class AdminAccountProtection
     public function deleteUnused(int $userId, Request $request): bool
     {
         $deleted = DB::transaction(static function () use ($userId, $request): ?User {
-            app(\App\Domains\AuthorityMigration\AuthorityWriterFence::class)->admit('admin.user.delete');
+            app(InstallationAuthority::class)->assertLegacyWriter();
             $user = User::query()->lockForUpdate()->findOrFail($userId);
 
             // A staff account, account with money/traffic or any linked domain
@@ -65,7 +66,7 @@ final class AdminAccountProtection
     public function rotateCredentials(int $userId, Request $request): void
     {
         $user = DB::transaction(static function () use ($userId): User {
-            app(\App\Domains\AuthorityMigration\AuthorityWriterFence::class)->admit('admin.user.credentials.rotate');
+            app(InstallationAuthority::class)->assertLegacyWriter();
             $user = User::query()->lockForUpdate()->findOrFail($userId);
             $user->token = Helper::guid();
             $user->uuid = Helper::guid(true);

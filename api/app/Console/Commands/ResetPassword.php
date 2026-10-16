@@ -48,7 +48,7 @@ class ResetPassword extends Command
         if (!$user) abort(500, '邮箱不存在');
         $password = $password ?? Helper::guid(false);
         $saved = app(IdentityPhase::class)->run(IdentityPhase::CLI_PASSWORD_RESET, function () use (&$user, $password): bool {
-            if (IdentityPhase::enabled()) $user = User::query()->whereKey($user->getKey())->lockForUpdate()->firstOrFail();
+            $user = User::query()->whereKey($user->getKey())->lockForUpdate()->firstOrFail();
             $user->password = password_hash($password, PASSWORD_DEFAULT);
             $user->password_algo = null;
             return $user->save();

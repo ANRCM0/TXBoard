@@ -82,7 +82,7 @@ class OrderService
 
         return DB::transaction(function () use ($user, $plan, $newPeriod, $couponCode,
             $userService, $idempotencyKey, $body): Order {
-            app(\App\Domains\AuthorityMigration\AuthorityWriterFence::class)->admit('order.create');
+            app(\App\Domains\Installation\InstallationAuthority::class)->assertLegacyWriter();
             // One user lock serializes concurrent creates across TXAPI, native
             // clients and Gateway. Claim-check always precedes order preflight.
             $user = User::lockForUpdate()->find($user->id);
@@ -144,7 +144,7 @@ class OrderService
             return;
         }
         $openedOrder = DB::transaction(function () {
-            app(\App\Domains\AuthorityMigration\AuthorityWriterFence::class)->admit('order.fulfill');
+            app(\App\Domains\Installation\InstallationAuthority::class)->assertLegacyWriter();
             $order = $this->lockCurrentOrderWhenStatus(Order::STATUS_PROCESSING);
             if (!$order) {
                 return null;
@@ -371,7 +371,7 @@ class OrderService
                 ->value('purchase_terms_version') === PublishedOrderService::VERSION;
             $transition = function (?Order $order = null) use ($callbackNo, $paymentId, $verifiedAmountMinor, $native) {
                 if (!$native) {
-                    app(\App\Domains\AuthorityMigration\AuthorityWriterFence::class)->admit('order.paid');
+                    app(\App\Domains\Installation\InstallationAuthority::class)->assertLegacyWriter();
                     $order = $this->lockCurrentOrder();
                     if ($order?->purchase_terms_version === PublishedOrderService::VERSION) {
                         throw new \RuntimeException('Native order requires native payment admission');
@@ -437,8 +437,8 @@ class OrderService
                     ]);
                 }
             }
-        } catch (\App\Domains\AuthorityMigration\AuthorityFenceException) {
-            Log::error('AUTHORITY_ORDER_PAID_FENCE_REJECTED');
+        } catch (\App\Domains\Installation\InstallationAuthorityException) {
+            Log::error('INSTALLATION_ORDER_PAID_REJECTED');
             return false;
         } catch (\Exception $e) {
             Log::error($e);
@@ -464,7 +464,7 @@ class OrderService
                 return true;
             }
             $cancelledOrder = DB::transaction(function () {
-                app(\App\Domains\AuthorityMigration\AuthorityWriterFence::class)->admit('order.cancel');
+                app(\App\Domains\Installation\InstallationAuthority::class)->assertLegacyWriter();
                 $order = $this->lockCurrentOrderWhenStatus(Order::STATUS_PENDING);
                 if (!$order) {
                     return null;
@@ -512,8 +512,8 @@ class OrderService
             $this->order = $cancelledOrder;
             HookManager::call('order.cancel.after', $cancelledOrder);
             return true;
-        } catch (\App\Domains\AuthorityMigration\AuthorityFenceException) {
-            Log::error('AUTHORITY_ORDER_CANCEL_FENCE_REJECTED');
+        } catch (\App\Domains\Installation\InstallationAuthorityException) {
+            Log::error('INSTALLATION_ORDER_CANCEL_REJECTED');
             return false;
         } catch (\Exception $e) {
             Log::error('ORDER_CANCELLATION_FAILED');

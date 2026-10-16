@@ -1,7 +1,7 @@
 # 当前开发进度与下一步
 
 
-2026-10-16 清理候选：第一批订阅/链接观察及原型清理（PR #253）、第二批写入口 capture hooks 和身份领域归属（PR #254）已通过 CI，尚未合并。第三批删除条款影子 mutation 服务及专属测试，收紧用量结算的冻结边界证明，候选验收待 CI；当前 native 购买、续订、重置和历史结算继续使用正式领域服务。writer fence、postcommit/outbox、旧 Client 和隔离 Internal API 仍按真实依赖保留，详见 [Core 清理](../../development/core-cleanup.md)。
+2026-10-16 清理候选：第一批订阅/链接观察及原型（PR #253）、第二批账户 capture 与领域归属（PR #254）、第三批条款影子及严格回执（PR #255）已通过 CI，尚未合并。第四批删除隔离 writer fence/postcommit 迁移原型及专属 CLI/CI；实际安装权威保留历史证据拒绝，身份/会话和工单使用当前事务入口，普通账户冻结 afterCommit 回调保持。第四批运行验收待候选 CI；详见 [Core 清理](../../development/core-cleanup.md)。
 > 更新：2026-10-16 · 代码基线：`main` 的 `ccf0b8c86f83559deee19434f8a591ed00ab3877`。
 >
 > C1、C2 已完成合并（PR #247—#251）；下一阶段为 C3 支付与资金闭环。合并不等于生产发布，C3—C5 和完整协议/平台矩阵仍未完成。
