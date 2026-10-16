@@ -1,5 +1,7 @@
 # Captured legacy money endpoint projection v1
 
+> Retired on 2026-10-16: this isolated shadow/prototype runtime, commands and dedicated tests have been removed. The text below is historical evidence, not an available interface or an implementation requirement. Existing database migrations and records are retained; this cleanup does not run data deletion.
+
 Status: verified local/testing implementation slice, default off. This is additive
 shadow evidence; legacy User balances remain authoritative.
 

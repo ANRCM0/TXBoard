@@ -1,6 +1,6 @@
 <?php
 
-use App\Services\Subscription\ShadowSchemaV1;
+use App\Domains\Installation\SchemaReplayValidator;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -10,7 +10,7 @@ return new class extends Migration {
     public const TABLE = 'tx_credential_provider_shadow_authorization';
     public function up(): void
     {
-        (new ShadowSchemaV1())->create(self::TABLE, function (Blueprint $t) {
+        (new SchemaReplayValidator())->create(self::TABLE, function (Blueprint $t) {
             $t->bigIncrements('id'); $t->string('snapshot_ref', 64)->unique('tx_cp_auth_ref_uq');
             $t->string('provider_id', 64); $t->unsignedBigInteger('access_subject_id')->unique('tx_cp_auth_subject_uq');
             $t->unsignedBigInteger('candidate_id')->unique('tx_cp_auth_candidate_uq');

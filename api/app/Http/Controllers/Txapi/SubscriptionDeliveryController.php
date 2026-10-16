@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Txapi;
 use App\Core\Http\TxapiResponse;
 use App\Domains\CredentialProvider\ProviderError;
 use App\Domains\CredentialProvider\RenderGrantCodec;
-use App\Services\Subscription\NativeSubscriptionDelivery;
+use App\Domains\Subscription\Services\NativeSubscriptionDelivery;
 use DomainException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;

@@ -4,8 +4,8 @@ namespace Tests\Feature\Txapi;
 
 use App\Domains\Installation\InstallationAuthority;
 use App\Models\Order;
-use App\Services\Subscription\PublishedOrderService;
-use App\Services\Subscription\SubscriptionFulfillmentService;
+use App\Domains\Subscription\Services\PublishedOrderService;
+use App\Domains\Subscription\Services\SubscriptionFulfillmentService;
 use Illuminate\Support\Facades\DB;
 use Laravel\Sanctum\Sanctum;
 use Tests\Support\NativeSubscriptionTestCase;

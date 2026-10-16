@@ -2,7 +2,7 @@
 
 namespace App\Models;
 
-class SubscriptionSlot extends SubscriptionShadowModel
+class SubscriptionSlot extends SubscriptionRecord
 {
     protected $table = 'tx_subscription_slot';
     protected $primaryKey = 'user_id';

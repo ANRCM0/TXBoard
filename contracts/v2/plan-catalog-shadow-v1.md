@@ -1,5 +1,7 @@
 # Plan Catalog Shadow v1
 
+> Retired on 2026-10-16: this isolated shadow/prototype runtime, commands and dedicated tests have been removed. The text below is historical evidence, not an available interface or an implementation requirement. Existing database migrations and records are retained; this cleanup does not run data deletion.
+
 > Status: B1 catalog shadow implementation. Legacy Plan and OrderService remain authoritative. This command is limited to an explicitly isolated copy; it does not publish offers to users.
 
 `core:catalog-shadow --isolated-copy --run=<key> --limit=<1..1000> --billing-timezone=<IANA> --currency=<code>` processes a bounded cursor below a frozen legacy Plan high-water ID. `--retry-plan=<id>` independently captures a changed or previously failed plan. Currency and billing timezone are explicit, with no invented defaults. Supported ISO 4217 currencies are USD, CNY, EUR, GBP, HKD, SGD, CAD, AUD, NZD and TWD, all with two minor digits. Other currencies are rejected until their legacy unit semantics have been confirmed.

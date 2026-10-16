@@ -1,5 +1,7 @@
 # Commerce Shadow v1
 
+> Retired on 2026-10-16: this isolated shadow/prototype runtime, commands and dedicated tests have been removed. The text below is historical evidence, not an available interface or an implementation requirement. Existing database migrations and records are retained; this cleanup does not run data deletion.
+
 > B1.3 foundation: isolated-copy evidence and financial opening entries. Existing OrderService, WalletRechargeService and User writers remain authoritative. This slice does not enable payment attempts, fulfillment, refunds or a ledger balance authority.
 
 All seven tables use the dedicated `tx_commerce_shadow_*` namespace. They are migration evidence, separate from future authoritative money/order tables. Capture and reconciliation JSON identify `mode=isolated_shadow` and `legacy_authority=retained`; scanning or matching evidence cannot publish an authority transition.

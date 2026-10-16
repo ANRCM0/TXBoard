@@ -1,5 +1,7 @@
 # Local Provider authorization snapshot v1
 
+> Retired on 2026-10-16: this isolated shadow/prototype runtime, commands and dedicated tests have been removed. The text below is historical evidence, not an available interface or an implementation requirement. Existing database migrations and records are retained; this cleanup does not run data deletion.
+
 The later [Go offline signature diagnostic](node-offline-signature-proof-v1.md)
 can independently inspect original signatures without granting Node admission.
 The no-consumer statements below retain the original B4.5 runtime scope; no
@@ -115,4 +117,4 @@ The trusted PHP process and this same-OS fixture are not an adversarial sandbox.
 Node service identity, Provider private delivery/parse, per-source revocation
 mapping, session termination/clock enforcement, ACK/offline convergence, pending
 traffic policy, production isolation/HA/restore and legacy migration remain open
-gates. See [verification fixture](../../../api/tests/Fixtures/CredentialProviderAuthorization/README.md).
+gates. See `../../../api/tests/Fixtures/CredentialProviderAuthorization/README.md` (retired fixture; see Git history).

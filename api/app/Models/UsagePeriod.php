@@ -4,7 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class UsagePeriod extends SubscriptionShadowModel
+class UsagePeriod extends SubscriptionRecord
 {
     protected $table = 'tx_usage_period';
 

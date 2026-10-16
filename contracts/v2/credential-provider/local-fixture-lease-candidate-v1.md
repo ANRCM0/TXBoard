@@ -1,5 +1,7 @@
 # Local Provider lease candidate v1
 
+> Retired on 2026-10-16: this isolated shadow/prototype runtime, commands and dedicated tests have been removed. The text below is historical evidence, not an available interface or an implementation requirement. Existing database migrations and records are retained; this cleanup does not run data deletion.
+
 Status: Current local/testing implementation scope, isolated Linux gates passed;
 default off. This prepares nonsecret Core metadata only. It grants no admission,
 does not activate a Subject, insert an auth snapshot or publish a Node handshake,
@@ -74,7 +76,7 @@ per-source delivery/ACK evidence, HA/restore and historical Usage settlement
 remain independent prerequisites. No production or legacy credential migration
 is authorized by this slice.
 
-The [fixture verification record](../../../api/tests/Fixtures/CredentialProviderLease/README.md)
+The `../../../api/tests/Fixtures/CredentialProviderLease/README.md` (retired fixture; see Git history)
 records the fixed committed base, source scope, dependencies, engine-specific
 checks, independent-session barriers, crash/replay evidence and earlier failed
 attempts. These results verify the local candidate boundary, not production

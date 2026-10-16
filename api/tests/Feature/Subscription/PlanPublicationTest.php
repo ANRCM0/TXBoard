@@ -5,7 +5,7 @@ namespace Tests\Feature\Subscription;
 use App\Domains\Installation\InstallationAuthority;
 use App\Models\PlanOffer;
 use App\Models\PlanRevision;
-use App\Services\Subscription\PlanPublicationService;
+use App\Domains\Subscription\Services\PlanPublicationService;
 use App\Support\Setting as RuntimeSetting;
 use Carbon\Carbon;
 use Illuminate\Database\Schema\Blueprint;

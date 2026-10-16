@@ -4,9 +4,9 @@ namespace App\Domains\UsageV2;
 
 use App\Domains\Installation\InstallationAuthority;
 use App\Services\NodeSyncService;
-use App\Services\Subscription\NativeCredentialSynchronization;
-use App\Services\Subscription\NativeSubscriptionStore;
-use App\Services\Subscription\SubscriptionEntitlementResolver;
+use App\Domains\Subscription\Services\NativeCredentialSynchronization;
+use App\Domains\Subscription\Services\NativeSubscriptionStore;
+use App\Domains\Subscription\Services\SubscriptionEntitlementResolver;
 use Illuminate\Support\Facades\DB;
 use Throwable;
 

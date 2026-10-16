@@ -3,7 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Domains\Installation\InstallationAuthorityException;
-use App\Services\Subscription\PlanPublicationService;
+use App\Domains\Subscription\Services\PlanPublicationService;
 use Illuminate\Console\Command;
 use Throwable;
 

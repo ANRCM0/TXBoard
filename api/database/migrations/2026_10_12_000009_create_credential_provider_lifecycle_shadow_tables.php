@@ -1,6 +1,6 @@
 <?php
 
-use App\Services\Subscription\ShadowSchemaV1;
+use App\Domains\Installation\SchemaReplayValidator;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
-        $schema = new ShadowSchemaV1();
+        $schema = new SchemaReplayValidator();
         $schema->create('tx_credential_provider_shadow_lifecycle', function (Blueprint $t) {
             $t->bigIncrements('id');
             $t->unsignedBigInteger('registration_id')->unique('tx_cp_lifecycle_registration_uq');

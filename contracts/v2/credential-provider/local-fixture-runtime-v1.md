@@ -1,5 +1,7 @@
 # Local Credential Provider Fixture Runtime v1
 
+> Retired on 2026-10-16: this isolated shadow/prototype runtime, commands and dedicated tests have been removed. The text below is historical evidence, not an available interface or an implementation requirement. Existing database migrations and records are retained; this cleanup does not run data deletion.
+
 > B4.1 local/testing foundation. Default off. Synthetic issue/query evidence is implemented; [B4.2 fixture lifecycle](local-fixture-lifecycle-v1.md) adds shadow revoke/disable/cleanup. This does not authorize a Node, install a v2 plugin, import legacy credentials or replace PHP Plugin Package v1.
 
 The Core adapter registers a fixed project-owned `synthetic-fixture-v1` executable identity, provider ID, instance epoch, operation grants and the `synthetic-v1` profile. The caller cannot select a command, URL, working directory or storage path. The registered script digest must match before invocation. Changing an existing provider epoch or registration is refused. The only accepted operator scope is the explicitly named local fixture grant; issue/query also bind the requested Subject and registered provider. The service has no HTTP route and does not treat an untrusted caller-supplied authorization label as authentication.

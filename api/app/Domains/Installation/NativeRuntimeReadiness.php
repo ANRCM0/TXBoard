@@ -8,8 +8,8 @@ use App\Domains\CredentialProvider\ProviderError;
 use App\Domains\CredentialProvider\ProviderTransport;
 use App\Domains\Network\NativeNodeAuthorization;
 use App\Models\Server;
-use App\Services\Subscription\NativeSubscriptionDelivery;
-use App\Services\Subscription\PlanPublicationService;
+use App\Domains\Subscription\Services\NativeSubscriptionDelivery;
+use App\Domains\Subscription\Services\PlanPublicationService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 

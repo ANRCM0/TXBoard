@@ -7,7 +7,7 @@ use App\Domains\Installation\InstallationAuthority;
 use App\Jobs\OrderHandleJob;
 use App\Models\Order;
 use App\Services\OrderService;
-use App\Services\Subscription\PublishedOrderService;
+use App\Domains\Subscription\Services\PublishedOrderService;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;

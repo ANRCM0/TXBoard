@@ -10,7 +10,7 @@ use App\Models\User;
 use App\Listeners\EnforceInstallationAuthority;
 use App\Services\NodeSyncService;
 use App\Services\ServerService;
-use App\Services\Subscription\PlanPublicationService;
+use App\Domains\Subscription\Services\PlanPublicationService;
 use Illuminate\Contracts\Queue\Job;
 use Illuminate\Console\Events\CommandStarting;
 use Illuminate\Foundation\Testing\RefreshDatabase;

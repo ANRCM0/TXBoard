@@ -23,7 +23,7 @@ final class AccountController
     {
         $user = Auth::guard('sanctum')->user();
         if (app(\App\Domains\Installation\InstallationAuthority::class)->inspect()['mode'] === 'native') {
-            $entitlement = app(\App\Services\Subscription\SubscriptionEntitlementResolver::class)->resolve((int) $user->id);
+            $entitlement = app(\App\Domains\Subscription\Services\SubscriptionEntitlementResolver::class)->resolve((int) $user->id);
             return TxapiResponse::success($request, [
                 'id' => (int) $user->id, 'email' => (string) $user->email,
                 'telegram_id' => $user->telegram_id === null ? null : (int) $user->telegram_id,
@@ -50,7 +50,7 @@ final class AccountController
     public function subscription(Request $request, UserService $service): JsonResponse
     {
         if (app(\App\Domains\Installation\InstallationAuthority::class)->inspect()['mode'] === 'native') {
-            $entitlement = app(\App\Services\Subscription\SubscriptionEntitlementResolver::class)
+            $entitlement = app(\App\Domains\Subscription\Services\SubscriptionEntitlementResolver::class)
                 ->resolve((int) Auth::guard('sanctum')->id());
             return TxapiResponse::success($request, $entitlement + [
                 'subscribe_url' => null, 'credential_status' => 'provider_managed',

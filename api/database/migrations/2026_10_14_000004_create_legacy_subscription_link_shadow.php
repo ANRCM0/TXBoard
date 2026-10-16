@@ -1,5 +1,5 @@
 <?php
-use App\Services\Subscription\ShadowSchemaV1;
+use App\Domains\Installation\SchemaReplayValidator;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -8,7 +8,7 @@ return new class extends Migration {
     private const TABLES=['tx_legacy_subscription_link_shadow','tx_legacy_link_checkpoint','tx_legacy_link_exception'];
     public function up(): void
     {
-        $schema=new ShadowSchemaV1();
+        $schema=new SchemaReplayValidator();
         $schema->create(self::TABLES[0],function(Blueprint $t):void{
             $t->bigIncrements('id');$t->integer('legacy_user_id');$t->unsignedBigInteger('subscription_id');$t->unsignedBigInteger('map_id');
             $t->string('key_id',64);$t->unsignedInteger('key_generation');$t->char('token_digest',64);

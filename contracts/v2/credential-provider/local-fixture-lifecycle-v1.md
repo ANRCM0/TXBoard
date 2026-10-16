@@ -1,5 +1,7 @@
 # Local Credential Provider Fixture Lifecycle v1
 
+> Retired on 2026-10-16: this isolated shadow/prototype runtime, commands and dedicated tests have been removed. The text below is historical evidence, not an available interface or an implementation requirement. Existing database migrations and records are retained; this cleanup does not run data deletion.
+
 > B4.2 local/testing evidence only. Default off. This extends the [fixed synthetic runtime](local-fixture-runtime-v1.md); it does not revoke live Subject authorization, uninstall a v1 plugin or prove Node convergence.
 
 Core records a permanent subject revocation fact and its original operation in one SQL transaction before private IPC. The registered provider row is the common fence for issuance, dispatch, revocation and disable. Fact versions are allocated monotonically by Core under the provider registration lock; the revocation scope is the corresponding provider/epoch/Subject (`provider-subject/v1`). A private tombstone rejects a lower version for that Subject, without rejecting a delayed legitimate fact for another Subject solely because its allocated sequence is smaller. Callers provide only the expected current Subject auth version and an allow-listed reason. Subject fields, historical usage and money evidence remain unchanged. New issuance and its later dispatch both use current reads to reject a recorded shadow revocation. Historical successful issue receipts remain historical evidence and do not assert current credential validity.

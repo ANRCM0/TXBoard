@@ -22,9 +22,7 @@ AUTOMATIC = {
 }
 HISTORICAL_DIRS = {
     "tests/Feature/AuthorityMigration",
-    "tests/Feature/CredentialProviderFixture",
     "tests/Feature/InternalReadOnly",
-    "tests/Feature/LegacyLinks",
 }
 
 

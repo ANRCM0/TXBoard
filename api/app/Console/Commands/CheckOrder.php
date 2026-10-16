@@ -4,7 +4,7 @@ namespace App\Console\Commands;
 
 use App\Jobs\OrderHandleJob;
 use App\Domains\Installation\InstallationAuthority;
-use App\Services\Subscription\PublishedOrderService;
+use App\Domains\Subscription\Services\PublishedOrderService;
 use Illuminate\Console\Command;
 use App\Models\Order;
 use Illuminate\Support\Facades\Bus;

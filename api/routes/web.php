@@ -105,7 +105,7 @@ Route::get('/', function (Request $request) {
 
 // Subscription links must win before the dynamic admin catch-all.
 Route::get('/' . (admin_setting('subscribe_path', 's')) . '/{token}', [\App\Http\Controllers\SubscriptionController::class, 'subscribe'])
-    ->middleware(['client', \App\Http\Middleware\SubscriptionIdentityShadow::class, \App\Http\Middleware\LegacySubscriptionLinkShadow::class])
+    ->middleware('client')
     ->name('client.subscribe');
 
 /*

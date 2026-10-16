@@ -7,8 +7,8 @@ use App\Models\Plan;
 use App\Models\Server;
 use App\Models\ServerGroup;
 use App\Models\User;
-use App\Services\Subscription\NativeCredentialProviderService;
-use App\Services\Subscription\PlanPublicationService;
+use App\Domains\Subscription\Services\NativeCredentialProviderService;
+use App\Domains\Subscription\Services\PlanPublicationService;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 

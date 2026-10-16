@@ -1,5 +1,7 @@
 # Local Credential Provider Plugin Boundary v1
 
+> Retired on 2026-10-16: this isolated shadow/prototype runtime, commands and dedicated tests have been removed. The text below is historical evidence, not an available interface or an implementation requirement. Existing database migrations and records are retained; this cleanup does not run data deletion.
+
 Status: B4.3 implemented local/testing fixture slice, default off; not a
 production Provider lifecycle or Node drain acceptance.
 This slice connects the existing [synthetic lifecycle](local-fixture-lifecycle-v1.md)
@@ -165,8 +167,8 @@ locked vendor, excluding concurrent Internal/Subscription work. Full API gate:
 gate: 20 passed, 182 assertions. The two separate-session tests are intentionally
 skipped in SQLite; MySQL 8.4 is unverified.
 
-The [trusted fixture instructions](../../../api/tests/Fixtures/CredentialProviderPlugin/README.md)
-and [source/evidence manifest](../../../api/tests/Fixtures/CredentialProviderPlugin/verification.json)
+The `../../../api/tests/Fixtures/CredentialProviderPlugin/README.md` (retired fixture; see Git history)
+and `../../../api/tests/Fixtures/CredentialProviderPlugin/verification.json` (retired fixture; see Git history)
 record reproducible commands, exact sources, test counts and limitations. A
 successful synthetic private cleanup still produces an uninstall refusal;
 Node lease expiration/convergence, production credentials and settlement handoff

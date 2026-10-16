@@ -3,11 +3,11 @@
 namespace Tests\Feature\Subscription;
 
 use App\Models\Order;
-use App\Services\Subscription\PublishedOrderService;
-use App\Services\Subscription\SubscriptionEntitlementResolver;
-use App\Services\Subscription\SubscriptionFulfillmentService;
-use App\Services\Subscription\SubscriptionLifecycleService;
-use App\Services\Subscription\SubscriptionTermsTimeline;
+use App\Domains\Subscription\Services\PublishedOrderService;
+use App\Domains\Subscription\Services\SubscriptionEntitlementResolver;
+use App\Domains\Subscription\Services\SubscriptionFulfillmentService;
+use App\Domains\Subscription\Services\SubscriptionLifecycleService;
+use App\Domains\Subscription\Services\SubscriptionTermsTimeline;
 use Illuminate\Support\Facades\DB;
 use Tests\Support\NativeSubscriptionTestCase;
 use Throwable;

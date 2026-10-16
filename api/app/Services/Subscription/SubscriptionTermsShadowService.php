@@ -2,6 +2,8 @@
 
 namespace App\Services\Subscription;
 
+use App\Domains\Subscription\Services\SubscriptionTermsTimeline;
+
 use Carbon\Carbon;
 use DateTimeZone;
 use DomainException;

@@ -1,5 +1,7 @@
 # 当前开发进度与下一步
 
+
+2026-10-16 清理候选：已移除旧订阅/链接观察、隔离 backfill/catalog/commerce 工具和合成 Provider 原型；当前订阅服务统一迁入领域目录。候选 PR 的运行验收尚待 CI；仍在使用的身份事务、writer fence、observer/capture 和隔离 Internal API 未整体删除，详见 [Core 清理](../../development/core-cleanup.md)。
 > 更新：2026-10-16 · 代码基线：`main` 的 `ccf0b8c86f83559deee19434f8a591ed00ab3877`。
 >
 > C1、C2 已完成合并（PR #247—#251）；下一阶段为 C3 支付与资金闭环。合并不等于生产发布，C3—C5 和完整协议/平台矩阵仍未完成。

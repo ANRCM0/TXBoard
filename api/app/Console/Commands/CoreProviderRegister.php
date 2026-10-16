@@ -4,7 +4,7 @@ namespace App\Console\Commands;
 
 use App\Domains\CredentialProvider\ProviderError;
 use App\Domains\Installation\InstallationAuthorityException;
-use App\Services\Subscription\NativeCredentialProviderService;
+use App\Domains\Subscription\Services\NativeCredentialProviderService;
 use Illuminate\Console\Command;
 use Throwable;
 

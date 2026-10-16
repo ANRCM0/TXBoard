@@ -12,35 +12,11 @@
             <directory>tests/Feature</directory>
             <!-- Historical transition suites are opt-in by explicit test path. -->
             <exclude>tests/Feature/AuthorityMigration</exclude>
-            <exclude>tests/Feature/CredentialProviderFixture</exclude>
             <exclude>tests/Feature/InternalReadOnly</exclude>
-            <exclude>tests/Feature/LegacyLinks</exclude>
-            <exclude>tests/Feature/Subscription/CommerceShadowTest.php</exclude>
             <exclude>tests/Feature/Subscription/LegacyAdminCreationShadowTest.php</exclude>
             <exclude>tests/Feature/Subscription/LegacyAdminDeletionShadowTest.php</exclude>
             <exclude>tests/Feature/Subscription/LegacyBootstrapCreationShadowTest.php</exclude>
-            <exclude>tests/Feature/Subscription/LegacyBulkBanCaptureTest.php</exclude>
-            <exclude>tests/Feature/Subscription/LegacyCommissionTransferCaptureTest.php</exclude>
-            <exclude>tests/Feature/Subscription/LegacyCronTrafficResetCaptureTest.php</exclude>
-            <exclude>tests/Feature/Subscription/LegacyLifecycleShadowReconcileTest.php</exclude>
-            <exclude>tests/Feature/Subscription/LegacyMoneyShadowTest.php</exclude>
-            <exclude>tests/Feature/Subscription/LegacyObserverCaptureTest.php</exclude>
-            <exclude>tests/Feature/Subscription/LegacyOrderCancellationCaptureTest.php</exclude>
-            <exclude>tests/Feature/Subscription/LegacyOrderCreationCaptureTest.php</exclude>
-            <exclude>tests/Feature/Subscription/LegacyOrderFulfillmentCaptureTest.php</exclude>
-            <exclude>tests/Feature/Subscription/LegacyPlanPropagationCaptureTest.php</exclude>
             <exclude>tests/Feature/Subscription/LegacyRegistrationCreationShadowTest.php</exclude>
-            <exclude>tests/Feature/Subscription/LegacyRewardCaptureTest.php</exclude>
-            <exclude>tests/Feature/Subscription/LegacyScheduleRepairCaptureTest.php</exclude>
-            <exclude>tests/Feature/Subscription/LegacyStandaloneResetCaptureTest.php</exclude>
-            <exclude>tests/Feature/Subscription/LegacySubscriptionIdentityTest.php</exclude>
-            <exclude>tests/Feature/Subscription/LegacyTrafficBatchCaptureTest.php</exclude>
-            <exclude>tests/Feature/Subscription/LegacyTrafficFetchCaptureTest.php</exclude>
-            <exclude>tests/Feature/Subscription/LegacyUserMutationCaptureTest.php</exclude>
-            <exclude>tests/Feature/Subscription/LegacyWalletRechargeCaptureTest.php</exclude>
-            <exclude>tests/Feature/Subscription/PlanCatalogShadowTest.php</exclude>
-            <exclude>tests/Feature/Subscription/SubscriptionShadowBackfillTest.php</exclude>
-            <exclude>tests/Feature/Subscription/SubscriptionSlotTest.php</exclude>
             <exclude>tests/Feature/Subscription/SubscriptionTermsShadowTest.php</exclude>
         </testsuite>
     </testsuites>

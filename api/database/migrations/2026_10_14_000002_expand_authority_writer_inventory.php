@@ -1,6 +1,6 @@
 <?php
 
-use App\Services\Subscription\ShadowSchemaV1;
+use App\Domains\Installation\SchemaReplayValidator;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -15,7 +15,7 @@ return new class extends Migration {
         $column=collect(Schema::getColumns('tx_authority_writer_fence'))->firstWhere('name','inventory_hash');
         if(!$column || !$column['nullable'] || !in_array($column['type_name'],DB::getDriverName()==='sqlite'?['varchar']:['char'],true)
             || (DB::getDriverName()!=='sqlite' && $column['type']!=='char(64)'))throw new RuntimeException('AUTHORITY_INVENTORY_SCHEMA_INVALID');
-        (new ShadowSchemaV1())->create('tx_authority_inventory_upgrade',function(Blueprint $t):void{
+        (new SchemaReplayValidator())->create('tx_authority_inventory_upgrade',function(Blueprint $t):void{
             $t->string('upgrade_key',64)->primary();$t->string('scope',32);$t->string('version',32);
             $t->string('prior_scope',32);$t->string('prior_version',32);
             $t->unsignedBigInteger('expected_epoch');$t->unsignedBigInteger('expanded_epoch');

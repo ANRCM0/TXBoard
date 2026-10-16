@@ -1,5 +1,7 @@
 # Subscription Shadow v1
 
+> Retired on 2026-10-16: this isolated shadow/prototype runtime, commands and dedicated tests have been removed. The text below is historical evidence, not an available interface or an implementation requirement. Existing database migrations and records are retained; this cleanup does not run data deletion.
+
 > Status: B1 additive implementation. Legacy User/Plan/Order services remain authoritative. These records do not issue authorization or change public APIs.
 
 The migration creates native `tx_*` shadow tables. Existing `tx_user` and `tx_plan` tables and their writers are unchanged. References to legacy users/plans are logical references: adding restrictive foreign keys to those tables would change existing deletion behavior. Reconciliation must detect missing sources. All foreign keys between new tables use RESTRICT; history is never cascaded away.

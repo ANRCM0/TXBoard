@@ -15,7 +15,7 @@ use App\Domains\Billing\PurchasedOrderGrant;
 use App\Services\Plugin\HookManager;
 use App\Services\Subscription\LegacyUserMutationCapture;
 use App\Services\Subscription\LegacyCaptureShadowException;
-use App\Services\Subscription\PublishedOrderService;
+use App\Domains\Subscription\Services\PublishedOrderService;
 use App\Utils\Helper;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
@@ -145,7 +145,7 @@ class OrderService
         // Dispatch from the stored marker, not a possibly stale queued Order.
         // Native fulfillment owns its account-first transaction and admission.
         if (Order::query()->useWritePdo()->whereKey($this->order->id)->value('purchase_terms_version') === PublishedOrderService::VERSION) {
-            app(\App\Services\Subscription\SubscriptionFulfillmentService::class)->fulfill((int) $this->order->id);
+            app(\App\Domains\Subscription\Services\SubscriptionFulfillmentService::class)->fulfill((int) $this->order->id);
             $this->order = Order::query()->findOrFail($this->order->id);
             return;
         }

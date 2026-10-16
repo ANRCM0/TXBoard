@@ -2,7 +2,7 @@
 
 namespace App\Console\Commands;
 
-use App\Services\Subscription\SubscriptionLifecycleService;
+use App\Domains\Subscription\Services\SubscriptionLifecycleService;
 use Illuminate\Console\Command;
 use Throwable;
 

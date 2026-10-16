@@ -1,6 +1,6 @@
 <?php
 
-use App\Services\Subscription\ShadowSchemaV1;
+use App\Domains\Installation\SchemaReplayValidator;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -12,7 +12,7 @@ return new class extends Migration {
 
     public function up(): void
     {
-        $schema = new ShadowSchemaV1();
+        $schema = new SchemaReplayValidator();
         $schema->create('tx_commerce_shadow_money_account', function (Blueprint $table) {
             $table->bigIncrements('id');
             $table->enum('owner_type', ['user', 'system']);

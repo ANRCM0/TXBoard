@@ -5,7 +5,7 @@ namespace Tests\Feature\Subscription;
 use App\Jobs\OrderHandleJob;
 use App\Models\Order;
 use App\Services\Auth\NativeIdentityService;
-use App\Services\Subscription\NativePlanCatalog;
+use App\Domains\Subscription\Services\NativePlanCatalog;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
 use Laravel\Sanctum\Sanctum;

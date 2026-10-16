@@ -6,7 +6,7 @@ use App\Models\Order;
 use App\Models\OrderPurchaseTerms;
 use App\Models\Plan;
 use App\Services\OrderService;
-use App\Services\Subscription\PlanPublicationService;
+use App\Domains\Subscription\Services\PlanPublicationService;
 use DateTimeZone;
 use JsonException;
 use RuntimeException;

@@ -1,6 +1,6 @@
 <?php
 
-use App\Services\Subscription\ShadowSchemaV1;
+use App\Domains\Installation\SchemaReplayValidator;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
-        (new ShadowSchemaV1())->create('tx_legacy_user_creation_shadow', function (Blueprint $t): void {
+        (new SchemaReplayValidator())->create('tx_legacy_user_creation_shadow', function (Blueprint $t): void {
             $t->bigIncrements('id');
             $t->integer('legacy_user_id');
             $t->string('source_kind', 32);
