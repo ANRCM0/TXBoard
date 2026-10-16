@@ -1,8 +1,8 @@
 # 当前开发进度与下一步
 
 
-2026-10-16 清理状态：前四批（PR #252—#256）已合入 main `6fbb7ad`；第五批 Internal API 退役候选 PR #257 的精确提交 `0ea0adf` CI 已通过，尚未合并。接续三批并行清理旧订阅/Node、隔离 UsageV2、Plugin/Theme 包，并将 native 订单状态机归入 Billing。此三批仍为待 CI 验收候选；详见 [Core 清理](../../development/core-cleanup.md)。
-> 更新：2026-10-16 · 代码基线：`main` 的 `6fbb7ad640a1ddb005eeb06bb9c01199c2b65804`。
+2026-10-16 清理状态：PR #252—#258 已合入 main。Internal API 隔离原型、旧订阅/Node 交付、隔离 UsageV2、旧 Plugin/Theme 包运行时及重复入口已退役；native 订单状态机归入 Billing。当前剩余旧财务业务随 C3 接管继续清理，详见 [Core 清理](../../development/core-cleanup.md)。
+> 更新：2026-10-16 · 代码基线：`main` 的 `015010703794ebd613c1dce5f899e9ed4879cfeb`。
 >
 > C1、C2 已完成合并（PR #247—#251）；下一阶段为 C3 支付与资金闭环。合并不等于生产发布，C3—C5 和完整协议/平台矩阵仍未完成。
 
@@ -32,13 +32,15 @@ C2 最终候选 `ea9d17b` 的 Core、MySQL 8.4、Node Go race 和真实流量四
 
 数据库、真实进程/流量、race、完整构建与广泛回归继续只在 CI 集中运行；本地只做语法、格式、差异和必要轻量静态检查。大型本地 Linux 环境已按用户要求删除，不重建。没有新代码、实际失败或未解决问题，不重跑已通过矩阵；更新验收记录不制造文档提交触发相同组件复验。
 
+清理候选 `5f8cc4d` 的 13 项开发检查通过，10 项按条件跳过；包括 API 869 项通过、MySQL 151 项通过、Node race/镜像、真实 C2、Gateway/SDK、Web 与文档。PR #257、#258 分别以 `e90862e`、`0150107` 合并；跳过项不计为通过，也不代表正式发布。
+
 ## 下一阶段
 
 1. **C3：支付、资金与退款。** 补齐 PaymentAttempt、资金账户/分录、钱包/渠道组合及退款，之后才开放 native 付费购买；复用 C2 履约与 outbox。
 2. **C4：正式接口及凭据生命周期。** 正式 Internal API、服务与调用者授权、生产 PKI/轮换、长期订阅链接；Gateway 管理员入口随该阶段交付。
 3. **C5：安装发布。** 新安装、正常更新、必要恢复、固定版本组合和正式发布说明；复用已验证业务，不按每个协议重复整条链。
 
-现存 legacy/shadow 清理随直接相关实现进行，不另加过渡框架。旧站迁移、HA/Cluster、完整协议/平台及商业扩展另行安排。详细目标见[完整计划](core-completion-plan.md)和[优先级](development-priorities.md)。
+近期先做 C3-A 资金契约与账本基础，再接通购买/收款，最后完成退款/对账并开放付费。分批目标、并行依赖及验收条件见[后续开发路线](next-development-roadmap.md)。现存旧财务清理随直接相关实现进行，不另加过渡框架。旧站迁移、HA/Cluster、完整协议/平台及商业扩展另行安排。整体目标见[完整计划](core-completion-plan.md)和[优先级](development-priorities.md)。
 
 ## 历史证据索引
 

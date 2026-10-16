@@ -1,6 +1,6 @@
 # 当前组件接口与支持矩阵
 
-> 更新：2026-10-16 · 基线：C2 已合入 `main`（`ccf0b8c`）。
+> 更新：2026-10-16 · 基线：C2 与后续清理已合入 `main`（`0150107`）。
 >
 > 本页由当前实现手工维护，描述组件职责、接口支持与缺口，不是旧版本兼容承诺。B0 的旧字段/路径差异保留在[历史清单](baseline-inventory.md)及[JSON](baseline-inventory.json)，不能覆盖本矩阵。
 
@@ -9,7 +9,7 @@
 | 边界 | 当前接口与行为 | 明确缺口或限制 | 当前依据 |
 | --- | --- | --- | --- |
 | User / Admin → Core | 注册的 `/txapi/*`；User Sanctum Bearer，Admin 动态路径/Bearer/RBAC/audit | native 不支持的旧写入明确拒绝；新 UI 延期，现有入口仍存在 | [HTTP 身份边界](../../../contracts/http/external-adapter-current.md) |
-| Gateway → Core | 可选用户 BFF；已有 native `/txapi/*` DTO/envelope 适配和有限内部调用切片 | 正式 Internal API、完整管理员调用者授权链与生产通道属 C4；不能声称 Gateway 已接管全部入口 | [Gateway native 对接](../../../gateway/docs/native-core-integration.md)、[Internal API](../../../contracts/v2/core-internal-api/README.md) |
+| Gateway → Core | 可选用户 BFF；当前 native `/txapi/*` DTO/envelope 与 `core-entitlement/v1`；隔离内部调用切片已退役 | 正式 Internal API、完整管理员调用者授权链与生产通道属 C4；不能声称 Gateway 已接管全部入口 | [Gateway native 对接](../../../gateway/docs/native-core-integration.md)、[Internal API](../../../contracts/v2/core-internal-api/README.md) |
 | 套餐 / 订单 → 订阅 | 不可变 Revision/Offer、v2 购买证据，原子履约与生命周期；共同权益读取 | 只开放零价 Offer，付费建单/结账拒绝；支付事实、账本与退款属 C3 | [Subscription](../../../contracts/v2/core-subscription-v1.md)、[C2 runtime](../../../contracts/v2/native-c2-runtime-v1.md) |
 | Core → Provider | 独立进程 mTLS；持久 issue/query/revoke/rotate；Core 仅保存非秘密绑定 | 当前即时轮换，不宣称重叠轮换、生产 PKI 或证书全生命周期完成 | [真实发行](../../../contracts/v2/credential-provider/native-issuance-v1.md)、[C2 runtime](../../../contracts/v2/native-c2-runtime-v1.md) |
 | Core / Provider → Node | Core 有限签名绑定 Node、Subject、凭据承诺与 Usage Session；Provider 向授权 Node 交付秘密 | C2 支持 sing-box VLESS/VMess direct TCP；其他内核/传输及完整矩阵不属 C2 交付 | [Node 材料交付](../../../contracts/v2/credential-provider/native-node-delivery-v1.md)、[C2 runtime](../../../contracts/v2/native-c2-runtime-v1.md) |

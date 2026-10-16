@@ -1,6 +1,6 @@
 # Core First v2：当前架构与开发基线
 
-> 更新：2026-10-16 · 代码基线：`main` 的 C2 合并提交 `ccf0b8c`。
+> 更新：2026-10-16 · 代码基线：`main` 的清理合并提交 `0150107`。
 >
 > C1、C2 已合并，下一阶段为 C3 支付与资金闭环。本目录保留早期 B0—B8 与 P0/P1 证据；历史切片状态不能覆盖本页和[当前进度](current-progress.md)。
 
@@ -21,8 +21,8 @@ Core 是账户、订阅、权限、订单和用量结算的唯一持久业务权
 | Core | 不可变购买证据、原生订阅与周期、共同权益、真实持久启用、授权和用量结算 | C3 支付事实/资金账本/退款；C4 正式 Internal API |
 | Credential Provider | 独立进程、mTLS 签发/查询/轮换/撤销、Node 材料交付、客户端直接渲染 | 生产 PKI、信任及密钥生命周期、长期订阅链接 |
 | TX-Node | 同一有限签名绑定访问和计量、持久批次与回放；C2 支持 sing-box VLESS/VMess direct TCP | 全协议/平台矩阵、HA 等不属已完成范围 |
-| Gateway | 可选用户 BFF，native `/txapi/*` 适配与有限内部调用切片 | 管理员接入和正式服务身份/调用者授权链 |
-| Plugin/Theme | 现有 Module 委派；PHP 插件仍是可信进程内代码 | 没有通用第三方插件沙箱，不宣称已隔离 |
+| Gateway | 可选用户 BFF，当前 native `/txapi/*` 适配；隔离内部调用切片已退役 | 正式 Internal API、管理员接入和服务身份/调用者授权链 |
+| Plugin/Theme | Module 委派当前 Plugin 包与静态 Theme；旧格式/Blade 及重复入口已退役；PHP 插件仍是可信进程内代码 | 没有通用第三方插件沙箱，不宣称已隔离 |
 | 前端与安装 | 现有入口仍存在；新增前端延期至 TX-F，安装器独立由 TXBoard-Deploy 承担 | C5 完成基础安装、正常更新和发布收口 |
 
 C2 当前只开放零价 Offer，付费购买及支付结账明确拒绝；C2 合并不代表生产发布或 C3—C5 已完成。
@@ -33,6 +33,7 @@ C2 当前只开放零价 Offer，付费购买及支付结账明确拒绝；C2 �
 - [当前接口支持矩阵](compatibility-matrix.md)：当前组件支持与明确缺口。
 - [运行拓扑](runtime-topology.md)：现有运行角色和 Compact/Standard/Cluster 目标。
 - [完整交付计划](core-completion-plan.md)与[开发优先级](development-priorities.md)：C3 → C4 → C5。
+- [后续开发路线](next-development-roadmap.md)：清理合并后的 C3 分批、领域所有权、并行依赖及验收条件。
 - [当前进度](current-progress.md)与 [Native C2 runtime](../../../contracts/v2/native-c2-runtime-v1.md)：已合并范围及限制。
 - [开发与批次验收流程](../../development/development-workflow.md)：本地轻量检查、CI 集中验收、不重复已通过测试。
 
