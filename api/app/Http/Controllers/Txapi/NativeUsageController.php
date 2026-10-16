@@ -20,7 +20,7 @@ final class NativeUsageController
         }
         $input = $request->validate(['subscription_id' => ['sometimes', 'integer', 'min:1', 'max:'.PHP_INT_MAX],
             'after_id' => ['sometimes', 'integer', 'min:0', 'max:'.PHP_INT_MAX],
-            'limit' => ['sometimes', 'integer', 'min:1', 'max:100]]);
+            'limit' => ['sometimes', 'integer', 'min:1', 'max:100']]);
         $result = DB::transaction(function () use ($input, $store): array {
             $installation = app(InstallationAuthority::class)->assertNativeRead();
             $userId = (int) Auth::guard('sanctum')->id();

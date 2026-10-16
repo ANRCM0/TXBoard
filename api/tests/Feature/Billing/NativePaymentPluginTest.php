@@ -54,7 +54,7 @@ final class NativePaymentPluginTest extends NativePaymentTestCase
         [$user, $order] = $this->purchase();
         app(NativePaymentCheckout::class)->start($user->id, $order->id, $this->payment->id, 'typed-plugin');
         $dispatch = DB::table('tx_payment_dispatch')->first();
-        $snapshot = $this->snapshot($dispatch->attempt_id);
+        $snapshot = $this->paymentSnapshot($dispatch->attempt_id);
         $this->assertSame('native-payment-dispatch/1', $snapshot['schema']);
         foreach (['plugin_code', 'plugin_version', 'contract_version', 'provider'] as $field) {
             $this->assertSame($snapshot[$field], $dispatch->$field);
@@ -68,7 +68,7 @@ final class NativePaymentPluginTest extends NativePaymentTestCase
         [$user, $order] = $this->purchase();
         $checkout = app(NativePaymentCheckout::class);
         $started = $checkout->start($user->id, $order->id, $this->payment->id, 'disabled-plugin');
-        $snapshot = $this->snapshot($started['attempt']['attempt_id']);
+        $snapshot = $this->paymentSnapshot($started['attempt']['attempt_id']);
         $this->assertTrue(app(PluginManager::class)->disable('epay'));
         $this->payment->update(['config' => ['url' => 'https://new.example.test', 'pid' => '9', 'key' => 'rotated']]);
         $this->rejects('PAYMENT_PROVIDER_UNAVAILABLE',
@@ -99,7 +99,7 @@ final class NativePaymentPluginTest extends NativePaymentTestCase
         [$user, $order] = $this->purchase();
         $checkout = app(NativePaymentCheckout::class);
         $started = $checkout->start($user->id, $order->id, $this->payment->id, 'pinned-version');
-        $snapshot = $this->snapshot($started['attempt']['attempt_id']);
+        $snapshot = $this->paymentSnapshot($started['attempt']['attempt_id']);
         $registry = app(NativePaymentProviderRegistry::class);
         foreach (['plugin_version' => '2.0.0', 'contract_version' => 'native-payment-provider/2',
             'provider_snapshot_schema' => 'epay-md5-dispatch/2'] as $field => $value) {
@@ -243,7 +243,7 @@ final class NativePaymentPluginTest extends NativePaymentTestCase
         }
     }
 
-    private function snapshot(int|string $attemptId): array
+    private function paymentSnapshot(int|string $attemptId): array
     {
         return json_decode(Crypt::decryptString(DB::table('tx_payment_dispatch')->where('attempt_id', $attemptId)
             ->value('snapshot_ciphertext')), true, 16, JSON_THROW_ON_ERROR);
