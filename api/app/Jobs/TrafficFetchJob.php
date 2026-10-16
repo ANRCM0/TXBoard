@@ -3,8 +3,6 @@
 namespace App\Jobs;
 
 use App\Models\User;
-use App\Services\Subscription\LegacyCaptureShadowException;
-use App\Services\Subscription\LegacyUserMutationCapture;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -40,10 +38,10 @@ class TrafficFetchJob implements ShouldQueue
 
         foreach ($data as $uid => $v) {
             $increments = ['u' => $v[0] * $this->server['rate'], 'd' => $v[1] * $this->server['rate']];
-            if (config('legacy_capture_shadow.enabled') === false && config('authority_writer_fence.enabled') === false) {
+            if (config('authority_writer_fence.enabled') === false) {
                 User::where('id', $uid)->incrementEach($increments, ['t' => time()]);
             } else {
-                $this->captureIncrement((int) $uid, $increments);
+                $this->applyIncrement((int) $uid, $increments);
             }
             $userIds[] = $uid;
         }
@@ -53,7 +51,7 @@ class TrafficFetchJob implements ShouldQueue
         }
     }
 
-    private function captureIncrement(int $userId, array $increments): void
+    private function applyIncrement(int $userId, array $increments): void
     {
         // Keep the native per-User commit boundary; no batch identity or dedupe exists here.
         DB::transaction(function () use ($userId, $increments): void {
@@ -61,28 +59,12 @@ class TrafficFetchJob implements ShouldQueue
             if (User::where('id', $userId)->lockForUpdate()->first(['id']) === null) {
                 return;
             }
-            if (config('legacy_capture_shadow.enabled') === false) {
-                User::where('id', $userId)->incrementEach($increments, ['t' => time()]);
-                return;
-            }
-            $reference = $this->server['id'] ?? null;
-            if ((!is_int($reference) && !is_string($reference))
-                || !preg_match('/\A[1-9][0-9]{0,9}\z/D', (string) $reference)
-                || (int) $reference > 2147483647) {
-                throw new LegacyCaptureShadowException('CAPTURE_SOURCE_INVALID');
-            }
-            $capture = app(LegacyUserMutationCapture::class);
-            $before = $capture->beginLegacyTrafficFetch($userId, (int) $reference);
             User::where('id', $userId)->incrementEach($increments, ['t' => time()]);
-            $capture->appendLegacyTrafficFetch($before);
         });
     }
 
     public function failed(?\Throwable $exception): void
     {
         if ($exception instanceof \App\Domains\AuthorityMigration\AuthorityFenceException) { Log::error('AUTHORITY_TRAFFIC_FETCH_FENCE_REJECTED'); return; }
-        if ($exception instanceof LegacyCaptureShadowException) {
-            Log::error('LEGACY_TRAFFIC_FETCH_CAPTURE_FAILED');
-        }
     }
 }

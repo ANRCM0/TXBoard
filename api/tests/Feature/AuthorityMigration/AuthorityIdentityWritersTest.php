@@ -6,7 +6,7 @@ use App\Console\Commands\TxboardInstall;
 use App\Domains\AuthorityMigration\AuthorityIdentityInventory;
 use App\Domains\AuthorityMigration\AuthorityInventory;
 use App\Domains\AuthorityMigration\AuthorityFinanceInventory;
-use App\Domains\AuthorityMigration\AuthorityIdentitySqlPhase;
+use App\Domains\Identity\AccountSqlPhase;
 use App\Domains\AuthorityMigration\AuthorityNativeInventory;
 use App\Domains\AuthorityMigration\AuthorityPostcommitHandoff;
 use App\Domains\AuthorityMigration\AuthorityPostcommitIntent;
@@ -21,8 +21,6 @@ use App\Models\User;
 use App\Services\AuthService;
 use App\Services\MailService;
 use App\Services\Plugin\HookManager;
-use App\Services\Subscription\LegacyUserMutationCapture;
-use App\Services\Subscription\LegacyUserCreationEvidence;
 use App\Support\Setting;
 use App\Utils\CacheKey;
 use Illuminate\Database\Events\TransactionCommitted;
@@ -55,12 +53,7 @@ class AuthorityIdentityWritersTest extends TestCase
         $this->assertSame(0, Artisan::call('migrate', ['--force' => true]));
         Bus::fake();
         HookManager::reset();
-        config(['authority_writer_fence.enabled' => false, 'core_shadow.isolated_copy' => true,
-            'legacy_capture_shadow.enabled' => false, 'legacy_admin_creation_shadow.enabled' => false,
-            'legacy_registration_creation_shadow.enabled' => false, 'legacy_bootstrap_creation_shadow.enabled' => false,
-            'legacy_admin_deletion_shadow.enabled' => false, 'legacy_observer_capture.enabled' => false,
-            'legacy_standalone_reset_capture.enabled' => false, 'legacy_plan_propagation_capture.enabled' => false,
-            'legacy_bulk_ban_capture.enabled' => false]);
+        config(['authority_writer_fence.enabled' => false, 'core_shadow.isolated_copy' => true]);
         admin_setting(['secure_path' => 'identity_fixture', 'try_out_plan_id' => 0, 'captcha_enable' => 0,
             'password_limit_enable' => 0, 'email_verify' => 0, 'invite_force' => 0,
             'commission_withdraw_limit' => 0, 'commission_withdraw_method' => ['alipay'], 'invite_gen_limit' => 5]);
@@ -143,7 +136,7 @@ class AuthorityIdentityWritersTest extends TestCase
         $user = $this->user();
         foreach (array_diff(AuthorityIdentityInventory::WRITERS, AuthorityNativeInventory::WRITERS) as $writer) {
             $entered = false;
-            $this->refused(fn () => app(AuthorityIdentitySqlPhase::class)->run($writer, function () use (&$entered, $user): void {
+            $this->refused(fn () => app(AccountSqlPhase::class)->run($writer, function () use (&$entered, $user): void {
                 $entered = true;
                 DB::table('tx_user')->where('id', $user->id)->update(['balance' => 999]);
             }), 'AUTHORITY_FENCE_WRITER_INVALID');
@@ -567,74 +560,9 @@ class AuthorityIdentityWritersTest extends TestCase
         $this->assertSame($original[1], $second->fresh()->token);
     }
 
-    public function test_isolated_install_entry_seeds_original_keys_and_bootstrap_creation_with_strict_outer_refusal(): void
-    {
-        $this->identity();
-        $seed = new \ReflectionMethod(TxboardInstall::class, 'seedCoreSettings');
-        $seed->invoke(app(TxboardInstall::class));
-        $this->assertNotNull(SettingModel::where('name', 'app_name')->first());
-        $this->assertNotNull(SettingModel::where('name', 'app_url')->first());
-        $this->capture();
-        $this->assertTrue(TxboardInstall::registerAdmin('bootstrap-identity@example.test', 'BootstrapPassword77'));
-        $user = User::byEmail('bootstrap-identity@example.test')->firstOrFail();
-        $this->assertTrue((bool) $user->is_admin);
-        $creation = DB::table('tx_legacy_user_creation_shadow')->where('legacy_user_id', $user->id)->first();
-        $this->assertSame('install.admin.create', $creation->source_kind);
-        $this->assertSame('bootstrap-creation-shadow/v1', $creation->source_version);
-        $this->assertSame(AuthorityIdentityInventory::SCOPE,
-            DB::table('tx_authority_postcommit_intent')->where('legacy_user_id', $user->id)->value('scope'));
-        try {
-            DB::transaction(fn () => TxboardInstall::registerAdmin('forbidden-outer@example.test', 'BootstrapPassword77'));
-            $this->fail('Captured bootstrap must reject a caller outer transaction.');
-        } catch (\App\Services\Subscription\LegacyCaptureShadowException $error) {
-            $this->assertSame('BOOTSTRAP_SHADOW_OUTER_TRANSACTION_UNSUPPORTED', $error->getMessage());
-        }
-        $this->assertNull(User::byEmail('forbidden-outer@example.test')->first());
-    }
 
-    public function test_registration_creation_anchor_precedes_commit_time_schedule_for_trial_and_no_trial(): void
-    {
-        $this->identity();
-        $this->capture();
-        $plan = $this->plan();
-        $afterSchedule = [];
-        HookManager::register('user.register.after', function (User $user) use (&$afterSchedule): void {
-            $afterSchedule[$user->email] = $user->next_reset_at;
-            $this->assertSame($user->fresh()->next_reset_at, $user->next_reset_at);
-        });
-        foreach ([false, true] as $trial) {
-            admin_setting(['try_out_plan_id' => $trial ? $plan->id : 0, 'try_out_hour' => 24]);
-            $email = ($trial ? 'trial' : 'plain').'-identity-anchor@example.test';
-            $this->postJson('/txapi/auth/register', ['email' => $email, 'password' => 'FixturePassword77'])->assertCreated();
-            $user = User::byEmail($email)->firstOrFail();
-            $anchor = DB::table('tx_legacy_user_creation_shadow')->where('legacy_user_id', $user->id)->first();
-            $initial = json_decode($anchor->initial_snapshot, true, flags: JSON_THROW_ON_ERROR);
-            $this->assertNull($initial['next_reset_at']);
-            $event = DB::table('tx_legacy_capture_shadow_event')->where('legacy_user_id', $user->id)->orderBy('sequence')->first();
-            if ($trial) {
-                $this->assertNotNull($event);
-                $this->assertSame('user.schedule.observer', $event->source_kind);
-                $this->assertSame($initial, json_decode($event->before_snapshot, true, flags: JSON_THROW_ON_ERROR));
-                $this->assertSame($anchor->initial_hash, $event->before_hash);
-            } else {
-                $this->assertNull($event, 'No schedule mutation means no fabricated capture event.');
-            }
-            $this->assertSame($trial, $user->fresh()->next_reset_at !== null);
-            $this->assertSame($trial, $afterSchedule[$email] !== null);
-            $verified = app(LegacyUserCreationEvidence::class)->verify($user->id, 'user.register');
-            $this->assertTrue($verified['evidence_valid']);
-            if ($trial) {
-                $this->assertTrue($verified['first_mutation_before_matches_initial']);
-                $this->assertTrue(app(LegacyUserMutationCapture::class)->verify($user->id)['page_ok']);
-            } else {
-                $this->assertNull($verified['first_mutation_before_matches_initial']);
-            }
-            $intent = DB::table('tx_authority_postcommit_intent')->where('legacy_user_id', $user->id)->where('action', 'created')->first();
-            $this->assertSame('5', (string) $intent->authority_epoch);
-            $this->assertSame('user.register.create', $intent->writer);
-            $this->assertSame(AuthorityIdentityInventory::VERSION, $intent->version);
-        }
-    }
+
+
 
     public function test_pending_old_v4_intent_can_handoff_under_declared_v5_without_rehashing_immutable_payload(): void
     {
@@ -665,26 +593,12 @@ class AuthorityIdentityWritersTest extends TestCase
         $this->refused(fn () => AuthorityPostcommitIntent::findOrFail($intent->intent_id)->delete(), 'AUTHORITY_POSTCOMMIT_INTENT_IMMUTABLE');
     }
 
-    public function test_register_commit_callback_failure_rolls_back_creation_capture_intents_and_actual_pdo(): void
-    {
-        $this->identity();
-        $this->capture();
-        config(['legacy_observer_capture.enabled' => 'invalid']);
-        $this->postJson('/txapi/auth/register', ['email' => 'rolled-back-identity@example.test',
-            'password' => 'FixturePassword77'])->assertStatus(409);
-        $this->assertNull(User::byEmail('rolled-back-identity@example.test')->first());
-        $this->assertSame(0, DB::table('tx_legacy_user_creation_shadow')->count());
-        $this->assertSame(0, DB::table('tx_authority_postcommit_intent')->count());
-        $this->assertSame(0, DB::table('tx_authority_postcommit_delivery')->count());
-        $this->assertSame(0, DB::transactionLevel());
-        $this->assertFalse(DB::connection()->getPdo()->inTransaction());
-        Bus::assertNothingDispatched();
-    }
+
 
     public function test_closed_phase_enum_unknown_outer_and_expired_actual_admission_cannot_authorize_sql(): void
     {
         $this->identity();
-        $phase = app(AuthorityIdentitySqlPhase::class);
+        $phase = app(AccountSqlPhase::class);
         $entered = false;
         $this->refused(fn () => $phase->run('request.user.operation', function () use (&$entered): void { $entered = true; }),
             'AUTHORITY_IDENTITY_WRITER_INVALID');
@@ -694,7 +608,7 @@ class AuthorityIdentityWritersTest extends TestCase
             $this->refused(fn () => (new AuthService($user))->generateAuthData(), 'AUTHORITY_ADMISSION_REQUIRED');
         });
         DB::beginTransaction();
-        $proof = $this->fence()->admit(AuthorityIdentitySqlPhase::SESSION_ISSUE);
+        $proof = $this->fence()->admit(AccountSqlPhase::SESSION_ISSUE);
         DB::rollBack();
         DB::beginTransaction();
         $this->refused(fn () => $proof->assertValid(), 'AUTHORITY_ADMISSION_LIFETIME_INVALID');
@@ -749,12 +663,7 @@ class AuthorityIdentityWritersTest extends TestCase
         $this->assertTrue(password_verify('DefaultOffPassword88', $user->fresh()->password));
     }
 
-    private function capture(): void
-    {
-        config(['legacy_capture_shadow' => ['enabled' => true, 'run_key' => 'identity-capture',
-            'billing_timezone' => 'UTC', 'currency' => 'USD'], 'legacy_observer_capture.enabled' => true,
-            'legacy_registration_creation_shadow.enabled' => true, 'legacy_bootstrap_creation_shadow.enabled' => true]);
-    }
+
 
     private function invite(User $user): InviteCode
     {

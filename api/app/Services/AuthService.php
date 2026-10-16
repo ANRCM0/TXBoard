@@ -5,7 +5,7 @@ namespace App\Services;
 use App\Models\User;
 use Illuminate\Support\Str;
 use Laravel\Sanctum\PersonalAccessToken;
-use App\Domains\AuthorityMigration\AuthorityIdentitySqlPhase as IdentityPhase;
+use App\Domains\Identity\AccountSqlPhase as IdentityPhase;
 use App\Domains\AuthorityMigration\AuthorityAdmissionRegistry;
 use App\Domains\AuthorityMigration\AuthorityWriterFence;
 use App\Domains\AuthorityMigration\AuthorityInventory;

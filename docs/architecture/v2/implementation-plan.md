@@ -264,19 +264,19 @@ Node [当前契约](https://github.com/ANRCM0/TX-Node/blob/main/docs/local-event
 
 原 `TrafficBatchJob` 增加固定 `traffic.batch.settle` policy，在 Server → 有序 User 原锁序内记录精确计费后端点；批次去重、全体用户及节点统计、事件和 mapping 失效共同提交或回滚。原倍率/floor/溢出及 queued 语义保持，成功批次重放在捕获配置/表失效时仍跳过。显式捕获路径的统计读取使用当前共享锁，修复已实证的陈旧 MVCC 唯一键冲突；关闭路径保留原批量读取。死锁重试的 Redis 用户列表仅取成功事务，提交后丢失的通知仍未知。
 
-固定合仓基线 `3ca3940` 加三个精确 PHP 文件：最终全 API 1017 通过 / 88 引擎专测跳过 / 10179 断言；其中专项 SQLite 13 通过 / 4 跳过 / 163 断言。MariaDB 专项 17 全通过 / 205 断言，包含真实独立会话、陈旧快照和提交前后 SIGKILL。早期数据库长度问题与 fixture 失败保留在[源码及验收报告](legacy-traffic-batch-capture-verification.json)，复现方式见[测试 fixture](../../../api/tests/Fixtures/LegacyTrafficBatchCapture/README.md)，行为见[契约](../../../contracts/v2/legacy-traffic-batch-capture-v1.md)。默认关闭，不应用 Subscription/Terms/用量/资金投影；无标识旧流量与其他未覆盖 writer 仍阻断完整迁移门禁。
+固定合仓基线 `3ca3940` 加三个精确 PHP 文件：最终全 API 1017 通过 / 88 引擎专测跳过 / 10179 断言；其中专项 SQLite 13 通过 / 4 跳过 / 163 断言。MariaDB 专项 17 全通过 / 205 断言，包含真实独立会话、陈旧快照和提交前后 SIGKILL。早期数据库长度问题与 fixture 失败保留在[源码及验收报告](legacy-traffic-batch-capture-verification.json)，复现方式见测试 fixture（夹具已退役），行为见[契约](../../../contracts/v2/legacy-traffic-batch-capture-v1.md)。默认关闭，不应用 Subscription/Terms/用量/资金投影；无标识旧流量与其他未覆盖 writer 仍阻断完整迁移门禁。
 
 ### B1.14 隔离副本无标识旧流量写入捕获
 
 原 `TrafficFetchJob` 默认路径保留单次 SQL 更新；显式开启捕获时，每个实际 User 的独占当前读、原倍率/数据库赋值、事件和 mapping 失效共同提交。固定 `traffic.fetch.apply` policy 只引用 queued Server 工作项，不推定 Node 认证。相同输入仍累计两次；后一个 User 失败保留前一个提交，原统计 Job/Redis、单次尝试/20秒超时和未知结果不可安全重放语义均保持。MariaDB 原 INT 舍入逐行记录，SQLite 非整数证据拒绝而不重算价格或用量。
 
-固定已推送 B1.13 `dc33ec1` 加四个精确 PHP 文件；专项 runtime/test 与 v1 验收 hash 相同。SQLite 专项 8 通过 / 2 跳过 / 78 断言；MariaDB 10 全通过 / 98 断言，包含独立会话和 User 提交前后 SIGKILL。另将既有邮件 deadline 用例改为在真实发送回调中跨过原签名期限并断言进入，保留前次失败日志。全 API 1025 通过 / 90 引擎专测跳过 / 10258 断言。[契约](../../../contracts/v2/legacy-traffic-fetch-capture-v1.md)、[fixture](../../../api/tests/Fixtures/LegacyTrafficFetchCapture/README.md)和[源码/日志报告](legacy-traffic-fetch-capture-verification.json)保留精确复现信息。两类旧流量 User 端点现有固定捕获策略；完整 writer 覆盖、历史周期归属、影子投影、无标识 pending 排空与生产权威切换仍待完成。
+固定已推送 B1.13 `dc33ec1` 加四个精确 PHP 文件；专项 runtime/test 与 v1 验收 hash 相同。SQLite 专项 8 通过 / 2 跳过 / 78 断言；MariaDB 10 全通过 / 98 断言，包含独立会话和 User 提交前后 SIGKILL。另将既有邮件 deadline 用例改为在真实发送回调中跨过原签名期限并断言进入，保留前次失败日志。全 API 1025 通过 / 90 引擎专测跳过 / 10258 断言。[契约](../../../contracts/v2/legacy-traffic-fetch-capture-v1.md)、fixture（夹具已退役）和[源码/日志报告](legacy-traffic-fetch-capture-verification.json)保留精确复现信息。两类旧流量 User 端点现有固定捕获策略；完整 writer 覆盖、历史周期归属、影子投影、无标识 pending 排空与生产权威切换仍待完成。
 
 ### B1.15 隔离副本返佣与礼品卡奖励捕获
 
 原 `CheckCommission` 每 Order 事务增加固定 `commission.distribute` 捕获，启用时独占读取实际 inviter；原百分比、三级遍历、余额/佣金模式、原日志、Order 统计及候选重放语义保留。`GiftCardService` 原兑换事务分别捕获 primary/inviter 奖励，覆盖余额、流量、有效期、嵌套重置和套餐赋值；同 User self-invite 生成连续端点。原 code/template/User 锁和使用次数维持，SQL/捕获失败共同回滚。
 
-固定 B1.14 `9cc8c0c` 加四个 PHP 文件，SQLite 15 通过 / 3 专测跳过 / 162 断言；MariaDB 18 全通过 / 193 断言，包括真实 stale 返佣候选再次发放、single-use gift 并发仲裁及提交前后 SIGKILL。全 API 1040 通过 / 93 引擎专测跳过 / 10420 断言。最终审阅补充跨 policy 票据拒绝和原 code 保存 false 被忽略的真实行为，前次失败及成功版本均保留在[报告](legacy-reward-capture-verification.json)，[契约](../../../contracts/v2/legacy-reward-capture-v1.md)及[fixture](../../../api/tests/Fixtures/LegacyRewardCapture/README.md)说明边界。
+固定 B1.14 `9cc8c0c` 加四个 PHP 文件，SQLite 15 通过 / 3 专测跳过 / 162 断言；MariaDB 18 全通过 / 193 断言，包括真实 stale 返佣候选再次发放、single-use gift 并发仲裁及提交前后 SIGKILL。全 API 1040 通过 / 93 引擎专测跳过 / 10420 断言。最终审阅补充跨 policy 票据拒绝和原 code 保存 false 被忽略的真实行为，前次失败及成功版本均保留在[报告](legacy-reward-capture-verification.json)，[契约](../../../contracts/v2/legacy-reward-capture-v1.md)及fixture（夹具已退役）说明边界。
 
 未引入 live ledger 或幂等性：原返佣缺少 Order 当前锁/状态重查，stale work 可以再次发放；原 `markAsUsed` false 不阻止奖励提交，可能再次兑换；expiry/plan 后的 Observer 仍独立写 next_reset_at 并产生明确 source gap。这些证据不能证明整阶段完成，后续继续覆盖 Observer/其他 writer、投影和权威切换门禁。
 
@@ -284,19 +284,19 @@ Node [当前契约](https://github.com/ANRCM0/TX-Node/blob/main/docs/local-event
 
 独立 `LEGACY_OBSERVER_CAPTURE_ENABLED=false` 开关在现有 local/testing 隔离捕获之上，允许 `UserObserver` 原 after-commit 重算使用单独 User 独占事务记录 `user.schedule.observer`。不移动原业务提交点；礼品卡/履约端点后可追加连续 schedule 事件，原日历/普通 Plan 读取、withoutEvents 与 Node dispatch 仍保留。新事务失败只回滚 schedule，不取消此前业务提交；未知响应与 Node 通知缺口仍待恢复机制。
 
-固定 B1.15 `cb16180` 加四个 PHP 文件；SQLite 10 通过 / 2 专测跳过 / 100 断言，MariaDB 12 全通过 / 125 断言，包含 stale model 等锁后当前读和真实跟进提交前后 SIGKILL。全 API 1050 通过 / 95 引擎专测跳过 / 10520 断言。查看[契约](../../../contracts/v2/legacy-observer-schedule-capture-v1.md)、[fixture](../../../api/tests/Fixtures/LegacyObserverCapture/README.md)和[验证报告](legacy-observer-capture-verification.json)。旧捕获单独启用仍保持历史 source gap；原始 User insert、其他独立 writer、整个迁移与投影门禁未因此完成。
+固定 B1.15 `cb16180` 加四个 PHP 文件；SQLite 10 通过 / 2 专测跳过 / 100 断言，MariaDB 12 全通过 / 125 断言，包含 stale model 等锁后当前读和真实跟进提交前后 SIGKILL。全 API 1050 通过 / 95 引擎专测跳过 / 10520 断言。查看[契约](../../../contracts/v2/legacy-observer-schedule-capture-v1.md)、fixture（夹具已退役）和[验证报告](legacy-observer-capture-verification.json)。旧捕获单独启用仍保持历史 source gap；原始 User insert、其他独立 writer、整个迁移与投影门禁未因此完成。
 
 ### B1.17 隔离副本独立流量重置捕获
 
 独立 `LEGACY_STANDALONE_RESET_CAPTURE_ENABLED=false` 开关只覆盖原 `performReset` 在 SQL level zero 且非 due-cron policy 的调用。固定 `traffic.reset.standalone` 记录当前 User 原重置端点；manual/auto/api/user_access/order/gift_card/forced-cron 标签是可信 PHP 来源，不能推定调用身份。原 Admin 鉴权/路径、locked eligibility、日历/日志/metadata/cache/hook 和 false/409 语义保持；nested Order/gift/hook reset 仍由外层 ticket 捕获，未增加内部冲突事件。
 
-固定 B1.16 `5a8f06d` 加四个 PHP 文件；SQLite 10 通过 / 2 专测跳过 / 202 断言，MariaDB 12 全通过 / 229 断言，包含 stale User 等锁后当前读、重复手动重置和真实提交前后 SIGKILL。全 API 1060 通过 / 97 引擎专测跳过 / 10722 断言。查看[契约](../../../contracts/v2/legacy-standalone-reset-capture-v1.md)、[fixture](../../../api/tests/Fixtures/LegacyStandaloneResetCapture/README.md)和[验证报告](legacy-standalone-reset-verification.json)。原 post-commit order reset 可独立接入连续链；未知结果重放仍是另一重置，force/fix-null/initial schedule、其他 writer、v2 周期投影与通知恢复仍待完成。
+固定 B1.16 `5a8f06d` 加四个 PHP 文件；SQLite 10 通过 / 2 专测跳过 / 202 断言，MariaDB 12 全通过 / 229 断言，包含 stale User 等锁后当前读、重复手动重置和真实提交前后 SIGKILL。全 API 1060 通过 / 97 引擎专测跳过 / 10722 断言。查看[契约](../../../contracts/v2/legacy-standalone-reset-capture-v1.md)、fixture（夹具已退役）和[验证报告](legacy-standalone-reset-verification.json)。原 post-commit order reset 可独立接入连续链；未知结果重放仍是另一重置，force/fix-null/initial schedule、其他 writer、v2 周期投影与通知恢复仍待完成。
 
 ### B1.18 隔离副本显式重置时间修正捕获
 
-原 `reset:traffic --fix-null/--force` 只在新增 `--capture-schedule` marker 下使用每 User 独占事务、当前资格重查和固定 `user.schedule.repair` 证据；原候选遍历、日历、save false 和部分成功 exit 行为保持。只修正 next_reset_at，不能推定 counter reset、原始创建、CLI 授权或全局停写。无 marker 路径零捕获 SQL；失败 User 回滚，已完成 User 保留，固定日志不带秘密上下文。
+历史切片（2026-10-16 已退役，当前命令不再提供 `--capture-schedule`）：原 `reset:traffic --fix-null/--force` 只在新增 `--capture-schedule` marker 下使用每 User 独占事务、当前资格重查和固定 `user.schedule.repair` 证据；原候选遍历、日历、save false 和部分成功 exit 行为保持。只修正 next_reset_at，不能推定 counter reset、原始创建、CLI 授权或全局停写。无 marker 路径零捕获 SQL；失败 User 回滚，已完成 User 保留，固定日志不带秘密上下文。
 
-固定 B1.17 `e47a775` 加四个 PHP 文件；SQLite 7 通过 / 2 专测跳过 / 73 断言，MariaDB 9 全通过 / 94 断言，包含等锁后 fix-null 已不符合条件跳过及真实修正提交前后 SIGKILL。全 API 1067 通过 / 99 引擎专测跳过 / 10795 断言。查看[契约](../../../contracts/v2/legacy-schedule-repair-capture-v1.md)、[fixture](../../../api/tests/Fixtures/LegacyScheduleRepairCapture/README.md)和[验证报告](legacy-schedule-repair-verification.json)。其余 creation/deletion/plugin/initial schedule writer、影子投影和生产权威切换仍未完成。
+固定 B1.17 `e47a775` 加四个 PHP 文件；SQLite 7 通过 / 2 专测跳过 / 73 断言，MariaDB 9 全通过 / 94 断言，包含等锁后 fix-null 已不符合条件跳过及真实修正提交前后 SIGKILL。全 API 1067 通过 / 99 引擎专测跳过 / 10795 断言。查看[契约](../../../contracts/v2/legacy-schedule-repair-capture-v1.md)、fixture（夹具已退役）和[验证报告](legacy-schedule-repair-verification.json)。其余 creation/deletion/plugin/initial schedule writer、影子投影和生产权威切换仍未完成。
 
 ### B5.11 隔离注册 mTLS 接入
 
@@ -340,7 +340,7 @@ B5.14 的 CI Redis 测试库改为显式12，当前源码本地12项真实链路
 
 [当前契约](../../../contracts/v2/legacy-money-shadow-v1.md)在独立默认关闭开关下，将已验证捕获事件的余额/佣金端点写入三张独立证据表。首事件before作为观察锚点，不补造历史收款；每个非零整数差额生成两条平衡分录，另一侧明确为未分类捕获过渡账户。非财务事件只推进端点。首次冻结高水位，分页原子保存事件/分录/游标，完成后显式extend再接新事件；不会修复旧map或切换任何业务权威。
 
-固定 Core `651bdbc` 加本批六个PHP文件：SQLite专项 **13通过、2项引擎条件跳过、182断言**，MariaDB **15全部通过、203断言**，全API **1125通过、101项引擎条件跳过、11506断言**。真实独立会话验证User锁等待，提交前后SIGKILL分别留下零/一页，重启无重复分录；逐页对账仅执行SELECT，损坏证据、上下文漂移、源缺口及SQL失败拒绝或整页回滚。源码、依赖和日志hash见[验证报告](legacy-money-shadow-verification.json)，重现范围见[测试夹具](../../../api/tests/Fixtures/LegacyMoneyShadow/README.md)。提交 `ddbc7e3` 的独立Oracle MySQL8.4 CI **15项、203断言**通过，API、MySQL原回归、真实会话链路和Core镜像发布流程均成功。完整writer覆盖、订单/支付事实、Terms/周期投影与生产切换仍待完成。
+固定 Core `651bdbc` 加本批六个PHP文件：SQLite专项 **13通过、2项引擎条件跳过、182断言**，MariaDB **15全部通过、203断言**，全API **1125通过、101项引擎条件跳过、11506断言**。真实独立会话验证User锁等待，提交前后SIGKILL分别留下零/一页，重启无重复分录；逐页对账仅执行SELECT，损坏证据、上下文漂移、源缺口及SQL失败拒绝或整页回滚。源码、依赖和日志hash见[验证报告](legacy-money-shadow-verification.json)，重现范围见测试夹具（夹具已退役）。提交 `ddbc7e3` 的独立Oracle MySQL8.4 CI **15项、203断言**通过，API、MySQL原回归、真实会话链路和Core镜像发布流程均成功。完整writer覆盖、订单/支付事实、Terms/周期投影与生产切换仍待完成。
 
 ### B4.6 Node独立公钥签名诊断
 

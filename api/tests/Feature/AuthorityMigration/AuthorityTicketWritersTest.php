@@ -4,7 +4,7 @@ namespace Tests\Feature\AuthorityMigration;
 
 use App\Domains\AuthorityMigration\AuthorityAdmissionRegistry;
 use App\Domains\AuthorityMigration\AuthorityFenceException;
-use App\Domains\AuthorityMigration\AuthorityIdentitySqlPhase;
+use App\Domains\Identity\AccountSqlPhase;
 use App\Domains\AuthorityMigration\AuthorityPostcommitHandoff;
 use App\Domains\Support\TicketWorkflow;
 use App\Exceptions\ApiException;
@@ -36,9 +36,6 @@ class AuthorityTicketWritersTest extends TestCase
         parent::setUp();
         $this->configureTicketDatabase();
         config(['authority_writer_fence.enabled' => false, 'core_shadow.isolated_copy' => true,
-            'legacy_capture_shadow.enabled' => false, 'legacy_observer_capture.enabled' => false,
-            'legacy_admin_creation_shadow.enabled' => false, 'legacy_registration_creation_shadow.enabled' => false,
-            'legacy_bootstrap_creation_shadow.enabled' => false, 'legacy_admin_deletion_shadow.enabled' => false,
             'cache.default' => 'array', 'cache.setting_store' => 'array']);
         $this->assertSame(0, Artisan::call('migrate', ['--force' => true]));
         admin_setting(['secure_path' => 'ticket_fixture', 'ticket_must_wait_reply' => 0,
@@ -296,7 +293,7 @@ class AuthorityTicketWritersTest extends TestCase
             ->assertStatus(409);
         $this->assertSame(['withdrawal.request'], array_keys($seen));
         DB::beginTransaction();
-        $this->fence()->admit(AuthorityIdentitySqlPhase::WITHDRAWAL_REQUEST);
+        $this->fence()->admit(AccountSqlPhase::WITHDRAWAL_REQUEST);
         DB::table('tx_user')->where('id', $user->id)->update(['balance' => 123]);
         try {
             app(TicketService::class)->createWithdrawalTicket($user->id, 'Duplicate', 1, 'Message');
@@ -471,7 +468,7 @@ class AuthorityTicketWritersTest extends TestCase
         $user = $this->user();
         TicketMessage::creating(static fn () => throw new \RuntimeException('TICKET_SYNTHETIC_WITHDRAWAL_MESSAGE_FAILURE'));
         DB::beginTransaction();
-        $proof = $this->fence()->admit(AuthorityIdentitySqlPhase::WITHDRAWAL_REQUEST);
+        $proof = $this->fence()->admit(AccountSqlPhase::WITHDRAWAL_REQUEST);
         DB::table('tx_user')->where('id', $user->id)->update(['balance' => 456]);
         $this->fault(fn () => app(TicketService::class)->createWithdrawalTicket($user->id, 'Withdrawal failure', 1, 'Initial'),
             'TICKET_SYNTHETIC_WITHDRAWAL_MESSAGE_FAILURE');
@@ -530,23 +527,6 @@ class AuthorityTicketWritersTest extends TestCase
         $this->assertSame(Ticket::STATUS_CLOSED, (int) $ticket->fresh()->status);
         $this->assertSame(1, TicketMessage::count());
         Bus::assertNotDispatched(SendEmailJob::class);
-    }
-    public function test_v6_registration_committing_schedule_failure_rolls_back_native_sql_creation_capture_and_intent(): void
-    {
-        $this->tickets();
-        admin_setting(['try_out_plan_id' => 0, 'captcha_enable' => 0, 'email_verify' => 0, 'invite_force' => 0]);
-        config(['legacy_capture_shadow' => ['enabled' => true, 'run_key' => 'ticket-capture',
-            'billing_timezone' => 'UTC', 'currency' => 'USD'], 'legacy_observer_capture.enabled' => 'invalid',
-            'legacy_registration_creation_shadow.enabled' => true]);
-        $this->postJson('/txapi/auth/register', ['email' => 'ticket-register-rollback@example.test',
-            'password' => 'FixturePassword77'])->assertStatus(409);
-        $this->assertNull(\App\Models\User::byEmail('ticket-register-rollback@example.test')->first());
-        $this->assertSame(0, DB::table('tx_legacy_user_creation_shadow')->count());
-        $this->assertSame(0, DB::table('tx_authority_postcommit_intent')->count());
-        $this->assertSame(0, DB::table('tx_authority_postcommit_delivery')->count());
-        $this->assertSame(0, DB::transactionLevel());
-        $this->assertFalse(DB::connection()->getPdo()->inTransaction());
-        Bus::assertNothingDispatched();
     }
     private function observeTicketMutations(array &$seen, array $allowed = ['user.ticket.create', 'user.ticket.reply',
         'user.ticket.close', 'admin.ticket.reply', 'admin.ticket.close', 'ticket.close.cron']): void

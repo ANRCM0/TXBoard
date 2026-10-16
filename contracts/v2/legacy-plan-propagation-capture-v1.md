@@ -1,5 +1,7 @@
 # Legacy Plan propagation capture v1
 
+> Retired: 2026-10-16 native development cleanup removes this capture runtime, flags and verifier entry points. The text below records historical behavior only. Database migrations and existing evidence remain; current account writes do not emit this shadow evidence. See [Core cleanup](../../docs/development/core-cleanup.md).
+
 Status: verified isolated implementation slice. The current Admin
 `POST /txapi/admin/{admin_path}/plans` remains the business authority and retains
 its Admin Bearer, RBAC and dynamic path checks. Gateway receives no Admin route.

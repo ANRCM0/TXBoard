@@ -3,7 +3,7 @@ namespace App\Services;
 
 
 use App\Exceptions\ApiException;
-use App\Domains\AuthorityMigration\AuthorityIdentitySqlPhase;
+use App\Domains\Identity\AccountSqlPhase;
 use App\Domains\AuthorityMigration\AuthorityAdmissionRegistry;
 use App\Domains\AuthorityMigration\AuthorityFenceException;
 use App\Domains\AuthorityMigration\AuthorityAdmission;
@@ -23,16 +23,16 @@ class TicketService
     /** Withdrawal already owns the outer User transaction and its admission. */
     public function createWithdrawalTicket($userId, $subject, $level, $message)
     {
-        if (!AuthorityIdentitySqlPhase::enabled()) {
+        if (!AccountSqlPhase::enabled()) {
             return $this->createTicket($userId, $subject, $level, $message);
         }
         $proof = app(AuthorityAdmissionRegistry::class)->current();
         $proof->assertValid();
-        if ($proof->writer !== AuthorityIdentitySqlPhase::WITHDRAWAL_REQUEST) {
+        if ($proof->writer !== AccountSqlPhase::WITHDRAWAL_REQUEST) {
             throw new AuthorityFenceException('AUTHORITY_WITHDRAWAL_ADMISSION_REQUIRED');
         }
-        return app(AuthorityIdentitySqlPhase::class)->run(
-            AuthorityIdentitySqlPhase::WITHDRAWAL_REQUEST,
+        return app(AccountSqlPhase::class)->run(
+            AccountSqlPhase::WITHDRAWAL_REQUEST,
             fn () => $this->createTicket($userId, $subject, $level, $message)
         );
     }
@@ -191,7 +191,7 @@ class TicketService
         $userCreate = $proof->writer === AuthorityTicketSqlPhase::USER_TICKET_CREATE
             && $proof->scope === AuthorityTicketInventory::SCOPE
             && $proof->version === AuthorityTicketInventory::VERSION && $proof->epoch === '6';
-        $withdrawal = $proof->writer === AuthorityIdentitySqlPhase::WITHDRAWAL_REQUEST
+        $withdrawal = $proof->writer === AccountSqlPhase::WITHDRAWAL_REQUEST
             && (($proof->scope === AuthorityIdentityInventory::SCOPE
                     && $proof->version === AuthorityIdentityInventory::VERSION && $proof->epoch === '5')
                 || ($proof->scope === AuthorityTicketInventory::SCOPE

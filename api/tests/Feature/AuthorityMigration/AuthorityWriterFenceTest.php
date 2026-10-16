@@ -23,8 +23,7 @@ class AuthorityWriterFenceTest extends TestCase
         config(['database.default'=>$name,'database.connections.'.$name=>$this->mysql()?config('database.connections.mysql'):
             array_replace(config('database.connections.sqlite'),['database'=>':memory:'])]);DB::purge($name);
         if($this->mysql())$this->clearMysql();$this->assertSame(0,Artisan::call('migrate',['--force'=>true]));Bus::fake();
-        config(['authority_writer_fence'=>['enabled'=>true,'worker_epoch'=>'1','worker_role'=>'legacy'],'core_shadow.isolated_copy'=>true,
-            'legacy_capture_shadow.enabled'=>false,'legacy_admin_creation_shadow.enabled'=>false,'legacy_observer_capture.enabled'=>false]);
+        config(['authority_writer_fence'=>['enabled'=>true,'worker_epoch'=>'1','worker_role'=>'legacy'],'core_shadow.isolated_copy'=>true]);
         // Fixture settings predate the v1 declaration; they are not v1 writers.
         config(['authority_writer_fence.enabled'=>false]);
         admin_setting(['secure_path'=>'authority_fixture','try_out_plan_id'=>0]);

@@ -5,6 +5,7 @@ on:
     paths:
       - 'api/app/Domains/Installation/**'
       - 'api/app/Domains/Account/**'
+      - 'api/app/Domains/Identity/**'
       - 'api/app/Domains/Billing/**'
       - 'api/app/Domains/Subscription/**'
       - 'api/app/Domains/CredentialProvider/**'
@@ -16,6 +17,7 @@ on:
       - 'api/app/Jobs/**'
       - 'api/app/Providers/**'
       - 'api/app/Listeners/**'
+      - 'api/app/Observers/**'
       - 'api/app/Http/Controllers/Txapi/**'
       - 'api/app/Http/Middleware/**'
       - 'api/app/Models/**'
@@ -51,6 +53,7 @@ on:
     paths:
       - 'api/app/Domains/Installation/**'
       - 'api/app/Domains/Account/**'
+      - 'api/app/Domains/Identity/**'
       - 'api/app/Domains/Billing/**'
       - 'api/app/Domains/Subscription/**'
       - 'api/app/Domains/CredentialProvider/**'
@@ -62,6 +65,7 @@ on:
       - 'api/app/Jobs/**'
       - 'api/app/Providers/**'
       - 'api/app/Listeners/**'
+      - 'api/app/Observers/**'
       - 'api/app/Http/Controllers/Txapi/**'
       - 'api/app/Http/Middleware/**'
       - 'api/app/Models/**'

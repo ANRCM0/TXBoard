@@ -4,7 +4,9 @@ namespace Tests\Feature\Txapi;
 
 use App\Models\Plan;
 use App\Models\User;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -127,6 +129,61 @@ class TxapiAdminPlanMutationTest extends TestCase
         $this->assertSame(5 * 1073741824, (int) $subscriber->fresh()->transfer_enable);
         $this->assertSame(1, (int) $subscriber->fresh()->device_limit);
         $this->assertSame(1073741824, (int) $outsider->fresh()->transfer_enable);
+    }
+
+    public function test_force_update_over_one_thousand_accounts_rolls_back_all_batches_before_successful_retry(): void
+    {
+        Sanctum::actingAs($this->user('plan-large-admin@example.test', true));
+        $plan = Plan::create([
+            'name' => 'Large propagation', 'group_id' => 1, 'transfer_enable' => 2,
+            'show' => true, 'sell' => true, 'renew' => true, 'prices' => ['monthly' => 9],
+        ]);
+        $outsider = $this->user('plan-large-outsider@example.test', false);
+        $rows = [];
+        for ($index = 0; $index < 1001; ++$index) {
+            $rows[] = [
+                'email' => 'plan-large-' . $index . '@example.test', 'password' => 'fixture-only',
+                'uuid' => (string) \Illuminate\Support\Str::uuid(),
+                'token' => bin2hex(random_bytes(16)), 'plan_id' => $plan->id,
+                'transfer_enable' => 2 * 1073741824, 'device_limit' => null,
+                'created_at' => time(), 'updated_at' => time(),
+            ];
+        }
+        foreach (array_chunk($rows, 100) as $chunk) {
+            DB::table('tx_user')->insert($chunk);
+        }
+        $updates = 0;
+        $injectFailure = true;
+        DB::listen(function (QueryExecuted $query) use (&$updates, &$injectFailure): void {
+            if ($injectFailure && preg_match('/^update ["`]tx_user["`]/i', $query->sql)) {
+                ++$updates;
+                if ($updates === 2) {
+                    throw new \RuntimeException('Synthetic second propagation batch failure');
+                }
+            }
+        });
+        $input = [
+            'id' => $plan->id, 'name' => 'Large propagation updated',
+            'transfer_enable' => 5, 'device_limit' => 3, 'force_update' => true,
+            'prices' => ['monthly' => 9],
+        ];
+        $url = '/txapi/admin/plan_mutation_admin/plans';
+
+        $this->postJson($url, $input)->assertStatus(500);
+        $this->assertSame(2, $updates);
+        $this->assertSame(1001, User::where('plan_id', $plan->id)
+            ->where('transfer_enable', 2 * 1073741824)->whereNull('device_limit')->count());
+        $this->assertSame('Large propagation', $plan->fresh()->name);
+        $this->assertSame(2, (int) $plan->fresh()->transfer_enable);
+
+        $injectFailure = false;
+        $this->postJson($url, $input)->assertOk()->assertJsonPath('data.id', $plan->id);
+        $this->assertSame(1001, User::where('plan_id', $plan->id)
+            ->where('transfer_enable', 5 * 1073741824)->where('device_limit', 3)->count());
+        $this->assertSame(5, (int) $plan->fresh()->transfer_enable);
+        $this->assertSame('Large propagation updated', $plan->fresh()->name);
+        $this->assertNull($outsider->fresh()->plan_id);
+        $this->assertNull($outsider->fresh()->device_limit);
     }
 
     private function user(string $email, bool $admin): User

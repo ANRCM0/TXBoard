@@ -2,7 +2,7 @@
 
 namespace App\Models;
 
-use App\Domains\AuthorityMigration\AuthorityIdentitySqlPhase;
+use App\Domains\Identity\AccountSqlPhase;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
 
@@ -32,12 +32,12 @@ protected $table = 'tx_subscribe_templates';
         $phase = static fn () => self::updateOrCreate(
             ['name' => $name], ['content' => $content]
         );
-        if (!AuthorityIdentitySqlPhase::enabled()) {
+        if (!AccountSqlPhase::enabled()) {
             $phase();
             Cache::store('redis')->forget(self::$cachePrefix . $name);
             return;
         }
-        app(AuthorityIdentitySqlPhase::class)->run(AuthorityIdentitySqlPhase::SETTINGS_SUBSCRIBE_TEMPLATE_WRITE, $phase);
+        app(AccountSqlPhase::class)->run(AccountSqlPhase::SETTINGS_SUBSCRIBE_TEMPLATE_WRITE, $phase);
         try {
             Cache::store('redis')->forget(self::$cachePrefix . $name);
         } catch (\Throwable) {

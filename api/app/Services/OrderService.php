@@ -13,8 +13,6 @@ use App\Models\OrderPurchaseTerms;
 use App\Domains\Billing\OrderPurchaseTermsSnapshot;
 use App\Domains\Billing\PurchasedOrderGrant;
 use App\Services\Plugin\HookManager;
-use App\Services\Subscription\LegacyUserMutationCapture;
-use App\Services\Subscription\LegacyCaptureShadowException;
 use App\Domains\Subscription\Services\PublishedOrderService;
 use App\Utils\Helper;
 use Illuminate\Support\Facades\Bus;
@@ -101,9 +99,6 @@ class OrderService
                         throw new ApiException(__('You have an unpaid or pending order, please try again later or cancel it'));
                     }
 
-                    $capture = app(LegacyUserMutationCapture::class);
-                    $captureBefore = $capture->beginOrderCreation((int) $user->id);
-
                     HookManager::call('order.create.before', [$user, $plan, $newPeriod, $couponCode]);
                     $order = new Order([
                         'user_id' => $user->id,
@@ -133,7 +128,6 @@ class OrderService
                     }
                     HookManager::call('order.create.after', $order);
                     HookManager::call('order.after_create', $order);
-                    $capture->appendOrderCreation($captureBefore);
                     return $order;
                 }
             );
@@ -171,9 +165,6 @@ class OrderService
 
             $this->user = User::lockForUpdate()->find($order->user_id);
 
-            $capture = app(LegacyUserMutationCapture::class);
-            $captureBefore = $capture->beginOrderFulfillment((int) $order->user_id, (int) $order->id);
-
             if ($order->surplus_credit) {
                 $this->user->balance += $order->surplus_credit;
             }
@@ -206,8 +197,6 @@ class OrderService
             if (!$order->save()) {
                 throw new \RuntimeException('订单信息保存失败');
             }
-
-            $capture->appendOrderFulfillment($captureBefore);
 
             return $order;
         });
@@ -490,12 +479,13 @@ class OrderService
                 if (!$order->save()) {
                     throw new \RuntimeException('Failed to save order status.');
                 }
-                $capture = null;
-                $captureBefore = null;
                 if ($order->balance_amount) {
-                    $capture = app(LegacyUserMutationCapture::class);
-                    $captureBefore = $capture->beginOrderCancellationRefund(
-                        (int) $order->user_id, (int) $order->id, $order->getRawOriginal('balance_amount'));
+                    $refund = $order->getRawOriginal('balance_amount');
+                    if ((!is_int($refund) && !is_string($refund))
+                        || !preg_match('/\A[1-9][0-9]{0,9}\z/D', (string) $refund)
+                        || (int) $refund > 2147483647) {
+                        throw new \RuntimeException('Invalid order wallet refund amount');
+                    }
                     $userService = new UserService();
                     if (!$userService->addBalance($order->user_id, $order->balance_amount)) {
                         throw new \RuntimeException('Failed to add balance.');
@@ -512,7 +502,6 @@ class OrderService
                         $coupon->saveOrFail();
                     }
                 }
-                $capture?->appendOrderCancellationRefund($captureBefore);
                 return $order;
             });
 
@@ -525,9 +514,6 @@ class OrderService
             return true;
         } catch (\App\Domains\AuthorityMigration\AuthorityFenceException) {
             Log::error('AUTHORITY_ORDER_CANCEL_FENCE_REJECTED');
-            return false;
-        } catch (LegacyCaptureShadowException) {
-            Log::error('LEGACY_ORDER_CANCELLATION_CAPTURE_FAILED');
             return false;
         } catch (\Exception $e) {
             Log::error('ORDER_CANCELLATION_FAILED');

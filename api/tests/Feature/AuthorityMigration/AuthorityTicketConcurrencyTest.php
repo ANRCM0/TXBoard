@@ -29,10 +29,7 @@ class AuthorityTicketConcurrencyTest extends TestCase
         $this->configureTicketDatabase();
         $this->databaseConfigured = true;
         config(['authority_writer_fence.enabled' => false, 'core_shadow.isolated_copy' => true,
-            'cache.default' => 'array', 'cache.setting_store' => 'array',
-            'legacy_capture_shadow.enabled' => false, 'legacy_observer_capture.enabled' => false,
-            'legacy_admin_creation_shadow.enabled' => false, 'legacy_registration_creation_shadow.enabled' => false,
-            'legacy_bootstrap_creation_shadow.enabled' => false, 'legacy_admin_deletion_shadow.enabled' => false]);
+            'cache.default' => 'array', 'cache.setting_store' => 'array']);
         $this->assertSame(0, Artisan::call('migrate', ['--force' => true]));
         Bus::fake();
         HookManager::reset();

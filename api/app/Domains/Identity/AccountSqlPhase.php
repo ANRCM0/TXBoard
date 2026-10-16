@@ -1,11 +1,17 @@
 <?php
 
-namespace App\Domains\AuthorityMigration;
+namespace App\Domains\Identity;
+
+use App\Domains\AuthorityMigration\AuthorityAdmissionRegistry;
+use App\Domains\AuthorityMigration\AuthorityFenceException;
+use App\Domains\AuthorityMigration\AuthorityIdentityInventory;
+use App\Domains\AuthorityMigration\AuthorityNativeInventory;
+use App\Domains\AuthorityMigration\AuthorityWriterFence;
 
 use Illuminate\Support\Facades\DB;
 
-/** Source-only closed operations; delegates exactly one original native SQL phase. */
-final class AuthorityIdentitySqlPhase
+/** Identity writes share the same transaction, installation and writer admission. */
+final class AccountSqlPhase
 {
     public const USER_REGISTER_INVITE_CONSUME='user.register.invite-consume';
     public const USER_REGISTER_CREATE='user.register.create';

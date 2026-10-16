@@ -8,7 +8,6 @@ use App\Models\User;
 use App\Services\AuthService;
 use App\Services\Plugin\HookManager;
 use App\Services\UserService;
-use App\Services\Subscription\LegacyUserMutationCapture;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -78,8 +77,6 @@ final class UserEditorController
         [$user, $applied] = DB::transaction(static function () use ($request, $id, $fields): array {
             app(\App\Domains\AuthorityMigration\AuthorityWriterFence::class)->admit('admin.user.update');
             $user = User::query()->lockForUpdate()->findOrFail($id);
-            $capture = app(LegacyUserMutationCapture::class);
-            $captureBefore = $capture->begin($id);
             foreach (['balance' => 'expected_balance_minor',
                          'commission_balance' => 'expected_commission_balance_minor'] as $key => $expectedKey) {
                 if (array_key_exists($key, $fields) &&
@@ -153,7 +150,6 @@ final class UserEditorController
             ]);
             $wasBanned = (bool) $user->banned;
             $user->fill($changes)->saveOrFail();
-            $capture->append($captureBefore, (int) $request->user()->id);
             if ((!$wasBanned && (bool) $user->banned) || array_key_exists('password', $changes)) {
                 (new AuthService($user))->removeAllSessions();
             }
@@ -184,13 +180,11 @@ final class UserEditorController
         if (!empty($fields['plan_id']) && !Plan::query()->whereKey($fields['plan_id'])->exists()) {
             throw ValidationException::withMessages(['plan_id' => 'Subscription plan not found']);
         }
-        $user = DB::transaction(static function () use ($fields, $email, $service, $request): User {
+        $user = DB::transaction(static function () use ($fields, $email, $service): User {
             app(\App\Domains\AuthorityMigration\AuthorityWriterFence::class)->admit('admin.user.create');
             if (User::byEmail($email)->exists()) {
                 throw ValidationException::withMessages(['email_prefix' => 'Email already exists']);
             }
-            $creation = app(\App\Services\Subscription\LegacyAdminCreationShadow::class);
-            $ticket = $creation->begin((int) $request->user()->id);
             $user = $service->createUser([
                 'email' => $email,
                 'password' => $fields['password'],
@@ -198,7 +192,6 @@ final class UserEditorController
                 'expired_at' => $fields['expired_at'] ?? null,
             ]);
             $user->saveOrFail();
-            $creation->append($ticket, (int) $user->id);
             return $user;
         });
         // Do not echo credentials, UUID or subscription token in a bulk

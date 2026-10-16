@@ -18,8 +18,7 @@ $app->instance('request', $request);
 Illuminate\Support\Facades\Facade::clearResolvedInstance('request');
 $kernel->bootstrap();
 if (!$app->environment('testing') || config('database.default') !== 'mysql'
-    || config('database.connections.mysql.database') !== (getenv('INTERNAL_REGISTRATION_SHADOW_VERIFY') === 'true'
-        ? 'txboard_registration_transport_test' : 'txboard_internal_test')) {
+    || config('database.connections.mysql.database') !== 'txboard_internal_test') {
     throw new RuntimeException('Exclusive disposable email database required');
 }
 $watched = in_array($request->getPathInfo(), [

@@ -13,10 +13,6 @@
             <!-- Historical transition suites are opt-in by explicit test path. -->
             <exclude>tests/Feature/AuthorityMigration</exclude>
             <exclude>tests/Feature/InternalReadOnly</exclude>
-            <exclude>tests/Feature/Subscription/LegacyAdminCreationShadowTest.php</exclude>
-            <exclude>tests/Feature/Subscription/LegacyAdminDeletionShadowTest.php</exclude>
-            <exclude>tests/Feature/Subscription/LegacyBootstrapCreationShadowTest.php</exclude>
-            <exclude>tests/Feature/Subscription/LegacyRegistrationCreationShadowTest.php</exclude>
             <exclude>tests/Feature/Subscription/SubscriptionTermsShadowTest.php</exclude>
         </testsuite>
     </testsuites>

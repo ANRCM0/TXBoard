@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Txapi;
 
 use App\Core\Http\TxapiResponse;
-use App\Domains\AuthorityMigration\AuthorityIdentitySqlPhase;
+use App\Domains\Identity\AccountSqlPhase;
 use App\Models\CommissionLog;
 use App\Models\InviteCode;
 use App\Models\Order;
@@ -54,8 +54,8 @@ final class InviteController
             $code->code = Helper::randomChar(8);
             return $code->save();
         };
-        $created = AuthorityIdentitySqlPhase::enabled()
-            ? app(AuthorityIdentitySqlPhase::class)->run(AuthorityIdentitySqlPhase::INVITE_CREATE, $phase)
+        $created = AccountSqlPhase::enabled()
+            ? app(AccountSqlPhase::class)->run(AccountSqlPhase::INVITE_CREATE, $phase)
             : DB::transaction($phase);
         if (!$created) {
             return TxapiResponse::error($request, 'INVITE_LIMIT_REACHED', 'Invitation code limit reached', 409);

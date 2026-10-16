@@ -10,8 +10,6 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
 use App\Services\Plugin\HookManager;
-use App\Services\Subscription\LegacyCaptureShadowException;
-use App\Services\Subscription\LegacyUserMutationCapture;
 
 /**
  * Service for handling traffic reset.
@@ -39,15 +37,10 @@ class TrafficResetService
     array $metadata = [],
     bool $recheckDue = false
   ): bool {
-    // Only this native standalone due transaction owns a cron capture ticket.
-    // Nested order/gift resets retain their original outer transaction ownership.
+    // Nested order/gift resets retain their outer transaction's admission.
     $ownsFence = DB::transactionLevel() === 0;
-    $captureCron = DB::transactionLevel() === 0
-      && $triggerSource === TrafficResetLog::SOURCE_CRON && $recheckDue === true;
-    $captureStandalone = DB::transactionLevel() === 0 && !$captureCron
-      && config('legacy_standalone_reset_capture.enabled') !== false;
     try {
-      return DB::transaction(function () use ($user, $triggerSource, $metadata, $recheckDue, $captureCron, $captureStandalone, $ownsFence) {
+      return DB::transaction(function () use ($user, $triggerSource, $metadata, $recheckDue, $ownsFence) {
         if (config('authority_writer_fence.enabled') !== false) {
           if ($ownsFence) app(\App\Domains\AuthorityMigration\AuthorityWriterFence::class)->admit('traffic.reset');
           else app(\App\Domains\AuthorityMigration\AuthorityAdmissionRegistry::class)->current()->assertValid();
@@ -61,9 +54,6 @@ class TrafficResetService
         if ($triggerSource === TrafficResetLog::SOURCE_MANUAL && !$this->canReset($user)) {
           return false;
         }
-        $capture = $captureCron || $captureStandalone ? app(LegacyUserMutationCapture::class) : null;
-        $captureBefore = $captureCron ? $capture?->beginCronTrafficReset((int) $user->id)
-          : ($captureStandalone ? $capture?->beginStandaloneReset((int) $user->id, $triggerSource) : null);
         $oldUpload = (int) ($user->u ?? 0);
         $oldDownload = $user->d ?? 0;
         $oldTotal = $oldUpload + $oldDownload;
@@ -92,18 +82,10 @@ class TrafficResetService
 
         $this->clearUserCache($user);
         HookManager::call('traffic.reset.after', $user);
-        if ($captureCron) {
-          $capture?->appendCronTrafficReset($captureBefore);
-        } elseif ($captureStandalone) {
-          $capture?->appendStandaloneReset($captureBefore);
-        }
         return true;
       });
     } catch (\App\Domains\AuthorityMigration\AuthorityFenceException) {
       Log::error('AUTHORITY_TRAFFIC_RESET_FENCE_REJECTED');
-      return false;
-    } catch (LegacyCaptureShadowException) {
-      Log::error($captureStandalone ? 'LEGACY_STANDALONE_TRAFFIC_RESET_CAPTURE_FAILED' : 'LEGACY_CRON_TRAFFIC_RESET_CAPTURE_FAILED');
       return false;
     } catch (\Exception $e) {
       Log::error(__('traffic_reset.reset_failed'), [
@@ -410,8 +392,7 @@ class TrafficResetService
     }
   }
 
-  /** Explicit isolated CLI repair, preserving original schedule-only calculation. */
-  /** Enabled per-User bridge for the original default CLI schedule-only save. */
+  /** Repair a schedule under the same admission and User lock as other writers. */
   public function repairScheduleFenced(int $userId, bool $onlyMissing): bool
   {
     if (DB::transactionLevel() !== 0) throw new \App\Domains\AuthorityMigration\AuthorityFenceException('AUTHORITY_SCHEDULE_OUTER_TRANSACTION_UNSUPPORTED');
@@ -422,30 +403,6 @@ class TrafficResetService
       $next = $this->calculateNextResetTime($user);
       if (!$next) return false;
       $user->next_reset_at = $next->timestamp; $user->saveOrFail(); return true;
-    });
-  }
-
-  public function repairScheduleCaptured(int $userId, bool $onlyMissing): bool
-  {
-    if (DB::transactionLevel() !== 0) {
-      throw new LegacyCaptureShadowException('CAPTURE_SCHEDULE_OUTER_TRANSACTION_UNSUPPORTED');
-    }
-    return DB::transaction(function () use ($userId, $onlyMissing): bool {
-      if (config('authority_writer_fence.enabled') !== false) app(\App\Domains\AuthorityMigration\AuthorityWriterFence::class)->admit('user.schedule.repair');
-      $user = User::whereKey($userId)->lockForUpdate()->first();
-      if (!$user || !$user->isActive() || ($onlyMissing && $user->next_reset_at !== null)) {
-        return false;
-      }
-      $capture = app(LegacyUserMutationCapture::class);
-      $before = $capture->beginScheduleRepair((int) $user->id);
-      $nextResetTime = $this->calculateNextResetTime($user);
-      if (!$nextResetTime) {
-        return false;
-      }
-      $user->next_reset_at = $nextResetTime->timestamp;
-      $user->save();
-      $capture->appendScheduleRepair($before);
-      return true;
     });
   }
 

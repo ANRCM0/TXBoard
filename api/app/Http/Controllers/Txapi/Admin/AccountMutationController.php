@@ -3,12 +3,11 @@
 namespace App\Http\Controllers\Txapi\Admin;
 
 use App\Core\Http\TxapiResponse;
+use App\Domains\Identity\AdminAccountModeration;
 use App\Domains\Identity\AdminAccountProtection;
 use App\Models\User;
-use App\Services\Subscription\LegacyBulkBanCapture;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 final class AccountMutationController
@@ -33,7 +32,7 @@ final class AccountMutationController
         return TxapiResponse::success($request, ['ok' => true]);
     }
 
-    public function ban(Request $request): JsonResponse
+    public function ban(Request $request, AdminAccountModeration $accounts): JsonResponse
     {
         $params = $request->validate([
             'scope' => ['required', 'in:selected,filtered'],
@@ -66,18 +65,7 @@ final class AccountMutationController
         }
         if ($ids === []) return TxapiResponse::success($request, ['updated' => 0]);
 
-        $updated = DB::transaction(static function () use ($ids, $request): int {
-            app(\App\Domains\AuthorityMigration\AuthorityWriterFence::class)->admit('admin.user.bulk-ban');
-            $users = User::query()->whereIn('id', $ids)->orderBy('id')
-                ->lockForUpdate()->get();
-            if ($users->count() !== count($ids) ||
-                $users->contains(fn (User $u) => $u->is_admin || $u->is_staff
-                    || $u->id === (int) $request->user()->id)) {
-                throw ValidationException::withMessages(['user_ids' => 'Selection contains missing or protected users']);
-            }
-            app(LegacyBulkBanCapture::class)->apply($users, (int) $request->user()->id);
-            return $users->count();
-        });
+        $updated = $accounts->ban($ids, (int) $request->user()->id);
         return TxapiResponse::success($request, ['updated' => $updated]);
     }
 }

@@ -1,5 +1,7 @@
 # Legacy Observer schedule capture v1
 
+> Retired: 2026-10-16. Observer capture and its flags have been removed. Current scheduling and postcommit behavior remain; the text below is historical evidence only. See [Core cleanup](../../docs/development/core-cleanup.md).
+
 Status: isolated local/testing follow-up writer. Existing UserObserver remains
 the reset schedule authority. This opt-in extends
 [legacy writer capture](legacy-user-mutation-capture-v1.md) without moving an
@@ -46,4 +48,4 @@ cluster writer exclusion. Bounded chain verification remains SELECT-only and
 transaction-only; complete migration, power-loss/restore, notification recovery
 and authoritative v2 activation still require their own gates.
 
-See [synthetic fixture](../../api/tests/Fixtures/LegacyObserverCapture/README.md).
+See synthetic fixture（夹具已退役）.

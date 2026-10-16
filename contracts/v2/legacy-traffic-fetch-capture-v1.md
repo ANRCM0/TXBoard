@@ -1,5 +1,7 @@
 # Unidentified legacy traffic increment capture v1
 
+> Retired: 2026-10-16 native development cleanup removes this capture runtime, flags and verifier entry points. The text below records historical behavior only. Database migrations and existing evidence remain; current account writes do not emit this shadow evidence. See [Core cleanup](../../docs/development/core-cleanup.md).
+
 Status: isolated local/testing implementation. The existing User counter writes
 remain authoritative. This extends [writer capture](legacy-user-mutation-capture-v1.md)
 for `TrafficFetchJob`, the no-batch-ID branch of `UserService::trafficFetch`.
@@ -57,5 +59,5 @@ coverage and the migration gate remain false; other writers, historical period
 attribution, production cutover, lost hints/statistics and power-loss behavior
 remain independent gates.
 
-The [fixture](../../api/tests/Fixtures/LegacyTrafficFetchCapture/README.md)
+The fixture（夹具已退役）
 exercises native SQL behavior and real local process death with synthetic data.

@@ -1,5 +1,7 @@
 # Legacy Admin account creation evidence v1
 
+> Retired: 2026-10-16 native development cleanup removes this capture runtime, flags and verifier entry points. The text below records historical behavior only. Database migrations and existing evidence remain; current account writes do not emit this shadow evidence. See [Core cleanup](../../docs/development/core-cleanup.md).
+
 Status: Current isolated slice. Only the existing native Admin account create transaction is covered. Registration, installer bootstrap, trusted PHP plugins and historical users remain outside this slice; no missing creation history is invented.
 
 Independent strict default-off `LEGACY_ADMIN_CREATION_SHADOW_ENABLED` also requires the existing capture context, local/testing and `CORE_SHADOW_ISOLATED_COPY=true`. After native input, current Admin authorization, Plan and duplicate-email checks, begin freezes the current context and actual Admin User ID inside the original transaction. Append follows the actual User INSERT and precedes commit, reading the real persisted allowlist fields under that transaction. UserService defaults, GiB-to-byte conversion, password/UUID/token creation, response and after-commit Observer timing remain native.

@@ -44,8 +44,7 @@ class AuthorityFinanceFenceTest extends TestCase
         config(['database.default'=>$name,'database.connections.'.$name=>$this->mysql()?config('database.connections.mysql'):
             array_replace(config('database.connections.sqlite'),['database'=>':memory:'])]);DB::purge($name);
         if($this->mysql())$this->clearMysql();$this->assertSame(0,Artisan::call('migrate',['--force'=>true]));Bus::fake();HookManager::reset();
-        config(['authority_writer_fence'=>['enabled'=>true,'worker_epoch'=>'1','worker_role'=>'legacy'],'core_shadow.isolated_copy'=>true,
-            'legacy_capture_shadow.enabled'=>false,'legacy_admin_creation_shadow.enabled'=>false,'legacy_observer_capture.enabled'=>false]);
+        config(['authority_writer_fence'=>['enabled'=>true,'worker_epoch'=>'1','worker_role'=>'legacy'],'core_shadow.isolated_copy'=>true]);
         $this->withoutMiddleware(\Illuminate\Routing\Middleware\ThrottleRequests::class);
         Plugin::create(['name'=>'EPay','code'=>'epay','type'=>'payment','version'=>'1.0.0','is_enabled'=>true,'config'=>'{}']);
         $this->app->forgetInstance(PluginManager::class);app(PluginManager::class)->initializeEnabledPlugins();

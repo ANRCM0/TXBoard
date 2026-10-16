@@ -16,8 +16,6 @@ use App\Models\Order;
 use App\Models\Plan;
 use App\Models\User;
 use App\Services\Plugin\HookManager;
-use App\Services\Subscription\LegacyAdminCreationShadow;
-use App\Services\Subscription\LegacyUserMutationCapture;
 use App\Services\TrafficResetService;
 use Illuminate\Database\Events\TransactionCommitting;
 use Illuminate\Database\QueryException;
@@ -41,10 +39,7 @@ class AuthorityNativeWritersTest extends TestCase
             array_replace(config('database.connections.sqlite'),['database'=>':memory:'])]);DB::purge($name);
         if($this->mysql())$this->clearMysql();$this->assertSame(0,Artisan::call('migrate',['--force'=>true]));
         $this->originalBus=app(\Illuminate\Contracts\Bus\Dispatcher::class);Bus::fake();HookManager::reset();
-        config(['authority_writer_fence'=>['enabled'=>true,'worker_epoch'=>'1','worker_role'=>'legacy'],'core_shadow.isolated_copy'=>true,
-            'legacy_capture_shadow.enabled'=>false,'legacy_admin_creation_shadow.enabled'=>false,'legacy_admin_deletion_shadow.enabled'=>false,
-            'legacy_observer_capture.enabled'=>false,'legacy_standalone_reset_capture.enabled'=>false,'legacy_plan_propagation_capture.enabled'=>false,
-            'legacy_bulk_ban_capture.enabled'=>false]);
+        config(['authority_writer_fence'=>['enabled'=>true,'worker_epoch'=>'1','worker_role'=>'legacy'],'core_shadow.isolated_copy'=>true]);
         $this->fixtureSettings(['secure_path'=>'native_fixture','commission_transfer_limit'=>0,'commission_withdraw_limit'=>0,'try_out_plan_id'=>0]);
         $this->admin=$this->user(['is_admin'=>true]);Sanctum::actingAs($this->admin);
         $this->withoutMiddleware(\Illuminate\Routing\Middleware\ThrottleRequests::class);
@@ -132,29 +127,7 @@ class AuthorityNativeWritersTest extends TestCase
         $this->assertSame(0,Artisan::call('reset:traffic',['--fix-null'=>true]));$this->assertNotNull($user->fresh()->next_reset_at);
         $this->assertSame(5,(int)$user->fresh()->u);$this->assertSame(9,(int)$user->fresh()->d);
     }
-    public function test_actual_admin_creation_and_update_preserve_exact_producer_then_observer_capture_chain():void
-    {
-        $this->native();$this->capture();$plan=$this->plan();
-        $created=$this->postJson('/txapi/admin/native_fixture/users',['email_prefix'=>'native-created','email_suffix'=>'example.test',
-            'password'=>'SyntheticNativePassword77','plan_id'=>$plan->id,'expired_at'=>time()+86400])->assertCreated();
-        $id=$created->json('data.id');$user=User::findOrFail($id);$creation=DB::table('tx_legacy_user_creation_shadow')->where('legacy_user_id',$id)->first();
-        $initial=json_decode($creation->initial_snapshot,true);$this->assertNull($initial['next_reset_at']);
-        $first=DB::table('tx_legacy_capture_shadow_event')->where('legacy_user_id',$id)->orderBy('sequence')->first();
-        $this->assertSame('user.schedule.observer',$first->source_kind);$this->assertSame($initial,json_decode($first->before_snapshot,true));
-        $this->assertNotNull(json_decode($first->after_snapshot,true)['next_reset_at']);$this->assertNotNull($user->next_reset_at);
-        $other=$this->plan(['group_id'=>2]);$priorExpiry=$user->expired_at;
-        $this->postJson('/txapi/admin/native_fixture/users/'.$id.'/update',['plan_id'=>$other->id,'expected_plan_id'=>$plan->id,
-            'expired_at'=>$priorExpiry+86400,'expected_expired_at'=>$priorExpiry])->assertOk();
-        $events=DB::table('tx_legacy_capture_shadow_event')->where('legacy_user_id',$id)->orderBy('sequence')->get();
-        $this->assertSame(['user.schedule.observer','admin.user.update','user.schedule.observer'],$events->pluck('source_kind')->all());
-        $this->assertSame([1,2,3],array_map('intval',$events->pluck('sequence')->all()));
-        $this->assertSame($events[0]->after_hash,$events[1]->before_hash);$this->assertSame($events[1]->after_hash,$events[2]->before_hash);
-        $this->assertSame(2,json_decode($events[1]->after_snapshot,true)['group_id']===null?null:(int)json_decode($events[1]->after_snapshot,true)['group_id']);
-        $this->assertTrue(app(LegacyUserMutationCapture::class)->verify($id)['page_ok']);
-        $intent=DB::table('tx_authority_postcommit_intent')->where('legacy_user_id',$id)->where('action','updated')->first();
-        $this->assertSame(1,(int)$intent->old_group_id);
-        Bus::assertDispatched(NodeUserSyncJob::class,fn($job)=>(new \ReflectionProperty($job,'oldGroupId'))->getValue($job)===1);
-    }
+
     public function test_each_model_save_and_later_transaction_keeps_independent_intent_original_group_and_producer_changes():void
     {
         $this->native();$plan=$this->plan();$user=$this->user(['plan_id'=>$plan->id,'group_id'=>1,'expired_at'=>time()+86400]);$snapshot=null;
@@ -182,14 +155,7 @@ class AuthorityNativeWritersTest extends TestCase
         DB::transaction(function()use($user):void{$this->fence()->admit('admin.user.update');$this->assertFalse($user->fresh()->update(['group_id'=>4]));});
         $this->assertSame(1,DB::table('tx_authority_postcommit_intent')->count());$this->assertSame(3,(int)$user->fresh()->group_id);
     }
-    public function test_commit_schedule_callback_failure_rolls_back_producer_capture_intents_and_actual_pdo_transaction():void
-    {
-        $this->native();$this->capture();$user=$this->user(['group_id'=>1]);$before=$this->business();
-        config(['legacy_observer_capture.enabled'=>'invalid']);
-        $this->postJson('/txapi/admin/native_fixture/users/'.$user->id.'/update',['expired_at'=>time()+86400,'expected_expired_at'=>null])->assertStatus(409);
-        $this->assertSame($before,$this->business());$this->assertFalse(DB::connection()->getPdo()->inTransaction());$this->assertSame(0,DB::transactionLevel());
-        $this->assertSame(0,DB::table('tx_authority_postcommit_intent')->count());$this->assertSame(0,DB::table('tx_legacy_capture_shadow_event')->count());Bus::assertNothingDispatched();
-    }
+
     public function test_proof_rejects_equal_depth_rollback_rebegin_first_nested_alternate_connection_purge_and_aftercommit():void
     {
         $this->native();DB::beginTransaction();$proof=$this->fence()->admit('admin.user.update');$proof->assertValid();DB::rollBack();
@@ -344,7 +310,7 @@ class AuthorityNativeWritersTest extends TestCase
     private function send($socket,array $value):void{fwrite($socket,json_encode($value,JSON_THROW_ON_ERROR)."\n");fflush($socket);}
     private function receive($socket):array{stream_set_timeout($socket,15);$line=fgets($socket);$this->assertIsString($line);return json_decode($line,true,flags:JSON_THROW_ON_ERROR);}
     private function requireMysql():void{if(!$this->mysql()||!function_exists('pcntl_fork')||!function_exists('posix_kill'))$this->markTestSkipped('Requires dedicated MySQL processes and SIGKILL.');}
-    private function capture():void{config(['legacy_capture_shadow'=>['enabled'=>true,'run_key'=>'native-capture','billing_timezone'=>'UTC','currency'=>'USD'],'legacy_admin_creation_shadow.enabled'=>true,'legacy_observer_capture.enabled'=>true]);}
+
     private function native():void{$this->fence()->initialize();$this->fence()->expand('inventory-fixture','1');$this->fence()->extendFinance('finance-fixture','2');$this->fence()->extendNative('native-fixture','3');$this->declare();}
     private function declare(string $epoch='4'):void{config(['authority_writer_fence'=>['enabled'=>true,'worker_epoch'=>$epoch,'worker_role'=>'legacy','worker_scope'=>AuthorityNativeInventory::SCOPE,'worker_version'=>AuthorityNativeInventory::VERSION]]);}
     private function fence():AuthorityWriterFence{return app(AuthorityWriterFence::class);}

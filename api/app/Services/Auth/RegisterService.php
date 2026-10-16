@@ -14,7 +14,7 @@ use App\Utils\Dict;
 use App\Utils\Helper;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
-use App\Domains\AuthorityMigration\AuthorityIdentitySqlPhase as IdentityPhase;
+use App\Domains\Identity\AccountSqlPhase as IdentityPhase;
 
 class RegisterService
 {
@@ -190,7 +190,7 @@ class RegisterService
         ]);
 
         // 保存用户
-        if (!app(\App\Services\Subscription\LegacyRegistrationCreationShadow::class)->persist($user)) {
+        if (!app(\App\Domains\Identity\AccountCreationService::class)->persist($user, IdentityPhase::USER_REGISTER_CREATE)) {
             return [false, [500, __('Register failed')]];
         }
 

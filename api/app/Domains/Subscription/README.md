@@ -27,6 +27,9 @@ There are no forwarding classes in `App\Services\Subscription`.
 - `NativeSubscriptionDelivery` combines verified entitlements and Provider
   bindings into finite signed delivery policy. Network owns Node authorization
   signing; this service does not store proxy credentials.
+- `PlanAccountPropagation` applies the existing administrator plan projection to
+  a locked account set in the plan save transaction. Chunked SQL changes only
+  group, traffic allowance, speed and device fields; purchased Terms are unchanged.
 
 ## Transactions
 

@@ -5,7 +5,7 @@ namespace App\Jobs;
 
 use App\Models\Server;
 use App\Models\StatServer;
-use App\Domains\AuthorityMigration\AuthorityIdentitySqlPhase;
+use App\Domains\Identity\AccountSqlPhase;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -71,8 +71,8 @@ class StatServerJob implements ShouldQueue
 
     protected function updateServerTraffic(int $u, int $d): void
     {
-        if (AuthorityIdentitySqlPhase::enabled()) {
-            app(AuthorityIdentitySqlPhase::class)->run(AuthorityIdentitySqlPhase::STATS_SERVER_TRAFFIC,
+        if (AccountSqlPhase::enabled()) {
+            app(AccountSqlPhase::class)->run(AccountSqlPhase::STATS_SERVER_TRAFFIC,
                 fn () => $this->applyServerTraffic($u, $d));
             return;
         }
@@ -91,9 +91,9 @@ class StatServerJob implements ShouldQueue
 
     protected function processServerStat(int $u, int $d, int $recordAt): void
     {
-        if (AuthorityIdentitySqlPhase::enabled()) {
+        if (AccountSqlPhase::enabled()) {
             $driver = DB::connection()->getDriverName();
-            app(AuthorityIdentitySqlPhase::class)->run(AuthorityIdentitySqlPhase::STATS_SERVER_APPLY,
+            app(AccountSqlPhase::class)->run(AccountSqlPhase::STATS_SERVER_APPLY,
                 fn () => $this->applyServerStat($driver, $u, $d, $recordAt), $driver === 'sqlite' ? 3 : 1);
             return;
         }
