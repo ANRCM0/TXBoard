@@ -3,6 +3,7 @@
 namespace App\Domains\Network;
 
 use App\Models\Server;
+use App\Domains\Installation\InstallationAuthority;
 use App\Services\ServerService;
 use App\Services\TrafficUsage;
 use App\Utils\CacheKey;
@@ -33,6 +34,10 @@ final class NativeNodeReport
         }
         $params = $validator->validated();
         $traffic = $params['traffic'] ?? [];
+        if ($traffic !== [] && (config('core_installation.mode') === 'native'
+            || app(InstallationAuthority::class)->inspect()['mode'] === 'native')) {
+            throw new NodeReportError('NATIVE_TRAFFIC_SETTLEMENT_UNAVAILABLE', 'Native subscription traffic settlement is not enabled');
+        }
         $batch = $params['traffic_batch_id'] ?? null;
         if ($traffic !== [] && !$batch) {
             throw new NodeReportError('BATCH_ID_REQUIRED', 'Traffic reports require a stable batch ID');

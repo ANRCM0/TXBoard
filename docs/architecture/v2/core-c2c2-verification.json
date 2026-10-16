@@ -1,0 +1,100 @@
+{
+  "schema": "tx-core.c2c2-verification/v1",
+  "date": "2026-10-16",
+  "branch": "feat/core-provider-node",
+  "base": "f558eddf1f28c5084860ed1433f8c14a3ff14faa",
+  "dependency": {
+    "pull_request": 249,
+    "branch": "feat/core-provider-integration",
+    "unmerged_parents": [247, 248, 249]
+  },
+  "scope": [
+    "Core signs native entitlement and non-secret UUID commitments for a configured Node recipient.",
+    "Provider exposes separate, mutually authenticated Core metadata and Node material endpoints.",
+    "Node verifies Core scope/revision, directly retrieves material, verifies commitments and binds the profile at kernel application.",
+    "Existing finite expiry, empty-snapshot revocation and durable non-secret authorization state are reused.",
+    "Legacy billing is refused in native authority; initialization remains closed."
+  ],
+  "status_at_candidate": {
+    "implementation": "candidate for remote CI acceptance",
+    "new_runtime_profile_checks": "syntax/diff checked; execution delegated to CI",
+    "real_core_provider_node_vless": "not yet accepted; runner preparation issues fixed, final execution delegated to CI",
+    "complete_c2": false,
+    "native_ready": false,
+    "merged": false,
+    "published": false
+  },
+  "test_location_policy": {
+    "user_instruction_date": "2026-10-16",
+    "heavy_tests": "GitHub Actions by default: database, actual processes/traffic, race, builds and broad regressions.",
+    "local": "Syntax, formatting, diff and lightweight static checks only after the user's instruction.",
+    "existing_database_run": "Started before the instruction, completed and terminated its private server; no new local heavy runs started afterward.",
+    "workflow": ".github/workflows/ci-native-provider-node.yml"
+  },
+  "prior_local_evidence": [
+    {
+      "check": "Core metadata/domain/entitlement/preparation and existing Node HTTP/WS regression",
+      "tests": 125,
+      "passed": 124,
+      "failed": 1,
+      "assertions": 1152,
+      "repair": "Canonical JSON key ordering made one strict array assertion fail; compare canonical encodings while preserving scalar types.",
+      "evidence": "/tmp/tx-c2d-acceptance-xqctfuxk/tests-1792108147141986651.log"
+    },
+    {
+      "check": "Affected Core domain and Node HTTP retest, including authentication changes during metadata",
+      "tests": 27,
+      "assertions": 517,
+      "result": "passed",
+      "evidence": "/tmp/tx-c2d-acceptance-xqctfuxk/tests-1792108495313734130.log"
+    },
+    {
+      "check": "Dedicated MariaDB 11.4.12 production migrations and C2-C1/C2-C2 domains",
+      "tests": 36,
+      "assertions": 852,
+      "result": "passed",
+      "evidence": "/tmp/tx-c2d-acceptance-xqctfuxk/mysql-h9ogobyw/mysql-native-domain.log",
+      "not_mysql_8_4": true
+    },
+    {
+      "check": "Provider and shared grant verification under Go race",
+      "top_level_tests": 28,
+      "tests_including_subtests": 131,
+      "result": "passed; targeted actual TLS/concurrent revoke tests repeated after the clock-skew repair",
+      "evidence": ["/tmp/tx-c2c2-provider-tests.json", "/tmp/tx-c2c2-provider-clock-fix-tests.json"]
+    },
+    {
+      "check": "Node authorization/config/delivery client/txboard focused race",
+      "result": "passed before the later profile/config consistency additions; those additions await CI",
+      "evidence": "Delivery Node agent command output; four packages passed."
+    },
+    {
+      "check": "Node capability CLI",
+      "result": "focused test passed; real service test source compiled before the later fixture/profile updates"
+    }
+  ],
+  "repairs": [
+    "Permit the Core's bounded not-before backdating at Provider verification without extending expiry.",
+    "Issue an empty complete snapshot without any Provider metadata request.",
+    "Scope bounded candidates to the target Node/current slot instead of the global Provider history.",
+    "Exclude known old subscription Subjects without consuming current output capacity.",
+    "Unify speed/device limits as integers in 0..2147483647.",
+    "Recheck current Machine activity and authenticated credential digest after external metadata retrieval.",
+    "Bind the signed credential profile to the actual candidate Node protocol before durable acceptance and kernel use.",
+    "Preserve unacknowledged native traffic rather than bypassing recovery/legacy-billing refusal to pass a live test."
+  ],
+  "ci_acceptance": {
+    "core": "Core related tests plus live registered route/schema inventory.",
+    "mysql": "MySQL 8.4 production migrations and native grant transaction/ownership tests.",
+    "node": "Provider, delivery, authorization, config, transport, controlplane, Service and CLI race tests.",
+    "live": "Actual Laravel Node routes, Provider process and two Node Service VLESS targets; isolated offline expiry, retained tail and sibling revocation.",
+    "admission_substitution": "Only unavailable native installation admission is substituted in the private integration fixture; no production activation is claimed.",
+    "final_results": "Record exact-head GitHub Actions results on the PR; do not equate prior local evidence with final CI."
+  },
+  "remaining": [
+    "Subscription rendering and credential rotation/lifecycle.",
+    "Real native grant traffic through UsagePeriod settlement and replay recovery.",
+    "Production readiness transition and writer/queue drain evidence.",
+    "Non-author review, authorized merge and publication."
+  ]
+}

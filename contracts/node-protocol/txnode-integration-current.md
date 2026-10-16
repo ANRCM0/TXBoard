@@ -264,3 +264,14 @@ Node全量与增量用户快照采用同一原生资格：当前有套餐且未�
 ## 用户权限组变更的提交后同步
 
 原生用户模型事件在事务提交后通知节点；每次事件的旧权限组、是否需要同步/重算及模型字段必须在事件发生时冻结，不能读取后续保存已经覆盖的 original/changes。真实事务回滚不发同步任务。同一事务内多次变更分别保留各次旧组。NodeUserSyncJob执行时按当前User状态决定新组add/remove，先从旧组节点移除；JSON组ID为整数或十进制字符串的现有节点都必须收到对应通知。
+
+## Native Provider 消费补充（C2-C2）
+
+`GET /txapi/node/v1/users` 在已配置的原生 Provider 策略下返回完整签名及非秘密
+`sha256:` 凭据摘要，明文 UUID 由 Node 通过独立 mTLS 直接向 Provider 获取。
+签名绑定当前权益、Node/Machine、接收证书指纹和有限期限；旧 UUID 不作为兜底。
+握手能力 `node_provider_credential_delivery_v1` 仅表示该消费能力，不表示 native
+安装已激活。WebSocket 只提示重新获取完整签名，旧流量计费写入在 native 下拒绝。
+具体字段、版本和剩余门禁见[材料消费契约](../v2/credential-provider/native-node-delivery-v1.md)。
+前述基于 User 旧字段的资格与流量 v1 计费描述适用于既有模式；本策略使用真实
+Subscription/Terms 权益，不能调用旧计费路径，也不能由路由存在推断生产可就绪。

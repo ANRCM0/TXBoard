@@ -100,6 +100,10 @@ Core新增原生Provider注册、持久操作与AccessSubject绑定，先提交�
 
 ## 下一步顺序
 
+2026-10-16新增C2-C2候选（`feat/core-provider-node`，依赖PR #249）：Core以共同订阅权益和真实签发回执签署非秘密凭据摘要，Provider通过独立Node mTLS身份交付材料，Node校验摘要及实际内核协议后使用已有有限授权机制。空撤销快照不依赖Provider在线，签发后续检查当前Machine/Token身份；native旧流量计费路径明确拒绝。实现、已完成的早期本地检查与尚待远端验收分别见[C2-C2记录](core-c2c2-verification.json)。不能把候选推送或测试夹具视为生产就绪。
+
+用户同日要求降低本地资源占用，后续数据库、真实服务/流量、race、完整构建和大范围回归统一优先放到GitHub Actions；本地只做轻量检查。本阶段最终真实Node链路及新增协议绑定检查交由`native-provider-node` workflow验收，精确提交结果记入PR。
+
 1. **Core优先：订阅与权益权威**。C1及C2-B待非作者审阅和维护者合并；C2-C1真实Provider签发与持久恢复已完成本地批次验收。随后接通Node材料消费、轮换、订阅分发和授权流量结算链；完整链验收前保持native不可就绪。
 2. **Core：支付事实、账务与退款**。复用已有支付验证和交易入口，补齐payment attempts、账本及退款状态闭环。
 3. **Core：正式Internal API与凭据生命周期**。在当前权限与服务边界内逐批开放，保留未完成生产秘密交付的状态。

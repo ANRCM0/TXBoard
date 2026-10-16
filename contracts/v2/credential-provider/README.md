@@ -9,6 +9,10 @@
 持久回执已接入。它没有凭据材料导出、Node 消费、订阅渲染或轮换能力，
 不等于下述完整 Target 契约完成，也不解除 native 安装就绪门禁。
 
+C2-C2 的[Node 材料消费契约](native-node-delivery-v1.md)进一步定义 Core 非秘密签名、
+Provider 独立 mTLS 材料通道和 Node 内核应用校验。它仍不开放 native 就绪、
+订阅渲染、轮换或用量结算；实际验收结果在本批 PR/CI 中记录。
+
 ## 范围与权威
 
 Core 拥有 Subscription、Terms、Access Subject、授权政策和 Usage/Money 账本。Provider 拥有代理凭据的秘密、发行/解析算法、协议配置渲染和私有持久存储。注册、授权、生命周期由 [Plugin Platform v2](../../../docs/architecture/v2/plugin-platform.md) 协调；数据关联见 [Core Data Model](../../../docs/architecture/v2/core-domain-model.md)。

@@ -1,0 +1,152 @@
+name: native-provider-node
+
+on:
+  pull_request:
+    paths:
+      - 'api/**'
+      - 'node/**'
+      - 'contracts/v2/credential-provider/native-node-delivery-v1.md'
+      - 'scripts/tests/native-provider-node/**'
+      - 'scripts/verify-native-provider-node.py'
+      - '.github/workflows/ci-native-provider-node.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'api/**'
+      - 'node/**'
+      - 'contracts/v2/credential-provider/native-node-delivery-v1.md'
+      - 'scripts/tests/native-provider-node/**'
+      - 'scripts/verify-native-provider-node.py'
+      - '.github/workflows/ci-native-provider-node.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-provider-node-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  provider-node-core:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      APP_ENV: testing
+      DB_CONNECTION: sqlite
+      DB_DATABASE: ':memory:'
+      CACHE_DRIVER: array
+      SETTING_CACHE_STORE: array
+      QUEUE_CONNECTION: sync
+      SESSION_DRIVER: array
+      CORE_INSTALLATION_MODE: legacy
+      CORE_INSTALLATION_EPOCH: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, pdo_sqlite, curl, openssl, sodium, bcmath
+          coverage: none
+      - name: Prepare Core
+        working-directory: api
+        run: |
+          composer install --no-interaction --prefer-dist
+          cp .env.example .env
+          php artisan key:generate
+      - name: Core authority, metadata, ownership and existing Node boundaries
+        working-directory: api
+        run: >-
+          php artisan test
+          tests/Unit/Domains/CredentialProvider
+          tests/Feature/Subscription/NativeProviderNodeAuthorizationTest.php
+          tests/Feature/Subscription/NativeCredentialProviderTest.php
+          tests/Feature/Subscription/NativeSubscriptionEntitlementTest.php
+          tests/Feature/Installation/NativeProviderPreparationTest.php
+          tests/Feature/Server/NativeNodeAuthorizationSnapshotTest.php
+          tests/Feature/Server/TxNodeNativeProtocolTest.php
+          tests/Feature/Server/TxNodeNativeWebSocketTest.php
+          tests/Unit/NativeNodeAuthorizationConfigTest.php
+      - name: Registered HTTP boundaries
+        run: |
+          cd api
+          php artisan route:list --json > ../route-list.json
+          cd ..
+          node scripts/export-route-catalog.mjs --routes route-list.json --json /tmp/provider-routes.json --markdown /tmp/provider-routes.md --check
+          node scripts/check-external-integration-routes.mjs --routes route-list.json
+          node scripts/check-native-schema-only.mjs --check
+
+  provider-node-mysql:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: provider-node-root-fixture
+          MYSQL_DATABASE: txboard_c2_native_test
+          MYSQL_USER: provider_test
+          MYSQL_PASSWORD: provider-node-user-fixture
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping --host=127.0.0.1 --user=root --password=provider-node-root-fixture"
+          --health-interval 5s --health-retries 20
+    env:
+      APP_ENV: testing
+      CORE_NATIVE_TEST_MYSQL: '1'
+      DB_CONNECTION: mysql
+      DB_HOST: 127.0.0.1
+      DB_DATABASE: txboard_c2_native_test
+      DB_USERNAME: provider_test
+      DB_PASSWORD: provider-node-user-fixture
+      CACHE_DRIVER: array
+      SETTING_CACHE_STORE: array
+      QUEUE_CONNECTION: sync
+      SESSION_DRIVER: array
+      CORE_INSTALLATION_MODE: legacy
+      CORE_INSTALLATION_EPOCH: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, pdo_mysql, curl, openssl, sodium, bcmath
+          coverage: none
+      - name: Production migrations and native grant transactions
+        working-directory: api
+        run: |
+          composer install --no-interaction --prefer-dist
+          cp .env.example .env
+          php artisan key:generate
+          php artisan migrate --force
+          php artisan test tests/Feature/Subscription/NativeProviderNodeAuthorizationTest.php tests/Feature/Subscription/NativeCredentialProviderTest.php
+
+  provider-node-live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, pdo_sqlite, curl, openssl, sodium, bcmath
+          coverage: none
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: node/go.mod
+          cache-dependency-path: node/go.sum
+      - name: Prepare Core
+        working-directory: api
+        run: |
+          composer install --no-interaction --prefer-dist
+          cp .env.example .env
+          APP_ENV=testing php artisan key:generate
+      - name: Provider and Node delivery boundaries under race detector
+        working-directory: node
+        run: >-
+          go test -race
+          ./internal/credentialprovider ./internal/credentialdelivery
+          ./internal/credentialdeliveryclient ./internal/authorization
+          ./internal/config ./internal/txboard ./internal/controlplane
+          ./internal/service ./cmd/tx-node ./cmd/credential-provider
+      - name: Actual Core HTTP, Provider mTLS, Node Service and VLESS
+        run: python3 scripts/verify-native-provider-node.py

@@ -9,7 +9,7 @@ return [
     'key_epoch' => env('NATIVE_NODE_AUTHORIZATION_KEY_EPOCH'),
     // Base64url encoded 32-byte Ed25519 seed. Never reuse APP_KEY or node tokens.
     'private_seed' => env('NATIVE_NODE_AUTHORIZATION_PRIVATE_SEED'),
-    'policy_version' => 'native-node-authorization/v1',
+    'policy_version' => env('NATIVE_NODE_AUTHORIZATION_POLICY_VERSION', 'native-node-authorization/v1'),
     'lease_seconds' => env('NATIVE_NODE_AUTHORIZATION_LEASE_SECONDS', 120),
     'max_lease_seconds' => 120,
     'refresh_interval_seconds' => 30,

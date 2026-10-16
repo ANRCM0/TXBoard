@@ -6,6 +6,8 @@ use App\Core\Http\TxapiResponse;
 use App\Services\ServerService;
 use App\Domains\Network\MachineTelemetry;
 use App\Domains\Network\NativeNodeAuthorization;
+use App\Domains\Network\NativeProviderNodeAuthorization;
+use App\Domains\Installation\InstallationAuthority;
 use App\Domains\Network\NativeNodeReport;
 use App\Domains\Network\NativeAccessAudit;
 use App\Domains\Network\NodeReportError;
@@ -36,17 +38,37 @@ final class NodeProtocolController
             'settings' => $this->intervals(),
         ];
         $authorization = app(NativeNodeAuthorization::class);
-        if ($authorization->enabled()) {
+        try {
+            $native = $this->nativeInstallation();
+        } catch (\Throwable) {
+            return TxapiResponse::error($request, 'NODE_AUTHORIZATION_UNAVAILABLE',
+                'Node authorization is temporarily unavailable', 503)->header('Cache-Control', 'no-store');
+        }
+        if ($native) {
+            try {
+                $data['capabilities'] = ['http_poll', 'machine_discovery', 'access_audit_v1',
+                    NativeNodeAuthorization::CAPABILITY, 'node_provider_credential_delivery_v1'];
+                $data['authorization_trust'] = app(NativeProviderNodeAuthorization::class)->publicTrust();
+                $data['authorization_refresh_interval_seconds'] = 30;
+            } catch (\Throwable) {
+                return TxapiResponse::error($request, 'NODE_AUTHORIZATION_UNAVAILABLE',
+                    'Node authorization is temporarily unavailable', 503)->header('Cache-Control', 'no-store');
+            }
+        }
+        if (!$native && $authorization->enabled()) {
             try {
                 $data['capabilities'][] = NativeNodeAuthorization::CAPABILITY;
                 $data['authorization_trust'] = $authorization->publicTrust();
+                if ($data['authorization_trust']['policy_version'] !== NativeNodeAuthorization::POLICY_VERSION) {
+                    throw new \DomainException('NATIVE_NODE_AUTHORIZATION_POLICY_INVALID');
+                }
                 $data['authorization_refresh_interval_seconds'] = 30;
             } catch (\DomainException) {
                 return TxapiResponse::error($request, 'NODE_AUTHORIZATION_UNAVAILABLE',
                     'Node authorization is temporarily unavailable', 503)->header('Cache-Control', 'no-store');
             }
         }
-        if (config('native_traffic_receipts.enabled') === true) {
+        if (!$native && config('native_traffic_receipts.enabled') === true) {
             $data['capabilities'][] = 'traffic_receipt_durable_v1';
             if (config('native_traffic_periods.enabled', true) === true) $data['capabilities'][] = 'traffic_period_v1';
         }
@@ -75,6 +97,20 @@ final class NodeProtocolController
     {
         $node = $request->attributes->get('txnode.node');
         ServerService::touchNode($node);
+        try {
+            if ($this->nativeInstallation()) {
+                $machine = $request->attributes->get('txnode.machine');
+                $data = app(NativeProviderNodeAuthorization::class)->snapshot($node, [
+                    'kind' => $machine === null ? 'node' : 'machine',
+                    'machine_id' => $machine === null ? null : (int) $machine->id,
+                    'credential_sha256' => hash('sha256', (string) $request->bearerToken()),
+                ]);
+                return TxapiResponse::success($request, $data)->header('Cache-Control', 'no-store, private');
+            }
+        } catch (\Throwable) {
+            return TxapiResponse::error($request, 'NODE_AUTHORIZATION_UNAVAILABLE',
+                'Node authorization is temporarily unavailable', 503)->header('Cache-Control', 'no-store, private');
+        }
         $authorization = app(NativeNodeAuthorization::class);
         if ($authorization->enabled()) {
             try {
@@ -143,7 +179,8 @@ final class NodeProtocolController
             $result = app(NativeNodeReport::class)->submit($node, $request->all());
         } catch (NodeReportError $e) {
             return TxapiResponse::error($request, $e->errorCode, $e->getMessage(), match ($e->errorCode) {
-                'TRAFFIC_BATCH_CONFLICT' => 409, 'TRAFFIC_DURABILITY_UNAVAILABLE' => 503, default => 422,
+                'TRAFFIC_BATCH_CONFLICT' => 409,
+                'TRAFFIC_DURABILITY_UNAVAILABLE', 'NATIVE_TRAFFIC_SETTLEMENT_UNAVAILABLE' => 503, default => 422,
             });
         }
         return TxapiResponse::success($request, $result, status: 202);
@@ -174,6 +211,12 @@ final class NodeProtocolController
             'push_interval' => (int) admin_setting('server_push_interval', 60),
             'pull_interval' => (int) admin_setting('server_pull_interval', 60),
         ];
+    }
+
+    private function nativeInstallation(): bool
+    {
+        return config('core_installation.mode') === 'native'
+            || app(InstallationAuthority::class)->inspect()['mode'] === 'native';
     }
 
     private function etagResponse(Request $request, array $payload): JsonResponse

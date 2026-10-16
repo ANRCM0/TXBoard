@@ -44,6 +44,17 @@ final class SubscriptionEntitlementResolver
         }, 3);
     }
 
+    /** Reuse the authoritative projection inside an account-first aggregate transaction. */
+    public function resolveLocked(int $userId, int $at): array
+    {
+        if (DB::transactionLevel() < 1 || $userId <= 0 || $at < 0 || $at > 9007199254740991) {
+            throw new DomainException('ENTITLEMENT_TRANSACTION_REQUIRED');
+        }
+        $installation = app(InstallationAuthority::class)->assertNativeRead();
+        // Unlike the public diagnostic read, damaged evidence aborts the entire signed snapshot.
+        return $this->readLocked($userId, $at, $installation);
+    }
+
     private function readLocked(int $userId, int $at, array $installation): array
     {
         $user = DB::table('tx_user')->where('id', $userId)->sharedLock()->first(['id', 'banned']);

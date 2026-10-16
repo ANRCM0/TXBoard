@@ -7,6 +7,10 @@ The existing fixture registrations and fixture operations remain isolated.
 Rotation, render delivery, Node consumption and the ready-state transition
 are subsequent integration work; they are not advertised as capabilities here.
 
+The subsequent [C2-C2 Node delivery contract](native-node-delivery-v1.md)
+adds separately authenticated metadata and Node material endpoints without
+changing the issue/query/revoke wire format defined here.
+
 ## Runtime and trust
 
 The Provider is a separate Go executable in `node/cmd/credential-provider`.

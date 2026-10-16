@@ -3,6 +3,7 @@
 namespace App\WebSocket;
 
 use App\Models\Server;
+use App\Domains\Installation\InstallationAuthority;
 use App\Services\DeviceStateService;
 use App\Services\NodeRegistry;
 use App\Services\ServerService;
@@ -16,6 +17,10 @@ final class NativeNodePush
      */
     public static function pushDeviceStateToNode(int $nodeId, DeviceStateService $service): void
     {
+        if (self::nativeInstallation()) {
+            NodeRegistry::send($nodeId, 'sync.users', ['refresh_required' => true]);
+            return;
+        }
         $node = Server::find($nodeId);
         if (!$node) return;
 
@@ -36,6 +41,10 @@ final class NativeNodePush
     public static function pushFullSync(Server $node): void
     {
         $nodeId = (int) $node->id;
+        if (self::nativeInstallation()) {
+            NodeRegistry::send($nodeId, 'sync.users', ['refresh_required' => true]);
+            return;
+        }
 
         // Push config
         $config = ServerService::buildNodeConfig($node);
@@ -52,5 +61,11 @@ final class NativeNodePush
         Log::info("[WS] Full sync pushed to node#{$nodeId}", [
             'users' => count($users),
         ]);
+    }
+
+    private static function nativeInstallation(): bool
+    {
+        return config('core_installation.mode') === 'native'
+            || app(InstallationAuthority::class)->inspect()['mode'] === 'native';
     }
 }
