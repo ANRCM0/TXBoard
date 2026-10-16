@@ -58,4 +58,4 @@ jobs:
           touch .env
           mkdir -p storage/framework/{cache/data,sessions,views} storage/logs bootstrap/cache
       - name: Native account suspension, expiry and committed group synchronization
-        run: php artisan test --configuration phpunit-historical.xml --filter='NativeUserGroupSyncTest|NativeUserExpiryBoundaryTest|TxapiAdminSuspensionTest'
+        run: php artisan test --filter='NativeUserGroupSyncTest|NativeUserExpiryBoundaryTest|TxapiAdminSuspensionTest'

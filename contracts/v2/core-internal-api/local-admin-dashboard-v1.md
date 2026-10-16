@@ -1,5 +1,7 @@
 # 本地管理仪表盘 v1
 
+> 已退役（2026-10-16）：本文保留旧隔离切片的历史协议和验收说明。对应 Core/Gateway 运行入口、配置、SDK 原型消费者、夹具及专属 CI 已移除；下文 Current/local-testing 状态仅描述当时实现。正式 Internal API 仍属 C4 待交付，不提供旧路径或旧版本兼容。见 [当前清理边界](../../../docs/development/core-cleanup.md)。
+
 B5.17 增量 Current：`admin.dashboard.get` version `1` 使用现有 Internal mTLS、服务 proof、SQL nonce 和技术审计，仅接受 `admin-gateway`。必须同时严格启用 `CORE_INTERNAL_READONLY_ENABLED`、`CORE_INTERNAL_ADMIN_DASHBOARD_ENABLED`、`CORE_SHADOW_ISOLATED_COPY`，且环境为 local/testing。默认关闭，不能启用生产管理 Gateway。
 
 `input` 恰好为 `{ "admin_path": "<当前管理路径>" }`，沿用有界 ASCII 路径规则。每次请求通过当前 Sanctum 会话、封禁、原生 `AdminPath` 与 `Admin` 检查；服务身份不提供业务权限。错误路径404，普通用户或仅 staff 为403；撤销、过期和退役 Agent 凭据拒绝。身份读取和仪表盘共用同一原生授权适配器。权限仍是当前 `is_admin`，不虚构细粒度 RBAC。

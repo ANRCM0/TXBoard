@@ -1,5 +1,7 @@
 # Isolated local registration over Internal mTLS v1
 
+> 已退役（2026-10-16）：本文保留旧隔离切片的历史协议和验收说明。对应 Core/Gateway 运行入口、配置、SDK 原型消费者、夹具及专属 CI 已移除；下文 Current/local-testing 状态仅描述当时实现。正式 Internal API 仍属 C4 待交付，不提供旧路径或旧版本兼容。见 [当前清理边界](../../../docs/development/core-cleanup.md)。
+
 Status: Current / verified isolated B5.11. Fixed-source gates and real SDK/HPKE/Redis/TLS1.3/MariaDB integration passed; see [verification evidence](../../../docs/architecture/v2/internal-isolated-registration-verification.json). This fixed operation uses synthetic accounts on the existing local/testing boundary; production registration remains the native TXAPI flow.
 
 `auth.register`, contract version `"1"`, requires the `user-gateway` service identity, no Authorization header (including an empty header), the global Internal gate, `core_shadow.isolated_copy=true` and the independent exact-true default-off `CORE_INTERNAL_REGISTER_ENABLED`. Audit actor is `0`. The existing proof binds the exact method, path, body and absent actor; nonce admission is not registration idempotency.

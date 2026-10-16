@@ -53,16 +53,8 @@ const registered = await api.auth.register({
 - `GatewayApiError` 包含 `code`、HTTP `status`、可选 `requestId`。遇到 409/429/503 不要无脑自动重试密文写请求。
 - 套餐与订单金额沿用 TXBoard 的分单位；不在 SDK 中二次转换。
 - SDK 仅类型描述，不代替 Gateway/后端的运行时校验；SSR 必须为不同请求隔离 `getToken` 与客户实例。
-- 无订单创建、checkout、支付回调、管理员 API、订阅原始 Token 导出。
+- 订单创建需服务端显式开启；无 checkout/cancel、支付回调、管理员 API、订阅原始 Token 导出。
 
 [HTTP v1 契约](../../contracts/gateway-v1.md) · [Docker 运行方式](../../docs/docker-deployment.md) · [当前状态](../../docs/development-status.md)。
 
-当前用户会话接口需要服务器独立开启本地隔离的 `GATEWAY_INTERNAL_SESSIONS_ENABLED`，同时配置 Core Internal mTLS、HPKE 和 Redis；Core 也有独立开关。生产默认关闭。发现 `auth.sessions` / `auth.logout.encrypted` 能力后可调用：
-
-```ts
-const sessions = await api.auth.sessions.list()
-await api.auth.sessions.revoke(sessions.items[0].id) // ID 保持字符串
-await api.auth.logout() // 只撤销当前凭据
-```
-
-撤销和登出始终发送 Bearer + 加密请求，SDK 不重试 POST，也不保存或清除应用的 token。撤销当前 session 成功后，由应用更新自己的登录状态；响应未知时，用另一枚有效凭据确认。会话列表有界且不缓存，Core 仍负责全部 owner/角色检查。见[当前会话消费者契约](../../../contracts/v2/core-internal-api/local-isolated-session-consumer-v1.md)。
+2026-10-16 已移除只服务隔离 Internal 原型的密码恢复、会话列表/撤销/登出和订单取消方法。当前 SDK 只暴露 Gateway 实际提供的操作；账户令牌的保存和清除仍由应用负责。

@@ -58,4 +58,4 @@ jobs:
         working-directory: api
         env:
           CORE_PROVIDER_GO_PROOF_INTEROP: '1'
-        run: php artisan test --configuration phpunit-historical.xml --filter=test_go_offline_signature_diagnostic_interoperates_with_actual_core_binding
+        run: php artisan test --filter=test_go_offline_signature_diagnostic_interoperates_with_actual_core_binding

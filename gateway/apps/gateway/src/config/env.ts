@@ -1,5 +1,3 @@
-import { loadInternalUserConfig, type InternalUserConfig } from './internal-user.js'
-
 export type GatewayConfig = {
   host: string
   port: number
@@ -23,21 +21,6 @@ export type GatewayConfig = {
    *  payment write ban stays in force and POST /gateway/v1/orders answers 405
    *  with zero upstream calls. */
   orderWriteEnabled: boolean
-  /** Local/testing-only mTLS read slice; absence preserves Native behavior. */
-  internalUser?: InternalUserConfig
-  /** Additional local public-read opt-in; cannot enable authentication operations. */
-  internalPublicReadEnabled?: boolean
-  /** Separate isolated local account login; does not enable mail or registration. */
-  internalLoginEnabled?: boolean
-  /** Separate encrypted email-only isolated mode, with HPKE and Redis required at boot. */
-  internalEmailCodeEnabled?: boolean
-  /** Independent synthetic registration over the local Internal boundary. */
-  internalRegisterEnabled?: boolean
-  internalPasswordResetEnabled?: boolean
-  /** Independent local/testing current User session consumer. */
-  internalOrderCancelEnabled?: boolean
-  internalOrderCancelEnvironment?: 'local' | 'testing'
-  internalSessionsEnabled?: boolean
 }
 
 function intSetting(value: string | undefined, fallback: number, min: number, max: number): number {
@@ -95,42 +78,6 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
   const upstreamHosts = (env.GATEWAY_UPSTREAM_HOSTS || upstream.hostname)
     .split(',').map(s => s.trim().toLowerCase()).filter(Boolean)
 
-  const internalUser = loadInternalUserConfig(env)
-  const publicRead = env.GATEWAY_INTERNAL_PUBLIC_READ_ENABLED
-  if (publicRead !== undefined && publicRead !== '' && publicRead !== 'false'
-    && (publicRead !== 'true' || !internalUser || !['local', 'testing'].includes(env.APP_ENV ?? ''))) {
-    throw new Error('Invalid local Internal public-read configuration')
-  }
-  const login = env.GATEWAY_INTERNAL_LOGIN_ENABLED
-  if (login !== undefined && login !== '' && login !== 'false'
-    && (login !== 'true' || !internalUser || !['local', 'testing'].includes(env.APP_ENV ?? ''))) {
-    throw new Error('Invalid local Internal login configuration')
-  }
-  const emailCode = env.GATEWAY_INTERNAL_EMAIL_CODE_ENABLED
-  if (emailCode !== undefined && emailCode !== '' && emailCode !== 'false'
-    && (emailCode !== 'true' || !internalUser || !['local', 'testing'].includes(env.APP_ENV ?? ''))) {
-    throw new Error('Invalid local Internal email-code configuration')
-  }
-  const registration = env.GATEWAY_INTERNAL_REGISTER_ENABLED
-  if (registration !== undefined && registration !== '' && registration !== 'false'
-    && (registration !== 'true' || !internalUser || !['local', 'testing'].includes(env.APP_ENV ?? ''))) {
-    throw new Error('Invalid local Internal registration configuration')
-  }
-  const passwordReset = env.GATEWAY_INTERNAL_PASSWORD_RESET_ENABLED
-  if (passwordReset !== undefined && passwordReset !== '' && passwordReset !== 'false'
-    && (passwordReset !== 'true' || !internalUser || !['local', 'testing'].includes(env.APP_ENV ?? ''))) {
-    throw new Error('Invalid local Internal password-reset configuration')
-  }
-  const sessions = env.GATEWAY_INTERNAL_SESSIONS_ENABLED
-  if (sessions !== undefined && sessions !== '' && sessions !== 'false'
-    && (sessions !== 'true' || !internalUser || !['local', 'testing'].includes(env.APP_ENV ?? ''))) {
-    throw new Error('Invalid local Internal sessions configuration')
-  }
-  const cancel = env.GATEWAY_INTERNAL_ORDER_CANCEL_ENABLED
-  if (cancel !== undefined && cancel !== '' && cancel !== 'false'
-    && (cancel !== 'true' || !internalUser || !['local', 'testing'].includes(env.APP_ENV ?? ''))) {
-    throw new Error('Invalid local Internal order cancellation configuration')
-  }
   return {
     host: env.GATEWAY_HOST || '127.0.0.1',
     port: intSetting(env.GATEWAY_PORT, 8787, 1, 65535),
@@ -148,14 +95,5 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     // leaves the write ban in force — a typo, a '1' or an empty value can
     // never open a transaction write path.
     orderWriteEnabled: env.GATEWAY_ORDER_WRITE_ENABLED === 'true',
-    internalUser,
-    internalPublicReadEnabled: publicRead === 'true',
-    internalLoginEnabled: login === 'true',
-    internalEmailCodeEnabled: emailCode === 'true',
-    internalRegisterEnabled: registration === 'true',
-    internalPasswordResetEnabled: passwordReset === 'true',
-    internalOrderCancelEnabled: cancel === 'true',
-    internalOrderCancelEnvironment: cancel === 'true' ? env.APP_ENV as 'local' | 'testing' : undefined,
-    internalSessionsEnabled: sessions === 'true',
   }
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { Aes256Gcm, CipherSuite, DhkemP256HkdfSha256, HkdfSha256 } from '@hpke/core'
-import katVectors from '../../packages/theme-sdk/test/vectors/hpke-kat.json' with { type: 'json' }
+import katVectors from '../../../packages/theme-sdk/test/vectors/hpke-kat.json' with { type: 'json' }
 import { buildAad, type SealedRequest } from '../src/services/crypto.js'
 
 /**

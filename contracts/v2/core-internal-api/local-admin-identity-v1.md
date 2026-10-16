@@ -1,5 +1,7 @@
 # 本地管理身份读取 v1
 
+> 已退役（2026-10-16）：本文保留旧隔离切片的历史协议和验收说明。对应 Core/Gateway 运行入口、配置、SDK 原型消费者、夹具及专属 CI 已移除；下文 Current/local-testing 状态仅描述当时实现。正式 Internal API 仍属 C4 待交付，不提供旧路径或旧版本兼容。见 [当前清理边界](../../../docs/development/core-cleanup.md)。
+
 B5.15 增量 Current：`admin.identity.get` version `1` 仅用于隔离副本的管理端准备，默认关闭。必须同时启用 `CORE_INTERNAL_READONLY_ENABLED`、`CORE_INTERNAL_ADMIN_IDENTITY_ENABLED` 与 `CORE_SHADOW_ISOLATED_COPY`，且环境为 local/testing。生产配置不能启用；未开放 Gateway 的 Admin 路由或新前端。
 
 沿用 `POST /txapi/internal/v1/operations/{id}` 的真实 mTLS 边界和绑定方法、路径、原始 body、Authorization 的服务 proof，仅接受 `admin-gateway` 身份。Core 从当前 Sanctum Bearer 获取 actor，验证过期/撤销、封禁，再调用原生 `AdminPath` 和 `Admin`。普通 User、仅 staff、退役 Agent 凭据、User Gateway 或伪造 actor/role 头均不能进入。当前 Core 的管理权限是原生 `is_admin`，本片不虚构细粒度 RBAC。

@@ -56,6 +56,8 @@ RETIRED_CLASSES = (
     "LegacyUserDeletionShadow",
     "SubscriptionTermsShadowService",
     "FencedSanctumGuard",
+    "InternalReadOnlyController",
+    "InternalServiceProof",
 )
 RETIRED_PATHS = (
     "api/app/Domains/CredentialProviderFixture",
@@ -91,6 +93,18 @@ RETIRED_PATHS = (
     "api/tests/Support/AuthorityTicketFixture.php",
     "api/tests/Feature/Identity/AccountPostcommitBoundaryTest.php",
     "api/app/Services/TicketService.php",
+    "api/app/Domains/InternalReadOnly",
+    "api/app/Http/Controllers/Txapi/InternalReadOnlyController.php",
+    "api/app/Http/Middleware/InternalServiceProof.php",
+    "api/tests/Feature/InternalReadOnly",
+    "api/internal-readonly-fixtures",
+    "gateway/apps/gateway/src/adapters/internal-user-v2.ts",
+    "gateway/apps/gateway/src/adapters/internal-admin-v1.ts",
+    "gateway/apps/gateway/src/services/internal-user-client.ts",
+    "gateway/apps/gateway/src/services/internal-admin-client.ts",
+    "gateway/apps/gateway/src/config/internal-user.ts",
+    "gateway/apps/gateway/src/config/internal-admin.ts",
+    "api/phpunit-historical.xml",
 )
 RETIRED_CONFIGS = (
     "legacy_capture_shadow",
@@ -105,6 +119,8 @@ RETIRED_CONFIGS = (
     "legacy_money_shadow",
     "legacy_lifecycle_reconcile",
     "authority_writer_fence",
+    "core_shadow",
+    "internal_api_slice",
 )
 
 
@@ -129,7 +145,7 @@ def validate():
                 f"Retired runtime path restored: {relative}")
     retired = re.compile(r"\b(?:" + "|".join(RETIRED_CLASSES) + r")\b")
     old_namespace = re.compile(r"App\\Services\\Subscription\\")
-    retired_namespace = re.compile(r"App\\Domains\\(?:CredentialProviderFixture|LegacyLinks|AuthorityMigration)\\")
+    retired_namespace = re.compile(r"App\\Domains\\(?:CredentialProviderFixture|LegacyLinks|AuthorityMigration|InternalReadOnly)\\")
     retired_ticket = re.compile(r"App\\Services\\TicketService\b")
     retired_config = re.compile(
         r"""['"](?:""" + "|".join(RETIRED_CONFIGS) + r""")(?:\.|['"])"""

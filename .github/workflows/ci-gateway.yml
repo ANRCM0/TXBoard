@@ -8,7 +8,6 @@ on:
       - 'gateway/**'
       - '!gateway/**/*.md'
       - 'contracts/http/**'
-      - 'contracts/v2/core-internal-api/**'
       - 'contracts/v2/secure-channel/**'
       - 'scripts/resolve-image-tags.sh'
       - 'scripts/test-image-tags.sh'
@@ -18,7 +17,6 @@ on:
       - 'gateway/**'
       - '!gateway/**/*.md'
       - 'contracts/http/**'
-      - 'contracts/v2/core-internal-api/**'
       - 'contracts/v2/secure-channel/**'
       - 'scripts/resolve-image-tags.sh'
       - 'scripts/test-image-tags.sh'
@@ -86,8 +84,6 @@ jobs:
           cache-dependency-path: gateway/package-lock.json
       - name: Validate Gateway documentation links
         run: node scripts/check-docs.mjs
-      - name: Verify legacy and monorepo snapshot isolation
-        run: python3 -m unittest discover -s tests/integration -p test_snapshot_layout.py
       - name: Validate portable production dependency guard
         run: node --test scripts/tests/validate-portable-dependencies.test.mjs
       - name: Restore pinned dependencies

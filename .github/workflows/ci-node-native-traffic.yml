@@ -149,4 +149,4 @@ jobs:
           mkdir -p api/storage/framework/{cache/data,sessions,views} api/storage/logs api/bootstrap/cache
       - name: Real SQL sessions serialize reset and settlement in both lock orders
         # This job owns its disposable DB; no application or Node service uses it.
-        run: cd api && php vendor/bin/phpunit --configuration phpunit-historical.xml --filter 'NativeTrafficPeriodConcurrencyTest|NativeTrafficBatchStatisticsConcurrencyTest'
+        run: cd api && php vendor/bin/phpunit --filter 'NativeTrafficPeriodConcurrencyTest|NativeTrafficBatchStatisticsConcurrencyTest'

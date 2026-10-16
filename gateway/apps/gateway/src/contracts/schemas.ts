@@ -54,19 +54,10 @@ export const registerSchema = z.strictObject({
 
 export type RegisterRequest = z.infer<typeof registerSchema>
 
-export const passwordResetSchema = z.strictObject({
-  email: z.email().max(254), password: z.string().min(8).max(1024),
-  email_code: z.string().regex(/^\d{6}$/), ...captchaFields,
-})
-
 /** POST /gateway/v1/secure/auth/email-code body (after decryption). */
 export const emailCodeSchema = z.strictObject({ email: z.email().max(254), ...captchaFields })
 
 export type EmailCodeRequest = z.infer<typeof emailCodeSchema>
-
-export const sessionIdSchema = z.string().regex(/^[1-9][0-9]{0,17}$(?![\s\S])/)
-export const sessionRevokeSchema = z.strictObject({ session_id: sessionIdSchema })
-export const sessionEmptySchema = z.strictObject({})
 
 /** All current Core states, including 4 (discounted historical orders). */
 export const orderStatusQueryValues: readonly string[] = ['0', '1', '2', '3', '4']

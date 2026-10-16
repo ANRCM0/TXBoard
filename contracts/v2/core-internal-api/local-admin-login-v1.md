@@ -1,5 +1,7 @@
 # 本地管理登录 v1
 
+> 已退役（2026-10-16）：本文保留旧隔离切片的历史协议和验收说明。对应 Core/Gateway 运行入口、配置、SDK 原型消费者、夹具及专属 CI 已移除；下文 Current/local-testing 状态仅描述当时实现。正式 Internal API 仍属 C4 待交付，不提供旧路径或旧版本兼容。见 [当前清理边界](../../../docs/development/core-cleanup.md)。
+
 B5.16 Current 增量：`auth.admin.login` version1 仅由 `admin-gateway` 服务调用，Core 独立 `CORE_INTERNAL_ADMIN_LOGIN_ENABLED=false` 默认关闭，另要求原 Internal 开关、local/testing 和严格隔离副本。仅合成 `@example.test` 邮箱进入；请求必须没有 Authorization，包括空头。未开放公网 Admin Gateway、新管理前端或 SC-v2。
 
 输入复用原登录闭合 schema：email/password 以及可选的三个原生 CAPTCHA 字段；未知字段、重复 JSON key、非法类型/大小、版本、期限或服务 proof 拒绝。临时 FormRequest 保留原 TrimStrings（密码空格不去掉）、校验、10/min共享原生登录限流、LoginService 的密码预算/旧hash/封禁及 hook。CAPTCHA 仅确认SQL/缓存/已加载配置已知停用时允许，不访问外部服务。请求绑定在 finally 恢复，不向下一 Octane 请求保留临时 User/Request。

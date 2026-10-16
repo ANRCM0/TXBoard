@@ -1,22 +1,16 @@
 # Core Internal API v1
 
-> 状态：Target / Draft，B0 设计基线。完整 B5 尚未交付；已有默认关闭、仅 local/testing 的 [当前只读切片](current-readonly-slice-v1.md)、[公共展示读取](local-public-display-v1.md)、另行隔离的 [订单创建切片](local-user-order-create-v1.md)、[原生账户登录](local-isolated-login-v1.md)和[内存邮件验证码](local-isolated-email-code-v1.md)和[合成账户注册](local-isolated-registration-v1.md)和[密码恢复](local-isolated-password-reset-v1.md)和[当前用户会话](local-isolated-sessions-v1.md)，其已注册路径和验收范围以 Current 文件为准。
+> 状态：Target / Draft。正式 Internal API 属 C4 待交付。2026-10-16 已移除 B5 隔离 local/testing 实现及 Core/Gateway 两端消费者，不保留过渡兼容。
 
-当前两个 User operation 的显式 `contract_version:"2"` 扩展见 [B5.2 User DTO](current-user-dto-v2.md)，保留 v1 与 Admin，不代表 Draft 其他操作已开放。
+本目录下 `current-*` 和 `local-*` 文档仅保留历史协议及原验收证据；文件名中的 Current 不表示现在仍有运行入口。旧服务 proof、dispatcher、配置、专用 SDK 方法与夹具已退役。Gateway 当前继续通过真实 TXAPI upstream 调用 Core；正式服务身份、调用者授权、生产 PKI 及管理 Gateway 后续按当前契约实现。
 
-B5.3 增量 [有界订单列表](current-order-list-v2.md) 复用原 owner/query 与分页，仅扩展 local/testing User 服务白名单；生产私网与其余 Operation 门禁不变。
-
-B5.15 增量 [管理身份读取](local-admin-identity-v1.md) 在独立默认关闭开关下，由 `admin-gateway` proof 与当前 Core Sanctum/AdminPath/Admin 共同核对，只返回闭合身份 DTO。仅隔离 local/testing，尚未开放 Admin Gateway 或正式 SC-v2。
-
-B5.16 增量 [管理登录](local-admin-login-v1.md) 复用原管理登录、CAPTCHA/密码预算与会话签发，只向实际管理员私密交付引导凭据和路径。独立默认关闭且只允许合成账户，服务与User登录隔离；原生部分提交和未知结果不补偿、不自动重试。
-
-B5.14 的独立 [Gateway/SDK 会话消费者](local-isolated-session-consumer-v1.md)接通本地当前用户会话 list/revoke/logout；额外开关、HPKE 与 Redis 门禁不因 Core operation 存在而自动开放。
+清理范围见 [Core 清理](../../../docs/development/core-cleanup.md)。以下第 1—5 节为目标设计约束，不代表功能已开放。
 
 ## 1. 业务与安全权威
 
 Gateway 负责 Web 传输、SC-v2、请求结构及 DTO 适配。Core 负责登录验证、账户归属、管理员身份、RBAC、价格、优惠、余额、订单状态、节点权限、幂等与审计。Gateway 不使用共享管理员 Token，不缓存业务授权结果为最终判定，不访问业务 MySQL 或发布节点控制消息。
 
-目标内部入口原拟为 `POST /internal/v1/operations/{operation}`，只监听受控私网；它是显式 Operation 分发器，不是任意 URL、控制器名或方法调用代理。当前只读切片依 AGENTS.md 改为已注册的 `POST /txapi/internal/v1/operations/{id}`，默认关闭且限制 local/testing；它不改变其余 Draft 操作的未实现状态，也不能通过公网反代 wildcard 暴露。
+目标服务入口只监听受控私网，采用显式 Operation 分发器，不能接收任意 URL、控制器名或方法调用。旧 `POST /txapi/internal/v1/operations/{id}` 已移除；任何凭据都不能重新启用它。正式入口、操作范围及服务身份需要在 C4 同步实现契约与消费者，不能通过公网反代 wildcard 暴露。
 
 服务身份和最终用户身份必须同时成立：
 
@@ -98,6 +92,8 @@ Gateway 负责 Web 传输、SC-v2、请求结构及 DTO 适配。Core 负责登�
 - 真实 Core/MySQL/Redis + Gateway 验收通过，Operation allow-list 和旧调用退出清单齐备，才能迁移对应 Web 入口。
 
 [领域模型](../../../docs/architecture/v2/core-domain-model.md) · [升级契约](../upgrade-manifest/README.md) · [SC-v2](../secure-channel/README.md)
+
+## 历史切片索引（均已退役）
 
 B5.4: [local User dashboard and payment-method display reads](current-user-display-v2.md), with the same version-2 User identity and local/testing gates.
 

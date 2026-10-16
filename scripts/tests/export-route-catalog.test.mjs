@@ -64,11 +64,12 @@ test('rejects duplicate route verbs and malformed input', () => {
   assert.throws(() => parseArgs([]), /Missing --routes/);
 });
 
-test('internal operations require service proof even when actor middleware is present', () => {
-  const route = {method:'POST', uri:'txapi/internal/v1/operations/{operation}', middleware:['api', 'user']};
-  assert.equal(classify(route.uri)[1], 'internal-service');
-  assert.throws(() => assertCurrentBoundaries(inventory([...required, route])), /unguarded_internal_service/);
-  assertCurrentBoundaries(inventory([...required, {...route, middleware:['api', 'App\\Http\\Middleware\\InternalServiceProof']} ]));
+test('retired internal operations cannot be registered with any middleware', () => {
+  for (const middleware of [[], ['api', 'user'], ['api', 'App\\Http\\Middleware\\InternalServiceProof']]) {
+    const route = {method:'POST', uri:'txapi/internal/v1/operations/{operation}', middleware};
+    assert.equal(classify(route.uri)[1], 'forbidden');
+    assert.throws(() => assertCurrentBoundaries(inventory([...required, route])), /legacy_routes/);
+  }
 });
 
 test('split Caddy exposes only the native TX-Node WebSocket Upgrade path', () => {

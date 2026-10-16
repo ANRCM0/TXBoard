@@ -1,5 +1,7 @@
 # Internal API 当前只读切片 v1
 
+> 已退役（2026-10-16）：本文保留旧隔离切片的历史协议和验收说明。对应 Core/Gateway 运行入口、配置、SDK 原型消费者、夹具及专属 CI 已移除；下文 Current/local-testing 状态仅描述当时实现。正式 Internal API 仍属 C4 待交付，不提供旧路径或旧版本兼容。见 [当前清理边界](../../../docs/development/core-cleanup.md)。
+
 状态：Current / local-testing-only，B5.1 最小验证切片。此文件描述 request version 1；[B5.2 User DTO version 2](current-user-dto-v2.md) 的 Gateway opt-in 独立描述。完整 B5、B6、SC-v2 和生产上线门禁仍未完成。
 
 实际注册入口为 `POST /txapi/internal/v1/operations/{id}`。Draft 的 `/internal/v1/operations/{operation}` 改为 `/txapi/internal/v1/operations/{id}`，遵循仓库 AGENTS.md 的已注册 TXAPI 路由要求。没有任意 URL、类名、方法名或查询参数透传。
@@ -92,7 +94,7 @@ nonce 保留至 exp；window 保留 120 秒；audit 保留 24 小时。已接纳
 
 ## 验证与范围限制
 
-可复现流程见 [fixture README](../../../scripts/tests/internal-readonly/README.md)。独立 committed Core HEAD + 本切片覆盖，复制 vendor 避免 Composer 相对 classmap 加载来源应用；不带入并发修改。HTTP fixture 使用唯一空的 txboard_internal_test，禁止 migrate:fresh 或生产数据库。
+可复现流程见 当时的 fixture README（随原型退役，可从 Git 历史追溯）。独立 committed Core HEAD + 本切片覆盖，复制 vendor 避免 Composer 相对 classmap 加载来源应用；不带入并发修改。HTTP fixture 使用唯一空的 txboard_internal_test，禁止 migrate:fresh 或生产数据库。
 
 当前验证结果由对应 evidence 文件记录，包括代码 hash/HEAD、TLS 参数、真实 CA/CRL、证书过期 keepalive、Node/PHP runtime、并发与重启 replay 以及 sanitized audit 行数。fixture 完成时停止服务，删除临时私钥、actor token、可信配置和 CA 私密状态，保留公开证书 fingerprint、routes、日志及无秘密 result。
 

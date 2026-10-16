@@ -41,7 +41,7 @@ jobs:
       - name: Core authority, metadata, ownership and existing Node boundaries
         working-directory: api
         run: >-
-          php artisan test --configuration phpunit-historical.xml
+          php artisan test
           tests/Unit/Domains/CredentialProvider
           tests/Feature/Subscription/NativeProviderNodeAuthorizationTest.php
           tests/Feature/Subscription/NativeCredentialProviderTest.php
@@ -103,7 +103,7 @@ jobs:
           cp .env.example .env
           php artisan key:generate
           php artisan migrate --force
-          php artisan test --configuration phpunit-historical.xml tests/Feature/Subscription/NativeProviderNodeAuthorizationTest.php tests/Feature/Subscription/NativeCredentialProviderTest.php
+          php artisan test tests/Feature/Subscription/NativeProviderNodeAuthorizationTest.php tests/Feature/Subscription/NativeCredentialProviderTest.php
 
   provider-node-live:
     runs-on: ubuntu-latest

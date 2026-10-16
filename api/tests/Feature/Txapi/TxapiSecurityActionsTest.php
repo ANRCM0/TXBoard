@@ -22,6 +22,16 @@ class TxapiSecurityActionsTest extends TestCase
         $this->withoutMiddleware(\Illuminate\Routing\Middleware\ThrottleRequests::class);
     }
 
+    public function test_retired_internal_service_proof_cannot_open_an_api_entrypoint(): void
+    {
+        $this->withHeaders([
+            'Authorization' => 'Bearer retired-service-credential',
+            'X-TXBoard-Service-Proof' => 'retired-proof',
+        ])->postJson('/txapi/internal/v1/operations/user.identity.get', [
+            'input' => new \stdClass(),
+        ])->assertNotFound();
+    }
+
     public function test_quick_login_requires_user_token_validates_redirect_and_uses_one_time_login_service(): void
     {
         $this->postJson('/txapi/auth/quick-login')->assertStatus(401);

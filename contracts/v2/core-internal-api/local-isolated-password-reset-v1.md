@@ -1,5 +1,7 @@
 # Isolated password recovery over Internal mTLS v1
 
+> 已退役（2026-10-16）：本文保留旧隔离切片的历史协议和验收说明。对应 Core/Gateway 运行入口、配置、SDK 原型消费者、夹具及专属 CI 已移除；下文 Current/local-testing 状态仅描述当时实现。正式 Internal API 仍属 C4 待交付，不提供旧路径或旧版本兼容。见 [当前清理边界](../../../docs/development/core-cleanup.md)。
+
 Status: Current / verified isolated B5.12, local/testing synthetic accounts only. See [fixed-source verification](../../../docs/architecture/v2/internal-isolated-password-reset-verification.json). Native `/txapi/auth/password/forgot` remains authoritative.
 
 The fixed `auth.password.reset`, version `"1"`, requires `user-gateway` service identity, an absent Authorization header, exact signed body/proof admission, the global local Internal gate, `core_shadow.isolated_copy=true` and independent exact-true default-off `CORE_INTERNAL_PASSWORD_RESET_ENABLED`. Neither registration, login nor email-code flags enable it. Technical actor is `0`; no visitor ID, role or IP claim is accepted.

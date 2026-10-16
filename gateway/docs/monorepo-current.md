@@ -4,7 +4,7 @@
 
 ## 开发与测试
 
-从主仓根目录执行 `cd gateway`，再运行 `npm ci`、`npm run check`、`npm run test:redis` 和 `npm run test:browser`。`gateway/package-lock.json` 保持独立，根目录的 web workspace 不吸收 Gateway 依赖。SDK 仍位于 `gateway/packages/theme-sdk`；现有 TypeScript 相对 import 和 app 的 `../../.env` 指向保持在 Gateway 子树内。
+`gateway/package-lock.json` 保持独立，根目录的 web workspace 不吸收 Gateway 依赖。SDK 仍位于 `gateway/packages/theme-sdk`；现有 TypeScript 相对 import 和 app 的 `../../.env` 指向保持在 Gateway 子树内。当前开发只在本地做必要静态检查，`npm ci`、`npm run check`、Redis、浏览器和镜像验收统一放到 CI，避免重复占用本地资源。
 
 实际工作流是根目录 [.github/workflows/ci-gateway.yml](../../.github/workflows/ci-gateway.yml)。所有 shell 步骤默认在 `gateway/` 执行，npm cache 使用 `gateway/package-lock.json`。验证保留 Gateway/SDK 类型检查、测试、构建、真实 Redis 多连接测试、SDK pack dry-run、启动拒绝检查、Compose/Docker/HPKE 容器检查、Chromium mock E2E、codec 和离线 crypto 浏览器检查。文档检查另覆盖 contracts、SDK README 和 staging 文档；这些门禁不代表生产 Core/CAPTCHA 联调。
 
@@ -23,7 +23,7 @@
 | `vX.Y.Z-rc.N`、`-beta.N`、`-preview.N` | `preview`、精确预发布标签 |
 | PR、手动验证、文档或测试单独变更 | 验证，不发布 |
 
-主仓 `v*` 是 Core/Gateway/Node 的统一发布版本，不另建 Gateway 发布 tag。版本标签使用主仓 [统一解析器](../../scripts/resolve-image-tags.sh)，且 release commit 必须已在 main；不支持的标签不会发布。OCI source/revision/version 从当前 GitHub repository、commit、ref 生成，主仓改名不要求修改镜像构建源码。流水线不自动发布 npm、切换部署、启用 Internal 开关，也未增加签名或 provenance 验收声明。
+主仓 `v*` 是 Core/Gateway/Node 的统一发布版本，不另建 Gateway 发布 tag。版本标签使用主仓 [统一解析器](../../scripts/resolve-image-tags.sh)，且 release commit 必须已在 main；不支持的标签不会发布。OCI source/revision/version 从当前 GitHub repository、commit、ref 生成，主仓改名不要求修改镜像构建源码。流水线不自动发布 npm、切换部署，也未增加签名或 provenance 验收声明。
 
 main 先发布不可变的 `dev-sha-*`；发布完成后重新读取 main，只有该 commit 仍属于 main 且 Gateway 运行源码、SDK 源码或构建配置没有继续变化，才从已构建 digest 更新 `dev`。后续仅文档/测试变更不阻止原运行版本发布；过时构建只保留不可变标签，不回写 `dev`。
 
@@ -35,16 +35,7 @@ Gateway 的 TypeScript builder 在 `BUILDPLATFORM` 上运行，最终 Node 容�
 
 Native 联调的 `TXBOARD_CORE_REPO` 指向主仓根目录，`TXBOARD_CORE_VENDOR` 指向其 `api/vendor`。`tests/integration/run-linux.sh` 仍归档 committed Core，再从 `gateway/` 构建消费者，不读取未提交的 Core 业务改动。
 
-Internal 快照工具的 source 和 dependency-source 指向 Gateway workspace：
-
-```sh
-python3 gateway/tests/integration/prepare-internal-user-snapshot.py \
-  /path/to/core/gateway /tmp/new-gateway-snapshot /path/to/linux-dependencies HEAD
-```
-
-工具默认归档该 source 相对 Git 根目录的 `gateway` 子树，然后叠加既定 Internal 文件；记录统一 commit、Gateway tree ID、source prefix 和叠加文件 SHA256。不能把整仓根目录当成 Gateway source。若复现迁移前的独立 Gateway commit，显式传第五参数空字符串 `''`，保留原 commit 身份；不会重写历史验收报告。
-
-运行 Internal 两套 TLS launcher 前，设置 `INTERNAL_EXPECTED_CORE_COMMIT=<固定Core快照的40位commit>`，必须与 Core `internal-snapshot.json` 完全相等。仍需独占合成测试库、明确 Redis scope 和原 mTLS fixture；合仓不会授权连接生产数据库或外发邮件。
+2026-10-16 已退役隔离 Internal User/Admin mTLS 消费者、快照工具、TLS launcher 和专属验收矩阵。当前 Gateway 只适配 Core 已注册的固定 `/txapi/*` 操作，未来管理员入口仍待独立实现。
 
 ## SDK 兼容边界
 

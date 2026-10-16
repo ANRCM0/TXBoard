@@ -13,10 +13,7 @@
 - 核心错误：400（入参）、401（缺 Token/上游未授权）、403（Origin）、404（未找到）、405（订单写入禁用）、409（HPKE 重放）、413（请求过大）、422（Laravel 校验）、429（账号限流或上游限流）、502/504（坏网关/超时）、503（Redis 安全存储不可用）、500（内部错误）。
 - 上游仅接受 Native `{data,meta?,request_id}` / `{error:{code,message,fields?},request_id}` 信封，并按操作校验 DTO；退休的 `status:success` 与旧 paginator 不再接受。错误正文不公开上游内部信息。
 - **权限判断始终以 Laravel 为准**。用户 GET 路由需 `Authorization: Bearer <user-token>`；无用户身份的页面不允许向 Gateway 提交管理员 Token。
-- 默认 Native 保持上述当前行为；仅 local/testing 明确启用 `GATEWAY_INTERNAL_USER_ENABLED=true` 时，现有受保护只读操作使用版本2 Internal mTLS 上游，DTO不变，失败无fallback。配置与限制见 [B5.2–B5.6 Current记录](../docs/internal-user-integration.md)，没有新增管理员 Gateway。
-- B5.8 额外精确启用 `GATEWAY_INTERNAL_PUBLIC_READ_ENABLED=true` 后，站点/主题和套餐展示可选择固定匿名 Internal mTLS operation；浏览器 Bearer 不转发，服务证书和 proof 仍必需。默认 Native、公共 DTO 和缓存 TTL 保持，Internal cache miss 失败无回退。[当前接入与验收](../docs/internal-user-integration.md)。
-- B5.9 额外精确 `GATEWAY_INTERNAL_LOGIN_ENABLED=true` 可选择隔离原生账户登录，Core另需登录开关和隔离副本标记。会话发行、密码及限流保持Core权威，只接受已确认关闭的CAPTCHA；未知提交不自动重试，原token不可恢复，现有会话撤销/过期仍有效。[当前范围与证据](../docs/internal-user-integration.md)。
-- B5.12 独立 `GATEWAY_INTERNAL_PASSWORD_RESET_ENABLED=true` 仅允许隔离的加密密码恢复，必须使用 Internal mTLS、HPKE 与 Redis，完整账户工作流关闭。SDK `auth.resetPassword` 不发送访客 Bearer，不自动重试；Core 保持原生锁、验证码预算、密码和会话权威，部分提交后的失败需要确认状态。见[当前接入范围](../docs/internal-user-integration.md)。
+- 当前上游只使用固定 Core `/txapi/*` 路由。隔离 Internal User/Admin mTLS 原型、其开关和消费者已退役，没有管理员 Gateway。
 
 ## 固定路由矩阵
 
@@ -27,9 +24,6 @@
 | GET `/plans` | 公开套餐列表；金额遵循 Laravel 分单位 | `/txapi/plans` |
 | POST `/auth/login` | 邮箱/密码、可选 CAPTCHA；兼容普通登录 | `/txapi/auth/login` |
 | GET `/user/profile` | 用户资料 | `/txapi/me` |
-| GET `/user/sessions` | 默认关闭，本地 Internal 会话开关；当前 User Bearer、有界 owner 列表 | 固定 Internal `user.session.list` v1 |
-| POST `/secure/auth/session-revoke` | 默认关闭，当前 User Bearer + HPKE；指定 decimal-string session ID | 固定 Internal `user.session.revoke` v1 |
-| POST `/secure/auth/session-logout` | 默认关闭，当前 User Bearer + HPKE；只删除当前凭据 | 固定 Internal `user.session.logout` v1 |
 | GET `/user/subscription/summary` | 订阅使用概览，不返回 token/uuid/subscribe_url | `/txapi/me/subscription` |
 | GET `/dashboard/stats` | `{unpaidOrders,openTickets,invitedUsers}` | `/txapi/me/dashboard-stats` |
 | GET `/orders` | 当前用户订单数组；可选 `status=0..4,current=1..9999,page_size=1..100`，默认第 1 页 100 条 | `/txapi/orders?page=&per_page=&status=` |
@@ -41,7 +35,7 @@
 | GET `/crypto/key` | 仅启用 HPKE 时公开 kid/suite/公钥/scope | Gateway 本地 |
 | POST `/secure/auth/login` | 启用 HPKE+Redis 时密文登录 | `/txapi/auth/login` |
 | POST `/secure/auth/register` | **默认关闭**，需 HPKE+Redis 和账户开关 | `/txapi/auth/register` |
-| POST `/secure/auth/email-code` | **默认关闭**，需 HPKE+Redis 和账户开关；另有独立本地隔离 Internal 邮件开关 | `/txapi/auth/email-code`；隔离 opt-in 为 `auth.email-code.send` |
+| POST `/secure/auth/email-code` | **默认关闭**，需 HPKE+Redis 和账户开关 | `/txapi/auth/email-code` |
 | POST `/orders` | **默认 405、零上游调用**；`GATEWAY_ORDER_WRITE_ENABLED=true` 时启用订单写入适配层（GW-304），需 Bearer + `Idempotency-Key` 头 | `/txapi/orders`（仅 `orderWrite` 策略） |
 
 仅支付方式展示使用用户 Bearer，不代表任何“访客支付方式”已开放。
@@ -55,11 +49,11 @@
 
 **密文账户操作**：Gateway 公钥发现后使用 HPKE 请求体 `{kid,ts,nonce,enc,ct}`。AAD 绑定 `login`/`register`/`email-code` 的固定路径；密文不可跨操作直接重放。注册字段 `{email,password,invite_code?,email_code?,turnstile_token?,recaptcha_v3_token?,recaptcha_data?}`，发邮箱码字段 `{email,turnstile_token?,recaptcha_v3_token?,recaptcha_data?}`。成功注册只返回用户 `auth_data`；邮箱码返回 `{sent:true}`。SDK 不把失败自动降级为明文注册/发码。
 
+解密后的 JSON 拒绝重复解码键（包括转义后的同名键）及超过 30 层的嵌套，解析或 DTO 校验失败返回 400。密码恢复、会话管理和订单取消的隔离原型路由及 SDK 方法已退役。
+
 **只读接口**：计划需 id/name；用户需 email；订单需 trade_no/status；付款仅公开 id/name/icon/payment/手续费字段；通知页限制 current 和 pageSize；统计固定是三个非负整数。错误或格式不符时拒绝而非强行透传。
 
 **订单写入（GW-304，默认关闭，`GATEWAY_ORDER_WRITE_ENABLED=true` 启用）**：
-
-同时启用 local/testing Internal User transport 时，订单创建选择固定 `user.order.create`；Core 的独立写入开关与隔离标记仍须成立，HTTP201/写入 DTO 严格校验、失败无 Native 回退。未启用 Internal 时保留现有 Native 上游。B5.7 已通过隔离验收，配置/提交未知恢复边界见 [当前接入记录](../docs/internal-user-integration.md)。
 
 - 请求头 `Idempotency-Key` **必填**，格式为 1–128 位 URL 安全字符（`[A-Za-z0-9._~-]`）；缺失或非法返回 `400 VALIDATION_ERROR`，**零上游调用**。
 - 请求体 strict schema：`{plan_id:正整数, period:枚举, coupon_code?:1–64位}`；未知字段 400。
@@ -83,16 +77,3 @@ Native 金额已是分，不再次乘 100；ISO 时间转现有 Unix 秒；套�
 - 当前隔离 Core fixtures 与 HTTP 正负例已验证；OpenAPI 3.1、完整安全审查、目标 BFF、正式部署与 SDK 发布仍待完成。
 
 [当前代码/CI 状态](../docs/development-status.md) · [HPKE/Redis 设计](../docs/app-crypto-preview.md) · [主题 SDK](../packages/theme-sdk/README.md)。
-
-本地 B5.10 的额外 `GATEWAY_INTERNAL_EMAIL_CODE_ENABLED=true` 要求已配置的 local/testing Internal mTLS、HPKE 和 Redis，且账户工作流关闭。它仅开放加密 email-code 路由，注册与明文 email-code 仍为404；Core 另要求隔离副本和邮件 opt-in，并只接受原生规范化后的精确 `@example.test` 域。Gateway 保留现有 `{sent:true}` DTO，不交付验证码、正文或收件人。任意 Internal401和服务预算429是基础设施503；原生校验/冷却/频控保持相应拒绝。选定 Internal 后不自动重试或回退 Native，未知结果可能已产生本地消息与缓存code。实际消息只使用 ArrayTransport，成功不代表外部送达。见[邮件切片证据](../docs/internal-email-code-core-verification.json)。
-
-B5.4 local Internal opt-in additionally maps protected `/dashboard/stats` and
-`/payments` to fixed empty-input User operations, retaining their public DTOs.
-Native remains the default. Invalid actor, service trust, overflow, unexpected
-fields or transport failure does not trigger a Native fallback. This supplies
-no checkout authorization or production PKI/SC-v2 acceptance.
-
-B5.5 extends that local opt-in to the authenticated subscription summary and
-notices. Public DTOs, native visible-only content and bounded pages remain;
-credentials are excluded. Missing plan, invalid actor/trust/DTO or transport
-errors retain refusal without Native fallback. Native stays the default.

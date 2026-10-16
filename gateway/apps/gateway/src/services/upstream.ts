@@ -1,7 +1,6 @@
 import type { GatewayConfig } from '../config/env.js'
 import { adaptNativeData, nativeErrorEnvelope, nativeSuccessEnvelope } from '../adapters/txapi-native.js'
 import { GatewayFailure } from './failures.js'
-import { internalUserRequest } from './internal-user-client.js'
 import { mappedOrderWriteFailure } from './order-write-failure.js'
 export { GatewayFailure, type GatewayFailureCode } from './failures.js'
 
@@ -23,7 +22,6 @@ const allowlistedPaths = {
   userOrderStatus: '/txapi/orders/',
   register: '/txapi/auth/register',
   sendEmailCode: '/txapi/auth/email-code',
-  resetPassword: '/txapi/auth/password/forgot',
   // GW-304: order creation. The ONLY mutating operation the order-write
   // adaptation layer may reach, and only when GATEWAY_ORDER_WRITE_ENABLED is
   // set. Laravel owns the idempotency decision; the Gateway only forwards the
@@ -124,17 +122,6 @@ export async function upstreamRequest(
     headers?: Record<string, string>
   } = {},
 ): Promise<unknown> {
-  if (config.internalUser && ((config.internalPublicReadEnabled === true && (operation === 'guestConfig' || operation === 'guestPlans'))
-    || (config.internalLoginEnabled === true && operation === 'login')
-    || (config.internalEmailCodeEnabled === true && operation === 'sendEmailCode')
-    || (config.internalRegisterEnabled === true && operation === 'register')
-    || operation === 'userProfile' || operation === 'userOrderDetail' || operation === 'userOrders'
-    || operation === 'userStats' || operation === 'userPaymentMethods' || operation === 'userSubscription' || operation === 'userNotices' || operation === 'userOrderStatus' || operation === 'userOrderCreate')) {
-    return internalUserRequest(config, operation, options)
-  }
-  if (config.internalPasswordResetEnabled === true && operation === 'resetPassword') {
-    return internalUserRequest(config, operation, options)
-  }
   // No untrusted path/host input can escape this static allowlist.
   const path = allowlistedPaths[operation]
   if (path === null) throw new GatewayFailure('UPSTREAM_ERROR', 404, 'Public payment catalog unavailable')
@@ -156,7 +143,7 @@ export async function upstreamRequest(
   }
   const headers = new Headers({ Accept: 'application/json' })
   if (operation.startsWith('user') && options.auth) headers.set('Authorization', options.auth)
-  const method = operation === 'login' || operation === 'register' || operation === 'sendEmailCode' || operation === 'resetPassword'
+  const method = operation === 'login' || operation === 'register' || operation === 'sendEmailCode'
     || operation === 'userOrderCreate'
     ? 'POST' : 'GET'
   if (method === 'POST') headers.set('Content-Type', 'application/json')

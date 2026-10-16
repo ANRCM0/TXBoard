@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises'
 import { createHash } from 'node:crypto'
 import { Aes256Gcm, CipherSuite, DhkemP256HkdfSha256, HkdfSha256 } from '@hpke/core'
 import { GatewayFailure } from '../services/upstream.js'
-import { strictInternalJson } from '../adapters/internal-user-v2.js'
+import { parseStrictJson } from '../security/strict-json.js'
 
 const info = new TextEncoder().encode('TXBOARD-GW-V1-LOGIN-HPKE')
 /**
@@ -17,7 +17,7 @@ export const aadPrefix = 'txboard-gateway:v1\nPOST\n/gateway/v1/secure/auth/'
  */
 export const singleShotSession = '-'
 const replayWindowMs = 60_000
-export type CryptoOperation = 'login' | 'register' | 'email-code' | 'password-reset' | 'session-revoke' | 'session-logout'
+export type CryptoOperation = 'login' | 'register' | 'email-code'
 export interface ReplayStore {
   reserve(kid: string, nonce: string, ttlMs: number): Promise<boolean>
 }
@@ -228,7 +228,7 @@ export class CryptoService {
     if (!first) throw new GatewayFailure('VALIDATION_ERROR', 409, 'Replayed encrypted request')
     try {
       const json = new TextDecoder('utf-8', { fatal: true }).decode(plaintext)
-      return operation === 'session-revoke' || operation === 'session-logout' ? strictInternalJson(json) : JSON.parse(json)
+      return parseStrictJson(json)
     } catch {
       throw new GatewayFailure('VALIDATION_ERROR', 400, 'Invalid decrypted JSON')
     }
@@ -270,14 +270,7 @@ export async function loadCryptoService(
   if (!['disabled', 'optional'].includes(mode)) throw new Error('Unsupported GATEWAY_HPKE_MODE')
   if (mode === 'disabled') return undefined
   if (!replay) throw new Error('Redis replay protection is required for HPKE mode')
-  const emailOnly = env.GATEWAY_INTERNAL_EMAIL_CODE_ENABLED === 'true'
-  const registerOnly = env.GATEWAY_INTERNAL_REGISTER_ENABLED === 'true'
-  const resetOnly = env.GATEWAY_INTERNAL_PASSWORD_RESET_ENABLED === 'true'
-  const sessionsOnly = env.GATEWAY_INTERNAL_SESSIONS_ENABLED === 'true'
   const accountEnabled = env.GATEWAY_ACCOUNT_WORKFLOWS_ENABLED === 'true'
-  if ((emailOnly || registerOnly || resetOnly || sessionsOnly) && (accountEnabled || !['local', 'testing'].includes(env.APP_ENV ?? ''))) {
-    throw new Error('Invalid isolated account HPKE scope configuration')
-  }
   const keyFile = env.GATEWAY_HPKE_KEY_FILE
   if (!keyFile || !keyFile.startsWith('/')) {
     throw new Error('GATEWAY_HPKE_KEY_FILE must be an absolute Docker secret path')
@@ -305,7 +298,5 @@ export async function loadCryptoService(
   // 吊销表：非法 kid 格式 fail-hard 启动（防误拼"以为吊销了其实没有"）。
   const revokedKids = parseRevokedKids(env.GATEWAY_HPKE_REVOKED_KIDS)
 
-  // Existing key scope is broader than the email-only route allowlist. It does
-  // not authorize registration; the policy table and Core operation remain final.
-  return CryptoService.create(jwk, replay, accountEnabled || emailOnly || registerOnly || resetOnly || sessionsOnly, previousJwk, previousExpiresAt, revokedKids)
+  return CryptoService.create(jwk, replay, accountEnabled, previousJwk, previousExpiresAt, revokedKids)
 }

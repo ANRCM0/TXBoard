@@ -1,5 +1,7 @@
 # Isolated local email-code send over Internal mTLS v1
 
+> 已退役（2026-10-16）：本文保留旧隔离切片的历史协议和验收说明。对应 Core/Gateway 运行入口、配置、SDK 原型消费者、夹具及专属 CI 已移除；下文 Current/local-testing 状态仅描述当时实现。正式 Internal API 仍属 C4 待交付，不提供旧路径或旧版本兼容。见 [当前清理边界](../../../docs/development/core-cleanup.md)。
+
 Status: Current / verified isolated local slice. Fixed-source Core tests and real SDK/HPKE/Redis/mTLS/ArrayTransport checks passed; see [verification evidence](../../../docs/architecture/v2/internal-isolated-email-code-verification.json). This operation does not activate production mail, registration, password recovery or CAPTCHA providers.
 
 `auth.email-code.send`, contract version `"1"`, uses only the existing fixed Internal mTLS boundary and `user-gateway` service identity. Its distinct `email-code` actor requires an absent Authorization header, including rejection of an empty header, and proof `actor_sha256=SHA256("")`. Native User/Admin credentials do not replace service identity. Technical audit uses actor_id `0`, not a virtual User. Global Internal enabled, local/testing environment, `core_shadow.isolated_copy=true` and the extra exact-true default-off `internal_api_slice.email_code_enabled` are all required; public/login/order flags cannot enable this operation.

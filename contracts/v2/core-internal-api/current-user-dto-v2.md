@@ -1,5 +1,7 @@
 # Internal User DTO v2 当前本机切片
 
+> 已退役（2026-10-16）：本文保留旧隔离切片的历史协议和验收说明。对应 Core/Gateway 运行入口、配置、SDK 原型消费者、夹具及专属 CI 已移除；下文 Current/local-testing 状态仅描述当时实现。正式 Internal API 仍属 C4 待交付，不提供旧路径或旧版本兼容。见 [当前清理边界](../../../docs/development/core-cleanup.md)。
+
 状态：Current / local-testing-only，B5.2。基于已提交 B5.1 `8543668ccf7c53174f4ce1e9f4d0f25856fe2855`，不代表全部 B5/B6、生产门禁或 SC-v2 完成。
 
 沿用 `POST /txapi/internal/v1/operations/{id}` 和 B5.1 服务证明/授权机制，请求仅新增 `contract_version:"2"`。完整原始正文（包含版本与 deadline）仍被 JWS body hash 绑定。JWS v=`internal-readonly/1` 是服务证明版本，与 DTO request version 分别验证。

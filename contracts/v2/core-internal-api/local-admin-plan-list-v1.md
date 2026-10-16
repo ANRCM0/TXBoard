@@ -1,5 +1,7 @@
 # 隔离管理套餐列表 v1
 
+> 已退役（2026-10-16）：本文保留旧隔离切片的历史协议和验收说明。对应 Core/Gateway 运行入口、配置、SDK 原型消费者、夹具及专属 CI 已移除；下文 Current/local-testing 状态仅描述当时实现。正式 Internal API 仍属 C4 待交付，不提供旧路径或旧版本兼容。见 [当前清理边界](../../../docs/development/core-cleanup.md)。
+
 > 状态：Current，仅默认关闭的隔离 local/testing 切片；见[验收报告](../../../docs/architecture/v2/internal-admin-plan-list-verification.json)。
 
 B5.20 增加 `admin.plan.list` version `1`，只由 `admin-gateway` 调用。独立 `CORE_INTERNAL_ADMIN_PLAN_LIST_ENABLED` 默认关闭，并要求全局 Internal 开关、local/testing、隔离副本。每次使用当前 Sanctum、封禁、AdminPath/Admin 授权；服务证书不授予管理员角色。

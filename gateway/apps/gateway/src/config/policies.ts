@@ -23,13 +23,9 @@ export type PolicyName =
   | 'secureLogin'
   | 'secureRegister'
   | 'secureEmailCode'
-  | 'securePasswordReset'
-  | 'isolatedSessionRead'
-  | 'secureSessionMutation'
   | 'captchaChallenge'
   | 'disabledWrite'
   | 'orderWrite'
-  | 'isolatedOrderCancel'
 
 export type RoutePolicy = Readonly<{
   /** Identity of the policy; the stable key used by snapshots and tests. */
@@ -57,9 +53,6 @@ export const POLICY_DEFINITIONS: Readonly<Record<PolicyName, RoutePolicy>> = {
   secureLogin: { name: 'secureLogin', auth: 'none', body: 'hpke', limiter: 'login', cache: 'off' },
   secureRegister: { name: 'secureRegister', auth: 'none', body: 'hpke', limiter: 'register', cache: 'off' },
   secureEmailCode: { name: 'secureEmailCode', auth: 'none', body: 'hpke', limiter: 'email-code', cache: 'off' },
-  securePasswordReset: { name: 'securePasswordReset', auth: 'none', body: 'hpke', limiter: 'public', cache: 'off' },
-  isolatedSessionRead: { name: 'isolatedSessionRead', auth: 'bearer', body: 'none', limiter: 'public', cache: 'off' },
-  secureSessionMutation: { name: 'secureSessionMutation', auth: 'bearer', body: 'hpke', limiter: 'public', cache: 'off' },
   // GW-209: challenge issue. Anonymous, limiter-guarded, never cached: the
   // returned challengeId is a bearer capability that must never be shared.
   captchaChallenge: { name: 'captchaChallenge', auth: 'none', body: 'none', limiter: 'public', cache: 'off' },
@@ -74,7 +67,6 @@ export const POLICY_DEFINITIONS: Readonly<Record<PolicyName, RoutePolicy>> = {
   // shape-checked before any handler runs, and never cached. The policy
   // guarantees no upstream call without a credential and a well-formed body;
   // idempotency and every business rule stay in Laravel (GW-302/303).
-  isolatedOrderCancel: { name: 'isolatedOrderCancel', auth: 'bearer', body: 'json', limiter: 'public', cache: 'off' },
   orderWrite: { name: 'orderWrite', auth: 'bearer', body: 'json', limiter: 'public', cache: 'off' },
 } as const
 
@@ -95,16 +87,12 @@ export const routeDefinitions = [
   { method: 'POST', path: `${PREFIX}/auth/login`, policy: POLICY_DEFINITIONS.login },
   { method: 'POST', path: `${PREFIX}/secure/auth/login`, policy: POLICY_DEFINITIONS.secureLogin },
   { method: 'POST', path: `${PREFIX}/secure/auth/register`, policy: POLICY_DEFINITIONS.secureRegister },
-  { method: 'POST', path: `${PREFIX}/secure/auth/password-reset`, policy: POLICY_DEFINITIONS.securePasswordReset },
   { method: 'POST', path: `${PREFIX}/secure/auth/email-code`, policy: POLICY_DEFINITIONS.secureEmailCode },
 
   // GW-209: one-time CAPTCHA challenge issue. Anonymous but limiter-guarded,
   // so challenge farming is throttled by the same public policy as bootstrap.
   { method: 'POST', path: `${PREFIX}/auth/captcha/challenge`, policy: POLICY_DEFINITIONS.captchaChallenge },
 
-  { method: 'GET', path: `${PREFIX}/user/sessions`, policy: POLICY_DEFINITIONS.isolatedSessionRead },
-  { method: 'POST', path: `${PREFIX}/secure/auth/session-revoke`, policy: POLICY_DEFINITIONS.secureSessionMutation },
-  { method: 'POST', path: `${PREFIX}/secure/auth/session-logout`, policy: POLICY_DEFINITIONS.secureSessionMutation },
   { method: 'GET', path: `${PREFIX}/user/profile`, policy: POLICY_DEFINITIONS.userRead },
   { method: 'GET', path: `${PREFIX}/user/subscription/summary`, policy: POLICY_DEFINITIONS.userRead },
   { method: 'GET', path: `${PREFIX}/notices`, policy: POLICY_DEFINITIONS.userRead },
@@ -116,7 +104,6 @@ export const routeDefinitions = [
   { method: 'GET', path: `${PREFIX}/payments`, policy: POLICY_DEFINITIONS.userRead },
 
   // Payment write ban: fixed 405, structurally zero upstream calls.
-  { method: 'POST', path: `${PREFIX}/orders/:tradeNo/cancel`, policy: POLICY_DEFINITIONS.isolatedOrderCancel },
   { method: 'POST', path: `${PREFIX}/orders`, policy: POLICY_DEFINITIONS.disabledWrite },
 ] as const
 
@@ -151,11 +138,7 @@ export const ROUTE_OPERATIONS: Readonly<Record<string, readonly string[]>> = {
   [routeKey('POST', `${PREFIX}/secure/auth/login`)]: ['login'],
   [routeKey('POST', `${PREFIX}/secure/auth/register`)]: ['register'],
   [routeKey('POST', `${PREFIX}/secure/auth/email-code`)]: ['sendEmailCode'],
-  [routeKey('POST', `${PREFIX}/secure/auth/password-reset`)]: ['resetPassword'],
   [routeKey('POST', `${PREFIX}/auth/captcha/challenge`)]: [],
-  [routeKey('GET', `${PREFIX}/user/sessions`)]: ['userSessionList'],
-  [routeKey('POST', `${PREFIX}/secure/auth/session-revoke`)]: ['userSessionRevoke'],
-  [routeKey('POST', `${PREFIX}/secure/auth/session-logout`)]: ['userSessionLogout'],
   [routeKey('GET', `${PREFIX}/user/profile`)]: ['userProfile'],
   [routeKey('GET', `${PREFIX}/user/subscription/summary`)]: ['userSubscription'],
   [routeKey('GET', `${PREFIX}/notices`)]: ['userNotices'],
@@ -167,7 +150,6 @@ export const ROUTE_OPERATIONS: Readonly<Record<string, readonly string[]>> = {
   [routeKey('GET', `${PREFIX}/payments`)]: ['userPaymentMethods'],
   // The write ban: zero upstream operations, in every posture where the
   // route is NOT promoted. See operationsFor().
-  [routeKey('POST', `${PREFIX}/orders/:tradeNo/cancel`)]: ['userOrderCancel'],
   [routeKey('POST', `${PREFIX}/orders`)]: [],
 } as const
 
@@ -194,11 +176,7 @@ const UPSTREAM_WRITE_OPERATIONS: ReadonlySet<string> = new Set<string>([
   'login',
   'register',
   'sendEmailCode',
-  'resetPassword',
   'userOrderCreate',
-  'userOrderCancel',
-  'userSessionRevoke',
-  'userSessionLogout',
 ])
 
 /**
@@ -214,11 +192,6 @@ export interface PolicyEnvironment {
   redis?: boolean
   /** GATEWAY_ACCOUNT_WORKFLOWS_ENABLED. */
   accountWorkflows?: boolean
-  /** Extra local Internal flag enables only secureEmailCode, never registration. */
-  isolatedEmailCode?: boolean
-  isolatedRegister?: boolean
-  isolatedPasswordReset?: boolean
-  isolatedSessions?: boolean
   /** GW-209: a CAPTCHA challenge store is wired, so the challenge route exists. */
   captchaChallenge?: boolean
   /**
@@ -228,7 +201,6 @@ export interface PolicyEnvironment {
    * shipped posture and nothing else — not a header, manifest or capability
    * — can weaken it.
    */
-  isolatedOrderCancel?: boolean
   orderWrite?: boolean
 }
 
@@ -237,7 +209,6 @@ export interface PolicyEnvironment {
 const ACCOUNT_WORKFLOW_POLICIES: ReadonlySet<PolicyName> = new Set<PolicyName>([
   'secureRegister',
   'secureEmailCode',
-  'securePasswordReset',
 ])
 
 /**
@@ -276,23 +247,7 @@ export function activeRouteDefinitions(
     return definition
   }).filter(definition => {
     const { policy, path } = definition
-    if (policy.name === 'isolatedOrderCancel') return environment.isolatedOrderCancel === true
-    if (policy.name === 'isolatedSessionRead' || policy.name === 'secureSessionMutation') {
-      return Boolean(environment.hpke && environment.redis && environment.replayStore
-        && environment.isolatedSessions && !environment.accountWorkflows)
-    }
-    if (policy.name === 'securePasswordReset') {
-      return Boolean(environment.hpke && environment.redis && environment.replayStore
-        && environment.isolatedPasswordReset && !environment.accountWorkflows)
-    }
-    if (policy.name === 'secureRegister') {
-      return accountWorkflows || Boolean(environment.hpke && environment.redis
-        && environment.replayStore && environment.isolatedRegister)
-    }
-    if (policy.name === 'secureEmailCode') {
-      return accountWorkflows || Boolean(environment.hpke && environment.redis
-        && environment.replayStore && environment.isolatedEmailCode)
-    }
+    if (ACCOUNT_WORKFLOW_POLICIES.has(policy.name)) return accountWorkflows
     // crypto/key is the HPKE public-key discovery endpoint: it exists only
     // when HPKE is wired, and every sealed route needs the same capability.
     if (policy.body === 'hpke' || policy.name === 'secureLogin' || path === `${PREFIX}/crypto/key`) {
@@ -401,22 +356,10 @@ export function validatePolicies(
     if (policy.body === 'hpke' && !environment.replayStore) {
       throw new Error(`Policy ${policy.name} accepts an HPKE envelope without a replay store`)
     }
-    if ((policy.name === 'isolatedSessionRead' || policy.name === 'secureSessionMutation')
-      && !(environment.hpke && environment.redis && environment.replayStore
-        && environment.isolatedSessions && !environment.accountWorkflows)) {
-      throw new Error('Isolated session policies require HPKE, Redis and the independent local flag')
-    }
     if (ACCOUNT_WORKFLOW_POLICIES.has(policy.name)) {
       // A single boolean must never unlock an account workflow: HPKE and Redis
       // and GATEWAY_ACCOUNT_WORKFLOWS_ENABLED have to be present together.
-      const emailOnly = policy.name === 'secureEmailCode' && environment.isolatedEmailCode
-        && !environment.accountWorkflows
-      const registerOnly = policy.name === 'secureRegister' && environment.isolatedRegister
-        && !environment.accountWorkflows
-      const resetOnly = policy.name === 'securePasswordReset' && environment.isolatedPasswordReset
-        && !environment.accountWorkflows
-      const unlocked = Boolean(environment.hpke && environment.redis
-        && (policy.name === 'securePasswordReset' ? resetOnly : environment.accountWorkflows || emailOnly || registerOnly))
+      const unlocked = Boolean(environment.hpke && environment.redis && environment.accountWorkflows)
       const halfUnlocked = Boolean(environment.hpke || environment.redis
         || environment.accountWorkflows) && !unlocked
       if (halfUnlocked) {

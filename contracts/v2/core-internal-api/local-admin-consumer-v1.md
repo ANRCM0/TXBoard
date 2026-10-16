@@ -1,5 +1,7 @@
 # 本地管理 Internal 消费者 v1
 
+> 已退役（2026-10-16）：本文保留旧隔离切片的历史协议和验收说明。对应 Core/Gateway 运行入口、配置、SDK 原型消费者、夹具及专属 CI 已移除；下文 Current/local-testing 状态仅描述当时实现。正式 Internal API 仍属 C4 待交付，不提供旧路径或旧版本兼容。见 [当前清理边界](../../../docs/development/core-cleanup.md)。
+
 B5.18 增量 Current：Gateway 中增加隔离测试用管理客户端，只消费固定 `auth.admin.login`、`admin.identity.get`、`admin.dashboard.get` version `1`。不注册公开 Admin HTTP 路由，不接入旧 User HPKE 通道，也不引入新的前端存储或业务数据。
 
 独立 `GATEWAY_INTERNAL_ADMIN_ENABLED=true` 与 `APP_ENV=local/testing` 门禁默认关闭；生产或歧义开关拒绝。服务端固定配置文件只能给出 HTTPS loopback/Internal Core origin、服务器名、CA、CRL、管理客户端证书与私钥路径。管理客户端证书 SAN 必须恰好 `DNS:admin-gateway.internal`，不能复用 User 服务身份；请求只使用 TLS1.3、当前有效证书、严格 Core SAN 和信任链，不跟随重定向。

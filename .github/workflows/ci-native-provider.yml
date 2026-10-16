@@ -45,7 +45,7 @@ jobs:
       - name: Core Provider codec, transport, domain and authenticated adapters
         working-directory: api
         run: >-
-          php artisan test --configuration phpunit-historical.xml
+          php artisan test
           tests/Unit/Domains/CredentialProvider
           tests/Feature/Installation/NativeProviderPreparationTest.php
           tests/Feature/Subscription/NativeCredentialProviderTest.php
@@ -103,6 +103,6 @@ jobs:
           php artisan migrate --force
       - name: Native Provider transactions and ownership on MySQL 8.4
         run: >-
-          php artisan test --configuration phpunit-historical.xml
+          php artisan test
           tests/Feature/Subscription/NativeCredentialProviderTest.php
           tests/Feature/Txapi/TxapiNativeCredentialProviderTest.php
