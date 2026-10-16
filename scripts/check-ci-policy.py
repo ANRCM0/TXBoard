@@ -20,13 +20,16 @@ AUTOMATIC = {
     "docker-txboard.yml",
     "docs.yml",
 }
-HISTORICAL_DIRS = {
-    "tests/Feature/InternalReadOnly",
-}
 RETIRED_WORKFLOWS = {
     f"ci-authority-{name}.yml"
     for name in ("writer-fence", "inventory-expand", "finance-fence",
                  "native-writers", "identity-writers", "ticket-writers")
+}
+RETIRED_WORKFLOWS |= {
+    f"ci-internal-{name}.yml"
+    for name in ("admin", "admin-consumer", "admin-dashboard", "admin-login",
+                 "admin-network-groups", "admin-order-list", "admin-plan-list",
+                 "admin-sessions", "admin-users", "order-cancel", "sessions")
 }
 
 
@@ -92,8 +95,8 @@ def validate_workflow(path):
             for step in job.get("steps", []):
                 command = step.get("run", "")
                 if re.search(r"(?:artisan\s+test|vendor/bin/phpunit)\b", command):
-                    require("phpunit-historical.xml" in command,
-                            f"{path.name}/{name}: manual suite must discover historical tests")
+                    require("--filter" in command or re.search(r"tests/(?:Feature|Unit)/", command),
+                            f"{path.name}/{name}: manual suite must select explicit tests")
     visiting, visited = set(), set()
 
     def visit(name):
@@ -117,15 +120,7 @@ def validate_suites():
         item.text.strip()
         for item in configuration.findall("./testsuites/testsuite/exclude")
     }
-    required = HISTORICAL_DIRS | {
-        path.relative_to(ROOT / "api").as_posix()
-        for path in (ROOT / "api/tests/Feature/Subscription").glob("*Test.php")
-        if "Legacy" in path.name or "Shadow" in path.name
-        or path.name == "SubscriptionSlotTest.php"
-    }
-    require(required <= excluded, "Default PHP suite still includes historical transition tests")
-    for path in excluded:
-        require((ROOT / "api" / path).exists(), f"Stale PHP suite exclusion: {path}")
+    require(not excluded, "Current PHP suite must not hide tests through historical exclusions")
     current = (
         list((ROOT / "api/tests/Feature/Installation").glob("*Test.php"))
         + list((ROOT / "api/tests/Feature/Subscription").glob("Native*Test.php"))
@@ -143,9 +138,8 @@ def validate_suites():
                 f"Current native test is not discovered: {relative}")
         require(not any(relative == old or relative.startswith(old + "/") for old in excluded),
                 f"Current native test excluded: {relative}")
-    historical = ET.parse(ROOT / "api/phpunit-historical.xml").getroot()
-    require(not historical.findall("./testsuites/testsuite/exclude"),
-            "Historical investigation suite must discover explicitly requested old tests")
+    require(not (ROOT / "api/phpunit-historical.xml").exists(),
+            "Duplicate historical PHP configuration was restored")
     return len(excluded), len(current)
 
 
@@ -153,7 +147,7 @@ def main():
     files = sorted((ROOT / ".github/workflows").glob("*.yml"))
     require(AUTOMATIC <= {path.name for path in files}, "An automatic workflow is missing")
     require(not RETIRED_WORKFLOWS & {path.name for path in files},
-            "A retired authority prototype workflow was restored")
+            "A retired prototype workflow was restored")
     workflows = {path.name: validate_workflow(path) for path in files}
     for owner in ("ci-api.yml", "ci-mysql.yml", "docker-txboard.yml"):
         trigger = workflows[owner]["on"]["pull_request"]

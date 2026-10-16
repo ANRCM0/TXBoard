@@ -1,5 +1,7 @@
 # Local Internal current order status v2
 
+> 已退役（2026-10-16）：本文保留旧隔离切片的历史协议和验收说明。对应 Core/Gateway 运行入口、配置、SDK 原型消费者、夹具及专属 CI 已移除；下文 Current/local-testing 状态仅描述当时实现。正式 Internal API 仍属 C4 待交付，不提供旧路径或旧版本兼容。见 [当前清理边界](../../../docs/development/core-cleanup.md)。
+
 Status: B5.6 implemented and verified, local/testing only. Fixed operation
 `user.order-status.get` version `2` requires the current non-admin Sanctum User
 and `user-gateway` service proof. Input contains only `trade_no`, 1..128 ASCII

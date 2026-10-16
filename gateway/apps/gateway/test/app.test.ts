@@ -4,6 +4,8 @@ import { createGatewayApp } from '../src/app.js'
 import { loadConfig } from '../src/config/env.js'
 import { CryptoService, loadCryptoService } from '../src/services/crypto.js'
 import { generateKeyPairSync } from 'node:crypto'
+import { Aes256Gcm, CipherSuite, DhkemP256HkdfSha256, HkdfSha256 } from '@hpke/core'
+import { buildAad } from '../src/services/crypto.js'
 import { encryptLoginPayload, encryptForOperation } from '../../../packages/theme-sdk/src/crypto.js'
 import { invalidateCache, resetCacheStats } from '../src/middleware/cache.js'
 
@@ -443,4 +445,40 @@ describe('account workflows and read-only dashboard models', () => {
     expect(res.status).toBe(400)
     expect(fetcher).not.toHaveBeenCalled()
   })
+  it.each(['login', 'register', 'email-code'] as const)(
+    'rejects duplicate decoded keys before %s reaches Laravel',
+    async operation => {
+      const { privateKey } = generateKeyPairSync('ec', { namedCurve: 'prime256v1' })
+      const crypto = await CryptoService.create(privateKey.export({ format: 'jwk' }), fakeReplay(), true)
+      const fetcher = mockFetch(ok({ auth_data: token }))
+      const limiter = { check: vi.fn(async () => {}) }
+      const app = createGatewayApp(config, fetcher, crypto, { accountWorkflows: true, limiter })
+      const key = crypto.publicKey().keys[0]!
+      const suite = new CipherSuite({
+        kem: new DhkemP256HkdfSha256(), kdf: new HkdfSha256(), aead: new Aes256Gcm(),
+      })
+      const recipientPublicKey = await suite.kem.deserializePublicKey(Uint8Array.from(Buffer.from(key.publicKey, 'base64url')))
+      const sender = await suite.createSenderContext({
+        recipientPublicKey, info: new TextEncoder().encode('TXBOARD-GW-V1-LOGIN-HPKE'),
+      })
+      const ts = Date.now()
+      const nonce = '0123456789abcdef012345'
+      const plaintext = '{"email":"first@example.test","\\u0065mail":"second@example.test","password":"pass12345678"}'
+      const ciphertext = await sender.seal(new TextEncoder().encode(plaintext), buildAad(operation, key.kid, ts, nonce))
+      const body = JSON.stringify({
+        kid: key.kid, ts, nonce,
+        enc: Buffer.from(sender.enc).toString('base64url'),
+        ct: Buffer.from(ciphertext).toString('base64url'),
+      })
+      const send = () => app.request('/gateway/v1/secure/auth/' + operation, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body,
+      })
+      const response = await send()
+      expect(response.status).toBe(400)
+      expect((await dataOf(response)).error.code).toBe('VALIDATION_ERROR')
+      expect((await send()).status).toBe(409)
+      expect(fetcher).not.toHaveBeenCalled()
+      expect(limiter.check).not.toHaveBeenCalled()
+    },
+  )
 })

@@ -1,5 +1,7 @@
 # Isolated current User sessions over Internal mTLS v1
 
+> 已退役（2026-10-16）：本文保留旧隔离切片的历史协议和验收说明。对应 Core/Gateway 运行入口、配置、SDK 原型消费者、夹具及专属 CI 已移除；下文 Current/local-testing 状态仅描述当时实现。正式 Internal API 仍属 C4 待交付，不提供旧路径或旧版本兼容。见 [当前清理边界](../../../docs/development/core-cleanup.md)。
+
 Status: Current / verified isolated B5.13. See [fixed-source evidence](../../../docs/architecture/v2/internal-isolated-sessions-verification.json). Local/testing synthetic accounts only; native `/txapi/auth/logout` and `/txapi/auth/sessions` remain authoritative.
 
 Fixed `user.session.list`, `user.session.revoke` and `user.session.logout` use contract version `"1"`, `user-gateway` service identity and the actual current Sanctum Bearer. Global Internal, isolated-copy and independent default-off `CORE_INTERNAL_SESSIONS_ENABLED` gates are required. Admin, banned, expired/revoked tokens and non-User principals are refused. Only exact synthetic `@example.test` accounts enter this slice. Service proof binds the actual Authorization header, method, path and raw body; SQL nonce admission still prevents proof replay.

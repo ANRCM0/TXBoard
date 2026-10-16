@@ -10,8 +10,6 @@
         </testsuite>
         <testsuite name="Feature">
             <directory>tests/Feature</directory>
-            <!-- Historical transition suites are opt-in by explicit test path. -->
-            <exclude>tests/Feature/InternalReadOnly</exclude>
         </testsuite>
     </testsuites>
     <source>

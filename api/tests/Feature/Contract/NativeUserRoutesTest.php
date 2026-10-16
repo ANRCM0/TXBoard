@@ -16,6 +16,14 @@ class NativeUserRoutesTest extends TestCase
         }
     }
 
+    public function test_retired_internal_service_routes_are_not_registered(): void
+    {
+        foreach (Route::getRoutes()->getRoutes() as $route) {
+            $this->assertDoesNotMatchRegularExpression('~^txapi/internal(?:/|$)~', $route->uri(),
+                'A retired Internal API route was re-registered: ' . $route->uri());
+        }
+    }
+
     public function test_old_controller_namespaces_are_absent_and_entrypoints_have_native_handlers(): void
     {
         $this->assertDirectoryDoesNotExist(app_path('Http/Controllers/V1'));

@@ -1,5 +1,7 @@
 # Isolated User order cancellation v1
 
+> 已退役（2026-10-16）：本文保留旧隔离切片的历史协议和验收说明。对应 Core/Gateway 运行入口、配置、SDK 原型消费者、夹具及专属 CI 已移除；下文 Current/local-testing 状态仅描述当时实现。正式 Internal API 仍属 C4 待交付，不提供旧路径或旧版本兼容。见 [当前清理边界](../../../docs/development/core-cleanup.md)。
+
 Status: Current isolated slice. Synthetic local/testing only, independently default off.
 
 `user.order.cancel` version `1` takes the closed input `{trade_no}` with ASCII `[A-Za-z0-9_-]` length 1..128. `CORE_INTERNAL_ORDER_CANCEL_ENABLED` must be strictly true together with global Internal, local/testing and the isolated-copy gate. Dedicated user-gateway identity and the current native User Bearer are required. Core preserves current ban, non-Admin User operation policy and native owner-scoped order lookup; a caller/service ID never grants ownership. Success is HTTP200 `{data:{ok:true},request_id,meta:{current_only:true,slice:internal-order-cancel/1}}`, private/no-store. Missing or foreign order is native404; OrderService false is native409 `ORDER_CONFLICT`.

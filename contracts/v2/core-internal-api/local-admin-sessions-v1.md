@@ -1,5 +1,7 @@
 # 隔离管理会话 v1
 
+> 已退役（2026-10-16）：本文保留旧隔离切片的历史协议和验收说明。对应 Core/Gateway 运行入口、配置、SDK 原型消费者、夹具及专属 CI 已移除；下文 Current/local-testing 状态仅描述当时实现。正式 Internal API 仍属 C4 待交付，不提供旧路径或旧版本兼容。见 [当前清理边界](../../../docs/development/core-cleanup.md)。
+
 > 状态：Current，仅默认关闭的隔离 local/testing 切片；见[验收报告](../../../docs/architecture/v2/internal-admin-sessions-verification.json)。
 
 B5.21 加入 `admin.session.list`、`admin.session.revoke` 和 `admin.session.logout`，version `1`。独立 `CORE_INTERNAL_ADMIN_SESSIONS_ENABLED` 默认关闭，同时要求全局 Internal、local/testing、隔离副本和合成 `@example.test` 管理账户。只能由独立admin-gateway证书和实际当前Sanctum Bearer调用。当前封禁、AdminPath/Admin每次核对，普通User/staff/Node及退役Agent凭据不得执行管理操作；请求不能指定owner。

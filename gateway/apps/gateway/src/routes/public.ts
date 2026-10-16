@@ -38,9 +38,8 @@ export function registerPublicRoutes(app: RouteRegistrar, deps: PublicRouteDeps)
         'user.subscription.summary', 'orders.detail', 'payments.methods', 'notices.list',
         'dashboard.stats', 'orders.status', 'orders.page',
         ...(crypto ? ['auth.login.encrypted'] : []),
-        ...(config.internalSessionsEnabled === true ? ['auth.sessions', 'auth.logout.encrypted'] : []),
         ...(accountWorkflows ? ['auth.register.encrypted'] : []),
-        ...(accountWorkflows || config.internalEmailCodeEnabled === true ? ['auth.email-code.encrypted'] : []),
+        ...(accountWorkflows ? ['auth.email-code.encrypted'] : []),
         // GW-304: advertise order creation only when the deployment actually
         // enabled it, so a theme never offers a write the Gateway would 405.
         ...(config.orderWriteEnabled ? ['orders.create'] : []),

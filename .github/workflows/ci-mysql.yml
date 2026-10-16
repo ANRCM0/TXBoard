@@ -88,7 +88,7 @@ jobs:
             echo "MySQL core schema verified" . PHP_EOL;
           '
       - name: Verify P0 metadata normalization
-        run: php artisan test --configuration phpunit-historical.xml tests/Unit/Support/Audit/MySqlSchemaInventoryTest.php
+        run: php artisan test tests/Unit/Support/Audit/MySqlSchemaInventoryTest.php
       - name: Capture read-only MySQL schema and uniqueness evidence
         run: php scripts/p0-schema-inventory.php --output=artifacts/p0-schema.json
       - uses: actions/setup-node@v4
@@ -121,11 +121,11 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
       - name: P0-B synthetic MySQL HTTP-to-worker journey
-        run: php artisan test --configuration phpunit-historical.xml tests/Feature/Journey/CorePurchaseTrafficJourneyTest.php
+        run: php artisan test tests/Feature/Journey/CorePurchaseTrafficJourneyTest.php
       - name: P0-B synthetic MySQL read-path baseline
         env:
           P0_BASELINE_OUTPUT: ${{ github.workspace }}/api/artifacts/p0b-read-path-mysql.json
-        run: php artisan test --configuration phpunit-historical.xml tests/Feature/Performance/P0ReadPathBaselineTest.php
+        run: php artisan test tests/Feature/Performance/P0ReadPathBaselineTest.php
       - name: Preserve P0-B synthetic benchmark artifact
         if: always()
         uses: actions/upload-artifact@v4
@@ -135,17 +135,17 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
       - name: P2-E native user auth and token lifecycle on MySQL
-        run: php artisan test --configuration phpunit-historical.xml tests/Feature/Txapi/TxapiNativeAuthTest.php
+        run: php artisan test tests/Feature/Txapi/TxapiNativeAuthTest.php
       - name: P2-D native support ticket contract on MySQL
-        run: php artisan test --configuration phpunit-historical.xml tests/Feature/Txapi/TxapiTicketWorkflowTest.php
+        run: php artisan test tests/Feature/Txapi/TxapiTicketWorkflowTest.php
       - name: P2-C native account content contracts on MySQL
-        run: php artisan test --configuration phpunit-historical.xml tests/Feature/Txapi/TxapiAccountContentTest.php
+        run: php artisan test tests/Feature/Txapi/TxapiAccountContentTest.php
       - name: P2-A native plan catalog and renewal permissions on MySQL
-        run: php artisan test --configuration phpunit-historical.xml tests/Feature/Txapi/TxapiPlanCatalogTest.php
+        run: php artisan test tests/Feature/Txapi/TxapiPlanCatalogTest.php
       - name: P1-A native TXAPI read/auth contract on MySQL
-        run: php artisan test --configuration phpunit-historical.xml tests/Feature/Txapi/TxapiCoreContractTest.php
+        run: php artisan test tests/Feature/Txapi/TxapiCoreContractTest.php
       - name: P3 financial invariant audit regression
-        run: php artisan test --configuration phpunit-historical.xml tests/Feature/Billing/FinancialInvariantAuditTest.php
+        run: php artisan test tests/Feature/Billing/FinancialInvariantAuditTest.php
       - name: Capture P3 read-only billing invariant artifact
         run: php scripts/p3-billing-audit.php --output=artifacts/p3-billing-audit.json
       - name: Upload P3 billing invariant artifact
@@ -157,33 +157,33 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
       - name: P3-A3 shared checkout and native checkout boundary on MySQL
-        run: php artisan test --configuration phpunit-historical.xml tests/Feature/Txapi/TxapiCheckoutTest.php
+        run: php artisan test tests/Feature/Txapi/TxapiCheckoutTest.php
       - name: P3-B dual-webhook signed notification and replay on MySQL
-        run: php artisan test --configuration phpunit-historical.xml tests/Feature/Payment/PaymentWebhookTest.php
+        run: php artisan test tests/Feature/Payment/PaymentWebhookTest.php
       - name: P3-A2 native billing contracts and reconciliation
-        run: php artisan test --configuration phpunit-historical.xml tests/Feature/Txapi/TxapiBillingTest.php
+        run: php artisan test tests/Feature/Txapi/TxapiBillingTest.php
       - name: GW-303 idempotency contract and crash recovery on MySQL
-        run: php artisan test --configuration phpunit-historical.xml tests/Feature/Txapi/TxapiOrderIdempotencyTest.php
+        run: php artisan test tests/Feature/Txapi/TxapiOrderIdempotencyTest.php
       - name: C1 purchased terms validation and fulfillment on MySQL
         run: >-
-          php artisan test --configuration phpunit-historical.xml
+          php artisan test
           tests/Unit/Domains/Billing/OrderPurchaseTermsSnapshotTest.php
           tests/Unit/Domains/Billing/PurchasedOrderGrantTest.php
           tests/Feature/Billing/PurchasedTermsFulfillmentTest.php
       - name: GW-303 real MySQL 100-concurrent-request idempotency stress
-        run: php artisan test --configuration phpunit-historical.xml tests/Feature/Billing/OrderIdempotencyMysqlConcurrencyTest.php
+        run: php artisan test tests/Feature/Billing/OrderIdempotencyMysqlConcurrencyTest.php
       - name: C2 installation admission and native catalog preparation on MySQL
-        run: php artisan test --configuration phpunit-historical.xml tests/Feature/Installation/InstallationRuntimeTest.php
+        run: php artisan test tests/Feature/Installation/InstallationRuntimeTest.php
       - name: P3-A monetary state transitions and coupon recovery on MySQL
-        run: php artisan test --configuration phpunit-historical.xml tests/Unit/Services/OrderServiceConcurrencyTest.php
+        run: php artisan test tests/Unit/Services/OrderServiceConcurrencyTest.php
       - name: P4-D native WS frames, scopes and cross-transport ledger
-        run: php artisan test --configuration phpunit-historical.xml tests/Feature/Server/TxNodeNativeWebSocketTest.php
+        run: php artisan test tests/Feature/Server/TxNodeNativeWebSocketTest.php
       - name: P4 native node authentication and protocol contract on MySQL
-        run: php artisan test --configuration phpunit-historical.xml tests/Feature/Server/TxNodeNativeProtocolTest.php
+        run: php artisan test tests/Feature/Server/TxNodeNativeProtocolTest.php
       - name: P4 optimized traffic batch query budget and settlement correctness
-        run: php artisan test --configuration phpunit-historical.xml tests/Feature/Server/TrafficBatchSettlementTest.php
+        run: php artisan test tests/Feature/Server/TrafficBatchSettlementTest.php
       - name: MySQL order recovery regression
-        run: php artisan test --configuration phpunit-historical.xml tests/Feature/Order/CheckOrderRecoveryTest.php
+        run: php artisan test tests/Feature/Order/CheckOrderRecoveryTest.php
 
   installation-bootstrap:
     runs-on: ubuntu-latest

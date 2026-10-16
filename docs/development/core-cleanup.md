@@ -1,6 +1,6 @@
 # Core 清理与领域边界
 
-更新：2026-10-16。本批基于已合并的 C2 和当前 native 开发基线；运行验证由候选 PR 的 CI 提供，不因文件移动宣称新增业务已交付。
+更新：2026-10-16。前四批已通过各自 CI 并合并至 main；第五批基于当前 native 开发基线退役隔离 Internal API，运行验证由候选 PR 的 CI 提供，不因代码清理宣称新增业务已交付。
 
 ## 第一批：订阅与原型
 
@@ -48,6 +48,17 @@
 
 现有普通账户冻结回调、管理员删除 veto、套餐批量回滚、native 权限与真实 C2 回归继续由各 CI 所有者执行；不再执行退役版本矩阵。第四批结果以候选提交的 CI 为准。
 
+## 第五批：隔离 Internal API
+
+移除 Core 的 `InternalReadOnly` 域、专属 controller/middleware、配置及 `/txapi/internal/v1/operations/{id}` 路由。旧 Bearer 或 Service Proof 不能重新启用退役路由；正式服务身份和操作分发仍属 C4 待交付。
+
+- Gateway 同步移除 Internal user/admin 客户端、适配器、环境配置和仅依赖它们的 session、密码重置、订单取消入口。对应 SDK 方法、策略和 schema 一并删除，不保留失去服务端消费者的方法。
+- 当前 native TXAPI 上游、账户工作流和 HPKE 认证继续保留。严格 JSON 解析归入 Gateway 通用安全层，供现存登录、注册和验证码解密使用，拒绝重复解码键和过深输入。
+- 删除隔离副本夹具、启动器、专属测试和 11 条手动 CI。默认 PHP 配置不再排除历史目录，语义完全相同的第二份配置一并移除；其余手动工具通过测试路径或 filter 选择必要范围。
+- 当前路由审计明确禁止恢复 `/txapi/internal`，领域检查禁止退役运行时引用。历史协议标记退役，既有验证 JSON、数据库迁移及历史表保持原样。
+
+Core API、MySQL、native C2 与镜像继续验证当前行为；Gateway/SDK、Redis、容器及浏览器由现有 Gateway CI 集中验证。本地只做静态检查，不重建原型环境。
+
 ## 当前领域入口
 
 订阅服务的具体职责、事务要求和跨域边界见 [Subscription domain](../../api/app/Domains/Subscription/README.md)。
@@ -67,9 +78,9 @@
 
 隔离 authority 迁移原型已在第四批删除。当前安装状态仍使用既有 `tx_authority_writer_fence` 表名；这不是保留旧迁移运行器。正式 native runtime outbox 与旧隔离 postcommit handoff 是不同机制。
 
-旧写入口的实际业务与 `UserObserver` 尚存，capture hooks 已移除。旧 Client/User 渲染入口及隔离 Internal API 尚未整体替换。
+旧写入口的实际业务与 `UserObserver` 尚存，capture hooks 已移除。旧 Client/User 订阅渲染及旧 Node 用户增量链仍需按真实消费者清理。隔离 Internal API 已在第五批候选中退役；正式 C4 接口尚未交付。
 
-条款影子写入已在第三批候选中删除。旧 UsageV2 的隔离接收配置、手动 Registry 工具及其共享实现仍有测试或历史夹具消费者，不能把本批理解为所有旧 Node 链路均已清除。
+条款影子写入已在第三批删除。旧 UsageV2 的隔离接收配置、手动 Registry 工具及其共享实现仍有测试或历史夹具消费者，不能把本批理解为所有旧 Node 链路均已清除。Plugin/Theme 的旧包格式与适配分支也需与当前包生产者、消费者同步收敛。
 
 这些剩余实现不构成旧版本支持承诺，也不要求为它们继续添加兼容功能。C3—C5 的业务交付范围保持原计划。
 

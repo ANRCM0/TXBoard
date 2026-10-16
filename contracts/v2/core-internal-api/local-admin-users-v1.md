@@ -1,5 +1,7 @@
 # 隔离管理用户读取 v1
 
+> 已退役（2026-10-16）：本文保留旧隔离切片的历史协议和验收说明。对应 Core/Gateway 运行入口、配置、SDK 原型消费者、夹具及专属 CI 已移除；下文 Current/local-testing 状态仅描述当时实现。正式 Internal API 仍属 C4 待交付，不提供旧路径或旧版本兼容。见 [当前清理边界](../../../docs/development/core-cleanup.md)。
+
 > 状态：Current，仅默认关闭的隔离 local/testing 切片；见[验收报告](../../../docs/architecture/v2/internal-admin-users-verification.json)。
 
 B5.22 加入 `admin.user.list` / `admin.user.get` version `1`，只允许独立admin-gateway服务和当前真实Admin凭据。`CORE_INTERNAL_ADMIN_USERS_ENABLED` 独立默认关闭，同时要求全局Internal、local/testing与隔离副本。当前封禁、管理路径与Admin角色每次由Core验证；服务身份和输入owner不授予权限。

@@ -1,5 +1,7 @@
 # Isolated Gateway and SDK session consumer v1
 
+> 已退役（2026-10-16）：本文保留旧隔离切片的历史协议和验收说明。对应 Core/Gateway 运行入口、配置、SDK 原型消费者、夹具及专属 CI 已移除；下文 Current/local-testing 状态仅描述当时实现。正式 Internal API 仍属 C4 待交付，不提供旧路径或旧版本兼容。见 [当前清理边界](../../../docs/development/core-cleanup.md)。
+
 Status: Current / verified isolated B5.14. See [fixed-source evidence](../../../docs/architecture/v2/internal-session-consumer-verification.json). Delegates the [current Core session operations](local-isolated-sessions-v1.md); no production or SC-v2 activation.
 
 `GATEWAY_INTERNAL_SESSIONS_ENABLED=true` requires an existing local/testing Internal mTLS configuration, HPKE with its mandatory replay store, Redis account limiter, and disabled legacy account workflows. The independent default-off Core session and isolated-copy gates remain required. No Native fallback, shared service actor, Gateway session database, refresh token or automatic mutation retry is introduced.

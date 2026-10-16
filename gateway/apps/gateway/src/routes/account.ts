@@ -6,7 +6,6 @@ import {
   loginResultSchema,
   loginSchema,
   registerSchema,
-  passwordResetSchema,
   sealedRequestSchema,
 } from '../contracts/schemas.js'
 import { PREFIX } from '../middleware/request-context.js'
@@ -277,19 +276,7 @@ export function registerAccountRoutes(
 
     app.post(`${PREFIX}/secure/auth/login`, secure('login', runLogin))
 
-    if (config.internalPasswordResetEnabled === true && limiter) {
-      app.post(`${PREFIX}/secure/auth/password-reset`, secure('password-reset', async (c, data) => {
-        const parsed = passwordResetSchema.safeParse(data)
-        if (!parsed.success) return fail(c, 'VALIDATION_ERROR', 'Invalid recovery request', 400)
-        const rejected = await checkAccountLimiter(c, limiter, 'password-reset', parsed.data.email)
-        if (rejected) return rejected
-        const result = await upstreamRequest(config, fetcher, 'resetPassword', { body: parsed.data })
-        if (result !== true) throw new GatewayFailure('UPSTREAM_ERROR', 502, 'Unexpected upstream response shape')
-        return ok(c, { reset: true })
-      }))
-    }
-
-    if ((accountWorkflows || config.internalRegisterEnabled === true) && limiter) {
+    if (accountWorkflows && limiter) {
       app.post(`${PREFIX}/secure/auth/register`, secure('register', async (c, data) => {
         const parsed = registerSchema.safeParse(data)
         if (!parsed.success) return fail(c, 'VALIDATION_ERROR', 'Invalid registration data', 400)
@@ -300,7 +287,7 @@ export function registerAccountRoutes(
       }))
     }
 
-    if ((accountWorkflows || config.internalEmailCodeEnabled === true) && limiter) {
+    if (accountWorkflows && limiter) {
       app.post(`${PREFIX}/secure/auth/email-code`, secure('email-code', async (c, data) => {
         const parsed = emailCodeSchema.safeParse(data)
         if (!parsed.success) return fail(c, 'VALIDATION_ERROR', 'Invalid verification request', 400)

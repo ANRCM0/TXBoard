@@ -46,17 +46,12 @@ export type PaymentMethod = {
 export type Notice = { id: number; [field: string]: unknown }
 export type NoticePage = { data: Notice[]; total: number }
 export type RegistrationPayload = LoginPayload & { invite_code?: string }
-export type PasswordResetPayload = LoginPayload & { email_code: string }
 export type EmailCodePayload = Pick<LoginPayload, 'email' | 'turnstile_token' | 'recaptcha_v3_token' | 'recaptcha_data'>
 export type DashboardStats = { unpaidOrders: number; openTickets: number; invitedUsers: number }
 export type OrderState = 0 | 1 | 2 | 3 | 4
 export type OrderStatus = { tradeNo: string; status: OrderState }
 export type OrderQuery = { status?: OrderState; current?: number; page_size?: number }
 export type OrderPage = { items: Order[]; current: number; pageSize: number; total: number; lastPage: number }
-export type UserSession = {
-  id: string; name: string; abilities: string[]
-  last_used_at: string | null; created_at: string | null; updated_at: string | null; expires_at: string | null
-}
 export type UserAuth = { auth_data: string; is_admin?: boolean | number }
 export type UserProfile = {
   email: string
@@ -221,8 +216,6 @@ export function createTXBoardClient(options: TXBoardClientOptions = {}) {
      * before any upstream call — never a silently duplicated order.
      */
     idempotencyKey?: string
-    /** Request-local credential already read for an encrypted session mutation. */
-    authorization?: string
   } = {}): Promise<T> {
     const method = options.method || 'GET'
     const isGet = method === 'GET'
@@ -238,7 +231,7 @@ export function createTXBoardClient(options: TXBoardClientOptions = {}) {
       if (options.idempotencyKey) headers.set('Idempotency-Key', options.idempotencyKey)
 
       if (options.protected) {
-        const token = options.authorization ?? String(await optionsGetToken() || '').trim()
+        const token = String(await optionsGetToken() || '').trim()
         if (!token) throw new GatewayApiError('UNAUTHORIZED', 401, 'User session is required')
         headers.set('Authorization', /^Bearer /i.test(token) ? token : `Bearer ${token}`)
       }
@@ -302,27 +295,11 @@ export function createTXBoardClient(options: TXBoardClientOptions = {}) {
     throw lastError ?? new GatewayApiError('GATEWAY_ERROR', 0, 'Gateway request failed')
   }
 
-  async function secureInvoke<T>(operation: 'register' | 'email-code' | 'password-reset', payload: unknown): Promise<T> {
+  async function secureInvoke<T>(operation: 'register' | 'email-code', payload: unknown): Promise<T> {
     const discovery = await invoke<import('./crypto.js').KeyDiscovery>('/crypto/key')
     const { encryptForOperation } = await import('./crypto.js')
     const sealed = await encryptForOperation(discovery, payload, operation)
     return invoke<T>(`/secure/auth/${operation}`, { method: 'POST', body: sealed })
-  }
-
-  async function sessionMutation(operation: 'session-revoke' | 'session-logout', payload: unknown): Promise<{ ok: true }> {
-    const token = String(await optionsGetToken() || '').trim()
-    if (!token) throw new GatewayApiError('UNAUTHORIZED', 401, 'User session is required')
-    const discovery = await invoke<import('./crypto.js').KeyDiscovery>('/crypto/key')
-    const { encryptForOperation } = await import('./crypto.js')
-    const sealed = await encryptForOperation(discovery, payload, operation)
-    try {
-      return await invoke(`/secure/auth/${operation}`, { method: 'POST', body: sealed, protected: true, authorization: token })
-    } catch (error) {
-      if (error instanceof GatewayApiError && ['INVALID_RESPONSE', 'VERSION_MISMATCH'].includes(error.code)) {
-        throw new GatewayApiError(error.code, error.status, error.message, error.requestId, false, true)
-      }
-      throw error
-    }
   }
 
   async function optionsGetToken() {
@@ -338,21 +315,9 @@ export function createTXBoardClient(options: TXBoardClientOptions = {}) {
       list: () => invoke<Plan[]>('/plans'),
     },
     auth: {
-      /** Default-off isolated session consumer; token state remains caller-owned. */
-      sessions: {
-        list: () => invoke<{ items: UserSession[] }>('/user/sessions', { protected: true }),
-        revoke: (sessionId: string) => {
-          if (typeof sessionId !== 'string' || !/^[1-9][0-9]{0,17}$(?![\s\S])/.test(sessionId)) {
-            throw new GatewayApiError('VALIDATION_ERROR', 400, 'Invalid session identifier')
-          }
-          return sessionMutation('session-revoke', { session_id: sessionId })
-        },
-      },
-      logout: () => sessionMutation('session-logout', {}),
       /** Account writes are encrypted-only and require opt-in Redis+HPKE Gateway. */
       register: (payload: RegistrationPayload) => secureInvoke<UserAuth>('register', payload),
       sendEmailCode: (payload: EmailCodePayload) => secureInvoke<{ sent: boolean }>('email-code', payload),
-      resetPassword: (payload: PasswordResetPayload) => secureInvoke<{ reset: boolean }>('password-reset', payload),
       login: async (payload: LoginPayload) => {
         if (!options.encryptedLogin) return invoke<UserAuth>('/auth/login', { method: 'POST', body: payload })
         const discovery = await invoke<import('./crypto.js').KeyDiscovery>('/crypto/key')
@@ -385,27 +350,6 @@ export function createTXBoardClient(options: TXBoardClientOptions = {}) {
         return invoke<OrderPage>('/orders/page' + (params.size ? '?' + params.toString() : ''), { protected: true })
       },
       detail: (tradeNo: string) => invoke<Order>(`/orders/${encodeURIComponent(tradeNo)}`, { protected: true }),
-      /** Isolated legacy cancellation: POST is never retried; unknown outcome needs state confirmation. */
-      cancel: async (tradeNo: string) => {
-        if (!/^[A-Za-z0-9_-]{1,128}$(?![\s\S])/.test(tradeNo)) throw new GatewayApiError('VALIDATION_ERROR', 400, 'Invalid order identifier')
-        let value: unknown
-        try {
-          value = await invoke<unknown>('/orders/' + encodeURIComponent(tradeNo) + '/cancel', { method: 'POST', body: {}, protected: true })
-        } catch (error) {
-          if (error instanceof GatewayApiError && [401, 403, 404].includes(error.status)) {
-            throw new GatewayApiError(error.code, error.status, error.message, error.requestId, false, false)
-          }
-          if (error instanceof GatewayApiError && (error.status === 409 || error.status >= 500
-            || ['NETWORK_ERROR', 'INVALID_RESPONSE', 'VERSION_MISMATCH'].includes(error.code))) {
-            throw new GatewayApiError(error.code, error.status, error.message, error.requestId, false, true)
-          }
-          throw error
-        }
-        if (!value || typeof value !== 'object' || Array.isArray(value) || Object.keys(value).length !== 1 || (value as { ok?: unknown }).ok !== true) {
-          throw new GatewayApiError('INVALID_RESPONSE', 502, 'Unexpected cancellation response', undefined, false, true)
-        }
-        return { ok: true as const }
-      },
       /**
        * GW-304: create an order. Requires an `idempotencyKey` — the Gateway
        * rejects a write without one (400, zero upstream calls), so the caller
