@@ -213,6 +213,11 @@ digest and historical bindings. Revocation or Provider unavailability does
 not discard provable pre-cutoff traffic. Core verifies frozen grant/tariff
 hashes and period/Terms coverage before acknowledging durable receipt.
 
+Settlement requires the complete retained Terms boundary evidence described in
+the [current boundary contract](node-usage/terms-boundary-current.md). Incomplete
+historical proof is quarantined with its receipt and original-period reservation
+retained; it is not inferred from the current Terms or silently backfilled.
+
 `core:native-work` scans the SQL inbox, settles with integer tariff arithmetic,
 updates the original Period atomically and retries SQL notification outbox
 work. Quota exhaustion prevents new grants and causes a full refresh/finite

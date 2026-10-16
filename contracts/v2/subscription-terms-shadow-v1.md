@@ -1,5 +1,11 @@
 # Subscription Terms Shadow v1
 
+> Retired: 2026-10-16. The isolated mutation service and its tests have been removed.
+> Current purchase/renewal uses native fulfillment; reset uses the native
+> lifecycle service. The read-only Terms timeline remains shared by Subscription
+> and UsageV2. Historical database records and the text below are retained for
+> reference only. See [Core cleanup](../../docs/development/core-cleanup.md).
+
 > B1.4 isolated-copy domain slice. Legacy User, orders and resets remain authoritative. No legacy writer, route, worker or provider is connected to these mutations.
 
 `SubscriptionTermsTimeline` resolves immutable Terms and immutable transitions into half-open intervals. An outgoing transition caps the predecessor at the earlier of its original end and transition time; the successor begins exactly at that time. The resolver rejects missing ownership, duplicate versions, forks, cycles, disconnected histories, invalid intervals and stale tip pointers. A pre-existing gap remains a gap. `at` excludes an interval's end; `covers` accepts a usage interval ending exactly at that end, but rejects one crossing into the successor. Period creation Terms may differ from the currently effective Terms while remaining in the same subscription.

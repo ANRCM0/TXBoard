@@ -93,15 +93,16 @@ final class UsageTermsBoundary
     /** New boundaries may narrow a historical range, but never reassign an accepted interval. */
     public function assertFrozen(array $entry, object $period, int $start, int $end): void
     {
-        $creation = $entry['period_creation_terms_id'] ?? $entry['terms_id']; // B3.1 retained evidence.
-        if ((string) $period->terms_id !== $creation
+        if (($entry['boundary_revision'] ?? null) !== self::REVISION
+            || !isset($entry['period_creation_terms_id'], $entry['terms_effective_from'])
+            || !array_key_exists('terms_effective_until', $entry)
+            || !array_key_exists('terms_ending_transition_id', $entry)
+            || !UsageRegistry::covers($start, $end, $entry['terms_effective_from'], $entry['terms_effective_until'])) {
+            throw new UsageError('USAGE_FROZEN_TERMS_BOUNDARY');
+        }
+        if ((string) $period->terms_id !== $entry['period_creation_terms_id']
             || !UsageRegistry::covers($start, $end, $entry['period_started_at'], $entry['period_ended_at'])) {
             throw new UsageError('USAGE_FROZEN_PERIOD_BOUNDARY');
-        }
-        if (isset($entry['boundary_revision']) && ($entry['boundary_revision'] !== self::REVISION
-            || !array_key_exists('terms_effective_until', $entry) || !isset($entry['terms_effective_from'])
-            || !UsageRegistry::covers($start, $end, $entry['terms_effective_from'], $entry['terms_effective_until']))) {
-            throw new UsageError('USAGE_FROZEN_TERMS_BOUNDARY');
         }
         $this->freeze($entry['subscription_id'], $entry['terms_id'], $period, $start, $end);
         $terms = DB::table('tx_subscription_terms')->where('id', $entry['terms_id'])->sharedLock()->first();

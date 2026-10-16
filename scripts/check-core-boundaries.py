@@ -54,6 +54,7 @@ RETIRED_CLASSES = (
     "LegacyCaptureShadowEvent",
     "LegacyUserCreationShadow",
     "LegacyUserDeletionShadow",
+    "SubscriptionTermsShadowService",
 )
 RETIRED_PATHS = (
     "api/app/Domains/CredentialProviderFixture",
@@ -78,6 +79,9 @@ RETIRED_PATHS = (
     "api/app/Console/Commands/CoreBootstrapCreationShadowVerify.php",
     "api/app/Console/Commands/CoreRegistrationCreationShadowVerify.php",
     "api/app/Console/Commands/CoreLegacyCaptureShadow.php",
+    "api/app/Services/Subscription",
+    "api/tests/Feature/Subscription/SubscriptionTermsShadowTest.php",
+    "api/tests/Feature/UsageV2/UsageTermsBoundaryTest.php",
 )
 RETIRED_CONFIGS = (
     "legacy_capture_shadow",
@@ -114,9 +118,7 @@ def validate():
         require(not path.exists() or (path.is_dir() and not any(path.rglob("*"))),
                 f"Retired runtime path restored: {relative}")
     retired = re.compile(r"\b(?:" + "|".join(RETIRED_CLASSES) + r")\b")
-    old_namespace = re.compile(
-        r"App\\Services\\Subscription\\(?:" + "|".join(SUBSCRIPTION_SERVICES) + r")\b"
-    )
+    old_namespace = re.compile(r"App\\Services\\Subscription\\")
     retired_namespace = re.compile(r"App\\Domains\\(?:CredentialProviderFixture|LegacyLinks)\\")
     retired_config = re.compile(
         r"""['"](?:""" + "|".join(RETIRED_CONFIGS) + r""")(?:\.|['"])"""

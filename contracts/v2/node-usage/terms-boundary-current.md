@@ -1,17 +1,74 @@
-# Node Usage v2: B3.2 Terms and period boundaries
+# Node Usage v2: current Terms and period boundaries
 
-Status: Current / isolated-copy only. This extends the [B3.1 receipt slice](isolated-receipt-current.md) using the [subscription Terms projection](../subscription-terms-shadow-v1.md). Existing isolation gates, Node credentials, HTTP schemas, receipt identity and v1 authority remain in force.
+Status: current native development contract, updated 2026-10-16. The
+[native C2 runtime](../native-c2-runtime-v1.md) supplies signed grants, durable
+receipts, original-period reservations and settlement. The earlier
+[isolated Terms mutation service](../subscription-terms-shadow-v1.md) is retired.
+This contract changes retained Core evidence requirements, not the public Node
+payload, digest or receipt schema.
 
-Core grant issuance and first receipt acceptance consume `SubscriptionTermsTimeline::resolve(..., currentRead: true)` after subscription locks. Immutable Terms rows keep their original ranges; outgoing transitions provide the effective predecessor cutoff. Usage must fit a single projected Terms segment and a single known, finite period in the same subscription. Intervals are half-open: `[start, boundary)` belongs to the predecessor, and `[boundary, end)` belongs to the successor. A crossing batch or a gap is rejected before a persisted ACK. Missing/corrupt timeline evidence and overlapping/unknown period evidence fail closed.
+## Domain ownership and half-open intervals
 
-A period's `terms_id` identifies its creation Terms. Subsequent grants can use later effective Terms in the same subscription without creating another period or resetting counters. A Terms advance keeps that period and allowance; a verified reset closes it at the boundary and creates a new zero-counter period. Node must capture separate batches at these boundaries. The optional handshake omits grants whose Terms or period no longer covers the current instant and exposes a lease no later than the known Terms, period or subscription end. The stored authorization snapshot remains unchanged.
+Published-order fulfillment owns purchases and renewal Terms transitions.
+`SubscriptionLifecycleService` owns resets and lifecycle changes.
+`SubscriptionTermsTimeline` is their shared read-only projection, also consumed
+by UsageV2 after subscription locks. Original Terms rows remain immutable;
+outgoing transitions supply the predecessor cutoff.
 
-New receipts freeze `boundary_revision=terms-period-half-open-v1`, creation Terms ID, projected Terms start/end and outgoing transition ID in the retained SQL evidence. The public Node payload and receipt schemas do not change. Existing receipt replay returns the stored identity before consulting current timeline policy.
+Normal usage must fit one projected Terms segment and one known period of the
+same subscription. Intervals are half-open: `[start, boundary)` belongs to the
+predecessor and `[boundary, end)` to the successor. A period's `terms_id` records
+its creation Terms. Renewal can change effective Terms without opening another
+period or resetting consumption. Reset closes the old period and opens a new
+zero-counter period. Late and pending historical usage stays with its original
+Terms, period and tariff.
 
-Settlement checks the retained interval against both its frozen bounds and the current historical projection under subscription/period locks. It verifies the original Terms evidence hash, retains the original Terms ID, period ID and tariff, and never moves usage into a current period. A legitimate later transition or reset allows pending and late historical intervals ending at the boundary to settle into their original period. B1.4 refuses any mutation that would reassign already accepted intervals, across pending, processing, retry, quarantine and settled states. Corrupt or contradictory historical boundaries quarantine the batch without partial counters or ledger writes; explicit repair and audited retry preserve its receipt.
+Native grants and receipts bind the original complete coverage window. A later
+proven authorization cutoff can produce a persisted quarantined receipt with
+original-period quota reservations; it does not produce a settled ACK. Invalid
+scope, proof or billing remains a rejection. Missing or contradictory historical
+evidence never permits reassignment to the current period.
 
-B3.1 receipts without the new boundary fields remain readable and can settle when their original Terms/period association and historical interval are still provable. They are not rewritten or reissued. This is an isolated compatibility rule, not an import of unproven v1 counters.
+## Required retained evidence
 
-Locking uses SQL current reads. Terms mutations lock User, slot, subscription and periods, then inspect accepted evidence without reverse-locking batches or grants. Receipt and settlement paths hold the same subscription lock while freezing or writing evidence. The adapter does not acquire batch/grant locks or invoke a Terms mutation. Independent MariaDB sessions verify old repeatable-read snapshots and races among receipt acceptance, boundary mutation, settlement and reset.
+Current producers freeze all five fields for each retained usage entry:
 
-Provider runtime enforcement, live grant refresh, Node default-service collection, v2 WSS, historical machine reassignment credentials and production cutover remain outside this slice. Verification: [B3.2 evidence](../../../docs/architecture/v2/usage-terms-boundary-verification.json).
+| Field | Meaning |
+| --- | --- |
+| `boundary_revision` | Exactly `terms-period-half-open-v1` |
+| `period_creation_terms_id` | Original period's creation Terms |
+| `terms_effective_from` | Projected Terms interval start |
+| `terms_effective_until` | Projected end, explicitly present even when null |
+| `terms_ending_transition_id` | Outgoing transition, explicitly present even when null |
+
+Settlement requires these fields, verifies the original Terms hash and checks
+both the frozen interval and current historical projection. There is no B3.1
+fallback that infers missing boundary fields from the entry's Terms or today's
+state. Missing proof quarantines the batch as `USAGE_FROZEN_TERMS_BOUNDARY`
+before counters, ledger or Node statistics are written. No automatic backfill,
+receipt replacement or data deletion is performed.
+
+Quarantine retains the same batch identity, receipt and native reservation.
+Repeated submit/query returns that durable receipt; it does not create a second
+reservation or settle the batch. Successful settlement atomically charges the
+original period and releases its reservation. Explicit audited recovery retains
+the evidence requirements.
+
+## Mutation and transaction safety
+
+Native mutation takes the account, slot, subscription and history locks before
+inspecting accepted usage. Reset and renewal refuse a boundary that would
+reassign an accepted interval, regardless of pending, processing, retry,
+quarantined or settled state. Inspection does not reverse-lock batches or grants
+against a settlement worker. Receipt and settlement paths recheck ownership in
+their own admission-protected transaction.
+
+Existing native tests cover purchase/renewal/reset, original-period settlement,
+authorization cutoff and quota reservations. The cleanup regression removes all
+five boundary fields from an accepted native batch while retaining a valid
+evidence hash; settlement must quarantine with no charge, preserve the
+reservation, and keep submit/query replayable.
+
+The [B3.2 verification JSON](../../../docs/architecture/v2/usage-terms-boundary-verification.json)
+records historical isolated tests. It is not evidence that the retired shadow
+writer or incomplete-evidence compatibility remains callable.
