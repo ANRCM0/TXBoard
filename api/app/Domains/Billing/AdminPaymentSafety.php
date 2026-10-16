@@ -21,7 +21,8 @@ final class AdminPaymentSafety
             // This check deliberately includes cancelled, completed and
             // pending records. Ledger references are historical evidence.
             if (Order::query()->where('payment_id', $payment->id)->exists()
-                || WalletRecharge::query()->where('payment_id', $payment->id)->exists()) {
+                || WalletRecharge::query()->where('payment_id', $payment->id)->exists()
+                || DB::table('tx_payment_attempt')->where('payment_id', $payment->id)->exists()) {
                 return false;
             }
 

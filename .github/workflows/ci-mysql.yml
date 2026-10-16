@@ -236,7 +236,7 @@ jobs:
 
   native-subscription-domain:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     permissions:
       contents: read
     services:
@@ -291,6 +291,15 @@ jobs:
           tests/Feature/Billing/NativeMoneyLedgerMysqlConcurrencyTest.php
           tests/Feature/Billing/NativePaymentAttemptsTest.php
           tests/Feature/Billing/NativePaymentAttemptsMysqlConcurrencyTest.php
+          tests/Feature/Billing/NativePaymentSettlementTest.php
+          tests/Feature/Billing/NativePaymentSettlementMysqlConcurrencyTest.php
+          tests/Feature/Billing/NativeBillingRecoveryTest.php
+          tests/Feature/Billing/NativeEpayCheckoutTest.php
+          tests/Feature/Billing/NativePaymentPluginTest.php
+          tests/Feature/Billing/NativeFreeCheckoutTest.php
+          tests/Feature/Billing/NativeWalletRefundTest.php
+          tests/Feature/Billing/NativeWalletRefundMysqlConcurrencyTest.php
+          tests/Feature/Txapi/TxapiWalletRechargeTest.php
       - name: Native domain transactions and application adapters on MySQL 8.4
         run: >-
           php artisan test
@@ -308,6 +317,12 @@ jobs:
           tests/Feature/Subscription/NativeRuntimeCommerceTest.php
           tests/Feature/Subscription/NativeIdentityAndCatalogTest.php
           tests/Feature/Installation/NativeRuntimeReadinessTest.php
+          tests/Feature/Installation/InstallationRuntimeTest.php
+          tests/Feature/Installation/NativeProviderTrustTest.php
+          tests/Feature/Subscription/NativeSubscriptionLinksTest.php
+          tests/Feature/Subscription/NativePlanAdministrationTest.php
+          tests/Feature/Txapi/TxapiNativeInternalApiTest.php
+          tests/Feature/Txapi/TxapiNativeInternalCheckoutTest.php
           tests/Feature/UsageV2/NativeRuntimeUsageTest.php
       - name: Native receipt concurrency and SQL crash recovery on MySQL 8.4
         run: php artisan test tests/Feature/UsageV2/UsageMysqlConcurrencyTest.php

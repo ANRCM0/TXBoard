@@ -3,8 +3,6 @@
 namespace App\Domains\Billing;
 
 use App\Exceptions\ApiException;
-use App\Domains\Installation\InstallationAuthority;
-use App\Domains\Installation\NativeRuntimeAdmission;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Services\OrderService;
@@ -20,11 +18,35 @@ final class OrderCheckout
 {
     /** @return array{type:int,data:mixed} */
     public function start(int $userId, string $tradeNo, ?int $paymentMethod = null,
-        ?string $paymentToken = null): array
+        ?string $paymentToken = null, ?string $requestKey = null, bool $wallet = false, ?string $walletMinor = null): array
     {
         $locator = Order::query()->useWritePdo()->where('user_id', $userId)->where('trade_no', $tradeNo)->first();
         if ($locator === null) throw new ApiException('Order does not exist', 404);
         $native = $locator?->purchase_terms_version === PublishedOrderService::VERSION;
+        if ($native && (string) $locator->total_amount === '0') {
+            if ($requestKey === null) { throw new BillingError('PAYMENT_IDEMPOTENCY_KEY_REQUIRED'); }
+            return app(NativeFreeCheckout::class)->start($userId, (int) $locator->id, $requestKey, [
+                'method' => $paymentMethod === null ? null : (string) $paymentMethod,
+                'token_hash' => $paymentToken === null ? null : hash('sha256', $paymentToken),
+                'wallet' => $wallet, 'wallet_minor' => $walletMinor,
+            ]);
+        }
+        if ($native && (string) $locator->total_amount !== '0') {
+            if ($paymentToken !== null || ($wallet && ($paymentMethod !== null || $walletMinor !== null))) {
+                throw new ApiException('Native checkout input is invalid', 422);
+            }
+            if ($requestKey === null) {
+                throw new BillingError('PAYMENT_IDEMPOTENCY_KEY_REQUIRED');
+            }
+            if ($wallet) {
+                return app(NativeWalletPayments::class)->pay($userId, (int) $locator->id, $requestKey);
+            }
+            if ($paymentMethod === null || $paymentMethod < 1) {
+                throw new ApiException('Payment method is required', 422);
+            }
+            $started = app(NativePaymentCheckout::class)->start($userId, (int) $locator->id, $paymentMethod, $requestKey, $walletMinor);
+            return $started['payment'] + ['attempt' => $started['attempt']];
+        }
         $prepare = static function (?Order $order = null) use (
             $userId, $tradeNo, $paymentMethod, $native
         ): array {
@@ -50,10 +72,6 @@ final class OrderCheckout
             }
             if ((int) $order->total_amount === 0) {
                 return ['kind' => 'free', 'order' => $order];
-            }
-            if ($native && (app(InstallationAuthority::class)->assertNativeMutation()['runtime_version'] ?? null)
-                === NativeRuntimeAdmission::VERSION) {
-                throw new ApiException('Native paid checkout is unavailable', 409);
             }
             if ($paymentMethod === null || $paymentMethod < 1) {
                 throw new ApiException('Payment method is required', 422);

@@ -3,6 +3,9 @@
 namespace App\Providers;
 
 use Illuminate\Foundation\Support\Providers\RouteServiceProvider as ServiceProvider;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
 
 class RouteServiceProvider extends ServiceProvider
@@ -23,6 +26,11 @@ class RouteServiceProvider extends ServiceProvider
      */
     public function boot()
     {
+        RateLimiter::for('native-internal-ingress', static fn (Request $request) =>
+            Limit::perMinute(600)->by('native-internal:'.hash('sha256', (string) $request->server('REMOTE_ADDR', 'unknown')))
+                ->response(static fn (Request $request, array $headers) =>
+                    \App\Core\Http\TxapiResponse::error($request, 'RATE_LIMITED', 'Service ingress limit exceeded', 429)
+                        ->withHeaders($headers)->header('Cache-Control', 'private, no-store')));
         // HTTPS scheme is forced per-request via middleware (Octane-safe).
         parent::boot();
     }

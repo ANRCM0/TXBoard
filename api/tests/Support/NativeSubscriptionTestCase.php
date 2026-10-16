@@ -51,6 +51,7 @@ abstract class NativeSubscriptionTestCase extends TestCase
             '2026_10_15_000001_create_order_purchase_terms.php',
             '2026_10_15_000003_enable_plan_publication.php',
             '2026_10_15_000004_enable_native_subscriptions.php',
+            '2026_10_16_000016_create_native_free_checkout.php',
         ] as $migration) {
             (require database_path('migrations/'.$migration))->up();
         }

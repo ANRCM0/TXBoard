@@ -1,6 +1,6 @@
 # TXBoard Module Platform
 
-Module Platform 为 Plugin、Theme 等扩展提供**统一只读目录、能力和健康信息，以及经过授权的生命周期委托**。它不复制用户、订阅、订单、支付、Node/Machine 等 Core 领域。
+Module Platform 为 Plugin、Theme 等扩展提供**统一只读目录、能力和健康信息，以及经过授权的生命周期委托**。它不复制用户、订阅、订单、支付事实/账本、Node/Machine 等 Core 领域。具体支付商的下单、验签、查询和渠道退款协议属于支付插件，不属于资金内核；完整责任矩阵见 [Core 内核与插件扩展边界](v2/core-extension-boundaries.md)。
 
 ## 组件关系
 
@@ -16,6 +16,7 @@ Module Management (authorized mutations)
 ```
 
 - Core 直接负责身份与鉴权、订单与账本、订阅、节点和机器、基础设置与审计。扩展接口只能委托这些领域服务，不得替代其权限与财务真相。
+- 内置或随包发布不改变扩展归属。停用支付插件应停止新渠道请求，不能删除财务事实或切断原交易验证/恢复；原交易排空及破坏性升级/卸载保护须由对应契约和运行时实现，不能由 Registry 读取代劳。
 - Module Registry 的 `installed`、`enabled`、`active`、`health` 由运行时派生，不可相信第三方包声明的状态。
 - Module ID、类型、能力、依赖、展示信息按统一描述符输出；不同来源的 ID 冲突必须可预测处理。
 - Registry 读取应隔离单个扩展加载失败，不在读路径安装、启用、卸载或修改主题。
@@ -48,7 +49,7 @@ Module Management (authorized mutations)
 ## 开发与验证要求
 
 - 新增模块前明确 Core/Module 归属、稳定标识、类型、依赖、声明的 product-level capabilities、运行时配置所有者、版本兼容性及独立回退方法。不要使用具体文件是否存在替代能力语义。
-- 模块 `capability`、Admin permission、Agent ability/target scope 是不同授权层次，不能相互等同；Bridge 消息和 Admin 导航路径要进行版本校验及安全限制。
+- 模块 `capability` 只描述能力，不授予 Admin permission 或资源操作范围；Bridge 消息和 Admin 导航路径要进行版本校验及安全限制。Agent/MCP 已退役，不为扩展恢复其授权层。
 - Module Health 为只读、有限、可预测的检查，可包含 manifest、依赖、兼容性、Admin 资源和配置状态；禁止任意 HTTP 请求、脚本或不受限扫描。模块可以 enabled 但 degraded；可选模块错误应独立暴露，不能拖垮 Core。
 - 插件/主题升级通过各自 runtime 处理：依赖关系、已有包兼容、活跃系统主题保护、Octane 缓存失效与 Worker 重启行为都需要回归测试；数据库变更不能创建第二套真相。
 - 变更清单必须验证包 Schema / DTO、Registry API、Lifecycle 权限、Admin UI、插件/主题兼容性以及镜像运行时；具体测试与约束由 [AGENTS.md](../../AGENTS.md) 维护。

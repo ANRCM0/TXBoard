@@ -16,15 +16,20 @@ class TxapiBillingTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_native_order_uses_same_wallet_reservation_and_cancel_refunds_once(): void
+    public function test_native_wallet_never_adopts_historical_user_balance(): void
+    {
+        $user = $this->user('historical-wallet-p3@example.test', ['balance' => 350]);
+        Sanctum::actingAs($user);
+        $this->getJson('/txapi/billing/wallet')->assertStatus(503)
+            ->assertJsonPath('error.code', 'INSTALLATION_AUTHORITY_NATIVE_NOT_READY');
+        $this->assertSame(350, (int) $user->fresh()->balance);
+    }
+
+    public function test_historical_order_reservation_and_cancel_refunds_once(): void
     {
         $user = $this->user('buyer-p3@example.test', ['balance' => 350]);
         $plan = $this->plan();
         Sanctum::actingAs($user);
-        $this->getJson('/txapi/billing/wallet')->assertOk()
-            ->assertJsonPath('data.balance_minor', 350)
-            ->assertJsonPath('data.commission_balance_minor', 0);
-
         $created = $this->postJson('/txapi/orders', [
             'plan_id' => $plan->id, 'period' => Plan::PERIOD_MONTHLY,
         ]);

@@ -235,7 +235,9 @@ class InstallationAuthority
             $configuration = app(NativeRuntimeReadiness::class)->configuration($state['installation_id']);
             $receipt = DB::table('tx_native_runtime_activation')->where('installation_id', $state['installation_id'])->sharedLock()->first();
             $snapshot = json_decode($receipt->configuration_snapshot, true, 32, JSON_THROW_ON_ERROR);
-            $this->require(hash_equals(NativeRuntimeReadiness::hash($snapshot['configuration']),
+            $approved = app(\App\Domains\CredentialProvider\NativeProviderTrust::class)
+                ->currentLocked($state['installation_id'], $snapshot['configuration']);
+            $this->require(hash_equals(NativeRuntimeReadiness::hash($approved),
                 NativeRuntimeReadiness::hash($configuration)), 'NATIVE_CONFIGURATION_CHANGED');
             return $this->result($state);
         });
@@ -380,6 +382,12 @@ class InstallationAuthority
             }
             if ($table === 'tx_user') {
                 $this->assertBootstrapAdministrators();
+                continue;
+            }
+            if ($table === 'tx_plugin_package_fence') {
+                // Inactive package identities are coordination inventory, not adopted business data.
+                $this->require(!DB::table($table)->whereNotNull('mutation_token')->lockForUpdate()->exists(),
+                    'DATABASE_NOT_EMPTY');
                 continue;
             }
             $this->require(!DB::table($table)->lockForUpdate()->exists(), 'DATABASE_NOT_EMPTY');

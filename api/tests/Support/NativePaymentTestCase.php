@@ -9,6 +9,7 @@ use App\Domains\Subscription\Services\NativeSubscriptionStore;
 use App\Domains\Subscription\Services\PlanPublicationService;
 use App\Models\Order;
 use App\Models\Payment;
+use App\Models\Plugin;
 use App\Models\User;
 use App\Services\Auth\NativeIdentityService;
 use Illuminate\Support\Facades\DB;
@@ -22,13 +23,17 @@ abstract class NativePaymentTestCase extends NativeRuntimeTestCase
     {
         parent::setUp();
         $this->activate();
+        Plugin::query()->create([
+            'code' => 'epay', 'name' => 'EPay', 'type' => Plugin::TYPE_PAYMENT,
+            'version' => '1.0.0', 'is_enabled' => true, 'config' => '{}', 'installed_at' => now(),
+        ]);
         $this->payment = Payment::query()->create([
             'uuid' => bin2hex(random_bytes(16)), 'payment' => 'native-test', 'name' => 'Verified test adapter',
             'config' => [], 'enable' => true,
         ]);
     }
 
-    /** Trusted internal purchase builder; the public paid-offer admission gate remains closed. */
+    /** Trusted internal purchase builder for exact frozen payment test evidence. */
     protected function purchase(?User $user = null, string $period = 'monthly'): array
     {
         if ($user === null) {

@@ -2,7 +2,7 @@
 
 namespace Tests\Feature\Subscription;
 
-use App\Jobs\OrderHandleJob;
+use App\Domains\Billing\NativeBillingRecovery;
 use App\Models\Order;
 use App\Services\Auth\NativeIdentityService;
 use App\Domains\Subscription\Services\NativePlanCatalog;
@@ -32,11 +32,15 @@ final class NativeRuntimeCommerceTest extends NativeRuntimeTestCase
         $this->postJson('/txapi/orders', ['offer_id' => $free['offer_id']], ['Idempotency-Key' => 'free-admitted'])
             ->assertCreated();
         $order = Order::query()->firstOrFail();
-        $this->postJson('/txapi/orders/'.$order->trade_no.'/checkout', ['method' => 1])
+        $this->postJson('/txapi/orders/'.$order->trade_no.'/checkout', [], ['Idempotency-Key' => 'free-checkout'])
             ->assertOk()->assertJsonPath('data.type', -1)->assertJsonPath('data.data', true);
         $this->assertSame(Order::STATUS_PROCESSING, (int) $order->fresh()->status);
-        Bus::assertDispatchedTimes(OrderHandleJob::class, 1);
+        Bus::assertNothingDispatched();
+        $this->postJson('/txapi/orders/'.$order->trade_no.'/checkout', [], ['Idempotency-Key' => 'free-checkout'])
+            ->assertOk()->assertJsonPath('data.type', -1)->assertJsonPath('data.data', true);
         $this->postJson('/txapi/orders/'.$order->trade_no.'/checkout')->assertStatus(409);
-        Bus::assertDispatchedTimes(OrderHandleJob::class, 1);
+        $this->assertSame('completed', array_values(app(NativeBillingRecovery::class)->recover())[0]['status']);
+        $this->assertSame(Order::STATUS_COMPLETED, (int) $order->fresh()->status);
+        Bus::assertNothingDispatched();
     }
 }

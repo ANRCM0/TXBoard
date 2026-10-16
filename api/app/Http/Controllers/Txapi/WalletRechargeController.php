@@ -2,116 +2,121 @@
 
 namespace App\Http\Controllers\Txapi;
 
+use App\Core\Http\TxapiErrorRenderer;
 use App\Core\Http\TxapiResponse;
-use App\Domains\Billing\WalletRechargeService;
-use App\Exceptions\ApiException;
-use App\Models\WalletRecharge;
+use App\Domains\Billing\BillingError;
+use App\Domains\Billing\NativePaymentProviderRegistry;
+use App\Domains\Billing\NativeRechargeService;
+use App\Domains\Billing\NativeWalletPayments;
+use App\Domains\Installation\InstallationAuthority;
+use App\Domains\Installation\InstallationAuthorityException;
 use App\Models\Payment;
+use Closure;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 final class WalletRechargeController
 {
+    public function balance(Request $request, NativeWalletPayments $wallet): JsonResponse
+    {
+        return $this->respond($request, fn (): JsonResponse => TxapiResponse::success($request, [
+            'schema' => 'native-wallet/v1', 'balances' => $wallet->balance((int) Auth::guard('sanctum')->id()),
+        ]));
+    }
+
     public function methods(Request $request): JsonResponse
     {
-        $methods = Payment::query()->where('enable', true)
-            ->whereIn('payment', WalletRechargeService::VERIFIED_RECHARGE_PROVIDERS)
-            ->orderBy('sort')->orderBy('id')
-            ->get(['id','name','payment','icon','handling_fee_fixed','handling_fee_percent'])
-            ->map(static fn (Payment $method): array => [
-                'id' => (int) $method->id,
-                'name' => (string) $method->name,
-                'payment' => (string) $method->payment,
-                'icon' => $method->icon,
-                'handling_fee_fixed' => (int) ($method->handling_fee_fixed ?? 0),
-                'handling_fee_percent' => (float) ($method->handling_fee_percent ?? 0),
-            ])->all();
-        return TxapiResponse::success($request, $methods);
+        return $this->respond($request, function () use ($request): JsonResponse {
+            app(InstallationAuthority::class)->assertNativeRuntime();
+            $methods = Payment::query()->where('enable', true)
+                ->where('handling_fee_fixed', 0)->where('handling_fee_percent', 0)->orderBy('sort')->orderBy('id')
+                ->limit(100)->get()
+                ->filter(static function (Payment $method): bool {
+                    try {
+                        $provider = app(NativePaymentProviderRegistry::class)->forPayment($method);
+                        $provider->adapter->accountRef($method);
+                        return in_array('CNY', $provider->adapter->capabilities()['currencies'], true);
+                    } catch (BillingError) { return false; }
+                })
+                ->map(static fn (Payment $method): array => [
+                    'id' => (string) $method->id, 'name' => (string) $method->name,
+                    'payment' => (string) $method->payment, 'icon' => $method->icon,
+                    'currency' => 'CNY', 'handling_fee_fixed' => '0', 'handling_fee_percent' => '0',
+                    'external_refund_supported' => false,
+                ])->values()->all();
+            return TxapiResponse::success($request, $methods);
+        });
     }
 
-    public function store(Request $request, WalletRechargeService $service): JsonResponse
+    public function store(Request $request, NativeRechargeService $service): JsonResponse
     {
-        $params = $request->validate([
-            'amount_minor' => ['required', 'integer',
-                'min:' . WalletRechargeService::MIN_AMOUNT_MINOR,
-                'max:' . WalletRechargeService::MAX_AMOUNT_MINOR],
-            'payment_method_id' => ['required', 'integer', 'min:1'],
-        ]);
-        $key = (string) $request->header('Idempotency-Key', '');
-        if (!\Illuminate\Support\Str::isUuid($key)) {
-            throw ValidationException::withMessages([
-                'idempotency_key' => 'A UUID Idempotency-Key header is required',
+        return $this->respond($request, function () use ($request, $service): JsonResponse {
+            $params = $request->validate([
+                'amount_minor' => ['required', 'string', 'regex:/\A[1-9][0-9]{0,18}\z/D'],
+                'payment_method_id' => ['required', 'integer', 'min:1'],
             ]);
-        }
+            $key = (string) $request->header('Idempotency-Key', '');
+            if (!Str::isUuid($key)) {
+                throw ValidationException::withMessages(['idempotency_key' => 'A UUID Idempotency-Key header is required']);
+            }
+            $recharge = $service->create((int) Auth::guard('sanctum')->id(), $params['amount_minor'],
+                (int) $params['payment_method_id'], $key);
+            return TxapiResponse::success($request, $recharge, status: 201);
+        });
+    }
+
+    public function index(Request $request, NativeRechargeService $service): JsonResponse
+    {
+        return $this->respond($request, function () use ($request, $service): JsonResponse {
+            $params = $request->validate([
+                'limit' => ['sometimes', 'integer', 'min:1', 'max:50'],
+                'after_id' => ['sometimes', 'integer', 'min:0'],
+            ]);
+            $rows = $service->listing((int) Auth::guard('sanctum')->id(),
+                (int) ($params['limit'] ?? 20), (int) ($params['after_id'] ?? 0));
+            return TxapiResponse::success($request, $rows, [
+                'next_after_id' => $rows === [] ? null : $rows[array_key_last($rows)]['recharge_id'],
+            ]);
+        });
+    }
+
+    public function show(Request $request, string $tradeNo, NativeRechargeService $service): JsonResponse
+    {
+        return $this->respond($request, fn (): JsonResponse =>
+            TxapiResponse::success($request, $service->show((int) Auth::guard('sanctum')->id(), $tradeNo)));
+    }
+
+    public function checkout(Request $request, string $tradeNo, NativeRechargeService $service): JsonResponse
+    {
+        return $this->respond($request, function () use ($request, $tradeNo, $service): JsonResponse {
+            $request->validate(['token' => ['prohibited']]);
+            return TxapiResponse::success($request, $service->checkout((int) Auth::guard('sanctum')->id(), $tradeNo));
+        });
+    }
+
+    private function respond(Request $request, Closure $action): JsonResponse
+    {
         try {
-            $recharge = $service->create(
-                (int) Auth::guard('sanctum')->id(),
-                (int) $params['amount_minor'], (int) $params['payment_method_id'], $key);
-        } catch (ApiException $e) {
-            $status = in_array((int) $e->getCode(), [409, 422], true)
-                ? (int) $e->getCode() : 409;
-            return TxapiResponse::error($request, 'RECHARGE_REJECTED',
-                'Recharge could not be created', $status);
+            $response = $action();
+        } catch (InstallationAuthorityException) {
+            $response = TxapiResponse::error($request, 'INSTALLATION_AUTHORITY_NATIVE_NOT_READY',
+                'Core installation is not ready', 503);
+        } catch (BillingError $error) {
+            $response = $this->rejected($request, $error);
+        } catch (ValidationException $error) {
+            $response = TxapiErrorRenderer::render($request, $error);
         }
-        return TxapiResponse::success($request, self::dto($recharge), status: 201);
+        return $response->header('Cache-Control', 'private, no-store');
     }
 
-    public function index(Request $request): JsonResponse
+    private function rejected(Request $request, BillingError $error): JsonResponse
     {
-        $params = $request->validate([
-            'page' => ['sometimes', 'integer', 'min:1'],
-            'per_page' => ['sometimes', 'integer', 'min:1', 'max:50'],
-        ]);
-        $page = WalletRecharge::query()
-            ->where('user_id', Auth::guard('sanctum')->id())
-            ->orderByDesc('id')->paginate((int) ($params['per_page'] ?? 20),
-                ['id', 'trade_no', 'payment_id', 'amount_minor', 'fee_minor',
-                    'status', 'paid_at', 'created_at'], 'page', (int) ($params['page'] ?? 1));
-        return TxapiResponse::success($request,
-            $page->getCollection()->map(self::dto(...))->all(),
-            ['page' => $page->currentPage(), 'per_page' => $page->perPage(),
-                'total' => $page->total(), 'last_page' => $page->lastPage()]);
-    }
-
-    public function show(Request $request, string $tradeNo): JsonResponse
-    {
-        $recharge = WalletRecharge::query()
-            ->where('user_id', Auth::guard('sanctum')->id())
-            ->where('trade_no', $tradeNo)->firstOrFail();
-        return TxapiResponse::success($request, self::dto($recharge));
-    }
-
-    public function checkout(Request $request, string $tradeNo,
-        WalletRechargeService $service): JsonResponse
-    {
-        $params = $request->validate([
-            'token' => ['sometimes', 'nullable', 'string', 'max:2048'],
-        ]);
-        try {
-            $result = $service->checkout((int) Auth::guard('sanctum')->id(),
-                $tradeNo, $params['token'] ?? null);
-        } catch (ApiException $e) {
-            $code = (int) $e->getCode();
-            $status = in_array($code, [404, 409, 422, 502], true) ? $code : 409;
-            return TxapiResponse::error($request, 'RECHARGE_CHECKOUT_FAILED',
-                'Recharge checkout cannot be completed', $status);
-        }
-        return TxapiResponse::success($request, $result);
-    }
-
-    private static function dto(WalletRecharge $recharge): array
-    {
-        return [
-            'trade_no' => (string) $recharge->trade_no,
-            'payment_method_id' => (int) $recharge->payment_id,
-            'amount_minor' => (int) $recharge->amount_minor,
-            'fee_minor' => (int) $recharge->fee_minor,
-            'total_minor' => (int) $recharge->amount_minor + (int) $recharge->fee_minor,
-            'status' => (int) $recharge->status,
-            'created_at' => (int) $recharge->created_at,
-            'paid_at' => $recharge->paid_at === null ? null : (int) $recharge->paid_at,
-        ];
+        $status = $error->errorCode === 'RECHARGE_MISSING' ? 404
+            : (in_array($error->errorCode, ['RECHARGE_INPUT_INVALID', 'RECHARGE_FEES_UNSUPPORTED',
+                'RECHARGE_PROVIDER_UNAVAILABLE', 'BILLING_AMOUNT_INVALID'], true) ? 422 : 409);
+        return TxapiResponse::error($request, $error->errorCode, 'Native wallet recharge could not be completed', $status);
     }
 }

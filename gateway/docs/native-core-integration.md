@@ -1,5 +1,30 @@
 # 当前 Gateway 与 Core Native 适配
 
+## 2026-10-16 C3/C4 候选补充
+
+本分支新增真实服务端 `NativeCoreClient` 和 `scripts/native-core-client.mjs`，
+通过 `/txapi/internal/native/v1/{user|admin}/operations/{operation}` 调用 Core。
+服务使用独立 mTLS 文件、service ID/credential/epoch；调用者 Bearer 仍由 Core
+重新验证，管理员另需当前 Admin/RBAC 与安全路径。配置、服务引导与完整调用格式见
+[正式服务契约](../../contracts/v2/native-internal-api-v1.md)。
+这些是待 CI 验收的候选，不代表生产代理/PKI 或完整管理员操作已交付。
+
+`GATEWAY_CORE_USER_*` 与 `GATEWAY_CORE_ADMIN_*` 独立，显式启用后配置不全即拒绝启动，
+不回退明文。客户端验证 HTTPS hostname，禁重定向/自动重试，限制请求/响应及总 deadline，
+5xx/网络中断视为未知结果，写调用保留原幂等键恢复。mTLS 私钥和服务凭据只能注入
+服务器，不能进入 Theme SDK、浏览器、URL 或日志。管理员客户端配置不会自动注册
+管理员浏览器路由。
+
+既有浏览器 `login`/`guestConfig` 在配置 User service 后使用真实服务客户端；
+其他历史浏览器 DTO 不因此变成 native Offer/钱包契约。尤其旧订单创建仍传
+`plan_id/period`，不能以开启历史写开关声称 native 购买完成。服务端 CLI 支持固定
+registry 中的已实现操作；先构建 `apps/gateway/dist`，从 stdin 读取业务输入，从
+运行时秘密环境读取 actor，避免将密码/Bearer 写入命令参数。
+
+以下 2026-10-12 联调记录描述当时的直接 TXAPI 适配，不作为本候选验收证据。
+
+## 历史直接适配基线
+
 2026-10-12：本次交付属于 B5/B6 准备，保留当前 `/gateway/v1` 外部合同。目标 `/txapi/bff/v1`、统一 User/Admin Gateway、版本协商、正式部署与 SDK 发布均没有因此完成。
 
 `apps/gateway/src/services/upstream.ts` 固定列出 15 个历史操作；14 个映射到当前 `/txapi`，匿名 `guestPaymentMethods` 无对应接口。`adapters/txapi-native.ts` 严格校验 Native 信封和每类 DTO，再投影为已有主题 SDK 展示字段。旧 `status:success`、旧 paginator、含糊信封、无效数据拒绝。

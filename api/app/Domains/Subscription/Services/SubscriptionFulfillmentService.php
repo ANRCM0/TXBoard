@@ -3,7 +3,9 @@
 namespace App\Domains\Subscription\Services;
 
 use App\Domains\Billing\PurchasedOrderGrant;
+use App\Domains\Billing\NativePaymentSettlement;
 use App\Domains\Installation\InstallationAuthority;
+use App\Domains\Installation\NativeRuntimeAdmission;
 use App\Models\Order;
 use App\Models\OrderPurchaseTerms;
 use DomainException;
@@ -34,6 +36,10 @@ final class SubscriptionFulfillmentService
         $result = DB::transaction(function () use ($orderId, $locator, $now): array {
             $installation = app(InstallationAuthority::class)->assertNativeMutation();
             [$user, $slot, $subscriptions] = $this->store->lockAccount((int) $locator->user_id, $now, $installation['installation_id']);
+            $histories = [];
+            foreach ($subscriptions as $existing) {
+                $histories[(string) $existing->id] = $this->store->lockHistory($existing);
+            }
             $order = Order::query()->whereKey($orderId)->lockForUpdate()->first();
             if (!$order || (string) $order->user_id !== (string) $locator->user_id) {
                 throw new DomainException('NATIVE_ORDER_IDENTITY_CHANGED');
@@ -61,8 +67,9 @@ final class SubscriptionFulfillmentService
                 if (!$subscription || (int) $order->status !== Order::STATUS_COMPLETED) {
                     throw new DomainException('NATIVE_ORDER_RECEIPT_INVALID');
                 }
-                $history = $this->store->lockHistory($subscription);
+                $history = $histories[(string) $subscription->id];
                 $this->nativeGrant($order, $purchase);
+                $this->verifyPayment($installation, (int) $user->id, $order, $purchase);
                 $this->store->verifyHistory($subscription, $history);
                 return $this->store->replay($operation, $request, $subscription);
             }
@@ -73,12 +80,13 @@ final class SubscriptionFulfillmentService
                 throw new DomainException('NATIVE_ACCOUNT_BANNED');
             }
             $subscription = $slot->subscription_id === null ? null : $subscriptions->firstWhere('id', $slot->subscription_id);
-            $history = $subscription === null ? null : $this->store->lockHistory($subscription);
+            $history = $subscription === null ? null : $histories[(string) $subscription->id];
             if ($subscription !== null) {
                 // Must precede grant/catalog/source verification, which performs ordinary reads.
                 $this->store->protectAcceptedUsage((string) $subscription->id, $now);
             }
             $grant = $this->nativeGrant($order, $purchase);
+            $this->verifyPayment($installation, (int) $user->id, $order, $purchase);
             if ($subscription === null) {
                 if ((int) $order->type !== Order::TYPE_NEW_PURCHASE || $grant['purchase_kind'] === 'traffic_reset') {
                     throw new DomainException('NATIVE_ORDER_TARGET_MISSING');
@@ -177,6 +185,14 @@ final class SubscriptionFulfillmentService
             throw new DomainException('NATIVE_ORDER_PURCHASE_REQUIRED');
         }
         return $grant;
+    }
+
+    private function verifyPayment(array $installation, int $userId, Order $order, OrderPurchaseTerms $purchase): void
+    {
+        if (($installation['runtime_version'] ?? null) === NativeRuntimeAdmission::VERSION
+            && (string) $order->total_amount !== '0') {
+            app(NativePaymentSettlement::class)->verifyWinningPaymentLocked($installation, $userId, $order, $purchase);
+        }
     }
 
     private function assertNoFinancialAdjustments(Order $order): void

@@ -12,7 +12,9 @@
 
 2026-10-16，C1 购买权益和 C2 原生订阅闭环已合入 main，包含真实 Provider 签发/轮换、直接渲染、有限授权、持久用量和原周期结算。C2 仅开放免费 Offer，有界支持 Linux sing-box VLESS/VMess direct TCP；其他已有内核与协议不代表完整 native 验收。
 
-项目尚未接入正式测试，不再承担旧版本过渡兼容；以 native 为开发基线，接口、Schema 和真实消费者可以同步调整。CI 按当前组件收敛，旧迁移和影子矩阵仅保留手动入口。下一阶段为 C3 支付/资金/退款，其后是 C4 正式接口与凭据生命周期、C5 安装发布。新前端继续延期至 TX-F。详见[开发基线与 CI 分工](docs/development/native-development-baseline.md)、[当前进度](docs/architecture/v2/current-progress.md)和[交付计划](docs/architecture/v2/core-completion-plan.md)。
+本分支正在整合 C3/C4 候选：支付渠道插件、真实结算/钱包/退款、正式服务入口、独立链接和显式信任轮换。候选不代表已合并或发布；升级折抵、部分权益全退策略、支付插件版本交接及集成验收仍未收口，详见[内核成熟度评审](docs/architecture/v2/core-maturity-review.md)。
+
+项目尚未接入正式测试，不再承担旧版本过渡兼容；以 native 为开发基线，接口、Schema 和真实消费者可以同步调整。CI 按当前组件收敛，旧迁移和影子矩阵仅保留手动入口。C3/C4 收口后进入 C5 安装发布，新前端继续延期至 TX-F。详见[开发基线与 CI 分工](docs/development/native-development-baseline.md)、[当前进度](docs/architecture/v2/current-progress.md)和[交付计划](docs/architecture/v2/core-completion-plan.md)。
 
 ## 核心能力
 

@@ -14,7 +14,12 @@ TXBoard 是业务与数据权威。Gateway、Deploy、TX-Node 与可选插件按
 | [Core Subscription v1](core-subscription-v1.md) | 安装准备、正式目录及订阅聚合基础；生产启用条件由 Native C2 Runtime v1 补充 | Core C2 基础 |
 | [Native C2 Runtime v1](native-c2-runtime-v1.md) | 原生就绪转换、免费购买、Provider 轮换与接收者渲染、签名授权及原周期结算；精确提交验收见 PR #251 | Core C2 收尾 |
 | [Core Billing v1](core-billing-v1.md) | C3-A 真实双分录与支付尝试/收款事实基础；渠道接入、退款及对账完成前不开放付费 | Core C3 实现中 |
-| [Core Internal API v1](core-internal-api/README.md) | 正式服务身份、调用者授权与 Operation 待交付；旧隔离切片已退役 | C4 / B5 历史 |
+| [Native Payment Provider v1](native-payment-provider-v1.md) | typed 支付插件、冻结 dispatch、停用恢复与破坏性生命周期保护；非 PHP 沙箱 | C3 候选，未发布 |
+| [Native Payment Settlement v1](native-payment-settlement-v1.md) | 真实 CNY 收款、唯一获胜分配、迟到负债与 SQL 履约恢复；免费永久幂等 | C3 候选，待集成验收 |
+| [Native Wallet / Refunds v1](native-wallet-refunds-v1.md) | 钱包/混合付款、充值、退款至钱包、有界只读对账；升级折抵/部分精准全退未完成 | C3 候选，待集成验收 |
+| [Native Internal API v1](native-internal-api-v1.md) | 正式服务凭据、实际 actor、mTLS/epoch、固定 operation、审计与原键恢复 | C4 候选，待集成验收 |
+| [Native Provider Lifecycle v1](native-provider-lifecycle-v1.md) | 显式信任轮换、独立链接与有限授权；生产 PKI/信任分发未验收 | C4 候选，待集成验收 |
+| [Core Internal API 历史](core-internal-api/README.md) | 已退役隔离切片，仅历史追溯；不是正式入口或回退实现 | B5 历史 |
 | [Credential Provider v1](credential-provider/README.md) | 秘密归属、发行、租约、撤销、生命周期 | B4 |
 | [Node Usage v2](node-usage/README.md) | 计费主体、持久接收、结算、重放 | B3 |
 | [Secure Channel v2](secure-channel/README.md) | User/Admin 安全域、双向加密、密钥与防重放 | B6 |
@@ -24,7 +29,7 @@ TXBoard 是业务与数据权威。Gateway、Deploy、TX-Node 与可选插件按
 
 当前 HTTP 权威是 [TXAPI 接口](../http/external-adapter-current.md) 和 Laravel 注册路由；当前节点协议是 [Node Protocol v1](../node-protocol/README.md)。当前扩展继续遵守 [Plugin Package v1](../plugin-package/README.md)、[Module Lifecycle v1](../module-lifecycle/README.md) 和 Admin Bridge v1。
 
-不得为了符合目标目录而重新注册已退役的 `/api/v1`、`/api/v2`，也不得将目标 Internal API、升级 CLI 或加密通道写成已实现。协议落地需同时更新生产者、实际消费者、直接相关负向检查和能力声明；不要求维护历史协议兼容窗口。
+不得为了符合目标目录而重新注册已退役的 `/api/v1`、`/api/v2`。正式服务入口仅限上表候选的 `/txapi/internal/native/v1/...`，不能据此恢复旧 dispatcher；候选代码、CI 验证、合并及发布分别记录。协议落地需同时更新生产者、实际消费者、直接相关负向检查和能力声明；不要求维护历史协议兼容窗口。
 
 ## 共同规则
 

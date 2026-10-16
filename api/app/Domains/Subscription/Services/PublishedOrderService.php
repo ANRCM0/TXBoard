@@ -70,20 +70,31 @@ final class PublishedOrderService
                     throw new RuntimeException('PUBLISHED_ORDER_PENDING_ORDER_EXISTS');
                 }
                 $current = $slot->subscription_id === null ? null : $subscriptions->firstWhere('id', $slot->subscription_id);
+                $hasPaidHistory = false;
                 if ($current !== null) {
                     if (!in_array($current->status, ['active', 'suspended'], true)
                         || ($current->expires_at !== null && (int) $current->expires_at <= $now)) {
                         throw new RuntimeException('PUBLISHED_ORDER_SLOT_RELEASE_REQUIRED');
                     }
-                    $this->subscriptions->verifyHistory($current, $this->subscriptions->lockHistory($current));
+                    $history = $this->subscriptions->lockHistory($current);
+                    $this->subscriptions->verifyHistory($current, $history);
+                    foreach ($history['terms'] as $terms) {
+                        $source = $this->subscriptions->verifyTerms($terms, $current);
+                        $hasPaidHistory = $hasPaidHistory || (string) $source['price_minor'] !== '0';
+                    }
                 }
                 $published = $this->catalog->verifiedOffer($offerId, true, true);
                 $offer = $published['offer'];
                 if (($installation['runtime_version'] ?? null) === NativeRuntimeAdmission::VERSION
-                    && (string) $offer->price_minor !== '0') {
-                    throw new RuntimeException('PUBLISHED_ORDER_PAID_PURCHASE_UNAVAILABLE');
+                    && (string) $offer->price_minor !== '0' && $offer->currency !== 'CNY') {
+                    throw new RuntimeException('PUBLISHED_ORDER_CURRENCY_UNSUPPORTED');
                 }
                 $type = $this->orderType($current, $offer);
+                if (($installation['runtime_version'] ?? null) === NativeRuntimeAdmission::VERSION
+                    && $type === Order::TYPE_UPGRADE && ($hasPaidHistory || (string) $offer->price_minor !== '0')) {
+                    // A full-price replacement must not silently discard unimplemented credit.
+                    throw new RuntimeException('PUBLISHED_ORDER_UPGRADE_CREDIT_UNAVAILABLE');
+                }
                 $availability = $published['availability'];
                 $flag = in_array($type, [Order::TYPE_RENEWAL, Order::TYPE_RESET_TRAFFIC], true) ? 'renew' : 'sell';
                 if (!(bool) $availability->$flag) {
@@ -106,7 +117,7 @@ final class PublishedOrderService
                 ]);
                 $this->snapshots->capturePublished($created, $published);
                 return $created;
-            });
+            }, permanent: true);
             // A successful idempotency claim is not permission to return damaged evidence.
             $grant = $this->grants->resolve($order,
                 OrderPurchaseTerms::query()->where('order_id', $order->id)->first());
@@ -138,7 +149,7 @@ final class PublishedOrderService
             if ($this->grants->resolve($order, $purchase) === null) {
                 throw new RuntimeException('PUBLISHED_ORDER_PURCHASE_REQUIRED');
             }
-            return $transition($order);
+            return $transition($order, $purchase, $installation);
         }, 3);
     }
 

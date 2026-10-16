@@ -18,6 +18,8 @@ const required = [
   ['POST', 'txapi/integrations/telegram/webhook'],
   ['GET|HEAD', 'txapi/payment/webhook/{method}/{uuid}'],
   ['POST', 'txapi/payment/webhook/{method}/{uuid}'],
+  ['POST', 'txapi/internal/native/v1/{domain}/operations/{operation}', ['api', 'throttle:native-internal-ingress', 'App\\Http\\Middleware\\NativeServiceIdentity']],
+  ['POST', 'txapi/subscription-links/{linkRef}/redeem', ['api', 'throttle:30,1']],
 ].map(([method,uri,middleware]) => ({method,uri,middleware:middleware || (uri.startsWith('txapi/node/') ? ['api','App\\Http\\Middleware\\TxNodeAuth'] : [])}));
 
 test('can export deterministic Laravel route registry and critical control-plane boundaries', () => {
@@ -70,6 +72,25 @@ test('retired internal operations cannot be registered with any middleware', () 
     assert.equal(classify(route.uri)[1], 'forbidden');
     assert.throws(() => assertCurrentBoundaries(inventory([...required, route])), /legacy_routes/);
   }
+});
+
+test('only the exact formal native Internal API is admitted with independent service and actor checks', () => {
+  const uri = 'txapi/internal/native/v1/{domain}/operations/{operation}';
+  assert.equal(classify(uri)[1], 'service-and-actor');
+  assertCurrentBoundaries(inventory(required));
+  for (const middleware of [[], ['api', 'txapi.user'], ['api', 'admin'],
+    ['api', 'App\\Http\\Middleware\\InternalServiceProof'], ['api', 'App\\Http\\Middleware\\NativeServiceIdentity']]) {
+    assert.throws(() => assertCurrentBoundaries(inventory(required.map(route =>
+      route.uri === uri ? {...route, middleware} : route))), /unguarded_native_internal/);
+  }
+  assert.throws(() => assertCurrentBoundaries(inventory([...required,
+    {method:'GET', uri, middleware:['App\\Http\\Middleware\\NativeServiceIdentity']}]
+  )), /unguarded_native_internal/);
+  for (const path of ['txapi/internal/native/v2/{domain}/operations/{operation}',
+    'txapi/internal/native/v1/{operation}', 'txapi/internal/native/v1/user/sql']) {
+    assert.equal(classify(path)[1], 'forbidden');
+  }
+  assert.equal(classify('txapi/subscription-links/{linkRef}/redeem')[1], 'link-proof');
 });
 
 test('split Caddy exposes only the native TX-Node WebSocket Upgrade path', () => {

@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\DB;
 use RuntimeException;
 use Throwable;
 
-/** Native initializing-only catalog preparation, not a ready-state authority or an API. */
+/** Immutable native publications share one authority during preparation and live management. */
 final class PlanPublicationService
 {
     public const SCHEMA = 'plan-publication/v1';
@@ -30,7 +30,7 @@ final class PlanPublicationService
             throw new RuntimeException('PUBLICATION_CONTEXT_INVALID');
         }
         return DB::transaction(function () use ($planId, $publicationKey, $currency, $timezone): array {
-            app(InstallationAuthority::class)->assertCatalogMutation();
+            $this->admitLocked();
             $plan = DB::table('tx_plan')->where('id', $planId)->lockForUpdate()->first();
             if (!$plan) {
                 throw new RuntimeException('PUBLICATION_PLAN_MISSING');
@@ -117,7 +117,7 @@ final class PlanPublicationService
         }
         $availability['capacity_limit'] = $this->integer($availability['capacity_limit'], true, 4294967295);
         return DB::transaction(function () use ($offerId, $availability, $expectedVersion): array {
-            app(InstallationAuthority::class)->assertCatalogMutation();
+            $this->admitLocked();
             // The locator is immutable; ownership is rechecked after acquiring the Plan lock.
             $locator = DB::table('tx_plan_offer')->where('id', $offerId)->first();
             if (!$locator) {
@@ -163,6 +163,16 @@ final class PlanPublicationService
      *
      * @return array{revision:object,offer:object,source:array,availability:?object}
      */
+    private function admitLocked(): void
+    {
+        $authority = app(InstallationAuthority::class);
+        if (($authority->inspect()['runtime_version'] ?? null) !== null) {
+            $authority->assertNativeMutation();
+        } else {
+            $authority->assertCatalogMutation();
+        }
+    }
+
     public function verifiedOffer(int $offerId, bool $lock = false, bool $requirePublished = false): array
     {
         if ($offerId <= 0 || ($requirePublished && !$lock) || ($lock && DB::transactionLevel() === 0)) {

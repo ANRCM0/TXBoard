@@ -22,6 +22,20 @@ final class PaymentNotificationProcessor
     /** @return array{status:int, body?:mixed, error?:string} */
     public function process(string $method, string $uuid, Request $request): array
     {
+        try {
+            $checkout = app(NativePaymentCheckout::class);
+            if ($checkout->recognizes($method, $uuid, $request->input())) {
+                $settlement = $checkout->notify($method, $uuid, $request->input());
+                return ['status' => 200, 'body' => $settlement['acknowledgement']];
+            }
+            if (app(\App\Domains\Installation\InstallationAuthority::class)->inspect()['mode'] === 'native') {
+                return ['status' => 422, 'error' => 'unrecognized native payment'];
+            }
+        } catch (\Throwable) {
+            // Frozen dispatches include credentials; never log adapter exception context.
+            Log::error('NATIVE_PAYMENT_NOTIFICATION_REJECTED');
+            return ['status' => 500, 'error' => 'fail'];
+        }
         HookManager::call('payment.notify.before', [$method, $uuid, $request]);
         try {
             $payment = Payment::query()->where('uuid', $uuid)

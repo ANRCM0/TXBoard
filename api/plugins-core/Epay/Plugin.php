@@ -4,9 +4,22 @@ namespace Plugin\Epay;
 
 use App\Services\Plugin\AbstractPlugin;
 use App\Contracts\PaymentInterface;
+use App\Contracts\NativePaymentPluginInterface;
+use App\Contracts\NativePaymentProviderInterface;
 
-class Plugin extends AbstractPlugin implements PaymentInterface
+class Plugin extends AbstractPlugin implements PaymentInterface, NativePaymentPluginInterface
 {
+    public function nativePaymentPackageVersion(): string
+    {
+        return '1.0.0';
+    }
+
+    public function nativePaymentProvider(): NativePaymentProviderInterface
+    {
+        require_once __DIR__.'/NativeAdapter.php';
+        return new NativeAdapter;
+    }
+
     public function boot(): void
     {
         $this->filter('available_payment_methods', function ($methods) {

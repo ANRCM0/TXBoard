@@ -20,6 +20,7 @@
 
 - [扩展包与跨仓 HTTP/Node 协议](../../contracts/README.md)
 - [Module Platform](module-platform-v1.md)
+- [Core 内核与插件扩展边界](v2/core-extension-boundaries.md)
 - [当前范围与 Agent/MCP 退役](v2/admin-only-scope.md)
 - [AGENTS.md 开发边界](../../AGENTS.md)
 

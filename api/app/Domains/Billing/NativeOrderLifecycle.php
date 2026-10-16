@@ -3,6 +3,7 @@
 namespace App\Domains\Billing;
 
 use App\Domains\Installation\InstallationAuthorityException;
+use App\Domains\Installation\NativeRuntimeAdmission;
 use App\Domains\Subscription\Services\PublishedOrderService;
 use App\Domains\Subscription\Services\SubscriptionFulfillmentService;
 use App\Jobs\OrderHandleJob;
@@ -24,7 +25,13 @@ final class NativeOrderLifecycle
     public function paid(string $callbackNo, ?int $paymentId = null, ?int $verifiedAmountMinor = null): bool
     {
         try {
-            $transition = function (Order $order) use ($callbackNo, $paymentId, $verifiedAmountMinor) {
+            $transition = function (Order $order, $purchase, array $installation) use ($callbackNo, $paymentId, $verifiedAmountMinor) {
+                // Paid purchases must enter the receipt/ledger settlement authority, not this free-order transition.
+                if (($installation['runtime_version'] ?? null) === NativeRuntimeAdmission::VERSION
+                    && ((string) $order->total_amount !== '0' || (int) ($order->handling_amount ?? 0) !== 0
+                    || $paymentId !== null || $verifiedAmountMinor !== null)) {
+                    throw new \RuntimeException('NATIVE_PAID_SETTLEMENT_REQUIRED');
+                }
                 // Provider identity + signed amount must be checked under the
                 // same order lock as PENDING -> PROCESSING. This closes the
                 // race with simultaneous checkout method changes or callbacks.
@@ -95,8 +102,9 @@ final class NativeOrderLifecycle
     {
         try {
             $cancelled = app(PublishedOrderService::class)->transitionOrder((int) $this->order->id,
-                static function (Order $order): ?Order {
+                static function (Order $order, $purchase, array $installation): ?Order {
                     if ((int) $order->status !== Order::STATUS_PENDING) { return null; }
+                    app(NativeWalletReservations::class)->releaseLocked($installation, (int) $order->user_id, $order, $purchase);
                     $order->status = Order::STATUS_CANCELLED;
                     $order->saveOrFail();
                     return $order;

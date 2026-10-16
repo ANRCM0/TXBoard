@@ -84,6 +84,8 @@ jobs:
           cache-dependency-path: gateway/package-lock.json
       - name: Validate Gateway documentation links
         run: node scripts/check-docs.mjs
+      - name: Check native Core client CLI syntax
+        run: node --check scripts/native-core-client.mjs
       - name: Validate portable production dependency guard
         run: node --test scripts/tests/validate-portable-dependencies.test.mjs
       - name: Restore pinned dependencies

@@ -1,6 +1,8 @@
 # 外部主题 TXAPI 对接手册
 
 > 当前接口以 `api/routes/txapi.php`、`api/routes/web.php` 为准；外部部署须自行验证 HTTP 连通性。
+>
+> 2026-10-16：本分支含 C3/C4 候选接口，尚不代表已合并、通过集成验收或发布。路由注册不等于当前 native 安装准入；未实现的历史业务入口仍拒绝。当前状态及限制见[内核成熟度评审](../../docs/architecture/v2/core-maturity-review.md)。
 
 ## 1. 接入原则
 
@@ -63,8 +65,8 @@ Authorization: Bearer <opaque-session-token>
 
 | 分类 | 方法 + 路径 | 关键字段/用途 |
 | --- | --- | --- |
-| 用户 | GET `/me` | `id,email,plan_id,uuid,balance_minor,commission_balance_minor,expired_at,traffic` |
-| 用户 | GET `/me/subscription` | 用户自己的订阅链接、当前套餐和流量、重置日；**敏感 URL** |
+| 用户 | GET `/me` | native：账户身份、`subscription` 与非秘密凭据状态；旧 UUID、余额及 User 权益字段不是 native 权威 |
+| 用户 | GET `/me/subscription` | native：`core-entitlement/v1` 共同权益摘要，不返回代理秘密或旧 token URL |
 | 用户 | GET `/me/dashboard-stats` | 未付款订单、未关闭工单、邀请人数 |
 | 用户 | GET `/me/site-config` | 仅登录用户可见的站点配置 |
 | 用户 | GET / PATCH `/me/preferences` | 偏好；PATCH 只支持 `remind_expire`、`remind_traffic` |
@@ -74,6 +76,9 @@ Authorization: Bearer <opaque-session-token>
 | 原生凭据 | GET `/me/credential-operations/{operation_ref}` | 本人操作的非秘密状态；只读，不触发外部调用 |
 | 原生凭据 | POST `/me/credential-operations/{operation_ref}/recover` | 空请求体，按原操作查询和恢复，不创建新的逻辑签发 |
 | 原生分发 | POST `/me/subscription-deliveries` | `access_subject_id,recipient_public_key` 与可选固定 `format_id`；返回短期签名策略，由持有独立接收密钥的客户端向 Provider 取回配置 |
+| 原生链接 | GET / POST `/me/subscription-links` | GET 支持 `after_id`；POST `access_subject_id,expires_at` 与 `Idempotency-Key`，bearer 仅首次返回 |
+| 原生链接 | POST `/me/subscription-links/{linkRef}/revoke` | 空请求体，独立撤销本人链接，已签发有限授权不延长 |
+| 原生用量 | GET `/me/usage-periods` | 本人真实 UsagePeriod；`subscription_id?,after_id?,limit?`，不读取旧 StatUser 作为权威 |
 | 用户 | GET `/plans/{planId}` | 登录后的套餐详情与购买资格（无权时 404） |
 | 安全 | POST `/auth/logout` | 注销当前 Sanctum 会话 |
 | 安全 | GET `/auth/sessions` | 安全字段的会话清单 |
@@ -98,32 +103,38 @@ Authorization: Bearer <opaque-session-token>
 | 礼品卡 | GET `/gift-cards/history/{id}` | 单条历史 |
 | 其他 | POST `/billing/stripe-public-key` | Stripe 可公开配置 |
 | 提现 | POST `/billing/withdrawals` | 提现申请 |
-| 账单 | GET `/billing/wallet` | `balance_minor,commission_balance_minor` |
+| 账单 | GET `/billing/wallet` | native：`{schema:"native-wallet/v1",balances:[...]}`，按币种返回账本可用/保留金额 |
 | 账单 | GET `/billing/commissions` | 佣金明细分页 |
 | 支付 | GET `/billing/payment-methods` | 可用订单支付方式，服务端移除私密配置 |
+| 支付 | GET `/billing/payment-attempts/{attemptId}` | 仅本人原尝试的非秘密状态，不发起外部查询 |
+| 支付 | POST `/billing/payment-attempts/{attemptId}/query` | 仅本人，按原冻结插件配置查询/恢复，不接受客户端收款声明 |
 | 优惠券 | POST `/billing/coupons/check` | `code,plan_id,period` |
-| 订单 | GET / POST `/orders` | GET 支持 `page,per_page,status`；POST `plan_id,period,coupon_code?`（201） |
+| 订单 | GET / POST `/orders` | GET 支持 `page,per_page,status`；native POST 仅 `offer_id` 与 `Idempotency-Key`（201） |
 | 订单 | GET `/orders/{tradeNo}` | 轻量状态 |
 | 订单 | GET `/orders/{tradeNo}/detail` | 订单详情 |
-| 订单 | POST `/orders/{tradeNo}/checkout` | `method?`、`token?`；获得支付动作，不是成功通知 |
+| 订单 | POST `/orders/{tradeNo}/checkout` | native 必需 `Idempotency-Key`；`method?`、`wallet?`、字符串 `wallet_amount_minor?`，禁止渠道 token；免费订单仅空请求体 |
 | 订单 | POST `/orders/{tradeNo}/cancel` | 仅本人可取消待付订单 |
 | 充值 | GET `/billing/recharge-payment-methods` | 仅已验证支持充值的支付方式 |
-| 充值 | GET / POST `/billing/recharges` | GET 分页；POST `amount_minor,payment_method_id` 且需要 UUID `Idempotency-Key`（201） |
+| 充值 | GET / POST `/billing/recharges` | GET 游标 `after_id,limit`；POST 字符串 `amount_minor,payment_method_id` 且需要 UUID `Idempotency-Key`（201） |
 | 充值 | GET `/billing/recharges/{tradeNo}` | 本人的充值记录 |
-| 充值 | POST `/billing/recharges/{tradeNo}/checkout` | `token?`，启动充值支付 |
+| 充值 | POST `/billing/recharges/{tradeNo}/checkout` | 空请求体，启动原充值单支付；禁止 `token` |
 
-`/billing/recharges` 的分页上限 **50**，订单/工单等大多数列表的 `per_page` 上限 **100**。动态参数 `tradeNo` 不等于数据库自增 ID。对用户私有 URL、账号与付款响应禁止共享 CDN 缓存。
+`/billing/recharges` 的 `limit` 上限 **50**，订单/工单等大多数列表的 `per_page` 上限 **100**。动态参数 `tradeNo` 不等于数据库自增 ID。对用户私有 URL、账号与付款响应禁止共享 CDN 缓存。
 
-原生凭据路由是 C2-C1 已注册的应用适配器，当前真实 native 安装仍处于 `initializing`，业务请求返回就绪拒绝；legacy 安装不使用这些接口。响应只含 `core-credential-operation/v1` 元数据，不返回 UUID、私钥或订阅内容。签发回执不表示 Node 已获授权，`unknown` 也不代表没有执行。恢复语义与剩余启用条件见 [Provider 签发契约](../v2/credential-provider/native-issuance-v1.md)。
+原生凭据路由沿用 C2 已交付的真实安装门禁：未初始化或未完成 preflight/activate 的安装拒绝业务；激活后仅开放 `NativeRuntimeAdmission` 明确允许的入口，不能把本表所有历史注册路由当作 native 已开放。凭据响应只含 `core-credential-operation/v1` 元数据，不返回 UUID、私钥或订阅内容。签发回执不表示 Node 已获授权，`unknown` 也不代表没有执行。见 [Provider 签发契约](../v2/credential-provider/native-issuance-v1.md)。
+
+链接兑换不是 User Bearer 路由：`POST /txapi/subscription-links/{linkRef}/redeem` 使用独立链接 bearer 与闭合请求体中的 `recipient_public_key`。只返回至多 30 秒且受链接到期时间约束的 Provider 渲染授权，不返回代理材料。见[链接契约](../v2/native-provider-lifecycle-v1.md)。正式 Internal API 是服务端 mTLS + 独立服务凭据入口，浏览器不得持有这些凭据，见[服务契约](../v2/native-internal-api-v1.md)。
 
 ## 4. 主题常见完整业务流程
 
 ### 套餐购买
 
-1. `GET /txapi/plans` 展示可售套餐；登录后 `GET /txapi/plans/{planId}` 查询本人资格。
-2. `POST /txapi/orders`，例如 `{"plan_id":1,"period":"<prices[].period>"}` 是字段形状示例；`period` 的合法值须从当前套餐的 `prices[].period` 选择，不可猜测未提供的周期。
-3. 取 `data.trade_no`，`GET /txapi/billing/payment-methods`，然后 `POST /txapi/orders/{tradeNo}/checkout` 提交选定的 `method` ID。
-4. 根据 checkout 的 `data.type` 和 `data.data` 处理重定向/支付动作，并轮询 `GET /txapi/orders/{tradeNo}` 的状态。不可用客户端金额或回跳 URL 强行标记已支付。
+1. native `GET /txapi/plans` 返回不可变已发布 Offer；从返回值选择 `offer_id`，不提交可变套餐价格或猜测周期。
+2. `POST /txapi/orders` 提交 `{"offer_id":"<offer_id>"}` 与 `Idempotency-Key`；响应丢失时用原键/原输入重试。native 创建键永久保留，取消或时间流逝不释放原键；直接入口允许 1—128 位 `A-Za-z0-9._~-`，服务入口另要求 UUID。
+3. 取 `data.trade_no`。免费订单 checkout 为空体；全钱包使用 `{"wallet":true}`；渠道使用 `{"method":1}`，可选字符串 `wallet_amount_minor` 冻结混合份额。checkout 使用独立永久键，所有重试保留原键/输入；新客户端建议统一使用 UUID。
+4. 根据 checkout 的 `data.type` 和 `data.data` 处理动作，轮询订单/原支付尝试。实际收款通过验签回调/原尝试查询进入 Core；SQL work 负责可恢复履约，不要求 Webhook 内同步完成。
+
+本候选仅支持 CNY、无手续费与已实现的渠道插件。付费套餐替换因尚缺不可变来源绑定的升级折抵而明确拒绝；已履约续费/重置等精确全退仍未交付。不能以支付失败、浏览器回跳或本地订单取消推断渠道未收款。详见[支付结算](../v2/native-payment-settlement-v1.md)与[钱包退款](../v2/native-wallet-refunds-v1.md)。
 
 ### 钱包充值（幂等）
 
@@ -133,7 +144,7 @@ Authorization: Bearer <opaque-session-token>
 Content-Type: application/json
 Idempotency-Key: 00000000-0000-4000-8000-000000000001
 
-{"amount_minor":2500,"payment_method_id":1}
+{"amount_minor":"2500","payment_method_id":1}
 ```
 
 `Idempotency-Key` 必须是 UUID；同一业务重试使用原键，避免重复创建充值单。随后按返回的 `trade_no` 调用 `POST /billing/recharges/{tradeNo}/checkout`，使用查询接口确认状态。以上 ID/金额仅示例，不表示任何已配置支付方式。

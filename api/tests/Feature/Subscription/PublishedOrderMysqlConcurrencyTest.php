@@ -128,7 +128,7 @@ class PublishedOrderMysqlConcurrencyTest extends NativeSubscriptionTestCase
                 json_encode($result, JSON_THROW_ON_ERROR));
             $this->assertSame(0, Order::query()->where('user_id', $waitingId)->where('plan_id', $planId)->count());
             $this->assertSame('in_progress', DB::table('idempotency_keys')->where('user_id', $waitingId)
-                ->where('key_hash', OrderIdempotency::keyHash($waitingId, OrderIdempotency::OPERATION_CREATE, 'waiting'))
+                ->where('key_hash', OrderIdempotency::keyHash($waitingId, OrderIdempotency::OPERATION_NATIVE_CREATE, 'waiting'))
                 ->value('status'));
             $this->assertSame(1, Order::query()->where('plan_id', $planId)
                 ->whereIn('status', [Order::STATUS_PENDING, Order::STATUS_PROCESSING])->count());
@@ -157,8 +157,8 @@ class PublishedOrderMysqlConcurrencyTest extends NativeSubscriptionTestCase
         // Existing slots and recoverable claims isolate Plan contention from unrelated
         // missing-row gap locks, without bypassing the production create transaction.
         DB::table('idempotency_keys')->insert([
-            'user_id' => $userId, 'operation' => OrderIdempotency::OPERATION_CREATE,
-            'key_hash' => OrderIdempotency::keyHash($userId, OrderIdempotency::OPERATION_CREATE, $key),
+            'user_id' => $userId, 'operation' => OrderIdempotency::OPERATION_NATIVE_CREATE,
+            'key_hash' => OrderIdempotency::keyHash($userId, OrderIdempotency::OPERATION_NATIVE_CREATE, $key),
             'request_hash' => OrderIdempotency::requestHash([
                 'schema' => PublishedOrderService::VERSION, 'offer_id' => (string) $offerId,
                 'installation_id' => self::INSTALLATION,
