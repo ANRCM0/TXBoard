@@ -1,6 +1,7 @@
 # Native C2 runtime v1
 
-Status: candidate implementation; exact-head remote acceptance is required.
+Status: implemented bounded runtime. Exact-commit CI, review and merge evidence
+are recorded in [PR #251](https://github.com/ANRCM0/TXBoard/pull/251).
 
 This contract completes the first bounded native Subscription runtime for a
 fresh installation. It does not migrate an existing legacy installation.
@@ -183,7 +184,9 @@ authorization or Period boundaries.
 
 An authenticated Core may refuse a newly submitted historical batch with the
 specific `USAGE_NATIVE_AUTHORIZATION_CUTOFF` code after verifying its original
-ownership/proof/lease and establishing a later effective cutoff. Native Node
+ownership/proof/lease and establishing a later effective cutoff. All entries
+and billing arithmetic must validate before this batch-level classification;
+an invalid entry remains a hard error regardless of entry order. Native Node
 retains that exact batch and Session in local quarantine without a receipt or
 settlement claim. It does not change the batch ID, drop the bytes or charge a
 new period. A refusal affecting the active Session closes its I/O and requires

@@ -2,11 +2,13 @@
 
 更新日期：2026-10-16。当前主仓负责 Core、Gateway、Node；安装器由独立 TXBoard-Deploy 承接。新管理前端和用户前端延期，后续统一放在 TX-F，仅本地提交、不推送。Agent/MCP 已退役；优惠券等新增商业扩展继续后移。
 
-## C2 收尾候选
+## C2 收尾与验收
 
-`feat/core-c2-closeout` 在已通过远端验收的 C2-C2 `38c6912` 上集成原生持久启用、身份与正式目录 API、Provider 即时轮换和客户端直接渲染、同一签名中的授权/用量绑定，以及 SQL 恢复任务。新契约见 [Native C2 runtime v1](../../../contracts/v2/native-c2-runtime-v1.md)。本批仍是候选，完成状态以精确提交的 Actions 结果和审阅为准。
+`feat/core-c2-closeout` 在已通过远端验收的 C2-C2 `38c6912` 上集成原生持久启用、身份与正式目录 API、Provider 即时轮换和客户端直接渲染、同一签名中的授权/用量绑定，以及 SQL 恢复任务。新契约见 [Native C2 runtime v1](../../../contracts/v2/native-c2-runtime-v1.md)。精确提交的 CI、领域复审、依赖合并顺序和最终状态统一记录在 [PR #251](https://github.com/ANRCM0/TXBoard/pull/251)，实现范围及验收入口见[收尾记录](core-c2-runtime-verification.json)。
 
-新增 `native-c2` workflow 集中验证 SQLite 与 MySQL 8.4、Go race，以及不替换安装准入的真实注册、零元订单、Redis 队列履约、Provider、VLESS、离线到期、重启旧周期重放、重置、续费、轮换与撤销。按照用户要求，本地只做轻量静态检查；大型 Linux 环境已删除，不重建。C3 资金账本、C4 正式 Internal API/生产证书与长期订阅链接、C5 安装发布仍另行推进。
+新增 `native-c2` workflow 集中验证 SQLite 与 MySQL 8.4、Go race，以及不替换安装准入的真实注册、零元订单、Redis 队列履约、Provider、VLESS、离线到期、重启旧周期重放、重置、续费、轮换与撤销。`7600693` 的真实流量与 Go race 任务已通过；首轮 Core/MySQL 夹具问题和后续审查修复须以 PR 精确 head 复验，不借用旧提交结果。按照用户要求，本地只做轻量静态检查；大型 Linux 环境已删除，不重建。
+
+当前原生运行仅开放免费 Offer；已知付费 `offer_id` 在建单时拒绝，旧付费原生订单也不能发起支付。C3 支付回调与资金账本、C4 正式 Internal API/生产证书与长期订阅链接、C5 安装发布仍另行推进。后文各切片是当时的历史范围与验收记录，其中“保持 initializing”和未合并状态不覆盖本节的收尾契约及 PR 最终状态。
 
 ## 已完成的基础切片
 
@@ -110,7 +112,7 @@ Core新增原生Provider注册、持久操作与AccessSubject绑定，先提交�
 
 用户同日要求降低本地资源占用，后续数据库、真实服务/流量、race、完整构建和大范围回归统一优先放到GitHub Actions；本地只做轻量检查。本阶段最终真实Node链路及新增协议绑定检查交由`native-provider-node` workflow验收，精确提交结果记入PR。
 
-1. **Core优先：订阅与权益权威**。C1及C2-B待非作者审阅和维护者合并；C2-C1真实Provider签发与持久恢复已完成本地批次验收。随后接通Node材料消费、轮换、订阅分发和授权流量结算链；完整链验收前保持native不可就绪。
+1. **C2 收尾合并**。按 PR #251 的精确提交完成远端验收与领域复审，并依次合入 #247、#248、#249、#250、#251；原生生产启用遵循持久 preflight/activate，不通过环境变量绕过。
 2. **Core：支付事实、账务与退款**。复用已有支付验证和交易入口，补齐payment attempts、账本及退款状态闭环。
 3. **Core：正式Internal API与凭据生命周期**。在当前权限与服务边界内逐批开放，保留未完成生产秘密交付的状态。
 4. **Core集中交付后收口安装器**。基础安装、启动、正常更新及关联恢复验收；Node/安装器边缘测试不阻塞Core主线。新前端和P2商业/HA扩展继续后移。

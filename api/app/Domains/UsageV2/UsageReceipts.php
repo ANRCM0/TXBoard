@@ -41,13 +41,16 @@ final class UsageReceipts
                 || $p['ended_at'] < $now - (int) config('core_usage_v2.max_late_report_seconds')) { throw new UsageError('USAGE_INTERVAL_OUTSIDE_RETENTION'); }
             if (DB::table('tx_usage_batch')->where('source_id', $source->id)->where('started_at', '<', $p['ended_at'])
                 ->where('ended_at', '>', $p['started_at'])->exists()) { throw new UsageError('USAGE_INTERVAL_OVERLAP', 409); }
-            $frozen = []; $rawUp = '0'; $rawDown = '0'; $billed = '0';
+            $frozen = []; $rawUp = '0'; $rawDown = '0'; $billed = '0'; $authorizationCutoff = false;
             foreach ($p['entries'] as $entry) {
-                $evidence = $this->freeze($source, $entry, $p); $frozen[] = $evidence;
+                [$evidence, $cutoff] = $this->freeze($source, $entry, $p); $frozen[] = $evidence;
+                $authorizationCutoff = $authorizationCutoff || $cutoff;
                 $rawUp = UsageMath::add($rawUp, $evidence['raw_up_bytes']);
                 $rawDown = UsageMath::add($rawDown, $evidence['raw_down_bytes']);
                 $billed = UsageMath::add($billed, $evidence['billed_up_bytes'], $evidence['billed_down_bytes']);
             }
+            // Only a fully validated batch can authorize Node's durable cutoff quarantine.
+            if ($authorizationCutoff) { throw new UsageError('USAGE_NATIVE_AUTHORIZATION_CUTOFF'); }
             $encoded = json_encode($frozen, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES);
             $id = DB::table('tx_usage_batch')->insertGetId([
                 'source_id' => $source->id, 'node_id' => $nodeId, 'source_epoch' => $p['source_epoch'], 'batch_id' => $p['batch_id'],
@@ -112,6 +115,7 @@ final class UsageReceipts
         }, 3);
     }
 
+    /** Returns [evidence, proven later cutoff]; all independent validation still runs for cutoff entries. */
     private function freeze(object $source, array $entry, array $payload): array
     {
         $grant = DB::table('tx_auth_snapshot')->where('id', $entry['auth_snapshot_id'])->lockForUpdate()->first();
@@ -145,15 +149,16 @@ final class UsageReceipts
         $this->policy->assertSubscription($sub);
         NativeUsageLedger::verifyTariff($tariff);
         $boundaries = $this->boundaries ?? app(UsageTermsBoundary::class);
+        $authorizationCutoff = false;
         if ($native) {
             $cutoff = $boundaries->nativeCutoff($grant, $sub, $subject, $period, $proof['coverage']);
-            if ($cutoff !== null && $end > $cutoff) { throw new UsageError('USAGE_NATIVE_AUTHORIZATION_CUTOFF'); }
+            $authorizationCutoff = $cutoff !== null && $end > $cutoff;
         }
-        if (!UsageRegistry::covers($start, $end, $period->starts_at, $period->ends_at)
+        if (!$authorizationCutoff && (!UsageRegistry::covers($start, $end, $period->starts_at, $period->ends_at)
             || !UsageRegistry::covers($start, $end, $sub->starts_at, $sub->expires_at)
             || ($sub->ended_at !== null && $end > (int) $sub->ended_at)
             || ($grant->revoked_at !== null && $end > (int) $grant->revoked_at)
-            || ($subject->revoked_at !== null && $end > (int) $subject->revoked_at)) {
+            || ($subject->revoked_at !== null && $end > (int) $subject->revoked_at))) {
             throw new UsageError('USAGE_GRANT_OWNERSHIP_OR_COVERAGE');
         }
         // A revoked subject can report traffic strictly within its former authorization.
@@ -163,8 +168,11 @@ final class UsageReceipts
             throw new UsageError('USAGE_REVOCATION_TIME_UNKNOWN');
         }
         if ($tariff->rounding_revision !== 'floor-per-direction-v1') { throw new UsageError('USAGE_ROUNDING_UNSUPPORTED'); }
-        $boundary = $boundaries->freeze((string) $sub->id, (string) $terms->id, $period, $start, $end);
-        return $entry + $boundary + [
+        // lockOwners validates the complete native Terms/period history; nativeCutoff binds it to the original proof.
+        // Preserve that original window while validating a rejected entry, including its billing arithmetic.
+        $boundary = $authorizationCutoff ? $proof['coverage']
+            : $boundaries->freeze((string) $sub->id, (string) $terms->id, $period, $start, $end);
+        return [$entry + $boundary + [
             'subscription_id' => (string) $grant->subscription_id, 'user_id' => (string) $grant->user_id,
             'billed_up_bytes' => UsageMath::floor($entry['raw_up_bytes'], (string) $tariff->numerator, (string) $tariff->denominator),
             'billed_down_bytes' => UsageMath::floor($entry['raw_down_bytes'], (string) $tariff->numerator, (string) $tariff->denominator),
@@ -173,7 +181,7 @@ final class UsageReceipts
             'grant_issued_at' => (int) $grant->issued_at, 'grant_lease_expires_at' => (int) $grant->lease_expires_at,
             'period_started_at' => (int) $period->starts_at, 'period_ended_at' => $period->ends_at === null ? null : (int) $period->ends_at,
             'auth_version' => (string) $grant->auth_version, 'revocation_version' => (string) $grant->revocation_version,
-        ];
+        ], $authorizationCutoff];
     }
 
     public static function receipt(object $batch): array

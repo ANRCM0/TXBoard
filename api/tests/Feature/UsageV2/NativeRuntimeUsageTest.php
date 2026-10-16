@@ -5,6 +5,7 @@ namespace Tests\Feature\UsageV2;
 use App\Domains\UsageV2\UsageError;
 use App\Domains\UsageV2\UsagePayload;
 use App\Domains\UsageV2\UsageReceipts;
+use App\Domains\UsageV2\UsageRegistry;
 use App\Domains\UsageV2\UsageSettlement;
 use App\Services\Subscription\NativeCredentialSynchronization;
 use App\Services\Subscription\NativeCredentialProviderService;
@@ -12,6 +13,7 @@ use App\Services\Subscription\SubscriptionLifecycleService;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redis;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Support\NativeRuntimeTestCase;
 
 final class NativeRuntimeUsageTest extends NativeRuntimeTestCase
@@ -190,11 +192,141 @@ final class NativeRuntimeUsageTest extends NativeRuntimeTestCase
         $this->assertSame(0, DB::table('tx_usage_entry')->count());
     }
 
+    #[DataProvider('mixedCutoffCases')]
+    public function test_cutoff_never_masks_another_entry_with_invalid_proof_or_scope(int $cutoffIndex, string $damage): void
+    {
+        $this->activate();
+        $this->subscribe();
+        $this->subscribe();
+        $snapshot = $this->snapshot();
+        $grants = $this->sortedGrants($snapshot);
+        $this->assertCount(2, $grants);
+        $cutoff = $this->rotateGrant($grants[$cutoffIndex], 'runtime-mixed-cutoff');
+        $entries = array_map(fn (array $grant): array => $this->usageEntry($grant), $grants);
+        $damagedIndex = 1 - $cutoffIndex;
+        if ($damage === 'proof') {
+            DB::table('tx_native_usage_grant')->where('grant_id', $grants[$damagedIndex]['auth_snapshot_id'])
+                ->update(['binding_hash' => str_repeat('0', 64)]);
+            $expected = 'USAGE_NATIVE_GRANT_PROOF_INVALID';
+        } else {
+            $entries[$damagedIndex]['terms_id'] = $grants[$cutoffIndex]['terms_id'];
+            $expected = 'USAGE_GRANT_OWNERSHIP_OR_COVERAGE';
+        }
+        $payload = $this->payload($snapshot, overrides: ['entries' => $entries, 'ended_at' => $cutoff + 1]);
+        $this->assertRejectedWithoutUsageWrites($payload, $cutoff + 2, $expected);
+    }
+
+    public static function mixedCutoffCases(): array
+    {
+        return [
+            'cutoff before damaged proof' => [0, 'proof'],
+            'damaged proof before cutoff' => [1, 'proof'],
+            'cutoff before invalid scope' => [0, 'scope'],
+            'invalid scope before cutoff' => [1, 'scope'],
+        ];
+    }
+
+    #[DataProvider('validCutoffCases')]
+    public function test_batches_with_only_proven_cutoffs_keep_the_specific_error_without_persisting(array $cutoffIndexes): void
+    {
+        $this->activate();
+        $this->subscribe();
+        $this->subscribe();
+        $snapshot = $this->snapshot();
+        $grants = $this->sortedGrants($snapshot);
+        $this->assertCount(2, $grants);
+        $cutoff = $snapshot['issued_at'];
+        foreach ($cutoffIndexes as $index) {
+            $cutoff = max($cutoff, $this->rotateGrant($grants[$index], 'runtime-valid-cutoff-'.$index));
+        }
+        $payload = $this->payload($snapshot, overrides: ['ended_at' => $cutoff + 1,
+            'entries' => array_map(fn (array $grant): array => $this->usageEntry($grant), $grants)]);
+        $this->assertRejectedWithoutUsageWrites($payload, $cutoff + 2, 'USAGE_NATIVE_AUTHORIZATION_CUTOFF');
+    }
+
+    public static function validCutoffCases(): array
+    {
+        return ['first entry only' => [[0]], 'last entry only' => [[1]], 'every entry' => [[0, 1]]];
+    }
+
+    #[DataProvider('invalidCutoffBillingCases')]
+    public function test_a_proven_cutoff_does_not_mask_invalid_billing_in_the_same_entry(array $changes, string $expected): void
+    {
+        $this->activate();
+        $this->subscribe();
+        $snapshot = $this->snapshot();
+        $grant = $snapshot['usage_v2']['grants'][0];
+        $cutoff = $this->rotateGrant($grant, 'runtime-billing-cutoff');
+        $tariff = DB::table('tx_tariff_revision')->where('id', $grant['tariff_revision_id'])->first();
+        $changed = array_replace(['node_id' => (int) $tariff->node_id, 'numerator' => (string) $tariff->numerator,
+            'denominator' => (string) $tariff->denominator, 'effective_from' => (int) $tariff->effective_from,
+            'effective_until' => (int) $tariff->effective_until, 'rounding_revision' => $tariff->rounding_revision], $changes);
+        DB::table('tx_tariff_revision')->where('id', $tariff->id)
+            ->update($changed + ['content_hash' => UsageRegistry::hash($changed)]);
+        $payload = $this->payload($snapshot, overrides: ['ended_at' => $cutoff + 1]);
+        $this->assertRejectedWithoutUsageWrites($payload, $cutoff + 2, $expected);
+    }
+
+    public static function invalidCutoffBillingCases(): array
+    {
+        return [
+            'unsupported rounding' => [['rounding_revision' => 'unsupported-rounding'], 'USAGE_ROUNDING_UNSUPPORTED'],
+            'zero denominator' => [['denominator' => '0'], 'USAGE_DECIMAL_INVALID'],
+            'billing overflow' => [['numerator' => '9223372036854775807', 'denominator' => '1'], 'USAGE_ACCOUNTING_OVERFLOW'],
+        ];
+    }
+
+    private function sortedGrants(array $snapshot): array
+    {
+        $grants = $snapshot['usage_v2']['grants'];
+        $tuple = static fn (array $grant): string => implode("\0", array_map(
+            static fn (string $key): string => $grant[$key],
+            ['access_subject_id', 'auth_snapshot_id', 'tariff_revision_id', 'usage_period_id']));
+        usort($grants, static fn (array $a, array $b): int => strcmp($tuple($a), $tuple($b)));
+        return $grants;
+    }
+
+    private function rotateGrant(array $grant, string $key): int
+    {
+        $subject = DB::table('tx_access_subject')->where('id', $grant['access_subject_id'])->first();
+        $rotation = app(NativeCredentialProviderService::class)->rotate(
+            (int) $grant['user_id'], (int) $subject->id, $key, (string) $subject->row_version);
+        $this->assertSame('succeeded', $rotation['status']);
+        $cutoff = DB::table('tx_auth_snapshot')->where('id', $grant['auth_snapshot_id'])->value('revoked_at');
+        $this->assertNotNull($cutoff);
+        $this->assertGreaterThanOrEqual($grant['issued_at'], (int) $cutoff);
+        $this->assertLessThan($grant['lease_expires_at'], (int) $cutoff);
+        return (int) $cutoff;
+    }
+
+    private function assertRejectedWithoutUsageWrites(array $payload, int $now, string $expected): void
+    {
+        try {
+            app(UsageReceipts::class)->submit((int) $this->node->id, $payload, $now);
+            $this->fail('Invalid or cut off batch persisted');
+        } catch (UsageError $error) {
+            $this->assertSame($expected, $error->errorCode);
+            $this->assertSame(422, $error->httpStatus);
+        }
+        $this->assertSame(0, DB::table('tx_usage_batch')->count());
+        $this->assertSame(0, DB::table('tx_usage_entry')->count());
+        $this->assertSame(0, DB::table('tx_usage_outbox')->count());
+        $this->assertSame(0, (int) DB::table('tx_usage_period')->sum('billable_bytes'));
+        $this->assertSame(0, (int) DB::table('tx_user')->sum('u'));
+        $this->assertSame(0, (int) DB::table('tx_user')->sum('d'));
+    }
+
+    private function usageEntry(array $grant, string $up = '3', string $down = '5'): array
+    {
+        return array_intersect_key($grant, array_flip([
+            'access_subject_id', 'auth_snapshot_id', 'tariff_revision_id', 'terms_id', 'usage_period_id',
+        ])) + ['raw_up_bytes' => $up, 'raw_down_bytes' => $down];
+    }
+
     private function payload(array $snapshot, string $up = '3', string $down = '5', array $overrides = []): array
     {
         $grant = $snapshot['usage_v2']['grants'][0];
-        $entry = array_intersect_key($grant, array_flip(['access_subject_id', 'auth_snapshot_id', 'tariff_revision_id', 'terms_id', 'usage_period_id']));
-        $entry += ['raw_up_bytes' => $up, 'raw_down_bytes' => $down];
+        $entry = $this->usageEntry($grant, $up, $down);
         $payload = ['protocol_version' => 2, 'node_id' => (string) $this->node->id, 'source_epoch' => $snapshot['usage_v2']['source_epoch'],
             'batch_id' => 'runtime-batch-0001', 'started_at' => $snapshot['issued_at'], 'ended_at' => $snapshot['issued_at'] + 1, 'entries' => [$entry]];
         $payload = array_replace($payload, $overrides);

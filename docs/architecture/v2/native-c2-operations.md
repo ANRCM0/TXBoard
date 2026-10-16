@@ -1,6 +1,7 @@
 # Native C2 runtime configuration
 
-Status: candidate, pending exact-head CI acceptance and review.
+Implementation and operator scope are defined here; exact-commit CI, review and
+merge evidence are recorded in [PR #251](https://github.com/ANRCM0/TXBoard/pull/251).
 The normative behavior is [Native C2 runtime v1](../../../contracts/v2/native-c2-runtime-v1.md).
 This is operator configuration for a fresh native installation, not a legacy
 migration or a host installer.

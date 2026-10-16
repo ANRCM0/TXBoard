@@ -2,7 +2,7 @@
 
 > 更新：2026-10-16 · 实施路线：C1—C5 · 本文是后续开发决策，不是完成声明。
 >
-> 用户最新要求：先完成 Core 的完整开发；现有站点数据兼容不作为新版本的必经路径。前端、安装器和 Node 的独立工作不能替代 Core 业务开发。C1 已完成实现、本地批次验收及代码提交 `ea5c4c4` 的远端 CI 核验，见[收尾记录](core-c1-closeout-verification.json)；非作者审阅、合并与发布仍分别待完成。C2-A准备和C2-B订阅领域已实现，C2-C1真实Provider控制操作已完成本地验收；完整Node/订阅消费及就绪链仍在开发，C3—C5待完成。实际结果以代码、PR 和[当前进度](current-progress.md)为准。
+> 用户最新要求：先完成 Core 的完整开发；现有站点数据兼容不作为新版本的必经路径。前端、安装器和 Node 的独立工作不能替代 Core 业务开发。C1 购买证据与 C2 原生订阅、真实 Provider/Node、直接渲染、授权用量结算和持久启用已集成；精确提交验收与依赖合并统一记录在 [PR #251](https://github.com/ANRCM0/TXBoard/pull/251)。C2 限定免费购买和 sing-box VLESS/VMess direct TCP；C3—C5 待完成。实际结果以代码、PR 和[当前进度](current-progress.md)为准。
 
 ## 完成范围与现有边界
 
@@ -49,6 +49,8 @@
 **2026-10-15实施状态：** C2-A在`feat/core-native-subscriptions`实现持久authority bootstrap、逐工作项准入、就绪检查和不可变套餐发布/Availability CAS；基于C1最终提交`5e03dbc`，依赖尚未合入的PR #247。参见[C2-A验收记录](core-c2a-verification.json)及[本批契约](../../../contracts/v2/core-subscription-v1.md)。native只允许`initializing`准备，不提供激活；该批基础不等于下表中的真实订阅、读取、授权和用量已经交付。
 
 **2026-10-16进展：** C2-B已实现原生订阅履约、生命周期、共同权益、用量归属和应用适配，PR #248提交`0adb0dd`的远端检查已通过（发布相关任务跳过）。C2-C1在`feat/core-provider-integration`接入独立Provider真实签发/查询/撤销与Core持久恢复，通过本地mTLS进程联调及SQL专项；见[C2-C1验收](core-c2c1-verification.json)。材料仍仅在Provider私有存储中，后续必须完成Node与订阅渲染消费、轮换、授权到用量闭环及就绪转换。登记、回执或测试中替换准入均不开放生产运行。
+
+**2026-10-16收尾：** PR #251 集成上述后续链路和真实持久激活，不再以测试准入替身证明就绪。Provider 只向已授权 Node 或持有客户端私钥的渲染接收方交付材料；Node 使用同一签名 Session 控制访问和计量，重启后的原批次按原 Period 结算。非零报价与支付结账在本阶段明确拒绝，支付回调及资金能力由 C3 完成后再开放。首轮真实 VLESS 全链与相关 Go race 已通过，Core/MySQL 夹具和审查修复以 PR 最终 head 复验；[收尾记录](core-c2-runtime-verification.json)列出支持范围和验收入口。
 
 | 组成 | 必须交付的生产行为 |
 | --- | --- |
