@@ -29,7 +29,7 @@ class PluginLifecycleSafetyTest extends TestCase
             app(PluginManager::class)->enable('phase3_unavailable');
             $this->fail('Enabling a missing implementation must fail.');
         } catch (\RuntimeException $e) {
-            $this->assertStringContainsString('unavailable', $e->getMessage());
+            $this->assertSame('Invalid current plugin package', $e->getMessage());
         }
 
         $row = Plugin::query()->where('code', 'phase3_unavailable')->firstOrFail();

@@ -63,7 +63,7 @@ Core API、MySQL、native C2 与镜像继续验证当前行为；Gateway/SDK、R
 
 删除旧 token 订阅下载、User UUID 渲染器、协议注册门面、旧节点列表与凭据轮换入口，以及生成这些链接的 helper、管理端、用户页和知识库替换。旧订阅模板的设置、页面和规则资源一并删除；历史表及迁移保留。当前客户端通过短期 PoP 渲染授权直接向 Provider 获取材料。
 
-TXBoard Node 消费者只接受 Provider 签名授权和完整刷新，删除 unsigned 用户快照、缓存、delta/device 事件及旧孤立用量客户端。WebSocket 只推刷新提示，实际完整授权仍由当前身份和权益重新生成。独立 Xboard 外部适配器仍有实际消费者，不属于本次 Core 过渡兼容。
+TXBoard Node 消费者只接受 Provider 签名授权和完整刷新，删除 unsigned 用户快照、缓存、delta/device 事件及旧孤立用量客户端。Core 删除无人调用的旧授权签发入口，默认策略改为 Provider 授权。WebSocket 只推刷新提示，实际完整授权仍由当前身份和权益重新生成。独立 Xboard 外部适配器仍有实际消费者，不属于本次 Core 过渡兼容。
 
 ## 第七批：UsageV2 native 收敛
 

@@ -37,18 +37,7 @@ final class NativeNodeAuthorization
             'max_clock_skew_seconds' => $this->clockSkewSeconds()];
     }
 
-    /**
-     * Caller must hold the tx_server row lock before calling. The row lock serializes
-     * first-state creation and fixes the global lock order: Server, then auth state.
-     */
-    public function issueLocked(Server $node, array $users, int $now): array
-    {
-        if ($this->policyVersion() !== self::POLICY_VERSION) {
-            throw new DomainException('NATIVE_NODE_AUTHORIZATION_POLICY_INVALID');
-        }
-        return $this->issueSnapshotLocked($node, $users, $now);
-    }
-
+    /** Caller holds the Server lock after account, Subject and receipt locks. */
     public function issueProviderLocked(Server $node, array $users, array $provider, int $expiresAt, int $now, ?array $usage = null): array
     {
         $installation = app(\App\Domains\Installation\InstallationAuthority::class)->assertNativeRead();

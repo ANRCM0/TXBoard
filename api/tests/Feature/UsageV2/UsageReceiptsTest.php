@@ -17,7 +17,7 @@ final class UsageReceiptsTest extends NativeRuntimeTestCase
 
     public function test_unactivated_installation_cannot_read_or_accept_usage(): void
     {
-        $this->expectExceptionMessage('INSTALLATION_NATIVE_NOT_READY');
+        $this->expectExceptionMessage('INSTALLATION_AUTHORITY_NATIVE_NOT_READY');
         app(UsageReceipts::class)->query((int) $this->node->id, []);
     }
 
