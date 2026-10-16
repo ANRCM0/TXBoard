@@ -27,7 +27,9 @@ class TxapiNativeSubscriptionAdapterTest extends NativeSubscriptionTestCase
         $this->assertSame([
             'schema' => 'core-entitlement/v1', 'authorized' => false,
             'reason' => 'ENTITLEMENT_SLOT_MISSING', 'user_id' => (string) $user->id,
-            'subscribe_url' => null, 'credential_status' => 'provider_not_integrated',
+            'subscribe_url' => null, 'credential_status' => 'provider_managed',
+            'delivery_formats' => ['native-connection-bundle/v1'],
+            'delivery_endpoint' => '/txapi/me/subscription-deliveries',
         ], $data['data']);
         $this->assertStringNotContainsString((string) $user->token, $response->getContent());
         $this->assertStringNotContainsString((string) $user->uuid, $response->getContent());

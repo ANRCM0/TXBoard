@@ -9,7 +9,8 @@ TXBoard 是业务与数据权威。Gateway、Deploy、TX-Node 与可选插件按
 | 契约 | 负责边界 | 实施批次 |
 | --- | --- | --- |
 | [Core Commerce v1](core-commerce-v1.md) | 正式订单购买快照与履约输入；不等于订阅/账务权威切换 | Core C1 |
-| [Core Subscription v1](core-subscription-v1.md) | C2-A安装权威及正式目录准备；native未就绪，不开放半条生产链路 | Core C2（进行中） |
+| [Core Subscription v1](core-subscription-v1.md) | 安装准备、正式目录及订阅聚合基础；生产启用条件由 Native C2 Runtime v1 补充 | Core C2 基础 |
+| [Native C2 Runtime v1](native-c2-runtime-v1.md) | 原生就绪转换、免费购买、Provider 轮换与接收者渲染、签名授权及原周期结算；精确提交验收见 PR #251 | Core C2 收尾 |
 | [Core Internal API v1](core-internal-api/README.md) | 服务身份、最终用户授权、Operation、DTO、幂等 | B5 |
 | [Credential Provider v1](credential-provider/README.md) | 秘密归属、发行、租约、撤销、生命周期 | B4 |
 | [Node Usage v2](node-usage/README.md) | 计费主体、持久接收、结算、重放 | B3 |

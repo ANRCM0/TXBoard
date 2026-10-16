@@ -54,7 +54,7 @@ final class ProviderCodec
             'provider_instance_epoch', 'idempotency_key', 'input_hash', 'deadline_at', 'input',
         ]);
         self::require($request['contract_version'] === 'credential-provider/1');
-        self::require(in_array($request['operation'], ['issue', 'query', 'revoke'], true));
+        self::require(in_array($request['operation'], ['issue', 'rotate', 'query', 'revoke'], true));
         self::token($request['request_id'], '/^[A-Za-z0-9._~:-]{1,96}$/D');
         self::token($request['operation_id'], '/^cp_[0-9a-f]{32}$/D');
         self::token($request['provider_id'], '/^[a-z][a-z0-9_-]{0,63}$/D');
@@ -114,7 +114,7 @@ final class ProviderCodec
             if ($request['operation'] === 'query') {
                 self::keys($response['result'], ['operation', 'input_hash', 'result']);
                 $receipt = $response['result'];
-                self::require(in_array($receipt['operation'], ['issue', 'revoke'], true));
+                self::require(in_array($receipt['operation'], ['issue', 'rotate', 'revoke'], true));
                 self::token($receipt['input_hash'], '/^[0-9a-f]{64}$/D');
                 self::require(is_array($receipt['result']));
                 self::require($originalRequest !== null);
@@ -149,12 +149,20 @@ final class ProviderCodec
             self::token($input['operation_id'], '/^cp_[0-9a-f]{32}$/D');
             return;
         }
-        if ($operation === 'issue') {
-            self::keys($input, [
+        if (in_array($operation, ['issue', 'rotate'], true)) {
+            $keys = [
                 'installation_id', 'access_subject_id', 'subscription_id', 'terms_id',
                 'provider_subject_ref', 'expected_subject_version', 'credential_profile_id',
                 'not_before_at', 'credential_expires_at',
-            ]);
+            ];
+            if ($operation === 'rotate') {
+                $keys = [...$keys, 'credential_ref', 'expected_credential_generation', 'rotation_mode'];
+                self::token($input['credential_ref'] ?? null, '/^credential_[0-9a-f]{32}$/D');
+                self::decimal($input['expected_credential_generation'] ?? null);
+                self::require($input['expected_credential_generation'] !== self::MAX_DECIMAL
+                    && ($input['rotation_mode'] ?? null) === 'immediate');
+            }
+            self::keys($input, $keys);
             foreach (['subscription_id', 'terms_id', 'expected_subject_version'] as $key) {
                 self::decimal($input[$key]);
             }
@@ -179,13 +187,29 @@ final class ProviderCodec
 
     private static function result(string $operation, #[\SensitiveParameter] array $result, #[\SensitiveParameter] ?array $input): void
     {
-        if ($operation === 'issue') {
-            self::keys($result, [
+        if (in_array($operation, ['issue', 'rotate'], true)) {
+            $keys = [
                 'access_subject_id', 'provider_subject_ref', 'credential_profile_id',
                 'credential_ref', 'credential_generation', 'issued_at', 'not_before_at', 'credential_expires_at',
-            ]);
+            ];
+            if ($operation === 'rotate') {
+                $keys = [...$keys, 'previous_credential_ref', 'previous_generation', 'previous_valid_until', 'rotation_mode'];
+                self::token($result['previous_credential_ref'] ?? null, '/^credential_[0-9a-f]{32}$/D');
+                self::decimal($result['previous_generation'] ?? null);
+                self::require($result['previous_generation'] !== self::MAX_DECIMAL
+                    && ($result['credential_generation'] ?? null) === (string) ((int) $result['previous_generation'] + 1)
+                    && ($result['rotation_mode'] ?? null) === 'immediate'
+                    && ($result['previous_valid_until'] ?? null) === ($result['issued_at'] ?? null)
+                    && ($result['credential_ref'] ?? null) !== $result['previous_credential_ref']);
+                if ($input !== null) {
+                    self::require($result['previous_credential_ref'] === $input['credential_ref']
+                        && $result['previous_generation'] === $input['expected_credential_generation']);
+                }
+            } else {
+                self::require(($result['credential_generation'] ?? null) === '1');
+            }
+            self::keys($result, $keys);
             self::token($result['credential_ref'], '/^credential_[0-9a-f]{32}$/D');
-            self::require($result['credential_generation'] === '1');
             self::require(in_array($result['credential_profile_id'], self::PROFILES, true));
             foreach (['issued_at', 'not_before_at', 'credential_expires_at'] as $key) {
                 self::timestamp($result[$key]);

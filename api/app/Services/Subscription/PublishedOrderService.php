@@ -6,6 +6,7 @@ use App\Domains\Billing\OrderIdempotency;
 use App\Domains\Billing\OrderPurchaseTermsSnapshot;
 use App\Domains\Billing\PurchasedOrderGrant;
 use App\Domains\Installation\InstallationAuthority;
+use App\Domains\Installation\NativeRuntimeAdmission;
 use App\Models\Order;
 use App\Models\OrderPurchaseTerms;
 use App\Models\Plan;
@@ -78,6 +79,10 @@ final class PublishedOrderService
                 }
                 $published = $this->catalog->verifiedOffer($offerId, true, true);
                 $offer = $published['offer'];
+                if (($installation['runtime_version'] ?? null) === NativeRuntimeAdmission::VERSION
+                    && (string) $offer->price_minor !== '0') {
+                    throw new RuntimeException('PUBLISHED_ORDER_PAID_PURCHASE_UNAVAILABLE');
+                }
                 $type = $this->orderType($current, $offer);
                 $availability = $published['availability'];
                 $flag = in_array($type, [Order::TYPE_RENEWAL, Order::TYPE_RESET_TRAFFIC], true) ? 'renew' : 'sell';

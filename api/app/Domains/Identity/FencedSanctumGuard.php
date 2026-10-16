@@ -14,7 +14,7 @@ final class FencedSanctumGuard extends Guard
 {
     protected function updateLastUsedAt($accessToken)
     {
-        if (!IdentityPhase::enabled()) {
+        if (!IdentityPhase::locksAccount()) {
             parent::updateLastUsedAt($accessToken);
             return;
         }

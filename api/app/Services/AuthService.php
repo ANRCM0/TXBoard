@@ -27,7 +27,7 @@ class AuthService
     {
         // Create a new Sanctum token with device info
         $token = app(IdentityPhase::class)->run(IdentityPhase::SESSION_ISSUE, function () use ($requireAdmin) {
-            if (IdentityPhase::enabled()) {
+            if (IdentityPhase::locksAccount()) {
                 $this->user = User::query()->whereKey($this->user->getKey())->lockForUpdate()->firstOrFail();
                 if ($this->user->banned) throw new AuthorizationException('Your account has been suspended');
                 if ($requireAdmin && !$this->user->is_admin) throw new AuthorizationException('Administrator access required');
@@ -71,7 +71,7 @@ class AuthService
     public function removeSession(string $sessionId): bool
     {
         app(IdentityPhase::class)->run(IdentityPhase::SESSION_REVOKE, function () use ($sessionId): void {
-            $user = IdentityPhase::enabled() ? User::query()->whereKey($this->user->getKey())->lockForUpdate()->firstOrFail() : $this->user;
+            $user = IdentityPhase::locksAccount() ? User::query()->whereKey($this->user->getKey())->lockForUpdate()->firstOrFail() : $this->user;
             $user->tokens()->where('id', $sessionId)->delete();
         });
         return true;
@@ -86,7 +86,7 @@ class AuthService
             return true;
         }
         app(IdentityPhase::class)->run(IdentityPhase::SESSION_REVOKE, function (): void {
-            $user = IdentityPhase::enabled() ? User::query()->whereKey($this->user->getKey())->lockForUpdate()->firstOrFail() : $this->user;
+            $user = IdentityPhase::locksAccount() ? User::query()->whereKey($this->user->getKey())->lockForUpdate()->firstOrFail() : $this->user;
             $user->tokens()->delete();
         });
         return true;

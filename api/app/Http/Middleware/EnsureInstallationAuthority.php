@@ -15,7 +15,12 @@ final class EnsureInstallationAuthority
     {
         if (!in_array($request->path(), ['api/health', 'txapi/health'], true)) {
             try {
-                app(InstallationAuthority::class)->assertRuntime();
+                $authority = app(InstallationAuthority::class);
+                if (($authority->inspect()['runtime_version'] ?? null) === \App\Domains\Installation\NativeRuntimeAdmission::VERSION) {
+                    $authority->assertHttp($request->method(), $request->path());
+                } else {
+                    $authority->assertRuntime();
+                }
             } catch (InstallationAuthorityException $error) {
                 return TxapiResponse::error($request, $error->getMessage(),
                     'Core installation is not ready', 503);

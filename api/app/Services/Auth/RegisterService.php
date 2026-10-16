@@ -154,6 +154,21 @@ class RegisterService
             return [false, $error];
         }
 
+        if (app(\App\Domains\Installation\InstallationAuthority::class)->inspect()['mode'] === 'native') {
+            [$created, $result] = app(NativeIdentityService::class)->register($request);
+            if ($created) {
+                if ((int) admin_setting('email_verify', 0)) {
+                    Cache::forget(CacheKey::get('EMAIL_VERIFY_CODE', $request->input('email')));
+                }
+                if ((int) admin_setting('register_limit_by_ip_enable', 0)) {
+                    $key = CacheKey::get('REGISTER_IP_RATE_LIMIT', $request->ip());
+                    Cache::put($key, (int) Cache::get($key, 0) + 1,
+                        (int) admin_setting('register_limit_expire', 60) * 60);
+                }
+            }
+            return [$created, $result];
+        }
+
         HookManager::call('user.register.before', $request);
 
         $email = $request->input('email');

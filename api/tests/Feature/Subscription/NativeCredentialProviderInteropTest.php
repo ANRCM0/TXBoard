@@ -21,6 +21,7 @@ final class NativeCredentialProviderInteropTest extends NativeSubscriptionTestCa
         }
         parent::setUp();
         (require database_path('migrations/2026_10_16_000001_enable_native_credential_provider.php'))->up();
+        (require database_path('migrations/2026_10_16_000002_enable_native_credential_rotation.php'))->up();
         config(['credential_provider.providers.primary-provider' => [
             'endpoint' => getenv('CORE_PROVIDER_INTEROP_ENDPOINT'),
             'instance_epoch' => '1', 'profiles' => ['vless-uuid/v1', 'vmess-uuid/v1'],

@@ -36,6 +36,7 @@ final class NativeProviderNodeAuthorizationTest extends NativeSubscriptionTestCa
     {
         parent::setUp();
         foreach (['2026_10_16_000001_enable_native_credential_provider.php',
+            '2026_10_16_000002_enable_native_credential_rotation.php',
             '2026_10_14_000010_create_native_node_authorization_state.php'] as $migration) {
             (require database_path('migrations/'.$migration))->up();
         }
@@ -276,7 +277,8 @@ final class NativeProviderNodeAuthorizationTest extends NativeSubscriptionTestCa
     {
         $this->issued();
         $template = (array) DB::table('tx_access_subject')->first();
-        unset($template['id']);
+        // Synthetic scan candidates cannot reuse another Subject's operation ownership.
+        unset($template['id'], $template['current_credential_operation_ref']);
         for ($i = 0; $i < 1024; $i++) {
             DB::table('tx_access_subject')->insert(array_replace($template, [
                 'provider_subject_ref' => 'subject_'.bin2hex(random_bytes(16)),
@@ -291,7 +293,7 @@ final class NativeProviderNodeAuthorizationTest extends NativeSubscriptionTestCa
         [$included] = $this->issued();
         [, , $outside] = $this->issued(['group_id' => 8]);
         $template = (array) DB::table('tx_access_subject')->where('id', $outside['subject_id'])->first();
-        unset($template['id']);
+        unset($template['id'], $template['current_credential_operation_ref']);
         for ($i = 0; $i < 129; $i++) {
             DB::table('tx_access_subject')->insert(array_replace($template, [
                 'provider_subject_ref' => 'subject_'.bin2hex(random_bytes(16)),

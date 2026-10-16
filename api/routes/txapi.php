@@ -88,6 +88,9 @@ Route::match(['get', 'post'], 'payment/webhook/{method}/{uuid}',
 Route::prefix('admin/{admin_path}')
     ->middleware(['admin.path', 'admin', 'log', 'throttle:120,1'])
     ->group(function () {
+        Route::post('native/accounts', [\App\Http\Controllers\Txapi\Admin\NativeAccountController::class, 'create']);
+        Route::patch('native/accounts/{id}/status', [\App\Http\Controllers\Txapi\Admin\NativeAccountController::class, 'status'])
+            ->whereNumber('id');
         Route::post('subscriptions/{id}/operations/{operation}', [\App\Http\Controllers\Txapi\Admin\SubscriptionOperationsController::class, 'execute'])
             ->whereNumber('id')->where('operation', 'suspend|resume|revoke|expire|reset');
         Route::get('audit-logs', [AuditLogController::class, 'index']);
@@ -279,9 +282,13 @@ Route::middleware(['txapi.user', 'throttle:120,1'])->group(function () {
     Route::get('plans/{planId}', [PublicController::class, 'plan'])->whereNumber('planId');
     Route::get('me', [AccountController::class, 'me']);
     Route::get('me/subscription', [AccountController::class, 'subscription']);
+    Route::post('me/subscription-deliveries', [\App\Http\Controllers\Txapi\SubscriptionDeliveryController::class, 'create'])
+        ->middleware('throttle:10,1');
     Route::post('me/access-subjects', [\App\Http\Controllers\Txapi\CredentialProviderController::class, 'issue'])
         ->middleware('throttle:10,1');
     Route::post('me/access-subjects/{id}/revoke', [\App\Http\Controllers\Txapi\CredentialProviderController::class, 'revoke'])
+        ->whereNumber('id')->middleware('throttle:10,1');
+    Route::post('me/access-subjects/{id}/rotate', [\App\Http\Controllers\Txapi\CredentialProviderController::class, 'rotate'])
         ->whereNumber('id')->middleware('throttle:10,1');
     Route::post('me/credential-operations/{operation_ref}/recover', [\App\Http\Controllers\Txapi\CredentialProviderController::class, 'recover'])
         ->where('operation_ref', 'cp_[a-f0-9]{32}')->middleware('throttle:10,1');

@@ -72,7 +72,7 @@ final class NodeProtocolController
             $data['capabilities'][] = 'traffic_receipt_durable_v1';
             if (config('native_traffic_periods.enabled', true) === true) $data['capabilities'][] = 'traffic_period_v1';
         }
-        if ($node) {
+        if ($node && (!$native || config('native_node_authorization.policy_version') !== NativeNodeAuthorization::PROVIDER_USAGE_POLICY_VERSION)) {
             try {
                 $capability = app(UsageRegistry::class)->capability((int) $node->id, time());
                 if ($capability !== null) { $data['usage_v2'] = $capability; }

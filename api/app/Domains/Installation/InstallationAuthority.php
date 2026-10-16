@@ -106,6 +106,100 @@ class InstallationAuthority
         });
     }
 
+    public function readiness(): array
+    {
+        return $this->storage(function (): array {
+            $this->require(DB::transactionLevel() === 0, 'PROBE_TRANSACTION_FORBIDDEN');
+            $readiness = app(NativeRuntimeReadiness::class);
+            [$state, $preflight] = DB::transaction(function () use ($readiness): array {
+                $this->assertCatalogMutation();
+                $state = $this->read(true);
+                return [$state, $readiness->preflightLocked($state['installation_id'])];
+            }, 3);
+            $snapshot = $readiness->probe($preflight);
+            return DB::transaction(function () use ($readiness, $state, $preflight, $snapshot): array {
+                $this->assertCatalogMutation();
+                $current = $this->read(true);
+                $this->require(hash_equals($state['content_hash'], $current['content_hash'])
+                    && hash_equals(NativeRuntimeReadiness::hash($preflight),
+                        NativeRuntimeReadiness::hash($readiness->preflightLocked($current['installation_id']))),
+                    'ACTIVATION_CONFIGURATION_CHANGED');
+                return ['schema' => NativeRuntimeAdmission::VERSION, 'ready_to_activate' => true,
+                    'installation_id' => $current['installation_id'], 'expected_version' => $current['row_version'],
+                    'configuration_digest' => NativeRuntimeReadiness::hash($snapshot), 'next_worker_epoch' => '2',
+                    'provider_capabilities' => $snapshot['provider_capabilities']];
+            }, 3);
+        });
+    }
+
+    public function activate(string $key, string $expectedVersion, string $configurationDigest): array
+    {
+        return $this->storage(function () use ($key, $expectedVersion, $configurationDigest): array {
+            $this->require(DB::transactionLevel() === 0 && preg_match('/\A[A-Za-z0-9._:-]{1,64}\z/D', $key) === 1
+                && $expectedVersion === '1' && preg_match('/\A[0-9a-f]{64}\z/D', $configurationDigest) === 1, 'ACTIVATION_INPUT_INVALID');
+            $candidate = DB::transaction(fn (): array =>
+                $this->activationCandidateLocked($key, $expectedVersion, $configurationDigest), 3);
+            if (isset($candidate['result'])) { return $candidate['result']; }
+            $snapshot = app(NativeRuntimeReadiness::class)->probe($candidate['preflight']);
+            return DB::transaction(function () use ($key, $expectedVersion, $configurationDigest, $candidate, $snapshot): array {
+                $current = $this->activationCandidateLocked($key, $expectedVersion, $configurationDigest);
+                if (isset($current['result'])) { return $current['result']; }
+                $this->require(hash_equals($candidate['state']['content_hash'], $current['state']['content_hash'])
+                    && hash_equals(NativeRuntimeReadiness::hash($candidate['preflight']), NativeRuntimeReadiness::hash($current['preflight']))
+                    && hash_equals($configurationDigest, NativeRuntimeReadiness::hash($snapshot)), 'ACTIVATION_CONFIGURATION_CHANGED');
+                $state = $current['state'];
+                $now = time();
+                DB::table('tx_native_runtime_activation')->insert([
+                    'installation_id' => $state['installation_id'], 'business_key' => $key,
+                    'runtime_version' => NativeRuntimeAdmission::VERSION, 'request_hash' => NativeRuntimeReadiness::hash($current['request']),
+                    'configuration_snapshot' => \App\Domains\CredentialProvider\ProviderCodec::canonical($snapshot),
+                    'configuration_hash' => $configurationDigest, 'authority_epoch' => '2', 'activated_at' => $now,
+                ]);
+                $state = array_replace($state, ['phase' => 'open', 'authority_epoch' => '2', 'row_version' => '2',
+                    'schema_version' => '2', 'domain_version' => '2', 'prepare_key' => $key,
+                    'inventory_hash' => $configurationDigest, 'updated_at' => (string) $now]);
+                unset($state['content_hash']);
+                $state['content_hash'] = $this->hash($state);
+                $this->require(DB::table(self::TABLE)->where('id', 1)->where('row_version', 1)->update($state) === 1, 'ACTIVATION_CONFLICT');
+                return $this->result($state);
+            }, 3);
+        });
+    }
+
+    private function activationCandidateLocked(string $key, string $expectedVersion, string $configurationDigest): array
+    {
+        $rows = DB::table(self::TABLE)->orderBy('id')->limit(2)->lockForUpdate()->get(self::COLUMNS);
+        $this->require($rows->count() === 1, 'RECORD_REQUIRED');
+        $this->assertNoHistoricalEvidence(true);
+        $state = $this->validate((array) $rows->first());
+        $this->require($state['authority'] === 'native' && config('core_installation.mode') === 'native', 'ACTIVATION_NATIVE_REQUIRED');
+        $request = ['installation_id' => $state['installation_id'], 'business_key' => $key,
+            'expected_version' => $expectedVersion, 'configuration_digest' => $configurationDigest];
+        $existing = DB::table('tx_native_runtime_activation')->where('installation_id', $state['installation_id'])->lockForUpdate()->first();
+        if ($existing) {
+            $this->require($existing->business_key === $key
+                && hash_equals($existing->request_hash, NativeRuntimeReadiness::hash($request))
+                && $state['phase'] === 'open', 'ACTIVATION_CONFLICT');
+            return ['result' => $this->result($state)];
+        }
+        $this->assertExpected($state);
+        $this->require($state['phase'] === 'initializing' && $state['row_version'] === $expectedVersion, 'ACTIVATION_CONFLICT');
+        return ['state' => $state, 'request' => $request,
+            'preflight' => app(NativeRuntimeReadiness::class)->preflightLocked($state['installation_id'])];
+    }
+
+    public function assertNativeRuntime(): array
+    {
+        return DB::transaction(fn (): array => $this->assertNativeDomain(), 3);
+    }
+
+    public function assertHttp(string $method, string $path): void
+    {
+        if ($this->inspect()['mode'] !== 'native') { $this->assertRuntime(); return; }
+        $this->assertNativeRuntime();
+        $this->require(NativeRuntimeAdmission::http($method, $path), 'NATIVE_CAPABILITY_UNAVAILABLE');
+    }
+
     public function assertCatalogMutation(): void
     {
         $this->storage(function (): void {
@@ -133,10 +227,13 @@ class InstallationAuthority
             $this->require(DB::transactionLevel() > 0, 'TRANSACTION_REQUIRED');
             $state = $this->read(true);
             $this->assertExpected($state);
-            // No version of this release can create a ready native record.
-            // Domain integration must not turn catalog preparation into activation.
             $this->require($state !== null && $state['authority'] === 'native'
                 && $state['phase'] === 'open', 'NATIVE_NOT_READY');
+            $configuration = app(NativeRuntimeReadiness::class)->configuration($state['installation_id']);
+            $receipt = DB::table('tx_native_runtime_activation')->where('installation_id', $state['installation_id'])->sharedLock()->first();
+            $snapshot = json_decode($receipt->configuration_snapshot, true, 32, JSON_THROW_ON_ERROR);
+            $this->require(hash_equals(NativeRuntimeReadiness::hash($snapshot['configuration']),
+                NativeRuntimeReadiness::hash($configuration)), 'NATIVE_CONFIGURATION_CHANGED');
             return $this->result($state);
         });
     }
@@ -190,7 +287,7 @@ class InstallationAuthority
         $mode = config('core_installation.mode', 'legacy');
         $epoch = config('core_installation.worker_epoch', '1');
         $this->require(in_array($mode, ['legacy', 'native'], true)
-            && (is_string($epoch) || is_int($epoch)) && (string) $epoch === '1', 'WORKER_MISMATCH');
+            && (is_string($epoch) || is_int($epoch)) && in_array((string) $epoch, ['1', '2'], true), 'WORKER_MISMATCH');
         if ($state === null) {
             $this->require($mode === 'legacy', 'RECORD_REQUIRED');
             return;
@@ -222,12 +319,33 @@ class InstallationAuthority
                         && strcmp((string) $state[$field], (string) PHP_INT_MAX) <= 0)), 'STATE_INVALID');
             $state[$field] = (string) $state[$field];
         }
-        $this->require($state['id'] === '1' && $state['version'] === self::VERSION
-            && $state['scope'] === self::VERSION && $state['authority_epoch'] === '1' && $state['row_version'] === '1'
+        $initial = $state['authority_epoch'] === '1' && $state['row_version'] === '1'
             && $state['schema_version'] === '1' && $state['domain_version'] === '1'
-            && in_array($state['authority'], ['legacy', 'native'], true)
             && $state['phase'] === ($state['authority'] === 'native' ? 'initializing' : 'open')
-            && $state['prepare_key'] === null && $state['inventory_hash'] === null, 'STATE_INVALID');
+            && $state['prepare_key'] === null && $state['inventory_hash'] === null;
+        $activated = $state['authority'] === 'native' && $state['phase'] === 'open'
+            && $state['authority_epoch'] === '2' && $state['row_version'] === '2'
+            && $state['schema_version'] === '2' && $state['domain_version'] === '2'
+            && is_string($state['prepare_key']) && is_string($state['inventory_hash']);
+        $this->require($state['id'] === '1' && $state['version'] === self::VERSION && $state['scope'] === self::VERSION
+            && in_array($state['authority'], ['legacy', 'native'], true) && ($initial || $activated), 'STATE_INVALID');
+        if ($activated) {
+            $query = DB::table('tx_native_runtime_activation')->useWritePdo()->where('installation_id', $state['installation_id']);
+            if (DB::transactionLevel() > 0) { $query->sharedLock(); }
+            $receipt = $query->first();
+            $this->require($receipt !== null && $receipt->runtime_version === NativeRuntimeAdmission::VERSION
+                && $receipt->business_key === $state['prepare_key'] && (string) $receipt->authority_epoch === '2'
+                && hash_equals($receipt->configuration_hash, $state['inventory_hash']), 'STATE_INVALID');
+            $snapshot = json_decode($receipt->configuration_snapshot, true, 32, JSON_THROW_ON_ERROR);
+            $this->require(is_array($snapshot) && hash_equals($receipt->configuration_hash, NativeRuntimeReadiness::hash($snapshot))
+                && ($snapshot['configuration']['admission_digest'] ?? null) === NativeRuntimeAdmission::digest()
+                && ($snapshot['configuration']['installation_id'] ?? null) === $state['installation_id']
+                && ($snapshot['provider_capabilities']['node_delivery'] ?? null) === true
+                && ($snapshot['provider_capabilities']['subscription_render'] ?? null) === true, 'STATE_INVALID');
+            $this->require(hash_equals($receipt->request_hash, NativeRuntimeReadiness::hash([
+                'installation_id' => $state['installation_id'], 'business_key' => $state['prepare_key'],
+                'expected_version' => '1', 'configuration_digest' => $receipt->configuration_hash])), 'STATE_INVALID');
+        }
         $this->require(is_string($state['installation_id']) && (bool) preg_match('/\A[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\z/D', $state['installation_id'])
             && is_string($state['bootstrap_key']) && (bool) preg_match('/\A[A-Za-z0-9][A-Za-z0-9_.:-]{0,63}\z/D', $state['bootstrap_key'])
             && is_string($state['bootstrap_request_hash']) && is_string($state['content_hash']), 'STATE_INVALID');
@@ -297,9 +415,11 @@ class InstallationAuthority
 
     private function result(array $state): array
     {
-        return ['initialized' => true, 'mode' => $state['authority'], 'phase' => $state['phase'],
+        $result = ['initialized' => true, 'mode' => $state['authority'], 'phase' => $state['phase'],
             'installation_id' => $state['installation_id'], 'authority_epoch' => $state['authority_epoch'],
             'schema_version' => (int) $state['schema_version'], 'domain_version' => (int) $state['domain_version']];
+        if ($state['authority'] === 'native' && $state['phase'] === 'open') { $result['runtime_version'] = NativeRuntimeAdmission::VERSION; }
+        return $result;
     }
 
     private function legacyResult(): array

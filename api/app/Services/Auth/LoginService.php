@@ -71,7 +71,7 @@ class LoginService
 
         // 更新最后登录时间
         $result = app(IdentityPhase::class)->run(IdentityPhase::USER_LOGIN_TOUCH, function () use (&$user, $email, $password): array {
-            if (IdentityPhase::enabled()) {
+            if (IdentityPhase::locksAccount()) {
                 $current = User::byEmail($email)->whereKey($user->getKey())->lockForUpdate()->first();
                 if (!$current) return [false, [400, __('Incorrect email or password')]];
                 if (!Helper::multiPasswordVerify($current->password_algo, $current->password_salt, $password, $current->password))
@@ -133,7 +133,7 @@ class LoginService
 
             // 更新密码
             $saved = app(IdentityPhase::class)->run(IdentityPhase::USER_PASSWORD_RECOVER, function () use (&$user, $email, $password): bool {
-                if (IdentityPhase::enabled()) {
+                if (IdentityPhase::locksAccount()) {
                     $user = User::byEmail($email)->whereKey($user->getKey())->lockForUpdate()->firstOrFail();
                 }
                 $user->password = password_hash($password, PASSWORD_DEFAULT);

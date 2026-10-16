@@ -2,7 +2,7 @@
 
 > 更新：2026-10-16 · 实施路线：C1—C5 · 本文是后续开发决策，不是完成声明。
 >
-> 用户最新要求：先完成 Core 的完整开发；现有站点数据兼容不作为新版本的必经路径。前端、安装器和 Node 的独立工作不能替代 Core 业务开发。C1 已完成实现、本地批次验收及代码提交 `ea5c4c4` 的远端 CI 核验，见[收尾记录](core-c1-closeout-verification.json)；非作者审阅、合并与发布仍分别待完成。C2-A准备和C2-B订阅领域已实现，C2-C1真实Provider控制操作已完成本地验收；完整Node/订阅消费及就绪链仍在开发，C3—C5待完成。实际结果以代码、PR 和[当前进度](current-progress.md)为准。
+> 用户最新要求：先完成 Core 的完整开发；现有站点数据兼容不作为新版本的必经路径。前端、安装器和 Node 的独立工作不能替代 Core 业务开发。C1 购买证据与 C2 原生订阅、真实 Provider/Node、直接渲染、授权用量结算和持久启用已集成；精确提交验收与依赖合并统一记录在 [PR #251](https://github.com/ANRCM0/TXBoard/pull/251)。C2 限定免费购买和 sing-box VLESS/VMess direct TCP；C3—C5 待完成。实际结果以代码、PR 和[当前进度](current-progress.md)为准。
 
 ## 完成范围与现有边界
 
@@ -50,6 +50,8 @@
 
 **2026-10-16进展：** C2-B已实现原生订阅履约、生命周期、共同权益、用量归属和应用适配，PR #248提交`0adb0dd`的远端检查已通过（发布相关任务跳过）。C2-C1在`feat/core-provider-integration`接入独立Provider真实签发/查询/撤销与Core持久恢复，通过本地mTLS进程联调及SQL专项；见[C2-C1验收](core-c2c1-verification.json)。材料仍仅在Provider私有存储中，后续必须完成Node与订阅渲染消费、轮换、授权到用量闭环及就绪转换。登记、回执或测试中替换准入均不开放生产运行。
 
+**2026-10-16收尾：** PR #251 集成上述后续链路和真实持久激活，不再以测试准入替身证明就绪。Provider 只向已授权 Node 或持有客户端私钥的渲染接收方交付材料；Node 使用同一签名 Session 控制访问和计量，重启后的原批次按原 Period 结算。非零报价与支付结账在本阶段明确拒绝，支付回调及资金能力由 C3 完成后再开放。首轮真实 VLESS 全链与相关 Go race 已通过，Core/MySQL 夹具和审查修复以 PR 最终 head 复验；[收尾记录](core-c2-runtime-verification.json)列出支持范围和验收入口。
+
 | 组成 | 必须交付的生产行为 |
 | --- | --- |
 | 套餐发布 | 生产 `PlanPublicationService` 发布不可变 Revision/Offer，独立维护销售/续费可用性；修改套餐只发布后继版本，已有购买保持冻结条款。 |
@@ -58,7 +60,7 @@
 | 单订阅容量 | 复用持久 Slot 作为锁记录，所有开通/变更遵守一致锁序；活动订阅容量限制和并发操作不能绕过。 |
 | 条款关联 | 支持真实 `plan_revision_id` 及聚合归属约束；Terms/Transition 追加且不可改写，已接受用量不能越过新条款边界。 |
 | 权益读取 | `SubscriptionEntitlementResolver` 成为账户订阅 API、Node REST/WS、节点增量授权及订阅分发的共同权威，统一到期、封禁、配额、组和设备/速度限制。 |
-| 用量与周期 | 将现有持久接收、去重、批次及计量实现接入 Subscription/Terms/Period 归属；结算和周期累计同事务。重置保留旧周期，离线旧批次按原周期结算，不能挂到当前订阅。 |
+| 用量与周期 | 将现有持久接收、去重、批次及计量实现接入 Subscription/Terms/Period 归属；待结算和隔离批次按原周期预留额度，真实结算同事务释放预留并累计用量。重置保留旧周期，离线旧批次不能挂到当前订阅。 |
 | 凭据归属 | 真实 AccessSubject 绑定订阅与 Provider 的非秘密引用；本阶段接入可用的 Provider 接口，缺失能力时明确不可发行凭据，禁止 Core 新建代理 UUID 兜底。 |
 | 所有写入口 | 订单、管理员创建/编辑/分配、注册试用、定时到期/重置、套餐传播、批量操作、Worker 及现有扩展统一 admission/epoch。未实现的可选动作在 native 模式拒绝。 |
 

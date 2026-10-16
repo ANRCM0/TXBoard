@@ -3,6 +3,8 @@
 namespace App\Domains\Billing;
 
 use App\Exceptions\ApiException;
+use App\Domains\Installation\InstallationAuthority;
+use App\Domains\Installation\NativeRuntimeAdmission;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Services\OrderService;
@@ -24,7 +26,7 @@ final class OrderCheckout
         if ($locator === null) throw new ApiException('Order does not exist', 404);
         $native = $locator?->purchase_terms_version === PublishedOrderService::VERSION;
         $prepare = static function (?Order $order = null) use (
-            $userId, $tradeNo, $paymentMethod
+            $userId, $tradeNo, $paymentMethod, $native
         ): array {
             if ($order === null) {
                 app(\App\Domains\AuthorityMigration\AuthorityWriterFence::class)->admit('order.checkout');
@@ -48,6 +50,10 @@ final class OrderCheckout
             }
             if ((int) $order->total_amount === 0) {
                 return ['kind' => 'free', 'order' => $order];
+            }
+            if ($native && (app(InstallationAuthority::class)->assertNativeMutation()['runtime_version'] ?? null)
+                === NativeRuntimeAdmission::VERSION) {
+                throw new ApiException('Native paid checkout is unavailable', 409);
             }
             if ($paymentMethod === null || $paymentMethod < 1) {
                 throw new ApiException('Payment method is required', 422);

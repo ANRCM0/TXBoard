@@ -72,8 +72,10 @@ Authorization: Bearer <opaque-session-token>
 | 用户 | POST `/me/subscription-credentials/rotate` | 轮换订阅凭据；旧链接立刻失效，强限流 |
 | 原生凭据 | POST `/me/access-subjects` | `subscription_id,provider_id,credential_profile_id,expected_version`；必需 `Idempotency-Key`，仅准备完成后的 native 领域可签发 |
 | 原生凭据 | POST `/me/access-subjects/{id}/revoke` | `expected_version` 与 `Idempotency-Key`；先本地拒绝，再协调 Provider 撤销 |
+| 原生凭据 | POST `/me/access-subjects/{id}/rotate` | `expected_version` 与 `Idempotency-Key`；保留 Subject、递增凭据代次并拒绝旧代次 |
 | 原生凭据 | GET `/me/credential-operations/{operation_ref}` | 本人操作的非秘密状态；只读，不触发外部调用 |
 | 原生凭据 | POST `/me/credential-operations/{operation_ref}/recover` | 空请求体，按原操作查询和恢复，不创建新的逻辑签发 |
+| 原生分发 | POST `/me/subscription-deliveries` | `access_subject_id,recipient_public_key` 与可选固定 `format_id`；返回短期签名策略，由持有独立接收密钥的客户端向 Provider 取回配置 |
 | 用户 | GET `/plans/{planId}` | 登录后的套餐详情与购买资格（无权时 404） |
 | 安全 | POST `/auth/logout` | 注销当前 Sanctum 会话 |
 | 安全 | GET `/auth/sessions` | 安全字段的会话清单 |

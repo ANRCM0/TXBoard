@@ -84,6 +84,50 @@ class ProviderCodecTest extends TestCase
         ProviderCodec::decodeResponse(json_encode($response), $request);
     }
 
+    public function test_rotation_receipt_and_query_bind_exact_successor_without_material(): void
+    {
+        $request = self::issue();
+        $request['operation'] = 'rotate';
+        $request['input'] += ['credential_ref' => 'credential_'.str_repeat('d', 32),
+            'expected_credential_generation' => '7', 'rotation_mode' => 'immediate'];
+        $request['input_hash'] = ProviderCodec::inputHash('rotate', 'test-provider', '1', $request['input']);
+        ProviderCodec::validateRequest($request, 1700000000);
+        $response = self::response($request);
+        $response['result']['credential_generation'] = '8';
+        $response['result'] += ['previous_credential_ref' => $request['input']['credential_ref'],
+            'previous_generation' => '7', 'previous_valid_until' => 1700000000, 'rotation_mode' => 'immediate'];
+        $this->assertSame($response, ProviderCodec::decodeResponse(json_encode($response), $request));
+        $query = $request;
+        $query['operation'] = 'query';
+        $query['input'] = ['operation_id' => $request['operation_id']];
+        $query['input_hash'] = ProviderCodec::inputHash('query', 'test-provider', '1', $query['input']);
+        $queried = array_replace($response, ['result' => ['operation' => 'rotate',
+            'input_hash' => $request['input_hash'], 'result' => $response['result']]]);
+        $this->assertSame($queried, ProviderCodec::decodeResponse(json_encode($queried), $query, $request));
+        $response['result']['credential_generation'] = '9';
+        $this->expectExceptionMessage('PROVIDER_INVALID_RESPONSE');
+        ProviderCodec::decodeResponse(json_encode($response), $request);
+    }
+
+    public function test_rotation_refuses_overlap_and_generation_overflow(): void
+    {
+        foreach ([
+            ['expected_credential_generation' => '9223372036854775807', 'rotation_mode' => 'immediate'],
+            ['expected_credential_generation' => '1', 'rotation_mode' => 'bounded_overlap'],
+        ] as $invalid) {
+            $request = self::issue();
+            $request['operation'] = 'rotate';
+            $request['input'] += $invalid + ['credential_ref' => 'credential_'.str_repeat('d', 32)];
+            $request['input_hash'] = ProviderCodec::inputHash('rotate', 'test-provider', '1', $request['input']);
+            try {
+                ProviderCodec::validateRequest($request, 1700000000);
+                $this->fail('Unsupported rotation accepted.');
+            } catch (ProviderError $error) {
+                $this->assertSame('PROVIDER_INVALID_REQUEST', $error->codeName);
+            }
+        }
+    }
+
     #[DataProvider('invalidResponseChanges')]
     public function test_rejects_response_drift_or_secret_fields(string $path, mixed $value): void
     {

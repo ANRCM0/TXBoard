@@ -27,7 +27,7 @@ final class AccountController
             return TxapiResponse::success($request, [
                 'id' => (int) $user->id, 'email' => (string) $user->email,
                 'telegram_id' => $user->telegram_id === null ? null : (int) $user->telegram_id,
-                'subscription' => $entitlement, 'credential_status' => 'provider_not_integrated',
+                'subscription' => $entitlement, 'credential_status' => 'provider_managed',
             ]);
         }
         return TxapiResponse::success($request, [
@@ -53,7 +53,9 @@ final class AccountController
             $entitlement = app(\App\Services\Subscription\SubscriptionEntitlementResolver::class)
                 ->resolve((int) Auth::guard('sanctum')->id());
             return TxapiResponse::success($request, $entitlement + [
-                'subscribe_url' => null, 'credential_status' => 'provider_not_integrated',
+                'subscribe_url' => null, 'credential_status' => 'provider_managed',
+                'delivery_formats' => [\App\Domains\CredentialProvider\RenderGrantCodec::FORMAT],
+                'delivery_endpoint' => '/txapi/me/subscription-deliveries',
             ]);
         }
         // Only the authenticated subscriber may see their private subscription
@@ -98,6 +100,11 @@ final class AccountController
 
     public function rotateSubscriptionCredentials(Request $request): JsonResponse
     {
+        if (app(\App\Domains\Installation\InstallationAuthority::class)->inspect()['mode'] === 'native') {
+            return TxapiResponse::error($request, 'NATIVE_PROVIDER_ROTATION_REQUIRED',
+                'Rotate the owned access subject through the Provider operation', 409)
+                ->header('Cache-Control', 'no-store');
+        }
         // Mutates a private subscription secret; never expose this as GET.
         // Serialize concurrent rotations and preserve existing Sanctum sessions.
         $phase = static function (): string {
@@ -108,7 +115,7 @@ final class AccountController
             $user->saveOrFail();
             return Helper::getSubscribeUrl($user->token);
         };
-        $newUrl = IdentityPhase::enabled()
+        $newUrl = IdentityPhase::locksAccount()
             ? app(IdentityPhase::class)->run(IdentityPhase::USER_ACCOUNT_CREDENTIALS_ROTATE, $phase)
             : DB::transaction($phase);
         return TxapiResponse::success($request, ['subscribe_url' => $newUrl]);
@@ -137,7 +144,7 @@ final class AccountController
         $user = Auth::guard('sanctum')->user();
         // Explicit allowlist; cannot mutate balance, role or subscription tokens.
         app(IdentityPhase::class)->run(IdentityPhase::USER_ACCOUNT_PREFERENCES, function () use (&$user, $values): void {
-            if (IdentityPhase::enabled()) $user = User::query()->whereKey($user->getKey())->lockForUpdate()->firstOrFail();
+            if (IdentityPhase::locksAccount()) $user = User::query()->whereKey($user->getKey())->lockForUpdate()->firstOrFail();
             foreach ($values as $key => $value) {
                 $user->$key = (bool) $value;
             }

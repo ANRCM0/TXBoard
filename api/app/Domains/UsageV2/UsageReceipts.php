@@ -16,8 +16,21 @@ final class UsageReceipts
     {
         $this->policy->requireIsolated(); $p = $parsed['payload'];
         if ((string) $nodeId !== $p['node_id']) { throw new UsageError('USAGE_NODE_SCOPE', 403); }
-        try { return DB::transaction(function () use ($nodeId, $parsed, $p, $now) {
+        try {
+            $native = NativeUsageLedger::enabled();
+            $locators = [];
+            if ($native) {
+                $replay = DB::transaction(function () use ($p, $parsed): ?array {
+                    $this->policy->requireTransaction();
+                    $existing = $this->find($p);
+                    return $existing ? $this->matching($existing, $parsed['digest']) : null;
+                }, 3);
+                if ($replay !== null) { return $replay; }
+                $locators = app(NativeUsageLedger::class)->grantLocators($p['entries']);
+            }
+            return DB::transaction(function () use ($nodeId, $parsed, $p, $now, $native, $locators) {
             $this->policy->requireTransaction();
+            if ($native) { app(NativeUsageLedger::class)->lockOwners($locators); }
             $source = DB::table('tx_node_usage_source')->where('node_id', $nodeId)->where('source_epoch', $p['source_epoch'])->lockForUpdate()->first();
             if (!$source) { throw new UsageError('USAGE_SOURCE_UNKNOWN', 403); }
             // Historical replay precedes current generation/authorization checks.
@@ -28,27 +41,46 @@ final class UsageReceipts
                 || $p['ended_at'] < $now - (int) config('core_usage_v2.max_late_report_seconds')) { throw new UsageError('USAGE_INTERVAL_OUTSIDE_RETENTION'); }
             if (DB::table('tx_usage_batch')->where('source_id', $source->id)->where('started_at', '<', $p['ended_at'])
                 ->where('ended_at', '>', $p['started_at'])->exists()) { throw new UsageError('USAGE_INTERVAL_OVERLAP', 409); }
-            $frozen = []; $rawUp = '0'; $rawDown = '0'; $billed = '0';
+            $frozen = []; $rawUp = '0'; $rawDown = '0'; $billed = '0'; $authorizationCutoff = false;
             foreach ($p['entries'] as $entry) {
-                $evidence = $this->freeze($source, $entry, $p); $frozen[] = $evidence;
+                [$evidence, $cutoff] = $this->freeze($source, $entry, $p); $frozen[] = $evidence;
+                $authorizationCutoff = $authorizationCutoff || $cutoff;
                 $rawUp = UsageMath::add($rawUp, $evidence['raw_up_bytes']);
                 $rawDown = UsageMath::add($rawDown, $evidence['raw_down_bytes']);
                 $billed = UsageMath::add($billed, $evidence['billed_up_bytes'], $evidence['billed_down_bytes']);
             }
+            // A fully proven cutoff remains durable evidence and consumes the original Period's quota.
             $encoded = json_encode($frozen, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES);
             $id = DB::table('tx_usage_batch')->insertGetId([
                 'source_id' => $source->id, 'node_id' => $nodeId, 'source_epoch' => $p['source_epoch'], 'batch_id' => $p['batch_id'],
                 'core_instance_id' => $source->core_instance_id, 'receipt_generation' => $source->receipt_generation,
                 'receipt_id' => 'receipt_'.Str::uuid(), 'payload_digest' => $parsed['digest'], 'canonical_payload' => $parsed['canonical'],
                 'frozen_entries' => $encoded, 'frozen_hash' => UsageRegistry::hash($frozen),
-                'started_at' => $p['started_at'], 'ended_at' => $p['ended_at'], 'status' => 'pending', 'accepted_at' => $now, 'updated_at' => $now,
+                'started_at' => $p['started_at'], 'ended_at' => $p['ended_at'],
+                'status' => $authorizationCutoff ? 'quarantined' : 'pending',
+                'reason_code' => $authorizationCutoff ? 'USAGE_NATIVE_AUTHORIZATION_CUTOFF' : null,
+                'accepted_at' => $now, 'updated_at' => $now,
             ]);
+            if ($native) { NativeUsageReservations::reserveLocked($id, $frozen, $now); }
             ($this->fault ?? static fn () => null)('after_payload');
             DB::table('tx_usage_outbox')->insert([
                 'batch_id' => $id, 'event_key' => 'usage.accepted:'.$id, 'kind' => 'usage.accepted', 'status' => 'pending',
                 'body' => json_encode(['batch_row_id' => (string) $id, 'payload_digest' => $parsed['digest']], JSON_THROW_ON_ERROR), 'created_at' => $now,
             ]);
             ($this->fault ?? static fn () => null)('after_outbox');
+            if ($native) {
+                // Recovery must evaluate reserved quota even before a pending batch is settled.
+                $subscriptions = [];
+                foreach ($frozen as $entry) { $subscriptions[$entry['subscription_id']] = $entry['user_id']; }
+                foreach ($subscriptions as $subscriptionId => $userId) {
+                    DB::table('tx_native_runtime_outbox')->insert([
+                        'event_key' => 'usage.quota:'.$id.':'.$subscriptionId, 'kind' => 'credential.sync',
+                        'user_id' => $userId, 'subscription_id' => $subscriptionId,
+                        'subscription_version' => DB::table('tx_subscription')->where('id', $subscriptionId)->value('row_version'),
+                        'status' => 'pending', 'created_at' => $now,
+                    ]);
+                }
+            }
             return self::receipt(DB::table('tx_usage_batch')->where('id', $id)->first());
         }, 3); } catch (UsageError $error) {
             if ($error->errorCode === 'BATCH_PAYLOAD_CONFLICT') { $this->conflictAudit($p, $parsed['digest'], $now); }
@@ -99,10 +131,14 @@ final class UsageReceipts
         }, 3);
     }
 
+    /** Returns [evidence, proven later cutoff]; all independent validation still runs for cutoff entries. */
     private function freeze(object $source, array $entry, array $payload): array
     {
         $grant = DB::table('tx_auth_snapshot')->where('id', $entry['auth_snapshot_id'])->lockForUpdate()->first();
         if (!$grant || (string) $grant->source_id !== (string) $source->id) { throw new UsageError('USAGE_GRANT_SOURCE'); }
+        NativeUsageLedger::verifyGrant($grant);
+        $native = NativeUsageLedger::enabled();
+        $proof = $native ? app(NativeUsageLedger::class)->verifyNativeGrant($grant) : null;
         foreach (['access_subject_id','tariff_revision_id','terms_id','usage_period_id'] as $key) {
             if ((string) $grant->$key !== $entry[$key]) { throw new UsageError('USAGE_GRANT_OWNERSHIP_OR_COVERAGE'); }
         }
@@ -121,33 +157,47 @@ final class UsageReceipts
             || (string) $sub->user_id !== (string) $grant->user_id || (int) $tariff->node_id !== (int) $source->node_id
             || (string) $subject->subscription_id !== (string) $sub->id || (string) $terms->subscription_id !== (string) $sub->id
             || (string) $period->subscription_id !== (string) $sub->id
-            || $period->boundary_kind !== 'known' || $period->starts_at === null || $period->ends_at === null
+            || $period->boundary_kind !== 'known' || $period->starts_at === null
             || !UsageRegistry::covers($start, $end, $grant->issued_at, $grant->lease_expires_at)
-            || !UsageRegistry::covers($start, $end, $period->starts_at, $period->ends_at)
-            || !UsageRegistry::covers($start, $end, $tariff->effective_from, $tariff->effective_until)
-            || !UsageRegistry::covers($start, $end, $sub->starts_at, $sub->expires_at)
-            || ($sub->ended_at !== null && $end > (int) $sub->ended_at)
-            || ($grant->revoked_at !== null && $end > (int) $grant->revoked_at)
-            || ($subject->revoked_at !== null && $end > (int) $subject->revoked_at)) {
+            || !UsageRegistry::covers($start, $end, $tariff->effective_from, $tariff->effective_until)) {
             throw new UsageError('USAGE_GRANT_OWNERSHIP_OR_COVERAGE');
         }
         $this->policy->assertSubscription($sub);
+        NativeUsageLedger::verifyTariff($tariff);
+        $boundaries = $this->boundaries ?? app(UsageTermsBoundary::class);
+        $authorizationCutoff = false;
+        if ($native) {
+            $cutoff = $boundaries->nativeCutoff($grant, $sub, $subject, $period, $proof['coverage']);
+            $authorizationCutoff = $cutoff !== null && $end > $cutoff;
+        }
+        if (!$authorizationCutoff && (!UsageRegistry::covers($start, $end, $period->starts_at, $period->ends_at)
+            || !UsageRegistry::covers($start, $end, $sub->starts_at, $sub->expires_at)
+            || ($sub->ended_at !== null && $end > (int) $sub->ended_at)
+            || ($grant->revoked_at !== null && $end > (int) $grant->revoked_at)
+            || ($subject->revoked_at !== null && $end > (int) $subject->revoked_at))) {
+            throw new UsageError('USAGE_GRANT_OWNERSHIP_OR_COVERAGE');
+        }
         // A revoked subject can report traffic strictly within its former authorization.
         // A changed auth version without an effective revocation timestamp cannot establish a safe interval.
-        if ((string) $subject->auth_version !== (string) $grant->auth_version && $subject->revoked_at === null) { throw new UsageError('USAGE_AUTH_VERSION_AMBIGUOUS'); }
-        if ($subject->status !== 'active' && $subject->revoked_at === null) { throw new UsageError('USAGE_REVOCATION_TIME_UNKNOWN'); }
+        if (!$native && (string) $subject->auth_version !== (string) $grant->auth_version && $subject->revoked_at === null) { throw new UsageError('USAGE_AUTH_VERSION_AMBIGUOUS'); }
+        if ($subject->status !== 'active' && $subject->revoked_at === null && (!$native || $grant->revoked_at === null)) {
+            throw new UsageError('USAGE_REVOCATION_TIME_UNKNOWN');
+        }
         if ($tariff->rounding_revision !== 'floor-per-direction-v1') { throw new UsageError('USAGE_ROUNDING_UNSUPPORTED'); }
-        $boundary = ($this->boundaries ?? app(UsageTermsBoundary::class))->freeze((string) $sub->id, (string) $terms->id, $period, $start, $end);
-        return $entry + $boundary + [
+        // lockOwners validates the complete native Terms/period history; nativeCutoff binds it to the original proof.
+        // Preserve that original window while validating a rejected entry, including its billing arithmetic.
+        $boundary = $authorizationCutoff ? $proof['coverage']
+            : $boundaries->freeze((string) $sub->id, (string) $terms->id, $period, $start, $end);
+        return [$entry + $boundary + [
             'subscription_id' => (string) $grant->subscription_id, 'user_id' => (string) $grant->user_id,
             'billed_up_bytes' => UsageMath::floor($entry['raw_up_bytes'], (string) $tariff->numerator, (string) $tariff->denominator),
             'billed_down_bytes' => UsageMath::floor($entry['raw_down_bytes'], (string) $tariff->numerator, (string) $tariff->denominator),
             'numerator' => (string) $tariff->numerator, 'denominator' => (string) $tariff->denominator, 'rounding_revision' => $tariff->rounding_revision,
             'grant_hash' => $grant->content_hash, 'tariff_hash' => $tariff->content_hash, 'terms_hash' => $terms->content_hash,
             'grant_issued_at' => (int) $grant->issued_at, 'grant_lease_expires_at' => (int) $grant->lease_expires_at,
-            'period_started_at' => (int) $period->starts_at, 'period_ended_at' => (int) $period->ends_at,
+            'period_started_at' => (int) $period->starts_at, 'period_ended_at' => $period->ends_at === null ? null : (int) $period->ends_at,
             'auth_version' => (string) $grant->auth_version, 'revocation_version' => (string) $grant->revocation_version,
-        ];
+        ], $authorizationCutoff];
     }
 
     public static function receipt(object $batch): array

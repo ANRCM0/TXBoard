@@ -8,7 +8,7 @@
 | 订单、余额、充值和工单 | `/txapi/orders/*`、`/txapi/billing/*`、`/txapi/tickets/*` | 用户 Sanctum Bearer |
 | 管理员 | `/txapi/admin/{admin_path}/*` | 管理员 Bearer、动态路径与 RBAC |
 | TXNode HTTP | `/txapi/node/v1/*` | Node/Machine Bearer + 节点/机器身份头 |
-| Node Usage v2 隔离接收 | `/txapi/node/v2/usage/*` | 同一 Node/Machine 身份；仅显式 local/testing 副本启用，生产拒绝 |
+| Node Usage v2 接收 | `/txapi/node/v2/usage/*` | 同一 Node/Machine 身份；legacy 仅显式 local/testing 副本，native 受就绪与签名 Session 门禁约束 |
 | TXNode WS | `wss://<host>/txapi/node/v1/ws` | Workerman Upgrade、专用身份头、功能开关 |
 | 支付商回调 | `GET/POST /txapi/payment/webhook/{method}/{uuid}` | 提供商签名，原始 ACK |
 | Telegram 回调 | `POST /txapi/integrations/telegram/webhook` | Telegram 验证摘要 |
@@ -18,8 +18,9 @@
 普通 TXAPI JSON 响应包含 `data`、`request_id`，分页可含 `meta`；错误通常为 `error.code`、`error.message` 和 `request_id`，响应头包含 `X-Request-Id`。第三方回调有各自响应约定。存活检查：`GET /txapi/health`。
 
 存活检查与安装就绪分开：`/api/health`、`/txapi/health`不依赖数据库；
-`/txapi/readiness`在安装权威校验后返回`data.ready=true`。C2-A/C2-B的native安装
-始终处于`initializing`，业务HTTP请求统一拒绝；不能通过修改环境变量回legacy绕过。
+`/txapi/readiness`在安装权威校验后返回`data.ready=true`。全新 native 安装
+初始处于`initializing`，完成 C2 配置、真实 Provider 探测和持久激活后才开放
+受支持的业务入口；不能通过修改环境变量回 legacy 绕过。
 既有未初始化legacy部署保持原业务模式。边界见[Core Subscription v1](../v2/core-subscription-v1.md)。
 
 C2-B已注册原生订阅应用适配，但仍受上述安装门禁约束：
@@ -28,7 +29,9 @@ C2-B已注册原生订阅应用适配，但仍受上述安装门禁约束：
 `expected_version`和`Idempotency-Key`，操作仅限暂停、恢复、撤销、到期及重置。
 账户归属由Core读取，不能通过请求选择。账户权益读取返回非秘密订阅投影，
 不返回旧UUID作为原生代理凭据。legacy安装的订单与账户契约保持现状；
-生产原生Node授权、Provider凭据及订阅分发须完成C2-C后才可启用。
+原生 Node 授权、Provider 凭据、订阅分发与 UsageV2 使用
+[C2 有界运行契约](../v2/native-c2-runtime-v1.md)的独立准入条件。
+当前原生购买仅支持零价 Offer；付费收款入口不开放。
 
 C2-C1另注册以下用户Bearer入口，均保留native安装门禁：
 `POST /txapi/me/access-subjects`要求订阅ID、已配置Provider/Profile、预期订阅版本和幂等键；
@@ -40,6 +43,12 @@ C2-C1另注册以下用户Bearer入口，均保留native安装门禁：
 这些入口不返回代理UUID或订阅配置。
 具体传输与字段见[真实Provider发行契约](../v2/credential-provider/native-issuance-v1.md)。
 
+原生运行时还提供 `POST /txapi/me/access-subjects/{id}/rotate`，
+要求预期 Subject 版本和幂等键，保留 Subject 并轮换凭据代次。
+`POST /txapi/me/subscription-deliveries`接受本人 Subject 与独立客户端生成的
+`recipient_public_key`，只返回短期签名策略；实际配置由该接收密钥持有者
+直接向 Provider 取回。Core 不返回代理 UUID。
+
 ## 具体对接
 
 - **[外部主题：HTTP 请求、字段、完整用户路由](theme-integration-current.md)**
@@ -50,7 +59,9 @@ C2-C1另注册以下用户Bearer入口，均保留native安装门禁：
 
 HTTP 路由由 `api/routes/txapi.php` 和 `RouteServiceProvider.php` 注册；Workerman WebSocket、插件动态路由以及反向代理规则不包含在 Laravel route-list 内。
 
-Node Usage v2 的已实现范围与回执契约见 [隔离接收切片](../v2/node-usage/isolated-receipt-current.md)。TX-Node 默认 Service 和生产计费仍使用 v1，注册隔离路由不构成运行路径切换。
+Node Usage v2 的历史隔离接收契约见 [隔离接收切片](../v2/node-usage/isolated-receipt-current.md)。
+legacy Node 保持 v1 默认行为；显式 native v2 模式要求同一签名中的有限授权与
+完整 UsageV2 Session，并保留原批次、原周期和真实持久回执。
 
 ## 基础账户状态即时授权
 
