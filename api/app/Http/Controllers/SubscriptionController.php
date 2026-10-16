@@ -33,6 +33,7 @@ class SubscriptionController extends Controller
 
     public function subscribe(Request $request)
     {
+        app(\App\Domains\Installation\InstallationAuthority::class)->assertRuntime();
         HookManager::call('client.subscribe.before');
         $request->validate([
             'types' => ['nullable', 'string'],
@@ -57,6 +58,8 @@ class SubscriptionController extends Controller
 
     public function doSubscribe(Request $request, $user, $servers = null)
     {
+        // Also guard callers that supply pre-rendered servers and skip the reader.
+        app(\App\Domains\Installation\InstallationAuthority::class)->assertRuntime();
         if ($servers === null) {
             $servers = ServerService::getAvailableServers($user);
             $servers = HookManager::filter('client.subscribe.servers', $servers, $user, $request);

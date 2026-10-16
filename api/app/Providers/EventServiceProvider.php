@@ -31,6 +31,10 @@ class EventServiceProvider extends ServiceProvider
         parent::boot();
         $this->app->scoped(\App\Domains\AuthorityMigration\AuthorityAdmissionRegistry::class);
         Event::listen(\Illuminate\Database\Events\TransactionCommitting::class, [\App\Domains\AuthorityMigration\FencedUserPostcommit::class, 'handle']);
+        Event::listen(\Illuminate\Console\Events\CommandStarting::class,
+            [\App\Listeners\EnforceInstallationAuthority::class, 'commandStarting']);
+        Event::listen(\Illuminate\Queue\Events\JobProcessing::class,
+            [\App\Listeners\EnforceInstallationAuthority::class, 'jobProcessing']);
 
         User::created([UserObserver::class, 'onCreated']);
         User::updated([UserObserver::class, 'onUpdated']);

@@ -88,6 +88,8 @@ Route::match(['get', 'post'], 'payment/webhook/{method}/{uuid}',
 Route::prefix('admin/{admin_path}')
     ->middleware(['admin.path', 'admin', 'log', 'throttle:120,1'])
     ->group(function () {
+        Route::post('subscriptions/{id}/operations/{operation}', [\App\Http\Controllers\Txapi\Admin\SubscriptionOperationsController::class, 'execute'])
+            ->whereNumber('id')->where('operation', 'suspend|resume|revoke|expire|reset');
         Route::get('audit-logs', [AuditLogController::class, 'index']);
         Route::get('access-audit/rules', [AccessAuditAdminController::class, 'rules']);
         Route::post('access-audit/rules', [AccessAuditAdminController::class, 'saveRule']);

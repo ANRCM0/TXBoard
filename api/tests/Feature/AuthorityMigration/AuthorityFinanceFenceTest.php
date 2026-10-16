@@ -161,7 +161,11 @@ class AuthorityFinanceFenceTest extends TestCase
         $paid=$this->order($user,$plan,['payment_id'=>$payment->id]);$this->post($this->webhook($payment),$this->signature($paid->trade_no,'10.00','native-paid'))->assertOk();
         (new OrderHandleJob($paid->trade_no))->handle();$this->postJson('/txapi/billing/commission-transfer',['transfer_amount'=>50])->assertOk();
         $this->postJson('/txapi/gift-cards/redeem',['code'=>$gift->code])->assertOk();$queries=DB::getQueryLog();DB::disableQueryLog();
-        foreach($queries as$query)$this->assertStringNotContainsString('tx_authority_',$query['query']);
+        foreach($queries as$query){
+            // Installation admission may inspect schema even with the rehearsal fence disabled.
+            if(str_contains($query['query'],'sqlite_master')||str_contains($query['query'],'information_schema'))continue;
+            $this->assertStringNotContainsString('tx_authority_',$query['query']);
+        }
     }
     public function test_old_worker_wrong_inventory_and_closed_history_refuse_money_before_change():void
     {

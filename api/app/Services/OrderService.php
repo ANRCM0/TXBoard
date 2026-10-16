@@ -15,6 +15,7 @@ use App\Domains\Billing\PurchasedOrderGrant;
 use App\Services\Plugin\HookManager;
 use App\Services\Subscription\LegacyUserMutationCapture;
 use App\Services\Subscription\LegacyCaptureShadowException;
+use App\Services\Subscription\PublishedOrderService;
 use App\Utils\Helper;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
@@ -141,11 +142,21 @@ class OrderService
 
     public function open(): void
     {
+        // Dispatch from the stored marker, not a possibly stale queued Order.
+        // Native fulfillment owns its account-first transaction and admission.
+        if (Order::query()->useWritePdo()->whereKey($this->order->id)->value('purchase_terms_version') === PublishedOrderService::VERSION) {
+            app(\App\Services\Subscription\SubscriptionFulfillmentService::class)->fulfill((int) $this->order->id);
+            $this->order = Order::query()->findOrFail($this->order->id);
+            return;
+        }
         $openedOrder = DB::transaction(function () {
             app(\App\Domains\AuthorityMigration\AuthorityWriterFence::class)->admit('order.fulfill');
             $order = $this->lockCurrentOrderWhenStatus(Order::STATUS_PROCESSING);
             if (!$order) {
                 return null;
+            }
+            if ($order->purchase_terms_version === PublishedOrderService::VERSION) {
+                throw new \RuntimeException('Native order requires native fulfillment admission');
             }
 
             $terms = OrderPurchaseTerms::query()->where('order_id', $order->id)->first();
@@ -367,9 +378,16 @@ class OrderService
     public function paid(string $callbackNo, ?int $paymentId = null, ?int $verifiedAmountMinor = null)
     {
         try {
-            [$order, $shouldDispatch] = DB::transaction(function () use ($callbackNo, $paymentId, $verifiedAmountMinor) {
-                app(\App\Domains\AuthorityMigration\AuthorityWriterFence::class)->admit('order.paid');
-                $order = $this->lockCurrentOrder();
+            $native = Order::query()->useWritePdo()->whereKey($this->order->id)
+                ->value('purchase_terms_version') === PublishedOrderService::VERSION;
+            $transition = function (?Order $order = null) use ($callbackNo, $paymentId, $verifiedAmountMinor, $native) {
+                if (!$native) {
+                    app(\App\Domains\AuthorityMigration\AuthorityWriterFence::class)->admit('order.paid');
+                    $order = $this->lockCurrentOrder();
+                    if ($order?->purchase_terms_version === PublishedOrderService::VERSION) {
+                        throw new \RuntimeException('Native order requires native payment admission');
+                    }
+                }
                 if (!$order) {
                     throw new \RuntimeException('Order not found.');
                 }
@@ -406,7 +424,10 @@ class OrderService
                 }
 
                 return [$order, true];
-            });
+            };
+            [$order, $shouldDispatch] = $native
+                ? app(PublishedOrderService::class)->transitionOrder((int) $this->order->id, $transition)
+                : DB::transaction(fn () => $transition());
 
             $this->order = $order;
 
@@ -440,11 +461,27 @@ class OrderService
     public function cancel(): bool
     {
         try {
+            if (Order::query()->useWritePdo()->whereKey($this->order->id)
+                ->value('purchase_terms_version') === PublishedOrderService::VERSION) {
+                $cancelled = app(PublishedOrderService::class)->transitionOrder((int) $this->order->id,
+                    static function (Order $order): ?Order {
+                        if ((int) $order->status !== Order::STATUS_PENDING) return null;
+                        $order->status = Order::STATUS_CANCELLED;
+                        $order->saveOrFail();
+                        return $order;
+                    });
+                if ($cancelled === null) return false;
+                $this->order = $cancelled;
+                return true;
+            }
             $cancelledOrder = DB::transaction(function () {
                 app(\App\Domains\AuthorityMigration\AuthorityWriterFence::class)->admit('order.cancel');
                 $order = $this->lockCurrentOrderWhenStatus(Order::STATUS_PENDING);
                 if (!$order) {
                     return null;
+                }
+                if ($order->purchase_terms_version === PublishedOrderService::VERSION) {
+                    throw new \RuntimeException('Native order requires native cancellation admission');
                 }
 
                 HookManager::call('order.cancel.before', $order);

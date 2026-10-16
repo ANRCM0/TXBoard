@@ -47,13 +47,16 @@ class AuthorityWriterFenceTest extends TestCase
         $this->assertSame('covered update',User::findOrFail($id)->remarks);
         $this->assertSame(0,DB::table('tx_authority_prepare_receipt')->count());
     }
-    public function test_default_off_production_keeps_native_writes_without_fence_sql_or_context_validation():void
+    public function test_default_off_production_keeps_legacy_writes_without_isolated_fence_validation():void
     {
         config(['authority_writer_fence'=>['enabled'=>false,'worker_epoch'=>'invalid','worker_role'=>'v2'],'core_shadow.isolated_copy'=>false]);
         $this->app['env']='production';Schema::drop('tx_authority_writer_fence');Schema::drop('tx_authority_prepare_receipt');
         DB::enableQueryLog();DB::flushQueryLog();$id=$this->createAccount()->assertCreated()->json('data.id');
         $this->updateAccount($id,['remarks'=>'native default'])->assertOk();$queries=DB::getQueryLog();DB::disableQueryLog();
-        foreach($queries as$query)$this->assertStringNotContainsString('tx_authority_',$query['query']);
+        foreach($queries as$query){
+            if(str_contains($query['query'],'sqlite_master')||str_contains($query['query'],'information_schema'))continue;
+            $this->assertStringNotContainsString('tx_authority_',$query['query']);
+        }
     }
     public function test_missing_state_wrong_epoch_or_role_and_prepared_native_writes_fail_closed():void
     {

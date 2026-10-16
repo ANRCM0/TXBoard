@@ -58,7 +58,7 @@ class OrderHandleJob implements ShouldQueue
      */
     public function handle()
     {
-        $order = Order::where('trade_no', $this->tradeNo)->first();
+        $order = Order::query()->useWritePdo()->where('trade_no', $this->tradeNo)->first();
         if (!$order) return;
         $orderService = new OrderService($order);
         switch ($order->status) {

@@ -5,6 +5,7 @@ import { inventory, classify, assertCurrentBoundaries, markdown, parseArgs } fro
 
 const required = [
   ['GET|HEAD', 'txapi/health'],
+  ['GET|HEAD', 'txapi/readiness'],
   ['GET|HEAD', 'txapi/public/site-config'],
   ['POST', 'txapi/auth/admin/login'],
   ['GET|HEAD', 'txapi/admin/{admin_path}/users', ['api', 'admin.path', 'admin', 'log']],
@@ -23,6 +24,7 @@ test('can export deterministic Laravel route registry and critical control-plane
   const out = inventory(required);
   assertCurrentBoundaries(out);
   assert.equal(out.filter(x => x.path === '/txapi/health').length, 1);
+  assert.equal(out.find(x => x.path === '/txapi/readiness').principal, 'public');
   assert.equal(out.find(x => x.path === '/txapi/node/v1/report').principal, 'node');
   assert.match(markdown(out), /TXBoard HTTP 路由快照/);
   assert.ok(markdown(out).includes('external-adapter-current.md'));

@@ -129,7 +129,11 @@ class AuthorityInventoryExpandTest extends TestCase
         $this->postJson($this->users().'/'.$three->id.'/delete')->assertOk();
         $this->postJson('/txapi/admin/inventory_fixture/plans',['id'=>$plan->id,'name'=>'Original','transfer_enable'=>2,'force_update'=>true])->assertOk();
         $this->job($server,$one,'default-batch')->handle();$queries=DB::getQueryLog();DB::disableQueryLog();
-        foreach($queries as$query)$this->assertStringNotContainsString('tx_authority_',$query['query']);
+        foreach($queries as$query){
+            // Installation admission may inspect schema, but not absent rehearsal data.
+            if(str_contains($query['query'],'sqlite_master')||str_contains($query['query'],'information_schema'))continue;
+            $this->assertStringNotContainsString('tx_authority_',$query['query']);
+        }
     }
     public function test_expansion_receipt_insert_failure_rolls_back_same_row_and_readonly_recovery_is_inconclusive():void
     {

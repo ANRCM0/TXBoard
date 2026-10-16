@@ -328,7 +328,7 @@ class AuthorityTicketWritersTest extends TestCase
         $this->assertSame($before, $this->rows(array_keys($before)));
     }
 
-    public function test_default_disabled_native_ticket_http_admin_cron_and_real_bearer_have_zero_authority_io(): void
+    public function test_default_disabled_native_ticket_http_admin_cron_and_real_bearer_have_no_authority_data_io(): void
     {
         config(['authority_writer_fence' => ['enabled' => false, 'worker_epoch' => 'invalid', 'worker_role' => 'invalid'],
             'core_shadow.isolated_copy' => false]);
@@ -356,7 +356,11 @@ class AuthorityTicketWritersTest extends TestCase
             'last_reply_user_id' => $admin->id, 'updated_at' => time() - 90000]);
         $this->assertSame(0, Artisan::call('check:ticket'));
         $this->assertSame(Ticket::STATUS_CLOSED, (int) $cron->fresh()->status);
-        foreach (DB::getQueryLog() as $query) $this->assertStringNotContainsString('tx_authority_', $query['query']);
+        foreach (DB::getQueryLog() as $query) {
+            // Installation admission may inspect schema, not the absent rehearsal tables.
+            if (str_contains($query['query'], 'sqlite_master') || str_contains($query['query'], 'information_schema')) continue;
+            $this->assertStringNotContainsString('tx_authority_', $query['query']);
+        }
         DB::disableQueryLog();
         $this->assertNotNull($token->accessToken->fresh()->last_used_at);
     }

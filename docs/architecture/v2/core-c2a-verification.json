@@ -1,0 +1,136 @@
+{
+  "schema": "tx-core.c2a-verification/v1",
+  "date": "2026-10-15",
+  "branch": "feat/core-native-subscriptions",
+  "implementation_base": "5e03dbcb33ba44cd1896a1c54053ae128868fe79",
+  "unmerged_dependency": {
+    "pull_request": 247,
+    "branch": "feat/core-purchased-terms",
+    "required_order": "Merge C1 before C2-A; neither branch is the delivered main baseline."
+  },
+  "scope": "Persistent installation authority, fail-closed runtime admission and immutable native catalog preparation",
+  "status": {
+    "c2a_implementation": "implemented with local batch acceptance",
+    "complete_c2": false,
+    "native_ready": false,
+    "activation_operation_available": false,
+    "merged": false,
+    "published": false
+  },
+  "implementation": [
+    "Extend the existing authority singleton instead of introducing another fence.",
+    "Persist immutable installation identity, authority choice, bootstrap request, versions and epoch; refuse historical evidence takeover.",
+    "Require an empty native database except explicitly listed configuration metadata and bootstrap administrators without business assets.",
+    "Serialize first MySQL-compatible insertion with a database-scoped connection advisory lock, then transact the immutable initialization.",
+    "Admit each HTTP request, queue item, business command and named legacy SQL writer against persisted authority; configuration cannot downgrade native state.",
+    "Keep liveness independent of database readiness and expose bounded non-secret readiness refusal.",
+    "Allow image preparation and Octane process startup while refusing native business work; skip the legacy updater for native preparing installations.",
+    "Publish immutable Revision and Offer records with exact prices and frozen policies; independently update availability using row-version CAS.",
+    "Verify complete immutable publication evidence before replay or availability mutation; never promote shadow rows."
+  ],
+  "local_environment": {
+    "runtime": "Isolated WSL fixture, PHP 8.4.16",
+    "databases": ["SQLite in memory", "MariaDB 11.4.12"],
+    "database_isolation": "Private temporary MariaDB data directories and Unix sockets; no TCP",
+    "redis_isolation": "Private Redis instance with Unix socket, no TCP or persistence",
+    "dependencies": "Existing composer.lock vendor contents, no dependency upgrade",
+    "production_or_shared_database_modified": false,
+    "real_env_or_credentials_used": false,
+    "mariadb_claimed_as_mysql_8_4": false,
+    "fixture_root": "/tmp/tx-c2-acceptance-vs_l4w2v"
+  },
+  "local_results": [
+    {
+      "check": "Production-schema migrations and real installation/catalog runtime plus C1 fulfillment",
+      "database": "Private MariaDB 11.4.12",
+      "result": "passed",
+      "tests": 30,
+      "assertions": 194,
+      "evidence": "/tmp/tx-c2-acceptance-vs_l4w2v/mysql-akc1bzd3/mysql-runtime.log"
+    },
+    {
+      "check": "Committed bootstrap fixture with twelve independent PHP processes on a fresh database",
+      "database": "Private MariaDB 11.4.12",
+      "result": "passed",
+      "tests": 1,
+      "assertions": 77,
+      "evidence": "/tmp/tx-c2-acceptance-vs_l4w2v/mysql-g_o864vp/mysql-bootstrap-test.log",
+      "regression_fixed": "Compatible empty-key gap locks caused competing initializers to exhaust retries; advisory coordination now converges on one immutable native initializing record."
+    },
+    {
+      "check": "Initial API-wide regression sweep",
+      "result": "failed, diagnosed and followed by targeted repairs",
+      "tests": 1777,
+      "assertions": 16463,
+      "passed": 1575,
+      "errors": 29,
+      "failures": 19,
+      "skipped": 154,
+      "warnings": 5,
+      "evidence": "/tmp/tx-c2-acceptance-vs_l4w2v/api-regression.log",
+      "causes": [
+        "The isolated fixture omitted repository-level contract JSON and existing frontend entry HTML.",
+        "Explicit Redis consumers could not connect because the fixture had no Redis server.",
+        "Six old no-authority-I/O assertions predated installation admission; they must permit metadata inspection and, where present, read-only singleton inspection while still prohibiting historical receipt I/O."
+      ],
+      "single_green_full_local_suite_claimed": false
+    },
+    {
+      "check": "All initially failing test classes plus installation, publication, fence and catalog regressions with corrected fixtures",
+      "result": "294 passed, 35 conditionally skipped; one metadata assertion subsequently repaired",
+      "tests": 330,
+      "passed": 294,
+      "skipped": 35,
+      "failures": 1,
+      "assertions": 2837,
+      "evidence": "/tmp/tx-c2-acceptance-vs_l4w2v/api-regression-repaired.log",
+      "skip_reason": "Existing independent MySQL/process fixture opt-ins; bootstrap has separate private-database evidence.",
+      "remaining_failure": "The default-off native writer assertion did not yet allow SQLite pragma_table_xinfo metadata inspection."
+    },
+    {
+      "check": "Final remaining default-off native writer assertion after metadata-only repair",
+      "result": "passed",
+      "tests": 1,
+      "assertions": 15,
+      "evidence": "/tmp/tx-c2-acceptance-vs_l4w2v/focused-tests.log",
+      "scope": "Metadata and read-only installation singleton checks are permitted; missing historical authority data I/O remains prohibited and original after-commit node synchronization remains asserted."
+    },
+    {
+      "check": "Live Laravel route registry export and external integration route boundaries",
+      "result": "passed",
+      "http_methods": 255,
+      "families": 10,
+      "evidence": "Parent workspace .tmp/c2-route-list.json"
+    },
+    {
+      "check": "Route and external integration JavaScript regression",
+      "result": "passed",
+      "tests": 14
+    },
+    {
+      "check": "Added PHP files syntax, native-only source guard, shell syntax, MySQL workflow actionlint and git diff whitespace",
+      "result": "passed"
+    }
+  ],
+  "remote_acceptance": {
+    "status_at_commit": "pending pull-request CI",
+    "mysql_8_4": "Required through existing MySQL runtime job and new isolated installation-bootstrap job.",
+    "image": "Existing image verification/recovery and Octane smoke checks remain enabled; no new local Docker build was performed.",
+    "api": "Required full API CI; local evidence is an initial sweep followed by targeted repair, not one final green full-suite run.",
+    "reporting": "Record exact PR head and remote CI results on the PR; do not trigger identical component suites just to append a report."
+  },
+  "recovery": {
+    "populated_down_migrations": "Refused for installation metadata or native publication evidence.",
+    "native_not_ready": "Keep the installation initializing; diagnose or repair forward. Do not delete evidence or change configuration to bypass refusal.",
+    "legacy_compatibility": "Existing uninitialized or explicitly legacy deployments retain business behavior.",
+    "review_required": "Non-author Core schema/authority reviewer; Node/Deploy consumer confirmation before later activation."
+  },
+  "remaining_c2": [
+    "Bind native orders to real published offers and fulfill Subscription, Terms, Transition, Slot and UsagePeriod from C1 purchase evidence.",
+    "Integrate new purchase, renewal, plan changes, expiry, pause/resume, reset and revocation under consistent transactions and lock order.",
+    "Use one entitlement resolver across account subscriptions, Node full/delta REST/WS and subscription distribution.",
+    "Settle persisted usage against its original Subscription, Terms and Period without reassigning delayed batches.",
+    "Integrate a usable Provider and non-secret AccessSubject references; synthetic providers do not satisfy the production authorization chain.",
+    "Complete all native writer/worker admission and the real end-to-end chain before adding readiness or activation."
+  ]
+}

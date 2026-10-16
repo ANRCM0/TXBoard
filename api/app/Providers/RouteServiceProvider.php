@@ -45,6 +45,10 @@ class RouteServiceProvider extends ServiceProvider
         Route::get('/txapi/health', static function (\Illuminate\Http\Request $request) {
             return \App\Core\Http\TxapiResponse::success($request, ['status' => 'ok']);
         });
+        // Unlike liveness, readiness is admitted by the installation middleware.
+        Route::get('/txapi/readiness', static function (\Illuminate\Http\Request $request) {
+            return \App\Core\Http\TxapiResponse::success($request, ['ready' => true]);
+        });
 
         $this->mapApiRoutes();
         $this->mapWebRoutes();

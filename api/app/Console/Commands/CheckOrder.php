@@ -3,12 +3,12 @@
 namespace App\Console\Commands;
 
 use App\Jobs\OrderHandleJob;
-use App\Services\OrderService;
+use App\Domains\Installation\InstallationAuthority;
+use App\Services\Subscription\PublishedOrderService;
 use Illuminate\Console\Command;
 use App\Models\Order;
-use App\Models\User;
-use App\Models\Plan;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Cache;
 
 class CheckOrder extends Command
 {
@@ -17,7 +17,7 @@ class CheckOrder extends Command
      *
      * @var string
      */
-    protected $signature = 'check:order';
+    protected $signature = 'check:order {--limit=100 : Maximum native recovery candidates per run}';
 
     /**
      * The console command description.
@@ -43,19 +43,42 @@ class CheckOrder extends Command
      */
     public function handle()
     {
+        $authority = app(InstallationAuthority::class)->inspect();
+        $native = $authority['mode'] === 'native';
+        $limit = filter_var($this->option('limit'), FILTER_VALIDATE_INT);
+        if ($native && ($limit === false || $limit < 1 || $limit > 1000)) {
+            $this->error('NATIVE_ORDER_RECOVERY_LIMIT_INVALID');
+            return self::FAILURE;
+        }
         // Pending orders only need handling after the two-hour expiry window.
         // Processing orders must remain eligible for recovery on every run.
-        Order::where(function ($query) {
+        $query = Order::query()->useWritePdo()->where(function ($query) {
                 $query->where('status', Order::STATUS_PROCESSING)
                     ->orWhere(function ($pending) {
                         $pending->where('status', Order::STATUS_PENDING)
                             ->where('created_at', '<=', time() - 7200);
                     });
             })
-            ->orderBy('id', 'ASC')
-            ->lazyById(200)
-            ->each(function ($order) {
-                OrderHandleJob::dispatch($order->trade_no)->onConnection('redis');
-            });
+            ->orderBy('id', 'ASC');
+        $cursorKey = $native ? 'core:native-order-recovery:'.$authority['installation_id'] : null;
+        if ($native) {
+            $query->where('purchase_terms_version', PublishedOrderService::VERSION);
+            $cursor = filter_var(Cache::get($cursorKey, 0), FILTER_VALIDATE_INT);
+            $orders = (clone $query)->where('id', '>', max(0, $cursor ?: 0))->limit($limit)->get();
+            if ($orders->isEmpty()) {
+                $orders = $query->limit($limit)->get();
+            }
+        } else {
+            $orders = $query->lazyById(200);
+        }
+        $orders->each(function ($order) use ($cursorKey) {
+            Bus::dispatch((new OrderHandleJob($order->trade_no))->onConnection('redis'));
+            if ($cursorKey !== null) {
+                // Rotate across runs so a damaged low-ID order cannot starve later work.
+                // Losing this cursor only causes safe re-dispatch of idempotent jobs.
+                Cache::put($cursorKey, (int) $order->id, 86400);
+            }
+        });
+        return self::SUCCESS;
     }
 }

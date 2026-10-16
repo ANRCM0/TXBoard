@@ -4,7 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-/** Internal shadow model. It is not an authorization or billing authority. */
+/** Shared canonical storage model. Only versioned native services may grant authority. */
 abstract class SubscriptionShadowModel extends Model
 {
     protected $dateFormat = 'U';

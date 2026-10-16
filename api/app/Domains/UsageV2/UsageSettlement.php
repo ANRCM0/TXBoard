@@ -31,6 +31,7 @@ final class UsageSettlement
     {
         $this->policy->requireIsolated();
         return DB::transaction(function () use ($batchId, $now) {
+            $this->policy->requireTransaction();
             $batch = DB::table('tx_usage_batch')->where('id', $batchId)->lockForUpdate()->first();
             if (!$batch || in_array($batch->status, ['settled','quarantined'], true)
                 || ($batch->processing_lease_until !== null && (int) $batch->processing_lease_until > $now)) { return null; }
@@ -48,6 +49,7 @@ final class UsageSettlement
         $this->policy->requireIsolated();
         try {
             return DB::transaction(function () use ($batchId, $fence, $now) {
+                $this->policy->requireTransaction();
                 $batch = DB::table('tx_usage_batch')->where('id', $batchId)->lockForUpdate()->first();
                 if (!$batch || $batch->status !== 'processing' || (string) $batch->fencing_token !== $fence
                     || (int) $batch->processing_lease_until <= $now) { return 'stale'; }
@@ -71,7 +73,9 @@ final class UsageSettlement
                 $subscriptions = array_unique(array_column($totals, 'subscription_id'));
                 usort($subscriptions, fn ($a, $b) => UsagePayload::compare($a, $b));
                 foreach ($subscriptions as $subscriptionId) {
-                    if (!DB::table('tx_subscription')->where('id', $subscriptionId)->lockForUpdate()->exists()) { throw new UsageError('USAGE_FROZEN_SUBSCRIPTION_MISSING'); }
+                    $subscription = DB::table('tx_subscription')->where('id', $subscriptionId)->lockForUpdate()->first();
+                    if (!$subscription) { throw new UsageError('USAGE_FROZEN_SUBSCRIPTION_MISSING'); }
+                    $this->policy->assertSubscription($subscription);
                 }
                 uksort($totals, fn ($a, $b) => UsagePayload::compare((string) $a, (string) $b));
                 foreach ($totals as $pid => $total) {
@@ -112,6 +116,7 @@ final class UsageSettlement
             $quarantine = $error instanceof UsageError || $error instanceof \JsonException;
             $state = $quarantine ? 'quarantined' : 'retry_wait';
             DB::transaction(function () use ($batchId, $fence, $now, $error, $state, $quarantine) {
+                $this->policy->requireTransaction();
                 $batch = DB::table('tx_usage_batch')->where('id', $batchId)->lockForUpdate()->first();
                 if ($batch && $batch->status === 'processing' && (string) $batch->fencing_token === $fence) {
                     DB::table('tx_usage_batch')->where('id', $batchId)->update(['status' => $state,
@@ -129,6 +134,7 @@ final class UsageSettlement
         $this->policy->requireIsolated();
         if (!preg_match('/^[A-Z][A-Z0-9_]{2,79}$/D', $reason)) { throw new UsageError('USAGE_RECOVERY_REASON_INVALID'); }
         DB::transaction(function () use ($batchId, $reason, $now) {
+            $this->policy->requireTransaction();
             $batch = DB::table('tx_usage_batch')->where('id', $batchId)->lockForUpdate()->first();
             if (!$batch || $batch->status !== 'quarantined') { throw new UsageError('USAGE_BATCH_NOT_QUARANTINED', 409); }
             DB::table('tx_usage_outbox')->insert(['batch_id' => $batchId, 'event_key' => 'usage.recover:'.$batchId.':'.($batch->fencing_token),

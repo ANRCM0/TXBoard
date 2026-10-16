@@ -15,6 +15,7 @@ final class AuthorityWriterFence
 
     public function admit(string $writer): ?AuthorityAdmission
     {
+        app(\App\Domains\Installation\InstallationAuthority::class)->assertLegacyWriter();
         if (config('authority_writer_fence.enabled') === false) return null;
         return $this->safe(function () use ($writer): ?AuthorityAdmission {
             $this->context();

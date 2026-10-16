@@ -17,6 +17,7 @@ final class UsageReceipts
         $this->policy->requireIsolated(); $p = $parsed['payload'];
         if ((string) $nodeId !== $p['node_id']) { throw new UsageError('USAGE_NODE_SCOPE', 403); }
         try { return DB::transaction(function () use ($nodeId, $parsed, $p, $now) {
+            $this->policy->requireTransaction();
             $source = DB::table('tx_node_usage_source')->where('node_id', $nodeId)->where('source_epoch', $p['source_epoch'])->lockForUpdate()->first();
             if (!$source) { throw new UsageError('USAGE_SOURCE_UNKNOWN', 403); }
             // Historical replay precedes current generation/authorization checks.
@@ -59,9 +60,12 @@ final class UsageReceipts
     {
         $this->policy->requireIsolated();
         if ((string) $nodeId !== $query['node_id']) { throw new UsageError('USAGE_NODE_SCOPE', 403); }
-        $batch = $this->find($query);
-        if (!$batch) { throw new UsageError('BATCH_NOT_FOUND', 404); }
-        try { return $this->matching($batch, $query['payload_digest']); }
+        try { return DB::transaction(function () use ($query) {
+            $this->policy->requireTransaction();
+            $batch = $this->find($query);
+            if (!$batch) { throw new UsageError('BATCH_NOT_FOUND', 404); }
+            return $this->matching($batch, $query['payload_digest']);
+        }, 3); }
         catch (UsageError $error) {
             if ($error->errorCode === 'BATCH_PAYLOAD_CONFLICT') { $this->conflictAudit($query, $query['payload_digest'], time()); }
             throw $error;
@@ -82,14 +86,17 @@ final class UsageReceipts
 
     private function conflictAudit(array $identity, string $digest, int $now): void
     {
-        $batch = $this->find($identity);
-        if (!$batch) { return; }
-        DB::table('tx_usage_outbox')->insertOrIgnore([
-            'batch_id' => $batch->id, 'event_key' => 'usage.conflict:'.$batch->id.':'.hash('sha256', $digest),
-            'kind' => 'usage.conflict', 'status' => 'completed',
-            'body' => json_encode(['reason_code' => 'BATCH_PAYLOAD_CONFLICT', 'supplied_digest' => $digest, 'original_digest' => $batch->payload_digest], JSON_THROW_ON_ERROR),
-            'created_at' => $now, 'completed_at' => $now,
-        ]);
+        DB::transaction(function () use ($identity, $digest, $now) {
+            $this->policy->requireTransaction();
+            $batch = $this->find($identity);
+            if (!$batch) { return; }
+            DB::table('tx_usage_outbox')->insertOrIgnore([
+                'batch_id' => $batch->id, 'event_key' => 'usage.conflict:'.$batch->id.':'.hash('sha256', $digest),
+                'kind' => 'usage.conflict', 'status' => 'completed',
+                'body' => json_encode(['reason_code' => 'BATCH_PAYLOAD_CONFLICT', 'supplied_digest' => $digest, 'original_digest' => $batch->payload_digest], JSON_THROW_ON_ERROR),
+                'created_at' => $now, 'completed_at' => $now,
+            ]);
+        }, 3);
     }
 
     private function freeze(object $source, array $entry, array $payload): array
@@ -124,6 +131,7 @@ final class UsageReceipts
             || ($subject->revoked_at !== null && $end > (int) $subject->revoked_at)) {
             throw new UsageError('USAGE_GRANT_OWNERSHIP_OR_COVERAGE');
         }
+        $this->policy->assertSubscription($sub);
         // A revoked subject can report traffic strictly within its former authorization.
         // A changed auth version without an effective revocation timestamp cannot establish a safe interval.
         if ((string) $subject->auth_version !== (string) $grant->auth_version && $subject->revoked_at === null) { throw new UsageError('USAGE_AUTH_VERSION_AMBIGUOUS'); }
