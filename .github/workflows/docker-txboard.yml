@@ -23,7 +23,6 @@ on:
       - "scripts/test-image-tags.sh"
       - ".github/workflows/docker-txboard.yml"
   pull_request:
-    branches: [main]
     paths:
       - "api/**"
       - "!api/**/*.md"

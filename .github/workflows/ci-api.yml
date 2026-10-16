@@ -29,7 +29,6 @@ on:
       - "scripts/check-core-boundaries.py"
       - ".github/workflows/ci-api.yml"
   pull_request:
-    branches: [main]
     paths:
       - "api/**"
       - "!api/**/*.md"

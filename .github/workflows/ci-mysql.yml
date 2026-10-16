@@ -10,7 +10,6 @@ on:
       - "scripts/tests/compare-critical-data-snapshots.test.mjs"
       - ".github/workflows/ci-mysql.yml"
   pull_request:
-    branches: [main]
     paths:
       - "api/**"
       - "!api/**/*.md"

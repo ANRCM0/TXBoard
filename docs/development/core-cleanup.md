@@ -40,4 +40,5 @@
 - `python scripts/check-core-boundaries.py` 检查当前订阅域位置、旧命名空间和已退役运行时引用，由 API CI 执行。
 - API 默认测试集检查当前行为与插件生命周期；MySQL CI 检查迁移、初始化和 native 事务；native C2 CI 检查真实 Provider/Node/渲染及原周期结算链路。
 - 删除的专属工作流不保留同名空任务；其余工作流继续遵守 [CI 分工](native-development-baseline.md)。
+- Core 的 API、MySQL 和镜像验收支持叠加 PR 的任意目标分支，按实际增量触发；默认分支推送与发布条件保持原有约束，未修改的 Node/Gateway/Web 不为此批重复验收。
 - 本地只执行轻量静态和文档检查，不启动数据库、Linux 环境或真实流量。
