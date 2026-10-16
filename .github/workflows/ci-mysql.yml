@@ -161,6 +161,12 @@ jobs:
         run: php artisan test tests/Feature/Txapi/TxapiBillingTest.php
       - name: GW-303 idempotency contract and crash recovery on MySQL
         run: php artisan test tests/Feature/Txapi/TxapiOrderIdempotencyTest.php
+      - name: C1 purchased terms validation and fulfillment on MySQL
+        run: >-
+          php artisan test
+          tests/Unit/Domains/Billing/OrderPurchaseTermsSnapshotTest.php
+          tests/Unit/Domains/Billing/PurchasedOrderGrantTest.php
+          tests/Feature/Billing/PurchasedTermsFulfillmentTest.php
       - name: GW-303 real MySQL 100-concurrent-request idempotency stress
         run: php artisan test tests/Feature/Billing/OrderIdempotencyMysqlConcurrencyTest.php
       - name: P3-A monetary state transitions and coupon recovery on MySQL

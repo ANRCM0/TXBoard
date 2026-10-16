@@ -100,6 +100,10 @@ class OrderIdempotencyMysqlConcurrencyTest extends TestCase
             $this->assertCount(100, $trades);
             $this->assertCount(1, array_unique($trades));
             $this->assertSame(1, Order::query()->where('user_id', $user->id)->count());
+            $order = Order::query()->where('user_id', $user->id)->firstOrFail();
+            $this->assertSame('tx-core.purchase-terms/v1', $order->purchase_terms_version);
+            $this->assertSame(1, DB::table('tx_order_purchase_terms')
+                ->where('order_id', $order->id)->where('user_id', $user->id)->count());
             $this->assertSame(1, DB::table('idempotency_keys')
                 ->where('user_id', $user->id)->count());
             $this->assertSame('succeeded', DB::table('idempotency_keys')
@@ -114,6 +118,9 @@ class OrderIdempotencyMysqlConcurrencyTest extends TestCase
             }
             rmdir($dir);
             DB::table('idempotency_keys')->where('user_id', $user->id)->delete();
+            // Only this fixture's evidence may be removed before its restricted parent orders.
+            DB::table('tx_order_purchase_terms')->whereIn('order_id',
+                Order::query()->where('user_id', $user->id)->select('id'))->delete();
             DB::table('tx_order')->where('user_id', $user->id)->delete();
             $user->delete();
             $plan->delete();

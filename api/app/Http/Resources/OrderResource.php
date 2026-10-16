@@ -23,6 +23,14 @@ class OrderResource extends JsonResource
             ...parent::toArray($request),
             'period' => PlanService::getLegacyPeriod((string)$this->period),
             'plan' => $this->whenLoaded('plan', fn() => PlanResource::make($this->plan)),
+            'purchase_terms' => $this->whenLoaded('purchaseTerms', fn() => $this->purchaseTerms ? [
+                'version' => 'tx-core.purchase-terms/v1',
+                'period' => (string) $this->purchaseTerms->period,
+                'order_type' => (int) $this->purchaseTerms->order_type,
+                'price_minor' => (string) $this->purchaseTerms->price_minor,
+                'currency' => (string) $this->purchaseTerms->currency,
+                'content_hash' => (string) $this->purchaseTerms->content_hash,
+            ] : null),
             'payment' => $this->whenLoaded('payment', fn() => $this->payment ? [
                 'id' => $this->payment->id,
                 'name' => $this->payment->name,

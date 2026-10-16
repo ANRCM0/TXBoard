@@ -80,6 +80,29 @@ class OrderServiceConcurrencyTest extends TestCase
         $this->assertSame(100, User::findOrFail($user->id)->balance);
     }
 
+    public function test_open_uses_immutable_purchase_terms_when_plan_changes_after_order_creation(): void
+    {
+        $user = $this->makeUser(['balance' => 0, 'expired_at' => 0, 'transfer_enable' => 0]);
+        $plan = $this->makePlan(['transfer_enable' => 2, 'group_id' => 7, 'speed_limit' => 30, 'device_limit' => 4]);
+        $order = $this->makeOrder($user, $plan, ['status' => Order::STATUS_PROCESSING, 'total_amount' => 1100, 'purchase_terms_version' => 'tx-core.purchase-terms/v1']);
+        $purchase = app(\App\Domains\Billing\OrderPurchaseTermsSnapshot::class)->build($order, $plan, 'CNY', 1, 'Asia/Shanghai');
+        \App\Models\OrderPurchaseTerms::create([
+            'order_id' => $order->id, 'user_id' => $user->id, 'plan_id' => $plan->id, 'period' => 'monthly',
+            'order_type' => Order::TYPE_NEW_PURCHASE, 'price_minor' => '1100', 'currency' => 'CNY',
+            'currency_minor_exponent' => 2, 'quota_bytes' => $purchase['quota_bytes'], 'group_id' => 7,
+            'speed_limit_mbps' => 30, 'device_limit' => 4, 'reset_policy' => $purchase['reset_policy'],
+            'duration_months' => 1, 'purchase_kind' => 'subscription', 'source_snapshot' => $purchase,
+            'content_hash' => $purchase['content_hash'], 'created_at' => time(),
+        ]);
+        $plan->update(['transfer_enable' => 99, 'group_id' => 99, 'speed_limit' => 1, 'device_limit' => 1]);
+        (new OrderService(Order::findOrFail($order->id)))->open();
+        $user->refresh();
+        $this->assertSame(2 * 1073741824, (int) $user->transfer_enable);
+        $this->assertSame(7, (int) $user->group_id);
+        $this->assertSame(30, (int) $user->speed_limit);
+        $this->assertSame(4, (int) $user->device_limit);
+    }
+
     public function test_open_only_applies_subscription_once_when_called_with_stale_order_models(): void
     {
         $user = $this->makeUser([
