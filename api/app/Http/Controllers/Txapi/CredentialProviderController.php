@@ -7,7 +7,7 @@ use App\Domains\Billing\IdempotencyException;
 use App\Domains\Billing\OrderIdempotency;
 use App\Domains\CredentialProvider\ProviderError;
 use App\Domains\Installation\InstallationAuthority;
-use App\Services\Subscription\NativeCredentialProviderService;
+use App\Domains\Subscription\Services\NativeCredentialProviderService;
 use Closure;
 use DomainException;
 use Illuminate\Http\JsonResponse;

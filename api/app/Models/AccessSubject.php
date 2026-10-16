@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use LogicException;
 
-class AccessSubject extends SubscriptionShadowModel
+class AccessSubject extends SubscriptionRecord
 {
     protected $table = 'tx_access_subject';
 

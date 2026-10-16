@@ -26,9 +26,9 @@ on:
       - "scripts/tests/p0-api-audit.test.mjs"
       - "scripts/native-admin-release-audit.mjs"
       - "scripts/tests/native-admin-release-audit.test.mjs"
+      - "scripts/check-core-boundaries.py"
       - ".github/workflows/ci-api.yml"
   pull_request:
-    branches: [main]
     paths:
       - "api/**"
       - "!api/**/*.md"
@@ -52,6 +52,7 @@ on:
       - "scripts/tests/p0-api-audit.test.mjs"
       - "scripts/native-admin-release-audit.mjs"
       - "scripts/tests/native-admin-release-audit.test.mjs"
+      - "scripts/check-core-boundaries.py"
       - ".github/workflows/ci-api.yml"
 
 concurrency:
@@ -84,6 +85,9 @@ jobs:
         working-directory: api
     steps:
       - uses: actions/checkout@v4
+      - name: Verify current Core domain boundaries
+        working-directory: .
+        run: python3 scripts/check-core-boundaries.py
       - uses: shivammathur/setup-php@v2
         with:
           php-version: "8.2"

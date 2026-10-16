@@ -5,7 +5,7 @@ namespace Tests\Feature\Installation;
 use App\Domains\CredentialProvider\ProviderTransport;
 use App\Domains\Installation\InstallationAuthority;
 use App\Domains\Installation\InstallationAuthorityException;
-use App\Services\Subscription\NativeCredentialProviderService;
+use App\Domains\Subscription\Services\NativeCredentialProviderService;
 use App\Domains\Network\NativeProviderNodeAuthorization;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;

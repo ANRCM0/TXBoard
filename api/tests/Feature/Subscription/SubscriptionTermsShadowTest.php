@@ -8,7 +8,7 @@ use App\Models\SubscriptionTermsTransition;
 use App\Models\UsageAdjustment;
 use App\Models\User;
 use App\Services\Subscription\SubscriptionTermsShadowService;
-use App\Services\Subscription\SubscriptionTermsTimeline;
+use App\Domains\Subscription\Services\SubscriptionTermsTimeline;
 use App\Services\TrafficResetService;
 use Carbon\Carbon;
 use DomainException;

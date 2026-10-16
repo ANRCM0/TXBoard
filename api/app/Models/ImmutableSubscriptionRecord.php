@@ -4,7 +4,7 @@ namespace App\Models;
 
 use LogicException;
 
-abstract class ImmutableSubscriptionRecord extends SubscriptionShadowModel
+abstract class ImmutableSubscriptionRecord extends SubscriptionRecord
 {
     public const UPDATED_AT = null;
 

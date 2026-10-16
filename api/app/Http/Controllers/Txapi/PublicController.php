@@ -28,8 +28,8 @@ final class PublicController
     public function plans(Request $request, PlanCatalog $catalog): JsonResponse
     {
         if (app(\App\Domains\Installation\InstallationAuthority::class)->inspect()['mode'] === 'native') {
-            return TxapiResponse::success($request, app(\App\Services\Subscription\NativePlanCatalog::class)->available(),
-                ['schema' => \App\Services\Subscription\NativePlanCatalog::SCHEMA]);
+            return TxapiResponse::success($request, app(\App\Domains\Subscription\Services\NativePlanCatalog::class)->available(),
+                ['schema' => \App\Domains\Subscription\Services\NativePlanCatalog::SCHEMA]);
         }
         return TxapiResponse::success($request, $catalog->available());
     }
@@ -41,12 +41,12 @@ final class PublicController
             abort(401);
         }
         if (app(\App\Domains\Installation\InstallationAuthority::class)->inspect()['mode'] === 'native') {
-            $offers = app(\App\Services\Subscription\NativePlanCatalog::class)->available($planId);
+            $offers = app(\App\Domains\Subscription\Services\NativePlanCatalog::class)->available($planId);
             if ($offers === []) {
                 abort(404);
             }
             return TxapiResponse::success($request, ['plan_id' => (string) $planId, 'offers' => $offers],
-                ['schema' => \App\Services\Subscription\NativePlanCatalog::SCHEMA]);
+                ['schema' => \App\Domains\Subscription\Services\NativePlanCatalog::SCHEMA]);
         }
         $plan = $catalog->availableForUser($planId, $user);
         if ($plan === null) {

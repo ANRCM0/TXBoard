@@ -5,7 +5,7 @@ namespace Tests\Support;
 use App\Domains\Installation\InstallationAuthority;
 use App\Models\Plan;
 use App\Models\User;
-use App\Services\Subscription\PlanPublicationService;
+use App\Domains\Subscription\Services\PlanPublicationService;
 use App\Support\Setting as RuntimeSetting;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Bus;

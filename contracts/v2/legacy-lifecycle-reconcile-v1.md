@@ -1,5 +1,7 @@
 # Legacy lifecycle shadow reconciliation v1
 
+> Retired on 2026-10-16: this isolated shadow/prototype runtime, commands and dedicated tests have been removed. The text below is historical evidence, not an available interface or an implementation requirement. Existing database migrations and records are retained; this cleanup does not run data deletion.
+
 Status: Current isolated read-only slice.
 
 `LEGACY_LIFECYCLE_RECONCILE_ENABLED=true` requires the existing strict local/testing isolated capture context. The new bounded CLI `core:lifecycle-shadow-reconcile --run=<subscription-backfill-run> --limit=100 --after-id=0 --isolated-copy` freezes its range at that existing checkpoint high-water. Its ordered union includes current Users, legacy subscription maps/exceptions, initial creation anchors, deletion anchors and capture streams; records beyond high-water are explicitly reported. No table or historical record is written. The CLI rejects outer transactions, invalid bounds and missing checkpoints, and emits no source values, credentials or snapshots.

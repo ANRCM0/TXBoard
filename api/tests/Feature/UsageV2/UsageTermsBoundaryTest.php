@@ -8,7 +8,7 @@ use App\Domains\UsageV2\UsageReceipts;
 use App\Domains\UsageV2\UsageRegistry;
 use App\Domains\UsageV2\UsageSettlement;
 use App\Services\Subscription\SubscriptionTermsShadowService;
-use App\Services\Subscription\SubscriptionTermsTimeline;
+use App\Domains\Subscription\Services\SubscriptionTermsTimeline;
 use DomainException;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;

@@ -9,7 +9,7 @@ use App\Models\Order;
 use App\Models\Payment;
 use App\Services\OrderService;
 use App\Services\PaymentService;
-use App\Services\Subscription\PublishedOrderService;
+use App\Domains\Subscription\Services\PublishedOrderService;
 use Illuminate\Support\Facades\DB;
 
 /**

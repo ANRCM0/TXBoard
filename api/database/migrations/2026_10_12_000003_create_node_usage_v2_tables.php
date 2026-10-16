@@ -4,14 +4,14 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
-use App\Services\Subscription\ShadowSchemaV1;
+use App\Domains\Installation\SchemaReplayValidator;
 
 return new class extends Migration {
     private const TABLES = ['tx_node_usage_source', 'tx_tariff_revision', 'tx_auth_snapshot', 'tx_usage_batch', 'tx_usage_entry', 'tx_usage_outbox', 'tx_node_usage_stat'];
 
     public function up(): void
     {
-        $schema = new ShadowSchemaV1();
+        $schema = new SchemaReplayValidator();
         $schema->create('tx_node_usage_source', function (Blueprint $t) {
             $t->bigIncrements('id'); $t->unsignedBigInteger('node_id'); $t->unsignedBigInteger('source_epoch');
             $t->string('installation_ref', 80); $t->string('core_instance_id', 80);

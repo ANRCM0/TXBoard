@@ -2,7 +2,7 @@
 
 namespace App\Domains\UsageV2;
 
-use App\Services\Subscription\SubscriptionTermsTimeline;
+use App\Domains\Subscription\Services\SubscriptionTermsTimeline;
 use DomainException;
 use Illuminate\Support\Facades\DB;
 

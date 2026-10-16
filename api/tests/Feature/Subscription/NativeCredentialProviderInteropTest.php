@@ -5,9 +5,9 @@ namespace Tests\Feature\Subscription;
 use App\Domains\CredentialProvider\ProviderError;
 use App\Domains\CredentialProvider\ProviderTransport;
 use App\Models\Order;
-use App\Services\Subscription\NativeCredentialProviderService;
-use App\Services\Subscription\PublishedOrderService;
-use App\Services\Subscription\SubscriptionFulfillmentService;
+use App\Domains\Subscription\Services\NativeCredentialProviderService;
+use App\Domains\Subscription\Services\PublishedOrderService;
+use App\Domains\Subscription\Services\SubscriptionFulfillmentService;
 use Illuminate\Support\Facades\DB;
 use Tests\Support\NativeSubscriptionTestCase;
 

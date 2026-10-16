@@ -1,6 +1,13 @@
 # Legacy subscription identity compatibility read v1
 
-Status: Current isolated-copy observation; legacy authority retained.
+Status: Retired on 2026-10-16. Historical design and validation record only.
+
+The native development baseline does not require transitional identity
+observations. The reader, middleware, request attribute and dedicated tests have
+been removed. Current subscription routes retain their actual authentication
+middleware without this observer. Historical database migrations and stored
+evidence are retained; no data is deleted or converted by this cleanup. The
+remainder records the retired behavior and its previous validation.
 
 The native `client.subscribe` route still authenticates `User.token` through
 `Client`, including the existing precedence of a query token over a path token.

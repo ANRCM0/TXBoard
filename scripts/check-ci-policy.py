@@ -22,9 +22,7 @@ AUTOMATIC = {
 }
 HISTORICAL_DIRS = {
     "tests/Feature/AuthorityMigration",
-    "tests/Feature/CredentialProviderFixture",
     "tests/Feature/InternalReadOnly",
-    "tests/Feature/LegacyLinks",
 }
 
 
@@ -151,6 +149,10 @@ def main():
     files = sorted((ROOT / ".github/workflows").glob("*.yml"))
     require(AUTOMATIC <= {path.name for path in files}, "An automatic workflow is missing")
     workflows = {path.name: validate_workflow(path) for path in files}
+    for owner in ("ci-api.yml", "ci-mysql.yml", "docker-txboard.yml"):
+        trigger = workflows[owner]["on"]["pull_request"]
+        require(not any(key in trigger for key in ("branches", "branches-ignore")),
+                f"{owner}: Core acceptance must also run for stacked pull requests")
     require(set(workflows["ci-native-c2.yml"]["jobs"]) == {"native-c2-live"},
             "Native integration must not repeat component unit suites")
     makefile = (ROOT / "node/Makefile").read_text(encoding="utf-8")

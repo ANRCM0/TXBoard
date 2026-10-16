@@ -10,8 +10,8 @@ use App\Domains\Installation\NativeRuntimeReadiness;
 use App\Domains\UsageV2\NativeUsageLedger;
 use App\Models\Server;
 use App\Models\Setting;
-use App\Services\Subscription\NativeCredentialProviderService;
-use App\Services\Subscription\SubscriptionEntitlementResolver;
+use App\Domains\Subscription\Services\NativeCredentialProviderService;
+use App\Domains\Subscription\Services\SubscriptionEntitlementResolver;
 use DomainException;
 use Illuminate\Support\Facades\DB;
 

@@ -15,7 +15,7 @@ use App\Models\Plan;
 use App\Services\CouponService;
 use App\Services\OrderService;
 use App\Services\PlanService;
-use App\Services\Subscription\PublishedOrderService;
+use App\Domains\Subscription\Services\PublishedOrderService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;

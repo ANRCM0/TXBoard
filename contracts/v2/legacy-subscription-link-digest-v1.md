@@ -1,6 +1,14 @@
 # Legacy subscription link digest adapter v1
 
-Status: Candidate, independently default off, isolated local/testing only.
+Status: Retired on 2026-10-16. Historical design and validation record only.
+
+The native development baseline does not require a legacy-link migration or
+shadow observation mode. Its domain classes, middleware, configuration,
+backfill/reconcile commands and dedicated tests have been removed. Current
+subscription requests do not attach link associations or read this evidence.
+Historical database migrations and stored evidence are retained; this cleanup
+does not delete or convert data. The remainder describes the retired experiment,
+not an available runtime contract.
 
 Existing Client still authenticates the actual native User.token using native query-token precedence/database equality; SubscriptionController retains availability and UUID-based protocol rendering. This adapter observes only that authenticated User and never authenticates a digest, authorizes a Subscription or returns a Provider credential. Missing/changed/damaged shadow evidence blocks the observation, while native URL/body/headers keep their current behavior. Native credential rotation invalidates the old link normally; this slice never rewrites/reissues URLs or adopts a changed token into an existing immutable link.
 

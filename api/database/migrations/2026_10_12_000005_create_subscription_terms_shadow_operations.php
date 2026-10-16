@@ -1,6 +1,6 @@
 <?php
 
-use App\Services\Subscription\ShadowSchemaV1;
+use App\Domains\Installation\SchemaReplayValidator;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
-        (new ShadowSchemaV1())->create('tx_subscription_terms_shadow_operation', function (Blueprint $table) {
+        (new SchemaReplayValidator())->create('tx_subscription_terms_shadow_operation', function (Blueprint $table) {
             $table->bigIncrements('id');
             $table->integer('user_id');
             $table->unsignedBigInteger('subscription_id');

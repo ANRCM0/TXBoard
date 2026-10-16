@@ -373,7 +373,7 @@ class InstallationAuthorityTest extends TestCase
 
     public function test_versioned_schema_replay_rejects_arbitrary_enum_supersets(): void
     {
-        $schema = new \App\Services\Subscription\ShadowSchemaV1();
+        $schema = new \App\Domains\Installation\SchemaReplayValidator();
         $definition = static function (Blueprint $table): void {
             $table->enum('authority', ['legacy']);
             $table->enum('phase', ['open', 'prepared']);

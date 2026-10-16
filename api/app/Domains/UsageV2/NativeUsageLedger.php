@@ -6,7 +6,7 @@ use App\Domains\Installation\InstallationAuthority;
 use App\Domains\Installation\NativeRuntimeAdmission;
 use App\Domains\Installation\NativeRuntimeReadiness;
 use App\Models\Server;
-use App\Services\Subscription\NativeSubscriptionStore;
+use App\Domains\Subscription\Services\NativeSubscriptionStore;
 use Illuminate\Support\Facades\DB;
 
 final class NativeUsageLedger

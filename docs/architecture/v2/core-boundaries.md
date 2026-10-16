@@ -49,3 +49,7 @@ Core 基于现有 Laravel 构建模块化控制平面。账户身份与订阅权
 | 前端与 Agent | 新前端延期至独立 TX-F；Agent/MCP 已退役，旧凭据拒绝 | 不恢复 Agent/MCP；前端工作不代替 Core 交付 |
 
 当前入口以[外部适配契约](../../../contracts/http/external-adapter-current.md)、[Node 契约](../../../contracts/node-protocol/txnode-integration-current.md)和 [C2 运行契约](../../../contracts/v2/native-c2-runtime-v1.md)为准。后续按[完整交付计划](core-completion-plan.md)推进，历史 B0—B8 迁移设计不再作为开发期旧版本兼容要求。
+
+## 代码边界收敛
+
+当前订阅业务统一位于 `api/app/Domains/Subscription/Services`，HTTP、命令、Node 授权与 UsageV2 直接使用这些领域服务，不保留旧 Services 路径别名。共用 Schema 校验归入 Installation，规范模型基类为 SubscriptionRecord。已删除的隔离影子工具及仍需处理的运行时依赖见 [Core 清理](../../development/core-cleanup.md)。

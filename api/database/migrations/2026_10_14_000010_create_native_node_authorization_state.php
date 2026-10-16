@@ -1,6 +1,6 @@
 <?php
 
-use App\Services\Subscription\ShadowSchemaV1;
+use App\Domains\Installation\SchemaReplayValidator;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -11,7 +11,7 @@ return new class extends Migration {
 
     public function up(): void
     {
-        (new ShadowSchemaV1())->create(self::TABLE, function (Blueprint $table) {
+        (new SchemaReplayValidator())->create(self::TABLE, function (Blueprint $table) {
             $table->bigIncrements('id');
             $table->unsignedBigInteger('node_id')->unique('tx_node_auth_node_uq');
             $table->unsignedBigInteger('machine_id')->nullable();

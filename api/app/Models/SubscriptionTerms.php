@@ -19,7 +19,7 @@ class SubscriptionTerms extends ImmutableSubscriptionRecord
                 if ($subscription === null) {
                     throw new LogicException('Native subscription owner is missing.');
                 }
-                app(\App\Services\Subscription\NativeSubscriptionStore::class)
+                app(\App\Domains\Subscription\Services\NativeSubscriptionStore::class)
                     ->verifyTerms((object) $terms->getAttributes(), $subscription);
             } elseif ($terms->plan_revision_id !== null || $terms->schema_version !== null
                 || $terms->source_order_id !== null || $terms->source_snapshot !== null) {

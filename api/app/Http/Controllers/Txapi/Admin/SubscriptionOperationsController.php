@@ -6,7 +6,7 @@ use App\Core\Http\TxapiResponse;
 use App\Domains\Billing\IdempotencyException;
 use App\Domains\Billing\OrderIdempotency;
 use App\Domains\Installation\InstallationAuthority;
-use App\Services\Subscription\SubscriptionLifecycleService;
+use App\Domains\Subscription\Services\SubscriptionLifecycleService;
 use DomainException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;

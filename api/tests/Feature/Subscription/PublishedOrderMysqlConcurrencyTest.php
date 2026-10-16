@@ -4,9 +4,9 @@ namespace Tests\Feature\Subscription;
 
 use App\Domains\Billing\OrderIdempotency;
 use App\Models\Order;
-use App\Services\Subscription\NativeSubscriptionStore;
-use App\Services\Subscription\PublishedOrderService;
-use App\Services\Subscription\SubscriptionFulfillmentService;
+use App\Domains\Subscription\Services\NativeSubscriptionStore;
+use App\Domains\Subscription\Services\PublishedOrderService;
+use App\Domains\Subscription\Services\SubscriptionFulfillmentService;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 use Tests\Support\NativeSubscriptionTestCase;

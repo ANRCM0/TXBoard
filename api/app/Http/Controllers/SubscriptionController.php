@@ -49,10 +49,6 @@ class SubscriptionController extends Controller
             return response('', 403, ['Content-Type' => 'text/plain']);
         }
 
-        $association = $request->attributes->get(\App\Domains\LegacyLinks\LinkService::ATTRIBUTE);
-        if ($association instanceof \App\Domains\LegacyLinks\LinkAssociation) {
-            $request->attributes->set(\App\Domains\LegacyLinks\LinkService::RENDER_ATTRIBUTE, $association->forNativeUser($user));
-        }
         return $this->doSubscribe($request, $user);
     }
 
