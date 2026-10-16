@@ -1,6 +1,8 @@
 # Core First v2 契约目录
 
-> 状态：Target / Draft。2026-10-12 开始 B0；本目录不注册路由、不改变当前权限、不代表部署完成。
+> 更新：2026-10-16。C1、C2 已实现并合入 main，其余协议按各自状态阅读；本目录不注册路由，也不代表整体已正式发布。
+
+项目仍处开发阶段，尚未接入正式测试，以当前 native 为开发基线，不承担旧版本过渡兼容。允许生产者、真实消费者与契约同步变更；不为历史协议新增双轨适配。旧迁移/隔离切片仅保留历史证据，见[开发基线](../../docs/development/native-development-baseline.md)。
 
 TXBoard 是业务与数据权威。Gateway、Deploy、TX-Node 与可选插件按本目录的版本化契约协作，不能分别定义订单、授权、流量与升级的业务真相。`v2` 是平台演进目录；其中每项协议有自己的版本，不代表全部协议同时升到第二版。
 
@@ -21,11 +23,11 @@ TXBoard 是业务与数据权威。Gateway、Deploy、TX-Node 与可选插件按
 
 当前 HTTP 权威是 [TXAPI 接口](../http/external-adapter-current.md) 和 Laravel 注册路由；当前节点协议是 [Node Protocol v1](../node-protocol/README.md)。当前扩展继续遵守 [Plugin Package v1](../plugin-package/README.md)、[Module Lifecycle v1](../module-lifecycle/README.md) 和 Admin Bridge v1。
 
-不得为了符合目标目录而重新注册已退役的 `/api/v1`、`/api/v2`，也不得将目标 Internal API、升级 CLI 或加密通道写成已实现。协议落地需同时实现生产者、消费者、失败测试、兼容检测和退出条件。
+不得为了符合目标目录而重新注册已退役的 `/api/v1`、`/api/v2`，也不得将目标 Internal API、升级 CLI 或加密通道写成已实现。协议落地需同时更新生产者、实际消费者、直接相关负向检查和能力声明；不要求维护历史协议兼容窗口。
 
 ## 共同规则
 
-- 64 位数据库 ID、bytes 与金额最小单位在新 JSON DTO 中用十进制字符串；时间为 UTC Unix 秒。旧协议独立解码，不就地改变字段类型。
+- 64 位数据库 ID、bytes 与金额最小单位在当前 JSON DTO 中用十进制字符串；时间为 UTC Unix 秒。格式变更同时更新真实消费者，不额外保留旧解码层。
 - 权限、财务和流量归属由 Core 验证；声明 capability 或通过 mTLS 不等于最终用户授权。
 - 修改已实现的对外行为时，更新对应当前契约和真实消费者；本目录不能作为绕过现有约束的依据。
 - 示例是非秘密的目标格式；没有执行迁移或开放接口。

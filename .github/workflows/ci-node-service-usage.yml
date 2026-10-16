@@ -1,11 +1,7 @@
 name: node-service-core-usage
 
 on:
-  push:
-    branches: [main]
-    paths: ['api/**', 'node/internal/**', 'node/go.mod', 'node/go.sum', 'scripts/tests/node-service-usage/**', 'contracts/v2/node-usage/**', '.github/workflows/ci-node-service-usage.yml']
-  pull_request:
-    paths: ['api/**', 'node/internal/**', 'node/go.mod', 'node/go.sum', 'scripts/tests/node-service-usage/**', 'contracts/v2/node-usage/**', '.github/workflows/ci-node-service-usage.yml']
+  # Historical migration/prototype evidence; outside the native development gate.
   workflow_dispatch:
 
 permissions:

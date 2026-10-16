@@ -1,38 +1,43 @@
-# Core First v2：B0 架构与实施基线
+# Core First v2：当前架构与开发基线
 
-> 基线建立于2026-10-12，当前进度更新于2026-10-14。P0.1–P0.6基础切片已完成；[当前进度与下一步](current-progress.md)提供完成范围，[实施台账](implementation-plan.md)保留历史与验收证据。完整方案的生产迁移门禁仍待逐项验收。
+> 更新：2026-10-16 · 代码基线：`main` 的 C2 合并提交 `ccf0b8c`。
+>
+> C1、C2 已合并，下一阶段为 C3 支付与资金闭环。本目录保留早期 B0—B8 与 P0/P1 证据；历史切片状态不能覆盖本页和[当前进度](current-progress.md)。
 
-这轮建设从现有 Laravel、前端、Gateway、Node 和 Deploy 演进。Core 是唯一业务与数据权威；先补齐契约、兼容检测和恢复能力，再切换写入与调用，最后清理没有消费者的旧实现。
+## 当前开发决策
 
-2026-10-13 后的代码位置以 [双仓布局](../../development/repository-layout.md) 为准。旧报告中的仓库名、路径和 SHA 保留为历史证据；合仓不提前完成任何运行时迁移门禁。
+项目仍处于开发阶段，尚未接入正式测试部署，不承担旧版本过渡兼容承诺。开发主线面向全新 native 安装；允许同步修改契约及真实消费者、进行破坏性变更，并在明确为可丢弃的开发环境中重建数据库。无需为旧部署增加回填、双写、shadow 比较、兼容兜底或回退窗口。
 
-管理前端与用户前端均延期，后续集中到独立 `TX-F` 项目，只本地提交、不推送；本仓推进 Core、Gateway、Node，安装器继续独立成库；Agent/MCP 直接清理，不再拆分插件。参见[当前范围与退役边界](admin-only-scope.md)。该决定覆盖早期 B7 设计的保留要求。
+这个决定不等于仓库中的 legacy/shadow 代码已经删除。现存实现按相关业务批次清理，删除时同步更新调用者和契约；不再为它们扩展新功能。不支持的模式明确拒绝，不能因取消兼容而绕过身份、事务、持久授权或凭据隔离。
 
-## 首批六项交付
+真实资金、不可丢弃数据不属于开发数据库重建范围；未来如确有旧站迁移需求，另立项目及验收条件，不列入当前 C3—C5 门禁。规则见[Core 演进与数据处理](core-evolution.md)。
 
-| 任务 | 本批产物 | 实施边界 |
+## 当前架构
+
+Core 是账户、订阅、权限、订单和用量结算的唯一持久业务权威。Laravel API、Worker 与 Scheduler 共享领域规则和 SQL 事务；Gateway 是可选 BFF；独立 Credential Provider 保管代理秘密；TX-Node 执行有限授权并持久记录用量。代码合仓不合并身份和运行职责。
+
+| 组件 | 已有行为 | 当前缺口 |
 | --- | --- | --- |
-| CORE-001 当前业务与数据库清查 | [完整静态清单](baseline-inventory.md)、[JSON](baseline-inventory.json)、[基线验证](baseline-verification.md) | 静态扫描不代替真实路由注册表、数据库与动态调用图 |
-| CORE-002 Core v2 领域边界 | [Core First ADR 与边界](core-boundaries.md)、[运行角色](runtime-topology.md) | 当前权限和 v1 包格式继续生效 |
-| CORE-003 数据模型 v2 | [模型规范](core-domain-model.md)、[增量演进](core-evolution.md)、[B1.1 实现](subscription-shadow-implementation.md) | 新模型只用于隔离回填，不切换生产权威 |
-| CORE-004 Credential Provider v1 | [插件平台](plugin-platform.md)、[Provider 契约](../../../contracts/v2/credential-provider/README.md) | 合成发行/撤销、有限候选与离线签名快照已实现；生产 OS 隔离、秘密交付与 Node 收敛待验收 |
-| CORE-005 版本和升级契约 | [兼容矩阵](compatibility-matrix.md)、[Upgrade Manifest](../../../contracts/v2/upgrade-manifest/README.md) | 订阅、商品、财务单机影子 CLI 已实现；完整生产切换仍为 Target |
-| CORE-006 Core Internal API v1 | [Internal API](../../../contracts/v2/core-internal-api/README.md)、[SC-v2 边界](../../../contracts/v2/secure-channel/README.md) | 本地用户/公共展示 mTLS 读取、隔离建单、原生登录与内存邮件验证码已实现；管理员 Gateway 与正式 SC-v2 未启用 |
+| Core | 不可变购买证据、原生订阅与周期、共同权益、真实持久启用、授权和用量结算 | C3 支付事实/资金账本/退款；C4 正式 Internal API |
+| Credential Provider | 独立进程、mTLS 签发/查询/轮换/撤销、Node 材料交付、客户端直接渲染 | 生产 PKI、信任及密钥生命周期、长期订阅链接 |
+| TX-Node | 同一有限签名绑定访问和计量、持久批次与回放；C2 支持 sing-box VLESS/VMess direct TCP | 全协议/平台矩阵、HA 等不属已完成范围 |
+| Gateway | 可选用户 BFF，native `/txapi/*` 适配与有限内部调用切片 | 管理员接入和正式服务身份/调用者授权链 |
+| Plugin/Theme | 现有 Module 委派；PHP 插件仍是可信进程内代码 | 没有通用第三方插件沙箱，不宣称已隔离 |
+| 前端与安装 | 现有入口仍存在；新增前端延期至 TX-F，安装器独立由 TXBoard-Deploy 承担 | C5 完成基础安装、正常更新和发布收口 |
 
-## 当前需先解决的跨仓差异
+C2 当前只开放零价 Offer，付费购买及支付结账明确拒绝；C2 合并不代表生产发布或 C3—C5 已完成。
 
-1. Gateway Native 适配已改为真实 `/txapi/*` 与 DTO/envelope；Internal API 逐 operation 迁移和 User/Admin 完整授权仍需验证。
-2. 原生v1报告默认已启用SQL持久接收和签名观察周期；202/queued表示已接收、仍待结算。P0.5/P0.6真实控制和流量闭环已验收；隔离Usage v2未接管默认业务，有限离线租约、完整协议覆盖及权威交接仍待完成。
-3. User 仍持有套餐、配额、用量、到期时间和 UUID；当前影子 Schema、商品/财务证据、管理员创建初始记录和 Terms 转换尚未接管 live writer。
-4. 当前 PHP 插件仍在进程内运行；固定可信合成 Provider 能发行/撤销并保留清理证据，不能代替生产隔离和 Node 撤销 ACK。
-5. 单机影子升级已有签名、持久检查点和提交后恢复；部分 DDL 仍需调查，集群 fencing 与生产 writer switch 尚未实现。
+## 阅读入口
 
-详见[逐项兼容矩阵](compatibility-matrix.md)。设计先行不解除数据库、支付、权限和生产发布的验收要求。
+- [Core 边界决策](core-boundaries.md)：权威、身份、秘密与扩展职责。
+- [当前接口支持矩阵](compatibility-matrix.md)：当前组件支持与明确缺口。
+- [运行拓扑](runtime-topology.md)：现有运行角色和 Compact/Standard/Cluster 目标。
+- [完整交付计划](core-completion-plan.md)与[开发优先级](development-priorities.md)：C3 → C4 → C5。
+- [当前进度](current-progress.md)与 [Native C2 runtime](../../../contracts/v2/native-c2-runtime-v1.md)：已合并范围及限制。
+- [开发与批次验收流程](../../development/development-workflow.md)：本地轻量检查、CI 集中验收、不重复已通过测试。
 
-## 推进与来源
+跨组件行为以[当前 HTTP 契约](../../../contracts/http/external-adapter-current.md)、[Node 契约](../../../contracts/node-protocol/txnode-integration-current.md)及对应 [v2 契约](../../../contracts/v2/README.md)为准；目标文档不能使未注册接口自动可用。代码位置见[仓库布局](../../development/repository-layout.md)。
 
-[实施台账与下一批](implementation-plan.md) 记录依赖、验收与退出条件；[假设及证据](assumptions.md) 单列尚未验证的事项。跨仓引用本目录及 [v2 契约](../../../contracts/v2/README.md)，当前行为仍引用对应 Current 契约。
+## 历史资料
 
-2026-10-13 的[两仓迁移前收尾报告](pre-monorepo-closure-verification.json)记录 B1.12、B4.5、B5.10 的独立提交与组合回归。当前切片已收尾，整套方案的生产迁移门禁仍按实施台账逐项验收。
-
-静态清单刷新/漂移检查命令会记录在 [CORE-001 清单](baseline-inventory.md) 中。本地验证结果和未运行项目以 [baseline-verification.md](baseline-verification.md) 为准，不能从文档数量推断 B0 或生产验收全部完成。
+[B0 清单](baseline-inventory.md)、[静态 JSON](baseline-inventory.json)、[实施台账](implementation-plan.md)、影子回填及早期验收报告保留当时路径、提交和结论，仅供历史追溯。它们不构成当前版本必须保留旧入口、兼容旧数据库或重跑历史矩阵的要求。新的架构总览与接口支持矩阵由当前实现维护，不使用 B0 生成结果覆盖。

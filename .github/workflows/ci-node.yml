@@ -2,10 +2,12 @@ name: Node CI and images
 
 on:
   push:
-    branches: [main, feat/installer-node-authorization-preflight]
+    branches: [main]
     tags: ["v*"]
     paths:
       - "node/**"
+      - "!node/**/*.md"
+      - "!node/.github/release/**"
       - "contracts/node-protocol/**"
       - "contracts/v2/node-usage/**"
       - "scripts/resolve-image-tags.sh"
@@ -15,6 +17,8 @@ on:
     branches: [main]
     paths:
       - "node/**"
+      - "!node/**/*.md"
+      - "!node/.github/release/**"
       - "contracts/node-protocol/**"
       - "contracts/v2/node-usage/**"
       - "scripts/resolve-image-tags.sh"
@@ -177,6 +181,7 @@ jobs:
           grep -Fq 'CMD ["-c", "/etc/txnode/config.yml"]' Dockerfile
 
   runtime-stability:
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v')
     name: Node runtime stability
     runs-on: ubuntu-latest
     steps:
@@ -189,7 +194,7 @@ jobs:
       - run: make test-runtime-stability
 
   image-smoke:
-    name: Node image metadata and config compatibility
+    name: Node image metadata and canonical configuration
     runs-on: ubuntu-latest
     needs: test
     steps:
@@ -224,30 +229,6 @@ jobs:
           assert 'node_runtime_checkpoint_v1' in proof['capabilities']
           print('Exact-image offline authorization capability passed')
           PY
-      - name: Verify old Compose mount fallback
-        run: |
-          set -euo pipefail
-          legacy_cfg="$(mktemp)"
-          printf 'invalid: [\n' > "$legacy_cfg"
-          output="$(docker run --rm -v "$legacy_cfg:/etc/xboard-node/config.yml:ro" txboard-node:config-path-ci 2>&1 || true)"
-          printf '%s\n' "$output"
-          grep -Fq 'using legacy container config path /etc/xboard-node/config.yml' <<<"$output"
-      - name: Verify canonical path wins
-        run: |
-          set -euo pipefail
-          canonical_cfg="$(mktemp)"
-          legacy_cfg="$(mktemp)"
-          printf 'invalid: [\n' > "$canonical_cfg"
-          printf 'invalid: [\n' > "$legacy_cfg"
-          output="$(docker run --rm \
-            -v "$canonical_cfg:/etc/txnode/config.yml:ro" \
-            -v "$legacy_cfg:/etc/xboard-node/config.yml:ro" \
-            txboard-node:config-path-ci 2>&1 || true)"
-          printf '%s\n' "$output"
-          if grep -Fq 'using legacy container config path' <<<"$output"; then
-            echo "Legacy fallback won despite canonical config being mounted" >&2
-            exit 1
-          fi
 
   build:
     name: Node release binaries
@@ -285,7 +266,12 @@ jobs:
     name: Publish independent Node image
     runs-on: ubuntu-latest
     needs: [changes, test, runtime-stability, image-smoke]
-    if: (github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.changes.outputs.runtime == 'true') || startsWith(github.ref, 'refs/tags/v')
+    if: >-
+      ${{ !cancelled() && needs.changes.result == 'success' && needs.test.result == 'success' &&
+          needs.image-smoke.result == 'success' &&
+          ((github.event_name == 'push' && github.ref == 'refs/heads/main' &&
+            needs.changes.outputs.runtime == 'true' && needs.runtime-stability.result == 'skipped') ||
+           (startsWith(github.ref, 'refs/tags/v') && needs.runtime-stability.result == 'success')) }}
     permissions:
       contents: read
       packages: write

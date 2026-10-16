@@ -1,60 +1,55 @@
-# Core 增量演进与恢复
+# Core 开发演进与数据处理
 
-> 状态：Target / Draft · 更新：2026-10-12 · 本文定义实施与迁移约束，不提供已可执行的 v2 升级命令。
+> 更新：2026-10-16 · 当前开发主线：全新 native 安装。
+>
+> 本页取代早期 B0 的“必须经 legacy/shadow 再切换”开发顺序。旧回填、对账与恢复报告保留为历史证据，不构成当前交付前置条件。
 
-## 权威来源与演进次序
+## 当前原则
 
-[Core First ADR](core-boundaries.md) 确定方向，[数据模型](core-domain-model.md)定义不变量，[实施计划](implementation-plan.md)维护 B0—B8 门禁。当前 [OrderService](../../../api/app/Services/OrderService.php)、[UserService](../../../api/app/Services/UserService.php) 和各专用运行时仍是权威；不能增加适配器后再把规则复制成另一套服务。
+项目仍处开发阶段，尚未接入正式测试部署。开发可以直接调整规范模型、接口和真实消费者，不要求旧版本滚动兼容、影子比较、双写、旧包窗口或自动数据回填。新的领域能力直接落在 Core 的唯一权威上，不为保留旧写入口增加平行服务。
 
-实施按 `契约 → DTO/model → adapter → runtime delegation → API → UI → migration`。本轮 B0 只形成可核查的规格，不创建表、不修改路由、不迁移秘密、不拆除主题/Agent，不把文档检查算作运行时验收。B1 先做订阅读影子与对账；B2 提供恢复编排；B3/B4 完成流量与 Provider 切换前置；B5/B6 才迁移统一 Web 入口。
+当前订阅及用量使用 `Subscription/Terms/Transition/Slot/UsagePeriod/AccessSubject` 等规范记录；C3 在现有订单流程上补齐真实支付与资金事实。能复用的纯值转换、日历、锁序、幂等和事务算法继续复用；不从正式服务调用仅供隔离演练的顶层事务方法。
 
-## 迁移状态机（Draft）
+现存 legacy/shadow 实现尚未全部清理。清理随受影响业务批次进行，先核对真实入口及调用关系，更新契约和消费者，再移除旧分支；不扩展新的兼容兜底。未支持入口在 native 下明确拒绝。
 
-| 阶段 | 唯一写入权威 | 允许操作与持久检查点 |
-| --- | --- | --- |
-| `legacy` | 当前 User/Plan/Order/旧流量路径 | 验证备份可恢复、代码/镜像/Schema/配置版本、迁移租约和兼容矩阵 |
-| `expanded` | legacy | 只添加表/索引/nullable 兼容列；记录每项 schema 操作及 checksum，不运行删除 |
-| `backfilling` | legacy | 固定高水位、分块游标、source hash、映射 ID、校验结果；事务锁定读取业务聚合，增量变化须有可恢复捕获机制 |
-| `shadow_verified` | legacy | 新读路径只影子比较；记录差异、不向用户交付新授权，不让两套 Worker 都计费 |
-| `cutover_prepared` | legacy，短暂冻结受影响写入 | 停止/排空相关 Worker，持久 fence，清空未捕获差量，最终逐户/财务对账，记录队列水位 |
-| `v2_authoritative` | 新 Core 领域服务 | 原子发布 authority_epoch 与路由/Worker fence；旧字段只由新权威生成兼容投影；恢复并验证请求 |
-| `contracted` | v2 | 全消费者、旧节点、旧插件和回退窗口关闭后才分批删除兼容代码；删除旧字段是后续独立版本 |
+## 破坏性变更与开发数据库
 
-authority_epoch 和 migration run/checkpoint 需要持久化，不能仅依赖进程内开关或 Redis TTL；物理实现与 [Upgrade Manifest](../../../contracts/v2/upgrade-manifest/README.md) 对齐。任何 User/Admin/Agent/订单/充值/重置/节点 Worker/插件写入路径必须遵守同一 fence。无法证明旧插件不直接写 User 字段时，阻断切换或保持明确 legacy 兼容模式。
+| 情形 | 处理方式 |
+| --- | --- |
+| 可丢弃的开发/CI 数据库，数据来源明确 | 允许重建，重新运行当前 Schema 初始化与必要种子；无需为旧开发快照补回填流程 |
+| Schema、DTO、协议或接口变更 | 同批更新模型、真实消费者及当前契约；删除被替代分支，不引入第二套长期写权威 |
+| 不明来源数据库、真实账号/支付/不可丢弃数据 | 不按开发数据库处理；先确认数据范围和归属，再制定保存或迁移操作 |
+| Node spool、Provider 私有存储、SQL 相互绑定的开发夹具 | 重建整个相关夹具并重新绑定安装身份，不把旧签名、回执、密钥或未结算批次移植到新安装 |
+| 仅修改文档或 CI 组织 | 做引用、差异及工作流静态检查，不为重新记录结果重跑已通过业务矩阵 |
 
-## 回填清单与保真规则
+“允许重建开发库”是开发策略，不是启动应用时自动清库。重建限定明确的开发目标，不能从普通启动配置推断删除权限；不提供通用 production reset。
 
-| 旧来源 | 新目标 | 保真、缺失与对账要求 |
-| --- | --- | --- |
-| `tx_plan` + prices | PlanRevision、PlanOffer | Plan 流量从 GiB 转为 bytes；价格主单位转换到 minor，以整数十进制方式校验；解析实际 reset setting/timezone；禁止修改既有 Plan |
-| `User.plan_id/group_id/expired_at` + 个性化 speed/device/quota | Subscription + Terms + slot | 使用 User 当前实际生效值，不能用当前 Plan 覆盖历史个性化权益；null 到期、已过期、封禁/暂停分别保留；缺 Plan 建迁移例外而非套用默认套餐 |
-| `User.transfer_enable/u/d/last_reset_at/next_reset_at/reset_count` | UsagePeriod + migration opening entry | 原 bytes 原计数保留，包括超过配额；无法证明周期起点时标记 `legacy_boundary_unknown`；期初迁移记录不是伪造的逐节点历史 |
-| `User.uuid` | Provider-owned legacy import + Subject mapping | 秘密通过限定迁移桥直接进入 Provider；Core 仅保存导入回执、非秘密 provider ref、User→Subscription→Subject 映射；逐个去重且可重试 |
-| `User.token` + 私密订阅 URL | SubscriptionLink + legacy URL adapter | 保留旧 URL 的摘要验证与唯一归属；旧明文兼容保留期限明确；不得在移除前强迫全部用户重发链接 |
-| `tx_order/payment/callback_no/surplus_order_ids` | 保留 Order + OrderItem + legacy PaymentAttempt 标记 | 当前已完成订单不开通第二次；旧价格/权益没有历史证据时标记 `legacy_snapshot_unknown`；不使用当前 Plan 编造旧合同 |
-| `User.balance/commission_balance`、充值、佣金及折抵 | money accounts + opening journals | 在一致快照边界建立每用户每货币期初 journal，对应 migration clearing account；保留原流水用于审计，不伪造历史复式分录；待支付预扣/取消恢复须显式归属 |
-| 旧 `tx_traffic_batch`、未决队列/节点 pending batches | legacy dedupe + usage migration boundary | 不清除去重键；识别已结算/已入队/未确认范围，禁止同一历史 batch 在新 Worker 再计费 |
+迁移历史可以在关联实现中简化，但文件变更不代替数据库操作，也不能声称已删除运行中的表或历史数据。已有数据证据保留真实归属；不把 shadow 记录改名为 active 作为完成手段。
 
-回填每个聚合有唯一 migration key（run/类型/legacy ID），同 key 同 source hash 返回同结果，不同 hash 重新比较并记录变化。迁移 map 是来源证据，不是另一业务写入入口。schema 扩展后发生的合法 legacy 变更必须通过同事务 outbox/change capture 或最终暂停写入与重读得到；B1 实现前选定一种可恢复方案，不能依赖“两次普通写入都应该成功”。
+## 安装权威与事务不变量
 
-## 对账报告
+C2 已实现 `native/initializing` 到 `native/open` 的持久 preflight/activate。开发期取消旧版本兼容不会取消安装标识、schema/领域版本、配置摘要及 authority epoch：
 
-迁移报告必须列出总数、逐对象差异、未决来源和阻断项，不只提供总余额相等。逐 User 比较套餐/组/永久期限/有效期、剩余量及原始上下载量、reset 锚点和个性化限额、有效 slot 数、旧 token/UUID 的唯一归属。逐订单比较 owner、trade_no、状态、购买类型、已履约、折扣/余额/折抵/手续费/实际应付。
+- Web、Worker、Scheduler 对同一持久权威逐工作项准入；环境变量不能自行激活或将错误模式降级为 legacy。
+- 初始化验证开发目标为空且来源可解释；重建后通过完整初始化建立身份及关联。
+- 订单完成和订阅履约同事务；Subject、Terms、Period 归属及版本在最终提交时重验。
+- 已持久接收的 native 用量按原 Period 预留额度；待结算与隔离都占用额度，结算同事务释放预留并累计原周期。
+- SQL outbox/接收记录负责跨队列失败恢复；Redis 通知、进程退出或成功 HTTP 响应不能替代持久事实。
+- Provider 网络调用在 SQL 事务外执行；秘密不进入 Core，未知结果沿原操作恢复。
 
-财务按 currency/account 比较期初余额、迁移中增量及期末余额；未知货币、负数异常、重复 callback、无法解释的旧预扣余额均阻断。流量逐订阅周期比对旧 counters 和 opening entries + 新增量，同时核验批次去重水位。缺 Plan、未知历史快照等例外可以明确标记保留，但若影响授权、余额或重复结算，则不能用人工勾选“通过”掩盖。
+故障时优先修复当前开发版本；不因取消旧版本支持而允许旧 Worker 写新权威、回放产生第二次履约或旧凭据复活。
 
-## 权威切换与失败恢复
+## 业务恢复与未来迁移
 
-1. **切换前失败**：authority 保持 legacy；恢复同 run/checkpoint，只补未完成块。清理影子数据须限定本次 migration key 且未被业务引用，保留备份和原表。
-2. **切换准备时失败**：读取 fence 与持久 checkpoint，确认哪套 Worker 已停止、队列水位和写入是否冻结；保持服务处于明确维护/受限状态，验证后继续或解除准备，不凭进程退出推断成功。
-3. **v2 已写入后失败**：先停止受影响写入，保护数据库/outbox/节点重发材料；旧镜像不能直接回到 legacy 权威。优先 forward fix；回退仅在旧投影完整、反向增量转换经过验证、待处理批次无重复和回退 Schema 兼容时进行。
-4. **数据库恢复**：恢复整个一致性边界（业务 DB、迁移检查点、必要 Provider 存储和版本），校验支付商外部已发生交易/节点未确认批次后再放行。外部收款不能被 DB 回滚撤销；重新核验并补偿。不得用 `migrate:rollback` 删除已产生业务数据的新表。
-5. **跨进程分歧**：旧 Octane/Worker 缓存、旧 Admin 写接口、旧 Plugin hooks 必须通过 authority_epoch 拒绝 stale 写入；从 checkpoint 恢复对应版本 Worker。领域事务产生的 outbox 重发通过业务幂等键完成，不重复履约或通知状态转换。
+运行恢复继续属于业务正确性：保留未确认原批次、恢复持久 outbox、查询未知支付/Provider 操作、避免重复扣量及履约。C3 对真实资金和退款的恢复规则必须随业务一起交付。
 
-允许保持 legacy 读兼容，不允许 legacy 和 v2 各自成为独立写权威。新 Core 产生旧字段投影的延迟或失败须可观测，并阻断依赖该投影的旧授权路径；不能让旧节点继续使用过期配额/撤销状态。
+当前不承诺从旧站自动升级到新模型，也不要求逐户迁移演练阻塞 C3—C5。未来确有旧站需求时，另立迁移项目，范围至少包括：
 
-## 验收证据与待验证决定
+1. 旧套餐、个性化权益、期限与周期的来源证明和对账。
+2. 未决订单/支付/退款、余额及渠道已发生交易的真实归属。
+3. Provider 秘密导入、旧链接、节点未确认批次与去重边界。
+4. 持久 fence、旧 Worker 排空、备份恢复和不可逆写入后的恢复策略。
 
-本地 B0 交付的设计不是生产数据或恢复验收。B1/B2 进入切换前需提交匿名化真实数据副本演练、逐户/逐币对账、并发测试及失败恢复记录。测试应覆盖进程 kill、DB commit 前后中断、队列不可用、节点批次重发、外部支付已成功但本地恢复、Provider 导入部分完成和 stale Worker。
+该项目未启动；现有影子报告只作为可复用材料。[Upgrade Manifest](../../../contracts/v2/upgrade-manifest/README.md)中的发布/恢复目标也不能被解读为当前已支持任意旧版本数据库回滚。
 
-尚待实现阶段验证：Terms transition 的物理索引及有效区间查询、MySQL/SQLite 并发约束差异、change capture 方案、旧 site currency/timezone 取值、epoch 的原子发布及 worker drain 机制、Provider 秘密导入通道、晚到旧节点的保守归属规则。任何决定落地先更新相应契约和测试，再修改运行时。
+当前进度见[主进度](current-progress.md)，开发顺序见[完整计划](core-completion-plan.md)，验证按[批次流程](../../development/development-workflow.md)选择新增和直接受影响路径。

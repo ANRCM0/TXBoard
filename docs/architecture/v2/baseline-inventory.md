@@ -1,6 +1,6 @@
 # B0 静态基线盘点
 
-由 `node TXBoard/scripts/export-core-baseline.mjs --workspace <四仓父目录>` 生成；`--check` 比较保存快照与当前源码及文件列表，并验证快照基准提交仍为当前 HEAD 的祖先。完整清单见 [baseline-inventory.json](baseline-inventory.json)，兼容结论见 [compatibility-matrix.md](compatibility-matrix.md)。
+由 `node TXBoard/scripts/export-core-baseline.mjs --workspace <四仓父目录>` 生成；`--check` 比较保存快照与当前源码及文件列表，并验证快照基准提交仍为当前 HEAD 的祖先。完整清单见 [baseline-inventory.json](baseline-inventory.json)，兼容结论见 [baseline-compatibility-matrix.md](baseline-compatibility-matrix.md)。
 
 此清单是词法静态扫描，**不是完整动态调用图、Laravel 运行时 route:list、权限验证或生产验收**。HEAD 仅标识提交基准；脚本每次在控制台输出当前工作区 dirty 状态，不冻结该易变状态，也不宣称工作区干净。源码哈希按 LF 规范化，无时间戳、绝对路径或凭据。
 
@@ -131,4 +131,4 @@ Node 发送前将一个不可变批次以稳定 ID 写入 spool 并 fsync，重�
 
 ## 再生成与漂移检查
 
-`node TXBoard/scripts/export-core-baseline.mjs --workspace <四仓父目录>` 写入 JSON、本文及兼容矩阵。`node TXBoard/scripts/export-core-baseline.mjs --workspace <四仓父目录> --check` 只比较且漂移时返回非零。工作区状态实时输出并不进入生成物，文档/脚本本身改动不会制造永久 dirty 漂移；当前代码仍按实际工作区扫描，源码变化不能被 HEAD 掩盖。检查使用快照中固定的基准 HEAD，文档提交不会改写基准或导致误报；需要建立新基线时显式重新生成。
+`node TXBoard/scripts/export-core-baseline.mjs --workspace <四仓父目录>` 写入 JSON、本文及历史兼容矩阵（baseline-compatibility-matrix.md）；不覆盖当前 compatibility-matrix.md。`node TXBoard/scripts/export-core-baseline.mjs --workspace <四仓父目录> --check` 只比较且漂移时返回非零。工作区状态实时输出并不进入生成物，文档/脚本本身改动不会制造永久 dirty 漂移；当前代码仍按实际工作区扫描，源码变化不能被 HEAD 掩盖。检查使用快照中固定的基准 HEAD，文档提交不会改写基准或导致误报；需要建立新基线时显式重新生成。

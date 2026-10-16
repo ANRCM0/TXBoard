@@ -1,11 +1,7 @@
 name: lifecycle-reconcile-shadow
 
 on:
-  push:
-    branches: [main]
-    paths: ['api/**', 'contracts/v2/legacy-lifecycle-reconcile-v1.md', '.github/workflows/ci-lifecycle-shadow-reconcile.yml']
-  pull_request:
-    paths: ['api/**', 'contracts/v2/legacy-lifecycle-reconcile-v1.md', '.github/workflows/ci-lifecycle-shadow-reconcile.yml']
+  # Historical migration/prototype evidence; outside the native development gate.
   workflow_dispatch:
 
 permissions:
@@ -61,4 +57,4 @@ jobs:
           touch .env
           mkdir -p storage/framework/{cache/data,sessions,views} storage/logs bootstrap/cache
       - name: Bounded SELECT-only lifecycle evidence and native MySQL JSON association
-        run: php artisan test --filter=LegacyLifecycleShadowReconcileTest
+        run: php artisan test --configuration phpunit-historical.xml --filter=LegacyLifecycleShadowReconcileTest

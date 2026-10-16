@@ -1,11 +1,7 @@
 name: basic-account-authority
 
+# Historical legacy-model control proof; run only when explicitly requested.
 on:
-  push:
-    branches: [main]
-    paths: ['api/**', 'contracts/node-protocol/txnode-integration-current.md', 'contracts/http/external-adapter-current.md', '.github/workflows/ci-basic-account-authority.yml']
-  pull_request:
-    paths: ['api/**', 'contracts/node-protocol/txnode-integration-current.md', 'contracts/http/external-adapter-current.md', '.github/workflows/ci-basic-account-authority.yml']
   workflow_dispatch:
 
 permissions:
@@ -16,7 +12,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  isolated:
+  native-account-authority:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     services:
@@ -62,4 +58,4 @@ jobs:
           touch .env
           mkdir -p storage/framework/{cache/data,sessions,views} storage/logs bootstrap/cache
       - name: Native account suspension, expiry and committed group synchronization
-        run: php artisan test --filter='NativeUserGroupSyncTest|NativeUserExpiryBoundaryTest|TxapiAdminSuspensionTest'
+        run: php artisan test --configuration phpunit-historical.xml --filter='NativeUserGroupSyncTest|NativeUserExpiryBoundaryTest|TxapiAdminSuspensionTest'

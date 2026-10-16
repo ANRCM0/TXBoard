@@ -6,7 +6,9 @@ These instructions apply to coding agents working in this repository.
 
 ### Core First v2 演进基线
 
-2026-10-12 起，后续架构演进参考 `docs/architecture/v2/README.md`、`docs/architecture/v2/core-boundaries.md` 与 `contracts/v2/README.md`。2026-10-13 用户最新调整范围：管理前端与用户前端均暂缓，后续新增前端开发集中到独立 `TX-F` 项目，只本地提交、不推送；本仓只推进 Core、Gateway、Node，安装器仍独立成库。清理 Agent/MCP，取消插件迁移，见 `docs/architecture/v2/admin-only-scope.md`。不得依据目标方案提前开放管理员 Gateway、删除 User 字段或 Theme、改变插件包格式。跨仓改动先核对对应 Current 契约，按 Operation/数据迁移阶段逐项实施。
+2026-10-16 C2 合并后用户最新决定：项目仍处开发阶段，尚未接入正式测试，不需要旧版本过渡兼容。以当前 native 架构为开发基线，允许同步修改当前源码、数据库、接口、配置和包格式；不再新增 legacy/shadow 兜底或将旧站迁移作为开发门禁。现存历史代码按实际依赖清理，不表示承诺继续支持；安全边界与当前真实消费者必须保持一致。详见 `docs/development/native-development-baseline.md`，其要求覆盖下文及历史文档中的旧兼容窗口约束。
+
+后续架构参考 `docs/architecture/v2/README.md`、`docs/architecture/v2/core-boundaries.md` 与 `contracts/v2/README.md`。管理前端与用户前端均暂缓，新增前端开发集中到独立 `TX-F` 项目，只本地提交、不推送；本仓推进 Core、Gateway、Node，安装器独立成库。Agent/MCP 已退役，见 `docs/architecture/v2/admin-only-scope.md`。不提前开放尚未实现的管理员 Gateway 或业务能力；旧字段、配置和包格式允许随当前实际消费者一起调整或清理，不再要求过渡兼容。
 
 TXBoard is the Control Plane.
 
@@ -77,11 +79,10 @@ Do not build UI first and invent the contract afterward.
 
 If a public or cross-repository behavior changes, update the relevant file under `contracts/`.
 
-## 5. Adapter-first migration
+## 5. Runtime delegation
 
-Existing runtimes are authoritative.
-
-Use adapters to normalize them:
+Native Core domain services own current business state. Adapters normalize and
+delegate to their actual runtime:
 
 ```text
 PluginManager  -> Plugin adapter -> Module Platform
@@ -89,20 +90,17 @@ ThemeService   -> Theme adapter  -> Module Platform
 ```
 
 Adapters may describe and delegate. They must not duplicate domain logic.
+Do not add adapters, dual writes or migration captures only to support an old
+development revision. Existing legacy/shadow code is historical, not a required
+future product mode.
 
-## 6. Plugin compatibility
+## 6. Current plugin contracts
 
-Plugin Package v1 is a compatibility boundary.
-
-Do not require existing plugins to:
-
-- rename plugin codes;
-- add a new manifest immediately;
-- rebuild against TXBoard Admin source;
-- move `admin/dist`;
-- rewrite lifecycle code.
-
-Breaking plugin contract changes require a future explicit versioned contract.
+Use the current package contract and actual bundled consumers as the source of
+truth. Development may change package formats together with their producer,
+consumer and documentation; no old-package compatibility window is required.
+Keep archive validation, lifecycle ownership and secret boundaries. A contract
+change does not by itself create a process sandbox.
 
 ## 7. Theme rules
 
@@ -124,7 +122,7 @@ Theme Admin, user rendering and Module Registry must resolve the same effective 
 
 ## 8. Retired Agent / MCP
 
-Agent/MCP is removed under the 2026-10-13 product decision. Do not restore its API, token issuance, scheduled inspections, UI, embedded process or CI. Historical migrations/audit rows remain; legacy Agent tokens are denied by Sanctum. New Admin and User frontend development is deferred and belongs exclusively to the separate TX-F project. TX-F permits local commits only; existing push authorization for runtime/installer repositories does not authorize pushing TX-F. This repository develops Core, Gateway and Node; installation belongs to TXBoard-Deploy. Preserve the existing bundled Admin/User UI and Theme during the compatibility window.
+Agent/MCP is removed under the 2026-10-13 product decision. Do not restore its API, token issuance, scheduled inspections, UI, embedded process or CI. Historical migrations/audit rows remain; legacy Agent tokens are denied by Sanctum. New Admin and User frontend development is deferred and belongs exclusively to the separate TX-F project. TX-F permits local commits only; existing push authorization for runtime/installer repositories does not authorize pushing TX-F. This repository develops Core, Gateway and Node; installation belongs to TXBoard-Deploy. Existing bundled UI/Theme consumers may change with their actual contracts; do not create a new frontend project in this repository.
 
 ## 9. Module Registry rules
 
@@ -246,14 +244,14 @@ Module HTTP contracts:
 
 - 2026-10-16 用户要求降低本地资源占用：后续数据库、真实进程/流量联调、Go race、完整构建及大范围回归默认在 GitHub Actions / CI 执行。本地只做语法、格式、差异和必要的轻量静态检查，不再自行启动重型测试环境。
 - 完成本地轻量检查后，可以提交并推送候选分支，通过 Draft PR 的 CI 集中验收；必须区分“候选已推送”和“验收已通过”。CI 失败优先修复并在 CI 复验，不为定位问题自动回到本地跑数据库或整套测试。确需本地重型复现时须用户明确要求。
-- 保留现有 required checks、发布与迁移门禁；为 stacked PR 配置必要的相关 CI，不以目标分支过滤导致的未触发检查冒充通过。
+- CI 按当前组件与 native 业务分工；允许合并重复检查并将旧迁移/影子/隔离原型转为手动历史工具，不再将其作为开发门禁。真实已配置 required checks 与发布资格须同步核对，不以未触发或同名空任务冒充通过。
 
 - 一个完整功能或多个相关阶段可以合为一批：连续开发 → 集中验收 → 汇总修复 → 相关复测 → 提交推送。此约定覆盖旧的每条小切片独立全量测试、提交和推送要求。
 - 日常实现只做必要的语法、编译、类型和明显错误检查；文档修改只检查差异、引用和一致性，不启动应用、Docker 或数据库测试。
 - 批次验收围绕新增功能、主要业务链路和直接受影响行为。达到标准后收尾；没有新改动、实际失败或未解决问题，不重复运行已通过的全量测试。
 - 权限、扣费、支付和数据库写入的关键变更保留必要的针对性检查；发现权限绕过、丢数据或基础接口阻断时及时处理，不等待依赖工作堆积。
 - 完整协议/双内核矩阵、复杂故障注入与备份恢复边缘组合集中到发布验收或相关实现变更时；已有协议不为测试而重新开发。
-- 不关闭现有 required CI 或发布/迁移门禁。以批次末尾提交推送减少重复 CI；记录结果的文档不得造成无意义的相同组件复验循环。
+- 当前鉴权、资金/用量归属、事务/持久化和镜像实物检查仍需覆盖。过渡迁移矩阵不再自动重复执行；正式发布资格与开发验收分开。记录结果的文档不得造成无意义的相同组件复验循环。
 - 代理负责各自实现与必要检查，协调者统一安排批次集成；不得默认让每个代理重复跑完整环境和相同回归。
 - 进度以可用功能、实际问题与剩余工作为主；明确区分开发完成、已验证和已发布，延后验收的范围继续列出。
 
@@ -303,7 +301,7 @@ Before coding:
 1. inspect current implementation;
 2. identify the authoritative runtime;
 3. identify the contract being changed;
-4. define backward-compatibility requirements;
+4. identify current producers and consumers that must change together;
 5. state explicit non-goals.
 
 Before merge:
@@ -343,14 +341,14 @@ Module Management API
 Stabilization work must preserve these invariants:
 
 - do not create a second source of truth for Plugin, Theme or Core domains;
-- keep Plugin Package v1, Theme Package v1 and Admin Bridge v1 compatibility;
+- keep actual package producers/consumers and their current contracts consistent;
 - keep Registry reads side-effect free;
 - keep lifecycle mutations behind specialized adapters;
 - keep retired Agent tokens invalid and preserve historical audit records;
 - keep health details bounded, runtime-derived and non-secret;
 - do not add direct Module/MCP access to MySQL, Redis, TX-Node, SSH, Docker, shell or arbitrary filesystem;
 - do not add a Module database table unless runtime state cannot be reliably derived;
-- treat any breaking package/Bridge/Module contract as an explicit future version, not an implicit v1 extension.
+- document coordinated package/Bridge/Module contract changes without adding an old-version compatibility layer.
 
 Changes must preserve these invariants and update the applicable versioned contract.
 
@@ -369,7 +367,7 @@ cd .. && node scripts/export-route-catalog.mjs --routes route-list.json --json a
 ## 20. 新增 Module 能力的验收规则
 
 - **Module**：先明确稳定 ID、type、version、capabilities、依赖、配置归属、运行时状态、升级/回滚方式和管理权限；capability 只描述产品能力，不代表管理员权限或 Agent ability。Health 检查必须只读、有界、可预测，enabled 不等于 healthy。
-- **Theme / Plugin**：保持现有包格式与 Admin Bridge 协商规则；对依赖冲突、系统/当前主题保护、禁用后 stale route、坏包、失败升级、Octane worker 缓存做负向测试。若引入持久化表，先证明不能从既有数据安全派生状态。
+- **Theme / Plugin**：同步当前包格式、Admin Bridge 与实际消费者；对依赖冲突、系统/当前主题保护、禁用后 stale route、坏包、失败升级、Octane worker 缓存保留相关负向检查。若引入持久化表，先证明不能从既有数据安全派生状态。
 - **Agent/MCP**：已退役；需要重建时先建立独立版本契约，不恢复旧接口或旧凭据。
 - **Node operation**：先定义 `operation/input/output/timeout/error_code/idempotency/verification` 契约，再实现固定类型操作；同一 request_id 不得重复执行非幂等动作，`ops.result` 只说明执行报告，独立观测通过后才能称为恢复成功，未知状态返回 inconclusive。
 - **安全输入与审计**：禁止任意 URL、内网元数据探测、文件路径、命令行或进程名注入；诊断只允许固定来源和有界参数。审计包含 actor/client/protocol/tool/target/risk/request_id/status/error code，敏感 token、password、authorization、private key 和输入内容须脱敏。验证 403 scope/ability、404 目标丢失、422 策略/参数拒绝、重放和撤销的负向用例。

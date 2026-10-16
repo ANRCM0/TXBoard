@@ -6,6 +6,12 @@ This repository contains TXBoard Core, [Gateway](gateway/README.md) and [TX-Node
 
 > **Status:** Actively evolving. CI and image publication are not proof of production readiness. Validate database migrations, payments, node integration and extensions in an isolated environment before rollout.
 
+The project has not entered formal testing. Native C1/C2 is the development
+baseline; old-deployment migration and backward compatibility are not delivery
+requirements. Coordinated breaking changes are allowed. C3 payments and money,
+C4 formal APIs/credential lifecycle, and C5 installation/releases remain.
+See the [development baseline and CI ownership](docs/development/native-development-baseline.md).
+
 ## Components
 
 | Repository | Responsibility |

@@ -1,11 +1,7 @@
 name: admin-creation-shadow
 
 on:
-  push:
-    branches: [main]
-    paths: ['api/**', 'contracts/v2/legacy-admin-creation-shadow-v1.md', '.github/workflows/ci-admin-creation-shadow.yml']
-  pull_request:
-    paths: ['api/**', 'contracts/v2/legacy-admin-creation-shadow-v1.md', '.github/workflows/ci-admin-creation-shadow.yml']
+  # Historical migration/prototype evidence; outside the native development gate.
   workflow_dispatch:
 
 permissions:
@@ -61,4 +57,4 @@ jobs:
           touch .env
           mkdir -p storage/framework/{cache/data,sessions,views} storage/logs bootstrap/cache
       - name: Native creation atomic evidence and independent MySQL session visibility
-        run: php artisan test --filter=LegacyAdminCreationShadowTest
+        run: php artisan test --configuration phpunit-historical.xml --filter=LegacyAdminCreationShadowTest

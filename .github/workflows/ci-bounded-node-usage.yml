@@ -1,11 +1,7 @@
 name: bounded-node-core-usage
 
 on:
-  push:
-    branches: [main]
-    paths: ['api/**', 'node/internal/kernel/singbox/**', 'node/internal/usageinterval/**', 'node/internal/usagev2/**', 'node/go.mod', 'node/go.sum', 'scripts/tests/node-usage-boundary/**', 'contracts/v2/node-usage/**', '.github/workflows/ci-bounded-node-usage.yml']
-  pull_request:
-    paths: ['api/**', 'node/internal/kernel/singbox/**', 'node/internal/usageinterval/**', 'node/internal/usagev2/**', 'node/go.mod', 'node/go.sum', 'scripts/tests/node-usage-boundary/**', 'contracts/v2/node-usage/**', '.github/workflows/ci-bounded-node-usage.yml']
+  # Historical migration/prototype evidence; outside the native development gate.
   workflow_dispatch:
 
 permissions:

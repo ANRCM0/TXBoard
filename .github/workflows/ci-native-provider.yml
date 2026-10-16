@@ -1,23 +1,8 @@
 name: native-credential-provider
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'api/**'
-      - 'node/internal/credentialprovider/**'
-      - 'node/cmd/credential-provider/**'
-      - 'contracts/v2/credential-provider/native-issuance-v1.md'
-      - 'scripts/verify-native-provider-interop.py'
-      - '.github/workflows/ci-native-provider.yml'
-  pull_request:
-    paths:
-      - 'api/**'
-      - 'node/internal/credentialprovider/**'
-      - 'node/cmd/credential-provider/**'
-      - 'contracts/v2/credential-provider/native-issuance-v1.md'
-      - 'scripts/verify-native-provider-interop.py'
-      - '.github/workflows/ci-native-provider.yml'
+  # Historical migration/prototype evidence; outside the native development gate.
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -60,7 +45,7 @@ jobs:
       - name: Core Provider codec, transport, domain and authenticated adapters
         working-directory: api
         run: >-
-          php artisan test
+          php artisan test --configuration phpunit-historical.xml
           tests/Unit/Domains/CredentialProvider
           tests/Feature/Installation/NativeProviderPreparationTest.php
           tests/Feature/Subscription/NativeCredentialProviderTest.php
@@ -118,6 +103,6 @@ jobs:
           php artisan migrate --force
       - name: Native Provider transactions and ownership on MySQL 8.4
         run: >-
-          php artisan test
+          php artisan test --configuration phpunit-historical.xml
           tests/Feature/Subscription/NativeCredentialProviderTest.php
           tests/Feature/Txapi/TxapiNativeCredentialProviderTest.php

@@ -2,9 +2,11 @@ name: api-ci
 
 on:
   push:
-    branches: [main, feat/installer-node-authorization-preflight]
+    branches: [main]
     paths:
       - "api/**"
+      - "!api/**/*.md"
+      - "contracts/v2/**"
       - "contracts/module-package/**"
       - "contracts/module-lifecycle/**"
       - "contracts/theme-package/**"
@@ -13,6 +15,7 @@ on:
       - "contracts/http/theme-integration-current.md"
       - "contracts/node-protocol/txnode-integration-current.md"
       - "contracts/node-protocol/native-authorization-lease-v1.md"
+      - "scripts/native-subscription-client.mjs"
       - "scripts/p0-api-audit.mjs"
       - "scripts/export-route-catalog.mjs"
       - "scripts/check-native-schema-only.mjs"
@@ -28,6 +31,8 @@ on:
     branches: [main]
     paths:
       - "api/**"
+      - "!api/**/*.md"
+      - "contracts/v2/**"
       - "contracts/module-package/**"
       - "contracts/module-lifecycle/**"
       - "contracts/theme-package/**"
@@ -36,6 +41,7 @@ on:
       - "contracts/http/theme-integration-current.md"
       - "contracts/node-protocol/txnode-integration-current.md"
       - "contracts/node-protocol/native-authorization-lease-v1.md"
+      - "scripts/native-subscription-client.mjs"
       - "scripts/p0-api-audit.mjs"
       - "scripts/export-route-catalog.mjs"
       - "scripts/check-native-schema-only.mjs"
@@ -81,7 +87,7 @@ jobs:
       - uses: shivammathur/setup-php@v2
         with:
           php-version: "8.2"
-          extensions: mbstring, sqlite3, pdo_sqlite, redis, sodium
+          extensions: mbstring, sqlite3, pdo_sqlite, curl, openssl, sodium, redis, bcmath, pcntl, posix
           coverage: none
       - name: Install dependencies
         run: composer install --no-interaction --prefer-dist
@@ -89,7 +95,9 @@ jobs:
         run: |
           cp .env.example .env
           php artisan key:generate
-      - name: Run tests
+      - name: Check PHP syntax
+        run: find app config routes database tests -name '*.php' -print0 | xargs -0 -n1 php -l > "$RUNNER_TEMP/php-syntax.log"
+      - name: Run current native development suite
         env:
           APP_ENV: testing
           DB_CONNECTION: sqlite
@@ -106,6 +114,9 @@ jobs:
           node --test scripts/tests/native-admin-release-audit.test.mjs
           node --test scripts/tests/export-route-catalog.test.mjs
           node --test scripts/tests/check-external-integration-routes.test.mjs
+      - name: Check native subscription consumer syntax
+        working-directory: .
+        run: node --check scripts/native-subscription-client.mjs
       - name: Verify native source and Admin references
         working-directory: .
         run: |

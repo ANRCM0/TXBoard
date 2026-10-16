@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - "web/**"
+      - "!web/**/*.md"
       - "package.json"
       - "package-lock.json"
       - ".github/workflows/ci-web.yml"
@@ -12,6 +13,7 @@ on:
     branches: [main]
     paths:
       - "web/**"
+      - "!web/**/*.md"
       - "package.json"
       - "package-lock.json"
       - ".github/workflows/ci-web.yml"

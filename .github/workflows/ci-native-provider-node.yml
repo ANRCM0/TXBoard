@@ -1,23 +1,8 @@
 name: native-provider-node
 
 on:
-  pull_request:
-    paths:
-      - 'api/**'
-      - 'node/**'
-      - 'contracts/v2/credential-provider/native-node-delivery-v1.md'
-      - 'scripts/tests/native-provider-node/**'
-      - 'scripts/verify-native-provider-node.py'
-      - '.github/workflows/ci-native-provider-node.yml'
-  push:
-    branches: [main]
-    paths:
-      - 'api/**'
-      - 'node/**'
-      - 'contracts/v2/credential-provider/native-node-delivery-v1.md'
-      - 'scripts/tests/native-provider-node/**'
-      - 'scripts/verify-native-provider-node.py'
-      - '.github/workflows/ci-native-provider-node.yml'
+  # Historical migration/prototype evidence; outside the native development gate.
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -56,7 +41,7 @@ jobs:
       - name: Core authority, metadata, ownership and existing Node boundaries
         working-directory: api
         run: >-
-          php artisan test
+          php artisan test --configuration phpunit-historical.xml
           tests/Unit/Domains/CredentialProvider
           tests/Feature/Subscription/NativeProviderNodeAuthorizationTest.php
           tests/Feature/Subscription/NativeCredentialProviderTest.php
@@ -118,7 +103,7 @@ jobs:
           cp .env.example .env
           php artisan key:generate
           php artisan migrate --force
-          php artisan test tests/Feature/Subscription/NativeProviderNodeAuthorizationTest.php tests/Feature/Subscription/NativeCredentialProviderTest.php
+          php artisan test --configuration phpunit-historical.xml tests/Feature/Subscription/NativeProviderNodeAuthorizationTest.php tests/Feature/Subscription/NativeCredentialProviderTest.php
 
   provider-node-live:
     runs-on: ubuntu-latest

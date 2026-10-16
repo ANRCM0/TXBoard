@@ -3,12 +3,14 @@ name: txboard-core-image
 on:
   # Runtime/build changes on main update the dev image; documentation-only commits do not.
   push:
-    branches: [main, feat/installer-node-authorization-preflight]
+    branches: [main]
     tags:
       - "v*"
     paths:
       - "api/**"
+      - "!api/**/*.md"
       - "web/**"
+      - "!web/**/*.md"
       - "Dockerfile"
       - ".dockerignore"
       - "package.json"
@@ -19,13 +21,14 @@ on:
       - "scripts/ci-release-recovery.sh"
       - "scripts/resolve-image-tags.sh"
       - "scripts/test-image-tags.sh"
-      - "contracts/node-protocol/native-authorization-lease-v1.md"
       - ".github/workflows/docker-txboard.yml"
   pull_request:
     branches: [main]
     paths:
       - "api/**"
+      - "!api/**/*.md"
       - "web/**"
+      - "!web/**/*.md"
       - "Dockerfile"
       - ".dockerignore"
       - "package.json"
@@ -36,8 +39,8 @@ on:
       - "scripts/ci-release-recovery.sh"
       - "scripts/resolve-image-tags.sh"
       - "scripts/test-image-tags.sh"
-      - "contracts/node-protocol/native-authorization-lease-v1.md"
       - ".github/workflows/docker-txboard.yml"
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -49,11 +52,10 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' || github.ref_type == 'branch' }}
 
 jobs:
-  # A passing image build alone is not release qualification. Run regression
-  # checks on the exact Git commit for PR, dev, preview and stable channels.
+  # Release tags repeat the current Core/web suite on the exact release commit.
+  # Development changes use the dedicated API/web workflows instead.
   release-gate:
-    if: github.event_name == 'push'
-    # Tag releases use exactly the same validation as pull requests and main.
+    if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     services:
       redis:
@@ -78,7 +80,7 @@ jobs:
       - uses: shivammathur/setup-php@v2
         with:
           php-version: "8.2"
-          extensions: mbstring, sqlite3, pdo_sqlite, redis, sodium
+          extensions: mbstring, sqlite3, pdo_sqlite, curl, openssl, sodium, redis, bcmath, pcntl, posix
           coverage: none
       - name: Install API dependencies
         working-directory: api
@@ -101,6 +103,7 @@ jobs:
       - name: Verify web typecheck, tests, build and performance budget
         run: npm run verify:web
   release-recovery:
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
     # Protect stable/preview publishing with a MySQL upgrade+restore check.
     # This is synthetic CI evidence, not an operator's real backup/rollback.
     runs-on: ubuntu-latest
@@ -164,7 +167,7 @@ jobs:
           retention-days: 14
 
   verify:
-    # PRs smoke-test the image; main and release tags also run publish gates.
+    # Every selected change verifies the actual image; tags add release gates.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -301,7 +304,12 @@ jobs:
   publish:
     # PRs validate but never push. Only a main commit or a vetted semver Git
     # tag may publish; neither can overwrite the other channel.
-    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || startsWith(github.ref, 'refs/tags/v')
+    if: >-
+      ${{ !cancelled() && needs.verify.result == 'success' &&
+          ((github.event_name == 'push' && github.ref == 'refs/heads/main' &&
+            needs.release-gate.result == 'skipped' && needs.release-recovery.result == 'skipped') ||
+           (startsWith(github.ref, 'refs/tags/v') &&
+            needs.release-gate.result == 'success' && needs.release-recovery.result == 'success')) }}
     needs: [release-gate, release-recovery, verify]
     runs-on: ubuntu-latest
     permissions:
