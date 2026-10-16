@@ -302,5 +302,12 @@ jobs:
           tests/Feature/Subscription/NativeIdentityAndCatalogTest.php
           tests/Feature/Installation/NativeRuntimeReadinessTest.php
           tests/Feature/UsageV2/NativeRuntimeUsageTest.php
+      - name: Native billing ledger and payment evidence on MySQL 8.4
+        run: >-
+          php artisan test
+          tests/Feature/Billing/NativeMoneyLedgerTest.php
+          tests/Feature/Billing/NativeMoneyLedgerMysqlConcurrencyTest.php
+          tests/Feature/Billing/NativePaymentAttemptsTest.php
+          tests/Feature/Billing/NativePaymentAttemptsMysqlConcurrencyTest.php
       - name: Native receipt concurrency and SQL crash recovery on MySQL 8.4
         run: php artisan test tests/Feature/UsageV2/UsageMysqlConcurrencyTest.php
