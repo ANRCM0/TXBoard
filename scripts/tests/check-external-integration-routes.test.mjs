@@ -37,3 +37,9 @@ test('new native Node routes require documentation updates', () => {
   const routes = [...fixture(), {method:'POST',uri:'txapi/node/v1/extra',middleware:['api']}];
   assert.throws(() => verifyGuideRoutes(routes, theme, node), /undocumentedNode/);
 });
+
+test('Node guide must describe current signed usage authority and receipt submission', () => {
+  for (const marker of ['native-provider-authorization/v2', '/txapi/node/v2/usage/submit']) {
+    assert.throws(() => verifyGuideRoutes(fixture(), theme, node.replaceAll(marker, '')), /out of date/);
+  }
+});

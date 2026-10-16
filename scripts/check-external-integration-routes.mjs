@@ -41,7 +41,8 @@ export function verifyGuideRoutes(routes, theme, node) {
   };
   if (user.length < 25 || nodes.length !== 8 || themeset.size < 55 || nodeset.size !== 8
     || themeset.size !== themeDeclared.length || nodeset.size !== nodeDeclared.length
-    || !theme.includes('Idempotency-Key') || !node.includes('traffic_batch_id')
+    || !theme.includes('Idempotency-Key') || !node.includes('native-provider-authorization/v2')
+    || !node.includes('/txapi/node/v2/usage/submit')
     || !node.includes('X-TX-Machine-ID') || !node.includes('/txapi/node/v1/ws')
     || Object.values(failures).some(f => f.length)) {
     throw new Error('CURRENT external integration route docs out of date:\n'
