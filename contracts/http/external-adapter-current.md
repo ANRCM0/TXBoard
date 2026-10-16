@@ -30,6 +30,16 @@ C2-B已注册原生订阅应用适配，但仍受上述安装门禁约束：
 不返回旧UUID作为原生代理凭据。legacy安装的订单与账户契约保持现状；
 生产原生Node授权、Provider凭据及订阅分发须完成C2-C后才可启用。
 
+C2-C1另注册以下用户Bearer入口，均保留native安装门禁：
+`POST /txapi/me/access-subjects`要求订阅ID、已配置Provider/Profile、预期订阅版本和幂等键；
+`POST /txapi/me/access-subjects/{id}/revoke`要求预期Subject版本和幂等键；
+`GET /txapi/me/credential-operations/{operation_ref}`只读查询，
+`POST /txapi/me/credential-operations/{operation_ref}/recover`恢复原操作。
+账户身份取自认证上下文，不接受请求提供的owner、URL、密钥或Provider Subject引用。
+响应仅包含非秘密回执和操作状态；写入/恢复的unknown返回202，只读查询成功返回200。
+这些入口不返回代理UUID或订阅配置。
+具体传输与字段见[真实Provider发行契约](../v2/credential-provider/native-issuance-v1.md)。
+
 ## 具体对接
 
 - **[外部主题：HTTP 请求、字段、完整用户路由](theme-integration-current.md)**

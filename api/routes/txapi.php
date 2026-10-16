@@ -279,6 +279,14 @@ Route::middleware(['txapi.user', 'throttle:120,1'])->group(function () {
     Route::get('plans/{planId}', [PublicController::class, 'plan'])->whereNumber('planId');
     Route::get('me', [AccountController::class, 'me']);
     Route::get('me/subscription', [AccountController::class, 'subscription']);
+    Route::post('me/access-subjects', [\App\Http\Controllers\Txapi\CredentialProviderController::class, 'issue'])
+        ->middleware('throttle:10,1');
+    Route::post('me/access-subjects/{id}/revoke', [\App\Http\Controllers\Txapi\CredentialProviderController::class, 'revoke'])
+        ->whereNumber('id')->middleware('throttle:10,1');
+    Route::post('me/credential-operations/{operation_ref}/recover', [\App\Http\Controllers\Txapi\CredentialProviderController::class, 'recover'])
+        ->where('operation_ref', 'cp_[a-f0-9]{32}')->middleware('throttle:10,1');
+    Route::get('me/credential-operations/{operation_ref}', [\App\Http\Controllers\Txapi\CredentialProviderController::class, 'show'])
+        ->where('operation_ref', 'cp_[a-f0-9]{32}');
     Route::get('me/dashboard-stats', [AccountController::class, 'dashboardStats']);
     Route::get('me/site-config', [AccountController::class, 'userConfig']);
     Route::get('me/nodes', [ServerController::class, 'index']);

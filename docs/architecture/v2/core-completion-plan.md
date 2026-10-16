@@ -1,8 +1,8 @@
 ﻿# Core 完整基础能力交付计划
 
-> 更新：2026-10-15 · 实施路线：C1—C5 · 本文是后续开发决策，不是完成声明。
+> 更新：2026-10-16 · 实施路线：C1—C5 · 本文是后续开发决策，不是完成声明。
 >
-> 用户最新要求：先完成 Core 的完整开发；现有站点数据兼容不作为新版本的必经路径。前端、安装器和 Node 的独立工作不能替代 Core 业务开发。C1 已完成实现、本地批次验收及代码提交 `ea5c4c4` 的远端 CI 核验，见[收尾记录](core-c1-closeout-verification.json)；非作者审阅、合并与发布仍分别待完成。C2-A安装权威与套餐发布准备已实现并完成本地批次验收，C2完整生命周期和权威链仍在开发，C3—C5待开发。实际结果以代码、PR 和[当前进度](current-progress.md)为准。
+> 用户最新要求：先完成 Core 的完整开发；现有站点数据兼容不作为新版本的必经路径。前端、安装器和 Node 的独立工作不能替代 Core 业务开发。C1 已完成实现、本地批次验收及代码提交 `ea5c4c4` 的远端 CI 核验，见[收尾记录](core-c1-closeout-verification.json)；非作者审阅、合并与发布仍分别待完成。C2-A准备和C2-B订阅领域已实现，C2-C1真实Provider控制操作已完成本地验收；完整Node/订阅消费及就绪链仍在开发，C3—C5待完成。实际结果以代码、PR 和[当前进度](current-progress.md)为准。
 
 ## 完成范围与现有边界
 
@@ -47,6 +47,8 @@
 **交付目标：** native 新安装的实际开通、授权和用量都由同一套订阅模型决定。
 
 **2026-10-15实施状态：** C2-A在`feat/core-native-subscriptions`实现持久authority bootstrap、逐工作项准入、就绪检查和不可变套餐发布/Availability CAS；基于C1最终提交`5e03dbc`，依赖尚未合入的PR #247。参见[C2-A验收记录](core-c2a-verification.json)及[本批契约](../../../contracts/v2/core-subscription-v1.md)。native只允许`initializing`准备，不提供激活；该批基础不等于下表中的真实订阅、读取、授权和用量已经交付。
+
+**2026-10-16进展：** C2-B已实现原生订阅履约、生命周期、共同权益、用量归属和应用适配，PR #248提交`0adb0dd`的远端检查已通过（发布相关任务跳过）。C2-C1在`feat/core-provider-integration`接入独立Provider真实签发/查询/撤销与Core持久恢复，通过本地mTLS进程联调及SQL专项；见[C2-C1验收](core-c2c1-verification.json)。材料仍仅在Provider私有存储中，后续必须完成Node与订阅渲染消费、轮换、授权到用量闭环及就绪转换。登记、回执或测试中替换准入均不开放生产运行。
 
 | 组成 | 必须交付的生产行为 |
 | --- | --- |

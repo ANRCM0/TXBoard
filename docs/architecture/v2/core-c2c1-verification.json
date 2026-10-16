@@ -1,0 +1,138 @@
+{
+  "schema": "tx-core.c2c1-verification/v1",
+  "date": "2026-10-16",
+  "branch": "feat/core-provider-integration",
+  "scope": [
+    "Separate real Provider process with private UUIDv4 issuance for vless-uuid/v1 and vmess-uuid/v1.",
+    "Closed bounded issue/query/revoke protocol over TLS 1.3, mTLS and a Core client leaf-certificate allowlist.",
+    "Persistent Provider identity, atomic private material/operation receipts, idempotency and permanent subject tombstones.",
+    "Native Core registration, AccessSubject ownership and durable intent-before-network recovery.",
+    "Authenticated user adapters and preparation-only registration command with production admission still closed."
+  ],
+  "status": {
+    "local_batch": "passed after focused repairs",
+    "complete_c2": false,
+    "native_ready": false,
+    "activation_operation_available": false,
+    "material_export_available": false,
+    "node_material_consumer_available": false,
+    "merged": false,
+    "published": false,
+    "remote_ci": "The new Provider mTLS and MySQL 8.4 workflow must pass on the exact PR head; no local MariaDB result is claimed as MySQL 8.4."
+  },
+  "dependencies": {
+    "stacked_base": "feat/core-native-subscriptions",
+    "c2b_pull_request": 248,
+    "c2b_head_checked": "0adb0ddb48734e7f42ebee1307fb5e49ae503996",
+    "c2b_state": "OPEN",
+    "c1_pull_request": 247,
+    "merge_order": "C1, C2-B, then C2-C1; review branches are not released defaults.",
+    "c2b_remote_checks": {
+      "checked_on": "2026-10-16",
+      "total": 61,
+      "success": 57,
+      "skipped": 4,
+      "failed": 0,
+      "pending": 0,
+      "mysql_workflow_run": 38794791178,
+      "mysql_regression_job": 116628223913,
+      "native_subscription_job": 116628224356,
+      "installation_bootstrap_job": 116628224698,
+      "evidence": "D:/my-project/TXX/.tmp/c2b-remote-checks-final.json"
+    }
+  },
+  "environment": {
+    "php": "8.4.16",
+    "go": "1.26.3",
+    "databases": ["SQLite in memory", "MariaDB 11.4.12"],
+    "fixture_root": "/tmp/tx-c2c-acceptance-31_e7jjr",
+    "isolation": "Private disposable MariaDB data/socket directory and separate real Provider process with temporary CA, certificates and private store. No production/shared database.",
+    "dependencies": "Existing locked Composer and Go dependencies; no lock changes.",
+    "domain_admission": "Substituted only in domain/interop fixtures. A separate preparation test exercises the real initializing authority and rejects business issuance/HTTP."
+  },
+  "results": [
+    {
+      "check": "Core Provider codec, transport, domain, authenticated adapters and installation regression",
+      "tests": 100,
+      "passed": 99,
+      "skipped": 1,
+      "assertions": 712,
+      "result": "passed before the final STORE_UNAVAILABLE codec test and new preparation test",
+      "skip_reason": "Existing independent MySQL bootstrap fixture opt-in.",
+      "evidence": "/tmp/tx-c2c-acceptance-31_e7jjr/tests-1792093717993825736.log"
+    },
+    {
+      "check": "Final affected codec, real preparation gate and native domain after rollback-index repair",
+      "tests": 60,
+      "assertions": 474,
+      "result": "passed",
+      "evidence": "/tmp/tx-c2c-acceptance-31_e7jjr/tests-1792094301387644170.log",
+      "overlap": "Includes relevant tests from the initial Core run; counts are not added as unique coverage."
+    },
+    {
+      "check": "Dedicated MariaDB production migrations, domain and authenticated adapters",
+      "tests": 19,
+      "assertions": 444,
+      "result": "passed",
+      "evidence": "/tmp/tx-c2c-acceptance-31_e7jjr/mysql-astw2hgl/mysql-native-domain.log",
+      "initial_failure": "InnoDB replaced the original subscription foreign-key index with the new covering index, so empty down() could not drop it.",
+      "repair": "Restore a supporting subscription_id index before removing the new covering index; preserve the original foreign key and populated rollback refusal."
+    },
+    {
+      "check": "Actual PHP Core to separate Go Provider over mutually authenticated TLS",
+      "tests": 4,
+      "assertions": 75,
+      "result": "passed",
+      "evidence": "/tmp/tx-c2c-acceptance-31_e7jjr/real-provider-interop.log",
+      "cases": [
+        "Real issuance followed by a dropped response recovers by original-operation query without a second issue.",
+        "Replay and subject revocation preserve historical metadata without reactivation.",
+        "Ban after Provider success and manual revoke before unknown-issue recovery both persist successful compensating revocation.",
+        "A different client certificate from the same CA and an untrusted server CA are rejected.",
+        "Allowed query for a missing operation reports OPERATION_UNKNOWN."
+      ],
+      "limit": "No Node credential consumption or actual proxy traffic is claimed by these tests."
+    },
+    {
+      "check": "Go Provider focused race, persistence, protocol and mTLS suite",
+      "top_level_tests": 17,
+      "result": "passed with negative subtests; provider binary rebuilt",
+      "command": "go test -race ./internal/credentialprovider ./cmd/credential-provider",
+      "evidence": "Provider runtime agent command output, final run 4.662 seconds.",
+      "cases": [
+        "Real UUID persistence, restart replay and exclusive store ownership.",
+        "Concurrent idempotency, deadline expiry under contention and pre-issue revocation tombstones.",
+        "TLS client fingerprint and version denial; closed wire/body limits.",
+        "Corrupt persisted receipt or idempotency mapping returns bounded STORE_UNAVAILABLE without forwarding raw JSON."
+      ]
+    },
+    {
+      "check": "Syntax, registered routes, external contract inventory and native schema naming",
+      "php_files": 17,
+      "go_formatted_files": 6,
+      "http_methods": 260,
+      "route_families": 10,
+      "route_and_schema_script_tests": 17,
+      "result": "passed; workflow YAML and Python syntax also passed",
+      "evidence": "/tmp/tx-c2c-acceptance-31_e7jjr/php-syntax.log"
+    },
+    {
+      "check": "Final focused source review",
+      "result": "No remaining concrete blocker found in the repaired boundaries.",
+      "verified_repairs": [
+        "New logical revokes increment fact versions, including compensation after a prior manual revoke.",
+        "Core accepts higher acknowledged revocation facts and the Provider's earlier first-revoked timestamp.",
+        "Successful/orphaned terminal reads require intact semantically bound receipts and Subject metadata.",
+        "Provider replays closed typed receipts; Core never resends a mutation on STORE_UNAVAILABLE."
+      ]
+    }
+  ],
+  "remaining": [
+    "Provider material delivery to a real authorized Node consumer and subscription renderer.",
+    "Credential rotation and production Provider/certificate registration lifecycle.",
+    "Common entitlement integration into native Node REST/WS/full/delta authorization and revocation convergence.",
+    "Actual traffic produced by those grants through durable UsagePeriod settlement.",
+    "Explicit production readiness transition, old-work rejection and required writer/queue drain evidence.",
+    "Exact-head remote CI, non-author review, authorized merge and release."
+  ]
+}

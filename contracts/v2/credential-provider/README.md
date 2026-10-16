@@ -4,6 +4,11 @@
 >
 > 本契约位于 v2 架构目录，其能力协议版本为 v1。当前 PHP Plugin Package v1 不实现本契约；本文件不新增 HTTP 路由、不提供现有插件沙箱、不证明节点租约或凭据卸载已可用。
 
+2026-10-16 的 C2-C1 实现子集见[真实发行与恢复契约](native-issuance-v1.md)：
+独立 Provider 进程、mTLS、私有 UUID 存储、issue/query/subject-revoke 和 Core
+持久回执已接入。它没有凭据材料导出、Node 消费、订阅渲染或轮换能力，
+不等于下述完整 Target 契约完成，也不解除 native 安装就绪门禁。
+
 ## 范围与权威
 
 Core 拥有 Subscription、Terms、Access Subject、授权政策和 Usage/Money 账本。Provider 拥有代理凭据的秘密、发行/解析算法、协议配置渲染和私有持久存储。注册、授权、生命周期由 [Plugin Platform v2](../../../docs/architecture/v2/plugin-platform.md) 协调；数据关联见 [Core Data Model](../../../docs/architecture/v2/core-domain-model.md)。

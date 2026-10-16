@@ -70,6 +70,10 @@ Authorization: Bearer <opaque-session-token>
 | 用户 | GET `/me/nodes` | 面向主题的安全节点列表，不返回节点密钥/证书 |
 | 用户 | GET / PATCH `/me/preferences` | 偏好；PATCH 只支持 `remind_expire`、`remind_traffic` |
 | 用户 | POST `/me/subscription-credentials/rotate` | 轮换订阅凭据；旧链接立刻失效，强限流 |
+| 原生凭据 | POST `/me/access-subjects` | `subscription_id,provider_id,credential_profile_id,expected_version`；必需 `Idempotency-Key`，仅准备完成后的 native 领域可签发 |
+| 原生凭据 | POST `/me/access-subjects/{id}/revoke` | `expected_version` 与 `Idempotency-Key`；先本地拒绝，再协调 Provider 撤销 |
+| 原生凭据 | GET `/me/credential-operations/{operation_ref}` | 本人操作的非秘密状态；只读，不触发外部调用 |
+| 原生凭据 | POST `/me/credential-operations/{operation_ref}/recover` | 空请求体，按原操作查询和恢复，不创建新的逻辑签发 |
 | 用户 | GET `/plans/{planId}` | 登录后的套餐详情与购买资格（无权时 404） |
 | 安全 | POST `/auth/logout` | 注销当前 Sanctum 会话 |
 | 安全 | GET `/auth/sessions` | 安全字段的会话清单 |
@@ -109,6 +113,8 @@ Authorization: Bearer <opaque-session-token>
 | 充值 | POST `/billing/recharges/{tradeNo}/checkout` | `token?`，启动充值支付 |
 
 `/billing/recharges` 的分页上限 **50**，订单/工单等大多数列表的 `per_page` 上限 **100**。动态参数 `tradeNo` 不等于数据库自增 ID。对用户私有 URL、账号与付款响应禁止共享 CDN 缓存。
+
+原生凭据路由是 C2-C1 已注册的应用适配器，当前真实 native 安装仍处于 `initializing`，业务请求返回就绪拒绝；legacy 安装不使用这些接口。响应只含 `core-credential-operation/v1` 元数据，不返回 UUID、私钥或订阅内容。签发回执不表示 Node 已获授权，`unknown` 也不代表没有执行。恢复语义与剩余启用条件见 [Provider 签发契约](../v2/credential-provider/native-issuance-v1.md)。
 
 ## 4. 主题常见完整业务流程
 
