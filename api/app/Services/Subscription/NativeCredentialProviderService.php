@@ -6,6 +6,7 @@ use App\Domains\CredentialProvider\ProviderCodec;
 use App\Domains\CredentialProvider\ProviderError;
 use App\Domains\CredentialProvider\ProviderTransport;
 use App\Domains\Installation\InstallationAuthority;
+use App\Domains\Installation\NativeRuntimeAdmission;
 use DomainException;
 use Illuminate\Support\Facades\DB;
 use Throwable;
@@ -155,6 +156,236 @@ final class NativeCredentialProviderService
         return $this->drive($userId, $reference);
     }
 
+    public function rotate(int $userId, int $subjectId, string $businessKey, int|string $expectedVersion): array
+    {
+        $this->freshTransaction();
+        $request = ['kind' => 'rotate', 'user_id' => $this->decimal($userId),
+            'access_subject_id' => $this->decimal($subjectId), 'business_key' => $this->key($businessKey),
+            'expected_version' => $this->decimal($expectedVersion)];
+        $locator = DB::table(self::SUBJECTS)->useWritePdo()->where('id', $subjectId)->first();
+        $this->require($locator !== null, 'SUBJECT_MISSING');
+        $reference = DB::transaction(function () use ($request, $userId, $subjectId, $locator): string {
+            $now = time();
+            $installation = app(InstallationAuthority::class)->assertNativeMutation();
+            [$user, $slot, $subscriptions] = $this->store->lockAccount($userId, $now, $installation['installation_id']);
+            $subscription = $subscriptions->firstWhere('id', $locator->subscription_id);
+            $this->require($subscription !== null, 'SUBJECT_MISSING');
+            $history = $this->store->lockHistory($subscription);
+            $subject = DB::table(self::SUBJECTS)->where('id', $subjectId)->lockForUpdate()->first();
+            $this->verifySubject($subject, $subscription, $installation['installation_id']);
+            $registration = DB::table(self::REGISTRATIONS)->where('id', $subject->provider_registration_id)->lockForUpdate()->first();
+            $this->verifyRegistration($registration, $installation['installation_id']);
+            $existing = DB::table(self::OPERATIONS)->where('user_id', $userId)
+                ->where('business_key', $request['business_key'])->lockForUpdate()->first();
+            if ($existing) {
+                $this->verifyOperation($existing);
+                $storedRequest = $this->decode($existing->request_snapshot);
+                if ($existing->kind === 'rotate') {
+                    unset($storedRequest['bound_subscription_version']);
+                }
+                $this->require(hash_equals($this->hash($storedRequest), $this->hash($request)), 'IDEMPOTENCY_CONFLICT');
+                return $existing->operation_ref;
+            }
+            $this->entitlement($user, $slot, $subscription, $history, $now);
+            $this->require((string) $subject->row_version === $request['expected_version'], 'VERSION_CONFLICT');
+            return $this->recordRotation($request, $subject, $registration, $subscription, $now);
+        }, 3);
+        return $this->drive($userId, $reference);
+    }
+
+    /** Called after Account/History locks; persists bounded rebind intents without network work. */
+    public function recordRotationLocked(int $userId, int $subscriptionId): array
+    {
+        $this->require(DB::transactionLevel() > 0, 'TRANSACTION_REQUIRED');
+        $now = time();
+        $installation = app(InstallationAuthority::class)->assertNativeMutation();
+        [$user, $slot, $subscriptions] = $this->store->lockAccount($userId, $now, $installation['installation_id']);
+        $subscription = $subscriptions->firstWhere('id', $subscriptionId);
+        $this->require($subscription !== null, 'SUBSCRIPTION_MISSING');
+        $history = $this->store->lockHistory($subscription);
+        if (!$this->canSynchronize($user, $slot, $subscription, $history, $now)) {
+            return [];
+        }
+        $subjects = DB::table(self::SUBJECTS)->forceIndex('tx_native_subject_sub_idx')
+            ->where('subscription_id', $subscriptionId)->where('status', '!=', 'revoked')
+            ->orderBy('id')->limit(129)->lockForUpdate()->get();
+        $this->require($subjects->count() <= 128, 'SUBJECT_HISTORY_LIMIT');
+        $registrations = DB::table(self::REGISTRATIONS)->whereIn('id', $subjects->pluck('provider_registration_id'))
+            ->orderBy('id')->lockForUpdate()->get()->keyBy('id');
+        $references = [];
+        foreach ($subjects as $subject) {
+            $this->verifySubject($subject, $subscription, $installation['installation_id']);
+            $registration = $registrations->get($subject->provider_registration_id);
+            $this->verifyRegistration($registration, $installation['installation_id']);
+            $pending = DB::table(self::OPERATIONS)->where('access_subject_id', $subject->id)
+                ->whereIn('status', ['pending', 'unknown'])->orderBy('id')->limit(2)->lockForUpdate()->get();
+            $this->require($pending->count() <= 1, 'OPERATION_DAMAGED');
+            if ($pending->isNotEmpty()) {
+                $this->verifyOperation($pending->first());
+                $references[] = $pending->first()->operation_ref;
+                continue;
+            }
+            $this->require($subject->status === 'active', 'SUBJECT_DAMAGED');
+            $nextExpiry = min($now + 31 * 86400,
+                $subscription->expires_at === null ? PHP_INT_MAX : (int) $subscription->expires_at);
+            $needsExpiryRefresh = (int) $subject->credential_expires_at <= $now
+                || ((int) $subject->credential_expires_at <= $now + 120 && $nextExpiry > (int) $subject->credential_expires_at);
+            if ((string) $subject->bound_subscription_version === (string) $subscription->row_version
+                && (string) $subject->bound_terms_id === (string) $subscription->current_terms_id
+                && !$needsExpiryRefresh) {
+                continue;
+            }
+            $request = ['kind' => 'rotate', 'user_id' => (string) $userId, 'access_subject_id' => (string) $subject->id,
+                'business_key' => 'sync:'.$subject->id.':'.$subscription->row_version.':'.$subject->credential_generation,
+                'expected_version' => (string) $subject->row_version];
+            $references[] = $this->recordRotation($request, $subject, $registration, $subscription, $now);
+        }
+        return $references;
+    }
+
+    /** Durable outbox callers retry this bounded pass; no Provider call holds a SQL transaction. */
+    public function synchronize(int $userId, int $subscriptionId): array
+    {
+        $this->freshTransaction();
+        $this->decimal($userId);
+        $this->decimal($subscriptionId);
+        $snapshot = DB::transaction(function () use ($userId, $subscriptionId): array {
+            $now = time();
+            $installation = app(InstallationAuthority::class)->assertNativeMutation();
+            [$user, $slot, $subscriptions] = $this->store->lockAccount($userId, $now, $installation['installation_id']);
+            $subscription = $subscriptions->firstWhere('id', $subscriptionId);
+            $this->require($subscription !== null, 'SUBSCRIPTION_MISSING');
+            $history = $this->store->lockHistory($subscription);
+            $subjects = DB::table(self::SUBJECTS)->forceIndex('tx_native_subject_sub_idx')
+                ->where('subscription_id', $subscriptionId)->where('status', '!=', 'revoked')
+                ->orderBy('id')->limit(129)->lockForUpdate()->get();
+            $this->require($subjects->count() <= 128, 'SUBJECT_HISTORY_LIMIT');
+            foreach ($subjects as $subject) {
+                $this->verifySubject($subject, $subscription, $installation['installation_id']);
+            }
+            $allowed = $this->canSynchronize($user, $slot, $subscription, $history, $now);
+            return ['allowed' => $allowed, 'subscription' => $subscription, 'subjects' => $subjects,
+                'references' => $allowed ? $this->recordRotationLocked($userId, $subscriptionId) : []];
+        }, 3);
+        $results = [];
+        if (!$snapshot['allowed']) {
+            foreach ($snapshot['subjects'] as $subject) {
+                if ($subject->status !== 'revoked') {
+                    $results[] = $this->revoke($userId, (int) $subject->id,
+                        'sync-deny:'.$subject->id.':'.$subject->row_version, (string) $subject->row_version, 'SUBSCRIPTION_CHANGED');
+                }
+            }
+            $pending = DB::table(self::OPERATIONS)->useWritePdo()->where('subscription_id', $subscriptionId)
+                ->where('user_id', $userId)->whereIn('status', ['pending', 'unknown'])->orderBy('id')->limit(129)->get();
+            $this->require($pending->count() <= 128, 'SUBJECT_HISTORY_LIMIT');
+            foreach ($pending as $operation) {
+                $results[] = $this->recover($userId, $operation->operation_ref);
+            }
+        } else {
+            $pending = DB::table(self::OPERATIONS)->useWritePdo()->where('user_id', $userId)
+                ->where('subscription_id', $subscriptionId)->whereIn('status', ['pending', 'unknown'])
+                ->orderBy('id')->limit(129)->pluck('operation_ref')->all();
+            $this->require(count($pending) <= 128, 'SUBJECT_HISTORY_LIMIT');
+            foreach (array_unique([...$snapshot['references'], ...$pending]) as $reference) {
+                $results[] = $this->recover($userId, $reference);
+            }
+            $providerId = config('native_provider_node.provider_id');
+            $this->require(is_string($providerId) && $providerId !== '', 'REGISTRATION_MISSING');
+            $registration = DB::table(self::REGISTRATIONS)->useWritePdo()->where('provider_id', $providerId)->first();
+            $this->require($registration !== null, 'REGISTRATION_MISSING');
+            $this->verifyRegistration($registration, $snapshot['subscription']->installation_id);
+            foreach ($this->decode($registration->profiles) as $profile) {
+                $existing = DB::table(self::SUBJECTS)->useWritePdo()->where('subscription_id', $subscriptionId)
+                    ->where('provider_id', $providerId)->where('credential_profile_id', $profile);
+                if ((clone $existing)->where('status', '!=', 'revoked')->exists()) {
+                    continue;
+                }
+                $last = (clone $existing)->max('id') ?? 0;
+                $results[] = $this->issue($userId, $subscriptionId, $providerId, $profile,
+                    'rebind:'.$subscriptionId.':'.$snapshot['subscription']->row_version.':'.str_replace('/', '_', $profile).':'.$last,
+                    (string) $snapshot['subscription']->row_version);
+            }
+        }
+        $unconfirmed = DB::table(self::SUBJECTS)->useWritePdo()->where('subscription_id', $subscriptionId)
+            ->where('status', 'revoked')->whereNull('provider_revoked_at')->orderBy('id')->limit(129)->get();
+        $this->require($unconfirmed->count() <= 128, 'SUBJECT_HISTORY_LIMIT');
+        foreach ($unconfirmed as $subject) {
+            if (!DB::table(self::OPERATIONS)->useWritePdo()->where('access_subject_id', $subject->id)
+                ->where('kind', 'revoke')->whereIn('status', ['pending', 'unknown'])->exists()) {
+                $results[] = $this->revoke($userId, (int) $subject->id,
+                    'sync-tombstone:'.$subject->id.':'.$subject->row_version, (string) $subject->row_version, 'SUBSCRIPTION_CHANGED');
+            }
+        }
+        $this->verifySynchronized($userId, $subscriptionId);
+        return $results;
+    }
+
+    private function verifySynchronized(int $userId, int $subscriptionId): void
+    {
+        DB::transaction(function () use ($userId, $subscriptionId): void {
+            $now = time();
+            $installation = app(InstallationAuthority::class)->assertNativeMutation();
+            [$user, $slot, $subscriptions] = $this->store->lockAccount($userId, $now, $installation['installation_id']);
+            $subscription = $subscriptions->firstWhere('id', $subscriptionId);
+            $this->require($subscription !== null, 'SUBSCRIPTION_MISSING');
+            $history = $this->store->lockHistory($subscription);
+            $allowed = $this->canSynchronize($user, $slot, $subscription, $history, $now);
+            $subjects = DB::table(self::SUBJECTS)->forceIndex('tx_native_subject_sub_idx')
+                ->where('subscription_id', $subscriptionId)->where(function ($query): void {
+                    $query->where('status', '!=', 'revoked')->orWhereNull('provider_revoked_at');
+                })->orderBy('id')->limit(129)->lockForUpdate()->get();
+            $this->require($subjects->count() <= 128, 'SUBJECT_HISTORY_LIMIT');
+            $providerId = $allowed ? config('native_provider_node.provider_id') : null;
+            $this->require(!$allowed || (is_string($providerId) && $providerId !== ''), 'REGISTRATION_MISSING');
+            $registrations = DB::table(self::REGISTRATIONS)->where(function ($query) use ($subjects, $providerId): void {
+                $query->whereIn('id', $subjects->pluck('provider_registration_id'));
+                if ($providerId !== null) {
+                    $query->orWhere('provider_id', $providerId);
+                }
+            })
+                ->orderBy('id')->lockForUpdate()->get()->keyBy('id');
+            $this->require(!DB::table(self::OPERATIONS)->where('subscription_id', $subscriptionId)
+                ->where('user_id', $userId)->whereIn('status', ['pending', 'unknown'])->lockForUpdate()->exists(),
+                'SYNCHRONIZATION_PENDING');
+            $profiles = [];
+            foreach ($subjects as $subject) {
+                $this->verifySubject($subject, $subscription, $installation['installation_id']);
+                $this->require($allowed && $subject->status === 'active'
+                    && (string) $subject->bound_terms_id === (string) $subscription->current_terms_id
+                    && (string) $subject->bound_subscription_version === (string) $subscription->row_version
+                    && $subject->not_before_at !== null && (int) $subject->not_before_at <= $now
+                    && $subject->credential_expires_at !== null && (int) $subject->credential_expires_at > $now,
+                    'SYNCHRONIZATION_PENDING');
+                $registration = $registrations->get($subject->provider_registration_id);
+                $this->verifyRegistration($registration, $installation['installation_id']);
+                $this->authorizationBindingLocked($subject, ['authorized' => true, 'user_id' => (string) $userId,
+                    'subscription_id' => (string) $subscriptionId],
+                    (array) $registration + ['profiles_decoded' => $this->decode($registration->profiles)]);
+                $profiles[$subject->provider_id][$subject->credential_profile_id] = true;
+            }
+            if ($allowed) {
+                $registration = $registrations->firstWhere('provider_id', $providerId);
+                $this->verifyRegistration($registration, $installation['installation_id']);
+                foreach ($this->decode($registration->profiles) as $profile) {
+                    $this->require(isset($profiles[$providerId][$profile]), 'SYNCHRONIZATION_PENDING');
+                }
+            }
+        }, 3);
+    }
+
+    private function canSynchronize(object $user, object $slot, object $subscription, array $history, int $now): bool
+    {
+        try {
+            $this->entitlement($user, $slot, $subscription, $history, $now);
+            return true;
+        } catch (DomainException $error) {
+            if ($error->getMessage() !== 'NATIVE_CREDENTIAL_ENTITLEMENT_DENIED') {
+                throw $error;
+            }
+            return false;
+        }
+    }
+
     public function recover(int $userId, string $operationRef): array
     {
         $this->freshTransaction();
@@ -182,7 +413,52 @@ final class NativeCredentialProviderService
         return (array) $row + ['profiles_decoded' => $this->decode($row->profiles)];
     }
 
-    /** Read-only verification of an already locked Subject against its original successful receipt. */
+    /** A valid in-flight mutation is omitted from a complete grant; unexplained pending state is damaged. */
+    public function authorizationPendingLocked(object $subject, array $entitlement, array $registration): bool
+    {
+        $this->require(DB::transactionLevel() > 0, 'TRANSACTION_REQUIRED');
+        if ($subject->status !== 'pending') {
+            return false;
+        }
+        $installation = app(InstallationAuthority::class)->assertNativeRead();
+        $this->require(($entitlement['authorized'] ?? false) === true, 'ENTITLEMENT_DENIED');
+        $this->verifySubject($subject, (object) ['id' => $entitlement['subscription_id']], $installation['installation_id']);
+        $this->verifyRegistration((object) $registration, $installation['installation_id']);
+        $this->require((string) $subject->provider_registration_id === (string) $registration['id']
+            && $subject->provider_id === $registration['provider_id']
+            && in_array($subject->credential_profile_id, $registration['profiles_decoded'], true)
+            && (string) $subject->revocation_fact_version === '0'
+            && $subject->revoked_at === null && $subject->provider_revoked_at === null, 'SUBJECT_INVALID');
+        $operations = DB::table(self::OPERATIONS)->where('access_subject_id', $subject->id)
+            ->whereIn('status', ['pending', 'unknown'])->orderBy('id')->limit(2)->sharedLock()->get();
+        $this->require($operations->count() === 1, 'OPERATION_DAMAGED');
+        $operation = $operations->first();
+        $this->verifyOperation($operation);
+        $this->require(in_array($operation->kind, ['issue', 'rotate'], true)
+            && (string) $operation->user_id === $entitlement['user_id']
+            && (string) $operation->subscription_id === $entitlement['subscription_id']
+            && (string) $operation->provider_registration_id === (string) $registration['id'], 'OPERATION_DAMAGED');
+        $wire = $this->decode($operation->wire_request);
+        $this->require($wire['provider_id'] === $registration['provider_id']
+            && $wire['provider_instance_epoch'] === (string) $registration['provider_instance_epoch']
+            && $wire['input']['expected_subject_version'] === (string) $subject->row_version, 'OPERATION_DAMAGED');
+        $this->verifyReceiptBinding($operation, $subject, $wire);
+        if ($operation->kind === 'issue') {
+            foreach (['credential_ref', 'credential_generation', 'issued_at', 'not_before_at', 'credential_expires_at',
+                'current_credential_operation_ref'] as $field) {
+                $this->require(($subject->$field ?? null) === null, 'OPERATION_DAMAGED');
+            }
+        } else {
+            $source = $this->credentialSourceLocked($subject);
+            $this->verifyReceiptBinding($source, $subject, $this->decode($source->wire_request));
+            $this->require($wire['input']['credential_ref'] === $subject->credential_ref
+                && $wire['input']['expected_credential_generation'] === (string) $subject->credential_generation,
+                'OPERATION_DAMAGED');
+        }
+        return true;
+    }
+
+    /** Read-only verification of an already locked Subject against its current successful receipt. */
     public function authorizationBindingLocked(object $subject, array $entitlement, array $registration): array
     {
         $this->require(DB::transactionLevel() > 0, 'TRANSACTION_REQUIRED');
@@ -193,11 +469,7 @@ final class NativeCredentialProviderService
         $this->require((string) $subject->provider_registration_id === (string) $registration['id']
             && $subject->provider_id === $registration['provider_id']
             && in_array($subject->credential_profile_id, $registration['profiles_decoded'], true), 'SUBJECT_INVALID');
-        $operations = DB::table(self::OPERATIONS)->where('access_subject_id', $subject->id)
-            ->where('kind', 'issue')->orderBy('id')->limit(2)->sharedLock()->get();
-        $this->require($operations->count() === 1, 'OPERATION_DAMAGED');
-        $operation = $operations->first();
-        $this->verifyOperation($operation);
+        $operation = $this->credentialSourceLocked($subject);
         $this->require($operation->status === 'succeeded'
             && (string) $operation->user_id === $entitlement['user_id']
             && (string) $operation->subscription_id === $entitlement['subscription_id']
@@ -207,7 +479,8 @@ final class NativeCredentialProviderService
         $this->require($wire['provider_id'] === $registration['provider_id']
             && $wire['provider_instance_epoch'] === (string) $registration['provider_instance_epoch']
             && $wire['input']['installation_id'] === $installation['installation_id']
-            && $wire['input']['provider_subject_ref'] === $subject->provider_subject_ref, 'OPERATION_DAMAGED');
+            && $wire['input']['provider_subject_ref'] === $subject->provider_subject_ref
+            && $wire['input']['terms_id'] === (string) $subject->bound_terms_id, 'OPERATION_DAMAGED');
         $this->verifyReceiptBinding($operation, $subject, $wire);
         $this->require($subject->status === 'active' && (string) $subject->revocation_fact_version === '0'
             && $subject->revoked_at === null && $subject->provider_revoked_at === null, 'SUBJECT_INVALID');
@@ -268,7 +541,7 @@ final class NativeCredentialProviderService
             if ($response['status'] !== 'rejected' || ($response['error']['retryable'] ?? true)) {
                 return $this->unknown($userId, $reference, $code);
             }
-            return $this->withOperation($userId, $reference, function ($operation, $subject) use ($code): array {
+            $public = $this->withOperation($userId, $reference, function ($operation, $subject, $registration) use ($code): array {
                 if (!in_array($operation->status, ['succeeded', 'rejected', 'orphaned'], true)) {
                     DB::table(self::OPERATIONS)->where('id', $operation->id)->update([
                         'status' => 'rejected', 'error_code' => $this->diagnostic($code), 'updated_at' => time(),
@@ -278,9 +551,18 @@ final class NativeCredentialProviderService
                     if ($operation->kind === 'issue' && $subject->status !== 'revoked') {
                         $this->denySubject($subject, time());
                     }
+                    if ($operation->kind === 'rotate') {
+                        $remediation = $this->recordRevoke(['kind' => 'revoke', 'user_id' => (string) $operation->user_id,
+                            'access_subject_id' => (string) $subject->id, 'business_key' => 'rotate-reject:'.$operation->operation_ref,
+                            'expected_version' => (string) $subject->row_version, 'reason_code' => 'SUBSCRIPTION_CHANGED'],
+                            $subject, $registration, 'SUBSCRIPTION_CHANGED', time());
+                        DB::table(self::OPERATIONS)->where('id', $operation->id)->update(['remediation_operation_ref' => $remediation]);
+                        $operation->remediation_operation_ref = $remediation;
+                    }
                 }
                 return $this->publicOperation($operation, $subject);
             });
+            return $this->recoverRemediation($userId, $public);
         }
         try {
             $public = $this->finalize($userId, $reference, $response['result']);
@@ -305,7 +587,7 @@ final class NativeCredentialProviderService
                 $this->verifyReceipt($wire, $result);
                 $status = 'succeeded';
                 $remediation = null;
-                if ($operation->kind === 'issue') {
+                if (in_array($operation->kind, ['issue', 'rotate'], true)) {
                     $usable = $subject->status === 'pending'
                         && (string) $subject->row_version === $wire['input']['expected_subject_version']
                         && (string) $subscription->row_version === (string) $subject->bound_subscription_version
@@ -320,6 +602,7 @@ final class NativeCredentialProviderService
                         'credential_ref' => $result['credential_ref'], 'credential_generation' => $result['credential_generation'],
                         'issued_at' => $result['issued_at'], 'not_before_at' => $result['not_before_at'],
                         'credential_expires_at' => $result['credential_expires_at'], 'updated_at' => $now,
+                        'current_credential_operation_ref' => $operation->operation_ref,
                     ];
                     if ($usable) {
                         $metadata += ['status' => 'active', 'row_version' => (int) $subject->row_version + 1];
@@ -430,6 +713,65 @@ final class NativeCredentialProviderService
         return $this->record($request, $subject, $registration, $input, $now);
     }
 
+    private function recordRotation(array $request, object $subject, object $registration, object $subscription, int $now): string
+    {
+        $this->require($subject->status === 'active' && (string) $subject->revocation_fact_version === '0'
+            && $subject->revoked_at === null && $subject->provider_revoked_at === null, 'SUBJECT_INVALID');
+        $this->require($subject->provider_id === $registration->provider_id
+            && in_array($subject->credential_profile_id, $this->decode($registration->profiles), true), 'SUBJECT_INVALID');
+        $source = $this->credentialSourceLocked($subject);
+        $sourceWire = $this->decode($source->wire_request);
+        $this->verifyReceiptBinding($source, $subject, $sourceWire);
+        $this->require($sourceWire['input']['terms_id'] === (string) $subject->bound_terms_id, 'OPERATION_DAMAGED');
+        $this->require($subject->credential_generation !== null && (int) $subject->credential_generation < PHP_INT_MAX
+            && (int) $subject->row_version < PHP_INT_MAX - 1 && (int) $subject->auth_version < PHP_INT_MAX, 'VERSION_OVERFLOW');
+        $changes = ['status' => 'pending', 'row_version' => (int) $subject->row_version + 1,
+            'auth_version' => (int) $subject->auth_version + 1, 'bound_terms_id' => $subscription->current_terms_id,
+            'bound_subscription_version' => $subscription->row_version, 'updated_at' => $now];
+        DB::table(self::SUBJECTS)->where('id', $subject->id)->update($changes);
+        foreach ($changes as $key => $value) {
+            $subject->$key = $value;
+        }
+        $input = [
+            'installation_id' => $subject->installation_id, 'access_subject_id' => (string) $subject->id,
+            'subscription_id' => (string) $subject->subscription_id, 'terms_id' => (string) $subscription->current_terms_id,
+            'provider_subject_ref' => $subject->provider_subject_ref, 'expected_subject_version' => (string) $subject->row_version,
+            'credential_profile_id' => $subject->credential_profile_id, 'credential_ref' => $subject->credential_ref,
+            'expected_credential_generation' => (string) $subject->credential_generation, 'rotation_mode' => 'immediate',
+            'not_before_at' => $now, 'credential_expires_at' => min($now + 31 * 86400,
+                $subscription->expires_at === null ? PHP_INT_MAX : (int) $subscription->expires_at),
+        ];
+        $request['bound_subscription_version'] = (string) $subscription->row_version;
+        $reference = $this->record($request, $subject, $registration, $input, $now);
+        if ((app(InstallationAuthority::class)->inspect()['runtime_version'] ?? null) === NativeRuntimeAdmission::VERSION) {
+            DB::table('tx_auth_snapshot')->forceIndex('tx_native_auth_sub_idx')
+                ->where('subscription_id', $subscription->id)->where('access_subject_id', $subject->id)
+                ->whereNull('revoked_at')->update(['revoked_at' => $now]);
+        }
+        return $reference;
+    }
+
+    private function credentialSourceLocked(object $subject): object
+    {
+        $query = DB::table(self::OPERATIONS)->where('access_subject_id', $subject->id)
+            ->where('subscription_id', $subject->subscription_id)->where('provider_registration_id', $subject->provider_registration_id);
+        if (($subject->current_credential_operation_ref ?? null) !== null) {
+            $query->where('operation_ref', $subject->current_credential_operation_ref);
+        } else {
+            $this->require((string) $subject->credential_generation === '1', 'OPERATION_DAMAGED');
+            $query->where('kind', 'issue');
+        }
+        $operations = $query->orderBy('id')->limit(2)->sharedLock()->get();
+        $this->require($operations->count() === 1, 'OPERATION_DAMAGED');
+        $operation = $operations->first();
+        $this->verifyOperation($operation);
+        $this->require($operation->status === 'succeeded' && in_array($operation->kind, ['issue', 'rotate'], true), 'OPERATION_DAMAGED');
+        $result = $this->decode($operation->result_snapshot);
+        $this->require((string) $subject->credential_generation === $result['credential_generation']
+            && $subject->credential_ref === $result['credential_ref'], 'OPERATION_DAMAGED');
+        return $operation;
+    }
+
     private function denySubject(object $subject, int $now, bool $newFact = false): void
     {
         if ($subject->status === 'revoked' && !$newFact) {
@@ -507,8 +849,14 @@ final class NativeCredentialProviderService
     private function verifyOperation(?object $operation): void
     {
         $this->require($operation !== null, 'OPERATION_DAMAGED');
+        $this->require(in_array($operation->kind, ['issue', 'rotate', 'revoke'], true), 'OPERATION_DAMAGED');
         $request = $this->decode($operation->request_snapshot);
         $wire = $this->decode($operation->wire_request);
+        try {
+            ProviderCodec::validateRequest(array_replace($wire, ['deadline_at' => time() + 25]));
+        } catch (Throwable) {
+            throw new DomainException('NATIVE_CREDENTIAL_OPERATION_DAMAGED');
+        }
         $this->require(hash_equals($operation->request_hash, $this->hash($request))
             && hash_equals($operation->wire_hash, $this->hash($wire))
             && ($request['kind'] ?? null) === $operation->kind
@@ -537,23 +885,50 @@ final class NativeCredentialProviderService
     private function verifyReceiptBinding(object $operation, object $subject, array $wire): void
     {
         $input = $wire['input'];
-        if ($operation->kind === 'issue') {
+        $this->require($input['access_subject_id'] === (string) $subject->id
+            && $input['provider_subject_ref'] === $subject->provider_subject_ref
+            && $input['installation_id'] === $subject->installation_id
+            && $wire['provider_id'] === $subject->provider_id, 'OPERATION_DAMAGED');
+        if (in_array($operation->kind, ['issue', 'rotate'], true)) {
             $request = $this->decode($operation->request_snapshot);
             $this->require($input['subscription_id'] === (string) $subject->subscription_id
-                && $input['terms_id'] === (string) $subject->bound_terms_id
-                && $input['credential_profile_id'] === $subject->credential_profile_id
-                && ($request['expected_version'] ?? null) === (string) $subject->bound_subscription_version,
+                && $input['credential_profile_id'] === $subject->credential_profile_id,
                 'OPERATION_DAMAGED');
+            if (in_array($operation->status, ['pending', 'unknown'], true)) {
+                $this->require($input['terms_id'] === (string) $subject->bound_terms_id, 'OPERATION_DAMAGED');
+                if ($operation->kind === 'issue') {
+                    $this->require(($request['expected_version'] ?? null) === (string) $subject->bound_subscription_version,
+                        'OPERATION_DAMAGED');
+                } else {
+                    $this->require(($request['bound_subscription_version'] ?? null) === (string) $subject->bound_subscription_version,
+                        'OPERATION_DAMAGED');
+                }
+            }
         }
         if (!in_array($operation->status, ['succeeded', 'orphaned'], true)) {
             return;
         }
         $result = $this->decode($operation->result_snapshot);
-        if ($operation->kind === 'issue') {
-            $this->require(in_array($subject->status, ['active', 'revoked'], true)
+        if (in_array($operation->kind, ['issue', 'rotate'], true)) {
+            $this->require(in_array($subject->status, ['pending', 'active', 'revoked'], true)
                 && ($operation->status !== 'orphaned' || $subject->status === 'revoked'), 'OPERATION_DAMAGED');
-            foreach (['credential_ref', 'credential_generation', 'issued_at', 'not_before_at', 'credential_expires_at'] as $field) {
-                $this->require($subject->$field !== null && (string) $subject->$field === (string) $result[$field], 'OPERATION_DAMAGED');
+            $pointer = $subject->current_credential_operation_ref ?? null;
+            $current = $pointer === $operation->operation_ref
+                || ($pointer === null && (string) $subject->credential_generation === '1');
+            if ($current) {
+                foreach (['credential_ref', 'credential_generation', 'issued_at', 'not_before_at', 'credential_expires_at'] as $field) {
+                    $this->require($subject->$field !== null && (string) $subject->$field === (string) $result[$field], 'OPERATION_DAMAGED');
+                }
+                if ($subject->status === 'active') {
+                    $sourceRequest = $this->decode($operation->request_snapshot);
+                    $bound = $operation->kind === 'issue' ? ($sourceRequest['expected_version'] ?? null)
+                        : ($sourceRequest['bound_subscription_version'] ?? null);
+                    $this->require($input['terms_id'] === (string) $subject->bound_terms_id
+                        && $bound === (string) $subject->bound_subscription_version, 'OPERATION_DAMAGED');
+                }
+            } else {
+                $this->require($subject->credential_generation !== null
+                    && (int) $subject->credential_generation > (int) $result['credential_generation'], 'OPERATION_DAMAGED');
             }
         } else {
             $this->require($operation->status === 'succeeded' && $subject->status === 'revoked'
@@ -568,11 +943,22 @@ final class NativeCredentialProviderService
         $input = $wire['input'];
         $this->require(($result['access_subject_id'] ?? null) === $input['access_subject_id']
             && ($result['provider_subject_ref'] ?? null) === $input['provider_subject_ref'], 'RECEIPT_INVALID');
-        if ($wire['operation'] === 'issue') {
+        if (in_array($wire['operation'], ['issue', 'rotate'], true)) {
             $keys = ['access_subject_id', 'provider_subject_ref', 'credential_profile_id', 'credential_ref',
                 'credential_generation', 'issued_at', 'not_before_at', 'credential_expires_at'];
+            $expectedGeneration = '1';
+            if ($wire['operation'] === 'rotate') {
+                $this->require((int) $input['expected_credential_generation'] < PHP_INT_MAX, 'RECEIPT_INVALID');
+                $expectedGeneration = (string) ((int) $input['expected_credential_generation'] + 1);
+                $keys = [...$keys, 'previous_credential_ref', 'previous_generation', 'previous_valid_until', 'rotation_mode'];
+                $this->require(($result['previous_credential_ref'] ?? null) === $input['credential_ref']
+                    && ($result['previous_generation'] ?? null) === $input['expected_credential_generation']
+                    && ($result['previous_valid_until'] ?? null) === ($result['issued_at'] ?? null)
+                    && ($result['rotation_mode'] ?? null) === 'immediate'
+                    && ($result['credential_ref'] ?? null) !== $input['credential_ref'], 'RECEIPT_INVALID');
+            }
             $this->require(($result['credential_profile_id'] ?? null) === $input['credential_profile_id']
-                && ($result['credential_generation'] ?? null) === '1'
+                && ($result['credential_generation'] ?? null) === $expectedGeneration
                 && is_string($result['credential_ref'] ?? null)
                 && (bool) preg_match('/\Acredential_[0-9a-f]{32}\z/D', $result['credential_ref'])
                 && is_int($result['issued_at'] ?? null) && $result['issued_at'] >= $input['not_before_at']

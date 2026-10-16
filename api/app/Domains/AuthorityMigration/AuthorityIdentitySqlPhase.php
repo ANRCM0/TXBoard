@@ -36,10 +36,28 @@ final class AuthorityIdentitySqlPhase
     public const MAIL_LOG_APPEND='mail.log.append';
 
     public static function enabled():bool { return config('authority_writer_fence.enabled')!==false; }
+    public static function locksAccount(): bool
+    {
+        return self::enabled() || config('core_installation.mode') === 'native';
+    }
+
     public function run(string $writer,callable $phase,int $attempts=1):mixed
     {
         if(!in_array($writer,array_diff(AuthorityIdentityInventory::WRITERS,AuthorityNativeInventory::WRITERS),true))
             throw new AuthorityFenceException('AUTHORITY_IDENTITY_WRITER_INVALID');
+        if (app(\App\Domains\Installation\InstallationAuthority::class)->inspect()['mode'] === 'native') {
+            if (!in_array($writer, [
+                self::USER_LOGIN_TOUCH, self::USER_PASSWORD_RECOVER, self::USER_PASSWORD_CHANGE,
+                self::USER_ACCOUNT_PREFERENCES, self::SESSION_ISSUE, self::SESSION_REVOKE,
+                self::SESSION_LAST_USED, self::ADMIN_AUDIT_APPEND, self::MAIL_LOG_APPEND,
+            ], true)) {
+                throw new AuthorityFenceException('AUTHORITY_NATIVE_IDENTITY_WRITER_REJECTED');
+            }
+            return DB::transaction(function () use ($phase): mixed {
+                app(\App\Domains\Installation\InstallationAuthority::class)->assertNativeMutation();
+                return \App\Models\User::withoutEvents($phase);
+            }, $attempts);
+        }
         if(!self::enabled())return $phase();
         if(DB::transactionLevel()>0){
             app(AuthorityAdmissionRegistry::class)->current()->assertValid();

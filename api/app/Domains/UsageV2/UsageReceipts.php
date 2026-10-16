@@ -16,8 +16,21 @@ final class UsageReceipts
     {
         $this->policy->requireIsolated(); $p = $parsed['payload'];
         if ((string) $nodeId !== $p['node_id']) { throw new UsageError('USAGE_NODE_SCOPE', 403); }
-        try { return DB::transaction(function () use ($nodeId, $parsed, $p, $now) {
+        try {
+            $native = NativeUsageLedger::enabled();
+            $locators = [];
+            if ($native) {
+                $replay = DB::transaction(function () use ($p, $parsed): ?array {
+                    $this->policy->requireTransaction();
+                    $existing = $this->find($p);
+                    return $existing ? $this->matching($existing, $parsed['digest']) : null;
+                }, 3);
+                if ($replay !== null) { return $replay; }
+                $locators = app(NativeUsageLedger::class)->grantLocators($p['entries']);
+            }
+            return DB::transaction(function () use ($nodeId, $parsed, $p, $now, $native, $locators) {
             $this->policy->requireTransaction();
+            if ($native) { app(NativeUsageLedger::class)->lockOwners($locators); }
             $source = DB::table('tx_node_usage_source')->where('node_id', $nodeId)->where('source_epoch', $p['source_epoch'])->lockForUpdate()->first();
             if (!$source) { throw new UsageError('USAGE_SOURCE_UNKNOWN', 403); }
             // Historical replay precedes current generation/authorization checks.
@@ -103,6 +116,9 @@ final class UsageReceipts
     {
         $grant = DB::table('tx_auth_snapshot')->where('id', $entry['auth_snapshot_id'])->lockForUpdate()->first();
         if (!$grant || (string) $grant->source_id !== (string) $source->id) { throw new UsageError('USAGE_GRANT_SOURCE'); }
+        NativeUsageLedger::verifyGrant($grant);
+        $native = NativeUsageLedger::enabled();
+        $proof = $native ? app(NativeUsageLedger::class)->verifyNativeGrant($grant) : null;
         foreach (['access_subject_id','tariff_revision_id','terms_id','usage_period_id'] as $key) {
             if ((string) $grant->$key !== $entry[$key]) { throw new UsageError('USAGE_GRANT_OWNERSHIP_OR_COVERAGE'); }
         }
@@ -121,23 +137,33 @@ final class UsageReceipts
             || (string) $sub->user_id !== (string) $grant->user_id || (int) $tariff->node_id !== (int) $source->node_id
             || (string) $subject->subscription_id !== (string) $sub->id || (string) $terms->subscription_id !== (string) $sub->id
             || (string) $period->subscription_id !== (string) $sub->id
-            || $period->boundary_kind !== 'known' || $period->starts_at === null || $period->ends_at === null
+            || $period->boundary_kind !== 'known' || $period->starts_at === null
             || !UsageRegistry::covers($start, $end, $grant->issued_at, $grant->lease_expires_at)
-            || !UsageRegistry::covers($start, $end, $period->starts_at, $period->ends_at)
-            || !UsageRegistry::covers($start, $end, $tariff->effective_from, $tariff->effective_until)
+            || !UsageRegistry::covers($start, $end, $tariff->effective_from, $tariff->effective_until)) {
+            throw new UsageError('USAGE_GRANT_OWNERSHIP_OR_COVERAGE');
+        }
+        $this->policy->assertSubscription($sub);
+        NativeUsageLedger::verifyTariff($tariff);
+        $boundaries = $this->boundaries ?? app(UsageTermsBoundary::class);
+        if ($native) {
+            $cutoff = $boundaries->nativeCutoff($grant, $sub, $subject, $period, $proof['coverage']);
+            if ($cutoff !== null && $end > $cutoff) { throw new UsageError('USAGE_NATIVE_AUTHORIZATION_CUTOFF'); }
+        }
+        if (!UsageRegistry::covers($start, $end, $period->starts_at, $period->ends_at)
             || !UsageRegistry::covers($start, $end, $sub->starts_at, $sub->expires_at)
             || ($sub->ended_at !== null && $end > (int) $sub->ended_at)
             || ($grant->revoked_at !== null && $end > (int) $grant->revoked_at)
             || ($subject->revoked_at !== null && $end > (int) $subject->revoked_at)) {
             throw new UsageError('USAGE_GRANT_OWNERSHIP_OR_COVERAGE');
         }
-        $this->policy->assertSubscription($sub);
         // A revoked subject can report traffic strictly within its former authorization.
         // A changed auth version without an effective revocation timestamp cannot establish a safe interval.
-        if ((string) $subject->auth_version !== (string) $grant->auth_version && $subject->revoked_at === null) { throw new UsageError('USAGE_AUTH_VERSION_AMBIGUOUS'); }
-        if ($subject->status !== 'active' && $subject->revoked_at === null) { throw new UsageError('USAGE_REVOCATION_TIME_UNKNOWN'); }
+        if (!$native && (string) $subject->auth_version !== (string) $grant->auth_version && $subject->revoked_at === null) { throw new UsageError('USAGE_AUTH_VERSION_AMBIGUOUS'); }
+        if ($subject->status !== 'active' && $subject->revoked_at === null && (!$native || $grant->revoked_at === null)) {
+            throw new UsageError('USAGE_REVOCATION_TIME_UNKNOWN');
+        }
         if ($tariff->rounding_revision !== 'floor-per-direction-v1') { throw new UsageError('USAGE_ROUNDING_UNSUPPORTED'); }
-        $boundary = ($this->boundaries ?? app(UsageTermsBoundary::class))->freeze((string) $sub->id, (string) $terms->id, $period, $start, $end);
+        $boundary = $boundaries->freeze((string) $sub->id, (string) $terms->id, $period, $start, $end);
         return $entry + $boundary + [
             'subscription_id' => (string) $grant->subscription_id, 'user_id' => (string) $grant->user_id,
             'billed_up_bytes' => UsageMath::floor($entry['raw_up_bytes'], (string) $tariff->numerator, (string) $tariff->denominator),
@@ -145,7 +171,7 @@ final class UsageReceipts
             'numerator' => (string) $tariff->numerator, 'denominator' => (string) $tariff->denominator, 'rounding_revision' => $tariff->rounding_revision,
             'grant_hash' => $grant->content_hash, 'tariff_hash' => $tariff->content_hash, 'terms_hash' => $terms->content_hash,
             'grant_issued_at' => (int) $grant->issued_at, 'grant_lease_expires_at' => (int) $grant->lease_expires_at,
-            'period_started_at' => (int) $period->starts_at, 'period_ended_at' => (int) $period->ends_at,
+            'period_started_at' => (int) $period->starts_at, 'period_ended_at' => $period->ends_at === null ? null : (int) $period->ends_at,
             'auth_version' => (string) $grant->auth_version, 'revocation_version' => (string) $grant->revocation_version,
         ];
     }

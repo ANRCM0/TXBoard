@@ -2,6 +2,12 @@
 
 更新日期：2026-10-16。当前主仓负责 Core、Gateway、Node；安装器由独立 TXBoard-Deploy 承接。新管理前端和用户前端延期，后续统一放在 TX-F，仅本地提交、不推送。Agent/MCP 已退役；优惠券等新增商业扩展继续后移。
 
+## C2 收尾候选
+
+`feat/core-c2-closeout` 在已通过远端验收的 C2-C2 `38c6912` 上集成原生持久启用、身份与正式目录 API、Provider 即时轮换和客户端直接渲染、同一签名中的授权/用量绑定，以及 SQL 恢复任务。新契约见 [Native C2 runtime v1](../../../contracts/v2/native-c2-runtime-v1.md)。本批仍是候选，完成状态以精确提交的 Actions 结果和审阅为准。
+
+新增 `native-c2` workflow 集中验证 SQLite 与 MySQL 8.4、Go race，以及不替换安装准入的真实注册、零元订单、Redis 队列履约、Provider、VLESS、离线到期、重启旧周期重放、重置、续费、轮换与撤销。按照用户要求，本地只做轻量静态检查；大型 Linux 环境已删除，不重建。C3 资金账本、C4 正式 Internal API/生产证书与长期订阅链接、C5 安装发布仍另行推进。
+
 ## 已完成的基础切片
 
 | 切片 | 当前结果 | 实现及证据 |

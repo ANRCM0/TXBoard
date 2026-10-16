@@ -36,7 +36,7 @@ class ProviderTransport
             || !hash_equals($configuration['config_digest'], $registration['config_digest'])) {
             throw new ProviderError('PROVIDER_REGISTRATION_MISMATCH');
         }
-        if ($request['operation'] === 'issue'
+        if (in_array($request['operation'], ['issue', 'rotate'], true)
             && !in_array($request['input']['credential_profile_id'], $configuration['profiles'], true)) {
             throw new ProviderError('PROVIDER_PROFILE_UNSUPPORTED');
         }
@@ -66,6 +66,31 @@ class ProviderTransport
         $configuration['endpoint'] = substr($configuration['endpoint'], 0, -strlen('/operations')).'/credential-metadata';
         return ProviderMetadataCodec::decodeResponse(
             $this->exchange($configuration, $request, ProviderMetadataCodec::MAX_BYTES, 25), $request);
+    }
+
+    public function capabilities(array $registration): array
+    {
+        $providerId = $registration['provider_id'] ?? null;
+        if (!is_string($providerId)) {
+            throw new ProviderError('PROVIDER_REGISTRATION_MISMATCH');
+        }
+        $configuration = $this->operatorConfiguration($providerId);
+        if (($registration['provider_instance_epoch'] ?? null) !== $configuration['instance_epoch']
+            || !is_string($registration['config_digest'] ?? null)
+            || !hash_equals($configuration['config_digest'], $registration['config_digest'])) {
+            throw new ProviderError('PROVIDER_REGISTRATION_MISMATCH');
+        }
+        $request = ['contract_version' => ProviderCapabilityCodec::VERSION, 'request_id' => 'capability_'.bin2hex(random_bytes(16)),
+            'provider_id' => $providerId, 'provider_instance_epoch' => $configuration['instance_epoch']];
+        $configuration['endpoint'] = substr($configuration['endpoint'], 0, -strlen('/operations')).'/capabilities';
+        $result = ProviderCapabilityCodec::decodeResponse(
+            $this->exchange($configuration, $request, ProviderCodec::MAX_BYTES, 25), $request);
+        foreach ($configuration['profiles'] as $profile) {
+            if (!in_array($profile, $result['profiles'], true)) {
+                throw new ProviderError('PROVIDER_PROFILE_UNSUPPORTED');
+            }
+        }
+        return $result;
     }
 
     private function exchange(array $configuration, array $request, int $maxBytes, int $remaining): string

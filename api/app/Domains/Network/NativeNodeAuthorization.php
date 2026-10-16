@@ -16,6 +16,7 @@ final class NativeNodeAuthorization
     public const AUDIENCE = 'tx-node-native-authorization-v1';
     public const POLICY_VERSION = 'native-node-authorization/v1';
     public const PROVIDER_POLICY_VERSION = 'native-provider-authorization/v1';
+    public const PROVIDER_USAGE_POLICY_VERSION = 'native-provider-authorization/v2';
 
     public function enabled(): bool
     {
@@ -48,18 +49,18 @@ final class NativeNodeAuthorization
         return $this->issueSnapshotLocked($node, $users, $now);
     }
 
-    public function issueProviderLocked(Server $node, array $users, array $provider, int $expiresAt, int $now): array
+    public function issueProviderLocked(Server $node, array $users, array $provider, int $expiresAt, int $now, ?array $usage = null): array
     {
         $installation = app(\App\Domains\Installation\InstallationAuthority::class)->assertNativeRead();
-        if ($this->policyVersion() !== self::PROVIDER_POLICY_VERSION
+        if ($this->policyVersion() !== ($usage === null ? self::PROVIDER_POLICY_VERSION : self::PROVIDER_USAGE_POLICY_VERSION)
             || ($provider['installation_id'] ?? null) !== $this->coreInstanceId()
             || $provider['installation_id'] !== $installation['installation_id'] || $expiresAt <= $now) {
             throw new DomainException('NATIVE_NODE_AUTHORIZATION_POLICY_INVALID');
         }
-        return $this->issueSnapshotLocked($node, $users, $now, $provider, $expiresAt);
+        return $this->issueSnapshotLocked($node, $users, $now, $provider, $expiresAt, $usage);
     }
 
-    private function issueSnapshotLocked(Server $node, array $users, int $now, ?array $provider = null, ?int $expiresAt = null): array
+    private function issueSnapshotLocked(Server $node, array $users, int $now, ?array $provider = null, ?int $expiresAt = null, ?array $usage = null): array
     {
         $this->assertEnabledConfiguration();
         if (DB::transactionLevel() < 1) { throw new DomainException('NATIVE_NODE_AUTHORIZATION_TRANSACTION_REQUIRED'); }
@@ -117,6 +118,10 @@ final class NativeNodeAuthorization
             $payload['provider'] = $provider;
             self::validateProviderPayload($payload);
         }
+        if ($usage !== null) {
+            $payload['usage_v2'] = $usage;
+            self::validateUsagePayload($payload);
+        }
         $message = self::canonicalJson($payload);
         if (strlen($message) > self::MAX_PAYLOAD_BYTES) { throw new DomainException('NATIVE_NODE_AUTHORIZATION_USERS_INVALID'); }
         $digest = hash('sha256', $message);
@@ -148,13 +153,15 @@ final class NativeNodeAuthorization
             $payload = json_decode($bytes, true, 32, JSON_THROW_ON_ERROR);
             $required = ['protocol_version','audience','policy_version','core_instance_id','node_id','machine_id','revision','key_id','key_epoch',
                 'issued_at','not_before','expires_at','complete','users'];
-            $providerPolicy = ($expected['policy_version'] ?? null) === self::PROVIDER_POLICY_VERSION;
+            $usagePolicy = ($expected['policy_version'] ?? null) === self::PROVIDER_USAGE_POLICY_VERSION;
+            $providerPolicy = $usagePolicy || ($expected['policy_version'] ?? null) === self::PROVIDER_POLICY_VERSION;
             if ($providerPolicy) { $required[] = 'provider'; }
+            if ($usagePolicy) { $required[] = 'usage_v2'; }
             if (!is_array($payload)) { throw new DomainException('NATIVE_NODE_AUTHORIZATION_INVALID'); }
             if (self::canonicalJson($payload) !== $bytes) { throw new DomainException('NATIVE_NODE_AUTHORIZATION_INVALID'); }
             $keys = array_keys($payload); sort($keys, SORT_STRING); sort($required, SORT_STRING);
             if ($keys !== $required || $payload['protocol_version'] !== 1 || $payload['audience'] !== self::AUDIENCE
-                || !in_array($payload['policy_version'], [self::POLICY_VERSION, self::PROVIDER_POLICY_VERSION], true)
+                || !in_array($payload['policy_version'], [self::POLICY_VERSION, self::PROVIDER_POLICY_VERSION, self::PROVIDER_USAGE_POLICY_VERSION], true)
                 || $payload['policy_version'] !== ($expected['policy_version'] ?? null)
                 || $payload['core_instance_id'] !== ($expected['core_instance_id'] ?? null)
                 || $payload['node_id'] !== ($expected['node_id'] ?? null)
@@ -178,6 +185,7 @@ final class NativeNodeAuthorization
             }
             self::validateUsers($payload['users']);
             if ($providerPolicy) { self::validateProviderPayload($payload); }
+            if ($usagePolicy) { self::validateUsagePayload($payload); }
             return $payload;
         } catch (JsonException|\ValueError $error) {
             throw new DomainException('NATIVE_NODE_AUTHORIZATION_INVALID', previous: $error);
@@ -270,6 +278,49 @@ final class NativeNodeAuthorization
         $this->clockSkewSeconds();
     }
 
+    private static function validateUsagePayload(array $payload): void
+    {
+        $fail = static function (bool $valid): void {
+            if (!$valid) { throw new DomainException('NATIVE_NODE_AUTHORIZATION_USAGE_INVALID'); }
+        };
+        $keys = static function (mixed $row, array $required) use ($fail): void {
+            $fail(is_array($row));
+            $actual = array_keys($row); sort($actual, SORT_STRING); sort($required, SORT_STRING);
+            $fail($actual === $required);
+        };
+        $decimal = static function (mixed $value, bool $zero = false) use ($fail): void {
+            $fail(is_string($value)
+                && preg_match($zero ? '/\A(?:0|[1-9][0-9]{0,18})\z/D' : '/\A[1-9][0-9]{0,18}\z/D', $value) === 1
+                && (strlen($value) < 19 || strcmp($value, '9223372036854775807') <= 0));
+        };
+        $usage = $payload['usage_v2'] ?? null;
+        $keys($usage, ['protocol_version', 'core_instance_id', 'node_id', 'source_epoch', 'receipt_generation',
+            'retention_seconds', 'max_late_report_seconds', 'receipt_retention_seconds', 'issued_at', 'grants']);
+        $fail($usage['protocol_version'] === 2 && $usage['core_instance_id'] === $payload['core_instance_id']
+            && $usage['node_id'] === (string) $payload['node_id'] && $usage['issued_at'] === $payload['issued_at']
+            && is_array($usage['grants']) && array_is_list($usage['grants']) && count($usage['grants']) === count($payload['users']));
+        foreach (['source_epoch', 'receipt_generation'] as $field) {
+            $decimal($usage[$field]);
+        }
+        foreach (['retention_seconds', 'max_late_report_seconds', 'receipt_retention_seconds'] as $field) {
+            $fail(is_int($usage[$field]) && $usage[$field] > 0 && $usage[$field] <= 9007199254740991);
+        }
+        $fail($usage['max_late_report_seconds'] <= $usage['retention_seconds']
+            && $usage['retention_seconds'] <= $usage['receipt_retention_seconds']);
+        foreach ($usage['grants'] as $index => $grant) {
+            $keys($grant, ['user_id', 'access_subject_id', 'auth_snapshot_id', 'tariff_revision_id', 'terms_id',
+                'usage_period_id', 'issued_at', 'lease_expires_at', 'revocation_version']);
+            $subject = $payload['provider']['subjects'][$index];
+            $fail($grant['user_id'] === (string) $payload['users'][$index]['id']
+                && $grant['access_subject_id'] === $subject['access_subject_id'] && $grant['terms_id'] === $subject['terms_id']
+                && $grant['issued_at'] === $payload['issued_at'] && $grant['lease_expires_at'] === $payload['expires_at']);
+            foreach (['auth_snapshot_id', 'tariff_revision_id', 'usage_period_id'] as $field) {
+                $decimal($grant[$field]);
+            }
+            $decimal($grant['revocation_version'], true);
+        }
+    }
+
     private function keyMaterial(): array
     {
         if (!extension_loaded('sodium')) {
@@ -338,7 +389,7 @@ final class NativeNodeAuthorization
     private function policyVersion(): string
     {
         $version = config('native_node_authorization.policy_version');
-        if (!in_array($version, [self::POLICY_VERSION, self::PROVIDER_POLICY_VERSION], true)) {
+        if (!in_array($version, [self::POLICY_VERSION, self::PROVIDER_POLICY_VERSION, self::PROVIDER_USAGE_POLICY_VERSION], true)) {
             throw new DomainException('NATIVE_NODE_AUTHORIZATION_POLICY_INVALID');
         }
         return $version;

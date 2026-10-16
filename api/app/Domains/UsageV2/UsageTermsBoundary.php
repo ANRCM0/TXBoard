@@ -13,11 +13,48 @@ final class UsageTermsBoundary
 
     public function __construct(private SubscriptionTermsTimeline $timeline) {}
 
+    /** The immutable native proof records the complete original window before any later shortening. */
+    public function nativeCutoff(object $grant, object $subscription, object $subject, object $period, array $original): ?int
+    {
+        try {
+            $selected = null;
+            foreach ($this->timeline->resolve((string) $subscription->id, currentRead: true) as $segment) {
+                if ($segment['terms_id'] === (string) $grant->terms_id) { $selected = $segment; }
+            }
+            if ($selected === null || ($original['boundary_revision'] ?? null) !== self::REVISION
+                || (string) $period->terms_id !== ($original['period_creation_terms_id'] ?? null)
+                || SubscriptionTermsTimeline::timestamp($subscription->starts_at) !== $original['subscription_started_at']
+                || SubscriptionTermsTimeline::timestamp($period->starts_at) !== $original['period_started_at']
+                || $selected['effective_from'] !== $original['terms_effective_from']) {
+                throw new UsageError('USAGE_NATIVE_CUTOFF_AMBIGUOUS');
+            }
+            $cutoff = null;
+            $candidates = [$grant->revoked_at, $subject->revoked_at, $subscription->ended_at];
+            foreach ([
+                [$subscription->expires_at, $original['subscription_expires_at']],
+                [$period->ends_at, $original['period_ended_at']],
+                [$selected['effective_until'], $original['terms_effective_until']],
+            ] as [$current, $previous]) {
+                $current = SubscriptionTermsTimeline::timestamp($current, nullable: true);
+                if ($current !== null && ($previous === null || $current < $previous)) { $candidates[] = $current; }
+            }
+            foreach ($candidates as $candidate) {
+                $at = SubscriptionTermsTimeline::timestamp($candidate, nullable: true);
+                if ($at === null) { continue; }
+                if ($at < (int) $grant->issued_at) { throw new UsageError('USAGE_NATIVE_CUTOFF_AMBIGUOUS'); }
+                if ($at < (int) $grant->lease_expires_at) { $cutoff = $cutoff === null ? $at : min($cutoff, $at); }
+            }
+            return $cutoff;
+        } catch (DomainException) {
+            throw new UsageError('USAGE_NATIVE_CUTOFF_AMBIGUOUS');
+        }
+    }
+
     /** Call after locking the subscription and selected period in the owning transaction. */
     public function freeze(string $subscription, string $terms, object $period, int $start, int $end): array
     {
         if ((string) $period->subscription_id !== $subscription || $period->boundary_kind !== 'known'
-            || $period->starts_at === null || $period->ends_at === null || $start >= $end
+            || $period->starts_at === null || $start >= $end
             || !UsageRegistry::covers($start, $end, $period->starts_at, $period->ends_at)) {
             throw new UsageError('USAGE_PERIOD_BOUNDARY');
         }

@@ -30,6 +30,7 @@ class Kernel extends ConsoleKernel
         if (app(\App\Domains\Installation\InstallationAuthority::class)->inspect()['mode'] === 'native') {
             $schedule->command('core:subscriptions-tick --limit=100')->everyMinute()->onOneServer()->withoutOverlapping(5);
             $schedule->command('check:order --limit=100')->everyMinute()->onOneServer()->withoutOverlapping(5);
+            $schedule->command('core:native-work --limit=100')->everyMinute()->onOneServer()->withoutOverlapping(5);
             return;
         }
         Cache::put(CacheKey::get('SCHEDULE_LAST_CHECK_AT', null), time());

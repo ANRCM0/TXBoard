@@ -22,6 +22,7 @@ class NativeCredentialProviderTest extends NativeSubscriptionTestCase
     private array $calls = [];
     private array $receipts = [];
     private array $tombstones = [];
+    private array $currentCredentials = [];
     private int $providerClockOffset = 0;
     private mixed $exchange = null;
     private ProviderTransport $transport;
@@ -30,6 +31,7 @@ class NativeCredentialProviderTest extends NativeSubscriptionTestCase
     {
         parent::setUp();
         (require database_path('migrations/2026_10_16_000001_enable_native_credential_provider.php'))->up();
+        (require database_path('migrations/2026_10_16_000002_enable_native_credential_rotation.php'))->up();
         $this->transport = Mockery::mock(ProviderTransport::class);
         $this->transport->shouldReceive('configuration')->with('fixture-provider')->andReturn([
             'provider_id' => 'fixture-provider', 'provider_instance_epoch' => '7',
@@ -335,13 +337,138 @@ class NativeCredentialProviderTest extends NativeSubscriptionTestCase
     {
         DB::table('tx_credential_provider_registration')->delete();
         $migration = require database_path('migrations/2026_10_16_000001_enable_native_credential_provider.php');
+        $rotation = require database_path('migrations/2026_10_16_000002_enable_native_credential_rotation.php');
+        $rotation->down();
         $migration->down();
         $this->assertFalse(Schema::hasTable('tx_credential_provider_registration'));
         $this->assertFalse(Schema::hasColumn('tx_access_subject', 'authority_version'));
         $migration->up();
+        $rotation->up();
         $this->assertTrue(Schema::hasTable('tx_credential_provider_operation'));
         $this->assertTrue(Schema::hasColumn('tx_access_subject', 'bound_terms_id'));
         $this->assertSame(0, DB::table('tx_access_subject')->count());
+    }
+
+    public function test_immediate_rotation_preserves_subject_and_historical_receipts_without_reissuing(): void
+    {
+        [$user, $subscription] = $this->subscription();
+        $issued = $this->issue($user->id, $subscription);
+        $periods = DB::table('tx_usage_period')->get()->toJson();
+        $rotated = $this->service()->rotate($user->id, (int) $issued['subject_id'], 'rotate-1', $issued['subject_version']);
+        $this->assertSame('succeeded', $rotated['status']);
+        $this->assertSame('2', $rotated['credential_generation']);
+        $this->assertSame($issued['subject_id'], $rotated['subject_id']);
+        $this->assertNotSame($issued['credential_ref'], $rotated['credential_ref']);
+        $this->assertSame($rotated['operation_ref'], DB::table('tx_access_subject')->value('current_credential_operation_ref'));
+        $this->assertSame($periods, DB::table('tx_usage_period')->get()->toJson());
+        $this->assertSame(1, DB::table('tx_subscription')->count());
+        $this->assertSame(1, DB::table('tx_access_subject')->count());
+        $this->assertSame($rotated, $this->service()->rotate($user->id, (int) $issued['subject_id'], 'rotate-1', $issued['subject_version']));
+        $historical = $this->service()->operation($user->id, $issued['operation_ref']);
+        $this->assertSame('succeeded', $historical['status']);
+        $this->assertSame('2', $historical['credential_generation']);
+        $next = $this->service()->rotate($user->id, (int) $issued['subject_id'], 'rotate-2', $rotated['subject_version']);
+        $this->assertSame('3', $next['credential_generation']);
+        $this->assertSame(['issue', 'rotate', 'rotate'], array_column($this->calls, 'operation'));
+        $this->service()->operation($user->id, $rotated['operation_ref']);
+        $this->expectExceptionMessage('NATIVE_CREDENTIAL_ROTATION_POPULATED_ROLLBACK_REFUSED');
+        (require database_path('migrations/2026_10_16_000002_enable_native_credential_rotation.php'))->down();
+    }
+
+    public function test_unknown_rotation_fences_subject_and_recovers_the_same_generation_by_query(): void
+    {
+        [$user, $subscription] = $this->subscription();
+        $issued = $this->issue($user->id, $subscription);
+        $this->exchange = function (array $wire): array {
+            $response = $this->respond($wire);
+            if ($wire['operation'] === 'rotate') {
+                throw new ProviderError('PROVIDER_TRANSPORT_FAILED', true);
+            }
+            return $response;
+        };
+        $pending = $this->service()->rotate($user->id, (int) $issued['subject_id'], 'lost-rotate', $issued['subject_version']);
+        $this->assertSame('unknown', $pending['status']);
+        $this->assertSame('pending', $pending['subject_status']);
+        $this->assertSame('1', $pending['credential_generation']);
+        $this->reject(fn () => $this->service()->rotate($user->id, (int) $issued['subject_id'],
+            'duplicate-rotate', $pending['subject_version']), 'SUBJECT_INVALID');
+        $recovered = $this->service()->recover($user->id, $pending['operation_ref']);
+        $this->assertSame('succeeded', $recovered['status']);
+        $this->assertSame('2', $recovered['credential_generation']);
+        $this->assertSame(['issue', 'rotate', 'query'], array_column($this->calls, 'operation'));
+    }
+
+    public function test_late_rotation_after_ban_is_orphaned_and_provider_revoked(): void
+    {
+        [$user, $subscription] = $this->subscription();
+        $issued = $this->issue($user->id, $subscription);
+        $this->exchange = function (array $wire) use ($user): array {
+            $response = $this->respond($wire);
+            if ($wire['operation'] === 'rotate') {
+                DB::table('tx_user')->where('id', $user->id)->update(['banned' => true]);
+            }
+            return $response;
+        };
+        $result = $this->service()->rotate($user->id, (int) $issued['subject_id'], 'ban-rotate', $issued['subject_version']);
+        $this->assertSame('orphaned', $result['status']);
+        $this->assertSame('revoked', $result['subject_status']);
+        $this->assertNotNull($result['provider_revoked_at']);
+        $this->assertSame('succeeded', $this->service()->operation($user->id, $result['remediation_operation_ref'])['status']);
+    }
+
+    public function test_synchronization_provisions_once_rebinds_stale_terms_and_never_revives_a_tombstone(): void
+    {
+        config(['native_provider_node.provider_id' => 'fixture-provider']);
+        [$user, $subscription] = $this->subscription();
+        $first = $this->service()->synchronize($user->id, (int) $subscription->id);
+        $this->assertCount(2, $first);
+        $this->assertSame([], $this->service()->synchronize($user->id, (int) $subscription->id));
+        $count = count($this->calls);
+        DB::table('tx_subscription')->where('id', $subscription->id)->increment('row_version');
+        $refs = DB::transaction(fn () => $this->service()->recordRotationLocked($user->id, (int) $subscription->id));
+        $this->assertCount(2, $refs);
+        $this->assertCount($count, $this->calls);
+        $rebound = $this->service()->synchronize($user->id, (int) $subscription->id);
+        $this->assertSame(['2', '2'], array_column($rebound, 'credential_generation'));
+        $this->assertSame([], $this->service()->synchronize($user->id, (int) $subscription->id));
+        DB::table('tx_user')->where('id', $user->id)->update(['banned' => true]);
+        $this->service()->synchronize($user->id, (int) $subscription->id);
+        $this->assertSame(2, DB::table('tx_access_subject')->where('status', 'revoked')->count());
+        DB::table('tx_user')->where('id', $user->id)->update(['banned' => false]);
+        $this->service()->synchronize($user->id, (int) $subscription->id);
+        $this->assertSame(2, DB::table('tx_access_subject')->where('status', 'active')->count());
+        $this->assertSame(2, DB::table('tx_access_subject')->where('status', 'revoked')->count());
+    }
+
+    public function test_synchronization_does_not_complete_with_a_rejected_required_profile_or_unconfirmed_tombstone(): void
+    {
+        [$user, $subscription] = $this->subscription();
+        config(['native_provider_node.provider_id' => 'fixture-provider']);
+        $this->exchange = function (array $wire): array {
+            if ($wire['operation'] === 'issue' && $wire['input']['credential_profile_id'] === 'vmess-uuid/v1') {
+                return ['status' => 'rejected', 'result' => null, 'error' => ['code' => 'SUBJECT_REVOKED', 'retryable' => false]];
+            }
+            return $this->respond($wire);
+        };
+        $this->reject(fn () => $this->service()->synchronize($user->id, (int) $subscription->id), 'SYNCHRONIZATION_PENDING');
+        $this->assertSame(1, DB::table('tx_access_subject')->where('status', 'active')->count());
+        $this->exchange = null;
+        $this->service()->synchronize($user->id, (int) $subscription->id);
+        $this->assertSame(2, DB::table('tx_access_subject')->where('status', 'active')->count());
+        DB::table('tx_user')->where('id', $user->id)->update(['banned' => 1]);
+        $this->exchange = function (array $wire): array {
+            if ($wire['operation'] === 'revoke') {
+                return ['status' => 'rejected', 'result' => null,
+                    'error' => ['code' => 'REVOCATION_FACT_CONFLICT', 'retryable' => false]];
+            }
+            return $this->respond($wire);
+        };
+        $this->reject(fn () => $this->service()->synchronize($user->id, (int) $subscription->id), 'SYNCHRONIZATION_PENDING');
+        $this->assertSame(0, DB::table('tx_access_subject')->where('status', '!=', 'revoked')->count());
+        $this->assertSame(2, DB::table('tx_access_subject')->whereNull('provider_revoked_at')->count());
+        $this->exchange = null;
+        $this->service()->synchronize($user->id, (int) $subscription->id);
+        $this->assertSame(0, DB::table('tx_access_subject')->whereNull('provider_revoked_at')->count());
     }
 
     private function subscription(): array
@@ -387,17 +514,31 @@ class NativeCredentialProviderTest extends NativeSubscriptionTestCase
             }
             return $base + ['result' => $original['result']];
         }
-        if ($wire['operation'] === 'issue') {
+        if (in_array($wire['operation'], ['issue', 'rotate'], true)) {
             if (isset($this->tombstones[$input['provider_subject_ref']])) {
                 return array_replace($base, ['status' => 'rejected', 'result' => null,
                     'error' => ['code' => 'SUBJECT_REVOKED', 'retryable' => false]]);
             }
+            $previous = $this->currentCredentials[$input['provider_subject_ref']] ?? null;
+            if ($wire['operation'] === 'rotate'
+                && ($previous === null || $previous['credential_ref'] !== $input['credential_ref']
+                    || $previous['credential_generation'] !== $input['expected_credential_generation'])) {
+                return array_replace($base, ['status' => 'rejected', 'result' => null,
+                    'error' => ['code' => 'GENERATION_CONFLICT', 'retryable' => false]]);
+            }
             $result = [
                 'access_subject_id' => $input['access_subject_id'], 'provider_subject_ref' => $input['provider_subject_ref'],
-                'credential_profile_id' => $input['credential_profile_id'], 'credential_ref' => 'credential_'.str_repeat('a', 32),
-                'credential_generation' => '1', 'issued_at' => time(), 'not_before_at' => $input['not_before_at'],
+                'credential_profile_id' => $input['credential_profile_id'],
+                'credential_ref' => 'credential_'.substr(hash('sha256', $wire['operation_id']), 0, 32),
+                'credential_generation' => $wire['operation'] === 'rotate' ? (string) ((int) $input['expected_credential_generation'] + 1) : '1',
+                'issued_at' => time(), 'not_before_at' => $input['not_before_at'],
                 'credential_expires_at' => $input['credential_expires_at'],
             ];
+            if ($wire['operation'] === 'rotate') {
+                $result += ['previous_credential_ref' => $input['credential_ref'], 'previous_generation' => $input['expected_credential_generation'],
+                    'previous_valid_until' => $result['issued_at'], 'rotation_mode' => 'immediate'];
+            }
+            $this->currentCredentials[$input['provider_subject_ref']] = $result;
         } else {
             $previous = $this->tombstones[$input['provider_subject_ref']] ?? null;
             $requested = (int) $input['revocation_fact_version'];

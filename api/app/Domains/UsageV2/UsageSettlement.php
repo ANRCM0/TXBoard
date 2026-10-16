@@ -48,19 +48,38 @@ final class UsageSettlement
     {
         $this->policy->requireIsolated();
         try {
-            return DB::transaction(function () use ($batchId, $fence, $now) {
+            $native = NativeUsageLedger::enabled();
+            $locatorHash = null; $locators = [];
+            if ($native) {
+                $locator = DB::table('tx_usage_batch')->useWritePdo()->where('id', $batchId)->first();
+                if (!$locator) { return 'stale'; }
+                $entries = json_decode($locator->frozen_entries, true, 32, JSON_THROW_ON_ERROR);
+                if (!is_array($entries) || !hash_equals($locator->frozen_hash, UsageRegistry::hash($entries))) {
+                    throw new UsageError('USAGE_FROZEN_EVIDENCE_CORRUPT');
+                }
+                $locatorHash = $locator->frozen_hash;
+                $locators = app(NativeUsageLedger::class)->grantLocators($entries);
+            }
+            return DB::transaction(function () use ($batchId, $fence, $now, $native, $locatorHash, $locators) {
                 $this->policy->requireTransaction();
+                if ($native) { app(NativeUsageLedger::class)->lockOwners($locators); }
                 $batch = DB::table('tx_usage_batch')->where('id', $batchId)->lockForUpdate()->first();
                 if (!$batch || $batch->status !== 'processing' || (string) $batch->fencing_token !== $fence
                     || (int) $batch->processing_lease_until <= $now) { return 'stale'; }
                 $entries = json_decode($batch->frozen_entries, true, 32, JSON_THROW_ON_ERROR);
                 if (!is_array($entries) || !array_is_list($entries) || !$entries
                     || !hash_equals($batch->frozen_hash, UsageRegistry::hash($entries))
+                    || ($native && !hash_equals($batch->frozen_hash, $locatorHash))
                     || !hash_equals($batch->payload_digest, 'sha256:'.hash('sha256', $batch->canonical_payload))) {
                     throw new UsageError('USAGE_FROZEN_EVIDENCE_CORRUPT');
                 }
                 $totals = []; $periodEntries = []; $rawUp = '0'; $rawDown = '0';
                 foreach ($entries as $entry) {
+                    if ($native) {
+                        $grant = DB::table('tx_auth_snapshot')->where('id', $entry['auth_snapshot_id'])->first();
+                        if (!$grant) { throw new UsageError('USAGE_NATIVE_GRANT_MISSING'); }
+                        app(NativeUsageLedger::class)->verifyNativeGrant($grant);
+                    }
                     $pid = $entry['usage_period_id'];
                     $periodEntries[$pid][] = $entry;
                     $totals[$pid] ??= ['up' => '0','down' => '0','billable' => '0','subscription_id' => $entry['subscription_id']];

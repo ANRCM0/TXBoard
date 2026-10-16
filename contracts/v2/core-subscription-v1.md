@@ -4,6 +4,12 @@
 > native Subscription runtime, a production activation contract or an authority
 > migration. C2-B acceptance is tracked separately from the accepted C2-A batch.
 
+The subsequent [Native C2 runtime v1](native-c2-runtime-v1.md) contract defines
+the candidate activation and complete bounded native runtime. Preparation-only
+statements in this document describe the earlier C2-A/B gate; they do not
+override that explicitly versioned runtime. Its final remote acceptance and
+review remain required before claiming C2 completion.
+
 ## Persistent Installation Authority
 
 The existing singleton `tx_authority_writer_fence` is extended, not replaced.

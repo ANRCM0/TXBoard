@@ -6,6 +6,8 @@ use App\Domains\CredentialProvider\ProviderCodec;
 use App\Domains\CredentialProvider\ProviderMetadataCodec;
 use App\Domains\CredentialProvider\ProviderTransport;
 use App\Domains\Installation\InstallationAuthority;
+use App\Domains\Installation\NativeRuntimeReadiness;
+use App\Domains\UsageV2\NativeUsageLedger;
 use App\Models\Server;
 use App\Models\Setting;
 use App\Services\Subscription\NativeCredentialProviderService;
@@ -79,7 +81,7 @@ final class NativeProviderNodeAuthorization
             $current = $this->projectLocked($node, $locators, $configuration, $credential, $now, true);
             $this->require($current === $before, 'AUTHORITY_CHANGED');
             $now = time();
-            $users = []; $subjects = []; $expiresAt = $now + 120;
+            $users = []; $subjects = []; $expiresAt = $now + $this->signer->publicTrust()['lease_seconds'];
             foreach ($current['rows'] as $index => $row) {
                 $metadataRow = $metadata['credentials'][$index];
                 $this->require($metadataRow['credential_expires_at'] === $row['credential_expires_at'], 'METADATA_INVALID');
@@ -106,8 +108,14 @@ final class NativeProviderNodeAuthorization
             ];
             // projectLocked takes this target lock last, after every account/Subject/receipt.
             $lockedNode = Server::query()->whereKey($node->id)->lockForUpdate()->first();
+            $usage = null;
+            if (config('native_node_authorization.policy_version') === NativeNodeAuthorization::PROVIDER_USAGE_POLICY_VERSION) {
+                $usage = app(NativeUsageLedger::class)->issueLocked($lockedNode, $current['rows'], $now, $expiresAt);
+            }
+            $authorization = $this->signer->issueProviderLocked($lockedNode, $users, $provider, $expiresAt, $now, $usage);
+            if ($usage !== null) { app(NativeUsageLedger::class)->bindEnvelopeLocked($usage, $authorization); }
             return ['protocol_version' => 1, 'node_id' => (int) $node->id, 'users' => $users,
-                'authorization' => $this->signer->issueProviderLocked($lockedNode, $users, $provider, $expiresAt, $now)];
+                'authorization' => $authorization];
         }, 3);
     }
 
@@ -152,6 +160,7 @@ final class NativeProviderNodeAuthorization
             if (!$entitlement['authorized']) { continue; }
             $subject = $subjects[(string) $locator->id];
             $this->require($entitlement['subscription_id'] === (string) $subject->subscription_id, 'EVIDENCE_INVALID');
+            if ($this->credentials->authorizationPendingLocked($subject, $entitlement, $registration)) { continue; }
             $input = $this->credentials->authorizationBindingLocked($subject, $entitlement, $registration);
             if ((string) $subject->bound_subscription_version !== $entitlement['subscription_version']
                 || (string) $subject->bound_terms_id !== $entitlement['terms_id']
@@ -173,6 +182,9 @@ final class NativeProviderNodeAuthorization
         $this->require($lockedNode !== null && $lockedNode->enabled
             && $lockedNode->machine_id === $expectedNode->machine_id
             && $this->profile($lockedNode) === $profile, 'TARGET_CHANGED');
+        if (config('native_node_authorization.policy_version') === NativeNodeAuthorization::PROVIDER_USAGE_POLICY_VERSION) {
+            NativeRuntimeReadiness::assertSupportedNode($lockedNode);
+        }
         $recipient = config('native_provider_node.recipients.'.(string) $lockedNode->id);
         $machineId = $lockedNode->machine_id === null ? null : (int) $lockedNode->machine_id;
         $this->require(is_array($recipient) && count($recipient) === 2 && array_key_exists('machine_id', $recipient)
@@ -257,7 +269,8 @@ final class NativeProviderNodeAuthorization
     private function trust(string $installationId): array
     {
         $trust = $this->signer->publicTrust();
-        $this->require($trust['policy_version'] === NativeNodeAuthorization::PROVIDER_POLICY_VERSION
+        $this->require(in_array($trust['policy_version'], [NativeNodeAuthorization::PROVIDER_POLICY_VERSION,
+                NativeNodeAuthorization::PROVIDER_USAGE_POLICY_VERSION], true)
             && $trust['core_instance_id'] === $installationId, 'TRUST_INVALID');
         return $trust;
     }

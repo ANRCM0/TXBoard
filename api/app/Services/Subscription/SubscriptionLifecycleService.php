@@ -125,7 +125,7 @@ final class SubscriptionLifecycleService
             'effective_at' => SubscriptionTermsTimeline::timestamp($at, true), 'parameters' => $parameters,
         ];
         $now = SubscriptionTermsTimeline::timestamp($at ?? time());
-        return DB::transaction(function () use ($request, $kind, $userId, $subscriptionId, $key, $now, $parameters): array {
+        $result = DB::transaction(function () use ($request, $kind, $userId, $subscriptionId, $key, $now, $parameters): array {
             $installation = app(InstallationAuthority::class)->assertNativeMutation();
             [$user, $slot, $subscriptions] = $this->store->lockAccount($userId, $now, $installation['installation_id']);
             $subscription = $subscriptions->firstWhere('id', $subscriptionId);
@@ -187,7 +187,10 @@ final class SubscriptionLifecycleService
             }
             $result = $this->store->result($subscription, $period, $now, $extra);
             $this->store->record($request, $result, $now);
+            app(NativeCredentialSynchronization::class)->stageLocked($userId, $subscriptionId);
             return $result;
         }, 3);
+        app(NativeCredentialSynchronization::class)->synchronize($userId, $subscriptionId);
+        return $result;
     }
 }

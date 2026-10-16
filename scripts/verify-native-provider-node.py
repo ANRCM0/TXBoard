@@ -22,7 +22,7 @@ def free_port():
         return listener.getsockname()[1]
 
 
-def main():
+def main(closeout=False):
     repo = Path(__file__).resolve().parent.parent
     parser = argparse.ArgumentParser()
     parser.add_argument("--api-root", type=Path, default=repo / "api")
@@ -30,14 +30,15 @@ def main():
     args = parser.parse_args()
     if os.name != "posix":
         raise RuntimeError("The private Provider fixture requires POSIX permissions")
-    scripts = repo / "scripts/tests/native-provider-node"
+    scripts = repo / ("scripts/tests/native-c2" if closeout else "scripts/tests/native-provider-node")
     with tempfile.TemporaryDirectory(prefix="tx-native-provider-node-") as temporary:
         root = Path(temporary)
         os.chmod(root, 0o700)
         (root / "core.sqlite").touch(mode=0o600)
         ports = {}
-        while len(set(ports.values())) < 6:
-            ports = {key: free_port() for key in ("provider", "core", "https", "node", "secondary", "origin")}
+        port_names = ("provider", "core", "https", "node", "secondary", "origin") + (("render",) if closeout else ())
+        while len(set(ports.values())) < len(port_names):
+            ports = {key: free_port() for key in port_names}
         provider_origin = f"https://127.0.0.1:{ports['provider']}"
         core_origin = f"https://127.0.0.1:{ports['https']}"
 
@@ -79,6 +80,10 @@ def main():
                    NATIVE_PROVIDER_NODE_FIXTURE=str(scripts / "fixture.php"),
                    NATIVE_NODE_AUTHORIZATION_PRIVATE_SEED=base64.urlsafe_b64encode(os.urandom(32)).decode().rstrip("="),
                    SSL_CERT_FILE=str(root / "ca.pem"), GOFLAGS="-buildvcs=false")
+        if closeout:
+            env.update(NATIVE_PROVIDER_NODE_RENDER=f"https://127.0.0.1:{ports['render']}",
+                       NATIVE_PROVIDER_NODE_CORE=core_origin,
+                       REDIS_HOST="127.0.0.1", REDIS_PORT="6379")
 
         def fixture(mode):
             result = subprocess.run(["php", str(scripts / "fixture.php"), mode],
@@ -100,13 +105,21 @@ def main():
         processes = []
         proxy = None
         try:
-            processes.append(subprocess.Popen([
+            provider_arguments = [
                 str(provider), "--listen", f"127.0.0.1:{ports['provider']}",
                 "--store", str(private / "provider.db"), "--provider-id", "primary-provider", "--epoch", "1",
                 "--tls-cert", str(root / "server.pem"), "--tls-key", str(root / "server.key"),
                 "--client-ca", str(root / "ca.pem"), "--client-fingerprint", fingerprint["core"],
                 "--delivery-trust", str(root / "trust.json"), "--node-client-fingerprint", fingerprint["node"],
-            ], stdin=subprocess.DEVNULL, stdout=provider_log, stderr=subprocess.STDOUT))
+            ]
+            if closeout:
+                provider_arguments += [
+                    "--subscription-listen", f"127.0.0.1:{ports['render']}",
+                    "--subscription-tls-cert", str(root / "server.pem"),
+                    "--subscription-tls-key", str(root / "server.key"),
+                ]
+            processes.append(subprocess.Popen(provider_arguments, stdin=subprocess.DEVNULL,
+                                              stdout=provider_log, stderr=subprocess.STDOUT))
             for _ in range(100):
                 if processes[0].poll() is not None:
                     raise RuntimeError("Provider startup failed")
@@ -119,6 +132,8 @@ def main():
                 raise RuntimeError("Provider startup timed out")
             print(fixture("seed").strip(), flush=True)
             env["CORE_INSTALLATION_MODE"] = "native"
+            if closeout:
+                env["CORE_INSTALLATION_EPOCH"] = "2"
             processes.append(subprocess.Popen([
                 "php", "-S", f"127.0.0.1:{ports['core']}", str(scripts / "router.php"),
             ], cwd=args.api_root, env=env, stdin=subprocess.DEVNULL,
@@ -138,11 +153,19 @@ def main():
                 def log_message(self, *arguments):
                     pass
 
+                def unavailable(self):
+                    content = b'{"error":{"code":"TEMPORARILY_UNAVAILABLE","message":"Fixture temporarily unavailable"}}'
+                    self.send_response(503)
+                    self.send_header("Content-Type", "application/json")
+                    self.send_header("Content-Length", str(len(content)))
+                    self.end_headers()
+                    self.wfile.write(content)
+
                 def handle_core(self):
                     if (root / "offline").exists() and self.headers.get("X-TX-Node-ID") == "1":
-                        self.send_error(503)
+                        self.unavailable()
                         return
-                    if not self.path.startswith("/txapi/node/v1/"):
+                    if not self.path.startswith("/txapi/node/v1/") and not (closeout and self.path.startswith("/txapi/")):
                         self.send_error(404)
                         return
                     length = int(self.headers.get("Content-Length", "0"))
@@ -167,12 +190,13 @@ def main():
                         self.end_headers()
                         self.wfile.write(content)
                     except (OSError, http.client.HTTPException):
-                        self.send_error(503)
+                        self.unavailable()
                     finally:
                         upstream.close()
 
                 do_GET = handle_core
                 do_POST = handle_core
+                do_PATCH = handle_core
 
             proxy = ThreadingHTTPServer(("127.0.0.1", ports["https"]), Handler)
             context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
@@ -180,6 +204,18 @@ def main():
             context.load_cert_chain(str(root / "server.pem"), str(root / "server.key"))
             proxy.socket = context.wrap_socket(proxy.socket, server_side=True)
             threading.Thread(target=proxy.serve_forever, daemon=True).start()
+            if closeout:
+                print(fixture("account").strip(), flush=True)
+                subprocess.run([
+                    "node", str(repo / "scripts/native-subscription-client.mjs"),
+                    "--core-origin", core_origin,
+                    "--provider-origin", env["NATIVE_PROVIDER_NODE_RENDER"],
+                    "--provider-id", "primary-provider",
+                    "--subject-id", str(json.loads((root / "fixture.json").read_text())["subject_id"]),
+                    "--bearer-file", str(root / "user-bearer"),
+                    "--ca-file", str(root / "ca.pem"), "--trust-file", str(root / "trust.json"),
+                    "--output", str(root / "subscription.json"),
+                ], cwd=repo, env=env, check=True, timeout=60)
             fixture_state = json.loads((root / "fixture.json").read_text())
             auth = {
                 "enabled": True, "state_dir": str(root / "node-state/authorization"),
@@ -200,6 +236,12 @@ def main():
                 "node": {"track_interval": 1, "push_interval": 5, "pull_interval": 60},
                 "authorization": auth,
             }
+            if closeout:
+                node_config["authorization"]["policy_version"] = "native-provider-authorization/v2"
+                node_config["usage_v2"] = {
+                    "enabled": True, "isolated_copy": False,
+                    "directory": str(root / "node-usage"), "ca_file": str(root / "ca.pem"),
+                }
             (root / "node.json").write_text(json.dumps(node_config))
             node_config["panel"]["node_id"] = fixture_state["secondary_node_id"]
             node_config["kernel"]["config_dir"] = str(root / "node-secondary-state")
@@ -207,10 +249,12 @@ def main():
             (root / "node-secondary.json").write_text(json.dumps(node_config))
             subprocess.run([
                 "go", "test", "-race", "-count=1", "-timeout=180s",
-                "-run", "^TestNativeProviderCoreMaterialAndRealVLESS$", "./internal/service",
+                "-run", "^TestNativeC2RuntimeEndToEnd$" if closeout else "^TestNativeProviderCoreMaterialAndRealVLESS$",
+                "./internal/service",
             ], cwd=repo / "node", env=env, check=True, timeout=600)
             print(fixture("verify").strip(), flush=True)
-            print("Real Provider Node consumption passed; private material and fixture removed on exit.", flush=True)
+            print("Real native C2 runtime passed; private fixture removed on exit." if closeout else
+                  "Real Provider Node consumption passed; private material and fixture removed on exit.", flush=True)
         finally:
             if proxy is not None:
                 proxy.shutdown()

@@ -11,6 +11,7 @@ final class UsageRegistry
 
     public function source(int $nodeId, string $installationRef, int $now): object
     {
+        if (NativeUsageLedger::enabled()) { throw new UsageError('USAGE_NATIVE_SOURCE_AUTOMATIC'); }
         $this->policy->requireIsolated();
         if (!preg_match('/^[A-Za-z0-9:_-]{8,80}$/D', $installationRef)) { throw new UsageError('USAGE_INSTALLATION_INVALID'); }
         return DB::transaction(function () use ($nodeId, $installationRef, $now) {
@@ -34,6 +35,7 @@ final class UsageRegistry
 
     public function tariff(int $nodeId, string $numerator, string $denominator, int $from, int $until): object
     {
+        if (NativeUsageLedger::enabled()) { throw new UsageError('USAGE_NATIVE_TARIFF_AUTOMATIC'); }
         $this->policy->requireIsolated(); UsagePayload::decimal($numerator, true); UsagePayload::decimal($denominator, false);
         UsagePayload::time($from); UsagePayload::time($until);
         if ($from >= $until || !DB::table('tx_server')->where('id', $nodeId)->exists()) { throw new UsageError('USAGE_TARIFF_INVALID'); }
@@ -48,6 +50,7 @@ final class UsageRegistry
 
     public function grant(int $sourceId, int $subjectId, int $termsId, int $periodId, int $tariffId, int $issued, int $expires): object
     {
+        if (NativeUsageLedger::enabled()) { throw new UsageError('USAGE_NATIVE_GRANT_AUTOMATIC'); }
         $this->policy->requireIsolated(); UsagePayload::time($issued); UsagePayload::time($expires);
         if ($issued >= $expires) { throw new UsageError('USAGE_LEASE_INVALID'); }
         return DB::transaction(function () use ($sourceId, $subjectId, $termsId, $periodId, $tariffId, $issued, $expires) {
@@ -63,7 +66,7 @@ final class UsageRegistry
                 || $subject->revoked_at !== null || $sub->status !== 'active'
                 || (string) $terms->subscription_id !== (string) $sub->id || (string) $period->subscription_id !== (string) $sub->id
                 || (int) $tariff->node_id !== (int) $source->node_id
-                || $period->boundary_kind !== 'known' || $period->starts_at === null || $period->ends_at === null
+                || $period->boundary_kind !== 'known' || $period->starts_at === null
                 || !self::covers($issued, $expires, $sub->starts_at, $sub->expires_at)
                 || !self::covers($issued, $expires, $period->starts_at, $period->ends_at)
                 || !self::covers($issued, $expires, $tariff->effective_from, $tariff->effective_until)) {
@@ -82,6 +85,7 @@ final class UsageRegistry
 
     public function capability(int $nodeId, int $now): ?array
     {
+        if (NativeUsageLedger::enabled()) { return null; }
         if (!$this->policy->enabled()) { return null; }
         $this->policy->requireIsolated();
         return DB::transaction(fn () => $this->capabilityLocked($nodeId, $now), 3);
@@ -120,7 +124,8 @@ final class UsageRegistry
                 'user_id' => (string) $grant->user_id, 'access_subject_id' => (string) $grant->access_subject_id,
                 'auth_snapshot_id' => (string) $grant->id, 'tariff_revision_id' => (string) $grant->tariff_revision_id,
                 'terms_id' => (string) $grant->terms_id, 'usage_period_id' => (string) $grant->usage_period_id,
-                'issued_at' => (int) $grant->issued_at, 'lease_expires_at' => min((int) $grant->lease_expires_at, (int) $period->ends_at,
+                'issued_at' => (int) $grant->issued_at, 'lease_expires_at' => min((int) $grant->lease_expires_at,
+                    $period->ends_at === null ? PHP_INT_MAX : (int) $period->ends_at,
                     $boundary['terms_effective_until'] ?? PHP_INT_MAX, $sub->expires_at === null ? PHP_INT_MAX : (int) $sub->expires_at),
                 'revocation_version' => (string) $grant->revocation_version,
             ];

@@ -1,0 +1,43 @@
+{
+  "schema": "tx-core.c2-runtime-verification/v1",
+  "date": "2026-10-16",
+  "branch": "feat/core-c2-closeout",
+  "base": "38c6912a2376f86edaf77a20c6c0c6f20a2d47ab",
+  "dependencies": [247, 248, 249, 250],
+  "status": {
+    "implementation": "candidate",
+    "remote_acceptance": "pending",
+    "review": "cross-component static review in progress",
+    "merged": false,
+    "published": false
+  },
+  "scope": [
+    "Persistent fresh-native activation with actual Provider capability probing outside SQL transactions.",
+    "Native identity and immutable published catalog API, actual free checkout and queued fulfillment.",
+    "Provider store version 2, immediate generation rotation, durable synchronization and strict pending Subject handling.",
+    "Direct recipient proof-of-possession subscription rendering with a real standalone client.",
+    "One signed policy binds Node access, Provider material and finite native usage Session.",
+    "Durable original-session I/O evidence, bounded completed-operation aggregation and restart replay.",
+    "Core receipts, immutable billing evidence, original Period settlement and SQL recovery work.",
+    "Known authorization-cutoff rejections retain local quarantine without a fabricated receipt."
+  ],
+  "test_location_policy": {
+    "heavy": "GitHub Actions only, following the user's instruction.",
+    "local": "Formatting, syntax, documentation links, diff and lightweight native naming checks.",
+    "linux_environment": "User-authorized deletion completed; the large local Linux distribution is not recreated."
+  },
+  "workflow": ".github/workflows/ci-native-c2.yml",
+  "planned_remote_acceptance": {
+    "core": "Related installation, Subscription, Provider and UsageV2 boundaries, production PHP syntax and HTTP/schema audit.",
+    "mysql": "MySQL 8.4 production migrations and dedicated native transaction fixtures.",
+    "node": "Provider, shared protocols, authorization, native usage, actual kernel adapters and Service under Go race.",
+    "live": "Actual native activation without admission substitution, HTTP registration/login, Redis queue fulfillment, direct render consumer, two VLESS Nodes, expiry, original-period restart replay, reset, renewal, rotation, revoke and account ban.",
+    "sql_evidence": "Each settled batch's canonical entries match frozen evidence, ledger ownership and exact original Period counters."
+  },
+  "remaining_release_scope": [
+    "C3 money ledger, payment attempts and refunds.",
+    "C4 formal Internal API, production PKI/overlap rotation and long-lived subscription URL lifecycle.",
+    "C5 installation, normal update/restore and fixed release images.",
+    "Legacy migration and complete protocol, UDP, kernel, platform and HA matrices."
+  ]
+}

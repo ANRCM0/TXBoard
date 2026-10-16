@@ -40,6 +40,15 @@ final class CredentialProviderController
         });
     }
 
+    public function rotate(Request $request, NativeCredentialProviderService $service): JsonResponse
+    {
+        return $this->run($request, ['expected_version'], function () use ($request, $service): array {
+            $input = $request->validate(['expected_version' => ['required', 'regex:/\A[1-9][0-9]{0,18}\z/D']]);
+            return $service->rotate((int) Auth::guard('sanctum')->id(), (int) $request->route('id'),
+                $this->key($request), $input['expected_version']);
+        });
+    }
+
     public function recover(Request $request, NativeCredentialProviderService $service): JsonResponse
     {
         return $this->run($request, [], fn (): array => $service->recover(

@@ -193,7 +193,7 @@ final class AuthController
         $current = Auth::guard('sanctum')->user()->currentAccessToken();
         if ($current && method_exists($current, 'delete')) {
             app(IdentityPhase::class)->run(IdentityPhase::SESSION_REVOKE, function () use ($current): void {
-                if (!IdentityPhase::enabled()) { $current->delete(); return; }
+                if (!IdentityPhase::locksAccount()) { $current->delete(); return; }
                 $user = User::query()->whereKey(Auth::guard('sanctum')->id())->lockForUpdate()->firstOrFail();
                 $token = $user->tokens()->whereKey($current->getKey())->lockForUpdate()->first();
                 if ($token) $token->delete();
@@ -224,7 +224,7 @@ final class AuthController
     {
         $deleted = app(IdentityPhase::class)->run(IdentityPhase::SESSION_REVOKE, function () use ($sessionId): int {
             $user = Auth::guard('sanctum')->user();
-            if (IdentityPhase::enabled()) $user = User::query()->whereKey($user->getKey())->lockForUpdate()->firstOrFail();
+            if (IdentityPhase::locksAccount()) $user = User::query()->whereKey($user->getKey())->lockForUpdate()->firstOrFail();
             return $user->tokens()->whereKey($sessionId)->delete();
         });
         if (!$deleted) {
@@ -269,7 +269,7 @@ final class AuthController
                 'Invalid current password', 400);
         }
         $saved = app(IdentityPhase::class)->run(IdentityPhase::USER_PASSWORD_CHANGE, function () use (&$user, $params): bool {
-            if (IdentityPhase::enabled()) {
+            if (IdentityPhase::locksAccount()) {
                 $currentToken = $user->currentAccessToken();
                 $user = User::query()->whereKey($user->getKey())->lockForUpdate()->firstOrFail();
                 $user->withAccessToken($currentToken);
@@ -285,9 +285,9 @@ final class AuthController
 
         $current = $user->currentAccessToken();
         app(IdentityPhase::class)->run(IdentityPhase::SESSION_REVOKE, function () use ($user, $current): void {
-            $owner = IdentityPhase::enabled() ? User::query()->whereKey($user->getKey())->lockForUpdate()->firstOrFail() : $user;
+            $owner = IdentityPhase::locksAccount() ? User::query()->whereKey($user->getKey())->lockForUpdate()->firstOrFail() : $user;
             if ($current && method_exists($current, 'getKey')) {
-                if (IdentityPhase::enabled() && !$owner->tokens()->whereKey($current->getKey())->lockForUpdate()->first()) abort(401);
+                if (IdentityPhase::locksAccount() && !$owner->tokens()->whereKey($current->getKey())->lockForUpdate()->first()) abort(401);
                 $owner->tokens()->where('id', '!=', $current->getKey())->delete();
             } else {
                 $owner->tokens()->delete();

@@ -22,6 +22,7 @@ final class TxapiNativeCredentialProviderTest extends NativeSubscriptionTestCase
     {
         parent::setUp();
         (require database_path('migrations/2026_10_16_000001_enable_native_credential_provider.php'))->up();
+        (require database_path('migrations/2026_10_16_000002_enable_native_credential_rotation.php'))->up();
         app(InstallationAuthority::class)->shouldReceive('assertRuntime')->andReturnNull();
         $plugins = Mockery::mock(PluginManager::class);
         $plugins->shouldReceive('initializeEnabledPlugins')->andReturnNull();
@@ -36,14 +37,21 @@ final class TxapiNativeCredentialProviderTest extends NativeSubscriptionTestCase
             $this->providerCalls++;
             $input = $request['input'];
             $result = ['access_subject_id' => $input['access_subject_id'], 'provider_subject_ref' => $input['provider_subject_ref']];
-            $result += $request['operation'] === 'issue' ? [
+            $result += in_array($request['operation'], ['issue', 'rotate'], true) ? [
                 'credential_profile_id' => $input['credential_profile_id'],
-                'credential_ref' => 'credential_'.str_repeat('b', 32), 'credential_generation' => '1',
+                'credential_ref' => 'credential_'.substr(hash('sha256', $request['operation_id']), 0, 32),
+                'credential_generation' => $request['operation'] === 'rotate'
+                    ? (string) ((int) $input['expected_credential_generation'] + 1) : '1',
                 'issued_at' => time(), 'not_before_at' => $input['not_before_at'],
                 'credential_expires_at' => $input['credential_expires_at'],
             ] : [
                 'accepted_revocation_fact_version' => $input['revocation_fact_version'], 'provider_revoked_at' => time(),
             ];
+            if ($request['operation'] === 'rotate') {
+                $result += ['previous_credential_ref' => $input['credential_ref'],
+                    'previous_generation' => $input['expected_credential_generation'],
+                    'previous_valid_until' => $result['issued_at'], 'rotation_mode' => 'immediate'];
+            }
             return ['status' => 'succeeded', 'result' => $result, 'error' => null];
         });
         $this->app->instance(ProviderTransport::class, $transport);
@@ -83,8 +91,32 @@ final class TxapiNativeCredentialProviderTest extends NativeSubscriptionTestCase
         $this->postJson('/txapi/me/credential-operations/'.$operation['operation_ref'].'/recover')->assertNotFound();
         $this->postJson('/txapi/me/access-subjects/'.$operation['subject_id'].'/revoke',
             ['expected_version' => $operation['subject_version']], ['Idempotency-Key' => 'cross-revoke'])->assertNotFound();
+        $this->postJson('/txapi/me/access-subjects/'.$operation['subject_id'].'/rotate',
+            ['expected_version' => $operation['subject_version']], ['Idempotency-Key' => 'cross-rotate'])->assertNotFound();
         $this->assertSame(1, $this->providerCalls);
         $this->assertSame('active', DB::table('tx_access_subject')->value('status'));
+    }
+
+    public function test_authenticated_rotation_is_immediate_idempotent_and_has_closed_inputs(): void
+    {
+        [$owner, $subscription] = $this->subscription();
+        $operation = app(NativeCredentialProviderService::class)->issue($owner->id,
+            (int) $subscription['subscription_id'], 'primary-provider', 'vless-uuid/v1', 'rotate-fixture', '1');
+        Sanctum::actingAs($owner);
+        $url = '/txapi/me/access-subjects/'.$operation['subject_id'].'/rotate';
+        $body = ['expected_version' => $operation['subject_version']];
+        $this->postJson($url, $body)->assertStatus(422)->assertJsonPath('error.code', 'IDEMPOTENCY_KEY_REQUIRED');
+        $this->postJson($url, $body + ['rotation_mode' => 'overlap'], ['Idempotency-Key' => 'rotation-closed'])
+            ->assertStatus(422);
+        $rotated = $this->postJson($url, $body, ['Idempotency-Key' => 'rotation'])
+            ->assertOk()->assertJsonPath('data.credential_generation', '2')
+            ->assertJsonPath('data.subject_id', $operation['subject_id'])->json('data');
+        $this->assertNotSame($operation['credential_ref'], $rotated['credential_ref']);
+        $this->postJson($url, $body, ['Idempotency-Key' => 'rotation'])
+            ->assertOk()->assertJsonPath('data.operation_ref', $rotated['operation_ref']);
+        $this->getJson('/txapi/me/credential-operations/'.$operation['operation_ref'])->assertOk();
+        $this->assertSame(2, $this->providerCalls);
+        $this->assertSame(1, DB::table('tx_access_subject')->count());
     }
 
     public function test_authentication_key_and_closed_inputs_are_enforced_before_provider_calls(): void

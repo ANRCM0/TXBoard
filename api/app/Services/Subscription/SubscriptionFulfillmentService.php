@@ -31,7 +31,7 @@ final class SubscriptionFulfillmentService
         if (!$locator) {
             throw new DomainException('NATIVE_ORDER_MISSING');
         }
-        return DB::transaction(function () use ($orderId, $locator, $now): array {
+        $result = DB::transaction(function () use ($orderId, $locator, $now): array {
             $installation = app(InstallationAuthority::class)->assertNativeMutation();
             [$user, $slot, $subscriptions] = $this->store->lockAccount((int) $locator->user_id, $now, $installation['installation_id']);
             $order = Order::query()->whereKey($orderId)->lockForUpdate()->first();
@@ -97,8 +97,11 @@ final class SubscriptionFulfillmentService
                 throw new DomainException('NATIVE_ORDER_STATUS_CONFLICT');
             }
             $this->store->record($request, $result, $now);
+            app(NativeCredentialSynchronization::class)->stageLocked((int) $user->id, (int) $result['subscription_id']);
             return $result;
         }, 3);
+        app(NativeCredentialSynchronization::class)->synchronize((int) $locator->user_id, (int) $result['subscription_id']);
+        return $result;
     }
 
     private function create(object $user, object $slot, array $grant, string $installationId, int $now): array

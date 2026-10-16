@@ -56,6 +56,16 @@ class ProviderTransportTest extends TestCase
         $transport->metadata($registration, ProviderMetadataCodecTest::request());
     }
 
+    public function test_capabilities_refuses_registration_drift_before_network(): void
+    {
+        $this->configure();
+        $transport = new ProviderTransport();
+        $registration = $transport->configuration('test-provider');
+        config(['credential_provider.providers.test-provider.endpoint' => 'https://different.example:8443/operations']);
+        $this->expectExceptionMessage('PROVIDER_REGISTRATION_MISMATCH');
+        $transport->capabilities($registration);
+    }
+
     public function test_http_endpoint_and_userinfo_are_refused(): void
     {
         $this->configure();
