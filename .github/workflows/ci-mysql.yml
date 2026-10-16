@@ -284,6 +284,13 @@ jobs:
           php artisan key:generate
       - name: Apply native production schema
         run: php artisan migrate --force --no-interaction
+      - name: Native billing ledger and payment evidence on MySQL 8.4
+        run: >-
+          php artisan test
+          tests/Feature/Billing/NativeMoneyLedgerTest.php
+          tests/Feature/Billing/NativeMoneyLedgerMysqlConcurrencyTest.php
+          tests/Feature/Billing/NativePaymentAttemptsTest.php
+          tests/Feature/Billing/NativePaymentAttemptsMysqlConcurrencyTest.php
       - name: Native domain transactions and application adapters on MySQL 8.4
         run: >-
           php artisan test
@@ -302,12 +309,5 @@ jobs:
           tests/Feature/Subscription/NativeIdentityAndCatalogTest.php
           tests/Feature/Installation/NativeRuntimeReadinessTest.php
           tests/Feature/UsageV2/NativeRuntimeUsageTest.php
-      - name: Native billing ledger and payment evidence on MySQL 8.4
-        run: >-
-          php artisan test
-          tests/Feature/Billing/NativeMoneyLedgerTest.php
-          tests/Feature/Billing/NativeMoneyLedgerMysqlConcurrencyTest.php
-          tests/Feature/Billing/NativePaymentAttemptsTest.php
-          tests/Feature/Billing/NativePaymentAttemptsMysqlConcurrencyTest.php
       - name: Native receipt concurrency and SQL crash recovery on MySQL 8.4
         run: php artisan test tests/Feature/UsageV2/UsageMysqlConcurrencyTest.php

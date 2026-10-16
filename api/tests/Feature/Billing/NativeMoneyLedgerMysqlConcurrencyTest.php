@@ -32,7 +32,7 @@ final class NativeMoneyLedgerMysqlConcurrencyTest extends NativeRuntimeTestCase
             fclose($parent);
             stream_set_timeout($child, 15);
             try {
-                $this->session();
+                $this->configureMysqlSession();
                 if ($this->read($child) !== 'POST') { throw new RuntimeException('START_SIGNAL_MISSING'); }
                 $announced = false;
                 DB::connection()->beforeExecuting(function (string $sql) use ($child, &$announced): void {
@@ -56,7 +56,7 @@ final class NativeMoneyLedgerMysqlConcurrencyTest extends NativeRuntimeTestCase
         $finished = false;
         $released = false;
         try {
-            $this->session();
+            $this->configureMysqlSession();
             DB::connection()->beforeExecuting(function (string $sql) use ($parent, &$released): void {
                 if ($released || !str_contains(strtolower($sql), 'insert into `tx_money_journal`')) { return; }
                 $released = true;
@@ -91,7 +91,7 @@ final class NativeMoneyLedgerMysqlConcurrencyTest extends NativeRuntimeTestCase
         $this->assertSame(0, pcntl_wexitstatus($status));
     }
 
-    private function session(): void
+    private function configureMysqlSession(): void
     {
         DB::statement('SET SESSION TRANSACTION ISOLATION LEVEL REPEATABLE READ');
         DB::statement('SET SESSION innodb_lock_wait_timeout = 10');
