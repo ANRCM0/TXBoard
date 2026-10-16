@@ -15,6 +15,26 @@ slot/history, original order and frozen purchase, then stable money accounts,
 then attempt/receipt and financial settlement evidence. Replays use permanent
 keys. Provider requests never hold SQL locks.
 
+The reservation locator is an order-owned aggregate: after locking its user and
+order, Core reads it with a current locking read before selecting the money
+union. That union always covers provider clearing, sales and refund liability;
+wallet accounts participate only when the order has a reservation. Core locks
+the complete conditional union in sorted account identity order before reading
+journals, receipts, allocations or settlement decisions and validating attempt
+financial evidence. Reservation journal validation follows that union as well.
+Current locking reads of narrowly scoped, user-owned attempt/dispatch locators
+may precede the union to recover the original immutable identity or request key.
+Those locators do not prove an amount, payment status or winning decision and
+cannot replace the financial evidence validation after the money locks.
+
+MySQL repeatable-read admission checks may establish a snapshot before the user
+lock is acquired. Ordinary snapshot reads therefore cannot select an existing
+settlement decision or the first observation timestamp after waiting for another
+transaction. Financial mutation and replay use explicit current locking reads
+and validate the original evidence; read-only reconciliation retains its separate
+snapshot reader. A duplicate success cannot become a new refund liability merely
+because the original winning settlement was absent from an earlier snapshot.
+
 An accepted provider transaction atomically writes a verified receipt, balanced
 money journal, immutable settlement decision and, if this purchase wins payment,
 one order-payment allocation plus a durable `order.fulfill` work item. No

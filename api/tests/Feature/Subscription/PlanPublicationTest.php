@@ -54,6 +54,7 @@ class PlanPublicationTest extends TestCase
         (require database_path('migrations/2026_10_15_000003_enable_plan_publication.php'))->up();
 
         $authority = Mockery::mock(InstallationAuthority::class);
+        $authority->shouldReceive('inspect')->andReturn(['mode' => 'native', 'phase' => 'initializing']);
         $authority->shouldReceive('assertCatalogMutation')->andReturnUsing(function (): void {
             $this->assertGreaterThan(0, DB::transactionLevel());
             $this->admissions++;

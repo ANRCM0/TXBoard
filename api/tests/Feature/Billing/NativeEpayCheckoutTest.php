@@ -255,15 +255,25 @@ final class NativeEpayCheckoutTest extends NativePaymentTestCase
     {
         [$user, $order] = $this->purchase();
         $started = app(NativePaymentCheckout::class)->start($user->id, $order->id, $this->payment->id, 'worker-query');
-        Http::fake(function () {
-            $this->assertSame(0, DB::transactionLevel());
+        $reference = DB::table('tx_payment_dispatch')->where('attempt_id', $started['attempt']['attempt_id'])
+            ->value('provider_order_ref');
+        $queries = [];
+        Http::fake(static function ($request) use (&$queries) {
+            $queries[] = ['transaction_level' => DB::transactionLevel(), 'method' => $request->method(),
+                'url' => $request->url(), 'act' => $request['act'], 'out_trade_no' => $request['out_trade_no'],
+                'pid' => $request['pid'], 'key' => $request['key']];
             throw new ConnectionException('provider unavailable');
         });
         $result = app(NativeBillingRecovery::class)->recoverPayments();
         $this->assertSame('unknown', $result[$started['attempt']['attempt_id']]['status']);
         $this->assertSame([], app(NativeBillingRecovery::class)->recoverPayments());
-        Http::assertSentCount(1);
+        // A throwing fake has no response for Laravel's recorded request/response pairs.
+        $this->assertSame([['transaction_level' => 0, 'method' => 'POST',
+            'url' => 'https://epay.example.test/gateway/api.php', 'act' => 'order', 'out_trade_no' => $reference,
+            'pid' => '42', 'key' => 'original-merchant-secret']], $queries);
+        $this->assertSame('unknown', DB::table('tx_payment_attempt')->value('status'));
         $this->assertSame(0, DB::table('tx_payment_receipt')->count());
+        $this->assertSame(0, DB::table('tx_money_journal')->count());
     }
 
     private function creditWallet(User $user, string $amount): string

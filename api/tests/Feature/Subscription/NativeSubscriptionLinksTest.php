@@ -110,6 +110,16 @@ final class NativeSubscriptionLinksTest extends NativeRuntimeTestCase
         $service->redeem($link['link_ref'], $link['link_token'], $this->recipient());
     }
 
+    public function test_link_redeeming_never_includes_a_currently_hidden_node(): void
+    {
+        [$user, $subject] = $this->binding();
+        $service = app(NativeSubscriptionLinks::class);
+        $link = $service->issue($user->id, $subject->id, time() + 3600, 'hidden-node-link');
+        DB::table('tx_server')->where('id', $this->node->id)->update(['show' => false]);
+        $this->expectExceptionMessage('NATIVE_SUBSCRIPTION_DELIVERY_NODES_UNAVAILABLE');
+        $service->redeem($link['link_ref'], $link['link_token'], $this->recipient());
+    }
+
     private function recipient(): string
     {
         return RenderGrantCodec::base64url(sodium_crypto_sign_publickey(sodium_crypto_sign_keypair()));
@@ -117,6 +127,7 @@ final class NativeSubscriptionLinksTest extends NativeRuntimeTestCase
 
     private function binding(): array
     {
+        DB::table('tx_server')->where('id', $this->node->id)->update(['show' => true]);
         $this->activate();
         [$user, $subscription] = $this->subscribe();
         app(NativeCredentialSynchronization::class)->recover(100);

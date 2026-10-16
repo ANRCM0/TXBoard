@@ -11,6 +11,18 @@ final class NativeWalletReservations
 {
     public function __construct(private readonly NativeMoneyLedger $ledger, private readonly PurchasedOrderGrant $grants) {}
 
+    /** Reserve/capture/release and mixed payment replay share one canonically ordered account union. */
+    public function lockMoneyAccountsLocked(array $installation, int $userId, string $currency): void
+    {
+        $this->ledger->lockAccountsLocked($installation, $userId, $currency, [
+            ['owner_id' => '0', 'purpose' => 'provider_clearing'],
+            ['owner_id' => '0', 'purpose' => 'refund_liability'],
+            ['owner_id' => '0', 'purpose' => 'sales_revenue'],
+            ['owner_id' => (string) $userId, 'purpose' => 'wallet_available'],
+            ['owner_id' => (string) $userId, 'purpose' => 'wallet_reserved'],
+        ]);
+    }
+
     public function reserveLocked(array $installation, int $userId, Order $order, OrderPurchaseTerms $terms,
         string $amountMinor, string $requestKey): array
     {
@@ -18,21 +30,23 @@ final class NativeWalletReservations
         $amount = MoneyValue::minor($amountMinor, true);
         $key = MoneyValue::key($requestKey);
         $this->require(bccomp($amount, MoneyValue::minor($purchase['price_minor'], true)) <= 0, 'WALLET_AMOUNT_EXCEEDS_PRICE');
+        $reservation = DB::table('tx_wallet_order_reservation')->where('order_id', $order->id)->lockForUpdate()->first();
+        $this->lockMoneyAccountsLocked($installation, $userId, $purchase['currency']);
         $existing = DB::table('tx_wallet_order_reservation')->where('installation_id', $installation['installation_id'])
-            ->where('user_id', $userId)->where('key_hash', hash('sha256', $key))->first();
+            ->where('user_id', $userId)->where('key_hash', hash('sha256', $key))->sharedLock()->first();
         if ($existing !== null) {
             $this->require((string) $existing->order_id === (string) $order->id && $existing->request_key === $key
                 && (string) $existing->amount_minor === $amount,
                 'WALLET_IDEMPOTENCY_CONFLICT');
         } else {
-            $existing = DB::table('tx_wallet_order_reservation')->where('order_id', $order->id)->first();
+            $existing = $reservation;
             $this->require($existing === null || ($existing->request_key === $key
                 && (string) $existing->amount_minor === $amount), 'WALLET_IDEMPOTENCY_CONFLICT');
         }
         if ($existing === null) {
             $this->require((int) $order->status === Order::STATUS_PENDING
-                && !DB::table('tx_order_payment')->where('order_id', $order->id)->exists(), 'WALLET_ORDER_NOT_PAYABLE');
-            $this->require(!DB::table('tx_payment_attempt')->where('order_id', $order->id)->exists(),
+                && !DB::table('tx_order_payment')->where('order_id', $order->id)->sharedLock()->exists(), 'WALLET_ORDER_NOT_PAYABLE');
+            $this->require(!DB::table('tx_payment_attempt')->where('order_id', $order->id)->sharedLock()->exists(),
                 'WALLET_CHANNEL_PAYMENT_PENDING');
             $payload = [
                 'installation_id' => $installation['installation_id'], 'user_id' => (string) $userId,
@@ -54,7 +68,7 @@ final class NativeWalletReservations
     public function channelAmountLocked(array $installation, int $userId, Order $order, OrderPurchaseTerms $terms): string
     {
         $purchase = $this->purchase($installation, $userId, $order, $terms);
-        $row = DB::table('tx_wallet_order_reservation')->where('order_id', $order->id)->first();
+        $row = DB::table('tx_wallet_order_reservation')->where('order_id', $order->id)->lockForUpdate()->first();
         if ($row === null) { return MoneyValue::minor($purchase['price_minor'], true); }
         $result = $this->verifyLocked($installation, $userId, $order, $terms, $row);
         return $result['channel_minor'];
@@ -62,7 +76,7 @@ final class NativeWalletReservations
 
     public function captureLocked(array $installation, int $userId, Order $order, OrderPurchaseTerms $terms): array
     {
-        $row = DB::table('tx_wallet_order_reservation')->where('order_id', $order->id)->first();
+        $row = DB::table('tx_wallet_order_reservation')->where('order_id', $order->id)->lockForUpdate()->first();
         $this->require($row !== null, 'WALLET_RESERVATION_MISSING');
         $result = $this->verifyLocked($installation, $userId, $order, $terms, $row);
         $this->require($row->status !== 'released', 'WALLET_RESERVATION_RELEASED');
@@ -82,7 +96,7 @@ final class NativeWalletReservations
 
     public function releaseLocked(array $installation, int $userId, Order $order, ?OrderPurchaseTerms $terms = null): ?array
     {
-        $row = DB::table('tx_wallet_order_reservation')->where('order_id', $order->id)->first();
+        $row = DB::table('tx_wallet_order_reservation')->where('order_id', $order->id)->lockForUpdate()->first();
         if ($row === null) { return null; }
         $terms ??= OrderPurchaseTerms::query()->where('order_id', $order->id)->lockForUpdate()->first();
         $this->require($terms !== null, 'WALLET_PURCHASE_REQUIRED');
@@ -104,6 +118,7 @@ final class NativeWalletReservations
     public function verifyLocked(array $installation, int $userId, Order $order, OrderPurchaseTerms $terms, object $row): array
     {
         $purchase = $this->purchase($installation, $userId, $order, $terms);
+        $this->lockMoneyAccountsLocked($installation, $userId, $purchase['currency']);
         $payload = $this->payload($row);
         $this->require($payload['installation_id'] === $installation['installation_id'] && $payload['user_id'] === (string) $userId
             && $payload['order_id'] === (string) $order->id && $payload['purchase_terms_id'] === (string) $terms->id
@@ -119,7 +134,7 @@ final class NativeWalletReservations
             $at = $kind === 'reserve' ? $row->created_at : $row->{($kind === 'capture' ? 'captured' : 'released').'_at'};
             $this->require($expected === ($journalId !== null) && $expected === ($at !== null), 'WALLET_EVIDENCE_INVALID');
             if ($expected) {
-                $journal = $this->ledger->inspectJournal((int) $journalId);
+                $journal = $this->ledger->inspectJournalLocked((int) $journalId);
                 $expectedJournal = $this->journal($payload + ['occurred_at' => (string) $at], $kind);
                 $this->require($journal['installation_id'] === $installation['installation_id']
                     && $journal['user_id'] === (string) $userId, 'WALLET_EVIDENCE_INVALID');

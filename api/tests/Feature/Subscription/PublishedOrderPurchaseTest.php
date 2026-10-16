@@ -464,6 +464,8 @@ class PublishedOrderPurchaseTest extends NativeSubscriptionTestCase
         $this->assertSame($before, $user->fresh()->getAttributes());
         $this->assertSame(1, OrderPurchaseTerms::query()->count());
         $this->assertSame(0, DB::table('tx_subscription_operation')->count());
+        $this->assertSame(0, DB::table('tx_wallet_order_reservation')->count());
+        $this->assertSame(0, DB::table('tx_money_journal')->count());
     }
 
     public function test_native_admission_and_damaged_purchase_refuse_all_order_transitions(): void

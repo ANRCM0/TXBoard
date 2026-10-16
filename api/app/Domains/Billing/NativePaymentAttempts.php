@@ -288,6 +288,11 @@ final class NativePaymentAttempts
         if ($terms === null || $purchase === null) {
             throw new BillingError('PAYMENT_PURCHASE_REQUIRED');
         }
+        $reservation = DB::table('tx_wallet_order_reservation')->where('order_id', $orderId)->lockForUpdate()->first();
+        if ($reservation !== null) {
+            app(NativeWalletReservations::class)->lockMoneyAccountsLocked(
+                ['installation_id' => $installationId], $userId, $purchase['currency']);
+        }
         return [$order, $terms, $purchase];
     }
 

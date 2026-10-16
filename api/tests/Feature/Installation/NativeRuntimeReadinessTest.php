@@ -151,9 +151,10 @@ final class NativeRuntimeReadinessTest extends NativeRuntimeTestCase
     }
 
     /** @dataProvider missingKernelForeignKeys */
-    public function test_activation_requires_kernel_ownership_constraints(string $table, string $constraint): void
+    public function test_activation_requires_kernel_ownership_constraints(string $table, string $constraint, array $columns): void
     {
-        Schema::table($table, static fn ($blueprint) => $blueprint->dropForeign($constraint));
+        Schema::table($table, static fn ($blueprint) => $blueprint->dropForeign(DB::getDriverName() === 'sqlite'
+            ? $columns : $constraint));
         $this->expectExceptionMessage('INSTALLATION_AUTHORITY_SCHEMA_OWNERSHIP_REQUIRED');
         app(InstallationAuthority::class)->readiness();
     }
@@ -161,12 +162,16 @@ final class NativeRuntimeReadinessTest extends NativeRuntimeTestCase
     public static function missingKernelForeignKeys(): array
     {
         return [
-            'nullable recharge payment owner' => ['tx_payment_receipt', 'tx_payment_receipt_financial_owner_fk'],
-            'wallet capture journal owner' => ['tx_wallet_order_reservation', 'tx_wallet_reservation_capture_fk'],
-            'refund source journal owner' => ['tx_native_refund', 'tx_native_refund_source_journal_id_fk'],
-            'service actor authorization' => ['tx_internal_actor_grant', 'tx_internal_actor_grant_user_fk'],
-            'request actor' => ['tx_internal_request', 'tx_internal_request_actor_fk'],
-            'link subject owner' => ['tx_subscription_link', 'tx_sub_link_subject_fk'],
+            'nullable recharge payment owner' => ['tx_payment_receipt', 'tx_payment_receipt_financial_owner_fk',
+                ['attempt_id', 'installation_id', 'user_id', 'payment_id']],
+            'wallet capture journal owner' => ['tx_wallet_order_reservation', 'tx_wallet_reservation_capture_fk',
+                ['capture_journal_id', 'installation_id', 'user_id']],
+            'refund source journal owner' => ['tx_native_refund', 'tx_native_refund_source_journal_id_fk',
+                ['source_journal_id', 'installation_id', 'user_id']],
+            'service actor authorization' => ['tx_internal_actor_grant', 'tx_internal_actor_grant_user_fk', ['user_id']],
+            'request actor' => ['tx_internal_request', 'tx_internal_request_actor_fk', ['actor_id']],
+            'link subject owner' => ['tx_subscription_link', 'tx_sub_link_subject_fk',
+                ['access_subject_id', 'subscription_id']],
         ];
     }
 

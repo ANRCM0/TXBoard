@@ -43,17 +43,19 @@ final class NativePaymentCheckout
                 if ($order === null || $terms === null || (string) $order->user_id !== (string) $userId) {
                     throw new BillingError('PAYMENT_ORDER_OWNERSHIP_INVALID');
                 }
-                if (DB::table('tx_payment_attempt')->where('order_id', $orderId)->exists()
-                    && !DB::table('tx_wallet_order_reservation')->where('order_id', $orderId)->exists()) {
+                if (DB::table('tx_payment_attempt')->where('order_id', $orderId)->sharedLock()->exists()
+                    && !DB::table('tx_wallet_order_reservation')->where('order_id', $orderId)->lockForUpdate()->exists()) {
                     throw new BillingError('PAYMENT_ORDER_ALLOCATION_FROZEN');
                 }
                 app(NativeWalletReservations::class)->reserveLocked($installation, $userId, $order, $terms,
                     MoneyValue::minor($walletMinor, true), 'checkout:'.$orderId);
             }
+            // The user lock serializes these owned locators; a pre-wait RR snapshot may miss a dispatch.
             // An existing request resolves its original credentials before consulting current registration.
             $existing = DB::table('tx_payment_attempt')->where('installation_id', $installation['installation_id'])
-                ->where('user_id', $userId)->where('key_hash', hash('sha256', $key))->first();
-            $dispatch = $existing === null ? null : DB::table('tx_payment_dispatch')->where('attempt_id', $existing->id)->first();
+                ->where('user_id', $userId)->where('key_hash', hash('sha256', $key))->sharedLock()->first();
+            $dispatch = $existing === null ? null : DB::table('tx_payment_dispatch')->where('attempt_id', $existing->id)
+                ->sharedLock()->first();
             if ($existing !== null && $dispatch === null) {
                 throw new BillingError('NATIVE_PAYMENT_DISPATCH_MISSING');
             }
@@ -165,12 +167,12 @@ final class NativePaymentCheckout
         }
         return $this->transactions->run($userId, function (array $installation) use ($userId, $attemptId, $queried): array {
             $dispatch = DB::table('tx_payment_dispatch')->where('attempt_id', $attemptId)
-                ->where('installation_id', $installation['installation_id'])->where('user_id', $userId)->first();
+                ->where('installation_id', $installation['installation_id'])->where('user_id', $userId)->sharedLock()->first();
             if ($dispatch === null) {
                 throw new BillingError('PAYMENT_ATTEMPT_MISSING');
             }
             $snapshot = $this->snapshot($dispatch);
-            $stored = DB::table('tx_payment_attempt')->where('id', $attemptId)->first();
+            $stored = DB::table('tx_payment_attempt')->where('id', $attemptId)->sharedLock()->first();
             if ($stored === null) {
                 throw new BillingError('PAYMENT_ATTEMPT_MISSING');
             }

@@ -146,10 +146,10 @@ final class NativeBillingRecoveryTest extends NativePaymentTestCase
                 if (trim((string) fgets($child)) !== 'RECOVER') { throw new \RuntimeException('START_SIGNAL_MISSING'); }
                 $announced = false;
                 DB::connection()->beforeExecuting(function (string $sql) use ($child, &$announced): void {
-                    if (!$announced && str_contains(strtolower($sql), 'tx_authority_writer_fence')
+                    if (!$announced && str_contains(strtolower($sql), '`tx_user`')
                         && str_contains(strtolower($sql), 'for update')) {
                         $announced = true;
-                        fwrite($child, "ADMISSION_LOCK\n");
+                        fwrite($child, "ACCOUNT_LOCK\n");
                         fflush($child);
                     }
                 });
@@ -175,19 +175,23 @@ final class NativeBillingRecoveryTest extends NativePaymentTestCase
                 $released = true;
                 fwrite($parent, "RECOVER\n");
                 fflush($parent);
-                $this->assertSame('ADMISSION_LOCK', trim((string) fgets($parent)));
+                $this->assertSame('ACCOUNT_LOCK', trim((string) fgets($parent)));
                 $read = [$parent];
                 $write = [];
                 $except = [];
                 $this->assertSame(0, stream_select($read, $write, $except, 0, 250000),
                     'The other worker must wait for the original owning transaction.');
             });
-            $this->assertSame('completed', app(NativeBillingRecovery::class)->recover(1)[$settlement['work_id']]['status']);
+            $recovered = app(NativeBillingRecovery::class)->recover(1);
+            $this->assertSame('completed', $recovered[$settlement['work_id']]['status'],
+                json_encode($recovered, JSON_THROW_ON_ERROR));
             $this->assertTrue($released);
             $result = json_decode((string) fgets($parent), true, 32, JSON_THROW_ON_ERROR);
             $finished = true;
             $this->assertArrayNotHasKey('error', $result, json_encode($result, JSON_THROW_ON_ERROR));
             $this->assertTrue($result['contended']);
+            $this->assertSame('completed', $result['results'][$settlement['work_id']]['status'],
+                json_encode($result, JSON_THROW_ON_ERROR));
             $this->assertSame(1, DB::table('tx_subscription')->count());
             $this->assertSame(1, DB::table('tx_subscription_operation')->count());
             $this->assertSame(1, DB::table('tx_usage_period')->count());

@@ -114,8 +114,17 @@ final class NativeProviderTrustTest extends NativeRuntimeTestCase
         $candidate = $service->preflight();
         $service->rotate('trust-rotation', $candidate['previous_digest'], $candidate['configuration_digest']);
         DB::table('tx_native_runtime_trust_transition')->update(['previous_digest' => str_repeat('a', 64)]);
-        $this->expectException(DomainException::class);
-        $this->expectExceptionMessage('EVIDENCE_INVALID');
+        $activation = json_decode(DB::table('tx_native_runtime_activation')->value('configuration_snapshot'),
+            true, 32, JSON_THROW_ON_ERROR);
+        try {
+            DB::transaction(fn () => $service->currentLocked(self::INSTALLATION, $activation['configuration']));
+            $this->fail('Tampered trust transition was accepted');
+        } catch (DomainException $error) {
+            $this->assertSame('NATIVE_PROVIDER_TRUST_EVIDENCE_INVALID', $error->getMessage());
+        }
+        // Installation admission deliberately sanitizes dependency failures.
+        $this->expectException(InstallationAuthorityException::class);
+        $this->expectExceptionMessage('INSTALLATION_AUTHORITY_STORAGE_FAILED');
         DB::transaction(fn () => app(InstallationAuthority::class)->assertNativeMutation());
     }
 

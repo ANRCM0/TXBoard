@@ -34,6 +34,16 @@ Every public mutation starts a fresh SQL transaction, obtains current native
 installation admission, then locks the owning tx_user row. Existing order paths
 retain account/slot/subscription before order/purchase locks. Money account locks
 are taken in sorted business-identity order after business aggregate locks.
+An order-owned wallet reservation is part of that aggregate and may be located
+with a current lock after its owning user/order locks, before money accounts.
+The complete conditional money-account union precedes attempt/receipt,
+allocation and journal evidence locks; pure channel payments do not create
+wallet accounts merely to inspect a nonexistent reservation. Financial mutation
+and replay evidence use current locking reads, including journal postings, not
+an older REPEATABLE READ snapshot established during installation admission.
+`inspectJournalLocked` requires those aggregate and money locks; the separate
+read-only `inspectJournal` remains a non-locking evidence inspector and creates
+or repairs nothing.
 Services never perform provider network I/O in a SQL transaction.
 
 Domain methods explicitly ending in Locked participate in the caller's

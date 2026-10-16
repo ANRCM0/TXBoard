@@ -147,11 +147,16 @@ final class NativePaymentSettlementMysqlConcurrencyTest extends NativePaymentTes
         $operation = fn (): array => app(NativePaymentSettlement::class)->settle(
             $user->id, (int) $attempt['attempt_id'], $this->fact($attempt, ['occurred_at' => null]));
         $results = $this->race([$operation, $operation, $operation, $operation]);
+        $this->assertSame(array_fill(0, 4, $results[0]), $results);
+        $this->assertSame('order_payment', $results[0]['decision']);
         $this->assertCount(1, array_unique(array_column($results, 'settlement_id')));
         $this->assertCount(1, array_unique(array_column($results, 'occurred_at')));
         foreach (['tx_payment_receipt', 'tx_money_journal', 'tx_payment_settlement', 'tx_order_payment', 'tx_billing_work'] as $table) {
             $this->assertSame(1, DB::table($table)->count(), $table);
         }
+        $this->assertSame($results[0]['occurred_at'], (string) DB::table('tx_payment_receipt')->value('occurred_at'));
+        $this->assertSame($results[0]['occurred_at'], (string) DB::table('tx_money_journal')->value('occurred_at'));
+        $this->assertSame($results[0]['occurred_at'], (string) $order->fresh()->paid_at);
         $this->assertSame('1234', $this->balance('provider_clearing'));
         $this->assertSame('1234', $this->balance('sales_revenue'));
     }

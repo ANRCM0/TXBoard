@@ -26,7 +26,7 @@ final class NativeRechargeService
             $existing = DB::table('tx_native_recharge')->where('installation_id', $installation['installation_id'])
                 ->where('user_id', $userId)->where('key_hash', hash('sha256', $key))->lockForUpdate()->first();
             if ($existing !== null) {
-                $this->verify($existing, $installation, $userId);
+                $this->verify($existing, $installation, $userId, true);
                 $this->require((string) $existing->amount_minor === $amount && (int) $existing->payment_id === $paymentId
                     && $existing->request_key === $key, 'RECHARGE_IDEMPOTENCY_CONFLICT');
                 return $this->dto($existing);
@@ -42,7 +42,8 @@ final class NativeRechargeService
                 && preg_match('/\A0(?:\.0+)?\z/D', (string) ($payment->handling_fee_percent ?? '0')) === 1,
                 'RECHARGE_FEES_UNSUPPORTED');
             $this->require(DB::table('tx_native_recharge')->where('installation_id', $installation['installation_id'])
-                ->where('user_id', $userId)->where('status', 'pending')->orderBy('id')->limit(20)->get(['id'])->count() < 20,
+                ->where('user_id', $userId)->where('status', 'pending')->orderBy('id')->limit(20)
+                ->lockForUpdate()->get(['id'])->count() < 20,
                 'RECHARGE_PENDING_LIMIT');
             $payload = [
                 'installation_id' => $installation['installation_id'], 'user_id' => (string) $userId,
@@ -96,7 +97,7 @@ final class NativeRechargeService
         $this->context($installation, $userId);
         $row = DB::table('tx_native_recharge')->where('id', $rechargeId)->lockForUpdate()->first();
         $this->require($row !== null, 'RECHARGE_MISSING');
-        $this->verify($row, $installation, $userId);
+        $this->verify($row, $installation, $userId, true);
         return ['recharge_id' => (string) $row->id, 'payment_id' => (string) $row->payment_id, 'trade_no' => $row->trade_no,
             'amount_minor' => (string) $row->amount_minor, 'currency' => $row->currency, 'content_hash' => $row->content_hash];
     }
@@ -109,8 +110,9 @@ final class NativeRechargeService
         $this->require($attempt !== null && $attempt->intent_type === 'recharge'
             && (string) $attempt->user_id === (string) $userId, 'PAYMENT_ATTEMPT_MISSING');
         $intent = $this->intentLocked($installation, $userId, (int) $attempt->recharge_id);
-        $row = DB::table('tx_native_recharge')->where('id', $intent['recharge_id'])->first();
-        $prior = DB::table('tx_payment_receipt')->where('attempt_id', $attemptId)->first();
+        $row = DB::table('tx_native_recharge')->where('id', $intent['recharge_id'])->lockForUpdate()->first();
+        $this->lockMoneyAccounts($installation, $userId, $intent['currency']);
+        $prior = DB::table('tx_payment_receipt')->where('attempt_id', $attemptId)->lockForUpdate()->first();
         if (array_key_exists('occurred_at', $fact) && $fact['occurred_at'] === null) {
             $fact['occurred_at'] = $prior === null ? (string) time() : (string) $prior->occurred_at;
         }
@@ -149,7 +151,7 @@ final class NativeRechargeService
             'journal_id' => $journal['journal_id'], 'amount_minor' => $intent['amount_minor'], 'currency' => $intent['currency']];
     }
 
-    private function verify(object $row, array $installation, int $userId): void
+    private function verify(object $row, array $installation, int $userId, bool $locked = false): void
     {
         $payload = [];
         foreach (['installation_id', 'user_id', 'payment_id', 'trade_no', 'request_key', 'amount_minor', 'currency', 'created_at'] as $field) {
@@ -166,13 +168,18 @@ final class NativeRechargeService
                 : $row->receipt_id === null && $row->journal_id === null && $row->paid_at === null),
             'RECHARGE_EVIDENCE_INVALID');
         if ($row->status === 'paid') {
-            $receipt = DB::table('tx_payment_receipt')->where('id', $row->receipt_id)->first();
+            if ($locked) {
+                $this->lockMoneyAccounts($installation, $userId, $row->currency);
+            }
+            $receipts = DB::table('tx_payment_receipt')->where('id', $row->receipt_id);
+            $receipt = ($locked ? $receipts->lockForUpdate() : $receipts)->first();
             $this->require($receipt !== null && $receipt->intent_type === 'recharge'
                 && (string) $receipt->recharge_id === (string) $row->id && (string) $receipt->user_id === (string) $userId
                 && $receipt->installation_id === $row->installation_id
                 && (string) $receipt->amount_minor === (string) $row->amount_minor && $receipt->currency === $row->currency
                 && (string) $receipt->occurred_at === (string) $row->paid_at, 'RECHARGE_EVIDENCE_INVALID');
-            $journal = $this->ledger->inspectJournal((int) $row->journal_id);
+            $journal = $locked ? $this->ledger->inspectJournalLocked((int) $row->journal_id)
+                : $this->ledger->inspectJournal((int) $row->journal_id);
             $this->require($journal['business_type'] === 'wallet_credit'
                 && $journal['business_ref'] === (string) $receipt->attempt_id
                 && $journal['idempotency_key'] === $receipt->identity_hash
@@ -183,6 +190,15 @@ final class NativeRechargeService
                     ['owner_id' => (string) $userId, 'purpose' => 'wallet_available', 'side' => 'credit', 'amount_minor' => (string) $row->amount_minor],
                 ], 'RECHARGE_EVIDENCE_INVALID');
         }
+    }
+
+    private function lockMoneyAccounts(array $installation, int $userId, string $currency): void
+    {
+        $this->ledger->lockAccountsLocked($installation, $userId, $currency, [
+            ['owner_id' => 0, 'purpose' => 'provider_clearing'],
+            ['owner_id' => 0, 'purpose' => 'refund_liability'],
+            ['owner_id' => $userId, 'purpose' => 'wallet_available'],
+        ]);
     }
 
     private function dto(object $row): array

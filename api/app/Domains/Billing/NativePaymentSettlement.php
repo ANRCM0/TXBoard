@@ -37,15 +37,15 @@ final class NativePaymentSettlement
             $purchase = $this->grants->resolve($order, $terms);
             $this->require($purchase !== null && $terms !== null, 'PAYMENT_PURCHASE_REQUIRED');
             $this->require((int) ($order->handling_amount ?? 0) === 0, 'PAYMENT_SETTLEMENT_FEES_UNSUPPORTED');
+            $currency = MoneyValue::currency($purchase['currency']);
+            $reservation = $this->lockMoneyAccountsLocked($installation, $userId, $order, $currency);
             $amount = MoneyValue::minor(app(NativeWalletReservations::class)
                 ->channelAmountLocked($installation, $userId, $order, $terms), true);
-            $currency = MoneyValue::currency($purchase['currency']);
-            $reservation = DB::table('tx_wallet_order_reservation')->where('order_id', $order->id)->first();
-            // These immutable reads select the journal inputs before money locks; the participant
-            // revalidates all attempt/receipt bindings under their locks before anything commits.
-            $prior = DB::table('tx_payment_settlement')->where('attempt_id', $attemptId)->first();
-            $previousReceipt = DB::table('tx_payment_receipt')->where('attempt_id', $attemptId)->first();
-            $allocation = DB::table('tx_order_payment')->where('order_id', $order->id)->first();
+            // Admission may establish an RR snapshot before the user lock. Financial decisions
+            // must use current evidence after the complete money-account union is locked.
+            $previousReceipt = DB::table('tx_payment_receipt')->where('attempt_id', $attemptId)->sharedLock()->first();
+            $prior = DB::table('tx_payment_settlement')->where('attempt_id', $attemptId)->sharedLock()->first();
+            $allocation = DB::table('tx_order_payment')->where('order_id', $order->id)->sharedLock()->first();
             $decision = $prior?->decision ?? (
                 (int) $order->status === Order::STATUS_PENDING && !(bool) ($user->banned ?? false)
                 && $allocation === null && ($reservation === null || $reservation->status !== 'released')
@@ -63,13 +63,6 @@ final class NativePaymentSettlement
             ]);
             $occurredAt = MoneyValue::minor($fact['occurred_at'] ?? null, true);
             if ($reservation !== null) {
-                $this->ledger->lockAccountsLocked($installation, $userId, $currency, [
-                    ['owner_id' => 0, 'purpose' => 'provider_clearing'],
-                    ['owner_id' => 0, 'purpose' => 'sales_revenue'],
-                    ['owner_id' => 0, 'purpose' => 'refund_liability'],
-                    ['owner_id' => $userId, 'purpose' => 'wallet_available'],
-                    ['owner_id' => $userId, 'purpose' => 'wallet_reserved'],
-                ]);
                 if ($decision === 'order_payment') {
                     app(NativeWalletReservations::class)->captureLocked($installation, $userId, $order, $terms);
                 } elseif ($reservation->status === 'reserved') {
@@ -123,15 +116,16 @@ final class NativePaymentSettlement
     {
         $this->require(DB::transactionLevel() > 0 && (string) $order->user_id === (string) $userId
             && (string) $terms->order_id === (string) $order->id, 'PAYMENT_SETTLEMENT_BINDING_INVALID');
-        app(NativeRefundService::class)->assertOrderNotFullyRefundedLocked($userId, (int) $order->id);
         $purchase = $this->grants->resolve($order, $terms);
         $this->require($purchase !== null, 'PAYMENT_PURCHASE_REQUIRED');
-        $allocation = DB::table('tx_order_payment')->where('order_id', $order->id)->first();
+        $reservation = $this->lockMoneyAccountsLocked($installation, $userId, $order, MoneyValue::currency($purchase['currency']));
+        app(NativeRefundService::class)->assertOrderNotFullyRefundedLocked($userId, (int) $order->id);
+        $allocation = DB::table('tx_order_payment')->where('order_id', $order->id)->sharedLock()->first();
         $this->require($allocation !== null, 'PAYMENT_ORDER_ALLOCATION_REQUIRED');
         if ($allocation->settlement_id === null) {
             return app(NativeWalletPayments::class)->verifyWinningPaymentLocked($installation, $userId, $order, $terms);
         }
-        $settlement = DB::table('tx_payment_settlement')->where('id', $allocation->settlement_id)->first();
+        $settlement = DB::table('tx_payment_settlement')->where('id', $allocation->settlement_id)->sharedLock()->first();
         $this->require($settlement !== null, 'PAYMENT_SETTLEMENT_EVIDENCE_INVALID');
         $payload = $this->payload($settlement);
         $this->require($payload['decision'] === 'order_payment'
@@ -143,21 +137,24 @@ final class NativePaymentSettlement
             && (int) ($order->handling_amount ?? 0) === 0
             && hash_equals(MoneyValue::hash($payload), (string) $settlement->content_hash),
             'PAYMENT_SETTLEMENT_EVIDENCE_INVALID');
-        $reservation = DB::table('tx_wallet_order_reservation')->where('order_id', $order->id)->first();
         $this->require($reservation === null || $reservation->status === 'captured', 'PAYMENT_SETTLEMENT_EVIDENCE_INVALID');
-        $receipt = DB::table('tx_payment_receipt')->where('id', $payload['receipt_id'])->first();
-        $this->require($receipt !== null && DB::table('tx_money_journal')->where('id', $payload['journal_id'])->exists(),
-            'PAYMENT_SETTLEMENT_EVIDENCE_INVALID');
-        $journal = $this->ledger->postLocked($installation, $userId, [
+        $receipt = DB::table('tx_payment_receipt')->where('id', $payload['receipt_id'])->sharedLock()->first();
+        $this->require($receipt !== null, 'PAYMENT_SETTLEMENT_EVIDENCE_INVALID');
+        $journal = $this->ledger->inspectJournalLocked((int) $payload['journal_id']);
+        $expectedJournal = [
+            'journal_id' => $payload['journal_id'], 'installation_id' => $installation['installation_id'],
+            'user_id' => (string) $userId, 'reverses_journal_id' => null,
             'business_type' => 'provider_capture', 'business_ref' => $payload['attempt_id'],
             'idempotency_key' => (string) $receipt->identity_hash, 'currency' => $payload['currency'],
             'occurred_at' => $payload['occurred_at'],
             'postings' => [
-                ['owner_id' => 0, 'purpose' => 'provider_clearing', 'side' => 'debit', 'amount_minor' => $payload['amount_minor']],
-                ['owner_id' => 0, 'purpose' => 'sales_revenue', 'side' => 'credit', 'amount_minor' => $payload['amount_minor']],
+                ['owner_id' => '0', 'purpose' => 'provider_clearing', 'side' => 'debit', 'amount_minor' => $payload['amount_minor']],
+                ['owner_id' => '0', 'purpose' => 'sales_revenue', 'side' => 'credit', 'amount_minor' => $payload['amount_minor']],
             ],
-        ]);
-        $this->require($journal['journal_id'] === $payload['journal_id'], 'PAYMENT_SETTLEMENT_EVIDENCE_INVALID');
+        ];
+        foreach ($expectedJournal as $field => $value) {
+            $this->require($journal[$field] === $value, 'PAYMENT_SETTLEMENT_EVIDENCE_INVALID');
+        }
         $verified = $this->attempts->recordVerifiedReceiptLocked($installation, $userId, (int) $payload['attempt_id'], [
             'attempt_id' => $payload['attempt_id'], 'provider' => (string) $receipt->provider,
             'provider_account_ref' => (string) $receipt->provider_account_ref, 'transaction_ref' => (string) $receipt->transaction_ref,
@@ -171,6 +168,23 @@ final class NativePaymentSettlement
         $this->require($locked !== null && $this->payload($locked) === $payload
             && hash_equals(MoneyValue::hash($payload), (string) $locked->content_hash), 'PAYMENT_SETTLEMENT_EVIDENCE_INVALID');
         return $this->result($locked, $payload);
+    }
+
+    /** The reservation locator is order-owned; all financial evidence follows the sorted money union. */
+    private function lockMoneyAccountsLocked(array $installation, int $userId, Order $order, string $currency): ?object
+    {
+        $reservation = DB::table('tx_wallet_order_reservation')->where('order_id', $order->id)->lockForUpdate()->first();
+        $accounts = [
+            ['owner_id' => 0, 'purpose' => 'provider_clearing'],
+            ['owner_id' => 0, 'purpose' => 'sales_revenue'],
+            ['owner_id' => 0, 'purpose' => 'refund_liability'],
+        ];
+        if ($reservation !== null) {
+            $accounts[] = ['owner_id' => $userId, 'purpose' => 'wallet_available'];
+            $accounts[] = ['owner_id' => $userId, 'purpose' => 'wallet_reserved'];
+        }
+        $this->ledger->lockAccountsLocked($installation, $userId, $currency, $accounts);
+        return $reservation;
     }
 
     private function allocate(object $settlement, array $payload): void
@@ -212,10 +226,10 @@ final class NativePaymentSettlement
             'installation_id' => $payload['installation_id'], 'user_id' => $payload['user_id'],
             'order_id' => $payload['order_id'], 'settlement_id' => (string) $settlement->id,
             'receipt_id' => $payload['receipt_id'],
-            'amount_minor' => MoneyValue::minor(DB::table('tx_order')->where('id', $payload['order_id'])->value('total_amount'), true),
+            'amount_minor' => MoneyValue::minor(DB::table('tx_order')->where('id', $payload['order_id'])->lockForUpdate()->value('total_amount'), true),
             'currency' => $payload['currency'],
         ];
-        $reservation = DB::table('tx_wallet_order_reservation')->where('order_id', $payload['order_id'])->first();
+        $reservation = DB::table('tx_wallet_order_reservation')->where('order_id', $payload['order_id'])->lockForUpdate()->first();
         if ($reservation !== null) { $allocation['wallet_reservation_id'] = (string) $reservation->id; }
         return $allocation;
     }

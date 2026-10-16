@@ -290,7 +290,7 @@ final class NativeWalletRefundTest extends NativePaymentTestCase
             [$user, $original] = $this->channelPayment();
             $subscription = app(SubscriptionFulfillmentService::class)->fulfill($original->id, time() - 10);
             $offer = collect($this->offers)->firstWhere('offer_code', $period);
-            $later = app(PublishedOrderService::class)->create($user->id, (int) $offer['offer_id'], 'later:'.$period);
+            $later = app(PublishedOrderService::class)->create($user->id, (int) $offer['offer_id'], 'later-'.$period);
             $attempt = app(NativePaymentAttempts::class)->prepare($user->id, $later->id,
                 $this->payment->id, 'merchant-1', 'later-payment:'.$period);
             $settled = app(NativePaymentSettlement::class)->settle($user->id, (int) $attempt['attempt_id'],

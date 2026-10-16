@@ -6,6 +6,7 @@ use App\Domains\Billing\BillingError;
 use App\Domains\Billing\NativeBillingRecovery;
 use App\Domains\Billing\NativeBillingTransaction;
 use App\Domains\Billing\NativePaymentAttempts;
+use App\Domains\Billing\NativePaymentCheckout;
 use App\Domains\Billing\NativePaymentSettlement;
 use App\Domains\Billing\NativeRechargeService;
 use App\Domains\Billing\NativeRefundService;
@@ -17,6 +18,7 @@ use App\Models\Order;
 use App\Models\OrderPurchaseTerms;
 use App\Models\User;
 use App\Services\Auth\NativeIdentityService;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Facades\DB;
 use Tests\Support\NativePaymentTestCase;
 
@@ -28,6 +30,7 @@ final class NativeWalletRefundMysqlConcurrencyTest extends NativePaymentTestCase
     protected function setUp(): void
     {
         parent::setUp();
+        config(['app.url' => 'https://core.example.test']);
         $this->payment->update(['payment' => 'EPay', 'config' => [
             'url' => 'https://epay.example.test', 'pid' => '42', 'key' => 'mysql-test-secret', 'type' => 'alipay',
         ]]);
@@ -39,7 +42,7 @@ final class NativeWalletRefundMysqlConcurrencyTest extends NativePaymentTestCase
         [$user, $order] = $this->purchase();
         $this->fund($user);
         $pay = fn (): array => app(NativeWalletPayments::class)->pay($user->id, $order->id, 'concurrent-wallet');
-        $results = $this->race([$pay, $pay, $pay, $pay]);
+        $results = $this->race([$pay, $pay, $pay, $pay], true);
         $allocations = array_map(fn (array $result): string => $result['payment']['order_payment_id'], $results);
         $this->assertCount(1, array_unique($allocations));
         $this->assertSame(1, DB::table('tx_wallet_order_reservation')->where('status', 'captured')->count());
@@ -72,6 +75,29 @@ final class NativeWalletRefundMysqlConcurrencyTest extends NativePaymentTestCase
         $this->assertSame(1, DB::table('tx_order')->where('status', Order::STATUS_PENDING)->count());
     }
 
+    public function test_concurrent_mixed_checkout_replays_one_reservation_attempt_and_frozen_dispatch(): void
+    {
+        $this->requireMysqlProcesses();
+        [$user, $order] = $this->purchase();
+        $this->fund($user);
+        $checkout = fn (): array => app(NativePaymentCheckout::class)->start(
+            $user->id, $order->id, $this->payment->id, 'concurrent-mixed-checkout', '500');
+        $results = $this->race([$checkout, $checkout, $checkout, $checkout], true);
+        $this->assertCount(1, array_unique(array_map(fn (array $result): string => $result['attempt']['attempt_id'], $results)));
+        $this->assertCount(1, array_unique(array_map(fn (array $result): string => $result['payment']['data'], $results)));
+        $this->assertSame(array_fill(0, 4, '734'), array_map(fn (array $result): string => $result['attempt']['amount_minor'], $results));
+        $this->assertSame(1, DB::table('tx_payment_attempt')->where('intent_type', 'purchase')->count());
+        $this->assertSame(1, DB::table('tx_payment_dispatch')->count());
+        $this->assertSame(1, DB::table('tx_wallet_order_reservation')->where('status', 'reserved')->count());
+        $this->assertSame(1, DB::table('tx_money_journal')->where('business_type', 'wallet_reserve')->count());
+        $this->assertSame(0, DB::table('tx_money_journal')->where('business_type', 'wallet_capture')->count());
+        $this->assertSame('4500', $this->walletBalance($user));
+        $this->assertSame('500', $this->walletBalance($user, 'wallet_reserved'));
+        $this->assertSame(0, DB::table('tx_order_payment')->count());
+        $this->assertSame(0, DB::table('tx_billing_work')->count());
+        $this->assertSame(1, DB::table('tx_payment_receipt')->count(), 'Only the earlier recharge actually captured money.');
+    }
+
     public function test_same_refund_key_concurrently_returns_one_credit_and_one_immutable_refund(): void
     {
         $this->requireMysqlProcesses();
@@ -79,7 +105,7 @@ final class NativeWalletRefundMysqlConcurrencyTest extends NativePaymentTestCase
         $admin = $this->admin();
         $refund = fn (): array => app(NativeRefundService::class)->refundToWallet($user->id, 'receipt',
             (int) $paid['receipt_id'], '1234', 'one-refund', $admin->id, 'customer_request');
-        $results = $this->race([$refund, $refund, $refund, $refund]);
+        $results = $this->race([$refund, $refund, $refund, $refund], true);
         $this->assertCount(1, array_unique(array_column($results, 'refund_id')));
         $this->assertSame(1, DB::table('tx_native_refund')->count());
         $this->assertSame(1, DB::table('tx_money_journal')->where('business_type', 'refund')->count());
@@ -98,13 +124,37 @@ final class NativeWalletRefundMysqlConcurrencyTest extends NativePaymentTestCase
                 $user->id, 'receipt', (int) $paid['receipt_id'], '800', 'refund-left', $admin->id, 'customer_request')),
             fn (): array => $this->outcome(fn (): array => app(NativeRefundService::class)->refundToWallet(
                 $user->id, 'receipt', (int) $paid['receipt_id'], '800', 'refund-right', $admin->id, 'customer_request')),
-        ]);
+        ], true);
         $this->assertCount(1, array_filter($results, fn (array $result): bool => isset($result['refund_id'])));
         $this->assertSame(['REFUND_AMOUNT_EXCEEDS_SOURCE'], array_values(array_filter(array_column($results, 'error_code'))));
         $this->assertSame('800', $this->walletBalance($user));
         $this->assertSame('800', (string) DB::table('tx_native_refund')->value('cumulative_minor'));
         $this->assertSame(1, DB::table('tx_native_refund')->count());
         $this->assertSame(Order::STATUS_PROCESSING, (int) $order->fresh()->status);
+    }
+
+    public function test_concurrent_recharge_replay_reads_current_paid_evidence_after_an_older_snapshot(): void
+    {
+        $this->requireMysqlProcesses();
+        [$user] = $this->purchase();
+        $recharge = app(NativeRechargeService::class)->create($user->id, '5000', $this->payment->id, 'race-recharge');
+        $attempt = app(NativePaymentAttempts::class)->prepareRecharge($user->id, (int) $recharge['recharge_id'],
+            $this->payment->id, 'merchant-1', 'race-recharge-attempt');
+        $fact = $this->fact($attempt, ['transaction_ref' => 'concurrent-real-recharge', 'occurred_at' => null]);
+        $settle = fn (): array => app(NativePaymentSettlement::class)->settle($user->id, (int) $attempt['attempt_id'], $fact);
+        $results = $this->race([$settle, $settle, $settle, $settle], true);
+        $this->assertCount(1, array_unique(array_column($results, 'receipt_id')));
+        $this->assertCount(1, array_unique(array_column($results, 'journal_id')));
+        $this->assertSame(array_fill(0, 4, 'wallet_credit'), array_column($results, 'decision'));
+        $this->assertSame(1, DB::table('tx_payment_receipt')->count());
+        $this->assertSame(1, DB::table('tx_money_journal')->where('business_type', 'wallet_credit')->count());
+        $this->assertSame(2, DB::table('tx_money_posting')->count());
+        $this->assertSame('5000', $this->walletBalance($user));
+        $this->assertSame('paid', DB::table('tx_native_recharge')->value('status'));
+        $this->assertSame((string) DB::table('tx_native_recharge')->value('paid_at'),
+            (string) DB::table('tx_payment_receipt')->value('occurred_at'));
+        $this->assertSame(0, DB::table('tx_order_payment')->count());
+        $this->assertSame(0, DB::table('tx_billing_work')->count());
     }
 
     public function test_concurrent_mixed_components_make_one_full_entitlement_decision_without_losing_either_refund(): void
@@ -211,7 +261,7 @@ final class NativeWalletRefundMysqlConcurrencyTest extends NativePaymentTestCase
         return (string) (DB::table('tx_money_account')->where('owner_id', $user->id)->where('purpose', $purpose)->value('balance_minor') ?? '0');
     }
 
-    private function race(array $operations): array
+    private function race(array $operations, bool $pinOlderSnapshots = false): array
     {
         $directory = sys_get_temp_dir().'/txboard-native-wallet-refund-'.bin2hex(random_bytes(8));
         mkdir($directory, 0700);
@@ -226,10 +276,29 @@ final class NativeWalletRefundMysqlConcurrencyTest extends NativePaymentTestCase
                         DB::purge();
                         DB::statement('SET SESSION TRANSACTION ISOLATION LEVEL REPEATABLE READ');
                         DB::statement('SET SESSION innodb_lock_wait_timeout = 5');
+                        if ($pinOlderSnapshots) {
+                            $pinned = false;
+                            DB::listen(function (QueryExecuted $query) use ($directory, $operations, $index, &$pinned): void {
+                                if ($pinned || DB::transactionLevel() === 0
+                                    || !str_contains($query->sql, 'tx_authority_writer_fence')) { return; }
+                                $pinned = true;
+                                if ($index === 0) {
+                                    foreach (array_keys($operations) as $follower) {
+                                        if ($follower !== 0) { $this->awaitFile($directory.'/snapshot-'.$follower); }
+                                    }
+                                } else {
+                                    // Freeze an ordinary RR snapshot before the owning user lock.
+                                    DB::table('tx_money_journal')->limit(1)->get(['id']);
+                                    touch($directory.'/snapshot-'.$index);
+                                    $this->awaitFile($directory.'/committed');
+                                }
+                            });
+                        }
                         $deadline = microtime(true) + 20;
                         while (!is_file($directory.'/start') && microtime(true) < $deadline) { usleep(1000); }
                         if (!is_file($directory.'/start')) { throw new \RuntimeException('Wallet/refund barrier timeout.'); }
                         file_put_contents($directory.'/'.$index, json_encode($operation(), JSON_THROW_ON_ERROR));
+                        if ($pinOlderSnapshots && $index === 0) { touch($directory.'/committed'); }
                         DB::disconnect();
                         exit(0);
                     } catch (\Throwable $error) {
@@ -261,6 +330,13 @@ final class NativeWalletRefundMysqlConcurrencyTest extends NativePaymentTestCase
             rmdir($directory);
             DB::purge();
         }
+    }
+
+    private function awaitFile(string $path): void
+    {
+        $deadline = microtime(true) + 20;
+        while (!is_file($path) && microtime(true) < $deadline) { usleep(1000); }
+        if (!is_file($path)) { throw new \RuntimeException('Wallet/refund snapshot barrier timeout.'); }
     }
 
     private function requireMysqlProcesses(): void

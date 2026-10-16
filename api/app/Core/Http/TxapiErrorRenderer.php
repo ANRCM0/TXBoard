@@ -5,6 +5,7 @@ namespace App\Core\Http;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -16,6 +17,18 @@ final class TxapiErrorRenderer
 {
     public static function render(Request $request, Throwable $exception): JsonResponse
     {
+        // Laravel wraps the named ingress throttle callback in this exception.
+        // Preserve only its canonical response, not arbitrary exception payloads.
+        if ($exception instanceof HttpResponseException && $exception->getResponse() instanceof JsonResponse) {
+            $response = $exception->getResponse();
+            $body = $response->getData(true);
+            if ($response->getStatusCode() === 429 && is_array($body) && count($body) === 2
+                && ($body['error'] ?? null) === ['code' => 'RATE_LIMITED', 'message' => 'Service ingress limit exceeded']
+                && ($body['request_id'] ?? null) === TxapiResponse::requestId($request)
+                && $response->headers->get('X-Request-Id') === TxapiResponse::requestId($request)) {
+                return $response;
+            }
+        }
         $status = match (true) {
             $exception instanceof ValidationException => 422,
             $exception instanceof AuthenticationException => 401,

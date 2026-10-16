@@ -49,21 +49,18 @@ final class NativeWalletPayments
             $terms = OrderPurchaseTerms::query()->where('order_id', $orderId)->lockForUpdate()->first();
             $this->require($order !== null && $terms !== null && (string) $order->user_id === (string) $userId,
                 'WALLET_ORDER_MISSING');
-            $allocation = DB::table('tx_order_payment')->where('order_id', $orderId)->first();
+            $purchase = $this->grants->resolve($order, $terms);
+            $this->require($purchase !== null, 'WALLET_PURCHASE_REQUIRED');
+            $reservation = DB::table('tx_wallet_order_reservation')->where('order_id', $orderId)->lockForUpdate()->first();
+            $this->reservations->lockMoneyAccountsLocked($installation, $userId, $purchase['currency']);
+            // Admission can establish an older RR snapshot before the owning user lock is available.
+            $allocation = DB::table('tx_order_payment')->where('order_id', $orderId)->sharedLock()->first();
             if ($allocation !== null) {
-                $reservation = DB::table('tx_wallet_order_reservation')->where('id', $allocation->wallet_reservation_id)->first();
                 $this->require($reservation !== null && $reservation->request_key === $key, 'WALLET_IDEMPOTENCY_CONFLICT');
                 return ['type' => -1, 'data' => true, 'payment' => $this->verifyWinningPaymentLocked($installation, $userId, $order, $terms)];
             }
             app(NativeRefundService::class)->assertOrderNotFullyRefundedLocked($userId, $orderId);
             $this->require(!(bool) ($user->banned ?? false), 'WALLET_ACCOUNT_UNAVAILABLE');
-            $purchase = $this->grants->resolve($order, $terms);
-            $this->require($purchase !== null, 'WALLET_PURCHASE_REQUIRED');
-            app(NativeMoneyLedger::class)->lockAccountsLocked($installation, $userId, $purchase['currency'], [
-                ['owner_id' => '0', 'purpose' => 'sales_revenue'],
-                ['owner_id' => (string) $userId, 'purpose' => 'wallet_available'],
-                ['owner_id' => (string) $userId, 'purpose' => 'wallet_reserved'],
-            ]);
             $this->reservations->reserveLocked($installation, $userId, $order, $terms,
                 MoneyValue::minor($purchase['price_minor'], true), $key);
             $reservation = $this->reservations->captureLocked($installation, $userId, $order, $terms);
@@ -88,8 +85,11 @@ final class NativeWalletPayments
     public function verifyWinningPaymentLocked(array $installation, int $userId, Order $order, OrderPurchaseTerms $terms): array
     {
         $this->require(DB::transactionLevel() > 0, 'BILLING_TRANSACTION_REQUIRED');
-        $allocation = DB::table('tx_order_payment')->where('order_id', $order->id)->first();
-        $row = $allocation === null ? null : DB::table('tx_wallet_order_reservation')->where('id', $allocation->wallet_reservation_id)->first();
+        $purchase = $this->grants->resolve($order, $terms);
+        $this->require($purchase !== null, 'WALLET_PURCHASE_REQUIRED');
+        $row = DB::table('tx_wallet_order_reservation')->where('order_id', $order->id)->lockForUpdate()->first();
+        $this->reservations->lockMoneyAccountsLocked($installation, $userId, $purchase['currency']);
+        $allocation = DB::table('tx_order_payment')->where('order_id', $order->id)->sharedLock()->first();
         $this->require($allocation !== null && $row !== null && $allocation->settlement_id === null && $allocation->receipt_id === null,
             'WALLET_PAYMENT_EVIDENCE_INVALID');
         $reservation = $this->reservations->verifyLocked($installation, $userId, $order, $terms, $row);

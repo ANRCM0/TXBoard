@@ -2,12 +2,15 @@
 
 namespace Tests\Feature\Txapi;
 
+use App\Core\Http\TxapiErrorRenderer;
+use App\Core\Http\TxapiResponse;
 use App\Domains\InternalApi\ServiceCredentials;
 use App\Domains\Billing\OrderIdempotency;
 use App\Domains\Subscription\Services\NativeCredentialSynchronization;
 use App\Models\User;
 use App\Http\Middleware\NativeServiceIdentity;
 use Illuminate\Database\QueryException;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Route;
 use Illuminate\Support\Facades\Schema;
@@ -96,8 +99,11 @@ final class TxapiNativeInternalApiTest extends NativeRuntimeTestCase
         $key = md5('native-internal-ingress'.$limit->key);
         RateLimiter::increment($key, 60, $limit->maxAttempts);
         try {
-            $this->invoke('system.capabilities.get')->assertStatus(429)
-                ->assertJsonPath('error.code', 'RATE_LIMITED')->assertHeader('Cache-Control', 'private, no-store');
+            $response = $this->invoke('system.capabilities.get')->assertStatus(429)
+                ->assertJsonPath('error.code', 'RATE_LIMITED')->assertHeader('Retry-After')
+                ->assertHeader('X-RateLimit-Limit', '600')->assertHeader('X-RateLimit-Remaining', '0');
+            $this->assertTrue($response->headers->hasCacheControlDirective('private'));
+            $this->assertTrue($response->headers->hasCacheControlDirective('no-store'));
             $this->assertSame(0, DB::table('tx_internal_audit')->count());
         } finally {
             RateLimiter::clear($key);
@@ -109,6 +115,29 @@ final class TxapiNativeInternalApiTest extends NativeRuntimeTestCase
         config(['core_installation.mode' => 'legacy']);
         $this->invoke('system.capabilities.get')->assertStatus(503);
         $this->assertSame(0, DB::table('tx_internal_audit')->count());
+    }
+
+    public function test_response_exception_passthrough_requires_a_current_txapi_envelope(): void
+    {
+        $request = $this->boundaryRequest();
+        $response = TxapiResponse::error($request, 'RATE_LIMITED', 'Service ingress limit exceeded', 429)
+            ->withHeaders(['Retry-After' => '60', 'Cache-Control' => 'private, no-store']);
+        $this->assertSame($response, TxapiErrorRenderer::render($request, new HttpResponseException($response)));
+        $unstructured = response()->json(['exception' => 'PRIVATE_EXCEPTION_MATERIAL'], 429);
+        $rejected = TxapiErrorRenderer::render($request, new HttpResponseException($unstructured));
+        $this->assertSame(500, $rejected->getStatusCode());
+        $this->assertSame('INTERNAL_ERROR', $rejected->getData(true)['error']['code']);
+        $this->assertStringNotContainsString('PRIVATE_EXCEPTION_MATERIAL', $rejected->getContent());
+        foreach ([
+            TxapiResponse::error($request, 'RATE_LIMITED', 'PRIVATE_EXCEPTION_MATERIAL', 429),
+            TxapiResponse::error($request, 'RATE_LIMITED', 'Service ingress limit exceeded', 200),
+            TxapiResponse::error(Request::create('/other'), 'RATE_LIMITED', 'Service ingress limit exceeded', 429),
+        ] as $invalid) {
+            $sanitized = TxapiErrorRenderer::render($request, new HttpResponseException($invalid));
+            $this->assertSame(500, $sanitized->getStatusCode());
+            $this->assertSame('INTERNAL_ERROR', $sanitized->getData(true)['error']['code']);
+            $this->assertStringNotContainsString('PRIVATE_EXCEPTION_MATERIAL', $sanitized->getContent());
+        }
     }
 
     public function test_real_actor_sessions_are_rechecked_and_secret_fields_never_enter_audit(): void
@@ -380,7 +409,7 @@ final class TxapiNativeInternalApiTest extends NativeRuntimeTestCase
 
     private function boundaryRequest(): Request
     {
-        $request = Request::create(self::BASE.'user/operations/system.capabilities.get', 'POST', server: [
+        $request = Request::create('https://localhost'.self::BASE.'user/operations/system.capabilities.get', 'POST', server: [
             'REMOTE_ADDR' => '127.0.0.1', 'HTTPS' => 'on',
             'HTTP_X_CORE_SERVICE_ID' => $this->service['service_id'],
             'HTTP_X_CORE_SERVICE_CREDENTIAL' => $this->service['credential'],
@@ -412,8 +441,11 @@ final class TxapiNativeInternalApiTest extends NativeRuntimeTestCase
             'X-Core-Service-Epoch' => $this->service['epoch'],
             'X-Core-Tls-Verified' => 'SUCCESS', 'X-Core-Tls-Certificate-Sha256' => self::FINGERPRINT,
         ], $headers);
-        return $this->withServerVariables(array_replace(['REMOTE_ADDR' => '127.0.0.1', 'HTTPS' => 'on'], $server))
-            ->postJson(self::BASE.$domain.'/operations/'.$operation, array_replace([
+        $server = array_replace(['REMOTE_ADDR' => '127.0.0.1', 'HTTPS' => 'on'], $server);
+        // Symfony derives HTTPS from the URI scheme, overriding the server bag.
+        $scheme = in_array(strtolower((string) $server['HTTPS']), ['on', '1'], true) ? 'https' : 'http';
+        return $this->withServerVariables($server)
+            ->postJson($scheme.'://localhost'.self::BASE.$domain.'/operations/'.$operation, array_replace([
                 'contract_version' => '1', 'request_id' => (string) Str::uuid(),
                 'deadline_at' => time() + 15, 'input' => $input === [] ? (object) [] : $input,
             ], $envelope), $headers);

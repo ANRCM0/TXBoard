@@ -26,19 +26,24 @@ final class NativeRefundService
         $request = ['user_id' => (string) $userId, 'source_type' => $sourceType, 'source_id' => (string) $sourceId,
             'amount_minor' => MoneyValue::minor($amountMinor, true), 'request_key' => MoneyValue::key($requestKey),
             'actor_id' => (string) $actorId, 'reason' => $reason, 'destination' => 'wallet'];
-        return $this->transactions->run($userId, function (array $installation) use ($userId, $sourceType, $sourceId, $request, $actorId): array {
-            $actor = DB::table('tx_user')->where('id', $actorId)->first();
+        // Immutable routing only; source evidence is reread after the aggregate and money locks.
+        $locator = DB::table($sourceType === 'receipt' ? 'tx_payment_receipt' : 'tx_order_payment')
+            ->useWritePdo()->where('id', $sourceId)->first();
+        return $this->transactions->run($userId, function (array $installation) use ($userId, $sourceType, $sourceId, $request, $actorId, $locator): array {
+            $actor = DB::table('tx_user')->where('id', $actorId)->sharedLock()->first();
             $this->require($actor !== null && (bool) $actor->is_admin && !(bool) ($actor->banned ?? false), 'REFUND_ACTOR_FORBIDDEN');
             [, $slot, $subscriptions] = $this->subscriptions->lockAccount($userId, time(), $installation['installation_id']);
             $histories = [];
             foreach ($subscriptions as $subscription) {
                 $histories[(string) $subscription->id] = $this->subscriptions->lockHistory($subscription);
             }
-            $locator = DB::table($sourceType === 'receipt' ? 'tx_payment_receipt' : 'tx_order_payment')->where('id', $sourceId)->first();
             $this->require($locator !== null && $locator->installation_id === $installation['installation_id']
                 && (string) $locator->user_id === (string) $userId, 'REFUND_SOURCE_MISSING');
             $order = $locator->order_id === null ? null : Order::query()->whereKey($locator->order_id)->lockForUpdate()->first();
             $terms = $order === null ? null : OrderPurchaseTerms::query()->where('order_id', $order->id)->lockForUpdate()->first();
+            if ($order !== null) {
+                DB::table('tx_wallet_order_reservation')->where('order_id', $order->id)->lockForUpdate()->first();
+            }
             $currency = MoneyValue::currency($locator->currency);
             $this->ledger->lockAccountsLocked($installation, $userId, $currency, [
                 ['owner_id' => '0', 'purpose' => 'provider_clearing'],
@@ -78,7 +83,7 @@ final class NativeRefundService
                     $this->verifyRefundHash($row);
                     $orderTotal = MoneyValue::add($orderTotal, (string) $row->amount_minor);
                 }
-                $allocation = DB::table('tx_order_payment')->where('id', $source['order_payment_id'])->first();
+                $allocation = DB::table('tx_order_payment')->where('id', $source['order_payment_id'])->sharedLock()->first();
                 $this->require($allocation !== null && bccomp($orderTotal, (string) $allocation->amount_minor) <= 0,
                     'REFUND_AMOUNT_EXCEEDS_ORDER');
                 $entitlement = $orderTotal === (string) $allocation->amount_minor
@@ -114,7 +119,7 @@ final class NativeRefundService
     {
         $this->require(DB::transactionLevel() > 0, 'BILLING_TRANSACTION_REQUIRED');
         $this->require(!DB::table('tx_native_refund')->where('user_id', $userId)->where('order_id', $orderId)
-            ->whereIn('entitlement_effect', ['unfulfilled_cancelled', 'subscription_revoked', 'already_ended'])->exists(),
+            ->whereIn('entitlement_effect', ['unfulfilled_cancelled', 'subscription_revoked', 'already_ended'])->sharedLock()->exists(),
             'REFUND_ORDER_FULLY_REFUNDED');
     }
 
@@ -123,7 +128,7 @@ final class NativeRefundService
         if ($type === 'wallet_payment') {
             $allocation = DB::table('tx_order_payment')->where('id', $id)->lockForUpdate()->first();
             $this->require($allocation !== null && $order !== null && $terms !== null, 'REFUND_SOURCE_MISSING');
-            $reservation = DB::table('tx_wallet_order_reservation')->where('order_id', $order->id)->first();
+            $reservation = DB::table('tx_wallet_order_reservation')->where('order_id', $order->id)->lockForUpdate()->first();
             $this->require($reservation !== null, 'REFUND_WALLET_SOURCE_REQUIRED');
             $wallet = app(NativeWalletReservations::class)->verifyLocked($installation, $userId, $order, $terms, $reservation);
             $this->require($wallet['status'] === 'captured'
@@ -136,7 +141,7 @@ final class NativeRefundService
                 'currency' => $wallet['currency'], 'debit_purpose' => 'sales_revenue',
                 'installation_id' => $installation['installation_id'], 'user_id' => (string) $userId];
         }
-        $receipt = DB::table('tx_payment_receipt')->where('id', $id)->first();
+        $receipt = DB::table('tx_payment_receipt')->where('id', $id)->sharedLock()->first();
         $this->require($receipt !== null && (string) $receipt->user_id === (string) $userId
             && $receipt->installation_id === $installation['installation_id'], 'REFUND_SOURCE_MISSING');
         $fact = [];
@@ -147,10 +152,10 @@ final class NativeRefundService
         $this->require($verified['receipt_id'] === (string) $id, 'REFUND_SOURCE_EVIDENCE_INVALID');
         $journal = DB::table('tx_money_journal')->where('installation_id', $installation['installation_id'])->where('user_id', $userId)
             ->where('business_type', 'provider_capture')->where('business_ref', (string) $receipt->attempt_id)
-            ->where('idempotency_key', $receipt->identity_hash)->first();
+            ->where('idempotency_key', $receipt->identity_hash)->sharedLock()->first();
         $this->require($journal !== null, 'REFUND_SOURCE_NOT_REFUNDABLE');
-        $evidence = $this->ledger->inspectJournal((int) $journal->id);
-        $settlement = DB::table('tx_payment_settlement')->where('receipt_id', $id)->first();
+        $evidence = $this->ledger->inspectJournalLocked((int) $journal->id);
+        $settlement = DB::table('tx_payment_settlement')->where('receipt_id', $id)->sharedLock()->first();
         $allocation = null;
         if ($settlement !== null) {
             $payload = [];
@@ -166,7 +171,7 @@ final class NativeRefundService
                 && $payload['amount_minor'] === $verified['amount_minor'] && $payload['currency'] === $verified['currency'],
                 'REFUND_SOURCE_EVIDENCE_INVALID');
             if ($settlement->decision === 'order_payment') {
-                $allocation = DB::table('tx_order_payment')->where('settlement_id', $settlement->id)->first();
+                $allocation = DB::table('tx_order_payment')->where('settlement_id', $settlement->id)->sharedLock()->first();
                 $this->require($allocation !== null && $order !== null, 'REFUND_SOURCE_EVIDENCE_INVALID');
                 $this->verifyAllocation($allocation, $installation, $userId, $order);
             } else {
@@ -206,7 +211,7 @@ final class NativeRefundService
     {
         $this->require($order !== null, 'REFUND_ORDER_MISSING');
         $now = time();
-        $sourceTerms = DB::table('tx_subscription_terms')->where('source_order_id', $order->id)->orderBy('id')->limit(2)->get();
+        $sourceTerms = DB::table('tx_subscription_terms')->where('source_order_id', $order->id)->orderBy('id')->limit(2)->sharedLock()->get();
         if ($sourceTerms->isEmpty()) {
             $this->require((int) $order->status === Order::STATUS_PROCESSING, 'REFUND_FULFILLMENT_EVIDENCE_INVALID');
             $this->cancelPendingFulfillmentLocked($installation, $userId, $order, $now, true);
@@ -274,7 +279,7 @@ final class NativeRefundService
             $this->require($actual === $source[$field], 'REFUND_EVIDENCE_INVALID');
         }
         $this->require(bccomp((string) $row->cumulative_minor, $source['original_amount_minor']) <= 0, 'REFUND_EVIDENCE_INVALID');
-        $journal = $this->ledger->inspectJournal((int) $row->journal_id);
+        $journal = $this->ledger->inspectJournalLocked((int) $row->journal_id);
         $this->require($journal['installation_id'] === $source['installation_id']
             && $journal['user_id'] === $source['user_id'], 'REFUND_EVIDENCE_INVALID');
         $expected = $this->refundJournal($source, (string) $row->amount_minor, $row->request_key, (string) $row->created_at);

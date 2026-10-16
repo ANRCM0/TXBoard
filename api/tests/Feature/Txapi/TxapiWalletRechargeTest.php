@@ -49,11 +49,11 @@ final class TxapiWalletRechargeTest extends NativePaymentTestCase
         $this->postJson(self::ROOT.'/WR'.str_repeat('A', 28).'/checkout')->assertUnauthorized();
         Sanctum::actingAs($user);
         $this->postJson(self::ROOT, $body)->assertUnprocessable()->assertJsonPath('error.code', 'VALIDATION_FAILED')
-            ->assertHeader('Cache-Control', 'private, no-store');
+            ->assertHeader('Cache-Control', 'no-store, private');
         $this->postJson(self::ROOT, $body, ['Idempotency-Key' => 'not-a-uuid'])->assertUnprocessable();
         foreach ([0, 100, 100.5, '0', '99', '500001', '100.5', '00100', '9223372036854775808'] as $invalid) {
             $this->postJson(self::ROOT, array_replace($body, ['amount_minor' => $invalid]),
-                ['Idempotency-Key' => $key])->assertUnprocessable()->assertHeader('Cache-Control', 'private, no-store');
+                ['Idempotency-Key' => $key])->assertUnprocessable()->assertHeader('Cache-Control', 'no-store, private');
         }
         $this->postJson(self::ROOT, array_replace($body, ['payment_method_id' => '999999']),
             ['Idempotency-Key' => $key])->assertUnprocessable()->assertJsonPath('error.code', 'RECHARGE_PROVIDER_UNAVAILABLE');
@@ -61,7 +61,7 @@ final class TxapiWalletRechargeTest extends NativePaymentTestCase
         $this->assertSame(0, DB::table('tx_payment_dispatch')->count());
         DB::table('tx_user')->where('id', $user->id)->update(['balance' => 2147483600, 'commission_balance' => 123]);
         $created = $this->postJson(self::ROOT, $body, ['Idempotency-Key' => $key])->assertCreated()
-            ->assertHeader('Cache-Control', 'private, no-store')
+            ->assertHeader('Cache-Control', 'no-store, private')
             ->assertJsonPath('data.amount_minor', '1500')->assertJsonPath('data.fee_minor', '0')
             ->assertJsonPath('data.total_minor', '1500')->assertJsonPath('data.currency', 'CNY')
             ->assertJsonPath('data.payment_method_id', (string) $this->payment->id)
@@ -76,12 +76,12 @@ final class TxapiWalletRechargeTest extends NativePaymentTestCase
             ->assertCreated()->assertJsonPath('data', $created->json('data'));
         $this->postJson(self::ROOT, array_replace($body, ['amount_minor' => '2000']), ['Idempotency-Key' => $key])
             ->assertConflict()->assertJsonPath('error.code', 'RECHARGE_IDEMPOTENCY_CONFLICT')
-            ->assertHeader('Cache-Control', 'private, no-store');
+            ->assertHeader('Cache-Control', 'no-store, private');
         $this->assertSame(1, DB::table('tx_native_recharge')->where('user_id', $user->id)->count());
         $this->assertSame(0, DB::table('tx_payment_attempt')->count());
         $this->assertSame(0, DB::table('tx_payment_receipt')->count());
         $this->assertSame(0, DB::table('tx_money_journal')->count());
-        $this->getJson('/txapi/billing/wallet')->assertOk()->assertHeader('Cache-Control', 'private, no-store')
+        $this->getJson('/txapi/billing/wallet')->assertOk()->assertHeader('Cache-Control', 'no-store, private')
             ->assertJsonPath('data.schema', 'native-wallet/v1')->assertJsonPath('data.balances', []);
         $this->assertSame(2147483600, (int) $user->fresh()->balance);
         $this->assertSame(123, (int) $user->fresh()->commission_balance);
@@ -100,21 +100,21 @@ final class TxapiWalletRechargeTest extends NativePaymentTestCase
         $this->getJson(self::ROOT.'?limit=1')->assertOk()->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.recharge_id', $first['recharge_id'])
             ->assertJsonPath('meta.next_after_id', $first['recharge_id'])->assertJsonMissingPath('meta.total')
-            ->assertHeader('Cache-Control', 'private, no-store');
+            ->assertHeader('Cache-Control', 'no-store, private');
         $this->getJson(self::ROOT.'?limit=1&after_id='.$first['recharge_id'])->assertOk()->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.recharge_id', $second['recharge_id'])
             ->assertJsonPath('meta.next_after_id', $second['recharge_id']);
         $this->getJson(self::ROOT.'?after_id='.$second['recharge_id'])->assertOk()
             ->assertJsonPath('data', [])->assertJsonPath('meta.next_after_id', null);
         foreach (['limit=0', 'limit=51', 'after_id=-1', 'after_id=1.5'] as $query) {
-            $this->getJson(self::ROOT.'?'.$query)->assertUnprocessable()->assertHeader('Cache-Control', 'private, no-store');
+            $this->getJson(self::ROOT.'?'.$query)->assertUnprocessable()->assertHeader('Cache-Control', 'no-store, private');
         }
         $this->getJson(self::ROOT.'/'.$first['trade_no'])->assertOk()->assertJsonPath('data', $first)
-            ->assertHeader('Cache-Control', 'private, no-store');
+            ->assertHeader('Cache-Control', 'no-store, private');
         $this->getJson(self::ROOT.'/'.$foreign['trade_no'])->assertNotFound()
-            ->assertJsonPath('error.code', 'RECHARGE_MISSING')->assertHeader('Cache-Control', 'private, no-store');
+            ->assertJsonPath('error.code', 'RECHARGE_MISSING')->assertHeader('Cache-Control', 'no-store, private');
         $this->postJson(self::ROOT.'/'.$foreign['trade_no'].'/checkout')->assertNotFound()
-            ->assertHeader('Cache-Control', 'private, no-store');
+            ->assertHeader('Cache-Control', 'no-store, private');
         $this->getJson(self::ROOT.'/not-a-native-reference')->assertNotFound();
         Sanctum::actingAs($other);
         $this->getJson(self::ROOT)->assertOk()->assertJsonCount(1, 'data')
@@ -133,11 +133,11 @@ final class TxapiWalletRechargeTest extends NativePaymentTestCase
         $recharge = $this->createRecharge();
         $path = self::ROOT.'/'.$recharge['trade_no'].'/checkout';
         $this->postJson($path, ['token' => 'must-not-be-accepted'])->assertUnprocessable()
-            ->assertJsonPath('error.fields', ['token'])->assertHeader('Cache-Control', 'private, no-store');
+            ->assertJsonPath('error.fields', ['token'])->assertHeader('Cache-Control', 'no-store, private');
         $this->assertSame(0, DB::table('tx_payment_dispatch')->count());
         $checkout = $this->postJson($path)->assertOk()->assertJsonPath('data.payment.type', 1)
             ->assertJsonPath('data.attempt.intent_type', 'recharge')->assertJsonPath('data.attempt.amount_minor', '1000')
-            ->assertJsonPath('data.attempt.currency', 'CNY')->assertHeader('Cache-Control', 'private, no-store');
+            ->assertJsonPath('data.attempt.currency', 'CNY')->assertHeader('Cache-Control', 'no-store, private');
         $attemptId = $checkout->json('data.attempt.attempt_id');
         $url = $checkout->json('data.payment.data');
         $this->assertStringStartsWith('https://payment.invalid/gateway/submit.php?', $url);
@@ -162,7 +162,7 @@ final class TxapiWalletRechargeTest extends NativePaymentTestCase
         $this->payment->update(['enable' => false, 'uuid' => bin2hex(random_bytes(16)),
             'config' => ['url' => 'https://changed.example.test', 'pid' => '99', 'key' => 'changed-secret']]);
         $this->postJson($path)->assertConflict()->assertJsonPath('error.code', 'PAYMENT_PROVIDER_UNAVAILABLE')
-            ->assertHeader('Cache-Control', 'private, no-store');
+            ->assertHeader('Cache-Control', 'no-store, private');
         $this->post($callback, $params)->assertOk()->assertContent('success');
         $this->post($callback, $params)->assertOk()->assertContent('success');
         $this->assertSame(1, DB::table('tx_payment_receipt')->count());
@@ -175,7 +175,7 @@ final class TxapiWalletRechargeTest extends NativePaymentTestCase
         $this->getJson('/txapi/billing/wallet')->assertOk()->assertJsonPath('data', [
             'schema' => 'native-wallet/v1',
             'balances' => [['currency' => 'CNY', 'available_minor' => '1000', 'reserved_minor' => '0']],
-        ])->assertHeader('Cache-Control', 'private, no-store');
+        ])->assertHeader('Cache-Control', 'no-store, private');
         $this->assertSame(321, (int) $owner->fresh()->balance);
         $this->assertSame(123, (int) $owner->fresh()->commission_balance);
         $this->assertSame(0, DB::table('tx_order_payment')->count());
@@ -263,7 +263,7 @@ final class TxapiWalletRechargeTest extends NativePaymentTestCase
             ->assertJsonPath('data.0.id', (string) $this->payment->id)->assertJsonPath('data.0.payment', 'EPay')
             ->assertJsonPath('data.0.currency', 'CNY')->assertJsonPath('data.0.handling_fee_fixed', '0')
             ->assertJsonPath('data.0.handling_fee_percent', '0')->assertJsonPath('data.0.external_refund_supported', false)
-            ->assertJsonMissingPath('data.0.config')->assertHeader('Cache-Control', 'private, no-store');
+            ->assertJsonMissingPath('data.0.config')->assertHeader('Cache-Control', 'no-store, private');
         $this->assertStringNotContainsString(self::SECRET, $methods->getContent());
         $this->assertStringNotContainsString('never-return-provider-secret', $methods->getContent());
         $this->assertStringNotContainsString('Not a native provider', $methods->getContent());
@@ -271,7 +271,7 @@ final class TxapiWalletRechargeTest extends NativePaymentTestCase
             Payment::query()->where('uuid', 'percent-fee-wallet')->firstOrFail()] as $method) {
             $response = $this->postJson(self::ROOT, ['amount_minor' => '1000', 'payment_method_id' => (string) $method->id],
                 ['Idempotency-Key' => (string) Str::uuid()])->assertStatus($method->id === $unsupported->id ? 409 : 422)
-                ->assertHeader('Cache-Control', 'private, no-store');
+                ->assertHeader('Cache-Control', 'no-store, private');
             $this->assertStringNotContainsString(self::SECRET, $response->getContent());
             $this->assertStringNotContainsString('never-return-provider-secret', $response->getContent());
         }
@@ -311,7 +311,7 @@ final class TxapiWalletRechargeTest extends NativePaymentTestCase
                 ? ['amount_minor' => '1000', 'payment_method_id' => (string) $this->payment->id] : [];
             $response = $this->json($verb, $path, $body, ['Idempotency-Key' => (string) Str::uuid()])
                 ->assertStatus(503)->assertJsonPath('error.code', 'INSTALLATION_AUTHORITY_NATIVE_NOT_READY')
-                ->assertHeader('Cache-Control', 'private, no-store')->assertJsonMissingPath('data');
+                ->assertHeader('Cache-Control', 'no-store, private')->assertJsonMissingPath('data');
             $this->assertStringNotContainsString(self::SECRET, $response->getContent());
             $this->assertStringNotContainsString('12345', $response->getContent());
         }
@@ -333,7 +333,7 @@ final class TxapiWalletRechargeTest extends NativePaymentTestCase
         return $this->postJson(self::ROOT, [
             'amount_minor' => $amount, 'payment_method_id' => (string) $this->payment->id,
         ], ['Idempotency-Key' => (string) Str::uuid()])->assertCreated()
-            ->assertHeader('Cache-Control', 'private, no-store')->json('data');
+            ->assertHeader('Cache-Control', 'no-store, private')->json('data');
     }
 
     private function notification(int|string $attemptId, array $overrides = []): array

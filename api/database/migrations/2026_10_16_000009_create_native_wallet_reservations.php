@@ -59,7 +59,8 @@ return new class extends Migration {
         }
         foreach (['tx_billing_work', 'tx_order_payment'] as $name) {
             Schema::table($name, function (Blueprint $table) use ($name): void {
-                $table->dropForeign($name.'_wallet_owner_fk');
+                $table->dropForeign(DB::getDriverName() === 'sqlite'
+                    ? ['wallet_reservation_id', 'installation_id', 'user_id', 'order_id'] : $name.'_wallet_owner_fk');
                 $table->dropUnique($name.'_wallet_reservation_uq');
                 $table->dropColumn('wallet_reservation_id');
             });

@@ -4,6 +4,7 @@ namespace Tests\Feature\Subscription;
 
 use App\Domains\Subscription\Services\NativePlanAdministration;
 use App\Domains\Subscription\Services\PublishedOrderService;
+use App\Domains\CredentialProvider\ProviderCodec;
 use App\Services\Auth\NativeIdentityService;
 use Illuminate\Support\Facades\DB;
 use Tests\Support\NativeRuntimeTestCase;
@@ -23,7 +24,8 @@ final class NativePlanAdministrationTest extends NativeRuntimeTestCase
             array_replace($input, ['plan_id' => $first['plan_id'], 'prices_minor' => ['monthly' => '123']]), 'admin-edit');
         $this->assertSame('123', $second['publication']['offers'][0]['price_minor']);
         $this->assertSame($original, (array) DB::table('tx_plan_offer')->where('id', $original['id'])->first());
-        $this->assertSame($first, $service->publish($actor->id, $input, 'admin-publication'));
+        $this->assertSame(ProviderCodec::canonical($first),
+            ProviderCodec::canonical($service->publish($actor->id, $input, 'admin-publication')));
         $this->assertSame(2, DB::table('tx_native_plan_request')->count());
         $this->expectExceptionMessage('NATIVE_PLAN_IDEMPOTENCY_CONFLICT');
         $service->publish($actor->id, array_replace($input, ['name' => 'Changed']), 'admin-publication');

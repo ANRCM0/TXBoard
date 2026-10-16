@@ -49,7 +49,8 @@ return new class extends Migration {
             throw new RuntimeException('NATIVE_RECHARGE_POPULATED_ROLLBACK_REFUSED');
         }
         foreach (['tx_payment_dispatch', 'tx_payment_receipt', 'tx_payment_attempt'] as $name) {
-            Schema::table($name, fn (Blueprint $table) => $table->dropForeign($name.'_recharge_owner_fk'));
+            Schema::table($name, fn (Blueprint $table) => $table->dropForeign(DB::getDriverName() === 'sqlite'
+                ? ['recharge_id', 'installation_id', 'user_id'] : $name.'_recharge_owner_fk'));
         }
         Schema::dropIfExists('tx_native_recharge');
     }

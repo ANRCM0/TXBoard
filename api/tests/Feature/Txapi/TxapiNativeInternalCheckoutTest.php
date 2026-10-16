@@ -67,7 +67,7 @@ final class TxapiNativeInternalCheckoutTest extends NativePaymentTestCase
             'Idempotency-Key' => (string) Str::uuid(),
         ];
         $invoke = fn () => $this->withServerVariables(['REMOTE_ADDR' => '127.0.0.1', 'HTTPS' => 'on'])
-            ->postJson('/txapi/internal/native/v1/user/operations/'.$operation, [
+            ->postJson('https://core.example.test/txapi/internal/native/v1/user/operations/'.$operation, [
                 'contract_version' => '1', 'request_id' => (string) Str::uuid(),
                 'deadline_at' => time() + 15, 'input' => $input,
             ], $headers);
