@@ -70,8 +70,14 @@ It returns verified immutable offers and explicit mutable sale availability;
 the purchasable identifier is `offer_id`. Later mutable Plan edits and legacy
 User counters cannot change this projection. Purchase/fulfillment retain the
 C2 account/slot locks, frozen v2 purchase evidence, capacity arbitration and
-atomic order completion. The real free-order API path is included in C2
-acceptance; C3 remains responsible for the full money/attempt/refund ledger.
+atomic order completion. This runtime exposes only zero-price offers. A known
+nonzero `offer_id` is rejected before an order or capacity reservation commits,
+and checkout independently rejects a nonzero native order before selecting a
+payment provider or starting a charge. Balance, discounts and coupons cannot
+turn a paid offer into an admitted purchase. Payment webhooks remain outside
+the runtime inventory. The real free-order API path is included in C2
+acceptance; C3 must complete payment callbacks and the money/attempt/refund
+ledger before paid native purchases can open.
 
 Native administrator identity operations are:
 

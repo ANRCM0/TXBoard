@@ -32,6 +32,7 @@ abstract class NativeRuntimeTestCase extends TestCase
     protected array $providerCapabilities = ['node_delivery' => true, 'subscription_render' => true];
     protected ?\Closure $duringCapabilityProbe = null;
     protected int $capabilityProbes = 0;
+    protected array $planPrices = ['monthly' => '0.00', 'onetime' => '0.00'];
     private array $files = [];
     private array $receipts = [];
     private int $sequence = 0;
@@ -86,7 +87,8 @@ abstract class NativeRuntimeTestCase extends TestCase
             'machine_id' => null, 'recipient_sha256' => str_repeat('d', 64)]]]);
         $plan = Plan::withoutEvents(fn () => Plan::query()->create(['name' => 'Runtime plan', 'group_id' => $group,
             'transfer_enable' => 2, 'speed_limit' => 30, 'device_limit' => 2, 'reset_traffic_method' => 2,
-            'prices' => ['monthly' => '0.00', 'onetime' => '0.00'], 'show' => true, 'sell' => true, 'renew' => true]));
+            'capacity_limit' => null,
+            'prices' => $this->planPrices, 'show' => true, 'sell' => true, 'renew' => true]));
         $this->offers = app(PlanPublicationService::class)->publish($plan->id, 'runtime-offers', 'USD', 'UTC')['offers'];
         $transport = Mockery::mock(ProviderTransport::class)->makePartial();
         $transport->shouldReceive('capabilities')->andReturnUsing(function (array $registration): array {

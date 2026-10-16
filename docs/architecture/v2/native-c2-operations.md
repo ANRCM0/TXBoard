@@ -12,6 +12,9 @@ Nodes, static tariff, no multiplexing and TLS mode 0. The client rendering DTO
 can describe ordinary TLS, but native activation does not yet accept that
 configuration. UDP, Reality, Xray, other transports and protocols remain
 outside this native runtime. Existing legacy runtime support is unchanged.
+Only zero-price offers are exposed or purchasable. Nonzero native orders cannot
+start payment checkout; payment callbacks and the money ledger remain C3 work.
+Provision a zero-price offer for this runtime.
 
 ## Preparation and activation
 

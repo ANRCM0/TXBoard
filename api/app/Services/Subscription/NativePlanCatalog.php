@@ -3,6 +3,7 @@
 namespace App\Services\Subscription;
 
 use App\Domains\Installation\InstallationAuthority;
+use App\Domains\Installation\NativeRuntimeAdmission;
 use DomainException;
 use Illuminate\Support\Facades\DB;
 
@@ -19,7 +20,7 @@ final class NativePlanCatalog
             throw new DomainException('NATIVE_CATALOG_INPUT_INVALID');
         }
         return DB::transaction(function () use ($planId): array {
-            app(InstallationAuthority::class)->assertNativeRead();
+            $installation = app(InstallationAuthority::class)->assertNativeRead();
             $query = DB::table('tx_plan_offer_availability as availability')
                 ->join('tx_plan_offer as offer', 'offer.id', '=', 'availability.offer_id')
                 ->where('availability.status', 'published')->where('availability.show', true)
@@ -45,6 +46,10 @@ final class NativePlanCatalog
                 $published = $this->publication->verifiedOffer((int) $row->offer_id);
                 $offer = $published['offer'];
                 $source = $published['source'];
+                if (($installation['runtime_version'] ?? null) === NativeRuntimeAdmission::VERSION
+                    && (string) $offer->price_minor !== '0') {
+                    continue;
+                }
                 $result[] = [
                     'offer_id' => (string) $offer->id, 'plan_id' => (string) $offer->plan_id,
                     'plan_revision_id' => (string) $offer->plan_revision_id,

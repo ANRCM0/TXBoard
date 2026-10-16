@@ -36,6 +36,7 @@ final class NativeProviderNodeAuthorizationTest extends NativeSubscriptionTestCa
     {
         parent::setUp();
         foreach (['2026_10_16_000001_enable_native_credential_provider.php',
+            '2026_10_16_000002_enable_native_credential_rotation.php',
             '2026_10_14_000010_create_native_node_authorization_state.php'] as $migration) {
             (require database_path('migrations/'.$migration))->up();
         }

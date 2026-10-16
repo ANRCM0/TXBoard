@@ -2,13 +2,19 @@
 
 namespace Tests\Feature\Subscription;
 
+use App\Domains\Billing\OrderCheckout;
+use App\Domains\Installation\InstallationAuthority;
+use App\Domains\Installation\NativeRuntimeAdmission;
+use App\Exceptions\ApiException;
 use App\Models\User;
 use App\Services\Auth\NativeIdentityService;
 use App\Services\Subscription\NativePlanCatalog;
 use App\Services\Subscription\PlanPublicationService;
+use App\Services\Subscription\PublishedOrderService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
+use Mockery;
 use Tests\Support\NativeSubscriptionTestCase;
 
 final class NativeIdentityAndCatalogTest extends NativeSubscriptionTestCase
@@ -70,5 +76,30 @@ final class NativeIdentityAndCatalogTest extends NativeSubscriptionTestCase
         app(PlanPublicationService::class)->setAvailability($offer,
             ['show' => false, 'sell' => true, 'renew' => true, 'capacity_limit' => null], 1);
         $this->assertNotContains((string) $offer, array_column(app(NativePlanCatalog::class)->available(), 'offer_id'));
+    }
+
+    public function test_existing_paid_native_order_cannot_start_a_charge_under_the_bounded_runtime(): void
+    {
+        // Earlier domain fixtures can construct paid evidence; the activated runtime cannot.
+        $user = $this->user(['balance' => 5000]);
+        $offer = $this->publishedOffer($this->plan());
+        $order = app(PublishedOrderService::class)->create($user->id, $offer, 'paid-checkout');
+        $before = $order->fresh()->getAttributes();
+        $authority = Mockery::mock(InstallationAuthority::class);
+        $authority->shouldReceive('assertNativeMutation')->andReturnUsing(function (): array {
+            $this->assertGreaterThan(0, DB::transactionLevel());
+            return ['installation_id' => self::INSTALLATION, 'runtime_version' => NativeRuntimeAdmission::VERSION];
+        });
+        $this->app->instance(InstallationAuthority::class, $authority);
+        try {
+            app(OrderCheckout::class)->start($user->id, $order->trade_no, 1);
+            $this->fail('Paid native checkout reached the payment provider');
+        } catch (ApiException $error) {
+            $this->assertSame(409, $error->getCode());
+            $this->assertSame('Native paid checkout is unavailable', $error->getMessage());
+        }
+        $this->assertSame($before, $order->fresh()->getAttributes());
+        $this->assertSame(5000, (int) $user->fresh()->balance);
+        Bus::assertNothingDispatched();
     }
 }

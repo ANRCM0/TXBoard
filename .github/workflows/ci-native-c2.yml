@@ -34,6 +34,11 @@ jobs:
   native-c2-core:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    services:
+      redis:
+        image: redis:7.4
+        ports: ['6379:6379']
+        options: --health-cmd="redis-cli ping" --health-interval 5s --health-retries 12
     env:
       APP_ENV: testing
       DB_CONNECTION: sqlite
@@ -115,7 +120,7 @@ jobs:
           cp .env.example .env
           php artisan key:generate
           php artisan migrate --force
-          php artisan test tests/Feature/Subscription/NativeCredentialProviderTest.php tests/Feature/Subscription/NativeProviderNodeAuthorizationTest.php tests/Feature/Subscription/NativeSubscriptionDeliveryTest.php tests/Feature/Installation/NativeRuntimeReadinessTest.php tests/Feature/UsageV2/NativeRuntimeUsageTest.php
+          php artisan test tests/Feature/Subscription/NativeCredentialProviderTest.php tests/Feature/Subscription/NativeProviderNodeAuthorizationTest.php tests/Feature/Subscription/NativeSubscriptionDeliveryTest.php tests/Feature/Subscription/NativeRuntimeCommerceTest.php tests/Feature/Subscription/NativeIdentityAndCatalogTest.php tests/Feature/Installation/NativeRuntimeReadinessTest.php tests/Feature/UsageV2/NativeRuntimeUsageTest.php
 
   native-c2-node:
     runs-on: ubuntu-latest
