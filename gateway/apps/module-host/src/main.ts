@@ -49,7 +49,8 @@ element<HTMLFormElement>('#connect').addEventListener('submit', async event => {
     const descriptor = parseExtensionDescriptor((await (await request('presentation')).json()).data)
     if (descriptor.module !== module || descriptor.actor !== kind) throw new Error('MODULE_DESCRIPTOR_INVALID')
     expectedFingerprint = descriptor.fingerprint
-    const html = await moduleDocument(descriptor, path => request(`resources/${path}`))
+    const nonce = element<HTMLMetaElement>('meta[name="module-script-nonce"]').content
+    const html = await moduleDocument(descriptor, path => request(`resources/${path}`), nonce)
     if (current !== generation) return
     const navigation = element<HTMLButtonElement>('#navigation')
     navigation.textContent = descriptor.title

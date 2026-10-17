@@ -618,7 +618,7 @@ class CoreCapabilityBoundaryTest(unittest.TestCase):
 
     def test_native_sessions_only_owner_and_exact_composition_root_can_reference_it(self):
         for relative in GUARD.ACCOUNT_SESSION_OWNERS:
-            namespace = GUARD.KERNEL_FILES[relative]
+            namespace = 'App\\' + '\\'.join(Path(relative).parent.parts[2:])
             self.write(relative, f"<?php\nnamespace {namespace};\n"
                        "use App\\Domains\\Identity\\NativeAccountSessions;\n")
         self.assertEqual(16, GUARD.validate_kernel_boundaries(self.root))
@@ -711,7 +711,7 @@ class CoreCapabilityBoundaryTest(unittest.TestCase):
 
     def test_native_usage_queries_is_limited_to_exact_owner_and_composition(self):
         for relative in GUARD.USAGE_QUERY_OWNERS:
-            namespace = GUARD.KERNEL_FILES[relative]
+            namespace = 'App\\' + '\\'.join(Path(relative).parent.parts[2:])
             self.write(relative, f"<?php\nnamespace {namespace};\n"
                        "use App\\Domains\\UsageV2\\NativeUsageQueries;\n")
         self.assertEqual(16, GUARD.validate_kernel_boundaries(self.root))

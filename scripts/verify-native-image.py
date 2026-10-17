@@ -11,6 +11,7 @@ import hashlib
 import importlib.util
 import json
 import os
+import re
 from pathlib import Path
 import secrets
 import shutil
@@ -34,7 +35,8 @@ def require(value, message):
 def run(arguments, cwd=None, env=None, timeout=600):
     result = subprocess.run([str(value) for value in arguments], cwd=cwd, env=env, stdin=subprocess.DEVNULL,
                             stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=timeout)
-    require(result.returncode == 0, "Native image fixture command failed: " + str(arguments[0]) + " (exit " + str(result.returncode) + ") " + result.stderr[-1200:])
+    codes = re.findall(r'"error_code"\s*:\s*"([A-Z][A-Z0-9_]{1,160})"', result.stdout + result.stderr)
+    require(result.returncode == 0, "Native image fixture command failed: " + str(arguments[0]) + " (exit " + str(result.returncode) + ") codes=" + repr(codes) + " " + result.stderr[-1200:])
     return result.stdout
 
 
@@ -271,6 +273,22 @@ def main():
                 "composition_approvals": 3, "original_orders": 1, "module_owned_schema": 2, "recovered_operation": recovered_operation,
                 "provider": "actual Go mTLS capability peer; no Node traffic in this image proof", "consumer": "actual admin login, catalog, order, extension HTTP and Chromium SDK host"})
             print("Native immutable image install, update and killed-executor recovery passed", flush=True)
+        except BaseException:
+            codes, stage = [], "before_intent"
+            log = installation / "backups/installer/install.log"
+            if log.is_file():
+                codes = re.findall(r'"error_code"\s*:\s*"([A-Z][A-Z0-9_]{1,160})"', log.read_text(errors="replace")[-1048576:])
+            try:
+                intent = native.Journal(installation).load()
+                if intent is not None:
+                    stage = intent["stage"]
+            except Exception:
+                stage = "journal_unavailable"
+            diagnostic = {"schema": "modular-native-image-proof/v1", "status": "failed", "stage": stage, "error_codes": codes}
+            args.output.parent.mkdir(parents=True, exist_ok=True)
+            write(args.output, diagnostic)
+            print(json.dumps(diagnostic), flush=True)
+            raise
         finally:
             if (installation / "compose.yaml").exists():
                 subprocess.run(["docker", "compose", "down", "--volumes", "--remove-orphans"], cwd=installation,

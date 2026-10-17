@@ -3,7 +3,8 @@ import type { ExtensionDescriptor } from '@txboard/core-sdk'
 const framePolicy = "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; font-src data:; connect-src 'none'; form-action 'none'; base-uri 'none'"
 
 /** Fetch declared assets with host authorization, then embed them in the opaque frame without credentials or resource URLs. */
-export async function moduleDocument(descriptor: ExtensionDescriptor, load: (path: string) => Promise<Response>): Promise<string> {
+export async function moduleDocument(descriptor: ExtensionDescriptor, load: (path: string) => Promise<Response>, scriptNonce: string): Promise<string> {
+  if (!/^[A-Za-z0-9+/]{32}(?![\s\S])/u.test(scriptNonce)) throw new Error('MODULE_HOST_NONCE_REQUIRED')
   const assets = new Map<string, Uint8Array>()
   let total = 0
   for (const path of descriptor.assets) {
@@ -54,6 +55,8 @@ export async function moduleDocument(descriptor: ExtensionDescriptor, load: (pat
   const page = new DOMParser().parseFromString(`<meta http-equiv="Content-Security-Policy" content="${framePolicy}">` + text(descriptor.entry), 'text/html')
   page.querySelectorAll('base, meta[http-equiv], iframe, object, embed, audio, video, source, track').forEach(element => element.remove())
   const embeddedStyles = new Set<HTMLStyleElement>()
+  // srcdoc inherits the parent's script policy. Its own inline-only policy still blocks all external script URLs.
+  page.querySelectorAll<HTMLScriptElement>('script').forEach(script => script.setAttribute('nonce', scriptNonce))
   page.querySelectorAll<HTMLScriptElement>('script[src]').forEach(script => {
     const path = relative(script.getAttribute('src')!, descriptor.entry)
     if (!path.endsWith('.js')) throw new Error('MODULE_RESOURCE_TYPE_UNSUPPORTED')

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import { createServer } from 'node:http'
 import { readFile } from 'node:fs/promises'
 import { chromium } from 'playwright'
+import { hostDocument } from '../../apps/module-host/document.mjs'
 
 const token = 'module-browser-fixture-secret'
 const empty = { type: 'object', properties: {}, required: [], additionalProperties: false }
@@ -71,20 +72,24 @@ test('actual minimal host loads declared assets and enforces opaque Bridge, retr
   const host = await server(async (request, response) => {
     if (!['/', '/host.js'].includes(request.url)) { response.writeHead(404).end(); return }
     response.setHeader('Content-Type', request.url === '/' ? 'text/html' : 'text/javascript')
-    response.end(await readFile(new URL(request.url === '/' ? '../../apps/module-host/dist/index.html' : '../../apps/module-host/dist/host.js', import.meta.url)))
+    response.end(request.url === '/' ? await hostDocument() : await readFile(new URL('../../apps/module-host/dist/host.js', import.meta.url)))
   })
   hostOrigin = host.url
   t.after(host.close)
   const browser = await chromium.launch({ headless: true })
   t.after(() => browser.close())
   const page = await browser.newPage({ viewport: { width: 1000, height: 850 } })
+  const diagnostics = []
+  page.on('pageerror', error => diagnostics.push(error.message))
+  page.on('console', message => { if (message.type() === 'error') diagnostics.push(message.text().slice(0, 500)) })
   await page.goto(host.url)
   await page.locator('#origin').fill(core.url)
   await page.locator('#admin-path').fill('acceptance')
   await page.locator('#token').fill(token)
   const connect = async () => {
     await page.locator('#connect button').click()
-    await page.frameLocator('#surface iframe').locator('#result').filter({ hasText: label }).waitFor()
+    try { await page.frameLocator('#surface iframe').locator('#result').filter({ hasText: label }).waitFor() }
+    catch (error) { throw new Error(`${error.message}; host=${await page.locator('#status').textContent()}; browser=${JSON.stringify(diagnostics)}`) }
   }
   await connect()
   let frame = page.frameLocator('#surface iframe')

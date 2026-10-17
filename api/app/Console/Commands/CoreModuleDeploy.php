@@ -26,8 +26,11 @@ final class CoreModuleDeploy extends Command
             };
             $this->line(json_encode($result, JSON_THROW_ON_ERROR));
             return self::SUCCESS;
-        } catch (\Throwable) {
-            $this->error('MODULE_DEPLOYMENT_INCOMPLETE: inspect the durable intent and resume with the same ID, package and configuration.');
+        } catch (\Throwable $error) {
+            $code = $error instanceof \App\Extensions\Contracts\ExtensionFailure || $error instanceof \App\Core\Kernel\Modules\ModuleError
+                ? $error->errorCode : 'MODULE_DEPLOYMENT_INCOMPLETE';
+            if (preg_match('/\AMODULE_[A-Z_]{1,100}\z/D', $code) !== 1) $code = 'MODULE_DEPLOYMENT_INCOMPLETE';
+            $this->line(json_encode(['error_code' => $code]));
             return self::FAILURE;
         }
     }

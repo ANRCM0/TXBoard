@@ -2,13 +2,14 @@ import assert from 'node:assert/strict'
 import { createServer } from 'node:http'
 import { readFile } from 'node:fs/promises'
 import { chromium } from 'playwright'
+import { hostDocument } from '../../apps/module-host/document.mjs'
 
 // Only the explicit native image CI fixture supplies this private session file.
 const input = JSON.parse(await readFile(process.argv[2], 'utf8'))
 const host = createServer(async (request, response) => {
   if (!['/', '/host.js'].includes(request.url)) { response.writeHead(404).end(); return }
   response.setHeader('Content-Type', request.url === '/' ? 'text/html' : 'text/javascript')
-  response.end(await readFile(new URL(request.url === '/' ? '../../apps/module-host/dist/index.html' : '../../apps/module-host/dist/host.js', import.meta.url)))
+  response.end(request.url === '/' ? await hostDocument() : await readFile(new URL('../../apps/module-host/dist/host.js', import.meta.url)))
 })
 let browser
 try {
