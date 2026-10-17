@@ -504,8 +504,9 @@ final class NativeUpgradeCreditTest extends NativePaymentTestCase
                 $this->assertGreaterThan(0, DB::transactionLevel());
                 $real->applyLocked($installation, $account, $slot, $subscriptions, $histories, $order, $purchase, $now);
                 $this->assertTrue(DB::table('tx_subscription_operation')->where('order_id', $target->id)->exists());
-                $this->assertSame($providerOperations, DB::table('tx_credential_provider_operation')->count(),
-                    'The SQL participant must stage work without performing Provider I/O.');
+                // Durable Provider intents are SQL work; the fixture rejects every wire call inside a transaction.
+                $this->assertSame($providerOperations + 1, DB::table('tx_credential_provider_operation')->count());
+                $this->assertSame(1, DB::table('tx_credential_provider_operation')->where('status', 'pending')->count());
                 throw new \RuntimeException('INJECTED_LOCKED_PORT_FAILURE');
             },
         );
@@ -516,7 +517,8 @@ final class NativeUpgradeCreditTest extends NativePaymentTestCase
         $tables = ['tx_order', 'tx_subscription', 'tx_subscription_terms', 'tx_subscription_terms_transition',
             'tx_usage_period', 'tx_subscription_operation', 'tx_money_account', 'tx_money_journal', 'tx_money_posting',
             'tx_payment_attempt', 'tx_payment_receipt', 'tx_payment_settlement', 'tx_order_payment', 'tx_billing_work',
-            'tx_native_free_checkout', 'tx_native_runtime_outbox', 'tx_order_upgrade_credit', 'tx_upgrade_credit_source'];
+            'tx_native_free_checkout', 'tx_native_runtime_outbox', 'tx_order_upgrade_credit', 'tx_upgrade_credit_source',
+            'tx_credential_provider_operation', 'tx_access_subject', 'tx_auth_snapshot'];
         $before = $this->snapshots($tables);
         try {
             $accept();

@@ -98,7 +98,11 @@ final class OrderFulfillmentBoundaryTest extends NativePaymentTestCase
         $this->assertSame('completed', DB::table('tx_native_runtime_outbox')->value('status'));
         // The fixture's actual Provider wire asserts transactionLevel() === 0 for every call.
         $this->assertSame(1, DB::table('tx_credential_provider_operation')->count());
-        $this->assertSame($first, app(OrderFulfillment::class)->fulfill($order->id, $at + 1));
+        $replayed = app(OrderFulfillment::class)->fulfill($order->id, $at + 1);
+        // Persisted JSON object key order is not part of the result; scalar types and values are.
+        ksort($first);
+        ksort($replayed);
+        $this->assertSame($first, $replayed);
         $this->assertSame(1, DB::table('tx_subscription_operation')->where('order_id', $order->id)->count());
         $this->assertSame(1, DB::table('tx_subscription_terms')->where('source_order_id', $order->id)->count());
         $this->assertSame(1, DB::table('tx_credential_provider_operation')->count());
