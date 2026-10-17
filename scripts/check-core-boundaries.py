@@ -164,6 +164,14 @@ KERNEL_FILES = {
     "api/app/Domains/Identity/Contracts/AccountQueries.php":
         "App\\Domains\\Identity\\Contracts",
     "api/app/Domains/InternalApi/AccountReadOperations.php": "App\\Domains\\InternalApi",
+    "api/app/Domains/Billing/Contracts/OrderQueries.php":
+        "App\\Domains\\Billing\\Contracts",
+    "api/app/Domains/Billing/Contracts/OrderListQuery.php":
+        "App\\Domains\\Billing\\Contracts",
+    "api/app/Domains/Billing/Contracts/OrderPage.php":
+        "App\\Domains\\Billing\\Contracts",
+    "api/app/Domains/InternalApi/OrderReadOperations.php": "App\\Domains\\InternalApi",
+    "api/app/Domains/InternalApi/ReadOperationResult.php": "App\\Domains\\InternalApi",
 }
 RESOLVER_OWNERS = frozenset({
     "api/app/Domains/Subscription/Services/SubscriptionEntitlementResolver.php",
@@ -181,6 +189,15 @@ ACCOUNT_QUERY_OWNERS = frozenset({
     "api/app/Domains/Identity/NativeAccountQueries.php",
     "api/app/Providers/CoreCapabilitiesServiceProvider.php",
 })
+ORDER_QUERY_OWNERS = frozenset({
+    "api/app/Domains/Billing/NativeOrderQueries.php",
+    "api/app/Providers/CoreCapabilitiesServiceProvider.php",
+})
+READ_ADAPTER_FILES = {
+    "api/app/Domains/InternalApi/AccountReadOperations.php": "account read handler",
+    "api/app/Domains/InternalApi/OrderReadOperations.php": "order read handler",
+    "api/app/Domains/InternalApi/ReadOperationResult.php": "read operation result",
+}
 PHP_COMMENTS = re.compile(
     r"""'(?:\\.|[^'\\])*'|"(?:\\.|[^"\\])*"|//[^\r\n]*|/\*[\s\S]*?\*/|\#(?!\[)[^\r\n]*"""
 )
@@ -257,6 +274,16 @@ def validate_kernel_boundaries(root):
             re.compile(r"(?<!\$)\b(?:Closure|callable|Request|Model|Builder|Connection|ConnectionInterface)\b",
                        re.IGNORECASE),
         ),
+        "api/app/Domains/Billing/Contracts": (
+            re.compile(
+                r"\bApp\\(?!(?:Core\\Kernel|Domains\\Billing\\Contracts)(?:\\|\b))",
+                re.IGNORECASE,
+            ),
+            HOST_NAMESPACE,
+            HOST_OPERATION,
+            re.compile(r"(?<!\$)\b(?:Closure|callable|Request|Model|Builder|Connection|ConnectionInterface)\b",
+                       re.IGNORECASE),
+        ),
     }
     checked = 0
     for area, patterns in areas.items():
@@ -289,6 +316,8 @@ def validate_kernel_boundaries(root):
          FULFILLMENT_OWNERS, "order fulfillment"),
         (re.compile(r"\bNativeAccountQueries\b", re.IGNORECASE),
          ACCOUNT_QUERY_OWNERS, "account query"),
+        (re.compile(r"\bNativeOrderQueries\b", re.IGNORECASE),
+         ORDER_QUERY_OWNERS, "order query"),
     )
     for area in ("api/app", "api/config", "api/routes", "api/plugins-core"):
         for path in sorted((root / area).rglob("*.php")):
@@ -300,8 +329,8 @@ def validate_kernel_boundaries(root):
             if relative.startswith("api/app/Domains/Subscription/Services/"):
                 require(re.search(r"\bNativePaymentSettlement\b", source, re.IGNORECASE) is None,
                         f"Subscription service depends on concrete payment settlement: {relative}")
-            if relative == "api/app/Domains/InternalApi/AccountReadOperations.php":
-                # This bounded handler must not recreate HTTP or SQL dispatch. Actor
+            if relative in READ_ADAPTER_FILES:
+                # These bounded adapters must not recreate HTTP or SQL dispatch. Actor
                 # provenance and the executor's output pipeline require runtime tests.
                 for pattern in (
                     re.compile(r"\bApp\\Http\\", re.IGNORECASE),
@@ -310,7 +339,7 @@ def validate_kernel_boundaries(root):
                     re.compile(r"(?<!\$)\b(?:Auth|Request)\b", re.IGNORECASE),
                 ):
                     require(pattern.search(source) is None,
-                            f"Host or HTTP dependency in account read handler: {relative}")
+                            f"Host or HTTP dependency in {READ_ADAPTER_FILES[relative]}: {relative}")
     return checked
 
 

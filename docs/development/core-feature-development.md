@@ -59,7 +59,13 @@ Schema / 外部契约 / 配置变更：
 已有纵向示例：原生 HTTP 与 Internal API 的账户读取共用
 [AccountQueries](../../contracts/v2/core-account-read-ports-v1.md)。业务查询放在 Identity，
 订阅事实委托 Subscription；入口各自认证当前 actor 并做协议映射，不让 Internal API
-为读取数据实例化 HTTP Controller。该 K4 子集仍是待本提交验收的候选，不代表所有入口都已统一。
+为读取数据实例化 HTTP Controller。该 K4 子集 `a4cee43` 的开发 CI 已通过，尚未合并。
+
+下一条候选示例是 [OrderQueries](../../contracts/v2/core-order-read-ports-v1.md)：
+Billing 拥有当前订单列表、状态和详情的读取投影，HTTP 只校验输入与映射 404，
+Internal API 固定 handler 传实际 actor ID 和闭集分页输入。列表通过领域 OrderPage
+返回数据/分页，入口转换为自身协议；详情字段不扩散到摘要，查询结果不授予支付或履约权限。
+本批订单查询仍待精确提交 CI 和领域评审，不代表 K4 全入口或 K5 完成。
 
 1. **定位 owner 与规则。** 先区分业务变化、协议变化或入口变化；核对原实现与真实消费者。
 2. **确定最小契约。** 复用已有用例；必要时新增窄接口/DTO，定义权限、错误、业务键和完成程度。公开协议变化先同步契约。

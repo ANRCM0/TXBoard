@@ -158,8 +158,10 @@ final class OperationExecutor
             }
         }
         if ($spec['handler'] !== null) {
-            $result = TxapiResponse::success($request,
-                app()->call([app($spec['handler']), $spec['method']], ['actor' => $actor]));
+            $view = app()->call([app($spec['handler']), $spec['method']], ['actor' => $actor, 'input' => $input]);
+            if ($view === null) throw new \Symfony\Component\HttpKernel\Exception\NotFoundHttpException();
+            if (!$view instanceof ReadOperationResult) throw new \LogicException('INTERNAL_READ_RESULT_INVALID');
+            $result = TxapiResponse::success($request, $view->data, $view->meta);
         } else {
             $result = $this->invokeController($request, $operation, $spec, $input, $actor);
         }

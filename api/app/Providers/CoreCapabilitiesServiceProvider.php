@@ -5,6 +5,8 @@ namespace App\Providers;
 use App\Core\Infrastructure\SystemClock;
 use App\Core\Kernel\Clock;
 use App\Domains\Billing\Internal\WinningPaymentProofs;
+use App\Domains\Billing\Contracts\OrderQueries;
+use App\Domains\Billing\NativeOrderQueries;
 use App\Domains\Billing\NativePaymentSettlement;
 use App\Domains\CredentialProvider\Contracts\ProviderClient;
 use App\Domains\CredentialProvider\ProviderTransport;
@@ -25,6 +27,7 @@ final class CoreCapabilitiesServiceProvider extends ServiceProvider
         $this->app->singleton(Clock::class, SystemClock::class);
         $this->app->scoped(ProviderClient::class, ProviderTransport::class);
         $this->app->scoped(AccountQueries::class, NativeAccountQueries::class);
+        $this->app->scoped(OrderQueries::class, NativeOrderQueries::class);
         $this->app->scoped(SubscriptionFulfillmentService::class);
         $this->app->scoped(OrderFulfillment::class,
             fn ($app) => $app->make(SubscriptionFulfillmentService::class));
