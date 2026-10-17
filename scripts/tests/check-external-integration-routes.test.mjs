@@ -7,7 +7,7 @@ const fixture = () => [...contract.theme_routes, ...contract.node_routes].map(la
   const space = label.indexOf(' ');
   const method = label.slice(0, space);
   const uri = label.slice(space + 2);
-  const protectedPath = /^txapi\/(?:me(?:\/|$)|orders(?:\/|$)|billing\/|tickets(?:\/|$)|traffic\/|knowledge(?:\/|$)|notices(?:\/|$)|invites(?:\/|$)|gift-cards\/)/.test(uri);
+  const protectedPath = /^txapi\/(?:me(?:\/|$)|orders(?:\/|$)|extensions\/|billing\/|tickets(?:\/|$)|traffic\/|knowledge(?:\/|$)|notices(?:\/|$)|invites(?:\/|$)|gift-cards\/)/.test(uri);
   return { method, uri, middleware: protectedPath ? ['api','txapi.user'] : ['api'] };
 });
 

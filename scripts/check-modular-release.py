@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Static consistency of the fixed cross-repository candidate, not runtime acceptance."""
+"""Static consistency of the fixed cross-repository composition, not runtime acceptance."""
 import json
 from pathlib import Path
 import re
@@ -15,5 +15,9 @@ workflow = (root / release["image_proof"]["workflow"]).read_text(encoding="utf-8
 assert "repository: " + release["deploy"]["repository"] in workflow
 assert "ref: " + release["deploy"]["revision"] in workflow
 assert (root / release["image_proof"]["runner"]).is_file()
-assert json.loads((root / release["version_policy"]).read_text())["kernel_api"]["frozen_files"] == release["kernel"]
-print("Modular release: fixed Deploy revision and candidate artifacts match")
+policy = json.loads((root / release["version_policy"]).read_text(encoding="utf-8"))
+kernel = json.loads((root / release["kernel"]).read_text(encoding="utf-8"))
+assert policy["kernel_api"]["frozen_files"] == release["kernel"]
+assert kernel["stability"] in ("candidate", "stable")
+assert policy["status"] == release["kernel_stability"] == kernel["stability"]
+print("Modular release: fixed Deploy revision, Kernel stability and artifacts match")
