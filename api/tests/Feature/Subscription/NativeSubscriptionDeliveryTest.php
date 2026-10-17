@@ -2,7 +2,7 @@
 
 namespace Tests\Feature\Subscription;
 
-use App\Domains\CredentialProvider\ProviderTransport;
+use App\Domains\CredentialProvider\Contracts\ProviderClient;
 use App\Domains\CredentialProvider\RenderGrantCodec;
 use App\Models\Order;
 use App\Models\Server;
@@ -55,7 +55,7 @@ final class NativeSubscriptionDeliveryTest extends NativeSubscriptionTestCase
             'native_provider_node.recipients' => [$id => ['machine_id' => null, 'recipient_sha256' => str_repeat('d', 64)]],
             'native_subscription_delivery.providers.render-provider.endpoint' => 'https://render.example.test/subscription-render',
         ]);
-        $transport = Mockery::mock(ProviderTransport::class);
+        $transport = Mockery::mock(ProviderClient::class);
         $transport->shouldReceive('configuration')->with('render-provider')->andReturn([
             'provider_id' => 'render-provider', 'provider_instance_epoch' => '1',
             'config_digest' => str_repeat('a', 64), 'profiles' => ['vless-uuid/v1'],
@@ -82,7 +82,7 @@ final class NativeSubscriptionDeliveryTest extends NativeSubscriptionTestCase
                 'credential_expires_at' => (int) DB::table('tx_access_subject')->where('id', $subject['access_subject_id'])->value('credential_expires_at'),
             ]]];
         });
-        $this->app->instance(ProviderTransport::class, $transport);
+        $this->app->instance(ProviderClient::class, $transport);
         $this->owner = (int) $this->user()->id;
         $offer = $this->publishedOffer($this->plan());
         $order = app(PublishedOrderService::class)->create($this->owner, $offer, 'render-purchase');

@@ -3,6 +3,7 @@
 namespace Tests\Feature\Subscription;
 
 use App\Domains\CredentialProvider\ProviderError;
+use App\Domains\CredentialProvider\Contracts\ProviderClient;
 use App\Domains\CredentialProvider\ProviderTransport;
 use App\Models\Order;
 use App\Domains\Subscription\Services\NativeCredentialProviderService;
@@ -55,7 +56,7 @@ final class NativeCredentialProviderInteropTest extends NativeSubscriptionTestCa
                 return $response;
             }
         };
-        $this->app->instance(ProviderTransport::class, $transport);
+        $this->app->instance(ProviderClient::class, $transport);
         $service = app(NativeCredentialProviderService::class);
         $service->register('primary-provider', 'real-provider');
         [$user, $subscription] = $this->subscription('first');

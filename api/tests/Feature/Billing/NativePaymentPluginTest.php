@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Billing;
 
+use App\Contracts\NativePaymentProviderInterface;
 use App\Domains\Billing\NativePaymentCheckout;
 use App\Domains\Billing\NativePaymentProviderRegistry;
 use App\Models\Plugin;
@@ -61,6 +62,43 @@ final class NativePaymentPluginTest extends NativePaymentTestCase
             $this->assertSame($snapshot[$field], $dispatch->$field);
         }
         $this->assertSame('epay-md5-dispatch/1', $snapshot['provider_snapshot_schema']);
+        Http::assertNothingSent();
+    }
+
+    public function test_unsupported_refund_capabilities_cannot_advertise_or_resolve_frozen_dispatches(): void
+    {
+        [$user, $order] = $this->purchase();
+        $started = app(NativePaymentCheckout::class)->start(
+            $user->id, $order->id, $this->payment->id, 'unsupported-refund-capability');
+        $snapshot = $this->paymentSnapshot($started['attempt']['attempt_id']);
+        $supported = app(PluginManager::class)->nativePaymentProvider('epay');
+        $identity = $supported['adapter']->identity();
+        $capabilities = $supported['adapter']->capabilities();
+        $this->assertTrue(app(PluginManager::class)->disable('epay'));
+        // A disabled valid provider still resolves the original query without booting hooks.
+        $this->assertSame('epay', app(NativePaymentProviderRegistry::class)->forFrozen($snapshot, 'query')->pluginCode);
+
+        foreach (['external_refund', 'query_refund'] as $unsupported) {
+            $adapter = \Mockery::mock(NativePaymentProviderInterface::class);
+            $adapter->shouldReceive('identity')->twice()->andReturn($identity);
+            $adapter->shouldReceive('capabilities')->twice()->andReturn(
+                array_replace($capabilities, [$unsupported => true]));
+            $registration = array_replace($supported, ['adapter' => $adapter]);
+            $manager = \Mockery::mock(PluginManager::class);
+            $manager->shouldReceive('nativePaymentProvider')->with('epay', false)->once()->andReturn($registration);
+            $manager->shouldReceive('nativePaymentProvider')->with('epay', true)->once()->andReturn($registration);
+            $registry = new NativePaymentProviderRegistry($manager);
+
+            Plugin::query()->where('code', 'epay')->update(['is_enabled' => true]);
+            $this->assertSame([], $registry->availableMethods());
+            Plugin::query()->where('code', 'epay')->update(['is_enabled' => false]);
+            $this->rejects('PAYMENT_PROVIDER_CAPABILITY_UNSUPPORTED',
+                fn () => $registry->forFrozen($snapshot, 'query'));
+        }
+
+        $this->assertSame([], HookManager::filter('available_payment_methods', []));
+        $this->assertSame(1, DB::table('tx_payment_attempt')->count());
+        $this->assertSame(0, DB::table('tx_payment_receipt')->count());
         Http::assertNothingSent();
     }
 

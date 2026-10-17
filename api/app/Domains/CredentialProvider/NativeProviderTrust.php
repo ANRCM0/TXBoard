@@ -2,6 +2,7 @@
 
 namespace App\Domains\CredentialProvider;
 
+use App\Domains\CredentialProvider\Contracts\ProviderClient;
 use App\Domains\Installation\InstallationAuthority;
 use App\Domains\Installation\NativeRuntimeReadiness;
 use DomainException;
@@ -40,7 +41,7 @@ final class NativeProviderTrust
     {
         $this->require(DB::transactionLevel() === 0, 'OUTER_TRANSACTION_UNSUPPORTED');
         $before = DB::transaction(fn (): array => $this->candidateLocked(), 3);
-        $capabilities = app(ProviderTransport::class)->capabilities($before['configuration']['provider']);
+        $capabilities = app(ProviderClient::class)->capabilities($before['configuration']['provider']);
         unset($capabilities['request_id']);
         $this->assertCapabilities($capabilities, $before['configuration']['provider']);
         $after = DB::transaction(fn (): array => $this->candidateLocked(), 3);

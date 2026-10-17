@@ -180,6 +180,8 @@ final class NativePaymentProviderRegistry
             foreach (['checkout', 'verify_notification', 'query', 'external_refund', 'query_refund'] as $field) {
                 $this->require(is_bool($capabilities[$field] ?? null), 'PAYMENT_PROVIDER_CONTRACT_INVALID');
             }
+            $this->require(!$capabilities['external_refund'] && !$capabilities['query_refund'],
+                'PAYMENT_PROVIDER_CAPABILITY_UNSUPPORTED');
             $this->require(count($capabilities) === 7 && is_array($capabilities['currencies'] ?? null)
                 && array_is_list($capabilities['currencies']) && count($capabilities['currencies']) >= 1
                 && count($capabilities['currencies']) <= 10 && ($capabilities['currency_minor_exponent'] ?? null) === '2',

@@ -20,3 +20,7 @@
 - Provider 存储、密钥、Core SQL 和 Node 高水位/原批次需要一致恢复边界；不能将旧备份当作安全回滚或将秘密迁回 Core。见[数据安全规则](../../../docs/development/native-development-baseline.md)。
 
 旧合成 Provider、旧导入目标及旧包兼容不属于当前调用面；历史原文从 Git 查询，历史验证 JSON 不作为当前运行证明。
+
+## K2 候选进程内契约
+
+[Core Provider Client v1](core-provider-client-v1.md) 定义现有五个业务消费者与当前 mTLS adapter 的接口及事务约束。候选尚待 CI 和评审，不增加对外协议或生产 PKI 支持声明。

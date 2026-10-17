@@ -42,6 +42,13 @@ Capabilities explicitly declare checkout, verify_notification, query,
 external_refund, query_refund, currencies and currency_minor_exponent. Missing
 capabilities fail closed. This candidate supports local redirect checkout;
 network-created checkout and external refund remain unsupported, not simulated.
+Both `external_refund` and `query_refund` must be exactly `false`: the current
+interface exposes neither operation and Core refunds only to its wallet. Registry
+resolution rejects a provider declaring either flag `true` with
+`PAYMENT_PROVIDER_CAPABILITY_UNSUPPORTED`, including frozen recovery resolution.
+Such a provider is omitted from available methods. This validation does not
+revoke supported notification/query recovery merely because a plugin is disabled;
+the original package/version/configuration binding still applies.
 Provider query is bounded network I/O outside every SQL transaction.
 
 ## Frozen dispatch and normalized facts

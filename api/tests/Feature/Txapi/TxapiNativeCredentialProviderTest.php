@@ -2,7 +2,7 @@
 
 namespace Tests\Feature\Txapi;
 
-use App\Domains\CredentialProvider\ProviderTransport;
+use App\Domains\CredentialProvider\Contracts\ProviderClient;
 use App\Domains\Installation\InstallationAuthority;
 use App\Models\Order;
 use App\Services\Plugin\PluginManager;
@@ -27,7 +27,7 @@ final class TxapiNativeCredentialProviderTest extends NativeSubscriptionTestCase
         $plugins = Mockery::mock(PluginManager::class);
         $plugins->shouldReceive('initializeEnabledPlugins')->andReturnNull();
         $this->app->instance(PluginManager::class, $plugins);
-        $transport = Mockery::mock(ProviderTransport::class);
+        $transport = Mockery::mock(ProviderClient::class);
         $transport->shouldReceive('configuration')->with('primary-provider')->andReturn([
             'provider_id' => 'primary-provider', 'provider_instance_epoch' => '1',
             'profiles' => ['vless-uuid/v1'], 'config_digest' => str_repeat('a', 64),
@@ -54,7 +54,7 @@ final class TxapiNativeCredentialProviderTest extends NativeSubscriptionTestCase
             }
             return ['status' => 'succeeded', 'result' => $result, 'error' => null];
         });
-        $this->app->instance(ProviderTransport::class, $transport);
+        $this->app->instance(ProviderClient::class, $transport);
         app(NativeCredentialProviderService::class)->register('primary-provider', 'api-provider');
     }
 

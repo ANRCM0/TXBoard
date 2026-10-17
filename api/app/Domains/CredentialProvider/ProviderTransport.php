@@ -2,9 +2,11 @@
 
 namespace App\Domains\CredentialProvider;
 
+use App\Domains\CredentialProvider\Contracts\ProviderClient;
+use Illuminate\Support\Facades\DB;
 use Throwable;
 
-class ProviderTransport
+class ProviderTransport implements ProviderClient
 {
     public function configuration(string $providerId): array
     {
@@ -24,6 +26,7 @@ class ProviderTransport
 
     public function call(#[\SensitiveParameter] array $registration, #[\SensitiveParameter] array $request): array
     {
+        $this->assertOutsideTransaction();
         ProviderCodec::validateRequest($request);
         $providerId = $registration['provider_id'] ?? null;
         if (!is_string($providerId) || $providerId !== $request['provider_id']) {
@@ -44,8 +47,9 @@ class ProviderTransport
         return ProviderCodec::decodeResponse($response, $request, $registration['original_request'] ?? null);
     }
 
-    public function metadata(array $registration, array $request): array
+    public function metadata(#[\SensitiveParameter] array $registration, #[\SensitiveParameter] array $request): array
     {
+        $this->assertOutsideTransaction();
         ProviderMetadataCodec::validateRequest($request);
         $providerId = $registration['provider_id'] ?? null;
         if (!is_string($providerId) || $providerId !== $request['provider_id']) {
@@ -68,8 +72,9 @@ class ProviderTransport
             $this->exchange($configuration, $request, ProviderMetadataCodec::MAX_BYTES, 25), $request);
     }
 
-    public function capabilities(array $registration): array
+    public function capabilities(#[\SensitiveParameter] array $registration): array
     {
+        $this->assertOutsideTransaction();
         $providerId = $registration['provider_id'] ?? null;
         if (!is_string($providerId)) {
             throw new ProviderError('PROVIDER_REGISTRATION_MISMATCH');
@@ -91,6 +96,13 @@ class ProviderTransport
             }
         }
         return $result;
+    }
+
+    private function assertOutsideTransaction(): void
+    {
+        if (DB::transactionLevel() !== 0) {
+            throw new ProviderError('PROVIDER_NETWORK_INSIDE_TRANSACTION');
+        }
     }
 
     private function exchange(array $configuration, array $request, int $maxBytes, int $remaining): string

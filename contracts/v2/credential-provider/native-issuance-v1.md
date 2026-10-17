@@ -149,7 +149,9 @@ identity. Preparation registration is permitted under the existing native
 initializing admission; issuing/revoking require native domain admission.
 
 Core records the operation and pending Subject before any network call.
-Network calls never run inside a SQL transaction. Retrying an uncertain result
+Network calls never run inside a SQL transaction. The K2 candidate enforces this
+at each native network entry with PROVIDER_NETWORK_INSIDE_TRANSACTION; see the
+[in-process Provider client contract](core-provider-client-v1.md). Retrying an uncertain result
 first queries the original operation, then only resends the identical logical
 request if the Provider reports it missing. Malformed responses, TLS failures,
 timeouts or unexpected metadata preserve recoverable unknown state and use
