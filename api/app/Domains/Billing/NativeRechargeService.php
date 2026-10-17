@@ -146,6 +146,10 @@ final class NativeRechargeService implements \App\Domains\Billing\Contracts\Rech
             $this->require((string) $row->journal_id === $journal['journal_id']
                 && (string) $row->paid_at === $receipt['occurred_at'], 'RECHARGE_EVIDENCE_INVALID');
         }
+        app(SettlementNotifications::class)->recordLocked($installation, 'billing.recharge-settled.v1', $receipt['receipt_id'],
+            ['user_id' => (string) $userId, 'recharge_id' => $intent['recharge_id'], 'receipt_id' => $receipt['receipt_id'],
+                'decision' => $isWallet ? 'wallet_credit' : 'refund_liability', 'amount_minor' => $intent['amount_minor'],
+                'currency' => $intent['currency']], (int) $receipt['occurred_at']);
         return ['decision' => $isWallet ? 'wallet_credit' : 'refund_liability',
             'recharge_id' => $intent['recharge_id'], 'receipt_id' => $receipt['receipt_id'],
             'journal_id' => $journal['journal_id'], 'amount_minor' => $intent['amount_minor'], 'currency' => $intent['currency']];

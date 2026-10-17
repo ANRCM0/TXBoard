@@ -1,0 +1,18 @@
+{
+  "package": {
+    "schema": 1
+  },
+  "name": "ModulePortal",
+  "code": "module_portal",
+  "version": "1.0.0",
+  "type": "feature",
+  "description": "Permission checked presentation and configuration example",
+  "author": "Module author",
+  "config": {
+    "label": {
+      "type": "string",
+      "default": "Module portal",
+      "label": "Page label"
+    }
+  }
+}

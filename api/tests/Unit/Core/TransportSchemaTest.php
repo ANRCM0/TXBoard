@@ -31,7 +31,7 @@ final class TransportSchemaTest extends TestCase
         $validator = new TransportSchema($contract['definitions']);
         $schema = $contract['operations']['commerce.orders.checkout']['output'];
         $result = $validator->project(['type' => 1, 'data' => 'https://pay.example.test/checkout',
-            'attempt' => ['attempt_id' => '1', 'status' => 'pending', 'intent_type' => 'order',
+            'attempt' => ['attempt_id' => '1', 'status' => 'pending', 'intent_type' => 'purchase',
                 'order_id' => '2', 'recharge_id' => null, 'payment_id' => '3', 'amount_minor' => '100',
                 'currency' => 'CNY', 'request_key' => 'private-request', 'purchase_content_hash' => 'private',
                 'internal' => ['secret' => 'private']],
@@ -51,5 +51,16 @@ final class TransportSchemaTest extends TestCase
         $validator->project(['schema' => 'native-wallet/v1', 'balances' => [
             ['currency' => 'CNY', 'available_minor' => 9007199254740993, 'reserved_minor' => '0'],
         ]], $contract['operations']['billing.wallet.get']['output']);
+    }
+
+    public function test_wire_preserves_empty_object_and_array_distinctions_at_nested_boundaries(): void
+    {
+        $empty = ['type' => 'object', 'properties' => [], 'required' => [], 'additionalProperties' => false];
+        $schema = ['type' => 'object', 'properties' => ['configuration' => $empty], 'required' => ['configuration'], 'additionalProperties' => false];
+        $validator = new TransportSchema;
+        self::assertTrue($validator->acceptsWire(json_decode('{"configuration":{}}'), $schema));
+        self::assertFalse($validator->acceptsWire(json_decode('{"configuration":[]}'), $schema));
+        self::assertSame('{"configuration":{}}', json_encode($validator->project(['configuration' => []], $schema)));
+        self::assertSame('{}', json_encode(TransportSchema::wireDefinition($empty)['properties']));
     }
 }

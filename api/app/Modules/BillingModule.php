@@ -42,7 +42,8 @@ final class BillingModule implements ModuleProvider
                 new CapabilityDefinition('billing.order-cancellation', OrderCancellation::class),
                 new CapabilityDefinition('billing.order-checkout', OrderCheckout::class),
                 new CapabilityDefinition('billing.winning-proof', WinningPaymentProofs::class, exported: false),
-            ], requires: [new CapabilityRequirement('installation.admission'), new CapabilityRequirement('subscription.fulfillment')], required: true);
+            ], requires: [new CapabilityRequirement('installation.admission'), new CapabilityRequirement('subscription.fulfillment'),
+                new CapabilityRequirement('notifications.event-journal')], required: true);
     }
 
     public function bindings(): array

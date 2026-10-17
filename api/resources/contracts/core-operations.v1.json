@@ -432,7 +432,7 @@
         "intent_type": {
           "type": "string",
           "enum": [
-            "order",
+            "purchase",
             "recharge"
           ]
         },

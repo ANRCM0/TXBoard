@@ -31,6 +31,7 @@ class Kernel extends ConsoleKernel
             $schedule->command('core:subscriptions-tick --limit=100')->everyMinute()->onOneServer()->withoutOverlapping(5);
             $schedule->command('check:order --limit=100')->everyMinute()->onOneServer()->withoutOverlapping(5);
             $schedule->command('core:native-work --limit=100')->everyMinute()->onOneServer()->withoutOverlapping(5);
+            $schedule->command('core:module-work --limit=100')->everyMinute()->onOneServer()->withoutOverlapping(5);
             return;
         }
         Cache::put(CacheKey::get('SCHEDULE_LAST_CHECK_AT', null), time());

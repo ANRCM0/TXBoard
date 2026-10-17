@@ -1,0 +1,266 @@
+{
+  "schema": "core-module/v1",
+  "id": "offer_reservation",
+  "version": "1.0.0",
+  "kind": "optional-business",
+  "execution": "in-process",
+  "kernel_api": {
+    "min": 1,
+    "max": 1
+  },
+  "requires": [
+    {
+      "id": "subscription.purchase",
+      "min": 1,
+      "max": 1
+    },
+    {
+      "id": "billing.order-checkout",
+      "min": 1,
+      "max": 1
+    }
+  ],
+  "boot_after": [],
+  "operations": {
+    "reservation.create": {
+      "actor": "user",
+      "permission": null,
+      "idempotency": "domain",
+      "input": {
+        "type": "object",
+        "properties": {
+          "offer_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 10,
+            "pattern": "^[1-9][0-9]*$",
+            "x-decimal-maximum": "2147483647"
+          },
+          "pay_with_wallet": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "offer_id",
+          "pay_with_wallet"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "reservation_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64,
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "offer_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 20,
+            "pattern": "^[1-9][0-9]*$"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "held",
+              "unknown",
+              "purchased",
+              "completed",
+              "refused"
+            ],
+            "maxLength": 24
+          },
+          "trade_no": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pay_with_wallet": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "reservation_id",
+          "offer_id",
+          "status",
+          "trade_no",
+          "pay_with_wallet"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "reservation.recover": {
+      "actor": "user",
+      "permission": null,
+      "idempotency": "domain",
+      "input": {
+        "type": "object",
+        "properties": {
+          "reservation_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64,
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        },
+        "required": [
+          "reservation_id"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "reservation_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64,
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "offer_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 20,
+            "pattern": "^[1-9][0-9]*$"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "held",
+              "unknown",
+              "purchased",
+              "completed",
+              "refused"
+            ],
+            "maxLength": 24
+          },
+          "trade_no": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pay_with_wallet": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "reservation_id",
+          "offer_id",
+          "status",
+          "trade_no",
+          "pay_with_wallet"
+        ],
+        "additionalProperties": false
+      },
+      "recovery": true
+    },
+    "reservations.list": {
+      "actor": "user",
+      "permission": null,
+      "idempotency": "read",
+      "input": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "reservations": {
+            "type": "array",
+            "maxItems": 50,
+            "items": {
+              "type": "object",
+              "properties": {
+                "reservation_id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 64,
+                  "pattern": "^[0-9a-f]{64}$"
+                },
+                "offer_id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 20,
+                  "pattern": "^[1-9][0-9]*$"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "held",
+                    "unknown",
+                    "purchased",
+                    "completed",
+                    "refused"
+                  ],
+                  "maxLength": 24
+                },
+                "trade_no": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 128
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "pay_with_wallet": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "reservation_id",
+                "offer_id",
+                "status",
+                "trade_no",
+                "pay_with_wallet"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "reservations"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "subscriptions": [],
+  "config_schema": {
+    "type": "object",
+    "properties": {
+      "max_open": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 10
+      }
+    },
+    "required": [
+      "max_open"
+    ],
+    "additionalProperties": false
+  },
+  "schema_version": 1,
+  "secrets": []
+}

@@ -92,6 +92,12 @@ Route::match(['get', 'post'], 'payment/webhook/{method}/{uuid}',
 Route::prefix('admin/{admin_path}')
     ->middleware(['admin.path', 'admin', 'log', 'throttle:120,1'])
     ->group(function () {
+        Route::post('extensions/{code}/operations/{operation}', [\App\Http\Controllers\Txapi\ExtensionController::class, 'admin'])
+            ->where('code', '[a-z][a-z0-9_]{0,63}')->where('operation', '[a-z][a-z0-9.-]{0,63}');
+        Route::get('extensions/{code}/presentation', [\App\Http\Controllers\Txapi\ExtensionPresentationController::class, 'admin'])->where('code', '[a-z][a-z0-9_]{0,63}');
+        Route::get('extensions/{code}/resources/{asset}', [\App\Http\Controllers\Txapi\ExtensionPresentationController::class, 'adminResource'])
+            ->where('code', '[a-z][a-z0-9_]{0,63}')->where('asset', 'ui/[A-Za-z0-9_./-]+');
+        Route::post('extensions/{code}/configuration', [\App\Http\Controllers\Txapi\ExtensionPresentationController::class, 'configure'])->where('code', '[a-z][a-z0-9_]{0,63}');
         Route::post('native/plans/publications',
             [\App\Http\Controllers\Txapi\Admin\NativePlanAdminController::class, 'publish'])
             ->middleware(\App\Http\Middleware\NativeAdminPermission::class.':catalog.publish');
@@ -292,6 +298,11 @@ Route::middleware('throttle:60,1')->group(function () {
 });
 
 Route::middleware(['txapi.user', 'throttle:120,1'])->group(function () {
+    Route::post('extensions/{code}/operations/{operation}', [\App\Http\Controllers\Txapi\ExtensionController::class, 'user'])
+        ->where('code', '[a-z][a-z0-9_]{0,63}')->where('operation', '[a-z][a-z0-9.-]{0,63}');
+    Route::get('extensions/{code}/presentation', [\App\Http\Controllers\Txapi\ExtensionPresentationController::class, 'user'])->where('code', '[a-z][a-z0-9_]{0,63}');
+    Route::get('extensions/{code}/resources/{asset}', [\App\Http\Controllers\Txapi\ExtensionPresentationController::class, 'userResource'])
+        ->where('code', '[a-z][a-z0-9_]{0,63}')->where('asset', 'ui/[A-Za-z0-9_./-]+');
     Route::get('plans/{planId}', [PublicController::class, 'plan'])->whereNumber('planId');
     Route::get('me', [AccountController::class, 'me']);
     Route::get('me/subscription', [AccountController::class, 'subscription']);

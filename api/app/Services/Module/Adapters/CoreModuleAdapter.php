@@ -23,6 +23,7 @@ final class CoreModuleAdapter implements ModuleAdapter
     {
         $modules = [];
         foreach ($this->runtime->plan()->modules as $definition) {
+            if (str_starts_with($definition->id, 'plugin.')) continue;
             $manifest = ModuleManifest::fromArray([
                 'schema' => 1,
                 'module' => ['id' => 'core.'.$definition->id, 'name' => $definition->id,

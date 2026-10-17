@@ -1,0 +1,18 @@
+{
+  "package": {
+    "schema": 1
+  },
+  "name": "OfferReservation",
+  "code": "offer_reservation",
+  "version": "1.0.0",
+  "type": "feature",
+  "description": "Independent reservation workflow over typed purchase and wallet capabilities",
+  "author": "Module author",
+  "config": {
+    "max_open": {
+      "type": "integer",
+      "default": 1,
+      "label": "Maximum open reservations per account"
+    }
+  }
+}

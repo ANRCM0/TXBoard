@@ -14,7 +14,7 @@ final class ModuleRuntime
     private ?ModulePlan $plan = null;
 
     /** @param list<ModuleProvider> $providers */
-    public function register(Container $container, array $providers): void
+    public function register(Container $container, array $providers, array $unavailable = []): void
     {
         if ($this->plan !== null) throw new ModuleError('MODULE_COMPOSITION_ALREADY_REGISTERED');
         $definitions = [];
@@ -27,6 +27,23 @@ final class ModuleRuntime
             $byId[$definition->id] = $provider;
         }
         $plan = (new ModuleResolver)->compose($definitions);
+        $denied = [];
+        foreach ($plan->modules as $definition) {
+            if (!$byId[$definition->id] instanceof PackageModuleProvider) continue;
+            foreach ($definition->requires as $requirement) {
+                foreach ($plan->modules as $owner) {
+                    foreach ($owner->provides as $capability) {
+                        if ($capability->id === $requirement->id && !$capability->exported) {
+                            if ($definition->required) throw new ModuleError('MODULE_PRIVATE_CAPABILITY_DENIED', $definition->id, $requirement->id);
+                            $denied[$definition->id] = 'MODULE_PRIVATE_CAPABILITY_DENIED';
+                        }
+                    }
+                }
+            }
+        }
+        if ($denied !== []) $plan = (new ModuleResolver)->compose(array_values(array_filter($definitions,
+            static fn (ModuleDefinition $definition): bool => !isset($denied[$definition->id]))));
+        $plan = new ModulePlan($plan->modules, array_replace($plan->unavailable, $unavailable, $denied));
         $bindings = [];
         $owners = [];
         foreach ($plan->modules as $definition) {

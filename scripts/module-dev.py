@@ -1,0 +1,227 @@
+#!/usr/bin/env python3
+"""Trusted developer tooling. Package declarations never grant deployment authority.
+
+scaffold creates an independent SDK module. validate/package inspect a single explicit
+directory. lock consumes a maintainer-owned composition file and emits exact hashes.
+No command installs packages, discovers application modules, or enables database rows.
+"""
+import argparse
+import hashlib
+import json
+from pathlib import Path
+import re
+import sys
+import zipfile
+
+CODE = re.compile(r"[a-z][a-z0-9_]{0,63}\Z")
+VERSION = re.compile(r"(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?\Z")
+RELATIVE = re.compile(r"[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)*\Z")
+GRANT = re.compile(r"(?:capability|event|permission):[a-z][a-z0-9._-]*\Z")
+MAX_FILES, MAX_BYTES = 2000, 50 * 1024 * 1024
+
+
+def read(path):
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def studly(code):
+    return "".join(part[0].upper() + part[1:] for part in code.split("_") if part)
+
+
+def object_schema(properties=None, required=None):
+    return {"type": "object", "properties": properties or {}, "required": required or [], "additionalProperties": False}
+
+
+def write_json(path, value):
+    path.write_text(json.dumps(value, ensure_ascii=True, indent=2) + "\n", encoding="utf-8", newline="\n")
+
+
+def files(path):
+    if not path.is_dir() or path.is_symlink():
+        raise ValueError("MODULE_DIRECTORY_INVALID")
+    for ancestor in (path, *path.parents):
+        if ancestor.is_symlink():
+            raise ValueError("MODULE_LINK_FORBIDDEN")
+    found, total, folded = {}, 0, set()
+    for item in sorted(path.rglob("*")):
+        relative = item.relative_to(path).as_posix()
+        if item.is_symlink() or len(relative) > 240 or not RELATIVE.fullmatch(relative) or any(p in (".", "..") for p in item.relative_to(path).parts):
+            raise ValueError("MODULE_FILE_PATH_INVALID")
+        if item.is_dir():
+            continue
+        if not item.is_file() or relative.lower() in folded:
+            raise ValueError("MODULE_FILE_PATH_INVALID")
+        folded.add(relative.lower())
+        total += item.stat().st_size
+        found[relative] = hashlib.sha256(item.read_bytes()).hexdigest()
+        if len(found) > MAX_FILES or total > MAX_BYTES:
+            raise ValueError("MODULE_PACKAGE_LIMIT")
+    if not {"Plugin.php", "config.json", "module.json"} <= found.keys():
+        raise ValueError("MODULE_PACKAGE_INCOMPLETE")
+    return found
+
+
+def schema(value, depth=0):
+    allowed = {"type", "const", "enum", "anyOf", "properties", "required", "additionalProperties", "items", "minItems", "maxItems", "minLength", "maxLength", "pattern", "minimum", "maximum", "x-decimal-maximum"}
+    if not isinstance(value, dict) or depth > 20 or value.keys() - allowed:
+        raise ValueError("MODULE_SCHEMA_INVALID")
+    if "anyOf" in value:
+        if not isinstance(value["anyOf"], list) or not 2 <= len(value["anyOf"]) <= 8:
+            raise ValueError("MODULE_SCHEMA_INVALID")
+        for variant in value["anyOf"]:
+            schema(variant, depth + 1)
+        return
+    if "const" in value:
+        if isinstance(value["const"], (dict, list)):
+            raise ValueError("MODULE_SCHEMA_INVALID")
+        return
+    kind = value.get("type")
+    if kind not in ("object", "array", "integer", "string", "boolean", "null"):
+        raise ValueError("MODULE_SCHEMA_INVALID")
+    if kind == "object":
+        properties = value.get("properties")
+        required = value.get("required")
+        if not isinstance(properties, dict) or len(properties) > 64 or not isinstance(required, list) or set(required) - properties.keys() or value.get("additionalProperties") is not False:
+            raise ValueError("MODULE_SCHEMA_INVALID")
+        for field, definition in properties.items():
+            if not CODE.fullmatch(field):
+                raise ValueError("MODULE_SCHEMA_INVALID")
+            schema(definition, depth + 1)
+    if kind == "array":
+        if type(value.get("maxItems")) is not int or not 0 <= value["maxItems"] <= 1000:
+            raise ValueError("MODULE_SCHEMA_INVALID")
+        schema(value.get("items"), depth + 1)
+
+
+def validate(path):
+    inventory = files(path)
+    manifest, config = read(path / "module.json"), read(path / "config.json")
+    allowed = {"schema", "id", "version", "kind", "execution", "kernel_api", "requires", "boot_after", "operations", "subscriptions", "config_schema", "schema_version", "presentation", "connector", "secrets", "lifecycle"}
+    code = manifest.get("id", "")
+    if manifest.keys() - allowed or not CODE.fullmatch(code) or not VERSION.fullmatch(manifest.get("version", "")) or manifest.get("schema") != "core-module/v1" or manifest.get("execution") != "in-process" or manifest.get("kind") not in ("optional-business", "connector", "presentation"):
+        raise ValueError("MODULE_MANIFEST_INVALID")
+    if config.get("code") != code or config.get("version") != manifest["version"] or config.get("package", {}).get("schema") != 1 or config.get("type") not in ("feature", "payment"):
+        raise ValueError("MODULE_IDENTITY_INVALID")
+    if manifest.get("kernel_api") != {"min": 1, "max": 1} or type(manifest.get("schema_version")) is not int or manifest["schema_version"] < 0:
+        raise ValueError("MODULE_VERSION_INVALID")
+    schema(manifest.get("config_schema"))
+    for operation, spec in manifest.get("operations", {}).items():
+        if not re.fullmatch(r"[a-z][a-z0-9.-]{0,63}", operation) or spec.get("actor") not in ("user", "admin") or spec.get("idempotency") not in ("read", "domain") or "permission" not in spec:
+            raise ValueError("MODULE_OPERATION_INVALID")
+        schema(spec.get("input"))
+        schema(spec.get("output"))
+        if spec["actor"] == "admin" and not str(spec["permission"]).startswith("extensions." + code + ".") or spec["actor"] == "user" and spec["permission"] is not None:
+            raise ValueError("MODULE_PERMISSION_INVALID")
+    for event in manifest.get("subscriptions", []):
+        if not re.fullmatch(r"[a-z][a-z0-9.-]*\.v[1-9][0-9]*", event):
+            raise ValueError("MODULE_EVENT_INVALID")
+    for field in manifest.get("secrets", []):
+        if manifest["config_schema"].get("properties", {}).get(field, {}).get("type") != "string":
+            raise ValueError("MODULE_SECRET_INVALID")
+    return manifest, inventory
+
+
+def scaffold(path, code):
+    if not CODE.fullmatch(code) or path.exists():
+        raise ValueError("MODULE_SCAFFOLD_TARGET_INVALID")
+    path.mkdir(parents=True)
+    version = "1.0.0"
+    write_json(path / "module.json", {"schema": "core-module/v1", "id": code, "version": version, "kind": "optional-business", "execution": "in-process", "kernel_api": {"min": 1, "max": 1}, "requires": [], "boot_after": [], "operations": {"version.get": {"actor": "user", "permission": None, "idempotency": "read", "input": object_schema(), "output": object_schema({"version": {"type": "string", "maxLength": 80}}, ["version"])}}, "subscriptions": [], "config_schema": object_schema(), "schema_version": 1, "secrets": []})
+    write_json(path / "config.json", {"package": {"schema": 1}, "name": studly(code), "code": code, "version": version, "type": "feature", "description": "Independent SDK module", "author": "Module author", "config": {}})
+    source = """<?php
+
+namespace Plugin\\__CLASS__;
+
+use App\\Extensions\\Contracts\\DeploymentModule;
+use App\\Extensions\\Contracts\\ExtensionModule;
+use App\\Extensions\\Contracts\\ExtensionRequest;
+use App\\Extensions\\Contracts\\ExtensionResponse;
+use App\\Extensions\\Contracts\\ExtensionFailure;
+use App\\Services\\Plugin\\AbstractPlugin;
+
+final class Plugin extends AbstractPlugin implements DeploymentModule, ExtensionModule
+{
+    public function packageVersion(): string { return '1.0.0'; }
+
+    public function prepareSchema(string $deploymentId, int $fromVersion, int $toVersion): void
+    {
+        if ($toVersion !== 1 || !in_array($fromVersion, [0, 1], true)) throw new ExtensionFailure('MODULE_SCHEMA_VERSION_CONFLICT');
+    }
+
+    public function handle(ExtensionRequest $request): ExtensionResponse
+    {
+        if ($request->operation !== 'version.get') throw new ExtensionFailure('MODULE_OPERATION_NOT_FOUND', 404);
+        return new ExtensionResponse(['version' => $this->packageVersion()]);
+    }
+}
+"""
+    (path / "Plugin.php").write_text(source.replace("__CLASS__", studly(code)), encoding="utf-8", newline="\n")
+
+
+def build_lock(root, composition):
+    source = read(composition)
+    if source.get("schema") != 1 or not isinstance(source.get("packages"), list) or len(source["packages"]) > 64:
+        raise ValueError("MODULE_COMPOSITION_INVALID")
+    entries, seen = [], set()
+    for entry in source["packages"]:
+        code = entry.get("code", "")
+        if not CODE.fullmatch(code) or code in seen or type(entry.get("required")) is not bool or entry.get("root") not in ("plugins/" + studly(code), "plugins-core/" + studly(code)) or entry.keys() - {"code", "root", "required", "grants"}:
+            raise ValueError("MODULE_COMPOSITION_INVALID")
+        seen.add(code)
+        grants = entry.get("grants")
+        if not isinstance(grants, list) or len(grants) > 64 or len(set(grants)) != len(grants) or any(not isinstance(g, str) or not GRANT.fullmatch(g) for g in grants):
+            raise ValueError("MODULE_GRANT_INVALID")
+        manifest, inventory = validate(root / entry["root"])
+        expected = {"capability:" + r["id"] for r in manifest["requires"]} | {"event:" + e for e in manifest["subscriptions"]} | {"permission:" + s["permission"] for s in manifest["operations"].values() if s["actor"] == "admin"}
+        if manifest["id"] != code or expected - set(grants):
+            raise ValueError("MODULE_GRANT_REQUIRED")
+        entries.append({**entry, "version": manifest["version"], "files": inventory})
+    return {"schema": 1, "packages": sorted(entries, key=lambda item: item["code"])}
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    commands = parser.add_subparsers(dest="command", required=True)
+    create = commands.add_parser("scaffold")
+    create.add_argument("code")
+    create.add_argument("directory", type=Path)
+    check = commands.add_parser("validate")
+    check.add_argument("directory", type=Path)
+    package = commands.add_parser("package")
+    package.add_argument("directory", type=Path)
+    package.add_argument("output", type=Path)
+    lock = commands.add_parser("lock")
+    lock.add_argument("composition", type=Path)
+    lock.add_argument("output", type=Path)
+    lock.add_argument("--application-root", type=Path, default=Path(__file__).resolve().parents[1] / "api")
+    lock.add_argument("--check", action="store_true")
+    args = parser.parse_args()
+    try:
+        if args.command == "scaffold":
+            scaffold(args.directory, args.code)
+            validate(args.directory)
+        elif args.command == "validate":
+            validate(args.directory)
+        elif args.command == "package":
+            manifest, inventory = validate(args.directory)
+            if args.output.exists() or args.output.resolve().is_relative_to(args.directory.resolve()):
+                raise ValueError("MODULE_ARCHIVE_TARGET_INVALID")
+            with zipfile.ZipFile(args.output, "x", compression=zipfile.ZIP_DEFLATED) as archive:
+                for file in inventory:
+                    archive.write(args.directory / file, studly(manifest["id"]) + "/" + file)
+        else:
+            result = build_lock(args.application_root, args.composition)
+            if args.check:
+                if read(args.output) != result:
+                    raise ValueError("MODULE_LOCK_STALE")
+            else:
+                write_json(args.output, result)
+        print("Module development: " + args.command + " passed")
+    except (ValueError, OSError, KeyError, TypeError) as error:
+        print(str(error), file=sys.stderr)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

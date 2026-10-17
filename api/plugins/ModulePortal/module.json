@@ -1,0 +1,83 @@
+{
+  "schema": "core-module/v1",
+  "id": "module_portal",
+  "version": "1.0.0",
+  "kind": "presentation",
+  "execution": "in-process",
+  "kernel_api": {
+    "min": 1,
+    "max": 1
+  },
+  "requires": [],
+  "boot_after": [],
+  "operations": {
+    "status.get": {
+      "actor": "admin",
+      "permission": "extensions.module_portal.view",
+      "idempotency": "read",
+      "input": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "version": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "actor_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 20,
+            "pattern": "^[1-9][0-9]*$"
+          }
+        },
+        "required": [
+          "label",
+          "version",
+          "actor_id"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "subscriptions": [],
+  "config_schema": {
+    "type": "object",
+    "properties": {
+      "label": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 80
+      }
+    },
+    "required": [
+      "label"
+    ],
+    "additionalProperties": false
+  },
+  "schema_version": 1,
+  "secrets": [],
+  "presentation": {
+    "actor": "admin",
+    "permission": "extensions.module_portal.view",
+    "title": "Module portal",
+    "entry": "ui/index.html",
+    "assets": [
+      "ui/index.html"
+    ],
+    "operations": [
+      "status.get"
+    ],
+    "configuration_permission": "extensions.module_portal.configure"
+  }
+}

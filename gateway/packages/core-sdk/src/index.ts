@@ -1,4 +1,6 @@
 import { coreOperations, type CoreInput, type CoreOperation, type CoreOutput } from './contracts.generated.js'
+export { ExtensionClient, acceptsModuleSchema, parseExtensionDescriptor, parseBridgeRequest,
+  type ExtensionDescriptor, type ExtensionOperation, type ExtensionTransport, type BridgeRequest, type JsonSchema } from './extensions.js'
 
 export { coreOperations, type CoreInput, type CoreOperation, type CoreOutput } from './contracts.generated.js'
 
