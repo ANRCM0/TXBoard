@@ -131,20 +131,24 @@ jobs:
           grep -Fq '3aed155119a1' internal/deps/sing-vmess/TXNODE-PATCH.md
           test -s internal/deps/sing-vmess/LICENSE
           go mod tidy -diff
-      - name: Validate retained historical Node release notes
+      - name: Validate retained Node version and any release notes
         run: |
           set -euo pipefail
           version="$(tr -d '[:space:]' < .github/release/VERSION)"
           [[ "$version" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
-          grep -Fxq "# TX-Node $version" .github/release/NOTES.md
-          retired_node_bin="xboard-node""-linux-"
-          retired_cli_bin="xbctl""-linux-"
-          retired_audit_zip="AccessAudit""-plugin.zip"
-          if grep -Fq "$retired_node_bin" .github/release/NOTES.md \
-            || grep -Fq "$retired_cli_bin" .github/release/NOTES.md \
-            || grep -Fq "$retired_audit_zip" .github/release/NOTES.md; then
-            echo "Historical release notes list retired artifacts" >&2
-            exit 1
+          if [[ -e .github/release/NOTES.md ]]; then
+            grep -Fxq "# TX-Node $version" .github/release/NOTES.md
+            retired_node_bin="xboard-node""-linux-"
+            retired_cli_bin="xbctl""-linux-"
+            retired_audit_zip="AccessAudit""-plugin.zip"
+            if grep -Fq "$retired_node_bin" .github/release/NOTES.md \
+              || grep -Fq "$retired_cli_bin" .github/release/NOTES.md \
+              || grep -Fq "$retired_audit_zip" .github/release/NOTES.md; then
+              echo "Historical release notes list retired artifacts" >&2
+              exit 1
+            fi
+          else
+            echo 'SKIP - historical release prose removed; version metadata validated.'
           fi
       - name: Verify release commit is contained in monorepo main
         if: startsWith(github.ref, 'refs/tags/')
