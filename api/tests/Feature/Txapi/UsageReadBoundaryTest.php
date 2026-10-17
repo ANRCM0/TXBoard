@@ -163,7 +163,9 @@ final class UsageReadBoundaryTest extends NativeRuntimeTestCase
         $start = (int) DB::table('tx_usage_period')->where('id', $subscription['usage_period_id'])->value('starts_at');
         $reset = app(SubscriptionLifecycleService::class)->reset($actor->id, (int) $subscription['subscription_id'],
             'usage-query-corruption-reset', $subscription['subscription_version'], $start + 1);
-        DB::table('tx_usage_period')->where('id', $subscription['usage_period_id'])->update(['boundary_kind' => 'damaged']);
+        // Keep SQL constraints intact while breaking the aggregate's contiguous period sequence.
+        DB::table('tx_usage_period')->where('id', $subscription['usage_period_id'])->update(['period_no' => 99]);
+        $this->assertSame(99, (int) DB::table('tx_usage_period')->where('id', $subscription['usage_period_id'])->value('period_no'));
         $input = ['after_id' => $reset['usage_period_id'], 'limit' => 1];
         $this->invoke($token, $input)->assertStatus(503)->assertJsonPath('error.code', 'DEPENDENCY_UNAVAILABLE');
         $this->http($token, $input)->assertStatus(500);
@@ -173,7 +175,7 @@ final class UsageReadBoundaryTest extends NativeRuntimeTestCase
         } catch (\DomainException $error) {
             $this->assertSame('NATIVE_PERIOD_HISTORY_INVALID', $error->getMessage());
         }
-        DB::table('tx_usage_period')->where('id', $subscription['usage_period_id'])->update(['boundary_kind' => 'known']);
+        DB::table('tx_usage_period')->where('id', $subscription['usage_period_id'])->update(['period_no' => 1]);
         DB::table('tx_subscription_terms')->where('subscription_id', $subscription['subscription_id'])
             ->update(['content_hash' => str_repeat('0', 64)]);
         $this->invoke($token, $input)->assertStatus(503)->assertJsonPath('error.code', 'DEPENDENCY_UNAVAILABLE');
@@ -191,9 +193,11 @@ final class UsageReadBoundaryTest extends NativeRuntimeTestCase
             app(UsageQueries::class)->listing((int) $actor->id, new UsageQuery());
             $this->fail('Stale installation worker admitted usage read.');
         } catch (InstallationAuthorityException $error) {
-            $this->assertNotSame('', $error->getMessage());
+            $this->assertSame('INSTALLATION_AUTHORITY_WORKER_MISMATCH', $error->getMessage());
         }
-        $this->invoke($token)->assertStatus(503)->assertJsonPath('error.code', 'DEPENDENCY_UNAVAILABLE');
+        foreach ([$this->http($token), $this->invoke($token)] as $response) {
+            $response->assertStatus(503)->assertJsonPath('error.code', 'INSTALLATION_AUTHORITY_WORKER_MISMATCH');
+        }
         $this->assertSame(0, DB::table('tx_subscription_slot')->where('user_id', $actor->id)->count());
         $this->assertSame(0, DB::table('tx_internal_request')->count());
         $this->assertSame(0, DB::transactionLevel());
