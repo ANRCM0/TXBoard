@@ -60,8 +60,15 @@ test('actual minimal host loads declared assets and enforces opaque Bridge, retr
       const configuration = JSON.parse(raw)
       configurations.push({ raw, key: request.headers['idempotency-key'] })
       label = configuration.configuration.label
-      if (loseConfigurationAck) { loseConfigurationAck = false; response.destroy(); return }
-      response.end(JSON.stringify({ data: { configured: true } }))
+      if (loseConfigurationAck) {
+        loseConfigurationAck = false
+        response.writeHead(200, { 'Content-Length': '1000' })
+        response.write('{"data":')
+        setTimeout(() => response.destroy(), 10)
+        return
+      }
+      response.end(JSON.stringify({ data: { deployment_id: request.headers['idempotency-key'], module: descriptor.module,
+        action: 'configure', phase: 'completed', package_version: descriptor.version } }))
       return
     }
     assert.equal(path, 'operations/status.get')
@@ -82,6 +89,10 @@ test('actual minimal host loads declared assets and enforces opaque Bridge, retr
   const diagnostics = []
   page.on('pageerror', error => diagnostics.push(error.message))
   page.on('console', message => { if (message.type() === 'error') diagnostics.push(message.text().slice(0, 500)) })
+  const waitStatus = async text => {
+    try { await page.locator('#status').filter({ hasText: text }).waitFor() }
+    catch (error) { throw new Error(`${error.message}; host=${await page.locator('#status').textContent()}; configuration_requests=${configurations.length}; browser=${JSON.stringify(diagnostics)}`) }
+  }
   await page.goto(host.url)
   await page.locator('#origin').fill(core.url)
   await page.locator('#admin-path').fill('acceptance')
@@ -113,14 +124,14 @@ test('actual minimal host loads declared assets and enforces opaque Bridge, retr
   const input = page.locator('#configuration input')
   await input.fill('Retry value')
   await page.locator('#configuration button').click()
-  await page.locator('#status').filter({ hasText: 'Failed to fetch' }).waitFor()
+  await waitStatus('MODULE_CONFIGURATION_UNCONFIRMED')
   await input.fill('Different value')
   await page.locator('#configuration button').click()
-  await page.locator('#status').filter({ hasText: 'MODULE_CONFIGURATION_RECOVERY_REQUIRED' }).waitFor()
+  await waitStatus('MODULE_CONFIGURATION_RECOVERY_REQUIRED')
   assert.equal(configurations.length, 1)
   await input.fill('Retry value')
   await page.locator('#configuration button').click()
-  await page.locator('#status').filter({ hasText: 'Configuration saved' }).waitFor()
+  await waitStatus('Configuration saved')
   assert.equal(configurations.length, 2)
   assert.deepEqual(configurations[0], configurations[1])
   assert.match(configurations[0].key, /^[0-9a-f-]{36}$/)
@@ -128,7 +139,7 @@ test('actual minimal host loads declared assets and enforces opaque Bridge, retr
   for (const code of ['MODULE_PERMISSION_DENIED', 'MODULE_VERSION_CHANGED', 'MODULE_NOT_AVAILABLE']) {
     admission = code
     await frame.locator('#call').click()
-    await page.locator('#status').filter({ hasText: code }).waitFor()
+    await waitStatus(code)
     await page.locator('#surface iframe').waitFor({ state: 'detached' })
     assert.equal(await page.locator('#navigation').isVisible(), false)
     admission = null
@@ -137,7 +148,7 @@ test('actual minimal host loads declared assets and enforces opaque Bridge, retr
   }
   unsafeAsset = true
   await page.locator('#connect button').click()
-  await page.locator('#status').filter({ hasText: 'MODULE_RESOURCE_NOT_DECLARED' }).waitFor()
+  await waitStatus('MODULE_RESOURCE_NOT_DECLARED')
   assert.equal(await page.locator('#surface iframe').count(), 0)
   assert.deepEqual(leaks, [])
 })

@@ -93,7 +93,16 @@ element<HTMLFormElement>('#connect').addEventListener('submit', async event => {
       if (pendingConfiguration && pendingConfiguration.body !== body) throw new Error('MODULE_CONFIGURATION_RECOVERY_REQUIRED')
       pendingConfiguration ??= { key: crypto.randomUUID(), body }
       status.textContent = `Saving configuration: ${pendingConfiguration.key}`
-      await request('configuration', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Idempotency-Key': pendingConfiguration.key }, body })
+      let receipt: unknown
+      try {
+        receipt = await (await request('configuration', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Idempotency-Key': pendingConfiguration.key }, body })).json()
+      } catch (error) {
+        if (error instanceof Error && /^MODULE_[A-Z_]+$/.test(error.message)) throw error
+        throw new Error('MODULE_CONFIGURATION_UNCONFIRMED')
+      }
+      const result = (receipt as { data?: Record<string, unknown> } | null)?.data
+      if (result?.deployment_id !== pendingConfiguration.key || result.module !== module || result.action !== 'configure'
+        || result.phase !== 'completed' || result.package_version !== descriptor.version) throw new Error('MODULE_CONFIGURATION_UNCONFIRMED')
       pendingConfiguration = null
       status.textContent = 'Configuration saved. Open the module again to load its current version.'
     })

@@ -272,6 +272,7 @@ def main():
                 "compositions": [value["composition_fingerprint"] for value in reports], "authority_epoch": "2", "activation_count": 1,
                 "composition_approvals": 3, "original_orders": 1, "module_owned_schema": 2, "recovered_operation": recovered_operation,
                 "provider": "actual Go mTLS capability peer; no Node traffic in this image proof", "consumer": "actual admin login, catalog, order, extension HTTP and Chromium SDK host"})
+            args.output.chmod(0o644)
             print("Native immutable image install, update and killed-executor recovery passed", flush=True)
         except BaseException:
             codes, stage = [], "before_intent"
@@ -287,6 +288,7 @@ def main():
             diagnostic = {"schema": "modular-native-image-proof/v1", "status": "failed", "stage": stage, "error_codes": codes}
             args.output.parent.mkdir(parents=True, exist_ok=True)
             write(args.output, diagnostic)
+            args.output.chmod(0o644)
             print(json.dumps(diagnostic), flush=True)
             raise
         finally:

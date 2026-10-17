@@ -4,7 +4,7 @@
   "core_revision": "The exact CI checkout SHA; image APP_COMMIT and workflow run identify it",
   "deploy": {
     "repository": "ANRCM0/TXBoard-Deploy",
-    "revision": "b6fb54ffa55d0e395a33d9d423cbde1fd5d534b9",
+    "revision": "5adef3c3b0a5a8fe64799cae6d507a715072188f",
     "runner": "scripts/native-runtime.py",
     "protocol": "txboard.native-deployment/v1"
   },
