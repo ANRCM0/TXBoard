@@ -123,7 +123,7 @@ function escapeCell(value) {
   return String(value).replaceAll('|', '\\|').replaceAll('\n', ' ');
 }
 
-export function markdown(items, integrationHref = '../../contracts/http/external-adapter-current.md') {
+export function markdown(items, integrationHref = '../../scripts/fixtures/external-integration-routes.json') {
   const summary = new Map();
   for (const item of items) summary.set(item.family, (summary.get(item.family) || 0) + 1);
   const lines = [
@@ -137,8 +137,8 @@ export function markdown(items, integrationHref = '../../contracts/http/external
     '', '## Registered HTTP methods', '',
     '| Method | Path | Family | Principal | Laravel middleware |', '|---|---|---|---|---|',
     ...items.map(x => `| ${escapeCell(x.method)} | \`${escapeCell(x.path)}\` | ${escapeCell(x.family)} | ${escapeCell(x.principal)} | \`${escapeCell(x.middleware)}\` |`),
-    '', 'Integration rules, errors, security, payment callback behavior and rollout status:',
-    `see [External Adapter Integration Guide](${integrationHref}).`, '',
+    '', 'Machine-readable external route baseline (not deployment acceptance):',
+    `see [External Integration Route Baseline](${integrationHref}).`, '',
   ];
   return lines.join('\n');
 }
@@ -171,7 +171,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
         routes: data,
       }, null, 2) + '\n'],
       [flags.markdown, markdown(data, flags.markdown ? relative(dirname(resolve(flags.markdown)),
-        fileURLToPath(new URL('../contracts/http/external-adapter-current.md', import.meta.url)))
+        fileURLToPath(new URL('./fixtures/external-integration-routes.json', import.meta.url)))
         .split(sep).join('/') : undefined)],
     ];
     for (const [file,content] of outputs) {
