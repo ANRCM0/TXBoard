@@ -2,8 +2,9 @@
 
 namespace App\Domains\Billing;
 
+use App\Domains\Billing\Internal\WinningPaymentProofs;
+use App\Domains\Subscription\Internal\LockedOrderFulfillment;
 use App\Domains\Subscription\Services\NativeSubscriptionStore;
-use App\Domains\Subscription\Services\SubscriptionFulfillmentService;
 use App\Domains\UsageV2\NativeUsageReservations;
 use App\Models\Order;
 use App\Models\OrderPurchaseTerms;
@@ -63,7 +64,7 @@ final class NativeUpgradeCredits
                     $refunded = '0';
                     $used = '0';
                     if ($cash !== '0') {
-                        $paid = app(NativePaymentSettlement::class)->verifyWinningPaymentLocked(
+                        $paid = app(WinningPaymentProofs::class)->verifyWinningPaymentLocked(
                             $installation, (int) $order->user_id, $order, $purchase);
                         $allocationId = $paid['order_payment_id'];
                         $allocation = DB::table('tx_order_payment')->where('id', $allocationId)->sharedLock()->first();
@@ -251,7 +252,7 @@ final class NativeUpgradeCredits
                 }
                 $this->require($from === $source['coverage_from'], 'UPGRADE_SOURCE_INVALID');
                 if ($source['cash_minor'] !== '0') {
-                    $paid = app(NativePaymentSettlement::class)->verifyWinningPaymentLocked(
+                    $paid = app(WinningPaymentProofs::class)->verifyWinningPaymentLocked(
                         $installation, (int) $order->user_id, $original, $originalTerms);
                     $this->require($paid['order_payment_id'] === $source['order_payment_id'], 'UPGRADE_SOURCE_INVALID');
                     $refunded = app(NativeRefundService::class)->refundedForPaymentLocked(
@@ -264,7 +265,7 @@ final class NativeUpgradeCredits
         [$user, $slot, $subscriptions] = $store->lockAccount((int) $order->user_id, $now, $installation['installation_id']);
         $histories = [];
         foreach ($subscriptions as $subscription) { $histories[(string) $subscription->id] = $store->lockHistory($subscription); }
-        app(SubscriptionFulfillmentService::class)->applyLocked(
+        app(LockedOrderFulfillment::class)->applyLocked(
             $installation, $user, $slot, $subscriptions, $histories, $order, $purchase, $now);
         $order->refresh();
     }

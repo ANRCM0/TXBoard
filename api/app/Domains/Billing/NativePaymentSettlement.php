@@ -2,13 +2,14 @@
 
 namespace App\Domains\Billing;
 
+use App\Domains\Billing\Internal\WinningPaymentProofs;
 use App\Domains\Subscription\Services\NativeSubscriptionStore;
 use App\Models\Order;
 use App\Models\OrderPurchaseTerms;
 use Illuminate\Support\Facades\DB;
 
 /** Trusted verified channel facts enter the one atomic money and purchase decision. */
-final class NativePaymentSettlement
+final class NativePaymentSettlement implements WinningPaymentProofs
 {
     public function __construct(
         private readonly NativeBillingTransaction $transactions,

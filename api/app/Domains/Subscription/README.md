@@ -4,8 +4,10 @@ Current subscription business services live in `Services/`. HTTP controllers,
 console commands, Node authorization and UsageV2 consume domain capabilities.
 Public entitlement consumers use `Contracts\EntitlementQueries`; existing
 account-first transaction participants use `Internal\LockedEntitlementQueries`.
-Both are scoped bindings to the same authoritative resolver. Other service
-entry points retain their current contracts.
+Both are scoped bindings to the same authoritative resolver. Fresh fulfillment
+consumers use `Contracts\OrderFulfillment`; the upgrade SQL participant uses
+`Internal\LockedOrderFulfillment`. Both bind to the same scoped fulfillment owner.
+Other service entry points retain their current contracts.
 There are no forwarding classes in `App\Services\Subscription`.
 
 ## Ownership
@@ -65,3 +67,9 @@ HTTP adapters select the authenticated account. The internal locked query keeps
 scalar arrays and propagates damaged-evidence errors so signed snapshot checks
 retain their existing equality and rollback semantics. See
 [the precise contract](../../../../contracts/v2/core-entitlement-queries-v1.md).
+
+Fulfillment delegates paid-order proof to Billing `Internal\WinningPaymentProofs`,
+which preserves current locking evidence checks and may initialize money accounts.
+It is SQL-only, not a side-effect-free public query. The precise fresh/locked
+contracts and commit responsibilities are in
+[Order Fulfillment Ports v1](../../../../contracts/v2/core-order-fulfillment-ports-v1.md).

@@ -8,6 +8,8 @@
 
 K1 候选实现的精确接口见 [Core Entitlement Queries v1](core-entitlement-queries-v1.md)。该子集采用 `forAccount(EntitlementQuery)`，沿用入口鉴权，尚未引入本文示意的 `InvocationContext`；后文完整接口示例不代表已提供的 SDK。
 
+K3 的实际履约/付款证明子集见 [Core Order Fulfillment Ports v1](core-order-fulfillment-ports-v1.md)：保留现有标量结果和内部锁定模型，尚未引入后文示意的统一上下文或通用事务包装。
+
 ## 1. 契约目标
 
 业务调用者依赖明确的输入、输出与行为保证，运行时通过显式装配使用当前实现。每个端口必须说明：

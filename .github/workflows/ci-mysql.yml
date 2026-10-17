@@ -294,6 +294,7 @@ jobs:
           tests/Feature/Billing/NativePaymentSettlementTest.php
           tests/Feature/Billing/NativePaymentSettlementMysqlConcurrencyTest.php
           tests/Feature/Billing/NativeBillingRecoveryTest.php
+          tests/Feature/Billing/OrderFulfillmentBoundaryTest.php
           tests/Feature/Billing/NativeEpayCheckoutTest.php
           tests/Feature/Billing/NativePaymentPluginTest.php
           tests/Feature/Billing/NativeFreeCheckoutTest.php

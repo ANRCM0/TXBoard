@@ -4,11 +4,16 @@ namespace App\Providers;
 
 use App\Core\Infrastructure\SystemClock;
 use App\Core\Kernel\Clock;
+use App\Domains\Billing\Internal\WinningPaymentProofs;
+use App\Domains\Billing\NativePaymentSettlement;
 use App\Domains\CredentialProvider\Contracts\ProviderClient;
 use App\Domains\CredentialProvider\ProviderTransport;
 use App\Domains\Subscription\Contracts\EntitlementQueries;
+use App\Domains\Subscription\Contracts\OrderFulfillment;
 use App\Domains\Subscription\Internal\LockedEntitlementQueries;
+use App\Domains\Subscription\Internal\LockedOrderFulfillment;
 use App\Domains\Subscription\Services\SubscriptionEntitlementResolver;
+use App\Domains\Subscription\Services\SubscriptionFulfillmentService;
 use Illuminate\Support\ServiceProvider;
 
 final class CoreCapabilitiesServiceProvider extends ServiceProvider
@@ -17,6 +22,14 @@ final class CoreCapabilitiesServiceProvider extends ServiceProvider
     {
         $this->app->singleton(Clock::class, SystemClock::class);
         $this->app->scoped(ProviderClient::class, ProviderTransport::class);
+        $this->app->scoped(SubscriptionFulfillmentService::class);
+        $this->app->scoped(OrderFulfillment::class,
+            fn ($app) => $app->make(SubscriptionFulfillmentService::class));
+        $this->app->scoped(LockedOrderFulfillment::class,
+            fn ($app) => $app->make(SubscriptionFulfillmentService::class));
+        $this->app->scoped(NativePaymentSettlement::class);
+        $this->app->scoped(WinningPaymentProofs::class,
+            fn ($app) => $app->make(NativePaymentSettlement::class));
         $this->app->scoped(SubscriptionEntitlementResolver::class);
         $this->app->scoped(EntitlementQueries::class,
             fn ($app) => $app->make(SubscriptionEntitlementResolver::class));

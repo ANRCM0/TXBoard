@@ -3,6 +3,7 @@
 namespace Tests\Feature\Billing;
 
 use App\Domains\Billing\MoneyValue;
+use App\Domains\Billing\Internal\WinningPaymentProofs;
 use App\Domains\Billing\NativeBillingRecovery;
 use App\Domains\Billing\NativeBillingTransaction;
 use App\Domains\Billing\NativeOrderLifecycle;
@@ -15,6 +16,8 @@ use App\Domains\Billing\NativeWalletReservations;
 use App\Domains\Billing\OrderCheckout;
 use App\Domains\CredentialProvider\ProviderCodec;
 use App\Domains\Subscription\Services\NativeSubscriptionStore;
+use App\Domains\Subscription\Contracts\OrderFulfillment;
+use App\Domains\Subscription\Internal\LockedOrderFulfillment;
 use App\Domains\Subscription\Services\PlanPublicationService;
 use App\Domains\Subscription\Services\PublishedOrderService;
 use App\Domains\Subscription\Services\SubscriptionFulfillmentService;
@@ -29,6 +32,7 @@ use App\Models\User;
 use App\Services\Auth\NativeIdentityService;
 use Illuminate\Support\Facades\DB;
 use Laravel\Sanctum\Sanctum;
+use Mockery;
 use Tests\Support\NativePaymentTestCase;
 
 final class NativeUpgradeCreditTest extends NativePaymentTestCase
@@ -369,6 +373,65 @@ final class NativeUpgradeCreditTest extends NativePaymentTestCase
             requestKey: 'wallet-upgrade-checkout', wallet: true));
     }
 
+    public function test_channel_upgrade_locked_port_failure_rolls_back_actual_money_and_rights(): void
+    {
+        $this->assertLockedPortFailureRollsBack('channel');
+    }
+
+    public function test_mixed_upgrade_locked_port_failure_rolls_back_actual_money_and_rights(): void
+    {
+        $this->assertLockedPortFailureRollsBack('mixed');
+    }
+
+    public function test_wallet_upgrade_locked_port_failure_rolls_back_actual_money_and_rights(): void
+    {
+        $this->assertLockedPortFailureRollsBack('wallet');
+    }
+
+    public function test_zero_net_upgrade_locked_port_failure_rolls_back_free_acceptance_and_rights(): void
+    {
+        $this->assertLockedPortFailureRollsBack('free');
+    }
+
+    public function test_target_proof_port_failure_rolls_back_upgrade_financial_acceptance(): void
+    {
+        [$user] = $this->paidSource();
+        $target = app(PublishedOrderService::class)->create($user->id, $this->targetOffer('25.00'), 'proof-boundary-upgrade');
+        $attempt = $this->prepare($user, $target);
+        $real = app(WinningPaymentProofs::class);
+        $targetReached = false;
+        $proofs = Mockery::mock(WinningPaymentProofs::class);
+        $proofs->shouldReceive('verifyWinningPaymentLocked')->andReturnUsing(
+            function (array $installation, int $userId, Order $order, OrderPurchaseTerms $terms) use ($real, $target, &$targetReached): array {
+                if ($order->id === $target->id) {
+                    $targetReached = true;
+                    $this->assertGreaterThan(0, DB::transactionLevel());
+                    $this->assertTrue(DB::table('tx_order_payment')->where('order_id', $target->id)->exists());
+                    $this->assertSame(Order::STATUS_PROCESSING, (int) $order->status);
+                    throw new \App\Domains\Billing\BillingError('PAYMENT_TEST_PROOF_REFUSED');
+                }
+                return $real->verifyWinningPaymentLocked($installation, $userId, $order, $terms);
+            },
+        );
+        $this->app->instance(WinningPaymentProofs::class, $proofs);
+        $tables = ['tx_order', 'tx_subscription', 'tx_subscription_terms', 'tx_subscription_operation',
+            'tx_money_account', 'tx_money_journal', 'tx_money_posting', 'tx_payment_attempt', 'tx_payment_receipt',
+            'tx_payment_settlement', 'tx_order_payment', 'tx_billing_work', 'tx_native_runtime_outbox',
+            'tx_order_upgrade_credit', 'tx_upgrade_credit_source'];
+        $before = $this->snapshots($tables);
+        $fact = $this->fact($attempt, ['transaction_ref' => 'proof-boundary-channel']);
+        $this->rejects('PAYMENT_TEST_PROOF_REFUSED', fn () => app(NativePaymentSettlement::class)
+            ->settle($user->id, (int) $attempt['attempt_id'], $fact));
+        $this->assertTrue($targetReached, 'Refusal must occur for target fulfillment, after source validation.');
+        $this->assertSame($before, $this->snapshots($tables));
+
+        $this->app->instance(WinningPaymentProofs::class, $real);
+        $result = app(NativePaymentSettlement::class)->settle($user->id, (int) $attempt['attempt_id'], $fact);
+        $this->assertSame('order_payment', $result['decision']);
+        $this->assertSame(Order::STATUS_COMPLETED, (int) $target->fresh()->status);
+        $this->assertSame(1, DB::table('tx_subscription_operation')->where('order_id', $target->id)->count());
+    }
+
     public function test_perpetual_credit_counts_reserved_and_settled_usage_and_reset_does_not_recreate_spent_principal(): void
     {
         [$user, , , $subscription] = $this->paidSource(period: 'onetime');
@@ -416,6 +479,62 @@ final class NativeUpgradeCreditTest extends NativePaymentTestCase
         $this->assertSame(Order::STATUS_COMPLETED, (int) $target->fresh()->status);
         $this->assertSame($quote, $this->quote($target));
         $this->assertSame(1, DB::table('tx_subscription_operation')->where('order_id', $target->id)->count());
+    }
+
+    private function assertLockedPortFailureRollsBack(string $mode): void
+    {
+        [$user] = $this->paidSource();
+        if (in_array($mode, ['wallet', 'mixed'], true)) { $this->fund($user, '5000'); }
+        $target = app(PublishedOrderService::class)->create($user->id,
+            $this->targetOffer($mode === 'free' ? '1.00' : '25.00'), 'locked-port-'.$mode);
+        if ($mode === 'mixed') { $this->reserve($user, $target, '100', 'locked-port-mixed'); }
+        $attempt = in_array($mode, ['channel', 'mixed'], true) ? $this->prepare($user, $target) : null;
+        $fact = $attempt === null ? null : $this->fact($attempt, ['transaction_ref' => 'locked-port-'.$mode]);
+        $accept = fn () => $attempt === null
+            ? app(OrderCheckout::class)->start($user->id, $target->trade_no,
+                requestKey: 'locked-port-checkout-'.$mode, wallet: $mode === 'wallet')
+            : app(NativePaymentSettlement::class)->settle($user->id, (int) $attempt['attempt_id'], $fact);
+        $real = app(LockedOrderFulfillment::class);
+        $providerOperations = DB::table('tx_credential_provider_operation')->count();
+        $port = Mockery::mock(LockedOrderFulfillment::class);
+        $port->shouldReceive('applyLocked')->once()->andReturnUsing(
+            function (array $installation, object $account, object $slot, \Illuminate\Support\Collection $subscriptions,
+                array $histories, Order $order, ?OrderPurchaseTerms $purchase, int $now) use ($real, $target, $providerOperations): array {
+                $this->assertSame($target->id, $order->id);
+                $this->assertGreaterThan(0, DB::transactionLevel());
+                $real->applyLocked($installation, $account, $slot, $subscriptions, $histories, $order, $purchase, $now);
+                $this->assertTrue(DB::table('tx_subscription_operation')->where('order_id', $target->id)->exists());
+                // Durable Provider intents are SQL work; the fixture rejects every wire call inside a transaction.
+                $this->assertSame($providerOperations + 1, DB::table('tx_credential_provider_operation')->count());
+                $this->assertSame(1, DB::table('tx_credential_provider_operation')->where('status', 'pending')->count());
+                throw new \RuntimeException('INJECTED_LOCKED_PORT_FAILURE');
+            },
+        );
+        $freshPort = Mockery::mock(OrderFulfillment::class);
+        $freshPort->shouldNotReceive('fulfill');
+        $this->app->instance(OrderFulfillment::class, $freshPort);
+        $this->app->instance(LockedOrderFulfillment::class, $port);
+        $tables = ['tx_order', 'tx_subscription', 'tx_subscription_terms', 'tx_subscription_terms_transition',
+            'tx_usage_period', 'tx_subscription_operation', 'tx_money_account', 'tx_money_journal', 'tx_money_posting',
+            'tx_payment_attempt', 'tx_payment_receipt', 'tx_payment_settlement', 'tx_order_payment', 'tx_billing_work',
+            'tx_native_free_checkout', 'tx_native_runtime_outbox', 'tx_order_upgrade_credit', 'tx_upgrade_credit_source',
+            'tx_credential_provider_operation', 'tx_access_subject', 'tx_auth_snapshot', 'tx_wallet_order_reservation'];
+        $before = $this->snapshots($tables);
+        try {
+            $accept();
+            $this->fail('The locked port failure must roll back '.$mode.' financial acceptance and rights together.');
+        } catch (\RuntimeException $error) {
+            $this->assertSame('INJECTED_LOCKED_PORT_FAILURE', $error->getMessage());
+        }
+        $this->assertSame($before, $this->snapshots($tables));
+        $this->assertSame(Order::STATUS_PENDING, (int) $target->fresh()->status);
+
+        $this->app->instance(LockedOrderFulfillment::class, $real);
+        $first = $accept();
+        $this->assertSame(Order::STATUS_COMPLETED, (int) $target->fresh()->status);
+        $this->assertSame($first, $accept());
+        $this->assertSame(1, DB::table('tx_subscription_operation')->where('order_id', $target->id)->count());
+        $this->assertSame(1, DB::table('tx_subscription_terms')->where('source_order_id', $target->id)->count());
     }
 
     private function paidSource(int $ageSeconds = 1296000, string $period = 'monthly'): array

@@ -153,6 +153,12 @@ KERNEL_FILES = {
     "api/app/Providers/CoreCapabilitiesServiceProvider.php": "App\\Providers",
     "api/app/Domains/CredentialProvider/Contracts/ProviderClient.php":
         "App\\Domains\\CredentialProvider\\Contracts",
+    "api/app/Domains/Subscription/Contracts/OrderFulfillment.php":
+        "App\\Domains\\Subscription\\Contracts",
+    "api/app/Domains/Subscription/Internal/LockedOrderFulfillment.php":
+        "App\\Domains\\Subscription\\Internal",
+    "api/app/Domains/Billing/Internal/WinningPaymentProofs.php":
+        "App\\Domains\\Billing\\Internal",
 }
 RESOLVER_OWNERS = frozenset({
     "api/app/Domains/Subscription/Services/SubscriptionEntitlementResolver.php",
@@ -160,6 +166,10 @@ RESOLVER_OWNERS = frozenset({
 })
 PROVIDER_TRANSPORT_OWNERS = frozenset({
     "api/app/Domains/CredentialProvider/ProviderTransport.php",
+    "api/app/Providers/CoreCapabilitiesServiceProvider.php",
+})
+FULFILLMENT_OWNERS = frozenset({
+    "api/app/Domains/Subscription/Services/SubscriptionFulfillmentService.php",
     "api/app/Providers/CoreCapabilitiesServiceProvider.php",
 })
 PHP_COMMENTS = re.compile(
@@ -171,6 +181,10 @@ HOST_OPERATION = re.compile(
     r"|\b(?:app|resolve|config|env|request|auth|curl_[a-z_]+|file_get_contents|"
     r"file_put_contents|fopen|fsockopen|stream_socket_client|shell_exec|exec|"
     r"system|passthru|proc_open|popen)\s*\(",
+    re.IGNORECASE,
+)
+INTERNAL_HOST_NAMESPACE = re.compile(
+    r"\b(?:Illuminate\\(?:Support\\Facades|Http)|Symfony|GuzzleHttp|Plugin)\\",
     re.IGNORECASE,
 )
 
@@ -236,11 +250,24 @@ def validate_kernel_boundaries(root):
                         f"{match.group(0) if match else ''}")
             checked += 1
 
+    # Locked participant contracts may expose existing Eloquent rows/collections.
+    # This checks direct host calls only; transaction ownership still needs tests.
+    for area in ("api/app/Domains/Subscription/Internal", "api/app/Domains/Billing/Internal"):
+        for path in sorted((root / area).rglob("*.php")):
+            source = without_php_comments(path.read_text(encoding="utf-8-sig"))
+            for pattern in (HOST_OPERATION, INTERNAL_HOST_NAMESPACE):
+                match = pattern.search(source)
+                require(match is None,
+                        f"Host operation in locked participant contract {path.relative_to(root).as_posix()}: "
+                        f"{match.group(0) if match else ''}")
+
     concrete_boundaries = (
         (re.compile(r"\bSubscriptionEntitlementResolver\b", re.IGNORECASE),
          RESOLVER_OWNERS, "entitlement"),
         (re.compile(r"\bProviderTransport\b", re.IGNORECASE),
          PROVIDER_TRANSPORT_OWNERS, "provider transport"),
+        (re.compile(r"\bSubscriptionFulfillmentService\b", re.IGNORECASE),
+         FULFILLMENT_OWNERS, "order fulfillment"),
     )
     for area in ("api/app", "api/config", "api/routes", "api/plugins-core"):
         for path in sorted((root / area).rglob("*.php")):
@@ -249,6 +276,9 @@ def validate_kernel_boundaries(root):
             for concrete, owners, label in concrete_boundaries:
                 require(relative in owners or concrete.search(source) is None,
                         f"Concrete {label} dependency outside owner/composition root: {relative}")
+            if relative.startswith("api/app/Domains/Subscription/Services/"):
+                require(re.search(r"\bNativePaymentSettlement\b", source, re.IGNORECASE) is None,
+                        f"Subscription service depends on concrete payment settlement: {relative}")
     return checked
 
 
