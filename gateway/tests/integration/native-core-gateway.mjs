@@ -9,6 +9,7 @@ import { loadConfig } from '../../apps/gateway/dist/config/env.js'
 import { CryptoService } from '../../apps/gateway/dist/services/crypto.js'
 import { RedisSecurity } from '../../apps/gateway/dist/services/redis-security.js'
 import { createLogger } from '../../apps/gateway/dist/middleware/observability.js'
+import { invalidateCache } from '../../apps/gateway/dist/middleware/cache.js'
 import { encryptForOperation } from '../../packages/theme-sdk/dist/crypto.js'
 
 const coreRoot = resolve(process.env.TXBOARD_CORE_TEST_ROOT || '')
@@ -98,6 +99,9 @@ try {
   const bootstrap = await call(gateway, prefix + '/bootstrap')
   assert.equal(bootstrap.data.site.name, 'Gateway integration')
   assert.ok(!bootstrap.data.capabilities.includes('orders.create'))
+  // The two fixture deployments share a process and the current public cache.
+  // Each deployment's bootstrap must execute against its own write setting.
+  invalidateCache('/bootstrap')
   const writeBootstrap = await call(writable, prefix + '/bootstrap')
   assert.ok(writeBootstrap.data.capabilities.includes('orders.create'))
   const plans = await call(gateway, prefix + '/plans')
