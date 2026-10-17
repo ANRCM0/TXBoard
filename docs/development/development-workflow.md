@@ -42,4 +42,4 @@
 
 C1、C2 已合入 main，当前优先 C3 支付尝试、资金与退款闭环，其后为 C4 正式接口/凭据生命周期及 C5 安装发布。历史 Node/旧站恢复组合不再阻塞当前 Core 开发；与当前业务直接相关的持久化和恢复要求继续验证。
 
-开发顺序见[基础功能优先级](../architecture/v2/development-priorities.md)，完成范围见[当前进度](../architecture/v2/current-progress.md)，具体执行命令见[本地开发](local-development.md)。
+当前能力与限制见[实现基线](../architecture/v2/current-progress.md)，具体执行命令见[本地开发](local-development.md)。

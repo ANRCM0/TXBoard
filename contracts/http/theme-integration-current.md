@@ -2,7 +2,7 @@
 
 > 当前接口以 `api/routes/txapi.php`、`api/routes/web.php` 为准；外部部署须自行验证 HTTP 连通性。
 >
-> 2026-10-16：本分支含 C3/C4 候选接口，尚不代表已合并、通过集成验收或发布。路由注册不等于当前 native 安装准入；未实现的历史业务入口仍拒绝。当前状态及限制见[内核成熟度评审](../../docs/architecture/v2/core-maturity-review.md)。
+> 当前主线已包含支付、钱包退款、升级折抵及正式服务接口子集。路由注册不等于 native 安装准入；未支持入口仍拒绝，合并不代表生产发布。当前范围及限制见[实现基线](../../docs/architecture/v2/current-progress.md)。
 
 ## 1. 接入原则
 
@@ -134,7 +134,7 @@ Authorization: Bearer <opaque-session-token>
 3. 取 `data.trade_no`。免费订单 checkout 为空体；全钱包使用 `{"wallet":true}`；渠道使用 `{"method":1}`，可选字符串 `wallet_amount_minor` 冻结混合份额。checkout 使用独立永久键，所有重试保留原键/输入；新客户端建议统一使用 UUID。
 4. 根据 checkout 的 `data.type` 和 `data.data` 处理动作，轮询订单/原支付尝试。实际收款通过验签回调/原尝试查询进入 Core；SQL work 负责可恢复履约，不要求 Webhook 内同步完成。
 
-本候选仅支持 CNY、无手续费与已实现的渠道插件。付费套餐替换因尚缺不可变来源绑定的升级折抵而明确拒绝；已履约续费/重置等精确全退仍未交付。不能以支付失败、浏览器回跳或本地订单取消推断渠道未收款。详见[支付结算](../v2/native-payment-settlement-v1.md)与[钱包退款](../v2/native-wallet-refunds-v1.md)。
+当前仅支持 CNY、无手续费与已实现的渠道插件。套餐升级使用不可变来源报价及共享现金预算，含零抵扣也须冻结来源指纹；非现金 credit 不可退款。全量/部分退款仅到原用户钱包，不修改权益或任何履约 work，也不做原路退款。不能以支付失败、浏览器回跳或本地订单取消推断渠道未收款。详见[支付结算](../v2/native-payment-settlement-v1.md)、[钱包退款](../v2/native-wallet-refunds-v1.md)和[升级折抵](../v2/native-upgrade-credit-v1.md)。
 
 ### 钱包充值（幂等）
 

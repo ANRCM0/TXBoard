@@ -2,7 +2,7 @@
 
 Source now lives at the main repository's `gateway/packages/theme-sdk`; run workspace build/pack commands from `gateway/`. The package name, version, exports and HTTP contract remain unchanged. Unified repository image tags do not publish this package to npm.
 
-Framework-agnostic TypeScript client for the Gateway's fixed `/gateway/v1` routes (Vue, React, Next.js, SPA). Future optional `/txapi/bff/v1` integration is **TARGET only** and retains the Gateway v1 `{ok,data,meta}` wire schema; see [integration](../../docs/txapi-integration.md). Currently a workspace package, **not yet published to npm**. Build with `npm run build --workspace @txboard/theme-sdk`.
+Framework-agnostic TypeScript client for the Gateway's fixed `/gateway/v1` routes (Vue, React, Next.js, SPA). The external envelope is `{ok,data,meta}`; `/txapi/bff/v1` and administrator browser routes are not registered. See [current integration](../../docs/native-core-integration.md). Currently a workspace package, **not yet published to npm**. Build with `npm run build --workspace @txboard/theme-sdk`.
 
 ```ts
 import { createTXBoardClient } from '@txboard/theme-sdk'
@@ -53,7 +53,7 @@ const registered = await api.auth.register({
 - `GatewayApiError` 包含 `code`、HTTP `status`、可选 `requestId`。遇到 409/429/503 不要无脑自动重试密文写请求。
 - 套餐与订单金额沿用 TXBoard 的分单位；不在 SDK 中二次转换。
 - SDK 仅类型描述，不代替 Gateway/后端的运行时校验；SSR 必须为不同请求隔离 `getToken` 与客户实例。
-- 订单创建需服务端显式开启；无 checkout/cancel、支付回调、管理员 API、订阅原始 Token 导出。
+- 订单创建默认关闭；当前 `plan_id/period` 适配不兼容 Native Core `offer_id`，开启开关不证明购买可用。无 checkout/cancel、支付回调、管理员 API、订阅原始 Token 导出。
 
 [HTTP v1 契约](../../contracts/gateway-v1.md) · [Docker 运行方式](../../docs/docker-deployment.md) · [当前状态](../../docs/development-status.md)。
 
@@ -64,3 +64,14 @@ returns the current `core-entitlement/v1` union; check `authorized` before readi
 `subscription_id`, `remaining_bytes` or `expires_at`. Byte counts, identifiers,
 limits and Unix seconds are decimal strings and remain exact across transport.
 A denied summary exposes the Core reason without any credential or reusable URL.
+
+## Offline experiments
+
+Explicit subpaths `experimental/sc-v2-codec`, `experimental/sc-v2-crypto` and
+`experimental/sc-v2-response-salt` remain offline engineering APIs, not Gateway
+HTTP or Core business consumers. Base HPKE does not authenticate an actor. The
+original deterministic response material requires shared single-owner safety
+across openings; the Redis fixture is not an atomic crypto fence. Fresh salt
+does not replace authorization, replay/recovery or key trust. Current limits
+are consolidated in [crypto and experiment boundaries](../../docs/app-crypto-preview.md)
+and the [SC-v2 contracts](../../../contracts/v2/secure-channel/README.md).

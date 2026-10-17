@@ -2,9 +2,9 @@
 
 Status: experimental B6.1 bytes only, identifier `txboard.sc-v2-codec/1`. This is
 not a finalized SC-v2 protocol, encryption implementation or release approval.
-The [Gateway experiment](https://github.com/ANRCM0/TXBoard-Gateway/blob/main/docs/sc-v2-codec-experimental.md)
-contains the exact field order, byte limits, reference encoder and current
-restrictions. It is an optional SDK subpath with no registered HTTP route, Core
+The [reference encoder](../../../gateway/packages/theme-sdk/src/experimental/sc-v2-codec.ts)
+defines the experimental field order and byte limits; current channel restrictions
+are documented in the [Gateway crypto guide](../../../gateway/docs/app-crypto-preview.md). It is an optional SDK subpath with no registered HTTP route, Core
 operation or plaintext fallback. Current v1 Gateway/SDK behavior remains intact.
 
 The experiment uses length-prefixed ordered tuples, explicit request/response

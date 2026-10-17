@@ -6,11 +6,13 @@ This repository contains TXBoard Core, [Gateway](gateway/README.md) and [TX-Node
 
 > **Status:** Actively evolving. CI and image publication are not proof of production readiness. Validate database migrations, payments, node integration and extensions in an isolated environment before rollout.
 
-The project has not entered formal testing. Native C1/C2 is the development
-baseline; old-deployment migration and backward compatibility are not delivery
-requirements. Coordinated breaking changes are allowed. C3 payments and money,
-C4 formal APIs/credential lifecycle, and C5 installation/releases remain.
-See the [development baseline and CI ownership](docs/development/native-development-baseline.md).
+The project has not entered formal testing. Current native subscriptions/usage,
+CNY settlement, wallets and wallet-only refunds, upgrade credits, the unified
+plugin framework and a bounded service API subset are merged. Old plugins and
+old development revisions are not compatibility targets. This is not a complete
+API, production PKI, installation/recovery or release acceptance claim. See the
+[current implementation baseline](docs/architecture/v2/current-progress.md) and
+[development/data-safety rules](docs/development/native-development-baseline.md).
 
 ## Components
 

@@ -1,13 +1,13 @@
 # Native Core Billing v1
 
-Status: C3-A foundation contract (PR #260, not merged at this review). This branch
-also contains the C3 integration candidate described in
-[settlement](native-payment-settlement-v1.md),
-[payment plugins](native-payment-provider-v1.md) and
-[wallet/refunds](native-wallet-refunds-v1.md).
-Those documents supersede the foundation-only admission limits, not its money
-invariants. Integration acceptance and remaining C3 gaps are tracked separately
-in the [maturity review](../../docs/architecture/v2/core-maturity-review.md).
+Status: current native Billing foundation, merged in PR #260; settlement,
+wallet-only refunds, upgrade credits and payment plugins are merged in PR #261.
+[Settlement](native-payment-settlement-v1.md),
+[payment plugins](native-payment-provider-v1.md),
+[wallet/refunds](native-wallet-refunds-v1.md) and
+[upgrade credits](native-upgrade-credit-v1.md) extend the original foundation
+without weakening its money invariants. See the [current implementation and
+acceptance limits](../../docs/architecture/v2/current-progress.md).
 
 ## Authority and scope
 

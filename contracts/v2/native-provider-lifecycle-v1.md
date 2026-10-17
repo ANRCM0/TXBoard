@@ -1,7 +1,8 @@
 # Native Provider lifecycle and subscription links v1
 
-Status: C4 implementation candidate. CI and review evidence are required before
-this document can be described as verified or released.
+Status: current bounded lifecycle contract, merged in PR #261.
+Production PKI, real certificate rotation and Node trust distribution remain
+unverified; merge and CI are not release approval.
 
 Core owns non-secret registration, policy, durable operations and subscription
 links. The separately executed Provider owns all proxy credential material.

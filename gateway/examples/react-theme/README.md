@@ -1,6 +1,6 @@
 # React 独立主题模板（GW-505）
 
-React 19 + Vite 独立主题模板。**所有数据都经 `@txboard/theme-sdk` 访问 Gateway（`/gateway/v1`），任何路径都不直连 Laravel。** 骨架源码见 `src/`；设计契约与验收矩阵见 [docs/theme-templates.md](../../docs/theme-templates.md)。
+React 19 + Vite 独立主题模板。**所有数据都经 `@txboard/theme-sdk` 访问 Gateway（`/gateway/v1`），任何路径都不直连 Laravel。** 骨架源码见 `src/`；设计契约与验收矩阵见 [当前开发者指南](../../docs/developer-guide.md)。
 
 ## 运行
 
@@ -10,7 +10,7 @@ npm install --workspace @txboard/theme-sdk
 VITE_GATEWAY_PROXY_TARGET=http://127.0.0.1:8080 npm run dev --workspace react-theme
 ```
 
-Gateway 默认运行在 `http://127.0.0.1:8080`（Docker Compose 内映射），本模板开发服务器把 `/gateway/v1` 同源代理过去，因此 Origin 始终一致；跨域部署时把站点精确 origin 加入 `GATEWAY_ALLOWED_ORIGINS` 并改用 HTTPS `baseURL`。
+上面 `8080` 仅是显式配置的隔离开发目标，不是 Gateway 默认端口或已存在的 Docker 公网映射。按实际可达地址设置代理（Gateway 默认 8787，容器不直通公网）；本模板把 `/gateway/v1` 同源代理过去，跨域部署时把站点精确 origin 加入 `GATEWAY_ALLOWED_ORIGINS` 并改用 HTTPS `baseURL`。
 
 ## 结构
 
@@ -48,3 +48,10 @@ src/
 - **错误 UI**：401→重新登录、429→稍后重试、503→服务暂不可用、网络/超时→检查网络，全部展示 Gateway `requestId`；未知错误码提示确认远程状态。
 - **URL 卫生**：服务端下发的 background/logo/外链经 `safeWebUrl` 白名单校验（禁 `javascript:`/`data:`/凭据/跨源 http）。
 - **主题配置即外观**：`theme.config` 只驱动 CSS tokens，从不作为权限或业务依据。
+
+## 当前限制
+
+本目录是已有示例，不是正式发布或生产验收。当前订单创建仍用历史
+`plan_id/period`，不兼容 Native Core `offer_id`；能力通告/开启写入开关
+不能视作 Native 购买已可用。Core 仅安装静态 SPA 主题包，不执行 SSR 上传代码。
+新前端开发仍归独立 TX-F，已有示例构建/浏览器验收由 CI 集中执行。

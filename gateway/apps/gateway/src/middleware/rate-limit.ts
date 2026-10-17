@@ -45,7 +45,7 @@ export interface ResolvedPolicy extends RouteRatePolicy {
 }
 
 /**
- * Candidate initial quotas (docs/implementation-plan.md §2.2). Tune after
+ * Current initial quotas (docs/rate-limiting.md). Tune after
  * load testing; these are deliberately conservative for credential endpoints.
  * WAF / Laravel-side limits remain in force — this is defense in depth.
  */

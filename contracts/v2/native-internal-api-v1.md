@@ -1,7 +1,8 @@
 # Native Internal API v1
 
-Status: C4 implementation candidate, 2026-10-16. Runtime/SQL/TLS tests run in CI;
-this document is not a production deployment or acceptance declaration.
+Status: current bounded service API subset, merged in PR #261.
+Runtime/SQL/TLS tests run in CI; this is not complete management coverage
+or a production deployment/PKI acceptance declaration.
 The retired `InternalReadOnly` dispatcher and its old routes remain unavailable.
 
 ## Boundary and deployment

@@ -2,7 +2,7 @@
  * middleware/observability.ts — structured redacted logging, metrics and the
  * internal readiness probe (GW-214 / PR-D).
  *
- * HARD RULE (docs/middleware-architecture.md §2.1 / §6, GW-205 / GW-214):
+ * HARD RULE (docs/architecture.md, GW-205 / GW-214):
  * only bounded, non-user-data fields may be emitted — requestId, route
  * TEMPLATE, HTTP status, duration, error code and closed enum labels. NEVER
  * Authorization headers, passwords, tokens, CAPTCHA values, emails, request or

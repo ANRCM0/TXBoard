@@ -9,11 +9,11 @@ import { createHash } from 'node:crypto'
  *    write route, forwarded to Laravel verbatim. The Gateway validates its
  *    FORMAT and never its meaning; Laravel hashes it with the authenticated user and operation to identify
  *    the claim; it hashes the validated request body separately to detect
- *    same-key/different-body conflicts (docs/adr-order-idempotency.md).
+ *    same-key/different-body conflicts (contracts/gateway-v1.md).
  *
  *  - `X-Idempotency-Key-Hint` — derived BY THE GATEWAY from the validated body
- *    only (SHA-256 over the canonical JSON), without any user identity. ADR
- *    §7.2 is explicit: the hint is NOT authoritative. Laravel re-derives the
+ *    only (SHA-256 over the canonical JSON), without any user identity. The
+ *    hint is NOT authoritative. Core re-derives the
  *    final key from the authenticated user_id; a mismatch is a log signal, not
  *    a rejection. The Gateway computes it here purely so the backend has a
  *    cheap correlation value — it holds no idempotency state of its own and
@@ -58,9 +58,8 @@ export function validateIdempotencyKey(header: string | null | undefined): Idemp
 
 /**
  * Canonical JSON: keys sorted by Unicode code point, no insignificant
- * whitespace, UTF-8. This is the SAME canonicalization ADR §3.1 specifies for
- * the Laravel-side key, so the hint can be compared to the authoritative key
- * byte-for-byte if the backend chooses to.
+ * whitespace, UTF-8. This normalizes the Gateway correlation hint only; it is
+ * not a substitute for the Core request fingerprint or actor-scoped claim.
  */
 export function canonicalJson(value: unknown): string {
   return JSON.stringify(value, (_key, inner) => {
@@ -74,7 +73,7 @@ export function canonicalJson(value: unknown): string {
 }
 
 /**
- * The Gateway-derived idempotency hint for an order body (ADR §7.2):
+ * The Gateway-derived correlation hint for an order body:
  * SHA-256 over the operation name and the canonical body, WITHOUT any user
  * identity — the Gateway never holds a trusted user_id, only the bearer token.
  */

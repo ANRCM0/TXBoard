@@ -1,10 +1,10 @@
 # Native payment settlement v1
 
-Status: C3 integration candidate. Purchase settlement and the bundled EPay payment plugin
+Status: current native settlement contract, merged in PR #261. Purchase settlement and the bundled EPay payment plugin
 share the native money/receipt authority with recharge, wallet allocation and
 refund-to-wallet services. CNY paid admission has a real HTTP producer, verified
-callback/query consumer and durable fulfillment recovery. Candidate completion
-does not replace CI acceptance or authorize a production release.
+callback/query consumer and durable fulfillment recovery. Implementation and merge
+do not replace exact-head CI or authorize a production release.
 
 ## Ownership and transaction
 

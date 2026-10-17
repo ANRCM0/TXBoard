@@ -8,7 +8,7 @@
 | 订单、余额、充值和工单 | `/txapi/orders/*`、`/txapi/billing/*`、`/txapi/tickets/*` | 用户 Sanctum Bearer |
 | 管理员 | `/txapi/admin/{admin_path}/*` | 管理员 Bearer、动态路径与 RBAC |
 | TXNode HTTP | `/txapi/node/v1/*` | Node/Machine Bearer + 节点/机器身份头 |
-| Node Usage v2 接收 | `/txapi/node/v2/usage/*` | 同一 Node/Machine 身份；legacy 仅显式 local/testing 副本，native 受就绪与签名 Session 门禁约束 |
+| Node Usage v2 接收 | `/txapi/node/v2/usage/*` | 同一 Node/Machine 身份；当前 native 受就绪与签名 Session 门禁约束 |
 | TXNode WS | `wss://<host>/txapi/node/v1/ws` | Workerman Upgrade、专用身份头、功能开关 |
 | 支付商回调 | `GET/POST /txapi/payment/webhook/{method}/{uuid}` | 提供商签名，原始 ACK |
 | Telegram 回调 | `POST /txapi/integrations/telegram/webhook` | Telegram 验证摘要 |
@@ -33,12 +33,13 @@ C2-B已注册原生订阅应用适配，但仍受上述安装门禁约束：
 不返回旧UUID作为原生代理凭据。legacy安装的订单与账户契约保持现状；
 原生 Node 授权、Provider 凭据、订阅分发与 UsageV2 使用
 [C2 有界运行契约](../v2/native-c2-runtime-v1.md)的独立准入条件。
-C2 合并基线仅支持零价 Offer。本分支 C3/C4 候选加入 CNY 无手续费的渠道插件、
-钱包/混合支付、充值、退款至钱包与持久履约恢复，尚不能当作已通过集成验收或正式发布。
-免费 checkout 同样必需永久幂等键。付费升级折抵、已履约续费/重置精准全退、
-原路退款和支付插件旧版本交接尚未交付，明确拒绝而不猜测资金或权益。
-详见[结算](../v2/native-payment-settlement-v1.md)、[钱包退款](../v2/native-wallet-refunds-v1.md)
-和[内核成熟度](../../docs/architecture/v2/core-maturity-review.md)。
+C2 合并基线仅支持零价 Offer。2026-10-17 合并的 C3/C4 实现进一步支持 CNY
+无手续费渠道插件、钱包/混合支付、充值、退款至钱包、升级折抵与持久履约恢复；
+合并不代表完整内核或生产验收完成。
+免费 checkout 同样必需永久幂等键。退款仅入钱包，不做权益精准回滚或原路退款；
+旧支付插件不兼容，不能启用旧协议交接或猜测资金与权益。
+详见[结算](../v2/native-payment-settlement-v1.md)、[钱包退款](../v2/native-wallet-refunds-v1.md)、
+[升级折抵](../v2/native-upgrade-credit-v1.md)和[当前实现基线](../../docs/architecture/v2/current-progress.md)。
 
 C2-C1另注册以下用户Bearer入口，均保留native安装门禁：
 `POST /txapi/me/access-subjects`要求订阅ID、已配置Provider/Profile、预期订阅版本和幂等键；
@@ -66,7 +67,7 @@ C2-C1另注册以下用户Bearer入口，均保留native安装门禁：
 
 HTTP 路由由 `api/routes/txapi.php` 和 `RouteServiceProvider.php` 注册；Workerman WebSocket、插件动态路由以及反向代理规则不包含在 Laravel route-list 内。
 
-Node Usage v2 的历史隔离接收契约见 [隔离接收切片](../v2/node-usage/isolated-receipt-current.md)。
+Node Usage v2 的当前接收、持久回执与原周期结算见 [Native 用量契约](../v2/node-usage/README.md)。
 legacy Node 保持 v1 默认行为；显式 native v2 模式要求同一签名中的有限授权与
 完整 UsageV2 Session，并保留原批次、原周期和真实持久回执。
 

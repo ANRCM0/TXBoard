@@ -7,8 +7,10 @@ import { dirname, extname, isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const inputs = ['README.md', 'README.en.md', 'CONTRIBUTING.md', 'docs', 'contracts',
-  'gateway/README.md', 'gateway/docs', 'node/README.md', 'node/docs'];
+const inputs = ['README.md', 'README.en.md', 'AGENTS.md', 'CONTRIBUTING.md',
+  '.github', 'api/app/Domains', 'api/plugins-core', 'docs', 'contracts', 'gateway', 'node'];
+const excludedDirectories = new Set(['.git', 'node_modules', 'vendor', 'dist',
+  'build', 'coverage', '.next', '.turbo', '.cache']);
 const files = [];
 const errors = [];
 let checked = 0;
@@ -20,7 +22,10 @@ function collect(relative) {
     return;
   }
   if (statSync(abs).isDirectory()) {
+    // Vendored upstream documentation is not maintained by this project.
+    if (relative.replaceAll('\\', '/') === 'node/internal/deps') return;
     for (const child of readdirSync(abs)) {
+      if (excludedDirectories.has(child)) continue;
       collect(join(relative, child));
     }
   } else if (extname(abs) === '.md') {

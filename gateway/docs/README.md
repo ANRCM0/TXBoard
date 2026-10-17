@@ -1,27 +1,19 @@
-# TXBoard Gateway 文档中心
+# Gateway 文档入口
 
-> Gateway 是可选的用户主题 API BFF / SDK，不是 TXBoard 内置的 Agent Ops MCP Gateway。当前运行前缀为 `/gateway/v1`；`/txapi/bff/v1` 是目标方案，不能当作已经发布。
+Gateway 当前是 `/gateway/v1` 用户 BFF/SDK；`/txapi/bff/v1`、统一管理员浏览器入口和网络 SC-v2 没有因文档存在而上线。Core 保留身份、权限、资金、订单和权益权威。
 
-## 阅读路线
+## 当前维护文档
 
-- **合仓入口**：[源码目录、CI、独立镜像与 SDK 边界](monorepo-current.md)。开发和 Compose 命令均在主仓 `gateway/` 执行。
+- [架构与信任边界](architecture.md)：静态策略、上游归属、缓存、观测和故障。
+- [当前实现与验证范围](development-status.md)：实际代码、历史证据及尚未覆盖的环境。
+- [当前 HTTP 契约](../contracts/gateway-v1.md)、[Native 服务接入](native-core-integration.md) 与 [SDK README](../packages/theme-sdk/README.md)。
+- [SDK/现有示例指南](developer-guide.md) 和 [Core 主题包契约](../../contracts/theme-package/README.md)。
+- [加密、replay 与离线实验](app-crypto-preview.md)、[安全政策](../SECURITY.md)。
+- [合仓运行/CI/镜像约定](monorepo-current.md)、[Docker 部署与恢复](docker-deployment.md)、[隔离 Staging](../staging/README.md)。
+- [限流策略](rate-limiting.md)、[限流恢复](runbook-rate-limit-recovery.md)、[发布记录](release-checklist.md)。
 
-后续平台演进先读 [Core First v2 B0 基线](../../docs/architecture/v2/README.md) 和 [跨仓兼容矩阵](../../docs/architecture/v2/compatibility-matrix.md)。统一 User/Admin Gateway、独立前端与 SC-v2 属于目标架构；现行 BFF 行为和发布门禁仍按当前契约执行。
+## 维护规则
 
-- **开发入门**：[架构](architecture.md)、[开发者指南](developer-guide.md)、[Docker 部署](docker-deployment.md)。
-- **现有协议与 SDK**：[Gateway v1](../contracts/gateway-v1.md)、[Theme SDK](../packages/theme-sdk/README.md)、[主题模板](theme-templates.md)。
-- **部署运维**：[限流设计](rate-limiting.md)、[限流恢复](runbook-rate-limit-recovery.md)、[发布检查](release-checklist.md)。
-- **目标架构**：[TXAPI 集成方案](txapi-integration.md)、[目标 BFF 契约](../contracts/txapi-bff-target-v1.md)。
-- **路线图与状态**：[开发状态台账](development-status.md)、[Roadmap](roadmap.md)、[Task Backlog](task-backlog.md)。
-- **历史决策**：各 `adr-*.md` 是设计及决策记录，不能仅因文件存在便视为功能已上线。
+当前事实以源码与对应契约为准；[状态页](development-status.md)集中说明验证边界，不在各入口重复历史测试计数。实验不是已开放业务，历史结果只覆盖其记录的源码/环境。API/包格式同步更新真实生产者和消费者，不保留已退役入口、旧包共存或无消费者的过渡计划。
 
-## 如何理解状态
-
-- **Current**：已实现于当前代码，但不能自动推断通过生产联调。
-- **Experimental**：仅在开关、沙盒或受限环境下使用。
-- **Target / Draft**：未来目标或待评审设计。
-- **Historical**：历史讨论、阶段性计划与过往验收记录。
-
-**唯一的当前进展来源是 [development-status.md](development-status.md)**。README 只保留稳定的产品介绍和入口，不维护另一份容易过时的 PR / 测试数字。
-
-[返回 TXBoard 文档中心](../../docs/README.md)。
+[主仓架构边界](../../docs/architecture/v2/README.md) · [主仓文档入口](../../docs/README.md)。
