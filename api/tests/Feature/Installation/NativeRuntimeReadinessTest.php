@@ -12,6 +12,7 @@ use Illuminate\Contracts\Queue\Job;
 use Illuminate\Queue\Events\JobProcessing;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Mockery;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Output\NullOutput;
@@ -19,6 +20,24 @@ use Tests\Support\NativeRuntimeTestCase;
 
 final class NativeRuntimeReadinessTest extends NativeRuntimeTestCase
 {
+    public function test_activation_requires_the_native_payment_schema(): void
+    {
+        Schema::drop('tx_payment_receipt');
+        $this->expectExceptionMessage('INSTALLATION_AUTHORITY_SCHEMA_REQUIRED');
+        app(InstallationAuthority::class)->readiness();
+    }
+
+    public function test_activation_refuses_existing_financial_accounts(): void
+    {
+        DB::table('tx_money_account')->insert([
+            'installation_id' => self::INSTALLATION, 'owner_id' => 0, 'user_id' => null,
+            'purpose' => 'provider_clearing', 'currency' => 'USD', 'normal_side' => 'debit',
+            'balance_minor' => '0', 'created_at' => time(),
+        ]);
+        $this->expectExceptionMessage('INSTALLATION_AUTHORITY_FRESH_NATIVE_REQUIRED');
+        app(InstallationAuthority::class)->readiness();
+    }
+
     public function test_activation_is_persistent_cas_idempotent_and_requires_the_new_worker_epoch(): void
     {
         $authority = app(InstallationAuthority::class);

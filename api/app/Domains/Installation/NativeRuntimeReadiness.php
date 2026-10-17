@@ -65,6 +65,16 @@ final class NativeRuntimeReadiness
             'tx_auth_snapshot' => ['source_id', 'user_id', 'access_subject_id', 'subscription_id', 'terms_id', 'usage_period_id',
                 'tariff_revision_id', 'auth_version', 'revocation_version', 'issued_at', 'lease_expires_at', 'revoked_at', 'content_hash'],
             'tx_node_authorization_state' => ['node_id', 'machine_id', 'key_id', 'key_epoch', 'revision', 'snapshot_digest'],
+            'tx_money_account' => ['id', 'installation_id', 'owner_id', 'user_id', 'purpose', 'currency', 'normal_side', 'balance_minor'],
+            'tx_money_journal' => ['id', 'installation_id', 'user_id', 'business_type', 'business_ref',
+                'idempotency_key', 'request_hash', 'currency', 'occurred_at', 'reverses_journal_id'],
+            'tx_money_posting' => ['id', 'journal_id', 'account_id', 'position', 'side', 'amount_minor'],
+            'tx_payment_attempt' => ['id', 'installation_id', 'user_id', 'order_id', 'payment_id',
+                'purchase_terms_id', 'provider', 'provider_account_ref', 'order_trade_no', 'amount_minor', 'currency',
+                'purchase_content_hash', 'request_key', 'request_hash', 'key_hash', 'attempt_hash', 'status'],
+            'tx_payment_receipt' => ['id', 'installation_id', 'user_id', 'order_id', 'payment_id', 'attempt_id',
+                'provider', 'provider_account_ref', 'transaction_ref', 'identity_hash', 'amount_minor',
+                'currency', 'occurred_at', 'content_hash'],
         ] as $table => $columns) {
             $this->require(Schema::hasTable($table) && Schema::hasColumns($table, $columns), 'SCHEMA_REQUIRED');
         }
@@ -72,6 +82,20 @@ final class NativeRuntimeReadiness
         $this->require(Schema::hasIndex('tx_auth_snapshot', 'tx_native_auth_sub_idx')
             && Schema::hasIndex('tx_native_runtime_activation', ['installation_id'], 'unique')
             && Schema::hasIndex('tx_usage_batch', ['node_id', 'source_epoch', 'batch_id'], 'unique'), 'SCHEMA_REQUIRED');
+        foreach ([
+            ['tx_money_account', ['installation_id', 'owner_id', 'purpose', 'currency']],
+            ['tx_money_journal', ['installation_id', 'user_id', 'business_type', 'business_ref', 'idempotency_key']],
+            ['tx_money_journal', ['reverses_journal_id']],
+            ['tx_money_posting', ['journal_id', 'position']],
+            ['tx_payment_attempt', ['installation_id', 'user_id', 'key_hash']],
+            ['tx_payment_attempt', ['id', 'installation_id', 'user_id', 'order_id', 'payment_id']],
+            ['tx_order', ['id', 'user_id']],
+            ['tx_order_purchase_terms', ['id', 'order_id', 'user_id']],
+            ['tx_payment_receipt', ['installation_id', 'identity_hash']],
+            ['tx_payment_receipt', ['attempt_id']],
+        ] as [$table, $columns]) {
+            $this->require(Schema::hasIndex($table, $columns, 'unique'), 'SCHEMA_REQUIRED');
+        }
         foreach ([
             ['tx_native_usage_grant', ['grant_id'], 'tx_auth_snapshot', ['id']],
             ['tx_native_usage_reservation', ['batch_id'], 'tx_usage_batch', ['id']],
@@ -82,6 +106,19 @@ final class NativeRuntimeReadiness
             ['tx_auth_snapshot', ['usage_period_id', 'subscription_id'], 'tx_usage_period', ['id', 'subscription_id']],
             ['tx_auth_snapshot', ['access_subject_id', 'subscription_id'], 'tx_access_subject', ['id', 'subscription_id']],
             ['tx_auth_snapshot', ['terms_id', 'subscription_id'], 'tx_subscription_terms', ['id', 'subscription_id']],
+            ['tx_money_account', ['user_id'], 'tx_user', ['id']],
+            ['tx_money_journal', ['user_id'], 'tx_user', ['id']],
+            ['tx_money_journal', ['reverses_journal_id'], 'tx_money_journal', ['id']],
+            ['tx_money_posting', ['journal_id'], 'tx_money_journal', ['id']],
+            ['tx_money_posting', ['account_id'], 'tx_money_account', ['id']],
+            ['tx_payment_attempt', ['user_id'], 'tx_user', ['id']],
+            ['tx_payment_attempt', ['payment_id'], 'tx_payment', ['id']],
+            ['tx_payment_attempt', ['order_id', 'user_id'], 'tx_order', ['id', 'user_id']],
+            ['tx_payment_attempt', ['purchase_terms_id', 'order_id', 'user_id'], 'tx_order_purchase_terms', ['id', 'order_id', 'user_id']],
+            ['tx_payment_receipt', ['user_id'], 'tx_user', ['id']],
+            ['tx_payment_receipt', ['payment_id'], 'tx_payment', ['id']],
+            ['tx_payment_receipt', ['attempt_id', 'installation_id', 'user_id', 'order_id', 'payment_id'],
+                'tx_payment_attempt', ['id', 'installation_id', 'user_id', 'order_id', 'payment_id']],
         ] as [$table, $columns, $foreign, $references]) {
             $found = false;
             foreach (Schema::getForeignKeys($table) as $key) {
@@ -92,7 +129,8 @@ final class NativeRuntimeReadiness
         }
         $configuration = $this->configuration($installationId);
         foreach (['tx_subscription', 'tx_access_subject', 'tx_order', 'tx_auth_snapshot', 'tx_node_usage_source',
-            'tx_usage_batch', 'tx_native_usage_grant', 'tx_native_usage_reservation', 'tx_credential_provider_operation'] as $table) {
+            'tx_usage_batch', 'tx_native_usage_grant', 'tx_native_usage_reservation', 'tx_credential_provider_operation',
+            'tx_money_account', 'tx_money_journal', 'tx_money_posting', 'tx_payment_attempt', 'tx_payment_receipt'] as $table) {
             $this->require(!DB::table($table)->sharedLock()->exists(), 'FRESH_NATIVE_REQUIRED');
         }
         $registration = DB::table('tx_credential_provider_registration')
