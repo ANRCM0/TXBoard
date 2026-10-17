@@ -1,7 +1,8 @@
 # Core Account Read Ports v1
 
 > K4 candidate subset, 2026-10-17. Based on K3 candidate `c8f782b`, not a
-> merged baseline. Exact-commit CI and domain review are pending.
+> merged baseline at the time of authoring. Now merged via PR #266, with exact
+> source development CI passed; no production qualification is implied.
 
 ## Scope and ownership
 

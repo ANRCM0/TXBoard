@@ -7,11 +7,15 @@
 // Usage: node examples/theme-template-check.mjs
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
-const ROOT = new URL('..', import.meta.url).pathname
+const ROOT = fileURLToPath(new URL('..', import.meta.url))
 const TEMPLATES = ['vue-theme', 'react-theme', 'next-theme', 'my-theme']
 
 const FORBIDDEN_PATTERNS = [
+  { re: /@ANRCM0\/theme-sdk/, why: 'retired SDK package scope' },
+  { re: /\bplan\.(?:month_price|year_price|description|id)\b/, why: 'legacy catalog field' },
+  { re: /payload:\s*\{\s*plan_id\b|\{\s*plan_id:\s*(?:1|planId|newPlanId)/, why: 'legacy order creation payload' },
   // Any direct upstream/Laravel coupling is a hard failure.
   { re: /fetch\s*\(\s*['"`][^'"`]*laravel/i, why: 'fetch to a Laravel host literal' },
   { re: /['"`]https?:\/\/[^'"`]*laravel/i, why: 'Laravel URL literal' },
@@ -21,10 +25,8 @@ const FORBIDDEN_PATTERNS = [
   { re: /api[_-]?secret|APP_KEY|master[_-]?key/i, why: 'hard-coded secret' },
 ]
 
-// SDK package name accepts both the workspace name (@txboard/theme-sdk,
-// used by in-repo templates) and the published GitHub Packages scope
-// (@ANRCM0/theme-sdk, used by community themes built from the release).
-const SDK_SPECIFIER = /@(?:txboard|ANRCM0)\/theme-sdk/
+// Existing examples consume the current workspace SDK contract.
+const SDK_SPECIFIER = /@txboard\/theme-sdk/
 
 const REQUIRED = [
   { re: SDK_SPECIFIER, why: 'must use the theme SDK' },

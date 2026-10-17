@@ -34,7 +34,7 @@ GATEWAY_SMOKE_URL=https://staging.example.test npm run smoke:staging
 
 应记录实际 Core/Gateway commit、镜像 digest、PHP/DB/Redis 版本和脱敏结果；mock 浏览器测试与真实业务环境分开。CAPTCHA、邮件、Token 撤销、两用户/他人订单隔离和异常网络使用真正目标接口验证。
 
-当前旧式浏览器订单使用 `plan_id/period`，Native Core 创建使用 `offer_id`；**不能**以 `GATEWAY_ORDER_WRITE_ENABLED=true` 宣称 Native 购买成功。默认禁写保持 405、零上游调用。支付 Provider/回调与资金权威不经 Gateway，另由 Core 当前契约验收。
+Gateway displays current Native published Offers and, only when the explicit write gate is enabled, sends the selected `offer_id` to Core. Default disabled behavior remains 405 with zero upstream calls. The gate does not authorize payment or fulfillment claims; Provider/callback and financial authority remain in Core.
 
 HPKE 需要核对新旧 key、过期/吊销、毫秒时间窗、replay/限流及 Redis 故障时敏感操作 503。replay TTL 121 秒不提供 Redis failover 强一致；生产还需全副本/缓存传播及恢复证据，见 [加密说明](../docs/app-crypto-preview.md)。
 

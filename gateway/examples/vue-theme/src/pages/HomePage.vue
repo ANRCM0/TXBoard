@@ -13,7 +13,7 @@
     <ErrorState v-if="error" :error="error" @retry="load" />
 
     <section v-if="plans.length" class="plans" aria-label="套餐列表">
-      <PlanCard v-for="plan in plans" :key="plan.id" :plan="plan" @choose="goToPlan(plan.id)" />
+      <PlanCard v-for="plan in plans" :key="plan.offer_id" :plan="plan" @choose="goToPlan(plan.offer_id)" />
     </section>
 
     <p v-else-if="!error && !loading" class="muted">暂无公开套餐。</p>
@@ -24,7 +24,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import type { Plan } from '@txboard/theme-sdk'
+import type { NativeOffer } from '@txboard/theme-sdk'
 import { api, hasCapability } from '../api'
 import { safeWebUrl } from '../lib/safe-url'
 import { useAuth } from '../composables/useAuth'
@@ -34,7 +34,7 @@ import PlanCard from '../components/PlanCard.vue'
 const router = useRouter()
 const auth = useAuth()
 const site = ref<{ name: string; description: string; url: string; logo: string } | null>(null)
-const plans = ref<Plan[]>([])
+const plans = ref<NativeOffer[]>([])
 const caps = ref<string[]>([])
 const loading = ref(true)
 const error = ref<Error | null>(null)
@@ -56,11 +56,11 @@ async function load() {
   }
 }
 
-function goToPlan(planId: number) {
+function goToPlan(offerId: string) {
   if (!auth.isAuthed) return router.push('/login')
   // Write capability is advertised by the Gateway; never assume it.
   if (!hasCapability(caps.value, 'orders.create')) return router.push('/plans')
-  router.push(`/plans/${planId}`)
+  router.push(`/plans/${offerId}`)
 }
 
 onMounted(load)

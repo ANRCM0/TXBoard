@@ -1,7 +1,8 @@
 # Core Order Fulfillment Ports v1
 
 > K3 candidate subset, 2026-10-17. Based on K2 candidate `832a8e8`, not a merged
-> baseline. Exact-commit CI and domain review are pending. No new route or schema.
+> baseline when authored. Now merged via PR #265 with exact source development
+> CI passed. No new route or schema; no production qualification is implied.
 
 ## Owners and composition
 

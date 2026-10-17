@@ -19,7 +19,7 @@
 
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import type { SubscriptionSummary, UserProfile } from '@ANRCM0/theme-sdk'
+import type { SubscriptionSummary, UserProfile } from '@txboard/theme-sdk'
 import { api } from '../api'
 import { formatBytes, formatDate } from '../lib/format'
 import ErrorState from '../components/ErrorState.vue'

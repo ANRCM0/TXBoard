@@ -88,10 +88,12 @@ async function checkStatus(tradeNo: string) {
  * The SDK never auto-retries a write. IDEMPOTENCY_IN_PROGRESS means: back off
  * and resend the SAME key. ORDER_REJECTED means the order was refused.
  */
-async function createOrder(planId: number, period: string, draftKey: string) {
+async function createOrder(offerId: string, draftKey: string) {
   try {
+    const bootstrap = await api.bootstrap()
+    if (!bootstrap.capabilities.includes('orders.create')) return
     const result = await api.orders.create(
-      { plan_id: planId, period },
+      { offer_id: offerId },
       { idempotencyKey: draftKey || newIdempotencyKey() },
     )
     createNotice.value = `订单已创建：${result.trade_no}`

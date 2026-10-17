@@ -1,7 +1,8 @@
 # Core Order Read Ports v1
 
 > K4 candidate subset, 2026-10-17. Based on account-read candidate `a4cee43`
-> (PR #266), not a merged baseline. This batch awaits exact-commit CI and review.
+> (PR #266). Merged via PR #267, with exact source development CI passed;
+> no production qualification is implied.
 
 ## Ownership and scope
 

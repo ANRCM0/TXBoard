@@ -1,10 +1,10 @@
 // usePlans hook: public plan list (GW-505). Guest-read only, zero Bearer.
 import { useCallback, useEffect, useState } from 'react'
-import type { Plan } from '@txboard/theme-sdk'
+import type { NativeOffer } from '@txboard/theme-sdk'
 import { api } from '../api'
 
 export function usePlans() {
-  const [plans, setPlans] = useState<Plan[]>([])
+  const [plans, setPlans] = useState<NativeOffer[]>([])
   const [error, setError] = useState<Error | null>(null)
   const [loading, setLoading] = useState(true)
 

@@ -3,10 +3,12 @@
 export const requestId = '12345678-1234-4234-8234-123456789abc'
 export const nativeEnvelope = (data: unknown, meta?: unknown) => ({ data, request_id: requestId, ...(meta ? { meta } : {}) })
 export const nativeError = (code = 'REJECTED', message = 'refused') => ({ error: { code, message }, request_id: requestId })
-export const nativePlan = (overrides: Record<string, unknown> = {}) => ({
-  id: 1, name: 'Plan', content: '', tags: [], traffic_limit_bytes: 1073741824,
-  speed_limit_mbps: null, device_limit: null, capacity_limit: null,
-  reset_traffic_method: null, prices: [], renewable: true, ...overrides,
+export const nativeOffer = (overrides: Record<string, unknown> = {}) => ({
+  offer_id: '1', plan_id: '1', plan_revision_id: '1', name: 'Plan', content: null, tags: [],
+  offer_code: 'monthly', purchase_kind: 'subscription', currency: 'CNY',
+  currency_minor_exponent: 2, price_minor: '1200', quota_bytes: '1073741824',
+  group_id: null, speed_limit_mbps: null, device_limit: null, sell: true, renew: true,
+  availability_version: '1', publication_hash: 'a'.repeat(64), ...overrides,
 })
 export const nativeProfile = (overrides: Record<string, unknown> = {}) => ({
   id: 1, email: 'alice@example.test', telegram_id: null,

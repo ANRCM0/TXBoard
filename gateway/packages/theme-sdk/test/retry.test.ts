@@ -21,7 +21,7 @@ describe('GW-308: retry & error-state SDK API', () => {
   it('GET retries with exponential backoff and succeeds on second attempt', async () => {
     const fetchImpl = vi.fn()
       .mockResolvedValueOnce(errResponse(503, 'UPSTREAM_UNAVAILABLE'))
-      .mockResolvedValueOnce(okResponse({ plans: [] }))
+      .mockResolvedValueOnce(okResponse([]))
     const sdk = createTXBoardClient({ fetchImpl: fetchImpl as typeof fetch, baseRetryDelay: 50 })
 
     const promise = sdk.plans.list()
@@ -29,7 +29,7 @@ describe('GW-308: retry & error-state SDK API', () => {
     const result = await promise
 
     expect(fetchImpl).toHaveBeenCalledTimes(2)
-    expect(result).toEqual({ plans: [] })
+    expect(result).toEqual([])
   })
 
   it('GET retries with exponential backoff and succeeds on third attempt', async () => {
