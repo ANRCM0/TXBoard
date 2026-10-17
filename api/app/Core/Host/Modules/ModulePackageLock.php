@@ -31,7 +31,7 @@ final class ModulePackageLock
                 || isset($seen[$code]) || !is_bool($entry['required'] ?? null)) throw new ModuleError('MODULE_PACKAGE_LOCK_INVALID');
             $seen[$code] = true;
             $this->declared[$code] = ['code' => $code, 'version' => is_string($entry['version'] ?? null) && strlen($entry['version']) <= 80 ? $entry['version'] : 'invalid',
-                'required' => $entry['required'], 'fingerprint' => hash('sha256', json_encode($entry['files'] ?? [], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES))];
+                'required' => $entry['required'], 'fingerprint' => self::hash($entry['files'] ?? [])];
             try { $this->packages[$code] = $this->load($applicationRoot, $entry); }
             catch (\Throwable) {
                 if ($entry['required']) throw new ModuleError('MODULE_PACKAGE_VERIFICATION_FAILED', 'plugin.'.$code);
@@ -41,7 +41,7 @@ final class ModulePackageLock
         ksort($this->packages, SORT_STRING);
         ksort($this->unavailable, SORT_STRING);
         ksort($this->declared, SORT_STRING);
-        $this->fingerprint = hash('sha256', json_encode($lock, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES));
+        $this->fingerprint = self::hash($lock);
     }
 
     public static function fromFile(string $applicationRoot, string $file): self
@@ -126,7 +126,22 @@ final class ModulePackageLock
             $manifest['boot_after'] ?? [], $entry['required'], $manifest['kernel_api']['min'], $manifest['kernel_api']['max']);
         return $entry + ['path' => $path, 'manifest' => $manifest, 'definition' => $definition,
             'class' => 'Plugin\\'.Str::studly($code).'\\Plugin',
-            'fingerprint' => hash('sha256', json_encode($entry['files'], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES))];
+            'fingerprint' => self::hash($entry['files'])];
+    }
+
+    private static function hash(mixed $value): string
+    {
+        return hash('sha256', json_encode(self::canonical($value), JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES));
+    }
+
+    private static function canonical(mixed $value): mixed
+    {
+        if (!is_array($value)) return $value;
+        // JSON object order is not package content. Preserve the explicit order of lists.
+        if (!array_is_list($value)) ksort($value, SORT_STRING);
+        foreach ($value as &$child) $child = self::canonical($child);
+        unset($child);
+        return $value;
     }
 
     private function validateSurface(array $manifest, array $grants): void

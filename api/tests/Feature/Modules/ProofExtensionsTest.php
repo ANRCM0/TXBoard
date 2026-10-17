@@ -11,6 +11,7 @@ use App\Domains\Subscription\Contracts\Purchases;
 use App\Domains\Subscription\Services\PublishedOrderService;
 use App\Extensions\Contracts\ExtensionFailure;
 use App\Models\Order;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -163,6 +164,44 @@ final class ProofExtensionsTest extends ModuleRuntimeTestCase
         $this->assertSame(0, DB::table('tx_money_journal')->count());
         $this->assertTrue(app(ModuleDeployment::class)->assertDrained('offer_reservation')['drained']);
         $this->assertNull(app(CurrentInvocation::class)->current());
+    }
+
+    public function test_settlement_during_configuration_fence_keeps_original_delivery_for_later_dispatch(): void
+    {
+        $this->enableModule('epay');
+        $this->enableModule('delivery_receipt', $this->receiverConfiguration());
+        $this->activate();
+        $originalVersion = (int) DB::table('tx_plugins')->where('code', 'delivery_receipt')->value('module_config_version');
+        Http::fake(function ($request) {
+            $this->assertSame('https://receiver.example.test/events', $request->url());
+            $this->assertTrue($request->hasHeader('Authorization', 'Bearer original-receiver-secret'));
+            return Http::response(['status' => 'accepted', 'event_id' => $request['event_id']]);
+        });
+        $key = (string) Str::uuid();
+        $interleaved = false;
+        DB::listen(function (QueryExecuted $query) use (&$interleaved, $key): void {
+            if ($interleaved || DB::transactionLevel() !== 0 || !str_contains(strtolower($query->sql), 'update')
+                || !str_contains($query->sql, 'tx_module_deployment')
+                || !in_array('schema_ready', $query->bindings, true) || !in_array($key, $query->bindings, true)) return;
+            $interleaved = true;
+            $this->assertNotNull(DB::table('tx_plugins')->where('code', 'delivery_receipt')->value('native_payment_mutation_token'));
+            $this->settle();
+            $this->assertSame(1, DB::table('tx_payment_receipt')->count());
+            $this->assertSame(1, DB::table('tx_money_journal')->count());
+            $this->assertSame(1, DB::table('tx_module_delivery')->count());
+            $this->assertSame(1, app(ModuleDeliveryWorker::class)->run(10)['paused']);
+            Http::assertNothingSent();
+        });
+
+        $this->deploy('delivery_receipt', 'configure', $this->receiverConfiguration('https://changed.example.test/events'), $key);
+        $this->assertTrue($interleaved);
+        $this->assertSame($originalVersion, (int) DB::table('tx_module_delivery')->value('configuration_version'));
+        config(['core_modules.secrets.receiver' => 'rotated-receiver-secret']);
+        $this->assertSame(1, app(ModuleDeliveryWorker::class)->run(10)['accepted']);
+        Http::assertSentCount(1);
+        $this->assertSame(1, DB::table('tx_ext_delivery_receipt')->count());
+        $this->assertSame(1, DB::table('tx_module_event')->count());
+        $this->assertSame(1, DB::table('tx_module_delivery')->count());
     }
 
     public function test_presentation_requires_live_grant_for_resources_operations_configuration_and_disable(): void

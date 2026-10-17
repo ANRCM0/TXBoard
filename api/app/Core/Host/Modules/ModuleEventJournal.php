@@ -32,8 +32,9 @@ final class ModuleEventJournal implements EventJournal
         foreach ($this->packages->packages() as $code => $package) {
             if (!in_array('plugin.'.$code, $active, true) || !in_array($event->kind, $package['manifest']['subscriptions'], true)) continue;
             $row = Plugin::query()->where('code', $code)->sharedLock()->first();
-            if ($row === null || !$row->is_enabled || $row->native_payment_mutation_token !== null || $row->version !== $package['version']
+            if ($row === null || !$row->is_enabled || $row->version !== $package['version']
                 || (int) $row->module_schema_version !== $package['manifest']['schema_version']) continue;
+            // Capture the committed enabled configuration even while deployment fences dispatch.
             $configuration = json_decode($row->config ?: '{}', true);
             $resolved = false;
             try {

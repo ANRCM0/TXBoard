@@ -57,7 +57,7 @@ def files(path):
         if ancestor.is_symlink():
             raise ValueError("MODULE_LINK_FORBIDDEN")
     found, total, folded = {}, 0, set()
-    for item in sorted(path.rglob("*")):
+    for item in sorted(path.rglob("*"), key=lambda item: item.relative_to(path).as_posix()):
         relative = item.relative_to(path).as_posix()
         if item.is_symlink() or len(relative) > 240 or not RELATIVE.fullmatch(relative) or any(p in (".", "..") for p in item.relative_to(path).parts):
             raise ValueError("MODULE_FILE_PATH_INVALID")

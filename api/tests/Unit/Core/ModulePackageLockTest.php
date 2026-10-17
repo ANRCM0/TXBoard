@@ -79,6 +79,26 @@ final class ModulePackageLockTest extends TestCase
         $this->assertNull((new ModulePackageLock($this->root, $lock))->package('demo'));
     }
 
+    public function test_json_object_order_does_not_change_package_identity_but_changed_content_does(): void
+    {
+        $lock = $this->lock();
+        $original = new ModulePackageLock($this->root, $lock);
+        $reordered = $lock;
+        $reordered['packages'][0]['files'] = array_reverse($reordered['packages'][0]['files'], true);
+        $reordered['packages'][0] = array_reverse($reordered['packages'][0], true);
+        $reordered = array_reverse($reordered, true);
+        $equivalent = new ModulePackageLock($this->root, $reordered);
+        $this->assertSame($original->fingerprint(), $equivalent->fingerprint());
+        $this->assertSame($original->declared(), $equivalent->declared());
+        $this->assertSame($original->package('demo')['fingerprint'], $equivalent->package('demo')['fingerprint']);
+
+        file_put_contents($this->root.'/plugins/Demo/Plugin.php', '<?php /* changed */');
+        $changed = new ModulePackageLock($this->root, $this->lock());
+        $this->assertNotNull($changed->package('demo'));
+        $this->assertNotSame($original->fingerprint(), $changed->fingerprint());
+        $this->assertNotSame($original->declared()['demo']['fingerprint'], $changed->declared()['demo']['fingerprint']);
+    }
+
     public function test_trusted_capability_grant_still_cannot_export_private_sql_participation(): void
     {
         $this->manifest['requires'] = [['id' => 'private.sql-owner', 'min' => 1, 'max' => 1]];
