@@ -299,6 +299,8 @@ jobs:
           tests/Feature/Billing/NativeFreeCheckoutTest.php
           tests/Feature/Billing/NativeWalletRefundTest.php
           tests/Feature/Billing/NativeWalletRefundMysqlConcurrencyTest.php
+          tests/Feature/Billing/NativeUpgradeCreditTest.php
+          tests/Feature/Billing/NativeUpgradeCreditMysqlConcurrencyTest.php
           tests/Feature/Txapi/TxapiWalletRechargeTest.php
 
   native-subscription-domain:

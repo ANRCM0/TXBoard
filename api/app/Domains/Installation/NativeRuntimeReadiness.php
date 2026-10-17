@@ -116,11 +116,16 @@ final class NativeRuntimeReadiness
             'tx_native_free_checkout' => ['id', 'installation_id', 'user_id', 'order_id', 'request_key',
                 'key_hash', 'request_hash', 'purchase_hash', 'currency', 'result_json', 'content_hash',
                 'status', 'created_at', 'completed_at'],
+            'tx_order_upgrade_credit' => ['id', 'installation_id', 'user_id', 'order_id', 'subscription_id',
+                'terms_id', 'period_id', 'offer_id', 'currency', 'list_minor', 'credit_minor', 'net_minor',
+                'quoted_at', 'expires_at', 'quote_json', 'content_hash'],
+            'tx_upgrade_credit_source' => ['id', 'quote_id', 'order_payment_id', 'amount_minor'],
         ] as $table => $columns) {
             $this->require(Schema::hasTable($table) && Schema::hasColumns($table, $columns), 'SCHEMA_REQUIRED');
         }
         $this->require(Schema::hasColumn('tx_access_subject', 'current_credential_operation_ref'), 'SCHEMA_REQUIRED');
         $this->require(Schema::hasIndex('tx_auth_snapshot', 'tx_native_auth_sub_idx')
+            && Schema::hasIndex('tx_usage_entry', 'tx_usage_entry_period_batch_idx')
             && Schema::hasIndex('tx_native_runtime_activation', ['installation_id'], 'unique')
             && Schema::hasIndex('tx_usage_batch', ['node_id', 'source_epoch', 'batch_id'], 'unique')
             && Schema::hasIndex('tx_internal_service', ['service_id'], 'primary')
@@ -172,6 +177,8 @@ final class NativeRuntimeReadiness
             ['tx_native_plan_request', ['installation_id', 'actor_id', 'business_key']],
             ['tx_native_free_checkout', ['installation_id', 'user_id', 'key_hash']],
             ['tx_native_free_checkout', ['order_id']],
+            ['tx_order_upgrade_credit', ['order_id']],
+            ['tx_upgrade_credit_source', ['quote_id', 'order_payment_id']],
         ] as [$table, $columns]) {
             $this->require(Schema::hasIndex($table, $columns, 'unique'), 'SCHEMA_REQUIRED');
         }
@@ -255,6 +262,14 @@ final class NativeRuntimeReadiness
             ['tx_native_plan_request', ['plan_id'], 'tx_plan', ['id']],
             ['tx_native_free_checkout', ['order_id'], 'tx_order', ['id']],
             ['tx_native_free_checkout', ['user_id'], 'tx_user', ['id']],
+            ['tx_order_upgrade_credit', ['installation_id'], 'tx_authority_writer_fence', ['installation_id']],
+            ['tx_order_upgrade_credit', ['order_id', 'user_id'], 'tx_order', ['id', 'user_id']],
+            ['tx_order_upgrade_credit', ['subscription_id', 'user_id'], 'tx_subscription', ['id', 'user_id']],
+            ['tx_order_upgrade_credit', ['terms_id'], 'tx_subscription_terms', ['id']],
+            ['tx_order_upgrade_credit', ['period_id'], 'tx_usage_period', ['id']],
+            ['tx_order_upgrade_credit', ['offer_id'], 'tx_plan_offer', ['id']],
+            ['tx_upgrade_credit_source', ['quote_id'], 'tx_order_upgrade_credit', ['id']],
+            ['tx_upgrade_credit_source', ['order_payment_id'], 'tx_order_payment', ['id']],
         ] as [$table, $columns, $foreign, $references]) {
             $found = false;
             foreach (Schema::getForeignKeys($table) as $key) {
@@ -270,7 +285,7 @@ final class NativeRuntimeReadiness
             'tx_payment_dispatch', 'tx_payment_settlement', 'tx_order_payment', 'tx_billing_work', 'tx_native_recharge',
             'tx_wallet_order_reservation', 'tx_native_refund', 'tx_internal_request',
             'tx_native_runtime_trust_transition', 'tx_subscription_link', 'tx_native_plan_request',
-            'tx_native_runtime_outbox', 'tx_native_free_checkout'] as $table) {
+            'tx_native_runtime_outbox', 'tx_native_free_checkout', 'tx_order_upgrade_credit', 'tx_upgrade_credit_source'] as $table) {
             $this->require(!DB::table($table)->sharedLock()->exists(), 'FRESH_NATIVE_REQUIRED');
         }
         $this->require(!DB::table('idempotency_keys')->where('operation', OrderIdempotency::OPERATION_NATIVE_CREATE)

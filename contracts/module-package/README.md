@@ -128,6 +128,14 @@ agent.admin
 
 Capabilities MUST be unique and MUST come from the v1 capability registry.
 
+For a specialized Plugin Package, the adapter validates the current package
+contract before normalization. `payment.provider` requires `type=payment`
+and the complete current `payment` declaration; the type string alone is
+insufficient. This read-only inventory does not execute plugin PHP or certify
+that protocol operations are usable. Actual checkout/management availability
+also requires installed/enabled state, code-side package version, typed
+implementation, matching adapter identity and all required capabilities.
+
 Adding a new capability to the v1 registry is a contract change and requires corresponding runtime/documentation support.
 
 ## Dependencies

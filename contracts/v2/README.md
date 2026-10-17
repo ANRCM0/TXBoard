@@ -1,6 +1,6 @@
 # Core First v2 契约目录
 
-> 更新：2026-10-16。C1、C2 已实现并合入 main，其余协议按各自状态阅读；本目录不注册路由，也不代表整体已正式发布。
+> 更新：2026-10-17。C1、C2 已实现并合入 main，其余协议按各自状态阅读；本目录不注册路由，也不代表整体已正式发布。早期候选 `e9e65f2` 的 CI 通过不覆盖本批升级折抵、wallet-only 退款与插件统一改动；本批仍待精确新提交验收。
 
 项目仍处开发阶段，尚未接入正式测试，以当前 native 为开发基线，不承担旧版本过渡兼容。允许生产者、真实消费者与契约同步变更；不为历史协议新增双轨适配。旧迁移/隔离切片的历史证据保留；已退役源码与命令不再可调用，清理范围见 [Core 清理](../../docs/development/core-cleanup.md)，开发规则见[开发基线](../../docs/development/native-development-baseline.md)。
 
@@ -14,9 +14,10 @@ TXBoard 是业务与数据权威。Gateway、Deploy、TX-Node 与可选插件按
 | [Core Subscription v1](core-subscription-v1.md) | 安装准备、正式目录及订阅聚合基础；生产启用条件由 Native C2 Runtime v1 补充 | Core C2 基础 |
 | [Native C2 Runtime v1](native-c2-runtime-v1.md) | 原生就绪转换、免费购买、Provider 轮换与接收者渲染、签名授权及原周期结算；精确提交验收见 PR #251 | Core C2 收尾 |
 | [Core Billing v1](core-billing-v1.md) | C3-A 真实双分录与支付尝试/收款事实基础；渠道接入、退款及对账完成前不开放付费 | Core C3 实现中 |
-| [Native Payment Provider v1](native-payment-provider-v1.md) | typed 支付插件、冻结 dispatch、停用恢复与破坏性生命周期保护；非 PHP 沙箱 | C3 候选，未发布 |
+| [Native Payment Provider v1](native-payment-provider-v1.md) | 单一显式当前支付插件契约、冻结 dispatch、停用恢复与永久金融 pin；不兼容旧插件，非 PHP 沙箱 | C3 新候选，待精确提交验收 |
 | [Native Payment Settlement v1](native-payment-settlement-v1.md) | 真实 CNY 收款、唯一获胜分配、迟到负债与 SQL 履约恢复；免费永久幂等 | C3 候选，待集成验收 |
-| [Native Wallet / Refunds v1](native-wallet-refunds-v1.md) | 钱包/混合付款、充值、退款至钱包、有界只读对账；升级折抵/部分精准全退未完成 | C3 候选，待集成验收 |
+| [Native Wallet / Refunds v1](native-wallet-refunds-v1.md) | 钱包/混合付款、充值、有界只读对账；全量/部分退款仅至钱包，不改变权益或任何履约 work | C3 新候选，待精确提交验收 |
+| [Native Upgrade Credit v1](native-upgrade-credit-v1.md) | 不可变来源报价、现金 claim 与非现金 carry、按源折算、永久键及最长两小时有效期；接受与 SQL 升级原子提交 | C3 新候选，待精确提交验收 |
 | [Native Internal API v1](native-internal-api-v1.md) | 正式服务凭据、实际 actor、mTLS/epoch、固定 operation、审计与原键恢复 | C4 候选，待集成验收 |
 | [Native Provider Lifecycle v1](native-provider-lifecycle-v1.md) | 显式信任轮换、独立链接与有限授权；生产 PKI/信任分发未验收 | C4 候选，待集成验收 |
 | [Core Internal API 历史](core-internal-api/README.md) | 已退役隔离切片，仅历史追溯；不是正式入口或回退实现 | B5 历史 |

@@ -50,6 +50,7 @@ final class NativePaymentAttempts
             if ((int) $order->status !== Order::STATUS_PENDING) {
                 throw new BillingError('PAYMENT_ORDER_NOT_PAYABLE');
             }
+            app(NativeUpgradeCredits::class)->assertPayableLocked($installation, $order);
             $amount = MoneyValue::minor(app(NativeWalletReservations::class)
                 ->channelAmountLocked($installation, $userId, $order, $terms), true);
             $currency = MoneyValue::currency($purchase['currency']);
@@ -171,6 +172,19 @@ final class NativePaymentAttempts
         $fact = $this->normalizeFact($attemptId, $fact);
         return $this->withAttemptLocked($installation, $userId, $attemptId,
             fn (object $attempt): array => $this->recordReceipt($attempt, $fact));
+    }
+
+    /** Caller holds the complete owner/history/order and money locks; never records or rewrites a receipt. */
+    public function inspectVerifiedReceiptLocked(array $installation, int $userId, int $attemptId): array
+    {
+        return $this->withAttemptLocked($installation, $userId, $attemptId, function (object $attempt): array {
+            $receipt = DB::table('tx_payment_receipt')->where('attempt_id', $attempt->id)->sharedLock()->first();
+            if ($receipt === null || $attempt->status !== 'succeeded') {
+                throw new BillingError('PAYMENT_RECEIPT_MISSING');
+            }
+            $this->verifyReceipt($receipt, $attempt);
+            return $this->receiptResult($receipt);
+        });
     }
 
     private function recordReceipt(object $attempt, array $fact): array

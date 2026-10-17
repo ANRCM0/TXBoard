@@ -2,7 +2,6 @@
 
 namespace App\Domains\Billing;
 
-use App\Domains\Subscription\Services\NativeCredentialSynchronization;
 use App\Domains\Subscription\Services\NativeSubscriptionStore;
 use App\Models\Order;
 use App\Models\OrderPurchaseTerms;
@@ -32,10 +31,9 @@ final class NativeRefundService
         return $this->transactions->run($userId, function (array $installation) use ($userId, $sourceType, $sourceId, $request, $actorId, $locator): array {
             $actor = DB::table('tx_user')->where('id', $actorId)->sharedLock()->first();
             $this->require($actor !== null && (bool) $actor->is_admin && !(bool) ($actor->banned ?? false), 'REFUND_ACTOR_FORBIDDEN');
-            [, $slot, $subscriptions] = $this->subscriptions->lockAccount($userId, time(), $installation['installation_id']);
-            $histories = [];
+            [, , $subscriptions] = $this->subscriptions->lockAccount($userId, time(), $installation['installation_id']);
             foreach ($subscriptions as $subscription) {
-                $histories[(string) $subscription->id] = $this->subscriptions->lockHistory($subscription);
+                $this->subscriptions->lockHistory($subscription);
             }
             $this->require($locator !== null && $locator->installation_id === $installation['installation_id']
                 && (string) $locator->user_id === (string) $userId, 'REFUND_SOURCE_MISSING');
@@ -73,22 +71,14 @@ final class NativeRefundService
             }
             $cumulative = MoneyValue::add($cumulative, $request['amount_minor']);
             $this->require(bccomp($cumulative, $source['original_amount_minor']) <= 0, 'REFUND_AMOUNT_EXCEEDS_SOURCE');
-            $entitlement = ['effect' => 'none', 'subscription_id' => null];
             if ($source['order_payment_id'] !== null) {
-                $rows = DB::table('tx_native_refund')->where('order_payment_id', $source['order_payment_id'])
-                    ->orderBy('id')->limit(2001)->lockForUpdate()->get();
-                $this->require($rows->count() <= 2000, 'REFUND_HISTORY_LIMIT');
-                $orderTotal = $request['amount_minor'];
-                foreach ($rows as $row) {
-                    $this->verifyRefundHash($row);
-                    $orderTotal = MoneyValue::add($orderTotal, (string) $row->amount_minor);
-                }
+                $orderTotal = MoneyValue::add($request['amount_minor'], $this->refundedForPaymentLocked(
+                    $installation, $userId, (int) $source['order_payment_id']));
                 $allocation = DB::table('tx_order_payment')->where('id', $source['order_payment_id'])->sharedLock()->first();
                 $this->require($allocation !== null && bccomp($orderTotal, (string) $allocation->amount_minor) <= 0,
                     'REFUND_AMOUNT_EXCEEDS_ORDER');
-                $entitlement = $orderTotal === (string) $allocation->amount_minor
-                    ? $this->fullEntitlementLocked($installation, $userId, $order, $slot, $subscriptions, $histories, $request['request_key'])
-                    : ['effect' => 'partial_retained', 'subscription_id' => null];
+                app(NativeUpgradeCredits::class)->assertRefundBudgetLocked($installation, $userId,
+                    (int) $source['order_payment_id'], $orderTotal);
             }
             $now = (string) time();
             $journal = $this->ledger->postLocked($installation, $userId,
@@ -100,8 +90,8 @@ final class NativeRefundService
                 'order_id' => $source['order_id'], 'source_journal_id' => $source['source_journal_id'],
                 'journal_id' => $journal['journal_id'], 'request_key' => $request['request_key'], 'request_hash' => $hash,
                 'amount_minor' => $request['amount_minor'], 'cumulative_minor' => $cumulative, 'currency' => $source['currency'],
-                'destination' => 'wallet', 'reason' => $request['reason'], 'entitlement_effect' => $entitlement['effect'],
-                'subscription_id' => $entitlement['subscription_id'], 'created_at' => $now,
+                'destination' => 'wallet', 'reason' => $request['reason'], 'entitlement_effect' => 'none',
+                'subscription_id' => null, 'created_at' => $now,
             ];
             $id = DB::table('tx_native_refund')->insertGetId($payload + [
                 'key_hash' => hash('sha256', $request['request_key']), 'content_hash' => MoneyValue::hash($payload),
@@ -115,16 +105,41 @@ final class NativeRefundService
         throw new BillingError('REFUND_EXTERNAL_UNSUPPORTED');
     }
 
-    public function assertOrderNotFullyRefundedLocked(int $userId, int $orderId): void
+    /** Caller holds the owner/history/order aggregate and complete money-account union locks. */
+    public function refundedForPaymentLocked(array $installation, int $userId, int $orderPaymentId): string
     {
         $this->require(DB::transactionLevel() > 0, 'BILLING_TRANSACTION_REQUIRED');
-        $this->require(!DB::table('tx_native_refund')->where('user_id', $userId)->where('order_id', $orderId)
-            ->whereIn('entitlement_effect', ['unfulfilled_cancelled', 'subscription_revoked', 'already_ended'])->sharedLock()->exists(),
-            'REFUND_ORDER_FULLY_REFUNDED');
+        $allocation = DB::table('tx_order_payment')->where('id', $orderPaymentId)->sharedLock()->first();
+        $this->require($allocation !== null && $allocation->installation_id === $installation['installation_id']
+            && (string) $allocation->user_id === (string) $userId, 'REFUND_SOURCE_MISSING');
+        $order = Order::query()->whereKey($allocation->order_id)->sharedLock()->first();
+        $terms = OrderPurchaseTerms::query()->where('order_id', $allocation->order_id)->sharedLock()->first();
+        $this->require($order !== null && $terms !== null, 'REFUND_SOURCE_MISSING');
+        $this->verifyAllocation($allocation, $installation, $userId, $order);
+        $rows = DB::table('tx_native_refund')->where('order_payment_id', $orderPaymentId)
+            ->orderBy('id')->limit(2001)->sharedLock()->get();
+        $this->require($rows->count() <= 2000, 'REFUND_HISTORY_LIMIT');
+        $sources = [];
+        $cumulativeBySource = [];
+        $total = '0';
+        foreach ($rows as $row) {
+            $sourceKey = $row->source_type.':'.$row->source_id;
+            if (!isset($sources[$sourceKey])) {
+                $sources[$sourceKey] = $this->sourceLocked($installation, $userId,
+                    $row->source_type, (int) $row->source_id, $order, $terms);
+            }
+            $this->verifyRefund($row, $sources[$sourceKey]);
+            $cumulativeBySource[$sourceKey] = MoneyValue::add($cumulativeBySource[$sourceKey] ?? '0', (string) $row->amount_minor);
+            $this->require($cumulativeBySource[$sourceKey] === (string) $row->cumulative_minor, 'REFUND_EVIDENCE_INVALID');
+            $total = MoneyValue::add($total, (string) $row->amount_minor);
+        }
+        $this->require(bccomp($total, (string) $allocation->amount_minor) <= 0, 'REFUND_AMOUNT_EXCEEDS_ORDER');
+        return $total;
     }
 
     private function sourceLocked(array $installation, int $userId, string $type, int $id, ?Order $order, ?OrderPurchaseTerms $terms): array
     {
+        $this->require(in_array($type, ['receipt', 'wallet_payment'], true) && $id > 0, 'REFUND_SOURCE_INVALID');
         if ($type === 'wallet_payment') {
             $allocation = DB::table('tx_order_payment')->where('id', $id)->lockForUpdate()->first();
             $this->require($allocation !== null && $order !== null && $terms !== null, 'REFUND_SOURCE_MISSING');
@@ -144,11 +159,7 @@ final class NativeRefundService
         $receipt = DB::table('tx_payment_receipt')->where('id', $id)->sharedLock()->first();
         $this->require($receipt !== null && (string) $receipt->user_id === (string) $userId
             && $receipt->installation_id === $installation['installation_id'], 'REFUND_SOURCE_MISSING');
-        $fact = [];
-        foreach (['attempt_id', 'provider', 'provider_account_ref', 'transaction_ref', 'amount_minor', 'currency', 'occurred_at'] as $field) {
-            $fact[$field] = (string) $receipt->$field;
-        }
-        $verified = app(NativePaymentAttempts::class)->recordVerifiedReceiptLocked($installation, $userId, (int) $receipt->attempt_id, $fact);
+        $verified = app(NativePaymentAttempts::class)->inspectVerifiedReceiptLocked($installation, $userId, (int) $receipt->attempt_id);
         $this->require($verified['receipt_id'] === (string) $id, 'REFUND_SOURCE_EVIDENCE_INVALID');
         $journal = DB::table('tx_money_journal')->where('installation_id', $installation['installation_id'])->where('user_id', $userId)
             ->where('business_type', 'provider_capture')->where('business_ref', (string) $receipt->attempt_id)
@@ -206,71 +217,6 @@ final class NativeRefundService
             && hash_equals(MoneyValue::hash($payload), $allocation->content_hash), 'REFUND_SOURCE_EVIDENCE_INVALID');
     }
 
-    private function fullEntitlementLocked(array $installation, int $userId, ?Order $order, object $slot,
-        $subscriptions, array $histories, string $key): array
-    {
-        $this->require($order !== null, 'REFUND_ORDER_MISSING');
-        $now = time();
-        $sourceTerms = DB::table('tx_subscription_terms')->where('source_order_id', $order->id)->orderBy('id')->limit(2)->sharedLock()->get();
-        if ($sourceTerms->isEmpty()) {
-            $this->require((int) $order->status === Order::STATUS_PROCESSING, 'REFUND_FULFILLMENT_EVIDENCE_INVALID');
-            $this->cancelPendingFulfillmentLocked($installation, $userId, $order, $now, true);
-            $order->status = Order::STATUS_CANCELLED;
-            $order->saveOrFail();
-            return ['effect' => 'unfulfilled_cancelled', 'subscription_id' => null];
-        }
-        $this->require($sourceTerms->count() === 1, 'REFUND_FULFILLMENT_EVIDENCE_INVALID');
-        $this->require((int) $order->type === Order::TYPE_NEW_PURCHASE, 'REFUND_ENTITLEMENT_REVERSAL_UNSUPPORTED');
-        $term = $sourceTerms->first();
-        $subscription = $subscriptions->firstWhere('id', $term->subscription_id);
-        $this->require($subscription !== null, 'REFUND_FULFILLMENT_EVIDENCE_INVALID');
-        $history = $histories[(string) $subscription->id];
-        $current = $this->subscriptions->verifyHistory($subscription, $history);
-        $this->require((string) $subscription->current_terms_id === (string) $term->id, 'REFUND_ENTITLEMENT_SUPERSEDED');
-        if (!in_array($subscription->status, ['active', 'suspended'], true)) {
-            $this->cancelPendingFulfillmentLocked($installation, $userId, $order, $now);
-            return ['effect' => 'already_ended', 'subscription_id' => (string) $subscription->id];
-        }
-        $this->require((string) $slot->subscription_id === (string) $subscription->id, 'REFUND_FULFILLMENT_EVIDENCE_INVALID');
-        $period = $current['period'];
-        $this->require($period !== null && $now > (int) $period->starts_at && $now > (int) $subscription->starts_at,
-            'REFUND_ENTITLEMENT_BOUNDARY_NOT_READY');
-        $this->require($subscription->expires_at === null || $now < (int) $subscription->expires_at, 'REFUND_ENTITLEMENT_EXPIRED');
-        $this->subscriptions->protectAcceptedUsage((string) $subscription->id, $now);
-        $period = $this->subscriptions->closePeriod($period, $now, $now);
-        $request = [
-            'schema' => NativeSubscriptionStore::OPERATION, 'kind' => 'revoke', 'user_id' => (string) $userId,
-            'subscription_id' => (string) $subscription->id, 'business_key' => 'refund:'.hash('sha256', $key),
-            'expected_version' => (string) $subscription->row_version, 'effective_at' => $now, 'parameters' => [],
-        ];
-        $subscription = $this->subscriptions->updateSubscription($subscription, ['status' => 'revoked', 'ended_at' => $now], $now);
-        $this->subscriptions->replaceSlot($slot, null, $now);
-        $this->subscriptions->record($request, $this->subscriptions->result($subscription, $period, $now), $now);
-        app(NativeCredentialSynchronization::class)->stageLocked($userId, (int) $subscription->id);
-        $this->cancelPendingFulfillmentLocked($installation, $userId, $order, $now);
-        return ['effect' => 'subscription_revoked', 'subscription_id' => (string) $subscription->id];
-    }
-
-    private function cancelPendingFulfillmentLocked(array $installation, int $userId, Order $order,
-        int $now, bool $unfulfilled = false): void
-    {
-        $rows = DB::table('tx_billing_work')->where('order_id', $order->id)->orderBy('id')->limit(2)->lockForUpdate()->get();
-        $this->require($rows->count() === 1, 'REFUND_FULFILLMENT_EVIDENCE_INVALID');
-        $work = $rows->first();
-        $this->require($work->installation_id === $installation['installation_id']
-            && (string) $work->user_id === (string) $userId && $work->kind === 'order.fulfill'
-            && in_array($work->status, ['pending', 'completed'], true)
-            && ($work->status === 'pending') === ($work->completed_at === null)
-            && (!$unfulfilled || $work->status === 'pending'), 'REFUND_FULFILLMENT_EVIDENCE_INVALID');
-        // Direct fulfillment may commit before the worker acknowledges its durable item.
-        // A full refund must stop that pending retry without rewriting completed history.
-        if ($work->status === 'pending') {
-            DB::table('tx_billing_work')->where('id', $work->id)->where('status', 'pending')->update([
-                'status' => 'cancelled', 'completed_at' => $now, 'error_code' => null,
-            ]);
-        }
-    }
-
     private function verifyRefund(object $row, array $source): void
     {
         $this->verifyRefundHash($row);
@@ -295,7 +241,8 @@ final class NativeRefundService
         foreach (['user_id', 'source_type', 'source_id', 'amount_minor', 'request_key', 'actor_id', 'reason', 'destination'] as $field) {
             $request[$field] = $payload[$field];
         }
-        $this->require($row->destination === 'wallet' && hash_equals(MoneyValue::hash($payload), $row->content_hash)
+        $this->require($row->destination === 'wallet' && $row->entitlement_effect === 'none' && $row->subscription_id === null
+            && hash_equals(MoneyValue::hash($payload), $row->content_hash)
             && hash_equals(MoneyValue::hash($request), $row->request_hash)
             && hash_equals(hash('sha256', $row->request_key), $row->key_hash), 'REFUND_EVIDENCE_INVALID');
         MoneyValue::minor($row->amount_minor, true);

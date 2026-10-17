@@ -37,7 +37,11 @@ final class NativePaymentCheckout
             $userId, $orderId, $rechargeId, $paymentId, $key, $walletMinor
         ): array {
             if ($orderId !== null && $walletMinor !== null) {
-                app(NativeSubscriptionStore::class)->lockAccount($userId, time(), $installation['installation_id']);
+                [, , $subscriptions] = app(NativeSubscriptionStore::class)
+                    ->lockAccount($userId, time(), $installation['installation_id']);
+                foreach ($subscriptions as $subscription) {
+                    app(NativeSubscriptionStore::class)->lockHistory($subscription);
+                }
                 $order = Order::query()->whereKey($orderId)->lockForUpdate()->first();
                 $terms = OrderPurchaseTerms::query()->where('order_id', $orderId)->lockForUpdate()->first();
                 if ($order === null || $terms === null || (string) $order->user_id !== (string) $userId) {
@@ -47,6 +51,7 @@ final class NativePaymentCheckout
                     && !DB::table('tx_wallet_order_reservation')->where('order_id', $orderId)->lockForUpdate()->exists()) {
                     throw new BillingError('PAYMENT_ORDER_ALLOCATION_FROZEN');
                 }
+                app(NativeUpgradeCredits::class)->lockSourcesLocked($installation, $order);
                 app(NativeWalletReservations::class)->reserveLocked($installation, $userId, $order, $terms,
                     MoneyValue::minor($walletMinor, true), 'checkout:'.$orderId);
             }

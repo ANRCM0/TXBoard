@@ -4,15 +4,13 @@ namespace App\Domains\Billing;
 
 use App\Exceptions\ApiException;
 use App\Models\Order;
-use App\Models\Payment;
 use App\Services\OrderService;
-use App\Services\PaymentService;
 use App\Domains\Subscription\Services\PublishedOrderService;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Shared V1/TXAPI checkout transition. No provider network interaction is
- * performed while a database row lock is held. Amounts are integer cents.
+ * TXAPI checkout transition. Paid execution uses native frozen dispatch only;
+ * legacy free-order behavior has no payment plugin entry point.
  */
 final class OrderCheckout
 {
@@ -47,82 +45,28 @@ final class OrderCheckout
             $started = app(NativePaymentCheckout::class)->start($userId, (int) $locator->id, $paymentMethod, $requestKey, $walletMinor);
             return $started['payment'] + ['attempt' => $started['attempt']];
         }
-        $prepare = static function (?Order $order = null) use (
-            $userId, $tradeNo, $paymentMethod, $native
-        ): array {
-            if ($order === null) {
-                app(\App\Domains\Installation\InstallationAuthority::class)->assertLegacyWriter();
-                $order = Order::query()->where('user_id', $userId)
-                    ->where('trade_no', $tradeNo)->lockForUpdate()->first();
-                if ($order?->purchase_terms_version === PublishedOrderService::VERSION) {
-                    throw new ApiException('Native order requires native checkout admission', 409);
-                }
-            }
-            if (!$order) {
-                throw new ApiException('Order does not exist', 404);
-            }
-            if ((int) $order->user_id !== $userId || $order->trade_no !== $tradeNo) {
-                throw new ApiException('Order does not exist', 404);
+        if (!$native && (int) $locator->total_amount > 0) {
+            throw new ApiException('Payment execution requires a native frozen dispatch', 409);
+        }
+        $order = DB::transaction(static function () use ($userId, $tradeNo): Order {
+            app(\App\Domains\Installation\InstallationAuthority::class)->assertLegacyWriter();
+            $order = Order::query()->where('user_id', $userId)->where('trade_no', $tradeNo)->lockForUpdate()->first();
+            if ($order === null) { throw new ApiException('Order does not exist', 404); }
+            if ($order->purchase_terms_version === PublishedOrderService::VERSION) {
+                throw new ApiException('Native order requires native checkout admission', 409);
             }
             if ((int) $order->status !== Order::STATUS_PENDING) {
                 throw new ApiException('Only pending orders can be checked out', 409);
             }
-            if ((int) $order->total_amount < 0) {
-                throw new ApiException('Order amount is invalid', 409);
+            if ((int) $order->total_amount < 0) { throw new ApiException('Order amount is invalid', 409); }
+            if ((int) $order->total_amount !== 0) {
+                throw new ApiException('Payment execution requires a native frozen dispatch', 409);
             }
-            if ((int) $order->total_amount === 0) {
-                return ['kind' => 'free', 'order' => $order];
-            }
-            if ($paymentMethod === null || $paymentMethod < 1) {
-                throw new ApiException('Payment method is required', 422);
-            }
-            $payment = Payment::query()->whereKey($paymentMethod)
-                ->where('enable', true)->first();
-            if (!$payment) {
-                throw new ApiException('Payment method is not available', 422);
-            }
-            $provider = new PaymentService($payment->payment, $payment->id);
-            $fee = ($payment->handling_fee_fixed || $payment->handling_fee_percent)
-                ? (int) round(
-                    $order->total_amount * ((float) $payment->handling_fee_percent / 100)
-                    + (float) $payment->handling_fee_fixed
-                )
-                : null;
-            if ($fee !== null && $fee < 0) {
-                throw new ApiException('Invalid payment fee', 422);
-            }
-            $order->handling_amount = $fee;
-            $order->payment_id = $paymentMethod;
-            $order->saveOrFail();
-            return ['kind' => 'paid', 'order' => $order, 'provider' => $provider];
-        };
-        $prepared = $native
-            ? app(PublishedOrderService::class)->transitionOrder((int) $locator->id, $prepare)
-            : DB::transaction(fn () => $prepare());
-
-        /** @var Order $order */
-        $order = $prepared['order'];
-        if ($prepared['kind'] === 'free') {
-            $lifecycle = $order->purchase_terms_version === PublishedOrderService::VERSION
-                ? new NativeOrderLifecycle($order) : new OrderService($order);
-            if (!$lifecycle->paid($order->trade_no)) {
-                throw new ApiException('Payment transition conflict', 409);
-            }
-            return ['type' => -1, 'data' => true];
+            return $order;
+        });
+        if (!(new OrderService($order))->paid($order->trade_no)) {
+            throw new ApiException('Payment transition conflict', 409);
         }
-
-        /** @var PaymentService $provider */
-        $provider = $prepared['provider'];
-        $result = $provider->pay([
-            'trade_no' => $order->trade_no,
-            'total_amount' => (int) $order->total_amount
-                + (int) ($order->handling_amount ?? 0),
-            'user_id' => $userId,
-            'stripe_token' => $paymentToken,
-        ]);
-        if (!is_array($result) || !isset($result['type'], $result['data'])) {
-            throw new ApiException('Invalid payment provider response', 502);
-        }
-        return ['type' => (int) $result['type'], 'data' => $result['data']];
+        return ['type' => -1, 'data' => true];
     }
 }

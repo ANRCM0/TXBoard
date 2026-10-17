@@ -5,6 +5,7 @@ namespace Tests\Feature\Billing;
 use App\Domains\Billing\NativeBillingReconciliation;
 use App\Domains\Billing\NativeBillingRecovery;
 use App\Domains\Billing\NativeBillingTransaction;
+use App\Domains\Billing\MoneyValue;
 use App\Domains\Billing\NativeMoneyLedger;
 use App\Domains\Billing\NativeOrderLifecycle;
 use App\Domains\Billing\NativePaymentAttempts;
@@ -130,16 +131,18 @@ final class NativeWalletRefundTest extends NativePaymentTestCase
         $actor = $this->admin();
         $refunds = app(NativeRefundService::class);
         $partial = $refunds->refundToWallet($user->id, 'receipt', (int) $settlement['receipt_id'], '234', 'partial', $actor->id, 'customer_request');
-        $this->assertSame('partial_retained', $partial['entitlement_effect']);
+        $this->assertSame('none', $partial['entitlement_effect']);
+        $this->assertNull($partial['subscription_id']);
         $this->assertFalse($partial['external_refund']);
         $this->assertSame('wallet_credited', $partial['status']);
         $this->assertSame('234', $this->walletBalance($user, 'wallet_available'));
         $this->assertSame(Order::STATUS_PROCESSING, (int) $order->fresh()->status);
         $full = $refunds->refundToWallet($user->id, 'receipt', (int) $settlement['receipt_id'], '1000', 'remaining', $actor->id, 'customer_request');
         $this->assertSame('1234', $full['cumulative_minor']);
-        $this->assertSame('unfulfilled_cancelled', $full['entitlement_effect']);
-        $this->assertSame(Order::STATUS_CANCELLED, (int) $order->fresh()->status);
-        $this->assertSame('cancelled', DB::table('tx_billing_work')->value('status'));
+        $this->assertSame('none', $full['entitlement_effect']);
+        $this->assertNull($full['subscription_id']);
+        $this->assertSame(Order::STATUS_PROCESSING, (int) $order->fresh()->status);
+        $this->assertSame('pending', DB::table('tx_billing_work')->value('status'));
         $this->assertSame($partial, $refunds->refundToWallet($user->id, 'receipt', (int) $settlement['receipt_id'], '234', 'partial', $actor->id, 'customer_request'));
         $this->assertSame($full, $refunds->refundToWallet($user->id, 'receipt', (int) $settlement['receipt_id'], '1000', 'remaining', $actor->id, 'customer_request'));
         $this->assertSame('1234', $this->walletBalance($user, 'wallet_available'));
@@ -148,7 +151,10 @@ final class NativeWalletRefundTest extends NativePaymentTestCase
         $this->rejects('REFUND_IDEMPOTENCY_CONFLICT',
             fn () => $refunds->refundToWallet($user->id, 'receipt', (int) $settlement['receipt_id'], '235', 'partial', $actor->id, 'customer_request'));
         $this->rejects('REFUND_EXTERNAL_UNSUPPORTED', fn () => $refunds->refundExternally());
-        $this->assertSame([], app(NativeBillingRecovery::class)->recover());
+        $this->assertSame('completed', array_values(app(NativeBillingRecovery::class)->recover())[0]['status']);
+        $this->assertSame(Order::STATUS_COMPLETED, (int) $order->fresh()->status);
+        $this->assertSame('active', DB::table('tx_subscription')->value('status'));
+        $this->assertSame('1234', $this->walletBalance($user, 'wallet_available'));
     }
 
     public function test_wallet_payment_refund_references_real_capture_without_fabricating_a_receipt(): void
@@ -161,16 +167,17 @@ final class NativeWalletRefundTest extends NativePaymentTestCase
             (int) $payment['order_payment_id'], '1234', 'wallet-full-return', $actor->id, 'customer_request');
         $this->assertNull($result['receipt_id']);
         $this->assertSame($payment['journal_id'], $result['source_journal_id']);
-        $this->assertSame('unfulfilled_cancelled', $result['entitlement_effect']);
+        $this->assertSame('none', $result['entitlement_effect']);
         $this->assertSame('5000', $this->walletBalance($user, 'wallet_available'));
         $this->assertSame(1, DB::table('tx_payment_receipt')->count());
         $replay = app(NativeWalletPayments::class)->pay($user->id, $order->id, 'wallet-refund-source');
         $this->assertSame($payment, $replay['payment'], 'Refunding money does not erase the original successful payment result.');
         $this->assertSame('5000', $this->walletBalance($user, 'wallet_available'));
-        $this->assertSame(Order::STATUS_CANCELLED, (int) $order->fresh()->status);
+        $this->assertSame(Order::STATUS_PROCESSING, (int) $order->fresh()->status);
+        $this->assertSame('pending', DB::table('tx_billing_work')->value('status'));
     }
 
-    public function test_mixed_refund_components_share_one_full_order_entitlement_decision(): void
+    public function test_mixed_refund_components_share_one_order_limit_without_changing_fulfillment(): void
     {
         [$user, $order] = $this->purchase();
         $this->fund($user);
@@ -182,42 +189,43 @@ final class NativeWalletRefundTest extends NativePaymentTestCase
         $actor = $this->admin();
         $service = app(NativeRefundService::class);
         $channel = $service->refundToWallet($user->id, 'receipt', (int) $settled['receipt_id'], '734', 'return-channel', $actor->id, 'customer_request');
-        $this->assertSame('partial_retained', $channel['entitlement_effect']);
+        $this->assertSame('none', $channel['entitlement_effect']);
         $this->assertSame(Order::STATUS_PROCESSING, (int) $order->fresh()->status);
         $wallet = $service->refundToWallet($user->id, 'wallet_payment', (int) $settled['order_payment_id'],
             '500', 'return-wallet', $actor->id, 'customer_request');
-        $this->assertSame('unfulfilled_cancelled', $wallet['entitlement_effect']);
+        $this->assertSame('none', $wallet['entitlement_effect']);
+        $this->assertSame(Order::STATUS_PROCESSING, (int) $order->fresh()->status);
+        $this->assertSame('pending', DB::table('tx_billing_work')->value('status'));
         $this->assertSame('5734', $this->walletBalance($user, 'wallet_available'), 'The original top-up plus real channel proceeds return once.');
         $this->rejects('REFUND_AMOUNT_EXCEEDS_SOURCE',
             fn () => $service->refundToWallet($user->id, 'wallet_payment', (int) $settled['order_payment_id'], '1',
                 'wallet-over', $actor->id, 'customer_request'));
     }
 
-    public function test_full_refund_revokes_only_its_current_subscription_and_keeps_original_usage_history(): void
+    public function test_full_refund_retains_subscription_usage_credentials_and_pending_fulfillment(): void
     {
         [$user, $order, $settlement] = $this->channelPayment();
         $fulfilled = app(SubscriptionFulfillmentService::class)->fulfill($order->id, time() - 5);
         $this->assertSame('pending', DB::table('tx_billing_work')->value('status'));
         $period = DB::table('tx_usage_period')->where('id', $fulfilled['usage_period_id'])->first();
         DB::table('tx_usage_period')->where('id', $period->id)->update(['upload_bytes' => '10', 'download_bytes' => '20', 'billable_bytes' => '30']);
+        $tables = ['tx_payment_attempt', 'tx_payment_receipt', 'tx_subscription', 'tx_subscription_slot', 'tx_subscription_terms', 'tx_usage_period',
+            'tx_subscription_operation', 'tx_native_runtime_outbox', 'tx_billing_work'];
+        $before = $this->tableSnapshots($tables);
         $actor = $this->admin();
         $service = app(NativeRefundService::class);
         $result = $service->refundToWallet($user->id, 'receipt', (int) $settlement['receipt_id'], '1234', 'fulfilled-full', $actor->id, 'customer_request');
-        $this->assertSame('subscription_revoked', $result['entitlement_effect']);
-        $this->assertSame($fulfilled['subscription_id'], $result['subscription_id']);
-        $this->assertSame('revoked', DB::table('tx_subscription')->value('status'));
-        $this->assertNull(DB::table('tx_subscription_slot')->where('user_id', $user->id)->value('subscription_id'));
-        $retained = DB::table('tx_usage_period')->where('id', $period->id)->first();
-        $this->assertSame('closed', $retained->status);
-        $this->assertSame('30', (string) $retained->billable_bytes);
-        $this->assertSame((string) $period->terms_id, (string) $retained->terms_id);
+        $this->assertSame('none', $result['entitlement_effect']);
+        $this->assertNull($result['subscription_id']);
+        $this->assertSame($before, $this->tableSnapshots($tables));
+        $this->assertSame('1234', $this->walletBalance($user, 'wallet_available'));
         $this->assertSame(Order::STATUS_COMPLETED, (int) $order->fresh()->status);
         $this->assertSame($result, $service->refundToWallet($user->id, 'receipt', (int) $settlement['receipt_id'], '1234', 'fulfilled-full', $actor->id, 'customer_request'));
-        $this->assertSame(1, DB::table('tx_subscription_operation')->where('kind', 'revoke')->count());
-        $this->assertGreaterThan(0, DB::table('tx_native_runtime_outbox')->where('kind', 'credential.sync')->where('status', 'pending')->count());
-        $this->assertSame('cancelled', DB::table('tx_billing_work')->value('status'));
-        $this->assertSame([], app(NativeBillingRecovery::class)->recover());
-        $this->assertSame(0, (int) DB::table('tx_billing_work')->value('attempts'));
+        $this->assertSame($before, $this->tableSnapshots($tables));
+        $this->assertSame('completed', array_values(app(NativeBillingRecovery::class)->recover())[0]['status']);
+        $this->assertSame('active', DB::table('tx_subscription')->value('status'));
+        $this->assertSame('30', (string) DB::table('tx_usage_period')->where('id', $period->id)->value('billable_bytes'));
+        $this->assertSame(0, DB::table('tx_subscription_operation')->where('kind', 'revoke')->count());
     }
 
     public function test_full_refund_preserves_acknowledged_fulfillment_work_as_completed_history(): void
@@ -229,7 +237,8 @@ final class NativeWalletRefundTest extends NativePaymentTestCase
         $actor = $this->admin();
         $refund = app(NativeRefundService::class)->refundToWallet($user->id, 'receipt',
             (int) $settlement['receipt_id'], '1234', 'acknowledged-full', $actor->id, 'customer_request');
-        $this->assertSame('subscription_revoked', $refund['entitlement_effect']);
+        $this->assertSame('none', $refund['entitlement_effect']);
+        $this->assertSame('active', DB::table('tx_subscription')->value('status'));
         $retained = DB::table('tx_billing_work')->where('id', $work->id)->first();
         $this->assertSame('completed', $retained->status);
         $this->assertSame((string) $work->completed_at, (string) $retained->completed_at);
@@ -237,7 +246,7 @@ final class NativeWalletRefundTest extends NativePaymentTestCase
         $this->assertSame([], app(NativeBillingRecovery::class)->recover());
     }
 
-    public function test_superseded_purchase_full_refund_cannot_revoke_later_renewal(): void
+    public function test_superseded_purchase_full_refund_succeeds_without_rewriting_later_renewal(): void
     {
         [$user, $order, $settled] = $this->channelPayment();
         $first = app(SubscriptionFulfillmentService::class)->fulfill($order->id, time() - 10);
@@ -247,18 +256,19 @@ final class NativeWalletRefundTest extends NativePaymentTestCase
         app(NativePaymentSettlement::class)->settle($user->id, (int) $attempt['attempt_id'],
             $this->fact($attempt, ['transaction_ref' => 'renewal-real-channel']));
         app(SubscriptionFulfillmentService::class)->fulfill($renewal->id, time() - 5);
+        $before = $this->tableSnapshots(['tx_subscription', 'tx_subscription_slot', 'tx_subscription_terms',
+            'tx_usage_period', 'tx_subscription_operation', 'tx_billing_work']);
         $actor = $this->admin();
-        $this->rejects('REFUND_ENTITLEMENT_SUPERSEDED', fn () => app(NativeRefundService::class)
-            ->refundToWallet($user->id, 'receipt', (int) $settled['receipt_id'], '1234', 'old-full', $actor->id, 'customer_request'));
+        $result = app(NativeRefundService::class)->refundToWallet($user->id, 'receipt',
+            (int) $settled['receipt_id'], '1234', 'old-full', $actor->id, 'customer_request');
+        $this->assertSame('none', $result['entitlement_effect']);
         $this->assertSame('active', DB::table('tx_subscription')->where('id', $first['subscription_id'])->value('status'));
-        $this->assertSame(0, DB::table('tx_native_refund')->count());
-        $this->assertSame('0', $this->walletBalance($user, 'wallet_available'));
-        $partial = app(NativeRefundService::class)->refundToWallet($user->id, 'receipt',
-            (int) $settled['receipt_id'], '1233', 'old-partial', $actor->id, 'customer_request');
-        $this->assertSame('partial_retained', $partial['entitlement_effect']);
+        $this->assertSame(1, DB::table('tx_native_refund')->count());
+        $this->assertSame('1234', $this->walletBalance($user, 'wallet_available'));
+        $this->assertSame($before, $this->tableSnapshots(array_keys($before)));
     }
 
-    public function test_refund_write_failure_rolls_back_credit_cancellation_and_all_evidence(): void
+    public function test_refund_write_failure_rolls_back_credit_and_all_evidence_without_touching_fulfillment(): void
     {
         [$user, $order, $settled] = $this->channelPayment();
         $actor = $this->admin();
@@ -284,7 +294,7 @@ final class NativeWalletRefundTest extends NativePaymentTestCase
         $this->assertSame('0', $this->walletBalance($user, 'wallet_available'));
     }
 
-    public function test_full_refunds_of_fulfilled_renewal_and_reset_refuse_to_destroy_preexisting_entitlement(): void
+    public function test_partial_then_full_refunds_of_fulfilled_renewal_and_reset_only_credit_wallet(): void
     {
         foreach (['monthly', 'reset_traffic'] as $period) {
             [$user, $original] = $this->channelPayment();
@@ -296,19 +306,22 @@ final class NativeWalletRefundTest extends NativePaymentTestCase
             $settled = app(NativePaymentSettlement::class)->settle($user->id, (int) $attempt['attempt_id'],
                 $this->fact($attempt, ['transaction_ref' => 'later-real:'.$period]));
             app(SubscriptionFulfillmentService::class)->fulfill($later->id, time() - 5);
+            $before = $this->tableSnapshots(['tx_subscription', 'tx_subscription_slot', 'tx_subscription_terms',
+                'tx_usage_period', 'tx_subscription_operation', 'tx_native_runtime_outbox', 'tx_billing_work']);
             $actor = $this->admin();
             $service = app(NativeRefundService::class);
             $amount = $settled['amount_minor'];
-            $this->rejects('REFUND_ENTITLEMENT_REVERSAL_UNSUPPORTED', fn () => $service->refundToWallet(
-                $user->id, 'receipt', (int) $settled['receipt_id'], $amount, 'unsupported-full:'.$period, $actor->id, 'customer_request'));
-            $this->assertSame('0', $this->walletBalance($user, 'wallet_available'));
             $partialAmount = \App\Domains\Billing\MoneyValue::add($amount, '-1');
             $partial = $service->refundToWallet($user->id, 'receipt', (int) $settled['receipt_id'],
-                $partialAmount, 'supported-partial:'.$period, $actor->id, 'customer_request');
-            $this->assertSame('partial_retained', $partial['entitlement_effect']);
-            $this->rejects('REFUND_ENTITLEMENT_REVERSAL_UNSUPPORTED', fn () => $service->refundToWallet(
-                $user->id, 'receipt', (int) $settled['receipt_id'], '1', 'unsupported-rest:'.$period, $actor->id, 'customer_request'));
+                $partialAmount, 'partial:'.$period, $actor->id, 'customer_request');
+            $this->assertSame('none', $partial['entitlement_effect']);
             $this->assertSame($partialAmount, $this->walletBalance($user, 'wallet_available'));
+            $full = $service->refundToWallet($user->id, 'receipt', (int) $settled['receipt_id'],
+                '1', 'remaining:'.$period, $actor->id, 'customer_request');
+            $this->assertSame('none', $full['entitlement_effect']);
+            $this->assertSame($amount, $full['cumulative_minor']);
+            $this->assertSame($amount, $this->walletBalance($user, 'wallet_available'));
+            $this->assertSame($before, $this->tableSnapshots(array_keys($before)));
             $this->assertSame('active', DB::table('tx_subscription')->where('id', $subscription['subscription_id'])->value('status'));
             $this->assertSame(0, DB::table('tx_subscription_operation')->where('user_id', $user->id)->where('kind', 'revoke')->count());
         }
@@ -326,6 +339,101 @@ final class NativeWalletRefundTest extends NativePaymentTestCase
             (int) $settled['receipt_id'], '1', 'not-admin', $other->id, 'customer_request'));
         $this->assertSame(0, DB::table('tx_native_refund')->count());
         $this->assertSame(1, DB::table('tx_money_journal')->count());
+    }
+
+    public function test_other_mixed_source_refund_journal_is_verified_before_another_wallet_credit(): void
+    {
+        [$user, $order] = $this->purchase();
+        $this->fund($user);
+        $this->reserve($user, $order, '500', 'mixed-corrupt-source');
+        $attempt = app(NativePaymentAttempts::class)->prepare($user->id, $order->id,
+            $this->payment->id, 'merchant-1', 'mixed-corrupt-channel');
+        $paid = app(NativePaymentSettlement::class)->settle($user->id, (int) $attempt['attempt_id'],
+            $this->fact($attempt, ['transaction_ref' => 'mixed-corrupt-payment']));
+        $actor = $this->admin();
+        $refunds = app(NativeRefundService::class);
+        $channel = $refunds->refundToWallet($user->id, 'receipt', (int) $paid['receipt_id'],
+            '734', 'mixed-channel-return', $actor->id, 'customer_request');
+        DB::table('tx_money_journal')->where('id', $channel['journal_id'])->update(['request_hash' => str_repeat('0', 64)]);
+        $this->rejects('BILLING_EVIDENCE_CORRUPT', fn () => $refunds->refundToWallet($user->id, 'wallet_payment',
+            (int) $paid['order_payment_id'], '500', 'mixed-wallet-return', $actor->id, 'customer_request'));
+        $this->assertSame('5234', $this->walletBalance($user, 'wallet_available'));
+        $this->assertSame(1, DB::table('tx_native_refund')->count());
+        $this->assertSame(1, DB::table('tx_money_journal')->where('business_type', 'refund')->count());
+        $this->assertSame('pending', DB::table('tx_billing_work')->value('status'));
+    }
+
+    public function test_rehashed_refund_cannot_claim_an_entitlement_effect_or_skip_cumulative_evidence(): void
+    {
+        [$user, , $paid] = $this->channelPayment();
+        $actor = $this->admin();
+        $refunds = app(NativeRefundService::class);
+        $first = $refunds->refundToWallet($user->id, 'receipt', (int) $paid['receipt_id'],
+            '200', 'unchanged-entitlement', $actor->id, 'customer_request');
+        $payload = (array) DB::table('tx_native_refund')->where('id', $first['refund_id'])->first();
+        unset($payload['id'], $payload['key_hash'], $payload['content_hash']);
+        $payload = array_map(static fn ($value) => $value === null ? null : (string) $value, $payload);
+        $payload['entitlement_effect'] = 'subscription_revoked';
+        DB::table('tx_native_refund')->where('id', $first['refund_id'])->update([
+            'entitlement_effect' => $payload['entitlement_effect'], 'content_hash' => MoneyValue::hash($payload),
+        ]);
+        $this->rejects('REFUND_EVIDENCE_INVALID', fn () => $refunds->refundToWallet($user->id, 'receipt',
+            (int) $paid['receipt_id'], '200', 'unchanged-entitlement', $actor->id, 'customer_request'));
+        $payload['entitlement_effect'] = 'none';
+        $payload['cumulative_minor'] = '201';
+        DB::table('tx_native_refund')->where('id', $first['refund_id'])->update([
+            'entitlement_effect' => 'none', 'cumulative_minor' => '201', 'content_hash' => MoneyValue::hash($payload),
+        ]);
+        $this->rejects('REFUND_EVIDENCE_INVALID', fn () => $refunds->refundToWallet($user->id, 'receipt',
+            (int) $paid['receipt_id'], '1', 'next-after-corrupt', $actor->id, 'customer_request'));
+        $this->assertSame('200', $this->walletBalance($user, 'wallet_available'));
+        $this->assertSame(1, DB::table('tx_native_refund')->count());
+    }
+
+    public function test_admin_wallet_refund_http_requires_live_permission_and_keeps_entitlements_unchanged(): void
+    {
+        [$user, $order, $paid] = $this->channelPayment();
+        app(SubscriptionFulfillmentService::class)->fulfill($order->id, time() - 5);
+        admin_setting(['secure_path' => 'wallet-refund-admin']);
+        $path = '/txapi/admin/wallet-refund-admin/native/billing/refunds';
+        $body = ['user_id' => (string) $user->id, 'source_type' => 'receipt',
+            'source_id' => $paid['receipt_id'], 'amount_minor' => '234', 'reason' => 'customer_request'];
+        $headers = ['Idempotency-Key' => 'admin-partial-wallet-refund'];
+        $this->postJson($path, $body, $headers)->assertForbidden();
+        Sanctum::actingAs($user, ['billing.refund']);
+        $this->postJson($path, $body, $headers)->assertForbidden();
+        $actor = $this->admin()->fresh();
+        Sanctum::actingAs($actor, ['billing.refund']);
+        $this->postJson($path, $body, $headers)->assertForbidden();
+        DB::table('tx_internal_actor_grant')->insert([
+            'user_id' => $actor->id, 'permission' => 'billing.refund', 'created_at' => time(),
+        ]);
+        Sanctum::actingAs($actor, ['billing.reconcile']);
+        $this->postJson($path, $body, $headers)->assertForbidden();
+        Sanctum::actingAs($actor, ['billing.refund']);
+        $this->postJson('/txapi/admin/wrong/native/billing/refunds', $body, $headers)->assertNotFound();
+        foreach (['destination' => 'external', 'entitlement_effect' => 'subscription_revoked'] as $key => $value) {
+            $this->postJson($path, $body + [$key => $value], $headers)->assertUnprocessable()
+                ->assertJsonPath('error.code', 'BILLING_REQUEST_INVALID');
+        }
+        $this->assertSame(0, DB::table('tx_native_refund')->count());
+        $tables = ['tx_order', 'tx_order_purchase_terms', 'tx_payment_attempt', 'tx_payment_receipt', 'tx_subscription', 'tx_subscription_slot',
+            'tx_subscription_terms', 'tx_usage_period', 'tx_subscription_operation', 'tx_native_runtime_outbox', 'tx_billing_work'];
+        $before = $this->tableSnapshots($tables);
+        $partial = $this->postJson($path, $body, $headers)->assertOk()
+            ->assertJsonPath('data.status', 'wallet_credited')->assertJsonPath('data.destination', 'wallet')
+            ->assertJsonPath('data.entitlement_effect', 'none')->assertJsonPath('data.subscription_id', null)
+            ->assertJsonPath('data.external_refund', false)->assertHeader('Cache-Control', 'no-store, private')->json('data');
+        $this->postJson($path, $body, $headers)->assertOk()->assertJsonPath('data', $partial);
+        $this->postJson($path, array_replace($body, ['amount_minor' => '1000']),
+            ['Idempotency-Key' => 'admin-remaining-wallet-refund'])->assertOk()
+            ->assertJsonPath('data.cumulative_minor', '1234')->assertJsonPath('data.entitlement_effect', 'none');
+        $this->assertSame($before, $this->tableSnapshots($tables));
+        $this->assertSame('1234', $this->walletBalance($user, 'wallet_available'));
+        $this->assertSame(2, DB::table('tx_native_refund')->count());
+        DB::table('tx_internal_actor_grant')->where('user_id', $actor->id)->delete();
+        $this->postJson($path, $body, $headers)->assertForbidden();
+        $this->assertSame('1234', $this->walletBalance($user, 'wallet_available'));
     }
 
     public function test_reconciliation_is_read_only_bounded_and_reports_projection_corruption(): void
@@ -457,5 +565,20 @@ final class NativeWalletRefundTest extends NativePaymentTestCase
     private function walletBalance(User $user, string $purpose): string
     {
         return (string) (DB::table('tx_money_account')->where('owner_id', $user->id)->where('purpose', $purpose)->value('balance_minor') ?? '0');
+    }
+
+    private function tableSnapshots(array $tables): array
+    {
+        $snapshots = [];
+        foreach ($tables as $table) {
+            $query = DB::table($table);
+            if ($table === 'tx_subscription_slot') {
+                $query->orderBy('user_id')->orderBy('slot_no');
+            } else {
+                $query->orderBy('id');
+            }
+            $snapshots[$table] = $query->get()->toJson();
+        }
+        return $snapshots;
     }
 }

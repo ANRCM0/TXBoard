@@ -38,10 +38,13 @@ final class NativePaymentSettlementMysqlConcurrencyTest extends NativePaymentTes
         $filesystem->makeDirectory($window, 0700);
         $filesystem->put($path.'/config.json', json_encode(['package' => ['schema' => 1],
             'code' => $code, 'name' => 'Delete race', 'version' => '1.0.0', 'type' => 'payment',
+            'payment' => ['contract' => 'native-payment-provider/1', 'provider' => 'EPay',
+                'snapshot_schema' => 'epay-md5-dispatch/1'],
             'description' => 'Delete versus fresh native install', 'author' => 'Tests'], JSON_THROW_ON_ERROR));
         $filesystem->put($path.'/Plugin.php', '<?php namespace Plugin\\NativeDeleteRace; '
             .'class Plugin extends \\App\\Services\\Plugin\\AbstractPlugin implements \\App\\Contracts\\NativePaymentPluginInterface {'
             .'public function nativePaymentPackageVersion(): string { return "1.0.0"; }'
+            .'public function form(): array { return []; }'
             .'public function nativePaymentProvider(): \\App\\Contracts\\NativePaymentProviderInterface {'
             .'require_once base_path("plugins-core/Epay/NativeAdapter.php"); return new \\Plugin\\Epay\\NativeAdapter; }}');
         Plugin::query()->create(['code' => $code, 'name' => 'Delete race', 'type' => Plugin::TYPE_PAYMENT,

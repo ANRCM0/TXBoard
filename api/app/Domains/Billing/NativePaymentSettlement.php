@@ -38,6 +38,7 @@ final class NativePaymentSettlement
             $this->require($purchase !== null && $terms !== null, 'PAYMENT_PURCHASE_REQUIRED');
             $this->require((int) ($order->handling_amount ?? 0) === 0, 'PAYMENT_SETTLEMENT_FEES_UNSUPPORTED');
             $currency = MoneyValue::currency($purchase['currency']);
+            app(NativeUpgradeCredits::class)->lockSourcesLocked($installation, $order);
             $reservation = $this->lockMoneyAccountsLocked($installation, $userId, $order, $currency);
             $amount = MoneyValue::minor(app(NativeWalletReservations::class)
                 ->channelAmountLocked($installation, $userId, $order, $terms), true);
@@ -46,9 +47,11 @@ final class NativePaymentSettlement
             $previousReceipt = DB::table('tx_payment_receipt')->where('attempt_id', $attemptId)->sharedLock()->first();
             $prior = DB::table('tx_payment_settlement')->where('attempt_id', $attemptId)->sharedLock()->first();
             $allocation = DB::table('tx_order_payment')->where('order_id', $order->id)->sharedLock()->first();
+            $acceptedAt = time();
+            $quotePayable = app(NativeUpgradeCredits::class)->payableLocked($installation, $order, $acceptedAt);
             $decision = $prior?->decision ?? (
                 (int) $order->status === Order::STATUS_PENDING && !(bool) ($user->banned ?? false)
-                && $allocation === null && ($reservation === null || $reservation->status !== 'released')
+                && $allocation === null && $quotePayable && ($reservation === null || $reservation->status !== 'released')
                     ? 'order_payment' : 'refund_liability'
             );
             $this->require(in_array($decision, ['order_payment', 'refund_liability'], true), 'PAYMENT_SETTLEMENT_EVIDENCE_INVALID');
@@ -102,6 +105,10 @@ final class NativePaymentSettlement
                     $order->callback_no = $receipt['transaction_ref'];
                     $order->paid_at = (int) $receipt['occurred_at'];
                     $order->saveOrFail();
+                    app(NativeUpgradeCredits::class)->fulfillAcceptedLocked($installation, $order, $terms, $acceptedAt);
+                } elseif (!$quotePayable && (int) $order->status === Order::STATUS_PENDING && $allocation === null) {
+                    $order->status = Order::STATUS_CANCELLED;
+                    $order->saveOrFail();
                 }
             }
             $this->require($this->payload($existing) === $payload
@@ -119,7 +126,6 @@ final class NativePaymentSettlement
         $purchase = $this->grants->resolve($order, $terms);
         $this->require($purchase !== null, 'PAYMENT_PURCHASE_REQUIRED');
         $reservation = $this->lockMoneyAccountsLocked($installation, $userId, $order, MoneyValue::currency($purchase['currency']));
-        app(NativeRefundService::class)->assertOrderNotFullyRefundedLocked($userId, (int) $order->id);
         $allocation = DB::table('tx_order_payment')->where('order_id', $order->id)->sharedLock()->first();
         $this->require($allocation !== null, 'PAYMENT_ORDER_ALLOCATION_REQUIRED');
         if ($allocation->settlement_id === null) {
@@ -155,11 +161,7 @@ final class NativePaymentSettlement
         foreach ($expectedJournal as $field => $value) {
             $this->require($journal[$field] === $value, 'PAYMENT_SETTLEMENT_EVIDENCE_INVALID');
         }
-        $verified = $this->attempts->recordVerifiedReceiptLocked($installation, $userId, (int) $payload['attempt_id'], [
-            'attempt_id' => $payload['attempt_id'], 'provider' => (string) $receipt->provider,
-            'provider_account_ref' => (string) $receipt->provider_account_ref, 'transaction_ref' => (string) $receipt->transaction_ref,
-            'amount_minor' => $payload['amount_minor'], 'currency' => $payload['currency'], 'occurred_at' => $payload['occurred_at'],
-        ]);
+        $verified = $this->attempts->inspectVerifiedReceiptLocked($installation, $userId, (int) $payload['attempt_id']);
         $this->require($verified['receipt_id'] === $payload['receipt_id'] && $verified['payment_id'] === $payload['payment_id']
             && (string) $order->payment_id === $payload['payment_id']
             && (string) $order->callback_no === $verified['transaction_ref']

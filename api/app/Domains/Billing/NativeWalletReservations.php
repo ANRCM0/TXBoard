@@ -44,6 +44,7 @@ final class NativeWalletReservations
                 && (string) $existing->amount_minor === $amount), 'WALLET_IDEMPOTENCY_CONFLICT');
         }
         if ($existing === null) {
+            app(NativeUpgradeCredits::class)->assertPayableLocked($installation, $order);
             $this->require((int) $order->status === Order::STATUS_PENDING
                 && !DB::table('tx_order_payment')->where('order_id', $order->id)->sharedLock()->exists(), 'WALLET_ORDER_NOT_PAYABLE');
             $this->require(!DB::table('tx_payment_attempt')->where('order_id', $order->id)->sharedLock()->exists(),

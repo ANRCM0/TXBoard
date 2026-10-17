@@ -2,6 +2,7 @@
 
 namespace App\Domains\Billing;
 
+use App\Contracts\NativePaymentPluginInterface;
 use App\Models\Plugin;
 use App\Services\Plugin\PluginManager;
 use Illuminate\Support\Facades\DB;
@@ -11,7 +12,7 @@ use Throwable;
 /** Closed installed-plugin resolution. No request can select a PHP class, package path or provider URL. */
 final class NativePaymentProviderRegistry
 {
-    public const CONTRACT = 'native-payment-provider/1';
+    public const CONTRACT = NativePaymentPluginInterface::CONTRACT;
     public const SNAPSHOT = 'native-payment-dispatch/1';
 
     public function __construct(private readonly PluginManager $plugins) {}
@@ -20,27 +21,7 @@ final class NativePaymentProviderRegistry
     {
         $this->require((bool) ($payment->enable ?? false), 'PAYMENT_PROVIDER_UNAVAILABLE');
         $method = MoneyValue::key($payment->payment ?? null, 32);
-        $rows = Plugin::query()->where('type', Plugin::TYPE_PAYMENT)->where('is_enabled', true)
-            ->orderBy('code')->limit(65)->get(['code']);
-        $this->require($rows->count() <= 64, 'PAYMENT_PROVIDER_REGISTRY_LIMIT');
-        $matches = [];
-        $bundled = [];
-        foreach ($rows as $row) {
-            try {
-                $resolved = $this->resolve($row->code, false);
-                if ($resolved->providerId !== $method) { continue; }
-                $matches[] = $resolved;
-                if ($this->plugins->isCorePlugin($row->code)) { $bundled[] = $resolved; }
-            } catch (BillingError $error) {
-                Log::warning('Native payment plugin is unavailable', [
-                    'plugin' => $row->code, 'code' => $error->errorCode,
-                ]);
-            }
-        }
-        $matches = $bundled === [] ? $matches : $bundled;
-        $this->require(count($matches) === 1, $matches === []
-            ? 'NATIVE_PAYMENT_PROVIDER_UNSUPPORTED' : 'PAYMENT_PROVIDER_AMBIGUOUS');
-        $resolved = $matches[0];
+        $resolved = $this->forMethod($method);
         if ($lock) {
             $this->require(DB::transactionLevel() > 0, 'PAYMENT_TRANSACTION_REQUIRED');
             $row = Plugin::query()->where('code', $resolved->pluginCode)->lockForUpdate()->first();
@@ -49,10 +30,51 @@ final class NativePaymentProviderRegistry
             $current = $this->resolve($resolved->pluginCode, false);
             $this->require($current->binding() === $resolved->binding(), 'PAYMENT_PROVIDER_BINDING_INVALID');
         }
-        $capabilities = $resolved->adapter->capabilities();
-        $this->require($capabilities['checkout'] && $capabilities['verify_notification'] && $capabilities['query'],
-            'PAYMENT_PROVIDER_CAPABILITY_UNSUPPORTED');
         return $resolved;
+    }
+
+    /** Management uses the same validated registry as checkout, without booting plugin hooks. */
+    public function forMethod(string $method): ResolvedNativePaymentProvider
+    {
+        MoneyValue::key($method, 32);
+        $matches = $this->registeredProviders()[$method] ?? [];
+        $this->require(count($matches) === 1, $matches === []
+            ? 'NATIVE_PAYMENT_PROVIDER_UNSUPPORTED' : 'PAYMENT_PROVIDER_AMBIGUOUS');
+        return $matches[0];
+    }
+
+    /** Ambiguous or invalid providers are never advertised as available channels. */
+    public function availableMethods(): array
+    {
+        $methods = [];
+        foreach ($this->registeredProviders() as $method => $providers) {
+            if (count($providers) === 1) { $methods[$method] = $providers[0]; }
+        }
+        return $methods;
+    }
+
+    private function registeredProviders(): array
+    {
+        $rows = Plugin::query()->where('type', Plugin::TYPE_PAYMENT)->where('is_enabled', true)
+            ->orderBy('code')->limit(65)->get(['code']);
+        $this->require($rows->count() <= 64, 'PAYMENT_PROVIDER_REGISTRY_LIMIT');
+        $matches = [];
+        $bundled = [];
+        foreach ($rows as $row) {
+            try {
+                $resolved = $this->resolve($row->code, false);
+                $capabilities = $resolved->adapter->capabilities();
+                $this->require($capabilities['checkout'] && $capabilities['verify_notification'] && $capabilities['query'],
+                    'PAYMENT_PROVIDER_CAPABILITY_UNSUPPORTED');
+                $matches[$resolved->providerId][] = $resolved;
+                if ($this->plugins->isCorePlugin($row->code)) { $bundled[$resolved->providerId][] = $resolved; }
+            } catch (BillingError $error) {
+                Log::warning('Native payment plugin is unavailable', [
+                    'plugin' => $row->code, 'code' => $error->errorCode,
+                ]);
+            }
+        }
+        return array_replace($matches, $bundled);
     }
 
     /** Recovery never boots the plugin or consults the current payment registration's merchant config. */

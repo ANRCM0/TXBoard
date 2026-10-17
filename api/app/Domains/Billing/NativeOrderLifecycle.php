@@ -57,11 +57,22 @@ final class NativeOrderLifecycle
                     return [$order, false];
                 }
 
+                $nativeUpgrade = ($installation['runtime_version'] ?? null) === NativeRuntimeAdmission::VERSION
+                    && (int) $order->type === Order::TYPE_UPGRADE;
+                $acceptedAt = time();
+                if ($nativeUpgrade) {
+                    app(NativeUpgradeCredits::class)->lockSourcesLocked($installation, $order);
+                    $acceptedAt = time();
+                    app(NativeUpgradeCredits::class)->assertPayableLocked($installation, $order, $acceptedAt);
+                }
                 $order->status = Order::STATUS_PROCESSING;
                 $order->paid_at = time();
                 $order->callback_no = $callbackNo;
                 if (!$order->save()) {
                     throw new \RuntimeException('Failed to save order status.');
+                }
+                if ($nativeUpgrade) {
+                    app(NativeUpgradeCredits::class)->fulfillAcceptedLocked($installation, $order, $purchase, $acceptedAt);
                 }
 
                 return [$order, true];

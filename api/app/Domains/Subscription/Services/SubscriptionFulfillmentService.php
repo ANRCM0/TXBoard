@@ -45,70 +45,81 @@ final class SubscriptionFulfillmentService
                 throw new DomainException('NATIVE_ORDER_IDENTITY_CHANGED');
             }
             $purchase = OrderPurchaseTerms::query()->where('order_id', $orderId)->lockForUpdate()->first();
-            if ($order->purchase_terms_version !== 'tx-core.purchase-terms/v2' || !$purchase) {
-                throw new DomainException('NATIVE_ORDER_PURCHASE_REQUIRED');
-            }
-            $this->assertNoFinancialAdjustments($order);
-            $key = 'order.fulfill/'.$orderId;
-            $request = [
-                'schema' => NativeSubscriptionStore::OPERATION, 'user_id' => (string) $user->id,
-                'business_key' => $key, 'kind' => 'order.fulfill', 'order_id' => (string) $orderId,
-                'purchase_hash' => $purchase->content_hash, 'installation_id' => $installation['installation_id'],
-            ];
-            $receipts = DB::table('tx_subscription_operation')->where(function ($query) use ($user, $key, $orderId): void {
-                $query->where('order_id', $orderId)->orWhere(fn ($q) => $q->where('user_id', $user->id)->where('business_key', $key));
-            })->orderBy('id')->lockForUpdate()->get();
-            if ($receipts->count() > 1) {
-                throw new DomainException('NATIVE_OPERATION_DAMAGED');
-            }
-            $operation = $receipts->first();
-            if ($operation) {
-                $subscription = $subscriptions->firstWhere('id', $operation->subscription_id);
-                if (!$subscription || (int) $order->status !== Order::STATUS_COMPLETED) {
-                    throw new DomainException('NATIVE_ORDER_RECEIPT_INVALID');
-                }
-                $history = $histories[(string) $subscription->id];
-                $this->nativeGrant($order, $purchase);
-                $this->verifyPayment($installation, (int) $user->id, $order, $purchase);
-                $this->store->verifyHistory($subscription, $history);
-                return $this->store->replay($operation, $request, $subscription);
-            }
-            if ((int) $order->status !== Order::STATUS_PROCESSING) {
-                throw new DomainException('NATIVE_ORDER_NOT_PROCESSING');
-            }
-            if ((bool) ($user->banned ?? false)) {
-                throw new DomainException('NATIVE_ACCOUNT_BANNED');
-            }
-            $subscription = $slot->subscription_id === null ? null : $subscriptions->firstWhere('id', $slot->subscription_id);
-            $history = $subscription === null ? null : $histories[(string) $subscription->id];
-            if ($subscription !== null) {
-                // Must precede grant/catalog/source verification, which performs ordinary reads.
-                $this->store->protectAcceptedUsage((string) $subscription->id, $now);
-            }
-            $grant = $this->nativeGrant($order, $purchase);
-            $this->verifyPayment($installation, (int) $user->id, $order, $purchase);
-            if ($subscription === null) {
-                if ((int) $order->type !== Order::TYPE_NEW_PURCHASE || $grant['purchase_kind'] === 'traffic_reset') {
-                    throw new DomainException('NATIVE_ORDER_TARGET_MISSING');
-                }
-                $result = $this->create($user, $slot, $grant, $installation['installation_id'], $now);
-            } else {
-                if ((int) $order->type === Order::TYPE_NEW_PURCHASE) {
-                    throw new DomainException($subscription->expires_at !== null && (int) $subscription->expires_at <= $now
-                        ? 'NATIVE_SLOT_REQUIRES_EXPIRY' : 'NATIVE_SLOT_OCCUPIED');
-                }
-                $current = $this->store->verifyHistory($subscription, $history);
-                $result = $this->advance($subscription, $current['terms'], $current['period'], $grant, $key, $now);
-            }
-            if (DB::table('tx_order')->where('id', $orderId)->where('status', Order::STATUS_PROCESSING)
-                ->update(['status' => Order::STATUS_COMPLETED, 'updated_at' => $now]) !== 1) {
-                throw new DomainException('NATIVE_ORDER_STATUS_CONFLICT');
-            }
-            $this->store->record($request, $result, $now);
-            app(NativeCredentialSynchronization::class)->stageLocked((int) $user->id, (int) $result['subscription_id']);
-            return $result;
+            return $this->applyLocked($installation, $user, $slot, $subscriptions, $histories, $order, $purchase, $now);
         }, 3);
         app(NativeCredentialSynchronization::class)->synchronize((int) $locator->user_id, (int) $result['subscription_id']);
+        return $result;
+    }
+
+    /** SQL-only application. The caller owns admission/account/history/order and the complete financial lock union. */
+    public function applyLocked(array $installation, object $user, object $slot, \Illuminate\Support\Collection $subscriptions,
+        array $histories, Order $order, ?OrderPurchaseTerms $purchase, int $now): array
+    {
+        if (DB::transactionLevel() < 1 || (string) $order->user_id !== (string) $user->id) {
+            throw new DomainException('NATIVE_TRANSACTION_CONTEXT_REQUIRED');
+        }
+        $orderId = (int) $order->id;
+        if ($order->purchase_terms_version !== 'tx-core.purchase-terms/v2' || !$purchase) {
+            throw new DomainException('NATIVE_ORDER_PURCHASE_REQUIRED');
+        }
+        $this->assertNoFinancialAdjustments($order);
+        $key = 'order.fulfill/'.$orderId;
+        $request = [
+            'schema' => NativeSubscriptionStore::OPERATION, 'user_id' => (string) $user->id,
+            'business_key' => $key, 'kind' => 'order.fulfill', 'order_id' => (string) $orderId,
+            'purchase_hash' => $purchase->content_hash, 'installation_id' => $installation['installation_id'],
+        ];
+        $receipts = DB::table('tx_subscription_operation')->where(function ($query) use ($user, $key, $orderId): void {
+            $query->where('order_id', $orderId)->orWhere(fn ($q) => $q->where('user_id', $user->id)->where('business_key', $key));
+        })->orderBy('id')->lockForUpdate()->get();
+        if ($receipts->count() > 1) {
+            throw new DomainException('NATIVE_OPERATION_DAMAGED');
+        }
+        $operation = $receipts->first();
+        if ($operation) {
+            $subscription = $subscriptions->firstWhere('id', $operation->subscription_id);
+            if (!$subscription || (int) $order->status !== Order::STATUS_COMPLETED) {
+                throw new DomainException('NATIVE_ORDER_RECEIPT_INVALID');
+            }
+            $history = $histories[(string) $subscription->id];
+            $this->nativeGrant($order, $purchase);
+            $this->verifyPayment($installation, (int) $user->id, $order, $purchase);
+            $this->store->verifyHistory($subscription, $history, currentRead: true);
+            return $this->store->replay($operation, $request, $subscription, currentRead: true);
+        }
+        if ((int) $order->status !== Order::STATUS_PROCESSING) {
+            throw new DomainException('NATIVE_ORDER_NOT_PROCESSING');
+        }
+        if ((bool) ($user->banned ?? false)) {
+            throw new DomainException('NATIVE_ACCOUNT_BANNED');
+        }
+        $subscription = $slot->subscription_id === null ? null : $subscriptions->firstWhere('id', $slot->subscription_id);
+        $history = $subscription === null ? null : $histories[(string) $subscription->id];
+        if ($subscription !== null) {
+            // Must precede grant/catalog/source verification, which performs ordinary reads.
+            $this->store->protectAcceptedUsage((string) $subscription->id, $now);
+        }
+        $grant = $this->nativeGrant($order, $purchase);
+        $this->verifyPayment($installation, (int) $user->id, $order, $purchase);
+        if ($subscription === null) {
+            if ((int) $order->type !== Order::TYPE_NEW_PURCHASE || $grant['purchase_kind'] === 'traffic_reset') {
+                throw new DomainException('NATIVE_ORDER_TARGET_MISSING');
+            }
+            $result = $this->create($user, $slot, $grant, $installation['installation_id'], $now);
+        } else {
+            if ((int) $order->type === Order::TYPE_NEW_PURCHASE) {
+                throw new DomainException($subscription->expires_at !== null && (int) $subscription->expires_at <= $now
+                    ? 'NATIVE_SLOT_REQUIRES_EXPIRY' : 'NATIVE_SLOT_OCCUPIED');
+            }
+            $current = $this->store->verifyHistory($subscription, $history, currentRead: true);
+            $result = $this->advance($subscription, $current['terms'], $current['period'], $grant, $key, $now);
+        }
+        if (DB::table('tx_order')->where('id', $orderId)->where('status', Order::STATUS_PROCESSING)
+            ->update(['status' => Order::STATUS_COMPLETED, 'updated_at' => $now]) !== 1) {
+            throw new DomainException('NATIVE_ORDER_STATUS_CONFLICT');
+        }
+        $this->store->record($request, $result, $now);
+        app(NativeCredentialSynchronization::class)->stageLocked((int) $user->id, (int) $result['subscription_id']);
         return $result;
     }
 

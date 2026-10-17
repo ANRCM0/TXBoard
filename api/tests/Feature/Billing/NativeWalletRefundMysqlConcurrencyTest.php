@@ -110,8 +110,9 @@ final class NativeWalletRefundMysqlConcurrencyTest extends NativePaymentTestCase
         $this->assertSame(1, DB::table('tx_native_refund')->count());
         $this->assertSame(1, DB::table('tx_money_journal')->where('business_type', 'refund')->count());
         $this->assertSame('1234', $this->walletBalance($user));
-        $this->assertSame(Order::STATUS_CANCELLED, (int) $order->fresh()->status);
-        $this->assertSame('cancelled', DB::table('tx_billing_work')->value('status'));
+        $this->assertSame(array_fill(0, 4, 'none'), array_column($results, 'entitlement_effect'));
+        $this->assertSame(Order::STATUS_PROCESSING, (int) $order->fresh()->status);
+        $this->assertSame('pending', DB::table('tx_billing_work')->value('status'));
     }
 
     public function test_distinct_concurrent_refund_keys_cannot_exceed_the_same_receipt_limit(): void
@@ -157,7 +158,7 @@ final class NativeWalletRefundMysqlConcurrencyTest extends NativePaymentTestCase
         $this->assertSame(0, DB::table('tx_billing_work')->count());
     }
 
-    public function test_concurrent_mixed_components_make_one_full_entitlement_decision_without_losing_either_refund(): void
+    public function test_concurrent_mixed_components_credit_both_sources_without_changing_fulfillment(): void
     {
         $this->requireMysqlProcesses();
         [$user, $order] = $this->purchase();
@@ -176,15 +177,15 @@ final class NativeWalletRefundMysqlConcurrencyTest extends NativePaymentTestCase
         ]);
         $effects = array_column($results, 'entitlement_effect');
         sort($effects, SORT_STRING);
-        $this->assertSame(['partial_retained', 'unfulfilled_cancelled'], $effects);
+        $this->assertSame(['none', 'none'], $effects);
         $this->assertSame('5734', $this->walletBalance($user));
         $this->assertSame(2, DB::table('tx_native_refund')->count());
         $this->assertSame('1234', (string) DB::table('tx_native_refund')->sum('amount_minor'));
-        $this->assertSame(Order::STATUS_CANCELLED, (int) $order->fresh()->status);
-        $this->assertSame('cancelled', DB::table('tx_billing_work')->value('status'));
+        $this->assertSame(Order::STATUS_PROCESSING, (int) $order->fresh()->status);
+        $this->assertSame('pending', DB::table('tx_billing_work')->value('status'));
     }
 
-    public function test_refund_and_fulfillment_race_cannot_leave_paid_rights_active_after_full_refund(): void
+    public function test_refund_and_fulfillment_race_preserves_both_wallet_credit_and_authorized_fulfillment(): void
     {
         $this->requireMysqlProcesses();
         [$user, $order, $paid] = $this->channelPayment();
@@ -193,23 +194,21 @@ final class NativeWalletRefundMysqlConcurrencyTest extends NativePaymentTestCase
         $results = $this->race([
             fn (): array => app(NativeRefundService::class)->refundToWallet($user->id, 'receipt',
                 (int) $paid['receipt_id'], '1234', 'fulfillment-race-refund', $admin->id, 'customer_request'),
-            fn (): array => $this->outcome(fn (): array => app(SubscriptionFulfillmentService::class)->fulfill($order->id, $at)),
+            fn (): array => app(SubscriptionFulfillmentService::class)->fulfill($order->id, $at),
         ]);
         $this->assertSame('wallet_credited', $results[0]['status']);
         $this->assertSame('1234', $this->walletBalance($user));
-        $this->assertSame(0, DB::table('tx_subscription')->whereIn('status', ['active', 'suspended'])->count());
-        if (isset($results[1]['error_code'])) {
-            $this->assertContains($results[1]['error_code'], ['NATIVE_ORDER_NOT_PROCESSING', 'REFUND_ORDER_FULLY_REFUNDED']);
-            $this->assertSame('unfulfilled_cancelled', $results[0]['entitlement_effect']);
-            $this->assertSame(0, DB::table('tx_subscription')->count());
-        } else {
-            $this->assertSame('subscription_revoked', $results[0]['entitlement_effect']);
-            $this->assertSame('revoked', DB::table('tx_subscription')->value('status'));
-            $this->assertSame('closed', DB::table('tx_usage_period')->value('status'));
-            $this->assertSame(Order::STATUS_COMPLETED, (int) $order->fresh()->status);
-        }
-        $this->assertSame('cancelled', DB::table('tx_billing_work')->value('status'));
-        $this->assertSame([], app(NativeBillingRecovery::class)->recover());
+        $this->assertSame('none', $results[0]['entitlement_effect']);
+        $this->assertNull($results[0]['subscription_id']);
+        $this->assertSame('active', DB::table('tx_subscription')->value('status'));
+        $this->assertSame($results[1]['subscription_id'], (string) DB::table('tx_subscription_slot')
+            ->where('user_id', $user->id)->value('subscription_id'));
+        $this->assertSame('open', DB::table('tx_usage_period')->value('status'));
+        $this->assertSame(Order::STATUS_COMPLETED, (int) $order->fresh()->status);
+        $this->assertSame('pending', DB::table('tx_billing_work')->value('status'));
+        $this->assertSame('completed', array_values(app(NativeBillingRecovery::class)->recover())[0]['status']);
+        $this->assertSame('1234', $this->walletBalance($user));
+        $this->assertSame(0, DB::table('tx_subscription_operation')->where('kind', 'revoke')->count());
     }
 
     private function outcome(\Closure $operation): array

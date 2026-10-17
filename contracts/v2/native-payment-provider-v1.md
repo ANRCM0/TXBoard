@@ -6,9 +6,13 @@ Status: implementation candidate for ADR-CF-002; acceptance remains CI-only.
 
 Core owns attempts, immutable receipts, money, allocation, refunds and durable
 fulfillment. A payment plugin implements NativePaymentPluginInterface and
-returns NativePaymentProviderInterface for protocol-only work. The historical
-PaymentInterface::notify() result is not a native fact and is never adapted
-implicitly. PHP plugins remain trusted in-process code, not a sandbox.
+returns NativePaymentProviderInterface for protocol-only work. The only current
+package declaration is `package.schema=1`, `type=payment` and the closed
+`payment` object containing `contract=native-payment-provider/1`, `provider`
+and `snapshot_schema`. Adapter identity must match it exactly. Missing or old
+contracts are rejected, not adapted. The historical PaymentInterface has been
+removed, and direct PaymentService pay/notify always refuse. PHP plugins remain
+trusted in-process code, not a sandbox.
 
 PluginManager validates installed payment packages. Native Registry discovers
 only those installed packages, resolves stable provider IDs and rejects
@@ -16,6 +20,13 @@ ambiguous third-party providers. Bundled provider ownership wins collisions.
 No user-selected class, filesystem path, URL or merchant configuration enters
 registration. Enabling a plugin or declaring capability grants no Core actor
 permission. Registry never boots a disabled plugin for recovery.
+Management lists and form lookup use this same validated registry, not
+`available_payment_methods` hooks. The payment plugin interface includes
+`form()` for management schema; it does not expose financial execution.
+AlipayF2f is no longer bundled; only EPay currently implements this contract.
+The [development guide](../../docs/development/payment-plugin-development.md)
+and [fail-closed starter](../plugin-package/examples/payment-starter/) define
+the new-plugin workflow.
 
 The plugin's nativePaymentPackageVersion() returns a code-side literal matching
 its release, not a value read from config.json at runtime. It must exactly match
@@ -89,9 +100,12 @@ inventory. An active or abandoned token still refuses bootstrap; registered
 plugins and financial records are not adopted through this inventory exception.
 
 This is deliberately conservative: even successful historical transactions pin
-the verifier permanently. A plugin used once cannot yet be upgraded/uninstalled
-through managed lifecycle. A verified versioned dependency handoff, retained
-old-version code store, external-refund execution and general plugin isolation
-are future work. No timeout, disabled flag or user request erases the pin.
+the verifier permanently. A plugin used once cannot be upgraded/uninstalled
+through managed lifecycle. The current product does not require compatibility
+with old plugins or a multi-version code store. Independent new plugin
+development uses the same current contract, while a previously dispatched
+package remains retained solely for financial evidence. External refunds are
+not part of the product scope; refunds go to the Core wallet. No timeout,
+disabled flag or user request erases the pin.
 Out-of-band replacement of plugin files remains an operator/deployment risk and
 is not prevented by the managed lifecycle fence.

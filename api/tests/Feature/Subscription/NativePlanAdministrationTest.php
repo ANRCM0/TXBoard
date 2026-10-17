@@ -42,21 +42,20 @@ final class NativePlanAdministrationTest extends NativeRuntimeTestCase
         $service->publish($actor->id, $this->input(), 'admin-publication');
     }
 
-    public function test_paid_plan_replacement_is_refused_until_source_bound_upgrade_credit_exists(): void
+    public function test_free_source_can_upgrade_to_a_paid_offer_without_inventing_credit(): void
     {
         $this->activate();
         [$user] = $this->subscribe();
         $actor = $this->administrator();
         $publication = app(NativePlanAdministration::class)->publish($actor->id, $this->input(), 'paid-plan');
         $before = DB::table('tx_order')->count();
-        try {
-            app(PublishedOrderService::class)->create($user->id,
-                (int) $publication['publication']['offers'][0]['offer_id'], 'paid-upgrade');
-            $this->fail('Unimplemented upgrade credit was silently ignored');
-        } catch (\RuntimeException $error) {
-            $this->assertSame('PUBLISHED_ORDER_UPGRADE_CREDIT_UNAVAILABLE', $error->getMessage());
-        }
-        $this->assertSame($before, DB::table('tx_order')->count());
+        $order = app(PublishedOrderService::class)->create($user->id,
+            (int) $publication['publication']['offers'][0]['offer_id'], 'paid-upgrade');
+        $this->assertSame('99', (string) $order->total_amount);
+        $this->assertSame($before + 1, DB::table('tx_order')->count());
+        $this->assertSame(1, DB::table('tx_order_upgrade_credit')->count());
+        $this->assertSame('0', (string) DB::table('tx_order_upgrade_credit')->value('credit_minor'));
+        $this->assertSame(0, DB::table('tx_upgrade_credit_source')->count());
         $this->assertSame(0, DB::table('tx_money_journal')->count());
     }
 

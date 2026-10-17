@@ -41,6 +41,9 @@ final class NativeFreeCheckout
                 $this->require(!(bool) DB::table('tx_user')->where('id', $userId)->value('banned'),
                     'FREE_CHECKOUT_ACCOUNT_UNAVAILABLE');
                 $this->require((int) $order->status === Order::STATUS_PENDING, 'FREE_CHECKOUT_ORDER_NOT_PENDING');
+                app(NativeUpgradeCredits::class)->lockSourcesLocked($installation, $order);
+                $acceptedAt = time();
+                app(NativeUpgradeCredits::class)->assertPayableLocked($installation, $order, $acceptedAt);
                 $payload = [
                     'schema' => self::SCHEMA, 'installation_id' => $installation['installation_id'],
                     'user_id' => (string) $userId, 'order_id' => (string) $order->id, 'request_key' => $key,
@@ -57,6 +60,7 @@ final class NativeFreeCheckout
                 $order->paid_at = (int) $payload['created_at'];
                 $order->callback_no = $order->trade_no;
                 $order->saveOrFail();
+                app(NativeUpgradeCredits::class)->fulfillAcceptedLocked($installation, $order, $purchase, $acceptedAt);
                 return self::RESULT;
             });
     }

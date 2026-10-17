@@ -119,6 +119,11 @@ class PluginManager
         }
 
         $plugin = new $pluginClass($pluginCode);
+        $manifest = json_decode((string) File::get($this->getPluginPath($pluginCode).'/config.json'), true);
+        if (($manifest['type'] ?? null) === Plugin::TYPE_PAYMENT
+            && !$plugin instanceof NativePaymentPluginInterface) {
+            throw new BillingError('NATIVE_PAYMENT_PROVIDER_UNSUPPORTED');
+        }
         $this->loadedPlugins[$pluginCode] = $plugin;
 
         return $plugin;
@@ -477,6 +482,7 @@ class PluginManager
         if (!$dbPlugin) {
             throw new \RuntimeException('Plugin is not installed: ' . $pluginCode);
         }
+        $this->assertCurrentPackage($pluginCode);
         if ($dbPlugin->is_enabled) {
             return true; // Idempotent enable: never boot/register a second time.
         }
@@ -1058,7 +1064,11 @@ class PluginManager
         if ($row === null || (!$recovery && !$row->is_enabled) || $row->native_payment_mutation_token !== null) {
             throw new BillingError('PAYMENT_PROVIDER_UNAVAILABLE');
         }
-        $this->assertCurrentPackage($code);
+        try {
+            $this->assertCurrentPackage($code);
+        } catch (\Throwable) {
+            throw new BillingError('NATIVE_PAYMENT_PROVIDER_UNSUPPORTED');
+        }
         $manifest = json_decode((string) File::get($this->getPluginPath($code).'/config.json'), true);
         if (($manifest['version'] ?? null) !== (string) $row->version
             || ($manifest['type'] ?? null) !== Plugin::TYPE_PAYMENT) {
@@ -1071,7 +1081,14 @@ class PluginManager
         if ($plugin->nativePaymentPackageVersion() !== (string) $row->version) {
             throw new BillingError('PAYMENT_PROVIDER_LOADED_VERSION_UNAVAILABLE');
         }
-        return ['adapter' => $plugin->nativePaymentProvider(), 'version' => (string) $row->version];
+        $adapter = $plugin->nativePaymentProvider();
+        $identity = $adapter->identity();
+        if (($identity['contract_version'] ?? null) !== $manifest['payment']['contract']
+            || ($identity['provider_id'] ?? null) !== $manifest['payment']['provider']
+            || ($identity['snapshot_schema'] ?? null) !== $manifest['payment']['snapshot_schema']) {
+            throw new BillingError('PAYMENT_PROVIDER_CONTRACT_INVALID');
+        }
+        return ['plugin' => $plugin, 'adapter' => $adapter, 'version' => (string) $row->version];
     }
 
     private function withNativePaymentMutation(string $code, Closure $operation, bool $drain = true): mixed

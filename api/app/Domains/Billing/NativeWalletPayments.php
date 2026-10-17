@@ -51,6 +51,7 @@ final class NativeWalletPayments
                 'WALLET_ORDER_MISSING');
             $purchase = $this->grants->resolve($order, $terms);
             $this->require($purchase !== null, 'WALLET_PURCHASE_REQUIRED');
+            app(NativeUpgradeCredits::class)->lockSourcesLocked($installation, $order);
             $reservation = DB::table('tx_wallet_order_reservation')->where('order_id', $orderId)->lockForUpdate()->first();
             $this->reservations->lockMoneyAccountsLocked($installation, $userId, $purchase['currency']);
             // Admission can establish an older RR snapshot before the owning user lock is available.
@@ -59,7 +60,8 @@ final class NativeWalletPayments
                 $this->require($reservation !== null && $reservation->request_key === $key, 'WALLET_IDEMPOTENCY_CONFLICT');
                 return ['type' => -1, 'data' => true, 'payment' => $this->verifyWinningPaymentLocked($installation, $userId, $order, $terms)];
             }
-            app(NativeRefundService::class)->assertOrderNotFullyRefundedLocked($userId, $orderId);
+            $acceptedAt = time();
+            app(NativeUpgradeCredits::class)->assertPayableLocked($installation, $order, $acceptedAt);
             $this->require(!(bool) ($user->banned ?? false), 'WALLET_ACCOUNT_UNAVAILABLE');
             $this->reservations->reserveLocked($installation, $userId, $order, $terms,
                 MoneyValue::minor($purchase['price_minor'], true), $key);
@@ -78,6 +80,7 @@ final class NativeWalletPayments
             $order->status = Order::STATUS_PROCESSING;
             $order->paid_at = (int) $reservation['captured_at'];
             $order->saveOrFail();
+            app(NativeUpgradeCredits::class)->fulfillAcceptedLocked($installation, $order, $terms, $acceptedAt);
             return ['type' => -1, 'data' => true, 'payment' => $this->verifyWinningPaymentLocked($installation, $userId, $order, $terms)];
         });
     }

@@ -1,6 +1,8 @@
 # Native wallet, recharge and refunds v1
 
-Status: current C3 integration contract. Real CI acceptance remains required.
+Status: current C3 development contract, updated 2026-10-17. The wallet-only
+refund and upgrade-credit changes are candidates awaiting exact-head CI;
+successful checks on the earlier e9e65f2 head do not validate this batch.
 
 ## Money authority and payment choices
 
@@ -49,9 +51,9 @@ retained as refund liability, never credited twice. Timeout remains unknown.
 
 ## Refund destination and limits
 
-The implemented destination is explicitly `wallet`, not the external channel.
-The bundled EPay external-refund capability is false. Core external-refund
-execution is not implemented: external refund requests fail with
+The product destination is exclusively `wallet`, not the external channel.
+The bundled EPay external-refund capability is false. Original-channel refund
+execution is out of scope: external requests fail with
 `REFUND_EXTERNAL_UNSUPPORTED`; no successful external refund is invented.
 
 An authorized administrator supplies the original receipt or wallet-payment
@@ -70,25 +72,25 @@ committed cumulative total can never exceed the original source amount. Keys
 remain bound forever, including across different sources and actors. Replays
 validate both source and refund journal evidence and do not repeat credits.
 
-Partial refunds leave subscription rights unchanged. A cumulative full refund
-of an unfulfilled winning purchase cancels its durable fulfillment and order in
-the same transaction. A full refund of a fulfilled **new purchase** revokes only
-its still-current subscription terms, closes the original UsagePeriod through
-native lifecycle primitives and stages credential invalidation. Accepted usage
-is never moved or deleted. Any still-pending fulfillment work is cancelled in
-the refund transaction; previously acknowledged completed work retains its
-original completion history. An original new-purchase order superseded by later
-renewal or plan change cannot be fully refunded automatically
-(`REFUND_ENTITLEMENT_SUPERSEDED`). Full refunds of fulfilled renewal, plan-change
-and traffic-reset purchases are explicitly rejected with
-`REFUND_ENTITLEMENT_REVERSAL_UNSUPPORTED`: exact restoration of preceding terms,
-expiry and retained usage is not implemented. This also applies when several
-partial refunds cumulatively reach the original amount. Every rejected request
-rolls back all money effects; it cannot revoke earlier or later purchased rights.
-A new-purchase subscription already ended needs no new revocation. A
-zero-duration boundary or accepted future usage also rejects atomically rather
-than rewriting evidence. These unsupported full-refund reversals remain a Core
-maturity blocker, not an implemented generic refund capability.
+Every partial or full refund records `entitlement_effect: "none"` and a null
+`subscription_id`. It does not cancel the order or any pending, running or
+completed fulfillment/free/credential work; it does not revoke a subscription,
+close a UsagePeriod, invalidate credentials or reconstruct old entitlements.
+This also applies when several partial refunds cumulatively reach the full
+source amount, before or after fulfillment of new purchases, renewals,
+upgrades or traffic resets. Independent lifecycle authorization is required
+when an administrator also intends to revoke access. Refund approval alone
+does not authorize that separate operation.
+
+Original allocation cash is the maximum refundable base. Existing refunds and
+pending/processing/completed upgrade cash claims share that allocation budget;
+refunds plus reserved/consumed claims cannot exceed its verified amount.
+An upgrade's carried noncash credit is not a new payment and cannot be credited
+to the wallet. Source financial validation and the owning user lock serialize
+refunds with quote creation, acceptance, cancellation and competing refund keys.
+Malformed or over-budget requests roll back every money effect. Historical
+entitlement reversal and original-channel refunds are deliberately not required
+product capabilities, rather than unimplemented refund maturity blockers.
 
 ## Read-only reconciliation
 
@@ -104,24 +106,36 @@ rows/accounts. Nonzero cursors and scan-budget exhaustion are incomplete, never
 proof that the installation is clean. It performs no repair, balance rewrite,
 provider call, payment claim or hidden background mutation.
 
-## Known upgrade-credit gap
+## Upgrade-credit candidate
 
-The current native purchase model charges the full published price for plan
-changes. It does not implement unused-value/upgrade credits: no old `surplus_*`
-field, generic adjustment or unbacked wallet credit is treated as that feature.
-An immutable source-bound credit quote, exact proration/rounding policy,
-single-consumption claim and cancellation/refund interaction must be delivered
-together before the C3 upgrade-credit goal can be marked complete.
+[Native upgrade credit v1](native-upgrade-credit-v1.md) defines immutable
+source-bound quotes, source allocation cash claims and separately tracked
+noncash carry. Finite source/component values use UTC coverage seconds and are
+rounded down independently; perpetual sources use billed and durably reserved
+quota. Credit is capped at the target's list price and does not mint excess
+wallet balance.
+
+Every native upgrade persists its quote and subscription/period fingerprint,
+even when credit is zero. Quote lifetime is at most two hours and cannot cross
+the source expiry/current period boundary. Permanent order keys return the
+original order and quote, never reprice a retry. Acceptance rechecks current
+financial evidence and source state. Upgrade payment/free acceptance and SQL
+subscription replacement commit atomically; net-zero upgrades use free checkout
+without a fake receipt or zero-value posting. The candidate's regression and
+MySQL evidence must be collected on the new head, not inherited from e9e65f2.
 
 ## Acceptance
 
-CI covers real recharge receipts, shared receipt identity, cross-owner and
+Required CI acceptance covers real recharge receipts, shared receipt identity, cross-owner and
 amount rejection, wallet reservation/capture/release, insufficient funds,
 permanent replay/conflict, cancellation, canonical allocation/durable work,
 refund cumulative limits, wallet-only and channel sources, atomic rollback,
-superseded entitlement rejection, retained usage and bounded read-only
+unchanged entitlements/work for full refunds, retained usage, upgrade-source
+cash budget interactions and bounded read-only
 reconciliation. Local validation is limited to static checks; financial database
 and concurrency acceptance run centrally in CI.
 Dedicated real-MySQL cases exercise concurrent same-key wallet captures,
 different-order overspending, same-key refunds, cumulative competing refund
 keys, mixed-source full refunds and refund-versus-fulfillment serialization.
+The current refund policy must leave fulfillment work unchanged regardless of
+which transaction commits first.

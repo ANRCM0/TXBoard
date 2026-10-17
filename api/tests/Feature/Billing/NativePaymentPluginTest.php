@@ -37,7 +37,7 @@ final class NativePaymentPluginTest extends NativePaymentTestCase
         parent::tearDown();
     }
 
-    public function test_installed_typed_plugin_is_frozen_and_old_payment_interface_is_not_a_native_capability(): void
+    public function test_installed_current_plugin_is_frozen_and_removed_payment_plugin_is_not_available(): void
     {
         $provider = app(NativePaymentProviderRegistry::class)->forPayment($this->payment);
         $this->assertSame('epay', $provider->pluginCode);
@@ -51,6 +51,7 @@ final class NativePaymentPluginTest extends NativePaymentTestCase
             fn () => app(PluginManager::class)->nativePaymentProvider('alipay_f2f'));
         // An unsupported optional plugin does not poison the unrelated bundled channel.
         $this->assertSame('epay', app(NativePaymentProviderRegistry::class)->forPayment($this->payment)->pluginCode);
+        $this->assertSame(['EPay'], \App\Services\PaymentService::getAllPaymentMethodNames());
         [$user, $order] = $this->purchase();
         app(NativePaymentCheckout::class)->start($user->id, $order->id, $this->payment->id, 'typed-plugin');
         $dispatch = DB::table('tx_payment_dispatch')->first();
@@ -61,6 +62,53 @@ final class NativePaymentPluginTest extends NativePaymentTestCase
         }
         $this->assertSame('epay-md5-dispatch/1', $snapshot['provider_snapshot_schema']);
         Http::assertNothingSent();
+    }
+
+    public function test_legacy_hook_cannot_advertise_an_unimplemented_channel_or_execute_a_payment(): void
+    {
+        HookManager::registerFilter('available_payment_methods', static fn (array $methods): array =>
+            $methods + ['LegacyPay' => ['plugin_code' => 'epay']], 20);
+        $this->assertSame(['EPay'], \App\Services\PaymentService::getAllPaymentMethodNames());
+        $service = new \App\Services\PaymentService('EPay', $this->payment->id);
+        $this->assertSame('plugin-secret', $service->form()['key']['value']);
+        foreach (['pay', 'notify'] as $entry) {
+            try {
+                $service->$entry([]);
+                $this->fail('Direct payment execution must not bypass native dispatch.');
+            } catch (\App\Exceptions\ApiException $error) {
+                $this->assertSame(409, $error->getCode());
+                $this->assertSame('Payment execution requires a native frozen dispatch', $error->getMessage());
+            }
+        }
+        $this->assertSame(0, DB::table('tx_payment_attempt')->count());
+        $this->assertSame(0, DB::table('tx_payment_receipt')->count());
+        Http::assertNothingSent();
+    }
+
+    public function test_manifest_protocol_binding_cannot_certify_a_different_loaded_provider(): void
+    {
+        $directory = sys_get_temp_dir().'/native-manifest-contract-'.bin2hex(random_bytes(8));
+        File::makeDirectory($directory, 0700);
+        try {
+            $manifest = json_decode(File::get(base_path('plugins-core/Epay/config.json')), true, 16, JSON_THROW_ON_ERROR);
+            $manifest['payment']['provider'] = 'OtherPay';
+            File::put($directory.'/config.json', json_encode($manifest, JSON_THROW_ON_ERROR));
+            app(PluginManager::class)->nativePaymentProvider('epay');
+            $manager = new class(app(PluginPackage::class), $directory) extends PluginManager {
+                public function __construct(PluginPackage $package, private readonly string $fixturePath)
+                {
+                    parent::__construct($package);
+                }
+                public function getPluginPath(string $pluginCode): string { return $this->fixturePath; }
+            };
+            $this->rejects('PAYMENT_PROVIDER_CONTRACT_INVALID', fn () => $manager->nativePaymentProvider('epay'));
+            unset($manifest['payment']);
+            File::put($directory.'/config.json', json_encode($manifest, JSON_THROW_ON_ERROR));
+            $this->rejects('NATIVE_PAYMENT_PROVIDER_UNSUPPORTED', fn () => $manager->nativePaymentProvider('epay'));
+            Http::assertNothingSent();
+        } finally {
+            File::deleteDirectory($directory);
+        }
     }
 
     public function test_disabled_plugin_stops_new_checkout_and_url_reissue_but_retains_limited_frozen_recovery(): void
@@ -138,6 +186,8 @@ final class NativePaymentPluginTest extends NativePaymentTestCase
             $this->assertTrue($zip->open($archive, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === true);
             $zip->addFromString('config.json', json_encode(['name' => 'Pinned package', 'code' => 'native_pin_fixture',
                 'package' => ['schema' => 1],
+                'payment' => ['contract' => 'native-payment-provider/1', 'provider' => 'EPay',
+                    'snapshot_schema' => 'epay-md5-dispatch/1'],
                 'version' => '1.1.0', 'description' => 'Pinned package', 'author' => 'Tests', 'type' => 'payment',
                 'require' => []], JSON_THROW_ON_ERROR));
             $zip->addFromString('Plugin.php', '<?php // Lifecycle must reject before loading this package.');
@@ -212,6 +262,8 @@ final class NativePaymentPluginTest extends NativePaymentTestCase
         $filesystem->ensureDirectoryExists($path);
         $filesystem->put($path.'/config.json', json_encode(['package' => ['schema' => 1],
             'code' => $code, 'name' => 'Delete probe', 'version' => '1.0.0', 'type' => 'payment',
+            'payment' => ['contract' => 'native-payment-provider/1', 'provider' => 'EPay',
+                'snapshot_schema' => 'epay-md5-dispatch/1'],
             'description' => 'Package delete boundary', 'author' => 'Tests'], JSON_THROW_ON_ERROR));
         $filesystem->put($path.'/Plugin.php', '<?php namespace Plugin\\NativeDeleteProbe; '
             .'class Plugin extends \\App\\Services\\Plugin\\AbstractPlugin {}');

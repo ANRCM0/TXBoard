@@ -17,6 +17,8 @@ class PluginInstallSafetyTest extends TestCase
     {
         File::deleteDirectory(base_path('plugins/Phase3MissingRuntime'));
         File::deleteDirectory(base_path('plugins/RetiredPackageFixture'));
+        File::deleteDirectory(base_path('plugins/OldPaymentFixture'));
+        File::deleteDirectory(base_path('plugins/MissingPaymentInterfaceFixture'));
         parent::tearDown();
     }
 
@@ -62,5 +64,49 @@ class PluginInstallSafetyTest extends TestCase
         $this->assertSame($before, DB::transactionLevel());
         $this->assertFalse(Plugin::query()->where('code', 'phase3_missing_runtime')->exists());
         $this->assertFileExists($path . '/config.json');
+    }
+
+    public function test_payment_package_without_current_contract_is_rejected_before_loading_php(): void
+    {
+        $path = base_path('plugins/OldPaymentFixture');
+        File::ensureDirectoryExists($path);
+        File::put($path.'/config.json', json_encode([
+            'name' => 'Old Payment Fixture', 'code' => 'old_payment_fixture', 'version' => '1.0.0',
+            'description' => 'No typed payment declaration', 'author' => 'Tests',
+            'type' => 'payment', 'package' => ['schema' => 1],
+        ], JSON_THROW_ON_ERROR));
+        File::put($path.'/Plugin.php', '<?php throw new \RuntimeException("old payment code executed");');
+        try {
+            app(PluginManager::class)->install('old_payment_fixture');
+            $this->fail('Old payment packages must not be installed.');
+        } catch (\Exception $error) {
+            $this->assertSame('Invalid plugin config', $error->getMessage());
+        }
+        $this->assertFalse(Plugin::query()->where('code', 'old_payment_fixture')->exists());
+        $this->assertNull(DB::table('tx_plugin_package_fence')->where('plugin_code', 'old_payment_fixture')->value('mutation_token'));
+    }
+
+    public function test_payment_declaration_cannot_replace_the_required_php_interface(): void
+    {
+        $path = base_path('plugins/MissingPaymentInterfaceFixture');
+        File::ensureDirectoryExists($path.'/database/migrations');
+        File::put($path.'/config.json', json_encode([
+            'name' => 'Missing Payment Interface Fixture', 'code' => 'missing_payment_interface_fixture', 'version' => '1.0.0',
+            'description' => 'Declaration without typed runtime', 'author' => 'Tests',
+            'type' => 'payment', 'package' => ['schema' => 1],
+            'payment' => ['contract' => 'native-payment-provider/1', 'provider' => 'FixturePay',
+                'snapshot_schema' => 'fixturepay-dispatch/1'],
+        ], JSON_THROW_ON_ERROR));
+        File::put($path.'/Plugin.php', '<?php namespace Plugin\MissingPaymentInterfaceFixture; '
+            .'class Plugin extends \App\Services\Plugin\AbstractPlugin {}');
+        File::put($path.'/database/migrations/2026_10_17_000001_probe.php',
+            '<?php throw new \RuntimeException("payment migration executed");');
+        try {
+            app(PluginManager::class)->install('missing_payment_interface_fixture');
+            $this->fail('A payment declaration must not substitute for an implementation.');
+        } catch (\App\Domains\Billing\BillingError $error) {
+            $this->assertSame('NATIVE_PAYMENT_PROVIDER_UNSUPPORTED', $error->errorCode);
+        }
+        $this->assertFalse(Plugin::query()->where('code', 'missing_payment_interface_fixture')->exists());
     }
 }

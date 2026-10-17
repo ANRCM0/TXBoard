@@ -47,7 +47,6 @@ class PluginIdentityBoundaryTest extends TestCase
         foreach ([
             'telegram' => 'Telegram',
             'epay' => 'Epay',
-            'alipay_f2f' => 'AlipayF2f',
             'phase3_route_fixture' => 'Phase3RouteFixture',
         ] as $code => $directory) {
             $this->assertSame('Plugin\\' . $directory, $manager->getPluginNamespace($code));
