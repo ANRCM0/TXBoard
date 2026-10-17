@@ -21,6 +21,7 @@ import sys
 import tempfile
 import time
 import urllib.request
+import urllib.error
 import uuid
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -56,6 +57,42 @@ def port():
 def write(path, value):
     path.write_text(json.dumps(value, indent=2) + "\n", encoding="utf-8")
     path.chmod(0o600)
+
+
+def purchase_diagnostic(installation, email, offer_id, key):
+    """Only rerun the original CI-owned purchase key; emit no SQL, arguments or values."""
+    payload = base64.b64encode(json.dumps({"email": email, "offer_id": offer_id, "key": key}).encode()).decode()
+    source = r'''<?php
+require '/www/vendor/autoload.php';
+$app = require '/www/bootstrap/app.php';
+$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$input = json_decode(base64_decode('__PAYLOAD__'), true, 16, JSON_THROW_ON_ERROR);
+try {
+    $user = App\Models\User::query()->where('email', $input['email'])->firstOrFail();
+    $result = app(App\Domains\Subscription\Contracts\Purchases::class)->purchase((int) $user->id, (int) $input['offer_id'], $input['key']);
+    echo json_encode(['owner_status' => 'succeeded']);
+} catch (Throwable $error) {
+    $code = preg_match('/\A[A-Z][A-Z0-9_]{1,100}\z/D', $error->getMessage()) === 1 ? $error->getMessage() : null;
+    $frames = [];
+    foreach ([['file' => $error->getFile(), 'line' => $error->getLine()], ...$error->getTrace()] as $frame) {
+        if (preg_match('#\A/www/(app/[A-Za-z0-9_./]+\.php)\z#D', $frame['file'] ?? '', $match) === 1) {
+            $frames[] = [$match[1], (int) ($frame['line'] ?? 0)];
+        }
+    }
+    $state = preg_match('/\A[A-Z0-9]{5}\z/D', (string) $error->getCode()) === 1 ? (string) $error->getCode() : null;
+    $driver = $error instanceof Illuminate\Database\QueryException ? ($error->errorInfo[1] ?? null) : null;
+    echo json_encode(['owner_status' => 'failed', 'class' => get_class($error), 'code' => $code,
+        'sqlstate' => $state, 'driver_code' => is_int($driver) ? $driver : null, 'frames' => array_slice($frames, 0, 8)]);
+}
+'''.replace('__PAYLOAD__', payload)
+    result = subprocess.run(["docker", "compose", "exec", "-T", "txboard", "php"], cwd=installation,
+                            input=source, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=45)
+    try:
+        diagnostic = json.loads(result.stdout)
+        if isinstance(diagnostic, dict) and diagnostic.get('owner_status') in ('succeeded', 'failed'):
+            print(json.dumps({"purchase_diagnostic": diagnostic}), flush=True)
+    except ValueError:
+        print('{"purchase_diagnostic":{"owner_status":"unavailable"}}', flush=True)
 
 
 def tls(root, gateway):
@@ -207,13 +244,27 @@ def main():
                 if key:
                     headers["Idempotency-Key"] = key
                 request = urllib.request.Request(origin + path, data=None if body is None else json.dumps(body).encode(), headers=headers)
-                with urllib.request.urlopen(request, timeout=30) as response:
-                    return json.load(response)["data"]
+                try:
+                    with urllib.request.urlopen(request, timeout=30) as response:
+                        return json.load(response)["data"]
+                except urllib.error.HTTPError as error:
+                    try:
+                        code = json.loads(error.read(32768)).get("error", {}).get("code", "HTTP_ERROR")
+                    except (ValueError, AttributeError):
+                        code = "HTTP_ERROR"
+                    if not isinstance(code, str) or not re.fullmatch(r"[A-Z][A-Z0-9_]{1,100}", code):
+                        code = "HTTP_ERROR"
+                    raise RuntimeError(f"Native HTTP request rejected: {error.code} {code}") from None
             auth = http("/txapi/auth/admin/login", {"email": preparation["identity"]["email"], "password": password})
             presentation = f"/txapi/admin/{auth['secure_path']}/extensions/module_portal/"
             require(http(presentation + "presentation", token=auth["auth_data"])["version"] == "1.0.0", "Real HTTP module presentation was unavailable")
             offers = http("/txapi/plans")
-            http("/txapi/orders", {"offer_id": offers[0]["offer_id"]}, auth["auth_data"], str(uuid.uuid4()))
+            purchase_key = str(uuid.uuid4())
+            try:
+                http("/txapi/orders", {"offer_id": offers[0]["offer_id"]}, auth["auth_data"], purchase_key)
+            except RuntimeError:
+                purchase_diagnostic(installation, preparation["identity"]["email"], offers[0]["offer_id"], purchase_key)
+                raise
             money_before = backend.snapshot()
             kernel = run(["docker", "run", "--rm", "--entrypoint", "sha256sum", baseline, "/www/resources/contracts/kernel.v1.files.json"]).split()[0]
             images = [baseline]
