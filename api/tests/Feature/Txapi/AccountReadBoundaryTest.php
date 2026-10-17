@@ -36,7 +36,9 @@ final class AccountReadBoundaryTest extends NativeRuntimeTestCase
         $this->assertInstanceOf(NativeAccountQueries::class, $queries);
         $this->assertSame($queries, app(AccountQueries::class));
         [$subscribed] = $this->subscribe();
-        $subscribed->update(['telegram_id' => 123456789]);
+        // Earlier reduced-schema fixtures can leave Eloquent's guardable-column cache populated.
+        $subscribed->forceFill(['telegram_id' => 123456789])->saveOrFail();
+        $this->assertSame(123456789, (int) $subscribed->fresh()->telegram_id);
         $other = $this->user();
         $tokens = [
             $subscribed->id => $subscribed->createToken('subscriber', ['*'])->plainTextToken,
@@ -69,7 +71,9 @@ final class AccountReadBoundaryTest extends NativeRuntimeTestCase
 
     public function test_both_entry_points_use_the_public_port_and_internal_reads_do_not_resolve_http_controllers(): void
     {
-        $user = $this->user(['telegram_id' => 912345678]);
+        $user = $this->user();
+        $user->forceFill(['telegram_id' => 912345678])->saveOrFail();
+        $this->assertSame(912345678, (int) $user->fresh()->telegram_id);
         $token = $user->createToken('port-owner', ['*'])->plainTextToken;
         $account = ['id' => (int) $user->id, 'email' => $user->email, 'telegram_id' => 912345678,
             'subscription' => ['schema' => 'port-test', 'authorized' => false, 'user_id' => (int) $user->id],
