@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Throwable;
 
-class InstallationAuthority
+class InstallationAuthority implements \App\Domains\Installation\Contracts\InstallationAdmission
 {
     public const VERSION = 'core-installation/v1';
     private const TABLE = 'tx_authority_writer_fence';

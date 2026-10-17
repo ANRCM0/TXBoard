@@ -12,6 +12,7 @@ final readonly class ModuleDescriptor
         public ?bool $active,
         public ModuleHealth $health,
         public ?ModuleHealthDetails $healthDetails = null,
+        public array $services = [],
     ) {
     }
 
@@ -46,6 +47,10 @@ final readonly class ModuleDescriptor
 
         if ($this->healthDetails !== null) {
             $descriptor['health_details'] = $this->healthDetails->toArray();
+        }
+
+        if ($this->services !== []) {
+            $descriptor['services'] = $this->services;
         }
 
         if ($this->manifest->adminNavigation !== []) {

@@ -188,30 +188,37 @@ KERNEL_FILES = {
 RESOLVER_OWNERS = frozenset({
     "api/app/Domains/Subscription/Services/SubscriptionEntitlementResolver.php",
     "api/app/Providers/CoreCapabilitiesServiceProvider.php",
+    "api/app/Modules/SubscriptionModule.php",
 })
 PROVIDER_TRANSPORT_OWNERS = frozenset({
     "api/app/Domains/CredentialProvider/ProviderTransport.php",
     "api/app/Providers/CoreCapabilitiesServiceProvider.php",
+    "api/app/Modules/ProviderModule.php",
 })
 FULFILLMENT_OWNERS = frozenset({
     "api/app/Domains/Subscription/Services/SubscriptionFulfillmentService.php",
     "api/app/Providers/CoreCapabilitiesServiceProvider.php",
+    "api/app/Modules/SubscriptionModule.php",
 })
 ACCOUNT_QUERY_OWNERS = frozenset({
     "api/app/Domains/Identity/NativeAccountQueries.php",
     "api/app/Providers/CoreCapabilitiesServiceProvider.php",
+    "api/app/Modules/IdentityModule.php",
 })
 ORDER_QUERY_OWNERS = frozenset({
     "api/app/Domains/Billing/NativeOrderQueries.php",
     "api/app/Providers/CoreCapabilitiesServiceProvider.php",
+    "api/app/Modules/BillingModule.php",
 })
 ACCOUNT_SESSION_OWNERS = frozenset({
     "api/app/Domains/Identity/NativeAccountSessions.php",
     "api/app/Providers/CoreCapabilitiesServiceProvider.php",
+    "api/app/Modules/IdentityModule.php",
 })
 USAGE_QUERY_OWNERS = frozenset({
     "api/app/Domains/UsageV2/NativeUsageQueries.php",
     "api/app/Providers/CoreCapabilitiesServiceProvider.php",
+    "api/app/Modules/UsageModule.php",
 })
 READ_ADAPTER_FILES = {
     "api/app/Domains/InternalApi/AccountReadOperations.php": "account read handler",
@@ -319,6 +326,12 @@ def validate_kernel_boundaries(root):
                        re.IGNORECASE),
         ),
     }
+    for domain in ('Network', 'Installation'):
+        areas[f"api/app/Domains/{domain}/Contracts"] = (
+            re.compile(r"\bApp\\(?!(?:Core\\Kernel|Domains\\" + domain + r"\\Contracts)(?:\\|\b))", re.IGNORECASE),
+            HOST_NAMESPACE, HOST_OPERATION,
+            re.compile(r"(?<!\$)\b(?:Closure|callable|Request|Model|Builder|Connection|ConnectionInterface)\b", re.IGNORECASE),
+        )
     checked = 0
     for area, patterns in areas.items():
         for path in sorted((root / area).rglob("*.php")):

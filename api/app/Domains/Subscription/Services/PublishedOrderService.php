@@ -115,13 +115,13 @@ final class PublishedOrderService
                 return $created;
             }, permanent: true);
             // A successful idempotency claim is not permission to return damaged evidence.
-            $grant = $this->grants->resolve($order,
-                OrderPurchaseTerms::query()->where('order_id', $order->id)->sharedLock()->first());
+            $purchase = OrderPurchaseTerms::query()->where('order_id', $order->id)->sharedLock()->first();
+            $grant = $this->grants->resolve($order, $purchase);
             if ($order->purchase_terms_version !== self::VERSION || $grant === null
                 || $grant['catalog']['offer_id'] !== (string) $offerId) {
                 throw new RuntimeException('PUBLISHED_ORDER_REPLAY_INVALID');
             }
-            return $order;
+            return $order->setRelation('purchaseTerms', $purchase);
         }, 3);
     }
 

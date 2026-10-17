@@ -25,7 +25,7 @@ final class OperationRegistry
         $read = 'read';
         $write = 'workflow';
         $domain = 'domain';
-        return [
+        return OperationSchemas::apply([
             'system.capabilities.get' => self::spec($both, 'anonymous', $read, null, null, [], []),
             'identity.session.create' => self::spec($user, 'anonymous', 'once', Txapi\AuthController::class, 'login',
                 ['email' => ['required', 'email:strict', 'max:255'], 'password' => ['required', 'string', 'min:8', 'max:255'],
@@ -48,12 +48,8 @@ final class OperationRegistry
                 ['session_id' => $id], ['ok'], command: SessionMutationOperations::class),
             'identity.session.end' => self::spec($both, 'authenticated', 'once', null, 'end', [], ['ok'],
                 command: SessionMutationOperations::class),
-            'catalog.offers.list' => self::spec($user, 'anonymous', $read, Txapi\PublicController::class, 'plans', [],
-                ['offer_id', 'plan_id', 'plan_revision_id', 'name', 'content', 'tags', 'offer_code', 'purchase_kind',
-                    'currency', 'price_minor', 'currency_minor_exponent', 'quota_bytes', 'group_id', 'speed_limit_mbps',
-                    'device_limit', 'sell', 'renew', 'availability_version', 'publication_hash'], list: true),
-            'subscription.mine.get' => self::spec($user, 'user', $read, null, 'subscription', [],
-                self::entitlementFields(), handler: AccountReadOperations::class),
+            'catalog.offers.list' => self::spec([], '', '', null, 'listing', [], [], handler: CatalogReadOperations::class),
+            'subscription.mine.get' => self::spec([], '', '', null, 'subscription', [], [], handler: AccountReadOperations::class),
             'subscription.links.list' => self::spec($user, 'user', $read, Txapi\SubscriptionLinkController::class, 'index',
                 ['after_id' => ['sometimes', 'string', 'regex:/\A(?:0|[1-9][0-9]{0,17})\z/D']],
                 ['schema', 'items', 'next_after_id']),
@@ -65,44 +61,18 @@ final class OperationRegistry
                 ['link_ref' => ['required', 'string', 'regex:/\Alink_[a-f0-9]{32}\z/D']],
                 ['schema', 'id', 'link_ref', 'subscription_id', 'access_subject_id', 'status', 'version', 'expires_at',
                     'revoked_at', 'created_at'], parameters: ['linkRef' => 'link_ref']),
-            'commerce.orders.list' => self::spec($user, 'user', $read, null, 'listing',
-                $page + ['status' => ['sometimes', 'integer', 'in:0,1,2,3,4']], self::orderFields(), list: true,
-                handler: OrderReadOperations::class),
-            'commerce.orders.get' => self::spec($user, 'user', $read, null, 'find',
-                ['trade_no' => $trade], self::orderFields(), handler: OrderReadOperations::class),
-            'commerce.orders.create' => self::spec($user, 'user', $domain, Txapi\BillingController::class, 'createOrder',
-                ['offer_id' => $id], ['id', 'trade_no', 'status', 'amount_minor', 'currency', 'purchase_terms_version']),
-            'commerce.orders.checkout' => self::spec($user, 'user', $domain, Txapi\BillingController::class, 'checkout',
-                ['trade_no' => $trade, 'method' => ['sometimes', 'string', 'regex:/\A[1-9][0-9]{0,17}\z/D'],
-                    'wallet' => ['sometimes', 'boolean'],
-                    'wallet_amount_minor' => ['sometimes', 'string', 'regex:/\A[1-9][0-9]{0,18}\z/D']],
-                ['type', 'data', 'attempt', 'payment', 'wallet_reservation'],
-                parameters: ['tradeNo' => 'trade_no']),
-            'commerce.orders.cancel' => self::spec($user, 'user', $write, Txapi\BillingController::class, 'cancelOrder',
-                ['trade_no' => $trade], ['ok'], parameters: ['tradeNo' => 'trade_no']),
-            'billing.wallet.get' => self::spec($user, 'user', $read, Txapi\WalletRechargeController::class, 'balance', [],
-                ['schema', 'balances']),
-            'billing.payment-methods.list' => self::spec($user, 'user', $read, Txapi\WalletRechargeController::class, 'methods', [],
-                ['id', 'name', 'payment', 'icon', 'currency', 'handling_fee_fixed', 'handling_fee_percent',
-                    'external_refund_supported'], list: true),
-            'billing.recharges.create' => self::spec($user, 'user', $domain, Txapi\WalletRechargeController::class, 'store',
-                ['amount_minor' => ['required', 'string', 'regex:/\A[1-9][0-9]{0,5}\z/D'],
-                    'payment_method_id' => $id], self::rechargeFields()),
-            'billing.recharges.list' => self::spec($user, 'user', $read, Txapi\WalletRechargeController::class, 'index',
-                ['limit' => ['sometimes', 'integer', 'min:1', 'max:50'],
-                    'after_id' => ['sometimes', 'string', 'regex:/\A(?:0|[1-9][0-9]{0,17})\z/D']],
-                self::rechargeFields(), list: true),
-            'billing.recharges.get' => self::spec($user, 'user', $read, Txapi\WalletRechargeController::class, 'show',
-                ['trade_no' => $trade], self::rechargeFields(), parameters: ['tradeNo' => 'trade_no']),
-            'billing.recharges.checkout' => self::spec($user, 'user', $domain, Txapi\WalletRechargeController::class, 'checkout',
-                ['trade_no' => $trade], ['attempt', 'payment', 'type', 'data'], parameters: ['tradeNo' => 'trade_no']),
-            'usage.mine.list' => self::spec($user, 'user', $read, null, 'listing',
-                ['subscription_id' => array_replace($id, [0 => 'sometimes']),
-                    'after_id' => ['sometimes', 'string', 'regex:/\A(?:0|[1-9][0-9]{0,17})\z/D'],
-                    'limit' => ['sometimes', 'integer', 'min:1', 'max:100']],
-                ['id', 'subscription_id', 'terms_id', 'period_no', 'quota_bytes', 'upload_bytes', 'download_bytes',
-                    'billable_bytes', 'consumed_bytes', 'row_version', 'status', 'starts_at', 'ends_at', 'next_reset_at'], list: true,
-                handler: UsageReadOperations::class),
+            'commerce.orders.list' => self::spec([], '', '', null, 'listing', [], [], handler: OrderReadOperations::class),
+            'commerce.orders.get' => self::spec([], '', '', null, 'find', [], [], handler: OrderReadOperations::class),
+            'commerce.orders.create' => self::spec([], '', '', null, 'purchase', [], [], command: CommerceMutationOperations::class),
+            'commerce.orders.checkout' => self::spec([], '', '', null, 'checkout', [], [], command: CommerceMutationOperations::class),
+            'commerce.orders.cancel' => self::spec([], '', '', null, 'cancel', [], [], command: CommerceMutationOperations::class),
+            'billing.wallet.get' => self::spec([], '', '', null, 'wallet', [], [], handler: BillingReadOperations::class),
+            'billing.payment-methods.list' => self::spec([], '', '', null, 'methods', [], [], handler: BillingReadOperations::class),
+            'billing.recharges.create' => self::spec([], '', '', null, 'recharge', [], [], command: CommerceMutationOperations::class),
+            'billing.recharges.list' => self::spec([], '', '', null, 'recharges', [], [], handler: BillingReadOperations::class),
+            'billing.recharges.get' => self::spec([], '', '', null, 'recharge', [], [], handler: BillingReadOperations::class),
+            'billing.recharges.checkout' => self::spec([], '', '', null, 'rechargeCheckout', [], [], command: CommerceMutationOperations::class),
+            'usage.mine.list' => self::spec([], '', '', null, 'listing', [], [], handler: UsageReadOperations::class),
             'settings.public.get' => self::spec($both, 'anonymous', $read, Txapi\PublicController::class, 'siteConfig', [],
                 ['frontend_theme', 'tos_url', 'email_whitelist_suffix', 'captcha_type', 'recaptcha_site_key',
                     'recaptcha_v3_site_key', 'recaptcha_v3_score_threshold', 'turnstile_site_key',
@@ -152,7 +122,7 @@ final class OperationRegistry
                     'stop_register' => ['sometimes', 'boolean']],
                 ['ok'], permission: 'settings.write'),
             ...self::subscriptionOperations($admin, $id),
-        ];
+        ]);
     }
 
     public static function capabilities(string $domain, array $allowed): array
@@ -160,10 +130,15 @@ final class OperationRegistry
         $result = [];
         foreach (self::all() as $id => $spec) {
             if (!in_array($domain, $spec['domains'], true) || !in_array($id, $allowed, true)) continue;
+            $contract = OperationSchemas::operation($id);
             $result[] = ['id' => $id, 'version' => '1', 'actor' => $spec['actor'],
                 'permission' => $spec['permission'], 'idempotency' => $spec['mode'],
-                'input_fields' => array_values(array_filter(array_keys($spec['rules']), static fn ($field): bool => !str_contains($field, '.'))),
-                'input_schema' => self::inputSchema($spec['rules']), 'output_fields' => $spec['fields'],
+                'input_fields' => $contract !== null ? array_keys($contract['input']['properties'])
+                    : array_values(array_filter(array_keys($spec['rules']), static fn ($field): bool => !str_contains($field, '.'))),
+                'input_schema' => $contract !== null ? $contract['input'] + ['definitions' => OperationSchemas::all()['definitions']]
+                    : self::inputSchema($spec['rules']), 'output_fields' => $spec['fields'],
+                'output_schema' => $contract !== null ? $contract['output'] + ['definitions' => OperationSchemas::all()['definitions']] : null,
+                'errors' => $contract['errors'] ?? [],
                 'max_request_bytes' => (int) config('internal_api.max_request_bytes'),
                 'deadline_seconds' => (int) config('internal_api.deadline_seconds')];
         }

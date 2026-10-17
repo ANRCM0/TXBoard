@@ -6,7 +6,7 @@ use App\Domains\Installation\InstallationAuthority;
 use Illuminate\Support\Facades\DB;
 
 /** Native recharge intent; only the shared verified receipt authority can create wallet value. */
-final class NativeRechargeService
+final class NativeRechargeService implements \App\Domains\Billing\Contracts\Recharges
 {
     public const MIN_AMOUNT_MINOR = '100';
     public const MAX_AMOUNT_MINOR = '500000';
@@ -60,7 +60,7 @@ final class NativeRechargeService
     public function checkout(int $userId, string $tradeNo): array
     {
         $recharge = $this->show($userId, $tradeNo);
-        return app(NativePaymentCheckout::class)->recharge($userId, (int) $recharge['recharge_id'],
+        return app(\App\Domains\Billing\Contracts\PaymentCheckout::class)->recharge($userId, (int) $recharge['recharge_id'],
             (int) $recharge['payment_method_id'], 'recharge:'.$recharge['recharge_id']);
     }
 

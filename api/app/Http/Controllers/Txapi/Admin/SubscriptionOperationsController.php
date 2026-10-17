@@ -6,7 +6,7 @@ use App\Core\Http\TxapiResponse;
 use App\Domains\Billing\IdempotencyException;
 use App\Domains\Billing\OrderIdempotency;
 use App\Domains\Installation\InstallationAuthority;
-use App\Domains\Subscription\Services\SubscriptionLifecycleService;
+use App\Domains\Subscription\Contracts\SubscriptionLifecycle;
 use DomainException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\DB;
 
 final class SubscriptionOperationsController
 {
-    public function execute(Request $request, SubscriptionLifecycleService $service): JsonResponse
+    public function execute(Request $request, SubscriptionLifecycle $service): JsonResponse
     {
         if (app(InstallationAuthority::class)->inspect()['mode'] !== 'native') {
             return TxapiResponse::error($request, 'NATIVE_SUBSCRIPTION_REQUIRED', 'Native subscription required', 409);

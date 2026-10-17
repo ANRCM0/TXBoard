@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\DB;
 use Throwable;
 
 /** Bounded observation only. No repair, account creation, provider requests or settlement calls. */
-final class NativeBillingReconciliation
+final class NativeBillingReconciliation implements \App\Domains\Billing\Contracts\BillingReconciliation
 {
     private const POSTING_SCAN_LIMIT = 2000;
 

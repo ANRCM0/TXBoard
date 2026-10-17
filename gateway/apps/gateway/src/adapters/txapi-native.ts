@@ -27,7 +27,9 @@ const detail = order.extend({
 })
 const payment = z.object({
   id, name: z.string(), provider: z.string(), icon: z.string().nullable(),
-  fee_fixed_minor: integer, fee_percent: z.number().nonnegative().finite(),
+  // Native checkout currently supports zero fees and serializes them as decimal strings.
+  fee_fixed_minor: z.union([integer, z.literal('0').transform(() => 0)]),
+  fee_percent: z.union([z.number().nonnegative().finite(), z.literal('0').transform(() => 0)]),
 })
 const notice = z.object({
   id, title: z.string(), content: z.string(), img_url: z.string().nullable(),

@@ -9,7 +9,7 @@ use App\Models\OrderPurchaseTerms;
 use Illuminate\Support\Facades\DB;
 
 /** Full-wallet purchases share the same order-payment allocation and durable fulfillment authority. */
-final class NativeWalletPayments
+final class NativeWalletPayments implements \App\Domains\Billing\Contracts\WalletPayments
 {
     public function __construct(
         private readonly NativeBillingTransaction $transactions,

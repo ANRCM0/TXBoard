@@ -6,7 +6,7 @@ use App\Models\Server;
 use App\Models\ServerGroup;
 
 /** Shared native projection; pagination adds no new network authority. */
-final class NetworkGroupReader
+final class NetworkGroupReader implements \App\Domains\Network\Contracts\NetworkGroups
 {
     public function read(?int $page = null, ?int $perPage = null): array
     {

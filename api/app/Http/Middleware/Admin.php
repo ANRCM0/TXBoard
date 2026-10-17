@@ -25,6 +25,8 @@ class Admin
             return response()->json(['message' => 'Unauthorized'], 403);
         }
         
+        app(\App\Core\Host\Execution\InvocationScope::class)->actor(
+            new \App\Core\Kernel\Execution\ActorRef('admin', (string) $user->id));
         return $next($request);
     }
 }

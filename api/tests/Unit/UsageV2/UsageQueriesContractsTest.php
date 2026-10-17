@@ -86,7 +86,8 @@ final class UsageQueriesContractsTest extends TestCase
         $this->assertSame(UsageReadOperations::class, $spec['handler']);
         $this->assertNull($spec['command']);
         $this->assertNull($spec['controller']);
-        $this->assertSame(['subscription_id', 'after_id', 'limit'], array_keys($spec['rules']));
+        $this->assertSame(['subscription_id', 'after_id', 'limit'],
+            array_keys(\App\Domains\InternalApi\OperationSchemas::operation('usage.mine.list')['input']['properties']));
         $this->assertTrue($spec['list']);
         $this->assertSame('listing', $spec['method']);
     }

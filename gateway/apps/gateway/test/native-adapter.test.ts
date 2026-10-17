@@ -23,6 +23,18 @@ const fixtures: Array<[UpstreamOperation, string, unknown, unknown?]> = [
   ['userOrderCreate', '/txapi/orders', { trade_no: 'T-1', private_note: 'secret' }],
 ]
 describe('current Native Core adapter', () => {
+  it('accepts the real native zero-fee payment DTO without widening string coercion', async () => {
+    const method = { id: 1, name: 'Pay', provider: 'Epay', icon: null, fee_fixed_minor: '0', fee_percent: '0' }
+    const invoke = (data: unknown) => upstreamRequest(config,
+      vi.fn(async () => Response.json(nativeEnvelope([data]))), 'userPaymentMethods', { auth: bearer })
+    await expect(invoke(method)).resolves.toEqual([{
+      id: 1, name: 'Pay', payment: 'Epay', icon: null, handling_fee_fixed: 0, handling_fee_percent: 0,
+    }])
+    for (const invalid of ['', ' 0', '00', '-1', 'NaN', '1e2', '9007199254740992']) {
+      await expect(invoke({ ...method, fee_fixed_minor: invalid })).rejects.toMatchObject({ status: 502 })
+      await expect(invoke({ ...method, fee_percent: invalid })).rejects.toMatchObject({ status: 502 })
+    }
+  })
   it.each(fixtures)('uses only the Native route and projects %s', async (operation, path, data, meta) => {
     const fetcher = vi.fn(async () => Response.json(nativeEnvelope(data, meta)))
     const result = await upstreamRequest(config, fetcher, operation, {

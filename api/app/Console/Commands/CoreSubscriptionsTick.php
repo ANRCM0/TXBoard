@@ -2,7 +2,7 @@
 
 namespace App\Console\Commands;
 
-use App\Domains\Subscription\Services\SubscriptionLifecycleService;
+use App\Domains\Subscription\Contracts\SubscriptionLifecycle;
 use Illuminate\Console\Command;
 use Throwable;
 
@@ -11,7 +11,7 @@ final class CoreSubscriptionsTick extends Command
     protected $signature = 'core:subscriptions-tick {--limit=100}';
     protected $description = 'Advance due native subscription boundaries within a bounded batch';
 
-    public function handle(SubscriptionLifecycleService $lifecycle): int
+    public function handle(SubscriptionLifecycle $lifecycle): int
     {
         try {
             $limit = $this->option('limit');

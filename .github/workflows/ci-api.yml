@@ -6,6 +6,8 @@ on:
     paths:
       - "api/**"
       - "!api/**/*.md"
+      - "contracts/core-api/**"
+      - "scripts/generate-core-contracts.py"
       - "contracts/v2/**"
       - "contracts/module-package/**"
       - "contracts/module-lifecycle/**"
@@ -30,6 +32,8 @@ on:
     paths:
       - "api/**"
       - "!api/**/*.md"
+      - "contracts/core-api/**"
+      - "scripts/generate-core-contracts.py"
       - "contracts/v2/**"
       - "contracts/module-package/**"
       - "contracts/module-lifecycle/**"
@@ -84,6 +88,7 @@ jobs:
       - name: Verify current Core domain boundaries
         working-directory: .
         run: |
+          python3 scripts/generate-core-contracts.py --check
           python3 scripts/check-core-boundaries.py
           python3 -m unittest discover -s scripts/tests -p test_check_core_boundaries.py
       - uses: shivammathur/setup-php@v2

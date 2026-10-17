@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\DB;
  * TXAPI checkout transition. Paid execution uses native frozen dispatch only;
  * legacy free-order behavior has no payment plugin entry point.
  */
-final class OrderCheckout
+final class OrderCheckout implements \App\Domains\Billing\Contracts\OrderCheckout
 {
     /** @return array{type:int,data:mixed} */
     public function start(int $userId, string $tradeNo, ?int $paymentMethod = null,
@@ -37,12 +37,12 @@ final class OrderCheckout
                 throw new BillingError('PAYMENT_IDEMPOTENCY_KEY_REQUIRED');
             }
             if ($wallet) {
-                return app(NativeWalletPayments::class)->pay($userId, (int) $locator->id, $requestKey);
+                return app(\App\Domains\Billing\Contracts\WalletPayments::class)->pay($userId, (int) $locator->id, $requestKey);
             }
             if ($paymentMethod === null || $paymentMethod < 1) {
                 throw new ApiException('Payment method is required', 422);
             }
-            $started = app(NativePaymentCheckout::class)->start($userId, (int) $locator->id, $paymentMethod, $requestKey, $walletMinor);
+            $started = app(\App\Domains\Billing\Contracts\PaymentCheckout::class)->start($userId, (int) $locator->id, $paymentMethod, $requestKey, $walletMinor);
             return $started['payment'] + ['attempt' => $started['attempt']];
         }
         if (!$native && (int) $locator->total_amount > 0) {

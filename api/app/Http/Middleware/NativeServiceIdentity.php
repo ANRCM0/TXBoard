@@ -74,6 +74,8 @@ final class NativeServiceIdentity
             return TxapiResponse::error($request, 'SERVICE_UNAUTHORIZED', 'Service authentication required', 401);
         }
         $request->attributes->set('native_internal_service', $service);
+        app(\App\Core\Host\Execution\InvocationScope::class)->service(
+            new \App\Core\Kernel\Execution\ActorRef('service', (string) $service->service_id));
         $audit->service($request, $service);
         return $next($request);
     }
