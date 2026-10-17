@@ -1,6 +1,6 @@
 # TXBoard 文档维护规范
 
-**文档面向读者，Contract 面向协议，实现代码决定当前行为。** 本规范适用于主仓库 `README*.md`、`docs/`、`contracts/` 及新增开发文档；独立部署、节点和 Gateway 仓库有各自的运行时权威资料。
+**文档面向读者，Contract 面向协议，实现代码决定当前行为。** 本规范适用于当前仓库的 Core、Gateway、Node 文档；独立 TXBoard-Deploy 维护安装和主机生命周期资料。
 
 ## 1. 单一权威来源
 
@@ -11,8 +11,8 @@
 | Node/Machine HTTP 与 WSS | `contracts/node-protocol/`、TX-Node 当前实现 |
 | Package/Bridge/Module 版本化协议 | `contracts/` |
 | 生产安装、更新、备份与 XBoard 导入命令 | [TXBoard-Deploy](https://github.com/ANRCM0/TXBoard-Deploy) |
-| TX-Node 运行时和安装器 | [TX-Node](https://github.com/ANRCM0/TX-Node) 与 TX-Node-Installer |
-| 用户主题 API BFF / SDK | [TXBoard-Gateway](https://github.com/ANRCM0/TXBoard-Gateway) |
+| TX-Node 运行时 | [node/](../node/README.md)，安装由 TXBoard-Deploy 负责 |
+| 用户主题 API BFF / SDK | [gateway/](../gateway/README.md) |
 | 已退役 Agent/MCP | [范围决定](architecture/v2/admin-only-scope.md)，旧文档从 Git 历史查询 |
 
 不要在多个 README 中维护可变的菜单编号、全部环境变量、接口完整列表或重复的发布快照。其他位置给出简要说明并链接到权威文档。
@@ -29,7 +29,7 @@
 
 具有时效性的文档可在标题下注明“适用版本/提交或更新日期”，但不要在每个 README 中复制一份需要持续同步的研发状态台账。
 
-已退役功能只保留一个范围与数据保留说明入口，不为旧路径复制空占位页。删除失效操作指南时同步修正索引和引用；仍需追溯的验收结果并入现有历史台账，既有验证 JSON、数据库迁移及审计记录不因文档清理删除。原操作过程通过 Git 历史查询，不作为当前命令指南。
+只保留当前使用、开发、接口、安全和运行恢复所需文档。旧路线图、阶段台账、历史盘点、重复设计和被替代指南从当前目录删除，不另写历史索引或兼容占位页。仍有效的不变量先合入其现有权威文档；删除时修复实际引用。既有验证 JSON、数据库迁移、金融及审计记录不因文档清理删除；原操作过程从 Git 历史查询，不作为当前命令指南。
 
 已退役协议和旧前端逐批计划不因“曾经验收”永久保留。当前索引移除失效入口；确需逐项追溯的历史记录链接到删除前的固定提交，不使用会漂移的分支 URL，也不把旧协议改链到语义不同的新协议冒充替代。仍适用的安全与维护要求收敛到现有权威指南；历史 JSON 中的路径和哈希按原证据保留。
 
@@ -62,6 +62,6 @@
 node scripts/check-docs.mjs
 ```
 
-检查范围：根 README/贡献说明、`docs/`、`contracts/`、Gateway/Node 的 README 与 `docs/` 内 Markdown 文件的**本仓库相对文件路径**；自动跳过外部链接与片段锚点。工具不访问网络，也**不验证 URL 可达性、动态生成的文档、标题锚点或代码示例执行结果**。删除文档还需检查非 Markdown 消费者，并确认固定提交包含所引用的原文；如修改版本化契约，仍需人工检查协议语义、Schema 与示例一致性。
+检查范围：根 README/贡献说明/AGENTS、`.github/`、API 领域与随包插件、`docs/`、`contracts/` 和 Gateway/Node 内维护的 Markdown 文件的**本仓库相对文件路径**；排除依赖、构建产物及 `node/internal/deps/` 的上游文档。自动跳过外部链接与片段锚点。工具不访问网络，也**不验证 URL 可达性、动态生成的文档、标题锚点或代码示例执行结果**。删除文档还需检查非 Markdown 消费者，并确认固定提交包含所引用的原文；如修改版本化契约，仍需人工检查协议语义、Schema 与示例一致性。
 
 文档 CI 对新增/修改的本仓库链接执行基本检查，不替代技术审查。

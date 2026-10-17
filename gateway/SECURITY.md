@@ -1,24 +1,27 @@
-# Security policy — TXBoard Gateway
+# Gateway Security Policy
 
-Gateway 是可选主题 API 适配器，不是 WAF、匿名化服务或端到端通信加密系统。任何公网入口都必须走有效证书的 HTTPS。漏洞请通过仓库的私有 Security Advisory 途径提交，切勿在公开 Issue、CI 或聊天中暴露凭据。
+Gateway 是固定 API 适配器，不是 WAF、匿名化服务或端到端通信加密系统。公网必须经有效证书的 HTTPS。漏洞通过仓库私有 Security Advisory 提交；公开 Issue、日志、工件或聊天不得包含凭据。
 
-## 已实现的控制（PR #4～#7）
+## 当前控制与归属
 
-- 静态上游路径白名单、精确 Origin CORS、no-store、有限请求/响应大小、超时和错误类型映射。
-- 仅按需向 Laravel 发送当前用户 Bearer；不转发管理员安全路径、账户订阅原始 Token、支付敏感配置。
-- 可选 HPKE 密文请求（**只保护请求体**），绑定方法/操作/kid/时间戳/nonce；私钥仅从 Docker 文件 Secret 加载。
-- HPKE 模式必须使用 Redis，`SET NX PX` 原子登记 nonce；故障 503、重放 409，不回退本地缓存。
-- 邮箱维度固定窗口限流，登录 8/分钟、注册 3/10分钟、邮件 2/10分钟；超过限额返回 429。
-- 加密注册与发验证码功能 **默认关闭**；订单支付写入、节点/管理员/支付回调不由 Gateway 代理。
+- 静态上游/路由策略、严格请求 DTO 与 Native 响应投影、精确 Origin/Host、受限大小/超时、no-store 和安全头；不提供任意 host/path 代理。
+- 普通用户 Bearer 只转发给需要的操作；管理员原生入口和支付/Node/订阅路由独立。服务端 Native User/Admin 客户端使用各自 mTLS、service credential/epoch，Core 仍复验 actor/RBAC；这些秘密不进入 Theme SDK。
+- HPKE v1 只加密请求体，已含当前/旧 key、过期与吊销、固定 AAD、毫秒 ±60 秒窗口。Redis 原子 replay TTL 121 秒；重放 409，故障 503，无本地 replay 回退或自动明文降级。
+- Redis 原子 IP/账号双维滑动窗口，敏感路径 fail-closed；公开/只读按策略降级并观测。账户预算独立计数，真实 Core 自身 CAPTCHA/限流/授权不可取消。
+- 受限结构化日志/指标；禁止 Authorization、密码、完整邮箱、CAPTCHA、正文、私钥、订阅私密地址和上游内部异常。依赖锁、SBOM/审计脚本及独立镜像上下文不因合仓合并权限。
 
-## 未完成的安全保障
+## 不可省略的限制
 
-- 没有生产可信代理/Host/IP 风控证明；仅 Origin 不是服务器鉴权。邮箱维度限流可遭到“消耗他人限额”攻击，Laravel 旧 API 不受 Gateway 风控约束。
-- Redis 的健康期间原子占位**不代表**异步复制/故障切主时永不丢 nonce；部署审查必须测 Redis 持久化、AOF、切主以及容量耗尽行为。
-- 没有多 kid 解密轮换窗口、密钥吊销、独立密码学/安全审计，HPKE 不应被描述为完整双向业务数据保护；TLS 不可省。
-- 没有完整的生产结构化审计日志、指标与告警、WAF/IP 防刷、真实 CAPTCHA/邮件验证联调和故障预案。
-- 没有 Laravel 持久化交易幂等；不能开放订单创建、扣款、checkout、支付回调及快速购买。
+HPKE base mode 不认证发送者，不防主题 XSS，也不保证长期私钥泄露后历史密文保密；响应/Bearer 仍依赖 TLS。吊销不能销毁已泄露的 key。轮换窗口从进程加载时算起，发现响应当前可短缓存，不能承诺全副本和缓存瞬时吊销。
 
-真实 TXBoard 环境验收按产品决策**暂缓**，不是完成或豁免正式上线门禁。只有在独立 Staging、外部审查、性能/代理故障注入和回滚全通过后，才可考虑生产放量。
+Redis 正常期间的 `SET NX PX` 不代表故障切主、旧快照恢复或丢键后仍强一致。replay 不是业务幂等，Gateway 不持资金/订单账本；未知写结果不能自动换 key 或重复扣款。历史浏览器 `plan_id/period` 不兼容 Native `offer_id`，订单写开关保持默认关闭。
 
-参阅：[开发状态](./docs/development-status.md) · [HPKE/Redis 限制](./docs/app-crypto-preview.md) · [Docker 操作与回滚](./docs/docker-deployment.md) · [GW-207 依赖/SBOM/签名/CSP-TLS 审计报告](./docs/security-audit-gw207.md)。
+`/healthz` 仅 liveness，默认 upstream readiness 是占位。源码中的可信入口、指标和密钥生命周期不替代生产 PKI/代理链、Redis 恢复、容量及密码学审查证据。第三方主题/插件需信任作者，不能将同源 JS 或可信同进程 PHP 描述为沙箱。
+
+三项 SDK SC-v2 experimental 子路径及共享 owner 工程夹具仅限离线/测试；当前没有正式网络 SC-v2 入口。共享 owner 校验与 WebCrypto 加密不是原子 fence，盐候选也不证明 replay/恢复或 actor 权限。
+
+## 部署与恢复
+
+Gateway/Redis 不直接开放公网；私钥和 mTLS 文件只读、最小权限注入，不进 Git/镜像/日志。只能分流 `/gateway/v1/*`；停用 Gateway 不得删除 Core MySQL/Redis/财务记录或恢复退役 API。安全事件先收紧受影响入口，保存脱敏证据并核对实际已提交业务，不伪造成功/失败结果。
+
+当前细节：[加密与实验限制](docs/app-crypto-preview.md) · [架构](docs/architecture.md) · [Native 接入](docs/native-core-integration.md) · [部署恢复](docs/docker-deployment.md) · [版本与验证](docs/development-status.md)。

@@ -8,13 +8,11 @@
 
 > **项目状态**：仓库持续开发中。CI、镜像构建和单元测试不等于真实环境生产验收；特别是数据库迁移、支付、节点接入和第三方扩展，请按 [上线验收清单](docs/operations/release-staging-acceptance.md) 独立验证。不要直接将开发标签用于生产。
 
-## 当前开发进度
+## 当前实现
 
-2026-10-16，C1 购买权益和 C2 原生订阅闭环已合入 main，包含真实 Provider 签发/轮换、直接渲染、有限授权、持久用量和原周期结算。C2 仅开放免费 Offer，有界支持 Linux sing-box VLESS/VMess direct TCP；其他已有内核与协议不代表完整 native 验收。
+当前主线已包含原生订阅/用量、CNY 支付结算、钱包与退款、升级折抵、统一插件框架及正式服务接口子集。退款仅到钱包，不反转权益或履约 work；不兼容旧插件。具体支持范围与未验收边界统一见[当前实现基线](docs/architecture/v2/current-progress.md)，不以合并或 CI 通过宣称完整内核成熟、生产可用或已发布。
 
-本分支正在整合 C3/C4 候选：支付渠道插件、真实结算/钱包/退款、正式服务入口、独立链接和显式信任轮换。候选不代表已合并或发布；升级折抵、部分权益全退策略、支付插件版本交接及集成验收仍未收口，详见[内核成熟度评审](docs/architecture/v2/core-maturity-review.md)。
-
-项目尚未接入正式测试，不再承担旧版本过渡兼容；以 native 为开发基线，接口、Schema 和真实消费者可以同步调整。CI 按当前组件收敛，旧迁移和影子矩阵仅保留手动入口。C3/C4 收口后进入 C5 安装发布，新前端继续延期至 TX-F。详见[开发基线与 CI 分工](docs/development/native-development-baseline.md)、[当前进度](docs/architecture/v2/current-progress.md)和[交付计划](docs/architecture/v2/core-completion-plan.md)。
+项目尚未接入正式测试部署；只维护当前 native 契约及真实消费者，不承担旧版本过渡兼容。新增前端延期至 TX-F，安装器由 TXBoard-Deploy 维护。开发与数据安全规则见[Native 开发基线](docs/development/native-development-baseline.md)。
 
 ## 核心能力
 
@@ -98,7 +96,7 @@ sudo bash install.sh
 
 ## 安全与许可
 
-- 管理员、用户、Node 和 Agent 分别使用独立鉴权与权限约束。不要将安全路径 `secure_path` 当成身份认证。
+- 管理员、用户、Node/Machine 和服务客户端分别使用独立鉴权与权限约束，旧 Agent 凭据拒绝。不要将安全路径 `secure_path` 当成身份认证。
 - PHP 插件是可信的进程内代码，**不是安全沙箱**；安装第三方包前应核验来源。
 - 不要把 Token、数据库备份、支付密钥或包含敏感信息的日志提交到公开仓库。
 - 安全约束详见 [安全基线](docs/security/README.md)。

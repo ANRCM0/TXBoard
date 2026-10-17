@@ -63,4 +63,4 @@ Core 的业务领域可以继续细分负责人，但当前共享 User/Order/流
 
 上述为协作约定与待办；文档、模板本身不能强制 GitHub 权限或审批。未核实的远端设置不宣称已启用。本批不创建团队、邀请成员或修改保护规则。
 
-关联文档：[仓库与镜像布局](repository-layout.md)、[批次开发流程](development-workflow.md)、[开发优先级](../architecture/v2/development-priorities.md)、[主仓行为约束](../../AGENTS.md)。安装器 PR 入口为 TXBoard-Deploy `CONTRIBUTING.md` 与 `.github/pull_request_template.md`。
+关联文档：[仓库与镜像布局](repository-layout.md)、[批次开发流程](development-workflow.md)、[当前实现基线](../architecture/v2/current-progress.md)、[主仓行为约束](../../AGENTS.md)。安装器 PR 入口为 TXBoard-Deploy `CONTRIBUTING.md` 与 `.github/pull_request_template.md`。

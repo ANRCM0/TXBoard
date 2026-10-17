@@ -2,13 +2,13 @@
 
 > 更新：2026-10-17。C1、C2 及 C3/C4 本批实现已合入 main；C3-A 见 PR #260（`070a5df`），结算、钱包退款、升级折抵、统一插件框架及 C4 服务接口子集见 PR #261（`eba7ed8`）。合并不等于完整 C4、C5 或生产验收完成；各协议仍按自己的支持范围和限制阅读。
 
-项目仍处开发阶段，尚未接入正式测试，以当前 native 为开发基线，不承担旧版本过渡兼容。允许生产者、真实消费者与契约同步变更；不为历史协议新增双轨适配。旧迁移/隔离切片的历史证据保留；已退役源码与命令不再可调用，清理范围见 [Core 清理](../../docs/development/core-cleanup.md)，开发规则见[开发基线](../../docs/development/native-development-baseline.md)。
+项目仍处开发阶段，尚未接入正式测试，以当前 native 为开发基线，不承担旧版本过渡兼容。允许生产者、真实消费者与契约同步变更；不为历史协议新增双轨适配。旧迁移/隔离切片的历史证据保留；已退役源码与命令不再可调用，当前领域入口见[架构总览](../../docs/architecture/v2/README.md)，开发规则见[开发基线](../../docs/development/native-development-baseline.md)。
 
 TXBoard 是业务与数据权威。Gateway、Deploy、TX-Node 与可选插件按本目录的版本化契约协作，不能分别定义订单、授权、流量与升级的业务真相。`v2` 是平台演进目录；其中每项协议有自己的版本，不代表全部协议同时升到第二版。
 
 2026-10-13 [当前范围](../../docs/architecture/v2/admin-only-scope.md)：管理前端与用户前端均暂缓，后续集中到独立 `TX-F` 项目，只本地提交、不推送；本仓推进 Core、Gateway、Node，安装器独立成库；Agent/MCP 已退役。现有 Admin/User UI/Theme 的真实消费者继续维护，不承担历史格式兼容；Admin 迁移仍要求独立服务身份、Core 当前授权与通道验收。
 
-| 契约 | 负责边界 | 实施批次 |
+| 契约 | 负责边界 | 范围 |
 | --- | --- | --- |
 | [Core Commerce v1](core-commerce-v1.md) | 正式订单购买快照与履约输入；不等于订阅/账务权威切换 | Core C1 |
 | [Core Subscription v1](core-subscription-v1.md) | 安装准备、正式目录及订阅聚合基础；生产启用条件由 Native C2 Runtime v1 补充 | Core C2 基础 |
@@ -20,10 +20,9 @@ TXBoard 是业务与数据权威。Gateway、Deploy、TX-Node 与可选插件按
 | [Native Upgrade Credit v1](native-upgrade-credit-v1.md) | 不可变来源报价、现金 claim 与非现金 carry、按源折算、永久键及最长两小时有效期；接受与 SQL 升级原子提交 | C3，已合并 |
 | [Native Internal API v1](native-internal-api-v1.md) | 正式服务凭据、实际 actor、mTLS/epoch、固定 operation、审计与原键恢复；不开放任意业务操作 | C4 已合并子集 |
 | [Native Provider Lifecycle v1](native-provider-lifecycle-v1.md) | 显式信任轮换、独立链接与有限授权；生产 PKI/信任分发未验收 | C4 已合并子集 |
-| [Credential Provider v1](credential-provider/README.md) | 秘密归属与生命周期目标；当前发行、Node 交付以目录内 native 契约为准 | B4 目标及当前入口 |
+| [Credential Provider v1](credential-provider/README.md) | 秘密归属；发行、Node 交付、生命周期及有限离线诊断 | 当前入口 |
 | [Node Usage v2](node-usage/README.md) | 当前 native 计费主体、持久接收、原周期结算与重放 | C2 native |
-| [Secure Channel v2](secure-channel/README.md) | User/Admin 安全域、双向加密、密钥与防重放 | B6 |
-| [Upgrade Manifest v1](upgrade-manifest/README.md) | 兼容矩阵、迁移阶段、检查点与恢复 | B2 |
+| [Secure Channel v2](secure-channel/README.md) | 隔离 SDK 实验与未开放业务通道的安全边界 | Experimental |
 
 ## 当前接口仍然有效
 
@@ -38,6 +37,4 @@ TXBoard 是业务与数据权威。Gateway、Deploy、TX-Node 与可选插件按
 - 修改已实现的对外行为时，更新对应当前契约和真实消费者；本目录不能作为绕过现有约束的依据。
 - 示例是非秘密的目标格式；没有执行迁移或开放接口。
 
-[B0 入口与状态](../../docs/architecture/v2/README.md) · [实施顺序](../../docs/architecture/v2/implementation-plan.md)
-
-已退役的 shadow、authority v1-v6、隔离 Internal API、合成 Provider 和隔离 Usage 协议不再保留独立页面或目录占位。历史结果与固定提交原文入口集中在[实施台账](../../docs/architecture/v2/implementation-plan.md)；既有验证 JSON 的路径和哈希保持原样，不是当前运行时依赖。
+旧阶段计划和已退役协议从当前目录移除，原文从 Git 历史查询；历史验证 JSON 保留原字节，不作为当前调用面。安装与恢复操作以 TXBoard-Deploy 对应版本为准。

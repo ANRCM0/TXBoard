@@ -14,7 +14,7 @@ import { fail, ok, validated, type RouteContext, type RouteDeps } from './shared
  *
  * This module exists ONLY when GATEWAY_ORDER_WRITE_ENABLED is set. It is a
  * thin, stateless pass-through, and every line of it answers to three rules
- * from the M3 boundary (docs/adr-order-idempotency.md §7, GW-304 acceptance):
+ * from the current boundary (contracts/gateway-v1.md, order-write adapter):
  *
  *  1. **No admin token, no business rules.** The Gateway forwards the USER's
  *     own bearer verbatim. It never recomputes a price, never checks a
@@ -23,8 +23,8 @@ import { fail, ok, validated, type RouteContext, type RouteDeps } from './shared
  *
  *  2. **No local idempotency.** The Gateway holds no idempotency state: the
  *     `Idempotency-Key` is forwarded verbatim and the `X-Idempotency-Key-Hint`
- *     is a correlation value derived from the body alone. Laravel's persisted
- *     `idempotency_keys` table is the only authority.
+ *     is a correlation value derived from the body alone. Core owns persisted
+ *     idempotency and every financial decision.
  *
  *  3. **Fail loud, never fail silent.** A missing or malformed key is a 400
  *     before ANY upstream call; an upstream idempotency verdict is surfaced

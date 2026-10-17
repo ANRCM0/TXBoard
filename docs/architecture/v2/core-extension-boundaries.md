@@ -1,6 +1,6 @@
 # Core 内核业务与插件扩展边界
 
-> ADR-CF-002 · 决策日期：2026-10-16 · 更新：2026-10-17 · 状态：架构方向已确认，相关实现按 C3/C4 交付。
+> ADR-CF-002 · 决策日期：2026-10-16 · 更新：2026-10-17 · 状态：当前业务及统一扩展框架边界。
 >
 > 本文细化 [Core First 边界](core-boundaries.md)：支付渠道属于插件，支付事实与资金一致性属于 Core。它不是插件重构、生命周期保护或 C3/C4 已验收完成的声明。与历史目标文档冲突时，以本文和 [Native 开发基线](../../development/native-development-baseline.md)为准；具体接口仍须由版本化契约和真实消费者共同实现。
 
@@ -71,7 +71,7 @@ Registry 不能从用户输入加载任意 PHP 类、URL 或商户配置。扩�
 3. 任意历史 native dispatch 都永久 pin 原插件包。managed 破坏性升级、上传替换、卸载和删除均拒绝；终态、超时或禁用不能解除。没有 dispatch 的当前契约包可依照现有完整包流程更新。不能通过删除密钥或覆盖原冻结配置切断恢复。
 4. 重放旧通知仍校验原商户和原尝试，不因当前渠道配置改变而接受另一账户的结果。财务证据的保留不依赖插件是否仍在活动清单中。
 
-当前统一框架要求显式的 `package.schema=1`、`type=payment` 与闭集 `payment.contract/provider/snapshot_schema`，实现 typed 接口及代码侧包版本字面量，并核对 manifest、数据库、已加载类和冻结版本。候选保留持久 mutation fence、archive/资源安全及 Octane 旧代码拒绝。它不维护旧插件兼容、多版本代码仓库或自动版本交接；永久金融 pin 是明确的维护限制与证据安全策略，不是本轮必须补齐的旧插件兼容能力。统一框架与新插件开发指南已具备候选实现，仍须在新提交 CI 验证。
+当前统一框架要求显式的 `package.schema=1`、`type=payment` 与闭集 `payment.contract/provider/snapshot_schema`，实现 typed 接口及代码侧包版本字面量，并核对 manifest、数据库、已加载类和冻结版本。当前实现保留持久 mutation fence、archive/资源安全及 Octane 旧代码拒绝。它不维护旧插件兼容、多版本代码仓库或自动版本交接；永久金融 pin 是明确的维护限制与证据安全策略，不是本轮必须补齐的旧插件兼容能力。统一框架与新插件开发指南已合入当前主线；具体范围见各契约，不等于生产验收。
 
 ## 4. 插件边界不等于安全沙箱
 
@@ -93,11 +93,11 @@ Core 自身会话、服务身份与支付商户认证配置按各自边界保护
 
 这里的 Node Agent 是数据面运行角色，不是已退役的产品 Agent/MCP。支付 Provider 与 Credential Provider 也不是同一契约；不能因名称相似而共享凭据或秘密政策。
 
-## 6. 当前代码映射与 C3/C4 收口
+## 6. 当前代码映射
 
 - [PaymentService](../../../api/app/Services/PaymentService.php) 只保留管理名单与表单门面，与 checkout 共用验证后的 Native Registry；不再经 hooks 发现渠道。当前仅 [Epay](../../../api/plugins-core/Epay/Plugin.php) 随包提供可用支付协议；只有旧接口的 AlipayF2f 已移除，不新增兼容适配。随包发布不使渠道协议变成 Core 领域。
 - 具体 EPay 协议位于 `plugins-core/Epay/NativeAdapter.php`，Core 经 [typed 支付契约](../../../contracts/v2/native-payment-provider-v1.md)和 Registry 调用，不保留平行 Core EPay adapter。新插件遵守[统一包契约](../../../contracts/plugin-package/README.md)及[开发指南与 fail-closed starter](../../development/payment-plugin-development.md)，无需修改 Core 渠道 switch。
 - Core 保留共享 attempts、收款事实、钱包、账本、退款约束与履约。充值与购买复用同一渠道契约和收款权威，不分别实现一套支付状态机。
-- [升级折抵](../../../contracts/v2/native-upgrade-credit-v1.md)属于 Core 报价业务：全部 native upgrade（含零抵扣）持久化来源/订阅/周期指纹，现金 claim 与非现金 carry 分开；有限期来源按 UTC 秒、按来源与分量分别向下取整，报价最长两小时且永久键重放不刷新。净额为零走免费结账；接受资金或免费结账与 SQL 升级同事务提交。此项是本批候选，不能套用旧 `e9e65f2` 的成功检查。
+- [升级折抵](../../../contracts/v2/native-upgrade-credit-v1.md)属于 Core 报价业务：全部 native upgrade（含零抵扣）持久化来源/订阅/周期指纹，现金 claim 与非现金 carry 分开；有限期来源按 UTC 秒、按来源与分量分别向下取整，报价最长两小时且永久键重放不刷新。净额为零走免费结账；接受资金或免费结账与 SQL 升级同事务提交。此项已合入当前主线，验证状态见[实现基线](current-progress.md)。
 - C4 的直接 API、Internal API、Worker 和 CLI 委托同一 Core 领域服务。跨进程的服务认证不能代替实际调用者授权，也不能给插件开通通用 SQL、Shell 或任意网络执行入口。
-- 后续实现需同步更新契约、包/DTO、真实调用者、生命周期保护与针对性测试。当前 [交付计划](core-completion-plan.md) 和[进度](current-progress.md)继续区分候选实现、CI 验证、合并和发布，本文不提升其完成状态。
+- 后续实现需同步更新契约、包/DTO、真实调用者、生命周期保护与针对性测试。[实现基线](current-progress.md)区分实现、精确提交验证、合并和发布，不以架构说明提升完成状态。

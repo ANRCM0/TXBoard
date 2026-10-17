@@ -1,7 +1,7 @@
 # Native upgrade credit v1
 
-Status: current native development contract; candidate acceptance is recorded on
-the exact PR head. This is a Core price adjustment, not a payment plugin feature.
+Status: current native development contract, merged in PR #261; acceptance is
+scoped to the exact PR head, not production release. This is a Core price adjustment, not a payment plugin feature.
 
 ## Quote and policy
 

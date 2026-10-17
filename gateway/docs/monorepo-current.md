@@ -35,10 +35,10 @@ Gateway 的 TypeScript builder 在 `BUILDPLATFORM` 上运行，最终 Node 容�
 
 Native 联调的 `TXBOARD_CORE_REPO` 指向主仓根目录，`TXBOARD_CORE_VENDOR` 指向其 `api/vendor`。`tests/integration/run-linux.sh` 仍归档 committed Core，再从 `gateway/` 构建消费者，不读取未提交的 Core 业务改动。
 
-2026-10-16 已退役隔离 Internal User/Admin mTLS 消费者、快照工具、TLS launcher 和专属验收矩阵。当前 Gateway 只适配 Core 已注册的固定 `/txapi/*` 操作，未来管理员入口仍待独立实现。
+当前服务端 `NativeCoreClient`/CLI 通过独立 User/Admin mTLS 调用固定 operation；浏览器仅 login/guestConfig 可选 User service，管理员浏览器入口未开放。不要把此前隔离原型的退役记录当作当前源码；实际配置与验证边界见 [Native 接入](native-core-integration.md)。
 
 ## SDK 兼容边界
 
-包名仍为 `@txboard/theme-sdk`，版本 `0.1.0`；当前未发布 npm。ESM、声明文件、Node 下限、公开导出（含两个 experimental 子路径）、`/gateway/v1`、HPKE AAD 和 `{ok,data,meta}` 信封均未因移动目录改变。SDK 不保存用户凭据，公共接口不附带 Bearer，未知写结果不自动重试。
+包名仍为 `@txboard/theme-sdk`，版本 `0.1.0`；当前未发布 npm。ESM、声明文件、Node 下限、公开导出（含三个 experimental 子路径）、`/gateway/v1`、HPKE AAD 和 `{ok,data,meta}` 信封均未因移动目录改变。SDK 不保存用户凭据，公共接口不附带 Bearer，未知写结果不自动重试。
 
 统一 `v*` 镜像发布不等于 SDK npm 发布。正式 npm 发布仍需独立版本/CHANGELOG、干净 tarball 安装、浏览器与 SSR 隔离、声明消费及 provenance/发布身份验收；迁移没有把历史发布设计当作已实现工作流。打包仍在 `gateway/` 运行 `npm pack --dry-run --workspace @txboard/theme-sdk`，只包含包自身 dist/README，不包含 Core、Node、secrets 或源码仓目录。

@@ -8,7 +8,7 @@
 | 订单、余额、充值和工单 | `/txapi/orders/*`、`/txapi/billing/*`、`/txapi/tickets/*` | 用户 Sanctum Bearer |
 | 管理员 | `/txapi/admin/{admin_path}/*` | 管理员 Bearer、动态路径与 RBAC |
 | TXNode HTTP | `/txapi/node/v1/*` | Node/Machine Bearer + 节点/机器身份头 |
-| Node Usage v2 接收 | `/txapi/node/v2/usage/*` | 同一 Node/Machine 身份；legacy 仅显式 local/testing 副本，native 受就绪与签名 Session 门禁约束 |
+| Node Usage v2 接收 | `/txapi/node/v2/usage/*` | 同一 Node/Machine 身份；当前 native 受就绪与签名 Session 门禁约束 |
 | TXNode WS | `wss://<host>/txapi/node/v1/ws` | Workerman Upgrade、专用身份头、功能开关 |
 | 支付商回调 | `GET/POST /txapi/payment/webhook/{method}/{uuid}` | 提供商签名，原始 ACK |
 | Telegram 回调 | `POST /txapi/integrations/telegram/webhook` | Telegram 验证摘要 |
@@ -39,7 +39,7 @@ C2 合并基线仅支持零价 Offer。2026-10-17 合并的 C3/C4 实现进一�
 免费 checkout 同样必需永久幂等键。退款仅入钱包，不做权益精准回滚或原路退款；
 旧支付插件不兼容，不能启用旧协议交接或猜测资金与权益。
 详见[结算](../v2/native-payment-settlement-v1.md)、[钱包退款](../v2/native-wallet-refunds-v1.md)、
-[升级折抵](../v2/native-upgrade-credit-v1.md)和[内核成熟度](../../docs/architecture/v2/core-maturity-review.md)。
+[升级折抵](../v2/native-upgrade-credit-v1.md)和[当前实现基线](../../docs/architecture/v2/current-progress.md)。
 
 C2-C1另注册以下用户Bearer入口，均保留native安装门禁：
 `POST /txapi/me/access-subjects`要求订阅ID、已配置Provider/Profile、预期订阅版本和幂等键；

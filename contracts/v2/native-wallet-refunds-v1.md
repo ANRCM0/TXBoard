@@ -1,8 +1,8 @@
 # Native wallet, recharge and refunds v1
 
-Status: current C3 development contract, updated 2026-10-17. The wallet-only
-refund and upgrade-credit changes are candidates awaiting exact-head CI;
-successful checks on the earlier e9e65f2 head do not validate this batch.
+Status: current native development contract, merged in PR #261. Wallet-only
+refunds and upgrade credits are included in its exact-head acceptance; see the
+[current implementation and validation limits](../../docs/architecture/v2/current-progress.md).
 
 ## Money authority and payment choices
 

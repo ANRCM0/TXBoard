@@ -1,12 +1,11 @@
 # SC-v2 offline crypto experiment v1
 
-Status: B6.2 isolated SDK experiment. Gateway commit
-`2a5d2ee2dd01a7568a0b121236b158fa5339fd8e` adds the explicit
+Status: isolated SDK experiment at the explicit
 `@txboard/theme-sdk/experimental/sc-v2-crypto` subpath. It has no Gateway/Core
 HTTP or business consumer. The [SC-v2 target gates](README.md) remain open.
 
-The [implementation contract](https://github.com/ANRCM0/TXBoard-Gateway/blob/2a5d2ee2dd01a7568a0b121236b158fa5339fd8e/docs/sc-v2-crypto-experimental.md)
-records the exact candidate framing and limits. Locked HPKE core 1.9.0/common
+The [implementation](../../../gateway/packages/theme-sdk/src/experimental/sc-v2-crypto.ts)
+defines the candidate framing and limits. Locked HPKE core 1.9.0/common
 1.10.1 uses base P-256/HKDF-SHA256/AES-256-GCM for the request. Separate exporter
 labels derive a 32-byte response key and 12-byte nonce for WebCrypto AES-GCM.
 Request metadata, ciphertext digest, response kind and status are bound to the
@@ -39,20 +38,10 @@ Key discovery/rotation/revocation, actor policy, encrypted error ownership,
 business-idempotent retries and independent protocol review also remain gates.
 The experiment implements no Redis ownership or replay policy.
 
-## Verification
+## Verification boundary
 
-The fixed Linux base `e8875e7` plus the exact experiment passed 467 Gateway tests,
-68 SDK tests including 28 crypto tests, and both workspace typecheck/build.
-Actual Chromium 155 passed deterministic request/response and odd-y fixtures,
-three rejection checks and four live Node/browser exchanges in both directions,
-including empty, Chinese and maximum-size bytes. Existing metadata vectors
-passed unchanged. A static loopback browser harness is not an encrypted HTTP
-business operation.
-
-The [verification report](https://github.com/ANRCM0/TXBoard-Gateway/blob/2a5d2ee2dd01a7568a0b121236b158fa5339fd8e/docs/sc-v2-crypto-verification.json)
-distinguishes fixed-gate bytes, later documentation edits and LF/CRLF lockfile
-bytes. The [design review](https://github.com/ANRCM0/TXBoard-Gateway/blob/2a5d2ee2dd01a7568a0b121236b158fa5339fd8e/docs/sc-v2-crypto-design-review.md)
-and [implementation review](https://github.com/ANRCM0/TXBoard-Gateway/blob/2a5d2ee2dd01a7568a0b121236b158fa5339fd8e/docs/sc-v2-crypto-implementation-review.md)
-are engineering reviews of this offline scope, not a formal cryptographic audit.
-The deterministic reference uses the pinned library and public fixture scalars;
-it is not an independent cryptographic implementation.
+The [historical verification report](../../../gateway/docs/sc-v2-crypto-verification.json)
+records fixed-source Node/Chromium vectors and their original environment.
+It is not current-head acceptance, a network business operation or a formal
+cryptographic audit. The deterministic reference uses the pinned library and
+public fixture scalars, not an independent cryptographic implementation.

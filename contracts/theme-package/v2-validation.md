@@ -1,7 +1,7 @@
 # Theme Package v2: admission validation (GW-502, phase 1)
 
-This directory contains a **non-executing validator** for the proposed
-[Gateway Theme Package v2 ADR](https://github.com/ANRCM0/TXBoard-Gateway/blob/main/docs/adr-theme-package-v2.md).
+This directory contains a **non-executing validator** for the current
+[static Theme Package contract](README.md).
 
 ## Implemented in this phase
 

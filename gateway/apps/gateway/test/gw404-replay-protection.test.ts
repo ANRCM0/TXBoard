@@ -14,7 +14,7 @@ import { encryptForOperation, encryptLoginPayload } from '../../../packages/them
 /**
  * GW-404 抗重放验收矩阵（RP-1～RP-10）与 GW-406 故障注入/性能（FI、PERF）。
  *
- * 判据（docs/adr-replay-protection-and-audit.md）：
+ * 判据（docs/app-crypto-preview.md）：
  *  - D1 nonce 唯一性：Redis 单命令 `SET NX PX`，键 `txbgw:v1:replay:<kid>:<nonce>`，
  *    TTL = 窗口×2 + 1000 = 121s。
  *  - D2 窗口 ±60s 硬编码，越窗 400 且**不接触 Redis**。

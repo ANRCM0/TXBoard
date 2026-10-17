@@ -37,7 +37,7 @@ export type UpstreamOperation = keyof typeof allowlistedPaths
  * on the order-write path. The client's own `Idempotency-Key` header is
  * forwarded verbatim (the SDK sets it; the Gateway never generates one from
  * user data); `X-Idempotency-Key-Hint` is the Gateway-derived hint from
- * ADR §7.2. Nothing else — no Origin, no X-Forwarded-*, no credential — is
+ * contracts/gateway-v1.md. Nothing else — no Origin, no X-Forwarded-*, no credential — is
  * ever added by this mechanism.
  */
 export const ORDER_WRITE_FORWARDED_HEADERS: ReadonlySet<string> = new Set([
@@ -97,8 +97,8 @@ function publicErrorMessage(status: number): string {
 
 /**
  * GW-304: map an upstream order-write rejection to the Gateway's frozen error
- * vocabulary. The verdict codes are Laravel's (docs/adr-order-idempotency.md
- * §7.3); the Gateway never invents them and never degrades an idempotency 409
+ * vocabulary. Core owns the verdict codes (contracts/gateway-v1.md);
+ * the Gateway never invents them and never degrades an idempotency 409
  * to a generic 502 — the client must be able to tell "retry later" from
  * "conflict" from "the request was refused".
  *

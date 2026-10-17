@@ -1,6 +1,8 @@
 # Native payment provider v1
 
-Status: implementation candidate for ADR-CF-002; acceptance remains CI-only.
+Status: current unified payment plugin contract, merged in PR #261.
+Exact-head validation and production limits are recorded in the
+[current baseline](../../docs/architecture/v2/current-progress.md).
 
 ## Ownership and registration
 

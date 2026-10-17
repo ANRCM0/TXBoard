@@ -1,19 +1,19 @@
 # TXBoard Gateway HTTP API — v1
 
-> **CURRENT / 已实现合同：/gateway/v1。** 未来 /txapi/bff/v1 见 [目标合同](./txapi-bff-target-v1.md)，目前尚未实施。
+> **CURRENT / 当前 Gateway 适配合同：/gateway/v1。** `/txapi/bff/v1` 未注册。此页描述现有适配器，不保证每项历史 DTO 都兼容当前 Native Core；尤其 `plan_id/period` 订单创建不能替代 `offer_id`。
 >
-> **实现状态：**2026-10-12 已完成当前 14 项操作的 Native 适配与隔离 Core/Gateway HTTP 联调；环境为 PHP 8.4、MariaDB 11.4 和 Redis，生产部署、MySQL 8.4、目标 BFF 与 B5/B6 总验收尚未完成。详见 [联调记录](../docs/native-core-integration.md)。
+> **验证范围：**2026-10-12 隔离 HTTP 结果只覆盖其记录的 Core/Gateway 版本（PHP 8.4、MariaDB 11.4、Redis），不代表后续 Native 业务改动已验收。服务端 mTLS 通道与当前限制见 [Native 接入](../docs/native-core-integration.md)。
 
 ## 请求与错误格式
 
 - Base URL `/gateway/v1`，仅 Gateway 存活检查位于 `GET /healthz`。
-- UTF-8 JSON、无 cookie、no-store；Origin 必须严格匹配已配置名单。它不是服务器认证机制。
+- UTF-8 JSON、无 cookie；用户/敏感响应 no-store，`public-short` 成功 GET 可短缓存（含 `/crypto/key`，轮换/吊销须考虑缓存传播）。Origin 必须严格匹配已配置名单，它不是服务器认证机制。
 - 成功：`{"ok":true,"data":{},"meta":{"version":"1","requestId":"..."}}`。
 - 失败：`{"ok":false,"error":{"code":"...","message":"..."},"meta":{"version":"1","requestId":"..."}}`。
 - 核心错误：400（入参）、401（缺 Token/上游未授权）、403（Origin）、404（未找到）、405（订单写入禁用）、409（HPKE 重放）、413（请求过大）、422（Laravel 校验）、429（账号限流或上游限流）、502/504（坏网关/超时）、503（Redis 安全存储不可用）、500（内部错误）。
 - 上游仅接受 Native `{data,meta?,request_id}` / `{error:{code,message,fields?},request_id}` 信封，并按操作校验 DTO；退休的 `status:success` 与旧 paginator 不再接受。错误正文不公开上游内部信息。
 - **权限判断始终以 Laravel 为准**。用户 GET 路由需 `Authorization: Bearer <user-token>`；无用户身份的页面不允许向 Gateway 提交管理员 Token。
-- 当前上游只使用固定 Core `/txapi/*` 路由。隔离 Internal User/Admin mTLS 原型、其开关和消费者已退役，没有管理员 Gateway。
+- 普通适配使用固定 Core `/txapi/*`；配置独立 User service 后，`login`、`guestConfig` 可选真实 mTLS operation 通道。服务端另有独立 Admin client，但没有管理员浏览器路由，不能向 SDK 注入服务凭据。
 
 ## 固定路由矩阵
 
@@ -36,7 +36,7 @@
 | POST `/secure/auth/login` | 启用 HPKE+Redis 时密文登录 | `/txapi/auth/login` |
 | POST `/secure/auth/register` | **默认关闭**，需 HPKE+Redis 和账户开关 | `/txapi/auth/register` |
 | POST `/secure/auth/email-code` | **默认关闭**，需 HPKE+Redis 和账户开关 | `/txapi/auth/email-code` |
-| POST `/orders` | **默认 405、零上游调用**；`GATEWAY_ORDER_WRITE_ENABLED=true` 时启用订单写入适配层（GW-304），需 Bearer + `Idempotency-Key` 头 | `/txapi/orders`（仅 `orderWrite` 策略） |
+| POST `/orders` | **默认 405、零上游调用**；显式开关保留历史写适配，不兼容 Native `offer_id`，不能据此宣称购买可用 | `/txapi/orders`（仅 `orderWrite` 策略） |
 
 仅支付方式展示使用用户 Bearer，不代表任何“访客支付方式”已开放。
 
@@ -47,7 +47,7 @@
 
 **明文登录**：`{email,password,turnstile_token?,recaptcha_v3_token?,recaptcha_data?,email_code?}`。当前通用 Native 登录只返回用户 `auth_data`；不返回管理员标志、后台路径或订阅凭据。
 
-**密文账户操作**：Gateway 公钥发现后使用 HPKE 请求体 `{kid,ts,nonce,enc,ct}`。AAD 绑定 `login`/`register`/`email-code` 的固定路径；密文不可跨操作直接重放。注册字段 `{email,password,invite_code?,email_code?,turnstile_token?,recaptcha_v3_token?,recaptcha_data?}`，发邮箱码字段 `{email,turnstile_token?,recaptcha_v3_token?,recaptcha_data?}`。成功注册只返回用户 `auth_data`；邮箱码返回 `{sent:true}`。SDK 不把失败自动降级为明文注册/发码。
+**密文账户操作**：Gateway 公钥发现返回 `{protocol,suite,keys[]}`，含当前 key 和未过期/未吊销 previous key。HPKE 请求体为 `{kid,ts,nonce,enc,ct}`，`ts` 为 Unix 毫秒、接受 ±60000 毫秒；SDK nonce 为 16 随机字节（128 bit）。AAD 绑定协议、POST、固定 `login/register/email-code` 路径、kid、ts、nonce 及单步 `-` 占位。Redis replay TTL 121 秒，重放 409，故障 503，不回退本地存储。注册字段 `{email,password,invite_code?,email_code?,turnstile_token?,recaptcha_v3_token?,recaptcha_data?}`，发邮箱码字段 `{email,turnstile_token?,recaptcha_v3_token?,recaptcha_data?}`。成功注册只返回用户 `auth_data`；邮箱码返回 `{sent:true}`。SDK 不把失败自动降级为明文注册/发码。完整字节及轮换/缓存限制见 [当前加密说明](../docs/app-crypto-preview.md)。
 
 解密后的 JSON 拒绝重复解码键（包括转义后的同名键）及超过 30 层的嵌套，解析或 DTO 校验失败返回 400。密码恢复、会话管理和订单取消的隔离原型路由及 SDK 方法已退役。
 
@@ -55,16 +55,17 @@
 
 **订单写入（GW-304，默认关闭，`GATEWAY_ORDER_WRITE_ENABLED=true` 启用）**：
 
+- **历史适配器限制：**本节 `plan_id/period` 仍是现有 Gateway schema，不兼容 Native Core `offer_id`；开关和 capability 只描述 Gateway 状态，不完成该契约转换。
 - 请求头 `Idempotency-Key` **必填**，格式为 1–128 位 URL 安全字符（`[A-Za-z0-9._~-]`）；缺失或非法返回 `400 VALIDATION_ERROR`，**零上游调用**。
 - 请求体 strict schema：`{plan_id:正整数, period:枚举, coupon_code?:1–64位}`；未知字段 400。
 - Gateway 透传用户 Bearer（**不接受管理员 Token**），并追加自派生 `X-Idempotency-Key-Hint`（仅作日志关联，Laravel 以认证 user_id 重新派生权威键）。
 - 错误映射：上游 `IDEMPOTENCY_IN_PROGRESS` → `409 IDEMPOTENCY_IN_PROGRESS`（带 `Retry-After`，客户端退避后以**同一键**重试）；`IDEMPOTENCY_CONFLICT` → `409 IDEMPOTENCY_CONFLICT`；余额/套餐/优惠券类业务拒绝 → `422 ORDER_REJECTED`（不回显上游原文）。
 - 成功返回 `201` + 上游订单 DTO（至少含 `trade_no`）。SDK（`orders.create`）对写请求**永不自动重试**。
-- 幂等、余额、套餐、金额规则**全部由 Laravel 决定**；Gateway 不持有管理 token、不复制业务规则、不做本地去重。启用前需 GW-303/305/306 验收通过（见 [订单幂等 ADR](../docs/adr-order-idempotency.md)）。
+- 幂等、余额、套餐、金额规则**全部由 Core 决定**；Gateway 不持有管理 token、不复制业务规则、不做本地去重。Hint 不含受信用户身份，不能作为权威幂等键；未知写结果保留原 key，不自动换 key/重发。真正 Native 创建按 [当前订单契约](../../contracts/v2/core-commerce-v1.md) 和实际服务消费者执行。
 
 ## Native 字段与分页迁移
 
-15 个历史操作中 14 个有当前 Native 对应项；匿名 `guestPaymentMethods` 没有对应项，`/catalog/payment-methods` 固定 404、零上游调用，即使历史开关为 true 也不声明该能力。受保护 `/payments` 只转发调用用户的 Bearer。
+历史适配表列有 15 个 operation 槽位，其中匿名目录不可用；其他项也不能仅凭历史路径映射推断当前业务 DTO 已兼容。匿名 `guestPaymentMethods` 没有对应项，`/catalog/payment-methods` 固定 404、零上游调用，即使历史开关为 true 也不声明该能力。受保护 `/payments` 只转发调用用户的 Bearer。
 
 Native 金额已是分，不再次乘 100；ISO 时间转现有 Unix 秒；套餐流量由字节转 GiB，用户流量保留字节。未知 DTO 字段被过滤，用户 UUID 与订阅私密 URL 不输出。订单详情和状态必须匹配请求标识。
 
@@ -74,7 +75,7 @@ Native 金额已是分，不再次乘 100；ISO 时间转现有 Unix 秒；套�
 
 - Gateway 不代理任意 host/path，不直连数据库，不碰管理员/节点/插件/支付回调和订阅原文 Token。
 - Redis nonce 是有限时间窗的防重放，不是 Laravel 交易幂等、不提供跨 Redis failover 的强一致承诺。
-- 当前隔离 Core fixtures 与 HTTP 正负例已验证；OpenAPI 3.1、完整安全审查、目标 BFF、正式部署与 SDK 发布仍待完成。
+- 历史隔离 fixtures 与 HTTP 正负例仅证明原始源码；正式部署、安全审查、目标 BFF 和 SDK 发布须分别有匹配版本证据。
 
 [当前代码/CI 状态](../docs/development-status.md) · [HPKE/Redis 设计](../docs/app-crypto-preview.md) · [主题 SDK](../packages/theme-sdk/README.md)。
 

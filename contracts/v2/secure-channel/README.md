@@ -1,8 +1,8 @@
 # Secure Channel v2
 
-> 状态：Target / Draft。本批冻结安全边界与验收要求，尚未冻结密码学字节格式；不能据此宣称 SC-v2 已实现或已获安全批准。
+> 状态：Experimental。本文保留实际 SDK 实验的安全边界；正式业务通道尚未冻结密码学字节格式；不能据此宣称 SC-v2 已实现或已获安全批准。
 
-B6.1 已有 [实验 metadata codec](metadata-codec-prototype-v1.md) 与独立 Python/Node/Chromium 字节向量；B6.2 增加 [离线加密实验](offline-crypto-experiment-v1.md) 和 Node/浏览器互通。两者都没有网络或业务消费者，不冻结正式密码协议；共享响应所有权与本页其他门禁继续生效。
+已有 [实验 metadata codec](metadata-codec-prototype-v1.md) 与独立 Python/Node/Chromium 字节向量；另有 [离线加密实验](offline-crypto-experiment-v1.md) 和 Node/浏览器互通。两者都没有网络或业务消费者，不冻结正式密码协议；共享响应所有权与本页其他门禁继续生效。
 
 ## 1. 当前实现与目标
 
@@ -15,7 +15,7 @@ SC-v2 的目标是将 User/Admin Web API 的秘密请求和响应放入同一个
 - User 与 Admin 有独立服务身份、密钥用途、Operation allow-list、Origin 策略、限流及 SDK 上下文。密钥发现元数据只提供公开钥匙和公开兼容信息。
 - 协商在秘密调用之前完成，明确通道版本、套件、密钥版本、有效期和安全域；浏览器或 Node 不支持时拒绝秘密操作，禁止自动回退明文。
 - key discovery 不授权任何操作；路由策略与 Core actor 权限独立执行。capability 或前端按钮显隐不授予权限。
-- 当前旧客户端保留在明确隔离的旧契约入口，直到对应迁移门禁通过；不能把 B0 文档作为强制加密现行所有接口的发布指令。
+- 当前 `/gateway/v1` 及其 HPKE 请求格式保持独立；实验不得隐式改变现行接口或建立自动明文降级。
 
 ## 3. 加密不变量
 
@@ -37,9 +37,9 @@ SC 防重放不替代业务幂等。响应丢失时，SDK 使用新的合法加�
 
 密钥有用途、版本、发布/生效/停止新请求/撤销状态及审计记录；私钥由受限部署秘密机制交付，不进入镜像、仓库或共享 Theme 配置。轮换允许已发布的有界重叠窗口；吊销优先于缓存和未过期 key discovery。旧密钥终止后不继续解密旧请求。
 
-密钥轮换、Redis 部署与 Core 服务证书轮换是独立流程，Deploy 按 [升级 Manifest](../upgrade-manifest/README.md) 编排兼容版本，不能把镜像降级当成密钥或数据库回滚。
+密钥轮换、Redis 部署与 Core 服务证书轮换是独立流程，操作以 [TXBoard-Deploy](https://github.com/ANRCM0/TXBoard-Deploy) 对应版本的安装/恢复说明为准，不能把镜像降级当成密钥或数据库回滚。
 
-## 6. B6 开工前仍须冻结的字节规范
+## 6. 业务采用的未完成条件
 
 | 项目 | 必须产出 | 缺失时的处理 |
 | --- | --- | --- |
@@ -56,8 +56,8 @@ SC 防重放不替代业务幂等。响应丢失时，SDK 使用新的合法加�
 
 真实 Core + MySQL + Redis + Gateway 的 User/Admin 身份隔离、写入重试、密钥恢复演练和上线审查通过后，才可登记为交付。单元测试、mock upstream、设计文件或模板示例不构成该证据。
 
-[当前内部身份与 Operation](../native-internal-api-v1.md) · [历史实施台账](../../../docs/architecture/v2/implementation-plan.md)
+[当前内部身份与 Operation](../native-internal-api-v1.md)
 
-B6.3 的 [共享响应所有权工程实验](shared-owner-experiment-v1.md) 仅验证隔离 local/testing fixture 的连续主节点假设；未知数据丢失、HA/恢复及真实网络或业务采用的门禁仍未通过。
+ [共享响应所有权工程实验](shared-owner-experiment-v1.md) 仅验证隔离 local/testing fixture 的连续主节点假设；未知数据丢失、HA/恢复及真实网络或业务采用的门禁仍未通过。
 
-B6.4 的[响应随机值候选](response-salt-experiment-v1.md)使用独立字节格式及 RFC9458 派生方式，已通过离线向量/浏览器验收；共享业务重放、恢复和协议审查门禁仍保留，未开放业务通道。
+[响应随机值候选](response-salt-experiment-v1.md)使用独立字节格式及 RFC9458 派生方式，已通过离线向量/浏览器验收；共享业务重放、恢复和协议审查门禁仍保留，未开放业务通道。

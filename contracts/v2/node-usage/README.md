@@ -71,9 +71,3 @@ Registry 生成测试授权。重型验证仅在 Actions 执行。
 
 当前 native 支持范围遵循 C2 runtime；完整协议/平台矩阵、v2 WSS、管理员恢复 API 和
 完整备份恢复编排不因删除原型而宣称完成。当前 HTTP 持久回执与真实 native 用量继续保留。
-
-## 历史证据
-
-隔离接收、TCP collector、Core interop、Service、协议和撤销矩阵的旧协议页面已移除。
-[实施台账](../../../docs/architecture/v2/implementation-plan.md)保留结果、验证 JSON 和固定提交的原文入口。
-历史报告中的源码路径及哈希不改写，也不代表旧 CLI 或隔离授权仍可使用。
