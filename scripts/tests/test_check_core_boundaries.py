@@ -48,7 +48,7 @@ class CoreCapabilityBoundaryTest(unittest.TestCase):
             "    public function __construct(private array $value) {}\n"
             "    public function jsonSerialize(): array { return $this->value; }\n}\n",
         )
-        self.assertEqual(12, GUARD.validate_kernel_boundaries(self.root))
+        self.assertEqual(16, GUARD.validate_kernel_boundaries(self.root))
 
     def test_missing_contract_fails_instead_of_skipping_the_entire_area(self):
         (self.root / "api/app/Core/Kernel/Clock.php").unlink()
@@ -102,7 +102,7 @@ class CoreCapabilityBoundaryTest(unittest.TestCase):
             namespace = GUARD.KERNEL_FILES.get(relative, "App\\Domains\\Subscription\\Services")
             self.write(relative, f"<?php\nnamespace {namespace};\n"
                        "use App\\Domains\\Subscription\\Services\\SubscriptionEntitlementResolver;\n")
-        self.assertEqual(12, GUARD.validate_kernel_boundaries(self.root))
+        self.assertEqual(16, GUARD.validate_kernel_boundaries(self.root))
         self.assert_violation(
             "api/app/Providers/AnotherServiceProvider.php",
             "<?php\nuse App\\Domains\\Subscription\\Services\\SubscriptionEntitlementResolver;\n",
@@ -144,7 +144,7 @@ class CoreCapabilityBoundaryTest(unittest.TestCase):
             "api/app/Http/Controllers/Caller.php",
             "<?php\n// SubscriptionEntitlementResolver is not this consumer's dependency.\n",
         )
-        self.assertEqual(13, GUARD.validate_kernel_boundaries(self.root))
+        self.assertEqual(17, GUARD.validate_kernel_boundaries(self.root))
         self.assert_violation(
             "api/app/Core/Kernel/Notes.php",
             "<?php\nnamespace App\\Core\\Kernel;\n$value = 'Illuminate\\\\Http\\\\Request';\n",
@@ -168,7 +168,7 @@ class CoreCapabilityBoundaryTest(unittest.TestCase):
             "api/tests/Feature/ExistingResolverTest.php",
             "<?php\nuse App\\Domains\\Subscription\\Services\\SubscriptionEntitlementResolver;\n",
         )
-        self.assertEqual(12, GUARD.validate_kernel_boundaries(self.root))
+        self.assertEqual(16, GUARD.validate_kernel_boundaries(self.root))
 
     def test_provider_contract_allows_sensitive_parameters_and_owned_contracts(self):
         self.write(
@@ -179,7 +179,7 @@ class CoreCapabilityBoundaryTest(unittest.TestCase):
             "    public function call(#[\\SensitiveParameter] array $registration, "
             "#[\\SensitiveParameter] array $request): array;\n}\n",
         )
-        self.assertEqual(12, GUARD.validate_kernel_boundaries(self.root))
+        self.assertEqual(16, GUARD.validate_kernel_boundaries(self.root))
 
     def test_missing_provider_contract_is_rejected(self):
         (self.root / "api/app/Domains/CredentialProvider/Contracts/ProviderClient.php").unlink()
@@ -209,7 +209,7 @@ class CoreCapabilityBoundaryTest(unittest.TestCase):
             namespace = GUARD.KERNEL_FILES.get(relative, "App\\Domains\\CredentialProvider")
             self.write(relative, f"<?php\nnamespace {namespace};\n"
                        "use App\\Domains\\CredentialProvider\\ProviderTransport;\n")
-        self.assertEqual(12, GUARD.validate_kernel_boundaries(self.root))
+        self.assertEqual(16, GUARD.validate_kernel_boundaries(self.root))
         self.assert_violation(
             "api/app/Domains/CredentialProvider/AnotherTransport.php",
             "<?php\nuse App\\Domains\\CredentialProvider\\ProviderTransport;\n",
@@ -241,7 +241,7 @@ class CoreCapabilityBoundaryTest(unittest.TestCase):
             "api/tests/Feature/ProviderTransportTest.php",
             "<?php\nuse App\\Domains\\CredentialProvider\\ProviderTransport;\n",
         )
-        self.assertEqual(12, GUARD.validate_kernel_boundaries(self.root))
+        self.assertEqual(16, GUARD.validate_kernel_boundaries(self.root))
 
     def test_public_order_fulfillment_accepts_scalar_input_and_array_result(self):
         self.write(
@@ -250,7 +250,7 @@ class CoreCapabilityBoundaryTest(unittest.TestCase):
             "interface OrderFulfillment {\n"
             "    public function fulfill(int $orderId, ?int $at = null): array;\n}\n",
         )
-        self.assertEqual(12, GUARD.validate_kernel_boundaries(self.root))
+        self.assertEqual(16, GUARD.validate_kernel_boundaries(self.root))
 
     def test_each_transaction_port_is_required_with_its_exact_namespace(self):
         for relative in (
@@ -284,7 +284,7 @@ class CoreCapabilityBoundaryTest(unittest.TestCase):
                 f"interface {name} {{\n"
                 "    public function inspect(Order $order, Purchase $purchase, Collection $rows): array;\n}\n",
             )
-        self.assertEqual(12, GUARD.validate_kernel_boundaries(self.root))
+        self.assertEqual(16, GUARD.validate_kernel_boundaries(self.root))
 
     def test_locked_participants_reject_direct_host_operations_and_facades(self):
         for area, namespace in (
@@ -312,7 +312,7 @@ class CoreCapabilityBoundaryTest(unittest.TestCase):
             namespace = GUARD.KERNEL_FILES.get(relative, "App\\Domains\\Subscription\\Services")
             self.write(relative, f"<?php\nnamespace {namespace};\n"
                        "use App\\Domains\\Subscription\\Services\\SubscriptionFulfillmentService;\n")
-        self.assertEqual(12, GUARD.validate_kernel_boundaries(self.root))
+        self.assertEqual(16, GUARD.validate_kernel_boundaries(self.root))
         for relative in (
             "api/app/Domains/Billing/AnotherService.php", "api/app/Providers/AnotherServiceProvider.php",
             "api/config/forbidden.php", "api/routes/forbidden.php",
@@ -345,7 +345,7 @@ class CoreCapabilityBoundaryTest(unittest.TestCase):
             "    public function account(AccountIdentity $identity): array;\n"
             "    public function subscription(int $userId): array;\n}\n",
         )
-        self.assertEqual(12, GUARD.validate_kernel_boundaries(self.root))
+        self.assertEqual(16, GUARD.validate_kernel_boundaries(self.root))
 
     def test_identity_contracts_and_fixed_read_handler_are_required_with_exact_namespaces(self):
         for relative in (
@@ -385,7 +385,7 @@ class CoreCapabilityBoundaryTest(unittest.TestCase):
             namespace = GUARD.KERNEL_FILES.get(relative, "App\\Domains\\Identity")
             self.write(relative, f"<?php\nnamespace {namespace};\n"
                        "use App\\Domains\\Identity\\NativeAccountQueries;\n")
-        self.assertEqual(12, GUARD.validate_kernel_boundaries(self.root))
+        self.assertEqual(16, GUARD.validate_kernel_boundaries(self.root))
         for relative in (
             "api/app/Domains/Identity/AnotherQuery.php",
             "api/app/Http/Controllers/AccountController.php",
@@ -422,7 +422,7 @@ class CoreCapabilityBoundaryTest(unittest.TestCase):
             "api/tests/Feature/Identity/AccountQueryTest.php",
             "<?php\nuse App\\Domains\\Identity\\NativeAccountQueries;\n",
         )
-        self.assertEqual(12, GUARD.validate_kernel_boundaries(self.root))
+        self.assertEqual(16, GUARD.validate_kernel_boundaries(self.root))
 
     def test_fixed_read_handler_rejects_http_auth_sql_and_host_dependencies(self):
         for expression in (
@@ -449,7 +449,7 @@ class CoreCapabilityBoundaryTest(unittest.TestCase):
             "use Illuminate\\Http\\Request;\nuse Illuminate\\Support\\Facades\\DB;\n"
             "use App\\Http\\Controllers\\Txapi\\AccountController;\n",
         )
-        self.assertEqual(12, GUARD.validate_kernel_boundaries(self.root))
+        self.assertEqual(16, GUARD.validate_kernel_boundaries(self.root))
 
     def test_order_contracts_allow_owned_dtos_and_scalar_page_data(self):
         self.write(
@@ -472,7 +472,7 @@ class CoreCapabilityBoundaryTest(unittest.TestCase):
             "final readonly class OrderPage {\n"
             "    public function __construct(public array $items, public array $meta) {}\n}\n",
         )
-        self.assertEqual(12, GUARD.validate_kernel_boundaries(self.root))
+        self.assertEqual(16, GUARD.validate_kernel_boundaries(self.root))
 
     def test_order_contracts_and_read_adapters_are_required_with_exact_namespaces(self):
         for relative in (
@@ -515,7 +515,7 @@ class CoreCapabilityBoundaryTest(unittest.TestCase):
             namespace = GUARD.KERNEL_FILES.get(relative, "App\\Domains\\Billing")
             self.write(relative, f"<?php\nnamespace {namespace};\n"
                        "use App\\Domains\\Billing\\NativeOrderQueries;\n")
-        self.assertEqual(12, GUARD.validate_kernel_boundaries(self.root))
+        self.assertEqual(16, GUARD.validate_kernel_boundaries(self.root))
         for relative in (
             "api/app/Domains/Billing/AnotherQuery.php",
             "api/app/Http/Controllers/AccountController.php",
@@ -557,7 +557,7 @@ class CoreCapabilityBoundaryTest(unittest.TestCase):
             "api/tests/Feature/Billing/OrderQueryTest.php",
             "<?php\nuse App\\Domains\\Billing\\NativeOrderQueries;\n",
         )
-        self.assertEqual(12, GUARD.validate_kernel_boundaries(self.root))
+        self.assertEqual(16, GUARD.validate_kernel_boundaries(self.root))
 
     def test_order_handler_and_result_reject_http_auth_sql_and_framework_dependencies(self):
         for relative, label in (
@@ -606,7 +606,7 @@ class CoreCapabilityBoundaryTest(unittest.TestCase):
                    "public function listing(int $userId, ?int $limit = null): array;\n"
                    "public function revoke(int $userId, int $sessionId): bool;\n"
                    "public function end(int $userId, ?int $currentTokenId): void;\n}\n")
-        self.assertEqual(12, GUARD.validate_kernel_boundaries(self.root))
+        self.assertEqual(16, GUARD.validate_kernel_boundaries(self.root))
         for expression in (
             "use App\\Domains\\Identity\\NativeAccountSessions;",
             "use App\\Models\\User;", "use Laravel\\Sanctum\\PersonalAccessToken;",
@@ -621,7 +621,7 @@ class CoreCapabilityBoundaryTest(unittest.TestCase):
             namespace = GUARD.KERNEL_FILES[relative]
             self.write(relative, f"<?php\nnamespace {namespace};\n"
                        "use App\\Domains\\Identity\\NativeAccountSessions;\n")
-        self.assertEqual(12, GUARD.validate_kernel_boundaries(self.root))
+        self.assertEqual(16, GUARD.validate_kernel_boundaries(self.root))
         for relative in (
             "api/app/Domains/Identity/AnotherSessions.php", "api/app/Http/Controllers/Caller.php",
             "api/app/Domains/InternalApi/AnotherCommand.php", "api/app/Providers/AnotherProvider.php",
@@ -659,7 +659,102 @@ class CoreCapabilityBoundaryTest(unittest.TestCase):
             self.write(relative, "<?php\nnamespace App\\Domains\\InternalApi;\n"
                        "use App\\Models\\User;\n"
                        "use App\\Domains\\Identity\\Contracts\\AccountSessions;\n")
-        self.assertEqual(12, GUARD.validate_kernel_boundaries(self.root))
+        self.assertEqual(16, GUARD.validate_kernel_boundaries(self.root))
+
+    def test_usage_contracts_owner_and_handler_are_required_with_exact_namespaces(self):
+        for relative in (
+            *(f"api/app/Domains/UsageV2/Contracts/{name}.php" for name in
+              ("UsageQueries", "UsageQuery", "UsagePage", "UsageTargetMissing")),
+            "api/app/Domains/UsageV2/NativeUsageQueries.php",
+            "api/app/Domains/InternalApi/UsageReadOperations.php",
+        ):
+            with self.subTest(relative=relative):
+                original = (self.root / relative).read_text(encoding="utf-8")
+                (self.root / relative).unlink()
+                with self.assertRaisesRegex(ValueError, "Missing Core capability file"):
+                    GUARD.validate_kernel_boundaries(self.root)
+                self.assert_violation(relative, "<?php\nnamespace App\\Wrong;\n",
+                                      "Wrong Core capability namespace")
+                self.write(relative, original)
+
+    def test_usage_contracts_allow_owned_dtos_arrays_and_standard_exceptions(self):
+        prefix = "<?php\nnamespace App\\Domains\\UsageV2\\Contracts;\n"
+        self.write("api/app/Domains/UsageV2/Contracts/UsageQueries.php", prefix +
+                   "interface UsageQueries { public function listing(int $userId, UsageQuery $query): UsagePage; }")
+        self.write("api/app/Domains/UsageV2/Contracts/UsagePage.php", prefix +
+                   "final readonly class UsagePage { public function __construct("
+                   "public array $items, public ?string $nextAfterId) {} }")
+        self.write("api/app/Domains/UsageV2/Contracts/UsageQuery.php", prefix +
+                   "use InvalidArgumentException; final readonly class UsageQuery { "
+                   "public function __construct(public ?int $subscriptionId = null, "
+                   "public int $afterId = 0, public int $limit = 100) {} }")
+        self.write("api/app/Domains/UsageV2/Contracts/UsageTargetMissing.php", prefix +
+                   "use RuntimeException; final class UsageTargetMissing extends RuntimeException {}")
+        self.assertEqual(16, GUARD.validate_kernel_boundaries(self.root))
+
+    def test_usage_contracts_reject_host_models_implementations_and_callbacks(self):
+        for expression in (
+            "use App\\Domains\\UsageV2\\NativeUsageQueries;",
+            "use App\\Domains\\UsageV2\\NativeUsageReservations;",
+            "use App\\Domains\\Subscription\\Services\\NativeSubscriptionStore;",
+            "use App\\Domains\\Billing\\Contracts\\OrderPage;",
+            "use App\\Models\\User;", "use Illuminate\\Database\\ConnectionInterface;",
+            "use Laravel\\Sanctum\\PersonalAccessToken;",
+            "public function listing(callable $callback): array;", "public \\Closure $callback;",
+            "public function query(): Builder;", "$value = DB::transaction(fn () => []);",
+            "$value = app('usage');", "$value = \\curl_init();",
+        ):
+            with self.subTest(expression=expression):
+                self.assert_violation("api/app/Domains/UsageV2/Contracts/Forbidden.php",
+                                      "<?php\nnamespace App\\Domains\\UsageV2\\Contracts;\n" + expression,
+                                      "Host or implementation dependency")
+
+    def test_native_usage_queries_is_limited_to_exact_owner_and_composition(self):
+        for relative in GUARD.USAGE_QUERY_OWNERS:
+            namespace = GUARD.KERNEL_FILES[relative]
+            self.write(relative, f"<?php\nnamespace {namespace};\n"
+                       "use App\\Domains\\UsageV2\\NativeUsageQueries;\n")
+        self.assertEqual(16, GUARD.validate_kernel_boundaries(self.root))
+        for relative in (
+            "api/app/Domains/UsageV2/AnotherQuery.php", "api/app/Http/Controllers/Caller.php",
+            "api/app/Domains/InternalApi/AnotherHandler.php", "api/app/Providers/AnotherProvider.php",
+            "api/config/forbidden.php", "api/routes/forbidden.php", "api/plugins-core/Example/Plugin.php",
+        ):
+            for expression in (
+                "use App\\Domains\\UsageV2\\NativeUsageQueries as Queries;",
+                "$value = new \\App\\Domains\\UsageV2\\NativeUsageQueries();",
+                "$value = app('App\\\\Domains\\\\UsageV2\\\\NativeUsageQueries');",
+            ):
+                with self.subTest(relative=relative, expression=expression):
+                    self.assert_violation(relative, "<?php\n" + expression, "Concrete usage query dependency")
+                    (self.root / relative).unlink()
+
+    def test_usage_fixed_read_handler_allows_actor_contracts_and_local_result(self):
+        self.write("api/app/Domains/InternalApi/UsageReadOperations.php",
+                   "<?php\nnamespace App\\Domains\\InternalApi;\nuse App\\Models\\User;\n"
+                   "use App\\Domains\\UsageV2\\Contracts\\UsageQueries;\n"
+                   "use App\\Domains\\UsageV2\\Contracts\\UsageQuery;\n"
+                   "use App\\Domains\\UsageV2\\Contracts\\UsageTargetMissing;\n"
+                   "final class UsageReadOperations { public function __construct(private UsageQueries $queries) {}\n"
+                   "public function listing(User $actor, array $input): ReadOperationResult {\n"
+                   "$page = $this->queries->listing((int) $actor->id, new UsageQuery());\n"
+                   "return new ReadOperationResult($page->items, ['next_after_id' => $page->nextAfterId]); } }")
+        self.assertEqual(16, GUARD.validate_kernel_boundaries(self.root))
+
+    def test_usage_fixed_read_handler_rejects_http_auth_sql_and_framework_dependencies(self):
+        for expression in (
+            "use App\\Http\\Controllers\\Txapi\\NativeUsageController;",
+            "use Illuminate\\Http\\Request as Input;", "use Illuminate\\Support\\Facades\\DB;",
+            "use Laravel\\Sanctum\\PersonalAccessToken;", "use GuzzleHttp\\Client;",
+            "use Symfony\\Component\\HttpFoundation\\Response;",
+            "$actor = auth()->user();", "$actor = request()->user();", "$actor = Auth::user();",
+            "$value = Request::create('/');", "$value = DB::transaction(fn () => []);",
+            "$value = app('usage');", "$value = \\file_get_contents('https://example.invalid');",
+        ):
+            with self.subTest(expression=expression):
+                self.assert_violation("api/app/Domains/InternalApi/UsageReadOperations.php",
+                                      "<?php\nnamespace App\\Domains\\InternalApi;\n" + expression,
+                                      "Host or HTTP dependency in usage read handler")
 
     def test_subscription_uses_payment_proof_port_without_restricting_financial_owner(self):
         self.write(
@@ -678,7 +773,7 @@ class CoreCapabilityBoundaryTest(unittest.TestCase):
             "api/tests/Feature/FulfillmentTest.php",
             "<?php\nuse App\\Domains\\Subscription\\Services\\SubscriptionFulfillmentService;\n",
         )
-        self.assertEqual(12, GUARD.validate_kernel_boundaries(self.root))
+        self.assertEqual(16, GUARD.validate_kernel_boundaries(self.root))
         for expression in (
             "use App\\Domains\\Billing\\NativePaymentSettlement as Settlement;",
             "$proof = app(\\App\\Domains\\Billing\\NativePaymentSettlement::class);",
