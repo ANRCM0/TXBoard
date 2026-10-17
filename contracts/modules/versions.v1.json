@@ -1,6 +1,6 @@
 {
   "schema": "core-module-version-policy/v1",
-  "status": "candidate",
+  "status": "stable",
   "kernel_api": {
     "major": 1,
     "frozen_files": "contracts/kernel/v1.files.json"
@@ -20,5 +20,5 @@
     "php": "api/app/Extensions/Contracts",
     "typescript": "@txboard/core-sdk"
   },
-  "acceptance": "Kernel stability is pending exact candidate CI and fixed-image install/update/recovery evidence"
+  "acceptance": "The frozen Kernel v1 API is stable. Release compositions require their own exact-source CI and fixed-image install/update/recovery evidence; Kernel stability does not grant merge or publishing authority."
 }

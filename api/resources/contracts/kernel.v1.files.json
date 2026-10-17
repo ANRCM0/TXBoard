@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "kernel_api": 1,
-  "stability": "candidate",
+  "stability": "stable",
   "files": {
     "api/app/Core/Kernel/Clock.php": "546fd2997f0e5c1ef16406c6e4dd1d74153057835700aa9dd81b108b0fd0db45",
     "api/app/Core/Kernel/Execution/ActorRef.php": "c83a5034a3ba6a03386082a40d1242bf3a7b3591359f292dd0031745082e8166",

@@ -1,7 +1,7 @@
 {
   "schema": "modular-core-release/v1",
   "status": "candidate",
-  "kernel_stability": "candidate",
+  "kernel_stability": "stable",
   "core_revision": "The exact CI checkout SHA; image APP_COMMIT and workflow run identify it",
   "deploy": {
     "repository": "ANRCM0/TXBoard-Deploy",
