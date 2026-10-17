@@ -1,12 +1,10 @@
 # Core capability and transaction map
 
-> K0 inventory, K1 entitlement, K2 adapters, K3 fulfillment and K4 ingress candidates, 2026-10-17.
+> K0 inventory, K1 entitlement, K2 adapters, K3 fulfillment and K4 ingress, 2026-10-17.
 >
-> Starting source: local `main` at `85b0eac62f73f636efe736548e968535c561ced3`.
-> This map records actual candidate scope. K1-K3 exact-commit development CI is
-> recorded below, as is accepted K4 account/order-read development CI. The new
-> session-lifecycle subset still needs its own CI and domain review.
-> None of these candidate branches is an assumed merged or production baseline.
+> Current source baseline: merged `main` at `f59f1675932fa9e52181613cf9e1792bec04729d`.
+> K0-K3 and K4 account/order/session slices are merged. Usage-read and Gateway Offer
+> work are separate in-flight candidates. Development CI is not production qualification.
 
 Core is a modular control plane for one operator installation and its end users,
 not a generic plugin shell or an implemented multi-operator tenancy platform.
@@ -35,7 +33,7 @@ Current native behavior remains governed by its domain contracts and evidence.
 | Credential lifecycle | `NativeCredentialProviderService`, `NativeCredentialSynchronization` | Persist intent, call Provider outside SQL, validate and persist result; unknown outcomes recover the original operation. |
 | Links and delivery | `NativeSubscriptionLinks`, `NativeSubscriptionDelivery` | Ownership and finite delivery policy; bearer delivery is a separate authorized response, not entitlement DTO data. |
 | Node authorization | `NativeProviderNodeAuthorization` | Provider metadata outside SQL followed by final locked identity/Terms/Period/version verification and finite authorization. |
-| Usage | `UsageReceipts`, `UsageSettlement`, `NativeUsageReservations` | Original source/session/period and batch evidence, durable reservation, current fencing, atomic settlement and reservation release. |
+| Usage | `UsageReceipts`, `UsageSettlement`, `NativeUsageReservations`; read projection candidate `NativeUsageQueries` | Original source/session/period and batch evidence, durable reservation, current fencing, atomic settlement and reservation release; read candidate preserves complete history verification and current Slot initialization. |
 | Installation | `InstallationAuthority`, `NativeRuntimeAdmission`, `NativeRuntimeReadiness` | Durable installation/epoch and admission precede domain access; a cached success or environment flag is not authority. |
 | Extension runtime | `PluginManager`, `ModuleRegistry`, `ModuleLifecycle`, specialized Plugin/Theme adapters | Registry reads describe runtime facts; controlled lifecycle delegates to the existing owner, not another business kernel. |
 
@@ -100,7 +98,7 @@ algorithms; a test reference does not authorize another production caller.
 `subscription.mine.get` to compiled `AccountReadOperations` handlers. They use
 Identity `AccountQueries`, the same application query consumed by native HTTP.
 The executor still verifies the separate service, actual actor, current grants,
-domain, closed input and output field allow-list. The next candidate also maps
+domain, closed input and output field allow-list. The merged order subset also maps
 `commerce.orders.list/get` to fixed OrderReadOperations using Billing OrderQueries.
 Other operations keep their existing controller targets; these subsets do not
 claim all ingress is migrated.
@@ -206,7 +204,7 @@ module under the [feature development guide](../../development/core-feature-deve
 
 ## 7. K2 current adapter candidate
 
-K2 builds on the K1 candidate commit `e76abc9`, not an assumed merged baseline.
+K2 was developed on K1 `e76abc9`; PR #263-#268 are now merged into `f59f167`.
 `CredentialProvider/Contracts/ProviderClient` exposes the current five methods;
 `ProviderTransport` directly implements it with a scoped composition binding.
 NativeCredentialProviderService, NativeSubscriptionDelivery,
@@ -229,13 +227,13 @@ Existing module inventory/lifecycle adapters remain the authoritative extension
 seam; K2 does not add another registry or open generic module invocation.
 Candidate regression tests and source guards cover the changed boundaries.
 K2 commit `832a8e8` passed its triggered API, MySQL and real Provider development
-checks in PR #264. It remains unmerged and does not prove production PKI,
+checks in PR #264. It is merged and does not prove production PKI,
 arbitrary Provider protocols or original-channel refunds. K4/K5 and release
 qualification remain separate work.
 
 ## 8. K3 fulfillment and financial proof candidate
 
-This subset builds on K2 candidate `832a8e8`; it is not a merged baseline.
+This subset was developed on K2 `832a8e8` and is merged through PR #265.
 The [Order Fulfillment Ports contract](../../../contracts/v2/core-order-fulfillment-ports-v1.md)
 records the exact three interfaces and their failure/locking rules.
 
@@ -273,7 +271,7 @@ K4 ingress delegation, K5 integrated checks and release qualification remain ope
 
 ## 9. K4 account read ingress candidate
 
-This subset builds on K3 candidate `c8f782b`, still unmerged. The
+This subset was developed on K3 `c8f782b` and is merged through PR #266. The
 [Account Read Ports contract](../../../contracts/v2/core-account-read-ports-v1.md)
 records Identity's two query methods, scalar actor projection and the three
 fixed Internal API handler targets. No new business or service operation exists.
@@ -305,7 +303,7 @@ cover shared query replacement, alternating actual actors and authorization
 failure; account-read development CI is recorded below.
 
 Account-read candidate `a4cee43` (PR #266) passed its triggered API/MySQL/C2/image/
-docs development checks, and remains unmerged. This does not qualify a release.
+docs development checks, and is merged. This does not qualify a release.
 
 ## 10. K4 order-read candidate
 
@@ -337,12 +335,12 @@ New tests cover real HTTP/Internal parity, paging, owner isolation, missing Plan
 port replacement, admission rejection and failures. Candidate `8734af1` (PR #267)
 passed its triggered API/MySQL/C2/image-verify/docs development checks. Manual
 MySQL/release/recovery/publish jobs were skipped, not passed; Gateway was not
-triggered. The candidate remains unmerged and does not qualify a release.
+triggered. The candidate is merged and does not qualify a release.
 
 ## 11. K4 authenticated session lifecycle candidate
 
 The [Account Sessions contract](../../../contracts/v2/core-account-sessions-v1.md)
-is stacked on `8734af1`. Identity owns the existing listing, owned-token revoke
+was developed on `8734af1` and is merged through PR #268. Identity owns the existing listing, owned-token revoke
 and current-token end algorithms. HTTP AuthController and three existing Internal
 API operations now delegate to one scoped AccountSessions port. Password, login,
 registration and admin bulk-revoke participants remain outside this subset.
@@ -371,6 +369,58 @@ outer transaction, new financial/session truth, route or permission is added.
 Static guards and targeted tests are authored for ownership, actual Bearer
 isolation, shared-port substitution, current-token selection, rollback/admission,
 current permissions, closed input, replay/conflict/unknown and safe failures.
-Exact-commit runtime/MySQL CI remains pending for this new candidate. Other
-justified ingress slices, K5 integrated handoff and production qualification
-remain separate work; no candidate is merged by this change.
+Session `29da45d` passed its triggered API/MySQL/C2/docs/image-verify checks and
+was merged at `f59f167`. That main merge passed the final native subscription,
+billing and installation-bootstrap checks; mysql-regression was skipped.
+Other justified ingress slices, K5 integrated handoff and production qualification
+remain separate work.
+
+## 12. K4 Usage query candidate
+
+The [Usage Queries contract](../../../contracts/v2/core-usage-queries-v1.md) moves
+the existing usage-period query algorithm from NativeUsageController to scoped
+UsageV2 NativeUsageQueries behind UsageQueries. HTTP `/txapi/me/usage-periods`
+and the fixed `usage.mine.list` read handler share it. No route, operation,
+receipt, settlement rule, provider or new persistence is introduced.
+
+Actual actor IDs, installation read admission, the existing transaction and
+account/Slot/subscription/history locks remain. Omitted subscription selection
+uses the owner's actual Slot; explicit history remains owner-scoped. Complete
+history verification precedes cursor/limit filtering and reservation-inclusive
+consumption. This is not a write-free query: the existing account primitive may
+initialize an empty Slot. Missing targets throw inside the transaction so that
+such initialization rolls back before both adapters return 404. The 1000-entry
+aggregate limits are unchanged and are not solved by transport pagination.
+
+The immutable pure query/page and typed missing-target error belong to UsageV2,
+not Kernel. The interface permits both actual ingress consumers to substitute the
+same owner in boundary tests; it is not a generic repository or plugin API.
+Internal results use unchanged read-only dispatch, current authorization,
+field/meta filtering, redaction, response bounds, safe errors and private/no-store.
+Static guards cover concrete owner selection, pure contracts and the fixed read
+handler; authored targeted API/MySQL tests remain pending CI for this candidate.
+
+## 13. Remaining ingress inventory
+
+Remaining Controller targets do not imply duplicated business authorities:
+
+| Consumers | Existing owner / reason to keep transport adaptation |
+| --- | --- |
+| Public Offer list / native order creation | NativePlanCatalog / PublishedOrderService; Gateway consumer sync is PR #269, not another Core engine |
+| Checkout / cancellation | OrderCheckout / NativeOrderLifecycle; retain actual actor, durable keys and safe error mapping |
+| Subscription links | NativeSubscriptionLinks; preserve domain/domain-once and one-time secret delivery |
+| Wallet / recharge | NativeWalletPayments / NativeRechargeService; no new wallet or recharge owner required |
+| Admin publication / availability | NativePlanAdministration; immutable publication and mutable availability remain distinct |
+| Admin refund / reconciliation | NativeRefundService / NativeBillingReconciliation; no generic BillingCommands |
+| Subscription lifecycle | SubscriptionLifecycleService; owner lookup is authorized target coordination |
+| Public and admin settings reads | SiteConfigService / AdminSettingsProjection; existing output projections remain transport-specific |
+| Login | Current CaptchaService, LoginService and AuthService coordination; no identified duplicate algorithm demanding a new port |
+
+Payment-method enumeration still differs between BillingController and
+WalletRechargeController. The next bounded review must define their purposes,
+currency/filter/bound semantics and shared provider-resolution owner without
+silently treating their output DTOs as identical or expanding supported payments.
+Node/Machine administrative list SQL and constrained site-settings persistence
+remain explicit lower-priority ingress inventory, not proof of a second lifecycle
+or financial authority. K5 must inspect actual owners, strategies and tests, not
+require the OperationRegistry Controller count to reach zero.

@@ -20,6 +20,8 @@ use App\Domains\Subscription\Internal\LockedEntitlementQueries;
 use App\Domains\Subscription\Internal\LockedOrderFulfillment;
 use App\Domains\Subscription\Services\SubscriptionEntitlementResolver;
 use App\Domains\Subscription\Services\SubscriptionFulfillmentService;
+use App\Domains\UsageV2\Contracts\UsageQueries;
+use App\Domains\UsageV2\NativeUsageQueries;
 use Illuminate\Support\ServiceProvider;
 
 final class CoreCapabilitiesServiceProvider extends ServiceProvider
@@ -31,6 +33,7 @@ final class CoreCapabilitiesServiceProvider extends ServiceProvider
         $this->app->scoped(AccountQueries::class, NativeAccountQueries::class);
         $this->app->scoped(AccountSessions::class, NativeAccountSessions::class);
         $this->app->scoped(OrderQueries::class, NativeOrderQueries::class);
+        $this->app->scoped(UsageQueries::class, NativeUsageQueries::class);
         $this->app->scoped(SubscriptionFulfillmentService::class);
         $this->app->scoped(OrderFulfillment::class,
             fn ($app) => $app->make(SubscriptionFulfillmentService::class));
