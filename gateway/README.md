@@ -11,7 +11,8 @@ Core 保留认证/CAPTCHA、账户/权限、订单、钱包/账本、退款、�
 - 公开 bootstrap、主题配置、套餐、登录，以及用户 profile/权益摘要、订单/分页/状态、支付方式展示、通知/计数的现有适配器。
 - 可选 HPKE 请求加密及 Redis replay；已实现双 key、旧 key 过期/吊销、路由限流和脱敏观测。注册/发码默认关闭，没有 HPKE 失败后的明文回退。
 - 服务端 `NativeCoreClient`/CLI 使用独立 User/Admin mTLS；当前仅 login/guestConfig 浏览器适配可选择 User service，不等于管理员浏览器 API 已开放。
-- 订单写默认 405、零上游调用；保留的 `plan_id/period` body **不兼容 Native `offer_id` 创建**。打开历史开关不是购买链路验收。
+- `/plans` displays current immutable published Offers with exact decimal-string IDs, money and quotas; order creation accepts only `offer_id`. Core remains the purchase authority.
+- Order writes remain disabled by default (405, zero upstream calls). The explicit gate does not add checkout, payment callbacks or admin browser access.
 - 匿名支付目录固定 404；无 checkout/cancel、支付回调或管理员浏览器路由。`/txapi/bff/v1`、正式 SDK npm 发布、生产部署和网络 SC-v2 未因这些适配器交付。
 
 只将 `/gateway/v1/*` 分流到 Gateway。Core 管理、支付回调、私密订阅、插件、Node/WebSocket 各走已注册入口及独立鉴权；不恢复退役 Agent/MCP 或 `/api/v1`、`/api/v2`。

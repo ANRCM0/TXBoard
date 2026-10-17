@@ -20,7 +20,9 @@ CLI 依赖已构建的 `apps/gateway/dist`，从 stdin 读取业务 input，acto
 
 外部 `/gateway/v1` 的 `{ok,data,meta}` 不直接等同内部 Native envelope。输入 strict schema、上游 envelope/DTO 校验及输出字段白名单仍必需，不能只替换路径。
 
-**订单创建仍使用历史 `plan_id/period`，Native Core 要求 `offer_id`。** `GATEWAY_ORDER_WRITE_ENABLED` 默认 false，关闭时 405/零上游调用；打开只提升 Gateway 策略，不完成 native 购买 DTO 迁移。其他历史展示适配也须按当前消费者逐项核对，不能沿用旧通过结论。
+Gateway's public catalog and order creation now consume the current Native published-Offer DTO: decimal string identifiers, minor-unit price and quota stay exact, and purchase accepts only `{offer_id}`. The existing `NativePlanCatalog` and `PublishedOrderService` remain authoritative; HTTP controllers already invoke those owners, so this batch does not add a redundant domain port or alter purchase transactions. Core revalidates immutable publication and availability at create time.
+
+`GATEWAY_ORDER_WRITE_ENABLED` remains false by default and disabled requests return 405 with zero upstream calls. Enabling the existing explicit gate exposes only the fixed user `offer_id` operation; it does not grant admin access or imply payment/fulfillment. Gateway and SDK reject the retired `plan_id/period` input with no translation/fallback. Exact HTTP/DB integration evidence is pending Actions for this candidate; historical JSON remains unchanged.
 
 匿名 `/catalog/payment-methods` 固定 404、零上游调用；历史 catalog flag 不能为受保护支付接口发明共享 Bearer。`/payments` 仍需要当前用户凭据，Gateway 不持支付商密钥或处理回调。密码恢复、会话管理和订单取消的旧浏览器原型/SDK 方法未因服务客户端存在而恢复。
 

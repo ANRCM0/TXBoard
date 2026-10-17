@@ -99,4 +99,4 @@ GATEWAY_SMOKE_URL=https://your-staging.example npm run smoke:staging
 
 密钥双版本、吊销、replay、日志与指标已经有运行实现，不等于完成生产证明。上线须核对匹配版本的代理/PKI、全副本与缓存传播、Redis 持久性/故障恢复、外部 CAPTCHA/邮件、容量及恢复演练。历史隔离 MariaDB 联调不能代替当前 Native 业务或 MySQL 8.4。
 
-订单写默认关闭，旧浏览器 `plan_id/period` 不兼容 Native `offer_id`；开启开关不能完成 native 购买。Gateway 不新增结算/支付回调入口。详见 [当前状态](development-status.md)、[加密运行限制](app-crypto-preview.md) 与 [安全政策](../SECURITY.md)。
+订单写默认关闭；显式开启后只接受已发布 Native Offer 的 `offer_id`，Core 仍决定购买及资金。Gateway 不新增结算/支付回调入口。详见 [当前状态](development-status.md)、[加密运行限制](app-crypto-preview.md) 与 [安全政策](../SECURITY.md)。

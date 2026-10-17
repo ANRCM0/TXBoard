@@ -1,4 +1,4 @@
-import { requestId, nativeEnvelope, nativeError, nativePlan, nativeProfile, nativeOrder, nativeSubscription } from './native-fixtures.js'
+import { requestId, nativeEnvelope, nativeError, nativeOffer, nativeProfile, nativeOrder, nativeSubscription } from './native-fixtures.js'
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { createGatewayApp } from '../src/app.js'
 import { loadConfig } from '../src/config/env.js'
@@ -111,10 +111,10 @@ describe('gateway security and TXBoard v1 adapters', () => {
     })
   })
 
-  it('keeps plan prices as upstream cents and never unwraps arbitrary data structures', async () => {
-    const fetcher = mockFetch(ok([nativePlan({ id: 1, name: 'Monthly', prices: [{ period: 'monthly', amount_minor: 1200 }] })]))
+  it('keeps Offer prices as upstream decimal strings and never unwraps arbitrary data structures', async () => {
+    const fetcher = mockFetch(ok([nativeOffer({ name: 'Monthly' })]))
     const res = await createGatewayApp(config, fetcher).request('/gateway/v1/plans')
-    expect((await dataOf(res)).data[0]).toMatchObject({ id: 1, name: 'Monthly', month_price: 1200 })
+    expect((await dataOf(res)).data[0]).toMatchObject({ offer_id: '1', name: 'Monthly', price_minor: '1200' })
     expect((fetcher.mock.calls[0] as any)[0]).toContain('/txapi/plans')
   })
 
@@ -243,10 +243,10 @@ describe('gateway security and TXBoard v1 adapters', () => {
 
   it('rejects malformed successful envelopes and invalid core business fields', async () => {
     for (const payload of [
-      { status: 1, data: [nativePlan({ id: 1, name: 'Plan', prices: [{ period: 'monthly', amount_minor: 1200 }] })] },
-      { data: [nativePlan({ id: 1, name: 'Plan', prices: [{ period: 'monthly', amount_minor: 1200 }] })] },
+      { status: 1, data: [nativeOffer({ name: 'Plan' })] },
+      { data: [nativeOffer({ name: 'Plan' })] },
       ok({ invalid: true }),
-      ok([{ id: 'not-numeric', name: 'Plan' }]),
+      ok([nativeOffer({ offer_id: 1 })]),
     ]) {
       const fetcher = mockFetch(payload)
       const res = await createGatewayApp(config, fetcher).request('/gateway/v1/plans')

@@ -1,7 +1,8 @@
 # Core Account Sessions v1
 
-> K4 candidate subset, 2026-10-17. Stacked on order-read candidate `8734af1`,
-> not a merged baseline. Exact-commit CI and domain review are pending.
+> K4 subset merged via PR #268 at `f59f167`, 2026-10-17. Source head `29da45d`
+> passed its triggered development CI; maintainer waived manual review for this
+> batch. No production release qualification is implied.
 
 ## Ownership and scope
 

@@ -1,4 +1,4 @@
-import { requestId, nativeError, nativePlan } from './native-fixtures.js'
+import { requestId, nativeError, nativeOffer } from './native-fixtures.js'
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import {
   createGatewayApp,
@@ -151,7 +151,7 @@ describe('GW-218: cache middleware integration', () => {
 
   it('caches plans route responses', async () => {
     const config = testConfig()
-    const fetcher = createMockFetcher([nativePlan({ id: 1, name: 'Basic', prices: [{ period: 'monthly', amount_minor: 1200 }] })])
+    const fetcher = createMockFetcher([nativeOffer({ name: 'Basic' })])
     const app = createGatewayApp(config, fetcher)
 
     const res1 = await app.request('/gateway/v1/plans')
@@ -223,9 +223,9 @@ describe('GW-218: cache middleware integration', () => {
 
   it('includes query string in cache key', async () => {
     const config = testConfig()
-    // /plans is schema-validated (array of {id,name}), so the mock must return
+    // /plans is schema-validated (array of Native Offers), so the mock must return
     // a valid plan list or the route answers 502 and nothing is cacheable.
-    const fetcher = createMockFetcher([nativePlan({ id: 1, name: 'Basic', prices: [{ period: 'monthly', amount_minor: 1200 }] })])
+    const fetcher = createMockFetcher([nativeOffer({ name: 'Basic' })])
     const app = createGatewayApp(config, fetcher)
 
     // Same path, different query = different cache entries

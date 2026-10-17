@@ -1,17 +1,12 @@
 // OrdersPage: read-only list/status + gated create (GW-505).
-import { useState } from 'react'
-import { useAuth } from '../hooks/useAuth'
 import { useOrders } from '../hooks/useOrders'
-import { hasCapability } from '../api'
 import { formatMoney } from '../lib/format'
 import { ErrorState } from '../components/ErrorState'
 
 const STATUS_LABELS: Record<number, string> = { 0: '待支付', 1: '开通中', 2: '已取消', 3: '已完成', 4: '已折抵' }
 
 export function OrdersPage() {
-  const auth = useAuth()
-  const { orders, error, loading, notice, current, lastPage, total, setCurrent, refreshStatus, createOrder } = useOrders()
-  const [canCreate] = useState(false)
+  const { orders, error, loading, notice, current, lastPage, total, setCurrent, refreshStatus } = useOrders()
 
   return (
     <section className="panel">
@@ -20,14 +15,6 @@ export function OrdersPage() {
       <ErrorState error={error} />
 
       {notice && <p className="notice" role="status">{notice}</p>}
-
-      {/* The create button only renders when bootstrap advertised orders.create;
-          the hook never auto-retries a write. */}
-      {canCreate && (
-        <button className="primary" onClick={() => createOrder({ plan_id: 1, period: 'monthly' })}>
-          创建测试订单
-        </button>
-      )}
 
       {loading && <p role="status">加载中…</p>}
       {!loading && !error && orders.length === 0 && <p className="muted">暂无订单。</p>}

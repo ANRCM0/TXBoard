@@ -63,12 +63,27 @@ export type UserProfile = {
   email: string
   telegram_id: number | null
 }
-export type Plan = {
-  id: number
+/** Published Core Offer; decimal domain values remain strings. */
+export type NativeOffer = {
+  offer_id: string
+  plan_id: string
+  plan_revision_id: string
   name: string
-  month_price?: number | null
-  year_price?: number | null
-  [field: string]: unknown
+  content: string | null
+  tags: string[]
+  offer_code: 'monthly' | 'quarterly' | 'half_yearly' | 'yearly' | 'two_yearly' | 'three_yearly' | 'onetime' | 'reset_traffic'
+  purchase_kind: 'subscription' | 'perpetual' | 'traffic_reset'
+  currency: string
+  currency_minor_exponent: 2
+  price_minor: string
+  quota_bytes: string
+  group_id: string | null
+  speed_limit_mbps: string | null
+  device_limit: string | null
+  sell: boolean
+  renew: boolean
+  availability_version: string
+  publication_hash: string
 }
 export type Order = {
   trade_no: string
@@ -80,12 +95,10 @@ export type Order = {
 }
 
 export type OrderCreatePayload = {
-  plan_id: number
-  period: string
-  coupon_code?: string
+  offer_id: string
 }
 
-export type OrderCreateResult = { trade_no: string; [field: string]: unknown }
+export type OrderCreateResult = { trade_no: string }
 
 export class GatewayApiError extends Error {
   constructor(
@@ -315,7 +328,7 @@ export function createTXBoardClient(options: TXBoardClientOptions = {}) {
       config: () => invoke<ThemeData>('/theme/config'),
     },
     plans: {
-      list: () => invoke<Plan[]>('/plans'),
+      list: () => invoke<NativeOffer[]>('/plans'),
     },
     auth: {
       /** Account writes are encrypted-only and require opt-in Redis+HPKE Gateway. */

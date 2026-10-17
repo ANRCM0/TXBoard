@@ -1,7 +1,7 @@
 // my-theme SDK bootstrap: single client instance (docs/developer-guide.md §3.3).
-// All data flows through @ANRCM0/theme-sdk -> /gateway/v1. No other upstream exists.
-import { createTXBoardClient } from '@ANRCM0/theme-sdk'
-import type { BootstrapData } from '@ANRCM0/theme-sdk'
+// All data flows through @txboard/theme-sdk -> /gateway/v1. No other upstream exists.
+import { createTXBoardClient } from '@txboard/theme-sdk'
+import type { BootstrapData } from '@txboard/theme-sdk'
 
 const TOKEN_KEY = 'txboard_auth_data'
 
@@ -56,19 +56,27 @@ export function newIdempotencyKey(): string {
 }
 
 // Persist the draft key across refreshes: sessionStorage scoped per
-// plan_id + period. On refresh the SAME key is reused — the Gateway derives
-// its authoritative key from the authenticated user; ours is the correlation
-// hint that prevents accidental double submits.
-const DRAFT_KEY_PREFIX = 'txboard_draft_key:'
-export function draftKeyFor(planId: number, period: string): string {
-  const storageKey = `${DRAFT_KEY_PREFIX}${planId}:${period}`
+// offer_id. Core binds the unchanged key to the authenticated user and input.
+// Without sessionStorage, keep the same draft key for this page lifetime.
+const DRAFT_KEY_PREFIX = 'txboard_offer_draft_key:'
+const draftKeys = new Map<string, string>()
+export function draftKeyFor(offerId: string): string {
+  const storageKey = `${DRAFT_KEY_PREFIX}${offerId}`
+  const cached = draftKeys.get(offerId)
+  if (cached) return cached
   try {
     const existing = sessionStorage.getItem(storageKey)
-    if (existing) return existing
+    if (existing) {
+      draftKeys.set(offerId, existing)
+      return existing
+    }
     const created = newIdempotencyKey()
+    draftKeys.set(offerId, created)
     sessionStorage.setItem(storageKey, created)
     return created
   } catch {
-    return newIdempotencyKey()
+    const key = draftKeys.get(offerId) ?? newIdempotencyKey()
+    draftKeys.set(offerId, key)
+    return key
   }
 }

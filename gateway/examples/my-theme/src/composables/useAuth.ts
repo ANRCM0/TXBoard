@@ -1,6 +1,6 @@
 // Session composable: owns token lifetime, login/logout, 401 handling.
 import { computed, ref } from 'vue'
-import type { LoginPayload, UserAuth } from '@ANRCM0/theme-sdk'
+import type { LoginPayload, UserAuth } from '@txboard/theme-sdk'
 import { api, clearToken, readToken, writeToken } from '../api'
 
 const token = ref(readToken())
