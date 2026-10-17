@@ -518,7 +518,7 @@ final class NativeUpgradeCreditTest extends NativePaymentTestCase
             'tx_usage_period', 'tx_subscription_operation', 'tx_money_account', 'tx_money_journal', 'tx_money_posting',
             'tx_payment_attempt', 'tx_payment_receipt', 'tx_payment_settlement', 'tx_order_payment', 'tx_billing_work',
             'tx_native_free_checkout', 'tx_native_runtime_outbox', 'tx_order_upgrade_credit', 'tx_upgrade_credit_source',
-            'tx_credential_provider_operation', 'tx_access_subject', 'tx_auth_snapshot'];
+            'tx_credential_provider_operation', 'tx_access_subject', 'tx_auth_snapshot', 'tx_wallet_order_reservation'];
         $before = $this->snapshots($tables);
         try {
             $accept();
