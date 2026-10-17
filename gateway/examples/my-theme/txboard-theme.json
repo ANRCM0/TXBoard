@@ -15,7 +15,7 @@
   "gateway": {
     "contract": "1.x",
     "sdk": {
-      "package": "@ANRCM0/theme-sdk",
+      "package": "@txboard/theme-sdk",
       "version": ">=0.1.0 <1.0.0"
     },
     "capabilities": [

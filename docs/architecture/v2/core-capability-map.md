@@ -1,12 +1,13 @@
 # Core capability and transaction map
 
-> K0 inventory, K1 entitlement, K2 adapters, K3 fulfillment and K4 ingress candidates, 2026-10-17.
+> Current K0-K3 and accepted K4 account/order/session ingress scope, 2026-10-17.
 >
 > Starting source: local `main` at `85b0eac62f73f636efe736548e968535c561ced3`.
-> This map records actual candidate scope. K1-K3 exact-commit development CI is
-> recorded below, as is accepted K4 account/order-read development CI. The new
-> session-lifecycle subset still needs its own CI and domain review.
-> None of these candidate branches is an assumed merged or production baseline.
+> PRs #263-#268 are merged in dependency order into `main` at `f59f167`.
+> Each exact source head passed its triggered development checks; session head
+> `29da45d` passed API/MySQL/C2/docs/image verification. The final main tree is
+> identical to that head. Main integration CI is recorded separately; maintainer
+> waived manual review for this batch. This is not production qualification.
 
 Core is a modular control plane for one operator installation and its end users,
 not a generic plugin shell or an implemented multi-operator tenancy platform.
@@ -206,7 +207,7 @@ module under the [feature development guide](../../development/core-feature-deve
 
 ## 7. K2 current adapter candidate
 
-K2 builds on the K1 candidate commit `e76abc9`, not an assumed merged baseline.
+K2 builds on K1 commit `e76abc9`; both are now merged (PRs #263/#264).
 `CredentialProvider/Contracts/ProviderClient` exposes the current five methods;
 `ProviderTransport` directly implements it with a scoped composition binding.
 NativeCredentialProviderService, NativeSubscriptionDelivery,
@@ -229,13 +230,13 @@ Existing module inventory/lifecycle adapters remain the authoritative extension
 seam; K2 does not add another registry or open generic module invocation.
 Candidate regression tests and source guards cover the changed boundaries.
 K2 commit `832a8e8` passed its triggered API, MySQL and real Provider development
-checks in PR #264. It remains unmerged and does not prove production PKI,
+checks in PR #264. It is merged and does not prove production PKI,
 arbitrary Provider protocols or original-channel refunds. K4/K5 and release
 qualification remain separate work.
 
 ## 8. K3 fulfillment and financial proof candidate
 
-This subset builds on K2 candidate `832a8e8`; it is not a merged baseline.
+This merged subset builds on K2 commit `832a8e8` (PR #265).
 The [Order Fulfillment Ports contract](../../../contracts/v2/core-order-fulfillment-ports-v1.md)
 records the exact three interfaces and their failure/locking rules.
 
@@ -273,7 +274,7 @@ K4 ingress delegation, K5 integrated checks and release qualification remain ope
 
 ## 9. K4 account read ingress candidate
 
-This subset builds on K3 candidate `c8f782b`, still unmerged. The
+This merged subset builds on K3 commit `c8f782b`. The
 [Account Read Ports contract](../../../contracts/v2/core-account-read-ports-v1.md)
 records Identity's two query methods, scalar actor projection and the three
 fixed Internal API handler targets. No new business or service operation exists.
@@ -305,7 +306,7 @@ cover shared query replacement, alternating actual actors and authorization
 failure; account-read development CI is recorded below.
 
 Account-read candidate `a4cee43` (PR #266) passed its triggered API/MySQL/C2/image/
-docs development checks, and remains unmerged. This does not qualify a release.
+docs development checks, and is merged. This does not qualify a release.
 
 ## 10. K4 order-read candidate
 
@@ -337,7 +338,7 @@ New tests cover real HTTP/Internal parity, paging, owner isolation, missing Plan
 port replacement, admission rejection and failures. Candidate `8734af1` (PR #267)
 passed its triggered API/MySQL/C2/image-verify/docs development checks. Manual
 MySQL/release/recovery/publish jobs were skipped, not passed; Gateway was not
-triggered. The candidate remains unmerged and does not qualify a release.
+triggered. The candidate is merged and does not qualify a release.
 
 ## 11. K4 authenticated session lifecycle candidate
 
@@ -371,6 +372,8 @@ outer transaction, new financial/session truth, route or permission is added.
 Static guards and targeted tests are authored for ownership, actual Bearer
 isolation, shared-port substitution, current-token selection, rollback/admission,
 current permissions, closed input, replay/conflict/unknown and safe failures.
-Exact-commit runtime/MySQL CI remains pending for this new candidate. Other
-justified ingress slices, K5 integrated handoff and production qualification
-remain separate work; no candidate is merged by this change.
+Session head `29da45d` passed its triggered API, native C2, MySQL installation/
+billing/subscription, docs and image verification checks. PR #268 is merged at
+`f59f167`, whose file tree is identical to `29da45d`; main integration CI remains
+a separate result. Other justified ingress slices, K5 integrated handoff and
+production qualification remain separate work.

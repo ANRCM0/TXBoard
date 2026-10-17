@@ -14,6 +14,9 @@ const api = createTXBoardClient({
 
 const { site, theme, security } = await api.bootstrap()
 const plans = await api.plans.list()
+const selectedOffer = plans[0]
+// Order writes also require the server-side GATEWAY_ORDER_WRITE_ENABLED gate.
+// if (selectedOffer) await api.orders.create({offer_id: selectedOffer.offer_id}, {idempotencyKey: key})
 const profile = await api.user.profile()
 const subscription = await api.user.subscription()
 const orders = await api.orders.list({status: 0}) // default first page, up to 100 rows
@@ -53,7 +56,7 @@ const registered = await api.auth.register({
 - `GatewayApiError` 包含 `code`、HTTP `status`、可选 `requestId`。遇到 409/429/503 不要无脑自动重试密文写请求。
 - 套餐与订单金额沿用 TXBoard 的分单位；不在 SDK 中二次转换。
 - SDK 仅类型描述，不代替 Gateway/后端的运行时校验；SSR 必须为不同请求隔离 `getToken` 与客户实例。
-- 订单创建默认关闭；当前 `plan_id/period` 适配不兼容 Native Core `offer_id`，开启开关不证明购买可用。无 checkout/cancel、支付回调、管理员 API、订阅原始 Token 导出。
+- `plans.list()` returns published `NativeOffer[]`; IDs, `price_minor` and `quota_bytes` are exact decimal strings. Select an `offer_id`, never derive an offer from a Plan ID/period or recompute price. `orders.create({offer_id})` is strict and remains disabled by default at the Gateway. No checkout/cancel, payment callback, administrator API or raw subscription-token export is exposed.
 
 [HTTP v1 契约](../../contracts/gateway-v1.md) · [Docker 运行方式](../../docs/docker-deployment.md) · [当前状态](../../docs/development-status.md)。
 

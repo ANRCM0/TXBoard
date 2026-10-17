@@ -1,6 +1,6 @@
 # Core Entitlement Queries v1
 
-> Status: K1 candidate implementation, 2026-10-17. CI acceptance and review are pending; this is an in-process contract, not a new HTTP API.
+> Status: merged via PR #263, 2026-10-17; exact source development CI passed. This is an in-process contract, not a new HTTP API or production qualification.
 
 ## Ownership and composition
 

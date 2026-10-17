@@ -18,7 +18,7 @@ Browser / Theme SDK
 - Core 管理入口、支付回调、私密订阅、插件与 Node/WebSocket 不因部署 Gateway 改道。已退役的 Agent/MCP 与 `/api/v1`、`/api/v2` 不恢复。
 - `services/upstream.ts` 固定选择 Core `/txapi/*` 路径，禁止客户端提供上游 host/path。匿名支付目录没有 Core 对应项，固定 404、零上游调用。
 - `services/native-internal.ts` 是独立服务端 mTLS 客户端。User/Admin 服务配置隔离；当前浏览器适配只在配置 User service 后将 `login`、`guestConfig` 选入该通道。客户端存在不等于管理员浏览器 API 已开放，详见 [Native 接入](native-core-integration.md)。
-- 当前旧式浏览器订单 body 为 `plan_id/period`，Native Core 创建要求 `offer_id`；开启历史写开关不能使二者兼容。
+- 浏览器目录和创建使用 Native 已发布 Offer 的 `offer_id`；Core 继续持有购买与金融权威，Gateway 写入仍默认关闭。
 
 ## 请求管线与静态策略
 

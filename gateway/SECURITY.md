@@ -14,7 +14,7 @@ Gateway 是固定 API 适配器，不是 WAF、匿名化服务或端到端通信
 
 HPKE base mode 不认证发送者，不防主题 XSS，也不保证长期私钥泄露后历史密文保密；响应/Bearer 仍依赖 TLS。吊销不能销毁已泄露的 key。轮换窗口从进程加载时算起，发现响应当前可短缓存，不能承诺全副本和缓存瞬时吊销。
 
-Redis 正常期间的 `SET NX PX` 不代表故障切主、旧快照恢复或丢键后仍强一致。replay 不是业务幂等，Gateway 不持资金/订单账本；未知写结果不能自动换 key 或重复扣款。历史浏览器 `plan_id/period` 不兼容 Native `offer_id`，订单写开关保持默认关闭。
+Redis 正常期间的 `SET NX PX` 不代表故障切主、旧快照恢复或丢键后仍强一致。replay 不是业务幂等，Gateway 不持资金/订单账本；未知写结果不能自动换 key 或重复扣款。Native 购买只接受 Core 已发布 `offer_id`，订单写开关保持默认关闭。
 
 `/healthz` 仅 liveness，默认 upstream readiness 是占位。源码中的可信入口、指标和密钥生命周期不替代生产 PKI/代理链、Redis 恢复、容量及密码学审查证据。第三方主题/插件需信任作者，不能将同源 JS 或可信同进程 PHP 描述为沙箱。
 

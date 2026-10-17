@@ -44,7 +44,7 @@ const page = await api.orders.page({ current: 1, page_size: 20 })
 
 ## 订单写入与未知结果
 
-**当前浏览器 `orders.create` 仍接受历史 `plan_id/period`，与 Native Core 的 `offer_id` 契约不兼容。** 默认关闭；bootstrap 出现 `orders.create` 仅说明开关已打开，不证明 native 购买可用。不要在新客户端复制该历史购买 body；服务端 native 接口及真实消费者边界见 [Native 接入](native-core-integration.md)。
+`plans.list()` returns published `NativeOffer[]` values with exact decimal-string IDs, prices and quotas. Use the returned `offer_id` verbatim; do not infer it from a mutable Plan or recompute price. `orders.create({offer_id}, {idempotencyKey})` accepts no legacy `plan_id/period` conversion. The route remains disabled by default; its bootstrap capability only reflects the explicit server gate and does not mean payment or fulfillment succeeded. See [Native integration](native-core-integration.md).
 
 保留适配器的行为是：必填 1..128 位 URL 安全 `Idempotency-Key`，缺失/非法 400 且零上游调用；Gateway 原样透传用户 key，自派生 Hint 仅作关联，不持业务去重状态。相同逻辑意图保留原 key；参数改变不能复用 key。`IDEMPOTENCY_IN_PROGRESS` 和 `IDEMPOTENCY_CONFLICT` 保持不同 409，业务拒绝为安全的 422。超时/断网不证明失败，禁止自动换 key 或重发写入，先查询/按原 key 恢复；交易真相与幂等由 Core 管理。
 

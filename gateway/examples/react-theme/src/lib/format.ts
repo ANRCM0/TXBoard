@@ -1,3 +1,10 @@
+// Native catalog money is formatted by digit placement without numeric conversion.
+export const formatOfferMoney = (minor: string): string => {
+  if (!/^(0|[1-9][0-9]*)$/.test(minor)) return '—'
+  const digits = minor.padStart(3, '0')
+  return `${digits.slice(0, -2)}.${digits.slice(-2)}`
+}
+
 // Formatting helpers. Amounts are integer minor units (cents); the SDK never
 // converts them — display conversion is the theme's job.
 export const formatMoney = (minor: number | null | undefined): string =>

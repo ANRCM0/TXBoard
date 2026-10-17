@@ -1,6 +1,11 @@
 # Core Commerce v1 — purchased terms
 
-> Status: Current implementation slice, additive and legacy-compatible. This contract does not switch Subscription/User authority or introduce a new payment ledger.
+> Status: historical C1 purchased-terms foundation. The original slice below is
+> superseded for current native purchase by [Core Subscription v1](core-subscription-v1.md)
+> and [Native Payment Settlement v1](native-payment-settlement-v1.md). Native
+> clients select a published `offer_id`; do not implement the old `plan_id/period`
+> or legacy-authority rollout described below. Current Gateway consumers follow
+> [Native Offer Commerce v1](../../gateway/contracts/native-offer-commerce-v1.md).
 
 ## Purpose
 

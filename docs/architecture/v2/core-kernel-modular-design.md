@@ -609,7 +609,7 @@ R1 不增加通用抽象，目标是对已经选定且完成验证的功能组�
 
 默认先完成前置契约再推进依赖阶段；不需要改动的已满足目标项直接登记证据。没有估算依据时不承诺固定工期，也不按类/接口数量统计完成率。
 
-2026-10-17：K0 责任与消费者清单、K1 权益查询接口已形成候选；精确提交 `e76abc9` 已通过所触发的 API、MySQL 和 C2 开发验收。K2 当前 Provider/支付适配边界 `832a8e8`、K3 履约与付款证明子集 `c8f782b` 也已通过各自已触发的开发检查，仍待领域评审与按依赖合并，不能当作已合并基线。K4 账户读取 `a4cee43`（PR #266）也已通过已触发的开发 CI，HTTP 和三个固定 Internal API 操作共用 [账户查询端口](../../../contracts/v2/core-account-read-ports-v1.md)，保持入口鉴权与结果过滤。其上的 Billing [订单读取端口](../../../contracts/v2/core-order-read-ports-v1.md) `8734af1`（PR #267）也已通过已触发开发 CI；三个 HTTP 视图与两个 Internal API 操作共用现有归属、分页和投影，仍待领域评审与按依赖合并。当前新候选抽取 Identity [会话生命周期端口](../../../contracts/v2/core-account-sessions-v1.md)，HTTP 和三个现有 Internal API 操作共用会话列表、归属撤销及实际当前会话退出；读取规则不放宽，两个固定命令保留先鉴权后回执、原 workflow/once 和未知结果不重执行。本提交 CI 与领域评审仍待完成，不代表所有入站操作已改造。实际接口、消费者、事务责任及剩余范围见 [能力清单](core-capability-map.md)、[权益查询契约](../../../contracts/v2/core-entitlement-queries-v1.md)和 [履约端口契约](../../../contracts/v2/core-order-fulfillment-ports-v1.md)。K4 其余范围、K5 与生产专项仍未完成；原有 native 功能不计为本轮新增。
+2026-10-17：K0/K1 `e76abc9`、K2 Provider/支付边界 `832a8e8`、K3 履约/付款证明 `c8f782b` 与 K4 账户读取 `a4cee43`、订单读取 `8734af1`、会话生命周期 `29da45d` 各自通过所触发的精确源码开发 CI，PR #263-#268 已按依赖合入 `main`（`f59f167`）。本批维护者明确豁免人工审阅；未绕过 CI 或远端保护。最终合并树与 `29da45d` 一致，主线集成 CI 单独记录。会话领域端口保留原有归属撤销、实际当前 token、先鉴权后回执、workflow/once 及未知结果不重执行。当前下一批同步现有 Gateway/SDK 的真实 Offer 消费者：只接受已发布 `offer_id`，保留精确字符串，默认关闭写入，复用现有目录和购买 owner；不为已委托的 HTTP Controller 重复增加端口。此候选的真实 HTTP/数据库集成尚待 CI。K4 其余实际消费者核对、K5 集成收尾与生产专项分别列出；原有 native 功能不计为本轮新增。接口和事务责任见[能力清单](core-capability-map.md)。
 
 每阶段汇报至少列出：
 

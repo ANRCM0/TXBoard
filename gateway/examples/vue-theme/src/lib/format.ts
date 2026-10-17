@@ -1,3 +1,10 @@
+// Native catalog money is formatted by digit placement without numeric conversion.
+export const formatOfferMoney = (minor: string): string => {
+  if (!/^(0|[1-9][0-9]*)$/.test(minor)) return '—'
+  const digits = minor.padStart(3, '0')
+  return `${digits.slice(0, -2)}.${digits.slice(-2)}`
+}
+
 // Formatting helpers. TXBoard amounts are integer minor units (cents);
 // conversion to display currency happens in the theme, never in the SDK.
 export const formatMoney = (minor: number | null | undefined): string =>

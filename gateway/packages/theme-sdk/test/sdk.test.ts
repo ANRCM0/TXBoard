@@ -1,5 +1,14 @@
 import { describe, expect, it, vi } from 'vitest'
-import { createTXBoardClient, GatewayApiError } from '../src/index.js'
+import { createTXBoardClient, GatewayApiError, type NativeOffer } from '../src/index.js'
+
+const offerFixture = {
+  offer_id: '9007199254740993', plan_id: '9007199254740994', plan_revision_id: '9007199254740995',
+  name: 'Published Monthly', content: null, tags: ['native'], offer_code: 'monthly',
+  purchase_kind: 'subscription', currency: 'CNY', currency_minor_exponent: 2,
+  price_minor: '9007199254740996', quota_bytes: '9007199254740997',
+  group_id: '9007199254740998', speed_limit_mbps: '1000', device_limit: '3',
+  sell: true, renew: true, availability_version: '9007199254740999', publication_hash: 'a'.repeat(64),
+} satisfies NativeOffer
 
 function response(data: unknown, status = 200) {
   return Response.json({ ok: true, data, meta: { version: '1', requestId: 'test-id' } }, { status })
@@ -25,11 +34,15 @@ describe('@txboard/theme-sdk v1', () => {
         site: { name: 'TXBoard' }, theme: { name: 'Nova', config: {} },
         security: { captcha: { enabled: false, type: null, siteKey: null } }, capabilities: [],
       })
-      return response([{ id: 1, name: 'Monthly', month_price: 500 }])
+      return response([offerFixture])
     })
     const sdk = createTXBoardClient({ fetchImpl: fetchImpl as typeof fetch, getToken: () => 'secretBearer' })
     expect((await sdk.bootstrap()).site.name).toBe('TXBoard')
-    expect((await sdk.plans.list())[0]?.month_price).toBe(500)
+    const offers: NativeOffer[] = await sdk.plans.list()
+    expect(offers).toEqual([offerFixture])
+    expect(offers[0]?.offer_id).toBe('9007199254740993')
+    expect(offers[0]?.price_minor).toBe('9007199254740996')
+    expect(offers[0]?.quota_bytes).toBe('9007199254740997')
     for (const [, options] of fetchImpl.mock.calls as any) {
       expect(options.headers.has('Authorization')).toBe(false)
       expect(options.credentials).toBe('omit')
@@ -91,7 +104,7 @@ describe('GW-304 order create SDK surface', () => {
     })
     const sdk = createTXBoardClient({ fetchImpl: fetchImpl as typeof fetch, getToken: () => 'test-user-session' })
     const created = await sdk.orders.create(
-      { plan_id: 3, period: 'month_price' },
+      { offer_id: offerFixture.offer_id },
       { idempotencyKey: 'draft-2026-10-11-0001' },
     )
     expect(created.trade_no).toBe('T2026')
@@ -99,8 +112,17 @@ describe('GW-304 order create SDK surface', () => {
     expect(calls[0]!.init.method).toBe('POST')
     expect(calls[0]!.init.headers.get('Idempotency-Key')).toBe('draft-2026-10-11-0001')
     expect(calls[0]!.init.headers.get('Authorization')).toBe('Bearer test-user-session')
-    expect(JSON.parse(calls[0]!.init.body)).toEqual({ plan_id: 3, period: 'month_price' })
+    expect(JSON.parse(calls[0]!.init.body)).toEqual({ offer_id: offerFixture.offer_id })
     // A write is never auto-retried, so a transient failure cannot duplicate.
+    expect(fetchImpl).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not retry an indeterminate order-write response', async () => {
+    const fetchImpl = vi.fn(async () => response({ code: 'temporary' }, 503))
+    const sdk = createTXBoardClient({ fetchImpl: fetchImpl as typeof fetch, getToken: () => 'test-user-session' })
+    await expect(sdk.orders.create(
+      { offer_id: offerFixture.offer_id }, { idempotencyKey: 'stable-write-key' },
+    )).rejects.toMatchObject({ status: 503 })
     expect(fetchImpl).toHaveBeenCalledTimes(1)
   })
 
@@ -112,7 +134,7 @@ describe('GW-304 order create SDK surface', () => {
     }, { status: 409, headers: { 'Retry-After': '2' } }))
     const sdk = createTXBoardClient({ fetchImpl: fetchImpl as typeof fetch, getToken: () => 'test-user-session' })
     const error = await sdk.orders.create(
-      { plan_id: 3, period: 'month_price' }, { idempotencyKey: 'k' },
+      { offer_id: offerFixture.offer_id }, { idempotencyKey: 'k' },
     ).catch(e => e as GatewayApiError)
     expect(error).toBeInstanceOf(GatewayApiError)
     expect(error.code).toBe('IDEMPOTENCY_IN_PROGRESS')

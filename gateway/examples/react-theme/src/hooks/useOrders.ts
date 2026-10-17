@@ -1,7 +1,7 @@
 // useOrders hook: list/status/create with gated write semantics (GW-505).
 import { useCallback, useEffect, useState } from 'react'
 import type { GatewayApiError, Order } from '@txboard/theme-sdk'
-import { api, newIdempotencyKey } from '../api'
+import { api } from '../api'
 
 export function useOrders() {
   const [orders, setOrders] = useState<Order[]>([])
@@ -47,14 +47,16 @@ export function useOrders() {
    * GW-304 write: only callable when bootstrap advertised orders.create.
    * The SDK never auto-retries a write. IDEMPOTENCY_IN_PROGRESS = back off and
    * resend the SAME key; IDEMPOTENCY_CONFLICT = draft reused with a different
-   * request; ORDER_REJECTED = business refusal (balance/plan/coupon).
+   * request; ORDER_REJECTED = business refusal (offer admission).
    */
   const createOrder = useCallback(async (
-    payload: { plan_id: number; period: string; coupon_code?: string },
-    draftKey?: string,
+    payload: { offer_id: string },
+    draftKey: string,
   ) => {
-    const idempotencyKey = draftKey || newIdempotencyKey()
+    const idempotencyKey = draftKey
     try {
+      const bootstrap = await api.bootstrap()
+      if (!bootstrap.capabilities.includes('orders.create')) return null
       const result = await api.orders.create(payload, { idempotencyKey })
       setNotice(`订单已创建：${result.trade_no}`)
       await load()

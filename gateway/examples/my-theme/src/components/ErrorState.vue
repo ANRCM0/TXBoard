@@ -11,7 +11,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { GatewayApiError } from '@ANRCM0/theme-sdk'
+import type { GatewayApiError } from '@txboard/theme-sdk'
 
 const props = defineProps<{ error: Error | GatewayApiError | null }>()
 defineEmits<{ retry: [] }>()
