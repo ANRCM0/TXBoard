@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
-        if (!Schema::hasColumn('tx_user', 'next_reset_at')) {
+        if (config('core_installation.mode') === 'native' || !Schema::hasColumn('tx_user', 'next_reset_at')) {
             return;
         }
 

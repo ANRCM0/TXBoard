@@ -78,7 +78,7 @@ final class AccountReadBoundaryTest extends NativeRuntimeTestCase
         $account = ['id' => (int) $user->id, 'email' => $user->email, 'telegram_id' => 912345678,
             'subscription' => ['schema' => 'port-test', 'authorized' => false, 'user_id' => (int) $user->id],
             'credential_status' => 'provider_managed'];
-        $subscription = ['schema' => 'port-test', 'authorized' => false, 'user_id' => (int) $user->id,
+        $subscription = ['schema' => 'core-entitlement/v1', 'authorized' => false, 'reason' => 'ENTITLEMENT_SLOT_EMPTY', 'user_id' => (int) $user->id,
             'credential_status' => 'provider_managed', 'delivery_formats' => ['port-format']];
         $queries = Mockery::mock(AccountQueries::class);
         $queries->shouldReceive('account')->twice()->with(Mockery::on(static fn ($identity): bool =>
@@ -89,7 +89,7 @@ final class AccountReadBoundaryTest extends NativeRuntimeTestCase
         $this->assertSame($account, $this->http('/txapi/me?user_id=999999&authorized=true&at=1', $token)
             ->assertOk()->json('data'));
         $this->http('/txapi/me/subscription?user_id=999999&authorized=true&at=1', $token)->assertOk()
-            ->assertJsonPath('data.schema', 'port-test')
+            ->assertJsonPath('data.schema', 'core-entitlement/v1')
             ->assertJsonPath('data.delivery_endpoint', '/txapi/me/subscription-deliveries');
         $this->app->bind(AccountController::class, static function () {
             throw new \LogicException('INTERNAL_READ_MUST_NOT_RESOLVE_ACCOUNT_CONTROLLER');
@@ -201,14 +201,16 @@ final class AccountReadBoundaryTest extends NativeRuntimeTestCase
         $queries->shouldReceive('subscription')->once()->with((int) $user->id)->andReturn($subscription);
         $this->app->instance(AccountQueries::class, $queries);
         $account = $this->invoke('identity.account.get', $token)->assertOk();
-        $standalone = $this->invoke('subscription.mine.get', $token)->assertOk();
+        $standalone = $this->invoke('subscription.mine.get', $token)->assertStatus(503)
+            ->assertJsonPath('error.code', 'DEPENDENCY_UNAVAILABLE');
         $expected = ['schema' => 'test', 'authorized' => true, 'user_id' => (string) $user->id,
             'subscription_id' => '71', 'quota_bytes' => '1000', 'consumed_bytes' => '17',
             'delivery_formats' => ['test-format'],
             'credential_status' => ['state' => 'managed', 'nested' => ['count' => 2]]];
         $this->assertSame(['id' => (string) $user->id, 'email' => $user->email, 'telegram_id' => null,
             'subscription' => $expected], $account->json('data'));
-        $this->assertSame($expected, $standalone->json('data'));
+        // The standalone operation now rejects a malformed nested contract instead of passing it through.
+        $this->assertNull($standalone->json('data'));
         foreach ([$account, $standalone] as $response) {
             $this->assertStringNotContainsString($secret, $response->getContent());
             $this->assertTrue($response->headers->hasCacheControlDirective('private'));

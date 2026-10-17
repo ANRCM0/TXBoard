@@ -6,6 +6,15 @@ on:
     paths:
       - "api/**"
       - "!api/**/*.md"
+      - "contracts/core-api/**"
+      - "scripts/generate-core-contracts.py"
+      - "contracts/kernel/**"
+      - "contracts/modules/**"
+      - "contracts/releases/**"
+      - "scripts/check-kernel-v1.py"
+      - "scripts/check-modular-release.py"
+      - "scripts/module-dev.py"
+      - "scripts/tests/test_module_dev.py"
       - "contracts/v2/**"
       - "contracts/module-package/**"
       - "contracts/module-lifecycle/**"
@@ -30,6 +39,15 @@ on:
     paths:
       - "api/**"
       - "!api/**/*.md"
+      - "contracts/core-api/**"
+      - "scripts/generate-core-contracts.py"
+      - "contracts/kernel/**"
+      - "contracts/modules/**"
+      - "contracts/releases/**"
+      - "scripts/check-kernel-v1.py"
+      - "scripts/check-modular-release.py"
+      - "scripts/module-dev.py"
+      - "scripts/tests/test_module_dev.py"
       - "contracts/v2/**"
       - "contracts/module-package/**"
       - "contracts/module-lifecycle/**"
@@ -50,6 +68,8 @@ on:
       - "scripts/check-core-boundaries.py"
       - "scripts/tests/test_check_core_boundaries.py"
       - ".github/workflows/ci-api.yml"
+
+  workflow_dispatch:
 
 concurrency:
   group: api-ci-${{ github.ref }}
@@ -84,8 +104,14 @@ jobs:
       - name: Verify current Core domain boundaries
         working-directory: .
         run: |
+          python3 scripts/generate-core-contracts.py --check
           python3 scripts/check-core-boundaries.py
+          python3 scripts/check-kernel-v1.py
+          python3 scripts/check-modular-release.py
+          python3 scripts/module-dev.py lock api/bootstrap/module-composition.json api/bootstrap/module-packages.lock.json --application-root api --check
+          python3 scripts/module-dev.py lock api/bootstrap/module-composition.proof.json api/bootstrap/module-packages.proof.lock.json --application-root api --check
           python3 -m unittest discover -s scripts/tests -p test_check_core_boundaries.py
+          python3 -m unittest discover -s scripts/tests -p test_module_dev.py
       - uses: shivammathur/setup-php@v2
         with:
           php-version: "8.2"
@@ -98,13 +124,21 @@ jobs:
           cp .env.example .env
           php artisan key:generate
       - name: Check PHP syntax
-        run: find app config routes database tests plugins-core -name '*.php' -print0 | xargs -0 -n1 php -l > "$RUNNER_TEMP/php-syntax.log"
+        run: find app config routes database tests plugins-core plugins/DeliveryReceipt plugins/OfferReservation plugins/ModulePortal -name '*.php' -print0 | xargs -0 -n1 php -l > "$RUNNER_TEMP/php-syntax.log"
       - name: Run current native development suite
         env:
           APP_ENV: testing
           DB_CONNECTION: sqlite
           DB_DATABASE: ":memory:"
         run: php artisan test
+      - name: Actual durable HTTPS receiver restart after lost notification acknowledgement
+        env:
+          CORE_MODULE_RECEIVER_CERT: ${{ runner.temp }}/module-receiver.pem
+          CORE_MODULE_RECEIVER_KEY: ${{ runner.temp }}/module-receiver.key
+        run: |
+          openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj /CN=module-receiver-fixture -addext subjectAltName=IP:127.0.0.1 -keyout "$CORE_MODULE_RECEIVER_KEY" -out "$CORE_MODULE_RECEIVER_CERT" 2>/dev/null
+          chmod 600 "$CORE_MODULE_RECEIVER_KEY"
+          php artisan test tests/Integration/Modules/NotificationReceiverTest.php
       - uses: actions/setup-node@v4
         with:
           node-version: "22"

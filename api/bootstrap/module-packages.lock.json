@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "packages": [
+    {
+      "code": "epay",
+      "root": "plugins-core/Epay",
+      "required": false,
+      "grants": [],
+      "version": "1.0.0",
+      "files": {
+        "config.json": "7fe411483c8b3902d88a396c28e7fd38f53e3ccfdd0a497d55498b6309981793",
+        "module.json": "83176f38f790caa339395db41cfd58174195458fc5547cb1285538d43bf9443a",
+        "NativeAdapter.php": "124e357d03bfd3ac1ed413a4da5e696babac9bf2225c9521392e351e96db226b",
+        "Plugin.php": "502f4ee69f9253c6338caf595030848327a9d7a1136b747b3537a0af5f796a6a"
+      }
+    }
+  ]
+}

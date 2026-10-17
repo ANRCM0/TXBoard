@@ -115,6 +115,9 @@ final class NativePaymentSettlement implements WinningPaymentProofs
             $this->require($this->payload($existing) === $payload
                 && hash_equals(MoneyValue::hash($payload), (string) $existing->content_hash),
                 'PAYMENT_SETTLEMENT_EVIDENCE_INVALID');
+            app(SettlementNotifications::class)->recordLocked($installation, 'billing.payment-settled.v1', (string) $existing->id,
+                ['user_id' => (string) $userId, 'order_id' => (string) $order->id, 'receipt_id' => $payload['receipt_id'],
+                    'decision' => $decision, 'amount_minor' => $amount, 'currency' => $currency], (int) $receipt['occurred_at']);
             return $this->result($existing, $payload);
         });
     }

@@ -20,7 +20,7 @@ final class NativeIdentityService
         return $this->create((string) $request->input('email'), $request->input('password'));
     }
 
-    public function create(string $email, mixed $password): array
+    public function create(string $email, mixed $password, ?int $actorId = null): array
     {
         $email = strtolower(trim($email));
         if (!is_string($password) || strlen($password) < 8 || strlen($password) > 1024
@@ -31,8 +31,12 @@ final class NativeIdentityService
             throw new DomainException('NATIVE_IDENTITY_TRANSACTION_OWNERSHIP_REQUIRED');
         }
         try {
-            $user = DB::transaction(function () use ($email, $password): User {
+            $user = DB::transaction(function () use ($email, $password, $actorId): User {
                 app(InstallationAuthority::class)->assertNativeMutation();
+                if ($actorId !== null) {
+                    $actor = User::query()->whereKey($actorId)->sharedLock()->first();
+                    if ($actor === null || !$actor->is_admin || $actor->banned) throw new DomainException('NATIVE_ACCOUNT_ACTOR_REJECTED');
+                }
                 if (User::byEmail($email)->lockForUpdate()->exists()) {
                     throw new DomainException('NATIVE_IDENTITY_CONFLICT');
                 }

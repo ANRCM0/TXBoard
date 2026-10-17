@@ -1,0 +1,23 @@
+{
+  "package": {
+    "schema": 1
+  },
+  "name": "DeliveryReceipt",
+  "code": "delivery_receipt",
+  "version": "1.0.0",
+  "type": "feature",
+  "description": "Durable notification receipts with an idempotent receiver",
+  "author": "Module author",
+  "config": {
+    "endpoint": {
+      "type": "string",
+      "default": "https://receiver.example.test/events",
+      "label": "Receiver endpoint"
+    },
+    "token": {
+      "type": "string",
+      "default": "secret:module_receipt_token",
+      "label": "Secret reference"
+    }
+  }
+}

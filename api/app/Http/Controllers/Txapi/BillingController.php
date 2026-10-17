@@ -7,19 +7,15 @@ use App\Exceptions\ApiException;
 use App\Domains\Billing\IdempotencyException;
 use App\Domains\Billing\OrderIdempotency;
 use App\Domains\Billing\BillingError;
-use App\Domains\Billing\NativePaymentProviderRegistry;
-use App\Domains\Billing\NativePaymentCheckout;
+use App\Domains\Billing\Contracts\PaymentCheckout;
 use App\Domains\Installation\InstallationAuthority;
 use App\Domains\Installation\InstallationAuthorityException;
 use App\Models\CommissionLog;
-use App\Models\Order;
 use App\Models\Payment;
 use App\Models\Plan;
 use App\Services\CouponService;
 use App\Services\OrderService;
-use App\Domains\Billing\NativeOrderLifecycle;
 use App\Services\PlanService;
-use App\Domains\Subscription\Services\PublishedOrderService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -54,29 +50,19 @@ final class BillingController
 
     public function methods(Request $request): JsonResponse
     {
-        $native = app(InstallationAuthority::class)->inspect()['mode'] === 'native';
-        $methods = Payment::query()->where('enable', true)
-            ->orderBy('sort')->orderBy('id')
-            ->get()
-            ->filter(static function (Payment $method) use ($native): bool {
-                if (!$native) { return true; }
-                if ((float) $method->handling_fee_fixed !== 0.0 || (float) $method->handling_fee_percent !== 0.0) {
-                    return false;
-                }
-                try {
-                    $provider = app(NativePaymentProviderRegistry::class)->forPayment($method);
-                    $provider->adapter->accountRef($method);
-                    return true;
-                }
-                catch (BillingError) { return false; }
-            })
+        if (app(InstallationAuthority::class)->inspect()['mode'] === 'native') {
+            return TxapiResponse::success($request,
+                array_map(static fn (array $method): array => array_replace($method, ['id' => (int) $method['id']]),
+                    app(\App\Domains\Billing\Contracts\PaymentMethods::class)->available()))->header('Cache-Control', 'private, no-store');
+        }
+        $methods = Payment::query()->where('enable', true)->orderBy('sort')->orderBy('id')->get()
             ->map(static fn (Payment $method): array => [
                 'id' => (int) $method->id,
                 'name' => (string) $method->name,
                 'provider' => (string) $method->payment,
                 'icon' => $method->icon,
-                'fee_fixed_minor' => $native ? '0' : (int) $method->handling_fee_fixed,
-                'fee_percent' => $native ? '0' : (float) $method->handling_fee_percent,
+                'fee_fixed_minor' => (int) $method->handling_fee_fixed,
+                'fee_percent' => (float) $method->handling_fee_percent,
             ])->values()->all();
         return TxapiResponse::success($request, $methods)->header('Cache-Control', 'private, no-store');
     }
@@ -157,7 +143,7 @@ final class BillingController
                 return TxapiResponse::error($request, 'IDEMPOTENCY_KEY_REQUIRED',
                     'Idempotency-Key is required for native purchases', 400);
             }
-            $order = app(PublishedOrderService::class)->create((int) Auth::guard('sanctum')->id(),
+            $order = app(\App\Domains\Subscription\Contracts\Purchases::class)->purchase((int) Auth::guard('sanctum')->id(),
                 (int) $params['offer_id'], $key);
         } catch (IdempotencyException $error) {
             $response = TxapiResponse::error($request, $error->errorCode, $error->getMessage(), (int) $error->getCode());
@@ -169,7 +155,7 @@ final class BillingController
             return TxapiResponse::error($request, 'ORDER_REJECTED',
                 'Order cannot be created under current subscription or publication state', 409);
         }
-        return TxapiResponse::success($request, ['trade_no' => $order->trade_no], status: 201)
+        return TxapiResponse::success($request, ['trade_no' => $order->tradeNo], status: 201)
             ->header('Cache-Control', 'no-store');
     }
 
@@ -187,7 +173,7 @@ final class BillingController
                 return TxapiResponse::error($request, 'NATIVE_PAYMENT_INPUT_INVALID',
                     'Native checkout accepts a wallet or channel allocation', 422)->header('Cache-Control', 'private, no-store');
             }
-            $result = app(\App\Domains\Billing\OrderCheckout::class)->start(
+            $result = app(\App\Domains\Billing\Contracts\OrderCheckout::class)->start(
                 (int) Auth::guard('sanctum')->id(), $tradeNo,
                 isset($params['method']) ? (int) $params['method'] : null,
                 $params['token'] ?? null,
@@ -234,7 +220,7 @@ final class BillingController
                 ->header('Cache-Control', 'private, no-store');
         }
         try {
-            $checkout = app(NativePaymentCheckout::class);
+            $checkout = app(PaymentCheckout::class);
             $userId = (int) Auth::guard('sanctum')->id();
             $result = $query ? $checkout->query($userId, (int) $attemptId)
                 : $checkout->status($userId, (int) $attemptId);
@@ -250,14 +236,10 @@ final class BillingController
 
     public function cancelOrder(Request $request, string $tradeNo): JsonResponse
     {
-        $order = Order::query()->useWritePdo()->where('user_id', Auth::guard('sanctum')->id())
-            ->where('trade_no', $tradeNo)->first();
-        if (!$order) {
-            abort(404);
-        }
-        $lifecycle = $order->purchase_terms_version === PublishedOrderService::VERSION
-            ? new NativeOrderLifecycle($order) : new OrderService($order);
-        if (!$lifecycle->cancel()) {
+        $cancelled = app(\App\Domains\Billing\Contracts\OrderCancellation::class)->cancel(
+            (int) Auth::guard('sanctum')->id(), $tradeNo);
+        if ($cancelled === null) abort(404);
+        if (!$cancelled) {
             return TxapiResponse::error($request, 'ORDER_CONFLICT',
                 'Only an unpaid order may be cancelled', 409);
         }

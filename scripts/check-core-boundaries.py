@@ -178,33 +178,51 @@ KERNEL_FILES = {
     "api/app/Domains/InternalApi/SessionReadOperations.php": "App\\Domains\\InternalApi",
     "api/app/Domains/InternalApi/SessionMutationOperations.php": "App\\Domains\\InternalApi",
     "api/app/Domains/InternalApi/MutationOperationResult.php": "App\\Domains\\InternalApi",
+    "api/app/Domains/UsageV2/Contracts/UsageQueries.php": "App\\Domains\\UsageV2\\Contracts",
+    "api/app/Domains/UsageV2/Contracts/UsageQuery.php": "App\\Domains\\UsageV2\\Contracts",
+    "api/app/Domains/UsageV2/Contracts/UsagePage.php": "App\\Domains\\UsageV2\\Contracts",
+    "api/app/Domains/UsageV2/Contracts/UsageTargetMissing.php": "App\\Domains\\UsageV2\\Contracts",
+    "api/app/Domains/UsageV2/NativeUsageQueries.php": "App\\Domains\\UsageV2",
+    "api/app/Domains/InternalApi/UsageReadOperations.php": "App\\Domains\\InternalApi",
 }
 RESOLVER_OWNERS = frozenset({
     "api/app/Domains/Subscription/Services/SubscriptionEntitlementResolver.php",
     "api/app/Providers/CoreCapabilitiesServiceProvider.php",
+    "api/app/Modules/SubscriptionModule.php",
 })
 PROVIDER_TRANSPORT_OWNERS = frozenset({
     "api/app/Domains/CredentialProvider/ProviderTransport.php",
     "api/app/Providers/CoreCapabilitiesServiceProvider.php",
+    "api/app/Modules/ProviderModule.php",
 })
 FULFILLMENT_OWNERS = frozenset({
     "api/app/Domains/Subscription/Services/SubscriptionFulfillmentService.php",
     "api/app/Providers/CoreCapabilitiesServiceProvider.php",
+    "api/app/Modules/SubscriptionModule.php",
 })
 ACCOUNT_QUERY_OWNERS = frozenset({
     "api/app/Domains/Identity/NativeAccountQueries.php",
     "api/app/Providers/CoreCapabilitiesServiceProvider.php",
+    "api/app/Modules/IdentityModule.php",
 })
 ORDER_QUERY_OWNERS = frozenset({
     "api/app/Domains/Billing/NativeOrderQueries.php",
     "api/app/Providers/CoreCapabilitiesServiceProvider.php",
+    "api/app/Modules/BillingModule.php",
 })
 ACCOUNT_SESSION_OWNERS = frozenset({
     "api/app/Domains/Identity/NativeAccountSessions.php",
     "api/app/Providers/CoreCapabilitiesServiceProvider.php",
+    "api/app/Modules/IdentityModule.php",
+})
+USAGE_QUERY_OWNERS = frozenset({
+    "api/app/Domains/UsageV2/NativeUsageQueries.php",
+    "api/app/Providers/CoreCapabilitiesServiceProvider.php",
+    "api/app/Modules/UsageModule.php",
 })
 READ_ADAPTER_FILES = {
     "api/app/Domains/InternalApi/AccountReadOperations.php": "account read handler",
+    "api/app/Domains/InternalApi/UsageReadOperations.php": "usage read handler",
     "api/app/Domains/InternalApi/OrderReadOperations.php": "order read handler",
     "api/app/Domains/InternalApi/ReadOperationResult.php": "read operation result",
     "api/app/Domains/InternalApi/SessionReadOperations.php": "session read handler",
@@ -297,7 +315,23 @@ def validate_kernel_boundaries(root):
             re.compile(r"(?<!\$)\b(?:Closure|callable|Request|Model|Builder|Connection|ConnectionInterface)\b",
                        re.IGNORECASE),
         ),
+        "api/app/Domains/UsageV2/Contracts": (
+            re.compile(
+                r"\bApp\\(?!(?:Core\\Kernel|Domains\\UsageV2\\Contracts)(?:\\|\b))",
+                re.IGNORECASE,
+            ),
+            HOST_NAMESPACE,
+            HOST_OPERATION,
+            re.compile(r"(?<!\$)\b(?:Closure|callable|Request|Model|Builder|Connection|ConnectionInterface)\b",
+                       re.IGNORECASE),
+        ),
     }
+    for domain in ('Network', 'Installation'):
+        areas[f"api/app/Domains/{domain}/Contracts"] = (
+            re.compile(r"\bApp\\(?!(?:Core\\Kernel|Domains\\" + domain + r"\\Contracts)(?:\\|\b))", re.IGNORECASE),
+            HOST_NAMESPACE, HOST_OPERATION,
+            re.compile(r"(?<!\$)\b(?:Closure|callable|Request|Model|Builder|Connection|ConnectionInterface)\b", re.IGNORECASE),
+        )
     checked = 0
     for area, patterns in areas.items():
         for path in sorted((root / area).rglob("*.php")):
@@ -333,6 +367,8 @@ def validate_kernel_boundaries(root):
          ORDER_QUERY_OWNERS, "order query"),
         (re.compile(r"\bNativeAccountSessions\b", re.IGNORECASE),
          ACCOUNT_SESSION_OWNERS, "account sessions"),
+        (re.compile(r"\bNativeUsageQueries\b", re.IGNORECASE),
+         USAGE_QUERY_OWNERS, "usage query"),
     )
     for area in ("api/app", "api/config", "api/routes", "api/plugins-core"):
         for path in sorted((root / area).rglob("*.php")):

@@ -15,7 +15,7 @@ final class NetworkGroupAdminController
 {
     public function index(Request $request): JsonResponse
     {
-        $data = app(\App\Domains\Network\NetworkGroupReader::class)->read()['items'];
+        $data = app(\App\Domains\Network\Contracts\NetworkGroups::class)->read()['items'];
 
         return TxapiResponse::success($request, $data)->header('Cache-Control', 'no-store');
     }

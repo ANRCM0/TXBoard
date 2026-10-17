@@ -1,4 +1,4 @@
-import { requestId, nativePlan, nativeProfile } from './native-fixtures.js'
+import { requestId, nativeOffer, nativeProfile } from './native-fixtures.js'
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import {
   compileIpAllowlist,
@@ -441,7 +441,7 @@ describe('GW-215 Redis failure posture', () => {
   it('public routes degrade, and the degradation is observable rather than silent', async () => {
     const limiter = RedisRateLimiter.withClient(fakeRedis(() => { throw new Error('timeout') }))
     const events: { limited: boolean; degraded: boolean }[] = []
-    const fetcher = vi.fn(async () => Response.json({ request_id: requestId, data: [nativePlan({ id: 1, name: 'Monthly', prices: [{ period: 'monthly', amount_minor: 1200 }] })] }))
+    const fetcher = vi.fn(async () => Response.json({ request_id: requestId, data: [nativeOffer({ name: 'Monthly' })] }))
     const app = createGatewayApp(config, fetcher as never, undefined, {
       rateLimiter: limiter, onRateEvent: e => events.push(e),
     })

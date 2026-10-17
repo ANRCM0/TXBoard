@@ -36,7 +36,7 @@ final class NativeBillingRecovery
         $results = [];
         foreach ($attempts as $attempt) {
             try {
-                $results[(string) $attempt->attempt_id] = app(NativePaymentCheckout::class)
+                $results[(string) $attempt->attempt_id] = app(\App\Domains\Billing\Contracts\PaymentCheckout::class)
                     ->recover((int) $attempt->user_id, (int) $attempt->attempt_id);
             } catch (Throwable $error) {
                 $results[(string) $attempt->attempt_id] = ['error_code' => $this->errorCode($error)];

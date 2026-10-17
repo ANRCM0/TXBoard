@@ -17,12 +17,17 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Schema;
 use Throwable;
+use App\Core\Host\Modules\ModulePackageLock;
+use App\Core\Host\Modules\ModuleRuntime;
+use App\Services\Module\ModuleHealthDetails;
 
 final class PluginModuleAdapter implements ModuleAdapter
 {
     public function __construct(
         private readonly PluginManager $pluginManager,
         private readonly PluginPackage $pluginPackage,
+        private readonly ModulePackageLock $packages,
+        private readonly ModuleRuntime $runtime,
     ) {
     }
 
@@ -93,13 +98,32 @@ final class PluginModuleAdapter implements ModuleAdapter
                     );
                 }
 
+                $details = null;
+                $services = [];
+                $active = null;
+                if (File::isFile($directory.'/module.json')) {
+                    $package = $this->packages->package($manifest->id);
+                    $composed = $package !== null && in_array('plugin.'.$manifest->id, array_column($this->runtime->plan()->modules, 'id'), true);
+                    $schema = $package !== null && $row !== null && (int) $row->module_schema_version === $package['manifest']['schema_version'];
+                    $version = $package !== null && $row !== null && $row->version === $package['version'];
+                    $fence = $row !== null && $row->native_payment_mutation_token === null;
+                    $active = $composed && $schema && $version && $fence && $row->is_enabled && $health === ModuleHealth::HEALTHY;
+                    $details = ModuleHealthDetails::fromChecks(['composition' => $composed, 'schema' => $schema, 'package_version' => $version, 'mutation_idle' => $fence]);
+                    $health = !$composed ? ModuleHealth::INCOMPATIBLE : ($row === null || !$row->is_enabled ? ModuleHealth::DISABLED
+                        : ($active ? ModuleHealth::HEALTHY : ModuleHealth::DEGRADED));
+                    foreach ($package['definition']->provides ?? [] as $capability) {
+                        if ($capability->exported) $services[] = ['id' => $capability->id, 'version' => $capability->version];
+                    }
+                }
                 $modules[] = new ModuleDescriptor(
                     manifest: $manifest,
                     source: $source,
                     installed: $row !== null,
                     enabled: (bool) ($row?->is_enabled ?? false),
-                    active: null,
+                    active: $active,
                     health: $health,
+                    healthDetails: $details,
+                    services: $services,
                 );
             }
         }

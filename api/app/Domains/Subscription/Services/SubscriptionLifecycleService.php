@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\DB;
 use Throwable;
 
 /** Versioned native lifecycle; account entitlement and usage fields are never authoritative. */
-final class SubscriptionLifecycleService
+final class SubscriptionLifecycleService implements \App\Domains\Subscription\Contracts\SubscriptionLifecycle
 {
     public function __construct(private NativeSubscriptionStore $store) {}
 

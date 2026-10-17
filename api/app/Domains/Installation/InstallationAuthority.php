@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Throwable;
 
-class InstallationAuthority
+class InstallationAuthority implements \App\Domains\Installation\Contracts\InstallationAdmission
 {
     public const VERSION = 'core-installation/v1';
     private const TABLE = 'tx_authority_writer_fence';
@@ -158,6 +158,8 @@ class InstallationAuthority
                     'configuration_snapshot' => \App\Domains\CredentialProvider\ProviderCodec::canonical($snapshot),
                     'configuration_hash' => $configurationDigest, 'authority_epoch' => '2', 'activated_at' => $now,
                 ]);
+                app(ModuleReleaseReceipts::class)->approveLocked($state['installation_id'], 'activation:'.$key, null,
+                    $snapshot['modules']['composition']);
                 $state = array_replace($state, ['phase' => 'open', 'authority_epoch' => '2', 'row_version' => '2',
                     'schema_version' => '2', 'domain_version' => '2', 'prepare_key' => $key,
                     'inventory_hash' => $configurationDigest, 'updated_at' => (string) $now]);
@@ -196,6 +198,18 @@ class InstallationAuthority
         return DB::transaction(fn (): array => $this->assertNativeDomain(), 3);
     }
 
+    public function runtimeReport(): array
+    {
+        return $this->storage(fn (): array => DB::transaction(function (): array {
+            $state = $this->assertNativeDomain();
+            $modules = app(\App\Core\Host\Modules\ModuleReadiness::class)->inspectLocked(true);
+            return ['schema' => 'native-runtime-readiness/v1', 'ready' => true,
+                'installation_id' => $state['installation_id'], 'authority_epoch' => $state['authority_epoch'],
+                'composition_fingerprint' => $modules['fingerprint'], 'release_id' => $modules['composition']['release_id'],
+                'diagnostics' => $modules['diagnostics']];
+        }, 3));
+    }
+
     public function assertHttp(string $method, string $path): void
     {
         if ($this->inspect()['mode'] !== 'native') { $this->assertRuntime(); return; }
@@ -224,6 +238,57 @@ class InstallationAuthority
         return $this->assertNativeDomain();
     }
 
+    /** Trusted deployment work only; this never admits business commands or changes the installation epoch. */
+    public function assertModuleDeployment(): array
+    {
+        return $this->storage(function (): array {
+            $this->require(DB::transactionLevel() > 0, 'TRANSACTION_REQUIRED');
+            $state = $this->read(true);
+            $this->assertExpected($state);
+            $this->require($state !== null && $state['authority'] === 'native'
+                && in_array($state['phase'], ['initializing', 'open'], true), 'NATIVE_NOT_READY');
+            return $this->result($state);
+        });
+    }
+
+    public function modulePreflight(): array
+    {
+        return $this->storage(function (): array {
+            $this->require(DB::transactionLevel() === 0, 'PROBE_TRANSACTION_FORBIDDEN');
+            return DB::transaction(function (): array {
+                $state = $this->assertModuleDeployment();
+                if ($state['phase'] === 'open') $this->assertNativeConfigurationLocked($state['installation_id']);
+                $report = app(\App\Core\Host\Modules\ModuleReadiness::class)->inspectLocked(true);
+                $active = app(ModuleReleaseReceipts::class)->currentLocked($state['installation_id']);
+                app(\App\Core\Host\Modules\ModuleReadiness::class)->assertTransitionLocked($active);
+                return ['installation_id' => $state['installation_id'], 'authority_epoch' => $state['authority_epoch'],
+                    'ready_to_adopt' => $state['phase'] === 'open', 'active_fingerprint' => $active['fingerprint'] ?? null,
+                    'candidate_fingerprint' => $report['fingerprint'], 'composition' => $report['composition'], 'diagnostics' => $report['diagnostics']];
+            }, 3);
+        });
+    }
+
+    public function adoptModuleRelease(string $key, ?string $expectedFingerprint, string $candidateFingerprint): array
+    {
+        return $this->storage(function () use ($key, $expectedFingerprint, $candidateFingerprint): array {
+            $this->require(DB::transactionLevel() === 0 && \Illuminate\Support\Str::isUuid($key)
+                && ($expectedFingerprint === null || preg_match('/\A[a-f0-9]{64}\z/D', $expectedFingerprint) === 1)
+                && preg_match('/\A[a-f0-9]{64}\z/D', $candidateFingerprint) === 1, 'MODULE_INPUT_INVALID');
+            return DB::transaction(function () use ($key, $expectedFingerprint, $candidateFingerprint): array {
+                $locked = DB::table(self::TABLE)->where('id', 1)->lockForUpdate()->first();
+                $this->require($locked !== null, 'RECORD_REQUIRED');
+                $state = $this->assertModuleDeployment();
+                $this->require($state['phase'] === 'open', 'NATIVE_NOT_READY');
+                $this->assertNativeConfigurationLocked($state['installation_id']);
+                $report = app(\App\Core\Host\Modules\ModuleReadiness::class)->inspectLocked(true);
+                $this->require(hash_equals($report['fingerprint'], $candidateFingerprint), 'MODULE_CANDIDATE_CHANGED');
+                app(\App\Core\Host\Modules\ModuleReadiness::class)->assertTransitionLocked(
+                    app(ModuleReleaseReceipts::class)->currentLocked($state['installation_id']));
+                return app(ModuleReleaseReceipts::class)->approveLocked($state['installation_id'], $key, $expectedFingerprint, $report['composition']);
+            }, 3);
+        });
+    }
+
     private function assertNativeDomain(): array
     {
         return $this->storage(function (): array {
@@ -232,15 +297,21 @@ class InstallationAuthority
             $this->assertExpected($state);
             $this->require($state !== null && $state['authority'] === 'native'
                 && $state['phase'] === 'open', 'NATIVE_NOT_READY');
-            $configuration = app(NativeRuntimeReadiness::class)->configuration($state['installation_id']);
-            $receipt = DB::table('tx_native_runtime_activation')->where('installation_id', $state['installation_id'])->sharedLock()->first();
-            $snapshot = json_decode($receipt->configuration_snapshot, true, 32, JSON_THROW_ON_ERROR);
-            $approved = app(\App\Domains\CredentialProvider\NativeProviderTrust::class)
-                ->currentLocked($state['installation_id'], $snapshot['configuration']);
-            $this->require(hash_equals(NativeRuntimeReadiness::hash($approved),
-                NativeRuntimeReadiness::hash($configuration)), 'NATIVE_CONFIGURATION_CHANGED');
+            $this->assertNativeConfigurationLocked($state['installation_id']);
+            $modules = app(\App\Core\Host\Modules\ModuleReadiness::class)->inspectLocked();
+            app(ModuleReleaseReceipts::class)->assertCurrentLocked($state['installation_id'], $modules['composition']);
             return $this->result($state);
         });
+    }
+
+    private function assertNativeConfigurationLocked(string $installationId): void
+    {
+        $configuration = app(NativeRuntimeReadiness::class)->configuration($installationId);
+        $receipt = DB::table('tx_native_runtime_activation')->where('installation_id', $installationId)->sharedLock()->first();
+        $this->require($receipt !== null, 'NATIVE_NOT_READY');
+        $snapshot = json_decode($receipt->configuration_snapshot, true, 32, JSON_THROW_ON_ERROR);
+        $approved = app(\App\Domains\CredentialProvider\NativeProviderTrust::class)->currentLocked($installationId, $snapshot['configuration']);
+        $this->require(hash_equals(NativeRuntimeReadiness::hash($approved), NativeRuntimeReadiness::hash($configuration)), 'NATIVE_CONFIGURATION_CHANGED');
     }
 
     private function read(bool $locked = false): ?array

@@ -1,0 +1,1550 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "contract": "core-operations/v1",
+  "unknown_fields": "reject-input-project-output",
+  "units": {
+    "money": "currency minor unit, canonical decimal string",
+    "bytes": "bytes, canonical decimal string",
+    "usage_time": "UTC Unix seconds",
+    "order_time": "ISO 8601 UTC offset"
+  },
+  "definitions": {
+    "decimal": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]{0,18})$",
+      "x-decimal-maximum": "9223372036854775807"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[1-9][0-9]{0,18}$",
+      "x-decimal-maximum": "9223372036854775807"
+    },
+    "offer": {
+      "type": "object",
+      "properties": {
+        "offer_id": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]{0,18}$",
+          "x-decimal-maximum": "9223372036854775807"
+        },
+        "plan_id": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]{0,18}$",
+          "x-decimal-maximum": "9223372036854775807"
+        },
+        "plan_revision_id": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]{0,18}$",
+          "x-decimal-maximum": "9223372036854775807"
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 255
+        },
+        "content": {
+          "anyOf": [
+            {
+              "type": "string",
+              "maxLength": 65536
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 255
+          },
+          "maxItems": 256
+        },
+        "offer_code": {
+          "type": "string",
+          "enum": [
+            "monthly",
+            "quarterly",
+            "half_yearly",
+            "yearly",
+            "two_yearly",
+            "three_yearly",
+            "onetime",
+            "reset_traffic"
+          ]
+        },
+        "purchase_kind": {
+          "type": "string",
+          "enum": [
+            "subscription",
+            "perpetual",
+            "traffic_reset"
+          ]
+        },
+        "currency": {
+          "type": "string",
+          "pattern": "^[A-Z]{3}$"
+        },
+        "price_minor": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]{0,18})$",
+          "x-decimal-maximum": "9223372036854775807"
+        },
+        "currency_minor_exponent": {
+          "const": 2
+        },
+        "quota_bytes": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]{0,18})$",
+          "x-decimal-maximum": "9223372036854775807"
+        },
+        "group_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^(0|[1-9][0-9]{0,18})$",
+              "x-decimal-maximum": "9223372036854775807"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "speed_limit_mbps": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^(0|[1-9][0-9]{0,18})$",
+              "x-decimal-maximum": "9223372036854775807"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "device_limit": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^(0|[1-9][0-9]{0,18})$",
+              "x-decimal-maximum": "9223372036854775807"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "sell": {
+          "type": "boolean"
+        },
+        "renew": {
+          "type": "boolean"
+        },
+        "availability_version": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]{0,18}$",
+          "x-decimal-maximum": "9223372036854775807"
+        },
+        "publication_hash": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      },
+      "required": [
+        "offer_id",
+        "plan_id",
+        "plan_revision_id",
+        "name",
+        "content",
+        "tags",
+        "offer_code",
+        "purchase_kind",
+        "currency",
+        "price_minor",
+        "currency_minor_exponent",
+        "quota_bytes",
+        "group_id",
+        "speed_limit_mbps",
+        "device_limit",
+        "sell",
+        "renew",
+        "availability_version",
+        "publication_hash"
+      ],
+      "additionalProperties": false
+    },
+    "order": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]{0,18}$",
+          "x-decimal-maximum": "9223372036854775807"
+        },
+        "trade_no": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{1,128}$"
+        },
+        "plan_id": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]{0,18}$",
+          "x-decimal-maximum": "9223372036854775807"
+        },
+        "period": {
+          "type": "string",
+          "enum": [
+            "monthly",
+            "quarterly",
+            "half_yearly",
+            "yearly",
+            "two_yearly",
+            "three_yearly",
+            "onetime",
+            "reset_traffic"
+          ]
+        },
+        "type": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4
+        },
+        "status": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4
+        },
+        "amount_minor": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]{0,18})$",
+          "x-decimal-maximum": "9223372036854775807"
+        },
+        "plan": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^[1-9][0-9]{0,18}$",
+                  "x-decimal-maximum": "9223372036854775807"
+                },
+                "name": {
+                  "type": "string",
+                  "maxLength": 255
+                }
+              },
+              "required": [
+                "id",
+                "name"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "paid_at": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?(?:Z|[+-][0-9]{2}:[0-9]{2})$",
+              "maxLength": 40
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "created_at": {
+          "type": "string",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?(?:Z|[+-][0-9]{2}:[0-9]{2})$",
+          "maxLength": 40
+        }
+      },
+      "required": [
+        "id",
+        "trade_no",
+        "plan_id",
+        "period",
+        "type",
+        "status",
+        "amount_minor",
+        "plan",
+        "paid_at",
+        "created_at"
+      ],
+      "additionalProperties": false
+    },
+    "purchase": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]{0,18}$",
+          "x-decimal-maximum": "9223372036854775807"
+        },
+        "trade_no": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{1,128}$"
+        },
+        "status": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4
+        },
+        "amount_minor": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]{0,18})$",
+          "x-decimal-maximum": "9223372036854775807"
+        },
+        "currency": {
+          "type": "string",
+          "pattern": "^[A-Z]{3}$"
+        },
+        "purchase_terms_version": {
+          "const": "tx-core.purchase-terms/v2"
+        }
+      },
+      "required": [
+        "id",
+        "trade_no",
+        "status",
+        "amount_minor",
+        "currency",
+        "purchase_terms_version"
+      ],
+      "additionalProperties": false
+    },
+    "method": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]{0,18}$",
+          "x-decimal-maximum": "9223372036854775807"
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 255
+        },
+        "payment": {
+          "type": "string",
+          "maxLength": 32
+        },
+        "icon": {
+          "anyOf": [
+            {
+              "type": "string",
+              "maxLength": 2048
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "currency": {
+          "type": "string",
+          "pattern": "^[A-Z]{3}$"
+        },
+        "handling_fee_fixed": {
+          "const": "0"
+        },
+        "handling_fee_percent": {
+          "const": "0"
+        },
+        "external_refund_supported": {
+          "const": false
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "payment",
+        "icon",
+        "currency",
+        "handling_fee_fixed",
+        "handling_fee_percent",
+        "external_refund_supported"
+      ],
+      "additionalProperties": false
+    },
+    "wallet": {
+      "type": "object",
+      "properties": {
+        "schema": {
+          "const": "native-wallet/v1"
+        },
+        "balances": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "currency": {
+                "type": "string",
+                "pattern": "^[A-Z]{3}$"
+              },
+              "available_minor": {
+                "type": "string",
+                "pattern": "^(0|[1-9][0-9]{0,18})$",
+                "x-decimal-maximum": "9223372036854775807"
+              },
+              "reserved_minor": {
+                "type": "string",
+                "pattern": "^(0|[1-9][0-9]{0,18})$",
+                "x-decimal-maximum": "9223372036854775807"
+              }
+            },
+            "required": [
+              "currency",
+              "available_minor",
+              "reserved_minor"
+            ],
+            "additionalProperties": false
+          },
+          "maxItems": 10
+        }
+      },
+      "required": [
+        "schema",
+        "balances"
+      ],
+      "additionalProperties": false
+    },
+    "attempt": {
+      "type": "object",
+      "properties": {
+        "attempt_id": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]{0,18}$",
+          "x-decimal-maximum": "9223372036854775807"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "prepared",
+            "pending",
+            "unknown",
+            "succeeded",
+            "failed"
+          ]
+        },
+        "intent_type": {
+          "type": "string",
+          "enum": [
+            "purchase",
+            "recharge"
+          ]
+        },
+        "order_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "x-decimal-maximum": "9223372036854775807"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "recharge_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "x-decimal-maximum": "9223372036854775807"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "payment_id": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]{0,18}$",
+          "x-decimal-maximum": "9223372036854775807"
+        },
+        "amount_minor": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]{0,18})$",
+          "x-decimal-maximum": "9223372036854775807"
+        },
+        "currency": {
+          "type": "string",
+          "pattern": "^[A-Z]{3}$"
+        }
+      },
+      "required": [
+        "attempt_id",
+        "status",
+        "intent_type",
+        "order_id",
+        "recharge_id",
+        "payment_id",
+        "amount_minor",
+        "currency"
+      ],
+      "additionalProperties": false
+    },
+    "redirect": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": 1
+        },
+        "data": {
+          "type": "string",
+          "pattern": "^https://[^\\s]+$",
+          "maxLength": 8192
+        }
+      },
+      "required": [
+        "type",
+        "data"
+      ],
+      "additionalProperties": false
+    },
+    "allocation": {
+      "type": "object",
+      "properties": {
+        "order_id": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]{0,18}$",
+          "x-decimal-maximum": "9223372036854775807"
+        },
+        "wallet_reservation_id": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]{0,18}$",
+          "x-decimal-maximum": "9223372036854775807"
+        },
+        "amount_minor": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]{0,18})$",
+          "x-decimal-maximum": "9223372036854775807"
+        },
+        "currency": {
+          "type": "string",
+          "pattern": "^[A-Z]{3}$"
+        }
+      },
+      "required": [
+        "order_id",
+        "wallet_reservation_id",
+        "amount_minor",
+        "currency"
+      ],
+      "additionalProperties": false
+    },
+    "recharge": {
+      "type": "object",
+      "properties": {
+        "recharge_id": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]{0,18}$",
+          "x-decimal-maximum": "9223372036854775807"
+        },
+        "trade_no": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{1,128}$"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "paid"
+          ]
+        },
+        "amount_minor": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]{0,18})$",
+          "x-decimal-maximum": "9223372036854775807"
+        },
+        "fee_minor": {
+          "const": "0"
+        },
+        "total_minor": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]{0,18})$",
+          "x-decimal-maximum": "9223372036854775807"
+        },
+        "currency": {
+          "type": "string",
+          "pattern": "^[A-Z]{3}$"
+        },
+        "payment_method_id": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]{0,18}$",
+          "x-decimal-maximum": "9223372036854775807"
+        },
+        "paid_at": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^(0|[1-9][0-9]{0,18})$",
+              "x-decimal-maximum": "9223372036854775807"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "created_at": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]{0,18}$",
+          "x-decimal-maximum": "9223372036854775807"
+        }
+      },
+      "required": [
+        "recharge_id",
+        "trade_no",
+        "status",
+        "amount_minor",
+        "fee_minor",
+        "total_minor",
+        "currency",
+        "payment_method_id",
+        "paid_at",
+        "created_at"
+      ],
+      "additionalProperties": false
+    },
+    "usage": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]{0,18}$",
+          "x-decimal-maximum": "9223372036854775807"
+        },
+        "subscription_id": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]{0,18}$",
+          "x-decimal-maximum": "9223372036854775807"
+        },
+        "terms_id": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]{0,18}$",
+          "x-decimal-maximum": "9223372036854775807"
+        },
+        "period_no": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]{0,18}$",
+          "x-decimal-maximum": "9223372036854775807"
+        },
+        "quota_bytes": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]{0,18})$",
+          "x-decimal-maximum": "9223372036854775807"
+        },
+        "upload_bytes": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]{0,18})$",
+          "x-decimal-maximum": "9223372036854775807"
+        },
+        "download_bytes": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]{0,18})$",
+          "x-decimal-maximum": "9223372036854775807"
+        },
+        "billable_bytes": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]{0,18})$",
+          "x-decimal-maximum": "9223372036854775807"
+        },
+        "consumed_bytes": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]{0,18})$",
+          "x-decimal-maximum": "9223372036854775807"
+        },
+        "row_version": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]{0,18}$",
+          "x-decimal-maximum": "9223372036854775807"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "open",
+            "closed"
+          ]
+        },
+        "starts_at": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "ends_at": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "next_reset_at": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "subscription_id",
+        "terms_id",
+        "period_no",
+        "quota_bytes",
+        "upload_bytes",
+        "download_bytes",
+        "billable_bytes",
+        "consumed_bytes",
+        "row_version",
+        "status",
+        "starts_at",
+        "ends_at",
+        "next_reset_at"
+      ],
+      "additionalProperties": false
+    },
+    "entitlement": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "schema": {
+              "const": "core-entitlement/v1"
+            },
+            "authorized": {
+              "const": false
+            },
+            "reason": {
+              "type": "string",
+              "pattern": "^ENTITLEMENT_[A-Z_]+$",
+              "maxLength": 64
+            },
+            "user_id": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "x-decimal-maximum": "9223372036854775807"
+            },
+            "credential_status": {
+              "const": "provider_managed"
+            },
+            "delivery_formats": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "maxLength": 64
+              },
+              "maxItems": 16
+            }
+          },
+          "required": [
+            "schema",
+            "authorized",
+            "reason",
+            "user_id",
+            "credential_status",
+            "delivery_formats"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "schema": {
+              "const": "core-entitlement/v1"
+            },
+            "authorized": {
+              "const": true
+            },
+            "reason": {
+              "const": "ENTITLEMENT_GRANTED"
+            },
+            "user_id": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "x-decimal-maximum": "9223372036854775807"
+            },
+            "credential_status": {
+              "const": "provider_managed"
+            },
+            "delivery_formats": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "maxLength": 64
+              },
+              "maxItems": 16
+            },
+            "subscription_id": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "x-decimal-maximum": "9223372036854775807"
+            },
+            "subscription_version": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "x-decimal-maximum": "9223372036854775807"
+            },
+            "plan_id": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "x-decimal-maximum": "9223372036854775807"
+            },
+            "terms_id": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "x-decimal-maximum": "9223372036854775807"
+            },
+            "terms_version": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "x-decimal-maximum": "9223372036854775807"
+            },
+            "plan_revision_id": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "x-decimal-maximum": "9223372036854775807"
+            },
+            "usage_period_id": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "x-decimal-maximum": "9223372036854775807"
+            },
+            "period_terms_id": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "x-decimal-maximum": "9223372036854775807"
+            },
+            "period_version": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "x-decimal-maximum": "9223372036854775807"
+            },
+            "group_id": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^(0|[1-9][0-9]{0,18})$",
+                  "x-decimal-maximum": "9223372036854775807"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "speed_limit_mbps": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^(0|[1-9][0-9]{0,18})$",
+                  "x-decimal-maximum": "9223372036854775807"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "device_limit": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^(0|[1-9][0-9]{0,18})$",
+                  "x-decimal-maximum": "9223372036854775807"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "expires_at": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^(0|[1-9][0-9]{0,18})$",
+                  "x-decimal-maximum": "9223372036854775807"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "next_reset_at": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^(0|[1-9][0-9]{0,18})$",
+                  "x-decimal-maximum": "9223372036854775807"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "quota_bytes": {
+              "type": "string",
+              "pattern": "^(0|[1-9][0-9]{0,18})$",
+              "x-decimal-maximum": "9223372036854775807"
+            },
+            "consumed_bytes": {
+              "type": "string",
+              "pattern": "^(0|[1-9][0-9]{0,18})$",
+              "x-decimal-maximum": "9223372036854775807"
+            },
+            "remaining_bytes": {
+              "type": "string",
+              "pattern": "^(0|[1-9][0-9]{0,18})$",
+              "x-decimal-maximum": "9223372036854775807"
+            },
+            "upload_bytes": {
+              "type": "string",
+              "pattern": "^(0|[1-9][0-9]{0,18})$",
+              "x-decimal-maximum": "9223372036854775807"
+            },
+            "download_bytes": {
+              "type": "string",
+              "pattern": "^(0|[1-9][0-9]{0,18})$",
+              "x-decimal-maximum": "9223372036854775807"
+            }
+          },
+          "required": [
+            "schema",
+            "authorized",
+            "reason",
+            "user_id",
+            "credential_status",
+            "delivery_formats",
+            "subscription_id",
+            "subscription_version",
+            "plan_id",
+            "terms_id",
+            "terms_version",
+            "plan_revision_id",
+            "usage_period_id",
+            "period_terms_id",
+            "period_version",
+            "group_id",
+            "speed_limit_mbps",
+            "device_limit",
+            "expires_at",
+            "next_reset_at",
+            "quota_bytes",
+            "consumed_bytes",
+            "remaining_bytes",
+            "upload_bytes",
+            "download_bytes"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "checkout": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": 1
+            },
+            "data": {
+              "type": "string",
+              "pattern": "^https://[^\\s]+$",
+              "maxLength": 8192
+            },
+            "attempt": {
+              "$ref": "#/definitions/attempt"
+            }
+          },
+          "required": [
+            "type",
+            "data",
+            "attempt"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": -1
+            },
+            "data": {
+              "const": true
+            },
+            "payment": {
+              "$ref": "#/definitions/allocation"
+            }
+          },
+          "required": [
+            "type",
+            "data"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "recharge-checkout": {
+      "type": "object",
+      "properties": {
+        "attempt": {
+          "$ref": "#/definitions/attempt"
+        },
+        "payment": {
+          "$ref": "#/definitions/redirect"
+        }
+      },
+      "required": [
+        "attempt",
+        "payment"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "operations": {
+    "catalog.offers.list": {
+      "version": 1,
+      "domains": [
+        "user"
+      ],
+      "actor": "anonymous",
+      "permission": null,
+      "idempotency": "read",
+      "consistency": "current-owner-view",
+      "input": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "array",
+        "items": {
+          "$ref": "#/definitions/offer"
+        },
+        "maxItems": 256
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS"
+      ]
+    },
+    "commerce.orders.create": {
+      "version": 1,
+      "domains": [
+        "user"
+      ],
+      "actor": "user",
+      "permission": null,
+      "idempotency": "domain",
+      "consistency": "owner-transaction",
+      "input": {
+        "type": "object",
+        "properties": {
+          "offer_id": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "x-decimal-maximum": "9223372036854775807"
+          }
+        },
+        "required": [
+          "offer_id"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "$ref": "#/definitions/purchase"
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS"
+      ]
+    },
+    "commerce.orders.list": {
+      "version": 1,
+      "domains": [
+        "user"
+      ],
+      "actor": "user",
+      "permission": null,
+      "idempotency": "read",
+      "consistency": "current-owner-view",
+      "input": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100000
+          },
+          "per_page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "status": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "array",
+        "items": {
+          "$ref": "#/definitions/order"
+        },
+        "maxItems": 100
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS"
+      ]
+    },
+    "commerce.orders.get": {
+      "version": 1,
+      "domains": [
+        "user"
+      ],
+      "actor": "user",
+      "permission": null,
+      "idempotency": "read",
+      "consistency": "current-owner-view",
+      "input": {
+        "type": "object",
+        "properties": {
+          "trade_no": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$"
+          }
+        },
+        "required": [
+          "trade_no"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "$ref": "#/definitions/order"
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS"
+      ]
+    },
+    "commerce.orders.checkout": {
+      "version": 1,
+      "domains": [
+        "user"
+      ],
+      "actor": "user",
+      "permission": null,
+      "idempotency": "domain",
+      "consistency": "owner-transaction",
+      "input": {
+        "type": "object",
+        "properties": {
+          "trade_no": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$"
+          },
+          "method": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "x-decimal-maximum": "9223372036854775807"
+          },
+          "wallet": {
+            "type": "boolean"
+          },
+          "wallet_amount_minor": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "x-decimal-maximum": "9223372036854775807"
+          }
+        },
+        "required": [
+          "trade_no"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "$ref": "#/definitions/checkout"
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS"
+      ]
+    },
+    "commerce.orders.cancel": {
+      "version": 1,
+      "domains": [
+        "user"
+      ],
+      "actor": "user",
+      "permission": null,
+      "idempotency": "workflow",
+      "consistency": "owner-transaction",
+      "input": {
+        "type": "object",
+        "properties": {
+          "trade_no": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$"
+          }
+        },
+        "required": [
+          "trade_no"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "const": true
+          }
+        },
+        "required": [
+          "ok"
+        ],
+        "additionalProperties": false
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS"
+      ]
+    },
+    "billing.wallet.get": {
+      "version": 1,
+      "domains": [
+        "user"
+      ],
+      "actor": "user",
+      "permission": null,
+      "idempotency": "read",
+      "consistency": "current-owner-view",
+      "input": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "output": {
+        "$ref": "#/definitions/wallet"
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS"
+      ]
+    },
+    "billing.payment-methods.list": {
+      "version": 1,
+      "domains": [
+        "user"
+      ],
+      "actor": "user",
+      "permission": null,
+      "idempotency": "read",
+      "consistency": "current-owner-view",
+      "input": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "array",
+        "items": {
+          "$ref": "#/definitions/method"
+        },
+        "maxItems": 100
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS"
+      ]
+    },
+    "billing.recharges.create": {
+      "version": 1,
+      "domains": [
+        "user"
+      ],
+      "actor": "user",
+      "permission": null,
+      "idempotency": "domain",
+      "consistency": "owner-transaction",
+      "input": {
+        "type": "object",
+        "properties": {
+          "amount_minor": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,5}$"
+          },
+          "payment_method_id": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "x-decimal-maximum": "9223372036854775807"
+          }
+        },
+        "required": [
+          "amount_minor",
+          "payment_method_id"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "$ref": "#/definitions/recharge"
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS"
+      ]
+    },
+    "billing.recharges.list": {
+      "version": 1,
+      "domains": [
+        "user"
+      ],
+      "actor": "user",
+      "permission": null,
+      "idempotency": "read",
+      "consistency": "current-owner-view",
+      "input": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50
+          },
+          "after_id": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]{0,18})$",
+            "x-decimal-maximum": "9223372036854775807"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "array",
+        "items": {
+          "$ref": "#/definitions/recharge"
+        },
+        "maxItems": 50
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS"
+      ]
+    },
+    "billing.recharges.get": {
+      "version": 1,
+      "domains": [
+        "user"
+      ],
+      "actor": "user",
+      "permission": null,
+      "idempotency": "read",
+      "consistency": "current-owner-view",
+      "input": {
+        "type": "object",
+        "properties": {
+          "trade_no": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$"
+          }
+        },
+        "required": [
+          "trade_no"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "$ref": "#/definitions/recharge"
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS"
+      ]
+    },
+    "billing.recharges.checkout": {
+      "version": 1,
+      "domains": [
+        "user"
+      ],
+      "actor": "user",
+      "permission": null,
+      "idempotency": "domain",
+      "consistency": "owner-transaction",
+      "input": {
+        "type": "object",
+        "properties": {
+          "trade_no": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$"
+          }
+        },
+        "required": [
+          "trade_no"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "$ref": "#/definitions/recharge-checkout"
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS"
+      ]
+    },
+    "subscription.mine.get": {
+      "version": 1,
+      "domains": [
+        "user"
+      ],
+      "actor": "user",
+      "permission": null,
+      "idempotency": "read",
+      "consistency": "current-owner-view",
+      "input": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "output": {
+        "$ref": "#/definitions/entitlement"
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS"
+      ]
+    },
+    "usage.mine.list": {
+      "version": 1,
+      "domains": [
+        "user"
+      ],
+      "actor": "user",
+      "permission": null,
+      "idempotency": "read",
+      "consistency": "current-owner-view",
+      "input": {
+        "type": "object",
+        "properties": {
+          "subscription_id": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "x-decimal-maximum": "9223372036854775807"
+          },
+          "after_id": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]{0,18})$",
+            "x-decimal-maximum": "9223372036854775807"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "array",
+        "items": {
+          "$ref": "#/definitions/usage"
+        },
+        "maxItems": 100
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS"
+      ]
+    }
+  }
+}

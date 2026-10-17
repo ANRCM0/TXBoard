@@ -112,8 +112,13 @@ final class NativePaymentSettlementMysqlConcurrencyTest extends NativePaymentTes
                 } catch (BillingError $error) { return ['created' => false, 'code' => $error->errorCode]; }
             },
             function (): array {
-                try { return ['uninstalled' => app(PluginManager::class)->uninstall('epay')]; }
-                catch (BillingError $error) { return ['uninstalled' => false, 'code' => $error->errorCode]; }
+                try {
+                    $manager = app(PluginManager::class);
+                    $manager->disable('epay');
+                    return ['uninstalled' => $manager->uninstall('epay')];
+                } catch (\App\Extensions\Contracts\ExtensionFailure $error) {
+                    return ['uninstalled' => false, 'code' => $error->errorCode];
+                }
             },
         ]);
         $this->assertFalse($results[0]['created'] && $results[1]['uninstalled']);
@@ -122,7 +127,7 @@ final class NativePaymentSettlementMysqlConcurrencyTest extends NativePaymentTes
             $this->assertSame(0, DB::table('tx_payment_attempt')->count());
             $this->assertFalse(Plugin::query()->where('code', 'epay')->exists());
         } else {
-            $this->assertContains($results[1]['code'], ['PAYMENT_PLUGIN_DRAIN_REQUIRED', 'PAYMENT_PLUGIN_MUTATION_IN_PROGRESS']);
+            $this->assertContains($results[1]['code'], ['MODULE_DRAIN_REQUIRED', 'MODULE_DEPLOYMENT_BUSY']);
             $this->assertTrue(Plugin::query()->where('code', 'epay')->exists());
         }
         $this->assertSame(0, DB::table('tx_payment_receipt')->count());

@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "kernel_api": 1,
+  "stability": "stable",
+  "files": {
+    "api/app/Core/Kernel/Clock.php": "546fd2997f0e5c1ef16406c6e4dd1d74153057835700aa9dd81b108b0fd0db45",
+    "api/app/Core/Kernel/Execution/ActorRef.php": "c83a5034a3ba6a03386082a40d1242bf3a7b3591359f292dd0031745082e8166",
+    "api/app/Core/Kernel/Execution/CurrentInvocation.php": "8b9f90930033e6ebeab07870a8ca4d2d2735b38d0cf9e64e40fdc7b919c35f53",
+    "api/app/Core/Kernel/Execution/InvocationContext.php": "e642572197392835d858d4060e0fddb0c3a5180e8854f74fbb01a311acd7f84e",
+    "api/app/Core/Kernel/Modules/CapabilityDefinition.php": "ff7110d1771e1d87702635a98611137f4a2ae2b805d6a6e505ea8465d088fa37",
+    "api/app/Core/Kernel/Modules/CapabilityRequirement.php": "39282b6566cd3dc2f2ce9a8b062efc0c0b713621011f1c909a1391fc823e5bf1",
+    "api/app/Core/Kernel/Modules/ModuleDefinition.php": "c00e32db90e3dbf219d0af88cf553b7e7e6d4c3fd772204a8ced7649bee7a80b",
+    "api/app/Core/Kernel/Modules/ModuleError.php": "7a0f88281b771631de5d6a7f9ad4ecd6a9b9cb90f8333ff96e8fb07900eed86b",
+    "api/app/Core/Kernel/Modules/ModuleIdentifier.php": "63e233b394994d7137c7723ad9871d1573cefc2b7fbfaf9e74e6659d5f7af625",
+    "api/app/Core/Kernel/Modules/ModulePlan.php": "a3d6fec8900e2049ff33a6d03877cf281930873975a0402b5701c92d000b4006",
+    "api/app/Core/Kernel/Modules/ModuleResolver.php": "edb8469da8999c276abbf5cec7eda7d7edea410afcc7b38f744e00fadefa5d33"
+  }
+}

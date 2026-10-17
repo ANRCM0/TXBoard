@@ -9,7 +9,8 @@ const service: NativeServiceConfig = {
 }
 const requestId = '11111111-1111-4111-8111-111111111111'
 const actor = 'Bearer 1|actor-session-credential'
-const result = { data: { subscription_id: '9007199254740993', quota_bytes: '9223372036854775807' }, request_id: requestId }
+const result = { data: { id: '9007199254740993', trade_no: 'TX-1', status: 0,
+  amount_minor: '1200', currency: 'CNY', purchase_terms_version: 'tx-core.purchase-terms/v2' }, request_id: requestId }
 const transport = () => vi.fn<NativeTransport>().mockResolvedValue({
   status: 200, contentType: 'application/json', body: JSON.stringify(result),
 })

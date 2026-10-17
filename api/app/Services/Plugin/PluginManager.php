@@ -140,6 +140,46 @@ class PluginManager
 
     }
 
+    /** Only the fixed module runtime calls this; it owns version, admission and permission checks. */
+    public function moduleInstance(string $pluginCode): AbstractPlugin
+    {
+        $plugin = $this->moduleImplementation($pluginCode);
+        $row = Plugin::query()->useWritePdo()->where('code', $pluginCode)->first();
+        if ($plugin === null || $row === null) throw new \RuntimeException('MODULE_IMPLEMENTATION_UNAVAILABLE');
+        $config = json_decode($row->config ?: '{}', true, 32, JSON_THROW_ON_ERROR);
+        $plugin->setConfig($this->castConfigValuesByType($pluginCode, $config));
+        return $plugin;
+    }
+
+    public function moduleImplementation(string $pluginCode): AbstractPlugin
+    {
+        $plugin = $this->loadPlugin($pluginCode);
+        if ($plugin === null) throw new \RuntimeException('MODULE_IMPLEMENTATION_UNAVAILABLE');
+        return clone $plugin;
+    }
+
+    public function moduleDefaultConfiguration(string $pluginCode): array
+    {
+        return $this->extractDefaultConfig(json_decode(File::get($this->getPluginPath($pluginCode).'/config.json'), true, 32, JSON_THROW_ON_ERROR));
+    }
+
+    public function moduleRemoveAssets(string $pluginCode): void { $this->removePublishedAssets($pluginCode); }
+
+    public function isManagedModule(string $pluginCode): bool
+    {
+        if (config('core_installation.mode') !== 'native') return false;
+        $file = $this->getPluginPath($pluginCode).'/module.json';
+        if (!File::isFile($file)) return false;
+        $package = app(\App\Core\Host\Modules\ModulePackageLock::class)->package($pluginCode);
+        return ($package['manifest']['lifecycle'] ?? 'managed') !== 'payment-owner';
+    }
+
+    private function deployModule(string $pluginCode, string $action): bool
+    {
+        app(\App\Core\Host\Modules\ModuleDeployment::class)->execute($pluginCode, $action, (string) Str::uuid());
+        return true;
+    }
+
     /**
      * 注册插件的服务提供者
      */
@@ -208,6 +248,7 @@ class PluginManager
      */
     public function install(string $pluginCode): bool
     {
+        if ($this->isManagedModule($pluginCode)) return $this->deployModule($pluginCode, 'install');
         return $this->withNativePaymentMutation($pluginCode,
             fn (string $token) => $this->installCurrent($pluginCode, $token), false);
     }
@@ -471,6 +512,7 @@ class PluginManager
      */
     public function enable(string $pluginCode): bool
     {
+        if ($this->isManagedModule($pluginCode)) return $this->deployModule($pluginCode, 'enable');
         return $this->withNativePaymentMutation($pluginCode,
             fn () => $this->enableCurrent($pluginCode), false);
     }
@@ -542,6 +584,7 @@ class PluginManager
      */
     public function disable(string $pluginCode): bool
     {
+        if ($this->isManagedModule($pluginCode)) return $this->deployModule($pluginCode, 'disable');
         return $this->withNativePaymentMutation($pluginCode,
             fn () => $this->disableCurrent($pluginCode), false);
     }
@@ -579,6 +622,7 @@ class PluginManager
      */
     public function uninstall(string $pluginCode): bool
     {
+        if ($this->isManagedModule($pluginCode)) return $this->deployModule($pluginCode, 'uninstall');
         return $this->withNativePaymentMutation($pluginCode, function () use ($pluginCode): bool {
             $this->assertNoActiveDependents($pluginCode);
             $this->disableCurrent($pluginCode);
@@ -599,6 +643,7 @@ class PluginManager
      */
     public function delete(string $pluginCode): bool
     {
+        if ($this->isManagedModule($pluginCode)) throw new \RuntimeException('MODULE_IMMUTABLE_DEPLOYMENT_PACKAGE');
         $this->assertPluginCode($pluginCode);
         if ($this->isCorePlugin($pluginCode)) {
             throw new \Exception('核心插件不允许删除');
@@ -695,6 +740,7 @@ class PluginManager
      */
     public function update(string $pluginCode): bool
     {
+        if ($this->isManagedModule($pluginCode)) return $this->deployModule($pluginCode, 'update');
         return $this->withNativePaymentMutation($pluginCode,
             fn () => $this->updateCurrent($pluginCode));
     }
@@ -829,6 +875,10 @@ class PluginManager
         }
 
         $code = $config['code'];
+        if (File::isFile($pluginPath.'/module.json') || $this->isManagedModule($code)) {
+            File::deleteDirectory($extractPath);
+            throw new \RuntimeException('MODULE_IMMUTABLE_DEPLOYMENT_PACKAGE');
+        }
         if ($this->isCorePlugin($code)) {
             File::deleteDirectory($extractPath);
             throw new \RuntimeException('Bundled plugins cannot be overwritten by uploads');
@@ -928,6 +978,10 @@ class PluginManager
      */
     public function initializeEnabledPlugins(): void
     {
+        if (config('core_installation.mode') === 'native') {
+            $this->pluginsInitialized = true;
+            return;
+        }
         if ($this->pluginsInitialized) {
             return;
         }
@@ -938,6 +992,7 @@ class PluginManager
             try {
                 $pluginCode = $dbPlugin->code;
                 $this->assertPluginCode($pluginCode);
+                if ($this->isManagedModule($pluginCode)) continue;
 
                 $pluginInstance = $this->loadPlugin($pluginCode);
                 if (!$pluginInstance) {
@@ -975,11 +1030,13 @@ class PluginManager
      */
     public function registerPluginSchedules(Schedule $schedule): void
     {
+        if (config('core_installation.mode') === 'native') return;
         Plugin::where('is_enabled', true)
             ->get()
             ->each(function ($dbPlugin) use ($schedule) {
                 try {
                     $this->assertPluginCode($dbPlugin->code);
+                    if ($this->isManagedModule($dbPlugin->code)) return;
                     $pluginInstance = $this->loadPlugin($dbPlugin->code);
                     if (!$pluginInstance) {
                         return;
@@ -1060,9 +1117,17 @@ class PluginManager
     public function nativePaymentProvider(string $code, bool $recovery = false): array
     {
         $this->assertPluginCode($code);
+        $package = app(\App\Core\Host\Modules\ModulePackageLock::class)->package($code);
+        if ($package === null || ($package['manifest']['connector'] ?? null) !== 'payment'
+            || !in_array('plugin.'.$code, app(\App\Core\Host\Modules\ModuleRuntime::class)->plan()->providers('payment.channel'), true)) {
+            throw new BillingError('NATIVE_PAYMENT_PROVIDER_UNSUPPORTED');
+        }
         $row = Plugin::query()->where('code', $code)->where('type', Plugin::TYPE_PAYMENT)->first();
         if ($row === null || (!$recovery && !$row->is_enabled) || $row->native_payment_mutation_token !== null) {
             throw new BillingError('PAYMENT_PROVIDER_UNAVAILABLE');
+        }
+        if ($row->version !== $package['version'] || (int) $row->module_schema_version !== $package['manifest']['schema_version']) {
+            throw new BillingError('PAYMENT_PROVIDER_VERSION_UNAVAILABLE');
         }
         try {
             $this->assertCurrentPackage($code);
@@ -1118,7 +1183,7 @@ class PluginManager
             if ($row !== null && $row->native_payment_mutation_token !== null) {
                 throw new BillingError('PAYMENT_PLUGIN_MUTATION_IN_PROGRESS');
             }
-            if ($drain && DB::table('tx_payment_dispatch')->where('plugin_code', $code)->exists()) {
+            if ($drain && app(\App\Domains\Billing\Internal\PaymentPackageReferences::class)->retained($code)) {
                 throw new BillingError('PAYMENT_PLUGIN_DRAIN_REQUIRED');
             }
             $token = bin2hex(random_bytes(32));

@@ -3,6 +3,8 @@ WORKDIR /srv
 COPY package.json package-lock.json ./
 COPY apps/gateway/package.json apps/gateway/package.json
 COPY packages/theme-sdk/package.json packages/theme-sdk/package.json
+COPY packages/core-sdk/package.json packages/core-sdk/package.json
+COPY apps/module-host/package.json apps/module-host/package.json
 RUN npm ci --no-audit --no-fund
 COPY tsconfig.base.json ./
 COPY apps/gateway/tsconfig.json apps/gateway/tsconfig.json

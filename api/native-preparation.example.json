@@ -1,0 +1,48 @@
+{
+  "schema": "native-preparation/v1",
+  "installation_id": "33333333-3333-4333-8333-333333333333",
+  "bootstrap_key": "operator-bootstrap",
+  "operation_key": "44444444-4444-4444-8444-444444444444",
+  "identity": {
+    "email": "admin@example.test",
+    "password": "replace-with-a-unique-secret",
+    "permissions": []
+  },
+  "network": {
+    "node_token": "replace-with-a-unique-node-token",
+    "groups": [
+      {
+        "id": 1,
+        "name": "Default"
+      }
+    ],
+    "nodes": [
+      {
+        "id": 1,
+        "name": "Node",
+        "type": "vless",
+        "host": "node.example.test",
+        "port": 443,
+        "group_ids": [
+          1
+        ],
+        "rate": "1.00"
+      }
+    ]
+  },
+  "catalog": {
+    "plans": [
+      {
+        "id": 1,
+        "name": "Standard",
+        "group_id": 1,
+        "quota_gib": 100,
+        "reset_method": 2,
+        "currency": "CNY",
+        "prices_minor": {
+          "monthly": "1000"
+        }
+      }
+    ]
+  }
+}

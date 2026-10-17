@@ -1,4 +1,4 @@
-import { requestId, nativePlan, nativeProfile } from './native-fixtures.js'
+import { requestId, nativeOffer, nativeProfile } from './native-fixtures.js'
 import { describe, expect, it, vi } from 'vitest'
 import {
   CircuitBreaker, LocalQuota, OverloadGuard, PublicReadGuard, SafetyGuard,
@@ -228,7 +228,7 @@ describe('GW-206 upstream slow / broken handling', () => {
     const client = new UpstreamClient(
       config,
       scriptedFetcher([
-        () => Response.json({ request_id: requestId, data: [nativePlan({ id: 1, name: 'Plan', prices: [{ period: 'monthly', amount_minor: 1200 }] })] }),
+        () => Response.json({ request_id: requestId, data: [nativeOffer({ name: 'Plan' })] }),
         () => { throw up(500) },
       ]),
       breaker,
@@ -239,7 +239,7 @@ describe('GW-206 upstream slow / broken handling', () => {
     await client.call('guestPlans')
     // Second call: upstream 500 then retry succeeds — no throw escapes.
     const result = await client.call('guestPlans')
-    expect(result).toMatchObject([{ id: 1, name: 'Plan', month_price: 1200 }])
+    expect(result).toMatchObject([{ offer_id: '1', name: 'Plan', price_minor: '1200' }])
     expect(metrics.upstreamRetries.get({ operation: 'guestPlans' })).toBe(1)
     expect(events).toContain(RESILIENCE_EVENTS.upstreamRetry)
   })
@@ -382,7 +382,7 @@ describe('GW-206 metrics exposition', () => {
     // the second call fails twice (exhausted retries) and serves stale.
     const failing = scriptedFetcher([
       () => { throw up(500) },
-      () => Response.json({ request_id: requestId, data: [nativePlan({ id: 1, name: 'Plan', prices: [{ period: 'monthly', amount_minor: 1200 }] })] }),
+      () => Response.json({ request_id: requestId, data: [nativeOffer({ name: 'Plan' })] }),
       () => { throw up(500) },
       () => { throw up(500) },
     ])
@@ -392,7 +392,7 @@ describe('GW-206 metrics exposition', () => {
       metrics, nullLogger(), 30_000,
     )
     await retryClient.call('guestPlans')
-    expect(await retryClient.call('guestPlans')).toMatchObject([{ id: 1, name: 'Plan', month_price: 1200 }])
+    expect(await retryClient.call('guestPlans')).toMatchObject([{ offer_id: '1', name: 'Plan', price_minor: '1200' }])
     const after = metrics.render()
     expect(after).toContain(RESILIENCE_METRICS.upstreamRetries)
     expect(after).toContain(RESILIENCE_METRICS.staleServed)

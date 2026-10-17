@@ -31,7 +31,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import type { CaptchaConfig } from '@ANRCM0/theme-sdk'
+import type { CaptchaConfig } from '@txboard/theme-sdk'
 import { api } from '../api'
 import { useAuth } from '../composables/useAuth'
 import CaptchaField from '../components/CaptchaField.vue'

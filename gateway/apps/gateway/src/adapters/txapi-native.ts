@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { subscriptionSummarySchema, userProfileSchema } from '../contracts/schemas.js'
+import { planListSchema, subscriptionSummarySchema, userProfileSchema } from '../contracts/schemas.js'
 import { GatewayFailure } from '../services/failures.js'
 import type { UpstreamOperation } from '../services/upstream.js'
 
@@ -7,7 +7,6 @@ import type { UpstreamOperation } from '../services/upstream.js'
 // z.object strips extension fields; none are passed through.
 const integer = z.number().int().min(0).max(Number.MAX_SAFE_INTEGER)
 const id = integer.min(1)
-const nullableLimit = integer.nullable()
 const iso = z.iso.datetime({ offset: true })
 const nullableDate = iso.nullable()
 const planRef = z.object({ id, name: z.string() })
@@ -17,12 +16,6 @@ const periodNames = {
   onetime: 'onetime_price', reset_traffic: 'reset_price',
 } as const
 const period = z.enum(Object.keys(periodNames) as [keyof typeof periodNames, ...Array<keyof typeof periodNames>])
-const plan = z.object({
-  id, name: z.string(), content: z.string(), tags: z.array(z.string()),
-  traffic_limit_bytes: integer, speed_limit_mbps: nullableLimit, device_limit: nullableLimit,
-  capacity_limit: nullableLimit, reset_traffic_method: nullableLimit,
-  prices: z.array(z.object({ period, amount_minor: integer })), renewable: z.boolean(),
-})
 const order = z.object({
   id, trade_no: z.string().regex(/^[a-zA-Z0-9_-]{1,128}$/), plan_id: id,
   period, type: integer, status: integer.max(4), amount_minor: integer,
@@ -34,7 +27,9 @@ const detail = order.extend({
 })
 const payment = z.object({
   id, name: z.string(), provider: z.string(), icon: z.string().nullable(),
-  fee_fixed_minor: integer, fee_percent: z.number().nonnegative().finite(),
+  // Native checkout currently supports zero fees and serializes them as decimal strings.
+  fee_fixed_minor: z.union([integer, z.literal('0').transform(() => 0)]),
+  fee_percent: z.union([z.number().nonnegative().finite(), z.literal('0').transform(() => 0)]),
 })
 const notice = z.object({
   id, title: z.string(), content: z.string(), img_url: z.string().nullable(),
@@ -85,19 +80,7 @@ export function adaptNativeData(
 ): unknown {
   switch (operation) {
     case 'guestConfig': return checked(site, data)
-    case 'guestPlans': return checked(z.array(plan), data).map(row => {
-      const prices: Record<string, number | null> = Object.fromEntries(Object.values(periodNames).map(key => [key, null]))
-      for (const price of row.prices) {
-        const key = periodNames[price.period]
-        if (prices[key] !== null) throw new GatewayFailure('UPSTREAM_ERROR', 502, 'Duplicate upstream plan period')
-        prices[key] = price.amount_minor
-      }
-      return { id: row.id, name: row.name, content: row.content, tags: row.tags,
-        transfer_enable: row.traffic_limit_bytes / 1073741824,
-        speed_limit: row.speed_limit_mbps, device_limit: row.device_limit,
-        capacity_limit: row.capacity_limit, reset_traffic_method: row.reset_traffic_method,
-        renew: row.renewable, ...prices }
-    })
+    case 'guestPlans': return checked(planListSchema, data)
     case 'login': case 'register': return checked(auth, data)
     case 'sendEmailCode': checked(z.object({ ok: z.literal(true) }), data); return true
     case 'userProfile': return checked(userProfileSchema, data)

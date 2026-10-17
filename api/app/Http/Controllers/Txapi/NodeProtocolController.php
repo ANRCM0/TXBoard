@@ -6,7 +6,8 @@ use App\Core\Http\TxapiResponse;
 use App\Services\ServerService;
 use App\Domains\Network\MachineTelemetry;
 use App\Domains\Network\NativeNodeAuthorization;
-use App\Domains\Network\NativeProviderNodeAuthorization;
+use App\Domains\Network\Contracts\NodeAuthorizationQueries;
+use App\Domains\Network\Contracts\NodePrincipal;
 use App\Domains\Network\NativeNodeReport;
 use App\Domains\Network\NativeAccessAudit;
 use App\Domains\Network\NodeReportError;
@@ -34,7 +35,7 @@ final class NodeProtocolController
             'settings' => $this->intervals(),
         ];
         try {
-            $data['authorization_trust'] = app(NativeProviderNodeAuthorization::class)->publicTrust();
+            $data['authorization_trust'] = app(NodeAuthorizationQueries::class)->publicTrust();
             $data['authorization_refresh_interval_seconds'] = 30;
         } catch (\Throwable) {
             return TxapiResponse::error($request, 'NODE_AUTHORIZATION_UNAVAILABLE',
@@ -58,11 +59,8 @@ final class NodeProtocolController
         ServerService::touchNode($node);
         try {
             $machine = $request->attributes->get('txnode.machine');
-            $data = app(NativeProviderNodeAuthorization::class)->snapshot($node, [
-                'kind' => $machine === null ? 'node' : 'machine',
-                'machine_id' => $machine === null ? null : (int) $machine->id,
-                'credential_sha256' => hash('sha256', (string) $request->bearerToken()),
-            ]);
+            $data = app(NodeAuthorizationQueries::class)->snapshot(new NodePrincipal((int) $node->id,
+                $machine === null ? null : (int) $machine->id, hash('sha256', (string) $request->bearerToken())));
             return TxapiResponse::success($request, $data)->header('Cache-Control', 'no-store, private');
         } catch (\Throwable) {
             return TxapiResponse::error($request, 'NODE_AUTHORIZATION_UNAVAILABLE',

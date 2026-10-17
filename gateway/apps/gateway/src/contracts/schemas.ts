@@ -62,21 +62,13 @@ export type EmailCodeRequest = z.infer<typeof emailCodeSchema>
 /** All current Core states, including 4 (discounted historical orders). */
 export const orderStatusQueryValues: readonly string[] = ['0', '1', '2', '3', '4']
 
-/**
- * GW-304: POST /gateway/v1/orders request body.
- *
- * Deliberately minimal and strict: the Gateway validates SHAPE only. Amount
- * (the plan price), period pricing, coupon, balance and every other business
- * rule stay in Laravel — the Gateway must never recompute a price or decide
- * whether the order may proceed. Unknown fields are rejected, so no parameter
- * can be smuggled upstream.
- */
-export const orderCreateSchema = z.strictObject({
-  plan_id: z.number().int().positive(),
-  period: z.enum(['month_price', 'quarter_price', 'half_year_price', 'year_price',
-    'two_year_price', 'three_year_price', 'onetime_price', 'reset_price']),
-  coupon_code: z.string().min(1).max(64).optional(),
-})
+// Core/PHP signed-64-bit decimals remain strings, including above JS safe integer.
+const coreDecimal = z.string().regex(/^(0|[1-9][0-9]{0,18})$/)
+  .refine(value => value.length < 19 || value <= '9223372036854775807')
+const corePositiveDecimal = coreDecimal.refine(value => value !== '0')
+
+/** Purchase identity only; Core owns admission and immutable Offer terms. */
+export const orderCreateSchema = z.strictObject({ offer_id: corePositiveDecimal })
 
 export type OrderCreateRequest = z.infer<typeof orderCreateSchema>
 
@@ -85,7 +77,7 @@ export type OrderCreateRequest = z.infer<typeof orderCreateSchema>
  * follow the order up (via the existing read routes) survive; Laravel decides
  * what else may be shown and the Gateway does not second-guess it.
  */
-export const orderCreateResultSchema = z.looseObject({ trade_no: z.string().min(1).max(128) })
+export const orderCreateResultSchema = z.object({ trade_no: z.string().min(1).max(128) })
 
 export type OrderCreateResult = z.infer<typeof orderCreateResultSchema>
 
@@ -93,8 +85,21 @@ export type OrderCreateResult = z.infer<typeof orderCreateResultSchema>
  * Upstream response shapes
  * ------------------------------------------------------------------ */
 
-export const planListSchema = z.array(z.looseObject({ id: z.number().int(), name: z.string() }))
-export type Plan = z.infer<typeof planListSchema>[number]
+export const nativeOfferSchema = z.object({
+  offer_id: corePositiveDecimal, plan_id: corePositiveDecimal, plan_revision_id: corePositiveDecimal,
+  name: z.string(), content: z.string().nullable(), tags: z.array(z.string()),
+  offer_code: z.enum(['monthly', 'quarterly', 'half_yearly', 'yearly', 'two_yearly',
+    'three_yearly', 'onetime', 'reset_traffic']),
+  purchase_kind: z.enum(['subscription', 'perpetual', 'traffic_reset']),
+  currency: z.string().regex(/^[A-Z]{3}$/), currency_minor_exponent: z.literal(2),
+  price_minor: coreDecimal, quota_bytes: coreDecimal,
+  group_id: coreDecimal.nullable(), speed_limit_mbps: coreDecimal.nullable(),
+  device_limit: coreDecimal.nullable(), sell: z.boolean(), renew: z.boolean(),
+  availability_version: corePositiveDecimal, publication_hash: z.string().regex(/^[0-9a-f]{64}$/),
+})
+export const planListSchema = z.array(nativeOfferSchema).max(256)
+  .refine(rows => new Set(rows.map(row => row.offer_id)).size === rows.length)
+export type NativeOffer = z.infer<typeof nativeOfferSchema>
 
 export const userProfileSchema = z.object({
   id: z.number().int().positive().safe(), email: z.email(),
@@ -103,7 +108,7 @@ export const userProfileSchema = z.object({
 export type UserProfile = z.infer<typeof userProfileSchema>
 
 // Core decimal strings retain exact byte counts and identifiers at the SDK boundary.
-const decimal = z.string().regex(/^(0|[1-9][0-9]{0,19})$/)
+const decimal = coreDecimal
 const positiveDecimal = decimal.refine(value => value !== '0')
 const entitlementBase = { schema: z.literal('core-entitlement/v1'), reason: z.string().regex(/^ENTITLEMENT_[A-Z_]+$/) }
 export const subscriptionSummarySchema = z.discriminatedUnion('authorized', [

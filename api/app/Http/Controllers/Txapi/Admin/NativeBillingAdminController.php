@@ -4,15 +4,15 @@ namespace App\Http\Controllers\Txapi\Admin;
 
 use App\Core\Http\TxapiResponse;
 use App\Domains\Billing\BillingError;
-use App\Domains\Billing\NativeBillingReconciliation;
-use App\Domains\Billing\NativeRefundService;
+use App\Domains\Billing\Contracts\BillingReconciliation;
+use App\Domains\Billing\Contracts\WalletRefunds;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 final class NativeBillingAdminController
 {
-    public function refund(Request $request, NativeRefundService $refunds): JsonResponse
+    public function refund(Request $request, WalletRefunds $refunds): JsonResponse
     {
         if (array_diff(array_keys($request->all()), ['user_id', 'source_type', 'source_id', 'amount_minor', 'reason'])) {
             return TxapiResponse::error($request, 'BILLING_REQUEST_INVALID', 'Unsupported refund fields', 422);
@@ -34,7 +34,7 @@ final class NativeBillingAdminController
         return TxapiResponse::success($request, $result)->header('Cache-Control', 'private, no-store');
     }
 
-    public function reconcile(Request $request, NativeBillingReconciliation $reconciliation): JsonResponse
+    public function reconcile(Request $request, BillingReconciliation $reconciliation): JsonResponse
     {
         if (array_diff(array_keys($request->all()), ['user_id', 'limit', 'after_id'])) {
             return TxapiResponse::error($request, 'BILLING_REQUEST_INVALID', 'Unsupported reconciliation fields', 422);

@@ -192,19 +192,20 @@ final class OrderReadBoundaryTest extends NativeRuntimeTestCase
         $user = $this->user();
         $token = $user->createToken('projection-owner', ['*'])->plainTextToken;
         $secret = 'PRIVATE_ORDER_READ_SECRET';
-        $row = ['id' => 91, 'trade_no' => 'safe-order', 'plan_id' => 8, 'amount_minor' => 1234, 'status' => 0,
+        $row = ['id' => 91, 'trade_no' => 'safe-order', 'plan_id' => 8, 'period' => 'monthly', 'type' => 1, 'amount_minor' => 1234, 'status' => 0,
             'plan' => ['id' => 8, 'name' => 'Display', 'token' => $secret, 'nested' => ['private_key' => $secret, 'count' => 2]],
+            'paid_at' => null, 'created_at' => '2026-10-18T00:00:00Z',
             'payment_id' => 44, 'balance_amount_minor' => 10, 'password' => $secret, 'unexpected' => $secret];
         $meta = ['page' => 1, 'per_page' => 20, 'total' => 1, 'last_page' => 1];
         $queries = Mockery::mock(OrderQueries::class);
         $queries->shouldReceive('listing')->once()->andReturn(new OrderPage([$row], $meta + ['unexpected' => $secret]));
         $queries->shouldReceive('find')->once()->with((int) $user->id, 'safe-order')->andReturn($row);
         $large = $row;
-        $large['plan']['name'] = str_repeat('x', 2048);
+        $large['plan']['name'] = str_repeat('x', 255);
         $queries->shouldReceive('find')->once()->with((int) $user->id, 'large-order')->andReturn($large);
         $this->app->instance(OrderQueries::class, $queries);
-        $expected = ['id' => '91', 'trade_no' => 'safe-order', 'plan_id' => '8', 'amount_minor' => '1234', 'status' => 0,
-            'plan' => ['id' => '8', 'name' => 'Display', 'nested' => ['count' => 2]]];
+        $expected = ['id' => '91', 'trade_no' => 'safe-order', 'plan_id' => '8', 'period' => 'monthly', 'type' => 1, 'amount_minor' => '1234', 'status' => 0,
+            'plan' => ['id' => '8', 'name' => 'Display'], 'paid_at' => null, 'created_at' => '2026-10-18T00:00:00Z'];
         $list = $this->invoke('commerce.orders.list', $token)->assertOk()
             ->assertJsonPath('data', [$expected])->assertJsonPath('meta', $meta);
         $get = $this->invoke('commerce.orders.get', $token, ['trade_no' => 'safe-order'])->assertOk()
@@ -214,7 +215,7 @@ final class OrderReadBoundaryTest extends NativeRuntimeTestCase
             $this->assertTrue($response->headers->hasCacheControlDirective('private'));
             $this->assertTrue($response->headers->hasCacheControlDirective('no-store'));
         }
-        config(['internal_api.max_response_bytes' => 1024]);
+        config(['internal_api.max_response_bytes' => 256]);
         $this->invoke('commerce.orders.get', $token, ['trade_no' => 'large-order'])->assertStatus(503)
             ->assertJsonPath('error.code', 'DEPENDENCY_UNAVAILABLE');
         $this->assertSame(0, DB::table('tx_internal_request')->count());

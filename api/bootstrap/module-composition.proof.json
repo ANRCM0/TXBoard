@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "packages": [
+    {
+      "code": "epay",
+      "root": "plugins-core/Epay",
+      "required": false,
+      "grants": []
+    },
+    {
+      "code": "delivery_receipt",
+      "root": "plugins/DeliveryReceipt",
+      "required": false,
+      "grants": [
+        "event:billing.payment-settled.v1",
+        "event:billing.recharge-settled.v1",
+        "permission:extensions.delivery_receipt.view"
+      ]
+    },
+    {
+      "code": "offer_reservation",
+      "root": "plugins/OfferReservation",
+      "required": false,
+      "grants": [
+        "capability:billing.order-checkout",
+        "capability:subscription.purchase"
+      ]
+    },
+    {
+      "code": "module_portal",
+      "root": "plugins/ModulePortal",
+      "required": false,
+      "grants": [
+        "permission:extensions.module_portal.configure",
+        "permission:extensions.module_portal.view"
+      ]
+    }
+  ]
+}

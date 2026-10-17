@@ -10,7 +10,7 @@ use App\Models\OrderPurchaseTerms;
 use Throwable;
 
 /** Frozen dispatch orchestration; only verified adapter facts enter settlement. */
-final class NativePaymentCheckout
+final class NativePaymentCheckout implements \App\Domains\Billing\Contracts\PaymentCheckout
 {
     public function __construct(
         private readonly NativeBillingTransaction $transactions,

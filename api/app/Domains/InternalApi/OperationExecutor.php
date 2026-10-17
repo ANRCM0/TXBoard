@@ -64,8 +64,9 @@ final class OperationExecutor
         }
         $input = $envelope['input'];
         $inputFields = array_values(array_filter(array_keys($spec['rules']), static fn ($field): bool => !str_contains($field, '.')));
-        if (array_diff(array_keys($input), $inputFields)
-            || Validator::make($input, $spec['rules'])->fails()) {
+        $contract = OperationSchemas::operation($operation);
+        if ($contract !== null ? !OperationSchemas::input($operation, $input)
+            : (array_diff(array_keys($input), $inputFields) || Validator::make($input, $spec['rules'])->fails())) {
             return $this->error($request, 'INVALID_REQUEST', 422);
         }
         $limitKey = 'native-internal:'.hash('sha256', $service->service_id.':'.$operation);
@@ -74,6 +75,8 @@ final class OperationExecutor
         RateLimiter::hit($limitKey, 60);
         try {
             $actor = $this->actor($request, $domain, $spec);
+            app(\App\Core\Host\Execution\InvocationScope::class)->correlate(
+                $envelope['request_id'], $envelope['deadline_at']);
             app(InternalAudit::class)->actor($request, $actor?->id, $envelope['request_id']);
             if ($envelope['deadline_at'] <= time()) return $this->error($request, 'DEADLINE_EXCEEDED', 504);
             if ($operation === 'system.capabilities.get') {
@@ -81,6 +84,16 @@ final class OperationExecutor
             } else {
                 $response = $this->dispatch($request, $operation, $spec, $input, $actor);
             }
+        } catch (OperationFailure $error) {
+            $response = $this->error($request, $error->errorCode, $error->status);
+        } catch (\App\Domains\Billing\BillingError|\App\Domains\Billing\IdempotencyException $error) {
+            $status = str_ends_with($error->errorCode, '_MISSING') ? 404 : 409;
+            $response = $this->error($request, $error->errorCode, $status);
+        } catch (\App\Domains\Installation\InstallationAuthorityException) {
+            $response = $this->error($request, 'INSTALLATION_NATIVE_NOT_READY', 503);
+        } catch (\App\Exceptions\ApiException $error) {
+            $response = $this->error($request, 'BUSINESS_REJECTED',
+                in_array((int) $error->getCode(), [404, 409, 422, 502], true) ? (int) $error->getCode() : 409);
         } catch (AuthenticationException) {
             $response = $this->error($request, 'ACTOR_UNAUTHORIZED', 401);
         } catch (HttpExceptionInterface $error) {
@@ -127,18 +140,24 @@ final class OperationExecutor
     private function dispatch(Request $request, string $operation, array $spec, array $input, ?User $actor): JsonResponse
     {
         if ($spec['handler'] !== null
-            && ($spec['mode'] !== 'read' || $actor === null || $spec['controller'] !== null || $spec['command'] !== null)) {
+            && ($spec['mode'] !== 'read' || $spec['controller'] !== null || $spec['command'] !== null
+                || $actor === null && !($operation === 'catalog.offers.list' && $spec['handler'] === CatalogReadOperations::class))) {
             throw new \LogicException('INTERNAL_READ_HANDLER_INVALID');
         }
         if ($spec['command'] !== null) {
             $target = match ($operation) {
                 'identity.sessions.revoke' => [SessionMutationOperations::class, 'revoke', 'workflow'],
                 'identity.session.end' => [SessionMutationOperations::class, 'end', 'once'],
+                'commerce.orders.create' => [CommerceMutationOperations::class, 'purchase', 'domain'],
+                'commerce.orders.checkout' => [CommerceMutationOperations::class, 'checkout', 'domain'],
+                'commerce.orders.cancel' => [CommerceMutationOperations::class, 'cancel', 'workflow'],
+                'billing.recharges.create' => [CommerceMutationOperations::class, 'recharge', 'domain'],
+                'billing.recharges.checkout' => [CommerceMutationOperations::class, 'rechargeCheckout', 'domain'],
                 default => null,
             };
             if ($actor === null || $spec['controller'] !== null || $spec['handler'] !== null
                 || $target === null || [$spec['command'], $spec['method'], $spec['mode']] !== $target) {
-                throw new \LogicException('INTERNAL_SESSION_COMMAND_INVALID');
+                throw new \LogicException('INTERNAL_COMMAND_INVALID');
             }
         }
         $receipt = null;
@@ -168,18 +187,26 @@ final class OperationExecutor
                 return $this->error($request, 'IDEMPOTENCY_IN_PROGRESS', 409)->header('Retry-After', '2');
             }
         }
-        if ($spec['handler'] !== null) {
-            $view = app()->call([app($spec['handler']), $spec['method']], ['actor' => $actor, 'input' => $input]);
-            if ($view === null) throw new \Symfony\Component\HttpKernel\Exception\NotFoundHttpException();
-            if (!$view instanceof ReadOperationResult) throw new \LogicException('INTERNAL_READ_RESULT_INVALID');
-            $result = TxapiResponse::success($request, $view->data, $view->meta);
-        } elseif ($spec['command'] !== null) {
-            $view = app()->call([app($spec['command']), $spec['method']], ['actor' => $actor, 'input' => $input]);
-            if ($view === null) throw new \Symfony\Component\HttpKernel\Exception\NotFoundHttpException();
-            if (!$view instanceof MutationOperationResult) throw new \LogicException('INTERNAL_MUTATION_RESULT_INVALID');
-            $result = TxapiResponse::success($request, $view->data);
-        } else {
-            $result = $this->invokeController($request, $operation, $spec, $input, $actor);
+        try {
+            if ($spec['handler'] !== null) {
+                $view = app()->call([app($spec['handler']), $spec['method']], ['actor' => $actor, 'input' => $input]);
+                if ($view === null) throw new \Symfony\Component\HttpKernel\Exception\NotFoundHttpException();
+                if (!$view instanceof ReadOperationResult) throw new \LogicException('INTERNAL_READ_RESULT_INVALID');
+                $result = TxapiResponse::success($request, $view->data, $view->meta);
+            } elseif ($spec['command'] !== null) {
+                $arguments = ['actor' => $actor, 'input' => $input];
+                if ($spec['command'] === CommerceMutationOperations::class) {
+                    $arguments['idempotencyKey'] = (string) $request->header('Idempotency-Key', '');
+                }
+                $view = app()->call([app($spec['command']), $spec['method']], $arguments);
+                if ($view === null) throw new \Symfony\Component\HttpKernel\Exception\NotFoundHttpException();
+                if (!$view instanceof MutationOperationResult) throw new \LogicException('INTERNAL_MUTATION_RESULT_INVALID');
+                $result = TxapiResponse::success($request, $view->data, $view->meta, $view->status);
+            } else {
+                $result = $this->invokeController($request, $operation, $spec, $input, $actor);
+            }
+        } catch (OperationFailure $error) {
+            $result = $this->error($request, $error->errorCode, $error->status);
         }
         if (!$result instanceof JsonResponse) throw new \LogicException('INTERNAL_RESPONSE_INVALID');
         $body = $result->getData(true);
@@ -193,6 +220,7 @@ final class OperationExecutor
             $project = fn (array $row): array => $this->clean(array_intersect_key($row, array_flip($spec['fields'])),
                 $operation === 'subscription.links.issue');
             $projected = $spec['list'] ? array_map($project, $data) : $project($data);
+            $projected = OperationSchemas::output($operation, $projected);
             $meta = array_intersect_key($body['meta'] ?? [], array_flip(['page', 'per_page', 'total', 'last_page', 'schema', 'next_after_id']));
             $result = TxapiResponse::success($request, $projected, $meta, $result->getStatusCode());
         }

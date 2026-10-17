@@ -80,10 +80,11 @@ final class NativeOrderRecoveryTest extends NativeSubscriptionTestCase
         $method = new \ReflectionMethod(Kernel::class, 'schedule');
         $method->invoke(app(\Illuminate\Contracts\Console\Kernel::class), $schedule);
         $commands = array_map(static fn ($event) => $event->command, $schedule->events());
-        $this->assertCount(3, $commands);
+        $this->assertCount(4, $commands);
         $this->assertStringContainsString('core:subscriptions-tick --limit=100', $commands[0]);
         $this->assertStringContainsString('check:order --limit=100', $commands[1]);
         $this->assertStringContainsString('core:native-work --limit=100', $commands[2]);
+        $this->assertStringContainsString('core:module-work --limit=100', $commands[3]);
         $this->artisan('check:order', ['--limit' => 1001])->assertFailed();
         Bus::assertNothingDispatched();
     }

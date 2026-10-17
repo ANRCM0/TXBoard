@@ -18,6 +18,14 @@ const requestId = '12345678-1234-4234-8234-123456789abc'
 const upstreamEnvelope = (data, meta) => ({ data, request_id: requestId, ...(meta ? { meta } : {}) })
 const upstreamError = message => ({ error: { code: 'REJECTED', message }, request_id: requestId })
 const orderFixture = { id: 1, trade_no: 'fixture-order', status: 4, plan_id: 1, period: 'monthly', type: 1, amount_minor: 1200, plan: { id: 1, name: 'Fixture Pro', traffic_limit_bytes: 100 }, paid_at: null, created_at: '2026-10-12T00:00:00+00:00', payment_id: null, balance_amount_minor: 0, discount_amount_minor: 0 }
+const offerFixture = {
+  offer_id: '9007199254740993', plan_id: '9007199254740994', plan_revision_id: '9007199254740995',
+  name: 'Published Monthly', content: null, tags: ['native'], offer_code: 'monthly',
+  purchase_kind: 'subscription', currency: 'CNY', currency_minor_exponent: 2,
+  price_minor: '9007199254740996', quota_bytes: '9007199254740997',
+  group_id: '9007199254740998', speed_limit_mbps: '1000', device_limit: '3',
+  sell: true, renew: true, availability_version: '9007199254740999', publication_hash: 'a'.repeat(64),
+}
 // GW-304: idempotency-key -> trade_no, mirroring the Laravel semantics the
 // ADR specifies (same key + same body replays the first result).
 const ordersByKey = new Map()
@@ -65,7 +73,8 @@ test('Chromium theme SDK works through Gateway with strict fake Laravel contract
         turnstile_secret_key: 'not-public',
       })
     } else if (path === '/txapi/plans') {
-      result = upstreamEnvelope([{ id: 1, name: 'Monthly', content: '', tags: [], traffic_limit_bytes: 1073741824, speed_limit_mbps: null, device_limit: null, capacity_limit: null, reset_traffic_method: null, prices: [{ period: 'monthly', amount_minor: 1200 }], renewable: true }])
+      assert.equal(req.headers.authorization, undefined, 'Public catalog must not receive a Bearer')
+      result = upstreamEnvelope([offerFixture])
     } else if ([
       '/txapi/auth/login', '/txapi/auth/register',
       '/txapi/auth/email-code',
@@ -95,7 +104,7 @@ test('Chromium theme SDK works through Gateway with strict fake Laravel contract
       } else if (req.headers.authorization !== TEST_BEARER) {
         status = 401
         result = upstreamError('Expired fixture session')
-      } else if (!(submitted.plan_id === 1 && submitted.period === 'month_price')) {
+      } else if (!(Object.keys(submitted).length === 1 && submitted.offer_id === offerFixture.offer_id)) {
         status = 422
         result = upstreamError('Invalid fixture order')
       } else {
@@ -241,19 +250,19 @@ test('Chromium theme SDK works through Gateway with strict fake Laravel contract
     // Idempotency-Key header; the Gateway forwards it plus its own hint.
     const orderKey = 'browser-fixture-order-1'
     const created = await api.orders.create(
-      { plan_id: 1, period: 'month_price' }, { idempotencyKey: orderKey },
+      { offer_id: plans[0].offer_id }, { idempotencyKey: orderKey },
     )
     // Replaying the SAME key returns the SAME order (the fixture upstream
     // mirrors the Laravel idempotency semantics, not the Gateway's).
     const replayed = await api.orders.create(
-      { plan_id: 1, period: 'month_price' }, { idempotencyKey: orderKey },
+      { offer_id: plans[0].offer_id }, { idempotencyKey: orderKey },
     )
     let missingKeyStatus
     try {
       await fetch('http://127.0.0.1:' + gatewayPort + '/gateway/v1/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: session },
-        body: JSON.stringify({ plan_id: 1, period: 'month_price' }),
+        body: JSON.stringify({ offer_id: plans[0].offer_id }),
       }).then(r => { missingKeyStatus = r.status })
     } catch { /* captured below as undefined */ }
     const code = await encryptedApi.auth.sendEmailCode({ email, turnstile_token: 'fixture-captcha' })
@@ -307,7 +316,7 @@ test('Chromium theme SDK works through Gateway with strict fake Laravel contract
   assert.equal(result.siteName, 'Fixture TXBoard')
   assert.deepEqual(result.captcha, { enabled: true, type: 'turnstile', siteKey: SITE })
   assert.deepEqual(result.theme, { name: 'TXBoard', config: { accent: 'blue' } })
-  assert.equal(result.plans[0].month_price, 1200)
+  assert.deepEqual(result.plans, [offerFixture])
   assert.deepEqual(result.loginKeys, ['auth_data'])
   assert.equal(result.profileEmail, email)
   assert.equal(result.orderNumber, 'fixture-order')

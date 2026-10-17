@@ -1,0 +1,91 @@
+{
+  "schema": "core-module/v1",
+  "id": "delivery_receipt",
+  "version": "1.0.0",
+  "kind": "connector",
+  "execution": "in-process",
+  "kernel_api": {
+    "min": 1,
+    "max": 1
+  },
+  "requires": [],
+  "boot_after": [],
+  "operations": {
+    "receipts.list": {
+      "actor": "admin",
+      "permission": "extensions.delivery_receipt.view",
+      "idempotency": "read",
+      "input": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "receipts": {
+            "type": "array",
+            "maxItems": 50,
+            "items": {
+              "type": "object",
+              "properties": {
+                "event_id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 64,
+                  "pattern": "^[0-9a-f]{64}$"
+                },
+                "accepted_at": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 20,
+                  "pattern": "^[0-9]+$"
+                }
+              },
+              "required": [
+                "event_id",
+                "accepted_at"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "receipts"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "subscriptions": [
+    "billing.payment-settled.v1",
+    "billing.recharge-settled.v1"
+  ],
+  "config_schema": {
+    "type": "object",
+    "properties": {
+      "endpoint": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 2048,
+        "pattern": "^https://[^ ]+$"
+      },
+      "token": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 80,
+        "pattern": "^secret:[a-z][a-z0-9_]{0,63}$"
+      }
+    },
+    "required": [
+      "endpoint",
+      "token"
+    ],
+    "additionalProperties": false
+  },
+  "schema_version": 1,
+  "secrets": [
+    "token"
+  ]
+}

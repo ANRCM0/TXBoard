@@ -297,7 +297,7 @@ final class TxapiNativeInternalApiTest extends NativeRuntimeTestCase
             }
             if ($spec['command'] !== null) {
                 $this->assertNull($spec['controller']);
-                $this->assertSame('authenticated', $spec['actor']);
+                $this->assertSame(str_starts_with($operation, 'identity.session') ? 'authenticated' : 'user', $spec['actor']);
                 $this->assertTrue((new \ReflectionMethod($spec['command'], $spec['method']))->isPublic());
                 $commands[$operation] = [$spec['command'], $spec['method'], $spec['mode']];
                 continue;
@@ -310,13 +310,26 @@ final class TxapiNativeInternalApiTest extends NativeRuntimeTestCase
         $account = \App\Domains\InternalApi\AccountReadOperations::class;
         $orders = \App\Domains\InternalApi\OrderReadOperations::class;
         $sessions = \App\Domains\InternalApi\SessionReadOperations::class;
+        $usage = \App\Domains\InternalApi\UsageReadOperations::class;
+        $catalog = \App\Domains\InternalApi\CatalogReadOperations::class;
+        $billing = \App\Domains\InternalApi\BillingReadOperations::class;
         $this->assertSame(['identity.account.get' => [$account, 'account'], 'identity.admin.get' => [$account, 'account'],
             'identity.sessions.list' => [$sessions, 'listing'],
+            'catalog.offers.list' => [$catalog, 'listing'],
             'subscription.mine.get' => [$account, 'subscription'], 'commerce.orders.list' => [$orders, 'listing'],
-            'commerce.orders.get' => [$orders, 'find']], $handlers);
+            'commerce.orders.get' => [$orders, 'find'],
+            'billing.wallet.get' => [$billing, 'wallet'], 'billing.payment-methods.list' => [$billing, 'methods'],
+            'billing.recharges.list' => [$billing, 'recharges'], 'billing.recharges.get' => [$billing, 'recharge'],
+            'usage.mine.list' => [$usage, 'listing']], $handlers);
         $mutations = \App\Domains\InternalApi\SessionMutationOperations::class;
+        $commerce = \App\Domains\InternalApi\CommerceMutationOperations::class;
         $this->assertSame(['identity.sessions.revoke' => [$mutations, 'revoke', 'workflow'],
-            'identity.session.end' => [$mutations, 'end', 'once']], $commands);
+            'identity.session.end' => [$mutations, 'end', 'once'],
+            'commerce.orders.create' => [$commerce, 'purchase', 'domain'],
+            'commerce.orders.checkout' => [$commerce, 'checkout', 'domain'],
+            'commerce.orders.cancel' => [$commerce, 'cancel', 'workflow'],
+            'billing.recharges.create' => [$commerce, 'recharge', 'domain'],
+            'billing.recharges.checkout' => [$commerce, 'rechargeCheckout', 'domain']], $commands);
     }
 
     public function test_all_boundary_rejections_are_audited_without_untrusted_service_operation_or_input_material(): void

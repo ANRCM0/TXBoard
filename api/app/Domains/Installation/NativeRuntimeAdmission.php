@@ -6,7 +6,7 @@ namespace App\Domains\Installation;
 final class NativeRuntimeAdmission
 {
     public const VERSION = 'native-core-runtime/1';
-    public const COMMANDS = ['core:subscriptions-tick', 'core:native-work', 'core:provider-trust', 'core:internal-service', 'check:order',
+    public const COMMANDS = ['core:subscriptions-tick', 'core:native-work', 'core:module-work', 'core:module-deliveries', 'core:module-deploy', 'core:provider-trust', 'core:internal-service', 'check:order',
         'schedule:run', 'schedule:work', 'queue:work', 'queue:listen', 'queue:restart',
         'horizon', 'horizon:work', 'horizon:supervisor', 'horizon:terminate', 'horizon:status'];
     public const JOBS = [\App\Jobs\OrderHandleJob::class];
@@ -22,6 +22,8 @@ final class NativeRuntimeAdmission
             'txapi/auth/sessions', 'txapi/orders', 'txapi/orders/[A-Za-z0-9_-]+',
             'txapi/orders/[A-Za-z0-9_-]+/detail', 'txapi/me/credential-operations/cp_[a-f0-9]{32}',
             'txapi/node/v1/(?:config|users|machine/nodes|audit/rules)',
+            'txapi/extensions/[a-z][a-z0-9_]{0,63}/(?:presentation|resources/ui/[A-Za-z0-9_./-]+)',
+            'txapi/admin/[^/]+/extensions/[a-z][a-z0-9_]{0,63}/(?:presentation|resources/ui/[A-Za-z0-9_./-]+)',
         ],
         'POST' => [
             'txapi/auth/(?:login|admin/login|register|logout|password)',
@@ -39,6 +41,9 @@ final class NativeRuntimeAdmission
             'txapi/node/v2/usage/(?:submit|batch/get)',
             'txapi/admin/[^/]+/subscriptions/[1-9][0-9]*/operations/(?:suspend|resume|revoke|expire|reset)',
             'txapi/admin/[^/]+/native/accounts',
+            'txapi/extensions/[a-z][a-z0-9_]{0,63}/operations/[a-z][a-z0-9.-]{0,63}',
+            'txapi/admin/[^/]+/extensions/[a-z][a-z0-9_]{0,63}/operations/[a-z][a-z0-9.-]{0,63}',
+            'txapi/admin/[^/]+/extensions/[a-z][a-z0-9_]{0,63}/configuration',
         ],
         'PATCH' => ['txapi/me/preferences', 'txapi/admin/[^/]+/native/accounts/[1-9][0-9]*/status',
             'txapi/admin/[^/]+/native/plan-offers/[1-9][0-9]*/availability'],

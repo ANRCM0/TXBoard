@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Services\Module\Adapters\PluginLifecycleAdapter;
+use App\Services\Module\Adapters\CoreModuleAdapter;
 use App\Services\Module\Adapters\PluginModuleAdapter;
 use App\Services\Module\Adapters\ThemeLifecycleAdapter;
 use App\Services\Module\Adapters\ThemeModuleAdapter;
@@ -17,6 +18,7 @@ class ModuleServiceProvider extends ServiceProvider
         $this->app->scoped(ModuleRegistry::class, function ($app) {
             return new ModuleRegistry([
                 // System-owned identities win deterministic duplicate-ID resolution.
+                $app->make(CoreModuleAdapter::class),
                 $app->make(ThemeModuleAdapter::class),
                 $app->make(PluginModuleAdapter::class),
             ]);

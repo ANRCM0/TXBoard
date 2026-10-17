@@ -208,8 +208,8 @@ final class NativePaymentPluginTest extends NativePaymentTestCase
         [$user, $order] = $this->purchase();
         app(NativePaymentCheckout::class)->start($user->id, $order->id, $this->payment->id, 'permanent-pin');
         $manager = app(PluginManager::class);
-        $this->rejects('PAYMENT_PLUGIN_DRAIN_REQUIRED', fn () => $manager->uninstall('epay'));
-        $this->rejects('PAYMENT_PLUGIN_DRAIN_REQUIRED', fn () => $manager->update('epay'));
+        $this->rejectsModule('MODULE_DRAIN_REQUIRED', fn () => $manager->uninstall('epay'));
+        $this->rejectsModule('MODULE_DRAIN_REQUIRED', fn () => $manager->update('epay'));
         $this->assertTrue(Plugin::query()->where('code', 'epay')->firstOrFail()->is_enabled);
         $this->assertNull(Plugin::query()->where('code', 'epay')->value('native_payment_mutation_token'));
         $this->assertFileExists(base_path('plugins-core/Epay/NativeAdapter.php'));
@@ -248,11 +248,21 @@ final class NativePaymentPluginTest extends NativePaymentTestCase
         $directory = sys_get_temp_dir().'/native-loaded-version-'.bin2hex(random_bytes(8));
         File::makeDirectory($directory, 0700);
         try {
-            $manifest = json_decode(File::get(base_path('plugins-core/Epay/config.json')), true, 16, JSON_THROW_ON_ERROR);
-            $manifest['version'] = '2.0.0';
-            File::put($directory.'/config.json', json_encode($manifest, JSON_THROW_ON_ERROR));
+            $path = $directory.'/plugins-core/Epay';
+            File::copyDirectory(base_path('plugins-core/Epay'), $path);
+            foreach (['config.json', 'module.json'] as $file) {
+                $manifest = json_decode(File::get($path.'/'.$file), true, 32, JSON_THROW_ON_ERROR);
+                $manifest['version'] = '2.0.0';
+                File::put($path.'/'.$file, json_encode($manifest, JSON_THROW_ON_ERROR));
+            }
+            $lock = json_decode(File::get(base_path('bootstrap/module-packages.lock.json')), true, 32, JSON_THROW_ON_ERROR);
+            $entry = array_values(array_filter($lock['packages'], static fn (array $entry): bool => $entry['code'] === 'epay'))[0];
+            $entry['version'] = '2.0.0';
+            foreach ($entry['files'] as $file => $_hash) $entry['files'][$file] = hash_file('sha256', $path.'/'.$file);
+            $this->app->instance(\App\Core\Host\Modules\ModulePackageLock::class,
+                new \App\Core\Host\Modules\ModulePackageLock($directory, ['schema' => 1, 'packages' => [$entry]]));
             Plugin::query()->where('code', 'epay')->update(['version' => '2.0.0']);
-            $manager = new class(app(PluginPackage::class), $directory) extends PluginManager {
+            $manager = new class(app(PluginPackage::class), $path) extends PluginManager {
                 public function __construct(PluginPackage $package, private readonly string $fixturePath)
                 {
                     parent::__construct($package);
@@ -274,8 +284,8 @@ final class NativePaymentPluginTest extends NativePaymentTestCase
         Plugin::query()->where('code', 'epay')->update(['native_payment_mutation_token' => $token]);
         $this->rejects('NATIVE_PAYMENT_PROVIDER_UNSUPPORTED',
             fn () => app(NativePaymentCheckout::class)->start($user->id, $order->id, $this->payment->id, 'fenced'));
-        $this->rejects('PAYMENT_PLUGIN_MUTATION_IN_PROGRESS', fn () => app(PluginManager::class)->enable('epay'));
-        $this->rejects('PAYMENT_PLUGIN_MUTATION_IN_PROGRESS', fn () => app(PluginManager::class)->uninstall('epay'));
+        $this->rejectsModule('MODULE_DEPLOYMENT_BUSY', fn () => app(PluginManager::class)->enable('epay'));
+        $this->rejectsModule('MODULE_DEPLOYMENT_BUSY', fn () => app(PluginManager::class)->uninstall('epay'));
         $this->assertSame($token, Plugin::query()->where('code', 'epay')->value('native_payment_mutation_token'));
         $this->assertSame(0, DB::table('tx_payment_attempt')->count());
         Http::assertNothingSent();
@@ -331,6 +341,12 @@ final class NativePaymentPluginTest extends NativePaymentTestCase
         } finally {
             $filesystem->deleteDirectory($path);
         }
+    }
+
+    private function rejectsModule(string $code, \Closure $action): void
+    {
+        try { $action(); $this->fail('Expected '.$code); }
+        catch (\App\Extensions\Contracts\ExtensionFailure $error) { $this->assertSame($code, $error->errorCode); }
     }
 
     private function paymentSnapshot(int|string $attemptId): array

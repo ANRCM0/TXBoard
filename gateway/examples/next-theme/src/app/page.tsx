@@ -6,14 +6,14 @@ import { negotiateVersion } from '@/lib/version'
 import { safeImageUrl } from '@/lib/safe-url'
 import { PlanCard } from '@/components/PlanCard'
 import { ErrorState } from '@/components/ErrorState'
-import type { BootstrapData, Plan } from '@txboard/theme-sdk'
+import type { BootstrapData, NativeOffer } from '@txboard/theme-sdk'
 
 export const dynamic = 'force-dynamic'
 
 export default async function HomePage() {
   const api = createClient()
   let bootstrap: BootstrapData | null = null
-  let plans: Plan[] = []
+  let plans: NativeOffer[] = []
   let error: Error | null = null
   let refusal: string | null = null
 
@@ -52,7 +52,7 @@ export default async function HomePage() {
       <ErrorState error={error} />
 
       <section className="plans" aria-label="套餐列表">
-        {plans.map(plan => <PlanCard key={plan.id} plan={plan} />)}
+        {plans.map(plan => <PlanCard key={plan.offer_id} plan={plan} />)}
       </section>
       {plans.length === 0 && !error && <p className="muted">暂无公开套餐。</p>}
     </main>

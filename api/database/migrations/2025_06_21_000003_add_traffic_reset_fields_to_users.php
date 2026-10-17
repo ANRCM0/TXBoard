@@ -22,8 +22,10 @@ class AddTrafficResetFieldsToUsers extends Migration
             });
         }
 
-        // Set initial reset time for existing users
-        Artisan::call('reset:traffic', ['--fix-null' => true]);
+        // Native initialization has no legacy allocations and cannot run business commands before activation.
+        if (config('core_installation.mode') !== 'native') {
+            Artisan::call('reset:traffic', ['--fix-null' => true]);
+        }
     }
 
     /**
