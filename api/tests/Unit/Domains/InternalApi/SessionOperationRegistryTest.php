@@ -7,6 +7,7 @@ use App\Domains\InternalApi\OperationRegistry;
 use App\Domains\InternalApi\OrderReadOperations;
 use App\Domains\InternalApi\SessionMutationOperations;
 use App\Domains\InternalApi\SessionReadOperations;
+use App\Domains\InternalApi\UsageReadOperations;
 use PHPUnit\Framework\TestCase;
 
 final class SessionOperationRegistryTest extends TestCase
@@ -38,6 +39,7 @@ final class SessionOperationRegistryTest extends TestCase
             'subscription.mine.get' => [AccountReadOperations::class, 'subscription', 'read'],
             'commerce.orders.list' => [OrderReadOperations::class, 'listing', 'read'],
             'commerce.orders.get' => [OrderReadOperations::class, 'find', 'read'],
+            'usage.mine.list' => [UsageReadOperations::class, 'listing', 'read'],
         ], $handlers);
         $this->assertSame([
             'identity.sessions.revoke' => [SessionMutationOperations::class, 'revoke', 'workflow'],

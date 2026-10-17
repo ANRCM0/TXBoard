@@ -108,20 +108,20 @@ domain-compatible operation inventory, field lists, required actor/permission,
 idempotency mode, size and deadline. Capability discovery never grants an
 operation or actor privilege.
 
-K4 candidate `identity.account.get`, `identity.admin.get` and
+K4 `identity.account.get`, `identity.admin.get` and
 `subscription.mine.get` delegate through fixed account read handlers to the
 shared Identity query port instead of invoking HTTP controllers. Their existing
 authentication, permissions, input/output fields, error normalization, redaction
 and response bounds are unchanged. The precise candidate/acceptance boundary is
 [Core Account Read Ports v1](core-account-read-ports-v1.md).
-The next K4 candidate moves `commerce.orders.list` and `commerce.orders.get`
+The merged order-read subset moves `commerce.orders.list` and `commerce.orders.get`
 to fixed OrderReadOperations and Billing OrderQueries, preserving pagination
 metadata and the existing owner restriction. Account and order read handlers
 return adapter-local data/metadata; null order results map to the same 404, and
 all results still pass the common executor output controls. See
 [Core Order Read Ports v1](core-order-read-ports-v1.md).
 
-The session-lifecycle candidate moves `identity.sessions.list` to the fixed
+The merged session-lifecycle subset moves `identity.sessions.list` to the fixed
 SessionReadOperations handler and the existing revoke/end operations to two
 exact SessionMutationOperations command targets. They share Identity's
 AccountSessions port with native HTTP. Read handlers remain read-only; command
@@ -129,6 +129,11 @@ dispatch is separately restricted to those exact operations, methods and existin
 workflow/once modes. Actor/service authorization precedes receipt admission and
 replay; unknown workflow outcomes are never re-executed. Results rejoin the same
 output controls. See [Core Account Sessions v1](core-account-sessions-v1.md).
+The Usage query candidate moves the existing `usage.mine.list` to fixed
+UsageReadOperations and the same UsageQueries owner as HTTP usage-period reads.
+Read mode, actual actor, field/meta filtering and safe failures remain; the domain
+query retains its complete history verification, transaction/locks and possible
+initial Slot creation. See [Core Usage Queries v1](core-usage-queries-v1.md).
 Remaining operations retain their current controller delegation. No handler or
 class name is accepted from a caller, and no new operation is made available.
 
