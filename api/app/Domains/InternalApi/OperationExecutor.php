@@ -126,6 +126,10 @@ final class OperationExecutor
 
     private function dispatch(Request $request, string $operation, array $spec, array $input, ?User $actor): JsonResponse
     {
+        if ($spec['handler'] !== null
+            && ($spec['mode'] !== 'read' || $actor === null || $spec['controller'] !== null)) {
+            throw new \LogicException('INTERNAL_READ_HANDLER_INVALID');
+        }
         $receipt = null;
         // Signed checkout material is a current authorization decision, not a
         // replayable receipt. Re-enter its permanent domain key on every call.
@@ -153,36 +157,12 @@ final class OperationExecutor
                 return $this->error($request, 'IDEMPOTENCY_IN_PROGRESS', 409)->header('Retry-After', '2');
             }
         }
-        $delegated = clone $request;
-        $delegated->query->replace([]);
-        $delegated->request->replace($input);
-        $delegated->setJson(new InputBag($input));
-        $delegated->setUserResolver(static fn () => $actor);
-        $route = clone $request->route();
-        $arguments = ['request' => $delegated];
-        foreach ($spec['parameters'] as $name => $field) {
-            $value = $input[$field];
-            $arguments[$name] = $name === 'sessionId' ? (int) $value : $value;
-            $route->setParameter($name, $value);
-            $route->setParameter($field, $value);
-            unset($input[$field]);
+        if ($spec['handler'] !== null) {
+            $result = TxapiResponse::success($request,
+                app()->call([app($spec['handler']), $spec['method']], ['actor' => $actor]));
+        } else {
+            $result = $this->invokeController($request, $operation, $spec, $input, $actor);
         }
-        foreach ($spec['routeParameters'] as $name => $value) $route->setParameter($name, $value);
-        $delegated->request->replace($input);
-        $delegated->setJson(new InputBag($input));
-        $delegated->setRouteResolver(static fn () => $route);
-        $formClass = match ($operation) {
-            'identity.session.create', 'identity.admin-session.create' => AuthLogin::class,
-            'settings.site.update' => \App\Http\Requests\Admin\ConfigSave::class,
-            default => null,
-        };
-        if ($formClass !== null) {
-            $form = $formClass::createFrom($delegated, new $formClass);
-            $form->setContainer(app())->setRedirector(app('redirect'));
-            $form->validateResolved();
-            $arguments['request'] = $form;
-        }
-        $result = app()->call([app($spec['controller']), $spec['method']], $arguments);
         if (!$result instanceof JsonResponse) throw new \LogicException('INTERNAL_RESPONSE_INVALID');
         $body = $result->getData(true);
         if ($result->getStatusCode() >= 400 || isset($body['error'])) {
@@ -229,6 +209,40 @@ final class OperationExecutor
             }
         }
         return $result;
+    }
+
+    private function invokeController(Request $request, string $operation, array $spec, array $input, ?User $actor): mixed
+    {
+        $delegated = clone $request;
+        $delegated->query->replace([]);
+        $delegated->request->replace($input);
+        $delegated->setJson(new InputBag($input));
+        $delegated->setUserResolver(static fn () => $actor);
+        $route = clone $request->route();
+        $arguments = ['request' => $delegated];
+        foreach ($spec['parameters'] as $name => $field) {
+            $value = $input[$field];
+            $arguments[$name] = $name === 'sessionId' ? (int) $value : $value;
+            $route->setParameter($name, $value);
+            $route->setParameter($field, $value);
+            unset($input[$field]);
+        }
+        foreach ($spec['routeParameters'] as $name => $value) $route->setParameter($name, $value);
+        $delegated->request->replace($input);
+        $delegated->setJson(new InputBag($input));
+        $delegated->setRouteResolver(static fn () => $route);
+        $formClass = match ($operation) {
+            'identity.session.create', 'identity.admin-session.create' => AuthLogin::class,
+            'settings.site.update' => \App\Http\Requests\Admin\ConfigSave::class,
+            default => null,
+        };
+        if ($formClass !== null) {
+            $form = $formClass::createFrom($delegated, new $formClass);
+            $form->setContainer(app())->setRedirector(app('redirect'));
+            $form->validateResolved();
+            $arguments['request'] = $form;
+        }
+        return app()->call([app($spec['controller']), $spec['method']], $arguments);
     }
 
     private function clean(array $value, bool $allowLinkToken = false): array

@@ -37,10 +37,10 @@ final class OperationRegistry
                     'turnstile_token' => ['sometimes', 'string', 'max:8192'], 'recaptcha_v3_token' => ['sometimes', 'string', 'max:8192'],
                     'recaptcha_data' => ['sometimes', 'string', 'max:8192']],
                 ['auth_data', 'is_admin', 'secure_path']),
-            'identity.account.get' => self::spec($user, 'user', $read, Txapi\AccountController::class, 'me', [],
-                ['id', 'email', 'telegram_id', 'subscription', 'credential_status']),
-            'identity.admin.get' => self::spec($admin, 'admin', $read, Txapi\AccountController::class, 'me', [],
-                ['id', 'email'], permission: 'identity.read'),
+            'identity.account.get' => self::spec($user, 'user', $read, null, 'account', [],
+                ['id', 'email', 'telegram_id', 'subscription', 'credential_status'], handler: AccountReadOperations::class),
+            'identity.admin.get' => self::spec($admin, 'admin', $read, null, 'account', [],
+                ['id', 'email'], permission: 'identity.read', handler: AccountReadOperations::class),
             'identity.sessions.list' => self::spec($both, 'authenticated', $read, Txapi\AuthController::class, 'sessions', [],
                 ['id', 'name', 'abilities', 'last_used_at', 'created_at', 'updated_at', 'expires_at'], list: true),
             'identity.sessions.revoke' => self::spec($both, 'authenticated', $write, Txapi\AuthController::class, 'revoke',
@@ -50,8 +50,8 @@ final class OperationRegistry
                 ['offer_id', 'plan_id', 'plan_revision_id', 'name', 'content', 'tags', 'offer_code', 'purchase_kind',
                     'currency', 'price_minor', 'currency_minor_exponent', 'quota_bytes', 'group_id', 'speed_limit_mbps',
                     'device_limit', 'sell', 'renew', 'availability_version', 'publication_hash'], list: true),
-            'subscription.mine.get' => self::spec($user, 'user', $read, Txapi\AccountController::class, 'subscription', [],
-                self::entitlementFields()),
+            'subscription.mine.get' => self::spec($user, 'user', $read, null, 'subscription', [],
+                self::entitlementFields(), handler: AccountReadOperations::class),
             'subscription.links.list' => self::spec($user, 'user', $read, Txapi\SubscriptionLinkController::class, 'index',
                 ['after_id' => ['sometimes', 'string', 'regex:/\A(?:0|[1-9][0-9]{0,17})\z/D']],
                 ['schema', 'items', 'next_after_id']),
@@ -169,10 +169,10 @@ final class OperationRegistry
 
     private static function spec(array $domains, string $actor, string $mode, ?string $controller, ?string $method,
         array $rules, array $fields, bool $list = false, array $parameters = [], ?string $permission = null,
-        array $routeParameters = []): array
+        array $routeParameters = [], ?string $handler = null): array
     {
         return compact('domains', 'actor', 'mode', 'controller', 'method', 'rules', 'fields', 'list', 'parameters',
-            'permission', 'routeParameters');
+            'permission', 'routeParameters', 'handler');
     }
 
     private static function inputSchema(array $rules): array

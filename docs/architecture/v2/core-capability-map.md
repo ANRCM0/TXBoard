@@ -1,10 +1,11 @@
 # Core capability and transaction map
 
-> K0 inventory, K1 entitlement, K2 adapters and K3 fulfillment candidates, 2026-10-17.
+> K0 inventory, K1 entitlement, K2 adapters, K3 fulfillment and K4 account read candidates, 2026-10-17.
 >
 > Starting source: local `main` at `85b0eac62f73f636efe736548e968535c561ced3`.
-> This map describes inspected owners and the K1 candidate changes. It does not
-> assert that remote CI, production deployment or later K2-K5 work is complete.
+> This map records actual candidate scope. K1-K3 exact-commit development CI is
+> recorded below; the new K4 subset still needs its own CI and domain review.
+> None of these candidate branches is an assumed merged or production baseline.
 
 Core is a modular control plane for one operator installation and its end users,
 not a generic plugin shell or an implemented multi-operator tenancy platform.
@@ -17,6 +18,7 @@ Current native behavior remains governed by its domain contracts and evidence.
 | Capability | Current owner / entry | Transaction and invariant |
 | --- | --- | --- |
 | Identity and account | `Domains/Identity`: `AccountCreationService`, `AccountSqlPhase`, `AdminAccountModeration`, `AccountSessionGuard` | Current identity and role checks remain separate from entitlements and money; no user traffic fields become native entitlement authority. |
+| Account read projection | Identity `AccountQueries` / `NativeAccountQueries` | Authenticated actor scalars from ingress; delegates entitlement facts to Subscription; no actor cache or independent authorization. |
 | Catalog administration | `NativePlanAdministration::publish`, `PlanPublicationService::publish/setAvailability`, `NativePlanCatalog` | Immutable publication and current selling availability are distinct; purchased evidence is not repriced. |
 | Purchase | `PublishedOrderService::create` | Account-first locks, permanent order key, frozen purchase and upgrade-source evidence; no provider network request in this transaction. |
 | Order transitions | `PublishedOrderService::transitionOrder` and `NativeOrderLifecycle` | Controlled internal transitions, not an external arbitrary callback or `setStatus` capability. |
@@ -61,14 +63,15 @@ it is not a public DTO or a route available to plugins or clients.
 
 | Production call site | Contract | Existing responsibilities that stay with the caller |
 | --- | --- | --- |
-| `AccountController::me` | Public `EntitlementQueries` | Derive the account from the actual Sanctum actor; retain account response shape and existing installation routing. |
-| `AccountController::subscription` | Public `EntitlementQueries` | Derive the account from the current actor; retain delivery metadata and the current response envelope. |
+| `NativeAccountQueries::account` | Public `EntitlementQueries` | HTTP and Internal API derive the current actor first; preserve account identity fields and entitlement result. |
+| `NativeAccountQueries::subscription` | Public `EntitlementQueries` | Shared native subscription projection; HTTP alone appends its delivery endpoint. |
 | `NativeSubscriptionLinks::issue` | Internal `LockedEntitlementQueries` | Recheck actor/subject ownership and entitlement inside the link-issuance transaction. |
 | `NativeSubscriptionDelivery` locked projection | Internal `LockedEntitlementQueries` | Preserve metadata-before-final-check workflow, account locks and finite delivery authorization. |
 | `NativeProviderNodeAuthorization::projectLocked` | Internal `LockedEntitlementQueries` | Preserve complete signing transaction locks and final verification; never sign a cached public view. |
 | `NativeRuntimeWorker` usage-event handling | Internal `LockedEntitlementQueries` | Preserve installation/account/subscription locks and the original durable event identity. |
 
-These are six call sites in five production consumers. Direct concrete resolver
+These remain six call sites in five direct production consumers after K4 moves
+the two account projections out of the HTTP controller. Direct concrete resolver
 dependencies remain only in its own implementation and the composition provider.
 Existing domain tests may still call the implementation to verify its native
 algorithms; a test reference does not authorize another production caller.
@@ -88,15 +91,16 @@ algorithms; a test reference does not authorize another production caller.
 - The existing direct resolver methods remain internal algorithm/test surfaces;
   production consumers use the appropriate public or locked contract.
 
-### Internal API is an indirect consumer
+### Internal API delegates account reads without HTTP controllers
 
-`OperationRegistry` currently maps `identity.account.get`, `identity.admin.get`
-and `subscription.mine.get` to the actual AccountController methods. The executor
-still verifies the separate service, actual actor, current grants, domain,
-closed input and output field allow-list. It does not yet invoke every domain
-port directly, and this slice does not claim that later ingress refactor.
+`OperationRegistry` maps `identity.account.get`, `identity.admin.get` and
+`subscription.mine.get` to compiled `AccountReadOperations` handlers. They use
+Identity `AccountQueries`, the same application query consumed by native HTTP.
+The executor still verifies the separate service, actual actor, current grants,
+domain, closed input and output field allow-list. Other operations keep their
+existing controller targets; this subset does not claim all ingress is migrated.
 
-Do not remove these checks because the Controller now injects a typed capability.
+Do not remove these checks because a handler now injects a typed capability.
 Neither mTLS nor a stored workflow response replaces current actor authorization.
 Octane and Worker must not retain actor/context state across requests or jobs.
 
@@ -219,9 +223,10 @@ Wallet refunds retain `entitlement_effect=none`.
 Existing module inventory/lifecycle adapters remain the authoritative extension
 seam; K2 does not add another registry or open generic module invocation.
 Candidate regression tests and source guards cover the changed boundaries.
-API, MySQL and real Provider acceptance is pending for this candidate; no
-production PKI, arbitrary Provider protocols or original-channel refund claim
-is made. K3-K5 and release qualification remain separate work.
+K2 commit `832a8e8` passed its triggered API, MySQL and real Provider development
+checks in PR #264. It remains unmerged and does not prove production PKI,
+arbitrary Provider protocols or original-channel refunds. K4/K5 and release
+qualification remain separate work.
 
 ## 8. K3 fulfillment and financial proof candidate
 
@@ -250,10 +255,49 @@ Source checks reject concrete fulfillment use outside implementation/composition
 and concrete settlement use in Subscription services; they deliberately preserve
 legitimate Billing settlement entry points and internal SQL model types. Tests
 cover scope/replacement and real transaction/proof/rollback behavior in existing
-API/MySQL acceptance. These are candidate changes, not passing test evidence.
+API/MySQL acceptance. K3 commit `c8f782b` passed its triggered API (1179 passed,
+33 skipped), MySQL billing/subscription and concurrent recovery, real C2,
+installation, docs and verify checks in PR #265. This is exact-commit development
+evidence, not a result for later K4 edits or a release/merge declaration.
 
 Identity/account creation, catalog publication, purchase coordination, lifecycle,
 wallet/refund and usage already retain their listed domain owners/transaction
 contracts. This slice does not claim every mutation now has an interface; further
 ports require an actual consumer and must retain their original atomic boundary.
 K4 ingress delegation, K5 integrated checks and release qualification remain open.
+
+## 9. K4 account read ingress candidate
+
+This subset builds on K3 candidate `c8f782b`, still unmerged. The
+[Account Read Ports contract](../../../contracts/v2/core-account-read-ports-v1.md)
+records Identity's two query methods, scalar actor projection and the three
+fixed Internal API handler targets. No new business or service operation exists.
+
+| Real consumer | Shared capability | Entry owner responsibilities |
+| --- | --- | --- |
+| Native AccountController me | AccountQueries account | Actual Sanctum actor and current HTTP shape; no client-selected account |
+| AccountController subscription | AccountQueries subscription | Actual Sanctum actor; HTTP-only delivery endpoint |
+| identity.account.get | Same account query via AccountReadOperations | User service identity, actual actor, unchanged output projection |
+| identity.admin.get | Same account query via AccountReadOperations | Admin service/path/role/token ability/current identity.read grant; only id/email output |
+| subscription.mine.get | Same subscription query via AccountReadOperations | User service identity, actual actor, unchanged entitlement field allowlist |
+
+Queries delegate to the existing EntitlementQueries owner and preserve denied
+views, installation errors and outer-transaction refusal. They do not cache the
+actor, write business state or create internal request receipts. Session
+last-used writes and audit remain separate entry behavior. Administrator reads
+retain the existing entitlement query dependency before output filtering.
+
+Fixed handler results rejoin common projection, recursive secret redaction,
+decimal-string normalization, size limits and error handling. The remaining
+controller invocation block is extracted without changing its request/form/
+route mapping; login, orders, checkout, lifecycle and other operations retain
+their current owners and idempotency behavior.
+
+Identity public contracts and concrete-owner dependencies are statically guarded;
+only the new account handler has a direct HTTP/auth/SQL dependency fence. No
+source heuristic proves authentication or dynamic calls safe. Behavior tests
+cover shared query replacement, alternating actual actors and authorization
+failure; exact-commit CI remains pending for this K4 candidate.
+
+K4 order reads and other justified ingress slices, K5 integrated handoff and
+production qualification are not declared complete by this subset.

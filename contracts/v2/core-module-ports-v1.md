@@ -10,6 +10,8 @@ K1 候选实现的精确接口见 [Core Entitlement Queries v1](core-entitlement
 
 K3 的实际履约/付款证明子集见 [Core Order Fulfillment Ports v1](core-order-fulfillment-ports-v1.md)：保留现有标量结果和内部锁定模型，尚未引入后文示意的统一上下文或通用事务包装。
 
+K4 的账户读取子集见 [Core Account Read Ports v1](core-account-read-ports-v1.md)：HTTP 与三个固定 Internal API 操作共用查询，入口继续拥有实际 actor 认证及协议映射，不引入通用动态业务调用。
+
 ## 1. 契约目标
 
 业务调用者依赖明确的输入、输出与行为保证，运行时通过显式装配使用当前实现。每个端口必须说明：

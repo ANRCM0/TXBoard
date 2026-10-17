@@ -306,7 +306,7 @@ jobs:
 
   native-subscription-domain:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
     permissions:
       contents: read
     services:
@@ -379,6 +379,7 @@ jobs:
           tests/Feature/Subscription/NativeSubscriptionLinksTest.php
           tests/Feature/Subscription/NativePlanAdministrationTest.php
           tests/Feature/Txapi/TxapiNativeInternalApiTest.php
+          tests/Feature/Txapi/AccountReadBoundaryTest.php
           tests/Feature/Txapi/TxapiNativeInternalCheckoutTest.php
           tests/Feature/UsageV2/NativeRuntimeUsageTest.php
       - name: Native receipt concurrency and SQL crash recovery on MySQL 8.4
