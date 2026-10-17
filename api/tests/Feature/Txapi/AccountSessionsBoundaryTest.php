@@ -96,7 +96,11 @@ final class AccountSessionsBoundaryTest extends NativeRuntimeTestCase
         $other = $this->newUser()->createToken('other-owner', ['*']);
         $target = $actor->createToken('target', ['*']);
         $internalTarget = $actor->createToken('internal-target', ['*']);
-        $this->http('DELETE', '/txapi/auth/sessions/0', $current->plainTextToken)->assertNotFound();
+        // Native installation admission rejects this path before controller dispatch.
+        $this->http('DELETE', '/txapi/auth/sessions/0', $current->plainTextToken)->assertStatus(503)
+            ->assertJsonPath('error.code', 'INSTALLATION_AUTHORITY_NATIVE_CAPABILITY_UNAVAILABLE');
+        $this->assertFalse(app(AccountSessions::class)->revoke((int) $actor->id, 0));
+        $this->assertNotNull($current->accessToken->fresh());
         $this->invoke('identity.sessions.revoke', $current->plainTextToken,
             ['session_id' => (string) $internalTarget->accessToken->id])->assertOk()->assertJsonPath('data.ok', true);
         $this->assertNull($internalTarget->accessToken->fresh());

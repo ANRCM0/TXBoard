@@ -21,6 +21,11 @@ actor and current token; caller input never selects the owner or the token used
 by `end`. HTTP preserves its existing null/transient-token no-op behavior. The
 Internal API continues to require an actual Sanctum PersonalAccessToken.
 
+Existing ingress validation stays distinct from a missing positive target:
+native HTTP rejects a zero-ID session path at installation admission with 503
+`INSTALLATION_AUTHORITY_NATIVE_CAPABILITY_UNAVAILABLE`; Internal API rejects
+non-positive `session_id` input with 422. Neither reaches session deletion.
+
 Listing preserves `id`, `name`, `abilities`, `last_used_at`, `created_at`,
 `updated_at`, `expires_at`, date formatting and optional limit semantics. It
 does not expose the token hash or bearer. HTTP IDs stay integers; Internal API
