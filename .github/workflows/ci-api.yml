@@ -69,6 +69,8 @@ on:
       - "scripts/tests/test_check_core_boundaries.py"
       - ".github/workflows/ci-api.yml"
 
+  workflow_dispatch:
+
 concurrency:
   group: api-ci-${{ github.ref }}
   cancel-in-progress: true
