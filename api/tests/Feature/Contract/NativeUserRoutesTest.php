@@ -18,10 +18,21 @@ class NativeUserRoutesTest extends TestCase
 
     public function test_retired_internal_service_routes_are_not_registered(): void
     {
+        $formal = 0;
         foreach (Route::getRoutes()->getRoutes() as $route) {
+            if ($route->uri() === 'txapi/internal/native/v1/{domain}/operations/{operation}') {
+                $formal++;
+                $this->assertSame(['POST'], $route->methods());
+                $this->assertSame(\App\Http\Controllers\Txapi\InternalOperationController::class.'@execute', $route->getActionName());
+                $this->assertContains(\App\Http\Middleware\NativeServiceIdentity::class, $route->gatherMiddleware());
+                $this->assertContains('throttle:native-internal-ingress', $route->gatherMiddleware());
+                $this->assertSame('user|admin', $route->wheres['domain']);
+                continue;
+            }
             $this->assertDoesNotMatchRegularExpression('~^txapi/internal(?:/|$)~', $route->uri(),
                 'A retired Internal API route was re-registered: ' . $route->uri());
         }
+        $this->assertSame(1, $formal, 'Only the closed formal service boundary may be registered.');
     }
 
     public function test_old_controller_namespaces_are_absent_and_entrypoints_have_native_handlers(): void

@@ -1,81 +1,57 @@
-# TXBoard Gateway 架构与信任边界
+# Gateway 当前架构与信任边界
 
-> 设计决策：2026-10-09。**PR #10–#13 已合并模块化、路由策略、可信入口/限流及观测/熔断代码；真实集成与未来 /txapi/bff/v1 尚未实施验收。** 当前真实能力与验证状态以 [开发状态台账](./development-status.md) 为准。实施细节、示例代码和验收矩阵见 [模块化中间件架构规范](./middleware-architecture.md)。
+本文描述当前源码，不维护历史开发顺序。功能与验收范围见 [当前状态](development-status.md)，HTTP 字段见 [Gateway v1 契约](../contracts/gateway-v1.md)。
 
-## TXBoard Native 双仓 ADR-006（TARGET）
+## 运行与业务归属
 
-未来可选 Gateway 仅处理 `/txapi/bff/v1/*`，其余 `/txapi/*` 由 Laravel Native 处理；现有 `/gateway/v1/*` 仍有效。管理员、Node、Agent、支付、插件等不经 BFF，Laravel 保留业务权威。详情见 [Integration](./txapi-integration.md)。
-
-## 1. 核心决策（ADR：模块化单体）
-
-采用 **一个 Node.js 22 / Hono / TypeScript 网关进程 + 同进程可组合中间件 + 静态注册的声明式路由策略 + Redis 共享安全状态**。
-
-- 不将认证、限流、加密、数据适配拆为必须串联的多个 HTTP 微服务；多服务增加网络跳数、可用性和部署成本。
-- 不支持主题或运维在运行时上传任意 JavaScript 中间件；扩展只能通过源码显式注册、代码审查和 CI。
-- 不将所有中间件强制用于全部路径；强制的全局基线不可关闭，其余由**预定义、强类型策略**选择。
-- Gateway 是 **协议/展示适配层**，不是 Laravel 的业务替代品、WAF、通用反向代理或独立交易后台。
-- 重构采用**无行为变更优先**：保持 `/gateway/v1` 现有请求/响应契约、原先默认关闭的敏感功能和可回滚部署。
-
-### 流量拓扑
+Gateway 是 Node.js / Hono / TypeScript 模块化单体，公开前缀为 `/gateway/v1`。它提供用户主题的固定 API 适配，不是通用反向代理、业务数据库或交易后台。`/txapi/bff/v1` 和统一管理员浏览器入口没有注册，不能当作当前接口。
 
 ```text
-浏览器 / Luma / 独立主题
-  -> HTTPS OpenResty / Nginx / 1Panel (TLS、基础 IP 限流、请求体上限)
-      |-- /gateway/v1/* -> TXBoard Gateway (Hono, Docker 私网)
-      |                      |-- 全局安全基线 + Request ID
-      |                      |-- 路由策略分派
-      |                      |-- 按需的限流 / Bearer / HPKE / Zod
-      |                      |-- 固定上游 operation + 数据最小化
-      |                      |-- Redis (nonce / 账户限流 / 有条件的 IP 风控)
-      |                      +-- TXBoard Laravel API
-      |
-      +-- 原 /api/v1/*、/api/v2/*、/s/*、WebSocket、插件、
-          节点、支付回调 -> 原 TXBoard 入口 -> Laravel
-                                              -> MySQL / Laravel Redis
+Browser / Theme SDK
+  -> HTTPS ingress
+      -> /gateway/v1/* -> Gateway -> 固定 Core operation
+                         |-> Redis: replay / rate limit
+      -> Core 其他已注册入口（独立鉴权）
 ```
 
-只有指定路径才转发至 Gateway；**不能**将默认反代、所有 `/api/*`、订阅链接或支付回调劫持到 Gateway。Gateway 无数据库连接、管理员 Token 和 Docker Socket，所有业务授权、用户订单归属、余额与交易幂等依旧由 Laravel 执行。
+- Core 持有身份、权限、订单、钱包/账本、退款、权益和 Node 状态；Gateway 不计算价格、不结算、不存储业务真相，不持有共享管理员 Bearer。
+- Core 管理入口、支付回调、私密订阅、插件与 Node/WebSocket 不因部署 Gateway 改道。已退役的 Agent/MCP 与 `/api/v1`、`/api/v2` 不恢复。
+- `services/upstream.ts` 固定选择 Core `/txapi/*` 路径，禁止客户端提供上游 host/path。匿名支付目录没有 Core 对应项，固定 404、零上游调用。
+- `services/native-internal.ts` 是独立服务端 mTLS 客户端。User/Admin 服务配置隔离；当前浏览器适配只在配置 User service 后将 `login`、`guestConfig` 选入该通道。客户端存在不等于管理员浏览器 API 已开放，详见 [Native 接入](native-core-integration.md)。
+- 当前旧式浏览器订单 body 为 `plan_id/period`，Native Core 创建要求 `offer_id`；开启历史写开关不能使二者兼容。
 
-## 2. 五层逻辑职责（不是五个服务）
+## 请求管线与静态策略
 
-| 层次 | 责任 | 边界 |
+`apps/gateway/src/app.ts` 组合中间件；`config/policies.ts` 是路由方法、路径及安全形态的静态事实源。未知方法/路径不能继承已知路径的宽松策略；非法组合在启动时拒绝。
+
+| 层 | 当前职责 | 不可越过的边界 |
 | --- | --- | --- |
-| L0 入口 | TLS、基础 IP 限流、Host/Body 上限、可信代理链 | 属于 OpenResty；源站仅接受可信入口 |
-| L1 全局基线 | Request ID、脱敏观测、no-store、安全头、Origin/CORS、大小/超时 | 任意 Gateway API 都不能绕过；Origin 不是鉴权 |
-| L2 路由安全 | 策略选择、IP/账户限流、Bearer 形态校验、可选 HPKE + Redis nonce | 用户真实权限、CAPTCHA 最终验证在 Laravel |
-| L3 契约/业务适配 | Zod 参数与上游响应检查、静态路径 operation、DTO 字段白名单 | 不使用前端输入构建任意上游 host/path |
-| L4 运维支撑 | Redis 安全状态、结构化脱敏日志、指标、liveness/readiness | 不存储密码、令牌、交易账本 |
+| HTTPS 入口 | TLS、私网分流、基础防刷、可信 peer | Gateway/Redis 不直接暴露公网 |
+| 全局基线 | request ID、安全头、Origin/Host、大小与超时、脱敏日志 | Origin 不是身份认证；客户端转发头不可信 |
+| 路由策略 | Bearer 形态、HPKE envelope、固定 limiter、禁止写入口 | 客户端 header、capability、主题 manifest 不可放宽策略 |
+| 适配与投影 | 严格请求 DTO、Native envelope/字段检查、固定上游、最小字段 | Core 独立复核身份、归属和业务规则 |
+| 运行支撑 | Redis、防重放、限流、指标、readiness | 不持订单/资金账本，不记录秘密 |
 
-处理顺序原则：**先执行低成本、无副作用的全局保护，再进行昂贵解密与访问上游**；身份归属和交易权限不可单靠 Gateway 判定。Hono `await next()` 形成洋葱式请求/响应顺序，响应观测在后置阶段执行。
+`publicRead`、`userRead`、`login`、`secureLogin`、`secureRegister`、`secureEmailCode`、`captchaChallenge`、`disabledWrite` 和 `orderWrite` 由服务端固定绑定。先低成本拒绝，再做昂贵解密/上游调用；业务副作用之前必须经过对应安全闸门。
 
-## 3. 路由策略与数据边界
+- `POST /orders` 默认 `disabledWrite`，405、零上游调用。显式写开关只更换 Gateway 策略，不证明上游 DTO 或业务链路兼容。
+- HPKE 路由没有明文回退；注册/发码还受默认关闭的账户工作流开关约束。准确密钥、AAD 和 replay 规则见 [加密与实验边界](app-crypto-preview.md)。
+- 可信入口根据 socket peer 与允许列表解析转发头，不直接信任任意 `X-Forwarded-For`。部署时仍须核对真正的代理链和 Host。
+- 路由级限流为 Redis 原子双维滑动窗口，敏感路由 fail-closed；账户预算另行计数。配置文件热重载不能由 HTTP 请求触发，见 [限流](rate-limiting.md)。
 
-| 预设策略 | 路由示例 | 强制动作 | 缓存规则 |
-| --- | --- | --- | --- |
-| `publicRead` | `GET /bootstrap`、`/theme/config`、`/plans` | 全局基线、固定上游、公开字段过滤、Schema | 默认不缓存；审核后可对明确公开且无敏感数据的结果短缓存 |
-| `userRead` | `/user/profile`、`/user/subscription/summary`、`/orders`、`/payments`、`/notices` | Bearer 形态检查 + Laravel 最终认证授权 + 响应最小化 | 不共享缓存 |
-| `login` | `POST /auth/login` | 小请求体、Schema、入口/账户双层限流（规划）、Laravel CAPTCHA | 禁止缓存 |
-| `secureAccount` | `POST /secure/auth/login`、`register`、`email-code` | 必须 HPKE+Redis nonce、对应账号限流、Schema、Laravel 最终验证 | 禁止缓存且无明文回退；注册/邮箱写仍默认关闭 |
-| `disabledWrite` | `POST /orders` | 固定 405 | 不代理任何交易写入 |
+## 缓存、观测和故障
 
-策略应由服务端静态绑定路径和 HTTP 方法，不应信任客户端声明的策略名、capabilities、主题 manifest 或 header 来授予权限。新增策略必须附对应拒绝/绕过测试。当前各接口与既有 SDK 的行为以 [Gateway v1 契约](../contracts/gateway-v1.md) 为准。
+- 只有 `public-short` 策略的成功 GET 可进进程内 TTL 缓存；默认 60 秒，键含方法、路径和查询。用户数据/凭据写入不得共享缓存。该缓存不提供跨 worker 的即时失效；公钥轮换/吊销要同时考虑缓存与全副本配置传播。
+- 结构化日志只接受受限字段；禁止 Authorization、密码、完整邮箱、CAPTCHA 票据、请求/响应正文、订阅私密地址和上游内部异常。指标标签使用受限路由模板，不用用户输入。
+- `/healthz` 是 liveness；`/readyz` 只汇报依赖状态，其中默认 upstream 探针是占位，不证明真实 Core 可用。`/metrics` 需要单独凭据。
+- 写入/凭证操作不得因超时、网络失败或安全存储故障自动放行/重试；未知写结果保留原幂等键，由 Core 恢复。只读重试和熔断受运行时边界限制，不允许重试风暴。
+- Gateway 不持 SMTP/支付商密钥。通知投递、支付验签、重复回调吸收、金额/归属和资金退款由 Core 及其专用插件接口负责。
 
-## 4. 安全与运维约束
+## 代码入口
 
-- **身份与代理：** 仅信任指定入口的转发来源；不直接使用未验证的 `X-Forwarded-For`，禁止把 Origin/Host 当作身份凭证，CSRF/Cookie 模式需另做 ADR。**已实现（GW-213）：** 客户端 IP 仅由 socket peer 推导，转发头仅在对端命中可信白名单时采纳且重建而非追加，伪造转发头在对端不可信时于 handler 前 403 拒绝。
-- **限流：** 入口基础 IP 策略与 Gateway 账户/操作策略分层。**已实现（GW-213）双层限流**：登录 5/5 分钟（IP）+ 5/15 分钟（账号），注册 3/10 分钟 + 3/30 分钟，邮箱验证码 2/10 分钟 + 2/30 分钟，用户只读 60/分钟（IP）+ 120/分钟（bearer）。配额为负载测试前保守初值，调参体系与在线热更新未做。
-- **加密：** 已有 HPKE 请求加密技术预览；只保护请求体，非双向加密；必须 HTTPS。敏感路线 Redis 失效 fail-closed（503），重放拒绝（409）；密钥双版本轮换/吊销待实现。
-- **响应与隐私：** 不写日志的字段包括 Authorization、密码、CAPTCHA、完整 email、原始 Token、请求/响应体和订阅私密链接；返回最少字段，不直接透传 Laravel 内部异常。**已实现（GW-214）：** `requestId` 贯穿、脱敏结构化日志、`/metrics`（带凭证）、13 条 Prometheus 告警规则。
-- **健康：** `/healthz` 仅 liveness；`/readyz` 已实现（GW-214），内网可达、不输出 Redis URL/密钥/内部配置，但 upstream 探针目前为占位，未接真实 Laravel。
-- **故障：** 任何上游超时/限流不得放大为无限重试；订单和支付写入未获 Laravel 持久化幂等验收前不开放。
-- **部署：** 推荐单容器起步，未来按需水平扩展相同的无状态 Gateway，所有副本共享 Redis/持久化私钥；不得开放 Gateway 8787 或 Redis 公网端口。
+- 路由/安全形态：`apps/gateway/src/config/policies.ts`、`apps/gateway/src/routes/`。
+- 上游与 DTO：`apps/gateway/src/services/upstream.ts`、`apps/gateway/src/adapters/txapi-native.ts`、`apps/gateway/src/contracts/schemas.ts`。
+- 安全/运行状态：`apps/gateway/src/middleware/`、`apps/gateway/src/services/crypto.ts`、`apps/gateway/src/services/redis-security.ts`。
+- 主题 SDK 与示例：[开发者指南](developer-guide.md)；包安装/活动主题由 [Core Theme Runtime](../../contracts/theme-package/README.md) 管理，不由 Gateway 解包执行。
 
-## 5. 迁移顺序与退出标准
-
-1. **保契约重构：** 将现有 `app.ts` 中路由、适配、策略逻辑按目录拆分；保持路由、状态码、默认开关和 SDK 行为不变；现有 CI 回归全绿。
-2. **固定策略：** 建立默认拒绝的路由策略注册表，定义全局不可跳过的强制防护、正/负例与故障注入测试。
-3. **强化安全与可观测：** 可信代理、双层限流、日志脱敏、readiness、Redis/密钥生命周期和指标；无配置时安全失败。
-4. **真实隔离联调：** TXBoard Laravel/MySQL/Redis、真实 CAPTCHA、浏览器、代理与回滚验收。按产品决策可延期开发验证，但生产前绝不可省略。
-5. **主题接入：** Luma 先走公开与只读接口，SDK feature flag 可回到原 API；跨主题、SSR 与缓存一致性通过后再推广。
-
-**退出条件：** 代码/模拟 CI 通过≠真实 Staging 验收≠生产安全许可。详细任务 GW-210～GW-218 见 [任务矩阵](./task-backlog.md)，证据必须记录在 [状态台账](./development-status.md)。
+源码合并、相同源码 CI、隔离业务联调和正式发布是不同结论。当前文档不设旧包/旧 API 过渡窗口，不能以历史 ADR、旧测试数或演示模板替代当前验收。

@@ -30,7 +30,9 @@ final class PurchasedOrderGrant
                 'order_type', 'quote_source', 'list_price_minor', 'price_minor', 'currency', 'currency_minor_exponent',
                 'quota_bytes', 'group_id', 'speed_limit_mbps', 'device_limit', 'reset_policy',
                 'duration_months', 'calendar_policy', 'purchase_kind', 'open_event_id', 'content_hash'];
-            $this->keys($snapshot, $published ? [...$expectedKeys, 'catalog'] : $expectedKeys);
+            $publishedKeys = [...$expectedKeys, 'catalog'];
+            if ($published && array_key_exists('upgrade_credit', $snapshot)) { $publishedKeys[] = 'upgrade_credit'; }
+            $this->keys($snapshot, $published ? $publishedKeys : $expectedKeys);
             $hash = $snapshot['content_hash'] ?? null;
             $this->require(is_string($hash) && preg_match('/^[a-f0-9]{64}$/D', $hash) === 1);
             unset($snapshot['content_hash']);

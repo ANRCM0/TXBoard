@@ -1,5 +1,6 @@
 /** Stable public failure vocabulary shared by transport and DTO decoding. */
 export type GatewayFailureCode =
+  | 'UNAUTHORIZED' | 'FORBIDDEN'
   | 'UPSTREAM_UNAVAILABLE' | 'UPSTREAM_ERROR' | 'PAYLOAD_TOO_LARGE'
   | 'VALIDATION_ERROR' | 'RATE_LIMITED' | 'CAPTCHA_REQUIRED'
   | 'IDEMPOTENCY_IN_PROGRESS' | 'IDEMPOTENCY_CONFLICT' | 'ORDER_REJECTED'

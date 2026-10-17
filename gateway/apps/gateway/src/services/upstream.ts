@@ -2,6 +2,7 @@ import type { GatewayConfig } from '../config/env.js'
 import { adaptNativeData, nativeErrorEnvelope, nativeSuccessEnvelope } from '../adapters/txapi-native.js'
 import { GatewayFailure } from './failures.js'
 import { mappedOrderWriteFailure } from './order-write-failure.js'
+import { NativeCoreClient, type NativeInternalOperation } from './native-internal.js'
 export { GatewayFailure, type GatewayFailureCode } from './failures.js'
 
 export type UpstreamFetcher = typeof fetch
@@ -36,7 +37,7 @@ export type UpstreamOperation = keyof typeof allowlistedPaths
  * on the order-write path. The client's own `Idempotency-Key` header is
  * forwarded verbatim (the SDK sets it; the Gateway never generates one from
  * user data); `X-Idempotency-Key-Hint` is the Gateway-derived hint from
- * ADR §7.2. Nothing else — no Origin, no X-Forwarded-*, no credential — is
+ * contracts/gateway-v1.md. Nothing else — no Origin, no X-Forwarded-*, no credential — is
  * ever added by this mechanism.
  */
 export const ORDER_WRITE_FORWARDED_HEADERS: ReadonlySet<string> = new Set([
@@ -96,8 +97,8 @@ function publicErrorMessage(status: number): string {
 
 /**
  * GW-304: map an upstream order-write rejection to the Gateway's frozen error
- * vocabulary. The verdict codes are Laravel's (docs/adr-order-idempotency.md
- * §7.3); the Gateway never invents them and never degrades an idempotency 409
+ * vocabulary. Core owns the verdict codes (contracts/gateway-v1.md);
+ * the Gateway never invents them and never degrades an idempotency 409
  * to a generic 502 — the client must be able to tell "retry later" from
  * "conflict" from "the request was refused".
  *
@@ -122,6 +123,19 @@ export async function upstreamRequest(
     headers?: Record<string, string>
   } = {},
 ): Promise<unknown> {
+  // Only current user DTOs with identical semantics opt into this channel.
+  // The independent Admin client is never selected by a browser operation.
+  const internalOperations: Partial<Record<UpstreamOperation, NativeInternalOperation>> = {
+    login: 'identity.session.create', guestConfig: 'settings.public.get',
+  }
+  const internalOperation = internalOperations[operation]
+  if (config.nativeUserService && internalOperation) {
+    const result = await new NativeCoreClient(config.upstream, config.nativeUserService,
+      config.timeoutMs, config.maxResponseBytes).call(internalOperation, {
+        input: asRecord(options.body), signal: options.signal,
+      })
+    return adaptNativeData(operation, result.data, result.meta, options)
+  }
   // No untrusted path/host input can escape this static allowlist.
   const path = allowlistedPaths[operation]
   if (path === null) throw new GatewayFailure('UPSTREAM_ERROR', 404, 'Public payment catalog unavailable')

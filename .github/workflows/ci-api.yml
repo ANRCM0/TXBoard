@@ -100,7 +100,7 @@ jobs:
           cp .env.example .env
           php artisan key:generate
       - name: Check PHP syntax
-        run: find app config routes database tests -name '*.php' -print0 | xargs -0 -n1 php -l > "$RUNNER_TEMP/php-syntax.log"
+        run: find app config routes database tests plugins-core -name '*.php' -print0 | xargs -0 -n1 php -l > "$RUNNER_TEMP/php-syntax.log"
       - name: Run current native development suite
         env:
           APP_ENV: testing

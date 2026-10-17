@@ -4,30 +4,29 @@ namespace Tests\Feature\Payment;
 
 use App\Models\Order;
 use App\Models\Payment;
-use App\Models\Plan;
-use App\Models\Plugin;
-use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-use Tests\TestCase;
+use App\Domains\Billing\NativePaymentCheckout;
+use App\Domains\Billing\NativeBillingRecovery;
+use App\Domains\Subscription\Services\PublishedOrderService;
+use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
+use Tests\Support\NativePaymentTestCase;
 
-class PaymentWebhookTest extends TestCase
+class PaymentWebhookTest extends NativePaymentTestCase
 {
-    use RefreshDatabase;
+    protected string $publicationCurrency = 'CNY';
+    protected array $planPrices = ['monthly' => '10.00', 'onetime' => '0.00'];
+    private array $references = [];
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        Plugin::create([
-            'name' => 'EPay',
-            'code' => 'epay',
-            'type' => 'payment',
-            'version' => '1.0.0',
-            'is_enabled' => true,
-            'config' => '{}',
-        ]);
-        $this->app->forgetInstance(\App\Services\Plugin\PluginManager::class);
-        \App\Services\Plugin\HookManager::reset();
+        config(['app.url' => 'https://core.example.test']);
+        $this->payment->update(['payment' => 'EPay', 'config' => [
+            'pid' => '42', 'key' => 'test-secret', 'url' => 'https://payment.example.test',
+        ]]);
+        Http::preventStrayRequests();
     }
 
     public function test_missing_order_must_not_be_acknowledged_as_paid(): void
@@ -35,17 +34,17 @@ class PaymentWebhookTest extends TestCase
         $payment = $this->payment();
         $response = $this->postCallback($payment, 'missing-order');
 
-        $response->assertStatus(400);
+        $response->assertStatus(422);
         $this->assertNotSame('success', $response->getContent());
     }
 
     public function test_signed_underpayment_cannot_settle_order(): void
     {
         $payment = $this->payment();
-        $order = $this->order($payment, 1000, 100);
+        $order = $this->order($payment);
 
-        $this->postCallback($payment, $order->trade_no, ['money' => '10.99'])
-            ->assertStatus(400);
+        $this->postCallback($payment, $order->trade_no, ['money' => '9.99'])
+            ->assertStatus(500);
         $this->assertSame(Order::STATUS_PENDING, $order->fresh()->status);
     }
 
@@ -55,7 +54,7 @@ class PaymentWebhookTest extends TestCase
         $order = $this->order($payment);
 
         $this->postCallback($payment, $order->trade_no, ['trade_status' => 'WAIT_BUYER_PAY'])
-            ->assertStatus(422);
+            ->assertStatus(500);
         $this->assertSame(Order::STATUS_PENDING, $order->fresh()->status);
     }
 
@@ -64,8 +63,8 @@ class PaymentWebhookTest extends TestCase
         $payment = $this->payment();
         $order = $this->order($payment);
 
-        $this->postCallback($payment, $order->trade_no, ['pid' => 'other'])
-            ->assertStatus(422);
+        $this->postCallback($payment, $order->trade_no, ['pid' => '43'])
+            ->assertStatus(500);
         $this->assertSame(Order::STATUS_PENDING, $order->fresh()->status);
     }
 
@@ -75,33 +74,37 @@ class PaymentWebhookTest extends TestCase
         $otherPayment = $this->payment('another_gateway_uuid_value00001');
         $order = $this->order($otherPayment);
 
-        $this->postCallback($payment, $order->trade_no)->assertStatus(400);
+        $this->postCallback($payment, $order->trade_no)->assertStatus(500);
         $this->assertSame(Order::STATUS_PENDING, $order->fresh()->status);
     }
 
-    public function test_cancelled_order_cannot_be_acknowledged_as_paid(): void
+    public function test_cancelled_order_records_late_payment_as_liability_without_fulfillment(): void
     {
         $payment = $this->payment();
         $order = $this->order($payment);
-        $order->update(['status' => Order::STATUS_CANCELLED]);
+        app(PublishedOrderService::class)->transitionOrder($order->id,
+            static fn (Order $locked) => $locked->update(['status' => Order::STATUS_CANCELLED]));
 
-        $this->postCallback($payment, $order->trade_no)->assertStatus(400);
+        $this->postCallback($payment, $order->trade_no)->assertOk()->assertSeeText('success');
         $this->assertSame(Order::STATUS_CANCELLED, $order->fresh()->status);
+        $this->assertSame(1, DB::table('tx_payment_receipt')->count());
+        $this->assertSame('1000', (string) DB::table('tx_money_account')->where('purpose', 'refund_liability')->value('balance_minor'));
+        $this->assertSame(0, DB::table('tx_order_payment')->count());
+        $this->assertSame(0, DB::table('tx_billing_work')->count());
     }
 
     public function test_repeated_callback_needs_the_same_provider_transaction(): void
     {
         $payment = $this->payment();
         $order = $this->order($payment);
-        $order->update([
-            'status' => Order::STATUS_COMPLETED,
-            'callback_no' => 'provider-trade-1',
-        ]);
+        $this->postCallback($payment, $order->trade_no)->assertOk();
+        app(NativeBillingRecovery::class)->recover();
+        $this->assertSame(Order::STATUS_COMPLETED, $order->fresh()->status);
 
         $this->postCallback($payment, $order->trade_no)->assertOk()
             ->assertSeeText('success');
         $this->postCallback($payment, $order->trade_no, ['trade_no' => 'provider-trade-2'])
-            ->assertStatus(400);
+            ->assertStatus(500);
     }
 
     public function test_wrong_gateway_endpoint_and_bad_signature_are_rejected(): void
@@ -110,12 +113,12 @@ class PaymentWebhookTest extends TestCase
         $order = $this->order($payment);
 
         $this->post('/txapi/payment/webhook/MGate/' . $payment->uuid,
-            $this->signedPayload($order->trade_no))->assertStatus(422);
+            $this->signedPayload($order->trade_no))->assertStatus(500);
 
         $payload = $this->signedPayload($order->trade_no);
         $payload['sign'] = 'not-valid';
         $this->post('/txapi/payment/webhook/EPay/' . $payment->uuid, $payload)
-            ->assertStatus(422);
+            ->assertStatus(500);
     }
 
     public function test_valid_payment_settles_order_once(): void
@@ -145,13 +148,14 @@ class PaymentWebhookTest extends TestCase
             ->assertOk()->assertSeeText('success');
         $this->assertSame(Order::STATUS_PROCESSING, (int) $order->fresh()->status);
         $this->assertSame('provider-trade-1', $order->fresh()->callback_no);
-        \Illuminate\Support\Facades\Bus::assertDispatchedTimes(
-            \App\Jobs\OrderHandleJob::class, 1
-        );
+        $this->assertSame(1, DB::table('tx_payment_receipt')->count());
+        $this->assertSame(1, DB::table('tx_order_payment')->count());
+        $this->assertSame(1, DB::table('tx_billing_work')->where('kind', 'order.fulfill')->count());
+        \Illuminate\Support\Facades\Bus::assertNotDispatched(\App\Jobs\OrderHandleJob::class);
 
         $otherTransaction = $this->signedPayload($order->trade_no,
             ['trade_no' => 'another-provider-transaction']);
-        $this->post($uri, $otherTransaction)->assertStatus(400);
+        $this->post($uri, $otherTransaction)->assertStatus(500);
         $this->assertSame('provider-trade-1', $order->fresh()->callback_no);
     }
 
@@ -164,15 +168,15 @@ class PaymentWebhookTest extends TestCase
 
         $invalid = $this->signedPayload($order->trade_no);
         $invalid['sign'] = 'forged';
-        $this->post($uri, $invalid)->assertStatus(422)->assertSeeText('fail');
+        $this->post($uri, $invalid)->assertStatus(500)->assertSeeText('fail');
         $this->post($uri, $this->signedPayload($order->trade_no,
-            ['money' => '9.99']))->assertStatus(400)->assertSeeText('fail');
+            ['money' => '9.99']))->assertStatus(500)->assertSeeText('fail');
         $this->post('/txapi/payment/webhook/EPay/' . $different->uuid,
-            $this->signedPayload($order->trade_no))->assertStatus(400);
+            $this->signedPayload($order->trade_no))->assertStatus(500);
         $this->assertSame(Order::STATUS_PENDING, (int) $order->fresh()->status);
     }
 
-    public function test_native_get_callback_supports_legacy_gateway_query_mode(): void
+    public function test_native_get_callback_supports_provider_query_parameters(): void
     {
         \Illuminate\Support\Facades\Bus::fake();
         $payment = $this->payment();
@@ -190,72 +194,24 @@ class PaymentWebhookTest extends TestCase
         ));
     }
 
-    private function payment(string $uuid = 'epay_gateway_uuid_value_00000001'): Payment
+    private function payment(string $uuid = 'default'): Payment
     {
+        if ($uuid === 'default') { return $this->payment; }
         return Payment::create([
-            'uuid' => $uuid,
-            'payment' => 'EPay',
-            'name' => 'EPay test',
-            'enable' => true,
-            'config' => ['pid' => 'merchant-1', 'key' => 'test-secret', 'url' => 'https://example.invalid'],
-            'created_at' => time(),
-            'updated_at' => time(),
+            'uuid' => $uuid, 'payment' => 'EPay', 'name' => 'EPay test', 'enable' => true,
+            'config' => $this->payment->config,
         ]);
     }
 
-    private function order(Payment $payment, int $total = 1000, int $fee = 0): Order
+    private function order(Payment $payment): Order
     {
-        $user = User::create([
-            'email' => uniqid('payment_', true) . '@example.com',
-            'password' => 'password',
-            'uuid' => '00000000-0000-0000-0000-000000000001',
-            'token' => '0123456789abcdef0123456789abcdef',
-            'balance' => 0,
-            'commission_balance' => 0,
-            'transfer_enable' => 0,
-            'u' => 0,
-            'd' => 0,
-            'banned' => 0,
-            'is_admin' => 0,
-            'is_staff' => 0,
-            'expired_at' => 0,
-            'remind_expire' => 1,
-            'remind_traffic' => 1,
-            'created_at' => time(),
-            'updated_at' => time(),
-        ]);
-        $plan = Plan::create([
-            'group_id' => null,
-            'transfer_enable' => 1111,
-            'name' => 'Payment Test Plan',
-            'speed_limit' => null,
-            'show' => 1,
-            'sort' => 0,
-            'renew' => 1,
-            'prices' => [Plan::PERIOD_MONTHLY => 10],
-            'reset_traffic_method' => Plan::RESET_TRAFFIC_MONTHLY,
-            'capacity_limit' => null,
-            'sell' => 1,
-            'device_limit' => null,
-            'created_at' => time(),
-            'updated_at' => time(),
-        ]);
-        return Order::create([
-            'user_id' => $user->id,
-            'plan_id' => $plan->id,
-            'payment_id' => $payment->id,
-            'type' => Order::TYPE_NEW_PURCHASE,
-            'period' => Plan::PERIOD_MONTHLY,
-            'trade_no' => 'pay_' . bin2hex(random_bytes(10)),
-            'total_amount' => $total,
-            'handling_amount' => $fee,
-            'balance_amount' => 0,
-            'status' => Order::STATUS_PENDING,
-            'commission_status' => 0,
-            'commission_balance' => 0,
-            'created_at' => time(),
-            'updated_at' => time(),
-        ]);
+        [$user, $order] = $this->purchase();
+        $started = app(NativePaymentCheckout::class)->start($user->id, $order->id, $payment->id,
+            'webhook-'.bin2hex(random_bytes(8)));
+        $snapshot = json_decode(Crypt::decryptString(DB::table('tx_payment_dispatch')
+            ->where('attempt_id', $started['attempt']['attempt_id'])->value('snapshot_ciphertext')), true, 16, JSON_THROW_ON_ERROR);
+        $this->references[$order->trade_no] = $snapshot['provider_order_ref'];
+        return $order;
     }
 
     private function postCallback(Payment $payment, string $orderNo, array $overrides = [])
@@ -267,8 +223,8 @@ class PaymentWebhookTest extends TestCase
     private function signedPayload(string $orderNo, array $overrides = []): array
     {
         $params = array_merge([
-            'pid' => 'merchant-1',
-            'out_trade_no' => $orderNo,
+            'pid' => '42',
+            'out_trade_no' => $this->references[$orderNo] ?? $orderNo,
             'trade_no' => 'provider-trade-1',
             'money' => '10.00',
             'trade_status' => 'TRADE_SUCCESS',

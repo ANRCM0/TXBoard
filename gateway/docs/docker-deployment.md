@@ -2,11 +2,11 @@
 
 当前源码位于主仓 `gateway/`，下列命令先 `cd gateway`。根 Actions 独立构建 `ghcr.io/<owner>/txboard-gateway`，统一版本规则见 [合仓运行约定](monorepo-current.md)；合并源码不改变原部署开关。
 
-> 当前代码支持容器化配置，但**没有在真实 TXBoard 服务器执行部署或验收**。用于本地与隔离环境；生产之前必须完成安全/数据/回滚审核。以下仅操作 Gateway 自身，不影响旧 Laravel 容器、MySQL、Redis 或支付回调。
+> 当前代码支持容器化配置，不能据此宣称生产部署已验收。实际环境、最终源码和镜像 digest 必须匹配；完整运行/构建检查在 CI/获授权环境执行。以下只操作 Gateway 自身，不变更 Core、MySQL、Redis 或支付回调。
 
-## Future: 与 TXBoard Native 的 TXAPI 集成（尚未部署）
+## 当前 Native 边界
 
-未来只将 `/txapi/bff/v1/*` 分流到私网 Gateway，其余 `/txapi/*` 直连 TXBoard；BFF 匹配优先。当前 `/gateway/v1/*`、`/api/v1/*` 仍有效。Gateway 固定 upstream 应指向私有 TXBoard origin，不能回到相同公网反代导致环路。需独立审查 TXBoard Caddy 当前广泛可信 CIDR 配置、代理头安全和 Docker 私网，部署应可独立关闭 Gateway 而不影响原生业务。详见 [ADR](./txapi-integration.md)。以下当前部署步骤维持不变。
+只将当前 `/gateway/v1/*` 分流到私网 Gateway；没有 `/txapi/bff/v1` 或管理员浏览器路由。Core 已注册的 `/txapi/*`、支付回调、订阅和节点入口保持原生鉴权，不恢复退役旧 API。固定 upstream 指向受控 Core origin，不能回到相同公网反代形成循环。服务 mTLS 及配置隔离见 [Native 接入](native-core-integration.md)；以下基础 Compose 不会自动注入完整 service PKI。
 
 ## 1. 网络结构
 
@@ -14,7 +14,7 @@
 Browser (HTTPS only)
   → 现有 Nginx/OpenResty/Caddy/1Panel HTTPS 入口
        ├─ /gateway/v1/* → gateway:8787 (private Docker network)
-       └─ /api/*, /s/*, admin, node, plugins, payment webhook → TXBoard 原服务
+       └─ Core 其他已注册路由、订阅、admin、node、plugins、payment webhook → Core
   Gateway → 固定 TXBOARD_UPSTREAM_URL (private trusted origin)
   Gateway → Redis (私网；仅启用 HPKE 时必须)
 ```
@@ -37,7 +37,7 @@ docker compose -f compose.yaml config --quiet
 
 | 档位 | Compose 组合 | HPKE | Redis | 账户写入口 |
 | --- | --- | --- | --- | --- |
-| 基础只读 + 旧版登录 | `-f compose.yaml` | off | 无要求 | off |
+| 基础只读 + TLS 登录入口 | `-f compose.yaml` | off | 按实际路由安全配置 | off |
 | 私网加密预览 | `-f compose.yaml -f compose.crypto.yaml -f compose.redis.yaml` | on | 内置私有容器 | 默认 off |
 | 1Panel Redis 预览 | `-f compose.yaml -f compose.crypto.yaml` | on | 自有 `GATEWAY_REDIS_URL` | 默认 off |
 | 加密注册/邮件验证码 | 加密预览组合 + `GATEWAY_ACCOUNT_WORKFLOWS_ENABLED=true` | on | 必需 | **显式 opt-in，仅隔离环境** |
@@ -79,7 +79,7 @@ location ^~ /gateway/v1/ {
 }
 ```
 
-`gateway` 需为反代所在网络的可解析服务名。不要在 `proxy_pass` 后面添加 URI 尾斜杠，以免改变路径。配置前保留现有代理文件和回滚版本；现有 `/api/`、`/s/`、管理员、支付回调和节点路由一律不变。此配置为隔离环境示例，不是可直接套用的生产访问控制模板。
+`gateway` 需为反代所在网络的可解析服务名。不要在 `proxy_pass` 后面添加 URI 尾斜杠，以免改变路径。配置前保留代理文件和回滚版本；Core 其他已注册入口及其鉴权不变。需单独核对可信 peer/转发头、Host 与 Origin；此片段不是可直接套用的生产访问控制模板。
 
 ## 5. 校验与回滚
 
@@ -93,8 +93,10 @@ GATEWAY_SMOKE_URL=https://your-staging.example npm run smoke:staging
 `/healthz` 只证明容器能响应，不表示 Redis、防刷、Laravel、邮件或支付可用。模拟 CI：
 `npm run check`、`npm run test:redis`（需 `GATEWAY_TEST_REDIS_URL`）、`npm run test:browser`。
 
-回滚：**先**关前端 Gateway feature flag / 撤销代理 `/gateway/v1/*`，**再**对对应 Compose 组合执行 `docker compose ... down`。不可执行 `down -v`，不可删 TXBoard 数据卷/生产 Redis。关闭 Gateway 不应改变旧 `/api/*` 业务。
+回滚：**先**停止受影响客户端向 Gateway 发新请求/撤销 `/gateway/v1/*` 代理，**再**停止对应 Compose。只恢复受支持的 Core 入口/客户端，不恢复退役 API。不可执行 `down -v`，不可删 Core 数据卷、生产 Redis、幂等或资金记录。未知写结果保留原 key，由 Core 恢复。
 
 ## 6. 上线阻断项
 
-真实 TXBoard Laravel/MySQL/Redis 联调，验证码/邮件真实流程，代理 Host/IP 可信边界，独立密码学安全审查，双 kid 密钥轮换，Redis 故障转移和持久记录，日志/指标，压测和运维回滚演练**均未验收**。订单创建/结算/支付写入不开放。详见 [开发状态](./development-status.md) 与 [安全政策](../SECURITY.md)。
+密钥双版本、吊销、replay、日志与指标已经有运行实现，不等于完成生产证明。上线须核对匹配版本的代理/PKI、全副本与缓存传播、Redis 持久性/故障恢复、外部 CAPTCHA/邮件、容量及恢复演练。历史隔离 MariaDB 联调不能代替当前 Native 业务或 MySQL 8.4。
+
+订单写默认关闭，旧浏览器 `plan_id/period` 不兼容 Native `offer_id`；开启开关不能完成 native 购买。Gateway 不新增结算/支付回调入口。详见 [当前状态](development-status.md)、[加密运行限制](app-crypto-preview.md) 与 [安全政策](../SECURITY.md)。

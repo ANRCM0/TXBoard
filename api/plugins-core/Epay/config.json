@@ -3,6 +3,11 @@
     "name": "EPay",
     "code": "epay",
     "type": "payment",
+    "payment": {
+        "contract": "native-payment-provider/1",
+        "provider": "EPay",
+        "snapshot_schema": "epay-md5-dispatch/1"
+    },
     "version": "1.0.0",
     "description": "EPay payment plugin",
     "author": "TXBoard Team"

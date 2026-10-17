@@ -2,7 +2,7 @@ import { requestId, nativeError, nativeOrder } from './native-fixtures.js'
 /**
  * test/observability.test.ts — GW-214 / PR-D.
  *
- * The contract under test is docs/middleware-architecture.md §2.1 / §6
+ * The contract under test is docs/architecture.md
  * (GW-205 / GW-214): the gateway may only ever emit structured, redacted
  * fields. These tests are written as adversarial probes — they drive real
  * traffic carrying credentials and then grep the captured log sink and the

@@ -41,16 +41,12 @@ boot/restore fence, durable denial, unobserved rollback detection, suspend/HA
 proof, distributed revocation or offline convergence. Production admission must
 satisfy those separate gates before using any time observation as authority.
 
-Tests use synthetic signatures and controlled private clocks to distinguish
-wall expiry, exact subsecond expiry, monotonic expiry, regression, crypto-time
-consumption, trust refresh and concurrent closure. The existing actual Core to
-Go fixture also supplies the original Core signed bytes for diagnostic window
-checks under an explicit test clock, without claiming real Node admission.
+Tests use synthetic signatures and controlled private clocks for expiry,
+regression, crypto-time consumption, trust refresh and concurrent closure.
+The former Core interoperability fixture and its environment switch are retired;
+they are not current test instructions. Current pure Go tests do not require PHP.
 
-
-Linux Go 1.26.3 race: fourteen main tests and fifty-six subtests passed;
-one actual-Core-only test is explicitly skipped in the pure Go invocation.
-Vet passed. The actual Core transaction/signature interoperation ran separately
-and passed one PHP test with six assertions, including the Go original-byte
-window checks described above. See [source and log evidence](../../../node/docs/provider-window-verification.json)
-and [calling boundary](../../../node/docs/provider-window-current.md).
+The [historical verification report](../../../node/docs/provider-window-verification.json)
+records the old source/log snapshot, not current runtime admission. The current
+[calling boundary](../../../node/docs/native-provider-node.md#offline-proof-library)
+retains the diagnostic-only library usage and its limits.

@@ -46,6 +46,9 @@ return new class extends Migration {
         $hasSort = Schema::hasColumn('tx_server_route', 'sort');
         $hasEnabled = Schema::hasColumn('tx_server_route', 'enabled');
 
+        if ($hasSort && Schema::hasIndex('tx_server_route', 'tx_server_route_sort_index')) {
+            Schema::table('tx_server_route', fn (Blueprint $table) => $table->dropIndex('tx_server_route_sort_index'));
+        }
         Schema::table('tx_server_route', function (Blueprint $table) use ($hasSort, $hasEnabled) {
             if ($hasSort) {
                 $table->dropColumn('sort');

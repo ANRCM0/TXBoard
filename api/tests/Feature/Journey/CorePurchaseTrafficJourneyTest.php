@@ -28,7 +28,7 @@ class CorePurchaseTrafficJourneyTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_existing_paid_purchase_and_legacy_traffic_remain_consistent_without_native_grants(): void
+    public function test_retired_direct_payment_is_refused_and_existing_traffic_remains_consistent_without_native_grants(): void
     {
         Bus::fake();
         Redis::shouldReceive('sadd')->zeroOrMoreTimes()->andReturn(1);
@@ -98,22 +98,21 @@ class CorePurchaseTrafficJourneyTest extends TestCase
         $this->assertSame(Order::STATUS_PENDING, (int) $order->status);
         $this->assertNull($user->fresh()->plan_id);
 
-        // Verify that the payment provider remains enabled and hook-registered
-        // on both SQLite and MySQL before the checkout invokes it.
+        // Management discovery uses the current typed registry, not legacy hooks.
         $this->assertTrue(Plugin::query()->where('code', 'epay')->where('is_enabled', true)
             ->where('type', 'payment')->exists(), 'Payment plugin record is inactive');
         $this->assertArrayHasKey('epay', app(PluginManager::class)->getEnabledPaymentPlugins(),
             'Enabled payment plugin was not loaded');
         $this->assertArrayHasKey('EPay', (new PaymentService('temp'))->getAvailablePaymentMethods(),
-            'EPay payment hook was not registered');
+            'EPay current payment provider was not registered');
 
-        // EPay pay() only creates an external redirect URL; nothing is sent.
+        // An order without frozen native terms cannot invoke a plugin directly.
         $checkout = $this->postJson('/txapi/orders/' . $tradeNo . '/checkout', [
             'method' => $payment->id,
         ], $headers);
-        $checkout->assertOk()->assertJsonPath('data.type', 1);
-        $this->assertStringContainsString('payment.invalid/submit.php?', (string) $checkout->json('data.data'));
-        $this->assertSame((int) $payment->id, (int) $order->fresh()->payment_id);
+        $checkout->assertStatus(409);
+        $this->assertSame(Order::STATUS_PENDING, (int) $order->fresh()->status);
+        $this->assertNull($order->fresh()->payment_id);
 
         $payload = [
             'pid' => 'p0b-merchant', 'out_trade_no' => $tradeNo,
@@ -124,22 +123,16 @@ class CorePurchaseTrafficJourneyTest extends TestCase
         $payload['sign'] = md5(stripslashes(urldecode(http_build_query($payload))) . 'p0b-test-only-secret');
         $payload['sign_type'] = 'MD5';
         $endpoint = '/txapi/payment/webhook/EPay/' . $payment->uuid;
+        $this->post($endpoint, $payload)->assertStatus(422)->assertContent('fail');
+        $this->post($endpoint, $payload)->assertStatus(422)->assertContent('fail');
+        Bus::assertNotDispatched(OrderHandleJob::class);
+        $this->assertSame(0, DB::table('tx_payment_receipt')->count());
+        $this->assertSame(0, DB::table('tx_money_journal')->count());
+        $this->assertNull($user->fresh()->plan_id);
 
-        $this->post($endpoint, $payload)->assertOk()->assertSeeText('success');
-        $this->assertSame(Order::STATUS_PROCESSING, (int) $order->fresh()->status);
-        Bus::assertDispatchedTimes(OrderHandleJob::class, 1);
-
-        // A repeated valid event cannot dispatch a second fulfilment.
-        $this->post($endpoint, $payload)->assertOk()->assertSeeText('success');
-        Bus::assertDispatchedTimes(OrderHandleJob::class, 1);
-
-        // Explicitly run the queued worker to verify persisted entitlement.
-        (new OrderHandleJob($tradeNo))->handle();
-        (new OrderHandleJob($tradeNo))->handle();
-        $this->assertSame(Order::STATUS_COMPLETED, (int) $order->fresh()->status);
-        $this->assertSame((int) $plan->id, (int) $user->fresh()->plan_id);
-        $this->assertSame(2 * 1073741824, (int) $user->fresh()->transfer_enable);
-        $this->assertGreaterThan(time(), (int) $user->fresh()->expired_at);
+        // Traffic compatibility is independent of the retired payment path.
+        $user->update(['plan_id' => $plan->id, 'group_id' => 1,
+            'transfer_enable' => 2 * 1073741824, 'expired_at' => time() + 86400]);
 
         $server = Server::create([
             'name' => 'p0b-node', 'type' => Server::TYPE_VMESS,
@@ -173,6 +166,6 @@ class CorePurchaseTrafficJourneyTest extends TestCase
         $this->assertSame(1, DB::table('tx_stat_server')->where('server_id', $server->id)->count());
 
         $this->getJson('/txapi/orders/' . rawurlencode($tradeNo), $headers)
-            ->assertOk()->assertJsonPath('data.status', Order::STATUS_COMPLETED);
+            ->assertOk()->assertJsonPath('data.status', Order::STATUS_PENDING);
     }
 }

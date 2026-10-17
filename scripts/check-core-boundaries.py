@@ -11,8 +11,10 @@ SUBSCRIPTION_SERVICES = (
     "NativeCredentialProviderService",
     "NativeCredentialSynchronization",
     "NativePlanCatalog",
+    "NativePlanAdministration",
     "NativeSubscriptionCalendar",
     "NativeSubscriptionDelivery",
+    "NativeSubscriptionLinks",
     "NativeSubscriptionStore",
     "PlanPublicationService",
     "PlanAccountPropagation",
@@ -119,6 +121,7 @@ RETIRED_PATHS = (
     "node/internal/txboard/usage_v2.go",
     "node/internal/service/usage_v2_adapter.go",
     "api/phpunit-historical.xml",
+    "api/app/Domains/Billing/NativeEpayAdapter.php",
 )
 RETIRED_CONFIGS = (
     "legacy_capture_shadow",
@@ -179,6 +182,15 @@ def validate():
             "Missing canonical subscription record model")
     require((ROOT / "api/app/Domains/Installation/SchemaReplayValidator.php").is_file(),
             "Missing shared installation schema validator")
+    billing = ROOT / "api/app/Domains/Billing"
+    for path in billing.rglob("*.php"):
+        text = path.read_text(encoding="utf-8-sig")
+        require(not re.search(r"\bNativeEpayAdapter\b|Plugin\\Epay\\", text),
+                f"Core financial domain depends on a concrete payment protocol: {path.relative_to(ROOT)}")
+    require((ROOT / "api/app/Contracts/NativePaymentProviderInterface.php").is_file(),
+            "Missing native payment plugin contract")
+    require((ROOT / "api/app/Domains/Billing/NativePaymentProviderRegistry.php").is_file(),
+            "Missing Core-owned payment capability registry")
     for name in ("AccountSqlPhase", "AccountCreationService", "AdminAccountModeration", "AccountSessionGuard"):
         path = ROOT / f"api/app/Domains/Identity/{name}.php"
         require(path.is_file() and "namespace App\\Domains\\Identity;" in path.read_text(encoding="utf-8"),

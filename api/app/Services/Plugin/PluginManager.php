@@ -2,8 +2,11 @@
 
 namespace App\Services\Plugin;
 
+use App\Contracts\NativePaymentPluginInterface;
+use App\Domains\Billing\BillingError;
 use App\Http\Middleware\EnsurePluginEnabled;
 use App\Models\Plugin;
+use Closure;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
@@ -116,6 +119,11 @@ class PluginManager
         }
 
         $plugin = new $pluginClass($pluginCode);
+        $manifest = json_decode((string) File::get($this->getPluginPath($pluginCode).'/config.json'), true);
+        if (($manifest['type'] ?? null) === Plugin::TYPE_PAYMENT
+            && !$plugin instanceof NativePaymentPluginInterface) {
+            throw new BillingError('NATIVE_PAYMENT_PROVIDER_UNSUPPORTED');
+        }
         $this->loadedPlugins[$pluginCode] = $plugin;
 
         return $plugin;
@@ -200,6 +208,12 @@ class PluginManager
      */
     public function install(string $pluginCode): bool
     {
+        return $this->withNativePaymentMutation($pluginCode,
+            fn (string $token) => $this->installCurrent($pluginCode, $token), false);
+    }
+
+    private function installCurrent(string $pluginCode, string $mutationToken): bool
+    {
         $this->assertPluginCode($pluginCode);
         $configFile = $this->getPluginPath($pluginCode) . '/config.json';
 
@@ -233,7 +247,7 @@ class PluginManager
 
         $this->runMigrations(pluginCode: $pluginCode);
 
-        DB::beginTransaction();
+        $registered = false;
         try {
             $defaultValues = $this->extractDefaultConfig($config);
 
@@ -246,7 +260,9 @@ class PluginManager
                 'is_enabled' => false,
                 'config' => json_encode($defaultValues),
                 'installed_at' => now(),
+                'native_payment_mutation_token' => $mutationToken,
             ]);
+            $registered = true;
 
             // 运行插件安装方法
             if (method_exists($plugin, 'install')) {
@@ -256,11 +272,10 @@ class PluginManager
             // 发布插件资源
             $this->publishAssets($pluginCode);
 
-            DB::commit();
             return true;
         } catch (\Throwable $e) {
-            if (DB::transactionLevel() > 0) {
-                DB::rollBack();
+            if ($registered) {
+                Plugin::query()->where('code', $pluginCode)->where('native_payment_mutation_token', $mutationToken)->delete();
             }
             HookManager::removeOwner($pluginCode);
             throw $e;
@@ -456,11 +471,18 @@ class PluginManager
      */
     public function enable(string $pluginCode): bool
     {
+        return $this->withNativePaymentMutation($pluginCode,
+            fn () => $this->enableCurrent($pluginCode), false);
+    }
+
+    private function enableCurrent(string $pluginCode): bool
+    {
         $this->assertPluginCode($pluginCode);
         $dbPlugin = Plugin::query()->where('code', $pluginCode)->first();
         if (!$dbPlugin) {
             throw new \RuntimeException('Plugin is not installed: ' . $pluginCode);
         }
+        $this->assertCurrentPackage($pluginCode);
         if ($dbPlugin->is_enabled) {
             return true; // Idempotent enable: never boot/register a second time.
         }
@@ -520,6 +542,12 @@ class PluginManager
      */
     public function disable(string $pluginCode): bool
     {
+        return $this->withNativePaymentMutation($pluginCode,
+            fn () => $this->disableCurrent($pluginCode), false);
+    }
+
+    private function disableCurrent(string $pluginCode): bool
+    {
         $this->assertPluginCode($pluginCode);
         $dbPlugin = Plugin::query()->where('code', $pluginCode)->first();
         if (!$dbPlugin) {
@@ -551,16 +579,15 @@ class PluginManager
      */
     public function uninstall(string $pluginCode): bool
     {
-        $this->assertPluginCode($pluginCode);
-        $this->assertNoActiveDependents($pluginCode);
-        $this->disable($pluginCode);
-        // Uninstall removes runtime registration and owned assets, but does
-        // not drop user/business tables. Database migrations are retained so
-        // accidental uninstalls cannot destroy plugin-owned persistent data.
-        $this->removePublishedAssets($pluginCode);
-        Plugin::query()->where('code', $pluginCode)->delete();
-
-        return true;
+        return $this->withNativePaymentMutation($pluginCode, function () use ($pluginCode): bool {
+            $this->assertNoActiveDependents($pluginCode);
+            $this->disableCurrent($pluginCode);
+            // Financial dispatches pin the package before any cleanup or file mutation.
+            $this->removePublishedAssets($pluginCode);
+            Plugin::query()->where('code', $pluginCode)->delete();
+            unset($this->loadedPlugins[$pluginCode], $this->configTypesCache[$pluginCode]);
+            return true;
+        });
     }
 
     /**
@@ -576,19 +603,24 @@ class PluginManager
         if ($this->isCorePlugin($pluginCode)) {
             throw new \Exception('核心插件不允许删除');
         }
-        if (Plugin::where('code', $pluginCode)->exists()) {
-            $this->uninstall($pluginCode);
-        }
-
-        $pluginPath = $this->getUserPluginPath($pluginCode);
-        if (!File::exists($pluginPath)) {
-            throw new \Exception('插件不存在');
-        }
-
-        File::deleteDirectory($pluginPath);
-        $this->removePublishedAssets($pluginCode);
-
-        return true;
+        return $this->withNativePaymentMutation($pluginCode, function () use ($pluginCode): bool {
+            if (Plugin::where('code', $pluginCode)->exists()) {
+                $this->assertNoActiveDependents($pluginCode);
+                $this->disableCurrent($pluginCode);
+            }
+            $pluginPath = $this->getUserPluginPath($pluginCode);
+            if (!File::exists($pluginPath)) {
+                throw new \RuntimeException('Plugin package is unavailable');
+            }
+            if (!File::deleteDirectory($pluginPath)) {
+                throw new \RuntimeException('Failed to delete plugin package');
+            }
+            $this->removePublishedAssets($pluginCode);
+            // Keep registration fenced until every live package path has been removed.
+            Plugin::query()->where('code', $pluginCode)->delete();
+            unset($this->loadedPlugins[$pluginCode], $this->configTypesCache[$pluginCode]);
+            return true;
+        });
     }
 
     /**
@@ -663,6 +695,12 @@ class PluginManager
      */
     public function update(string $pluginCode): bool
     {
+        return $this->withNativePaymentMutation($pluginCode,
+            fn () => $this->updateCurrent($pluginCode));
+    }
+
+    private function updateCurrent(string $pluginCode): bool
+    {
         $this->assertPluginCode($pluginCode);
         $dbPlugin = Plugin::where('code', $pluginCode)->first();
         if (!$dbPlugin) {
@@ -696,7 +734,7 @@ class PluginManager
         $previousConfig = $dbPlugin->config;
         try {
             if ($wasEnabled) {
-                $this->disable($pluginCode);
+                $this->disableCurrent($pluginCode);
             }
             // Plugin-authored DDL / external effects cannot be atomically
             // rolled back by a SQL transaction on MySQL.
@@ -713,7 +751,7 @@ class PluginManager
             $plugin->update($oldVersion, $newVersion);
             $dbPlugin->update(['version' => $newVersion, 'updated_at' => now()]);
             if ($wasEnabled) {
-                $this->enable($pluginCode);
+                $this->enableCurrent($pluginCode);
             }
         } catch (\Throwable $e) {
             // Restore durable metadata. If a new package is already on disk,
@@ -802,25 +840,27 @@ class PluginManager
             throw $e;
         }
         $targetPath = $this->getUserPluginPath($code);
-        $existingRow = Plugin::query()->where('code', $code)->first();
-
-        if (File::isDirectory($targetPath)) {
-            $installedConfigFile = $targetPath . '/config.json';
-            $oldConfig = File::isFile($installedConfigFile)
-                ? json_decode((string) File::get($installedConfigFile), true)
-                : null;
-            if (!is_array($oldConfig) || !isset($oldConfig['version'])
-                || !version_compare($config['version'], $oldConfig['version'], '>')) {
-                File::deleteDirectory($extractPath);
-                throw new \RuntimeException('Uploaded plugin version must be newer');
-            }
-        }
+        $existingRow = null;
         $staged = $targetPath . '.staging-' . bin2hex(random_bytes(8));
         $backup = $targetPath . '.backup-' . bin2hex(random_bytes(8));
         $hadOldFiles = false;
         $promoted = false;
-        $wasEnabled = (bool) ($existingRow?->is_enabled ?? false);
+        $wasEnabled = false;
+        $mutationToken = null;
         try {
+            // Persist the fence before replacing the package, not after update() begins.
+            $mutationToken = $this->beginNativePaymentMutation($code, true);
+            $existingRow = Plugin::query()->where('code', $code)->first();
+            $wasEnabled = (bool) ($existingRow?->is_enabled ?? false);
+            if (File::isDirectory($targetPath)) {
+                $installedConfigFile = $targetPath.'/config.json';
+                $oldConfig = File::isFile($installedConfigFile)
+                    ? json_decode((string) File::get($installedConfigFile), true) : null;
+                if (!is_array($oldConfig) || !isset($oldConfig['version'])
+                    || !version_compare($config['version'], $oldConfig['version'], '>')) {
+                    throw new \RuntimeException('Uploaded plugin version must be newer');
+                }
+            }
             if (!File::copyDirectory($pluginPath, $staged)) {
                 throw new \RuntimeException('Failed to stage plugin package');
             }
@@ -834,9 +874,10 @@ class PluginManager
                 throw new \RuntimeException('Failed to publish staged plugin');
             }
             $promoted = true;
+            unset($this->loadedPlugins[$code], $this->configTypesCache[$code]);
 
             if ($existingRow) {
-                $this->update($code);
+                $this->updateCurrent($code);
             }
         } catch (\Throwable $e) {
             File::deleteDirectory($staged);
@@ -856,11 +897,12 @@ class PluginManager
             }
             if ($existingRow && $restored) {
                 try {
+                    unset($this->loadedPlugins[$code], $this->configTypesCache[$code]);
                     // The failed upgrade may have published new-version
                     // assets; republish the restored version instead.
                     $this->publishAssets($code);
                     if ($wasEnabled) {
-                        $this->enable($code);
+                        $this->enableCurrent($code);
                     }
                 } catch (\Throwable $restoreError) {
                     Log::error('Failed to restore plugin after upgrade rollback', [
@@ -871,6 +913,7 @@ class PluginManager
             throw $e;
         } finally {
             File::deleteDirectory($extractPath);
+            $this->endNativePaymentMutation($code, $mutationToken);
         }
         if ($hadOldFiles) {
             File::deleteDirectory($backup);
@@ -1013,6 +1056,94 @@ class PluginManager
         return $this->getEnabledPluginsByType('payment');
     }
 
+    /** Resolve only the typed financial protocol surface; recovery never boots routes, hooks or providers. */
+    public function nativePaymentProvider(string $code, bool $recovery = false): array
+    {
+        $this->assertPluginCode($code);
+        $row = Plugin::query()->where('code', $code)->where('type', Plugin::TYPE_PAYMENT)->first();
+        if ($row === null || (!$recovery && !$row->is_enabled) || $row->native_payment_mutation_token !== null) {
+            throw new BillingError('PAYMENT_PROVIDER_UNAVAILABLE');
+        }
+        try {
+            $this->assertCurrentPackage($code);
+        } catch (\Throwable) {
+            throw new BillingError('NATIVE_PAYMENT_PROVIDER_UNSUPPORTED');
+        }
+        $manifest = json_decode((string) File::get($this->getPluginPath($code).'/config.json'), true);
+        if (($manifest['version'] ?? null) !== (string) $row->version
+            || ($manifest['type'] ?? null) !== Plugin::TYPE_PAYMENT) {
+            throw new BillingError('PAYMENT_PROVIDER_VERSION_UNAVAILABLE');
+        }
+        $plugin = $this->loadPlugin($code);
+        if (!$plugin instanceof NativePaymentPluginInterface) {
+            throw new BillingError('NATIVE_PAYMENT_PROVIDER_UNSUPPORTED');
+        }
+        if ($plugin->nativePaymentPackageVersion() !== (string) $row->version) {
+            throw new BillingError('PAYMENT_PROVIDER_LOADED_VERSION_UNAVAILABLE');
+        }
+        $adapter = $plugin->nativePaymentProvider();
+        $identity = $adapter->identity();
+        if (($identity['contract_version'] ?? null) !== $manifest['payment']['contract']
+            || ($identity['provider_id'] ?? null) !== $manifest['payment']['provider']
+            || ($identity['snapshot_schema'] ?? null) !== $manifest['payment']['snapshot_schema']) {
+            throw new BillingError('PAYMENT_PROVIDER_CONTRACT_INVALID');
+        }
+        return ['plugin' => $plugin, 'adapter' => $adapter, 'version' => (string) $row->version];
+    }
+
+    private function withNativePaymentMutation(string $code, Closure $operation, bool $drain = true): mixed
+    {
+        $token = $this->beginNativePaymentMutation($code, $drain);
+        try {
+            return $operation($token);
+        } finally {
+            $this->endNativePaymentMutation($code, $token);
+        }
+    }
+
+    /** Permanent package identity survives uninstall. Lock order is package fence, then installed plugin. */
+    private function beginNativePaymentMutation(string $code, bool $drain): string
+    {
+        $this->assertPluginCode($code);
+        if (DB::transactionLevel() !== 0) {
+            throw new \RuntimeException('Plugin lifecycle requires a standalone transaction boundary');
+        }
+        return DB::transaction(function () use ($code, $drain): string {
+            DB::table('tx_plugin_package_fence')->insertOrIgnore(['plugin_code' => $code, 'mutation_token' => null]);
+            $package = DB::table('tx_plugin_package_fence')->where('plugin_code', $code)->lockForUpdate()->first();
+            if ($package === null || $package->mutation_token !== null) {
+                throw new BillingError('PAYMENT_PLUGIN_MUTATION_IN_PROGRESS');
+            }
+            $row = Plugin::query()->where('code', $code)->lockForUpdate()->first();
+            if ($row !== null && $row->native_payment_mutation_token !== null) {
+                throw new BillingError('PAYMENT_PLUGIN_MUTATION_IN_PROGRESS');
+            }
+            if ($drain && DB::table('tx_payment_dispatch')->where('plugin_code', $code)->exists()) {
+                throw new BillingError('PAYMENT_PLUGIN_DRAIN_REQUIRED');
+            }
+            $token = bin2hex(random_bytes(32));
+            DB::table('tx_plugin_package_fence')->where('plugin_code', $code)->update(['mutation_token' => $token]);
+            if ($row !== null) {
+                DB::table('tx_plugins')->where('code', $code)->update(['native_payment_mutation_token' => $token]);
+            }
+            return $token;
+        }, 3);
+    }
+
+    private function endNativePaymentMutation(string $code, ?string $token): void
+    {
+        if ($token !== null) {
+            DB::transaction(function () use ($code, $token): void {
+                $package = DB::table('tx_plugin_package_fence')->where('plugin_code', $code)->lockForUpdate()->first();
+                if ($package === null || $package->mutation_token !== $token) { return; }
+                DB::table('tx_plugins')->where('code', $code)->where('native_payment_mutation_token', $token)
+                    ->update(['native_payment_mutation_token' => null]);
+                DB::table('tx_plugin_package_fence')->where('plugin_code', $code)->where('mutation_token', $token)
+                    ->update(['mutation_token' => null]);
+            }, 3);
+        }
+    }
+
     /**
      * install default plugins
      */
@@ -1056,7 +1187,7 @@ class PluginManager
                 if (is_array($value)) {
                     continue;
                 }
-                
+
                 if (is_string($value) && $value !== '') {
                     $decoded = json_decode($value, true);
                     if (json_last_error() === JSON_ERROR_NONE) {

@@ -4,7 +4,7 @@
 [Terms/周期边界](terms-boundary-current.md) 为准。2026-10-16 清理后，仅保留已激活的
 native 安装、真实 Provider 回执和同一份有限签名 Node 授权驱动的用量链路。
 隔离开关、手工 source/tariff/grant/capability、`core:usage-v2` CLI 及其原型运行器已退役。
-历史隔离文档只描述当时实现，不是当前启用步骤或旧版本兼容承诺。
+历史隔离协议原文从 Git 查询，不是当前启用步骤或旧版本兼容承诺。
 
 ## 准入和领域归属
 
@@ -71,12 +71,3 @@ Registry 生成测试授权。重型验证仅在 Actions 执行。
 
 当前 native 支持范围遵循 C2 runtime；完整协议/平台矩阵、v2 WSS、管理员恢复 API 和
 完整备份恢复编排不因删除原型而宣称完成。当前 HTTP 持久回执与真实 native 用量继续保留。
-
-## 历史设计记录
-
-- [B3.1 隔离接收切片](isolated-receipt-current.md)
-- [有界 TCP collector](bounded-tcp-collector-v1.md)
-- [隔离 Core interop](bounded-tcp-core-interop-v1.md)
-- [隔离 Service](isolated-service-v2-v1.md)
-- [隔离协议矩阵](live-protocol-service-v1.md)
-- [隔离撤销矩阵](live-revocation-service-v1.md)

@@ -10,7 +10,7 @@ import { PREFIX } from '../middleware/request-context.js'
  * or database theme config can mutate it at runtime, and `validatePolicies()`
  * refuses to let a boot start on an illegal combination.
  *
- * docs/middleware-architecture.md §3 — "策略表属于编译期只读定义，而不是运行时
+ * docs/architecture.md — "策略表属于编译期只读定义，而不是运行时
  * 任意 JSON". Non-overridable items: the global baseline, the static upstream
  * allowlist, Laravel's authority, response/log redaction and the payment write
  * ban. No URL, JSON field or status code changes here.

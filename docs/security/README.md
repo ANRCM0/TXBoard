@@ -37,4 +37,4 @@ Caddy 的可信代理默认仅允许 `127.0.0.1/8 ::1/128`，不再无条件信�
 - Octane/Swoole 可能持续持有已加载类与路由；插件停用、卸载后仍应由 enabled guard 拒绝旧请求，必要时重启 Octane、queue 和 scheduler worker。
 - 检验坏 ZIP、依赖冲突、错误 manifest、升级失败恢复、禁用后 stale route、Worker 缓存与可信参考插件的真实联调。
 
-参照 [Agent Ops 架构](../architecture/agent-ops.md)、[Module Platform](../architecture/module-platform-v1.md)、[Plugin Package](../../contracts/plugin-package/README.md) 和 [Agent Contract](../../contracts/http/agent-ops-v1.md)。
+参照 [Core 与扩展边界](../architecture/v2/core-extension-boundaries.md)、[Module Platform](../architecture/module-platform-v1.md)、[Plugin Package](../../contracts/plugin-package/README.md) 和 [Agent/MCP 退役说明](../architecture/v2/admin-only-scope.md)。

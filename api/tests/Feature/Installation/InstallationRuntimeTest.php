@@ -139,6 +139,28 @@ class InstallationRuntimeTest extends TestCase
         $this->assertStringContainsString('INSTALLATION_AUTHORITY_BOOTSTRAP_CONFLICT', Artisan::output());
     }
 
+    public function test_native_bootstrap_retains_only_inactive_package_coordination_inventory(): void
+    {
+        DB::table('tx_plugin_package_fence')->insert(['plugin_code' => 'uninstalled_package', 'mutation_token' => null]);
+        $this->native();
+        $this->assertDatabaseHas('tx_plugin_package_fence', [
+            'plugin_code' => 'uninstalled_package', 'mutation_token' => null,
+        ]);
+        $this->assertSame('initializing', app(InstallationAuthority::class)->inspect()['phase']);
+    }
+
+    public function test_native_bootstrap_does_not_adopt_an_active_or_abandoned_package_mutation(): void
+    {
+        DB::table('tx_plugin_package_fence')->insert([
+            'plugin_code' => 'busy_package', 'mutation_token' => str_repeat('a', 64),
+        ]);
+        $this->refuses('DATABASE_NOT_EMPTY', fn () => $this->native());
+        $this->assertSame(0, DB::table('tx_authority_writer_fence')->count());
+        $this->assertDatabaseHas('tx_plugin_package_fence', [
+            'plugin_code' => 'busy_package', 'mutation_token' => str_repeat('a', 64),
+        ]);
+    }
+
     public function test_real_catalog_preparation_uses_persistent_authority_and_cannot_enable_runtime(): void
     {
         $this->native();

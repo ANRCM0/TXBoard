@@ -32,7 +32,6 @@ protected $table = 'tx_plugins';
     // 默认不可删除的插件列表
     const PROTECTED_PLUGINS = [
         'epay',           // EPay
-        'alipay_f2f',     // Alipay F2F
         'telegram',       // Telegram
     ];
 

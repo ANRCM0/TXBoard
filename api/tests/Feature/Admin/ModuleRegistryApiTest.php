@@ -91,6 +91,31 @@ class ModuleRegistryApiTest extends TestCase
         }
     }
 
+    public function test_payment_type_without_current_contract_cannot_claim_a_provider_capability(): void
+    {
+        $path = base_path('plugins/OldPaymentDeclarationFixture');
+        File::ensureDirectoryExists($path);
+        $manifest = [
+            'name' => 'Old Payment Declaration', 'code' => 'old_payment_declaration_fixture', 'version' => '1.0.0',
+            'description' => 'No current protocol declaration', 'author' => 'TXBoard tests',
+            'type' => 'payment', 'package' => ['schema' => 1],
+        ];
+        File::put($path.'/config.json', json_encode($manifest, JSON_THROW_ON_ERROR));
+        try {
+            $response = $this->getJson("/txapi/admin/{$this->securePath}/modules")->assertOk();
+            $this->assertNotContains($manifest['code'], array_column($response->json('data.modules'), 'id'));
+            $this->assertContains('Plugin metadata is invalid', array_column($response->json('data.errors'), 'message'));
+            $manifest['payment'] = ['contract' => 'native-payment-provider/1',
+                'provider' => 'FixturePay', 'snapshot_schema' => 'fixturepay-dispatch/1'];
+            File::put($path.'/config.json', json_encode($manifest, JSON_THROW_ON_ERROR));
+            $this->getJson("/txapi/admin/{$this->securePath}/modules/{$manifest['code']}")
+                ->assertOk()->assertJsonPath('data.capabilities', ['payment.provider'])
+                ->assertJsonPath('data.installed', false)->assertJsonPath('data.enabled', false);
+        } finally {
+            File::deleteDirectory($path);
+        }
+    }
+
     public function test_discovery_errors_do_not_expose_plugin_admin_references_or_invalid_ids(): void
     {
         $secret = 'token-for-regression-test';

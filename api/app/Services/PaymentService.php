@@ -2,134 +2,75 @@
 
 namespace App\Services;
 
+use App\Domains\Billing\NativePaymentProviderRegistry;
 use App\Exceptions\ApiException;
 use App\Models\Payment;
 use App\Services\Plugin\PluginManager;
-use App\Services\Plugin\HookManager;
 
-class PaymentService
+/** Management facade only. Payment execution requires Core's frozen native dispatch. */
+final class PaymentService
 {
-    public $method;
-    protected $config;
-    protected $payment;
-    protected $pluginManager;
+    private array $config = [];
+    private ?string $pluginCode = null;
 
-    public function __construct($method, $id = NULL, $uuid = NULL)
+    public function __construct(public string $method, ?int $id = null, ?string $uuid = null)
     {
-        $this->method = $method;
-        $this->pluginManager = app(PluginManager::class);
-
-        if ($method === 'temp') {
-            return;
-        }
-
-        if ($id) {
-            $paymentModel = Payment::find($id);
-            if (!$paymentModel) {
+        if ($method === 'temp') { return; }
+        if ($id !== null || $uuid !== null) {
+            $payment = $id !== null ? Payment::query()->find($id) : Payment::query()->where('uuid', $uuid)->first();
+            if ($payment === null || $payment->payment !== $method) {
                 throw new ApiException('payment not found');
             }
-            $payment = $paymentModel->makeVisible('config')->toArray();
+            $this->config = is_array($payment->config) ? $payment->config : [];
         }
-        if ($uuid) {
-            $paymentModel = Payment::where('uuid', $uuid)->first();
-            if (!$paymentModel) {
-                throw new ApiException('payment not found');
-            }
-            $payment = $paymentModel->makeVisible('config')->toArray();
+        try {
+            $this->pluginCode = app(NativePaymentProviderRegistry::class)->forMethod($method)->pluginCode;
+        } catch (\Throwable) {
+            throw new ApiException('payment method not found or disabled');
         }
-
-        $this->config = [];
-        if (isset($payment)) {
-            $this->config = is_string($payment['config']) ? json_decode($payment['config'], true) : $payment['config'];
-            $this->config['enable'] = $payment['enable'];
-            $this->config['id'] = $payment['id'];
-            $this->config['uuid'] = $payment['uuid'];
-            $this->config['notify_domain'] = $payment['notify_domain'] ?? '';
-        }
-
-        $paymentMethods = $this->getAvailablePaymentMethods();
-        if (isset($paymentMethods[$this->method])) {
-            $pluginCode = $paymentMethods[$this->method]['plugin_code'];
-            $paymentPlugins = $this->pluginManager->getEnabledPaymentPlugins();
-            foreach ($paymentPlugins as $plugin) {
-                if ($plugin->getPluginCode() === $pluginCode) {
-                    $plugin->setConfig($this->config);
-                    $this->payment = $plugin;
-                    return;
-                }
-            }
-        }
-
-        throw new ApiException('payment method not found or disabled');
     }
 
-    public function notify($params)
+    public function notify($params): never
     {
-        if (!$this->config['enable'])
-            throw new ApiException('gate is not enable');
-        return $this->payment->notify($params);
+        throw new ApiException('Payment execution requires a native frozen dispatch', 409);
     }
 
-    public function pay($order)
+    public function pay($order): never
     {
-        // custom notify domain name
-        $notifyPath = "/txapi/payment/webhook/{$this->method}/{$this->config['uuid']}";
-        $notifyUrl = url($notifyPath);
-        if ($this->config['notify_domain']) {
-            $parseUrl = parse_url($notifyUrl);
-            $notifyUrl = $this->config['notify_domain'] . $parseUrl['path'];
+        throw new ApiException('Payment execution requires a native frozen dispatch', 409);
+    }
+
+    public function form(): array
+    {
+        if ($this->pluginCode === null) {
+            throw new ApiException('payment method not found or disabled');
         }
-
-        return $this->payment->pay([
-            'notify_url' => $notifyUrl,
-            'return_url' => source_base_url($order['return_path'] ?? '/#/order/' . $order['trade_no']),
-            'trade_no' => $order['trade_no'],
-            'total_amount' => $order['total_amount'],
-            'user_id' => $order['user_id'],
-            'stripe_token' => $order['stripe_token']
-        ]);
-    }
-
-    public function form()
-    {
-        $form = $this->payment->form();
+        $registration = app(PluginManager::class)->nativePaymentProvider($this->pluginCode);
         $result = [];
-        foreach ($form as $key => $field) {
+        foreach ($registration['plugin']->form() as $key => $field) {
             $result[$key] = [
                 'type' => $field['type'],
                 'label' => $field['label'] ?? '',
                 'placeholder' => $field['placeholder'] ?? '',
                 'description' => $field['description'] ?? '',
                 'value' => $this->config[$key] ?? $field['default'] ?? '',
-                'options' => $field['select_options'] ?? $field['options'] ?? []
+                'options' => $field['select_options'] ?? $field['options'] ?? [],
             ];
         }
         return $result;
     }
 
-    /**
-     * 获取所有可用的支付方式
-     */
     public function getAvailablePaymentMethods(): array
     {
         $methods = [];
-
-        $methods = HookManager::filter('available_payment_methods', $methods);
-
+        foreach (app(NativePaymentProviderRegistry::class)->availableMethods() as $method => $provider) {
+            $methods[$method] = ['name' => (string) $method, 'plugin_code' => $provider->pluginCode, 'type' => 'plugin'];
+        }
         return $methods;
     }
 
-    /**
-     * 获取所有支付方式名称列表（用于管理后台）
-     */
     public static function getAllPaymentMethodNames(): array
     {
-        $pluginManager = app(PluginManager::class);
-        $pluginManager->initializeEnabledPlugins();
-
-        $instance = new self('temp');
-        $methods = $instance->getAvailablePaymentMethods();
-
-        return array_keys($methods);
+        return array_map('strval', array_keys(app(NativePaymentProviderRegistry::class)->availableMethods()));
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Services\Plugin;
 
+use App\Contracts\NativePaymentPluginInterface;
 use InvalidArgumentException;
 use ZipArchive;
 
@@ -26,6 +27,21 @@ final class PluginPackage
         $package = $config['package'] ?? null;
         if (!is_array($package) || ($package['schema'] ?? null) !== self::SCHEMA_VERSION) {
             throw new InvalidArgumentException('Plugin Package v1 requires package.schema=1');
+        }
+        if (($config['type'] ?? null) === 'payment') {
+            $payment = $config['payment'] ?? null;
+            if (!is_array($payment) || array_is_list($payment)
+                || count($payment) !== 3
+                || ($payment['contract'] ?? null) !== NativePaymentPluginInterface::CONTRACT
+                || !is_string($payment['provider'] ?? null)
+                || preg_match('/\A[A-Za-z0-9][A-Za-z0-9_.:-]{0,31}\z/D', $payment['provider']) !== 1
+                || !is_string($payment['snapshot_schema'] ?? null)
+                || strlen($payment['snapshot_schema']) > 64
+                || preg_match('~\A[a-z0-9][a-z0-9._-]*/[1-9][0-9]*\z~D', $payment['snapshot_schema']) !== 1) {
+                throw new InvalidArgumentException('Payment plugins require the current explicit payment contract');
+            }
+        } elseif (array_key_exists('payment', $config)) {
+            throw new InvalidArgumentException('Only payment plugins may declare the payment contract');
         }
         $menus = $config['admin_menus'] ?? [];
         if (!is_array($menus) || !array_is_list($menus)) {

@@ -38,7 +38,7 @@ final class NativeSubscriptionDelivery
         return $endpoint;
     }
 
-    public function authorize(int $userId, int $subjectId, string $recipientKey): array
+    public function authorize(int $userId, int $subjectId, string $recipientKey, ?\Closure $guard = null): array
     {
         $this->require(DB::transactionLevel() === 0 && $userId > 0 && $subjectId > 0, 'INPUT_INVALID');
         RenderGrantCodec::publicKey($recipientKey);
@@ -48,7 +48,11 @@ final class NativeSubscriptionDelivery
         $this->require($locator !== null, 'SUBJECT_MISSING');
         $configuration = $this->transport->configuration($locator->provider_id);
         $endpoint = self::endpoint($locator->provider_id);
-        $before = DB::transaction(fn (): array => $this->project($userId, $subjectId, $configuration, time()), 3);
+        $before = DB::transaction(function () use ($userId, $subjectId, $configuration, $guard): array {
+            $projection = $this->project($userId, $subjectId, $configuration, time());
+            if ($guard !== null) { $guard(); }
+            return $projection;
+        }, 3);
         $request = [
             'contract_version' => ProviderMetadataCodec::VERSION, 'request_id' => 'render_'.bin2hex(random_bytes(16)),
             'provider_id' => $before['registration']['provider_id'],
@@ -59,13 +63,15 @@ final class NativeSubscriptionDelivery
         // No network request is made while holding the account/Subject/Node locks.
         $metadata = $this->transport->metadata($before['registration'], $request);
         $metadata = ProviderMetadataCodec::decodeResponse(ProviderCodec::canonical($metadata), $request);
-        return DB::transaction(function () use ($userId, $subjectId, $recipientKey, $configuration, $endpoint, $before, $metadata): array {
+        return DB::transaction(function () use ($userId, $subjectId, $recipientKey, $configuration, $endpoint, $before, $metadata, $guard): array {
             $now = time();
             $after = $this->project($userId, $subjectId, $configuration, $now);
+            $policyExpiry = $guard === null ? null : $guard();
             $this->require($after === $before && self::endpoint($configuration['provider_id']) === $endpoint, 'AUTHORITY_CHANGED');
             $credential = $metadata['credentials'][0];
             $this->require($credential['credential_expires_at'] === $after['credential_expires_at'], 'METADATA_INVALID');
             $expires = $now + 30;
+            if ($policyExpiry !== null) { $expires = min($expires, $policyExpiry); }
             foreach ([$after['credential_expires_at'], $after['entitlement']['expires_at'],
                 $after['entitlement']['next_reset_at']] as $boundary) {
                 if ($boundary !== null) {

@@ -48,9 +48,17 @@ abstract class NativeSubscriptionTestCase extends TestCase
             '2026_10_11_000001_create_idempotency_keys.php',
             '2026_10_12_000001_create_subscription_shadow_tables.php',
             '2026_10_12_000002_create_plan_catalog_shadow_tables.php',
+            '2026_10_14_000001_create_authority_writer_fence.php',
             '2026_10_15_000001_create_order_purchase_terms.php',
+            '2026_10_15_000002_extend_installation_authority.php',
             '2026_10_15_000003_enable_plan_publication.php',
             '2026_10_15_000004_enable_native_subscriptions.php',
+            '2026_10_16_000004_create_native_money_ledger.php',
+            '2026_10_16_000005_create_native_payment_attempts.php',
+            '2026_10_16_000007_create_native_payment_settlement.php',
+            '2026_10_16_000009_create_native_wallet_reservations.php',
+            '2026_10_16_000016_create_native_free_checkout.php',
+            '2026_10_17_000001_create_native_upgrade_credits.php',
         ] as $migration) {
             (require database_path('migrations/'.$migration))->up();
         }
@@ -196,6 +204,21 @@ abstract class NativeSubscriptionTestCase extends TestCase
             $table->unsignedBigInteger('paid_at')->nullable();
             $table->unsignedBigInteger('created_at');
             $table->unsignedBigInteger('updated_at');
+        });
+        Schema::create('tx_payment', function (Blueprint $table): void {
+            $table->integer('id', true);
+            $table->char('uuid', 32);
+            $table->string('payment', 16);
+            $table->string('name');
+            $table->text('icon')->nullable();
+            $table->text('config');
+            $table->string('notify_domain', 128)->nullable();
+            $table->integer('handling_fee_fixed')->nullable();
+            $table->decimal('handling_fee_percent', 5)->nullable();
+            $table->boolean('enable')->default(false);
+            $table->integer('sort')->nullable();
+            $table->integer('created_at');
+            $table->integer('updated_at');
         });
     }
 }

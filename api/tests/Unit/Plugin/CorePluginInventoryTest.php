@@ -13,7 +13,7 @@ class CorePluginInventoryTest extends TestCase
         $directories = array_map('basename', File::directories(base_path('plugins-core')));
         sort($directories);
 
-        $this->assertSame(['AlipayF2f', 'Epay', 'Telegram'], $directories);
-        $this->assertSame(['epay', 'alipay_f2f', 'telegram'], Plugin::PROTECTED_PLUGINS);
+        $this->assertSame(['Epay', 'Telegram'], $directories);
+        $this->assertSame(['epay', 'telegram'], Plugin::PROTECTED_PLUGINS);
     }
 }

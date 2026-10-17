@@ -50,6 +50,16 @@ use App\Http\Controllers\Txapi\TicketController;
 use App\Http\Controllers\Txapi\PublicController;
 use Illuminate\Support\Facades\Route;
 
+Route::post('internal/native/v1/{domain}/operations/{operation}',
+    [\App\Http\Controllers\Txapi\InternalOperationController::class, 'execute'])
+    ->where('domain', 'user|admin')->where('operation', '[a-z][a-z0-9.-]{1,100}')
+    ->middleware(['throttle:native-internal-ingress', \App\Http\Middleware\NativeServiceIdentity::class]);
+
+// Link proof is independent of account, service and Node credentials.
+Route::post('subscription-links/{linkRef}/redeem',
+    [\App\Http\Controllers\Txapi\SubscriptionLinkController::class, 'redeem'])
+    ->where('linkRef', 'link_[a-f0-9]{32}')->middleware('throttle:30,1');
+
 // Versioned TX-Node control plane; scoped bearer credentials, separate from user
 // auth. Never expose node credentials in URLs. No V1/V2 adapter is registered.
 Route::prefix('node/v1')->middleware(TxNodeAuth::class)->group(function () {
@@ -82,6 +92,18 @@ Route::match(['get', 'post'], 'payment/webhook/{method}/{uuid}',
 Route::prefix('admin/{admin_path}')
     ->middleware(['admin.path', 'admin', 'log', 'throttle:120,1'])
     ->group(function () {
+        Route::post('native/plans/publications',
+            [\App\Http\Controllers\Txapi\Admin\NativePlanAdminController::class, 'publish'])
+            ->middleware(\App\Http\Middleware\NativeAdminPermission::class.':catalog.publish');
+        Route::patch('native/plan-offers/{offerId}/availability',
+            [\App\Http\Controllers\Txapi\Admin\NativePlanAdminController::class, 'availability'])
+            ->whereNumber('offerId')->middleware(\App\Http\Middleware\NativeAdminPermission::class.':catalog.publish');
+        Route::post('native/billing/refunds',
+            [\App\Http\Controllers\Txapi\Admin\NativeBillingAdminController::class, 'refund'])
+            ->middleware(\App\Http\Middleware\NativeAdminPermission::class.':billing.refund');
+        Route::get('native/billing/reconciliation',
+            [\App\Http\Controllers\Txapi\Admin\NativeBillingAdminController::class, 'reconcile'])
+            ->middleware(\App\Http\Middleware\NativeAdminPermission::class.':billing.reconcile');
         Route::post('native/accounts', [\App\Http\Controllers\Txapi\Admin\NativeAccountController::class, 'create']);
         Route::patch('native/accounts/{id}/status', [\App\Http\Controllers\Txapi\Admin\NativeAccountController::class, 'status'])
             ->whereNumber('id');
@@ -273,6 +295,12 @@ Route::middleware(['txapi.user', 'throttle:120,1'])->group(function () {
     Route::get('plans/{planId}', [PublicController::class, 'plan'])->whereNumber('planId');
     Route::get('me', [AccountController::class, 'me']);
     Route::get('me/subscription', [AccountController::class, 'subscription']);
+    Route::get('me/subscription-links', [\App\Http\Controllers\Txapi\SubscriptionLinkController::class, 'index']);
+    Route::post('me/subscription-links', [\App\Http\Controllers\Txapi\SubscriptionLinkController::class, 'create'])
+        ->middleware('throttle:10,1');
+    Route::post('me/subscription-links/{linkRef}/revoke', [\App\Http\Controllers\Txapi\SubscriptionLinkController::class, 'revoke'])
+        ->where('linkRef', 'link_[a-f0-9]{32}')->middleware('throttle:10,1');
+    Route::get('me/usage-periods', [\App\Http\Controllers\Txapi\NativeUsageController::class, 'index']);
     Route::post('me/subscription-deliveries', [\App\Http\Controllers\Txapi\SubscriptionDeliveryController::class, 'create'])
         ->middleware('throttle:10,1');
     Route::post('me/access-subjects', [\App\Http\Controllers\Txapi\CredentialProviderController::class, 'issue'])
@@ -316,7 +344,11 @@ Route::middleware(['txapi.user', 'throttle:120,1'])->group(function () {
     Route::get('gift-cards/history/{id}', [GiftCardController::class, 'detail'])->whereNumber('id');
     Route::post('billing/stripe-public-key', [StripeConfigController::class, 'publicKey']);
     Route::post('billing/withdrawals', [WithdrawalController::class, 'store'])->middleware('throttle:5,1');
-    Route::get('billing/wallet', [BillingController::class, 'wallet']);
+    Route::get('billing/wallet', [WalletRechargeController::class, 'balance']);
+    Route::get('billing/payment-attempts/{attemptId}', [BillingController::class, 'paymentAttemptStatus'])
+        ->whereNumber('attemptId');
+    Route::post('billing/payment-attempts/{attemptId}/query', [BillingController::class, 'paymentAttemptQuery'])
+        ->whereNumber('attemptId')->middleware('throttle:10,1');
     Route::get('billing/recharge-payment-methods', [WalletRechargeController::class, 'methods']);
     Route::get('billing/recharges', [WalletRechargeController::class, 'index']);
     Route::post('billing/recharges', [WalletRechargeController::class, 'store'])->middleware('throttle:10,1');

@@ -1,0 +1,16 @@
+{
+  "name": "ExamplePay",
+  "code": "example_pay",
+  "type": "payment",
+  "version": "0.1.0",
+  "description": "Fail-closed starter for a new payment provider",
+  "author": "Plugin Author",
+  "package": {
+    "schema": 1
+  },
+  "payment": {
+    "contract": "native-payment-provider/1",
+    "provider": "ExamplePay",
+    "snapshot_schema": "examplepay-dispatch/1"
+  }
+}

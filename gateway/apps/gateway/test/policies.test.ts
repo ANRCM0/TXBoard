@@ -24,7 +24,7 @@ import { generateKeyPairSync } from 'node:crypto'
  * These tests pin the security posture of every route as data, prove the
  * invariant between the routes the app actually registers and the policies the
  * table declares, and verify that the illegal combinations named in
- * docs/middleware-architecture.md §3 are rejected at boot rather than at
+ * docs/architecture.md are rejected at boot rather than at
  * request time.
  */
 
