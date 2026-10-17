@@ -33,14 +33,16 @@ class TxapiCheckoutTest extends TestCase
         Bus::assertDispatchedTimes(\App\Jobs\OrderHandleJob::class, 1);
     }
 
-    public function test_rejects_negative_amount_and_missing_provider(): void
+    public function test_rejects_negative_amount_and_retired_paid_checkout(): void
     {
         $owner = $this->user('reject@example.test');
         $order = $this->order($owner, 1000);
         $this->postJson('/txapi/orders/'.$order->trade_no.'/checkout')->assertStatus(401);
         Sanctum::actingAs($owner);
         $this->postJson('/txapi/orders/'.$order->trade_no.'/checkout')
-            ->assertStatus(422)->assertJsonPath('error.code', 'PAYMENT_METHOD_INVALID');
+            ->assertStatus(409)->assertJsonPath('error.code', 'ORDER_CONFLICT');
+        $this->assertSame(Order::STATUS_PENDING, (int) $order->fresh()->status);
+        $this->assertNull($order->fresh()->payment_id);
         $order->update(['total_amount' => -100]);
         $this->postJson('/txapi/orders/'.$order->trade_no.'/checkout')
             ->assertStatus(409)->assertJsonPath('error.code', 'ORDER_CONFLICT');

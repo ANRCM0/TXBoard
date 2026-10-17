@@ -214,7 +214,7 @@ final class NativeUpgradeCreditTest extends NativePaymentTestCase
         $this->assertSame('completed', DB::table('tx_native_free_checkout')->where('order_id', $target->id)->value('status'));
     }
 
-    public function test_admin_manual_zero_net_upgrade_rejects_stale_quote_and_applies_valid_rights_before_worker(): void
+    public function test_manual_zero_net_upgrade_keeps_http_closed_and_applies_domain_rights_atomically(): void
     {
         admin_setting(['secure_path' => 'upgrade_credit_admin']);
         [$owner] = $this->paidSource();
@@ -230,12 +230,15 @@ final class NativeUpgradeCreditTest extends NativePaymentTestCase
         $tables = ['tx_order', 'tx_subscription', 'tx_subscription_terms', 'tx_subscription_operation',
             'tx_payment_attempt', 'tx_payment_receipt', 'tx_money_journal', 'tx_order_payment', 'tx_native_runtime_outbox'];
         $before = $this->snapshots($tables);
-        $this->postJson($url.$stale->trade_no.'/paid')->assertStatus(409)->assertJsonPath('error.code', 'ORDER_CONFLICT');
+        $this->postJson($url.$stale->trade_no.'/paid')->assertStatus(503)
+            ->assertJsonPath('error.code', 'INSTALLATION_AUTHORITY_NATIVE_CAPABILITY_UNAVAILABLE');
+        $this->assertSame($before, $this->snapshots($tables));
+        $this->assertFalse((new NativeOrderLifecycle($stale))->paid('manual_operation'));
         $this->assertSame($before, $this->snapshots($tables));
         $this->assertSame(Order::STATUS_PENDING, (int) $stale->fresh()->status);
         $financial = $this->snapshots(['tx_payment_attempt', 'tx_payment_receipt', 'tx_money_journal', 'tx_order_payment']);
-        $this->postJson($url.$valid->trade_no.'/paid')->assertOk()->assertJsonPath('data.ok', true);
-        // NativeRuntimeTestCase fakes the queue, so these rights must already be committed in the request.
+        $this->assertTrue((new NativeOrderLifecycle($valid))->paid('manual_operation'));
+        // The queue is fake: rights must already be committed by the domain call.
         $this->assertSame(Order::STATUS_COMPLETED, (int) $valid->fresh()->status);
         $terms = DB::table('tx_subscription_terms')->where('source_order_id', $valid->id)->first();
         $this->assertNotNull($terms);
@@ -244,7 +247,7 @@ final class NativeUpgradeCreditTest extends NativePaymentTestCase
         $this->assertSame(1, DB::table('tx_subscription_operation')->where('order_id', $valid->id)->count());
         $this->assertSame($financial, $this->snapshots(array_keys($financial)));
         $accepted = $this->snapshots($tables);
-        $this->postJson($url.$valid->trade_no.'/paid')->assertStatus(409)->assertJsonPath('error.code', 'ORDER_CONFLICT');
+        $this->assertTrue((new NativeOrderLifecycle($valid->fresh()))->paid('manual_operation'));
         $this->assertSame($accepted, $this->snapshots($tables));
     }
 

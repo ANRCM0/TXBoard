@@ -24,7 +24,7 @@ class PaymentWebhookTest extends NativePaymentTestCase
 
         config(['app.url' => 'https://core.example.test']);
         $this->payment->update(['payment' => 'EPay', 'config' => [
-            'pid' => 'merchant-1', 'key' => 'test-secret', 'url' => 'https://payment.example.test',
+            'pid' => '42', 'key' => 'test-secret', 'url' => 'https://payment.example.test',
         ]]);
         Http::preventStrayRequests();
     }
@@ -63,7 +63,7 @@ class PaymentWebhookTest extends NativePaymentTestCase
         $payment = $this->payment();
         $order = $this->order($payment);
 
-        $this->postCallback($payment, $order->trade_no, ['pid' => 'other'])
+        $this->postCallback($payment, $order->trade_no, ['pid' => '43'])
             ->assertStatus(500);
         $this->assertSame(Order::STATUS_PENDING, $order->fresh()->status);
     }
@@ -223,7 +223,7 @@ class PaymentWebhookTest extends NativePaymentTestCase
     private function signedPayload(string $orderNo, array $overrides = []): array
     {
         $params = array_merge([
-            'pid' => 'merchant-1',
+            'pid' => '42',
             'out_trade_no' => $this->references[$orderNo] ?? $orderNo,
             'trade_no' => 'provider-trade-1',
             'money' => '10.00',
