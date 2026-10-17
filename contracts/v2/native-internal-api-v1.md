@@ -108,6 +108,15 @@ domain-compatible operation inventory, field lists, required actor/permission,
 idempotency mode, size and deadline. Capability discovery never grants an
 operation or actor privilege.
 
+K4 candidate `identity.account.get`, `identity.admin.get` and
+`subscription.mine.get` delegate through fixed account read handlers to the
+shared Identity query port instead of invoking HTTP controllers. Their existing
+authentication, permissions, input/output fields, error normalization, redaction
+and response bounds are unchanged. The precise candidate/acceptance boundary is
+[Core Account Read Ports v1](core-account-read-ports-v1.md); other operations
+retain their current controller delegation. No handler/class name is accepted
+from a caller, and no new operation is made available.
+
 Implemented families are account/admin login, owner session listing/revocation
 and logout; published offer catalog, owner subscription entitlement; owner order
 listing/status/create/checkout/cancel; native wallet, payment-method and recharge

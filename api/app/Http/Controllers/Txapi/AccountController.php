@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Txapi;
 
 use App\Core\Http\TxapiResponse;
-use App\Domains\Subscription\Contracts\EntitlementQueries;
-use App\Domains\Subscription\Contracts\EntitlementQuery;
+use App\Domains\Identity\Contracts\AccountIdentity;
+use App\Domains\Identity\Contracts\AccountQueries;
 use App\Models\Order;
 use App\Models\Plan;
 use App\Models\Ticket;
@@ -23,13 +23,9 @@ final class AccountController
     {
         $user = Auth::guard('sanctum')->user();
         if (app(\App\Domains\Installation\InstallationAuthority::class)->inspect()['mode'] === 'native') {
-            $entitlement = app(EntitlementQueries::class)
-                ->forAccount(new EntitlementQuery((int) $user->id))->toArray();
-            return TxapiResponse::success($request, [
-                'id' => (int) $user->id, 'email' => (string) $user->email,
-                'telegram_id' => $user->telegram_id === null ? null : (int) $user->telegram_id,
-                'subscription' => $entitlement, 'credential_status' => 'provider_managed',
-            ]);
+            return TxapiResponse::success($request, app(AccountQueries::class)->account(new AccountIdentity(
+                (int) $user->id, (string) $user->email, $user->telegram_id === null ? null : (int) $user->telegram_id,
+            )));
         }
         return TxapiResponse::success($request, [
             'id' => (int) $user->id,
@@ -49,13 +45,10 @@ final class AccountController
 
     public function subscription(Request $request): JsonResponse
     {
-        $entitlement = app(EntitlementQueries::class)
-            ->forAccount(new EntitlementQuery((int) Auth::guard('sanctum')->id()))->toArray();
-        return TxapiResponse::success($request, $entitlement + [
-            'credential_status' => 'provider_managed',
-            'delivery_formats' => [\App\Domains\CredentialProvider\RenderGrantCodec::FORMAT],
-            'delivery_endpoint' => '/txapi/me/subscription-deliveries',
-        ]);
+        return TxapiResponse::success($request,
+            app(AccountQueries::class)->subscription((int) Auth::guard('sanctum')->id()) + [
+                'delivery_endpoint' => '/txapi/me/subscription-deliveries',
+            ]);
     }
 
     public function dashboardStats(Request $request): JsonResponse

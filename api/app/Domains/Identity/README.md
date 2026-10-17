@@ -1,5 +1,13 @@
 # Identity domain
 
+`Contracts\AccountQueries` exposes the current native account/subscription read
+projections to HTTP and the three fixed Internal API account read operations.
+`NativeAccountQueries` delegates entitlement facts to Subscription's public port;
+it does not cache actors, read authentication headers or write account state.
+`AccountIdentity` is an immutable scalar projection of the entry's current actor,
+not an authorization credential. The [precise read contract](../../../../contracts/v2/core-account-read-ports-v1.md)
+records entry ownership, output differences and remaining ingress scope.
+
 `AccountSqlPhase` owns the transaction and admission boundary shared by current
 identity writers. Its native writer allowlist remains closed; moving the class
 does not authorize legacy account creation or finance mutations in native mode.

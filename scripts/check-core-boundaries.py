@@ -159,6 +159,11 @@ KERNEL_FILES = {
         "App\\Domains\\Subscription\\Internal",
     "api/app/Domains/Billing/Internal/WinningPaymentProofs.php":
         "App\\Domains\\Billing\\Internal",
+    "api/app/Domains/Identity/Contracts/AccountIdentity.php":
+        "App\\Domains\\Identity\\Contracts",
+    "api/app/Domains/Identity/Contracts/AccountQueries.php":
+        "App\\Domains\\Identity\\Contracts",
+    "api/app/Domains/InternalApi/AccountReadOperations.php": "App\\Domains\\InternalApi",
 }
 RESOLVER_OWNERS = frozenset({
     "api/app/Domains/Subscription/Services/SubscriptionEntitlementResolver.php",
@@ -170,6 +175,10 @@ PROVIDER_TRANSPORT_OWNERS = frozenset({
 })
 FULFILLMENT_OWNERS = frozenset({
     "api/app/Domains/Subscription/Services/SubscriptionFulfillmentService.php",
+    "api/app/Providers/CoreCapabilitiesServiceProvider.php",
+})
+ACCOUNT_QUERY_OWNERS = frozenset({
+    "api/app/Domains/Identity/NativeAccountQueries.php",
     "api/app/Providers/CoreCapabilitiesServiceProvider.php",
 })
 PHP_COMMENTS = re.compile(
@@ -238,6 +247,16 @@ def validate_kernel_boundaries(root):
             re.compile(r"(?<!\$)\b(?:Closure|callable|Request|Model|Builder|Connection|ConnectionInterface)\b",
                        re.IGNORECASE),
         ),
+        "api/app/Domains/Identity/Contracts": (
+            re.compile(
+                r"\bApp\\(?!(?:Core\\Kernel|Domains\\Identity\\Contracts)(?:\\|\b))",
+                re.IGNORECASE,
+            ),
+            HOST_NAMESPACE,
+            HOST_OPERATION,
+            re.compile(r"(?<!\$)\b(?:Closure|callable|Request|Model|Builder|Connection|ConnectionInterface)\b",
+                       re.IGNORECASE),
+        ),
     }
     checked = 0
     for area, patterns in areas.items():
@@ -268,6 +287,8 @@ def validate_kernel_boundaries(root):
          PROVIDER_TRANSPORT_OWNERS, "provider transport"),
         (re.compile(r"\bSubscriptionFulfillmentService\b", re.IGNORECASE),
          FULFILLMENT_OWNERS, "order fulfillment"),
+        (re.compile(r"\bNativeAccountQueries\b", re.IGNORECASE),
+         ACCOUNT_QUERY_OWNERS, "account query"),
     )
     for area in ("api/app", "api/config", "api/routes", "api/plugins-core"):
         for path in sorted((root / area).rglob("*.php")):
@@ -279,6 +300,17 @@ def validate_kernel_boundaries(root):
             if relative.startswith("api/app/Domains/Subscription/Services/"):
                 require(re.search(r"\bNativePaymentSettlement\b", source, re.IGNORECASE) is None,
                         f"Subscription service depends on concrete payment settlement: {relative}")
+            if relative == "api/app/Domains/InternalApi/AccountReadOperations.php":
+                # This bounded handler must not recreate HTTP or SQL dispatch. Actor
+                # provenance and the executor's output pipeline require runtime tests.
+                for pattern in (
+                    re.compile(r"\bApp\\Http\\", re.IGNORECASE),
+                    HOST_NAMESPACE,
+                    HOST_OPERATION,
+                    re.compile(r"(?<!\$)\b(?:Auth|Request)\b", re.IGNORECASE),
+                ):
+                    require(pattern.search(source) is None,
+                            f"Host or HTTP dependency in account read handler: {relative}")
     return checked
 
 

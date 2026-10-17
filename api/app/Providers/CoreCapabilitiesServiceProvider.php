@@ -8,6 +8,8 @@ use App\Domains\Billing\Internal\WinningPaymentProofs;
 use App\Domains\Billing\NativePaymentSettlement;
 use App\Domains\CredentialProvider\Contracts\ProviderClient;
 use App\Domains\CredentialProvider\ProviderTransport;
+use App\Domains\Identity\Contracts\AccountQueries;
+use App\Domains\Identity\NativeAccountQueries;
 use App\Domains\Subscription\Contracts\EntitlementQueries;
 use App\Domains\Subscription\Contracts\OrderFulfillment;
 use App\Domains\Subscription\Internal\LockedEntitlementQueries;
@@ -22,6 +24,7 @@ final class CoreCapabilitiesServiceProvider extends ServiceProvider
     {
         $this->app->singleton(Clock::class, SystemClock::class);
         $this->app->scoped(ProviderClient::class, ProviderTransport::class);
+        $this->app->scoped(AccountQueries::class, NativeAccountQueries::class);
         $this->app->scoped(SubscriptionFulfillmentService::class);
         $this->app->scoped(OrderFulfillment::class,
             fn ($app) => $app->make(SubscriptionFulfillmentService::class));

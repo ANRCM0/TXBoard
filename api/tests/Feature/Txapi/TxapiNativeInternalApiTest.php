@@ -269,19 +269,37 @@ final class TxapiNativeInternalApiTest extends NativeRuntimeTestCase
             ->assertJsonPath('data.account_reconciliation.system.scope', 'installation_all_users_system_accounts');
     }
 
-    public function test_empty_input_schema_is_an_object_and_registry_targets_are_current_closed_controllers(): void
+    public function test_empty_input_schema_is_an_object_and_registry_targets_are_current_closed_executables(): void
     {
         $response = $this->invoke('system.capabilities.get')->assertOk();
         $decoded = json_decode($response->getContent());
         $capabilities = collect($decoded->data->operations);
         $schema = $capabilities->firstWhere('id', 'system.capabilities.get')->input_schema;
         $this->assertInstanceOf(\stdClass::class, $schema->properties);
-        foreach (\App\Domains\InternalApi\OperationRegistry::all() as $spec) {
-            if ($spec['controller'] === null) continue;
+        $handlers = [];
+        foreach (\App\Domains\InternalApi\OperationRegistry::all() as $operation => $spec) {
+            if ($operation === 'system.capabilities.get') {
+                $this->assertNull($spec['controller']);
+                $this->assertNull($spec['handler']);
+                $this->assertNull($spec['method']);
+                continue;
+            }
+            if ($spec['handler'] !== null) {
+                $this->assertNull($spec['controller']);
+                $this->assertSame(\App\Domains\InternalApi\AccountReadOperations::class, $spec['handler']);
+                $this->assertSame('read', $spec['mode']);
+                $this->assertTrue(method_exists($spec['handler'], $spec['method']));
+                $this->assertTrue((new \ReflectionMethod($spec['handler'], $spec['method']))->isPublic());
+                $handlers[$operation] = $spec['method'];
+                continue;
+            }
+            $this->assertNotNull($spec['controller']);
             $this->assertTrue(method_exists($spec['controller'], $spec['method']));
             $this->assertNotSame(\App\Http\Controllers\Txapi\TrafficController::class, $spec['controller']);
             $this->assertNotSame(\App\Http\Controllers\Txapi\Admin\PlanMutationController::class, $spec['controller']);
         }
+        $this->assertSame(['identity.account.get' => 'account', 'identity.admin.get' => 'account',
+            'subscription.mine.get' => 'subscription'], $handlers);
     }
 
     public function test_all_boundary_rejections_are_audited_without_untrusted_service_operation_or_input_material(): void
