@@ -285,7 +285,14 @@ def main():
                     stage = intent["stage"]
             except Exception:
                 stage = "journal_unavailable"
-            diagnostic = {"schema": "modular-native-image-proof/v1", "status": "failed", "stage": stage, "error_codes": codes}
+            frames = []
+            application_log = installation / 'data/storage/logs/laravel.log'
+            if application_log.is_file():
+                frames = [list(frame) for frame in re.findall(
+                    r'#\d+ /www/(app/[A-Za-z0-9_./]+\.php)\((\d+)\): ([A-Za-z0-9_\\]+)(?:->|::)([A-Za-z0-9_]+)\(',
+                    application_log.read_text(errors='replace')[-1048576:])[-12:]]
+            diagnostic = {"schema": "modular-native-image-proof/v1", "status": "failed", "stage": stage,
+                          "error_codes": codes, "application_frames": frames}
             args.output.parent.mkdir(parents=True, exist_ok=True)
             write(args.output, diagnostic)
             args.output.chmod(0o644)
