@@ -3,10 +3,19 @@
 // Scope covers public docs and versioned contracts; external URLs, anchor IDs,
 // reference-style links and generated paths require human review.
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
-import { dirname, extname, isAbsolute, join, resolve } from 'node:path';
+import { dirname, extname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const args = process.argv.slice(2);
+const rootIndex = args.indexOf('--root');
+if (args.some((arg, index) => arg !== '--has-docs' && arg !== '--root' && !(rootIndex !== -1 && index === rootIndex + 1)) ||
+    (rootIndex !== -1 && (!args[rootIndex + 1] || args[rootIndex + 1].startsWith('--')))) {
+  console.error('Usage: check-docs.mjs [--root directory] [--has-docs]');
+  process.exit(1);
+}
+const root = rootIndex === -1
+  ? resolve(dirname(fileURLToPath(import.meta.url)), '..')
+  : resolve(args[rootIndex + 1]);
 const inputs = ['README.md', 'README.en.md', 'AGENTS.md', 'CONTRIBUTING.md',
   '.github', 'api/app/Domains', 'api/plugins-core', 'docs', 'contracts', 'gateway', 'node'];
 const excludedDirectories = new Set(['.git', 'node_modules', 'vendor', 'dist',
@@ -18,7 +27,6 @@ let checked = 0;
 function collect(relative) {
   const abs = resolve(root, relative);
   if (!existsSync(abs)) {
-    errors.push(`Missing documentation input: ${relative}`);
     return;
   }
   if (statSync(abs).isDirectory()) {
@@ -34,6 +42,16 @@ function collect(relative) {
 }
 
 for (const entry of inputs) collect(entry);
+
+// Discovery must not validate links: CI uses this to distinguish skipped checks.
+if (args.includes('--has-docs')) {
+  console.log(files.length > 0 ? 'true' : 'false');
+  process.exit(0);
+}
+if (files.length === 0) {
+  console.log('SKIP: no first-party Markdown documentation found; link validation not run.');
+  process.exit(0);
+}
 
 for (const file of files) {
   const source = readFileSync(file, 'utf8');

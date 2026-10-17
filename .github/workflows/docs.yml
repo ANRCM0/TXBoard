@@ -5,6 +5,8 @@ on:
     paths:
       - '**/*.md'
       - 'scripts/check-docs.mjs'
+      - 'gateway/scripts/check-docs.mjs'
+      - 'scripts/tests/check-docs.test.mjs'
       - 'scripts/check-ci-policy.py'
       - '.github/workflows/**'
       - 'node/Makefile'
@@ -14,6 +16,8 @@ on:
     paths:
       - '**/*.md'
       - 'scripts/check-docs.mjs'
+      - 'gateway/scripts/check-docs.mjs'
+      - 'scripts/tests/check-docs.test.mjs'
       - 'scripts/check-ci-policy.py'
       - '.github/workflows/**'
       - 'node/Makefile'
@@ -30,8 +34,20 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Test documentation validator fixtures
+        run: node --test scripts/tests/check-docs.test.mjs
+      - name: Discover first-party documentation
+        id: docs
+        run: |
+          has_docs=$(node scripts/check-docs.mjs --has-docs)
+          [[ "$has_docs" == true || "$has_docs" == false ]]
+          printf 'has_docs=%s\n' "$has_docs" >> "$GITHUB_OUTPUT"
       - name: Validate local documentation links
+        if: steps.docs.outputs.has_docs == 'true'
         run: node scripts/check-docs.mjs
+      - name: Report skipped documentation links
+        if: steps.docs.outputs.has_docs == 'false'
+        run: echo 'SKIP - no first-party Markdown documentation found; link validation not run.'
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
