@@ -176,7 +176,9 @@ final class ProofExtensionsTest extends ModuleRuntimeTestCase
         $this->getJson($base.'presentation', ['X-Core-Module-Fingerprint' => str_repeat('0', 64)] + $headers)
             ->assertStatus(409)->assertJsonPath('error.code', 'MODULE_VERSION_CHANGED');
         $this->get($base.'resources/ui/index.html', $headers)->assertOk()->assertHeader('X-Content-Type-Options', 'nosniff');
-        $this->get($base.'resources/Plugin.php', $headers)->assertNotFound();
+        $this->getJson($base.'resources/Plugin.php', $headers)->assertStatus(503)
+            ->assertJsonPath('error.code', 'INSTALLATION_AUTHORITY_NATIVE_CAPABILITY_UNAVAILABLE');
+        $this->get($base.'resources/ui/Plugin.php', $headers)->assertNotFound();
         $this->postJson($base.'operations/status.get', ['input' => (object) []], $headers)
             ->assertOk()->assertJsonPath('data.actor_id', (string) $user->id)->assertJsonPath('data.label', 'Original portal');
         $key = (string) Str::uuid();
