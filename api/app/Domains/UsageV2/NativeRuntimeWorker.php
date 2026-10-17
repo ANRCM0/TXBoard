@@ -6,7 +6,7 @@ use App\Domains\Installation\InstallationAuthority;
 use App\Services\NodeSyncService;
 use App\Domains\Subscription\Services\NativeCredentialSynchronization;
 use App\Domains\Subscription\Services\NativeSubscriptionStore;
-use App\Domains\Subscription\Services\SubscriptionEntitlementResolver;
+use App\Domains\Subscription\Internal\LockedEntitlementQueries;
 use Illuminate\Support\Facades\DB;
 use Throwable;
 
@@ -38,7 +38,7 @@ final class NativeRuntimeWorker
                         $subscription = $subscriptions->firstWhere('id', $subscriptionId);
                         if (!$subscription) { throw new UsageError('USAGE_NATIVE_OWNER_MISSING'); }
                         $store->lockHistory($subscription);
-                        $entitlement = app(SubscriptionEntitlementResolver::class)->resolveLocked($userId, time());
+                        $entitlement = app(LockedEntitlementQueries::class)->resolveLocked($userId, time());
                         if (!$entitlement['authorized']) {
                             app(NativeCredentialSynchronization::class)->stageLocked($userId, (int) $subscriptionId);
                         }

@@ -8,6 +8,7 @@ use App\Domains\CredentialProvider\ProviderTransport;
 use App\Domains\CredentialProvider\RenderGrantCodec;
 use App\Domains\Installation\InstallationAuthority;
 use App\Domains\Network\NativeNodeAuthorization;
+use App\Domains\Subscription\Internal\LockedEntitlementQueries;
 use App\Models\Server;
 use DomainException;
 use Illuminate\Support\Facades\DB;
@@ -16,7 +17,7 @@ use Illuminate\Support\Facades\DB;
 final class NativeSubscriptionDelivery
 {
     public function __construct(
-        private readonly SubscriptionEntitlementResolver $entitlements,
+        private readonly LockedEntitlementQueries $entitlements,
         private readonly NativeCredentialProviderService $credentials,
         private readonly ProviderTransport $transport,
         private readonly NativeNodeAuthorization $signer,

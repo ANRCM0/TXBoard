@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Txapi;
 
 use App\Core\Http\TxapiResponse;
+use App\Domains\Subscription\Contracts\EntitlementQueries;
+use App\Domains\Subscription\Contracts\EntitlementQuery;
 use App\Models\Order;
 use App\Models\Plan;
 use App\Models\Ticket;
@@ -21,7 +23,8 @@ final class AccountController
     {
         $user = Auth::guard('sanctum')->user();
         if (app(\App\Domains\Installation\InstallationAuthority::class)->inspect()['mode'] === 'native') {
-            $entitlement = app(\App\Domains\Subscription\Services\SubscriptionEntitlementResolver::class)->resolve((int) $user->id);
+            $entitlement = app(EntitlementQueries::class)
+                ->forAccount(new EntitlementQuery((int) $user->id))->toArray();
             return TxapiResponse::success($request, [
                 'id' => (int) $user->id, 'email' => (string) $user->email,
                 'telegram_id' => $user->telegram_id === null ? null : (int) $user->telegram_id,
@@ -46,8 +49,8 @@ final class AccountController
 
     public function subscription(Request $request): JsonResponse
     {
-        $entitlement = app(\App\Domains\Subscription\Services\SubscriptionEntitlementResolver::class)
-            ->resolve((int) Auth::guard('sanctum')->id());
+        $entitlement = app(EntitlementQueries::class)
+            ->forAccount(new EntitlementQuery((int) Auth::guard('sanctum')->id()))->toArray();
         return TxapiResponse::success($request, $entitlement + [
             'credential_status' => 'provider_managed',
             'delivery_formats' => [\App\Domains\CredentialProvider\RenderGrantCodec::FORMAT],

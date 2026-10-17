@@ -37,4 +37,10 @@ TXBoard 是业务与数据权威。Gateway、Deploy、TX-Node 与可选插件按
 - 修改已实现的对外行为时，更新对应当前契约和真实消费者；本目录不能作为绕过现有约束的依据。
 - 示例是非秘密的目标格式；没有执行迁移或开放接口。
 
+## 待评审的进程内契约
+
+[Core Module Ports v1](core-module-ports-v1.md) 是小内核与业务模块的 Target / Draft 设计，明确公开用例、事务内参与者和外部协议能力的不同语义。它不属于上表已实现 wire API，不注册 HTTP 路由、不扩大能力范围，也不增加旧版本兼容。对应[详细设计](../../docs/architecture/v2/core-kernel-modular-design.md)以当前 native 源码为起点。
+
 旧阶段计划和已退役协议从当前目录移除，原文从 Git 历史查询；历史验证 JSON 保留原字节，不作为当前调用面。安装与恢复操作以 TXBoard-Deploy 对应版本为准。
+
+K1 候选代码的精确进程内接口见 [Core Entitlement Queries v1](core-entitlement-queries-v1.md)，尚待 CI 与评审，不作为已合并 wire API。

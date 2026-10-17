@@ -2,6 +2,7 @@
 
 namespace App\Domains\Subscription\Services;
 
+use App\Domains\Subscription\Internal\LockedEntitlementQueries;
 use App\Domains\CredentialProvider\ProviderCodec;
 use App\Domains\CredentialProvider\RenderGrantCodec;
 use App\Domains\Installation\InstallationAuthority;
@@ -13,7 +14,7 @@ final class NativeSubscriptionLinks
 {
     public function __construct(
         private readonly NativeSubscriptionStore $store,
-        private readonly SubscriptionEntitlementResolver $entitlements,
+        private readonly LockedEntitlementQueries $entitlements,
         private readonly NativeSubscriptionDelivery $delivery,
     ) {}
 

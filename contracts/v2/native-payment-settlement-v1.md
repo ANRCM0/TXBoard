@@ -145,7 +145,7 @@ frozen channel attempts per invocation, oldest query observation first, and
 waits at least sixty seconds before automatically querying an attempt again.
 The query observation commits before provider I/O and never claims payment.
 An explicit user query may retry sooner. Canceled work is terminal, not a failed
-fulfillment retry. Full refund blocks new fulfillment and cancels pending work.
+fulfillment retry. Partial and full refunds credit the wallet only with entitlement_effect=none; they do not cancel fulfillment or pending work. See [Native Wallet / Refunds v1](native-wallet-refunds-v1.md).
 
 ## Scope and acceptance
 

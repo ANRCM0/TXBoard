@@ -4,15 +4,17 @@ namespace Tests\Feature\Subscription;
 
 use App\Models\Order;
 use App\Domains\Subscription\Services\PublishedOrderService;
-use App\Domains\Subscription\Services\SubscriptionEntitlementResolver;
 use App\Domains\Subscription\Services\SubscriptionFulfillmentService;
 use App\Domains\Subscription\Services\SubscriptionLifecycleService;
 use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Support\NativeSubscriptionTestCase;
+use Tests\Support\ReadsEntitlements;
 
 final class NativeSubscriptionEntitlementTest extends NativeSubscriptionTestCase
 {
+    use ReadsEntitlements;
+
     public function test_entitlement_uses_native_counters_and_reads_do_not_write_or_serialize_secrets(): void
     {
         [$user, $opened, $at] = $this->opened();
@@ -21,7 +23,7 @@ final class NativeSubscriptionEntitlementTest extends NativeSubscriptionTestCase
         ]);
         $before = $user->fresh()->getAttributes();
         $operations = DB::table('tx_subscription_operation')->count();
-        $view = app(SubscriptionEntitlementResolver::class)->resolve($user->id, $at + 1);
+        $view = $this->readEntitlement($user->id, $at + 1);
         $this->assertTrue($view['authorized']);
         $this->assertSame('2147483648', $view['quota_bytes']);
         $this->assertSame('50', $view['consumed_bytes']);
@@ -46,7 +48,7 @@ final class NativeSubscriptionEntitlementTest extends NativeSubscriptionTestCase
             'terms_hash' => DB::table('tx_subscription_terms')->where('id', $opened['terms_id'])->update(['content_hash' => str_repeat('0', 64)]),
             'source_order' => DB::table('tx_order')->where('id', $order->id)->update(['status' => Order::STATUS_PROCESSING]),
         };
-        $view = app(SubscriptionEntitlementResolver::class)->resolve($user->id, $at + 1);
+        $view = $this->readEntitlement($user->id, $at + 1);
         $this->assertFalse($view['authorized']);
         $this->assertSame('ENTITLEMENT_EVIDENCE_INVALID', $view['reason']);
         $this->assertArrayNotHasKey('quota_bytes', $view);
@@ -64,7 +66,7 @@ final class NativeSubscriptionEntitlementTest extends NativeSubscriptionTestCase
         [$user, $opened, $at] = $this->opened();
         app(SubscriptionLifecycleService::class)->reset($user->id, (int) $opened['subscription_id'], 'reset', '1', $at + 100);
         DB::table('tx_usage_period')->where('id', $opened['usage_period_id'])->update(['ends_at' => $at + 99]);
-        $view = app(SubscriptionEntitlementResolver::class)->resolve($user->id, $at + 101);
+        $view = $this->readEntitlement($user->id, $at + 101);
         $this->assertSame('ENTITLEMENT_EVIDENCE_INVALID', $view['reason']);
     }
 
@@ -72,9 +74,8 @@ final class NativeSubscriptionEntitlementTest extends NativeSubscriptionTestCase
     {
         [$user, $opened, $at] = $this->opened();
         DB::table('tx_usage_period')->where('id', $opened['usage_period_id'])->update(['billable_bytes' => 2147483648]);
-        $resolver = app(SubscriptionEntitlementResolver::class);
-        $this->assertSame('ENTITLEMENT_QUOTA_EXHAUSTED', $resolver->resolve($user->id, $at + 1)['reason']);
-        $this->assertSame('ENTITLEMENT_EXPIRED', $resolver->resolve($user->id, $opened['expires_at'])['reason']);
+        $this->assertSame('ENTITLEMENT_QUOTA_EXHAUSTED', $this->readEntitlement($user->id, $at + 1)['reason']);
+        $this->assertSame('ENTITLEMENT_EXPIRED', $this->readEntitlement($user->id, $opened['expires_at'])['reason']);
         $this->assertSame('active', DB::table('tx_subscription')->value('status'));
     }
 

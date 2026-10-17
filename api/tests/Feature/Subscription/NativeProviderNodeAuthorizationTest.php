@@ -15,7 +15,8 @@ use App\Domains\Subscription\Services\NativeCredentialProviderService;
 use App\Domains\Subscription\Services\PublishedOrderService;
 use App\Domains\Subscription\Services\SubscriptionFulfillmentService;
 use App\Domains\Subscription\Services\SubscriptionLifecycleService;
-use App\Domains\Subscription\Services\SubscriptionEntitlementResolver;
+use App\Domains\Subscription\Contracts\EntitlementQueries;
+use App\Domains\Subscription\Internal\LockedEntitlementQueries;
 use DomainException;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Database\QueryException;
@@ -138,6 +139,35 @@ final class NativeProviderNodeAuthorizationTest extends NativeSubscriptionTestCa
         $this->duringMetadata = fn () => DB::table('tx_user')->where('id', $user->id)->update(['banned' => true]);
         $this->rejectSnapshot('NATIVE_PROVIDER_NODE_AUTHORITY_CHANGED');
         $this->assertSame(0, DB::table('tx_node_authorization_state')->count());
+    }
+
+    public function test_node_uses_locked_port_and_keeps_exact_array_projection_across_metadata(): void
+    {
+        [$user] = $this->issued();
+        $delegate = app(LockedEntitlementQueries::class);
+        $projections = [];
+        $locked = Mockery::mock(LockedEntitlementQueries::class);
+        $locked->shouldReceive('resolveLocked')->twice()
+            ->withArgs(fn (int $userId, int $at): bool => $userId === (int) $user->id && $at > 0)
+            ->andReturnUsing(function (int $userId, int $at) use ($delegate, &$projections): array {
+                $this->assertGreaterThan(0, DB::transactionLevel());
+                $projection = $delegate->resolveLocked($userId, $at);
+                $projections[] = $projection;
+                return $projection;
+            });
+        $public = Mockery::mock(EntitlementQueries::class);
+        $public->shouldNotReceive('forAccount');
+        $this->app->instance(LockedEntitlementQueries::class, $locked);
+        $this->app->instance(EntitlementQueries::class, $public);
+
+        $payload = $this->verify($this->snapshot()['authorization']);
+        $this->assertCount(2, $projections);
+        $this->assertCount(23, $projections[0]);
+        $this->assertSame($projections[0], $projections[1]);
+        $this->assertSame([], array_filter($projections[0], 'is_object'));
+        $this->assertArrayNotHasKey('observed_at', $projections[0]);
+        $this->assertSame((int) $user->id, $payload['users'][0]['id']);
+        $this->assertSame(1, $this->metadataCalls);
     }
 
     public function test_unlimited_native_limits_are_zero_in_the_node_dto_and_null_is_refused(): void
@@ -363,11 +393,11 @@ final class NativeProviderNodeAuthorizationTest extends NativeSubscriptionTestCa
     public function test_locked_resolver_refuses_without_transaction_and_does_not_create_slots(): void
     {
         $user = $this->user();
-        $result = DB::transaction(fn () => app(SubscriptionEntitlementResolver::class)->resolveLocked($user->id, time()));
+        $result = DB::transaction(fn () => app(LockedEntitlementQueries::class)->resolveLocked($user->id, time()));
         $this->assertFalse($result['authorized']);
         $this->assertSame(0, DB::table('tx_subscription_slot')->count());
         $this->expectExceptionMessage('ENTITLEMENT_TRANSACTION_REQUIRED');
-        app(SubscriptionEntitlementResolver::class)->resolveLocked($user->id, time());
+        app(LockedEntitlementQueries::class)->resolveLocked($user->id, time());
     }
 
     private function issued(array $planOverrides = []): array
