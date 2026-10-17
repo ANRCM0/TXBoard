@@ -1,0 +1,429 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:txboard:module-manifest:v1",
+  "title": "Core module manifest v1",
+  "$defs": {
+    "code": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]{0,63}$"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9._-]{0,95}$"
+    },
+    "version": {
+      "type": "string",
+      "maxLength": 80,
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?$"
+    },
+    "permission": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "string",
+          "maxLength": 117,
+          "pattern": "^extensions\\.[a-z][a-z0-9_]*\\.[a-z][a-z0-9._-]*$"
+        }
+      ]
+    },
+    "schema": {
+      "type": "object",
+      "maxProperties": 17,
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "enum": [
+            "object",
+            "array",
+            "string",
+            "integer",
+            "boolean",
+            "null"
+          ]
+        },
+        "const": {
+          "type": [
+            "string",
+            "integer",
+            "boolean",
+            "null"
+          ]
+        },
+        "enum": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 64,
+          "items": {
+            "type": [
+              "string",
+              "integer",
+              "boolean",
+              "null"
+            ]
+          }
+        },
+        "anyOf": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 8,
+          "items": {
+            "$ref": "#/$defs/schema"
+          }
+        },
+        "properties": {
+          "type": "object",
+          "maxProperties": 64,
+          "propertyNames": {
+            "$ref": "#/$defs/code"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/schema"
+          }
+        },
+        "required": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/code"
+          },
+          "maxItems": 64,
+          "uniqueItems": true
+        },
+        "additionalProperties": {
+          "const": false
+        },
+        "items": {
+          "$ref": "#/$defs/schema"
+        },
+        "pattern": {
+          "type": "string",
+          "maxLength": 512
+        },
+        "x-decimal-maximum": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]{0,18})$"
+        },
+        "minLength": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "maxLength": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "minItems": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "maxItems": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "minimum": {
+          "type": "integer",
+          "minimum": -9007199254740991,
+          "maximum": 9007199254740991
+        },
+        "maximum": {
+          "type": "integer",
+          "minimum": -9007199254740991,
+          "maximum": 9007199254740991
+        }
+      },
+      "anyOf": [
+        {
+          "required": [
+            "type"
+          ]
+        },
+        {
+          "required": [
+            "const"
+          ],
+          "maxProperties": 1
+        },
+        {
+          "required": [
+            "anyOf"
+          ],
+          "maxProperties": 1
+        }
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "object"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "required": [
+              "properties",
+              "required",
+              "additionalProperties"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "array"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "required": [
+              "items",
+              "maxItems"
+            ],
+            "properties": {
+              "maxItems": {
+                "maximum": 1000
+              }
+            }
+          }
+        }
+      ]
+    },
+    "operation": {
+      "type": "object",
+      "properties": {
+        "actor": {
+          "enum": [
+            "user",
+            "admin"
+          ]
+        },
+        "permission": {
+          "$ref": "#/$defs/permission"
+        },
+        "idempotency": {
+          "enum": [
+            "read",
+            "domain"
+          ]
+        },
+        "input": {
+          "$ref": "#/$defs/schema"
+        },
+        "output": {
+          "$ref": "#/$defs/schema"
+        },
+        "recovery": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "actor",
+        "permission",
+        "idempotency",
+        "input",
+        "output"
+      ],
+      "additionalProperties": false
+    },
+    "presentation": {
+      "type": "object",
+      "properties": {
+        "actor": {
+          "enum": [
+            "user",
+            "admin"
+          ]
+        },
+        "permission": {
+          "$ref": "#/$defs/permission"
+        },
+        "configuration_permission": {
+          "$ref": "#/$defs/permission"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "entry": {
+          "type": "string",
+          "pattern": "^ui/[A-Za-z0-9_/-]+\\.html$"
+        },
+        "assets": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^ui/[A-Za-z0-9_-]+(/[A-Za-z0-9_-]+)*\\.(html|js|css|svg|png|woff2)$"
+          },
+          "maxItems": 32,
+          "uniqueItems": true
+        },
+        "operations": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9.-]{0,63}$"
+          },
+          "maxItems": 64,
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "actor",
+        "permission",
+        "title",
+        "entry",
+        "assets",
+        "operations"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "type": "object",
+  "properties": {
+    "schema": {
+      "const": "core-module/v1"
+    },
+    "id": {
+      "$ref": "#/$defs/code"
+    },
+    "version": {
+      "$ref": "#/$defs/version"
+    },
+    "kind": {
+      "enum": [
+        "optional-business",
+        "connector",
+        "presentation"
+      ]
+    },
+    "execution": {
+      "const": "in-process"
+    },
+    "kernel_api": {
+      "type": "object",
+      "properties": {
+        "min": {
+          "const": 1
+        },
+        "max": {
+          "const": 1
+        }
+      },
+      "required": [
+        "min",
+        "max"
+      ],
+      "additionalProperties": false
+    },
+    "requires": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/$defs/id"
+          },
+          "min": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "max": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "id",
+          "min",
+          "max"
+        ],
+        "additionalProperties": false
+      },
+      "maxItems": 64,
+      "uniqueItems": true
+    },
+    "boot_after": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/id"
+      },
+      "maxItems": 64,
+      "uniqueItems": true
+    },
+    "operations": {
+      "type": "object",
+      "maxProperties": 64,
+      "propertyNames": {
+        "pattern": "^[a-z][a-z0-9.-]{0,63}$"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/operation"
+      }
+    },
+    "subscriptions": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "maxLength": 96,
+        "pattern": "^[a-z][a-z0-9.-]*\\.v[1-9][0-9]*$"
+      },
+      "maxItems": 32,
+      "uniqueItems": true
+    },
+    "config_schema": {
+      "$ref": "#/$defs/schema"
+    },
+    "schema_version": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 2147483647
+    },
+    "secrets": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/code"
+      },
+      "maxItems": 16,
+      "uniqueItems": true
+    },
+    "presentation": {
+      "$ref": "#/$defs/presentation"
+    },
+    "connector": {
+      "const": "payment"
+    },
+    "lifecycle": {
+      "enum": [
+        "managed",
+        "payment-owner"
+      ]
+    }
+  },
+  "required": [
+    "schema",
+    "id",
+    "version",
+    "kind",
+    "execution",
+    "kernel_api",
+    "requires",
+    "boot_after",
+    "operations",
+    "subscriptions",
+    "config_schema",
+    "schema_version"
+  ],
+  "additionalProperties": false
+}

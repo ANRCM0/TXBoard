@@ -16,12 +16,11 @@ final class CoreModuleDeploy extends Command
             $file = $this->option('config-file');
             $configuration = null;
             if ($file !== null) {
-                if (!is_file($file) || filesize($file) > 32768) throw new \RuntimeException('MODULE_CONFIGURATION_INVALID');
-                $configuration = json_decode(file_get_contents($file), true, 32, JSON_THROW_ON_ERROR);
-                if (!is_array($configuration)) throw new \RuntimeException('MODULE_CONFIGURATION_INVALID');
+                $configuration = \App\Core\Host\Configuration\TrustedConfiguration::object($file, 32768);
             }
             $result = match ($this->argument('action')) {
                 'inspect' => $deployment->inspect($this->argument('deployment_id')),
+                'drain' => $deployment->assertDrained($this->argument('code')),
                 'resume' => $deployment->resume($this->argument('code'), $this->argument('deployment_id')),
                 default => $deployment->execute($this->argument('code'), $this->argument('action'), $this->argument('deployment_id'), $configuration),
             };

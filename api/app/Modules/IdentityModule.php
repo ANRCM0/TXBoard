@@ -25,6 +25,7 @@ final class IdentityModule implements ModuleProvider
                 new CapabilityDefinition('identity.sessions', AccountSessions::class),
                 new CapabilityDefinition('identity.accounts', AccountAdministration::class),
                 new CapabilityDefinition('identity.preferences', AccountPreferences::class),
+                new CapabilityDefinition('identity.initial-preparation', \App\Domains\Identity\Internal\InitialIdentity::class, exported: false),
             ], requires: [new CapabilityRequirement('installation.admission'), new CapabilityRequirement('subscription.entitlements'),
                 new CapabilityRequirement('subscription.locked-account-access')], required: true);
     }
@@ -36,6 +37,7 @@ final class IdentityModule implements ModuleProvider
             new ServiceBinding(AccountSessions::class, NativeAccountSessions::class),
             new ServiceBinding(AccountAdministration::class, NativeAccountAdministration::class),
             new ServiceBinding(AccountPreferences::class, NativeAccountPreferences::class),
+            new ServiceBinding(\App\Domains\Identity\Internal\InitialIdentity::class, \App\Domains\Identity\NativeInitialIdentity::class),
         ];
     }
 }

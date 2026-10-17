@@ -4,7 +4,6 @@
   "version": "1.0.0",
   "kind": "connector",
   "execution": "in-process",
-  "lifecycle": "payment-owner",
   "kernel_api": {
     "min": 1,
     "max": 1

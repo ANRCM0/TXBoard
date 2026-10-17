@@ -42,6 +42,7 @@ final class BillingModule implements ModuleProvider
                 new CapabilityDefinition('billing.order-cancellation', OrderCancellation::class),
                 new CapabilityDefinition('billing.order-checkout', OrderCheckout::class),
                 new CapabilityDefinition('billing.winning-proof', WinningPaymentProofs::class, exported: false),
+                new CapabilityDefinition('billing.package-references', \App\Domains\Billing\Internal\PaymentPackageReferences::class, exported: false),
             ], requires: [new CapabilityRequirement('installation.admission'), new CapabilityRequirement('subscription.fulfillment'),
                 new CapabilityRequirement('notifications.event-journal')], required: true);
     }
@@ -59,6 +60,7 @@ final class BillingModule implements ModuleProvider
             new ServiceBinding(OrderCancellation::class, NativeOrderCancellation::class),
             new ServiceBinding(OrderCheckout::class, \App\Domains\Billing\OrderCheckout::class),
             new ServiceBinding(WinningPaymentProofs::class, NativePaymentSettlement::class),
+            new ServiceBinding(\App\Domains\Billing\Internal\PaymentPackageReferences::class, \App\Domains\Billing\NativePaymentPackageReferences::class),
         ];
     }
 }

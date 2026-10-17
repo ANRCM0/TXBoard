@@ -79,7 +79,7 @@ final class ModuleReadiness
             $code = $package['code'];
             if (!isset($target[$code])) {
                 if (Plugin::query()->where('code', $code)->sharedLock()->exists()
-                    || DB::table('tx_payment_dispatch')->where('plugin_code', $code)->sharedLock()->exists()
+                    || app(\App\Domains\Billing\Internal\PaymentPackageReferences::class)->retained($code)
                     || DB::table('tx_module_delivery')->where('module_code', $code)->whereNotIn('status', ['accepted', 'refused'])->sharedLock()->exists()) {
                     $this->fail('REMOVAL_DRAIN_REQUIRED');
                 }

@@ -1,0 +1,298 @@
+{
+  "type": "object",
+  "properties": {
+    "schema": {
+      "const": "native-preparation/v1"
+    },
+    "installation_id": {
+      "type": "string",
+      "minLength": 36,
+      "maxLength": 36,
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "bootstrap_key": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,63}$"
+    },
+    "operation_key": {
+      "type": "string",
+      "minLength": 36,
+      "maxLength": 36,
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "identity": {
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 255
+        },
+        "password": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 1024
+        },
+        "permissions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[a-z][a-z0-9_.-]{0,127}$"
+          },
+          "minItems": 0,
+          "maxItems": 128
+        }
+      },
+      "required": [
+        "email",
+        "password",
+        "permissions"
+      ],
+      "additionalProperties": false
+    },
+    "network": {
+      "type": "object",
+      "properties": {
+        "node_token": {
+          "type": "string",
+          "minLength": 16,
+          "maxLength": 255,
+          "pattern": "^[A-Za-z0-9._~-]{16,255}$"
+        },
+        "groups": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 2147483647
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 255
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1,
+          "maxItems": 128
+        },
+        "nodes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 2147483647
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 255
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "vless",
+                  "vmess"
+                ]
+              },
+              "host": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 253,
+                "pattern": "^[A-Za-z0-9.:-]+$"
+              },
+              "port": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 65535
+              },
+              "group_ids": {
+                "type": "array",
+                "items": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 2147483647
+                },
+                "minItems": 1,
+                "maxItems": 128
+              },
+              "rate": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 9,
+                "pattern": "^(?:0|[1-9][0-9]{0,5})(?:\\.[0-9]{1,2})?$"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "type",
+              "host",
+              "port",
+              "group_ids",
+              "rate"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1,
+          "maxItems": 128
+        }
+      },
+      "required": [
+        "node_token",
+        "groups",
+        "nodes"
+      ],
+      "additionalProperties": false
+    },
+    "catalog": {
+      "type": "object",
+      "properties": {
+        "plans": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 2147483647
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 255
+              },
+              "group_id": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 2147483647
+              },
+              "quota_gib": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 8589934591
+              },
+              "reset_method": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 4
+              },
+              "currency": {
+                "type": "string",
+                "enum": [
+                  "CNY",
+                  "USD"
+                ]
+              },
+              "prices_minor": {
+                "type": "object",
+                "properties": {
+                  "monthly": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 19,
+                    "pattern": "^(?:0|[1-9][0-9]{0,18})$",
+                    "x-decimal-maximum": "9223372036854775807"
+                  },
+                  "quarterly": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 19,
+                    "pattern": "^(?:0|[1-9][0-9]{0,18})$",
+                    "x-decimal-maximum": "9223372036854775807"
+                  },
+                  "half_yearly": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 19,
+                    "pattern": "^(?:0|[1-9][0-9]{0,18})$",
+                    "x-decimal-maximum": "9223372036854775807"
+                  },
+                  "yearly": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 19,
+                    "pattern": "^(?:0|[1-9][0-9]{0,18})$",
+                    "x-decimal-maximum": "9223372036854775807"
+                  },
+                  "two_yearly": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 19,
+                    "pattern": "^(?:0|[1-9][0-9]{0,18})$",
+                    "x-decimal-maximum": "9223372036854775807"
+                  },
+                  "three_yearly": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 19,
+                    "pattern": "^(?:0|[1-9][0-9]{0,18})$",
+                    "x-decimal-maximum": "9223372036854775807"
+                  },
+                  "onetime": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 19,
+                    "pattern": "^(?:0|[1-9][0-9]{0,18})$",
+                    "x-decimal-maximum": "9223372036854775807"
+                  },
+                  "reset_traffic": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 19,
+                    "pattern": "^(?:0|[1-9][0-9]{0,18})$",
+                    "x-decimal-maximum": "9223372036854775807"
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "group_id",
+              "quota_gib",
+              "reset_method",
+              "currency",
+              "prices_minor"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1,
+          "maxItems": 128
+        }
+      },
+      "required": [
+        "plans"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "schema",
+    "installation_id",
+    "bootstrap_key",
+    "operation_key",
+    "identity",
+    "network",
+    "catalog"
+  ],
+  "additionalProperties": false
+}

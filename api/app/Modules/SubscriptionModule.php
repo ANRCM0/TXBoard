@@ -35,6 +35,7 @@ final class SubscriptionModule implements ModuleProvider
                 new CapabilityDefinition('subscription.locked-entitlements', LockedEntitlementQueries::class, exported: false),
                 new CapabilityDefinition('subscription.locked-fulfillment', LockedOrderFulfillment::class, exported: false),
                 new CapabilityDefinition('subscription.locked-account-access', LockedAccountAccess::class, exported: false),
+                new CapabilityDefinition('subscription.initial-preparation', \App\Domains\Subscription\Internal\InitialCatalog::class, exported: false),
             ], requires: [new CapabilityRequirement('installation.admission'), new CapabilityRequirement('platform.clock'), new CapabilityRequirement('credentials.provider-client'), new CapabilityRequirement('billing.winning-proof')], required: true);
     }
 
@@ -49,6 +50,7 @@ final class SubscriptionModule implements ModuleProvider
             new ServiceBinding(LockedEntitlementQueries::class, SubscriptionEntitlementResolver::class),
             new ServiceBinding(LockedOrderFulfillment::class, SubscriptionFulfillmentService::class),
             new ServiceBinding(LockedAccountAccess::class, NativeAccountAccess::class),
+            new ServiceBinding(\App\Domains\Subscription\Internal\InitialCatalog::class, \App\Domains\Subscription\NativeInitialCatalog::class),
         ];
     }
 }

@@ -249,6 +249,8 @@ jobs:
         env:
           GATEWAY_TEST_REDIS_URL: redis://127.0.0.1:16379
         run: npm run test:browser
+      - name: Browser module host assets, opaque Bridge and configuration recovery
+        run: node --test tests/browser/module-host.test.mjs
       - name: Experimental metadata codec byte vectors in Chromium
         run: node scripts/test-sc-v2-codec-browser.mjs
       - name: Offline SC-v2 crypto Node and Chromium interoperability

@@ -25,7 +25,7 @@ final class ExtensionPresentationController
     public function configure(Request $request, string $code): Response
     {
         return $this->respond($request, function () use ($request, $code): Response {
-            [$package, $view] = $this->authorize($code, 'admin', true);
+            [$package, $view] = $this->authorize($request, $code, 'admin', true);
             $permission = $view['configuration_permission'] ?? null;
             if ($permission === null) throw new ExtensionFailure('MODULE_CONFIGURATION_PERMISSION_REQUIRED', 403);
             app(ExtensionActors::class)->authorize('admin', $permission);
@@ -45,7 +45,7 @@ final class ExtensionPresentationController
     private function describe(Request $request, string $code, string $kind): Response
     {
         return $this->respond($request, function () use ($request, $code, $kind): Response {
-            [$package, $view] = $this->authorize($code, $kind);
+            [$package, $view] = $this->authorize($request, $code, $kind);
             $operations = array_intersect_key($package['manifest']['operations'], array_flip($view['operations']));
             foreach ($operations as &$operation) {
                 $operation['input'] = TransportSchema::wireDefinition($operation['input']);
@@ -53,7 +53,7 @@ final class ExtensionPresentationController
             }
             unset($operation);
             $data = ['schema' => 'module-presentation/v1', 'module' => $code, 'version' => $package['version'], 'fingerprint' => $package['fingerprint'],
-                'actor' => $kind, 'title' => $view['title'], 'entry' => $view['entry'], 'assets' => $view['assets'], 'operations' => $operations];
+                'actor' => $kind, 'title' => $view['title'], 'entry' => $view['entry'], 'assets' => $view['assets'], 'operations' => (object) $operations];
             if ($kind === 'admin' && isset($view['configuration_permission'])) {
                 $row = Plugin::query()->useWritePdo()->where('code', $code)->firstOrFail();
                 $configuration = json_decode($row->config ?: '{}', true, 32, JSON_THROW_ON_ERROR);
@@ -69,7 +69,7 @@ final class ExtensionPresentationController
     private function resource(Request $request, string $code, string $asset, string $kind): Response
     {
         return $this->respond($request, function () use ($request, $code, $asset, $kind): Response {
-            [$package, $view] = $this->authorize($code, $kind);
+            [$package, $view] = $this->authorize($request, $code, $kind);
             if (!in_array($asset, $view['assets'], true) || !isset($package['files'][$asset])) throw new ExtensionFailure('MODULE_RESOURCE_NOT_FOUND', 404);
             $path = $package['path'].'/'.$asset;
             if (!is_file($path) || is_link($path) || filesize($path) > 2097152 || !hash_equals($package['files'][$asset], hash_file('sha256', $path))) {
@@ -85,9 +85,9 @@ final class ExtensionPresentationController
         });
     }
 
-    private function authorize(string $code, string $kind, bool $configure = false): array
+    private function authorize(Request $request, string $code, string $kind, bool $configure = false): array
     {
-        $package = app(ExtensionRuntime::class)->package($code);
+        $package = app(ExtensionRuntime::class)->package($code, $request->header('X-Core-Module-Fingerprint'));
         $view = $package['manifest']['presentation'] ?? null;
         if ($view === null || $view['actor'] !== $kind) throw new ExtensionFailure('MODULE_PRESENTATION_NOT_FOUND', 404);
         app(ExtensionActors::class)->authorize($kind, $configure ? ($view['configuration_permission'] ?? null) : $view['permission']);

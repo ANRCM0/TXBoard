@@ -16,12 +16,13 @@ final class ExtensionRuntime
     public function __construct(private readonly ModulePackageLock $packages, private readonly ModuleRuntime $runtime,
         private readonly PluginManager $plugins, private readonly InstallationAdmission $installation) {}
 
-    public function package(string $code): array
+    public function package(string $code, ?string $expectedFingerprint = null): array
     {
         $package = $this->packages->package($code);
         if ($package === null || !in_array('plugin.'.$code, array_column($this->runtime->plan()->modules, 'id'), true)) {
             throw new ExtensionFailure('MODULE_NOT_AVAILABLE', 404);
         }
+        if ($expectedFingerprint !== null && !hash_equals($package['fingerprint'], $expectedFingerprint)) throw new ExtensionFailure('MODULE_VERSION_CHANGED');
         return $package;
     }
 

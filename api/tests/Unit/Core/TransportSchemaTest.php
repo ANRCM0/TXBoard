@@ -63,4 +63,17 @@ final class TransportSchemaTest extends TestCase
         self::assertSame('{"configuration":{}}', json_encode($validator->project(['configuration' => []], $schema)));
         self::assertSame('{}', json_encode(TransportSchema::wireDefinition($empty)['properties']));
     }
+
+    public function test_schema_vocabulary_preserves_absolute_end_and_unicode_scalar_length(): void
+    {
+        $validator = new TransportSchema;
+        self::assertFalse($validator->accepts("12\n", ['type' => 'string', 'pattern' => '^[1-9][0-9]*$']));
+        self::assertTrue($validator->accepts("\u{1F642}", ['type' => 'string', 'maxLength' => 1]));
+        self::assertFalse($validator->accepts("\u{1F642}\u{1F642}", ['type' => 'string', 'maxLength' => 1]));
+        foreach ([['type' => 'string', 'maxLength' => -1], ['const' => 1, 'type' => 'integer'],
+            ['type' => 'string', 'x-decimal-maximum' => '01'], ['type' => 'string', 'pattern' => '[']] as $invalid) {
+            try { TransportSchema::assertDefinition($invalid); self::fail('Expected invalid schema'); }
+            catch (\InvalidArgumentException $error) { self::assertSame('CONTRACT_SCHEMA_INVALID', $error->getMessage()); }
+        }
+    }
 }

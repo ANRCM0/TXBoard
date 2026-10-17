@@ -1,5 +1,6 @@
 import { ExtensionClient, acceptsModuleSchema, parseExtensionDescriptor, type ExtensionDescriptor } from '@txboard/core-sdk'
 import { ModuleBridge } from './bridge.js'
+import { moduleDocument } from './resources.js'
 
 function element<T extends HTMLElement>(selector: string): T {
   const value = document.querySelector<T>(selector)
@@ -16,7 +17,11 @@ element<HTMLFormElement>('#connect').addEventListener('submit', async event => {
   event.preventDefault()
   const current = ++generation
   disconnect?.()
+  const connection = new AbortController()
+  disconnect = () => connection.abort()
   surface.replaceChildren()
+  element<HTMLButtonElement>('#navigation').hidden = true
+  element('#details').textContent = ''
   configForm.replaceChildren()
   configForm.hidden = true
   try {
@@ -28,9 +33,11 @@ element<HTMLFormElement>('#connect').addEventListener('submit', async event => {
     const module = element<HTMLInputElement>('#module').value
     if (!/^[a-z][a-z0-9_]{0,63}$/.test(module) || kind === 'admin' && !/^[a-zA-Z0-9_-]{1,128}$/.test(adminPath)) throw new Error('HOST_INPUT_INVALID')
     const token = element<HTMLInputElement>('#token').value
+    let expectedFingerprint: string | null = null
     const base = `${origin.origin}/txapi/${kind === 'admin' ? `admin/${encodeURIComponent(adminPath)}/` : ''}extensions/${module}`
     const request = async (path: string, init: RequestInit = {}): Promise<Response> => {
-      const response = await fetch(`${base}/${path}`, { ...init, credentials: 'omit', cache: 'no-store', headers: { Authorization: `Bearer ${token}`, ...init.headers } })
+      const response = await fetch(`${base}/${path}`, { ...init, signal: init.signal ?? connection.signal, credentials: 'omit', cache: 'no-store', headers: {
+        Authorization: `Bearer ${token}`, ...(expectedFingerprint ? { 'X-Core-Module-Fingerprint': expectedFingerprint } : {}), ...init.headers } })
       if (!response.ok) {
         const data = await response.json().catch(() => null)
         const code: unknown = data?.error?.code
@@ -41,8 +48,8 @@ element<HTMLFormElement>('#connect').addEventListener('submit', async event => {
     status.textContent = 'Checking module permissions...'
     const descriptor = parseExtensionDescriptor((await (await request('presentation')).json()).data)
     if (descriptor.module !== module || descriptor.actor !== kind) throw new Error('MODULE_DESCRIPTOR_INVALID')
-    const html = await (await request(`resources/${descriptor.entry}`)).text()
-    if (html.length > 2097152) throw new Error('MODULE_RESOURCE_LIMIT')
+    expectedFingerprint = descriptor.fingerprint
+    const html = await moduleDocument(descriptor, path => request(`resources/${path}`))
     if (current !== generation) return
     const navigation = element<HTMLButtonElement>('#navigation')
     navigation.textContent = descriptor.title
@@ -52,8 +59,7 @@ element<HTMLFormElement>('#connect').addEventListener('submit', async event => {
     frame.title = descriptor.title
     frame.setAttribute('sandbox', 'allow-scripts')
     frame.referrerPolicy = 'no-referrer'
-    const csp = `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'none'; form-action 'none'">`
-    frame.srcdoc = csp + html
+    frame.srcdoc = html
     const client = new ExtensionClient(descriptor, async (operation, input, options) => {
       const response = await request(`operations/${encodeURIComponent(operation)}`, { method: 'POST', signal: options.signal,
         headers: { 'Content-Type': 'application/json', ...(options.idempotencyKey ? { 'Idempotency-Key': options.idempotencyKey } : {}) }, body: JSON.stringify({ input }) })
@@ -67,14 +73,27 @@ element<HTMLFormElement>('#connect').addEventListener('submit', async event => {
       const reply = await bridge.receive(message.source, message.origin, message.data)
       if (reply && current === generation) {
         frame.contentWindow?.postMessage(reply, '*')
-        if (reply.error) status.textContent = String(reply.error)
+        if (reply.error) {
+          status.textContent = String(reply.error)
+          if (['MODULE_NOT_AVAILABLE', 'MODULE_PERMISSION_DENIED', 'MODULE_ACTOR_REJECTED', 'MODULE_VERSION_CHANGED'].includes(String(reply.error))) {
+            disconnect?.()
+            navigation.hidden = true
+            configForm.hidden = true
+          }
+        }
       }
     }
     window.addEventListener('message', receive)
-    disconnect = () => { bridge.close(); window.removeEventListener('message', receive); frame.remove() }
+    disconnect = () => { connection.abort(); bridge.close(); window.removeEventListener('message', receive); frame.remove() }
     navigation.onclick = () => frame.focus()
+    let pendingConfiguration: { key: string; body: string } | null = null
     renderConfiguration(descriptor, async configuration => {
-      await request('configuration', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Idempotency-Key': crypto.randomUUID() }, body: JSON.stringify({ configuration }) })
+      const body = JSON.stringify({ configuration })
+      if (pendingConfiguration && pendingConfiguration.body !== body) throw new Error('MODULE_CONFIGURATION_RECOVERY_REQUIRED')
+      pendingConfiguration ??= { key: crypto.randomUUID(), body }
+      status.textContent = `Saving configuration: ${pendingConfiguration.key}`
+      await request('configuration', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Idempotency-Key': pendingConfiguration.key }, body })
+      pendingConfiguration = null
       status.textContent = 'Configuration saved. Open the module again to load its current version.'
     })
     status.textContent = 'Module admitted. Page is isolated; operations remain permission checked by Core.'

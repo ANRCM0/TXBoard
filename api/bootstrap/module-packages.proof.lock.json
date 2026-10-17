@@ -14,7 +14,7 @@
       "files": {
         "config.json": "d8958ec79ff150a002e584f83635cce183dc895889131d58df198512f02c1e65",
         "module.json": "55b1adb1508c285123a2de924a11b0a0289389700b8ade10026c805f1cee33a0",
-        "Plugin.php": "dd2d43a642c1c032f4f0189a225563303ba8de07bab87f9bdff32ba2a026ae4e"
+        "Plugin.php": "1bf732d79976765fabd506ed76d6c8ca642e8a356348619c72d10782220e3af5"
       }
     },
     {
@@ -25,9 +25,9 @@
       "version": "1.0.0",
       "files": {
         "config.json": "7fe411483c8b3902d88a396c28e7fd38f53e3ccfdd0a497d55498b6309981793",
-        "module.json": "ecbe7cf84b754cce585a7b6176d001acac1a0a6cc660517371992593bfc74d46",
+        "module.json": "83176f38f790caa339395db41cfd58174195458fc5547cb1285538d43bf9443a",
         "NativeAdapter.php": "124e357d03bfd3ac1ed413a4da5e696babac9bf2225c9521392e351e96db226b",
-        "Plugin.php": "a397c4e86c11af23b78299bbd7ba8f6f92d684ff9bbb6db2eaab3eabe65aa3d4"
+        "Plugin.php": "502f4ee69f9253c6338caf595030848327a9d7a1136b747b3537a0af5f796a6a"
       }
     },
     {

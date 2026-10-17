@@ -17,7 +17,7 @@ final class EnforceInstallationAuthority
 {
     // Recovery tools do not authorize business work or native activation.
     private const PREPARATION_COMMANDS = [
-        'core:installation', 'core:modules', 'core:module-deploy', 'core:module-release', 'core:plan-publish', 'core:provider-register',
+        'core:installation', 'core:native-prepare', 'core:modules', 'core:module-deploy', 'core:module-release', 'core:plan-publish', 'core:provider-register',
         'migrate', 'migrate:status', 'list', 'help', 'about', 'route:list',
         'config:show', 'config:cache', 'config:clear', 'route:cache', 'route:clear',
         'view:cache', 'view:clear', 'event:cache', 'event:clear', 'event:list',

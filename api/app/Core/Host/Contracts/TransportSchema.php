@@ -15,22 +15,39 @@ final class TransportSchema
             'items', 'minItems', 'maxItems', 'minLength', 'maxLength', 'pattern', 'minimum', 'maximum', 'x-decimal-maximum'];
         if ($depth > 20 || array_diff(array_keys($schema), $allowed)) throw new InvalidArgumentException('CONTRACT_SCHEMA_INVALID');
         if (isset($schema['anyOf'])) {
-            if (!is_array($schema['anyOf']) || !array_is_list($schema['anyOf']) || count($schema['anyOf']) < 2 || count($schema['anyOf']) > 8) {
+            if (count($schema) !== 1 || !is_array($schema['anyOf']) || !array_is_list($schema['anyOf']) || count($schema['anyOf']) < 2 || count($schema['anyOf']) > 8) {
                 throw new InvalidArgumentException('CONTRACT_SCHEMA_INVALID');
             }
             foreach ($schema['anyOf'] as $variant) self::assertDefinition($variant, $depth + 1);
             return;
         }
         if (array_key_exists('const', $schema)) {
-            if (!is_scalar($schema['const']) && $schema['const'] !== null) throw new InvalidArgumentException('CONTRACT_SCHEMA_INVALID');
+            if (count($schema) !== 1 || !is_scalar($schema['const']) && $schema['const'] !== null || is_float($schema['const'])
+                || is_int($schema['const']) && abs($schema['const']) > 9007199254740991) throw new InvalidArgumentException('CONTRACT_SCHEMA_INVALID');
             return;
         }
         if (!in_array($schema['type'] ?? null, ['object', 'array', 'string', 'integer', 'boolean', 'null'], true)) {
             throw new InvalidArgumentException('CONTRACT_SCHEMA_INVALID');
         }
+        foreach (['minLength', 'maxLength', 'minItems', 'maxItems', 'minimum', 'maximum'] as $field) {
+            if (array_key_exists($field, $schema) && (!is_int($schema[$field]) || abs($schema[$field]) > 9007199254740991
+                || !in_array($field, ['minimum', 'maximum'], true) && $schema[$field] < 0)) throw new InvalidArgumentException('CONTRACT_SCHEMA_INVALID');
+        }
+        foreach ([['minLength', 'maxLength'], ['minItems', 'maxItems'], ['minimum', 'maximum']] as [$minimum, $maximum]) {
+            if (isset($schema[$minimum], $schema[$maximum]) && $schema[$minimum] > $schema[$maximum]) throw new InvalidArgumentException('CONTRACT_SCHEMA_INVALID');
+        }
+        if (array_key_exists('enum', $schema)) {
+            if (!is_array($schema['enum']) || !array_is_list($schema['enum']) || count($schema['enum']) < 1 || count($schema['enum']) > 64) throw new InvalidArgumentException('CONTRACT_SCHEMA_INVALID');
+            foreach ($schema['enum'] as $value) if (!is_scalar($value) && $value !== null || is_float($value)
+                || is_int($value) && abs($value) > 9007199254740991) throw new InvalidArgumentException('CONTRACT_SCHEMA_INVALID');
+        }
+        if (array_key_exists('x-decimal-maximum', $schema) && ($schema['type'] !== 'string' || !is_string($schema['x-decimal-maximum'])
+            || preg_match('/\A(?:0|[1-9][0-9]{0,18})\z/D', $schema['x-decimal-maximum']) !== 1)) throw new InvalidArgumentException('CONTRACT_SCHEMA_INVALID');
         if ($schema['type'] === 'object') {
             if (($schema['additionalProperties'] ?? null) !== false || !is_array($schema['properties'] ?? null)
                 || count($schema['properties']) > 64 || !is_array($schema['required'] ?? null) || !array_is_list($schema['required'])
+                || count(array_filter($schema['required'], 'is_string')) !== count($schema['required'])
+                || count(array_unique($schema['required'], SORT_STRING)) !== count($schema['required'])
                 || array_diff($schema['required'], array_keys($schema['properties']))) throw new InvalidArgumentException('CONTRACT_SCHEMA_INVALID');
             foreach ($schema['properties'] as $name => $property) {
                 if (!is_string($name) || preg_match('/\A[a-z][a-z0-9_]{0,63}\z/D', $name) !== 1) throw new InvalidArgumentException('CONTRACT_SCHEMA_INVALID');
@@ -43,7 +60,7 @@ final class TransportSchema
             }
             self::assertDefinition($schema['items'], $depth + 1);
         }
-        if (isset($schema['pattern']) && (!is_string($schema['pattern']) || strlen($schema['pattern']) > 512
+        if (array_key_exists('pattern', $schema) && (!is_string($schema['pattern']) || strlen($schema['pattern']) > 512
             || @preg_match('~'.str_replace('~', '\\~', $schema['pattern']).'~Du', '') === false)) throw new InvalidArgumentException('CONTRACT_SCHEMA_INVALID');
     }
 
@@ -87,6 +104,7 @@ final class TransportSchema
             if ($length < ($schema['minLength'] ?? 0) || $length > ($schema['maxLength'] ?? PHP_INT_MAX)) return false;
             if (isset($schema['pattern']) && preg_match('~'.str_replace('~', '\\~', $schema['pattern']).'~Du', $value) !== 1) return false;
             if (isset($schema['x-decimal-maximum'])) {
+                if (preg_match('/\A(?:0|[1-9][0-9]*)\z/D', $value) !== 1) return false;
                 $maximum = $schema['x-decimal-maximum'];
                 if (strlen($value) > strlen($maximum) || strlen($value) === strlen($maximum) && strcmp($value, $maximum) > 0) return false;
             }

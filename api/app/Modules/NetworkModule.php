@@ -19,6 +19,7 @@ final class NetworkModule implements ModuleProvider
         return new ModuleDefinition('network', '1.0.0', 'required-business', provides: [
                 new CapabilityDefinition('network.groups', NetworkGroups::class),
                 new CapabilityDefinition('network.node-authorization', NodeAuthorizationQueries::class),
+                new CapabilityDefinition('network.initial-preparation', \App\Domains\Network\Internal\InitialNetwork::class, exported: false),
             ], requires: [new CapabilityRequirement('installation.admission'), new CapabilityRequirement('subscription.entitlements'), new CapabilityRequirement('credentials.provider-client')], required: true);
     }
 
@@ -27,6 +28,7 @@ final class NetworkModule implements ModuleProvider
         return [
             new ServiceBinding(NetworkGroups::class, NetworkGroupReader::class),
             new ServiceBinding(NodeAuthorizationQueries::class, NativeNodeAuthorizationQueries::class),
+            new ServiceBinding(\App\Domains\Network\Internal\InitialNetwork::class, \App\Domains\Network\NativeInitialNetwork::class),
         ];
     }
 }

@@ -198,6 +198,18 @@ class InstallationAuthority implements \App\Domains\Installation\Contracts\Insta
         return DB::transaction(fn (): array => $this->assertNativeDomain(), 3);
     }
 
+    public function runtimeReport(): array
+    {
+        return $this->storage(fn (): array => DB::transaction(function (): array {
+            $state = $this->assertNativeDomain();
+            $modules = app(\App\Core\Host\Modules\ModuleReadiness::class)->inspectLocked(true);
+            return ['schema' => 'native-runtime-readiness/v1', 'ready' => true,
+                'installation_id' => $state['installation_id'], 'authority_epoch' => $state['authority_epoch'],
+                'composition_fingerprint' => $modules['fingerprint'], 'release_id' => $modules['composition']['release_id'],
+                'diagnostics' => $modules['diagnostics']];
+        }, 3));
+    }
+
     public function assertHttp(string $method, string $path): void
     {
         if ($this->inspect()['mode'] !== 'native') { $this->assertRuntime(); return; }

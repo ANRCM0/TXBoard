@@ -10,6 +10,7 @@ use App\Extensions\Contracts\ExtensionFailure;
 use App\Extensions\Contracts\DeliveryResult;
 use App\Extensions\Contracts\DomainEvent;
 use App\Extensions\Contracts\NotificationChannel;
+use App\Extensions\SDK\OutboundTargets;
 use App\Services\Plugin\AbstractPlugin;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -40,16 +41,21 @@ final class Plugin extends AbstractPlugin implements DeploymentModule, Extension
         if ($known !== null) return new DeliveryResult(hash_equals($known->body_hash, $hash) ? 'accepted' : 'refused',
             hash_equals($known->body_hash, $hash) ? 'RECEIPT_REPLAY' : 'RECEIPT_CONFLICT');
         $url = $this->getConfig('endpoint');
-        $parts = is_string($url) ? parse_url($url) : false;
-        $hosts = array_filter(explode(',', (string) env('DELIVERY_RECEIPT_ALLOWED_HOSTS', '')));
-        if (!is_array($parts) || ($parts['scheme'] ?? null) !== 'https' || isset($parts['user']) || isset($parts['pass'])
-            || isset($parts['fragment']) || !in_array($parts['host'] ?? null, $hosts, true)) return new DeliveryResult('refused', 'RECEIVER_CONFIGURATION_REJECTED');
+        if (!OutboundTargets::https($this->pluginCode, $url)) return new DeliveryResult('refused', 'RECEIVER_CONFIGURATION_REJECTED');
+        if (DB::transactionLevel() !== 0) throw new ExtensionFailure('MODULE_DELIVERY_TRANSACTION_FORBIDDEN');
         try {
             // The receiver persists event_id before acknowledging it. Unknown results retain that ID for retry.
             $response = Http::withToken($this->getConfig('token'))->withHeaders(['Idempotency-Key' => $event->eventId])
                 ->connectTimeout(3)->timeout(20)->withOptions(['allow_redirects' => false, 'stream' => true])->post($url, $body);
             $stream = $response->toPsrResponse()->getBody();
-            try { $text = $stream->read(8193); }
+            try {
+                $text = '';
+                while (!$stream->eof() && strlen($text) <= 8192) {
+                    $chunk = $stream->read(8193 - strlen($text));
+                    if ($chunk === '') break;
+                    $text .= $chunk;
+                }
+            }
             finally { $stream->close(); }
             if (strlen($text) > 8192) return new DeliveryResult('unknown', 'RECEIVER_RESPONSE_INVALID');
             $receipt = json_decode($text, true);

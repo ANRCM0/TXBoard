@@ -167,6 +167,7 @@ class PluginManager
 
     public function isManagedModule(string $pluginCode): bool
     {
+        if (config('core_installation.mode') !== 'native') return false;
         $file = $this->getPluginPath($pluginCode).'/module.json';
         if (!File::isFile($file)) return false;
         $package = app(\App\Core\Host\Modules\ModulePackageLock::class)->package($pluginCode);
@@ -1125,6 +1126,9 @@ class PluginManager
         if ($row === null || (!$recovery && !$row->is_enabled) || $row->native_payment_mutation_token !== null) {
             throw new BillingError('PAYMENT_PROVIDER_UNAVAILABLE');
         }
+        if ($row->version !== $package['version'] || (int) $row->module_schema_version !== $package['manifest']['schema_version']) {
+            throw new BillingError('PAYMENT_PROVIDER_VERSION_UNAVAILABLE');
+        }
         try {
             $this->assertCurrentPackage($code);
         } catch (\Throwable) {
@@ -1179,7 +1183,7 @@ class PluginManager
             if ($row !== null && $row->native_payment_mutation_token !== null) {
                 throw new BillingError('PAYMENT_PLUGIN_MUTATION_IN_PROGRESS');
             }
-            if ($drain && DB::table('tx_payment_dispatch')->where('plugin_code', $code)->exists()) {
+            if ($drain && app(\App\Domains\Billing\Internal\PaymentPackageReferences::class)->retained($code)) {
                 throw new BillingError('PAYMENT_PLUGIN_DRAIN_REQUIRED');
             }
             $token = bin2hex(random_bytes(32));

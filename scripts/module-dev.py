@@ -21,7 +21,21 @@ MAX_FILES, MAX_BYTES = 2000, 50 * 1024 * 1024
 
 
 def read(path):
-    return json.loads(path.read_text(encoding="utf-8"))
+    if path.is_symlink() or not path.is_file() or path.stat().st_size > 2097152:
+        raise ValueError("MODULE_JSON_UNAVAILABLE")
+    def pairs(items):
+        result = {}
+        for key, value in items:
+            if key in result:
+                raise ValueError("MODULE_JSON_DUPLICATE_KEY")
+            result[key] = value
+        return result
+    def nonfinite(value):
+        raise ValueError("MODULE_JSON_NONFINITE")
+    value = json.loads(path.read_text(encoding="utf-8"), object_pairs_hook=pairs, parse_constant=nonfinite)
+    if not isinstance(value, dict):
+        raise ValueError("MODULE_JSON_OBJECT_REQUIRED")
+    return value
 
 
 def studly(code):
@@ -53,9 +67,9 @@ def files(path):
             raise ValueError("MODULE_FILE_PATH_INVALID")
         folded.add(relative.lower())
         total += item.stat().st_size
-        found[relative] = hashlib.sha256(item.read_bytes()).hexdigest()
-        if len(found) > MAX_FILES or total > MAX_BYTES:
+        if len(found) >= MAX_FILES or total > MAX_BYTES:
             raise ValueError("MODULE_PACKAGE_LIMIT")
+        found[relative] = hashlib.sha256(item.read_bytes()).hexdigest()
     if not {"Plugin.php", "config.json", "module.json"} <= found.keys():
         raise ValueError("MODULE_PACKAGE_INCOMPLETE")
     return found
@@ -66,22 +80,39 @@ def schema(value, depth=0):
     if not isinstance(value, dict) or depth > 20 or value.keys() - allowed:
         raise ValueError("MODULE_SCHEMA_INVALID")
     if "anyOf" in value:
-        if not isinstance(value["anyOf"], list) or not 2 <= len(value["anyOf"]) <= 8:
+        if set(value) != {"anyOf"} or not isinstance(value["anyOf"], list) or not 2 <= len(value["anyOf"]) <= 8:
             raise ValueError("MODULE_SCHEMA_INVALID")
         for variant in value["anyOf"]:
             schema(variant, depth + 1)
         return
     if "const" in value:
-        if isinstance(value["const"], (dict, list)):
+        if set(value) != {"const"} or not primitive(value["const"]):
             raise ValueError("MODULE_SCHEMA_INVALID")
         return
     kind = value.get("type")
     if kind not in ("object", "array", "integer", "string", "boolean", "null"):
         raise ValueError("MODULE_SCHEMA_INVALID")
+    for key in ("minLength", "maxLength", "minItems", "maxItems", "minimum", "maximum"):
+        if key in value and (type(value[key]) is not int or abs(value[key]) > 9007199254740991 or key not in ("minimum", "maximum") and value[key] < 0):
+            raise ValueError("MODULE_SCHEMA_INVALID")
+    for low, high in (("minLength", "maxLength"), ("minItems", "maxItems"), ("minimum", "maximum")):
+        if low in value and high in value and value[low] > value[high]:
+            raise ValueError("MODULE_SCHEMA_INVALID")
+    if "enum" in value and (not isinstance(value["enum"], list) or not 1 <= len(value["enum"]) <= 64 or not all(primitive(item) for item in value["enum"])):
+        raise ValueError("MODULE_SCHEMA_INVALID")
+    if "x-decimal-maximum" in value and (kind != "string" or not isinstance(value["x-decimal-maximum"], str) or not re.fullmatch(r"(?:0|[1-9][0-9]{0,18})", value["x-decimal-maximum"])):
+        raise ValueError("MODULE_SCHEMA_INVALID")
+    if "pattern" in value:
+        if not isinstance(value["pattern"], str) or len(value["pattern"]) > 512:
+            raise ValueError("MODULE_SCHEMA_INVALID")
+        try:
+            re.compile(value["pattern"])
+        except re.error:
+            raise ValueError("MODULE_SCHEMA_INVALID") from None
     if kind == "object":
         properties = value.get("properties")
         required = value.get("required")
-        if not isinstance(properties, dict) or len(properties) > 64 or not isinstance(required, list) or set(required) - properties.keys() or value.get("additionalProperties") is not False:
+        if not isinstance(properties, dict) or len(properties) > 64 or not isinstance(required, list) or not all(isinstance(item, str) for item in required) or len(set(required)) != len(required) or set(required) - properties.keys() or value.get("additionalProperties") is not False:
             raise ValueError("MODULE_SCHEMA_INVALID")
         for field, definition in properties.items():
             if not CODE.fullmatch(field):
@@ -93,32 +124,72 @@ def schema(value, depth=0):
         schema(value.get("items"), depth + 1)
 
 
+def primitive(value):
+    return value is None or type(value) in (str, bool) or type(value) is int and abs(value) <= 9007199254740991
+
+
+def sequence(value, maximum):
+    return isinstance(value, list) and len(value) <= maximum and all(isinstance(item, str) for item in value) and len(set(value)) == len(value)
+
+
 def validate(path):
     inventory = files(path)
     manifest, config = read(path / "module.json"), read(path / "config.json")
     allowed = {"schema", "id", "version", "kind", "execution", "kernel_api", "requires", "boot_after", "operations", "subscriptions", "config_schema", "schema_version", "presentation", "connector", "secrets", "lifecycle"}
     code = manifest.get("id", "")
-    if manifest.keys() - allowed or not CODE.fullmatch(code) or not VERSION.fullmatch(manifest.get("version", "")) or manifest.get("schema") != "core-module/v1" or manifest.get("execution") != "in-process" or manifest.get("kind") not in ("optional-business", "connector", "presentation"):
+    if manifest.keys() - allowed or not isinstance(code, str) or not CODE.fullmatch(code) or not isinstance(manifest.get("version"), str) or len(manifest["version"]) > 80 or not VERSION.fullmatch(manifest["version"]) or manifest.get("schema") != "core-module/v1" or manifest.get("execution") != "in-process" or manifest.get("kind") not in ("optional-business", "connector", "presentation"):
         raise ValueError("MODULE_MANIFEST_INVALID")
     if config.get("code") != code or config.get("version") != manifest["version"] or config.get("package", {}).get("schema") != 1 or config.get("type") not in ("feature", "payment"):
         raise ValueError("MODULE_IDENTITY_INVALID")
-    if manifest.get("kernel_api") != {"min": 1, "max": 1} or type(manifest.get("schema_version")) is not int or manifest["schema_version"] < 0:
+    if manifest.get("kernel_api") != {"min": 1, "max": 1} or type(manifest.get("schema_version")) is not int or not 0 <= manifest["schema_version"] <= 2147483647:
         raise ValueError("MODULE_VERSION_INVALID")
+    operations, requirements = manifest.get("operations"), manifest.get("requires")
+    if not isinstance(operations, dict) or len(operations) > 64 or not isinstance(requirements, list) or len(requirements) > 64:
+        raise ValueError("MODULE_MANIFEST_INVALID")
+    seen = set()
+    for requirement in requirements:
+        if not isinstance(requirement, dict) or set(requirement) != {"id", "min", "max"} or not isinstance(requirement["id"], str) or not re.fullmatch(r"[a-z][a-z0-9._-]{0,95}", requirement["id"]) or requirement["id"] in seen or type(requirement["min"]) is not int or type(requirement["max"]) is not int or not 1 <= requirement["min"] <= requirement["max"] <= 2147483647:
+            raise ValueError("MODULE_REQUIREMENT_INVALID")
+        seen.add(requirement["id"])
+    if not sequence(manifest.get("boot_after"), 64) or any(not re.fullmatch(r"[a-z][a-z0-9._-]{0,95}", item) for item in manifest["boot_after"]):
+        raise ValueError("MODULE_BOOT_ORDER_INVALID")
+    if manifest.get("connector") not in (None, "payment") or manifest.get("lifecycle", "managed") not in ("managed", "payment-owner"):
+        raise ValueError("MODULE_MANIFEST_INVALID")
     schema(manifest.get("config_schema"))
-    for operation, spec in manifest.get("operations", {}).items():
-        if not re.fullmatch(r"[a-z][a-z0-9.-]{0,63}", operation) or spec.get("actor") not in ("user", "admin") or spec.get("idempotency") not in ("read", "domain") or "permission" not in spec:
+    for operation, spec in operations.items():
+        if not re.fullmatch(r"[a-z][a-z0-9.-]{0,63}", operation) or not isinstance(spec, dict) or spec.keys() - {"actor", "permission", "idempotency", "input", "output", "recovery"} or spec.get("actor") not in ("user", "admin") or spec.get("idempotency") not in ("read", "domain") or "permission" not in spec or "recovery" in spec and type(spec["recovery"]) is not bool:
             raise ValueError("MODULE_OPERATION_INVALID")
         schema(spec.get("input"))
         schema(spec.get("output"))
-        if spec["actor"] == "admin" and not str(spec["permission"]).startswith("extensions." + code + ".") or spec["actor"] == "user" and spec["permission"] is not None:
+        if not permission(spec["actor"], spec["permission"], code):
             raise ValueError("MODULE_PERMISSION_INVALID")
-    for event in manifest.get("subscriptions", []):
+    if not sequence(manifest.get("subscriptions"), 32) or not sequence(manifest.get("secrets", []), 16):
+        raise ValueError("MODULE_MANIFEST_INVALID")
+    for event in manifest["subscriptions"]:
         if not re.fullmatch(r"[a-z][a-z0-9.-]*\.v[1-9][0-9]*", event):
             raise ValueError("MODULE_EVENT_INVALID")
     for field in manifest.get("secrets", []):
         if manifest["config_schema"].get("properties", {}).get(field, {}).get("type") != "string":
             raise ValueError("MODULE_SECRET_INVALID")
+    if manifest.get("lifecycle") == "payment-owner" and (manifest.get("connector") != "payment" or operations or manifest["subscriptions"] or manifest["schema_version"] != 0):
+        raise ValueError("MODULE_MANIFEST_INVALID")
+    if "presentation" in manifest:
+        view = manifest["presentation"]
+        if not isinstance(view, dict) or view.keys() - {"actor", "permission", "configuration_permission", "title", "entry", "assets", "operations"} or view.get("actor") not in ("user", "admin") or "permission" not in view or not permission(view["actor"], view["permission"], code) or not isinstance(view.get("title"), str) or not 1 <= len(view["title"].encode()) <= 80 or not sequence(view.get("assets"), 32) or not sequence(view.get("operations"), 64) or not isinstance(view.get("entry"), str) or not view["entry"].endswith(".html") or view["entry"] not in view["assets"]:
+            raise ValueError("MODULE_PRESENTATION_INVALID")
+        if view.get("configuration_permission") is not None and not permission(view["actor"], view["configuration_permission"], code):
+            raise ValueError("MODULE_PERMISSION_INVALID")
+        for asset in view["assets"]:
+            if not re.fullmatch(r"ui/[A-Za-z0-9_-]+(?:/[A-Za-z0-9_-]+)*\.(?:html|js|css|svg|png|woff2)", asset) or asset not in inventory or (path / asset).stat().st_size > 2097152:
+                raise ValueError("MODULE_PRESENTATION_INVALID")
+        for operation in view["operations"]:
+            if operation not in operations or operations[operation]["actor"] != view["actor"]:
+                raise ValueError("MODULE_PRESENTATION_INVALID")
     return manifest, inventory
+
+
+def permission(actor, value, code):
+    return value is None if actor == "user" else isinstance(value, str) and value.startswith("extensions." + code + ".") and len(value) <= 117 and re.fullmatch(r"[a-z][a-z0-9._-]*", value) is not None
 
 
 def scaffold(path, code):
@@ -160,19 +231,23 @@ final class Plugin extends AbstractPlugin implements DeploymentModule, Extension
 
 def build_lock(root, composition):
     source = read(composition)
-    if source.get("schema") != 1 or not isinstance(source.get("packages"), list) or len(source["packages"]) > 64:
+    if set(source) != {"schema", "packages"} or source.get("schema") != 1 or not isinstance(source.get("packages"), list) or len(source["packages"]) > 64:
         raise ValueError("MODULE_COMPOSITION_INVALID")
     entries, seen = [], set()
     for entry in source["packages"]:
+        if not isinstance(entry, dict):
+            raise ValueError("MODULE_COMPOSITION_INVALID")
         code = entry.get("code", "")
-        if not CODE.fullmatch(code) or code in seen or type(entry.get("required")) is not bool or entry.get("root") not in ("plugins/" + studly(code), "plugins-core/" + studly(code)) or entry.keys() - {"code", "root", "required", "grants"}:
+        if not isinstance(code, str) or not CODE.fullmatch(code) or code in seen or type(entry.get("required")) is not bool or entry.get("root") not in ("plugins/" + studly(code), "plugins-core/" + studly(code)) or entry.keys() - {"code", "root", "required", "grants"}:
             raise ValueError("MODULE_COMPOSITION_INVALID")
         seen.add(code)
         grants = entry.get("grants")
-        if not isinstance(grants, list) or len(grants) > 64 or len(set(grants)) != len(grants) or any(not isinstance(g, str) or not GRANT.fullmatch(g) for g in grants):
+        if not sequence(grants, 64) or any(len(g) > 128 or not GRANT.fullmatch(g) for g in grants):
             raise ValueError("MODULE_GRANT_INVALID")
         manifest, inventory = validate(root / entry["root"])
         expected = {"capability:" + r["id"] for r in manifest["requires"]} | {"event:" + e for e in manifest["subscriptions"]} | {"permission:" + s["permission"] for s in manifest["operations"].values() if s["actor"] == "admin"}
+        view = manifest.get("presentation", {})
+        expected |= {"permission:" + view[field] for field in ("permission", "configuration_permission") if isinstance(view.get(field), str)}
         if manifest["id"] != code or expected - set(grants):
             raise ValueError("MODULE_GRANT_REQUIRED")
         entries.append({**entry, "version": manifest["version"], "files": inventory})

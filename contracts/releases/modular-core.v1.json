@@ -1,0 +1,30 @@
+{
+  "schema": "modular-core-release/v1",
+  "status": "candidate",
+  "core_revision": "The exact CI checkout SHA; image APP_COMMIT and workflow run identify it",
+  "deploy": {
+    "repository": "ANRCM0/TXBoard-Deploy",
+    "revision": "51fcde7d57616fb58e750313b2c740dc265bb56f",
+    "runner": "scripts/native-runtime.py",
+    "protocol": "txboard.native-deployment/v1"
+  },
+  "kernel": "contracts/kernel/v1.files.json",
+  "module_manifest": "contracts/modules/manifest.v1.schema.json",
+  "version_policy": "contracts/modules/versions.v1.json",
+  "operations": "contracts/core-api/operations.v1.json",
+  "default_composition": "api/bootstrap/module-packages.lock.json",
+  "proof_composition": "api/bootstrap/module-packages.proof.lock.json",
+  "native_preparation": "api/resources/contracts/native-preparation.v1.json",
+  "worker_epoch": "2",
+  "image_proof": {
+    "workflow": ".github/workflows/docker-txboard.yml",
+    "runner": "scripts/verify-native-image.py",
+    "evidence": "artifacts/modular-native-image.json"
+  },
+  "scope": {
+    "money": "CNY, zero channel fees, native wallet refund; real merchant qualification remains separate",
+    "node": "Current supported VLESS/VMess profiles and actual native C2 acceptance; no complete protocol or HA claim",
+    "frontend": "Minimal SDK module acceptance host only; production TX-F is a later local-commit-only batch",
+    "publishing": "Candidate PR and CI evidence; no default-branch merge or release authorization"
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "schema": "core-module-version-policy/v1",
+  "status": "candidate",
+  "kernel_api": {
+    "major": 1,
+    "frozen_files": "contracts/kernel/v1.files.json"
+  },
+  "module_manifest": "core-module/v1",
+  "public_operations": "core-operations/v1",
+  "presentation": "module-presentation/v1",
+  "bridge": "core-module/v1",
+  "package_version": "semantic-version",
+  "compatibility": {
+    "breaking_public_operation": "new explicit operation contract version; update supported consumers together",
+    "breaking_kernel": "new kernel API major; no silent v1 changes",
+    "package_updates": "exact file hashes, schema intent, drain and controlled worker restart",
+    "authority": "deployment composition grants capabilities, events and permissions; package declarations do not grant authority"
+  },
+  "sdk": {
+    "php": "api/app/Extensions/Contracts",
+    "typescript": "@txboard/core-sdk"
+  },
+  "acceptance": "Kernel stability is pending exact candidate CI and fixed-image install/update/recovery evidence"
+}

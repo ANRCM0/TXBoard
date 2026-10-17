@@ -18,6 +18,7 @@ node
 
 # API local/runtime state.
 api/tests
+api/module-fixtures
 api/phpunit.xml
 api/phpunit.xml.dist
 api/.phpunit.cache

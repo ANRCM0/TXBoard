@@ -15,7 +15,7 @@ final class ProviderModule implements ModuleProvider
     public function definition(): ModuleDefinition
     {
         return new ModuleDefinition('provider', '1.0.0', 'connector', provides: [
-                new CapabilityDefinition('credentials.provider-client', ProviderClient::class),
+                new CapabilityDefinition('credentials.provider-client', ProviderClient::class, exported: false),
             ], requires: [new CapabilityRequirement('installation.admission')], required: true);
     }
 

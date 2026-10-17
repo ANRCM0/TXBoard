@@ -21,6 +21,8 @@ on:
       - "scripts/ci-release-recovery.sh"
       - "scripts/resolve-image-tags.sh"
       - "scripts/test-image-tags.sh"
+      - "scripts/verify-native-image.py"
+      - "contracts/releases/modular-core.v1.json"
       - ".github/workflows/docker-txboard.yml"
   pull_request:
     paths:
@@ -38,6 +40,8 @@ on:
       - "scripts/ci-release-recovery.sh"
       - "scripts/resolve-image-tags.sh"
       - "scripts/test-image-tags.sh"
+      - "scripts/verify-native-image.py"
+      - "contracts/releases/modular-core.v1.json"
       - ".github/workflows/docker-txboard.yml"
   workflow_dispatch:
 
@@ -168,6 +172,7 @@ jobs:
   verify:
     # Every selected change verifies the actual image; tags add release gates.
     runs-on: ubuntu-latest
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
       - name: Test image tag classification
@@ -300,6 +305,41 @@ jobs:
             }
           '
           docker rm -f txboard-smoke
+      - name: Check out the exact native Deploy candidate
+        uses: actions/checkout@v4
+        with:
+          repository: ANRCM0/TXBoard-Deploy
+          ref: 51fcde7d57616fb58e750313b2c740dc265bb56f
+          path: .ci-native-deploy
+          persist-credentials: false
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: node/go.mod
+          cache-dependency-path: node/go.sum
+      - name: Build actual Provider capability peer
+        working-directory: node
+        run: go build -buildvcs=false -o "$RUNNER_TEMP/native-image-provider" ./cmd/credential-provider
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: gateway/package-lock.json
+      - name: Build the SDK module acceptance host and install Chromium
+        working-directory: gateway
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build --workspace @txboard/module-host
+          npx playwright install --with-deps chromium
+      - name: Native immutable image installation, module update and killed-executor recovery
+        run: sudo -E python3 -B scripts/verify-native-image.py --deploy-root "$GITHUB_WORKSPACE/.ci-native-deploy" --provider-binary "$RUNNER_TEMP/native-image-provider"
+      - name: Preserve non-secret exact-image native evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: modular-native-fixed-image-proof
+          path: artifacts/modular-native-image.json
+          if-no-files-found: error
+          retention-days: 14
   publish:
     # PRs validate but never push. Only a main commit or a vetted semver Git
     # tag may publish; neither can overwrite the other channel.

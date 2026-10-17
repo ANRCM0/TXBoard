@@ -150,10 +150,28 @@ final class ModuleDeployment
 
     private function assertReferencesDrained(string $code): void
     {
-        if (DB::table('tx_payment_dispatch')->where('plugin_code', $code)->exists()
+        if (app(\App\Domains\Billing\Internal\PaymentPackageReferences::class)->retained($code)
             || DB::table('tx_module_delivery')->where('module_code', $code)->whereNotIn('status', ['accepted', 'refused'])->exists()) {
             throw new ExtensionFailure('MODULE_DRAIN_REQUIRED');
         }
+    }
+
+    public function assertDrained(string $code): array
+    {
+        $package = $this->runtime->package($code);
+        return $this->lock->run($code, function () use ($code, $package): array {
+            DB::transaction(function () use ($code): void {
+                $this->installation->assertModuleDeployment();
+                $row = Plugin::query()->where('code', $code)->sharedLock()->first();
+                if ($row === null || $row->is_enabled || $row->native_payment_mutation_token !== null) throw new ExtensionFailure('MODULE_STOP_BEFORE_REMOVAL');
+                $this->assertReferencesDrained($code);
+            }, 3);
+            $implementation = $this->plugins->moduleImplementation($code);
+            if (!$implementation instanceof DeploymentModule || $implementation->packageVersion() !== $package['version']) throw new ExtensionFailure('MODULE_DEPLOYMENT_CONTRACT_REQUIRED');
+            if (in_array('domain', array_column($package['manifest']['operations'], 'idempotency'), true) && !$implementation instanceof RemovalGuard) throw new ExtensionFailure('MODULE_REMOVAL_GUARD_REQUIRED');
+            if ($implementation instanceof RemovalGuard) $implementation->assertDrained();
+            return ['module' => $code, 'drained' => true, 'package_version' => $package['version']];
+        });
     }
 
     private function assertNoEnabledDependents(array $package): void

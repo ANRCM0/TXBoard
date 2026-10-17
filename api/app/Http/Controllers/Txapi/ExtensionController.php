@@ -32,7 +32,7 @@ final class ExtensionController
     private function invoke(Request $request, string $code, string $operation, string $kind, ExtensionRuntime $runtime): JsonResponse
     {
         try {
-            $package = $runtime->package($code);
+            $package = $runtime->package($code, $request->header('X-Core-Module-Fingerprint'));
             $spec = $package['manifest']['operations'][$operation] ?? null;
             if ($spec === null || $spec['actor'] !== $kind) throw new ExtensionFailure('MODULE_OPERATION_NOT_FOUND', 404);
             if (!$request->isJson() || $request->query->count() !== 0 || strlen($request->getContent()) > 32768) {

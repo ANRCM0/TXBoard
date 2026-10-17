@@ -303,6 +303,8 @@ jobs:
           tests/Feature/Billing/NativeUpgradeCreditTest.php
           tests/Feature/Billing/NativeUpgradeCreditMysqlConcurrencyTest.php
           tests/Feature/Txapi/TxapiWalletRechargeTest.php
+          tests/Feature/Modules/ModuleDeploymentTest.php
+          tests/Feature/Modules/ProofExtensionsTest.php
 
   native-subscription-domain:
     runs-on: ubuntu-latest

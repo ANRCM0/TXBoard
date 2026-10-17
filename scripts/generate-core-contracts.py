@@ -13,6 +13,26 @@ def js(value):
     return json.dumps(value, ensure_ascii=True, separators=(',', ':'))
 
 
+def absolute_end_pattern(value):
+    result, escaped, bracket = '', False, False
+    for char in value:
+        if escaped:
+            result += char
+            escaped = False
+        elif char == '\\':
+            result += char
+            escaped = True
+        elif char == '[':
+            result += char
+            bracket = True
+        elif char == ']':
+            result += char
+            bracket = False
+        else:
+            result += '(?![\\s\\S])' if char == '$' and not bracket else char
+    return result
+
+
 def expression(schema, definitions):
     supported = {'$ref', 'anyOf', 'const', 'enum', 'type', 'properties', 'required',
                  'additionalProperties', 'items', 'maxItems', 'minItems', 'maxLength',
@@ -52,14 +72,18 @@ def expression(schema, definitions):
                           ('maxLength', 'max'), ('minimum', 'min'), ('maximum', 'max')]:
         if bound in schema:
             value = schema[bound]
+            if kind == 'string':
+                operator = '>=' if bound == 'minLength' else '<='
+                result += '.refine(value => [...value].length ' + operator + ' ' + str(value) + ')'
+                continue
             if kind == 'integer':
                 value = min(value, 9007199254740991)
             result += f'.{method}({value})'
     if 'pattern' in schema:
-        result += '.regex(new RegExp(' + js(schema['pattern']) + '))'
+        result += '.regex(new RegExp(' + js(absolute_end_pattern(schema['pattern'])) + ', "u"))'
     if 'x-decimal-maximum' in schema:
         value = schema['x-decimal-maximum']
-        result += '.refine(value => value.length < ' + str(len(value)) + ' || value.length === ' + str(len(value)) + ' && value <= ' + js(value) + ')'
+        result += '.refine(value => /^(?:0|[1-9][0-9]*)(?![\\s\\S])/u.test(value) && (value.length < ' + str(len(value)) + ' || value.length === ' + str(len(value)) + ' && value <= ' + js(value) + '))'
     return result
 
 

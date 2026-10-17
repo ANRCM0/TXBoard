@@ -46,8 +46,8 @@ final class ModulePackageLock
 
     public static function fromFile(string $applicationRoot, string $file): self
     {
-        if (!is_file($file) || filesize($file) > 2097152) throw new ModuleError('MODULE_PACKAGE_LOCK_INVALID');
-        return new self($applicationRoot, json_decode(file_get_contents($file), true, 48, JSON_THROW_ON_ERROR));
+        if (!is_file($file) || is_link($file) || filesize($file) > 2097152) throw new ModuleError('MODULE_PACKAGE_LOCK_INVALID');
+        return new self($applicationRoot, \App\Domains\InternalApi\StrictJson::object(file_get_contents($file)));
     }
 
     public function packages(): array { return $this->packages; }
@@ -95,8 +95,8 @@ final class ModulePackageLock
             }
         }
         if ($count !== count($entry['files'])) throw new ModuleError('MODULE_PACKAGE_HASH_MISMATCH');
-        $manifest = json_decode(file_get_contents($path.'/module.json'), true, 32, JSON_THROW_ON_ERROR);
-        $config = json_decode(file_get_contents($path.'/config.json'), true, 32, JSON_THROW_ON_ERROR);
+        $manifest = \App\Domains\InternalApi\StrictJson::object(file_get_contents($path.'/module.json'));
+        $config = \App\Domains\InternalApi\StrictJson::object(file_get_contents($path.'/config.json'));
         if (($manifest['schema'] ?? null) !== 'core-module/v1' || ($manifest['id'] ?? null) !== $code
             || ($manifest['version'] ?? null) !== ($entry['version'] ?? null)
             || ($config['code'] ?? null) !== $code || ($config['version'] ?? null) !== $entry['version']
@@ -112,7 +112,6 @@ final class ModulePackageLock
         }
         $lifecycle = $manifest['lifecycle'] ?? 'managed';
         if (!in_array($lifecycle, ['managed', 'payment-owner'], true)
-            || $lifecycle === 'managed' && $manifest['schema_version'] < 1
             || $lifecycle === 'payment-owner' && (($manifest['connector'] ?? null) !== 'payment'
                 || $manifest['operations'] !== [] || $manifest['subscriptions'] !== [] || $manifest['schema_version'] !== 0)) {
             throw new ModuleError('MODULE_PACKAGE_MANIFEST_INVALID');
@@ -137,6 +136,7 @@ final class ModulePackageLock
             || !is_array($manifest['operations'] ?? null) || count($manifest['operations']) > 64
             || !is_array($manifest['subscriptions'] ?? null) || !array_is_list($manifest['subscriptions']) || count($manifest['subscriptions']) > 32
             || !is_array($manifest['requires'] ?? null) || !array_is_list($manifest['requires']) || count($manifest['requires']) > 64
+            || isset($manifest['connector']) && $manifest['connector'] !== 'payment'
             || !is_array($manifest['config_schema'] ?? null)) throw new ModuleError('MODULE_PACKAGE_MANIFEST_INVALID');
         foreach ($grants as $grant) {
             if (!is_string($grant) || strlen($grant) > 128 || preg_match('/\A(?:capability|event|permission):[a-z][a-z0-9._-]*\z/D', $grant) !== 1) {
@@ -167,9 +167,15 @@ final class ModulePackageLock
                 || !in_array($view['actor'] ?? null, ['user', 'admin'], true) || !array_key_exists('permission', $view)
                 || !is_string($view['title'] ?? null) || strlen($view['title']) < 1 || strlen($view['title']) > 80
                 || !is_array($view['assets'] ?? null) || !array_is_list($view['assets']) || count($view['assets']) > 32
+                || count(array_unique($view['assets'], SORT_STRING)) !== count($view['assets'])
                 || !in_array($view['entry'] ?? null, $view['assets'], true)
+                || !is_string($view['entry'] ?? null) || !str_ends_with($view['entry'], '.html')
                 || !is_array($view['operations'] ?? null) || !array_is_list($view['operations'])
+                || count(array_unique($view['operations'], SORT_STRING)) !== count($view['operations'])
                 || array_diff($view['operations'], array_keys($manifest['operations']))) throw new ModuleError('MODULE_PRESENTATION_INVALID');
+            foreach ($view['operations'] as $operation) {
+                if (($manifest['operations'][$operation]['actor'] ?? null) !== $view['actor']) throw new ModuleError('MODULE_PRESENTATION_INVALID');
+            }
             foreach ($view['assets'] as $asset) {
                 if (!is_string($asset) || preg_match('~\Aui/[A-Za-z0-9_-]+(?:/[A-Za-z0-9_-]+)*\.(?:html|js|css|svg|png|woff2)\z~D', $asset) !== 1) throw new ModuleError('MODULE_PRESENTATION_INVALID');
             }
