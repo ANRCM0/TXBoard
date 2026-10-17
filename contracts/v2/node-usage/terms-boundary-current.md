@@ -3,7 +3,7 @@
 Status: current native development contract, updated 2026-10-16. The
 [native C2 runtime](../native-c2-runtime-v1.md) supplies signed grants, durable
 receipts, original-period reservations and settlement. The earlier
-[isolated Terms mutation service](../subscription-terms-shadow-v1.md) is retired.
+[isolated Terms mutation service](https://github.com/ANRCM0/TXBoard/blob/5b546dfc992ec56a90bfe54a103df6326eb47f08/contracts/v2/subscription-terms-shadow-v1.md) is retired.
 The isolated Usage Registry, manual issuance CLI and isolated-copy admission
 have also been retired. Current receipt and settlement services always require
 native runtime admission and original signed native grant evidence. Shared

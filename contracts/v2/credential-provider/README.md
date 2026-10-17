@@ -1,17 +1,17 @@
 # CredentialProvider Contract v1
 
-> 状态：Target / Draft · 更新：2026-10-12 · 契约版本：`credential-provider/1`
+> 状态：完整目标为 Target / Draft · 更新：2026-10-17 · 契约版本：`credential-provider/1`
 >
 > 本契约位于 v2 架构目录，其能力协议版本为 v1。当前 PHP Plugin Package v1 不实现本契约；本文件不新增 HTTP 路由、不提供现有插件沙箱、不证明节点租约或凭据卸载已可用。
 
-2026-10-16 的 C2-C1 实现子集见[真实发行与恢复契约](native-issuance-v1.md)：
-独立 Provider 进程、mTLS、私有 UUID 存储、issue/query/subject-revoke 和 Core
-持久回执已接入。它没有凭据材料导出、Node 消费、订阅渲染或轮换能力，
-不等于下述完整 Target 契约完成，也不解除 native 安装就绪门禁。
+## 当前实现入口
 
-C2-C2 的[Node 材料消费契约](native-node-delivery-v1.md)进一步定义 Core 非秘密签名、
-Provider 独立 mTLS 材料通道和 Node 内核应用校验。它仍不开放 native 就绪、
-订阅渲染、轮换或用量结算；实际验收结果在本批 PR/CI 中记录。
+- [真实发行与恢复](native-issuance-v1.md)：独立 Provider 进程、mTLS、私有 UUID 存储、issue/query/subject-revoke 与 Core 持久回执。
+- [Node 材料消费](native-node-delivery-v1.md)：Core 非秘密签名、Provider 独立 mTLS 材料通道和 Node 内核应用校验。
+- [Native C2 Runtime](../native-c2-runtime-v1.md)：在以上基础上完成就绪转换、受限订阅渲染、轮换与原周期用量结算。
+- [Native Provider Lifecycle](../native-provider-lifecycle-v1.md)：显式信任转换、独立订阅链接与有限授权；生产 PKI 和信任分发验收不因此完成。
+
+下文保留完整生命周期目标，不能把它当作以上实现已经覆盖全部 operation、协议或部署拓扑的证明。历史导入设想不属于当前 native 开发门禁；不得恢复旧隔离开关、合成 fixture 或旧插件兼容层。
 
 ## 范围与权威
 
@@ -135,10 +135,10 @@ Disable 的目标是停止新发行与新授权，已存在的有限租约不会
 
 ## 验收与待验证决定
 
-B4.3 的[本地 Plugin 停用接入](local-fixture-plugin-boundary-v1.md)仅适用于固定可信测试插件：Plugin 状态与 Provider 发行 fence 原子提交，私有清理保留原 operation；卸载与删除继续等待 Node/租约/交付/结算门禁。它不改变下述 v2 Target 的完成要求。
+早期 B4 合成 Provider、Plugin 停用接入、租约候选与离线签名快照已退役；其历史证据和原文入口集中在[实施台账](../../../docs/architecture/v2/implementation-plan.md)。公钥诊断不等于 Node 准入，旧 fixture 的通过结果不证明当前秘密交付、卸载或全网撤销。
 
-B4.4 的[本地租约候选](local-fixture-lease-candidate-v1.md)和 B4.5 的[初始绑定与离线签名快照](local-fixture-authorization-snapshot-v1.md)默认关闭，只适用于 local/testing 的固定合成 Provider。后者原子保存初始 Subject 绑定和签名历史，公钥 CLI 只验证离线证据；两者均不授予 Node 准入，不完成秘密交付或全网撤销。
+当前实现继续要求秘密不进入 Core、未知结果查询原 operation、停用后禁止新发行、历史 usage 保留原归属，且不能用 Provider 清理成功代替 Node/租约/交付/结算的完成证据。具体支持范围以本页“当前实现入口”的 native 契约为准。
 
 B4 契约测试覆盖七个 operation、超时后成功、同键冲突、重复导入/重复轮换、Provider 失联、Core 提交前后失败、停用与发行并发、卸载与 enable 并发、Node 离线/时间回拨/撤销回退、运行时移除后晚到 usage、跨 Provider 错绑和秘密泄漏。Node 控制与使用量故障测试独立证明 auth lease 和计费归属；只有 PHP 单元测试通过不能证明沙箱或全网撤销。
 
-尚需定稿：JSON Schema、输入规范化摘要算法、独立 runtime transport/服务身份、Node 加密材料封装、有限租约/时钟预算、具体 retention、批量 revoke 分页与 checkpoint 存储。实现开始前将这些细节落入 Schema/DTO/Node 消费端及测试；当前 API/Plugin v1 权限边界在 [Core First ADR](../../../docs/architecture/v2/core-boundaries.md) 门禁前保持。
+完整 Target 的 Schema、摘要、transport、材料封装、租约/时钟预算、retention、批量 revoke 与 checkpoint 必须按实际能力分别冻结并验证；已实现的 native 子集使用各自契约中的具体规范，不以本目标清单否定或扩大它们。权限与秘密边界仍遵守 [Core First ADR](../../../docs/architecture/v2/core-boundaries.md)。

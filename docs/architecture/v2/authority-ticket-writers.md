@@ -2,7 +2,7 @@
 
 > Historical evidence only. The isolated v1-v6 authority prototype and its dedicated CI were retired on 2026-10-16. The behavior and results below describe the former implementation, not current runtime support. See [current Core boundaries](../../development/core-cleanup.md).
 
-The [v6 contract](../../../contracts/v2/authority-ticket-writers-v6.md) extends the same isolated-copy authority singleton with six native support operations. The fixed inventory contains the preceding 53 owners plus user ticket create/reply/close, admin reply/close and per-ticket cron close. The legacy runtime remains authoritative; admission is disabled by default and global cutover flags remain false.
+The [v6 contract](https://github.com/ANRCM0/TXBoard/blob/5b546dfc992ec56a90bfe54a103df6326eb47f08/contracts/v2/authority-ticket-writers-v6.md) extends the same isolated-copy authority singleton with six native support operations. The fixed inventory contains the preceding 53 owners plus user ticket create/reply/close, admin reply/close and per-ticket cron close. The legacy runtime remains authoritative; admission is disabled by default and global cutover flags remain false.
 
 A separate immutable ticket receipt binds the verified v5 parent chain and unchanged historical hashes. Only v5 open5 can extend to v6 open6; prepare produces7. Earlier prepared versions cannot reopen or change meaning. Replay and recovery validate the complete receipt chain, including parent hashes, before returning the original result. Bounded recovery remains SELECT-only.
 

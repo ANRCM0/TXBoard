@@ -56,7 +56,7 @@ SC 防重放不替代业务幂等。响应丢失时，SDK 使用新的合法加�
 
 真实 Core + MySQL + Redis + Gateway 的 User/Admin 身份隔离、写入重试、密钥恢复演练和上线审查通过后，才可登记为交付。单元测试、mock upstream、设计文件或模板示例不构成该证据。
 
-[内部身份与 Operation](../core-internal-api/README.md) · [实施台账](../../../docs/architecture/v2/implementation-plan.md)
+[当前内部身份与 Operation](../native-internal-api-v1.md) · [历史实施台账](../../../docs/architecture/v2/implementation-plan.md)
 
 B6.3 的 [共享响应所有权工程实验](shared-owner-experiment-v1.md) 仅验证隔离 local/testing fixture 的连续主节点假设；未知数据丢失、HA/恢复及真实网络或业务采用的门禁仍未通过。
 

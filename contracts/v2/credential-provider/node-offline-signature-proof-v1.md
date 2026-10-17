@@ -1,8 +1,11 @@
 # Node offline Provider signature proof v1
 
-Status: verified isolated implementation slice. This adds an independent Go **signature
-diagnostic**, not a Node admission or lease consumer. Default Node Service,
-kernel credentials, usage grants and network routes do not import it.
+Status: isolated signature diagnostic with historical verification evidence.
+The former Core fixture and its admission profile are retired. The retained Go
+**signature diagnostic** is not a Node admission or lease consumer. Current
+admission uses [native Node delivery](native-node-delivery-v1.md); default Node
+Service, kernel credentials, usage grants and network routes do not import this
+diagnostic.
 
 `node/internal/providerproof` accepts a caller-supplied, trusted public-key set
 of one or two entries. It never loads keys from a JWS, URL or untrusted payload,
@@ -28,21 +31,21 @@ historical expired or revoked-key signature, does not grant admission. Unknown
 keys, malformed profiles and signature failures return one fixed error with no
 input or underlying parser/crypto detail.
 
-The independent interoperability fixture invokes the actual Core initial-binding
-transaction and existing full PHP profile validator before exporting only its
-public key metadata and original signed statement to Go. It is opt-in under
-`CORE_PROVIDER_GO_PROOF_INTEROP=1`; its disposable private root is removed after
-the test. Normal API tests explicitly skip the cross-toolchain fixture. Pure Go
-tests exercise cryptographic tampering, algorithm/domain/key confusion,
-encoding/JSON limits and concurrent verification. No API runtime change or
-production key is involved.
+The historical interoperability fixture invoked the former Core initial-binding
+transaction and full PHP profile validator before exporting only public key
+metadata and the original signed statement to Go. That retired fixture and
+`CORE_PROVIDER_GO_PROOF_INTEROP=1` are not current execution instructions.
+The retained pure Go tests exercise cryptographic tampering, algorithm/domain/key
+confusion, encoding/JSON limits and concurrent verification without an API
+runtime change or production key.
 
-This is a narrow B4 prerequisite. Full nested evidence validation, intended
+This was a narrow B4 prerequisite. Full nested evidence validation, intended
 recipient/source matching, trusted clocks, lease enforcement, secret delivery,
 revocation convergence and runtime integration remain separate gates. The
-[Core snapshot contract](local-fixture-authorization-snapshot-v1.md) remains
-the full business-profile authority; the Go diagnostic is deliberately not an
-equivalent implementation of that entire validator.
+[archived Core snapshot contract](https://github.com/ANRCM0/TXBoard/blob/5b546dfc992ec56a90bfe54a103df6326eb47f08/contracts/v2/credential-provider/local-fixture-authorization-snapshot-v1.md)
+describes the former business profile, not a current issuance or admission
+protocol; the Go diagnostic is deliberately not an equivalent implementation
+of that entire validator.
 
 Go1.26.3 race tests passed 7 main tests plus30 subtests, with the opt-in Core
 fixture explicitly skipped in that pure run. A separate actual Core binding
