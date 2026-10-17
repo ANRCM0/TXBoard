@@ -286,11 +286,10 @@ final class TxapiNativeInternalApiTest extends NativeRuntimeTestCase
             }
             if ($spec['handler'] !== null) {
                 $this->assertNull($spec['controller']);
-                $this->assertSame(\App\Domains\InternalApi\AccountReadOperations::class, $spec['handler']);
                 $this->assertSame('read', $spec['mode']);
                 $this->assertTrue(method_exists($spec['handler'], $spec['method']));
                 $this->assertTrue((new \ReflectionMethod($spec['handler'], $spec['method']))->isPublic());
-                $handlers[$operation] = $spec['method'];
+                $handlers[$operation] = [$spec['handler'], $spec['method']];
                 continue;
             }
             $this->assertNotNull($spec['controller']);
@@ -298,8 +297,11 @@ final class TxapiNativeInternalApiTest extends NativeRuntimeTestCase
             $this->assertNotSame(\App\Http\Controllers\Txapi\TrafficController::class, $spec['controller']);
             $this->assertNotSame(\App\Http\Controllers\Txapi\Admin\PlanMutationController::class, $spec['controller']);
         }
-        $this->assertSame(['identity.account.get' => 'account', 'identity.admin.get' => 'account',
-            'subscription.mine.get' => 'subscription'], $handlers);
+        $account = \App\Domains\InternalApi\AccountReadOperations::class;
+        $orders = \App\Domains\InternalApi\OrderReadOperations::class;
+        $this->assertSame(['identity.account.get' => [$account, 'account'], 'identity.admin.get' => [$account, 'account'],
+            'subscription.mine.get' => [$account, 'subscription'], 'commerce.orders.list' => [$orders, 'listing'],
+            'commerce.orders.get' => [$orders, 'find']], $handlers);
     }
 
     public function test_all_boundary_rejections_are_audited_without_untrusted_service_operation_or_input_material(): void

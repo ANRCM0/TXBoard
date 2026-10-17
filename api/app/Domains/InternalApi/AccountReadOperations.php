@@ -11,15 +11,15 @@ final class AccountReadOperations
 {
     public function __construct(private readonly AccountQueries $queries) {}
 
-    public function account(User $actor): array
+    public function account(User $actor, array $input): ReadOperationResult
     {
-        return $this->queries->account(new AccountIdentity(
+        return new ReadOperationResult($this->queries->account(new AccountIdentity(
             (int) $actor->id, (string) $actor->email, $actor->telegram_id === null ? null : (int) $actor->telegram_id,
-        ));
+        )));
     }
 
-    public function subscription(User $actor): array
+    public function subscription(User $actor, array $input): ReadOperationResult
     {
-        return $this->queries->subscription((int) $actor->id);
+        return new ReadOperationResult($this->queries->subscription((int) $actor->id));
     }
 }

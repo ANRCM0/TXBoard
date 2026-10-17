@@ -12,6 +12,8 @@ K3 的实际履约/付款证明子集见 [Core Order Fulfillment Ports v1](core-
 
 K4 的账户读取子集见 [Core Account Read Ports v1](core-account-read-ports-v1.md)：HTTP 与三个固定 Internal API 操作共用查询，入口继续拥有实际 actor 认证及协议映射，不引入通用动态业务调用。
 
+K4 的订单读取子集见 [Core Order Read Ports v1](core-order-read-ports-v1.md)：Billing 查询保留当前分页、归属及列表/详情投影，三个 HTTP 视图与两个固定 Internal API 操作复用，不改变订单写入、资金或履约权威。
+
 ## 1. 契约目标
 
 业务调用者依赖明确的输入、输出与行为保证，运行时通过显式装配使用当前实现。每个端口必须说明：

@@ -113,7 +113,13 @@ K4 candidate `identity.account.get`, `identity.admin.get` and
 shared Identity query port instead of invoking HTTP controllers. Their existing
 authentication, permissions, input/output fields, error normalization, redaction
 and response bounds are unchanged. The precise candidate/acceptance boundary is
-[Core Account Read Ports v1](core-account-read-ports-v1.md); other operations
+[Core Account Read Ports v1](core-account-read-ports-v1.md).
+The next K4 candidate moves `commerce.orders.list` and `commerce.orders.get`
+to fixed OrderReadOperations and Billing OrderQueries, preserving pagination
+metadata and the existing owner restriction. Account and order read handlers
+return adapter-local data/metadata; null order results map to the same 404, and
+all results still pass the common executor output controls. See
+[Core Order Read Ports v1](core-order-read-ports-v1.md). Remaining operations
 retain their current controller delegation. No handler/class name is accepted
 from a caller, and no new operation is made available.
 

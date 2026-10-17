@@ -1,10 +1,11 @@
 # Core capability and transaction map
 
-> K0 inventory, K1 entitlement, K2 adapters, K3 fulfillment and K4 account read candidates, 2026-10-17.
+> K0 inventory, K1 entitlement, K2 adapters, K3 fulfillment and K4 account/order read candidates, 2026-10-17.
 >
 > Starting source: local `main` at `85b0eac62f73f636efe736548e968535c561ced3`.
 > This map records actual candidate scope. K1-K3 exact-commit development CI is
-> recorded below; the new K4 subset still needs its own CI and domain review.
+> recorded below, as is the accepted K4 account-read development CI. The new
+> order-read subset still needs its own CI and domain review.
 > None of these candidate branches is an assumed merged or production baseline.
 
 Core is a modular control plane for one operator installation and its end users,
@@ -19,6 +20,7 @@ Current native behavior remains governed by its domain contracts and evidence.
 | --- | --- | --- |
 | Identity and account | `Domains/Identity`: `AccountCreationService`, `AccountSqlPhase`, `AdminAccountModeration`, `AccountSessionGuard` | Current identity and role checks remain separate from entitlements and money; no user traffic fields become native entitlement authority. |
 | Account read projection | Identity `AccountQueries` / `NativeAccountQueries` | Authenticated actor scalars from ingress; delegates entitlement facts to Subscription; no actor cache or independent authorization. |
+| Order read projection | Billing `OrderQueries` / `NativeOrderQueries` | Existing owner-scoped list/status/detail with current Plan display; no write, financial snapshot or authority for a later mutation. |
 | Catalog administration | `NativePlanAdministration::publish`, `PlanPublicationService::publish/setAvailability`, `NativePlanCatalog` | Immutable publication and current selling availability are distinct; purchased evidence is not repriced. |
 | Purchase | `PublishedOrderService::create` | Account-first locks, permanent order key, frozen purchase and upgrade-source evidence; no provider network request in this transaction. |
 | Order transitions | `PublishedOrderService::transitionOrder` and `NativeOrderLifecycle` | Controlled internal transitions, not an external arbitrary callback or `setStatus` capability. |
@@ -97,8 +99,10 @@ algorithms; a test reference does not authorize another production caller.
 `subscription.mine.get` to compiled `AccountReadOperations` handlers. They use
 Identity `AccountQueries`, the same application query consumed by native HTTP.
 The executor still verifies the separate service, actual actor, current grants,
-domain, closed input and output field allow-list. Other operations keep their
-existing controller targets; this subset does not claim all ingress is migrated.
+domain, closed input and output field allow-list. The next candidate also maps
+`commerce.orders.list/get` to fixed OrderReadOperations using Billing OrderQueries.
+Other operations keep their existing controller targets; these subsets do not
+claim all ingress is migrated.
 
 Do not remove these checks because a handler now injects a typed capability.
 Neither mTLS nor a stored workflow response replaces current actor authorization.
@@ -297,7 +301,38 @@ Identity public contracts and concrete-owner dependencies are statically guarded
 only the new account handler has a direct HTTP/auth/SQL dependency fence. No
 source heuristic proves authentication or dynamic calls safe. Behavior tests
 cover shared query replacement, alternating actual actors and authorization
-failure; exact-commit CI remains pending for this K4 candidate.
+failure; account-read development CI is recorded below.
 
-K4 order reads and other justified ingress slices, K5 integrated handoff and
-production qualification are not declared complete by this subset.
+Account-read candidate `a4cee43` (PR #266) passed its triggered API/MySQL/C2/image/
+docs development checks, and remains unmerged. This does not qualify a release.
+
+## 10. K4 order-read candidate
+
+The exact contract is [Core Order Read Ports v1](../../../contracts/v2/core-order-read-ports-v1.md).
+Billing's scoped OrderQueries implements the existing AccountController queries;
+no order, payment or subscription write authority moves.
+
+| Consumer | Port method | Preserved behavior |
+| --- | --- | --- |
+| HTTP orders | listing | Actual actor, validation, status filter, deterministic order and page metadata |
+| HTTP order | find | Actual actor, summary-only fields, owner/missing 404 |
+| HTTP orderDetail | detail | Detail-only financial display/current Plan fields; missing Plan 404 |
+| commerce.orders.list | listing via OrderReadOperations | Separate user service and real actor; closed input, existing page bound and projected metadata |
+| commerce.orders.get | find via OrderReadOperations | User-only actual owner scope; no caller-supplied class or owner |
+
+Summary keeps a null Plan when missing; detail still requires a current Plan.
+Current Plan display is not frozen purchase evidence. Queries use the current
+connection and isolation without adding transactions/locks or claiming an atomic
+financial snapshot. They create no business writes or internal request receipts.
+
+Account and order read handlers return adapter-local ReadOperationResult data/
+metadata, or null for a missing order. Executor maps this through the existing
+HTTP envelope and output/meta allowlists, redaction, decimal conversion, limits
+and safe errors. It continues to authenticate service/actor before dispatch and
+audits the result. This result DTO is not a Kernel or plugin invocation API.
+
+Pure Billing contracts, concrete consumers and fixed handlers have source guards.
+New tests cover real HTTP/Internal parity, paging, owner isolation, missing Plan,
+port replacement, admission rejection and failures. Exact-commit CI for this
+order-read candidate is pending. Other justified ingress slices, K5 integrated
+handoff and production qualification remain separate work.
