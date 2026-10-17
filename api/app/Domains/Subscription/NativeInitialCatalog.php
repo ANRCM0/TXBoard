@@ -30,7 +30,7 @@ final class NativeInitialCatalog implements InitialCatalog
                 $plan = new Plan;
                 $plan->forceFill(['id' => $definition['id'], 'name' => $definition['name'], 'group_id' => $definition['group_id'],
                     'transfer_enable' => $definition['quota_gib'], 'reset_traffic_method' => $definition['reset_method'],
-                    'prices' => $prices, 'show' => true, 'sell' => true, 'renew' => true]);
+                    'prices' => $prices, 'capacity_limit' => null, 'show' => true, 'sell' => true, 'renew' => true]);
                 Plan::withoutEvents(fn () => $plan->save());
                 $result[$definition['id']] = app(PlanPublicationService::class)->publish($plan->id,
                     'prepare-'.substr(hash('sha256', $key.':'.$plan->id), 0, 48), $definition['currency'], 'UTC');

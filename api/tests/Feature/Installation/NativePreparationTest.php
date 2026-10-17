@@ -27,6 +27,9 @@ final class NativePreparationTest extends TestCase
         $first = app(NativePreparation::class)->prepare($input);
         $this->assertSame($first, app(NativePreparation::class)->prepare($input));
         foreach (['tx_user', 'tx_server', 'tx_server_group', 'tx_plan', 'tx_plan_revision'] as $table) $this->assertSame(1, DB::table($table)->count());
+        $this->assertNull(DB::table('tx_plan')->value('capacity_limit'));
+        $this->assertGreaterThan(0, DB::table('tx_plan_offer_availability')->count());
+        $this->assertSame(0, DB::table('tx_plan_offer_availability')->whereNotNull('capacity_limit')->count());
         $this->assertSame(4, DB::table('tx_native_preparation_step')->count());
         $user = DB::table('tx_user')->first();
         $this->assertTrue(password_verify($input['identity']['password'], $user->password));
