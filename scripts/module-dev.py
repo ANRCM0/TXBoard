@@ -14,7 +14,7 @@ import sys
 import zipfile
 
 CODE = re.compile(r"[a-z][a-z0-9_]{0,63}\Z")
-VERSION = re.compile(r"(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?\Z")
+VERSION = re.compile(r"(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?\Z")
 RELATIVE = re.compile(r"[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)*\Z")
 GRANT = re.compile(r"(?:capability|event|permission):[a-z][a-z0-9._-]*\Z")
 MAX_FILES, MAX_BYTES = 2000, 50 * 1024 * 1024

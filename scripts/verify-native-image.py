@@ -168,7 +168,7 @@ def main():
         (source / "runtime.env").write_text("\n".join([
             "CORE_CREDENTIAL_PROVIDER_ID=primary-provider", "CORE_CREDENTIAL_PROVIDER_EPOCH=1",
             f"CORE_CREDENTIAL_PROVIDER_ENDPOINT=https://{gateway}:{control_port}/operations", "CORE_CREDENTIAL_PROVIDER_PROFILES=vless-uuid/v1,vmess-uuid/v1",
-            f"NATIVE_SUBSCRIPTION_RENDER_ENDPOINT=https://{gateway}:{render_port}", "NATIVE_NODE_AUTHORIZATION_KEY_ID=native-image-key",
+            f"NATIVE_SUBSCRIPTION_RENDER_ENDPOINT=https://{gateway}:{render_port}/subscription-render", "NATIVE_NODE_AUTHORIZATION_KEY_ID=native-image-key",
             "NATIVE_NODE_AUTHORIZATION_KEY_EPOCH=1", "NATIVE_NODE_AUTHORIZATION_POLICY_VERSION=native-provider-authorization/v2",
             "CORS_ALLOWED_ORIGINS=http://127.0.0.1:4317"]) + "\n")
         for path in source.iterdir():

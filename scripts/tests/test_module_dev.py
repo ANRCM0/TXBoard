@@ -1,5 +1,6 @@
 import importlib.util
 import json
+import re
 import shutil
 import tempfile
 import unittest
@@ -38,6 +39,24 @@ class ModuleDevelopmentTest(unittest.TestCase):
                 (self.package / "module.json").write_text(raw)
                 with self.assertRaises(ValueError):
                     module.validate(self.package)
+
+    def test_package_versions_match_the_frozen_kernel_grammar(self):
+        definition = module.read(ROOT / "contracts/modules/manifest.v1.schema.json")["$defs"]["version"]
+        cases = {"1.0.0": True, "1.0.0-alpha.1": True, "1.0.0-alpha-1": True,
+                 "1.0.0-..": False, "1.0.0-a..b": False, "1.0.0-a--b": False,
+                 "1.0.0-a.": False, "1.0.0\n": False, "01.0.0": False, "1.0.0+build": False}
+        for version, valid in cases.items():
+            with self.subTest(version=version):
+                self.assertEqual(valid, re.search(definition["pattern"], version) is not None)
+                self.change(lambda manifest: manifest.update(version=version))
+                config = module.read(self.package / "config.json")
+                config["version"] = version
+                module.write_json(self.package / "config.json", config)
+                if valid:
+                    self.assertEqual(version, module.validate(self.package)[0]["version"])
+                else:
+                    with self.assertRaises(ValueError):
+                        module.validate(self.package)
 
     def test_closed_metadata_and_schema_bounds_are_checked(self):
         for callback in (

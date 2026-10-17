@@ -309,7 +309,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: ANRCM0/TXBoard-Deploy
-          ref: 5adef3c3b0a5a8fe64799cae6d507a715072188f
+          ref: 37a40482852c9398fbbe276ebb93379febccf234
           path: .ci-native-deploy
           persist-credentials: false
       - uses: actions/setup-go@v5
