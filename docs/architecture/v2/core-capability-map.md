@@ -1,6 +1,6 @@
 # Core capability and transaction map
 
-> K0 inventory, K1 entitlement-port and K2 adapter-boundary candidates, 2026-10-17.
+> K0 inventory, K1 entitlement, K2 adapters and K3 fulfillment candidates, 2026-10-17.
 >
 > Starting source: local `main` at `85b0eac62f73f636efe736548e968535c561ced3`.
 > This map describes inspected owners and the K1 candidate changes. It does not
@@ -222,3 +222,38 @@ Candidate regression tests and source guards cover the changed boundaries.
 API, MySQL and real Provider acceptance is pending for this candidate; no
 production PKI, arbitrary Provider protocols or original-channel refund claim
 is made. K3-K5 and release qualification remain separate work.
+
+## 8. K3 fulfillment and financial proof candidate
+
+This subset builds on K2 candidate `832a8e8`; it is not a merged baseline.
+The [Order Fulfillment Ports contract](../../../contracts/v2/core-order-fulfillment-ports-v1.md)
+records the exact three interfaces and their failure/locking rules.
+
+| Owner capability | Real consumers migrated | Commit authority |
+| --- | --- | --- |
+| Subscription public OrderFulfillment | BillingRecovery, FreeCheckout recovery, OrderLifecycle open | Own fresh SQL transaction, then credential synchronization |
+| Subscription internal LockedOrderFulfillment | UpgradeCredits acceptance (four existing acceptance entry paths converge here) | Caller commits financial acceptance and SQL rights atomically |
+| Billing internal WinningPaymentProofs | Subscription fulfillment, BillingRecovery, UpgradeCredits source verification | Caller transaction; money union and authoritative allocation/receipt/journal/wallet checks |
+
+Both fulfillment interfaces resolve to the existing scoped owner. The proof
+interface resolves to the existing scoped settlement owner. No domain algorithm,
+work table, payment format or public route changes. Internal model and collection
+inputs retain existing contracts; they do not prove locks or authorization.
+
+The proof participant can initialize money accounts and is not a side-effect-free
+query. A free/zero-net acceptance does not create a zero-value payment proof;
+liability receipts cannot grant rights. SQL-only participants never synchronize
+credentials or perform network I/O. Fresh fulfillment drives synchronization only
+after commit and retains the original durable operation/work for replay.
+
+Source checks reject concrete fulfillment use outside implementation/composition
+and concrete settlement use in Subscription services; they deliberately preserve
+legitimate Billing settlement entry points and internal SQL model types. Tests
+cover scope/replacement and real transaction/proof/rollback behavior in existing
+API/MySQL acceptance. These are candidate changes, not passing test evidence.
+
+Identity/account creation, catalog publication, purchase coordination, lifecycle,
+wallet/refund and usage already retain their listed domain owners/transaction
+contracts. This slice does not claim every mutation now has an interface; further
+ports require an actual consumer and must retain their original atomic boundary.
+K4 ingress delegation, K5 integrated checks and release qualification remain open.

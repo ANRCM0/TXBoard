@@ -2,9 +2,10 @@
 
 namespace App\Domains\Billing;
 
+use App\Domains\Billing\Internal\WinningPaymentProofs;
 use App\Domains\Installation\InstallationAuthority;
+use App\Domains\Subscription\Contracts\OrderFulfillment;
 use App\Domains\Subscription\Services\NativeSubscriptionStore;
-use App\Domains\Subscription\Services\SubscriptionFulfillmentService;
 use App\Models\Order;
 use App\Models\OrderPurchaseTerms;
 use Illuminate\Support\Facades\DB;
@@ -15,8 +16,8 @@ final class NativeBillingRecovery
 {
     public function __construct(
         private readonly NativeSubscriptionStore $subscriptions,
-        private readonly NativePaymentSettlement $settlements,
-        private readonly SubscriptionFulfillmentService $fulfillment,
+        private readonly WinningPaymentProofs $settlements,
+        private readonly OrderFulfillment $fulfillment,
     ) {}
 
     /** Query original frozen attempts; the transport and later settlement own separate transactions. */

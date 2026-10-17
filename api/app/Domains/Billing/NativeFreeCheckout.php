@@ -3,8 +3,8 @@
 namespace App\Domains\Billing;
 
 use App\Domains\Installation\InstallationAuthority;
+use App\Domains\Subscription\Contracts\OrderFulfillment;
 use App\Domains\Subscription\Services\PublishedOrderService;
-use App\Domains\Subscription\Services\SubscriptionFulfillmentService;
 use App\Models\Order;
 use App\Models\OrderPurchaseTerms;
 use Illuminate\Support\Facades\DB;
@@ -77,7 +77,7 @@ final class NativeFreeCheckout
             try {
                 $this->withRecord($locator);
                 // This owns its own transaction and unique order.fulfill operation; Provider I/O follows commit.
-                app(SubscriptionFulfillmentService::class)->fulfill((int) $locator->order_id);
+                app(OrderFulfillment::class)->fulfill((int) $locator->order_id);
                 $this->withRecord($locator, true);
                 $results['free:'.$locator->id] = ['status' => 'completed'];
             } catch (Throwable $error) {

@@ -4,8 +4,8 @@ namespace App\Domains\Billing;
 
 use App\Domains\Installation\InstallationAuthorityException;
 use App\Domains\Installation\NativeRuntimeAdmission;
+use App\Domains\Subscription\Contracts\OrderFulfillment;
 use App\Domains\Subscription\Services\PublishedOrderService;
-use App\Domains\Subscription\Services\SubscriptionFulfillmentService;
 use App\Jobs\OrderHandleJob;
 use App\Models\Order;
 use Illuminate\Support\Facades\Bus;
@@ -18,7 +18,7 @@ final class NativeOrderLifecycle
 
     public function open(): void
     {
-        app(SubscriptionFulfillmentService::class)->fulfill((int) $this->order->id);
+        app(OrderFulfillment::class)->fulfill((int) $this->order->id);
         $this->order = Order::query()->useWritePdo()->findOrFail($this->order->id);
     }
 

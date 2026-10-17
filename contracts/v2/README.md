@@ -46,3 +46,5 @@ TXBoard 是业务与数据权威。Gateway、Deploy、TX-Node 与可选插件按
 K1 候选代码的精确进程内接口见 [Core Entitlement Queries v1](core-entitlement-queries-v1.md)，尚待 CI 与评审，不作为已合并 wire API。
 
 K2 候选适配边界见 [Core Provider Client v1](credential-provider/core-provider-client-v1.md)；支付扩展复用现有 Native Payment Provider，不新增通用渠道包装。
+
+K3 履约与付款证明候选子集见 [Core Order Fulfillment Ports v1](core-order-fulfillment-ports-v1.md)，分别说明自有事务、SQL 参与及付款证据语义，不开放任意跨域事务或账本写入。

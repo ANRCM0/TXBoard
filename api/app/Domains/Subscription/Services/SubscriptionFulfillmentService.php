@@ -3,16 +3,18 @@
 namespace App\Domains\Subscription\Services;
 
 use App\Domains\Billing\PurchasedOrderGrant;
-use App\Domains\Billing\NativePaymentSettlement;
+use App\Domains\Billing\Internal\WinningPaymentProofs;
 use App\Domains\Installation\InstallationAuthority;
 use App\Domains\Installation\NativeRuntimeAdmission;
+use App\Domains\Subscription\Contracts\OrderFulfillment;
+use App\Domains\Subscription\Internal\LockedOrderFulfillment;
 use App\Models\Order;
 use App\Models\OrderPurchaseTerms;
 use DomainException;
 use Illuminate\Support\Facades\DB;
 
 /** Native fulfillment never calls legacy User, wallet, reset or commission writers. */
-final class SubscriptionFulfillmentService
+final class SubscriptionFulfillmentService implements OrderFulfillment, LockedOrderFulfillment
 {
     public function __construct(
         private NativeSubscriptionStore $store,
@@ -202,7 +204,7 @@ final class SubscriptionFulfillmentService
     {
         if (($installation['runtime_version'] ?? null) === NativeRuntimeAdmission::VERSION
             && (string) $order->total_amount !== '0') {
-            app(NativePaymentSettlement::class)->verifyWinningPaymentLocked($installation, $userId, $order, $purchase);
+            app(WinningPaymentProofs::class)->verifyWinningPaymentLocked($installation, $userId, $order, $purchase);
         }
     }
 
