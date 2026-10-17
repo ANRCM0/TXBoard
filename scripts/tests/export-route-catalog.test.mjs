@@ -29,7 +29,7 @@ test('can export deterministic Laravel route registry and critical control-plane
   assert.equal(out.find(x => x.path === '/txapi/readiness').principal, 'public');
   assert.equal(out.find(x => x.path === '/txapi/node/v1/report').principal, 'node');
   assert.match(markdown(out), /TXBoard HTTP 路由快照/);
-  assert.ok(markdown(out).includes('external-adapter-current.md'));
+  assert.ok(markdown(out).includes('external-integration-routes.json'));
 });
 test('rejects all legacy V1/V2 routes even if current endpoints still present', () => {
   const routes = inventory([...required,

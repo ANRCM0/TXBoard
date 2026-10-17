@@ -1,56 +1,56 @@
 #!/usr/bin/env node
-/** Guard published TXAPI theme/Node tables with Laravel route:list --json. */
+/** Guard the machine-readable external route baseline against Laravel's registry. */
 import { readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { inventory } from './export-route-catalog.mjs';
 
-export function themeRows(doc) {
-  const rows = [];
-  for (const line of doc.split('\n')) {
-    const match = line.match(/^\|\s*(GET|POST|PATCH|DELETE)(?:\s*\/\s*(GET|POST|PATCH|DELETE))?\s*\|\s*\x60(\/[^\x60]+)\x60\s*\|/)
-      || line.match(/^\|\s*[^|]+\s*\|\s*(GET|POST|PATCH|DELETE)(?:\s*\/\s*(GET|POST|PATCH|DELETE))?\s*\x60(\/[^\x60]+)\x60\s*\|/);
-    if (match) for (const method of [match[1], match[2]].filter(Boolean)) {
-      rows.push(method + ' /txapi' + match[3]);
-    }
-  }
-  return rows;
+const wire = {
+  order_idempotency_header: 'Idempotency-Key',
+  node_authorization_policy: 'native-provider-authorization/v2',
+  node_usage_submit_path: '/txapi/node/v2/usage/submit',
+  node_machine_id_header: 'X-TX-Machine-ID',
+  node_websocket_path: '/txapi/node/v1/ws',
+};
+
+function exactKeys(value, keys) {
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
+    && Object.keys(value).sort().join('\n') === [...keys].sort().join('\n');
 }
 
-export function nodeRows(doc) {
-  const rows = [];
-  for (const line of doc.split('\n')) {
-    const match = line.match(/^\|\s*(GET|POST)\s*\|\s*\x60(\/txapi\/node\/v1\/[^\x60]+)\x60\s*\|/);
-    if (match) rows.push(match[1] + ' ' + match[2]);
-  }
-  return rows;
+export function loadExternalContract() {
+  return JSON.parse(readFileSync(new URL('./fixtures/external-integration-routes.json', import.meta.url), 'utf8'));
 }
 
-export function verifyGuideRoutes(routes, theme, node) {
+export function verifyExternalRoutes(routes, contract) {
+  const labels = value => Array.isArray(value) && value.every(row => typeof row === 'string'
+    && /^(GET|POST|PUT|PATCH|DELETE) \/txapi\/[A-Za-z0-9_{}./-]+$/.test(row))
+    && new Set(value).size === value.length;
+  if (!exactKeys(contract, ['schema_version', 'theme_routes', 'node_routes', 'wire'])
+    || contract.schema_version !== 1 || !labels(contract.theme_routes) || !labels(contract.node_routes)
+    || contract.theme_routes.length < 55 || contract.node_routes.length !== 8
+    || !contract.node_routes.every(row => /^(GET|POST) \/txapi\/node\/v1\//.test(row))
+    || !exactKeys(contract.wire, Object.keys(wire))
+    || Object.entries(wire).some(([key, value]) => contract.wire[key] !== value)) {
+    throw new Error('EXTERNAL_INTEGRATION_ROUTE_CONTRACT_INVALID');
+  }
   const registered = inventory(routes);
   const live = new Set(registered.map(r => r.method + ' ' + r.path));
-  const themeDeclared = themeRows(theme);
-  const nodeDeclared = nodeRows(node);
   const user = registered.filter(r => /(?:txapi\.user|App\\Http\\Middleware\\TxapiUser)/.test(r.middleware));
   const nodes = registered.filter(r => r.path.startsWith('/txapi/node/v1/'));
-  const themeset = new Set(themeDeclared);
-  const nodeset = new Set(nodeDeclared);
+  const themeset = new Set(contract.theme_routes);
+  const nodeset = new Set(contract.node_routes);
   const failures = {
-    undocumentedUser: user.filter(r => !themeset.has(r.method + ' ' + r.path)).map(r => r.method + ' ' + r.path),
-    undocumentedNode: nodes.filter(r => !nodeset.has(r.method + ' ' + r.path)).map(r => r.method + ' ' + r.path),
-    staleDocumentation: [...themeset, ...nodeset].filter(s => !live.has(s)),
+    unlistedUser: user.filter(r => !themeset.has(r.method + ' ' + r.path)).map(r => r.method + ' ' + r.path),
+    unlistedNode: nodes.filter(r => !nodeset.has(r.method + ' ' + r.path)).map(r => r.method + ' ' + r.path),
+    staleContract: [...themeset, ...nodeset].filter(s => !live.has(s)),
   };
-  if (user.length < 25 || nodes.length !== 8 || themeset.size < 55 || nodeset.size !== 8
-    || themeset.size !== themeDeclared.length || nodeset.size !== nodeDeclared.length
-    || !theme.includes('Idempotency-Key') || !node.includes('native-provider-authorization/v2')
-    || !node.includes('/txapi/node/v2/usage/submit')
-    || !node.includes('X-TX-Machine-ID') || !node.includes('/txapi/node/v1/ws')
-    || Object.values(failures).some(f => f.length)) {
-    throw new Error('CURRENT external integration route docs out of date:\n'
+  if (user.length < 25 || nodes.length !== 8 || Object.values(failures).some(f => f.length)) {
+    throw new Error('CURRENT external integration route contract out of date:\n'
       + JSON.stringify({ ...failures, userCount:user.length, nodeCount:nodes.length,
-        documentedTheme:themeset.size, documentedNode:nodeset.size }, null, 2));
+        expectedTheme:themeset.size, expectedNode:nodeset.size }, null, 2));
   }
   return { userCount:user.length, nodeCount:nodes.length,
-    documentedTheme:themeset.size, documentedNode:nodeset.size };
+    expectedTheme:themeset.size, expectedNode:nodeset.size };
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
@@ -58,9 +58,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     const at = process.argv.indexOf('--routes');
     if (at < 0 || !process.argv[at + 1]) throw new Error('Usage: --routes <route-list.json>');
     const routes = JSON.parse(readFileSync(process.argv[at + 1], 'utf8'));
-    const theme = readFileSync(new URL('../contracts/http/theme-integration-current.md', import.meta.url), 'utf8');
-    const node = readFileSync(new URL('../contracts/node-protocol/txnode-integration-current.md', import.meta.url), 'utf8');
-    process.stdout.write(JSON.stringify(verifyGuideRoutes(routes, theme, node)) + '\n');
+    process.stdout.write(JSON.stringify(verifyExternalRoutes(routes, loadExternalContract())) + '\n');
   } catch (error) {
     process.stderr.write(String(error.message || error) + '\n');
     process.exitCode = 1;
