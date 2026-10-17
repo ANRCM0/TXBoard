@@ -1,6 +1,6 @@
 # Core capability and transaction map
 
-> K0 inventory and K1 entitlement-port candidate, 2026-10-17.
+> K0 inventory, K1 entitlement-port and K2 adapter-boundary candidates, 2026-10-17.
 >
 > Starting source: local `main` at `85b0eac62f73f636efe736548e968535c561ced3`.
 > This map describes inspected owners and the K1 candidate changes. It does not
@@ -152,14 +152,17 @@ currencies, multi-tenancy or additional native Node protocols.
 
 The existing [`check-core-boundaries.py`](../../../scripts/check-core-boundaries.py)
 retains its retired-code and current-domain checks. This candidate extends it
-only for the actual K1 surface:
+for the actual K1 and K2 surfaces:
 
 - Require the concrete Kernel/contract/composition files and their namespaces.
 - Reject framework, host I/O and business implementation dependencies in Kernel.
 - Reject host/framework, persistence, callable and implementation dependencies in
-  Subscription's public contracts; arrays and ordinary PHP value types remain valid.
+  Subscription and CredentialProvider public contracts; arrays and ordinary PHP
+  value types remain valid.
 - Reject concrete entitlement resolver dependencies outside its exact owner and
   composition provider, including production config/routes and bundled plugins.
+- Reject concrete ProviderTransport dependencies outside its implementation and
+  composition provider; five current business consumers use ProviderClient.
 - Leave other existing application `app()` calls and internal locked arrays alone.
   This is not a generic ban on service containers or a demand to rewrite Core.
 
@@ -187,8 +190,35 @@ long-running-process acceptance remains centralized in CI.
 ## 6. Deferred work
 
 K1 supplies a real typed read seam and explicit locked collaboration, not a
-completed abstract Core framework. Broader Provider port extraction, financial
-transaction participant types, direct domain dispatch for all ingress, other
-capabilities and a complete dependency graph remain K2-K5 work only when an
+completed abstract Core framework. Financial transaction participant types, direct domain dispatch for all ingress, other
+capabilities and a complete dependency graph remain K3-K5 work only when an
 actual use case justifies them. Ordinary business work continues in its owning
 module under the [feature development guide](../../development/core-feature-development.md).
+
+## 7. K2 current adapter candidate
+
+K2 builds on the K1 candidate commit `e76abc9`, not an assumed merged baseline.
+`CredentialProvider/Contracts/ProviderClient` exposes the current five methods;
+`ProviderTransport` directly implements it with a scoped composition binding.
+NativeCredentialProviderService, NativeSubscriptionDelivery,
+NativeProviderNodeAuthorization, NativeRuntimeReadiness and NativeProviderTrust
+now depend on this contract. There is no new adapter wrapper or second codec.
+
+Native `call`, `metadata` and `capabilities` reject an active owning SQL transaction
+before configuration or network work. Local configuration/digest reads remain
+available inside existing locked workflows. Frozen configuration, original
+operation recovery, Node snapshot checks and secret ownership remain unchanged.
+The precise surface is [Core Provider Client v1](../../../contracts/v2/credential-provider/core-provider-client-v1.md).
+
+Payment retains its existing plugin interface and Registry. The Registry now
+rejects `external_refund=true` or `query_refund=true`, including frozen recovery
+resolution, because the current interface cannot execute those operations.
+Well-formed disabled-channel frozen query/notification recovery is unchanged.
+Wallet refunds retain `entitlement_effect=none`.
+
+Existing module inventory/lifecycle adapters remain the authoritative extension
+seam; K2 does not add another registry or open generic module invocation.
+Candidate regression tests and source guards cover the changed boundaries.
+API, MySQL and real Provider acceptance is pending for this candidate; no
+production PKI, arbitrary Provider protocols or original-channel refund claim
+is made. K3-K5 and release qualification remain separate work.

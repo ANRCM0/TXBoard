@@ -3,6 +3,7 @@
 namespace Tests\Support;
 
 use App\Domains\CredentialProvider\ProviderError;
+use App\Domains\CredentialProvider\Contracts\ProviderClient;
 use App\Domains\CredentialProvider\ProviderTransport;
 use App\Domains\Installation\InstallationAuthority;
 use App\Domains\Network\NativeNodeAuthorization;
@@ -140,7 +141,7 @@ abstract class NativeRuntimeTestCase extends TestCase
             unset($request['subjects']);
             return $request + ['credentials' => $credentials];
         });
-        $this->app->instance(ProviderTransport::class, $transport);
+        $this->app->instance(ProviderClient::class, $transport);
         app(NativeCredentialProviderService::class)->register('runtime-provider', 'runtime-registration');
     }
 

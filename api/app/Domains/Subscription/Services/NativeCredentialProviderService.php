@@ -4,7 +4,7 @@ namespace App\Domains\Subscription\Services;
 
 use App\Domains\CredentialProvider\ProviderCodec;
 use App\Domains\CredentialProvider\ProviderError;
-use App\Domains\CredentialProvider\ProviderTransport;
+use App\Domains\CredentialProvider\Contracts\ProviderClient;
 use App\Domains\Installation\InstallationAuthority;
 use App\Domains\Installation\NativeRuntimeAdmission;
 use App\Domains\UsageV2\NativeUsageReservations;
@@ -23,7 +23,7 @@ final class NativeCredentialProviderService
 
     public function __construct(
         private NativeSubscriptionStore $store,
-        private ProviderTransport $transport,
+        private ProviderClient $transport,
     ) {}
 
     public function register(string $providerId, string $businessKey): array

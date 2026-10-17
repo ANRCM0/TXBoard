@@ -4,7 +4,7 @@ namespace Tests\Feature\Subscription;
 
 use App\Domains\CredentialProvider\ProviderError;
 use App\Domains\CredentialProvider\ProviderCodec;
-use App\Domains\CredentialProvider\ProviderTransport;
+use App\Domains\CredentialProvider\Contracts\ProviderClient;
 use App\Domains\Installation\InstallationAuthority;
 use App\Domains\Network\NativeNodeAuthorization;
 use App\Domains\Network\NativeProviderNodeAuthorization;
@@ -72,7 +72,7 @@ final class NativeProviderNodeAuthorizationTest extends NativeSubscriptionTestCa
             'native_provider_node.provider_id' => 'fixture-provider',
             'native_provider_node.recipients' => [$id => ['machine_id' => null, 'recipient_sha256' => str_repeat('d', 64)]],
         ]);
-        $transport = Mockery::mock(ProviderTransport::class);
+        $transport = Mockery::mock(ProviderClient::class);
         $transport->shouldReceive('configuration')->with('fixture-provider')->andReturn([
             'provider_id' => 'fixture-provider', 'provider_instance_epoch' => '1', 'config_digest' => str_repeat('a', 64),
             'profiles' => ['vless-uuid/v1', 'vmess-uuid/v1'],
@@ -102,7 +102,7 @@ final class NativeProviderNodeAuthorizationTest extends NativeSubscriptionTestCa
             unset($request['subjects']);
             return $request + ['credentials' => $credentials];
         });
-        $this->app->instance(ProviderTransport::class, $transport);
+        $this->app->instance(ProviderClient::class, $transport);
         app(NativeCredentialProviderService::class)->register('fixture-provider', 'registration');
     }
 

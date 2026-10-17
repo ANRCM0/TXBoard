@@ -151,9 +151,15 @@ KERNEL_FILES = {
     "api/app/Domains/Subscription/Internal/LockedEntitlementQueries.php":
         "App\\Domains\\Subscription\\Internal",
     "api/app/Providers/CoreCapabilitiesServiceProvider.php": "App\\Providers",
+    "api/app/Domains/CredentialProvider/Contracts/ProviderClient.php":
+        "App\\Domains\\CredentialProvider\\Contracts",
 }
 RESOLVER_OWNERS = frozenset({
     "api/app/Domains/Subscription/Services/SubscriptionEntitlementResolver.php",
+    "api/app/Providers/CoreCapabilitiesServiceProvider.php",
+})
+PROVIDER_TRANSPORT_OWNERS = frozenset({
+    "api/app/Domains/CredentialProvider/ProviderTransport.php",
     "api/app/Providers/CoreCapabilitiesServiceProvider.php",
 })
 PHP_COMMENTS = re.compile(
@@ -205,7 +211,17 @@ def validate_kernel_boundaries(root):
             ),
             HOST_NAMESPACE,
             HOST_OPERATION,
-            re.compile(r"\b(?:Closure|callable|Request|Model|Builder|Connection|ConnectionInterface)\b",
+            re.compile(r"(?<!\$)\b(?:Closure|callable|Request|Model|Builder|Connection|ConnectionInterface)\b",
+                       re.IGNORECASE),
+        ),
+        "api/app/Domains/CredentialProvider/Contracts": (
+            re.compile(
+                r"\bApp\\(?!(?:Core\\Kernel|Domains\\CredentialProvider\\Contracts)(?:\\|\b))",
+                re.IGNORECASE,
+            ),
+            HOST_NAMESPACE,
+            HOST_OPERATION,
+            re.compile(r"(?<!\$)\b(?:Closure|callable|Request|Model|Builder|Connection|ConnectionInterface)\b",
                        re.IGNORECASE),
         ),
     }
@@ -220,15 +236,19 @@ def validate_kernel_boundaries(root):
                         f"{match.group(0) if match else ''}")
             checked += 1
 
-    concrete = re.compile(r"\bSubscriptionEntitlementResolver\b", re.IGNORECASE)
+    concrete_boundaries = (
+        (re.compile(r"\bSubscriptionEntitlementResolver\b", re.IGNORECASE),
+         RESOLVER_OWNERS, "entitlement"),
+        (re.compile(r"\bProviderTransport\b", re.IGNORECASE),
+         PROVIDER_TRANSPORT_OWNERS, "provider transport"),
+    )
     for area in ("api/app", "api/config", "api/routes", "api/plugins-core"):
         for path in sorted((root / area).rglob("*.php")):
             relative = path.relative_to(root).as_posix()
-            if relative in RESOLVER_OWNERS:
-                continue
             source = without_php_comments(path.read_text(encoding="utf-8-sig"))
-            require(concrete.search(source) is None,
-                    f"Concrete entitlement dependency outside owner/composition root: {relative}")
+            for concrete, owners, label in concrete_boundaries:
+                require(relative in owners or concrete.search(source) is None,
+                        f"Concrete {label} dependency outside owner/composition root: {relative}")
     return checked
 
 
@@ -293,7 +313,7 @@ if __name__ == "__main__":
         count = validate()
         print(f"Core boundaries: {len(SUBSCRIPTION_SERVICES)} domain services; "
               f"{count} PHP source files checked; retired runtime references absent; "
-              "Kernel, public entitlement contracts and concrete consumer boundaries checked.")
+              "Kernel, public capability contracts and concrete consumer boundaries checked.")
     except ValueError as error:
         print(f"Core boundary check failed: {error}", file=sys.stderr)
         sys.exit(1)

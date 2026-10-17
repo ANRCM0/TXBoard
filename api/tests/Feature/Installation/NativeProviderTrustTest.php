@@ -4,7 +4,7 @@ namespace Tests\Feature\Installation;
 
 use App\Domains\CredentialProvider\NativeProviderTrust;
 use App\Domains\CredentialProvider\RenderGrantCodec;
-use App\Domains\CredentialProvider\ProviderTransport;
+use App\Domains\CredentialProvider\Contracts\ProviderClient;
 use App\Domains\Installation\InstallationAuthority;
 use App\Domains\Installation\InstallationAuthorityException;
 use DomainException;
@@ -40,9 +40,9 @@ final class NativeProviderTrustTest extends NativeRuntimeTestCase
     public function test_actual_tls_file_rotation_is_committed_by_digest_and_updates_registration(): void
     {
         $this->activate();
-        $before = app(ProviderTransport::class)->configuration('runtime-provider');
+        $before = app(ProviderClient::class)->configuration('runtime-provider');
         $this->candidateTransport();
-        $candidate = app(ProviderTransport::class)->configuration('runtime-provider');
+        $candidate = app(ProviderClient::class)->configuration('runtime-provider');
         $this->assertNotSame($before['config_digest'], $candidate['config_digest']);
         $service = app(NativeProviderTrust::class);
         $preflight = $service->preflight();

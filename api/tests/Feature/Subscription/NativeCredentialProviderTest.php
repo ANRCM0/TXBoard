@@ -3,7 +3,7 @@
 namespace Tests\Feature\Subscription;
 
 use App\Domains\CredentialProvider\ProviderError;
-use App\Domains\CredentialProvider\ProviderTransport;
+use App\Domains\CredentialProvider\Contracts\ProviderClient;
 use App\Models\Order;
 use App\Domains\Subscription\Services\NativeCredentialProviderService;
 use App\Domains\Subscription\Services\PublishedOrderService;
@@ -25,14 +25,14 @@ class NativeCredentialProviderTest extends NativeSubscriptionTestCase
     private array $currentCredentials = [];
     private int $providerClockOffset = 0;
     private mixed $exchange = null;
-    private ProviderTransport $transport;
+    private ProviderClient $transport;
 
     protected function setUp(): void
     {
         parent::setUp();
         (require database_path('migrations/2026_10_16_000001_enable_native_credential_provider.php'))->up();
         (require database_path('migrations/2026_10_16_000002_enable_native_credential_rotation.php'))->up();
-        $this->transport = Mockery::mock(ProviderTransport::class);
+        $this->transport = Mockery::mock(ProviderClient::class);
         $this->transport->shouldReceive('configuration')->with('fixture-provider')->andReturn([
             'provider_id' => 'fixture-provider', 'provider_instance_epoch' => '7',
             'config_digest' => str_repeat('a', 64), 'profiles' => ['vless-uuid/v1', 'vmess-uuid/v1'],
@@ -46,7 +46,7 @@ class NativeCredentialProviderTest extends NativeSubscriptionTestCase
             $this->calls[] = $wire;
             return $this->exchange === null ? $this->respond($wire) : ($this->exchange)($wire);
         });
-        $this->app->instance(ProviderTransport::class, $this->transport);
+        $this->app->instance(ProviderClient::class, $this->transport);
         $this->service()->register('fixture-provider', 'register');
     }
 

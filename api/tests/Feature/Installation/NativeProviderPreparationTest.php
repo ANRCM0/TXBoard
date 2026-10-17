@@ -2,7 +2,7 @@
 
 namespace Tests\Feature\Installation;
 
-use App\Domains\CredentialProvider\ProviderTransport;
+use App\Domains\CredentialProvider\Contracts\ProviderClient;
 use App\Domains\Installation\InstallationAuthority;
 use App\Domains\Installation\InstallationAuthorityException;
 use App\Domains\Subscription\Services\NativeCredentialProviderService;
@@ -41,14 +41,14 @@ final class NativeProviderPreparationTest extends TestCase
     {
         app(InstallationAuthority::class)->initialize('550e8400-e29b-41d4-a716-446655440000', 'native', 'provider-setup');
         config(['core_installation.mode' => 'native']);
-        $transport = Mockery::mock(ProviderTransport::class);
+        $transport = Mockery::mock(ProviderClient::class);
         $transport->shouldReceive('configuration')->with('primary-provider')->andReturn([
             'provider_id' => 'primary-provider', 'provider_instance_epoch' => '1',
             'config_digest' => str_repeat('a', 64), 'profiles' => ['vless-uuid/v1'],
         ]);
         $transport->shouldNotReceive('call');
         $transport->shouldNotReceive('metadata');
-        $this->app->instance(ProviderTransport::class, $transport);
+        $this->app->instance(ProviderClient::class, $transport);
         $arguments = ['provider' => 'primary-provider', '--key' => 'provider-registration'];
         $this->assertSame(0, Artisan::call('core:provider-register', $arguments));
         $first = Artisan::output();

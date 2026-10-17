@@ -4,7 +4,7 @@ namespace App\Domains\Network;
 
 use App\Domains\CredentialProvider\ProviderCodec;
 use App\Domains\CredentialProvider\ProviderMetadataCodec;
-use App\Domains\CredentialProvider\ProviderTransport;
+use App\Domains\CredentialProvider\Contracts\ProviderClient;
 use App\Domains\Installation\InstallationAuthority;
 use App\Domains\Installation\NativeRuntimeReadiness;
 use App\Domains\UsageV2\NativeUsageLedger;
@@ -23,7 +23,7 @@ final class NativeProviderNodeAuthorization
     public function __construct(
         private readonly LockedEntitlementQueries $entitlements,
         private readonly NativeCredentialProviderService $credentials,
-        private readonly ProviderTransport $transport,
+        private readonly ProviderClient $transport,
         private readonly NativeNodeAuthorization $signer,
     ) {}
 

@@ -44,3 +44,5 @@ TXBoard 是业务与数据权威。Gateway、Deploy、TX-Node 与可选插件按
 旧阶段计划和已退役协议从当前目录移除，原文从 Git 历史查询；历史验证 JSON 保留原字节，不作为当前调用面。安装与恢复操作以 TXBoard-Deploy 对应版本为准。
 
 K1 候选代码的精确进程内接口见 [Core Entitlement Queries v1](core-entitlement-queries-v1.md)，尚待 CI 与评审，不作为已合并 wire API。
+
+K2 候选适配边界见 [Core Provider Client v1](credential-provider/core-provider-client-v1.md)；支付扩展复用现有 Native Payment Provider，不新增通用渠道包装。

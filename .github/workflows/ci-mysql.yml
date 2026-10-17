@@ -362,6 +362,8 @@ jobs:
           tests/Feature/Subscription/NativeSubscriptionLifecycleTest.php
           tests/Feature/Subscription/NativeSubscriptionEntitlementTest.php
           tests/Feature/Subscription/EntitlementQueryBoundaryTest.php
+          tests/Unit/Domains/CredentialProvider/ProviderClientBoundaryTest.php
+          tests/Unit/Domains/CredentialProvider/ProviderTransportTest.php
           tests/Feature/UsageV2/NativeSubscriptionUsageTest.php
           tests/Feature/Txapi/TxapiNativeSubscriptionOperationsTest.php
           tests/Feature/Txapi/TxapiPublishedOrderAdapterTest.php

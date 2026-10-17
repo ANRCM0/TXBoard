@@ -4,11 +4,51 @@ namespace Tests\Unit\Domains\CredentialProvider;
 
 use App\Domains\CredentialProvider\ProviderError;
 use App\Domains\CredentialProvider\ProviderTransport;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class ProviderTransportTest extends TestCase
 {
     private array $files = [];
+
+    public function test_network_operations_reject_outer_and_nested_transactions_before_configuration_or_wire_validation(): void
+    {
+        $transport = new ProviderTransport();
+        config(['credential_provider.providers' => []]);
+        $assertBlocked = function (int $level) use ($transport): void {
+            foreach (['call', 'metadata', 'capabilities'] as $method) {
+                try {
+                    $arguments = $method === 'capabilities' ? [[]] : [[], []];
+                    $transport->{$method}(...$arguments);
+                    $this->fail('Provider network operation accepted inside a transaction: '.$method);
+                } catch (ProviderError $error) {
+                    $this->assertSame('PROVIDER_NETWORK_INSIDE_TRANSACTION', $error->codeName);
+                    $this->assertFalse($error->retryable);
+                    $this->assertSame($level, DB::transactionLevel());
+                }
+            }
+        };
+
+        DB::transaction(function () use ($assertBlocked): void {
+            $assertBlocked(1);
+            DB::transaction(fn () => $assertBlocked(2));
+            $this->assertSame(1, DB::transactionLevel());
+        });
+        $this->assertSame(0, DB::transactionLevel());
+    }
+
+    public function test_configuration_and_digest_remain_available_inside_a_transaction(): void
+    {
+        $this->configure();
+        $transport = new ProviderTransport();
+        $configuration = $transport->configuration('test-provider');
+
+        DB::transaction(function () use ($transport, $configuration): void {
+            $this->assertSame($configuration, $transport->configuration('test-provider'));
+            $this->assertSame($configuration['config_digest'], $transport->configDigest('test-provider'));
+            $this->assertSame(1, DB::transactionLevel());
+        });
+    }
 
     protected function tearDown(): void
     {

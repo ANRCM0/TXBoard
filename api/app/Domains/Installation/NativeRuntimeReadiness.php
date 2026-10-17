@@ -6,7 +6,7 @@ use App\Domains\Billing\OrderIdempotency;
 use App\Domains\CredentialProvider\ProviderCodec;
 use App\Domains\CredentialProvider\ProviderCapabilityCodec;
 use App\Domains\CredentialProvider\ProviderError;
-use App\Domains\CredentialProvider\ProviderTransport;
+use App\Domains\CredentialProvider\Contracts\ProviderClient;
 use App\Domains\Network\NativeNodeAuthorization;
 use App\Models\Server;
 use App\Domains\Subscription\Services\NativeSubscriptionDelivery;
@@ -20,7 +20,7 @@ final class NativeRuntimeReadiness
     {
         $providerId = config('native_provider_node.provider_id');
         $this->require(is_string($providerId), 'PROVIDER_REQUIRED');
-        $provider = app(ProviderTransport::class)->configuration($providerId);
+        $provider = app(ProviderClient::class)->configuration($providerId);
         $trust = app(NativeNodeAuthorization::class)->publicTrust();
         $this->require($trust['policy_version'] === NativeNodeAuthorization::PROVIDER_USAGE_POLICY_VERSION
             && $trust['core_instance_id'] === $installationId, 'SIGNER_INVALID');
@@ -343,7 +343,7 @@ final class NativeRuntimeReadiness
         $this->require(DB::transactionLevel() === 0, 'PROBE_TRANSACTION_FORBIDDEN');
         $registration = $preflight['provider_registration'];
         try {
-            $capabilities = app(ProviderTransport::class)->capabilities($registration);
+            $capabilities = app(ProviderClient::class)->capabilities($registration);
         } catch (ProviderError) {
             throw new InstallationAuthorityException('INSTALLATION_AUTHORITY_PROVIDER_CAPABILITY_UNAVAILABLE');
         }
