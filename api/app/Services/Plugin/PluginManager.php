@@ -169,8 +169,8 @@ class PluginManager
     {
         $file = $this->getPluginPath($pluginCode).'/module.json';
         if (!File::isFile($file)) return false;
-        $manifest = json_decode(File::get($file), true);
-        return ($manifest['lifecycle'] ?? 'managed') !== 'payment-owner';
+        $package = app(\App\Core\Host\Modules\ModulePackageLock::class)->package($pluginCode);
+        return ($package['manifest']['lifecycle'] ?? 'managed') !== 'payment-owner';
     }
 
     private function deployModule(string $pluginCode, string $action): bool
@@ -977,6 +977,10 @@ class PluginManager
      */
     public function initializeEnabledPlugins(): void
     {
+        if (config('core_installation.mode') === 'native') {
+            $this->pluginsInitialized = true;
+            return;
+        }
         if ($this->pluginsInitialized) {
             return;
         }
@@ -1025,6 +1029,7 @@ class PluginManager
      */
     public function registerPluginSchedules(Schedule $schedule): void
     {
+        if (config('core_installation.mode') === 'native') return;
         Plugin::where('is_enabled', true)
             ->get()
             ->each(function ($dbPlugin) use ($schedule) {

@@ -25,11 +25,12 @@ final class ModuleDeployment
             || ($action === 'configure') !== ($configuration !== null)) throw new ExtensionFailure('MODULE_DEPLOYMENT_INPUT_INVALID', 422);
         $package = $this->runtime->package($code);
         if (($package['manifest']['lifecycle'] ?? 'managed') !== 'managed') throw new ExtensionFailure('MODULE_LIFECYCLE_OWNED_BY_PAYMENT');
-        $installation = $this->installation->assertNativeRuntime();
+        if ($configuration !== null && strlen(json_encode($configuration, JSON_THROW_ON_ERROR)) > 32768) throw new ExtensionFailure('MODULE_CONFIGURATION_INVALID', 422);
+        $installation = DB::transaction(fn (): array => $this->installation->assertModuleDeployment(), 3);
         $requestHash = hash('sha256', json_encode([$action, $configuration], JSON_THROW_ON_ERROR));
         return $this->lock->run($code, function () use ($code, $action, $deploymentId, $configuration, $package, $installation, $requestHash): array {
             $intent = DB::transaction(function () use ($code, $action, $deploymentId, $configuration, $package, $installation, $requestHash): object {
-                $this->installation->assertNativeMutation();
+                $this->installation->assertModuleDeployment();
                 DB::table('tx_plugin_package_fence')->insertOrIgnore(['plugin_code' => $code, 'mutation_token' => null]);
                 $fence = DB::table('tx_plugin_package_fence')->where('plugin_code', $code)->lockForUpdate()->first();
                 $row = Plugin::query()->where('code', $code)->lockForUpdate()->first();
@@ -39,13 +40,14 @@ final class ModuleDeployment
                         || $intent->package_hash !== $package['fingerprint'] || $intent->installation_id !== $installation['installation_id']) {
                         throw new ExtensionFailure('MODULE_DEPLOYMENT_CONFLICT');
                     }
-                    if ($intent->phase !== 'completed' && $fence->mutation_token !== $intent->mutation_token) throw new ExtensionFailure('MODULE_DEPLOYMENT_FENCE_LOST');
+                    if (!in_array($intent->phase, ['completed', 'rejected'], true) && $fence->mutation_token !== $intent->mutation_token) throw new ExtensionFailure('MODULE_DEPLOYMENT_FENCE_LOST');
                     return $intent;
                 }
                 if ($fence->mutation_token !== null || $row?->native_payment_mutation_token !== null) throw new ExtensionFailure('MODULE_DEPLOYMENT_BUSY');
                 if ($action === 'enable') $this->runtime->dependencies($code);
                 if (in_array($action, ['disable', 'update', 'uninstall'], true)) $this->assertNoEnabledDependents($package);
                 if (($action === 'install') !== ($row === null)) throw new ExtensionFailure('MODULE_INSTALLATION_CONFLICT');
+                if ($action === 'uninstall' && $row->is_enabled) throw new ExtensionFailure('MODULE_STOP_BEFORE_REMOVAL');
                 if ($action === 'update' && ($row->is_enabled || version_compare($package['version'], $row->version, '<')
                     || $row->version === $package['version'] && (int) $row->module_schema_version >= $package['manifest']['schema_version'])) {
                     throw new ExtensionFailure('MODULE_STOP_BEFORE_UPDATE');
@@ -74,23 +76,35 @@ final class ModuleDeployment
                 return (object) $values;
             }, 3);
             if ($intent->phase === 'completed') return $this->result($intent);
+            if ($intent->phase === 'rejected') throw new ExtensionFailure('MODULE_DEPLOYMENT_REJECTED');
             try {
                 $snapshot = json_decode(Crypt::decryptString($intent->state_snapshot), true, 32, JSON_THROW_ON_ERROR);
                 foreach (['deployment_id', 'module_code', 'package_hash', 'request_hash'] as $field) {
                     if (($snapshot[$field] ?? null) !== $intent->$field) throw new ExtensionFailure('MODULE_DEPLOYMENT_EVIDENCE_INVALID');
                 }
                 $plugin = $this->plugins->moduleImplementation($code);
-                if (!$plugin instanceof DeploymentModule || $plugin->packageVersion() !== $package['version']) throw new ExtensionFailure('MODULE_DEPLOYMENT_CONTRACT_REQUIRED');
-                if (in_array($action, ['update', 'uninstall'], true) && $plugin instanceof RemovalGuard) $plugin->assertDrained();
-                if (in_array($action, ['install', 'update'], true) && $intent->phase === 'prepared') {
+                try {
+                    if (!$plugin instanceof DeploymentModule || $plugin->packageVersion() !== $package['version']) throw new ExtensionFailure('MODULE_DEPLOYMENT_CONTRACT_REQUIRED');
+                    if (in_array('domain', array_column($package['manifest']['operations'], 'idempotency'), true) && !$plugin instanceof RemovalGuard) throw new ExtensionFailure('MODULE_REMOVAL_GUARD_REQUIRED');
+                    if ($intent->phase === 'prepared' && in_array($action, ['update', 'uninstall'], true) && $plugin instanceof RemovalGuard) $plugin->assertDrained();
+                } catch (ExtensionFailure $error) {
+                    if ($intent->phase === 'prepared') $this->rejectPrepared($intent, $error->errorCode);
+                    throw $error;
+                }
+                if (in_array($action, ['install', 'update'], true) && in_array($intent->phase, ['prepared', 'schema_applying'], true)) {
                     // The contract explicitly permits replay with the original ID, including after partial DDL.
+                    $this->phase($intent, 'schema_applying');
                     $plugin->prepareSchema($deploymentId, $snapshot['from_schema'], $package['manifest']['schema_version']);
                     $this->phase($intent, 'schema_ready');
                 }
-                if ($action !== 'uninstall') $this->plugins->publishAssets($code);
-                else $this->plugins->moduleRemoveAssets($code);
+                if ($intent->phase === 'prepared') $this->phase($intent, 'schema_ready');
+                if ($intent->phase === 'schema_ready') {
+                    if ($action !== 'uninstall') $this->plugins->publishAssets($code);
+                    else $this->plugins->moduleRemoveAssets($code);
+                    $this->phase($intent, 'assets_ready');
+                }
                 DB::transaction(function () use ($intent, $package, $snapshot, $action, $code): void {
-                    $state = $this->installation->assertNativeMutation();
+                    $state = $this->installation->assertModuleDeployment();
                     if ($state['installation_id'] !== $intent->installation_id) throw new ExtensionFailure('MODULE_INSTALLATION_CONFLICT');
                     $fence = DB::table('tx_plugin_package_fence')->where('plugin_code', $code)->lockForUpdate()->first();
                     if ($fence?->mutation_token !== $intent->mutation_token) throw new ExtensionFailure('MODULE_DEPLOYMENT_FENCE_LOST');
@@ -113,10 +127,25 @@ final class ModuleDeployment
                 return $this->result($intent);
             } catch (\Throwable $error) {
                 // Keep the fence, original package identity and durable intent for explicit same-operation recovery.
-                DB::table('tx_module_deployment')->where('deployment_id', $deploymentId)->update(['error_code' => 'MODULE_DEPLOYMENT_INCOMPLETE', 'updated_at' => time()]);
+                DB::table('tx_module_deployment')->where('deployment_id', $deploymentId)->where('phase', '<>', 'rejected')
+                    ->update(['error_code' => 'MODULE_DEPLOYMENT_INCOMPLETE', 'updated_at' => time()]);
                 throw $error;
             }
         });
+    }
+
+    private function rejectPrepared(object $intent, string $code): void
+    {
+        DB::transaction(function () use ($intent, $code): void {
+            $fence = DB::table('tx_plugin_package_fence')->where('plugin_code', $intent->module_code)->lockForUpdate()->first();
+            if ($fence?->mutation_token !== $intent->mutation_token) throw new ExtensionFailure('MODULE_DEPLOYMENT_FENCE_LOST');
+            DB::table('tx_plugins')->where('code', $intent->module_code)->where('native_payment_mutation_token', $intent->mutation_token)
+                ->update(['native_payment_mutation_token' => null]);
+            DB::table('tx_plugin_package_fence')->where('plugin_code', $intent->module_code)->update(['mutation_token' => null]);
+            DB::table('tx_module_deployment')->where('deployment_id', $intent->deployment_id)->where('phase', 'prepared')
+                ->update(['phase' => 'rejected', 'error_code' => $code, 'updated_at' => time()]);
+            $intent->phase = 'rejected';
+        }, 3);
     }
 
     private function assertReferencesDrained(string $code): void

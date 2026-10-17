@@ -32,6 +32,12 @@ api/storage/framework/sessions/*
 api/storage/framework/views/*
 api/storage/logs/*
 api/plugins/*
+!api/plugins/DeliveryReceipt/
+!api/plugins/DeliveryReceipt/**
+!api/plugins/OfferReservation/
+!api/plugins/OfferReservation/**
+!api/plugins/ModulePortal/
+!api/plugins/ModulePortal/**
 api/public/hot
 api/public/storage
 api/composer.phar

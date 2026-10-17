@@ -55,7 +55,11 @@ class RouteServiceProvider extends ServiceProvider
         });
         // Unlike liveness, readiness is admitted by the installation middleware.
         Route::get('/txapi/readiness', static function (\Illuminate\Http\Request $request) {
-            return \App\Core\Http\TxapiResponse::success($request, ['ready' => true]);
+            $composition = app(\App\Core\Host\Modules\ModuleReadiness::class)->composition();
+            return \App\Core\Http\TxapiResponse::success($request, ['ready' => true, 'core_modules' => [
+                'kernel_api' => $composition['kernel_api'], 'release_id' => $composition['release_id'],
+                'composition_fingerprint' => \App\Domains\Installation\NativeRuntimeReadiness::hash($composition),
+            ]]);
         });
 
         $this->mapApiRoutes();

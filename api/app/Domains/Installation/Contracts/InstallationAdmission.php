@@ -13,4 +13,5 @@ interface InstallationAdmission
     public function assertCatalogMutation(): void;
     public function assertNativeMutation(): array;
     public function assertNativeRead(): array;
+    public function assertModuleDeployment(): array;
 }

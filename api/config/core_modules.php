@@ -3,6 +3,7 @@
 return [
     // Trusted deployment composition only; requests and package declarations cannot edit this list.
     'providers' => [],
+    'release_id' => env('CORE_RELEASE_ID', env('APP_COMMIT', 'development')),
     'package_lock' => env('CORE_MODULE_PACKAGE_LOCK', base_path('bootstrap/module-packages.lock.json')),
     // Reference names are public configuration; values stay in the host's secret environment.
     'secrets' => (static function (): array {

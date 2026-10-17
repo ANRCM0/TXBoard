@@ -8,6 +8,8 @@ use App\Core\Kernel\Modules\CapabilityDefinition;
 use App\Core\Kernel\Modules\CapabilityRequirement;
 use App\Core\Kernel\Modules\ModuleDefinition;
 use App\Domains\Network\Contracts\NetworkGroups;
+use App\Domains\Network\Contracts\NodeAuthorizationQueries;
+use App\Domains\Network\NativeNodeAuthorizationQueries;
 use App\Domains\Network\NetworkGroupReader;
 
 final class NetworkModule implements ModuleProvider
@@ -16,6 +18,7 @@ final class NetworkModule implements ModuleProvider
     {
         return new ModuleDefinition('network', '1.0.0', 'required-business', provides: [
                 new CapabilityDefinition('network.groups', NetworkGroups::class),
+                new CapabilityDefinition('network.node-authorization', NodeAuthorizationQueries::class),
             ], requires: [new CapabilityRequirement('installation.admission'), new CapabilityRequirement('subscription.entitlements'), new CapabilityRequirement('credentials.provider-client')], required: true);
     }
 
@@ -23,6 +26,7 @@ final class NetworkModule implements ModuleProvider
     {
         return [
             new ServiceBinding(NetworkGroups::class, NetworkGroupReader::class),
+            new ServiceBinding(NodeAuthorizationQueries::class, NativeNodeAuthorizationQueries::class),
         ];
     }
 }

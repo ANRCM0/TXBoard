@@ -16,6 +16,7 @@ final class ModulePackageLock
 {
     private array $packages = [];
     private array $unavailable = [];
+    private array $declared = [];
     private string $fingerprint;
 
     public function __construct(string $applicationRoot, array $lock)
@@ -29,6 +30,8 @@ final class ModulePackageLock
             if (!is_string($code) || preg_match('/\A[a-z][a-z0-9_]{0,63}\z/D', $code) !== 1
                 || isset($seen[$code]) || !is_bool($entry['required'] ?? null)) throw new ModuleError('MODULE_PACKAGE_LOCK_INVALID');
             $seen[$code] = true;
+            $this->declared[$code] = ['code' => $code, 'version' => is_string($entry['version'] ?? null) && strlen($entry['version']) <= 80 ? $entry['version'] : 'invalid',
+                'required' => $entry['required'], 'fingerprint' => hash('sha256', json_encode($entry['files'] ?? [], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES))];
             try { $this->packages[$code] = $this->load($applicationRoot, $entry); }
             catch (\Throwable) {
                 if ($entry['required']) throw new ModuleError('MODULE_PACKAGE_VERIFICATION_FAILED', 'plugin.'.$code);
@@ -37,6 +40,7 @@ final class ModulePackageLock
         }
         ksort($this->packages, SORT_STRING);
         ksort($this->unavailable, SORT_STRING);
+        ksort($this->declared, SORT_STRING);
         $this->fingerprint = hash('sha256', json_encode($lock, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES));
     }
 
@@ -47,6 +51,7 @@ final class ModulePackageLock
     }
 
     public function packages(): array { return $this->packages; }
+    public function declared(): array { return $this->declared; }
     public function package(string $code): ?array { return $this->packages[$code] ?? null; }
     public function unavailable(): array { return $this->unavailable; }
     public function fingerprint(): string { return $this->fingerprint; }

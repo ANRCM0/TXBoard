@@ -335,7 +335,8 @@ final class NativeRuntimeReadiness
                 'credential_sha256' => hash('sha256', $token)];
         }
         return ['configuration' => $configuration, 'provider_registration' => $registered,
-            'catalog' => $catalog, 'nodes' => $targets];
+            'catalog' => $catalog, 'nodes' => $targets,
+            'modules' => app(\App\Core\Host\Modules\ModuleReadiness::class)->inspectLocked(true)];
     }
 
     public function probe(array $preflight): array

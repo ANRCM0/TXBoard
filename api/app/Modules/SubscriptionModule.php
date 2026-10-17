@@ -19,6 +19,8 @@ use App\Domains\Subscription\Internal\LockedEntitlementQueries;
 use App\Domains\Subscription\Internal\LockedOrderFulfillment;
 use App\Domains\Subscription\Services\SubscriptionEntitlementResolver;
 use App\Domains\Subscription\Services\SubscriptionFulfillmentService;
+use App\Domains\Subscription\Internal\LockedAccountAccess;
+use App\Domains\Subscription\NativeAccountAccess;
 
 final class SubscriptionModule implements ModuleProvider
 {
@@ -32,6 +34,7 @@ final class SubscriptionModule implements ModuleProvider
                 new CapabilityDefinition('subscription.lifecycle', SubscriptionLifecycle::class),
                 new CapabilityDefinition('subscription.locked-entitlements', LockedEntitlementQueries::class, exported: false),
                 new CapabilityDefinition('subscription.locked-fulfillment', LockedOrderFulfillment::class, exported: false),
+                new CapabilityDefinition('subscription.locked-account-access', LockedAccountAccess::class, exported: false),
             ], requires: [new CapabilityRequirement('installation.admission'), new CapabilityRequirement('platform.clock'), new CapabilityRequirement('credentials.provider-client'), new CapabilityRequirement('billing.winning-proof')], required: true);
     }
 
@@ -45,6 +48,7 @@ final class SubscriptionModule implements ModuleProvider
             new ServiceBinding(SubscriptionLifecycle::class, SubscriptionLifecycleService::class),
             new ServiceBinding(LockedEntitlementQueries::class, SubscriptionEntitlementResolver::class),
             new ServiceBinding(LockedOrderFulfillment::class, SubscriptionFulfillmentService::class),
+            new ServiceBinding(LockedAccountAccess::class, NativeAccountAccess::class),
         ];
     }
 }

@@ -16,7 +16,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use App\Models\User;
-use App\Domains\Identity\AccountSqlPhase as IdentityPhase;
+use App\Domains\Identity\Contracts\AccountPreferences;
+use App\Domains\Identity\Contracts\PreferenceChange;
 
 final class AccountController
 {
@@ -72,7 +73,12 @@ final class AccountController
 
     public function preferences(Request $request): JsonResponse
     {
-        return TxapiResponse::success($request, self::preferencesDto(Auth::guard('sanctum')->user()));
+        try { $result = app(AccountPreferences::class)->read((int) Auth::guard('sanctum')->id()); }
+        catch (\DomainException $error) {
+            if ($error->getMessage() !== 'IDENTITY_ACTOR_UNAVAILABLE') throw $error;
+            return TxapiResponse::error($request, 'IDENTITY_ACTOR_UNAVAILABLE', 'Account unavailable', 403);
+        }
+        return TxapiResponse::success($request, $result->toArray());
     }
 
     public function updatePreferences(Request $request): JsonResponse
@@ -85,24 +91,14 @@ final class AccountController
             return TxapiResponse::error($request, 'PREFERENCES_REQUIRED',
                 'At least one preference must be supplied', 422);
         }
-        $user = Auth::guard('sanctum')->user();
-        // Explicit allowlist; cannot mutate balance, role or subscription tokens.
-        app(IdentityPhase::class)->run(IdentityPhase::USER_ACCOUNT_PREFERENCES, function () use (&$user, $values): void {
-            $user = User::query()->whereKey($user->getKey())->lockForUpdate()->firstOrFail();
-            foreach ($values as $key => $value) {
-                $user->$key = (bool) $value;
-            }
-            $user->saveOrFail();
-        });
-        return TxapiResponse::success($request, self::preferencesDto($user));
-    }
-
-    private static function preferencesDto($user): array
-    {
-        return [
-            'remind_expire' => (bool) $user->remind_expire,
-            'remind_traffic' => (bool) $user->remind_traffic,
-        ];
+        $change = new PreferenceChange(array_key_exists('remind_expire', $values) ? (bool) $values['remind_expire'] : null,
+            array_key_exists('remind_traffic', $values) ? (bool) $values['remind_traffic'] : null);
+        try { $result = app(AccountPreferences::class)->update((int) Auth::guard('sanctum')->id(), $change); }
+        catch (\DomainException $error) {
+            if ($error->getMessage() !== 'IDENTITY_ACTOR_UNAVAILABLE') throw $error;
+            return TxapiResponse::error($request, 'IDENTITY_ACTOR_UNAVAILABLE', 'Account unavailable', 403);
+        }
+        return TxapiResponse::success($request, $result->toArray());
     }
 
     public function orders(Request $request): JsonResponse
