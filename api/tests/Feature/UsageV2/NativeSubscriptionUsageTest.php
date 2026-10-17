@@ -8,17 +8,18 @@ use App\Domains\UsageV2\UsageReceipts;
 use App\Domains\UsageV2\UsageSettlement;
 use App\Models\Order;
 use App\Domains\Subscription\Services\PublishedOrderService;
-use App\Domains\Subscription\Services\SubscriptionEntitlementResolver;
 use App\Domains\Subscription\Services\SubscriptionFulfillmentService;
 use App\Domains\Subscription\Services\SubscriptionLifecycleService;
 use DomainException;
 use Illuminate\Support\Facades\DB;
 use Tests\Support\NativeRuntimeTestCase;
+use Tests\Support\ReadsEntitlements;
 use Tests\Support\UsageV2Fixture;
 
 final class NativeSubscriptionUsageTest extends NativeRuntimeTestCase
 {
     use UsageV2Fixture;
+    use ReadsEntitlements;
 
     private array $fixture;
 
@@ -50,7 +51,7 @@ final class NativeSubscriptionUsageTest extends NativeRuntimeTestCase
         $this->assertSame('0', (string) DB::table('tx_usage_period')->where('id', $reset['usage_period_id'])->value('billable_bytes'));
         $this->assertSame(1, DB::table('tx_usage_entry')->count());
         $this->assertSame(0, (int) $f['user']->fresh()->u);
-        $state = app(SubscriptionEntitlementResolver::class)->resolve($f['user']->id, $f['now'] + 60);
+        $state = $this->readEntitlement($f['user']->id, $f['now'] + 60);
         $this->assertTrue($state['authorized']);
         $this->assertSame('0', $state['consumed_bytes']);
     }
@@ -66,7 +67,7 @@ final class NativeSubscriptionUsageTest extends NativeRuntimeTestCase
         $this->assertSame($f['opened']['usage_period_id'], $renewed['usage_period_id']);
         $this->assertNotSame($f['opened']['terms_id'], $renewed['terms_id']);
         $this->assertSame(['settled'], array_values(app(UsageSettlement::class)->scan(10, $f['now'] + 50)));
-        $state = app(SubscriptionEntitlementResolver::class)->resolve($f['user']->id, $f['now'] + 60);
+        $state = $this->readEntitlement($f['user']->id, $f['now'] + 60);
         $this->assertTrue($state['authorized']);
         $this->assertSame('11', $state['consumed_bytes']);
         $this->assertSame($f['opened']['terms_id'], $state['period_terms_id']);

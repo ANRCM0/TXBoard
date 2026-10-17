@@ -2,7 +2,12 @@
 
 namespace App\Domains\Subscription\Services;
 
+use App\Core\Kernel\Clock;
 use App\Domains\Installation\InstallationAuthority;
+use App\Domains\Subscription\Contracts\EntitlementQueries;
+use App\Domains\Subscription\Contracts\EntitlementQuery;
+use App\Domains\Subscription\Contracts\EntitlementView;
+use App\Domains\Subscription\Internal\LockedEntitlementQueries;
 use App\Domains\UsageV2\NativeUsageReservations;
 use DomainException;
 use Illuminate\Database\QueryException;
@@ -12,19 +17,24 @@ use JsonException;
 use RuntimeException;
 
 /** A coherent, non-secret entitlement projection, not a credential or Node grant. */
-final class SubscriptionEntitlementResolver
+final class SubscriptionEntitlementResolver implements EntitlementQueries, LockedEntitlementQueries
 {
-    public const SCHEMA = 'core-entitlement/v1';
+    public const SCHEMA = EntitlementView::SCHEMA;
     private const HISTORY_LIMIT = 1000;
 
     public function __construct(
         private readonly NativeSubscriptionStore $store,
         private readonly SubscriptionTermsTimeline $timeline,
+        private readonly Clock $clock,
     ) {}
 
-    public function resolve(int $userId, ?int $at = null): array
+    public function forAccount(EntitlementQuery $query): EntitlementView
     {
-        $at ??= time();
+        return EntitlementView::fromProjection($this->resolveAt($query->userId, $this->clock->now()));
+    }
+
+    private function resolveAt(int $userId, int $at): array
+    {
         if ($userId <= 0 || $at < 0 || $at > 9007199254740991) {
             throw new InvalidArgumentException('ENTITLEMENT_INPUT_INVALID');
         }

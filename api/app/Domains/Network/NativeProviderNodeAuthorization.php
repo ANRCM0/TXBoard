@@ -11,7 +11,7 @@ use App\Domains\UsageV2\NativeUsageLedger;
 use App\Models\Server;
 use App\Models\Setting;
 use App\Domains\Subscription\Services\NativeCredentialProviderService;
-use App\Domains\Subscription\Services\SubscriptionEntitlementResolver;
+use App\Domains\Subscription\Internal\LockedEntitlementQueries;
 use DomainException;
 use Illuminate\Support\Facades\DB;
 
@@ -21,7 +21,7 @@ final class NativeProviderNodeAuthorization
     private const MAX_CANDIDATE_SCAN = 1024;
 
     public function __construct(
-        private readonly SubscriptionEntitlementResolver $entitlements,
+        private readonly LockedEntitlementQueries $entitlements,
         private readonly NativeCredentialProviderService $credentials,
         private readonly ProviderTransport $transport,
         private readonly NativeNodeAuthorization $signer,

@@ -4,16 +4,18 @@ namespace Tests\Feature\Subscription;
 
 use App\Models\Order;
 use App\Domains\Subscription\Services\PublishedOrderService;
-use App\Domains\Subscription\Services\SubscriptionEntitlementResolver;
 use App\Domains\Subscription\Services\SubscriptionFulfillmentService;
 use App\Domains\Subscription\Services\SubscriptionLifecycleService;
 use App\Domains\Subscription\Services\SubscriptionTermsTimeline;
 use Illuminate\Support\Facades\DB;
 use Tests\Support\NativeSubscriptionTestCase;
+use Tests\Support\ReadsEntitlements;
 use Throwable;
 
 class NativeSubscriptionLifecycleTest extends NativeSubscriptionTestCase
 {
+    use ReadsEntitlements;
+
     public function test_suspend_resume_revoke_replay_and_stale_version_preserve_account_and_history(): void
     {
         [$user, $offer, $initial, $at] = $this->opened();
@@ -21,14 +23,14 @@ class NativeSubscriptionLifecycleTest extends NativeSubscriptionTestCase
         $subscription = (int) $initial['subscription_id'];
         $suspended = $this->lifecycle()->suspend($user->id, $subscription, 'suspend', '1', $at + 10, 'review');
         $this->assertSame('suspended', $suspended['status']);
-        $this->assertFalse(app(SubscriptionEntitlementResolver::class)->resolve($user->id, $at + 11)['authorized']);
+        $this->assertFalse($this->readEntitlement($user->id, $at + 11)['authorized']);
         $this->assertSame($initial['subscription_id'], (string) DB::table('tx_subscription_slot')->value('subscription_id'));
         $this->reject(fn () => $this->lifecycle()->resume($user->id, $subscription, 'stale', '1', $at + 20),
             'NATIVE_SUBSCRIPTION_VERSION_CONFLICT');
         $this->reject(fn () => $this->lifecycle()->suspend($user->id, $subscription, 'suspend', '1', $at + 11),
             'NATIVE_OPERATION_CONFLICT');
         $resumed = $this->lifecycle()->resume($user->id, $subscription, 'resume', '2', $at + 20);
-        $this->assertTrue(app(SubscriptionEntitlementResolver::class)->resolve($user->id, $at + 21)['authorized']);
+        $this->assertTrue($this->readEntitlement($user->id, $at + 21)['authorized']);
         $this->assertSameResult($suspended, $this->lifecycle()->suspend($user->id, $subscription, 'suspend', '1', $at + 10, 'review'));
         $revoked = $this->lifecycle()->revoke($user->id, $subscription, 'revoke', $resumed['subscription_version'], $at + 30);
         $this->assertSame('revoked', $revoked['status']);
@@ -158,7 +160,7 @@ class NativeSubscriptionLifecycleTest extends NativeSubscriptionTestCase
         $boundary = (int) DB::table('tx_usage_period')->value('next_reset_at');
         $this->assertSame(1, $this->lifecycle()->tick(1, $boundary)['completed']);
         $this->assertSame('suspended', DB::table('tx_subscription')->value('status'));
-        $this->assertFalse(app(SubscriptionEntitlementResolver::class)->resolve($user->id, $boundary + 1)['authorized']);
+        $this->assertFalse($this->readEntitlement($user->id, $boundary + 1)['authorized']);
         $this->assertSame(0, $this->lifecycle()->tick(100, $initial['expires_at'] + 100)['failed']);
         $this->assertSame('expired', DB::table('tx_subscription')->value('status'));
     }

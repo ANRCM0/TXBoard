@@ -12,16 +12,18 @@ use App\Domains\UsageV2\UsageSettlement;
 use App\Domains\Subscription\Services\NativeCredentialSynchronization;
 use App\Domains\Subscription\Services\NativeCredentialProviderService;
 use App\Domains\Subscription\Services\SubscriptionLifecycleService;
-use App\Domains\Subscription\Services\SubscriptionEntitlementResolver;
 use DomainException;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redis;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Support\NativeRuntimeTestCase;
+use Tests\Support\ReadsEntitlements;
 
 final class NativeRuntimeUsageTest extends NativeRuntimeTestCase
 {
+    use ReadsEntitlements;
+
     public function test_signed_native_grants_real_subject_and_settlement_changes_only_native_period_once(): void
     {
         $this->activate();
@@ -37,13 +39,13 @@ final class NativeRuntimeUsageTest extends NativeRuntimeTestCase
         $receipts = app(UsageReceipts::class);
         $first = $receipts->submit((int) $this->node->id, $payload, $snapshot['issued_at'] + 2);
         $this->assertSame('11', (string) DB::table('tx_native_usage_reservation')->value('reserved_bytes'));
-        $this->assertSame('11', app(SubscriptionEntitlementResolver::class)->resolve($user->id)['consumed_bytes']);
+        $this->assertSame('11', $this->readEntitlement($user->id)['consumed_bytes']);
         $this->assertSame($first, $receipts->submit((int) $this->node->id, $payload, $snapshot['issued_at'] + 3));
         $this->assertSame(['settled'], array_values(app(UsageSettlement::class)->scan(10, $snapshot['issued_at'] + 3)));
         $this->assertSame([], app(UsageSettlement::class)->scan(10, $snapshot['issued_at'] + 4));
         $this->assertSame('11', (string) DB::table('tx_usage_period')->where('id', $subscription['usage_period_id'])->value('billable_bytes'));
         $this->assertSame(0, DB::table('tx_native_usage_reservation')->count());
-        $this->assertSame('11', app(SubscriptionEntitlementResolver::class)->resolve($user->id)['consumed_bytes']);
+        $this->assertSame('11', $this->readEntitlement($user->id)['consumed_bytes']);
         $this->assertSame(0, (int) $user->fresh()->u);
         $this->assertSame(0, (int) $user->fresh()->d);
         $this->assertSame(1, DB::table('tx_usage_entry')->count());
@@ -194,7 +196,7 @@ final class NativeRuntimeUsageTest extends NativeRuntimeTestCase
         $this->assertSame(1, DB::table('tx_usage_entry')->count());
         $this->assertSame(1, DB::table('tx_native_usage_reservation')->count());
         $this->assertSame('11', (string) DB::table('tx_native_usage_reservation')->value('reserved_bytes'));
-        $this->assertSame('22', app(SubscriptionEntitlementResolver::class)->resolve($user->id)['consumed_bytes']);
+        $this->assertSame('22', $this->readEntitlement($user->id)['consumed_bytes']);
     }
 
     public function test_verified_pending_subject_does_not_block_other_users_complete_snapshot(): void
@@ -309,7 +311,7 @@ final class NativeRuntimeUsageTest extends NativeRuntimeTestCase
         foreach ($grants as $grant) {
             $this->assertSame('11', (string) DB::table('tx_native_usage_reservation')
                 ->where('usage_period_id', $grant['usage_period_id'])->value('reserved_bytes'));
-            $this->assertSame('11', app(SubscriptionEntitlementResolver::class)->resolve((int) $grant['user_id'])['consumed_bytes']);
+            $this->assertSame('11', $this->readEntitlement((int) $grant['user_id'])['consumed_bytes']);
         }
         $this->assertSame(0, DB::table('tx_usage_entry')->count());
         $this->assertSame(0, (int) DB::table('tx_usage_period')->sum('billable_bytes'));
@@ -379,7 +381,7 @@ final class NativeRuntimeUsageTest extends NativeRuntimeTestCase
         }
         $this->assertSame('2250000000', (string) DB::table('tx_native_usage_reservation')->sum('reserved_bytes'));
         $this->assertSame('0', (string) DB::table('tx_usage_period')->where('id', $subscription['usage_period_id'])->value('billable_bytes'));
-        $this->assertSame('ENTITLEMENT_QUOTA_EXHAUSTED', app(SubscriptionEntitlementResolver::class)->resolve($user->id)['reason']);
+        $this->assertSame('ENTITLEMENT_QUOTA_EXHAUSTED', $this->readEntitlement($user->id)['reason']);
         $this->assertSame([], $this->snapshot()['users']);
         $subject = DB::table('tx_access_subject')->where('status', 'active')->first();
         try {
@@ -444,7 +446,7 @@ final class NativeRuntimeUsageTest extends NativeRuntimeTestCase
         $batch = DB::table('tx_usage_batch')->first();
         $this->assertSame('USAGE_NATIVE_AUTHORIZATION_CUTOFF', $batch->reason_code);
         $worker->recover((int) $batch->id, 'TEST_NATIVE_RECOVERY', $snapshot['issued_at'] + 33);
-        $this->assertSame('11', app(SubscriptionEntitlementResolver::class)->resolve($user->id)['consumed_bytes']);
+        $this->assertSame('11', $this->readEntitlement($user->id)['consumed_bytes']);
         $this->assertSame(['quarantined'], array_values($worker->scan(10, $snapshot['issued_at'] + 34)));
         $this->assertSame('11', (string) DB::table('tx_native_usage_reservation')->value('reserved_bytes'));
         $this->assertSame('0', (string) DB::table('tx_usage_period')->value('billable_bytes'));
@@ -461,12 +463,12 @@ final class NativeRuntimeUsageTest extends NativeRuntimeTestCase
             if ($phase === 'before_commit') { throw new \RuntimeException('injected-after-reservation-release'); }
         });
         $this->assertSame(['retry_wait'], array_values($worker->scan(10, $snapshot['issued_at'] + 3)));
-        $this->assertSame('11', app(SubscriptionEntitlementResolver::class)->resolve($user->id)['consumed_bytes']);
+        $this->assertSame('11', $this->readEntitlement($user->id)['consumed_bytes']);
         $this->assertSame('0', (string) DB::table('tx_usage_period')->value('billable_bytes'));
         $this->assertSame('11', (string) DB::table('tx_native_usage_reservation')->value('reserved_bytes'));
         $this->assertSame(0, DB::table('tx_usage_entry')->count());
         $this->assertSame(['settled'], array_values(app(UsageSettlement::class)->scan(10, $snapshot['issued_at'] + 60)));
-        $this->assertSame('11', app(SubscriptionEntitlementResolver::class)->resolve($user->id)['consumed_bytes']);
+        $this->assertSame('11', $this->readEntitlement($user->id)['consumed_bytes']);
         $this->assertSame('11', (string) DB::table('tx_usage_period')->value('billable_bytes'));
         $this->assertSame(0, DB::table('tx_native_usage_reservation')->count());
         $this->assertSame([], app(UsageSettlement::class)->scan(10, $snapshot['issued_at'] + 61));
@@ -485,7 +487,7 @@ final class NativeRuntimeUsageTest extends NativeRuntimeTestCase
         $this->assertSame('quarantined', $receipt['settlement_status']);
         $this->assertSame('3000000000', (string) DB::table('tx_native_usage_reservation')
             ->where('usage_period_id', $subscription['usage_period_id'])->value('reserved_bytes'));
-        $entitlement = app(SubscriptionEntitlementResolver::class)->resolve($user->id);
+        $entitlement = $this->readEntitlement($user->id);
         $this->assertTrue($entitlement['authorized']);
         $this->assertSame($reset['usage_period_id'], $entitlement['usage_period_id']);
         $this->assertSame('0', $entitlement['consumed_bytes']);
@@ -511,7 +513,7 @@ final class NativeRuntimeUsageTest extends NativeRuntimeTestCase
             $this->assertSame('quarantined', $receipt['settlement_status']);
         }
         $this->assertSame(2, DB::table('tx_native_usage_reservation')->count());
-        $this->assertSame('ENTITLEMENT_QUOTA_EXHAUSTED', app(SubscriptionEntitlementResolver::class)->resolve($user->id)['reason']);
+        $this->assertSame('ENTITLEMENT_QUOTA_EXHAUSTED', $this->readEntitlement($user->id)['reason']);
         $consumed = DB::transaction(fn (): string => NativeUsageReservations::consumed(
             DB::table('tx_usage_period')->where('id', $subscription['usage_period_id'])->first()));
         $this->assertSame((string) PHP_INT_MAX, $consumed);

@@ -34,4 +34,8 @@ SQL 持久保存业务事实、用量接收/预留/结算和 outbox。Redis 只�
 - [当前契约](../../../contracts/v2/README.md)、[HTTP 身份边界](../../../contracts/http/external-adapter-current.md)、[Node 协议](../../../contracts/node-protocol/README.md)。
 - [Native 配置与运行](native-c2-operations.md)、[开发及数据安全规则](../../development/native-development-baseline.md)、[发布验收](../../operations/release-staging-acceptance.md)。
 
+## 架构设计草案
+
+[小内核与业务模块详细设计](core-kernel-modular-design.md)及[进程内能力契约草案](../../../contracts/v2/core-module-ports-v1.md)描述如何在当前 native 实现上收口依赖与事务边界，状态为 Target / Draft。业务模块仍属于 Core，不变成可热卸载插件；适配层不恢复旧版本兼容。设计文件不表示接口、目录调整或多租户已经实现，不改变本页当前运行能力。
+
 当前角色不等于已验证 Compact/Standard/Cluster 部署产品；HA、完整平台/协议与容量承诺没有完成验收。旧计划、阶段台账和重复设计从当前文档移除；原文可从 Git 历史追溯，不再以历史方案驱动新开发。

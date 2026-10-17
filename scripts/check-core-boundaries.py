@@ -139,11 +139,97 @@ RETIRED_CONFIGS = (
     "core_shadow",
     "internal_api_slice",
 )
+KERNEL_FILES = {
+    "api/app/Core/Kernel/Clock.php": "App\\Core\\Kernel",
+    "api/app/Core/Infrastructure/SystemClock.php": "App\\Core\\Infrastructure",
+    "api/app/Domains/Subscription/Contracts/EntitlementQueries.php":
+        "App\\Domains\\Subscription\\Contracts",
+    "api/app/Domains/Subscription/Contracts/EntitlementQuery.php":
+        "App\\Domains\\Subscription\\Contracts",
+    "api/app/Domains/Subscription/Contracts/EntitlementView.php":
+        "App\\Domains\\Subscription\\Contracts",
+    "api/app/Domains/Subscription/Internal/LockedEntitlementQueries.php":
+        "App\\Domains\\Subscription\\Internal",
+    "api/app/Providers/CoreCapabilitiesServiceProvider.php": "App\\Providers",
+}
+RESOLVER_OWNERS = frozenset({
+    "api/app/Domains/Subscription/Services/SubscriptionEntitlementResolver.php",
+    "api/app/Providers/CoreCapabilitiesServiceProvider.php",
+})
+PHP_COMMENTS = re.compile(
+    r"""'(?:\\.|[^'\\])*'|"(?:\\.|[^"\\])*"|//[^\r\n]*|/\*[\s\S]*?\*/|\#(?!\[)[^\r\n]*"""
+)
+HOST_NAMESPACE = re.compile(r"\b(?:Illuminate|Symfony|GuzzleHttp|Plugin)\\", re.IGNORECASE)
+HOST_OPERATION = re.compile(
+    r"\b(?:DB|Cache|Redis|Http|PDO|mysqli|SoapClient)\b"
+    r"|\b(?:app|resolve|config|env|request|auth|curl_[a-z_]+|file_get_contents|"
+    r"file_put_contents|fopen|fsockopen|stream_socket_client|shell_exec|exec|"
+    r"system|passthru|proc_open|popen)\s*\(",
+    re.IGNORECASE,
+)
 
 
 def require(condition, message):
     if not condition:
         raise ValueError(message)
+
+
+def without_php_comments(text):
+    # Preserve quoted class names: string-based container lookups are dependencies too.
+    return PHP_COMMENTS.sub(
+        lambda match: " " * len(match.group(0))
+        if match.group(0).startswith(("//", "/*", "#")) else match.group(0),
+        text,
+    )
+
+
+def validate_kernel_boundaries(root):
+    """Small source guard, not a PHP parser, sandbox or proof of transaction safety."""
+    for relative, namespace in KERNEL_FILES.items():
+        path = root / relative
+        require(path.is_file(), f"Missing Core capability file: {relative}")
+        source = without_php_comments(path.read_text(encoding="utf-8-sig"))
+        require(re.search(r"\bnamespace\s+" + re.escape(namespace) + r"\s*;", source) is not None,
+                f"Wrong Core capability namespace: {relative}")
+
+    areas = {
+        "api/app/Core/Kernel": (
+            re.compile(r"\bApp\\(?!Core\\Kernel(?:\\|\b))", re.IGNORECASE),
+            HOST_NAMESPACE,
+            HOST_OPERATION,
+        ),
+        "api/app/Domains/Subscription/Contracts": (
+            re.compile(
+                r"\bApp\\(?!(?:Core\\Kernel|Domains\\Subscription\\Contracts)(?:\\|\b))",
+                re.IGNORECASE,
+            ),
+            HOST_NAMESPACE,
+            HOST_OPERATION,
+            re.compile(r"\b(?:Closure|callable|Request|Model|Builder|Connection|ConnectionInterface)\b",
+                       re.IGNORECASE),
+        ),
+    }
+    checked = 0
+    for area, patterns in areas.items():
+        for path in sorted((root / area).rglob("*.php")):
+            source = without_php_comments(path.read_text(encoding="utf-8-sig"))
+            for pattern in patterns:
+                match = pattern.search(source)
+                require(match is None,
+                        f"Host or implementation dependency in {path.relative_to(root).as_posix()}: "
+                        f"{match.group(0) if match else ''}")
+            checked += 1
+
+    concrete = re.compile(r"\bSubscriptionEntitlementResolver\b", re.IGNORECASE)
+    for area in ("api/app", "api/config", "api/routes", "api/plugins-core"):
+        for path in sorted((root / area).rglob("*.php")):
+            relative = path.relative_to(root).as_posix()
+            if relative in RESOLVER_OWNERS:
+                continue
+            source = without_php_comments(path.read_text(encoding="utf-8-sig"))
+            require(concrete.search(source) is None,
+                    f"Concrete entitlement dependency outside owner/composition root: {relative}")
+    return checked
 
 
 def validate():
@@ -198,6 +284,7 @@ def validate():
     ticket = ROOT / "api/app/Domains/Support/TicketService.php"
     require(ticket.is_file() and "namespace App\\Domains\\Support;" in ticket.read_text(encoding="utf-8"),
             "Missing support domain ticket service")
+    validate_kernel_boundaries(ROOT)
     return len(files)
 
 
@@ -205,7 +292,8 @@ if __name__ == "__main__":
     try:
         count = validate()
         print(f"Core boundaries: {len(SUBSCRIPTION_SERVICES)} domain services; "
-              f"{count} PHP source files checked; retired runtime references absent.")
+              f"{count} PHP source files checked; retired runtime references absent; "
+              "Kernel, public entitlement contracts and concrete consumer boundaries checked.")
     except ValueError as error:
         print(f"Core boundary check failed: {error}", file=sys.stderr)
         sys.exit(1)

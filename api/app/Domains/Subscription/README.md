@@ -1,7 +1,11 @@
 # Subscription domain
 
 Current subscription business services live in `Services/`. HTTP controllers,
-console commands, Node authorization and UsageV2 consume these services directly.
+console commands, Node authorization and UsageV2 consume domain capabilities.
+Public entitlement consumers use `Contracts\EntitlementQueries`; existing
+account-first transaction participants use `Internal\LockedEntitlementQueries`.
+Both are scoped bindings to the same authoritative resolver. Other service
+entry points retain their current contracts.
 There are no forwarding classes in `App\Services\Subscription`.
 
 ## Ownership
@@ -54,3 +58,10 @@ complete current frozen boundary evidence and never infers missing legacy fields
 Moving these services does not change database tables, wire contracts or lock
 semantics. Historical shadow reservation helpers are not current domain entry
 points.
+
+The public entitlement query uses a server-owned `Clock` and returns an immutable
+closed projection. It requires a fresh transaction and does not authorize callers.
+HTTP adapters select the authenticated account. The internal locked query keeps
+scalar arrays and propagates damaged-evidence errors so signed snapshot checks
+retain their existing equality and rollback semantics. See
+[the precise contract](../../../../contracts/v2/core-entitlement-queries-v1.md).
