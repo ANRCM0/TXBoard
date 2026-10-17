@@ -10,8 +10,9 @@ TXBoard 是业务与数据权威。Gateway、Deploy、TX-Node 与可选插件按
 
 | 契约 | 负责边界 | 范围 |
 | --- | --- | --- |
-| [Core Order Read Ports v1](core-order-read-ports-v1.md) | Billing 订单列表/状态/详情共享查询与两个固定 Internal API 读取处理器 | K4 新候选子集，待本提交 CI 与领域评审 |
-| [Core Account Read Ports v1](core-account-read-ports-v1.md) | 原生账户/订阅共享查询与三个固定 Internal API 读取处理器；不新增权限或业务操作 | K4 候选子集，待本提交 CI 与领域评审 |
+| [Core Account Sessions v1](core-account-sessions-v1.md) | Identity 会话列表、撤销和退出共用领域端口；固定读取及两个窄命令目标，保留鉴权和重放规则 | K4 新候选子集，待本提交 CI 与领域评审 |
+| [Core Order Read Ports v1](core-order-read-ports-v1.md) | Billing 订单列表/状态/详情共享查询与两个固定 Internal API 读取处理器 | K4 候选 `8734af1` 开发 CI 已通过，待领域评审与按依赖合并 |
+| [Core Account Read Ports v1](core-account-read-ports-v1.md) | 原生账户/订阅共享查询与三个固定 Internal API 读取处理器；不新增权限或业务操作 | K4 候选 `a4cee43` 开发 CI 已通过，待领域评审与按依赖合并 |
 | [Core Commerce v1](core-commerce-v1.md) | 正式订单购买快照与履约输入；不等于订阅/账务权威切换 | Core C1 |
 | [Core Subscription v1](core-subscription-v1.md) | 安装准备、正式目录及订阅聚合基础；生产启用条件由 Native C2 Runtime v1 补充 | Core C2 基础 |
 | [Native C2 Runtime v1](native-c2-runtime-v1.md) | 原生就绪转换、免费购买、Provider 轮换与接收者渲染、签名授权及原周期结算；精确提交验收见 PR #251 | Core C2 收尾 |

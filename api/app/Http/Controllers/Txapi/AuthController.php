@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Txapi;
 
 use App\Core\Http\TxapiResponse;
+use App\Domains\Identity\Contracts\AccountSessions;
 use App\Exceptions\ApiException;
 use App\Http\Requests\Passport\AuthLogin;
 use App\Http\Requests\Passport\AuthRegister;
@@ -190,42 +191,22 @@ final class AuthController
 
     public function logout(Request $request): JsonResponse
     {
-        $current = Auth::guard('sanctum')->user()->currentAccessToken();
-        if ($current && method_exists($current, 'delete')) {
-            app(IdentityPhase::class)->run(IdentityPhase::SESSION_REVOKE, function () use ($current): void {
-                $user = User::query()->whereKey(Auth::guard('sanctum')->id())->lockForUpdate()->firstOrFail();
-                $token = $user->tokens()->whereKey($current->getKey())->lockForUpdate()->first();
-                if ($token) $token->delete();
-            });
-        }
+        $user = Auth::guard('sanctum')->user();
+        $current = $user->currentAccessToken();
+        $currentTokenId = $current && method_exists($current, 'delete') ? (int) $current->getKey() : null;
+        app(AccountSessions::class)->end((int) $user->getKey(), $currentTokenId);
         return TxapiResponse::success($request, ['ok' => true]);
     }
 
     public function sessions(Request $request, ?int $limit = null): JsonResponse
     {
-        $query = Auth::guard('sanctum')->user()->tokens()->orderByDesc('id');
-        if ($limit !== null) $query->limit($limit);
-        $items = $query->get(['id', 'name', 'abilities', 'last_used_at',
-                'created_at', 'updated_at', 'expires_at'])
-            ->map(static fn ($token): array => [
-                'id' => (int) $token->id,
-                'name' => (string) $token->name,
-                'abilities' => $token->abilities,
-                'last_used_at' => $token->last_used_at?->toIso8601String(),
-                'created_at' => $token->created_at?->toIso8601String(),
-                'updated_at' => $token->updated_at?->toIso8601String(),
-                'expires_at' => $token->expires_at?->toIso8601String(),
-            ])->all();
+        $items = app(AccountSessions::class)->listing((int) Auth::guard('sanctum')->id(), $limit);
         return TxapiResponse::success($request, $items);
     }
 
     public function revoke(Request $request, int $sessionId): JsonResponse
     {
-        $deleted = app(IdentityPhase::class)->run(IdentityPhase::SESSION_REVOKE, function () use ($sessionId): int {
-            $user = Auth::guard('sanctum')->user();
-            $user = User::query()->whereKey($user->getKey())->lockForUpdate()->firstOrFail();
-            return $user->tokens()->whereKey($sessionId)->delete();
-        });
+        $deleted = app(AccountSessions::class)->revoke((int) Auth::guard('sanctum')->id(), $sessionId);
         if (!$deleted) {
             abort(404);
         }

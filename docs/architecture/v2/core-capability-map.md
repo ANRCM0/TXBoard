@@ -1,11 +1,11 @@
 # Core capability and transaction map
 
-> K0 inventory, K1 entitlement, K2 adapters, K3 fulfillment and K4 account/order read candidates, 2026-10-17.
+> K0 inventory, K1 entitlement, K2 adapters, K3 fulfillment and K4 ingress candidates, 2026-10-17.
 >
 > Starting source: local `main` at `85b0eac62f73f636efe736548e968535c561ced3`.
 > This map records actual candidate scope. K1-K3 exact-commit development CI is
-> recorded below, as is the accepted K4 account-read development CI. The new
-> order-read subset still needs its own CI and domain review.
+> recorded below, as is accepted K4 account/order-read development CI. The new
+> session-lifecycle subset still needs its own CI and domain review.
 > None of these candidate branches is an assumed merged or production baseline.
 
 Core is a modular control plane for one operator installation and its end users,
@@ -20,6 +20,7 @@ Current native behavior remains governed by its domain contracts and evidence.
 | --- | --- | --- |
 | Identity and account | `Domains/Identity`: `AccountCreationService`, `AccountSqlPhase`, `AdminAccountModeration`, `AccountSessionGuard` | Current identity and role checks remain separate from entitlements and money; no user traffic fields become native entitlement authority. |
 | Account read projection | Identity `AccountQueries` / `NativeAccountQueries` | Authenticated actor scalars from ingress; delegates entitlement facts to Subscription; no actor cache or independent authorization. |
+| Account session lifecycle | Identity `AccountSessions` / `NativeAccountSessions` | Actual actor and current-token scalars; owned revoke/end retain AccountSqlPhase admission, actor lock and transaction. No new session store or authorization proof. |
 | Order read projection | Billing `OrderQueries` / `NativeOrderQueries` | Existing owner-scoped list/status/detail with current Plan display; no write, financial snapshot or authority for a later mutation. |
 | Catalog administration | `NativePlanAdministration::publish`, `PlanPublicationService::publish/setAvailability`, `NativePlanCatalog` | Immutable publication and current selling availability are distinct; purchased evidence is not repriced. |
 | Purchase | `PublishedOrderService::create` | Account-first locks, permanent order key, frozen purchase and upgrade-source evidence; no provider network request in this transaction. |
@@ -298,7 +299,7 @@ route mapping; login, orders, checkout, lifecycle and other operations retain
 their current owners and idempotency behavior.
 
 Identity public contracts and concrete-owner dependencies are statically guarded;
-only the new account handler has a direct HTTP/auth/SQL dependency fence. No
+fixed account, order and session handlers have a direct HTTP/auth/SQL dependency fence. No
 source heuristic proves authentication or dynamic calls safe. Behavior tests
 cover shared query replacement, alternating actual actors and authorization
 failure; account-read development CI is recorded below.
@@ -333,6 +334,43 @@ audits the result. This result DTO is not a Kernel or plugin invocation API.
 
 Pure Billing contracts, concrete consumers and fixed handlers have source guards.
 New tests cover real HTTP/Internal parity, paging, owner isolation, missing Plan,
-port replacement, admission rejection and failures. Exact-commit CI for this
-order-read candidate is pending. Other justified ingress slices, K5 integrated
-handoff and production qualification remain separate work.
+port replacement, admission rejection and failures. Candidate `8734af1` (PR #267)
+passed its triggered API/MySQL/C2/image-verify/docs development checks. Manual
+MySQL/release/recovery/publish jobs were skipped, not passed; Gateway was not
+triggered. The candidate remains unmerged and does not qualify a release.
+
+## 11. K4 authenticated session lifecycle candidate
+
+The [Account Sessions contract](../../../contracts/v2/core-account-sessions-v1.md)
+is stacked on `8734af1`. Identity owns the existing listing, owned-token revoke
+and current-token end algorithms. HTTP AuthController and three existing Internal
+API operations now delegate to one scoped AccountSessions port. Password, login,
+registration and admin bulk-revoke participants remain outside this subset.
+
+| Consumer | Delegation | Preserved responsibility |
+| --- | --- | --- |
+| HTTP sessions | listing | Actual Sanctum actor, original projection and optional server-side limit |
+| HTTP revoke | revoke | Actual owner; missing/other-owner target remains 404 |
+| HTTP logout | end | Actual current deletable token only; null/missing no-op |
+| identity.sessions.list | SessionReadOperations listing | Both service domains, real actor, no receipt, common output controls |
+| identity.sessions.revoke | SessionMutationOperations revoke | Same workflow receipt/hash; unknown outcomes never re-execute |
+| identity.session.end | SessionMutationOperations end | Same once mode/no receipt; caller cannot select current token |
+
+Read-handler admission stays read-only. A separate command target admits only the
+two exact operation/class/method/mode tuples with an actor and without controller
+or read handler. There is no generic command bus, caller-selected class or plugin
+registration. MutationOperationResult carries data only; a null revoke result
+follows the existing 404 exception path and started-receipt semantics.
+
+Current service/actor/admin authorization still precedes dispatch and receipt
+replay. Results rejoin common field filtering, recursive redaction, decimal
+conversion, response bounds and private/no-store behavior. Mutations retain
+AccountSqlPhase installation admission, transaction and actor-first locks. No
+outer transaction, new financial/session truth, route or permission is added.
+
+Static guards and targeted tests are authored for ownership, actual Bearer
+isolation, shared-port substitution, current-token selection, rollback/admission,
+current permissions, closed input, replay/conflict/unknown and safe failures.
+Exact-commit runtime/MySQL CI remains pending for this new candidate. Other
+justified ingress slices, K5 integrated handoff and production qualification
+remain separate work; no candidate is merged by this change.

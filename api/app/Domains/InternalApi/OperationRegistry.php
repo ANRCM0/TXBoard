@@ -41,11 +41,13 @@ final class OperationRegistry
                 ['id', 'email', 'telegram_id', 'subscription', 'credential_status'], handler: AccountReadOperations::class),
             'identity.admin.get' => self::spec($admin, 'admin', $read, null, 'account', [],
                 ['id', 'email'], permission: 'identity.read', handler: AccountReadOperations::class),
-            'identity.sessions.list' => self::spec($both, 'authenticated', $read, Txapi\AuthController::class, 'sessions', [],
-                ['id', 'name', 'abilities', 'last_used_at', 'created_at', 'updated_at', 'expires_at'], list: true),
-            'identity.sessions.revoke' => self::spec($both, 'authenticated', $write, Txapi\AuthController::class, 'revoke',
-                ['session_id' => $id], ['ok'], parameters: ['sessionId' => 'session_id']),
-            'identity.session.end' => self::spec($both, 'authenticated', 'once', Txapi\AuthController::class, 'logout', [], ['ok']),
+            'identity.sessions.list' => self::spec($both, 'authenticated', $read, null, 'listing', [],
+                ['id', 'name', 'abilities', 'last_used_at', 'created_at', 'updated_at', 'expires_at'], list: true,
+                handler: SessionReadOperations::class),
+            'identity.sessions.revoke' => self::spec($both, 'authenticated', $write, null, 'revoke',
+                ['session_id' => $id], ['ok'], command: SessionMutationOperations::class),
+            'identity.session.end' => self::spec($both, 'authenticated', 'once', null, 'end', [], ['ok'],
+                command: SessionMutationOperations::class),
             'catalog.offers.list' => self::spec($user, 'anonymous', $read, Txapi\PublicController::class, 'plans', [],
                 ['offer_id', 'plan_id', 'plan_revision_id', 'name', 'content', 'tags', 'offer_code', 'purchase_kind',
                     'currency', 'price_minor', 'currency_minor_exponent', 'quota_bytes', 'group_id', 'speed_limit_mbps',
@@ -170,10 +172,10 @@ final class OperationRegistry
 
     private static function spec(array $domains, string $actor, string $mode, ?string $controller, ?string $method,
         array $rules, array $fields, bool $list = false, array $parameters = [], ?string $permission = null,
-        array $routeParameters = [], ?string $handler = null): array
+        array $routeParameters = [], ?string $handler = null, ?string $command = null): array
     {
         return compact('domains', 'actor', 'mode', 'controller', 'method', 'rules', 'fields', 'list', 'parameters',
-            'permission', 'routeParameters', 'handler');
+            'permission', 'routeParameters', 'handler', 'command');
     }
 
     private static function inputSchema(array $rules): array
