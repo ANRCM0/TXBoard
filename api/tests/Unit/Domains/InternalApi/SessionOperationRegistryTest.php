@@ -3,6 +3,9 @@
 namespace Tests\Unit\Domains\InternalApi;
 
 use App\Domains\InternalApi\AccountReadOperations;
+use App\Domains\InternalApi\BillingReadOperations;
+use App\Domains\InternalApi\CatalogReadOperations;
+use App\Domains\InternalApi\CommerceMutationOperations;
 use App\Domains\InternalApi\OperationRegistry;
 use App\Domains\InternalApi\OrderReadOperations;
 use App\Domains\InternalApi\SessionMutationOperations;
@@ -28,22 +31,33 @@ final class SessionOperationRegistryTest extends TestCase
                 $commands[$id] = [$spec['command'], $spec['method'], $spec['mode']];
                 $this->assertNull($spec['controller'], $id);
                 $this->assertNull($spec['handler'], $id);
-                $this->assertSame('authenticated', $spec['actor'], $id);
-                $this->assertSame(['user', 'admin'], $spec['domains'], $id);
+                $session = str_starts_with($id, 'identity.session');
+                $this->assertSame($session ? 'authenticated' : 'user', $spec['actor'], $id);
+                $this->assertSame($session ? ['user', 'admin'] : ['user'], $spec['domains'], $id);
             }
         }
         $this->assertSame([
             'identity.account.get' => [AccountReadOperations::class, 'account', 'read'],
             'identity.admin.get' => [AccountReadOperations::class, 'account', 'read'],
             'identity.sessions.list' => [SessionReadOperations::class, 'listing', 'read'],
+            'catalog.offers.list' => [CatalogReadOperations::class, 'listing', 'read'],
             'subscription.mine.get' => [AccountReadOperations::class, 'subscription', 'read'],
             'commerce.orders.list' => [OrderReadOperations::class, 'listing', 'read'],
             'commerce.orders.get' => [OrderReadOperations::class, 'find', 'read'],
+            'billing.wallet.get' => [BillingReadOperations::class, 'wallet', 'read'],
+            'billing.payment-methods.list' => [BillingReadOperations::class, 'methods', 'read'],
+            'billing.recharges.list' => [BillingReadOperations::class, 'recharges', 'read'],
+            'billing.recharges.get' => [BillingReadOperations::class, 'recharge', 'read'],
             'usage.mine.list' => [UsageReadOperations::class, 'listing', 'read'],
         ], $handlers);
         $this->assertSame([
             'identity.sessions.revoke' => [SessionMutationOperations::class, 'revoke', 'workflow'],
             'identity.session.end' => [SessionMutationOperations::class, 'end', 'once'],
+            'commerce.orders.create' => [CommerceMutationOperations::class, 'purchase', 'domain'],
+            'commerce.orders.checkout' => [CommerceMutationOperations::class, 'checkout', 'domain'],
+            'commerce.orders.cancel' => [CommerceMutationOperations::class, 'cancel', 'workflow'],
+            'billing.recharges.create' => [CommerceMutationOperations::class, 'recharge', 'domain'],
+            'billing.recharges.checkout' => [CommerceMutationOperations::class, 'rechargeCheckout', 'domain'],
         ], $commands);
     }
 

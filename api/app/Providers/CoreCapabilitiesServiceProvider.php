@@ -6,16 +6,24 @@ use App\Core\Host\Modules\ModuleProvider;
 use App\Core\Host\Modules\ModuleRuntime;
 use App\Core\Host\Modules\ModulePackageLock;
 use App\Core\Kernel\Modules\ModuleError;
-use App\Modules;
+use App\Modules\BillingModule;
+use App\Modules\IdentityModule;
+use App\Modules\InstallationModule;
+use App\Modules\NetworkModule;
+use App\Modules\NotificationsModule;
+use App\Modules\PlatformModule;
+use App\Modules\ProviderModule;
+use App\Modules\SubscriptionModule;
+use App\Modules\UsageModule;
 use Illuminate\Support\ServiceProvider;
 
 final class CoreCapabilitiesServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        $providers = [new Modules\PlatformModule, new Modules\InstallationModule, new Modules\ProviderModule,
-            new Modules\IdentityModule, new Modules\SubscriptionModule, new Modules\BillingModule,
-            new Modules\UsageModule, new Modules\NetworkModule, new Modules\NotificationsModule];
+        $providers = [new PlatformModule, new InstallationModule, new ProviderModule,
+            new IdentityModule, new SubscriptionModule, new BillingModule,
+            new UsageModule, new NetworkModule, new NotificationsModule];
         $extensions = config('core_modules.providers', []);
         if (!is_array($extensions) || !array_is_list($extensions) || count($extensions) > 64) {
             throw new ModuleError('MODULE_PROVIDER_CONFIGURATION_INVALID');

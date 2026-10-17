@@ -207,7 +207,7 @@ final class UsageReadBoundaryTest extends NativeRuntimeTestCase
     {
         $actor = $this->newUser();
         $token = $actor->createToken('port-owner', ['*'])->plainTextToken;
-        $items = [['id' => '71', 'subscription_id' => '12', 'consumed_bytes' => '19', 'starts_at' => 123]];
+        $items = [$this->usageItem()];
         $port = Mockery::mock(UsageQueries::class);
         $port->shouldReceive('listing')->twice()->with((int) $actor->id, Mockery::on(static fn ($query): bool =>
             $query instanceof UsageQuery && $query->subscriptionId === 12 && $query->afterId === 70 && $query->limit === 1))
@@ -262,16 +262,15 @@ final class UsageReadBoundaryTest extends NativeRuntimeTestCase
         $secret = 'USAGE_QUERY_PRIVATE_SECRET';
         $port = Mockery::mock(UsageQueries::class);
         $port->shouldReceive('listing')->once()->andReturn(new UsagePage([
-            ['id' => 71, 'subscription_id' => 12, 'consumed_bytes' => 19,
-                'status' => ['state' => 'open', 'token' => $secret, 'nested' => ['private_key' => $secret, 'safe' => true]],
-                'password' => $secret, 'unexpected' => $secret],
+            array_replace($this->usageItem(), ['id' => 71, 'subscription_id' => 12, 'consumed_bytes' => 19,
+                'unknown' => ['state' => 'open', 'token' => $secret, 'nested' => ['private_key' => $secret, 'safe' => true]],
+                'password' => $secret, 'unexpected' => $secret]),
         ], '71'));
-        $port->shouldReceive('listing')->once()->andReturn(new UsagePage([['id' => '71', 'status' => str_repeat('x', 2048)]], null));
+        $port->shouldReceive('listing')->once()->andReturn(new UsagePage(array_fill(0, 30, $this->usageItem()), null));
         $port->shouldReceive('listing')->once()->andThrow(new \RuntimeException($secret));
         $this->app->instance(UsageQueries::class, $port);
         $response = $this->invoke($token)->assertOk();
-        $this->assertSame([['id' => '71', 'subscription_id' => '12', 'consumed_bytes' => '19',
-            'status' => ['state' => 'open', 'nested' => ['safe' => true]]]], $response->json('data'));
+        $this->assertSame([$this->usageItem()], $response->json('data'));
         $response->assertJsonPath('meta.schema', 'native-usage-periods/v1')->assertJsonPath('meta.next_after_id', '71');
         $this->assertStringNotContainsString($secret, $response->getContent());
         $this->assertTrue($response->headers->hasCacheControlDirective('private'));
@@ -284,6 +283,13 @@ final class UsageReadBoundaryTest extends NativeRuntimeTestCase
         $this->assertStringNotContainsString($secret, json_encode(DB::table('tx_internal_audit')->get()));
         $this->assertStringNotContainsString($token, json_encode(DB::table('tx_internal_audit')->get()));
         $this->assertSame(0, DB::table('tx_internal_request')->count());
+    }
+
+    private function usageItem(): array
+    {
+        return ['id' => '71', 'subscription_id' => '12', 'terms_id' => '5', 'period_no' => '1', 'quota_bytes' => '1000',
+            'upload_bytes' => '7', 'download_bytes' => '12', 'billable_bytes' => '19', 'consumed_bytes' => '19',
+            'row_version' => '1', 'status' => 'open', 'starts_at' => 123, 'ends_at' => null, 'next_reset_at' => null];
     }
 
     private function invoke(?string $token = null, array $input = [], array $headers = [], string $domain = 'user')

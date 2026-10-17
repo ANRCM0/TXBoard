@@ -24,7 +24,7 @@ final class ExtensionController
         return $this->invoke($request, $code, $operation, 'user', $runtime);
     }
 
-    public function admin(Request $request, string $code, string $operation, ExtensionRuntime $runtime): JsonResponse
+    public function admin(Request $request, string $admin_path, string $code, string $operation, ExtensionRuntime $runtime): JsonResponse
     {
         return $this->invoke($request, $code, $operation, 'admin', $runtime);
     }

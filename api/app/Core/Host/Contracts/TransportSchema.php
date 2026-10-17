@@ -60,8 +60,13 @@ final class TransportSchema
             }
             self::assertDefinition($schema['items'], $depth + 1);
         }
-        if (array_key_exists('pattern', $schema) && (!is_string($schema['pattern']) || strlen($schema['pattern']) > 512
-            || @preg_match('~'.str_replace('~', '\\~', $schema['pattern']).'~Du', '') === false)) throw new InvalidArgumentException('CONTRACT_SCHEMA_INVALID');
+        if (array_key_exists('pattern', $schema)) {
+            if (!is_string($schema['pattern']) || strlen($schema['pattern']) > 512) throw new InvalidArgumentException('CONTRACT_SCHEMA_INVALID');
+            set_error_handler(static fn (): bool => true);
+            try { $valid = preg_match('~'.str_replace('~', '\\~', $schema['pattern']).'~Du', '') !== false; }
+            finally { restore_error_handler(); }
+            if (!$valid) throw new InvalidArgumentException('CONTRACT_SCHEMA_INVALID');
+        }
     }
 
     public function acceptsWire(mixed $value, array $schema): bool { return $this->accepts($value, $schema, wire: true); }

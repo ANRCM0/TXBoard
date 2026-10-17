@@ -27,7 +27,8 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
-        if (app(\App\Domains\Installation\InstallationAuthority::class)->inspect()['mode'] === 'native') {
+        if (config('core_installation.mode') === 'native'
+            || app(\App\Domains\Installation\InstallationAuthority::class)->inspect()['mode'] === 'native') {
             $schedule->command('core:subscriptions-tick --limit=100')->everyMinute()->onOneServer()->withoutOverlapping(5);
             $schedule->command('check:order --limit=100')->everyMinute()->onOneServer()->withoutOverlapping(5);
             $schedule->command('core:native-work --limit=100')->everyMinute()->onOneServer()->withoutOverlapping(5);

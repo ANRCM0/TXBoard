@@ -17,6 +17,11 @@ on:
       - "scripts/tests/compare-critical-data-snapshots.test.mjs"
       - ".github/workflows/ci-mysql.yml"
   workflow_dispatch:
+    inputs:
+      native_only:
+        description: Run native domain acceptance without the separate full legacy regression job
+        type: boolean
+        default: false
 
 concurrency:
   group: api-mysql-ci-${{ github.ref }}
@@ -24,7 +29,7 @@ concurrency:
 
 jobs:
   mysql-regression:
-    if: github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch' && !inputs.native_only
     runs-on: ubuntu-latest
     services:
       mysql:

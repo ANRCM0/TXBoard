@@ -35,7 +35,7 @@ final class NativePreparationSteps
             DB::table('tx_native_preparation_step')->insert(['installation_id' => $state['installation_id'],
                 'owner' => $owner, 'business_key' => $key, 'request_hash' => $hash,
                 'result_snapshot' => $snapshot, 'result_hash' => hash('sha256', $snapshot), 'created_at' => time()]);
-            return $result;
+            return json_decode($snapshot, true, 32, JSON_THROW_ON_ERROR);
         }, 3);
     }
 }

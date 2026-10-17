@@ -15,7 +15,8 @@ final class NativePaymentMethods implements PaymentMethods
     {
         $this->installation->assertNativeRuntime();
         return Payment::query()->where('enable', true)
-            ->where('handling_fee_fixed', 0)->where('handling_fee_percent', 0)->orderBy('sort')->orderBy('id')
+            ->where(fn ($query) => $query->where('handling_fee_fixed', 0)->orWhereNull('handling_fee_fixed'))
+            ->where(fn ($query) => $query->where('handling_fee_percent', 0)->orWhereNull('handling_fee_percent'))->orderBy('sort')->orderBy('id')
             ->limit(100)->get()->filter(function (Payment $method): bool {
                 try {
                     $provider = $this->providers->forPayment($method);

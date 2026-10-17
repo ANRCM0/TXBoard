@@ -18,11 +18,11 @@ use Symfony\Component\HttpFoundation\Response;
 final class ExtensionPresentationController
 {
     public function user(Request $request, string $code): Response { return $this->describe($request, $code, 'user'); }
-    public function admin(Request $request, string $code): Response { return $this->describe($request, $code, 'admin'); }
+    public function admin(Request $request, string $admin_path, string $code): Response { return $this->describe($request, $code, 'admin'); }
     public function userResource(Request $request, string $code, string $asset): Response { return $this->resource($request, $code, $asset, 'user'); }
-    public function adminResource(Request $request, string $code, string $asset): Response { return $this->resource($request, $code, $asset, 'admin'); }
+    public function adminResource(Request $request, string $admin_path, string $code, string $asset): Response { return $this->resource($request, $code, $asset, 'admin'); }
 
-    public function configure(Request $request, string $code): Response
+    public function configure(Request $request, string $admin_path, string $code): Response
     {
         return $this->respond($request, function () use ($request, $code): Response {
             [$package, $view] = $this->authorize($request, $code, 'admin', true);

@@ -76,4 +76,16 @@ final class NativePreparationTest extends TestCase
     {
         return json_decode(file_get_contents(base_path('native-preparation.example.json')), true, 32, JSON_THROW_ON_ERROR);
     }
+
+    public function test_native_schedule_registration_does_not_require_an_initialized_authority_record(): void
+    {
+        $authority = \Mockery::mock(InstallationAuthority::class);
+        $authority->shouldNotReceive('inspect');
+        $this->app->instance(InstallationAuthority::class, $authority);
+        $schedule = new \Illuminate\Console\Scheduling\Schedule;
+        (new \ReflectionMethod(\App\Console\Kernel::class, 'schedule'))
+            ->invoke(app(\Illuminate\Contracts\Console\Kernel::class), $schedule);
+        $this->assertCount(4, $schedule->events());
+        $this->assertSame(0, DB::table('tx_authority_writer_fence')->count());
+    }
 }

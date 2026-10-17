@@ -47,7 +47,9 @@ final class ModuleReleaseReceipts
             'business_key' => $key, 'previous_fingerprint' => $expected, 'composition_fingerprint' => $fingerprint,
             'composition_snapshot' => \App\Domains\CredentialProvider\ProviderCodec::canonical($composition), 'request_hash' => $requestHash,
             'content_hash' => NativeRuntimeReadiness::hash($payload), 'created_at' => $payload['created_at']]);
-        return ['version' => (string) $version, 'fingerprint' => $fingerprint, 'composition' => $composition, 'business_key' => $key];
+        return ['version' => (string) $version, 'fingerprint' => $fingerprint,
+            'composition' => json_decode(\App\Domains\CredentialProvider\ProviderCodec::canonical($composition), true, 32, JSON_THROW_ON_ERROR),
+            'business_key' => $key];
     }
 
     public function assertCurrentLocked(string $installationId, array $composition): void

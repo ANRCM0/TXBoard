@@ -47,12 +47,12 @@ final class ModuleDeployment
                 if ($action === 'enable') $this->runtime->dependencies($code);
                 if (in_array($action, ['disable', 'update', 'uninstall'], true)) $this->assertNoEnabledDependents($package);
                 if (($action === 'install') !== ($row === null)) throw new ExtensionFailure('MODULE_INSTALLATION_CONFLICT');
+                if (in_array($action, ['update', 'uninstall'], true)) $this->assertReferencesDrained($code);
                 if ($action === 'uninstall' && $row->is_enabled) throw new ExtensionFailure('MODULE_STOP_BEFORE_REMOVAL');
                 if ($action === 'update' && ($row->is_enabled || version_compare($package['version'], $row->version, '<')
                     || $row->version === $package['version'] && (int) $row->module_schema_version >= $package['manifest']['schema_version'])) {
                     throw new ExtensionFailure('MODULE_STOP_BEFORE_UPDATE');
                 }
-                if (in_array($action, ['update', 'uninstall'], true)) $this->assertReferencesDrained($code);
                 if ($action !== 'update' && $row !== null && $row->version !== $package['version']) throw new ExtensionFailure('MODULE_PACKAGE_VERSION_CONFLICT');
                 if ($row !== null && !in_array($action, ['update', 'disable'], true) && (int) $row->module_schema_version !== $package['manifest']['schema_version']) {
                     throw new ExtensionFailure('MODULE_SCHEMA_VERSION_CONFLICT');
