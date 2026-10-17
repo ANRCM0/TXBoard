@@ -47,7 +47,7 @@ final class NativePlanCatalog
                 $offer = $published['offer'];
                 $source = $published['source'];
                 if (($installation['runtime_version'] ?? null) === NativeRuntimeAdmission::VERSION
-                    && (string) $offer->price_minor !== '0') {
+                    && (string) $offer->price_minor !== '0' && $offer->currency !== 'CNY') {
                     continue;
                 }
                 $result[] = [

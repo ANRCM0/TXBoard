@@ -83,7 +83,6 @@ final class OrderPurchaseTermsSnapshot
             || (string) $order->plan_id !== (string) $revision->plan_id
             || (string) $order->plan_id !== (string) $offer->plan_id
             || (string) $order->period !== $offer->offer_code
-            || (string) $order->total_amount !== (string) $offer->price_minor
             || (string) $order->purchase_terms_version !== 'tx-core.purchase-terms/v2'
             || ($offer->offer_code === Plan::PERIOD_RESET_TRAFFIC) !== ((int) $order->type === Order::TYPE_RESET_TRAFFIC)) {
             throw new InvalidArgumentException('ORDER_PURCHASE_TERMS_IDENTITY_INVALID');
@@ -112,6 +111,12 @@ final class OrderPurchaseTermsSnapshot
             'catalog' => ['revision_id' => (string) $revision->id, 'offer_id' => (string) $offer->id,
                 'publication_hash' => (string) $revision->content_hash],
         ];
+        if ((string) $order->total_amount !== (string) $offer->price_minor
+            || ((int) $order->type === Order::TYPE_UPGRADE
+                && DB::table('tx_order_upgrade_credit')->where('order_id', $order->id)->sharedLock()->exists())) {
+            $snapshot['upgrade_credit'] = app(NativeUpgradeCredits::class)->binding($order, $offer);
+            $snapshot['price_minor'] = (string) $order->total_amount;
+        }
         return $snapshot + ['content_hash' => $this->catalog->hash($snapshot)];
     }
 

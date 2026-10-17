@@ -103,6 +103,61 @@
         ],
         "additionalProperties": false
       }
+    },
+    "type": {
+      "enum": [
+        "feature",
+        "payment"
+      ]
+    },
+    "payment": {
+      "type": "object",
+      "required": [
+        "contract",
+        "provider",
+        "snapshot_schema"
+      ],
+      "properties": {
+        "contract": {
+          "const": "native-payment-provider/1"
+        },
+        "provider": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,31}$"
+        },
+        "snapshot_schema": {
+          "type": "string",
+          "maxLength": 64,
+          "pattern": "^[a-z0-9][a-z0-9._-]*/[1-9][0-9]*$"
+        }
+      },
+      "additionalProperties": false
     }
-  }
+  },
+  "allOf": [
+    {
+      "if": {
+        "required": [
+          "type"
+        ],
+        "properties": {
+          "type": {
+            "const": "payment"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "payment"
+        ]
+      },
+      "else": {
+        "not": {
+          "required": [
+            "payment"
+          ]
+        }
+      }
+    }
+  ]
 }

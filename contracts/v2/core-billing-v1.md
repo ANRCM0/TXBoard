@@ -1,7 +1,13 @@
 # Native Core Billing v1
 
-Status: implementation contract for C3-A. C3-B actual payment integration and C3-C
-refunds/reconciliation remain required before native paid admission opens.
+Status: C3-A foundation contract (PR #260, not merged at this review). This branch
+also contains the C3 integration candidate described in
+[settlement](native-payment-settlement-v1.md),
+[payment plugins](native-payment-provider-v1.md) and
+[wallet/refunds](native-wallet-refunds-v1.md).
+Those documents supersede the foundation-only admission limits, not its money
+invariants. Integration acceptance and remaining C3 gaps are tracked separately
+in the [maturity review](../../docs/architecture/v2/core-maturity-review.md).
 
 ## Authority and scope
 
@@ -28,6 +34,16 @@ Every public mutation starts a fresh SQL transaction, obtains current native
 installation admission, then locks the owning tx_user row. Existing order paths
 retain account/slot/subscription before order/purchase locks. Money account locks
 are taken in sorted business-identity order after business aggregate locks.
+An order-owned wallet reservation is part of that aggregate and may be located
+with a current lock after its owning user/order locks, before money accounts.
+The complete conditional money-account union precedes attempt/receipt,
+allocation and journal evidence locks; pure channel payments do not create
+wallet accounts merely to inspect a nonexistent reservation. Financial mutation
+and replay evidence use current locking reads, including journal postings, not
+an older REPEATABLE READ snapshot established during installation admission.
+`inspectJournalLocked` requires those aggregate and money locks; the separate
+read-only `inspectJournal` remains a non-locking evidence inspector and creates
+or repairs nothing.
 Services never perform provider network I/O in a SQL transaction.
 
 Domain methods explicitly ending in Locked participate in the caller's
@@ -114,8 +130,9 @@ retries. Populated financial tables refuse destructive rollback. Current native
 readiness validates the schema and rejects initialization/activation over money
 or payment evidence; retained historical shadow evidence is never adopted.
 
-CI verifies balanced postings, ownership/currency mismatch, insufficient funds,
+Foundation CI verifies balanced postings, ownership/currency mismatch, insufficient funds,
 permanent idempotency, reversal, atomic rollback, real MySQL races and immutable
-receipt conflicts. Existing zero-price C2 checkout and paid rejection remain.
-Schema and internal foundation completion do not mean native paid support,
-channel integration, refunds, C4 service ingress or production release.
+receipt conflicts. The foundation alone retained C2 zero-price admission.
+The integration candidate changes checkout/admission through the linked domain
+contracts; foundation checks are not evidence that those changes passed.
+Schema and internal foundation completion do not mean production release.

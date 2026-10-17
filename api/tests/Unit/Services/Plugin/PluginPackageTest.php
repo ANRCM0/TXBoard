@@ -36,6 +36,38 @@ class PluginPackageTest extends TestCase
         $this->assertTrue($this->package->isSafeAdminAppReference('admin/index.html#/dashboard'));
     }
 
+    public function test_payment_plugins_require_one_explicit_current_contract_without_aliases(): void
+    {
+        $payment = ['contract' => 'native-payment-provider/1', 'provider' => 'ExamplePay',
+            'snapshot_schema' => 'examplepay-dispatch/1'];
+        $manifest = ['package' => ['schema' => 1], 'type' => 'payment', 'payment' => $payment];
+        $this->assertTrue($this->package->validateManifestExtension($manifest));
+        foreach (['contract', 'provider', 'snapshot_schema'] as $field) {
+            $incomplete = $payment;
+            unset($incomplete[$field]);
+            $this->assertFalse($this->package->validateManifestExtension(array_replace($manifest, ['payment' => $incomplete])));
+        }
+        foreach ([null, [], array_replace($payment, ['contract' => 'native-payment-provider/2']),
+            array_replace($payment, ['provider' => '../provider']), array_replace($payment, ['snapshot_schema' => '/1']),
+            $payment + ['legacy_notify' => true]] as $invalid) {
+            $this->assertFalse($this->package->validateManifestExtension(array_replace($manifest, ['payment' => $invalid])));
+        }
+        $this->assertFalse($this->package->validateManifestExtension(['package' => ['schema' => 1], 'type' => 'payment']));
+        $this->assertFalse($this->package->validateManifestExtension(array_replace($manifest, ['type' => 'feature'])));
+    }
+
+    public function test_bundled_payment_and_starter_use_the_same_manifest_contract(): void
+    {
+        $root = dirname(__DIR__, 5);
+        foreach (['api/plugins-core/Epay/config.json',
+            'contracts/plugin-package/examples/payment-starter/config.json'] as $file) {
+            $manifest = json_decode(file_get_contents($root.'/'.$file), true, 16, JSON_THROW_ON_ERROR);
+            $this->assertTrue($this->package->validateManifestExtension($manifest), $file);
+            $this->assertSame('payment', $manifest['type']);
+            $this->assertSame('native-payment-provider/1', $manifest['payment']['contract']);
+        }
+    }
+
     public function test_admin_app_requires_package_v1(): void
     {
         $this->assertFalse($this->package->validateManifestExtension([

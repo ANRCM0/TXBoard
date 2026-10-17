@@ -8,11 +8,13 @@
 
 Core 基于现有 Laravel 构建模块化控制平面。账户身份与订阅权益分离；权益、用量和资金事实具有明确版本、归属及持久记录。API、Worker、Scheduler 共用领域规则；Gateway、Provider、Node 是访问或执行角色，不另建订单、权限或财务真相。
 
+具体归属见 [Core 内核与插件扩展边界](core-extension-boundaries.md)。支付渠道是可替换插件；付款尝试、收款事实、钱包账本、退款规则和履约一致性仍由 Core 掌握。“支付属于 Core”不表示把具体支付商协议写进内核。
+
 | 领域 | Core 权威 | 其他角色 |
 | --- | --- | --- |
 | Identity / RBAC | 账户、会话、管理员权限、资源归属、审计 | Gateway 适配入口并传递可验证调用者身份 |
 | Plan / Subscription | 不可变 Revision/Offer、购买证据、订阅、Terms、有效期及配额 | 外部销售适配不能直接开通权益 |
-| Order / Billing | 订单、履约；C3 完成支付尝试、资金账户/分录及退款 | Payment Provider 验签、渠道交互与结果映射 |
+| Order / Billing | 订单、履约；C3 完成支付尝试、收款事实、资金账户/分录及退款 | Payment 插件提供具体渠道协议、验签、查询和结果映射，不直接落账或开通权益 |
 | Network / Usage | Node/Machine/Group/Route、Subject、授权政策、持久接收与周期结算 | Node 执行有限授权、记录及重报；Provider 管理代理凭据 |
 | Subscription delivery | Subject 归属、权益过滤、有限渲染授权；C4 完成长链接生命周期 | Provider 渲染并直接交付给受权接收方 |
 | Module / Plugin | 库存、权限授予、生命周期委派与审计 | 当前 PHP 插件为可信进程内代码；独立 Provider 有自己的运行边界 |

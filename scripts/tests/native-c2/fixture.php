@@ -52,17 +52,24 @@ function nativeC2Purchase(string $bearer, int $offerId, string $key): void
     $order = nativeC2Request('orders', ['offer_id' => $offerId], $bearer, $key, statuses: [201]);
     $trade = $order['data']['trade_no'] ?? null;
     if (!is_string($trade)) { throw new RuntimeException('NATIVE_C2_ORDER_MISSING'); }
-    nativeC2Request('orders/'.$trade.'/checkout', [], $bearer);
-    // Execute the actual queued production job, not a substituted fulfillment.
+    nativeC2Request('orders/'.$trade.'/checkout', [], $bearer, $key.'-checkout');
+    nativeC2Request('orders/'.$trade.'/checkout', [], $bearer, $key.'-checkout');
+    // Execute the production SQL recovery owner, not a substituted fulfillment.
     for ($index = 0; $index < 4; $index++) {
-        Artisan::call('queue:work', ['connection' => 'redis', '--once' => true, '--stop-when-empty' => true,
-            '--queue' => 'order_handle', '--tries' => 1, '--timeout' => 20]);
+        nativeC2Work();
         if ((int) Order::query()->where('trade_no', $trade)->value('status') === Order::STATUS_COMPLETED) {
             nativeC2Work();
+            $original = nativeC2Request('orders', ['offer_id' => $offerId], $bearer, $key, statuses: [201]);
+            if (($original['data']['trade_no'] ?? null) !== $trade
+                || DB::table('tx_payment_receipt')->exists() || DB::table('tx_money_journal')->exists()
+                || DB::table('tx_native_free_checkout')->where('order_id',
+                    Order::query()->where('trade_no', $trade)->value('id'))->value('status') !== 'completed') {
+                throw new RuntimeException('NATIVE_C2_FREE_CHECKOUT_EVIDENCE_INVALID');
+            }
             return;
         }
     }
-    throw new RuntimeException('NATIVE_C2_REAL_QUEUE_FULFILLMENT_FAILED');
+    throw new RuntimeException('NATIVE_C2_SQL_FULFILLMENT_FAILED');
 }
 
 try {
@@ -154,7 +161,7 @@ try {
             'subject_id' => (string) $subject->id,
             'initial_period_id' => (string) DB::table('tx_usage_period')->where('subscription_id', $subscriptionId)->value('id')];
         file_put_contents($directory.'/fixture.json', json_encode($fixture, JSON_THROW_ON_ERROR));
-        echo "Real HTTP registration, free checkout, queued fulfillment and Provider issuance passed.\n";
+        echo "Real HTTP registration, permanent free checkout, SQL fulfillment recovery and Provider issuance passed.\n";
         exit(0);
     }
     if ($mode === 'work') {

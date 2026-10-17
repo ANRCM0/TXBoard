@@ -63,6 +63,8 @@ final class NativeOrderRecoveryTest extends NativeSubscriptionTestCase
         $this->assertSame(Order::STATUS_CANCELLED, (int) $expired->fresh()->status);
         $this->assertSame(Order::STATUS_PROCESSING, (int) $processing->fresh()->status);
         $this->assertSame(Order::STATUS_PENDING, (int) $fresh->fresh()->status);
+        $this->assertSame(0, DB::table('tx_wallet_order_reservation')->count());
+        $this->assertSame(0, DB::table('tx_money_journal')->count());
         Bus::fake();
 
         $this->artisan('check:order', ['--limit' => 100])->assertSuccessful();

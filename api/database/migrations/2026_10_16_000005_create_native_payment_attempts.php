@@ -18,8 +18,10 @@ return new class extends Migration {
             $table->bigIncrements('id');
             $table->char('installation_id', 36);
             $table->integer('user_id');
-            $table->integer('order_id');
-            $table->unsignedBigInteger('purchase_terms_id');
+            $table->string('intent_type', 16)->default('purchase');
+            $table->unsignedBigInteger('recharge_id')->nullable();
+            $table->integer('order_id')->nullable();
+            $table->unsignedBigInteger('purchase_terms_id')->nullable();
             $table->integer('payment_id');
             $table->string('provider', 32);
             $table->string('provider_account_ref', 128);
@@ -36,6 +38,7 @@ return new class extends Migration {
             $table->unsignedBigInteger('updated_at');
             $table->unique(['installation_id', 'user_id', 'key_hash'], 'tx_payment_attempt_key_uq');
             $table->unique(['id', 'installation_id', 'user_id', 'order_id', 'payment_id'], 'tx_payment_attempt_owner_uq');
+            $table->unique(['id', 'installation_id', 'user_id', 'payment_id'], 'tx_payment_attempt_financial_owner_uq');
             $table->index(['order_id', 'id'], 'tx_payment_attempt_order_idx');
             $table->foreign('user_id', 'tx_payment_attempt_user_fk')->references('id')->on('tx_user')->restrictOnDelete();
             $table->foreign('payment_id', 'tx_payment_attempt_payment_fk')->references('id')->on('tx_payment')->restrictOnDelete();
@@ -48,7 +51,9 @@ return new class extends Migration {
             $table->bigIncrements('id');
             $table->char('installation_id', 36);
             $table->integer('user_id');
-            $table->integer('order_id');
+            $table->string('intent_type', 16)->default('purchase');
+            $table->unsignedBigInteger('recharge_id')->nullable();
+            $table->integer('order_id')->nullable();
             $table->integer('payment_id');
             $table->unsignedBigInteger('attempt_id');
             $table->string('provider', 32);
@@ -65,6 +70,9 @@ return new class extends Migration {
             $table->unique('attempt_id', 'tx_payment_receipt_attempt_uq');
             $table->foreign(['attempt_id', 'installation_id', 'user_id', 'order_id', 'payment_id'], 'tx_payment_receipt_owner_fk')
                 ->references(['id', 'installation_id', 'user_id', 'order_id', 'payment_id'])
+                ->on('tx_payment_attempt')->restrictOnDelete();
+            $table->foreign(['attempt_id', 'installation_id', 'user_id', 'payment_id'], 'tx_payment_receipt_financial_owner_fk')
+                ->references(['id', 'installation_id', 'user_id', 'payment_id'])
                 ->on('tx_payment_attempt')->restrictOnDelete();
             $table->foreign('user_id', 'tx_payment_receipt_user_fk')->references('id')->on('tx_user')->restrictOnDelete();
             $table->foreign('payment_id', 'tx_payment_receipt_payment_fk')->references('id')->on('tx_payment')->restrictOnDelete();

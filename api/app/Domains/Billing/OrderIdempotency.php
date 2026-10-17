@@ -15,13 +15,13 @@ use Illuminate\Support\Facades\DB;
 final class OrderIdempotency
 {
     public const OPERATION_CREATE = 'order.create';
+    public const OPERATION_NATIVE_CREATE = 'native.order.create';
     private const TABLE = 'idempotency_keys';
 
     public static function clientKey(?string $header): ?string
     {
         if ($header === null) {
-            // Existing native clients without the header retain old behavior.
-            // Gateway writes always require a key; new clients should send one.
+            // Callers that require durable acceptance must reject a missing key.
             return null;
         }
         $value = trim($header);
@@ -60,17 +60,21 @@ final class OrderIdempotency
      * Invoke only under a transaction and a locked user row. Returns the
      * existing order before purchase preflight on a successful replay.
      */
-    public static function run(int $userId, ?string $key, array $body, \Closure $create): Order
+    public static function run(int $userId, ?string $key, array $body, \Closure $create, bool $permanent = false): Order
     {
         if ($key === null) {
+            if ($permanent) {
+                throw new IdempotencyException('Idempotency-Key is required', 400, 'IDEMPOTENCY_KEY_REQUIRED');
+            }
             return $create();
         }
 
-        $operation = self::OPERATION_CREATE;
+        $operation = $permanent ? self::OPERATION_NATIVE_CREATE : self::OPERATION_CREATE;
         $keyHash = self::keyHash($userId, $operation, $key);
         $requestHash = self::requestHash($body);
         $now = time();
         $ttlSeconds = max(3600, min(604800, (int) config('idempotency.ttl_hours', 24) * 3600));
+        $expiresAt = $permanent ? PHP_INT_MAX : $now + $ttlSeconds;
         $timeout = max(60, (int) config('idempotency.in_progress_timeout_seconds', 900));
         $table = DB::table(self::TABLE);
         $record = (clone $table)->where('user_id', $userId)
@@ -78,7 +82,7 @@ final class OrderIdempotency
             ->where('key_hash', $keyHash)
             ->lockForUpdate()->first();
 
-        if ($record && (int) $record->expires_at <= $now) {
+        if (!$permanent && $record && (int) $record->expires_at <= $now) {
             // A physically retained expired key must not block new attempts.
             (clone $table)->where('id', $record->id)->delete();
             $record = null;
@@ -108,7 +112,7 @@ final class OrderIdempotency
             (clone $table)->where('id', $record->id)->update([
                 'status' => 'in_progress',
                 'updated_at' => $now,
-                'expires_at' => $now + $ttlSeconds,
+                'expires_at' => $expiresAt,
             ]);
             $id = (int) $record->id;
         } else {
@@ -122,7 +126,7 @@ final class OrderIdempotency
                 'result_snapshot' => null,
                 'created_at' => $now,
                 'updated_at' => $now,
-                'expires_at' => $now + $ttlSeconds,
+                'expires_at' => $expiresAt,
             ]);
         }
 

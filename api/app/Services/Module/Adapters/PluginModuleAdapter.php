@@ -131,6 +131,7 @@ final class PluginModuleAdapter implements ModuleAdapter
 
     private function manifestFromPackage(string $directory, array $config): array
     {
+        $this->pluginPackage->assertManifestExtension($config);
         foreach (['name', 'code', 'version', 'description', 'author'] as $field) {
             if (!is_string($config[$field] ?? null) || trim($config[$field]) === '') {
                 throw new \InvalidArgumentException("Plugin field {$field} is required");

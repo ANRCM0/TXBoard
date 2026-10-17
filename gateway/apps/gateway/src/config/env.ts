@@ -1,4 +1,8 @@
+import { loadNativeServiceConfig, NativeCoreClient, type NativeServiceConfig } from '../services/native-internal.js'
+
 export type GatewayConfig = {
+  nativeUserService?: NativeServiceConfig
+  nativeAdminService?: NativeServiceConfig
   host: string
   port: number
   upstream: URL
@@ -78,7 +82,16 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
   const upstreamHosts = (env.GATEWAY_UPSTREAM_HOSTS || upstream.hostname)
     .split(',').map(s => s.trim().toLowerCase()).filter(Boolean)
 
+  const nativeUserService = loadNativeServiceConfig(env, 'user')
+  const nativeAdminService = loadNativeServiceConfig(env, 'admin')
+  // Validate at boot, before serving traffic. No plaintext fallback when an
+  // explicitly enabled service channel is incomplete or misconfigured.
+  for (const service of [nativeUserService, nativeAdminService]) {
+    if (service) new NativeCoreClient(upstream, service,
+      intSetting(env.GATEWAY_UPSTREAM_TIMEOUT_MS, 8000, 500, 30000))
+  }
   return {
+    nativeUserService, nativeAdminService,
     host: env.GATEWAY_HOST || '127.0.0.1',
     port: intSetting(env.GATEWAY_PORT, 8787, 1, 65535),
     upstream,

@@ -13,6 +13,8 @@
 | 支付商回调 | `GET/POST /txapi/payment/webhook/{method}/{uuid}` | 提供商签名，原始 ACK |
 | Telegram 回调 | `POST /txapi/integrations/telegram/webhook` | Telegram 验证摘要 |
 | 订阅交付 | `POST /txapi/me/subscription-deliveries` | User Bearer + 客户端 PoP，Provider 直出材料 |
+| 订阅链接 | `/txapi/me/subscription-links*`；`POST /txapi/subscription-links/{linkRef}/redeem` | 管理需 User Bearer；兑换使用独立链接 bearer + 接收者 PoP，不借用用户/服务凭据 |
+| 正式服务入口 | `POST /txapi/internal/native/v1/{domain}/operations/{operation}` | 独立 User/Admin 服务凭据、可信 mTLS 证书绑定与实际调用者凭据；不是浏览器通道 |
 | 动态插件接口 | 插件自行注册的接口 | 由实际插件负责鉴权与路由 |
 
 普通 TXAPI JSON 响应包含 `data`、`request_id`，分页可含 `meta`；错误通常为 `error.code`、`error.message` 和 `request_id`，响应头包含 `X-Request-Id`。第三方回调有各自响应约定。存活检查：`GET /txapi/health`。
@@ -31,7 +33,12 @@ C2-B已注册原生订阅应用适配，但仍受上述安装门禁约束：
 不返回旧UUID作为原生代理凭据。legacy安装的订单与账户契约保持现状；
 原生 Node 授权、Provider 凭据、订阅分发与 UsageV2 使用
 [C2 有界运行契约](../v2/native-c2-runtime-v1.md)的独立准入条件。
-当前原生购买仅支持零价 Offer；付费收款入口不开放。
+C2 合并基线仅支持零价 Offer。本分支 C3/C4 候选加入 CNY 无手续费的渠道插件、
+钱包/混合支付、充值、退款至钱包与持久履约恢复，尚不能当作已通过集成验收或正式发布。
+免费 checkout 同样必需永久幂等键。付费升级折抵、已履约续费/重置精准全退、
+原路退款和支付插件旧版本交接尚未交付，明确拒绝而不猜测资金或权益。
+详见[结算](../v2/native-payment-settlement-v1.md)、[钱包退款](../v2/native-wallet-refunds-v1.md)
+和[内核成熟度](../../docs/architecture/v2/core-maturity-review.md)。
 
 C2-C1另注册以下用户Bearer入口，均保留native安装门禁：
 `POST /txapi/me/access-subjects`要求订阅ID、已配置Provider/Profile、预期订阅版本和幂等键；

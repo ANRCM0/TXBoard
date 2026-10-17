@@ -4,7 +4,7 @@ namespace Tests\Feature\Plugin;
 
 use App\Models\Plugin;
 use App\Services\Plugin\PluginManager;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\File;
 use Tests\TestCase;
@@ -12,7 +12,7 @@ use ZipArchive;
 
 class PluginStageFailureTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseMigrations;
 
     protected function tearDown(): void
     {

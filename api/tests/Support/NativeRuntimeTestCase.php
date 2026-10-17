@@ -31,8 +31,10 @@ abstract class NativeRuntimeTestCase extends TestCase
     protected bool $loseProviderResponse = false;
     protected array $providerCapabilities = ['node_delivery' => true, 'subscription_render' => true];
     protected ?\Closure $duringCapabilityProbe = null;
+    protected ?\Closure $duringMetadata = null;
     protected int $capabilityProbes = 0;
     protected array $planPrices = ['monthly' => '0.00', 'onetime' => '0.00'];
+    protected string $publicationCurrency = 'USD';
     private array $files = [];
     private array $receipts = [];
     private int $sequence = 0;
@@ -89,7 +91,7 @@ abstract class NativeRuntimeTestCase extends TestCase
             'transfer_enable' => 2, 'speed_limit' => 30, 'device_limit' => 2, 'reset_traffic_method' => 2,
             'capacity_limit' => null,
             'prices' => $this->planPrices, 'show' => true, 'sell' => true, 'renew' => true]));
-        $this->offers = app(PlanPublicationService::class)->publish($plan->id, 'runtime-offers', 'USD', 'UTC')['offers'];
+        $this->offers = app(PlanPublicationService::class)->publish($plan->id, 'runtime-offers', $this->publicationCurrency, 'UTC')['offers'];
         $transport = Mockery::mock(ProviderTransport::class)->makePartial();
         $transport->shouldReceive('capabilities')->andReturnUsing(function (array $registration): array {
             $this->assertSame(0, DB::transactionLevel());
@@ -128,6 +130,7 @@ abstract class NativeRuntimeTestCase extends TestCase
         });
         $transport->shouldReceive('metadata')->andReturnUsing(function (array $registration, array $request): array {
             $this->assertSame(0, DB::transactionLevel());
+            if ($this->duringMetadata !== null) { ($this->duringMetadata)($registration, $request); }
             $credentials = [];
             foreach ($request['subjects'] as $subject) {
                 $credentials[] = ['access_subject_id' => $subject['access_subject_id'], 'credential_ref' => $subject['credential_ref'],
@@ -182,7 +185,7 @@ abstract class NativeRuntimeTestCase extends TestCase
             'node_id' => (int) $this->node->id, 'machine_id' => null, 'key_id' => 'runtime-key', 'key_epoch' => '1'], time());
     }
 
-    private function file(string $contents): string
+    protected function file(string $contents): string
     {
         $path = tempnam(sys_get_temp_dir(), 'native-runtime-');
         file_put_contents($path, $contents);

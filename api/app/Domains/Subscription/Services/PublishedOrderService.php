@@ -5,6 +5,7 @@ namespace App\Domains\Subscription\Services;
 use App\Domains\Billing\OrderIdempotency;
 use App\Domains\Billing\OrderPurchaseTermsSnapshot;
 use App\Domains\Billing\PurchasedOrderGrant;
+use App\Domains\Billing\NativeUpgradeCredits;
 use App\Domains\Installation\InstallationAuthority;
 use App\Domains\Installation\NativeRuntimeAdmission;
 use App\Models\Order;
@@ -70,18 +71,20 @@ final class PublishedOrderService
                     throw new RuntimeException('PUBLISHED_ORDER_PENDING_ORDER_EXISTS');
                 }
                 $current = $slot->subscription_id === null ? null : $subscriptions->firstWhere('id', $slot->subscription_id);
+                $history = null;
                 if ($current !== null) {
                     if (!in_array($current->status, ['active', 'suspended'], true)
                         || ($current->expires_at !== null && (int) $current->expires_at <= $now)) {
                         throw new RuntimeException('PUBLISHED_ORDER_SLOT_RELEASE_REQUIRED');
                     }
-                    $this->subscriptions->verifyHistory($current, $this->subscriptions->lockHistory($current));
+                    $history = $this->subscriptions->lockHistory($current);
+                    $this->subscriptions->verifyHistory($current, $history, currentRead: true);
                 }
                 $published = $this->catalog->verifiedOffer($offerId, true, true);
                 $offer = $published['offer'];
                 if (($installation['runtime_version'] ?? null) === NativeRuntimeAdmission::VERSION
-                    && (string) $offer->price_minor !== '0') {
-                    throw new RuntimeException('PUBLISHED_ORDER_PAID_PURCHASE_UNAVAILABLE');
+                    && (string) $offer->price_minor !== '0' && $offer->currency !== 'CNY') {
+                    throw new RuntimeException('PUBLISHED_ORDER_CURRENCY_UNSUPPORTED');
                 }
                 $type = $this->orderType($current, $offer);
                 $availability = $published['availability'];
@@ -96,20 +99,24 @@ final class PublishedOrderService
                 if ((int) $offer->price_minor > 2147483647) {
                     throw new RuntimeException('PUBLISHED_ORDER_PRICE_OUT_OF_RANGE');
                 }
+                $credit = ($installation['runtime_version'] ?? null) === NativeRuntimeAdmission::VERSION
+                    && $type === Order::TYPE_UPGRADE
+                    ? app(NativeUpgradeCredits::class)->quoteLocked($installation, $current, $history, $offer, $now) : null;
                 $created = Order::query()->create([
                     'user_id' => $userId, 'plan_id' => (int) $offer->plan_id, 'period' => $offer->offer_code,
                     'type' => $type, 'status' => Order::STATUS_PENDING, 'trade_no' => Helper::generateOrderNo(),
-                    'total_amount' => (int) $offer->price_minor, 'purchase_terms_version' => self::VERSION,
+                    'total_amount' => (int) ($credit['net_minor'] ?? $offer->price_minor), 'purchase_terms_version' => self::VERSION,
                     'balance_amount' => 0, 'discount_amount' => 0, 'surplus_amount' => 0, 'surplus_credit' => 0,
                     'commission_balance' => 0, 'coupon_id' => null, 'invite_user_id' => null,
                     'surplus_order_ids' => null,
                 ]);
+                if ($credit !== null) { app(NativeUpgradeCredits::class)->persistLocked($created, $credit); }
                 $this->snapshots->capturePublished($created, $published);
                 return $created;
-            });
+            }, permanent: true);
             // A successful idempotency claim is not permission to return damaged evidence.
             $grant = $this->grants->resolve($order,
-                OrderPurchaseTerms::query()->where('order_id', $order->id)->first());
+                OrderPurchaseTerms::query()->where('order_id', $order->id)->sharedLock()->first());
             if ($order->purchase_terms_version !== self::VERSION || $grant === null
                 || $grant['catalog']['offer_id'] !== (string) $offerId) {
                 throw new RuntimeException('PUBLISHED_ORDER_REPLAY_INVALID');
@@ -128,7 +135,8 @@ final class PublishedOrderService
         if ($locator === null) throw new RuntimeException('PUBLISHED_ORDER_MISSING');
         return DB::transaction(function () use ($orderId, $locator, $transition): mixed {
             $installation = app(InstallationAuthority::class)->assertNativeMutation();
-            $this->subscriptions->lockAccount((int) $locator->user_id, time(), $installation['installation_id']);
+            [, , $subscriptions] = $this->subscriptions->lockAccount((int) $locator->user_id, time(), $installation['installation_id']);
+            foreach ($subscriptions as $subscription) { $this->subscriptions->lockHistory($subscription); }
             $order = Order::query()->whereKey($orderId)->lockForUpdate()->first();
             if ($order === null || (string) $order->user_id !== (string) $locator->user_id
                 || $order->purchase_terms_version !== self::VERSION) {
@@ -138,7 +146,7 @@ final class PublishedOrderService
             if ($this->grants->resolve($order, $purchase) === null) {
                 throw new RuntimeException('PUBLISHED_ORDER_PURCHASE_REQUIRED');
             }
-            return $transition($order);
+            return $transition($order, $purchase, $installation);
         }, 3);
     }
 

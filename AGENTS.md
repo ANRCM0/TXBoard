@@ -46,6 +46,7 @@ Keep these as Core:
 - User;
 - Plan / Subscription;
 - Order;
+- payment attempts / verified receipts, wallet / ledger / refund rules and fulfillment consistency;
 - Node / Machine / Group / Route;
 - TXBoard ↔ TX-Node control plane;
 - base settings / audit / authorization;
@@ -55,11 +56,18 @@ Good Module candidates include:
 
 - Plugin;
 - Theme;
-- payment provider;
+- payment channel provider (checkout / protocol verification / query / supported channel refund, not financial authority);
 - notification provider;
 - external integration;
 
 Do not modularize Core domains merely to increase modularity.
+
+The authoritative responsibility matrix is `docs/architecture/v2/core-extension-boundaries.md`.
+Bundled payment connectors remain plugins. Do not bind Core Billing to a specific
+channel protocol or allow plugins to write order, wallet or entitlement truth.
+Disabling a channel stops new side effects, not historical financial recovery;
+implement explicit drain and destructive-lifecycle guards before claiming safety.
+These are architectural contracts, not a sandbox for trusted in-process PHP code.
 
 ## 4. Contract-first
 

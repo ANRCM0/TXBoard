@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Installation;
 
+use App\Domains\Billing\OrderIdempotency;
 use App\Domains\Installation\InstallationAuthority;
 use App\Domains\Installation\InstallationAuthorityException;
 use App\Domains\Installation\NativeRuntimeAdmission;
@@ -22,7 +23,7 @@ final class NativeRuntimeReadinessTest extends NativeRuntimeTestCase
 {
     public function test_activation_requires_the_native_payment_schema(): void
     {
-        Schema::drop('tx_payment_receipt');
+        Schema::table('tx_payment_receipt', static fn ($table) => $table->dropColumn('content_hash'));
         $this->expectExceptionMessage('INSTALLATION_AUTHORITY_SCHEMA_REQUIRED');
         app(InstallationAuthority::class)->readiness();
     }
@@ -61,8 +62,9 @@ final class NativeRuntimeReadinessTest extends NativeRuntimeTestCase
     public function test_ready_native_does_not_reopen_legacy_http_writers_or_updater_on_restart(): void
     {
         $this->activate();
+        $this->getJson('/txapi/public/site-config')->assertOk();
         $this->get('/')->assertStatus(503)->assertJsonPath('error.code', 'INSTALLATION_AUTHORITY_NATIVE_CAPABILITY_UNAVAILABLE');
-        $this->getJson('/txapi/billing/wallet')->assertStatus(503);
+        $this->getJson('/txapi/billing/wallet')->assertUnauthorized();
         $this->assertSame(0, Artisan::call('core:installation', ['operation' => 'native-managed']));
         $this->assertSame(1, Artisan::call('core:installation', ['operation' => 'native-preparing']));
         $entrypoint = file_get_contents(base_path('.docker/entrypoint.sh'));
@@ -102,6 +104,117 @@ final class NativeRuntimeReadinessTest extends NativeRuntimeTestCase
         });
         $this->expectExceptionMessage('INSTALLATION_AUTHORITY_SCHEMA_OWNERSHIP_REQUIRED');
         app(InstallationAuthority::class)->readiness();
+    }
+
+    /** @dataProvider incompleteKernelSchemas */
+    public function test_activation_requires_the_complete_kernel_schema(string $table, string $column): void
+    {
+        Schema::table($table, static fn ($blueprint) => $blueprint->dropColumn($column));
+        $this->expectExceptionMessage('INSTALLATION_AUTHORITY_SCHEMA_REQUIRED');
+        app(InstallationAuthority::class)->readiness();
+    }
+
+    public static function incompleteKernelSchemas(): array
+    {
+        return [
+            'frozen dispatch' => ['tx_payment_dispatch', 'snapshot_ciphertext'],
+            'payment allocation' => ['tx_order_payment', 'content_hash'],
+            'durable fulfillment' => ['tx_billing_work', 'content_hash'],
+            'wallet reservation' => ['tx_wallet_order_reservation', 'content_hash'],
+            'refund evidence' => ['tx_native_refund', 'content_hash'],
+            'service binding' => ['tx_internal_service', 'certificate_sha256'],
+            'request recovery' => ['tx_internal_request', 'response_json'],
+            'trust history' => ['tx_native_runtime_trust_transition', 'content_hash'],
+            'subscription link' => ['tx_subscription_link', 'bearer_hash'],
+            'publication receipt' => ['tx_native_plan_request', 'result_hash'],
+            'free checkout recovery' => ['tx_native_free_checkout', 'result_json'],
+            'plugin lifecycle exclusion' => ['tx_plugins', 'native_payment_mutation_token'],
+            'plugin package exclusion' => ['tx_plugin_package_fence', 'mutation_token'],
+            'permanent order claim evidence' => ['idempotency_keys', 'request_hash'],
+            'financial account time' => ['tx_money_account', 'created_at'],
+            'journal time' => ['tx_money_journal', 'created_at'],
+            'attempt creation time' => ['tx_payment_attempt', 'created_at'],
+            'attempt update time' => ['tx_payment_attempt', 'updated_at'],
+            'receipt time' => ['tx_payment_receipt', 'created_at'],
+            'settlement time' => ['tx_payment_settlement', 'created_at'],
+            'allocation time' => ['tx_order_payment', 'created_at'],
+            'fulfillment time' => ['tx_billing_work', 'created_at'],
+            'recharge time' => ['tx_native_recharge', 'created_at'],
+            'reservation time' => ['tx_wallet_order_reservation', 'created_at'],
+            'refund occurrence time' => ['tx_native_refund', 'created_at'],
+            'service creation time' => ['tx_internal_service', 'created_at'],
+            'service update time' => ['tx_internal_service', 'updated_at'],
+            'trust time' => ['tx_native_runtime_trust_transition', 'created_at'],
+            'link time' => ['tx_subscription_link', 'created_at'],
+            'publication time' => ['tx_native_plan_request', 'created_at'],
+        ];
+    }
+
+    /** @dataProvider missingKernelForeignKeys */
+    public function test_activation_requires_kernel_ownership_constraints(string $table, string $constraint, array $columns): void
+    {
+        Schema::table($table, static fn ($blueprint) => $blueprint->dropForeign(DB::getDriverName() === 'sqlite'
+            ? $columns : $constraint));
+        $this->expectExceptionMessage('INSTALLATION_AUTHORITY_SCHEMA_OWNERSHIP_REQUIRED');
+        app(InstallationAuthority::class)->readiness();
+    }
+
+    public static function missingKernelForeignKeys(): array
+    {
+        return [
+            'nullable recharge payment owner' => ['tx_payment_receipt', 'tx_payment_receipt_financial_owner_fk',
+                ['attempt_id', 'installation_id', 'user_id', 'payment_id']],
+            'wallet capture journal owner' => ['tx_wallet_order_reservation', 'tx_wallet_reservation_capture_fk',
+                ['capture_journal_id', 'installation_id', 'user_id']],
+            'refund source journal owner' => ['tx_native_refund', 'tx_native_refund_source_journal_id_fk',
+                ['source_journal_id', 'installation_id', 'user_id']],
+            'service actor authorization' => ['tx_internal_actor_grant', 'tx_internal_actor_grant_user_fk', ['user_id']],
+            'request actor' => ['tx_internal_request', 'tx_internal_request_actor_fk', ['actor_id']],
+            'link subject owner' => ['tx_subscription_link', 'tx_sub_link_subject_fk',
+                ['access_subject_id', 'subscription_id']],
+        ];
+    }
+
+    public function test_service_bootstrap_metadata_is_not_mistaken_for_financial_business_evidence(): void
+    {
+        DB::table('tx_internal_service')->insert([
+            'service_id' => 'bootstrap-user', 'security_domain' => 'user',
+            'token_hash' => str_repeat('a', 64), 'certificate_sha256' => str_repeat('b', 64),
+            'epoch' => 1, 'operations_json' => '["user.identity.get"]', 'expires_at' => time() + 3600,
+            'created_at' => time(), 'updated_at' => time(),
+        ]);
+        $this->assertTrue(app(InstallationAuthority::class)->readiness()['ready_to_activate']);
+    }
+
+    public function test_activation_requires_unique_order_claim_identity(): void
+    {
+        Schema::table('idempotency_keys', static fn ($table) => $table->dropUnique('uq_idempotency_user_op_key'));
+        $this->expectExceptionMessage('INSTALLATION_AUTHORITY_SCHEMA_REQUIRED');
+        app(InstallationAuthority::class)->readiness();
+    }
+
+    public function test_activation_ignores_retained_legacy_claims_but_refuses_native_order_claims(): void
+    {
+        $claim = ['user_id' => 1, 'request_hash' => str_repeat('a', 64), 'status' => 'in_progress',
+            'expires_at' => PHP_INT_MAX, 'created_at' => time(), 'updated_at' => time()];
+        DB::table('idempotency_keys')->insert($claim + [
+            'operation' => OrderIdempotency::OPERATION_CREATE, 'key_hash' => str_repeat('b', 64),
+        ]);
+        $retained = (array) DB::table('idempotency_keys')->first();
+        $this->assertTrue(app(InstallationAuthority::class)->readiness()['ready_to_activate']);
+        $this->assertSame($retained, (array) DB::table('idempotency_keys')->first());
+        DB::table('idempotency_keys')->insert($claim + [
+            'operation' => OrderIdempotency::OPERATION_NATIVE_CREATE, 'key_hash' => str_repeat('c', 64),
+        ]);
+        $this->expectExceptionMessage('INSTALLATION_AUTHORITY_FRESH_NATIVE_REQUIRED');
+        app(InstallationAuthority::class)->readiness();
+    }
+
+    public function test_plugin_package_code_rows_are_bootstrap_metadata_not_financial_evidence(): void
+    {
+        DB::table('tx_plugin_package_fence')->insert(['plugin_code' => 'uninstalled-package', 'mutation_token' => null]);
+        $this->assertTrue(app(InstallationAuthority::class)->readiness()['ready_to_activate']);
+        $this->assertSame(1, DB::table('tx_plugin_package_fence')->where('plugin_code', 'uninstalled-package')->count());
     }
 
     public function test_real_capabilities_are_required_and_probe_request_nonces_do_not_change_readiness_digest(): void

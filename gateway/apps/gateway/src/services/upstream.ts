@@ -2,6 +2,7 @@ import type { GatewayConfig } from '../config/env.js'
 import { adaptNativeData, nativeErrorEnvelope, nativeSuccessEnvelope } from '../adapters/txapi-native.js'
 import { GatewayFailure } from './failures.js'
 import { mappedOrderWriteFailure } from './order-write-failure.js'
+import { NativeCoreClient, type NativeInternalOperation } from './native-internal.js'
 export { GatewayFailure, type GatewayFailureCode } from './failures.js'
 
 export type UpstreamFetcher = typeof fetch
@@ -122,6 +123,19 @@ export async function upstreamRequest(
     headers?: Record<string, string>
   } = {},
 ): Promise<unknown> {
+  // Only current user DTOs with identical semantics opt into this channel.
+  // The independent Admin client is never selected by a browser operation.
+  const internalOperations: Partial<Record<UpstreamOperation, NativeInternalOperation>> = {
+    login: 'identity.session.create', guestConfig: 'settings.public.get',
+  }
+  const internalOperation = internalOperations[operation]
+  if (config.nativeUserService && internalOperation) {
+    const result = await new NativeCoreClient(config.upstream, config.nativeUserService,
+      config.timeoutMs, config.maxResponseBytes).call(internalOperation, {
+        input: asRecord(options.body), signal: options.signal,
+      })
+    return adaptNativeData(operation, result.data, result.meta, options)
+  }
   // No untrusted path/host input can escape this static allowlist.
   const path = allowlistedPaths[operation]
   if (path === null) throw new GatewayFailure('UPSTREAM_ERROR', 404, 'Public payment catalog unavailable')

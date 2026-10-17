@@ -86,7 +86,7 @@ final class NativeSubscriptionStore
         return ['terms' => $terms, 'transitions' => $transitions, 'periods' => $periods];
     }
 
-    public function verifyTerms(object $terms, object $subscription): array
+    public function verifyTerms(object $terms, object $subscription, bool $currentRead = false): array
     {
         if (($subscription->authority_version ?? null) !== self::AUTHORITY
             || !is_string($subscription->installation_id ?? null) || $subscription->installation_id === ''
@@ -101,9 +101,12 @@ final class NativeSubscriptionStore
             || (string) $terms->plan_revision_id !== ($source['catalog']['revision_id'] ?? null)) {
             throw new DomainException('NATIVE_TERMS_SOURCE_INVALID');
         }
-        // These immutable source reads are deliberately nonlocking: writers check accepted usage first.
-        $order = Order::query()->useWritePdo()->find($terms->source_order_id);
-        $purchase = OrderPurchaseTerms::query()->useWritePdo()->where('order_id', $terms->source_order_id)->first();
+        // Current verification is only for callers already holding the owning aggregate.
+        $this->assertCurrentReadContext($currentRead);
+        $orderQuery = Order::query()->useWritePdo()->whereKey($terms->source_order_id);
+        $purchaseQuery = OrderPurchaseTerms::query()->useWritePdo()->where('order_id', $terms->source_order_id);
+        $order = ($currentRead ? $orderQuery->sharedLock() : $orderQuery)->first();
+        $purchase = ($currentRead ? $purchaseQuery->sharedLock() : $purchaseQuery)->first();
         if (!$order || !$purchase || !in_array((int) $order->status, [Order::STATUS_PROCESSING, Order::STATUS_COMPLETED], true)
             || SubscriptionTermsTimeline::json($this->grants->resolve($order, $purchase) ?? []) !== SubscriptionTermsTimeline::json($source)) {
             throw new DomainException('NATIVE_TERMS_SOURCE_INVALID');
@@ -157,14 +160,17 @@ final class NativeSubscriptionStore
         }
     }
 
-    public function verifyHistory(object $subscription, array $history): array
+    public function verifyHistory(object $subscription, array $history, bool $currentRead = false): array
     {
+        $this->assertCurrentReadContext($currentRead);
         $sources = [];
         $version = 0;
         foreach ($history['terms'] as $terms) {
-            $sources[(string) $terms->id] = $this->verifyTerms($terms, $subscription);
+            $sources[(string) $terms->id] = $this->verifyTerms($terms, $subscription, $currentRead);
+            $order = DB::table('tx_order')->where('id', $terms->source_order_id);
+            $status = ($currentRead ? $order->sharedLock() : $order)->value('status');
             if ((int) $terms->version_no !== ++$version
-                || (int) DB::table('tx_order')->where('id', $terms->source_order_id)->value('status') !== Order::STATUS_COMPLETED) {
+                || (int) $status !== Order::STATUS_COMPLETED) {
                 throw new DomainException('NATIVE_TERMS_SOURCE_INVALID');
             }
         }
@@ -239,27 +245,19 @@ final class NativeSubscriptionStore
         if (!$batchesExist) {
             return;
         }
-        // First ordinary business read after aggregate locks: do not inherit a stale RR view
-        // or lock batches in reverse order from the usage settlement worker.
+        // Admission may have frozen an RR view before the owner lock. Read only
+        // this aggregate's indexed future evidence, never lock a global batch scan.
+        if (Schema::hasTable('tx_native_usage_reservation')) {
+            $this->protectCurrentAcceptedUsage($subscriptionId, $boundary);
+        }
+        // Retain the snapshot scan as an additional malformed-evidence guard.
         $batches = DB::table('tx_usage_batch')->where('ended_at', '>', $boundary)->orderBy('id')
             ->limit(1001)->get(['id', 'frozen_entries', 'frozen_hash']);
         if ($batches->count() > 1000) {
             throw new DomainException('NATIVE_USAGE_EVIDENCE_LIMIT');
         }
         foreach ($batches as $batch) {
-            $entries = json_decode($batch->frozen_entries, true, 32, JSON_THROW_ON_ERROR);
-            if (!is_array($entries) || !array_is_list($entries) || !$entries || count($entries) > 1000
-                || !hash_equals($batch->frozen_hash, SubscriptionTermsTimeline::hash($entries))) {
-                throw new DomainException('NATIVE_USAGE_EVIDENCE_INVALID');
-            }
-            foreach ($entries as $entry) {
-                if (!is_array($entry) || !is_string($entry['subscription_id'] ?? null)) {
-                    throw new DomainException('NATIVE_USAGE_EVIDENCE_INVALID');
-                }
-                if ($entry['subscription_id'] === $subscriptionId) {
-                    throw new DomainException('NATIVE_ACCEPTED_USAGE_WOULD_BE_REASSIGNED');
-                }
-            }
+            $this->assertUsageBoundary($batch, $subscriptionId);
         }
         if (DB::table('tx_usage_entry as entry')->join('tx_usage_batch as batch', 'batch.id', '=', 'entry.batch_id')
             ->where('entry.subscription_id', $subscriptionId)->where('batch.ended_at', '>', $boundary)->exists()) {
@@ -267,8 +265,9 @@ final class NativeSubscriptionStore
         }
     }
 
-    public function replay(object $operation, array $request, object $subscription): array
+    public function replay(object $operation, array $request, object $subscription, bool $currentRead = false): array
     {
+        $this->assertCurrentReadContext($currentRead);
         $stored = $this->jsonObject($operation->request_snapshot);
         $result = $this->jsonObject($operation->result_snapshot);
         if (!hash_equals((string) $operation->request_hash, SubscriptionTermsTimeline::hash($request))) {
@@ -291,8 +290,8 @@ final class NativeSubscriptionStore
         SubscriptionTermsTimeline::decimal($result['period_version'] ?? null, true);
         SubscriptionTermsTimeline::timestamp($result['applied_at'] ?? null);
         SubscriptionTermsTimeline::timestamp($result['expires_at'] ?? null, true);
-        $terms = DB::table('tx_subscription_terms')->where('id', $result['terms_id'] ?? null)->first();
-        $period = DB::table('tx_usage_period')->where('id', $result['usage_period_id'] ?? null)->first();
+        $terms = $this->evidenceRow('tx_subscription_terms', $result['terms_id'] ?? null, $currentRead);
+        $period = $this->evidenceRow('tx_usage_period', $result['usage_period_id'] ?? null, $currentRead);
         if (!$terms || !$period || (string) $period->subscription_id !== (string) $subscription->id
             || (string) $terms->subscription_id !== (string) $subscription->id
             || (int) $result['subscription_version'] > (int) $subscription->row_version
@@ -302,9 +301,9 @@ final class NativeSubscriptionStore
             || ($operation->order_id !== null && (string) $terms->source_order_id !== (string) $operation->order_id)) {
             throw new DomainException('NATIVE_OPERATION_DAMAGED');
         }
-        $this->verifyTerms($terms, $subscription);
+        $this->verifyTerms($terms, $subscription, $currentRead);
         if (($result['transition_id'] ?? null) !== null) {
-            $transition = DB::table('tx_subscription_terms_transition')->where('id', $result['transition_id'])->first();
+            $transition = $this->evidenceRow('tx_subscription_terms_transition', $result['transition_id'], $currentRead);
             if (!$transition || (string) $transition->next_terms_id !== (string) $terms->id
                 || $transition->business_key !== $operation->business_key) {
                 throw new DomainException('NATIVE_OPERATION_DAMAGED');
@@ -312,14 +311,14 @@ final class NativeSubscriptionStore
             $this->verifyTransition($transition, $subscription);
         }
         if (($result['previous_period_id'] ?? null) !== null) {
-            $previous = DB::table('tx_usage_period')->where('id', $result['previous_period_id'])->first();
+            $previous = $this->evidenceRow('tx_usage_period', $result['previous_period_id'], $currentRead);
             if (!$previous || (string) $previous->subscription_id !== (string) $subscription->id || $previous->status !== 'closed'
                 || (int) $previous->ends_at !== (int) $period->starts_at) {
                 throw new DomainException('NATIVE_OPERATION_DAMAGED');
             }
         }
         if (($result['quota_adjustment_id'] ?? null) !== null) {
-            $adjustment = DB::table('tx_usage_adjustment')->where('id', $result['quota_adjustment_id'])->first();
+            $adjustment = $this->evidenceRow('tx_usage_adjustment', $result['quota_adjustment_id'], $currentRead);
             if (!$adjustment || (string) $adjustment->usage_period_id !== (string) $period->id
                 || (string) $adjustment->terms_transition_id !== (string) $result['transition_id']
                 || $adjustment->business_key !== $operation->business_key || $adjustment->kind !== 'quota_change') {
@@ -478,6 +477,75 @@ final class NativeSubscriptionStore
             throw new DomainException('NATIVE_BUSINESS_KEY_INVALID');
         }
         return $key;
+    }
+
+    private function protectCurrentAcceptedUsage(string $subscriptionId, int $boundary): void
+    {
+        $this->assertCurrentReadContext(true);
+        $periods = DB::table('tx_usage_period')->forceIndex('tx_period_number_uq')
+            ->where('subscription_id', $subscriptionId)->orderBy('period_no')->limit(1001)->sharedLock()->pluck('id');
+        if ($periods->count() > 1000) {
+            throw new DomainException('NATIVE_AGGREGATE_HISTORY_LIMIT');
+        }
+        if ($periods->isEmpty()) {
+            return;
+        }
+        foreach ([
+            'tx_native_usage_reservation' => 'tx_native_usage_reservation_period_idx',
+            'tx_usage_entry' => 'tx_usage_entry_period_batch_idx',
+        ] as $table => $index) {
+            if (DB::getDriverName() === 'mysql') {
+                // Force owned Period evidence to drive the join, even on small tables.
+                $query = DB::query()->fromRaw($table.' AS evidence FORCE INDEX ('.$index.') '
+                    .'STRAIGHT_JOIN tx_usage_batch AS batch ON batch.id = evidence.batch_id');
+            } else {
+                $query = DB::table($table.' as evidence')
+                    ->join('tx_usage_batch as batch', 'batch.id', '=', 'evidence.batch_id');
+            }
+            $batch = $query->whereIn('evidence.usage_period_id', $periods->all())
+                ->where('batch.ended_at', '>', $boundary)->orderBy('batch.id')->sharedLock()
+                ->first(['batch.id', 'batch.frozen_entries', 'batch.frozen_hash']);
+            if ($batch !== null) {
+                $this->assertUsageBoundary($batch, $subscriptionId, true);
+            }
+        }
+    }
+
+    private function assertUsageBoundary(object $batch, string $subscriptionId, bool $indexedOwner = false): void
+    {
+        try {
+            $entries = json_decode($batch->frozen_entries, true, 32, JSON_THROW_ON_ERROR);
+        } catch (\JsonException $error) {
+            throw new DomainException('NATIVE_USAGE_EVIDENCE_INVALID', previous: $error);
+        }
+        if (!is_array($entries) || !array_is_list($entries) || !$entries || count($entries) > 1000
+            || !hash_equals($batch->frozen_hash, SubscriptionTermsTimeline::hash($entries))) {
+            throw new DomainException('NATIVE_USAGE_EVIDENCE_INVALID');
+        }
+        foreach ($entries as $entry) {
+            if (!is_array($entry) || !is_string($entry['subscription_id'] ?? null)) {
+                throw new DomainException('NATIVE_USAGE_EVIDENCE_INVALID');
+            }
+            if ($entry['subscription_id'] === $subscriptionId) {
+                throw new DomainException('NATIVE_ACCEPTED_USAGE_WOULD_BE_REASSIGNED');
+            }
+        }
+        if ($indexedOwner) {
+            throw new DomainException('NATIVE_USAGE_EVIDENCE_INVALID');
+        }
+    }
+
+    private function evidenceRow(string $table, mixed $id, bool $currentRead): ?object
+    {
+        $query = DB::table($table)->where('id', $id);
+        return ($currentRead ? $query->sharedLock() : $query)->first();
+    }
+
+    private function assertCurrentReadContext(bool $currentRead): void
+    {
+        if ($currentRead && DB::transactionLevel() < 1) {
+            throw new DomainException('NATIVE_TRANSACTION_CONTEXT_REQUIRED');
+        }
     }
 
     private function jsonObject(mixed $value): array

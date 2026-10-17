@@ -234,9 +234,9 @@ jobs:
       - name: Concurrent native bootstrap on an empty MySQL 8.4 database
         run: php artisan test tests/Feature/Installation/InstallationBootstrapMysqlTest.php
 
-  native-subscription-domain:
+  native-billing-domain:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     permissions:
       contents: read
     services:
@@ -291,6 +291,68 @@ jobs:
           tests/Feature/Billing/NativeMoneyLedgerMysqlConcurrencyTest.php
           tests/Feature/Billing/NativePaymentAttemptsTest.php
           tests/Feature/Billing/NativePaymentAttemptsMysqlConcurrencyTest.php
+          tests/Feature/Billing/NativePaymentSettlementTest.php
+          tests/Feature/Billing/NativePaymentSettlementMysqlConcurrencyTest.php
+          tests/Feature/Billing/NativeBillingRecoveryTest.php
+          tests/Feature/Billing/NativeEpayCheckoutTest.php
+          tests/Feature/Billing/NativePaymentPluginTest.php
+          tests/Feature/Billing/NativeFreeCheckoutTest.php
+          tests/Feature/Billing/NativeWalletRefundTest.php
+          tests/Feature/Billing/NativeWalletRefundMysqlConcurrencyTest.php
+          tests/Feature/Billing/NativeUpgradeCreditTest.php
+          tests/Feature/Billing/NativeUpgradeCreditMysqlConcurrencyTest.php
+          tests/Feature/Txapi/TxapiWalletRechargeTest.php
+
+  native-subscription-domain:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: c2-native-root-fixture
+          MYSQL_DATABASE: txboard_c2_native_test
+          MYSQL_USER: c2_native
+          MYSQL_PASSWORD: c2-native-user-fixture
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping --host=127.0.0.1 --user=root --password=c2-native-root-fixture"
+          --health-interval 5s --health-retries 20
+    env:
+      APP_ENV: testing
+      CORE_NATIVE_TEST_MYSQL: '1'
+      CORE_INSTALLATION_MODE: legacy
+      CORE_INSTALLATION_EPOCH: '1'
+      DB_CONNECTION: mysql
+      DB_HOST: 127.0.0.1
+      DB_PORT: '3306'
+      DB_DATABASE: txboard_c2_native_test
+      DB_USERNAME: c2_native
+      DB_PASSWORD: c2-native-user-fixture
+      CACHE_DRIVER: array
+      SETTING_CACHE_STORE: array
+      QUEUE_CONNECTION: sync
+      SESSION_DRIVER: array
+    defaults:
+      run:
+        working-directory: api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, pdo_mysql, pdo_sqlite, curl, openssl, sodium, redis, bcmath, pcntl, posix
+          coverage: none
+      - name: Install locked dependencies
+        run: composer install --no-interaction --prefer-dist
+      - name: Prepare disposable fixture
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+      - name: Apply native production schema
+        run: php artisan migrate --force --no-interaction
       - name: Native domain transactions and application adapters on MySQL 8.4
         run: >-
           php artisan test
@@ -308,6 +370,12 @@ jobs:
           tests/Feature/Subscription/NativeRuntimeCommerceTest.php
           tests/Feature/Subscription/NativeIdentityAndCatalogTest.php
           tests/Feature/Installation/NativeRuntimeReadinessTest.php
+          tests/Feature/Installation/InstallationRuntimeTest.php
+          tests/Feature/Installation/NativeProviderTrustTest.php
+          tests/Feature/Subscription/NativeSubscriptionLinksTest.php
+          tests/Feature/Subscription/NativePlanAdministrationTest.php
+          tests/Feature/Txapi/TxapiNativeInternalApiTest.php
+          tests/Feature/Txapi/TxapiNativeInternalCheckoutTest.php
           tests/Feature/UsageV2/NativeRuntimeUsageTest.php
       - name: Native receipt concurrency and SQL crash recovery on MySQL 8.4
         run: php artisan test tests/Feature/UsageV2/UsageMysqlConcurrencyTest.php

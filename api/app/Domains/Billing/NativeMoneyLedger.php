@@ -25,6 +25,45 @@ final class NativeMoneyLedger
         return $this->write($installation, $userId, $request, null);
     }
 
+    /** Prelock the complete account union before a business mutation posts multiple journals. */
+    public function lockAccountsLocked(array $installation, int $userId, string $currency, array $identities): void
+    {
+        $installationId = $this->context($installation, $userId);
+        $currency = MoneyValue::currency($currency);
+        $this->require(array_is_list($identities) && count($identities) >= 1 && count($identities) <= 64,
+            'BILLING_ACCOUNTS_INVALID');
+        $accounts = [];
+        foreach ($identities as $identity) {
+            $this->require(is_array($identity) && count($identity) === 2
+                && array_key_exists('owner_id', $identity) && array_key_exists('purpose', $identity),
+                'BILLING_ACCOUNT_INVALID');
+            $owner = MoneyValue::minor($identity['owner_id']);
+            $this->require($owner === '0' || $owner === (string) $userId, 'BILLING_ACCOUNT_OWNER_MISMATCH');
+            $purposes = $owner === '0' ? self::SYSTEM_PURPOSES : self::USER_PURPOSES;
+            $purpose = $identity['purpose'];
+            $this->require(is_string($purpose) && isset($purposes[$purpose]), 'BILLING_ACCOUNT_PURPOSE_INVALID');
+            $accounts[] = ['owner_id' => $owner, 'purpose' => $purpose];
+        }
+        $this->lockAccounts($installationId, $userId, ['currency' => $currency, 'postings' => $accounts]);
+    }
+
+    /** Read-only evidence validation; never creates accounts, repairs balances or takes money locks. */
+    public function inspectJournal(int $journalId): array
+    {
+        $journal = DB::table('tx_money_journal')->where('id', $journalId)->first();
+        $this->require($journal !== null, 'BILLING_JOURNAL_MISSING');
+        return $this->result($journal) + ['postings' => $this->evidence($journal)];
+    }
+
+    /** Caller holds the owning aggregate and complete money-account union before current evidence reads. */
+    public function inspectJournalLocked(int $journalId): array
+    {
+        $this->require(DB::transactionLevel() > 0, 'BILLING_TRANSACTION_REQUIRED');
+        $journal = DB::table('tx_money_journal')->where('id', $journalId)->sharedLock()->first();
+        $this->require($journal !== null, 'BILLING_JOURNAL_MISSING');
+        return $this->result($journal) + ['postings' => $this->evidence($journal, true, true)];
+    }
+
     public function reverse(int $userId, int $journalId, string $key, int $occurredAt): array
     {
         return app(NativeBillingTransaction::class)->run($userId,
@@ -176,15 +215,16 @@ final class NativeMoneyLedger
     {
         return ['business_type' => $journal->business_type, 'business_ref' => $journal->business_ref,
             'idempotency_key' => $journal->idempotency_key, 'currency' => $journal->currency,
-            'occurred_at' => (string) $journal->occurred_at, 'postings' => $this->evidence($journal, false)];
+            'occurred_at' => (string) $journal->occurred_at, 'postings' => $this->evidence($journal, false, true)];
     }
 
-    private function evidence(object $journal, bool $verifyHash = true): array
+    private function evidence(object $journal, bool $verifyHash = true, bool $locked = false): array
     {
-        $rows = DB::table('tx_money_posting as p')->join('tx_money_account as a', 'a.id', '=', 'p.account_id')
-            ->where('p.journal_id', $journal->id)->orderBy('p.position')
-            ->get(['p.position', 'p.side', 'p.amount_minor', 'a.owner_id', 'a.user_id', 'a.purpose',
-                'a.currency', 'a.installation_id', 'a.normal_side']);
+        $query = DB::table('tx_money_posting as p')->join('tx_money_account as a', 'a.id', '=', 'p.account_id')
+            ->where('p.journal_id', $journal->id)->orderBy('p.position')->limit(65);
+        if ($locked) { $query->sharedLock(); }
+        $rows = $query->get(['p.position', 'p.side', 'p.amount_minor', 'a.owner_id', 'a.user_id', 'a.purpose',
+            'a.currency', 'a.installation_id', 'a.normal_side']);
         $postings = [];
         foreach ($rows as $position => $row) {
             $owner = (string) $row->owner_id;

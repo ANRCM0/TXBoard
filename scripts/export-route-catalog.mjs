@@ -14,6 +14,8 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 export const classify = (uri) => {
   const p = '/' + String(uri).replace(/^\/+/, '');
+  if (p === '/txapi/internal/native/v1/{domain}/operations/{operation}') return ['Native Internal API', 'service-and-actor'];
+  if (p === '/txapi/subscription-links/{linkRef}/redeem') return ['Native subscription link', 'link-proof'];
   if (/^\/txapi\/agent(?:\/|$)/.test(p) ||
       /^\/txapi\/internal(?:\/|$)/.test(p) ||
       /^\/txapi\/admin\/[^/]+\/agents(?:\/|$)/.test(p) ||
@@ -83,6 +85,8 @@ export function assertCurrentBoundaries(items) {
     'POST /txapi/integrations/telegram/webhook',
     'GET /txapi/payment/webhook/{method}/{uuid}',
     'POST /txapi/payment/webhook/{method}/{uuid}',
+    'POST /txapi/internal/native/v1/{domain}/operations/{operation}',
+    'POST /txapi/subscription-links/{linkRef}/redeem',
   ];
   const missing = required.filter(x => !paths.has(x));
   const obsolete = items.filter(x => x.principal === 'forbidden');
@@ -99,12 +103,18 @@ export function assertCurrentBoundaries(items) {
   });
   const unguardedNodes = items.filter(x => x.family === 'TXAPI Node HTTP' &&
     !x.middleware.split(',').some(v => v.trim() === 'App\\Http\\Middleware\\TxNodeAuth'));
-  if (missing.length || obsolete.length || unguarded.length || unguardedNodes.length) {
+  const unguardedInternal = items.filter(x => x.family === 'Native Internal API' &&
+    (x.method !== 'POST' || !x.middleware.split(',').some(v =>
+      v.trim() === 'App\\Http\\Middleware\\NativeServiceIdentity') ||
+      !x.middleware.split(',').some(v => ['throttle:native-internal-ingress',
+        'Illuminate\\Routing\\Middleware\\ThrottleRequests:native-internal-ingress'].includes(v.trim()))));
+  if (missing.length || obsolete.length || unguarded.length || unguardedNodes.length || unguardedInternal.length) {
     throw new Error(JSON.stringify({
       missing_current_routes: missing,
       legacy_routes: obsolete.map(x => x.method+' '+x.path),
       unguarded_native_admin: unguarded.map(x => x.method+' '+x.path),
       unguarded_native_node: unguardedNodes.map(x => x.method+' '+x.path),
+      unguarded_native_internal: unguardedInternal.map(x => x.method+' '+x.path),
     }, null, 2));
   }
 }

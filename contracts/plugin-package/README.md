@@ -60,6 +60,35 @@ TXBoard **不会**在安装插件时运行 npm、Vite 或任意前端构建命�
 
 所有插件都必须声明整数 `package.schema: 1`，包括只提供支付或配置表单的插件。不声明 `package` 的旧包不再安装、启用或加载。配置完整示例与字段校验见 [schema-v1.json](schema-v1.json)。
 
+## Current payment extension
+
+`type: "payment"` additionally requires an explicit closed declaration:
+
+```json
+{
+  "payment": {
+    "contract": "native-payment-provider/1",
+    "provider": "ExamplePay",
+    "snapshot_schema": "examplepay-dispatch/1"
+  }
+}
+```
+
+All three fields are required; unknown fields, old/unknown contracts and
+payment declarations on feature plugins are rejected. `Plugin.php` implements
+`NativePaymentPluginInterface` (`form`, code-side package version and typed
+provider constructor). Its adapter identity must exactly match the declaration.
+No old `PaymentInterface`, hook-based provider registration or direct
+`pay/notify` entry point is supported. Module inventory validates the current
+package declaration before deriving `payment.provider`; a `type` label alone
+does not claim the capability.
+
+See the [development guide](../../docs/development/payment-plugin-development.md),
+[fail-closed starter](examples/payment-starter/) and
+[payment protocol contract](../v2/native-payment-provider-v1.md). Managed
+destructive lifecycle remains blocked after the first frozen dispatch; there
+is no old-version plugin code store or implicit historical dependency handoff.
+
 ## Declaring Plugin Package v1
 
 所有插件必须声明 `package.schema`；自带 Admin App 可附加以下固定布局信息：
