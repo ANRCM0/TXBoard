@@ -1,6 +1,6 @@
 # Core Data Model v2
 
-> 状态：总体 Target / Draft · 更新：2026-10-12 · 订阅影子 Schema/Models 已按 [B1.1](subscription-shadow-implementation.md) 实现；本文件其余逻辑目标不表示运行时已启用。B3/B4 补齐流量及凭据协议，财务实现需独立验收。
+> 状态：2026-10-12 的历史 Target / Draft。下文保留早期旧字段与影子模型设计，不是当前 native 数据权威说明。B1.1 历史验证结果见[实施台账](implementation-plan.md)；回填运行时及其操作指南已退役。当前所有者见[Core 与扩展边界](core-extension-boundaries.md)，正式订阅与资金规则见[当前契约](../../../contracts/v2/README.md)。
 
 ## 当前数据与统一单位
 

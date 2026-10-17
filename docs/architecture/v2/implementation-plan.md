@@ -61,7 +61,19 @@ B0 补充退出证据见 [Linux 运行验证](baseline-linux-verification.md)。
 
 ## 3. B1 的第一条可验收切片
 
-当前实现及双引擎证据见 [B1.1 订阅影子回填与对账](subscription-shadow-implementation.md)。B1.1 已交付 Schema、单槽约束、有界回填、只读核对和显式影子 DTO；整个 B1 仍需商品/订单/财务快照、真实样本、Terms 转换和链接兼容门禁。没有发布 v2 业务写入权威。
+B1.1 当时交付 Schema、单槽约束、有界回填、只读核对和显式影子 DTO；没有发布 v2 业务写入权威。该隔离原型已随 [Core 清理](../../development/core-cleanup.md)退役，旧回填/对账命令及其操作指南不再提供；原操作过程可从 Git 历史查询。
+
+以下保留原指南在 2026-10-12 记录的双引擎验证证据，未在文档清理时重跑，也不能证明当前运行时或生产迁移可用：
+
+| 历史验证 | 当时记录 |
+| --- | --- |
+| Linux API 全量，SQLite | 554 passed、2 skipped，4166 assertions；跳过项为真实数据库并发测试 |
+| 回填/对账，SQLite | 13/13，81 assertions |
+| 回填/对账，MariaDB 11.4.12 / MySQL 驱动 | 13/13，81 assertions；覆盖大于 JS safe integer 的流量 |
+| Schema/slot，SQLite | 22 passed，50 assertions；并发 case 在该引擎 skipped |
+| Schema/slot，MariaDB 11.4.12 / pcntl | 23/23，89 assertions；32 独立连接中 1 成功、31 冲突，最终 1 active 与 31 pending |
+
+这些是合成隔离副本的历史结果；当时未获取匿名化生产副本，不能据此宣称真实历史订单/支付迁移或 Oracle MySQL 8 已验收。既有验证 JSON、历史数据库迁移与审计记录仍保留。
 
 B1.2 的 [商品目录影子契约](../../../contracts/v2/plan-catalog-shadow-v1.md) 已实现不可变 revision/offer、独立销售状态、有界游标与异常重试；SQLite 23 项、108 断言，MariaDB 25 项、119 断言通过。真实独立会话覆盖陈旧事务快照后的 revision/offer 和版本号读取；GiB、十进制价格、真实旧报价与 Carbon 日历周期一致性均校验。现有 User Terms 不引用当前 Plan 猜测历史。
 

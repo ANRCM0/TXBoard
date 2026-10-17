@@ -6,6 +6,7 @@
 - [节点与机器](node-management.md)
 - [支付与订单](payments.md)
 - [插件、主题与模块](plugins-and-themes.md)
-- [Agent Ops / MCP](agent-mcp.md)
+
+Agent/MCP 不再提供接入或操作指南；范围和历史数据保留规则统一见[退役说明](../architecture/v2/admin-only-scope.md)。
 
 首次部署从 [首次配置清单](../getting-started/first-setup.md) 开始。
