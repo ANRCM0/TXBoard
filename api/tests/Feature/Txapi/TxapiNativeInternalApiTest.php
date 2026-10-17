@@ -277,19 +277,29 @@ final class TxapiNativeInternalApiTest extends NativeRuntimeTestCase
         $schema = $capabilities->firstWhere('id', 'system.capabilities.get')->input_schema;
         $this->assertInstanceOf(\stdClass::class, $schema->properties);
         $handlers = [];
+        $commands = [];
         foreach (\App\Domains\InternalApi\OperationRegistry::all() as $operation => $spec) {
             if ($operation === 'system.capabilities.get') {
                 $this->assertNull($spec['controller']);
                 $this->assertNull($spec['handler']);
+                $this->assertNull($spec['command']);
                 $this->assertNull($spec['method']);
                 continue;
             }
             if ($spec['handler'] !== null) {
                 $this->assertNull($spec['controller']);
+                $this->assertNull($spec['command']);
                 $this->assertSame('read', $spec['mode']);
                 $this->assertTrue(method_exists($spec['handler'], $spec['method']));
                 $this->assertTrue((new \ReflectionMethod($spec['handler'], $spec['method']))->isPublic());
                 $handlers[$operation] = [$spec['handler'], $spec['method']];
+                continue;
+            }
+            if ($spec['command'] !== null) {
+                $this->assertNull($spec['controller']);
+                $this->assertSame('authenticated', $spec['actor']);
+                $this->assertTrue((new \ReflectionMethod($spec['command'], $spec['method']))->isPublic());
+                $commands[$operation] = [$spec['command'], $spec['method'], $spec['mode']];
                 continue;
             }
             $this->assertNotNull($spec['controller']);
@@ -299,9 +309,14 @@ final class TxapiNativeInternalApiTest extends NativeRuntimeTestCase
         }
         $account = \App\Domains\InternalApi\AccountReadOperations::class;
         $orders = \App\Domains\InternalApi\OrderReadOperations::class;
+        $sessions = \App\Domains\InternalApi\SessionReadOperations::class;
         $this->assertSame(['identity.account.get' => [$account, 'account'], 'identity.admin.get' => [$account, 'account'],
+            'identity.sessions.list' => [$sessions, 'listing'],
             'subscription.mine.get' => [$account, 'subscription'], 'commerce.orders.list' => [$orders, 'listing'],
             'commerce.orders.get' => [$orders, 'find']], $handlers);
+        $mutations = \App\Domains\InternalApi\SessionMutationOperations::class;
+        $this->assertSame(['identity.sessions.revoke' => [$mutations, 'revoke', 'workflow'],
+            'identity.session.end' => [$mutations, 'end', 'once']], $commands);
     }
 
     public function test_all_boundary_rejections_are_audited_without_untrusted_service_operation_or_input_material(): void

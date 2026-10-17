@@ -381,6 +381,7 @@ jobs:
           tests/Feature/Txapi/TxapiNativeInternalApiTest.php
           tests/Feature/Txapi/AccountReadBoundaryTest.php
           tests/Feature/Txapi/OrderReadBoundaryTest.php
+          tests/Feature/Txapi/AccountSessionsBoundaryTest.php
           tests/Feature/Txapi/TxapiNativeInternalCheckoutTest.php
           tests/Feature/UsageV2/NativeRuntimeUsageTest.php
       - name: Native receipt concurrency and SQL crash recovery on MySQL 8.4

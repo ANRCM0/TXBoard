@@ -127,8 +127,19 @@ final class OperationExecutor
     private function dispatch(Request $request, string $operation, array $spec, array $input, ?User $actor): JsonResponse
     {
         if ($spec['handler'] !== null
-            && ($spec['mode'] !== 'read' || $actor === null || $spec['controller'] !== null)) {
+            && ($spec['mode'] !== 'read' || $actor === null || $spec['controller'] !== null || $spec['command'] !== null)) {
             throw new \LogicException('INTERNAL_READ_HANDLER_INVALID');
+        }
+        if ($spec['command'] !== null) {
+            $target = match ($operation) {
+                'identity.sessions.revoke' => [SessionMutationOperations::class, 'revoke', 'workflow'],
+                'identity.session.end' => [SessionMutationOperations::class, 'end', 'once'],
+                default => null,
+            };
+            if ($actor === null || $spec['controller'] !== null || $spec['handler'] !== null
+                || $target === null || [$spec['command'], $spec['method'], $spec['mode']] !== $target) {
+                throw new \LogicException('INTERNAL_SESSION_COMMAND_INVALID');
+            }
         }
         $receipt = null;
         // Signed checkout material is a current authorization decision, not a
@@ -162,6 +173,11 @@ final class OperationExecutor
             if ($view === null) throw new \Symfony\Component\HttpKernel\Exception\NotFoundHttpException();
             if (!$view instanceof ReadOperationResult) throw new \LogicException('INTERNAL_READ_RESULT_INVALID');
             $result = TxapiResponse::success($request, $view->data, $view->meta);
+        } elseif ($spec['command'] !== null) {
+            $view = app()->call([app($spec['command']), $spec['method']], ['actor' => $actor, 'input' => $input]);
+            if ($view === null) throw new \Symfony\Component\HttpKernel\Exception\NotFoundHttpException();
+            if (!$view instanceof MutationOperationResult) throw new \LogicException('INTERNAL_MUTATION_RESULT_INVALID');
+            $result = TxapiResponse::success($request, $view->data);
         } else {
             $result = $this->invokeController($request, $operation, $spec, $input, $actor);
         }

@@ -172,6 +172,12 @@ KERNEL_FILES = {
         "App\\Domains\\Billing\\Contracts",
     "api/app/Domains/InternalApi/OrderReadOperations.php": "App\\Domains\\InternalApi",
     "api/app/Domains/InternalApi/ReadOperationResult.php": "App\\Domains\\InternalApi",
+    "api/app/Domains/Identity/Contracts/AccountSessions.php":
+        "App\\Domains\\Identity\\Contracts",
+    "api/app/Domains/Identity/NativeAccountSessions.php": "App\\Domains\\Identity",
+    "api/app/Domains/InternalApi/SessionReadOperations.php": "App\\Domains\\InternalApi",
+    "api/app/Domains/InternalApi/SessionMutationOperations.php": "App\\Domains\\InternalApi",
+    "api/app/Domains/InternalApi/MutationOperationResult.php": "App\\Domains\\InternalApi",
 }
 RESOLVER_OWNERS = frozenset({
     "api/app/Domains/Subscription/Services/SubscriptionEntitlementResolver.php",
@@ -193,15 +199,22 @@ ORDER_QUERY_OWNERS = frozenset({
     "api/app/Domains/Billing/NativeOrderQueries.php",
     "api/app/Providers/CoreCapabilitiesServiceProvider.php",
 })
+ACCOUNT_SESSION_OWNERS = frozenset({
+    "api/app/Domains/Identity/NativeAccountSessions.php",
+    "api/app/Providers/CoreCapabilitiesServiceProvider.php",
+})
 READ_ADAPTER_FILES = {
     "api/app/Domains/InternalApi/AccountReadOperations.php": "account read handler",
     "api/app/Domains/InternalApi/OrderReadOperations.php": "order read handler",
     "api/app/Domains/InternalApi/ReadOperationResult.php": "read operation result",
+    "api/app/Domains/InternalApi/SessionReadOperations.php": "session read handler",
+    "api/app/Domains/InternalApi/SessionMutationOperations.php": "session mutation command",
+    "api/app/Domains/InternalApi/MutationOperationResult.php": "mutation operation result",
 }
 PHP_COMMENTS = re.compile(
     r"""'(?:\\.|[^'\\])*'|"(?:\\.|[^"\\])*"|//[^\r\n]*|/\*[\s\S]*?\*/|\#(?!\[)[^\r\n]*"""
 )
-HOST_NAMESPACE = re.compile(r"\b(?:Illuminate|Symfony|GuzzleHttp|Plugin)\\", re.IGNORECASE)
+HOST_NAMESPACE = re.compile(r"\b(?:Illuminate|Laravel|Symfony|GuzzleHttp|Plugin)\\", re.IGNORECASE)
 HOST_OPERATION = re.compile(
     r"\b(?:DB|Cache|Redis|Http|PDO|mysqli|SoapClient)\b"
     r"|\b(?:app|resolve|config|env|request|auth|curl_[a-z_]+|file_get_contents|"
@@ -318,6 +331,8 @@ def validate_kernel_boundaries(root):
          ACCOUNT_QUERY_OWNERS, "account query"),
         (re.compile(r"\bNativeOrderQueries\b", re.IGNORECASE),
          ORDER_QUERY_OWNERS, "order query"),
+        (re.compile(r"\bNativeAccountSessions\b", re.IGNORECASE),
+         ACCOUNT_SESSION_OWNERS, "account sessions"),
     )
     for area in ("api/app", "api/config", "api/routes", "api/plugins-core"):
         for path in sorted((root / area).rglob("*.php")):

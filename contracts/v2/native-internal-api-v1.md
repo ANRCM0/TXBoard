@@ -119,9 +119,18 @@ to fixed OrderReadOperations and Billing OrderQueries, preserving pagination
 metadata and the existing owner restriction. Account and order read handlers
 return adapter-local data/metadata; null order results map to the same 404, and
 all results still pass the common executor output controls. See
-[Core Order Read Ports v1](core-order-read-ports-v1.md). Remaining operations
-retain their current controller delegation. No handler/class name is accepted
-from a caller, and no new operation is made available.
+[Core Order Read Ports v1](core-order-read-ports-v1.md).
+
+The session-lifecycle candidate moves `identity.sessions.list` to the fixed
+SessionReadOperations handler and the existing revoke/end operations to two
+exact SessionMutationOperations command targets. They share Identity's
+AccountSessions port with native HTTP. Read handlers remain read-only; command
+dispatch is separately restricted to those exact operations, methods and existing
+workflow/once modes. Actor/service authorization precedes receipt admission and
+replay; unknown workflow outcomes are never re-executed. Results rejoin the same
+output controls. See [Core Account Sessions v1](core-account-sessions-v1.md).
+Remaining operations retain their current controller delegation. No handler or
+class name is accepted from a caller, and no new operation is made available.
 
 Implemented families are account/admin login, owner session listing/revocation
 and logout; published offer catalog, owner subscription entitlement; owner order
