@@ -498,14 +498,24 @@ describe('GW-214 /readyz', () => {
       },
     )
 
-    const res = await app.request('http://gateway.internal/readyz')
+    const timer = vi.spyOn(process.hrtime, 'bigint').mockReturnValueOnce(0n).mockReturnValue(563793n)
+    let res: Response
+    try {
+      res = await app.request('http://gateway.internal/readyz')
+    } finally {
+      timer.mockRestore()
+    }
     expect(res.status).toBe(200)
     expect(res.headers.get('content-type')).toContain('application/json')
     const payload = await res.json() as { status: string; dependencies: Record<string, string> }
     expect(payload.status).toBe('ready')
     expect(payload.dependencies).toEqual({ redis: 'up', hpke: 'up', captchaChallenge: 'unknown', upstream: 'up' })
 
-    const blob = JSON.stringify(payload) + lines.join('\n')
+    const entries = lines.map(line => JSON.parse(line) as LogEntry)
+    expect(entries.find(entry => entry.msg === 'request.completed')?.fields.durationMs).toBe(0.563793)
+    // Timing digits can match a port by chance; only normalize the typed duration.
+    const blob = JSON.stringify({ payload, logs: entries }, (key, value) =>
+      key === 'durationMs' && typeof value === 'number' ? 0 : value)
     for (const forbidden of [
       'txboard.example', 'https://', 'redis://', '6379', 'localhost',
       SECRETS.bearerToken, 'password', 'GATEWAY_', 'metricsToken', 'REDIS_URL', 'UPSTREAM_URL',
