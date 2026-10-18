@@ -8,8 +8,8 @@ import { fileURLToPath } from 'node:url';
 
 // Re-review production package contents before changing this fingerprint.
 // Development-only dependencies do not affect it.
-// Added first-party Core SDK/workbench workspaces; all third-party production versions and integrity pins are unchanged.
-const REVIEWED_GRAPH = 'eef81377e5915f6d1bd98f5db9ddaf67b0782ba863f8be14b6cfdb9d0d543450';
+// First-party Core SDK 0.1.1 and matching workbench pin; all third-party production versions and integrity pins are unchanged.
+const REVIEWED_GRAPH = '9ae4793dd673803a0339035cade1488ec7c246d4517cee0bee0209aa7b6c5e5f';
 const lifecycle = ['preinstall', 'install', 'postinstall', 'preprepare', 'prepare', 'postprepare'];
 const platformFields = ['cpu', 'os', 'libc', 'gypfile', 'hasInstallScript'];
 const packageFields = ['name', 'version', 'dependencies', 'optionalDependencies', 'peerDependencies', 'peerDependenciesMeta'];
