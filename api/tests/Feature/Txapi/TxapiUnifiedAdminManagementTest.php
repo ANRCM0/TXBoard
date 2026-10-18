@@ -52,7 +52,7 @@ final class TxapiUnifiedAdminManagementTest extends NativeRuntimeTestCase
         $invoke('network.routes.sort', ['items' => [['id' => $route, 'sort' => 42]]])->assertOk();
         $invoke('network.routes.list', [])->assertOk()->assertJsonFragment(['id' => $route, 'sort' => 42]);
         $invoke('network.routes.simulate', ['node_id' => (string) $this->node->id, 'target' => 'example.test'])
-            ->assertOk()->assertJsonPath('data.authoritative', false);
+            ->assertOk()->assertJsonPath('data.authoritative', true);
         $invoke('network.routes.delete', ['route_id' => $route])->assertOk();
 
         $copy = $invoke('network.nodes.copy', ['node_id' => (string) $this->node->id])->assertOk()->json('data.id');
