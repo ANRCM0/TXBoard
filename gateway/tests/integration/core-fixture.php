@@ -32,14 +32,15 @@ if ($action === 'user-service') {
 if ($action === 'admin-service') {
     $operations = ['system.capabilities.get', 'identity.admin-session.create', 'identity.admin.get',
         'identity.sessions.list', 'identity.sessions.revoke', 'identity.session.end',
-        'network.nodes.list', 'network.machines.list', 'settings.site.get'];
+        'network.nodes.list', 'network.machines.list', 'settings.site.get',
+        'identity.accounts.list', 'identity.accounts.get', 'commerce.admin-orders.list', 'commerce.admin-orders.get'];
     $service = app(\App\Domains\InternalApi\ServiceCredentials::class)->issue('browser-admin-fixture', 'admin',
         $argv[3] ?? '', $operations, time() + 3600);
     [$created, $admin] = app(\App\Services\Auth\NativeIdentityService::class)
         ->create('gw-admin-'.bin2hex(random_bytes(6)).'@example.test', 'admin-integration-password');
     if (!$created) throw new RuntimeException('Admin fixture creation failed');
     $admin->forceFill(['is_admin' => true])->saveOrFail();
-    foreach (['identity.read', 'identity.sessions.manage', 'network.nodes.read', 'network.machines.read', 'settings.read'] as $permission) {
+    foreach (['identity.read', 'identity.sessions.manage', 'network.nodes.read', 'network.machines.read', 'settings.read', 'identity.accounts.read', 'commerce.orders.read'] as $permission) {
         Illuminate\Support\Facades\DB::table('tx_internal_actor_grant')->insert([
             'user_id' => $admin->id, 'permission' => $permission, 'created_at' => time()]);
     }

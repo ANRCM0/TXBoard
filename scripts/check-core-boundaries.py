@@ -221,6 +221,8 @@ USAGE_QUERY_OWNERS = frozenset({
     "api/app/Modules/UsageModule.php",
 })
 READ_ADAPTER_FILES = {
+    "api/app/Domains/InternalApi/AdminAccountReadOperations.php": "admin account read handler",
+    "api/app/Domains/InternalApi/AdminOrderReadOperations.php": "admin order read handler",
     "api/app/Domains/InternalApi/AccountReadOperations.php": "account read handler",
     "api/app/Domains/InternalApi/UsageReadOperations.php": "usage read handler",
     "api/app/Domains/InternalApi/OrderReadOperations.php": "order read handler",

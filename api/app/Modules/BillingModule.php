@@ -51,6 +51,7 @@ final class BillingModule implements ModuleProvider
     {
         return [
             new ServiceBinding(OrderQueries::class, NativeOrderQueries::class),
+            new ServiceBinding(\App\Domains\Billing\Contracts\AdminOrderQueries::class, NativeOrderQueries::class),
             new ServiceBinding(PaymentCheckout::class, NativePaymentCheckout::class),
             new ServiceBinding(WalletPayments::class, NativeWalletPayments::class),
             new ServiceBinding(WalletRefunds::class, NativeRefundService::class),

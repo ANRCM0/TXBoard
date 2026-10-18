@@ -34,6 +34,7 @@ final class IdentityModule implements ModuleProvider
     {
         return [
             new ServiceBinding(AccountQueries::class, NativeAccountQueries::class),
+            new ServiceBinding(\App\Domains\Identity\Contracts\AdminAccountQueries::class, NativeAccountQueries::class),
             new ServiceBinding(AccountSessions::class, NativeAccountSessions::class),
             new ServiceBinding(AccountAdministration::class, NativeAccountAdministration::class),
             new ServiceBinding(AccountPreferences::class, NativeAccountPreferences::class),

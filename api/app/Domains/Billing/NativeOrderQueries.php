@@ -6,10 +6,14 @@ use App\Domains\Billing\Contracts\OrderListQuery;
 use App\Domains\Billing\Contracts\OrderPage;
 use App\Domains\Billing\Contracts\OrderQueries;
 use App\Models\Order;
+use App\Models\OrderPurchaseTerms;
 use Illuminate\Support\Carbon;
 use InvalidArgumentException;
+use App\Domains\Billing\Contracts\AdminOrderQueries;
+use App\Domains\Billing\Contracts\AdminOrderListQuery;
+use App\Domains\Subscription\Services\PublishedOrderService;
 
-final class NativeOrderQueries implements OrderQueries
+final class NativeOrderQueries implements OrderQueries, AdminOrderQueries
 {
     public function listing(int $userId, OrderListQuery $query): OrderPage
     {
@@ -57,6 +61,49 @@ final class NativeOrderQueries implements OrderQueries
     private function requireAccount(int $userId): void
     {
         if ($userId <= 0) throw new InvalidArgumentException('ORDER_READ_ACCOUNT_INVALID');
+    }
+
+    public function adminListing(AdminOrderListQuery $query): OrderPage
+    {
+        $orders = Order::query()->useWritePdo()
+            ->where('purchase_terms_version', PublishedOrderService::VERSION);
+        if ($query->userId !== null) $orders->where('user_id', $query->userId);
+        if ($query->tradeNo !== null) $orders->where('trade_no', $query->tradeNo);
+        if ($query->status !== null) $orders->where('status', $query->status);
+        $page = $orders->orderByDesc('created_at')->orderByDesc('id')->paginate($query->perPage,
+            ['id', 'trade_no', 'user_id', 'plan_id', 'period', 'type', 'status', 'total_amount',
+                'paid_at', 'created_at', 'purchase_terms_version'], 'page', $query->page);
+        $terms = OrderPurchaseTerms::query()->useWritePdo()->whereIn('order_id', $page->getCollection()->pluck('id'))
+            ->get()->keyBy('order_id');
+        return new OrderPage($page->getCollection()->map(
+            static fn (Order $order): array => self::adminSummary($order, $terms->get($order->id)))->all(),
+            ['page' => $page->currentPage(), 'per_page' => $page->perPage(),
+                'total' => $page->total(), 'last_page' => $page->lastPage()]);
+    }
+
+    public function adminFind(string $tradeNo): ?array
+    {
+        if (!preg_match('/\A[A-Za-z0-9_-]{1,128}\z/D', $tradeNo)) {
+            throw new InvalidArgumentException('ADMIN_ORDER_QUERY_INVALID');
+        }
+        $order = Order::query()->useWritePdo()
+            ->where('purchase_terms_version', PublishedOrderService::VERSION)->where('trade_no', $tradeNo)->first();
+        return $order === null ? null : self::adminSummary($order,
+            OrderPurchaseTerms::query()->useWritePdo()->where('order_id', $order->id)->first());
+    }
+
+    private static function adminSummary(Order $order, ?OrderPurchaseTerms $terms): array
+    {
+        $purchase = app(PurchasedOrderGrant::class)->resolve($order, $terms);
+        if ($purchase === null) throw new \LogicException('NATIVE_ORDER_PURCHASE_MISSING');
+        return ['id' => (int) $order->id, 'trade_no' => (string) $order->trade_no,
+            'user_id' => (int) $order->user_id, 'plan_id' => (int) $order->plan_id,
+            'period' => (string) $order->period, 'type' => (int) $order->type, 'status' => (int) $order->status,
+            'amount_minor' => $purchase['price_minor'], 'currency' => $purchase['currency'],
+            'plan' => ['id' => (int) $order->plan_id, 'name' => $purchase['plan_name']],
+            'paid_at' => $order->paid_at ? Carbon::createFromTimestampUTC((int) $order->paid_at)->toIso8601String() : null,
+            'created_at' => Carbon::createFromTimestampUTC((int) $order->created_at)->toIso8601String(),
+            'purchase_terms_version' => PublishedOrderService::VERSION];
     }
 
     private static function summary(Order $order): array

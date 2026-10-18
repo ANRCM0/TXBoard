@@ -123,7 +123,7 @@ try {
   let adminToken, adminPath
   const admin = createCoreAdminClient({ baseURL: 'http://127.0.0.1:18089/gateway/v1/core/admin',
     getToken: () => adminToken, getAdminPath: () => adminPath })
-  assert.equal((await admin.capabilities()).operations.length, 8); checks++
+  assert.equal((await admin.capabilities()).operations.length, 12); checks++
   await assert.rejects(admin.call('identity.admin-session.create', { email: actor.email, password: 'integration-password-2026' },
     { idempotencyKey: randomUUID() }), e => e.status === 403); checks++
   const loggedIn = await admin.call('identity.admin-session.create', { email: adminService.email, password: 'admin-integration-password' }, { idempotencyKey: randomUUID() })
@@ -137,6 +137,17 @@ try {
   assert.equal(machines.meta.total, 0); checks++
   const site = await admin.call('settings.site.get', {})
   assert.equal(typeof site.site.app_name, 'string'); assert.ok(!('server_token' in site.site)); checks++
+  const accounts = await admin.callResult('identity.accounts.list', { email: adminService.email, per_page: 1 })
+  assert.equal(accounts.meta.total, 1); assert.equal(accounts.data[0].id, adminService.id); checks++
+  assert.ok(!('password' in accounts.data[0])); checks++
+  const target = await admin.call('identity.accounts.get', { user_id: actor.id })
+  assert.equal(target.id, actor.id); assert.equal(target.credential_status, 'provider_managed'); checks++
+  await assert.rejects(admin.call('identity.accounts.get', { user_id: '9223372036854775807' }), e => e.status === 404); checks++
+  const nativeOrders = await admin.callResult('commerce.admin-orders.list', { user_id: actor.id, per_page: 1 })
+  assert.ok(nativeOrders.meta.total >= 2); assert.equal(nativeOrders.data[0].user_id, actor.id); checks++
+  const nativeDetail = await admin.call('commerce.admin-orders.get', { trade_no: nativeOrders.data[0].trade_no })
+  assert.equal(nativeDetail.currency, 'CNY'); assert.equal(typeof nativeDetail.amount_minor, 'string'); checks++
+  assert.ok(!('purchase_terms_json' in nativeDetail)); checks++
   const adminSessions = await admin.callResult('identity.sessions.list', {})
   assert.ok(adminSessions.data.some(row => row.id === adminService.secondary)); checks++
   await admin.call('identity.sessions.revoke', { session_id: adminService.secondary }, { idempotencyKey: randomUUID() })
@@ -152,7 +163,7 @@ try {
   console.log(JSON.stringify({ sourceHead, checks, realCore: true, nativeActivation: true, database: 'mysql',
     gatewayMtls: true, tlsTermination: 'isolated CI adapter to loopback PHP development server',
     browserSdk: true, originalKeyReplay: true, lostResponseRecovery: true, ownerIsolation: true,
-    sessionEnd: true, serviceGrantRevocation: true, serviceFailureDistinctFromUserSession: true, adminChannel: true, adminChecks: 13, actorGrantRevocation: true, adminPathRotation: true }))
+    sessionEnd: true, serviceGrantRevocation: true, serviceFailureDistinctFromUserSession: true, adminChannel: true, adminChecks: 20, actorGrantRevocation: true, adminPathRotation: true }))
 } finally {
   for (const server of servers.reverse()) await new Promise(r => server.close(r))
   if (adminLimiter) await adminLimiter.close()

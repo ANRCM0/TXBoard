@@ -1371,6 +1371,243 @@
         "currency"
       ],
       "additionalProperties": false
+    },
+    "admin-account": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/id"
+        },
+        "email": {
+          "type": "string",
+          "maxLength": 255
+        },
+        "banned": {
+          "type": "boolean"
+        },
+        "is_admin": {
+          "type": "boolean"
+        },
+        "created_at": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "last_login_at": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "email",
+        "banned",
+        "is_admin",
+        "created_at",
+        "last_login_at"
+      ],
+      "additionalProperties": false
+    },
+    "admin-account-detail": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/id"
+        },
+        "email": {
+          "type": "string",
+          "maxLength": 255
+        },
+        "banned": {
+          "type": "boolean"
+        },
+        "is_admin": {
+          "type": "boolean"
+        },
+        "created_at": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "last_login_at": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "subscription": {
+          "$ref": "#/definitions/account-entitlement"
+        },
+        "credential_status": {
+          "const": "provider_managed"
+        }
+      },
+      "required": [
+        "id",
+        "email",
+        "banned",
+        "is_admin",
+        "created_at",
+        "last_login_at",
+        "subscription",
+        "credential_status"
+      ],
+      "additionalProperties": false
+    },
+    "admin-order": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]{0,18}$",
+          "x-decimal-maximum": "9223372036854775807"
+        },
+        "trade_no": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{1,128}$"
+        },
+        "plan_id": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]{0,18}$",
+          "x-decimal-maximum": "9223372036854775807"
+        },
+        "period": {
+          "type": "string",
+          "enum": [
+            "monthly",
+            "quarterly",
+            "half_yearly",
+            "yearly",
+            "two_yearly",
+            "three_yearly",
+            "onetime",
+            "reset_traffic"
+          ]
+        },
+        "type": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4
+        },
+        "status": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4
+        },
+        "amount_minor": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]{0,18})$",
+          "x-decimal-maximum": "9223372036854775807"
+        },
+        "plan": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^[1-9][0-9]{0,18}$",
+                  "x-decimal-maximum": "9223372036854775807"
+                },
+                "name": {
+                  "type": "string",
+                  "maxLength": 255
+                }
+              },
+              "required": [
+                "id",
+                "name"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "paid_at": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?(?:Z|[+-][0-9]{2}:[0-9]{2})$",
+              "maxLength": 40
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "created_at": {
+          "type": "string",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?(?:Z|[+-][0-9]{2}:[0-9]{2})$",
+          "maxLength": 40
+        },
+        "user_id": {
+          "$ref": "#/definitions/id"
+        },
+        "currency": {
+          "type": "string",
+          "enum": [
+            "USD",
+            "CNY",
+            "EUR",
+            "GBP",
+            "HKD",
+            "SGD",
+            "CAD",
+            "AUD",
+            "NZD",
+            "TWD"
+          ]
+        },
+        "purchase_terms_version": {
+          "const": "tx-core.purchase-terms/v2"
+        }
+      },
+      "required": [
+        "id",
+        "trade_no",
+        "plan_id",
+        "period",
+        "type",
+        "status",
+        "amount_minor",
+        "plan",
+        "paid_at",
+        "created_at",
+        "user_id",
+        "currency",
+        "purchase_terms_version"
+      ],
+      "additionalProperties": false
     }
   },
   "operations": {
@@ -2873,6 +3110,257 @@
           "site"
         ],
         "additionalProperties": false
+      },
+      "meta": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS"
+      ]
+    },
+    "identity.accounts.list": {
+      "version": 1,
+      "domains": [
+        "admin"
+      ],
+      "actor": "admin",
+      "permission": "identity.accounts.read",
+      "idempotency": "read",
+      "consistency": "current-owner-view",
+      "input": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100000
+          },
+          "per_page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "email": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 254
+          },
+          "banned": {
+            "type": "boolean"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "array",
+        "items": {
+          "$ref": "#/definitions/admin-account"
+        },
+        "maxItems": 100
+      },
+      "meta": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "per_page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "last_page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "page",
+          "per_page",
+          "total",
+          "last_page"
+        ],
+        "additionalProperties": false
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS"
+      ]
+    },
+    "identity.accounts.get": {
+      "version": 1,
+      "domains": [
+        "admin"
+      ],
+      "actor": "admin",
+      "permission": "identity.accounts.read",
+      "idempotency": "read",
+      "consistency": "current-owner-view",
+      "input": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "$ref": "#/definitions/id"
+          }
+        },
+        "required": [
+          "user_id"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "$ref": "#/definitions/admin-account-detail"
+      },
+      "meta": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS"
+      ]
+    },
+    "commerce.admin-orders.list": {
+      "version": 1,
+      "domains": [
+        "admin"
+      ],
+      "actor": "admin",
+      "permission": "commerce.orders.read",
+      "idempotency": "read",
+      "consistency": "current-owner-view",
+      "input": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100000
+          },
+          "per_page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "user_id": {
+            "$ref": "#/definitions/id"
+          },
+          "trade_no": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$"
+          },
+          "status": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "array",
+        "items": {
+          "$ref": "#/definitions/admin-order"
+        },
+        "maxItems": 100
+      },
+      "meta": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "per_page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "last_page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "page",
+          "per_page",
+          "total",
+          "last_page"
+        ],
+        "additionalProperties": false
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS"
+      ]
+    },
+    "commerce.admin-orders.get": {
+      "version": 1,
+      "domains": [
+        "admin"
+      ],
+      "actor": "admin",
+      "permission": "commerce.orders.read",
+      "idempotency": "read",
+      "consistency": "current-owner-view",
+      "input": {
+        "type": "object",
+        "properties": {
+          "trade_no": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$"
+          }
+        },
+        "required": [
+          "trade_no"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "$ref": "#/definitions/admin-order"
       },
       "meta": {
         "type": "object",
