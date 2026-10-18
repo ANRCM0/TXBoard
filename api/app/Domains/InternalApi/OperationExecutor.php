@@ -206,7 +206,10 @@ final class OperationExecutor
                 if (!$view instanceof MutationOperationResult) throw new \LogicException('INTERNAL_MUTATION_RESULT_INVALID');
                 $result = TxapiResponse::success($request, $view->data, $view->meta, $view->status);
             } else {
-                $result = $this->invokeController($request, $operation, $spec, $input, $actor);
+                $invoke = fn () => $this->invokeController($request, $operation, $spec, $input, $actor);
+                $result = ($spec['adminDatabaseWrite'] ?? false)
+                    ? app(AdminMutationBoundary::class)->run($actor, $spec['permission'], $invoke)
+                    : $invoke();
             }
         } catch (OperationFailure $error) {
             $result = $this->error($request, $error->errorCode, $error->status);
@@ -265,6 +268,7 @@ final class OperationExecutor
     private function invokeController(Request $request, string $operation, array $spec, array $input, ?User $actor): mixed
     {
         $delegated = clone $request;
+        $delegated->attributes->set('native_internal_operation', $operation);
         $delegated->query->replace([]);
         $delegated->request->replace($input);
         $delegated->setJson(new InputBag($input));
@@ -279,8 +283,9 @@ final class OperationExecutor
             unset($input[$field]);
         }
         foreach ($spec['routeParameters'] as $name => $value) $route->setParameter($name, $value);
-        $delegated->request->replace($input);
-        $delegated->setJson(new InputBag($input));
+        $payload = isset($spec['payload']) ? $input[$spec['payload']] : $input;
+        $delegated->request->replace($payload);
+        $delegated->setJson(new InputBag($payload));
         $delegated->setRouteResolver(static fn () => $route);
         $formClass = match ($operation) {
             'identity.session.create', 'identity.admin-session.create' => AuthLogin::class,

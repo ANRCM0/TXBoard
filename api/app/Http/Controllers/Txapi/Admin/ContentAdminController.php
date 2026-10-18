@@ -114,9 +114,9 @@ final class ContentAdminController
 
     public function categories(Request $request): JsonResponse
     {
+        $categories = Knowledge::query()->whereNotNull('category')->distinct()->orderBy('category')->pluck('category')->all();
         return TxapiResponse::success($request,
-            Knowledge::query()->whereNotNull('category')->distinct()->orderBy('category')
-                ->pluck('category')->all());
+            $request->attributes->has('native_internal_operation') ? ['categories' => $categories] : $categories);
     }
 
     public function article(Request $request, string $id): JsonResponse

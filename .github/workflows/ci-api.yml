@@ -8,6 +8,7 @@ on:
       - "!api/**/*.md"
       - "contracts/core-api/**"
       - "scripts/generate-core-contracts.py"
+      - "scripts/check-admin-unification.py"
       - "contracts/kernel/**"
       - "contracts/modules/**"
       - "contracts/releases/**"
@@ -41,6 +42,7 @@ on:
       - "!api/**/*.md"
       - "contracts/core-api/**"
       - "scripts/generate-core-contracts.py"
+      - "scripts/check-admin-unification.py"
       - "contracts/kernel/**"
       - "contracts/modules/**"
       - "contracts/releases/**"
@@ -105,6 +107,7 @@ jobs:
         working-directory: .
         run: |
           python3 scripts/generate-core-contracts.py --check
+          python3 scripts/check-admin-unification.py
           python3 scripts/check-core-boundaries.py
           python3 scripts/check-kernel-v1.py
           python3 scripts/check-modular-release.py

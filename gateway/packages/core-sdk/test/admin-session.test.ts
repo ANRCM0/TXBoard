@@ -11,6 +11,26 @@ const forbidden = (status: number) => Response.json({ ok: false, error: {
   meta: { version: '1', requestId: 'trace' } }, { status })
 
 describe('administrator session lifecycle', () => {
+  it('separates reads from commands and preserves the original action key after an unknown response', async () => {
+    const send = vi.fn<typeof fetch>().mockResolvedValueOnce(loggedIn())
+      .mockRejectedValueOnce(new Error('lost response'))
+      .mockResolvedValueOnce(envelope({ id: '9007199254740993', banned: true }))
+    const admin = createCoreAdminSession({ fetchImpl: send })
+    await admin.login(credentials, key)
+    const input = { user_id: '9007199254740993', expected_banned: false, banned: true }
+    expect(() => admin.read('identity.accounts.status.update' as never, input as never)).toThrow()
+    expect(send).toHaveBeenCalledTimes(1)
+    await expect(admin.write('identity.accounts.status.update', input, key))
+      .rejects.toMatchObject({ needsStateConfirmation: true })
+    expect(send).toHaveBeenCalledTimes(2)
+    const result = await admin.write('identity.accounts.status.update', input, key)
+    expect(result.data).toEqual({ id: input.user_id, banned: true })
+    const first = new Headers(send.mock.calls[1]![1]!.headers)
+    const second = new Headers(send.mock.calls[2]![1]!.headers)
+    expect(first.get('Idempotency-Key')).toBe(key)
+    expect(second.get('Idempotency-Key')).toBe(key)
+    expect(second.get('X-Core-Admin-Path')).toBe('rotated_path')
+  })
   it('keeps credentials internal, retains session on 403, and clears current session on 401', async () => {
     const send = vi.fn<typeof fetch>().mockResolvedValueOnce(loggedIn())
       .mockResolvedValueOnce(forbidden(403)).mockResolvedValueOnce(forbidden(401))

@@ -1,15 +1,9 @@
 import { createBrowserCoreClient, CoreUserApiError, type CoreUserClientOptions, type CoreUserCapabilities } from './user.js'
 import type { CallOptions, CoreResult } from './client.js'
 import type { CoreInput, CoreOutput } from './contracts.generated.js'
-
-export const CORE_ADMIN_OPERATIONS = [
-  'identity.admin-session.create', 'identity.admin.get', 'identity.sessions.list',
-  'identity.sessions.revoke', 'identity.session.end', 'network.nodes.list',
-  'network.machines.list', 'settings.site.get',
-  'identity.accounts.list', 'identity.accounts.get',
-  'commerce.admin-orders.list', 'commerce.admin-orders.get',
-] as const
-export type CoreAdminOperation = (typeof CORE_ADMIN_OPERATIONS)[number]
+import { CORE_ADMIN_OPERATIONS, type CoreAdminOperation } from './admin.generated.js'
+export { CORE_ADMIN_OPERATIONS, CORE_ADMIN_READ_OPERATIONS, CORE_ADMIN_WRITE_OPERATIONS,
+  type CoreAdminOperation, type CoreAdminReadOperation, type CoreAdminWriteOperation } from './admin.generated.js'
 export type CoreAdminClientOptions = CoreUserClientOptions & {
   getAdminPath: () => string | null | undefined | Promise<string | null | undefined>
 }

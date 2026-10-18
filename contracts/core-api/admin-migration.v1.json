@@ -1,0 +1,1549 @@
+{
+  "schema": "core-admin-migration/v1",
+  "source": "api/routes/txapi.php",
+  "scope": "admin/{admin_path}",
+  "sourceOnly": true,
+  "runtimeAcceptance": "deferred by user",
+  "routes": [
+    {
+      "method": "POST",
+      "path": "native/plans/publications",
+      "controller": "NativePlanAdminController",
+      "action": "publish",
+      "operations": [
+        "catalog.plans.publish"
+      ],
+      "status": "bound",
+      "note": "Use the declared operation schema; legacy payloads are not forwarded wholesale."
+    },
+    {
+      "method": "PATCH",
+      "path": "native/plan-offers/{offerId}/availability",
+      "controller": "NativePlanAdminController",
+      "action": "availability",
+      "operations": [
+        "catalog.offers.availability.update"
+      ],
+      "status": "bound",
+      "note": "Use the declared operation schema; legacy payloads are not forwarded wholesale."
+    },
+    {
+      "method": "POST",
+      "path": "native/billing/refunds",
+      "controller": "NativeBillingAdminController",
+      "action": "refund",
+      "operations": [
+        "billing.refunds.create"
+      ],
+      "status": "bound",
+      "note": "Use the declared operation schema; legacy payloads are not forwarded wholesale."
+    },
+    {
+      "method": "GET",
+      "path": "native/billing/reconciliation",
+      "controller": "NativeBillingAdminController",
+      "action": "reconcile",
+      "operations": [
+        "billing.reconciliation.get"
+      ],
+      "status": "bound",
+      "note": "Use the declared operation schema; legacy payloads are not forwarded wholesale."
+    },
+    {
+      "method": "POST",
+      "path": "native/accounts",
+      "controller": "NativeAccountController",
+      "action": "create",
+      "operations": [
+        "identity.accounts.create"
+      ],
+      "status": "bound",
+      "note": "Use the generated bounded operation and its explicit resource/permission contract."
+    },
+    {
+      "method": "PATCH",
+      "path": "native/accounts/{id}/status",
+      "controller": "NativeAccountController",
+      "action": "status",
+      "operations": [
+        "identity.accounts.status.update"
+      ],
+      "status": "bound",
+      "note": "Use the generated bounded operation and its explicit resource/permission contract."
+    },
+    {
+      "method": "POST",
+      "path": "subscriptions/{id}/operations/{operation}",
+      "controller": "SubscriptionOperationsController",
+      "action": "execute",
+      "operations": [
+        "subscription.lifecycle.suspend",
+        "subscription.lifecycle.resume",
+        "subscription.lifecycle.revoke",
+        "subscription.lifecycle.expire",
+        "subscription.lifecycle.reset"
+      ],
+      "status": "bound",
+      "note": "Use the declared operation schema; legacy payloads are not forwarded wholesale."
+    },
+    {
+      "method": "GET",
+      "path": "audit-logs",
+      "controller": "AuditLogController",
+      "action": "index",
+      "operations": [
+        "audit.logs.list"
+      ],
+      "status": "bound",
+      "note": "Use the generated bounded operation and its explicit resource/permission contract."
+    },
+    {
+      "method": "GET",
+      "path": "access-audit/rules",
+      "controller": "AccessAuditAdminController",
+      "action": "rules",
+      "operations": [
+        "network.access-audit.rules.list"
+      ],
+      "status": "bound",
+      "note": "Use the generated bounded operation and its explicit resource/permission contract."
+    },
+    {
+      "method": "POST",
+      "path": "access-audit/rules",
+      "controller": "AccessAuditAdminController",
+      "action": "saveRule",
+      "operations": [
+        "network.access-audit.rules.save"
+      ],
+      "status": "bound",
+      "note": "Use the generated bounded operation and its explicit resource/permission contract."
+    },
+    {
+      "method": "DELETE",
+      "path": "access-audit/rules/{id}",
+      "controller": "AccessAuditAdminController",
+      "action": "deleteRule",
+      "operations": [
+        "network.access-audit.rules.delete"
+      ],
+      "status": "bound",
+      "note": "Use the generated bounded operation and its explicit resource/permission contract."
+    },
+    {
+      "method": "GET",
+      "path": "access-audit/events",
+      "controller": "AccessAuditAdminController",
+      "action": "events",
+      "operations": [
+        "network.access-audit.events.list"
+      ],
+      "status": "bound",
+      "note": "Use the generated bounded operation and its explicit resource/permission contract."
+    },
+    {
+      "method": "GET",
+      "path": "themes",
+      "controller": "ThemeAdminController",
+      "action": "index",
+      "operations": [],
+      "status": "dedicated-adapter-required",
+      "note": "Package, schema-driven configuration or secret-bearing response requires a separate bounded adapter; not exposed through generic JSON forwarding."
+    },
+    {
+      "method": "POST",
+      "path": "themes/upload",
+      "controller": "ThemeAdminController",
+      "action": "upload",
+      "operations": [],
+      "status": "dedicated-adapter-required",
+      "note": "Package, schema-driven configuration or secret-bearing response requires a separate bounded adapter; not exposed through generic JSON forwarding."
+    },
+    {
+      "method": "POST",
+      "path": "themes/{name}/rollback",
+      "controller": "ThemeAdminController",
+      "action": "rollback",
+      "operations": [],
+      "status": "dedicated-adapter-required",
+      "note": "Package, schema-driven configuration or secret-bearing response requires a separate bounded adapter; not exposed through generic JSON forwarding."
+    },
+    {
+      "method": "GET",
+      "path": "themes/{name}/config",
+      "controller": "ThemeAdminController",
+      "action": "config",
+      "operations": [],
+      "status": "dedicated-adapter-required",
+      "note": "Package, schema-driven configuration or secret-bearing response requires a separate bounded adapter; not exposed through generic JSON forwarding."
+    },
+    {
+      "method": "PUT",
+      "path": "themes/{name}/config",
+      "controller": "ThemeAdminController",
+      "action": "saveConfig",
+      "operations": [],
+      "status": "dedicated-adapter-required",
+      "note": "Package, schema-driven configuration or secret-bearing response requires a separate bounded adapter; not exposed through generic JSON forwarding."
+    },
+    {
+      "method": "DELETE",
+      "path": "themes/{name}",
+      "controller": "ThemeAdminController",
+      "action": "delete",
+      "operations": [],
+      "status": "dedicated-adapter-required",
+      "note": "Package, schema-driven configuration or secret-bearing response requires a separate bounded adapter; not exposed through generic JSON forwarding."
+    },
+    {
+      "method": "GET",
+      "path": "modules",
+      "controller": "ModuleAdminController",
+      "action": "index",
+      "operations": [
+        "platform.modules.list"
+      ],
+      "status": "bound",
+      "note": "Use the generated bounded operation and its explicit resource/permission contract."
+    },
+    {
+      "method": "GET",
+      "path": "modules/{id}/operations",
+      "controller": "ModuleAdminController",
+      "action": "operations",
+      "operations": [
+        "platform.modules.operations.list"
+      ],
+      "status": "bound",
+      "note": "Use the generated bounded operation and its explicit resource/permission contract."
+    },
+    {
+      "method": "POST",
+      "path": "modules/{id}/operations/{operation}",
+      "controller": "ModuleAdminController",
+      "action": "execute",
+      "operations": [],
+      "status": "adapter-required",
+      "note": "Not admitted to the generated browser surface; retain existing route until a reviewed owner adapter and contract are implemented."
+    },
+    {
+      "method": "GET",
+      "path": "modules/{id}",
+      "controller": "ModuleAdminController",
+      "action": "show",
+      "operations": [
+        "platform.modules.get"
+      ],
+      "status": "bound",
+      "note": "Use the generated bounded operation and its explicit resource/permission contract."
+    },
+    {
+      "method": "GET",
+      "path": "analytics/dashboard",
+      "controller": "AnalyticsAdminController",
+      "action": "dashboard",
+      "operations": [],
+      "status": "adapter-required",
+      "note": "Not admitted to the generated browser surface; retain existing route until a reviewed owner adapter and contract are implemented."
+    },
+    {
+      "method": "GET",
+      "path": "analytics/overview",
+      "controller": "AnalyticsAdminController",
+      "action": "overview",
+      "operations": [],
+      "status": "adapter-required",
+      "note": "Not admitted to the generated browser surface; retain existing route until a reviewed owner adapter and contract are implemented."
+    },
+    {
+      "method": "GET",
+      "path": "analytics/orders/chart",
+      "controller": "AnalyticsAdminController",
+      "action": "orders",
+      "operations": [],
+      "status": "adapter-required",
+      "note": "Not admitted to the generated browser surface; retain existing route until a reviewed owner adapter and contract are implemented."
+    },
+    {
+      "method": "GET",
+      "path": "analytics/traffic/rank",
+      "controller": "AnalyticsAdminController",
+      "action": "trafficRank",
+      "operations": [],
+      "status": "adapter-required",
+      "note": "Not admitted to the generated browser surface; retain existing route until a reviewed owner adapter and contract are implemented."
+    },
+    {
+      "method": "GET",
+      "path": "analytics/rankings",
+      "controller": "AnalyticsAdminController",
+      "action": "ranking",
+      "operations": [],
+      "status": "adapter-required",
+      "note": "Not admitted to the generated browser surface; retain existing route until a reviewed owner adapter and contract are implemented."
+    },
+    {
+      "method": "GET",
+      "path": "analytics/users/{id}/traffic",
+      "controller": "AnalyticsAdminController",
+      "action": "userTraffic",
+      "operations": [],
+      "status": "adapter-required",
+      "note": "Not admitted to the generated browser surface; retain existing route until a reviewed owner adapter and contract are implemented."
+    },
+    {
+      "method": "GET",
+      "path": "analytics/records",
+      "controller": "AnalyticsAdminController",
+      "action": "records",
+      "operations": [],
+      "status": "adapter-required",
+      "note": "Not admitted to the generated browser surface; retain existing route until a reviewed owner adapter and contract are implemented."
+    },
+    {
+      "method": "GET",
+      "path": "analytics/nodes/rank/{period}",
+      "controller": "AnalyticsAdminController",
+      "action": "serverRank",
+      "operations": [],
+      "status": "adapter-required",
+      "note": "Not admitted to the generated browser surface; retain existing route until a reviewed owner adapter and contract are implemented."
+    },
+    {
+      "method": "GET",
+      "path": "plugins/types",
+      "controller": "PluginAdminController",
+      "action": "types",
+      "operations": [],
+      "status": "dedicated-adapter-required",
+      "note": "Package, schema-driven configuration or secret-bearing response requires a separate bounded adapter; not exposed through generic JSON forwarding."
+    },
+    {
+      "method": "GET",
+      "path": "plugins",
+      "controller": "PluginAdminController",
+      "action": "index",
+      "operations": [],
+      "status": "dedicated-adapter-required",
+      "note": "Package, schema-driven configuration or secret-bearing response requires a separate bounded adapter; not exposed through generic JSON forwarding."
+    },
+    {
+      "method": "POST",
+      "path": "plugins/upload",
+      "controller": "PluginAdminController",
+      "action": "upload",
+      "operations": [],
+      "status": "dedicated-adapter-required",
+      "note": "Package, schema-driven configuration or secret-bearing response requires a separate bounded adapter; not exposed through generic JSON forwarding."
+    },
+    {
+      "method": "GET",
+      "path": "plugins/{code}/config",
+      "controller": "PluginAdminController",
+      "action": "config",
+      "operations": [],
+      "status": "dedicated-adapter-required",
+      "note": "Package, schema-driven configuration or secret-bearing response requires a separate bounded adapter; not exposed through generic JSON forwarding."
+    },
+    {
+      "method": "PUT",
+      "path": "plugins/{code}/config",
+      "controller": "PluginAdminController",
+      "action": "saveConfig",
+      "operations": [],
+      "status": "dedicated-adapter-required",
+      "note": "Package, schema-driven configuration or secret-bearing response requires a separate bounded adapter; not exposed through generic JSON forwarding."
+    },
+    {
+      "method": "POST",
+      "path": "plugins/{code}/actions/{action}",
+      "controller": "PluginAdminController",
+      "action": "action",
+      "operations": [],
+      "status": "dedicated-adapter-required",
+      "note": "Package, schema-driven configuration or secret-bearing response requires a separate bounded adapter; not exposed through generic JSON forwarding."
+    },
+    {
+      "method": "DELETE",
+      "path": "plugins/{code}",
+      "controller": "PluginAdminController",
+      "action": "delete",
+      "operations": [],
+      "status": "dedicated-adapter-required",
+      "note": "Package, schema-driven configuration or secret-bearing response requires a separate bounded adapter; not exposed through generic JSON forwarding."
+    },
+    {
+      "method": "GET",
+      "path": "network-machines",
+      "controller": "NetworkMachineAdminController",
+      "action": "index",
+      "operations": [
+        "network.machines.list"
+      ],
+      "status": "native-replacement",
+      "note": "Use the declared operation schema; legacy payloads are not forwarded wholesale."
+    },
+    {
+      "method": "POST",
+      "path": "network-machines",
+      "controller": "NetworkMachineAdminController",
+      "action": "create",
+      "operations": [],
+      "status": "dedicated-adapter-required",
+      "note": "Package, schema-driven configuration or secret-bearing response requires a separate bounded adapter; not exposed through generic JSON forwarding."
+    },
+    {
+      "method": "PUT",
+      "path": "network-machines/{id}",
+      "controller": "NetworkMachineAdminController",
+      "action": "update",
+      "operations": [
+        "network.machines.update"
+      ],
+      "status": "bound",
+      "note": "Use the generated bounded operation and its explicit resource/permission contract."
+    },
+    {
+      "method": "POST",
+      "path": "network-machines/{id}/credentials",
+      "controller": "NetworkMachineAdminController",
+      "action": "credentials",
+      "operations": [],
+      "status": "dedicated-adapter-required",
+      "note": "Package, schema-driven configuration or secret-bearing response requires a separate bounded adapter; not exposed through generic JSON forwarding."
+    },
+    {
+      "method": "POST",
+      "path": "network-machines/{id}/token/rotate",
+      "controller": "NetworkMachineAdminController",
+      "action": "rotateToken",
+      "operations": [],
+      "status": "dedicated-adapter-required",
+      "note": "Package, schema-driven configuration or secret-bearing response requires a separate bounded adapter; not exposed through generic JSON forwarding."
+    },
+    {
+      "method": "GET",
+      "path": "network-machines/{id}/nodes",
+      "controller": "NetworkMachineAdminController",
+      "action": "nodes",
+      "operations": [
+        "network.machines.nodes.list"
+      ],
+      "status": "bound",
+      "note": "Use the generated bounded operation and its explicit resource/permission contract."
+    },
+    {
+      "method": "GET",
+      "path": "network-machines/{id}/history",
+      "controller": "NetworkMachineAdminController",
+      "action": "history",
+      "operations": [],
+      "status": "adapter-required",
+      "note": "Not admitted to the generated browser surface; retain existing route until a reviewed owner adapter and contract are implemented."
+    },
+    {
+      "method": "POST",
+      "path": "network-machines/{id}/runtime/update",
+      "controller": "NetworkMachineAdminController",
+      "action": "updateRuntime",
+      "operations": [],
+      "status": "adapter-required",
+      "note": "Not admitted to the generated browser surface; retain existing route until a reviewed owner adapter and contract are implemented."
+    },
+    {
+      "method": "DELETE",
+      "path": "network-machines/{id}",
+      "controller": "NetworkMachineAdminController",
+      "action": "delete",
+      "operations": [
+        "network.machines.delete"
+      ],
+      "status": "bound",
+      "note": "Use the generated bounded operation and its explicit resource/permission contract."
+    },
+    {
+      "method": "GET",
+      "path": "network-nodes",
+      "controller": "NetworkNodeAdminController",
+      "action": "index",
+      "operations": [
+        "network.nodes.list"
+      ],
+      "status": "native-replacement",
+      "note": "Use the declared operation schema; legacy payloads are not forwarded wholesale."
+    },
+    {
+      "method": "GET",
+      "path": "network-nodes/protocols",
+      "controller": "NetworkNodeAdminController",
+      "action": "protocols",
+      "operations": [],
+      "status": "adapter-required",
+      "note": "Not admitted to the generated browser surface; retain existing route until a reviewed owner adapter and contract are implemented."
+    },
+    {
+      "method": "POST",
+      "path": "network-nodes/secrets",
+      "controller": "NetworkNodeSecretController",
+      "action": "generate",
+      "operations": [],
+      "status": "dedicated-adapter-required",
+      "note": "Package, schema-driven configuration or secret-bearing response requires a separate bounded adapter; not exposed through generic JSON forwarding."
+    },
+    {
+      "method": "PUT",
+      "path": "network-nodes/sort",
+      "controller": "NetworkNodeAdminController",
+      "action": "sort",
+      "operations": [
+        "network.nodes.sort"
+      ],
+      "status": "bound",
+      "note": "Use the generated bounded operation and its explicit resource/permission contract."
+    },
+    {
+      "method": "PATCH",
+      "path": "network-nodes/batch",
+      "controller": "NetworkNodeAdminController",
+      "action": "batchUpdate",
+      "operations": [
+        "network.nodes.batch-update"
+      ],
+      "status": "bound",
+      "note": "Use the generated bounded operation and its explicit resource/permission contract."
+    },
+    {
+      "method": "POST",
+      "path": "network-nodes/batch-delete",
+      "controller": "NetworkNodeAdminController",
+      "action": "batchDelete",
+      "operations": [
+        "network.nodes.batch-delete"
+      ],
+      "status": "bound",
+      "note": "Use the generated bounded operation and its explicit resource/permission contract."
+    },
+    {
+      "method": "POST",
+      "path": "network-nodes/batch-traffic-reset",
+      "controller": "NetworkNodeAdminController",
+      "action": "batchResetTraffic",
+      "operations": [
+        "network.nodes.batch-traffic-reset"
+      ],
+      "status": "bound",
+      "note": "Use the generated bounded operation and its explicit resource/permission contract."
+    },
+    {
+      "method": "POST",
+      "path": "network-nodes",
+      "controller": "NetworkNodeAdminController",
+      "action": "save",
+      "operations": [],
+      "status": "adapter-required",
+      "note": "Not admitted to the generated browser surface; retain existing route until a reviewed owner adapter and contract are implemented."
+    },
+    {
+      "method": "PUT",
+      "path": "network-nodes/{id}",
+      "controller": "NetworkNodeAdminController",
+      "action": "replace",
+      "operations": [],
+      "status": "adapter-required",
+      "note": "Not admitted to the generated browser surface; retain existing route until a reviewed owner adapter and contract are implemented."
+    },
+    {
+      "method": "PATCH",
+      "path": "network-nodes/{id}",
+      "controller": "NetworkNodeAdminController",
+      "action": "patch",
+      "operations": [
+        "network.nodes.patch"
+      ],
+      "status": "bound",
+      "note": "Use the generated bounded operation and its explicit resource/permission contract."
+    },
+    {
+      "method": "POST",
+      "path": "network-nodes/{id}/copy",
+      "controller": "NetworkNodeAdminController",
+      "action": "copy",
+      "operations": [
+        "network.nodes.copy"
+      ],
+      "status": "bound",
+      "note": "Use the generated bounded operation and its explicit resource/permission contract."
+    },
+    {
+      "method": "POST",
+      "path": "network-nodes/{id}/traffic-reset",
+      "controller": "NetworkNodeAdminController",
+      "action": "resetTraffic",
+      "operations": [
+        "network.nodes.traffic-reset"
+      ],
+      "status": "bound",
+      "note": "Use the generated bounded operation and its explicit resource/permission contract."
+    },
+    {
+      "method": "DELETE",
+      "path": "network-nodes/{id}",
+      "controller": "NetworkNodeAdminController",
+      "action": "delete",
+      "operations": [
+        "network.nodes.delete"
+      ],
+      "status": "bound",
+      "note": "Use the generated bounded operation and its explicit resource/permission contract."
+    },
+    {
+      "method": "GET",
+      "path": "network-groups",
+      "controller": "NetworkGroupAdminController",
+      "action": "index",
+      "operations": [
+        "network.groups.list"
+      ],
+      "status": "bound",
+      "note": "Use the generated bounded operation and its explicit resource/permission contract."
+    },
+    {
+      "method": "POST",
+      "path": "network-groups",
+      "controller": "NetworkGroupAdminController",
+      "action": "save",
+      "operations": [
+        "network.groups.save"
+      ],
+      "status": "bound",
+      "note": "Use the generated bounded operation and its explicit resource/permission contract."
+    },
+    {
+      "method": "DELETE",
+      "path": "network-groups/{id}",
+      "controller": "NetworkGroupAdminController",
+      "action": "delete",
+      "operations": [
+        "network.groups.delete"
+      ],
+      "status": "bound",
+      "note": "Use the generated bounded operation and its explicit resource/permission contract."
+    },
+    {
+      "method": "GET",
+      "path": "network-routes",
+      "controller": "NetworkRouteAdminController",
+      "action": "index",
+      "operations": [
+        "network.routes.list"
+      ],
+      "status": "bound",
+      "note": "Use the generated bounded operation and its explicit resource/permission contract."
+    },
+    {
+      "method": "POST",
+      "path": "network-routes",
+      "controller": "NetworkRouteAdminController",
+      "action": "save",
+      "operations": [
+        "network.routes.save"
+      ],
+      "status": "bound",
+      "note": "Use the generated bounded operation and its explicit resource/permission contract."
+    },
+    {
+      "method": "PUT",
+      "path": "network-routes/sort",
+      "controller": "NetworkRouteAdminController",
+      "action": "sort",
+      "operations": [
+        "network.routes.sort"
+      ],
+      "status": "bound",
+      "note": "Use the generated bounded operation and its explicit resource/permission contract."
+    },
+    {
+      "method": "POST",
+      "path": "network-routes/simulate",
+      "controller": "NetworkRouteAdminController",
+      "action": "simulate",
+      "operations": [
+        "network.routes.simulate"
+      ],
+      "status": "bound",
+      "note": "Use the generated bounded operation and its explicit resource/permission contract."
+    },
+    {
+      "method": "DELETE",
+      "path": "network-routes/{id}",
+      "controller": "NetworkRouteAdminController",
+      "action": "delete",
+      "operations": [
+        "network.routes.delete"
+      ],
+      "status": "bound",
+      "note": "Use the generated bounded operation and its explicit resource/permission contract."
+    },
+    {
+      "method": "GET",
+      "path": "settings",
+      "controller": "SettingsAdminController",
+      "action": "index",
+      "operations": [],
+      "status": "adapter-required",
+      "note": "Not admitted to the generated browser surface; retain existing route until a reviewed owner adapter and contract are implemented."
+    },
+    {
+      "method": "GET",
+      "path": "settings/{group}",
+      "controller": "SettingsAdminController",
+      "action": "group",
+      "operations": [
+        "settings.site.get"
+      ],
+      "status": "native-replacement",
+      "note": "Only group=site is mapped. Other configuration groups require their own reviewed schema and secret handling."
+    },
+    {
+      "method": "POST",
+      "path": "settings",
+      "controller": "SettingsAdminController",
+      "action": "save",
+      "operations": [
+        "settings.site.update"
+      ],
+      "status": "native-replacement",
+      "note": "Only the bounded site-setting fields are mapped; credentials and all other configuration groups are excluded."
+    },
+    {
+      "method": "POST",
+      "path": "settings/telegram/webhook",
+      "controller": "SettingsAdminController",
+      "action": "setTelegramWebhook",
+      "operations": [],
+      "status": "adapter-required",
+      "note": "Not admitted to the generated browser surface; retain existing route until a reviewed owner adapter and contract are implemented."
+    },
+    {
+      "method": "GET",
+      "path": "mail-templates",
+      "controller": "MailTemplateAdminController",
+      "action": "index",
+      "operations": [
+        "notifications.mail-templates.list"
+      ],
+      "status": "bound",
+      "note": "Use the generated bounded operation and its explicit resource/permission contract."
+    },
+    {
+      "method": "GET",
+      "path": "mail-templates/{name}",
+      "controller": "MailTemplateAdminController",
+      "action": "show",
+      "operations": [
+        "notifications.mail-templates.get"
+      ],
+      "status": "bound",
+      "note": "Use the generated bounded operation and its explicit resource/permission contract."
+    },
+    {
+      "method": "PUT",
+      "path": "mail-templates/{name}",
+      "controller": "MailTemplateAdminController",
+      "action": "save",
+      "operations": [
+        "notifications.mail-templates.save"
+      ],
+      "status": "bound",
+      "note": "Use the generated bounded operation and its explicit resource/permission contract."
+    },
+    {
+      "method": "DELETE",
+      "path": "mail-templates/{name}",
+      "controller": "MailTemplateAdminController",
+      "action": "reset",
+      "operations": [
+        "notifications.mail-templates.reset"
+      ],
+      "status": "bound",
+      "note": "Use the generated bounded operation and its explicit resource/permission contract."
+    },
+    {
+      "method": "POST",
+      "path": "mail-templates/{name}/test",
+      "controller": "MailTemplateAdminController",
+      "action": "test",
+      "operations": [
+        "notifications.mail-templates.test"
+      ],
+      "status": "bound",
+      "note": "Use the generated bounded operation and its explicit resource/permission contract."
+    },
+    {
+      "method": "GET",
+      "path": "gift-cards/types",
+      "controller": "GiftCardAdminController",
+      "action": "types",
+      "operations": [],
+      "status": "native-owner-required",
+      "note": "Recorded for later on-demand native domain development per user instruction; no legacy business mutation is enabled.",
+      "deferredByUser": true
+    },
+    {
+      "method": "GET",
+      "path": "gift-cards/templates",
+      "controller": "GiftCardAdminController",
+      "action": "templates",
+      "operations": [],
+      "status": "native-owner-required",
+      "note": "Recorded for later on-demand native domain development per user instruction; no legacy business mutation is enabled.",
+      "deferredByUser": true
+    },
+    {
+      "method": "POST",
+      "path": "gift-cards/templates",
+      "controller": "GiftCardAdminController",
+      "action": "createTemplate",
+      "operations": [],
+      "status": "native-owner-required",
+      "note": "Recorded for later on-demand native domain development per user instruction; no legacy business mutation is enabled.",
+      "deferredByUser": true
+    },
+    {
+      "method": "PUT",
+      "path": "gift-cards/templates/{id}",
+      "controller": "GiftCardAdminController",
+      "action": "updateTemplate",
+      "operations": [],
+      "status": "native-owner-required",
+      "note": "Recorded for later on-demand native domain development per user instruction; no legacy business mutation is enabled.",
+      "deferredByUser": true
+    },
+    {
+      "method": "DELETE",
+      "path": "gift-cards/templates/{id}",
+      "controller": "GiftCardAdminController",
+      "action": "deleteTemplate",
+      "operations": [],
+      "status": "native-owner-required",
+      "note": "Recorded for later on-demand native domain development per user instruction; no legacy business mutation is enabled.",
+      "deferredByUser": true
+    },
+    {
+      "method": "POST",
+      "path": "gift-cards/codes/batches",
+      "controller": "GiftCardAdminController",
+      "action": "issue",
+      "operations": [],
+      "status": "native-owner-required",
+      "note": "Recorded for later on-demand native domain development per user instruction; no legacy business mutation is enabled.",
+      "deferredByUser": true
+    },
+    {
+      "method": "PATCH",
+      "path": "gift-cards/codes/{id}/toggle",
+      "controller": "GiftCardAdminController",
+      "action": "toggle",
+      "operations": [],
+      "status": "native-owner-required",
+      "note": "Recorded for later on-demand native domain development per user instruction; no legacy business mutation is enabled.",
+      "deferredByUser": true
+    },
+    {
+      "method": "PATCH",
+      "path": "gift-cards/codes/{id}",
+      "controller": "GiftCardAdminController",
+      "action": "editCode",
+      "operations": [],
+      "status": "native-owner-required",
+      "note": "Recorded for later on-demand native domain development per user instruction; no legacy business mutation is enabled.",
+      "deferredByUser": true
+    },
+    {
+      "method": "GET",
+      "path": "gift-cards/codes/export",
+      "controller": "GiftCardAdminController",
+      "action": "exportCodes",
+      "operations": [],
+      "status": "native-owner-required",
+      "note": "Recorded for later on-demand native domain development per user instruction; no legacy business mutation is enabled.",
+      "deferredByUser": true
+    },
+    {
+      "method": "GET",
+      "path": "gift-cards/codes",
+      "controller": "GiftCardAdminController",
+      "action": "codes",
+      "operations": [],
+      "status": "native-owner-required",
+      "note": "Recorded for later on-demand native domain development per user instruction; no legacy business mutation is enabled.",
+      "deferredByUser": true
+    },
+    {
+      "method": "GET",
+      "path": "gift-cards/statistics",
+      "controller": "GiftCardAdminController",
+      "action": "statistics",
+      "operations": [],
+      "status": "native-owner-required",
+      "note": "Recorded for later on-demand native domain development per user instruction; no legacy business mutation is enabled.",
+      "deferredByUser": true
+    },
+    {
+      "method": "GET",
+      "path": "gift-cards/usages",
+      "controller": "GiftCardAdminController",
+      "action": "usages",
+      "operations": [],
+      "status": "native-owner-required",
+      "note": "Recorded for later on-demand native domain development per user instruction; no legacy business mutation is enabled.",
+      "deferredByUser": true
+    },
+    {
+      "method": "DELETE",
+      "path": "gift-cards/codes/{id}",
+      "controller": "GiftCardAdminController",
+      "action": "deleteCode",
+      "operations": [],
+      "status": "native-owner-required",
+      "note": "Recorded for later on-demand native domain development per user instruction; no legacy business mutation is enabled.",
+      "deferredByUser": true
+    },
+    {
+      "method": "GET",
+      "path": "coupons",
+      "controller": "CouponAdminController",
+      "action": "index",
+      "operations": [],
+      "status": "native-owner-required",
+      "note": "Recorded for later on-demand native domain development per user instruction; no legacy business mutation is enabled.",
+      "deferredByUser": true
+    },
+    {
+      "method": "POST",
+      "path": "coupons",
+      "controller": "CouponAdminController",
+      "action": "save",
+      "operations": [],
+      "status": "native-owner-required",
+      "note": "Recorded for later on-demand native domain development per user instruction; no legacy business mutation is enabled.",
+      "deferredByUser": true
+    },
+    {
+      "method": "POST",
+      "path": "coupons/export",
+      "controller": "CouponAdminController",
+      "action": "generateCsv",
+      "operations": [],
+      "status": "native-owner-required",
+      "note": "Recorded for later on-demand native domain development per user instruction; no legacy business mutation is enabled.",
+      "deferredByUser": true
+    },
+    {
+      "method": "PUT",
+      "path": "coupons/{id}",
+      "controller": "CouponAdminController",
+      "action": "save",
+      "operations": [],
+      "status": "native-owner-required",
+      "note": "Recorded for later on-demand native domain development per user instruction; no legacy business mutation is enabled.",
+      "deferredByUser": true
+    },
+    {
+      "method": "PATCH",
+      "path": "coupons/{id}/toggle",
+      "controller": "CouponAdminController",
+      "action": "toggle",
+      "operations": [],
+      "status": "native-owner-required",
+      "note": "Recorded for later on-demand native domain development per user instruction; no legacy business mutation is enabled.",
+      "deferredByUser": true
+    },
+    {
+      "method": "DELETE",
+      "path": "coupons/{id}",
+      "controller": "CouponAdminController",
+      "action": "delete",
+      "operations": [],
+      "status": "native-owner-required",
+      "note": "Recorded for later on-demand native domain development per user instruction; no legacy business mutation is enabled.",
+      "deferredByUser": true
+    },
+    {
+      "method": "GET",
+      "path": "queue/snapshot",
+      "controller": "QueueAdminController",
+      "action": "snapshot",
+      "operations": [
+        "platform.queue.snapshot.get"
+      ],
+      "status": "bound",
+      "note": "Use the generated bounded operation and its explicit resource/permission contract."
+    },
+    {
+      "method": "GET",
+      "path": "queue/failures",
+      "controller": "QueueAdminController",
+      "action": "failures",
+      "operations": [
+        "platform.queue.failures.list"
+      ],
+      "status": "bound",
+      "note": "Use the generated bounded operation and its explicit resource/permission contract."
+    },
+    {
+      "method": "GET",
+      "path": "queue/failures/{id}",
+      "controller": "QueueAdminController",
+      "action": "failure",
+      "operations": [
+        "platform.queue.failures.get"
+      ],
+      "status": "bound",
+      "note": "Use the generated bounded operation and its explicit resource/permission contract."
+    },
+    {
+      "method": "GET",
+      "path": "payment-methods",
+      "controller": "PaymentManagementController",
+      "action": "index",
+      "operations": [],
+      "status": "dedicated-adapter-required",
+      "note": "Package, schema-driven configuration or secret-bearing response requires a separate bounded adapter; not exposed through generic JSON forwarding."
+    },
+    {
+      "method": "GET",
+      "path": "payment-methods/providers",
+      "controller": "PaymentManagementController",
+      "action": "providers",
+      "operations": [],
+      "status": "dedicated-adapter-required",
+      "note": "Package, schema-driven configuration or secret-bearing response requires a separate bounded adapter; not exposed through generic JSON forwarding."
+    },
+    {
+      "method": "POST",
+      "path": "payment-methods/form",
+      "controller": "PaymentManagementController",
+      "action": "form",
+      "operations": [],
+      "status": "dedicated-adapter-required",
+      "note": "Package, schema-driven configuration or secret-bearing response requires a separate bounded adapter; not exposed through generic JSON forwarding."
+    },
+    {
+      "method": "POST",
+      "path": "payment-methods",
+      "controller": "PaymentManagementController",
+      "action": "save",
+      "operations": [],
+      "status": "dedicated-adapter-required",
+      "note": "Package, schema-driven configuration or secret-bearing response requires a separate bounded adapter; not exposed through generic JSON forwarding."
+    },
+    {
+      "method": "PUT",
+      "path": "payment-methods/sort",
+      "controller": "PaymentManagementController",
+      "action": "sort",
+      "operations": [],
+      "status": "dedicated-adapter-required",
+      "note": "Package, schema-driven configuration or secret-bearing response requires a separate bounded adapter; not exposed through generic JSON forwarding."
+    },
+    {
+      "method": "PUT",
+      "path": "payment-methods/{id}",
+      "controller": "PaymentManagementController",
+      "action": "save",
+      "operations": [],
+      "status": "dedicated-adapter-required",
+      "note": "Package, schema-driven configuration or secret-bearing response requires a separate bounded adapter; not exposed through generic JSON forwarding."
+    },
+    {
+      "method": "PATCH",
+      "path": "payment-methods/{id}/toggle",
+      "controller": "PaymentManagementController",
+      "action": "toggle",
+      "operations": [],
+      "status": "dedicated-adapter-required",
+      "note": "Package, schema-driven configuration or secret-bearing response requires a separate bounded adapter; not exposed through generic JSON forwarding."
+    },
+    {
+      "method": "POST",
+      "path": "payment-methods/{id}/delete",
+      "controller": "PaymentSafetyController",
+      "action": "delete",
+      "operations": [],
+      "status": "adapter-required",
+      "note": "Not admitted to the generated browser surface; retain existing route until a reviewed owner adapter and contract are implemented."
+    },
+    {
+      "method": "GET",
+      "path": "traffic-resets",
+      "controller": "TrafficResetAdminController",
+      "action": "index",
+      "operations": [],
+      "status": "native-owner-required",
+      "note": "Recorded for later on-demand native domain development per user instruction; no legacy business mutation is enabled.",
+      "deferredByUser": true
+    },
+    {
+      "method": "GET",
+      "path": "traffic-resets/stats",
+      "controller": "TrafficResetAdminController",
+      "action": "stats",
+      "operations": [],
+      "status": "native-owner-required",
+      "note": "Recorded for later on-demand native domain development per user instruction; no legacy business mutation is enabled.",
+      "deferredByUser": true
+    },
+    {
+      "method": "GET",
+      "path": "traffic-resets/users/{id}",
+      "controller": "TrafficResetAdminController",
+      "action": "show",
+      "operations": [],
+      "status": "native-owner-required",
+      "note": "Recorded for later on-demand native domain development per user instruction; no legacy business mutation is enabled.",
+      "deferredByUser": true
+    },
+    {
+      "method": "POST",
+      "path": "traffic-resets/users/{id}/reset",
+      "controller": "TrafficResetAdminController",
+      "action": "reset",
+      "operations": [],
+      "status": "native-owner-required",
+      "note": "Recorded for later on-demand native domain development per user instruction; no legacy business mutation is enabled.",
+      "deferredByUser": true
+    },
+    {
+      "method": "GET",
+      "path": "plans",
+      "controller": "CommerceReadController",
+      "action": "plans",
+      "operations": [
+        "catalog.admin-offers.list"
+      ],
+      "status": "native-replacement",
+      "note": "Native replacement returns verified revision/Offer/availability data; legacy Plan counters are not forwarded."
+    },
+    {
+      "method": "GET",
+      "path": "orders",
+      "controller": "CommerceReadController",
+      "action": "orders",
+      "operations": [
+        "commerce.admin-orders.list"
+      ],
+      "status": "native-replacement",
+      "note": "Use the declared operation schema; legacy payloads are not forwarded wholesale."
+    },
+    {
+      "method": "POST",
+      "path": "orders/assign",
+      "controller": "OrderOperationsAdminController",
+      "action": "assign",
+      "operations": [],
+      "status": "native-owner-required",
+      "note": "Recorded for later on-demand native domain development per user instruction; no legacy business mutation is enabled.",
+      "deferredByUser": true
+    },
+    {
+      "method": "POST",
+      "path": "orders/{tradeNo}/commission-review",
+      "controller": "OrderOperationsAdminController",
+      "action": "commission",
+      "operations": [],
+      "status": "native-owner-required",
+      "note": "Recorded for later on-demand native domain development per user instruction; no legacy business mutation is enabled.",
+      "deferredByUser": true
+    },
+    {
+      "method": "GET",
+      "path": "orders/{id}/detail",
+      "controller": "OrderAdminController",
+      "action": "detail",
+      "operations": [
+        "commerce.admin-orders.get"
+      ],
+      "status": "native-replacement",
+      "note": "Resolve a native trade number and use the frozen purchase projection; legacy numeric-ID detail and financial fields are not returned."
+    },
+    {
+      "method": "POST",
+      "path": "orders/{tradeNo}/paid",
+      "controller": "OrderAdminController",
+      "action": "paid",
+      "operations": [],
+      "status": "native-owner-required",
+      "note": "Recorded for later on-demand native domain development per user instruction; no legacy business mutation is enabled.",
+      "deferredByUser": true
+    },
+    {
+      "method": "POST",
+      "path": "orders/{tradeNo}/cancel",
+      "controller": "OrderAdminController",
+      "action": "cancel",
+      "operations": [],
+      "status": "native-owner-required",
+      "note": "Recorded for later on-demand native domain development per user instruction; no legacy business mutation is enabled.",
+      "deferredByUser": true
+    },
+    {
+      "method": "GET",
+      "path": "tickets",
+      "controller": "TicketAdminController",
+      "action": "index",
+      "operations": [],
+      "status": "adapter-required",
+      "note": "Not admitted to the generated browser surface; retain existing route until a reviewed owner adapter and contract are implemented."
+    },
+    {
+      "method": "GET",
+      "path": "tickets/{id}",
+      "controller": "TicketAdminController",
+      "action": "show",
+      "operations": [],
+      "status": "adapter-required",
+      "note": "Not admitted to the generated browser surface; retain existing route until a reviewed owner adapter and contract are implemented."
+    },
+    {
+      "method": "POST",
+      "path": "tickets/{id}/reply",
+      "controller": "TicketAdminController",
+      "action": "reply",
+      "operations": [],
+      "status": "adapter-required",
+      "note": "Not admitted to the generated browser surface; retain existing route until a reviewed owner adapter and contract are implemented."
+    },
+    {
+      "method": "POST",
+      "path": "tickets/{id}/close",
+      "controller": "TicketAdminController",
+      "action": "close",
+      "operations": [],
+      "status": "adapter-required",
+      "note": "Not admitted to the generated browser surface; retain existing route until a reviewed owner adapter and contract are implemented."
+    },
+    {
+      "method": "GET",
+      "path": "users",
+      "controller": "UserReadController",
+      "action": "index",
+      "operations": [
+        "identity.accounts.list"
+      ],
+      "status": "native-replacement",
+      "note": "Use the declared operation schema; legacy payloads are not forwarded wholesale."
+    },
+    {
+      "method": "POST",
+      "path": "users",
+      "controller": "UserEditorController",
+      "action": "create",
+      "operations": [
+        "identity.accounts.create"
+      ],
+      "status": "native-replacement",
+      "note": "Use the declared operation schema; legacy payloads are not forwarded wholesale."
+    },
+    {
+      "method": "POST",
+      "path": "users/{id}/update",
+      "controller": "UserEditorController",
+      "action": "update",
+      "operations": [],
+      "status": "native-owner-required",
+      "note": "Recorded for later on-demand native domain development per user instruction; no legacy business mutation is enabled.",
+      "deferredByUser": true
+    },
+    {
+      "method": "GET",
+      "path": "users/{id}",
+      "controller": "UserReadController",
+      "action": "show",
+      "operations": [
+        "identity.accounts.get"
+      ],
+      "status": "native-replacement",
+      "note": "Use the declared operation schema; legacy payloads are not forwarded wholesale."
+    },
+    {
+      "method": "POST",
+      "path": "users/{id}/delete",
+      "controller": "AccountMutationController",
+      "action": "delete",
+      "operations": [],
+      "status": "native-owner-required",
+      "note": "Recorded for later on-demand native domain development per user instruction; no legacy business mutation is enabled.",
+      "deferredByUser": true
+    },
+    {
+      "method": "POST",
+      "path": "users/ban",
+      "controller": "AccountMutationController",
+      "action": "ban",
+      "operations": [
+        "identity.accounts.status.update"
+      ],
+      "status": "native-replacement",
+      "note": "Replacement is a per-account expected_banned compare-and-set, not the legacy filtered/bulk mutation."
+    },
+    {
+      "method": "POST",
+      "path": "users/mail",
+      "controller": "UserMailAdminController",
+      "action": "send",
+      "operations": [],
+      "status": "native-owner-required",
+      "note": "Recorded for later on-demand native domain development per user instruction; no legacy business mutation is enabled.",
+      "deferredByUser": true
+    },
+    {
+      "method": "POST",
+      "path": "plans",
+      "controller": "PlanMutationController",
+      "action": "save",
+      "operations": [
+        "catalog.plans.publish"
+      ],
+      "status": "native-replacement",
+      "note": "Use the declared operation schema; legacy payloads are not forwarded wholesale."
+    },
+    {
+      "method": "POST",
+      "path": "plans/sort",
+      "controller": "PlanMutationController",
+      "action": "sort",
+      "operations": [],
+      "status": "native-owner-required",
+      "note": "Recorded for later on-demand native domain development per user instruction; no legacy business mutation is enabled.",
+      "deferredByUser": true
+    },
+    {
+      "method": "POST",
+      "path": "plans/{id}/flags",
+      "controller": "PlanMutationController",
+      "action": "flags",
+      "operations": [
+        "catalog.offers.availability.update"
+      ],
+      "status": "native-replacement",
+      "note": "Use the declared operation schema; legacy payloads are not forwarded wholesale."
+    },
+    {
+      "method": "POST",
+      "path": "plans/{id}/delete",
+      "controller": "PlanMutationController",
+      "action": "delete",
+      "operations": [],
+      "status": "native-owner-required",
+      "note": "Recorded for later on-demand native domain development per user instruction; no legacy business mutation is enabled.",
+      "deferredByUser": true
+    },
+    {
+      "method": "GET",
+      "path": "content/notices",
+      "controller": "ContentAdminController",
+      "action": "notices",
+      "operations": [
+        "content.notices.list"
+      ],
+      "status": "bound",
+      "note": "Use the generated bounded operation and its explicit resource/permission contract."
+    },
+    {
+      "method": "POST",
+      "path": "content/notices",
+      "controller": "ContentAdminController",
+      "action": "saveNotice",
+      "operations": [
+        "content.notices.create",
+        "content.notices.update"
+      ],
+      "status": "bound",
+      "note": "Use the generated bounded operation and its explicit resource/permission contract."
+    },
+    {
+      "method": "PUT",
+      "path": "content/notices/sort",
+      "controller": "ContentAdminController",
+      "action": "sortNotices",
+      "operations": [
+        "content.notices.sort"
+      ],
+      "status": "bound",
+      "note": "Use the generated bounded operation and its explicit resource/permission contract."
+    },
+    {
+      "method": "GET",
+      "path": "content/notices/{id}",
+      "controller": "ContentAdminController",
+      "action": "notice",
+      "operations": [
+        "content.notices.get"
+      ],
+      "status": "bound",
+      "note": "Use the generated bounded operation and its explicit resource/permission contract."
+    },
+    {
+      "method": "PUT",
+      "path": "content/notices/{id}",
+      "controller": "ContentAdminController",
+      "action": "saveNotice",
+      "operations": [
+        "content.notices.create",
+        "content.notices.update"
+      ],
+      "status": "bound",
+      "note": "Use the generated bounded operation and its explicit resource/permission contract."
+    },
+    {
+      "method": "PATCH",
+      "path": "content/notices/{id}/visibility",
+      "controller": "ContentAdminController",
+      "action": "showNotice",
+      "operations": [
+        "content.notices.visibility.toggle"
+      ],
+      "status": "bound",
+      "note": "Use the generated bounded operation and its explicit resource/permission contract."
+    },
+    {
+      "method": "DELETE",
+      "path": "content/notices/{id}",
+      "controller": "ContentAdminController",
+      "action": "deleteNotice",
+      "operations": [
+        "content.notices.delete"
+      ],
+      "status": "bound",
+      "note": "Use the generated bounded operation and its explicit resource/permission contract."
+    },
+    {
+      "method": "GET",
+      "path": "content/knowledge",
+      "controller": "ContentAdminController",
+      "action": "knowledge",
+      "operations": [
+        "content.knowledge.list"
+      ],
+      "status": "bound",
+      "note": "Use the generated bounded operation and its explicit resource/permission contract."
+    },
+    {
+      "method": "POST",
+      "path": "content/knowledge",
+      "controller": "ContentAdminController",
+      "action": "saveArticle",
+      "operations": [
+        "content.knowledge.create",
+        "content.knowledge.update"
+      ],
+      "status": "bound",
+      "note": "Use the generated bounded operation and its explicit resource/permission contract."
+    },
+    {
+      "method": "GET",
+      "path": "content/knowledge/categories",
+      "controller": "ContentAdminController",
+      "action": "categories",
+      "operations": [
+        "content.knowledge.categories.list"
+      ],
+      "status": "bound",
+      "note": "Use the generated bounded operation and its explicit resource/permission contract."
+    },
+    {
+      "method": "PUT",
+      "path": "content/knowledge/sort",
+      "controller": "ContentAdminController",
+      "action": "sortArticles",
+      "operations": [
+        "content.knowledge.sort"
+      ],
+      "status": "bound",
+      "note": "Use the generated bounded operation and its explicit resource/permission contract."
+    },
+    {
+      "method": "GET",
+      "path": "content/knowledge/{id}",
+      "controller": "ContentAdminController",
+      "action": "article",
+      "operations": [
+        "content.knowledge.get"
+      ],
+      "status": "bound",
+      "note": "Use the generated bounded operation and its explicit resource/permission contract."
+    },
+    {
+      "method": "PUT",
+      "path": "content/knowledge/{id}",
+      "controller": "ContentAdminController",
+      "action": "saveArticle",
+      "operations": [
+        "content.knowledge.create",
+        "content.knowledge.update"
+      ],
+      "status": "bound",
+      "note": "Use the generated bounded operation and its explicit resource/permission contract."
+    },
+    {
+      "method": "PATCH",
+      "path": "content/knowledge/{id}/visibility",
+      "controller": "ContentAdminController",
+      "action": "showArticle",
+      "operations": [
+        "content.knowledge.visibility.toggle"
+      ],
+      "status": "bound",
+      "note": "Use the generated bounded operation and its explicit resource/permission contract."
+    },
+    {
+      "method": "DELETE",
+      "path": "content/knowledge/{id}",
+      "controller": "ContentAdminController",
+      "action": "deleteArticle",
+      "operations": [
+        "content.knowledge.delete"
+      ],
+      "status": "bound",
+      "note": "Use the generated bounded operation and its explicit resource/permission contract."
+    },
+    {
+      "method": "POST",
+      "path": "extensions/{code}/operations/{operation}",
+      "controller": "ExtensionController",
+      "action": "admin",
+      "operations": [],
+      "status": "dedicated-adapter-required",
+      "note": "Extension operations, configuration and presentation use their package-defined schemas and resource authorization; do not flatten into a wildcard Core operation."
+    },
+    {
+      "method": "GET",
+      "path": "extensions/{code}/presentation",
+      "controller": "ExtensionPresentationController",
+      "action": "admin",
+      "operations": [],
+      "status": "dedicated-adapter-required",
+      "note": "Extension operations, configuration and presentation use their package-defined schemas and resource authorization; do not flatten into a wildcard Core operation."
+    },
+    {
+      "method": "GET",
+      "path": "extensions/{code}/resources/{asset}",
+      "controller": "ExtensionPresentationController",
+      "action": "adminResource",
+      "operations": [],
+      "status": "dedicated-adapter-required",
+      "note": "Extension operations, configuration and presentation use their package-defined schemas and resource authorization; do not flatten into a wildcard Core operation."
+    },
+    {
+      "method": "POST",
+      "path": "extensions/{code}/configuration",
+      "controller": "ExtensionPresentationController",
+      "action": "configure",
+      "operations": [],
+      "status": "dedicated-adapter-required",
+      "note": "Extension operations, configuration and presentation use their package-defined schemas and resource authorization; do not flatten into a wildcard Core operation."
+    }
+  ],
+  "legacyBusinessPolicy": "Record only; develop and adapt later as needed. User instruction 2026-10-18."
+}

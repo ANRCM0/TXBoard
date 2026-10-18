@@ -51,6 +51,59 @@ export const NATIVE_INTERNAL_OPERATIONS = {
   'subscription.lifecycle.revoke': ['admin'],
   'subscription.lifecycle.expire': ['admin'],
   'subscription.lifecycle.reset': ['admin'],
+  'identity.accounts.create': ['admin'],
+  'identity.accounts.status.update': ['admin'],
+  'network.groups.list': ['admin'],
+  'network.groups.save': ['admin'],
+  'network.groups.delete': ['admin'],
+  'network.routes.list': ['admin'],
+  'network.routes.save': ['admin'],
+  'network.routes.delete': ['admin'],
+  'network.routes.sort': ['admin'],
+  'network.nodes.patch': ['admin'],
+  'network.nodes.delete': ['admin'],
+  'network.nodes.traffic-reset': ['admin'],
+  'network.nodes.batch-update': ['admin'],
+  'network.nodes.batch-delete': ['admin'],
+  'network.nodes.batch-traffic-reset': ['admin'],
+  'network.nodes.sort': ['admin'],
+  'network.machines.update': ['admin'],
+  'network.machines.delete': ['admin'],
+  'content.notices.list': ['admin'],
+  'content.notices.get': ['admin'],
+  'content.notices.create': ['admin'],
+  'content.notices.update': ['admin'],
+  'content.notices.visibility.toggle': ['admin'],
+  'content.notices.delete': ['admin'],
+  'content.notices.sort': ['admin'],
+  'content.knowledge.list': ['admin'],
+  'content.knowledge.get': ['admin'],
+  'content.knowledge.create': ['admin'],
+  'content.knowledge.update': ['admin'],
+  'content.knowledge.visibility.toggle': ['admin'],
+  'content.knowledge.delete': ['admin'],
+  'content.knowledge.sort': ['admin'],
+  'audit.logs.list': ['admin'],
+  'platform.queue.failures.list': ['admin'],
+  'catalog.admin-offers.list': ['admin'],
+  'platform.modules.list': ['admin'],
+  'platform.modules.get': ['admin'],
+  'platform.modules.operations.list': ['admin'],
+  'network.access-audit.rules.list': ['admin'],
+  'network.access-audit.rules.save': ['admin'],
+  'network.access-audit.rules.delete': ['admin'],
+  'network.access-audit.events.list': ['admin'],
+  'network.nodes.copy': ['admin'],
+  'network.machines.nodes.list': ['admin'],
+  'network.routes.simulate': ['admin'],
+  'content.knowledge.categories.list': ['admin'],
+  'platform.queue.snapshot.get': ['admin'],
+  'platform.queue.failures.get': ['admin'],
+  'notifications.mail-templates.list': ['admin'],
+  'notifications.mail-templates.get': ['admin'],
+  'notifications.mail-templates.save': ['admin'],
+  'notifications.mail-templates.reset': ['admin'],
+  'notifications.mail-templates.test': ['admin'],
 } as const
 
 export type NativeInternalOperation = keyof typeof NATIVE_INTERNAL_OPERATIONS
@@ -185,7 +238,7 @@ export class NativeCoreClient {
       && !/^[a-zA-Z0-9_-]{1,128}$/.test(options.adminPath ?? '')) {
       throw new GatewayFailure('FORBIDDEN', 403, 'Current administrator path required')
     }
-    if (writes.has(operation) && !uuid.test(options.idempotencyKey ?? '')) {
+    if ((writes.has(operation) || operation in coreOperations && coreOperations[operation as CoreOperation].idempotency !== 'read') && !uuid.test(options.idempotencyKey ?? '')) {
       throw new GatewayFailure('VALIDATION_ERROR', 400, 'Original UUID idempotency key required')
     }
     const requestId = options.requestId ?? randomUUID()

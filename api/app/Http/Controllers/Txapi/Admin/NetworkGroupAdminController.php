@@ -15,9 +15,12 @@ final class NetworkGroupAdminController
 {
     public function index(Request $request): JsonResponse
     {
-        $data = app(\App\Domains\Network\Contracts\NetworkGroups::class)->read()['items'];
-
-        return TxapiResponse::success($request, $data)->header('Cache-Control', 'no-store');
+        $reader = app(\App\Domains\Network\Contracts\NetworkGroups::class);
+        $page = $request->attributes->has('native_internal_operation')
+            ? $reader->read((int) $request->input('page', 1), (int) $request->input('per_page', 20))
+            : $reader->read();
+        return TxapiResponse::success($request, $page['items'], $page['pagination'] ?? [])
+            ->header('Cache-Control', 'no-store');
     }
 
     public function save(Request $request): JsonResponse

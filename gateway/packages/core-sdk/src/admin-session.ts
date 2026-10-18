@@ -1,6 +1,8 @@
 import {
-  createCoreAdminClient, CoreAdminApiError, type CoreAdminOperation,
+  createCoreAdminClient, CoreAdminApiError,
 } from './admin.js'
+import { CORE_ADMIN_READ_OPERATIONS, CORE_ADMIN_WRITE_OPERATIONS,
+  type CoreAdminReadOperation, type CoreAdminWriteOperation } from './admin.generated.js'
 import type { CoreInput, CoreOutput } from './contracts.generated.js'
 import type { CoreResult } from './client.js'
 
@@ -12,9 +14,8 @@ export type CoreAdminSessionOptions = Readonly<{
 export class StaleAdminContext extends Error {
   constructor() { super('ADMIN_CONTEXT_CHANGED'); this.name = 'StaleAdminContext' }
 }
-type AdminReadOperation = Exclude<CoreAdminOperation,
-  'identity.admin-session.create' | 'identity.sessions.revoke' | 'identity.session.end'>
 
+type AdminWriteOperation = Exclude<CoreAdminWriteOperation, 'identity.sessions.revoke' | 'identity.session.end'>
 /** Memory-only administrator context; a change aborts all requests from the old identity. */
 export function createCoreAdminSession(options: CoreAdminSessionOptions = {}) {
   let session: { bearer: string; adminPath: string } | undefined
@@ -57,8 +58,15 @@ export function createCoreAdminSession(options: CoreAdminSessionOptions = {}) {
       return { isAdmin: true as const }
     },
     capabilities() { return current(signal => client.capabilities({ signal })) },
-    read<K extends AdminReadOperation>(operation: K, input: CoreInput<K>, signal?: AbortSignal): Promise<CoreResult<K>> {
+    read<K extends CoreAdminReadOperation>(operation: K, input: CoreInput<K>, signal?: AbortSignal): Promise<CoreResult<K>> {
+      if (!(CORE_ADMIN_READ_OPERATIONS as readonly string[]).includes(operation)) throw new CoreAdminApiError('FORBIDDEN', 403)
       return current(signal => client.callResult(operation, input, { signal }), signal)
+    },
+    write<K extends AdminWriteOperation>(operation: K, input: CoreInput<K>, actionKey: string, signal?: AbortSignal): Promise<CoreResult<K>> {
+      const id: string = operation
+      if (!(CORE_ADMIN_WRITE_OPERATIONS as readonly string[]).includes(operation)
+          || id === 'identity.sessions.revoke' || id === 'identity.session.end') throw new CoreAdminApiError('FORBIDDEN', 403)
+      return current(signal => client.callResult(operation, input, { signal, idempotencyKey: actionKey }), signal)
     },
     revokeSession(sessionId: string, actionKey: string, signal?: AbortSignal): Promise<CoreOutput<'identity.sessions.revoke'>> {
       return current(signal => client.call('identity.sessions.revoke', { session_id: sessionId },

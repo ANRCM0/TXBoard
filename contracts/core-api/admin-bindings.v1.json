@@ -1,0 +1,428 @@
+{
+  "schema": "core-admin-bindings/v1",
+  "bindings": {
+    "identity.accounts.create": {
+      "controller": "NativeAccountController",
+      "method": "create",
+      "parameters": {},
+      "routeParameters": {},
+      "payload": null
+    },
+    "identity.accounts.status.update": {
+      "controller": "NativeAccountController",
+      "method": "status",
+      "parameters": {
+        "id": "user_id"
+      },
+      "routeParameters": {},
+      "payload": null
+    },
+    "network.groups.list": {
+      "controller": "NetworkGroupAdminController",
+      "method": "index",
+      "parameters": {},
+      "routeParameters": {},
+      "payload": null
+    },
+    "network.groups.save": {
+      "controller": "NetworkGroupAdminController",
+      "method": "save",
+      "parameters": {},
+      "routeParameters": {},
+      "payload": null
+    },
+    "network.groups.delete": {
+      "controller": "NetworkGroupAdminController",
+      "method": "delete",
+      "parameters": {
+        "id": "group_id"
+      },
+      "routeParameters": {},
+      "payload": null
+    },
+    "network.routes.list": {
+      "controller": "NetworkRouteAdminController",
+      "method": "index",
+      "parameters": {},
+      "routeParameters": {},
+      "payload": null
+    },
+    "network.routes.save": {
+      "controller": "NetworkRouteAdminController",
+      "method": "save",
+      "parameters": {},
+      "routeParameters": {},
+      "payload": null
+    },
+    "network.routes.delete": {
+      "controller": "NetworkRouteAdminController",
+      "method": "delete",
+      "parameters": {
+        "id": "route_id"
+      },
+      "routeParameters": {},
+      "payload": null
+    },
+    "network.routes.sort": {
+      "controller": "NetworkRouteAdminController",
+      "method": "sort",
+      "parameters": {},
+      "routeParameters": {},
+      "payload": "items"
+    },
+    "network.nodes.patch": {
+      "controller": "NetworkNodeAdminController",
+      "method": "patch",
+      "parameters": {
+        "id": "node_id"
+      },
+      "routeParameters": {},
+      "payload": null
+    },
+    "network.nodes.delete": {
+      "controller": "NetworkNodeAdminController",
+      "method": "delete",
+      "parameters": {
+        "id": "node_id"
+      },
+      "routeParameters": {},
+      "payload": null
+    },
+    "network.nodes.traffic-reset": {
+      "controller": "NetworkNodeAdminController",
+      "method": "resetTraffic",
+      "parameters": {
+        "id": "node_id"
+      },
+      "routeParameters": {},
+      "payload": null
+    },
+    "network.nodes.batch-update": {
+      "controller": "NetworkNodeAdminController",
+      "method": "batchUpdate",
+      "parameters": {},
+      "routeParameters": {},
+      "payload": null
+    },
+    "network.nodes.batch-delete": {
+      "controller": "NetworkNodeAdminController",
+      "method": "batchDelete",
+      "parameters": {},
+      "routeParameters": {},
+      "payload": null
+    },
+    "network.nodes.batch-traffic-reset": {
+      "controller": "NetworkNodeAdminController",
+      "method": "batchResetTraffic",
+      "parameters": {},
+      "routeParameters": {},
+      "payload": null
+    },
+    "network.nodes.sort": {
+      "controller": "NetworkNodeAdminController",
+      "method": "sort",
+      "parameters": {},
+      "routeParameters": {},
+      "payload": "items"
+    },
+    "network.machines.update": {
+      "controller": "NetworkMachineAdminController",
+      "method": "update",
+      "parameters": {
+        "id": "machine_id"
+      },
+      "routeParameters": {},
+      "payload": null
+    },
+    "network.machines.delete": {
+      "controller": "NetworkMachineAdminController",
+      "method": "delete",
+      "parameters": {
+        "id": "machine_id"
+      },
+      "routeParameters": {},
+      "payload": null
+    },
+    "content.notices.list": {
+      "controller": "ContentAdminController",
+      "method": "notices",
+      "parameters": {},
+      "routeParameters": {},
+      "payload": null
+    },
+    "content.notices.get": {
+      "controller": "ContentAdminController",
+      "method": "notice",
+      "parameters": {
+        "id": "content_id"
+      },
+      "routeParameters": {},
+      "payload": null
+    },
+    "content.notices.create": {
+      "controller": "ContentAdminController",
+      "method": "saveNotice",
+      "parameters": {},
+      "routeParameters": {},
+      "payload": null
+    },
+    "content.notices.update": {
+      "controller": "ContentAdminController",
+      "method": "saveNotice",
+      "parameters": {
+        "id": "content_id"
+      },
+      "routeParameters": {},
+      "payload": null
+    },
+    "content.notices.visibility.toggle": {
+      "controller": "ContentAdminController",
+      "method": "showNotice",
+      "parameters": {
+        "id": "content_id"
+      },
+      "routeParameters": {},
+      "payload": null
+    },
+    "content.notices.delete": {
+      "controller": "ContentAdminController",
+      "method": "deleteNotice",
+      "parameters": {
+        "id": "content_id"
+      },
+      "routeParameters": {},
+      "payload": null
+    },
+    "content.notices.sort": {
+      "controller": "ContentAdminController",
+      "method": "sortNotices",
+      "parameters": {},
+      "routeParameters": {},
+      "payload": null
+    },
+    "content.knowledge.list": {
+      "controller": "ContentAdminController",
+      "method": "knowledge",
+      "parameters": {},
+      "routeParameters": {},
+      "payload": null
+    },
+    "content.knowledge.get": {
+      "controller": "ContentAdminController",
+      "method": "article",
+      "parameters": {
+        "id": "content_id"
+      },
+      "routeParameters": {},
+      "payload": null
+    },
+    "content.knowledge.create": {
+      "controller": "ContentAdminController",
+      "method": "saveArticle",
+      "parameters": {},
+      "routeParameters": {},
+      "payload": null
+    },
+    "content.knowledge.update": {
+      "controller": "ContentAdminController",
+      "method": "saveArticle",
+      "parameters": {
+        "id": "content_id"
+      },
+      "routeParameters": {},
+      "payload": null
+    },
+    "content.knowledge.visibility.toggle": {
+      "controller": "ContentAdminController",
+      "method": "showArticle",
+      "parameters": {
+        "id": "content_id"
+      },
+      "routeParameters": {},
+      "payload": null
+    },
+    "content.knowledge.delete": {
+      "controller": "ContentAdminController",
+      "method": "deleteArticle",
+      "parameters": {
+        "id": "content_id"
+      },
+      "routeParameters": {},
+      "payload": null
+    },
+    "content.knowledge.sort": {
+      "controller": "ContentAdminController",
+      "method": "sortArticles",
+      "parameters": {},
+      "routeParameters": {},
+      "payload": null
+    },
+    "audit.logs.list": {
+      "controller": "AuditLogController",
+      "method": "index",
+      "parameters": {},
+      "routeParameters": {},
+      "payload": null
+    },
+    "platform.queue.failures.list": {
+      "controller": "QueueAdminController",
+      "method": "failures",
+      "parameters": {},
+      "routeParameters": {},
+      "payload": null
+    },
+    "catalog.admin-offers.list": {
+      "controller": "NativeCatalogReadController",
+      "method": "offers",
+      "parameters": {},
+      "routeParameters": {},
+      "payload": null
+    },
+    "platform.modules.list": {
+      "controller": "ModuleAdminController",
+      "method": "index",
+      "parameters": {},
+      "routeParameters": {},
+      "payload": null
+    },
+    "platform.modules.get": {
+      "controller": "ModuleAdminController",
+      "method": "show",
+      "parameters": {
+        "id": "module_id"
+      },
+      "routeParameters": {},
+      "payload": null
+    },
+    "platform.modules.operations.list": {
+      "controller": "ModuleAdminController",
+      "method": "operations",
+      "parameters": {
+        "id": "module_id"
+      },
+      "routeParameters": {},
+      "payload": null
+    },
+    "network.access-audit.rules.list": {
+      "controller": "AccessAuditAdminController",
+      "method": "rules",
+      "parameters": {},
+      "routeParameters": {},
+      "payload": null
+    },
+    "network.access-audit.rules.save": {
+      "controller": "AccessAuditAdminController",
+      "method": "saveRule",
+      "parameters": {},
+      "routeParameters": {},
+      "payload": null
+    },
+    "network.access-audit.rules.delete": {
+      "controller": "AccessAuditAdminController",
+      "method": "deleteRule",
+      "parameters": {
+        "id": "rule_id"
+      },
+      "routeParameters": {},
+      "payload": null
+    },
+    "network.access-audit.events.list": {
+      "controller": "AccessAuditAdminController",
+      "method": "events",
+      "parameters": {},
+      "routeParameters": {},
+      "payload": null
+    },
+    "network.nodes.copy": {
+      "controller": "NetworkNodeAdminController",
+      "method": "copy",
+      "parameters": {
+        "id": "node_id"
+      },
+      "routeParameters": {},
+      "payload": null
+    },
+    "network.machines.nodes.list": {
+      "controller": "NetworkMachineAdminController",
+      "method": "nodes",
+      "parameters": {
+        "id": "machine_id"
+      },
+      "routeParameters": {},
+      "payload": null
+    },
+    "network.routes.simulate": {
+      "controller": "NetworkRouteAdminController",
+      "method": "simulate",
+      "parameters": {},
+      "routeParameters": {},
+      "payload": null
+    },
+    "content.knowledge.categories.list": {
+      "controller": "ContentAdminController",
+      "method": "categories",
+      "parameters": {},
+      "routeParameters": {},
+      "payload": null
+    },
+    "platform.queue.snapshot.get": {
+      "controller": "QueueAdminController",
+      "method": "snapshot",
+      "parameters": {},
+      "routeParameters": {},
+      "payload": null
+    },
+    "platform.queue.failures.get": {
+      "controller": "QueueAdminController",
+      "method": "failure",
+      "parameters": {
+        "id": "failure_id"
+      },
+      "routeParameters": {},
+      "payload": null
+    },
+    "notifications.mail-templates.list": {
+      "controller": "MailTemplateAdminController",
+      "method": "index",
+      "parameters": {},
+      "routeParameters": {},
+      "payload": null
+    },
+    "notifications.mail-templates.get": {
+      "controller": "MailTemplateAdminController",
+      "method": "show",
+      "parameters": {
+        "name": "name"
+      },
+      "routeParameters": {},
+      "payload": null
+    },
+    "notifications.mail-templates.save": {
+      "controller": "MailTemplateAdminController",
+      "method": "save",
+      "parameters": {
+        "name": "name"
+      },
+      "routeParameters": {},
+      "payload": null
+    },
+    "notifications.mail-templates.reset": {
+      "controller": "MailTemplateAdminController",
+      "method": "reset",
+      "parameters": {
+        "name": "name"
+      },
+      "routeParameters": {},
+      "payload": null
+    },
+    "notifications.mail-templates.test": {
+      "controller": "MailTemplateAdminController",
+      "method": "test",
+      "parameters": {
+        "name": "name"
+      },
+      "routeParameters": {},
+      "payload": null
+    }
+  }
+}

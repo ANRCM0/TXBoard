@@ -128,6 +128,7 @@ final class OperationRegistry
                     'stop_register' => ['sometimes', 'boolean']],
                 ['ok'], permission: 'settings.write'),
             ...self::subscriptionOperations($admin, $id),
+            ...AdminOperationBindings::all(),
         ]);
     }
 

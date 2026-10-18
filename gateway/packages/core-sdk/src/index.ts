@@ -4,5 +4,6 @@ export { ExtensionClient, acceptsModuleSchema, isModuleSchema, parseExtensionDes
   type ExtensionDescriptor, type ExtensionOperation, type ExtensionTransport, type BridgeRequest, type JsonSchema } from './extensions.js'
 
 export { coreOperations, type CoreInput, type CoreOperation, type CoreOutput, type CoreMeta } from './contracts.generated.js'
-export { createCoreAdminClient, CoreAdminApiError, CORE_ADMIN_OPERATIONS, type CoreAdminOperation, type CoreAdminClient, type CoreAdminClientOptions } from './admin.js'
+export { createCoreAdminClient, CoreAdminApiError, CORE_ADMIN_OPERATIONS, CORE_ADMIN_READ_OPERATIONS, CORE_ADMIN_WRITE_OPERATIONS,
+  type CoreAdminOperation, type CoreAdminReadOperation, type CoreAdminWriteOperation, type CoreAdminClient, type CoreAdminClientOptions } from './admin.js'
 export { createCoreAdminSession, StaleAdminContext, type CoreAdminSessionOptions, type CoreAdminSession } from './admin-session.js'
