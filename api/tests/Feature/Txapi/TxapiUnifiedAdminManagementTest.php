@@ -19,7 +19,7 @@ final class TxapiUnifiedAdminManagementTest extends NativeRuntimeTestCase
         $actor->forceFill(['is_admin' => true])->saveOrFail();
         $bearer = 'Bearer '.$actor->createToken('unified', ['*'])->plainTextToken;
         $ops = ['identity.accounts.create', 'identity.accounts.status.update', 'content.notices.create',
-            'content.notices.update', 'content.notices.get', 'network.groups.list'];
+            'content.notices.update', 'content.notices.get', 'content.notices.delete', 'network.groups.list'];
         foreach (['identity.accounts.manage', 'content.manage', 'content.read', 'network.groups.read'] as $permission) {
             DB::table('tx_internal_actor_grant')->insert(['user_id' => $actor->id, 'permission' => $permission, 'created_at' => time()]);
         }
@@ -49,6 +49,8 @@ final class TxapiUnifiedAdminManagementTest extends NativeRuntimeTestCase
             ->assertOk()->assertJsonPath('data.id', $notice);
         $invoke('content.notices.get', ['content_id' => $notice])->assertOk()->assertJsonPath('data.title', 'Updated');
         $this->assertSame(1, DB::table('tx_notice')->where('id', (int) $notice)->count());
+        $invoke('content.notices.delete', ['content_id' => $notice])->assertOk();
+        $invoke('content.notices.get', ['content_id' => $notice])->assertNotFound();
         $invoke('network.groups.list', ['page' => 1, 'per_page' => 1])->assertOk()->assertJsonPath('meta.per_page', 1);
         DB::table('tx_internal_actor_grant')->where('user_id', $actor->id)->where('permission', 'identity.accounts.manage')->delete();
         $invoke('identity.accounts.status.update', $input, $key)->assertForbidden();

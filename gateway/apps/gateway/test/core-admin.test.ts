@@ -18,7 +18,8 @@ describe('administrator browser admission', () => {
     expect(() => createGatewayApp(config)).toThrow('Redis')
     expect(() => loadConfig({ TXBOARD_UPSTREAM_URL: 'https://core.test', GATEWAY_CORE_ADMIN_OPERATIONS_ENABLED: 'true' })).toThrow('admin service')
     expect((await createGatewayApp(base).request(`${prefix}/capabilities`)).status).toBe(404)
-    expect((await app().request(`${prefix}/operations/settings.site.update`, { method: 'POST' })).status).toBe(404)
+    expect((await app().request(`${prefix}/operations/settings.secrets.update`, { method: 'POST' })).status).toBe(404)
+    expect((await app().request(`${prefix}/operations/settings.site.update`, { method: 'POST' })).status).toBe(401)
   })
   it('requires the actor and current path before Core and never accepts asserted permission', async () => {
     const call = vi.spyOn(NativeCoreClient.prototype, 'call')
@@ -42,5 +43,19 @@ describe('administrator browser admission', () => {
       body: JSON.stringify({ input: { email: 'admin@example.test', password: 'password-long' } }),
       headers: { 'content-type': 'application/json', 'Idempotency-Key': requestId } })
     expect(limiter.check).toHaveBeenCalledWith('login', 'admin@example.test', '0.0.0.0')
+  })
+  it('requires the original command UUID and forwards authenticated writes without retrying', async () => {
+    const call = vi.spyOn(NativeCoreClient.prototype, 'call').mockResolvedValue({ data: { ok: true }, request_id: requestId })
+    const gateway = app()
+    const headers = { 'content-type': 'application/json', Authorization: 'Bearer administrator-token', 'X-Core-Admin-Path': 'rotated_path' }
+    const body = JSON.stringify({ input: { app_name: 'Updated site' } })
+    const url = `${prefix}/operations/settings.site.update`
+    expect((await gateway.request(url, { method: 'POST', headers, body })).status).toBe(400)
+    expect(call).not.toHaveBeenCalled()
+    expect((await gateway.request(url, { method: 'POST', headers: { ...headers, 'Idempotency-Key': requestId }, body })).status).toBe(200)
+    expect(call).toHaveBeenCalledTimes(1)
+    expect(call).toHaveBeenCalledWith('settings.site.update', expect.objectContaining({
+      authorization: 'Bearer administrator-token', adminPath: 'rotated_path', idempotencyKey: requestId,
+    }))
   })
 })

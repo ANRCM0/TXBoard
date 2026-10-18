@@ -123,7 +123,7 @@ try {
   let adminToken, adminPath
   const admin = createCoreAdminClient({ baseURL: 'http://127.0.0.1:18089/gateway/v1/core/admin',
     getToken: () => adminToken, getAdminPath: () => adminPath })
-  assert.equal((await admin.capabilities()).operations.length, 12); checks++
+  assert.equal((await admin.capabilities()).operations.length, 19); checks++
   await assert.rejects(admin.call('identity.admin-session.create', { email: actor.email, password: 'integration-password-2026' },
     { idempotencyKey: randomUUID() }), e => e.status === 403); checks++
   const loggedIn = await admin.call('identity.admin-session.create', { email: adminService.email, password: 'admin-integration-password' }, { idempotencyKey: randomUUID() })
@@ -148,6 +148,24 @@ try {
   const nativeDetail = await admin.call('commerce.admin-orders.get', { trade_no: nativeOrders.data[0].trade_no })
   assert.equal(nativeDetail.currency, 'CNY'); assert.equal(typeof nativeDetail.amount_minor, 'string'); checks++
   assert.ok(!('purchase_terms_json' in nativeDetail)); checks++
+  const newAccount = await admin.call('identity.accounts.create', {
+    email: `admin-created-${randomUUID()}@example.test`, password: 'created-integration-password',
+  }, { idempotencyKey: randomUUID() })
+  assert.equal(typeof newAccount.id, 'string'); assert.ok(!('password' in newAccount)); checks++
+  const statusKey = randomUUID(), statusInput = { user_id: newAccount.id, expected_banned: false, banned: true }
+  const banned = await admin.call('identity.accounts.status.update', statusInput, { idempotencyKey: statusKey })
+  assert.equal(banned.banned, true)
+  assert.deepEqual(await admin.call('identity.accounts.status.update', statusInput, { idempotencyKey: statusKey }), banned); checks++
+  const noticeKey = randomUUID(), noticeInput = { title: 'SDK original notice', content: 'Integration body' }
+  const notice = await admin.call('content.notices.create', noticeInput, { idempotencyKey: noticeKey })
+  assert.equal(typeof notice.id, 'string')
+  assert.deepEqual(await admin.call('content.notices.create', noticeInput, { idempotencyKey: noticeKey }), notice); checks++
+  await admin.call('content.notices.update', { content_id: notice.id, title: 'SDK updated notice', content: 'Updated body' }, { idempotencyKey: randomUUID() })
+  assert.equal((await admin.call('content.notices.get', { content_id: notice.id })).title, 'SDK updated notice'); checks++
+  await admin.call('content.notices.delete', { content_id: notice.id }, { idempotencyKey: randomUUID() })
+  await assert.rejects(admin.call('content.notices.get', { content_id: notice.id }), e => e.status === 404); checks++
+  const groups = await admin.callResult('network.groups.list', { page: 1, per_page: 1 })
+  assert.equal(groups.meta.per_page, 1); assert.equal(typeof groups.data[0].id, 'string'); checks++
   const adminSessions = await admin.callResult('identity.sessions.list', {})
   assert.ok(adminSessions.data.some(row => row.id === adminService.secondary)); checks++
   await admin.call('identity.sessions.revoke', { session_id: adminService.secondary }, { idempotencyKey: randomUUID() })
@@ -163,7 +181,8 @@ try {
   console.log(JSON.stringify({ sourceHead, checks, realCore: true, nativeActivation: true, database: 'mysql',
     gatewayMtls: true, tlsTermination: 'isolated CI adapter to loopback PHP development server',
     browserSdk: true, originalKeyReplay: true, lostResponseRecovery: true, ownerIsolation: true,
-    sessionEnd: true, serviceGrantRevocation: true, serviceFailureDistinctFromUserSession: true, adminChannel: true, adminChecks: 20, actorGrantRevocation: true, adminPathRotation: true }))
+    sessionEnd: true, serviceGrantRevocation: true, serviceFailureDistinctFromUserSession: true, adminChannel: true, adminChecks: 26,
+    adminAccountMutation: true, adminContentCrud: true, adminWriteKeyReplay: true, actorGrantRevocation: true, adminPathRotation: true }))
 } finally {
   for (const server of servers.reverse()) await new Promise(r => server.close(r))
   if (adminLimiter) await adminLimiter.close()

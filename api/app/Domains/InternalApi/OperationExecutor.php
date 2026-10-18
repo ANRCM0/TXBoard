@@ -96,6 +96,8 @@ final class OperationExecutor
                 in_array((int) $error->getCode(), [404, 409, 422, 502], true) ? (int) $error->getCode() : 409);
         } catch (AuthenticationException) {
             $response = $this->error($request, 'ACTOR_UNAUTHORIZED', 401);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
+            $response = $this->error($request, 'NOT_FOUND', 404);
         } catch (HttpExceptionInterface $error) {
             $response = $this->error($request,
                 match ($error->getStatusCode()) { 404 => 'NOT_FOUND', 403 => 'FORBIDDEN', default => 'BUSINESS_REJECTED' },
