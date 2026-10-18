@@ -15,13 +15,13 @@ const success = z.strictObject({ ok: z.literal(true), data: z.unknown(), meta: z
 }) })
 const failure = z.strictObject({ ok: z.literal(false), error: z.strictObject({ code: z.string().max(96), message: z.string() }),
   meta: z.strictObject({ version: z.literal('1'), requestId: trace }) })
-const capabilities = z.strictObject({ contract: z.literal('core-user/v1'), operations: z.array(z.strictObject({
-  id: z.string(), version: z.literal('1'), actor: z.string(), idempotency: z.string(),
+const capabilities = z.strictObject({ contract: z.enum(['core-user/v1', 'core-admin/v1']), operations: z.array(z.strictObject({
+  permission: z.string().nullable().optional(), id: z.string(), version: z.literal('1'), actor: z.string(), idempotency: z.string(),
 })).max(100) })
 const capabilityEnvelope = z.strictObject({ ok: z.literal(true), data: capabilities,
   meta: z.strictObject({ version: z.literal('1'), requestId: trace }) })
 export type CoreUserCapabilities = z.output<typeof capabilities>
-export type CoreUserClient = CoreClient & { capabilities(): Promise<CoreUserCapabilities> }
+export type CoreUserClient = CoreClient & { capabilities(options?: { signal?: AbortSignal }): Promise<CoreUserCapabilities> }
 
 /** No upstream message, request body, token or payment URL is included in errors. */
 export class CoreUserApiError extends Error {
@@ -34,10 +34,13 @@ export class CoreUserApiError extends Error {
 
 const codes = new Set(['UNAUTHORIZED', 'FORBIDDEN', 'NOT_FOUND', 'VALIDATION_ERROR', 'RATE_LIMITED',
   'UPSTREAM_UNAVAILABLE', 'UPSTREAM_ERROR', 'PAYLOAD_TOO_LARGE', 'METHOD_NOT_ALLOWED',
-  'IDEMPOTENCY_IN_PROGRESS', 'IDEMPOTENCY_CONFLICT', 'ORIGIN_DENIED'])
+  'IDEMPOTENCY_IN_PROGRESS', 'IDEMPOTENCY_CONFLICT', 'ORIGIN_DENIED', 'CAPTCHA_REQUIRED'])
 
-export function createCoreUserClient(options: CoreUserClientOptions = {}): CoreUserClient {
-  const base = (options.baseURL ?? '/gateway/v1/core/user').replace(/\/+$/, '')
+export function createBrowserCoreClient(options: CoreUserClientOptions, surface: {
+  domain: 'user' | 'admin'; contract: string; prefix: string; operations?: readonly CoreOperation[];
+  getAdminPath?: () => string | null | undefined | Promise<string | null | undefined>
+}): CoreUserClient {
+  const base = (options.baseURL ?? surface.prefix).replace(/\/+$/, '')
   if (base.startsWith('/') && !base.startsWith('//')) {
     if (/[?#\\\s]/.test(base)) throw new Error('Invalid Core user base URL')
   } else {
@@ -81,6 +84,8 @@ export function createCoreUserClient(options: CoreUserClientOptions = {}): CoreU
   async function request(path: string, operation?: CoreOperation, input?: unknown,
     callOptions: Parameters<CoreTransport>[2] = {}): Promise<unknown> {
     const headers = new Headers({ Accept: 'application/json' })
+    if (operation && (!coreOperations[operation].domains.includes(surface.domain as never)
+        || surface.operations && !surface.operations.includes(operation))) throw new CoreUserApiError('FORBIDDEN', 403)
     const spec = operation ? coreOperations[operation] : undefined
     const mutation = spec !== undefined && spec.idempotency !== 'read'
     if (spec && spec.actor !== 'anonymous') {
@@ -88,6 +93,11 @@ export function createCoreUserClient(options: CoreUserClientOptions = {}): CoreU
       const bearer = raw.startsWith('Bearer ') ? raw : `Bearer ${raw}`
       if (!/^Bearer \S{8,4096}$/.test(bearer)) throw new CoreUserApiError('UNAUTHORIZED', 401)
       headers.set('Authorization', bearer)
+      if (surface.domain === 'admin') {
+        const adminPath = await surface.getAdminPath?.()
+        if (!/^[a-zA-Z0-9_-]{1,128}$/.test(adminPath ?? '')) throw new CoreUserApiError('ADMIN_CONTEXT_REQUIRED', 401)
+        headers.set('X-Core-Admin-Path', adminPath!)
+      }
     }
     if (spec) headers.set('Content-Type', 'application/json')
     if (mutation && callOptions.idempotencyKey) headers.set('Idempotency-Key', callOptions.idempotencyKey)
@@ -113,11 +123,11 @@ export function createCoreUserClient(options: CoreUserClientOptions = {}): CoreU
       }
       if (!spec) {
         const result = capabilityEnvelope.safeParse(value)
-        if (!result.success || new Set(result.data.data.operations.map(row => row.id)).size !== result.data.data.operations.length) {
+        if (!result.success || result.data.data.contract !== surface.contract || new Set(result.data.data.operations.map(row => row.id)).size !== result.data.data.operations.length) {
           throw new CoreUserApiError('INVALID_RESPONSE', response.status)
         }
         for (const row of result.data.data.operations) {
-          if (!Object.hasOwn(coreOperations, row.id)) throw new CoreUserApiError('VERSION_MISMATCH', response.status)
+          if (!Object.hasOwn(coreOperations, row.id) || surface.operations && !surface.operations.includes(row.id as CoreOperation)) throw new CoreUserApiError('VERSION_MISMATCH', response.status)
           const known = coreOperations[row.id as CoreOperation]
           if (row.actor !== known.actor || row.idempotency !== known.idempotency) throw new CoreUserApiError('VERSION_MISMATCH', response.status)
         }
@@ -139,6 +149,10 @@ export function createCoreUserClient(options: CoreUserClientOptions = {}): CoreU
     return result.data
   }
   return Object.assign(new CoreClient(transport, resultTransport), {
-    capabilities: () => request('/capabilities') as Promise<CoreUserCapabilities>,
+    capabilities: (settings: { signal?: AbortSignal } = {}) => request('/capabilities', undefined, undefined, settings) as Promise<CoreUserCapabilities>,
   })
+}
+
+export function createCoreUserClient(options: CoreUserClientOptions = {}): CoreUserClient {
+  return createBrowserCoreClient(options, { domain: 'user', contract: 'core-user/v1', prefix: '/gateway/v1/core/user' })
 }

@@ -252,6 +252,9 @@ export class NativeCoreClient {
       }
       if (code === 'SERVICE_UNAUTHORIZED') throw new GatewayFailure('UPSTREAM_UNAVAILABLE', 503, 'Core service unavailable')
       if (code === 'ACTOR_UNAUTHORIZED') throw new GatewayFailure('UNAUTHORIZED', 401, 'User session is required')
+      if (code === 'INVALID_CREDENTIALS') throw new GatewayFailure('UNAUTHORIZED', 401, 'Invalid credentials')
+      if (code === 'CAPTCHA_INVALID') throw new GatewayFailure('CAPTCHA_REQUIRED', 428, 'Verification required')
+      if (code === 'ADMIN_ACCESS_DENIED') throw new GatewayFailure('FORBIDDEN', 403, 'Administrator access required')
       if (code === 'FORBIDDEN') throw new GatewayFailure('FORBIDDEN', 403, 'Core operation not granted')
       if (response.status === 404) throw new GatewayFailure('NOT_FOUND', 404, 'Core resource unavailable')
       if (code === 'INVALID_REQUEST') throw new GatewayFailure('VALIDATION_ERROR', 422, 'Invalid Core operation input')

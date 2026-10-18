@@ -26,8 +26,22 @@ final class OperationSchemas
 
     public static function wire(array $schema): array
     {
-        return TransportSchema::wireDefinition($schema) + ['definitions' =>
-            array_map(TransportSchema::wireDefinition(...), self::all()['definitions'])];
+        $definitions = [];
+        $visit = function (array $value) use (&$visit, &$definitions): void {
+            if (isset($value['$ref'])) {
+                $name = substr($value['$ref'], strlen('#/definitions/'));
+                if (!array_key_exists($name, $definitions)) {
+                    $definitions[$name] = self::all()['definitions'][$name];
+                    $visit($definitions[$name]);
+                }
+            }
+            foreach ($value as $child) if (is_array($child)) $visit($child);
+        };
+        // Discovery includes only the transitive references each schema uses.
+        // Repeating the entire registry for every operation exceeds wire bounds.
+        $visit($schema);
+        return TransportSchema::wireDefinition($schema) + ['definitions' => (object)
+            array_map(TransportSchema::wireDefinition(...), $definitions)];
     }
 
     public static function apply(array $registry): array

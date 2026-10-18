@@ -2088,7 +2088,7 @@
         "admin"
       ],
       "actor": "authenticated",
-      "permission": null,
+      "permission": "identity.sessions.manage",
       "idempotency": "read",
       "consistency": "current-owner-view",
       "input": {
@@ -2133,7 +2133,7 @@
         "admin"
       ],
       "actor": "authenticated",
-      "permission": null,
+      "permission": "identity.sessions.manage",
       "idempotency": "workflow",
       "consistency": "owner-transaction",
       "input": {
@@ -2183,7 +2183,7 @@
         "admin"
       ],
       "actor": "authenticated",
-      "permission": null,
+      "permission": "identity.sessions.manage",
       "idempotency": "once",
       "consistency": "owner-transaction",
       "input": {
@@ -2283,6 +2283,596 @@
       },
       "output": {
         "$ref": "#/definitions/attempt-status"
+      },
+      "meta": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS"
+      ]
+    },
+    "identity.admin-session.create": {
+      "version": 1,
+      "domains": [
+        "admin"
+      ],
+      "actor": "anonymous",
+      "permission": null,
+      "idempotency": "once",
+      "consistency": "current-owner-view",
+      "input": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 3
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 8
+          },
+          "turnstile_token": {
+            "type": "string",
+            "maxLength": 8192
+          },
+          "recaptcha_v3_token": {
+            "type": "string",
+            "maxLength": 8192
+          },
+          "recaptcha_data": {
+            "type": "string",
+            "maxLength": 8192
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "auth_data": {
+            "type": "string",
+            "maxLength": 4103,
+            "pattern": "^Bearer [^\\s]{8,4096}$"
+          },
+          "is_admin": {
+            "const": true
+          },
+          "secure_path": {
+            "type": "string",
+            "maxLength": 128,
+            "pattern": "^[a-zA-Z0-9_-]{1,128}$"
+          }
+        },
+        "required": [
+          "auth_data",
+          "is_admin",
+          "secure_path"
+        ],
+        "additionalProperties": false
+      },
+      "meta": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS"
+      ]
+    },
+    "identity.admin.get": {
+      "version": 1,
+      "domains": [
+        "admin"
+      ],
+      "actor": "admin",
+      "permission": "identity.read",
+      "idempotency": "read",
+      "consistency": "current-owner-view",
+      "input": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/definitions/id"
+          },
+          "email": {
+            "type": "string",
+            "maxLength": 255
+          }
+        },
+        "required": [
+          "id",
+          "email"
+        ],
+        "additionalProperties": false
+      },
+      "meta": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS"
+      ]
+    },
+    "network.nodes.list": {
+      "version": 1,
+      "domains": [
+        "admin"
+      ],
+      "actor": "admin",
+      "permission": "network.nodes.read",
+      "idempotency": "read",
+      "consistency": "current-owner-view",
+      "input": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100000
+          },
+          "per_page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "#/definitions/id"
+            },
+            "name": {
+              "type": "string",
+              "maxLength": 255
+            },
+            "type": {
+              "type": "string",
+              "maxLength": 64
+            },
+            "host": {
+              "type": "string",
+              "maxLength": 255
+            },
+            "port": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 65535
+                },
+                {
+                  "type": "string",
+                  "maxLength": 32,
+                  "minLength": 1
+                }
+              ]
+            },
+            "server_port": {
+              "anyOf": [
+                {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 65535
+                    },
+                    {
+                      "type": "string",
+                      "maxLength": 32,
+                      "minLength": 1
+                    }
+                  ]
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "parent_id": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/id"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "machine_id": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/id"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "show": {
+              "type": "boolean"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "sort": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": -2147483648,
+                  "maximum": 2147483647
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "u": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/decimal"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "d": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/decimal"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "id",
+            "name",
+            "type",
+            "host",
+            "port",
+            "server_port",
+            "parent_id",
+            "machine_id",
+            "show",
+            "enabled",
+            "sort",
+            "u",
+            "d"
+          ],
+          "additionalProperties": false
+        },
+        "maxItems": 100
+      },
+      "meta": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "per_page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "last_page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "page",
+          "per_page",
+          "total",
+          "last_page"
+        ],
+        "additionalProperties": false
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS"
+      ]
+    },
+    "network.machines.list": {
+      "version": 1,
+      "domains": [
+        "admin"
+      ],
+      "actor": "admin",
+      "permission": "network.machines.read",
+      "idempotency": "read",
+      "consistency": "current-owner-view",
+      "input": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100000
+          },
+          "per_page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "#/definitions/id"
+            },
+            "name": {
+              "type": "string",
+              "maxLength": 255
+            },
+            "is_active": {
+              "type": "boolean"
+            },
+            "image_channel": {
+              "type": "string",
+              "maxLength": 64
+            },
+            "last_seen_at": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "servers_count": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "created_at": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "updated_at": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "id",
+            "name",
+            "is_active",
+            "image_channel",
+            "last_seen_at",
+            "servers_count",
+            "created_at",
+            "updated_at"
+          ],
+          "additionalProperties": false
+        },
+        "maxItems": 100
+      },
+      "meta": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "per_page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "last_page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "page",
+          "per_page",
+          "total",
+          "last_page"
+        ],
+        "additionalProperties": false
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS"
+      ]
+    },
+    "settings.site.get": {
+      "version": 1,
+      "domains": [
+        "admin"
+      ],
+      "actor": "admin",
+      "permission": "settings.read",
+      "idempotency": "read",
+      "consistency": "current-owner-view",
+      "input": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "site": {
+            "type": "object",
+            "properties": {
+              "app_name": {
+                "type": "string",
+                "maxLength": 255
+              },
+              "app_description": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "maxLength": 2048
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "app_url": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "maxLength": 2048
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "logo": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "maxLength": 2048
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "tos_url": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "maxLength": 2048
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "currency": {
+                "type": "string",
+                "maxLength": 16
+              },
+              "stop_register": {
+                "anyOf": [
+                  {
+                    "const": 0
+                  },
+                  {
+                    "const": 1
+                  }
+                ]
+              }
+            },
+            "required": [
+              "app_name",
+              "app_description",
+              "app_url",
+              "logo",
+              "tos_url",
+              "currency",
+              "stop_register"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "site"
+        ],
+        "additionalProperties": false
       },
       "meta": {
         "type": "object",

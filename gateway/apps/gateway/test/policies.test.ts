@@ -71,7 +71,14 @@ const EXPECTED_CORE: Record<string, PolicyName> = {
   ...Object.fromEntries(['commerce.orders.list', 'commerce.orders.get', 'billing.wallet.get', 'billing.payment-methods.list', 'billing.recharges.list', 'billing.recharges.get', 'subscription.mine.get', 'usage.mine.list', 'identity.account.get', 'identity.sessions.list', 'billing.payment-attempts.get'].map(id => [`POST /gateway/v1/core/user/operations/${id}`, 'coreUserRead' as PolicyName])),
   ...Object.fromEntries(['commerce.orders.create', 'commerce.orders.checkout', 'commerce.orders.cancel', 'billing.recharges.create', 'billing.recharges.checkout', 'identity.sessions.revoke', 'identity.session.end', 'billing.payment-attempts.query'].map(id => [`POST /gateway/v1/core/user/operations/${id}`, 'coreUserWrite' as PolicyName])),
 }
+const EXPECTED_ADMIN: Record<string, PolicyName> = {
+  'GET /gateway/v1/core/admin/capabilities': 'coreAdminCapabilities',
+  'POST /gateway/v1/core/admin/operations/identity.admin-session.create': 'coreAdminLogin',
+  ...Object.fromEntries(['identity.admin.get', 'identity.sessions.list', 'network.nodes.list', 'network.machines.list', 'settings.site.get'].map(id => [`POST /gateway/v1/core/admin/operations/${id}`, 'coreAdminRead' as PolicyName])),
+  ...Object.fromEntries(['identity.sessions.revoke', 'identity.session.end'].map(id => [`POST /gateway/v1/core/admin/operations/${id}`, 'coreAdminWrite' as PolicyName])),
+}
 const EXPECTED_MAPPING: Record<string, PolicyName> = {
+  ...EXPECTED_ADMIN,
   ...EXPECTED_CORE,
   'GET /gateway/v1/bootstrap': 'publicRead',
   'GET /gateway/v1/theme/config': 'publicRead',
@@ -106,7 +113,7 @@ describe('GW-212 route policy table', () => {
     expect(snapshot).toEqual(EXPECTED_MAPPING)
     // Snapshot the policy bodies too: a silent posture change in auth, body,
     // limiter or cache must fail this test rather than ship.
-    expect(routeDefinitions.filter(d => !d.path.startsWith('/gateway/v1/core/user/')).map(d => ({ ...d.policy }))).toEqual([
+    expect(routeDefinitions.filter(d => !d.path.startsWith('/gateway/v1/core/')).map(d => ({ ...d.policy }))).toEqual([
       { name: 'publicRead', auth: 'none', body: 'none', limiter: 'public', cache: 'public-short' },
       { name: 'publicRead', auth: 'none', body: 'none', limiter: 'public', cache: 'public-short' },
       { name: 'publicRead', auth: 'none', body: 'none', limiter: 'public', cache: 'public-short' },

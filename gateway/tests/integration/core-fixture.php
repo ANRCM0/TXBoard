@@ -13,7 +13,8 @@ if (config('database.connections.mysql.database') !== 'txboard_gateway_test'
 }
 $action = $argv[2] ?? 'seed';
 if ($action === 'user-service') {
-    $operations = array_keys(\App\Domains\InternalApi\OperationSchemas::all()['operations']);
+    $operations = array_keys(array_filter(\App\Domains\InternalApi\OperationSchemas::all()['operations'],
+        static fn ($spec) => in_array('user', $spec['domains'], true)));
     $service = app(\App\Domains\InternalApi\ServiceCredentials::class)->issue('browser-user-fixture', 'user',
         $argv[3] ?? '', array_merge(['system.capabilities.get'], $operations), time() + 3600);
     // Provision isolated actors through Identity. Registration HTTP and its
@@ -27,6 +28,33 @@ if ($action === 'user-service') {
     }
     echo json_encode($service, JSON_THROW_ON_ERROR)."\n";
     exit;
+}
+if ($action === 'admin-service') {
+    $operations = ['system.capabilities.get', 'identity.admin-session.create', 'identity.admin.get',
+        'identity.sessions.list', 'identity.sessions.revoke', 'identity.session.end',
+        'network.nodes.list', 'network.machines.list', 'settings.site.get'];
+    $service = app(\App\Domains\InternalApi\ServiceCredentials::class)->issue('browser-admin-fixture', 'admin',
+        $argv[3] ?? '', $operations, time() + 3600);
+    [$created, $admin] = app(\App\Services\Auth\NativeIdentityService::class)
+        ->create('gw-admin-'.bin2hex(random_bytes(6)).'@example.test', 'admin-integration-password');
+    if (!$created) throw new RuntimeException('Admin fixture creation failed');
+    $admin->forceFill(['is_admin' => true])->saveOrFail();
+    foreach (['identity.read', 'identity.sessions.manage', 'network.nodes.read', 'network.machines.read', 'settings.read'] as $permission) {
+        Illuminate\Support\Facades\DB::table('tx_internal_actor_grant')->insert([
+            'user_id' => $admin->id, 'permission' => $permission, 'created_at' => time()]);
+    }
+    admin_setting(['secure_path' => 'sdk_admin_fixture', 'password_limit_enable' => 0]);
+    echo json_encode($service + ['email' => $admin->email, 'id' => (string) $admin->id,
+        'secondary' => (string) $admin->createToken('admin-secondary', ['*'])->accessToken->id], JSON_THROW_ON_ERROR)."\n";
+    exit;
+}
+if ($action === 'admin-restrict') {
+    Illuminate\Support\Facades\DB::table('tx_internal_actor_grant')->where('permission', 'network.nodes.read')->delete();
+    echo "{}\n"; exit;
+}
+if ($action === 'admin-rotate-path') {
+    admin_setting(['secure_path' => 'sdk_admin_rotated']);
+    echo "{}\n"; exit;
 }
 if ($action === 'restrict-user-service') {
     Illuminate\Support\Facades\DB::table('tx_internal_service')->where('service_id', 'browser-user-fixture')

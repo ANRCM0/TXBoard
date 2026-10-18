@@ -1,0 +1,17 @@
+services:
+  gateway:
+    environment:
+      GATEWAY_CORE_ADMIN_OPERATIONS_ENABLED: ${GATEWAY_CORE_ADMIN_OPERATIONS_ENABLED:-false}
+      GATEWAY_CORE_ADMIN_ENABLED: 'true'
+      GATEWAY_CORE_ADMIN_SERVICE_ID: ${GATEWAY_CORE_ADMIN_SERVICE_ID:?isolated admin service id required}
+      GATEWAY_CORE_ADMIN_CREDENTIAL: ${GATEWAY_CORE_ADMIN_CREDENTIAL:?isolated admin service credential required}
+      GATEWAY_CORE_ADMIN_EPOCH: ${GATEWAY_CORE_ADMIN_EPOCH:?isolated admin service epoch required}
+      GATEWAY_CORE_ADMIN_CA_FILE: /run/core-admin/ca.pem
+      GATEWAY_CORE_ADMIN_CERT_FILE: /run/core-admin/client.pem
+      GATEWAY_CORE_ADMIN_KEY_FILE: /run/core-admin/client.key
+      GATEWAY_REDIS_URL: ${GATEWAY_REDIS_URL:?private Redis required for admin login admission}
+    volumes:
+      - type: bind
+        source: ${GATEWAY_CORE_ADMIN_TLS_DIR:?operator admin TLS directory required}
+        target: /run/core-admin
+        read_only: true

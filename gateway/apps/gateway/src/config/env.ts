@@ -26,6 +26,7 @@ export type GatewayConfig = {
    *  with zero upstream calls. */
   orderWriteEnabled: boolean
   coreUserOperationsEnabled?: boolean
+  coreAdminOperationsEnabled?: boolean
 }
 
 function intSetting(value: string | undefined, fallback: number, min: number, max: number): number {
@@ -89,6 +90,8 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
   if (coreUserOperationsEnabled && !nativeUserService) {
     throw new Error('Core user operations require an isolated native user service configuration')
   }
+  const coreAdminOperationsEnabled = env.GATEWAY_CORE_ADMIN_OPERATIONS_ENABLED === 'true'
+  if (coreAdminOperationsEnabled && !nativeAdminService) throw new Error('Core admin operations require an isolated native admin service configuration')
   // Validate at boot, before serving traffic. No plaintext fallback when an
   // explicitly enabled service channel is incomplete or misconfigured.
   for (const service of [nativeUserService, nativeAdminService]) {
@@ -97,7 +100,7 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
   }
   return {
     nativeUserService, nativeAdminService,
-    coreUserOperationsEnabled,
+    coreUserOperationsEnabled, coreAdminOperationsEnabled,
     host: env.GATEWAY_HOST || '127.0.0.1',
     port: intSetting(env.GATEWAY_PORT, 8787, 1, 65535),
     upstream,

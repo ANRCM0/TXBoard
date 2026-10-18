@@ -95,6 +95,7 @@ def generated_types(contract):
         lines.append('  ' + js(name) + ': { input: ' + expression(spec['input'], definitions)
                      + ', output: ' + expression(spec['output'], definitions)
                      + ', meta: ' + expression(spec.get('meta', {'type': 'object', 'properties': {}, 'required': [], 'additionalProperties': False}), definitions)
+                     + ', domains: ' + js(spec['domains']) + ', permission: ' + js(spec['permission'])
                      + ', actor: ' + js(spec['actor']) + ', idempotency: ' + js(spec['idempotency']) + ' },')
     lines += ['} as const', '', 'export type CoreOperation = keyof typeof coreOperations',
               "export type CoreInput<K extends CoreOperation> = z.input<(typeof coreOperations)[K]['input']>",
