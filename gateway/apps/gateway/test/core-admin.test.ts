@@ -41,6 +41,6 @@ describe('administrator browser admission', () => {
     await gateway.request(`${prefix}/operations/identity.admin-session.create`, { method: 'POST',
       body: JSON.stringify({ input: { email: 'admin@example.test', password: 'password-long' } }),
       headers: { 'content-type': 'application/json', 'Idempotency-Key': requestId } })
-    expect(limiter.check).toHaveBeenCalledWith('login', 'admin@example.test', undefined)
+    expect(limiter.check).toHaveBeenCalledWith('login', 'admin@example.test', '0.0.0.0')
   })
 })
