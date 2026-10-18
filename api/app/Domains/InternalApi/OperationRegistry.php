@@ -137,9 +137,9 @@ final class OperationRegistry
                 'permission' => $spec['permission'], 'idempotency' => $spec['mode'],
                 'input_fields' => $contract !== null ? array_keys($contract['input']['properties'])
                     : array_values(array_filter(array_keys($spec['rules']), static fn ($field): bool => !str_contains($field, '.'))),
-                'input_schema' => $contract !== null ? $contract['input'] + ['definitions' => OperationSchemas::all()['definitions']]
+                'input_schema' => $contract !== null ? OperationSchemas::wire($contract['input'])
                     : self::inputSchema($spec['rules']), 'output_fields' => $spec['fields'],
-                'output_schema' => $contract !== null ? $contract['output'] + ['definitions' => OperationSchemas::all()['definitions']] : null,
+                'output_schema' => $contract !== null ? OperationSchemas::wire($contract['output']) : null,
                 'errors' => $contract['errors'] ?? [],
                 'max_request_bytes' => (int) config('internal_api.max_request_bytes'),
                 'deadline_seconds' => (int) config('internal_api.deadline_seconds')];

@@ -24,6 +24,12 @@ final class OperationSchemas
         return new TransportSchema(self::all()['definitions']);
     }
 
+    public static function wire(array $schema): array
+    {
+        return TransportSchema::wireDefinition($schema) + ['definitions' =>
+            array_map(TransportSchema::wireDefinition(...), self::all()['definitions'])];
+    }
+
     public static function apply(array $registry): array
     {
         foreach (self::all()['operations'] as $id => $contract) {

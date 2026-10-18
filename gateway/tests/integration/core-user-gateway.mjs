@@ -65,6 +65,14 @@ try {
   const actor = await client.call('identity.account.get', {})
   assert.equal(typeof actor.id, 'string'); checks++
   const key = randomUUID(), input = { offer_id: offers[0].offer_id }
+  const lost = createCoreUserClient({ baseURL, getToken: () => token, fetchImpl: async (...args) => {
+    const response = await fetch(...args)
+    assert.ok(response.ok)
+    await response.arrayBuffer()
+    throw new Error('Simulated browser response loss after actual Core completion')
+  } })
+  await assert.rejects(lost.call('commerce.orders.create', input, { idempotencyKey: key }),
+    e => e.code === 'RESULT_UNKNOWN' && e.needsStateConfirmation); checks++
   const created = await client.callResult('commerce.orders.create', input, { idempotencyKey: key })
   const replay = await client.callResult('commerce.orders.create', input, { idempotencyKey: key })
   assert.deepEqual(replay.data, created.data); checks++
@@ -97,9 +105,13 @@ try {
   const reduced = await other.capabilities()
   assert.deepEqual(reduced.operations.map(row => row.id), ['catalog.offers.list']); checks++
   await assert.rejects(other.call('billing.wallet.get', {}), e => e.status === 403); checks++
+  const revoked = spawnSync('php', ['tests/integration/core-fixture.php', root, 'revoke-user-service'], { encoding: 'utf8' })
+  assert.equal(revoked.status, 0, revoked.stderr)
+  await assert.rejects(other.capabilities(), e => e.status === 503 && e.code === 'UPSTREAM_UNAVAILABLE'); checks++
   console.log(JSON.stringify({ sourceHead, checks, realCore: true, nativeActivation: true, database: 'mysql',
     gatewayMtls: true, tlsTermination: 'isolated CI adapter to loopback PHP development server',
-    browserSdk: true, originalKeyReplay: true, ownerIsolation: true, sessionEnd: true, serviceGrantRevocation: true }))
+    browserSdk: true, originalKeyReplay: true, lostResponseRecovery: true, ownerIsolation: true,
+    sessionEnd: true, serviceGrantRevocation: true, serviceFailureDistinctFromUserSession: true }))
 } finally {
   for (const server of servers.reverse()) await new Promise(r => server.close(r))
   php.kill(); await new Promise(r => php.once('exit', r)); closeSync(log)

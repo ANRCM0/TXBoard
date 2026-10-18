@@ -57,9 +57,9 @@ final class SessionOperationRegistryTest extends TestCase
             'commerce.orders.create' => [CommerceMutationOperations::class, 'purchase', 'domain'],
             'commerce.orders.checkout' => [CommerceMutationOperations::class, 'checkout', 'domain'],
             'commerce.orders.cancel' => [CommerceMutationOperations::class, 'cancel', 'workflow'],
+            'billing.payment-attempts.query' => [CommerceMutationOperations::class, 'queryAttempt', 'domain'],
             'billing.recharges.create' => [CommerceMutationOperations::class, 'recharge', 'domain'],
             'billing.recharges.checkout' => [CommerceMutationOperations::class, 'rechargeCheckout', 'domain'],
-            'billing.payment-attempts.query' => [CommerceMutationOperations::class, 'queryAttempt', 'domain'],
         ], $commands);
     }
 

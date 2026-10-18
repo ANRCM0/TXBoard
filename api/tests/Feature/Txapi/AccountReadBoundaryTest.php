@@ -197,11 +197,11 @@ final class AccountReadBoundaryTest extends NativeRuntimeTestCase
         $queries = Mockery::mock(AccountQueries::class);
         $queries->shouldReceive('account')->twice()->andReturnUsing(function () use ($user, $secret, $subscription, &$phase): array {
             return ['id' => (int) $user->id, 'email' => $phase === 'limit' ? str_repeat('x', 2048) : $user->email,
-                'telegram_id' => null, 'credential_status' => 'provider_managed',
+                'telegram_id' => null,
                 'subscription' => ['schema' => 'core-entitlement/v1', 'authorized' => false,
                     'reason' => 'ENTITLEMENT_SLOT_EMPTY', 'user_id' => (int) $user->id,
                     'password' => $secret, 'unexpected' => $secret],
-                'password' => $secret, 'unexpected' => $secret];
+                'credential_status' => 'provider_managed', 'password' => $secret, 'unexpected' => $secret];
         });
         $queries->shouldReceive('subscription')->once()->with((int) $user->id)->andReturn($subscription);
         $this->app->instance(AccountQueries::class, $queries);

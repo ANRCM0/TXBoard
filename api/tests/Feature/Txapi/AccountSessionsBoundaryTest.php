@@ -72,7 +72,7 @@ final class AccountSessionsBoundaryTest extends NativeRuntimeTestCase
         $port = Mockery::mock(AccountSessions::class);
         $session = ['id' => 71, 'name' => 'port-session', 'abilities' => ['*'],
             'last_used_at' => null, 'created_at' => null, 'updated_at' => null, 'expires_at' => null];
-        $port->shouldReceive('listing')->once()->with((int) $actor->id)->andReturn([$session]);
+        $port->shouldReceive('listing')->once()->with((int) $actor->id, null)->andReturn([$session]);
         $port->shouldReceive('listing')->once()->with((int) $actor->id, 101)->andReturn([$session]);
         $port->shouldReceive('revoke')->twice()->with((int) $actor->id, 72)->andReturn(true);
         $port->shouldReceive('end')->twice()->with((int) $actor->id, (int) $current->accessToken->id);

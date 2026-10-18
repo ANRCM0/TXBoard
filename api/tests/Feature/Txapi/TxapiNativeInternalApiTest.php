@@ -276,6 +276,8 @@ final class TxapiNativeInternalApiTest extends NativeRuntimeTestCase
         $capabilities = collect($decoded->data->operations);
         $schema = $capabilities->firstWhere('id', 'system.capabilities.get')->input_schema;
         $this->assertInstanceOf(\stdClass::class, $schema->properties);
+        $this->assertInstanceOf(\stdClass::class,
+            $capabilities->firstWhere('id', 'identity.sessions.list')->input_schema->properties);
         $handlers = [];
         $commands = [];
         foreach (\App\Domains\InternalApi\OperationRegistry::all() as $operation => $spec) {
@@ -329,9 +331,9 @@ final class TxapiNativeInternalApiTest extends NativeRuntimeTestCase
             'commerce.orders.create' => [$commerce, 'purchase', 'domain'],
             'commerce.orders.checkout' => [$commerce, 'checkout', 'domain'],
             'commerce.orders.cancel' => [$commerce, 'cancel', 'workflow'],
+            'billing.payment-attempts.query' => [$commerce, 'queryAttempt', 'domain'],
             'billing.recharges.create' => [$commerce, 'recharge', 'domain'],
-            'billing.recharges.checkout' => [$commerce, 'rechargeCheckout', 'domain'],
-            'billing.payment-attempts.query' => [$commerce, 'queryAttempt', 'domain']], $commands);
+            'billing.recharges.checkout' => [$commerce, 'rechargeCheckout', 'domain']], $commands);
     }
 
     public function test_all_boundary_rejections_are_audited_without_untrusted_service_operation_or_input_material(): void

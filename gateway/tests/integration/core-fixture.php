@@ -34,6 +34,11 @@ if ($action === 'restrict-user-service') {
     echo "{}\n";
     exit;
 }
+if ($action === 'revoke-user-service') {
+    app(\App\Domains\InternalApi\ServiceCredentials::class)->revoke('browser-user-fixture');
+    echo "{}\n";
+    exit;
+}
 if ($action === 'trust') {
     $trust = app(App\Domains\Network\NativeNodeAuthorization::class)->publicTrust();
     echo json_encode(array_intersect_key($trust, array_flip(['protocol_version', 'core_instance_id',
