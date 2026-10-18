@@ -74,7 +74,7 @@ const EXPECTED_CORE: Record<string, PolicyName> = {
 const EXPECTED_ADMIN: Record<string, PolicyName> = {
   'GET /gateway/v1/core/admin/capabilities': 'coreAdminCapabilities',
   'POST /gateway/v1/core/admin/operations/identity.admin-session.create': 'coreAdminLogin',
-  ...Object.fromEntries(['identity.admin.get', 'identity.sessions.list', 'network.nodes.list', 'network.machines.list', 'settings.site.get'].map(id => [`POST /gateway/v1/core/admin/operations/${id}`, 'coreAdminRead' as PolicyName])),
+  ...Object.fromEntries(['identity.admin.get', 'identity.sessions.list', 'network.nodes.list', 'network.machines.list', 'settings.site.get', 'identity.accounts.list', 'identity.accounts.get', 'commerce.admin-orders.list', 'commerce.admin-orders.get'].map(id => [`POST /gateway/v1/core/admin/operations/${id}`, 'coreAdminRead' as PolicyName])),
   ...Object.fromEntries(['identity.sessions.revoke', 'identity.session.end'].map(id => [`POST /gateway/v1/core/admin/operations/${id}`, 'coreAdminWrite' as PolicyName])),
 }
 const EXPECTED_MAPPING: Record<string, PolicyName> = {
