@@ -1,4 +1,5 @@
 export { CoreClient, CoreContractError, type CallOptions, type CoreTransport, type CoreResult } from './client.js'
+export { appendOrderEventPage, type OrderEvent, type OrderEventHistory } from './order-events.js'
 export { createCoreUserClient, CoreUserApiError, type CoreUserClient, type CoreUserClientOptions, type CoreUserCapabilities } from './user.js'
 export { ExtensionClient, acceptsModuleSchema, isModuleSchema, parseExtensionDescriptor, parseBridgeRequest,
   type ExtensionDescriptor, type ExtensionOperation, type ExtensionTransport, type BridgeRequest, type JsonSchema } from './extensions.js'

@@ -229,7 +229,10 @@ final class OperationExecutor
                 $operation === 'subscription.links.issue');
             $projected = $spec['list'] ? array_map($project, $data) : $project($data);
             $projected = OperationSchemas::output($operation, $projected);
-            $meta = array_intersect_key($body['meta'] ?? [], array_flip(['page', 'per_page', 'total', 'last_page', 'schema', 'next_after_id']));
+            $meta = array_intersect_key($body['meta'] ?? [], array_flip([
+                'page', 'per_page', 'total', 'last_page', 'schema', 'next_after_id',
+                'next_after_sequence', 'history_complete',
+            ]));
             if (array_key_exists('has_more', $body['meta'] ?? [])) $meta['has_more'] = $body['meta']['has_more'];
             $meta = OperationSchemas::meta($operation, $meta);
             $result = TxapiResponse::success($request, $projected, $meta, $result->getStatusCode());

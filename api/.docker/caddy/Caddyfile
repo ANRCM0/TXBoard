@@ -29,6 +29,14 @@
 		reverse_proxy 127.0.0.1:{$WS_PORT:8076}
 	}
 
+	# The browser uses the reviewed Gateway surface; service credentials remain
+	# inside Gateway. Configure this address for a separate Gateway container.
+	handle /gateway/* {
+		reverse_proxy {$TXBOARD_GATEWAY_UPSTREAM:127.0.0.1:8787} {
+			header_up Host {host}
+		}
+	}
+
 
 	# Retired adapter endpoints must not fall through to an SPA.
 	@retiredMcp path /mcp /mcp/*

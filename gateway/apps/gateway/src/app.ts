@@ -544,7 +544,7 @@ export function createGatewayApp(
   })
   registerUserRoutes(app, { config, fetcher: observed })
   registerOrdersRoutes(app, { config, fetcher: observed })
-  registerCoreUserRoutes(app, { config, fetcher: observed })
+  registerCoreUserRoutes(app, { config, fetcher: observed, limiter: policy.limiter })
   registerCoreAdminRoutes(app, { config, fetcher: observed, limiter: policy.limiter })
 
   // GW-304: order-write adaptation layer. Registered ONLY when

@@ -24,4 +24,11 @@ final class OrderReadOperations
         $order = $this->queries->find((int) $actor->id, $input['trade_no']);
         return $order === null ? null : new ReadOperationResult($order);
     }
+
+    public function events(User $actor, array $input): ?ReadOperationResult
+    {
+        $page = $this->queries->events((int) $actor->id, $input['trade_no'], $input['after_sequence'] ?? '0',
+            (int) ($input['limit'] ?? 50));
+        return $page === null ? null : new ReadOperationResult($page->items, $page->meta);
+    }
 }

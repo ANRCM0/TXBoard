@@ -25,7 +25,7 @@
   "scope": {
     "money": "CNY, zero channel fees, native wallet refund; real merchant qualification remains separate",
     "node": "Current supported VLESS/VMess profiles and actual native C2 acceptance; no complete protocol or HA claim",
-    "frontend": "Minimal SDK module acceptance host only; production TX-F is a later local-commit-only batch",
+    "frontend": "Admin and user sources live in web/ with the same-repository Core SDK; frontend behavior, container integration and production qualification are verified separately",
     "publishing": "Candidate PR and CI evidence; no default-branch merge or release authorization"
   }
 }

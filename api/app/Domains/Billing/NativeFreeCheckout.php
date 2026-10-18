@@ -60,6 +60,7 @@ final class NativeFreeCheckout
                 $order->paid_at = (int) $payload['created_at'];
                 $order->callback_no = $order->trade_no;
                 $order->saveOrFail();
+                app(NativeOrderEventJournal::class)->recordLocked($order, 'payment_accepted');
                 app(NativeUpgradeCredits::class)->fulfillAcceptedLocked($installation, $order, $purchase, $acceptedAt);
                 return self::RESULT;
             });

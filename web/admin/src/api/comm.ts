@@ -1,22 +1,22 @@
-import { nativeApiClient, unwrapNative, type NativeApiEnvelope } from './client'
+import { z } from 'zod'
+import { readPublicBootstrap } from '../native/publicBootstrap'
 
 export type GuestConfig = {
-  is_captcha?: number
-  captcha_type?: string
-  recaptcha_site_key?: string
-  recaptcha_v3_site_key?: string
-  recaptcha_v3_score_threshold?: number
-  turnstile_site_key?: string
+  is_captcha?: number; captcha_type?: string; recaptcha_site_key?: string
+  recaptcha_v3_site_key?: string; recaptcha_v3_score_threshold?: number; turnstile_site_key?: string
 }
-
-// Single source of truth shared with the user SPA's captcha component.
 export type { CaptchaPayload } from '@txboard/shared'
-
-export async function fetchGuestConfig() {
-  const config = await unwrapNative(nativeApiClient.get<NativeApiEnvelope<GuestConfig>>('/public/site-config'))
-  // Fail closed rather than silently disabling CAPTCHA on a malformed site config.
-  if (!config || (Number(config.is_captcha) !== 0 && Number(config.is_captcha) !== 1)) {
-    throw new Error('Invalid public CAPTCHA configuration')
-  }
-  return config
+const captcha = z.discriminatedUnion('enabled', [
+  z.object({ enabled: z.literal(false), type: z.null(), siteKey: z.null() }),
+  z.object({ enabled: z.literal(true), type: z.enum(['turnstile', 'recaptcha', 'recaptcha-v3']),
+    siteKey: z.string().trim().min(1).max(2048) }),
+])
+export async function fetchGuestConfig({ signal }: { signal?: AbortSignal } = {}): Promise<GuestConfig> {
+  const parsed = z.object({ ok: z.literal(true), data: z.object({ security: z.object({ captcha }) }) })
+    .parse(await readPublicBootstrap(signal)).data.security.captcha
+  if (!parsed.enabled) return { is_captcha: 0 }
+  return { is_captcha: 1, captcha_type: parsed.type,
+    ...(parsed.type === 'turnstile' ? { turnstile_site_key: parsed.siteKey }
+      : parsed.type === 'recaptcha-v3' ? { recaptcha_v3_site_key: parsed.siteKey }
+        : { recaptcha_site_key: parsed.siteKey }) }
 }

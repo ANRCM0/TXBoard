@@ -5,7 +5,7 @@ import react from '@vitejs/plugin-react'
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   return {
-    base: env.VITE_BASE_PATH || '/',
+    base: env.VITE_BASE_PATH || '/admin/',
     plugins: [react()],
     test: {
       environment: 'jsdom',
@@ -17,12 +17,8 @@ export default defineConfig(({ mode }) => {
     server: {
       port: Number(env.VITE_PORT || 3001),
       proxy: {
-        '/txapi': {
-          target: env.VITE_PROXY_TARGET || 'http://127.0.0.1:7801',
-          changeOrigin: true,
-        },
-        '/api': {
-          target: env.VITE_PROXY_TARGET || 'http://127.0.0.1:7801',
+        '/gateway': {
+          target: env.VITE_GATEWAY_TARGET || 'http://127.0.0.1:8080',
           changeOrigin: true,
         },
       },

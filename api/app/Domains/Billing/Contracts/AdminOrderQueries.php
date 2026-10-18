@@ -8,4 +8,6 @@ interface AdminOrderQueries
     public function adminListing(AdminOrderListQuery $query): OrderPage;
 
     public function adminFind(string $tradeNo): ?array;
+
+    public function adminEvents(string $tradeNo, string $afterSequence, int $limit): ?OrderPage;
 }

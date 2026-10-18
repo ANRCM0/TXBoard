@@ -420,6 +420,7 @@ jobs:
         run: >-
           php artisan test
           tests/Feature/Subscription/PublishedOrderPurchaseTest.php
+          tests/Feature/Subscription/NativeOrderEventJournalTest.php
           tests/Feature/Subscription/PublishedOrderMysqlConcurrencyTest.php
           tests/Feature/Subscription/NativeOrderRecoveryTest.php
           tests/Feature/Subscription/NativeSubscriptionLifecycleTest.php

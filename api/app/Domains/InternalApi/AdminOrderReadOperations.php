@@ -22,4 +22,11 @@ final class AdminOrderReadOperations
         $data = $this->queries->adminFind($input['trade_no']);
         return $data === null ? null : new ReadOperationResult($data);
     }
+
+    public function events(User $actor, array $input): ?ReadOperationResult
+    {
+        $page = $this->queries->adminEvents($input['trade_no'], $input['after_sequence'] ?? '0',
+            (int) ($input['limit'] ?? 50));
+        return $page === null ? null : new ReadOperationResult($page->items, $page->meta);
+    }
 }

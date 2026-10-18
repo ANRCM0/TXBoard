@@ -5,6 +5,7 @@ import { CORE_USER_OPERATIONS } from '../src/contracts/core-user.js'
 import { coreOperations } from '../src/contracts/core.generated.js'
 import { NativeCoreClient, type NativeServiceConfig } from '../src/services/native-internal.js'
 import { requestId } from './native-fixtures.js'
+import { GatewayFailure } from '../src/services/failures.js'
 
 const prefix = '/gateway/v1/core/user'
 const service: NativeServiceConfig = { domain: 'user', serviceId: 'fixture', credential: 'a'.repeat(64), epoch: '1',
@@ -66,4 +67,39 @@ describe('reviewed Core user surface', () => {
     expect(body.data.operations.map(row => row.id)).not.toContain('commerce.orders.create')
     expect(body.data.operations.map(row => row.id)).not.toContain('billing.wallet.get')
   })
+})
+
+it('admits native user login without bearer or commerce writes and preserves Core CAPTCHA authority', async () => {
+  const call = vi.spyOn(NativeCoreClient.prototype, 'call').mockResolvedValue({ data: { auth_data: 'Bearer user-token-long' }, request_id: requestId })
+  const check = vi.fn(async () => {})
+  const app = createGatewayApp(configured(false), undefined, undefined, { limiter: { check } })
+  const input = { email: 'User@example.test', password: 'password-long', turnstile_token: 'original-challenge' }
+  const response = await post(app, 'identity.session.create', JSON.stringify({ input }), false, requestId)
+  expect(response.status).toBe(200)
+  expect(check).toHaveBeenCalledWith('login', 'user@example.test', '0.0.0.0')
+  expect(call).toHaveBeenCalledExactlyOnceWith('identity.session.create', expect.objectContaining({ input, idempotencyKey: requestId, authorization: undefined }))
+  expect(response.headers.get('cache-control')).toContain('no-store')
+})
+
+it('validates anonymous login before limiting and fails closed without an account limiter', async () => {
+  const call = vi.spyOn(NativeCoreClient.prototype, 'call')
+  const check = vi.fn(async () => {})
+  const app = createGatewayApp(configured(), undefined, undefined, { limiter: { check } })
+  expect((await post(app, 'identity.session.create', '{"input":{"password":"password-long"}}', false, requestId)).status).toBe(422)
+  expect((await post(app, 'identity.session.create', '{"input":{"email":"user@example.test","password":"password-long"}}', false)).status).toBe(400)
+  expect(check).not.toHaveBeenCalled()
+  const response = await post(createGatewayApp(configured()), 'identity.session.create', '{"input":{"email":"user@example.test","password":"password-long"}}', false, requestId)
+  expect(response.status).toBe(503)
+  expect(call).not.toHaveBeenCalled()
+})
+
+it('propagates Core login rejection and limiter rejection without authentication bypass', async () => {
+  const call = vi.spyOn(NativeCoreClient.prototype, 'call').mockRejectedValue(new GatewayFailure('CAPTCHA_REQUIRED', 403, 'challenge required'))
+  const input = JSON.stringify({ input: { email: 'user@example.test', password: 'password-long' } })
+  const app = createGatewayApp(configured(), undefined, undefined, { limiter: { check: vi.fn(async () => {}) } })
+  expect((await post(app, 'identity.session.create', input, false, requestId)).status).toBe(403)
+  call.mockClear()
+  const limited = createGatewayApp(configured(), undefined, undefined, { limiter: { check: vi.fn(async () => { throw new GatewayFailure('RATE_LIMITED', 429, 'limited') }) } })
+  expect((await post(limited, 'identity.session.create', input, false, requestId)).status).toBe(429)
+  expect(call).not.toHaveBeenCalled()
 })

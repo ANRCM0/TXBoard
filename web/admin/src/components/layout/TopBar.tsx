@@ -1,11 +1,10 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { LogOut, Menu, Moon, Package, Search, Sun, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { getModuleRegistry } from '../../api/module'
-import { removeAccessToken } from '../../lib/storage'
-import { buildModuleNavigationGroups } from '../../navigation/registry'
+import { logoutAdmin } from '../../native/session'
+import { toast } from 'sonner'
+import { StaleAdminContext } from '@txboard/core-sdk'
 import { preloadAdminRoute } from '../../lib/routePreload'
 import { useDialog } from '../../lib/useDialog'
 
@@ -39,6 +38,7 @@ const commandItems = [
   ['/user/traffic-reset', '流量重置'],
   ['/user/ticket', '工单管理'],
   ['/system/audit-log', '审计日志'],
+  ['/system/sessions', '登录会话'],
 ] as const
 
 const titleRules: Array<[RegExp, string]> = [
@@ -70,15 +70,14 @@ const titleRules: Array<[RegExp, string]> = [
   [/^\/user\/traffic-reset/, '流量重置'],
   [/^\/user\/ticket/, '工单管理'],
   [/^\/system\/audit-log/, '审计日志'],
+  [/^\/system\/sessions/, '登录会话'],
   [/^\/plugins\//, '插件'],
 ]
 
 export function TopBar({ onOpenMenu }: { onOpenMenu: () => void }) {
   const navigate = useNavigate()
   const location = useLocation()
-  const queryClient = useQueryClient()
-  const modulesQuery = useQuery({ queryKey: ['moduleRegistry'], queryFn: getModuleRegistry })
-  const [dark, setDark] = useState(() => localStorage.getItem('theme') === 'dark')
+  const [dark, setDark] = useState(() => { try { return localStorage.getItem('theme') === 'dark' } catch { return false } })
   const [commandOpen, setCommandOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [activeIndex, setActiveIndex] = useState(0)
@@ -87,7 +86,7 @@ export function TopBar({ onOpenMenu }: { onOpenMenu: () => void }) {
 
   useEffect(() => {
     document.documentElement.dataset.theme = dark ? 'dark' : 'light'
-    localStorage.setItem('theme', dark ? 'dark' : 'light')
+    try { localStorage.setItem('theme', dark ? 'dark' : 'light') } catch { /* preference is optional */ }
   }, [dark])
 
   useEffect(() => {
@@ -125,23 +124,24 @@ export function TopBar({ onOpenMenu }: { onOpenMenu: () => void }) {
     return 'search-only' as const
   }, [location.pathname])
 
-  const moduleCommands = useMemo(
-    () => buildModuleNavigationGroups(modulesQuery.data?.modules || [])
-      .flatMap(group => group.items.map(item => [item.href, `${group.title} · ${item.title}`] as const)),
-    [modulesQuery.data?.modules],
-  )
-
   const commands = useMemo(() => {
-    const all = [...commandItems, ...moduleCommands]
+    const all = commandItems
     const q = query.trim().toLowerCase()
     if (!q) return all
     return all.filter(([path, label]) => `${label} ${path}`.toLowerCase().includes(q))
-  }, [moduleCommands, query])
+  }, [query])
 
-  function logout() {
-    removeAccessToken()
-    queryClient.clear()
-    navigate('/sign-in')
+  const [exiting, setExiting] = useState(false)
+  async function logout() {
+    if (exiting) return
+    setExiting(true)
+    try {
+      const result = await logoutAdmin()
+      if (!result.serverConfirmed) toast.warning('已退出本机。服务端退出结果未确认，请检查会话。')
+      navigate('/sign-in', { replace: true })
+    } catch (error) {
+      if (!(error instanceof StaleAdminContext)) toast.error('退出请求失败，请重试。')
+    } finally { setExiting(false) }
   }
 
   function go(path: string) {
@@ -175,10 +175,10 @@ export function TopBar({ onOpenMenu }: { onOpenMenu: () => void }) {
           <button type="button" className="admin-toolbar-icon" aria-label={dark ? '切换浅色模式' : '切换深色模式'} title={dark ? '切换浅色模式' : '切换深色模式'} onClick={() => setDark(value => !value)}>
             {dark ? <Sun size={20} /> : <Moon size={20} />}
           </button>
-          <button type="button" className="admin-avatar-button" onClick={logout} aria-label="退出登录" title="退出登录">
+          <button type="button" className="admin-avatar-button" onClick={() => void logout()} disabled={exiting} aria-label="退出登录" title="退出登录">
             <span className="admin-avatar">A</span>
           </button>
-          <button type="button" className="admin-logout-link" onClick={logout}>
+          <button type="button" className="admin-logout-link" onClick={() => void logout()} disabled={exiting}>
             <LogOut size={16} />
             <span>退出</span>
           </button>

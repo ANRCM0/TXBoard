@@ -1,17 +1,15 @@
-import { useQuery } from '@tanstack/react-query'
 import {
   ChevronDown,
   LayoutDashboard,
-  Plug,
   X,
 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { NavLink } from 'react-router-dom'
-import { getModuleRegistry } from '../../api/module'
 import { coreNavigationGroups } from '../../navigation/core'
-import { buildModuleNavigationGroups } from '../../navigation/registry'
 import { preloadAdminRoute, scheduleAdminRouteWarmup } from '../../lib/routePreload'
 import { useDialog } from '../../lib/useDialog'
+
+const availablePaths = new Set(['/config/system', '/system/sessions', '/server/manage', '/server/machine', '/user/manage', '/finance/order'])
 
 type SidebarProps = {
   open: boolean
@@ -47,14 +45,12 @@ function readOpenGroups(): Record<string, boolean> {
 
 export function Sidebar({ open, onClose, collapsed, onExpand }: SidebarProps) {
   const dialogRef = useDialog(open, onClose)
-  const modulesQuery = useQuery({ queryKey: ['moduleRegistry'], queryFn: getModuleRegistry })
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(readOpenGroups)
 
   const coreRoutePaths = useMemo(
     () => coreNavigationGroups.flatMap(group => group.items.map(([path]) => path)),
     [],
   )
-  const moduleGroups = buildModuleNavigationGroups(modulesQuery.data?.modules || [])
 
   useEffect(
     () => scheduleAdminRouteWarmup(coreRoutePaths),
@@ -138,6 +134,7 @@ export function Sidebar({ open, onClose, collapsed, onExpand }: SidebarProps) {
                       >
                         <Icon size={17} />
                         <span>{label}</span>
+                        {!availablePaths.has(to) ? <small className="native-nav-pending">待开放</small> : null}
                       </NavLink>
                     ))}
                   </div>
@@ -146,31 +143,7 @@ export function Sidebar({ open, onClose, collapsed, onExpand }: SidebarProps) {
             )
           })}
 
-          {moduleGroups.map(group => (
-            <section className="admin-nav-group" key={group.moduleId}>
-              <button type="button" className="admin-nav-group-trigger" title={group.title} aria-label={group.title} onClick={() => { if (collapsed && !open) onExpand() }}>
-                <Plug size={18} />
-                <span className="truncate">{group.title}</span>
-                {group.version ? <small>v{group.version}</small> : null}
-              </button>
-              <div className="admin-nav-sublist">
-                {group.items.map(item => (
-                  <NavLink
-                    key={item.id}
-                    to={item.href}
-                    onPointerEnter={() => warmRoute(item.href)}
-                    onPointerDown={() => warmRoute(item.href)}
-                    onFocus={() => warmRoute(item.href)}
-                    onClick={onClose}
-                    className={({ isActive }) => `admin-nav-sub ${isActive ? 'active' : ''}`}
-                  >
-                    <Plug size={16} />
-                    <span>{item.title}</span>
-                  </NavLink>
-                ))}
-              </div>
-            </section>
-          ))}
+
         </nav>
 
         <div className="admin-sidebar-footer">

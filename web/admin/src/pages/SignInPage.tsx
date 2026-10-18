@@ -1,21 +1,20 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { type AxiosError } from 'axios'
 import { useForm } from 'react-hook-form'
 import { useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { z } from 'zod'
-import { login } from '../api/auth'
+import { loginAdmin } from '../native/session'
+import { managementError } from '../native/Feedback'
+import { CoreAdminApiError } from '../native/api'
 import { fetchGuestConfig } from '../api/comm'
 import { CaptchaWidget, type CaptchaWidgetHandle } from '../components/CaptchaWidget'
-import { setAdminSecurePath } from '../api/client'
-import { toRouterTarget } from '../lib/basePath'
-import { setAccessToken } from '../lib/storage'
+import { loginRedirect } from '../lib/basePath'
 
 const schema = z.object({
-  email: z.string().min(1, '请输入邮箱'),
-  password: z.string().min(1, '请输入密码'),
+  email: z.string().trim().email('请输入有效邮箱'),
+  password: z.string().min(8, '密码至少需要 8 个字符'),
 })
 
 type FormValues = z.infer<typeof schema>
@@ -40,44 +39,20 @@ export function SignInPage() {
     mutationFn: async (value: FormValues) => {
       const captcha = await captchaRef.current?.getPayload()
       try {
-        return await login(value.email, value.password, captcha)
+        return await loginAdmin({ email: value.email.trim(), password: value.password, ...captcha })
       } finally {
         captchaRef.current?.reset()
       }
     },
-    onSuccess: data => {
-      if (!Boolean(data.is_admin)) {
-        toast.error('该账号不是管理员，无法进入管理后台')
-        return
-      }
-
-      const authorization = String(data.auth_data || data.access_token || '')
-      if (!authorization) {
-        toast.error('登录成功响应中未返回管理员授权凭据')
-        return
-      }
-
-      setAccessToken(authorization)
-      setAdminSecurePath(String(data.secure_path || ''))
+    onSuccess: () => {
+      form.resetField('password')
       toast.success('登录成功')
 
-      // Redirect query values are router-relative. Normalize any value produced
-      // by older builds that still included the physical secure_path prefix so
-      // React Router does not prepend the basename a second time.
-      const redirect = toRouterTarget(params.get('redirect') || '')
-      const redirectPathname = redirect.split(/[?#]/, 1)[0]
-      const target =
-        redirect.startsWith('/') &&
-        !redirect.startsWith('//') &&
-        redirectPathname !== '/sign-in'
-          ? redirect
-          : '/config/system'
-
-      navigate(target, { replace: true })
+      navigate(loginRedirect(params.get('redirect') || ''), { replace: true })
     },
     onError: error => {
-      const axiosError = error as AxiosError<{ message?: string }>
-      toast.error(axiosError.response?.data?.message || (error instanceof Error ? error.message : '登录失败'))
+      toast.error(error instanceof CoreAdminApiError && error.status === 401
+        ? '邮箱、密码或验证码未通过验证。' : managementError(error))
     },
   })
 

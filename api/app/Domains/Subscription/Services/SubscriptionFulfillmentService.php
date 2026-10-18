@@ -120,6 +120,8 @@ final class SubscriptionFulfillmentService implements OrderFulfillment, LockedOr
             ->update(['status' => Order::STATUS_COMPLETED, 'updated_at' => $now]) !== 1) {
             throw new DomainException('NATIVE_ORDER_STATUS_CONFLICT');
         }
+        $order->status = Order::STATUS_COMPLETED;
+        app(\App\Domains\Billing\NativeOrderEventJournal::class)->recordLocked($order, 'fulfilled', $now);
         $this->store->record($request, $result, $now);
         app(NativeCredentialSynchronization::class)->stageLocked((int) $user->id, (int) $result['subscription_id']);
         return $result;

@@ -71,6 +71,7 @@ final class NativeOrderLifecycle
                 if (!$order->save()) {
                     throw new \RuntimeException('Failed to save order status.');
                 }
+                app(NativeOrderEventJournal::class)->recordLocked($order, 'payment_accepted');
                 if ($nativeUpgrade) {
                     app(NativeUpgradeCredits::class)->fulfillAcceptedLocked($installation, $order, $purchase, $acceptedAt);
                 }
@@ -118,6 +119,7 @@ final class NativeOrderLifecycle
                     app(NativeWalletReservations::class)->releaseLocked($installation, (int) $order->user_id, $order, $purchase);
                     $order->status = Order::STATUS_CANCELLED;
                     $order->saveOrFail();
+                    app(NativeOrderEventJournal::class)->recordLocked($order, 'cancelled');
                     return $order;
                 });
             if ($cancelled === null) { return false; }

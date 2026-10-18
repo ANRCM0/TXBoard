@@ -19,6 +19,7 @@ export default defineConfig(({ mode }) => {
     server: {
       port: Number(env.VITE_USER_PORT || 5173),
       proxy: {
+        '/gateway': { target: env.VITE_GATEWAY_PROXY_TARGET || 'http://127.0.0.1:7801', changeOrigin: true },
         '/txapi': {
           target: env.VITE_PROXY_TARGET || 'http://127.0.0.1:7801',
           changeOrigin: true,

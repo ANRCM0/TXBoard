@@ -113,6 +113,7 @@ final class PublishedOrderService
                     ]);
                     if ($credit !== null) { app(NativeUpgradeCredits::class)->persistLocked($created, $credit); }
                     $this->snapshots->capturePublished($created, $published);
+                    app(\App\Domains\Billing\NativeOrderEventJournal::class)->recordLocked($created, 'created', (int) $created->created_at);
                     return $created;
                 } catch (RuntimeException $error) {
                     // Only a failure inside a fresh creation callback proves no prior purchase committed.

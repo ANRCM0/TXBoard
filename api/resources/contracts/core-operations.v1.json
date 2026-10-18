@@ -260,6 +260,24 @@
           "type": "string",
           "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?(?:Z|[+-][0-9]{2}:[0-9]{2})$",
           "maxLength": 40
+        },
+        "currency": {
+          "type": "string",
+          "enum": [
+            "USD",
+            "CNY",
+            "EUR",
+            "GBP",
+            "HKD",
+            "SGD",
+            "CAD",
+            "AUD",
+            "NZD",
+            "TWD"
+          ]
+        },
+        "purchase_terms_version": {
+          "const": "tx-core.purchase-terms/v2"
         }
       },
       "required": [
@@ -1606,6 +1624,40 @@
         "user_id",
         "currency",
         "purchase_terms_version"
+      ],
+      "additionalProperties": false
+    },
+    "order-event": {
+      "type": "object",
+      "properties": {
+        "sequence": {
+          "$ref": "#/definitions/id"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "created",
+            "payment_accepted",
+            "fulfilled",
+            "cancelled"
+          ]
+        },
+        "status": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4
+        },
+        "occurred_at": {
+          "type": "string",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?(?:Z|[+-][0-9]{2}:[0-9]{2})$",
+          "maxLength": 40
+        }
+      },
+      "required": [
+        "sequence",
+        "type",
+        "status",
+        "occurred_at"
       ],
       "additionalProperties": false
     }
@@ -9846,6 +9898,211 @@
         "IDEMPOTENCY_CONFLICT",
         "IDEMPOTENCY_IN_PROGRESS"
       ]
+    },
+    "commerce.orders.events.list": {
+      "version": 1,
+      "domains": [
+        "user"
+      ],
+      "actor": "user",
+      "permission": null,
+      "idempotency": "read",
+      "consistency": "current-owner-view",
+      "input": {
+        "type": "object",
+        "properties": {
+          "trade_no": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$"
+          },
+          "after_sequence": {
+            "$ref": "#/definitions/decimal"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          }
+        },
+        "required": [
+          "trade_no"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "array",
+        "items": {
+          "$ref": "#/definitions/order-event"
+        },
+        "maxItems": 100
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS"
+      ],
+      "meta": {
+        "type": "object",
+        "properties": {
+          "next_after_sequence": {
+            "$ref": "#/definitions/decimal"
+          },
+          "has_more": {
+            "type": "boolean"
+          },
+          "history_complete": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "next_after_sequence",
+          "has_more",
+          "history_complete"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "commerce.admin-orders.events.list": {
+      "version": 1,
+      "domains": [
+        "admin"
+      ],
+      "actor": "admin",
+      "permission": "commerce.orders.read",
+      "idempotency": "read",
+      "consistency": "current-owner-view",
+      "input": {
+        "type": "object",
+        "properties": {
+          "trade_no": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$"
+          },
+          "after_sequence": {
+            "$ref": "#/definitions/decimal"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          }
+        },
+        "required": [
+          "trade_no"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "array",
+        "items": {
+          "$ref": "#/definitions/order-event"
+        },
+        "maxItems": 100
+      },
+      "meta": {
+        "type": "object",
+        "properties": {
+          "next_after_sequence": {
+            "$ref": "#/definitions/decimal"
+          },
+          "has_more": {
+            "type": "boolean"
+          },
+          "history_complete": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "next_after_sequence",
+          "has_more",
+          "history_complete"
+        ],
+        "additionalProperties": false
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS"
+      ]
+    },
+    "identity.session.create": {
+      "version": 1,
+      "domains": [
+        "user"
+      ],
+      "actor": "anonymous",
+      "permission": null,
+      "idempotency": "once",
+      "consistency": "current-owner-view",
+      "input": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 3
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 8
+          },
+          "turnstile_token": {
+            "type": "string",
+            "maxLength": 8192
+          },
+          "recaptcha_v3_token": {
+            "type": "string",
+            "maxLength": 8192
+          },
+          "recaptcha_data": {
+            "type": "string",
+            "maxLength": 8192
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "auth_data": {
+            "type": "string",
+            "maxLength": 4103,
+            "pattern": "^Bearer [^\\s]{8,4096}$"
+          }
+        },
+        "required": [
+          "auth_data"
+        ],
+        "additionalProperties": false
+      },
+      "meta": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS"
+      ]
     }
   },
   "surfaces": {
@@ -9862,6 +10119,7 @@
       "identity.accounts.get",
       "commerce.admin-orders.list",
       "commerce.admin-orders.get",
+      "commerce.admin-orders.events.list",
       "identity.accounts.create",
       "identity.accounts.status.update",
       "catalog.plans.publish",

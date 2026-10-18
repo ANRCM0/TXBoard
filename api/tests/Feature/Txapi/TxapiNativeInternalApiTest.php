@@ -7,6 +7,8 @@ use App\Core\Http\TxapiResponse;
 use App\Domains\InternalApi\ServiceCredentials;
 use App\Domains\Billing\OrderIdempotency;
 use App\Domains\Subscription\Services\NativeCredentialSynchronization;
+use App\Domains\Subscription\Services\PublishedOrderService;
+use App\Domains\Billing\NativeOrderLifecycle;
 use App\Models\User;
 use App\Http\Middleware\NativeServiceIdentity;
 use Illuminate\Database\QueryException;
@@ -320,10 +322,12 @@ final class TxapiNativeInternalApiTest extends NativeRuntimeTestCase
         $this->assertSame(['identity.account.get' => [$account, 'account'], 'identity.admin.get' => [$account, 'account'],
             'identity.accounts.list' => [$adminAccounts, 'listing'], 'identity.accounts.get' => [$adminAccounts, 'find'],
             'commerce.admin-orders.list' => [$adminOrders, 'listing'], 'commerce.admin-orders.get' => [$adminOrders, 'find'],
+            'commerce.admin-orders.events.list' => [$adminOrders, 'events'],
             'identity.sessions.list' => [$sessions, 'listing'],
             'catalog.offers.list' => [$catalog, 'listing'],
             'subscription.mine.get' => [$account, 'subscription'], 'commerce.orders.list' => [$orders, 'listing'],
             'commerce.orders.get' => [$orders, 'find'],
+            'commerce.orders.events.list' => [$orders, 'events'],
             'billing.wallet.get' => [$billing, 'wallet'], 'billing.payment-attempts.get' => [$billing, 'attempt'],
             'billing.payment-methods.list' => [$billing, 'methods'],
             'billing.recharges.list' => [$billing, 'recharges'], 'billing.recharges.get' => [$billing, 'recharge'],
@@ -375,6 +379,71 @@ final class TxapiNativeInternalApiTest extends NativeRuntimeTestCase
             ->assertStatus(403)->assertJsonPath('error.code', 'FORBIDDEN');
         $this->assertSame((int) $admin->id, (int) DB::table('tx_internal_audit')->orderByDesc('id')->first()->actor_id);
         $this->assertSame(1, DB::table('tx_internal_request')->count());
+    }
+
+    public function test_order_event_http_cursor_reconnect_is_user_scoped_and_rechecks_current_session(): void
+    {
+        $operation = 'commerce.orders.events.list';
+        $this->service = app(ServiceCredentials::class)->issue('event-user', 'user', self::FINGERPRINT,
+            [$operation], time() + 3600);
+        $owner = $this->user();
+        $other = $this->user();
+        $offer = collect($this->offers)->firstWhere('offer_code', 'monthly');
+        $order = app(PublishedOrderService::class)->create($owner->id, (int) $offer['offer_id'], 'http-events');
+        $current = $owner->createToken('event-owner', ['*']);
+        $headers = ['Authorization' => 'Bearer '.$current->plainTextToken];
+        $input = ['trade_no' => $order->trade_no, 'after_sequence' => '0', 'limit' => 1];
+        $this->invoke($operation, $input)->assertUnauthorized();
+        $this->invoke($operation, $input, ['Authorization' => 'Bearer '.$other->createToken('foreign', ['*'])->plainTextToken])
+            ->assertNotFound();
+        $first = $this->invoke($operation, $input, $headers)->assertOk()
+            ->assertJsonPath('data.0.type', 'created')->assertJsonPath('meta.next_after_sequence', '1')
+            ->assertJsonPath('meta.history_complete', true)->assertJsonPath('meta.has_more', false);
+        $this->assertSame(['sequence', 'type', 'status', 'occurred_at'], array_keys($first->json('data.0')));
+        $this->assertTrue((new NativeOrderLifecycle($order))->cancel());
+        $next = ['trade_no' => $order->trade_no, 'after_sequence' => '1', 'limit' => 1];
+        $this->invoke($operation, $next, $headers)->assertOk()->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.type', 'cancelled')->assertJsonPath('meta.next_after_sequence', '2');
+        $this->invoke($operation, array_replace($next, ['after_sequence' => '2']), $headers)->assertOk()
+            ->assertJsonCount(0, 'data')->assertJsonPath('meta.next_after_sequence', '2');
+        foreach ([['after_sequence' => 1], ['after_sequence' => '-1'], ['after_sequence' => '01'], ['limit' => 101], ['user_id' => (string) $other->id]] as $invalid) {
+            $this->invoke($operation, array_replace($input, $invalid), $headers)->assertStatus(422);
+        }
+        $current->accessToken->delete();
+        $this->invoke($operation, $next, $headers)->assertUnauthorized();
+    }
+
+    public function test_admin_order_events_recheck_grant_ability_service_scope_and_admin_path(): void
+    {
+        $operation = 'commerce.admin-orders.events.list';
+        $this->service = app(ServiceCredentials::class)->issue('event-admin', 'admin', self::FINGERPRINT,
+            [$operation], time() + 3600);
+        $admin = $this->user(['is_admin' => true]);
+        $owner = $this->user();
+        $offer = collect($this->offers)->firstWhere('offer_code', 'monthly');
+        $order = app(PublishedOrderService::class)->create($owner->id, (int) $offer['offer_id'], 'admin-http-events');
+        $input = ['trade_no' => $order->trade_no];
+        $headers = ['Authorization' => 'Bearer '.$admin->createToken('events-admin', ['*'])->plainTextToken,
+            'X-Core-Admin-Path' => 'internal-test-admin'];
+        $this->invoke($operation, $input, $headers, domain: 'admin')->assertForbidden();
+        DB::table('tx_internal_actor_grant')->insert([
+            'user_id' => $admin->id, 'permission' => 'commerce.orders.read', 'created_at' => time(),
+        ]);
+        $this->invoke($operation, $input, $headers, domain: 'admin')->assertOk()
+            ->assertJsonPath('data.0.type', 'created')->assertJsonPath('meta.history_complete', true);
+        $limited = array_replace($headers, ['Authorization' => 'Bearer '.$admin->createToken('events-limited', ['identity.read'])->plainTextToken]);
+        $this->invoke($operation, $input, $limited, domain: 'admin')->assertForbidden();
+        $this->invoke($operation, $input, array_replace($headers, ['X-Core-Admin-Path' => 'stale-admin']), domain: 'admin')
+            ->assertNotFound();
+        DB::table('tx_internal_actor_grant')->where('user_id', $admin->id)->delete();
+        $this->invoke($operation, $input, $headers, domain: 'admin')->assertForbidden();
+        DB::table('tx_internal_actor_grant')->insert([
+            'user_id' => $admin->id, 'permission' => 'commerce.orders.read', 'created_at' => time(),
+        ]);
+        DB::table('tx_internal_service')->where('service_id', $this->service['service_id'])
+            ->update(['operations_json' => json_encode(['commerce.admin-orders.get'])]);
+        $this->invoke($operation, $input, $headers, domain: 'admin')->assertForbidden();
+        $this->assertSame(1, DB::table('tx_native_order_event')->where('order_id', $order->id)->count());
     }
 
     public function test_admin_grant_does_not_replace_current_session_ability(): void

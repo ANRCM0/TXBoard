@@ -26,6 +26,8 @@ final class NativePaymentSettlementTest extends NativePaymentTestCase
         $this->assertGreaterThanOrEqual($before, (int) $settlement['occurred_at']);
         $this->assertSame($settlement, $service->settle($user->id, (int) $attempt['attempt_id'], $fact));
         $this->assertSame(Order::STATUS_PROCESSING, (int) $order->fresh()->status);
+        $this->assertSame(['payment_accepted'], DB::table('tx_native_order_event')
+            ->where('order_id', $order->id)->orderBy('sequence')->pluck('type')->all());
         $this->assertSame($this->payment->id, (int) $order->fresh()->payment_id);
         $this->assertSame($settlement['occurred_at'], (string) $order->fresh()->paid_at);
         $this->assertSame(1, DB::table('tx_payment_receipt')->count());
@@ -63,6 +65,8 @@ final class NativePaymentSettlementTest extends NativePaymentTestCase
         $this->assertSame('2468', $this->balance('provider_clearing'));
         $this->assertSame('1234', $this->balance('sales_revenue'));
         $this->assertSame('1234', $this->balance('refund_liability'));
+        $this->assertSame(['payment_accepted'], DB::table('tx_native_order_event')
+            ->where('order_id', $order->id)->orderBy('sequence')->pluck('type')->all());
         $this->assertSame('settled-transaction-1', $order->fresh()->callback_no);
     }
 
@@ -112,6 +116,8 @@ final class NativePaymentSettlementTest extends NativePaymentTestCase
         $this->assertSame(Order::STATUS_PENDING, (int) $order->fresh()->status);
         $retry = app(NativePaymentSettlement::class)->settle($user->id, (int) $attempt['attempt_id'], $this->fact($attempt));
         $this->assertSame('order_payment', $retry['decision']);
+        $this->assertSame(['payment_accepted'], DB::table('tx_native_order_event')
+            ->where('order_id', $order->id)->orderBy('sequence')->pluck('type')->all());
     }
 
     public function test_invalid_verified_binding_and_cross_owner_transaction_reuse_leave_no_partial_journals(): void
@@ -133,6 +139,33 @@ final class NativePaymentSettlementTest extends NativePaymentTestCase
         $this->assertSame(1, DB::table('tx_money_journal')->count());
         $this->assertSame('1234', $this->balance('provider_clearing'));
         $this->assertSame(Order::STATUS_PENDING, (int) $otherOrder->fresh()->status);
+    }
+
+    public function test_event_failure_rolls_back_receipt_money_allocation_work_and_order_together(): void
+    {
+        [$user, $order, $attempt] = $this->prepared('event-atomic');
+        $inject = true;
+        DB::connection()->beforeExecuting(function (string $sql) use (&$inject): void {
+            if ($inject && preg_match('/insert into ["`]tx_native_order_event["`]/i', $sql)) {
+                $inject = false;
+                throw new \RuntimeException('INJECTED_ORDER_EVENT_FAILURE');
+            }
+        });
+        try {
+            app(NativePaymentSettlement::class)->settle($user->id, (int) $attempt['attempt_id'], $this->fact($attempt));
+            $this->fail('Event write failure must abort the settlement transaction.');
+        } catch (\RuntimeException $error) {
+            $this->assertSame('INJECTED_ORDER_EVENT_FAILURE', $error->getMessage());
+        }
+        foreach (['tx_money_account', 'tx_money_journal', 'tx_money_posting', 'tx_payment_receipt',
+            'tx_payment_settlement', 'tx_order_payment', 'tx_billing_work', 'tx_native_order_event'] as $table) {
+            $this->assertSame(0, DB::table($table)->count(), $table);
+        }
+        $this->assertSame(Order::STATUS_PENDING, (int) $order->fresh()->status);
+        $this->assertNull($order->fresh()->paid_at);
+        $this->assertSame('order_payment', app(NativePaymentSettlement::class)
+            ->settle($user->id, (int) $attempt['attempt_id'], $this->fact($attempt))['decision']);
+        $this->assertSame(1, DB::table('tx_native_order_event')->where('order_id', $order->id)->count());
     }
 
     public function test_fulfillment_requires_valid_money_and_work_evidence_and_financial_ownership_is_restrictive(): void

@@ -1,0 +1,80 @@
+import { useEffect, useRef, useState } from 'react'
+import { appendOrderEventPage, type OrderEventHistory } from '@txboard/core-sdk'
+import { CoreAdminApiError } from './api'
+import { managementError } from './Feedback'
+import { isoDate } from './readPresentation'
+import { admin } from './session'
+
+const labels = { created: '订单已创建', payment_accepted: '支付已确认', fulfilled: '履约已完成', cancelled: '订单已取消' }
+
+/** Keep each mounted order's cursor private; failed reads never advance it. */
+export function OrderTimeline({ tradeNo, onAdvance, onDenied }: { tradeNo: string;
+  onAdvance?: () => void; onDenied?: (error: unknown) => void }) {
+  const [history, setHistory] = useState<OrderEventHistory>()
+  const [error, setError] = useState<unknown>()
+  const [loading, setLoading] = useState(true)
+  const retry = useRef<() => void>(() => {})
+  const callbacks = useRef({ onAdvance, onDenied })
+  callbacks.current = { onAdvance, onDenied }
+  useEffect(() => {
+    let active = true, pending = false, denied = false, terminal = false
+    let current: OrderEventHistory | undefined
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const controller = new AbortController()
+    setHistory(undefined); setError(undefined); setLoading(true)
+    async function read() {
+      if (!active || pending) return
+      if (timer) clearTimeout(timer)
+      pending = true
+      setLoading(true)
+      try {
+        do {
+          const page = await admin.read('commerce.admin-orders.events.list', {
+            trade_no: tradeNo, after_sequence: current?.afterSequence ?? '0', limit: 100,
+          }, controller.signal)
+          if (!active) return
+          const previousCursor = current?.afterSequence ?? '0'
+          current = appendOrderEventPage(current, page)
+          setHistory(current); setError(undefined); denied = false
+          if (current.afterSequence !== previousCursor) callbacks.current.onAdvance?.()
+        } while (current.hasMore)
+        const last = current.events.at(-1)
+        terminal = last?.type === 'fulfilled' || last?.type === 'cancelled'
+      } catch (failure) {
+        if (!active) return
+        setError(failure)
+        denied = failure instanceof CoreAdminApiError && [401, 403, 404].includes(failure.status)
+        if (denied) { current = undefined; setHistory(undefined); callbacks.current.onDenied?.(failure) }
+      } finally {
+        pending = false
+        if (active) {
+          setLoading(false)
+          if (!denied && !terminal) timer = setTimeout(() => void read(), 5000)
+        }
+      }
+    }
+    const reconnect = () => { if (!denied && !terminal) void read() }
+    const visible = () => { if (document.visibilityState === 'visible') reconnect() }
+    retry.current = () => void read()
+    window.addEventListener('online', reconnect)
+    document.addEventListener('visibilitychange', visible)
+    void read()
+    return () => {
+      active = false; controller.abort()
+      if (timer) clearTimeout(timer)
+      window.removeEventListener('online', reconnect)
+      document.removeEventListener('visibilitychange', visible)
+    }
+  }, [tradeNo])
+  return <section className="native-order-timeline" aria-label="订单状态时间线" aria-busy={loading}>
+    <h3>状态时间线</h3>
+    {loading && !history ? <p role="status">正在读取时间线…</p> : null}
+    {error ? <div role="alert"><p>{managementError(error)}时间线尚未更新。</p>
+      <button className="button" disabled={loading} onClick={() => retry.current()}>重新加载时间线</button></div> : null}
+    {history && !history.historyComplete ? <p className="native-timeline-notice">历史记录不完整，仅展示已记录的事件。</p> : null}
+    {history?.events.length === 0 ? <p>暂无事件记录。</p> : null}
+    {history && history.events.length > 0 ? <ol>{history.events.map(event => <li key={event.sequence}>
+      <strong>{labels[event.type]}</strong><time dateTime={event.occurred_at}>{isoDate(event.occurred_at)}</time>
+    </li>)}</ol> : null}
+  </section>
+}

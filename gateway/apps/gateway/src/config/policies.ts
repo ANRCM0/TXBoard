@@ -30,7 +30,7 @@ export type PolicyName =
   | 'disabledWrite'
   | 'orderWrite'
   | 'coreAdminCapabilities' | 'coreAdminLogin' | 'coreAdminRead' | 'coreAdminWrite'
-  | 'coreCapabilities' | 'corePublicRead' | 'coreUserRead' | 'coreUserWrite'
+  | 'coreCapabilities' | 'corePublicRead' | 'coreUserLogin' | 'coreUserRead' | 'coreUserWrite'
 
 export type RoutePolicy = Readonly<{
   /** Identity of the policy; the stable key used by snapshots and tests. */
@@ -79,6 +79,7 @@ export const POLICY_DEFINITIONS: Readonly<Record<PolicyName, RoutePolicy>> = {
   coreAdminWrite: { name: 'coreAdminWrite', auth: 'bearer', body: 'json', limiter: 'public', cache: 'off' },
   coreCapabilities: { name: 'coreCapabilities', auth: 'none', body: 'none', limiter: 'public', cache: 'off' },
   corePublicRead: { name: 'corePublicRead', auth: 'none', body: 'json', limiter: 'public', cache: 'off' },
+  coreUserLogin: { name: 'coreUserLogin', auth: 'none', body: 'json', limiter: 'login', cache: 'off' },
   coreUserRead: { name: 'coreUserRead', auth: 'bearer', body: 'json', limiter: 'public', cache: 'off' },
   coreUserWrite: { name: 'coreUserWrite', auth: 'bearer', body: 'json', limiter: 'public', cache: 'off' },
 } as const
@@ -97,7 +98,7 @@ export const routeDefinitions = [
       : coreOperations[id].idempotency === 'read' ? POLICY_DEFINITIONS.coreAdminRead : POLICY_DEFINITIONS.coreAdminWrite })),
   { method: 'GET', path: `${CORE_USER_PREFIX}/capabilities`, policy: POLICY_DEFINITIONS.coreCapabilities },
   ...CORE_USER_OPERATIONS.map(id => ({ method: 'POST' as const, path: `${CORE_USER_PREFIX}/operations/${id}`,
-    policy: coreOperations[id].actor === 'anonymous' ? POLICY_DEFINITIONS.corePublicRead
+    policy: id === 'identity.session.create' ? POLICY_DEFINITIONS.coreUserLogin : coreOperations[id].actor === 'anonymous' ? POLICY_DEFINITIONS.corePublicRead
       : coreOperations[id].idempotency === 'read' ? POLICY_DEFINITIONS.coreUserRead : POLICY_DEFINITIONS.coreUserWrite })),
   { method: 'GET', path: `${PREFIX}/bootstrap`, policy: POLICY_DEFINITIONS.publicRead },
   { method: 'GET', path: `${PREFIX}/theme/config`, policy: POLICY_DEFINITIONS.publicRead },
@@ -356,7 +357,7 @@ export function validatePolicies(
           : !isCoreAdminOperation(id) || method !== 'POST' || policy.body !== 'json'
             || policy.auth !== (coreOperations[id].actor === 'anonymous' ? 'none' : 'bearer'))) throw new Error('Invalid reviewed Core admin route')
     } else if (policy.name.startsWith('core')) {
-      if (policy.cache !== 'off' || policy.limiter !== 'public') throw new Error('Core operations cannot be cached or unbounded')
+      if (policy.cache !== 'off' || policy.limiter !== (policy.name === 'coreUserLogin' ? 'login' : 'public')) throw new Error('Core operations cannot be cached or unbounded')
       const id = path.slice(`${CORE_USER_PREFIX}/operations/`.length)
       if (policy.name !== 'coreCapabilities' && (!isCoreUserOperation(id) || method !== 'POST'
           || policy.body !== 'json' || policy.auth !== (coreOperations[id].actor === 'anonymous' ? 'none' : 'bearer'))) {

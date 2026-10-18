@@ -15,16 +15,23 @@ use App\Domains\Subscription\Services\PublishedOrderService;
 
 final class NativeOrderQueries implements OrderQueries, AdminOrderQueries
 {
+    private readonly NativeOrderEventJournal $eventsJournal;
+
+    public function __construct(?NativeOrderEventJournal $eventsJournal = null)
+    {
+        $this->eventsJournal = $eventsJournal ?? new NativeOrderEventJournal();
+    }
+
     public function listing(int $userId, OrderListQuery $query): OrderPage
     {
         $this->requireAccount($userId);
-        $orders = Order::query()->with('plan:id,name')->where('user_id', $userId);
+        $orders = Order::query()->useWritePdo()->with(['plan:id,name', 'purchaseTerms' => static fn ($query) => $query->useWritePdo()])->where('user_id', $userId);
         if ($query->status !== null) {
             $orders->where('status', $query->status);
         }
         $result = $orders->orderByDesc('created_at')->orderByDesc('id')
-            ->paginate($query->perPage, ['id', 'trade_no', 'plan_id', 'period', 'type',
-                'status', 'total_amount', 'paid_at', 'created_at'], 'page', $query->page);
+            ->paginate($query->perPage, ['id', 'user_id', 'trade_no', 'plan_id', 'period', 'type',
+                'status', 'total_amount', 'paid_at', 'created_at', 'purchase_terms_version'], 'page', $query->page);
 
         return new OrderPage(
             $result->getCollection()->map(static fn (Order $order): array => self::summary($order))->all(),
@@ -36,7 +43,7 @@ final class NativeOrderQueries implements OrderQueries, AdminOrderQueries
     public function find(int $userId, string $tradeNo): ?array
     {
         $this->requireAccount($userId);
-        $order = Order::query()->with('plan:id,name')->where('user_id', $userId)
+        $order = Order::query()->useWritePdo()->with(['plan:id,name', 'purchaseTerms' => static fn ($query) => $query->useWritePdo()])->where('user_id', $userId)
             ->where('trade_no', $tradeNo)->first();
         return $order === null ? null : self::summary($order);
     }
@@ -44,18 +51,29 @@ final class NativeOrderQueries implements OrderQueries, AdminOrderQueries
     public function detail(int $userId, string $tradeNo): ?array
     {
         $this->requireAccount($userId);
-        $order = Order::query()->with('plan:id,name,transfer_enable')->where('user_id', $userId)
+        $order = Order::query()->useWritePdo()->with(['plan:id,name,transfer_enable', 'purchaseTerms' => static fn ($query) => $query->useWritePdo()])->where('user_id', $userId)
             ->where('trade_no', $tradeNo)->first();
-        if ($order === null || $order->plan === null) return null;
+        if ($order === null || ($order->plan === null && $order->purchase_terms_version !== PublishedOrderService::VERSION)) return null;
 
         // Detail-only financial display fields must not expand the summary projection.
         $data = self::summary($order);
-        $data['plan'] = ['id' => (int) $order->plan->id, 'name' => (string) $order->plan->name,
-            'traffic_limit_bytes' => (int) $order->plan->transfer_enable * 1073741824];
+        $purchase = self::frozenPurchase($order);
+        $data['plan'] = ['id' => (int) $order->plan_id, 'name' => $purchase['plan_name'] ?? (string) $order->plan->name,
+            'traffic_limit_bytes' => $purchase !== null ? (int) ($purchase['quota_bytes'] ?? 0) : (int) $order->plan->transfer_enable * 1073741824];
         $data['payment_id'] = $order->payment_id === null ? null : (int) $order->payment_id;
         $data['balance_amount_minor'] = (int) ($order->balance_amount ?? 0);
         $data['discount_amount_minor'] = (int) ($order->discount_amount ?? 0);
         return $data;
+    }
+
+    public function events(int $userId, string $tradeNo, string $afterSequence, int $limit): ?OrderPage
+    {
+        $this->requireAccount($userId);
+        $order = Order::query()->useWritePdo()->where('user_id', $userId)->where('trade_no', $tradeNo)->first();
+        if ($order === null || $order->purchase_terms_version !== PublishedOrderService::VERSION) {
+            return null;
+        }
+        return $this->eventsJournal->page($order, $afterSequence, $limit);
     }
 
     private function requireAccount(int $userId): void
@@ -92,6 +110,14 @@ final class NativeOrderQueries implements OrderQueries, AdminOrderQueries
             OrderPurchaseTerms::query()->useWritePdo()->where('order_id', $order->id)->first());
     }
 
+    public function adminEvents(string $tradeNo, string $afterSequence, int $limit): ?OrderPage
+    {
+        $order = Order::query()->useWritePdo()->where('purchase_terms_version', PublishedOrderService::VERSION)
+            ->where('trade_no', $tradeNo)->first();
+        if ($order === null) return null;
+        return $this->eventsJournal->page($order, $afterSequence, $limit);
+    }
+
     private static function adminSummary(Order $order, ?OrderPurchaseTerms $terms): array
     {
         $purchase = app(PurchasedOrderGrant::class)->resolve($order, $terms);
@@ -106,16 +132,27 @@ final class NativeOrderQueries implements OrderQueries, AdminOrderQueries
             'purchase_terms_version' => PublishedOrderService::VERSION];
     }
 
+    private static function frozenPurchase(Order $order): ?array
+    {
+        if ($order->purchase_terms_version !== PublishedOrderService::VERSION) return null;
+        $purchase = app(PurchasedOrderGrant::class)->resolve($order, $order->purchaseTerms);
+        if ($purchase === null) throw new \LogicException('NATIVE_ORDER_PURCHASE_MISSING');
+        return $purchase;
+    }
+
     private static function summary(Order $order): array
     {
+        $purchase = self::frozenPurchase($order);
         return [
             'id' => (int) $order->id, 'trade_no' => (string) $order->trade_no,
             'plan_id' => (int) $order->plan_id, 'period' => (string) $order->period,
             'type' => (int) $order->type, 'status' => (int) $order->status,
             'amount_minor' => (int) $order->total_amount,
-            'plan' => $order->plan ? ['id' => (int) $order->plan->id, 'name' => (string) $order->plan->name] : null,
+            'plan' => $purchase !== null ? ['id' => (int) $order->plan_id, 'name' => $purchase['plan_name']]
+                : ($order->plan ? ['id' => (int) $order->plan->id, 'name' => (string) $order->plan->name] : null),
             'paid_at' => $order->paid_at ? Carbon::createFromTimestampUTC((int) $order->paid_at)->toIso8601String() : null,
             'created_at' => Carbon::createFromTimestampUTC((int) $order->created_at)->toIso8601String(),
-        ];
+        ] + ($purchase === null ? [] : ['currency' => $purchase['currency'],
+            'purchase_terms_version' => PublishedOrderService::VERSION]);
     }
 }

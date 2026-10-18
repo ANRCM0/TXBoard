@@ -71,3 +71,10 @@ export function withBasePath(path: string): string {
   const normalized = '/' + String(path || '').replace(/^\/+/, '')
   return base === '/' ? normalized : base + normalized
 }
+
+export function loginRedirect(value: string): string {
+  const target = toRouterTarget(value)
+  if (!target.startsWith('/') || target.startsWith('//') || /[\\\u0000-\u001f]/.test(target)
+      || target.split(/[?#]/, 1)[0].replace(/\/+$/, '') === '/sign-in') return '/'
+  return target
+}
