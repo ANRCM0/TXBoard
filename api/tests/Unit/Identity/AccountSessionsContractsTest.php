@@ -68,7 +68,8 @@ final class AccountSessionsContractsTest extends TestCase
         $this->assertSame(['ok' => true], $commands->end($actor, [])->data);
         $reflection = new \ReflectionClass(MutationOperationResult::class);
         $this->assertTrue($reflection->isReadOnly());
-        $this->assertSame(['data' => ['ok' => true]], get_object_vars(new MutationOperationResult(['ok' => true])));
+        $this->assertSame(['data' => ['ok' => true], 'status' => 200, 'meta' => []],
+            get_object_vars(new MutationOperationResult(['ok' => true])));
     }
 
     public function test_registry_exposes_only_three_fixed_session_targets_and_preserves_closed_inputs_and_retry_modes(): void

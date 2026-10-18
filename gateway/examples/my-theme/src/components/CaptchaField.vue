@@ -10,7 +10,7 @@
 </template>
 
 <script setup lang="ts">
-import type { CaptchaConfig } from '@ANRCM0/theme-sdk'
+import type { CaptchaConfig } from '@txboard/theme-sdk'
 import { onMounted } from 'vue'
 
 const props = defineProps<{ captcha: CaptchaConfig }>()

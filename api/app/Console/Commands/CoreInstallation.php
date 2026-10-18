@@ -21,6 +21,8 @@ final class CoreInstallation extends Command
             $key = $this->option('key');
             if ($operation === 'activate' && $id === null && $mode === null && is_string($key)) {
                 $result = $authority->activate($key, (string) $this->option('expected-version'), (string) $this->option('configuration-digest'));
+            } elseif ($operation === 'runtime' && $id === null && $mode === null && $key === null) {
+                $result = $authority->runtimeReport();
             } elseif ($operation === 'preflight' && $id === null && $mode === null && $key === null) {
                 $result = $authority->readiness();
             } elseif ($operation === 'status' && $id === null && $mode === null && $key === null) {

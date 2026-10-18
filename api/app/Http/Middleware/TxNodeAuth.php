@@ -68,6 +68,8 @@ final class TxNodeAuth
             }
             $request->attributes->set('txnode.node', $node);
         }
+        app(\App\Core\Host\Execution\InvocationScope::class)->actor(
+            new \App\Core\Kernel\Execution\ActorRef('node', $nodeId === null ? 'machine:'.$machineId : (string) $nodeId));
         return $next($request);
     }
 

@@ -1,5 +1,5 @@
 <?php
-// This script can mutate only the dedicated integration database.
+// CI only: all mutable fixture operations require the isolated snapshot and DB.
 $root = realpath($argv[1] ?? '');
 if (!$root || !is_file($root.'/artisan') || !is_file($root.'/.gateway-integration-snapshot')) {
     throw new RuntimeException('A standalone integration Core snapshot is required');
@@ -12,71 +12,68 @@ if (config('database.connections.mysql.database') !== 'txboard_gateway_test'
     throw new RuntimeException('Refusing to mutate any other database or environment');
 }
 $action = $argv[2] ?? 'seed';
-if ($action === 'captcha-on' || $action === 'captcha-off') {
-    admin_setting(['captcha_enable' => $action === 'captcha-on' ? 1 : 0, 'captcha_type' => 'turnstile']);
-    echo "{}\n";
+if ($action === 'trust') {
+    $trust = app(App\Domains\Network\NativeNodeAuthorization::class)->publicTrust();
+    echo json_encode(array_intersect_key($trust, array_flip(['protocol_version', 'core_instance_id',
+        'key_id', 'key_epoch', 'algorithm', 'public_key'])), JSON_THROW_ON_ERROR)."\n";
     exit;
 }
-if ($action === 'history' || $action === 'activate-subscription') {
-    $user = App\Models\User::findOrFail((int) ($argv[3] ?? 0));
-    $plan = App\Models\Plan::findOrFail((int) ($argv[4] ?? 0));
-    $expectedPrefix = $action === 'history' ? 'gw-a-' : 'gw-b-';
-    if (!str_starts_with($user->email, $expectedPrefix) || $plan->name !== 'Gateway Native fixture') {
-        throw new RuntimeException('Only the dedicated integration user and plan may receive historical fixtures');
-    }
-    if ($action === 'activate-subscription') {
-        $user->forceFill(['plan_id' => $plan->id, 'group_id' => $plan->group_id,
-            'expired_at' => time() + 86400, 'transfer_enable' => 10 * 1073741824,
-            'u' => 123, 'd' => 456, 'device_limit' => $plan->device_limit,
-            'speed_limit' => $plan->speed_limit])->save();
+if ($action === 'history' || $action === 'edit-plan') {
+    app(App\Domains\Installation\InstallationAuthority::class)->assertNativeRuntime();
+    $plan = App\Models\Plan::findOrFail((int) ($argv[$action === 'history' ? 4 : 3] ?? 0));
+    if ($plan->name !== 'Gateway Native fixture') throw new RuntimeException('Dedicated fixture plan required');
+    if ($action === 'edit-plan') {
+        // Deliberately edit mutable source only; immutable publications remain untouched.
+        $plan->forceFill(['prices' => ['monthly' => '99.00', 'quarterly' => '297.00']])->save();
         echo "{}\n";
         exit;
     }
+    $user = App\Models\User::findOrFail((int) ($argv[3] ?? 0));
+    if (!str_starts_with($user->email, 'gw-a-')) throw new RuntimeException('Dedicated fixture owner required');
+    // Read-only pagination evidence. These historical rows are never used for native admission,
+    // purchase, financial recovery or entitlement. Native purchased orders are tested separately.
     $rows = [];
     $prefix = 'gw-history-'.bin2hex(random_bytes(5));
     for ($i = 0; $i < 101; $i++) {
-        $rows[] = [
-            'user_id' => $user->id, 'plan_id' => $plan->id, 'period' => 'monthly',
-            'trade_no' => $prefix.'-'.$i, 'type' => 1,
-            'status' => App\Models\Order::STATUS_DISCOUNTED, 'total_amount' => 1200,
-            'created_at' => time() - 1000 - $i, 'updated_at' => time() - 1000 - $i,
-        ];
+        $rows[] = ['user_id' => $user->id, 'plan_id' => $plan->id, 'period' => 'monthly',
+            'trade_no' => $prefix.'-'.$i, 'type' => 1, 'status' => App\Models\Order::STATUS_DISCOUNTED,
+            'total_amount' => 1200, 'created_at' => time() - 1000 - $i, 'updated_at' => time() - 1000 - $i];
     }
     Illuminate\Support\Facades\DB::table('tx_order')->insert($rows);
     echo json_encode(['trade_no' => $rows[0]['trade_no'], 'count' => count($rows)], JSON_THROW_ON_ERROR)."\n";
     exit;
 }
 if ($action !== 'seed') throw new RuntimeException('Unknown fixture operation');
-admin_setting([
-    'app_name' => 'Gateway integration', 'app_url' => 'http://127.0.0.1:18081',
-    'captcha_enable' => 0, 'stop_register' => 0, 'email_verify' => 0,
-    'invite_force' => 0, 'email_whitelist_enable' => 0, 'register_limit_by_ip_enable' => 0,
-]);
-if (admin_setting('app_name') !== 'Gateway integration') {
-    throw new RuntimeException('Fixture settings must be readable through the real Core settings repository');
-}
-$plan = App\Models\Plan::create([
-    'group_id' => 1, 'name' => 'Gateway Native fixture', 'transfer_enable' => 10,
-    'show' => true, 'sell' => true, 'renew' => true, 'sort' => 0,
-    'content' => 'Dedicated integration plan', 'prices' => ['monthly' => 12, 'quarterly' => 36],
+$authority = app(App\Domains\Installation\InstallationAuthority::class);
+// Initialization must run against fresh application data before creating catalog/node inventory.
+$authority->initialize('11111111-1111-4111-8111-111111111111', 'native', 'gateway-native-bootstrap');
+admin_setting(['app_name' => 'Gateway integration', 'app_url' => 'http://127.0.0.1:18081',
+    'captcha_enable' => 0, 'stop_register' => 0, 'email_verify' => 0, 'invite_force' => 0,
+    'email_whitelist_enable' => 0, 'register_limit_by_ip_enable' => 0,
+    'server_token' => 'synthetic-gateway-native-node-token']);
+$group = App\Models\ServerGroup::unguarded(fn () => App\Models\ServerGroup::create(['name' => 'Gateway native group']));
+$plan = App\Models\Plan::withoutEvents(fn () => App\Models\Plan::create([
+    'group_id' => $group->id, 'name' => 'Gateway Native fixture', 'transfer_enable' => 10,
+    'show' => true, 'sell' => true, 'renew' => true, 'sort' => 0, 'reset_traffic_method' => 2,
+    'content' => 'Dedicated integration plan', 'prices' => ['monthly' => '12.00', 'quarterly' => '36.00'],
     'tags' => ['integration'], 'device_limit' => 2, 'speed_limit' => 100, 'capacity_limit' => null,
-]);
-$payment = App\Models\Payment::create([
-    'uuid' => bin2hex(random_bytes(16)), 'name' => 'Gateway display fixture',
-    'payment' => 'Stripe', 'config' => ['secret_key' => 'test-fixture-never-expose'],
-    'enable' => true, 'sort' => 0, 'handling_fee_fixed' => 20, 'handling_fee_percent' => 1.5,
-]);
-$notice = App\Models\Notice::create([
-    'title' => 'Visible integration notice', 'content' => 'Public notice content',
-    'show' => true, 'sort' => 0, 'tags' => ['integration'],
-]);
-App\Models\Notice::create(['title' => 'Hidden fixture notice', 'content' => 'hidden-notice-secret', 'show' => false]);
-$article = App\Models\Knowledge::create([
-    'language' => 'en-US', 'category' => 'Integration', 'title' => 'Subscription gated article',
-    'body' => 'Public instructions <!--access start-->paid-fixture-secret<!--access end-->',
-    'show' => true, 'sort' => 0,
-]);
-echo json_encode(['plan_id' => $plan->id, 'payment_id' => $payment->id,
-    'notice_id' => $notice->id, 'article_id' => $article->id,
+]));
+$publication = app(App\Domains\Subscription\Services\PlanPublicationService::class)
+    ->publish($plan->id, 'gateway-native-publication', 'CNY', 'UTC');
+$node = App\Models\Server::withoutEvents(fn () => App\Models\Server::create([
+    'name' => 'Gateway readiness VLESS', 'type' => 'vless', 'host' => '127.0.0.1',
+    'port' => 18086, 'server_port' => 18086, 'rate' => 1, 'enabled' => true, 'show' => true,
+    'group_ids' => [(string) $group->id], 'protocol_settings' => ['tls' => 0, 'network' => 'tcp'],
+]));
+if ((int) $node->id !== 1) throw new RuntimeException('Fresh dedicated database required');
+app(App\Domains\Subscription\Services\NativeCredentialProviderService::class)
+    ->register('primary-provider', 'gateway-native-provider');
+$ready = $authority->readiness();
+$activated = $authority->activate('gateway-native-activate', '1', $ready['configuration_digest']);
+if ($activated['phase'] !== 'open' || $activated['authority_epoch'] !== '2') {
+    throw new RuntimeException('Real native activation required');
+}
+echo json_encode(['plan_id' => (string) $plan->id, 'offers' => $publication['offers'],
+    'authority_epoch' => $activated['authority_epoch'], 'native_activation' => true,
     'database_version' => Illuminate\Support\Facades\DB::selectOne('SELECT VERSION() AS version')->version,
 ], JSON_THROW_ON_ERROR)."\n";

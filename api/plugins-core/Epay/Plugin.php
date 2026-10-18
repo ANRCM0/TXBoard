@@ -6,8 +6,15 @@ use App\Services\Plugin\AbstractPlugin;
 use App\Contracts\NativePaymentPluginInterface;
 use App\Contracts\NativePaymentProviderInterface;
 
-final class Plugin extends AbstractPlugin implements NativePaymentPluginInterface
+final class Plugin extends AbstractPlugin implements NativePaymentPluginInterface, \App\Extensions\Contracts\DeploymentModule
 {
+    public function packageVersion(): string { return $this->nativePaymentPackageVersion(); }
+
+    public function prepareSchema(string $deploymentId, int $fromVersion, int $toVersion): void
+    {
+        if ($fromVersion !== 0 || $toVersion !== 0) throw new \App\Extensions\Contracts\ExtensionFailure('MODULE_SCHEMA_VERSION_UNSUPPORTED');
+    }
+
     public function nativePaymentPackageVersion(): string
     {
         return '1.0.0';

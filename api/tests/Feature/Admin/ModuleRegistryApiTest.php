@@ -47,6 +47,12 @@ class ModuleRegistryApiTest extends TestCase
         $this->assertFalse($modules->has('agent_ops'));
         $this->assertTrue($modules->has('theme.txboard'));
         $this->assertTrue($modules->has('epay'));
+        foreach (['identity', 'subscription', 'billing', 'usage', 'network', 'installation'] as $owner) {
+            $this->assertTrue($modules->has('core.'.$owner));
+            $this->assertSame('core', $modules['core.'.$owner]['type']);
+        }
+        $this->assertContains('subscription.entitlements', array_column($modules['core.subscription']['services'], 'id'));
+        $this->assertNotContains('subscription.locked-entitlements', array_column($modules['core.subscription']['services'], 'id'));
 
         $this->assertSame('theme', $modules['theme.txboard']['type']);
         $this->assertTrue($modules['theme.txboard']['active']);

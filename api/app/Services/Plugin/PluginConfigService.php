@@ -52,6 +52,10 @@ class PluginConfigService
      */
     public function updateConfig(string $pluginCode, array $config): bool
     {
+        if ($this->pluginManager->isManagedModule($pluginCode)) {
+            app(\App\Core\Host\Modules\ModuleDeployment::class)->execute($pluginCode, 'configure', (string) \Illuminate\Support\Str::uuid(), $config);
+            return true;
+        }
         $defaultConfig = $this->getDefaultConfig($pluginCode);
         if (empty($defaultConfig)) {
             throw new \Exception('插件配置结构不存在');

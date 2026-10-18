@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "packages": [
+    {
+      "code": "epay",
+      "root": "plugins-core/Epay",
+      "required": false,
+      "grants": []
+    }
+  ]
+}

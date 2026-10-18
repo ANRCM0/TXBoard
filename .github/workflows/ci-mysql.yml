@@ -17,6 +17,11 @@ on:
       - "scripts/tests/compare-critical-data-snapshots.test.mjs"
       - ".github/workflows/ci-mysql.yml"
   workflow_dispatch:
+    inputs:
+      native_only:
+        description: Run native domain acceptance without the separate full legacy regression job
+        type: boolean
+        default: false
 
 concurrency:
   group: api-mysql-ci-${{ github.ref }}
@@ -24,7 +29,7 @@ concurrency:
 
 jobs:
   mysql-regression:
-    if: github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch' && !inputs.native_only
     runs-on: ubuntu-latest
     services:
       mysql:
@@ -236,7 +241,7 @@ jobs:
 
   native-billing-domain:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     permissions:
       contents: read
     services:
@@ -303,10 +308,12 @@ jobs:
           tests/Feature/Billing/NativeUpgradeCreditTest.php
           tests/Feature/Billing/NativeUpgradeCreditMysqlConcurrencyTest.php
           tests/Feature/Txapi/TxapiWalletRechargeTest.php
+          tests/Feature/Modules/ModuleDeploymentTest.php
+          tests/Feature/Modules/ProofExtensionsTest.php
 
   native-subscription-domain:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 60
     permissions:
       contents: read
     services:
@@ -382,6 +389,7 @@ jobs:
           tests/Feature/Txapi/AccountReadBoundaryTest.php
           tests/Feature/Txapi/OrderReadBoundaryTest.php
           tests/Feature/Txapi/AccountSessionsBoundaryTest.php
+          tests/Feature/Txapi/UsageReadBoundaryTest.php
           tests/Feature/Txapi/TxapiNativeInternalCheckoutTest.php
           tests/Feature/UsageV2/NativeRuntimeUsageTest.php
       - name: Native receipt concurrency and SQL crash recovery on MySQL 8.4

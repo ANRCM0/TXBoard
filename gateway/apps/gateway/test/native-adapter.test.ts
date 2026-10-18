@@ -1,14 +1,14 @@
 import { describe, expect, it, vi } from 'vitest'
 import { loadConfig } from '../src/config/env.js'
 import { upstreamRequest, type UpstreamOperation } from '../src/services/upstream.js'
-import { nativeEnvelope, nativeError, nativeNotice, nativeOrder, nativePlan, nativeProfile, nativeSubscription } from './native-fixtures.js'
+import { nativeEnvelope, nativeError, nativeNotice, nativeOrder, nativeOffer, nativeProfile, nativeSubscription } from './native-fixtures.js'
 
 const config = loadConfig({ TXBOARD_UPSTREAM_URL: 'https://core.test' })
 const bearer = 'Bearer ordinary-user-session'
 const pages = { page: 1, per_page: 100, total: 1, last_page: 1 }
 const fixtures: Array<[UpstreamOperation, string, unknown, unknown?]> = [
   ['guestConfig', '/txapi/public/site-config', { app_name: 'Core', theme_config: {} }],
-  ['guestPlans', '/txapi/plans', [nativePlan({ prices: [{ period: 'monthly', amount_minor: 1200 }] })]],
+  ['guestPlans', '/txapi/plans', [nativeOffer()]],
   ['login', '/txapi/auth/login', { auth_data: bearer, secure_path: 'secret', is_admin: true }],
   ['register', '/txapi/auth/register', { auth_data: bearer }],
   ['sendEmailCode', '/txapi/auth/email-code', { ok: true }],
@@ -23,6 +23,18 @@ const fixtures: Array<[UpstreamOperation, string, unknown, unknown?]> = [
   ['userOrderCreate', '/txapi/orders', { trade_no: 'T-1', private_note: 'secret' }],
 ]
 describe('current Native Core adapter', () => {
+  it('accepts the real native zero-fee payment DTO without widening string coercion', async () => {
+    const method = { id: 1, name: 'Pay', provider: 'Epay', icon: null, fee_fixed_minor: '0', fee_percent: '0' }
+    const invoke = (data: unknown) => upstreamRequest(config,
+      vi.fn(async () => Response.json(nativeEnvelope([data]))), 'userPaymentMethods', { auth: bearer })
+    await expect(invoke(method)).resolves.toEqual([{
+      id: 1, name: 'Pay', payment: 'Epay', icon: null, handling_fee_fixed: 0, handling_fee_percent: 0,
+    }])
+    for (const invalid of ['', ' 0', '00', '-1', 'NaN', '1e2', '9007199254740992']) {
+      await expect(invoke({ ...method, fee_fixed_minor: invalid })).rejects.toMatchObject({ status: 502 })
+      await expect(invoke({ ...method, fee_percent: invalid })).rejects.toMatchObject({ status: 502 })
+    }
+  })
   it.each(fixtures)('uses only the Native route and projects %s', async (operation, path, data, meta) => {
     const fetcher = vi.fn(async () => Response.json(nativeEnvelope(data, meta)))
     const result = await upstreamRequest(config, fetcher, operation, {
@@ -37,7 +49,7 @@ describe('current Native Core adapter', () => {
     expect(headers.has('Origin')).toBe(false)
     expect(init.redirect).toBe('manual')
     expect(JSON.stringify(result)).not.toContain('secret')
-    if (operation === 'guestPlans') expect(result).toMatchObject([{ month_price: 1200, transfer_enable: 1 }])
+    if (operation === 'guestPlans') expect(result).toMatchObject([nativeOffer()])
     if (operation === 'login') expect(result).toEqual({ auth_data: bearer })
     if (operation === 'userStats') expect(result).toEqual([2, 1, 3])
     if (operation === 'userOrderStatus') expect(result).toBe(0)
@@ -64,15 +76,29 @@ describe('current Native Core adapter', () => {
       .rejects.toMatchObject({ code: 'UPSTREAM_ERROR', status: 502 })
   })
   it.each([
-    nativePlan({ id: '1' }), nativePlan({ traffic_limit_bytes: -1 }),
-    nativePlan({ traffic_limit_bytes: Number.MAX_SAFE_INTEGER + 1 }),
-    nativePlan({ prices: [{ period: 'monthly', amount_minor: 1.5 }] }),
-    nativePlan({ prices: [{ period: 'month_price', amount_minor: 1200 }] }),
-    nativePlan({ prices: [{ period: 'monthly', amount_minor: 1 }, { period: 'monthly', amount_minor: 2 }] }),
-    { id: 1, name: 'Missing all Native fields' },
-  ])('rejects invalid plan units, periods and types', async row => {
+    nativeOffer({ offer_id: 1 }), nativeOffer({ price_minor: '01' }),
+    nativeOffer({ group_id: '-1' }),
+    nativeOffer({ quota_bytes: '09007199254740993' }),
+    nativeOffer({ offer_id: '9223372036854775808' }),
+    nativeOffer({ currency: 'US' }), nativeOffer({ publication_hash: 'a'.repeat(63) }),
+    nativeOffer({ content: undefined }), { offer_id: '1', name: 'incomplete' },
+  ])('rejects malformed Native Offers without coercion', async row => {
     await expect(upstreamRequest(config, async () => Response.json(nativeEnvelope([row])), 'guestPlans'))
       .rejects.toMatchObject({ status: 502 })
+  })
+  it('preserves zero-valued nullable decimal fields from Core', async () => {
+    const row = nativeOffer({ group_id: '0', speed_limit_mbps: '0', device_limit: '0' })
+    await expect(upstreamRequest(config, async () => Response.json(nativeEnvelope([row])), 'guestPlans'))
+      .resolves.toEqual([row])
+  })
+  it('strips unknown Offer fields and rejects duplicate or oversized catalogs', async () => {
+    const withExtension = nativeOffer({ private_note: 'secret' })
+    await expect(upstreamRequest(config, async () => Response.json(nativeEnvelope([withExtension])), 'guestPlans'))
+      .resolves.toEqual([nativeOffer()])
+    for (const rows of [[nativeOffer(), nativeOffer()], Array.from({ length: 257 }, (_, i) => nativeOffer({ offer_id: String(i + 1) }))]) {
+      await expect(upstreamRequest(config, async () => Response.json(nativeEnvelope(rows)), 'guestPlans'))
+        .rejects.toMatchObject({ status: 502 })
+    }
   })
   it('rejects mismatched identifiers and unknown status 5 without coercion', async () => {
     for (const row of [nativeOrder({ trade_no: 'someone-elses-order' }), nativeOrder({ status: 5 })]) {

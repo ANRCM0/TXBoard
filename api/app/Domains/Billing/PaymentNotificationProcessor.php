@@ -12,7 +12,7 @@ final class PaymentNotificationProcessor
     public function process(string $method, string $uuid, Request $request): array
     {
         try {
-            $settlement = app(NativePaymentCheckout::class)->notify($method, $uuid, $request->input());
+            $settlement = app(\App\Domains\Billing\Contracts\PaymentCheckout::class)->notify($method, $uuid, $request->input());
             if ($settlement === null) {
                 return ['status' => 422, 'error' => 'unrecognized native payment'];
             }

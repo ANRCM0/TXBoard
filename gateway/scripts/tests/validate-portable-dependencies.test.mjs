@@ -37,7 +37,7 @@ function fixture(t) {
 test('accepts the complete reviewed portable production tree and workspace links', t => {
   const result = validatePortableDependencies(fixture(t));
   assert.equal(result.result, 'portable');
-  assert.equal(result.installed_entries, 14);
+  assert.equal(result.installed_entries, 16);
   assert.equal(result.production_fingerprint, productionFingerprint(reviewedLock));
   assert.ok(result.scanned_files > 20);
 });

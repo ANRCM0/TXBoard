@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises'
 import { request as httpsRequest } from 'node:https'
 import { GatewayFailure } from './failures.js'
 import { parseStrictJson } from '../security/strict-json.js'
+import { coreOperations, type CoreOperation } from '../contracts/core.generated.js'
 
 export const NATIVE_INTERNAL_OPERATIONS = {
   'system.capabilities.get': ['user', 'admin'],
@@ -195,6 +196,10 @@ export class NativeCoreClient {
     if (typeof input !== 'object' || Array.isArray(input)) {
       throw new GatewayFailure('VALIDATION_ERROR', 400, 'Core input object required')
     }
+    const contract = Object.hasOwn(coreOperations, operation) ? coreOperations[operation as CoreOperation] : undefined
+    if (contract && !contract.input.safeParse(input).success) {
+      throw new GatewayFailure('VALIDATION_ERROR', 422, 'Core operation input rejected')
+    }
     let body: string
     try {
       body = JSON.stringify({
@@ -246,6 +251,11 @@ export class NativeCoreClient {
     }
     if (!Object.hasOwn(payload, 'data') || Object.keys(payload).some(k => !['data', 'meta', 'request_id'].includes(k))) {
       throw new GatewayFailure('UPSTREAM_ERROR', 502, 'Invalid Core envelope')
+    }
+    if (contract) {
+      const checked = contract.output.safeParse(payload.data)
+      if (!checked.success) throw new GatewayFailure('UPSTREAM_ERROR', 502, 'Invalid Core operation output')
+      payload.data = checked.data
     }
     return payload as NativeCoreResponse
   }

@@ -1,0 +1,65 @@
+{
+  "schema": 1,
+  "packages": [
+    {
+      "code": "delivery_receipt",
+      "root": "plugins/DeliveryReceipt",
+      "required": false,
+      "grants": [
+        "event:billing.payment-settled.v1",
+        "event:billing.recharge-settled.v1",
+        "permission:extensions.delivery_receipt.view"
+      ],
+      "version": "1.0.0",
+      "files": {
+        "config.json": "d8958ec79ff150a002e584f83635cce183dc895889131d58df198512f02c1e65",
+        "module.json": "55b1adb1508c285123a2de924a11b0a0289389700b8ade10026c805f1cee33a0",
+        "Plugin.php": "1bf732d79976765fabd506ed76d6c8ca642e8a356348619c72d10782220e3af5"
+      }
+    },
+    {
+      "code": "epay",
+      "root": "plugins-core/Epay",
+      "required": false,
+      "grants": [],
+      "version": "1.0.0",
+      "files": {
+        "config.json": "7fe411483c8b3902d88a396c28e7fd38f53e3ccfdd0a497d55498b6309981793",
+        "module.json": "83176f38f790caa339395db41cfd58174195458fc5547cb1285538d43bf9443a",
+        "NativeAdapter.php": "124e357d03bfd3ac1ed413a4da5e696babac9bf2225c9521392e351e96db226b",
+        "Plugin.php": "502f4ee69f9253c6338caf595030848327a9d7a1136b747b3537a0af5f796a6a"
+      }
+    },
+    {
+      "code": "module_portal",
+      "root": "plugins/ModulePortal",
+      "required": false,
+      "grants": [
+        "permission:extensions.module_portal.configure",
+        "permission:extensions.module_portal.view"
+      ],
+      "version": "1.0.0",
+      "files": {
+        "config.json": "fa0b1a98e17e27d830c91a5f34d903e9cd5e6895d1add4fd4d079b092701d85f",
+        "module.json": "2c6b11c6486c587bcba945c8fe7fd93e395b2c3e5d76857ec62afd3966c3c746",
+        "Plugin.php": "ac7cae931aec60b29af5625722820cbfead19e5f290cbdddba543df970b28380",
+        "ui/index.html": "2081b898e916e918326b5945dee6504f09391c89742c5d0f22da303177576ac1"
+      }
+    },
+    {
+      "code": "offer_reservation",
+      "root": "plugins/OfferReservation",
+      "required": false,
+      "grants": [
+        "capability:billing.order-checkout",
+        "capability:subscription.purchase"
+      ],
+      "version": "1.0.0",
+      "files": {
+        "config.json": "9f7abfe613096ac8fa9a27cf55ba28fa9bc86710e1bd97bc897d0b5bb139376e",
+        "module.json": "8d34b257166c2ec8e81551f9bdf72db45a5bcb10bf2a66c59f52053e551d9c9c",
+        "Plugin.php": "f0f082b82c5317125d91fe1a384e14e101f2f53867064cfda069ab11b1bd5034"
+      }
+    }
+  ]
+}

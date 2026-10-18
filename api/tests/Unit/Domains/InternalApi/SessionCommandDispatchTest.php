@@ -31,13 +31,13 @@ final class SessionCommandDispatchTest extends TestCase
             ['identity.session.end', [], $actor],
         ];
         foreach ($cases as [$operation, $changes, $current]) {
-            $this->reject($operation, array_replace($base, $changes), $current, 'INTERNAL_SESSION_COMMAND_INVALID');
+            $this->reject($operation, array_replace($base, $changes), $current, 'INTERNAL_COMMAND_INVALID');
         }
         $end = OperationRegistry::all()['identity.session.end'];
         $this->reject('identity.session.end', array_replace($end, ['mode' => 'workflow']), $actor,
-            'INTERNAL_SESSION_COMMAND_INVALID');
+            'INTERNAL_COMMAND_INVALID');
         $this->reject('identity.session.end', array_replace($end, ['method' => 'revoke']), $actor,
-            'INTERNAL_SESSION_COMMAND_INVALID');
+            'INTERNAL_COMMAND_INVALID');
     }
 
     public function test_read_handler_admission_is_not_relaxed_to_allow_mutation_modes_or_dual_targets(): void

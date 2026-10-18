@@ -6,7 +6,7 @@ use App\Domains\Installation\InstallationAuthority;
 use Illuminate\Support\Facades\DB;
 
 /** Native recharge intent; only the shared verified receipt authority can create wallet value. */
-final class NativeRechargeService
+final class NativeRechargeService implements \App\Domains\Billing\Contracts\Recharges
 {
     public const MIN_AMOUNT_MINOR = '100';
     public const MAX_AMOUNT_MINOR = '500000';
@@ -60,7 +60,7 @@ final class NativeRechargeService
     public function checkout(int $userId, string $tradeNo): array
     {
         $recharge = $this->show($userId, $tradeNo);
-        return app(NativePaymentCheckout::class)->recharge($userId, (int) $recharge['recharge_id'],
+        return app(\App\Domains\Billing\Contracts\PaymentCheckout::class)->recharge($userId, (int) $recharge['recharge_id'],
             (int) $recharge['payment_method_id'], 'recharge:'.$recharge['recharge_id']);
     }
 
@@ -146,6 +146,10 @@ final class NativeRechargeService
             $this->require((string) $row->journal_id === $journal['journal_id']
                 && (string) $row->paid_at === $receipt['occurred_at'], 'RECHARGE_EVIDENCE_INVALID');
         }
+        app(SettlementNotifications::class)->recordLocked($installation, 'billing.recharge-settled.v1', $receipt['receipt_id'],
+            ['user_id' => (string) $userId, 'recharge_id' => $intent['recharge_id'], 'receipt_id' => $receipt['receipt_id'],
+                'decision' => $isWallet ? 'wallet_credit' : 'refund_liability', 'amount_minor' => $intent['amount_minor'],
+                'currency' => $intent['currency']], (int) $receipt['occurred_at']);
         return ['decision' => $isWallet ? 'wallet_credit' : 'refund_liability',
             'recharge_id' => $intent['recharge_id'], 'receipt_id' => $receipt['receipt_id'],
             'journal_id' => $journal['journal_id'], 'amount_minor' => $intent['amount_minor'], 'currency' => $intent['currency']];

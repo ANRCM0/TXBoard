@@ -61,7 +61,7 @@ function failEnvelope(code: string, status = 422) {
 }
 
 const USER_BEARER = 'Bearer usertoken_longer_than_eight'
-const VALID_ORDER = { plan_id: 1, period: 'month_price' }
+const VALID_ORDER = { offer_id: '1' }
 
 function postOrder(
   app: ReturnType<typeof createGatewayApp>,
@@ -241,18 +241,17 @@ describe('GW-304 authorization', () => {
 })
 
 describe('GW-304 input validation', () => {
-  it('rejects an unknown field, a bad plan id and a bad period with zero upstream calls', async () => {
+  it('rejects legacy bodies, extra fields and malformed Offer identifiers with zero upstream calls', async () => {
     const fetcher = vi.fn(async () => Response.json(okEnvelope({ trade_no: 'T1' })))
     const app = createGatewayApp(testConfig({ GATEWAY_ORDER_WRITE_ENABLED: 'true' }), fetcher)
     const bodies: unknown[] = [
-      { plan_id: 1, period: 'month_price', admin_discount: 100 },
-      { plan_id: 0, period: 'month_price' },
-      { plan_id: -3, period: 'month_price' },
-      { plan_id: 1.5, period: 'month_price' },
-      { plan_id: 1, period: 'forever' },
-      { plan_id: 1 },
-      { period: 'month_price' },
-      { plan_id: 1, period: 'month_price', coupon_code: '' },
+      ...[1, 0, -1, 1.5, '', '0', '01', '-1', '1.0', ' 1', '1 ', '1e2',
+        '9223372036854775808', '99999999999999999999'].map(offer_id => ({ offer_id })),
+      { offer_id: '1', owner_id: '2' }, { offer_id: '1', price_minor: '0' },
+      { offer_id: '1', coupon_code: 'SAVE' }, { offer_id: '1', period: 'monthly' },
+      { plan_id: 1, period: 'month_price' },
+      { offer_id: '1', admin_discount: 100 },
+      {},
       null,
     ]
     for (const body of bodies) {
@@ -266,7 +265,7 @@ describe('GW-304 input validation', () => {
     const fetcher = vi.fn(async () => Response.json(okEnvelope({ trade_no: 'T42' })))
     const app = createGatewayApp(testConfig({ GATEWAY_ORDER_WRITE_ENABLED: 'true' }), fetcher)
     const res = await postOrder(app,
-      { plan_id: 7, period: 'year_price', coupon_code: 'SAVE10' },
+      { offer_id: '9007199254740993' },
       { Authorization: USER_BEARER, 'Idempotency-Key': 'k1' })
     expect(res.status).toBe(201)
     expect((await res.json() as { data: unknown }).data).toEqual({ trade_no: 'T42' })
@@ -274,7 +273,7 @@ describe('GW-304 input validation', () => {
     expect(url).toBe('https://txboard.example/txapi/orders')
     expect(init.method).toBe('POST')
     expect(JSON.parse(init.body as string)).toEqual({
-      plan_id: 7, period: 'year_price', coupon_code: 'SAVE10',
+      offer_id: '9007199254740993',
     })
     // The user's own bearer, and only the two idempotency headers.
     const headers = init.headers as Headers
@@ -324,12 +323,12 @@ describe('GW-304 input validation', () => {
 describe('GW-304 the idempotency hint is a correlation value, not authority', () => {
   it('derives from the canonical body only, with no user identity', () => {
     const hintA = orderIdempotencyHint('order.create', VALID_ORDER)
-    const hintB = orderIdempotencyHint('order.create', { period: 'month_price', plan_id: 1 })
+    const hintB = orderIdempotencyHint('order.create', { offer_id: '1' })
     // Key order must not change the hint: canonical JSON is stable.
     expect(hintA).toBe(hintB)
     expect(hintA).toMatch(/^[0-9a-f]{64}$/)
-    // A different plan or period is a different hint.
-    expect(orderIdempotencyHint('order.create', { plan_id: 2, period: 'month_price' }))
+    // A different Offer is a different hint.
+    expect(orderIdempotencyHint('order.create', { offer_id: '2' }))
       .not.toBe(hintA)
     expect(orderIdempotencyHint('order.cancel', VALID_ORDER)).not.toBe(hintA)
   })

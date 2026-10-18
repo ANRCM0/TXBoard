@@ -8,7 +8,7 @@ use App\Models\OrderPurchaseTerms;
 use Illuminate\Support\Facades\DB;
 
 /** Authorized refunds explicitly arrive in the user's native wallet, never pretend to refund a channel. */
-final class NativeRefundService
+final class NativeRefundService implements \App\Domains\Billing\Contracts\WalletRefunds
 {
     public function __construct(
         private readonly NativeBillingTransaction $transactions,

@@ -5,12 +5,9 @@ namespace App\Http\Controllers\Txapi;
 use App\Core\Http\TxapiErrorRenderer;
 use App\Core\Http\TxapiResponse;
 use App\Domains\Billing\BillingError;
-use App\Domains\Billing\NativePaymentProviderRegistry;
-use App\Domains\Billing\NativeRechargeService;
-use App\Domains\Billing\NativeWalletPayments;
-use App\Domains\Installation\InstallationAuthority;
+use App\Domains\Billing\Contracts\Recharges;
+use App\Domains\Billing\Contracts\WalletPayments;
 use App\Domains\Installation\InstallationAuthorityException;
-use App\Models\Payment;
 use Closure;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -20,7 +17,7 @@ use Illuminate\Validation\ValidationException;
 
 final class WalletRechargeController
 {
-    public function balance(Request $request, NativeWalletPayments $wallet): JsonResponse
+    public function balance(Request $request, WalletPayments $wallet): JsonResponse
     {
         return $this->respond($request, fn (): JsonResponse => TxapiResponse::success($request, [
             'schema' => 'native-wallet/v1', 'balances' => $wallet->balance((int) Auth::guard('sanctum')->id()),
@@ -30,28 +27,17 @@ final class WalletRechargeController
     public function methods(Request $request): JsonResponse
     {
         return $this->respond($request, function () use ($request): JsonResponse {
-            app(InstallationAuthority::class)->assertNativeRuntime();
-            $methods = Payment::query()->where('enable', true)
-                ->where('handling_fee_fixed', 0)->where('handling_fee_percent', 0)->orderBy('sort')->orderBy('id')
-                ->limit(100)->get()
-                ->filter(static function (Payment $method): bool {
-                    try {
-                        $provider = app(NativePaymentProviderRegistry::class)->forPayment($method);
-                        $provider->adapter->accountRef($method);
-                        return in_array('CNY', $provider->adapter->capabilities()['currencies'], true);
-                    } catch (BillingError) { return false; }
-                })
-                ->map(static fn (Payment $method): array => [
-                    'id' => (string) $method->id, 'name' => (string) $method->name,
-                    'payment' => (string) $method->payment, 'icon' => $method->icon,
-                    'currency' => 'CNY', 'handling_fee_fixed' => '0', 'handling_fee_percent' => '0',
-                    'external_refund_supported' => false,
-                ])->values()->all();
+            $methods = array_map(static fn (array $method): array => [
+                'id' => $method['id'], 'name' => $method['name'], 'payment' => $method['provider'],
+                'icon' => $method['icon'], 'currency' => $method['currency'],
+                'handling_fee_fixed' => $method['fee_fixed_minor'], 'handling_fee_percent' => $method['fee_percent'],
+                'external_refund_supported' => $method['external_refund_supported'],
+            ], app(\App\Domains\Billing\Contracts\PaymentMethods::class)->available());
             return TxapiResponse::success($request, $methods);
         });
     }
 
-    public function store(Request $request, NativeRechargeService $service): JsonResponse
+    public function store(Request $request, Recharges $service): JsonResponse
     {
         return $this->respond($request, function () use ($request, $service): JsonResponse {
             $params = $request->validate([
@@ -68,7 +54,7 @@ final class WalletRechargeController
         });
     }
 
-    public function index(Request $request, NativeRechargeService $service): JsonResponse
+    public function index(Request $request, Recharges $service): JsonResponse
     {
         return $this->respond($request, function () use ($request, $service): JsonResponse {
             $params = $request->validate([
@@ -83,13 +69,13 @@ final class WalletRechargeController
         });
     }
 
-    public function show(Request $request, string $tradeNo, NativeRechargeService $service): JsonResponse
+    public function show(Request $request, string $tradeNo, Recharges $service): JsonResponse
     {
         return $this->respond($request, fn (): JsonResponse =>
             TxapiResponse::success($request, $service->show((int) Auth::guard('sanctum')->id(), $tradeNo)));
     }
 
-    public function checkout(Request $request, string $tradeNo, NativeRechargeService $service): JsonResponse
+    public function checkout(Request $request, string $tradeNo, Recharges $service): JsonResponse
     {
         return $this->respond($request, function () use ($request, $tradeNo, $service): JsonResponse {
             $request->validate(['token' => ['prohibited']]);

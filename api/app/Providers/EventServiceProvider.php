@@ -33,6 +33,10 @@ class EventServiceProvider extends ServiceProvider
             [\App\Listeners\EnforceInstallationAuthority::class, 'commandStarting']);
         Event::listen(\Illuminate\Queue\Events\JobProcessing::class,
             [\App\Listeners\EnforceInstallationAuthority::class, 'jobProcessing']);
+        Event::listen(\Illuminate\Console\Events\CommandFinished::class,
+            [\App\Listeners\EnforceInstallationAuthority::class, 'commandFinished']);
+        Event::listen(\Illuminate\Queue\Events\JobAttempted::class,
+            [\App\Listeners\EnforceInstallationAuthority::class, 'jobAttempted']);
 
         User::created([UserObserver::class, 'onCreated']);
         User::updated([UserObserver::class, 'onUpdated']);

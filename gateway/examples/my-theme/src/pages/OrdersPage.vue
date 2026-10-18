@@ -11,16 +11,15 @@
 
     <!-- Create entry: rendered only when the Gateway advertises the write capability. -->
     <form v-if="canCreate" class="create-form" @submit.prevent="submitCreate">
-      <label>套餐 ID
-        <input v-model.number="newPlanId" type="number" min="1" required />
-      </label>
-      <label>周期
-        <select v-model="newPeriod">
-          <option value="month_price">月付</option>
-          <option value="year_price">年付</option>
+      <label>已发布商品
+        <select v-model="selectedOfferId" required>
+          <option disabled value="">请选择商品</option>
+          <option v-for="offer in offers" :key="offer.offer_id" :value="offer.offer_id">
+            {{ offer.name }} / {{ offer.offer_code }} / {{ offer.currency }} {{ formatOfferMoney(offer.price_minor) }}
+          </option>
         </select>
       </label>
-      <button class="primary" type="submit" :disabled="loading || creating">
+      <button class="primary" type="submit" :disabled="loading || creating || !selectedOfferId">
         {{ creating ? '提交中…' : '创建订单' }}
       </button>
     </form>
@@ -48,9 +47,9 @@
 
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import type { GatewayApiError, Order } from '@ANRCM0/theme-sdk'
+import type { GatewayApiError, NativeOffer, Order } from '@txboard/theme-sdk'
 import { api, draftKeyFor } from '../api'
-import { formatMoney } from '../lib/format'
+import { formatMoney, formatOfferMoney } from '../lib/format'
 import ErrorState from '../components/ErrorState.vue'
 
 const STATUS_LABELS: Record<number, string> = { 0: '待支付', 1: '已支付', 2: '已取消', 3: '其他' }
@@ -61,8 +60,8 @@ const loading = ref(true)
 const error = ref<Error | null>(null)
 const createNotice = ref('')
 const creating = ref(false)
-const newPlanId = ref(1)
-const newPeriod = ref('month_price')
+const offers = ref<NativeOffer[]>([])
+const selectedOfferId = ref('')
 
 // Fail-closed: the write entry exists only when bootstrap advertised it.
 const canCreate = ref(false)
@@ -76,6 +75,8 @@ async function load() {
     const bootstrap = await api.bootstrap()
     caps.value = bootstrap.capabilities
     canCreate.value = caps.value.includes('orders.create')
+    offers.value = canCreate.value ? await api.plans.list() : []
+    if (!offers.value.some(offer => offer.offer_id === selectedOfferId.value)) selectedOfferId.value = ''
     orders.value = await api.orders.list()
   } catch (err) {
     error.value = err as Error
@@ -97,20 +98,20 @@ async function checkStatus(tradeNo: string) {
 /**
  * Create an order (docs/developer-guide.md §5). The SDK never auto-retries a
  * write. The idempotency key is generated ONCE per logical draft and
- * persisted in sessionStorage (plan_id + period scoped), so a page refresh
+ * persisted in sessionStorage (offer_id scoped), so a page refresh
  * reuses the same key instead of silently creating a duplicate.
  * IDEMPOTENCY_IN_PROGRESS → back off, resend the SAME key.
  * IDEMPOTENCY_CONFLICT   → the draft key was reused with a different body:
  *                          re-choose the plan (a correct server-side refusal).
  */
 async function submitCreate() {
-  if (!canCreate.value) return
+  if (!canCreate.value || !offers.value.some(offer => offer.offer_id === selectedOfferId.value)) return
   creating.value = true
   createNotice.value = ''
   try {
-    const draftKey = draftKeyFor(newPlanId.value, newPeriod.value)
+    const draftKey = draftKeyFor(selectedOfferId.value)
     const result = await api.orders.create(
-      { plan_id: newPlanId.value, period: newPeriod.value },
+      { offer_id: selectedOfferId.value },
       { idempotencyKey: draftKey },
     )
     createNotice.value = `订单已创建：${result.trade_no}`

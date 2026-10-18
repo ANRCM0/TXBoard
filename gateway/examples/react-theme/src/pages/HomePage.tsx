@@ -17,7 +17,7 @@ export function HomePage() {
   const site = bootstrap.data?.site
   const logo = safeImageUrl(site?.logo)
 
-  function choosePlan(planId: number) {
+  function choosePlan(offerId: string) {
     if (!auth.isAuthed) return navigate('/login')
     // Write capability is advertised by the Gateway; never assume it.
     if (!hasCapability(bootstrap.data?.capabilities ?? [], 'orders.create')) return navigate('/plans')
@@ -42,7 +42,7 @@ export function HomePage() {
 
       <section className="plans" aria-label="套餐列表">
         {plans.plans.map(plan => (
-          <PlanCard key={plan.id} plan={plan} onChoose={choosePlan} />
+          <PlanCard key={plan.offer_id} plan={plan} onChoose={choosePlan} />
         ))}
       </section>
     </main>

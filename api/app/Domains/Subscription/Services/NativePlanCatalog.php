@@ -8,7 +8,7 @@ use DomainException;
 use Illuminate\Support\Facades\DB;
 
 /** Published immutable offers; legacy User/Plan counters do not determine sales. */
-final class NativePlanCatalog
+final class NativePlanCatalog implements \App\Domains\Subscription\Contracts\CatalogQueries
 {
     public const SCHEMA = 'native-plan-offers/v1';
 
