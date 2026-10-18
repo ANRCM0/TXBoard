@@ -15,5 +15,6 @@ protected $table = 'tx_notice';
         'updated_at' => 'timestamp',
         'tags' => 'array',
         'show' => 'boolean',
+        'popup' => 'boolean',
     ];
 }

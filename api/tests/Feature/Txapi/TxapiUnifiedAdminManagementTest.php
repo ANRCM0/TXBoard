@@ -8,6 +8,7 @@ use App\Models\Server;
 use App\Models\ServerMachine;
 use App\Services\Auth\NativeIdentityService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Tests\Support\NativeRuntimeTestCase;
 
@@ -84,10 +85,14 @@ final class TxapiUnifiedAdminManagementTest extends NativeRuntimeTestCase
     public function test_content_and_runtime_views_keep_their_typed_projections_through_the_management_channel(): void
     {
         [$invoke] = $this->allBoundManagementClient();
-        $notice = $invoke('content.notices.create', ['title' => 'Notice', 'content' => 'Body', 'show' => false])->assertCreated()->json('data.id');
+        $this->assertTrue(Schema::hasColumn('tx_notice', 'popup'));
+        $notice = $invoke('content.notices.create', ['title' => 'Notice', 'content' => 'Body', 'show' => false, 'popup' => true])->assertCreated()->json('data.id');
         $invoke('content.notices.visibility.toggle', ['content_id' => $notice])->assertOk()->assertJsonPath('data.show', true);
         $invoke('content.notices.sort', ['ids' => [$notice]])->assertOk();
-        $invoke('content.notices.list', ['per_page' => 1])->assertOk()->assertJsonPath('data.0.id', $notice);
+        $invoke('content.notices.list', ['per_page' => 1])->assertOk()->assertJsonPath('data.0.id', $notice)
+            ->assertJsonPath('data.0.popup', true);
+        $invoke('content.notices.update', ['content_id' => $notice, 'title' => 'Notice', 'content' => 'Updated body', 'popup' => false])->assertOk();
+        $invoke('content.notices.get', ['content_id' => $notice])->assertOk()->assertJsonPath('data.popup', false);
         $articleInput = ['title' => 'Article', 'category' => 'Guides', 'language' => 'en-US', 'body' => 'Original body', 'show' => false];
         $article = $invoke('content.knowledge.create', $articleInput)->assertCreated()->json('data.id');
         $invoke('content.knowledge.update', array_replace($articleInput, ['content_id' => $article, 'body' => 'Changed body']))->assertOk();
