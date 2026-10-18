@@ -315,7 +315,11 @@ final class TxapiNativeInternalApiTest extends NativeRuntimeTestCase
         $usage = \App\Domains\InternalApi\UsageReadOperations::class;
         $catalog = \App\Domains\InternalApi\CatalogReadOperations::class;
         $billing = \App\Domains\InternalApi\BillingReadOperations::class;
+        $adminAccounts = \App\Domains\InternalApi\AdminAccountReadOperations::class;
+        $adminOrders = \App\Domains\InternalApi\AdminOrderReadOperations::class;
         $this->assertSame(['identity.account.get' => [$account, 'account'], 'identity.admin.get' => [$account, 'account'],
+            'identity.accounts.list' => [$adminAccounts, 'listing'], 'identity.accounts.get' => [$adminAccounts, 'find'],
+            'commerce.admin-orders.list' => [$adminOrders, 'listing'], 'commerce.admin-orders.get' => [$adminOrders, 'find'],
             'identity.sessions.list' => [$sessions, 'listing'],
             'catalog.offers.list' => [$catalog, 'listing'],
             'subscription.mine.get' => [$account, 'subscription'], 'commerce.orders.list' => [$orders, 'listing'],

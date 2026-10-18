@@ -1,3 +1,4 @@
+import { CORE_ADMIN_OPERATIONS, CORE_ADMIN_PREFIX } from '../contracts/core-admin.js'
 /**
  * middleware/observability.ts — structured redacted logging, metrics and the
  * internal readiness probe (GW-214 / PR-D).
@@ -192,6 +193,8 @@ export function nullLogger(): Logger {
  * stops a scanner from minting series with arbitrary paths.
  */
 const ROUTE_TEMPLATES: ReadonlyArray<readonly [string, string]> = [
+  ['GET', `${CORE_ADMIN_PREFIX}/capabilities`],
+  ...CORE_ADMIN_OPERATIONS.map(id => ['POST', `${CORE_ADMIN_PREFIX}/operations/${id}`] as const),
   ['GET', `${CORE_USER_PREFIX}/capabilities`],
   ...CORE_USER_OPERATIONS.map(id => ['POST', `${CORE_USER_PREFIX}/operations/${id}`] as const),
   ['GET', '/gateway/v1/plans'],

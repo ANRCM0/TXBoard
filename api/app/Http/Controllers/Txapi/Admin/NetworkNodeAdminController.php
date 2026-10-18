@@ -109,7 +109,8 @@ final class NetworkNodeAdminController
             return (int) $clone->id;
         });
         if ($newId === null) return $this->notFound($request);
-        return TxapiResponse::success($request, $newId);
+        return TxapiResponse::success($request,
+            $request->attributes->has('native_internal_operation') ? ['id' => $newId] : $newId);
     }
 
     public function delete(Request $request): JsonResponse

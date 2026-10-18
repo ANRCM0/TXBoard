@@ -44,6 +44,8 @@ describe('production native service consumer', () => {
   })
   it('uses a separate admin identity and requires the current admin path', async () => {
     const send = transport()
+    send.mockResolvedValue({ status: 200, contentType: 'application/json',
+      body: JSON.stringify({ data: [], meta: { page: 1, per_page: 20, total: 0, last_page: 1 }, request_id: requestId }) })
     const client = new NativeCoreClient(new URL('https://core.internal/'), {
       ...service, domain: 'admin', serviceId: 'admin-gateway', credential: 'b'.repeat(64),
     }, 8000, 1048576, send)

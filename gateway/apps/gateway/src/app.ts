@@ -50,6 +50,7 @@ import { registerAccountRoutes } from './routes/account.js'
 import { registerUserRoutes } from './routes/user.js'
 import { registerOrdersRoutes } from './routes/orders.js'
 import { registerOrdersWriteRoutes } from './routes/orders-write.js'
+import { registerCoreAdminRoutes } from './routes/core-admin.js'
 import { registerCoreUserRoutes } from './routes/core-user.js'
 import type { RouteContext } from './routes/shared.js'
 import {
@@ -320,6 +321,7 @@ export function createGatewayApp(
     // frozen table is the only place the route posture is decided.
     orderWrite: config.orderWriteEnabled,
     coreUserOperations: config.coreUserOperationsEnabled,
+    coreAdminOperations: config.coreAdminOperationsEnabled,
   }
   validatePolicies(activeRouteDefinitions(policyEnvironment), policyEnvironment, ROUTE_OPERATIONS)
   // The frozen table, compiled once. Every layer that needs to know a route's
@@ -466,7 +468,7 @@ export function createGatewayApp(
       // GW-304: Idempotency-Key must be preflight-allowed so a browser theme
       // can submit an order write. It is allowlisted by name; no other custom
       // header is advertised to a cross-origin client.
-      c.header('Access-Control-Allow-Headers', 'Authorization, Content-Type, Idempotency-Key')
+      c.header('Access-Control-Allow-Headers', 'Authorization, Content-Type, Idempotency-Key, X-Core-Admin-Path')
       c.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
       c.header('Access-Control-Allow-Credentials', 'false')
       c.header('Access-Control-Expose-Headers', 'X-Request-Id')
@@ -543,6 +545,7 @@ export function createGatewayApp(
   registerUserRoutes(app, { config, fetcher: observed })
   registerOrdersRoutes(app, { config, fetcher: observed })
   registerCoreUserRoutes(app, { config, fetcher: observed })
+  registerCoreAdminRoutes(app, { config, fetcher: observed, limiter: policy.limiter })
 
   // GW-304: order-write adaptation layer. Registered ONLY when
   // GATEWAY_ORDER_WRITE_ENABLED is set, and even then the route's policy comes

@@ -1,3 +1,4 @@
+import { CORE_ADMIN_OPERATIONS, CORE_ADMIN_PREFIX, isCoreAdminOperation } from '../contracts/core-admin.js'
 import { PREFIX } from '../middleware/request-context.js'
 import { CORE_USER_OPERATIONS, CORE_USER_PREFIX, isCoreUserOperation, requiresCommerceWrites } from '../contracts/core-user.js'
 import { coreOperations } from '../contracts/core.generated.js'
@@ -28,6 +29,7 @@ export type PolicyName =
   | 'captchaChallenge'
   | 'disabledWrite'
   | 'orderWrite'
+  | 'coreAdminCapabilities' | 'coreAdminLogin' | 'coreAdminRead' | 'coreAdminWrite'
   | 'coreCapabilities' | 'corePublicRead' | 'coreUserRead' | 'coreUserWrite'
 
 export type RoutePolicy = Readonly<{
@@ -71,6 +73,10 @@ export const POLICY_DEFINITIONS: Readonly<Record<PolicyName, RoutePolicy>> = {
   // guarantees no upstream call without a credential and a well-formed body;
   // idempotency and every business rule stay in Laravel (GW-302/303).
   orderWrite: { name: 'orderWrite', auth: 'bearer', body: 'json', limiter: 'public', cache: 'off' },
+  coreAdminCapabilities: { name: 'coreAdminCapabilities', auth: 'none', body: 'none', limiter: 'public', cache: 'off' },
+  coreAdminLogin: { name: 'coreAdminLogin', auth: 'none', body: 'json', limiter: 'login', cache: 'off' },
+  coreAdminRead: { name: 'coreAdminRead', auth: 'bearer', body: 'json', limiter: 'public', cache: 'off' },
+  coreAdminWrite: { name: 'coreAdminWrite', auth: 'bearer', body: 'json', limiter: 'public', cache: 'off' },
   coreCapabilities: { name: 'coreCapabilities', auth: 'none', body: 'none', limiter: 'public', cache: 'off' },
   corePublicRead: { name: 'corePublicRead', auth: 'none', body: 'json', limiter: 'public', cache: 'off' },
   coreUserRead: { name: 'coreUserRead', auth: 'bearer', body: 'json', limiter: 'public', cache: 'off' },
@@ -85,6 +91,10 @@ export const POLICY_DEFINITIONS: Readonly<Record<PolicyName, RoutePolicy>> = {
  * never inherit a permissive policy.
  */
 export const routeDefinitions = [
+  { method: 'GET', path: `${CORE_ADMIN_PREFIX}/capabilities`, policy: POLICY_DEFINITIONS.coreAdminCapabilities },
+  ...CORE_ADMIN_OPERATIONS.map(id => ({ method: 'POST' as const, path: `${CORE_ADMIN_PREFIX}/operations/${id}`,
+    policy: coreOperations[id].actor === 'anonymous' ? POLICY_DEFINITIONS.coreAdminLogin
+      : coreOperations[id].idempotency === 'read' ? POLICY_DEFINITIONS.coreAdminRead : POLICY_DEFINITIONS.coreAdminWrite })),
   { method: 'GET', path: `${CORE_USER_PREFIX}/capabilities`, policy: POLICY_DEFINITIONS.coreCapabilities },
   ...CORE_USER_OPERATIONS.map(id => ({ method: 'POST' as const, path: `${CORE_USER_PREFIX}/operations/${id}`,
     policy: coreOperations[id].actor === 'anonymous' ? POLICY_DEFINITIONS.corePublicRead
@@ -139,6 +149,8 @@ export function routeKey(method: string, path: string): string {
  * never state one posture while mapping the operations of the other.
  */
 export const ROUTE_OPERATIONS: Readonly<Record<string, readonly string[]>> = {
+  [routeKey('GET', `${CORE_ADMIN_PREFIX}/capabilities`)]: ['system.capabilities.get'],
+  ...Object.fromEntries(CORE_ADMIN_OPERATIONS.map(id => [routeKey('POST', `${CORE_ADMIN_PREFIX}/operations/${id}`), [id]])),
   [routeKey('GET', `${CORE_USER_PREFIX}/capabilities`)]: ['system.capabilities.get'],
   ...Object.fromEntries(CORE_USER_OPERATIONS.map(id => [routeKey('POST', `${CORE_USER_PREFIX}/operations/${id}`), [id]])),
   [routeKey('GET', `${PREFIX}/bootstrap`)]: ['guestConfig'],
@@ -216,6 +228,7 @@ export interface PolicyEnvironment {
    */
   orderWrite?: boolean
   coreUserOperations?: boolean
+  coreAdminOperations?: boolean
 }
 
 /** Policies that may only be unlocked by HPKE + Redis + the feature flag
@@ -261,6 +274,7 @@ export function activeRouteDefinitions(
     return definition
   }).filter(definition => {
     const { policy, path } = definition
+    if (path.startsWith(`${CORE_ADMIN_PREFIX}/`)) return Boolean(environment.coreAdminOperations)
     if (path.startsWith(`${CORE_USER_PREFIX}/`)) {
       if (!environment.coreUserOperations) return false
       const id = path.slice(`${CORE_USER_PREFIX}/operations/`.length)
@@ -335,7 +349,13 @@ export function validatePolicies(
     if (POLICY_DEFINITIONS[policy.name] !== policy) {
       throw new Error(`Route ${key} uses a non-canonical definition for policy ${policy.name}`)
     }
-    if (policy.name.startsWith('core')) {
+    if (policy.name.startsWith('coreAdmin')) {
+      const id = path.slice(`${CORE_ADMIN_PREFIX}/operations/`.length)
+      const discovery = policy.name === 'coreAdminCapabilities'
+      if (policy.cache !== 'off' || (discovery ? method !== 'GET' || path !== `${CORE_ADMIN_PREFIX}/capabilities`
+          : !isCoreAdminOperation(id) || method !== 'POST' || policy.body !== 'json'
+            || policy.auth !== (coreOperations[id].actor === 'anonymous' ? 'none' : 'bearer'))) throw new Error('Invalid reviewed Core admin route')
+    } else if (policy.name.startsWith('core')) {
       if (policy.cache !== 'off' || policy.limiter !== 'public') throw new Error('Core operations cannot be cached or unbounded')
       const id = path.slice(`${CORE_USER_PREFIX}/operations/`.length)
       if (policy.name !== 'coreCapabilities' && (!isCoreUserOperation(id) || method !== 'POST'

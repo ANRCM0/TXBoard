@@ -71,7 +71,14 @@ const EXPECTED_CORE: Record<string, PolicyName> = {
   ...Object.fromEntries(['commerce.orders.list', 'commerce.orders.get', 'billing.wallet.get', 'billing.payment-methods.list', 'billing.recharges.list', 'billing.recharges.get', 'subscription.mine.get', 'usage.mine.list', 'identity.account.get', 'identity.sessions.list', 'billing.payment-attempts.get'].map(id => [`POST /gateway/v1/core/user/operations/${id}`, 'coreUserRead' as PolicyName])),
   ...Object.fromEntries(['commerce.orders.create', 'commerce.orders.checkout', 'commerce.orders.cancel', 'billing.recharges.create', 'billing.recharges.checkout', 'identity.sessions.revoke', 'identity.session.end', 'billing.payment-attempts.query'].map(id => [`POST /gateway/v1/core/user/operations/${id}`, 'coreUserWrite' as PolicyName])),
 }
+const EXPECTED_ADMIN: Record<string, PolicyName> = {
+  'GET /gateway/v1/core/admin/capabilities': 'coreAdminCapabilities',
+  'POST /gateway/v1/core/admin/operations/identity.admin-session.create': 'coreAdminLogin',
+  ...Object.fromEntries(['identity.admin.get', 'identity.sessions.list', 'network.nodes.list', 'network.machines.list', 'settings.site.get', 'identity.accounts.list', 'identity.accounts.get', 'commerce.admin-orders.list', 'commerce.admin-orders.get', 'billing.reconciliation.get', 'network.groups.list', 'network.routes.list', 'content.notices.list', 'content.notices.get', 'content.knowledge.list', 'content.knowledge.get', 'audit.logs.list', 'platform.queue.failures.list', 'catalog.admin-offers.list', 'platform.modules.list', 'platform.modules.get', 'platform.modules.operations.list', 'network.access-audit.rules.list', 'network.access-audit.events.list', 'network.machines.nodes.list', 'network.routes.simulate', 'content.knowledge.categories.list', 'platform.queue.snapshot.get', 'platform.queue.failures.get', 'notifications.mail-templates.list', 'notifications.mail-templates.get'].map(id => [`POST /gateway/v1/core/admin/operations/${id}`, 'coreAdminRead' as PolicyName])),
+  ...Object.fromEntries(['identity.sessions.revoke', 'identity.session.end', 'identity.accounts.create', 'identity.accounts.status.update', 'catalog.plans.publish', 'catalog.offers.availability.update', 'billing.refunds.create', 'settings.site.update', 'subscription.lifecycle.suspend', 'subscription.lifecycle.resume', 'subscription.lifecycle.revoke', 'subscription.lifecycle.expire', 'subscription.lifecycle.reset', 'network.groups.save', 'network.groups.delete', 'network.routes.save', 'network.routes.delete', 'network.routes.sort', 'network.nodes.patch', 'network.nodes.delete', 'network.nodes.traffic-reset', 'network.nodes.batch-update', 'network.nodes.batch-delete', 'network.nodes.batch-traffic-reset', 'network.nodes.sort', 'network.machines.update', 'network.machines.delete', 'content.notices.create', 'content.notices.update', 'content.notices.visibility.toggle', 'content.notices.delete', 'content.notices.sort', 'content.knowledge.create', 'content.knowledge.update', 'content.knowledge.visibility.toggle', 'content.knowledge.delete', 'content.knowledge.sort', 'network.access-audit.rules.save', 'network.access-audit.rules.delete', 'network.nodes.copy', 'notifications.mail-templates.save', 'notifications.mail-templates.reset', 'notifications.mail-templates.test'].map(id => [`POST /gateway/v1/core/admin/operations/${id}`, 'coreAdminWrite' as PolicyName])),
+}
 const EXPECTED_MAPPING: Record<string, PolicyName> = {
+  ...EXPECTED_ADMIN,
   ...EXPECTED_CORE,
   'GET /gateway/v1/bootstrap': 'publicRead',
   'GET /gateway/v1/theme/config': 'publicRead',
@@ -106,7 +113,7 @@ describe('GW-212 route policy table', () => {
     expect(snapshot).toEqual(EXPECTED_MAPPING)
     // Snapshot the policy bodies too: a silent posture change in auth, body,
     // limiter or cache must fail this test rather than ship.
-    expect(routeDefinitions.filter(d => !d.path.startsWith('/gateway/v1/core/user/')).map(d => ({ ...d.policy }))).toEqual([
+    expect(routeDefinitions.filter(d => !d.path.startsWith('/gateway/v1/core/')).map(d => ({ ...d.policy }))).toEqual([
       { name: 'publicRead', auth: 'none', body: 'none', limiter: 'public', cache: 'public-short' },
       { name: 'publicRead', auth: 'none', body: 'none', limiter: 'public', cache: 'public-short' },
       { name: 'publicRead', auth: 'none', body: 'none', limiter: 'public', cache: 'public-short' },

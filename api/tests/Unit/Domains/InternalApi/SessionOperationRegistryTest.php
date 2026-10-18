@@ -3,6 +3,8 @@
 namespace Tests\Unit\Domains\InternalApi;
 
 use App\Domains\InternalApi\AccountReadOperations;
+use App\Domains\InternalApi\AdminAccountReadOperations;
+use App\Domains\InternalApi\AdminOrderReadOperations;
 use App\Domains\InternalApi\BillingReadOperations;
 use App\Domains\InternalApi\CatalogReadOperations;
 use App\Domains\InternalApi\CommerceMutationOperations;
@@ -39,6 +41,10 @@ final class SessionOperationRegistryTest extends TestCase
         $this->assertSame([
             'identity.account.get' => [AccountReadOperations::class, 'account', 'read'],
             'identity.admin.get' => [AccountReadOperations::class, 'account', 'read'],
+            'identity.accounts.list' => [AdminAccountReadOperations::class, 'listing', 'read'],
+            'identity.accounts.get' => [AdminAccountReadOperations::class, 'find', 'read'],
+            'commerce.admin-orders.list' => [AdminOrderReadOperations::class, 'listing', 'read'],
+            'commerce.admin-orders.get' => [AdminOrderReadOperations::class, 'find', 'read'],
             'identity.sessions.list' => [SessionReadOperations::class, 'listing', 'read'],
             'catalog.offers.list' => [CatalogReadOperations::class, 'listing', 'read'],
             'subscription.mine.get' => [AccountReadOperations::class, 'subscription', 'read'],

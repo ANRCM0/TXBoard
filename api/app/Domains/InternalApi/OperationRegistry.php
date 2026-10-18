@@ -41,6 +41,10 @@ final class OperationRegistry
                 ['id', 'email', 'telegram_id', 'subscription', 'credential_status'], handler: AccountReadOperations::class),
             'identity.admin.get' => self::spec($admin, 'admin', $read, null, 'account', [],
                 ['id', 'email'], permission: 'identity.read', handler: AccountReadOperations::class),
+            'identity.accounts.list' => self::spec([], '', '', null, 'listing', [], [], handler: AdminAccountReadOperations::class),
+            'identity.accounts.get' => self::spec([], '', '', null, 'find', [], [], handler: AdminAccountReadOperations::class),
+            'commerce.admin-orders.list' => self::spec([], '', '', null, 'listing', [], [], handler: AdminOrderReadOperations::class),
+            'commerce.admin-orders.get' => self::spec([], '', '', null, 'find', [], [], handler: AdminOrderReadOperations::class),
             'identity.sessions.list' => self::spec($both, 'authenticated', $read, null, 'listing', [],
                 ['id', 'name', 'abilities', 'last_used_at', 'created_at', 'updated_at', 'expires_at'], list: true,
                 handler: SessionReadOperations::class),
@@ -124,6 +128,7 @@ final class OperationRegistry
                     'stop_register' => ['sometimes', 'boolean']],
                 ['ok'], permission: 'settings.write'),
             ...self::subscriptionOperations($admin, $id),
+            ...AdminOperationBindings::all(),
         ]);
     }
 

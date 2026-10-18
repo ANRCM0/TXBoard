@@ -123,6 +123,14 @@ jobs:
         run: npm ci --no-audit --no-fund
       - name: Typecheck, test and build Gateway and SDK
         run: npm run check
+      - name: Package the accepted SDK for local-only frontend consumption
+        run: npm pack --workspace @txboard/core-sdk --pack-destination "$RUNNER_TEMP"
+      - name: Retain Core SDK package
+        uses: actions/upload-artifact@v4
+        with:
+          name: core-sdk-${{ github.sha }}
+          path: ${{ runner.temp }}/txboard-core-sdk-*.tgz
+          if-no-files-found: error
       - name: Live Redis multi-connection replay and throttle tests
         env:
           GATEWAY_TEST_REDIS_URL: redis://127.0.0.1:16379

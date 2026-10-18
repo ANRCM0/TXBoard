@@ -135,7 +135,7 @@ final class NetworkMachineAdminController
         if (!$deleted) return $this->missing($request);
         // The obsolete host is gone. Publish an empty association snapshot so
         // the socket registry can stop assigning nodes to this machine.
-        NodeSyncService::notifyMachineNodesChanged($id);
+        DB::afterCommit(static fn () => NodeSyncService::notifyMachineNodesChanged($id));
         return TxapiResponse::success($request, ['ok' => true]);
     }
 

@@ -28,7 +28,7 @@ rm -f "$scratch/core/api/bootstrap/cache/config.php"
 (
   cd "$scratch"
   openssl req -x509 -newkey rsa:2048 -nodes -days 1 -keyout ca.key -out ca.pem -subj /CN=gateway-fixture-ca
-  for name in server core node; do
+  for name in server core node admin; do
     openssl req -new -newkey rsa:2048 -nodes -keyout "$name.key" -out "$name.csr" -subj "/CN=$name"
     if [[ "$name" == server ]]; then
       printf 'extendedKeyUsage=serverAuth\nsubjectAltName=IP:127.0.0.1,DNS:localhost\n' > "$name.ext"
@@ -143,4 +143,5 @@ GATEWAY_INTEGRATION_LOG_DIR="$scratch" \
 node tests/integration/native-core-gateway.mjs | tee "$scratch/result.json"
 php tests/integration/core-fixture.php "$scratch/core/api" user-service "$core_fingerprint" > "$scratch/user-service.private.json"
 TXBOARD_CORE_TEST_ROOT="$scratch/core/api" GATEWAY_INTEGRATION_LOG_DIR="$scratch" \
+GATEWAY_TEST_REDIS_URL="redis://127.0.0.1:${REDIS_TEST_PORT:-16379}/12" \
 node tests/integration/core-user-gateway.mjs | tee "$scratch/core-user-result.json"

@@ -9,6 +9,7 @@ use App\Services\MailTemplateAdminService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Throwable;
 
@@ -65,7 +66,7 @@ final class MailTemplateAdminController
         }
 
         MailTemplate::query()->updateOrCreate(['name' => $name], $input);
-        Cache::forget("mail_template:{$name}");
+        DB::afterCommit(static fn () => Cache::forget("mail_template:{$name}"));
         return TxapiResponse::success($request, ['ok' => true]);
     }
 
@@ -74,7 +75,7 @@ final class MailTemplateAdminController
         $name = (string) $request->route('name');
         $this->knownTemplate($name);
         MailTemplate::query()->where('name', $name)->delete();
-        Cache::forget("mail_template:{$name}");
+        DB::afterCommit(static fn () => Cache::forget("mail_template:{$name}"));
 
         return TxapiResponse::success($request, ['ok' => true]);
     }

@@ -1,13 +1,14 @@
 import assert from 'node:assert/strict'
 import { readFileSync, openSync, closeSync } from 'node:fs'
-import { randomBytes, randomUUID } from 'node:crypto'
+import { randomBytes, randomUUID, X509Certificate } from 'node:crypto'
 import { createServer } from 'node:https'
 import { spawn, spawnSync } from 'node:child_process'
 import { resolve } from 'node:path'
 import { serve } from '@hono/node-server'
 import { createGatewayApp } from '../../apps/gateway/dist/app.js'
 import { loadConfig } from '../../apps/gateway/dist/config/env.js'
-import { createCoreUserClient } from '../../packages/core-sdk/dist/index.js'
+import { RedisSecurity } from '../../apps/gateway/dist/services/redis-security.js'
+import { createCoreUserClient, createCoreAdminClient } from '../../packages/core-sdk/dist/index.js'
 
 const root = process.env.TXBOARD_CORE_TEST_ROOT
 const scratch = process.env.GATEWAY_INTEGRATION_LOG_DIR
@@ -21,6 +22,7 @@ const php = spawn('php', ['-S', '127.0.0.1:18081', '-t', 'public', resolve('test
   cwd: root, stdio: ['ignore', log, log], env: { ...process.env, CORE_USER_PROXY_NONCE: nonce },
 })
 let checks = 0
+let adminLimiter
 try {
   for (let attempt = 0; ; attempt++) {
     if (php.exitCode !== null) throw new Error('Core exited before readiness')
@@ -108,11 +110,81 @@ try {
   const revoked = spawnSync('php', ['tests/integration/core-fixture.php', root, 'revoke-user-service'], { encoding: 'utf8' })
   assert.equal(revoked.status, 0, revoked.stderr)
   await assert.rejects(other.capabilities(), e => e.status === 503 && e.code === 'UPSTREAM_UNAVAILABLE'); checks++
+  const adminFingerprint = new X509Certificate(readFileSync(`${scratch}/admin.pem`)).fingerprint256.replaceAll(':', '').toLowerCase()
+  const provision = spawnSync('php', ['tests/integration/core-fixture.php', root, 'admin-service', adminFingerprint], { encoding: 'utf8' })
+  assert.equal(provision.status, 0, provision.stderr)
+  const adminService = JSON.parse(provision.stdout)
+  const adminConfig = { ...config, coreUserOperationsEnabled: false, coreAdminOperationsEnabled: true,
+    nativeAdminService: { domain: 'admin', serviceId: adminService.service_id, credential: adminService.credential,
+      epoch: adminService.epoch, caFile: `${scratch}/ca.pem`, certificateFile: `${scratch}/admin.pem`, keyFile: `${scratch}/admin.key` } }
+  adminLimiter = await RedisSecurity.connect(process.env.GATEWAY_TEST_REDIS_URL)
+  servers.push(serve({ fetch: createGatewayApp(adminConfig, undefined, undefined, { limiter: adminLimiter }).fetch,
+    hostname: '127.0.0.1', port: 18089 }))
+  let adminToken, adminPath
+  const admin = createCoreAdminClient({ baseURL: 'http://127.0.0.1:18089/gateway/v1/core/admin',
+    getToken: () => adminToken, getAdminPath: () => adminPath })
+  assert.equal((await admin.capabilities()).operations.length, 19); checks++
+  await assert.rejects(admin.call('identity.admin-session.create', { email: actor.email, password: 'integration-password-2026' },
+    { idempotencyKey: randomUUID() }), e => e.status === 403); checks++
+  const loggedIn = await admin.call('identity.admin-session.create', { email: adminService.email, password: 'admin-integration-password' }, { idempotencyKey: randomUUID() })
+  adminToken = loggedIn.auth_data; adminPath = loggedIn.secure_path
+  assert.equal(adminPath, 'sdk_admin_fixture'); checks++
+  assert.equal((await admin.call('identity.admin.get', {})).id, adminService.id); checks++
+  const nodes = await admin.callResult('network.nodes.list', { page: 1, per_page: 1 })
+  assert.equal(nodes.meta.page, 1); assert.ok(nodes.data.length > 0)
+  assert.equal(typeof nodes.data[0].id, 'string'); assert.ok(!('protocol_settings' in nodes.data[0])); checks++
+  const machines = await admin.callResult('network.machines.list', {})
+  assert.equal(machines.meta.total, 0); checks++
+  const site = await admin.call('settings.site.get', {})
+  assert.equal(typeof site.site.app_name, 'string'); assert.ok(!('server_token' in site.site)); checks++
+  const accounts = await admin.callResult('identity.accounts.list', { email: adminService.email, per_page: 1 })
+  assert.equal(accounts.meta.total, 1); assert.equal(accounts.data[0].id, adminService.id); checks++
+  assert.ok(!('password' in accounts.data[0])); checks++
+  const target = await admin.call('identity.accounts.get', { user_id: actor.id })
+  assert.equal(target.id, actor.id); assert.equal(target.credential_status, 'provider_managed'); checks++
+  await assert.rejects(admin.call('identity.accounts.get', { user_id: '9223372036854775807' }), e => e.status === 404); checks++
+  const nativeOrders = await admin.callResult('commerce.admin-orders.list', { user_id: actor.id, per_page: 1 })
+  assert.ok(nativeOrders.meta.total >= 2); assert.equal(nativeOrders.data[0].user_id, actor.id); checks++
+  const nativeDetail = await admin.call('commerce.admin-orders.get', { trade_no: nativeOrders.data[0].trade_no })
+  assert.equal(nativeDetail.currency, 'CNY'); assert.equal(typeof nativeDetail.amount_minor, 'string'); checks++
+  assert.ok(!('purchase_terms_json' in nativeDetail)); checks++
+  const newAccount = await admin.call('identity.accounts.create', {
+    email: `admin-created-${randomUUID()}@example.test`, password: 'created-integration-password',
+  }, { idempotencyKey: randomUUID() })
+  assert.equal(typeof newAccount.id, 'string'); assert.ok(!('password' in newAccount)); checks++
+  const statusKey = randomUUID(), statusInput = { user_id: newAccount.id, expected_banned: false, banned: true }
+  const banned = await admin.call('identity.accounts.status.update', statusInput, { idempotencyKey: statusKey })
+  assert.equal(banned.banned, true)
+  assert.deepEqual(await admin.call('identity.accounts.status.update', statusInput, { idempotencyKey: statusKey }), banned); checks++
+  const noticeKey = randomUUID(), noticeInput = { title: 'SDK original notice', content: 'Integration body' }
+  const notice = await admin.call('content.notices.create', noticeInput, { idempotencyKey: noticeKey })
+  assert.equal(typeof notice.id, 'string')
+  assert.deepEqual(await admin.call('content.notices.create', noticeInput, { idempotencyKey: noticeKey }), notice); checks++
+  await admin.call('content.notices.update', { content_id: notice.id, title: 'SDK updated notice', content: 'Updated body' }, { idempotencyKey: randomUUID() })
+  assert.equal((await admin.call('content.notices.get', { content_id: notice.id })).title, 'SDK updated notice'); checks++
+  await admin.call('content.notices.delete', { content_id: notice.id }, { idempotencyKey: randomUUID() })
+  await assert.rejects(admin.call('content.notices.get', { content_id: notice.id }), e => e.status === 404); checks++
+  const groups = await admin.callResult('network.groups.list', { page: 1, per_page: 1 })
+  assert.equal(groups.meta.per_page, 1); assert.equal(typeof groups.data[0].id, 'string'); checks++
+  const adminSessions = await admin.callResult('identity.sessions.list', {})
+  assert.ok(adminSessions.data.some(row => row.id === adminService.secondary)); checks++
+  await admin.call('identity.sessions.revoke', { session_id: adminService.secondary }, { idempotencyKey: randomUUID() })
+  assert.ok(!(await admin.call('identity.sessions.list', {})).some(row => row.id === adminService.secondary)); checks++
+  assert.equal(spawnSync('php', ['tests/integration/core-fixture.php', root, 'admin-restrict']).status, 0)
+  await assert.rejects(admin.call('network.nodes.list', {}), e => e.status === 403); checks++
+  assert.equal(spawnSync('php', ['tests/integration/core-fixture.php', root, 'admin-rotate-path']).status, 0)
+  await assert.rejects(admin.call('identity.admin.get', {}), e => e.status === 404); checks++
+  adminPath = 'sdk_admin_rotated'
+  assert.equal((await admin.call('identity.admin.get', {})).id, adminService.id); checks++
+  await admin.call('identity.session.end', {}, { idempotencyKey: randomUUID() })
+  await assert.rejects(admin.call('identity.admin.get', {}), e => e.status === 401); checks++
   console.log(JSON.stringify({ sourceHead, checks, realCore: true, nativeActivation: true, database: 'mysql',
     gatewayMtls: true, tlsTermination: 'isolated CI adapter to loopback PHP development server',
     browserSdk: true, originalKeyReplay: true, lostResponseRecovery: true, ownerIsolation: true,
-    sessionEnd: true, serviceGrantRevocation: true, serviceFailureDistinctFromUserSession: true }))
+    sessionEnd: true, serviceGrantRevocation: true, serviceFailureDistinctFromUserSession: true, adminChannel: true, adminChecks: 26,
+    adminAccountMutation: true, adminContentCrud: true, adminWriteKeyReplay: true, actorGrantRevocation: true, adminPathRotation: true }))
 } finally {
   for (const server of servers.reverse()) await new Promise(r => server.close(r))
+  if (adminLimiter) await adminLimiter.close()
   php.kill(); await new Promise(r => php.once('exit', r)); closeSync(log)
 }
