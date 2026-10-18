@@ -299,6 +299,8 @@ jobs:
           bash -n tests/integration/run-linux.sh
           php -l tests/integration/core-fixture.php
           node --check tests/integration/native-core-gateway.mjs
+          node --check tests/integration/core-user-gateway.mjs
+          php -l tests/integration/core-user-router.php
       - name: Install isolated integration dependencies
         working-directory: .
         run: |
@@ -327,6 +329,7 @@ jobs:
           path: |
             ${{ runner.temp }}/gateway-native.*/result.json
             ${{ runner.temp }}/gateway-native.*/fixture.json
+            ${{ runner.temp }}/gateway-native.*/core-user-result.json
   publish:
     if: github.event_name == 'push' && needs.verify.outputs.publish_image == 'true'
     needs: [verify, container, browser, native-commerce-http]

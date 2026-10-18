@@ -25,6 +25,8 @@ export const NATIVE_INTERNAL_OPERATIONS = {
   'commerce.orders.checkout': ['user'],
   'commerce.orders.cancel': ['user'],
   'billing.wallet.get': ['user'],
+  'billing.payment-attempts.get': ['user'],
+  'billing.payment-attempts.query': ['user'],
   'billing.payment-methods.list': ['user'],
   'billing.recharges.create': ['user'],
   'billing.recharges.list': ['user'],
@@ -139,6 +141,7 @@ const anonymous = new Set<NativeInternalOperation>([
 const writes = new Set<NativeInternalOperation>([
   'identity.sessions.revoke', 'commerce.orders.create', 'commerce.orders.checkout', 'commerce.orders.cancel',
   'billing.recharges.create', 'billing.recharges.checkout',
+  'billing.payment-attempts.query',
   'subscription.links.issue', 'subscription.links.revoke', 'catalog.plans.publish',
   'catalog.offers.availability.update', 'billing.refunds.create', 'settings.site.update',
   'subscription.lifecycle.suspend', 'subscription.lifecycle.resume', 'subscription.lifecycle.revoke',
@@ -247,6 +250,12 @@ export class NativeCoreClient {
         throw new GatewayFailure('UPSTREAM_UNAVAILABLE', response.status,
           'Core result unknown; retain the original idempotency key')
       }
+      if (code === 'SERVICE_UNAUTHORIZED') throw new GatewayFailure('UPSTREAM_UNAVAILABLE', 503, 'Core service unavailable')
+      if (code === 'ACTOR_UNAUTHORIZED') throw new GatewayFailure('UNAUTHORIZED', 401, 'User session is required')
+      if (code === 'FORBIDDEN') throw new GatewayFailure('FORBIDDEN', 403, 'Core operation not granted')
+      if (response.status === 404) throw new GatewayFailure('NOT_FOUND', 404, 'Core resource unavailable')
+      if (code === 'INVALID_REQUEST') throw new GatewayFailure('VALIDATION_ERROR', 422, 'Invalid Core operation input')
+      if (code === 'RATE_LIMITED') throw new GatewayFailure('RATE_LIMITED', 429, 'Core operation rate limited')
       throw new GatewayFailure('UPSTREAM_ERROR', response.status >= 400 ? response.status : 502, 'Core operation rejected')
     }
     if (!Object.hasOwn(payload, 'data') || Object.keys(payload).some(k => !['data', 'meta', 'request_id'].includes(k))) {
@@ -256,6 +265,9 @@ export class NativeCoreClient {
       const checked = contract.output.safeParse(payload.data)
       if (!checked.success) throw new GatewayFailure('UPSTREAM_ERROR', 502, 'Invalid Core operation output')
       payload.data = checked.data
+      const meta = contract.meta.safeParse(payload.meta ?? {})
+      if (!meta.success) throw new GatewayFailure('UPSTREAM_ERROR', 502, 'Invalid Core operation metadata')
+      if (Object.keys(meta.data).length !== 0 || payload.meta !== undefined) payload.meta = meta.data
     }
     return payload as NativeCoreResponse
   }

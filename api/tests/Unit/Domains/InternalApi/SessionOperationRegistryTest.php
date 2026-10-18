@@ -45,6 +45,7 @@ final class SessionOperationRegistryTest extends TestCase
             'commerce.orders.list' => [OrderReadOperations::class, 'listing', 'read'],
             'commerce.orders.get' => [OrderReadOperations::class, 'find', 'read'],
             'billing.wallet.get' => [BillingReadOperations::class, 'wallet', 'read'],
+            'billing.payment-attempts.get' => [BillingReadOperations::class, 'attempt', 'read'],
             'billing.payment-methods.list' => [BillingReadOperations::class, 'methods', 'read'],
             'billing.recharges.list' => [BillingReadOperations::class, 'recharges', 'read'],
             'billing.recharges.get' => [BillingReadOperations::class, 'recharge', 'read'],
@@ -56,6 +57,7 @@ final class SessionOperationRegistryTest extends TestCase
             'commerce.orders.create' => [CommerceMutationOperations::class, 'purchase', 'domain'],
             'commerce.orders.checkout' => [CommerceMutationOperations::class, 'checkout', 'domain'],
             'commerce.orders.cancel' => [CommerceMutationOperations::class, 'cancel', 'workflow'],
+            'billing.payment-attempts.query' => [CommerceMutationOperations::class, 'queryAttempt', 'domain'],
             'billing.recharges.create' => [CommerceMutationOperations::class, 'recharge', 'domain'],
             'billing.recharges.checkout' => [CommerceMutationOperations::class, 'rechargeCheckout', 'domain'],
         ], $commands);
@@ -65,7 +67,8 @@ final class SessionOperationRegistryTest extends TestCase
     {
         $all = OperationRegistry::all();
         $this->assertSame([], $all['identity.sessions.list']['rules']);
-        $this->assertSame(['session_id'], array_keys($all['identity.sessions.revoke']['rules']));
+        $this->assertTrue(\App\Domains\InternalApi\OperationSchemas::input('identity.sessions.revoke', ['session_id' => '1']));
+        $this->assertFalse(\App\Domains\InternalApi\OperationSchemas::input('identity.sessions.revoke', ['session_id' => 1]));
         $this->assertSame([], $all['identity.session.end']['rules']);
         $this->assertSame(['ok'], $all['identity.sessions.revoke']['fields']);
         $this->assertSame(['ok'], $all['identity.session.end']['fields']);

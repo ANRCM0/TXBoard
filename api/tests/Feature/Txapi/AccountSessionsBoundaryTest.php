@@ -70,8 +70,10 @@ final class AccountSessionsBoundaryTest extends NativeRuntimeTestCase
         $actor = $this->newUser();
         $current = $actor->createToken('actual-current', ['*']);
         $port = Mockery::mock(AccountSessions::class);
-        $port->shouldReceive('listing')->twice()->withArgs(static fn ($id, $limit = null): bool => $id === (int) $actor->id && $limit === null)
-            ->andReturn([['id' => 71, 'name' => 'port-session', 'abilities' => ['*']]]);
+        $session = ['id' => 71, 'name' => 'port-session', 'abilities' => ['*'],
+            'last_used_at' => null, 'created_at' => null, 'updated_at' => null, 'expires_at' => null];
+        $port->shouldReceive('listing')->once()->with((int) $actor->id, null)->andReturn([$session]);
+        $port->shouldReceive('listing')->once()->with((int) $actor->id, 101)->andReturn([$session]);
         $port->shouldReceive('revoke')->twice()->with((int) $actor->id, 72)->andReturn(true);
         $port->shouldReceive('end')->twice()->with((int) $actor->id, (int) $current->accessToken->id);
         $this->app->instance(AccountSessions::class, $port);
@@ -240,17 +242,19 @@ final class AccountSessionsBoundaryTest extends NativeRuntimeTestCase
         $token = $actor->createToken('projection', ['*'])->plainTextToken;
         $secret = 'SESSION_PRIVATE_SECRET';
         $port = Mockery::mock(AccountSessions::class);
-        $port->shouldReceive('listing')->once()->withArgs(static fn ($id, $limit = null): bool => $id === (int) $actor->id && $limit === null)->andReturn([
-            ['id' => 71, 'name' => 'safe', 'abilities' => ['nested' => ['token' => $secret, 'safe' => true]],
+        $port->shouldReceive('listing')->once()->with((int) $actor->id, 101)->andReturn([
+            ['id' => 71, 'name' => 'safe', 'abilities' => ['*'],
+                'last_used_at' => null, 'created_at' => null, 'updated_at' => null, 'expires_at' => null,
                 'token' => $secret, 'unexpected' => $secret],
         ]);
-        $port->shouldReceive('listing')->once()->withArgs(static fn ($id, $limit = null): bool => $id === (int) $actor->id && $limit === null)
+        $port->shouldReceive('listing')->once()->with((int) $actor->id, 101)
             ->andReturn([['id' => 71, 'name' => str_repeat('x', 2048)]]);
-        $port->shouldReceive('listing')->once()->withArgs(static fn ($id, $limit = null): bool => $id === (int) $actor->id && $limit === null)->andThrow(new \RuntimeException($secret));
+        $port->shouldReceive('listing')->once()->with((int) $actor->id, 101)->andThrow(new \RuntimeException($secret));
         $port->shouldReceive('revoke')->once()->with((int) $actor->id, 71)->andThrow(new \RuntimeException($secret));
         $this->app->instance(AccountSessions::class, $port);
         $response = $this->invoke('identity.sessions.list', $token)->assertOk();
-        $this->assertSame([['id' => '71', 'name' => 'safe', 'abilities' => ['nested' => ['safe' => true]]]], $response->json('data'));
+        $this->assertSame([['id' => '71', 'name' => 'safe', 'abilities' => ['*'],
+            'last_used_at' => null, 'created_at' => null, 'updated_at' => null, 'expires_at' => null]], $response->json('data'));
         $this->assertTrue($response->headers->hasCacheControlDirective('private'));
         $this->assertTrue($response->headers->hasCacheControlDirective('no-store'));
         config(['internal_api.max_response_bytes' => 1024]);

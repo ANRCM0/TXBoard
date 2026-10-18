@@ -50,6 +50,7 @@ import { registerAccountRoutes } from './routes/account.js'
 import { registerUserRoutes } from './routes/user.js'
 import { registerOrdersRoutes } from './routes/orders.js'
 import { registerOrdersWriteRoutes } from './routes/orders-write.js'
+import { registerCoreUserRoutes } from './routes/core-user.js'
 import type { RouteContext } from './routes/shared.js'
 import {
   ROUTE_OPERATIONS,
@@ -318,6 +319,7 @@ export function createGatewayApp(
     // theme manifest or client capability can promote the write ban — the
     // frozen table is the only place the route posture is decided.
     orderWrite: config.orderWriteEnabled,
+    coreUserOperations: config.coreUserOperationsEnabled,
   }
   validatePolicies(activeRouteDefinitions(policyEnvironment), policyEnvironment, ROUTE_OPERATIONS)
   // The frozen table, compiled once. Every layer that needs to know a route's
@@ -540,6 +542,7 @@ export function createGatewayApp(
   })
   registerUserRoutes(app, { config, fetcher: observed })
   registerOrdersRoutes(app, { config, fetcher: observed })
+  registerCoreUserRoutes(app, { config, fetcher: observed })
 
   // GW-304: order-write adaptation layer. Registered ONLY when
   // GATEWAY_ORDER_WRITE_ENABLED is set, and even then the route's policy comes

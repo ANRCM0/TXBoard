@@ -65,7 +65,14 @@ function registeredRoutes(app: ReturnType<typeof createGatewayApp>): string[] {
     .map(route => `${route.method} ${route.path}`)
 }
 
+const EXPECTED_CORE: Record<string, PolicyName> = {
+  'GET /gateway/v1/core/user/capabilities': 'coreCapabilities',
+  ...Object.fromEntries(['catalog.offers.list'].map(id => [`POST /gateway/v1/core/user/operations/${id}`, 'corePublicRead' as PolicyName])),
+  ...Object.fromEntries(['commerce.orders.list', 'commerce.orders.get', 'billing.wallet.get', 'billing.payment-methods.list', 'billing.recharges.list', 'billing.recharges.get', 'subscription.mine.get', 'usage.mine.list', 'identity.account.get', 'identity.sessions.list', 'billing.payment-attempts.get'].map(id => [`POST /gateway/v1/core/user/operations/${id}`, 'coreUserRead' as PolicyName])),
+  ...Object.fromEntries(['commerce.orders.create', 'commerce.orders.checkout', 'commerce.orders.cancel', 'billing.recharges.create', 'billing.recharges.checkout', 'identity.sessions.revoke', 'identity.session.end', 'billing.payment-attempts.query'].map(id => [`POST /gateway/v1/core/user/operations/${id}`, 'coreUserWrite' as PolicyName])),
+}
 const EXPECTED_MAPPING: Record<string, PolicyName> = {
+  ...EXPECTED_CORE,
   'GET /gateway/v1/bootstrap': 'publicRead',
   'GET /gateway/v1/theme/config': 'publicRead',
   'GET /gateway/v1/plans': 'publicRead',
@@ -99,7 +106,7 @@ describe('GW-212 route policy table', () => {
     expect(snapshot).toEqual(EXPECTED_MAPPING)
     // Snapshot the policy bodies too: a silent posture change in auth, body,
     // limiter or cache must fail this test rather than ship.
-    expect(routeDefinitions.map(d => ({ ...d.policy }))).toEqual([
+    expect(routeDefinitions.filter(d => !d.path.startsWith('/gateway/v1/core/user/')).map(d => ({ ...d.policy }))).toEqual([
       { name: 'publicRead', auth: 'none', body: 'none', limiter: 'public', cache: 'public-short' },
       { name: 'publicRead', auth: 'none', body: 'none', limiter: 'public', cache: 'public-short' },
       { name: 'publicRead', auth: 'none', body: 'none', limiter: 'public', cache: 'public-short' },

@@ -67,6 +67,8 @@ final class OperationRegistry
             'commerce.orders.checkout' => self::spec([], '', '', null, 'checkout', [], [], command: CommerceMutationOperations::class),
             'commerce.orders.cancel' => self::spec([], '', '', null, 'cancel', [], [], command: CommerceMutationOperations::class),
             'billing.wallet.get' => self::spec([], '', '', null, 'wallet', [], [], handler: BillingReadOperations::class),
+            'billing.payment-attempts.get' => self::spec([], '', '', null, 'attempt', [], [], handler: BillingReadOperations::class),
+            'billing.payment-attempts.query' => self::spec([], '', '', null, 'queryAttempt', [], [], command: CommerceMutationOperations::class),
             'billing.payment-methods.list' => self::spec([], '', '', null, 'methods', [], [], handler: BillingReadOperations::class),
             'billing.recharges.create' => self::spec([], '', '', null, 'recharge', [], [], command: CommerceMutationOperations::class),
             'billing.recharges.list' => self::spec([], '', '', null, 'recharges', [], [], handler: BillingReadOperations::class),
@@ -135,9 +137,9 @@ final class OperationRegistry
                 'permission' => $spec['permission'], 'idempotency' => $spec['mode'],
                 'input_fields' => $contract !== null ? array_keys($contract['input']['properties'])
                     : array_values(array_filter(array_keys($spec['rules']), static fn ($field): bool => !str_contains($field, '.'))),
-                'input_schema' => $contract !== null ? $contract['input'] + ['definitions' => OperationSchemas::all()['definitions']]
+                'input_schema' => $contract !== null ? OperationSchemas::wire($contract['input'])
                     : self::inputSchema($spec['rules']), 'output_fields' => $spec['fields'],
-                'output_schema' => $contract !== null ? $contract['output'] + ['definitions' => OperationSchemas::all()['definitions']] : null,
+                'output_schema' => $contract !== null ? OperationSchemas::wire($contract['output']) : null,
                 'errors' => $contract['errors'] ?? [],
                 'max_request_bytes' => (int) config('internal_api.max_request_bytes'),
                 'deadline_seconds' => (int) config('internal_api.deadline_seconds')];

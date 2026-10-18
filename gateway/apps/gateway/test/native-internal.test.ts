@@ -81,7 +81,7 @@ describe('production native service consumer', () => {
     send.mockResolvedValue({ status: 403, contentType: 'application/json',
       body: JSON.stringify({ request_id: requestId, error: { code: 'FORBIDDEN', message: 'PRIVATE SECRET' } }) })
     await expect(client.call('identity.sessions.list', { authorization: actor }))
-      .rejects.toMatchObject({ status: 403, message: 'Core operation rejected' })
+      .rejects.toMatchObject({ status: 403, code: 'FORBIDDEN', message: 'Core operation not granted' })
   })
   it('keeps audit or dependency 5xx outcomes unknown and never retries them', async () => {
     const send = transport()

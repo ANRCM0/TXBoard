@@ -1,4 +1,6 @@
 import { PREFIX } from '../middleware/request-context.js'
+import { CORE_USER_OPERATIONS, CORE_USER_PREFIX, isCoreUserOperation, requiresCommerceWrites } from '../contracts/core-user.js'
+import { coreOperations } from '../contracts/core.generated.js'
 
 /**
  * config/policies.ts — the compile-time route policy table (GW-212 / PR-B).
@@ -26,6 +28,7 @@ export type PolicyName =
   | 'captchaChallenge'
   | 'disabledWrite'
   | 'orderWrite'
+  | 'coreCapabilities' | 'corePublicRead' | 'coreUserRead' | 'coreUserWrite'
 
 export type RoutePolicy = Readonly<{
   /** Identity of the policy; the stable key used by snapshots and tests. */
@@ -68,6 +71,10 @@ export const POLICY_DEFINITIONS: Readonly<Record<PolicyName, RoutePolicy>> = {
   // guarantees no upstream call without a credential and a well-formed body;
   // idempotency and every business rule stay in Laravel (GW-302/303).
   orderWrite: { name: 'orderWrite', auth: 'bearer', body: 'json', limiter: 'public', cache: 'off' },
+  coreCapabilities: { name: 'coreCapabilities', auth: 'none', body: 'none', limiter: 'public', cache: 'off' },
+  corePublicRead: { name: 'corePublicRead', auth: 'none', body: 'json', limiter: 'public', cache: 'off' },
+  coreUserRead: { name: 'coreUserRead', auth: 'bearer', body: 'json', limiter: 'public', cache: 'off' },
+  coreUserWrite: { name: 'coreUserWrite', auth: 'bearer', body: 'json', limiter: 'public', cache: 'off' },
 } as const
 
 /**
@@ -78,6 +85,10 @@ export const POLICY_DEFINITIONS: Readonly<Record<PolicyName, RoutePolicy>> = {
  * never inherit a permissive policy.
  */
 export const routeDefinitions = [
+  { method: 'GET', path: `${CORE_USER_PREFIX}/capabilities`, policy: POLICY_DEFINITIONS.coreCapabilities },
+  ...CORE_USER_OPERATIONS.map(id => ({ method: 'POST' as const, path: `${CORE_USER_PREFIX}/operations/${id}`,
+    policy: coreOperations[id].actor === 'anonymous' ? POLICY_DEFINITIONS.corePublicRead
+      : coreOperations[id].idempotency === 'read' ? POLICY_DEFINITIONS.coreUserRead : POLICY_DEFINITIONS.coreUserWrite })),
   { method: 'GET', path: `${PREFIX}/bootstrap`, policy: POLICY_DEFINITIONS.publicRead },
   { method: 'GET', path: `${PREFIX}/theme/config`, policy: POLICY_DEFINITIONS.publicRead },
   { method: 'GET', path: `${PREFIX}/plans`, policy: POLICY_DEFINITIONS.publicRead },
@@ -128,6 +139,8 @@ export function routeKey(method: string, path: string): string {
  * never state one posture while mapping the operations of the other.
  */
 export const ROUTE_OPERATIONS: Readonly<Record<string, readonly string[]>> = {
+  [routeKey('GET', `${CORE_USER_PREFIX}/capabilities`)]: ['system.capabilities.get'],
+  ...Object.fromEntries(CORE_USER_OPERATIONS.map(id => [routeKey('POST', `${CORE_USER_PREFIX}/operations/${id}`), [id]])),
   [routeKey('GET', `${PREFIX}/bootstrap`)]: ['guestConfig'],
   [routeKey('GET', `${PREFIX}/theme/config`)]: ['guestConfig'],
   [routeKey('GET', `${PREFIX}/plans`)]: ['guestPlans'],
@@ -202,6 +215,7 @@ export interface PolicyEnvironment {
    * — can weaken it.
    */
   orderWrite?: boolean
+  coreUserOperations?: boolean
 }
 
 /** Policies that may only be unlocked by HPKE + Redis + the feature flag
@@ -247,6 +261,11 @@ export function activeRouteDefinitions(
     return definition
   }).filter(definition => {
     const { policy, path } = definition
+    if (path.startsWith(`${CORE_USER_PREFIX}/`)) {
+      if (!environment.coreUserOperations) return false
+      const id = path.slice(`${CORE_USER_PREFIX}/operations/`.length)
+      return !isCoreUserOperation(id) || !requiresCommerceWrites(id) || orderWriteEnabled
+    }
     if (ACCOUNT_WORKFLOW_POLICIES.has(policy.name)) return accountWorkflows
     // crypto/key is the HPKE public-key discovery endpoint: it exists only
     // when HPKE is wired, and every sealed route needs the same capability.
@@ -315,6 +334,14 @@ export function validatePolicies(
     }
     if (POLICY_DEFINITIONS[policy.name] !== policy) {
       throw new Error(`Route ${key} uses a non-canonical definition for policy ${policy.name}`)
+    }
+    if (policy.name.startsWith('core')) {
+      if (policy.cache !== 'off' || policy.limiter !== 'public') throw new Error('Core operations cannot be cached or unbounded')
+      const id = path.slice(`${CORE_USER_PREFIX}/operations/`.length)
+      if (policy.name !== 'coreCapabilities' && (!isCoreUserOperation(id) || method !== 'POST'
+          || policy.body !== 'json' || policy.auth !== (coreOperations[id].actor === 'anonymous' ? 'none' : 'bearer'))) {
+        throw new Error('Invalid reviewed Core user route')
+      }
     }
     // The payment write ban is structural, not a promise inside a handler:
     // a `disabledWrite` route may NEVER map to an upstream write operation.

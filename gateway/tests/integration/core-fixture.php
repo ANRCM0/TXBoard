@@ -12,6 +12,33 @@ if (config('database.connections.mysql.database') !== 'txboard_gateway_test'
     throw new RuntimeException('Refusing to mutate any other database or environment');
 }
 $action = $argv[2] ?? 'seed';
+if ($action === 'user-service') {
+    $operations = array_keys(\App\Domains\InternalApi\OperationSchemas::all()['operations']);
+    $service = app(\App\Domains\InternalApi\ServiceCredentials::class)->issue('browser-user-fixture', 'user',
+        $argv[3] ?? '', array_merge(['system.capabilities.get'], $operations), time() + 3600);
+    // Provision isolated actors through Identity. Registration HTTP and its
+    // throttle are already exercised by the preceding integration script.
+    foreach (['owner', 'outsider'] as $name) {
+        [$created, $user] = app(\App\Services\Auth\NativeIdentityService::class)
+            ->create('gw-sdk-'.$name.'-'.bin2hex(random_bytes(6)).'@example.test', 'integration-password-2026');
+        if (!$created) throw new RuntimeException('SDK fixture actor creation failed');
+        $service[$name] = 'Bearer '.$user->createToken('browser-sdk-'.$name, ['*'])->plainTextToken;
+        if ($name === 'owner') $service['secondary'] = (string) $user->createToken('browser-sdk-secondary', ['*'])->accessToken->id;
+    }
+    echo json_encode($service, JSON_THROW_ON_ERROR)."\n";
+    exit;
+}
+if ($action === 'restrict-user-service') {
+    Illuminate\Support\Facades\DB::table('tx_internal_service')->where('service_id', 'browser-user-fixture')
+        ->update(['operations_json' => json_encode(['system.capabilities.get', 'catalog.offers.list'])]);
+    echo "{}\n";
+    exit;
+}
+if ($action === 'revoke-user-service') {
+    app(\App\Domains\InternalApi\ServiceCredentials::class)->revoke('browser-user-fixture');
+    echo "{}\n";
+    exit;
+}
 if ($action === 'trust') {
     $trust = app(App\Domains\Network\NativeNodeAuthorization::class)->publicTrust();
     echo json_encode(array_intersect_key($trust, array_flip(['protocol_version', 'core_instance_id',
@@ -55,7 +82,7 @@ $group = App\Models\ServerGroup::unguarded(fn () => App\Models\ServerGroup::crea
 $plan = App\Models\Plan::withoutEvents(fn () => App\Models\Plan::create([
     'group_id' => $group->id, 'name' => 'Gateway Native fixture', 'transfer_enable' => 10,
     'show' => true, 'sell' => true, 'renew' => true, 'sort' => 0, 'reset_traffic_method' => 2,
-    'content' => 'Dedicated integration plan', 'prices' => ['monthly' => '12.00', 'quarterly' => '36.00'],
+    'content' => 'Dedicated integration plan', 'prices' => ['monthly' => '12.00', 'quarterly' => '36.00', 'onetime' => '0.00'],
     'tags' => ['integration'], 'device_limit' => 2, 'speed_limit' => 100, 'capacity_limit' => null,
 ]));
 $publication = app(App\Domains\Subscription\Services\PlanPublicationService::class)

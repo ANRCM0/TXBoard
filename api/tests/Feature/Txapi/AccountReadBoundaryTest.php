@@ -76,7 +76,8 @@ final class AccountReadBoundaryTest extends NativeRuntimeTestCase
         $this->assertSame(912345678, (int) $user->fresh()->telegram_id);
         $token = $user->createToken('port-owner', ['*'])->plainTextToken;
         $account = ['id' => (int) $user->id, 'email' => $user->email, 'telegram_id' => 912345678,
-            'subscription' => ['schema' => 'port-test', 'authorized' => false, 'user_id' => (int) $user->id],
+            'subscription' => ['schema' => 'core-entitlement/v1', 'authorized' => false,
+                'reason' => 'ENTITLEMENT_SLOT_EMPTY', 'user_id' => (int) $user->id],
             'credential_status' => 'provider_managed'];
         $subscription = ['schema' => 'core-entitlement/v1', 'authorized' => false, 'reason' => 'ENTITLEMENT_SLOT_EMPTY', 'user_id' => (int) $user->id,
             'credential_status' => 'provider_managed', 'delivery_formats' => ['port-format']];
@@ -196,19 +197,21 @@ final class AccountReadBoundaryTest extends NativeRuntimeTestCase
         $queries = Mockery::mock(AccountQueries::class);
         $queries->shouldReceive('account')->twice()->andReturnUsing(function () use ($user, $secret, $subscription, &$phase): array {
             return ['id' => (int) $user->id, 'email' => $phase === 'limit' ? str_repeat('x', 2048) : $user->email,
-                'telegram_id' => null, 'subscription' => $subscription, 'password' => $secret, 'unexpected' => $secret];
+                'telegram_id' => null,
+                'subscription' => ['schema' => 'core-entitlement/v1', 'authorized' => false,
+                    'reason' => 'ENTITLEMENT_SLOT_EMPTY', 'user_id' => (int) $user->id,
+                    'password' => $secret, 'unexpected' => $secret],
+                'credential_status' => 'provider_managed', 'password' => $secret, 'unexpected' => $secret];
         });
         $queries->shouldReceive('subscription')->once()->with((int) $user->id)->andReturn($subscription);
         $this->app->instance(AccountQueries::class, $queries);
         $account = $this->invoke('identity.account.get', $token)->assertOk();
         $standalone = $this->invoke('subscription.mine.get', $token)->assertStatus(503)
             ->assertJsonPath('error.code', 'DEPENDENCY_UNAVAILABLE');
-        $expected = ['schema' => 'test', 'authorized' => true, 'user_id' => (string) $user->id,
-            'subscription_id' => '71', 'quota_bytes' => '1000', 'consumed_bytes' => '17',
-            'delivery_formats' => ['test-format'],
-            'credential_status' => ['state' => 'managed', 'nested' => ['count' => 2]]];
+        $expected = ['schema' => 'core-entitlement/v1', 'authorized' => false,
+            'reason' => 'ENTITLEMENT_SLOT_EMPTY', 'user_id' => (string) $user->id];
         $this->assertSame(['id' => (string) $user->id, 'email' => $user->email, 'telegram_id' => null,
-            'subscription' => $expected], $account->json('data'));
+            'subscription' => $expected, 'credential_status' => 'provider_managed'], $account->json('data'));
         // The standalone operation now rejects a malformed nested contract instead of passing it through.
         $this->assertNull($standalone->json('data'));
         foreach ([$account, $standalone] as $response) {

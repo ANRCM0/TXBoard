@@ -16,6 +16,7 @@
 import { AsyncLocalStorage } from 'node:async_hooks'
 import { timingSafeEqual } from 'node:crypto'
 import { createMetricsRegistry, type MetricsRegistry } from '../services/metrics.js'
+import { CORE_USER_OPERATIONS, CORE_USER_PREFIX } from '../contracts/core-user.js'
 
 /* ------------------------------------------------------------------ *
  * Structured logger with allowlist redaction
@@ -191,6 +192,8 @@ export function nullLogger(): Logger {
  * stops a scanner from minting series with arbitrary paths.
  */
 const ROUTE_TEMPLATES: ReadonlyArray<readonly [string, string]> = [
+  ['GET', `${CORE_USER_PREFIX}/capabilities`],
+  ...CORE_USER_OPERATIONS.map(id => ['POST', `${CORE_USER_PREFIX}/operations/${id}`] as const),
   ['GET', '/gateway/v1/plans'],
   ['GET', '/gateway/v1/bootstrap'],
   ['GET', '/gateway/v1/theme/config'],

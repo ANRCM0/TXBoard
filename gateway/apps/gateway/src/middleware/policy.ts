@@ -218,7 +218,7 @@ export function policyEnforcementMiddleware(options: PolicyMiddlewareOptions) {
       // an unparsable body and no oversized body ever reaches the upstream.
       let payload: unknown
       try {
-        payload = await readJsonRequest(context.req.raw, options.maxRequestBytes)
+        payload = await readJsonRequest(context.req.raw, options.maxRequestBytes, policy.name.startsWith('core'))
       } catch (error) {
         const failure = error as GatewayFailure
         if (failure && failure.code === 'PAYLOAD_TOO_LARGE') {

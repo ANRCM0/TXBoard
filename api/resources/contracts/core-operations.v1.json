@@ -1010,6 +1010,367 @@
         "payment"
       ],
       "additionalProperties": false
+    },
+    "account-entitlement": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "schema": {
+              "const": "core-entitlement/v1"
+            },
+            "authorized": {
+              "const": false
+            },
+            "reason": {
+              "type": "string",
+              "pattern": "^ENTITLEMENT_[A-Z_]+$",
+              "maxLength": 64
+            },
+            "user_id": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "x-decimal-maximum": "9223372036854775807"
+            }
+          },
+          "required": [
+            "schema",
+            "authorized",
+            "reason",
+            "user_id"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "schema": {
+              "const": "core-entitlement/v1"
+            },
+            "authorized": {
+              "const": true
+            },
+            "reason": {
+              "const": "ENTITLEMENT_GRANTED"
+            },
+            "user_id": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "x-decimal-maximum": "9223372036854775807"
+            },
+            "subscription_id": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "x-decimal-maximum": "9223372036854775807"
+            },
+            "subscription_version": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "x-decimal-maximum": "9223372036854775807"
+            },
+            "plan_id": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "x-decimal-maximum": "9223372036854775807"
+            },
+            "terms_id": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "x-decimal-maximum": "9223372036854775807"
+            },
+            "terms_version": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "x-decimal-maximum": "9223372036854775807"
+            },
+            "plan_revision_id": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "x-decimal-maximum": "9223372036854775807"
+            },
+            "usage_period_id": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "x-decimal-maximum": "9223372036854775807"
+            },
+            "period_terms_id": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "x-decimal-maximum": "9223372036854775807"
+            },
+            "period_version": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "x-decimal-maximum": "9223372036854775807"
+            },
+            "group_id": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^(0|[1-9][0-9]{0,18})$",
+                  "x-decimal-maximum": "9223372036854775807"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "speed_limit_mbps": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^(0|[1-9][0-9]{0,18})$",
+                  "x-decimal-maximum": "9223372036854775807"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "device_limit": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^(0|[1-9][0-9]{0,18})$",
+                  "x-decimal-maximum": "9223372036854775807"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "expires_at": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^(0|[1-9][0-9]{0,18})$",
+                  "x-decimal-maximum": "9223372036854775807"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "next_reset_at": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^(0|[1-9][0-9]{0,18})$",
+                  "x-decimal-maximum": "9223372036854775807"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "quota_bytes": {
+              "type": "string",
+              "pattern": "^(0|[1-9][0-9]{0,18})$",
+              "x-decimal-maximum": "9223372036854775807"
+            },
+            "consumed_bytes": {
+              "type": "string",
+              "pattern": "^(0|[1-9][0-9]{0,18})$",
+              "x-decimal-maximum": "9223372036854775807"
+            },
+            "remaining_bytes": {
+              "type": "string",
+              "pattern": "^(0|[1-9][0-9]{0,18})$",
+              "x-decimal-maximum": "9223372036854775807"
+            },
+            "upload_bytes": {
+              "type": "string",
+              "pattern": "^(0|[1-9][0-9]{0,18})$",
+              "x-decimal-maximum": "9223372036854775807"
+            },
+            "download_bytes": {
+              "type": "string",
+              "pattern": "^(0|[1-9][0-9]{0,18})$",
+              "x-decimal-maximum": "9223372036854775807"
+            }
+          },
+          "required": [
+            "schema",
+            "authorized",
+            "reason",
+            "user_id",
+            "subscription_id",
+            "subscription_version",
+            "plan_id",
+            "terms_id",
+            "terms_version",
+            "plan_revision_id",
+            "usage_period_id",
+            "period_terms_id",
+            "period_version",
+            "group_id",
+            "speed_limit_mbps",
+            "device_limit",
+            "expires_at",
+            "next_reset_at",
+            "quota_bytes",
+            "consumed_bytes",
+            "remaining_bytes",
+            "upload_bytes",
+            "download_bytes"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "account": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/id"
+        },
+        "email": {
+          "type": "string",
+          "maxLength": 255
+        },
+        "telegram_id": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/decimal"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "subscription": {
+          "$ref": "#/definitions/account-entitlement"
+        },
+        "credential_status": {
+          "const": "provider_managed"
+        }
+      },
+      "required": [
+        "id",
+        "email",
+        "telegram_id",
+        "subscription",
+        "credential_status"
+      ],
+      "additionalProperties": false
+    },
+    "session": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/id"
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 255
+        },
+        "abilities": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 255
+          },
+          "maxItems": 100
+        },
+        "last_used_at": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?(?:Z|[+-][0-9]{2}:[0-9]{2})$",
+              "maxLength": 40
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "created_at": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?(?:Z|[+-][0-9]{2}:[0-9]{2})$",
+              "maxLength": 40
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "updated_at": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?(?:Z|[+-][0-9]{2}:[0-9]{2})$",
+              "maxLength": 40
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "expires_at": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?(?:Z|[+-][0-9]{2}:[0-9]{2})$",
+              "maxLength": 40
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "abilities",
+        "last_used_at",
+        "created_at",
+        "updated_at",
+        "expires_at"
+      ],
+      "additionalProperties": false
+    },
+    "attempt-status": {
+      "type": "object",
+      "properties": {
+        "attempt_id": {
+          "$ref": "#/definitions/id"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "prepared",
+            "pending",
+            "unknown",
+            "succeeded",
+            "failed"
+          ]
+        },
+        "intent_type": {
+          "type": "string",
+          "enum": [
+            "purchase",
+            "recharge"
+          ]
+        },
+        "amount_minor": {
+          "$ref": "#/definitions/decimal"
+        },
+        "currency": {
+          "type": "string",
+          "pattern": "^[A-Z]{3}$"
+        }
+      },
+      "required": [
+        "attempt_id",
+        "status",
+        "intent_type",
+        "amount_minor",
+        "currency"
+      ],
+      "additionalProperties": false
     }
   },
   "operations": {
@@ -1043,7 +1404,13 @@
         "DEPENDENCY_UNAVAILABLE",
         "IDEMPOTENCY_CONFLICT",
         "IDEMPOTENCY_IN_PROGRESS"
-      ]
+      ],
+      "meta": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
     },
     "commerce.orders.create": {
       "version": 1,
@@ -1079,7 +1446,13 @@
         "DEPENDENCY_UNAVAILABLE",
         "IDEMPOTENCY_CONFLICT",
         "IDEMPOTENCY_IN_PROGRESS"
-      ]
+      ],
+      "meta": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
     },
     "commerce.orders.list": {
       "version": 1,
@@ -1127,7 +1500,39 @@
         "DEPENDENCY_UNAVAILABLE",
         "IDEMPOTENCY_CONFLICT",
         "IDEMPOTENCY_IN_PROGRESS"
-      ]
+      ],
+      "meta": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "per_page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "last_page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "page",
+          "per_page",
+          "total",
+          "last_page"
+        ],
+        "additionalProperties": false
+      }
     },
     "commerce.orders.get": {
       "version": 1,
@@ -1162,7 +1567,13 @@
         "DEPENDENCY_UNAVAILABLE",
         "IDEMPOTENCY_CONFLICT",
         "IDEMPOTENCY_IN_PROGRESS"
-      ]
+      ],
+      "meta": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
     },
     "commerce.orders.checkout": {
       "version": 1,
@@ -1210,7 +1621,13 @@
         "DEPENDENCY_UNAVAILABLE",
         "IDEMPOTENCY_CONFLICT",
         "IDEMPOTENCY_IN_PROGRESS"
-      ]
+      ],
+      "meta": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
     },
     "commerce.orders.cancel": {
       "version": 1,
@@ -1254,7 +1671,13 @@
         "DEPENDENCY_UNAVAILABLE",
         "IDEMPOTENCY_CONFLICT",
         "IDEMPOTENCY_IN_PROGRESS"
-      ]
+      ],
+      "meta": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
     },
     "billing.wallet.get": {
       "version": 1,
@@ -1282,7 +1705,13 @@
         "DEPENDENCY_UNAVAILABLE",
         "IDEMPOTENCY_CONFLICT",
         "IDEMPOTENCY_IN_PROGRESS"
-      ]
+      ],
+      "meta": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
     },
     "billing.payment-methods.list": {
       "version": 1,
@@ -1314,7 +1743,13 @@
         "DEPENDENCY_UNAVAILABLE",
         "IDEMPOTENCY_CONFLICT",
         "IDEMPOTENCY_IN_PROGRESS"
-      ]
+      ],
+      "meta": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
     },
     "billing.recharges.create": {
       "version": 1,
@@ -1355,7 +1790,13 @@
         "DEPENDENCY_UNAVAILABLE",
         "IDEMPOTENCY_CONFLICT",
         "IDEMPOTENCY_IN_PROGRESS"
-      ]
+      ],
+      "meta": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
     },
     "billing.recharges.list": {
       "version": 1,
@@ -1398,7 +1839,26 @@
         "DEPENDENCY_UNAVAILABLE",
         "IDEMPOTENCY_CONFLICT",
         "IDEMPOTENCY_IN_PROGRESS"
-      ]
+      ],
+      "meta": {
+        "type": "object",
+        "properties": {
+          "next_after_id": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/id"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "next_after_id"
+        ],
+        "additionalProperties": false
+      }
     },
     "billing.recharges.get": {
       "version": 1,
@@ -1433,7 +1893,13 @@
         "DEPENDENCY_UNAVAILABLE",
         "IDEMPOTENCY_CONFLICT",
         "IDEMPOTENCY_IN_PROGRESS"
-      ]
+      ],
+      "meta": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
     },
     "billing.recharges.checkout": {
       "version": 1,
@@ -1468,7 +1934,13 @@
         "DEPENDENCY_UNAVAILABLE",
         "IDEMPOTENCY_CONFLICT",
         "IDEMPOTENCY_IN_PROGRESS"
-      ]
+      ],
+      "meta": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
     },
     "subscription.mine.get": {
       "version": 1,
@@ -1496,7 +1968,13 @@
         "DEPENDENCY_UNAVAILABLE",
         "IDEMPOTENCY_CONFLICT",
         "IDEMPOTENCY_IN_PROGRESS"
-      ]
+      ],
+      "meta": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
     },
     "usage.mine.list": {
       "version": 1,
@@ -1535,6 +2013,282 @@
           "$ref": "#/definitions/usage"
         },
         "maxItems": 100
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS"
+      ],
+      "meta": {
+        "type": "object",
+        "properties": {
+          "schema": {
+            "const": "native-usage-periods/v1"
+          },
+          "next_after_id": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/id"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "schema",
+          "next_after_id"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "identity.account.get": {
+      "version": 1,
+      "domains": [
+        "user"
+      ],
+      "actor": "user",
+      "permission": null,
+      "idempotency": "read",
+      "consistency": "current-owner-view",
+      "input": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "output": {
+        "$ref": "#/definitions/account"
+      },
+      "meta": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS"
+      ]
+    },
+    "identity.sessions.list": {
+      "version": 1,
+      "domains": [
+        "user",
+        "admin"
+      ],
+      "actor": "authenticated",
+      "permission": null,
+      "idempotency": "read",
+      "consistency": "current-owner-view",
+      "input": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "array",
+        "items": {
+          "$ref": "#/definitions/session"
+        },
+        "maxItems": 100
+      },
+      "meta": {
+        "type": "object",
+        "properties": {
+          "has_more": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "has_more"
+        ],
+        "additionalProperties": false
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS"
+      ]
+    },
+    "identity.sessions.revoke": {
+      "version": 1,
+      "domains": [
+        "user",
+        "admin"
+      ],
+      "actor": "authenticated",
+      "permission": null,
+      "idempotency": "workflow",
+      "consistency": "owner-transaction",
+      "input": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "$ref": "#/definitions/id"
+          }
+        },
+        "required": [
+          "session_id"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "const": true
+          }
+        },
+        "required": [
+          "ok"
+        ],
+        "additionalProperties": false
+      },
+      "meta": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS"
+      ]
+    },
+    "identity.session.end": {
+      "version": 1,
+      "domains": [
+        "user",
+        "admin"
+      ],
+      "actor": "authenticated",
+      "permission": null,
+      "idempotency": "once",
+      "consistency": "owner-transaction",
+      "input": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "const": true
+          }
+        },
+        "required": [
+          "ok"
+        ],
+        "additionalProperties": false
+      },
+      "meta": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS"
+      ]
+    },
+    "billing.payment-attempts.get": {
+      "version": 1,
+      "domains": [
+        "user"
+      ],
+      "actor": "user",
+      "permission": null,
+      "idempotency": "read",
+      "consistency": "current-owner-view",
+      "input": {
+        "type": "object",
+        "properties": {
+          "attempt_id": {
+            "$ref": "#/definitions/id"
+          }
+        },
+        "required": [
+          "attempt_id"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "$ref": "#/definitions/attempt-status"
+      },
+      "meta": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS"
+      ]
+    },
+    "billing.payment-attempts.query": {
+      "version": 1,
+      "domains": [
+        "user"
+      ],
+      "actor": "user",
+      "permission": null,
+      "idempotency": "domain",
+      "consistency": "owner-transaction",
+      "input": {
+        "type": "object",
+        "properties": {
+          "attempt_id": {
+            "$ref": "#/definitions/id"
+          }
+        },
+        "required": [
+          "attempt_id"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "$ref": "#/definitions/attempt-status"
+      },
+      "meta": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
       },
       "errors": [
         "INVALID_REQUEST",

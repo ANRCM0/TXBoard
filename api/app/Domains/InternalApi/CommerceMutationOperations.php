@@ -5,13 +5,22 @@ namespace App\Domains\InternalApi;
 use App\Domains\Billing\Contracts\OrderCancellation;
 use App\Domains\Billing\Contracts\OrderCheckout;
 use App\Domains\Billing\Contracts\Recharges;
+use App\Domains\Billing\Contracts\PaymentCheckout;
 use App\Domains\Subscription\Contracts\Purchases;
 use App\Models\User;
 
 final class CommerceMutationOperations
 {
     public function __construct(private readonly Purchases $purchases, private readonly OrderCheckout $checkout,
-        private readonly OrderCancellation $cancellation, private readonly Recharges $recharges) {}
+        private readonly OrderCancellation $cancellation, private readonly Recharges $recharges,
+        private readonly PaymentCheckout $paymentCheckout) {}
+
+    /** Provider query may settle money. Reuse the owner, outside a surrounding SQL transaction. */
+    public function queryAttempt(User $actor, array $input, string $idempotencyKey): MutationOperationResult
+    {
+        $this->paymentCheckout->query((int) $actor->id, (int) $input['attempt_id']);
+        return new MutationOperationResult($this->paymentCheckout->status((int) $actor->id, (int) $input['attempt_id']));
+    }
 
     public function purchase(User $actor, array $input, string $idempotencyKey): MutationOperationResult
     {

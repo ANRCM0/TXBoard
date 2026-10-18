@@ -71,6 +71,8 @@ REDIS_DB=12
 REDIS_CACHE_DB=12
 CORE_INSTALLATION_MODE=native
 CORE_INSTALLATION_EPOCH=1
+CORE_INTERNAL_API_ENABLED=true
+CORE_INTERNAL_TLS_PROXIES=127.0.0.1
 CORE_CREDENTIAL_PROVIDER_ID=primary-provider
 CORE_CREDENTIAL_PROVIDER_ENDPOINT=https://127.0.0.1:18084/operations
 CORE_CREDENTIAL_PROVIDER_EPOCH=1
@@ -139,3 +141,6 @@ TXBOARD_CORE_TEST_ROOT="$scratch/core/api" \
 GATEWAY_TEST_REDIS_URL="redis://127.0.0.1:${REDIS_TEST_PORT:-16379}/12" \
 GATEWAY_INTEGRATION_LOG_DIR="$scratch" \
 node tests/integration/native-core-gateway.mjs | tee "$scratch/result.json"
+php tests/integration/core-fixture.php "$scratch/core/api" user-service "$core_fingerprint" > "$scratch/user-service.private.json"
+TXBOARD_CORE_TEST_ROOT="$scratch/core/api" GATEWAY_INTEGRATION_LOG_DIR="$scratch" \
+node tests/integration/core-user-gateway.mjs | tee "$scratch/core-user-result.json"

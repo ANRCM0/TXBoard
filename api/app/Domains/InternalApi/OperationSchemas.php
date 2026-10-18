@@ -24,6 +24,12 @@ final class OperationSchemas
         return new TransportSchema(self::all()['definitions']);
     }
 
+    public static function wire(array $schema): array
+    {
+        return TransportSchema::wireDefinition($schema) + ['definitions' =>
+            array_map(TransportSchema::wireDefinition(...), self::all()['definitions'])];
+    }
+
     public static function apply(array $registry): array
     {
         foreach (self::all()['operations'] as $id => $contract) {
@@ -61,5 +67,13 @@ final class OperationSchemas
     {
         $spec = self::operation($operation);
         return $spec === null ? $output : self::validator()->project($output, $spec['output']);
+    }
+
+    public static function meta(string $operation, array $meta): array
+    {
+        $schema = self::operation($operation)['meta'] ?? null;
+        // TransportSchema represents an empty wire object as stdClass. The
+        // response owner accepts metadata arrays and omits an empty one.
+        return $schema === null ? $meta : (array) self::validator()->project($meta, $schema);
     }
 }

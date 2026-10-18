@@ -11,6 +11,7 @@ final class SessionReadOperations
 
     public function listing(User $actor, array $input): ReadOperationResult
     {
-        return new ReadOperationResult($this->sessions->listing((int) $actor->id));
+        $rows = $this->sessions->listing((int) $actor->id, 101);
+        return new ReadOperationResult(array_slice($rows, 0, 100), ['has_more' => count($rows) > 100]);
     }
 }
