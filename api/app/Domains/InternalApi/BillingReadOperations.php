@@ -5,12 +5,18 @@ namespace App\Domains\InternalApi;
 use App\Domains\Billing\Contracts\PaymentMethods;
 use App\Domains\Billing\Contracts\Recharges;
 use App\Domains\Billing\Contracts\WalletPayments;
+use App\Domains\Billing\Contracts\PaymentCheckout;
 use App\Models\User;
 
 final class BillingReadOperations
 {
     public function __construct(private readonly PaymentMethods $methods, private readonly Recharges $recharges,
-        private readonly WalletPayments $wallet) {}
+        private readonly WalletPayments $wallet, private readonly PaymentCheckout $checkout) {}
+
+    public function attempt(User $actor, array $input): ReadOperationResult
+    {
+        return new ReadOperationResult($this->checkout->status((int) $actor->id, (int) $input['attempt_id']));
+    }
 
     public function wallet(User $actor, array $input): ReadOperationResult
     {

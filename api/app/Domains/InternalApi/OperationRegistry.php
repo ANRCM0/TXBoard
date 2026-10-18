@@ -67,6 +67,8 @@ final class OperationRegistry
             'commerce.orders.checkout' => self::spec([], '', '', null, 'checkout', [], [], command: CommerceMutationOperations::class),
             'commerce.orders.cancel' => self::spec([], '', '', null, 'cancel', [], [], command: CommerceMutationOperations::class),
             'billing.wallet.get' => self::spec([], '', '', null, 'wallet', [], [], handler: BillingReadOperations::class),
+            'billing.payment-attempts.get' => self::spec([], '', '', null, 'attempt', [], [], handler: BillingReadOperations::class),
+            'billing.payment-attempts.query' => self::spec([], '', '', null, 'queryAttempt', [], [], command: CommerceMutationOperations::class),
             'billing.payment-methods.list' => self::spec([], '', '', null, 'methods', [], [], handler: BillingReadOperations::class),
             'billing.recharges.create' => self::spec([], '', '', null, 'recharge', [], [], command: CommerceMutationOperations::class),
             'billing.recharges.list' => self::spec([], '', '', null, 'recharges', [], [], handler: BillingReadOperations::class),

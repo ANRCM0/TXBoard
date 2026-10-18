@@ -93,4 +93,48 @@ final class TxapiNativeInternalCheckoutTest extends NativePaymentTestCase
         $this->assertSame(1, DB::table('tx_internal_request')->count());
         Http::assertNothingSent();
     }
+
+    public function test_attempt_query_replay_reads_current_owner_state_and_settles_only_once(): void
+    {
+        [$user, $order] = $this->purchase();
+        [$other] = $this->purchase();
+        $started = app(\App\Domains\Billing\NativePaymentCheckout::class)
+            ->start($user->id, $order->id, $this->payment->id, 'internal-query-checkout');
+        $attemptId = $started['attempt']['attempt_id'];
+        $dispatch = DB::table('tx_payment_dispatch')->where('attempt_id', $attemptId)->first();
+        $snapshot = json_decode(Crypt::decryptString($dispatch->snapshot_ciphertext), true, flags: JSON_THROW_ON_ERROR);
+        $this->service = app(ServiceCredentials::class)->issue('attempt-query', 'user', self::FINGERPRINT,
+            ['billing.payment-attempts.get', 'billing.payment-attempts.query'], time() + 3600);
+        $token = $user->createToken('query-owner', ['*'])->plainTextToken;
+        $key = (string) Str::uuid();
+        $invoke = function (string $operation, string $bearer, string $id) use ($key) {
+            return $this->withServerVariables(['REMOTE_ADDR' => '127.0.0.1', 'HTTPS' => 'on'])
+                ->postJson('https://core.example.test/txapi/internal/native/v1/user/operations/'.$operation, [
+                    'contract_version' => '1', 'request_id' => (string) Str::uuid(),
+                    'deadline_at' => time() + 15, 'input' => ['attempt_id' => $id],
+                ], ['X-Core-Service-Id' => $this->service['service_id'],
+                    'X-Core-Service-Credential' => $this->service['credential'],
+                    'X-Core-Service-Epoch' => $this->service['epoch'],
+                    'X-Core-Tls-Verified' => 'SUCCESS', 'X-Core-Tls-Certificate-Sha256' => self::FINGERPRINT,
+                    'Authorization' => 'Bearer '.$bearer, 'Idempotency-Key' => $key]);
+        };
+        $invoke('billing.payment-attempts.get', $other->createToken('outsider', ['*'])->plainTextToken, $attemptId)
+            ->assertNotFound();
+        $queries = 0;
+        Http::fake(function () use (&$queries, $snapshot) {
+            $this->assertSame(0, DB::transactionLevel());
+            if (++$queries === 1) throw new \Illuminate\Http\Client\ConnectionException('timeout');
+            return Http::response(['code' => 1, 'pid' => '42', 'status' => 1,
+                'out_trade_no' => $snapshot['provider_order_ref'], 'trade_no' => 'internal-query-receipt', 'money' => '12.34']);
+        });
+        $invoke('billing.payment-attempts.query', $token, $attemptId)->assertOk()->assertJsonPath('data.status', 'unknown');
+        $invoke('billing.payment-attempts.query', $token, $attemptId)->assertOk()->assertJsonPath('data.status', 'succeeded');
+        $invoke('billing.payment-attempts.query', $token, $attemptId)->assertOk()->assertJsonPath('data.status', 'succeeded');
+        $invoke('billing.payment-attempts.get', $token, $attemptId)->assertOk()->assertJsonPath('data.amount_minor', '1234');
+        $this->assertSame(1, DB::table('tx_payment_receipt')->count());
+        $this->assertSame(1, DB::table('tx_money_journal')->count());
+        $this->assertSame(1, DB::table('tx_internal_request')->count());
+        $invoke('billing.payment-attempts.query', $token, '999999')->assertStatus(409)
+            ->assertJsonPath('error.code', 'IDEMPOTENCY_CONFLICT');
+    }
 }

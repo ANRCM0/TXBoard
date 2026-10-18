@@ -62,4 +62,10 @@ final class OperationSchemas
         $spec = self::operation($operation);
         return $spec === null ? $output : self::validator()->project($output, $spec['output']);
     }
+
+    public static function meta(string $operation, array $meta): array
+    {
+        $schema = self::operation($operation)['meta'] ?? null;
+        return $schema === null ? $meta : self::validator()->project($meta, $schema);
+    }
 }

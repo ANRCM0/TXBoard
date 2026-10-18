@@ -8,9 +8,9 @@ import { boundedJson, GatewayFailure } from '../services/upstream.js'
  */
 
 /** Read a JSON request body with content-type and byte-cap enforcement. */
-export async function readJsonRequest(request: Request, maxBytes: number): Promise<unknown> {
+export async function readJsonRequest(request: Request, maxBytes: number, strict = false): Promise<unknown> {
   const type = request.headers.get('content-type') || ''
-  if (!type.toLowerCase().startsWith('application/json')) {
+  if (strict ? type.split(';', 1)[0]?.trim().toLowerCase() !== 'application/json' : !type.toLowerCase().startsWith('application/json')) {
     throw new GatewayFailure('VALIDATION_ERROR', 400, 'Content-Type must be application/json')
   }
   const len = request.headers.get('content-length')
@@ -18,7 +18,7 @@ export async function readJsonRequest(request: Request, maxBytes: number): Promi
     throw new GatewayFailure('PAYLOAD_TOO_LARGE', 413, 'Request body too large')
   }
   try {
-    return await boundedJson(request.body, maxBytes)
+    return await boundedJson(request.body, maxBytes, strict)
   } catch (e) {
     if (e instanceof GatewayFailure && e.code === 'PAYLOAD_TOO_LARGE') throw e
     throw new GatewayFailure('VALIDATION_ERROR', 400, 'Invalid JSON request')

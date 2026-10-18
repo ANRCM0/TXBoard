@@ -3,6 +3,7 @@ import { adaptNativeData, nativeErrorEnvelope, nativeSuccessEnvelope } from '../
 import { GatewayFailure } from './failures.js'
 import { mappedOrderWriteFailure } from './order-write-failure.js'
 import { NativeCoreClient, type NativeInternalOperation } from './native-internal.js'
+import { parseStrictJson } from '../security/strict-json.js'
 export { GatewayFailure, type GatewayFailureCode } from './failures.js'
 
 export type UpstreamFetcher = typeof fetch
@@ -49,6 +50,7 @@ export const ORDER_WRITE_FORWARDED_HEADERS: ReadonlySet<string> = new Set([
 export async function boundedJson(
   stream: ReadableStream<Uint8Array> | null,
   maxBytes: number,
+  strict = false,
 ): Promise<unknown> {
   if (!stream) throw new GatewayFailure('UPSTREAM_ERROR', 502, 'Empty upstream response')
   const reader = stream.getReader()
@@ -71,7 +73,8 @@ export async function boundedJson(
     offset += chunk.byteLength
   }
   try {
-    return JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes))
+    const text = new TextDecoder('utf-8', { fatal: true }).decode(bytes)
+    return strict ? parseStrictJson(text) : JSON.parse(text)
   } catch {
     throw new GatewayFailure('UPSTREAM_ERROR', 502, 'Invalid upstream JSON')
   }

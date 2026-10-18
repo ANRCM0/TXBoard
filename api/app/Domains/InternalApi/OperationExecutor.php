@@ -153,6 +153,7 @@ final class OperationExecutor
                 'commerce.orders.cancel' => [CommerceMutationOperations::class, 'cancel', 'workflow'],
                 'billing.recharges.create' => [CommerceMutationOperations::class, 'recharge', 'domain'],
                 'billing.recharges.checkout' => [CommerceMutationOperations::class, 'rechargeCheckout', 'domain'],
+                'billing.payment-attempts.query' => [CommerceMutationOperations::class, 'queryAttempt', 'domain'],
                 default => null,
             };
             if ($actor === null || $spec['controller'] !== null || $spec['handler'] !== null
@@ -164,6 +165,8 @@ final class OperationExecutor
         // Signed checkout material is a current authorization decision, not a
         // replayable receipt. Re-enter its permanent domain key on every call.
         $currentCheckout = in_array($operation, ['commerce.orders.checkout', 'billing.recharges.checkout'], true);
+        // An unknown query result can advance later. A replay must consult the owner again.
+        $currentOwnerResult = $currentCheckout || $operation === 'billing.payment-attempts.query';
         if (in_array($spec['mode'], ['workflow', 'domain', 'domain-once'], true)) {
             $key = $request->header('Idempotency-Key', '');
             // The same UUID is forwarded to the authoritative domain workflow.
@@ -176,7 +179,7 @@ final class OperationExecutor
             ]);
             $receipt = DB::table('tx_internal_request')->useWritePdo()->where('key_hash', $hash)->first();
             if (!hash_equals($receipt->input_hash, $inputHash)) return $this->error($request, 'IDEMPOTENCY_CONFLICT', 409);
-            if ($receipt->state === 'completed' && !$currentCheckout) {
+            if ($receipt->state === 'completed' && !$currentOwnerResult) {
                 $data = json_decode(Crypt::decryptString($receipt->response_json), true, flags: JSON_THROW_ON_ERROR);
                 $data['request_id'] = TxapiResponse::requestId($request);
                 return response()->json($data, $receipt->response_status);
@@ -222,13 +225,15 @@ final class OperationExecutor
             $projected = $spec['list'] ? array_map($project, $data) : $project($data);
             $projected = OperationSchemas::output($operation, $projected);
             $meta = array_intersect_key($body['meta'] ?? [], array_flip(['page', 'per_page', 'total', 'last_page', 'schema', 'next_after_id']));
+            if (array_key_exists('has_more', $body['meta'] ?? [])) $meta['has_more'] = $body['meta']['has_more'];
+            $meta = OperationSchemas::meta($operation, $meta);
             $result = TxapiResponse::success($request, $projected, $meta, $result->getStatusCode());
         }
         if (strlen($result->getContent()) > (int) config('internal_api.max_response_bytes')) {
             throw new \LogicException('INTERNAL_RESPONSE_LIMIT');
         }
         $domainMode = in_array($spec['mode'], ['domain', 'domain-once'], true);
-        if ($receipt !== null && !($currentCheckout && $receipt->state === 'completed')
+        if ($receipt !== null && !($currentOwnerResult && $receipt->state === 'completed')
             && ($result->getStatusCode() < 400 || (!$domainMode && $result->getStatusCode() < 500))) {
             // A financial domain owns its transaction. This is a durable
             // workflow receipt, not a second transaction around business code.
@@ -248,7 +253,7 @@ final class OperationExecutor
             if ($updated !== 1) {
                 $winner = DB::table('tx_internal_request')->useWritePdo()->where('key_hash', $receipt->key_hash)->first();
                 if (!$winner || $winner->state !== 'completed') throw new \RuntimeException('INTERNAL_RECEIPT_UNAVAILABLE');
-                if ($currentCheckout) return $result;
+                if ($currentOwnerResult) return $result;
                 $replayed = json_decode(Crypt::decryptString($winner->response_json), true, flags: JSON_THROW_ON_ERROR);
                 $replayed['request_id'] = TxapiResponse::requestId($request);
                 return response()->json($replayed, $winner->response_status);

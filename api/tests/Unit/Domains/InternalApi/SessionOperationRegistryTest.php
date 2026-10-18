@@ -48,6 +48,7 @@ final class SessionOperationRegistryTest extends TestCase
             'billing.payment-methods.list' => [BillingReadOperations::class, 'methods', 'read'],
             'billing.recharges.list' => [BillingReadOperations::class, 'recharges', 'read'],
             'billing.recharges.get' => [BillingReadOperations::class, 'recharge', 'read'],
+            'billing.payment-attempts.get' => [BillingReadOperations::class, 'attempt', 'read'],
             'usage.mine.list' => [UsageReadOperations::class, 'listing', 'read'],
         ], $handlers);
         $this->assertSame([
@@ -58,6 +59,7 @@ final class SessionOperationRegistryTest extends TestCase
             'commerce.orders.cancel' => [CommerceMutationOperations::class, 'cancel', 'workflow'],
             'billing.recharges.create' => [CommerceMutationOperations::class, 'recharge', 'domain'],
             'billing.recharges.checkout' => [CommerceMutationOperations::class, 'rechargeCheckout', 'domain'],
+            'billing.payment-attempts.query' => [CommerceMutationOperations::class, 'queryAttempt', 'domain'],
         ], $commands);
     }
 
@@ -65,7 +67,8 @@ final class SessionOperationRegistryTest extends TestCase
     {
         $all = OperationRegistry::all();
         $this->assertSame([], $all['identity.sessions.list']['rules']);
-        $this->assertSame(['session_id'], array_keys($all['identity.sessions.revoke']['rules']));
+        $this->assertTrue(\App\Domains\InternalApi\OperationSchemas::input('identity.sessions.revoke', ['session_id' => '1']));
+        $this->assertFalse(\App\Domains\InternalApi\OperationSchemas::input('identity.sessions.revoke', ['session_id' => 1]));
         $this->assertSame([], $all['identity.session.end']['rules']);
         $this->assertSame(['ok'], $all['identity.sessions.revoke']['fields']);
         $this->assertSame(['ok'], $all['identity.session.end']['fields']);

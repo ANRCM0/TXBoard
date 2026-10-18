@@ -94,10 +94,12 @@ def generated_types(contract):
     for name, spec in contract['operations'].items():
         lines.append('  ' + js(name) + ': { input: ' + expression(spec['input'], definitions)
                      + ', output: ' + expression(spec['output'], definitions)
+                     + ', meta: ' + expression(spec.get('meta', {'type': 'object', 'properties': {}, 'required': [], 'additionalProperties': False}), definitions)
                      + ', actor: ' + js(spec['actor']) + ', idempotency: ' + js(spec['idempotency']) + ' },')
     lines += ['} as const', '', 'export type CoreOperation = keyof typeof coreOperations',
               "export type CoreInput<K extends CoreOperation> = z.input<(typeof coreOperations)[K]['input']>",
               "export type CoreOutput<K extends CoreOperation> = z.output<(typeof coreOperations)[K]['output']>", '']
+    lines += ["export type CoreMeta<K extends CoreOperation> = z.output<(typeof coreOperations)[K]['meta']>", '']
     return '\n'.join(lines)
 
 
@@ -122,7 +124,7 @@ def main():
             path.write_text(content, encoding='utf-8', newline='\n')
     if stale:
         raise SystemExit('Stale generated contracts: ' + ', '.join(stale))
-    print('Core contracts: 14 operations; generated PHP resource and TypeScript validators/types are current.')
+    print(f"Core contracts: {len(contract['operations'])} operations; generated PHP resource and TypeScript validators/types are current.")
 
 
 if __name__ == '__main__':
