@@ -41,13 +41,14 @@ final class AccountSessionsContractsTest extends TestCase
         $token->forceFill(['id' => 17]);
         $actor->withAccessToken($token);
         $port = Mockery::mock(AccountSessions::class);
-        $port->shouldReceive('listing')->once()->with(7)->andReturn([['id' => 17]]);
+        $port->shouldReceive('listing')->once()->with(7, 101)->andReturn([['id' => 17]]);
         $port->shouldReceive('revoke')->once()->with(7, 31)->andReturn(true);
         $port->shouldReceive('revoke')->once()->with(7, 32)->andReturn(false);
         $port->shouldReceive('end')->once()->with(7, 17);
         $read = (new SessionReadOperations($port))->listing($actor, ['user_id' => '999', 'limit' => 1]);
         $this->assertInstanceOf(ReadOperationResult::class, $read);
         $this->assertSame([['id' => 17]], $read->data);
+        $this->assertSame(['has_more' => false], $read->meta);
         $commands = new SessionMutationOperations($port);
         $result = $commands->revoke($actor, ['session_id' => '31', 'user_id' => '999']);
         $this->assertInstanceOf(MutationOperationResult::class, $result);
@@ -72,6 +73,20 @@ final class AccountSessionsContractsTest extends TestCase
             get_object_vars(new MutationOperationResult(['ok' => true])));
     }
 
+    public function test_session_list_retains_a_bounded_page_and_reports_truncation(): void
+    {
+        $actor = new User();
+        $actor->id = 7;
+        $port = Mockery::mock(AccountSessions::class);
+        $port->shouldReceive('listing')->once()->with(7, 101)
+            ->andReturn(array_map(static fn ($id) => ['id' => $id], range(101, 1)));
+        $read = (new SessionReadOperations($port))->listing($actor, []);
+        $this->assertCount(100, $read->data);
+        $this->assertSame(['id' => 101], $read->data[0]);
+        $this->assertSame(['id' => 2], $read->data[99]);
+        $this->assertSame(['has_more' => true], $read->meta);
+    }
+
     public function test_registry_exposes_only_three_fixed_session_targets_and_preserves_closed_inputs_and_retry_modes(): void
     {
         $registry = OperationRegistry::all();
@@ -87,7 +102,8 @@ final class AccountSessionsContractsTest extends TestCase
             $this->assertNull($spec['controller']);
             $this->assertSame($handler, $spec['handler']);
             $this->assertSame($command, $spec['command']);
-            $this->assertSame($fields, array_keys($spec['rules']));
+            $contract = \App\Domains\InternalApi\OperationSchemas::operation($operation);
+            $this->assertSame($fields, array_keys($contract['input']['properties']));
             $this->assertSame(['user', 'admin'], $spec['domains']);
             $this->assertSame('authenticated', $spec['actor']);
         }

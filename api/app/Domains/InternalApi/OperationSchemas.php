@@ -66,6 +66,8 @@ final class OperationSchemas
     public static function meta(string $operation, array $meta): array
     {
         $schema = self::operation($operation)['meta'] ?? null;
-        return $schema === null ? $meta : self::validator()->project($meta, $schema);
+        // TransportSchema represents an empty wire object as stdClass. The
+        // response owner accepts metadata arrays and omits an empty one.
+        return $schema === null ? $meta : (array) self::validator()->project($meta, $schema);
     }
 }

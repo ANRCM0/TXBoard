@@ -318,7 +318,8 @@ final class TxapiNativeInternalApiTest extends NativeRuntimeTestCase
             'catalog.offers.list' => [$catalog, 'listing'],
             'subscription.mine.get' => [$account, 'subscription'], 'commerce.orders.list' => [$orders, 'listing'],
             'commerce.orders.get' => [$orders, 'find'],
-            'billing.wallet.get' => [$billing, 'wallet'], 'billing.payment-methods.list' => [$billing, 'methods'],
+            'billing.wallet.get' => [$billing, 'wallet'], 'billing.payment-attempts.get' => [$billing, 'attempt'],
+            'billing.payment-methods.list' => [$billing, 'methods'],
             'billing.recharges.list' => [$billing, 'recharges'], 'billing.recharges.get' => [$billing, 'recharge'],
             'usage.mine.list' => [$usage, 'listing']], $handlers);
         $mutations = \App\Domains\InternalApi\SessionMutationOperations::class;
@@ -329,7 +330,8 @@ final class TxapiNativeInternalApiTest extends NativeRuntimeTestCase
             'commerce.orders.checkout' => [$commerce, 'checkout', 'domain'],
             'commerce.orders.cancel' => [$commerce, 'cancel', 'workflow'],
             'billing.recharges.create' => [$commerce, 'recharge', 'domain'],
-            'billing.recharges.checkout' => [$commerce, 'rechargeCheckout', 'domain']], $commands);
+            'billing.recharges.checkout' => [$commerce, 'rechargeCheckout', 'domain'],
+            'billing.payment-attempts.query' => [$commerce, 'queryAttempt', 'domain']], $commands);
     }
 
     public function test_all_boundary_rejections_are_audited_without_untrusted_service_operation_or_input_material(): void

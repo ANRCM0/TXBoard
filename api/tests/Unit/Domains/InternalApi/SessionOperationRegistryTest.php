@@ -45,10 +45,10 @@ final class SessionOperationRegistryTest extends TestCase
             'commerce.orders.list' => [OrderReadOperations::class, 'listing', 'read'],
             'commerce.orders.get' => [OrderReadOperations::class, 'find', 'read'],
             'billing.wallet.get' => [BillingReadOperations::class, 'wallet', 'read'],
+            'billing.payment-attempts.get' => [BillingReadOperations::class, 'attempt', 'read'],
             'billing.payment-methods.list' => [BillingReadOperations::class, 'methods', 'read'],
             'billing.recharges.list' => [BillingReadOperations::class, 'recharges', 'read'],
             'billing.recharges.get' => [BillingReadOperations::class, 'recharge', 'read'],
-            'billing.payment-attempts.get' => [BillingReadOperations::class, 'attempt', 'read'],
             'usage.mine.list' => [UsageReadOperations::class, 'listing', 'read'],
         ], $handlers);
         $this->assertSame([

@@ -55,13 +55,7 @@ try {
   })
   servers.push(serve({ fetch: createGatewayApp(config).fetch, hostname: '127.0.0.1', port: 18088 }))
   const baseURL = 'http://127.0.0.1:18088/gateway/v1/core/user'
-  async function register() {
-    const response = await fetch('http://127.0.0.1:18081/txapi/auth/register', { method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ email: `gw-user-${randomUUID()}@example.test`, password: 'integration-password-2026' }) })
-    assert.equal(response.status, 201)
-    return (await response.json()).data.auth_data
-  }
-  const token = await register(), otherToken = await register()
+  const token = service.owner, otherToken = service.outsider
   const client = createCoreUserClient({ baseURL, getToken: () => token })
   const other = createCoreUserClient({ baseURL, getToken: () => otherToken })
   const caps = await client.capabilities()
@@ -84,8 +78,17 @@ try {
   const wallet = await client.call('billing.wallet.get', {})
   assert.equal(wallet.schema, 'native-wallet/v1'); checks++
   await client.call('commerce.orders.cancel', { trade_no: created.data.trade_no }, { idempotencyKey: randomUUID() }); checks++
+  const free = offers.find(offer => offer.price_minor === '0')
+  assert.ok(free)
+  const freeOrder = await client.call('commerce.orders.create', { offer_id: free.offer_id }, { idempotencyKey: randomUUID() })
+  const freeKey = randomUUID()
+  const paid = await client.call('commerce.orders.checkout', { trade_no: freeOrder.trade_no }, { idempotencyKey: freeKey })
+  assert.equal(paid.type, -1); assert.equal(paid.data, true)
+  assert.deepEqual(await client.call('commerce.orders.checkout', { trade_no: freeOrder.trade_no }, { idempotencyKey: freeKey }), paid); checks++
   const sessions = await client.callResult('identity.sessions.list', {})
   assert.equal(sessions.meta.has_more, false); assert.ok(sessions.data.length > 0); checks++
+  await client.call('identity.sessions.revoke', { session_id: service.secondary }, { idempotencyKey: randomUUID() })
+  assert.ok(!(await client.call('identity.sessions.list', {})).some(row => row.id === service.secondary)); checks++
   // The owner revokes the actual current session. A fresh Core read must fail.
   await client.call('identity.session.end', {}, { idempotencyKey: randomUUID() }); checks++
   await assert.rejects(client.call('identity.account.get', {}), e => e.status === 401 && e.code === 'UNAUTHORIZED'); checks++
