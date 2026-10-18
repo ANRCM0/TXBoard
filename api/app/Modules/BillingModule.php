@@ -33,6 +33,7 @@ final class BillingModule implements ModuleProvider
     {
         return new ModuleDefinition('billing', '1.0.0', 'required-business', provides: [
                 new CapabilityDefinition('billing.orders-read', OrderQueries::class),
+                new CapabilityDefinition('billing.admin-order-read', \App\Domains\Billing\Contracts\AdminOrderQueries::class, exported: false),
                 new CapabilityDefinition('billing.checkout', PaymentCheckout::class),
                 new CapabilityDefinition('billing.wallet', WalletPayments::class),
                 new CapabilityDefinition('billing.wallet-refunds', WalletRefunds::class),
