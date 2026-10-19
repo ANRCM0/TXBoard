@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, watch } from 'vue'
-import { captchaSiteKey, createCaptchaController, type CaptchaPayload } from '@txboard/shared'
-import type { GuestConfig } from '../api/comm'
+import { captchaSiteKey, createCaptchaController, type CaptchaConfig, type CaptchaPayload } from '@txboard/shared'
 
-const props=defineProps<{config:GuestConfig|null}>()
+const props=defineProps<{config:CaptchaConfig|null}>()
 const containerId='captcha-'+Math.random().toString(36).slice(2)
 
 // Every provider detail (script loading, widget mounting, token retrieval,

@@ -1,9 +1,7 @@
 # TXBoard Frontends
 
 The frontends are source workspaces in the TXBoard repository. Develop, review,
-build, and deploy them together with the same revision of the Core SDK. The former
-TX-F repository is a historical import; its fingerprints remain in
-`contracts/frontend/source.v1.json` for provenance. It is not a build dependency.
+build, and deploy them together with the same revision of the Core SDK.
 
 Run these commands from the repository root:
 

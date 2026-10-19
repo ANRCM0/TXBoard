@@ -80,3 +80,29 @@ for (const script of validators) {
     assert.match(result.stdout, /2 Markdown files, 2 relative links checked/);
   });
 }
+
+test('repository validator discovers frontend-only documentation and rejects its broken links', (t) => {
+  const root = fixture(t, {
+    'web/README.md': '[SDK development](../gateway/packages/core-sdk/missing.md)',
+    'web/node_modules/dependency/README.md': '[ignored](also-missing.md)',
+  });
+  const script = 'scripts/check-docs.mjs';
+  const discovery = run(script, root, '--has-docs');
+  assert.equal(discovery.status, 0);
+  assert.equal(discovery.stdout.trim(), 'true');
+  assert.equal(discovery.stderr, '');
+  const validation = run(script, root);
+  assert.equal(validation.status, 1);
+  assert.match(validation.stderr, /web[/\\]README\.md.*broken link \.\.\/gateway\/packages\/core-sdk\/missing\.md/);
+  assert.doesNotMatch(validation.stderr, /also-missing/);
+});
+
+test('repository validator resolves frontend development links relative to their document', (t) => {
+  const root = fixture(t, {
+    'web/README.md': '[SDK development](../gateway/packages/core-sdk/README.md)',
+    'gateway/packages/core-sdk/README.md': 'SDK development entry point.',
+  });
+  const result = run('scripts/check-docs.mjs', root);
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /2 Markdown files, 1 relative links checked/);
+});

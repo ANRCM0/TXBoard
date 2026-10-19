@@ -5,24 +5,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { TopBar } from './TopBar'
 vi.mock('../../lib/routePreload', () => ({ preloadAdminRoute: vi.fn() }))
-vi.mock('../../api/module', () => ({
-  getModuleRegistry: vi.fn().mockResolvedValue({
-    modules: [],
-    errors: [],
-    summary: {
-      total: 0,
-      health: {
-        healthy: 0,
-        degraded: 0,
-        disabled: 0,
-        failed: 0,
-        incompatible: 0,
-        missing_dependency: 0,
-      },
-      discovery_errors: 0,
-    },
-  }),
-}))
 let host: HTMLDivElement
 let root: Root
 let queryClient: QueryClient

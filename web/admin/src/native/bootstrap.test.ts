@@ -1,6 +1,5 @@
 import { afterEach, expect, it, vi } from 'vitest'
 import { fetchGuestConfig } from '../api/comm'
-import { nativeApiClient, pluginApiClient, nativeAdminPath } from '../api/client'
 
 afterEach(() => { vi.unstubAllGlobals() })
 it('uses only the public Gateway bootstrap, without cookies or actor credentials', async () => {
@@ -19,13 +18,8 @@ it('rejects malformed or unavailable enabled CAPTCHA instead of disabling it', a
   } } })))
   await expect(fetchGuestConfig()).rejects.toBeDefined()
 })
-it('bounds public bootstrap bytes and blocks all dormant original HTTP adapters', async () => {
+it('bounds public bootstrap response bytes', async () => {
   const send = vi.fn<typeof fetch>().mockResolvedValue(Response.json({ padding: 'x'.repeat(262_144) }))
   vi.stubGlobal('fetch', send)
   await expect(fetchGuestConfig()).rejects.toThrow('TOO_LARGE')
-  send.mockClear()
-  await expect(nativeApiClient.get('/admin/old/users')).rejects.toThrow('NOT_ADAPTED')
-  await expect(pluginApiClient.get('/plugin/old')).rejects.toThrow('NOT_ADAPTED')
-  expect(() => nativeAdminPath('users')).toThrow('NOT_ADAPTED')
-  expect(send).not.toHaveBeenCalled()
 })

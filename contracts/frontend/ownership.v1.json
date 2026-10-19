@@ -13,6 +13,5 @@
     "build": "npm run build:web",
     "verify": "npm run verify:web"
   },
-  "historical_source": "source.v1.json",
   "delivery": "Built by the TXBoard workspace and packaged by the Core image workflow."
 }

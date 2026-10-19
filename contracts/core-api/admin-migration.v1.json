@@ -3,7 +3,7 @@
   "source": "api/routes/txapi.php",
   "scope": "admin/{admin_path}",
   "sourceOnly": true,
-  "runtimeAcceptance": "deferred by user",
+  "runtimeAcceptance": "separate exact-revision GitHub Actions workflows",
   "routes": [
     {
       "method": "POST",

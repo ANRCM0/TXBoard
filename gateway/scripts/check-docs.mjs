@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Dependency-free local Markdown relative-path validation.
-// Scope covers Gateway docs, contracts and SDK/staging entry points; external URLs, anchor IDs,
+// Scope covers Gateway docs, contracts and SDK entry points; external URLs, anchor IDs,
 // reference-style links and generated paths require human review.
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { dirname, extname, join, resolve } from 'node:path';
@@ -16,7 +16,7 @@ if (args.some((arg, index) => arg !== '--has-docs' && arg !== '--root' && !(root
 const root = rootIndex === -1
   ? resolve(dirname(fileURLToPath(import.meta.url)), '..')
   : resolve(args[rootIndex + 1]);
-const inputs = ['README.md', 'docs', 'contracts', 'packages/theme-sdk/README.md', 'staging'];
+const inputs = ['README.md', 'docs', 'contracts', 'packages/core-sdk', 'packages/theme-sdk'];
 const excludedDirectories = new Set(['.git', 'node_modules', 'vendor', 'dist',
   'build', 'coverage', '.next', '.turbo', '.cache']);
 const files = [];

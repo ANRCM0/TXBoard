@@ -5,9 +5,6 @@ import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Sidebar } from './Sidebar'
 
-vi.mock('../../api/module', () => ({
-  getModuleRegistry: vi.fn().mockResolvedValue({ modules: [] }),
-}))
 vi.mock('../../lib/routePreload', () => ({
   preloadAdminRoute: vi.fn(),
   scheduleAdminRouteWarmup: vi.fn(() => () => {}),

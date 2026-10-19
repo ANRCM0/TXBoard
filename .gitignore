@@ -32,8 +32,3 @@ backups/
 .vscode/
 .DS_Store
 Thumbs.db
-
-# Local acceptance outputs
-/artifacts/
-/playwright-report/
-/test-results/
