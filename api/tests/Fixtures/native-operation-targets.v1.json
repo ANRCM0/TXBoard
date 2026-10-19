@@ -252,130 +252,6 @@
       "read",
       null
     ],
-    "identity.account.get": [
-      "handler",
-      "App\\Domains\\InternalApi\\AccountReadOperations",
-      "account",
-      "user",
-      [
-        "user"
-      ],
-      "read",
-      null
-    ],
-    "identity.accounts.get": [
-      "handler",
-      "App\\Domains\\InternalApi\\AdminAccountReadOperations",
-      "find",
-      "admin",
-      [
-        "admin"
-      ],
-      "read",
-      "identity.accounts.read"
-    ],
-    "identity.accounts.list": [
-      "handler",
-      "App\\Domains\\InternalApi\\AdminAccountReadOperations",
-      "listing",
-      "admin",
-      [
-        "admin"
-      ],
-      "read",
-      "identity.accounts.read"
-    ],
-    "identity.admin.get": [
-      "handler",
-      "App\\Domains\\InternalApi\\AccountReadOperations",
-      "account",
-      "admin",
-      [
-        "admin"
-      ],
-      "read",
-      "identity.read"
-    ],
-    "identity.session.end": [
-      "command",
-      "App\\Domains\\InternalApi\\SessionMutationOperations",
-      "end",
-      "authenticated",
-      [
-        "user",
-        "admin"
-      ],
-      "once",
-      "identity.sessions.manage"
-    ],
-    "identity.sessions.list": [
-      "handler",
-      "App\\Domains\\InternalApi\\SessionReadOperations",
-      "listing",
-      "authenticated",
-      [
-        "user",
-        "admin"
-      ],
-      "read",
-      "identity.sessions.manage"
-    ],
-    "identity.sessions.revoke": [
-      "command",
-      "App\\Domains\\InternalApi\\SessionMutationOperations",
-      "revoke",
-      "authenticated",
-      [
-        "user",
-        "admin"
-      ],
-      "workflow",
-      "identity.sessions.manage"
-    ],
-    "subscription.deliveries.authorize": [
-      "handler",
-      "App\\Domains\\InternalApi\\BrowserDeliveryReadOperations",
-      "authorize",
-      "user",
-      [
-        "user"
-      ],
-      "read",
-      null
-    ],
-    "subscription.delivery-options.get": [
-      "handler",
-      "App\\Domains\\InternalApi\\BrowserDeliveryReadOperations",
-      "options",
-      "user",
-      [
-        "user"
-      ],
-      "read",
-      null
-    ],
-    "subscription.mine.get": [
-      "handler",
-      "App\\Domains\\InternalApi\\AccountReadOperations",
-      "subscription",
-      "user",
-      [
-        "user"
-      ],
-      "read",
-      null
-    ],
-    "usage.mine.list": [
-      "handler",
-      "App\\Domains\\InternalApi\\UsageReadOperations",
-      "listing",
-      "user",
-      [
-        "user"
-      ],
-      "read",
-      null
-    ],
     "content.audit.list": [
       "handler",
       "App\\Domains\\InternalApi\\ContentReadOperations",
@@ -607,6 +483,119 @@
       "read",
       null
     ],
+    "identity.account.get": [
+      "handler",
+      "App\\Domains\\InternalApi\\AccountReadOperations",
+      "account",
+      "user",
+      [
+        "user"
+      ],
+      "read",
+      null
+    ],
+    "identity.accounts.get": [
+      "handler",
+      "App\\Domains\\InternalApi\\AdminAccountReadOperations",
+      "find",
+      "admin",
+      [
+        "admin"
+      ],
+      "read",
+      "identity.accounts.read"
+    ],
+    "identity.accounts.list": [
+      "handler",
+      "App\\Domains\\InternalApi\\AdminAccountReadOperations",
+      "listing",
+      "admin",
+      [
+        "admin"
+      ],
+      "read",
+      "identity.accounts.read"
+    ],
+    "identity.admin.get": [
+      "handler",
+      "App\\Domains\\InternalApi\\AccountReadOperations",
+      "account",
+      "admin",
+      [
+        "admin"
+      ],
+      "read",
+      "identity.read"
+    ],
+    "identity.session.end": [
+      "command",
+      "App\\Domains\\InternalApi\\SessionMutationOperations",
+      "end",
+      "authenticated",
+      [
+        "user",
+        "admin"
+      ],
+      "once",
+      "identity.sessions.manage"
+    ],
+    "identity.sessions.list": [
+      "handler",
+      "App\\Domains\\InternalApi\\SessionReadOperations",
+      "listing",
+      "authenticated",
+      [
+        "user",
+        "admin"
+      ],
+      "read",
+      "identity.sessions.manage"
+    ],
+    "identity.sessions.revoke": [
+      "command",
+      "App\\Domains\\InternalApi\\SessionMutationOperations",
+      "revoke",
+      "authenticated",
+      [
+        "user",
+        "admin"
+      ],
+      "workflow",
+      "identity.sessions.manage"
+    ],
+    "subscription.deliveries.authorize": [
+      "handler",
+      "App\\Domains\\InternalApi\\BrowserDeliveryReadOperations",
+      "authorize",
+      "user",
+      [
+        "user"
+      ],
+      "read",
+      null
+    ],
+    "subscription.delivery-options.get": [
+      "handler",
+      "App\\Domains\\InternalApi\\BrowserDeliveryReadOperations",
+      "options",
+      "user",
+      [
+        "user"
+      ],
+      "read",
+      null
+    ],
+    "subscription.mine.get": [
+      "handler",
+      "App\\Domains\\InternalApi\\AccountReadOperations",
+      "subscription",
+      "user",
+      [
+        "user"
+      ],
+      "read",
+      null
+    ],
     "support.admin-tickets.attachments.append": [
       "command",
       "App\\Domains\\InternalApi\\SupportAttachmentOperations",
@@ -673,6 +662,94 @@
       "read",
       "support.tickets.read"
     ],
+    "support.admin-tickets.audit.list": [
+      "handler",
+      "App\\Domains\\InternalApi\\SupportReadOperations",
+      "adminAudit",
+      "admin",
+      [
+        "admin"
+      ],
+      "read",
+      "support.tickets.read"
+    ],
+    "support.admin-tickets.claim": [
+      "command",
+      "App\\Domains\\InternalApi\\SupportMutationOperations",
+      "adminClaim",
+      "admin",
+      [
+        "admin"
+      ],
+      "domain",
+      "support.tickets.write"
+    ],
+    "support.admin-tickets.close": [
+      "command",
+      "App\\Domains\\InternalApi\\SupportMutationOperations",
+      "adminClose",
+      "admin",
+      [
+        "admin"
+      ],
+      "domain",
+      "support.tickets.write"
+    ],
+    "support.admin-tickets.get": [
+      "handler",
+      "App\\Domains\\InternalApi\\SupportReadOperations",
+      "adminFind",
+      "admin",
+      [
+        "admin"
+      ],
+      "read",
+      "support.tickets.read"
+    ],
+    "support.admin-tickets.list": [
+      "handler",
+      "App\\Domains\\InternalApi\\SupportReadOperations",
+      "adminListing",
+      "admin",
+      [
+        "admin"
+      ],
+      "read",
+      "support.tickets.read"
+    ],
+    "support.admin-tickets.messages.list": [
+      "handler",
+      "App\\Domains\\InternalApi\\SupportReadOperations",
+      "adminMessages",
+      "admin",
+      [
+        "admin"
+      ],
+      "read",
+      "support.tickets.read"
+    ],
+    "support.admin-tickets.reply": [
+      "command",
+      "App\\Domains\\InternalApi\\SupportMutationOperations",
+      "adminReply",
+      "admin",
+      [
+        "admin"
+      ],
+      "domain",
+      "support.tickets.write"
+    ],
+    "support.admin-tickets.unassign": [
+      "command",
+      "App\\Domains\\InternalApi\\SupportMutationOperations",
+      "adminUnassign",
+      "admin",
+      [
+        "admin"
+      ],
+      "domain",
+      "support.tickets.write"
+    ],
     "support.tickets.attachments.append": [
       "command",
       "App\\Domains\\InternalApi\\SupportAttachmentOperations",
@@ -732,6 +809,83 @@
       "handler",
       "App\\Domains\\InternalApi\\SupportAttachmentOperations",
       "userGet",
+      "user",
+      [
+        "user"
+      ],
+      "read",
+      null
+    ],
+    "support.tickets.close": [
+      "command",
+      "App\\Domains\\InternalApi\\SupportMutationOperations",
+      "close",
+      "user",
+      [
+        "user"
+      ],
+      "domain",
+      null
+    ],
+    "support.tickets.create": [
+      "command",
+      "App\\Domains\\InternalApi\\SupportMutationOperations",
+      "create",
+      "user",
+      [
+        "user"
+      ],
+      "domain",
+      null
+    ],
+    "support.tickets.get": [
+      "handler",
+      "App\\Domains\\InternalApi\\SupportReadOperations",
+      "find",
+      "user",
+      [
+        "user"
+      ],
+      "read",
+      null
+    ],
+    "support.tickets.list": [
+      "handler",
+      "App\\Domains\\InternalApi\\SupportReadOperations",
+      "listing",
+      "user",
+      [
+        "user"
+      ],
+      "read",
+      null
+    ],
+    "support.tickets.messages.list": [
+      "handler",
+      "App\\Domains\\InternalApi\\SupportReadOperations",
+      "messages",
+      "user",
+      [
+        "user"
+      ],
+      "read",
+      null
+    ],
+    "support.tickets.reply": [
+      "command",
+      "App\\Domains\\InternalApi\\SupportMutationOperations",
+      "reply",
+      "user",
+      [
+        "user"
+      ],
+      "domain",
+      null
+    ],
+    "usage.mine.list": [
+      "handler",
+      "App\\Domains\\InternalApi\\UsageReadOperations",
+      "listing",
       "user",
       [
         "user"
