@@ -1,10 +1,13 @@
 import {
   ChevronDown,
   LayoutDashboard,
+  PanelLeftClose,
+  PanelLeftOpen,
   X,
 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
-import { NavLink } from 'react-router-dom'
+import { NavLink, useLocation } from 'react-router-dom'
+import { TopBar } from './TopBar'
 import { coreNavigationGroups } from '../../navigation/core'
 import { preloadAdminRoute, scheduleAdminRouteWarmup } from '../../lib/routePreload'
 import { useDialog } from '../../lib/useDialog'
@@ -17,6 +20,7 @@ type SidebarProps = {
   onClose: () => void
   collapsed: boolean
   onExpand: () => void
+  onToggle?: () => void
 }
 
 const OPEN_GROUPS_STORAGE_KEY = 'txboard:admin:sidebar:open-groups'
@@ -44,7 +48,8 @@ function readOpenGroups(): Record<string, boolean> {
   return groups
 }
 
-export function Sidebar({ open, onClose, collapsed, onExpand }: SidebarProps) {
+export function Sidebar({ open, onClose, collapsed, onExpand, onToggle }: SidebarProps) {
+  const { pathname } = useLocation()
   const dialogRef = useDialog(open, onClose)
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(readOpenGroups)
 
@@ -110,7 +115,7 @@ export function Sidebar({ open, onClose, collapsed, onExpand }: SidebarProps) {
               <section className="admin-nav-group" key={group.key}>
                 <button
                   type="button"
-                  className="admin-nav-group-trigger"
+                  className={`admin-nav-group-trigger ${group.items.some(([path]) => pathname === path || pathname.startsWith(path + '/')) ? 'active' : ''}`}
                   title={group.title}
                   aria-label={group.title}
                   aria-controls={`admin-nav-${group.key}`}
@@ -149,8 +154,10 @@ export function Sidebar({ open, onClose, collapsed, onExpand }: SidebarProps) {
         </nav>
 
         <div className="admin-sidebar-footer">
-          <span className="admin-version-dot" />
-          <span>TXBoard</span>
+          <TopBar onOpenMenu={onClose} />
+          <button type="button" className="admin-sidebar-collapse-toggle" aria-label={collapsed ? '展开侧边栏' : '收起侧边栏'} title={collapsed ? '展开侧边栏' : '收起侧边栏'} aria-expanded={!collapsed} onClick={onToggle ?? onExpand}>
+            {collapsed ? <PanelLeftOpen size={19} /> : <PanelLeftClose size={19} />}
+          </button>
         </div>
       </div>
     </div>

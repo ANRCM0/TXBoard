@@ -12,10 +12,10 @@ import './UsersPage.css'
 
 type Account = CoreOutput<'identity.accounts.list'>[number]
 const columns: Column<Account>[] = [
-  { key: 'email', header: '用户', render: row => <Link className="table-link" to={'/user/' + row.id}>{row.email}</Link> },
+  { key: 'email', header: '用户', render: row => <div className="reference-account"><span className="reference-account-avatar" aria-hidden="true">{row.email.slice(0, 1).toUpperCase()}</span><Link className="table-link" to={'/user/' + row.id}>{row.email}</Link></div> },
   { key: 'id', header: '用户 ID', render: row => row.id },
-  { key: 'state', header: '状态', render: row => row.banned ? '已封禁' : '正常' },
-  { key: 'role', header: '角色', render: row => row.is_admin ? '管理员' : '用户' },
+  { key: 'state', header: '状态', render: row => <span className={'reference-status ' + (row.banned ? 'is-danger' : 'is-success')}>{row.banned ? '已封禁' : '正常'}</span> },
+  { key: 'role', header: '角色', render: row => <span className={'reference-tag ' + (row.is_admin ? 'is-primary' : '')}>{row.is_admin ? '管理员' : '用户'}</span> },
   { key: 'created', header: '注册时间', render: row => unixDate(row.created_at) },
   { key: 'login', header: '最近登录', render: row => unixDate(row.last_login_at) },
 ]
@@ -41,7 +41,7 @@ export function UsersPage() {
     setParams(current => { const next = new URLSearchParams(current); next.set('page', String(nextPage)); return next })
   }
   return <div className="native-management-page">
-    <PageHeader title="用户管理" description="查询账户身份、状态及当前订阅。"
+    <PageHeader title="用户管理" description="账户身份、状态与订阅"
       action={<button className="button" disabled={!valid || query.isFetching} onClick={() => void query.refetch()}><RefreshCw size={15} />刷新</button>} />
     {!valid ? <p role="alert">筛选参数有误，请清除筛选后重试。</p> : null}
     <ReadList title="用户列表" rows={data?.data ?? []} columns={columns} meta={data?.meta} page={page}

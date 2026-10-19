@@ -31,10 +31,17 @@ async function render(status = 0, recovery = false) {
     {recovery ? <OrderCommandRecovery /> : <OrderAdministration tradeNo="ORDER-ORIGINAL" status={status} onDenied={onDenied} />}
   </QueryClientProvider>)); await settle()
 }
-function button(text: string) { return Array.from(host.querySelectorAll<HTMLButtonElement>('button')).find(node => node.textContent === text)! }
+function button(text: string) {
+  const scope = document.querySelector<HTMLElement>('[role="dialog"][aria-modal="true"]') ?? host
+  return [...scope.querySelectorAll<HTMLButtonElement>('button')].find(node =>
+    node.getAttribute('aria-label') === text || node.textContent?.trim() === text)!
+}
 async function close() {
   await act(async () => button('关闭待支付订单').click())
   expect(admin.write).not.toHaveBeenCalled()
+  expect(requestConfirm).toHaveBeenLastCalledWith(expect.objectContaining({
+    title: '关闭待支付订单', confirmLabel: '确认关闭订单', danger: true, action: expect.any(Function),
+  }))
   await act(async () => vi.mocked(requestConfirm).mock.calls.at(-1)![0].action()); await settle()
 }
 

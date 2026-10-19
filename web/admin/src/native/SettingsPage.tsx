@@ -1,3 +1,4 @@
+import './settings-reference.css'
 import { NavLink } from 'react-router-dom'
 import { ConfigurationPage, type ConfigurationGroup } from './ConfigurationPage'
 
@@ -9,7 +10,7 @@ const links = [
 ] as const
 
 export function SettingsPage({ group = 'site' }: { group?: ConfigurationGroup }) {
-  return <div><nav className="native-settings-navigation" aria-label="设置分类">
+  return <div className="settings-reference settings-hub"><div className="settings-category-heading"><span>控制台设置</span><small>按分类管理站点偏好</small></div><nav className="native-settings-navigation" aria-label="设置分类">
     {links.map(([path, label]) => <NavLink key={path} to={path} end>{label}</NavLink>)}
   </nav><ConfigurationPage group={group} /></div>
 }

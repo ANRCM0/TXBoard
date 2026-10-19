@@ -30,7 +30,7 @@ async function settle() { await act(async () => { await new Promise(resolve => s
 async function render(group: ConfigurationGroup | 'mail' = 'site') {
   await act(async () => root.render(<QueryClientProvider client={client}>{group === 'mail' ? <MailTemplatesPage /> : <ConfigurationPage group={group} />}</QueryClientProvider>)); await settle()
 }
-function button(text: string) { return [...host.querySelectorAll<HTMLButtonElement>('button')].find(node => node.textContent === text)! }
+function button(text: string) { return [...host.querySelectorAll<HTMLButtonElement>('button')].find(node => node.getAttribute('aria-label') === text || node.textContent?.trim() === text)! }
 async function click(text: string) { await act(async () => button(text).click()); await settle() }
 async function input(node: HTMLInputElement | HTMLTextAreaElement, value: string) {
   await act(async () => {
@@ -70,7 +70,7 @@ it('discards the stale edit on CAS conflict and requires fresh deliberate editin
   version = revisedVersion; vi.mocked(admin.write).mockRejectedValueOnce(new CoreAdminApiError('SETTING_VERSION_CONFLICT', 409))
   await submit()
   await vi.waitFor(() => expect(host.querySelector('form.native-content-form')).toBeNull())
-  expect(host.textContent).toContain('请重新开始编辑')
+  expect(host.textContent).toContain('请重新编辑并核对修改')
   await click('开始编辑')
   expect(host.querySelector<HTMLInputElement>('#configuration-app_name')!.value).toBe('private site')
   await input(host.querySelector<HTMLInputElement>('#configuration-app_name')!, 'reviewed-intent'); await submit()
@@ -83,7 +83,7 @@ it('clears sensitive drafts and hides stale settings after forbidden refresh', a
   await render('email'); await click('开始编辑')
   await input(host.querySelector<HTMLInputElement>('#configuration-email_password')!, 'unsubmitted-secret')
   vi.mocked(admin.read).mockRejectedValue(new CoreAdminApiError('FORBIDDEN', 403))
-  await click('刷新权限与设置')
+  await click('刷新设置')
   expect(host.querySelector('input')).toBeNull()
   expect(host.textContent).not.toContain('private user')
   expect(admin.write).not.toHaveBeenCalled()
@@ -93,6 +93,11 @@ it('renders template markup as text and sends test mail only after explicit conf
   await render('mail')
   expect(host.querySelector('img')).toBeNull()
   expect(host.querySelector('pre')!.textContent).toContain('<img')
+  const help = [...host.querySelectorAll('details')].find(node => node.querySelector('summary')?.textContent === '模板变量与填写说明')!
+  expect(help.open).toBe(false)
+  await act(async () => help.querySelector('summary')!.click())
+  expect(help.open).toBe(true)
+  expect(help.querySelector('code')?.textContent).toBe('code必需')
   expect(admin.write).not.toHaveBeenCalled()
   vi.spyOn(window, 'confirm').mockReturnValue(true)
   const email = host.querySelector<HTMLInputElement>('input[type=email]')!
@@ -128,7 +133,7 @@ it('saves template source without evaluating HTML and replays an unknown reset w
 it('hides cached mail content after read permission is denied', async () => {
   await render('mail'); await click('编辑源码')
   vi.mocked(admin.read).mockRejectedValue(new CoreAdminApiError('FORBIDDEN', 403))
-  await click('刷新权限与模板')
+  await click('刷新模板')
   expect(host.querySelector('textarea')).toBeNull()
   expect(host.querySelector('pre')).toBeNull()
   expect(button('发送测试邮件')).toBeUndefined()

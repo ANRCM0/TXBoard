@@ -1,6 +1,7 @@
+import './observation-reference.css'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import type { CoreOutput } from '@txboard/core-sdk'
-import { RefreshCw } from 'lucide-react'
+import { RefreshCw, Monitor, ShieldCheck, LogOut } from 'lucide-react'
 import { toast } from 'sonner'
 import { admin, revokeAdminSession } from './session'
 import { managementError, ManagementFeedback } from './Feedback'
@@ -28,18 +29,18 @@ export function SessionsPage() {
       confirmLabel: '撤销', danger: true, action: () => revoke.mutate(id) })
   }
   const columns: Column<Session>[] = [
-    { key: 'name', header: '会话', render: row => <div className="native-row-identity"><strong>{row.name}</strong><small>#{row.id}</small></div> },
+    { key: 'name', header: '会话', render: row => <div className="observation-identity"><Monitor size={20} /><span><strong>{row.name}</strong><small className="observation-mono">会话 #{row.id}</small></span></div> },
     { key: 'created', header: '创建时间', render: row => date(row.created_at) },
     { key: 'used', header: '最近使用', render: row => date(row.last_used_at) },
-    { key: 'expires', header: '到期时间', render: row => row.expires_at ? date(row.expires_at) : '未设置' },
+    { key: 'expires', header: '到期时间', render: row => <span className="observation-tag">{row.expires_at ? date(row.expires_at) : '长期有效'}</span> },
     { key: 'actions', header: '操作', render: row => <button className="button danger" disabled={revoke.isPending}
-      onClick={() => void confirmRevoke(row.id)}>撤销</button> },
+      onClick={() => void confirmRevoke(row.id)}><LogOut size={14} />撤销</button> },
   ]
-  return <div className="native-management-page">
-    <PageHeader title="登录会话" description="查看与撤销当前管理员账户的登录会话。"
+  return <div className="native-management-page observation-page">
+    <PageHeader title="登录会话" description="管理此账户的登录设备与访问权限"
       action={<button className="button" disabled={query.isFetching} onClick={() => void query.refetch()}><RefreshCw size={15} />刷新</button>} />
     <ManagementFeedback error={query.isError ? query.error : undefined} loading={query.isFetching} onRetry={() => void query.refetch()} />
-    {!query.isError && query.data ? <div className="list-card">
+    {!query.isError && query.data ? <div className="list-card"><div className="observation-card-heading"><div><h2>登录设备</h2><p>发现不熟悉的登录？撤销会话以终止其访问。</p></div><span className="observation-tag"><ShieldCheck size={14} />{query.data.data.length} 个会话</span></div>
       {query.data.meta.has_more ? <p className="native-list-note">当前显示前 100 项，另有会话未展示。</p> : null}
       <DataTable rows={query.data.data} columns={columns} rowKey={row => row.id} label="登录会话" />
     </div> : null}

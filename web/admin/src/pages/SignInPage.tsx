@@ -1,7 +1,8 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
+import { Eye, EyeOff, KeyRound, Mail } from 'lucide-react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { z } from 'zod'
@@ -23,6 +24,7 @@ type FormValues = z.infer<typeof schema>
 export function SignInPage() {
   const navigate = useNavigate()
   const [params] = useSearchParams()
+  const [passwordVisible, setPasswordVisible] = useState(false)
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: { email: '', password: '' },
@@ -61,40 +63,49 @@ export function SignInPage() {
     <div className="admin-auth-page">
       <div className="admin-auth-tools"><ThemeToggle /></div>
       <div className="admin-auth-wrap">
-        <div className="admin-auth-brand">
-          <div className="admin-brand-mark" aria-hidden="true">TX</div>
-          <h1>TXBoard</h1>
-          <p>管理控制台</p>
-        </div>
-
         <div className="admin-auth-card">
+          <div className="admin-auth-brand">
+            <div className="admin-brand-mark" aria-hidden="true">TX</div>
+            <div><strong>TXBoard</strong><small>ADMIN CONSOLE</small></div>
+          </div>
           <div className="admin-auth-card-head">
             <h2>管理员登录</h2>
-            <p>使用管理员账号登录控制台</p>
+            <p>欢迎回来，登录以管理你的站点</p>
           </div>
 
           <form onSubmit={form.handleSubmit(value => mutation.mutate(value))} className="admin-auth-form">
             <label>
               <span>邮箱</span>
+              <div className="admin-auth-input"><Mail size={17} aria-hidden="true" />
               <input
                 {...form.register('email')}
+                aria-label="邮箱"
                 type="text"
                 autoComplete="email"
                 placeholder="admin@example.com"
                 autoFocus
+                aria-invalid={!!form.formState.errors.email}
+                aria-describedby={form.formState.errors.email ? 'admin-email-error' : undefined}
               />
-              {form.formState.errors.email ? <small>{form.formState.errors.email.message}</small> : null}
+              </div>
+              {form.formState.errors.email ? <small id="admin-email-error">{form.formState.errors.email.message}</small> : null}
             </label>
 
             <label>
               <span>密码</span>
+              <div className="admin-auth-input"><KeyRound size={17} aria-hidden="true" />
               <input
                 {...form.register('password')}
-                type="password"
+                aria-label="密码"
+                type={passwordVisible ? 'text' : 'password'}
                 autoComplete="current-password"
                 placeholder="请输入密码"
+                aria-invalid={!!form.formState.errors.password}
+                aria-describedby={form.formState.errors.password ? 'admin-password-error' : undefined}
               />
-              {form.formState.errors.password ? <small>{form.formState.errors.password.message}</small> : null}
+              <button type="button" className="admin-password-toggle" aria-label={passwordVisible ? '隐藏密码' : '显示密码'} aria-pressed={passwordVisible} onMouseDown={event => event.preventDefault()} onClick={() => setPasswordVisible(value => !value)}>{passwordVisible ? <EyeOff size={16} /> : <Eye size={16} />}</button>
+              </div>
+              {form.formState.errors.password ? <small id="admin-password-error">{form.formState.errors.password.message}</small> : null}
             </label>
 
             {captchaConfig.isError ? (

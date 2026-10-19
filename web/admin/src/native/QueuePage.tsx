@@ -1,3 +1,5 @@
+import { RefreshCw, X } from 'lucide-react'
+import './observation-reference.css'
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { CoreAdminApiError, type CoreOutput } from '@txboard/core-sdk'
@@ -25,24 +27,24 @@ export function QueuePage() {
   const columns: Column<Failure>[] = [
     { key: 'id', header: '失败记录', render: row => <button className="native-read-link" onClick={() => setSelected(row.id)}>#{row.id}</button> },
     { key: 'connection', header: '连接', render: row => row.connection },
-    { key: 'queue', header: '队列', render: row => row.queue },
-    { key: 'job', header: '任务', render: row => row.job },
+    { key: 'queue', header: '队列', render: row => <span className="observation-tag">{row.queue}</span> },
+    { key: 'job', header: '任务', render: row => <span className="observation-mono">{row.job}</span> },
     { key: 'failed_at', header: '失败时间', render: row => row.failed_at },
   ]
-  return <div className="native-management-page">
-    <PageHeader title="队列监控" description="查看队列运行快照及最近 30 条失败记录。" action={<button className="button" disabled={!session || snapshot.isFetching || failures.isFetching} onClick={() => void refresh()}>刷新队列状态</button>} />
+  return <div className="native-management-page observation-page">
+    <PageHeader title="队列监控" description="关注任务积压与失败情况" action={<button className="button" disabled={!session || snapshot.isFetching || failures.isFetching} onClick={() => void refresh()}><RefreshCw size={15} />刷新</button>} />
     {denied ? <p role="alert">无法确认队列读取权限，已隐藏快照和失败记录。</p> : null}
-    <section className="list-card"><h2>运行快照</h2><ManagementFeedback loading={snapshot.isFetching} error={snapshot.error} onRetry={() => void refresh()} />
-      {current ? <ReadFields fields={[
+    <section className="list-card"><div className="observation-card-heading"><div><h2>运行概况</h2><p>{current ? '更新于 ' + current.observed_at : '队列与任务处理状态'}</p></div>{current ? <span className="observation-tag" data-tone={current.status === 'running' ? 'success' : 'warning'}>{statuses[current.status]}</span> : null}</div><ManagementFeedback loading={snapshot.isFetching} error={snapshot.error} onRetry={() => void refresh()} />
+      {current ? <><div className="observation-summary">{[['待处理任务', current.pending_jobs], ['每分钟任务', current.jobs_per_minute], ['等待时间 / 秒', current.wait_seconds], ['近七日失败', current.failed_last_7_days]].map(([label, value]) => <div className="observation-stat" key={label}><span>{label}</span><strong>{value ?? '—'}</strong></div>)}</div><details className="observation-help"><summary>更多运行信息</summary><ReadFields fields={[
         ['状态', statuses[current.status]], ['连接', current.connection], ['进程数', current.processes], ['最近任务', current.recent_jobs], ['每分钟任务', current.jobs_per_minute],
         ['待处理任务', current.pending_jobs], ['等待秒数', current.wait_seconds], ['最长等待队列', current.longest_wait_queue], ['近七日失败', current.failed_last_7_days], ['观测时间', current.observed_at],
         ['失败记录可用', current.failed_jobs_available ? '是' : '否'],
-      ]} /> : null}
+      ]} /></details></> : null}
     </section>
-    <section className="list-card native-read-list"><h2>最近失败记录</h2><p>仅展示任务元数据；任务载荷和原始异常内容不会在此页面展示。</p><ManagementFeedback loading={failures.isFetching} error={failures.error} onRetry={() => void refresh()} />
+    <section className="list-card native-read-list"><div className="observation-card-heading"><div><h2>失败任务</h2><p>最近 30 条记录</p></div><span className="observation-tag" data-tone={visible && !failures.isError && failures.data?.data.length ? 'warning' : undefined}>{visible && !failures.isError ? failures.data?.data.length ?? '—' : '—'} 条</span></div><ManagementFeedback loading={failures.isFetching} error={failures.error} onRetry={() => void refresh()} />
       {visible && failures.data && !failures.isError ? <><p className="native-scroll-hint">左右滑动表格查看完整信息</p><DataTable label="队列失败记录" rows={failures.data.data} columns={columns} rowKey={row => row.id} empty="没有失败记录" /></> : null}
     </section>
-    {selected && visible ? <section className="list-card" aria-label="失败记录详情"><h2>失败记录详情</h2><button className="button" onClick={() => setSelected('')}>关闭失败详情</button><ManagementFeedback loading={detail.isFetching} error={detail.error} onRetry={() => void refresh()} />
+    {selected && visible ? <section className="list-card observation-detail" aria-label="失败记录详情"><div className="observation-card-heading"><h2>失败任务 #{selected}</h2><button className="button" aria-label="关闭失败详情" onClick={() => setSelected('')}><X size={15} />关闭</button></div><ManagementFeedback loading={detail.isFetching} error={detail.error} onRetry={() => void refresh()} />
       {failure ? <ReadFields fields={[
         ['记录 ID', failure.id], ['连接', failure.connection], ['队列', failure.queue], ['任务', failure.job], ['失败时间', failure.failed_at],
       ]} /> : null}

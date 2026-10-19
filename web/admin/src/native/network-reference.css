@@ -1,0 +1,87 @@
+/* Network pages mirror the reference's compact cards, toolbar and profile hierarchy.
+   All rules are scoped so adjacent feature pages retain their own presentation. */
+.network-reference-page { gap: 20px; }
+.network-reference-page .list-card { border: 1px solid var(--border); border-radius: 12px; background: var(--panel); box-shadow: none; overflow: hidden; }
+.network-reference-page .button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 34px; border-radius: 6px; font-size: 12px; font-weight: 500; }
+.network-reference-page .button[data-danger=true] { color: var(--danger); }
+.network-reference-page .button[data-danger=true]:hover:not(:disabled) { background: color-mix(in srgb, var(--danger) 8%, transparent); }
+.network-reference-page .network-filterbar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 16px 20px; border-bottom: 1px solid var(--border); }
+.network-reference-page .native-list-search { position: relative; max-width: 320px; margin: 0; gap: 0; }
+.network-reference-page .native-list-search > svg { position: absolute; left: 11px; color: var(--muted); pointer-events: none; }
+.network-reference-page .native-list-search input { padding-left: 35px; min-height: 36px; background: var(--panel); font-size: 12px; border-radius: 6px; }
+.network-reference-page .network-filterbar > select { min-height: 36px; padding: 6px 30px 6px 10px; color: var(--fg); background: var(--panel); border: 1px solid var(--border); border-radius: 6px; font: inherit; font-size: 12px; }
+.network-toolbar-hint { margin-left: auto; color: var(--muted); font-size: 11px; }
+.network-reference-page .data-table { min-width: 760px; }
+.network-reference-page .data-table th { background: var(--ui-surface-subtle, var(--bg)); color: var(--muted); font-size: 12px; font-weight: 500; padding: 12px 20px; }
+.network-reference-page .data-table td { padding: 15px 20px; font-size: 12px; vertical-align: middle; }
+.network-reference-page .data-table tbody tr:hover { background: color-mix(in srgb, var(--hover) 55%, transparent); }
+.network-reference-page .native-row-identity, .network-reference-page .nodes-v3-identity { display: grid; gap: 5px; }
+.network-reference-page .native-row-identity strong, .network-reference-page .nodes-v3-identity strong { font-size: 13px; font-weight: 600; color: var(--fg); }
+.network-reference-page .native-row-identity small, .network-reference-page .nodes-v3-identity small { font-size: 11px; color: var(--muted); }
+.network-reference-page a { text-decoration: none; }
+.network-reference-page a:hover { color: var(--primary); }
+.network-reference-page code { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; color: var(--muted); font-size: 11px; }
+.network-tags { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.network-tag { display: inline-flex; align-items: center; white-space: nowrap; width: fit-content; font-size: 11px; font-weight: 500; line-height: 1.6; padding: 2px 7px; border-radius: 5px; background: var(--ui-surface-subtle, var(--bg)); color: var(--muted); }
+.network-tag.is-success { color: var(--success); background: color-mix(in srgb, var(--success) 11%, transparent); }
+.network-tag.is-info { color: var(--primary); background: color-mix(in srgb, var(--primary) 10%, transparent); }
+.network-tag.is-warning { color: var(--warning); background: color-mix(in srgb, var(--warning) 11%, transparent); }
+.network-icon-link { display: inline-grid; place-items: center; width: 30px; height: 30px; color: var(--primary); border-radius: 5px; }
+.network-icon-link:hover { background: var(--hover); }
+.network-reference-page .data-table td:last-child .button { min-width: 30px; min-height: 30px; padding: 5px; margin: 0 2px; background: transparent; border-color: transparent; color: var(--primary); }
+.network-reference-page .data-table td:last-child .button:hover:not(:disabled) { background: var(--hover); }
+.network-sr-only, .network-action-label { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+.network-reference-page .network-profile-card, .network-reference-page .network-settings-card, .network-reference-page .network-editor { padding: 24px; }
+.network-profile-hero { display: flex; align-items: center; gap: 14px; padding-bottom: 22px; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
+.network-profile-icon { display: grid; place-items: center; width: 52px; height: 52px; border-radius: 14px; color: var(--primary); background: color-mix(in srgb, var(--primary) 10%, transparent); flex: 0 0 auto; }
+.network-profile-hero > div { min-width: 0; flex: 1; }
+.network-profile-hero h2 { margin: 0; font-size: 18px; line-height: 1.4; }
+.network-profile-hero p { margin: 6px 0 0; font-size: 12px; color: var(--muted); }
+.network-reference-page .network-section-heading { font-size: 13px; font-weight: 600; margin: 22px 0 12px; }
+.network-reference-page .native-read-fields { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0 24px; }
+.network-reference-page .native-read-fields > div { grid-template-columns: minmax(0, 1fr); align-content: start; gap: 7px; padding: 13px 0; }
+.network-reference-page .native-read-fields dt { font-size: 11px; }
+.network-reference-page .native-read-fields dd { font-size: 13px; }
+.network-reference-page .network-help { margin: 8px 0 20px; color: var(--muted); font-size: 12px; line-height: 1.8; }
+.network-reference-page .network-section-title { display: flex; gap: 9px; align-items: center; padding: 18px 20px 0; color: var(--muted); }
+.network-reference-page .network-section-title h2 { color: var(--fg); font-size: 14px; margin: 0; }
+.network-reference-page .network-section-title + .network-help { padding: 0 20px; }
+.network-reference-page .native-content-form { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; max-width: 820px; margin-top: 20px; }
+.network-reference-page .native-content-form label { font-size: 12px; color: var(--fg); gap: 8px; align-content: start; }
+.network-reference-page .native-content-form label:has(textarea) { grid-column: 1 / -1; }
+.network-reference-page .native-content-form label:has(input[type=checkbox]) { display: flex; flex-direction: row; align-items: center; gap: 9px; min-height: 36px; }
+.network-reference-page .native-content-form input, .network-reference-page .native-content-form select, .network-reference-page .native-content-form textarea { min-height: 36px; font-size: 12px; border-radius: 6px; padding: 8px 11px; font-family: inherit; }
+.network-reference-page .native-content-form input[type=checkbox] { min-height: 0; accent-color: var(--primary); }
+.network-reference-page :is(input,textarea,select):focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.network-reference-page .native-content-form > .button { justify-self: start; min-width: 110px; }
+.network-reference-page .native-filters { gap: 12px; padding: 16px 20px; margin: 0; border-bottom: 1px solid var(--border); }
+.network-reference-page .native-filters label { flex: 1 1 140px; }
+.network-reference-page .native-filters input { min-width: 0; width: 100%; }
+.network-reference-page .native-pagination { border-top: 1px solid var(--border); padding: 14px 20px; }
+.network-reference-page .list-card > .native-content-form, .network-reference-page .list-card > ol { margin: 20px; }
+.network-reference-page .network-profile-card > .native-content-form, .network-reference-page .network-settings-card > .native-content-form, .network-reference-page .network-editor > .native-content-form { margin: 20px 0 0; }
+@media (max-width: 900px) { .network-reference-page .native-read-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 600px) {
+  .network-reference-page .native-read-fields, .network-reference-page .native-content-form { grid-template-columns: minmax(0, 1fr); }
+  .network-reference-page .native-list-search { max-width: none; flex-basis: 100%; }
+  .network-reference-page .network-filterbar { padding: 14px; }
+  .network-toolbar-hint { margin-left: 0; }
+  .network-reference-page .network-profile-card, .network-reference-page .network-settings-card, .network-reference-page .network-editor { padding: 18px; }
+  .network-reference-page .data-table th, .network-reference-page .data-table td { padding-left: 14px; padding-right: 14px; }
+}
+.network-editor-modal { width: min(660px, calc(100vw - 32px)); }
+.network-editor-modal .network-editor-body { padding: 0; }
+.network-editor-modal .native-content-form { max-width: none; margin: 0; }
+.network-editor-modal .native-content-form > label:first-child { grid-column: 1 / -1; }
+.network-form-actions { grid-column: 1 / -1; display: flex; justify-content: flex-end; align-items: center; gap: 10px; border-top: 1px solid var(--border); padding-top: 20px; margin-top: 4px; }
+.network-form-actions .button:first-child { background: var(--primary); color: var(--primary-fg); border-color: var(--primary); }
+.network-reference-page .native-read-list > .button { margin: 16px 20px; }
+.network-reference-page .list-card > ol li { padding: 10px 0; border-bottom: 1px solid var(--border); }
+.network-reference-page .list-card > ol li .button { margin-left: 8px; }
+
+.network-reference-page .data-table td:last-child .button[data-danger=true] { color: var(--danger); }
+.network-reference-page .data-table td:last-child .button[data-danger=true]:hover:not(:disabled) { background: color-mix(in srgb, var(--danger) 8%, transparent); }
+.network-reference-page .list-card > [role=status] { padding: 18px 20px; border-top: 1px solid var(--border); background: var(--ui-surface-subtle, var(--bg)); font-size: 12px; line-height: 1.8; overflow-wrap: anywhere; }
+
+.network-reference-page .button[data-primary=true] { background: var(--primary); border-color: var(--primary); color: var(--primary-fg); }
+.network-reference-page .network-count { display: inline-flex; min-width: 28px; padding: 3px 8px; justify-content: center; border-radius: 5px; color: var(--muted); background: var(--ui-surface-subtle, var(--bg)); font-size: 12px; font-variant-numeric: tabular-nums; }

@@ -16,6 +16,7 @@
     "dev:renderer": "python scripts/txboard-dev.py renderer",
     "dev:hooks": "python scripts/txboard-dev.py hooks",
     "dev:admin": "npm run build:sdk && npm run dev --workspace @txboard/admin",
+    "preview:admin": "npm run build:sdk && node scripts/admin-preview.mjs",
     "dev:user": "npm run build:sdk && npm run dev --workspace @txboard/user",
     "build:sdk": "npm run build --workspace @txboard/core-sdk",
     "build:theme-sdk": "npm run build:sdk && npm run build --workspace @txboard/theme-sdk",

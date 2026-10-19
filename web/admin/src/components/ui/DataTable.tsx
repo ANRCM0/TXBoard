@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { Inbox } from 'lucide-react'
 import { QueryFeedback } from './QueryFeedback'
 
 export type Column<T> = { key: string; header: string; render: (row: T) => ReactNode; width?: string }
@@ -16,7 +17,7 @@ export function DataTable<T>({ rows, columns, empty = '暂无数据', emptyState
     {showTable ? <div className="table-wrap" tabIndex={0} role="region" aria-label={label} aria-busy={loading || false}>
       <table className="data-table"><thead><tr>{columns.map(c => <th scope="col" key={c.key} style={{width:c.width}}>{c.header}</th>)}</tr></thead>
         <tbody>{hasRows ? rows.map((row, i) => <tr key={rowKey ? rowKey(row) : i}>{columns.map(c => <td key={c.key}>{c.render(row)}</td>)}</tr>) :
-          <tr><td className="empty-cell" colSpan={columns.length}>{empty}</td></tr>}</tbody>
+          <tr><td className="empty-cell" colSpan={columns.length}><div className="table-empty-content"><Inbox size={32} strokeWidth={1.4} aria-hidden="true" /><span>{empty}</span></div></td></tr>}</tbody>
       </table>
     </div> : null}
   </>

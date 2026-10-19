@@ -23,7 +23,7 @@ async function render(page: React.ReactNode) {
   await act(async () => root.render(<QueryClientProvider client={client}>{page}</QueryClientProvider>)); await settle()
 }
 async function click(text: string) {
-  const button = Array.from(host.querySelectorAll('button')).find(element => element.textContent === text)
+  const button = Array.from(host.querySelectorAll('button')).find(element => element.getAttribute('aria-label') === text || element.textContent === text || element.querySelector('strong')?.textContent === text)
   expect(button).toBeTruthy(); await act(async () => button!.click()); await settle()
 }
 function input(label: string, value: string) {
@@ -43,7 +43,7 @@ it('sends server audit filters and pagination with string IDs, then hides stale 
   await click('下一页')
   expect(admin.read).toHaveBeenLastCalledWith('audit.logs.list', expect.objectContaining({ page: 2 }), expect.any(AbortSignal))
   vi.mocked(admin.read).mockRejectedValue(new CoreAdminApiError('FORBIDDEN', 403))
-  await click('刷新审计记录')
+  await click('刷新')
   expect(host.textContent).not.toContain('127.0.0.1')
   expect(host.querySelector('[aria-label="管理审计记录分页"]')).toBeNull()
 })
@@ -70,10 +70,13 @@ it('filters plugin inventory, loads capabilities and lifecycle declarations with
   expect(admin.read).toHaveBeenCalledWith('platform.modules.get', { module_id: plugin.id }, expect.any(AbortSignal))
   expect(admin.read).toHaveBeenCalledWith('platform.modules.operations.list', { module_id: plugin.id }, expect.any(AbortSignal))
   expect(host.textContent).toContain('停用、升级、卸载')
-  expect(host.textContent).toContain('受控部署流程')
+  const help = [...host.querySelectorAll('details')].find(node => node.querySelector('summary')?.textContent === '如何变更模块？')!
+  await act(async () => { help.open = true })
+  expect(help.textContent).toContain('安装、启停、升级及卸载需在部署环境中执行')
+  expect(help.textContent).toContain('此页面仅供查看')
   expect(Array.from(host.querySelectorAll('button')).some(button => ['安装', '升级', '卸载', '停用'].includes(button.textContent ?? ''))).toBe(false)
   vi.mocked(admin.read).mockRejectedValue(new CoreAdminApiError('FORBIDDEN', 403))
-  await click('刷新模块清单')
+  await click('刷新')
   expect(host.textContent).not.toContain(plugin.name)
   expect(host.querySelector('[aria-label="模块详情"]')).toBeNull()
 })
@@ -89,7 +92,7 @@ it('shows queue metadata while withholding exception messages and removes all ob
   await click('#12')
   expect(host.querySelector('[aria-label="失败记录详情"]')?.textContent).toContain('SendMail')
   vi.mocked(admin.read).mockRejectedValue(new CoreAdminApiError('FORBIDDEN', 403))
-  await click('刷新队列状态')
+  await click('刷新')
   expect(host.textContent).not.toContain('SendMail'); expect(host.textContent).not.toContain('redis')
 })
 it('withdraws cached data and aborts in-flight module detail when the administrator session ends', async () => {

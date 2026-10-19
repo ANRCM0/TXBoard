@@ -49,7 +49,7 @@ const account = { id: '9007199254740995', email: 'alice@example.test', banned: f
   created_at: 1792245600, last_login_at: null }
 const order = { id: '7', user_id: account.id, trade_no: 'ORDER-A', plan_id: '8', period: 'monthly',
   type: 1, status: 0, amount_minor: '9007199254740993', currency: 'USD', plan: { id: '8', name: 'Frozen Plus' },
-  created_at: '2026-10-18T00:00:00Z', paid_at: null, purchase_terms_version: 'tx-core.purchase-terms/v2' }
+  created_at: new Date(Date.now() - 86400000).toISOString(), paid_at: null, purchase_terms_version: 'tx-core.purchase-terms/v2' }
 function passed(name) { checks.push(name); console.log('PASS ' + name) }
 function session(id, name) {
   return { id, name, abilities: ['admin'], created_at: '2026-10-18T08:00:00Z',
@@ -176,12 +176,46 @@ try {
   await page.waitForFunction(() => document.documentElement.dataset.theme === 'dark')
   await page.screenshot({ path: output + '/nodes-dark.png', fullPage: true })
   await page.getByRole('link', { name: '仪表盘', exact: true }).click()
-  await page.getByText('当前管理员：', { exact: false }).waitFor()
+  await page.getByRole('region', { name: '管理入口', exact: true }).getByText('admin@example.test', { exact: true }).waitFor()
+  await page.getByRole('region', { name: '资源统计', exact: true }).getByRole('link', { name: /账户总数 21/ }).waitFor()
+  const trendCard = page.getByRole('region', { name: '订单趋势卡片', exact: true })
+  const rangeButtons = trendCard.getByRole('group', { name: '订单趋势时间范围', exact: true })
+  await rangeButtons.getByRole('button', { name: '30 天', exact: true }).click()
+  assert.equal(await rangeButtons.getByRole('button', { name: '30 天', exact: true }).getAttribute('aria-pressed'), 'true')
+  const trendGraph = trendCard.getByRole('group', { name: '样本订单趋势交互图表', exact: true })
+  await trendGraph.press('End')
+  await trendCard.getByRole('status').filter({ hasText: '全部订单' }).waitFor()
+  await trendGraph.press('Escape')
+  assert.equal(await trendCard.getByRole('status').count(), 0)
+  const pin = trendCard.getByRole('button', { name: '突出显示已完成曲线', exact: true })
+  await pin.click()
+  assert.equal(await pin.getAttribute('aria-pressed'), 'true')
+  await trendCard.getByText('查看样本订单趋势数据', { exact: true }).click()
+  assert.equal(await trendCard.locator('tbody tr').count(), 30)
+  await trendCard.getByText('查看样本订单趋势数据', { exact: true }).click()
+  const donut = page.getByRole('region', { name: '样本订单状态', exact: true })
+  await donut.getByRole('button', { name: /^待支付/ }).focus()
+  await donut.getByRole('status').filter({ hasText: '待支付' }).waitFor()
+  const trafficChart = page.getByRole('region', { name: '样本节点累计字节', exact: true })
+  await trafficChart.getByRole('group', { name: '样本节点累计字节交互图表', exact: true }).press('Home')
+  await trafficChart.getByRole('status').getByText('9007199254740999 字节', { exact: true }).waitFor()
+  assert.ok(state.reads.some(read => read.operation === 'commerce.admin-orders.list' && read.input.per_page === 100))
+  passed('sample charts support time ranges, keyboard tooltips, pinned legends and exact byte labels')
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth))
   await page.screenshot({ path: output + '/overview-dark.png', fullPage: true })
   await page.getByRole('button', { name: '切换浅色模式', exact: true }).click()
   await page.waitForFunction(() => document.documentElement.dataset.theme === 'light')
   await page.screenshot({ path: output + '/overview-desktop.png', fullPage: true })
+  state.ordersStatus = 403; state.nodesStatus = 403
+  await page.getByRole('button', { name: '刷新概览', exact: true }).click()
+  await trendCard.getByRole('alert').filter({ hasText: '没有此操作的权限' }).waitFor()
+  assert.equal(await page.getByRole('region', { name: '样本订单趋势', exact: true }).count(), 0)
+  assert.equal(await page.getByRole('region', { name: '样本订单状态', exact: true }).count(), 0)
+  assert.equal(await page.getByRole('region', { name: '样本节点累计字节', exact: true }).count(), 0)
+  passed('overview withdraws cached charts when their read permissions are denied')
+  state.ordersStatus = 200; state.nodesStatus = 200
+  await page.getByRole('button', { name: '刷新概览', exact: true }).click()
+  await trendGraph.waitFor()
   await page.locator('.native-overview-card').filter({ has: page.getByText('节点管理', { exact: true }) }).click()
   await page.getByText('Tokyo-A', { exact: true }).waitFor()
   passed('login theme persists into management and overview links navigate without layout overflow')
@@ -206,6 +240,7 @@ try {
   passed('machine projection and unknown heartbeat')
   await nav(page, '系统配置')
   await page.locator('.native-management-page .page-header').getByRole('heading', { name: '站点设置', exact: true }).waitFor()
+  await page.getByText('设置说明', { exact: true }).click()
   await page.getByText('设置版本：' + configuration.version, { exact: true }).waitFor()
   assert.equal(await page.getByRole('button', { name: '保存当前分类', exact: true }).count(), 0)
   await page.getByRole('button', { name: '开始编辑', exact: true }).click()
@@ -334,6 +369,12 @@ try {
     return panel && Math.abs(panel.getBoundingClientRect().left) < 1
   })
   await mobile.page.screenshot({ path: output + '/navigation-mobile.png', fullPage: true })
+  await nav(mobile.page, '仪表盘')
+  await mobile.page.getByRole('region', { name: '样本订单状态', exact: true }).waitFor()
+  await mobile.page.getByRole('button', { name: '7 天', exact: true }).click()
+  assert.ok(await mobile.page.evaluate(() => document.documentElement.scrollWidth <= innerWidth))
+  await mobile.page.screenshot({ path: output + '/overview-mobile.png', fullPage: true })
+  await mobile.page.getByRole('button', { name: '打开导航', exact: true }).click()
   await nav(mobile.page, '服务器管理')
   await mobile.page.getByText('Tokyo host', { exact: true }).waitFor()
   assert.equal(await mobile.page.locator('.admin-sidebar.is-open').count(), 0)

@@ -1,3 +1,5 @@
+import { ShieldCheck, AlertCircle, RefreshCw } from 'lucide-react'
+import './detail-reference.css'
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { CoreAdminApiError } from '@txboard/core-sdk'
@@ -37,7 +39,7 @@ export function OrderCommandRecovery({ onDenied }: { onDenied?: (error: unknown)
       if (failure instanceof CoreAdminApiError && [401, 403].includes(failure.status)) onDenied?.(failure)
     }
   }
-  return <section role="status" className="list-card">
+  return <section role="status" className="list-card reference-order-recovery">
     <h3>订单操作等待确认</h3><p>订单 {(action.input as { trade_no: string }).trade_no} 的操作结果尚未确认，请继续确认原操作。</p>
     <button className="button" disabled={state.busy} onClick={() => void recover()}>确认原订单操作结果</button>
     {error ? <p role="alert">{error}</p> : null}
@@ -85,21 +87,21 @@ export function OrderAdministration({ tradeNo, status, onDenied }: {
     requestConfirm({ title: '关闭待支付订单', message: `确认关闭订单 ${tradeNo}？如有钱包预留，将按原账本释放。`,
       confirmLabel: '确认关闭订单', danger: true, action: () => { void execute('close') } })
   }
-  return <section aria-label="订单管理操作">
-    <h3>订单管理操作</h3><OrderCommandRecovery onDenied={onDenied} />
-    {(status === 0 || status === 1) ? <>
-      <label>操作原因标识<input aria-label="订单操作原因标识" value={reason} maxLength={64} disabled={locked}
+  return <section className="reference-order-administration" aria-label="订单管理操作">
+    <div className="reference-detail-section-title"><ShieldCheck size={17} /><h3>订单管理操作</h3></div><OrderCommandRecovery onDenied={onDenied} />
+    {(status === 0 || status === 1) ? <div className="reference-order-command">
+      <label>操作原因标识<input placeholder="例如：admin_reviewed" aria-label="订单操作原因标识" value={reason} maxLength={64} disabled={locked}
         onChange={event => setReason(event.target.value)} autoComplete="off" /></label>
-      {status === 0 ? <button className="button" disabled={locked || !validReason} onClick={confirmClose}>关闭待支付订单</button>
-        : <button className="button" disabled={locked || !validReason} onClick={() => void execute('retry')}>恢复原订单履约</button>}
-      <p>{status === 0 ? '支付结果未确认时不能关闭订单。' : '恢复沿用原订单及付款事实，受理后请查看履约结果。'}</p>
-    </> : null}
+      {status === 0 ? <button className="button" disabled={locked || !validReason} data-danger="true" onClick={confirmClose}>关闭待支付订单</button>
+        : <button className="button" disabled={locked || !validReason} onClick={() => void execute('retry')}><RefreshCw size={14} />恢复原订单履约</button>}
+      <p className="reference-command-help"><AlertCircle size={14} /><span>{status === 0 ? '支付结果未确认时不能关闭订单。' : '恢复沿用原订单及付款事实，受理后请查看履约结果。'}</span></p><details className="reference-detail-help"><summary>如何填写操作原因？</summary><p>使用简短的原因标识，便于后续检索。支持字母、数字及下划线、点、冒号、短横线，最长 64 个字符。</p></details>
+    </div> : null}
     {error ? <p role="alert">{error}</p> : null}{notice ? <p role="status">{notice}</p> : null}
-    <h3>管理员操作审计</h3>
+    <div className="reference-detail-section-title"><ShieldCheck size={16} /><h3>管理员操作审计</h3></div><details className="reference-detail-help"><summary>关于管理员操作审计</summary><p>记录管理员、操作原因以及订单状态变化。恢复请求受理后，请继续通过状态时间线确认实际履约结果。</p></details>
     {audit.isError ? <p role="alert">{managementError(audit.error)}</p> : null}
     {audit.isFetching ? <p role="status">正在读取操作审计…</p> : null}
     {!audit.isError && audit.data ? <>
-      {audit.data.data.length ? <ol>{audit.data.data.map(row => <li key={row.id}>
+      {audit.data.data.length ? <ol className="reference-order-audit-list">{audit.data.data.map(row => <li key={row.id}>
         管理员 #{row.actor_id} · {row.action === 'close' ? '关闭订单' : '申请恢复履约'} · {isoDate(row.occurred_at)}
         <p>{orderStatus(row.from_status)} → {orderStatus(row.to_status)} · 原因：{row.reason}</p>
       </li>)}</ol> : <p>暂无管理员操作记录。</p>}

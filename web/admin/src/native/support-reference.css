@@ -1,0 +1,40 @@
+.support-page { gap: 20px; }
+.support-page .list-card { padding: 20px; box-shadow: none; }
+.support-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
+.support-heading h2, .support-heading h3 { margin: 0; font-size: 16px; font-weight: 650; }
+.support-heading p { margin: 5px 0 0; color: var(--muted); font-size: 12px; }
+.support-tag { display: inline-flex; padding: 4px 8px; border-radius: 6px; color: var(--muted); background: var(--control-bg); font-size: 12px; white-space: nowrap; }
+.support-tag[data-tone="success"] { color: var(--success); background: color-mix(in srgb, var(--success) 10%, transparent); }
+.support-tag[data-tone="warning"] { color: var(--warning); background: color-mix(in srgb, var(--warning) 10%, transparent); }
+.support-page .native-filters { align-items: end; gap: 12px; }
+.support-page .native-filters label { flex: 1 1 160px; max-width: 270px; }
+.support-page .data-table th { background: var(--control-bg); color: var(--muted); font-size: 12px; }
+.support-page .data-table td { padding-block: 15px; }
+.support-page .native-scroll-hint { display: none; }
+.support-page .native-ticket-messages { list-style: none; margin: 20px 0; padding: 0; display: grid; gap: 12px; }
+.support-page .native-ticket-messages > li { padding: 16px; background: var(--control-bg); border: 0; border-radius: 12px; }
+.support-page .native-ticket-messages > li[data-author="admin"] { background: color-mix(in srgb, var(--primary) 7%, var(--panel)); margin-inline-start: 28px; }
+.support-page .native-ticket-messages > li > p:first-child { color: var(--muted); font-size: 12px; margin-top: 0; }
+.support-page .native-ticket-messages > li > p:first-child strong { color: var(--fg); }
+.support-page .native-content-form { gap: 14px; }
+.support-page .native-content-form textarea { padding: 14px; line-height: 1.8; resize: vertical; background: var(--control-bg); border-radius: 10px; }
+.support-page .native-content-form label { color: var(--muted); font-size: 12px; }
+.support-page .native-content-form label:has(input[type="checkbox"]) { display: flex; gap: 8px; align-items: center; color: var(--fg); }
+.support-page .native-content-form input[type="checkbox"] { width: 16px; height: 16px; }
+.support-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.support-help { margin-top: 18px; color: var(--muted); font-size: 12px; line-height: 1.7; }
+.support-help summary { cursor: pointer; color: var(--primary); width: fit-content; }
+.support-pending { border-inline-start: 3px solid var(--warning); }
+.support-preview { padding: 16px; background: var(--control-bg); border-radius: 10px; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.8; }
+.support-attachments { min-width: 0; overflow-wrap: anywhere; }
+.support-attachments h3 { font-size: 13px; margin: 12px 0 8px; }
+.support-attachments > p { color: var(--muted); font-size: 12px; line-height: 1.7; }
+.support-upload { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 14px; border: 1px dashed var(--border); border-radius: 10px; color: var(--muted); font-size: 12px; }
+.support-upload input { max-width: 100%; min-width: 0; }
+.support-attachments ul { display: grid; gap: 8px; padding: 0; list-style: none; }
+.support-attachments li { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 12px; border-radius: 8px; background: var(--control-bg); }
+.support-attachments li > span { flex: 1 1 160px; font-size: 12px; }
+.support-attachments progress { width: 100%; height: 5px; accent-color: var(--primary); }
+.support-timeline { list-style: none; padding: 0; margin: 16px 0; }
+.support-timeline li { padding: 12px 16px; border-inline-start: 2px solid var(--border); color: var(--muted); font-size: 12px; line-height: 1.8; }
+@media (max-width: 640px) { .support-page .list-card { padding: 16px; } .support-page .native-filters label { max-width: none; } .support-page .native-ticket-messages > li[data-author="admin"] { margin-inline-start: 8px; } }

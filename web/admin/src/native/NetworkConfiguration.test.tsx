@@ -41,9 +41,16 @@ async function settle() { await act(async () => { await new Promise(resolve => s
 async function render(page: 'groups' | 'routes' | 'audit') {
   await act(async () => root.render(<QueryClientProvider client={client}>{page === 'groups' ? <GroupsPage /> : page === 'routes' ? <RoutesPage /> : <AccessAuditPage />}</QueryClientProvider>)); await settle()
 }
-function button(text: string) { return [...host.querySelectorAll<HTMLButtonElement>('button')].find(node => node.textContent === text)! }
+function button(text: string) {
+  const scope = document.querySelector<HTMLElement>('[role="dialog"][aria-modal="true"]') ?? host
+  return [...scope.querySelectorAll<HTMLButtonElement>('button')].find(node =>
+    node.getAttribute('aria-label') === text || node.textContent?.trim() === text)!
+}
 async function click(text: string) { await act(async () => button(text).click()); await settle() }
-function label(text: string) { return [...host.querySelectorAll('label')].find(node => node.textContent?.startsWith(text))! }
+function label(text: string) {
+  const scope = document.querySelector<HTMLElement>('[role="dialog"][aria-modal="true"]') ?? host
+  return [...scope.querySelectorAll('label')].find(node => node.textContent?.startsWith(text))!
+}
 async function input(node: HTMLInputElement | HTMLTextAreaElement, value: string) {
   await act(async () => { Object.getOwnPropertyDescriptor(node instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype, 'value')!.set!.call(node, value); node.dispatchEvent(new Event('input', { bubbles: true })) })
 }
@@ -51,10 +58,12 @@ async function select(node: HTMLSelectElement, value: string) { await act(async 
 
 it('saves the observed group string ID without inventing an unsupported row version', async () => {
   await render('groups'); await click('编辑')
+  expect(document.querySelector('[role="dialog"][aria-label="编辑分组"]')).not.toBeNull()
   await input(label('分组名称').querySelector('input')!, 'reviewed group')
   await click('保存分组')
   expect(admin.write).toHaveBeenCalledExactlyOnceWith('network.groups.save', { id: bigId, name: 'reviewed group' }, expect.any(String))
   expect(vi.mocked(admin.write).mock.calls[0]![1]).not.toHaveProperty('expected_version')
+  expect(document.querySelector('[role="dialog"][aria-label="编辑分组"]')).toBeNull()
 })
 
 it('retains an unknown group delete across navigation and reuses only its original operation key', async () => {
@@ -75,10 +84,15 @@ it('hides cached group names and edit forms after permission revocation', async 
   await act(async () => { await client.invalidateQueries() }); await settle()
   expect(host.textContent).not.toContain('private group')
   expect(button('保存分组')).toBeUndefined(); expect(admin.write).not.toHaveBeenCalled()
+  expect(document.querySelector('[role="dialog"][aria-label="编辑分组"]')).toBeNull()
 })
 
 it('sorts the complete fresh route set with exact IDs and zero-based integer positions', async () => {
-  await render('routes'); await click('编辑完整路由排序'); await click('下移'); await click('保存完整路由排序')
+  await render('routes')
+  // Display filtering must never turn the full-set ordering command into a subset write.
+  await input(host.querySelector<HTMLInputElement>('input[aria-label="搜索路由"]')!, 'route-' + bigId)
+  expect(host.querySelectorAll('tbody tr')).toHaveLength(1)
+  await click('编辑完整路由排序'); await click('下移'); await click('保存完整路由排序')
   expect(admin.write).toHaveBeenCalledExactlyOnceWith('network.routes.sort', { items: [{ id: '2', sort: 0 }, { id: bigId, sort: 1 }] }, expect.any(String))
 })
 

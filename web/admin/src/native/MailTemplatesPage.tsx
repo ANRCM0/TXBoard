@@ -1,3 +1,4 @@
+import './settings-reference.css'
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { CoreAdminApiError, type CoreInput } from '@txboard/core-sdk'
@@ -36,27 +37,27 @@ export function MailTemplatesPage() {
       else if (action === 'reset') await workflowActions.run('notifications.mail-templates.reset', { name })
       else if (action === 'test') await workflowActions.run('notifications.mail-templates.test', { name, ...(email ? { email } : {}) })
       if (!isCurrent()) return
-      setEditing(false); setSubject(''); setContent(''); setMessage(action === 'test' ? '测试邮件发送操作已确认。' : '操作已确认。'); await refresh()
+      setEditing(false); setSubject(''); setContent(''); setMessage(action === 'test' ? '测试邮件发送操作已确认' : '操作已确认'); await refresh()
     } catch (error) { if (isCurrent()) setMessage(managementError(error)) }
   }
-  return <div className="native-management-page">
-    <PageHeader title="邮件模板" description="编辑模板源码。测试邮件使用服务器当前已保存的模板。" action={<button className="button" disabled={state.busy || list.isFetching || detail.isFetching} onClick={() => void refresh()}>刷新权限与模板</button>} />
+  return <div className="native-management-page settings-reference">
+    <PageHeader title="邮件模板" description="管理通知主题与正文，保持每封邮件清晰一致" action={<button className="button" disabled={state.busy || list.isFetching || detail.isFetching} onClick={() => void refresh()}>刷新模板</button>} />
     <ManagementFeedback error={list.isError ? list.error : detail.isError ? detail.error : undefined} loading={list.isFetching || detail.isFetching} onRetry={() => void refresh()} />
     {message || state.error ? <p role="alert">{message || managementError(state.error)}</p> : null}
-    {blocked ? <p role="alert">当前无法确认模板访问权限，已清空编辑内容并隐藏数据。</p> : null}
-    {pending ? <section className="list-card"><h2>操作等待确认</h2><p>邮件模板操作的结果尚未确认。</p><button className="button" disabled={!ready || state.busy || list.isFetching || detail.isFetching} onClick={() => void perform('recover')}>使用原操作确认结果</button></section> : null}
-    {ready ? <section className="list-card">
-      <label>模板<select value={name} disabled={state.busy} onChange={event => setName(event.target.value as Name)}>{list.data!.data.map(row => <option key={row.name} value={row.name}>{row.label}（{row.customized ? '自定义' : '默认'}）</option>)}</select></label>
-      <h2>{detail.data!.data.label}</h2><p>必需变量：{detail.data!.data.required_vars.join('、') || '无'}；可选变量：{detail.data!.data.optional_vars.join('、') || '无'}</p>
-      {editing ? <form className="native-content-form" onSubmit={event => { event.preventDefault(); void perform('save') }}>
+    {blocked ? <p role="alert">当前无法确认模板访问权限，已清空编辑内容并隐藏数据</p> : null}
+    {pending ? <section className="list-card"><h2>操作等待确认</h2><p>邮件模板操作的结果尚未确认</p><button className="button" disabled={!ready || state.busy || list.isFetching || detail.isFetching} onClick={() => void perform('recover')}>使用原操作确认结果</button></section> : null}
+    {ready ? <section className="list-card settings-section settings-mail-editor">
+      <div className="settings-section-heading"><div><h2>通知模板</h2><p>选择邮件场景，维护主题和正文</p></div><span className="settings-status">{list.data!.data.find(row => row.name === name)?.customized ? '自定义模板' : '默认模板'}</span></div><label className="settings-template-select">模板<select value={name} disabled={state.busy} onChange={event => setName(event.target.value as Name)}>{list.data!.data.map(row => <option key={row.name} value={row.name}>{row.label}（{row.customized ? '自定义' : '默认'}）</option>)}</select></label>
+      <details className="settings-help"><summary>模板变量与填写说明</summary><p>保留必需变量，邮件发送时会自动填入对应内容</p><div className="settings-variable-list">{detail.data!.data.required_vars.map(variable => <code key={variable} title="必需变量">{variable}<small>必需</small></code>)}{detail.data!.data.optional_vars.map(variable => <code key={variable} title="可选变量">{variable}<small>可选</small></code>)}</div></details>
+      {editing ? <form className="native-content-form settings-mail-form" onSubmit={event => { event.preventDefault(); void perform('save') }}>
         <label>邮件主题<input value={subject} maxLength={255} required disabled={locked} onChange={event => setSubject(event.target.value)} /></label>
-        <div style={{ display: 'grid', gap: 8 }}><label htmlFor="mail-template-content">模板源码</label><textarea id="mail-template-content" rows={18} value={content} maxLength={20000} required disabled={locked} onChange={event => setContent(event.target.value)} /></div>
-        <button className="button" disabled={locked}>保存模板</button><button className="button" type="button" disabled={state.busy} onClick={() => { setSubject(''); setContent(''); setEditing(false) }}>取消编辑</button>
-      </form> : <><p>{detail.data!.data.subject}</p><pre style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{detail.data!.data.content}</pre><button className="button" disabled={locked} onClick={() => { setSubject(detail.data!.data.subject); setContent(detail.data!.data.content); setEditing(true) }}>编辑源码</button></>}
+        <div className="settings-source-field"><label htmlFor="mail-template-content">模板源码</label><textarea id="mail-template-content" rows={18} value={content} maxLength={20000} required disabled={locked} onChange={event => setContent(event.target.value)} /><small className="settings-character-count">{content.length.toLocaleString()} / 20,000 字符</small></div>
+        <div className="settings-form-actions"><span>保存后应用于后续邮件</span><button className="button primary" disabled={locked}>保存模板</button><button className="button" type="button" disabled={state.busy} onClick={() => { setSubject(''); setContent(''); setEditing(false) }}>取消编辑</button></div>
+      </form> : <><div className="settings-mail-subject"><small>邮件主题</small><strong>{detail.data!.data.subject}</strong></div><pre className="settings-source-preview">{detail.data!.data.content}</pre><button className="button primary" disabled={locked} onClick={() => { setSubject(detail.data!.data.subject); setContent(detail.data!.data.content); setEditing(true) }}>编辑源码</button></>}
       <button className="button" disabled={locked} onClick={() => { if (window.confirm('确定删除自定义内容并恢复默认邮件模板？')) void perform('reset') }}>恢复默认模板</button>
-      <form className="native-filters" onSubmit={event => { event.preventDefault(); if (window.confirm('确认向指定地址发送当前已保存模板的测试邮件？')) void perform('test') }}>
-        <label>测试收件人（留空发送到当前管理员邮箱）<input type="email" value={email} maxLength={254} disabled={locked} onChange={event => setEmail(event.target.value)} /></label><button className="button" disabled={locked}>发送测试邮件</button>
-      </form>
+      <section className="settings-test-mail"><header className="settings-section-heading"><div><h3>发送测试邮件</h3><p>测试使用当前已保存的模板</p></div></header><form className="native-filters" onSubmit={event => { event.preventDefault(); if (window.confirm('确认向指定地址发送当前已保存模板的测试邮件？')) void perform('test') }}>
+        <label>测试收件人<input placeholder="留空使用当前管理员邮箱" type="email" value={email} maxLength={254} disabled={locked} onChange={event => setEmail(event.target.value)} /></label><button className="button" disabled={locked}>发送测试邮件</button>
+      </form></section>
     </section> : null}
   </div>
 }

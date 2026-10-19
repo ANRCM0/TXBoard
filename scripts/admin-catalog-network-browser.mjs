@@ -70,8 +70,14 @@ try {
 
   await navigate(page, '权限组管理')
   await page.getByRole('row').filter({ hasText: 'Native group' }).getByRole('button', { name: '编辑', exact: true }).click()
-  await page.getByLabel('分组名称', { exact: true }).fill('Reviewed group')
-  await page.getByRole('button', { name: '保存分组', exact: true }).click()
+  const groupEditor = page.getByRole('dialog', { name: '编辑分组', exact: true })
+  await groupEditor.waitFor()
+  await groupEditor.getByLabel('分组名称', { exact: true }).fill('Reviewed group')
+  await groupEditor.getByRole('button', { name: '保存分组', exact: true }).click()
+  // An unknown write remains in the editor; close presentation without discarding its original key.
+  await groupEditor.getByRole('alert').waitFor()
+  await groupEditor.getByRole('button', { name: '取消', exact: true }).click()
+  await groupEditor.waitFor({ state: 'detached' })
   await page.getByRole('button', { name: '确认原分组操作', exact: true }).waitFor()
   await navigate(page, '套餐管理')
   await navigate(page, '权限组管理')
@@ -107,8 +113,11 @@ try {
 
   await navigate(page, '访问审计')
   await page.getByRole('row').filter({ hasText: 'Observed domains' }).getByRole('button', { name: '编辑', exact: true }).click()
-  await page.getByLabel('审计规则匹配内容', { exact: true }).fill('reviewed.test')
-  await page.getByRole('button', { name: '保存审计规则', exact: true }).click()
+  const auditEditor = page.getByRole('dialog', { name: '编辑审计规则', exact: true })
+  await auditEditor.waitFor()
+  await auditEditor.getByLabel('审计规则匹配内容', { exact: true }).fill('reviewed.test')
+  await auditEditor.getByRole('button', { name: '保存审计规则', exact: true }).click()
+  await auditEditor.waitFor({ state: 'detached' })
   await page.getByRole('row').filter({ hasText: 'reviewed.test' }).waitFor()
   await page.getByLabel('节点 ID', { exact: true }).fill(state.event.server_id)
   await page.getByLabel('用户 ID', { exact: true }).fill(state.event.user_id)
@@ -171,7 +180,8 @@ try {
     const tables = await mobile.page.locator('.native-management-page .table-wrap').evaluateAll(elements => elements.map(element => ({
       viewport: element.clientWidth, content: element.scrollWidth, table: element.querySelector('table').getBoundingClientRect().width,
     })))
-    assert.ok(tables.length > 0 && tables.every(table => table.content > table.viewport && table.table >= 920), name + ' tables must retain readable columns in a horizontal scroll region')
+    const minimumTableWidth = name === '套餐管理' ? 920 : 760
+    assert.ok(tables.length > 0 && tables.every(table => table.content > table.viewport && table.table >= minimumTableWidth), name + ' tables must retain reference column widths in a horizontal scroll region')
     await mobile.page.screenshot({ path: path.join(output, name + '-mobile.png'), fullPage: true })
   }
   verifyFixture(mobile.state)

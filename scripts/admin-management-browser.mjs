@@ -77,15 +77,15 @@ try {
   await open(desktop, '/system/audit-log')
   await page.getByLabel('管理员 ID', { exact: true }).fill('9007199254740993')
   const auditResponse = page.waitForResponse(response => response.url().endsWith('/operations/audit.logs.list') && response.request().postDataJSON().input.admin_id === '9007199254740993')
-  await page.getByRole('button', { name: '筛选审计记录', exact: true }).click(); await auditResponse
+  await page.getByRole('button', { name: '查询', exact: true }).click(); await auditResponse
   assert.equal(state.calls.filter(call => call.operation === 'audit.logs.list').at(-1).input.admin_id, '9007199254740993')
   await open(desktop, '/system/modules')
-  await page.getByRole('button', { name: 'Observed plugin', exact: true }).click()
+  await page.getByRole('region', { name: '模块清单', exact: true }).getByRole('row').filter({ has: page.getByText('Observed plugin', { exact: true }) }).getByRole('button').click()
   await page.locator('section[aria-label="模块详情"]').getByText('fixture-plugin', { exact: true }).waitFor()
   const beforeModules = writes(state).length
   assert.equal(await page.getByRole('button', { name: '卸载', exact: true }).count(), 0)
   state.denied.add('platform.modules.')
-  await page.getByRole('button', { name: '刷新模块清单', exact: true }).click()
+  await page.locator('.native-management-page .page-header').getByRole('button', { name: '刷新', exact: true }).click()
   await page.getByText('无法确认模块读取权限，已隐藏清单和详情。', { exact: true }).waitFor()
   assert.equal(await page.locator('.native-management-page table').count(), 0)
   assert.equal(await page.locator('section[aria-label="模块详情"]').count(), 0)
@@ -98,14 +98,14 @@ try {
   await page.locator('#configuration-app_name').fill('Reviewed site')
   assert.equal(writes(state).length, beforeSettings)
   await page.getByRole('button', { name: '保存当前分类', exact: true }).click()
-  await page.getByText('设置已保存。', { exact: true }).waitFor()
+  await page.getByText('设置已保存', { exact: true }).waitFor()
   const save = state.calls.find(call => call.operation === 'settings.configuration.update')
   assert.deepEqual(save.input, { expected_version: state.originalSettingsVersion, values: { app_name: 'Reviewed site' } })
   await page.getByRole('button', { name: '开始编辑', exact: true }).click()
   await page.locator('#configuration-app_name').fill('Unsaved private draft')
   state.denied.add('settings.configuration.')
-  await page.getByRole('button', { name: '刷新权限与设置', exact: true }).click()
-  await page.getByText('当前无法确认设置访问权限，已清空表单并隐藏数据。', { exact: true }).waitFor()
+  await page.getByRole('button', { name: '刷新设置', exact: true }).click()
+  await page.getByText('当前无法确认设置访问权限，已清空表单并隐藏数据', { exact: true }).waitFor()
   assert.equal(await page.locator('#configuration-app_name').count(), 0)
   assert.ok(!(await page.locator('.native-management-page').innerText()).includes('Unsaved private draft'))
   state.denied.clear()
@@ -120,7 +120,7 @@ try {
   await page.locator('#configuration-turnstile_secret_key').fill('synthetic-new-secret')
   const observed = state.settings.version
   await page.getByRole('button', { name: '保存当前分类', exact: true }).click()
-  await page.getByText('设置已保存。', { exact: true }).waitFor()
+  await page.getByText('设置已保存', { exact: true }).waitFor()
   const secretSave = state.calls.filter(call => call.operation === 'settings.configuration.update').at(-1)
   assert.deepEqual(secretSave.input, { expected_version: observed, values: { turnstile_secret_key: 'synthetic-new-secret' } })
   await page.getByRole('button', { name: '开始编辑', exact: true }).click()
@@ -131,9 +131,9 @@ try {
 
   await open(desktop, '/config/payment')
   await page.getByRole('button', { name: '配置支付方式', exact: true }).click()
-  await page.getByLabel('Merchant ID（已配置）', { exact: true }).waitFor()
-  assert.equal(await page.getByLabel('Merchant ID（已配置）', { exact: true }).inputValue(), '')
-  assert.equal(await page.getByLabel('Merchant key（已配置）', { exact: true }).inputValue(), '')
+  await page.getByLabel(/^Merchant ID\s*已配置$/).waitFor()
+  assert.equal(await page.getByLabel(/^Merchant ID\s*已配置$/).inputValue(), '')
+  assert.equal(await page.getByLabel(/^Merchant key\s*已配置$/).inputValue(), '')
   const beforePayment = state.calls.filter(call => call.operation === 'billing.admin-payment-methods.save').length
   await page.getByLabel('名称', { exact: true }).fill('Reviewed payment')
   assert.equal(state.calls.filter(call => call.operation === 'billing.admin-payment-methods.save').length, beforePayment)
@@ -164,6 +164,7 @@ try {
   await page.getByRole('button', { name: '读取当前订阅', exact: true }).click()
   await page.locator('.native-management-page').getByRole('heading', { name: 'subscription@example.test', exact: true }).waitFor()
   await page.getByRole('button', { name: '重置订阅流量周期', exact: true }).click()
+  await page.getByText('查看订阅标识与原始用量', { exact: true }).click()
   await page.getByText('9007199254740994', { exact: true }).waitFor()
   const reset = state.calls.find(call => call.operation === 'subscription.lifecycle.reset').input
   assert.deepEqual(reset, { subscription_id: state.subscription.subscription_id, expected_version: state.originalSubscriptionVersion })
@@ -179,7 +180,7 @@ try {
       await mobile.page.getByRole('button', { name: '保存当前分类', exact: true }).waitFor()
     } else if (pathname === '/config/payment') {
       await mobile.page.getByRole('button', { name: '配置支付方式', exact: true }).click()
-      await mobile.page.getByLabel('Merchant key（已配置）', { exact: true }).waitFor()
+      await mobile.page.getByLabel(/^Merchant key\s*已配置$/).waitFor()
     } else if (pathname === '/config/email/templates') {
       await mobile.page.getByRole('button', { name: '编辑源码', exact: true }).click()
       await mobile.page.getByLabel('模板源码', { exact: true }).waitFor()

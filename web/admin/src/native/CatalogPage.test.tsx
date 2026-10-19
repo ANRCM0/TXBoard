@@ -47,7 +47,7 @@ async function settle() { await act(async () => { await new Promise(resolve => s
 async function render(show = true) {
   await act(async () => root.render(<QueryClientProvider client={client}>{show ? <CatalogPage /> : null}</QueryClientProvider>)); await settle()
 }
-function button(text: string, scope: ParentNode = host) { return [...scope.querySelectorAll<HTMLButtonElement>('button')].find(node => node.textContent === text)! }
+function button(text: string, scope: ParentNode = host) { return [...scope.querySelectorAll<HTMLButtonElement>('button')].find(node => node.getAttribute('aria-label') === text || node.textContent?.trim() === text)! }
 async function click(text: string, scope: ParentNode = host) { await act(async () => button(text, scope).click()); await settle() }
 function field(id: string) { return host.querySelector<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>('#' + id)! }
 async function change(id: string, value: string) {
@@ -145,12 +145,12 @@ it('uses the observed current Offer version and never enables changes to superse
 
 it('server-filters current versus superseded Offers and preserves decimal Plan IDs across pagination', async () => {
   await render()
-  const filters = host.querySelector<HTMLElement>('section[aria-label="套餐 Offer"]')!
+  const filters = host.querySelector<HTMLElement>('section[aria-label="周期商品"]')!
   const select = filters.querySelector<HTMLSelectElement>('select')!
   await act(async () => { Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value')!.set!.call(select, 'superseded'); select.dispatchEvent(new Event('change', { bubbles: true })) }); await settle()
   const input = filters.querySelector<HTMLInputElement>('input')!
   await act(async () => { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, planId); input.dispatchEvent(new Event('input', { bubbles: true })) })
-  await click('筛选 Offer'); await click('下一页', filters)
+  await click('筛选商品'); await click('下一页', filters)
   expect(admin.read).toHaveBeenCalledWith('catalog.admin-offers.list', { page: 2, per_page: 20, status: 'superseded', plan_id: planId }, expect.any(AbortSignal))
   expect(admin.write).not.toHaveBeenCalled()
 })
@@ -162,7 +162,7 @@ it('keeps a conflicted Offer draft locked until its own authoritative revision i
   await click('保存可用性')
   expect(field('catalog-availability-capacity').value).toBe('0')
   expect(button('保存可用性').disabled).toBe(true)
-  await click('重新读取 Offer 并替换设置')
+  await click('重新读取商品并替换设置')
   expect(admin.read).toHaveBeenCalledWith('catalog.admin-plans.get', { plan_id: planId, revision_id: '11' })
   expect(field('catalog-availability-capacity').value).toBe('6')
   await click('保存可用性')
@@ -173,6 +173,11 @@ it('reads historical full terms as read-only evidence and still opens the curren
   await render(); await click('查看完整条款'); await click('查看此修订')
   expect(admin.read).toHaveBeenCalledWith('catalog.admin-plans.get', { plan_id: planId, revision_id: '10' }, expect.any(AbortSignal))
   expect(host.textContent).toContain('Historical immutable plan')
+  const versionDetails = [...host.querySelectorAll('details')].find(node => node.querySelector('summary')?.textContent === '查看完整条款与版本标识')!
+  expect(versionDetails.open).toBe(false)
+  await act(async () => versionDetails.querySelector('summary')!.click())
+  expect(versionDetails.open).toBe(true)
+  expect(versionDetails.textContent).toContain(original.revision.content_hash)
   expect(host.querySelector('[aria-label="套餐发布编辑器"]')).toBeNull()
   await click('基于当前完整条款编辑')
   expect(field('catalog-name').value).toBe('Complete authoritative plan')

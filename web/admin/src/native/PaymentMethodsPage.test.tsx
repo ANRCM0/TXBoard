@@ -43,7 +43,7 @@ async function settle() { await act(async () => { await new Promise(resolve => s
 async function render(page: ReactNode = <PaymentMethodsPage />) {
   await act(async () => root.render(<QueryClientProvider client={client}>{page}</QueryClientProvider>)); await settle()
 }
-function button(text: string) { return [...host.querySelectorAll<HTMLButtonElement>('button')].find(node => node.textContent === text)! }
+function button(text: string) { return [...host.querySelectorAll<HTMLButtonElement>('button')].find(node => node.getAttribute('aria-label') === text || node.textContent?.trim() === text)! }
 async function click(text: string) { await act(async () => button(text).click()); await settle() }
 function field(label: string) { return [...host.querySelectorAll('label')].find(node => node.textContent?.startsWith(label))!.querySelector('input')! }
 async function input(label: string, value: string) {
@@ -73,7 +73,7 @@ it('shows configured status while leaving every merchant input empty until an op
   expect(admin.read).toHaveBeenCalledWith('billing.admin-payment-methods.form', { provider: 'EPay', payment_id: paymentId }, expect.any(AbortSignal))
   expect(field('网关地址').value).toBe(''); expect(field('商户ID').value).toBe(''); expect(field('通信密钥').value).toBe('')
   expect(field('通信密钥').type).toBe('password')
-  expect(host.textContent).toContain('通信密钥（已配置）')
+  expect(field('通信密钥').closest('label')?.querySelector('.settings-configured')?.textContent).toBe('已配置')
   expect(admin.write).not.toHaveBeenCalled()
 })
 

@@ -41,7 +41,7 @@ async function render(content: boolean | 'knowledge' = false) {
   await act(async () => root.render(<QueryClientProvider client={client}>{content ? <ContentPage kind={content === 'knowledge' ? 'knowledge' : 'notices'} /> : <TicketsPage />}</QueryClientProvider>))
   await settle()
 }
-function button(text: string) { return [...host.querySelectorAll<HTMLButtonElement>('button')].find(node => node.textContent === text)! }
+function button(text: string) { return [...host.querySelectorAll<HTMLButtonElement>('button')].find(node => node.getAttribute('aria-label') === text || node.textContent === text)! }
 async function click(text: string) { await act(async () => button(text).click()); await settle() }
 async function input(node: HTMLInputElement | HTMLTextAreaElement, value: string) {
   await act(async () => {
@@ -126,7 +126,7 @@ it('requires a successful explicit authorization refresh before recovering a for
   await click('启用')
   const original = vi.mocked(admin.write).mock.calls[0]
   expect(button('使用原操作确认结果').disabled).toBe(true)
-  await click('刷新权限与内容')
+  await click('刷新')
   expect(admin.write).toHaveBeenCalledTimes(1)
   expect(button('使用原操作确认结果').disabled).toBe(false)
   await click('使用原操作确认结果')
@@ -151,7 +151,7 @@ it('recovers knowledge pending writes only from the knowledge page using the ori
   await render(true)
   expect(button('使用原操作确认结果')).toBeUndefined()
   expect(button('新增').disabled).toBe(true)
-  await click('刷新权限与内容')
+  await click('刷新')
   expect(admin.write).toHaveBeenCalledTimes(1)
   await render('knowledge'); await click('使用原操作确认结果')
   expect(vi.mocked(admin.write).mock.calls[1]).toEqual(original)

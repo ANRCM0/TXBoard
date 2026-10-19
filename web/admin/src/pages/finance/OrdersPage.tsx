@@ -42,12 +42,12 @@ export function OrdersPage() {
     { key: 'trade', header: '订单号', render: row => <button className="native-read-link" onClick={() => setDetail(row.trade_no)}>{row.trade_no}</button> },
     { key: 'user', header: '用户 ID', render: row => <Link className="table-link" to={'/user/' + row.user_id}>#{row.user_id}</Link> },
     { key: 'plan', header: '套餐', render: row => row.plan?.name ?? '未记录' },
-    { key: 'amount', header: '订单金额', render: row => minorAmount(row.amount_minor, row.currency) },
-    { key: 'status', header: '状态', render: row => orderStatus(row.status) },
+    { key: 'amount', header: '订单金额', render: row => <strong className="reference-number">{minorAmount(row.amount_minor, row.currency)}</strong> },
+    { key: 'status', header: '状态', render: row => <span className={'reference-status ' + (row.status === 3 ? 'is-success' : row.status === 0 || row.status === 1 ? 'is-warning' : '')}>{orderStatus(row.status)}</span> },
     { key: 'created', header: '创建时间', render: row => isoDate(row.created_at) },
   ]
   return <div className="native-management-page">
-    <PageHeader title="订单管理" description="查询原生购买订单、关闭待支付订单及恢复原订单履约。"
+    <PageHeader title="订单管理" description="购买记录与订单处理"
       action={<button className="button" disabled={!valid || query.isFetching} onClick={() => void query.refetch()}><RefreshCw size={15} />刷新</button>} />
     {detail === null ? <OrderCommandRecovery /> : null}
     {!valid ? <p role="alert">用户 ID、订单号或状态参数有误，请修正筛选。</p> : null}

@@ -40,7 +40,11 @@ async function render(path: string) {
     <Route path="/nodes" element={<NodesPage />} /><Route path="/reset" element={<TrafficResetPage />} />
   </Routes></MemoryRouter></QueryClientProvider>)); await settle()
 }
-function button(text: string) { return [...host.querySelectorAll<HTMLButtonElement>('button')].find(element => element.textContent === text)! }
+function button(text: string) {
+  const scope = document.querySelector<HTMLElement>('[role="dialog"][aria-modal="true"]') ?? host
+  return [...scope.querySelectorAll<HTMLButtonElement>('button')].find(node =>
+    node.getAttribute('aria-label') === text || node.textContent?.trim() === text)!
+}
 async function readyButton(text: string) {
   await vi.waitFor(async () => {
     await settle()
