@@ -65,8 +65,10 @@ retain their separate mTLS identity checks.
 (localhost HTTP is allowed for development). Same-origin browser requests carry
 the original user Bearer and, for administrators, `X-Core-Admin-Path`. Redis owns
 the shared ingress and login limits. Caddy overwrites `X-Core-Browser-Client-IP`;
-Core accepts it only from explicitly configured trusted proxy peers. User, admin
-and commerce admission have independent `CORE_BROWSER_*_ENABLED` switches.
+Core accepts it only from explicitly configured trusted proxy peers. Caddy
+resolves the client address only through its configured trusted proxy ranges
+using strict chain parsing; untrusted forwarded headers do not create an
+identity. User, admin and commerce admission have independent `CORE_BROWSER_*_ENABLED` switches.
 
 Theme SDK `0.2.0` exposes `createThemeClient` over the canonical Core user
 operations. Theme package manifests must declare `engines.browser`,

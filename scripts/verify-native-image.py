@@ -102,7 +102,7 @@ def verify_backup_assets(native, installation, assets):
             'live_assets_preserved': True}
 
 
-def verify_browser_ingress(origin, auth):
+def verify_browser_ingress(origin, auth, backend):
     """Exercise the built image's public Caddy listener, without a Gateway process."""
     def request(path, body=None, headers=None, expected=200):
         supplied = {'Accept': 'application/json', **(headers or {})}
@@ -115,10 +115,18 @@ def verify_browser_ingress(origin, auth):
         except urllib.error.HTTPError as failure:
             response = failure
         with response:
-            require(response.status == expected, 'Actual image browser ingress HTTP status mismatch')
+            raw = response.read(1048577)
+            try:
+                payload = json.loads(raw)
+            except (ValueError, UnicodeDecodeError):
+                payload = {}
+            code = payload.get('error', {}).get('code') if isinstance(payload, dict) and isinstance(payload.get('error', {}), dict) else None
+            safe_code = code if isinstance(code, str) and re.fullmatch(r'[A-Z][A-Z0-9_]{1,100}', code) else 'UNAVAILABLE'
+            diagnostic = f'path={path} status={response.status} expected={expected} error_code={safe_code}'
+            require(response.status == expected, 'Actual image browser ingress HTTP status mismatch: ' + diagnostic)
+            require(len(raw) <= 1048576 and isinstance(payload, dict), 'Browser ingress invalid envelope: ' + diagnostic)
             require(response.headers.get('Set-Cookie') is None, 'Browser ingress emitted a session cookie')
             require('no-store' in response.headers.get('Cache-Control', ''), 'Browser ingress response is cacheable')
-            payload = json.load(response)
         require(payload.get('ok') is (expected < 400), 'Browser envelope success does not match HTTP status')
         return payload
 
@@ -138,10 +146,22 @@ def verify_browser_ingress(origin, auth):
     request('/gateway/v1/bootstrap', headers={'X-Core-Service-Id': 'forged'}, expected=403)
     # This malformed attacker value would be rejected by PHP if Caddy forwarded it.
     request('/gateway/v1/bootstrap', headers={'X-Core-Browser-Client-IP': 'forged,not-an-ip'})
+    # Default Caddy trust is loopback only; the Docker bridge peer is untrusted.
+    # Rotating XFF must hit the existing socket budget.
+    def ingress_buckets():
+        return set(backend.compose('exec', '-T', 'txboard', 'redis-cli', '-s', '/data/redis.sock',
+                                  '-n', '1', '--raw', '--scan', '--pattern', '*core-browser:ingress:*').splitlines())
+    buckets = ingress_buckets()
+    require(len(buckets) == 1, 'Image fixture must have one socket ingress budget before XFF rotation')
+    for forwarded in ['198.51.100.7', '203.0.113.9, 198.51.100.8']:
+        request('/gateway/v1/bootstrap', headers={'X-Forwarded-For': forwarded,
+                'X-Core-Browser-Client-IP': '203.0.113.10'})
+    require(ingress_buckets() == buckets, 'Untrusted XFF split the actual image ingress budget')
     return {'public_caddy_listener': True, 'same_process_bootstrap_and_discovery': True,
             'bearer_admin_read': True, 'current_admin_path_required': True, 'no_session_cookie': True,
             'cookie_only_rejected': True, 'cross_origin_and_host_rejected': True,
-            'service_header_rejected': True, 'caddy_overwrites_client_ip_header': True}
+            'service_header_rejected': True, 'caddy_overwrites_client_ip_header': True,
+            'untrusted_xff_cannot_split_ingress_budget': True}
 
 
 def purchase_diagnostic(installation, email, offer_id, key):
@@ -356,7 +376,7 @@ def main():
                         code = "HTTP_ERROR"
                     raise RuntimeError(f"Native HTTP request rejected: {error.code} {code}") from None
             auth = http("/txapi/auth/admin/login", {"email": preparation["identity"]["email"], "password": password})
-            browser_evidence = [verify_browser_ingress(origin, auth)]
+            browser_evidence = [verify_browser_ingress(origin, auth, backend)]
             presentation = f"/txapi/admin/{auth['secure_path']}/extensions/module_portal/"
             require(http(presentation + "presentation", token=auth["auth_data"])["version"] == "1.0.0", "Real HTTP module presentation was unavailable")
             offers = http("/txapi/plans")
@@ -412,7 +432,7 @@ def main():
                     resource_evidence.append(verify_resource_limits(backend, resource_plan))
                     backup_evidence.append(verify_backup_assets(native, installation, assets))
                 auth = http("/txapi/auth/admin/login", {"email": preparation["identity"]["email"], "password": password})
-                browser_evidence.append(verify_browser_ingress(origin, auth))
+                browser_evidence.append(verify_browser_ingress(origin, auth, backend))
                 require(http(presentation + "presentation", token=auth["auth_data"])["version"] == version, "Worker retained an earlier package version")
                 require(http(presentation + "operations/status.get", {"input": {}}, auth["auth_data"])["version"] == version, "Real extension SDK operation did not use target code")
                 require(backend.snapshot() == money_before, "Image/module update changed financial aggregates")

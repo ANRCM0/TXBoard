@@ -23,18 +23,18 @@ final class CoreBrowserIngressTest extends NativeRuntimeTestCase
 
     public function test_capabilities_are_compiled_public_metadata_and_disable_gates_match_dispatch_without_service_credentials(): void
     {
-        $response = $this->getJson('https://core.example.test/gateway/v1/core/admin/capabilities')->assertOk()
+        $response = $this->browserGet('https://core.example.test/gateway/v1/core/admin/capabilities')->assertOk()
             ->assertJsonPath('ok', true)->assertJsonPath('data.contract', 'core-admin/v1');
         $this->assertContains('settings.configuration.update', array_column($response->json('data.operations'), 'id'));
         $this->assertStringNotContainsString('credential', $response->getContent());
         $this->assertSame(0, DB::table('tx_internal_service')->count());
         $this->assertDatabaseHas('tx_internal_audit', ['service_id' => 'browser', 'service_epoch' => 0, 'state' => 'completed']);
         config(['browser.commerce_enabled' => false]);
-        $operations = $this->getJson('https://core.example.test/gateway/v1/core/user/capabilities')->assertOk()->json('data.operations');
+        $operations = $this->browserGet('https://core.example.test/gateway/v1/core/user/capabilities')->assertOk()->json('data.operations');
         $this->assertNotContains('commerce.orders.create', array_column($operations, 'id'));
         $this->operation('user', 'commerce.orders.create', [])->assertNotFound();
         config(['browser.admin_enabled' => false]);
-        $this->getJson('https://core.example.test/gateway/v1/core/admin/capabilities')->assertOk()->assertJsonPath('data.operations', []);
+        $this->browserGet('https://core.example.test/gateway/v1/core/admin/capabilities')->assertOk()->assertJsonPath('data.operations', []);
         $this->operation('admin', 'settings.configuration.get', [])->assertNotFound();
     }
 
@@ -81,7 +81,7 @@ final class CoreBrowserIngressTest extends NativeRuntimeTestCase
     {
         admin_setting(['captcha_enable' => 1, 'captcha_type' => 'turnstile', 'turnstile_site_key' => 'public-site-key',
             'turnstile_secret_key' => 'private-captcha-secret', 'email_password' => 'private-mail-secret']);
-        $bootstrap = $this->getJson('https://core.example.test/gateway/v1/bootstrap')->assertOk()
+        $bootstrap = $this->browserGet('https://core.example.test/gateway/v1/bootstrap')->assertOk()
             ->assertJsonPath('data.security.captcha', ['enabled' => true, 'type' => 'turnstile', 'siteKey' => 'public-site-key']);
         $this->assertStringNotContainsString('private-captcha-secret', $bootstrap->getContent());
         $this->assertStringNotContainsString('private-mail-secret', $bootstrap->getContent());
@@ -132,7 +132,7 @@ final class CoreBrowserIngressTest extends NativeRuntimeTestCase
             'contract_version' => '1', 'request_id' => (string) Str::uuid(), 'deadline_at' => time() + 15, 'input' => (object) [],
         ])->assertForbidden()->assertJsonPath('error.code', 'SERVICE_UNAUTHORIZED');
         config(['browser.max_response_bytes' => 64]);
-        $this->getJson('https://core.example.test/gateway/v1/core/user/capabilities')->assertStatus(502)
+        $this->browserGet('https://core.example.test/gateway/v1/core/user/capabilities')->assertStatus(502)
             ->assertJsonPath('error.code', 'UPSTREAM_ERROR')->assertJsonMissingPath('data');
     }
 
@@ -157,30 +157,33 @@ final class CoreBrowserIngressTest extends NativeRuntimeTestCase
 
     public function test_browser_origin_admission_checks_raw_host_instead_of_forwarded_host(): void
     {
-        $this->operation('user', 'catalog.offers.list', [], ['Host' => 'evil.example.test', 'X-Forwarded-Host' => 'core.example.test'])->assertForbidden();
+        $this->postJson('https://evil.example.test/gateway/v1/core/user/operations/catalog.offers.list',
+            ['input' => (object) []], ['Origin' => 'https://core.example.test', 'X-Forwarded-Host' => 'core.example.test'])->assertForbidden();
         $this->operation('user', 'catalog.offers.list', [], ['Sec-Fetch-Site' => 'cross-site'])->assertForbidden();
         config(['browser.origin' => 'http://core.example.test']);
-        $this->getJson('https://core.example.test/gateway/v1/bootstrap')->assertStatus(503)->assertJsonMissingPath('data');
+        $this->browserGet('https://core.example.test/gateway/v1/bootstrap')->assertStatus(503)->assertJsonMissingPath('data');
     }
 
     public function test_ingress_limit_rejects_before_audit_insertion_and_bootstrap_requires_an_empty_body(): void
     {
         config(['browser.ingress_per_minute' => 2]);
         $baseline = DB::table('tx_internal_audit')->count();
-        $this->getJson('https://core.example.test/gateway/v1/bootstrap')->assertOk();
-        $this->getJson('https://core.example.test/gateway/v1/core/user/capabilities')->assertOk();
+        $this->browserGet('https://core.example.test/gateway/v1/bootstrap')->assertOk();
+        $this->browserGet('https://core.example.test/gateway/v1/core/user/capabilities')->assertOk();
         $this->assertSame($baseline + 2, DB::table('tx_internal_audit')->count());
-        $this->getJson('https://core.example.test/gateway/v1/bootstrap')->assertStatus(429)->assertHeader('Retry-After', '60');
+        $this->browserGet('https://core.example.test/gateway/v1/bootstrap')->assertStatus(429)->assertHeader('Retry-After', '60');
         $this->assertSame($baseline + 2, DB::table('tx_internal_audit')->count());
-        $this->call('GET', 'https://core.example.test/gateway/v1/bootstrap', [], [], [], ['CONTENT_TYPE' => 'application/json'], '{}')->assertStatus(400);
+        foreach (['{}', '[]'] as $body) {
+            $this->call('GET', 'https://core.example.test/gateway/v1/bootstrap', [], [], [], ['CONTENT_TYPE' => 'application/json'], $body)->assertStatus(400);
+        }
         $this->operation('user', 'catalog.offers.list', [], ['Origin' => 'https://evil.example.test'])->assertForbidden();
         $this->assertSame($baseline + 2, DB::table('tx_internal_audit')->count());
     }
 
     public function test_unknown_browser_routes_and_wrong_methods_return_safe_json_envelopes(): void
     {
-        $this->getJson('https://core.example.test/gateway/v1/unknown')->assertNotFound()->assertJsonPath('ok', false)->assertJsonMissingPath('exception');
-        $this->getJson('https://core.example.test/gateway/v1/core/user/operations/catalog.offers.list')->assertStatus(405)->assertJsonPath('ok', false);
+        $this->browserGet('https://core.example.test/gateway/v1/unknown')->assertNotFound()->assertJsonPath('ok', false)->assertJsonMissingPath('exception');
+        $this->browserGet('https://core.example.test/gateway/v1/core/user/operations/catalog.offers.list')->assertStatus(405)->assertJsonPath('ok', false);
         $this->postJson('https://core.example.test/gateway/v1/bootstrap', [])->assertStatus(405)->assertJsonPath('ok', false);
     }
 
@@ -249,6 +252,12 @@ final class CoreBrowserIngressTest extends NativeRuntimeTestCase
         $this->assertNotSame('Must not repeat uncertain write', Setting::where('name', 'app_name')->first()?->value);
         $this->operation('admin', 'settings.site.update', ['app_name' => 'Changed original input'], $headers)->assertStatus(409)
             ->assertJsonPath('error.code', 'IDEMPOTENCY_CONFLICT');
+    }
+
+    // Laravel getJson() serializes its default data as [] even for GET requests.
+    private function browserGet(string $url)
+    {
+        return $this->call('GET', $url, [], [], [], ['HTTP_ACCEPT' => 'application/json'], '');
     }
 
     private function operation(string $domain, string $operation, array $input, array $headers = [])

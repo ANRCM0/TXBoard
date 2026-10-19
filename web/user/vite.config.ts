@@ -19,7 +19,8 @@ export default defineConfig(({ mode }) => {
     server: {
       port: Number(env.VITE_USER_PORT || 5173),
       proxy: {
-        '/gateway': { target: env.VITE_GATEWAY_PROXY_TARGET || 'http://127.0.0.1:7801', changeOrigin: true },
+        // Core HTTP serves the browser API; retain the environment name for compatibility.
+        '/gateway': { target: env.VITE_GATEWAY_PROXY_TARGET || 'http://127.0.0.1:8080', changeOrigin: true },
       },
     },
   }
