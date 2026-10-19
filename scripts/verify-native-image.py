@@ -272,6 +272,7 @@ def main():
         with native.installation_lock(args.dir):
             native.Runner(args.dir, native.Docker(args.dir), hook=hook).execute("update", args.image, configuration=args.configuration)
         raise RuntimeError("Fault boundary was not reached")
+    node_source = load("node_component", ROOT / "scripts/check-node-component.py").verify()
     native = load("native_runtime", args.deploy_root / "scripts/native-runtime.py")
     tools = load("module_dev", ROOT / "scripts/module-dev.py")
     baseline = json.loads(run(["docker", "image", "inspect", args.image]))[0]["Id"]
@@ -448,6 +449,7 @@ def main():
             run(["node", ROOT / "scripts/tests/core-browser/module-host-live.mjs", session_file], cwd=ROOT, timeout=90)
             args.output.parent.mkdir(parents=True, exist_ok=True)
             write(args.output, {"schema": "modular-native-image-proof/v1", "images": images, "kernel_manifest_sha256": kernel,
+                "node_source": node_source,
                 "compositions": [value["composition_fingerprint"] for value in reports], "authority_epoch": "2", "activation_count": 1,
                 "composition_approvals": 3, "original_orders": 1, "module_owned_schema": 2, "recovered_operation": recovered_operation,
                 "resource_limits": resource_evidence, "native_backup_materials": backup_evidence,

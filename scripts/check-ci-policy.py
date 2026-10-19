@@ -15,7 +15,6 @@ AUTOMATIC = {
     "ci-core-browser.yml",
     "ci-mysql.yml",
     "ci-native-c2.yml",
-    "ci-node.yml",
     "ci-web.yml",
     "docker-txboard.yml",
     "docs.yml",
@@ -150,15 +149,24 @@ def main():
     require(not RETIRED_WORKFLOWS & {path.name for path in files},
             "A retired prototype workflow was restored")
     workflows = {path.name: validate_workflow(path) for path in files}
-    for owner in ("ci-api.yml", "ci-mysql.yml", "ci-node.yml", "ci-web.yml", "docker-txboard.yml"):
+    for owner in ("ci-api.yml", "ci-mysql.yml", "ci-web.yml", "docker-txboard.yml"):
         trigger = workflows[owner]["on"]["pull_request"]
         require(not any(key in trigger for key in ("branches", "branches-ignore")),
                 f"{owner}: Core acceptance must also run for stacked pull requests")
     require(set(workflows["ci-native-c2.yml"]["jobs"]) == {"native-c2-live"},
             "Native integration must not repeat component unit suites")
-    makefile = (ROOT / "node/Makefile").read_text(encoding="utf-8")
-    require("./cmd/..." in makefile or "./cmd/credential-provider" in makefile,
-            "The single Node test owner must cover the Provider CLI")
+    require("ci-node.yml" not in workflows,
+            "Independent Node tests and publishing belong to ANRCM0/txnode")
+    require((ROOT / ".gitmodules").is_file(), "The external Node source pin is missing")
+    for owner in ("ci-api.yml", "ci-core-browser.yml", "ci-native-c2.yml", "docker-txboard.yml"):
+        steps = [step for job in workflows[owner]["jobs"].values()
+                 for step in job.get("steps", [])]
+        core_checkouts = [step for step in steps
+                          if step.get("uses", "").startswith("actions/checkout@")
+                          and "repository" not in step.get("with", {})]
+        require(core_checkouts and all(step.get("with", {}).get("submodules") is True
+                                      for step in core_checkouts),
+                f"{owner}: paired acceptance must initialize the fixed Node source")
     excluded, current = validate_suites()
     print(f"CI policy: {len(files)} workflows parsed; {len(AUTOMATIC)} automatic, "
           f"{len(files) - len(AUTOMATIC)} manual; {excluded} historical suite exclusions, "

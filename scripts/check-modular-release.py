@@ -3,11 +3,16 @@
 import json
 from pathlib import Path
 import re
+import subprocess
 
 root = Path(__file__).resolve().parents[1]
 release = json.loads((root / "contracts/releases/modular-core.v1.json").read_text(encoding="utf-8"))
 assert release["schema"] == "modular-core-release/v1"
 assert re.fullmatch(r"[0-9a-f]{40}", release["deploy"]["revision"])
+assert release["node"]["repository"] == "ANRCM0/txnode"
+assert release["node"]["path"] == "node"
+assert re.fullmatch(r"160000 [0-9a-f]{40} 0\tnode", subprocess.check_output(
+    ["git", "-C", str(root), "ls-files", "--stage", "--", "node"], text=True).strip())
 for key in ("kernel", "module_manifest", "version_policy", "operations", "default_composition", "proof_composition", "native_preparation"):
     path = root / release[key]
     assert path.is_file() and path.resolve().is_relative_to(root.resolve()), key

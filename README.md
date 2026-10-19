@@ -1,6 +1,9 @@
 # TXBoard Development
 
-TXBoard is developed as one source repository. Core owns identity, subscriptions,
+TXBoard Core and web applications share this source repository. TX-Node is
+maintained independently in `ANRCM0/txnode`; `node/` is a pinned Git submodule for
+cross-component acceptance. Clone with `git clone --recurse-submodules` or run
+`git submodule update --init node` after checkout. Core owns identity, subscriptions,
 billing, configuration and browser admission. Node and the web applications
 consume its explicit contracts.
 
@@ -9,7 +12,7 @@ consume its explicit contracts.
 | `api/` | PHP Core, domain owners, migrations and extension composition |
 | `packages/` | Generated Core SDK and the thin browser theme client |
 | `tools/`, `examples/` | Development module host and current theme example |
-| `node/` | Go data plane, credential provider and protocol integrations |
+| `node/` | Fixed external TX-Node commit for integration; develop in ANRCM0/txnode |
 | `web/` | Administrator and user applications, plus shared frontend helpers |
 | `contracts/` | Versioned operation, extension, renderer and ownership declarations |
 | `scripts/` | Contract generation, static boundaries and development tooling |

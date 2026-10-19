@@ -8,8 +8,8 @@ on:
       - 'scripts/tests/check-docs.test.mjs'
       - 'scripts/check-ci-policy.py'
       - '.github/workflows/**'
-      - 'node/Makefile'
       - 'api/phpunit*.xml'
+      - '.gitmodules'
   push:
     branches: [main]
     paths:
@@ -18,8 +18,8 @@ on:
       - 'scripts/tests/check-docs.test.mjs'
       - 'scripts/check-ci-policy.py'
       - '.github/workflows/**'
-      - 'node/Makefile'
       - 'api/phpunit*.xml'
+      - '.gitmodules'
 
 permissions:
   contents: read
@@ -29,6 +29,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: true
       - uses: actions/setup-node@v4
         with:
           node-version: '22'

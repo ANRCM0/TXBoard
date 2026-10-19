@@ -9,6 +9,12 @@
     "runner": "scripts/native-runtime.py",
     "protocol": "txboard.native-deployment/v1"
   },
+  "node": {
+    "repository": "ANRCM0/txnode",
+    "path": "node",
+    "revision_source": "Git submodule gitlink in this Core commit",
+    "release_policy": "Independent Node versions and images; Core adoption requires paired acceptance"
+  },
   "kernel": "contracts/kernel/v1.files.json",
   "module_manifest": "contracts/modules/manifest.v1.schema.json",
   "version_policy": "contracts/modules/versions.v1.json",

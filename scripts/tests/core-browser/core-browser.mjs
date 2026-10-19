@@ -14,6 +14,9 @@ const scratch = process.env.CORE_BROWSER_INTEGRATION_LOG_DIR
 assert.ok(root && scratch)
 const sourceHead = readFileSync(`${root}/.core-browser-integration-snapshot`, 'utf8').trim()
 assert.match(sourceHead, /^[a-f0-9]{40}$/)
+const nodeSource = JSON.parse(readFileSync(`${root}/.node-integration-snapshot`, 'utf8'))
+assert.equal(nodeSource.repository, 'ANRCM0/txnode')
+assert.match(nodeSource.revision, /^[a-f0-9]{40}$/)
 const service = JSON.parse(readFileSync(`${scratch}/browser-user.private.json`, 'utf8'))
 const servers = []
 const devServers = []
@@ -198,7 +201,7 @@ try {
   assert.equal((await admin.call('identity.admin.get', {})).id, adminService.id); checks++
   await admin.call('identity.session.end', {}, { idempotencyKey: randomUUID() })
   await assert.rejects(admin.call('identity.admin.get', {}), e => e.status === 401); checks++
-  console.log(JSON.stringify({ sourceHead, checks, realCore: true, nativeActivation: true, database: 'mysql',
+  console.log(JSON.stringify({ sourceHead, nodeSource, checks, realCore: true, nativeActivation: true, database: 'mysql',
     coreBrowserIngress: true, viteDevProxySameOrigin: true, browserTransport: 'direct same-process PHP HTTP without service credentials',
     browserSdk: true, originalKeyReplay: true, lostResponseRecovery: true, ownerIsolation: true,
     sessionEnd: true, internalServiceMtls: 'separate retained API acceptance', adminChannel: true,
