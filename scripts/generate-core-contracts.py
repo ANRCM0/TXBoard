@@ -160,6 +160,7 @@ def main():
         ROOT / 'gateway/apps/gateway/src/contracts/core.generated.ts': types,
         ROOT / 'gateway/packages/core-sdk/src/contracts.generated.ts': types,
         ROOT / 'api/resources/contracts/admin-bindings.v1.json': bindings_path.read_text(encoding='utf-8'),
+        ROOT / 'api/resources/contracts/admin-settings.v1.json': (ROOT / 'contracts/core-api/admin-settings.v1.json').read_text(encoding='utf-8'),
         ROOT / 'gateway/apps/gateway/src/contracts/core-admin.generated.ts': surface,
         ROOT / 'gateway/packages/core-sdk/src/admin.generated.ts': surface,
     }

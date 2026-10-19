@@ -4,6 +4,7 @@ import { createServer } from 'node:http'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { chromium } from 'playwright'
+import { coreOperations } from '@txboard/core-sdk'
 
 const root = fileURLToPath(new URL('../', import.meta.url))
 const output = fileURLToPath(new URL('../artifacts/admin-browser/', import.meta.url))
@@ -36,6 +37,14 @@ const requestId = '12345678-1234-4234-8234-123456789abc'
 const node = { id: '9007199254740993', name: 'Tokyo-A', type: 'vless', host: '2001:db8::1', port: '443',
   server_port: null, parent_id: null, machine_id: '9', show: true, enabled: true, sort: null, u: '9007199254740999', d: '0' }
 const metadata = { version: '1', requestId, coreRequestId: requestId, coreMeta: {} }
+const settingsMetadata = JSON.parse(await readFile(path.join(root, 'contracts/core-api/admin-settings.v1.json'), 'utf8'))
+const configuration = {
+  version: 'a'.repeat(64),
+  values: Object.fromEntries(Object.entries(settingsMetadata.fields).filter(([, field]) => !field.write_only)
+    .map(([name, field]) => [name, structuredClone(field.default)])),
+  credentials: Object.entries(settingsMetadata.fields).filter(([, field]) => field.write_only)
+    .map(([name]) => ({ name, configured: true })),
+}
 const account = { id: '9007199254740995', email: 'alice@example.test', banned: false, is_admin: false,
   created_at: 1792245600, last_login_at: null }
 const order = { id: '7', user_id: account.id, trade_no: 'ORDER-A', plan_id: '8', period: 'monthly',
@@ -68,6 +77,12 @@ async function fixture(viewport) {
     state.operations.push(operation)
     const input = req.postDataJSON().input
     state.reads.push({ operation, input })
+    const checkedSend = (data, coreMeta = {}) => {
+      const spec = coreOperations[operation]
+      assert.ok(spec, 'Only generated management contracts are accepted')
+      spec.input.parse(input); spec.output.parse(data); spec.meta.parse(coreMeta)
+      return send(data, coreMeta)
+    }
     if (operation === 'identity.admin-session.create') {
       assert.equal(input.email, 'admin@example.test')
       assert.match(req.headers()['idempotency-key'], /^[0-9a-f-]{36}$/)
@@ -114,6 +129,8 @@ async function fixture(viewport) {
     if (operation === 'settings.site.get') return send({ site: { app_name: 'TXBoard',
       app_description: 'Subscription services', app_url: 'https://example.test', logo: null, tos_url: null,
       currency: 'CNY', stop_register: 0 } })
+    if (operation === 'settings.configuration.get') return checkedSend(configuration)
+    if (operation === 'platform.modules.list') return checkedSend({ modules: [], summary: { total: 0, discovery_errors: 0 } })
     if (operation === 'identity.sessions.list') return send(state.sessions, { has_more: false })
     if (operation === 'identity.sessions.revoke') {
       state.revokeKeys.push(req.headers()['idempotency-key'])
@@ -159,8 +176,8 @@ try {
   await page.getByText('Osaka-B', { exact: true }).waitFor()
   passed('server pagination')
   state.nodesStatus = 403
-  await page.getByRole('button', { name: '刷新', exact: true }).click()
-  await page.getByRole('alert').filter({ hasText: '没有此操作的权限' }).waitFor()
+  await page.getByRole('button', { name: '刷新节点', exact: true }).click()
+  await page.getByRole('alert').filter({ hasText: '没有此操作的权限' }).first().waitFor()
   assert.equal(await page.locator('table').count(), 0)
   assert.ok(!page.url().includes('sign-in'))
   passed('permission revocation removes stale rows without ending the session')
@@ -170,10 +187,15 @@ try {
   assert.match(await page.locator('table').innerText(), /未上报/)
   passed('machine projection and unknown heartbeat')
   await nav(page, '系统配置')
-  await page.locator('section[aria-label="站点配置"]').waitFor()
-  assert.match(await page.locator('dl').innerText(), /CNY/)
-  assert.equal(await page.getByRole('button', { name: '保存', exact: true }).count(), 0)
-  passed('read-only settings')
+  await page.getByRole('heading', { name: '站点设置', exact: true }).waitFor()
+  await page.getByText('设置版本：' + configuration.version, { exact: true }).waitFor()
+  assert.equal(await page.getByRole('button', { name: '保存当前分类', exact: true }).count(), 0)
+  await page.getByRole('button', { name: '开始编辑', exact: true }).click()
+  assert.equal(await page.locator('#configuration-app_name').inputValue(), configuration.values.app_name)
+  assert.equal(await page.locator('#configuration-app_description').inputValue(), configuration.values.app_description)
+  await page.getByRole('button', { name: '取消编辑', exact: true }).click()
+  assert.equal(state.operations.includes('settings.configuration.update'), false)
+  passed('versioned site configuration uses generated defaults and opens editing only on explicit action')
   await nav(page, '登录会话')
   const secondary = page.getByRole('row').filter({ hasText: 'Secondary session' })
   await secondary.getByRole('button', { name: '撤销', exact: true }).click()
@@ -258,9 +280,13 @@ try {
   await page.getByRole('alert').filter({ hasText: '没有此操作的权限' }).waitFor()
   assert.equal(await page.locator('table').count(), 0)
   passed('resource permission withdrawal removes user and order rows while preserving login')
-  await nav(page, '审计日志')
-  await page.getByText('此功能暂未开放', { exact: true }).waitFor()
-  passed('dormant pages stay explicit and do not call old HTTP routes')
+  const operationsBeforeModules = state.operations.length
+  await nav(page, '插件管理')
+  await page.getByRole('heading', { name: '插件管理', exact: true }).waitFor()
+  await page.getByText('没有符合条件的模块', { exact: true }).waitFor()
+  assert.equal(state.operations.slice(operationsBeforeModules).includes('platform.modules.list'), true)
+  assert.equal(state.operations.slice(operationsBeforeModules).some(operation => coreOperations[operation].idempotency !== 'read'), false)
+  passed('active plugin inventory shows its empty state without lifecycle writes or old HTTP routes')
   state.logoutFailure = true
   await page.getByRole('button', { name: '退出登录', exact: true }).click()
   await page.getByRole('heading', { name: '管理员登录' }).waitFor()
@@ -332,7 +358,7 @@ try {
   await nav(mobile.page, '节点管理')
   await mobile.page.getByText('Tokyo-A', { exact: true }).waitFor()
   mobile.state.nodesStatus = 401
-  await mobile.page.getByRole('button', { name: '刷新', exact: true }).click()
+  await mobile.page.getByRole('button', { name: '刷新节点', exact: true }).click()
   await mobile.page.getByRole('heading', { name: '管理员登录' }).waitFor()
   await mobile.page.reload()
   await mobile.page.getByRole('heading', { name: '管理员登录' }).waitFor()

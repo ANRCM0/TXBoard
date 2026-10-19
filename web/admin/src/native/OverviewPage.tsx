@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { Server, Network, Settings, ShieldCheck, Users, ReceiptText, MessageCircle, Bell, BookOpen, Tag, Gift, WalletCards, CreditCard, Boxes, Route } from 'lucide-react'
+import { Server, Network, Settings, ShieldCheck, Users, ReceiptText, MessageCircle, Bell, BookOpen, Tag, Gift, WalletCards, CreditCard, Boxes, Route, FileText, Plug, Package, Activity, Mail, RefreshCcw } from 'lucide-react'
 import { admin } from './session'
 import { ManagementFeedback } from './Feedback'
 import { PageHeader } from '../components/ui/PageHeader'
@@ -15,13 +15,21 @@ const entries = [
   { href: '/finance/coupon', title: '优惠券', description: '创建优惠策略或停用后续使用', icon: Tag },
   { href: '/finance/gift-card', title: '礼品卡', description: '查看批次与逐卡状态、撤销未兑换卡片', icon: Gift },
   { href: '/finance/commission', title: '邀请与佣金', description: '查看邀请奖励、审核钱包转入申请', icon: WalletCards },
-  { href: '/server/manage', title: '节点管理', description: '查看节点地址、启用状态与用量', icon: Network },
-  { href: '/server/machine', title: '服务器管理', description: '查看机器、镜像通道与最近心跳', icon: Server },
+  { href: '/server/manage', title: '节点管理', description: '查看节点详情、状态与服务器归属', icon: Network },
+  { href: '/server/machine', title: '服务器管理', description: '查看服务器详情、编辑状态与镜像通道', icon: Server },
   { href: '/server/group', title: '权限组管理', description: '维护用户、套餐和节点使用的分组', icon: Boxes },
   { href: '/server/route', title: '路由管理', description: '维护路由与完整排序、只读模拟节点匹配', icon: Route },
   { href: '/server/access-audit', title: '访问审计', description: '维护审计规则、筛选节点访问事件', icon: ShieldCheck },
-  { href: '/config/system', title: '系统配置', description: '查看站点公开信息与注册状态', icon: Settings },
+  { href: '/config/system', title: '系统配置', description: '管理站点、注册、安全与通知设置', icon: Settings },
   { href: '/system/sessions', title: '登录会话', description: '查看并撤销管理员账户的会话', icon: ShieldCheck },
+  { href: '/system/audit-log', title: '审计日志', description: '按操作、管理员与关键字查询审计记录', icon: FileText },
+  { href: '/system/modules', title: '模块中心', description: '查看模块状态、兼容性与部署支持', icon: Boxes },
+  { href: '/config/plugin', title: '插件管理', description: '查看插件清单、健康与能力', icon: Plug },
+  { href: '/config/theme', title: '主题管理', description: '查看主题清单与当前运行状态', icon: Package },
+  { href: '/config/payment', title: '支付配置', description: '配置原生商户渠道并核对当前可用性', icon: WalletCards },
+  { href: '/user/traffic-reset', title: '订阅流量重置', description: '核对当前订阅并重置流量周期', icon: RefreshCcw },
+  { href: '/system/queue', title: '队列监控', description: '查看任务状态与近期失败记录', icon: Activity },
+  { href: '/config/email/templates', title: '邮件模板', description: '编辑通知模板并显式发送测试邮件', icon: Mail },
 ]
 export function OverviewPage() {
   const identity = useQuery({ queryKey: ['native-admin', 'identity'],

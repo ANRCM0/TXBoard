@@ -17,6 +17,8 @@ on:
       - "scripts/admin-workflows-browser.mjs"
       - "scripts/lib/admin-workflows-fixture.mjs"
       - "scripts/admin-catalog-network-browser.mjs"
+      - "scripts/admin-management-browser.mjs"
+      - "scripts/lib/admin-management-fixture.mjs"
       - "scripts/lib/admin-catalog-network-fixture.mjs"
       - "scripts/user-browser.mjs"
       - "scripts/check-web-performance.mjs"
@@ -36,6 +38,8 @@ on:
       - "scripts/admin-workflows-browser.mjs"
       - "scripts/lib/admin-workflows-fixture.mjs"
       - "scripts/admin-catalog-network-browser.mjs"
+      - "scripts/admin-management-browser.mjs"
+      - "scripts/lib/admin-management-fixture.mjs"
       - "scripts/lib/admin-catalog-network-fixture.mjs"
       - "scripts/user-browser.mjs"
       - "scripts/check-web-performance.mjs"
@@ -67,5 +71,6 @@ jobs:
             artifacts/admin-browser/
             artifacts/admin-workflows-browser/
             artifacts/admin-catalog-network-browser/
+            artifacts/admin-management-browser/
             artifacts/user-browser/
           if-no-files-found: ignore

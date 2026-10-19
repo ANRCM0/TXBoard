@@ -7,6 +7,8 @@ use App\Http\Requests\Admin\ConfigSave;
 use App\Services\AdminSettingsProjection;
 use App\Services\ThemeService;
 use App\Services\TelegramService;
+use App\Services\NativeSettingsStorage;
+use App\Domains\InternalApi\AdminMutationBoundary;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Throwable;
@@ -34,6 +36,14 @@ final class SettingsAdminController
     public function save(ConfigSave $request): JsonResponse
     {
         $data = $request->validated();
+        if ($request->attributes->get('native_internal_operation') === 'settings.site.update') {
+            return app(AdminMutationBoundary::class)->run($request->user(), 'settings.write', function () use ($request, $data): JsonResponse {
+                $storage = app(NativeSettingsStorage::class);
+                $storage->lock();
+                $storage->persist($data);
+                return TxapiResponse::success($request, ['ok' => true]);
+            });
+        }
         // Persist only the validated native settings; retired keys are rejected.
         foreach ($data as $key => $value) {
             if ($key === 'frontend_theme') {

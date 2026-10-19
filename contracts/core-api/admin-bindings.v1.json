@@ -323,6 +323,62 @@
       "parameters": {},
       "routeParameters": {},
       "payload": null
+    },
+    "network.nodes.get": {
+      "controller": "NativeManagementReadController",
+      "method": "node",
+      "parameters": {},
+      "routeParameters": {},
+      "payload": null
+    },
+    "network.machines.get": {
+      "controller": "NativeManagementReadController",
+      "method": "machine",
+      "parameters": {},
+      "routeParameters": {},
+      "payload": null
+    },
+    "settings.configuration.get": {
+      "controller": "NativeSettingsAdminController",
+      "method": "show",
+      "parameters": {},
+      "routeParameters": {},
+      "payload": null
+    },
+    "settings.configuration.update": {
+      "controller": "NativeSettingsAdminController",
+      "method": "save",
+      "parameters": {},
+      "routeParameters": {},
+      "payload": null
+    },
+    "billing.admin-payment-methods.list": {
+      "controller": "NativePaymentConfigurationController",
+      "method": "index",
+      "parameters": {},
+      "routeParameters": {},
+      "payload": null
+    },
+    "billing.admin-payment-providers.list": {
+      "controller": "NativePaymentConfigurationController",
+      "method": "providers",
+      "parameters": {},
+      "routeParameters": {},
+      "payload": null
+    },
+    "billing.admin-payment-methods.form": {
+      "controller": "NativePaymentConfigurationController",
+      "method": "form",
+      "parameters": {},
+      "routeParameters": {},
+      "payload": null
+    },
+    "billing.admin-payment-methods.save": {
+      "controller": "NativePaymentConfigurationController",
+      "method": "save",
+      "parameters": {},
+      "routeParameters": {},
+      "payload": null
     }
   }
 }

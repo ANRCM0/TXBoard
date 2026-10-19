@@ -298,6 +298,7 @@ jobs:
           tests/Feature/Support/NativeTicketAttachmentsTest.php
           tests/Feature/Txapi/TxapiAdminResourceReadsTest.php
           tests/Feature/Txapi/TxapiUnifiedAdminManagementTest.php
+          tests/Feature/Txapi/TxapiAdminConfigurationTest.php
 
   native-billing-domain:
     name: native-billing-domain (${{ matrix.shard }})
@@ -329,6 +330,7 @@ jobs:
             test_files: >-
               tests/Feature/Billing/NativePaymentAttemptsTest.php
               tests/Feature/Billing/NativeOrderPaymentQueriesTest.php
+              tests/Feature/Billing/NativePaymentConfigurationTest.php
               tests/Feature/Billing/NativeOrderAdministrationTest.php
               tests/Feature/Billing/NativePaymentAttemptsMysqlConcurrencyTest.php
               tests/Feature/Billing/NativeEpayCheckoutTest.php

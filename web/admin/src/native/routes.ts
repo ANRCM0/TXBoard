@@ -3,9 +3,19 @@ export const availableAdminPaths: readonly string[] = [
   '/user/manage', '/finance/order', '/user/ticket', '/config/notice',
   '/config/knowledge', '/finance/coupon', '/finance/gift-card', '/finance/commission',
   '/finance/plan', '/server/group', '/server/route', '/server/access-audit',
+  '/system/audit-log', '/system/modules', '/config/plugin', '/config/theme',
+  '/config/payment', '/user/traffic-reset', '/system/queue', '/config/email/templates',
+  '/config/system/features', '/config/system/safe', '/config/system/subscribe', '/config/system/invite',
+  '/config/server', '/config/email', '/config/telegram', '/config/app',
 ]
 
 export function workflowDestination(operation: string): { path: string; label: string } | undefined {
+  if (operation.startsWith('network.nodes.')) return { path: '/server/manage', label: '节点管理' }
+  if (operation.startsWith('network.machines.')) return { path: '/server/machine', label: '服务器管理' }
+  if (operation.startsWith('subscription.lifecycle.')) return { path: '/user/traffic-reset', label: '订阅流量重置' }
+  if (operation.startsWith('settings.configuration.')) return { path: '/config/system', label: '系统配置' }
+  if (operation.startsWith('notifications.mail-templates.')) return { path: '/config/email/templates', label: '邮件模板' }
+  if (operation.startsWith('billing.admin-payment-methods.')) return { path: '/config/payment', label: '支付配置' }
   if (operation.startsWith('catalog.')) return { path: '/finance/plan', label: '套餐管理' }
   if (operation.startsWith('network.groups.')) return { path: '/server/group', label: '权限组管理' }
   if (operation.startsWith('network.routes.')) return { path: '/server/route', label: '路由管理' }

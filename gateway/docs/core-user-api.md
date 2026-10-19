@@ -1,11 +1,11 @@
 # Canonical user operation access
 
 This opt-in browser surface preserves the generated Core data contracts. Existing
-theme routes and their display DTOs continue to work. Formal TX-F pages and
-credential delivery are separate batches.
+theme routes and their display DTOs continue to work. The user application lives in the same TXBoard workspace; new user product pages
+remain deferred. Subscription delivery uses its separately authorized Provider flow.
 
 `GET /gateway/v1/core/user/capabilities` returns the intersection of the compiled
-20-operation user list, Core's current service grants and local feature gates.
+57-operation user list, Core's current service grants and local feature gates.
 The Core service must grant `system.capabilities.get` for discovery. Discovery
 does not replace authorization: Core checks the actual service and original user
 session on every operation.

@@ -9,6 +9,8 @@ import {
   MessageCircle,
   Network,
   ShieldCheck,
+  Activity,
+  Mail,
   Package,
   Plug,
   RefreshCcw,
@@ -34,6 +36,7 @@ export const coreNavigationGroups = [
       ['/config/system', '系统配置', Settings],
       ['/system/audit-log', '审计日志', FileText],
       ['/system/sessions', '登录会话', ShieldCheck],
+      ['/system/queue', '队列监控', Activity],
     ],
   },
   {
@@ -88,6 +91,7 @@ export const coreNavigationGroups = [
     items: [
       ['/config/notice', '公告管理', Bell],
       ['/config/knowledge', '知识库管理', BookOpen],
+      ['/config/email/templates', '邮件模板', Mail],
     ],
   },
 ] as const

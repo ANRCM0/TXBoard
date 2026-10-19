@@ -1,0 +1,708 @@
+{
+  "schema": "native-admin-settings/v1",
+  "fields": {
+    "app_name": {
+      "group": "site",
+      "label": "\u7ad9\u70b9\u540d\u79f0",
+      "setting": "app_name",
+      "kind": "text",
+      "default": "TXBoard",
+      "schema": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 255
+      },
+      "write_only": false
+    },
+    "app_description": {
+      "group": "site",
+      "label": "\u7ad9\u70b9\u63cf\u8ff0",
+      "setting": "app_description",
+      "kind": "text",
+      "default": "TXBoard control plane",
+      "schema": {
+        "type": "string",
+        "minLength": 0,
+        "maxLength": 2048
+      },
+      "write_only": false
+    },
+    "app_url": {
+      "group": "site",
+      "label": "\u7ad9\u70b9\u5730\u5740",
+      "setting": "app_url",
+      "kind": "text",
+      "default": "",
+      "schema": {
+        "type": "string",
+        "minLength": 0,
+        "maxLength": 2048
+      },
+      "write_only": false
+    },
+    "logo": {
+      "group": "site",
+      "label": "\u6807\u5fd7\u5730\u5740",
+      "setting": "logo",
+      "kind": "text",
+      "default": "",
+      "schema": {
+        "type": "string",
+        "minLength": 0,
+        "maxLength": 2048
+      },
+      "write_only": false
+    },
+    "tos_url": {
+      "group": "site",
+      "label": "\u670d\u52a1\u6761\u6b3e\u5730\u5740",
+      "setting": "tos_url",
+      "kind": "text",
+      "default": "",
+      "schema": {
+        "type": "string",
+        "minLength": 0,
+        "maxLength": 2048
+      },
+      "write_only": false
+    },
+    "stop_register": {
+      "group": "site",
+      "label": "\u5173\u95ed\u65b0\u7528\u6237\u6ce8\u518c",
+      "setting": "stop_register",
+      "kind": "checkbox",
+      "default": false,
+      "schema": {
+        "type": "boolean"
+      },
+      "write_only": false
+    },
+    "invite_enable": {
+      "group": "features",
+      "label": "\u9080\u8bf7",
+      "setting": "invite_enable",
+      "kind": "checkbox",
+      "default": true,
+      "schema": {
+        "type": "boolean"
+      },
+      "write_only": false
+    },
+    "gift_card_enable": {
+      "group": "features",
+      "label": "\u793c\u54c1\u5361",
+      "setting": "gift_card_enable",
+      "kind": "checkbox",
+      "default": true,
+      "schema": {
+        "type": "boolean"
+      },
+      "write_only": false
+    },
+    "ticket_enable": {
+      "group": "features",
+      "label": "\u5de5\u5355",
+      "setting": "ticket_enable",
+      "kind": "checkbox",
+      "default": true,
+      "schema": {
+        "type": "boolean"
+      },
+      "write_only": false
+    },
+    "knowledge_enable": {
+      "group": "features",
+      "label": "\u77e5\u8bc6\u5e93",
+      "setting": "knowledge_enable",
+      "kind": "checkbox",
+      "default": true,
+      "schema": {
+        "type": "boolean"
+      },
+      "write_only": false
+    },
+    "traffic_log_enable": {
+      "group": "features",
+      "label": "\u6d41\u91cf\u8bb0\u5f55",
+      "setting": "traffic_log_enable",
+      "kind": "checkbox",
+      "default": true,
+      "schema": {
+        "type": "boolean"
+      },
+      "write_only": false
+    },
+    "announcement_enable": {
+      "group": "features",
+      "label": "\u516c\u544a",
+      "setting": "announcement_enable",
+      "kind": "checkbox",
+      "default": true,
+      "schema": {
+        "type": "boolean"
+      },
+      "write_only": false
+    },
+    "register_enable": {
+      "group": "features",
+      "label": "\u6ce8\u518c\u5165\u53e3",
+      "setting": "register_enable",
+      "kind": "checkbox",
+      "default": true,
+      "schema": {
+        "type": "boolean"
+      },
+      "write_only": false
+    },
+    "email_verify": {
+      "group": "safe",
+      "label": "\u6ce8\u518c\u9a8c\u8bc1\u90ae\u7bb1",
+      "setting": "email_verify",
+      "kind": "checkbox",
+      "default": false,
+      "schema": {
+        "type": "boolean"
+      },
+      "write_only": false
+    },
+    "email_whitelist_enable": {
+      "group": "safe",
+      "label": "\u542f\u7528\u90ae\u7bb1\u540e\u7f00\u767d\u540d\u5355",
+      "setting": "email_whitelist_enable",
+      "kind": "checkbox",
+      "default": false,
+      "schema": {
+        "type": "boolean"
+      },
+      "write_only": false
+    },
+    "email_gmail_limit_enable": {
+      "group": "safe",
+      "label": "\u9650\u5236 Gmail \u522b\u540d",
+      "setting": "email_gmail_limit_enable",
+      "kind": "checkbox",
+      "default": false,
+      "schema": {
+        "type": "boolean"
+      },
+      "write_only": false
+    },
+    "captcha_enable": {
+      "group": "safe",
+      "label": "\u542f\u7528\u9a8c\u8bc1\u7801",
+      "setting": "captcha_enable",
+      "kind": "checkbox",
+      "default": false,
+      "schema": {
+        "type": "boolean"
+      },
+      "write_only": false
+    },
+    "register_limit_by_ip_enable": {
+      "group": "safe",
+      "label": "\u9650\u5236\u540c IP \u6ce8\u518c",
+      "setting": "register_limit_by_ip_enable",
+      "kind": "checkbox",
+      "default": false,
+      "schema": {
+        "type": "boolean"
+      },
+      "write_only": false
+    },
+    "email_whitelist_suffix": {
+      "group": "safe",
+      "label": "\u90ae\u7bb1\u540e\u7f00\u767d\u540d\u5355",
+      "setting": "email_whitelist_suffix",
+      "kind": "list",
+      "default": [],
+      "schema": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255
+        },
+        "maxItems": 100
+      },
+      "write_only": false
+    },
+    "captcha_type": {
+      "group": "safe",
+      "label": "\u9a8c\u8bc1\u7801\u670d\u52a1",
+      "setting": "captcha_type",
+      "kind": "select",
+      "default": "recaptcha",
+      "schema": {
+        "type": "string",
+        "enum": [
+          "recaptcha",
+          "turnstile",
+          "recaptcha-v3"
+        ]
+      },
+      "write_only": false,
+      "options": [
+        "recaptcha",
+        "turnstile",
+        "recaptcha-v3"
+      ]
+    },
+    "recaptcha_site_key": {
+      "group": "safe",
+      "label": "reCAPTCHA Site Key",
+      "setting": "recaptcha_site_key",
+      "kind": "text",
+      "default": "",
+      "schema": {
+        "type": "string",
+        "minLength": 0,
+        "maxLength": 8192
+      },
+      "write_only": false
+    },
+    "recaptcha_v3_site_key": {
+      "group": "safe",
+      "label": "reCAPTCHA v3 Site Key",
+      "setting": "recaptcha_v3_site_key",
+      "kind": "text",
+      "default": "",
+      "schema": {
+        "type": "string",
+        "minLength": 0,
+        "maxLength": 8192
+      },
+      "write_only": false
+    },
+    "turnstile_site_key": {
+      "group": "safe",
+      "label": "Turnstile Site Key",
+      "setting": "turnstile_site_key",
+      "kind": "text",
+      "default": "",
+      "schema": {
+        "type": "string",
+        "minLength": 0,
+        "maxLength": 8192
+      },
+      "write_only": false
+    },
+    "recaptcha_key": {
+      "group": "safe",
+      "label": "reCAPTCHA \u5bc6\u94a5",
+      "setting": "recaptcha_key",
+      "kind": "password",
+      "default": "",
+      "schema": {
+        "type": "string",
+        "minLength": 0,
+        "maxLength": 8192
+      },
+      "write_only": true
+    },
+    "recaptcha_v3_secret_key": {
+      "group": "safe",
+      "label": "reCAPTCHA v3 \u5bc6\u94a5",
+      "setting": "recaptcha_v3_secret_key",
+      "kind": "password",
+      "default": "",
+      "schema": {
+        "type": "string",
+        "minLength": 0,
+        "maxLength": 8192
+      },
+      "write_only": true
+    },
+    "turnstile_secret_key": {
+      "group": "safe",
+      "label": "Turnstile \u5bc6\u94a5",
+      "setting": "turnstile_secret_key",
+      "kind": "password",
+      "default": "",
+      "schema": {
+        "type": "string",
+        "minLength": 0,
+        "maxLength": 8192
+      },
+      "write_only": true
+    },
+    "login_limit_enabled": {
+      "group": "safe",
+      "label": "\u9650\u5236\u767b\u5f55\u5c1d\u8bd5",
+      "setting": "password_limit_enable",
+      "kind": "checkbox",
+      "default": true,
+      "schema": {
+        "type": "boolean"
+      },
+      "write_only": false
+    },
+    "login_limit_count": {
+      "group": "safe",
+      "label": "\u5141\u8bb8\u767b\u5f55\u5c1d\u8bd5\u6b21\u6570",
+      "setting": "password_limit_count",
+      "kind": "number",
+      "default": 5,
+      "schema": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 100000
+      },
+      "write_only": false
+    },
+    "login_limit_expire": {
+      "group": "safe",
+      "label": "\u767b\u5f55\u9650\u5236\u65f6\u95f4\uff08\u5206\u949f\uff09",
+      "setting": "password_limit_expire",
+      "kind": "number",
+      "default": 60,
+      "schema": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 100000
+      },
+      "write_only": false
+    },
+    "register_limit_count": {
+      "group": "safe",
+      "label": "\u5141\u8bb8\u6ce8\u518c\u6b21\u6570",
+      "setting": "register_limit_count",
+      "kind": "number",
+      "default": 3,
+      "schema": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 100000
+      },
+      "write_only": false
+    },
+    "register_limit_expire": {
+      "group": "safe",
+      "label": "\u6ce8\u518c\u9650\u5236\u65f6\u95f4\uff08\u5206\u949f\uff09",
+      "setting": "register_limit_expire",
+      "kind": "number",
+      "default": 60,
+      "schema": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 100000
+      },
+      "write_only": false
+    },
+    "plan_change_enable": {
+      "group": "subscribe",
+      "label": "\u5141\u8bb8\u66f4\u6362\u5957\u9910",
+      "setting": "plan_change_enable",
+      "kind": "checkbox",
+      "default": true,
+      "schema": {
+        "type": "boolean"
+      },
+      "write_only": false
+    },
+    "reset_traffic_method": {
+      "group": "subscribe",
+      "label": "\u65b0\u53d1\u5e03\u5957\u9910\u7684\u9ed8\u8ba4\u91cd\u7f6e\u65b9\u5f0f",
+      "setting": "reset_traffic_method",
+      "kind": "number",
+      "default": 1,
+      "schema": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 4
+      },
+      "write_only": false
+    },
+    "new_order_event_id": {
+      "group": "subscribe",
+      "label": "\u65b0\u8d2d\u65f6\u5e94\u7528\u6743\u76ca",
+      "setting": "new_order_event_id",
+      "kind": "number",
+      "default": 0,
+      "schema": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 1
+      },
+      "write_only": false
+    },
+    "renew_order_event_id": {
+      "group": "subscribe",
+      "label": "\u7eed\u8d39\u65f6\u5e94\u7528\u6743\u76ca",
+      "setting": "renew_order_event_id",
+      "kind": "number",
+      "default": 0,
+      "schema": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 1
+      },
+      "write_only": false
+    },
+    "change_order_event_id": {
+      "group": "subscribe",
+      "label": "\u6362\u5957\u9910\u65f6\u5e94\u7528\u6743\u76ca",
+      "setting": "change_order_event_id",
+      "kind": "number",
+      "default": 0,
+      "schema": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 1
+      },
+      "write_only": false
+    },
+    "server_pull_interval": {
+      "group": "server",
+      "label": "\u8282\u70b9\u62c9\u53d6\u95f4\u9694\uff08\u79d2\uff09",
+      "setting": "server_pull_interval",
+      "kind": "number",
+      "default": 60,
+      "schema": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 86400
+      },
+      "write_only": false
+    },
+    "server_push_interval": {
+      "group": "server",
+      "label": "\u8282\u70b9\u4e0a\u62a5\u95f4\u9694\uff08\u79d2\uff09",
+      "setting": "server_push_interval",
+      "kind": "number",
+      "default": 60,
+      "schema": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 86400
+      },
+      "write_only": false
+    },
+    "device_limit_mode": {
+      "group": "server",
+      "label": "\u8bbe\u5907\u9650\u5236\u6a21\u5f0f",
+      "setting": "device_limit_mode",
+      "kind": "number",
+      "default": 0,
+      "schema": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 86400
+      },
+      "write_only": false
+    },
+    "email_host": {
+      "group": "email",
+      "label": "SMTP \u4e3b\u673a",
+      "setting": "email_host",
+      "kind": "text",
+      "default": "",
+      "schema": {
+        "type": "string",
+        "minLength": 0,
+        "maxLength": 255
+      },
+      "write_only": false
+    },
+    "email_port": {
+      "group": "email",
+      "label": "SMTP \u7aef\u53e3",
+      "setting": "email_port",
+      "kind": "text",
+      "default": "465",
+      "schema": {
+        "type": "string",
+        "minLength": 0,
+        "maxLength": 255
+      },
+      "write_only": false
+    },
+    "email_username": {
+      "group": "email",
+      "label": "SMTP \u7528\u6237\u540d",
+      "setting": "email_username",
+      "kind": "text",
+      "default": "",
+      "schema": {
+        "type": "string",
+        "minLength": 0,
+        "maxLength": 255
+      },
+      "write_only": false
+    },
+    "email_from_address": {
+      "group": "email",
+      "label": "\u53d1\u4ef6\u4eba\u5730\u5740",
+      "setting": "email_from_address",
+      "kind": "text",
+      "default": "",
+      "schema": {
+        "type": "string",
+        "minLength": 0,
+        "maxLength": 255
+      },
+      "write_only": false
+    },
+    "email_encryption": {
+      "group": "email",
+      "label": "SMTP \u52a0\u5bc6",
+      "setting": "email_encryption",
+      "kind": "select",
+      "default": "ssl",
+      "schema": {
+        "type": "string",
+        "enum": [
+          "ssl",
+          "tls",
+          ""
+        ]
+      },
+      "write_only": false,
+      "options": [
+        "ssl",
+        "tls",
+        ""
+      ]
+    },
+    "email_password": {
+      "group": "email",
+      "label": "SMTP \u5bc6\u7801",
+      "setting": "email_password",
+      "kind": "password",
+      "default": "",
+      "schema": {
+        "type": "string",
+        "minLength": 0,
+        "maxLength": 8192
+      },
+      "write_only": true
+    },
+    "telegram_bot_enable": {
+      "group": "telegram",
+      "label": "\u542f\u7528 Telegram \u673a\u5668\u4eba",
+      "setting": "telegram_bot_enable",
+      "kind": "checkbox",
+      "default": false,
+      "schema": {
+        "type": "boolean"
+      },
+      "write_only": false
+    },
+    "telegram_bot_token": {
+      "group": "telegram",
+      "label": "\u673a\u5668\u4eba Token",
+      "setting": "telegram_bot_token",
+      "kind": "password",
+      "default": "",
+      "schema": {
+        "type": "string",
+        "minLength": 0,
+        "maxLength": 256
+      },
+      "write_only": true
+    },
+    "telegram_webhook_url": {
+      "group": "telegram",
+      "label": "Webhook \u7ad9\u70b9\u5730\u5740",
+      "setting": "telegram_webhook_url",
+      "kind": "text",
+      "default": "",
+      "schema": {
+        "type": "string",
+        "minLength": 0,
+        "maxLength": 2048
+      },
+      "write_only": false
+    },
+    "telegram_discuss_link": {
+      "group": "telegram",
+      "label": "\u8ba8\u8bba\u7fa4\u94fe\u63a5",
+      "setting": "telegram_discuss_link",
+      "kind": "text",
+      "default": "",
+      "schema": {
+        "type": "string",
+        "minLength": 0,
+        "maxLength": 2048
+      },
+      "write_only": false
+    },
+    "windows_version": {
+      "group": "app",
+      "label": "Windows \u7248\u672c",
+      "setting": "windows_version",
+      "kind": "text",
+      "default": "",
+      "schema": {
+        "type": "string",
+        "minLength": 0,
+        "maxLength": 120
+      },
+      "write_only": false
+    },
+    "windows_download_url": {
+      "group": "app",
+      "label": "Windows \u4e0b\u8f7d\u5730\u5740",
+      "setting": "windows_download_url",
+      "kind": "text",
+      "default": "",
+      "schema": {
+        "type": "string",
+        "minLength": 0,
+        "maxLength": 2048
+      },
+      "write_only": false
+    },
+    "macos_version": {
+      "group": "app",
+      "label": "macOS \u7248\u672c",
+      "setting": "macos_version",
+      "kind": "text",
+      "default": "",
+      "schema": {
+        "type": "string",
+        "minLength": 0,
+        "maxLength": 120
+      },
+      "write_only": false
+    },
+    "macos_download_url": {
+      "group": "app",
+      "label": "macOS \u4e0b\u8f7d\u5730\u5740",
+      "setting": "macos_download_url",
+      "kind": "text",
+      "default": "",
+      "schema": {
+        "type": "string",
+        "minLength": 0,
+        "maxLength": 2048
+      },
+      "write_only": false
+    },
+    "android_version": {
+      "group": "app",
+      "label": "Android \u7248\u672c",
+      "setting": "android_version",
+      "kind": "text",
+      "default": "",
+      "schema": {
+        "type": "string",
+        "minLength": 0,
+        "maxLength": 120
+      },
+      "write_only": false
+    },
+    "android_download_url": {
+      "group": "app",
+      "label": "Android \u4e0b\u8f7d\u5730\u5740",
+      "setting": "android_download_url",
+      "kind": "text",
+      "default": "",
+      "schema": {
+        "type": "string",
+        "minLength": 0,
+        "maxLength": 2048
+      },
+      "write_only": false
+    }
+  }
+}

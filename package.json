@@ -19,7 +19,7 @@
     "test:web": "npm run test --workspaces --if-present",
     "build:web": "npm run build:sdk && npm run build --workspace @txboard/admin --workspace @txboard/user",
     "check:frontend": "node scripts/check-admin-migration.mjs",
-    "test:browser": "node scripts/admin-browser.mjs && node scripts/admin-workflows-browser.mjs && node scripts/admin-catalog-network-browser.mjs && node scripts/user-browser.mjs",
+    "test:browser": "node scripts/admin-browser.mjs && node scripts/admin-workflows-browser.mjs && node scripts/admin-catalog-network-browser.mjs && node scripts/admin-management-browser.mjs && node scripts/user-browser.mjs",
     "performance:web": "node scripts/check-web-performance.mjs",
     "verify:web": "npm run check:frontend && npm run typecheck:web && npm run test:web && npm run build:web && npm run performance:web"
   },

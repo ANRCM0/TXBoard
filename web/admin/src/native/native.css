@@ -64,3 +64,6 @@
   .native-read-fields > div { grid-template-columns: minmax(0, 1fr); gap: 6px; }
   .native-scroll-hint { display: block; margin: 0 0 8px; color: var(--muted); font-size: 12px; }
 }
+.native-settings-navigation { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: 1.25rem; }
+.native-settings-navigation a { padding: .45rem .75rem; border: 1px solid var(--border); border-radius: .5rem; color: inherit; text-decoration: none; }
+.native-settings-navigation a.active { background: var(--primary); color: var(--primary-fg); }
