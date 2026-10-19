@@ -2,6 +2,8 @@ import assert from 'node:assert/strict'
 import { readFileSync, openSync, closeSync } from 'node:fs'
 import { randomUUID } from 'node:crypto'
 import { spawn, spawnSync } from 'node:child_process'
+import { fileURLToPath } from 'node:url'
+import { createServer } from 'vite'
 import { createCoreUserClient, createCoreAdminClient } from '../../../packages/core-sdk/dist/index.js'
 import { verifyRendererDelivery } from './renderer-delivery.mjs'
 import { createSupportTicket, verifyAdminSupport } from './support-workflow.mjs'
@@ -14,6 +16,7 @@ const sourceHead = readFileSync(`${root}/.core-browser-integration-snapshot`, 'u
 assert.match(sourceHead, /^[a-f0-9]{40}$/)
 const service = JSON.parse(readFileSync(`${scratch}/browser-user.private.json`, 'utf8'))
 const servers = []
+const devServers = []
 const log = openSync(`${scratch}/core-browser-http.log`, 'a')
 const php = spawn('php', ['-S', '127.0.0.1:18081', '-t', 'public', 'public/index.php'], {
   cwd: root, stdio: ['ignore', log, log], env: process.env,
@@ -25,6 +28,33 @@ try {
     try { if ((await fetch('http://127.0.0.1:18081/gateway/v1/bootstrap')).ok) break } catch {}
     if (attempt > 50) throw new Error('Core browser ingress readiness timed out')
     await new Promise(r => setTimeout(r, 100))
+  }
+  // Exercise each actual Vite configuration against the same real Core HTTP ingress.
+  for (const [app, variable] of [['admin', 'VITE_GATEWAY_TARGET'], ['user', 'VITE_GATEWAY_PROXY_TARGET']]) {
+    const previous = process.env[variable]
+    process.env[variable] = 'http://127.0.0.1:18081'
+    let dev
+    try {
+      const appRoot = fileURLToPath(new URL(`../../../web/${app}/`, import.meta.url))
+      dev = await createServer({ root: appRoot, configFile: `${appRoot}/vite.config.ts`,
+        server: { host: '127.0.0.1', port: 0, hmr: false }, logLevel: 'error' })
+      devServers.push(dev)
+      await dev.listen()
+    } finally {
+      if (previous === undefined) delete process.env[variable]
+      else process.env[variable] = previous
+    }
+    const address = dev.httpServer.address()
+    assert.ok(address && typeof address === 'object')
+    const devOrigin = `http://127.0.0.1:${address.port}`
+    const bootstrapURL = `${devOrigin}/gateway/v1/bootstrap`
+    assert.equal((await fetch(bootstrapURL)).status, 200); checks++
+    assert.equal((await fetch(bootstrapURL, { headers: { Origin: devOrigin } })).status, 200); checks++
+    assert.equal((await fetch(bootstrapURL, { headers: { Origin: devOrigin, 'Sec-Fetch-Site': 'cross-site' } })).status, 403); checks++
+    // Even a forged Core target Origin must fail the original dev-origin check.
+    for (const origin of ['https://untrusted.example', 'http://127.0.0.1:18081', 'null']) {
+      assert.equal((await fetch(bootstrapURL, { headers: { Origin: origin } })).status, 403); checks++
+    }
   }
   const baseURL = 'http://127.0.0.1:18081/gateway/v1/core/user'
   const token = service.owner, otherToken = service.outsider
@@ -169,7 +199,7 @@ try {
   await admin.call('identity.session.end', {}, { idempotencyKey: randomUUID() })
   await assert.rejects(admin.call('identity.admin.get', {}), e => e.status === 401); checks++
   console.log(JSON.stringify({ sourceHead, checks, realCore: true, nativeActivation: true, database: 'mysql',
-    coreBrowserIngress: true, browserTransport: 'direct same-process PHP HTTP without service credentials',
+    coreBrowserIngress: true, viteDevProxySameOrigin: true, browserTransport: 'direct same-process PHP HTTP without service credentials',
     browserSdk: true, originalKeyReplay: true, lostResponseRecovery: true, ownerIsolation: true,
     sessionEnd: true, internalServiceMtls: 'separate retained API acceptance', adminChannel: true,
     adminOrderCloseRecovery: true, adminOrderAudit: true, currentOrderGrantReplay: true, orderPaymentDiscovery: true,
@@ -177,6 +207,7 @@ try {
     financialWorkflows: true, couponPurchaseBinding: true, giftBatchRecovery: true, reviewedCommissionPayout: true,
     adminAccountMutation: true, adminContentCrud: true, adminWriteKeyReplay: true, actorGrantRevocation: true, adminPathRotation: true }))
 } finally {
+  for (const dev of devServers.reverse()) await dev.close()
   for (const server of servers.reverse()) await new Promise(r => server.close(r))
   if (php.exitCode === null) { php.kill(); await new Promise(r => php.once('exit', r)) }; closeSync(log)
 }

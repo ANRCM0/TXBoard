@@ -3,9 +3,9 @@ name: Core browser ingress
 on:
   push:
     branches: [main]
-    paths: ['api/**', 'packages/**', 'tools/module-host/**', 'package.json', 'package-lock.json', 'tsconfig.base.json', 'scripts/tests/core-browser/**', 'scripts/native-subscription-client.mjs', 'contracts/core-api/**', 'scripts/check-browser-core-surface.py', 'node/cmd/credential-provider/**', 'node/internal/credentialprovider/**', 'node/internal/credentialdelivery/**', 'node/go.mod', 'node/go.sum', '.github/workflows/ci-core-browser.yml']
+    paths: ['api/**', 'web/**', 'packages/**', 'tools/module-host/**', 'package.json', 'package-lock.json', 'tsconfig.base.json', 'scripts/tests/core-browser/**', 'scripts/native-subscription-client.mjs', 'contracts/core-api/**', 'scripts/check-browser-core-surface.py', 'node/cmd/credential-provider/**', 'node/internal/credentialprovider/**', 'node/internal/credentialdelivery/**', 'node/go.mod', 'node/go.sum', '.github/workflows/ci-core-browser.yml']
   pull_request:
-    paths: ['api/**', 'packages/**', 'tools/module-host/**', 'package.json', 'package-lock.json', 'tsconfig.base.json', 'scripts/tests/core-browser/**', 'scripts/native-subscription-client.mjs', 'contracts/core-api/**', 'scripts/check-browser-core-surface.py', 'node/cmd/credential-provider/**', 'node/internal/credentialprovider/**', 'node/internal/credentialdelivery/**', 'node/go.mod', 'node/go.sum', '.github/workflows/ci-core-browser.yml']
+    paths: ['api/**', 'web/**', 'packages/**', 'tools/module-host/**', 'package.json', 'package-lock.json', 'tsconfig.base.json', 'scripts/tests/core-browser/**', 'scripts/native-subscription-client.mjs', 'contracts/core-api/**', 'scripts/check-browser-core-surface.py', 'node/cmd/credential-provider/**', 'node/internal/credentialprovider/**', 'node/internal/credentialdelivery/**', 'node/go.mod', 'node/go.sum', '.github/workflows/ci-core-browser.yml']
   workflow_dispatch:
 permissions:
   contents: read

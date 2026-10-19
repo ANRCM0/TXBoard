@@ -2,6 +2,7 @@ import { loadEnv } from 'vite'
 import { defineConfig } from 'vitest/config'
 import vue from '@vitejs/plugin-vue'
 import path from 'node:path'
+import { coreBrowserProxy } from '../dev-core-proxy'
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
@@ -20,7 +21,7 @@ export default defineConfig(({ mode }) => {
       port: Number(env.VITE_USER_PORT || 5173),
       proxy: {
         // Core HTTP serves the browser API; retain the environment name for compatibility.
-        '/gateway': { target: env.VITE_GATEWAY_PROXY_TARGET || 'http://127.0.0.1:8080', changeOrigin: true },
+        '/gateway': coreBrowserProxy(env.VITE_GATEWAY_PROXY_TARGET || 'http://127.0.0.1:8080'),
       },
     },
   }
