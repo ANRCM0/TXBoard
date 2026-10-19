@@ -6,7 +6,7 @@
     "admin": "web/admin",
     "user": "web/user",
     "shared": "web/shared",
-    "sdk": "gateway/packages/core-sdk"
+    "sdk": "packages/core-sdk"
   },
   "commands": {
     "admin_dev": "npm run dev:admin",

@@ -72,7 +72,7 @@ try {
   const { page, state } = desktop
   page.on('dialog', dialog => dialog.accept())
   for (const [pathname] of routes) await open(desktop, pathname)
-  passed('all twelve management paths load built native pages through generated contracts')
+  passed('all twelve management paths load built native pages through generated Core contracts')
 
   await open(desktop, '/system/audit-log')
   await page.getByLabel('管理员 ID', { exact: true }).fill('9007199254740993')
@@ -197,7 +197,7 @@ try {
   verify(mobile.state)
   passed('all twelve new management paths retain bounded mobile layouts')
   await writeFile(path.join(output, 'result.json'), JSON.stringify({ passed: true, checks,
-    frontend: 'built main-repository admin', transport: 'strict synthetic Gateway fixtures',
+    frontend: 'built main-repository admin', transport: 'strict synthetic Core browser-ingress fixtures',
     schema: 'current generated Core input/output/meta schemas',
     realBackendAcceptance: 'separate API, MySQL, and actual Core image Actions; these synthetic fixtures do not claim live Core UI integration' }, null, 2) + '\n')
 } catch (error) {

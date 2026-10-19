@@ -58,7 +58,7 @@ async function navigate(page, name, mobile = false) {
   assert.equal(await page.getByText('此功能暂未开放', { exact: true }).count(), 0)
 }
 function validateFixture(state) {
-  assert.deepEqual(state.errors, [], 'Strict Gateway fixtures must not fail schema or operation assertions')
+  assert.deepEqual(state.errors, [], 'Strict Core browser-ingress fixtures must not fail schema or operation assertions')
   assert.deepEqual(state.pageErrors, [])
   assert.deepEqual(state.forbiddenRequests, [])
 }
@@ -163,7 +163,7 @@ try {
   validateFixture(mobile.state)
   passed('all six mobile routes expose active navigation and bounded management content')
   await writeFile(path.join(output, 'result.json'), JSON.stringify({ passed: true, checks,
-    frontend: 'built admin in the main TXBoard repository', transport: 'strict synthetic Gateway operation fixtures',
+    frontend: 'built admin in the main TXBoard repository', transport: 'strict synthetic Core browser-ingress operation fixtures',
     schema: 'current generated Core SDK input/output/meta schemas validated for every operation',
     realCoreAcceptance: 'separate backend Actions evidence; this script does not claim live Core or production acceptance',
     userFrontend: 'deferred', operations: [...new Set(fixtures.flatMap(fixture => fixture.state.calls.map(call => call.operation)))] }, null, 2) + '\n')

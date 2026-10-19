@@ -438,7 +438,7 @@ def validate():
     )
     files = []
     for area in ("api/app", "api/config", "api/routes", "api/database", "api/tests",
-                 "api/plugins-core", "scripts/tests", "gateway/tests"):
+                 "api/plugins-core", "scripts/tests"):
         files.extend((ROOT / area).rglob("*.php"))
     for path in files:
         text = path.read_text(encoding="utf-8-sig")

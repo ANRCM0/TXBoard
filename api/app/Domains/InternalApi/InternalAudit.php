@@ -32,6 +32,12 @@ final class InternalAudit
         $this->update($request, ['service_id' => $service->service_id, 'service_epoch' => $service->epoch]);
     }
 
+    public function browser(Request $request): void
+    {
+        // Source marker is compiled application vocabulary, not an authenticated service grant.
+        $this->update($request, ['service_id' => 'browser', 'service_epoch' => 0]);
+    }
+
     public function actor(Request $request, ?int $actorId, string $clientTrace): void
     {
         $this->update($request, ['actor_id' => $actorId, 'request_id' => $clientTrace]);

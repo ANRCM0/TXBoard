@@ -62,6 +62,28 @@ final class OperationExecutor
         if ($envelope['deadline_at'] > time() + (int) config('internal_api.deadline_seconds')) {
             return $this->error($request, 'INVALID_REQUEST', 400);
         }
+        return $this->executeAdmitted($request, $domain, $operation, $spec, $allowed, $envelope,
+            'native-internal:'.hash('sha256', $service->service_id.':'.$operation));
+    }
+
+    /** Browser admission supplies a compiled surface, never a fabricated internal service identity. */
+    public function executeBrowser(Request $request, string $domain, string $operation, array $input): JsonResponse
+    {
+        if ($request->attributes->get('core_browser_admitted') !== true
+            || !in_array($operation, app(\App\Domains\Browser\BrowserSurface::class)->operations($domain), true)) {
+            return $this->error($request, 'FORBIDDEN', 403);
+        }
+        $spec = OperationRegistry::all()[$operation] ?? null;
+        if ($spec === null || !in_array($domain, $spec['domains'], true)) return $this->error($request, 'UNKNOWN_OPERATION', 404);
+        $trace = TxapiResponse::requestId($request);
+        return $this->executeAdmitted($request, $domain, $operation, $spec, [],
+            ['input' => $input, 'request_id' => $trace, 'deadline_at' => time() + (int) config('browser.deadline_seconds', 30)],
+            'native-browser:'.hash('sha256', $request->attributes->get('core_browser_client_ip').':'.$operation));
+    }
+
+    private function executeAdmitted(Request $request, string $domain, string $operation, array $spec,
+        array $allowed, array $envelope, string $limitKey): JsonResponse
+    {
         $input = $envelope['input'];
         $inputFields = array_values(array_filter(array_keys($spec['rules']), static fn ($field): bool => !str_contains($field, '.')));
         $contract = OperationSchemas::operation($operation);
@@ -69,8 +91,8 @@ final class OperationExecutor
             : (array_diff(array_keys($input), $inputFields) || Validator::make($input, $spec['rules'])->fails())) {
             return $this->error($request, 'INVALID_REQUEST', 422);
         }
-        $limitKey = 'native-internal:'.hash('sha256', $service->service_id.':'.$operation);
-        $limit = $spec['actor'] === 'anonymous' && str_contains($operation, 'session.create') ? 10 : 120;
+        $limit = $request->attributes->get('core_browser_admitted') !== true
+            && $spec['actor'] === 'anonymous' && str_contains($operation, 'session.create') ? 10 : 120;
         if (RateLimiter::tooManyAttempts($limitKey, $limit)) return $this->error($request, 'RATE_LIMITED', 429);
         RateLimiter::hit($limitKey, 60);
         try {

@@ -102,6 +102,48 @@ def verify_backup_assets(native, installation, assets):
             'live_assets_preserved': True}
 
 
+def verify_browser_ingress(origin, auth):
+    """Exercise the built image's public Caddy listener, without a Gateway process."""
+    def request(path, body=None, headers=None, expected=200):
+        supplied = {'Accept': 'application/json', **(headers or {})}
+        data = None if body is None else json.dumps(body).encode()
+        if data is not None:
+            supplied['Content-Type'] = 'application/json'
+        call = urllib.request.Request(origin + path, data=data, headers=supplied)
+        try:
+            response = urllib.request.urlopen(call, timeout=20)
+        except urllib.error.HTTPError as failure:
+            response = failure
+        with response:
+            require(response.status == expected, 'Actual image browser ingress HTTP status mismatch')
+            require(response.headers.get('Set-Cookie') is None, 'Browser ingress emitted a session cookie')
+            require('no-store' in response.headers.get('Cache-Control', ''), 'Browser ingress response is cacheable')
+            payload = json.load(response)
+        require(payload.get('ok') is (expected < 400), 'Browser envelope success does not match HTTP status')
+        return payload
+
+    bootstrap = request('/gateway/v1/bootstrap', headers={'Origin': origin})
+    require(set(bootstrap['data']['capabilities']) == {'core.user', 'core.admin'}, 'Actual bootstrap surface mismatch')
+    caps = request('/gateway/v1/core/admin/capabilities')
+    require('identity.admin.get' in {item['id'] for item in caps['data']['operations']}, 'Admin discovery omitted native read')
+    actor = {'Authorization': auth['auth_data'], 'X-Core-Admin-Path': auth['secure_path'], 'Origin': origin}
+    operation = '/gateway/v1/core/admin/operations/identity.admin.get'
+    current = request(operation, {'input': {}}, actor)
+    require(current['data']['email'] == 'native-image@example.test', 'Bearer actor binding changed in image ingress')
+    require(isinstance(current['meta'].get('coreRequestId'), str), 'Browser response lacks owner trace')
+    request(operation, {'input': {}}, {**actor, 'X-Core-Admin-Path': 'wrong_image_path'}, 404)
+    request(operation, {'input': {}}, {'Cookie': 'laravel_session=synthetic_untrusted_cookie', 'Origin': origin}, 401)
+    request('/gateway/v1/bootstrap', headers={'Origin': 'https://other.example.test'}, expected=403)
+    request('/gateway/v1/bootstrap', headers={'Host': 'other.example.test'}, expected=403)
+    request('/gateway/v1/bootstrap', headers={'X-Core-Service-Id': 'forged'}, expected=403)
+    # This malformed attacker value would be rejected by PHP if Caddy forwarded it.
+    request('/gateway/v1/bootstrap', headers={'X-Core-Browser-Client-IP': 'forged,not-an-ip'})
+    return {'public_caddy_listener': True, 'same_process_bootstrap_and_discovery': True,
+            'bearer_admin_read': True, 'current_admin_path_required': True, 'no_session_cookie': True,
+            'cookie_only_rejected': True, 'cross_origin_and_host_rejected': True,
+            'service_header_rejected': True, 'caddy_overwrites_client_ip_header': True}
+
+
 def purchase_diagnostic(installation, email, offer_id, key):
     """Only rerun the original CI-owned purchase key; emit no SQL, arguments or values."""
     payload = base64.b64encode(json.dumps({"email": email, "offer_id": offer_id, "key": key}).encode()).decode()
@@ -230,7 +272,7 @@ def main():
         password = secrets.token_urlsafe(32)
         preparation = json.loads((ROOT / "api/native-preparation.example.json").read_text())
         preparation["identity"].update(email="native-image@example.test", password=password,
-                                       permissions=["extensions.module_portal.view", "extensions.module_portal.configure"])
+                                       permissions=["identity.read", "extensions.module_portal.view", "extensions.module_portal.configure"])
         preparation["network"]["node_token"] = secrets.token_urlsafe(32)
         preparation["network"]["nodes"][0].update(host="127.0.0.1", port=port())
         write(source / "prepare.json", preparation)
@@ -247,6 +289,7 @@ def main():
             shutil.copyfile(private / original, source / target)
         control_port, render_port, http_port = port(), port(), port()
         (source / "runtime.env").write_text("\n".join([
+            f"CORE_BROWSER_ORIGIN=http://127.0.0.1:{http_port}",
             "CORE_CREDENTIAL_PROVIDER_ID=primary-provider", "CORE_CREDENTIAL_PROVIDER_EPOCH=1",
             f"CORE_CREDENTIAL_PROVIDER_ENDPOINT=https://{gateway}:{control_port}/operations", "CORE_CREDENTIAL_PROVIDER_PROFILES=vless-uuid/v1,vmess-uuid/v1",
             f"NATIVE_SUBSCRIPTION_RENDER_ENDPOINT=https://{gateway}:{render_port}/subscription-render", "NATIVE_NODE_AUTHORIZATION_KEY_ID=native-image-key",
@@ -313,6 +356,7 @@ def main():
                         code = "HTTP_ERROR"
                     raise RuntimeError(f"Native HTTP request rejected: {error.code} {code}") from None
             auth = http("/txapi/auth/admin/login", {"email": preparation["identity"]["email"], "password": password})
+            browser_evidence = [verify_browser_ingress(origin, auth)]
             presentation = f"/txapi/admin/{auth['secure_path']}/extensions/module_portal/"
             require(http(presentation + "presentation", token=auth["auth_data"])["version"] == "1.0.0", "Real HTTP module presentation was unavailable")
             offers = http("/txapi/plans")
@@ -368,6 +412,7 @@ def main():
                     resource_evidence.append(verify_resource_limits(backend, resource_plan))
                     backup_evidence.append(verify_backup_assets(native, installation, assets))
                 auth = http("/txapi/auth/admin/login", {"email": preparation["identity"]["email"], "password": password})
+                browser_evidence.append(verify_browser_ingress(origin, auth))
                 require(http(presentation + "presentation", token=auth["auth_data"])["version"] == version, "Worker retained an earlier package version")
                 require(http(presentation + "operations/status.get", {"input": {}}, auth["auth_data"])["version"] == version, "Real extension SDK operation did not use target code")
                 require(backend.snapshot() == money_before, "Image/module update changed financial aggregates")
@@ -380,12 +425,13 @@ def main():
                         'P4 paired image proof did not collect every install, update and recovery checkpoint')
             session_file = temporary / "browser-session.json"
             write(session_file, {"origin": origin, "token": auth["auth_data"], "adminPath": auth["secure_path"], "version": "1.2.0"})
-            run(["node", ROOT / "gateway/tests/browser/module-host-live.mjs", session_file], cwd=ROOT / "gateway", timeout=90)
+            run(["node", ROOT / "scripts/tests/core-browser/module-host-live.mjs", session_file], cwd=ROOT, timeout=90)
             args.output.parent.mkdir(parents=True, exist_ok=True)
             write(args.output, {"schema": "modular-native-image-proof/v1", "images": images, "kernel_manifest_sha256": kernel,
                 "compositions": [value["composition_fingerprint"] for value in reports], "authority_epoch": "2", "activation_count": 1,
                 "composition_approvals": 3, "original_orders": 1, "module_owned_schema": 2, "recovered_operation": recovered_operation,
                 "resource_limits": resource_evidence, "native_backup_materials": backup_evidence,
+                "browser_ingress": browser_evidence,
                 "provider": "actual Go mTLS capability peer; no Node traffic in this image proof", "consumer": "actual admin login, catalog, order, extension HTTP and Chromium SDK host"})
             args.output.chmod(0o644)
             print("Native immutable image install, update and killed-executor recovery passed", flush=True)

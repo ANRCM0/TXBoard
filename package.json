@@ -6,7 +6,10 @@
     "web/shared",
     "web/admin",
     "web/user",
-    "gateway/packages/core-sdk"
+    "packages/core-sdk",
+    "packages/theme-sdk",
+    "tools/module-host",
+    "examples/theme-native"
   ],
   "scripts": {
     "dev:module": "python scripts/txboard-dev.py module",
@@ -15,7 +18,8 @@
     "dev:admin": "npm run build:sdk && npm run dev --workspace @txboard/admin",
     "dev:user": "npm run build:sdk && npm run dev --workspace @txboard/user",
     "build:sdk": "npm run build --workspace @txboard/core-sdk",
-    "typecheck:web": "npm run build:sdk && npm run typecheck --workspaces --if-present",
+    "build:theme-sdk": "npm run build:sdk && npm run build --workspace @txboard/theme-sdk",
+    "typecheck:web": "npm run build:theme-sdk && npm run typecheck --workspaces --if-present",
     "test:web": "npm run test --workspaces --if-present",
     "build:web": "npm run build:sdk && npm run build --workspace @txboard/admin --workspace @txboard/user",
     "check:frontend": "node scripts/check-frontend-boundaries.mjs",

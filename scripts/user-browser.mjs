@@ -172,7 +172,7 @@ try {
   await mobile.context.close()
   passed('malformed captcha fails closed, mobile account layout fits, and explicit logout clears identity')
   await writeFile(output + '/result.json', JSON.stringify({ passed: true, checks, frontend: 'built same-repository user UI',
-    transport: 'synthetic Gateway responses', realCoreAcceptance: 'separate Core Actions run; no combined production UI acceptance' }, null, 2) + '\n')
+    transport: 'synthetic Core browser-ingress responses', realCoreAcceptance: 'separate Core Actions run; no combined production UI acceptance' }, null, 2) + '\n')
 } finally {
   await browser.close()
   await server.close()

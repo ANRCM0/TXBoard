@@ -12,7 +12,7 @@ import yaml
 ROOT = Path(__file__).resolve().parent.parent
 AUTOMATIC = {
     "ci-api.yml",
-    "ci-gateway.yml",
+    "ci-core-browser.yml",
     "ci-mysql.yml",
     "ci-native-c2.yml",
     "ci-node.yml",

@@ -8,7 +8,7 @@ const stamp = 1792368000
 const metadata = JSON.parse(await readFile(new URL('../../contracts/core-api/admin-settings.v1.json', import.meta.url), 'utf8'))
 const managed = /^(?:audit\.logs\.|platform\.(?:modules\.|queue\.)|settings\.configuration\.|notifications\.mail-templates\.|billing\.admin-payment-|network\.(?:nodes\.get$|machines\.)|identity\.accounts\.get$|subscription\.lifecycle\.reset$)/
 
-/** Built admin UI with schema-checked synthetic transport; no live Core acceptance is implied. */
+/** Built admin UI with schema-checked synthetic browser ingress; no live Core acceptance is implied. */
 export async function managementFixture(browser, viewport) {
   const fixture = await catalogNetworkFixture(browser, viewport)
   const { context, state } = fixture

@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 
 const repository = fileURLToPath(new URL('../../', import.meta.url));
-const validators = ['scripts/check-docs.mjs', 'gateway/scripts/check-docs.mjs'];
+const validators = ['scripts/check-docs.mjs'];
 
 function fixture(t, files = {}) {
   const root = mkdtempSync(join(tmpdir(), 'tx-doc-validator-'));
@@ -62,7 +62,7 @@ for (const script of validators) {
       'node/internal/deps/upstream/README.md': '[bad](missing.md)',
       'docs/node_modules/upstream/README.md': '[bad](missing.md)',
       'docs/vendor/upstream/README.md': '[bad](missing.md)',
-      'gateway/node_modules/upstream/README.md': '[bad](missing.md)',
+      'packages/core-sdk/node_modules/upstream/README.md': '[bad](missing.md)',
     });
     const result = run(script, root);
     assert.equal(result.status, 0, result.stderr);
@@ -83,7 +83,7 @@ for (const script of validators) {
 
 test('repository validator discovers frontend-only documentation and rejects its broken links', (t) => {
   const root = fixture(t, {
-    'web/README.md': '[SDK development](../gateway/packages/core-sdk/missing.md)',
+    'web/README.md': '[SDK development](../packages/core-sdk/missing.md)',
     'web/node_modules/dependency/README.md': '[ignored](also-missing.md)',
   });
   const script = 'scripts/check-docs.mjs';
@@ -93,14 +93,14 @@ test('repository validator discovers frontend-only documentation and rejects its
   assert.equal(discovery.stderr, '');
   const validation = run(script, root);
   assert.equal(validation.status, 1);
-  assert.match(validation.stderr, /web[/\\]README\.md.*broken link \.\.\/gateway\/packages\/core-sdk\/missing\.md/);
+  assert.match(validation.stderr, /web[/\\]README\.md.*broken link \.\.\/packages\/core-sdk\/missing\.md/);
   assert.doesNotMatch(validation.stderr, /also-missing/);
 });
 
 test('repository validator resolves frontend development links relative to their document', (t) => {
   const root = fixture(t, {
-    'web/README.md': '[SDK development](../gateway/packages/core-sdk/README.md)',
-    'gateway/packages/core-sdk/README.md': 'SDK development entry point.',
+    'web/README.md': '[SDK development](../packages/core-sdk/README.md)',
+    'packages/core-sdk/README.md': 'SDK development entry point.',
   });
   const result = run('scripts/check-docs.mjs', root);
   assert.equal(result.status, 0, result.stderr);

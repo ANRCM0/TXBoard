@@ -377,7 +377,7 @@ try {
   await rotated.context.close()
   passed('one compiled bundle supports runtime admin mounts independently from its static asset namespace')
   await writeFile(output + '/result.json', JSON.stringify({ passed: true, checks,
-    frontend: 'built same-repository management UI', transport: 'synthetic Gateway responses',
+    frontend: 'built same-repository management UI', transport: 'synthetic Core browser-ingress responses',
     realCoreAcceptance: 'separate Core Actions run; no combined production UI acceptance' }, null, 2) + '\n')
 } finally {
   await browser.close()

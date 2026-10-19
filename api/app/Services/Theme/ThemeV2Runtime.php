@@ -413,7 +413,7 @@ final class ThemeV2Runtime
     {
         return [
             (string) config('theme_v2.txboard_version', ''),
-            (string) config('theme_v2.gateway_version', ''),
+            (string) config('theme_v2.browser_version', ''),
             (string) config('theme_v2.sdk_version', ''),
         ];
     }

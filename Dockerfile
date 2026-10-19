@@ -9,7 +9,10 @@ COPY package.json package-lock.json ./
 COPY web/shared/package.json web/shared/package.json
 COPY web/admin/package.json web/admin/package.json
 COPY web/user/package.json web/user/package.json
-COPY gateway/packages/core-sdk/package.json gateway/packages/core-sdk/package.json
+COPY packages/core-sdk/package.json packages/core-sdk/package.json
+COPY packages/theme-sdk/package.json packages/theme-sdk/package.json
+COPY tools/module-host/package.json tools/module-host/package.json
+COPY examples/theme-native/package.json examples/theme-native/package.json
 RUN --mount=type=cache,target=/root/.npm,sharing=locked \
     npm ci --no-audit --no-fund
 
@@ -17,9 +20,9 @@ COPY web/shared web/shared
 COPY web/admin web/admin
 COPY web/user web/user
 COPY contracts/core-api/admin-settings.v1.json contracts/core-api/admin-settings.v1.json
-COPY gateway/tsconfig.base.json gateway/tsconfig.base.json
-COPY gateway/packages/core-sdk/src gateway/packages/core-sdk/src
-COPY gateway/packages/core-sdk/tsconfig.json gateway/packages/core-sdk/tsconfig.json
+COPY tsconfig.base.json tsconfig.base.json
+COPY packages/core-sdk/src packages/core-sdk/src
+COPY packages/core-sdk/tsconfig.json packages/core-sdk/tsconfig.json
 # The admin bundle's Vite base is asset-only. Browser routing is mounted at
 # the instance-specific secure_path at runtime, while Caddy exposes only the
 # hashed bundle files below this private static namespace (never index.html).

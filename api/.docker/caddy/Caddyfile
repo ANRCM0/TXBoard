@@ -29,11 +29,11 @@
 		reverse_proxy 127.0.0.1:{$WS_PORT:8076}
 	}
 
-	# The browser uses the reviewed Gateway surface; service credentials remain
-	# inside Gateway. Configure this address for a separate Gateway container.
+	# Browser operations terminate inside Core alongside their authoritative owners.
 	handle /gateway/* {
-		reverse_proxy {$TXBOARD_GATEWAY_UPSTREAM:127.0.0.1:8787} {
-			header_up Host {host}
+		reverse_proxy 127.0.0.1:{$OCTANE_INTERNAL_PORT:7002} {
+			header_up Host {http.request.host}
+			header_up X-Core-Browser-Client-IP {remote_host}
 		}
 	}
 
