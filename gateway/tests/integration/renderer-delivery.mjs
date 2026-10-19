@@ -21,10 +21,15 @@ export async function verifyRendererDelivery(client, other, { root, scratch, non
     const run = spawnSync('php', ['tests/integration/core-fixture.php', root, action, actorId, ...args],
       { encoding: 'utf8', timeout: 30000 })
     assert.equal(run.status, 0, run.stderr || 'Delivery fixture failed')
+    return JSON.parse(run.stdout)
   }
-  fixture('delivery-owner')
+  const binding = fixture('delivery-owner')
+  assert.equal(binding.runtime_version, 'native-core-runtime/1')
+  assert.equal(binding.slot_subscription_id, binding.subscription_id, JSON.stringify(binding))
+  assert.equal(binding.entitlement_reason, 'ENTITLEMENT_GRANTED', JSON.stringify(binding))
   const options = await client.call('subscription.delivery-options.get', {})
-  assert.equal(options.authorized, true)
+  assert.equal(options.user_id, actorId)
+  assert.equal(options.authorized, true, options.reason)
   assert.deepEqual(options.formats.map(row => row.format_id), formats.map(row => row[0]))
   const subject = options.subjects.find(row => row.credential_profile_id === 'vmess-uuid/v1')
   const vless = options.subjects.find(row => row.credential_profile_id === 'vless-uuid/v1')
