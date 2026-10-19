@@ -15,10 +15,10 @@
 .native-nav-pending { margin-left: auto; font-size: 10px; color: var(--muted); white-space: nowrap; }
 .native-site-settings dd { margin: 0; overflow-wrap: anywhere; }
 .native-list-note { padding: 0 16px; }
-.management-filter-form { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; padding: 16px 0; }
-.management-filter-form label { display: grid; gap: 6px; font-size: 12px; }
-.management-filter-form input, .management-filter-form select { min-height: 36px; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--panel); color: var(--fg); max-width: 100%; }
-.management-filter-form input { min-width: 210px; }
+.management-filter-form, .native-filters { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; padding: 16px 0; }
+.management-filter-form label, .native-filters label { display: grid; gap: 6px; font-size: 12px; min-width: 0; }
+.management-filter-form input, .management-filter-form select, .native-filters input, .native-filters select { min-height: 36px; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--panel); color: var(--fg); max-width: 100%; box-sizing: border-box; font: inherit; }
+.management-filter-form input, .native-filters input { min-width: 210px; }
 .native-read-fields { margin: 0; }
 .native-read-fields > div { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 16px; padding: 14px 0; border-bottom: 1px solid var(--border); }
 .native-read-fields dt { color: var(--muted); }
@@ -35,6 +35,10 @@
 .native-content-form { display: grid; gap: 16px; max-width: 900px; }
 .native-content-form label { display: grid; gap: 8px; }
 .native-content-form input, .native-content-form select, .native-content-form textarea { min-width: 0; max-width: 100%; box-sizing: border-box; padding: 10px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--panel); color: var(--fg); }
+.native-content-form textarea { font: inherit; line-height: 1.6; resize: vertical; }
+.native-ticket-messages { display: grid; gap: 12px; padding: 0; margin: 20px 0; list-style: none; }
+.native-ticket-messages > li { padding: 12px 16px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--panel); font-size: 13px; line-height: 1.6; }
+.native-ticket-messages p { margin: 6px 0; }
 .native-read-list .table-wrap { max-width: 100%; overscroll-behavior-x: contain; }
 .native-read-list .data-table { min-width: 920px; }
 .native-read-list .data-table td { white-space: nowrap; }
@@ -51,9 +55,9 @@
   .native-overview-grid { grid-template-columns: minmax(0, 1fr); }
   .native-site-settings dl > div { grid-template-columns: minmax(0, 1fr); gap: 8px; }
   .native-pagination { justify-content: center; }
-  .management-filter-form { align-items: stretch; }
-  .management-filter-form label { flex: 1 1 100%; min-width: 0; }
-  .management-filter-form input { min-width: 0; width: 100%; }
+  .management-filter-form, .native-filters { align-items: stretch; }
+  .management-filter-form label, .native-filters label { flex: 1 1 100%; min-width: 0; }
+  .management-filter-form input, .native-filters input { min-width: 0; width: 100%; }
   .native-read-fields > div { grid-template-columns: minmax(0, 1fr); gap: 6px; }
   .native-scroll-hint { display: block; margin: 0 0 8px; color: var(--muted); font-size: 12px; }
 }

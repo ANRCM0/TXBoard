@@ -138,8 +138,9 @@ export function TicketsPage() {
         {!messages.isError ? <ol className="native-ticket-messages">{messages.data?.pages.flatMap(result => result.data).map(row =>
           <li key={row.id}><p><strong>{row.author_kind === 'admin' ? '客服' : row.author_kind === 'user' ? '用户' : '历史消息'}</strong> · {row.created_at}</p><p style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{row.message}</p>{row.attachments.length ? <AttachmentsPanel ticketId={ticket.id} attachments={row.attachments} upload={false} disabled={state.busy || !!state.pending} /> : null}</li>)}</ol> : null}
         {messages.hasNextPage ? <button className="button" disabled={messages.isFetching} onClick={() => void messages.fetchNextPage()}>继续读取消息</button> : null}
-        {ticket.status === 0 ? <form onSubmit={event => { event.preventDefault(); void mutate(false) }}>
-          <label>回复（最多 10 KB）<textarea rows={5} maxLength={10000} value={message} disabled={state.busy || !!state.pending} onChange={event => setMessage(event.target.value)} /></label>
+        {ticket.status === 0 ? <form className="native-content-form" onSubmit={event => { event.preventDefault(); void mutate(false) }}>
+          <label htmlFor="native-ticket-reply">回复（最多 10 KB）</label>
+          <textarea id="native-ticket-reply" rows={5} maxLength={10000} value={message} disabled={state.busy || !!state.pending} onChange={event => setMessage(event.target.value)} />
           <AttachmentsPanel ticketId={ticket.id} disabled={state.busy || !!state.pending} />
           <button className="button" disabled={state.busy || !!state.pending || detail.isFetching || attachmentBlocked || !canReply}>发送回复</button>
           <button className="button" type="button" disabled={state.busy || !!state.pending || detail.isFetching || attachmentBlocked || hasReadyAttachments} onClick={() => void mutate(true)}>关闭工单</button>
