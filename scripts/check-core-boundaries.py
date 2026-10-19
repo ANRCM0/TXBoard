@@ -183,6 +183,8 @@ KERNEL_FILES = {
     "api/app/Domains/UsageV2/Contracts/UsagePage.php": "App\\Domains\\UsageV2\\Contracts",
     "api/app/Domains/UsageV2/Contracts/UsageTargetMissing.php": "App\\Domains\\UsageV2\\Contracts",
     "api/app/Domains/UsageV2/Contracts/UsageHistoryUnavailable.php": "App\\Domains\\UsageV2\\Contracts",
+    "api/app/Domains/Network/Contracts/NodeIdentities.php": "App\\Domains\\Network\\Contracts",
+    "api/app/Domains/Network/NativeNodeIdentities.php": "App\\Domains\\Network",
     "api/app/Domains/UsageV2/NativeUsageQueries.php": "App\\Domains\\UsageV2",
     "api/app/Domains/InternalApi/UsageReadOperations.php": "App\\Domains\\InternalApi",
 }
