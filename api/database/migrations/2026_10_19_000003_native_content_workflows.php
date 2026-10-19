@@ -19,7 +19,6 @@ return new class extends Migration {
         if (!Schema::hasTable('tx_content_collection')) Schema::create('tx_content_collection', function (Blueprint $t): void {
             $t->string('kind', 16)->primary();
         });
-        foreach (['notices', 'knowledge'] as $kind) DB::table('tx_content_collection')->insertOrIgnore(['kind' => $kind]);
         if (!Schema::hasTable('tx_content_request')) Schema::create('tx_content_request', function (Blueprint $t): void {
             $t->char('key_hash', 64)->primary(); $t->uuid('installation_id'); $t->integer('actor_id');
             $t->string('operation', 48); $t->char('input_hash', 64); $t->mediumText('response_json');

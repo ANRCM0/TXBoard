@@ -124,8 +124,9 @@ final class NativeContentWorkflowTest extends NativeRuntimeTestCase
         $key = $this->workflowKey();
         try { $this->invokeWorkflow(fn () => $failing->execute($this->admin->id, 'notices', 'create', $this->notice(), $key)); $this->fail('Expected event failure'); }
         catch (\RuntimeException $error) { $this->assertSame('INJECTED_CONTENT_EVENT_FAILURE', $error->getMessage()); }
-        foreach (['tx_notice', 'tx_content_audit', 'tx_content_request'] as $table) $this->assertSame(0, DB::table($table)->count());
+        foreach (['tx_notice', 'tx_content_audit', 'tx_content_request', 'tx_content_collection'] as $table) $this->assertSame(0, DB::table($table)->count());
         $this->invokeWorkflow(fn () => $this->workflow->execute($this->admin->id, 'notices', 'create', $this->notice(), $key));
+        $this->assertSame(['notices'], DB::table('tx_content_collection')->pluck('kind')->all());
         DB::table('tx_content_audit')->update(['content_hash' => str_repeat('0', 64)]);
         $this->expectException(\LogicException::class);
         $this->workflow->audit($this->admin->id, '0', 10);

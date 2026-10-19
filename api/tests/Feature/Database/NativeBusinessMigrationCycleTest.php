@@ -22,7 +22,7 @@ final class NativeBusinessMigrationCycleTest extends NativeRuntimeTestCase
         $this->assertTrue(Schema::hasTable('tx_notice'));
         $this->assertTrue(Schema::hasTable('tx_ticket'));
         foreach ($files as $file) (require database_path('migrations/'.$file.'.php'))->up();
-        $this->assertSame(['knowledge', 'notices'], DB::table('tx_content_collection')->orderBy('kind')->pluck('kind')->all());
+        $this->assertSame(0, DB::table('tx_content_collection')->count());
         $this->assertTrue(Schema::hasColumn('tx_ticket', 'assigned_admin_id'));
         $this->assertTrue(Schema::hasIndex('tx_ticket', 'tx_ticket_assignment_idx'));
         $this->assertSame($before, (array) DB::table('tx_server')->where('id', $this->node->id)->first());

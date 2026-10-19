@@ -97,6 +97,8 @@ final class NativeContentWorkflow implements ContentQueries, ContentCommands
             // Order: installation -> actor/session/grant -> collection -> rows by id -> receipt/audit/event.
             $installation = app(InstallationAuthority::class)->assertNativeMutation();
             $this->sessions->assertCurrentLocked($actorId, 'content.manage');
+            // Create the serialization row only after admission; migrations keep fresh databases empty.
+            DB::table('tx_content_collection')->insertOrIgnore(['kind' => $kind]);
             $collection = DB::table('tx_content_collection')->where('kind', $kind)->lockForUpdate()->first();
             if ($collection === null) throw new LogicException('CONTENT_COLLECTION_MISSING');
             $scope = $kind.'.'.$operation;
