@@ -17,13 +17,16 @@ final class TxapiErrorRenderer
 {
     public static function render(Request $request, Throwable $exception): JsonResponse
     {
-        // Laravel wraps the named ingress throttle callback in this exception.
+        // Laravel wraps named Core throttle callbacks in this exception.
         // Preserve only its canonical response, not arbitrary exception payloads.
         if ($exception instanceof HttpResponseException && $exception->getResponse() instanceof JsonResponse) {
             $response = $exception->getResponse();
             $body = $response->getData(true);
             if ($response->getStatusCode() === 429 && is_array($body) && count($body) === 2
-                && ($body['error'] ?? null) === ['code' => 'RATE_LIMITED', 'message' => 'Service ingress limit exceeded']
+                && in_array($body['error'] ?? null, [
+                    ['code' => 'RATE_LIMITED', 'message' => 'Service ingress limit exceeded'],
+                    ['code' => 'RATE_LIMITED', 'message' => 'Subscription delivery limit exceeded'],
+                ], true)
                 && ($body['request_id'] ?? null) === TxapiResponse::requestId($request)
                 && $response->headers->get('X-Request-Id') === TxapiResponse::requestId($request)) {
                 return $response;
