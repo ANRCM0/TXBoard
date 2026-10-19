@@ -23,11 +23,11 @@ beforeEach(() => {
   host = document.createElement('div'); document.body.append(host); root = createRoot(host)
   client = new QueryClient({ defaultOptions: { queries: { retry: false } } }); workflowActions.reset()
   vi.mocked(admin.write).mockReset().mockResolvedValue({ data: { ok: true } } as never)
-  vi.mocked(admin.read).mockReset().mockImplementation(async operation => {
+  vi.mocked(admin.read).mockReset().mockImplementation(async (operation, input) => {
     if (operation === 'network.nodes.get') return { data: { ...node }, meta: {} } as never
     if (operation === 'network.nodes.list') return { data: [node], meta: { page: 1, per_page: 20, total: 1, last_page: 1 } } as never
     if (operation === 'network.machines.get') return { data: { id, name: 'private-machine', notes: 'retained note', is_active: true, image_channel: 'stable', servers_count: 21, last_seen_at: null, created_at: null, updated_at: null }, meta: {} } as never
-    if (operation === 'network.machines.nodes.list') return { data: [], meta: { page: 1, per_page: 20, total: 21, last_page: 2 } } as never
+    if (operation === 'network.machines.nodes.list') return { data: [], meta: { page: 'page' in input ? input.page : 1, per_page: 20, total: 21, last_page: 2 } } as never
     return { data: { id: '7', email: 'account@example.test', subscription: { authorized: true, subscription_id: '8', subscription_version: id, usage_period_id: '9', quota_bytes: '100', consumed_bytes: '20', remaining_bytes: '80' } }, meta: {} } as never
   })
   vi.spyOn(window, 'confirm').mockReturnValue(true)
@@ -41,7 +41,14 @@ async function render(path: string) {
   </Routes></MemoryRouter></QueryClientProvider>)); await settle()
 }
 function button(text: string) { return [...host.querySelectorAll<HTMLButtonElement>('button')].find(element => element.textContent === text)! }
-async function click(text: string) { await act(async () => button(text).click()); await settle() }
+async function readyButton(text: string) {
+  await vi.waitFor(async () => {
+    await settle()
+    expect(button(text), text + ' must be rendered').toBeDefined()
+    expect(button(text).disabled, text + ' must be enabled').toBe(false)
+  })
+}
+async function click(text: string) { await readyButton(text); await act(async () => button(text).click()); await settle() }
 async function input(value: string) {
   const element = host.querySelector('input')!
   await act(async () => { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(element, value); element.dispatchEvent(new Event('input', { bubbles: true })) })
@@ -87,6 +94,20 @@ it('reads machine notes and paginates the machine-owned node list', async () => 
 })
 it('saves machine metadata without submitting credentials or legacy adapter inputs', async () => {
   await render('/machine/' + id); await click('保存服务器')
+  expect(admin.write).toHaveBeenCalledExactlyOnceWith('network.machines.update', { machine_id: id, name: 'private-machine', notes: 'retained note', is_active: true, image_channel: 'stable' }, expect.any(String))
+})
+it('keeps machine mutations locked until the dependent node authorization read finishes', async () => {
+  let resolve!: (result: never) => void
+  const original = vi.mocked(admin.read).getMockImplementation()!
+  vi.mocked(admin.read).mockImplementation((operation, ...args) => operation === 'network.machines.nodes.list'
+    ? new Promise(done => { resolve = done }) : original(operation, ...args))
+  await render('/machine/' + id)
+  await vi.waitFor(() => expect(resolve).toBeDefined())
+  expect(button('保存服务器').disabled).toBe(true)
+  expect(button('下一页').disabled).toBe(true)
+  expect(admin.write).not.toHaveBeenCalled()
+  await act(async () => { resolve({ data: [], meta: { page: 1, per_page: 20, total: 21, last_page: 2 } } as never) })
+  await click('保存服务器')
   expect(admin.write).toHaveBeenCalledExactlyOnceWith('network.machines.update', { machine_id: id, name: 'private-machine', notes: 'retained note', is_active: true, image_channel: 'stable' }, expect.any(String))
 })
 it('ignores a delayed node write receipt after session replacement', async () => {

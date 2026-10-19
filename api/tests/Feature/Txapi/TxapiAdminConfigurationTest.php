@@ -55,6 +55,9 @@ final class TxapiAdminConfigurationTest extends NativeRuntimeTestCase
         $snapshot = $invoke('settings.configuration.get', [])->assertOk()
             ->assertJsonPath('data.values.app_name', 'Native authoritative')
             ->assertJsonPath('data.values.login_limit_count', 7)
+            ->assertJsonPath('data.values.new_order_event_id', 0)
+            ->assertJsonPath('data.values.renew_order_event_id', 0)
+            ->assertJsonPath('data.values.change_order_event_id', 0)
             ->assertJsonMissingPath('data.values.email_password')->assertJsonMissingPath('data.values.telegram_bot_token');
         $this->assertStringNotContainsString('smtp-secret-preserved', $snapshot->getContent());
         $this->assertStringNotContainsString('telegram-secret-preserved', $snapshot->getContent());
@@ -63,14 +66,18 @@ final class TxapiAdminConfigurationTest extends NativeRuntimeTestCase
         $this->assertTrue($credentials['telegram_bot_token']['configured']);
         $version = $snapshot->json('data.version');
         $key = (string) Str::uuid();
-        $input = ['expected_version' => $version, 'values' => ['app_name' => 'First update', 'login_limit_count' => 9]];
+        $input = ['expected_version' => $version, 'values' => ['app_name' => 'First update', 'login_limit_count' => 9,
+            'new_order_event_id' => 1, 'renew_order_event_id' => 1, 'change_order_event_id' => 1]];
         $invoke('settings.configuration.update', $input, $key)->assertOk();
         $this->assertSame('First update', Setting::where('name', 'app_name')->firstOrFail()->value);
         $this->assertSame('Preserve this description', Setting::where('name', 'app_description')->firstOrFail()->value);
         $this->assertSame('smtp-secret-preserved', Setting::where('name', 'email_password')->firstOrFail()->value);
         $this->assertSame('telegram-secret-preserved', Setting::where('name', 'telegram_bot_token')->firstOrFail()->value);
         $this->assertSame(9, (int) Setting::where('name', 'password_limit_count')->firstOrFail()->value);
-        $updated = $invoke('settings.configuration.get', [])->assertOk()->json('data.version');
+        $updated = $invoke('settings.configuration.get', [])->assertOk()
+            ->assertJsonPath('data.values.new_order_event_id', 1)
+            ->assertJsonPath('data.values.renew_order_event_id', 1)
+            ->assertJsonPath('data.values.change_order_event_id', 1)->json('data.version');
         $this->assertNotSame($version, $updated);
         $invoke('settings.configuration.update', ['expected_version' => $version, 'values' => ['app_name' => 'Stale overwrite']])->assertStatus(409);
         $invoke('settings.configuration.update', ['expected_version' => $updated, 'values' => ['app_name' => 'Later update']])->assertOk();

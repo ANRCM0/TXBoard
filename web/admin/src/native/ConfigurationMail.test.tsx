@@ -13,10 +13,11 @@ vi.mock('./session', async () => {
   return { admin, workflowActions: createWorkflowActions((operation, input, key) => admin.write(operation, input, key)) }
 })
 let host: HTMLDivElement, root: Root, client: QueryClient, version: string
+const initialVersion = 'a'.repeat(64), revisedVersion = 'b'.repeat(64)
 beforeEach(() => {
   ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
   host = document.createElement('div'); document.body.append(host); root = createRoot(host)
-  client = new QueryClient({ defaultOptions: { queries: { retry: false } } }); version = '1'
+  client = new QueryClient({ defaultOptions: { queries: { retry: false } } }); version = initialVersion
   workflowActions.reset(); vi.mocked(admin.write).mockReset().mockResolvedValue({ data: { ok: true } } as never)
   vi.mocked(admin.read).mockReset().mockImplementation(async operation => {
     if (operation === 'settings.configuration.get') return { data: { version, values: { app_name: 'private site', email_host: 'smtp.example.com', email_username: 'private user' }, credentials: [{ name: 'email_password', configured: true }] }, meta: {} } as never
@@ -46,7 +47,7 @@ it('sends only changed current-group fields and leaves configured credentials un
   expect(host.querySelector('#configuration-app_name')).toBeNull()
   await input(host.querySelector<HTMLInputElement>('#configuration-email_host')!, 'smtp.new.example')
   await submit()
-  expect(admin.write).toHaveBeenCalledExactlyOnceWith('settings.configuration.update', { expected_version: '1', values: { email_host: 'smtp.new.example' } }, expect.any(String))
+  await vi.waitFor(() => expect(admin.write).toHaveBeenCalledExactlyOnceWith('settings.configuration.update', { expected_version: initialVersion, values: { email_host: 'smtp.new.example' } }, expect.any(String)))
 })
 
 it('preserves the original sensitive write and key across navigation until explicit recovery', async () => {
@@ -54,6 +55,7 @@ it('preserves the original sensitive write and key across navigation until expli
   await input(host.querySelector<HTMLInputElement>('#configuration-email_password')!, 'new-secret')
   vi.mocked(admin.write).mockRejectedValueOnce(new TypeError('lost acknowledgement'))
   await submit()
+  await vi.waitFor(() => expect(workflowActions.snapshot().pending?.unknown).toBe(true))
   const original = vi.mocked(admin.write).mock.calls[0]
   await render('mail'); expect(admin.write).toHaveBeenCalledTimes(1)
   await render('email'); expect(host.querySelector('input[type=password]')).toBeNull()
@@ -65,14 +67,15 @@ it('preserves the original sensitive write and key across navigation until expli
 it('discards the stale edit on CAS conflict and requires fresh deliberate editing', async () => {
   await render(); await click('开始编辑')
   await input(host.querySelector<HTMLInputElement>('#configuration-app_name')!, 'old-intent')
-  version = '2'; vi.mocked(admin.write).mockRejectedValueOnce(new CoreAdminApiError('SETTING_VERSION_CONFLICT', 409))
+  version = revisedVersion; vi.mocked(admin.write).mockRejectedValueOnce(new CoreAdminApiError('SETTING_VERSION_CONFLICT', 409))
   await submit()
-  expect(host.querySelector('form.native-content-form')).toBeNull()
+  await vi.waitFor(() => expect(host.querySelector('form.native-content-form')).toBeNull())
   expect(host.textContent).toContain('请重新开始编辑')
   await click('开始编辑')
   expect(host.querySelector<HTMLInputElement>('#configuration-app_name')!.value).toBe('private site')
   await input(host.querySelector<HTMLInputElement>('#configuration-app_name')!, 'reviewed-intent'); await submit()
-  expect(vi.mocked(admin.write).mock.calls[1]![1]).toEqual({ expected_version: '2', values: { app_name: 'reviewed-intent' } })
+  await vi.waitFor(() => expect(admin.write).toHaveBeenCalledTimes(2))
+  expect(vi.mocked(admin.write).mock.calls[1]![1]).toEqual({ expected_version: revisedVersion, values: { app_name: 'reviewed-intent' } })
   expect(vi.mocked(admin.write).mock.calls[1]![2]).not.toBe(vi.mocked(admin.write).mock.calls[0]![2])
 })
 
