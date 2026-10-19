@@ -59,7 +59,7 @@ async function open(fixture, pathname) {
   const loaded = operation ? page.waitForResponse(response => response.url().endsWith('/operations/' + operation) && response.status() === 200) : Promise.resolve()
   await page.getByRole('button', { name: '登录', exact: true }).click()
   await page.waitForURL(url => url.pathname === '/admin' + pathname)
-  await page.getByRole('heading', { name: title, exact: true }).waitFor()
+  await page.locator('.native-management-page .page-header').getByRole('heading', { name: title, exact: true }).waitFor()
   await loaded
   await page.waitForFunction(() => document.querySelectorAll('.native-management-page .query-feedback[role="status"]').length === 0)
   verify(state)
@@ -151,7 +151,7 @@ try {
   state.denied.add('network.nodes.get')
   await page.getByRole('button', { name: '刷新节点', exact: true }).click()
   await page.getByText('当前账号没有此操作的权限，已隐藏资源数据。', { exact: true }).waitFor()
-  assert.equal(await page.getByRole('heading', { name: 'Native node', exact: true }).count(), 0)
+  assert.equal(await page.locator('.native-management-page').getByRole('heading', { name: 'Native node', exact: true }).count(), 0)
   assert.equal(await page.getByRole('button', { name: '删除节点', exact: true }).count(), 0); state.denied.clear()
   await open(desktop, '/server/machine/9007199254740997')
   assert.deepEqual(state.calls.filter(call => call.operation === 'network.machines.get').at(-1).input, { machine_id: '9007199254740997' })
@@ -162,7 +162,7 @@ try {
   await open(desktop, '/user/traffic-reset')
   await page.getByLabel('用户 ID', { exact: true }).fill('12')
   await page.getByRole('button', { name: '读取当前订阅', exact: true }).click()
-  await page.getByRole('heading', { name: 'subscription@example.test', exact: true }).waitFor()
+  await page.locator('.native-management-page').getByRole('heading', { name: 'subscription@example.test', exact: true }).waitFor()
   await page.getByRole('button', { name: '重置订阅流量周期', exact: true }).click()
   await page.getByText('9007199254740994', { exact: true }).waitFor()
   const reset = state.calls.find(call => call.operation === 'subscription.lifecycle.reset').input
@@ -186,7 +186,7 @@ try {
     } else if (pathname === '/user/traffic-reset') {
       await mobile.page.getByLabel('用户 ID', { exact: true }).fill('12')
       await mobile.page.getByRole('button', { name: '读取当前订阅', exact: true }).click()
-      await mobile.page.getByRole('heading', { name: 'subscription@example.test', exact: true }).waitFor()
+      await mobile.page.locator('.native-management-page').getByRole('heading', { name: 'subscription@example.test', exact: true }).waitFor()
     }
     assert.ok(await mobile.page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), title + ' must fit mobile viewport')
     assert.equal(await mobile.page.locator('.admin-sidebar.is-open').count(), 0)
