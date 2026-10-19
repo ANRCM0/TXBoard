@@ -6,7 +6,7 @@ import { catalogNetworkFixture } from './admin-catalog-network-fixture.mjs'
 const requestId = '12345678-1234-4234-8234-123456789abc'
 const stamp = 1792368000
 const metadata = JSON.parse(await readFile(new URL('../../contracts/core-api/admin-settings.v1.json', import.meta.url), 'utf8'))
-const managed = /^(?:audit\.logs\.|platform\.(?:modules\.|queue\.)|settings\.configuration\.|notifications\.mail-templates\.|billing\.admin-payment-|network\.(?:nodes\.get$|machines\.)|identity\.accounts\.get$|subscription\.lifecycle\.reset$)/
+const managed = /^(?:audit\.logs\.|platform\.(?:modules\.|queue\.)|settings\.configuration\.|notifications\.mail-templates\.|billing\.admin-payment-|network\.(?:nodes\.get$|nodes\.batch-[a-z-]+$|machines\.)|identity\.accounts\.get$|identity\.accounts\.status\.update$|subscription\.lifecycle\.reset$)/
 
 /** Built admin UI with schema-checked synthetic browser ingress; no live Core acceptance is implied. */
 export async function managementFixture(browser, viewport) {
@@ -25,6 +25,7 @@ export async function managementFixture(browser, viewport) {
   const machine = { id: '9007199254740997', name: 'Observed machine', notes: 'Machine metadata only',
     is_active: true, image_channel: 'stable', servers_count: 1, last_seen_at: stamp, created_at: stamp, updated_at: stamp }
   const node = { ...state.node, machine_id: machine.id, group_ids: ['7'], route_ids: [], tags: ['observed'], created_at: stamp, updated_at: stamp }
+  let accountBanned = false
   const subscription = { schema: 'core-entitlement/v1', authorized: true, reason: 'ENTITLEMENT_GRANTED',
     user_id: '12', subscription_id: '9007199254740999', subscription_version: '9007199254740993',
     plan_id: state.planId, terms_id: '81', terms_version: '1', plan_revision_id: state.originalRevision.revision_id,
@@ -94,6 +95,17 @@ export async function managementFixture(browser, viewport) {
         return send({ id: payment.id })
       }
       if (operation === 'network.nodes.get') { assert.equal(input.node_id, node.id); return send(node) }
+      if (operation === 'network.nodes.batch-update') {
+        assert.ok(input.ids.includes(node.id))
+        if (input.enabled !== undefined) node.enabled = input.enabled
+        if (input.show !== undefined) node.show = input.show
+        if ('machine_id' in input) node.machine_id = input.machine_id
+        return send({ ok: true })
+      }
+      if (operation === 'network.nodes.batch-delete' || operation === 'network.nodes.batch-traffic-reset') {
+        assert.ok(input.ids.includes(node.id))
+        return send({ ok: true })
+      }
       if (operation === 'network.machines.get') { assert.equal(input.machine_id, machine.id); return send(machine) }
       if (operation === 'network.machines.list') {
         const { notes, ...summary } = machine
@@ -106,8 +118,14 @@ export async function managementFixture(browser, viewport) {
       }
       if (operation === 'identity.accounts.get') {
         assert.equal(input.user_id, subscription.user_id)
-        return send({ id: subscription.user_id, email: 'subscription@example.test', banned: false, is_admin: false,
+        return send({ id: subscription.user_id, email: 'subscription@example.test', banned: accountBanned, is_admin: false,
           created_at: stamp, last_login_at: null, subscription, credential_status: 'provider_managed' })
+      }
+      if (operation === 'identity.accounts.status.update') {
+        assert.equal(input.user_id, subscription.user_id)
+        assert.equal(input.expected_banned, accountBanned)
+        accountBanned = input.banned
+        return send({ id: subscription.user_id, banned: accountBanned })
       }
       if (operation === 'subscription.lifecycle.reset') {
         assert.equal(input.subscription_id, subscription.subscription_id)

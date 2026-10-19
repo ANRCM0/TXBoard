@@ -5,6 +5,7 @@ import { admin, workflowActions } from './session'
 import { PageHeader } from '../components/ui/PageHeader'
 import { ManagementFeedback } from './Feedback'
 import { ReadFields } from './ReadList'
+import { QuotaBar } from '../components/ui/QuotaBar'
 import { NetworkRecovery, useNetworkManagement } from './NetworkManagement'
 
 export function TrafficResetPage() {
@@ -26,7 +27,7 @@ export function TrafficResetPage() {
     <NetworkRecovery management={management} blocked={!matchingPending || query.isFetching || query.isError} />
     {management.pending ? <p>重新读取原用户并匹配订阅后，才能确认原重置操作</p> : null}
     {userId ? <ManagementFeedback error={query.error} loading={query.isFetching} onRetry={() => void management.refresh()} notFoundMessage="用户不存在或已被删除" /> : null}
-    {account ? <section className="list-card settings-section"><header className="settings-section-heading"><div><h2>{account.email}</h2><p>订阅流量与周期</p></div><span className="settings-status">{subscription ? '已读取订阅' : '无可用订阅'}</span></header>{subscription ? <><div className="settings-usage-grid">{[['总额度', subscription.quota_bytes], ['已使用', subscription.consumed_bytes], ['剩余流量', subscription.remaining_bytes]].map(([label, value]) => <div key={label}><small>{label}</small><strong>{String(value).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}<span>字节</span></strong></div>)}</div><details className="settings-help"><summary>查看订阅标识与原始用量</summary><ReadFields fields={[
+    {account ? <section className="list-card settings-section"><header className="settings-section-heading"><div><h2>{account.email}</h2><p>订阅流量与周期</p></div><span className="settings-status">{subscription ? '已读取订阅' : '无可用订阅'}</span></header>{subscription ? <><QuotaBar used={subscription.consumed_bytes} total={subscription.quota_bytes} label="订阅流量" /><div className="settings-usage-grid">{[['总额度', subscription.quota_bytes], ['已使用', subscription.consumed_bytes], ['剩余流量', subscription.remaining_bytes]].map(([label, value]) => <div key={label}><small>{label}</small><strong>{String(value).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}<span>字节</span></strong></div>)}</div><details className="settings-help"><summary>查看订阅标识与原始用量</summary><ReadFields fields={[
       ['用户 ID', account.id], ['订阅 ID', subscription.subscription_id], ['订阅版本', subscription.subscription_version], ['当前流量周期', subscription.usage_period_id], ['额度字节', subscription.quota_bytes], ['已用字节', subscription.consumed_bytes], ['剩余字节', subscription.remaining_bytes],
     ]} /></details><footer className="settings-form-actions"><span>重置会开启新周期，历史用量仍保留</span><button className="button settings-danger-button" disabled={locked} onClick={() => void reset()}>重置订阅流量周期</button></footer></> : <p>当前没有可授权的原生订阅：{account.subscription.reason}</p>}</section> : null}
   </div>

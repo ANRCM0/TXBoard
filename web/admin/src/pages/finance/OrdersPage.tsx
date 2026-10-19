@@ -10,6 +10,9 @@ import { OrderReadDialog } from '../../native/OrderReadDialog'
 import { OrderCommandRecovery } from '../../native/OrderAdministration'
 import { isoDate, minorAmount, orderStatus, readPage, validId, validTradeNo } from '../../native/readPresentation'
 import { PageHeader } from '../../components/ui/PageHeader'
+import { FilterBar } from '../../components/ui/FilterBar'
+import { Input, Select } from '../../components/ui/Field'
+import { StatusBadge } from '../../components/ui/StatusBadge'
 import type { Column } from '../../components/ui/DataTable'
 
 type Order = CoreOutput<'commerce.admin-orders.list'>[number]
@@ -44,7 +47,7 @@ export function OrdersPage() {
     { key: 'user', header: '用户 ID', render: row => <Link className="table-link" to={'/user/' + row.user_id}>#{row.user_id}</Link> },
     { key: 'plan', header: '套餐', render: row => row.plan?.name ?? '未记录' },
     { key: 'amount', header: '订单金额', render: row => <strong className="reference-number">{minorAmount(row.amount_minor, row.currency)}</strong> },
-    { key: 'status', header: '状态', render: row => <span className={'reference-status ' + (row.status === 3 ? 'is-success' : row.status === 0 || row.status === 1 ? 'is-warning' : '')}>{orderStatus(row.status)}</span> },
+    { key: 'status', header: '状态', render: row => <StatusBadge tone={row.status === 3 ? 'success' : row.status === 0 || row.status === 1 ? 'warning' : 'neutral'}>{orderStatus(row.status)}</StatusBadge> },
     { key: 'created', header: '创建时间', render: row => isoDate(row.created_at) },
   ]
   return <div className="native-management-page commerce-reference orders-page">
@@ -56,17 +59,21 @@ export function OrdersPage() {
       ready={!!data} loading={query.isFetching} error={query.isError ? query.error : undefined}
       onRetry={() => void query.refetch()} onPage={paginate}>
       <header className="commerce-card-heading"><div><h2>订单列表</h2><p>按用户、订单号或处理状态查询购买记录</p></div></header><form className="management-filter-form" onSubmit={apply}>
-        <label>用户 ID<input aria-label="订单用户 ID" value={user} maxLength={19}
-          onChange={event => setUser(event.target.value)} inputMode="numeric" placeholder="精确用户 ID" /></label>
-        <label>订单号<input aria-label="订单号" value={trade} maxLength={128}
-          onChange={event => setTrade(event.target.value)} placeholder="精确订单号" /></label>
-        <label>订单状态<select aria-label="订单状态" value={status} onChange={event => setStatus(event.target.value)}>
-          <option value="">全部状态</option>{[0, 1, 2, 3, 4].map(value => <option key={value} value={String(value)}>{orderStatus(value)}</option>)}
-        </select></label>
-        <button className="button primary" type="submit"><Search size={15} />查询</button>
-        <button className="button" type="button" onClick={() => setParams({})}>清除筛选</button>
+        <FilterBar applied={[
+          ...(appliedUser ? [{ key: 'user', label: '用户 #' + appliedUser }] : []),
+          ...(appliedTrade ? [{ key: 'trade', label: '订单 ' + appliedTrade }] : []),
+          ...(appliedStatus !== '' ? [{ key: 'status', label: orderStatus(Number(appliedStatus)) }] : []),
+        ]} onClear={() => setParams({})}>
+          <label>用户 ID<Input aria-label="订单用户 ID" value={user} maxLength={19}
+            onChange={event => setUser(event.target.value)} inputMode="numeric" placeholder="精确用户 ID" /></label>
+          <label>订单号<Input aria-label="订单号" value={trade} maxLength={128}
+            onChange={event => setTrade(event.target.value)} placeholder="精确订单号" /></label>
+          <label>订单状态<Select aria-label="订单状态" value={status} onChange={event => setStatus(event.target.value)}>
+            <option value="">全部状态</option>{[0, 1, 2, 3, 4].map(value => <option key={value} value={String(value)}>{orderStatus(value)}</option>)}
+          </Select></label>
+          <button className="button primary" type="submit"><Search size={15} aria-hidden="true" />查询</button>
+        </FilterBar>
       </form>
-      {appliedUser || appliedTrade || appliedStatus !== '' ? <div className="commerce-applied-filters" aria-label="当前订单筛选"><span>当前筛选</span>{appliedUser ? <span className="commerce-badge">用户 #{appliedUser}</span> : null}{appliedTrade ? <span className="commerce-badge">订单 {appliedTrade}</span> : null}{appliedStatus !== '' ? <span className="commerce-badge">{orderStatus(Number(appliedStatus))}</span> : null}</div> : null}
     </ReadList>
     {detail ? <OrderReadDialog key={detail} tradeNo={detail} onClose={() => setDetail(null)} /> : null}
   </div>

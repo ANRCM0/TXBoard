@@ -1,4 +1,4 @@
-import { RefreshCw, Network } from 'lucide-react'
+import { RefreshCw, Network, Power, Link2, Copy, RefreshCcw, Trash2, Eye, EyeOff, PowerOff } from 'lucide-react'
 import './network-reference.css'
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
@@ -9,6 +9,11 @@ import { ManagementFeedback } from './Feedback'
 import { ReadFields } from './ReadList'
 import { dash, formatTimestamp } from './Inventory'
 import { NetworkRecovery, useNetworkManagement } from './NetworkManagement'
+import { DetailSection } from '../components/ui/DetailSection'
+import { DangerZone } from '../components/ui/DangerZone'
+import { StatusBadge } from '../components/ui/StatusBadge'
+import { Popover } from '../components/ui/Popover'
+import { Field, Input } from '../components/ui/Field'
 
 export function NodeDetailPage() {
   const { nodeId = '' } = useParams(), navigate = useNavigate()
@@ -31,22 +36,48 @@ export function NodeDetailPage() {
   }
   const recoveryBlocked = query.isFetching || query.isError || !node || (!!management.pending && 'node_id' in management.pending.input && management.pending.input.node_id !== node.id)
   return <div className="native-management-page network-reference-page network-node-detail-page">
-    <PageHeader title="节点详情" description="查看节点及其归属，管理显示、启用状态和节点计数。" action={<><Link className="button" to="/server/manage">返回节点列表</Link><button className="button" disabled={query.isFetching || management.state.busy} onClick={() => void management.refresh()}><RefreshCw size={15} aria-hidden="true" />刷新节点</button></>} />
+    <PageHeader title="节点详情" description="查看节点及其归属，管理显示、启用状态和节点计数" action={<><Link className="button" to="/server/manage">返回节点列表</Link><button className="button" disabled={query.isFetching || management.state.busy} onClick={() => void management.refresh()}><RefreshCw size={15} aria-hidden="true" />刷新节点</button></>} />
     <NetworkRecovery management={management} blocked={recoveryBlocked} />
     <ManagementFeedback error={query.error} loading={query.isFetching} onRetry={() => void management.refresh()} notFoundMessage="节点不存在或已被删除。" />
     {node ? <>
-      <section className="list-card network-profile-card" aria-label="节点配置概况"><div className="network-profile-hero"><span className="network-profile-icon"><Network size={24} /></span><div><h2>{node.name}</h2><p>节点 #{node.id} · {node.type}</p></div><span className={'network-tag ' + (node.enabled ? 'is-success' : '')}>{node.enabled ? '已启用' : '已禁用'}</span></div><h3 className="network-section-heading">连接与资源</h3><ReadFields fields={[
-        ['节点 ID', node.id], ['协议', node.type], ['地址', <code>{node.host.includes(':') ? '[' + node.host + ']' : node.host}:{node.port}</code>], ['服务端端口', dash(node.server_port)],
-        ['父节点', node.parent_id ? <Link to={'/server/node/' + node.parent_id}>{node.parent_id}</Link> : '无'],
-        ['服务器', node.machine_id ? <Link to={'/server/machine/' + node.machine_id}>{node.machine_id}</Link> : '未绑定'],
-        ['显示', node.show ? '显示' : '隐藏'], ['状态', node.enabled ? '已启用' : '已禁用'], ['上传字节', dash(node.u)], ['下载字节', dash(node.d)],
-        ['分组', node.group_ids.join(', ') || '无'], ['路由', node.route_ids.join(', ') || '无'], ['标签', node.tags.join(', ') || '无'],
-        ['创建时间', formatTimestamp(node.created_at)], ['更新时间', formatTimestamp(node.updated_at)],
-      ]} /></section>
-      <section className="list-card network-settings-card" aria-label="节点操作"><h2>节点操作</h2><p className="network-help">重置节点计数只影响节点统计；用户订阅额度请使用流量重置入口。</p>
-        <div className="native-list-toolbar network-node-actions"><button className="button" disabled={locked} onClick={() => void command('show')}>{node.show ? '隐藏节点' : '显示节点'}</button><button className="button" disabled={locked} onClick={() => void command('enabled')}>{node.enabled ? '禁用节点' : '启用节点'}</button><button className="button" disabled={locked} onClick={() => void command('copy')}>复制节点</button><button className="button" disabled={locked} onClick={() => void command('reset')}>重置节点计数</button></div>
-        <h3 className="network-section-heading">服务器归属</h3><p className="network-help">将节点关联到服务器，便于集中查看运行状态。解除绑定不会删除节点。</p><form className="native-content-form network-binding-form" onSubmit={event => { event.preventDefault(); void command('machine') }}><label>绑定服务器 ID（留空解除绑定）<input placeholder="输入服务器 ID，留空解除绑定" value={machine} pattern="[1-9][0-9]{0,18}" maxLength={19} disabled={locked} onChange={event => setMachine(event.target.value)} /></label><button className="button" disabled={locked}>保存服务器归属</button></form><div className="network-danger-zone"><div><h3>移除节点资源</h3><p>删除前请核对节点名称、连接地址及所属服务器。</p></div><button className="button" data-danger="true" disabled={locked} onClick={() => void command('delete')}>删除节点</button></div>
-      </section>
+      <DetailSection label="节点配置概况" title={node.name} description={'节点 #' + node.id + ' · ' + node.type}
+        icon={<Network size={17} />} className="network-profile-card"
+        actions={<div className="network-tags"><StatusBadge tone={node.enabled ? 'success' : 'neutral'}>{node.enabled ? '已启用' : '已禁用'}</StatusBadge><span className="reference-tag">{node.show ? '显示' : '隐藏'}</span></div>}>
+        <h3 className="network-section-heading">连接与资源</h3>
+        <ReadFields fields={[
+          ['节点 ID', node.id], ['协议', node.type], ['地址', <code>{node.host.includes(':') ? '[' + node.host + ']' : node.host}:{node.port}</code>], ['服务端端口', dash(node.server_port)],
+          ['父节点', node.parent_id ? <Link to={'/server/node/' + node.parent_id}>{node.parent_id}</Link> : '无'],
+          ['服务器', node.machine_id ? <Link to={'/server/machine/' + node.machine_id}>{node.machine_id}</Link> : '未绑定'],
+          ['显示', node.show ? '显示' : '隐藏'], ['状态', node.enabled ? '已启用' : '已禁用'], ['上传字节', dash(node.u)], ['下载字节', dash(node.d)],
+          ['分组', node.group_ids.join(', ') || '无'], ['路由', node.route_ids.join(', ') || '无'], ['标签', node.tags.join(', ') || '无'],
+          ['创建时间', formatTimestamp(node.created_at)], ['更新时间', formatTimestamp(node.updated_at)],
+        ]} />
+      </DetailSection>
+      <DetailSection label="节点操作" title="节点操作" icon={<Power size={17} />} className="network-settings-card"
+        description="重置节点计数只影响节点统计 · 用户订阅额度请使用流量重置入口"
+        actions={<Popover label="节点操作说明">
+          <p>显示与启用状态只影响此节点，不会修改用户订阅</p>
+          <p>复制节点会创建一份当前配置 · 删除节点不可恢复，请先核对名称、地址和所属服务器</p>
+          <p>重置节点计数会清零节点上传与下载统计，不影响用户订阅额度</p>
+        </Popover>}>
+        <div className="native-list-toolbar network-node-actions">
+          <button className="button" disabled={locked} onClick={() => void command('show')}>{node.show ? <EyeOff size={15} aria-hidden="true" /> : <Eye size={15} aria-hidden="true" />}{node.show ? '隐藏节点' : '显示节点'}</button>
+          <button className="button" disabled={locked} onClick={() => void command('enabled')}>{node.enabled ? <PowerOff size={15} aria-hidden="true" /> : <Power size={15} aria-hidden="true" />}{node.enabled ? '禁用节点' : '启用节点'}</button>
+          <button className="button" disabled={locked} onClick={() => void command('copy')}><Copy size={15} aria-hidden="true" />复制节点</button>
+          <button className="button" disabled={locked} onClick={() => void command('reset')}><RefreshCcw size={15} aria-hidden="true" />重置节点计数</button>
+        </div>
+        <h3 className="network-section-heading">服务器归属</h3>
+        <p className="network-help">将节点关联到服务器，便于集中查看运行状态 · 解除绑定不会删除节点</p>
+        <form className="native-content-form network-binding-form" onSubmit={event => { event.preventDefault(); void command('machine') }}>
+          <Field label="绑定服务器 ID" hint="留空解除绑定">
+            <Input placeholder="输入服务器 ID，留空解除绑定" value={machine} pattern="[1-9][0-9]{0,18}" maxLength={19} disabled={locked} onChange={event => setMachine(event.target.value)} />
+          </Field>
+          <button className="button" disabled={locked} aria-label="保存服务器"><Link2 size={15} aria-hidden="true" />保存服务器</button>
+        </form>
+        <DangerZone title="移除节点资源" description="删除前请核对节点名称、连接地址及所属服务器" className="network-danger-zone">
+          <button className="button danger" disabled={locked} onClick={() => void command('delete')}><Trash2 size={15} aria-hidden="true" />删除节点</button>
+        </DangerZone>
+      </DetailSection>
     </> : null}
   </div>
 }

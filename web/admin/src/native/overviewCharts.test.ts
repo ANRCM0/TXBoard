@@ -1,6 +1,7 @@
 import type { CoreOutput } from '@txboard/core-sdk'
 import { describe, expect, it } from 'vitest'
-import { gigabytes, nodeTrafficHistory, orderStatusShare, incomeTrend } from './overviewCharts'
+import { nodeTrafficHistory, orderStatusShare, incomeTrend } from './overviewCharts'
+import { gigabytes } from '../lib/format'
 
 type Order = CoreOutput<'commerce.admin-orders.list'>[number]
 type TrafficHistory = CoreOutput<'network.nodes.traffic-history.get'>

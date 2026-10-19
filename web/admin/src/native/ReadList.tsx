@@ -1,23 +1,27 @@
 import type { ReactNode } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
-import { DataTable, type Column } from '../components/ui/DataTable'
+import { DataTable, type Column, type TableSelection } from '../components/ui/DataTable'
+import { TableSkeleton } from '../components/ui/Skeleton'
 import { ManagementFeedback } from './Feedback'
 
 export function ReadList<T extends { id: string }>({ title, rows, columns, meta, page, ready,
-  loading, error, onRetry, onPage, children }: {
+  loading, error, onRetry, onPage, children, selection }: {
   title: string; rows: T[]; columns: Column<T>[]; page: number; ready: boolean
   meta?: { total: number; last_page: number }; loading: boolean; error?: unknown
   onRetry: () => void; onPage: (page: number) => void; children?: ReactNode
+  selection?: TableSelection<T>
 }) {
   const visibleMeta = ready && !error ? meta : undefined
   const lastPage = Math.min(visibleMeta?.last_page ?? page, 100000)
   const pages = [...new Set([1, page - 1, page, page + 1, lastPage])].filter(value => value >= 1 && value <= lastPage)
   return <section className="list-card native-read-list" aria-label={title} aria-busy={loading}>
     {children}
-    <ManagementFeedback error={error} loading={loading} onRetry={onRetry} />
+    {!ready && loading
+      ? <TableSkeleton rows={5} columns={columns.length + (selection ? 1 : 0)} label={title + '加载中'} />
+      : <ManagementFeedback error={error} loading={loading} onRetry={onRetry} />}
     {ready && !error ? <p className="native-scroll-hint">左右滑动表格查看完整信息</p> : null}
     {ready && !error ? <DataTable rows={rows} columns={columns} rowKey={row => row.id} label={title}
-      empty="没有符合条件的数据" /> : null}
+      selection={selection} empty="没有符合条件的数据" /> : null}
     <div className="native-pagination" aria-label={title + '分页'}>
       <span aria-live="polite">{visibleMeta ? '共 ' + visibleMeta.total + ' 项 · 第 ' + page + ' 页' : '第 ' + page + ' 页'}</span>
       <nav className="native-page-controls" aria-label="选择页码">

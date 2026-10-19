@@ -7,6 +7,8 @@ import { admin, useAdminSession } from './session'
 import { ManagementFeedback } from './Feedback'
 import { ReadFields } from './ReadList'
 import { PageHeader } from '../components/ui/PageHeader'
+import { ReadOnlyNotice } from '../components/ui/ReadOnlyNotice'
+import { StatusBadge } from '../components/ui/StatusBadge'
 import { DataTable, type Column } from '../components/ui/DataTable'
 
 type Module = CoreOutput<'platform.modules.get'>
@@ -33,12 +35,13 @@ export function ModulesPage({ kind }: { kind?: 'plugin' | 'theme' }) {
     { key: 'type', header: '类型', render: row => <span className="observation-tag">{row.type === 'theme' ? '主题' : row.type === 'plugin' ? '插件' : row.type}</span> },
     { key: 'version', header: '版本', render: row => <span className="observation-mono">{row.version}</span> },
     { key: 'source', header: '来源', render: row => row.source },
-    { key: 'installed', header: '安装状态', render: row => <span className="observation-tag" data-tone={row.installed ? 'success' : undefined}>{row.installed ? '已安装' : '未安装'}</span> },
-    { key: 'enabled', header: '运行状态', render: row => <span className="observation-tag" data-tone={row.enabled ? 'success' : undefined}>{row.enabled ? '已启用' : '未启用'}</span> },
-    { key: 'health', header: '健康', render: row => <span className="observation-tag" data-tone={row.health === 'healthy' ? 'success' : row.health === 'unhealthy' ? 'danger' : undefined}>{({ healthy: '正常', unhealthy: '异常', unknown: '未知' } as Record<string, string>)[row.health] ?? row.health}</span> },
+    { key: 'installed', header: '安装状态', render: row => <StatusBadge tone={row.installed ? 'success' : 'neutral'}>{row.installed ? '已安装' : '未安装'}</StatusBadge> },
+    { key: 'enabled', header: '运行状态', render: row => <StatusBadge tone={row.enabled ? 'success' : 'neutral'}>{row.enabled ? '已启用' : '未启用'}</StatusBadge> },
+    { key: 'health', header: '健康', render: row => <StatusBadge tone={row.health === 'healthy' ? 'success' : row.health === 'unhealthy' ? 'danger' : 'neutral'}>{({ healthy: '正常', unhealthy: '异常', unknown: '未知' } as Record<string, string>)[row.health] ?? row.health}</StatusBadge> },
   ]
   return <div className="native-management-page observation-page observation-modules-page">
     <PageHeader title={kind === 'theme' ? '主题管理' : kind === 'plugin' ? '插件管理' : '模块清单'} description="管理模块版本与运行状态" action={<button className="button" disabled={!session || list.isFetching} onClick={() => void refresh()}><RefreshCw size={15} />刷新</button>} />
+    <ReadOnlyNotice title="运行时清单只读">安装、启停、升级及卸载由受控部署流程负责 · 此页面只展示当前注册状态与声明能力</ReadOnlyNotice>
     <section className="list-card native-read-list"><div className="observation-card-heading"><div><h2>{kind === 'theme' ? '主题目录' : kind === 'plugin' ? '插件目录' : '模块目录'}</h2><p>查看版本、来源与可用状态</p></div><span className="observation-tag">{visible && list.data && !list.isError ? rows.length + ' 项' : '等待加载'}</span></div>
       <form className="native-filters observation-module-filters" onSubmit={event => event.preventDefault()}><label>搜索<input placeholder="搜索名称、ID 或描述" maxLength={120} value={keyword} onChange={event => setKeyword(event.target.value)} /></label><label>状态<select value={status} onChange={event => setStatus(event.target.value)}><option value="">全部</option><option value="installed">已安装</option><option value="enabled">已启用</option><option value="uninstalled">未安装</option></select></label>{keyword || status ? <button className="button observation-reset" type="button" onClick={() => { setKeyword(''); setStatus('') }}>清除筛选</button> : null}</form>
       <ManagementFeedback loading={list.isFetching} error={list.error} onRetry={() => void refresh()} />

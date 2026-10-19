@@ -64,6 +64,16 @@ it('directly reads a large node ID and uses only the supported visibility patch'
   await click('隐藏节点')
   expect(admin.write).toHaveBeenCalledExactlyOnceWith('network.nodes.patch', { node_id: id, show: false }, expect.any(String))
 })
+it('runs a current-page batch update and clears the selection after success', async () => {
+  await render('/nodes')
+  const checkbox = host.querySelector<HTMLInputElement>('input[aria-label="选择 private-node"]')!
+  expect(checkbox).not.toBeNull()
+  await act(async () => checkbox.click()); await settle()
+  await click('批量启用')
+  expect(admin.write).toHaveBeenCalledExactlyOnceWith('network.nodes.batch-update', { ids: [id], enabled: true }, expect.any(String))
+  expect(host.querySelector('input[aria-label="选择 private-node"]')?.matches(':checked')).toBe(false)
+})
+
 it('reports a missing node without displaying stale cached detail or requesting login', async () => {
   await render('/node/' + id)
   vi.mocked(admin.read).mockRejectedValue(new CoreAdminApiError('BUSINESS_REJECTED', 404))

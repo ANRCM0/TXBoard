@@ -14,6 +14,7 @@ vi.mock('./session', () => {
   const snapshot = { busy: false }
   return { admin: { read: vi.fn(), forgetSession: vi.fn() }, workflowActions: {
     snapshot: () => snapshot, generation: () => 0, subscribe: () => () => {}, run: vi.fn(), clearError: vi.fn(),
+    confirmReadAuthorization: vi.fn(),
   } }
 })
 const profile = { id: '9007199254740993', email: 'alice@example.test', banned: false, is_admin: false,

@@ -43,6 +43,17 @@
   --ui-gap: 12px;
   --ui-surface-subtle: #f1f5f9;
   --ui-surface-outline: #d9e3ee;
+  /* Categorical data colors. Keep series distinguishable without relying on
+   * the semantic status colors, which retain their own meaning. */
+  --data-blue: #3f6fe0;
+  --data-cyan: #0e8fa8;
+  --data-green: #1f8a5b;
+  --data-orange: #b66a12;
+  --data-purple: #7b57c8;
+  --data-red: #c2413b;
+  --ui-motion-fast: 150ms;
+  --ui-motion-base: 200ms;
+  --ui-ease: cubic-bezier(.2,.8,.2,1);
 }
 
 :root[data-theme="dark"] {
@@ -68,4 +79,10 @@
   --focus-ring: #93c5fd;
   --ui-surface-subtle: #172235;
   --ui-surface-outline: #324156;
+  --data-blue: #89a7ff;
+  --data-cyan: #38c7dd;
+  --data-green: #4ade9b;
+  --data-orange: #f4b860;
+  --data-purple: #b9a0ff;
+  --data-red: #ff8f88;
 }

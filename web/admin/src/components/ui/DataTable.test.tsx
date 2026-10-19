@@ -1,4 +1,4 @@
-import { act } from 'react'
+import { act, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { expect, it, vi } from 'vitest'
 import { DataTable } from './DataTable'
@@ -34,6 +34,28 @@ it('offers an intentional custom empty state while keeping populated tables inta
   act(() => root.render(<DataTable rows={[5]} columns={columns} emptyState={<button>创建第一条记录</button>} />))
   expect(host.querySelector('table')?.textContent).toContain('5')
   expect(host.querySelector('.table-empty-region')).toBeNull()
+  act(() => root.unmount()); host.remove()
+})
+
+it('selects only the current page and exposes an indeterminate header state', () => {
+  ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+  const host = document.createElement('div'); document.body.append(host)
+  const root = createRoot(host)
+  const columns = [{ key: 'id', header: 'ID', render: (row: number) => row }]
+  function Harness() {
+    const [selected, setSelected] = useState<Set<string>>(new Set(['2']))
+    return <DataTable rows={[1, 2]} columns={columns} selection={{
+      selected, onChange: setSelected, getKey: row => String(row), getLabel: row => '行 ' + row,
+    }} />
+  }
+  act(() => root.render(<Harness />))
+  expect(host.querySelector('input[aria-label="选择当前页全部行"]')).not.toBeNull()
+  expect(host.querySelectorAll('tbody input[type="checkbox"]')).toHaveLength(2)
+  expect(host.querySelector<HTMLInputElement>('input[aria-label="选择当前页全部行"]')!.indeterminate).toBe(true)
+  act(() => host.querySelector<HTMLInputElement>('input[aria-label="选择 行 1"]')!.click())
+  expect(host.querySelectorAll('tbody input[type="checkbox"]:checked')).toHaveLength(2)
+  act(() => host.querySelector<HTMLInputElement>('input[aria-label="选择当前页全部行"]')!.click())
+  expect(host.querySelectorAll('tbody input[type="checkbox"]:checked')).toHaveLength(0)
   act(() => root.unmount()); host.remove()
 })
 

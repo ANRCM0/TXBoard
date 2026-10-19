@@ -38,8 +38,10 @@ const routes = [
   ['/config/system/safe', '安全设置', 'settings.configuration.get'],
   ['/config/email/templates', '邮件模板', 'notifications.mail-templates.get'],
   ['/config/payment', '支付配置', 'billing.admin-payment-methods.list'],
+  ['/server/manage', '节点管理', 'network.nodes.list'],
   ['/server/node/9007199254740993', '节点详情', 'network.nodes.get'],
   ['/server/machine/9007199254740997', '服务器详情', 'network.machines.get'],
+  ['/user/12', '用户详情', 'identity.accounts.get'],
   ['/user/traffic-reset', '订阅流量重置', null],
 ]
 let browser
@@ -72,7 +74,7 @@ try {
   const { page, state } = desktop
   page.on('dialog', dialog => dialog.accept())
   for (const [pathname] of routes) await open(desktop, pathname)
-  passed('all twelve management paths load built native pages through generated Core contracts')
+  passed('all management paths load built native pages through generated Core contracts')
 
   await open(desktop, '/system/audit-log')
   await page.getByLabel('管理员 ID', { exact: true }).fill('9007199254740993')
@@ -153,6 +155,20 @@ try {
   await page.getByText('当前账号没有此操作的权限，已隐藏资源数据。', { exact: true }).waitFor()
   assert.equal(await page.locator('.native-management-page').getByRole('heading', { name: 'Native node', exact: true }).count(), 0)
   assert.equal(await page.getByRole('button', { name: '删除节点', exact: true }).count(), 0); state.denied.clear()
+  await open(desktop, '/server/manage')
+  await page.getByRole('row').filter({ hasText: 'Native node' }).getByRole('checkbox').check()
+  await page.getByRole('button', { name: '批量启用', exact: true }).click()
+  await page.waitForFunction(() => !document.querySelector('.ui-bulk-bar'))
+  const batch = state.calls.filter(call => call.operation === 'network.nodes.batch-update').at(-1)
+  assert.deepEqual(batch.input, { ids: [state.node.id], enabled: true })
+  passed('current-page node selection sends one bounded batch update and clears the selection')
+  await open(desktop, '/user/12')
+  await page.getByRole('button', { name: '封禁用户', exact: true }).click()
+  await page.getByRole('dialog').getByRole('button', { name: '封禁用户', exact: true }).click()
+  await page.getByRole('button', { name: '解除封禁', exact: true }).waitFor()
+  const status = state.calls.filter(call => call.operation === 'identity.accounts.status.update').at(-1)
+  assert.deepEqual(status.input, { user_id: '12', expected_banned: false, banned: true })
+  passed('user status changes only after confirmation and uses the observed ban state')
   await open(desktop, '/server/machine/9007199254740997')
   assert.deepEqual(state.calls.filter(call => call.operation === 'network.machines.get').at(-1).input, { machine_id: '9007199254740997' })
   await page.getByRole('link', { name: /Native node/ }).waitFor()

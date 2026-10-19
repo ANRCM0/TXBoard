@@ -7,6 +7,7 @@ import { admin, revokeAdminSession } from './session'
 import { managementError, ManagementFeedback } from './Feedback'
 import { PageHeader } from '../components/ui/PageHeader'
 import { DataTable, type Column } from '../components/ui/DataTable'
+import { EmptyState } from '../components/ui/EmptyState'
 import { requestConfirm } from '../components/ui/ConfirmDialog'
 
 type Session = CoreOutput<'identity.sessions.list'>[number]
@@ -42,7 +43,9 @@ export function SessionsPage() {
     <ManagementFeedback error={query.isError ? query.error : undefined} loading={query.isFetching} onRetry={() => void query.refetch()} />
     {!query.isError && query.data ? <div className="list-card"><div className="observation-card-heading"><div><h2>登录设备</h2><p>发现不熟悉的登录？撤销会话以终止其访问。</p></div><span className="observation-tag"><ShieldCheck size={14} />{query.data.data.length} 个会话</span></div>
       {query.data.meta.has_more ? <p className="native-list-note">当前显示前 100 项，另有会话未展示。</p> : null}
-      <p className="native-scroll-hint">左右滑动表格查看完整会话信息</p><DataTable rows={query.data.data} columns={columns} rowKey={row => row.id} label="登录会话" />
+      {query.data.data.length
+        ? <><p className="native-scroll-hint">左右滑动表格查看完整会话信息</p><DataTable rows={query.data.data} columns={columns} rowKey={row => row.id} label="登录会话" /></>
+        : <EmptyState title="暂无登录会话" description="当前账户没有可管理的活跃登录设备" />}
     </div> : null}
   </div>
 }

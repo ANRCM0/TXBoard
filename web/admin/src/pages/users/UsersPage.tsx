@@ -7,6 +7,9 @@ import { admin } from '../../native/session'
 import { ReadList } from '../../native/ReadList'
 import { readPage, unixDate } from '../../native/readPresentation'
 import { PageHeader } from '../../components/ui/PageHeader'
+import { FilterBar } from '../../components/ui/FilterBar'
+import { Input, Select } from '../../components/ui/Field'
+import { StatusBadge } from '../../components/ui/StatusBadge'
 import type { Column } from '../../components/ui/DataTable'
 import './UsersPage.css'
 
@@ -14,7 +17,7 @@ type Account = CoreOutput<'identity.accounts.list'>[number]
 const columns: Column<Account>[] = [
   { key: 'email', header: '用户', render: row => <div className="reference-account"><span className="reference-account-avatar" aria-hidden="true">{row.email.slice(0, 1).toUpperCase()}</span><Link className="table-link" to={'/user/' + row.id}>{row.email}</Link></div> },
   { key: 'id', header: '用户 ID', render: row => <code className="reference-user-id">{row.id}</code> },
-  { key: 'state', header: '状态', render: row => <span className={'reference-status ' + (row.banned ? 'is-danger' : 'is-success')}>{row.banned ? '已封禁' : '正常'}</span> },
+  { key: 'state', header: '状态', render: row => <StatusBadge tone={row.banned ? 'danger' : 'success'}>{row.banned ? '已封禁' : '正常'}</StatusBadge> },
   { key: 'role', header: '角色', render: row => <span className={'reference-tag ' + (row.is_admin ? 'is-primary' : '')}>{row.is_admin ? '管理员' : '用户'}</span> },
   { key: 'created', header: '注册时间', render: row => unixDate(row.created_at) },
   { key: 'login', header: '最近登录', render: row => unixDate(row.last_login_at) },
@@ -49,15 +52,18 @@ export function UsersPage() {
       onRetry={() => void query.refetch()} onPage={paginate}>
       <header className="reference-user-list-heading"><div><h2>用户列表</h2><p>按邮箱精确定位，或筛选账户状态</p></div>{data ? <span className="reference-tag">{data.meta.total.toLocaleString('zh-CN')} 位用户</span> : null}</header>
       <form className="management-filter-form" onSubmit={apply}>
-        <label>邮箱精确查询<input aria-label="用户邮箱" value={email} maxLength={254} type="email"
-          onChange={event => setEmail(event.target.value)} placeholder="user@example.com" /></label>
-        <label>账户状态<select aria-label="账户状态" value={banned} onChange={event => setBanned(event.target.value)}>
-          <option value="">全部状态</option><option value="0">正常</option><option value="1">已封禁</option>
-        </select></label>
-        <button className="button primary" type="submit"><Search size={15} />查询</button>
-        <button className="button" type="button" onClick={() => setParams({})}>清除筛选</button>
+        <FilterBar applied={[
+          ...(appliedEmail ? [{ key: 'email', label: '邮箱 ' + appliedEmail }] : []),
+          ...(appliedBanned ? [{ key: 'banned', label: appliedBanned === '1' ? '已封禁' : '正常账户' }] : []),
+        ]} onClear={() => { setEmail(''); setBanned(''); setParams({}) }}>
+          <label>邮箱精确查询<Input aria-label="用户邮箱" value={email} maxLength={254} type="email"
+            onChange={event => setEmail(event.target.value)} placeholder="user@example.com" /></label>
+          <label>账户状态<Select aria-label="账户状态" value={banned} onChange={event => setBanned(event.target.value)}>
+            <option value="">全部状态</option><option value="0">正常</option><option value="1">已封禁</option>
+          </Select></label>
+          <button className="button primary" type="submit"><Search size={15} aria-hidden="true" />查询</button>
+        </FilterBar>
       </form>
-      {appliedEmail || appliedBanned ? <p className="reference-applied-filters" role="status">当前筛选：{[appliedEmail ? '邮箱 ' + appliedEmail : '', appliedBanned ? (appliedBanned === '1' ? '已封禁' : '正常账户') : ''].filter(Boolean).join(' · ')}</p> : null}
     </ReadList>
   </div>
 }

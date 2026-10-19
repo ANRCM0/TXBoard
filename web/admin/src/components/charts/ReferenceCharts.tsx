@@ -47,7 +47,14 @@ export type HorizontalBarChartProps = { title: string; data: readonly Horizontal
  * Number(bytes * 10000n / maximumBytes) / 100 (guard maximumBytes === 0n).
  * Only ratios become Number; displayValue retains the original exact amount.
  */
-const colors = ['var(--primary)', 'var(--success)', 'var(--warning)', 'var(--danger)', 'var(--accent)', 'var(--muted)']
+const colors = [
+  'var(--primary)',
+  'var(--data-cyan)',
+  'var(--data-green)',
+  'var(--data-orange)',
+  'var(--data-purple)',
+  'var(--data-red)',
+]
 const colorAt = (index: number, color?: string) => color || colors[index % colors.length]
 const sample = (value: number | null | undefined): value is number => typeof value === 'number' && Number.isFinite(value) && value >= 0
 const formatNumber = (value: number) => new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 2 }).format(value)

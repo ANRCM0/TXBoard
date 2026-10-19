@@ -8,6 +8,7 @@ import { ReadList } from './ReadList'
 import { ManagementFeedback } from './Feedback'
 import { validId, unixDate } from './readPresentation'
 import { PageHeader } from '../components/ui/PageHeader'
+import { ReadOnlyNotice } from '../components/ui/ReadOnlyNotice'
 import type { Column } from '../components/ui/DataTable'
 
 type AuditLog = CoreOutput<'audit.logs.list'>[number]
@@ -33,6 +34,7 @@ export function AuditLogsPage() {
   ]
   return <div className="native-management-page observation-page observation-audit-page">
     <PageHeader title="管理审计" description="追踪管理员的操作与访问记录" action={<button className="button" disabled={!session || query.isFetching} onClick={() => void query.refetch()}><RefreshCw size={15} />刷新</button>} />
+    <ReadOnlyNotice title="审计记录只读">记录用于事后核对 · 不提供修改或删除入口 · 请求内容与来源信息来自 Core 审计存储</ReadOnlyNotice>
     {error ? <p role="alert">{error}</p> : null}
     <section className="list-card"><div className="observation-card-heading"><div><h2>筛选记录</h2><p>按操作、管理员或请求内容定位</p></div></div>
       <form className="native-filters observation-audit-filters" onSubmit={event => { event.preventDefault(); if (draft.admin_id && !validId(draft.admin_id)) { setError('管理员 ID 必须是有效的十进制字符串。'); return } setError(''); setPage(1); setFilters({ ...draft }) }}>

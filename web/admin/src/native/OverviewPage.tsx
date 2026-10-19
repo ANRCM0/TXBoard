@@ -5,6 +5,7 @@ import { Info, ArrowUpRight, Server, Network, Users, ReceiptText, RefreshCw } fr
 import { admin } from './session'
 import { ManagementFeedback } from './Feedback'
 import { PageHeader } from '../components/ui/PageHeader'
+import { MetricCard } from '../components/ui/MetricCard'
 import { SegmentedControl } from '../components/ui/SegmentedControl'
 import './overview-reference.css'
 import { DataTable } from '../components/ui/DataTable'
@@ -40,10 +41,10 @@ export function OverviewPage() {
   const distribution = orderStatusShare(orderRows)
   const traffic = nodeTrafficHistory(!nodes.isError && !history.isError && trafficEnabled ? history.data?.data : undefined)
   const metrics = [
-    { label: '账户总数', icon: Users, query: accounts, href: '/user/manage', tone: 'blue' },
-    { label: '订单总数', icon: ReceiptText, query: orders, href: '/finance/order', tone: 'purple' },
-    { label: '节点总数', icon: Network, query: nodes, href: '/server/manage', tone: 'green' },
-    { label: '服务器总数', icon: Server, query: machines, href: '/server/machine', tone: 'orange' },
+    { label: '账户总数', icon: Users, query: accounts, href: '/user/manage', tone: 'blue' as const },
+    { label: '订单总数', icon: ReceiptText, query: orders, href: '/finance/order', tone: 'purple' as const },
+    { label: '节点总数', icon: Network, query: nodes, href: '/server/manage', tone: 'green' as const },
+    { label: '服务器总数', icon: Server, query: machines, href: '/server/machine', tone: 'orange' as const },
   ]
   return <div className="native-management-page reference-overview">
     <PageHeader title="管理中心" description="站点资源概览" action={<div className="overview-refresh">
@@ -53,11 +54,10 @@ export function OverviewPage() {
     <ManagementFeedback error={identity.isError ? identity.error : undefined} loading={identity.isFetching}
       onRetry={() => void identity.refetch()} />
     <section className="overview-metrics" aria-label="资源统计">
-      {metrics.map(({ label, icon: Icon, query, href, tone }) => <Link className={'card overview-metric tone-' + tone} to={href} key={label}>
-        <div className="overview-metric-heading"><span>{label}</span><Icon size={19} /></div>
-        <strong>{query.isError ? '—' : query.data ? query.data.meta.total.toLocaleString('zh-CN') : '…'}</strong>
-        <span className="overview-metric-caption">{query.isError ? '暂不可用，点击查看' : '查看全部'}<ArrowUpRight size={14} /></span>
-      </Link>)}
+      {metrics.map(({ label, icon: Icon, query, href, tone }) => <MetricCard key={label} label={label} tone={tone}
+        icon={<Icon size={19} aria-hidden="true" />} href={href}
+        value={query.isError ? '—' : query.data ? query.data.meta.total.toLocaleString('zh-CN') : '…'}
+        caption={query.isError ? '暂不可用，点击查看' : '查看全部'} />)}
     </section>
     <div className="overview-charts-grid">
       <section className="card overview-chart-card" aria-label="收入趋势卡片">

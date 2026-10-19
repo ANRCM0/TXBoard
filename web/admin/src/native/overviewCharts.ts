@@ -1,4 +1,5 @@
 import type { CoreOutput } from '@txboard/core-sdk'
+import { gigabytes } from '../lib/format'
 import { minorAmount } from './readPresentation'
 
 type Order = CoreOutput<'commerce.admin-orders.list'>[number]
@@ -67,12 +68,6 @@ export function orderStatusShare(rows: readonly Order[]) {
   }
 }
 
-/** Round decimal GB to two places using exact integer arithmetic. */
-export function gigabytes(value: bigint) {
-  const hundredths = (value + 5_000_000n) / 10_000_000n
-  return (hundredths / 100n).toString() + '.' + (hundredths % 100n).toString().padStart(2, '0') + ' GB'
-}
-
 /** One series per node, sharing UTC dates and the same bounded drawing scale. */
 export function nodeTrafficHistory(history?: TrafficHistory) {
   const dates: string[] = []
@@ -102,7 +97,7 @@ export function nodeTrafficHistory(history?: TrafficHistory) {
     },
     series: rows.map(({ node, values }, index) => ({
       id: node.id, label: node.name,
-      color: ['var(--primary)', 'var(--success)', 'var(--warning)', 'var(--danger)', '#06b6d4'][index % 5],
+      color: ['var(--primary)', 'var(--data-cyan)', 'var(--data-green)', 'var(--data-orange)', 'var(--data-purple)', 'var(--data-red)'][index % 6],
       summary: gigabytes(values.reduce<bigint>((sum, value) => sum + (value ?? 0n), 0n)),
       values: values.map(value => value === null ? null : maximum ? Number(value * 1_000_000n / maximum) / 10_000 : 0),
       displayValues: values.map(value => value === null ? null : gigabytes(value)),

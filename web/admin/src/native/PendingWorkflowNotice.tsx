@@ -6,7 +6,7 @@ import { workflowDestination } from './routes'
 export function PendingWorkflowNotice() {
   const state = useSyncExternalStore(workflowActions.subscribe, workflowActions.snapshot)
   const attachments = useSyncExternalStore(attachmentTransfers.subscribe, attachmentTransfers.snapshot)
-  const destination = state.pending && workflowDestination(state.pending.operation)
+  const destination = state.pending && workflowDestination(state.pending.operation, state.pending.input)
   return <>
     {state.pending?.unknown && destination ? <section className="native-pending-notice" role="status" aria-label="管理操作待确认">
       <strong>{destination.label}有一项操作结果待确认</strong>

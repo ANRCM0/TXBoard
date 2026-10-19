@@ -9,7 +9,14 @@ export const availableAdminPaths: readonly string[] = [
   '/config/server', '/config/email', '/config/telegram', '/config/app',
 ]
 
-export function workflowDestination(operation: string): { path: string; label: string } | undefined {
+export function workflowDestination(operation: string, input?: unknown): { path: string; label: string } | undefined {
+  if (operation === 'identity.accounts.status.update') {
+    const userId = input && typeof input === 'object' && 'user_id' in input && typeof input.user_id === 'string'
+      ? input.user_id : ''
+    return userId
+      ? { path: '/user/' + userId, label: '用户详情' }
+      : { path: '/user/manage', label: '用户管理' }
+  }
   if (operation.startsWith('network.nodes.')) return { path: '/server/manage', label: '节点管理' }
   if (operation.startsWith('network.machines.')) return { path: '/server/machine', label: '服务器管理' }
   if (operation.startsWith('subscription.lifecycle.')) return { path: '/user/traffic-reset', label: '订阅流量重置' }

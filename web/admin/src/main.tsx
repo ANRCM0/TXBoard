@@ -14,6 +14,7 @@ import './admin-list-density.css'
 import './admin-monitor-density.css'
 import './native/native.css'
 import './admin-theme.css'
+import './components/ui/ui.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
