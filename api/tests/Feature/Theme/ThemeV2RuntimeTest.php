@@ -20,8 +20,8 @@ final class ThemeV2RuntimeTest extends TestCase
     {
         parent::setUp();
         config()->set('theme_v2.txboard_version', '3.6.0');
-        config()->set('theme_v2.gateway_version', '1.0.0');
-        config()->set('theme_v2.sdk_version', '0.1.0');
+        config()->set('theme_v2.browser_version', '1.0.0');
+        config()->set('theme_v2.sdk_version', '0.2.0');
         $this->cleanupThemeFiles();
     }
 
@@ -49,11 +49,11 @@ final class ThemeV2RuntimeTest extends TestCase
             'title' => 'Runtime Theme',
             'version' => $version,
             'entry' => ['type' => 'spa', 'module' => 'dist/index.js'],
-            'engines' => ['txboard' => '>=3.6', 'gateway' => '>=1 <2', 'contract' => '1.x'],
-            'gateway' => [
-                'contract' => '1.x',
-                'sdk' => ['package' => '@txboard/theme-sdk', 'version' => '>=0.1.0 <1.0.0'],
-                'capabilities' => ['bootstrap', 'auth.login'],
+            'engines' => ['txboard' => '>=3.6', 'browser' => '>=1 <2', 'contract' => 'core-browser/v1'],
+            'browser' => [
+                'contract' => 'core-browser/v1',
+                'sdk' => ['package' => '@txboard/theme-sdk', 'version' => '>=0.2.0 <1.0.0'],
+                'capabilities' => ['identity.session.create'],
             ],
             'assets' => [
                 ['path' => 'dist/index.js', 'integrity' => 'sha256-'.base64_encode(hash('sha256', $js, true))],
@@ -169,12 +169,12 @@ final class ThemeV2RuntimeTest extends TestCase
         $runtime = app(ThemeV2Runtime::class);
         $runtime->install($this->uploadedPackage('1.0.0'));
         $runtime->install($this->uploadedPackage('1.1.0'));
-        config()->set('theme_v2.gateway_version', '2.0.0');
+        config()->set('theme_v2.browser_version', '2.0.0');
         try {
             $runtime->rollback(self::NAME, false);
             $this->fail('Incompatible Gateway must reject rollback');
         } catch (\InvalidArgumentException $e) {
-            $this->assertStringContainsString('Incompatible Gateway version', $e->getMessage());
+            $this->assertStringContainsString('Incompatible Core browser version', $e->getMessage());
         }
         $this->assertSame('1.1.0', $runtime->manifest(self::NAME)['version']);
     }

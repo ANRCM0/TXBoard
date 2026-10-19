@@ -141,14 +141,14 @@ class ModuleManagementApiTest extends TestCase
         File::put($path.'/txboard-theme.json', json_encode([
             'format' => 2, 'name' => $name, 'version' => '1.0.0',
             'entry' => ['type' => 'spa', 'module' => 'dist/index.js'],
-            'engines' => ['txboard' => '*', 'gateway' => '*', 'contract' => '1.x'],
-            'gateway' => ['contract' => '1.x', 'sdk' => ['package' => '@txboard/theme-sdk', 'version' => '*'], 'capabilities' => []],
+            'engines' => ['txboard' => '*', 'browser' => '*', 'contract' => 'core-browser/v1'],
+            'browser' => ['contract' => 'core-browser/v1', 'sdk' => ['package' => '@txboard/theme-sdk', 'version' => '*'], 'capabilities' => []],
             'dependencies' => ['runtime' => []],
             'security' => ['csp' => 'strict', 'remoteCode' => false],
             'assets' => [['path' => 'dist/index.js', 'integrity' => 'sha256-'.base64_encode(hash('sha256', $js, true))]],
         ], JSON_THROW_ON_ERROR));
         config()->set(['theme_v2.txboard_version' => '3.6.0',
-            'theme_v2.gateway_version' => '1.0.0', 'theme_v2.sdk_version' => '0.1.0']);
+            'theme_v2.browser_version' => '1.0.0', 'theme_v2.sdk_version' => '0.2.0']);
     }
 
     private function makeAdmin(): User

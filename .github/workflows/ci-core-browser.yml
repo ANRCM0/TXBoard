@@ -1,0 +1,96 @@
+name: Core browser ingress
+
+on:
+  push:
+    branches: [main]
+    paths: ['api/**', 'web/**', 'packages/**', 'tools/module-host/**', 'package.json', 'package-lock.json', 'tsconfig.base.json', 'scripts/tests/core-browser/**', 'scripts/native-subscription-client.mjs', 'contracts/core-api/**', 'scripts/check-browser-core-surface.py', 'node/cmd/credential-provider/**', 'node/internal/credentialprovider/**', 'node/internal/credentialdelivery/**', 'node/go.mod', 'node/go.sum', '.github/workflows/ci-core-browser.yml']
+  pull_request:
+    paths: ['api/**', 'web/**', 'packages/**', 'tools/module-host/**', 'package.json', 'package-lock.json', 'tsconfig.base.json', 'scripts/tests/core-browser/**', 'scripts/native-subscription-client.mjs', 'contracts/core-api/**', 'scripts/check-browser-core-surface.py', 'node/cmd/credential-provider/**', 'node/internal/credentialprovider/**', 'node/internal/credentialdelivery/**', 'node/go.mod', 'node/go.sum', '.github/workflows/ci-core-browser.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: core-browser-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+defaults:
+  run:
+    shell: bash
+jobs:
+  browser-native-http:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      mariadb:
+        image: mariadb:11.4
+        env:
+          MARIADB_ROOT_PASSWORD: core-browser-root-fixture
+          MARIADB_ROOT_HOST: '%'
+        ports: ['13306:3306']
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval 5s --health-retries 20
+      redis:
+        image: redis:7.4-alpine
+        ports: ['16379:6379']
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, pdo_mysql, pdo_sqlite, curl, openssl, sodium, redis, bcmath, pcntl, posix
+          coverage: none
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22.23.2'
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: node/go.mod
+          cache-dependency-path: node/go.sum
+      - name: Validate native commerce fixture syntax
+        run: |
+          python3 scripts/check-browser-core-surface.py
+          bash -n scripts/tests/core-browser/run-linux.sh
+          php -l scripts/tests/core-browser/core-fixture.php
+          node --check scripts/tests/core-browser/core-browser.mjs
+          node --check scripts/tests/core-browser/renderer-delivery.mjs
+          node --check scripts/tests/core-browser/support-workflow.mjs
+          node --check scripts/tests/core-browser/financial-workflow.mjs
+      - name: Install isolated integration dependencies
+        working-directory: .
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y mariadb-client
+          cd api
+          composer install --no-interaction --prefer-dist
+          cd ..
+          npm ci --no-audit --no-fund
+      - name: Test isolated module host in Chromium
+        run: |
+          npm run build:sdk
+          npm run build --workspace @txboard/module-host
+          npx playwright install --with-deps chromium
+          node --test scripts/tests/core-browser/module-host.test.mjs
+      - name: Published offers, support, financial workflows and renderer delivery through actual Core browser HTTP
+        env:
+          TXBOARD_CORE_REPO: ${{ github.workspace }}
+          TXBOARD_CORE_VENDOR: ${{ github.workspace }}/api/vendor
+          MYSQL_TEST_HOST: 127.0.0.1
+          MYSQL_TEST_PORT: '13306'
+          MYSQL_TEST_ROOT_PASSWORD: core-browser-root-fixture
+          REDIS_TEST_PORT: '16379'
+          CORE_BROWSER_INTEGRATION_SCRATCH: ${{ runner.temp }}
+        run: bash scripts/tests/core-browser/run-linux.sh
+      - name: Retain bounded non-secret native commerce evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: core-browser-commerce-${{ github.sha }}
+          if-no-files-found: ignore
+          path: |
+            ${{ runner.temp }}/core-browser.*/core-browser-result.json
+            ${{ runner.temp }}/core-browser.*/fixture.json

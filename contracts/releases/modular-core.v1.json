@@ -5,7 +5,7 @@
   "core_revision": "The exact CI checkout SHA; image APP_COMMIT and workflow run identify it",
   "deploy": {
     "repository": "ANRCM0/TXBoard-Deploy",
-    "revision": "37a40482852c9398fbbe276ebb93379febccf234",
+    "revision": "aaea3914aca6ff11876b187c1e26cf40d443303d",
     "runner": "scripts/native-runtime.py",
     "protocol": "txboard.native-deployment/v1"
   },
@@ -25,7 +25,7 @@
   "scope": {
     "money": "CNY, zero channel fees, native wallet refund; real merchant qualification remains separate",
     "node": "Current supported VLESS/VMess profiles and actual native C2 acceptance; no complete protocol or HA claim",
-    "frontend": "Admin and user sources live in web/ with the same-repository Core SDK; frontend behavior, container integration and production qualification are verified separately",
-    "publishing": "Candidate PR and CI evidence; no default-branch merge or release authorization"
+    "frontend": "Admin and user sources live in web/ with the same-repository SDK; browser HTTP admission executes inside PHP Core without a standalone Gateway; functional, image and production qualification remain separate evidence",
+    "publishing": "Candidate composition; default-branch merge, image publication, formal release and operational qualification have separate evidence"
   }
 }

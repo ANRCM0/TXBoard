@@ -12,6 +12,7 @@ final class NativeRuntimeAdmission
     public const JOBS = [\App\Jobs\OrderHandleJob::class];
     private const HTTP = [
         'GET' => [
+            'gateway/v1/bootstrap', 'gateway/v1/core/(?:user|admin)/capabilities',
             'txapi/readiness', 'txapi/public/config', 'txapi/public/site-config', 'txapi/plans', 'txapi/plans/[1-9][0-9]*',
             'txapi/me', 'txapi/me/subscription', 'txapi/me/preferences',
             'txapi/me/subscription-links', 'txapi/me/usage-periods',
@@ -26,6 +27,7 @@ final class NativeRuntimeAdmission
             'txapi/admin/[^/]+/extensions/[a-z][a-z0-9_]{0,63}/(?:presentation|resources/ui/[A-Za-z0-9_./-]+)',
         ],
         'POST' => [
+            'gateway/v1/core/(?:user|admin)/operations/[a-z][a-z0-9.-]{1,100}',
             'txapi/auth/(?:login|admin/login|register|logout|password)',
             'txapi/me/access-subjects', 'txapi/me/access-subjects/[1-9][0-9]*/(?:revoke|rotate)',
             'txapi/me/credential-operations/cp_[a-f0-9]{32}/recover',

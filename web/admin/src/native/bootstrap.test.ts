@@ -2,7 +2,7 @@ import { afterEach, expect, it, vi } from 'vitest'
 import { fetchGuestConfig } from '../api/comm'
 
 afterEach(() => { vi.unstubAllGlobals() })
-it('uses only the public Gateway bootstrap, without cookies or actor credentials', async () => {
+it('uses only the public Core browser bootstrap, without cookies or actor credentials', async () => {
   const send = vi.fn<typeof fetch>().mockResolvedValue(Response.json({ ok: true, data: { security: {
     captcha: { enabled: true, type: 'turnstile', siteKey: 'public-site-key' },
   } } }))

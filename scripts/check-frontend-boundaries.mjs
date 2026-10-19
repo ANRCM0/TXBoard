@@ -6,7 +6,7 @@ import ts from 'typescript'
 const root = fileURLToPath(new URL('../', import.meta.url))
 const workspace = JSON.parse(await readFile(path.join(root, 'package.json'), 'utf8'))
 const ownership = JSON.parse(await readFile(path.join(root, 'contracts/frontend/ownership.v1.json'), 'utf8'))
-const expectedPaths = { admin: 'web/admin', user: 'web/user', shared: 'web/shared', sdk: 'gateway/packages/core-sdk' }
+const expectedPaths = { admin: 'web/admin', user: 'web/user', shared: 'web/shared', sdk: 'packages/core-sdk' }
 for (const version of Object.values({ ...workspace.dependencies, ...workspace.devDependencies })) {
   if (typeof version === 'string' && /(?:TX-F|\.\.\/|\.\.\\)/i.test(version)) throw new Error('Root workspace cannot depend on an independent repository checkout')
 }

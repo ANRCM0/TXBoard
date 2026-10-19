@@ -58,6 +58,13 @@ class Handler extends ExceptionHandler
      */
     public function render($request, Throwable $exception)
     {
+        if ($request->is('gateway/v1', 'gateway/v1/*')) {
+            $status = $exception instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface
+                ? $exception->getStatusCode() : ($exception instanceof \Illuminate\Validation\ValidationException ? 422 : 503);
+            $code = match ($status) { 401 => 'UNAUTHORIZED', 403 => 'FORBIDDEN', 404, 405 => 'NOT_FOUND',
+                413 => 'PAYLOAD_TOO_LARGE', 400, 422 => 'VALIDATION_ERROR', 429 => 'RATE_LIMITED', default => 'UPSTREAM_UNAVAILABLE' };
+            return \App\Domains\Browser\BrowserResponse::error($request, $code, $status);
+        }
         if ($request->is('txapi/*')) {
             return TxapiErrorRenderer::render($request, $exception);
         }

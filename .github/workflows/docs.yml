@@ -5,7 +5,6 @@ on:
     paths:
       - '**/*.md'
       - 'scripts/check-docs.mjs'
-      - 'gateway/scripts/check-docs.mjs'
       - 'scripts/tests/check-docs.test.mjs'
       - 'scripts/check-ci-policy.py'
       - '.github/workflows/**'
@@ -16,7 +15,6 @@ on:
     paths:
       - '**/*.md'
       - 'scripts/check-docs.mjs'
-      - 'gateway/scripts/check-docs.mjs'
       - 'scripts/tests/check-docs.test.mjs'
       - 'scripts/check-ci-policy.py'
       - '.github/workflows/**'

@@ -14,9 +14,9 @@ npm run verify:web
 
 `web/admin` contains the React administrator application; `web/user` contains the
 Vue user application. `web/shared` holds framework-independent helpers. Both
-applications consume `gateway/packages/core-sdk` through the npm workspace.
+applications consume `packages/core-sdk` through the npm workspace.
 
-Admin calls use the generated, controlled Gateway transport. Core remains the
+Admin calls use the generated, controlled Core browser ingress. Core remains the
 authority for current sessions, operation grants, record versions, and financial
 state. Credentials and unresolved command inputs stay in session memory. Unknown
 write results require an explicit retry with the original input and idempotency
@@ -44,6 +44,16 @@ sorting verifies the complete current set, and node routing simulation is a
 bounded read that displays any non-authoritative result and unresolved patterns.
 
 `web-ci` runs component and browser regression checks. Browser fixtures validate
-the built UI against strict generated Gateway contracts and record their synthetic
+the built UI against strict generated browser contracts and record their synthetic
 transport explicitly. Native backend Actions and actual image acceptance are
 separate evidence; neither implies a production deployment.
+
+Theme packages use `@txboard/theme-sdk` 0.2 and declare `core-browser/v1` with
+their explicit operation capabilities. `createThemeClient` exposes the generated
+`call`, `callResult`, and `capabilities` methods and keeps credentials in the
+host's memory. The minimal consumer lives in `examples/theme-native`.
+Build the theme SDK with `npm run build:theme-sdk`. Older themed REST and
+experimental HPKE methods are no longer provided.
+
+`tools/module-host` is a development acceptance host for controlled Core module
+presentation and operations. It is not a production service.

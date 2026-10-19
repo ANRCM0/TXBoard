@@ -40,56 +40,18 @@
           "type": "string",
           "minLength": 1
         },
-        "gateway": {
+        "contract": {
+          "const": "core-browser/v1"
+        },
+        "browser": {
           "type": "string",
           "minLength": 1
-        },
-        "contract": {
-          "const": "1.x"
         }
       },
       "required": [
         "txboard",
-        "gateway",
+        "browser",
         "contract"
-      ],
-      "additionalProperties": false
-    },
-    "gateway": {
-      "type": "object",
-      "properties": {
-        "contract": {
-          "const": "1.x"
-        },
-        "sdk": {
-          "type": "object",
-          "properties": {
-            "package": {
-              "const": "@txboard/theme-sdk"
-            },
-            "version": {
-              "type": "string",
-              "minLength": 1
-            }
-          },
-          "required": [
-            "package",
-            "version"
-          ],
-          "additionalProperties": false
-        },
-        "capabilities": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "pattern": "^[a-z][a-z0-9._-]{0,79}$"
-          }
-        }
-      },
-      "required": [
-        "contract",
-        "sdk",
-        "capabilities"
       ],
       "additionalProperties": false
     },
@@ -177,7 +139,45 @@
       ],
       "additionalProperties": false
     },
-    "author": {}
+    "author": {},
+    "browser": {
+      "type": "object",
+      "properties": {
+        "contract": {
+          "const": "core-browser/v1"
+        },
+        "sdk": {
+          "type": "object",
+          "properties": {
+            "package": {
+              "const": "@txboard/theme-sdk"
+            },
+            "version": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "package",
+            "version"
+          ],
+          "additionalProperties": false
+        },
+        "capabilities": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9._-]{0,79}$"
+          }
+        }
+      },
+      "required": [
+        "contract",
+        "sdk",
+        "capabilities"
+      ],
+      "additionalProperties": false
+    }
   },
   "required": [
     "format",
@@ -185,7 +185,7 @@
     "version",
     "entry",
     "engines",
-    "gateway",
+    "browser",
     "assets",
     "dependencies",
     "security"

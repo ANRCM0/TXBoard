@@ -177,7 +177,7 @@ try {
   verifyFixture(mobile.state)
   passed('all four catalog and network pages retain bounded mobile layouts and navigation')
   await writeFile(path.join(output, 'result.json'), JSON.stringify({ passed: true, checks,
-    frontend: 'built main-repository admin', transport: 'strict synthetic Gateway fixtures',
+    frontend: 'built main-repository admin', transport: 'strict synthetic Core browser-ingress fixtures',
     schema: 'current generated Core input/output/meta schemas',
     realBackendAcceptance: 'separate API, MySQL, and actual Core image Actions; this fixture does not claim live Core UI integration' }, null, 2) + '\n')
 } catch (error) {

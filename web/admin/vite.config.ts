@@ -1,6 +1,7 @@
 import { loadEnv } from 'vite'
 import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
+import { coreBrowserProxy } from '../dev-core-proxy'
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
@@ -17,10 +18,7 @@ export default defineConfig(({ mode }) => {
     server: {
       port: Number(env.VITE_PORT || 3001),
       proxy: {
-        '/gateway': {
-          target: env.VITE_GATEWAY_TARGET || 'http://127.0.0.1:8080',
-          changeOrigin: true,
-        },
+        '/gateway': coreBrowserProxy(env.VITE_GATEWAY_TARGET || 'http://127.0.0.1:8080'),
       },
     },
   }

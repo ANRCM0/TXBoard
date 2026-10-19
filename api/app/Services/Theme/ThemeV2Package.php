@@ -83,7 +83,7 @@ final class ThemeV2Package
      *
      * @return array<string, mixed> validated v2 manifest
      */
-    public function validate(ZipArchive $zip, string $txboardVersion, string $gatewayVersion, string $sdkVersion): array
+    public function validate(ZipArchive $zip, string $txboardVersion, string $browserVersion, string $sdkVersion): array
     {
         $this->assertSafeArchive($zip);
         $entry = $this->manifestEntry($zip);
@@ -149,7 +149,7 @@ final class ThemeV2Package
             throw new InvalidArgumentException('Theme v2 manifest must be valid JSON');
         }
         $this->assertObject($manifest, 'manifest');
-        $this->known($manifest, ['format','name','title','version','entry','engines','gateway',
+        $this->known($manifest, ['format','name','title','version','entry','engines','browser',
             'assets','build','config','dependencies','security','author'], 'manifest');
 
         if (($manifest['format'] ?? null) !== 2) {
@@ -177,31 +177,24 @@ final class ThemeV2Package
         }
 
         $engines = $manifest['engines'] ?? null;
-        $gateway = $manifest['gateway'] ?? null;
+        $browser = $manifest['browser'] ?? null;
         $this->assertObject($engines, 'engines');
-        $this->assertObject($gateway, 'gateway');
-        $this->known($engines, ['txboard','gateway','contract'], 'engines');
-        $this->known($gateway, ['contract','sdk','capabilities'], 'gateway');
-        $sdk = $gateway['sdk'] ?? null;
-        $this->assertObject($sdk, 'gateway.sdk');
-        $this->known($sdk, ['package','version'], 'gateway.sdk');
+        $this->assertObject($browser, 'browser');
+        $this->known($engines, ['txboard','browser','contract'], 'engines');
+        $this->known($browser, ['contract','sdk','capabilities'], 'browser');
+        $sdk = $browser['sdk'] ?? null;
+        $this->assertObject($sdk, 'browser.sdk');
+        $this->known($sdk, ['package','version'], 'browser.sdk');
         if (($sdk['package'] ?? null) !== '@txboard/theme-sdk') {
             throw new InvalidArgumentException('Unsupported theme SDK package');
         }
-        if (($engines['contract'] ?? null) !== '1.x' || ($gateway['contract'] ?? null) !== '1.x') {
-            throw new InvalidArgumentException('Unsupported theme Gateway contract');
+        if (($engines['contract'] ?? null) !== 'core-browser/v1' || ($browser['contract'] ?? null) !== 'core-browser/v1') {
+            throw new InvalidArgumentException('Unsupported theme Core browser contract');
         }
         $this->compatible($txboardVersion, $engines['txboard'] ?? null, 'TXBoard');
-        $this->compatible($gatewayVersion, $engines['gateway'] ?? null, 'Gateway');
+        $this->compatible($browserVersion, $engines['browser'] ?? null, 'Core browser');
         $this->compatible($sdkVersion, $sdk['version'] ?? null, 'SDK');
-        if (!is_array($gateway['capabilities'] ?? null) || !array_is_list($gateway['capabilities'])) {
-            throw new InvalidArgumentException('Theme capability hints must be an array');
-        }
-        foreach ($gateway['capabilities'] as $capability) {
-            if (!is_string($capability) || !preg_match('/\A[a-z][a-z0-9._-]{0,79}\z/D', $capability)) {
-                throw new InvalidArgumentException('Invalid theme capability hint');
-            }
-        }
+        $this->assertBrowserCapabilities($browser['capabilities'] ?? null);
 
         $security = $manifest['security'] ?? null;
         $this->assertObject($security, 'security');
@@ -301,18 +294,49 @@ final class ThemeV2Package
     public function assertDeployedCompatibility(
         array $manifest,
         string $txboardVersion,
-        string $gatewayVersion,
+        string $browserVersion,
         string $sdkVersion
     ): void {
         $this->compatible($txboardVersion, $manifest['engines']['txboard'] ?? null, 'TXBoard');
-        $this->compatible($gatewayVersion, $manifest['engines']['gateway'] ?? null, 'Gateway');
-        $this->compatible($sdkVersion, $manifest['gateway']['sdk']['version'] ?? null, 'SDK');
+        $this->compatible($browserVersion, $manifest['engines']['browser'] ?? null, 'Core browser');
+        $this->compatible($sdkVersion, $manifest['browser']['sdk']['version'] ?? null, 'SDK');
         if (($manifest['format'] ?? null) !== 2 ||
+            array_key_exists('gateway', $manifest) ||
             ($manifest['entry']['type'] ?? null) !== 'spa' ||
-            ($manifest['gateway']['contract'] ?? null) !== '1.x' ||
+            ($manifest['engines']['contract'] ?? null) !== 'core-browser/v1' ||
+            ($manifest['browser']['sdk']['package'] ?? null) !== '@txboard/theme-sdk' ||
+            ($manifest['browser']['contract'] ?? null) !== 'core-browser/v1' ||
             ($manifest['security']['csp'] ?? null) !== 'strict' ||
             ($manifest['security']['remoteCode'] ?? null) !== false) {
             throw new InvalidArgumentException('Incompatible installed Theme v2 manifest');
+        }
+        $this->assertBrowserCapabilities($manifest['browser']['capabilities'] ?? null);
+    }
+
+    private function assertBrowserCapabilities(mixed $capabilities): void
+    {
+        if (!is_array($capabilities) || !array_is_list($capabilities)) {
+            throw new InvalidArgumentException('Theme capability hints must be an array');
+        }
+        $surfacePath = dirname(__DIR__, 3) . '/resources/contracts/browser-surfaces.v1.json';
+        if (!is_file($surfacePath) || !is_readable($surfacePath)) {
+            throw new InvalidArgumentException('Reviewed browser surface unavailable');
+        }
+        try {
+            $surfaces = json_decode((string) file_get_contents($surfacePath), true, 32, JSON_THROW_ON_ERROR);
+        } catch (JsonException $error) {
+            throw new InvalidArgumentException('Reviewed browser surface unavailable', previous: $error);
+        }
+        $reviewed = $surfaces['user'] ?? null;
+        if (!is_array($reviewed) || !array_is_list($reviewed) || ($surfaces['version'] ?? null) !== 1) {
+            throw new InvalidArgumentException('Reviewed browser surface unavailable');
+        }
+        $seen = [];
+        foreach ($capabilities as $capability) {
+            if (!is_string($capability) || !in_array($capability, $reviewed, true) || isset($seen[$capability])) {
+                throw new InvalidArgumentException('Unreviewed or duplicate theme browser capability');
+            }
+            $seen[$capability] = true;
         }
     }
 

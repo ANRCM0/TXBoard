@@ -9,18 +9,8 @@
   },
   "engines": {
     "txboard": ">=3.6",
-    "gateway": ">=1 <2",
-    "contract": "1.x"
-  },
-  "gateway": {
-    "contract": "1.x",
-    "sdk": {
-      "package": "@txboard/theme-sdk",
-      "version": ">=0.1.0 <1.0.0"
-    },
-    "capabilities": [
-      "bootstrap"
-    ]
+    "contract": "core-browser/v1",
+    "browser": ">=1 <2"
   },
   "assets": [
     {
@@ -34,5 +24,17 @@
   "security": {
     "csp": "strict",
     "remoteCode": false
+  },
+  "browser": {
+    "contract": "core-browser/v1",
+    "sdk": {
+      "package": "@txboard/theme-sdk",
+      "version": ">=0.2.0 <1.0.0"
+    },
+    "capabilities": [
+      "identity.session.create",
+      "catalog.offers.list",
+      "commerce.orders.list"
+    ]
   }
 }

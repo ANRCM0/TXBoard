@@ -4,7 +4,7 @@ return [
     // These must be supplied from trusted deployed release metadata (not a ZIP).
     // Blank values fail closed during v2 installation and activation.
     'txboard_version' => env('THEME_V2_TXBOARD_VERSION', ''),
-    'gateway_version' => env('THEME_V2_GATEWAY_VERSION', ''),
+    'browser_version' => env('THEME_V2_BROWSER_VERSION', ''),
     'sdk_version' => env('THEME_V2_SDK_VERSION', ''),
 
     // Server-owned presentation-field allowlist. Manifest config.public can

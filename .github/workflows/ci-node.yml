@@ -383,7 +383,7 @@ jobs:
           pattern: tx-node-linux-*
           merge-multiple: true
           path: node/dist
-      # Core/Gateway publish their images independently. This is the one
+      # Core publishes its image independently. This is the one
       # monorepo Release creator; it does not claim those builds are atomic.
       - name: Create unified release if missing and upload Node binaries
         env:

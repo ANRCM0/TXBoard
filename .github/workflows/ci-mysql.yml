@@ -403,6 +403,10 @@ jobs:
       max-parallel: 4
       matrix:
         include:
+          - shard: browser-ingress
+            run_usage_concurrency: false
+            test_files: >-
+              tests/Feature/Txapi/CoreBrowserIngressTest.php
           - shard: orders-and-lifecycle
             run_usage_concurrency: false
             test_files: >-

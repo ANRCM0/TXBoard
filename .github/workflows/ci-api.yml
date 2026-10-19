@@ -9,6 +9,7 @@ on:
       - "contracts/core-api/**"
       - "scripts/generate-core-contracts.py"
       - "scripts/check-admin-unification.py"
+      - "scripts/check-browser-core-surface.py"
       - "contracts/kernel/**"
       - "contracts/modules/**"
       - "contracts/releases/**"
@@ -51,6 +52,7 @@ on:
       - "contracts/core-api/**"
       - "scripts/generate-core-contracts.py"
       - "scripts/check-admin-unification.py"
+      - "scripts/check-browser-core-surface.py"
       - "contracts/kernel/**"
       - "contracts/modules/**"
       - "contracts/releases/**"
@@ -124,6 +126,7 @@ jobs:
         run: |
           python3 scripts/generate-core-contracts.py --check
           python3 scripts/check-admin-unification.py
+          python3 scripts/check-browser-core-surface.py
           python3 scripts/check-core-boundaries.py
           python3 scripts/check-kernel-v1.py
           python3 scripts/check-renderer-registry.py
