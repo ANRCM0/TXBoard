@@ -11,7 +11,7 @@ contract = json.loads((ROOT / 'contracts/core-api/operations.v1.json').read_text
 bindings = json.loads((ROOT / 'contracts/core-api/admin-bindings.v1.json').read_text(encoding='utf-8'))['bindings']
 migration = json.loads((ROOT / 'contracts/core-api/admin-migration.v1.json').read_text(encoding='utf-8'))
 surface = contract['surfaces']['admin']
-assert len(surface) == len(set(surface)) == 111
+assert len(surface) == len(set(surface)) == 119
 registry = (ROOT / 'api/app/Domains/InternalApi/OperationRegistry.php').read_text(encoding='utf-8')
 for name, binding in bindings.items():
     spec = contract['operations'][name]

@@ -5,7 +5,9 @@ import type { CoreAdminWriteOperation } from '@txboard/core-sdk'
 type Operation = Extract<CoreAdminWriteOperation,
   `commerce.admin-orders.${string}` | `support.admin-tickets.${string}` | `content.${string}`
   | `billing.coupons.${string}` | `billing.admin-gift-cards.${string}` | `billing.admin-commissions.${string}`
-  | `catalog.${string}` | `network.groups.${string}` | `network.routes.${string}` | `network.access-audit.${string}`>
+  | `catalog.${string}` | `network.groups.${string}` | `network.routes.${string}` | `network.access-audit.${string}`
+  | `network.nodes.${string}` | `network.machines.${string}` | `subscription.lifecycle.${string}`
+  | `notifications.mail-templates.${string}` | 'settings.configuration.update' | 'billing.admin-payment-methods.save'>
 export type PendingWorkflow = { [K in Operation]: {
   operation: K; input: CoreInput<K>; key: string; unknown: boolean
 } }[Operation]

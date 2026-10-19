@@ -42,7 +42,7 @@ async function login(page) {
   await page.getByRole('textbox', { name: '邮箱', exact: true }).fill('admin@example.test')
   await page.getByLabel('密码', { exact: true }).fill('admin-password')
   await page.getByRole('button', { name: '登录', exact: true }).click()
-  await page.getByRole('heading', { name: '套餐与发布', exact: true }).waitFor()
+  await page.locator('.native-management-page .page-header').getByRole('heading', { name: '套餐与发布', exact: true }).waitFor()
 }
 async function navigate(page, name, mobile = false) {
   if (mobile) await page.getByRole('button', { name: '打开导航', exact: true }).click()
@@ -50,7 +50,7 @@ async function navigate(page, name, mobile = false) {
   await link.waitFor(); assert.doesNotMatch(await link.innerText(), /待开放/); await link.click()
   const [, pathname, heading] = routes.find(row => row[0] === name)
   await page.waitForURL(url => url.pathname === '/admin' + pathname)
-  await page.getByRole('heading', { name: heading, exact: true }).waitFor()
+  await page.locator('.native-management-page .page-header').getByRole('heading', { name: heading, exact: true }).waitFor()
 }
 function verifyFixture(state) {
   assert.deepEqual(state.errors, [])
@@ -85,7 +85,7 @@ try {
 
   await navigate(page, '路由管理')
   await page.getByRole('button', { name: '编辑完整路由排序', exact: true }).click()
-  const sorting = page.locator('section.list-card').filter({ has: page.getByRole('heading', { name: '完整路由排序', exact: true }) })
+  const sorting = page.locator('.native-management-page section.list-card').filter({ has: page.getByRole('heading', { name: '完整路由排序', exact: true }) })
   await sorting.getByRole('button', { name: '下移', exact: true }).first().click()
   await page.getByRole('button', { name: '保存完整路由排序', exact: true }).click()
   await page.getByRole('button', { name: '保存完整路由排序', exact: true }).waitFor({ state: 'detached' })

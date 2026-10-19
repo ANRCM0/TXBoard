@@ -28,7 +28,12 @@ This adaptation phase enables support tickets and private attachments, notices,
 knowledge, coupons, gift cards and batches, and reviewed commission transfers into
 the native wallet. Commission approval is a wallet transfer; external payout and
 commission reversal actions are not exposed by the current backend contract.
-Unadapted navigation destinations continue to display the existing pending page.
+The current administration navigation is connected to reviewed operations.
+Module/plugin/theme entries inspect runtime state; lifecycle changes remain in
+the controlled deployment flow. Queue pages omit raw job payloads and exception
+messages. Dedicated settings and payment configuration forms use versioned
+updates and never return existing credential values. Node/machine detail reads
+use exact IDs, and traffic resets use the current native subscription version.
 New user application product work remains deferred in this phase.
 
 Catalog management reads complete verified publication snapshots and paginated

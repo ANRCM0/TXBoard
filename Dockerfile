@@ -16,6 +16,7 @@ RUN --mount=type=cache,target=/root/.npm,sharing=locked \
 COPY web/shared web/shared
 COPY web/admin web/admin
 COPY web/user web/user
+COPY contracts/core-api/admin-settings.v1.json contracts/core-api/admin-settings.v1.json
 COPY gateway/tsconfig.base.json gateway/tsconfig.base.json
 COPY gateway/packages/core-sdk/src gateway/packages/core-sdk/src
 COPY gateway/packages/core-sdk/tsconfig.json gateway/packages/core-sdk/tsconfig.json

@@ -5,6 +5,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { workflowActions } from './session'
 import { PendingWorkflowNotice } from './PendingWorkflowNotice'
 import { availableAdminPaths, workflowDestination } from './routes'
+import { coreNavigationGroups } from '../navigation/core'
 
 vi.mock('./session', async () => {
   const { createWorkflowActions } = await import('./workflowActions')
@@ -36,8 +37,11 @@ it('links an unknown action back to its owner from another page without replayin
 it('only maps bounded current admin operations to enabled management destinations', () => {
   const operations = ['commerce.admin-orders.close', 'support.admin-tickets.reply', 'content.notices.update',
     'content.knowledge.update', 'billing.coupons.disable', 'billing.admin-gift-cards.revoke', 'billing.admin-commissions.payouts.approve',
-    'catalog.plans.publish', 'catalog.offers.availability.update', 'network.groups.save', 'network.routes.sort', 'network.access-audit.rules.save']
+    'catalog.plans.publish', 'catalog.offers.availability.update', 'network.groups.save', 'network.routes.sort', 'network.access-audit.rules.save',
+    'settings.configuration.update', 'notifications.mail-templates.save', 'billing.admin-payment-methods.save',
+    'network.nodes.patch', 'network.machines.update', 'subscription.lifecycle.reset']
   for (const id of operations) expect(availableAdminPaths).toContain(workflowDestination(id)?.path)
   expect(workflowDestination('unknown.action')).toBeUndefined()
   expect(new Set(availableAdminPaths).size).toBe(availableAdminPaths.length)
+  for (const group of coreNavigationGroups) for (const [path] of group.items) expect(availableAdminPaths).toContain(path)
 })

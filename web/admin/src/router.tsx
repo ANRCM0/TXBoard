@@ -3,14 +3,12 @@ import { Navigate, createBrowserRouter } from 'react-router-dom'
 import { resolveBasePath } from './lib/basePath'
 import { AdminLayout } from './components/layout/AdminLayout'
 import { AuthGuard } from './components/layout/AuthGuard'
-import { coreNavigationGroups } from './navigation/core'
-import { availableAdminPaths } from './native/routes'
 
 const SignIn = lazy(() => import('./pages/SignInPage').then(m => ({ default: m.SignInPage })))
 const Overview = lazy(() => import('./native/OverviewPage').then(m => ({ default: m.OverviewPage })))
 const Nodes = lazy(() => import('./native/NodesPage').then(m => ({ default: m.NodesPage })))
 const Machines = lazy(() => import('./native/MachinesPage').then(m => ({ default: m.MachinesPage })))
-const Settings = lazy(() => import('./native/SiteSettingsPage').then(m => ({ default: m.SiteSettingsPage })))
+const Settings = lazy(() => import('./native/SettingsPage').then(m => ({ default: m.SettingsPage })))
 const Tickets = lazy(() => import('./native/TicketsPage').then(m => ({ default: m.TicketsPage })))
 const Content = lazy(() => import('./native/ContentPage').then(m => ({ default: m.ContentPage })))
 const Coupons = lazy(() => import('./native/CouponsPage').then(m => ({ default: m.CouponsPage })))
@@ -21,18 +19,18 @@ const Groups = lazy(() => import('./native/GroupsPage').then(m => ({ default: m.
 const NetworkRoutes = lazy(() => import('./native/RoutesPage').then(m => ({ default: m.RoutesPage })))
 const AccessAudit = lazy(() => import('./native/AccessAuditPage').then(m => ({ default: m.AccessAuditPage })))
 const Sessions = lazy(() => import('./native/SessionsPage').then(m => ({ default: m.SessionsPage })))
-const Pending = lazy(() => import('./native/PendingPage').then(m => ({ default: m.PendingPage })))
+const Audit = lazy(() => import('./native/AuditLogsPage').then(m => ({ default: m.AuditLogsPage })))
+const Modules = lazy(() => import('./native/ModulesPage').then(m => ({ default: m.ModulesPage })))
+const Queue = lazy(() => import('./native/QueuePage').then(m => ({ default: m.QueuePage })))
+const Payments = lazy(() => import('./native/PaymentMethodsPage').then(m => ({ default: m.PaymentMethodsPage })))
+const MailTemplates = lazy(() => import('./native/MailTemplatesPage').then(m => ({ default: m.MailTemplatesPage })))
+const NodeDetail = lazy(() => import('./native/NodeDetailPage').then(m => ({ default: m.NodeDetailPage })))
+const MachineDetail = lazy(() => import('./native/MachineDetailPage').then(m => ({ default: m.MachineDetailPage })))
+const TrafficReset = lazy(() => import('./native/TrafficResetPage').then(m => ({ default: m.TrafficResetPage })))
 const NotFound = lazy(() => import('./pages/NotFoundPage').then(m => ({ default: m.NotFoundPage })))
 const Users = lazy(() => import('./pages/users/UsersPage').then(m => ({ default: m.UsersPage })))
 const UserDetail = lazy(() => import('./pages/users/UserDetailPage').then(m => ({ default: m.UserDetailPage })))
 const Orders = lazy(() => import('./pages/finance/OrdersPage').then(m => ({ default: m.OrdersPage })))
-
-const active = availableAdminPaths
-const pendingPaths = new Set([
-  ...coreNavigationGroups.flatMap(group => group.items.map(([path]) => path)),
-  '/config/system/features', '/config/system/safe', '/config/system/subscribe', '/config/system/invite',
-  '/config/server', '/config/email', '/config/telegram',
-])
 
 export const router = createBrowserRouter([
   { path: '/sign-in', element: <SignIn /> },
@@ -45,23 +43,38 @@ export const router = createBrowserRouter([
       { path: 'server/route', element: <NetworkRoutes /> },
       { path: 'server/access-audit', element: <AccessAudit /> },
       { path: 'config/system', element: <Settings /> },
+      { path: 'config/system/features', element: <Settings group="features" /> },
+      { path: 'config/system/safe', element: <Settings group="safe" /> },
+      { path: 'config/system/subscribe', element: <Settings group="subscribe" /> },
+      { path: 'config/system/invite', element: <Commissions /> },
+      { path: 'config/server', element: <Settings group="server" /> },
+      { path: 'config/email', element: <Settings group="email" /> },
+      { path: 'config/telegram', element: <Settings group="telegram" /> },
+      { path: 'config/app', element: <Settings group="app" /> },
+      { path: 'config/email/templates', element: <MailTemplates /> },
+      { path: 'config/payment', element: <Payments /> },
+      { path: 'system/audit-log', element: <Audit /> },
+      { path: 'system/modules', element: <Modules /> },
+      { path: 'config/plugin', element: <Modules kind="plugin" /> },
+      { path: 'config/theme', element: <Modules kind="theme" /> },
+      { path: 'system/queue', element: <Queue /> },
       { path: 'system/sessions', element: <Sessions /> },
       { path: 'user/ticket', element: <Tickets /> },
       { path: 'config/notice', element: <Content key="notices" kind="notices" /> },
       { path: 'config/knowledge', element: <Content key="knowledge" kind="knowledge" /> },
       { path: 'user/manage', element: <Users /> },
+      { path: 'user/traffic-reset', element: <TrafficReset /> },
       { path: 'finance/order', element: <Orders /> },
       { path: 'finance/plan', element: <Catalog /> },
       { path: 'finance/coupon', element: <Coupons /> },
       { path: 'finance/gift-card', element: <GiftCards /> },
       { path: 'finance/commission', element: <Commissions /> },
-      ...[...pendingPaths].filter(path => !active.includes(path)).map(path => ({ path: path.slice(1), element: <Pending /> })),
-      { path: 'server/node/:nodeId', element: <Pending /> },
-      { path: 'server/machine/:machineId', element: <Pending /> },
+      { path: 'server/node/:nodeId', element: <NodeDetail /> },
+      { path: 'server/machine/:machineId', element: <MachineDetail /> },
       { path: 'user/:userId', element: <UserDetail /> },
-      { path: 'plugins/:pluginCode/*', element: <Pending /> },
+      { path: 'plugins/:pluginCode/*', element: <Navigate to="/config/plugin" replace /> },
       { path: 'config/frontend', element: <Navigate to="/config/theme" replace /> },
-      { path: 'config/APP', element: <Navigate to="/config/system" replace /> },
+      { path: 'config/APP', element: <Navigate to="/config/app" replace /> },
       { path: 'user', element: <Navigate to="/user/manage" replace /> },
       { path: 'coupon', element: <Navigate to="/finance/coupon" replace /> },
       { path: 'gift-card', element: <Navigate to="/finance/gift-card" replace /> },

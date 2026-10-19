@@ -54,6 +54,31 @@ describe('production native service consumer', () => {
     expect(send.mock.calls[0]![1].headers['X-Core-Service-Id']).toBe('admin-gateway')
     expect(send.mock.calls[0]![1].headers['X-Core-Admin-Path']).toBe('current-path')
   })
+  it.each(['network.nodes.get', 'network.machines.get', 'settings.configuration.get',
+    'settings.configuration.update', 'billing.admin-payment-methods.list',
+    'billing.admin-payment-providers.list', 'billing.admin-payment-methods.form',
+    'billing.admin-payment-methods.save'] as const)('isolates management operation %s from user services', async operation => {
+    const send = transport()
+    const user = new NativeCoreClient(new URL('https://core.internal/'), service, 8000, 1048576, send)
+    const admin = new NativeCoreClient(new URL('https://core.internal/'), {
+      ...service, domain: 'admin', serviceId: 'admin-gateway',
+    }, 8000, 1048576, send)
+    await expect(user.call(operation, { authorization: actor, adminPath: 'current-path', idempotencyKey: requestId }))
+      .rejects.toMatchObject({ status: 403 })
+    await expect(admin.call(operation)).rejects.toMatchObject({ status: 401 })
+    await expect(admin.call(operation, { authorization: actor })).rejects.toMatchObject({ status: 403 })
+    expect(send).not.toHaveBeenCalled()
+  })
+  it.each(['settings.configuration.update', 'billing.admin-payment-methods.save'] as const)(
+    'requires an original command key for %s before contacting Core', async operation => {
+      const send = transport()
+      const admin = new NativeCoreClient(new URL('https://core.internal/'), {
+        ...service, domain: 'admin', serviceId: 'admin-gateway',
+      }, 8000, 1048576, send)
+      await expect(admin.call(operation, { authorization: actor, adminPath: 'current-path' }))
+        .rejects.toMatchObject({ status: 400 })
+      expect(send).not.toHaveBeenCalled()
+    })
   it('fails closed on plaintext and incomplete channel configuration', () => {
     expect(() => new NativeCoreClient(new URL('http://core.internal/'), service)).toThrow('HTTPS')
     expect(() => loadConfig({ TXBOARD_UPSTREAM_URL: 'https://core.internal/',

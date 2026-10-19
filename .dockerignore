@@ -12,6 +12,11 @@ backup.sh
 sync-gateway.sh
 .env.example
 contracts
+!contracts/
+contracts/*
+!contracts/core-api/
+contracts/core-api/*
+!contracts/core-api/admin-settings.v1.json
 docs
 gateway
 !gateway/

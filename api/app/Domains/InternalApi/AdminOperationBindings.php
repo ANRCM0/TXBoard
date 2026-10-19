@@ -27,7 +27,7 @@ final class AdminOperationBindings
                 'adminDatabaseWrite' => $contract['idempotency'] !== 'read'
                     && in_array($binding['controller'], ['NetworkGroupAdminController', 'NetworkRouteAdminController',
                         'NetworkNodeAdminController', 'NetworkMachineAdminController', 'ContentAdminController',
-                        'AccessAuditAdminController'], true)
+                        'AccessAuditAdminController', 'NativeSettingsAdminController', 'NativePaymentConfigurationController'], true)
                     || $binding['controller'] === 'MailTemplateAdminController'
                         && in_array($binding['method'], ['save', 'reset'], true),
             ];

@@ -3,10 +3,14 @@ import { createRoot, type Root } from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { CoreAdminApiError } from './api'
+import { MemoryRouter } from 'react-router-dom'
 import { admin } from './session'
 import { NodesPage } from './NodesPage'
 
-vi.mock('./session', () => ({ admin: { read: vi.fn() } }))
+vi.mock('./session', async () => {
+  const { createWorkflowActions } = await import('./workflowActions')
+  return { admin: { read: vi.fn() }, workflowActions: createWorkflowActions(vi.fn()) }
+})
 const row = { id: '9007199254740993', name: 'Tokyo-A', type: 'vless', host: '2001:db8::1', port: '443',
   server_port: null, parent_id: null, machine_id: null, show: true, enabled: true, sort: null,
   u: '9007199254740999', d: null }
@@ -20,7 +24,7 @@ beforeEach(() => {
 afterEach(() => { act(() => root.unmount()); client.clear(); host.remove() })
 async function settle() { await act(async () => { await new Promise(resolve => setTimeout(resolve, 15)) }) }
 async function render() {
-  await act(async () => root.render(<QueryClientProvider client={client}><NodesPage /></QueryClientProvider>))
+  await act(async () => root.render(<QueryClientProvider client={client}><MemoryRouter><NodesPage /></MemoryRouter></QueryClientProvider>))
   await settle()
 }
 it('shows canonical IDs/byte counts and requests the next server page', async () => {

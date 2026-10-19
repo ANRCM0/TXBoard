@@ -1,4 +1,5 @@
 .native-management-page { display: grid; gap: 20px; min-width: 0; }
+.native-management-page h2 { overflow-wrap: anywhere; }
 .native-management-page .list-card { min-width: 0; }
 .native-list-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px; flex-wrap: wrap; }
 .native-list-search { display: flex; gap: 8px; align-items: center; flex: 1 1 220px; max-width: 380px; }
@@ -64,3 +65,7 @@
   .native-read-fields > div { grid-template-columns: minmax(0, 1fr); gap: 6px; }
   .native-scroll-hint { display: block; margin: 0 0 8px; color: var(--muted); font-size: 12px; }
 }
+.native-settings-navigation { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: 1.25rem; }
+.native-settings-navigation a { padding: .45rem .75rem; border: 1px solid var(--border); border-radius: .5rem; color: inherit; text-decoration: none; }
+.native-settings-navigation a.active { background: var(--primary); color: var(--primary-fg); }
+.native-configuration-version { overflow-wrap: anywhere; }

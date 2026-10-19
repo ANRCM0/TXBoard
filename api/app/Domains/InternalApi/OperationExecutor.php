@@ -238,7 +238,7 @@ final class OperationExecutor
             $data = $body['data'] ?? null;
             if (!is_array($data)) throw new \LogicException('INTERNAL_RESPONSE_INVALID');
             $project = fn (array $row): array => $this->clean(array_intersect_key($row, array_flip($spec['fields'])),
-                $operation === 'subscription.links.issue');
+                $operation === 'subscription.links.issue', $operation !== 'settings.configuration.get');
             $projected = $spec['list'] ? array_map($project, $data) : $project($data);
             $projected = OperationSchemas::output($operation, $projected);
             $meta = $body['meta'] ?? [];
@@ -321,7 +321,7 @@ final class OperationExecutor
         return app()->call([app($spec['controller']), $spec['method']], $arguments);
     }
 
-    private function clean(array $value, bool $allowLinkToken = false): array
+    private function clean(array $value, bool $allowLinkToken = false, bool $normalizeIdentifiers = true): array
     {
         foreach ($value as $key => &$item) {
             if (is_string($key) && preg_match('/(?:password|secret|private_key|authorization|token|uuid|ciphertext)/i', $key)
@@ -333,8 +333,9 @@ final class OperationExecutor
                 $fields = OperationRegistry::all()['subscription.mine.get']['fields'];
                 $item = array_intersect_key($item, array_flip($fields));
             }
-            if (is_array($item)) $item = $this->clean($item);
-            elseif (is_int($item) && is_string($key)
+            if (is_array($item)) $item = $this->clean($item, normalizeIdentifiers: $normalizeIdentifiers);
+            // Typed settings include integer event flags named *_id, not database identifiers.
+            elseif ($normalizeIdentifiers && is_int($item) && is_string($key)
                 && ($key === 'id' || in_array($key, ['u', 'd'], true) || preg_match('/(?:_id|_bytes|_minor)\z/D', $key))) {
                 $item = (string) $item;
             }

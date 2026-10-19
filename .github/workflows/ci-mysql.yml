@@ -298,6 +298,7 @@ jobs:
           tests/Feature/Support/NativeTicketAttachmentsTest.php
           tests/Feature/Txapi/TxapiAdminResourceReadsTest.php
           tests/Feature/Txapi/TxapiUnifiedAdminManagementTest.php
+          tests/Feature/Txapi/TxapiAdminConfigurationTest.php
 
   native-billing-domain:
     name: native-billing-domain (${{ matrix.shard }})
@@ -329,6 +330,7 @@ jobs:
             test_files: >-
               tests/Feature/Billing/NativePaymentAttemptsTest.php
               tests/Feature/Billing/NativeOrderPaymentQueriesTest.php
+              tests/Feature/Billing/NativePaymentConfigurationTest.php
               tests/Feature/Billing/NativeOrderAdministrationTest.php
               tests/Feature/Billing/NativePaymentAttemptsMysqlConcurrencyTest.php
               tests/Feature/Billing/NativeEpayCheckoutTest.php
@@ -432,13 +434,22 @@ jobs:
               tests/Feature/Subscription/NativeIdentityAndCatalogTest.php
               tests/Feature/Installation/NativeRuntimeReadinessTest.php
               tests/Feature/Installation/InstallationRuntimeTest.php
+          - shard: catalog-publications
+            run_usage_concurrency: false
+            test_files: >-
               tests/Feature/Subscription/NativePlanAdministrationTest.php
               tests/Feature/Subscription/NativeAdminCatalogTest.php
               tests/Feature/Subscription/NativePlanPublicationMysqlConcurrencyTest.php
               tests/Feature/Txapi/TxapiAdminCatalogTest.php
+          - shard: internal-admin-boundaries
+            run_usage_concurrency: false
+            test_files: >-
               tests/Feature/Txapi/TxapiNativeInternalApiTest.php
               tests/Feature/Txapi/TxapiAdminResourceReadsTest.php
               tests/Feature/Txapi/TxapiUnifiedAdminManagementTest.php
+          - shard: content-and-support
+            run_usage_concurrency: false
+            test_files: >-
               tests/Feature/Database/NoticePopupMigrationTest.php
               tests/Feature/Database/NativeBusinessMigrationCycleTest.php
               tests/Feature/Content/NativeContentWorkflowTest.php
