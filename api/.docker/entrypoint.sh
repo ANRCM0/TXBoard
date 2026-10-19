@@ -64,6 +64,22 @@ detect_mem_mib() {
 CPUS=$(detect_cpus)
 MEM_MIB=$(detect_mem_mib)
 
+# Keep queue data within the shared container budget. Refuse new Redis writes
+# at the limit instead of evicting durable work or authorization state.
+redis_budget=$(( MEM_MIB / 8 ))
+[ "$redis_budget" -ge 64 ] || redis_budget=64
+[ "$redis_budget" -le 512 ] || redis_budget=512
+: "${REDIS_MAXMEMORY_MIB:=$redis_budget}"
+case "$REDIS_MAXMEMORY_MIB" in
+    ''|0*|*[!0-9]*) echo '[entrypoint] Invalid Redis memory budget' >&2; exit 1 ;;
+esac
+[ "$REDIS_MAXMEMORY_MIB" -gt 0 ] && [ "$REDIS_MAXMEMORY_MIB" -lt "$MEM_MIB" ] || {
+    echo '[entrypoint] Redis memory budget must fit within the container memory budget' >&2
+    exit 1
+}
+REDIS_MAXMEMORY_BYTES=$(( REDIS_MAXMEMORY_MIB * 1024 * 1024 ))
+export REDIS_MAXMEMORY_MIB REDIS_MAXMEMORY_BYTES
+
 # Resource profile presets. RESOURCE_PROFILE selects ratios for the budget split:
 #   minimal     - smallest possible footprint (~250-350 MiB), single octane worker,
 #                 horizon capped to 1/1/1. Suitable for VPS with <=512 MiB RAM.

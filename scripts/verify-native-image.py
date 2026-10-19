@@ -19,6 +19,7 @@ import socket
 import subprocess
 import sys
 import tempfile
+import tarfile
 import time
 import urllib.request
 import urllib.error
@@ -57,6 +58,48 @@ def port():
 def write(path, value):
     path.write_text(json.dumps(value, indent=2) + "\n", encoding="utf-8")
     path.chmod(0o600)
+
+
+def verify_resource_limits(backend, plan):
+    limits = plan['limits']
+    container = backend.container(healthy=True)
+    actual = json.loads(backend.run(['inspect', '--type', 'container', container['id']]))[0]['HostConfig']
+    memory_bytes = limits['core_mib'] * 1024 * 1024
+    require(actual['Memory'] == memory_bytes and actual['MemorySwap'] == memory_bytes,
+            'Core container memory limits differ from the deployment plan')
+    redis_bytes = limits['redis_mib'] * 1024 * 1024
+    def redis_config(name):
+        return backend.compose('exec', '-T', 'txboard', 'redis-cli', '-s', '/data/redis.sock',
+                               '--raw', 'CONFIG', 'GET', name).splitlines()
+    require(redis_config('maxmemory') == ['maxmemory', str(redis_bytes)],
+            'Redis maxmemory differs from the deployment plan MiB budget')
+    require(redis_config('maxmemory-policy') == ['maxmemory-policy', 'noeviction'],
+            'Redis must preserve queued work at its memory limit')
+    return {'profile': plan['profile'], 'core_memory_bytes': memory_bytes,
+            'redis_maxmemory_bytes': redis_bytes, 'container_limits_verified': True,
+            'redis_budget_verified': True, 'redis_noeviction_verified': True}
+
+
+def verify_backup_assets(native, installation, assets):
+    intent = native.Journal(installation).load()
+    require(intent is not None and intent['stage'] == 'completed' and 'backup' in intent,
+            'Completed native update did not retain its original backup record')
+    record = intent['backup']
+    inspection = native.inspect_backup(installation, record['archive'], record['checksum'])
+    require(inspection['integrity_verified'] and inspection['materials_verified']
+            and inspection['immutable_image_recorded'] and inspection['consistency'] == 'native-frozen',
+            'Actual update backup failed read-only native material verification')
+    with tarfile.open(installation / 'backups' / record['archive'] / 'native-deployment.tar.gz', 'r:gz') as archive:
+        for name, expected in assets.items():
+            member = archive.getmember(name)
+            require(member.isfile() and member.size == len(expected), 'Native backup asset member mismatch')
+            with archive.extractfile(member) as stream:
+                require(stream.read() == expected, 'Native backup changed synthetic asset bytes')
+            require((installation / name).read_bytes() == expected,
+                    'Native update or recovery changed persistent synthetic assets')
+    return {'integrity_verified': True, 'materials_verified': True,
+            'native_frozen_verified': True, 'theme_and_plugin_bytes_verified': True,
+            'live_assets_preserved': True}
 
 
 def purchase_diagnostic(installation, email, offer_id, key):
@@ -151,6 +194,7 @@ def main():
     parser.add_argument("--provider-binary", required=True, type=Path)
     parser.add_argument("--image", default="txboard-ci:pr")
     parser.add_argument("--output", type=Path, default=ROOT / "artifacts/modular-native-image.json")
+    parser.add_argument("--verify-resource-profile", action="store_true", help="verify the paired P4 resource plan and complete native backup assets")
     parser.add_argument("--fault-child", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--dir", type=Path, help=argparse.SUPPRESS)
     parser.add_argument("--configuration", type=Path, help=argparse.SUPPRESS)
@@ -231,11 +275,24 @@ def main():
                        TXBOARD_ADMIN_EMAIL=preparation["identity"]["email"], TXBOARD_MODE="http", TXBOARD_TEST_MODE="true", TXBOARD_PUBLIC_HOST="127.0.0.1",
                        TXBOARD_HTTP_PORT=str(http_port), TXBOARD_DB_MODE="local", TXBOARD_DB_DATABASE="txboard_c2_native_test_image",
                        TXBOARD_DB_PASSWORD=secrets.token_hex(24), TXBOARD_DB_ROOT_PASSWORD=secrets.token_hex(24), TXBOARD_BACKUP_RETENTION="0")
+            if args.verify_resource_profile:
+                env['TXBOARD_RESOURCE_PROFILE'] = 'auto'
             run(["bash", args.deploy_root / "install.sh", "--yes"], env=env, timeout=900)
             backend = native.Docker(installation)
             first = backend.report("core:installation", "runtime", running=True)
             require(first["ready"] is True and first["authority_epoch"] == "2", "Fresh native installation was not activated")
             require(backend.container(healthy=True)["image"] == baseline, "Installed image differs from immutable input")
+            resource_evidence, backup_evidence = [], []
+            if args.verify_resource_profile:
+                resource_plan = json.loads((installation / 'resource-plan.json').read_text())
+                require(resource_plan['ready'] is True, 'Installer did not persist a ready capacity plan')
+                resource_evidence.append(verify_resource_limits(backend, resource_plan))
+                assets = {'data/storage/theme/native-ci-fixture/index.html': b'synthetic native theme fixture\n',
+                          'data/plugins/native-ci-fixture/state.json': b'{"synthetic":true}\n'}
+                for name, value in assets.items():
+                    path = installation / name
+                    path.parent.mkdir(parents=True, exist_ok=True)
+                    path.write_bytes(value)
             origin = f"http://127.0.0.1:{http_port}"
             def http(path, body=None, token=None, key=None):
                 headers = {"Content-Type": "application/json"}
@@ -307,6 +364,9 @@ def main():
                 report = backend.report("core:installation", "runtime", running=True)
                 reports.append(report)
                 require(backend.container(healthy=True)["image"] == image and report["authority_epoch"] == "2", "New image/epoch readiness mismatch")
+                if args.verify_resource_profile:
+                    resource_evidence.append(verify_resource_limits(backend, resource_plan))
+                    backup_evidence.append(verify_backup_assets(native, installation, assets))
                 auth = http("/txapi/auth/admin/login", {"email": preparation["identity"]["email"], "password": password})
                 require(http(presentation + "presentation", token=auth["auth_data"])["version"] == version, "Worker retained an earlier package version")
                 require(http(presentation + "operations/status.get", {"input": {}}, auth["auth_data"])["version"] == version, "Real extension SDK operation did not use target code")
@@ -315,6 +375,9 @@ def main():
             require(backend.sql("SELECT COUNT(*) FROM tx_module_release") == "3", "Missing or duplicate composition approval")
             require(backend.sql("SELECT COUNT(*) FROM tx_order") == "1", "Update duplicated or removed original order")
             require(not native.Journal(installation).guard.exists(), "Completed native recovery left a guard")
+            if args.verify_resource_profile:
+                require(len(resource_evidence) == 3 and len(backup_evidence) == 2,
+                        'P4 paired image proof did not collect every install, update and recovery checkpoint')
             session_file = temporary / "browser-session.json"
             write(session_file, {"origin": origin, "token": auth["auth_data"], "adminPath": auth["secure_path"], "version": "1.2.0"})
             run(["node", ROOT / "gateway/tests/browser/module-host-live.mjs", session_file], cwd=ROOT / "gateway", timeout=90)
@@ -322,6 +385,7 @@ def main():
             write(args.output, {"schema": "modular-native-image-proof/v1", "images": images, "kernel_manifest_sha256": kernel,
                 "compositions": [value["composition_fingerprint"] for value in reports], "authority_epoch": "2", "activation_count": 1,
                 "composition_approvals": 3, "original_orders": 1, "module_owned_schema": 2, "recovered_operation": recovered_operation,
+                "resource_limits": resource_evidence, "native_backup_materials": backup_evidence,
                 "provider": "actual Go mTLS capability peer; no Node traffic in this image proof", "consumer": "actual admin login, catalog, order, extension HTTP and Chromium SDK host"})
             args.output.chmod(0o644)
             print("Native immutable image install, update and killed-executor recovery passed", flush=True)
