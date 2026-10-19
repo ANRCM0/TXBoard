@@ -95,6 +95,7 @@ cat > "$scratch/core/api/config/native_provider_node.php" <<PHP
 <?php
 return ['provider_id' => 'primary-provider', 'recipients' => [
   1 => ['machine_id' => null, 'recipient_sha256' => '$node_fingerprint'],
+  2 => ['machine_id' => null, 'recipient_sha256' => '$node_fingerprint'],
 ]];
 PHP
 cat > "$scratch/core/api/config/native_subscription_delivery.php" <<'PHP'
@@ -125,6 +126,7 @@ php tests/integration/core-fixture.php "$scratch/core/api" trust > "$scratch/tru
   --client-ca "$scratch/ca.pem" --client-fingerprint "$core_fingerprint" \
   --delivery-trust "$scratch/trust.json" --node-client-fingerprint "$node_fingerprint" \
   --subscription-listen 127.0.0.1:18085 --subscription-tls-cert "$scratch/server.pem" \
+  --subscription-origin https://panel.example \
   --subscription-tls-key "$scratch/server.key" > "$scratch/provider.log" 2>&1 &
 provider_pid=$!
 trap 'kill "$provider_pid" 2>/dev/null || true; wait "$provider_pid" 2>/dev/null || true' EXIT

@@ -9,6 +9,7 @@ import { createGatewayApp } from '../../apps/gateway/dist/app.js'
 import { loadConfig } from '../../apps/gateway/dist/config/env.js'
 import { RedisSecurity } from '../../apps/gateway/dist/services/redis-security.js'
 import { createCoreUserClient, createCoreAdminClient } from '../../packages/core-sdk/dist/index.js'
+import { verifyRendererDelivery } from './renderer-delivery.mjs'
 
 const root = process.env.TXBOARD_CORE_TEST_ROOT
 const scratch = process.env.GATEWAY_INTEGRATION_LOG_DIR
@@ -100,6 +101,7 @@ try {
   const paid = await client.call('commerce.orders.checkout', { trade_no: freeOrder.trade_no }, { idempotencyKey: freeKey })
   assert.equal(paid.type, -1); assert.equal(paid.data, true)
   assert.deepEqual(await client.call('commerce.orders.checkout', { trade_no: freeOrder.trade_no }, { idempotencyKey: freeKey }), paid); checks++
+  checks += await verifyRendererDelivery(client, other, { root, scratch, nonce, actorId: actor.id, token, servers })
   const sessions = await client.callResult('identity.sessions.list', {})
   assert.equal(sessions.meta.has_more, false); assert.ok(sessions.data.length > 0); checks++
   await client.call('identity.sessions.revoke', { session_id: service.secondary }, { idempotencyKey: randomUUID() })
@@ -210,6 +212,7 @@ try {
     browserSdk: true, originalKeyReplay: true, lostResponseRecovery: true, ownerIsolation: true,
     sessionEnd: true, serviceGrantRevocation: true, serviceFailureDistinctFromUserSession: true, adminChannel: true,
     adminOrderCloseRecovery: true, adminOrderAudit: true, currentOrderGrantReplay: true, orderPaymentDiscovery: true,
+    rendererFormats: 6, rendererSdkProviderWire: true, rendererCliFiles: true, rendererLiveRevocation: true,
     adminAccountMutation: true, adminContentCrud: true, adminWriteKeyReplay: true, actorGrantRevocation: true, adminPathRotation: true }))
 } finally {
   for (const server of servers.reverse()) await new Promise(r => server.close(r))

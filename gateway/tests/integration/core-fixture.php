@@ -62,6 +62,24 @@ if ($action === 'admin-order-target') {
     echo json_encode(['trade_no' => $order->trade_no], JSON_THROW_ON_ERROR)."\n";
     exit;
 }
+if ($action === 'delivery-owner' || $action === 'revoke-render-subject') {
+    $owner = App\Models\User::findOrFail((int) ($argv[3] ?? 0));
+    if (!str_starts_with($owner->email, 'gw-sdk-owner-')) throw new RuntimeException('Dedicated delivery owner required');
+    $subscription = Illuminate\Support\Facades\DB::table('tx_subscription')->where('user_id', $owner->id)->where('status', 'active')->first();
+    if (!$subscription) throw new RuntimeException('A real active purchased subscription is required');
+    if ($action === 'delivery-owner') {
+        $result = app(App\Domains\Subscription\Services\NativeCredentialSynchronization::class)->synchronize($owner->id, $subscription->id);
+        if ($result['completed'] !== true) throw new RuntimeException('Delivery credential synchronization failed');
+    } else {
+        $subject = Illuminate\Support\Facades\DB::table('tx_access_subject')->where('subscription_id', $subscription->id)
+            ->where('id', (int) ($argv[4] ?? 0))->where('credential_profile_id', 'vmess-uuid/v1')->first();
+        if (!$subject) throw new RuntimeException('Dedicated VMess subject required');
+        $result = app(App\Domains\Subscription\Services\NativeCredentialProviderService::class)->revoke(
+            $owner->id, $subject->id, (string) Illuminate\Support\Str::uuid(), (string) $subject->row_version, 'MANUAL');
+        if ($result['status'] !== 'succeeded') throw new RuntimeException('Actual Provider revoke required');
+    }
+    echo "{}\n"; exit;
+}
 if ($action === 'admin-revoke-orders') {
     Illuminate\Support\Facades\DB::table('tx_internal_actor_grant')->where('permission', 'commerce.orders.manage')->delete();
     echo "{}\n"; exit;
@@ -139,6 +157,12 @@ $node = App\Models\Server::withoutEvents(fn () => App\Models\Server::create([
     'group_ids' => [(string) $group->id], 'protocol_settings' => ['tls' => 0, 'network' => 'tcp'],
 ]));
 if ((int) $node->id !== 1) throw new RuntimeException('Fresh dedicated database required');
+$vmess = App\Models\Server::withoutEvents(fn () => App\Models\Server::create([
+    'name' => 'Gateway VMess, = [Rule] # injection', 'type' => 'vmess', 'host' => '127.0.0.1',
+    'port' => 18086, 'server_port' => 18086, 'rate' => 1, 'enabled' => true, 'show' => true,
+    'group_ids' => [(string) $group->id], 'protocol_settings' => ['tls' => 0, 'network' => 'tcp'],
+]));
+if ((int) $vmess->id !== 2) throw new RuntimeException('Fresh dedicated VMess node required');
 app(App\Domains\Subscription\Services\NativeCredentialProviderService::class)
     ->register('primary-provider', 'gateway-native-provider');
 $ready = $authority->readiness();
