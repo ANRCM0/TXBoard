@@ -44,7 +44,10 @@ final class NativeAdminCatalogTest extends NativeRuntimeTestCase
 
         $original = $queries->publication((int) $first['plan_id'], (int) $first['publication']['revision_id']);
         $this->assertSame('Original', $original['revision']['terms']['name']);
-        $this->assertSame(['monthly' => '99', 'yearly' => '1000'], $original['revision']['terms']['prices_minor']);
+        // MySQL JSON objects can reorder members; amounts and their types remain exact.
+        $this->assertCount(2, $original['revision']['terms']['prices_minor']);
+        $this->assertSame('99', $original['revision']['terms']['prices_minor']['monthly']);
+        $this->assertSame('1000', $original['revision']['terms']['prices_minor']['yearly']);
         $this->assertCount(2, $original['offers']);
         $this->assertSame(['superseded'], array_values(array_unique(array_column($original['offers'], 'status'))));
         $this->assertSame($second['publication']['revision_id'], $original['current_revision_id']);
