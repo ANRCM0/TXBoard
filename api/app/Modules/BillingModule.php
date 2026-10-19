@@ -35,6 +35,11 @@ final class BillingModule implements ModuleProvider
                 new CapabilityDefinition('billing.order-payments-read', \App\Domains\Billing\Contracts\OrderPaymentQueries::class, exported: false),
                 new CapabilityDefinition('billing.admin-order-commands', \App\Domains\Billing\Contracts\AdminOrderCommands::class, exported: false),
                 new CapabilityDefinition('billing.orders-read', OrderQueries::class),
+                new CapabilityDefinition('billing.gift-cards', \App\Domains\Billing\Contracts\GiftCards::class, exported: false),
+                new CapabilityDefinition('billing.commissions', \App\Domains\Billing\Contracts\Commissions::class, exported: false),
+                new CapabilityDefinition('billing.commission-terms', \App\Domains\Billing\Internal\CommissionTerms::class, exported: false),
+                new CapabilityDefinition('billing.coupons', \App\Domains\Billing\Contracts\CouponAdministration::class, exported: false),
+                new CapabilityDefinition('billing.locked-coupon-discounts', \App\Domains\Billing\Internal\LockedCouponDiscounts::class, exported: false),
                 new CapabilityDefinition('billing.admin-order-read', \App\Domains\Billing\Contracts\AdminOrderQueries::class, exported: false),
                 new CapabilityDefinition('billing.checkout', PaymentCheckout::class),
                 new CapabilityDefinition('billing.wallet', WalletPayments::class),
@@ -47,7 +52,7 @@ final class BillingModule implements ModuleProvider
                 new CapabilityDefinition('billing.winning-proof', WinningPaymentProofs::class, exported: false),
                 new CapabilityDefinition('billing.package-references', \App\Domains\Billing\Internal\PaymentPackageReferences::class, exported: false),
             ], requires: [new CapabilityRequirement('installation.admission'), new CapabilityRequirement('subscription.fulfillment'),
-                new CapabilityRequirement('notifications.event-journal'), new CapabilityRequirement('identity.current-session-authorization'), new CapabilityRequirement('platform.invocation')], required: true);
+                new CapabilityRequirement('notifications.event-journal'), new CapabilityRequirement('identity.referral-snapshot'), new CapabilityRequirement('subscription.locked-fulfillment'), new CapabilityRequirement('identity.current-session-authorization'), new CapabilityRequirement('platform.invocation')], required: true);
     }
 
     public function bindings(): array
@@ -55,7 +60,12 @@ final class BillingModule implements ModuleProvider
         return [
             new ServiceBinding(\App\Domains\Billing\Contracts\OrderPaymentQueries::class, \App\Domains\Billing\NativeOrderPaymentQueries::class),
             new ServiceBinding(\App\Domains\Billing\Contracts\AdminOrderCommands::class, \App\Domains\Billing\NativeOrderAdministration::class),
+            new ServiceBinding(\App\Domains\Billing\Contracts\GiftCards::class, \App\Domains\Billing\NativeGiftCards::class),
             new ServiceBinding(OrderQueries::class, NativeOrderQueries::class),
+            new ServiceBinding(\App\Domains\Billing\Contracts\Commissions::class, \App\Domains\Billing\NativeCommissions::class),
+            new ServiceBinding(\App\Domains\Billing\Internal\CommissionTerms::class, \App\Domains\Billing\NativeCommissions::class),
+            new ServiceBinding(\App\Domains\Billing\Contracts\CouponAdministration::class, \App\Domains\Billing\NativeCouponWorkflow::class),
+            new ServiceBinding(\App\Domains\Billing\Internal\LockedCouponDiscounts::class, \App\Domains\Billing\NativeCouponWorkflow::class),
             new ServiceBinding(\App\Domains\Billing\Contracts\AdminOrderQueries::class, NativeOrderQueries::class),
             new ServiceBinding(PaymentCheckout::class, NativePaymentCheckout::class),
             new ServiceBinding(WalletPayments::class, NativeWalletPayments::class),

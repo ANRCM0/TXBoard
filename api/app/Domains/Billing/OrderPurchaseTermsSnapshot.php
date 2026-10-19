@@ -111,7 +111,13 @@ final class OrderPurchaseTermsSnapshot
             'catalog' => ['revision_id' => (string) $revision->id, 'offer_id' => (string) $offer->id,
                 'publication_hash' => (string) $revision->content_hash],
         ];
-        if ((string) $order->total_amount !== (string) $offer->price_minor
+        $coupon = app(NativeCouponWorkflow::class)->binding((int) $order->id, (int) $order->user_id,
+            (int) $offer->id, $offer->currency, (string) $offer->price_minor, (string) $order->total_amount);
+        if ($coupon !== null) {
+            if ((int) $order->type === Order::TYPE_UPGRADE) throw new RuntimeException('ORDER_COUPON_UPGRADE_UNSUPPORTED');
+            $snapshot['coupon_discount'] = $coupon;
+            $snapshot['price_minor'] = (string) $order->total_amount;
+        } elseif ((string) $order->total_amount !== (string) $offer->price_minor
             || ((int) $order->type === Order::TYPE_UPGRADE
                 && DB::table('tx_order_upgrade_credit')->where('order_id', $order->id)->sharedLock()->exists())) {
             $snapshot['upgrade_credit'] = app(NativeUpgradeCredits::class)->binding($order, $offer);

@@ -47,6 +47,9 @@ if ($action === 'admin-service') {
         'support.admin-tickets.attachments.begin', 'support.admin-tickets.attachments.append',
         'support.admin-tickets.attachments.finish', 'support.admin-tickets.attachments.get',
         'support.admin-tickets.attachments.download']);
+    $operations = array_merge($operations, array_keys(array_filter(\App\Domains\InternalApi\OperationSchemas::all()['operations'],
+        static fn ($spec, $name) => $spec['domains'] === ['admin'] && (str_starts_with($name, 'billing.coupons.')
+            || str_starts_with($name, 'billing.admin-gift-') || str_starts_with($name, 'billing.admin-commissions.')), ARRAY_FILTER_USE_BOTH)));
     $service = app(\App\Domains\InternalApi\ServiceCredentials::class)->issue('browser-admin-fixture', 'admin',
         $argv[3] ?? '', $operations, time() + 3600);
     [$created, $admin] = app(\App\Services\Auth\NativeIdentityService::class)
@@ -55,7 +58,8 @@ if ($action === 'admin-service') {
     $admin->forceFill(['is_admin' => true])->saveOrFail();
     foreach (['identity.read', 'identity.sessions.manage', 'network.nodes.read', 'network.machines.read', 'settings.read',
         'identity.accounts.read', 'identity.accounts.manage', 'commerce.orders.read', 'commerce.orders.manage', 'network.groups.read', 'content.manage', 'content.read',
-        'support.tickets.read', 'support.tickets.write'] as $permission) {
+        'support.tickets.read', 'support.tickets.write', 'billing.coupons.read', 'billing.coupons.manage',
+        'billing.gift-cards.read', 'billing.gift-cards.manage', 'billing.commissions.read', 'billing.commissions.manage'] as $permission) {
         Illuminate\Support\Facades\DB::table('tx_internal_actor_grant')->insert([
             'user_id' => $admin->id, 'permission' => $permission, 'created_at' => time()]);
     }
@@ -63,6 +67,31 @@ if ($action === 'admin-service') {
     echo json_encode($service + ['email' => $admin->email, 'id' => (string) $admin->id,
         'secondary' => (string) $admin->createToken('admin-secondary', ['*'])->accessToken->id], JSON_THROW_ON_ERROR)."\n";
     exit;
+}
+if ($action === 'financial-fund') {
+    foreach ([$argv[3] ?? '', $argv[4] ?? ''] as $id) {
+        $user = App\Models\User::findOrFail((int) $id);
+        if (!str_starts_with($user->email, 'gw-sdk-')) throw new RuntimeException('Dedicated SDK financial actor required');
+        app(App\Domains\Billing\NativeMoneyLedger::class)->post($user->id, [
+            'business_type' => 'wallet_credit', 'business_ref' => 'http-financial-fixture',
+            'idempotency_key' => (string) Illuminate\Support\Str::uuid(), 'currency' => 'CNY', 'occurred_at' => (string) time(),
+            'postings' => [
+                ['owner_id' => '0', 'purpose' => 'provider_clearing', 'side' => 'debit', 'amount_minor' => '5000'],
+                ['owner_id' => (string) $user->id, 'purpose' => 'wallet_available', 'side' => 'credit', 'amount_minor' => '5000'],
+            ],
+        ]);
+    }
+    echo "{}\n"; exit;
+}
+if ($action === 'financial-recover') {
+    $billing = app(App\Domains\Billing\NativeBillingRecovery::class)->recover();
+    $commissions = app(App\Domains\Billing\NativeCommissions::class)->recover(100);
+    echo json_encode(compact('billing', 'commissions'), JSON_THROW_ON_ERROR)."\n"; exit;
+}
+if ($action === 'financial-revoke') {
+    Illuminate\Support\Facades\DB::table('tx_internal_actor_grant')->where('user_id', (int) ($argv[3] ?? 0))
+        ->whereIn('permission', ['billing.coupons.manage', 'billing.commissions.manage'])->delete();
+    echo "{}\n"; exit;
 }
 if ($action === 'admin-order-target') {
     [$created, $user] = app(\App\Services\Auth\NativeIdentityService::class)

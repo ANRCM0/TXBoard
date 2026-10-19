@@ -167,7 +167,7 @@ final class OperationExecutor
                 'support.admin-tickets.close' => [SupportMutationOperations::class, 'adminClose', 'domain'],
                 'support.admin-tickets.claim' => [SupportMutationOperations::class, 'adminClaim', 'domain'],
                 'support.admin-tickets.unassign' => [SupportMutationOperations::class, 'adminUnassign', 'domain'],
-                default => array_merge(SupportAttachmentBindings::commands(), ContentOperationBindings::commands())[$operation] ?? null,
+                default => array_merge(SupportAttachmentBindings::commands(), ContentOperationBindings::commands(), CouponOperationBindings::commands(), GiftCardOperationBindings::commands(), GiftBatchOperationBindings::commands(), CommissionOperationBindings::commands())[$operation] ?? null,
             };
             if ($actor === null || $spec['controller'] !== null || $spec['handler'] !== null
                 || $target === null || [$spec['command'], $spec['method'], $spec['mode']] !== $target) {
@@ -180,7 +180,7 @@ final class OperationExecutor
         $currentCheckout = in_array($operation, ['commerce.orders.checkout', 'billing.recharges.checkout'], true);
         // An unknown query result can advance later. A replay must consult the owner again.
         $currentOwnerResult = $currentCheckout || $operation === 'billing.payment-attempts.query'
-            || in_array($spec['command'], [AdminOrderMutationOperations::class, SupportAttachmentOperations::class, SupportMutationOperations::class, ContentMutationOperations::class], true);
+            || in_array($spec['command'], [AdminOrderMutationOperations::class, SupportAttachmentOperations::class, SupportMutationOperations::class, ContentMutationOperations::class, CouponMutationOperations::class, GiftCardMutationOperations::class, CommissionMutationOperations::class], true);
         if (in_array($spec['mode'], ['workflow', 'domain', 'domain-once'], true)) {
             $key = $request->header('Idempotency-Key', '');
             // The same UUID is forwarded to the authoritative domain workflow.
@@ -212,7 +212,7 @@ final class OperationExecutor
                 $result = TxapiResponse::success($request, $view->data, $view->meta);
             } elseif ($spec['command'] !== null) {
                 $arguments = ['actor' => $actor, 'input' => $input];
-                if (in_array($spec['command'], [AdminOrderMutationOperations::class, CommerceMutationOperations::class, SupportAttachmentOperations::class, SupportMutationOperations::class, ContentMutationOperations::class], true)) {
+                if (in_array($spec['command'], [AdminOrderMutationOperations::class, CommerceMutationOperations::class, SupportAttachmentOperations::class, SupportMutationOperations::class, ContentMutationOperations::class, CouponMutationOperations::class, GiftCardMutationOperations::class, CommissionMutationOperations::class], true)) {
                     $arguments['idempotencyKey'] = (string) $request->header('Idempotency-Key', '');
                 }
                 $view = app()->call([app($spec['command']), $spec['method']], $arguments);

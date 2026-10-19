@@ -204,8 +204,8 @@ final class NativeBillingReconciliation implements \App\Domains\Billing\Contract
             $report['complete'] = true;
             $this->observe($issues, $scope.'_account', $account->id, function () use ($account, $rows, $ownerId, $installationId, &$report): void {
                 $purposes = $ownerId === 0
-                    ? ['provider_clearing' => 'debit', 'sales_revenue' => 'credit', 'refund_liability' => 'credit']
-                    : ['wallet_available' => 'credit', 'wallet_reserved' => 'credit'];
+                    ? ['provider_clearing' => 'debit', 'sales_revenue' => 'credit', 'refund_liability' => 'credit', 'gift_card_liability' => 'credit', 'commission_expense' => 'debit']
+                    : ['wallet_available' => 'credit', 'wallet_reserved' => 'credit', 'commission_available' => 'credit', 'commission_reserved' => 'credit'];
                 MoneyValue::currency($account->currency);
                 $this->check(isset($purposes[$account->purpose]) && $account->normal_side === $purposes[$account->purpose]
                     && ($ownerId === 0 ? $account->user_id === null : (string) $account->user_id === (string) $ownerId),

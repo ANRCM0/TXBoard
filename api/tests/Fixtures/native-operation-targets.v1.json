@@ -10,6 +10,292 @@
     "permission"
   ],
   "targets": {
+    "billing.admin-commissions.payouts.approve": [
+      "command",
+      "App\\Domains\\InternalApi\\CommissionMutationOperations",
+      "approve",
+      "admin",
+      [
+        "admin"
+      ],
+      "domain",
+      "billing.commissions.manage"
+    ],
+    "billing.admin-commissions.payouts.list": [
+      "handler",
+      "App\\Domains\\InternalApi\\CommissionReadOperations",
+      "adminPayouts",
+      "admin",
+      [
+        "admin"
+      ],
+      "read",
+      "billing.commissions.read"
+    ],
+    "billing.admin-commissions.payouts.reject": [
+      "command",
+      "App\\Domains\\InternalApi\\CommissionMutationOperations",
+      "reject",
+      "admin",
+      [
+        "admin"
+      ],
+      "domain",
+      "billing.commissions.manage"
+    ],
+    "billing.admin-commissions.policy.get": [
+      "handler",
+      "App\\Domains\\InternalApi\\CommissionReadOperations",
+      "adminPolicy",
+      "admin",
+      [
+        "admin"
+      ],
+      "read",
+      "billing.commissions.read"
+    ],
+    "billing.admin-commissions.policy.update": [
+      "command",
+      "App\\Domains\\InternalApi\\CommissionMutationOperations",
+      "policy",
+      "admin",
+      [
+        "admin"
+      ],
+      "domain",
+      "billing.commissions.manage"
+    ],
+    "billing.admin-commissions.rewards.list": [
+      "handler",
+      "App\\Domains\\InternalApi\\CommissionReadOperations",
+      "adminRewards",
+      "admin",
+      [
+        "admin"
+      ],
+      "read",
+      "billing.commissions.read"
+    ],
+    "billing.admin-gift-batches.get": [
+      "handler",
+      "App\\Domains\\InternalApi\\GiftBatchReadOperations",
+      "adminFind",
+      "admin",
+      [
+        "admin"
+      ],
+      "read",
+      "billing.gift-cards.read"
+    ],
+    "billing.admin-gift-batches.list": [
+      "handler",
+      "App\\Domains\\InternalApi\\GiftBatchReadOperations",
+      "adminListing",
+      "admin",
+      [
+        "admin"
+      ],
+      "read",
+      "billing.gift-cards.read"
+    ],
+    "billing.admin-gift-cards.list": [
+      "handler",
+      "App\\Domains\\InternalApi\\GiftCardReadOperations",
+      "adminList",
+      "admin",
+      [
+        "admin"
+      ],
+      "read",
+      "billing.gift-cards.read"
+    ],
+    "billing.admin-gift-cards.revoke": [
+      "command",
+      "App\\Domains\\InternalApi\\GiftCardMutationOperations",
+      "adminRevoke",
+      "admin",
+      [
+        "admin"
+      ],
+      "domain",
+      "billing.gift-cards.manage"
+    ],
+    "billing.commissions.balance.get": [
+      "handler",
+      "App\\Domains\\InternalApi\\CommissionReadOperations",
+      "balance",
+      "user",
+      [
+        "user"
+      ],
+      "read",
+      null
+    ],
+    "billing.commissions.payouts.list": [
+      "handler",
+      "App\\Domains\\InternalApi\\CommissionReadOperations",
+      "payouts",
+      "user",
+      [
+        "user"
+      ],
+      "read",
+      null
+    ],
+    "billing.commissions.payouts.request": [
+      "command",
+      "App\\Domains\\InternalApi\\CommissionMutationOperations",
+      "requestPayout",
+      "user",
+      [
+        "user"
+      ],
+      "domain",
+      null
+    ],
+    "billing.commissions.policy.get": [
+      "handler",
+      "App\\Domains\\InternalApi\\CommissionReadOperations",
+      "policy",
+      "user",
+      [
+        "user"
+      ],
+      "read",
+      null
+    ],
+    "billing.commissions.rewards.list": [
+      "handler",
+      "App\\Domains\\InternalApi\\CommissionReadOperations",
+      "rewards",
+      "user",
+      [
+        "user"
+      ],
+      "read",
+      null
+    ],
+    "billing.coupons.create": [
+      "command",
+      "App\\Domains\\InternalApi\\CouponMutationOperations",
+      "create",
+      "admin",
+      [
+        "admin"
+      ],
+      "domain",
+      "billing.coupons.manage"
+    ],
+    "billing.coupons.disable": [
+      "command",
+      "App\\Domains\\InternalApi\\CouponMutationOperations",
+      "disable",
+      "admin",
+      [
+        "admin"
+      ],
+      "domain",
+      "billing.coupons.manage"
+    ],
+    "billing.coupons.get": [
+      "handler",
+      "App\\Domains\\InternalApi\\CouponReadOperations",
+      "find",
+      "admin",
+      [
+        "admin"
+      ],
+      "read",
+      "billing.coupons.read"
+    ],
+    "billing.coupons.list": [
+      "handler",
+      "App\\Domains\\InternalApi\\CouponReadOperations",
+      "listing",
+      "admin",
+      [
+        "admin"
+      ],
+      "read",
+      "billing.coupons.read"
+    ],
+    "billing.gift-batches.get": [
+      "handler",
+      "App\\Domains\\InternalApi\\GiftBatchReadOperations",
+      "find",
+      "user",
+      [
+        "user"
+      ],
+      "read",
+      null
+    ],
+    "billing.gift-batches.issue": [
+      "command",
+      "App\\Domains\\InternalApi\\GiftCardMutationOperations",
+      "issueBatch",
+      "user",
+      [
+        "user"
+      ],
+      "domain",
+      null
+    ],
+    "billing.gift-batches.list": [
+      "handler",
+      "App\\Domains\\InternalApi\\GiftBatchReadOperations",
+      "listing",
+      "user",
+      [
+        "user"
+      ],
+      "read",
+      null
+    ],
+    "billing.gift-cards.issue": [
+      "command",
+      "App\\Domains\\InternalApi\\GiftCardMutationOperations",
+      "Issue",
+      "user",
+      [
+        "user"
+      ],
+      "domain",
+      null
+    ],
+    "billing.gift-cards.list": [
+      "handler",
+      "App\\Domains\\InternalApi\\GiftCardReadOperations",
+      "List",
+      "user",
+      [
+        "user"
+      ],
+      "read",
+      null
+    ],
+    "billing.gift-cards.redeem": [
+      "command",
+      "App\\Domains\\InternalApi\\GiftCardMutationOperations",
+      "Redeem",
+      "user",
+      [
+        "user"
+      ],
+      "domain",
+      null
+    ],
+    "billing.gift-cards.revoke": [
+      "command",
+      "App\\Domains\\InternalApi\\GiftCardMutationOperations",
+      "Revoke",
+      "user",
+      [
+        "user"
+      ],
+      "domain",
+      null
+    ],
     "billing.order-payment-attempts.list": [
       "handler",
       "App\\Domains\\InternalApi\\BillingReadOperations",
@@ -526,6 +812,39 @@
       ],
       "read",
       "identity.read"
+    ],
+    "identity.referrals.bind": [
+      "command",
+      "App\\Domains\\InternalApi\\CommissionMutationOperations",
+      "bind",
+      "user",
+      [
+        "user"
+      ],
+      "domain",
+      null
+    ],
+    "identity.referrals.code.create": [
+      "command",
+      "App\\Domains\\InternalApi\\CommissionMutationOperations",
+      "code",
+      "user",
+      [
+        "user"
+      ],
+      "domain",
+      null
+    ],
+    "identity.referrals.get": [
+      "handler",
+      "App\\Domains\\InternalApi\\CommissionReadOperations",
+      "referrals",
+      "user",
+      [
+        "user"
+      ],
+      "read",
+      null
     ],
     "identity.session.end": [
       "command",

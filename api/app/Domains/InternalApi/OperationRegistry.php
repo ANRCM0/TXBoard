@@ -140,6 +140,10 @@ final class OperationRegistry
             ...SupportAttachmentBindings::all(),
             ...AdminOperationBindings::all(),
             ...ContentOperationBindings::all(),
+            ...CouponOperationBindings::all(),
+            ...GiftCardOperationBindings::all(),
+            ...GiftBatchOperationBindings::all(),
+            ...CommissionOperationBindings::all(),
         ]);
     }
 
