@@ -2,7 +2,7 @@
 .reference-user-list-heading { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; }
 .reference-user-list-heading h2 { margin:0; font-size:18px; line-height:1.4; }
 .reference-user-list-heading p { margin:5px 0 0; color:var(--muted); font-size:12px; }
-.reference-users .management-filter-form { margin-top:16px; padding:16px; border-radius:10px; background:var(--ui-surface-subtle); }
+.reference-users .management-filter-form { margin:16px 0 20px; padding:16px; border-radius:10px; background:var(--ui-surface-subtle); }
 .reference-users .management-filter-form label:first-child { flex:1 1 280px; max-width:420px; }
 .reference-users .management-filter-form input { width:100%; }
 .reference-users .reference-account { min-width:240px; max-width:320px; }
