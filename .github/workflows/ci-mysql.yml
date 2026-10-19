@@ -436,6 +436,8 @@ jobs:
           tests/Feature/Subscription/NativeCredentialProviderTest.php
           tests/Feature/Subscription/NativeProviderNodeAuthorizationTest.php
           tests/Feature/Subscription/NativeSubscriptionDeliveryTest.php
+          tests/Feature/Subscription/NativeBrowserDeliveriesTest.php
+          tests/Feature/Txapi/TxapiNativeSubscriptionAdapterTest.php
           tests/Feature/Subscription/NativeRuntimeCommerceTest.php
           tests/Feature/Subscription/NativeIdentityAndCatalogTest.php
           tests/Feature/Installation/NativeRuntimeReadinessTest.php

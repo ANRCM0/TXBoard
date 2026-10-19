@@ -134,6 +134,8 @@ final class OperationRegistry
                     'stop_register' => ['sometimes', 'boolean']],
                 ['ok'], permission: 'settings.write'),
             ...self::subscriptionOperations($admin, $id),
+            'subscription.delivery-options.get' => self::browserDelivery('options'),
+            'subscription.deliveries.authorize' => self::browserDelivery('authorize'),
             ...AdminOperationBindings::all(),
         ]);
     }
@@ -236,6 +238,14 @@ final class OperationRegistry
         }
         return $operations;
     }
+
+    private static function browserDelivery(string $method): array
+    {
+        return ['domains' => ['user'], 'actor' => 'user', 'mode' => 'read', 'controller' => null,
+            'method' => $method, 'rules' => [], 'fields' => [], 'list' => false, 'parameters' => [],
+            'routeParameters' => [], 'permission' => null, 'handler' => BrowserDeliveryReadOperations::class, 'command' => null];
+    }
+
 
     private static function entitlementFields(): array
     {

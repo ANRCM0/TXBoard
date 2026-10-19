@@ -21,6 +21,8 @@ export const NATIVE_INTERNAL_OPERATIONS = {
   'identity.session.end': ['user', 'admin'],
   'catalog.offers.list': ['user'],
   'subscription.mine.get': ['user'],
+  'subscription.delivery-options.get': ['user'],
+  'subscription.deliveries.authorize': ['user'],
   'subscription.links.list': ['user'],
   'subscription.links.issue': ['user'],
   'subscription.links.revoke': ['user'],

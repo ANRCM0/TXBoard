@@ -61,7 +61,7 @@ try {
   const client = createCoreUserClient({ baseURL, getToken: () => token })
   const other = createCoreUserClient({ baseURL, getToken: () => otherToken })
   const caps = await client.capabilities()
-  assert.equal(caps.operations.length, 23); checks++
+  assert.equal(caps.operations.length, 25); checks++
   const offers = await client.call('catalog.offers.list', {})
   assert.ok(offers.length > 0); checks++
   const actor = await client.call('identity.account.get', {})

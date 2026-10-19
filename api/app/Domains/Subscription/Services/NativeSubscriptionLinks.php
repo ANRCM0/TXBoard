@@ -102,7 +102,8 @@ final class NativeSubscriptionLinks
         }, 3);
     }
 
-    public function redeem(string $reference, #[\SensitiveParameter] string $token, string $recipientKey): array
+    public function redeem(string $reference, #[\SensitiveParameter] string $token, string $recipientKey,
+        string $format = RenderGrantCodec::FORMAT, ?string $clientVersion = null): array
     {
         $this->fresh();
         $this->reference($reference);
@@ -124,7 +125,7 @@ final class NativeSubscriptionLinks
                 && hash_equals($row->bearer_hash, hash('sha256', $token)), 'MISSING');
             return (int) $row->expires_at;
         };
-        return $this->delivery->authorize((int) $locator->user_id, (int) $locator->access_subject_id, $recipientKey, $guard);
+        return $this->delivery->authorize((int) $locator->user_id, (int) $locator->access_subject_id, $recipientKey, $guard, $format, $clientVersion);
     }
 
     private function verify(object $row): void

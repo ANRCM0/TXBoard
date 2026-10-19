@@ -27,7 +27,8 @@ final class NativeAccountQueries implements AccountQueries, AdminAccountQueries
     public function subscription(int $userId): array
     {
         return $this->entitlements->forAccount(new EntitlementQuery($userId))->toArray() + [
-            'credential_status' => 'provider_managed', 'delivery_formats' => [RenderGrantCodec::FORMAT],
+            'credential_status' => 'provider_managed',
+            'delivery_formats' => [RenderGrantCodec::FORMAT, ...array_keys(RenderGrantCodec::CLIENT_FORMATS)],
         ];
     }
 

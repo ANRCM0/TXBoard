@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Txapi;
 
 use App\Core\Http\TxapiResponse;
 use App\Domains\CredentialProvider\ProviderError;
+use App\Domains\CredentialProvider\RenderGrantCodec;
 use App\Domains\Subscription\Services\NativeSubscriptionLinks;
 use DomainException;
 use Illuminate\Http\JsonResponse;
@@ -38,9 +39,12 @@ final class SubscriptionLinkController
 
     public function redeem(Request $request, NativeSubscriptionLinks $links): JsonResponse
     {
-        return $this->run($request, ['recipient_public_key'], function () use ($request, $links): array {
-            $input = $request->validate(['recipient_public_key' => ['required', 'string', 'regex:/\A[A-Za-z0-9_-]{43}\z/D']]);
-            return $links->redeem((string) $request->route('linkRef'), (string) $request->bearerToken(), $input['recipient_public_key']);
+        return $this->run($request, ['recipient_public_key', 'format_id', 'client_version'], function () use ($request, $links): array {
+            $input = $request->validate(['recipient_public_key' => ['required', 'string', 'regex:/\A[A-Za-z0-9_-]{43}\z/D'],
+                'format_id' => ['sometimes', 'string', 'in:'.implode(',', [RenderGrantCodec::FORMAT, ...array_keys(RenderGrantCodec::CLIENT_FORMATS)])],
+                'client_version' => ['sometimes', 'required', 'string', 'max:14']]);
+            return $links->redeem((string) $request->route('linkRef'), (string) $request->bearerToken(),
+                $input['recipient_public_key'], $input['format_id'] ?? RenderGrantCodec::FORMAT, $input['client_version'] ?? null);
         });
     }
 

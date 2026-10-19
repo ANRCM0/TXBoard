@@ -69,7 +69,7 @@ const EXPECTED_CORE: Record<string, PolicyName> = {
   'GET /gateway/v1/core/user/capabilities': 'coreCapabilities',
   'POST /gateway/v1/core/user/operations/identity.session.create': 'coreUserLogin',
   ...Object.fromEntries(['catalog.offers.list'].map(id => [`POST /gateway/v1/core/user/operations/${id}`, 'corePublicRead' as PolicyName])),
-  ...Object.fromEntries(['commerce.orders.list', 'commerce.orders.get', 'commerce.orders.events.list', 'billing.order-payment-attempts.list', 'billing.wallet.get', 'billing.payment-methods.list', 'billing.recharges.list', 'billing.recharges.get', 'subscription.mine.get', 'usage.mine.list', 'identity.account.get', 'identity.sessions.list', 'billing.payment-attempts.get'].map(id => [`POST /gateway/v1/core/user/operations/${id}`, 'coreUserRead' as PolicyName])),
+  ...Object.fromEntries(['commerce.orders.list', 'commerce.orders.get', 'commerce.orders.events.list', 'subscription.delivery-options.get', 'subscription.deliveries.authorize', 'billing.order-payment-attempts.list', 'billing.wallet.get', 'billing.payment-methods.list', 'billing.recharges.list', 'billing.recharges.get', 'subscription.mine.get', 'usage.mine.list', 'identity.account.get', 'identity.sessions.list', 'billing.payment-attempts.get'].map(id => [`POST /gateway/v1/core/user/operations/${id}`, 'coreUserRead' as PolicyName])),
   ...Object.fromEntries(['commerce.orders.create', 'commerce.orders.checkout', 'commerce.orders.cancel', 'billing.recharges.create', 'billing.recharges.checkout', 'identity.sessions.revoke', 'identity.session.end', 'billing.payment-attempts.query'].map(id => [`POST /gateway/v1/core/user/operations/${id}`, 'coreUserWrite' as PolicyName])),
 }
 const EXPECTED_ADMIN: Record<string, PolicyName> = {

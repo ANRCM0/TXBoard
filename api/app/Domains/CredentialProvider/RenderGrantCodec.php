@@ -10,6 +10,45 @@ final class RenderGrantCodec
     public const POLICY = 'native-provider-subscription/v1';
     public const AUDIENCE = 'tx-subscription-client-v1';
     public const FORMAT = 'native-connection-bundle/v1';
+    public const CLIENT_FORMATS = [
+        'clash/v1' => ['min' => '1.18.0', 'before' => '2.0.0'],
+        'clash-meta/v1' => ['min' => '1.18.0', 'before' => '2.0.0'],
+        'sing-box/v1' => ['min' => '1.10.0', 'before' => '1.13.0'],
+        'shadowrocket/v1' => ['min' => '2.2.0', 'before' => '3.0.0'],
+        'surge-ios/v1' => ['min' => '5.20.0', 'before' => '6.0.0'],
+        'surge-mac/v1' => ['min' => '6.7.0', 'before' => '7.0.0'],
+    ];
+
+    public static function profiles(string $format): array
+    {
+        return match ($format) {
+            'clash/v1', 'surge-ios/v1', 'surge-mac/v1' => ['vmess-uuid/v1'],
+            self::FORMAT, 'clash-meta/v1', 'sing-box/v1', 'shadowrocket/v1' => ['vless-uuid/v1', 'vmess-uuid/v1'],
+            default => throw new DomainException('NATIVE_SUBSCRIPTION_DELIVERY_PROFILE_UNSUPPORTED'),
+        };
+    }
+
+    /** An omitted ALPN field cannot represent an explicit signed TLS offer. */
+    public static function compatibleNode(string $format, array $node): bool
+    {
+        return ($node['transport'] ?? null) === 'tcp'
+            && in_array(($node['protocol'] ?? '').'-uuid/v1', self::profiles($format), true)
+            && ($format !== 'clash/v1' || ($node['tls']['alpn'] ?? []) === []);
+    }
+
+    /** Explicit compatibility admission; user-agent sniffing never chooses policy. */
+    public static function format(string $format, ?string $clientVersion): void
+    {
+        if ($format === self::FORMAT) {
+            self::require($clientVersion === null);
+            return;
+        }
+        $rule = self::CLIENT_FORMATS[$format] ?? null;
+        self::require($rule !== null && is_string($clientVersion)
+            && preg_match('/\A(?:0|[1-9][0-9]{0,3})\.(?:0|[1-9][0-9]{0,3})\.(?:0|[1-9][0-9]{0,3})\z/D', $clientVersion) === 1);
+        self::require(version_compare($clientVersion, $rule['min'], '>=')
+            && version_compare($clientVersion, $rule['before'], '<'));
+    }
 
     public static function publicKey(mixed $encoded): string
     {
