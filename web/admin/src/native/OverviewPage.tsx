@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { Server, Network, Settings, ShieldCheck, Users, ReceiptText } from 'lucide-react'
+import { Server, Network, Settings, ShieldCheck, Users, ReceiptText, MessageCircle, Bell, BookOpen, Tag, Gift, WalletCards } from 'lucide-react'
 import { admin } from './session'
 import { ManagementFeedback } from './Feedback'
 import { PageHeader } from '../components/ui/PageHeader'
@@ -8,6 +8,12 @@ import { PageHeader } from '../components/ui/PageHeader'
 const entries = [
   { href: '/user/manage', title: '用户管理', description: '查询账户与当前订阅', icon: Users },
   { href: '/finance/order', title: '订单管理', description: '查询原生购买订单与详情', icon: ReceiptText },
+  { href: '/user/ticket', title: '工单管理', description: '认领工单、回复并处理私有附件', icon: MessageCircle },
+  { href: '/config/notice', title: '公告管理', description: '编辑公告、发布时间与受众', icon: Bell },
+  { href: '/config/knowledge', title: '知识库管理', description: '管理知识内容、分类与排序', icon: BookOpen },
+  { href: '/finance/coupon', title: '优惠券', description: '创建优惠策略或停用后续使用', icon: Tag },
+  { href: '/finance/gift-card', title: '礼品卡', description: '查看批次与逐卡状态、撤销未兑换卡片', icon: Gift },
+  { href: '/finance/commission', title: '邀请与佣金', description: '查看邀请奖励、审核钱包转入申请', icon: WalletCards },
   { href: '/server/manage', title: '节点管理', description: '查看节点地址、启用状态与用量', icon: Network },
   { href: '/server/machine', title: '服务器管理', description: '查看机器、镜像通道与最近心跳', icon: Server },
   { href: '/config/system', title: '系统配置', description: '查看站点公开信息与注册状态', icon: Settings },

@@ -4,6 +4,7 @@ import { Outlet, useLocation } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
 import { TopBar } from './TopBar'
 import { ConfirmDialogHost } from '../ui/ConfirmDialog'
+import { PendingWorkflowNotice } from '../../native/PendingWorkflowNotice'
 
 const SIDEBAR_EXPANDED_KEY = 'txboard:admin:sidebar:expanded'
 
@@ -56,6 +57,7 @@ export function AdminLayout() {
         <TopBar onOpenMenu={() => setOpen(true)} />
         <div ref={scrollRef} className="admin-scroll">
           <div className='admin-page'>
+            <PendingWorkflowNotice />
             <Suspense fallback={<div className="route-panel-loading" role="status" aria-live="polite">正在加载页面…</div>}>
               <Outlet />
             </Suspense>

@@ -1,8 +1,8 @@
-import { CoreAdminApiError, coreOperations } from '@txboard/core-sdk'
+import { CoreAdminApiError, StaleAdminContext, coreOperations } from '@txboard/core-sdk'
 import type { CoreInput } from '@txboard/core-sdk'
 import type { CoreAdminWriteOperation } from '@txboard/core-sdk'
 
-type Operation = Extract<CoreAdminWriteOperation, `commerce.admin-orders.${string}`>
+type Operation = Extract<CoreAdminWriteOperation, `commerce.admin-orders.${string}` | `support.admin-tickets.${string}` | `content.${string}` | `billing.coupons.${string}` | `billing.admin-gift-cards.${string}` | `billing.admin-commissions.${string}`>
 export type PendingWorkflow = { [K in Operation]: {
   operation: K; input: CoreInput<K>; key: string; unknown: boolean
 } }[Operation]
@@ -20,6 +20,11 @@ export function createWorkflowActions(send: Send) {
     subscribe(notify: () => void) { listeners.add(notify); return () => { listeners.delete(notify) } },
     reset() { epoch++; update({ busy: false }) },
     clearError() { if (!state.busy && !state.pending) update({ busy: false }) },
+    confirmReadAuthorization(prefix: string) {
+      if (!state.busy && state.pending?.operation.startsWith(prefix)) {
+        update({ busy: false, pending: state.pending })
+      }
+    },
     async run<K extends Operation>(operation: K, input: CoreInput<K>) {
       if (state.busy) throw new Error('WORKFLOW_BUSY')
       if (!coreOperations[operation].input.safeParse(input).success) throw new CoreAdminApiError('VALIDATION_ERROR', 422)
@@ -33,8 +38,10 @@ export function createWorkflowActions(send: Send) {
       update({ busy: true, pending: action })
       try {
         await send(operation, action.input as CoreInput<K>, action.key)
-        if (current === epoch) update({ busy: false })
+        if (current !== epoch) throw new StaleAdminContext()
+        update({ busy: false })
       } catch (error) {
+        if (current !== epoch) throw new StaleAdminContext()
         if (current === epoch) {
           const unknown = action.unknown || !(error instanceof CoreAdminApiError) || error.needsStateConfirmation
           update({ busy: false, error, ...(unknown ? { pending: { ...action, unknown: true } } : {}) })

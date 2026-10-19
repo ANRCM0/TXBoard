@@ -6,6 +6,12 @@ const preloaders: Record<string, () => Promise<unknown>> = {
   '/system/sessions': () => import('../native/SessionsPage'),
   '/user/manage': () => import('../pages/users/UsersPage'),
   '/finance/order': () => import('../pages/finance/OrdersPage'),
+  '/user/ticket': () => import('../native/TicketsPage'),
+  '/config/notice': () => import('../native/ContentPage'),
+  '/config/knowledge': () => import('../native/ContentPage'),
+  '/finance/coupon': () => import('../native/CouponsPage'),
+  '/finance/gift-card': () => import('../native/GiftCardsPage'),
+  '/finance/commission': () => import('../native/CommissionsPage'),
 }
 
 export function preloadAdminRoute(path: string) {

@@ -14,6 +14,8 @@ on:
       - "contracts/core-api/**"
       - "scripts/check-admin-migration.mjs"
       - "scripts/admin-browser.mjs"
+      - "scripts/admin-workflows-browser.mjs"
+      - "scripts/lib/admin-workflows-fixture.mjs"
       - "scripts/user-browser.mjs"
       - "scripts/check-web-performance.mjs"
       - ".github/workflows/ci-web.yml"
@@ -29,6 +31,8 @@ on:
       - "contracts/core-api/**"
       - "scripts/check-admin-migration.mjs"
       - "scripts/admin-browser.mjs"
+      - "scripts/admin-workflows-browser.mjs"
+      - "scripts/lib/admin-workflows-fixture.mjs"
       - "scripts/user-browser.mjs"
       - "scripts/check-web-performance.mjs"
       - ".github/workflows/ci-web.yml"
@@ -57,5 +61,6 @@ jobs:
           name: admin-browser-${{ github.sha }}
           path: |
             artifacts/admin-browser/
+            artifacts/admin-workflows-browser/
             artifacts/user-browser/
           if-no-files-found: ignore

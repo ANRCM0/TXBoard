@@ -9,6 +9,7 @@ export function managementError(error: unknown): string {
     if (error.status === 401) return '登录已失效，请重新登录。'
     if (error.status === 403) return '当前账号没有此操作的权限，请联系管理员。'
     if (error.status === 404) return '管理入口或功能已变更，请重新登录后再试。'
+    if (error.status === 409) return '记录已变化或操作发生冲突，请重新读取后确认。'
     if (error.status === 429) return '请求过于频繁，请稍后再试。'
     if (error.status === 503) return '管理服务暂不可用，请稍后重试。'
   }
