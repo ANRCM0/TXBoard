@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { Server, Network, Settings, ShieldCheck, Users, ReceiptText, MessageCircle, Bell, BookOpen, Tag, Gift, WalletCards, CreditCard, Boxes, Route, FileText, Plug, Package, Activity, Mail, RefreshCcw } from 'lucide-react'
+import { ArrowUpRight, Server, Network, Settings, ShieldCheck, Users, ReceiptText, MessageCircle, Bell, BookOpen, Tag, Gift, WalletCards, CreditCard, Boxes, Route, FileText, Plug, Package, Activity, Mail, RefreshCcw } from 'lucide-react'
 import { admin } from './session'
 import { ManagementFeedback } from './Feedback'
 import { PageHeader } from '../components/ui/PageHeader'
@@ -35,13 +35,15 @@ export function OverviewPage() {
   const identity = useQuery({ queryKey: ['native-admin', 'identity'],
     queryFn: ({ signal }) => admin.read('identity.admin.get', {}, signal) })
   return <div className="native-management-page">
-    <PageHeader title="管理中心" description="管理站点资源与账户会话。" />
+    <PageHeader title="管理中心" description="管理站点资源与账户会话" />
     <ManagementFeedback error={identity.isError ? identity.error : undefined} loading={identity.isFetching}
       onRetry={() => void identity.refetch()} />
     {!identity.isError && identity.data ? <p className="native-identity">当前管理员：{identity.data.data.email} · #{identity.data.data.id}</p> : null}
     <div className="native-overview-grid">
       {entries.map(({ href, title, description, icon: Icon }) => <Link className="card native-overview-card" to={href} key={href}>
-        <Icon size={24} /><strong>{title}</strong><span>{description}</span>
+        <div className="native-overview-icon"><Icon size={20} /></div>
+        <div className="native-overview-copy"><strong>{title}</strong><span>{description}</span></div>
+        <ArrowUpRight className="native-overview-arrow" size={16} aria-hidden="true" />
       </Link>)}
     </div>
   </div>

@@ -11,6 +11,7 @@ import { CoreAdminApiError } from '../native/api'
 import { fetchGuestConfig } from '../api/comm'
 import { CaptchaWidget, type CaptchaWidgetHandle } from '../components/CaptchaWidget'
 import { loginRedirect } from '../lib/basePath'
+import { ThemeToggle } from '../components/ui/ThemeToggle'
 
 const schema = z.object({
   email: z.string().trim().email('请输入有效邮箱'),
@@ -58,10 +59,12 @@ export function SignInPage() {
 
   return (
     <div className="admin-auth-page">
+      <div className="admin-auth-tools"><ThemeToggle /></div>
       <div className="admin-auth-wrap">
         <div className="admin-auth-brand">
+          <div className="admin-brand-mark" aria-hidden="true">TX</div>
           <h1>TXBoard</h1>
-          <p>TXBoard 管理中心</p>
+          <p>管理控制台</p>
         </div>
 
         <div className="admin-auth-card">

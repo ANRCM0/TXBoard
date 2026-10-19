@@ -82,6 +82,7 @@ export function Sidebar({ open, onClose, collapsed, onExpand }: SidebarProps) {
             <div className="admin-brand-mark">TX</div>
             <div className="admin-brand-copy">
               <strong>TXBoard</strong>
+              <small>管理控制台</small>
             </div>
           </div>
           <button type="button" className="admin-mobile-menu admin-sidebar-close" onClick={onClose} aria-label="关闭导航">

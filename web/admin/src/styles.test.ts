@@ -28,7 +28,7 @@ describe('admin sidebar navigation layout', () => {
   })
 
   it('keeps the default compact rail and dashboard picker controls independently sized', () => {
-    expect(tokens).toContain('--admin-sidebar-compact-width: 64px;')
+    expect(tokens).toContain('--admin-sidebar-compact-width: 88px;')
     expect(styles).toContain('.admin-shell.is-sidebar-collapsed .admin-main{margin-left:var(--admin-sidebar-compact-width)}')
     expect(styles).toContain('.dashboard-period-popover{')
     expect(styles).toContain('.dashboard-chart-card,')

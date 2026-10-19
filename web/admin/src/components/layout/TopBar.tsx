@@ -1,4 +1,4 @@
-import { LogOut, Menu, Moon, Package, Search, Sun, X } from 'lucide-react'
+import { LogOut, Menu, Package, Search, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useLocation, useNavigate } from 'react-router-dom'
@@ -7,6 +7,7 @@ import { toast } from 'sonner'
 import { StaleAdminContext } from '@txboard/core-sdk'
 import { preloadAdminRoute } from '../../lib/routePreload'
 import { useDialog } from '../../lib/useDialog'
+import { ThemeToggle } from '../ui/ThemeToggle'
 
 const commandItems = [
   ['/', '仪表盘'],
@@ -77,17 +78,11 @@ const titleRules: Array<[RegExp, string]> = [
 export function TopBar({ onOpenMenu }: { onOpenMenu: () => void }) {
   const navigate = useNavigate()
   const location = useLocation()
-  const [dark, setDark] = useState(() => { try { return localStorage.getItem('theme') === 'dark' } catch { return false } })
   const [commandOpen, setCommandOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [activeIndex, setActiveIndex] = useState(0)
   const commandRef = useDialog(commandOpen, () => setCommandOpen(false))
   const shortcut = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘ K' : 'Ctrl K'
-
-  useEffect(() => {
-    document.documentElement.dataset.theme = dark ? 'dark' : 'light'
-    try { localStorage.setItem('theme', dark ? 'dark' : 'light') } catch { /* preference is optional */ }
-  }, [dark])
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -172,9 +167,7 @@ export function TopBar({ onOpenMenu }: { onOpenMenu: () => void }) {
         </button>
 
         <div className="admin-toolbar-actions">
-          <button type="button" className="admin-toolbar-icon" aria-label={dark ? '切换浅色模式' : '切换深色模式'} title={dark ? '切换浅色模式' : '切换深色模式'} onClick={() => setDark(value => !value)}>
-            {dark ? <Sun size={20} /> : <Moon size={20} />}
-          </button>
+          <ThemeToggle />
           <button type="button" className="admin-avatar-button" onClick={() => void logout()} disabled={exiting} aria-label="退出登录" title="退出登录">
             <span className="admin-avatar">A</span>
           </button>
