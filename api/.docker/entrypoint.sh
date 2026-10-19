@@ -71,13 +71,14 @@ redis_budget=$(( MEM_MIB / 8 ))
 [ "$redis_budget" -le 512 ] || redis_budget=512
 : "${REDIS_MAXMEMORY_MIB:=$redis_budget}"
 case "$REDIS_MAXMEMORY_MIB" in
-    ''|*[!0-9]*) echo '[entrypoint] Invalid Redis memory budget' >&2; exit 1 ;;
+    ''|0*|*[!0-9]*) echo '[entrypoint] Invalid Redis memory budget' >&2; exit 1 ;;
 esac
 [ "$REDIS_MAXMEMORY_MIB" -gt 0 ] && [ "$REDIS_MAXMEMORY_MIB" -lt "$MEM_MIB" ] || {
     echo '[entrypoint] Redis memory budget must fit within the container memory budget' >&2
     exit 1
 }
-export REDIS_MAXMEMORY_MIB
+REDIS_MAXMEMORY_BYTES=$(( REDIS_MAXMEMORY_MIB * 1024 * 1024 ))
+export REDIS_MAXMEMORY_MIB REDIS_MAXMEMORY_BYTES
 
 # Resource profile presets. RESOURCE_PROFILE selects ratios for the budget split:
 #   minimal     - smallest possible footprint (~250-350 MiB), single octane worker,

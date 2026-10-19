@@ -16,7 +16,7 @@ expect_budget 1024 128
 expect_budget 8192 512
 expect_budget 2048 256 256
 
-for invalid in 0 invalid 512 1024 999999999999999999999999999999; do
+for invalid in 0 08 invalid 512 1024 999999999999999999999999999999; do
   if docker run --rm --network none --memory 512m -e ENABLE_CADDY=false \
     -e "REDIS_MAXMEMORY_MIB=$invalid" "$image" sh -c 'exit 0' txboard:install; then
     echo "Invalid Redis budget was accepted: $invalid" >&2
