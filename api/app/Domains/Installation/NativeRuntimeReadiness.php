@@ -26,7 +26,8 @@ final class NativeRuntimeReadiness
             && $trust['core_instance_id'] === $installationId, 'SIGNER_INVALID');
         $this->require(config('core_usage_v2.core_instance_id') === $installationId
             && (string) config('core_usage_v2.receipt_generation') === '1', 'USAGE_IDENTITY_INVALID');
-        $this->require(extension_loaded('bcmath') && extension_loaded('curl') && extension_loaded('sodium'), 'RUNTIME_EXTENSION_MISSING');
+        $this->require(extension_loaded('bcmath') && extension_loaded('curl') && extension_loaded('sodium')
+            && extension_loaded('fileinfo'), 'RUNTIME_EXTENSION_MISSING');
         $usage = ['core_instance_id' => $installationId, 'receipt_generation' => '1'];
         foreach (['retention_seconds', 'max_late_report_seconds', 'receipt_retention_seconds'] as $field) {
             $value = config('core_usage_v2.'.$field);
@@ -102,6 +103,19 @@ final class NativeRuntimeReadiness
             'tx_native_order_event' => ['id', 'order_id', 'sequence', 'type', 'status', 'occurred_at'],
             'tx_native_order_admin_request' => ['id', 'installation_id', 'actor_id', 'order_id', 'action',
                 'key_hash', 'input_hash', 'payload_json', 'content_hash', 'created_at'],
+            'tx_ticket' => ['id', 'user_id', 'subject', 'level', 'status', 'reply_status', 'row_version', 'last_reply_user_id', 'assigned_admin_id'],
+            'tx_ticket_message' => ['id', 'ticket_id', 'user_id', 'message', 'author_kind', 'created_at'],
+            'tx_support_request' => ['key_hash', 'installation_id', 'actor_id', 'operation', 'input_hash', 'response_json', 'response_hash', 'created_at'],
+            'tx_support_audit' => ['id', 'installation_id', 'ticket_id', 'row_version', 'payload_json', 'content_hash'],
+            'tx_support_attachment' => ['id', 'installation_id', 'ticket_id', 'uploader_id', 'message_id', 'filename',
+                'media_type', 'size_bytes', 'sha256', 'status', 'received_bytes', 'next_chunk_index', 'created_at', 'expires_at', 'content_hash'],
+            'tx_support_attachment_chunk' => ['attachment_id', 'chunk_index', 'ciphertext', 'sha256', 'size_bytes'],
+            'tx_support_attachment_request' => ['key_hash', 'installation_id', 'actor_id', 'operation', 'input_hash', 'attachment_id', 'content_hash', 'created_at'],
+            'tx_notice' => ['id', 'row_version', 'audience', 'publish_at', 'expire_at', 'deleted_at', 'popup'],
+            'tx_knowledge' => ['id', 'row_version', 'audience', 'publish_at', 'expire_at', 'deleted_at', 'language', 'category'],
+            'tx_content_collection' => ['kind'],
+            'tx_content_request' => ['key_hash', 'installation_id', 'actor_id', 'operation', 'input_hash', 'response_json', 'response_hash', 'created_at'],
+            'tx_content_audit' => ['id', 'installation_id', 'actor_id', 'kind', 'operation', 'changes_json', 'input_hash', 'correlation_id', 'occurred_at', 'content_hash'],
             'tx_internal_service' => ['service_id', 'security_domain', 'token_hash', 'certificate_sha256', 'epoch',
                 'operations_json', 'expires_at', 'revoked_at', 'created_at', 'updated_at'],
             'tx_internal_actor_grant' => ['user_id', 'permission', 'created_at'],
@@ -134,9 +148,21 @@ final class NativeRuntimeReadiness
             && Schema::hasIndex('tx_internal_service', ['service_id'], 'primary')
             && Schema::hasIndex('tx_internal_actor_grant', ['user_id', 'permission'], 'primary')
             && Schema::hasIndex('tx_internal_request', ['key_hash'], 'primary')
-            && Schema::hasIndex('tx_native_order_event', ['order_id', 'sequence'], 'unique')
             && Schema::hasIndex('tx_native_order_admin_request', 'tx_order_admin_request_key_uq', 'unique')
             && Schema::hasIndex('tx_native_order_admin_request', 'tx_order_admin_audit_cursor_idx')
+            && Schema::hasIndex('tx_support_request', ['key_hash'], 'primary')
+            && Schema::hasIndex('tx_ticket', 'tx_ticket_user_status_idx')
+            && Schema::hasIndex('tx_ticket', 'tx_ticket_assignment_idx')
+            && Schema::hasIndex('tx_support_audit', 'tx_support_audit_version_unique', 'unique')
+            && Schema::hasIndex('tx_support_audit', 'tx_support_audit_cursor_idx')
+            && Schema::hasIndex('tx_support_attachment', ['id'], 'primary')
+            && Schema::hasIndex('tx_support_attachment', 'tx_support_attachment_ticket_idx')
+            && Schema::hasIndex('tx_support_attachment', 'tx_support_attachment_pending_idx')
+            && Schema::hasIndex('tx_support_attachment', 'tx_support_attachment_expiry_idx')
+            && Schema::hasIndex('tx_support_attachment', 'tx_support_attachment_message_idx')
+            && Schema::hasIndex('tx_support_attachment_chunk', ['attachment_id', 'chunk_index'], 'primary')
+            && Schema::hasIndex('tx_support_attachment_request', ['key_hash'], 'primary')
+            && Schema::hasIndex('tx_ticket_message', 'tx_ticket_message_cursor_idx')
             && Schema::hasIndex('tx_plugin_package_fence', ['plugin_code'], 'primary'), 'SCHEMA_REQUIRED');
         foreach ([
             ['idempotency_keys', ['user_id', 'operation', 'key_hash']],
@@ -264,6 +290,19 @@ final class NativeRuntimeReadiness
             ['tx_native_order_admin_request', ['order_id'], 'tx_order', ['id']],
             ['tx_native_order_admin_request', ['actor_id'], 'tx_user', ['id']],
             ['tx_native_order_admin_request', ['installation_id'], 'tx_authority_writer_fence', ['installation_id']],
+            ['tx_support_request', ['actor_id'], 'tx_user', ['id']],
+            ['tx_ticket', ['assigned_admin_id'], 'tx_user', ['id']],
+            ['tx_support_audit', ['ticket_id'], 'tx_ticket', ['id']],
+            ['tx_support_audit', ['installation_id'], 'tx_authority_writer_fence', ['installation_id']],
+            ['tx_support_attachment', ['ticket_id'], 'tx_ticket', ['id']],
+            ['tx_support_attachment', ['uploader_id'], 'tx_user', ['id']],
+            ['tx_support_attachment', ['message_id'], 'tx_ticket_message', ['id']],
+            ['tx_support_attachment', ['installation_id'], 'tx_authority_writer_fence', ['installation_id']],
+            ['tx_support_attachment_chunk', ['attachment_id'], 'tx_support_attachment', ['id']],
+            ['tx_support_attachment_request', ['attachment_id'], 'tx_support_attachment', ['id']],
+            ['tx_support_attachment_request', ['actor_id'], 'tx_user', ['id']],
+            ['tx_support_attachment_request', ['installation_id'], 'tx_authority_writer_fence', ['installation_id']],
+            ['tx_support_request', ['installation_id'], 'tx_authority_writer_fence', ['installation_id']],
             ['tx_internal_actor_grant', ['user_id'], 'tx_user', ['id']],
             ['tx_internal_request', ['actor_id'], 'tx_user', ['id']],
             ['tx_internal_audit', ['actor_id'], 'tx_user', ['id']],

@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { coreOperations } from '../contracts/core.generated.js'
+import { coreOperations, CORE_SURFACE_OPERATION_LIMIT } from '../contracts/core.generated.js'
 import { CORE_USER_OPERATIONS, CORE_USER_PREFIX, requiresCommerceWrites } from '../contracts/core-user.js'
 import { NativeCoreClient } from '../services/native-internal.js'
 import { GatewayFailure } from '../services/failures.js'
@@ -12,7 +12,7 @@ const wrapper = z.strictObject({ input: z.unknown() })
 const key = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 const capability = z.object({ id: z.string(), version: z.literal('1'), actor: z.string(), idempotency: z.string() })
 const discovery = z.object({ contract: z.literal('native-internal-api/v1'), domain: z.literal('user'),
-  operations: z.array(capability).max(100) })
+  operations: z.array(capability).max(CORE_SURFACE_OPERATION_LIMIT) })
 
 export function registerCoreUserRoutes(app: {
   get(path: string, handler: (c: RouteContext) => Promise<Response>): unknown

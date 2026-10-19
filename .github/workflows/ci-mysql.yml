@@ -192,7 +192,7 @@ jobs:
 
   installation-bootstrap:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     permissions:
       contents: read
     services:
@@ -241,7 +241,7 @@ jobs:
 
   native-admin-management:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     permissions:
       contents: read
     services:
@@ -291,6 +291,11 @@ jobs:
         run: >-
           php artisan test
           tests/Feature/Database/NoticePopupMigrationTest.php
+          tests/Feature/Database/NativeBusinessMigrationCycleTest.php
+          tests/Feature/Content/NativeContentWorkflowTest.php
+          tests/Feature/Support/NativeTicketWorkflowTest.php
+          tests/Feature/Support/NativeTicketWorkflowMysqlConcurrencyTest.php
+          tests/Feature/Support/NativeTicketAttachmentsTest.php
           tests/Feature/Txapi/TxapiAdminResourceReadsTest.php
           tests/Feature/Txapi/TxapiUnifiedAdminManagementTest.php
 
@@ -449,6 +454,10 @@ jobs:
           tests/Feature/Txapi/TxapiAdminResourceReadsTest.php
           tests/Feature/Txapi/TxapiUnifiedAdminManagementTest.php
           tests/Feature/Database/NoticePopupMigrationTest.php
+          tests/Feature/Database/NativeBusinessMigrationCycleTest.php
+          tests/Feature/Content/NativeContentWorkflowTest.php
+          tests/Feature/Support/NativeTicketWorkflowTest.php
+          tests/Feature/Support/NativeTicketAttachmentsTest.php
           tests/Feature/Txapi/AccountReadBoundaryTest.php
           tests/Feature/Txapi/OrderReadBoundaryTest.php
           tests/Feature/Txapi/AccountSessionsBoundaryTest.php

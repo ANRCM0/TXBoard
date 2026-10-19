@@ -38,6 +38,9 @@ final class AdminManagementContractTest extends TestCase
             'user_id' => '1', 'source_type' => 'receipt', 'source_id' => '2',
             'amount_minor' => '9223372036854775808', 'reason' => 'manual']));
         $this->assertFalse(OperationSchemas::input('content.notices.sort', ['ids' => [1, 2]]));
-        $this->assertTrue(OperationSchemas::input('content.notices.sort', ['ids' => ['1', '2']]));
+        $this->assertFalse(OperationSchemas::input('content.notices.sort', ['ids' => ['1', '2']]));
+        $this->assertTrue(OperationSchemas::input('content.notices.sort', ['items' => [
+            ['id' => '1', 'expected_version' => '2'], ['id' => '2', 'expected_version' => '1']]]));
+        $this->assertFalse(OperationSchemas::input('content.notices.sort', ['items' => [['id' => '1']]]));
     }
 }

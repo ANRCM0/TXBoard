@@ -143,120 +143,6 @@
       "routeParameters": {},
       "payload": null
     },
-    "content.notices.list": {
-      "controller": "ContentAdminController",
-      "method": "notices",
-      "parameters": {},
-      "routeParameters": {},
-      "payload": null
-    },
-    "content.notices.get": {
-      "controller": "ContentAdminController",
-      "method": "notice",
-      "parameters": {
-        "id": "content_id"
-      },
-      "routeParameters": {},
-      "payload": null
-    },
-    "content.notices.create": {
-      "controller": "ContentAdminController",
-      "method": "saveNotice",
-      "parameters": {},
-      "routeParameters": {},
-      "payload": null
-    },
-    "content.notices.update": {
-      "controller": "ContentAdminController",
-      "method": "saveNotice",
-      "parameters": {
-        "id": "content_id"
-      },
-      "routeParameters": {},
-      "payload": null
-    },
-    "content.notices.visibility.toggle": {
-      "controller": "ContentAdminController",
-      "method": "showNotice",
-      "parameters": {
-        "id": "content_id"
-      },
-      "routeParameters": {},
-      "payload": null
-    },
-    "content.notices.delete": {
-      "controller": "ContentAdminController",
-      "method": "deleteNotice",
-      "parameters": {
-        "id": "content_id"
-      },
-      "routeParameters": {},
-      "payload": null
-    },
-    "content.notices.sort": {
-      "controller": "ContentAdminController",
-      "method": "sortNotices",
-      "parameters": {},
-      "routeParameters": {},
-      "payload": null
-    },
-    "content.knowledge.list": {
-      "controller": "ContentAdminController",
-      "method": "knowledge",
-      "parameters": {},
-      "routeParameters": {},
-      "payload": null
-    },
-    "content.knowledge.get": {
-      "controller": "ContentAdminController",
-      "method": "article",
-      "parameters": {
-        "id": "content_id"
-      },
-      "routeParameters": {},
-      "payload": null
-    },
-    "content.knowledge.create": {
-      "controller": "ContentAdminController",
-      "method": "saveArticle",
-      "parameters": {},
-      "routeParameters": {},
-      "payload": null
-    },
-    "content.knowledge.update": {
-      "controller": "ContentAdminController",
-      "method": "saveArticle",
-      "parameters": {
-        "id": "content_id"
-      },
-      "routeParameters": {},
-      "payload": null
-    },
-    "content.knowledge.visibility.toggle": {
-      "controller": "ContentAdminController",
-      "method": "showArticle",
-      "parameters": {
-        "id": "content_id"
-      },
-      "routeParameters": {},
-      "payload": null
-    },
-    "content.knowledge.delete": {
-      "controller": "ContentAdminController",
-      "method": "deleteArticle",
-      "parameters": {
-        "id": "content_id"
-      },
-      "routeParameters": {},
-      "payload": null
-    },
-    "content.knowledge.sort": {
-      "controller": "ContentAdminController",
-      "method": "sortArticles",
-      "parameters": {},
-      "routeParameters": {},
-      "payload": null
-    },
     "audit.logs.list": {
       "controller": "AuditLogController",
       "method": "index",
@@ -354,13 +240,6 @@
     "network.routes.simulate": {
       "controller": "NetworkRouteAdminController",
       "method": "simulate",
-      "parameters": {},
-      "routeParameters": {},
-      "payload": null
-    },
-    "content.knowledge.categories.list": {
-      "controller": "ContentAdminController",
-      "method": "categories",
       "parameters": {},
       "routeParameters": {},
       "payload": null

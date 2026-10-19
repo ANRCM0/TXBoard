@@ -86,6 +86,8 @@ final class OperationExecutor
             }
         } catch (OperationFailure $error) {
             $response = $this->error($request, $error->errorCode, $error->status);
+        } catch (\App\Domains\Support\SupportFailure $error) {
+            $response = $this->error($request, $error->errorCode, $error->status);
         } catch (\App\Domains\Billing\BillingError|\App\Domains\Billing\IdempotencyException $error) {
             $status = str_ends_with($error->errorCode, '_MISSING') ? 404 : 409;
             $response = $this->error($request, $error->errorCode, $status);
@@ -158,7 +160,14 @@ final class OperationExecutor
                 'billing.recharges.create' => [CommerceMutationOperations::class, 'recharge', 'domain'],
                 'billing.recharges.checkout' => [CommerceMutationOperations::class, 'rechargeCheckout', 'domain'],
                 'billing.payment-attempts.query' => [CommerceMutationOperations::class, 'queryAttempt', 'domain'],
-                default => null,
+                'support.tickets.create' => [SupportMutationOperations::class, 'create', 'domain'],
+                'support.tickets.reply' => [SupportMutationOperations::class, 'reply', 'domain'],
+                'support.tickets.close' => [SupportMutationOperations::class, 'close', 'domain'],
+                'support.admin-tickets.reply' => [SupportMutationOperations::class, 'adminReply', 'domain'],
+                'support.admin-tickets.close' => [SupportMutationOperations::class, 'adminClose', 'domain'],
+                'support.admin-tickets.claim' => [SupportMutationOperations::class, 'adminClaim', 'domain'],
+                'support.admin-tickets.unassign' => [SupportMutationOperations::class, 'adminUnassign', 'domain'],
+                default => array_merge(SupportAttachmentBindings::commands(), ContentOperationBindings::commands())[$operation] ?? null,
             };
             if ($actor === null || $spec['controller'] !== null || $spec['handler'] !== null
                 || $target === null || [$spec['command'], $spec['method'], $spec['mode']] !== $target) {
@@ -171,7 +180,7 @@ final class OperationExecutor
         $currentCheckout = in_array($operation, ['commerce.orders.checkout', 'billing.recharges.checkout'], true);
         // An unknown query result can advance later. A replay must consult the owner again.
         $currentOwnerResult = $currentCheckout || $operation === 'billing.payment-attempts.query'
-            || $spec['command'] === AdminOrderMutationOperations::class;
+            || in_array($spec['command'], [AdminOrderMutationOperations::class, SupportAttachmentOperations::class, SupportMutationOperations::class, ContentMutationOperations::class], true);
         if (in_array($spec['mode'], ['workflow', 'domain', 'domain-once'], true)) {
             $key = $request->header('Idempotency-Key', '');
             // The same UUID is forwarded to the authoritative domain workflow.
@@ -203,7 +212,7 @@ final class OperationExecutor
                 $result = TxapiResponse::success($request, $view->data, $view->meta);
             } elseif ($spec['command'] !== null) {
                 $arguments = ['actor' => $actor, 'input' => $input];
-                if (in_array($spec['command'], [CommerceMutationOperations::class, AdminOrderMutationOperations::class], true)) {
+                if (in_array($spec['command'], [AdminOrderMutationOperations::class, CommerceMutationOperations::class, SupportAttachmentOperations::class, SupportMutationOperations::class, ContentMutationOperations::class], true)) {
                     $arguments['idempotencyKey'] = (string) $request->header('Idempotency-Key', '');
                 }
                 $view = app()->call([app($spec['command']), $spec['method']], $arguments);
@@ -232,11 +241,14 @@ final class OperationExecutor
                 $operation === 'subscription.links.issue');
             $projected = $spec['list'] ? array_map($project, $data) : $project($data);
             $projected = OperationSchemas::output($operation, $projected);
-            $meta = array_intersect_key($body['meta'] ?? [], array_flip([
-                'page', 'per_page', 'total', 'last_page', 'schema', 'next_after_id',
-                'next_after_sequence', 'history_complete', 'next_before_id', 'has_unresolved',
-            ]));
-            if (array_key_exists('has_more', $body['meta'] ?? [])) $meta['has_more'] = $body['meta']['has_more'];
+            $meta = $body['meta'] ?? [];
+            if (!is_array($meta)) throw new \LogicException('INTERNAL_METADATA_INVALID');
+            if (OperationSchemas::operation($operation) === null) {
+                $meta = array_intersect_key($meta, array_flip([
+                    'page', 'per_page', 'total', 'last_page', 'schema', 'next_after_id',
+                    'next_after_sequence', 'history_complete', 'next_before_id', 'has_unresolved', 'has_more',
+                ]));
+            }
             $meta = OperationSchemas::meta($operation, $meta);
             $result = TxapiResponse::success($request, $projected, $meta, $result->getStatusCode());
         }

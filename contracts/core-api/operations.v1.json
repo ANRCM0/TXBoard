@@ -2048,6 +2048,346 @@
         "public_key"
       ],
       "additionalProperties": false
+    },
+    "support-ticket": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/id"
+        },
+        "user_id": {
+          "$ref": "#/definitions/id"
+        },
+        "subject": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255
+        },
+        "level": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2
+        },
+        "status": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "reply_status": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "row_version": {
+          "$ref": "#/definitions/id"
+        },
+        "created_at": {
+          "type": "string",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?(?:Z|[+-][0-9]{2}:[0-9]{2})$",
+          "maxLength": 40
+        },
+        "updated_at": {
+          "type": "string",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?(?:Z|[+-][0-9]{2}:[0-9]{2})$",
+          "maxLength": 40
+        }
+      },
+      "required": [
+        "id",
+        "user_id",
+        "subject",
+        "level",
+        "status",
+        "reply_status",
+        "row_version",
+        "created_at",
+        "updated_at"
+      ],
+      "additionalProperties": false
+    },
+    "support-message": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/id"
+        },
+        "author_kind": {
+          "enum": [
+            "user",
+            "admin",
+            "unknown"
+          ],
+          "type": "string"
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 10000
+        },
+        "created_at": {
+          "type": "string",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?(?:Z|[+-][0-9]{2}:[0-9]{2})$",
+          "maxLength": 40
+        },
+        "attachments": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/support-attachment"
+          },
+          "maxItems": 4
+        }
+      },
+      "required": [
+        "id",
+        "author_kind",
+        "message",
+        "created_at",
+        "attachments"
+      ],
+      "additionalProperties": false
+    },
+    "support-attachment": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "ticket_id": {
+          "$ref": "#/definitions/id"
+        },
+        "message_id": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "filename": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "media_type": {
+          "type": "string",
+          "enum": [
+            "image/png",
+            "image/jpeg",
+            "application/pdf",
+            "text/plain"
+          ]
+        },
+        "size_bytes": {
+          "$ref": "#/definitions/decimal"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "uploading",
+            "ready",
+            "attached",
+            "cancelled",
+            "expired"
+          ]
+        },
+        "received_bytes": {
+          "$ref": "#/definitions/decimal"
+        },
+        "next_chunk_index": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 640
+        },
+        "created_at": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "expires_at": {
+          "type": "string",
+          "maxLength": 64
+        }
+      },
+      "required": [
+        "id",
+        "ticket_id",
+        "message_id",
+        "filename",
+        "media_type",
+        "size_bytes",
+        "sha256",
+        "status",
+        "received_bytes",
+        "next_chunk_index",
+        "created_at",
+        "expires_at"
+      ],
+      "additionalProperties": false
+    },
+    "support-mutation": {
+      "type": "object",
+      "properties": {
+        "ticket_id": {
+          "$ref": "#/definitions/id"
+        },
+        "message_id": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/id"
+            },
+            {
+              "const": null
+            }
+          ]
+        },
+        "row_version": {
+          "$ref": "#/definitions/id"
+        },
+        "status": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1
+        }
+      },
+      "required": [
+        "ticket_id",
+        "message_id",
+        "row_version",
+        "status"
+      ],
+      "additionalProperties": false
+    },
+    "support-admin-ticket": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/id"
+        },
+        "user_id": {
+          "$ref": "#/definitions/id"
+        },
+        "subject": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255
+        },
+        "level": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2
+        },
+        "status": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "reply_status": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "row_version": {
+          "$ref": "#/definitions/id"
+        },
+        "created_at": {
+          "type": "string",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?(?:Z|[+-][0-9]{2}:[0-9]{2})$",
+          "maxLength": 40
+        },
+        "updated_at": {
+          "type": "string",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?(?:Z|[+-][0-9]{2}:[0-9]{2})$",
+          "maxLength": 40
+        },
+        "assigned_admin_id": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "user_id",
+        "subject",
+        "level",
+        "status",
+        "reply_status",
+        "row_version",
+        "created_at",
+        "updated_at",
+        "assigned_admin_id"
+      ],
+      "additionalProperties": false
+    },
+    "support-audit": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/id"
+        },
+        "ticket_id": {
+          "$ref": "#/definitions/id"
+        },
+        "row_version": {
+          "$ref": "#/definitions/id"
+        },
+        "action": {
+          "type": "string",
+          "enum": [
+            "create",
+            "reply",
+            "close",
+            "claim",
+            "unassign"
+          ]
+        },
+        "actor_id": {
+          "$ref": "#/definitions/id"
+        },
+        "actor_kind": {
+          "type": "string",
+          "enum": [
+            "user",
+            "admin"
+          ]
+        },
+        "assigned_admin_id": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "occurred_at": {
+          "type": "string",
+          "maxLength": 64
+        }
+      },
+      "required": [
+        "id",
+        "ticket_id",
+        "row_version",
+        "action",
+        "actor_id",
+        "actor_kind",
+        "assigned_admin_id",
+        "occurred_at"
+      ],
+      "additionalProperties": false
     }
   },
   "operations": {
@@ -6969,19 +7309,12 @@
           "per_page": {
             "type": "integer",
             "minimum": 1,
-            "maximum": 100
+            "maximum": 20
           },
           "title": {
-            "anyOf": [
-              {
-                "type": "string",
-                "minLength": 0,
-                "maxLength": 255
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 0
           }
         },
         "required": [],
@@ -6997,20 +7330,64 @@
             },
             "title": {
               "type": "string",
-              "minLength": 0,
-              "maxLength": 255
+              "maxLength": 255,
+              "minLength": 0
             },
-            "content": {
-              "type": "string",
-              "minLength": 0,
-              "maxLength": 1000000
+            "sort": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2147483647
+            },
+            "row_version": {
+              "$ref": "#/definitions/id"
+            },
+            "audience": {
+              "enum": [
+                "authenticated",
+                "subscribed"
+              ],
+              "type": "string"
+            },
+            "publish_at": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 253402300799
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "expire_at": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 253402300799
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "created_at": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 253402300799
+            },
+            "updated_at": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 253402300799
             },
             "img_url": {
               "anyOf": [
                 {
                   "type": "string",
-                  "minLength": 0,
-                  "maxLength": 2048
+                  "maxLength": 2048,
+                  "minLength": 0
                 },
                 {
                   "type": "null"
@@ -7021,50 +7398,36 @@
               "type": "array",
               "items": {
                 "type": "string",
-                "minLength": 0,
-                "maxLength": 80
+                "maxLength": 80,
+                "minLength": 0
               },
-              "maxItems": 30,
-              "minItems": 0
-            },
-            "show": {
-              "type": "boolean"
+              "maxItems": 30
             },
             "popup": {
               "type": "boolean"
             },
-            "sort": {
-              "type": "integer",
-              "minimum": 0,
-              "maximum": 9007199254740991
-            },
-            "created_at": {
-              "type": "integer",
-              "minimum": 0,
-              "maximum": 9007199254740991
-            },
-            "updated_at": {
-              "type": "integer",
-              "minimum": 0,
-              "maximum": 9007199254740991
+            "show": {
+              "type": "boolean"
             }
           },
           "required": [
             "id",
             "title",
-            "content",
+            "sort",
+            "row_version",
+            "audience",
+            "publish_at",
+            "expire_at",
+            "created_at",
+            "updated_at",
             "img_url",
             "tags",
-            "show",
             "popup",
-            "sort",
-            "created_at",
-            "updated_at"
+            "show"
           ],
           "additionalProperties": false
         },
-        "maxItems": 100,
-        "minItems": 0
+        "maxItems": 20
       },
       "meta": {
         "type": "object",
@@ -7105,7 +7468,10 @@
         "BUSINESS_REJECTED",
         "DEPENDENCY_UNAVAILABLE",
         "IDEMPOTENCY_CONFLICT",
-        "IDEMPOTENCY_IN_PROGRESS"
+        "IDEMPOTENCY_IN_PROGRESS",
+        "CONTENT_INPUT_INVALID",
+        "CONTENT_QUERY_INVALID",
+        "CONTENT_KEY_INVALID"
       ]
     },
     "content.notices.get": {
@@ -7137,20 +7503,64 @@
           },
           "title": {
             "type": "string",
-            "minLength": 0,
-            "maxLength": 255
+            "maxLength": 255,
+            "minLength": 0
           },
-          "content": {
-            "type": "string",
-            "minLength": 0,
-            "maxLength": 1000000
+          "sort": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 2147483647
+          },
+          "row_version": {
+            "$ref": "#/definitions/id"
+          },
+          "audience": {
+            "enum": [
+              "authenticated",
+              "subscribed"
+            ],
+            "type": "string"
+          },
+          "publish_at": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 253402300799
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "expire_at": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 253402300799
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "created_at": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 253402300799
+          },
+          "updated_at": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 253402300799
           },
           "img_url": {
             "anyOf": [
               {
                 "type": "string",
-                "minLength": 0,
-                "maxLength": 2048
+                "maxLength": 2048,
+                "minLength": 0
               },
               {
                 "type": "null"
@@ -7161,45 +7571,38 @@
             "type": "array",
             "items": {
               "type": "string",
-              "minLength": 0,
-              "maxLength": 80
+              "maxLength": 80,
+              "minLength": 0
             },
-            "maxItems": 30,
-            "minItems": 0
-          },
-          "show": {
-            "type": "boolean"
+            "maxItems": 30
           },
           "popup": {
             "type": "boolean"
           },
-          "sort": {
-            "type": "integer",
-            "minimum": 0,
-            "maximum": 9007199254740991
+          "show": {
+            "type": "boolean"
           },
-          "created_at": {
-            "type": "integer",
-            "minimum": 0,
-            "maximum": 9007199254740991
-          },
-          "updated_at": {
-            "type": "integer",
-            "minimum": 0,
-            "maximum": 9007199254740991
+          "content": {
+            "type": "string",
+            "maxLength": 1000000,
+            "minLength": 0
           }
         },
         "required": [
           "id",
           "title",
-          "content",
+          "sort",
+          "row_version",
+          "audience",
+          "publish_at",
+          "expire_at",
+          "created_at",
+          "updated_at",
           "img_url",
           "tags",
-          "show",
           "popup",
-          "sort",
-          "created_at",
-          "updated_at"
+          "show",
+          "content"
         ],
         "additionalProperties": false
       },
@@ -7216,7 +7619,10 @@
         "BUSINESS_REJECTED",
         "DEPENDENCY_UNAVAILABLE",
         "IDEMPOTENCY_CONFLICT",
-        "IDEMPOTENCY_IN_PROGRESS"
+        "IDEMPOTENCY_IN_PROGRESS",
+        "CONTENT_INPUT_INVALID",
+        "CONTENT_QUERY_INVALID",
+        "CONTENT_KEY_INVALID"
       ]
     },
     "content.notices.create": {
@@ -7226,30 +7632,61 @@
       ],
       "actor": "admin",
       "permission": "content.manage",
-      "idempotency": "workflow",
-      "consistency": "owner-controlled-write",
+      "idempotency": "domain",
+      "consistency": "owner-transaction",
       "input": {
         "type": "object",
         "properties": {
           "title": {
             "type": "string",
-            "minLength": 1,
-            "maxLength": 255
+            "maxLength": 255,
+            "minLength": 1
           },
           "show": {
             "type": "boolean"
           },
-          "content": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 20000
+          "sort": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 2147483647
+          },
+          "audience": {
+            "enum": [
+              "authenticated",
+              "subscribed"
+            ],
+            "type": "string"
+          },
+          "publish_at": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 253402300799
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "expire_at": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 253402300799
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "img_url": {
             "anyOf": [
               {
                 "type": "string",
-                "minLength": 0,
-                "maxLength": 2048
+                "maxLength": 2048,
+                "minLength": 0
               },
               {
                 "type": "null"
@@ -7260,18 +7697,30 @@
             "type": "array",
             "items": {
               "type": "string",
-              "minLength": 0,
-              "maxLength": 80
+              "maxLength": 80,
+              "minLength": 0
             },
-            "maxItems": 30,
-            "minItems": 0
+            "maxItems": 30
           },
           "popup": {
             "type": "boolean"
+          },
+          "content": {
+            "type": "string",
+            "maxLength": 20000,
+            "minLength": 1
           }
         },
         "required": [
           "title",
+          "show",
+          "sort",
+          "audience",
+          "publish_at",
+          "expire_at",
+          "img_url",
+          "tags",
+          "popup",
           "content"
         ],
         "additionalProperties": false
@@ -7281,10 +7730,14 @@
         "properties": {
           "id": {
             "$ref": "#/definitions/id"
+          },
+          "row_version": {
+            "$ref": "#/definitions/id"
           }
         },
         "required": [
-          "id"
+          "id",
+          "row_version"
         ],
         "additionalProperties": false
       },
@@ -7301,7 +7754,10 @@
         "BUSINESS_REJECTED",
         "DEPENDENCY_UNAVAILABLE",
         "IDEMPOTENCY_CONFLICT",
-        "IDEMPOTENCY_IN_PROGRESS"
+        "IDEMPOTENCY_IN_PROGRESS",
+        "CONTENT_INPUT_INVALID",
+        "CONTENT_QUERY_INVALID",
+        "CONTENT_KEY_INVALID"
       ]
     },
     "content.notices.update": {
@@ -7311,30 +7767,61 @@
       ],
       "actor": "admin",
       "permission": "content.manage",
-      "idempotency": "workflow",
-      "consistency": "owner-controlled-write",
+      "idempotency": "domain",
+      "consistency": "owner-transaction",
       "input": {
         "type": "object",
         "properties": {
           "title": {
             "type": "string",
-            "minLength": 1,
-            "maxLength": 255
+            "maxLength": 255,
+            "minLength": 1
           },
           "show": {
             "type": "boolean"
           },
-          "content": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 20000
+          "sort": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 2147483647
+          },
+          "audience": {
+            "enum": [
+              "authenticated",
+              "subscribed"
+            ],
+            "type": "string"
+          },
+          "publish_at": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 253402300799
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "expire_at": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 253402300799
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "img_url": {
             "anyOf": [
               {
                 "type": "string",
-                "minLength": 0,
-                "maxLength": 2048
+                "maxLength": 2048,
+                "minLength": 0
               },
               {
                 "type": "null"
@@ -7345,23 +7832,39 @@
             "type": "array",
             "items": {
               "type": "string",
-              "minLength": 0,
-              "maxLength": 80
+              "maxLength": 80,
+              "minLength": 0
             },
-            "maxItems": 30,
-            "minItems": 0
+            "maxItems": 30
           },
           "popup": {
             "type": "boolean"
           },
+          "content": {
+            "type": "string",
+            "maxLength": 20000,
+            "minLength": 1
+          },
           "content_id": {
+            "$ref": "#/definitions/id"
+          },
+          "expected_version": {
             "$ref": "#/definitions/id"
           }
         },
         "required": [
           "title",
+          "show",
+          "sort",
+          "audience",
+          "publish_at",
+          "expire_at",
+          "img_url",
+          "tags",
+          "popup",
           "content",
-          "content_id"
+          "content_id",
+          "expected_version"
         ],
         "additionalProperties": false
       },
@@ -7370,10 +7873,14 @@
         "properties": {
           "id": {
             "$ref": "#/definitions/id"
+          },
+          "row_version": {
+            "$ref": "#/definitions/id"
           }
         },
         "required": [
-          "id"
+          "id",
+          "row_version"
         ],
         "additionalProperties": false
       },
@@ -7390,7 +7897,10 @@
         "BUSINESS_REJECTED",
         "DEPENDENCY_UNAVAILABLE",
         "IDEMPOTENCY_CONFLICT",
-        "IDEMPOTENCY_IN_PROGRESS"
+        "IDEMPOTENCY_IN_PROGRESS",
+        "CONTENT_INPUT_INVALID",
+        "CONTENT_QUERY_INVALID",
+        "CONTENT_KEY_INVALID"
       ]
     },
     "content.notices.visibility.toggle": {
@@ -7400,28 +7910,44 @@
       ],
       "actor": "admin",
       "permission": "content.manage",
-      "idempotency": "workflow",
-      "consistency": "owner-controlled-write",
+      "idempotency": "domain",
+      "consistency": "owner-transaction",
       "input": {
         "type": "object",
         "properties": {
           "content_id": {
             "$ref": "#/definitions/id"
+          },
+          "expected_version": {
+            "$ref": "#/definitions/id"
+          },
+          "show": {
+            "type": "boolean"
           }
         },
         "required": [
-          "content_id"
+          "content_id",
+          "expected_version",
+          "show"
         ],
         "additionalProperties": false
       },
       "output": {
         "type": "object",
         "properties": {
+          "id": {
+            "$ref": "#/definitions/id"
+          },
+          "row_version": {
+            "$ref": "#/definitions/id"
+          },
           "show": {
             "type": "boolean"
           }
         },
         "required": [
+          "id",
+          "row_version",
           "show"
         ],
         "additionalProperties": false
@@ -7439,7 +7965,10 @@
         "BUSINESS_REJECTED",
         "DEPENDENCY_UNAVAILABLE",
         "IDEMPOTENCY_CONFLICT",
-        "IDEMPOTENCY_IN_PROGRESS"
+        "IDEMPOTENCY_IN_PROGRESS",
+        "CONTENT_INPUT_INVALID",
+        "CONTENT_QUERY_INVALID",
+        "CONTENT_KEY_INVALID"
       ]
     },
     "content.notices.delete": {
@@ -7449,28 +7978,40 @@
       ],
       "actor": "admin",
       "permission": "content.manage",
-      "idempotency": "workflow",
-      "consistency": "owner-controlled-write",
+      "idempotency": "domain",
+      "consistency": "owner-transaction",
       "input": {
         "type": "object",
         "properties": {
           "content_id": {
             "$ref": "#/definitions/id"
+          },
+          "expected_version": {
+            "$ref": "#/definitions/id"
           }
         },
         "required": [
-          "content_id"
+          "content_id",
+          "expected_version"
         ],
         "additionalProperties": false
       },
       "output": {
         "type": "object",
         "properties": {
+          "id": {
+            "$ref": "#/definitions/id"
+          },
+          "row_version": {
+            "$ref": "#/definitions/id"
+          },
           "ok": {
             "const": true
           }
         },
         "required": [
+          "id",
+          "row_version",
           "ok"
         ],
         "additionalProperties": false
@@ -7488,7 +8029,10 @@
         "BUSINESS_REJECTED",
         "DEPENDENCY_UNAVAILABLE",
         "IDEMPOTENCY_CONFLICT",
-        "IDEMPOTENCY_IN_PROGRESS"
+        "IDEMPOTENCY_IN_PROGRESS",
+        "CONTENT_INPUT_INVALID",
+        "CONTENT_QUERY_INVALID",
+        "CONTENT_KEY_INVALID"
       ]
     },
     "content.notices.sort": {
@@ -7498,22 +8042,35 @@
       ],
       "actor": "admin",
       "permission": "content.manage",
-      "idempotency": "workflow",
-      "consistency": "owner-controlled-write",
+      "idempotency": "domain",
+      "consistency": "owner-transaction",
       "input": {
         "type": "object",
         "properties": {
-          "ids": {
+          "items": {
             "type": "array",
             "items": {
-              "$ref": "#/definitions/id"
+              "type": "object",
+              "properties": {
+                "id": {
+                  "$ref": "#/definitions/id"
+                },
+                "expected_version": {
+                  "$ref": "#/definitions/id"
+                }
+              },
+              "required": [
+                "id",
+                "expected_version"
+              ],
+              "additionalProperties": false
             },
             "maxItems": 1000,
             "minItems": 1
           }
         },
         "required": [
-          "ids"
+          "items"
         ],
         "additionalProperties": false
       },
@@ -7522,10 +8079,31 @@
         "properties": {
           "ok": {
             "const": true
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "$ref": "#/definitions/id"
+                },
+                "row_version": {
+                  "$ref": "#/definitions/id"
+                }
+              },
+              "required": [
+                "id",
+                "row_version"
+              ],
+              "additionalProperties": false
+            },
+            "maxItems": 1000
           }
         },
         "required": [
-          "ok"
+          "ok",
+          "items"
         ],
         "additionalProperties": false
       },
@@ -7542,7 +8120,10 @@
         "BUSINESS_REJECTED",
         "DEPENDENCY_UNAVAILABLE",
         "IDEMPOTENCY_CONFLICT",
-        "IDEMPOTENCY_IN_PROGRESS"
+        "IDEMPOTENCY_IN_PROGRESS",
+        "CONTENT_INPUT_INVALID",
+        "CONTENT_QUERY_INVALID",
+        "CONTENT_KEY_INVALID"
       ]
     },
     "content.knowledge.list": {
@@ -7565,31 +8146,22 @@
           "per_page": {
             "type": "integer",
             "minimum": 1,
-            "maximum": 100
+            "maximum": 20
           },
           "title": {
-            "anyOf": [
-              {
-                "type": "string",
-                "minLength": 0,
-                "maxLength": 255
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 0
           },
           "category": {
-            "anyOf": [
-              {
-                "type": "string",
-                "minLength": 0,
-                "maxLength": 255
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 0
+          },
+          "language": {
+            "type": "string",
+            "maxLength": 32,
+            "minLength": 0
           }
         },
         "required": [],
@@ -7605,46 +8177,89 @@
             },
             "title": {
               "type": "string",
-              "minLength": 0,
-              "maxLength": 255
-            },
-            "category": {
-              "type": "string",
-              "minLength": 0,
-              "maxLength": 255
-            },
-            "language": {
-              "type": "string",
-              "minLength": 0,
-              "maxLength": 32
-            },
-            "show": {
-              "type": "boolean"
+              "maxLength": 255,
+              "minLength": 0
             },
             "sort": {
               "type": "integer",
               "minimum": 0,
-              "maximum": 9007199254740991
+              "maximum": 2147483647
+            },
+            "row_version": {
+              "$ref": "#/definitions/id"
+            },
+            "audience": {
+              "enum": [
+                "authenticated",
+                "subscribed"
+              ],
+              "type": "string"
+            },
+            "publish_at": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 253402300799
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "expire_at": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 253402300799
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "created_at": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 253402300799
             },
             "updated_at": {
               "type": "integer",
               "minimum": 0,
-              "maximum": 9007199254740991
+              "maximum": 253402300799
+            },
+            "category": {
+              "type": "string",
+              "maxLength": 255,
+              "minLength": 0
+            },
+            "language": {
+              "type": "string",
+              "maxLength": 32,
+              "minLength": 0
+            },
+            "show": {
+              "type": "boolean"
             }
           },
           "required": [
             "id",
             "title",
+            "sort",
+            "row_version",
+            "audience",
+            "publish_at",
+            "expire_at",
+            "created_at",
+            "updated_at",
             "category",
             "language",
-            "show",
-            "sort",
-            "updated_at"
+            "show"
           ],
           "additionalProperties": false
         },
-        "maxItems": 100,
-        "minItems": 0
+        "maxItems": 20
       },
       "meta": {
         "type": "object",
@@ -7685,7 +8300,10 @@
         "BUSINESS_REJECTED",
         "DEPENDENCY_UNAVAILABLE",
         "IDEMPOTENCY_CONFLICT",
-        "IDEMPOTENCY_IN_PROGRESS"
+        "IDEMPOTENCY_IN_PROGRESS",
+        "CONTENT_INPUT_INVALID",
+        "CONTENT_QUERY_INVALID",
+        "CONTENT_KEY_INVALID"
       ]
     },
     "content.knowledge.get": {
@@ -7717,46 +8335,90 @@
           },
           "title": {
             "type": "string",
-            "minLength": 0,
-            "maxLength": 255
-          },
-          "category": {
-            "type": "string",
-            "minLength": 0,
-            "maxLength": 255
-          },
-          "language": {
-            "type": "string",
-            "minLength": 0,
-            "maxLength": 32
-          },
-          "show": {
-            "type": "boolean"
+            "maxLength": 255,
+            "minLength": 0
           },
           "sort": {
             "type": "integer",
             "minimum": 0,
-            "maximum": 9007199254740991
+            "maximum": 2147483647
+          },
+          "row_version": {
+            "$ref": "#/definitions/id"
+          },
+          "audience": {
+            "enum": [
+              "authenticated",
+              "subscribed"
+            ],
+            "type": "string"
+          },
+          "publish_at": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 253402300799
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "expire_at": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 253402300799
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "created_at": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 253402300799
           },
           "updated_at": {
             "type": "integer",
             "minimum": 0,
-            "maximum": 9007199254740991
+            "maximum": 253402300799
+          },
+          "category": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 0
+          },
+          "language": {
+            "type": "string",
+            "maxLength": 32,
+            "minLength": 0
+          },
+          "show": {
+            "type": "boolean"
           },
           "body": {
             "type": "string",
-            "minLength": 0,
-            "maxLength": 1000000
+            "maxLength": 1000000,
+            "minLength": 0
           }
         },
         "required": [
           "id",
           "title",
+          "sort",
+          "row_version",
+          "audience",
+          "publish_at",
+          "expire_at",
+          "created_at",
+          "updated_at",
           "category",
           "language",
           "show",
-          "sort",
-          "updated_at",
           "body"
         ],
         "additionalProperties": false
@@ -7774,7 +8436,10 @@
         "BUSINESS_REJECTED",
         "DEPENDENCY_UNAVAILABLE",
         "IDEMPOTENCY_CONFLICT",
-        "IDEMPOTENCY_IN_PROGRESS"
+        "IDEMPOTENCY_IN_PROGRESS",
+        "CONTENT_INPUT_INVALID",
+        "CONTENT_QUERY_INVALID",
+        "CONTENT_KEY_INVALID"
       ]
     },
     "content.knowledge.create": {
@@ -7784,37 +8449,78 @@
       ],
       "actor": "admin",
       "permission": "content.manage",
-      "idempotency": "workflow",
-      "consistency": "owner-controlled-write",
+      "idempotency": "domain",
+      "consistency": "owner-transaction",
       "input": {
         "type": "object",
         "properties": {
           "title": {
             "type": "string",
-            "minLength": 1,
-            "maxLength": 255
+            "maxLength": 255,
+            "minLength": 1
           },
           "show": {
             "type": "boolean"
           },
+          "sort": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 2147483647
+          },
+          "audience": {
+            "enum": [
+              "authenticated",
+              "subscribed"
+            ],
+            "type": "string"
+          },
+          "publish_at": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 253402300799
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "expire_at": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 253402300799
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "category": {
             "type": "string",
-            "minLength": 1,
-            "maxLength": 255
+            "maxLength": 255,
+            "minLength": 1
           },
           "language": {
             "type": "string",
-            "minLength": 1,
-            "maxLength": 32
+            "maxLength": 32,
+            "minLength": 1
           },
           "body": {
             "type": "string",
-            "minLength": 1,
-            "maxLength": 20000
+            "maxLength": 20000,
+            "minLength": 1
           }
         },
         "required": [
           "title",
+          "show",
+          "sort",
+          "audience",
+          "publish_at",
+          "expire_at",
           "category",
           "language",
           "body"
@@ -7826,10 +8532,14 @@
         "properties": {
           "id": {
             "$ref": "#/definitions/id"
+          },
+          "row_version": {
+            "$ref": "#/definitions/id"
           }
         },
         "required": [
-          "id"
+          "id",
+          "row_version"
         ],
         "additionalProperties": false
       },
@@ -7846,7 +8556,10 @@
         "BUSINESS_REJECTED",
         "DEPENDENCY_UNAVAILABLE",
         "IDEMPOTENCY_CONFLICT",
-        "IDEMPOTENCY_IN_PROGRESS"
+        "IDEMPOTENCY_IN_PROGRESS",
+        "CONTENT_INPUT_INVALID",
+        "CONTENT_QUERY_INVALID",
+        "CONTENT_KEY_INVALID"
       ]
     },
     "content.knowledge.update": {
@@ -7856,44 +8569,89 @@
       ],
       "actor": "admin",
       "permission": "content.manage",
-      "idempotency": "workflow",
-      "consistency": "owner-controlled-write",
+      "idempotency": "domain",
+      "consistency": "owner-transaction",
       "input": {
         "type": "object",
         "properties": {
           "title": {
             "type": "string",
-            "minLength": 1,
-            "maxLength": 255
+            "maxLength": 255,
+            "minLength": 1
           },
           "show": {
             "type": "boolean"
           },
+          "sort": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 2147483647
+          },
+          "audience": {
+            "enum": [
+              "authenticated",
+              "subscribed"
+            ],
+            "type": "string"
+          },
+          "publish_at": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 253402300799
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "expire_at": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 253402300799
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "category": {
             "type": "string",
-            "minLength": 1,
-            "maxLength": 255
+            "maxLength": 255,
+            "minLength": 1
           },
           "language": {
             "type": "string",
-            "minLength": 1,
-            "maxLength": 32
+            "maxLength": 32,
+            "minLength": 1
           },
           "body": {
             "type": "string",
-            "minLength": 1,
-            "maxLength": 20000
+            "maxLength": 20000,
+            "minLength": 1
           },
           "content_id": {
+            "$ref": "#/definitions/id"
+          },
+          "expected_version": {
             "$ref": "#/definitions/id"
           }
         },
         "required": [
           "title",
+          "show",
+          "sort",
+          "audience",
+          "publish_at",
+          "expire_at",
           "category",
           "language",
           "body",
-          "content_id"
+          "content_id",
+          "expected_version"
         ],
         "additionalProperties": false
       },
@@ -7902,10 +8660,14 @@
         "properties": {
           "id": {
             "$ref": "#/definitions/id"
+          },
+          "row_version": {
+            "$ref": "#/definitions/id"
           }
         },
         "required": [
-          "id"
+          "id",
+          "row_version"
         ],
         "additionalProperties": false
       },
@@ -7922,7 +8684,10 @@
         "BUSINESS_REJECTED",
         "DEPENDENCY_UNAVAILABLE",
         "IDEMPOTENCY_CONFLICT",
-        "IDEMPOTENCY_IN_PROGRESS"
+        "IDEMPOTENCY_IN_PROGRESS",
+        "CONTENT_INPUT_INVALID",
+        "CONTENT_QUERY_INVALID",
+        "CONTENT_KEY_INVALID"
       ]
     },
     "content.knowledge.visibility.toggle": {
@@ -7932,28 +8697,44 @@
       ],
       "actor": "admin",
       "permission": "content.manage",
-      "idempotency": "workflow",
-      "consistency": "owner-controlled-write",
+      "idempotency": "domain",
+      "consistency": "owner-transaction",
       "input": {
         "type": "object",
         "properties": {
           "content_id": {
             "$ref": "#/definitions/id"
+          },
+          "expected_version": {
+            "$ref": "#/definitions/id"
+          },
+          "show": {
+            "type": "boolean"
           }
         },
         "required": [
-          "content_id"
+          "content_id",
+          "expected_version",
+          "show"
         ],
         "additionalProperties": false
       },
       "output": {
         "type": "object",
         "properties": {
+          "id": {
+            "$ref": "#/definitions/id"
+          },
+          "row_version": {
+            "$ref": "#/definitions/id"
+          },
           "show": {
             "type": "boolean"
           }
         },
         "required": [
+          "id",
+          "row_version",
           "show"
         ],
         "additionalProperties": false
@@ -7971,7 +8752,10 @@
         "BUSINESS_REJECTED",
         "DEPENDENCY_UNAVAILABLE",
         "IDEMPOTENCY_CONFLICT",
-        "IDEMPOTENCY_IN_PROGRESS"
+        "IDEMPOTENCY_IN_PROGRESS",
+        "CONTENT_INPUT_INVALID",
+        "CONTENT_QUERY_INVALID",
+        "CONTENT_KEY_INVALID"
       ]
     },
     "content.knowledge.delete": {
@@ -7981,28 +8765,40 @@
       ],
       "actor": "admin",
       "permission": "content.manage",
-      "idempotency": "workflow",
-      "consistency": "owner-controlled-write",
+      "idempotency": "domain",
+      "consistency": "owner-transaction",
       "input": {
         "type": "object",
         "properties": {
           "content_id": {
             "$ref": "#/definitions/id"
+          },
+          "expected_version": {
+            "$ref": "#/definitions/id"
           }
         },
         "required": [
-          "content_id"
+          "content_id",
+          "expected_version"
         ],
         "additionalProperties": false
       },
       "output": {
         "type": "object",
         "properties": {
+          "id": {
+            "$ref": "#/definitions/id"
+          },
+          "row_version": {
+            "$ref": "#/definitions/id"
+          },
           "ok": {
             "const": true
           }
         },
         "required": [
+          "id",
+          "row_version",
           "ok"
         ],
         "additionalProperties": false
@@ -8020,7 +8816,10 @@
         "BUSINESS_REJECTED",
         "DEPENDENCY_UNAVAILABLE",
         "IDEMPOTENCY_CONFLICT",
-        "IDEMPOTENCY_IN_PROGRESS"
+        "IDEMPOTENCY_IN_PROGRESS",
+        "CONTENT_INPUT_INVALID",
+        "CONTENT_QUERY_INVALID",
+        "CONTENT_KEY_INVALID"
       ]
     },
     "content.knowledge.sort": {
@@ -8030,22 +8829,35 @@
       ],
       "actor": "admin",
       "permission": "content.manage",
-      "idempotency": "workflow",
-      "consistency": "owner-controlled-write",
+      "idempotency": "domain",
+      "consistency": "owner-transaction",
       "input": {
         "type": "object",
         "properties": {
-          "ids": {
+          "items": {
             "type": "array",
             "items": {
-              "$ref": "#/definitions/id"
+              "type": "object",
+              "properties": {
+                "id": {
+                  "$ref": "#/definitions/id"
+                },
+                "expected_version": {
+                  "$ref": "#/definitions/id"
+                }
+              },
+              "required": [
+                "id",
+                "expected_version"
+              ],
+              "additionalProperties": false
             },
             "maxItems": 1000,
             "minItems": 1
           }
         },
         "required": [
-          "ids"
+          "items"
         ],
         "additionalProperties": false
       },
@@ -8054,10 +8866,31 @@
         "properties": {
           "ok": {
             "const": true
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "$ref": "#/definitions/id"
+                },
+                "row_version": {
+                  "$ref": "#/definitions/id"
+                }
+              },
+              "required": [
+                "id",
+                "row_version"
+              ],
+              "additionalProperties": false
+            },
+            "maxItems": 1000
           }
         },
         "required": [
-          "ok"
+          "ok",
+          "items"
         ],
         "additionalProperties": false
       },
@@ -8074,7 +8907,10 @@
         "BUSINESS_REJECTED",
         "DEPENDENCY_UNAVAILABLE",
         "IDEMPOTENCY_CONFLICT",
-        "IDEMPOTENCY_IN_PROGRESS"
+        "IDEMPOTENCY_IN_PROGRESS",
+        "CONTENT_INPUT_INVALID",
+        "CONTENT_QUERY_INVALID",
+        "CONTENT_KEY_INVALID"
       ]
     },
     "audit.logs.list": {
@@ -9620,7 +10456,13 @@
       "consistency": "current-owner-view",
       "input": {
         "type": "object",
-        "properties": {},
+        "properties": {
+          "language": {
+            "type": "string",
+            "maxLength": 32,
+            "minLength": 0
+          }
+        },
         "required": [],
         "additionalProperties": false
       },
@@ -9631,8 +10473,8 @@
             "type": "array",
             "items": {
               "type": "string",
-              "minLength": 0,
-              "maxLength": 255
+              "maxLength": 255,
+              "minLength": 0
             },
             "maxItems": 1000
           }
@@ -9655,7 +10497,10 @@
         "BUSINESS_REJECTED",
         "DEPENDENCY_UNAVAILABLE",
         "IDEMPOTENCY_CONFLICT",
-        "IDEMPOTENCY_IN_PROGRESS"
+        "IDEMPOTENCY_IN_PROGRESS",
+        "CONTENT_INPUT_INVALID",
+        "CONTENT_QUERY_INVALID",
+        "CONTENT_KEY_INVALID"
       ]
     },
     "platform.queue.snapshot.get": {
@@ -10847,6 +11692,2394 @@
         "required": [],
         "additionalProperties": false
       }
+    },
+    "support.tickets.list": {
+      "version": 1,
+      "domains": [
+        "user"
+      ],
+      "actor": "user",
+      "permission": null,
+      "idempotency": "read",
+      "consistency": "current-owner-view",
+      "input": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100000
+          },
+          "per_page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "status": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "reply_status": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "array",
+        "items": {
+          "$ref": "#/definitions/support-ticket"
+        },
+        "maxItems": 100
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS",
+        "SUPPORT_TICKET_INPUT_INVALID",
+        "SUPPORT_TICKET_KEY_INVALID",
+        "SUPPORT_TICKET_QUERY_INVALID"
+      ],
+      "meta": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "per_page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "last_page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "page",
+          "per_page",
+          "total",
+          "last_page"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "support.tickets.get": {
+      "version": 1,
+      "domains": [
+        "user"
+      ],
+      "actor": "user",
+      "permission": null,
+      "idempotency": "read",
+      "consistency": "current-owner-view",
+      "input": {
+        "type": "object",
+        "properties": {
+          "ticket_id": {
+            "$ref": "#/definitions/id"
+          }
+        },
+        "required": [
+          "ticket_id"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "$ref": "#/definitions/support-ticket"
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS",
+        "SUPPORT_TICKET_INPUT_INVALID",
+        "SUPPORT_TICKET_KEY_INVALID",
+        "SUPPORT_TICKET_QUERY_INVALID"
+      ],
+      "meta": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    "support.tickets.messages.list": {
+      "version": 1,
+      "domains": [
+        "user"
+      ],
+      "actor": "user",
+      "permission": null,
+      "idempotency": "read",
+      "consistency": "current-owner-view",
+      "input": {
+        "type": "object",
+        "properties": {
+          "ticket_id": {
+            "$ref": "#/definitions/id"
+          },
+          "after_id": {
+            "$ref": "#/definitions/decimal"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 20
+          }
+        },
+        "required": [
+          "ticket_id"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "array",
+        "items": {
+          "$ref": "#/definitions/support-message"
+        },
+        "maxItems": 20
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS",
+        "SUPPORT_TICKET_INPUT_INVALID",
+        "SUPPORT_TICKET_KEY_INVALID",
+        "SUPPORT_TICKET_QUERY_INVALID"
+      ],
+      "meta": {
+        "type": "object",
+        "properties": {
+          "next_after_id": {
+            "$ref": "#/definitions/decimal"
+          },
+          "has_more": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "next_after_id",
+          "has_more"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "support.tickets.create": {
+      "version": 1,
+      "domains": [
+        "user"
+      ],
+      "actor": "user",
+      "permission": null,
+      "idempotency": "domain",
+      "consistency": "owner-transaction",
+      "input": {
+        "type": "object",
+        "properties": {
+          "subject": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255
+          },
+          "level": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 2
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 10000
+          }
+        },
+        "required": [
+          "subject",
+          "level",
+          "message"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "$ref": "#/definitions/support-mutation"
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS",
+        "SUPPORT_TICKET_INPUT_INVALID",
+        "SUPPORT_TICKET_KEY_INVALID",
+        "SUPPORT_TICKET_QUERY_INVALID"
+      ],
+      "meta": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    "support.tickets.reply": {
+      "version": 1,
+      "domains": [
+        "user"
+      ],
+      "actor": "user",
+      "permission": null,
+      "idempotency": "domain",
+      "consistency": "owner-transaction",
+      "input": {
+        "type": "object",
+        "properties": {
+          "ticket_id": {
+            "$ref": "#/definitions/id"
+          },
+          "expected_version": {
+            "$ref": "#/definitions/id"
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 10000
+          },
+          "attachment_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            },
+            "maxItems": 4
+          }
+        },
+        "required": [
+          "ticket_id",
+          "expected_version",
+          "message"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "$ref": "#/definitions/support-mutation"
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS",
+        "SUPPORT_TICKET_INPUT_INVALID",
+        "SUPPORT_TICKET_KEY_INVALID",
+        "SUPPORT_TICKET_QUERY_INVALID"
+      ],
+      "meta": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    "support.tickets.close": {
+      "version": 1,
+      "domains": [
+        "user"
+      ],
+      "actor": "user",
+      "permission": null,
+      "idempotency": "domain",
+      "consistency": "owner-transaction",
+      "input": {
+        "type": "object",
+        "properties": {
+          "ticket_id": {
+            "$ref": "#/definitions/id"
+          },
+          "expected_version": {
+            "$ref": "#/definitions/id"
+          }
+        },
+        "required": [
+          "ticket_id",
+          "expected_version"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "$ref": "#/definitions/support-mutation"
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS",
+        "SUPPORT_TICKET_INPUT_INVALID",
+        "SUPPORT_TICKET_KEY_INVALID",
+        "SUPPORT_TICKET_QUERY_INVALID"
+      ],
+      "meta": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    "support.admin-tickets.list": {
+      "version": 1,
+      "domains": [
+        "admin"
+      ],
+      "actor": "admin",
+      "permission": "support.tickets.read",
+      "idempotency": "read",
+      "consistency": "current-owner-view",
+      "input": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100000
+          },
+          "per_page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "status": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "reply_status": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "user_id": {
+            "$ref": "#/definitions/id"
+          },
+          "assignment": {
+            "type": "string",
+            "enum": [
+              "any",
+              "mine",
+              "unassigned"
+            ]
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "array",
+        "items": {
+          "$ref": "#/definitions/support-admin-ticket"
+        },
+        "maxItems": 100
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS",
+        "SUPPORT_TICKET_INPUT_INVALID",
+        "SUPPORT_TICKET_KEY_INVALID",
+        "SUPPORT_TICKET_QUERY_INVALID"
+      ],
+      "meta": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "per_page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "last_page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "page",
+          "per_page",
+          "total",
+          "last_page"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "support.admin-tickets.get": {
+      "version": 1,
+      "domains": [
+        "admin"
+      ],
+      "actor": "admin",
+      "permission": "support.tickets.read",
+      "idempotency": "read",
+      "consistency": "current-owner-view",
+      "input": {
+        "type": "object",
+        "properties": {
+          "ticket_id": {
+            "$ref": "#/definitions/id"
+          }
+        },
+        "required": [
+          "ticket_id"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "$ref": "#/definitions/support-admin-ticket"
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS",
+        "SUPPORT_TICKET_INPUT_INVALID",
+        "SUPPORT_TICKET_KEY_INVALID",
+        "SUPPORT_TICKET_QUERY_INVALID"
+      ],
+      "meta": {
+        "type": "object",
+        "properties": {
+          "current_admin_id": {
+            "$ref": "#/definitions/id"
+          }
+        },
+        "required": [
+          "current_admin_id"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "support.admin-tickets.messages.list": {
+      "version": 1,
+      "domains": [
+        "admin"
+      ],
+      "actor": "admin",
+      "permission": "support.tickets.read",
+      "idempotency": "read",
+      "consistency": "current-owner-view",
+      "input": {
+        "type": "object",
+        "properties": {
+          "ticket_id": {
+            "$ref": "#/definitions/id"
+          },
+          "after_id": {
+            "$ref": "#/definitions/decimal"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 20
+          }
+        },
+        "required": [
+          "ticket_id"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "array",
+        "items": {
+          "$ref": "#/definitions/support-message"
+        },
+        "maxItems": 20
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS",
+        "SUPPORT_TICKET_INPUT_INVALID",
+        "SUPPORT_TICKET_KEY_INVALID",
+        "SUPPORT_TICKET_QUERY_INVALID"
+      ],
+      "meta": {
+        "type": "object",
+        "properties": {
+          "next_after_id": {
+            "$ref": "#/definitions/decimal"
+          },
+          "has_more": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "next_after_id",
+          "has_more"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "support.admin-tickets.reply": {
+      "version": 1,
+      "domains": [
+        "admin"
+      ],
+      "actor": "admin",
+      "permission": "support.tickets.write",
+      "idempotency": "domain",
+      "consistency": "owner-transaction",
+      "input": {
+        "type": "object",
+        "properties": {
+          "ticket_id": {
+            "$ref": "#/definitions/id"
+          },
+          "expected_version": {
+            "$ref": "#/definitions/id"
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 10000
+          },
+          "attachment_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            },
+            "maxItems": 4
+          }
+        },
+        "required": [
+          "ticket_id",
+          "expected_version",
+          "message"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "$ref": "#/definitions/support-mutation"
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS",
+        "SUPPORT_TICKET_INPUT_INVALID",
+        "SUPPORT_TICKET_KEY_INVALID",
+        "SUPPORT_TICKET_QUERY_INVALID"
+      ],
+      "meta": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    "support.admin-tickets.close": {
+      "version": 1,
+      "domains": [
+        "admin"
+      ],
+      "actor": "admin",
+      "permission": "support.tickets.write",
+      "idempotency": "domain",
+      "consistency": "owner-transaction",
+      "input": {
+        "type": "object",
+        "properties": {
+          "ticket_id": {
+            "$ref": "#/definitions/id"
+          },
+          "expected_version": {
+            "$ref": "#/definitions/id"
+          }
+        },
+        "required": [
+          "ticket_id",
+          "expected_version"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "$ref": "#/definitions/support-mutation"
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS",
+        "SUPPORT_TICKET_INPUT_INVALID",
+        "SUPPORT_TICKET_KEY_INVALID",
+        "SUPPORT_TICKET_QUERY_INVALID"
+      ],
+      "meta": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    "content.user-notices.list": {
+      "version": 1,
+      "domains": [
+        "user"
+      ],
+      "actor": "user",
+      "permission": null,
+      "idempotency": "read",
+      "consistency": "current-owner-view",
+      "input": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100000
+          },
+          "per_page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 20
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 0
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "#/definitions/id"
+            },
+            "title": {
+              "type": "string",
+              "maxLength": 255,
+              "minLength": 0
+            },
+            "sort": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2147483647
+            },
+            "row_version": {
+              "$ref": "#/definitions/id"
+            },
+            "audience": {
+              "enum": [
+                "authenticated",
+                "subscribed"
+              ],
+              "type": "string"
+            },
+            "publish_at": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 253402300799
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "expire_at": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 253402300799
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "created_at": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 253402300799
+            },
+            "updated_at": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 253402300799
+            },
+            "img_url": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 2048,
+                  "minLength": 0
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "tags": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "maxLength": 80,
+                "minLength": 0
+              },
+              "maxItems": 30
+            },
+            "popup": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "id",
+            "title",
+            "sort",
+            "row_version",
+            "audience",
+            "publish_at",
+            "expire_at",
+            "created_at",
+            "updated_at",
+            "img_url",
+            "tags",
+            "popup"
+          ],
+          "additionalProperties": false
+        },
+        "maxItems": 20
+      },
+      "meta": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "per_page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "last_page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "page",
+          "per_page",
+          "total",
+          "last_page"
+        ],
+        "additionalProperties": false
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS",
+        "CONTENT_INPUT_INVALID",
+        "CONTENT_QUERY_INVALID",
+        "CONTENT_KEY_INVALID"
+      ]
+    },
+    "content.user-notices.get": {
+      "version": 1,
+      "domains": [
+        "user"
+      ],
+      "actor": "user",
+      "permission": null,
+      "idempotency": "read",
+      "consistency": "current-owner-view",
+      "input": {
+        "type": "object",
+        "properties": {
+          "content_id": {
+            "$ref": "#/definitions/id"
+          }
+        },
+        "required": [
+          "content_id"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/definitions/id"
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 0
+          },
+          "sort": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 2147483647
+          },
+          "row_version": {
+            "$ref": "#/definitions/id"
+          },
+          "audience": {
+            "enum": [
+              "authenticated",
+              "subscribed"
+            ],
+            "type": "string"
+          },
+          "publish_at": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 253402300799
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "expire_at": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 253402300799
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "created_at": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 253402300799
+          },
+          "updated_at": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 253402300799
+          },
+          "img_url": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2048,
+                "minLength": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 80,
+              "minLength": 0
+            },
+            "maxItems": 30
+          },
+          "popup": {
+            "type": "boolean"
+          },
+          "content": {
+            "type": "string",
+            "maxLength": 1000000,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "sort",
+          "row_version",
+          "audience",
+          "publish_at",
+          "expire_at",
+          "created_at",
+          "updated_at",
+          "img_url",
+          "tags",
+          "popup",
+          "content"
+        ],
+        "additionalProperties": false
+      },
+      "meta": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS",
+        "CONTENT_INPUT_INVALID",
+        "CONTENT_QUERY_INVALID",
+        "CONTENT_KEY_INVALID"
+      ]
+    },
+    "content.user-knowledge.list": {
+      "version": 1,
+      "domains": [
+        "user"
+      ],
+      "actor": "user",
+      "permission": null,
+      "idempotency": "read",
+      "consistency": "current-owner-view",
+      "input": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100000
+          },
+          "per_page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 20
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 0
+          },
+          "category": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 0
+          },
+          "language": {
+            "type": "string",
+            "maxLength": 32,
+            "minLength": 0
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "#/definitions/id"
+            },
+            "title": {
+              "type": "string",
+              "maxLength": 255,
+              "minLength": 0
+            },
+            "sort": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2147483647
+            },
+            "row_version": {
+              "$ref": "#/definitions/id"
+            },
+            "audience": {
+              "enum": [
+                "authenticated",
+                "subscribed"
+              ],
+              "type": "string"
+            },
+            "publish_at": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 253402300799
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "expire_at": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 253402300799
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "created_at": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 253402300799
+            },
+            "updated_at": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 253402300799
+            },
+            "category": {
+              "type": "string",
+              "maxLength": 255,
+              "minLength": 0
+            },
+            "language": {
+              "type": "string",
+              "maxLength": 32,
+              "minLength": 0
+            }
+          },
+          "required": [
+            "id",
+            "title",
+            "sort",
+            "row_version",
+            "audience",
+            "publish_at",
+            "expire_at",
+            "created_at",
+            "updated_at",
+            "category",
+            "language"
+          ],
+          "additionalProperties": false
+        },
+        "maxItems": 20
+      },
+      "meta": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "per_page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "last_page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "page",
+          "per_page",
+          "total",
+          "last_page"
+        ],
+        "additionalProperties": false
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS",
+        "CONTENT_INPUT_INVALID",
+        "CONTENT_QUERY_INVALID",
+        "CONTENT_KEY_INVALID"
+      ]
+    },
+    "content.user-knowledge.get": {
+      "version": 1,
+      "domains": [
+        "user"
+      ],
+      "actor": "user",
+      "permission": null,
+      "idempotency": "read",
+      "consistency": "current-owner-view",
+      "input": {
+        "type": "object",
+        "properties": {
+          "content_id": {
+            "$ref": "#/definitions/id"
+          }
+        },
+        "required": [
+          "content_id"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/definitions/id"
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 0
+          },
+          "sort": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 2147483647
+          },
+          "row_version": {
+            "$ref": "#/definitions/id"
+          },
+          "audience": {
+            "enum": [
+              "authenticated",
+              "subscribed"
+            ],
+            "type": "string"
+          },
+          "publish_at": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 253402300799
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "expire_at": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 253402300799
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "created_at": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 253402300799
+          },
+          "updated_at": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 253402300799
+          },
+          "category": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 0
+          },
+          "language": {
+            "type": "string",
+            "maxLength": 32,
+            "minLength": 0
+          },
+          "body": {
+            "type": "string",
+            "maxLength": 1000000,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "sort",
+          "row_version",
+          "audience",
+          "publish_at",
+          "expire_at",
+          "created_at",
+          "updated_at",
+          "category",
+          "language",
+          "body"
+        ],
+        "additionalProperties": false
+      },
+      "meta": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS",
+        "CONTENT_INPUT_INVALID",
+        "CONTENT_QUERY_INVALID",
+        "CONTENT_KEY_INVALID"
+      ]
+    },
+    "content.user-knowledge.categories.list": {
+      "version": 1,
+      "domains": [
+        "user"
+      ],
+      "actor": "user",
+      "permission": null,
+      "idempotency": "read",
+      "consistency": "current-owner-view",
+      "input": {
+        "type": "object",
+        "properties": {
+          "language": {
+            "type": "string",
+            "maxLength": 32,
+            "minLength": 0
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "categories": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 255,
+              "minLength": 0
+            },
+            "maxItems": 1000
+          }
+        },
+        "required": [
+          "categories"
+        ],
+        "additionalProperties": false
+      },
+      "meta": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS",
+        "CONTENT_INPUT_INVALID",
+        "CONTENT_QUERY_INVALID",
+        "CONTENT_KEY_INVALID"
+      ]
+    },
+    "content.audit.list": {
+      "version": 1,
+      "domains": [
+        "admin"
+      ],
+      "actor": "admin",
+      "permission": "content.read",
+      "idempotency": "read",
+      "consistency": "current-owner-view",
+      "input": {
+        "type": "object",
+        "properties": {
+          "after_id": {
+            "$ref": "#/definitions/decimal"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "#/definitions/id"
+            },
+            "installation_id": {
+              "type": "string",
+              "maxLength": 36,
+              "minLength": 0
+            },
+            "actor_id": {
+              "$ref": "#/definitions/id"
+            },
+            "kind": {
+              "enum": [
+                "notices",
+                "knowledge"
+              ],
+              "type": "string"
+            },
+            "operation": {
+              "enum": [
+                "create",
+                "update",
+                "visibility",
+                "delete",
+                "sort"
+              ],
+              "type": "string"
+            },
+            "changes": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "$ref": "#/definitions/id"
+                  },
+                  "row_version": {
+                    "$ref": "#/definitions/id"
+                  }
+                },
+                "required": [
+                  "id",
+                  "row_version"
+                ],
+                "additionalProperties": false
+              },
+              "maxItems": 1000
+            },
+            "input_hash": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "correlation_id": {
+              "type": "string",
+              "maxLength": 128,
+              "minLength": 0
+            },
+            "occurred_at": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 253402300799
+            }
+          },
+          "required": [
+            "id",
+            "installation_id",
+            "actor_id",
+            "kind",
+            "operation",
+            "changes",
+            "input_hash",
+            "correlation_id",
+            "occurred_at"
+          ],
+          "additionalProperties": false
+        },
+        "maxItems": 100
+      },
+      "meta": {
+        "type": "object",
+        "properties": {
+          "next_after_id": {
+            "$ref": "#/definitions/decimal"
+          },
+          "has_more": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "next_after_id",
+          "has_more"
+        ],
+        "additionalProperties": false
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS",
+        "CONTENT_INPUT_INVALID",
+        "CONTENT_QUERY_INVALID",
+        "CONTENT_KEY_INVALID"
+      ]
+    },
+    "support.admin-tickets.claim": {
+      "version": 1,
+      "domains": [
+        "admin"
+      ],
+      "actor": "admin",
+      "permission": "support.tickets.write",
+      "idempotency": "domain",
+      "consistency": "owner-transaction",
+      "input": {
+        "type": "object",
+        "properties": {
+          "ticket_id": {
+            "$ref": "#/definitions/id"
+          },
+          "expected_version": {
+            "$ref": "#/definitions/id"
+          }
+        },
+        "required": [
+          "ticket_id",
+          "expected_version"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "ticket_id": {
+            "$ref": "#/definitions/id"
+          },
+          "row_version": {
+            "$ref": "#/definitions/id"
+          },
+          "assigned_admin_id": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/id"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "ticket_id",
+          "row_version",
+          "assigned_admin_id"
+        ],
+        "additionalProperties": false
+      },
+      "meta": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS"
+      ]
+    },
+    "support.admin-tickets.unassign": {
+      "version": 1,
+      "domains": [
+        "admin"
+      ],
+      "actor": "admin",
+      "permission": "support.tickets.write",
+      "idempotency": "domain",
+      "consistency": "owner-transaction",
+      "input": {
+        "type": "object",
+        "properties": {
+          "ticket_id": {
+            "$ref": "#/definitions/id"
+          },
+          "expected_version": {
+            "$ref": "#/definitions/id"
+          }
+        },
+        "required": [
+          "ticket_id",
+          "expected_version"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "ticket_id": {
+            "$ref": "#/definitions/id"
+          },
+          "row_version": {
+            "$ref": "#/definitions/id"
+          },
+          "assigned_admin_id": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/id"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "ticket_id",
+          "row_version",
+          "assigned_admin_id"
+        ],
+        "additionalProperties": false
+      },
+      "meta": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS"
+      ]
+    },
+    "support.admin-tickets.audit.list": {
+      "version": 1,
+      "domains": [
+        "admin"
+      ],
+      "actor": "admin",
+      "permission": "support.tickets.read",
+      "idempotency": "read",
+      "consistency": "current-owner-view",
+      "input": {
+        "type": "object",
+        "properties": {
+          "ticket_id": {
+            "$ref": "#/definitions/id"
+          },
+          "after_id": {
+            "$ref": "#/definitions/decimal"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50
+          }
+        },
+        "required": [
+          "ticket_id"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "array",
+        "items": {
+          "$ref": "#/definitions/support-audit"
+        },
+        "maxItems": 50
+      },
+      "meta": {
+        "type": "object",
+        "properties": {
+          "next_after_id": {
+            "$ref": "#/definitions/decimal"
+          },
+          "has_more": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "next_after_id",
+          "has_more"
+        ],
+        "additionalProperties": false
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS"
+      ]
+    },
+    "support.tickets.attachments.begin": {
+      "version": 1,
+      "domains": [
+        "user"
+      ],
+      "actor": "user",
+      "permission": null,
+      "idempotency": "domain",
+      "consistency": "owner-transaction",
+      "input": {
+        "type": "object",
+        "properties": {
+          "ticket_id": {
+            "$ref": "#/definitions/id"
+          },
+          "filename": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "media_type": {
+            "type": "string",
+            "enum": [
+              "image/png",
+              "image/jpeg",
+              "application/pdf",
+              "text/plain"
+            ]
+          },
+          "size_bytes": {
+            "$ref": "#/definitions/id"
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        },
+        "required": [
+          "ticket_id",
+          "filename",
+          "media_type",
+          "size_bytes",
+          "sha256"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "$ref": "#/definitions/support-attachment"
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS",
+        "SUPPORT_TICKET_INPUT_INVALID",
+        "SUPPORT_TICKET_KEY_INVALID",
+        "SUPPORT_TICKET_QUERY_INVALID"
+      ],
+      "meta": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    "support.tickets.attachments.append": {
+      "version": 1,
+      "domains": [
+        "user"
+      ],
+      "actor": "user",
+      "permission": null,
+      "idempotency": "domain",
+      "consistency": "owner-transaction",
+      "input": {
+        "type": "object",
+        "properties": {
+          "attachment_id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "chunk_index": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 639
+          },
+          "content_base64": {
+            "type": "string",
+            "minLength": 4,
+            "maxLength": 10924,
+            "pattern": "^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$"
+          }
+        },
+        "required": [
+          "attachment_id",
+          "chunk_index",
+          "content_base64"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "$ref": "#/definitions/support-attachment"
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS",
+        "SUPPORT_TICKET_INPUT_INVALID",
+        "SUPPORT_TICKET_KEY_INVALID",
+        "SUPPORT_TICKET_QUERY_INVALID"
+      ],
+      "meta": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    "support.tickets.attachments.finish": {
+      "version": 1,
+      "domains": [
+        "user"
+      ],
+      "actor": "user",
+      "permission": null,
+      "idempotency": "domain",
+      "consistency": "owner-transaction",
+      "input": {
+        "type": "object",
+        "properties": {
+          "attachment_id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          }
+        },
+        "required": [
+          "attachment_id"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "$ref": "#/definitions/support-attachment"
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS",
+        "SUPPORT_TICKET_INPUT_INVALID",
+        "SUPPORT_TICKET_KEY_INVALID",
+        "SUPPORT_TICKET_QUERY_INVALID"
+      ],
+      "meta": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    "support.tickets.attachments.cancel": {
+      "version": 1,
+      "domains": [
+        "user"
+      ],
+      "actor": "user",
+      "permission": null,
+      "idempotency": "domain",
+      "consistency": "owner-transaction",
+      "input": {
+        "type": "object",
+        "properties": {
+          "attachment_id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          }
+        },
+        "required": [
+          "attachment_id"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "$ref": "#/definitions/support-attachment"
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS",
+        "SUPPORT_TICKET_INPUT_INVALID",
+        "SUPPORT_TICKET_KEY_INVALID",
+        "SUPPORT_TICKET_QUERY_INVALID"
+      ],
+      "meta": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    "support.tickets.attachments.get": {
+      "version": 1,
+      "domains": [
+        "user"
+      ],
+      "actor": "user",
+      "permission": null,
+      "idempotency": "read",
+      "consistency": "current-owner-view",
+      "input": {
+        "type": "object",
+        "properties": {
+          "attachment_id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          }
+        },
+        "required": [
+          "attachment_id"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "$ref": "#/definitions/support-attachment"
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS",
+        "SUPPORT_TICKET_INPUT_INVALID",
+        "SUPPORT_TICKET_KEY_INVALID",
+        "SUPPORT_TICKET_QUERY_INVALID"
+      ],
+      "meta": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    "support.tickets.attachments.download": {
+      "version": 1,
+      "domains": [
+        "user"
+      ],
+      "actor": "user",
+      "permission": null,
+      "idempotency": "read",
+      "consistency": "current-owner-view",
+      "input": {
+        "type": "object",
+        "properties": {
+          "attachment_id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "chunk_index": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 639
+          }
+        },
+        "required": [
+          "attachment_id",
+          "chunk_index"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "attachment_id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "chunk_index": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 639
+          },
+          "content_base64": {
+            "type": "string",
+            "minLength": 4,
+            "maxLength": 10924,
+            "pattern": "^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$"
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "last": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "attachment_id",
+          "chunk_index",
+          "content_base64",
+          "sha256",
+          "last"
+        ],
+        "additionalProperties": false
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS",
+        "SUPPORT_TICKET_INPUT_INVALID",
+        "SUPPORT_TICKET_KEY_INVALID",
+        "SUPPORT_TICKET_QUERY_INVALID"
+      ],
+      "meta": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    "support.admin-tickets.attachments.begin": {
+      "version": 1,
+      "domains": [
+        "admin"
+      ],
+      "actor": "admin",
+      "permission": "support.tickets.write",
+      "idempotency": "domain",
+      "consistency": "owner-transaction",
+      "input": {
+        "type": "object",
+        "properties": {
+          "ticket_id": {
+            "$ref": "#/definitions/id"
+          },
+          "filename": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "media_type": {
+            "type": "string",
+            "enum": [
+              "image/png",
+              "image/jpeg",
+              "application/pdf",
+              "text/plain"
+            ]
+          },
+          "size_bytes": {
+            "$ref": "#/definitions/id"
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        },
+        "required": [
+          "ticket_id",
+          "filename",
+          "media_type",
+          "size_bytes",
+          "sha256"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "$ref": "#/definitions/support-attachment"
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS",
+        "SUPPORT_TICKET_INPUT_INVALID",
+        "SUPPORT_TICKET_KEY_INVALID",
+        "SUPPORT_TICKET_QUERY_INVALID"
+      ],
+      "meta": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    "support.admin-tickets.attachments.append": {
+      "version": 1,
+      "domains": [
+        "admin"
+      ],
+      "actor": "admin",
+      "permission": "support.tickets.write",
+      "idempotency": "domain",
+      "consistency": "owner-transaction",
+      "input": {
+        "type": "object",
+        "properties": {
+          "attachment_id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "chunk_index": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 639
+          },
+          "content_base64": {
+            "type": "string",
+            "minLength": 4,
+            "maxLength": 10924,
+            "pattern": "^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$"
+          }
+        },
+        "required": [
+          "attachment_id",
+          "chunk_index",
+          "content_base64"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "$ref": "#/definitions/support-attachment"
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS",
+        "SUPPORT_TICKET_INPUT_INVALID",
+        "SUPPORT_TICKET_KEY_INVALID",
+        "SUPPORT_TICKET_QUERY_INVALID"
+      ],
+      "meta": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    "support.admin-tickets.attachments.finish": {
+      "version": 1,
+      "domains": [
+        "admin"
+      ],
+      "actor": "admin",
+      "permission": "support.tickets.write",
+      "idempotency": "domain",
+      "consistency": "owner-transaction",
+      "input": {
+        "type": "object",
+        "properties": {
+          "attachment_id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          }
+        },
+        "required": [
+          "attachment_id"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "$ref": "#/definitions/support-attachment"
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS",
+        "SUPPORT_TICKET_INPUT_INVALID",
+        "SUPPORT_TICKET_KEY_INVALID",
+        "SUPPORT_TICKET_QUERY_INVALID"
+      ],
+      "meta": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    "support.admin-tickets.attachments.cancel": {
+      "version": 1,
+      "domains": [
+        "admin"
+      ],
+      "actor": "admin",
+      "permission": "support.tickets.write",
+      "idempotency": "domain",
+      "consistency": "owner-transaction",
+      "input": {
+        "type": "object",
+        "properties": {
+          "attachment_id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          }
+        },
+        "required": [
+          "attachment_id"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "$ref": "#/definitions/support-attachment"
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS",
+        "SUPPORT_TICKET_INPUT_INVALID",
+        "SUPPORT_TICKET_KEY_INVALID",
+        "SUPPORT_TICKET_QUERY_INVALID"
+      ],
+      "meta": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    "support.admin-tickets.attachments.get": {
+      "version": 1,
+      "domains": [
+        "admin"
+      ],
+      "actor": "admin",
+      "permission": "support.tickets.read",
+      "idempotency": "read",
+      "consistency": "current-owner-view",
+      "input": {
+        "type": "object",
+        "properties": {
+          "attachment_id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          }
+        },
+        "required": [
+          "attachment_id"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "$ref": "#/definitions/support-attachment"
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS",
+        "SUPPORT_TICKET_INPUT_INVALID",
+        "SUPPORT_TICKET_KEY_INVALID",
+        "SUPPORT_TICKET_QUERY_INVALID"
+      ],
+      "meta": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    "support.admin-tickets.attachments.download": {
+      "version": 1,
+      "domains": [
+        "admin"
+      ],
+      "actor": "admin",
+      "permission": "support.tickets.read",
+      "idempotency": "read",
+      "consistency": "current-owner-view",
+      "input": {
+        "type": "object",
+        "properties": {
+          "attachment_id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "chunk_index": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 639
+          }
+        },
+        "required": [
+          "attachment_id",
+          "chunk_index"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "attachment_id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "chunk_index": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 639
+          },
+          "content_base64": {
+            "type": "string",
+            "minLength": 4,
+            "maxLength": 10924,
+            "pattern": "^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$"
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "last": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "attachment_id",
+          "chunk_index",
+          "content_base64",
+          "sha256",
+          "last"
+        ],
+        "additionalProperties": false
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS",
+        "SUPPORT_TICKET_INPUT_INVALID",
+        "SUPPORT_TICKET_KEY_INVALID",
+        "SUPPORT_TICKET_QUERY_INVALID"
+      ],
+      "meta": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
     }
   },
   "surfaces": {
@@ -10892,6 +14125,29 @@
       "network.nodes.sort",
       "network.machines.update",
       "network.machines.delete",
+      "audit.logs.list",
+      "platform.queue.failures.list",
+      "catalog.admin-offers.list",
+      "platform.modules.list",
+      "platform.modules.get",
+      "platform.modules.operations.list",
+      "network.access-audit.rules.list",
+      "network.access-audit.rules.save",
+      "network.access-audit.rules.delete",
+      "network.access-audit.events.list",
+      "network.nodes.copy",
+      "network.machines.nodes.list",
+      "network.routes.simulate",
+      "platform.queue.snapshot.get",
+      "platform.queue.failures.get",
+      "notifications.mail-templates.list",
+      "notifications.mail-templates.get",
+      "notifications.mail-templates.save",
+      "notifications.mail-templates.reset",
+      "notifications.mail-templates.test",
+      "commerce.admin-orders.close",
+      "commerce.admin-orders.retry",
+      "commerce.admin-orders.audit.list",
       "content.notices.list",
       "content.notices.get",
       "content.notices.create",
@@ -10906,30 +14162,25 @@
       "content.knowledge.visibility.toggle",
       "content.knowledge.delete",
       "content.knowledge.sort",
-      "audit.logs.list",
-      "platform.queue.failures.list",
-      "catalog.admin-offers.list",
-      "platform.modules.list",
-      "platform.modules.get",
-      "platform.modules.operations.list",
-      "network.access-audit.rules.list",
-      "network.access-audit.rules.save",
-      "network.access-audit.rules.delete",
-      "network.access-audit.events.list",
-      "network.nodes.copy",
-      "network.machines.nodes.list",
-      "network.routes.simulate",
       "content.knowledge.categories.list",
-      "platform.queue.snapshot.get",
-      "platform.queue.failures.get",
-      "notifications.mail-templates.list",
-      "notifications.mail-templates.get",
-      "notifications.mail-templates.save",
-      "notifications.mail-templates.reset",
-      "notifications.mail-templates.test",
-      "commerce.admin-orders.close",
-      "commerce.admin-orders.retry",
-      "commerce.admin-orders.audit.list"
+      "support.admin-tickets.list",
+      "support.admin-tickets.get",
+      "support.admin-tickets.messages.list",
+      "support.admin-tickets.reply",
+      "support.admin-tickets.close",
+      "content.audit.list",
+      "support.admin-tickets.claim",
+      "support.admin-tickets.unassign",
+      "support.admin-tickets.audit.list",
+      "support.admin-tickets.attachments.begin",
+      "support.admin-tickets.attachments.append",
+      "support.admin-tickets.attachments.finish",
+      "support.admin-tickets.attachments.cancel",
+      "support.admin-tickets.attachments.get",
+      "support.admin-tickets.attachments.download"
     ]
+  },
+  "limits": {
+    "surface_operations": 256
   }
 }

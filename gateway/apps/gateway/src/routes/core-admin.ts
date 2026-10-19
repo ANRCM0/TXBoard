@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { coreOperations } from '../contracts/core.generated.js'
+import { coreOperations, CORE_SURFACE_OPERATION_LIMIT } from '../contracts/core.generated.js'
 import { CORE_ADMIN_OPERATIONS, CORE_ADMIN_PREFIX } from '../contracts/core-admin.js'
 import { NativeCoreClient } from '../services/native-internal.js'
 import { GatewayFailure } from '../services/failures.js'
@@ -12,7 +12,7 @@ const wrapper = z.strictObject({ input: z.unknown() })
 const uuid = z.uuid()
 const path = /^[a-zA-Z0-9_-]{1,128}$/
 const discovery = z.object({ contract: z.literal('native-internal-api/v1'), domain: z.literal('admin'),
-  operations: z.array(z.object({ id: z.string(), version: z.literal('1'), actor: z.string(), idempotency: z.string() })).max(100) })
+  operations: z.array(z.object({ id: z.string(), version: z.literal('1'), actor: z.string(), idempotency: z.string() })).max(CORE_SURFACE_OPERATION_LIMIT) })
 
 export function registerCoreAdminRoutes(app: {
   get(path: string, handler: (c: RouteContext) => Promise<Response>): unknown

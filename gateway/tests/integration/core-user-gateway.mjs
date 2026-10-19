@@ -10,6 +10,7 @@ import { loadConfig } from '../../apps/gateway/dist/config/env.js'
 import { RedisSecurity } from '../../apps/gateway/dist/services/redis-security.js'
 import { createCoreUserClient, createCoreAdminClient } from '../../packages/core-sdk/dist/index.js'
 import { verifyRendererDelivery } from './renderer-delivery.mjs'
+import { createSupportTicket, verifyAdminSupport } from './support-workflow.mjs'
 
 const root = process.env.TXBOARD_CORE_TEST_ROOT
 const scratch = process.env.GATEWAY_INTEGRATION_LOG_DIR
@@ -62,7 +63,7 @@ try {
   const client = createCoreUserClient({ baseURL, getToken: () => token })
   const other = createCoreUserClient({ baseURL, getToken: () => otherToken })
   const caps = await client.capabilities()
-  assert.equal(caps.operations.length, 25); checks++
+  assert.equal(caps.operations.length, 42); checks++
   const offers = await client.call('catalog.offers.list', {})
   assert.ok(offers.length > 0); checks++
   const actor = await client.call('identity.account.get', {})
@@ -102,6 +103,8 @@ try {
   assert.equal(paid.type, -1); assert.equal(paid.data, true)
   assert.deepEqual(await client.call('commerce.orders.checkout', { trade_no: freeOrder.trade_no }, { idempotencyKey: freeKey }), paid); checks++
   checks += await verifyRendererDelivery(client, other, { root, scratch, nonce, actorId: actor.id, token, servers })
+  const support = await createSupportTicket(client, other)
+  checks += support.checks
   const sessions = await client.callResult('identity.sessions.list', {})
   assert.equal(sessions.meta.has_more, false); assert.ok(sessions.data.length > 0); checks++
   await client.call('identity.sessions.revoke', { session_id: service.secondary }, { idempotencyKey: randomUUID() })
@@ -130,13 +133,14 @@ try {
   let adminToken, adminPath
   const admin = createCoreAdminClient({ baseURL: 'http://127.0.0.1:18089/gateway/v1/core/admin',
     getToken: () => adminToken, getAdminPath: () => adminPath })
-  assert.equal((await admin.capabilities()).operations.length, 23); checks++
+  assert.equal((await admin.capabilities()).operations.length, 36); checks++
   await assert.rejects(admin.call('identity.admin-session.create', { email: actor.email, password: 'integration-password-2026' },
     { idempotencyKey: randomUUID() }), e => e.status === 403); checks++
   const loggedIn = await admin.call('identity.admin-session.create', { email: adminService.email, password: 'admin-integration-password' }, { idempotencyKey: randomUUID() })
   adminToken = loggedIn.auth_data; adminPath = loggedIn.secure_path
   assert.equal(adminPath, 'sdk_admin_fixture'); checks++
   assert.equal((await admin.call('identity.admin.get', {})).id, adminService.id); checks++
+  checks += await verifyAdminSupport(admin, support.ticket, { root, adminId: adminService.id })
   const nodes = await admin.callResult('network.nodes.list', { page: 1, per_page: 1 })
   assert.equal(nodes.meta.page, 1); assert.ok(nodes.data.length > 0)
   assert.equal(typeof nodes.data[0].id, 'string'); assert.ok(!('protocol_settings' in nodes.data[0])); checks++
@@ -185,13 +189,13 @@ try {
   const banned = await admin.call('identity.accounts.status.update', statusInput, { idempotencyKey: statusKey })
   assert.equal(banned.banned, true)
   assert.deepEqual(await admin.call('identity.accounts.status.update', statusInput, { idempotencyKey: statusKey }), banned); checks++
-  const noticeKey = randomUUID(), noticeInput = { title: 'SDK original notice', content: 'Integration body' }
+  const noticeKey = randomUUID(), noticeInput = { title: 'SDK original notice', content: 'Integration body', img_url: null, tags: [], popup: false, show: true, sort: 0, audience: 'authenticated', publish_at: null, expire_at: null }
   const notice = await admin.call('content.notices.create', noticeInput, { idempotencyKey: noticeKey })
   assert.equal(typeof notice.id, 'string')
   assert.deepEqual(await admin.call('content.notices.create', noticeInput, { idempotencyKey: noticeKey }), notice); checks++
-  await admin.call('content.notices.update', { content_id: notice.id, title: 'SDK updated notice', content: 'Updated body' }, { idempotencyKey: randomUUID() })
+  await admin.call('content.notices.update', { ...noticeInput, content_id: notice.id, expected_version: '1', title: 'SDK updated notice', content: 'Updated body' }, { idempotencyKey: randomUUID() })
   assert.equal((await admin.call('content.notices.get', { content_id: notice.id })).title, 'SDK updated notice'); checks++
-  await admin.call('content.notices.delete', { content_id: notice.id }, { idempotencyKey: randomUUID() })
+  await admin.call('content.notices.delete', { content_id: notice.id, expected_version: '2' }, { idempotencyKey: randomUUID() })
   await assert.rejects(admin.call('content.notices.get', { content_id: notice.id }), e => e.status === 404); checks++
   const groups = await admin.callResult('network.groups.list', { page: 1, per_page: 1 })
   assert.equal(groups.meta.per_page, 1); assert.equal(typeof groups.data[0].id, 'string'); checks++

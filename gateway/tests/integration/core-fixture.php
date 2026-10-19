@@ -41,6 +41,12 @@ if ($action === 'admin-service') {
         'commerce.admin-orders.events.list', 'commerce.admin-orders.audit.list', 'commerce.admin-orders.close', 'commerce.admin-orders.retry',
         'identity.accounts.create', 'identity.accounts.status.update', 'network.groups.list',
         'content.notices.create', 'content.notices.update', 'content.notices.get', 'content.notices.delete'];
+    $operations = array_merge($operations, ['support.admin-tickets.list', 'support.admin-tickets.get',
+        'support.admin-tickets.messages.list', 'support.admin-tickets.audit.list', 'support.admin-tickets.reply',
+        'support.admin-tickets.close', 'support.admin-tickets.claim', 'support.admin-tickets.unassign',
+        'support.admin-tickets.attachments.begin', 'support.admin-tickets.attachments.append',
+        'support.admin-tickets.attachments.finish', 'support.admin-tickets.attachments.get',
+        'support.admin-tickets.attachments.download']);
     $service = app(\App\Domains\InternalApi\ServiceCredentials::class)->issue('browser-admin-fixture', 'admin',
         $argv[3] ?? '', $operations, time() + 3600);
     [$created, $admin] = app(\App\Services\Auth\NativeIdentityService::class)
@@ -48,7 +54,8 @@ if ($action === 'admin-service') {
     if (!$created) throw new RuntimeException('Admin fixture creation failed');
     $admin->forceFill(['is_admin' => true])->saveOrFail();
     foreach (['identity.read', 'identity.sessions.manage', 'network.nodes.read', 'network.machines.read', 'settings.read',
-        'identity.accounts.read', 'identity.accounts.manage', 'commerce.orders.read', 'commerce.orders.manage', 'network.groups.read', 'content.manage', 'content.read'] as $permission) {
+        'identity.accounts.read', 'identity.accounts.manage', 'commerce.orders.read', 'commerce.orders.manage', 'network.groups.read', 'content.manage', 'content.read',
+        'support.tickets.read', 'support.tickets.write'] as $permission) {
         Illuminate\Support\Facades\DB::table('tx_internal_actor_grant')->insert([
             'user_id' => $admin->id, 'permission' => $permission, 'created_at' => time()]);
     }
@@ -95,6 +102,10 @@ if ($action === 'delivery-owner' || $action === 'revoke-render-subject') {
 }
 if ($action === 'admin-revoke-orders') {
     Illuminate\Support\Facades\DB::table('tx_internal_actor_grant')->where('permission', 'commerce.orders.manage')->delete();
+    echo "{}\n"; exit;
+}
+if ($action === 'admin-revoke-support') {
+    Illuminate\Support\Facades\DB::table('tx_internal_actor_grant')->where('permission', 'support.tickets.write')->delete();
     echo "{}\n"; exit;
 }
 if ($action === 'admin-restrict') {

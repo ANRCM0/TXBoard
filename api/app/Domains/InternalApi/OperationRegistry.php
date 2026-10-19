@@ -46,6 +46,9 @@ final class OperationRegistry
             'commerce.admin-orders.list' => self::spec([], '', '', null, 'listing', [], [], handler: AdminOrderReadOperations::class),
             'commerce.admin-orders.get' => self::spec([], '', '', null, 'find', [], [], handler: AdminOrderReadOperations::class),
             'commerce.admin-orders.events.list' => self::spec([], '', '', null, 'events', [], [], handler: AdminOrderReadOperations::class),
+            'commerce.admin-orders.audit.list' => self::spec([], '', '', null, 'audit', [], [], handler: AdminOrderReadOperations::class),
+            'commerce.admin-orders.close' => self::spec([], '', '', null, 'close', [], [], command: AdminOrderMutationOperations::class),
+            'commerce.admin-orders.retry' => self::spec([], '', '', null, 'retry', [], [], command: AdminOrderMutationOperations::class),
             'identity.sessions.list' => self::spec($both, 'authenticated', $read, null, 'listing', [],
                 ['id', 'name', 'abilities', 'last_used_at', 'created_at', 'updated_at', 'expires_at'], list: true,
                 handler: SessionReadOperations::class),
@@ -72,12 +75,9 @@ final class OperationRegistry
             'commerce.orders.create' => self::spec([], '', '', null, 'purchase', [], [], command: CommerceMutationOperations::class),
             'commerce.orders.checkout' => self::spec([], '', '', null, 'checkout', [], [], command: CommerceMutationOperations::class),
             'commerce.orders.cancel' => self::spec([], '', '', null, 'cancel', [], [], command: CommerceMutationOperations::class),
-            'billing.order-payment-attempts.list' => self::spec([], '', '', null, 'orderAttempts', [], [], handler: BillingReadOperations::class),
-            'commerce.admin-orders.close' => self::spec([], '', '', null, 'close', [], [], command: AdminOrderMutationOperations::class),
-            'commerce.admin-orders.retry' => self::spec([], '', '', null, 'retry', [], [], command: AdminOrderMutationOperations::class),
-            'commerce.admin-orders.audit.list' => self::spec([], '', '', null, 'audit', [], [], handler: AdminOrderReadOperations::class),
             'billing.wallet.get' => self::spec([], '', '', null, 'wallet', [], [], handler: BillingReadOperations::class),
             'billing.payment-attempts.get' => self::spec([], '', '', null, 'attempt', [], [], handler: BillingReadOperations::class),
+            'billing.order-payment-attempts.list' => self::spec([], '', '', null, 'orderAttempts', [], [], handler: BillingReadOperations::class),
             'billing.payment-attempts.query' => self::spec([], '', '', null, 'queryAttempt', [], [], command: CommerceMutationOperations::class),
             'billing.payment-methods.list' => self::spec([], '', '', null, 'methods', [], [], handler: BillingReadOperations::class),
             'billing.recharges.create' => self::spec([], '', '', null, 'recharge', [], [], command: CommerceMutationOperations::class),
@@ -136,7 +136,10 @@ final class OperationRegistry
             ...self::subscriptionOperations($admin, $id),
             'subscription.delivery-options.get' => self::browserDelivery('options'),
             'subscription.deliveries.authorize' => self::browserDelivery('authorize'),
+            ...SupportOperationBindings::all(),
+            ...SupportAttachmentBindings::all(),
             ...AdminOperationBindings::all(),
+            ...ContentOperationBindings::all(),
         ]);
     }
 
@@ -224,6 +227,13 @@ final class OperationRegistry
             'paid_at', 'created_at', 'attempt', 'payment'];
     }
 
+    private static function browserDelivery(string $method): array
+    {
+        return ['domains' => ['user'], 'actor' => 'user', 'mode' => 'read', 'controller' => null,
+            'method' => $method, 'rules' => [], 'fields' => [], 'list' => false, 'parameters' => [],
+            'routeParameters' => [], 'permission' => null, 'handler' => BrowserDeliveryReadOperations::class, 'command' => null];
+    }
+
     private static function subscriptionOperations(array $admin, array $id): array
     {
         $operations = [];
@@ -238,14 +248,6 @@ final class OperationRegistry
         }
         return $operations;
     }
-
-    private static function browserDelivery(string $method): array
-    {
-        return ['domains' => ['user'], 'actor' => 'user', 'mode' => 'read', 'controller' => null,
-            'method' => $method, 'rules' => [], 'fields' => [], 'list' => false, 'parameters' => [],
-            'routeParameters' => [], 'permission' => null, 'handler' => BrowserDeliveryReadOperations::class, 'command' => null];
-    }
-
 
     private static function entitlementFields(): array
     {

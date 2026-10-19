@@ -252,6 +252,237 @@
       "read",
       null
     ],
+    "content.audit.list": [
+      "handler",
+      "App\\Domains\\InternalApi\\ContentReadOperations",
+      "audit",
+      "admin",
+      [
+        "admin"
+      ],
+      "read",
+      "content.read"
+    ],
+    "content.knowledge.categories.list": [
+      "handler",
+      "App\\Domains\\InternalApi\\ContentReadOperations",
+      "categories",
+      "admin",
+      [
+        "admin"
+      ],
+      "read",
+      "content.read"
+    ],
+    "content.knowledge.create": [
+      "command",
+      "App\\Domains\\InternalApi\\ContentMutationOperations",
+      "articleCreate",
+      "admin",
+      [
+        "admin"
+      ],
+      "domain",
+      "content.manage"
+    ],
+    "content.knowledge.delete": [
+      "command",
+      "App\\Domains\\InternalApi\\ContentMutationOperations",
+      "articleDelete",
+      "admin",
+      [
+        "admin"
+      ],
+      "domain",
+      "content.manage"
+    ],
+    "content.knowledge.get": [
+      "handler",
+      "App\\Domains\\InternalApi\\ContentReadOperations",
+      "articleGet",
+      "admin",
+      [
+        "admin"
+      ],
+      "read",
+      "content.read"
+    ],
+    "content.knowledge.list": [
+      "handler",
+      "App\\Domains\\InternalApi\\ContentReadOperations",
+      "articleList",
+      "admin",
+      [
+        "admin"
+      ],
+      "read",
+      "content.read"
+    ],
+    "content.knowledge.sort": [
+      "command",
+      "App\\Domains\\InternalApi\\ContentMutationOperations",
+      "articleSort",
+      "admin",
+      [
+        "admin"
+      ],
+      "domain",
+      "content.manage"
+    ],
+    "content.knowledge.update": [
+      "command",
+      "App\\Domains\\InternalApi\\ContentMutationOperations",
+      "articleUpdate",
+      "admin",
+      [
+        "admin"
+      ],
+      "domain",
+      "content.manage"
+    ],
+    "content.knowledge.visibility.toggle": [
+      "command",
+      "App\\Domains\\InternalApi\\ContentMutationOperations",
+      "articleVisibility",
+      "admin",
+      [
+        "admin"
+      ],
+      "domain",
+      "content.manage"
+    ],
+    "content.notices.create": [
+      "command",
+      "App\\Domains\\InternalApi\\ContentMutationOperations",
+      "noticeCreate",
+      "admin",
+      [
+        "admin"
+      ],
+      "domain",
+      "content.manage"
+    ],
+    "content.notices.delete": [
+      "command",
+      "App\\Domains\\InternalApi\\ContentMutationOperations",
+      "noticeDelete",
+      "admin",
+      [
+        "admin"
+      ],
+      "domain",
+      "content.manage"
+    ],
+    "content.notices.get": [
+      "handler",
+      "App\\Domains\\InternalApi\\ContentReadOperations",
+      "noticeGet",
+      "admin",
+      [
+        "admin"
+      ],
+      "read",
+      "content.read"
+    ],
+    "content.notices.list": [
+      "handler",
+      "App\\Domains\\InternalApi\\ContentReadOperations",
+      "noticeList",
+      "admin",
+      [
+        "admin"
+      ],
+      "read",
+      "content.read"
+    ],
+    "content.notices.sort": [
+      "command",
+      "App\\Domains\\InternalApi\\ContentMutationOperations",
+      "noticeSort",
+      "admin",
+      [
+        "admin"
+      ],
+      "domain",
+      "content.manage"
+    ],
+    "content.notices.update": [
+      "command",
+      "App\\Domains\\InternalApi\\ContentMutationOperations",
+      "noticeUpdate",
+      "admin",
+      [
+        "admin"
+      ],
+      "domain",
+      "content.manage"
+    ],
+    "content.notices.visibility.toggle": [
+      "command",
+      "App\\Domains\\InternalApi\\ContentMutationOperations",
+      "noticeVisibility",
+      "admin",
+      [
+        "admin"
+      ],
+      "domain",
+      "content.manage"
+    ],
+    "content.user-knowledge.categories.list": [
+      "handler",
+      "App\\Domains\\InternalApi\\ContentReadOperations",
+      "userCategories",
+      "user",
+      [
+        "user"
+      ],
+      "read",
+      null
+    ],
+    "content.user-knowledge.get": [
+      "handler",
+      "App\\Domains\\InternalApi\\ContentReadOperations",
+      "userArticleGet",
+      "user",
+      [
+        "user"
+      ],
+      "read",
+      null
+    ],
+    "content.user-knowledge.list": [
+      "handler",
+      "App\\Domains\\InternalApi\\ContentReadOperations",
+      "userArticleList",
+      "user",
+      [
+        "user"
+      ],
+      "read",
+      null
+    ],
+    "content.user-notices.get": [
+      "handler",
+      "App\\Domains\\InternalApi\\ContentReadOperations",
+      "userNoticeGet",
+      "user",
+      [
+        "user"
+      ],
+      "read",
+      null
+    ],
+    "content.user-notices.list": [
+      "handler",
+      "App\\Domains\\InternalApi\\ContentReadOperations",
+      "userNoticeList",
+      "user",
+      [
+        "user"
+      ],
+      "read",
+      null
+    ],
     "identity.account.get": [
       "handler",
       "App\\Domains\\InternalApi\\AccountReadOperations",
@@ -363,6 +594,292 @@
         "user"
       ],
       "read",
+      null
+    ],
+    "support.admin-tickets.attachments.append": [
+      "command",
+      "App\\Domains\\InternalApi\\SupportAttachmentOperations",
+      "adminAppend",
+      "admin",
+      [
+        "admin"
+      ],
+      "domain",
+      "support.tickets.write"
+    ],
+    "support.admin-tickets.attachments.begin": [
+      "command",
+      "App\\Domains\\InternalApi\\SupportAttachmentOperations",
+      "adminBegin",
+      "admin",
+      [
+        "admin"
+      ],
+      "domain",
+      "support.tickets.write"
+    ],
+    "support.admin-tickets.attachments.cancel": [
+      "command",
+      "App\\Domains\\InternalApi\\SupportAttachmentOperations",
+      "adminCancel",
+      "admin",
+      [
+        "admin"
+      ],
+      "domain",
+      "support.tickets.write"
+    ],
+    "support.admin-tickets.attachments.download": [
+      "handler",
+      "App\\Domains\\InternalApi\\SupportAttachmentOperations",
+      "adminDownload",
+      "admin",
+      [
+        "admin"
+      ],
+      "read",
+      "support.tickets.read"
+    ],
+    "support.admin-tickets.attachments.finish": [
+      "command",
+      "App\\Domains\\InternalApi\\SupportAttachmentOperations",
+      "adminFinish",
+      "admin",
+      [
+        "admin"
+      ],
+      "domain",
+      "support.tickets.write"
+    ],
+    "support.admin-tickets.attachments.get": [
+      "handler",
+      "App\\Domains\\InternalApi\\SupportAttachmentOperations",
+      "adminGet",
+      "admin",
+      [
+        "admin"
+      ],
+      "read",
+      "support.tickets.read"
+    ],
+    "support.admin-tickets.audit.list": [
+      "handler",
+      "App\\Domains\\InternalApi\\SupportReadOperations",
+      "adminAudit",
+      "admin",
+      [
+        "admin"
+      ],
+      "read",
+      "support.tickets.read"
+    ],
+    "support.admin-tickets.claim": [
+      "command",
+      "App\\Domains\\InternalApi\\SupportMutationOperations",
+      "adminClaim",
+      "admin",
+      [
+        "admin"
+      ],
+      "domain",
+      "support.tickets.write"
+    ],
+    "support.admin-tickets.close": [
+      "command",
+      "App\\Domains\\InternalApi\\SupportMutationOperations",
+      "adminClose",
+      "admin",
+      [
+        "admin"
+      ],
+      "domain",
+      "support.tickets.write"
+    ],
+    "support.admin-tickets.get": [
+      "handler",
+      "App\\Domains\\InternalApi\\SupportReadOperations",
+      "adminFind",
+      "admin",
+      [
+        "admin"
+      ],
+      "read",
+      "support.tickets.read"
+    ],
+    "support.admin-tickets.list": [
+      "handler",
+      "App\\Domains\\InternalApi\\SupportReadOperations",
+      "adminListing",
+      "admin",
+      [
+        "admin"
+      ],
+      "read",
+      "support.tickets.read"
+    ],
+    "support.admin-tickets.messages.list": [
+      "handler",
+      "App\\Domains\\InternalApi\\SupportReadOperations",
+      "adminMessages",
+      "admin",
+      [
+        "admin"
+      ],
+      "read",
+      "support.tickets.read"
+    ],
+    "support.admin-tickets.reply": [
+      "command",
+      "App\\Domains\\InternalApi\\SupportMutationOperations",
+      "adminReply",
+      "admin",
+      [
+        "admin"
+      ],
+      "domain",
+      "support.tickets.write"
+    ],
+    "support.admin-tickets.unassign": [
+      "command",
+      "App\\Domains\\InternalApi\\SupportMutationOperations",
+      "adminUnassign",
+      "admin",
+      [
+        "admin"
+      ],
+      "domain",
+      "support.tickets.write"
+    ],
+    "support.tickets.attachments.append": [
+      "command",
+      "App\\Domains\\InternalApi\\SupportAttachmentOperations",
+      "userAppend",
+      "user",
+      [
+        "user"
+      ],
+      "domain",
+      null
+    ],
+    "support.tickets.attachments.begin": [
+      "command",
+      "App\\Domains\\InternalApi\\SupportAttachmentOperations",
+      "userBegin",
+      "user",
+      [
+        "user"
+      ],
+      "domain",
+      null
+    ],
+    "support.tickets.attachments.cancel": [
+      "command",
+      "App\\Domains\\InternalApi\\SupportAttachmentOperations",
+      "userCancel",
+      "user",
+      [
+        "user"
+      ],
+      "domain",
+      null
+    ],
+    "support.tickets.attachments.download": [
+      "handler",
+      "App\\Domains\\InternalApi\\SupportAttachmentOperations",
+      "userDownload",
+      "user",
+      [
+        "user"
+      ],
+      "read",
+      null
+    ],
+    "support.tickets.attachments.finish": [
+      "command",
+      "App\\Domains\\InternalApi\\SupportAttachmentOperations",
+      "userFinish",
+      "user",
+      [
+        "user"
+      ],
+      "domain",
+      null
+    ],
+    "support.tickets.attachments.get": [
+      "handler",
+      "App\\Domains\\InternalApi\\SupportAttachmentOperations",
+      "userGet",
+      "user",
+      [
+        "user"
+      ],
+      "read",
+      null
+    ],
+    "support.tickets.close": [
+      "command",
+      "App\\Domains\\InternalApi\\SupportMutationOperations",
+      "close",
+      "user",
+      [
+        "user"
+      ],
+      "domain",
+      null
+    ],
+    "support.tickets.create": [
+      "command",
+      "App\\Domains\\InternalApi\\SupportMutationOperations",
+      "create",
+      "user",
+      [
+        "user"
+      ],
+      "domain",
+      null
+    ],
+    "support.tickets.get": [
+      "handler",
+      "App\\Domains\\InternalApi\\SupportReadOperations",
+      "find",
+      "user",
+      [
+        "user"
+      ],
+      "read",
+      null
+    ],
+    "support.tickets.list": [
+      "handler",
+      "App\\Domains\\InternalApi\\SupportReadOperations",
+      "listing",
+      "user",
+      [
+        "user"
+      ],
+      "read",
+      null
+    ],
+    "support.tickets.messages.list": [
+      "handler",
+      "App\\Domains\\InternalApi\\SupportReadOperations",
+      "messages",
+      "user",
+      [
+        "user"
+      ],
+      "read",
+      null
+    ],
+    "support.tickets.reply": [
+      "command",
+      "App\\Domains\\InternalApi\\SupportMutationOperations",
+      "reply",
+      "user",
+      [
+        "user"
+      ],
+      "domain",
       null
     ],
     "usage.mine.list": [
