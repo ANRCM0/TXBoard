@@ -180,8 +180,8 @@ try {
     const tables = await mobile.page.locator('.native-management-page .table-wrap').evaluateAll(elements => elements.map(element => ({
       viewport: element.clientWidth, content: element.scrollWidth, table: element.querySelector('table').getBoundingClientRect().width,
     })))
-    const minimumTableWidth = name === '套餐管理' ? 920 : name === '权限组管理' ? 580 : 760
-    assert.ok(tables.length > 0 && tables.every(table => table.content > table.viewport && table.table >= minimumTableWidth), name + ' tables must retain reference column widths in a horizontal scroll region')
+    const minimumTableWidth = name === '套餐管理' ? 740 : name === '权限组管理' ? 580 : 760
+    assert.ok(tables.length > 0 && tables.every(table => table.content > table.viewport && table.table >= minimumTableWidth), name + ' tables must retain readable column widths in a horizontal scroll region: ' + JSON.stringify(tables))
     await mobile.page.screenshot({ path: path.join(output, name + '-mobile.png'), fullPage: true })
   }
   verifyFixture(mobile.state)

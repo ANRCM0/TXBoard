@@ -259,6 +259,10 @@ try {
   passed('login theme persists into management and overview links navigate without layout overflow')
   assert.match(await page.locator('table').innerText(), /9007199254740999/)
   assert.match(await page.locator('table').innerText(), /\[2001:db8::1\]:443/)
+  assert.ok(await page.locator('.native-list-search').evaluate(container => {
+    const input = container.querySelector('input'), icon = container.querySelector('svg')
+    return !icon || input.getBoundingClientRect().left + parseFloat(getComputedStyle(input).paddingLeft) >= icon.getBoundingClientRect().right + 3
+  }), 'search text must start after the search icon')
   passed('desktop login, protected deep link and exact decimal inventory')
   await page.locator('[data-sonner-toast]').waitFor({ state: 'detached' })
   await page.screenshot({ path: output + '/nodes-desktop.png', fullPage: true })
