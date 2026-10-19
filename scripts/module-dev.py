@@ -8,9 +8,13 @@ No command installs packages, discovers application modules, or enables database
 import argparse
 import hashlib
 import json
+import os
 from pathlib import Path
 import re
+import shutil
+import subprocess
 import sys
+import tempfile
 import zipfile
 
 CODE = re.compile(r"[a-z][a-z0-9_]{0,63}\Z")
@@ -50,7 +54,7 @@ def write_json(path, value):
     path.write_text(json.dumps(value, ensure_ascii=True, indent=2) + "\n", encoding="utf-8", newline="\n")
 
 
-def files(path):
+def files(path, required=("Plugin.php", "config.json", "module.json")):
     if not path.is_dir() or path.is_symlink():
         raise ValueError("MODULE_DIRECTORY_INVALID")
     for ancestor in (path, *path.parents):
@@ -70,7 +74,7 @@ def files(path):
         if len(found) >= MAX_FILES or total > MAX_BYTES:
             raise ValueError("MODULE_PACKAGE_LIMIT")
         found[relative] = hashlib.sha256(item.read_bytes()).hexdigest()
-    if not {"Plugin.php", "config.json", "module.json"} <= found.keys():
+    if not set(required) <= found.keys():
         raise ValueError("MODULE_PACKAGE_INCOMPLETE")
     return found
 
@@ -227,6 +231,34 @@ final class Plugin extends AbstractPlugin implements DeploymentModule, Extension
 }
 """
     (path / "Plugin.php").write_text(source.replace("__CLASS__", studly(code)), encoding="utf-8", newline="\n")
+    (path / "tests").mkdir()
+    template = r'''<?php
+
+use PHPUnit\Framework\TestCase;
+
+// Rename this file after wiring the real owner fixture and recovery driver.
+final class OwnerBoundaryTest extends TestCase
+{
+    public function test_actor_and_current_grant_are_rechecked(): void
+    {
+        $this->markTestIncomplete('Exercise another user, a revoked session and a disabled grant against the real owner operation.');
+    }
+
+    public function test_original_intent_recovers_after_a_lost_response(): void
+    {
+        $this->markTestIncomplete('Replay the same key and input after a committed-but-lost response; reject a changed input and preserve one owner effect.');
+    }
+
+    public function test_failure_rolls_back_owner_state(): void
+    {
+        $this->markTestIncomplete('Inject failure before commit and verify owner state, ledger and durable events remain consistent.');
+    }
+}
+'''
+    (path / "tests/OwnerBoundaryTest.php.dist").write_text(template, encoding="utf-8", newline="\n")
+    write_json(path / "tests/acceptance.json", {"schema": "module-acceptance-cases/v1", "status": "pending",
+        "cases": ["cross-user-isolation", "revoked-grants", "idempotency-conflict",
+            "lost-response-recovery", "transaction-rollback", "disabled-owner-hooks", "package-fingerprint"]})
 
 
 def build_lock(root, composition):
@@ -254,6 +286,74 @@ def build_lock(root, composition):
     return {"schema": 1, "packages": sorted(entries, key=lambda item: item["code"])}
 
 
+def test_plan(directory, application_root, php="php"):
+    manifest, inventory = validate(directory)
+    application = application_root.resolve()
+    if application_root.is_symlink() or not (application / "artisan").is_file() or not (application / "phpunit.xml").is_file():
+        raise ValueError("MODULE_TEST_APPLICATION_INVALID")
+    tests = sorted(name for name in inventory if name.startswith("tests/") and name.endswith("Test.php"))
+    return {"schema": "module-test-plan/v1", "module": manifest["id"], "version": manifest["version"],
+        "source_sha256": hashlib.sha256(json.dumps(inventory, sort_keys=True, separators=(",", ":")).encode()).hexdigest(),
+        "application_root": str(application), "php": php, "test_files": tests,
+        "lint_files": sorted(name for name in inventory if name.endswith(".php")),
+        "pending_templates": sorted(name for name in inventory if name.endswith(".php.dist")),
+        "acceptance": "pending", "executed": False}
+
+
+def test_module(directory, application_root, php="php", report=None, plan_only=False):
+    plan = test_plan(directory, application_root, php)
+    if plan_only:
+        print(json.dumps(plan, sort_keys=True))
+        return 0
+    if not plan["test_files"]:
+        raise ValueError("MODULE_TESTS_REQUIRED: implement tests/*Test.php; templates are not executable tests")
+    if report is not None and (report.exists() or report.resolve().is_relative_to(directory.resolve())):
+        raise ValueError("MODULE_TEST_REPORT_TARGET_INVALID")
+    executable = shutil.which(php)
+    if executable is None:
+        raise ValueError("MODULE_TEST_PHP_UNAVAILABLE")
+    application = Path(plan["application_root"])
+    runner = application / "vendor/bin/phpunit"
+    if not runner.is_file() or not (application / "vendor/autoload.php").is_file():
+        raise ValueError("MODULE_TEST_DEPENDENCIES_REQUIRED")
+    result = {**plan, "schema": "module-test-result/v1", "executed": True, "status": "failed", "stage": "lint"}
+    code = 0
+    # Ignore production DB settings and cached application configuration in this developer runner.
+    with tempfile.TemporaryDirectory(prefix="txboard-module-tests-") as temporary:
+        cache = Path(temporary)
+        (cache / "views").mkdir()
+        environment = {**os.environ, "APP_ENV": "testing", "APP_DEBUG": "true",
+            "APP_KEY": "base64:ZdD07lazsdQQmdBAJ2tA5WjufeI2hP8xlP6zgmvCMZs=", "BCRYPT_ROUNDS": "4",
+            "DB_CONNECTION": "sqlite", "DB_DATABASE": ":memory:", "DB_URL": "", "DATABASE_URL": "",
+            "CORE_NATIVE_TEST_MYSQL": "0", "CORE_INSTALLATION_TEST_MYSQL": "0", "NATIVE_TRAFFIC_PERIOD_MYSQL": "0",
+            "CORE_PROVIDER_INTEROP_ENDPOINT": "", "DB_HOST": "127.0.0.1", "DB_PORT": "1", "DB_SOCKET": "",
+            "DB_USERNAME": "module-test", "DB_PASSWORD": "",
+            "CACHE_DRIVER": "array", "CACHE_STORE": "array", "SETTING_CACHE_STORE": "array",
+            "QUEUE_CONNECTION": "sync", "SESSION_DRIVER": "array", "MAIL_MAILER": "array", "TELESCOPE_ENABLED": "false",
+            "APP_CONFIG_CACHE": str(cache / "config.php"), "APP_ROUTES_CACHE": str(cache / "routes.php"),
+            "APP_SERVICES_CACHE": str(cache / "services.php"), "APP_PACKAGES_CACHE": str(cache / "packages.php"),
+            "VIEW_COMPILED_PATH": str(cache / "views")}
+        for name in plan["lint_files"]:
+            code = subprocess.run([executable, "-l", str((directory / name).resolve())], cwd=application,
+                env=environment, check=False, timeout=30).returncode
+            if code != 0:
+                break
+        if code == 0:
+            result["stage"] = "phpunit"
+            command = [executable, str(runner), "--configuration", str(application / "phpunit.xml"),
+                "--do-not-cache-result", "--fail-on-incomplete", "--fail-on-risky", "--fail-on-warning", "--fail-on-skipped",
+                "--test-suffix", "Test.php", str((directory / "tests").resolve())]
+            code = subprocess.run(command, cwd=application, env=environment, check=False, timeout=600).returncode
+    if test_plan(directory, application_root, php)["source_sha256"] != plan["source_sha256"]:
+        result["stage"], code = "source-changed", 1
+    result["status"], result["exit_code"] = ("passed" if code == 0 else "failed"), code
+    if report is not None:
+        with report.open("x", encoding="utf-8", newline="\n") as stream:
+            stream.write(json.dumps(result, indent=2, sort_keys=True) + "\n")
+    print(json.dumps(result, sort_keys=True))
+    return code if 0 <= code <= 255 else 1
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
@@ -262,6 +362,12 @@ def main():
     create.add_argument("directory", type=Path)
     check = commands.add_parser("validate")
     check.add_argument("directory", type=Path)
+    test = commands.add_parser("test", help="Lint and run explicit package tests against disposable SQLite configuration")
+    test.add_argument("directory", type=Path)
+    test.add_argument("--application-root", type=Path, default=Path(__file__).resolve().parents[1] / "api")
+    test.add_argument("--php", default="php")
+    test.add_argument("--report", type=Path)
+    test.add_argument("--plan", action="store_true", help="Print the plan without starting PHP or running tests")
     package = commands.add_parser("package")
     package.add_argument("directory", type=Path)
     package.add_argument("output", type=Path)
@@ -277,6 +383,8 @@ def main():
             validate(args.directory)
         elif args.command == "validate":
             validate(args.directory)
+        elif args.command == "test":
+            return test_module(args.directory, args.application_root, args.php, args.report, args.plan)
         elif args.command == "package":
             manifest, inventory = validate(args.directory)
             if args.output.exists() or args.output.resolve().is_relative_to(args.directory.resolve()):
@@ -292,7 +400,7 @@ def main():
             else:
                 write_json(args.output, result)
         print("Module development: " + args.command + " passed")
-    except (ValueError, OSError, KeyError, TypeError) as error:
+    except (ValueError, OSError, KeyError, TypeError, subprocess.TimeoutExpired) as error:
         print(str(error), file=sys.stderr)
         return 1
     return 0
