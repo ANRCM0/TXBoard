@@ -13,5 +13,6 @@
 @media(max-width:600px) {
   .reference-users .management-filter-form { padding:12px; }
   .reference-users .management-filter-form label:first-child { max-width:none; flex-basis:100%; }
-  .reference-users .management-filter-form .button { flex:1; justify-content:center; }
+  .reference-users .management-filter-form label { flex:1 1 100%; }
+  .reference-users .management-filter-form .button { flex:1; justify-content:center; white-space:nowrap; }
 }

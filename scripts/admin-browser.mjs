@@ -430,6 +430,8 @@ try {
   await nav(mobile.page, '用户管理')
   await mobile.page.getByRole('link', { name: account.email, exact: true }).waitFor()
   assert.ok(await mobile.page.evaluate(() => document.documentElement.scrollWidth <= innerWidth))
+  const mobileSearch = mobile.page.getByRole('button', { name: '查询', exact: true })
+  assert.ok(await mobileSearch.evaluate(button => button.scrollWidth <= button.clientWidth && button.getBoundingClientRect().height >= 36), 'mobile search action must remain readable')
   await mobile.page.screenshot({ path: output + '/users-mobile.png', fullPage: true })
   await mobile.page.getByRole('link', { name: account.email, exact: true }).click()
   await mobile.page.getByRole('region', { name: '当前订阅', exact: true }).getByText('当前没有可用订阅。', { exact: true }).waitFor()
