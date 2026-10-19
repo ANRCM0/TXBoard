@@ -14,6 +14,18 @@ sync-gateway.sh
 contracts
 docs
 gateway
+!gateway/
+gateway/*
+!gateway/tsconfig.base.json
+!gateway/packages/
+gateway/packages/*
+!gateway/packages/core-sdk/
+gateway/packages/core-sdk/*
+!gateway/packages/core-sdk/package.json
+!gateway/packages/core-sdk/tsconfig.json
+!gateway/packages/core-sdk/src/
+!gateway/packages/core-sdk/src/**
+artifacts/
 node
 
 # API local/runtime state.

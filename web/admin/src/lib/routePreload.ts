@@ -1,39 +1,15 @@
 const preloaders: Record<string, () => Promise<unknown>> = {
-  '/system/audit-log': () => import('../pages/system/AuditLogPage'),
-  '/system/modules': () => import('../pages/system/ModuleCenterPage'),
-  '/config/system': () => import('../pages/config/SystemSettingsPage'),
-  '/config/system/features': () => import('../pages/config/FeatureEntrySettingsPage'),
-  '/config/system/safe': () => import('../pages/config/SafeSettingsPage'),
-  '/config/system/subscribe': () => import('../pages/config/SubscribeSettingsPage'),
-  '/config/system/invite': () => import('../pages/config/InviteSettingsPage'),
-  '/config/server': () => import('../pages/config/ServerSettingsPage'),
-  '/config/email': () => import('../pages/config/EmailSettingsPage'),
-  '/config/telegram': () => import('../pages/config/TelegramSettingsPage'),
-  '/config/plugin': () => import('../pages/plugins/PluginsPage'),
-  '/config/theme': () => import('../pages/config/ThemeSettingsPage'),
-  '/config/notice': () => import('../pages/config/NoticeSettingsPage'),
-  '/config/payment': () => import('../pages/config/PaymentSettingsPage'),
-  '/config/knowledge': () => import('../pages/config/KnowledgeSettingsPage'),
-  '/server/machine': () => import('../pages/server/MachinesPage'),
-  '/server/manage': () => import('../pages/server/NodesPage'),
-  '/server/group': () => import('../pages/server/GroupsPage'),
-  '/server/route': () => import('../pages/server/RoutesPage'),
-  '/server/access-audit': () => import('../pages/server/AccessAuditPage'),
-  '/finance/plan': () => import('../pages/finance/PlansPage'),
-  '/finance/order': () => import('../pages/finance/OrdersPage'),
-  '/finance/coupon': () => import('../pages/finance/CouponPage'),
-  '/finance/gift-card': () => import('../pages/finance/GiftCardPage'),
+  '/': () => import('../native/OverviewPage'),
+  '/config/system': () => import('../native/SiteSettingsPage'),
+  '/server/manage': () => import('../native/NodesPage'),
+  '/server/machine': () => import('../native/MachinesPage'),
+  '/system/sessions': () => import('../native/SessionsPage'),
   '/user/manage': () => import('../pages/users/UsersPage'),
-  '/user/traffic-reset': () => import('../pages/users/TrafficResetPage'),
-  '/user/ticket': () => import('../pages/users/TicketsPage'),
+  '/finance/order': () => import('../pages/finance/OrdersPage'),
 }
 
 export function preloadAdminRoute(path: string) {
-  const loader = path.startsWith('/plugins/')
-    ? () => import('../pages/plugins/PluginRoutePage')
-    : preloaders[path]
-
-  return loader ? loader() : Promise.resolve()
+  return preloaders[path]?.() ?? Promise.resolve()
 }
 
 type IdleWindow = Window & typeof globalThis & {

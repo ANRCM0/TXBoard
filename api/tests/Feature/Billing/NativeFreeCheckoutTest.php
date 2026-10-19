@@ -43,6 +43,8 @@ final class NativeFreeCheckoutTest extends NativeRuntimeTestCase
         $this->assertSame(Order::STATUS_COMPLETED, (int) $order->fresh()->status);
         $this->assertSame($first, $this->postJson($path, [], ['Idempotency-Key' => 'free-original'])->assertOk()->json('data'));
         $this->assertSame([], app(NativeBillingRecovery::class)->recover());
+        $this->assertSame(['created', 'payment_accepted', 'fulfilled'],
+            DB::table('tx_native_order_event')->where('order_id', $order->id)->orderBy('sequence')->pluck('type')->all());
         $this->assertSame(1, DB::table('tx_subscription_operation')->where('order_id', $order->id)->count());
         foreach (['tx_payment_attempt', 'tx_payment_receipt', 'tx_money_journal', 'tx_order_payment'] as $table) {
             $this->assertSame(0, DB::table($table)->count(), $table);
@@ -84,6 +86,36 @@ final class NativeFreeCheckoutTest extends NativeRuntimeTestCase
         $this->assertSame(1, DB::table('tx_subscription_operation')->where('order_id', $order->id)->count());
         $this->assertSame('completed', array_values(app(NativeBillingRecovery::class)->recover())[0]['status']);
         $this->assertSame(1, DB::table('tx_subscription_operation')->where('order_id', $order->id)->count());
+    }
+
+    public function test_fulfillment_event_failure_rolls_back_grant_and_recovery_records_one_completion(): void
+    {
+        [$user, $order] = $this->order();
+        app(OrderCheckout::class)->start($user->id, $order->trade_no, requestKey: 'event-grant-atomic');
+        $inject = true;
+        DB::connection()->beforeExecuting(function (string $sql) use (&$inject): void {
+            if ($inject && preg_match('/insert into ["`]tx_native_order_event["`]/i', $sql)) {
+                $inject = false;
+                throw new \RuntimeException('INJECTED_FULFILLMENT_EVENT_FAILURE');
+            }
+        });
+        try {
+            app(SubscriptionFulfillmentService::class)->fulfill($order->id);
+            $this->fail('Fulfillment committed without its event.');
+        } catch (\RuntimeException $error) {
+            $this->assertSame('INJECTED_FULFILLMENT_EVENT_FAILURE', $error->getMessage());
+        }
+        $this->assertSame(Order::STATUS_PROCESSING, (int) $order->fresh()->status);
+        $this->assertSame(0, DB::table('tx_subscription')->count());
+        $this->assertSame(0, DB::table('tx_subscription_operation')->count());
+        $this->assertSame(['created', 'payment_accepted'], DB::table('tx_native_order_event')
+            ->where('order_id', $order->id)->orderBy('sequence')->pluck('type')->all());
+        $this->assertSame('pending', DB::table('tx_native_free_checkout')->value('status'));
+        $this->assertSame('completed', array_values(app(NativeBillingRecovery::class)->recover())[0]['status']);
+        $this->assertSame(Order::STATUS_COMPLETED, (int) $order->fresh()->status);
+        $this->assertSame(['created', 'payment_accepted', 'fulfilled'], DB::table('tx_native_order_event')
+            ->where('order_id', $order->id)->orderBy('sequence')->pluck('type')->all());
+        $this->assertSame([], app(NativeBillingRecovery::class)->recover());
     }
 
     private function order(): array

@@ -11,11 +11,19 @@ use App\Models\User;
 final class BillingReadOperations
 {
     public function __construct(private readonly PaymentMethods $methods, private readonly Recharges $recharges,
-        private readonly WalletPayments $wallet, private readonly PaymentCheckout $checkout) {}
+        private readonly WalletPayments $wallet, private readonly PaymentCheckout $checkout,
+        private readonly \App\Domains\Billing\Contracts\OrderPaymentQueries $orderPayments) {}
 
     public function attempt(User $actor, array $input): ReadOperationResult
     {
         return new ReadOperationResult($this->checkout->status((int) $actor->id, (int) $input['attempt_id']));
+    }
+
+    public function orderAttempts(User $actor, array $input): ?ReadOperationResult
+    {
+        $page = $this->orderPayments->attempts((int) $actor->id, $input['trade_no'],
+            $input['before_id'] ?? null, (int) ($input['limit'] ?? 20));
+        return $page === null ? null : new ReadOperationResult($page->items, $page->meta);
     }
 
     public function wallet(User $actor, array $input): ReadOperationResult

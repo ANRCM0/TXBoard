@@ -18,6 +18,43 @@ final class NativePaymentAttempts
         private readonly PurchasedOrderGrant $grants,
     ) {}
 
+    /** Current account is locked; display reads never initialize slots, money accounts or dispatches. */
+    public function orderPageLocked(array $installation, int $userId, string $tradeNo, ?string $beforeId, int $limit): ?\App\Domains\Billing\Contracts\OrderPage
+    {
+        $this->assertLockedContext($installation, $userId);
+        $order = Order::query()->where('user_id', $userId)->where('trade_no', $tradeNo)->sharedLock()->first();
+        if ($order === null || $order->purchase_terms_version !== 'tx-core.purchase-terms/v2') return null;
+        $terms = OrderPurchaseTerms::query()->where('order_id', $order->id)->sharedLock()->first();
+        $purchase = $this->grants->resolve($order, $terms);
+        if ($terms === null || $purchase === null) throw new BillingError('PAYMENT_PURCHASE_REQUIRED');
+        $query = DB::table('tx_payment_attempt')->where('order_id', $order->id)
+            ->where('installation_id', $installation['installation_id'])->where('user_id', $userId);
+        $unresolved = (clone $query)->whereIn('status', ['prepared', 'pending', 'unknown'])->sharedLock()->exists();
+        if ($beforeId !== null) $query->where('id', '<', $beforeId);
+        $rows = $query->orderByDesc('id')->limit($limit + 1)->sharedLock()->get();
+        $items = [];
+        foreach ($rows->take($limit) as $attempt) {
+            $payload = $this->attemptPayload($attempt);
+            if ($payload['intent_type'] !== 'purchase' || $payload['recharge_id'] !== null
+                || $payload['installation_id'] !== $installation['installation_id']
+                || $payload['user_id'] !== (string) $userId || $payload['order_id'] !== (string) $order->id
+                || $payload['purchase_terms_id'] !== (string) $terms->id || $payload['order_trade_no'] !== $tradeNo
+                || $payload['purchase_content_hash'] !== $purchase['content_hash']
+                || $payload['currency'] !== MoneyValue::currency($purchase['currency'])
+                || bccomp($payload['amount_minor'], MoneyValue::minor($purchase['price_minor'], true)) > 0) {
+                throw new BillingError('PAYMENT_ATTEMPT_EVIDENCE_INVALID');
+            }
+            $this->verifyAttemptIntegrity($attempt, $payload);
+            $items[] = ['attempt_id' => (string) $attempt->id, 'status' => $attempt->status,
+                'intent_type' => 'purchase', 'amount_minor' => $payload['amount_minor'], 'currency' => $payload['currency'],
+                'created_at' => \Illuminate\Support\Carbon::createFromTimestampUTC((int) MoneyValue::minor($attempt->created_at, true))->toIso8601String(),
+                'updated_at' => \Illuminate\Support\Carbon::createFromTimestampUTC((int) MoneyValue::minor($attempt->updated_at, true))->toIso8601String()];
+        }
+        return new \App\Domains\Billing\Contracts\OrderPage($items, [
+            'next_before_id' => $items === [] ? null : $items[array_key_last($items)]['attempt_id'],
+            'has_more' => $rows->count() > $limit, 'has_unresolved' => $unresolved]);
+    }
+
     public function prepare(int $userId, int $orderId, int $paymentId, string $providerAccountRef, string $requestKey): array
     {
         return $this->transactions->run($userId, fn (array $installation): array =>

@@ -8,6 +8,14 @@ on:
       - "!web/**/*.md"
       - "package.json"
       - "package-lock.json"
+      - "gateway/packages/core-sdk/**"
+      - "gateway/tsconfig.base.json"
+      - "contracts/frontend/**"
+      - "contracts/core-api/**"
+      - "scripts/check-admin-migration.mjs"
+      - "scripts/admin-browser.mjs"
+      - "scripts/user-browser.mjs"
+      - "scripts/check-web-performance.mjs"
       - ".github/workflows/ci-web.yml"
   pull_request:
     paths:
@@ -15,6 +23,14 @@ on:
       - "!web/**/*.md"
       - "package.json"
       - "package-lock.json"
+      - "gateway/packages/core-sdk/**"
+      - "gateway/tsconfig.base.json"
+      - "contracts/frontend/**"
+      - "contracts/core-api/**"
+      - "scripts/check-admin-migration.mjs"
+      - "scripts/admin-browser.mjs"
+      - "scripts/user-browser.mjs"
+      - "scripts/check-web-performance.mjs"
       - ".github/workflows/ci-web.yml"
 
 concurrency:
@@ -33,3 +49,13 @@ jobs:
           cache-dependency-path: package-lock.json
       - run: npm ci --no-audit --no-fund
       - run: npm run verify:web
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:browser
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: admin-browser-${{ github.sha }}
+          path: |
+            artifacts/admin-browser/
+            artifacts/user-browser/
+          if-no-files-found: ignore

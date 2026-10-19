@@ -80,6 +80,7 @@ final class NativeWalletPayments implements \App\Domains\Billing\Contracts\Walle
             $order->status = Order::STATUS_PROCESSING;
             $order->paid_at = (int) $reservation['captured_at'];
             $order->saveOrFail();
+            app(NativeOrderEventJournal::class)->recordLocked($order, 'payment_accepted');
             app(NativeUpgradeCredits::class)->fulfillAcceptedLocked($installation, $order, $terms, $acceptedAt);
             return ['type' => -1, 'data' => true, 'payment' => $this->verifyWinningPaymentLocked($installation, $userId, $order, $terms)];
         });

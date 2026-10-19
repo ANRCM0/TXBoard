@@ -1,28 +1,8 @@
-const TOKEN_KEY = 'access_token'
-
-export function getAccessToken() {
-  return localStorage.getItem(TOKEN_KEY)
+// Compatibility exports for dormant migrated pages. Active UI uses the SDK session.
+export const getAccessToken = (): string | null => null
+export const getAuthorizationHeader = (): string => ''
+export const normalizeAuthorization = (_value?: string | null): string => ''
+export function setAccessToken(_token: string): never {
+  throw new Error('Use the management SDK session')
 }
-
-export function normalizeAuthorization(value: string | null | undefined) {
-  const token = String(value || '').trim()
-  if (!token) return ''
-  return /^Bearer\s+/i.test(token) ? token.replace(/^Bearer\s+/i, 'Bearer ') : `Bearer ${token}`
-}
-
-export function getAuthorizationHeader() {
-  return normalizeAuthorization(getAccessToken())
-}
-
-export function setAccessToken(token: string) {
-  const normalized = normalizeAuthorization(token)
-  if (!normalized) {
-    localStorage.removeItem(TOKEN_KEY)
-    return
-  }
-  localStorage.setItem(TOKEN_KEY, normalized)
-}
-
-export function removeAccessToken() {
-  localStorage.removeItem(TOKEN_KEY)
-}
+export function removeAccessToken(): void {}

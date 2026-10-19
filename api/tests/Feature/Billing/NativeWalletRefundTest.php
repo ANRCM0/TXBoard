@@ -63,6 +63,9 @@ final class NativeWalletRefundTest extends NativePaymentTestCase
         $result = app(NativeBillingRecovery::class)->recover();
         $this->assertSame('completed', $result[$payment['payment']['work_id']]['status']);
         $this->assertSame(Order::STATUS_COMPLETED, (int) $order->fresh()->status);
+        // This trusted fixture predates event creation: settlement and fulfillment still record once.
+        $this->assertSame(['payment_accepted', 'fulfilled'],
+            DB::table('tx_native_order_event')->where('order_id', $order->id)->orderBy('sequence')->pluck('type')->all());
     }
 
     public function test_reservation_and_unpaid_cancel_release_native_funds_atomically(): void

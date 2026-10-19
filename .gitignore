@@ -11,6 +11,9 @@
 **/dist/
 **/build/
 **/coverage/
+artifacts/
+**/playwright-report/
+**/test-results/
 **/.cache/
 **/*.log
 **/__pycache__/
@@ -29,3 +32,8 @@ backups/
 .vscode/
 .DS_Store
 Thumbs.db
+
+# Local acceptance outputs
+/artifacts/
+/playwright-report/
+/test-results/

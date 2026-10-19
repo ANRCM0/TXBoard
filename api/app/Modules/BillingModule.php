@@ -31,7 +31,9 @@ final class BillingModule implements ModuleProvider
 {
     public function definition(): ModuleDefinition
     {
-        return new ModuleDefinition('billing', '1.0.0', 'required-business', provides: [
+        return new ModuleDefinition('billing', '1.1.0', 'required-business', provides: [
+                new CapabilityDefinition('billing.order-payments-read', \App\Domains\Billing\Contracts\OrderPaymentQueries::class, exported: false),
+                new CapabilityDefinition('billing.admin-order-commands', \App\Domains\Billing\Contracts\AdminOrderCommands::class, exported: false),
                 new CapabilityDefinition('billing.orders-read', OrderQueries::class),
                 new CapabilityDefinition('billing.admin-order-read', \App\Domains\Billing\Contracts\AdminOrderQueries::class, exported: false),
                 new CapabilityDefinition('billing.checkout', PaymentCheckout::class),
@@ -45,12 +47,14 @@ final class BillingModule implements ModuleProvider
                 new CapabilityDefinition('billing.winning-proof', WinningPaymentProofs::class, exported: false),
                 new CapabilityDefinition('billing.package-references', \App\Domains\Billing\Internal\PaymentPackageReferences::class, exported: false),
             ], requires: [new CapabilityRequirement('installation.admission'), new CapabilityRequirement('subscription.fulfillment'),
-                new CapabilityRequirement('notifications.event-journal')], required: true);
+                new CapabilityRequirement('notifications.event-journal'), new CapabilityRequirement('identity.current-session-authorization'), new CapabilityRequirement('platform.invocation')], required: true);
     }
 
     public function bindings(): array
     {
         return [
+            new ServiceBinding(\App\Domains\Billing\Contracts\OrderPaymentQueries::class, \App\Domains\Billing\NativeOrderPaymentQueries::class),
+            new ServiceBinding(\App\Domains\Billing\Contracts\AdminOrderCommands::class, \App\Domains\Billing\NativeOrderAdministration::class),
             new ServiceBinding(OrderQueries::class, NativeOrderQueries::class),
             new ServiceBinding(\App\Domains\Billing\Contracts\AdminOrderQueries::class, NativeOrderQueries::class),
             new ServiceBinding(PaymentCheckout::class, NativePaymentCheckout::class),

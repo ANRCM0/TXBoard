@@ -1,0 +1,49 @@
+.native-management-page { display: grid; gap: 20px; min-width: 0; }
+.native-management-page .list-card { min-width: 0; }
+.native-list-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px; flex-wrap: wrap; }
+.native-list-search { display: flex; gap: 8px; align-items: center; flex: 1 1 220px; max-width: 380px; }
+.native-list-search input { min-width: 0; width: 100%; min-height: 36px; border: 1px solid var(--border); border-radius: var(--radius-control); padding: 8px 10px; background: var(--panel); color: var(--fg); }
+.native-pagination { display: flex; align-items: center; justify-content: flex-end; gap: 16px; padding: 16px; flex-wrap: wrap; }
+.native-row-identity { display: grid; gap: 4px; }
+.native-row-identity small, .native-list-toolbar > span { color: var(--muted); font-size: 12px; }
+.native-overview-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.native-overview-card { display: grid; gap: 12px; padding: 24px; text-decoration: none; color: inherit; }
+.native-overview-card span, .native-list-note { color: var(--muted); }
+.native-site-settings { padding: 24px; }
+.native-site-settings dl { margin: 0; }
+.native-site-settings dl > div { display: grid; grid-template-columns: 130px minmax(0, 1fr); padding: 16px 0; gap: 16px; border-bottom: 1px solid var(--border); }
+.native-nav-pending { margin-left: auto; font-size: 10px; color: var(--muted); white-space: nowrap; }
+.native-site-settings dd { margin: 0; overflow-wrap: anywhere; }
+.native-list-note { padding: 0 16px; }
+.management-filter-form { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; padding: 16px 0; }
+.management-filter-form label { display: grid; gap: 6px; font-size: 12px; }
+.management-filter-form input, .management-filter-form select { min-height: 36px; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--panel); color: var(--fg); max-width: 100%; }
+.management-filter-form input { min-width: 210px; }
+.native-read-fields { margin: 0; }
+.native-read-fields > div { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 16px; padding: 14px 0; border-bottom: 1px solid var(--border); }
+.native-read-fields dt { color: var(--muted); }
+.native-read-fields dd { margin: 0; overflow-wrap: anywhere; }
+.native-order-timeline { margin-top: 20px; }
+.native-order-timeline h3 { margin: 0 0 12px; font-size: 15px; }
+.native-order-timeline ol { display: grid; gap: 10px; margin: 0; padding: 0 0 0 20px; }
+.native-order-timeline li { display: flex; justify-content: space-between; gap: 16px; padding: 8px 0; }
+.native-order-timeline time { color: var(--muted); white-space: nowrap; }
+.native-timeline-notice { color: var(--muted); padding: 10px 12px; border-left: 3px solid var(--muted); }
+.native-read-fields a { color: var(--primary); }
+.native-read-link { padding: 0; background: none; border: 0; color: var(--primary); cursor: pointer; text-align: left; overflow-wrap: anywhere; }
+.native-read-list { min-width: 0; }
+.native-read-list .table-wrap { max-width: 100%; overscroll-behavior-x: contain; }
+.native-read-list .data-table { min-width: 920px; }
+.native-read-list .data-table td { white-space: nowrap; }
+.native-read-list .native-read-link { white-space: nowrap; }
+.native-scroll-hint { display: none; }
+@media (max-width: 600px) {
+  .native-overview-grid { grid-template-columns: minmax(0, 1fr); }
+  .native-site-settings dl > div { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .native-pagination { justify-content: center; }
+  .management-filter-form { align-items: stretch; }
+  .management-filter-form label { flex: 1 1 100%; min-width: 0; }
+  .management-filter-form input { min-width: 0; width: 100%; }
+  .native-read-fields > div { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+  .native-scroll-hint { display: block; margin: 0 0 8px; color: var(--muted); font-size: 12px; }
+}

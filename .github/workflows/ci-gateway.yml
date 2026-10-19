@@ -123,7 +123,7 @@ jobs:
         run: npm ci --no-audit --no-fund
       - name: Typecheck, test and build Gateway and SDK
         run: npm run check
-      - name: Package the accepted SDK for local-only frontend consumption
+      - name: Package the SDK for versioned external consumers
         run: npm pack --workspace @txboard/core-sdk --pack-destination "$RUNNER_TEMP"
       - name: Retain Core SDK package
         uses: actions/upload-artifact@v4

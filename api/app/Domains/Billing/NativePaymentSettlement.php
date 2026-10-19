@@ -106,10 +106,12 @@ final class NativePaymentSettlement implements WinningPaymentProofs
                     $order->callback_no = $receipt['transaction_ref'];
                     $order->paid_at = (int) $receipt['occurred_at'];
                     $order->saveOrFail();
+                    app(NativeOrderEventJournal::class)->recordLocked($order, 'payment_accepted');
                     app(NativeUpgradeCredits::class)->fulfillAcceptedLocked($installation, $order, $terms, $acceptedAt);
                 } elseif (!$quotePayable && (int) $order->status === Order::STATUS_PENDING && $allocation === null) {
                     $order->status = Order::STATUS_CANCELLED;
                     $order->saveOrFail();
+                    app(NativeOrderEventJournal::class)->recordLocked($order, 'cancelled');
                 }
             }
             $this->require($this->payload($existing) === $payload

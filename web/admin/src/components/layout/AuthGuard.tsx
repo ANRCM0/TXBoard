@@ -1,12 +1,12 @@
-import { Navigate, Outlet } from 'react-router-dom'
-import { currentRouterTarget } from '../../lib/basePath'
-import { getAccessToken } from '../../lib/storage'
+import { Navigate, Outlet, useLocation } from 'react-router-dom'
+import { useAdminSession } from '../../native/session'
 
 export function AuthGuard() {
-  if (import.meta.env.VITE_STATIC_PREVIEW === '1') return <Outlet />
-  if (!getAccessToken()) {
-    const redirect = encodeURIComponent(currentRouterTarget())
-    return <Navigate to={`/sign-in?redirect=${redirect}`} replace />
+  const authenticated = useAdminSession()
+  const location = useLocation()
+  if (!authenticated) {
+    const redirect = encodeURIComponent(location.pathname + location.search)
+    return <Navigate to={'/sign-in?redirect=' + redirect} replace />
   }
   return <Outlet />
 }

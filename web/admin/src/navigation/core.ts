@@ -33,6 +33,7 @@ export const coreNavigationGroups = [
     items: [
       ['/config/system', '系统配置', Settings],
       ['/system/audit-log', '审计日志', FileText],
+      ['/system/sessions', '登录会话', ShieldCheck],
     ],
   },
   {

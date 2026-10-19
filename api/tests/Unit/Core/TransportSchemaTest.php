@@ -25,6 +25,30 @@ final class TransportSchemaTest extends TestCase
         self::assertFalse($validator->accepts(['offer_id' => '1', 'actor' => 'admin'], $schema));
     }
 
+    public function test_every_published_schema_uses_the_native_transport_vocabulary(): void
+    {
+        $contract = $this->contract();
+        $expand = function (array $schema, array $references = []) use (&$expand, $contract): array {
+            if (isset($schema['$ref'])) {
+                $name = substr($schema['$ref'], strlen('#/definitions/'));
+                self::assertArrayHasKey($name, $contract['definitions']);
+                self::assertNotContains($name, $references, 'Schema references must be acyclic');
+                return $expand($contract['definitions'][$name], [...$references, $name]);
+            }
+            foreach ($schema['properties'] ?? [] as $name => $property) $schema['properties'][$name] = $expand($property, $references);
+            if (isset($schema['items'])) $schema['items'] = $expand($schema['items'], $references);
+            if (isset($schema['anyOf'])) $schema['anyOf'] = array_map(fn (array $variant): array => $expand($variant, $references), $schema['anyOf']);
+            return $schema;
+        };
+        foreach ($contract['definitions'] as $schema) TransportSchema::assertDefinition($expand($schema));
+        foreach ($contract['operations'] as $operation) {
+            foreach (['input', 'output', 'meta'] as $field) {
+                if (isset($operation[$field])) TransportSchema::assertDefinition($expand($operation[$field]));
+            }
+        }
+        self::assertNotEmpty($contract['operations']);
+    }
+
     public function test_nested_output_projection_removes_unlisted_financial_and_secret_fields(): void
     {
         $contract = $this->contract();

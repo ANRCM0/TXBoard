@@ -51,6 +51,8 @@ def expression(schema, definitions):
     if 'const' in schema:
         return 'z.literal(' + js(schema['const']) + ')'
     if 'enum' in schema:
+        if schema.get('type') != 'string':
+            raise ValueError('String enum schemas require type: string for PHP/TypeScript parity')
         return 'z.enum(' + js(schema['enum']) + ')'
     kind = schema['type']
     if kind == 'object':

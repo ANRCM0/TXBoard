@@ -1,376 +1,61 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import {
-  Ban,
-  ChevronLeft,
-  ChevronRight,
-  Mail,
-  Pencil,
-  Plus,
-  Search,
-  Trash2,
-  Users,
-} from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { toast } from 'sonner'
-import { getPlans } from '../../api/finance'
-import {
-  banUsers,
-  destroyUser,
-  getUserDetail,
-  getUsers,
-  type AdminUser,
-  type UserFilter,
-  type UserSort,
-} from '../../api/user-admin'
-import { UserEditorModal } from '../../components/users/UserEditorModal'
-import { UserMailModal } from '../../components/users/UserMailModal'
-import { EmptyState } from '../../components/ui/EmptyState'
-import { ListSurface } from '../../components/ui/ListSurface'
-import { listHasPages } from '../../components/ui/listSurfaceState'
+import { RefreshCw, Search } from 'lucide-react'
+import type { CoreOutput } from '@txboard/core-sdk'
+import { admin } from '../../native/session'
+import { ReadList } from '../../native/ReadList'
+import { readPage, unixDate } from '../../native/readPresentation'
 import { PageHeader } from '../../components/ui/PageHeader'
-import { requestConfirm } from '../../components/ui/ConfirmDialog'
-import { readUserListState, writeUserListState, type UserListState } from './userListUrlState'
+import type { Column } from '../../components/ui/DataTable'
 import './UsersPage.css'
 
-const GB = 1024 * 1024 * 1024
-
+type Account = CoreOutput<'identity.accounts.list'>[number]
+const columns: Column<Account>[] = [
+  { key: 'email', header: '用户', render: row => <Link className="table-link" to={'/user/' + row.id}>{row.email}</Link> },
+  { key: 'id', header: '用户 ID', render: row => row.id },
+  { key: 'state', header: '状态', render: row => row.banned ? '已封禁' : '正常' },
+  { key: 'role', header: '角色', render: row => row.is_admin ? '管理员' : '用户' },
+  { key: 'created', header: '注册时间', render: row => unixDate(row.created_at) },
+  { key: 'login', header: '最近登录', render: row => unixDate(row.last_login_at) },
+]
 export function UsersPage() {
-  const qc = useQueryClient()
   const [params, setParams] = useSearchParams()
-  const listState = readUserListState(params)
-  const { page, pageSize, email: appliedSearch, planId, banState, sortField, sortDesc } = listState
-  const [search, setSearch] = useState(appliedSearch)
-
-  // URL is the source of truth: browser Back and shared links restore the list.
-  useEffect(() => { setSearch(appliedSearch) }, [appliedSearch])
-
-  function updateList(patch: Partial<UserListState>) {
-    setParams(current => writeUserListState(current, { ...readUserListState(current), ...patch }))
+  const page = readPage(params.get('page'))
+  const appliedEmail = params.get('email') ?? ''
+  const appliedBanned = params.get('banned') ?? ''
+  const [email, setEmail] = useState(appliedEmail)
+  const [banned, setBanned] = useState(appliedBanned)
+  useEffect(() => { setEmail(appliedEmail); setBanned(appliedBanned) }, [appliedEmail, appliedBanned])
+  const valid = appliedEmail.length <= 254 && ['', '0', '1'].includes(appliedBanned)
+  const input = { page, per_page: 20, ...(appliedEmail ? { email: appliedEmail } : {}),
+    ...(appliedBanned !== '' ? { banned: appliedBanned === '1' } : {}) }
+  const query = useQuery({ queryKey: ['native-admin', 'accounts', input], enabled: valid,
+    queryFn: ({ signal }) => admin.read('identity.accounts.list', input, signal) })
+  const data = query.isError ? undefined : query.data
+  function apply(event: FormEvent) {
+    event.preventDefault()
+    setParams({ ...(email.trim() ? { email: email.trim() } : {}), ...(banned !== '' ? { banned } : {}) })
   }
-
-  const [selected, setSelected] = useState<Set<number>>(new Set())
-  const [editorOpen, setEditorOpen] = useState(false)
-  const [editing, setEditing] = useState<AdminUser | null>(null)
-  const [mailOpen, setMailOpen] = useState(false)
-  const selectPageRef = useRef<HTMLInputElement>(null)
-
-  const filters = useMemo<UserFilter[]>(() => {
-    const result: UserFilter[] = []
-    if (appliedSearch.trim()) result.push({ id: 'email', value: appliedSearch.trim() })
-    if (planId) result.push({ id: 'plan_id', value: 'eq:' + planId })
-    if (banState) result.push({ id: 'banned', value: 'eq:' + banState })
-    return result
-  }, [appliedSearch, planId, banState])
-
-  const sorts = useMemo<UserSort[]>(() => [
-    { id: sortField, desc: sortDesc },
-  ], [sortField, sortDesc])
-
-  const query = useQuery({
-    queryKey: ['adminUsers', page, pageSize, filters, sorts],
-    queryFn: () => getUsers({
-      current: page,
-      pageSize,
-      ...(filters.length ? { filter: filters } : {}),
-      sort: sorts,
-    }),
-    placeholderData: previous => previous,
-  })
-
-  const plansQuery = useQuery({
-    queryKey: ['plans'],
-    queryFn: getPlans,
-  })
-
-  const users = Array.isArray(query.data?.data) ? query.data.data : []
-  const hasFilters = Boolean(appliedSearch.trim() || planId || banState)
-  const showPagination = listHasPages(query.data?.total, pageSize, page)
-  const plans = Array.isArray(plansQuery.data) ? plansQuery.data : []
-
-  const refresh = () => qc.invalidateQueries({ queryKey: ['adminUsers'] })
-
-
-  const remove = useMutation({
-    mutationFn: destroyUser,
-    onSuccess: () => {
-      toast.success('用户已删除')
-      setSelected(new Set())
-      refresh()
-    },
-  })
-
-  const banSelected = useMutation({
-    mutationFn: (ids: number[]) => banUsers({ scope: 'selected', user_ids: ids }),
-    onSuccess: () => {
-      toast.success('所选用户已封禁')
-      setSelected(new Set())
-      refresh()
-    },
-  })
-
-  const pageIds = users.map(user => user.id)
-  const allPageSelected = pageIds.length > 0 && pageIds.every(id => selected.has(id))
-
-  useEffect(() => {
-    if (selectPageRef.current) selectPageRef.current.indeterminate = !allPageSelected && pageIds.some(id => selected.has(id))
-  }, [allPageSelected, pageIds, selected])
-
-  // Selection is scoped to the current view so hidden rows cannot be acted on accidentally.
-  useEffect(() => { setSelected(new Set()) }, [page, pageSize, appliedSearch, planId, banState, sortField, sortDesc])
-
-  function togglePage() {
-    setSelected(current => {
-      const next = new Set(current)
-      if (allPageSelected) pageIds.forEach(id => next.delete(id))
-      else pageIds.forEach(id => next.add(id))
-      return next
-    })
+  function paginate(nextPage: number) {
+    setParams(current => { const next = new URLSearchParams(current); next.set('page', String(nextPage)); return next })
   }
-
-  function toggleUser(id: number) {
-    setSelected(current => {
-      const next = new Set(current)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
-  }
-
-  function openCreate() {
-    setEditing(null)
-    setEditorOpen(true)
-  }
-
-  async function openEdit(user: AdminUser) {
-    try {
-      const detail = await getUserDetail(user.id)
-      setEditing(detail)
-      setEditorOpen(true)
-    } catch {
-      toast.error('无法加载用户详情，请重试')
-    }
-  }
-
-
-
-  function applySearch() {
-    updateList({ email: search.trim(), page: 1 })
-  }
-
-  function clearFilters() {
-    setSearch('')
-    updateList({ email: '', planId: '', banState: '', page: 1 })
-  }
-
-  return <>
-    <PageHeader
-      title="用户管理"
-      description="管理用户套餐、流量与账户状态，支持筛选和批量操作。"
-      action={<div className="actions">
-        <button className="button" onClick={() => setMailOpen(true)}><Mail size={15}/>发送邮件</button>
-        <button className="button primary" onClick={openCreate}><Plus size={15}/>创建用户</button>
-      </div>}
-    />
-
-    <div className="user-toolbar users-v4-toolbar" role="search" aria-label="筛选用户列表">
-      <form className="order-search users-v4-search" onSubmit={event => { event.preventDefault(); applySearch() }}>
-        <input
-          aria-label="搜索用户邮箱"
-          type="search"
-          name="email-search"
-          spellCheck={false}
-          autoComplete="off"
-          value={search}
-          onChange={event => setSearch(event.target.value)}
-          placeholder="搜索邮箱…"
-        />
-        <button className="button" type="submit">
-          <Search size={15}/>搜索
-        </button>
+  return <div className="native-management-page">
+    <PageHeader title="用户管理" description="查询账户身份、状态及当前订阅。"
+      action={<button className="button" disabled={!valid || query.isFetching} onClick={() => void query.refetch()}><RefreshCw size={15} />刷新</button>} />
+    {!valid ? <p role="alert">筛选参数有误，请清除筛选后重试。</p> : null}
+    <ReadList title="用户列表" rows={data?.data ?? []} columns={columns} meta={data?.meta} page={page}
+      ready={!!data} loading={query.isFetching} error={query.isError ? query.error : undefined}
+      onRetry={() => void query.refetch()} onPage={paginate}>
+      <form className="management-filter-form" onSubmit={apply}>
+        <label>邮箱精确查询<input aria-label="用户邮箱" value={email} maxLength={254} type="email"
+          onChange={event => setEmail(event.target.value)} placeholder="user@example.com" /></label>
+        <label>账户状态<select aria-label="账户状态" value={banned} onChange={event => setBanned(event.target.value)}>
+          <option value="">全部状态</option><option value="0">正常</option><option value="1">已封禁</option>
+        </select></label>
+        <button className="button primary" type="submit"><Search size={15} />查询</button>
+        <button className="button" type="button" onClick={() => setParams({})}>清除筛选</button>
       </form>
-
-      <select aria-label="筛选套餐" value={planId} onChange={event => updateList({ planId: event.target.value, page: 1 })}>
-        <option value="">全部套餐</option>
-        {plans.map(plan => <option key={plan.id} value={plan.id}>{plan.name}</option>)}
-      </select>
-
-      <select aria-label="筛选用户状态" value={banState} onChange={event => updateList({ banState: event.target.value as UserListState['banState'], page: 1 })}>
-        <option value="">全部状态</option>
-        <option value="0">正常</option>
-        <option value="1">已封禁</option>
-      </select>
-
-      <select aria-label="排序字段" value={sortField} onChange={event => updateList({ sortField: event.target.value as UserListState['sortField'], page: 1 })}>
-        <option value="id">按 ID</option>
-        <option value="email">按邮箱</option>
-        <option value="balance">按余额</option>
-        <option value="total_used">按已用流量</option>
-        <option value="expired_at">按到期时间</option>
-        <option value="created_at">按注册时间</option>
-      </select>
-
-      <button className="button" onClick={() => updateList({ sortDesc: !sortDesc, page: 1 })}>
-        {sortDesc ? '降序' : '升序'}
-      </button>
-
-      {(appliedSearch || planId || banState) && <button className="button" onClick={clearFilters}>清除筛选</button>}
-    </div>
-    <div className="users-v4-list-meta" aria-live="polite">
-      <span>{query.isLoading ? '正在加载用户…' : query.isError && !users.length ? '无法获取用户列表' : hasFilters ? `当前条件下共 ${query.data?.total ?? 0} 个用户` : `共 ${query.data?.total ?? 0} 个用户`}</span>
-      <span className="users-v4-scroll-hint">表格可横向滚动查看更多字段和操作</span>
-    </div>
-
-    {selected.size > 0 && <div className="selection-bar">
-      <span>已选择 {selected.size} 个用户</span>
-      <div className="actions">
-        <button type="button" className="button" onClick={() => setMailOpen(true)}><Mail size={15}/>发送邮件</button>
-        <button
-          className="button danger"
-          disabled={banSelected.isPending || query.isPlaceholderData || query.isFetching}
-          onClick={() => requestConfirm({ title: '批量封禁', message: '确认封禁所选用户？被封禁用户将无法登录。', danger: true, confirmLabel: '封禁', action: () => banSelected.mutate(Array.from(selected)) })}
-        ><Ban size={15}/>{banSelected.isPending ? '处理中…' : '批量封禁'}</button>
-        <button className="button" onClick={() => setSelected(new Set())}>取消选择</button>
-      </div>
-    </div>}
-
-    <ListSurface
-      className="user-table-card users-v4-surface"
-      label="用户列表" count={users.length}
-      loading={query.isLoading} error={query.isError} placeholder={query.isPlaceholderData}
-      onRetry={() => void query.refetch()}
-      emptyState={<EmptyState
-        icon={<Users size={22}/>}
-        title={hasFilters ? '没有符合条件的用户' : '还没有用户'}
-        description={hasFilters ? '请调整邮箱、套餐或账户状态筛选条件。' : '创建第一个用户，开始管理账户与套餐。'}
-        action={hasFilters
-          ? <button type="button" className="button" onClick={clearFilters}>清除筛选</button>
-          : <button type="button" className="button primary" onClick={openCreate}><Plus size={15}/>创建用户</button>}
-      />}
-      pagination={showPagination ? (
-      <div className="pagination-bar">
-        <span className="pagination-meta">
-          共 {query.data?.total || 0} 人 · 第 {query.data?.current_page || page} / {query.data?.last_page || 1} 页
-        </span>
-        <div className="pagination-actions">
-          <select aria-label="每页条数" value={pageSize} onChange={event => updateList({ pageSize: Number(event.target.value) as UserListState['pageSize'], page: 1 })}>
-            <option value={10}>10 / 页</option>
-            <option value={20}>20 / 页</option>
-            <option value={50}>50 / 页</option>
-            <option value={100}>100 / 页</option>
-          </select>
-          <button className="icon-button" aria-label="上一页" disabled={query.isFetching || page <= 1} onClick={() => updateList({ page: Math.max(1, page - 1) })}>
-            <ChevronLeft size={16}/>
-          </button>
-          <button
-            className="icon-button"
-            aria-label="下一页" disabled={query.isFetching || page >= Number(query.data?.last_page || 1)}
-            onClick={() => updateList({ page: page + 1 })}
-          ><ChevronRight size={16}/></button>
-        </div>
-      </div>
-      ) : null}
-    >
-        <table className="data-table user-table users-v4-table">
-          <thead>
-            <tr>
-              <th className="select-col"><input ref={selectPageRef} aria-label="选择本页全部用户" disabled={query.isPlaceholderData || query.isFetching} type="checkbox" checked={allPageSelected} onChange={togglePage}/></th>
-              <th scope="col">用户</th>
-              <th>套餐</th>
-              <th>流量</th>
-              <th>到期</th>
-              <th>余额</th>
-              <th>在线</th>
-              <th>状态</th>
-              <th>注册时间</th>
-              <th>操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            {users.map(user => <tr key={user.id}>
-              <td className="select-col"><input aria-label={'选择用户 '+user.email} disabled={query.isPlaceholderData || query.isFetching} type="checkbox" checked={selected.has(user.id)} onChange={() => toggleUser(user.id)}/></td>
-              <td>
-                <div className="user-identity">
-                  <Link className="link-button user-detail-link" to={`/user/${user.id}`}>{user.email}</Link>
-                  <div className="users-v4-identity-meta">
-                    <span>#{user.id}</span>
-                    <div className="user-badges">
-                      {Boolean(user.is_admin) && <span className="admin-v2-role-text">Admin</span>}
-                      {Boolean(user.is_staff) && <span className="admin-v2-role-text">Staff</span>}
-                      {user.group?.name && <span className="admin-v2-role-text">{user.group.name}</span>}
-                    </div>
-                  </div>
-                </div>
-              </td>
-              <td>{user.plan?.name || (user.plan_id ? 'Plan #' + user.plan_id : <span className="muted">无套餐</span>)}</td>
-              <td><TrafficCell user={user}/></td>
-              <td>{formatExpire(user.expired_at)}</td>
-              <td>
-                <strong>¥ {Number(user.balance || 0).toFixed(2)}</strong>
-                {Number(user.commission_balance || 0) > 0 && <small className="table-sub">佣金 ¥ {Number(user.commission_balance).toFixed(2)}</small>}
-              </td>
-              <td>{Number(user.online_count || 0)}</td>
-              <td><span className={Boolean(user.banned) ? 'status off' : 'status ok'}>{user.banned ? '已封禁' : '正常'}</span></td>
-              <td>{formatTime(user.created_at)}</td>
-              <td>
-                <div className="actions">
-                  <button type="button" className="icon-button" aria-label={'编辑用户 ' + user.email} title="编辑用户" onClick={() => openEdit(user)}><Pencil size={15} aria-hidden="true"/></button>
-                  <button
-                    type="button"
-                    className="icon-button danger"
-                    aria-label={'删除用户 ' + user.email}
-                    title="删除用户"
-                    disabled={remove.isPending}
-                    onClick={() => requestConfirm({ title: '删除用户', message: '删除用户会清理关联数据，且后端会拒绝删除仍有余额/处理中订单的用户。确认继续？', danger: true, confirmLabel: '删除', action: () => remove.mutate(user.id) })}
-                  ><Trash2 size={15}/></button>
-                </div>
-              </td>
-            </tr>)}
-          </tbody>
-        </table>
-    </ListSurface>
-
-    <UserEditorModal
-      open={editorOpen}
-      user={editing}
-      plans={plans}
-      onClose={() => setEditorOpen(false)}
-      onSaved={() => refresh()}
-    />
-
-    <UserMailModal
-      open={mailOpen}
-      selectedIds={Array.from(selected)}
-      filters={filters}
-      onClose={() => setMailOpen(false)}
-    />
-  </>
-}
-
-function TrafficCell({ user }: { user: AdminUser }) {
-  const used = Number(user.total_used ?? ((user.u || 0) + (user.d || 0)))
-  const total = Number(user.transfer_enable || 0)
-  const percent = total > 0 ? Math.min(100, (used / total) * 100) : 0
-
-  return <div className="traffic-cell">
-    <div className="traffic-bar"><span style={{ width: percent + '%' }}/></div>
-    <small>{formatBytes(used)} / {total > 0 ? formatBytes(total) : '∞'}</small>
+    </ReadList>
   </div>
-}
-
-function formatBytes(value: number) {
-  if (!Number.isFinite(value) || value <= 0) return '0 GB'
-  const gb = value / GB
-  if (gb >= 1024) return (gb / 1024).toFixed(2) + ' TB'
-  return gb.toFixed(gb >= 10 ? 1 : 2) + ' GB'
-}
-
-function formatExpire(value?: number | null) {
-  if (!value) return '长期有效'
-  return new Date(value * 1000).toLocaleDateString()
-}
-
-function formatTime(value?: number | null) {
-  if (!value) return '-'
-  return new Date(value * 1000).toLocaleString()
 }
