@@ -99,6 +99,9 @@ final class NativeRuntimeReadiness
                 'receipt_id', 'order_payment_id', 'order_id', 'source_journal_id', 'journal_id', 'request_key',
                 'key_hash', 'request_hash', 'amount_minor', 'cumulative_minor', 'currency', 'destination', 'reason',
                 'entitlement_effect', 'subscription_id', 'content_hash', 'created_at'],
+            'tx_native_order_event' => ['id', 'order_id', 'sequence', 'type', 'status', 'occurred_at'],
+            'tx_native_order_admin_request' => ['id', 'installation_id', 'actor_id', 'order_id', 'action',
+                'key_hash', 'input_hash', 'payload_json', 'content_hash', 'created_at'],
             'tx_internal_service' => ['service_id', 'security_domain', 'token_hash', 'certificate_sha256', 'epoch',
                 'operations_json', 'expires_at', 'revoked_at', 'created_at', 'updated_at'],
             'tx_internal_actor_grant' => ['user_id', 'permission', 'created_at'],
@@ -131,11 +134,16 @@ final class NativeRuntimeReadiness
             && Schema::hasIndex('tx_internal_service', ['service_id'], 'primary')
             && Schema::hasIndex('tx_internal_actor_grant', ['user_id', 'permission'], 'primary')
             && Schema::hasIndex('tx_internal_request', ['key_hash'], 'primary')
+            && Schema::hasIndex('tx_native_order_event', ['order_id', 'sequence'], 'unique')
+            && Schema::hasIndex('tx_native_order_admin_request', 'tx_order_admin_request_key_uq', 'unique')
+            && Schema::hasIndex('tx_native_order_admin_request', 'tx_order_admin_audit_cursor_idx')
             && Schema::hasIndex('tx_plugin_package_fence', ['plugin_code'], 'primary'), 'SCHEMA_REQUIRED');
         foreach ([
             ['idempotency_keys', ['user_id', 'operation', 'key_hash']],
             ['tx_money_account', ['installation_id', 'owner_id', 'purpose', 'currency']],
             ['tx_money_journal', ['installation_id', 'user_id', 'business_type', 'business_ref', 'idempotency_key']],
+            ['tx_native_order_admin_request', ['id']],
+            ['tx_native_order_admin_request', ['key_hash']],
             ['tx_money_journal', ['reverses_journal_id']],
             ['tx_money_posting', ['journal_id', 'position']],
             ['tx_payment_attempt', ['installation_id', 'user_id', 'key_hash']],
@@ -252,6 +260,10 @@ final class NativeRuntimeReadiness
             ['tx_native_refund', ['journal_id', 'installation_id', 'user_id'], 'tx_money_journal', ['id', 'installation_id', 'user_id']],
             ['tx_native_refund', ['order_id', 'user_id'], 'tx_order', ['id', 'user_id']],
             ['tx_native_refund', ['subscription_id'], 'tx_subscription', ['id']],
+            ['tx_native_order_event', ['order_id'], 'tx_order', ['id']],
+            ['tx_native_order_admin_request', ['order_id'], 'tx_order', ['id']],
+            ['tx_native_order_admin_request', ['actor_id'], 'tx_user', ['id']],
+            ['tx_native_order_admin_request', ['installation_id'], 'tx_authority_writer_fence', ['installation_id']],
             ['tx_internal_actor_grant', ['user_id'], 'tx_user', ['id']],
             ['tx_internal_request', ['actor_id'], 'tx_user', ['id']],
             ['tx_internal_audit', ['actor_id'], 'tx_user', ['id']],

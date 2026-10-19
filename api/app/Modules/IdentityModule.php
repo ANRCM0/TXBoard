@@ -20,7 +20,8 @@ final class IdentityModule implements ModuleProvider
 {
     public function definition(): ModuleDefinition
     {
-        return new ModuleDefinition('identity', '1.0.0', 'required-business', provides: [
+        return new ModuleDefinition('identity', '1.1.0', 'required-business', provides: [
+                new CapabilityDefinition('identity.current-session-authorization', \App\Domains\Identity\Internal\CurrentSessionAuthorization::class, exported: false),
                 new CapabilityDefinition('identity.account-read', AccountQueries::class),
                 new CapabilityDefinition('identity.admin-account-read', \App\Domains\Identity\Contracts\AdminAccountQueries::class, exported: false),
                 new CapabilityDefinition('identity.sessions', AccountSessions::class),
@@ -34,6 +35,7 @@ final class IdentityModule implements ModuleProvider
     public function bindings(): array
     {
         return [
+            new ServiceBinding(\App\Domains\Identity\Internal\CurrentSessionAuthorization::class, \App\Domains\Identity\NativeCurrentSessionAuthorization::class),
             new ServiceBinding(AccountQueries::class, NativeAccountQueries::class),
             new ServiceBinding(\App\Domains\Identity\Contracts\AdminAccountQueries::class, NativeAccountQueries::class),
             new ServiceBinding(AccountSessions::class, NativeAccountSessions::class),

@@ -153,6 +153,8 @@ final class OperationExecutor
                 'commerce.orders.create' => [CommerceMutationOperations::class, 'purchase', 'domain'],
                 'commerce.orders.checkout' => [CommerceMutationOperations::class, 'checkout', 'domain'],
                 'commerce.orders.cancel' => [CommerceMutationOperations::class, 'cancel', 'workflow'],
+                'commerce.admin-orders.close' => [AdminOrderMutationOperations::class, 'close', 'domain'],
+                'commerce.admin-orders.retry' => [AdminOrderMutationOperations::class, 'retry', 'domain'],
                 'billing.recharges.create' => [CommerceMutationOperations::class, 'recharge', 'domain'],
                 'billing.recharges.checkout' => [CommerceMutationOperations::class, 'rechargeCheckout', 'domain'],
                 'billing.payment-attempts.query' => [CommerceMutationOperations::class, 'queryAttempt', 'domain'],
@@ -168,7 +170,8 @@ final class OperationExecutor
         // replayable receipt. Re-enter its permanent domain key on every call.
         $currentCheckout = in_array($operation, ['commerce.orders.checkout', 'billing.recharges.checkout'], true);
         // An unknown query result can advance later. A replay must consult the owner again.
-        $currentOwnerResult = $currentCheckout || $operation === 'billing.payment-attempts.query';
+        $currentOwnerResult = $currentCheckout || $operation === 'billing.payment-attempts.query'
+            || $spec['command'] === AdminOrderMutationOperations::class;
         if (in_array($spec['mode'], ['workflow', 'domain', 'domain-once'], true)) {
             $key = $request->header('Idempotency-Key', '');
             // The same UUID is forwarded to the authoritative domain workflow.
@@ -200,7 +203,7 @@ final class OperationExecutor
                 $result = TxapiResponse::success($request, $view->data, $view->meta);
             } elseif ($spec['command'] !== null) {
                 $arguments = ['actor' => $actor, 'input' => $input];
-                if ($spec['command'] === CommerceMutationOperations::class) {
+                if (in_array($spec['command'], [CommerceMutationOperations::class, AdminOrderMutationOperations::class], true)) {
                     $arguments['idempotencyKey'] = (string) $request->header('Idempotency-Key', '');
                 }
                 $view = app()->call([app($spec['command']), $spec['method']], $arguments);

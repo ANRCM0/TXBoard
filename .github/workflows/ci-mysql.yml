@@ -350,6 +350,8 @@ jobs:
           tests/Feature/Billing/NativeMoneyLedgerTest.php
           tests/Feature/Billing/NativeMoneyLedgerMysqlConcurrencyTest.php
           tests/Feature/Billing/NativePaymentAttemptsTest.php
+          tests/Feature/Billing/NativeOrderPaymentQueriesTest.php
+          tests/Feature/Billing/NativeOrderAdministrationTest.php
           tests/Feature/Billing/NativePaymentAttemptsMysqlConcurrencyTest.php
           tests/Feature/Billing/NativePaymentSettlementTest.php
           tests/Feature/Billing/NativePaymentSettlementMysqlConcurrencyTest.php

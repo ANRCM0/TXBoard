@@ -6,6 +6,7 @@ import type { CoreOutput } from '@txboard/core-sdk'
 import { admin } from '../../native/session'
 import { ReadList } from '../../native/ReadList'
 import { OrderReadDialog } from '../../native/OrderReadDialog'
+import { OrderCommandRecovery } from '../../native/OrderAdministration'
 import { isoDate, minorAmount, orderStatus, readPage, validId, validTradeNo } from '../../native/readPresentation'
 import { PageHeader } from '../../components/ui/PageHeader'
 import type { Column } from '../../components/ui/DataTable'
@@ -46,8 +47,9 @@ export function OrdersPage() {
     { key: 'created', header: '创建时间', render: row => isoDate(row.created_at) },
   ]
   return <div className="native-management-page">
-    <PageHeader title="订单管理" description="查询原生购买订单。此处展示只读信息。"
+    <PageHeader title="订单管理" description="查询原生购买订单、关闭待支付订单及恢复原订单履约。"
       action={<button className="button" disabled={!valid || query.isFetching} onClick={() => void query.refetch()}><RefreshCw size={15} />刷新</button>} />
+    {detail === null ? <OrderCommandRecovery /> : null}
     {!valid ? <p role="alert">用户 ID、订单号或状态参数有误，请修正筛选。</p> : null}
     <ReadList title="订单列表" rows={data?.data ?? []} columns={columns} meta={data?.meta} page={page}
       ready={!!data} loading={query.isFetching} error={query.isError ? query.error : undefined}
@@ -64,6 +66,6 @@ export function OrdersPage() {
         <button className="button" type="button" onClick={() => setParams({})}>清除筛选</button>
       </form>
     </ReadList>
-    {detail ? <OrderReadDialog tradeNo={detail} onClose={() => setDetail(null)} /> : null}
+    {detail ? <OrderReadDialog key={detail} tradeNo={detail} onClose={() => setDetail(null)} /> : null}
   </div>
 }

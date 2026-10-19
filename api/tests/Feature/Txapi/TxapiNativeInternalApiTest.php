@@ -280,68 +280,17 @@ final class TxapiNativeInternalApiTest extends NativeRuntimeTestCase
         $this->assertInstanceOf(\stdClass::class, $schema->properties);
         $this->assertInstanceOf(\stdClass::class,
             $capabilities->firstWhere('id', 'identity.sessions.list')->input_schema->properties);
-        $handlers = [];
-        $commands = [];
-        foreach (\App\Domains\InternalApi\OperationRegistry::all() as $operation => $spec) {
-            if ($operation === 'system.capabilities.get') {
-                $this->assertNull($spec['controller']);
-                $this->assertNull($spec['handler']);
-                $this->assertNull($spec['command']);
-                $this->assertNull($spec['method']);
-                continue;
-            }
-            if ($spec['handler'] !== null) {
-                $this->assertNull($spec['controller']);
-                $this->assertNull($spec['command']);
-                $this->assertSame('read', $spec['mode']);
-                $this->assertTrue(method_exists($spec['handler'], $spec['method']));
-                $this->assertTrue((new \ReflectionMethod($spec['handler'], $spec['method']))->isPublic());
-                $handlers[$operation] = [$spec['handler'], $spec['method']];
-                continue;
-            }
-            if ($spec['command'] !== null) {
-                $this->assertNull($spec['controller']);
-                $this->assertSame(str_starts_with($operation, 'identity.session') ? 'authenticated' : 'user', $spec['actor']);
-                $this->assertTrue((new \ReflectionMethod($spec['command'], $spec['method']))->isPublic());
-                $commands[$operation] = [$spec['command'], $spec['method'], $spec['mode']];
-                continue;
-            }
-            $this->assertNotNull($spec['controller']);
-            $this->assertTrue(method_exists($spec['controller'], $spec['method']));
+        $registry = \App\Domains\InternalApi\OperationRegistry::all();
+        \Tests\Support\ReviewedOperationTargets::assertMatches($this, $registry);
+        foreach (['controller', 'handler', 'command', 'method'] as $field) {
+            $this->assertNull($registry['system.capabilities.get'][$field]);
+        }
+        foreach ($registry as $spec) {
+            if ($spec['controller'] === null) continue;
+            $this->assertTrue((new \ReflectionMethod($spec['controller'], $spec['method']))->isPublic());
             $this->assertNotSame(\App\Http\Controllers\Txapi\TrafficController::class, $spec['controller']);
             $this->assertNotSame(\App\Http\Controllers\Txapi\Admin\PlanMutationController::class, $spec['controller']);
         }
-        $account = \App\Domains\InternalApi\AccountReadOperations::class;
-        $orders = \App\Domains\InternalApi\OrderReadOperations::class;
-        $sessions = \App\Domains\InternalApi\SessionReadOperations::class;
-        $usage = \App\Domains\InternalApi\UsageReadOperations::class;
-        $catalog = \App\Domains\InternalApi\CatalogReadOperations::class;
-        $billing = \App\Domains\InternalApi\BillingReadOperations::class;
-        $adminAccounts = \App\Domains\InternalApi\AdminAccountReadOperations::class;
-        $adminOrders = \App\Domains\InternalApi\AdminOrderReadOperations::class;
-        $this->assertSame(['identity.account.get' => [$account, 'account'], 'identity.admin.get' => [$account, 'account'],
-            'identity.accounts.list' => [$adminAccounts, 'listing'], 'identity.accounts.get' => [$adminAccounts, 'find'],
-            'commerce.admin-orders.list' => [$adminOrders, 'listing'], 'commerce.admin-orders.get' => [$adminOrders, 'find'],
-            'commerce.admin-orders.events.list' => [$adminOrders, 'events'],
-            'identity.sessions.list' => [$sessions, 'listing'],
-            'catalog.offers.list' => [$catalog, 'listing'],
-            'subscription.mine.get' => [$account, 'subscription'], 'commerce.orders.list' => [$orders, 'listing'],
-            'commerce.orders.get' => [$orders, 'find'],
-            'commerce.orders.events.list' => [$orders, 'events'],
-            'billing.wallet.get' => [$billing, 'wallet'], 'billing.payment-attempts.get' => [$billing, 'attempt'],
-            'billing.payment-methods.list' => [$billing, 'methods'],
-            'billing.recharges.list' => [$billing, 'recharges'], 'billing.recharges.get' => [$billing, 'recharge'],
-            'usage.mine.list' => [$usage, 'listing']], $handlers);
-        $mutations = \App\Domains\InternalApi\SessionMutationOperations::class;
-        $commerce = \App\Domains\InternalApi\CommerceMutationOperations::class;
-        $this->assertSame(['identity.sessions.revoke' => [$mutations, 'revoke', 'workflow'],
-            'identity.session.end' => [$mutations, 'end', 'once'],
-            'commerce.orders.create' => [$commerce, 'purchase', 'domain'],
-            'commerce.orders.checkout' => [$commerce, 'checkout', 'domain'],
-            'commerce.orders.cancel' => [$commerce, 'cancel', 'workflow'],
-            'billing.payment-attempts.query' => [$commerce, 'queryAttempt', 'domain'],
-            'billing.recharges.create' => [$commerce, 'recharge', 'domain'],
-            'billing.recharges.checkout' => [$commerce, 'rechargeCheckout', 'domain']], $commands);
     }
 
     public function test_all_boundary_rejections_are_audited_without_untrusted_service_operation_or_input_material(): void

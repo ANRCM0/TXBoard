@@ -7,6 +7,7 @@ import { ManagementFeedback } from './Feedback'
 import { ReadFields } from './ReadList'
 import { isoDate, minorAmount, orderStatus } from './readPresentation'
 import { OrderTimeline } from './OrderTimeline'
+import { OrderAdministration } from './OrderAdministration'
 
 export function OrderReadDialog({ tradeNo, onClose }: { tradeNo: string; onClose: () => void }) {
   const [eventError, setEventError] = useState<unknown>()
@@ -30,5 +31,6 @@ export function OrderReadDialog({ tradeNo, onClose }: { tradeNo: string; onClose
     ]} /> : null}
     {order ? <OrderTimeline key={tradeNo} tradeNo={tradeNo}
       onAdvance={() => void query.refetch()} onDenied={setEventError} /> : null}
+    {order ? <OrderAdministration key={tradeNo} tradeNo={tradeNo} status={order.status} onDenied={setEventError} /> : null}
   </Modal>
 }

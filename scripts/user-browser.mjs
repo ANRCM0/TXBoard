@@ -25,7 +25,7 @@ const attempt = { attempt_id: '11', status: 'pending', intent_type: 'purchase', 
   payment_id: '1', amount_minor: amount, currency: 'USD' }
 async function fixture(viewport) {
   const context = await browser.newContext({ viewport })
-  const state = { captcha: false, lostCreate: true, denied: 0, advance: false,
+  const state = { captcha: false, lostCreate: true, denied: 0, advance: false, checkout: false, queried: false,
     calls: [], keys: [], pageErrors: [], forbidden: [], failures: [] }
   await context.route('**/*', async route => {
     const req = route.request(), url = new URL(req.url())
@@ -64,8 +64,19 @@ async function fixture(viewport) {
       if (operation === 'commerce.orders.get') return send({ ...order, status: state.advance ? 3 : 0 })
       if (operation === 'commerce.orders.list') return send([order], { page: input.page, per_page: 20, total: 21, last_page: 2 })
       if (operation === 'billing.payment-methods.list') return send([{ id: '1', name: 'Fixture Pay', payment: 'fixture', icon: null, currency: 'USD', handling_fee_fixed: '0', handling_fee_percent: '0', external_refund_supported: false }])
-      if (operation === 'commerce.orders.checkout') return send({ type: 1, data: 'https://payments.example.test/checkout', attempt })
+      if (operation === 'billing.order-payment-attempts.list') {
+        assert.equal(input.trade_no, order.trade_no)
+        const { order_id, recharge_id, payment_id, ...summary } = attempt
+        return send(state.checkout ? [{ ...summary, status: state.queried ? 'succeeded' : 'pending',
+          created_at: order.created_at, updated_at: order.created_at }] : [],
+          { next_before_id: state.checkout ? attempt.attempt_id : null, has_more: false, has_unresolved: state.checkout && !state.queried })
+      }
+      if (operation === 'commerce.orders.checkout') {
+        state.checkout = true
+        return send({ type: 1, data: 'https://payments.example.test/checkout', attempt })
+      }
       if (operation === 'billing.payment-attempts.get' || operation === 'billing.payment-attempts.query') {
+        if (operation.endsWith('.query')) state.queried = true
         const { order_id, recharge_id, payment_id, ...summary } = attempt
         return send({ ...summary, status: operation.endsWith('.query') ? 'succeeded' : 'pending' })
       }
@@ -119,6 +130,12 @@ try {
   await page.getByRole('img', { name: '支付链接二维码' }).waitFor()
   await page.screenshot({ path: output + '/order-desktop.png', fullPage: true })
   passed('payment checkout displays a validated HTTPS link and QR without opening the channel')
+  assert.equal(await page.getByRole('button', { name: '确认并发起支付' }).isDisabled(), true)
+  await page.getByRole('button', { name: '重新读取当前页面', exact: true }).click()
+  await page.getByRole('combobox', { name: '选择支付尝试' }).waitFor()
+  assert.equal(await page.getByRole('button', { name: '确认并发起支付' }).isDisabled(), true)
+  assert.equal(state.calls.filter(call => call.operation === 'commerce.orders.checkout').length, 1)
+  passed('re-entering an order discovers pending payments and prevents a second checkout')
   await page.getByRole('button', { name: '向渠道确认支付结果' }).click()
   await page.getByText('支付尝试 11：succeeded · 90071992547409.93 USD', { exact: true }).waitFor()
   passed('payment query preserves exact amount and shows the confirmed attempt status')

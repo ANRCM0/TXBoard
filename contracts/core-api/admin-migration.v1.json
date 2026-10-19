@@ -1182,10 +1182,11 @@
       "path": "orders/{tradeNo}/cancel",
       "controller": "OrderAdminController",
       "action": "cancel",
-      "operations": [],
-      "status": "native-owner-required",
-      "note": "Recorded for later on-demand native domain development per user instruction; no legacy business mutation is enabled.",
-      "deferredByUser": true
+      "operations": [
+        "commerce.admin-orders.close"
+      ],
+      "status": "native-replacement",
+      "note": "Close a pending frozen native purchase through Billing with current manage grant, original-key recovery and durable audit. Unconfirmed channel attempts prevent closure."
     },
     {
       "method": "GET",

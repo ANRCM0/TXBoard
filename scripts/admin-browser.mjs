@@ -88,6 +88,7 @@ async function fixture(viewport) {
       return send([{ ...order, trade_no: input.page === 2 ? 'ORDER-B' : order.trade_no }],
         { page: input.page, per_page: 20, total: input.trade_no ? 1 : 21, last_page: input.trade_no ? 1 : 2 })
     }
+    if (operation === 'commerce.admin-orders.audit.list') return send([], { next_after_id: '0', has_more: false })
     if (operation === 'commerce.admin-orders.get') return send({ ...order, trade_no: input.trade_no,
       status: state.eventStage === 2 ? 3 : state.eventStage === 1 ? 1 : 0 })
     if (operation === 'commerce.admin-orders.events.list') {

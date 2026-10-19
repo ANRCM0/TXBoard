@@ -4,11 +4,12 @@ namespace App\Domains\InternalApi;
 
 use App\Domains\Billing\Contracts\AdminOrderQueries;
 use App\Domains\Billing\Contracts\AdminOrderListQuery;
+use App\Domains\Billing\Contracts\AdminOrderCommands;
 use App\Models\User;
 
 final class AdminOrderReadOperations
 {
-    public function __construct(private readonly AdminOrderQueries $queries) {}
+    public function __construct(private readonly AdminOrderQueries $queries, private readonly AdminOrderCommands $commands) {}
 
     public function listing(User $actor, array $input): ReadOperationResult
     {
@@ -27,6 +28,12 @@ final class AdminOrderReadOperations
     {
         $page = $this->queries->adminEvents($input['trade_no'], $input['after_sequence'] ?? '0',
             (int) ($input['limit'] ?? 50));
+        return $page === null ? null : new ReadOperationResult($page->items, $page->meta);
+    }
+
+    public function audit(User $actor, array $input): ?ReadOperationResult
+    {
+        $page = $this->commands->audit((int) $actor->id, $input['trade_no'], $input['after_id'] ?? '0', $input['limit'] ?? 20);
         return $page === null ? null : new ReadOperationResult($page->items, $page->meta);
     }
 }

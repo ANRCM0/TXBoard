@@ -1,0 +1,358 @@
+{
+  "schema": "reviewed-native-operation-targets/v1",
+  "columns": [
+    "kind",
+    "class",
+    "method",
+    "actor",
+    "domains",
+    "mode",
+    "permission"
+  ],
+  "targets": {
+    "billing.order-payment-attempts.list": [
+      "handler",
+      "App\\Domains\\InternalApi\\BillingReadOperations",
+      "orderAttempts",
+      "user",
+      [
+        "user"
+      ],
+      "read",
+      null
+    ],
+    "billing.payment-attempts.get": [
+      "handler",
+      "App\\Domains\\InternalApi\\BillingReadOperations",
+      "attempt",
+      "user",
+      [
+        "user"
+      ],
+      "read",
+      null
+    ],
+    "billing.payment-attempts.query": [
+      "command",
+      "App\\Domains\\InternalApi\\CommerceMutationOperations",
+      "queryAttempt",
+      "user",
+      [
+        "user"
+      ],
+      "domain",
+      null
+    ],
+    "billing.payment-methods.list": [
+      "handler",
+      "App\\Domains\\InternalApi\\BillingReadOperations",
+      "methods",
+      "user",
+      [
+        "user"
+      ],
+      "read",
+      null
+    ],
+    "billing.recharges.checkout": [
+      "command",
+      "App\\Domains\\InternalApi\\CommerceMutationOperations",
+      "rechargeCheckout",
+      "user",
+      [
+        "user"
+      ],
+      "domain",
+      null
+    ],
+    "billing.recharges.create": [
+      "command",
+      "App\\Domains\\InternalApi\\CommerceMutationOperations",
+      "recharge",
+      "user",
+      [
+        "user"
+      ],
+      "domain",
+      null
+    ],
+    "billing.recharges.get": [
+      "handler",
+      "App\\Domains\\InternalApi\\BillingReadOperations",
+      "recharge",
+      "user",
+      [
+        "user"
+      ],
+      "read",
+      null
+    ],
+    "billing.recharges.list": [
+      "handler",
+      "App\\Domains\\InternalApi\\BillingReadOperations",
+      "recharges",
+      "user",
+      [
+        "user"
+      ],
+      "read",
+      null
+    ],
+    "billing.wallet.get": [
+      "handler",
+      "App\\Domains\\InternalApi\\BillingReadOperations",
+      "wallet",
+      "user",
+      [
+        "user"
+      ],
+      "read",
+      null
+    ],
+    "catalog.offers.list": [
+      "handler",
+      "App\\Domains\\InternalApi\\CatalogReadOperations",
+      "listing",
+      "anonymous",
+      [
+        "user"
+      ],
+      "read",
+      null
+    ],
+    "commerce.admin-orders.audit.list": [
+      "handler",
+      "App\\Domains\\InternalApi\\AdminOrderReadOperations",
+      "audit",
+      "admin",
+      [
+        "admin"
+      ],
+      "read",
+      "commerce.orders.read"
+    ],
+    "commerce.admin-orders.close": [
+      "command",
+      "App\\Domains\\InternalApi\\AdminOrderMutationOperations",
+      "close",
+      "admin",
+      [
+        "admin"
+      ],
+      "domain",
+      "commerce.orders.manage"
+    ],
+    "commerce.admin-orders.events.list": [
+      "handler",
+      "App\\Domains\\InternalApi\\AdminOrderReadOperations",
+      "events",
+      "admin",
+      [
+        "admin"
+      ],
+      "read",
+      "commerce.orders.read"
+    ],
+    "commerce.admin-orders.get": [
+      "handler",
+      "App\\Domains\\InternalApi\\AdminOrderReadOperations",
+      "find",
+      "admin",
+      [
+        "admin"
+      ],
+      "read",
+      "commerce.orders.read"
+    ],
+    "commerce.admin-orders.list": [
+      "handler",
+      "App\\Domains\\InternalApi\\AdminOrderReadOperations",
+      "listing",
+      "admin",
+      [
+        "admin"
+      ],
+      "read",
+      "commerce.orders.read"
+    ],
+    "commerce.admin-orders.retry": [
+      "command",
+      "App\\Domains\\InternalApi\\AdminOrderMutationOperations",
+      "retry",
+      "admin",
+      [
+        "admin"
+      ],
+      "domain",
+      "commerce.orders.manage"
+    ],
+    "commerce.orders.cancel": [
+      "command",
+      "App\\Domains\\InternalApi\\CommerceMutationOperations",
+      "cancel",
+      "user",
+      [
+        "user"
+      ],
+      "workflow",
+      null
+    ],
+    "commerce.orders.checkout": [
+      "command",
+      "App\\Domains\\InternalApi\\CommerceMutationOperations",
+      "checkout",
+      "user",
+      [
+        "user"
+      ],
+      "domain",
+      null
+    ],
+    "commerce.orders.create": [
+      "command",
+      "App\\Domains\\InternalApi\\CommerceMutationOperations",
+      "purchase",
+      "user",
+      [
+        "user"
+      ],
+      "domain",
+      null
+    ],
+    "commerce.orders.events.list": [
+      "handler",
+      "App\\Domains\\InternalApi\\OrderReadOperations",
+      "events",
+      "user",
+      [
+        "user"
+      ],
+      "read",
+      null
+    ],
+    "commerce.orders.get": [
+      "handler",
+      "App\\Domains\\InternalApi\\OrderReadOperations",
+      "find",
+      "user",
+      [
+        "user"
+      ],
+      "read",
+      null
+    ],
+    "commerce.orders.list": [
+      "handler",
+      "App\\Domains\\InternalApi\\OrderReadOperations",
+      "listing",
+      "user",
+      [
+        "user"
+      ],
+      "read",
+      null
+    ],
+    "identity.account.get": [
+      "handler",
+      "App\\Domains\\InternalApi\\AccountReadOperations",
+      "account",
+      "user",
+      [
+        "user"
+      ],
+      "read",
+      null
+    ],
+    "identity.accounts.get": [
+      "handler",
+      "App\\Domains\\InternalApi\\AdminAccountReadOperations",
+      "find",
+      "admin",
+      [
+        "admin"
+      ],
+      "read",
+      "identity.accounts.read"
+    ],
+    "identity.accounts.list": [
+      "handler",
+      "App\\Domains\\InternalApi\\AdminAccountReadOperations",
+      "listing",
+      "admin",
+      [
+        "admin"
+      ],
+      "read",
+      "identity.accounts.read"
+    ],
+    "identity.admin.get": [
+      "handler",
+      "App\\Domains\\InternalApi\\AccountReadOperations",
+      "account",
+      "admin",
+      [
+        "admin"
+      ],
+      "read",
+      "identity.read"
+    ],
+    "identity.session.end": [
+      "command",
+      "App\\Domains\\InternalApi\\SessionMutationOperations",
+      "end",
+      "authenticated",
+      [
+        "user",
+        "admin"
+      ],
+      "once",
+      "identity.sessions.manage"
+    ],
+    "identity.sessions.list": [
+      "handler",
+      "App\\Domains\\InternalApi\\SessionReadOperations",
+      "listing",
+      "authenticated",
+      [
+        "user",
+        "admin"
+      ],
+      "read",
+      "identity.sessions.manage"
+    ],
+    "identity.sessions.revoke": [
+      "command",
+      "App\\Domains\\InternalApi\\SessionMutationOperations",
+      "revoke",
+      "authenticated",
+      [
+        "user",
+        "admin"
+      ],
+      "workflow",
+      "identity.sessions.manage"
+    ],
+    "subscription.mine.get": [
+      "handler",
+      "App\\Domains\\InternalApi\\AccountReadOperations",
+      "subscription",
+      "user",
+      [
+        "user"
+      ],
+      "read",
+      null
+    ],
+    "usage.mine.list": [
+      "handler",
+      "App\\Domains\\InternalApi\\UsageReadOperations",
+      "listing",
+      "user",
+      [
+        "user"
+      ],
+      "read",
+      null
+    ]
+  }
+}

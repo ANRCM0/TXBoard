@@ -4,6 +4,7 @@ export const CORE_USER_PREFIX = '/gateway/v1/core/user'
 
 /** Reviewed browser surface. Adding a generated/internal operation never exposes it automatically. */
 export const CORE_USER_OPERATIONS = [
+  'billing.order-payment-attempts.list',
   'identity.session.create',
   'catalog.offers.list', 'commerce.orders.create', 'commerce.orders.list', 'commerce.orders.get', 'commerce.orders.events.list',
   'commerce.orders.checkout', 'commerce.orders.cancel', 'billing.wallet.get', 'billing.payment-methods.list',

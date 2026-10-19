@@ -10,7 +10,12 @@ import { UserDetailPage } from '../pages/users/UserDetailPage'
 import { OrdersPage } from '../pages/finance/OrdersPage'
 import { OrderReadDialog } from './OrderReadDialog'
 
-vi.mock('./session', () => ({ admin: { read: vi.fn(), forgetSession: vi.fn() } }))
+vi.mock('./session', () => {
+  const snapshot = { busy: false }
+  return { admin: { read: vi.fn(), forgetSession: vi.fn() }, workflowActions: {
+    snapshot: () => snapshot, generation: () => 0, subscribe: () => () => {}, run: vi.fn(), clearError: vi.fn(),
+  } }
+})
 const profile = { id: '9007199254740993', email: 'alice@example.test', banned: false, is_admin: false,
   created_at: null, last_login_at: null }
 const order = { id: '7', user_id: profile.id, trade_no: 'ORDER-A', plan_id: '8', period: 'monthly',
