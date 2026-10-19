@@ -69,7 +69,7 @@ export function ConfigurationPage({ group = 'site' }: { group?: ConfigurationGro
     {message || state.error ? <p role="alert">{message || managementError(state.error)}</p> : null}
     {blocked ? <p role="alert">当前无法确认设置访问权限，已清空表单并隐藏数据。</p> : null}
     {pending ? <section className="list-card"><h2>操作等待确认</h2><p>设置保存的结果尚未确认，请使用原操作确认结果。</p><button className="button" disabled={state.busy || !ready || query.isFetching} onClick={() => void perform(true)}>使用原操作确认结果</button></section> : null}
-    {ready ? <section className="list-card"><p>设置版本：{query.data!.data.version}</p>
+    {ready ? <section className="list-card"><p className="native-configuration-version">设置版本：{query.data!.data.version}</p>
       {!editing ? <button className="button" disabled={locked} onClick={begin}>开始编辑</button> : <form className="native-content-form" onSubmit={event => { event.preventDefault(); void perform() }}>
         {fields.filter(([, field]) => field.group === group).map(([name, field]) => {
           const id = 'configuration-' + name, value = draft[name] ?? field.default

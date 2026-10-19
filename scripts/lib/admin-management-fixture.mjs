@@ -36,7 +36,7 @@ export async function managementFixture(browser, viewport) {
   const failure = { id: '101', connection: 'redis', queue: 'default', job: 'ObservedJob', failed_at: '2026-10-19T00:00:00Z' }
   Object.assign(state, { denied: new Set(), settings, modules, machine, detailNode: node, subscription, payment,
     originalSettingsVersion: settings.version, originalPaymentVersion: payment.version, originalSubscriptionVersion: subscription.subscription_version })
-  await context.route('**/gateway/v1/operations/**', async route => {
+  await context.route('**/gateway/v1/core/admin/operations/**', async route => {
     const request = route.request(), operation = new URL(request.url()).pathname.split('/operations/')[1]
     if (!managed.test(operation)) return route.fallback()
     const json = (status, body) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) })
