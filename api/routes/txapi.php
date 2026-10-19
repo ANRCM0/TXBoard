@@ -313,7 +313,7 @@ Route::middleware(['txapi.user', 'throttle:120,1'])->group(function () {
         ->where('linkRef', 'link_[a-f0-9]{32}')->middleware('throttle:10,1');
     Route::get('me/usage-periods', [\App\Http\Controllers\Txapi\NativeUsageController::class, 'index']);
     Route::post('me/subscription-deliveries', [\App\Http\Controllers\Txapi\SubscriptionDeliveryController::class, 'create'])
-        ->middleware('throttle:10,1');
+        ->middleware('throttle:native-subscription-render');
     Route::post('me/access-subjects', [\App\Http\Controllers\Txapi\CredentialProviderController::class, 'issue'])
         ->middleware('throttle:10,1');
     Route::post('me/access-subjects/{id}/revoke', [\App\Http\Controllers\Txapi\CredentialProviderController::class, 'revoke'])
