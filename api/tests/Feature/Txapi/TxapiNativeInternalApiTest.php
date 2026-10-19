@@ -125,6 +125,9 @@ final class TxapiNativeInternalApiTest extends NativeRuntimeTestCase
         $response = TxapiResponse::error($request, 'RATE_LIMITED', 'Service ingress limit exceeded', 429)
             ->withHeaders(['Retry-After' => '60', 'Cache-Control' => 'private, no-store']);
         $this->assertSame($response, TxapiErrorRenderer::render($request, new HttpResponseException($response)));
+        $renderLimit = TxapiResponse::error($request, 'RATE_LIMITED', 'Subscription delivery limit exceeded', 429)
+            ->withHeaders(['Retry-After' => '30', 'Cache-Control' => 'private, no-store']);
+        $this->assertSame($renderLimit, TxapiErrorRenderer::render($request, new HttpResponseException($renderLimit)));
         $unstructured = response()->json(['exception' => 'PRIVATE_EXCEPTION_MATERIAL'], 429);
         $rejected = TxapiErrorRenderer::render($request, new HttpResponseException($unstructured));
         $this->assertSame(500, $rejected->getStatusCode());
