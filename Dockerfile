@@ -19,6 +19,7 @@ RUN --mount=type=cache,target=/root/.npm,sharing=locked \
 COPY web/shared web/shared
 COPY web/admin web/admin
 COPY web/user web/user
+COPY web/dev-core-proxy.ts web/dev-core-proxy.ts
 COPY contracts/core-api/admin-settings.v1.json contracts/core-api/admin-settings.v1.json
 COPY tsconfig.base.json tsconfig.base.json
 COPY packages/core-sdk/src packages/core-sdk/src
