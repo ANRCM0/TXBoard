@@ -2,6 +2,7 @@ secrets/
 node_modules/
 dist/
 coverage/
+/sbom/
 .env
 .env.*
 !.env.example

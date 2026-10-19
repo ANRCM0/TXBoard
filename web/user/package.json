@@ -13,14 +13,10 @@
   },
   "dependencies": {
     "@txboard/core-sdk": "*",
-    "axios": "^1.9.0",
-    "pinia": "^3.0.2",
     "vue": "^3.5.38",
     "vue-router": "^4.5.1",
     "qrcode": "^1.5.4",
-    "@stripe/stripe-js": "^7.9.0",
-    "@txboard/shared": "*",
-    "dompurify": "^3.2.6"
+    "@txboard/shared": "*"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^6.0.7",

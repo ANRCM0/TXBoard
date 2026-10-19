@@ -17,7 +17,7 @@ const root = rootIndex === -1
   ? resolve(dirname(fileURLToPath(import.meta.url)), '..')
   : resolve(args[rootIndex + 1]);
 const inputs = ['README.md', 'README.en.md', 'AGENTS.md', 'CONTRIBUTING.md',
-  '.github', 'api/app/Domains', 'api/plugins-core', 'docs', 'contracts', 'gateway', 'node'];
+  '.github', 'api/app/Domains', 'api/plugins-core', 'docs', 'contracts', 'gateway', 'node', 'web'];
 const excludedDirectories = new Set(['.git', 'node_modules', 'vendor', 'dist',
   'build', 'coverage', '.next', '.turbo', '.cache']);
 const files = [];

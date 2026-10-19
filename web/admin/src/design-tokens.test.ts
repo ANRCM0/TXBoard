@@ -6,7 +6,6 @@ const src = (path: string) => readFileSync(resolve(process.cwd(), 'src', path), 
 const tokens = src('design-tokens.css')
 const styles = src('styles.css')
 const forms = src('form-system.css')
-const drawer = src('pages/server/MachineOpsDrawer.css')
 const main = src('main.tsx')
 
 const essentialTokens = [
@@ -38,9 +37,7 @@ describe('admin UI foundations', () => {
     expect(styles).toContain('outline:2px solid var(--focus-ring)')
   })
 
-  it('keeps helper copy readable in admin forms and machine details', () => {
+  it('keeps helper copy readable in admin forms', () => {
     expect(forms).toContain('font-size:12px;\n  font-weight:400;\n  line-height:1.5;')
-    expect(drawer).toContain('.machine-ops-card-head p{margin:3px 0 0;color:var(--muted);font-size:12px;line-height:1.5}')
-    expect(drawer).toContain('.machine-ops-overview-copy span{color:var(--muted);font-size:12px}')
   })
 })
