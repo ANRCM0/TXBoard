@@ -154,3 +154,8 @@ are committed and reviewed in the Node repository, never bundled back into Core.
 Git source archives omit submodule contents. Integration snapshot tooling exports
 the verified Node commit explicitly and records its repository, revision and tree.
 The renderer source fingerprints continue to verify the pinned Provider source.
+Node owns its renderer package fingerprints in `compatibility/renderers.v1.json`.
+Its compatibility CI checks the supported Core interface and actual delivery,
+so compatible implementation updates can be reviewed and released independently.
+When Core adopts a new renderer implementation, review and version the combined
+Core renderer declaration and source fingerprints along with the Node pin.
