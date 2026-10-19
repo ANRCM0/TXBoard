@@ -3,6 +3,7 @@
 namespace Tests\Feature\Subscription;
 
 use App\Domains\CredentialProvider\RenderGrantCodec;
+use App\Domains\InternalApi\OperationSchemas;
 use App\Domains\Subscription\Services\NativeCredentialSynchronization;
 use App\Domains\Subscription\Services\NativeSubscriptionDelivery;
 use App\Models\User;
@@ -33,6 +34,7 @@ final class NativeBrowserDeliveriesTest extends NativeRuntimeTestCase
         [$owner, $subject] = $this->binding(); $this->authenticateActor($owner);
         $this->duringMetadata = static function (): void { throw new \RuntimeException('DISCOVERY_MUST_NOT_CALL_METADATA'); };
         $options = $this->delivery->browserOptions($owner->id);
+        $this->assertSame($options, OperationSchemas::output('subscription.delivery-options.get', $options));
         $this->assertTrue($options['authorized']); $this->assertSame((string) $owner->id, $options['user_id']);
         $this->assertEqualsCanonicalizing(['protocol_version', 'core_instance_id', 'key_id', 'key_epoch', 'algorithm', 'public_key'], array_keys($options['trust']));
         $this->assertSame('Ed25519', $options['trust']['algorithm']);
@@ -125,6 +127,7 @@ final class NativeBrowserDeliveriesTest extends NativeRuntimeTestCase
             if (!in_array($subject->credential_profile_id, RenderGrantCodec::profiles($format), true)) continue;
             $input = $this->input($subject); $input['format_id'] = $format; $input['client_version'] = $rule['min'];
             $result = $this->delivery->browserAuthorize($owner->id, $input);
+            $this->assertSame($result, OperationSchemas::output('subscription.deliveries.authorize', $result));
             $this->assertArrayNotHasKey('authorization', $result); $this->assertArrayHasKey('grant', $result);
             $raw = base64_decode(strtr($result['grant']['payload'], '-_', '+/'), true);
             $payload = json_decode($raw, true, 32, JSON_THROW_ON_ERROR);

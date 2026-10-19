@@ -5,7 +5,6 @@ import (
 	"crypto/tls"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -95,11 +94,7 @@ func TestBrowserRenderCORSPreflightsAreBoundedAndDoNotReadState(t *testing.T) {
 }
 
 func TestBrowserRenderHandlerKeepsTLSPathAndProofBoundaries(t *testing.T) {
-	store, err := OpenStore(filepath.Join(t.TempDir(), "provider.db"), "provider-a", "1")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer store.Close()
+	store, _ := testStore(t)
 	trust, _ := deliveryKey(t)
 	handler, err := NewBrowserRenderHandler(store, trust, []string{"https://panel.example"})
 	if err != nil {
