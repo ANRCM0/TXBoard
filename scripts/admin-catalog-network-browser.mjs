@@ -101,7 +101,7 @@ try {
   assert.equal(state.calls.filter(call => call.key).length, writesBeforeSimulation)
   await page.getByRole('list', { name: '未解析路由规则', exact: true }).getByText('geoip:fixture', { exact: true }).waitFor()
   await page.getByLabel('目标', { exact: true }).fill('different.test')
-  assert.equal(await page.getByText(/请求目标 example.test/).count(), 0)
+  await page.getByText(/请求目标 example.test/).waitFor({ state: 'detached' })
   await page.screenshot({ path: path.join(output, 'routes-desktop.png'), fullPage: true })
   passed('complete route ordering retains exact IDs and read-only simulation binds to the selected node and target')
 
@@ -168,6 +168,10 @@ try {
     await mobile.page.locator('.native-management-page table').first().waitFor()
     assert.equal(await mobile.page.locator('.admin-sidebar.is-open').count(), 0)
     assert.ok(await mobile.page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), name + ' must fit viewport')
+    const tables = await mobile.page.locator('.native-management-page .table-wrap').evaluateAll(elements => elements.map(element => ({
+      viewport: element.clientWidth, content: element.scrollWidth, table: element.querySelector('table').getBoundingClientRect().width,
+    })))
+    assert.ok(tables.length > 0 && tables.every(table => table.content > table.viewport && table.table >= 920), name + ' tables must retain readable columns in a horizontal scroll region')
     await mobile.page.screenshot({ path: path.join(output, name + '-mobile.png'), fullPage: true })
   }
   verifyFixture(mobile.state)
