@@ -45,7 +45,7 @@ function trafficHistory(input, rows) {
     nodes: rows.filter(row => input.node_ids.includes(row.id)).map((row, index) => ({ id: row.id, name: row.name,
       points: Array.from({ length: input.days }, (_, day) => ({
         date: new Date(start + day * 86400000).toISOString().slice(0, 10),
-        total_bytes: String(BigInt((index + 1) * (3 + day % 5)) * 1000000000n),
+        total_bytes: String(BigInt((index + 1) * (3 + day % 5)) * 1000000000n + BigInt(index + 1) * 250000000n),
       })),
     })),
   }
@@ -114,6 +114,9 @@ async function fixture(viewport) {
       subscription: { schema: 'core-entitlement/v1', authorized: false, reason: 'ENTITLEMENT_MISSING', user_id: account.id } })
     if (operation === 'commerce.admin-orders.list') {
       if (state.ordersStatus !== 200) return fail(state.ordersStatus)
+      if (input.per_page === 100) return checkedSend([order, { ...order, id: '8', trade_no: 'PAID-ORDER-A',
+        amount_minor: '12345', status: 3, paid_at: order.created_at }],
+        { page: input.page, per_page: 100, total: 21, last_page: 1 })
       return send([{ ...order, trade_no: input.page === 2 ? 'ORDER-B' : order.trade_no }],
         { page: input.page, per_page: 20, total: input.trade_no ? 1 : 21, last_page: input.trade_no ? 1 : 2 })
     }
@@ -199,21 +202,21 @@ try {
   await page.getByRole('region', { name: '资源统计', exact: true }).waitFor()
   assert.equal(await page.getByRole('region', { name: '管理入口', exact: true }).count(), 0)
   await page.getByRole('region', { name: '资源统计', exact: true }).getByRole('link', { name: /账户总数 21/ }).waitFor()
-  const trendCard = page.getByRole('region', { name: '订单趋势卡片', exact: true })
-  const rangeButtons = trendCard.getByRole('group', { name: '订单趋势时间范围', exact: true })
+  const trendCard = page.getByRole('region', { name: '收入趋势卡片', exact: true })
+  const rangeButtons = trendCard.getByRole('group', { name: '收入趋势时间范围', exact: true })
   await rangeButtons.getByRole('button', { name: '30 天', exact: true }).click()
   assert.equal(await rangeButtons.getByRole('button', { name: '30 天', exact: true }).getAttribute('aria-pressed'), 'true')
-  const trendGraph = trendCard.getByRole('group', { name: '样本订单趋势交互图表', exact: true })
+  const trendGraph = trendCard.getByRole('group', { name: '样本收入趋势交互图表', exact: true })
   await trendGraph.press('End')
-  await trendCard.getByRole('status').filter({ hasText: '全部订单' }).waitFor()
+  await trendCard.getByRole('status').filter({ hasText: 'USD 收入' }).waitFor()
   await trendGraph.press('Escape')
   assert.equal(await trendCard.getByRole('status').count(), 0)
-  const pin = trendCard.getByRole('button', { name: '突出显示已完成曲线', exact: true })
+  const pin = trendCard.getByRole('button', { name: '突出显示USD 收入曲线', exact: true })
   await pin.click()
   assert.equal(await pin.getAttribute('aria-pressed'), 'true')
-  await trendCard.getByText('查看样本订单趋势数据', { exact: true }).click()
+  await trendCard.getByText('查看样本收入趋势数据', { exact: true }).click()
   assert.equal(await trendCard.locator('tbody tr').count(), 30)
-  await trendCard.getByText('查看样本订单趋势数据', { exact: true }).click()
+  await trendCard.getByText('查看样本收入趋势数据', { exact: true }).click()
   const donut = page.getByRole('region', { name: '样本订单状态', exact: true })
   await donut.getByRole('button', { name: /^待支付/ }).focus()
   await donut.getByRole('status').filter({ hasText: '待支付' }).waitFor()
@@ -221,8 +224,8 @@ try {
   const trafficChart = trafficCard.getByRole('region', { name: '节点总流量', exact: true })
   const trafficRanges = trafficCard.getByRole('group', { name: '节点流量时间范围', exact: true })
   await trafficChart.getByRole('group', { name: '节点总流量交互图表', exact: true }).press('Home')
-  await trafficChart.getByRole('status').getByText('3 GB', { exact: true }).waitFor()
-  await trafficChart.getByRole('status').getByText('6 GB', { exact: true }).waitFor()
+  await trafficChart.getByRole('status').getByText('3.25 GB', { exact: true }).waitFor()
+  await trafficChart.getByRole('status').getByText('6.50 GB', { exact: true }).waitFor()
   assert.equal(await trafficChart.getByRole('button', { name: /^突出显示.+曲线$/ }).count(), 2)
   for (const days of [7, 14, 30]) {
     await trafficRanges.getByRole('button', { name: days + ' 天', exact: true }).click()
@@ -234,7 +237,7 @@ try {
   }
   assert.equal(await rangeButtons.getByRole('button', { name: '30 天', exact: true }).getAttribute('aria-pressed'), 'true')
   assert.ok(state.reads.some(read => read.operation === 'commerce.admin-orders.list' && read.input.per_page === 100))
-  passed('sample order charts and daily per-node GB curves support independent ranges and keyboard tooltips')
+  passed('sample revenue charts and daily per-node GB curves support independent ranges and keyboard tooltips')
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth))
   await page.screenshot({ path: output + '/overview-dark.png', fullPage: true })
   await page.getByRole('button', { name: '切换浅色模式', exact: true }).click()
@@ -243,7 +246,7 @@ try {
   state.ordersStatus = 403; state.nodesStatus = 403
   await page.getByRole('button', { name: '刷新概览', exact: true }).click()
   await trendCard.getByRole('alert').filter({ hasText: '没有此操作的权限' }).waitFor()
-  assert.equal(await page.getByRole('region', { name: '样本订单趋势', exact: true }).count(), 0)
+  assert.equal(await page.getByRole('region', { name: '样本收入趋势', exact: true }).count(), 0)
   assert.equal(await page.getByRole('region', { name: '样本订单状态', exact: true }).count(), 0)
   assert.equal(await page.getByRole('region', { name: '节点总流量', exact: true }).count(), 0)
   passed('overview withdraws cached charts when their read permissions are denied')
@@ -406,7 +409,7 @@ try {
   await mobile.page.screenshot({ path: output + '/navigation-mobile.png', fullPage: true })
   await nav(mobile.page, '仪表盘')
   await mobile.page.getByRole('region', { name: '样本订单状态', exact: true }).waitFor()
-  await mobile.page.getByRole('region', { name: '订单趋势卡片', exact: true }).getByRole('button', { name: '7 天', exact: true }).click()
+  await mobile.page.getByRole('region', { name: '收入趋势卡片', exact: true }).getByRole('button', { name: '7 天', exact: true }).click()
   await mobile.page.getByRole('region', { name: '节点流量卡片', exact: true }).getByRole('group', { name: '节点流量时间范围', exact: true }).getByRole('button', { name: '7 天', exact: true }).click()
   await mobile.page.getByRole('region', { name: '节点总流量', exact: true }).waitFor()
   assert.ok(await mobile.page.evaluate(() => document.documentElement.scrollWidth <= innerWidth))

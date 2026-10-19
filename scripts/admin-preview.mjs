@@ -131,7 +131,7 @@ function previewMiddleware(req, res) {
             id: node.id, name: node.name,
             points: Array.from({ length: input.days }, (_, day) => ({
               date: new Date(startsAt + day * 86400000).toISOString().slice(0, 10),
-              total_bytes: String(BigInt(8 + (day * 7 + index * 11) % 23) * BigInt(index + 1) * 1000000000n),
+              total_bytes: String(BigInt(8 + (day * 7 + index * 11) % 23) * BigInt(index + 1) * 1000000000n + BigInt(13 + (day * 17 + index * 19) % 86) * 10000000n),
             })),
           })),
         })

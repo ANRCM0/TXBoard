@@ -144,7 +144,7 @@ class CoreCapabilityBoundaryTest(unittest.TestCase):
             "api/app/Http/Controllers/Caller.php",
             "<?php\n// SubscriptionEntitlementResolver is not this consumer's dependency.\n",
         )
-        self.assertEqual(17, GUARD.validate_kernel_boundaries(self.root))
+        self.assertEqual(19, GUARD.validate_kernel_boundaries(self.root))
         self.assert_violation(
             "api/app/Core/Kernel/Notes.php",
             "<?php\nnamespace App\\Core\\Kernel;\n$value = 'Illuminate\\\\Http\\\\Request';\n",

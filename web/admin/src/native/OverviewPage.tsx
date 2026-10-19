@@ -8,7 +8,7 @@ import { PageHeader } from '../components/ui/PageHeader'
 import { DataTable } from '../components/ui/DataTable'
 import { isoDate, minorAmount, orderStatus } from './readPresentation'
 import { DonutChart, LineChart } from '../components/charts/ReferenceCharts'
-import { nodeTrafficHistory, orderStatusShare, orderTrend, type OverviewRange } from './overviewCharts'
+import { nodeTrafficHistory, orderStatusShare, incomeTrend, type OverviewRange } from './overviewCharts'
 
 export function OverviewPage() {
   const [range, setRange] = useState<OverviewRange>(14)
@@ -32,7 +32,7 @@ export function OverviewPage() {
   const refreshing = queries.some(query => query.isFetching)
   const updatedAt = Math.max(...queries.map(query => query.dataUpdatedAt))
   const orderRows = orders.isError ? [] : orders.data?.data ?? []
-  const trend = orderTrend(orderRows, range, new Date(orders.dataUpdatedAt || Date.now()))
+  const trend = incomeTrend(orderRows, range, new Date(orders.dataUpdatedAt || Date.now()))
   const distribution = orderStatusShare(orderRows)
   const traffic = nodeTrafficHistory(!nodes.isError && !history.isError && trafficEnabled ? history.data?.data : undefined)
   const metrics = [
@@ -56,16 +56,16 @@ export function OverviewPage() {
       </Link>)}
     </section>
     <div className="overview-charts-grid">
-      <section className="card overview-chart-card" aria-label="订单趋势卡片">
-        <div className="reference-card-heading"><div><h2>订单趋势</h2><p>按创建日期 · UTC · 当前状态</p></div>
-          <div className="overview-range" role="group" aria-label="订单趋势时间范围">{([7, 14, 30] as const).map(days =>
+      <section className="card overview-chart-card" aria-label="收入趋势卡片">
+        <div className="reference-card-heading"><div><h2>收入趋势</h2><p>已支付订单金额 · 按支付日期 · UTC</p></div>
+          <div className="overview-range" role="group" aria-label="收入趋势时间范围">{([7, 14, 30] as const).map(days =>
             <button type="button" key={days} aria-pressed={range === days} onClick={() => setRange(days)}>{days} 天</button>)}</div>
         </div>
         <ManagementFeedback error={orders.isError ? orders.error : undefined} loading={orders.isFetching} onRetry={() => void orders.refetch()} />
         {!orders.isError && orders.data ? <>
-          <LineChart title="样本订单趋势" labels={trend.labels} series={trend.hasData ? trend.series : []}
-            emptyText="此时间范围内暂无样本订单" />
-          <p className="overview-chart-scope">最近 {trend.sampleSize} 条订单中，{trend.includedCount} 条在所选范围内。零值表示样本中没有记录，不代表全站当日无订单。</p>
+          <LineChart title="样本收入趋势" yAxisWidth={92} formatValue={trend.formatValue} labels={trend.labels} series={trend.hasData ? trend.series : []}
+            emptyText="此时间范围内暂无已支付样本订单" />
+          <p className="overview-chart-scope">最近 {trend.sampleSize} 条订单中，{trend.includedCount} 条已支付订单在所选范围内。按币种分别统计订单金额，未扣除退款，含钱包支付；此样本不代表全站实收。</p>
         </> : null}
       </section>
       <section className="card overview-chart-card" aria-label="订单状态卡片">

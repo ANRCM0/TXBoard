@@ -31,14 +31,13 @@ tags, page selection, dialogs, empty states and disclosure patterns.
 `src/components/charts/ReferenceCharts.tsx` provides dependency-free React/SVG
 line, donut and horizontal-bar components, with theme tokens, keyboard detail
 selection, legend emphasis, reduced-motion support and readable data tables.
-The dashboard uses order trend lines, an order-status donut and daily total
+The dashboard uses income trend lines, an order-status donut and daily total
 traffic lines, one per node. Byte geometry uses bounded BigInt-derived ratios;
-tooltips and tables display exact decimal GB (1 GB = 1,000,000,000 bytes).
+tooltips, legends and axes display decimal GB rounded to two places (1 GB = 1,000,000,000 bytes). Raw totals retain exact integers.
 Missing points remain gaps and appear as unavailable rather than zero.
 
 The dashboard reads the latest 100 native orders and the first five nodes in
-Core's list order. Its 7/14/30-day UTC order chart counts creation dates and the
-orders' current states. It never treats the sample as full-site history or revenue.
+Core's list order. Its 7/14/30-day UTC income chart groups paid orders (processing or completed) by payment date. Each currency has its own line; amounts are gross order values, include wallet payments and do not subtract refunds. It never treats this recent-order sample as full-site cash receipts.
 The independent 7/14/30-day traffic chart reads `network.nodes.traffic-history.get`.
 UsageV2 aggregates settled raw upload plus download by the UTC day containing
 batch `ended_at - 1`; Network owns the node identities. Days without settled

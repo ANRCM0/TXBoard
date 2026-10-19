@@ -1,4 +1,5 @@
 import type { CoreOutput } from '@txboard/core-sdk'
+import { minorAmount } from './readPresentation'
 
 type Order = CoreOutput<'commerce.admin-orders.list'>[number]
 type TrafficHistory = CoreOutput<'network.nodes.traffic-history.get'>
@@ -11,40 +12,37 @@ function sampleScope(size: number) {
   return { scope: 'sample' as const, sampleSize: size, scopeLabel: `当前接口样本 ${size} 项，不代表全站统计` }
 }
 
-/** Counts orders by their creation date, using the current status of each sampled order. */
-export function orderTrend(rows: readonly Order[], days: OverviewRange = 7, now: Date = new Date()) {
+/** Paid-order gross amounts in the current sample, grouped by payment date and currency. */
+export function incomeTrend(rows: readonly Order[], days: OverviewRange = 7, now: Date = new Date()) {
   if (![7, 14, 30].includes(days)) throw new RangeError('Unsupported overview range')
   const nowMilliseconds = now.getTime()
   if (!Number.isFinite(nowMilliseconds)) throw new RangeError('Invalid overview date')
   const today = new Date(nowMilliseconds).toISOString().slice(0, 10)
   const endDay = Date.parse(today + 'T00:00:00Z')
   const startDay = endDay - (days - 1) * dayMilliseconds
-  const points = Array.from({ length: days }, (_, index) => {
-    const date = new Date(startDay + index * dayMilliseconds).toISOString().slice(0, 10)
-    return { date, label: date.slice(5).replace('-', '/'), total: 0, completed: 0, pending: 0 }
-  })
+  const dates = Array.from({ length: days }, (_, index) => new Date(startDay + index * dayMilliseconds).toISOString().slice(0, 10))
+  const currencies = new Map<string, bigint[]>()
   let includedCount = 0
   for (const row of rows) {
-    const time = Date.parse(row.created_at)
+    if (![1, 3].includes(row.status) || row.paid_at === null) continue
+    const time = Date.parse(row.paid_at)
     if (!Number.isFinite(time) || time < startDay || time > nowMilliseconds) continue
-    const index = Math.floor((time - startDay) / dayMilliseconds)
-    const point = points[index]
-    if (!point) continue
-    point.total++
-    if (row.status === 3) point.completed++
-    if (row.status === 0 || row.status === 1) point.pending++
+    if (!/^(0|[1-9][0-9]*)$/.test(row.amount_minor) || !/^[A-Z]{3}$/.test(row.currency)) throw new TypeError('Invalid income amount')
+    const amounts = currencies.get(row.currency) ?? Array<bigint>(days).fill(0n)
+    amounts[Math.floor((time - startDay) / dayMilliseconds)] += BigInt(row.amount_minor)
+    currencies.set(row.currency, amounts)
     includedCount++
   }
+  const maximum = Array.from(currencies.values()).flat().reduce((max, value) => value > max ? value : max, 0n)
   return {
-    ...sampleScope(rows.length), days, timeZone: 'UTC' as const,
-    definition: '按创建日期分组，已完成和待处理表示样本订单的当前状态',
-    includedCount, excludedCount: rows.length - includedCount, hasData: includedCount > 0,
-    points, labels: points.map(point => point.label),
-    series: [
-      { id: 'total', label: '全部订单', values: points.map(point => point.total), color: 'var(--primary)' },
-      { id: 'completed', label: '已完成', values: points.map(point => point.completed), color: 'var(--success)' },
-      { id: 'pending', label: '待处理', values: points.map(point => point.pending), color: 'var(--warning)' },
-    ],
+    ...sampleScope(rows.length), days, timeZone: 'UTC' as const, includedCount,
+    hasData: includedCount > 0, dates, labels: dates.map(date => date.slice(5).replace('-', '/')),
+    formatValue: (percent: number) => minorAmount(((maximum * BigInt(Math.round(Math.max(0, Math.min(100, percent)) * 10_000)) + 500_000n) / 1_000_000n).toString(), '').trim(),
+    series: Array.from(currencies).sort(([left], [right]) => left.localeCompare(right)).map(([currency, amounts]) => ({
+      id: currency, label: currency + ' 收入', summary: minorAmount(amounts.reduce((sum, amount) => sum + amount, 0n).toString(), currency),
+      values: amounts.map(amount => maximum ? Number(amount * 1_000_000n / maximum) / 10_000 : 0),
+      displayValues: amounts.map(amount => minorAmount(amount.toString(), currency)),
+    })),
   }
 }
 
@@ -69,11 +67,10 @@ export function orderStatusShare(rows: readonly Order[]) {
   }
 }
 
-/** Decimal GB labels retain all byte precision without coercing raw counters to Number. */
+/** Round decimal GB to two places using exact integer arithmetic. */
 export function gigabytes(value: bigint) {
-  const whole = value / 1_000_000_000n
-  const fraction = (value % 1_000_000_000n).toString().padStart(9, '0').replace(/0+$/, '')
-  return whole.toString() + (fraction ? '.' + fraction : '') + ' GB'
+  const hundredths = (value + 5_000_000n) / 10_000_000n
+  return (hundredths / 100n).toString() + '.' + (hundredths % 100n).toString().padStart(2, '0') + ' GB'
 }
 
 /** One series per node, sharing UTC dates and the same bounded drawing scale. */
