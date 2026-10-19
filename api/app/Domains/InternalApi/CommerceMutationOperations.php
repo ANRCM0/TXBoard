@@ -7,13 +7,14 @@ use App\Domains\Billing\Contracts\OrderCheckout;
 use App\Domains\Billing\Contracts\Recharges;
 use App\Domains\Billing\Contracts\PaymentCheckout;
 use App\Domains\Subscription\Contracts\Purchases;
+use App\Domains\Subscription\Contracts\CouponPurchases;
 use App\Models\User;
 
 final class CommerceMutationOperations
 {
     public function __construct(private readonly Purchases $purchases, private readonly OrderCheckout $checkout,
         private readonly OrderCancellation $cancellation, private readonly Recharges $recharges,
-        private readonly PaymentCheckout $paymentCheckout) {}
+        private readonly PaymentCheckout $paymentCheckout, private readonly CouponPurchases $couponPurchases) {}
 
     /** Provider query may settle money. Reuse the owner, outside a surrounding SQL transaction. */
     public function queryAttempt(User $actor, array $input, string $idempotencyKey): MutationOperationResult
@@ -25,8 +26,10 @@ final class CommerceMutationOperations
     public function purchase(User $actor, array $input, string $idempotencyKey): MutationOperationResult
     {
         try {
-            return new MutationOperationResult($this->purchases->purchase((int) $actor->id,
-                (int) $input['offer_id'], $idempotencyKey)->toArray(), 201);
+            $result = isset($input['coupon_code'])
+                ? $this->couponPurchases->purchaseWithCoupon((int) $actor->id, (int) $input['offer_id'], $input['coupon_code'], $idempotencyKey)
+                : $this->purchases->purchase((int) $actor->id, (int) $input['offer_id'], $idempotencyKey);
+            return new MutationOperationResult($result->toArray(), 201);
         } catch (\App\Domains\Billing\IdempotencyException|\App\Domains\Installation\InstallationAuthorityException $error) {
             throw $error;
         } catch (\DomainException|\RuntimeException) {

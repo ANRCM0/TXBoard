@@ -278,6 +278,22 @@
         },
         "purchase_terms_version": {
           "const": "tx-core.purchase-terms/v2"
+        },
+        "list_amount_minor": {
+          "$ref": "#/definitions/decimal"
+        },
+        "coupon_usage_policy": {
+          "anyOf": [
+            {
+              "const": "retained-on-order-create/v1"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "coupon_discount_minor": {
+          "$ref": "#/definitions/decimal"
         }
       },
       "required": [
@@ -1608,6 +1624,22 @@
         },
         "purchase_terms_version": {
           "const": "tx-core.purchase-terms/v2"
+        },
+        "list_amount_minor": {
+          "$ref": "#/definitions/decimal"
+        },
+        "coupon_usage_policy": {
+          "anyOf": [
+            {
+              "const": "retained-on-order-create/v1"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "coupon_discount_minor": {
+          "$ref": "#/definitions/decimal"
         }
       },
       "required": [
@@ -2388,6 +2420,668 @@
         "occurred_at"
       ],
       "additionalProperties": false
+    },
+    "native-coupon": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "pattern": "^[A-Z0-9][A-Z0-9_-]{7,63}$",
+          "maxLength": 64
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "currency": {
+          "const": "CNY"
+        },
+        "discount_kind": {
+          "enum": [
+            "fixed",
+            "basis_points"
+          ],
+          "type": "string"
+        },
+        "value": {
+          "$ref": "#/definitions/decimal"
+        },
+        "minimum_minor": {
+          "$ref": "#/definitions/decimal"
+        },
+        "total_limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000000000
+        },
+        "user_limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000000000
+        },
+        "starts_at": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 253402300799
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "expires_at": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 253402300799
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "offer_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/id"
+          },
+          "minItems": 0,
+          "maxItems": 256
+        },
+        "id": {
+          "$ref": "#/definitions/id"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "row_version": {
+          "$ref": "#/definitions/id"
+        },
+        "used_total": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000000000
+        },
+        "usage_policy": {
+          "const": "retained-on-order-create/v1"
+        },
+        "created_at": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 253402300799
+        },
+        "updated_at": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 253402300799
+        }
+      },
+      "required": [
+        "code",
+        "name",
+        "currency",
+        "discount_kind",
+        "value",
+        "minimum_minor",
+        "total_limit",
+        "user_limit",
+        "starts_at",
+        "expires_at",
+        "offer_ids",
+        "id",
+        "enabled",
+        "row_version",
+        "used_total",
+        "usage_policy",
+        "created_at",
+        "updated_at"
+      ],
+      "additionalProperties": false
+    },
+    "native-gift-card": {
+      "type": "object",
+      "properties": {
+        "card_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "maxLength": 36
+        },
+        "issuer_id": {
+          "$ref": "#/definitions/id"
+        },
+        "recipient_id": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "amount_minor": {
+          "$ref": "#/definitions/decimal"
+        },
+        "currency": {
+          "const": "CNY"
+        },
+        "state": {
+          "enum": [
+            "reserved",
+            "redeemed",
+            "revoked",
+            "expired"
+          ],
+          "type": "string"
+        },
+        "row_version": {
+          "$ref": "#/definitions/id"
+        },
+        "expires_at": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 253402300799
+        },
+        "created_at": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 253402300799
+        },
+        "closed_at": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 253402300799
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "card_id",
+        "issuer_id",
+        "recipient_id",
+        "amount_minor",
+        "currency",
+        "state",
+        "row_version",
+        "expires_at",
+        "created_at",
+        "closed_at"
+      ],
+      "additionalProperties": false
+    },
+    "native-gift-result": {
+      "type": "object",
+      "properties": {
+        "card_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "maxLength": 36
+        },
+        "issuer_id": {
+          "$ref": "#/definitions/id"
+        },
+        "recipient_id": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "amount_minor": {
+          "$ref": "#/definitions/decimal"
+        },
+        "currency": {
+          "const": "CNY"
+        },
+        "state": {
+          "enum": [
+            "reserved",
+            "redeemed",
+            "revoked",
+            "expired"
+          ],
+          "type": "string"
+        },
+        "row_version": {
+          "$ref": "#/definitions/id"
+        },
+        "expires_at": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 253402300799
+        },
+        "created_at": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 253402300799
+        },
+        "closed_at": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 253402300799
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "code": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^G1-[A-F0-9]{64}$",
+              "maxLength": 67
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "card_id",
+        "issuer_id",
+        "recipient_id",
+        "amount_minor",
+        "currency",
+        "state",
+        "row_version",
+        "expires_at",
+        "created_at",
+        "closed_at",
+        "code"
+      ],
+      "additionalProperties": false
+    },
+    "commission-policy": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "rate_bps": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10000
+        },
+        "hold_seconds": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 7776000
+        },
+        "refund_policy": {
+          "const": "net-before-vesting-retained-after/v1"
+        },
+        "row_version": {
+          "$ref": "#/definitions/decimal"
+        }
+      },
+      "required": [
+        "enabled",
+        "rate_bps",
+        "hold_seconds",
+        "refund_policy",
+        "row_version"
+      ],
+      "additionalProperties": false
+    },
+    "native-referral": {
+      "type": "object",
+      "properties": {
+        "invite_code": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^R1-[A-F0-9]{32}$",
+              "maxLength": 35
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "sponsor_id": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "bound_at": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 253402300799
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "invite_code",
+        "sponsor_id",
+        "bound_at"
+      ],
+      "additionalProperties": false
+    },
+    "commission-reward": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "maxLength": 36
+        },
+        "order_id": {
+          "$ref": "#/definitions/id"
+        },
+        "buyer_id": {
+          "$ref": "#/definitions/id"
+        },
+        "sponsor_id": {
+          "$ref": "#/definitions/id"
+        },
+        "state": {
+          "enum": [
+            "pending",
+            "accrued",
+            "ineligible"
+          ],
+          "type": "string"
+        },
+        "amount_minor": {
+          "$ref": "#/definitions/decimal"
+        },
+        "currency": {
+          "const": "CNY"
+        },
+        "rate_bps": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10000
+        },
+        "refund_policy": {
+          "const": "net-before-vesting-retained-after/v1"
+        },
+        "created_at": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 253402300799
+        },
+        "settled_at": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 253402300799
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "hold_seconds": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 7776000
+        }
+      },
+      "required": [
+        "id",
+        "order_id",
+        "buyer_id",
+        "sponsor_id",
+        "state",
+        "amount_minor",
+        "currency",
+        "rate_bps",
+        "refund_policy",
+        "created_at",
+        "settled_at",
+        "hold_seconds"
+      ],
+      "additionalProperties": false
+    },
+    "commission-payout": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "maxLength": 36
+        },
+        "user_id": {
+          "$ref": "#/definitions/id"
+        },
+        "state": {
+          "enum": [
+            "requested",
+            "approved",
+            "rejected"
+          ],
+          "type": "string"
+        },
+        "row_version": {
+          "$ref": "#/definitions/id"
+        },
+        "amount_minor": {
+          "$ref": "#/definitions/decimal"
+        },
+        "currency": {
+          "const": "CNY"
+        },
+        "destination": {
+          "const": "native-wallet"
+        },
+        "actor_id": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "type": "string",
+              "maxLength": 64
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "created_at": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 253402300799
+        },
+        "closed_at": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 253402300799
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "user_id",
+        "state",
+        "row_version",
+        "amount_minor",
+        "currency",
+        "destination",
+        "actor_id",
+        "reason",
+        "created_at",
+        "closed_at"
+      ],
+      "additionalProperties": false
+    },
+    "native-gift-batch": {
+      "type": "object",
+      "properties": {
+        "batch_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "maxLength": 36
+        },
+        "issuer_id": {
+          "$ref": "#/definitions/id"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "quantity": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 50
+        },
+        "amount_minor": {
+          "$ref": "#/definitions/id"
+        },
+        "total_minor": {
+          "$ref": "#/definitions/id"
+        },
+        "currency": {
+          "const": "CNY"
+        },
+        "expires_at": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 253402300799
+        },
+        "created_at": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 253402300799
+        }
+      },
+      "required": [
+        "batch_id",
+        "issuer_id",
+        "label",
+        "quantity",
+        "amount_minor",
+        "total_minor",
+        "currency",
+        "expires_at",
+        "created_at"
+      ],
+      "additionalProperties": false
+    },
+    "native-gift-issued-card": {
+      "type": "object",
+      "properties": {
+        "card_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "maxLength": 36
+        },
+        "issuer_id": {
+          "$ref": "#/definitions/id"
+        },
+        "recipient_id": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "amount_minor": {
+          "$ref": "#/definitions/decimal"
+        },
+        "currency": {
+          "const": "CNY"
+        },
+        "state": {
+          "enum": [
+            "reserved",
+            "redeemed",
+            "revoked",
+            "expired"
+          ],
+          "type": "string"
+        },
+        "row_version": {
+          "$ref": "#/definitions/id"
+        },
+        "expires_at": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 253402300799
+        },
+        "created_at": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 253402300799
+        },
+        "closed_at": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 253402300799
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "code": {
+          "type": "string",
+          "pattern": "^G1-[A-F0-9]{64}$",
+          "maxLength": 67
+        }
+      },
+      "required": [
+        "card_id",
+        "issuer_id",
+        "recipient_id",
+        "amount_minor",
+        "currency",
+        "state",
+        "row_version",
+        "expires_at",
+        "created_at",
+        "closed_at",
+        "code"
+      ],
+      "additionalProperties": false
     }
   },
   "operations": {
@@ -2445,6 +3139,11 @@
             "type": "string",
             "pattern": "^[1-9][0-9]{0,18}$",
             "x-decimal-maximum": "9223372036854775807"
+          },
+          "coupon_code": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{7,63}$",
+            "maxLength": 64
           }
         },
         "required": [
@@ -14080,6 +14779,2070 @@
         "required": [],
         "additionalProperties": false
       }
+    },
+    "billing.coupons.list": {
+      "version": 1,
+      "domains": [
+        "admin"
+      ],
+      "actor": "admin",
+      "permission": "billing.coupons.read",
+      "idempotency": "read",
+      "consistency": "current-owner-view",
+      "input": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100000
+          },
+          "per_page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "array",
+        "items": {
+          "$ref": "#/definitions/native-coupon"
+        },
+        "maxItems": 50
+      },
+      "meta": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "per_page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "last_page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "page",
+          "per_page",
+          "total",
+          "last_page"
+        ],
+        "additionalProperties": false
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS",
+        "CONTENT_INPUT_INVALID",
+        "CONTENT_QUERY_INVALID",
+        "CONTENT_KEY_INVALID",
+        "COUPON_INPUT_INVALID",
+        "COUPON_UNAVAILABLE",
+        "COUPON_CODE_CONFLICT",
+        "COUPON_USAGE_EXHAUSTED",
+        "COUPON_VERSION_CONFLICT",
+        "COUPON_IDEMPOTENCY_CONFLICT"
+      ]
+    },
+    "billing.coupons.get": {
+      "version": 1,
+      "domains": [
+        "admin"
+      ],
+      "actor": "admin",
+      "permission": "billing.coupons.read",
+      "idempotency": "read",
+      "consistency": "current-owner-view",
+      "input": {
+        "type": "object",
+        "properties": {
+          "coupon_id": {
+            "$ref": "#/definitions/id"
+          }
+        },
+        "required": [
+          "coupon_id"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "$ref": "#/definitions/native-coupon"
+      },
+      "meta": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS",
+        "CONTENT_INPUT_INVALID",
+        "CONTENT_QUERY_INVALID",
+        "CONTENT_KEY_INVALID",
+        "COUPON_INPUT_INVALID",
+        "COUPON_UNAVAILABLE",
+        "COUPON_CODE_CONFLICT",
+        "COUPON_USAGE_EXHAUSTED",
+        "COUPON_VERSION_CONFLICT",
+        "COUPON_IDEMPOTENCY_CONFLICT"
+      ]
+    },
+    "billing.coupons.create": {
+      "version": 1,
+      "domains": [
+        "admin"
+      ],
+      "actor": "admin",
+      "permission": "billing.coupons.manage",
+      "idempotency": "domain",
+      "consistency": "owner-transaction",
+      "input": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "pattern": "^[A-Z0-9][A-Z0-9_-]{7,63}$",
+            "maxLength": 64
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "currency": {
+            "const": "CNY"
+          },
+          "discount_kind": {
+            "enum": [
+              "fixed",
+              "basis_points"
+            ],
+            "type": "string"
+          },
+          "value": {
+            "$ref": "#/definitions/decimal"
+          },
+          "minimum_minor": {
+            "$ref": "#/definitions/decimal"
+          },
+          "total_limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1000000000
+          },
+          "user_limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1000000000
+          },
+          "starts_at": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 253402300799
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 253402300799
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "offer_ids": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/id"
+            },
+            "minItems": 0,
+            "maxItems": 256
+          }
+        },
+        "required": [
+          "code",
+          "name",
+          "currency",
+          "discount_kind",
+          "value",
+          "minimum_minor",
+          "total_limit",
+          "user_limit",
+          "starts_at",
+          "expires_at",
+          "offer_ids"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/definitions/id"
+          },
+          "row_version": {
+            "$ref": "#/definitions/id"
+          },
+          "enabled": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "row_version",
+          "enabled"
+        ],
+        "additionalProperties": false
+      },
+      "meta": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS",
+        "CONTENT_INPUT_INVALID",
+        "CONTENT_QUERY_INVALID",
+        "CONTENT_KEY_INVALID",
+        "COUPON_INPUT_INVALID",
+        "COUPON_UNAVAILABLE",
+        "COUPON_CODE_CONFLICT",
+        "COUPON_USAGE_EXHAUSTED",
+        "COUPON_VERSION_CONFLICT",
+        "COUPON_IDEMPOTENCY_CONFLICT"
+      ]
+    },
+    "billing.coupons.disable": {
+      "version": 1,
+      "domains": [
+        "admin"
+      ],
+      "actor": "admin",
+      "permission": "billing.coupons.manage",
+      "idempotency": "domain",
+      "consistency": "owner-transaction",
+      "input": {
+        "type": "object",
+        "properties": {
+          "coupon_id": {
+            "$ref": "#/definitions/id"
+          },
+          "expected_version": {
+            "$ref": "#/definitions/id"
+          }
+        },
+        "required": [
+          "coupon_id",
+          "expected_version"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/definitions/id"
+          },
+          "row_version": {
+            "$ref": "#/definitions/id"
+          },
+          "enabled": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "row_version",
+          "enabled"
+        ],
+        "additionalProperties": false
+      },
+      "meta": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS",
+        "CONTENT_INPUT_INVALID",
+        "CONTENT_QUERY_INVALID",
+        "CONTENT_KEY_INVALID",
+        "COUPON_INPUT_INVALID",
+        "COUPON_UNAVAILABLE",
+        "COUPON_CODE_CONFLICT",
+        "COUPON_USAGE_EXHAUSTED",
+        "COUPON_VERSION_CONFLICT",
+        "COUPON_IDEMPOTENCY_CONFLICT"
+      ]
+    },
+    "billing.gift-cards.list": {
+      "version": 1,
+      "domains": [
+        "user"
+      ],
+      "actor": "user",
+      "permission": null,
+      "idempotency": "read",
+      "consistency": "current-owner-view",
+      "input": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100000
+          },
+          "per_page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "array",
+        "items": {
+          "$ref": "#/definitions/native-gift-card"
+        },
+        "maxItems": 50
+      },
+      "meta": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "per_page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "last_page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "page",
+          "per_page",
+          "total",
+          "last_page"
+        ],
+        "additionalProperties": false
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS",
+        "GIFT_CARD_INPUT_INVALID",
+        "GIFT_CARD_UNAVAILABLE",
+        "GIFT_CARD_IDEMPOTENCY_CONFLICT",
+        "GIFT_CARD_VERSION_CONFLICT",
+        "GIFT_CARD_EXPIRED",
+        "GIFT_CARD_EXPIRY_INVALID",
+        "GIFT_CARD_SELF_REDEEM",
+        "BILLING_INSUFFICIENT_FUNDS"
+      ]
+    },
+    "billing.gift-cards.issue": {
+      "version": 1,
+      "domains": [
+        "user"
+      ],
+      "actor": "user",
+      "permission": null,
+      "idempotency": "domain",
+      "consistency": "owner-transaction",
+      "input": {
+        "type": "object",
+        "properties": {
+          "currency": {
+            "const": "CNY"
+          },
+          "amount_minor": {
+            "$ref": "#/definitions/decimal"
+          },
+          "expires_at": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 253402300799
+          }
+        },
+        "required": [
+          "currency",
+          "amount_minor",
+          "expires_at"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "$ref": "#/definitions/native-gift-result"
+      },
+      "meta": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS",
+        "GIFT_CARD_INPUT_INVALID",
+        "GIFT_CARD_UNAVAILABLE",
+        "GIFT_CARD_IDEMPOTENCY_CONFLICT",
+        "GIFT_CARD_VERSION_CONFLICT",
+        "GIFT_CARD_EXPIRED",
+        "GIFT_CARD_EXPIRY_INVALID",
+        "GIFT_CARD_SELF_REDEEM",
+        "BILLING_INSUFFICIENT_FUNDS"
+      ]
+    },
+    "billing.gift-cards.redeem": {
+      "version": 1,
+      "domains": [
+        "user"
+      ],
+      "actor": "user",
+      "permission": null,
+      "idempotency": "domain",
+      "consistency": "owner-transaction",
+      "input": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "pattern": "^G1-[A-F0-9]{64}$",
+            "maxLength": 67
+          }
+        },
+        "required": [
+          "code"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "$ref": "#/definitions/native-gift-result"
+      },
+      "meta": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS",
+        "GIFT_CARD_INPUT_INVALID",
+        "GIFT_CARD_UNAVAILABLE",
+        "GIFT_CARD_IDEMPOTENCY_CONFLICT",
+        "GIFT_CARD_VERSION_CONFLICT",
+        "GIFT_CARD_EXPIRED",
+        "GIFT_CARD_EXPIRY_INVALID",
+        "GIFT_CARD_SELF_REDEEM",
+        "BILLING_INSUFFICIENT_FUNDS"
+      ]
+    },
+    "billing.gift-cards.revoke": {
+      "version": 1,
+      "domains": [
+        "user"
+      ],
+      "actor": "user",
+      "permission": null,
+      "idempotency": "domain",
+      "consistency": "owner-transaction",
+      "input": {
+        "type": "object",
+        "properties": {
+          "card_id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+            "maxLength": 36
+          },
+          "expected_version": {
+            "$ref": "#/definitions/id"
+          }
+        },
+        "required": [
+          "card_id",
+          "expected_version"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "$ref": "#/definitions/native-gift-result"
+      },
+      "meta": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS",
+        "GIFT_CARD_INPUT_INVALID",
+        "GIFT_CARD_UNAVAILABLE",
+        "GIFT_CARD_IDEMPOTENCY_CONFLICT",
+        "GIFT_CARD_VERSION_CONFLICT",
+        "GIFT_CARD_EXPIRED",
+        "GIFT_CARD_EXPIRY_INVALID",
+        "GIFT_CARD_SELF_REDEEM",
+        "BILLING_INSUFFICIENT_FUNDS"
+      ]
+    },
+    "billing.admin-gift-cards.list": {
+      "version": 1,
+      "domains": [
+        "admin"
+      ],
+      "actor": "admin",
+      "permission": "billing.gift-cards.read",
+      "idempotency": "read",
+      "consistency": "current-owner-view",
+      "input": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100000
+          },
+          "per_page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "array",
+        "items": {
+          "$ref": "#/definitions/native-gift-card"
+        },
+        "maxItems": 50
+      },
+      "meta": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "per_page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "last_page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "page",
+          "per_page",
+          "total",
+          "last_page"
+        ],
+        "additionalProperties": false
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS",
+        "GIFT_CARD_INPUT_INVALID",
+        "GIFT_CARD_UNAVAILABLE",
+        "GIFT_CARD_IDEMPOTENCY_CONFLICT",
+        "GIFT_CARD_VERSION_CONFLICT",
+        "GIFT_CARD_EXPIRED",
+        "GIFT_CARD_EXPIRY_INVALID",
+        "GIFT_CARD_SELF_REDEEM",
+        "BILLING_INSUFFICIENT_FUNDS"
+      ]
+    },
+    "billing.admin-gift-cards.revoke": {
+      "version": 1,
+      "domains": [
+        "admin"
+      ],
+      "actor": "admin",
+      "permission": "billing.gift-cards.manage",
+      "idempotency": "domain",
+      "consistency": "owner-transaction",
+      "input": {
+        "type": "object",
+        "properties": {
+          "card_id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+            "maxLength": 36
+          },
+          "expected_version": {
+            "$ref": "#/definitions/id"
+          }
+        },
+        "required": [
+          "card_id",
+          "expected_version"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "$ref": "#/definitions/native-gift-result"
+      },
+      "meta": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS",
+        "GIFT_CARD_INPUT_INVALID",
+        "GIFT_CARD_UNAVAILABLE",
+        "GIFT_CARD_IDEMPOTENCY_CONFLICT",
+        "GIFT_CARD_VERSION_CONFLICT",
+        "GIFT_CARD_EXPIRED",
+        "GIFT_CARD_EXPIRY_INVALID",
+        "GIFT_CARD_SELF_REDEEM",
+        "BILLING_INSUFFICIENT_FUNDS"
+      ]
+    },
+    "identity.referrals.get": {
+      "version": 1,
+      "domains": [
+        "user"
+      ],
+      "actor": "user",
+      "permission": null,
+      "idempotency": "read",
+      "consistency": "current-owner-view",
+      "input": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "output": {
+        "$ref": "#/definitions/native-referral"
+      },
+      "meta": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS",
+        "GIFT_CARD_INPUT_INVALID",
+        "GIFT_CARD_UNAVAILABLE",
+        "GIFT_CARD_IDEMPOTENCY_CONFLICT",
+        "GIFT_CARD_VERSION_CONFLICT",
+        "GIFT_CARD_EXPIRED",
+        "GIFT_CARD_EXPIRY_INVALID",
+        "GIFT_CARD_SELF_REDEEM",
+        "BILLING_INSUFFICIENT_FUNDS",
+        "REFERRAL_INPUT_INVALID",
+        "REFERRAL_UNAVAILABLE",
+        "REFERRAL_ALREADY_BOUND",
+        "COMMISSION_INPUT_INVALID",
+        "COMMISSION_VERSION_CONFLICT",
+        "COMMISSION_IDEMPOTENCY_CONFLICT",
+        "COMMISSION_PAYOUT_MISSING"
+      ]
+    },
+    "identity.referrals.code.create": {
+      "version": 1,
+      "domains": [
+        "user"
+      ],
+      "actor": "user",
+      "permission": null,
+      "idempotency": "domain",
+      "consistency": "owner-transaction",
+      "input": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "output": {
+        "$ref": "#/definitions/native-referral"
+      },
+      "meta": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS",
+        "GIFT_CARD_INPUT_INVALID",
+        "GIFT_CARD_UNAVAILABLE",
+        "GIFT_CARD_IDEMPOTENCY_CONFLICT",
+        "GIFT_CARD_VERSION_CONFLICT",
+        "GIFT_CARD_EXPIRED",
+        "GIFT_CARD_EXPIRY_INVALID",
+        "GIFT_CARD_SELF_REDEEM",
+        "BILLING_INSUFFICIENT_FUNDS",
+        "REFERRAL_INPUT_INVALID",
+        "REFERRAL_UNAVAILABLE",
+        "REFERRAL_ALREADY_BOUND",
+        "COMMISSION_INPUT_INVALID",
+        "COMMISSION_VERSION_CONFLICT",
+        "COMMISSION_IDEMPOTENCY_CONFLICT",
+        "COMMISSION_PAYOUT_MISSING"
+      ]
+    },
+    "identity.referrals.bind": {
+      "version": 1,
+      "domains": [
+        "user"
+      ],
+      "actor": "user",
+      "permission": null,
+      "idempotency": "domain",
+      "consistency": "owner-transaction",
+      "input": {
+        "type": "object",
+        "properties": {
+          "invite_code": {
+            "type": "string",
+            "pattern": "^R1-[A-F0-9]{32}$",
+            "maxLength": 35
+          }
+        },
+        "required": [
+          "invite_code"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "$ref": "#/definitions/native-referral"
+      },
+      "meta": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS",
+        "GIFT_CARD_INPUT_INVALID",
+        "GIFT_CARD_UNAVAILABLE",
+        "GIFT_CARD_IDEMPOTENCY_CONFLICT",
+        "GIFT_CARD_VERSION_CONFLICT",
+        "GIFT_CARD_EXPIRED",
+        "GIFT_CARD_EXPIRY_INVALID",
+        "GIFT_CARD_SELF_REDEEM",
+        "BILLING_INSUFFICIENT_FUNDS",
+        "REFERRAL_INPUT_INVALID",
+        "REFERRAL_UNAVAILABLE",
+        "REFERRAL_ALREADY_BOUND",
+        "COMMISSION_INPUT_INVALID",
+        "COMMISSION_VERSION_CONFLICT",
+        "COMMISSION_IDEMPOTENCY_CONFLICT",
+        "COMMISSION_PAYOUT_MISSING"
+      ]
+    },
+    "billing.commissions.balance.get": {
+      "version": 1,
+      "domains": [
+        "user"
+      ],
+      "actor": "user",
+      "permission": null,
+      "idempotency": "read",
+      "consistency": "current-owner-view",
+      "input": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "available_minor": {
+            "$ref": "#/definitions/decimal"
+          },
+          "reserved_minor": {
+            "$ref": "#/definitions/decimal"
+          },
+          "currency": {
+            "const": "CNY"
+          }
+        },
+        "required": [
+          "available_minor",
+          "reserved_minor",
+          "currency"
+        ],
+        "additionalProperties": false
+      },
+      "meta": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS",
+        "GIFT_CARD_INPUT_INVALID",
+        "GIFT_CARD_UNAVAILABLE",
+        "GIFT_CARD_IDEMPOTENCY_CONFLICT",
+        "GIFT_CARD_VERSION_CONFLICT",
+        "GIFT_CARD_EXPIRED",
+        "GIFT_CARD_EXPIRY_INVALID",
+        "GIFT_CARD_SELF_REDEEM",
+        "BILLING_INSUFFICIENT_FUNDS",
+        "REFERRAL_INPUT_INVALID",
+        "REFERRAL_UNAVAILABLE",
+        "REFERRAL_ALREADY_BOUND",
+        "COMMISSION_INPUT_INVALID",
+        "COMMISSION_VERSION_CONFLICT",
+        "COMMISSION_IDEMPOTENCY_CONFLICT",
+        "COMMISSION_PAYOUT_MISSING"
+      ]
+    },
+    "billing.commissions.policy.get": {
+      "version": 1,
+      "domains": [
+        "user"
+      ],
+      "actor": "user",
+      "permission": null,
+      "idempotency": "read",
+      "consistency": "current-owner-view",
+      "input": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "output": {
+        "$ref": "#/definitions/commission-policy"
+      },
+      "meta": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS",
+        "GIFT_CARD_INPUT_INVALID",
+        "GIFT_CARD_UNAVAILABLE",
+        "GIFT_CARD_IDEMPOTENCY_CONFLICT",
+        "GIFT_CARD_VERSION_CONFLICT",
+        "GIFT_CARD_EXPIRED",
+        "GIFT_CARD_EXPIRY_INVALID",
+        "GIFT_CARD_SELF_REDEEM",
+        "BILLING_INSUFFICIENT_FUNDS",
+        "REFERRAL_INPUT_INVALID",
+        "REFERRAL_UNAVAILABLE",
+        "REFERRAL_ALREADY_BOUND",
+        "COMMISSION_INPUT_INVALID",
+        "COMMISSION_VERSION_CONFLICT",
+        "COMMISSION_IDEMPOTENCY_CONFLICT",
+        "COMMISSION_PAYOUT_MISSING"
+      ]
+    },
+    "billing.commissions.rewards.list": {
+      "version": 1,
+      "domains": [
+        "user"
+      ],
+      "actor": "user",
+      "permission": null,
+      "idempotency": "read",
+      "consistency": "current-owner-view",
+      "input": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100000
+          },
+          "per_page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "array",
+        "items": {
+          "$ref": "#/definitions/commission-reward"
+        },
+        "maxItems": 50
+      },
+      "meta": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "per_page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "last_page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "page",
+          "per_page",
+          "total",
+          "last_page"
+        ],
+        "additionalProperties": false
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS",
+        "GIFT_CARD_INPUT_INVALID",
+        "GIFT_CARD_UNAVAILABLE",
+        "GIFT_CARD_IDEMPOTENCY_CONFLICT",
+        "GIFT_CARD_VERSION_CONFLICT",
+        "GIFT_CARD_EXPIRED",
+        "GIFT_CARD_EXPIRY_INVALID",
+        "GIFT_CARD_SELF_REDEEM",
+        "BILLING_INSUFFICIENT_FUNDS",
+        "REFERRAL_INPUT_INVALID",
+        "REFERRAL_UNAVAILABLE",
+        "REFERRAL_ALREADY_BOUND",
+        "COMMISSION_INPUT_INVALID",
+        "COMMISSION_VERSION_CONFLICT",
+        "COMMISSION_IDEMPOTENCY_CONFLICT",
+        "COMMISSION_PAYOUT_MISSING"
+      ]
+    },
+    "billing.commissions.payouts.list": {
+      "version": 1,
+      "domains": [
+        "user"
+      ],
+      "actor": "user",
+      "permission": null,
+      "idempotency": "read",
+      "consistency": "current-owner-view",
+      "input": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100000
+          },
+          "per_page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "array",
+        "items": {
+          "$ref": "#/definitions/commission-payout"
+        },
+        "maxItems": 50
+      },
+      "meta": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "per_page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "last_page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "page",
+          "per_page",
+          "total",
+          "last_page"
+        ],
+        "additionalProperties": false
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS",
+        "GIFT_CARD_INPUT_INVALID",
+        "GIFT_CARD_UNAVAILABLE",
+        "GIFT_CARD_IDEMPOTENCY_CONFLICT",
+        "GIFT_CARD_VERSION_CONFLICT",
+        "GIFT_CARD_EXPIRED",
+        "GIFT_CARD_EXPIRY_INVALID",
+        "GIFT_CARD_SELF_REDEEM",
+        "BILLING_INSUFFICIENT_FUNDS",
+        "REFERRAL_INPUT_INVALID",
+        "REFERRAL_UNAVAILABLE",
+        "REFERRAL_ALREADY_BOUND",
+        "COMMISSION_INPUT_INVALID",
+        "COMMISSION_VERSION_CONFLICT",
+        "COMMISSION_IDEMPOTENCY_CONFLICT",
+        "COMMISSION_PAYOUT_MISSING"
+      ]
+    },
+    "billing.admin-commissions.policy.get": {
+      "version": 1,
+      "domains": [
+        "admin"
+      ],
+      "actor": "admin",
+      "permission": "billing.commissions.read",
+      "idempotency": "read",
+      "consistency": "current-owner-view",
+      "input": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "output": {
+        "$ref": "#/definitions/commission-policy"
+      },
+      "meta": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS",
+        "GIFT_CARD_INPUT_INVALID",
+        "GIFT_CARD_UNAVAILABLE",
+        "GIFT_CARD_IDEMPOTENCY_CONFLICT",
+        "GIFT_CARD_VERSION_CONFLICT",
+        "GIFT_CARD_EXPIRED",
+        "GIFT_CARD_EXPIRY_INVALID",
+        "GIFT_CARD_SELF_REDEEM",
+        "BILLING_INSUFFICIENT_FUNDS",
+        "REFERRAL_INPUT_INVALID",
+        "REFERRAL_UNAVAILABLE",
+        "REFERRAL_ALREADY_BOUND",
+        "COMMISSION_INPUT_INVALID",
+        "COMMISSION_VERSION_CONFLICT",
+        "COMMISSION_IDEMPOTENCY_CONFLICT",
+        "COMMISSION_PAYOUT_MISSING"
+      ]
+    },
+    "billing.admin-commissions.rewards.list": {
+      "version": 1,
+      "domains": [
+        "admin"
+      ],
+      "actor": "admin",
+      "permission": "billing.commissions.read",
+      "idempotency": "read",
+      "consistency": "current-owner-view",
+      "input": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100000
+          },
+          "per_page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "array",
+        "items": {
+          "$ref": "#/definitions/commission-reward"
+        },
+        "maxItems": 50
+      },
+      "meta": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "per_page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "last_page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "page",
+          "per_page",
+          "total",
+          "last_page"
+        ],
+        "additionalProperties": false
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS",
+        "GIFT_CARD_INPUT_INVALID",
+        "GIFT_CARD_UNAVAILABLE",
+        "GIFT_CARD_IDEMPOTENCY_CONFLICT",
+        "GIFT_CARD_VERSION_CONFLICT",
+        "GIFT_CARD_EXPIRED",
+        "GIFT_CARD_EXPIRY_INVALID",
+        "GIFT_CARD_SELF_REDEEM",
+        "BILLING_INSUFFICIENT_FUNDS",
+        "REFERRAL_INPUT_INVALID",
+        "REFERRAL_UNAVAILABLE",
+        "REFERRAL_ALREADY_BOUND",
+        "COMMISSION_INPUT_INVALID",
+        "COMMISSION_VERSION_CONFLICT",
+        "COMMISSION_IDEMPOTENCY_CONFLICT",
+        "COMMISSION_PAYOUT_MISSING"
+      ]
+    },
+    "billing.admin-commissions.payouts.list": {
+      "version": 1,
+      "domains": [
+        "admin"
+      ],
+      "actor": "admin",
+      "permission": "billing.commissions.read",
+      "idempotency": "read",
+      "consistency": "current-owner-view",
+      "input": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100000
+          },
+          "per_page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "array",
+        "items": {
+          "$ref": "#/definitions/commission-payout"
+        },
+        "maxItems": 50
+      },
+      "meta": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "per_page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "last_page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "page",
+          "per_page",
+          "total",
+          "last_page"
+        ],
+        "additionalProperties": false
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS",
+        "GIFT_CARD_INPUT_INVALID",
+        "GIFT_CARD_UNAVAILABLE",
+        "GIFT_CARD_IDEMPOTENCY_CONFLICT",
+        "GIFT_CARD_VERSION_CONFLICT",
+        "GIFT_CARD_EXPIRED",
+        "GIFT_CARD_EXPIRY_INVALID",
+        "GIFT_CARD_SELF_REDEEM",
+        "BILLING_INSUFFICIENT_FUNDS",
+        "REFERRAL_INPUT_INVALID",
+        "REFERRAL_UNAVAILABLE",
+        "REFERRAL_ALREADY_BOUND",
+        "COMMISSION_INPUT_INVALID",
+        "COMMISSION_VERSION_CONFLICT",
+        "COMMISSION_IDEMPOTENCY_CONFLICT",
+        "COMMISSION_PAYOUT_MISSING"
+      ]
+    },
+    "billing.commissions.payouts.request": {
+      "version": 1,
+      "domains": [
+        "user"
+      ],
+      "actor": "user",
+      "permission": null,
+      "idempotency": "domain",
+      "consistency": "owner-transaction",
+      "input": {
+        "type": "object",
+        "properties": {
+          "amount_minor": {
+            "$ref": "#/definitions/decimal",
+            "x-decimal-maximum": "2147483647"
+          },
+          "currency": {
+            "const": "CNY"
+          }
+        },
+        "required": [
+          "amount_minor",
+          "currency"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "$ref": "#/definitions/commission-payout"
+      },
+      "meta": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS",
+        "GIFT_CARD_INPUT_INVALID",
+        "GIFT_CARD_UNAVAILABLE",
+        "GIFT_CARD_IDEMPOTENCY_CONFLICT",
+        "GIFT_CARD_VERSION_CONFLICT",
+        "GIFT_CARD_EXPIRED",
+        "GIFT_CARD_EXPIRY_INVALID",
+        "GIFT_CARD_SELF_REDEEM",
+        "BILLING_INSUFFICIENT_FUNDS",
+        "REFERRAL_INPUT_INVALID",
+        "REFERRAL_UNAVAILABLE",
+        "REFERRAL_ALREADY_BOUND",
+        "COMMISSION_INPUT_INVALID",
+        "COMMISSION_VERSION_CONFLICT",
+        "COMMISSION_IDEMPOTENCY_CONFLICT",
+        "COMMISSION_PAYOUT_MISSING"
+      ]
+    },
+    "billing.admin-commissions.policy.update": {
+      "version": 1,
+      "domains": [
+        "admin"
+      ],
+      "actor": "admin",
+      "permission": "billing.commissions.manage",
+      "idempotency": "domain",
+      "consistency": "owner-transaction",
+      "input": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "rate_bps": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10000
+          },
+          "hold_seconds": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 7776000
+          },
+          "refund_policy": {
+            "const": "net-before-vesting-retained-after/v1"
+          },
+          "expected_version": {
+            "$ref": "#/definitions/decimal"
+          }
+        },
+        "required": [
+          "enabled",
+          "rate_bps",
+          "hold_seconds",
+          "refund_policy",
+          "expected_version"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "$ref": "#/definitions/commission-policy"
+      },
+      "meta": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS",
+        "GIFT_CARD_INPUT_INVALID",
+        "GIFT_CARD_UNAVAILABLE",
+        "GIFT_CARD_IDEMPOTENCY_CONFLICT",
+        "GIFT_CARD_VERSION_CONFLICT",
+        "GIFT_CARD_EXPIRED",
+        "GIFT_CARD_EXPIRY_INVALID",
+        "GIFT_CARD_SELF_REDEEM",
+        "BILLING_INSUFFICIENT_FUNDS",
+        "REFERRAL_INPUT_INVALID",
+        "REFERRAL_UNAVAILABLE",
+        "REFERRAL_ALREADY_BOUND",
+        "COMMISSION_INPUT_INVALID",
+        "COMMISSION_VERSION_CONFLICT",
+        "COMMISSION_IDEMPOTENCY_CONFLICT",
+        "COMMISSION_PAYOUT_MISSING"
+      ]
+    },
+    "billing.admin-commissions.payouts.approve": {
+      "version": 1,
+      "domains": [
+        "admin"
+      ],
+      "actor": "admin",
+      "permission": "billing.commissions.manage",
+      "idempotency": "domain",
+      "consistency": "owner-transaction",
+      "input": {
+        "type": "object",
+        "properties": {
+          "payout_id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+            "maxLength": 36
+          },
+          "expected_version": {
+            "$ref": "#/definitions/id"
+          },
+          "reason": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,63}$",
+            "maxLength": 64
+          }
+        },
+        "required": [
+          "payout_id",
+          "expected_version",
+          "reason"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "$ref": "#/definitions/commission-payout"
+      },
+      "meta": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS",
+        "GIFT_CARD_INPUT_INVALID",
+        "GIFT_CARD_UNAVAILABLE",
+        "GIFT_CARD_IDEMPOTENCY_CONFLICT",
+        "GIFT_CARD_VERSION_CONFLICT",
+        "GIFT_CARD_EXPIRED",
+        "GIFT_CARD_EXPIRY_INVALID",
+        "GIFT_CARD_SELF_REDEEM",
+        "BILLING_INSUFFICIENT_FUNDS",
+        "REFERRAL_INPUT_INVALID",
+        "REFERRAL_UNAVAILABLE",
+        "REFERRAL_ALREADY_BOUND",
+        "COMMISSION_INPUT_INVALID",
+        "COMMISSION_VERSION_CONFLICT",
+        "COMMISSION_IDEMPOTENCY_CONFLICT",
+        "COMMISSION_PAYOUT_MISSING"
+      ]
+    },
+    "billing.admin-commissions.payouts.reject": {
+      "version": 1,
+      "domains": [
+        "admin"
+      ],
+      "actor": "admin",
+      "permission": "billing.commissions.manage",
+      "idempotency": "domain",
+      "consistency": "owner-transaction",
+      "input": {
+        "type": "object",
+        "properties": {
+          "payout_id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+            "maxLength": 36
+          },
+          "expected_version": {
+            "$ref": "#/definitions/id"
+          },
+          "reason": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,63}$",
+            "maxLength": 64
+          }
+        },
+        "required": [
+          "payout_id",
+          "expected_version",
+          "reason"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "$ref": "#/definitions/commission-payout"
+      },
+      "meta": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS",
+        "GIFT_CARD_INPUT_INVALID",
+        "GIFT_CARD_UNAVAILABLE",
+        "GIFT_CARD_IDEMPOTENCY_CONFLICT",
+        "GIFT_CARD_VERSION_CONFLICT",
+        "GIFT_CARD_EXPIRED",
+        "GIFT_CARD_EXPIRY_INVALID",
+        "GIFT_CARD_SELF_REDEEM",
+        "BILLING_INSUFFICIENT_FUNDS",
+        "REFERRAL_INPUT_INVALID",
+        "REFERRAL_UNAVAILABLE",
+        "REFERRAL_ALREADY_BOUND",
+        "COMMISSION_INPUT_INVALID",
+        "COMMISSION_VERSION_CONFLICT",
+        "COMMISSION_IDEMPOTENCY_CONFLICT",
+        "COMMISSION_PAYOUT_MISSING"
+      ]
+    },
+    "billing.gift-batches.list": {
+      "version": 1,
+      "domains": [
+        "user"
+      ],
+      "actor": "user",
+      "permission": null,
+      "idempotency": "read",
+      "consistency": "current-owner-view",
+      "input": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100000
+          },
+          "per_page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "array",
+        "items": {
+          "$ref": "#/definitions/native-gift-batch"
+        },
+        "maxItems": 50
+      },
+      "meta": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "per_page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "last_page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "page",
+          "per_page",
+          "total",
+          "last_page"
+        ],
+        "additionalProperties": false
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS",
+        "GIFT_CARD_INPUT_INVALID",
+        "GIFT_CARD_UNAVAILABLE",
+        "GIFT_CARD_IDEMPOTENCY_CONFLICT",
+        "GIFT_CARD_VERSION_CONFLICT",
+        "GIFT_CARD_EXPIRED",
+        "GIFT_CARD_EXPIRY_INVALID",
+        "GIFT_CARD_SELF_REDEEM",
+        "BILLING_INSUFFICIENT_FUNDS"
+      ]
+    },
+    "billing.gift-batches.get": {
+      "version": 1,
+      "domains": [
+        "user"
+      ],
+      "actor": "user",
+      "permission": null,
+      "idempotency": "read",
+      "consistency": "current-owner-view",
+      "input": {
+        "type": "object",
+        "properties": {
+          "batch_id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+            "maxLength": 36
+          }
+        },
+        "required": [
+          "batch_id"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "batch": {
+            "$ref": "#/definitions/native-gift-batch"
+          },
+          "cards": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/native-gift-card"
+            },
+            "minItems": 1,
+            "maxItems": 50
+          }
+        },
+        "required": [
+          "batch",
+          "cards"
+        ],
+        "additionalProperties": false
+      },
+      "meta": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS",
+        "GIFT_CARD_INPUT_INVALID",
+        "GIFT_CARD_UNAVAILABLE",
+        "GIFT_CARD_IDEMPOTENCY_CONFLICT",
+        "GIFT_CARD_VERSION_CONFLICT",
+        "GIFT_CARD_EXPIRED",
+        "GIFT_CARD_EXPIRY_INVALID",
+        "GIFT_CARD_SELF_REDEEM",
+        "BILLING_INSUFFICIENT_FUNDS"
+      ]
+    },
+    "billing.gift-batches.issue": {
+      "version": 1,
+      "domains": [
+        "user"
+      ],
+      "actor": "user",
+      "permission": null,
+      "idempotency": "domain",
+      "consistency": "owner-transaction",
+      "input": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "amount_minor": {
+            "$ref": "#/definitions/id"
+          },
+          "currency": {
+            "const": "CNY"
+          },
+          "quantity": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50
+          },
+          "expires_at": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 253402300799
+          }
+        },
+        "required": [
+          "label",
+          "amount_minor",
+          "currency",
+          "quantity",
+          "expires_at"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "batch": {
+            "$ref": "#/definitions/native-gift-batch"
+          },
+          "cards": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/native-gift-issued-card"
+            },
+            "minItems": 1,
+            "maxItems": 50
+          }
+        },
+        "required": [
+          "batch",
+          "cards"
+        ],
+        "additionalProperties": false
+      },
+      "meta": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS",
+        "GIFT_CARD_INPUT_INVALID",
+        "GIFT_CARD_UNAVAILABLE",
+        "GIFT_CARD_IDEMPOTENCY_CONFLICT",
+        "GIFT_CARD_VERSION_CONFLICT",
+        "GIFT_CARD_EXPIRED",
+        "GIFT_CARD_EXPIRY_INVALID",
+        "GIFT_CARD_SELF_REDEEM",
+        "BILLING_INSUFFICIENT_FUNDS"
+      ]
+    },
+    "billing.admin-gift-batches.list": {
+      "version": 1,
+      "domains": [
+        "admin"
+      ],
+      "actor": "admin",
+      "permission": "billing.gift-cards.read",
+      "idempotency": "read",
+      "consistency": "current-owner-view",
+      "input": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100000
+          },
+          "per_page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "array",
+        "items": {
+          "$ref": "#/definitions/native-gift-batch"
+        },
+        "maxItems": 50
+      },
+      "meta": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "per_page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "last_page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "page",
+          "per_page",
+          "total",
+          "last_page"
+        ],
+        "additionalProperties": false
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS",
+        "GIFT_CARD_INPUT_INVALID",
+        "GIFT_CARD_UNAVAILABLE",
+        "GIFT_CARD_IDEMPOTENCY_CONFLICT",
+        "GIFT_CARD_VERSION_CONFLICT",
+        "GIFT_CARD_EXPIRED",
+        "GIFT_CARD_EXPIRY_INVALID",
+        "GIFT_CARD_SELF_REDEEM",
+        "BILLING_INSUFFICIENT_FUNDS"
+      ]
+    },
+    "billing.admin-gift-batches.get": {
+      "version": 1,
+      "domains": [
+        "admin"
+      ],
+      "actor": "admin",
+      "permission": "billing.gift-cards.read",
+      "idempotency": "read",
+      "consistency": "current-owner-view",
+      "input": {
+        "type": "object",
+        "properties": {
+          "batch_id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+            "maxLength": 36
+          }
+        },
+        "required": [
+          "batch_id"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "batch": {
+            "$ref": "#/definitions/native-gift-batch"
+          },
+          "cards": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/native-gift-card"
+            },
+            "minItems": 1,
+            "maxItems": 50
+          }
+        },
+        "required": [
+          "batch",
+          "cards"
+        ],
+        "additionalProperties": false
+      },
+      "meta": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS",
+        "GIFT_CARD_INPUT_INVALID",
+        "GIFT_CARD_UNAVAILABLE",
+        "GIFT_CARD_IDEMPOTENCY_CONFLICT",
+        "GIFT_CARD_VERSION_CONFLICT",
+        "GIFT_CARD_EXPIRED",
+        "GIFT_CARD_EXPIRY_INVALID",
+        "GIFT_CARD_SELF_REDEEM",
+        "BILLING_INSUFFICIENT_FUNDS"
+      ]
     }
   },
   "surfaces": {
@@ -14177,7 +16940,21 @@
       "support.admin-tickets.attachments.finish",
       "support.admin-tickets.attachments.cancel",
       "support.admin-tickets.attachments.get",
-      "support.admin-tickets.attachments.download"
+      "support.admin-tickets.attachments.download",
+      "billing.coupons.list",
+      "billing.coupons.get",
+      "billing.coupons.create",
+      "billing.coupons.disable",
+      "billing.admin-gift-cards.list",
+      "billing.admin-gift-cards.revoke",
+      "billing.admin-commissions.policy.get",
+      "billing.admin-commissions.rewards.list",
+      "billing.admin-commissions.payouts.list",
+      "billing.admin-commissions.policy.update",
+      "billing.admin-commissions.payouts.approve",
+      "billing.admin-commissions.payouts.reject",
+      "billing.admin-gift-batches.list",
+      "billing.admin-gift-batches.get"
     ]
   },
   "limits": {

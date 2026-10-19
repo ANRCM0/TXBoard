@@ -129,7 +129,9 @@ final class NativeOrderQueries implements OrderQueries, AdminOrderQueries
             'plan' => ['id' => (int) $order->plan_id, 'name' => $purchase['plan_name']],
             'paid_at' => $order->paid_at ? Carbon::createFromTimestampUTC((int) $order->paid_at)->toIso8601String() : null,
             'created_at' => Carbon::createFromTimestampUTC((int) $order->created_at)->toIso8601String(),
-            'purchase_terms_version' => PublishedOrderService::VERSION];
+            'purchase_terms_version' => PublishedOrderService::VERSION,
+            'list_amount_minor' => (string) $purchase['list_price_minor'],
+            'coupon_discount_minor' => (string) ($purchase['coupon_discount']['discount_minor'] ?? '0')];
     }
 
     private static function frozenPurchase(Order $order): ?array
@@ -153,6 +155,8 @@ final class NativeOrderQueries implements OrderQueries, AdminOrderQueries
             'paid_at' => $order->paid_at ? Carbon::createFromTimestampUTC((int) $order->paid_at)->toIso8601String() : null,
             'created_at' => Carbon::createFromTimestampUTC((int) $order->created_at)->toIso8601String(),
         ] + ($purchase === null ? [] : ['currency' => $purchase['currency'],
-            'purchase_terms_version' => PublishedOrderService::VERSION]);
+            'purchase_terms_version' => PublishedOrderService::VERSION,
+            'list_amount_minor' => (string) $purchase['list_price_minor'],
+            'coupon_discount_minor' => (string) ($purchase['coupon_discount']['discount_minor'] ?? '0')]);
     }
 }

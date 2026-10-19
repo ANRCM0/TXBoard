@@ -310,6 +310,7 @@ jobs:
           node --check tests/integration/core-user-gateway.mjs
           node --check tests/integration/renderer-delivery.mjs
           node --check tests/integration/support-workflow.mjs
+          node --check tests/integration/financial-workflow.mjs
           php -l tests/integration/core-user-router.php
       - name: Install isolated integration dependencies
         working-directory: .

@@ -354,6 +354,12 @@ jobs:
           php artisan test
           tests/Feature/Billing/NativeMoneyLedgerTest.php
           tests/Feature/Billing/NativeMoneyLedgerMysqlConcurrencyTest.php
+          tests/Feature/Billing/NativeCouponWorkflowTest.php
+          tests/Feature/Billing/NativeGiftCardWorkflowTest.php
+          tests/Feature/Billing/NativeGiftBatchesTest.php
+          tests/Feature/Billing/NativeCommissionWorkflowTest.php
+          tests/Feature/Billing/NativeReferralWorkflowTest.php
+          tests/Feature/Billing/NativeFinancialWorkflowMysqlConcurrencyTest.php
           tests/Feature/Billing/NativePaymentAttemptsTest.php
           tests/Feature/Billing/NativeOrderPaymentQueriesTest.php
           tests/Feature/Billing/NativeOrderAdministrationTest.php

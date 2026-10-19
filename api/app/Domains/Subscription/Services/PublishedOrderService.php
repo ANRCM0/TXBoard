@@ -6,6 +6,7 @@ use App\Domains\Billing\OrderIdempotency;
 use App\Domains\Billing\OrderPurchaseTermsSnapshot;
 use App\Domains\Billing\PurchasedOrderGrant;
 use App\Domains\Billing\NativeUpgradeCredits;
+use App\Domains\Billing\Internal\LockedCouponDiscounts;
 use App\Domains\Installation\InstallationAuthority;
 use App\Domains\Installation\NativeRuntimeAdmission;
 use App\Models\Order;
@@ -38,23 +39,29 @@ final class PublishedOrderService
             throw new RuntimeException('PUBLISHED_ORDER_IDENTITY_INVALID');
         }
         $key = OrderIdempotency::clientKey($idempotencyKey);
-        if ($adjustments !== []) {
+        $couponCode = null;
+        if ($adjustments !== [] && (array_keys($adjustments) !== ['coupon_code']
+            || !is_string($adjustments['coupon_code'])
+            || preg_match('/\A[A-Z0-9][A-Z0-9_-]{7,63}\z/Di', $adjustments['coupon_code']) !== 1)) {
             throw new RuntimeException('PUBLISHED_ORDER_FINANCIAL_ADJUSTMENT_UNSUPPORTED');
         }
+        if ($adjustments !== []) $couponCode = strtoupper($adjustments['coupon_code']);
         // Locate immutable ownership before opening the RR transaction. Replays do not
         // need a current Plan; fresh purchases recheck this locator under its Plan lock.
         $locator = DB::table('tx_plan_offer')->useWritePdo()->where('id', $offerId)->first(['plan_id']);
-        return DB::transaction(function () use ($userId, $offerId, $key, $locator): Order {
+        return DB::transaction(function () use ($userId, $offerId, $key, $locator, $couponCode): Order {
             $installation = app(InstallationAuthority::class)->assertNativeMutation();
             $now = time();
             [$user, $slot, $subscriptions] = $this->subscriptions->lockAccount($userId, $now, $installation['installation_id']);
+            if ($couponCode !== null) app(\App\Domains\Identity\Internal\CurrentSessionAuthorization::class)->assertCurrentLocked($userId);
             if ((bool) $user->banned) {
                 throw new RuntimeException('PUBLISHED_ORDER_ACCOUNT_UNAVAILABLE');
             }
             $body = ['schema' => self::VERSION, 'offer_id' => (string) $offerId,
                 'installation_id' => $installation['installation_id']];
+            if ($couponCode !== null) $body['coupon_code'] = $couponCode;
             $order = OrderIdempotency::run($userId, $key, $body, function () use (
-                $userId, $offerId, $slot, $subscriptions, $installation, $now, $locator,
+                $userId, $offerId, $slot, $subscriptions, $installation, $now, $locator, $couponCode,
             ): Order {
                 try {
                     if ($locator === null) throw new RuntimeException('PUBLICATION_OFFER_MISSING');
@@ -88,6 +95,9 @@ final class PublishedOrderService
                         throw new RuntimeException('PUBLISHED_ORDER_CURRENCY_UNSUPPORTED');
                     }
                     $type = $this->orderType($current, $offer);
+                    if ($couponCode !== null && $type === Order::TYPE_UPGRADE) {
+                        throw new RuntimeException('PUBLISHED_ORDER_COUPON_UPGRADE_UNSUPPORTED');
+                    }
                     $availability = $published['availability'];
                     $flag = in_array($type, [Order::TYPE_RENEWAL, Order::TYPE_RESET_TRAFFIC], true) ? 'renew' : 'sell';
                     if (!(bool) $availability->$flag) {
@@ -103,16 +113,20 @@ final class PublishedOrderService
                     $credit = ($installation['runtime_version'] ?? null) === NativeRuntimeAdmission::VERSION
                         && $type === Order::TYPE_UPGRADE
                         ? app(NativeUpgradeCredits::class)->quoteLocked($installation, $current, $history, $offer, $now) : null;
+                    $coupon = $couponCode === null ? null : app(LockedCouponDiscounts::class)->quoteLocked(
+                        $userId, $offerId, $offer->currency, (string) $offer->price_minor, $couponCode, $now, $installation['installation_id']);
                     $created = Order::query()->create([
                         'user_id' => $userId, 'plan_id' => (int) $offer->plan_id, 'period' => $offer->offer_code,
                         'type' => $type, 'status' => Order::STATUS_PENDING, 'trade_no' => Helper::generateOrderNo(),
-                        'total_amount' => (int) ($credit['net_minor'] ?? $offer->price_minor), 'purchase_terms_version' => self::VERSION,
+                        'total_amount' => (int) ($coupon['net_minor'] ?? $credit['net_minor'] ?? $offer->price_minor), 'purchase_terms_version' => self::VERSION,
                         'balance_amount' => 0, 'discount_amount' => 0, 'surplus_amount' => 0, 'surplus_credit' => 0,
                         'commission_balance' => 0, 'coupon_id' => null, 'invite_user_id' => null,
                         'surplus_order_ids' => null,
                     ]);
                     if ($credit !== null) { app(NativeUpgradeCredits::class)->persistLocked($created, $credit); }
-                    $this->snapshots->capturePublished($created, $published);
+                    if ($coupon !== null) app(LockedCouponDiscounts::class)->persistLocked((int) $created->id, $coupon);
+                    $purchase = $this->snapshots->capturePublished($created, $published);
+                    app(\App\Domains\Billing\Internal\CommissionTerms::class)->captureLocked($installation, $created, $purchase);
                     app(\App\Domains\Billing\NativeOrderEventJournal::class)->recordLocked($created, 'created', (int) $created->created_at);
                     return $created;
                 } catch (RuntimeException $error) {

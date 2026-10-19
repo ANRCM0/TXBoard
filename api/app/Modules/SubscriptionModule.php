@@ -35,12 +35,14 @@ final class SubscriptionModule implements ModuleProvider
                 new CapabilityDefinition('subscription.catalog', CatalogQueries::class),
                 new CapabilityDefinition('subscription.admin-catalog-read', \App\Domains\Subscription\Contracts\AdminCatalogQueries::class, exported: false),
                 new CapabilityDefinition('subscription.purchase', Purchases::class),
+                new CapabilityDefinition('subscription.coupon-purchase', \App\Domains\Subscription\Contracts\CouponPurchases::class, exported: false),
                 new CapabilityDefinition('subscription.lifecycle', SubscriptionLifecycle::class),
                 new CapabilityDefinition('subscription.locked-entitlements', LockedEntitlementQueries::class, exported: false),
                 new CapabilityDefinition('subscription.locked-fulfillment', LockedOrderFulfillment::class, exported: false),
                 new CapabilityDefinition('subscription.locked-account-access', LockedAccountAccess::class, exported: false),
                 new CapabilityDefinition('subscription.initial-preparation', \App\Domains\Subscription\Internal\InitialCatalog::class, exported: false),
-            ], requires: [new CapabilityRequirement('installation.admission'), new CapabilityRequirement('platform.clock'), new CapabilityRequirement('credentials.provider-client'), new CapabilityRequirement('billing.winning-proof'), new CapabilityRequirement('identity.current-session-authorization')], required: true);
+            ], requires: [new CapabilityRequirement('installation.admission'), new CapabilityRequirement('platform.clock'), new CapabilityRequirement('credentials.provider-client'), new CapabilityRequirement('billing.winning-proof'),
+                new CapabilityRequirement('billing.locked-coupon-discounts'), new CapabilityRequirement('billing.commission-terms'), new CapabilityRequirement('identity.current-session-authorization')], required: true);
     }
 
     public function bindings(): array
@@ -52,6 +54,7 @@ final class SubscriptionModule implements ModuleProvider
             new ServiceBinding(CatalogQueries::class, NativePlanCatalog::class),
             new ServiceBinding(\App\Domains\Subscription\Contracts\AdminCatalogQueries::class, \App\Domains\Subscription\Services\NativeAdminCatalogQueries::class),
             new ServiceBinding(Purchases::class, NativePurchases::class),
+            new ServiceBinding(\App\Domains\Subscription\Contracts\CouponPurchases::class, NativePurchases::class),
             new ServiceBinding(SubscriptionLifecycle::class, SubscriptionLifecycleService::class),
             new ServiceBinding(LockedEntitlementQueries::class, SubscriptionEntitlementResolver::class),
             new ServiceBinding(LockedOrderFulfillment::class, SubscriptionFulfillmentService::class),

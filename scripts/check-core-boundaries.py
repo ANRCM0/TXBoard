@@ -221,6 +221,12 @@ USAGE_QUERY_OWNERS = frozenset({
     "api/app/Modules/UsageModule.php",
 })
 READ_ADAPTER_FILES = {
+    "api/app/Domains/InternalApi/CommissionReadOperations.php": "commission read handler",
+    "api/app/Domains/InternalApi/CommissionMutationOperations.php": "commission mutation command",
+    "api/app/Domains/InternalApi/GiftCardReadOperations.php": "gift card read handler",
+    "api/app/Domains/InternalApi/GiftCardMutationOperations.php": "gift card mutation handler",
+    "api/app/Domains/InternalApi/CouponReadOperations.php": "coupon read handler",
+    "api/app/Domains/InternalApi/CouponMutationOperations.php": "coupon mutation command",
     "api/app/Domains/InternalApi/ContentReadOperations.php": "content read handler",
     "api/app/Domains/InternalApi/ContentMutationOperations.php": "content mutation command",
     "api/app/Domains/InternalApi/SupportReadOperations.php": "support read handler",

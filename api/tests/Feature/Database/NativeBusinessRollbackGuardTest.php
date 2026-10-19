@@ -51,12 +51,22 @@ final class NativeBusinessRollbackGuardTest extends TestCase
         return [
             'content' => ['2026_10_19_000003_native_content_workflows', 'NATIVE_CONTENT_FORWARD_RECOVERY_REQUIRED',
                 ['tx_content_audit', 'tx_content_request', 'tx_notice', 'tx_knowledge'], 'tx_knowledge', null],
+            'coupon' => ['2026_10_19_000004_native_coupon_workflows', 'NATIVE_COUPON_FORWARD_RECOVERY_REQUIRED',
+                ['tx_native_coupon_request', 'tx_native_coupon_application', 'tx_native_coupon_user', 'tx_native_coupon'], 'tx_native_coupon', null],
+            'gift-card' => ['2026_10_19_000005_native_gift_cards', 'NATIVE_GIFT_CARD_FORWARD_RECOVERY_REQUIRED',
+                ['tx_native_gift_request', 'tx_native_gift_terminal', 'tx_native_gift_card'], 'tx_native_gift_card', null],
+            'commission' => ['2026_10_19_000006_native_commissions', 'NATIVE_COMMISSION_FORWARD_RECOVERY_REQUIRED',
+                ['tx_native_commission_request', 'tx_native_commission_payout_terminal', 'tx_native_commission_payout',
+                    'tx_native_commission_reward', 'tx_native_commission_order', 'tx_native_commission_policy',
+                    'tx_native_commission_policy_head', 'tx_native_referral', 'tx_native_referral_code'], 'tx_native_referral_code', null],
             'support-assignment' => ['2026_10_19_000007_native_support_assignment_audit', 'NATIVE_SUPPORT_ASSIGNMENT_FORWARD_RECOVERY_REQUIRED',
                 ['tx_support_audit', 'tx_ticket'], 'tx_ticket', 'assigned_admin_id'],
             'support-audit' => ['2026_10_19_000007_native_support_assignment_audit', 'NATIVE_SUPPORT_ASSIGNMENT_FORWARD_RECOVERY_REQUIRED',
                 ['tx_support_audit', 'tx_ticket'], 'tx_support_audit', null],
             'attachment' => ['2026_10_19_000008_native_support_attachments', 'NATIVE_SUPPORT_ATTACHMENTS_FORWARD_RECOVERY_REQUIRED',
                 ['tx_support_attachment_request', 'tx_support_attachment_chunk', 'tx_support_attachment'], 'tx_support_attachment', null],
+            'gift-batch' => ['2026_10_19_000009_native_gift_batches', 'NATIVE_GIFT_BATCH_FORWARD_RECOVERY_REQUIRED',
+                ['tx_native_gift_batch', 'tx_native_gift_card'], 'tx_native_gift_batch', null],
         ];
     }
 

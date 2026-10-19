@@ -6,6 +6,37 @@ import { parseStrictJson } from '../security/strict-json.js'
 import { coreOperations, type CoreOperation } from '../contracts/core.generated.js'
 
 export const NATIVE_INTERNAL_OPERATIONS = {
+  'billing.gift-batches.list': ['user'],
+  'billing.gift-batches.get': ['user'],
+  'billing.gift-batches.issue': ['user'],
+  'billing.admin-gift-batches.list': ['admin'],
+  'billing.admin-gift-batches.get': ['admin'],
+  'support.tickets.attachments.begin': ['user'],
+  'support.tickets.attachments.append': ['user'],
+  'support.tickets.attachments.finish': ['user'],
+  'support.tickets.attachments.cancel': ['user'],
+  'support.tickets.attachments.get': ['user'],
+  'support.tickets.attachments.download': ['user'],
+  'support.admin-tickets.attachments.begin': ['admin'],
+  'support.admin-tickets.attachments.append': ['admin'],
+  'support.admin-tickets.attachments.finish': ['admin'],
+  'support.admin-tickets.attachments.cancel': ['admin'],
+  'support.admin-tickets.attachments.get': ['admin'],
+  'support.admin-tickets.attachments.download': ['admin'],
+  'identity.referrals.get': ['user'],
+  'identity.referrals.code.create': ['user'],
+  'identity.referrals.bind': ['user'],
+  'billing.commissions.balance.get': ['user'],
+  'billing.commissions.policy.get': ['user'],
+  'billing.commissions.rewards.list': ['user'],
+  'billing.commissions.payouts.list': ['user'],
+  'billing.admin-commissions.policy.get': ['admin'],
+  'billing.admin-commissions.rewards.list': ['admin'],
+  'billing.admin-commissions.payouts.list': ['admin'],
+  'billing.commissions.payouts.request': ['user'],
+  'billing.admin-commissions.policy.update': ['admin'],
+  'billing.admin-commissions.payouts.approve': ['admin'],
+  'billing.admin-commissions.payouts.reject': ['admin'],
   'support.tickets.list': ['user'],
   'support.tickets.get': ['user'],
   'support.tickets.messages.list': ['user'],
@@ -26,18 +57,16 @@ export const NATIVE_INTERNAL_OPERATIONS = {
   'support.admin-tickets.claim': ['admin'],
   'support.admin-tickets.unassign': ['admin'],
   'support.admin-tickets.audit.list': ['admin'],
-  'support.tickets.attachments.begin': ['user'],
-  'support.tickets.attachments.append': ['user'],
-  'support.tickets.attachments.finish': ['user'],
-  'support.tickets.attachments.cancel': ['user'],
-  'support.tickets.attachments.get': ['user'],
-  'support.tickets.attachments.download': ['user'],
-  'support.admin-tickets.attachments.begin': ['admin'],
-  'support.admin-tickets.attachments.append': ['admin'],
-  'support.admin-tickets.attachments.finish': ['admin'],
-  'support.admin-tickets.attachments.cancel': ['admin'],
-  'support.admin-tickets.attachments.get': ['admin'],
-  'support.admin-tickets.attachments.download': ['admin'],
+  'billing.coupons.list': ['admin'],
+  'billing.coupons.get': ['admin'],
+  'billing.coupons.create': ['admin'],
+  'billing.coupons.disable': ['admin'],
+  'billing.gift-cards.list': ['user'],
+  'billing.gift-cards.issue': ['user'],
+  'billing.gift-cards.redeem': ['user'],
+  'billing.gift-cards.revoke': ['user'],
+  'billing.admin-gift-cards.list': ['admin'],
+  'billing.admin-gift-cards.revoke': ['admin'],
   'system.capabilities.get': ['user', 'admin'],
   'identity.session.create': ['user'],
   'identity.admin-session.create': ['admin'],
@@ -356,6 +385,11 @@ export class NativeCoreClient {
       if (response.status === 404) throw new GatewayFailure('NOT_FOUND', 404, 'Core resource unavailable')
       if (code === 'INVALID_REQUEST') throw new GatewayFailure('VALIDATION_ERROR', 422, 'Invalid Core operation input')
       if (code === 'RATE_LIMITED') throw new GatewayFailure('RATE_LIMITED', 429, 'Core operation rate limited')
+      // These owner commands roll back their business transaction before returning a rejection.
+      // An interrupted transport or a failed response validation still remains unknown.
+      if (response.status >= 400 && response.status < 500 && contract?.idempotency === 'domain'
+        && /^(?:support[.]|content[.]|billing[.](?:coupons|gift-cards|admin-gift-cards|commissions|admin-commissions)[.]|identity[.]referrals[.])/.test(operation))
+        throw new GatewayFailure('BUSINESS_REJECTED', response.status, 'Core owner rejected the command')
       throw new GatewayFailure('UPSTREAM_ERROR', response.status >= 400 ? response.status : 502, 'Core operation rejected')
     }
     if (!Object.hasOwn(payload, 'data') || Object.keys(payload).some(k => !['data', 'meta', 'request_id'].includes(k))) {
