@@ -6,6 +6,7 @@ export const CORE_USER_PREFIX = '/gateway/v1/core/user'
 export const CORE_USER_OPERATIONS = [
   'billing.order-payment-attempts.list',
   'identity.session.create',
+  'subscription.delivery-options.get', 'subscription.deliveries.authorize',
   'catalog.offers.list', 'commerce.orders.create', 'commerce.orders.list', 'commerce.orders.get', 'commerce.orders.events.list',
   'commerce.orders.checkout', 'commerce.orders.cancel', 'billing.wallet.get', 'billing.payment-methods.list',
   'billing.recharges.create', 'billing.recharges.list', 'billing.recharges.get', 'billing.recharges.checkout',

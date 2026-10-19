@@ -1798,6 +1798,256 @@
         "updated_at"
       ],
       "additionalProperties": false
+    },
+    "browser-delivery-grant": {
+      "type": "object",
+      "properties": {
+        "endpoint": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048,
+          "pattern": "^https://[^/?#]+/subscription-render$"
+        },
+        "format_id": {
+          "type": "string",
+          "enum": [
+            "clash/v1",
+            "clash-meta/v1",
+            "sing-box/v1",
+            "shadowrocket/v1",
+            "surge-ios/v1",
+            "surge-mac/v1"
+          ]
+        },
+        "expires_at": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 253402300799
+        },
+        "proof_scheme": {
+          "const": "native-provider-subscription-request/v1"
+        },
+        "grant": {
+          "type": "object",
+          "properties": {
+            "payload": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 262144,
+              "pattern": "^[A-Za-z0-9_-]+$"
+            },
+            "signature": {
+              "type": "string",
+              "minLength": 86,
+              "maxLength": 86,
+              "pattern": "^[A-Za-z0-9_-]{86}$"
+            }
+          },
+          "required": [
+            "payload",
+            "signature"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "endpoint",
+        "format_id",
+        "expires_at",
+        "proof_scheme",
+        "grant"
+      ],
+      "additionalProperties": false
+    },
+    "browser-delivery-options": {
+      "type": "object",
+      "properties": {
+        "user_id": {
+          "$ref": "#/definitions/id"
+        },
+        "authorized": {
+          "type": "boolean"
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 96
+        },
+        "trust": {
+          "$ref": "#/definitions/browser-delivery-trust"
+        },
+        "formats": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/browser-delivery-format"
+          },
+          "minItems": 6,
+          "maxItems": 6
+        },
+        "subjects": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/browser-delivery-subject"
+          },
+          "maxItems": 16
+        }
+      },
+      "required": [
+        "user_id",
+        "authorized",
+        "reason",
+        "trust",
+        "formats",
+        "subjects"
+      ],
+      "additionalProperties": false
+    },
+    "browser-delivery-format": {
+      "type": "object",
+      "properties": {
+        "format_id": {
+          "type": "string",
+          "enum": [
+            "clash/v1",
+            "clash-meta/v1",
+            "sing-box/v1",
+            "shadowrocket/v1",
+            "surge-ios/v1",
+            "surge-mac/v1"
+          ]
+        },
+        "min_version": {
+          "type": "string",
+          "minLength": 5,
+          "maxLength": 14,
+          "pattern": "^(?:0|[1-9][0-9]{0,3})\\.(?:0|[1-9][0-9]{0,3})\\.(?:0|[1-9][0-9]{0,3})$"
+        },
+        "before_version": {
+          "type": "string",
+          "minLength": 5,
+          "maxLength": 14,
+          "pattern": "^(?:0|[1-9][0-9]{0,3})\\.(?:0|[1-9][0-9]{0,3})\\.(?:0|[1-9][0-9]{0,3})$"
+        },
+        "media_type": {
+          "type": "string",
+          "enum": [
+            "application/yaml",
+            "application/json",
+            "text/plain"
+          ]
+        },
+        "filename": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^txboard-[a-z-]+\\.(yaml|json|txt|conf)$"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "credential_profiles": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "vless-uuid/v1",
+              "vmess-uuid/v1"
+            ],
+            "type": "string"
+          },
+          "minItems": 1,
+          "maxItems": 2
+        }
+      },
+      "required": [
+        "format_id",
+        "min_version",
+        "before_version",
+        "media_type",
+        "filename",
+        "label",
+        "credential_profiles"
+      ],
+      "additionalProperties": false
+    },
+    "browser-delivery-subject": {
+      "type": "object",
+      "properties": {
+        "access_subject_id": {
+          "$ref": "#/definitions/id"
+        },
+        "provider_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "provider_instance_epoch": {
+          "$ref": "#/definitions/id"
+        },
+        "credential_profile_id": {
+          "type": "string",
+          "enum": [
+            "vless-uuid/v1",
+            "vmess-uuid/v1"
+          ]
+        },
+        "endpoint": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048,
+          "pattern": "^https://[^/?#]+/subscription-render$"
+        }
+      },
+      "required": [
+        "access_subject_id",
+        "provider_id",
+        "provider_instance_epoch",
+        "credential_profile_id",
+        "endpoint"
+      ],
+      "additionalProperties": false
+    },
+    "browser-delivery-trust": {
+      "type": "object",
+      "properties": {
+        "protocol_version": {
+          "const": 1
+        },
+        "core_instance_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "maxLength": 36
+        },
+        "key_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-zA-Z0-9_-]{1,64}$"
+        },
+        "key_epoch": {
+          "$ref": "#/definitions/id"
+        },
+        "algorithm": {
+          "const": "Ed25519"
+        },
+        "public_key": {
+          "type": "string",
+          "minLength": 43,
+          "maxLength": 43,
+          "pattern": "^[A-Za-z0-9_-]{43}$"
+        }
+      },
+      "required": [
+        "protocol_version",
+        "core_instance_id",
+        "key_id",
+        "key_epoch",
+        "algorithm",
+        "public_key"
+      ],
+      "additionalProperties": false
     }
   },
   "operations": {
@@ -10486,6 +10736,117 @@
         "IDEMPOTENCY_CONFLICT",
         "IDEMPOTENCY_IN_PROGRESS"
       ]
+    },
+    "subscription.delivery-options.get": {
+      "version": 1,
+      "domains": [
+        "user"
+      ],
+      "actor": "user",
+      "permission": null,
+      "idempotency": "read",
+      "consistency": "current-owner-view",
+      "input": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "output": {
+        "$ref": "#/definitions/browser-delivery-options"
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "NOT_FOUND",
+        "DEPENDENCY_UNAVAILABLE",
+        "SUBSCRIPTION_DELIVERY_UNAVAILABLE",
+        "NATIVE_SUBSCRIPTION_DELIVERY_INPUT_INVALID",
+        "NATIVE_SUBSCRIPTION_DELIVERY_SUBJECT_MISSING",
+        "NATIVE_SUBSCRIPTION_DELIVERY_ENTITLEMENT_DENIED",
+        "NATIVE_SUBSCRIPTION_DELIVERY_AUTHORITY_CHANGED",
+        "NATIVE_SUBSCRIPTION_DELIVERY_EXPIRED",
+        "NATIVE_SUBSCRIPTION_DELIVERY_PROFILE_UNSUPPORTED"
+      ],
+      "meta": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    "subscription.deliveries.authorize": {
+      "version": 1,
+      "domains": [
+        "user"
+      ],
+      "actor": "user",
+      "permission": null,
+      "idempotency": "read",
+      "consistency": "current-owner-view",
+      "input": {
+        "type": "object",
+        "properties": {
+          "access_subject_id": {
+            "$ref": "#/definitions/id"
+          },
+          "recipient_public_key": {
+            "type": "string",
+            "minLength": 43,
+            "maxLength": 43,
+            "pattern": "^[A-Za-z0-9_-]{43}$"
+          },
+          "format_id": {
+            "type": "string",
+            "enum": [
+              "clash/v1",
+              "clash-meta/v1",
+              "sing-box/v1",
+              "shadowrocket/v1",
+              "surge-ios/v1",
+              "surge-mac/v1"
+            ]
+          },
+          "client_version": {
+            "type": "string",
+            "minLength": 5,
+            "maxLength": 14,
+            "pattern": "^(?:0|[1-9][0-9]{0,3})\\.(?:0|[1-9][0-9]{0,3})\\.(?:0|[1-9][0-9]{0,3})$"
+          }
+        },
+        "required": [
+          "access_subject_id",
+          "recipient_public_key",
+          "format_id",
+          "client_version"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "$ref": "#/definitions/browser-delivery-grant"
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "NOT_FOUND",
+        "DEPENDENCY_UNAVAILABLE",
+        "SUBSCRIPTION_DELIVERY_UNAVAILABLE",
+        "NATIVE_SUBSCRIPTION_DELIVERY_INPUT_INVALID",
+        "NATIVE_SUBSCRIPTION_DELIVERY_SUBJECT_MISSING",
+        "NATIVE_SUBSCRIPTION_DELIVERY_ENTITLEMENT_DENIED",
+        "NATIVE_SUBSCRIPTION_DELIVERY_AUTHORITY_CHANGED",
+        "NATIVE_SUBSCRIPTION_DELIVERY_EXPIRED",
+        "NATIVE_SUBSCRIPTION_DELIVERY_PROFILE_UNSUPPORTED",
+        "NATIVE_SUBSCRIPTION_DELIVERY_CLIENT_NODES_UNAVAILABLE"
+      ],
+      "meta": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
     }
   },
   "surfaces": {

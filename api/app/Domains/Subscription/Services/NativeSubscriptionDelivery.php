@@ -9,18 +9,21 @@ use App\Domains\CredentialProvider\RenderGrantCodec;
 use App\Domains\Installation\InstallationAuthority;
 use App\Domains\Network\NativeNodeAuthorization;
 use App\Domains\Subscription\Internal\LockedEntitlementQueries;
+use App\Domains\Subscription\Contracts\BrowserDeliveries;
+use App\Domains\Identity\Internal\CurrentSessionAuthorization;
 use App\Models\Server;
 use DomainException;
 use Illuminate\Support\Facades\DB;
 
 /** Core signs a finite delivery policy; only the PoP recipient receives material. */
-final class NativeSubscriptionDelivery
+final class NativeSubscriptionDelivery implements BrowserDeliveries
 {
     public function __construct(
         private readonly LockedEntitlementQueries $entitlements,
         private readonly NativeCredentialProviderService $credentials,
         private readonly ProviderClient $transport,
         private readonly NativeNodeAuthorization $signer,
+        private readonly CurrentSessionAuthorization $sessions,
     ) {}
 
     public static function endpoint(string $providerId): string
@@ -39,18 +42,100 @@ final class NativeSubscriptionDelivery
         return $endpoint;
     }
 
-    public function authorize(int $userId, int $subjectId, string $recipientKey, ?\Closure $guard = null): array
+    public function browserOptions(int $actorId): array
+    {
+        $this->require(DB::transactionLevel() === 0 && $actorId > 0, 'INPUT_INVALID');
+        return DB::transaction(function () use ($actorId): array {
+            $installation = app(InstallationAuthority::class)->assertNativeRead();
+            $this->sessions->assertCurrentLocked($actorId);
+            $now = time();
+            $entitlement = $this->entitlements->resolveLocked($actorId, $now);
+            $trust = $this->signer->publicTrust();
+            $this->require($trust['core_instance_id'] === $installation['installation_id'], 'TRUST_INVALID');
+            $result = ['user_id' => (string) $actorId, 'authorized' => $entitlement['authorized'], 'reason' => $entitlement['reason'],
+                'trust' => array_intersect_key($trust, array_flip(['protocol_version', 'core_instance_id', 'key_id',
+                    'key_epoch', 'algorithm', 'public_key'])), 'formats' => self::browserFormats(), 'subjects' => []];
+            if ($entitlement['authorized'] !== true) return $result;
+            $subjects = DB::table('tx_access_subject')->where('subscription_id', $entitlement['subscription_id'])
+                ->where('status', 'active')->where('bound_subscription_version', $entitlement['subscription_version'])
+                ->where('bound_terms_id', $entitlement['terms_id'])->where('revocation_fact_version', 0)
+                ->whereNull('revoked_at')->whereNull('provider_revoked_at')
+                ->where('not_before_at', '<=', $now)->where('credential_expires_at', '>', $now)
+                ->whereIn('credential_profile_id', ['vless-uuid/v1', 'vmess-uuid/v1'])
+                ->orderBy('id')->limit(17)->sharedLock()->get();
+            $this->require($subjects->count() <= 16, 'SUBJECT_LIMIT');
+            foreach ($subjects as $subject) {
+                $configuration = $this->transport->configuration($subject->provider_id);
+                $registration = $this->credentials->authorizationRegistrationLocked($subject->provider_id, $installation['installation_id']);
+                $this->require($registration['provider_id'] === $configuration['provider_id']
+                    && (string) $registration['provider_instance_epoch'] === $configuration['provider_instance_epoch']
+                    && $registration['config_digest'] === $configuration['config_digest'], 'REGISTRATION_CHANGED');
+                $binding = $this->credentials->authorizationBindingLocked($subject, $entitlement, $registration);
+                $result['subjects'][] = ['access_subject_id' => $binding['access_subject_id'],
+                    'provider_id' => $registration['provider_id'], 'provider_instance_epoch' => (string) $registration['provider_instance_epoch'],
+                    'credential_profile_id' => $binding['credential_profile_id'], 'endpoint' => self::endpoint($registration['provider_id'])];
+            }
+            if ($result['subjects'] === []) $result['reason'] = 'NATIVE_SUBSCRIPTION_DELIVERY_SUBJECTS_UNAVAILABLE';
+            return $result;
+        }, 3);
+    }
+
+    public function browserAuthorize(int $actorId, array $input): array
+    {
+        $fields = ['access_subject_id', 'recipient_public_key', 'format_id', 'client_version'];
+        $id = $input['access_subject_id'] ?? null;
+        $this->require(count($input) === count($fields) && array_diff($fields, array_keys($input)) === []
+            && is_string($id) && preg_match('/\A[1-9][0-9]{0,18}\z/D', $id) === 1
+            && (strlen($id) < 19 || strcmp($id, (string) PHP_INT_MAX) <= 0)
+            && is_string($input['recipient_public_key'] ?? null) && is_string($input['format_id'] ?? null)
+            && isset(RenderGrantCodec::CLIENT_FORMATS[$input['format_id']])
+            && is_string($input['client_version'] ?? null), 'INPUT_INVALID');
+        $sessionGuard = fn () => $this->sessions->assertCurrentLocked($actorId);
+        $result = $this->authorize($actorId, (int) $id, $input['recipient_public_key'], null,
+            $input['format_id'], $input['client_version'], $sessionGuard);
+        $this->require(strlen($result['authorization']['payload']) <= 262144, 'AUTHORIZATION_TOO_LARGE');
+        return ['endpoint' => $result['endpoint'], 'format_id' => $result['format_id'], 'expires_at' => $result['expires_at'],
+            'proof_scheme' => $result['proof_scheme'], 'grant' => $result['authorization']];
+    }
+
+    private static function browserFormats(): array
+    {
+        $documents = [
+            'clash/v1' => ['application/yaml', 'txboard-clash-classic.yaml', 'Clash / VMess TCP'],
+            'clash-meta/v1' => ['application/yaml', 'txboard-clash.yaml', 'Clash Meta / Mihomo'],
+            'sing-box/v1' => ['application/json', 'txboard-sing-box.json', 'sing-box'],
+            'shadowrocket/v1' => ['text/plain', 'txboard-shadowrocket.txt', 'Shadowrocket'],
+            'surge-ios/v1' => ['text/plain', 'txboard-surge-ios.conf', 'Surge iOS / VMess TCP'],
+            'surge-mac/v1' => ['text/plain', 'txboard-surge-mac.conf', 'Surge Mac / VMess TCP'],
+        ];
+        $result = [];
+        foreach (RenderGrantCodec::CLIENT_FORMATS as $format => $rule) {
+            if (!isset($documents[$format])) throw new DomainException('NATIVE_SUBSCRIPTION_DELIVERY_PROFILE_UNSUPPORTED');
+            [$media, $filename, $label] = $documents[$format];
+            $result[] = ['format_id' => $format, 'min_version' => $rule['min'], 'before_version' => $rule['before'],
+                'media_type' => $media, 'filename' => $filename, 'label' => $label,
+                'credential_profiles' => RenderGrantCodec::profiles($format)];
+        }
+        return $result;
+    }
+
+    public function authorize(int $userId, int $subjectId, string $recipientKey, ?\Closure $guard = null,
+        string $format = RenderGrantCodec::FORMAT, ?string $clientVersion = null, ?\Closure $sessionGuard = null): array
     {
         $this->require(DB::transactionLevel() === 0 && $userId > 0 && $subjectId > 0, 'INPUT_INVALID');
         RenderGrantCodec::publicKey($recipientKey);
+        RenderGrantCodec::format($format, $clientVersion);
         $locator = DB::table('tx_access_subject as subject')->useWritePdo()
             ->join('tx_subscription as subscription', 'subscription.id', '=', 'subject.subscription_id')
             ->where('subject.id', $subjectId)->where('subscription.user_id', $userId)->first(['subject.provider_id']);
         $this->require($locator !== null, 'SUBJECT_MISSING');
         $configuration = $this->transport->configuration($locator->provider_id);
         $endpoint = self::endpoint($locator->provider_id);
-        $before = DB::transaction(function () use ($userId, $subjectId, $configuration, $guard): array {
+        $before = DB::transaction(function () use ($userId, $subjectId, $configuration, $guard, $sessionGuard, $format): array {
+            app(InstallationAuthority::class)->assertNativeRead();
+            if ($sessionGuard !== null) $sessionGuard();
             $projection = $this->project($userId, $subjectId, $configuration, time());
+            $this->compatibleNodes($projection, $format);
             if ($guard !== null) { $guard(); }
             return $projection;
         }, 3);
@@ -64,7 +149,9 @@ final class NativeSubscriptionDelivery
         // No network request is made while holding the account/Subject/Node locks.
         $metadata = $this->transport->metadata($before['registration'], $request);
         $metadata = ProviderMetadataCodec::decodeResponse(ProviderCodec::canonical($metadata), $request);
-        return DB::transaction(function () use ($userId, $subjectId, $recipientKey, $configuration, $endpoint, $before, $metadata, $guard): array {
+        return DB::transaction(function () use ($userId, $subjectId, $recipientKey, $configuration, $endpoint, $before, $metadata, $guard, $format, $clientVersion, $sessionGuard): array {
+            app(InstallationAuthority::class)->assertNativeRead();
+            if ($sessionGuard !== null) $sessionGuard();
             $now = time();
             $after = $this->project($userId, $subjectId, $configuration, $now);
             $policyExpiry = $guard === null ? null : $guard();
@@ -90,13 +177,14 @@ final class NativeSubscriptionDelivery
                 'grant_id' => 'render_'.bin2hex(random_bytes(16)),
                 'provider_id' => $after['registration']['provider_id'],
                 'provider_instance_epoch' => $after['registration']['provider_instance_epoch'],
-                'recipient_public_key' => $recipientKey, 'format_id' => RenderGrantCodec::FORMAT,
+                'recipient_public_key' => $recipientKey, 'format_id' => $format,
                 'user_id' => (string) $userId, 'subject' => $after['subject'],
                 'credential_sha256' => $credential['credential_sha256'],
-                'credential_expires_at' => $after['credential_expires_at'], 'nodes' => $after['nodes'],
+                'credential_expires_at' => $after['credential_expires_at'], 'nodes' => $this->compatibleNodes($after, $format),
             ];
+            if ($clientVersion !== null) { $payload['client_version'] = $clientVersion; }
             return [
-                'endpoint' => $endpoint, 'format_id' => RenderGrantCodec::FORMAT,
+                'endpoint' => $endpoint, 'format_id' => $format,
                 'expires_at' => $expires, 'proof_scheme' => 'native-provider-subscription-request/v1',
                 'authorization' => RenderGrantCodec::sign($payload, config('native_node_authorization.private_seed')),
             ];
@@ -158,6 +246,15 @@ final class NativeSubscriptionDelivery
             'subject' => $binding, 'subject_version' => (string) $subject->row_version,
             'credential_expires_at' => (int) $subject->credential_expires_at, 'nodes' => $connections,
         ];
+    }
+
+    private function compatibleNodes(array $projection, string $format): array
+    {
+        $this->require(in_array($projection['subject']['credential_profile_id'], RenderGrantCodec::profiles($format), true),
+            'PROFILE_UNSUPPORTED');
+        $nodes = array_values(array_filter($projection['nodes'], static fn (array $node): bool => RenderGrantCodec::compatibleNode($format, $node)));
+        $this->require($nodes !== [], 'CLIENT_NODES_UNAVAILABLE');
+        return $nodes;
     }
 
     public static function connection(Server $node): array

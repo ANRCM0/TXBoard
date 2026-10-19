@@ -58,7 +58,7 @@ final class NativeSubscriptionDeliveryTest extends NativeSubscriptionTestCase
         $transport = Mockery::mock(ProviderClient::class);
         $transport->shouldReceive('configuration')->with('render-provider')->andReturn([
             'provider_id' => 'render-provider', 'provider_instance_epoch' => '1',
-            'config_digest' => str_repeat('a', 64), 'profiles' => ['vless-uuid/v1'],
+            'config_digest' => str_repeat('a', 64), 'profiles' => ['vless-uuid/v1', 'vmess-uuid/v1'],
         ]);
         $transport->shouldReceive('call')->andReturnUsing(function ($registration, $request): array {
             $this->assertSame(0, DB::transactionLevel());
@@ -66,7 +66,7 @@ final class NativeSubscriptionDeliveryTest extends NativeSubscriptionTestCase
             return ['status' => 'succeeded', 'result' => [
                 'access_subject_id' => $input['access_subject_id'], 'provider_subject_ref' => $input['provider_subject_ref'],
                 'credential_profile_id' => $input['credential_profile_id'],
-                'credential_ref' => 'credential_'.str_repeat('b', 32), 'credential_generation' => '1',
+                'credential_ref' => 'credential_'.substr(hash('sha256', $input['access_subject_id']), 0, 32), 'credential_generation' => '1',
                 'issued_at' => time(), 'not_before_at' => $input['not_before_at'],
                 'credential_expires_at' => $input['credential_expires_at'],
             ], 'error' => null];
@@ -147,5 +147,77 @@ final class NativeSubscriptionDeliveryTest extends NativeSubscriptionTestCase
         $this->expectException(DomainException::class);
         $this->expectExceptionMessage('NATIVE_SUBSCRIPTION_DELIVERY_NODE_UNSUPPORTED');
         NativeSubscriptionDelivery::connection($node);
+    }
+
+    public function test_classic_clash_and_surge_reject_vless_before_provider_metadata(): void
+    {
+        $this->duringMetadata = static function (): void { throw new \RuntimeException('UNSUPPORTED_PROFILE_MUST_NOT_FETCH_METADATA'); };
+        foreach (['clash/v1', 'surge-ios/v1', 'surge-mac/v1'] as $format) {
+            try {
+                app(NativeSubscriptionDelivery::class)->authorize($this->owner, $this->subject,
+                    RenderGrantCodec::base64url(str_repeat('k', 32)), null, $format, RenderGrantCodec::CLIENT_FORMATS[$format]['min']);
+                $this->fail('VLESS was admitted to a VMess-only renderer');
+            } catch (DomainException $error) {
+                $this->assertSame('NATIVE_SUBSCRIPTION_DELIVERY_PROFILE_UNSUPPORTED', $error->getMessage());
+            }
+        }
+    }
+
+    public function test_classic_clash_signs_only_compatible_authorized_nodes_but_meta_retains_explicit_alpn(): void
+    {
+        $subject = $this->vmessSubject();
+        $node = Server::query()->firstOrFail(); $extra = $node->getAttributes(); unset($extra['id']);
+        $extra['name'] = 'Explicit ALPN'; $extra['protocol_settings'] = json_encode(['network' => 'tcp', 'tls' => 1,
+            'tls_settings' => ['server_name' => 'tls.example.test', 'alpn' => ['h2']]], JSON_THROW_ON_ERROR);
+        $extraId = DB::table('tx_server')->insertGetId($extra);
+        config(['native_provider_node.recipients.'.$extraId => ['machine_id' => null, 'recipient_sha256' => str_repeat('e', 64)]]);
+        $classic = $this->clientGrant($subject, 'clash/v1');
+        $this->assertSame([(string) $node->id], array_column($classic['nodes'], 'node_id'));
+        $this->assertSame('vmess-uuid/v1', $classic['subject']['credential_profile_id']);
+        $meta = $this->clientGrant($subject, 'clash-meta/v1');
+        $this->assertSame([(string) $node->id, (string) $extraId], array_column($meta['nodes'], 'node_id'));
+        $this->assertSame(['h2'], $meta['nodes'][1]['tls']['alpn']);
+    }
+
+    public function test_classic_clash_with_no_compatible_nodes_refuses_before_metadata(): void
+    {
+        $subject = $this->vmessSubject();
+        DB::table('tx_server')->update(['protocol_settings' => json_encode(['network' => 'tcp', 'tls' => 1,
+            'tls_settings' => ['server_name' => 'tls.example.test', 'alpn' => ['h2']]], JSON_THROW_ON_ERROR)]);
+        $this->duringMetadata = static function (): void { throw new \RuntimeException('EMPTY_CLIENT_POLICY_MUST_NOT_FETCH_METADATA'); };
+        $this->expectExceptionMessage('NATIVE_SUBSCRIPTION_DELIVERY_CLIENT_NODES_UNAVAILABLE');
+        $this->clientGrant($subject, 'clash/v1');
+    }
+
+    public function test_surge_platform_grants_preserve_explicit_alpn_and_original_recipient_binding(): void
+    {
+        $subject = $this->vmessSubject();
+        DB::table('tx_server')->update(['protocol_settings' => json_encode(['network' => 'tcp', 'tls' => 1,
+            'tls_settings' => ['server_name' => 'tls.example.test', 'alpn' => ['h2', 'http/1.1']]], JSON_THROW_ON_ERROR)]);
+        foreach (['surge-ios/v1', 'surge-mac/v1'] as $format) {
+            $grant = $this->clientGrant($subject, $format);
+            $this->assertSame($format, $grant['format_id']);
+            $this->assertSame(RenderGrantCodec::CLIENT_FORMATS[$format]['min'], $grant['client_version']);
+            $this->assertSame(['h2', 'http/1.1'], $grant['nodes'][0]['tls']['alpn']);
+            $this->assertSame(RenderGrantCodec::base64url(str_repeat('k', 32)), $grant['recipient_public_key']);
+        }
+    }
+
+    private function vmessSubject(): int
+    {
+        DB::table('tx_server')->update(['type' => 'vmess']);
+        $subscription = DB::table('tx_access_subject')->where('id', $this->subject)->value('subscription_id');
+        $result = app(NativeCredentialProviderService::class)->issue($this->owner, (int) $subscription,
+            'render-provider', 'vmess-uuid/v1', 'render-vmess-issue', '1');
+        $this->assertSame('succeeded', $result['status']);
+        return (int) $result['subject_id'];
+    }
+
+    private function clientGrant(int $subject, string $format): array
+    {
+        $result = app(NativeSubscriptionDelivery::class)->authorize($this->owner, $subject,
+            RenderGrantCodec::base64url(str_repeat('k', 32)), null, $format, RenderGrantCodec::CLIENT_FORMATS[$format]['min']);
+        $raw = base64_decode(strtr($result['authorization']['payload'], '-_', '+/'));
+        return json_decode($raw, true, 32, JSON_THROW_ON_ERROR);
     }
 }

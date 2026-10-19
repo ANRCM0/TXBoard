@@ -332,6 +332,28 @@
       "workflow",
       "identity.sessions.manage"
     ],
+    "subscription.deliveries.authorize": [
+      "handler",
+      "App\\Domains\\InternalApi\\BrowserDeliveryReadOperations",
+      "authorize",
+      "user",
+      [
+        "user"
+      ],
+      "read",
+      null
+    ],
+    "subscription.delivery-options.get": [
+      "handler",
+      "App\\Domains\\InternalApi\\BrowserDeliveryReadOperations",
+      "options",
+      "user",
+      [
+        "user"
+      ],
+      "read",
+      null
+    ],
     "subscription.mine.get": [
       "handler",
       "App\\Domains\\InternalApi\\AccountReadOperations",

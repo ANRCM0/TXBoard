@@ -31,6 +31,11 @@ class RouteServiceProvider extends ServiceProvider
                 ->response(static fn (Request $request, array $headers) =>
                     \App\Core\Http\TxapiResponse::error($request, 'RATE_LIMITED', 'Service ingress limit exceeded', 429)
                         ->withHeaders($headers)->header('Cache-Control', 'private, no-store')));
+        RateLimiter::for('native-subscription-render', static fn (Request $request) =>
+            Limit::perMinute(10)->by('subscription-render:'.(string) $request->user('sanctum')?->getAuthIdentifier())
+                ->response(static fn (Request $request, array $headers) =>
+                    \App\Core\Http\TxapiResponse::error($request, 'RATE_LIMITED', 'Subscription delivery limit exceeded', 429)
+                        ->withHeaders($headers)->header('Cache-Control', 'private, no-store')));
         // HTTPS scheme is forced per-request via middleware (Octane-safe).
         parent::boot();
     }

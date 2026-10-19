@@ -21,12 +21,15 @@ use App\Domains\Subscription\Services\SubscriptionEntitlementResolver;
 use App\Domains\Subscription\Services\SubscriptionFulfillmentService;
 use App\Domains\Subscription\Internal\LockedAccountAccess;
 use App\Domains\Subscription\NativeAccountAccess;
+use App\Domains\Subscription\Contracts\BrowserDeliveries;
+use App\Domains\Subscription\Services\NativeSubscriptionDelivery;
 
 final class SubscriptionModule implements ModuleProvider
 {
     public function definition(): ModuleDefinition
     {
-        return new ModuleDefinition('subscription', '1.0.0', 'required-business', provides: [
+        return new ModuleDefinition('subscription', '1.1.0', 'required-business', provides: [
+                new CapabilityDefinition('subscription.browser-deliveries', BrowserDeliveries::class, exported: false),
                 new CapabilityDefinition('subscription.entitlements', EntitlementQueries::class),
                 new CapabilityDefinition('subscription.fulfillment', OrderFulfillment::class),
                 new CapabilityDefinition('subscription.catalog', CatalogQueries::class),
@@ -37,12 +40,13 @@ final class SubscriptionModule implements ModuleProvider
                 new CapabilityDefinition('subscription.locked-fulfillment', LockedOrderFulfillment::class, exported: false),
                 new CapabilityDefinition('subscription.locked-account-access', LockedAccountAccess::class, exported: false),
                 new CapabilityDefinition('subscription.initial-preparation', \App\Domains\Subscription\Internal\InitialCatalog::class, exported: false),
-            ], requires: [new CapabilityRequirement('installation.admission'), new CapabilityRequirement('platform.clock'), new CapabilityRequirement('credentials.provider-client'), new CapabilityRequirement('billing.winning-proof')], required: true);
+            ], requires: [new CapabilityRequirement('installation.admission'), new CapabilityRequirement('platform.clock'), new CapabilityRequirement('credentials.provider-client'), new CapabilityRequirement('billing.winning-proof'), new CapabilityRequirement('identity.current-session-authorization')], required: true);
     }
 
     public function bindings(): array
     {
         return [
+            new ServiceBinding(BrowserDeliveries::class, NativeSubscriptionDelivery::class),
             new ServiceBinding(EntitlementQueries::class, SubscriptionEntitlementResolver::class),
             new ServiceBinding(OrderFulfillment::class, SubscriptionFulfillmentService::class),
             new ServiceBinding(CatalogQueries::class, NativePlanCatalog::class),

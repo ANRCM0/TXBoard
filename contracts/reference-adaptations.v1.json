@@ -1,0 +1,64 @@
+{
+  "schema": "reference-adaptations/v1",
+  "adaptations": [
+    {
+      "target": "api/app/Domains/Billing/NativeOrderAdministration.php",
+      "references": [
+        {
+          "project": "Xboard",
+          "commit": "4f48e61a2cbc6db5338872b6bdb45ef954ec1256",
+          "license": "MIT",
+          "files": [
+            "app/Http/Controllers/V2/Admin/OrderController.php",
+            "tests/Unit/Services/OrderServiceConcurrencyTest.php"
+          ],
+          "borrowed": "Pending-only cancellation workflow and stale-reader duplicate cancellation regression scenarios."
+        },
+        {
+          "project": "perfect-panel-backend",
+          "commit": "944dc363cc6a28f6e294e739c9de9df1317ca00e",
+          "license": "GPL-3.0",
+          "files": [
+            "internal/transport/task/order/reconcile_paid_orders.go",
+            "internal/transport/task/order/defer_close_order.go"
+          ],
+          "borrowed": "Durable paid order state as the recovery outbox and refusal to close an unconfirmed payment."
+        }
+      ],
+      "reuse": "Workflow design and regression scenarios; independently implemented against existing TXBoard owners. No reference source blocks copied.",
+      "local_constraints": [
+        "current administrator grant inside the owner transaction",
+        "sorted account locks",
+        "frozen purchase identity",
+        "native wallet reservation owner",
+        "no manual paid transition",
+        "original-key receipt and audit",
+        "postcommit queue wakeup"
+      ]
+    },
+    {
+      "target": "node/internal/credentialprovider/render_surge.go",
+      "references": [
+        {
+          "project": "Xboard",
+          "commit": "4f48e61a2cbc6db5338872b6bdb45ef954ec1256",
+          "license": "MIT",
+          "files": [
+            "app/Protocols/Surge.php",
+            "app/Protocols/Clash.php"
+          ],
+          "borrowed": "VMess field mapping, AEAD settings and explicit client protocol allowlists."
+        }
+      ],
+      "reuse": "Adapted VMess serialization into Go. Copyright attribution and full MIT notice retained in licenses/Xboard-MIT.txt.",
+      "local_constraints": [
+        "Core-signed compatible node subset",
+        "platform-specific Surge version admission",
+        "no VLESS through classic Clash or Surge",
+        "no explicit ALPN through classic Clash",
+        "INI-safe display labels",
+        "no subscription URL, user balance or arbitrary template interpolation"
+      ]
+    }
+  ]
+}
