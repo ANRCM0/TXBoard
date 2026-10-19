@@ -20,6 +20,7 @@ on:
       - "compose.yaml"
       - "backup.sh"
       - "scripts/test-backup.sh"
+      - "scripts/test-core-resource-budget.sh"
       - "scripts/ci-release-recovery.sh"
       - "scripts/resolve-image-tags.sh"
       - "scripts/test-image-tags.sh"
@@ -41,6 +42,7 @@ on:
       - "compose.yaml"
       - "backup.sh"
       - "scripts/test-backup.sh"
+      - "scripts/test-core-resource-budget.sh"
       - "scripts/ci-release-recovery.sh"
       - "scripts/resolve-image-tags.sh"
       - "scripts/test-image-tags.sh"
@@ -202,6 +204,8 @@ jobs:
           cache-from: type=gha,scope=txboard
           cache-to: type=gha,mode=max,scope=txboard
           provenance: false
+      - name: Verify Core Redis budget and no-eviction behavior
+        run: bash scripts/test-core-resource-budget.sh txboard-ci:pr
       - name: Verify runtime healthcheck is embedded in image
         run: |
           docker run --rm --entrypoint sh txboard-ci:pr -c \
