@@ -42,9 +42,11 @@ docker run --rm --network none --memory 512m \
     done
     php -r '\''
       $redis = new Redis(); $redis->connect("/data/redis.sock");
-      if ($redis->config("GET", "maxmemory")["maxmemory"] !== "16777216"
-          || $redis->config("GET", "maxmemory-policy")["maxmemory-policy"] !== "noeviction") {
-          throw new RuntimeException("Redis resource policy was not applied");
+      $memory = $redis->config("GET", "maxmemory");
+      $policy = $redis->config("GET", "maxmemory-policy");
+      if ((string) ($memory["maxmemory"] ?? "") !== "16777216"
+          || ($policy["maxmemory-policy"] ?? null) !== "noeviction") {
+          throw new RuntimeException("Redis resource policy was not applied: ".json_encode([$memory, $policy]));
       }
       $redis->lPush("resource-test-durable-work", "original-intent");
       $refused = false;
