@@ -6,9 +6,9 @@ deferred. Old theme REST DTO and encrypted Gateway routes are retired; current
 themes use the canonical Core operations through Theme SDK 0.2.0. Subscription delivery uses its separately authorized Provider flow.
 
 `GET /gateway/v1/core/user/capabilities` returns the intersection of the compiled
-57-operation user list and current browser feature gates. Discovery does not
-replace authorization: Core checks the original user session and durable actor
-grants on every authenticated operation.
+user-operation list and current browser feature gates. Discovery does not replace
+authorization: Core re-resolves the original user session and current account
+state on every authenticated operation.
 
 `POST /gateway/v1/core/user/operations/<operation>` accepts exactly
 `{"input":{...}}`. Query parameters, additional envelope fields, duplicate JSON

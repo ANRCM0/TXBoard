@@ -1,9 +1,9 @@
 # Management frontend access
 
-The reviewed administrator surface contains 119 explicit operations in
-`contracts/core-api/operations.v1.json`. The full Core contract contains 173
-operations. Generation never admits an operation merely because it belongs to
-the admin domain. Core browser ingress, SDK and PHP use the same generated schemas.
+The reviewed administrator surface is a strict subset of the generated Core
+contract in `contracts/core-api/operations.v1.json`. Generation never admits an
+operation merely because it belongs to the admin domain. Core browser ingress,
+SDK and PHP use the same generated schemas.
 
 ## Admission and identity
 
@@ -29,8 +29,7 @@ their existing domain transaction and durable recovery rules.
 
 ## Current frontend entries
 
-Admin and user sources, the SDK and frontend builds belong to TXBoard. TX-F is a
-historical import recorded in the frontend provenance manifest.
+Admin and user sources, the SDK and frontend builds belong to TXBoard.
 
 The admin router connects accounts, orders, catalog publications, groups, routes,
 access audit, support, content, coupons, gifts, reviewed commissions, sessions,
