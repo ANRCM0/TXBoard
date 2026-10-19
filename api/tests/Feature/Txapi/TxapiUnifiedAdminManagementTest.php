@@ -4,6 +4,7 @@ namespace Tests\Feature\Txapi;
 
 use App\Domains\InternalApi\ServiceCredentials;
 use App\Domains\InternalApi\AdminOperationBindings;
+use App\Domains\InternalApi\ContentOperationBindings;
 use App\Models\Server;
 use App\Models\ServerMachine;
 use App\Services\Auth\NativeIdentityService;
@@ -29,12 +30,12 @@ final class TxapiUnifiedAdminManagementTest extends NativeRuntimeTestCase
         $invoke('identity.accounts.status.update', $input, $key)->assertOk()->assertJsonPath('data.banned', true);
         $invoke('identity.accounts.status.update', $input, $key)->assertOk()->assertJsonPath('data.banned', true);
         $invoke('identity.accounts.status.update', $input + ['balance' => '100'], (string) Str::uuid())->assertStatus(422);
-        $notice = $invoke('content.notices.create', ['title' => 'Original', 'content' => 'Read me'])->assertCreated()->json('data.id');
-        $invoke('content.notices.update', ['content_id' => $notice, 'title' => 'Updated', 'content' => 'Changed'])
+        $notice = $invoke('content.notices.create', $this->noticeInput(['title' => 'Original', 'content' => 'Read me']))->assertCreated()->json('data.id');
+        $invoke('content.notices.update', $this->noticeInput(['content_id' => $notice, 'expected_version' => '1', 'title' => 'Updated', 'content' => 'Changed']))
             ->assertOk()->assertJsonPath('data.id', $notice);
         $invoke('content.notices.get', ['content_id' => $notice])->assertOk()->assertJsonPath('data.title', 'Updated');
         $this->assertSame(1, DB::table('tx_notice')->where('id', (int) $notice)->count());
-        $invoke('content.notices.delete', ['content_id' => $notice])->assertOk();
+        $invoke('content.notices.delete', ['content_id' => $notice, 'expected_version' => '2'])->assertOk();
         $invoke('content.notices.get', ['content_id' => $notice])->assertNotFound();
         $invoke('network.groups.list', ['page' => 1, 'per_page' => 1])->assertOk()->assertJsonPath('meta.per_page', 1);
         DB::table('tx_internal_actor_grant')->where('user_id', $actor->id)->where('permission', 'identity.accounts.manage')->delete();
@@ -86,22 +87,23 @@ final class TxapiUnifiedAdminManagementTest extends NativeRuntimeTestCase
     {
         [$invoke] = $this->allBoundManagementClient();
         $this->assertTrue(Schema::hasColumn('tx_notice', 'popup'));
-        $notice = $invoke('content.notices.create', ['title' => 'Notice', 'content' => 'Body', 'show' => false, 'popup' => true])->assertCreated()->json('data.id');
-        $invoke('content.notices.visibility.toggle', ['content_id' => $notice])->assertOk()->assertJsonPath('data.show', true);
-        $invoke('content.notices.sort', ['ids' => [$notice]])->assertOk();
+        $notice = $invoke('content.notices.create', $this->noticeInput(['show' => false, 'popup' => true]))->assertCreated()->json('data.id');
+        $invoke('content.notices.visibility.toggle', ['content_id' => $notice, 'expected_version' => '1', 'show' => true])->assertOk()->assertJsonPath('data.show', true);
+        $invoke('content.notices.sort', ['items' => [['id' => $notice, 'expected_version' => '2']]])->assertOk();
         $invoke('content.notices.list', ['per_page' => 1])->assertOk()->assertJsonPath('data.0.id', $notice)
             ->assertJsonPath('data.0.popup', true);
-        $invoke('content.notices.update', ['content_id' => $notice, 'title' => 'Notice', 'content' => 'Updated body', 'popup' => false])->assertOk();
+        $invoke('content.notices.update', $this->noticeInput(['content_id' => $notice, 'expected_version' => '3', 'content' => 'Updated body', 'popup' => false]))->assertOk();
         $invoke('content.notices.get', ['content_id' => $notice])->assertOk()->assertJsonPath('data.popup', false);
-        $articleInput = ['title' => 'Article', 'category' => 'Guides', 'language' => 'en-US', 'body' => 'Original body', 'show' => false];
+        $articleInput = ['title' => 'Article', 'category' => 'Guides', 'language' => 'en-US', 'body' => 'Original body', 'show' => false,
+            'sort' => 0, 'audience' => 'authenticated', 'publish_at' => null, 'expire_at' => null];
         $article = $invoke('content.knowledge.create', $articleInput)->assertCreated()->json('data.id');
-        $invoke('content.knowledge.update', array_replace($articleInput, ['content_id' => $article, 'body' => 'Changed body']))->assertOk();
+        $invoke('content.knowledge.update', array_replace($articleInput, ['content_id' => $article, 'expected_version' => '1', 'body' => 'Changed body']))->assertOk();
         $invoke('content.knowledge.get', ['content_id' => $article])->assertOk()->assertJsonPath('data.body', 'Changed body');
-        $invoke('content.knowledge.visibility.toggle', ['content_id' => $article])->assertOk()->assertJsonPath('data.show', true);
-        $invoke('content.knowledge.sort', ['ids' => [$article]])->assertOk();
+        $invoke('content.knowledge.visibility.toggle', ['content_id' => $article, 'expected_version' => '2', 'show' => true])->assertOk()->assertJsonPath('data.show', true);
+        $invoke('content.knowledge.sort', ['items' => [['id' => $article, 'expected_version' => '3']]])->assertOk();
         $invoke('content.knowledge.list', ['category' => 'Guides'])->assertOk()->assertJsonPath('data.0.id', $article);
         $invoke('content.knowledge.categories.list', [])->assertOk()->assertJsonPath('data.categories', ['Guides']);
-        $invoke('content.knowledge.delete', ['content_id' => $article])->assertOk();
+        $invoke('content.knowledge.delete', ['content_id' => $article, 'expected_version' => '4'])->assertOk();
         $invoke('content.knowledge.get', ['content_id' => $article])->assertNotFound();
 
         $invoke('notifications.mail-templates.list', [])->assertOk()->assertJsonPath('data.0.name', 'verify');
@@ -124,7 +126,8 @@ final class TxapiUnifiedAdminManagementTest extends NativeRuntimeTestCase
 
     private function allBoundManagementClient(): array
     {
-        $bindings = AdminOperationBindings::all();
+        $bindings = array_merge(AdminOperationBindings::all(), array_filter(ContentOperationBindings::all(),
+            static fn (array $spec): bool => $spec['domains'] === ['admin']));
         return $this->managementClient(array_keys($bindings), array_values(array_unique(array_column($bindings, 'permission'))));
     }
 
@@ -152,5 +155,11 @@ final class TxapiUnifiedAdminManagementTest extends NativeRuntimeTestCase
                     'X-Core-Tls-Certificate-Sha256' => $fingerprint, 'Idempotency-Key' => $key ?? (string) Str::uuid()]);
         };
         return [$invoke, $actor];
+    }
+
+    private function noticeInput(array $values): array
+    {
+        return $values + ['title' => 'Notice', 'content' => 'Body', 'show' => true, 'popup' => false,
+            'img_url' => null, 'tags' => [], 'sort' => 0, 'audience' => 'authenticated', 'publish_at' => null, 'expire_at' => null];
     }
 }

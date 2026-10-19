@@ -221,6 +221,10 @@ USAGE_QUERY_OWNERS = frozenset({
     "api/app/Modules/UsageModule.php",
 })
 READ_ADAPTER_FILES = {
+    "api/app/Domains/InternalApi/ContentReadOperations.php": "content read handler",
+    "api/app/Domains/InternalApi/ContentMutationOperations.php": "content mutation command",
+    "api/app/Domains/InternalApi/SupportReadOperations.php": "support read handler",
+    "api/app/Domains/InternalApi/SupportMutationOperations.php": "support mutation command",
     "api/app/Domains/InternalApi/AdminAccountReadOperations.php": "admin account read handler",
     "api/app/Domains/InternalApi/AdminOrderReadOperations.php": "admin order read handler",
     "api/app/Domains/InternalApi/AccountReadOperations.php": "account read handler",
@@ -328,7 +332,7 @@ def validate_kernel_boundaries(root):
                        re.IGNORECASE),
         ),
     }
-    for domain in ('Network', 'Installation'):
+    for domain in ('Network', 'Installation', 'Support', 'Content'):
         areas[f"api/app/Domains/{domain}/Contracts"] = (
             re.compile(r"\bApp\\(?!(?:Core\\Kernel|Domains\\" + domain + r"\\Contracts)(?:\\|\b))", re.IGNORECASE),
             HOST_NAMESPACE, HOST_OPERATION,
@@ -347,7 +351,7 @@ def validate_kernel_boundaries(root):
 
     # Locked participant contracts may expose existing Eloquent rows/collections.
     # This checks direct host calls only; transaction ownership still needs tests.
-    for area in ("api/app/Domains/Subscription/Internal", "api/app/Domains/Billing/Internal"):
+    for area in ("api/app/Domains/Subscription/Internal", "api/app/Domains/Billing/Internal", "api/app/Domains/Identity/Internal"):
         for path in sorted((root / area).rglob("*.php")):
             source = without_php_comments(path.read_text(encoding="utf-8-sig"))
             for pattern in (HOST_OPERATION, INTERNAL_HOST_NAMESPACE):
@@ -357,6 +361,12 @@ def validate_kernel_boundaries(root):
                         f"{match.group(0) if match else ''}")
 
     concrete_boundaries = (
+        (re.compile(r"\bNativeContentWorkflow\b", re.IGNORECASE),
+         frozenset({"api/app/Domains/Content/NativeContentWorkflow.php", "api/app/Modules/ContentModule.php"}), "content workflow"),
+        (re.compile(r"\bNativeTicketWorkflow\b", re.IGNORECASE),
+         frozenset({"api/app/Domains/Support/NativeTicketWorkflow.php", "api/app/Modules/SupportModule.php"}), "support workflow"),
+        (re.compile(r"\bNativeCurrentSessionAuthorization\b", re.IGNORECASE),
+         frozenset({"api/app/Domains/Identity/NativeCurrentSessionAuthorization.php", "api/app/Modules/IdentityModule.php"}), "current session authorization"),
         (re.compile(r"\bSubscriptionEntitlementResolver\b", re.IGNORECASE),
          RESOLVER_OWNERS, "entitlement"),
         (re.compile(r"\bProviderTransport\b", re.IGNORECASE),
@@ -376,6 +386,9 @@ def validate_kernel_boundaries(root):
         for path in sorted((root / area).rglob("*.php")):
             relative = path.relative_to(root).as_posix()
             source = without_php_comments(path.read_text(encoding="utf-8-sig"))
+            if not relative.startswith("api/app/Domains/Billing/") and relative != "api/app/Modules/BillingModule.php":
+                require(re.search(r"\b(?:NativeCouponWorkflow|NativeWorkflowBoundary)\b", source) is None,
+                        f"Concrete financial workflow dependency outside Billing: {relative}")
             for concrete, owners, label in concrete_boundaries:
                 require(relative in owners or concrete.search(source) is None,
                         f"Concrete {label} dependency outside owner/composition root: {relative}")

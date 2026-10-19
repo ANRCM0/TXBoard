@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { CoreClient, type CoreTransport } from './client.js'
-import { coreOperations, type CoreOperation } from './contracts.generated.js'
+import { coreOperations, CORE_SURFACE_OPERATION_LIMIT, type CoreOperation } from './contracts.generated.js'
 
 export type CoreUserClientOptions = Readonly<{
   baseURL?: string
@@ -17,7 +17,7 @@ const failure = z.strictObject({ ok: z.literal(false), error: z.strictObject({ c
   meta: z.strictObject({ version: z.literal('1'), requestId: trace }) })
 const capabilities = z.strictObject({ contract: z.enum(['core-user/v1', 'core-admin/v1']), operations: z.array(z.strictObject({
   permission: z.string().nullable().optional(), id: z.string(), version: z.literal('1'), actor: z.string(), idempotency: z.string(),
-})).max(100) })
+})).max(CORE_SURFACE_OPERATION_LIMIT) })
 const capabilityEnvelope = z.strictObject({ ok: z.literal(true), data: capabilities,
   meta: z.strictObject({ version: z.literal('1'), requestId: trace }) })
 export type CoreUserCapabilities = z.output<typeof capabilities>
@@ -34,7 +34,7 @@ export class CoreUserApiError extends Error {
 
 const codes = new Set(['UNAUTHORIZED', 'FORBIDDEN', 'NOT_FOUND', 'VALIDATION_ERROR', 'RATE_LIMITED',
   'UPSTREAM_UNAVAILABLE', 'UPSTREAM_ERROR', 'PAYLOAD_TOO_LARGE', 'METHOD_NOT_ALLOWED',
-  'IDEMPOTENCY_IN_PROGRESS', 'IDEMPOTENCY_CONFLICT', 'ORIGIN_DENIED', 'CAPTCHA_REQUIRED'])
+  'BUSINESS_REJECTED', 'IDEMPOTENCY_IN_PROGRESS', 'IDEMPOTENCY_CONFLICT', 'ORIGIN_DENIED', 'CAPTCHA_REQUIRED'])
 
 export function createBrowserCoreClient(options: CoreUserClientOptions, surface: {
   domain: 'user' | 'admin'; contract: string; prefix: string; operations?: readonly CoreOperation[];
@@ -118,7 +118,7 @@ export function createBrowserCoreClient(options: CoreUserClientOptions, surface:
         const parsed = failure.safeParse(value)
         const code = parsed.success && codes.has(parsed.data.error.code) ? parsed.data.error.code : 'UPSTREAM_ERROR'
         const uncertain = mutation && !['UNAUTHORIZED', 'FORBIDDEN', 'NOT_FOUND', 'VALIDATION_ERROR',
-          'IDEMPOTENCY_CONFLICT', 'METHOD_NOT_ALLOWED', 'ORIGIN_DENIED'].includes(code)
+          'BUSINESS_REJECTED', 'IDEMPOTENCY_CONFLICT', 'METHOD_NOT_ALLOWED', 'ORIGIN_DENIED'].includes(code)
         throw new CoreUserApiError(code, response.status, parsed.success ? parsed.data.meta.requestId : undefined, uncertain)
       }
       if (!spec) {

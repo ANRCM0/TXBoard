@@ -14,6 +14,8 @@ use App\Modules\NotificationsModule;
 use App\Modules\PlatformModule;
 use App\Modules\ProviderModule;
 use App\Modules\SubscriptionModule;
+use App\Modules\SupportModule;
+use App\Modules\ContentModule;
 use App\Modules\UsageModule;
 use Illuminate\Support\ServiceProvider;
 
@@ -23,7 +25,7 @@ final class CoreCapabilitiesServiceProvider extends ServiceProvider
     {
         $providers = [new PlatformModule, new InstallationModule, new ProviderModule,
             new IdentityModule, new SubscriptionModule, new BillingModule,
-            new UsageModule, new NetworkModule, new NotificationsModule];
+            new UsageModule, new NetworkModule, new NotificationsModule, new SupportModule, new ContentModule];
         $extensions = config('core_modules.providers', []);
         if (!is_array($extensions) || !array_is_list($extensions) || count($extensions) > 64) {
             throw new ModuleError('MODULE_PROVIDER_CONFIGURATION_INVALID');

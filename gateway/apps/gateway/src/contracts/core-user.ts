@@ -4,6 +4,24 @@ export const CORE_USER_PREFIX = '/gateway/v1/core/user'
 
 /** Reviewed browser surface. Adding a generated/internal operation never exposes it automatically. */
 export const CORE_USER_OPERATIONS = [
+  'support.tickets.list',
+  'support.tickets.get',
+  'support.tickets.messages.list',
+  'support.tickets.create',
+  'support.tickets.reply',
+  'support.tickets.close',
+  'content.user-notices.list',
+  'content.user-notices.get',
+  'content.user-knowledge.list',
+  'content.user-knowledge.get',
+  'content.user-knowledge.categories.list',
+  'support.tickets.attachments.begin',
+  'support.tickets.attachments.append',
+  'support.tickets.attachments.finish',
+  'support.tickets.attachments.cancel',
+  'support.tickets.attachments.get',
+  'support.tickets.attachments.download',
+
   'billing.order-payment-attempts.list',
   'identity.session.create',
   'subscription.delivery-options.get', 'subscription.deliveries.authorize',
@@ -18,4 +36,4 @@ export type CoreUserOperation = (typeof CORE_USER_OPERATIONS)[number]
 const admitted = new Set<string>(CORE_USER_OPERATIONS)
 export const isCoreUserOperation = (value: string): value is CoreUserOperation => admitted.has(value)
 export const requiresCommerceWrites = (id: CoreUserOperation): boolean =>
-  coreOperations[id].idempotency !== 'read' && !id.startsWith('identity.')
+  coreOperations[id].idempotency !== 'read' && (id.startsWith('commerce.') || id.startsWith('billing.'))
