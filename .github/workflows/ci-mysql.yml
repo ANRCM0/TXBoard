@@ -300,8 +300,48 @@ jobs:
           tests/Feature/Txapi/TxapiUnifiedAdminManagementTest.php
 
   native-billing-domain:
+    name: native-billing-domain (${{ matrix.shard }})
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        include:
+          - shard: ledger-and-transfers
+            test_files: >-
+              tests/Feature/Billing/NativeMoneyLedgerTest.php
+              tests/Feature/Billing/NativeMoneyLedgerMysqlConcurrencyTest.php
+              tests/Feature/Billing/NativeGiftCardWorkflowTest.php
+              tests/Feature/Billing/NativeGiftBatchesTest.php
+              tests/Feature/Billing/NativeWalletRefundTest.php
+              tests/Feature/Billing/NativeWalletRefundMysqlConcurrencyTest.php
+              tests/Feature/Txapi/TxapiWalletRechargeTest.php
+          - shard: discounts-and-commissions
+            test_files: >-
+              tests/Feature/Billing/NativeCouponWorkflowTest.php
+              tests/Feature/Billing/NativeCommissionWorkflowTest.php
+              tests/Feature/Billing/NativeReferralWorkflowTest.php
+              tests/Feature/Billing/NativeFinancialWorkflowMysqlConcurrencyTest.php
+              tests/Feature/Billing/NativeUpgradeCreditTest.php
+              tests/Feature/Billing/NativeUpgradeCreditMysqlConcurrencyTest.php
+          - shard: payment-attempts-and-checkout
+            test_files: >-
+              tests/Feature/Billing/NativePaymentAttemptsTest.php
+              tests/Feature/Billing/NativeOrderPaymentQueriesTest.php
+              tests/Feature/Billing/NativeOrderAdministrationTest.php
+              tests/Feature/Billing/NativePaymentAttemptsMysqlConcurrencyTest.php
+              tests/Feature/Billing/NativeEpayCheckoutTest.php
+              tests/Feature/Billing/NativePaymentPluginTest.php
+              tests/Feature/Billing/NativeFreeCheckoutTest.php
+          - shard: settlement-and-recovery
+            test_files: >-
+              tests/Feature/Billing/NativePaymentSettlementTest.php
+              tests/Feature/Billing/NativePaymentSettlementMysqlConcurrencyTest.php
+              tests/Feature/Billing/NativeBillingRecoveryTest.php
+              tests/Feature/Billing/OrderFulfillmentBoundaryTest.php
+              tests/Feature/Modules/ModuleDeploymentTest.php
+              tests/Feature/Modules/ProofExtensionsTest.php
     permissions:
       contents: read
     services:
@@ -350,38 +390,67 @@ jobs:
       - name: Apply native production schema
         run: php artisan migrate --force --no-interaction
       - name: Native billing ledger and payment evidence on MySQL 8.4
-        run: >-
-          php artisan test
-          tests/Feature/Billing/NativeMoneyLedgerTest.php
-          tests/Feature/Billing/NativeMoneyLedgerMysqlConcurrencyTest.php
-          tests/Feature/Billing/NativeCouponWorkflowTest.php
-          tests/Feature/Billing/NativeGiftCardWorkflowTest.php
-          tests/Feature/Billing/NativeGiftBatchesTest.php
-          tests/Feature/Billing/NativeCommissionWorkflowTest.php
-          tests/Feature/Billing/NativeReferralWorkflowTest.php
-          tests/Feature/Billing/NativeFinancialWorkflowMysqlConcurrencyTest.php
-          tests/Feature/Billing/NativePaymentAttemptsTest.php
-          tests/Feature/Billing/NativeOrderPaymentQueriesTest.php
-          tests/Feature/Billing/NativeOrderAdministrationTest.php
-          tests/Feature/Billing/NativePaymentAttemptsMysqlConcurrencyTest.php
-          tests/Feature/Billing/NativePaymentSettlementTest.php
-          tests/Feature/Billing/NativePaymentSettlementMysqlConcurrencyTest.php
-          tests/Feature/Billing/NativeBillingRecoveryTest.php
-          tests/Feature/Billing/OrderFulfillmentBoundaryTest.php
-          tests/Feature/Billing/NativeEpayCheckoutTest.php
-          tests/Feature/Billing/NativePaymentPluginTest.php
-          tests/Feature/Billing/NativeFreeCheckoutTest.php
-          tests/Feature/Billing/NativeWalletRefundTest.php
-          tests/Feature/Billing/NativeWalletRefundMysqlConcurrencyTest.php
-          tests/Feature/Billing/NativeUpgradeCreditTest.php
-          tests/Feature/Billing/NativeUpgradeCreditMysqlConcurrencyTest.php
-          tests/Feature/Txapi/TxapiWalletRechargeTest.php
-          tests/Feature/Modules/ModuleDeploymentTest.php
-          tests/Feature/Modules/ProofExtensionsTest.php
+        run: php artisan test ${{ matrix.test_files }}
 
   native-subscription-domain:
+    name: native-subscription-domain (${{ matrix.shard }})
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        include:
+          - shard: orders-and-lifecycle
+            run_usage_concurrency: false
+            test_files: >-
+              tests/Feature/Subscription/PublishedOrderPurchaseTest.php
+              tests/Feature/Subscription/NativeOrderEventJournalTest.php
+              tests/Feature/Subscription/PublishedOrderMysqlConcurrencyTest.php
+              tests/Feature/Subscription/NativeOrderRecoveryTest.php
+              tests/Feature/Subscription/NativeSubscriptionLifecycleTest.php
+              tests/Feature/Subscription/NativeSubscriptionEntitlementTest.php
+              tests/Feature/Subscription/EntitlementQueryBoundaryTest.php
+              tests/Feature/Txapi/TxapiNativeSubscriptionOperationsTest.php
+              tests/Feature/Txapi/TxapiPublishedOrderAdapterTest.php
+          - shard: providers-and-delivery
+            run_usage_concurrency: false
+            test_files: >-
+              tests/Unit/Domains/CredentialProvider/ProviderClientBoundaryTest.php
+              tests/Unit/Domains/CredentialProvider/ProviderTransportTest.php
+              tests/Feature/Subscription/NativeCredentialProviderTest.php
+              tests/Feature/Subscription/NativeProviderNodeAuthorizationTest.php
+              tests/Feature/Subscription/NativeSubscriptionDeliveryTest.php
+              tests/Feature/Subscription/NativeBrowserDeliveriesTest.php
+              tests/Feature/Txapi/TxapiNativeSubscriptionAdapterTest.php
+              tests/Feature/Installation/NativeProviderTrustTest.php
+              tests/Feature/Subscription/NativeSubscriptionLinksTest.php
+          - shard: runtime-and-administration
+            run_usage_concurrency: false
+            test_files: >-
+              tests/Feature/Subscription/NativeRuntimeCommerceTest.php
+              tests/Feature/Subscription/NativeIdentityAndCatalogTest.php
+              tests/Feature/Installation/NativeRuntimeReadinessTest.php
+              tests/Feature/Installation/InstallationRuntimeTest.php
+              tests/Feature/Subscription/NativePlanAdministrationTest.php
+              tests/Feature/Txapi/TxapiNativeInternalApiTest.php
+              tests/Feature/Txapi/TxapiAdminResourceReadsTest.php
+              tests/Feature/Txapi/TxapiUnifiedAdminManagementTest.php
+              tests/Feature/Database/NoticePopupMigrationTest.php
+              tests/Feature/Database/NativeBusinessMigrationCycleTest.php
+              tests/Feature/Content/NativeContentWorkflowTest.php
+              tests/Feature/Support/NativeTicketWorkflowTest.php
+              tests/Feature/Support/NativeTicketAttachmentsTest.php
+          - shard: read-boundaries-and-usage
+            run_usage_concurrency: true
+            test_files: >-
+              tests/Feature/UsageV2/NativeSubscriptionUsageTest.php
+              tests/Feature/Txapi/AccountReadBoundaryTest.php
+              tests/Feature/Txapi/OrderReadBoundaryTest.php
+              tests/Feature/Txapi/AccountSessionsBoundaryTest.php
+              tests/Feature/Txapi/UsageReadBoundaryTest.php
+              tests/Feature/Txapi/TxapiNativeInternalCheckoutTest.php
+              tests/Feature/UsageV2/NativeRuntimeUsageTest.php
     permissions:
       contents: read
     services:
@@ -430,45 +499,7 @@ jobs:
       - name: Apply native production schema
         run: php artisan migrate --force --no-interaction
       - name: Native domain transactions and application adapters on MySQL 8.4
-        run: >-
-          php artisan test
-          tests/Feature/Subscription/PublishedOrderPurchaseTest.php
-          tests/Feature/Subscription/NativeOrderEventJournalTest.php
-          tests/Feature/Subscription/PublishedOrderMysqlConcurrencyTest.php
-          tests/Feature/Subscription/NativeOrderRecoveryTest.php
-          tests/Feature/Subscription/NativeSubscriptionLifecycleTest.php
-          tests/Feature/Subscription/NativeSubscriptionEntitlementTest.php
-          tests/Feature/Subscription/EntitlementQueryBoundaryTest.php
-          tests/Unit/Domains/CredentialProvider/ProviderClientBoundaryTest.php
-          tests/Unit/Domains/CredentialProvider/ProviderTransportTest.php
-          tests/Feature/UsageV2/NativeSubscriptionUsageTest.php
-          tests/Feature/Txapi/TxapiNativeSubscriptionOperationsTest.php
-          tests/Feature/Txapi/TxapiPublishedOrderAdapterTest.php
-          tests/Feature/Subscription/NativeCredentialProviderTest.php
-          tests/Feature/Subscription/NativeProviderNodeAuthorizationTest.php
-          tests/Feature/Subscription/NativeSubscriptionDeliveryTest.php
-          tests/Feature/Subscription/NativeBrowserDeliveriesTest.php
-          tests/Feature/Txapi/TxapiNativeSubscriptionAdapterTest.php
-          tests/Feature/Subscription/NativeRuntimeCommerceTest.php
-          tests/Feature/Subscription/NativeIdentityAndCatalogTest.php
-          tests/Feature/Installation/NativeRuntimeReadinessTest.php
-          tests/Feature/Installation/InstallationRuntimeTest.php
-          tests/Feature/Installation/NativeProviderTrustTest.php
-          tests/Feature/Subscription/NativeSubscriptionLinksTest.php
-          tests/Feature/Subscription/NativePlanAdministrationTest.php
-          tests/Feature/Txapi/TxapiNativeInternalApiTest.php
-          tests/Feature/Txapi/TxapiAdminResourceReadsTest.php
-          tests/Feature/Txapi/TxapiUnifiedAdminManagementTest.php
-          tests/Feature/Database/NoticePopupMigrationTest.php
-          tests/Feature/Database/NativeBusinessMigrationCycleTest.php
-          tests/Feature/Content/NativeContentWorkflowTest.php
-          tests/Feature/Support/NativeTicketWorkflowTest.php
-          tests/Feature/Support/NativeTicketAttachmentsTest.php
-          tests/Feature/Txapi/AccountReadBoundaryTest.php
-          tests/Feature/Txapi/OrderReadBoundaryTest.php
-          tests/Feature/Txapi/AccountSessionsBoundaryTest.php
-          tests/Feature/Txapi/UsageReadBoundaryTest.php
-          tests/Feature/Txapi/TxapiNativeInternalCheckoutTest.php
-          tests/Feature/UsageV2/NativeRuntimeUsageTest.php
+        run: php artisan test ${{ matrix.test_files }}
       - name: Native receipt concurrency and SQL crash recovery on MySQL 8.4
+        if: matrix.run_usage_concurrency == true
         run: php artisan test tests/Feature/UsageV2/UsageMysqlConcurrencyTest.php
