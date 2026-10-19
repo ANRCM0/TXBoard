@@ -68,12 +68,16 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - run: npm run verify:web
       - run: npx playwright install --with-deps chromium
+      - name: Verify actual management development server in Chromium
+        run: npm run test:dev-browser --workspace @txboard/admin
       - run: npm run test:browser
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: admin-browser-${{ github.sha }}
           path: |
+            artifacts/admin-dev-browser/*.png
+            artifacts/admin-dev-browser/result.json
             artifacts/admin-browser/
             artifacts/admin-workflows-browser/
             artifacts/admin-catalog-network-browser/

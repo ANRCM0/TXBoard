@@ -8,6 +8,11 @@ export default defineConfig(({ mode }) => {
   return {
     base: env.VITE_BASE_PATH || '/admin/',
     plugins: [react()],
+    // Keep the SDK's Zod 4 scoped to its workspace instead of sharing the
+    // optimizer entry for the login forms' Zod 3 dependency.
+    optimizeDeps: {
+      include: ['@txboard/core-sdk'],
+    },
     test: {
       environment: 'jsdom',
       // Avoid starving the router's dynamic import when the full suite runs under load.
