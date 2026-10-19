@@ -189,6 +189,8 @@ try {
       await mobile.page.locator('.native-management-page').getByRole('heading', { name: 'subscription@example.test', exact: true }).waitFor()
     }
     assert.ok(await mobile.page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), title + ' must fit mobile viewport')
+    assert.ok(await mobile.page.locator('.native-management-page h2').evaluateAll(headings =>
+      headings.every(heading => heading.scrollWidth <= heading.clientWidth + 1)), title + ' must show complete resource headings')
     assert.equal(await mobile.page.locator('.admin-sidebar.is-open').count(), 0)
     await screenshot(mobile.page, pathname.replace(/^\//, '').replaceAll('/', '-') + '-mobile')
   }

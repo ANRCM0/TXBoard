@@ -1,4 +1,5 @@
 .native-management-page { display: grid; gap: 20px; min-width: 0; }
+.native-management-page h2 { overflow-wrap: anywhere; }
 .native-management-page .list-card { min-width: 0; }
 .native-list-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px; flex-wrap: wrap; }
 .native-list-search { display: flex; gap: 8px; align-items: center; flex: 1 1 220px; max-width: 380px; }
