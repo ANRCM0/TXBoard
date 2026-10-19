@@ -194,7 +194,7 @@ final class NativeCommissions implements Commissions, CommissionTerms
                         $proof = app(Internal\WinningPaymentProofs::class)->verifyWinningPaymentLocked($installation, (int) $row->buyer_id, $order, $purchase);
                         $allocationId = $proof['order_payment_id'];
                         $refunded = app(NativeRefundService::class)->refundedForPaymentLocked($installation, (int) $row->buyer_id, (int) $allocationId);
-                        $net = MoneyValue::add($snapshot['price_minor'], '-'.$refunded);
+                        $net = MoneyValue::minor(bcsub($snapshot['price_minor'], $refunded, 0));
                         $amount = bcdiv(bcmul($net, (string) $snapshot['policy']['rate_bps'], 0), '10000', 0);
                         MoneyValue::minor($amount);
                         if ($amount !== '0') {

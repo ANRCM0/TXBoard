@@ -47,6 +47,7 @@ final class NativeCommissionWorkflowTest extends NativeRuntimeTestCase
         $this->authenticateWorkflowActor($this->admin); $this->changePolicy('1', ['rate_bps' => 5000]);
         $this->pay($order);
         $results = $this->commissions->recover(10); $reward = array_values($results)[0];
+        $this->assertArrayNotHasKey('error_code', $reward, json_encode($results, JSON_THROW_ON_ERROR));
         $this->assertSame('accrued', $reward['state']); $this->assertSame('100', $reward['amount_minor']);
         $this->assertSame(1000, $reward['rate_bps']);
         $this->assertSame([], $this->commissions->recover(10));

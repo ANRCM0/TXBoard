@@ -27,7 +27,9 @@ export async function verifyFinancialWorkflows(owner, buyer, admin, { root, acto
   assert.equal(offer.price_minor, '1200')
   const orderKey = randomUUID(), orderInput = { offer_id: offer.offer_id, coupon_code: couponInput.code }
   const order = await buyer.call('commerce.orders.create', orderInput, { idempotencyKey: orderKey })
-  assert.equal(order.amount_minor, '1000'); assert.equal(order.coupon_discount_minor, '200'); checks++
+  assert.equal(order.amount_minor, '1000')
+  const orderDetail = await buyer.call('commerce.orders.get', { trade_no: order.trade_no })
+  assert.equal(orderDetail.coupon_discount_minor, '200'); checks++
   await admin.call('billing.coupons.disable', { coupon_id: coupon.id, expected_version: '1' }, { idempotencyKey: randomUUID() })
   assert.deepEqual(await buyer.call('commerce.orders.create', orderInput, { idempotencyKey: orderKey }), order); checks++
   const paid = await buyer.call('commerce.orders.checkout', { trade_no: order.trade_no, wallet: true }, { idempotencyKey: randomUUID() })
