@@ -153,7 +153,7 @@ try {
   assert.equal(await page.locator('section[aria-label="套餐发布编辑器"]').count(), 0)
   passed('new publication uses authoritative full terms and the observed revision while historical terms remain unchanged')
 
-  const offers = page.locator('section[aria-label="套餐 Offer"]')
+  const offers = page.locator('section[aria-label="周期商品"]')
   await offers.getByRole('button', { name: '调整可用性', exact: true }).click()
   await page.locator('#catalog-availability-sell').uncheck()
   await page.locator('#catalog-availability-capacity').fill('0')
@@ -163,7 +163,7 @@ try {
   assert.equal(availability.expected_version, '1'); assert.equal(availability.capacity_limit, 0)
   state.catalogDenied = true
   await page.getByRole('button', { name: '刷新', exact: true }).click()
-  await page.getByText('无法确认套餐管理权限，已隐藏数据。请刷新确认权限。', { exact: true }).waitFor()
+  await page.getByText('无法确认套餐管理权限，已隐藏数据请刷新确认权限', { exact: true }).waitFor()
   assert.equal(await page.locator('.native-management-page table').count(), 0)
   assert.equal(await page.locator('section[aria-label="套餐完整条款"]').count(), 0)
   assert.ok(!page.url().includes('sign-in'))
@@ -180,7 +180,7 @@ try {
     const tables = await mobile.page.locator('.native-management-page .table-wrap').evaluateAll(elements => elements.map(element => ({
       viewport: element.clientWidth, content: element.scrollWidth, table: element.querySelector('table').getBoundingClientRect().width,
     })))
-    const minimumTableWidth = name === '套餐管理' ? 920 : 760
+    const minimumTableWidth = name === '套餐管理' ? 920 : name === '权限组管理' ? 580 : 760
     assert.ok(tables.length > 0 && tables.every(table => table.content > table.viewport && table.table >= minimumTableWidth), name + ' tables must retain reference column widths in a horizontal scroll region')
     await mobile.page.screenshot({ path: path.join(output, name + '-mobile.png'), fullPage: true })
   }

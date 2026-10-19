@@ -8,6 +8,7 @@ import { admin, attachmentTransfers, workflowActions } from './session'
 import { AttachmentsPanel } from './AttachmentsPanel'
 import { ManagementFeedback, managementError } from './Feedback'
 import { ReadFields, ReadList } from './ReadList'
+import { isoDate } from './readPresentation'
 import { PageHeader } from '../components/ui/PageHeader'
 import type { Column } from '../components/ui/DataTable'
 
@@ -106,12 +107,12 @@ export function TicketsPage() {
     { key: 'status', header: '状态', render: row => <span className="support-tag" data-tone={row.status === 0 ? 'warning' : undefined}>{row.status === 0 ? '处理中' : '已关闭'}</span> },
     { key: 'reply', header: '回复', render: row => <span className="support-tag" data-tone={row.reply_status === 1 ? 'success' : 'warning'}>{row.reply_status === 1 ? '已回复' : '待回复'}</span> },
     { key: 'assignment', header: '负责人', render: row => row.assigned_admin_id ? '客服 #' + row.assigned_admin_id : '未分配' },
-    { key: 'updated', header: '更新时间', render: row => row.updated_at },
+    { key: 'updated', header: '更新时间', render: row => <time dateTime={row.updated_at}>{isoDate(row.updated_at)}</time> },
     { key: 'open', header: '操作', render: row => <button className="button" onClick={() => { setSelected(row.id); setMessage('') }}><MessageSquare size={14} />查看</button> },
   ]
   const ticket = !blocked && !detail.isError ? detail.data?.data : undefined
   const canReply = message.trim().length > 0 && new TextEncoder().encode(message).length <= 10000
-  return <div className="native-management-page support-page">
+  return <div className="native-management-page support-page tickets-page">
     <PageHeader title="工单管理" description="查看用户工单、回复并关闭已处理的工单。"
       action={<button className="button" disabled={list.isFetching} onClick={() => void refresh()}><RefreshCw size={15} />刷新</button>} />
     {ownPending ? <section className="list-card support-pending" role="status"><h2>操作等待确认</h2><p>上次操作结果尚未确定，请先确认结果再继续处理。</p>
@@ -129,28 +130,28 @@ export function TicketsPage() {
         <button className="button">筛选</button>
       </form>
     </ReadList>
-    {selected && !blocked ? <section className="list-card">
+    {selected && !blocked ? <section className="list-card support-ticket-detail">
       <ManagementFeedback error={detail.isError ? detail.error : messages.isError ? messages.error : undefined}
         loading={detail.isFetching || messages.isFetching} onRetry={() => void refresh()} notFoundMessage="工单不存在或已不可访问。" />
-      {ticket ? <><div className="support-heading"><div><h2>{ticket.subject}</h2><p>工单 #{ticket.id} · 用户 #{ticket.user_id}</p></div><button className="button" aria-label="关闭工单详情" onClick={() => setSelected('')}><X size={15} />关闭详情</button></div><ReadFields fields={[["工单号", ticket.id], ["用户 ID", ticket.user_id], ["状态", ticket.status === 0 ? '处理中' : '已关闭'], ["负责人", ticket.assigned_admin_id ? '客服 #' + ticket.assigned_admin_id : '未分配'], ["版本", ticket.row_version]]} />
-        {ticket.status === 0 && detail.data ? <div className="native-filters" aria-label="工单分派">
+      {ticket ? <><div className="support-heading"><div><h2 className="support-ticket-subject">{ticket.subject}</h2><p>工单 #{ticket.id} · 用户 #{ticket.user_id}</p></div><button className="button" aria-label="关闭工单详情" onClick={() => setSelected('')}><X size={15} />关闭详情</button></div><ReadFields fields={[["工单号", ticket.id], ["用户 ID", ticket.user_id], ["状态", ticket.status === 0 ? '处理中' : '已关闭'], ["负责人", ticket.assigned_admin_id ? '客服 #' + ticket.assigned_admin_id : '未分配'], ["版本", ticket.row_version]]} />
+        {ticket.status === 0 && detail.data ? <div className="support-assignment" aria-label="工单分派">
           {!ticket.assigned_admin_id ? <button className="button" disabled={state.busy || !!state.pending || detail.isFetching} onClick={() => void assign('support.admin-tickets.claim')}>认领给我</button> : null}
           {ticket.assigned_admin_id === detail.data.meta.current_admin_id ? <button className="button" disabled={state.busy || !!state.pending || detail.isFetching} onClick={() => void assign('support.admin-tickets.unassign')}>释放我的工单</button> : null}
         </div> : null}
         {!messages.isError ? <ol className="native-ticket-messages">{messages.data?.pages.flatMap(result => result.data).map(row =>
-          <li key={row.id} data-author={row.author_kind}><p><strong>{row.author_kind === 'admin' ? '客服' : row.author_kind === 'user' ? '用户' : '历史消息'}</strong> · {row.created_at}</p><p style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{row.message}</p>{row.attachments.length ? <AttachmentsPanel ticketId={ticket.id} attachments={row.attachments} upload={false} disabled={state.busy || !!state.pending} /> : null}</li>)}</ol> : null}
+          <li key={row.id} data-author={row.author_kind}><p><strong>{row.author_kind === 'admin' ? '客服' : row.author_kind === 'user' ? '用户' : '历史消息'}</strong><time dateTime={row.created_at}>{isoDate(row.created_at)}</time></p><p className="support-message-body">{row.message}</p>{row.attachments.length ? <AttachmentsPanel ticketId={ticket.id} attachments={row.attachments} upload={false} disabled={state.busy || !!state.pending} /> : null}</li>)}</ol> : null}
         {messages.hasNextPage ? <button className="button" disabled={messages.isFetching} onClick={() => void messages.fetchNextPage()}>继续读取消息</button> : null}
-        {ticket.status === 0 ? <form className="native-content-form" onSubmit={event => { event.preventDefault(); void mutate(false) }}>
+        {ticket.status === 0 ? <form className="native-content-form support-reply-form" onSubmit={event => { event.preventDefault(); void mutate(false) }}>
           <label htmlFor="native-ticket-reply">回复用户</label>
           <textarea id="native-ticket-reply" placeholder="输入回复内容…" rows={5} maxLength={10000} value={message} disabled={state.busy || !!state.pending} onChange={event => setMessage(event.target.value)} />
-          <small className="support-help">{new TextEncoder().encode(message).length} / 10,000 字节</small><AttachmentsPanel ticketId={ticket.id} disabled={state.busy || !!state.pending} />
-          <button className="button" disabled={state.busy || !!state.pending || detail.isFetching || attachmentBlocked || !canReply}><Send size={14} />发送回复</button>
-          <button className="button" type="button" disabled={state.busy || !!state.pending || detail.isFetching || attachmentBlocked || hasReadyAttachments} onClick={() => void mutate(true)}>关闭工单</button>
+          <small className="support-byte-count" aria-live="polite">{new TextEncoder().encode(message).length.toLocaleString()} / 10,000 字节</small><AttachmentsPanel ticketId={ticket.id} disabled={state.busy || !!state.pending} />
+          <div className="support-form-footer"><span>回复将连同已上传附件一起发送</span><div className="support-actions"><button className="button primary" disabled={state.busy || !!state.pending || detail.isFetching || attachmentBlocked || !canReply}><Send size={14} />发送回复</button>
+          <button className="button" type="button" disabled={state.busy || !!state.pending || detail.isFetching || attachmentBlocked || hasReadyAttachments} onClick={() => void mutate(true)}>关闭工单</button></div></div>
         </form> : null}
         <details className="support-help" aria-label="工单操作审计"><summary>处理记录</summary>
           <ManagementFeedback error={audit.isError ? audit.error : undefined} loading={audit.isFetching} onRetry={() => void audit.refetch()} />
           {!audit.isError ? <ol className="native-ticket-messages">{audit.data?.pages.flatMap(result => result.data).map(row =>
-            <li key={row.id}><p><strong>{auditActions[row.action]}</strong> · {row.occurred_at}</p>
+            <li key={row.id}><p><strong>{auditActions[row.action]}</strong><time dateTime={row.occurred_at}>{isoDate(row.occurred_at)}</time></p>
               <ReadFields fields={[["操作者", (row.actor_kind === 'admin' ? '客服 #' : '用户 #') + row.actor_id], ["操作后负责人", row.assigned_admin_id ? '客服 #' + row.assigned_admin_id : '未分配'], ["版本", row.row_version]]} /></li>)}</ol> : null}
           {!audit.isError && audit.data && audit.data.pages.every(result => result.data.length === 0) ? <p>暂无审计记录。</p> : null}
           {audit.hasNextPage ? <button className="button" disabled={audit.isFetching} onClick={() => void audit.fetchNextPage()}>继续读取审计</button> : null}

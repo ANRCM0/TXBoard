@@ -84,3 +84,45 @@
 }
 .settings-reference .native-content-form:not(.list-card) { box-shadow: none; border-radius: 0; background: transparent; }
 .settings-reference .settings-success-feedback { border: 1px solid color-mix(in srgb, var(--success) 24%, var(--border)); border-radius: var(--radius-control); padding: 12px 14px; color: var(--success); background: color-mix(in srgb, var(--success) 6%, var(--panel)); font-size: 12px; }
+
+/* Category navigation and configuration use the same reading rhythm. */
+.settings-category-heading { flex-wrap: wrap; row-gap: 4px; }
+.settings-category-note { margin: -8px 2px 20px; color: var(--muted); font-size: 12px; line-height: 1.7; }
+.settings-reference .native-settings-navigation a:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.settings-reference .settings-section-heading > div { min-width: 0; }
+.settings-reference .settings-section-heading h2 { line-height: 1.5; }
+.settings-reference .settings-pending-card { border-inline-start: 3px solid var(--warning); }
+.settings-reference .settings-pending-card p { margin: 8px 0 16px; }
+.settings-configuration-page .settings-value-grid dd[data-kind="checkbox"] { font-weight: 550; }
+.settings-configuration-page .settings-value-grid dd[data-configured="true"] { color: var(--success); }
+.settings-configuration-page .settings-status[data-editing="true"] { color: var(--primary); border-color: color-mix(in srgb, var(--primary) 25%, var(--border)); }
+.settings-configuration-page .settings-toggle-field { gap: 16px; }
+.settings-mail-page .settings-mail-subject strong { overflow-wrap: anywhere; line-height: 1.7; }
+.settings-mail-page .settings-source-preview:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
+.settings-mail-page .settings-mail-read-actions { display: flex; gap: 8px; }
+.settings-mail-page .settings-template-reset { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 20px; padding: 14px 0 0; border-top: 1px solid var(--border); }
+.settings-template-reset > span { color: var(--muted); font-size: 12px; }
+.settings-mail-page .settings-test-mail { margin-top: 20px; }
+.settings-mail-page .settings-source-field { min-width: 0; }
+.settings-mail-page .settings-source-field textarea { width: 100%; box-sizing: border-box; tab-size: 2; }
+.settings-payment-page .settings-fee-value { display: grid; gap: 5px; min-width: 150px; font-variant-numeric: tabular-nums; }
+.settings-fee-value strong { font-size: 13px; font-weight: 550; }
+.settings-fee-value small { color: var(--muted); font-size: 11px; }
+.settings-payment-page .data-table th { font-size: 12px; color: var(--muted); background: var(--control-bg); }
+.settings-payment-page .data-table td { vertical-align: middle; padding-block: 15px; }
+.settings-payment-page .native-row-identity strong, .settings-payment-page .native-row-identity small { overflow-wrap: anywhere; }
+.settings-payment-page .settings-subsection-heading p { margin-bottom: 0; }
+.settings-payment-page .settings-provider-help li { line-height: 1.7; overflow-wrap: anywhere; }
+.settings-reference .native-pagination { gap: 12px; flex-wrap: wrap; }
+.settings-reference .native-page-controls { flex-wrap: wrap; }
+@media (max-width: 720px) {
+ .settings-reference .settings-section-heading { flex-wrap: wrap; }
+ .settings-reference .settings-section-heading > div { flex: 1 1 200px; }
+ .settings-reference .native-settings-navigation { scrollbar-width: thin; overscroll-behavior-inline: contain; }
+ .settings-reference .settings-form-actions .button { flex: 1 1 130px; justify-content: center; }
+ .settings-mail-page .settings-test-mail .native-filters label { flex-basis: 100%; }
+ .settings-mail-page .settings-test-mail .native-filters > .button { width: 100%; justify-content: center; }
+ .settings-reference .settings-label-line { flex-wrap: wrap; row-gap: 4px; }
+ .settings-reference .native-pagination > span { flex-basis: 100%; }
+ .settings-payment-page .native-scroll-hint { display: block; color: var(--muted); font-size: 11px; }
+}

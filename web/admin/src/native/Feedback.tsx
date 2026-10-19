@@ -1,5 +1,5 @@
 import { CoreAdminApiError } from './api'
-import { AlertCircle, RefreshCw } from 'lucide-react'
+import { AlertCircle, LoaderCircle, RefreshCw } from 'lucide-react'
 import { admin } from './session'
 
 export function managementError(error: unknown): string {
@@ -19,13 +19,13 @@ export function ManagementFeedback({ error, loading, onRetry, notFoundMessage }:
   error?: unknown; loading?: boolean; onRetry: () => void; notFoundMessage?: string
 }) {
   if (error) return <div className="query-feedback is-error" role="alert">
-    <AlertCircle size={17} /><span>{error instanceof CoreAdminApiError && error.status === 404 && notFoundMessage
+    <AlertCircle size={17} aria-hidden="true" /><span>{error instanceof CoreAdminApiError && error.status === 404 && notFoundMessage
       ? notFoundMessage : managementError(error)}</span>
-    <button className="button" disabled={loading} onClick={onRetry}>
-      <RefreshCw size={14} />{loading ? '重试中…' : '重新加载'}
+    <button type="button" className="button" disabled={loading} onClick={onRetry}>
+      <RefreshCw size={14} className={loading ? 'loading-spinner' : undefined} aria-hidden="true" />{loading ? '重试中…' : '重新加载'}
     </button>
     {error instanceof CoreAdminApiError && error.status === 404 && !notFoundMessage
-      ? <button className="button" onClick={() => admin.forgetSession()}>重新登录</button> : null}
+      ? <button type="button" className="button" onClick={() => admin.forgetSession()}>重新登录</button> : null}
   </div>
-  return loading ? <div className="query-feedback" role="status">正在加载数据…</div> : null
+  return loading ? <div className="query-feedback" role="status"><LoaderCircle size={17} className="loading-spinner" aria-hidden="true" /><span>正在加载数据…</span></div> : null
 }

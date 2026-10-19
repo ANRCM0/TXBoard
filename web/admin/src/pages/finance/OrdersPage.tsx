@@ -1,3 +1,4 @@
+import '../../native/commerce-reference.css'
 import { useQuery } from '@tanstack/react-query'
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
@@ -39,14 +40,14 @@ export function OrdersPage() {
     setParams(current => { const next = new URLSearchParams(current); next.set('page', String(nextPage)); return next })
   }
   const columns: Column<Order>[] = [
-    { key: 'trade', header: '订单号', render: row => <button className="native-read-link" onClick={() => setDetail(row.trade_no)}>{row.trade_no}</button> },
+    { key: 'trade', header: '订单号', render: row => <div className="native-row-identity"><button className="native-read-link commerce-order-link" onClick={() => setDetail(row.trade_no)}>{row.trade_no}</button><small>订单 #{row.id}</small></div> },
     { key: 'user', header: '用户 ID', render: row => <Link className="table-link" to={'/user/' + row.user_id}>#{row.user_id}</Link> },
     { key: 'plan', header: '套餐', render: row => row.plan?.name ?? '未记录' },
     { key: 'amount', header: '订单金额', render: row => <strong className="reference-number">{minorAmount(row.amount_minor, row.currency)}</strong> },
     { key: 'status', header: '状态', render: row => <span className={'reference-status ' + (row.status === 3 ? 'is-success' : row.status === 0 || row.status === 1 ? 'is-warning' : '')}>{orderStatus(row.status)}</span> },
     { key: 'created', header: '创建时间', render: row => isoDate(row.created_at) },
   ]
-  return <div className="native-management-page">
+  return <div className="native-management-page commerce-reference orders-page">
     <PageHeader title="订单管理" description="购买记录与订单处理"
       action={<button className="button" disabled={!valid || query.isFetching} onClick={() => void query.refetch()}><RefreshCw size={15} />刷新</button>} />
     {detail === null ? <OrderCommandRecovery /> : null}
@@ -54,7 +55,7 @@ export function OrdersPage() {
     <ReadList title="订单列表" rows={data?.data ?? []} columns={columns} meta={data?.meta} page={page}
       ready={!!data} loading={query.isFetching} error={query.isError ? query.error : undefined}
       onRetry={() => void query.refetch()} onPage={paginate}>
-      <form className="management-filter-form" onSubmit={apply}>
+      <header className="commerce-card-heading"><div><h2>订单列表</h2><p>按用户、订单号或处理状态查询购买记录</p></div></header><form className="management-filter-form" onSubmit={apply}>
         <label>用户 ID<input aria-label="订单用户 ID" value={user} maxLength={19}
           onChange={event => setUser(event.target.value)} inputMode="numeric" placeholder="精确用户 ID" /></label>
         <label>订单号<input aria-label="订单号" value={trade} maxLength={128}
@@ -65,6 +66,7 @@ export function OrdersPage() {
         <button className="button primary" type="submit"><Search size={15} />查询</button>
         <button className="button" type="button" onClick={() => setParams({})}>清除筛选</button>
       </form>
+      {appliedUser || appliedTrade || appliedStatus !== '' ? <div className="commerce-applied-filters" aria-label="当前订单筛选"><span>当前筛选</span>{appliedUser ? <span className="commerce-badge">用户 #{appliedUser}</span> : null}{appliedTrade ? <span className="commerce-badge">订单 {appliedTrade}</span> : null}{appliedStatus !== '' ? <span className="commerce-badge">{orderStatus(Number(appliedStatus))}</span> : null}</div> : null}
     </ReadList>
     {detail ? <OrderReadDialog key={detail} tradeNo={detail} onClose={() => setDetail(null)} /> : null}
   </div>

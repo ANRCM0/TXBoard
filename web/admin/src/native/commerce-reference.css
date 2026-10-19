@@ -63,3 +63,67 @@
  .commerce-reference .native-filters label { min-width: 0; flex: 1 1 160px; }
 }
 .commerce-metrics strong.commerce-metric-name { font-size: 16px; overflow-wrap: anywhere; line-height: 1.5; }
+
+/* Per-page refinements keep identifiers readable without widening the viewport. */
+.commerce-card-heading > div { min-width: 0; }
+.commerce-card-heading h2, .commerce-card-heading h3, .commerce-batch-title { overflow-wrap: anywhere; }
+.commerce-reference .commerce-card-heading > .button { flex-shrink: 0; }
+.commerce-reference .data-table { min-width: 740px; }
+.commerce-reference .data-table th, .commerce-reference .data-table td { vertical-align: middle; }
+.commerce-reference .native-row-identity { min-width: 140px; max-width: 280px; white-space: normal; overflow-wrap: anywhere; }
+.commerce-reference .native-row-identity strong { line-height: 1.55; }
+.commerce-reference .commerce-cell-stack { min-width: 100px; line-height: 1.55; white-space: normal; overflow-wrap: anywhere; }
+.commerce-reference .commerce-date-range { min-width: 160px; }
+.commerce-reference .commerce-identifier { font-weight: 500; font-variant-numeric: tabular-nums; }
+.commerce-row-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.commerce-reference td .commerce-row-actions { min-width: 160px; }
+.commerce-reference .commerce-row-actions .button { margin: 0; }
+.commerce-table-note, .commerce-reference .commerce-table-description { font-size: 12px; color: var(--muted); line-height: 1.65; }
+.commerce-reference .commerce-pending { border-inline-start: 3px solid var(--warning); }
+.commerce-pending > p { margin: 8px 0 12px; }
+.commerce-pending .commerce-help { margin-bottom: 14px; }
+.commerce-loading { margin: 0; padding: 14px 16px; border-radius: var(--radius-control); background: var(--control-bg); }
+.commerce-reference .commerce-description { white-space: pre-wrap; overflow-wrap: anywhere; padding: 16px; background: var(--control-bg); border-radius: var(--radius-control); }
+.commerce-reference .commerce-price-list li { display: flex; flex-direction: column; line-height: 1.7; overflow-wrap: anywhere; }
+.commerce-reference .commerce-editor .native-read-list { margin-top: 24px; padding: 20px 0 0; border-top: 1px solid var(--border); border-radius: 0; box-shadow: none; }
+.commerce-reference .commerce-editor .native-read-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 24px; }
+.commerce-reference .commerce-editor .native-read-fields > div { grid-template-columns: minmax(0, 1fr); align-content: start; gap: 6px; padding-block: 12px; }
+.commerce-reference .commerce-editor .native-read-fields dt { font-size: 11px; }
+.commerce-reference .commerce-editor .native-read-fields dd { font-size: 12px; line-height: 1.6; }
+.catalog-page .commerce-catalog-form { margin-top: 20px; }
+.catalog-page .commerce-catalog-form fieldset > .native-filters { padding: 0; }
+.catalog-page .commerce-availability-form { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 20px; }
+.catalog-page .commerce-availability-form > label:not(.commerce-toggle) { grid-column: 1 / -1; max-width: 360px; }
+.catalog-page .commerce-availability-form .commerce-toggle { gap: 12px; }
+.commissions-page .commerce-review-toolbar { align-items: flex-start; }
+.commissions-page .commerce-review-toolbar label { max-width: 420px; }
+.commissions-page .commerce-editor > .native-content-form { margin-top: 18px; }
+.orders-page .management-filter-form label:first-child { flex: 0 1 180px; }
+.orders-page .management-filter-form label:nth-child(2) { flex: 1 1 260px; }
+.orders-page .management-filter-form input { min-width: 0; }
+.commerce-applied-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: -4px 0 20px; font-size: 12px; color: var(--muted); }
+.commerce-applied-filters .commerce-badge { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+.commerce-order-link { text-align: start; overflow-wrap: anywhere; line-height: 1.55; }
+.commerce-order-dialog .reference-profile-identity { min-width: 0; }
+.commerce-order-dialog .commerce-order-number { overflow-wrap: anywhere; line-height: 1.7; }
+.commerce-timeline-event-name { display: grid; gap: 4px; }
+.commerce-timeline-event-name small { color: var(--muted); font-size: 11px; }
+.commerce-order-dialog .reference-timeline-content { gap: 8px 20px; }
+.commerce-order-dialog .reference-detail-section-title { flex-wrap: wrap; }
+.commerce-audit-heading { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 16px; margin-bottom: 4px; }
+.commerce-audit-heading strong { font-size: 12px; font-weight: 550; }
+.commerce-audit-heading time { color: var(--muted); font-size: 11px; }
+.reference-order-administration .commerce-confirmed-notice { padding: 12px 14px; border-radius: var(--radius-control); background: color-mix(in srgb, var(--success) 8%, var(--panel)); color: var(--fg); font-size: 12px; line-height: 1.7; }
+.reference-order-administration .commerce-audit-pagination { gap: 8px; }
+@media (max-width: 720px) {
+ .commerce-card-heading { flex-wrap: wrap; }
+ .commerce-reference .commerce-editor .native-read-fields { grid-template-columns: minmax(0, 1fr); }
+ .catalog-page .commerce-availability-form { grid-template-columns: minmax(0, 1fr); }
+ .catalog-page .commerce-availability-form > label:not(.commerce-toggle) { max-width: none; }
+ .orders-page .management-filter-form label, .orders-page .management-filter-form label:first-child, .orders-page .management-filter-form label:nth-child(2) { flex: 1 1 100%; }
+ .commerce-order-dialog .reference-profile-header { flex-wrap: wrap; }
+ .commerce-order-dialog .reference-profile-identity { flex-basis: calc(100% - 74px); }
+ .commerce-order-dialog .reference-order-amount { flex-wrap: wrap; gap: 10px; }
+ .commerce-order-dialog .reference-order-amount strong { font-size: 22px; }
+ .commerce-applied-filters { margin-top: 0; }
+}

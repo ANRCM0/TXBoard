@@ -1,76 +1,12 @@
-/* UI v4: user details favor dense definition lists over independent cards.
-   Scoped page CSS replaces the older user-detail selectors from styles.css. */
-.user-detail-v4-error {display:flex;flex-direction:column;align-items:flex-start;gap:12px}
-.user-detail-v4-error p {margin:0;color:var(--muted)}
-.user-detail-v4-status-row {
-  display:flex;align-items:center;flex-wrap:wrap;gap:7px 12px;
-  margin:-5px 0 13px;font-size:var(--ui-font-secondary,12px)
-}
-.user-detail-v4-roles {color:var(--muted);overflow-wrap:anywhere}
-.user-detail-v4-status-row>.muted {overflow-wrap:anywhere}
-.user-detail-v4-summary {
-  display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
-  margin:0 0 14px;padding:0;border:1px solid var(--border);
-  border-radius:var(--radius-card);background:var(--panel);overflow:hidden
-}
-.user-detail-v4-metric {
-  min-width:0;padding:12px 15px;display:flex;flex-direction:column;gap:5px;
-  border-inline-end:1px solid var(--border)
-}
-.user-detail-v4-metric:last-child {border-inline-end:0}
-.user-detail-v4-metric dt {color:var(--muted);font-size:var(--ui-font-secondary,12px);line-height:1.3}
-.user-detail-v4-metric dd {margin:0;overflow-wrap:anywhere}
-.user-detail-v4-value {color:var(--fg);font-size:clamp(16px,1.7vw,20px);font-weight:650;line-height:1.25;font-variant-numeric:tabular-nums}
-.user-detail-v4-sub {color:var(--muted);font-size:var(--ui-font-secondary,12px);line-height:1.45}
-.user-detail-v4-section {min-width:0;margin-bottom:14px}
-.user-detail-v4-account {border:1px solid var(--border);border-radius:var(--radius-card);background:var(--panel);padding:15px 16px}
-.user-detail-v4-section-head {display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px}
-.user-detail-v4-section-head>div:first-child {min-width:0}
-.user-detail-v4-section-head h2 {margin:0;font-size:15px;line-height:1.4}
-.user-detail-v4-section-head p {margin:3px 0 0;color:var(--muted);font-size:12px;line-height:1.5}
-.user-detail-v4-section-head>.actions {flex-wrap:wrap;justify-content:flex-end}
-.user-detail-v4-meter {display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 12px;align-items:center;margin-bottom:14px}
-.user-detail-v4-meter>div {height:7px;background:var(--hover);border-radius:999px;overflow:hidden}
-.user-detail-v4-meter>div>span {display:block;height:100%;background:var(--primary);border-radius:999px}
-.user-detail-v4-meter>strong {font-size:12px;font-variant-numeric:tabular-nums}
-.user-detail-v4-meter>small {grid-column:1/-1;color:var(--muted);font-size:12px;line-height:1.5}
-.user-detail-v4-meta {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;margin:0;border-top:1px solid var(--border)}
-.user-detail-v4-meta>div {min-width:0;padding:10px 12px 5px 0}
-.user-detail-v4-meta dt {font-size:12px;color:var(--muted);margin-bottom:4px;line-height:1.35}
-.user-detail-v4-meta dd {margin:0;font-size:13px;font-weight:550;line-height:1.45;overflow-wrap:anywhere}
-.user-detail-v4-two-col {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
-.user-detail-v4-activity {padding-top:12px;border-top:1px solid var(--border)}
-.user-detail-v4-activity .table-wrap {min-width:0;max-width:100%;overflow-x:auto;overscroll-behavior-x:contain}
-.user-detail-v4-activity .data-table {min-width:450px;font-size:var(--ui-font-body,13px)}
-.user-detail-v4-activity .data-table th,
-.user-detail-v4-activity .data-table td {padding:9px 10px;vertical-align:top}
-.user-detail-v4-activity .data-table th:first-child,
-.user-detail-v4-activity .data-table td:first-child {padding-left:0}
-.user-detail-v4-activity .data-table td {overflow-wrap:anywhere}
-.user-detail-v4-activity .link-button {border:0;background:transparent;padding:0;color:var(--primary);cursor:pointer;text-align:left;text-decoration:none;font:inherit}
-.user-detail-v4-activity .link-button:hover {text-decoration:underline}
-.user-detail-v4-activity .link-button:focus-visible {outline:2px solid var(--focus-ring);outline-offset:2px;border-radius:3px}
-.user-detail-v4-empty {margin:0;color:var(--muted);font-size:13px;line-height:1.5;padding:5px 0 9px}
-@media(max-width:1100px) {
-  .user-detail-v4-summary {grid-template-columns:repeat(2,minmax(0,1fr))}
-  .user-detail-v4-metric:nth-child(2) {border-inline-end:0}
-  .user-detail-v4-metric:nth-child(-n+2) {border-bottom:1px solid var(--border)}
-  .user-detail-v4-meta {grid-template-columns:repeat(2,minmax(0,1fr))}
-  .user-detail-v4-two-col {grid-template-columns:1fr;gap:0}
-}
-@media(max-width:680px) {
-  .user-detail-v4-section-head {align-items:stretch;flex-direction:column}
-  .user-detail-v4-section-head>.actions {justify-content:flex-start}
-  .user-detail-v4-section-head>.actions .button {min-height:40px}
-  .user-detail-v4-account {padding:12px}
-  .user-detail-v4-metric {padding:11px}
-  .user-detail-v4-meta {grid-template-columns:1fr 1fr}
-  .user-detail-v4-activity .data-table {min-width:430px}
-}
-@media(max-width:420px) {
-  .user-detail-v4-metric {padding:10px}
-  .user-detail-v4-value {font-size:16px}
-  .user-detail-v4-sub {font-size:11px}
-  .user-detail-v4-meta {grid-template-columns:1fr}
-  .user-detail-v4-meta>div {padding:9px 0}
+/* Account detail follows the shared profile and definition-list structure. */
+.reference-user-detail .reference-detail-card { border:0; border-radius:18px; }
+.reference-user-detail .reference-profile-header { border-color:color-mix(in srgb,var(--border) 60%,transparent); }
+.reference-user-detail .reference-profile-avatar { border-radius:14px; }
+.reference-user-detail .reference-detail-metrics strong { font-size:22px; overflow-wrap:anywhere; }
+.reference-user-detail .reference-detail-empty { margin:0; padding:24px; border-radius:10px; text-align:center; background:var(--control-bg); color:var(--muted); }
+.reference-user-detail .reference-detail-link { display:inline-flex; align-items:center; flex-wrap:wrap; gap:5px; }
+@media(max-width:600px) {
+  .reference-user-detail .reference-profile-header { flex-wrap:wrap; align-items:flex-start; }
+  .reference-user-detail .reference-profile-identity { flex-basis:calc(100% - 70px); }
+  .reference-user-detail .reference-profile-header>.reference-status { margin-left:66px; }
 }

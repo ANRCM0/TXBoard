@@ -190,16 +190,16 @@ export function CatalogPage() {
   function update<K extends keyof Draft>(key: K, value: Draft[K]) { setDraft(old => old && { ...old, [key]: value }) }
   const planColumns: Column<Plan & { id: string }>[] = [
     { key: 'name', header: '套餐', render: row => <div className="native-row-identity"><strong>{row.name}</strong><small>#{row.plan_id}</small></div> },
-    { key: 'revision', header: '当前修订', render: row => '第 ' + row.revision_no + ' 版 · #' + row.current_revision_id },
+    { key: 'revision', header: '当前修订', render: row => <div className="commerce-cell-stack"><strong>第 {row.revision_no} 版</strong><small>#{row.current_revision_id}</small></div> },
     { key: 'currency', header: '币种', render: row => row.currency },
     { key: 'published', header: '发布时间', render: row => new Date(row.published_at * 1000).toLocaleString() },
-    { key: 'actions', header: '操作', render: row => <><button className="button" disabled={locked} onClick={() => selectPlan(row.plan_id)}>查看完整条款</button><button className="button" disabled={locked} onClick={() => void openCurrent(row.plan_id)}>编辑当前套餐</button></> },
+    { key: 'actions', header: '操作', render: row => <div className="commerce-row-actions"><button className="button" disabled={locked} onClick={() => selectPlan(row.plan_id)}>查看完整条款</button><button className="button" disabled={locked} onClick={() => void openCurrent(row.plan_id)}>编辑当前套餐</button></div> },
   ]
   const offerColumns: Column<Offer & { id: string }>[] = [
     { key: 'name', header: '商品 / 套餐', render: row => <div className="native-row-identity"><strong>{row.name}</strong><small>商品 #{row.offer_id} · 套餐 #{row.plan_id}</small></div> },
     { key: 'period', header: '周期 / 发布价格', render: row => <div className="commerce-cell-stack"><strong>{periodName(row.offer_code)}</strong><span className="commerce-amount">{row.price_minor} 最小单位 {row.currency}</span></div> },
     { key: 'status', header: '修订状态', render: row => <div className="commerce-cell-stack"><span className={row.status === 'published' ? 'commerce-badge success' : 'commerce-badge'}>{statusName(row.status)}</span><small>修订 #{row.revision_id}</small></div> },
-    { key: 'access', header: '当前可用性', render: row => <>{row.show ? '显示' : '隐藏'} · {row.sell ? '可新购' : '不新购'} · {row.renew ? '可续费' : '不续费'}<br />名额 {row.capacity_limit ?? '不限'} · 版本 {row.row_version}</> },
+    { key: 'access', header: '当前可用性', render: row => <div className="commerce-cell-stack"><span>{row.show ? '显示' : '隐藏'} · {row.sell ? '可新购' : '不新购'} · {row.renew ? '可续费' : '不续费'}</span><small>名额 {row.capacity_limit ?? '不限'} · 版本 {row.row_version}</small></div> },
     { key: 'actions', header: '操作', render: row => <button className="button" disabled={locked || offers.isFetching || row.status !== 'published'} onClick={() => { view.current++; setAvailability({ offer: row, show: row.show, sell: row.sell, renew: row.renew, capacity: row.capacity_limit ?? '', conflict: false }); setDraft(undefined); setError('') }}>调整可用性</button> },
   ]
   const historyColumns: Column<Revision & { id: string }>[] = [
@@ -209,18 +209,18 @@ export function CatalogPage() {
     { key: 'open', header: '操作', render: row => <button className="button" disabled={locked} onClick={() => setRevision(row.revision_id)}>查看此修订</button> },
   ]
   const visible = !blocked && !detail.isError ? detail.data?.data : undefined
-  return <div className="native-management-page commerce-reference">
+  return <div className="native-management-page commerce-reference catalog-page">
     <PageHeader title="套餐与发布" description="管理套餐版本、周期价格和商品销售状态" action={<><button className="button" disabled={plans.isFetching || offers.isFetching || opening} onClick={() => void refresh()}>刷新</button><button className="button primary" disabled={locked} onClick={() => { view.current++; setDraft(blank()); setAvailability(undefined); setConflict(false); setError('') }}>创建套餐</button></>} />
     <details className="commerce-help"><summary>套餐版本与销售规则</summary><p>发布新版本仅影响后续购买，已有订单保留原套餐内容</p><p>销售状态可以单独调整，历史版本仍可查看</p></details>
-    {pending ? <section className="list-card" role="status"><h2>套餐操作等待确认</h2><p>{pending.operation} · 原操作 {pending.key}</p><button className="button" disabled={blocked || state.busy} onClick={() => void recover()}>使用原操作确认结果</button></section> : null}
+    {pending ? <section className="list-card commerce-pending" role="status"><h2>套餐操作等待确认</h2><p>请先确认上次发布或销售设置的结果。</p><details className="commerce-help"><summary>查看操作标识</summary><code>{pending.operation} · 原操作 {pending.key}</code></details><button className="button" disabled={blocked || state.busy} onClick={() => void recover()}>使用原操作确认结果</button></section> : null}
     {error || state.error ? <p role="alert">{error || managementError(state.error)}</p> : null}
     {blocked ? <p role="alert">无法确认套餐管理权限，已隐藏数据请刷新确认权限</p> : null}
     {opening ? <p role="status">正在读取套餐内容…</p> : null}
     <ReadList title="已发布套餐" rows={blocked || plans.isError ? [] : plans.data?.data.map(row => ({ ...row, id: row.plan_id })) ?? []} columns={planColumns}
-      meta={plans.data?.meta} page={planPage} ready={!!plans.data && !blocked} loading={plans.isFetching} error={plans.isError ? plans.error : undefined} onRetry={() => void refresh()} onPage={setPlanPage} />
+      meta={plans.data?.meta} page={planPage} ready={!!plans.data && !blocked} loading={plans.isFetching} error={plans.isError ? plans.error : undefined} onRetry={() => void refresh()} onPage={setPlanPage}><header className="commerce-card-heading"><div><h2>已发布套餐</h2><p>套餐内容与当前发布版本</p></div></header></ReadList>
     <ReadList title="周期商品" rows={blocked || offers.isError ? [] : offers.data?.data.map(row => ({ ...row, id: row.offer_id })) ?? []} columns={offerColumns}
       meta={offers.data?.meta} page={offerPage} ready={!!offers.data && !blocked} loading={offers.isFetching} error={offers.isError ? offers.error : undefined} onRetry={() => void refresh()} onPage={setOfferPage}>
-      <form className="native-filters" onSubmit={event => { event.preventDefault(); if (filterDraft && (!/^[1-9][0-9]{0,18}$/.test(filterDraft) || BigInt(filterDraft) > 9223372036854775807n)) { setError('套餐 ID 格式无效'); return }; setPlanFilter(filterDraft); setOfferPage(1); setError('') }}>
+      <header className="commerce-card-heading"><div><h2>周期商品</h2><p>按套餐与修订状态查找已发布的周期商品</p></div></header><form className="native-filters" onSubmit={event => { event.preventDefault(); if (filterDraft && (!/^[1-9][0-9]{0,18}$/.test(filterDraft) || BigInt(filterDraft) > 9223372036854775807n)) { setError('套餐 ID 格式无效'); return }; setPlanFilter(filterDraft); setOfferPage(1); setError('') }}>
         <label>套餐 ID<input placeholder="输入套餐 ID" value={filterDraft} inputMode="numeric" pattern="[1-9][0-9]{0,18}" onChange={event => setFilterDraft(event.target.value)} /></label>
         <label>修订状态<select value={status} onChange={event => { setStatus(event.target.value as typeof status); setOfferPage(1) }}><option value="published">当前发布</option><option value="superseded">已被替代</option><option value="">全部修订</option></select></label><button className="button">筛选商品</button>
       </form>
@@ -228,13 +228,13 @@ export function CatalogPage() {
     {selected && !blocked ? <section className="list-card commerce-editor" aria-label="套餐完整条款"><header className="commerce-card-heading"><div><h2>套餐详情与版本历史</h2><p>查看每次发布时的完整套餐内容</p></div><button className="button" disabled={state.busy} onClick={() => { view.current++; setOpening(false); setSelected(''); setRevision('') }}>关闭详情</button></header>
       <ManagementFeedback error={detail.isError ? detail.error : undefined} loading={detail.isFetching} onRetry={() => void refresh()} notFoundMessage="套餐或修订不存在" />
       {visible ? <><div className="commerce-metrics"><div><small>套餐名称</small><strong className="commerce-metric-name">{visible.revision.terms.name}</strong></div><div><small>包含流量</small><strong>{visible.revision.terms.quota_gib}<span>GiB</span></strong></div><div><small>查看版本</small><strong>{visible.revision.revision_no}</strong></div></div><details className="commerce-help"><summary>查看完整条款与版本标识</summary><ReadFields fields={[["套餐 ID", visible.plan_id], ["查看修订", visible.revision.revision_id], ["当前修订", visible.current_revision_id], ["修订号", visible.revision.revision_no], ["条款哈希", visible.revision.content_hash], ["名称", visible.revision.terms.name], ["币种", visible.revision.terms.currency], ["流量", visible.revision.terms.quota_gib + ' GiB'], ["分组 ID", visible.revision.terms.group_id], ["速度限制", visible.revision.terms.speed_limit_mbps], ["设备限制", visible.revision.terms.device_limit], ["流量重置", resetNames[visible.revision.terms.reset_method] ?? String(visible.revision.terms.reset_method)]]} /></details>
-        <p style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{visible.revision.terms.content ?? '未填写说明'}</p><p>标签：{visible.revision.terms.tags.join(' · ') || '无'}</p>
+        <p className="commerce-description">{visible.revision.terms.content ?? '未填写说明'}</p><p>标签：{visible.revision.terms.tags.join(' · ') || '无'}</p>
         <ul className="commerce-price-list">{periods.filter(([key]) => visible.revision.terms.prices_minor[key] !== undefined).map(([key, label]) => <li key={key}>{label}：{visible.revision.terms.prices_minor[key]} 最小单位 {visible.revision.terms.currency}</li>)}</ul>
         <p className="commerce-table-description">编辑将基于最新版本，历史内容仅供查阅</p>
         <button className="button" disabled={locked} onClick={() => void openCurrent(visible.plan_id)}>基于当前完整条款编辑</button>
       </> : null}
       <ReadList title="套餐修订历史" rows={history.isError ? [] : history.data?.data.map(row => ({ ...row, id: row.revision_id })) ?? []} columns={historyColumns}
-        meta={history.data?.meta} page={historyPage} ready={!!history.data && !blocked} loading={history.isFetching} error={history.isError ? history.error : undefined} onRetry={() => void refresh()} onPage={setHistoryPage} />
+        meta={history.data?.meta} page={historyPage} ready={!!history.data && !blocked} loading={history.isFetching} error={history.isError ? history.error : undefined} onRetry={() => void refresh()} onPage={setHistoryPage}><header className="commerce-card-heading"><div><h3>套餐修订历史</h3><p>选择修订查看发布时的完整条款</p></div></header></ReadList>
     </section> : null}
     {draft && !blocked ? <section className="list-card commerce-editor" aria-label="套餐发布编辑器"><header className="commerce-card-heading"><div><h2>{draft.planId ? '发布套餐新修订' : '创建并发布套餐'}</h2><p>完善基本信息、流量额度与周期价格</p></div><span className="commerce-badge">{draft.planId ? '新版本' : '新套餐'}</span></header>
       {draft.planId ? <p>套餐 #{draft.planId} · 基于当前修订 <strong>{draft.expectedRevision}</strong>，草稿不会随刷新自动替换</p> : null}
@@ -259,7 +259,7 @@ export function CatalogPage() {
     {availability && !blocked ? <section className="list-card commerce-editor" aria-label="Offer 可用性编辑器"><header className="commerce-card-heading"><div><h2>调整商品 #{availability.offer.offer_id} 销售状态</h2><p>分别控制展示、新购与续费</p></div><span className="commerce-badge">销售设置</span></header><p>当前修订 #{availability.offer.revision_id} · 版本 {availability.offer.row_version} · 价格与冻结条款不会改变</p>
       {availability.conflict ? <p role="alert">可用性版本已变化，原设置保留，请重新读取后再次确认</p> : null}
       <button className="button" disabled={locked} onClick={() => void reloadAvailability()}>重新读取商品并替换设置</button>
-      <form className="native-content-form" onSubmit={event => { event.preventDefault(); void saveAvailability() }}>
+      <form className="native-content-form commerce-availability-form" onSubmit={event => { event.preventDefault(); void saveAvailability() }}>
         {(['show', 'sell', 'renew'] as const).map((key, index) => <label className="commerce-toggle" key={key}><input type="checkbox" id={'catalog-availability-' + key} checked={availability[key]} disabled={locked} onChange={event => setAvailability(old => old && { ...old, [key]: event.target.checked })} />{['向用户显示', '允许新购', '允许续费'][index]}</label>)}
         <label>商品名额（留空不限）<input id="catalog-availability-capacity" value={availability.capacity} inputMode="numeric" pattern="0|[1-9][0-9]*" disabled={locked} onChange={event => setAvailability(old => old && { ...old, capacity: event.target.value })} /></label>
         <footer className="commerce-form-actions"><span>套餐价格与内容保持原值</span><button className="button primary" disabled={locked || availability.conflict}>保存可用性</button><button className="button" type="button" disabled={state.busy} onClick={() => { view.current++; setAvailability(undefined); setOpening(false) }}>关闭可用性编辑</button></footer>

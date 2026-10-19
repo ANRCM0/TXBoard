@@ -55,3 +55,19 @@ fixtures plus sample users and orders. The visible badge identifies the preview.
 It listens on loopback, handles the simulated API locally and rejects business
 writes. It does not connect to Core or change real data. The normal development
 command and production build do not include the preview middleware.
+
+## Page detail adaptation
+
+The dashboard uses the shared segmented range control; compact summaries and
+expandable statistics definitions keep chart headers readable. User inventory
+and details use current native styles, applied-filter feedback and wrapping
+identities. Network, commerce, support, observation and settings pages refine
+column hierarchy, form grouping, operation placement and pending-result panels.
+The final shared layer aligns cards, control heights, table text and feedback
+across these page layouts. Narrow tables retain horizontal scrolling; lengthy
+identifiers, subjects, source previews and dialogs remain bounded.
+
+Core SDK operation inputs, observed versions, original idempotency keys and
+permission-withdrawal behavior remain owned by the existing page controllers.
+Actions browser coverage checks these behaviors alongside desktop/mobile
+screenshots. Local preview screenshots are synthetic visual evidence only.

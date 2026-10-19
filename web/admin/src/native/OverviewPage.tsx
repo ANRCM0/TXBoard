@@ -1,14 +1,18 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { ArrowUpRight, Server, Network, Users, ReceiptText, RefreshCw } from 'lucide-react'
+import { Info, ArrowUpRight, Server, Network, Users, ReceiptText, RefreshCw } from 'lucide-react'
 import { admin } from './session'
 import { ManagementFeedback } from './Feedback'
 import { PageHeader } from '../components/ui/PageHeader'
+import { SegmentedControl } from '../components/ui/SegmentedControl'
+import './overview-reference.css'
 import { DataTable } from '../components/ui/DataTable'
 import { isoDate, minorAmount, orderStatus } from './readPresentation'
 import { DonutChart, LineChart } from '../components/charts/ReferenceCharts'
 import { nodeTrafficHistory, orderStatusShare, incomeTrend, type OverviewRange } from './overviewCharts'
+
+const ranges = ([7, 14, 30] as const).map(value => ({ value, label: value + ' 天' }))
 
 export function OverviewPage() {
   const [range, setRange] = useState<OverviewRange>(14)
@@ -58,34 +62,34 @@ export function OverviewPage() {
     <div className="overview-charts-grid">
       <section className="card overview-chart-card" aria-label="收入趋势卡片">
         <div className="reference-card-heading"><div><h2>收入趋势</h2><p>已支付订单金额 · 按支付日期 · UTC</p></div>
-          <div className="overview-range" role="group" aria-label="收入趋势时间范围">{([7, 14, 30] as const).map(days =>
-            <button type="button" key={days} aria-pressed={range === days} onClick={() => setRange(days)}>{days} 天</button>)}</div>
+          <SegmentedControl label="收入趋势时间范围" value={range} options={ranges} onChange={setRange} />
         </div>
         <ManagementFeedback error={orders.isError ? orders.error : undefined} loading={orders.isFetching} onRetry={() => void orders.refetch()} />
         {!orders.isError && orders.data ? <>
           <LineChart title="样本收入趋势" yAxisWidth={92} formatValue={trend.formatValue} labels={trend.labels} series={trend.hasData ? trend.series : []}
             emptyText="此时间范围内暂无已支付样本订单" />
-          <p className="overview-chart-scope">最近 {trend.sampleSize} 条订单中，{trend.includedCount} 条已支付订单在所选范围内。按币种分别统计订单金额，未扣除退款，含钱包支付；此样本不代表全站实收。</p>
+          <div className="overview-chart-footer"><span>最近 {trend.sampleSize} 条订单 · 所选范围内 {trend.includedCount} 条已支付</span>
+            <details className="overview-scope-details"><summary><Info size={14} />收入统计口径</summary><p>按支付日期分别汇总各币种的订单金额，含钱包支付，未扣除退款；最近订单样本不代表全站实收。零值表示样本中没有对应记录。</p></details></div>
         </> : null}
       </section>
       <section className="card overview-chart-card" aria-label="订单状态卡片">
         <div className="reference-card-heading"><div><h2>订单状态</h2><p>最近订单的当前状态分布</p></div><Link to="/finance/order">全部订单<ArrowUpRight size={15} /></Link></div>
         {!orders.isError && orders.data ? <>
           <DonutChart title="样本订单状态" data={distribution.data} centerLabel="样本订单" />
-          <p className="overview-chart-scope">{distribution.scopeLabel}。切换趋势范围不会改变此样本。</p>
+          <p className="overview-chart-scope">最近 {distribution.sampleSize} 条订单的当前状态；与收入时间范围独立。</p>
         </> : <p className="overview-chart-scope">{orders.isError ? '订单状态暂不可用' : '正在读取订单状态…'}</p>}
       </section>
     </div>
     <section className="card overview-chart-card" aria-label="节点流量卡片">
       <div className="reference-card-heading"><div><h2>节点总流量</h2><p>每日上传 + 下载 · GB · UTC</p></div>
-        <div className="overview-range" role="group" aria-label="节点流量时间范围">{([7, 14, 30] as const).map(days =>
-          <button type="button" key={days} aria-pressed={trafficRange === days} onClick={() => setTrafficRange(days)}>{days} 天</button>)}</div>
+        <SegmentedControl label="节点流量时间范围" value={trafficRange} options={ranges} onChange={setTrafficRange} />
       </div>
       <ManagementFeedback error={nodes.isError ? nodes.error : undefined} loading={nodes.isFetching} onRetry={() => void nodes.refetch()} />
       {trafficEnabled ? <ManagementFeedback error={history.isError ? history.error : undefined} loading={history.isFetching} onRetry={() => void history.refetch()} /> : null}
       {!nodes.isError && !history.isError && history.data && trafficEnabled ? <>
         <LineChart title="节点总流量" labels={traffic.labels} series={traffic.series} xAxisLabel="日期（UTC）" yAxisWidth={92} formatValue={traffic.formatValue} emptyText="暂无节点流量数据" />
-        <p className="overview-chart-scope">当前列表前 {traffic.nodeCount} 个节点，每个节点一条曲线。按已结算批次结束日期汇总原始上传与下载，1 GB = 10⁹ 字节；今日数据截至最近刷新。</p>
+        <div className="overview-chart-footer"><span>当前列表前 {traffic.nodeCount} 个节点 · 每条曲线为一个节点</span>
+          <details className="overview-scope-details"><summary><Info size={14} />流量统计口径</summary><p>每日总流量为原始上传与下载之和，按已结算批次结束日期（UTC）汇总。1 GB = 10⁹ 字节，显示保留两位小数；今日数据截至最近刷新。</p></details></div>
       </> : null}
       {!nodes.isError && nodes.data && !trafficEnabled ? <p className="overview-chart-scope">暂无节点流量数据</p> : null}
     </section>

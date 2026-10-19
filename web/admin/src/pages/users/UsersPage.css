@@ -1,41 +1,17 @@
-/* Opt-in user management refinements; no global cascade additions. */
-.users-v4-toolbar {display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 10px}
-.users-v4-search {display:flex;align-items:center;min-height:40px;min-width:250px;flex:1 1 275px;border:1px solid var(--border);border-radius:var(--radius-control);overflow:hidden;background:var(--panel)}
-.users-v4-search:focus-within {border-color:var(--focus-ring);box-shadow:0 0 0 2px color-mix(in srgb,var(--focus-ring) 13%,transparent)}
-.users-v4-search input {min-height:40px;min-width:0;flex:1;border:0;outline:0;background:transparent;color:var(--fg);padding:7px 10px;font-size:var(--ui-font-body)}
-.users-v4-search .button {height:40px;border-radius:0;border-width:0 0 0 1px;box-shadow:none}
-.users-v4-toolbar>select {min-height:40px;min-width:128px;max-width:220px;padding:7px 10px;border-radius:var(--radius-control);border:1px solid var(--border);background:var(--panel);color:var(--fg);font-size:var(--ui-font-body)}
-.users-v4-toolbar>select:focus-visible,.users-v4-toolbar>.button:focus-visible {outline:2px solid var(--focus-ring);outline-offset:2px}
-.users-v4-list-meta {display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;color:var(--muted);font-size:12px;margin:0 0 10px}
-.users-v4-scroll-hint {display:none}
-.users-v4-table {min-width:1060px}
-.user-table-card.users-v4-surface .data-table th,.user-table-card.users-v4-surface .data-table td {padding:10px 12px}
-.users-v4-table .user-identity {min-width:165px;max-width:290px;gap:4px}
-.users-v4-table .user-detail-link {overflow-wrap:anywhere}
-.users-v4-identity-meta {display:flex;gap:4px 9px;align-items:center;flex-wrap:wrap;font-size:12px;line-height:1.4;color:var(--muted)}
-.user-table-card.users-v4-surface .data-table td {vertical-align:middle}
-.users-v4-table .user-badges {margin-top:0}
-.users-v4-table .user-badges .admin-v2-role-text {font-size:12px}
-.users-v4-table .actions {gap:3px;flex-wrap:nowrap}
-.users-v4-table .actions .icon-button {width:36px;height:36px;flex:none}
-.user-table-card.users-v4-surface.is-empty {background:transparent;border:0;box-shadow:none}
-.user-table-card.users-v4-surface.is-empty .tx-empty-state {min-height:0;padding:24px 16px;border:0;border-radius:0;background:transparent}
-.user-table-card.users-v4-surface .table-wrap {overscroll-behavior-x:contain}
-.users-v4-table .traffic-cell small {font-size:12px}
-.users-v4-table .traffic-cell {min-width:128px}
-.users-v4-table .traffic-bar span {background:var(--primary)}
-.users-v4-table .select-col input {cursor:pointer;accent-color:var(--primary)}
-.user-table-card.users-v4-surface .pagination-bar {padding:10px 13px}
-.user-table-card.users-v4-surface .pagination-bar .pagination-meta {font-variant-numeric:tabular-nums}
-.user-table-card.users-v4-surface .pagination-actions .icon-button {min-width:38px;min-height:38px}
-@media(max-width:860px) {
-  .users-v4-toolbar {align-items:stretch}
-  .users-v4-toolbar>select {flex:1 1 160px;max-width:none}
-  .users-v4-scroll-hint {display:inline}
-}
-@media(max-width:680px) {
-  .users-v4-search {min-width:0;width:100%;flex-basis:100%}
-  .users-v4-toolbar>.button {min-height:40px}
-  .users-v4-table .actions .icon-button {width:44px;height:44px}
-  .user-table-card.users-v4-surface .pagination-actions .icon-button {min-width:44px;min-height:44px}
+/* Active native user list; legacy v4 table selectors have been retired. */
+.reference-user-list-heading { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; }
+.reference-user-list-heading h2 { margin:0; font-size:18px; line-height:1.4; }
+.reference-user-list-heading p { margin:5px 0 0; color:var(--muted); font-size:12px; }
+.reference-users .management-filter-form { margin-top:16px; padding:16px; border-radius:10px; background:var(--ui-surface-subtle); }
+.reference-users .management-filter-form label:first-child { flex:1 1 280px; max-width:420px; }
+.reference-users .management-filter-form input { width:100%; }
+.reference-users .reference-account { min-width:240px; max-width:320px; }
+.reference-users .reference-account .table-link { overflow-wrap:anywhere; white-space:normal; line-height:1.5; }
+.reference-user-id { color:var(--muted); font-size:12px; font-variant-numeric:tabular-nums; }
+.reference-applied-filters { margin:0 0 16px; color:var(--muted); font-size:12px; overflow-wrap:anywhere; }
+.reference-users .data-table td:nth-last-child(-n+2) { color:var(--muted); font-size:12px; }
+@media(max-width:600px) {
+  .reference-users .management-filter-form { padding:12px; }
+  .reference-users .management-filter-form label:first-child { max-width:none; flex-basis:100%; }
+  .reference-users .management-filter-form .button { flex:1; justify-content:center; }
 }

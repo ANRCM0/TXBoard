@@ -33,20 +33,20 @@ export function CouponsPage() {
   function update<K extends keyof ReturnType<typeof blank>>(key: K, value: ReturnType<typeof blank>[K]) { setDraft(old => ({ ...old, [key]: value })) }
   const columns: Column<Coupon>[] = [
     { key: 'code', header: '优惠券', render: row => <div className="native-row-identity"><strong>{row.name}</strong><small>{row.code} · #{row.id}</small></div> },
-    { key: 'value', header: '折扣', render: row => row.discount_kind === 'fixed' ? row.value + ' 分' : row.value + ' / 10000' },
-    { key: 'uses', header: '使用次数', render: row => row.used_total + ' / ' + row.total_limit + ' · 每人 ' + row.user_limit },
-    { key: 'window', header: '有效期', render: row => (row.starts_at === null ? '立即' : new Date(row.starts_at * 1000).toLocaleString()) + ' → ' + (row.expires_at === null ? '长期' : new Date(row.expires_at * 1000).toLocaleString()) },
+    { key: 'value', header: '折扣', render: row => <div className="commerce-cell-stack"><strong className="commerce-amount">{row.discount_kind === 'fixed' ? row.value + ' 分' : row.value + ' / 10000'}</strong><small>{row.discount_kind === 'fixed' ? '固定减免' : '比例减免'}</small></div> },
+    { key: 'uses', header: '使用次数', render: row => <div className="commerce-cell-stack"><strong>{row.used_total} / {row.total_limit}</strong><small>每人上限 {row.user_limit} 次</small></div> },
+    { key: 'window', header: '有效期', render: row => <div className="commerce-cell-stack commerce-date-range"><span>起 {row.starts_at === null ? '立即' : new Date(row.starts_at * 1000).toLocaleString()}</span><small>止 {row.expires_at === null ? '长期' : new Date(row.expires_at * 1000).toLocaleString()}</small></div> },
     { key: 'offers', header: '适用商品', render: row => row.offer_ids.length ? row.offer_ids.join(', ') : '全部' },
     { key: 'state', header: '状态', render: row => <span className={row.enabled ? 'commerce-badge success' : 'commerce-badge'}>{row.enabled ? '启用' : '已停用'}</span> },
     { key: 'disable', header: '操作', render: row => <button className="button" disabled={locked || !row.enabled} title="停用后无法用于新订单" onClick={() => void disable(row)}>停用</button> },
   ]
-  return <div className="native-management-page commerce-reference">
+  return <div className="native-management-page commerce-reference coupons-page">
     <PageHeader title="优惠券管理" description="配置折扣、使用次数、用户限制、有效期和适用商品" action={<><button className="button" disabled={list.isFetching} onClick={() => void refresh()}>刷新</button><button className="button primary" disabled={locked} onClick={() => setEditing(true)}>创建优惠券</button></>} />
     <details className="commerce-help"><summary>优惠券使用规则</summary><p>优惠内容创建后固定，可随时停用；创建订单即占用一次使用次数，取消或退款不返还次数；退款以订单实付金额为限，暂不与升级抵扣叠加</p></details>
-    {pending ? <section className="list-card" role="status"><h2>操作等待确认</h2><p>{pending.operation} · {pending.key}</p><button className="button" disabled={denied || state.busy} onClick={() => void recover()}>使用原操作确认结果</button></section> : null}
+    {pending ? <section className="list-card commerce-pending" role="status"><h2>操作等待确认</h2><p>确认上次结果后，可继续管理优惠券。</p><details className="commerce-help"><summary>查看操作标识</summary><code>{pending.operation} · {pending.key}</code></details><button className="button" disabled={denied || state.busy} onClick={() => void recover()}>使用原操作确认结果</button></section> : null}
     {error || state.error ? <p role="alert">{error || managementError(state.error)}</p> : null}
     {denied ? <p role="alert">无法确认优惠券管理权限，已隐藏数据</p> : null}
-    <ReadList title="优惠券" rows={denied || list.isError ? [] : list.data?.data ?? []} columns={columns} meta={denied || list.isError ? undefined : list.data?.meta} page={page} ready={!!list.data && !denied} loading={list.isFetching} error={list.isError ? list.error : undefined} onRetry={() => void refresh()} onPage={setPage} />
+    <ReadList title="优惠券" rows={denied || list.isError ? [] : list.data?.data ?? []} columns={columns} meta={denied || list.isError ? undefined : list.data?.meta} page={page} ready={!!list.data && !denied} loading={list.isFetching} error={list.isError ? list.error : undefined} onRetry={() => void refresh()} onPage={setPage}><header className="commerce-card-heading"><div><h2>优惠券</h2><p>核对折扣、使用额度与有效期</p></div></header></ReadList>
     {editing && !denied ? <section className="list-card commerce-editor"><header className="commerce-card-heading"><div><h2>创建优惠券</h2><p>设置优惠内容、使用限额与适用范围</p></div><span className="commerce-badge">新优惠</span></header><form className="native-content-form commerce-form-grid" onSubmit={event => { event.preventDefault(); void create() }}>
       <div className="commerce-section-label"><h3>基本信息</h3><p>优惠码由用户在结账时填写</p></div><label>优惠码<input autoFocus placeholder="例如 WELCOME2026" value={draft.code} required minLength={8} maxLength={64} pattern="[A-Za-z0-9][A-Za-z0-9_-]{7,63}" disabled={locked} onChange={event => update('code', event.target.value)} /></label>
       <label>名称<input value={draft.name} required maxLength={120} disabled={locked} onChange={event => update('name', event.target.value)} /></label>
@@ -57,7 +57,7 @@ export function CouponsPage() {
       <label>每人使用上限<input type="number" value={draft.perUser} min={1} max={draft.total} required disabled={locked} onChange={event => update('perUser', Number(event.target.value))} /></label>
       <div className="commerce-section-label"><h3>有效期与范围</h3><p>留空使用默认范围</p></div><label>开始时间（留空立即）<input type="datetime-local" value={draft.starts} disabled={locked} onChange={event => update('starts', event.target.value)} /></label>
       <label>结束时间（留空长期）<input type="datetime-local" value={draft.expires} disabled={locked} onChange={event => update('expires', event.target.value)} /></label>
-      <label>适用商品 ID（英文逗号分隔，留空全部）<input value={draft.offers} disabled={locked} onChange={event => update('offers', event.target.value)} /></label>
+      <label className="commerce-wide-field">适用商品 ID（英文逗号分隔，留空全部）<input value={draft.offers} disabled={locked} onChange={event => update('offers', event.target.value)} /></label>
       <footer className="commerce-form-actions"><span>创建后可停用，优惠内容不可修改</span><button className="button primary" disabled={locked}>创建</button><button className="button" type="button" onClick={() => setEditing(false)}>关闭</button></footer>
     </form></section> : null}
   </div>

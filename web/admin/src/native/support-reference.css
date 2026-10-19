@@ -38,3 +38,67 @@
 .support-timeline { list-style: none; padding: 0; margin: 16px 0; }
 .support-timeline li { padding: 12px 16px; border-inline-start: 2px solid var(--border); color: var(--muted); font-size: 12px; line-height: 1.8; }
 @media (max-width: 640px) { .support-page .list-card { padding: 16px; } .support-page .native-filters label { max-width: none; } .support-page .native-ticket-messages > li[data-author="admin"] { margin-inline-start: 8px; } }
+
+/* Content editing, ticket conversations and transfer rows have distinct layouts. */
+.support-heading > div { min-width: 0; }
+.support-heading h2, .support-heading h3 { overflow-wrap: anywhere; line-height: 1.5; }
+.support-page .data-table { min-width: 700px; }
+.support-page .native-row-identity { max-width: 360px; min-width: 180px; white-space: normal; overflow-wrap: anywhere; }
+.support-page .data-table td { vertical-align: middle; }
+.support-page .native-content-form { max-width: none; background: transparent; border: 0; border-radius: 0; box-shadow: none; }
+.support-page .native-content-form input:not([type=checkbox]), .support-page .native-content-form select { width: 100%; min-height: 38px; font: inherit; }
+.support-page .native-content-form label { color: var(--fg); min-width: 0; font-weight: 550; }
+.support-page .native-content-form label.support-toggle { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--control-bg); align-self: end; min-height: 38px; box-sizing: border-box; }
+.support-page .native-content-form .support-toggle input { margin: 0; accent-color: var(--primary); }
+.support-page .support-editor-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 22px; }
+.support-page .support-wide-field, .support-page .support-form-footer { grid-column: 1 / -1; }
+.support-page .support-editor-grid > textarea { width: 100%; margin-top: -10px; }
+.support-page .support-editor-grid > .support-help { margin: 0; }
+.support-form-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding-top: 16px; margin-top: 6px; border-top: 1px solid var(--border); }
+.support-form-footer > span { color: var(--muted); font-size: 12px; line-height: 1.6; }
+.support-page .support-sort > ol { padding: 0; list-style: none; margin: 0 0 18px; }
+.support-sort > ol > li { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+.support-sort-title { display: flex; align-items: baseline; gap: 12px; min-width: 0; overflow-wrap: anywhere; font-size: 13px; }
+.support-sort-title small { color: var(--muted); font-variant-numeric: tabular-nums; min-width: 20px; }
+.support-sort .support-actions { flex-shrink: 0; }
+.support-audit-heading { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 16px; }
+.support-audit-heading strong { font-weight: 550; color: var(--fg); overflow-wrap: anywhere; }
+.support-audit-heading time { font-size: 11px; }
+.support-timeline p { margin: 5px 0 0; overflow-wrap: anywhere; }
+.support-page .support-ticket-detail > .native-read-fields { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: 24px; margin-bottom: 16px; }
+.support-page .support-ticket-detail > .native-read-fields > div { grid-template-columns: minmax(0, 1fr); gap: 6px; padding-block: 12px; align-content: start; }
+.support-page .support-ticket-detail > .native-read-fields dt { font-size: 11px; }
+.support-page .support-ticket-detail > .native-read-fields dd { font-size: 13px; line-height: 1.55; }
+.support-assignment { display: flex; flex-wrap: wrap; gap: 8px; padding: 4px 0 16px; }
+.support-page .native-ticket-messages > li > p:first-child { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 16px; margin-bottom: 12px; }
+.support-page .native-ticket-messages time { color: var(--muted); font-size: 11px; }
+.support-message-body { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13px; line-height: 1.85; margin: 0; }
+.support-page .support-reply-form { margin-top: 24px; padding-top: 22px; border-top: 1px solid var(--border); }
+.support-byte-count { justify-self: end; color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; margin-top: -8px; }
+.support-page .support-reply-form .support-form-footer { margin-top: 0; }
+.support-attachments .support-upload { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px; }
+.support-upload input { grid-column: 1 / -1; width: 100%; font-size: 12px; }
+.support-upload input::file-selector-button { margin-right: 12px; padding: 7px 10px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--panel); color: var(--fg); font: inherit; cursor: pointer; }
+.support-attachments .support-attachment-note { font-size: 11px; }
+.support-attachment-pending { padding: 12px 14px; border-inline-start: 3px solid var(--warning); background: color-mix(in srgb, var(--warning) 6%, var(--panel)); border-radius: var(--radius-control); margin-block: 12px; }
+.support-attachment-pending p { margin-top: 0; line-height: 1.7; }
+.support-attachments .support-file-info { display: grid; gap: 5px; min-width: 0; overflow-wrap: anywhere; }
+.support-file-info strong { font-size: 12px; font-weight: 550; line-height: 1.55; }
+.support-file-info small { color: var(--muted); font-size: 11px; line-height: 1.65; font-variant-numeric: tabular-nums; }
+.support-transfer-row > progress { order: 3; flex-basis: 100%; margin-top: 2px; }
+.support-attachments .button { min-height: 34px; font-size: 12px; gap: 6px; }
+.support-attachments li .button { flex: 0 0 auto; }
+@media (max-width: 720px) {
+ .support-page .support-editor-grid { grid-template-columns: minmax(0, 1fr); }
+ .support-page .support-ticket-detail > .native-read-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+ .support-form-footer { align-items: flex-start; }
+ .support-form-footer > span { flex-basis: 100%; }
+ .support-sort > ol > li { flex-wrap: wrap; gap: 10px; }
+ .support-sort-title { flex: 1 1 100%; }
+}
+@media (max-width: 440px) {
+ .support-page .support-ticket-detail > .native-read-fields { grid-template-columns: minmax(0, 1fr); }
+ .support-attachments li .button { flex-grow: 1; }
+ .support-form-footer .support-actions { width: 100%; }
+ .support-form-footer .support-actions > .button { flex: 1 1 auto; }
+}

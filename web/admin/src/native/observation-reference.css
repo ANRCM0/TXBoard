@@ -38,3 +38,46 @@
 .observation-request p { margin: 8px 0 0; line-height: 1.6; overflow-wrap: anywhere; }
 @media (max-width: 800px) { .observation-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); } .observation-page .list-card { padding: 16px; } }
 @media (max-width: 460px) { .observation-summary { grid-template-columns: 1fr; } .observation-page .native-filters label { max-width: none; flex-basis: 100%; } }
+
+/* Keep observation data readable without letting long identifiers widen the page. */
+.observation-page { min-width: 0; }
+.observation-page .list-card { min-width: 0; }
+.observation-page .button { min-height: 36px; font-size: 12px; }
+.observation-page .native-filters label { display: flex; flex-direction: column; gap: 8px; min-width: 0; font-size: 12px; }
+.observation-page .native-filters input, .observation-page .native-filters select { width: 100%; box-sizing: border-box; }
+.observation-page .native-pagination { flex-wrap: wrap; gap: 12px; border-top: 1px solid var(--border); margin-top: 16px; padding-top: 16px; }
+.observation-page .native-page-controls { flex-wrap: wrap; }
+.observation-page .native-list-note { padding: 10px 12px; background: var(--control-bg); border-radius: var(--radius-control); color: var(--muted); font-size: 12px; line-height: 1.7; }
+.observation-page [role="alert"] { padding: 12px 14px; border: 1px solid color-mix(in srgb, var(--danger) 24%, var(--border)); border-radius: var(--radius-control); background: color-mix(in srgb, var(--danger) 5%, var(--panel)); line-height: 1.7; font-size: 12px; }
+.observation-page .observation-date { display: inline-block; min-width: 145px; font-size: 12px; line-height: 1.7; font-variant-numeric: tabular-nums; }
+.observation-page .observation-detail .native-read-fields { margin-bottom: 0; }
+.observation-page .observation-help[open] { margin-top: 16px; border-top: 1px solid var(--border); }
+.observation-modules-page .observation-module-filters label:first-child { flex-basis: 300px; max-width: 460px; }
+.observation-modules-page .native-read-link { display: block; max-width: 420px; white-space: normal; }
+.observation-modules-page .observation-identity strong { line-height: 1.6; overflow-wrap: anywhere; }
+.observation-modules-page .observation-identity small { line-height: 1.7; }
+.observation-sessions-page .observation-tag { white-space: normal; }
+.observation-sessions-page .button.danger { white-space: nowrap; }
+.observation-queue-page .observation-stat { border: 1px solid var(--border); }
+.observation-queue-page .observation-stat strong { overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.observation-queue-page .observation-stat small { display: block; margin-top: 8px; color: var(--muted); font-size: 11px; line-height: 1.5; }
+.observation-queue-page .data-table td .observation-mono { display: block; min-width: 180px; max-width: 360px; line-height: 1.7; }
+.observation-audit-page .observation-audit-filters label:nth-child(2) { flex: 0 1 170px; }
+.observation-audit-page .observation-request { min-width: 190px; }
+.observation-audit-page .observation-request[open] { padding: 10px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--control-bg); }
+.observation-filter-summary { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 0 0; border-top: 1px solid var(--border); }
+.observation-filter-summary span { min-width: 0; max-width: 100%; overflow-wrap: anywhere; padding: 5px 9px; border-radius: 6px; color: var(--primary); background: color-mix(in srgb, var(--primary) 8%, var(--panel)); font-size: 12px; line-height: 1.5; }
+@media (max-width: 800px) {
+ .observation-page .native-scroll-hint { display: block; margin: 0 0 12px; color: var(--muted); font-size: 11px; line-height: 1.6; }
+ .observation-page .observation-card-heading { align-items: flex-start; }
+ .observation-page .observation-card-heading > div { min-width: 0; flex: 1 1 180px; }
+ .observation-page .observation-card-heading h2 { overflow-wrap: anywhere; }
+ .observation-page .native-read-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 520px) {
+ .observation-page .native-filters label, .observation-modules-page .observation-module-filters label:first-child, .observation-audit-page .observation-audit-filters label:nth-child(2) { max-width: none; flex: 1 1 100%; }
+ .observation-page .native-filters > .button { flex: 1 1 100px; justify-content: center; }
+ .observation-page .native-pagination > span { flex-basis: 100%; }
+ .observation-page .native-read-fields { grid-template-columns: minmax(0, 1fr); }
+ .observation-page .observation-stat { padding: 15px; }
+}

@@ -99,11 +99,11 @@ try {
   await page.getByRole('button', { name: '释放我的工单', exact: true }).waitFor()
   assert.equal(state.ticket.row_version, '8')
   await page.getByLabel('选择附件', { exact: true }).setInputFiles({ name: 'private-note.txt', mimeType: 'text/plain', buffer: attachmentBytes })
-  await page.getByText('private-note.txt · 待随回复发送', { exact: true }).waitFor()
+  await page.getByRole('list', { name: '待发送附件', exact: true }).getByRole('listitem').filter({ hasText: 'private-note.txt' }).getByText('待随回复发送', { exact: true }).waitFor()
   await page.getByLabel('回复用户', { exact: true }).fill('Verified response')
   await page.getByRole('button', { name: '发送回复', exact: true }).click()
   await page.locator('.native-ticket-messages').getByText('Verified response', { exact: true }).waitFor()
-  await page.getByRole('list', { name: '已发送附件', exact: true }).getByText('private-note.txt · ' + attachmentBytes.length + ' 字节', { exact: true }).waitFor()
+  await page.getByRole('list', { name: '已发送附件', exact: true }).getByRole('listitem').filter({ hasText: 'private-note.txt' }).getByText(attachmentBytes.length + ' 字节 · 已发送', { exact: true }).waitFor()
   assert.equal(state.attachment.status, 'attached')
   assert.deepEqual(state.calls.filter(call => call.operation === 'support.admin-tickets.reply').map(call => call.input.attachment_ids), [[attachmentId]])
   assert.deepEqual(state.calls.filter(call => /attachments\.(begin|append|finish)$/.test(call.operation)).map(call => call.operation),
