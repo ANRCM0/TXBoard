@@ -27,6 +27,8 @@ jobs:
       CORE_INSTALLATION_EPOCH: '1'
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: true
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
@@ -90,6 +92,8 @@ jobs:
       CORE_INSTALLATION_EPOCH: '1'
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: true
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
@@ -109,6 +113,8 @@ jobs:
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: true
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'

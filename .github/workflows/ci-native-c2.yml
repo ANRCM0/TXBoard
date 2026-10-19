@@ -3,6 +3,9 @@ name: native-c2
 on:
   pull_request:
     paths:
+      - "node"
+      - ".gitmodules"
+      - "scripts/check-node-component.py"
       - 'api/app/Domains/Installation/**'
       - 'api/app/Domains/Account/**'
       - 'api/app/Domains/Identity/**'
@@ -26,22 +29,7 @@ on:
       - 'api/routes/**'
       - 'api/bootstrap/**'
       - 'api/composer.*'
-      - 'node/internal/credentialprovider/**'
-      - 'node/internal/credentialdelivery/**'
-      - 'node/internal/credentialdeliveryclient/**'
-      - 'node/internal/authorization/**'
-      - 'node/internal/config/**'
-      - 'node/internal/txboard/**'
-      - 'node/internal/controlplane/**'
-      - 'node/internal/usageinterval/**'
-      - 'node/internal/usagev2/**'
-      - 'node/internal/kernel/singbox/**'
-      - 'node/internal/service/**'
-      - 'node/cmd/**'
-      - 'node/go.mod'
-      - 'node/go.sum'
       - '!api/**/*.md'
-      - '!node/**/*.md'
       - 'scripts/tests/native-c2/**'
       - 'scripts/verify-native-c2.py'
       - 'scripts/verify-native-provider-node.py'
@@ -51,6 +39,9 @@ on:
   push:
     branches: [main]
     paths:
+      - "node"
+      - ".gitmodules"
+      - "scripts/check-node-component.py"
       - 'api/app/Domains/Installation/**'
       - 'api/app/Domains/Account/**'
       - 'api/app/Domains/Identity/**'
@@ -74,22 +65,7 @@ on:
       - 'api/routes/**'
       - 'api/bootstrap/**'
       - 'api/composer.*'
-      - 'node/internal/credentialprovider/**'
-      - 'node/internal/credentialdelivery/**'
-      - 'node/internal/credentialdeliveryclient/**'
-      - 'node/internal/authorization/**'
-      - 'node/internal/config/**'
-      - 'node/internal/txboard/**'
-      - 'node/internal/controlplane/**'
-      - 'node/internal/usageinterval/**'
-      - 'node/internal/usagev2/**'
-      - 'node/internal/kernel/singbox/**'
-      - 'node/internal/service/**'
-      - 'node/cmd/**'
-      - 'node/go.mod'
-      - 'node/go.sum'
       - '!api/**/*.md'
-      - '!node/**/*.md'
       - 'scripts/tests/native-c2/**'
       - 'scripts/verify-native-c2.py'
       - 'scripts/verify-native-provider-node.py'
@@ -116,6 +92,8 @@ jobs:
         options: --health-cmd="redis-cli ping" --health-interval 5s --health-retries 12
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: true
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
@@ -135,4 +113,6 @@ jobs:
           cp .env.example .env
           APP_ENV=testing php artisan key:generate
       - name: Actual native activation, identity, queue, render, traffic and settlement
-        run: python3 scripts/verify-native-c2.py
+        run: |
+          python3 scripts/check-node-component.py
+          python3 scripts/verify-native-c2.py

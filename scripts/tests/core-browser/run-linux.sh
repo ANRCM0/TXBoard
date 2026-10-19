@@ -20,6 +20,12 @@ printf 'Evidence: %s\n' "$scratch"
 mkdir -p "$scratch/core" "$scratch/provider-private"
 core_head=$(git -C "$TXBOARD_CORE_REPO" rev-parse HEAD)
 git -C "$TXBOARD_CORE_REPO" archive "$core_head" | tar -x -C "$scratch/core"
+# git archive does not include submodule contents. Export the independently
+# versioned, verified Node pin explicitly into the isolated integration snapshot.
+python3 "$TXBOARD_CORE_REPO/scripts/check-node-component.py" --archive "$scratch/node-source.tar" > "$scratch/node-source.json"
+mkdir -p "$scratch/core/node"
+tar -xf "$scratch/node-source.tar" -C "$scratch/core/node"
+cp "$scratch/node-source.json" "$scratch/core/api/.node-integration-snapshot"
 cp -a "$TXBOARD_CORE_VENDOR" "$scratch/core/api/vendor"
 printf '%s\n' "$core_head" > "$scratch/core/api/.core-browser-integration-snapshot"
 mkdir -p "$scratch/core/api/storage/framework/"{cache/data,sessions,views} "$scratch/core/api/storage/logs"

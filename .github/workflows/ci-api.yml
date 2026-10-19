@@ -4,6 +4,9 @@ on:
   push:
     branches: [main]
     paths:
+      - "node"
+      - ".gitmodules"
+      - "scripts/check-node-component.py"
       - "api/**"
       - "!api/**/*.md"
       - "contracts/core-api/**"
@@ -22,8 +25,6 @@ on:
       - "scripts/tests/test_module_dev_integration.py"
       - "scripts/check-renderer-registry.py"
       - "contracts/renderers/**"
-      - "node/internal/credentialdelivery/render*.go"
-      - "node/internal/credentialprovider/render*.go"
       - "scripts/tests/test_module_dev.py"
       - "contracts/v2/**"
       - "contracts/module-package/**"
@@ -47,6 +48,9 @@ on:
       - ".github/workflows/ci-api.yml"
   pull_request:
     paths:
+      - "node"
+      - ".gitmodules"
+      - "scripts/check-node-component.py"
       - "api/**"
       - "!api/**/*.md"
       - "contracts/core-api/**"
@@ -65,8 +69,6 @@ on:
       - "scripts/tests/test_module_dev_integration.py"
       - "scripts/check-renderer-registry.py"
       - "contracts/renderers/**"
-      - "node/internal/credentialdelivery/render*.go"
-      - "node/internal/credentialprovider/render*.go"
       - "scripts/tests/test_module_dev.py"
       - "contracts/v2/**"
       - "contracts/module-package/**"
@@ -121,6 +123,8 @@ jobs:
         working-directory: api
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: true
       - name: Verify current Core domain boundaries
         working-directory: .
         run: |
@@ -129,6 +133,7 @@ jobs:
           python3 scripts/check-browser-core-surface.py
           python3 scripts/check-core-boundaries.py
           python3 scripts/check-kernel-v1.py
+          python3 scripts/check-node-component.py
           python3 scripts/check-renderer-registry.py
           python3 scripts/check-modular-release.py
           python3 scripts/module-dev.py lock api/bootstrap/module-composition.json api/bootstrap/module-packages.lock.json --application-root api --check

@@ -15,9 +15,10 @@ the owner of a write. The default deployment runs no separate Node.js Gateway.
   declared ports.
 - `packages/core-sdk` is the same-repository generated SDK. Both web
   applications consume this workspace instead of a separate frontend checkout.
-- `node/internal` owns data-plane and provider implementations. Local replacements
-  under `node/internal/deps` retain their Go sources, licenses and `TXNODE-PATCH.md`
-  development notes. They are dependencies, not independent release projects.
+- `node/` pins the independent `ANRCM0/txnode` repository as a Git submodule.
+  Its Go data plane, Provider, kernel dependencies, tests, releases and images
+  are owned there. Develop in that repository; update the Core pin only through
+  a reviewed integration change. Preserve vendored licenses and patch notes.
 
 Keep money and identifier values in their declared exact representation. Submit
 observed record versions with versioned writes. A stale write must conflict and
@@ -86,6 +87,8 @@ lockfiles. From the repository root, the following checks do not start the
 application or a database:
 
 ```sh
+git submodule update --init node
+python scripts/check-node-component.py
 npm ci
 npm run check:frontend
 npm run typecheck:web
@@ -119,7 +122,7 @@ test targets include functional suites and belong to the acceptance environment.
 | `ci-mysql.yml` | MySQL 8.4 transactions, conflicts, concurrent receipts and recovery |
 | `ci-web.yml` | Frontend boundaries, components, builds and browser regressions |
 | `ci-core-browser.yml` | Real Core browser HTTP, SDK, Provider, financial and support workflows |
-| `ci-node.yml` | Node tests, protocol behavior and Node image delivery |
+| External `ANRCM0/txnode` CI | Node tests, protocol behavior, pinned Core compatibility and Node releases |
 | `ci-native-c2.yml` | Native Core and Go Node integration |
 | `docker-txboard.yml` | Actual Core image verification and eligible publication |
 | `docs.yml` | Development documentation links and CI policy |
@@ -133,3 +136,26 @@ Keep reproducible fixtures and active checks in source. Store run-specific
 evidence in ignored `artifacts/` directories or uploaded CI artifacts. Existing
 database migrations remain part of upgrade and recovery compatibility even when
 their names refer to earlier schemas.
+
+## Independent Node Adoption
+
+Node main, SemVer tags and development images advance in `ANRCM0/txnode`.
+Core releases no longer build, tag or attach Node release binaries. Core and Node
+have independent versions; explicit protocol compatibility and integration proof
+determine whether a pair is supported. Existing `txboard-node` image names remain.
+
+Core's `node/` gitlink is the authoritative integration revision. Initialize it
+with `git submodule update --init node`; do not use `--remote` in acceptance.
+To adopt an already tested Node revision, fetch and check out that exact commit in
+`node/`, then stage the gitlink with `git add node`. Core API, real HTTP, native C2
+and image acceptance must verify the new pair before merge. Node source changes
+are committed and reviewed in the Node repository, never bundled back into Core.
+
+Git source archives omit submodule contents. Integration snapshot tooling exports
+the verified Node commit explicitly and records its repository, revision and tree.
+The renderer source fingerprints continue to verify the pinned Provider source.
+Node owns its renderer package fingerprints in `compatibility/renderers.v1.json`.
+Its compatibility CI checks the supported Core interface and actual delivery,
+so compatible implementation updates can be reviewed and released independently.
+When Core adopts a new renderer implementation, review and version the combined
+Core renderer declaration and source fingerprints along with the Node pin.

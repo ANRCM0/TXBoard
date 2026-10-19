@@ -7,6 +7,9 @@ on:
     tags:
       - "v*"
     paths:
+      - "node"
+      - ".gitmodules"
+      - "scripts/check-node-component.py"
       - "api/**"
       - "!api/**/*.md"
       - "web/**"
@@ -30,6 +33,9 @@ on:
       - ".github/workflows/docker-txboard.yml"
   pull_request:
     paths:
+      - "node"
+      - ".gitmodules"
+      - "scripts/check-node-component.py"
       - "api/**"
       - "!api/**/*.md"
       - "web/**"
@@ -88,6 +94,8 @@ jobs:
       SETTING_CACHE_STORE: array
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: true
       - uses: shivammathur/setup-php@v2
         with:
           php-version: "8.2"
@@ -149,6 +157,8 @@ jobs:
       SETTING_CACHE_STORE: array
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: true
       - uses: shivammathur/setup-php@v2
         with:
           php-version: "8.2"
@@ -183,6 +193,8 @@ jobs:
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: true
       - name: Test image tag classification
         run: bash scripts/test-image-tags.sh
       - name: Verify backup integrity and mysqldump failure handling
@@ -385,6 +397,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          submodules: true
           fetch-depth: 0
       - name: Resolve dev / preview / stable image tags
         id: channel
