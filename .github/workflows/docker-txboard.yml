@@ -317,8 +317,15 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: ANRCM0/TXBoard-Deploy
-          ref: 22b1ef5bfbc66753819257e0ece2cdf74c340350
+          ref: 37a40482852c9398fbbe276ebb93379febccf234
           path: .ci-native-deploy
+          persist-credentials: false
+      - name: Check out the exact P4 resource and recovery Deploy candidate
+        uses: actions/checkout@v4
+        with:
+          repository: ANRCM0/TXBoard-Deploy
+          ref: 22b1ef5bfbc66753819257e0ece2cdf74c340350
+          path: .ci-p4-native-deploy
           persist-credentials: false
       - uses: actions/setup-go@v5
         with:
@@ -340,12 +347,22 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Native immutable image installation, module update and killed-executor recovery
         run: sudo -E python3 -B scripts/verify-native-image.py --deploy-root "$GITHUB_WORKSPACE/.ci-native-deploy" --provider-binary "$RUNNER_TEMP/native-image-provider"
+      - name: P4 paired image resource limits and complete native backup recovery
+        run: sudo -E python3 -B scripts/verify-native-image.py --deploy-root "$GITHUB_WORKSPACE/.ci-p4-native-deploy" --provider-binary "$RUNNER_TEMP/native-image-provider" --verify-resource-profile --output artifacts/p4-native-image.json
       - name: Preserve non-secret exact-image native evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: modular-native-fixed-image-proof
           path: artifacts/modular-native-image.json
+          if-no-files-found: error
+          retention-days: 14
+      - name: Preserve non-secret P4 paired image evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: p4-native-fixed-image-proof
+          path: artifacts/p4-native-image.json
           if-no-files-found: error
           retention-days: 14
   publish:
