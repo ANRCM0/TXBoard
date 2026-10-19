@@ -3082,6 +3082,329 @@
         "code"
       ],
       "additionalProperties": false
+    },
+    "admin-plan-revision-summary": {
+      "type": "object",
+      "properties": {
+        "plan_id": {
+          "$ref": "#/definitions/id"
+        },
+        "revision_id": {
+          "$ref": "#/definitions/id"
+        },
+        "revision_no": {
+          "$ref": "#/definitions/id"
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 255
+        },
+        "currency": {
+          "type": "string",
+          "enum": [
+            "USD",
+            "CNY",
+            "EUR",
+            "GBP",
+            "HKD",
+            "SGD",
+            "CAD",
+            "AUD",
+            "NZD",
+            "TWD"
+          ]
+        },
+        "published_at": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 253402300799
+        }
+      },
+      "required": [
+        "plan_id",
+        "revision_id",
+        "revision_no",
+        "name",
+        "currency",
+        "published_at"
+      ],
+      "additionalProperties": false
+    },
+    "admin-plan-summary": {
+      "type": "object",
+      "properties": {
+        "plan_id": {
+          "$ref": "#/definitions/id"
+        },
+        "revision_no": {
+          "$ref": "#/definitions/id"
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 255
+        },
+        "currency": {
+          "type": "string",
+          "enum": [
+            "USD",
+            "CNY",
+            "EUR",
+            "GBP",
+            "HKD",
+            "SGD",
+            "CAD",
+            "AUD",
+            "NZD",
+            "TWD"
+          ]
+        },
+        "published_at": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 253402300799
+        },
+        "current_revision_id": {
+          "$ref": "#/definitions/id"
+        }
+      },
+      "required": [
+        "plan_id",
+        "revision_no",
+        "name",
+        "currency",
+        "published_at",
+        "current_revision_id"
+      ],
+      "additionalProperties": false
+    },
+    "admin-plan-publication-terms": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255
+        },
+        "content": {
+          "anyOf": [
+            {
+              "type": "string",
+              "maxLength": 8192
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 80
+          },
+          "maxItems": 40,
+          "minItems": 0
+        },
+        "quota_gib": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 8589934591
+        },
+        "group_id": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "speed_limit_mbps": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "device_limit": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reset_method": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4
+        },
+        "currency": {
+          "type": "string",
+          "enum": [
+            "USD",
+            "CNY",
+            "EUR",
+            "GBP",
+            "HKD",
+            "SGD",
+            "CAD",
+            "AUD",
+            "NZD",
+            "TWD"
+          ]
+        },
+        "prices_minor": {
+          "type": "object",
+          "properties": {
+            "monthly": {
+              "type": "string",
+              "pattern": "^(0|[1-9][0-9]{0,18})$",
+              "x-decimal-maximum": "9223372036854775807"
+            },
+            "quarterly": {
+              "type": "string",
+              "pattern": "^(0|[1-9][0-9]{0,18})$",
+              "x-decimal-maximum": "9223372036854775807"
+            },
+            "half_yearly": {
+              "type": "string",
+              "pattern": "^(0|[1-9][0-9]{0,18})$",
+              "x-decimal-maximum": "9223372036854775807"
+            },
+            "yearly": {
+              "type": "string",
+              "pattern": "^(0|[1-9][0-9]{0,18})$",
+              "x-decimal-maximum": "9223372036854775807"
+            },
+            "two_yearly": {
+              "type": "string",
+              "pattern": "^(0|[1-9][0-9]{0,18})$",
+              "x-decimal-maximum": "9223372036854775807"
+            },
+            "three_yearly": {
+              "type": "string",
+              "pattern": "^(0|[1-9][0-9]{0,18})$",
+              "x-decimal-maximum": "9223372036854775807"
+            },
+            "onetime": {
+              "type": "string",
+              "pattern": "^(0|[1-9][0-9]{0,18})$",
+              "x-decimal-maximum": "9223372036854775807"
+            },
+            "reset_traffic": {
+              "type": "string",
+              "pattern": "^(0|[1-9][0-9]{0,18})$",
+              "x-decimal-maximum": "9223372036854775807"
+            }
+          },
+          "required": [],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "name",
+        "content",
+        "tags",
+        "quota_gib",
+        "group_id",
+        "speed_limit_mbps",
+        "device_limit",
+        "reset_method",
+        "currency",
+        "prices_minor"
+      ],
+      "additionalProperties": false
+    },
+    "admin-catalog-offer": {
+      "type": "object",
+      "properties": {
+        "offer_id": {
+          "$ref": "#/definitions/id"
+        },
+        "plan_id": {
+          "$ref": "#/definitions/id"
+        },
+        "revision_id": {
+          "$ref": "#/definitions/id"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 255
+        },
+        "offer_code": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 32
+        },
+        "price_minor": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]{0,18})$",
+          "x-decimal-maximum": "9223372036854775807"
+        },
+        "currency": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 3
+        },
+        "status": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 32
+        },
+        "show": {
+          "type": "boolean"
+        },
+        "sell": {
+          "type": "boolean"
+        },
+        "renew": {
+          "type": "boolean"
+        },
+        "capacity_limit": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^(0|[1-9][0-9]{0,18})$",
+              "x-decimal-maximum": "9223372036854775807"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "row_version": {
+          "$ref": "#/definitions/id"
+        }
+      },
+      "required": [
+        "offer_id",
+        "plan_id",
+        "revision_id",
+        "name",
+        "offer_code",
+        "price_minor",
+        "currency",
+        "status",
+        "show",
+        "sell",
+        "renew",
+        "capacity_limit",
+        "row_version"
+      ],
+      "additionalProperties": false
     }
   },
   "operations": {
@@ -5132,6 +5455,9 @@
             },
             "required": [],
             "additionalProperties": false
+          },
+          "expected_revision_id": {
+            "$ref": "#/definitions/id"
           }
         },
         "required": [
@@ -9892,6 +10218,13 @@
           },
           "plan_id": {
             "$ref": "#/definitions/id"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "published",
+              "superseded"
+            ]
           }
         },
         "required": [],
@@ -9900,83 +10233,7 @@
       "output": {
         "type": "array",
         "items": {
-          "type": "object",
-          "properties": {
-            "offer_id": {
-              "$ref": "#/definitions/id"
-            },
-            "plan_id": {
-              "$ref": "#/definitions/id"
-            },
-            "revision_id": {
-              "$ref": "#/definitions/id"
-            },
-            "name": {
-              "type": "string",
-              "minLength": 0,
-              "maxLength": 255
-            },
-            "offer_code": {
-              "type": "string",
-              "minLength": 0,
-              "maxLength": 32
-            },
-            "price_minor": {
-              "type": "string",
-              "pattern": "^(0|[1-9][0-9]{0,18})$",
-              "x-decimal-maximum": "9223372036854775807"
-            },
-            "currency": {
-              "type": "string",
-              "minLength": 3,
-              "maxLength": 3
-            },
-            "status": {
-              "type": "string",
-              "minLength": 0,
-              "maxLength": 32
-            },
-            "show": {
-              "type": "boolean"
-            },
-            "sell": {
-              "type": "boolean"
-            },
-            "renew": {
-              "type": "boolean"
-            },
-            "capacity_limit": {
-              "anyOf": [
-                {
-                  "type": "string",
-                  "pattern": "^(0|[1-9][0-9]{0,18})$",
-                  "x-decimal-maximum": "9223372036854775807"
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "row_version": {
-              "$ref": "#/definitions/id"
-            }
-          },
-          "required": [
-            "offer_id",
-            "plan_id",
-            "revision_id",
-            "name",
-            "offer_code",
-            "price_minor",
-            "currency",
-            "status",
-            "show",
-            "sell",
-            "renew",
-            "capacity_limit",
-            "row_version"
-          ],
-          "additionalProperties": false
+          "$ref": "#/definitions/admin-catalog-offer"
         },
         "maxItems": 100
       },
@@ -16843,6 +17100,259 @@
         "GIFT_CARD_SELF_REDEEM",
         "BILLING_INSUFFICIENT_FUNDS"
       ]
+    },
+    "catalog.admin-plans.list": {
+      "version": 1,
+      "domains": [
+        "admin"
+      ],
+      "actor": "admin",
+      "permission": "catalog.read",
+      "idempotency": "read",
+      "consistency": "current-owner-view",
+      "input": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100000
+          },
+          "per_page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "array",
+        "items": {
+          "$ref": "#/definitions/admin-plan-summary"
+        },
+        "maxItems": 100
+      },
+      "meta": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "per_page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "last_page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "page",
+          "per_page",
+          "total",
+          "last_page"
+        ],
+        "additionalProperties": false
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS"
+      ]
+    },
+    "catalog.admin-plans.get": {
+      "version": 1,
+      "domains": [
+        "admin"
+      ],
+      "actor": "admin",
+      "permission": "catalog.read",
+      "idempotency": "read",
+      "consistency": "current-owner-view",
+      "input": {
+        "type": "object",
+        "properties": {
+          "plan_id": {
+            "$ref": "#/definitions/id"
+          },
+          "revision_id": {
+            "$ref": "#/definitions/id"
+          }
+        },
+        "required": [
+          "plan_id"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "plan_id": {
+            "$ref": "#/definitions/id"
+          },
+          "current_revision_id": {
+            "$ref": "#/definitions/id"
+          },
+          "revision": {
+            "type": "object",
+            "properties": {
+              "revision_id": {
+                "$ref": "#/definitions/id"
+              },
+              "revision_no": {
+                "$ref": "#/definitions/id"
+              },
+              "content_hash": {
+                "type": "string",
+                "minLength": 64,
+                "maxLength": 64
+              },
+              "published_at": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 253402300799
+              },
+              "terms": {
+                "$ref": "#/definitions/admin-plan-publication-terms"
+              }
+            },
+            "required": [
+              "revision_id",
+              "revision_no",
+              "content_hash",
+              "published_at",
+              "terms"
+            ],
+            "additionalProperties": false
+          },
+          "offers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/admin-catalog-offer"
+            },
+            "minItems": 1,
+            "maxItems": 8
+          }
+        },
+        "required": [
+          "plan_id",
+          "current_revision_id",
+          "revision",
+          "offers"
+        ],
+        "additionalProperties": false
+      },
+      "meta": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS"
+      ]
+    },
+    "catalog.admin-plans.history.list": {
+      "version": 1,
+      "domains": [
+        "admin"
+      ],
+      "actor": "admin",
+      "permission": "catalog.read",
+      "idempotency": "read",
+      "consistency": "current-owner-view",
+      "input": {
+        "type": "object",
+        "properties": {
+          "plan_id": {
+            "$ref": "#/definitions/id"
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100000
+          },
+          "per_page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          }
+        },
+        "required": [
+          "plan_id"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "array",
+        "items": {
+          "$ref": "#/definitions/admin-plan-revision-summary"
+        },
+        "maxItems": 100
+      },
+      "meta": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "per_page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "last_page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "page",
+          "per_page",
+          "total",
+          "last_page"
+        ],
+        "additionalProperties": false
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS"
+      ]
     }
   },
   "surfaces": {
@@ -16954,7 +17464,10 @@
       "billing.admin-commissions.payouts.approve",
       "billing.admin-commissions.payouts.reject",
       "billing.admin-gift-batches.list",
-      "billing.admin-gift-batches.get"
+      "billing.admin-gift-batches.get",
+      "catalog.admin-plans.list",
+      "catalog.admin-plans.get",
+      "catalog.admin-plans.history.list"
     ]
   },
   "limits": {

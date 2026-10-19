@@ -302,6 +302,27 @@
       },
       "routeParameters": {},
       "payload": null
+    },
+    "catalog.admin-plans.list": {
+      "controller": "NativeCatalogReadController",
+      "method": "plans",
+      "parameters": {},
+      "routeParameters": {},
+      "payload": null
+    },
+    "catalog.admin-plans.get": {
+      "controller": "NativeCatalogReadController",
+      "method": "publication",
+      "parameters": {},
+      "routeParameters": {},
+      "payload": null
+    },
+    "catalog.admin-plans.history.list": {
+      "controller": "NativeCatalogReadController",
+      "method": "history",
+      "parameters": {},
+      "routeParameters": {},
+      "payload": null
     }
   }
 }

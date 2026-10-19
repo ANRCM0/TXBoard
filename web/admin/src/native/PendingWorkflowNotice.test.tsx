@@ -35,7 +35,8 @@ it('links an unknown action back to its owner from another page without replayin
 
 it('only maps bounded current admin operations to enabled management destinations', () => {
   const operations = ['commerce.admin-orders.close', 'support.admin-tickets.reply', 'content.notices.update',
-    'content.knowledge.update', 'billing.coupons.disable', 'billing.admin-gift-cards.revoke', 'billing.admin-commissions.payouts.approve']
+    'content.knowledge.update', 'billing.coupons.disable', 'billing.admin-gift-cards.revoke', 'billing.admin-commissions.payouts.approve',
+    'catalog.plans.publish', 'catalog.offers.availability.update', 'network.groups.save', 'network.routes.sort', 'network.access-audit.rules.save']
   for (const id of operations) expect(availableAdminPaths).toContain(workflowDestination(id)?.path)
   expect(workflowDestination('unknown.action')).toBeUndefined()
   expect(new Set(availableAdminPaths).size).toBe(availableAdminPaths.length)

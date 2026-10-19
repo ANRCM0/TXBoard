@@ -433,6 +433,9 @@ jobs:
               tests/Feature/Installation/NativeRuntimeReadinessTest.php
               tests/Feature/Installation/InstallationRuntimeTest.php
               tests/Feature/Subscription/NativePlanAdministrationTest.php
+              tests/Feature/Subscription/NativeAdminCatalogTest.php
+              tests/Feature/Subscription/NativePlanPublicationMysqlConcurrencyTest.php
+              tests/Feature/Txapi/TxapiAdminCatalogTest.php
               tests/Feature/Txapi/TxapiNativeInternalApiTest.php
               tests/Feature/Txapi/TxapiAdminResourceReadsTest.php
               tests/Feature/Txapi/TxapiUnifiedAdminManagementTest.php

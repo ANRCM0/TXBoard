@@ -28,6 +28,19 @@ final class NativePlanAdministration
                 $this->require(hash_equals($existing->result_hash, hash('sha256', ProviderCodec::canonical($result))), 'EVIDENCE_INVALID');
                 return $result;
             }
+            // Receipt replay precedes the new CAS admission: old successful keys remain recoverable.
+            $planId = isset($input['plan_id']) ? (int) $input['plan_id'] : null;
+            $this->require($planId === null ? !array_key_exists('expected_revision_id', $input)
+                : isset($input['expected_revision_id']) && is_string($input['expected_revision_id'])
+                    && preg_match('/\A[1-9][0-9]{0,18}\z/D', $input['expected_revision_id']) === 1,
+                'INPUT_INVALID');
+            if ($planId !== null) {
+                $plan = DB::table('tx_plan')->where('id', $planId)->lockForUpdate()->first();
+                $this->require($plan !== null, 'MISSING');
+                $head = DB::table('tx_plan_revision')->where('plan_id', $planId)->orderByDesc('id')->lockForUpdate()->first();
+                $this->require($head !== null && (string) $head->id === $input['expected_revision_id'], 'REVISION_CONFLICT');
+                app(PlanPublicationService::class)->verifiedRevision((int) $head->id);
+            }
             $groupId = isset($input['group_id']) ? (int) $input['group_id'] : null;
             $this->require($groupId === null || DB::table('tx_server_group')->where('id', $groupId)->exists(), 'GROUP_MISSING');
             $prices = [];
@@ -43,10 +56,7 @@ final class NativePlanAdministration
                 'device_limit' => $input['device_limit'] ?? null, 'capacity_limit' => $input['capacity_limit'] ?? null,
                 'reset_traffic_method' => $input['reset_method'],
                 'prices' => ProviderCodec::canonical($prices), 'updated_at' => $now];
-            $planId = isset($input['plan_id']) ? (int) $input['plan_id'] : null;
             if ($planId !== null) {
-                $plan = DB::table('tx_plan')->where('id', $planId)->lockForUpdate()->first();
-                $this->require($plan !== null, 'MISSING');
                 DB::table('tx_plan')->where('id', $planId)->update($attributes);
             } else {
                 $planId = DB::table('tx_plan')->insertGetId($attributes + [

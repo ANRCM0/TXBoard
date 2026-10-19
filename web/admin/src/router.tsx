@@ -16,6 +16,10 @@ const Content = lazy(() => import('./native/ContentPage').then(m => ({ default: 
 const Coupons = lazy(() => import('./native/CouponsPage').then(m => ({ default: m.CouponsPage })))
 const Commissions = lazy(() => import('./native/CommissionsPage').then(m => ({ default: m.CommissionsPage })))
 const GiftCards = lazy(() => import('./native/GiftCardsPage').then(m => ({ default: m.GiftCardsPage })))
+const Catalog = lazy(() => import('./native/CatalogPage').then(m => ({ default: m.CatalogPage })))
+const Groups = lazy(() => import('./native/GroupsPage').then(m => ({ default: m.GroupsPage })))
+const NetworkRoutes = lazy(() => import('./native/RoutesPage').then(m => ({ default: m.RoutesPage })))
+const AccessAudit = lazy(() => import('./native/AccessAuditPage').then(m => ({ default: m.AccessAuditPage })))
 const Sessions = lazy(() => import('./native/SessionsPage').then(m => ({ default: m.SessionsPage })))
 const Pending = lazy(() => import('./native/PendingPage').then(m => ({ default: m.PendingPage })))
 const NotFound = lazy(() => import('./pages/NotFoundPage').then(m => ({ default: m.NotFoundPage })))
@@ -37,6 +41,9 @@ export const router = createBrowserRouter([
       { index: true, element: <Overview /> },
       { path: 'server/manage', element: <Nodes /> },
       { path: 'server/machine', element: <Machines /> },
+      { path: 'server/group', element: <Groups /> },
+      { path: 'server/route', element: <NetworkRoutes /> },
+      { path: 'server/access-audit', element: <AccessAudit /> },
       { path: 'config/system', element: <Settings /> },
       { path: 'system/sessions', element: <Sessions /> },
       { path: 'user/ticket', element: <Tickets /> },
@@ -44,6 +51,7 @@ export const router = createBrowserRouter([
       { path: 'config/knowledge', element: <Content key="knowledge" kind="knowledge" /> },
       { path: 'user/manage', element: <Users /> },
       { path: 'finance/order', element: <Orders /> },
+      { path: 'finance/plan', element: <Catalog /> },
       { path: 'finance/coupon', element: <Coupons /> },
       { path: 'finance/gift-card', element: <GiftCards /> },
       { path: 'finance/commission', element: <Commissions /> },

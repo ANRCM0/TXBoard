@@ -220,6 +220,21 @@ final class PlanPublicationService
             'availability' => $availability];
     }
 
+    /** Owner-verified immutable revision and its complete Offer set, including superseded history. */
+    public function verifiedRevision(int $revisionId): array
+    {
+        if ($revisionId < 1 || DB::transactionLevel() < 1) {
+            throw new RuntimeException('PUBLICATION_REVISION_READ_INVALID');
+        }
+        $revision = DB::table('tx_plan_revision')->useWritePdo()->where('id', $revisionId)->sharedLock()->first();
+        if ($revision === null) throw new RuntimeException('PUBLICATION_REVISION_MISSING');
+        $offers = DB::table('tx_plan_offer')->useWritePdo()->where('plan_revision_id', $revisionId)
+            ->orderBy('id')->sharedLock()->get()->all();
+        $this->verifyPublication($revision, $offers);
+        return ['revision' => $revision, 'offers' => $offers,
+            'source' => json_decode($revision->source_snapshot, true, flags: JSON_THROW_ON_ERROR)];
+    }
+
     private function source(object $plan, string $currency, string $timezone): array
     {
         $quota = $this->integer($plan->transfer_enable);
