@@ -70,6 +70,13 @@ if ($action === 'delivery-owner' || $action === 'revoke-render-subject') {
     if ($action === 'delivery-owner') {
         $result = app(App\Domains\Subscription\Services\NativeCredentialSynchronization::class)->synchronize($owner->id, $subscription->id);
         if ($result['completed'] !== true) throw new RuntimeException('Delivery credential synchronization failed');
+        $slot = Illuminate\Support\Facades\DB::table('tx_subscription_slot')->where('user_id', $owner->id)->first();
+        $entitlement = Illuminate\Support\Facades\DB::transaction(fn () => app(App\Domains\Subscription\Internal\LockedEntitlementQueries::class)->resolveLocked($owner->id, time()));
+        echo json_encode(['user_id' => (string) $owner->id, 'subscription_id' => (string) $subscription->id,
+            'slot_subscription_id' => $slot?->subscription_id === null ? null : (string) $slot->subscription_id,
+            'entitlement_reason' => $entitlement['reason'],
+            'runtime_version' => app(App\Domains\Installation\InstallationAuthority::class)->inspect()['runtime_version'] ?? null], JSON_THROW_ON_ERROR)."\n";
+        exit;
     } else {
         $subject = Illuminate\Support\Facades\DB::table('tx_access_subject')->where('subscription_id', $subscription->id)
             ->where('id', (int) ($argv[4] ?? 0))->where('credential_profile_id', 'vmess-uuid/v1')->first();
