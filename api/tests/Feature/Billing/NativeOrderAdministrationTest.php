@@ -40,7 +40,7 @@ final class NativeOrderAdministrationTest extends NativeRuntimeTestCase
         foreach (['commerce.orders.read', 'commerce.orders.manage'] as $permission) {
             DB::table('tx_internal_actor_grant')->insert(['user_id' => $this->admin->id, 'permission' => $permission, 'created_at' => time()]);
         }
-        $this->session();
+        $this->authenticateAdministrator();
     }
 
     public function test_stale_close_replay_releases_only_the_original_wallet_reservation_once(): void
@@ -186,7 +186,7 @@ final class NativeOrderAdministrationTest extends NativeRuntimeTestCase
         [, $user] = app(NativeIdentityService::class)->create($this->key().'@example.test', 'runtime-password');
         return $user;
     }
-    private function session(): void
+    private function authenticateAdministrator(): void
     {
         $token = $this->admin->createToken('admin-order', ['*']); Auth::forgetGuards();
         Auth::guard('sanctum')->setUser($this->admin->withAccessToken($token->accessToken));
