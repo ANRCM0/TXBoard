@@ -1,12 +1,11 @@
 import type { CoreOutput } from '@txboard/core-sdk'
 import { describe, expect, it } from 'vitest'
-import { nodeTrafficBars, nodeTrafficLines, orderStatusShare, orderTrend } from './overviewCharts'
+import { gigabytes, nodeTrafficHistory, orderStatusShare, orderTrend } from './overviewCharts'
 
 type Order = CoreOutput<'commerce.admin-orders.list'>[number]
-type Node = CoreOutput<'network.nodes.list'>[number]
+type TrafficHistory = CoreOutput<'network.nodes.traffic-history.get'>
 const now = new Date('2026-10-20T12:00:00Z')
 const order = (created_at: string, status = 0): Order => ({ created_at, status } as Order)
-const node = (id: string, u: string | null, d: string | null): Node => ({ id, name: 'Node ' + id, u, d } as Node)
 
 describe('overview sample order charts', () => {
   it('counts UTC creation dates across offsets and distinguishes current completion from payment date', () => {
@@ -64,51 +63,43 @@ describe('overview sample order charts', () => {
   })
 })
 
-describe('overview sample node counters', () => {
-  it('plots upload and download across categorical nodes while preserving exact labels and gaps', () => {
-    const rows = Object.freeze([node('1', '9223372036854775807', '4611686018427387903'), node('2', null, '0')])
-    const result = nodeTrafficLines(rows)
-    expect(result.labels).toEqual(['Node 1', 'Node 2'])
-    expect(result.maxBytes).toBe('9223372036854775807')
-    expect(result.series[0]).toMatchObject({ id: 'upload', values: [100, null], displayValues: ['9223372036854775807 字节', null] })
-    expect(result.series[1]).toMatchObject({ id: 'download', values: [49.99, 0], displayValues: ['4611686018427387903 字节', '0 字节'] })
-    expect(result.formatValue(100)).toBe('7.99 EiB')
-    expect(result.definition).toContain('不是时间趋势')
-    expect(nodeTrafficLines([node('1', null, null)]).hasData).toBe(false)
-    expect(nodeTrafficLines([node('1', '0', '0')]).series[0].values).toEqual([0])
-    expect(nodeTrafficLines([]).formatValue(0)).toBe('0 B')
+describe('overview daily node total traffic', () => {
+  const history = (nodes: TrafficHistory['nodes']): TrafficHistory => ({
+    time_zone: 'UTC', basis: 'settled-raw-usage/v1', bucket: 'day',
+    starts_at: Date.parse('2026-10-14T00:00:00Z') / 1000,
+    ends_at: now.getTime() / 1000, nodes,
   })
-  it('normalizes full-precision counters with BigInt while preserving exact labels', () => {
-    const large = '9223372036854775807'
-    const half = '4611686018427387903'
-    const rows = Object.freeze([Object.freeze(node('9007199254740993', large, half)), Object.freeze(node('2', '1', '0'))])
-    const result = nodeTrafficBars(rows)
-    expect(result.scopeLabel).toContain('不代表全站统计')
-    expect(result.maxBytes).toBe(large)
-    expect(result.data[0].id).toBe('9007199254740993')
-    expect(result.data[0].values[0]).toMatchObject({ percent: 100, basisPoints: 10_000, raw: large, displayValue: large + ' 字节' })
-    // Floor the ratio before converting the bounded 0..10000 number, never the raw counter.
-    expect(result.data[0].values[1]).toMatchObject({ percent: 49.99, basisPoints: 4999, raw: half })
-    expect(result.data[1].values[0]).toMatchObject({ percent: 0, displayValue: '1 字节' })
-    expect(rows[0].u).toBe(large)
+  it('compares nodes across dates using one total series per node in GB', () => {
+    const result = nodeTrafficHistory(history([
+      { id: '9007199254740993', name: 'Tokyo', points: [{ date: '2026-10-14', total_bytes: '3000000000' }, { date: '2026-10-15', total_bytes: '6000000000' }] },
+      { id: '2', name: 'Osaka', points: [{ date: '2026-10-14', total_bytes: '6000000000' }, { date: '2026-10-15', total_bytes: '0' }] },
+    ]))
+    expect(result.dates).toHaveLength(7)
+    expect(result.dates.at(-1)).toBe('2026-10-20')
+    expect(result.series.map(row => [row.id, row.label])).toEqual([['9007199254740993', 'Tokyo'], ['2', 'Osaka']])
+    expect(result.series[0].values.slice(0, 3)).toEqual([50, 100, null])
+    expect(result.series[0].displayValues.slice(0, 3)).toEqual(['3 GB', '6 GB', null])
+    expect(result.series[1].displayValues.slice(0, 3)).toEqual(['6 GB', '0 GB', null])
+    expect(result.series[0].summary).toBe('9 GB')
+    expect(result.formatValue(50)).toBe('3 GB')
   })
-
-  it('separates unavailable counters from observed zero and avoids division by zero', () => {
-    const result = nodeTrafficBars([node('1', null, '0'), node('2', null, null)])
-    expect(result.hasData).toBe(true)
-    expect(result.maxBytes).toBe('0')
-    expect(result.data[0].missing).toEqual(['upload'])
-    expect(result.data[0].missingLabels).toEqual(['上传未上报'])
-    expect(result.data[0].raw.upload).toBeNull()
-    expect(result.data[0].values).toHaveLength(1)
-    expect(result.data[0].values[0]).toMatchObject({ id: 'download', percent: 0, displayValue: '0 字节' })
-    expect(result.data[1].values).toEqual([])
-    expect(result.data[1].missingLabels).toEqual(['上传未上报', '下载未上报'])
-    expect(nodeTrafficBars([node('1', null, null)]).hasData).toBe(false)
-    expect(nodeTrafficBars([]).hasData).toBe(false)
+  it('retains large decimal totals and sub-GB precision without floating-point loss', () => {
+    const raw = '9999999999999999999999999999999999999999'
+    const result = nodeTrafficHistory(history([{ id: '1', name: 'Large', points: [{ date: '2026-10-14', total_bytes: raw }] }]))
+    expect(result.maxBytes).toBe(raw)
+    expect(result.series[0].displayValues[0]).toBe('9999999999999999999999999999999.999999999 GB')
+    expect(result.series[0].values[0]).toBe(100)
+    expect(gigabytes(1n)).toBe('0.000000001 GB')
+    expect(gigabytes(1_250_000_000n)).toBe('1.25 GB')
   })
-
-  it.each(['-1', '1.5', '01', '1e9', ' 1', 'NaN'])('rejects malformed raw counters: %s', value => {
-    expect(() => nodeTrafficBars([node('1', value, '0')])).toThrow(TypeError)
+  it('distinguishes zero from missing and withdraws absent history', () => {
+    const result = nodeTrafficHistory(history([{ id: '1', name: 'Zero', points: [{ date: '2026-10-14', total_bytes: '0' }] }]))
+    expect(result.series[0].values.slice(0, 2)).toEqual([0, null])
+    expect(result.formatValue(100)).toBe('0 GB')
+    expect(nodeTrafficHistory().series).toEqual([])
+    expect(nodeTrafficHistory().labels).toEqual([])
+  })
+  it.each(['-1', '1.5', '01', '1e9', ' 1', '9'.repeat(41)])('rejects malformed history bytes: %s', total_bytes => {
+    expect(() => nodeTrafficHistory(history([{ id: '1', name: 'Node', points: [{ date: '2026-10-14', total_bytes }] }]))).toThrow(TypeError)
   })
 })

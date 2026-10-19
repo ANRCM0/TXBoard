@@ -89,3 +89,24 @@ validated against generated input/output/meta. API/MySQL and actual Core image
 acceptance remain separate evidence; they do not certify live production UI,
 production PKI, load capacity or a formal release. New user product work remains
 deferred.
+
+### Daily node traffic history
+
+`network.nodes.traffic-history.get` is an administrator read requiring the current
+`network.nodes.read` grant. Supply `days` as 7, 14 or 30 and 1-20 distinct string
+`node_ids`; duplicates return 422 and any missing node returns 404 for the whole
+request. Node results retain input order. Responses are private and no-store.
+
+The UsageV2 read owner returns `time_zone: UTC`, `basis: settled-raw-usage/v1`,
+`bucket: day`, integer Unix `starts_at`/`ends_at`, and per-node daily `points`
+with `date` and exact canonical decimal-string `total_bytes` (up to 40 digits).
+The current UTC day and preceding days are zero-filled. Only settled UsageV2
+entries count; raw upload plus raw download is attributed to the UTC day of
+`batch.ended_at - 1`. Future batch endings are excluded. This history does not
+use resettable node counters, billed bytes or legacy statistics. GB presentation
+uses decimal 1,000,000,000 bytes per GB.
+
+The owner streams at most 100,000 entries using exact decimal addition. An
+additional entry fails the whole read with `USAGE_HISTORY_ENTRY_LIMIT` (422),
+without partial data. Invalid or overflowing stored byte values also fail closed
+with `USAGE_HISTORY_BYTES_INVALID` or `USAGE_HISTORY_BYTES_OVERFLOW` (422).

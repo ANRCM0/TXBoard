@@ -475,6 +475,7 @@ jobs:
               tests/Feature/Txapi/OrderReadBoundaryTest.php
               tests/Feature/Txapi/AccountSessionsBoundaryTest.php
               tests/Feature/Txapi/UsageReadBoundaryTest.php
+              tests/Feature/Txapi/NodeTrafficHistoryTest.php
               tests/Feature/Txapi/TxapiNativeInternalCheckoutTest.php
               tests/Feature/UsageV2/NativeRuntimeUsageTest.php
     permissions:

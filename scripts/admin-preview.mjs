@@ -123,6 +123,19 @@ function previewMiddleware(req, res) {
       if (operation === 'identity.session.end') return send({ ok: true })
       if (spec.idempotency !== 'read') return fail(403, 'PREVIEW_READ_ONLY')
       if (operation === 'network.nodes.list') return list(nodes)
+      if (operation === 'network.nodes.traffic-history.get') {
+        const startsAt = previewToday - (input.days - 1) * 86400000
+        return send({ time_zone: 'UTC', basis: 'settled-raw-usage/v1', bucket: 'day',
+          starts_at: startsAt / 1000, ends_at: Math.floor(previewNow.getTime() / 1000),
+          nodes: nodes.filter(row => input.node_ids.includes(row.id)).map((node, index) => ({
+            id: node.id, name: node.name,
+            points: Array.from({ length: input.days }, (_, day) => ({
+              date: new Date(startsAt + day * 86400000).toISOString().slice(0, 10),
+              total_bytes: String(BigInt(8 + (day * 7 + index * 11) % 23) * BigInt(index + 1) * 1000000000n),
+            })),
+          })),
+        })
+      }
       if (operation === 'network.nodes.get') {
         const node = nodes.find(row => row.id === input.node_id)
         return node ? send({ ...state.detailNode, ...node }) : fail(404, 'PREVIEW_RECORD_NOT_FOUND')
@@ -198,6 +211,7 @@ function previewMiddleware(req, res) {
 const root = fileURLToPath(new URL('../web/admin/', import.meta.url))
 process.chdir(root)
 const server = await createServer({ root, configFile: root + '/vite.config.ts',
+  optimizeDeps: { force: true },
   server: { host: '127.0.0.1', port, strictPort: true, open: false },
   plugins: [{ name: 'txboard-local-preview',
     configureServer(server) {

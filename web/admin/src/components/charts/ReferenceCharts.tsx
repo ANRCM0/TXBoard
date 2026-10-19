@@ -21,6 +21,7 @@ export type LineChartProps = {
   height?: number
   emptyText?: string
   xAxisLabel?: string
+  yAxisWidth?: number
 }
 export type DonutDatum = { id: string; label: string; value: number; color?: string; displayValue?: string }
 export type DonutChartProps = {
@@ -69,7 +70,7 @@ function useChartWidth() {
   return { ref, width }
 }
 
-export function LineChart({ title, labels, series, formatValue = formatNumber, height = 240, emptyText = '暂无趋势数据', xAxisLabel = '时间' }: LineChartProps) {
+export function LineChart({ title, labels, series, formatValue = formatNumber, height = 240, emptyText = '暂无趋势数据', xAxisLabel = '时间', yAxisWidth = 48 }: LineChartProps) {
   const id = useId().replace(/:/g, '')
   const { ref, width } = useChartWidth()
   const [pointer, setPointer] = useState<number | null>(null)
@@ -79,7 +80,8 @@ export function LineChart({ title, labels, series, formatValue = formatNumber, h
   const index = active === null || !labels.length ? null : Math.min(active, labels.length - 1)
   const pinnedId = series.some(item => item.id === pinned) ? pinned : null
   const plotHeight = Number.isFinite(height) ? Math.max(170, Math.min(600, height)) : 240
-  const left = 48, right = width - 16, top = 16, bottom = plotHeight - 32
+  const left = Number.isFinite(yAxisWidth) ? Math.max(48, Math.min(120, yAxisWidth)) : 48
+  const right = width - 16, top = 16, bottom = plotHeight - 32
   let maximum = 0, hasSamples = false
   for (const item of series) for (let i = 0; i < labels.length; i++) {
     const value = item.values[i]

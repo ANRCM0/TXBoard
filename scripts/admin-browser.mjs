@@ -36,6 +36,20 @@ const checks = []
 const requestId = '12345678-1234-4234-8234-123456789abc'
 const node = { id: '9007199254740993', name: 'Tokyo-A', type: 'vless', host: '2001:db8::1', port: '443',
   server_port: null, parent_id: null, machine_id: '9', show: true, enabled: true, sort: null, u: '9007199254740999', d: '0' }
+const overviewNodes = [node, { ...node, id: '9007199254740994', name: 'HongKong-B' }]
+function trafficHistory(input, rows) {
+  const now = new Date(), today = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+  const start = today - (input.days - 1) * 86400000
+  return { time_zone: 'UTC', basis: 'settled-raw-usage/v1', bucket: 'day',
+    starts_at: start / 1000, ends_at: Math.floor(now.getTime() / 1000),
+    nodes: rows.filter(row => input.node_ids.includes(row.id)).map((row, index) => ({ id: row.id, name: row.name,
+      points: Array.from({ length: input.days }, (_, day) => ({
+        date: new Date(start + day * 86400000).toISOString().slice(0, 10),
+        total_bytes: String(BigInt((index + 1) * (3 + day % 5)) * 1000000000n),
+      })),
+    })),
+  }
+}
 const metadata = { version: '1', requestId, coreRequestId: requestId, coreMeta: {} }
 const settingsMetadata = JSON.parse(await readFile(path.join(root, 'contracts/core-api/admin-settings.v1.json'), 'utf8'))
 const configuration = {
@@ -120,8 +134,14 @@ async function fixture(viewport) {
     }
     if (operation === 'network.nodes.list') {
       if (state.nodesStatus !== 200) return fail(state.nodesStatus)
+      if (input.per_page === 5) return checkedSend(overviewNodes,
+        { page: input.page, per_page: 5, total: 21, last_page: 5 })
       return send([{ ...node, name: input.page === 2 ? 'Osaka-B' : 'Tokyo-A' }],
         { page: input.page, per_page: 20, total: 21, last_page: 2 })
+    }
+    if (operation === 'network.nodes.traffic-history.get') {
+      if (state.nodesStatus !== 200) return fail(state.nodesStatus)
+      return checkedSend(trafficHistory(input, overviewNodes))
     }
     if (operation === 'network.machines.list') return send([{ id: '9', name: 'Tokyo host',
       is_active: true, image_channel: 'dev', last_seen_at: null, servers_count: 1,
@@ -172,11 +192,12 @@ try {
   await page.waitForFunction(() => document.documentElement.dataset.theme === 'dark')
   await page.screenshot({ path: output + '/login-dark.png', fullPage: true })
   await login(page, '/admin/server/manage')
-  await page.getByText('Tokyo-A', { exact: true }).waitFor()
+  await page.getByRole('table').getByRole('link', { name: 'Tokyo-A', exact: true }).waitFor()
   await page.waitForFunction(() => document.documentElement.dataset.theme === 'dark')
   await page.screenshot({ path: output + '/nodes-dark.png', fullPage: true })
   await page.getByRole('link', { name: '仪表盘', exact: true }).click()
-  await page.getByRole('region', { name: '管理入口', exact: true }).getByText('admin@example.test', { exact: true }).waitFor()
+  await page.getByRole('region', { name: '资源统计', exact: true }).waitFor()
+  assert.equal(await page.getByRole('region', { name: '管理入口', exact: true }).count(), 0)
   await page.getByRole('region', { name: '资源统计', exact: true }).getByRole('link', { name: /账户总数 21/ }).waitFor()
   const trendCard = page.getByRole('region', { name: '订单趋势卡片', exact: true })
   const rangeButtons = trendCard.getByRole('group', { name: '订单趋势时间范围', exact: true })
@@ -196,11 +217,24 @@ try {
   const donut = page.getByRole('region', { name: '样本订单状态', exact: true })
   await donut.getByRole('button', { name: /^待支付/ }).focus()
   await donut.getByRole('status').filter({ hasText: '待支付' }).waitFor()
-  const trafficChart = page.getByRole('region', { name: '样本节点累计字节', exact: true })
-  await trafficChart.getByRole('group', { name: '样本节点累计字节交互图表', exact: true }).press('Home')
-  await trafficChart.getByRole('status').getByText('9007199254740999 字节', { exact: true }).waitFor()
+  const trafficCard = page.getByRole('region', { name: '节点流量卡片', exact: true })
+  const trafficChart = trafficCard.getByRole('region', { name: '节点总流量', exact: true })
+  const trafficRanges = trafficCard.getByRole('group', { name: '节点流量时间范围', exact: true })
+  await trafficChart.getByRole('group', { name: '节点总流量交互图表', exact: true }).press('Home')
+  await trafficChart.getByRole('status').getByText('3 GB', { exact: true }).waitFor()
+  await trafficChart.getByRole('status').getByText('6 GB', { exact: true }).waitFor()
+  assert.equal(await trafficChart.getByRole('button', { name: /^突出显示.+曲线$/ }).count(), 2)
+  for (const days of [7, 14, 30]) {
+    await trafficRanges.getByRole('button', { name: days + ' 天', exact: true }).click()
+    await trafficChart.getByText('查看节点总流量数据', { exact: true }).click()
+    await page.waitForFunction(expected => document.querySelector('[aria-label="节点总流量"] tbody')?.rows.length === expected, days)
+    await trafficChart.getByText('查看节点总流量数据', { exact: true }).click()
+    assert.ok(state.reads.some(read => read.operation === 'network.nodes.traffic-history.get'
+      && read.input.days === days && JSON.stringify(read.input.node_ids) === JSON.stringify(overviewNodes.map(row => row.id))))
+  }
+  assert.equal(await rangeButtons.getByRole('button', { name: '30 天', exact: true }).getAttribute('aria-pressed'), 'true')
   assert.ok(state.reads.some(read => read.operation === 'commerce.admin-orders.list' && read.input.per_page === 100))
-  passed('sample charts support time ranges, keyboard tooltips, pinned legends and exact byte labels')
+  passed('sample order charts and daily per-node GB curves support independent ranges and keyboard tooltips')
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth))
   await page.screenshot({ path: output + '/overview-dark.png', fullPage: true })
   await page.getByRole('button', { name: '切换浅色模式', exact: true }).click()
@@ -211,13 +245,14 @@ try {
   await trendCard.getByRole('alert').filter({ hasText: '没有此操作的权限' }).waitFor()
   assert.equal(await page.getByRole('region', { name: '样本订单趋势', exact: true }).count(), 0)
   assert.equal(await page.getByRole('region', { name: '样本订单状态', exact: true }).count(), 0)
-  assert.equal(await page.getByRole('region', { name: '样本节点累计字节', exact: true }).count(), 0)
+  assert.equal(await page.getByRole('region', { name: '节点总流量', exact: true }).count(), 0)
   passed('overview withdraws cached charts when their read permissions are denied')
   state.ordersStatus = 200; state.nodesStatus = 200
   await page.getByRole('button', { name: '刷新概览', exact: true }).click()
   await trendGraph.waitFor()
-  await page.locator('.native-overview-card').filter({ has: page.getByText('节点管理', { exact: true }) }).click()
-  await page.getByText('Tokyo-A', { exact: true }).waitFor()
+  if (await page.getByRole('button', { name: '展开侧边栏', exact: true }).count()) await page.getByRole('button', { name: '展开侧边栏', exact: true }).click()
+  await nav(page, '节点管理')
+  await page.getByRole('table').getByRole('link', { name: 'Tokyo-A', exact: true }).waitFor()
   passed('login theme persists into management and overview links navigate without layout overflow')
   assert.match(await page.locator('table').innerText(), /9007199254740999/)
   assert.match(await page.locator('table').innerText(), /\[2001:db8::1\]:443/)
@@ -225,7 +260,7 @@ try {
   await page.locator('[data-sonner-toast]').waitFor({ state: 'detached' })
   await page.screenshot({ path: output + '/nodes-desktop.png', fullPage: true })
   await page.getByRole('button', { name: '下一页', exact: true }).click()
-  await page.getByText('Osaka-B', { exact: true }).waitFor()
+  await page.getByRole('table').getByRole('link', { name: 'Osaka-B', exact: true }).waitFor()
   passed('server pagination')
   state.nodesStatus = 403
   await page.getByRole('button', { name: '刷新节点', exact: true }).click()
@@ -233,7 +268,7 @@ try {
   assert.equal(await page.locator('table').count(), 0)
   assert.ok(!page.url().includes('sign-in'))
   passed('permission revocation removes stale rows without ending the session')
-  await page.getByRole('button', { name: '展开侧边栏', exact: true }).click()
+  if (await page.getByRole('button', { name: '展开侧边栏', exact: true }).count()) await page.getByRole('button', { name: '展开侧边栏', exact: true }).click()
   await nav(page, '服务器管理')
   await page.getByText('Tokyo host', { exact: true }).waitFor()
   assert.match(await page.locator('table').innerText(), /未上报/)
@@ -359,7 +394,7 @@ try {
   await mobile.page.screenshot({ path: output + '/login-mobile.png', fullPage: true })
   mobile.state.malformedCaptcha = false
   await login(mobile.page, '/admin/server/manage')
-  await mobile.page.getByText('Tokyo-A', { exact: true }).waitFor()
+  await mobile.page.getByRole('table').getByRole('link', { name: 'Tokyo-A', exact: true }).waitFor()
   assert.ok(await mobile.page.evaluate(() => document.documentElement.scrollWidth <= innerWidth))
   await mobile.page.screenshot({ path: output + '/nodes-mobile.png', fullPage: true })
   await mobile.page.getByRole('button', { name: '打开导航', exact: true }).click()
@@ -371,7 +406,9 @@ try {
   await mobile.page.screenshot({ path: output + '/navigation-mobile.png', fullPage: true })
   await nav(mobile.page, '仪表盘')
   await mobile.page.getByRole('region', { name: '样本订单状态', exact: true }).waitFor()
-  await mobile.page.getByRole('button', { name: '7 天', exact: true }).click()
+  await mobile.page.getByRole('region', { name: '订单趋势卡片', exact: true }).getByRole('button', { name: '7 天', exact: true }).click()
+  await mobile.page.getByRole('region', { name: '节点流量卡片', exact: true }).getByRole('group', { name: '节点流量时间范围', exact: true }).getByRole('button', { name: '7 天', exact: true }).click()
+  await mobile.page.getByRole('region', { name: '节点总流量', exact: true }).waitFor()
   assert.ok(await mobile.page.evaluate(() => document.documentElement.scrollWidth <= innerWidth))
   await mobile.page.screenshot({ path: output + '/overview-mobile.png', fullPage: true })
   await mobile.page.getByRole('button', { name: '打开导航', exact: true }).click()
@@ -380,7 +417,7 @@ try {
   assert.equal(await mobile.page.locator('.admin-sidebar.is-open').count(), 0)
   await mobile.page.getByRole('button', { name: '打开导航', exact: true }).click()
   await nav(mobile.page, '节点管理')
-  await mobile.page.getByText('Tokyo-A', { exact: true }).waitFor()
+  await mobile.page.getByRole('table').getByRole('link', { name: 'Tokyo-A', exact: true }).waitFor()
   passed('mobile layout, bounded table scroll and accessible navigation')
   await mobile.page.getByRole('button', { name: '打开导航', exact: true }).click()
   await nav(mobile.page, '用户管理')
@@ -415,7 +452,7 @@ try {
   passed('mobile user, linked orders and readable bounded order dialog')
   await mobile.page.getByRole('button', { name: '打开导航', exact: true }).click()
   await nav(mobile.page, '节点管理')
-  await mobile.page.getByText('Tokyo-A', { exact: true }).waitFor()
+  await mobile.page.getByRole('table').getByRole('link', { name: 'Tokyo-A', exact: true }).waitFor()
   mobile.state.nodesStatus = 401
   await mobile.page.getByRole('button', { name: '刷新节点', exact: true }).click()
   await mobile.page.getByRole('heading', { name: '管理员登录' }).waitFor()
@@ -427,7 +464,7 @@ try {
   await mobile.context.close()
   const rotated = await fixture({ width: 1280, height: 800 })
   await login(rotated.page, '/rotated_admin/server/manage')
-  await rotated.page.getByText('Tokyo-A', { exact: true }).waitFor()
+  await rotated.page.getByRole('table').getByRole('link', { name: 'Tokyo-A', exact: true }).waitFor()
   assert.ok(new URL(rotated.page.url()).pathname.startsWith('/rotated_admin/'))
   await rotated.page.reload()
   await rotated.page.getByRole('heading', { name: '管理员登录' }).waitFor()

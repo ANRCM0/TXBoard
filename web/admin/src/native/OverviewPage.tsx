@@ -1,43 +1,18 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { ArrowUpRight, Server, Network, Settings, ShieldCheck, Users, ReceiptText, MessageCircle, Bell, BookOpen, Tag, Gift, WalletCards, CreditCard, Boxes, Route, FileText, Plug, Package, Activity, Mail, RefreshCcw, RefreshCw } from 'lucide-react'
+import { ArrowUpRight, Server, Network, Users, ReceiptText, RefreshCw } from 'lucide-react'
 import { admin } from './session'
 import { ManagementFeedback } from './Feedback'
 import { PageHeader } from '../components/ui/PageHeader'
 import { DataTable } from '../components/ui/DataTable'
 import { isoDate, minorAmount, orderStatus } from './readPresentation'
 import { DonutChart, LineChart } from '../components/charts/ReferenceCharts'
-import { nodeTrafficLines, orderStatusShare, orderTrend, type OverviewRange } from './overviewCharts'
+import { nodeTrafficHistory, orderStatusShare, orderTrend, type OverviewRange } from './overviewCharts'
 
-const entries = [
-  { href: '/user/manage', title: '用户管理', description: '查询账户与当前订阅', icon: Users },
-  { href: '/finance/order', title: '订单管理', description: '查询原生购买订单与详情', icon: ReceiptText },
-  { href: '/finance/plan', title: '套餐管理', description: '查看完整发布历史、发布新修订与调整可用性', icon: CreditCard },
-  { href: '/user/ticket', title: '工单管理', description: '认领工单、回复并处理私有附件', icon: MessageCircle },
-  { href: '/config/notice', title: '公告管理', description: '编辑公告、发布时间与受众', icon: Bell },
-  { href: '/config/knowledge', title: '知识库管理', description: '管理知识内容、分类与排序', icon: BookOpen },
-  { href: '/finance/coupon', title: '优惠券', description: '创建优惠策略或停用后续使用', icon: Tag },
-  { href: '/finance/gift-card', title: '礼品卡', description: '查看批次与逐卡状态、撤销未兑换卡片', icon: Gift },
-  { href: '/finance/commission', title: '邀请与佣金', description: '查看邀请奖励、审核钱包转入申请', icon: WalletCards },
-  { href: '/server/manage', title: '节点管理', description: '查看节点详情、状态与服务器归属', icon: Network },
-  { href: '/server/machine', title: '服务器管理', description: '查看服务器详情、编辑状态与镜像通道', icon: Server },
-  { href: '/server/group', title: '权限组管理', description: '维护用户、套餐和节点使用的分组', icon: Boxes },
-  { href: '/server/route', title: '路由管理', description: '维护路由与完整排序、只读模拟节点匹配', icon: Route },
-  { href: '/server/access-audit', title: '访问审计', description: '维护审计规则、筛选节点访问事件', icon: ShieldCheck },
-  { href: '/config/system', title: '系统配置', description: '管理站点、注册、安全与通知设置', icon: Settings },
-  { href: '/system/sessions', title: '登录会话', description: '查看并撤销管理员账户的会话', icon: ShieldCheck },
-  { href: '/system/audit-log', title: '审计日志', description: '按操作、管理员与关键字查询审计记录', icon: FileText },
-  { href: '/system/modules', title: '模块中心', description: '查看模块状态、兼容性与部署支持', icon: Boxes },
-  { href: '/config/plugin', title: '插件管理', description: '查看插件清单、健康与能力', icon: Plug },
-  { href: '/config/theme', title: '主题管理', description: '查看主题清单与当前运行状态', icon: Package },
-  { href: '/config/payment', title: '支付配置', description: '配置原生商户渠道并核对当前可用性', icon: WalletCards },
-  { href: '/user/traffic-reset', title: '订阅流量重置', description: '核对当前订阅并重置流量周期', icon: RefreshCcw },
-  { href: '/system/queue', title: '队列监控', description: '查看任务状态与近期失败记录', icon: Activity },
-  { href: '/config/email/templates', title: '邮件模板', description: '编辑通知模板并显式发送测试邮件', icon: Mail },
-]
 export function OverviewPage() {
   const [range, setRange] = useState<OverviewRange>(14)
+  const [trafficRange, setTrafficRange] = useState<OverviewRange>(14)
   const identity = useQuery({ queryKey: ['native-admin', 'identity'],
     queryFn: ({ signal }) => admin.read('identity.admin.get', {}, signal) })
   const accounts = useQuery({ queryKey: ['native-admin', 'overview', 'accounts'],
@@ -48,13 +23,18 @@ export function OverviewPage() {
     queryFn: ({ signal }) => admin.read('network.nodes.list', { page: 1, per_page: 5 }, signal) })
   const machines = useQuery({ queryKey: ['native-admin', 'overview', 'machines'],
     queryFn: ({ signal }) => admin.read('network.machines.list', { page: 1, per_page: 1 }, signal) })
-  const queries = [identity, accounts, orders, nodes, machines]
+  const nodeIds = nodes.isError ? [] : nodes.data?.data.map(node => node.id) ?? []
+  const trafficEnabled = nodeIds.length > 0
+  const history = useQuery({ queryKey: ['native-admin', 'overview', 'node-traffic', trafficRange, nodeIds],
+    queryFn: ({ signal }) => admin.read('network.nodes.traffic-history.get', { days: trafficRange, node_ids: nodeIds }, signal),
+    enabled: trafficEnabled })
+  const queries = [identity, accounts, orders, nodes, machines, ...(trafficEnabled ? [history] : [])]
   const refreshing = queries.some(query => query.isFetching)
   const updatedAt = Math.max(...queries.map(query => query.dataUpdatedAt))
   const orderRows = orders.isError ? [] : orders.data?.data ?? []
   const trend = orderTrend(orderRows, range, new Date(orders.dataUpdatedAt || Date.now()))
   const distribution = orderStatusShare(orderRows)
-  const traffic = nodeTrafficLines(nodes.isError ? [] : nodes.data?.data ?? [])
+  const traffic = nodeTrafficHistory(!nodes.isError && !history.isError && trafficEnabled ? history.data?.data : undefined)
   const metrics = [
     { label: '账户总数', icon: Users, query: accounts, href: '/user/manage', tone: 'blue' },
     { label: '订单总数', icon: ReceiptText, query: orders, href: '/finance/order', tone: 'purple' },
@@ -97,12 +77,17 @@ export function OverviewPage() {
       </section>
     </div>
     <section className="card overview-chart-card" aria-label="节点流量卡片">
-      <div className="reference-card-heading"><div><h2>节点累计流量</h2><p>节点间对比 · 上传与下载折线</p></div><Link to="/server/manage">全部节点<ArrowUpRight size={15} /></Link></div>
+      <div className="reference-card-heading"><div><h2>节点总流量</h2><p>每日上传 + 下载 · GB · UTC</p></div>
+        <div className="overview-range" role="group" aria-label="节点流量时间范围">{([7, 14, 30] as const).map(days =>
+          <button type="button" key={days} aria-pressed={trafficRange === days} onClick={() => setTrafficRange(days)}>{days} 天</button>)}</div>
+      </div>
       <ManagementFeedback error={nodes.isError ? nodes.error : undefined} loading={nodes.isFetching} onRetry={() => void nodes.refetch()} />
-      {!nodes.isError && nodes.data ? <>
-        <LineChart title="样本节点累计字节" labels={traffic.labels} series={traffic.series} xAxisLabel="节点" formatValue={traffic.formatValue} emptyText="暂无节点流量数据" />
-        <p className="overview-chart-scope">{traffic.scopeLabel}。横轴为节点，纵轴为累计字节计数；计数可被重置，不表示历史趋势或今日新增流量。</p>
+      {trafficEnabled ? <ManagementFeedback error={history.isError ? history.error : undefined} loading={history.isFetching} onRetry={() => void history.refetch()} /> : null}
+      {!nodes.isError && !history.isError && history.data && trafficEnabled ? <>
+        <LineChart title="节点总流量" labels={traffic.labels} series={traffic.series} xAxisLabel="日期（UTC）" yAxisWidth={92} formatValue={traffic.formatValue} emptyText="暂无节点流量数据" />
+        <p className="overview-chart-scope">当前列表前 {traffic.nodeCount} 个节点，每个节点一条曲线。按已结算批次结束日期汇总原始上传与下载，1 GB = 10⁹ 字节；今日数据截至最近刷新。</p>
       </> : null}
+      {!nodes.isError && nodes.data && !trafficEnabled ? <p className="overview-chart-scope">暂无节点流量数据</p> : null}
     </section>
     <div className="overview-data-grid">
       <section className="card overview-data-card" aria-label="最近订单">
@@ -123,15 +108,5 @@ export function OverviewPage() {
         </Link>) : <p className="reference-secondary">暂无节点</p>}</div> : null}
       </section>
     </div>
-    <section className="card overview-shortcuts" aria-label="管理入口">
-      <div className="reference-card-heading"><div><h2>管理入口</h2><p>账户、业务与系统管理</p></div>{!identity.isError && identity.data ? <span className="reference-secondary">{identity.data.data.email}</span> : null}</div>
-    <div className="native-overview-grid">
-      {entries.map(({ href, title, description, icon: Icon }) => <Link className="card native-overview-card" to={href} key={href}>
-        <div className="native-overview-icon"><Icon size={20} /></div>
-        <div className="native-overview-copy"><strong>{title}</strong><span>{description}</span></div>
-        <ArrowUpRight className="native-overview-arrow" size={16} aria-hidden="true" />
-      </Link>)}
-    </div>
-    </section>
   </div>
 }

@@ -182,6 +182,7 @@ KERNEL_FILES = {
     "api/app/Domains/UsageV2/Contracts/UsageQuery.php": "App\\Domains\\UsageV2\\Contracts",
     "api/app/Domains/UsageV2/Contracts/UsagePage.php": "App\\Domains\\UsageV2\\Contracts",
     "api/app/Domains/UsageV2/Contracts/UsageTargetMissing.php": "App\\Domains\\UsageV2\\Contracts",
+    "api/app/Domains/UsageV2/Contracts/UsageHistoryUnavailable.php": "App\\Domains\\UsageV2\\Contracts",
     "api/app/Domains/UsageV2/NativeUsageQueries.php": "App\\Domains\\UsageV2",
     "api/app/Domains/InternalApi/UsageReadOperations.php": "App\\Domains\\InternalApi",
 }
@@ -385,6 +386,8 @@ def validate_kernel_boundaries(root):
          ORDER_QUERY_OWNERS, "order query"),
         (re.compile(r"\bNativeAccountSessions\b", re.IGNORECASE),
          ACCOUNT_SESSION_OWNERS, "account sessions"),
+        (re.compile(r"\bNativeNodeIdentities\b", re.IGNORECASE),
+         frozenset({"api/app/Domains/Network/NativeNodeIdentities.php", "api/app/Modules/NetworkModule.php"}), "network node identities"),
         (re.compile(r"\bNativeUsageQueries\b", re.IGNORECASE),
          USAGE_QUERY_OWNERS, "usage query"),
     )

@@ -1,7 +1,7 @@
 import type { CoreOutput } from '@txboard/core-sdk'
 
 type Order = CoreOutput<'commerce.admin-orders.list'>[number]
-type Node = CoreOutput<'network.nodes.list'>[number]
+type TrafficHistory = CoreOutput<'network.nodes.traffic-history.get'>
 export type OverviewRange = 7 | 14 | 30
 const dayMilliseconds = 86_400_000
 const statusLabels = ['待支付', '开通中', '已取消', '已完成', '已折抵'] as const
@@ -69,66 +69,46 @@ export function orderStatusShare(rows: readonly Order[]) {
   }
 }
 
-function bytes(value: Node['u']): bigint | null {
-  if (value === null) return null
-  // Preserve missing values, and reject malformed counters instead of silently plotting them as zero.
-  if (!/^(0|[1-9][0-9]*)$/.test(value)) throw new TypeError('Invalid node byte counter')
-  return BigInt(value)
+/** Decimal GB labels retain all byte precision without coercing raw counters to Number. */
+export function gigabytes(value: bigint) {
+  const whole = value / 1_000_000_000n
+  const fraction = (value % 1_000_000_000n).toString().padStart(9, '0').replace(/0+$/, '')
+  return whole.toString() + (fraction ? '.' + fraction : '') + ' GB'
 }
 
-/** Heights compare each direction with the largest directional counter in this sample. */
-export function nodeTrafficBars(rows: readonly Node[]) {
-  const parsed = rows.map(row => ({ row, upload: bytes(row.u), download: bytes(row.d) }))
-  const maximum = parsed.reduce((max, item) => {
-    const upload = item.upload ?? 0n, download = item.download ?? 0n
-    return upload > max && upload >= download ? upload : download > max ? download : max
-  }, 0n)
-  return {
-    ...sampleScope(rows.length), maxBytes: maximum.toString(),
-    definition: '当前节点累计计数；条长相对于样本中最大的单向计数，不是流量占比或时段新增用量',
-    hasData: parsed.some(item => item.upload !== null || item.download !== null),
-    data: parsed.map(({ row, upload, download }) => ({
-      id: row.id, label: row.name,
-      raw: { upload: row.u, download: row.d },
-      missing: [upload === null ? 'upload' : null, download === null ? 'download' : null].filter(value => value !== null),
-      missingLabels: [upload === null ? '上传未上报' : null, download === null ? '下载未上报' : null].filter((value): value is string => value !== null),
-      // Missing counters have no bar, so an unknown value is never converted into a zero counter.
-      values: ([{ id: 'upload', label: '上传', value: upload, raw: row.u, color: 'var(--primary)' },
-        { id: 'download', label: '下载', value: download, raw: row.d, color: 'var(--success)' }])
-        .filter(item => item.value !== null).map(item => {
-          const basisPoints = maximum ? Number(item.value! * 10_000n / maximum) : 0
-          return { id: item.id, label: item.label, percent: basisPoints / 100, basisPoints,
-            raw: item.raw, displayValue: `${item.raw} 字节`, color: item.color }
-        }),
-    })),
+/** One series per node, sharing UTC dates and the same bounded drawing scale. */
+export function nodeTrafficHistory(history?: TrafficHistory) {
+  const dates: string[] = []
+  if (history) {
+    const start = history.starts_at * 1000
+    const end = history.ends_at * 1000
+    if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || end < start || end - start > 31 * dayMilliseconds)
+      throw new RangeError('Invalid traffic history range')
+    const endDay = Date.parse(new Date(end).toISOString().slice(0, 10) + 'T00:00:00Z')
+    for (let time = start; time <= endDay; time += dayMilliseconds) dates.push(new Date(time).toISOString().slice(0, 10))
   }
-}
-
-/** Compare cumulative node counters; categorical node positions never imply elapsed time. */
-export function nodeTrafficLines(rows: readonly Node[]) {
-  const counters = rows.map(row => ({ upload: bytes(row.u), download: bytes(row.d) }))
-  const maximum = counters.reduce((max, row) => [row.upload, row.download]
-    .reduce<bigint>((value, counter) => counter !== null && counter > value ? counter : value, max), 0n)
-  function formatValue(percent: number) {
-    const value = maximum * BigInt(Math.round(Math.max(0, Math.min(100, percent)) * 100)) / 10_000n
-    const units = ['B', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB', 'EiB']
-    let divisor = 1n, unit = 0
-    while (value >= divisor * 1024n && unit < units.length - 1) { divisor *= 1024n; unit++ }
-    if (!unit) return value.toString() + ' B'
-    const hundredths = (value * 100n / divisor).toString().padStart(3, '0')
-    return hundredths.slice(0, -2) + '.' + hundredths.slice(-2) + ' ' + units[unit]
-  }
+  const rows = (history?.nodes ?? []).map(node => {
+    const points = new Map<string, bigint>()
+    for (const point of node.points) {
+      if (!/^(0|[1-9][0-9]{0,39})$/.test(point.total_bytes) || points.has(point.date)) throw new TypeError('Invalid traffic history point')
+      points.set(point.date, BigInt(point.total_bytes))
+    }
+    return { node, values: dates.map(date => points.get(date) ?? null) }
+  })
+  const maximum = rows.reduce((max, row) => row.values.reduce<bigint>((value, point) => point !== null && point > value ? point : value, max), 0n)
   return {
-    ...sampleScope(rows.length), maxBytes: maximum.toString(), formatValue,
-    hasData: counters.some(row => row.upload !== null || row.download !== null),
-    labels: rows.map(row => row.name),
-    definition: '横轴为节点，纵轴为可重置的累计字节计数；不是时间趋势或时段新增流量',
-    series: (['upload', 'download'] as const).map(direction => ({
-      id: direction, label: direction === 'upload' ? '上传' : '下载',
-      color: direction === 'upload' ? 'var(--primary)' : 'var(--success)',
-      // Only bounded drawing ratios become numbers. Tooltips and data tables retain exact counters.
-      values: counters.map(row => row[direction] === null ? null : maximum ? Number(row[direction]! * 10_000n / maximum) / 100 : 0),
-      displayValues: counters.map(row => row[direction] === null ? null : row[direction]!.toString() + ' 字节'),
+    nodeCount: rows.length, dates, labels: dates.map(date => date.slice(5).replace('-', '/')), maxBytes: maximum.toString(),
+    // The axis reverses the shared drawing scale; exact tooltip labels come directly from BigInt.
+    formatValue: (percent: number) => {
+      const value = maximum * BigInt(Math.round(Math.max(0, Math.min(100, percent)) * 10_000)) / 1_000_000n
+      return gigabytes(value >= 10_000_000n ? (value + 5_000_000n) / 10_000_000n * 10_000_000n : value)
+    },
+    series: rows.map(({ node, values }, index) => ({
+      id: node.id, label: node.name,
+      color: ['var(--primary)', 'var(--success)', 'var(--warning)', 'var(--danger)', '#06b6d4'][index % 5],
+      summary: gigabytes(values.reduce<bigint>((sum, value) => sum + (value ?? 0n), 0n)),
+      values: values.map(value => value === null ? null : maximum ? Number(value * 1_000_000n / maximum) / 10_000 : 0),
+      displayValues: values.map(value => value === null ? null : gigabytes(value)),
     })),
   }
 }

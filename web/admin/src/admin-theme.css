@@ -133,17 +133,7 @@ input::placeholder,textarea::placeholder { color:var(--muted); opacity:.85; }
 .overview-node .native-row-identity strong { font-size:13px; }
 .overview-node .native-row-identity small { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .overview-node>.reference-status { margin-left:auto; }
-.overview-shortcuts { padding:24px; }
-.native-overview-grid { grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; }
-.native-overview-card { display:flex; align-items:center; gap:10px; min-width:0; padding:12px; border:0; border-radius:8px; box-shadow:none; background:transparent; text-decoration:none; transition:background .15s; }
-.native-overview-card:hover { background:var(--control-bg); }
-.native-overview-icon { width:32px; height:32px; display:grid; place-items:center; flex:none; border-radius:8px; background:var(--control-bg); color:var(--muted); }
-.native-overview-icon svg { width:17px; height:17px; }
-.native-overview-copy { min-width:0; display:grid; gap:3px; }
-.native-overview-copy strong { font-size:13px; font-weight:600; color:var(--fg); }
-.native-overview-copy>span { display:none; }
-.native-overview-arrow { margin-left:auto; flex:none; color:var(--muted); width:13px; }
-.native-overview-card:focus-visible,.overview-metric:focus-visible { outline:2px solid var(--focus-ring); outline-offset:2px; }
+.overview-metric:focus-visible { outline:2px solid var(--focus-ring); outline-offset:2px; }
 .admin-auth-page { position:relative; background:radial-gradient(ellipse at 20% 10%,color-mix(in srgb,var(--accent) 14%,transparent),transparent 55%),radial-gradient(ellipse at 80% 90%,color-mix(in srgb,var(--accent) 9%,transparent),transparent 50%),var(--bg); }
 .admin-auth-tools { position:absolute; top:24px; right:24px; }
 .admin-auth-wrap { width:min(430px,100%); gap:0; }
@@ -174,7 +164,7 @@ input::placeholder,textarea::placeholder { color:var(--muted); opacity:.85; }
   .admin-shell.is-sidebar-collapsed .admin-sidebar-collapse-toggle { position:static; left:auto; top:auto; width:36px; height:36px; transform:none; }
   .admin-shell.is-sidebar-expanded .admin-nav-group-trigger.active { background:transparent; color:var(--fg); }
 }
-@media(max-width:1200px) { .overview-data-grid,.overview-charts-grid { grid-template-columns:minmax(0,1fr); } .native-overview-grid { grid-template-columns:repeat(3,minmax(0,1fr)); } }
+@media(max-width:1200px) { .overview-data-grid,.overview-charts-grid { grid-template-columns:minmax(0,1fr); } }
 @media(max-width:860px) {
   .admin-scroll { padding:20px 16px; }
   .page-header { min-height:68px; padding-left:44px; }
@@ -188,15 +178,13 @@ input::placeholder,textarea::placeholder { color:var(--muted); opacity:.85; }
   .overview-metrics { grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
   .overview-metric { padding:20px; }
   .native-management-page { gap:20px; }
-  .overview-shortcuts,.overview-data-card,.overview-chart-card { padding:20px; }
+  .overview-data-card,.overview-chart-card { padding:20px; }
   .native-pagination { justify-content:space-between; }
   .modal-header { padding:20px 16px 12px; }
   .modal-body { padding:8px 16px 20px; }
   .modal-footer,.modal-actions { padding:0 16px 20px; }
 }
 @media(max-width:600px) {
-  .native-overview-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:4px; }
-  .native-overview-card { padding:10px 4px; gap:8px; }
   .native-overview-arrow { display:none; }
   .reference-card-heading { flex-wrap:wrap; }
   .page-header { flex-wrap:wrap; }

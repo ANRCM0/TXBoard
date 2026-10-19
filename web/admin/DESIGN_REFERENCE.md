@@ -16,8 +16,8 @@ Shared tokens provide both light and dark palettes. No reference runtime,
 Vue dependency, branding assets or backend is included.
 
 `src/admin-theme.css` is the final shared presentation layer. Existing page
-styles retain specialized layouts; Core SDK operations and write ownership
-remain unchanged. The reference is not a dependency of the application build.
+styles retain specialized layouts; business writes retain their Core owners.
+The reference is not a dependency of the application build.
 
 Local type checks and builds are static checks. Component and browser acceptance
 run in `ci-web.yml`; browser screenshots are retained as workflow artifacts.
@@ -31,16 +31,19 @@ tags, page selection, dialogs, empty states and disclosure patterns.
 `src/components/charts/ReferenceCharts.tsx` provides dependency-free React/SVG
 line, donut and horizontal-bar components, with theme tokens, keyboard detail
 selection, legend emphasis, reduced-motion support and readable data tables.
-The dashboard uses order trend lines, an order-status donut and upload/download
-lines comparing nodes. Byte geometry uses bounded BigInt-derived ratios while
-tooltips and tables preserve the exact decimal counters. Missing counters remain
-gaps and appear as unavailable rather than zero.
+The dashboard uses order trend lines, an order-status donut and daily total
+traffic lines, one per node. Byte geometry uses bounded BigInt-derived ratios;
+tooltips and tables display exact decimal GB (1 GB = 1,000,000,000 bytes).
+Missing points remain gaps and appear as unavailable rather than zero.
 
 The dashboard reads the latest 100 native orders and the first five nodes in
 Core's list order. Its 7/14/30-day UTC order chart counts creation dates and the
 orders' current states. It never treats the sample as full-site history or revenue.
-Node counters are resettable cumulative values; the node comparison line is not
-a time series or today's usage. Resource total cards use Core's list metadata.
+The independent 7/14/30-day traffic chart reads `network.nodes.traffic-history.get`.
+UsageV2 aggregates settled raw upload plus download by the UTC day containing
+batch `ended_at - 1`; Network owns the node identities. Days without settled
+entries are zero-filled. The current day ends at the response cutoff; unprocessed
+or future batches are excluded. Resource total cards use Core's list metadata.
 
 ## Local preview with test data
 
