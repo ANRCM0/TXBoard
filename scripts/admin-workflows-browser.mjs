@@ -168,7 +168,26 @@ try {
     realCoreAcceptance: 'separate backend Actions evidence; this script does not claim live Core or production acceptance',
     userFrontend: 'deferred', operations: [...new Set(fixtures.flatMap(fixture => fixture.state.calls.map(call => call.operation)))] }, null, 2) + '\n')
 } catch (error) {
+  const diagnostics = []
+  for (const [index, fixture] of fixtures.entries()) {
+    const diagnostic = { fixture: index, url: fixture.page.url(), files: [], errors: [] }
+    if (!fixture.page.isClosed()) {
+      // Keep the failing DOM and rendered state together; a timeout alone cannot
+      // distinguish an absent editor from a user-content-dependent label.
+      const captures = await Promise.allSettled([
+        fixture.page.content().then(html => writeFile(path.join(output, `failure-${index}.html`), html)),
+        fixture.page.screenshot({ path: path.join(output, `failure-${index}.png`), fullPage: true, timeout: 5000 }),
+        fixture.page.locator('label').allTextContents().then(labels => { diagnostic.labels = labels }),
+      ])
+      for (const [capture, result] of captures.entries()) {
+        if (result.status === 'rejected') diagnostic.errors.push(String(result.reason))
+        else if (capture < 2) diagnostic.files.push(`failure-${index}.${capture === 0 ? 'html' : 'png'}`)
+      }
+    }
+    diagnostics.push(diagnostic)
+  }
   await writeFile(path.join(output, 'failure.json'), JSON.stringify({ passed: false, message: error.stack ?? String(error), checks,
+    diagnostics,
     fixtures: fixtures.map(fixture => ({ errors: fixture.state.errors, pageErrors: fixture.state.pageErrors,
       calls: fixture.state.calls.map(({ operation, input }) => ({ operation, input })) })) }, null, 2) + '\n')
   throw error
