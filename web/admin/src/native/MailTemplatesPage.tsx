@@ -50,7 +50,7 @@ export function MailTemplatesPage() {
       <h2>{detail.data!.data.label}</h2><p>必需变量：{detail.data!.data.required_vars.join('、') || '无'}；可选变量：{detail.data!.data.optional_vars.join('、') || '无'}</p>
       {editing ? <form className="native-content-form" onSubmit={event => { event.preventDefault(); void perform('save') }}>
         <label>邮件主题<input value={subject} maxLength={255} required disabled={locked} onChange={event => setSubject(event.target.value)} /></label>
-        <label>模板源码<textarea rows={18} value={content} maxLength={20000} required disabled={locked} onChange={event => setContent(event.target.value)} /></label>
+        <div style={{ display: 'grid', gap: 8 }}><label htmlFor="mail-template-content">模板源码</label><textarea id="mail-template-content" rows={18} value={content} maxLength={20000} required disabled={locked} onChange={event => setContent(event.target.value)} /></div>
         <button className="button" disabled={locked}>保存模板</button><button className="button" type="button" disabled={state.busy} onClick={() => { setSubject(''); setContent(''); setEditing(false) }}>取消编辑</button>
       </form> : <><p>{detail.data!.data.subject}</p><pre style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{detail.data!.data.content}</pre><button className="button" disabled={locked} onClick={() => { setSubject(detail.data!.data.subject); setContent(detail.data!.data.content); setEditing(true) }}>编辑源码</button></>}
       <button className="button" disabled={locked} onClick={() => { if (window.confirm('确定删除自定义内容并恢复默认邮件模板？')) void perform('reset') }}>恢复默认模板</button>

@@ -95,7 +95,10 @@ export async function managementFixture(browser, viewport) {
       }
       if (operation === 'network.nodes.get') { assert.equal(input.node_id, node.id); return send(node) }
       if (operation === 'network.machines.get') { assert.equal(input.machine_id, machine.id); return send(machine) }
-      if (operation === 'network.machines.list') return list([machine])
+      if (operation === 'network.machines.list') {
+        const { notes, ...summary } = machine
+        return list([summary])
+      }
       if (operation === 'network.machines.nodes.list') {
         assert.equal(input.machine_id, machine.id)
         const { id, name, type, host, port, show, enabled, sort } = node

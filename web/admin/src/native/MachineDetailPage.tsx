@@ -47,7 +47,7 @@ export function MachineDetailPage() {
       ['服务器 ID', machine.id], ['绑定节点数', machine.servers_count], ['最近心跳', formatTimestamp(machine.last_seen_at)], ['创建时间', formatTimestamp(machine.created_at)], ['更新时间', formatTimestamp(machine.updated_at)],
     ]} /><form className="native-content-form" onSubmit={event => { event.preventDefault(); void save() }}>
       <label>服务器名称<input required maxLength={255} value={name} disabled={locked} onChange={event => setName(event.target.value)} /></label>
-      <label>备注<textarea maxLength={2000} value={notes} disabled={locked} onChange={event => setNotes(event.target.value)} /></label>
+      <div style={{ display: 'grid', gap: 8 }}><label htmlFor="machine-notes">备注</label><textarea id="machine-notes" maxLength={2000} value={notes} disabled={locked} onChange={event => setNotes(event.target.value)} /></div>
       <label>镜像通道<select value={channel} disabled={locked} onChange={event => setChannel(event.target.value)}>{!['stable', 'dev'].includes(channel) ? <option value={channel}>{channel}（当前值）</option> : null}<option value="stable">stable</option><option value="dev">dev</option></select></label>
       <label><input type="checkbox" checked={active} disabled={locked} onChange={event => setActive(event.target.checked)} />启用服务器</label>
       <button className="button" disabled={locked || !name.trim() || !['stable', 'dev'].includes(channel)}>保存服务器</button><button type="button" className="button" disabled={locked} onClick={() => void remove()}>删除服务器</button>
