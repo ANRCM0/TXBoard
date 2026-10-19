@@ -3,6 +3,7 @@
 namespace Tests\Feature\Subscription;
 
 use App\Domains\Subscription\Contracts\AdminCatalogQueries;
+use App\Domains\CredentialProvider\ProviderCodec;
 use App\Domains\Subscription\Services\NativePlanAdministration;
 use App\Domains\Subscription\Services\PlanPublicationService;
 use App\Services\Auth\NativeIdentityService;
@@ -20,7 +21,7 @@ final class NativeAdminCatalogTest extends NativeRuntimeTestCase
         $input = $this->input();
         $first = $plans->publish($actor->id, $input, 'catalog-original');
         $secondInput = array_replace($input, ['plan_id' => $first['plan_id'],
-            'expected_revision_id' => $first['publication']['revision_id'], 'name' => 'Revised', 'prices_minor' => ['yearly' => '9007199254740993']]);
+            'expected_revision_id' => $first['publication']['revision_id'], 'name' => 'Revised', 'prices_minor' => ['yearly' => '9007199254741000']]);
         $second = $plans->publish($actor->id, $secondInput, 'catalog-revised');
         DB::table('tx_plan')->where('id', $first['plan_id'])->update(['name' => 'Unpublished mutable draft',
             'content' => 'Wrong draft', 'transfer_enable' => 999, 'prices' => '{"monthly":"999.00"}']);
@@ -28,7 +29,7 @@ final class NativeAdminCatalogTest extends NativeRuntimeTestCase
         $current = $queries->publication((int) $first['plan_id']);
         $this->assertSame($second['publication']['revision_id'], $current['current_revision_id']);
         $this->assertSame('Revised', $current['revision']['terms']['name']);
-        $this->assertSame(['yearly' => '9007199254740993'], $current['revision']['terms']['prices_minor']);
+        $this->assertSame(['yearly' => '9007199254741000'], $current['revision']['terms']['prices_minor']);
         $this->assertSame(3, $current['revision']['terms']['quota_gib']);
         $this->assertSame(123, $current['revision']['terms']['speed_limit_mbps']);
         $this->assertSame(4, $current['revision']['terms']['device_limit']);
@@ -39,7 +40,7 @@ final class NativeAdminCatalogTest extends NativeRuntimeTestCase
         $this->assertArrayNotHasKey('capacity_limit', $current['revision']['terms']);
         $this->assertSame('published', $current['offers'][0]['status']);
         $this->assertSame('17', $current['offers'][0]['capacity_limit']);
-        $this->assertSame('9007199254740993', $current['offers'][0]['price_minor']);
+        $this->assertSame('9007199254741000', $current['offers'][0]['price_minor']);
 
         $original = $queries->publication((int) $first['plan_id'], (int) $first['publication']['revision_id']);
         $this->assertSame('Original', $original['revision']['terms']['name']);
@@ -67,6 +68,40 @@ final class NativeAdminCatalogTest extends NativeRuntimeTestCase
         $this->assertSame('Unpublished mutable draft', DB::table('tx_plan')->where('id', $first['plan_id'])->value('name'));
         $this->assertSame(2, DB::table('tx_plan_revision')->where('plan_id', $first['plan_id'])->count());
         $this->assertSame(2, DB::table('tx_native_plan_request')->where('plan_id', $first['plan_id'])->count());
+    }
+
+    public function test_quote_precision_rejection_rolls_back_draft_publication_availability_and_receipt(): void
+    {
+        $this->activate();
+        $actor = $this->administrator();
+        $plans = app(NativePlanAdministration::class);
+        $queries = app(AdminCatalogQueries::class);
+        $first = $plans->publish($actor->id, $this->input(), 'precision-original');
+        $snapshot = static fn (): array => [
+            'plans' => DB::table('tx_plan')->orderBy('id')->get()->toJson(),
+            'revisions' => DB::table('tx_plan_revision')->orderBy('id')->get()->toJson(),
+            'offers' => DB::table('tx_plan_offer')->orderBy('id')->get()->toJson(),
+            'availability' => DB::table('tx_plan_offer_availability')->orderBy('offer_id')->get()->toJson(),
+            'receipts' => DB::table('tx_native_plan_request')->orderBy('actor_id')->orderBy('business_key')->get()->toJson(),
+        ];
+        $before = $snapshot();
+        $current = $queries->publication((int) $first['plan_id']);
+        try {
+            $plans->publish($actor->id, array_replace($this->input(), [
+                'plan_id' => $first['plan_id'], 'expected_revision_id' => $first['publication']['revision_id'],
+                'name' => 'Must roll back', 'quota_gib' => 77, 'prices_minor' => ['yearly' => '9007199254740993'],
+            ]), 'precision-rejected');
+            $this->fail('A quote-parity mismatch must reject publication rather than round the amount.');
+        } catch (\RuntimeException $failure) {
+            $this->assertSame('CATALOG_LEGACY_QUOTE_PRECISION_MISMATCH', $failure->getMessage());
+        }
+        $this->assertSame(0, DB::transactionLevel());
+        $this->assertSame($before, $snapshot());
+        $this->assertSame($current, $queries->publication((int) $first['plan_id']));
+        $this->assertSame($first['publication']['revision_id'], $queries->publication((int) $first['plan_id'])['current_revision_id']);
+        $this->assertSame(ProviderCodec::canonical($first), ProviderCodec::canonical(
+            $plans->publish($actor->id, $this->input(), 'precision-original')));
+        $this->assertSame($before, $snapshot());
     }
 
     public function test_historical_publication_reads_preserve_supported_non_admin_publication_currency(): void
