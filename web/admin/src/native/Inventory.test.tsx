@@ -35,7 +35,7 @@ it('shows canonical IDs/byte counts and requests the next server page', async ()
   expect(host.textContent).toContain('[2001:db8::1]:443')
   vi.mocked(admin.read).mockResolvedValueOnce({ data: [{ ...row, id: '2', name: 'Second page' }],
     meta: { page: 2, per_page: 20, total: 21, last_page: 2 } } as never)
-  const next = [...host.querySelectorAll('button')].find(button => button.textContent === '下一页')!
+  const next = host.querySelector<HTMLButtonElement>('button[aria-label="下一页"]')!
   await act(async () => next.click()); await settle()
   expect(admin.read).toHaveBeenLastCalledWith('network.nodes.list', { page: 2, per_page: 20 }, expect.any(AbortSignal))
   expect(host.textContent).toContain('Second page')
