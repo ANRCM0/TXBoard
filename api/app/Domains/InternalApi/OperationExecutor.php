@@ -234,7 +234,7 @@ final class OperationExecutor
             $projected = OperationSchemas::output($operation, $projected);
             $meta = array_intersect_key($body['meta'] ?? [], array_flip([
                 'page', 'per_page', 'total', 'last_page', 'schema', 'next_after_id',
-                'next_after_sequence', 'history_complete',
+                'next_after_sequence', 'history_complete', 'next_before_id', 'has_unresolved',
             ]));
             if (array_key_exists('has_more', $body['meta'] ?? [])) $meta['has_more'] = $body['meta']['has_more'];
             $meta = OperationSchemas::meta($operation, $meta);

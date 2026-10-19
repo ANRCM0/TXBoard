@@ -159,7 +159,7 @@ try {
   const mobile = await fixture({ width: 390, height: 844 })
   mobile.state.captcha = true
   await mobile.page.goto(origin + '/#/login')
-  await mobile.page.getByText('此站点要求验证码，当前用户入口暂不支持该验证码配置，请联系管理员。', { exact: true }).waitFor()
+  await mobile.page.getByText('无法读取登录安全配置，请重新加载。', { exact: true }).waitFor()
   assert.equal(await mobile.page.getByRole('button', { name: '登录', exact: true }).isDisabled(), true)
   mobile.state.captcha = false
   await mobile.page.reload()
@@ -170,7 +170,7 @@ try {
   await mobile.page.getByRole('heading', { name: 'TXBoard 用户登录' }).waitFor()
   assert.deepEqual(mobile.state.failures, []); assert.deepEqual(mobile.state.forbidden, []); assert.deepEqual(mobile.state.pageErrors, [])
   await mobile.context.close()
-  passed('unsupported captcha fails closed, mobile account layout fits, and explicit logout clears identity')
+  passed('malformed captcha fails closed, mobile account layout fits, and explicit logout clears identity')
   await writeFile(output + '/result.json', JSON.stringify({ passed: true, checks, frontend: 'built same-repository user UI',
     transport: 'synthetic Gateway responses', realCoreAcceptance: 'separate Core Actions run; no combined production UI acceptance' }, null, 2) + '\n')
 } finally {

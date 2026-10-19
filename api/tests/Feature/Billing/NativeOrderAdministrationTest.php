@@ -170,7 +170,9 @@ final class NativeOrderAdministrationTest extends NativeRuntimeTestCase
                     'X-Core-Tls-Certificate-Sha256' => $fingerprint, 'Authorization' => 'Bearer '.$token,
                     'X-Core-Admin-Path' => 'order_admin', 'Idempotency-Key' => $key]);
         };
-        $first = $invoke('commerce.admin-orders.close', $input)->assertOk()->assertJsonPath('data.status', 2);
+        $first = $invoke('commerce.admin-orders.close', $input);
+        $this->assertSame(200, $first->status(), $first->getContent());
+        $first->assertJsonPath('data.status', 2);
         DB::table('tx_internal_request')->where('actor_id', $this->admin->id)->update([
             'state' => 'started', 'response_json' => null, 'response_status' => null]);
         $invoke('commerce.admin-orders.close', $input)->assertOk()->assertJsonPath('data.request_id', $first->json('data.request_id'));
@@ -178,6 +180,18 @@ final class NativeOrderAdministrationTest extends NativeRuntimeTestCase
             ->assertJsonCount(1, 'data')->assertJsonPath('data.0.actor_id', (string) $this->admin->id);
         DB::table('tx_internal_actor_grant')->where('user_id', $this->admin->id)->where('permission', 'commerce.orders.manage')->delete();
         $invoke('commerce.admin-orders.close', $input)->assertForbidden();
+        $this->assertSame(1, DB::table('tx_native_order_admin_request')->count());
+    }
+
+    public function test_populated_command_journal_cannot_be_dropped_by_migration_rollback(): void
+    {
+        [, $order] = $this->order();
+        $this->commands->execute($this->admin->id, 'close', $this->input($order), $this->key());
+        $migration = require database_path('migrations/2026_10_19_000010_native_order_administration.php');
+        try { $migration->down(); $this->fail('Durable command journal was dropped'); }
+        catch (\RuntimeException $error) {
+            $this->assertSame('NATIVE_ORDER_ADMIN_FORWARD_RECOVERY_REQUIRED', $error->getMessage());
+        }
         $this->assertSame(1, DB::table('tx_native_order_admin_request')->count());
     }
 

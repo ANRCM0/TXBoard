@@ -61,7 +61,7 @@ try {
   const client = createCoreUserClient({ baseURL, getToken: () => token })
   const other = createCoreUserClient({ baseURL, getToken: () => otherToken })
   const caps = await client.capabilities()
-  assert.equal(caps.operations.length, 20); checks++
+  assert.equal(caps.operations.length, 23); checks++
   const offers = await client.call('catalog.offers.list', {})
   assert.ok(offers.length > 0); checks++
   const actor = await client.call('identity.account.get', {})
@@ -78,6 +78,11 @@ try {
   const created = await client.callResult('commerce.orders.create', input, { idempotencyKey: key })
   const replay = await client.callResult('commerce.orders.create', input, { idempotencyKey: key })
   assert.deepEqual(replay.data, created.data); checks++
+  const history = await client.callResult('billing.order-payment-attempts.list', { trade_no: created.data.trade_no })
+  assert.deepEqual(history.data, []); assert.equal(history.meta.has_unresolved, false); checks++
+  await assert.rejects(other.call('billing.order-payment-attempts.list', { trade_no: created.data.trade_no }), e => e.status === 404); checks++
+  const events = await client.callResult('commerce.orders.events.list', { trade_no: created.data.trade_no })
+  assert.deepEqual(events.data.map(row => row.type), ['created']); assert.equal(events.meta.history_complete, true); checks++
   await assert.rejects(other.call('commerce.orders.get', { trade_no: created.data.trade_no }), e => e.status === 404); checks++
   const orders = await client.callResult('commerce.orders.list', { page: 1, per_page: 1 })
   assert.equal(orders.meta.page, 1); assert.equal(orders.meta.total, 1); checks++
@@ -123,7 +128,7 @@ try {
   let adminToken, adminPath
   const admin = createCoreAdminClient({ baseURL: 'http://127.0.0.1:18089/gateway/v1/core/admin',
     getToken: () => adminToken, getAdminPath: () => adminPath })
-  assert.equal((await admin.capabilities()).operations.length, 19); checks++
+  assert.equal((await admin.capabilities()).operations.length, 23); checks++
   await assert.rejects(admin.call('identity.admin-session.create', { email: actor.email, password: 'integration-password-2026' },
     { idempotencyKey: randomUUID() }), e => e.status === 403); checks++
   const loggedIn = await admin.call('identity.admin-session.create', { email: adminService.email, password: 'admin-integration-password' }, { idempotencyKey: randomUUID() })
@@ -152,6 +157,28 @@ try {
     email: `admin-created-${randomUUID()}@example.test`, password: 'created-integration-password',
   }, { idempotencyKey: randomUUID() })
   assert.equal(typeof newAccount.id, 'string'); assert.ok(!('password' in newAccount)); checks++
+  const orderFixture = spawnSync('php', ['tests/integration/core-fixture.php', root, 'admin-order-target', offers[0].offer_id], { encoding: 'utf8' })
+  assert.equal(orderFixture.status, 0, orderFixture.stderr)
+  const adminOrder = JSON.parse(orderFixture.stdout)
+  const closeKey = randomUUID(), closeInput = { trade_no: adminOrder.trade_no, expected_status: 0, reason: 'http_reviewed' }
+  const lostAdmin = createCoreAdminClient({ baseURL: 'http://127.0.0.1:18089/gateway/v1/core/admin',
+    getToken: () => adminToken, getAdminPath: () => adminPath, fetchImpl: async (...args) => {
+      const response = await fetch(...args)
+      assert.ok(response.ok); await response.arrayBuffer()
+      throw new Error('Simulated lost admin acknowledgement after owner commit')
+    } })
+  await assert.rejects(lostAdmin.call('commerce.admin-orders.close', closeInput, { idempotencyKey: closeKey }),
+    e => e.code === 'RESULT_UNKNOWN' && e.needsStateConfirmation); checks++
+  const closed = await admin.call('commerce.admin-orders.close', closeInput, { idempotencyKey: closeKey })
+  assert.equal(closed.status, 2)
+  assert.deepEqual(await admin.call('commerce.admin-orders.close', closeInput, { idempotencyKey: closeKey }), closed); checks++
+  const audit = await admin.callResult('commerce.admin-orders.audit.list', { trade_no: adminOrder.trade_no })
+  assert.equal(audit.data.length, 1); assert.equal(audit.data[0].action, 'close')
+  assert.equal(audit.data[0].actor_id, adminService.id); checks++
+  await assert.rejects(admin.call('commerce.admin-orders.close', { ...closeInput, reason: 'changed' }, { idempotencyKey: closeKey }),
+    e => e.status === 409); checks++
+  assert.equal(spawnSync('php', ['tests/integration/core-fixture.php', root, 'admin-revoke-orders']).status, 0)
+  await assert.rejects(admin.call('commerce.admin-orders.close', closeInput, { idempotencyKey: closeKey }), e => e.status === 403); checks++
   const statusKey = randomUUID(), statusInput = { user_id: newAccount.id, expected_banned: false, banned: true }
   const banned = await admin.call('identity.accounts.status.update', statusInput, { idempotencyKey: statusKey })
   assert.equal(banned.banned, true)
@@ -181,7 +208,8 @@ try {
   console.log(JSON.stringify({ sourceHead, checks, realCore: true, nativeActivation: true, database: 'mysql',
     gatewayMtls: true, tlsTermination: 'isolated CI adapter to loopback PHP development server',
     browserSdk: true, originalKeyReplay: true, lostResponseRecovery: true, ownerIsolation: true,
-    sessionEnd: true, serviceGrantRevocation: true, serviceFailureDistinctFromUserSession: true, adminChannel: true, adminChecks: 26,
+    sessionEnd: true, serviceGrantRevocation: true, serviceFailureDistinctFromUserSession: true, adminChannel: true,
+    adminOrderCloseRecovery: true, adminOrderAudit: true, currentOrderGrantReplay: true, orderPaymentDiscovery: true,
     adminAccountMutation: true, adminContentCrud: true, adminWriteKeyReplay: true, actorGrantRevocation: true, adminPathRotation: true }))
 } finally {
   for (const server of servers.reverse()) await new Promise(r => server.close(r))

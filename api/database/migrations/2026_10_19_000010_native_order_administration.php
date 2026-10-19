@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration {
@@ -19,5 +20,11 @@ return new class extends Migration {
         });
     }
 
-    public function down(): void { throw new RuntimeException('NATIVE_ORDER_ADMIN_FORWARD_RECOVERY_REQUIRED'); }
+    public function down(): void
+    {
+        if (DB::table('tx_native_order_admin_request')->exists()) {
+            throw new RuntimeException('NATIVE_ORDER_ADMIN_FORWARD_RECOVERY_REQUIRED');
+        }
+        Schema::drop('tx_native_order_admin_request');
+    }
 };

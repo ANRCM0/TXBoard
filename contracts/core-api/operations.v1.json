@@ -1674,6 +1674,7 @@
           "$ref": "#/definitions/id"
         },
         "action": {
+          "type": "string",
           "enum": [
             "close",
             "retry"
@@ -1725,6 +1726,7 @@
           "pattern": "^[A-Za-z0-9_-]{1,128}$"
         },
         "action": {
+          "type": "string",
           "enum": [
             "close",
             "retry"

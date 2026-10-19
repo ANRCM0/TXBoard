@@ -34,6 +34,7 @@ if ($action === 'admin-service') {
         'identity.sessions.list', 'identity.sessions.revoke', 'identity.session.end',
         'network.nodes.list', 'network.machines.list', 'settings.site.get',
         'identity.accounts.list', 'identity.accounts.get', 'commerce.admin-orders.list', 'commerce.admin-orders.get',
+        'commerce.admin-orders.events.list', 'commerce.admin-orders.audit.list', 'commerce.admin-orders.close', 'commerce.admin-orders.retry',
         'identity.accounts.create', 'identity.accounts.status.update', 'network.groups.list',
         'content.notices.create', 'content.notices.update', 'content.notices.get', 'content.notices.delete'];
     $service = app(\App\Domains\InternalApi\ServiceCredentials::class)->issue('browser-admin-fixture', 'admin',
@@ -43,7 +44,7 @@ if ($action === 'admin-service') {
     if (!$created) throw new RuntimeException('Admin fixture creation failed');
     $admin->forceFill(['is_admin' => true])->saveOrFail();
     foreach (['identity.read', 'identity.sessions.manage', 'network.nodes.read', 'network.machines.read', 'settings.read',
-        'identity.accounts.read', 'identity.accounts.manage', 'commerce.orders.read', 'network.groups.read', 'content.manage', 'content.read'] as $permission) {
+        'identity.accounts.read', 'identity.accounts.manage', 'commerce.orders.read', 'commerce.orders.manage', 'network.groups.read', 'content.manage', 'content.read'] as $permission) {
         Illuminate\Support\Facades\DB::table('tx_internal_actor_grant')->insert([
             'user_id' => $admin->id, 'permission' => $permission, 'created_at' => time()]);
     }
@@ -51,6 +52,19 @@ if ($action === 'admin-service') {
     echo json_encode($service + ['email' => $admin->email, 'id' => (string) $admin->id,
         'secondary' => (string) $admin->createToken('admin-secondary', ['*'])->accessToken->id], JSON_THROW_ON_ERROR)."\n";
     exit;
+}
+if ($action === 'admin-order-target') {
+    [$created, $user] = app(\App\Services\Auth\NativeIdentityService::class)
+        ->create('gw-order-'.bin2hex(random_bytes(6)).'@example.test', 'order-integration-password');
+    if (!$created || !ctype_digit($argv[3] ?? '')) throw new RuntimeException('Order fixture creation failed');
+    $order = app(\App\Domains\Subscription\Services\PublishedOrderService::class)
+        ->create($user->id, (int) $argv[3], (string) \Illuminate\Support\Str::uuid());
+    echo json_encode(['trade_no' => $order->trade_no], JSON_THROW_ON_ERROR)."\n";
+    exit;
+}
+if ($action === 'admin-revoke-orders') {
+    Illuminate\Support\Facades\DB::table('tx_internal_actor_grant')->where('permission', 'commerce.orders.manage')->delete();
+    echo "{}\n"; exit;
 }
 if ($action === 'admin-restrict') {
     Illuminate\Support\Facades\DB::table('tx_internal_actor_grant')->where('permission', 'network.nodes.read')->delete();
