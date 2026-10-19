@@ -7,6 +7,10 @@ if (!$root || !is_file($root.'/artisan') || !is_file($root.'/.gateway-integratio
 require $root.'/vendor/autoload.php';
 $app = require $root.'/bootstrap/app.php';
 $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+set_exception_handler(static function (Throwable $error): void {
+    fwrite(STDERR, 'CORE_FIXTURE_FAILED: '.get_class($error)."\n");
+    exit(1);
+});
 if (config('database.connections.mysql.database') !== 'txboard_gateway_test'
     || config('app.env') !== 'testing' || config('mail.driver') !== 'log') {
     throw new RuntimeException('Refusing to mutate any other database or environment');
@@ -65,6 +69,8 @@ if ($action === 'admin-order-target') {
 if ($action === 'delivery-owner' || $action === 'revoke-render-subject') {
     $owner = App\Models\User::findOrFail((int) ($argv[3] ?? 0));
     if (!str_starts_with($owner->email, 'gw-sdk-owner-')) throw new RuntimeException('Dedicated delivery owner required');
+    // Checkout commits accepted payment first; the production recovery owner completes fulfillment.
+    if ($action === 'delivery-owner') app(App\Domains\Billing\NativeFreeCheckout::class)->recover(100);
     $subscription = Illuminate\Support\Facades\DB::table('tx_subscription')->where('user_id', $owner->id)->where('status', 'active')->first();
     if (!$subscription) throw new RuntimeException('A real active purchased subscription is required');
     if ($action === 'delivery-owner') {
