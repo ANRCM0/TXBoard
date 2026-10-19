@@ -24,7 +24,7 @@ export async function verifyRendererDelivery(client, other, { root, scratch, non
   }
   fixture('delivery-owner')
   const options = await client.call('subscription.delivery-options.get', {})
-  assert.equal(options.authorized, true)
+  assert.equal(options.authorized, true, options.reason)
   assert.deepEqual(options.formats.map(row => row.format_id), formats.map(row => row[0]))
   const subject = options.subjects.find(row => row.credential_profile_id === 'vmess-uuid/v1')
   const vless = options.subjects.find(row => row.credential_profile_id === 'vless-uuid/v1')
