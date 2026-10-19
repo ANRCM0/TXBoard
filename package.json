@@ -9,6 +9,9 @@
     "gateway/packages/core-sdk"
   ],
   "scripts": {
+    "dev:module": "python scripts/txboard-dev.py module",
+    "dev:renderer": "python scripts/txboard-dev.py renderer",
+    "dev:hooks": "python scripts/txboard-dev.py hooks",
     "dev:admin": "npm run build:sdk && npm run dev --workspace @txboard/admin",
     "dev:user": "npm run build:sdk && npm run dev --workspace @txboard/user",
     "build:sdk": "npm run build --workspace @txboard/core-sdk",

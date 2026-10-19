@@ -15,6 +15,10 @@ on:
       - "scripts/check-kernel-v1.py"
       - "scripts/check-modular-release.py"
       - "scripts/module-dev.py"
+      - "scripts/renderer-dev.py"
+      - "scripts/txboard-dev.py"
+      - "scripts/tests/test_renderer_dev.py"
+      - "scripts/tests/test_module_dev_integration.py"
       - "scripts/check-renderer-registry.py"
       - "contracts/renderers/**"
       - "node/internal/credentialdelivery/render*.go"
@@ -53,6 +57,10 @@ on:
       - "scripts/check-kernel-v1.py"
       - "scripts/check-modular-release.py"
       - "scripts/module-dev.py"
+      - "scripts/renderer-dev.py"
+      - "scripts/txboard-dev.py"
+      - "scripts/tests/test_renderer_dev.py"
+      - "scripts/tests/test_module_dev_integration.py"
       - "scripts/check-renderer-registry.py"
       - "contracts/renderers/**"
       - "node/internal/credentialdelivery/render*.go"
@@ -124,6 +132,7 @@ jobs:
           python3 scripts/module-dev.py lock api/bootstrap/module-composition.proof.json api/bootstrap/module-packages.proof.lock.json --application-root api --check
           python3 -m unittest discover -s scripts/tests -p test_check_core_boundaries.py
           python3 -m unittest discover -s scripts/tests -p test_module_dev.py
+          python3 -m unittest discover -s scripts/tests -p test_renderer_dev.py
       - uses: shivammathur/setup-php@v2
         with:
           php-version: "8.2"
@@ -135,6 +144,9 @@ jobs:
         run: |
           cp .env.example .env
           php artisan key:generate
+      - name: Exercise the real module developer test runner
+        working-directory: .
+        run: python3 -m unittest discover -s scripts/tests -p test_module_dev_integration.py
       - name: Check PHP syntax
         run: find app config routes database tests plugins-core plugins/DeliveryReceipt plugins/OfferReservation plugins/ModulePortal -name '*.php' -print0 | xargs -0 -n1 php -l > "$RUNNER_TEMP/php-syntax.log"
       - name: Run current native development suite

@@ -55,6 +55,9 @@ class HookManager
      */
     public static function withOwner(string $code, callable $callback): mixed
     {
+        if (preg_match('/\A[a-z][a-z0-9_]{0,63}\z/D', $code) !== 1) {
+            throw new \InvalidArgumentException('HOOK_OWNER_INVALID');
+        }
         $previous = App::bound('hook.current_owner')
             ? App::make('hook.current_owner') : null;
         App::instance('hook.current_owner', $code);
@@ -109,6 +112,47 @@ class HookManager
             [$kind, $hook, $priority, $key];
         App::instance('hook.owned', $owned);
         return $key;
+    }
+
+    private static function owner(string $kind, string $hook, int $priority, string $key): ?string
+    {
+        $owned = App::bound('hook.owned') ? App::make('hook.owned') : [];
+        $registration = $kind.':'.$hook.':'.$priority.':'.$key;
+        foreach ($owned as $owner => $entries) {
+            if (isset($entries[$registration])) return $owner;
+        }
+        return null;
+    }
+
+    private static function invoke(string $kind, string $hook, int $priority, string $key,
+        callable $callback, array $arguments): mixed
+    {
+        $previous = App::bound('hook.current_owner') ? App::make('hook.current_owner') : null;
+        App::instance('hook.current_owner', self::owner($kind, $hook, $priority, $key));
+        try {
+            return $callback(...$arguments);
+        } finally {
+            App::instance('hook.current_owner', $previous);
+        }
+    }
+
+    /** Diagnostic metadata only: never serialize callbacks, captures or payloads. */
+    public static function describe(): array
+    {
+        $result = [];
+        foreach (['action' => self::getActions(), 'filter' => self::getFilters()] as $kind => $hooks) {
+            ksort($hooks);
+            foreach ($hooks as $hook => $priorities) {
+                ksort($priorities);
+                foreach ($priorities as $priority => $callbacks) {
+                    foreach ($callbacks as $key => $_callback) {
+                        $result[] = ['kind' => $kind, 'hook' => $hook, 'priority' => $priority,
+                            'owner' => self::owner($kind, $hook, $priority, $key)];
+                    }
+                }
+            }
+        }
+        return $result;
     }
 
     /**
@@ -175,9 +219,10 @@ class HookManager
 
         ksort($actions[$hook]);
 
-        foreach ($actions[$hook] as $callbacks) {
-            foreach ($callbacks as $callback) {
-                $callback($payload);
+        foreach ($actions[$hook] as $priority => $callbacks) {
+            foreach ($callbacks as $key => $callback) {
+                if ((self::getActions()[$hook][$priority][$key] ?? null) !== $callback) continue;
+                self::invoke('action', $hook, $priority, $key, $callback, [$payload]);
             }
         }
     }
@@ -201,9 +246,10 @@ class HookManager
         ksort($filters[$hook]);
 
         $result = $value;
-        foreach ($filters[$hook] as $callbacks) {
-            foreach ($callbacks as $callback) {
-                $result = $callback($result, ...$args);
+        foreach ($filters[$hook] as $priority => $callbacks) {
+            foreach ($callbacks as $key => $callback) {
+                if ((self::getFilters()[$hook][$priority][$key] ?? null) !== $callback) continue;
+                $result = self::invoke('filter', $hook, $priority, $key, $callback, [$result, ...$args]);
             }
         }
 
@@ -269,58 +315,29 @@ class HookManager
      */
     public static function remove(string $hook, ?callable $callback = null): void
     {
-        $actions = self::getActions();
-        $filters = self::getFilters();
-
-        if ($callback === null) {
-            if (isset($actions[$hook])) {
-                unset($actions[$hook]);
-                self::setActions($actions);
-            }
-
-            if (isset($filters[$hook])) {
-                unset($filters[$hook]);
-                self::setFilters($filters);
-            }
-
-            return;
-        }
-
-        $callbackId = self::getCallableId($callback);
-
-        if (isset($actions[$hook])) {
-            foreach ($actions[$hook] as $priority => $callbacks) {
-                if (isset($callbacks[$callbackId])) {
-                    unset($actions[$hook][$priority][$callbackId]);
-
-                    if (empty($actions[$hook][$priority])) {
-                        unset($actions[$hook][$priority]);
-                    }
-
-                    if (empty($actions[$hook])) {
-                        unset($actions[$hook]);
+        $scope = App::bound('hook.current_owner') ? App::make('hook.current_owner') : null;
+        $callbackId = $callback === null ? null : self::getCallableId($callback);
+        $owned = App::bound('hook.owned') ? App::make('hook.owned') : [];
+        foreach (['action' => self::getActions(), 'filter' => self::getFilters()] as $kind => $hooks) {
+            foreach ($hooks[$hook] ?? [] as $priority => $callbacks) {
+                foreach ($callbacks as $key => $_callback) {
+                    $owner = self::owner($kind, $hook, $priority, $key);
+                    // A plugin may remove its own callbacks; the host retains global cleanup.
+                    if ($scope !== null && $scope !== $owner) continue;
+                    if ($callbackId !== null && $key !== ($owner === null ? $callbackId : 'plugin:'.$owner.':'.$callbackId)) continue;
+                    unset($hooks[$hook][$priority][$key]);
+                    if ($owner !== null) {
+                        unset($owned[$owner][$kind.':'.$hook.':'.$priority.':'.$key]);
+                        if (empty($owned[$owner])) unset($owned[$owner]);
                     }
                 }
+                if (empty($hooks[$hook][$priority])) unset($hooks[$hook][$priority]);
             }
-            self::setActions($actions);
+            if (empty($hooks[$hook])) unset($hooks[$hook]);
+            if ($kind === 'action') self::setActions($hooks);
+            else self::setFilters($hooks);
         }
-
-        if (isset($filters[$hook])) {
-            foreach ($filters[$hook] as $priority => $callbacks) {
-                if (isset($callbacks[$callbackId])) {
-                    unset($filters[$hook][$priority][$callbackId]);
-
-                    if (empty($filters[$hook][$priority])) {
-                        unset($filters[$hook][$priority]);
-                    }
-
-                    if (empty($filters[$hook])) {
-                        unset($filters[$hook]);
-                    }
-                }
-            }
-            self::setFilters($filters);
-        }
+        App::instance('hook.owned', $owned);
     }
 
     /**
