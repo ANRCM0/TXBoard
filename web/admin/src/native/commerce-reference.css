@@ -1,0 +1,129 @@
+/* Commerce view details: use shared semantic roles for both theme modes. */
+.commerce-reference { min-width: 0; }
+.commerce-reference .list-card { padding: 22px; border-radius: var(--radius-card); box-shadow: var(--shadow); }
+.commerce-reference h2 { margin: 0; font-size: 17px; line-height: 1.35; font-weight: 650; }
+.commerce-reference h3 { margin: 0; font-size: 13px; font-weight: 600; }
+.commerce-reference p { font-size: 12px; color: var(--muted); line-height: 1.65; }
+.commerce-reference .button { min-height: 34px; padding: 7px 12px; font-size: 12px; }
+.commerce-card-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
+.commerce-card-heading p { margin: 6px 0 0; }
+.commerce-reference .commerce-badge { display: inline-flex; align-items: center; white-space: nowrap; width: fit-content; padding: 4px 8px; font-size: 11px; font-weight: 500; border: 1px solid var(--border); border-radius: 6px; color: var(--muted); background: var(--control-bg); }
+.commerce-reference .commerce-badge.success { color: var(--success); border-color: color-mix(in srgb, var(--success) 22%, var(--border)); background: color-mix(in srgb, var(--success) 7%, var(--panel)); }
+.commerce-reference .commerce-badge.warning { color: var(--warning); border-color: color-mix(in srgb, var(--warning) 22%, var(--border)); background: color-mix(in srgb, var(--warning) 7%, var(--panel)); }
+.commerce-help { padding: 13px 16px; background: var(--control-bg); border: 1px solid var(--border); border-radius: var(--radius-control); }
+.commerce-help summary { color: var(--muted); cursor: pointer; font-size: 12px; font-weight: 550; }
+.commerce-help summary:hover { color: var(--primary); }
+.commerce-help p { margin: 12px 0 0; }
+.commerce-help code { display: block; font-size: 11px; margin-top: 12px; overflow-wrap: anywhere; color: var(--muted); }
+.commerce-cell-stack { display: flex; flex-direction: column; align-items: flex-start; gap: 5px; }
+.commerce-cell-stack strong { font-size: 12px; font-weight: 550; }
+.commerce-cell-stack small { color: var(--muted); font-size: 11px; }
+.commerce-amount { font-variant-numeric: tabular-nums; font-size: 12px; }
+.commerce-reference .native-row-identity small { font-size: 11px; color: var(--muted); }
+.commerce-reference .native-content-form { gap: 18px 22px; max-width: none; box-shadow: none; border-radius: 0; background: transparent; }
+.commerce-reference .commerce-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.commerce-reference label { display: flex; flex-direction: column; gap: 8px; min-width: 0; font-size: 12px; color: var(--fg); font-weight: 550; }
+.commerce-reference label small { font-weight: 400; color: var(--muted); font-size: 11px; }
+.commerce-reference input:not([type=checkbox]), .commerce-reference select, .commerce-reference textarea { width: 100%; min-height: 36px; box-sizing: border-box; padding: 8px 11px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--control-bg); color: var(--fg); font: inherit; font-weight: 400; outline: none; transition: border-color .15s, box-shadow .15s; }
+.commerce-reference input::placeholder { color: var(--muted); opacity: .75; }
+.commerce-reference textarea { resize: vertical; line-height: 1.65; }
+.commerce-reference input:focus-visible, .commerce-reference select:focus-visible, .commerce-reference textarea:focus-visible { border-color: var(--primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 15%, transparent); }
+.commerce-reference input:disabled, .commerce-reference select:disabled, .commerce-reference textarea:disabled { cursor: not-allowed; opacity: .55; }
+.commerce-reference .native-content-form fieldset { border: 1px solid var(--border); border-radius: 10px; padding: 18px; margin: 0; min-width: 0; gap: 18px 22px; }
+.commerce-reference legend { font-size: 13px; font-weight: 600; padding: 0 7px; color: var(--fg); }
+.commerce-reference .commerce-toggle { display: flex; align-items: center; flex-direction: row; justify-content: space-between; padding: 12px; min-height: 50px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--control-bg); }
+.commerce-reference input[type=checkbox] { accent-color: var(--primary); width: 17px; height: 17px; }
+.commerce-section-label { padding-top: 16px; margin-top: 4px; border-top: 1px solid var(--border); }
+.commerce-section-label:first-child { padding-top: 0; margin-top: 0; border: 0; }
+.commerce-section-label p { margin: 5px 0 0; }
+.commerce-reference .commerce-wide-field, .commerce-section-label, .commerce-form-actions { grid-column: 1 / -1; }
+.commerce-reference .commerce-form-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding-top: 16px; margin-top: 4px; border-top: 1px solid var(--border); }
+.commerce-form-actions > span { font-size: 12px; color: var(--muted); margin-right: auto; }
+.commerce-reference .native-filters { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; }
+.commerce-reference .native-filters label { min-width: 150px; }
+.commerce-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin: 18px 0; }
+.commerce-metrics > div { padding: 18px; border: 1px solid var(--border); border-radius: 10px; background: var(--control-bg); display: flex; flex-direction: column; gap: 10px; }
+.commerce-metrics small { color: var(--muted); font-size: 12px; }
+.commerce-metrics strong { color: var(--fg); font-size: 22px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.commerce-metrics strong span { font-size: 11px; color: var(--muted); margin-left: 6px; font-weight: 400; }
+.commerce-reference .commerce-review-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 20px; }
+.commerce-review-toolbar > div { flex: 1 1 280px; }
+.commerce-review-toolbar p { margin: 6px 0 0; }
+.commerce-review-toolbar label { flex: 1 1 260px; }
+.commerce-reference .commerce-editor > .button { margin-block: 12px; }
+.commerce-reference .commerce-editor > .commerce-help { margin-block: 16px; }
+.commerce-price-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); list-style: none; gap: 8px; padding: 0; margin: 18px 0; }
+.commerce-price-list li { padding: 12px; border: 1px solid var(--border); background: var(--control-bg); border-radius: 8px; font-size: 12px; font-variant-numeric: tabular-nums; }
+.commerce-reference [role=alert] { padding: 12px 14px; border: 1px solid color-mix(in srgb, var(--warning) 25%, var(--border)); background: color-mix(in srgb, var(--warning) 5%, var(--panel)); border-radius: var(--radius-control); color: var(--fg); font-size: 12px; }
+@media (max-width: 720px) {
+ .commerce-reference .list-card { padding: 16px; }
+ .commerce-reference .commerce-form-grid { grid-template-columns: minmax(0, 1fr); }
+ .commerce-card-heading { gap: 10px; }
+ .commerce-form-actions > span { flex-basis: 100%; }
+ .commerce-reference .native-filters label { min-width: 0; flex: 1 1 160px; }
+}
+.commerce-metrics strong.commerce-metric-name { font-size: 16px; overflow-wrap: anywhere; line-height: 1.5; }
+
+/* Per-page refinements keep identifiers readable without widening the viewport. */
+.commerce-card-heading > div { min-width: 0; }
+.commerce-card-heading h2, .commerce-card-heading h3, .commerce-batch-title { overflow-wrap: anywhere; }
+.commerce-reference .commerce-card-heading > .button { flex-shrink: 0; }
+.commerce-reference .data-table { min-width: 740px; }
+.commerce-reference .data-table th, .commerce-reference .data-table td { vertical-align: middle; }
+.commerce-reference .native-row-identity { min-width: 140px; max-width: 280px; white-space: normal; overflow-wrap: anywhere; }
+.commerce-reference .native-row-identity strong { line-height: 1.55; }
+.commerce-reference .commerce-cell-stack { min-width: 100px; line-height: 1.55; white-space: normal; overflow-wrap: anywhere; }
+.commerce-reference .commerce-date-range { min-width: 160px; }
+.commerce-reference .commerce-identifier { font-weight: 500; font-variant-numeric: tabular-nums; }
+.commerce-row-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.commerce-reference td .commerce-row-actions { min-width: 160px; }
+.commerce-reference .commerce-row-actions .button { margin: 0; }
+.commerce-table-note, .commerce-reference .commerce-table-description { font-size: 12px; color: var(--muted); line-height: 1.65; }
+.commerce-reference .commerce-pending { border-inline-start: 3px solid var(--warning); }
+.commerce-pending > p { margin: 8px 0 12px; }
+.commerce-pending .commerce-help { margin-bottom: 14px; }
+.commerce-loading { margin: 0; padding: 14px 16px; border-radius: var(--radius-control); background: var(--control-bg); }
+.commerce-reference .commerce-description { white-space: pre-wrap; overflow-wrap: anywhere; padding: 16px; background: var(--control-bg); border-radius: var(--radius-control); }
+.commerce-reference .commerce-price-list li { display: flex; flex-direction: column; line-height: 1.7; overflow-wrap: anywhere; }
+.commerce-reference .commerce-editor .native-read-list { margin-top: 24px; padding: 20px 0 0; border-top: 1px solid var(--border); border-radius: 0; box-shadow: none; }
+.commerce-reference .commerce-editor .native-read-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 24px; }
+.commerce-reference .commerce-editor .native-read-fields > div { grid-template-columns: minmax(0, 1fr); align-content: start; gap: 6px; padding-block: 12px; }
+.commerce-reference .commerce-editor .native-read-fields dt { font-size: 11px; }
+.commerce-reference .commerce-editor .native-read-fields dd { font-size: 12px; line-height: 1.6; }
+.catalog-page .commerce-catalog-form { margin-top: 20px; }
+.catalog-page .commerce-catalog-form fieldset > .native-filters { padding: 0; }
+.catalog-page .commerce-availability-form { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 20px; }
+.catalog-page .commerce-availability-form > label:not(.commerce-toggle) { grid-column: 1 / -1; max-width: 360px; }
+.catalog-page .commerce-availability-form .commerce-toggle { gap: 12px; }
+.commissions-page .commerce-review-toolbar { align-items: flex-start; }
+.commissions-page .commerce-review-toolbar label { max-width: 420px; }
+.commissions-page .commerce-editor > .native-content-form { margin-top: 18px; }
+.orders-page .management-filter-form label:first-child { flex: 0 1 180px; }
+.orders-page .management-filter-form label:nth-child(2) { flex: 1 1 260px; }
+.orders-page .management-filter-form input { min-width: 0; }
+.commerce-applied-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: -4px 0 20px; font-size: 12px; color: var(--muted); }
+.commerce-applied-filters .commerce-badge { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+.commerce-order-link { text-align: start; overflow-wrap: anywhere; line-height: 1.55; }
+.commerce-order-dialog .reference-profile-identity { min-width: 0; }
+.commerce-order-dialog .commerce-order-number { overflow-wrap: anywhere; line-height: 1.7; }
+.commerce-timeline-event-name { display: grid; gap: 4px; }
+.commerce-timeline-event-name small { color: var(--muted); font-size: 11px; }
+.commerce-order-dialog .reference-timeline-content { gap: 8px 20px; }
+.commerce-order-dialog .reference-detail-section-title { flex-wrap: wrap; }
+.commerce-audit-heading { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 16px; margin-bottom: 4px; }
+.commerce-audit-heading strong { font-size: 12px; font-weight: 550; }
+.commerce-audit-heading time { color: var(--muted); font-size: 11px; }
+.reference-order-administration .commerce-confirmed-notice { padding: 12px 14px; border-radius: var(--radius-control); background: color-mix(in srgb, var(--success) 8%, var(--panel)); color: var(--fg); font-size: 12px; line-height: 1.7; }
+.reference-order-administration .commerce-audit-pagination { gap: 8px; }
+@media (max-width: 720px) {
+ .commerce-card-heading { flex-wrap: wrap; }
+ .commerce-reference .commerce-editor .native-read-fields { grid-template-columns: minmax(0, 1fr); }
+ .catalog-page .commerce-availability-form { grid-template-columns: minmax(0, 1fr); }
+ .catalog-page .commerce-availability-form > label:not(.commerce-toggle) { max-width: none; }
+ .orders-page .management-filter-form label, .orders-page .management-filter-form label:first-child, .orders-page .management-filter-form label:nth-child(2) { flex: 1 1 100%; }
+ .commerce-order-dialog .reference-profile-header { flex-wrap: wrap; }
+ .commerce-order-dialog .reference-profile-identity { flex-basis: calc(100% - 74px); }
+ .commerce-order-dialog .reference-order-amount { flex-wrap: wrap; gap: 10px; }
+ .commerce-order-dialog .reference-order-amount strong { font-size: 22px; }
+ .commerce-applied-filters { margin-top: 0; }
+}

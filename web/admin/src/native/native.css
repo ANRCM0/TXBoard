@@ -7,9 +7,7 @@
 .native-pagination { display: flex; align-items: center; justify-content: flex-end; gap: 16px; padding: 16px; flex-wrap: wrap; }
 .native-row-identity { display: grid; gap: 4px; }
 .native-row-identity small, .native-list-toolbar > span { color: var(--muted); font-size: 12px; }
-.native-overview-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
-.native-overview-card { display: grid; gap: 12px; padding: 24px; text-decoration: none; color: inherit; }
-.native-overview-card span, .native-list-note { color: var(--muted); }
+.native-list-note { color: var(--muted); }
 .native-site-settings { padding: 24px; }
 .native-site-settings dl { margin: 0; }
 .native-site-settings dl > div { display: grid; grid-template-columns: 130px minmax(0, 1fr); padding: 16px 0; gap: 16px; border-bottom: 1px solid var(--border); }
@@ -56,7 +54,6 @@
 .native-management-page > label input, .native-management-page > label select, .native-management-page > label textarea { min-width: 0; max-width: 100%; box-sizing: border-box; padding: 10px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--panel); color: var(--fg); }
 .native-management-page .native-content-form input[type=checkbox] { width: auto; justify-self: start; }
 @media (max-width: 600px) {
-  .native-overview-grid { grid-template-columns: minmax(0, 1fr); }
   .native-site-settings dl > div { grid-template-columns: minmax(0, 1fr); gap: 8px; }
   .native-pagination { justify-content: center; }
   .management-filter-form, .native-filters { align-items: stretch; }

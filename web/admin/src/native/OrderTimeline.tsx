@@ -1,3 +1,5 @@
+import { Clock3, Check, Circle } from 'lucide-react'
+import './detail-reference.css'
 import { useEffect, useRef, useState } from 'react'
 import { appendOrderEventPage, type OrderEventHistory } from '@txboard/core-sdk'
 import { CoreAdminApiError } from './api'
@@ -66,15 +68,15 @@ export function OrderTimeline({ tradeNo, onAdvance, onDenied }: { tradeNo: strin
       document.removeEventListener('visibilitychange', visible)
     }
   }, [tradeNo])
-  return <section className="native-order-timeline" aria-label="订单状态时间线" aria-busy={loading}>
-    <h3>状态时间线</h3>
+  return <section className="native-order-timeline reference-order-timeline" aria-label="订单状态时间线" aria-busy={loading}>
+    <div className="reference-detail-section-title"><Clock3 size={17} /><h3>状态时间线</h3><span className="reference-tag">{history ? history.events.length + ' 个事件' : loading ? '读取中' : '未读取'}</span></div>
     {loading && !history ? <p role="status">正在读取时间线…</p> : null}
     {error ? <div role="alert"><p>{managementError(error)}时间线尚未更新。</p>
       <button className="button" disabled={loading} onClick={() => retry.current()}>重新加载时间线</button></div> : null}
     {history && !history.historyComplete ? <p className="native-timeline-notice">历史记录不完整，仅展示已记录的事件。</p> : null}
     {history?.events.length === 0 ? <p>暂无事件记录。</p> : null}
-    {history && history.events.length > 0 ? <ol>{history.events.map(event => <li key={event.sequence}>
-      <strong>{labels[event.type]}</strong><time dateTime={event.occurred_at}>{isoDate(event.occurred_at)}</time>
+    {history && history.events.length > 0 ? <ol>{history.events.map(event => <li key={event.sequence} className={'reference-timeline-event ' + (event.type === 'cancelled' ? 'is-cancelled' : '')}><span className="reference-timeline-marker">{event.type === 'cancelled' ? <Circle size={12} /> : <Check size={12} />}</span><div className="reference-timeline-content">
+      <span className="commerce-timeline-event-name"><strong>{labels[event.type]}</strong><small>事件 #{event.sequence}</small></span><time dateTime={event.occurred_at}>{isoDate(event.occurred_at)}</time></div>
     </li>)}</ol> : null}
   </section>
 }

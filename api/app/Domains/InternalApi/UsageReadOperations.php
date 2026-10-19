@@ -11,6 +11,20 @@ final class UsageReadOperations
 {
     public function __construct(private readonly UsageQueries $queries) {}
 
+    public function nodeTrafficHistory(User $actor, array $input): ?ReadOperationResult
+    {
+        if (count(array_unique($input['node_ids'], SORT_STRING)) !== count($input['node_ids'])) {
+            throw new OperationFailure('USAGE_HISTORY_NODE_IDS_DUPLICATE', 422);
+        }
+        try {
+            return new ReadOperationResult($this->queries->nodeTrafficHistory($input['node_ids'], $input['days'], time()));
+        } catch (UsageTargetMissing) {
+            return null;
+        } catch (\App\Domains\UsageV2\Contracts\UsageHistoryUnavailable $error) {
+            throw new OperationFailure($error->reason, 422);
+        }
+    }
+
     public function listing(User $actor, array $input): ?ReadOperationResult
     {
         try {

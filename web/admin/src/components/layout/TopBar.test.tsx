@@ -52,7 +52,7 @@ beforeEach(() => {
   })
   act(() => root.render(<QueryClientProvider client={queryClient}><MemoryRouter><TopBar onOpenMenu={() => {}} /><Location /></MemoryRouter></QueryClientProvider>))
 })
-afterEach(() => { act(() => root.unmount()); host.remove() })
+afterEach(() => { act(() => root.unmount()); queryClient.clear(); host.remove() })
 function key(key: string) { act(() => document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }))) }
 it('labels the compact logout control for assistive technology', () => {
   expect(host.querySelector('.admin-avatar-button')?.getAttribute('aria-label')).toBe('退出登录')
@@ -72,8 +72,17 @@ it('does not navigate when Enter confirms an IME composition', () => {
   expect(document.querySelector('[role="dialog"]')).not.toBeNull()
 })
 
-it('includes Module Registry navigation in the command palette', () => {
+it('offers native management routes without treating cached module metadata as executable navigation', () => {
   act(() => host.querySelector<HTMLButtonElement>('.admin-command-trigger')!.click())
-  expect(document.querySelector('[role="dialog"]')?.textContent).toContain('Access Audit · Dashboard')
-  expect(document.querySelector('[role="dialog"]')?.textContent).toContain('/plugins/access_audit/dashboard')
+  // TopBar commandItems and native/routes.ts own the available management routes.
+  // A legacy moduleRegistry cache is inventory data, not a runtime route authority.
+  const dialog = document.querySelector('[role="dialog"]')!
+  expect(dialog.textContent).toContain('插件管理')
+  expect(dialog.textContent).toContain('/config/plugin')
+  expect(dialog.textContent).not.toContain('Access Audit · Dashboard')
+  expect(dialog.textContent).not.toContain('/plugins/access_audit/dashboard')
+  const plugin = [...dialog.querySelectorAll<HTMLButtonElement>('[role="option"]')].find(option => option.textContent?.includes('/config/plugin'))!
+  act(() => plugin.click())
+  expect(host.querySelector('output')?.textContent).toBe('/config/plugin')
+  expect(document.querySelector('[role="dialog"]')).toBeNull()
 })

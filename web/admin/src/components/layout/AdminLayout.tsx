@@ -1,8 +1,7 @@
 import { Suspense, useEffect, useRef, useState } from 'react'
-import { PanelLeftClose, PanelLeftOpen } from 'lucide-react'
+import { Menu } from 'lucide-react'
 import { Outlet, useLocation } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
-import { TopBar } from './TopBar'
 import { ConfirmDialogHost } from '../ui/ConfirmDialog'
 import { PendingWorkflowNotice } from '../../native/PendingWorkflowNotice'
 
@@ -42,19 +41,16 @@ export function AdminLayout() {
   return (
     <div className={`admin-shell ${expanded ? 'is-sidebar-expanded' : 'is-sidebar-collapsed'}`}>
       <a className="admin-skip-link" href="#admin-content">跳转到主要内容</a>
-      <Sidebar open={open} onClose={() => setOpen(false)} collapsed={!expanded} onExpand={() => setExpanded(true)} />
+      <Sidebar open={open} onClose={() => setOpen(false)} collapsed={!expanded} onExpand={() => setExpanded(true)} onToggle={() => setExpanded(value => !value)} />
       <button
         type="button"
-        className="admin-sidebar-collapse-toggle"
-        aria-label={expanded ? '收起侧边栏' : '展开侧边栏'}
-        title={expanded ? '收起侧边栏' : '展开侧边栏'}
-        aria-expanded={expanded}
-        onClick={() => setExpanded(value => !value)}
+        className="admin-floating-menu"
+        aria-label="打开导航"
+        onClick={() => setOpen(true)}
       >
-        {expanded ? <PanelLeftClose size={17} /> : <PanelLeftOpen size={17} />}
+        <Menu size={20} />
       </button>
       <main className="admin-main" id="admin-content" tabIndex={-1}>
-        <TopBar onOpenMenu={() => setOpen(true)} />
         <div ref={scrollRef} className="admin-scroll">
           <div className='admin-page'>
             <PendingWorkflowNotice />

@@ -16,7 +16,7 @@ final class UsageModule implements ModuleProvider
     {
         return new ModuleDefinition('usage', '1.0.0', 'required-business', provides: [
                 new CapabilityDefinition('usage.read', UsageQueries::class),
-            ], requires: [new CapabilityRequirement('installation.admission'), new CapabilityRequirement('subscription.entitlements')], required: true);
+            ], requires: [new CapabilityRequirement('network.node-identities'), new CapabilityRequirement('installation.admission'), new CapabilityRequirement('subscription.entitlements')], required: true);
     }
 
     public function bindings(): array

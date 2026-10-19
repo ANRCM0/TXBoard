@@ -45,7 +45,7 @@ it('uses backend account filters and pagination from the URL without numeric ide
   await render('/user/manage?email=alice%40example.test&banned=0&page=2')
   expect(admin.read).toHaveBeenCalledWith('identity.accounts.list',
     { page: 2, per_page: 20, email: profile.email, banned: false }, expect.any(AbortSignal))
-  expect(host.querySelector('a')?.getAttribute('href')).toBe('/user/' + profile.id)
+  expect(host.querySelector('a[href="/user/' + profile.id + '"]')).not.toBeNull()
   expect(host.textContent).toContain(profile.id)
 })
 it('never sends an unsafe order user ID from a crafted URL', async () => {
@@ -60,8 +60,10 @@ it('shows native entitlement state and withdraws a user detail after permission 
   expect(host.textContent).toContain('当前没有可用订阅')
   expect(host.textContent).not.toContain('余额')
   vi.mocked(admin.read).mockRejectedValueOnce(new CoreAdminApiError('FORBIDDEN', 403))
-  await act(async () => host.querySelector<HTMLButtonElement>('.page-header button')!.click()); await settle()
+  await act(async () => [...host.querySelectorAll<HTMLButtonElement>('.page-header button')].find(node => node.getAttribute('aria-label') === '刷新' || node.textContent?.trim() === '刷新')!.click()); await settle()
   expect(host.textContent).not.toContain(profile.email)
+  expect(host.querySelector('[aria-label="账户信息"]')).toBeNull()
+  expect(host.querySelector('[aria-label="当前订阅"]')).toBeNull()
   expect(host.querySelector('[role="alert"]')?.textContent).toContain('没有此操作的权限')
 })
 it('displays a missing account as a resource error while preserving the administrator session', async () => {
@@ -84,7 +86,7 @@ it('keeps a new order dialog isolated from an older response and aborts the deta
   await act(async () => root.render(renderDialog('ORDER-B'))); await settle()
   expect(signal.aborted).toBe(true)
   await act(async () => resolveOld({ data: order } as never)); await settle()
-  expect(document.querySelector('[role="dialog"]')?.textContent).toContain('ORDER-B')
-  expect(document.querySelector('[role="dialog"]')?.textContent).not.toContain('ORDER-A')
-  expect(document.querySelector('[role="dialog"]')?.textContent).toContain('90071992547409.93 USD')
+  expect(document.querySelector('[role="dialog"][aria-label="订单详情"]')?.textContent).toContain('ORDER-B')
+  expect(document.querySelector('[role="dialog"][aria-label="订单详情"]')?.textContent).not.toContain('ORDER-A')
+  expect(document.querySelector('[role="dialog"][aria-label="订单详情"] .reference-order-amount strong')?.textContent).toBe('90071992547409.93 USD')
 })

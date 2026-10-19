@@ -41,11 +41,14 @@ final class UsageQueriesContractsTest extends TestCase
         $this->assertSame('NATIVE_USAGE_SUBSCRIPTION_NOT_FOUND', (new UsageTargetMissing())->getMessage());
     }
 
-    public function test_contract_has_one_concrete_domain_method_and_no_framework_http_or_sql_types(): void
+    public function test_contract_has_declared_domain_methods_and_no_framework_http_or_sql_types(): void
     {
         $contract = new \ReflectionClass(UsageQueries::class);
         $this->assertTrue($contract->isInterface());
-        $this->assertSame(['listing'], array_map(static fn ($method) => $method->name, $contract->getMethods()));
+        $this->assertSame(['nodeTrafficHistory', 'listing'], array_map(static fn ($method) => $method->name, $contract->getMethods()));
+        $history = $contract->getMethod('nodeTrafficHistory');
+        $this->assertSame(['array', 'int', 'int'], array_map(static fn ($parameter) => (string) $parameter->getType(), $history->getParameters()));
+        $this->assertSame('array', (string) $history->getReturnType());
         $method = $contract->getMethod('listing');
         $this->assertSame(['int', UsageQuery::class], array_map(static fn ($parameter) => (string) $parameter->getType(), $method->getParameters()));
         $this->assertSame(UsagePage::class, (string) $method->getReturnType());

@@ -1,0 +1,54 @@
+.reference-chart { min-width: 0; color: var(--fg); font-size: 12px; }
+.reference-chart-legend { display: flex; flex-wrap: wrap; gap: 6px; padding: 6px; margin-bottom: 12px; background: color-mix(in srgb, var(--control-bg) 70%, transparent); border-radius: 12px; }
+.reference-chart-legend button { display: flex; flex: 1 1 110px; gap: 9px; align-items: center; min-width: 0; padding: 10px 12px; border: 0; background: transparent; border-radius: 8px; text-align: left; color: inherit; cursor: pointer; font: inherit; transition: background .15s, opacity .15s; }
+.reference-chart-legend button:hover, .reference-chart-legend button[aria-pressed=true] { background: var(--panel); }
+.reference-chart-legend button.is-muted { opacity: .45; }
+.reference-chart-legend button > span { min-width: 0; display: grid; gap: 8px; color: var(--muted); font-size: 11px; overflow-wrap: anywhere; }
+.reference-chart-legend strong { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; color: var(--fg); font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.reference-chart :is(button,svg[tabindex],circle[tabindex],summary):focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 3px; }
+.reference-chart :is(.reference-chart-legend,.reference-chart-tooltip,.reference-donut-legend,.reference-bar-caption) i { display: inline-block; flex: 0 0 auto; width: 8px; height: 8px; border-radius: 50%; background: var(--reference-chart-color, var(--primary)); }
+.reference-chart-plot { position: relative; min-width: 0; }
+.reference-chart-plot > svg { display: block; max-width: 100%; overflow: visible; border-radius: 6px; touch-action: pan-y; }
+.reference-chart-grid { stroke: var(--border); stroke-dasharray: 3 5; stroke-opacity: .75; }
+.reference-chart-axis { fill: var(--muted); font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 10px; }
+.reference-chart-crosshair { stroke: var(--muted); stroke-dasharray: 3 4; stroke-opacity: .65; pointer-events: none; }
+.reference-chart-series { transition: opacity .18s; }
+.reference-chart-tooltip { position: absolute; top: 12px; right: 20px; display: grid; gap: 9px; width: max-content; max-width: min(230px, calc(100% - 36px)); padding: 12px 14px; background: var(--panel); color: var(--fg); box-shadow: var(--shadow-overlay); border: 1px solid var(--border); border-radius: 9px; pointer-events: none; z-index: 2; font-size: 11px; }
+.reference-chart-tooltip > strong { font-size: 11px; font-weight: 500; color: var(--muted); overflow-wrap: anywhere; }
+.reference-chart-tooltip > span { display: flex; align-items: center; gap: 8px; overflow-wrap: anywhere; }
+.reference-chart-tooltip b { margin-left: auto; padding-left: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.reference-chart-empty { display: grid; place-content: center; min-height: 210px; text-align: center; color: var(--muted); }
+.reference-chart-empty-note { margin: 4px 0 12px; text-align: center; color: var(--muted); font-size: 12px; }
+.reference-chart-data { color: var(--muted); font-size: 11px; margin-top: 12px; }
+.reference-chart-data summary { width: fit-content; cursor: pointer; line-height: 1.8; }
+.reference-chart-data > div { max-height: 260px; overflow: auto; margin-top: 10px; border: 1px solid var(--border); border-radius: 8px; }
+.reference-chart-data table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; font-size: 11px; }
+.reference-chart-data caption { padding: 10px; text-align: left; font-weight: 600; color: var(--fg); }
+.reference-chart-data th, .reference-chart-data td { padding: 8px 12px; border-top: 1px solid var(--border); text-align: left; white-space: nowrap; }
+.reference-chart-data th { font-weight: 500; }
+.reference-donut-layout { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.reference-donut-graphic { flex: 1 1 190px; max-width: 270px; min-width: 0; margin-inline: auto; }
+.reference-donut-graphic svg { display: block; width: 100%; overflow: visible; }
+.reference-donut-track { stroke: var(--control-bg); }
+.reference-donut-total { fill: var(--fg); font: 600 23px ui-monospace, SFMono-Regular, Consolas, monospace; }
+.reference-donut-segment { cursor: default; transition: opacity .18s, stroke-width .18s; }
+.reference-donut-legend { display: grid; flex: 1 1 180px; min-width: 0; gap: 4px; }
+.reference-donut-legend button { display: flex; align-items: center; gap: 9px; min-width: 0; width: 100%; padding: 10px; border: 0; background: transparent; text-align: left; color: var(--muted); font: inherit; border-radius: 6px; cursor: default; }
+.reference-donut-legend button:is(:hover,.is-active) { background: var(--control-bg); color: var(--fg); }
+.reference-donut-legend button > span { overflow-wrap: anywhere; }
+.reference-donut-legend strong { margin-left: auto; font-size: 12px; font-weight: 500; color: var(--fg); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.reference-donut-detail { margin: 12px 0; color: var(--muted); font-size: 11px; min-height: 18px; overflow-wrap: anywhere; }
+.reference-bar-list { display: grid; gap: 20px; margin: 0; padding: 0; list-style: none; }
+.reference-bar-list > li { display: grid; grid-template-columns: minmax(80px, 1fr) minmax(0, 3fr); align-items: start; gap: 20px; }
+.reference-bar-label { font-size: 12px; font-weight: 500; line-height: 1.6; overflow-wrap: anywhere; padding-top: 1px; }
+.reference-bar-values { display: grid; gap: 12px; min-width: 0; }
+.reference-chart-missing { margin:0; color:var(--muted); font-size:11px; }
+.reference-bar-entry { min-width: 0; }
+.reference-bar-caption { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 7px; font-size: 11px; color: var(--muted); }
+.reference-bar-caption > span { display: flex; align-items: center; gap: 7px; }
+.reference-bar-caption strong { color: var(--fg); font-weight: 500; font-variant-numeric: tabular-nums; text-align: right; overflow-wrap: anywhere; }
+.reference-bar-entry svg { width: 100%; height: 6px; display: block; }
+.reference-bar-track { fill: var(--control-bg); }
+.reference-bar-fill { fill: var(--reference-chart-color, var(--primary)); }
+@media (max-width: 480px) { .reference-bar-list > li { grid-template-columns: minmax(0, 1fr); gap: 10px; } .reference-chart-tooltip { right: 8px; } .reference-chart-legend button { padding: 9px 8px; } }
+@media (prefers-reduced-motion: reduce) { .reference-chart *, .reference-chart *::before { transition: none !important; animation: none !important; } }

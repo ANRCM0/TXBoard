@@ -17,7 +17,7 @@ beforeEach(() => {
   vi.clearAllMocks()
 })
 afterEach(() => { act(() => root.unmount()); host.remove() })
-function button(text: string) { return [...host.querySelectorAll<HTMLButtonElement>('button')].find(node => node.textContent === text)! }
+function button(text: string) { return [...host.querySelectorAll<HTMLButtonElement>('button')].find(node => node.getAttribute('aria-label') === text || node.textContent === text)! }
 async function render(disabled = false) { await act(async () => root.render(<AttachmentsPanel ticketId="7" disabled={disabled} />)) }
 
 it('permits read-only authorization refresh for denied pending attachments without replaying the write', async () => {
@@ -39,4 +39,8 @@ it('honors the parent lock for both permission checks and recovery', async () =>
   expect(button('使用原操作确认附件结果').disabled).toBe(true)
   expect(button('重新读取附件权限').disabled).toBe(true)
   expect(host.querySelector('input')!.disabled).toBe(true)
+  expect(host.querySelector('input')!.accept).toBe('image/png,image/jpeg,application/pdf,text/plain')
+  expect(host.textContent).toContain('附件可能包含个人信息')
+  expect(attachmentTransfers.upload).not.toHaveBeenCalled()
+  expect(attachmentTransfers.download).not.toHaveBeenCalled()
 })

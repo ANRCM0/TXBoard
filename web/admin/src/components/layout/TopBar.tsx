@@ -1,4 +1,4 @@
-import { LogOut, Menu, Moon, Package, Search, Sun, X } from 'lucide-react'
+import { LogOut, Search, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useLocation, useNavigate } from 'react-router-dom'
@@ -7,6 +7,7 @@ import { toast } from 'sonner'
 import { StaleAdminContext } from '@txboard/core-sdk'
 import { preloadAdminRoute } from '../../lib/routePreload'
 import { useDialog } from '../../lib/useDialog'
+import { ThemeToggle } from '../ui/ThemeToggle'
 
 const commandItems = [
   ['/', '仪表盘'],
@@ -15,12 +16,11 @@ const commandItems = [
   ['/config/system/safe', '安全设置'],
   ['/config/system/subscribe', '订阅设置'],
   ['/config/system/invite', '邀请设置'],
-  ['/config/frontend', '前端设置'],
   ['/system/modules', '模块中心'],
   ['/config/server', '服务器配置'],
   ['/config/email', '邮件设置'],
   ['/config/telegram', 'Telegram'],
-  ['/config/APP', 'APP 设置'],
+  ['/config/app', 'APP 设置'],
   ['/config/payment', '支付配置'],
   ['/config/theme', '主题管理'],
   ['/config/notice', '通知管理'],
@@ -30,64 +30,29 @@ const commandItems = [
   ['/server/manage', '节点管理'],
   ['/server/group', '分组管理'],
   ['/server/route', '路由管理'],
+  ['/server/access-audit', '访问审计'],
   ['/finance/plan', '套餐管理'],
   ['/finance/order', '订单管理'],
   ['/finance/coupon', '优惠券管理'],
   ['/finance/gift-card', '礼品卡管理'],
+  ['/finance/commission', '佣金管理'],
   ['/user/manage', '用户管理'],
   ['/user/traffic-reset', '流量重置'],
   ['/user/ticket', '工单管理'],
   ['/system/audit-log', '审计日志'],
   ['/system/sessions', '登录会话'],
+  ['/system/queue', '队列监控'],
+  ['/config/email/templates', '邮件模板'],
 ] as const
 
-const titleRules: Array<[RegExp, string]> = [
-  [/^\/$/, '仪表盘'],
-  [/^\/config\/system\/features/, '功能入口'],
-  [/^\/config\/system/, '系统配置'],
-  [/^\/config\/frontend/, '前端配置'],
-  [/^\/system\/modules/, '模块中心'],
-  [/^\/config\/server/, '服务器配置'],
-  [/^\/config\/email/, '邮件配置'],
-  [/^\/config\/telegram/, 'Telegram'],
-  [/^\/config\/APP/, 'APP 配置'],
-  [/^\/config\/payment/, '支付配置'],
-  [/^\/config\/theme/, '主题管理'],
-  [/^\/config\/notice/, '通知管理'],
-  [/^\/config\/knowledge/, '知识库管理'],
-  [/^\/config\/plugin/, '插件管理'],
-  [/^\/server\/machine\/\d+/, '机器详情'],
-  [/^\/server\/machine/, '机器管理'],
-  [/^\/server\/node\/\d+/, '节点详情'],
-  [/^\/server\/manage/, '节点管理'],
-  [/^\/server\/group/, '分组管理'],
-  [/^\/server\/route/, '路由管理'],
-  [/^\/finance\/plan/, '套餐管理'],
-  [/^\/finance\/order/, '订单管理'],
-  [/^\/finance\/coupon/, '优惠券管理'],
-  [/^\/finance\/gift-card/, '礼品卡管理'],
-  [/^\/user\/manage/, '用户管理'],
-  [/^\/user\/traffic-reset/, '流量重置'],
-  [/^\/user\/ticket/, '工单管理'],
-  [/^\/system\/audit-log/, '审计日志'],
-  [/^\/system\/sessions/, '登录会话'],
-  [/^\/plugins\//, '插件'],
-]
-
-export function TopBar({ onOpenMenu }: { onOpenMenu: () => void }) {
+export function TopBar(_props: { onOpenMenu: () => void }) {
   const navigate = useNavigate()
   const location = useLocation()
-  const [dark, setDark] = useState(() => { try { return localStorage.getItem('theme') === 'dark' } catch { return false } })
   const [commandOpen, setCommandOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [activeIndex, setActiveIndex] = useState(0)
   const commandRef = useDialog(commandOpen, () => setCommandOpen(false))
   const shortcut = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘ K' : 'Ctrl K'
-
-  useEffect(() => {
-    document.documentElement.dataset.theme = dark ? 'dark' : 'light'
-    try { localStorage.setItem('theme', dark ? 'dark' : 'light') } catch { /* preference is optional */ }
-  }, [dark])
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -112,17 +77,6 @@ export function TopBar({ onOpenMenu }: { onOpenMenu: () => void }) {
   useEffect(() => {
     commandRef.current?.querySelector('[aria-selected="true"]')?.scrollIntoView?.({ block: 'nearest' })
   }, [activeIndex, commandOpen, commandRef])
-
-  const title = useMemo(
-    () => titleRules.find(([pattern]) => pattern.test(location.pathname))?.[1] || 'TXBoard',
-    [location.pathname],
-  )
-  const toolbarMode = useMemo(() => {
-    const path = location.pathname.replace(/\/$/, '') || '/'
-    if (path === '/') return 'dashboard' as const
-    if (path === '/config/plugin' || path.startsWith('/plugins/')) return 'icon-title' as const
-    return 'search-only' as const
-  }, [location.pathname])
 
   const commands = useMemo(() => {
     const all = commandItems
@@ -152,38 +106,20 @@ export function TopBar({ onOpenMenu }: { onOpenMenu: () => void }) {
 
   return (
     <>
-      <header className={`admin-toolbar mode-${toolbarMode}`}>
-        <button type="button" className="admin-toolbar-mobile" aria-label="打开导航" onClick={onOpenMenu}>
-          <Menu size={20} />
-        </button>
-
-        {toolbarMode === 'dashboard' ? <h1>{title}</h1> : null}
-        {toolbarMode === 'icon-title' ? (
-          <div className="admin-toolbar-icon-title">
-            <Package size={24} />
-            <h1>{title}</h1>
-          </div>
-        ) : null}
-
-        <button type="button" aria-label="搜索菜单和功能" className="admin-command-trigger" onClick={() => setCommandOpen(true)}>
+      <div className="admin-toolbar admin-sidebar-tools" aria-label="控制台工具">
+        <button type="button" aria-label="搜索菜单和功能" title="搜索菜单和功能" className="admin-command-trigger" onClick={() => setCommandOpen(true)}>
             <Search size={16} />
             <span>搜索菜单和功能…</span>
             <kbd>{shortcut}</kbd>
         </button>
 
         <div className="admin-toolbar-actions">
-          <button type="button" className="admin-toolbar-icon" aria-label={dark ? '切换浅色模式' : '切换深色模式'} title={dark ? '切换浅色模式' : '切换深色模式'} onClick={() => setDark(value => !value)}>
-            {dark ? <Sun size={20} /> : <Moon size={20} />}
-          </button>
+          <ThemeToggle />
           <button type="button" className="admin-avatar-button" onClick={() => void logout()} disabled={exiting} aria-label="退出登录" title="退出登录">
-            <span className="admin-avatar">A</span>
-          </button>
-          <button type="button" className="admin-logout-link" onClick={() => void logout()} disabled={exiting}>
-            <LogOut size={16} />
-            <span>退出</span>
+            <LogOut size={18} />
           </button>
         </div>
-      </header>
+      </div>
 
       {commandOpen ? createPortal(
         <div className="admin-command-overlay" onMouseDown={event => event.target === event.currentTarget && setCommandOpen(false)}>

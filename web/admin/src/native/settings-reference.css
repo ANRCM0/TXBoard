@@ -1,0 +1,128 @@
+/* Settings views follow the reference card/form density while using shared theme roles. */
+.settings-reference { min-width: 0; }
+.settings-reference .list-card { padding: 22px; border-radius: var(--radius-card); box-shadow: var(--shadow); }
+.settings-reference .settings-section { display: block; }
+.settings-section-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
+.settings-reference h2 { margin: 0; font-size: 18px; font-weight: 650; line-height: 1.3; }
+.settings-reference h3 { margin: 0; font-size: 14px; font-weight: 600; }
+.settings-reference p { color: var(--muted); font-size: 12px; line-height: 1.6; }
+.settings-section-heading p { margin: 6px 0 0; }
+.settings-reference .settings-status { display: inline-flex; align-items: center; flex-shrink: 0; gap: 5px; border: 1px solid var(--border); border-radius: 6px; background: var(--control-bg); color: var(--muted); padding: 4px 8px; font-size: 11px; font-weight: 500; }
+.settings-reference .settings-status.positive { color: var(--success); background: color-mix(in srgb, var(--success) 8%, var(--panel)); border-color: color-mix(in srgb, var(--success) 24%, var(--border)); }
+.settings-reference .native-content-form { gap: 20px 24px; max-width: none; }
+.settings-reference .settings-field-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.settings-reference label { display: flex; flex-direction: column; align-items: stretch; gap: 8px; min-width: 0; color: var(--fg); font-size: 12px; font-weight: 550; }
+.settings-reference label small { color: var(--muted); font-weight: 400; }
+.settings-reference input:not([type=checkbox]), .settings-reference select, .settings-reference textarea { width: 100%; min-height: 36px; box-sizing: border-box; padding: 8px 11px; font: inherit; font-weight: 400; color: var(--fg); background: var(--control-bg); border: 1px solid var(--border); border-radius: var(--radius-control); outline: none; transition: border-color .15s, box-shadow .15s; }
+.settings-reference textarea { resize: vertical; line-height: 1.65; }
+.settings-reference input:focus-visible, .settings-reference select:focus-visible, .settings-reference textarea:focus-visible { border-color: var(--primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 15%, transparent); }
+.settings-reference input:disabled, .settings-reference textarea:disabled, .settings-reference select:disabled { opacity: .55; cursor: not-allowed; }
+.settings-reference input::placeholder, .settings-reference textarea::placeholder { color: var(--muted); opacity: .75; }
+.settings-reference .settings-toggle-field { display: flex; flex-direction: row; align-items: center; justify-content: space-between; min-height: 56px; padding: 12px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--control-bg); }
+.settings-reference input[type=checkbox] { width: 17px; height: 17px; accent-color: var(--primary); flex-shrink: 0; cursor: pointer; }
+.settings-reference .settings-wide-field, .settings-subsection-heading, .settings-form-actions { grid-column: 1 / -1; }
+.settings-reference .settings-form-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border); }
+.settings-form-actions > span { margin-right: auto; color: var(--muted); font-size: 12px; }
+.settings-reference .button { min-height: 34px; padding: 7px 12px; font-size: 12px; border-radius: var(--radius-control); }
+.settings-reference .settings-danger-button { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 35%, var(--border)); }
+.settings-help { margin: 0 0 20px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--control-bg); padding: 12px 14px; }
+.settings-help summary, .settings-provider-help summary { cursor: pointer; color: var(--muted); font-size: 12px; font-weight: 550; }
+.settings-help summary:hover, .settings-provider-help summary:hover { color: var(--primary); }
+.settings-help p { margin: 10px 0 0; }
+.settings-help .native-configuration-version { overflow-wrap: anywhere; font-size: 11px; }
+.settings-value-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 24px; margin: 0; }
+.settings-value-grid > div { min-width: 0; padding: 14px 0; border-bottom: 1px solid var(--border); }
+.settings-value-grid dt { font-size: 12px; color: var(--muted); margin-bottom: 7px; }
+.settings-value-grid dd { margin: 0; font-size: 13px; color: var(--fg); overflow-wrap: anywhere; white-space: pre-wrap; }
+.settings-category-heading { display: flex; align-items: baseline; gap: 12px; padding: 0 2px 14px; font-size: 14px; font-weight: 650; }
+.settings-category-heading small { color: var(--muted); font-size: 12px; font-weight: 400; }
+.settings-reference .native-settings-navigation { display: flex; flex-wrap: wrap; gap: 4px; border: 1px solid var(--border); border-radius: 10px; background: var(--panel); padding: 6px; margin-bottom: 20px; }
+.settings-reference .native-settings-navigation a { padding: 8px 12px; font-size: 12px; border: 0; border-radius: 6px; color: var(--muted); text-decoration: none; }
+.settings-reference .native-settings-navigation a:hover { color: var(--fg); background: var(--hover); }
+.settings-reference .native-settings-navigation a.active { color: var(--primary); background: color-mix(in srgb, var(--primary) 10%, var(--panel)); font-weight: 600; }
+.settings-reference [role=alert] { border: 1px solid color-mix(in srgb, var(--warning) 28%, var(--border)); border-radius: var(--radius-control); padding: 12px 14px; color: var(--fg); background: color-mix(in srgb, var(--warning) 5%, var(--panel)); font-size: 12px; }
+.settings-reference .settings-template-select { max-width: 420px; margin-bottom: 18px; }
+.settings-variable-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.settings-variable-list code { display: inline-flex; gap: 8px; padding: 5px 8px; border: 1px solid var(--border); border-radius: 5px; font-size: 11px; background: var(--panel); color: var(--fg); }
+.settings-variable-list small { color: var(--muted); font: 10px var(--font-sans); }
+.settings-mail-subject { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+.settings-mail-subject small { color: var(--muted); font-size: 11px; }
+.settings-mail-subject strong { font-size: 14px; }
+.settings-source-preview, .settings-source-field textarea { font-family: ui-monospace, SFMono-Regular, Consolas, monospace !important; font-size: 12px !important; }
+.settings-source-preview { max-height: 360px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; background: var(--control-bg); border: 1px solid var(--border); border-radius: var(--radius-control); padding: 16px; line-height: 1.7; margin-bottom: 16px; }
+.settings-source-field { display: grid; gap: 8px; }
+.settings-character-count { text-align: right; color: var(--muted); font-size: 11px; }
+.settings-test-mail { border-top: 1px solid var(--border); margin-top: 24px; padding-top: 20px; }
+.settings-reference .settings-test-mail .native-filters { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; }
+.settings-test-mail label { flex: 1 1 300px; }
+.settings-label-line { display: flex; justify-content: space-between; gap: 10px; }
+.settings-label-line .settings-configured { color: var(--success); }
+.settings-payment-status { display: flex; flex-direction: column; align-items: flex-start; gap: 5px; }
+.settings-payment-status small { color: var(--muted); font-size: 11px; }
+.settings-subsection-heading { border-top: 1px solid var(--border); padding-top: 20px; }
+.settings-provider-help summary { display: flex; justify-content: space-between; align-items: center; font-size: 13px; }
+.settings-provider-help summary::before { content: '+'; margin-right: 8px; }
+.settings-provider-help[open] summary::before { content: '−'; }
+.settings-provider-help summary span { margin-left: auto; font-size: 11px; color: var(--muted); }
+.settings-provider-help ul { display: grid; gap: 10px; padding-left: 20px; margin: 16px 0; font-size: 12px; }
+.settings-reference .settings-lookup { display: flex; align-items: flex-end; flex-wrap: wrap; gap: 16px; }
+.settings-lookup > div { flex: 1 1 240px; }
+.settings-lookup label { flex: 1 1 240px; }
+.settings-lookup p { margin: 6px 0 0; }
+.settings-usage-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 0 0 20px; }
+.settings-usage-grid > div { display: grid; gap: 12px; padding: 18px; background: var(--control-bg); border: 1px solid var(--border); border-radius: 10px; }
+.settings-usage-grid small { font-size: 12px; color: var(--muted); }
+.settings-usage-grid strong { font-size: 20px; font-weight: 650; overflow-wrap: anywhere; }
+.settings-usage-grid strong span { color: var(--muted); font-size: 11px; font-weight: 400; margin-left: 6px; }
+@media (max-width: 720px) {
+ .settings-reference .list-card { padding: 16px; }
+ .settings-reference .settings-field-grid, .settings-value-grid, .settings-usage-grid { grid-template-columns: minmax(0, 1fr); }
+ .settings-form-actions > span { flex-basis: 100%; }
+ .settings-section-heading { gap: 10px; }
+ .settings-reference .native-settings-navigation { flex-wrap: nowrap; overflow-x: auto; }
+ .settings-reference .native-settings-navigation a { white-space: nowrap; }
+}
+.settings-reference .native-content-form:not(.list-card) { box-shadow: none; border-radius: 0; background: transparent; }
+.settings-reference .settings-success-feedback { border: 1px solid color-mix(in srgb, var(--success) 24%, var(--border)); border-radius: var(--radius-control); padding: 12px 14px; color: var(--success); background: color-mix(in srgb, var(--success) 6%, var(--panel)); font-size: 12px; }
+
+/* Category navigation and configuration use the same reading rhythm. */
+.settings-category-heading { flex-wrap: wrap; row-gap: 4px; }
+.settings-category-note { margin: -8px 2px 20px; color: var(--muted); font-size: 12px; line-height: 1.7; }
+.settings-reference .native-settings-navigation a:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.settings-reference .settings-section-heading > div { min-width: 0; }
+.settings-reference .settings-section-heading h2 { line-height: 1.5; }
+.settings-reference .settings-pending-card { border-inline-start: 3px solid var(--warning); }
+.settings-reference .settings-pending-card p { margin: 8px 0 16px; }
+.settings-configuration-page .settings-value-grid dd[data-kind="checkbox"] { font-weight: 550; }
+.settings-configuration-page .settings-value-grid dd[data-configured="true"] { color: var(--success); }
+.settings-configuration-page .settings-status[data-editing="true"] { color: var(--primary); border-color: color-mix(in srgb, var(--primary) 25%, var(--border)); }
+.settings-configuration-page .settings-toggle-field { gap: 16px; }
+.settings-mail-page .settings-mail-subject strong { overflow-wrap: anywhere; line-height: 1.7; }
+.settings-mail-page .settings-source-preview:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
+.settings-mail-page .settings-mail-read-actions { display: flex; gap: 8px; }
+.settings-mail-page .settings-template-reset { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 20px; padding: 14px 0 0; border-top: 1px solid var(--border); }
+.settings-template-reset > span { color: var(--muted); font-size: 12px; }
+.settings-mail-page .settings-test-mail { margin-top: 20px; }
+.settings-mail-page .settings-source-field { min-width: 0; }
+.settings-mail-page .settings-source-field textarea { width: 100%; box-sizing: border-box; tab-size: 2; }
+.settings-payment-page .settings-fee-value { display: grid; gap: 5px; min-width: 150px; font-variant-numeric: tabular-nums; }
+.settings-fee-value strong { font-size: 13px; font-weight: 550; }
+.settings-fee-value small { color: var(--muted); font-size: 11px; }
+.settings-payment-page .data-table th { font-size: 12px; color: var(--muted); background: var(--control-bg); }
+.settings-payment-page .data-table td { vertical-align: middle; padding-block: 15px; }
+.settings-payment-page .native-row-identity strong, .settings-payment-page .native-row-identity small { overflow-wrap: anywhere; }
+.settings-payment-page .settings-subsection-heading p { margin-bottom: 0; }
+.settings-payment-page .settings-provider-help li { line-height: 1.7; overflow-wrap: anywhere; }
+.settings-reference .native-pagination { gap: 12px; flex-wrap: wrap; }
+.settings-reference .native-page-controls { flex-wrap: wrap; }
+@media (max-width: 720px) {
+ .settings-reference .settings-section-heading { flex-wrap: wrap; }
+ .settings-reference .settings-section-heading > div { flex: 1 1 200px; }
+ .settings-reference .native-settings-navigation { scrollbar-width: thin; overscroll-behavior-inline: contain; }
+ .settings-reference .settings-form-actions .button { flex: 1 1 130px; justify-content: center; }
+ .settings-mail-page .settings-test-mail .native-filters label { flex-basis: 100%; }
+ .settings-mail-page .settings-test-mail .native-filters > .button { width: 100%; justify-content: center; }
+ .settings-reference .settings-label-line { flex-wrap: wrap; row-gap: 4px; }
+ .settings-reference .native-pagination > span { flex-basis: 100%; }
+ .settings-payment-page .native-scroll-hint { display: block; color: var(--muted); font-size: 11px; }
+}

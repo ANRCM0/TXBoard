@@ -13,6 +13,7 @@ import './admin-density.css'
 import './admin-list-density.css'
 import './admin-monitor-density.css'
 import './native/native.css'
+import './admin-theme.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

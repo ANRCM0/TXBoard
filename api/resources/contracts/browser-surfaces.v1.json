@@ -66,6 +66,7 @@
     "identity.sessions.revoke",
     "identity.session.end",
     "network.nodes.list",
+    "network.nodes.traffic-history.get",
     "network.machines.list",
     "settings.site.get",
     "identity.accounts.list",

@@ -1,0 +1,23 @@
+/* Dashboard details use the same spacing and control scale as management lists. */
+.reference-overview .reference-card-heading { align-items:center; }
+.reference-overview .reference-card-heading > div:first-child { min-width:0; }
+.reference-overview .overview-metric { min-height:144px; }
+.reference-overview .overview-chart-card { display:flex; flex-direction:column; }
+.reference-overview .overview-chart-card > .reference-chart { flex:1; }
+.overview-chart-footer { display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:10px 20px; margin-top:18px; color:var(--muted); font-size:12px; line-height:1.6; }
+.overview-scope-details { min-width:0; flex:0 1 auto; }
+.overview-scope-details summary { display:flex; align-items:center; gap:5px; width:fit-content; color:var(--muted); cursor:pointer; list-style:none; border-radius:4px; }
+.overview-scope-details summary::-webkit-details-marker { display:none; }
+.overview-scope-details summary:hover,.overview-scope-details[open] summary { color:var(--primary); }
+.overview-scope-details summary:focus-visible { outline:2px solid var(--focus-ring); outline-offset:3px; }
+.overview-scope-details p { max-width:560px; margin:10px 0 0; padding:12px 14px; border-radius:8px; background:var(--control-bg); color:var(--muted); line-height:1.8; }
+.reference-overview .overview-node { border-radius:8px; padding-inline:8px; margin-inline:-8px; }
+.reference-overview .overview-node:hover { background:var(--ui-surface-subtle); }
+@media(max-width:600px) {
+  .reference-overview .reference-card-heading { align-items:flex-start; flex-wrap:wrap; gap:14px; }
+  .reference-overview .reference-card-heading > .segmented-control { width:100%; }
+  .reference-overview .segmented-control button { flex:1; min-height:36px; }
+  .reference-overview .overview-metric { min-height:132px; padding:18px; }
+  .reference-overview .overview-metric>strong { font-size:30px; }
+  .overview-chart-footer { flex-direction:column; gap:8px; }
+}

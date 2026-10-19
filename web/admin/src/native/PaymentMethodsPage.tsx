@@ -1,3 +1,4 @@
+import './settings-reference.css'
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { CoreAdminApiError, type CoreInput, type CoreOutput } from '@txboard/core-sdk'
@@ -17,6 +18,7 @@ export function PaymentMethodsPage() {
   const state = useSyncExternalStore(workflowActions.subscribe, workflowActions.snapshot)
   const generation = workflowActions.generation(), observed = useRef(generation), view = useRef(0)
   const [page, setPage] = useState(1), [draft, setDraft] = useState<Draft>(), [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
   const [failedFormRead, setFailedFormRead] = useState<CoreInput<'billing.admin-payment-methods.form'>>()
   const methods = useQuery({ queryKey: ['native-admin', 'payment-methods', generation, page],
     queryFn: ({ signal }) => admin.read('billing.admin-payment-methods.list', { page, per_page: 20 }, signal) })
@@ -36,8 +38,8 @@ export function PaymentMethodsPage() {
     if (draft && forbidden(form.error)) setFailedFormRead({ provider: draft.provider, ...(draft.row ? { payment_id: draft.row.id } : {}) })
   }, [form.error, draft])
   useEffect(() => {
-    if (observed.current !== generation) { observed.current = generation; setFailedFormRead(undefined); view.current++; setDraft(undefined); setError('') }
-    else if (denied) { view.current++; setDraft(undefined); setError('') }
+    if (observed.current !== generation) { observed.current = generation; setFailedFormRead(undefined); view.current++; setDraft(undefined); setError(''); setNotice('') }
+    else if (denied) { view.current++; setDraft(undefined); setError(''); setNotice('') }
   }, [generation, denied])
   async function refresh() {
     const current = workflowActions.generation()
@@ -54,7 +56,7 @@ export function PaymentMethodsPage() {
     view.current++
     setDraft({ row, name: row?.name ?? '', provider: row?.provider ?? providers.data?.data[0]?.provider ?? '',
       icon: row?.icon ?? '', enabled: row?.enabled ?? false, sort: String(row?.sort ?? 0), configuration: {} })
-    setError('')
+    setError(''); setNotice('')
   }
   async function perform(input: Save) {
     const current = workflowActions.generation(), displayed = view.current
@@ -63,11 +65,12 @@ export function PaymentMethodsPage() {
       await workflowActions.run('billing.admin-payment-methods.save', input)
       if (current !== workflowActions.generation() || displayed !== view.current) return
       setDraft(undefined); await refresh()
+      if (current === workflowActions.generation() && displayed === view.current) setNotice('支付配置已保存')
     } catch (failure) {
       if (current !== workflowActions.generation() || displayed !== view.current) return
       if (failure instanceof CoreAdminApiError && failure.status === 409 && !workflowActions.snapshot().pending) {
         setDraft(undefined); await refresh()
-        if (current === workflowActions.generation() && displayed === view.current) setError('支付方式已变化，请按刷新后的配置重新编辑。')
+        if (current === workflowActions.generation() && displayed === view.current) setError('支付方式已变化，请按刷新后的配置重新编辑')
         return
       }
       setError(managementError(failure))
@@ -76,7 +79,7 @@ export function PaymentMethodsPage() {
   async function save() {
     if (!draft || locked || !form.data || form.isError || form.isFetching) return
     if (!draft.name.trim() || !/^(0|[1-9][0-9]{0,9})$/.test(draft.sort) || Number(draft.sort) > 2147483647) {
-      setError('请填写支付方式名称和有效的排序值。'); return
+      setError('请填写支付方式名称和有效的排序值'); return
     }
     await perform({ ...(draft.row ? { payment_id: draft.row.id, expected_version: draft.row.version } : {}),
       name: draft.name.trim(), provider: draft.provider, icon: draft.icon.trim() || null, enabled: draft.enabled,
@@ -89,40 +92,41 @@ export function PaymentMethodsPage() {
   }
   const columns: Column<Method>[] = [
     { key: 'name', header: '支付方式', render: row => <div className="native-row-identity"><strong>{row.name}</strong><small>#{row.id} · {row.provider}</small></div> },
-    { key: 'state', header: '状态', render: row => <span>{row.enabled ? '已启用' : '已停用'} · {row.available ? '当前可结账' : '当前不可结账'}</span> },
-    { key: 'fees', header: '手续费', render: row => row.fee_fixed_minor + ' 最小货币单位 + ' + row.fee_percent + '%' },
+    { key: 'state', header: '状态', render: row => <div className="settings-payment-status"><span className={row.enabled ? 'settings-status positive' : 'settings-status'}>{row.enabled ? '已启用' : '已停用'}</span><small>{row.available ? '当前可结账' : '当前不可结账'}</small></div> },
+    { key: 'fees', header: '手续费', render: row => <div className="settings-fee-value"><strong>{row.fee_percent}%</strong><small>固定 {row.fee_fixed_minor} 最小货币单位</small></div> },
     { key: 'sort', header: '排序', render: row => row.sort },
     { key: 'action', header: '操作', render: row => <button className="button" disabled={locked} onClick={() => edit(row)}>配置支付方式</button> },
   ]
-  return <div className="native-management-page">
-    <PageHeader title="支付配置" description="管理原生支付方式。已有订单和支付尝试保留各自冻结的支付资料。"
+  return <div className="native-management-page settings-reference settings-payment-page">
+    <PageHeader title="支付配置" description="管理收款渠道、商户资料与结账可用状态"
       action={<><button className="button" disabled={state.busy} onClick={() => void refresh()}>刷新支付配置</button><button className="button primary" disabled={locked || !providers.data?.data.length} onClick={() => edit()}>新增支付方式</button></>} />
     <ManagementFeedback error={providers.error} loading={providers.isFetching} onRetry={() => void refresh()} />
-    {pending ? <section className="list-card" role="status"><h2>支付配置等待确认</h2><p>继续保留原输入与操作标识，请确认原操作结果后再编辑。</p><button className="button" disabled={denied || state.busy || !readable || methods.isFetching || providers.isFetching} onClick={() => void recover()}>使用原操作确认结果</button></section> : null}
+    {pending ? <section className="list-card settings-pending-card" role="status"><h2>支付配置等待确认</h2><p>继续保留原输入与操作标识，请确认原操作结果后再编辑</p><button className="button" disabled={denied || state.busy || !readable || methods.isFetching || providers.isFetching} onClick={() => void recover()}>使用原操作确认结果</button></section> : null}
+    {notice && !denied ? <p role="status" className="settings-success-feedback">{notice}</p> : null}
     {error || state.error ? <p role="alert">{error || managementError(state.error)}</p> : null}
-    {denied ? <p role="alert">无法确认支付配置权限，已隐藏数据。</p> : null}
+    {denied ? <p role="alert">无法确认支付配置权限，已隐藏数据</p> : null}
     <ReadList title="支付方式" rows={readable ? methods.data?.data ?? [] : []} columns={columns} page={page}
       meta={readable ? methods.data?.meta : undefined} ready={readable && !!methods.data}
-      loading={methods.isFetching} error={methods.error} onRetry={() => void refresh()} onPage={setPage} />
-    {readable && providers.data ? <section className="list-card"><h2>可用支付提供方</h2>
-      {providers.data.data.length ? <ul>{providers.data.data.map(provider => <li key={provider.provider}>{provider.provider} · {provider.currencies.join(' / ')} · {provider.external_refund ? '支持渠道退款' : '渠道退款未开放'}</li>)}</ul> : <p>当前没有通过原生能力检查的支付提供方，请先完成支付模块的受控部署。</p>}
-      <p>当前原生结账支持零手续费渠道；可用状态还取决于提供方、商户配置和币种校验。</p>
+      loading={methods.isFetching} error={methods.error} onRetry={() => void refresh()} onPage={setPage}><header className="settings-section-heading"><div><h2>支付方式</h2><p>区分渠道启用状态与当前结账可用性</p></div>{readable && methods.data ? <span className="settings-status">共 {methods.data.meta.total} 项</span> : null}</header></ReadList>
+    {readable && providers.data ? <section className="list-card settings-section"><details className="settings-provider-help"><summary>可用支付提供方 <span>{providers.data.data.length} 个</span></summary>
+      {providers.data.data.length ? <ul>{providers.data.data.map(provider => <li key={provider.provider}>{provider.provider} · {provider.currencies.join(' / ')} · {provider.external_refund ? '支持渠道退款' : '渠道退款未开放'}</li>)}</ul> : <p>暂无可用支付提供方，请检查支付模块状态</p>}
+      <p>当前支持零手续费渠道，保存后仍需核对商户资料和支持币种</p></details>
     </section> : null}
-    {draft && readable ? <section className="list-card"><h2>{draft.row ? '编辑支付方式' : '新增支付方式'}</h2>
-      <form className="native-content-form" onSubmit={event => { event.preventDefault(); void save() }}>
-        <label>名称<input required maxLength={255} value={draft.name} disabled={locked} onChange={event => setDraft({ ...draft, name: event.target.value })} /></label>
+    {draft && readable ? <section className="list-card settings-section"><header className="settings-section-heading"><div><h2>{draft.row ? '编辑支付方式' : '新增支付方式'}</h2><p>填写展示信息和商户资料</p></div><span className="settings-status">{draft.row ? '已有渠道' : '新建渠道'}</span></header>
+      <form className="native-content-form settings-field-grid" onSubmit={event => { event.preventDefault(); void save() }}>
+        <label>名称<input autoFocus placeholder="例如：在线支付" required maxLength={255} value={draft.name} disabled={locked} onChange={event => setDraft({ ...draft, name: event.target.value })} /></label>
         <label>支付提供方<select value={draft.provider} disabled={locked || !!draft.row} onChange={event => setDraft({ ...draft, provider: event.target.value, configuration: {} })}>
           {draft.row && !providers.data?.data.some(row => row.provider === draft.provider) ? <option value={draft.provider}>{draft.provider}</option> : null}
           {providers.data?.data.map(row => <option key={row.provider} value={row.provider}>{row.provider}</option>)}</select></label>
-        <label>图标地址<input maxLength={2048} value={draft.icon} disabled={locked} onChange={event => setDraft({ ...draft, icon: event.target.value })} /></label>
+        <label>图标地址<input placeholder="https://" maxLength={2048} value={draft.icon} disabled={locked} onChange={event => setDraft({ ...draft, icon: event.target.value })} /></label>
         <label>排序<input inputMode="numeric" value={draft.sort} disabled={locked} onChange={event => setDraft({ ...draft, sort: event.target.value })} /></label>
-        <label><input type="checkbox" checked={draft.enabled} disabled={locked} onChange={event => setDraft({ ...draft, enabled: event.target.checked })} />启用此支付方式</label>
+        <label className="settings-toggle-field"><span>启用此支付方式</span><input type="checkbox" checked={draft.enabled} disabled={locked} onChange={event => setDraft({ ...draft, enabled: event.target.checked })} /></label>
         <ManagementFeedback error={form.error} loading={form.isFetching} onRetry={() => void form.refetch()} />
-        {form.data && !form.isError ? <><p>已有商户配置不会回显；留空保留已保存的值。新建支付方式时请填写提供方要求的资料。</p>
-          {form.data.data.fields.map(field => <label key={field.name}>{field.label}（{field.configured ? '已配置' : '未配置'}）<input autoComplete="off" type={field.kind === 'password' ? 'password' : 'text'} maxLength={8192}
+        {form.data && !form.isError ? <><div className="settings-subsection-heading"><h3>商户配置</h3><p>凭据不会回显，留空保留原值</p></div>
+          {form.data.data.fields.map(field => <label key={field.name}><span className="settings-label-line">{field.label}<small className={field.configured ? 'settings-configured' : ''}>{field.configured ? '已配置' : '待填写'}</small></span><input autoComplete="off" type={field.kind === 'password' ? 'password' : 'text'} maxLength={8192}
             value={draft.configuration[field.name] ?? ''} disabled={locked} onChange={event => setDraft({ ...draft, configuration: { ...draft.configuration, [field.name]: event.target.value } })} /></label>)}</> : null}
-        <button className="button primary" disabled={locked || !form.data || form.isError || form.isFetching}>保存支付配置</button>
-        <button className="button" type="button" disabled={state.busy} onClick={() => { view.current++; setDraft(undefined) }}>关闭编辑</button>
+        <footer className="settings-form-actions"><span>保存后影响后续结账</span><button className="button primary" disabled={locked || !form.data || form.isError || form.isFetching}>保存支付配置</button>
+        <button className="button" type="button" disabled={state.busy} onClick={() => { view.current++; setDraft(undefined) }}>关闭编辑</button></footer>
       </form>
     </section> : null}
   </div>

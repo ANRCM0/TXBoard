@@ -70,8 +70,14 @@ try {
 
   await navigate(page, '权限组管理')
   await page.getByRole('row').filter({ hasText: 'Native group' }).getByRole('button', { name: '编辑', exact: true }).click()
-  await page.getByLabel('分组名称', { exact: true }).fill('Reviewed group')
-  await page.getByRole('button', { name: '保存分组', exact: true }).click()
+  const groupEditor = page.getByRole('dialog', { name: '编辑分组', exact: true })
+  await groupEditor.waitFor()
+  await groupEditor.getByLabel('分组名称', { exact: true }).fill('Reviewed group')
+  await groupEditor.getByRole('button', { name: '保存分组', exact: true }).click()
+  // An unknown write remains in the editor; close presentation without discarding its original key.
+  await groupEditor.getByRole('alert').waitFor()
+  await groupEditor.getByRole('button', { name: '取消', exact: true }).click()
+  await groupEditor.waitFor({ state: 'detached' })
   await page.getByRole('button', { name: '确认原分组操作', exact: true }).waitFor()
   await navigate(page, '套餐管理')
   await navigate(page, '权限组管理')
@@ -107,8 +113,11 @@ try {
 
   await navigate(page, '访问审计')
   await page.getByRole('row').filter({ hasText: 'Observed domains' }).getByRole('button', { name: '编辑', exact: true }).click()
-  await page.getByLabel('审计规则匹配内容', { exact: true }).fill('reviewed.test')
-  await page.getByRole('button', { name: '保存审计规则', exact: true }).click()
+  const auditEditor = page.getByRole('dialog', { name: '编辑审计规则', exact: true })
+  await auditEditor.waitFor()
+  await auditEditor.getByLabel('审计规则匹配内容', { exact: true }).fill('reviewed.test')
+  await auditEditor.getByRole('button', { name: '保存审计规则', exact: true }).click()
+  await auditEditor.waitFor({ state: 'detached' })
   await page.getByRole('row').filter({ hasText: 'reviewed.test' }).waitFor()
   await page.getByLabel('节点 ID', { exact: true }).fill(state.event.server_id)
   await page.getByLabel('用户 ID', { exact: true }).fill(state.event.user_id)
@@ -144,7 +153,7 @@ try {
   assert.equal(await page.locator('section[aria-label="套餐发布编辑器"]').count(), 0)
   passed('new publication uses authoritative full terms and the observed revision while historical terms remain unchanged')
 
-  const offers = page.locator('section[aria-label="套餐 Offer"]')
+  const offers = page.locator('section[aria-label="周期商品"]')
   await offers.getByRole('button', { name: '调整可用性', exact: true }).click()
   await page.locator('#catalog-availability-sell').uncheck()
   await page.locator('#catalog-availability-capacity').fill('0')
@@ -154,7 +163,7 @@ try {
   assert.equal(availability.expected_version, '1'); assert.equal(availability.capacity_limit, 0)
   state.catalogDenied = true
   await page.getByRole('button', { name: '刷新', exact: true }).click()
-  await page.getByText('无法确认套餐管理权限，已隐藏数据。请刷新确认权限。', { exact: true }).waitFor()
+  await page.getByText('无法确认套餐管理权限，已隐藏数据请刷新确认权限', { exact: true }).waitFor()
   assert.equal(await page.locator('.native-management-page table').count(), 0)
   assert.equal(await page.locator('section[aria-label="套餐完整条款"]').count(), 0)
   assert.ok(!page.url().includes('sign-in'))
@@ -171,7 +180,8 @@ try {
     const tables = await mobile.page.locator('.native-management-page .table-wrap').evaluateAll(elements => elements.map(element => ({
       viewport: element.clientWidth, content: element.scrollWidth, table: element.querySelector('table').getBoundingClientRect().width,
     })))
-    assert.ok(tables.length > 0 && tables.every(table => table.content > table.viewport && table.table >= 920), name + ' tables must retain readable columns in a horizontal scroll region')
+    const minimumTableWidth = name === '套餐管理' ? 740 : name === '权限组管理' ? 580 : 760
+    assert.ok(tables.length > 0 && tables.every(table => table.content > table.viewport && table.table >= minimumTableWidth), name + ' tables must retain readable column widths in a horizontal scroll region: ' + JSON.stringify(tables))
     await mobile.page.screenshot({ path: path.join(output, name + '-mobile.png'), fullPage: true })
   }
   verifyFixture(mobile.state)

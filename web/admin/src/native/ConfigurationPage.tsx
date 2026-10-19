@@ -1,3 +1,4 @@
+import './settings-reference.css'
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { CoreAdminApiError, type CoreInput } from '@txboard/core-sdk'
@@ -25,6 +26,8 @@ export function ConfigurationPage({ group = 'site' }: { group?: ConfigurationGro
   const blocked = denied(query.error) || denied(state.error)
   const ready = current && !blocked && !query.isError && !!query.data
   const locked = !ready || query.isFetching || state.busy || !!state.pending
+  const selectedFields = fields.filter(([, field]) => field.group === group)
+  const changedCount = selectedFields.filter(([name, field]) => JSON.stringify(draft[name]) !== JSON.stringify(baseline[name]) && (!field.write_only || draft[name] !== '')).length
   const pending = state.pending?.operation === 'settings.configuration.update' ? state.pending : undefined
   useEffect(() => { setOwner({ group, epoch }); setDraft({}); setBaseline({}); setVersion(''); setEditing(false); setMessage('') }, [group, epoch])
   useEffect(() => { if (blocked) { setDraft({}); setBaseline({}); setVersion(''); setEditing(false) } }, [blocked])
@@ -49,40 +52,41 @@ export function ConfigurationPage({ group = 'site' }: { group?: ConfigurationGro
       if (recover && pending) await workflowActions.run(pending.operation, pending.input)
       else {
         const values = Object.fromEntries(fields.filter(([name, field]) => field.group === group && JSON.stringify(draft[name]) !== JSON.stringify(baseline[name]) && (!field.write_only || draft[name] !== '')).map(([name]) => [name, draft[name]]))
-        if (!Object.keys(values).length) { setMessage('没有需要保存的修改。'); return }
+        if (!Object.keys(values).length) { setMessage('没有需要保存的修改'); return }
         await workflowActions.run('settings.configuration.update', { expected_version: version, values } as CoreInput<'settings.configuration.update'>)
       }
       if (!isCurrent()) return
-      setDraft({}); setBaseline({}); setEditing(false); setMessage('设置已保存。'); await refresh()
+      setDraft({}); setBaseline({}); setEditing(false); setMessage('设置已保存'); await refresh()
     } catch (error) {
       if (!isCurrent()) return
       setMessage(managementError(error))
       if (error instanceof CoreAdminApiError && error.status === 409 && !error.needsStateConfirmation) {
         setDraft({}); setBaseline({}); setEditing(false); setVersion(''); await refresh()
-        if (isCurrent()) setMessage('设置已被其他管理员修改，已刷新。请重新开始编辑并核对修改。')
+        if (isCurrent()) setMessage('设置已被其他管理员修改，请重新编辑并核对修改')
       }
     }
   }
-  return <div className="native-management-page">
-    <PageHeader title={titles[group]} description="修改当前分类的设置。凭据留空会保留已配置值。" action={<button className="button" disabled={state.busy || query.isFetching} onClick={() => void refresh()}>刷新权限与设置</button>} />
+  return <div className="native-management-page settings-reference settings-configuration-page">
+    <PageHeader title={titles[group]} description="管理站点运行偏好，修改后保存当前分类" action={<button className="button" disabled={state.busy || query.isFetching} onClick={() => void refresh()}>刷新设置</button>} />
     <ManagementFeedback error={query.isError ? query.error : undefined} loading={query.isFetching} onRetry={() => void refresh()} />
     {message || state.error ? <p role="alert">{message || managementError(state.error)}</p> : null}
-    {blocked ? <p role="alert">当前无法确认设置访问权限，已清空表单并隐藏数据。</p> : null}
-    {pending ? <section className="list-card"><h2>操作等待确认</h2><p>设置保存的结果尚未确认，请使用原操作确认结果。</p><button className="button" disabled={state.busy || !ready || query.isFetching} onClick={() => void perform(true)}>使用原操作确认结果</button></section> : null}
-    {ready ? <section className="list-card"><p className="native-configuration-version">设置版本：{query.data!.data.version}</p>
-      {!editing ? <button className="button" disabled={locked} onClick={begin}>开始编辑</button> : <form className="native-content-form" onSubmit={event => { event.preventDefault(); void perform() }}>
+    {blocked ? <p role="alert">当前无法确认设置访问权限，已清空表单并隐藏数据</p> : null}
+    {pending ? <section className="list-card settings-pending-card"><h2>操作等待确认</h2><p>设置保存的结果尚未确认，请使用原操作确认结果</p><button className="button" disabled={state.busy || !ready || query.isFetching} onClick={() => void perform(true)}>使用原操作确认结果</button></section> : null}
+    {ready ? <section className="list-card settings-section"><header className="settings-section-heading"><div><h2>{titles[group]}</h2><p>{selectedFields.length} 项设置 · 凭据留空保留已配置值</p></div><span className="settings-status" data-editing={editing}>{editing ? '正在编辑' : '当前配置'}</span></header>
+      <details className="settings-help"><summary>设置说明</summary><p>修改仅在保存后生效，取消编辑会放弃本次修改</p><p className="native-configuration-version">设置版本：{query.data!.data.version}</p></details>
+      {!editing ? <><dl className="settings-value-grid">{selectedFields.map(([name, field]) => { const value = (query.data!.data.values as Record<string, Value>)[name] ?? field.default; return <div key={name}><dt>{field.label}</dt><dd data-kind={field.kind} data-configured={field.write_only ? query.data!.data.credentials.find(item => item.name === name)?.configured : undefined}>{field.write_only ? (query.data!.data.credentials.find(item => item.name === name)?.configured ? '已配置' : '未配置') : field.kind === 'checkbox' ? (value ? '已开启' : '已关闭') : Array.isArray(value) ? value.join('、') || '未设置' : String(value) || '未设置'}</dd></div> })}</dl><footer className="settings-form-actions"><span>核对当前配置后开始修改</span><button className="button primary" disabled={locked} onClick={begin}>开始编辑</button></footer></> : <form className="native-content-form settings-field-grid" onSubmit={event => { event.preventDefault(); void perform() }}>
         {fields.filter(([, field]) => field.group === group).map(([name, field]) => {
           const id = 'configuration-' + name, value = draft[name] ?? field.default
           const update = (next: Value) => setDraft(old => ({ ...old, [name]: next }))
           const configured = field.write_only && query.data!.data.credentials.find(item => item.name === name)?.configured
-          return <label key={name} htmlFor={id}>{field.label}{field.write_only ? <small>（{configured ? '已配置' : '未配置'}，留空保留）</small> : null}
+          return <label className={field.kind === 'checkbox' ? 'settings-toggle-field' : field.kind === 'list' ? 'settings-wide-field' : undefined} key={name} htmlFor={id}>{field.label}{field.write_only ? <small>（{configured ? '已配置' : '未配置'}，留空保留）</small> : null}
             {field.kind === 'checkbox' ? <input id={id} type="checkbox" checked={Boolean(value)} disabled={locked} onChange={event => update(event.target.checked)} />
               : field.kind === 'select' ? <select id={id} value={String(value)} disabled={locked} onChange={event => update(event.target.value)}>{field.options?.map(option => <option key={option} value={option}>{option || '不加密'}</option>)}</select>
-              : field.kind === 'list' ? <textarea id={id} rows={4} value={Array.isArray(value) ? value.join('\n') : String(value)} disabled={locked} onChange={event => update(event.target.value.split('\n'))} onBlur={() => update(Array.isArray(value) ? value.map(item => item.trim()).filter(Boolean) : [])} />
+              : field.kind === 'list' ? <textarea id={id} placeholder="每行填写一项" rows={4} value={Array.isArray(value) ? value.join('\n') : String(value)} disabled={locked} onChange={event => update(event.target.value.split('\n'))} onBlur={() => update(Array.isArray(value) ? value.map(item => item.trim()).filter(Boolean) : [])} />
               : <input id={id} type={field.write_only ? 'password' : field.kind === 'number' ? 'number' : 'text'} autoComplete={field.write_only ? 'new-password' : 'off'} value={String(value)} min={field.schema.minimum} max={field.schema.maximum} minLength={field.schema.minLength} maxLength={field.schema.maxLength} required={field.kind === 'number' || !!field.schema.minLength} disabled={locked} onChange={event => update(field.kind === 'number' ? Number(event.target.value) : event.target.value)} />}
           </label>
         })}
-        <button className="button" disabled={locked}>保存当前分类</button><button className="button" type="button" disabled={state.busy} onClick={() => { setDraft({}); setBaseline({}); setEditing(false) }}>取消编辑</button>
+        <footer className="settings-form-actions"><span aria-live="polite">{changedCount ? `${changedCount} 项待保存` : '尚未修改'}</span><button className="button primary" disabled={locked}>保存当前分类</button><button className="button" type="button" disabled={state.busy} onClick={() => { setDraft({}); setBaseline({}); setEditing(false) }}>取消编辑</button></footer>
       </form>}
     </section> : null}
   </div>

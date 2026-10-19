@@ -99,11 +99,11 @@ try {
   await page.getByRole('button', { name: '释放我的工单', exact: true }).waitFor()
   assert.equal(state.ticket.row_version, '8')
   await page.getByLabel('选择附件', { exact: true }).setInputFiles({ name: 'private-note.txt', mimeType: 'text/plain', buffer: attachmentBytes })
-  await page.getByText('private-note.txt · 待随回复发送', { exact: true }).waitFor()
-  await page.getByLabel('回复（最多 10 KB）', { exact: true }).fill('Verified response')
+  await page.getByRole('list', { name: '待发送附件', exact: true }).getByRole('listitem').filter({ hasText: 'private-note.txt' }).getByText('待随回复发送', { exact: true }).waitFor()
+  await page.getByLabel('回复用户', { exact: true }).fill('Verified response')
   await page.getByRole('button', { name: '发送回复', exact: true }).click()
   await page.locator('.native-ticket-messages').getByText('Verified response', { exact: true }).waitFor()
-  await page.getByRole('list', { name: '已发送附件', exact: true }).getByText('private-note.txt · ' + attachmentBytes.length + ' 字节', { exact: true }).waitFor()
+  await page.getByRole('list', { name: '已发送附件', exact: true }).getByRole('listitem').filter({ hasText: 'private-note.txt' }).getByText(attachmentBytes.length + ' 字节 · 已发送', { exact: true }).waitFor()
   assert.equal(state.attachment.status, 'attached')
   assert.deepEqual(state.calls.filter(call => call.operation === 'support.admin-tickets.reply').map(call => call.input.attachment_ids), [[attachmentId]])
   assert.deepEqual(state.calls.filter(call => /attachments\.(begin|append|finish)$/.test(call.operation)).map(call => call.operation),
@@ -118,6 +118,9 @@ try {
     await editor.waitFor()
     await page.waitForFunction(expected => document.querySelector('textarea')?.value === expected, markup)
     assert.equal(await editor.inputValue(), markup)
+    const preview = page.locator('details').filter({ has: page.locator('summary', { hasText: '查看正文预览' }) })
+    await preview.locator('summary').click()
+    assert.equal(await preview.locator('.support-preview').innerText(), markup)
     assert.equal(await page.evaluate(() => window.fixtureInjected === true), false)
     assert.equal(await page.locator('.native-management-page img[src="x"], .native-management-page script').count(), 0)
   }
@@ -134,7 +137,7 @@ try {
   assert.equal(await batchTable.getByRole('button', { name: '撤销并退回发行人', exact: true }).isDisabled(), true)
   state.giftDenied = true
   await page.getByRole('button', { name: '刷新', exact: true }).click()
-  await page.getByRole('alert').filter({ hasText: '无法确认礼品卡管理权限，已隐藏数据。' }).waitFor()
+  await page.getByRole('alert').filter({ hasText: '无法确认礼品卡管理权限，已隐藏数据' }).waitFor()
   assert.equal(await page.locator('.native-management-page table').count(), 0)
   assert.equal(await page.getByText('Current batch', { exact: true }).count(), 0)
   assert.equal(await page.getByText(state.gift.card_id, { exact: true }).count(), 0)

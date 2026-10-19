@@ -46,7 +46,7 @@ async function settle() { await act(async () => { await new Promise(resolve => s
 async function render(page: ReactNode) {
   await act(async () => root.render(<QueryClientProvider client={client}>{page}</QueryClientProvider>)); await settle()
 }
-function button(text: string) { return [...host.querySelectorAll<HTMLButtonElement>('button')].find(node => node.textContent === text)! }
+function button(text: string) { return [...host.querySelectorAll<HTMLButtonElement>('button')].find(node => node.getAttribute('aria-label') === text || node.textContent?.trim() === text)! }
 async function click(text: string) { await act(async () => button(text).click()); await settle() }
 
 it.each([
@@ -152,7 +152,10 @@ it('loads the selected gift batch and revokes the observed card version without 
   }) as never)
   await render(<GiftCardsPage />); await click('查看逐卡状态')
   expect(admin.read).toHaveBeenCalledWith('billing.admin-gift-batches.get', { batch_id: uuid }, expect.any(AbortSignal))
-  expect(host.textContent).toContain('Batch test · 逐卡状态')
+  const batchDetail = [...host.querySelectorAll('section')].find(node => node.querySelector('h2')?.textContent === '批次详情')!
+  expect(batchDetail.querySelector('h3')?.textContent).toBe('Batch test')
+  expect(batchDetail.querySelectorAll('.commerce-metrics > div')).toHaveLength(4)
+  expect(batchDetail.querySelector('.commerce-metrics > div')?.textContent).toBe('待兑换1张')
   const table = host.querySelector('[aria-label="批次内卡片"]')!
   await act(async () => table.querySelector<HTMLButtonElement>('button')!.click()); await settle()
   expect(admin.write).toHaveBeenCalledExactlyOnceWith('billing.admin-gift-cards.revoke', { card_id: uuid, expected_version: '1' }, expect.any(String))

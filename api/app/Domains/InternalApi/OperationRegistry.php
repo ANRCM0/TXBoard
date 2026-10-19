@@ -91,6 +91,7 @@ final class OperationRegistry
                     'app_name', 'app_description', 'app_url', 'logo', 'tos_url', 'is_email_verify', 'is_invite_force',
                     'is_recaptcha', 'is_captcha', 'stop_register', 'login_with_mail_link_enable',
                     'try_out_enable', 'try_out_plan_id', 'traffic_warn_rate']),
+            'network.nodes.traffic-history.get' => self::spec([], '', '', null, 'nodeTrafficHistory', [], [], handler: UsageReadOperations::class),
             'network.nodes.list' => self::spec($admin, 'admin', $read, Txapi\Admin\NetworkNodeAdminController::class, 'index',
                 $page, ['id', 'name', 'type', 'host', 'port', 'server_port', 'group_ids', 'route_ids', 'tags',
                     'parent_id', 'machine_id', 'show', 'enabled', 'sort', 'u', 'd'], list: true, permission: 'network.nodes.read'),
