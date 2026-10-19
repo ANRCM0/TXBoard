@@ -31,6 +31,15 @@ commission reversal actions are not exposed by the current backend contract.
 Unadapted navigation destinations continue to display the existing pending page.
 New user application product work remains deferred in this phase.
 
+Catalog management reads complete verified publication snapshots and paginated
+history. Editing an existing plan publishes a new revision with the observed
+current revision as a precondition; it preserves the terms already purchased.
+Historical publications remain read-only. Offer availability has a separate
+version check, and the capacity for a new publication requires an explicit choice.
+Network configuration covers groups, routes and access-audit rules/events. Route
+sorting verifies the complete current set, and node routing simulation is a
+bounded read that displays any non-authoritative result and unresolved patterns.
+
 `web-ci` runs component and browser regression checks. Browser fixtures validate
 the built UI against strict generated Gateway contracts and record their synthetic
 transport explicitly. Native backend Actions and actual image acceptance are

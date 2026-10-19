@@ -2,7 +2,10 @@ import { CoreAdminApiError, StaleAdminContext, coreOperations } from '@txboard/c
 import type { CoreInput } from '@txboard/core-sdk'
 import type { CoreAdminWriteOperation } from '@txboard/core-sdk'
 
-type Operation = Extract<CoreAdminWriteOperation, `commerce.admin-orders.${string}` | `support.admin-tickets.${string}` | `content.${string}` | `billing.coupons.${string}` | `billing.admin-gift-cards.${string}` | `billing.admin-commissions.${string}`>
+type Operation = Extract<CoreAdminWriteOperation,
+  `commerce.admin-orders.${string}` | `support.admin-tickets.${string}` | `content.${string}`
+  | `billing.coupons.${string}` | `billing.admin-gift-cards.${string}` | `billing.admin-commissions.${string}`
+  | `catalog.${string}` | `network.groups.${string}` | `network.routes.${string}` | `network.access-audit.${string}`>
 export type PendingWorkflow = { [K in Operation]: {
   operation: K; input: CoreInput<K>; key: string; unknown: boolean
 } }[Operation]

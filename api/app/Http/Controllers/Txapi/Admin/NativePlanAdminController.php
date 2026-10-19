@@ -17,6 +17,7 @@ final class NativePlanAdminController
     {
         return [
             'plan_id' => ['sometimes', 'integer', 'min:1', 'max:'.PHP_INT_MAX],
+            'expected_revision_id' => ['sometimes', 'string', 'regex:/\A[1-9][0-9]{0,18}\z/D'],
             'name' => ['required', 'string', 'min:1', 'max:255'], 'content' => ['sometimes', 'nullable', 'string', 'max:8192'],
             'tags' => ['sometimes', 'array', 'max:40'], 'tags.*' => ['string', 'max:80'],
             'quota_gib' => ['required', 'integer', 'min:0', 'max:8589934591'],
