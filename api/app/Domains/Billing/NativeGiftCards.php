@@ -290,7 +290,7 @@ final class NativeGiftCards implements GiftCards
     public function expire(int $limit): array
     {
         if ($limit < 1 || $limit > 1000 || DB::transactionLevel() !== 0) self::invalid();
-        app(InstallationAuthority::class)->assertNativeRead();
+        app(InstallationAuthority::class)->assertNativeRuntime();
         $candidates = DB::table('tx_native_gift_card')->useWritePdo()->where('state', 'reserved')->where('expires_at', '<=', time())
             ->orderBy('expires_at')->orderBy('id')->limit($limit)->get(['id', 'issuer_id']);
         $count = 0; $errors = [];
