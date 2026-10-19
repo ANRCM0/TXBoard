@@ -68,6 +68,7 @@ export const coreNavigationGroups = [
       ['/config/payment', '支付配置', WalletCards],
       ['/finance/coupon', '优惠券', Tag],
       ['/finance/gift-card', '礼品卡', Gift],
+      ['/finance/commission', '佣金管理', WalletCards],
     ],
   },
   {

@@ -32,11 +32,21 @@
 .native-read-fields a { color: var(--primary); }
 .native-read-link { padding: 0; background: none; border: 0; color: var(--primary); cursor: pointer; text-align: left; overflow-wrap: anywhere; }
 .native-read-list { min-width: 0; }
+.native-content-form { display: grid; gap: 16px; max-width: 900px; }
+.native-content-form label { display: grid; gap: 8px; }
+.native-content-form input, .native-content-form select, .native-content-form textarea { min-width: 0; max-width: 100%; box-sizing: border-box; padding: 10px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--panel); color: var(--fg); }
 .native-read-list .table-wrap { max-width: 100%; overscroll-behavior-x: contain; }
 .native-read-list .data-table { min-width: 920px; }
 .native-read-list .data-table td { white-space: nowrap; }
 .native-read-list .native-read-link { white-space: nowrap; }
 .native-scroll-hint { display: none; }
+.native-pending-notice { margin: 0 0 20px; padding: 16px 20px; border: 1px solid var(--border); border-left: 3px solid var(--primary); border-radius: var(--radius-control); background: var(--panel); overflow-wrap: anywhere; }
+.native-pending-notice p { margin: 8px 0; color: var(--muted); }
+.native-pending-notice a { color: var(--primary); }
+.native-management-page .list-card:has(> h2), .native-management-page .list-card:has(> form) { padding: 20px; }
+.native-management-page > label { display: grid; gap: 8px; max-width: 600px; }
+.native-management-page > label input, .native-management-page > label select, .native-management-page > label textarea { min-width: 0; max-width: 100%; box-sizing: border-box; padding: 10px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--panel); color: var(--fg); }
+.native-management-page .native-content-form input[type=checkbox] { width: auto; justify-self: start; }
 @media (max-width: 600px) {
   .native-overview-grid { grid-template-columns: minmax(0, 1fr); }
   .native-site-settings dl > div { grid-template-columns: minmax(0, 1fr); gap: 8px; }

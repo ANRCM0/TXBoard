@@ -8,8 +8,9 @@ import { NavLink } from 'react-router-dom'
 import { coreNavigationGroups } from '../../navigation/core'
 import { preloadAdminRoute, scheduleAdminRouteWarmup } from '../../lib/routePreload'
 import { useDialog } from '../../lib/useDialog'
+import { availableAdminPaths } from '../../native/routes'
 
-const availablePaths = new Set(['/config/system', '/system/sessions', '/server/manage', '/server/machine', '/user/manage', '/finance/order'])
+const availablePaths = new Set(availableAdminPaths)
 
 type SidebarProps = {
   open: boolean

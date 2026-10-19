@@ -1,6 +1,6 @@
 {
   "schema": "frontend-integration/v1",
-  "sourceRepository": "local TX-F",
+  "sourceRepository": "TX-F (historical import; independent development retired)",
   "sourceCommit": "1880e0e",
   "sourceScope": [
     "web/admin",

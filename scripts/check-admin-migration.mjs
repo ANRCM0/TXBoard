@@ -9,6 +9,21 @@ const source = JSON.parse(await readFile(path.join(root, 'contracts/frontend/sou
 const workspace = JSON.parse(await readFile(path.join(root, 'package.json'), 'utf8'))
 const adminPackage = JSON.parse(await readFile(path.join(root, 'web/admin/package.json'), 'utf8'))
 const userPackage = JSON.parse(await readFile(path.join(root, 'web/user/package.json'), 'utf8'))
+const ownership = JSON.parse(await readFile(path.join(root, 'contracts/frontend/ownership.v1.json'), 'utf8'))
+const expectedPaths = { admin: 'web/admin', user: 'web/user', shared: 'web/shared', sdk: 'gateway/packages/core-sdk' }
+if (ownership.schema !== 'frontend-ownership/v1' || ownership.repository !== 'TXBoard'
+    || ownership.independent_repository !== false
+    || JSON.stringify(ownership.paths) !== JSON.stringify(expectedPaths)
+    || !Object.values(expectedPaths).every(name => workspace.workspaces.includes(name))) {
+  throw new Error('Frontend ownership must stay in the TXBoard source workspace')
+}
+for (const definition of [workspace, adminPackage, userPackage]) {
+  for (const version of Object.values({ ...definition.dependencies, ...definition.devDependencies })) {
+    if (typeof version === 'string' && /(?:TX-F|\.\.\/|\.\.\\)/i.test(version)) {
+      throw new Error('Frontend cannot depend on an independent repository checkout')
+    }
+  }
+}
 if (!workspace.workspaces.includes('gateway/packages/core-sdk')
     || adminPackage.dependencies['@txboard/core-sdk'] !== '*'
     || userPackage.dependencies['@txboard/core-sdk'] !== '*') throw new Error('Frontend must use the same-repository SDK workspace')
@@ -57,4 +72,5 @@ const sdkEntry = await readFile(path.join(root, 'web/admin/src/native/api.ts'), 
 if (!sdkEntry.includes('@txboard/core-sdk')) throw new Error('SDK consumer entry is missing')
 console.log(JSON.stringify({ sourceCommit: source.sourceCommit, copiedFiles: source.files.length,
   unchangedFiles: source.files.length - changed.length, adaptedFiles: changed,
-  reachableSourceModules: visited.size, legacyRuntimeReachable: false, sameRepositorySdk: true }, null, 2))
+  reachableSourceModules: visited.size, legacyRuntimeReachable: false, sameRepositorySdk: true,
+  activeRepository: ownership.repository, independentRepository: ownership.independent_repository }, null, 2))
