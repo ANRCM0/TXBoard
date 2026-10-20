@@ -15,8 +15,13 @@ const server = createServer(async (request, response) => {
     const pathname = new URL(request.url, 'http://localhost').pathname
     const asset = pathname.match(/^\/(?:admin|\.txboard-admin)\/assets\/([A-Za-z0-9_.-]+)$/)
     if (asset) {
-      response.writeHead(200, { 'Content-Type': asset[1].endsWith('.css') ? 'text/css' : 'text/javascript' })
+      const mime = { js: 'text/javascript', css: 'text/css', ttf: 'font/ttf', woff: 'font/woff', woff2: 'font/woff2', svg: 'image/svg+xml', png: 'image/png' }
+      response.writeHead(200, { 'Content-Type': mime[path.extname(asset[1]).slice(1)] || 'application/octet-stream' })
       return response.end(await readFile(path.join(dist, 'assets', asset[1])))
+    }
+    if (/^\/(?:admin|\.txboard-admin)\/editor-assets\.json$/.test(pathname)) {
+      response.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' })
+      return response.end(await readFile(path.join(dist, 'editor-assets.json')))
     }
     if (/^\/admin(?:\/.*)?$/.test(pathname)) {
       response.writeHead(200, { 'Content-Type': 'text/html', 'Cache-Control': 'private, no-store' })
@@ -104,7 +109,7 @@ try {
   await page.getByLabel('回复用户', { exact: true }).fill('Verified response')
   await page.getByRole('button', { name: '发送回复', exact: true }).click()
   await page.locator('.native-ticket-messages').getByText('Verified response', { exact: true }).waitFor()
-  await page.getByRole('list', { name: '已发送附件', exact: true }).getByRole('listitem').filter({ hasText: 'private-note.txt' }).getByText(attachmentBytes.length + ' 字节 · 已发送', { exact: true }).waitFor()
+  await page.getByRole('list', { name: '已发送附件', exact: true }).getByRole('listitem').filter({ hasText: 'private-note.txt' }).getByText(attachmentBytes.length + '字节 · 已发送', { exact: true }).waitFor()
   assert.equal(state.attachment.status, 'attached')
   assert.deepEqual(state.calls.filter(call => call.operation === 'support.admin-tickets.reply').map(call => call.input.attachment_ids), [[attachmentId]])
   assert.deepEqual(state.calls.filter(call => /attachments\.(begin|append|finish)$/.test(call.operation)).map(call => call.operation),
@@ -116,16 +121,18 @@ try {
   for (const name of ['公告管理', '知识库管理']) {
     await navigate(page, name)
     await page.getByRole('row').filter({ hasText: markup }).getByRole('button', { name: '编辑', exact: true }).click()
-    const editor = page.getByLabel('正文', { exact: true })
+    const dialog = page.getByRole('dialog', { name: '编辑内容', exact: true })
+    const editor = dialog.getByLabel('正文', { exact: true })
     await editor.waitFor()
-    await page.waitForFunction(expected => document.querySelector('textarea')?.value === expected, markup)
+    await page.waitForFunction(expected => document.querySelector('[role="dialog"] textarea')?.value === expected, markup)
     assert.equal(await editor.inputValue(), markup)
-    await page.getByRole('button', { name: '预览', exact: true }).click()
-    const preview = page.getByRole('region', { name: '正文预览', exact: true })
+    await dialog.getByRole('button', { name: '预览', exact: true }).click()
+    const preview = dialog.getByRole('region', { name: '正文预览', exact: true })
     assert.equal((await preview.innerText()).trim(), markup)
     assert.equal(await page.evaluate(() => window.fixtureInjected === true), false)
     assert.equal(await page.locator('.native-management-page img[src="x"], [role="dialog"] img[src="x"], .native-management-page script, [role="dialog"] script').count(), 0)
-    await page.getByRole('button', { name: '取消编辑', exact: true }).click()
+    await dialog.getByRole('button', { name: '关闭编辑', exact: true }).click()
+    await dialog.waitFor({ state: 'detached' })
   }
   passed('notice and knowledge hostile markup remains inert text in rows and content editors')
 

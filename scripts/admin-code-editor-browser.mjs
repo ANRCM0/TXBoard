@@ -12,8 +12,9 @@ await mkdir(output, { recursive: true })
 const server = createServer(async (req, res) => {
   try {
     const path = new URL(req.url, 'http://localhost').pathname
-    const asset = path.match(/^\/admin\/assets\/([A-Za-z0-9_.-]+)$/)
-    const file = asset ? 'assets/' + asset[1] : path === '/admin/editor-assets.json' ? 'editor-assets.json' : 'index.html'
+    const asset = path.match(/^\/(?:admin|\.txboard-admin)\/assets\/([A-Za-z0-9_.-]+)$/)
+    const manifest = /^\/(?:admin|\.txboard-admin)\/editor-assets\.json$/.test(path)
+    const file = asset ? 'assets/' + asset[1] : manifest ? 'editor-assets.json' : 'index.html'
     const extension = file.split('.').at(-1)
     const mime = { js: 'text/javascript', css: 'text/css', json: 'application/json', ttf: 'font/ttf', woff: 'font/woff', woff2: 'font/woff2', svg: 'image/svg+xml', png: 'image/png' }[extension] || 'text/html'
     res.writeHead(200, { 'Content-Type': mime,
@@ -98,7 +99,7 @@ try {
   assert.equal(await page.getByRole('textbox', { name: 'Clash 模板源码', exact: true }).inputValue(), '# local editor draft')
   checks.push('CSP permits local Monaco initialization; typing and mode switching preserve source')
   await page.getByRole('button', { name: '取消编辑', exact: true }).click()
-  await page.getByRole('button', { name: '放弃修改', exact: true }).click()
+  await page.getByRole('dialog').getByRole('button', { name: '放弃修改', exact: true }).click()
   await page.getByRole('button', { name: '编辑模板', exact: true }).click()
   await page.getByLabel('校验节点', { exact: true }).selectOption('provider-a')
   const plainMode = page.getByRole('button', { name: '使用纯文本编辑', exact: true })
@@ -109,16 +110,17 @@ try {
   assert.deepEqual(templateWrites[0].input, { format_id: 'clash/v1', expected_version: 'a'.repeat(64), source: '# edited locally\n{{ .Default }}', provider_id: 'provider-a' })
   const savedVersion = templates[0].version
   await page.getByRole('button', { name: '恢复默认模板', exact: true }).click()
-  await page.getByRole('button', { name: '恢复默认', exact: true }).click()
+  await page.getByRole('dialog').getByRole('button', { name: '恢复默认', exact: true }).click()
   await page.getByText('使用节点内置默认模板', { exact: true }).waitFor()
   assert.deepEqual(templateWrites[1].input, { format_id: 'clash/v1', expected_version: savedVersion })
   checks.push('Template save sends the provider, unchanged source and observed version; reset confirms and uses the next version')
   await page.getByRole('button', { name: 'Sing-box', exact: true }).click()
+  const jsonWorkerStarted = page.waitForEvent('worker', { predicate: worker => /json\.worker-[^/]+\.js$/.test(worker.url()) })
   await page.getByRole('button', { name: '编辑模板', exact: true }).click()
   await page.locator('[data-editor-state="ready"]').waitFor()
   await page.locator('.monaco-editor').click({ position: { x: 180, y: 20 } })
   await page.keyboard.press('Control+A'); await page.keyboard.insertText('null')
-  await page.waitForFunction(() => performance.getEntriesByType('resource').some(entry => /json\.worker-[^/]+\.js$/.test(entry.name)))
+  await jsonWorkerStarted
   assert.ok(workers.some(url => /json\.worker-/.test(url)), 'JSON language worker starts locally')
   // Exercise the production worker factory for languages used by mail and theme source.
   const languageWorkers = Promise.all(['html', 'css'].map(language => page.waitForEvent('worker', {

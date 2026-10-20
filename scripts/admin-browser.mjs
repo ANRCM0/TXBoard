@@ -163,7 +163,9 @@ async function fixture(viewport) {
       app_description: 'Subscription services', app_url: 'https://example.test', logo: null, tos_url: null,
       currency: 'CNY', stop_register: 0 } })
     if (operation === 'settings.configuration.get') return checkedSend(configuration)
-    if (operation === 'platform.modules.list') return checkedSend({ modules: [], summary: { total: 0, discovery_errors: 0 } })
+    if (operation === 'platform.module-cards.list') return checkedSend({ modules: [], discovery_errors: 0 })
+    if (['billing.admin-account-balances.get', 'billing.admin-customer-policy.get',
+      'subscription.admin.amendment.get', 'usage.admin-settled-entries.list'].includes(operation)) return fail(403)
     if (operation === 'identity.sessions.list') return send(state.sessions, { has_more: false })
     if (operation === 'identity.sessions.revoke') {
       state.revokeKeys.push(req.headers()['idempotency-key'])
@@ -223,10 +225,10 @@ try {
   await trendCard.getByRole('combobox', { name: '统计币种', exact: true }).selectOption('USD')
   const trendGraph = trendCard.getByRole('group', { name: '订单收入交互图表', exact: true })
   await trendGraph.press('End')
-  await trendCard.getByRole('status').filter({ hasText: '已支付订单金额' }).waitFor()
+  await trendCard.getByRole('status').filter({ hasText: '已支付订单 · 金额' }).waitFor()
   await trendGraph.press('Escape')
   assert.equal(await trendCard.getByRole('status').count(), 0)
-  const pin = trendCard.getByRole('button', { name: '突出显示已支付订单金额曲线', exact: true })
+  const pin = trendCard.getByRole('button', { name: '突出显示已支付订单 · 金额曲线', exact: true })
   await pin.click()
   assert.equal(await pin.getAttribute('aria-pressed'), 'true')
   await trendCard.locator('summary').filter({ hasText: /^查看订单收入数据$/ }).click()
@@ -393,8 +395,8 @@ try {
   const operationsBeforeModules = state.operations.length
   await nav(page, '插件管理')
   await page.locator('.native-management-page .page-header').getByRole('heading', { name: '插件管理', exact: true }).waitFor()
-  await page.getByRole('region', { name: '模块清单', exact: true }).getByText('没有符合条件的模块', { exact: true }).waitFor()
-  assert.equal(state.operations.slice(operationsBeforeModules).includes('platform.modules.list'), true)
+  await page.getByText('没有符合条件的模块', { exact: true }).waitFor()
+  assert.equal(state.operations.slice(operationsBeforeModules).includes('platform.module-cards.list'), true)
   assert.equal(state.operations.slice(operationsBeforeModules).some(operation => coreOperations[operation].idempotency !== 'read'), false)
   passed('active plugin inventory shows its empty state without lifecycle writes or old HTTP routes')
   state.logoutFailure = true
@@ -453,17 +455,12 @@ try {
   await mobile.page.getByRole('button', { name: 'ORDER-A', exact: true }).waitFor()
   assert.ok(await mobile.page.evaluate(() => document.documentElement.scrollWidth <= innerWidth))
   await mobile.page.screenshot({ path: output + '/orders-mobile.png', fullPage: true })
-  const table = mobile.page.locator('.native-read-list .table-wrap')
-  assert.ok(await table.evaluate(element => element.scrollWidth > element.clientWidth))
-  await table.evaluate(element => { element.scrollLeft = element.scrollWidth })
-  assert.ok(await table.evaluate(element => {
-    const last = element.querySelector('tbody td:last-child').getBoundingClientRect()
-    const bounds = element.getBoundingClientRect()
-    return last.right <= bounds.right + 1 && last.left >= bounds.left
-  }))
-  await mobile.page.screenshot({ path: output + '/orders-mobile-scrolled.png', fullPage: true })
-  await table.evaluate(element => { element.scrollLeft = 0 })
-  passed('mobile resource tables scroll to complete fields without compressing exact values')
+  const mobileOrders = mobile.page.locator('.native-read-list .ui-mobile-records')
+  await mobileOrders.waitFor()
+  await mobileOrders.getByText('90071992547409.93 USD', { exact: true }).waitFor()
+  assert.ok(await mobileOrders.evaluate(element => element.scrollWidth <= element.clientWidth))
+  await mobileOrders.getByRole('button', { name: '查看订单 ORDER-A 详情', exact: true }).waitFor()
+  passed('mobile order records retain exact values and a visible detail action without horizontal overflow')
   await mobile.page.getByRole('button', { name: 'ORDER-A', exact: true }).click()
   await mobile.page.getByRole('dialog', { name: '订单详情', exact: true })
     .locator('.reference-order-amount strong').filter({ hasText: /^90071992547409\.93 USD$/ }).waitFor()

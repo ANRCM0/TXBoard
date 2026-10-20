@@ -15,8 +15,13 @@ const server = createServer(async (request, response) => {
     const pathname = new URL(request.url, 'http://localhost').pathname
     const asset = pathname.match(/^\/(?:admin|\.txboard-admin)\/assets\/([A-Za-z0-9_.-]+)$/)
     if (asset) {
-      response.writeHead(200, { 'Content-Type': asset[1].endsWith('.css') ? 'text/css' : 'text/javascript' })
+      const mime = { js: 'text/javascript', css: 'text/css', ttf: 'font/ttf', woff: 'font/woff', woff2: 'font/woff2', svg: 'image/svg+xml', png: 'image/png' }
+      response.writeHead(200, { 'Content-Type': mime[path.extname(asset[1]).slice(1)] || 'application/octet-stream' })
       return response.end(await readFile(path.join(dist, 'assets', asset[1])))
+    }
+    if (/^\/(?:admin|\.txboard-admin)\/editor-assets\.json$/.test(pathname)) {
+      response.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' })
+      return response.end(await readFile(path.join(dist, 'editor-assets.json')))
     }
     if (/^\/admin(?:\/.*)?$/.test(pathname)) {
       response.writeHead(200, { 'Content-Type': 'text/html', 'Cache-Control': 'private, no-store' })
