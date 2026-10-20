@@ -5,6 +5,7 @@ import { RouterProvider } from 'react-router-dom'
 import { Toaster } from 'sonner'
 import { router } from './router'
 import { queryClient } from './native/queryClient'
+import { t, useLocale } from './lib/i18n'
 import './design-tokens.css'
 import './styles.css'
 import './form-system.css'
@@ -16,11 +17,16 @@ import './native/native.css'
 import './admin-theme.css'
 import './components/ui/ui.css'
 
+function RouteLoading() {
+  useLocale()
+  return <div className='route-loading' role='status' aria-live='polite'><span />{t('正在加载页面…')}</div>
+}
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
       <React.Suspense
-        fallback={<div className='route-loading' role='status' aria-live='polite'><span />正在加载页面…</div>}
+        fallback={<RouteLoading />}
       >
         <RouterProvider router={router} future={{ v7_startTransition: true }} />
       </React.Suspense>

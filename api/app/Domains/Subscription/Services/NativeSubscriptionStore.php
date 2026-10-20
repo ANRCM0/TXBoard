@@ -95,10 +95,13 @@ final class NativeSubscriptionStore
             throw new DomainException('NATIVE_TERMS_OWNERSHIP_INVALID');
         }
         $source = $this->jsonObject($terms->source_snapshot);
-        if (($source['schema'] ?? null) !== 'tx-core.purchase-terms/v2'
-            || (string) $terms->source_order_id !== ($source['order_id'] ?? null)
-            || (string) $subscription->user_id !== ($source['user_id'] ?? null)
-            || (string) $terms->plan_revision_id !== ($source['catalog']['revision_id'] ?? null)) {
+        $amendment = NativeSubscriptionAmendmentEvidence::isAmendment($source['schema'] ?? null);
+        $purchaseSource = $amendment ? ($source['purchase'] ?? []) : $source;
+        if (($purchaseSource['schema'] ?? null) !== 'tx-core.purchase-terms/v2'
+            || (string) $terms->source_order_id !== ($purchaseSource['order_id'] ?? null)
+            || (string) $subscription->user_id !== ($purchaseSource['user_id'] ?? null)
+            || (string) $terms->plan_revision_id !== (($source['schema'] ?? null) === NativeSubscriptionAmendmentEvidence::PLAN_SOURCE
+                ? ($source['plan_publication']['revision_id'] ?? null) : ($purchaseSource['catalog']['revision_id'] ?? null))) {
             throw new DomainException('NATIVE_TERMS_SOURCE_INVALID');
         }
         // Current verification is only for callers already holding the owning aggregate.
@@ -108,22 +111,23 @@ final class NativeSubscriptionStore
         $order = ($currentRead ? $orderQuery->sharedLock() : $orderQuery)->first();
         $purchase = ($currentRead ? $purchaseQuery->sharedLock() : $purchaseQuery)->first();
         if (!$order || !$purchase || !in_array((int) $order->status, [Order::STATUS_PROCESSING, Order::STATUS_COMPLETED], true)
-            || SubscriptionTermsTimeline::json($this->grants->resolve($order, $purchase) ?? []) !== SubscriptionTermsTimeline::json($source)) {
+            || SubscriptionTermsTimeline::json($this->grants->resolve($order, $purchase) ?? []) !== SubscriptionTermsTimeline::json($purchaseSource)) {
             throw new DomainException('NATIVE_TERMS_SOURCE_INVALID');
         }
+        $effective = $amendment ? app(NativeSubscriptionAmendmentEvidence::class)->effective($terms, $subscription, $source, $currentRead) : $source;
         foreach (['quota_bytes', 'group_id', 'speed_limit_mbps', 'device_limit'] as $field) {
             if (SubscriptionTermsTimeline::decimal($terms->$field, nullable: $field !== 'quota_bytes')
-                !== SubscriptionTermsTimeline::decimal($source[$field] ?? null, nullable: $field !== 'quota_bytes')) {
+                !== SubscriptionTermsTimeline::decimal($effective[$field] ?? null, nullable: $field !== 'quota_bytes')) {
                 throw new DomainException('NATIVE_TERMS_MIRROR_INVALID');
             }
         }
-        if ($terms->billing_timezone !== $source['reset_policy']['timezone']
+        if ($terms->billing_timezone !== $effective['reset_policy']['timezone']
             || SubscriptionTermsTimeline::json($this->jsonObject($terms->reset_policy))
-                !== SubscriptionTermsTimeline::json($source['reset_policy'])
+                !== SubscriptionTermsTimeline::json($effective['reset_policy'])
             || !is_string($terms->content_hash) || !hash_equals($terms->content_hash, $this->termsHash($terms))) {
             throw new DomainException('NATIVE_TERMS_HASH_INVALID');
         }
-        return $source;
+        return $amendment ? $effective + ['schema' => $source['schema'], 'purchase' => $purchaseSource] : $source;
     }
 
     public function termsHash(array|object $row): string
@@ -381,7 +385,11 @@ final class NativeSubscriptionStore
     public function openPeriod(object $subscription, object $terms, int $now, ?object $previous = null): object
     {
         $policy = $this->jsonObject($terms->reset_policy);
-        $next = $this->calendar->nextReset($policy, $subscription->expires_at === null ? null : (int) $subscription->expires_at, $now);
+        $source = $this->jsonObject($terms->source_snapshot);
+        $resetAnchor = NativeSubscriptionAmendmentEvidence::isAmendment($source['schema'] ?? null)
+            ? SubscriptionTermsTimeline::timestamp($source['reset_anchor_expires_at'] ?? null, true)
+            : ($subscription->expires_at === null ? null : (int) $subscription->expires_at);
+        $next = $this->calendar->nextReset($policy, $resetAnchor, $now);
         $row = [
             'subscription_id' => (string) $subscription->id, 'terms_id' => (string) $terms->id,
             'period_no' => $previous === null ? '1' : $this->increment($previous->period_no),
@@ -404,7 +412,7 @@ final class NativeSubscriptionStore
         return $this->updatePeriod($period, ['status' => 'closed', 'ends_at' => $end], $now);
     }
 
-    public function adjustQuota(object $period, object $terms, string $transitionId, string $key, int $now): ?string
+    public function adjustQuota(object $period, object $terms, string $transitionId, string $key, int $now, string $policy = 'core-purchase-quota/v1'): ?string
     {
         if ((string) $period->quota_bytes === (string) $terms->quota_bytes) {
             return null;
@@ -413,7 +421,7 @@ final class NativeSubscriptionStore
             'usage_period_id' => (string) $period->id, 'terms_transition_id' => $transitionId,
             'business_key' => $key, 'kind' => 'quota_change',
             'quota_delta_bytes' => (string) ((int) $terms->quota_bytes - (int) $period->quota_bytes),
-            'policy_version' => 'core-purchase-quota/v1',
+            'policy_version' => $policy,
         ];
         return (string) DB::table('tx_usage_adjustment')->insertGetId($payload + [
             'content_hash' => SubscriptionTermsTimeline::hash($payload), 'created_at' => $now,

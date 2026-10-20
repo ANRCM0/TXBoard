@@ -105,3 +105,29 @@ describe('overview daily node total traffic', () => {
     expect(() => nodeTrafficHistory(history([{ id: '1', name: 'Node', points: [{ date: '2026-10-14', total_bytes }] }]))).toThrow(TypeError)
   })
 })
+
+import { dashboardDates, validDashboardDates, nativeDashboardTrend } from './overviewCharts'
+
+describe('authoritative dashboard projections', () => {
+  it.each([7, 30, 90, 180, 365])('constructs a %i-day UTC date range', days => {
+    const dates = dashboardDates(days, now)
+    expect((Date.parse(dates.end_date) - Date.parse(dates.start_date)) / 86400000 + 1).toBe(days)
+    expect(dates.end_date).toBe('2026-10-20')
+  })
+  it('rejects future, invalid, reversed and overlong custom dates', () => {
+    expect(validDashboardDates('2026-01-01', '2026-10-20', now)).toBe(true)
+    expect(validDashboardDates('2026-02-30', '2026-03-01', now)).toBe(false)
+    expect(validDashboardDates('2026-10-20', '2026-10-21', now)).toBe(false)
+    expect(validDashboardDates('2026-10-20', '2026-10-19', now)).toBe(false)
+    expect(validDashboardDates('2025-10-19', '2026-10-20', now)).toBe(false)
+  })
+  it('preserves server amounts and counts exactly and selects a single currency', () => {
+    const point = { date: '2026-10-20', income: [{ currency: 'CNY', amount_minor: '9007199254741000', count: '9007199254740993' }, { currency: 'USD', amount_minor: '123', count: '1' }], earned_commission: [], commission_transfer: [] }
+    const money = nativeDashboardTrend([point], 'income', 'amount', 'CNY')
+    expect(money.series[0].displayValues).toEqual(['90071992547410.00 CNY'])
+    expect(money.series[0].values).toEqual([100])
+    expect(nativeDashboardTrend([point], 'income', 'amount', 'USD').series[0].summary).toBe('1.23 USD')
+    expect(nativeDashboardTrend([point], 'income', 'count', 'CNY').series[0].summary).toBe('9,007,199,254,740,993 笔')
+    expect(nativeDashboardTrend([point], 'earned_commission', 'amount', 'CNY').series[0].summary).toBe('0.00 CNY')
+  })
+})

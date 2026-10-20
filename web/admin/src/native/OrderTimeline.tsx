@@ -1,3 +1,4 @@
+import { t, useLocale } from '../lib/i18n'
 import { Clock3, Check, Circle } from 'lucide-react'
 import './detail-reference.css'
 import { useEffect, useRef, useState } from 'react'
@@ -12,6 +13,7 @@ const labels = { created: '订单已创建', payment_accepted: '支付已确认'
 /** Keep each mounted order's cursor private; failed reads never advance it. */
 export function OrderTimeline({ tradeNo, onAdvance, onDenied }: { tradeNo: string;
   onAdvance?: () => void; onDenied?: (error: unknown) => void }) {
+  useLocale()
   const [history, setHistory] = useState<OrderEventHistory>()
   const [error, setError] = useState<unknown>()
   const [loading, setLoading] = useState(true)
@@ -68,15 +70,15 @@ export function OrderTimeline({ tradeNo, onAdvance, onDenied }: { tradeNo: strin
       document.removeEventListener('visibilitychange', visible)
     }
   }, [tradeNo])
-  return <section className="native-order-timeline reference-order-timeline" aria-label="订单状态时间线" aria-busy={loading}>
-    <div className="reference-detail-section-title"><Clock3 size={17} /><h3>状态时间线</h3><span className="reference-tag">{history ? history.events.length + ' 个事件' : loading ? '读取中' : '未读取'}</span></div>
-    {loading && !history ? <p role="status">正在读取时间线…</p> : null}
-    {error ? <div role="alert"><p>{managementError(error)}时间线尚未更新。</p>
-      <button className="button" disabled={loading} onClick={() => retry.current()}>重新加载时间线</button></div> : null}
-    {history && !history.historyComplete ? <p className="native-timeline-notice">历史记录不完整，仅展示已记录的事件。</p> : null}
-    {history?.events.length === 0 ? <p>暂无事件记录。</p> : null}
+  return <section className="native-order-timeline reference-order-timeline" aria-label={t("订单状态时间线")} aria-busy={loading}>
+    <div className="reference-detail-section-title"><Clock3 size={17} /><h3>{t("状态时间线")}</h3><span className="reference-tag">{history ? t('{count} 个事件', { count: history.events.length }) : loading ? t("读取中") : t("未读取")}</span></div>
+    {loading && !history ? <p role="status">{t("正在读取时间线…")}</p> : null}
+    {error ? <div role="alert"><p>{managementError(error)}{t("时间线尚未更新。")}</p>
+      <button className="button" disabled={loading} onClick={() => retry.current()}>{t("重新加载时间线")}</button></div> : null}
+    {history && !history.historyComplete ? <p className="native-timeline-notice">{t("历史记录不完整，仅展示已记录的事件。")}</p> : null}
+    {history?.events.length === 0 ? <p>{t("暂无事件记录。")}</p> : null}
     {history && history.events.length > 0 ? <ol>{history.events.map(event => <li key={event.sequence} className={'reference-timeline-event ' + (event.type === 'cancelled' ? 'is-cancelled' : '')}><span className="reference-timeline-marker">{event.type === 'cancelled' ? <Circle size={12} /> : <Check size={12} />}</span><div className="reference-timeline-content">
-      <span className="commerce-timeline-event-name"><strong>{labels[event.type]}</strong><small>事件 #{event.sequence}</small></span><time dateTime={event.occurred_at}>{isoDate(event.occurred_at)}</time></div>
+      <span className="commerce-timeline-event-name"><strong>{t(labels[event.type])}</strong><small>{t('事件 #{id}', { id: event.sequence })}</small></span><time dateTime={event.occurred_at}>{isoDate(event.occurred_at)}</time></div>
     </li>)}</ol> : null}
   </section>
 }

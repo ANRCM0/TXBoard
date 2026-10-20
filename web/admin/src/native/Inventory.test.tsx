@@ -31,7 +31,7 @@ it('shows canonical IDs/byte counts and requests the next server page', async ()
   vi.mocked(admin.read).mockResolvedValue({ data: [row], meta: { page: 1, per_page: 20, total: 21, last_page: 2 } } as never)
   await render()
   expect(host.textContent).toContain('9007199254740993')
-  expect(host.textContent).toContain('9007199254740999')
+  expect(host.querySelector('[title="9007199254740999 字节"]')?.textContent).toBe('9007199.25 GB')
   expect(host.textContent).toContain('[2001:db8::1]:443')
   vi.mocked(admin.read).mockResolvedValueOnce({ data: [{ ...row, id: '2', name: 'Second page' }],
     meta: { page: 2, per_page: 20, total: 21, last_page: 2 } } as never)

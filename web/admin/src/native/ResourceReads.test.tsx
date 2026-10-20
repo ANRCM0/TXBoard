@@ -55,8 +55,11 @@ it('never sends an unsafe order user ID from a crafted URL', async () => {
   expect(host.querySelector('[role="alert"]')?.textContent).toContain('参数有误')
 })
 it('shows native entitlement state and withdraws a user detail after permission loss', async () => {
-  vi.mocked(admin.read).mockResolvedValue({ data: { ...profile, credential_status: 'provider_managed',
-    subscription: { schema: 'core-entitlement/v1', authorized: false, reason: 'ENTITLEMENT_MISSING', user_id: profile.id } } } as never)
+  vi.mocked(admin.read).mockImplementation(async operation => {
+    if (['billing.admin-account-balances.get', 'billing.admin-customer-policy.get', 'usage.admin-settled-entries.list'].includes(operation)) throw new CoreAdminApiError('FORBIDDEN', 403)
+    return { data: { ...profile, credential_status: 'provider_managed',
+      subscription: { schema: 'core-entitlement/v1', authorized: false, reason: 'ENTITLEMENT_MISSING', user_id: profile.id } } } as never
+  })
   await render('/user/' + profile.id)
   expect(host.textContent).toContain('当前没有可用订阅')
   expect(host.textContent).not.toContain('余额')

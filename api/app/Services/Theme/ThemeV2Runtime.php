@@ -16,6 +16,7 @@ use ZipArchive;
  */
 final class ThemeV2Runtime
 {
+    private static array $lockDepth = [];
     private const MANIFEST = 'txboard-theme.json';
     private const NAME = '/\A[a-z0-9][a-z0-9-]{0,62}[a-z0-9]\z/D';
 
@@ -96,7 +97,7 @@ final class ThemeV2Runtime
             try {
                 $manifest = $this->package->validate($zip, ...$this->trustedVersions());
                 $name = $manifest['name'];
-                $active = (string) admin_setting('frontend_theme', '') === $name;
+                $active = app(\App\Services\ThemeService::class)->getActiveTheme() === $name;
                 $target = $this->path($name);
                 if (File::exists($target)) {
                     if (!$this->isInstalled($name)) {
@@ -173,6 +174,20 @@ final class ThemeV2Runtime
                 File::deleteDirectory($stage);
             }
         });
+    }
+
+    public function inspectDeploymentPackage(string $path): array
+    {
+        $zip = new ZipArchive;
+        if ($zip->open($path) !== true) throw new InvalidArgumentException('Invalid Theme v2 ZIP');
+        try { return $this->package->validate($zip, ...$this->trustedVersions()); }
+        finally { $zip->close(); }
+    }
+
+    public function verifyInstalled(string $name): void
+    {
+        $this->assertAssetIntegrity($name, $this->path($name));
+        $this->package->assertDeployedCompatibility($this->manifest($name), ...$this->trustedVersions());
     }
 
     /** Publish only allowlisted static assets, never manifest or schema. */
@@ -331,7 +346,7 @@ final class ThemeV2Runtime
     {
         $manifest = $this->manifest($name);
         $defaults = $manifest['config']['defaults'] ?? [];
-        $stored = admin_setting('theme_'.$name);
+        $stored = \App\Models\Setting::query()->useWritePdo()->where('name', 'theme_'.$name)->first()?->value;
         return array_replace(is_array($defaults) ? $defaults : [], is_array($stored) ? $stored : []);
     }
 
@@ -340,8 +355,16 @@ final class ThemeV2Runtime
         $manifest = $this->manifest($name);
         $allowed = array_keys($manifest['config']['defaults'] ?? []);
         $filtered = array_intersect_key($settings, array_flip($allowed));
-        admin_setting(['theme_'.$name => array_replace($this->getConfig($name), $filtered)]);
+        \Illuminate\Support\Facades\DB::transaction(function () use ($name, $manifest, $filtered): void {
+            app(\App\Services\NativeSettingsStorage::class)->lock();
+            $row = \App\Models\Setting::query()->useWritePdo()->where('name', 'theme_'.$name)->lockForUpdate()->first();
+            $saved = is_array($row?->value) ? $row->value : [];
+            app(\App\Services\NativeSettingsStorage::class)->persist(['theme_'.$name => array_replace(
+                $manifest['config']['defaults'] ?? [], $saved, $filtered)]);
+        });
     }
+
+    public function withConfigurationLock(callable $work): mixed { return $this->locked($work); }
 
     public function getPublicConfig(string $name): array
     {
@@ -420,14 +443,21 @@ final class ThemeV2Runtime
 
     private function locked(callable $callback): mixed
     {
+        $root = $this->root();
+        if (isset(self::$lockDepth[$root])) {
+            self::$lockDepth[$root]++;
+            try { return $callback(); } finally { self::$lockDepth[$root]--; }
+        }
         File::ensureDirectoryExists($this->root());
         $handle = fopen($this->root().'/.runtime.lock', 'c+');
         if ($handle === false || !flock($handle, LOCK_EX)) {
             throw new RuntimeException('Cannot lock Theme v2 runtime');
         }
+        self::$lockDepth[$root] = 1;
         try {
             return $callback();
         } finally {
+            unset(self::$lockDepth[$root]);
             flock($handle, LOCK_UN);
             fclose($handle);
         }

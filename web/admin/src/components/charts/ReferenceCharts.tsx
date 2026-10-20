@@ -1,3 +1,4 @@
+import { t, useLocale, getLocale } from '../../lib/i18n'
 import { useEffect, useId, useRef, useState } from 'react'
 import type { CSSProperties, KeyboardEvent } from 'react'
 import './reference-charts.css'
@@ -57,7 +58,7 @@ const colors = [
 ]
 const colorAt = (index: number, color?: string) => color || colors[index % colors.length]
 const sample = (value: number | null | undefined): value is number => typeof value === 'number' && Number.isFinite(value) && value >= 0
-const formatNumber = (value: number) => new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 2 }).format(value)
+const formatNumber = (value: number) => new Intl.NumberFormat(getLocale(), { maximumFractionDigits: 2 }).format(value)
 const ratio = (value: number) => Number.isFinite(value) ? Math.max(0, Math.min(100, value)) : 0
 const toneStyle = (color: string): CSSProperties => ({ '--reference-chart-color': color } as CSSProperties)
 
@@ -77,7 +78,8 @@ function useChartWidth() {
   return { ref, width }
 }
 
-export function LineChart({ title, labels, series, formatValue = formatNumber, height = 240, emptyText = '暂无趋势数据', xAxisLabel = '时间', yAxisWidth = 48 }: LineChartProps) {
+export function LineChart({ title, labels, series, formatValue = formatNumber, height = 240, emptyText = t("暂无趋势数据"), xAxisLabel = t("时间"), yAxisWidth = 48 }: LineChartProps) {
+  useLocale()
   const id = useId().replace(/:/g, '')
   const { ref, width } = useChartWidth()
   const [pointer, setPointer] = useState<number | null>(null)
@@ -97,9 +99,9 @@ export function LineChart({ title, labels, series, formatValue = formatNumber, h
   const scale = maximum || 1
   const x = (i: number) => labels.length <= 1 ? (left + right) / 2 : left + (right - left) * i / (labels.length - 1)
   const y = (value: number) => bottom - value / scale * (bottom - top)
-  const description = `${labels.length} 个数据点，${series.length} 条曲线。横轴为${xAxisLabel}。聚焦图表后用左右方向键选择数据点，Home 和 End 跳到首尾。点击图例突出显示曲线。`
+  const description = t("{v0} 个数据点，{v1} 条曲线。横轴为{v2}。聚焦图表后用左右方向键选择数据点，Home 和 End 跳到首尾。点击图例突出显示曲线。", { v0: labels.length, v1: series.length, v2: xAxisLabel })
   const valueLabel = (item: ChartSeries, point: number) => sample(item.values[point])
-    ? item.displayValues?.[point] ?? formatValue(item.values[point]!) : '未上报'
+    ? item.displayValues?.[point] ?? formatValue(item.values[point]!) : t("未上报")
   function keyboard(event: KeyboardEvent<SVGSVGElement>) {
     if (!labels.length || !['ArrowLeft', 'ArrowRight', 'Home', 'End', 'Escape'].includes(event.key)) return
     event.preventDefault()
@@ -121,14 +123,14 @@ export function LineChart({ title, labels, series, formatValue = formatNumber, h
     return segments
   }
   return <section className="reference-chart reference-line-chart" aria-label={title} ref={ref}>
-    <div className="reference-chart-legend" aria-label={title + '图例'}>{series.map((item, i) => <button key={item.id} type="button"
-      style={toneStyle(colorAt(i, item.color))} aria-label={'突出显示' + item.label + '曲线'} aria-pressed={pinnedId === item.id}
+    <div className="reference-chart-legend" aria-label={t('{title}图例', { title })}>{series.map((item, i) => <button key={item.id} type="button"
+      style={toneStyle(colorAt(i, item.color))} aria-label={t('突出显示{label}曲线', { label: item.label })} aria-pressed={pinnedId === item.id}
       className={pinnedId && pinnedId !== item.id ? 'is-muted' : ''} onClick={() => setPinned(pinnedId === item.id ? null : item.id)}>
       <i aria-hidden="true" /><span>{item.label}{item.summary !== undefined ? <strong>{item.summary}</strong> : null}</span>
     </button>)}</div>
     {!hasSamples ? <div className="reference-chart-empty">{emptyText}</div> : <div className="reference-chart-plot">
       <svg viewBox={`0 0 ${width} ${plotHeight}`} width="100%" height={plotHeight} role="group" tabIndex={0}
-        aria-label={title + '交互图表'} aria-describedby={id + '-description'} onKeyDown={keyboard}
+        aria-label={t('{title}交互图表', { title })} aria-describedby={id + '-description'} onKeyDown={keyboard}
         onFocus={() => setFocused(current => current ?? 0)} onBlur={() => setFocused(null)}
         onPointerMove={event => {
           setFocused(null)
@@ -156,11 +158,12 @@ export function LineChart({ title, labels, series, formatValue = formatNumber, h
         <strong>{labels[index]}</strong>{series.map((item, i) => <span key={item.id} style={toneStyle(colorAt(i, item.color))}><i aria-hidden="true" />{item.label}<b>{valueLabel(item, index)}</b></span>)}
       </div> : null}
     </div>}
-    <details className="reference-chart-data"><summary>查看{title}数据</summary><div><table><caption>{title}</caption><thead><tr><th scope="col">{xAxisLabel}</th>{series.map(item => <th key={item.id} scope="col">{item.label}</th>)}</tr></thead><tbody>{labels.map((label, i) => <tr key={i}><th scope="row">{label}</th>{series.map(item => <td key={item.id}>{valueLabel(item, i)}</td>)}</tr>)}</tbody></table></div></details>
+    <details className="reference-chart-data"><summary>{t('查看{title}数据', { title })}</summary><div><table><caption>{title}</caption><thead><tr><th scope="col">{xAxisLabel}</th>{series.map(item => <th key={item.id} scope="col">{item.label}</th>)}</tr></thead><tbody>{labels.map((label, i) => <tr key={i}><th scope="row">{label}</th>{series.map(item => <td key={item.id}>{valueLabel(item, i)}</td>)}</tr>)}</tbody></table></div></details>
   </section>
 }
 
-export function DonutChart({ title, data, centerLabel = '合计', formatValue = formatNumber, emptyText = '暂无分布数据' }: DonutChartProps) {
+export function DonutChart({ title, data, centerLabel = t("合计"), formatValue = formatNumber, emptyText = t("暂无分布数据") }: DonutChartProps) {
+  useLocale()
   const id = useId().replace(/:/g, '')
   const [hovered, setHovered] = useState<string | null>(null), [focused, setFocused] = useState<string | null>(null)
   const valid = data.map(item => ({ ...item, value: sample(item.value) ? item.value : 0 }))
@@ -186,9 +189,9 @@ export function DonutChart({ title, data, centerLabel = '合计', formatValue = 
             onPointerEnter={() => setHovered(item.id)} onPointerLeave={() => setHovered(null)} onFocus={() => setFocused(item.id)} onBlur={() => setFocused(null)} />
         })}
         <text x="110" y="104" textAnchor="middle" className="reference-donut-total">{active ? formatNumber(normalizedTotal ? active.value / maximum / normalizedTotal * 100 : 0) + '%' : Number.isFinite(total) ? formatValue(total) : '—'}</text>
-        <text x="110" y="127" textAnchor="middle" className="reference-chart-axis">{active ? active.label : maximum ? centerLabel : '暂无占比'}</text>
+        <text x="110" y="127" textAnchor="middle" className="reference-chart-axis">{active ? active.label : maximum ? centerLabel : t("暂无占比")}</text>
       </svg>
-    </div><div className="reference-donut-legend" aria-label={title + '图例'}>{valid.map((item, i) => <button type="button" key={item.id}
+    </div><div className="reference-donut-legend" aria-label={t('{title}图例', { title })}>{valid.map((item, i) => <button type="button" key={item.id}
       style={toneStyle(colorAt(i, item.color))} className={active?.id === item.id ? 'is-active' : ''}
       onPointerEnter={() => setHovered(item.id)} onPointerLeave={() => setHovered(null)} onFocus={() => setFocused(item.id)} onBlur={() => setFocused(null)}
       aria-label={`${item.label}：${item.displayValue ?? formatValue(item.value)}，${formatNumber(normalizedTotal ? item.value / maximum / normalizedTotal * 100 : 0)}%`}>
@@ -196,11 +199,12 @@ export function DonutChart({ title, data, centerLabel = '合计', formatValue = 
     </button>)}</div></div>
     {active ? <p className="reference-donut-detail" role="status" aria-live={focused ? 'polite' : 'off'}>{active.label}：{active.displayValue ?? formatValue(active.value)} · {formatNumber(normalizedTotal ? active.value / maximum / normalizedTotal * 100 : 0)}%</p> : null}
     {!maximum ? <p className="reference-chart-empty-note">{emptyText}</p> : null}
-    <details className="reference-chart-data"><summary>查看{title}数据</summary><div><table><caption>{title}</caption><thead><tr><th scope="col">分类</th><th scope="col">数值</th><th scope="col">占比</th></tr></thead><tbody>{valid.map(item => <tr key={item.id}><th scope="row">{item.label}</th><td>{item.displayValue ?? formatValue(item.value)}</td><td>{formatNumber(normalizedTotal ? item.value / maximum / normalizedTotal * 100 : 0)}%</td></tr>)}</tbody></table></div></details>
+    <details className="reference-chart-data"><summary>{t('查看{title}数据', { title })}</summary><div><table><caption>{title}</caption><thead><tr><th scope="col">{t("分类")}</th><th scope="col">{t("数值")}</th><th scope="col">{t("占比")}</th></tr></thead><tbody>{valid.map(item => <tr key={item.id}><th scope="row">{item.label}</th><td>{item.displayValue ?? formatValue(item.value)}</td><td>{formatNumber(normalizedTotal ? item.value / maximum / normalizedTotal * 100 : 0)}%</td></tr>)}</tbody></table></div></details>
   </section>
 }
 
-export function HorizontalBarChart({ title, data, emptyText = '暂无节点流量数据' }: HorizontalBarChartProps) {
+export function HorizontalBarChart({ title, data, emptyText = t("暂无节点流量数据") }: HorizontalBarChartProps) {
+  useLocale()
   return <section className="reference-chart reference-bar-chart" aria-label={title}>
     {!data.length ? <div className="reference-chart-empty">{emptyText}</div> : <ol className="reference-bar-list">{data.map(row => <li key={row.id}>
       <strong className="reference-bar-label">{row.label}</strong><div className="reference-bar-values">{row.values.map((value, i) => <div key={value.id} className="reference-bar-entry" style={toneStyle(colorAt(i, value.color))}>

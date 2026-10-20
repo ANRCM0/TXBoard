@@ -16,6 +16,7 @@ use App\Domains\Billing\NativeWalletReservations;
 use App\Domains\Billing\OrderCheckout;
 use App\Domains\CredentialProvider\ProviderCodec;
 use App\Domains\Subscription\Services\NativeSubscriptionStore;
+use App\Domains\Subscription\Services\NativeSubscriptionAmendments;
 use App\Domains\Subscription\Contracts\OrderFulfillment;
 use App\Domains\Subscription\Internal\LockedOrderFulfillment;
 use App\Domains\Subscription\Services\PlanPublicationService;
@@ -34,9 +35,11 @@ use Illuminate\Support\Facades\DB;
 use Laravel\Sanctum\Sanctum;
 use Mockery;
 use Tests\Support\NativePaymentTestCase;
+use Tests\Support\NativeWorkflowActors;
 
 final class NativeUpgradeCreditTest extends NativePaymentTestCase
 {
+    use NativeWorkflowActors;
     protected string $publicationCurrency = 'CNY';
     protected array $planPrices = ['monthly' => '12.34', 'onetime' => '99.00', 'reset_traffic' => '2.00'];
     private int $fixtureSequence = 0;
@@ -70,6 +73,27 @@ final class NativeUpgradeCreditTest extends NativePaymentTestCase
         $this->assertSame($target->id, $replayed->id);
         $this->assertEquals($before, DB::table('tx_order_upgrade_credit')->where('order_id', $target->id)->first());
         $this->assertSame(1, DB::table('tx_upgrade_credit_source')->count());
+    }
+
+    public function test_administrative_plan_rights_and_extra_expiry_do_not_create_another_paid_credit_source(): void
+    {
+        [$user, $source, , $subscription] = $this->paidSource();
+        $administrativeOffer = $this->targetOffer('99.00');
+        $offer = DB::table('tx_plan_offer')->where('id', $administrativeOffer)->first();
+        $revision = DB::table('tx_plan_revision')->where('id', $offer->plan_revision_id)->first();
+        $admin = $this->workflowActor(true, ['subscription.lifecycle.manage']); $this->authenticateWorkflowActor($admin);
+        $owner = app(NativeSubscriptionAmendments::class); $snapshot = $owner->snapshot($admin->id, $user->id)['amendment'];
+        $result = $owner->apply($admin->id, $user->id, ['subscription_id' => $snapshot['subscription_id'], 'expected_subscription_version' => $snapshot['subscription_version'],
+            'expected_terms_id' => $snapshot['terms_id'], 'expected_period_version' => $snapshot['period_version'],
+            'changes' => ['plan_revision' => ['plan_id' => (string) $offer->plan_id, 'revision_id' => (string) $revision->id, 'content_hash' => $revision->content_hash],
+                'expires_at' => (string) ($subscription['expires_at'] + 365 * 86400)], 'reason' => 'administrative_rights'], $this->workflowKey());
+        Sanctum::actingAs($user, ['*']);
+        $target = app(PublishedOrderService::class)->create($user->id, $this->targetOffer('50.00'), 'after-administrative-upgrade');
+        $quote = $this->quote($target); $this->assertCount(1, $quote['sources']);
+        $this->assertSame((string) $source->id, $quote['sources'][0]['order_id']);
+        $this->assertNotSame($result['terms_id'], $quote['sources'][0]['terms_id']);
+        $this->assertSame((string) $subscription['expires_at'], $quote['sources'][0]['coverage_until']);
+        $this->assertLessThanOrEqual(1234, (int) $quote['credit_minor']);
     }
 
     public function test_early_renewal_credits_future_purchased_coverage_without_clipping_the_original_purchase(): void

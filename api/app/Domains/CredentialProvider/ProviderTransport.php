@@ -6,7 +6,7 @@ use App\Domains\CredentialProvider\Contracts\ProviderClient;
 use Illuminate\Support\Facades\DB;
 use Throwable;
 
-class ProviderTransport implements ProviderClient
+class ProviderTransport implements ProviderClient, \App\Domains\CredentialProvider\Contracts\TemplateValidationClient
 {
     public function configuration(string $providerId): array
     {
@@ -96,6 +96,35 @@ class ProviderTransport implements ProviderClient
             }
         }
         return $result;
+    }
+
+    public function validateTemplate(#[\SensitiveParameter] array $registration, string $format, #[\SensitiveParameter] string $source): void
+    {
+        $this->assertOutsideTransaction();
+        $capabilities = $this->capabilities($registration);
+        if (($capabilities['subscription_template_engine'] ?? null) !== 'tx-template/v1') {
+            throw new ProviderError('PROVIDER_TEMPLATE_ENGINE_UNSUPPORTED');
+        }
+        $configuration = $this->operatorConfiguration($registration['provider_id']);
+        if (($registration['provider_instance_epoch'] ?? null) !== $configuration['instance_epoch']
+            || !is_string($registration['config_digest'] ?? null)
+            || !hash_equals($configuration['config_digest'], $registration['config_digest'])) {
+            throw new ProviderError('PROVIDER_REGISTRATION_MISMATCH');
+        }
+        $configuration['endpoint'] = substr($configuration['endpoint'], 0, -strlen('/operations')).'/template-validate';
+        $request = ['contract_version' => 'tx-template/v1', 'request_id' => 'template_'.bin2hex(random_bytes(16)),
+            'provider_id' => $registration['provider_id'], 'provider_instance_epoch' => $registration['provider_instance_epoch'],
+            'format_id' => $format, 'source' => $source, 'sha256' => hash('sha256', $source)];
+        $response = ProviderCodec::decodeObject($this->exchange($configuration, $request, 4096, 10), 4096);
+        $expected = array_diff_key($request, ['source' => true]) + ['valid' => true];
+        $responseKeys = array_keys($response); $expectedKeys = array_keys($expected);
+        sort($responseKeys); sort($expectedKeys);
+        if ($responseKeys !== $expectedKeys) throw new ProviderError('PROVIDER_TEMPLATE_VALIDATION_INVALID');
+        foreach (array_diff_key($expected, ['valid' => true]) as $key => $value) {
+            if ($response[$key] !== $value) throw new ProviderError('PROVIDER_TEMPLATE_VALIDATION_INVALID');
+        }
+        if (!is_bool($response['valid'])) throw new ProviderError('PROVIDER_TEMPLATE_VALIDATION_INVALID');
+        if ($response['valid'] !== true) throw new ProviderError('PROVIDER_TEMPLATE_SOURCE_INVALID');
     }
 
     private function assertOutsideTransaction(): void

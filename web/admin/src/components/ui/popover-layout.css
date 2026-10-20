@@ -1,0 +1,11 @@
+.ui-popover > .ui-popover-panel.ui-positioned-popover {
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  box-sizing: border-box;
+  max-width: calc(100vw - 24px);
+  overflow: auto;
+  overscroll-behavior: contain;
+  z-index: 1100;
+}
+.ui-positioned-popover::backdrop { background: transparent; pointer-events: none; }

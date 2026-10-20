@@ -29,7 +29,9 @@ final class AdminOperationBindings
                         'NetworkNodeAdminController', 'NetworkMachineAdminController', 'ContentAdminController',
                         'AccessAuditAdminController', 'NativeSettingsAdminController', 'NativePaymentConfigurationController'], true)
                     || $binding['controller'] === 'MailTemplateAdminController'
-                        && in_array($binding['method'], ['save', 'reset'], true),
+                        && in_array($binding['method'], ['save', 'reset'], true)
+                    || $binding['controller'] === 'NativeSubscriptionTemplateController'
+                        && $binding['method'] === 'reset',
             ];
         }
         return $result;

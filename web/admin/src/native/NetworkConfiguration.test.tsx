@@ -1,4 +1,5 @@
 import { act } from 'react'
+import { createHash } from 'node:crypto'
 import { createRoot, type Root } from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
@@ -18,6 +19,7 @@ const bigId = '9007199254740993'
 const route = (id: string) => ({ id, remarks: 'route-' + id, match: ['domain:example.test'], action: 'direct',
   action_value: null, enabled: true, sort: 0, server_count: 0, created_at: null, updated_at: null })
 let routes: ReturnType<typeof route>[]
+const orderingRevision = () => createHash('sha256').update(JSON.stringify(routes.map(row => [row.id, row.sort]))).digest('hex')
 const simulation = { node: { id: bigId, name: 'observed node' }, target: 'example.test', authoritative: false,
   warning: 'custom routes take precedence', match: null, evaluated_routes: [], unresolved_patterns: [] }
 beforeEach(() => {
@@ -29,6 +31,7 @@ beforeEach(() => {
   vi.mocked(admin.read).mockReset().mockImplementation(async operation => {
     if (operation === 'network.groups.list') return { data: [{ id: bigId, name: 'private group', users_count: 0, plans_count: 0, server_count: 0 }], meta: { total: 1, last_page: 1 } } as never
     if (operation === 'network.routes.list') return { data: routes.map(row => ({ ...row })), meta: {} } as never
+    if (operation === 'network.routes.ordering.get') return { data: { revision: orderingRevision(), route_ids: routes.map(row => row.id) }, meta: {} } as never
     if (operation === 'network.nodes.list') return { data: [{ id: bigId, name: 'observed node' }], meta: { total: 1, last_page: 1 } } as never
     if (operation === 'network.routes.simulate') return { data: simulation, meta: {} } as never
     if (operation === 'network.access-audit.rules.list') return { data: [{ id: bigId, name: 'private rule', match_type: 'domain', match_value: 'example.test', enabled: true }], meta: {} } as never
@@ -36,7 +39,7 @@ beforeEach(() => {
   })
   vi.spyOn(window, 'confirm').mockReturnValue(true)
 })
-afterEach(() => { act(() => root.unmount()); client.clear(); host.remove(); workflowActions.reset(); vi.restoreAllMocks() })
+afterEach(() => { act(() => root.unmount()); client.clear(); host.remove(); workflowActions.reset(); vi.restoreAllMocks(); vi.unstubAllGlobals() })
 async function settle() { await act(async () => { await new Promise(resolve => setTimeout(resolve, 20)) }) }
 async function render(page: 'groups' | 'routes' | 'audit') {
   await act(async () => root.render(<QueryClientProvider client={client}>{page === 'groups' ? <GroupsPage /> : page === 'routes' ? <RoutesPage /> : <AccessAuditPage />}</QueryClientProvider>)); await settle()
@@ -93,7 +96,7 @@ it('sorts the complete fresh route set with exact IDs and zero-based integer pos
   await input(host.querySelector<HTMLInputElement>('input[aria-label="搜索路由"]')!, 'route-' + bigId)
   expect(host.querySelectorAll('tbody tr')).toHaveLength(1)
   await click('编辑完整路由排序'); await click('下移'); await click('保存完整路由排序')
-  expect(admin.write).toHaveBeenCalledExactlyOnceWith('network.routes.sort', { items: [{ id: '2', sort: 0 }, { id: bigId, sort: 1 }] }, expect.any(String))
+  expect(admin.write).toHaveBeenCalledExactlyOnceWith('network.routes.ordering.replace', { expected_revision: orderingRevision(), route_ids: ['2', bigId] }, expect.any(String))
 })
 
 it('rejects a changed route set rather than submitting an old full-set sort', async () => {
@@ -181,4 +184,112 @@ it('does not retry a rejected referenced group delete or invent optimistic succe
   expect(workflowActions.snapshot().pending).toBeUndefined()
   expect(host.textContent).toContain('private group')
   expect(host.textContent).toContain('记录已变化')
+})
+
+
+it('supports pointer route reordering while retaining the complete large-ID route set', async () => {
+  await render('routes'); await click('编辑完整路由排序')
+  const rows = host.querySelectorAll('.network-sort-list > li')
+  const transfer = { effectAllowed: '', dropEffect: '', setData: vi.fn() }
+  function drag(node: Element, type: string) { const event = new Event(type, { bubbles: true, cancelable: true }); Object.defineProperty(event, 'dataTransfer', { value: transfer }); node.dispatchEvent(event) }
+  await act(async () => { drag(rows[0]!.querySelector('[draggable]')!, 'dragstart'); drag(rows[1]!, 'dragover'); drag(rows[1]!, 'drop') })
+  await click('保存完整路由排序')
+  expect(admin.write).toHaveBeenCalledExactlyOnceWith('network.routes.ordering.replace', { expected_revision: orderingRevision(), route_ids: ['2', bigId] }, expect.any(String))
+})
+
+it('shows route action parameters only for actions that require them and rejects excess matches', async () => {
+  await render('routes'); await click('新增路由')
+  expect(label('动作参数')).toBeUndefined()
+  await select(label('动作').querySelector('select')!, 'dns')
+  expect(label('动作参数').querySelector('input')!.required).toBe(true)
+  await input(label('备注').querySelector('input')!, 'example DNS')
+  await input(label('动作参数').querySelector('input')!, '1.1.1.1')
+  await input(label('匹配规则').querySelector('textarea')!, Array(201).fill('domain:example.test').join('\n'))
+  await click('保存路由')
+  expect(admin.write).not.toHaveBeenCalled()
+  expect(document.querySelector('[role="dialog"]')!.textContent).toContain('请输入 1 至 200 项')
+})
+
+it('preserves a full ordering draft when another administrator changes the order of the same IDs', async () => {
+  await render('routes'); await click('编辑完整路由排序'); await click('下移')
+  routes[0]!.sort = 99
+  await click('保存完整路由排序')
+  expect(admin.write).not.toHaveBeenCalled()
+  expect(button('保存完整路由排序').disabled).toBe(true)
+  expect(host.querySelectorAll('.network-sort-list > li')).toHaveLength(2)
+  expect(host.textContent).toContain('当前排序草稿已保留')
+  await click('重新读取完整排序')
+  expect(window.confirm).toHaveBeenCalled()
+  expect(button('保存完整路由排序').disabled).toBe(false)
+})
+
+it('handles an owner revision conflict after preflight and requires a new reviewed ordering before retry', async () => {
+  await render('routes'); await click('编辑完整路由排序'); await click('下移')
+  vi.mocked(admin.write).mockRejectedValueOnce(new CoreAdminApiError('NETWORK_ROUTE_ORDERING_CONFLICT', 409))
+  await click('保存完整路由排序')
+  expect(button('保存完整路由排序').disabled).toBe(true)
+  expect(workflowActions.snapshot().pending).toBeUndefined()
+  const original = vi.mocked(admin.write).mock.calls[0]
+  await click('重新读取完整排序'); await click('下移'); await click('保存完整路由排序')
+  expect(admin.write).toHaveBeenCalledTimes(2)
+  expect(vi.mocked(admin.write).mock.calls[1]![2]).not.toBe(original![2])
+})
+
+it('recovers an unknown ordering after navigation with the same complete IDs revision and request key', async () => {
+  await render('routes'); await click('编辑完整路由排序'); await click('下移')
+  vi.mocked(admin.write).mockRejectedValueOnce(new TypeError('lost response')); await click('保存完整路由排序')
+  const original = vi.mocked(admin.write).mock.calls[0]
+  await render('groups'); await render('routes'); await click('确认原路由操作')
+  expect(vi.mocked(admin.write).mock.calls[1]).toEqual(original)
+  expect(workflowActions.snapshot().pending).toBeUndefined()
+})
+
+it('combines searchable multi-select route facets over the complete set and removes individual filters', async () => {
+  routes[1]!.action = 'block'; routes.push({ ...route('3'), action: 'dns', enabled: false })
+  await render('routes'); await click('动作筛选')
+  await act(async () => label('直连').querySelector<HTMLInputElement>('input')!.click())
+  await act(async () => label('指定 DNS').querySelector<HTMLInputElement>('input')!.click()); await settle()
+  expect(host.querySelectorAll('tbody tr')).toHaveLength(2)
+  await input(host.querySelector<HTMLInputElement>('input[aria-label="搜索动作筛选"]')!, '阻止')
+  expect(host.querySelector('.network-facet-options')?.textContent).toContain('阻止访问')
+  expect(host.querySelector('.network-facet-options')?.textContent).not.toContain('直连')
+  await click('动作筛选'); await click('状态筛选')
+  await act(async () => label('停用').querySelector<HTMLInputElement>('input')!.click()); await settle()
+  expect(host.querySelectorAll('tbody tr')).toHaveLength(1)
+  expect(host.textContent).toContain('筛选完整路由集合')
+  await click('状态筛选'); await click('移除筛选 停用')
+  expect(host.querySelectorAll('tbody tr')).toHaveLength(2)
+})
+
+it('keeps DNS and proxy parameter drafts separate and omits parameters for a direct route', async () => {
+  await render('routes'); await click('新增路由')
+  await input(label('备注').querySelector('input')!, 'reviewed route')
+  await input(label('匹配规则').querySelector('textarea')!, 'example.test')
+  await select(label('动作').querySelector('select')!, 'dns'); await input(label('动作参数').querySelector('input')!, '1.1.1.1')
+  await select(label('动作').querySelector('select')!, 'proxy'); await input(label('动作参数').querySelector('input')!, 'proxy-outbound')
+  await select(label('动作').querySelector('select')!, 'dns')
+  expect(label('动作参数').querySelector('input')!.value).toBe('1.1.1.1')
+  await select(label('动作').querySelector('select')!, 'direct'); await click('保存路由')
+  expect(admin.write).toHaveBeenCalledExactlyOnceWith('network.routes.save', { remarks: 'reviewed route', match: ['example.test'], action: 'direct', action_value: null, enabled: true }, expect.any(String))
+})
+
+it('uses cards with visible operations on mobile for both group and route records', async () => {
+  vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() })))
+  await render('groups')
+  expect(host.querySelectorAll('.ui-mobile-record')).toHaveLength(1)
+  expect(host.querySelector('.ui-mobile-record footer')?.textContent).toContain('编辑')
+  expect(host.querySelector('table')).toBeNull()
+  await render('routes')
+  expect(host.querySelectorAll('.ui-mobile-record')).toHaveLength(2)
+  expect(host.querySelector('.ui-mobile-record footer')?.textContent).toContain('删除')
+})
+
+it('requires confirmation before discarding changed group and route drafts', async () => {
+  await render('groups'); await click('编辑'); await input(label('分组名称').querySelector('input')!, 'unsaved group')
+  vi.mocked(window.confirm).mockReturnValue(false); await click('取消')
+  expect(document.querySelector('[role="dialog"][aria-label="编辑分组"]')).not.toBeNull()
+  vi.mocked(window.confirm).mockReturnValue(true); await click('取消'); await render('routes'); await click('编辑')
+  await input(label('备注').querySelector('input')!, 'unsaved route'); vi.mocked(window.confirm).mockReturnValue(false); await click('取消')
+  expect(document.querySelector('[role="dialog"][aria-label="编辑路由"]')).not.toBeNull()
+  expect(admin.write).not.toHaveBeenCalled()
 })

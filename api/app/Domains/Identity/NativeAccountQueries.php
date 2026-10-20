@@ -34,10 +34,14 @@ final class NativeAccountQueries implements AccountQueries, AdminAccountQueries
 
     public function adminListing(AdminAccountListQuery $query): array
     {
+        AdminAccountFilterFields::validate($query);
         $users = User::query()->useWritePdo();
         if ($query->email !== null) $users->where('email', $query->email);
         if ($query->banned !== null) $users->where('banned', $query->banned);
-        $page = $users->orderByDesc('id')->paginate($query->perPage,
+        foreach ($query->filters as $filter) \App\Core\Query\BoundedListFilters::apply($users, $filter['field'], $filter);
+        $users->orderBy($query->sortBy, $query->sortDirection);
+        if ($query->sortBy !== 'id') $users->orderBy('id', $query->sortDirection);
+        $page = $users->paginate($query->perPage,
             ['id', 'email', 'banned', 'is_admin', 'created_at', 'last_login_at'], 'page', $query->page);
         return ['items' => $page->getCollection()->map(self::adminProfile(...))->all(),
             'meta' => ['page' => $page->currentPage(), 'per_page' => $page->perPage(),
@@ -48,11 +52,13 @@ final class NativeAccountQueries implements AccountQueries, AdminAccountQueries
     {
         if ($userId < 1) throw new \InvalidArgumentException('ADMIN_ACCOUNT_QUERY_INVALID');
         $user = User::query()->useWritePdo()->find($userId,
-            ['id', 'email', 'banned', 'is_admin', 'created_at', 'last_login_at']);
+            ['id', 'email', 'password', 'banned', 'is_admin', 'is_staff', 'created_at', 'last_login_at']);
         if ($user === null) return null;
-        return self::adminProfile($user) + [
+        return self::adminProfile($user) + app(NativeAccountMetadata::class)->read($userId) + [
             'subscription' => $this->entitlements->forAccount(new EntitlementQuery($userId))->toArray(),
             'credential_status' => 'provider_managed',
+            'identity_revision' => NativeIdentityRevision::forUser($user),
+            'identity_editable' => !$user->is_admin && !$user->is_staff,
         ];
     }
 

@@ -1,49 +1,43 @@
+import { t, useLocale } from '../lib/i18n'
 import type { ReactNode } from 'react'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { TablePagination } from '../components/ui/TablePagination'
 import { DataTable, type Column, type TableSelection } from '../components/ui/DataTable'
 import { ColumnSettings, useColumnVisibility } from '../components/ui/ColumnSettings'
 import { TableSkeleton } from '../components/ui/Skeleton'
 import { ManagementFeedback } from './Feedback'
 
 export function ReadList<T extends { id: string }>({ title, rows, columns, meta, page, ready,
-  loading, error, onRetry, onPage, children, selection, columnSettingsKey, stickyHeader = false, stickyFirstColumn = false }: {
+  loading, error, onRetry, onPage, children, selection, columnSettingsKey = title, stickyHeader = true, stickyFirstColumn = true, perPage, onPageSize, maxPageSize, mobilePrimaryKey }: {
   title: string; rows: T[]; columns: Column<T>[]; page: number; ready: boolean
   meta?: { total: number; last_page: number }; loading: boolean; error?: unknown
   onRetry: () => void; onPage: (page: number) => void; children?: ReactNode
   selection?: TableSelection<T>; columnSettingsKey?: string; stickyHeader?: boolean; stickyFirstColumn?: boolean
+  perPage?: number; onPageSize?: (size: number) => void; maxPageSize?: number
+  mobilePrimaryKey?: string
 }) {
+  useLocale()
   const { hidden, onChange } = useColumnVisibility(columnSettingsKey, columns)
   const visibleColumns = columns.filter(column => !hidden.has(column.key))
   const visibleMeta = ready && !error ? meta : undefined
-  const lastPage = Math.min(visibleMeta?.last_page ?? page, 100000)
-  const pages = [...new Set([1, page - 1, page, page + 1, lastPage])].filter(value => value >= 1 && value <= lastPage)
-  return <section className="list-card native-read-list" aria-label={title} aria-busy={loading}>
+  return <section className="list-card native-read-list" aria-label={t(title)} aria-busy={loading}>
     {children}
     {columnSettingsKey ? <div className="ui-table-settings">
       <ColumnSettings columns={columns} hidden={hidden} onChange={onChange} />
     </div> : null}
     {!ready && loading
-      ? <TableSkeleton rows={5} columns={visibleColumns.length + (selection ? 1 : 0)} label={title + '加载中'} />
+      ? <TableSkeleton rows={5} columns={visibleColumns.length + (selection ? 1 : 0)} label={t('正在加载{title}', { title: t(title) })} />
       : <ManagementFeedback error={error} loading={loading} onRetry={onRetry} />}
-    {ready && !error ? <p className="native-scroll-hint">左右滑动表格查看完整信息</p> : null}
+    {ready && !error ? <p className="native-scroll-hint">{t("左右滑动表格查看完整信息")}</p> : null}
     {ready && !error ? <DataTable rows={rows} columns={visibleColumns} rowKey={row => row.id} label={title}
-      selection={selection} stickyHeader={stickyHeader} stickyFirstColumn={stickyFirstColumn} empty="没有符合条件的数据" /> : null}
-    <div className="native-pagination" aria-label={title + '分页'}>
-      <span aria-live="polite">{visibleMeta ? '共 ' + visibleMeta.total + ' 项 · 第 ' + page + ' 页' : '第 ' + page + ' 页'}</span>
-      <nav className="native-page-controls" aria-label="选择页码">
-        <button type="button" className="button native-page-arrow" aria-label="上一页" disabled={loading || !ready || !!error || page <= 1} onClick={() => onPage(page - 1)}><ChevronLeft size={16} /></button>
-        {pages.map((value, index) => <span className="native-page-item" key={value}>
-          {index > 0 && value - pages[index - 1] > 1 ? <span className="native-page-ellipsis">…</span> : null}
-          <button type="button" className={'button native-page-number' + (value === page ? ' is-current' : '')} aria-label={'第 ' + value + ' 页'} aria-current={value === page ? 'page' : undefined}
-            disabled={loading || !visibleMeta || value === page} onClick={() => onPage(value)}>{value}</button>
-        </span>)}
-        <button type="button" className="button native-page-arrow" aria-label="下一页" disabled={loading || !visibleMeta || page >= lastPage} onClick={() => onPage(page + 1)}><ChevronRight size={16} /></button>
-      </nav>
-    </div>
+      selection={selection} stickyHeader={stickyHeader} stickyFirstColumn={stickyFirstColumn} mobilePrimaryKey={mobilePrimaryKey}
+      stickyLastColumn={visibleColumns.length > 1 && ['actions', 'action', 'details'].includes(visibleColumns.at(-1)?.key ?? '')} empty={t("没有符合条件的数据")} /> : null}
+    <TablePagination label={t(title)} page={page} meta={visibleMeta} loading={loading || !ready || !!error} onPage={onPage}
+      perPage={perPage} onPageSize={onPageSize} maxPageSize={maxPageSize} selectedCount={selection && visibleMeta ? rows.filter(row => selection.selected.has(selection.getKey(row))).length : undefined} />
   </section>
 }
 
 export function ReadFields({ fields }: { fields: ReadonlyArray<readonly [string, ReactNode]> }) {
+  useLocale()
   return <dl className="native-read-fields">{fields.map(([label, value]) =>
-    <div key={label}><dt>{label}</dt><dd>{value ?? '未记录'}</dd></div>)}</dl>
+    <div key={label}><dt>{t(label)}</dt><dd>{value ?? t("未记录")}</dd></div>)}</dl>
 }

@@ -6,6 +6,7 @@ use App\Domains\Billing\OrderIdempotency;
 use App\Domains\Billing\OrderPurchaseTermsSnapshot;
 use App\Domains\Billing\PurchasedOrderGrant;
 use App\Domains\Billing\NativeUpgradeCredits;
+use App\Domains\Billing\NativeCustomerPolicies;
 use App\Domains\Billing\Internal\LockedCouponDiscounts;
 use App\Domains\Installation\InstallationAuthority;
 use App\Domains\Installation\NativeRuntimeAdmission;
@@ -49,9 +50,15 @@ final class PublishedOrderService
         // Locate immutable ownership before opening the RR transaction. Replays do not
         // need a current Plan; fresh purchases recheck this locator under its Plan lock.
         $locator = DB::table('tx_plan_offer')->useWritePdo()->where('id', $offerId)->first(['plan_id']);
-        return DB::transaction(function () use ($userId, $offerId, $key, $locator, $couponCode): Order {
+        $referralLocator = DB::table('tx_native_referral')->useWritePdo()->where('user_id', $userId)->first(['sponsor_id']);
+        return DB::transaction(function () use ($userId, $offerId, $key, $locator, $couponCode, $referralLocator): Order {
             $installation = app(InstallationAuthority::class)->assertNativeMutation();
             $now = time();
+            $accountIds = [$userId]; if ($referralLocator !== null) $accountIds[] = (int) $referralLocator->sponsor_id;
+            $accountIds = array_unique($accountIds); sort($accountIds, SORT_NUMERIC);
+            foreach ($accountIds as $id) if (!DB::table('tx_user')->where('id', $id)->lockForUpdate()->exists()) throw new RuntimeException('PUBLISHED_ORDER_ACCOUNT_UNAVAILABLE');
+            $referral = app(\App\Domains\Identity\Internal\ReferralSnapshot::class)->forAccountLocked($installation['installation_id'], $userId);
+            if (($referral['sponsor_id'] ?? null) !== ($referralLocator === null ? null : (string) $referralLocator->sponsor_id)) throw new RuntimeException('PUBLISHED_ORDER_REFERRAL_CHANGED');
             [$user, $slot, $subscriptions] = $this->subscriptions->lockAccount($userId, $now, $installation['installation_id']);
             if ($couponCode !== null) app(\App\Domains\Identity\Internal\CurrentSessionAuthorization::class)->assertCurrentLocked($userId);
             if ((bool) $user->banned) {
@@ -110,21 +117,26 @@ final class PublishedOrderService
                     if ((int) $offer->price_minor > 2147483647) {
                         throw new RuntimeException('PUBLISHED_ORDER_PRICE_OUT_OF_RANGE');
                     }
+                    $personal = app(NativeCustomerPolicies::class)->quotePriceLocked($installation, $userId, $offer, $now);
+                    $discountedOffer = clone $offer; $discountedOffer->price_minor = $personal['discounted_minor'];
                     $credit = ($installation['runtime_version'] ?? null) === NativeRuntimeAdmission::VERSION
                         && $type === Order::TYPE_UPGRADE
-                        ? app(NativeUpgradeCredits::class)->quoteLocked($installation, $current, $history, $offer, $now) : null;
+                        ? app(NativeUpgradeCredits::class)->quoteLocked($installation, $current, $history, $discountedOffer, $now) : null;
                     $coupon = $couponCode === null ? null : app(LockedCouponDiscounts::class)->quoteLocked(
                         $userId, $offerId, $offer->currency, (string) $offer->price_minor, $couponCode, $now, $installation['installation_id']);
+                    $net = $credit['net_minor'] ?? bcsub($personal['discounted_minor'], $coupon['discount_minor'] ?? '0', 0);
+                    if (bccomp($net, '0', 0) < 0) $net = '0';
                     $created = Order::query()->create([
                         'user_id' => $userId, 'plan_id' => (int) $offer->plan_id, 'period' => $offer->offer_code,
                         'type' => $type, 'status' => Order::STATUS_PENDING, 'trade_no' => Helper::generateOrderNo(),
-                        'total_amount' => (int) ($coupon['net_minor'] ?? $credit['net_minor'] ?? $offer->price_minor), 'purchase_terms_version' => self::VERSION,
+                        'total_amount' => (int) $net, 'purchase_terms_version' => self::VERSION,
                         'balance_amount' => 0, 'discount_amount' => 0, 'surplus_amount' => 0, 'surplus_credit' => 0,
                         'commission_balance' => 0, 'coupon_id' => null, 'invite_user_id' => null,
                         'surplus_order_ids' => null,
                     ]);
                     if ($credit !== null) { app(NativeUpgradeCredits::class)->persistLocked($created, $credit); }
                     if ($coupon !== null) app(LockedCouponDiscounts::class)->persistLocked((int) $created->id, $coupon);
+                    app(NativeCustomerPolicies::class)->persistPriceLocked($created, $personal, $coupon, $credit);
                     $purchase = $this->snapshots->capturePublished($created, $published);
                     app(\App\Domains\Billing\Internal\CommissionTerms::class)->captureLocked($installation, $created, $purchase);
                     app(\App\Domains\Billing\NativeOrderEventJournal::class)->recordLocked($created, 'created', (int) $created->created_at);

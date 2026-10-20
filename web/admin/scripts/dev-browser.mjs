@@ -26,7 +26,7 @@ try {
   const origin = 'http://127.0.0.1:' + address.port
   browser = await chromium.launch({ headless: true,
     executablePath: process.env.PLAYWRIGHT_EXECUTABLE_PATH || undefined })
-  const context = await browser.newContext({ viewport: { width: 1280, height: 800 } })
+  const context = await browser.newContext({ locale: 'zh-CN', viewport: { width: 1280, height: 800 } })
   const page = await context.newPage()
   const errors = []
   page.on('pageerror', error => errors.push(error.message))

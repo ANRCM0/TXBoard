@@ -202,6 +202,12 @@ final class OperationExecutor
         $currentCheckout = in_array($operation, ['commerce.orders.checkout', 'billing.recharges.checkout'], true);
         // An unknown query result can advance later. A replay must consult the owner again.
         $currentOwnerResult = $currentCheckout || $operation === 'billing.payment-attempts.query'
+            || ($spec['controller'] ?? null) === \App\Http\Controllers\Txapi\Admin\NativeModuleAdminController::class
+            || in_array($operation, ['subscription.admin-templates.save', 'subscription.admin-templates.reset'], true)
+            || ($spec['controller'] ?? null) === \App\Http\Controllers\Txapi\Admin\NativeSubscriptionAmendmentController::class
+            || ($spec['controller'] ?? null) === \App\Http\Controllers\Txapi\Admin\NativeAccountAdjustmentController::class
+            || ($spec['controller'] ?? null) === \App\Http\Controllers\Txapi\Admin\NativeCustomerPolicyController::class
+            || ($spec['controller'] ?? null) === \App\Http\Controllers\Txapi\Admin\NativeUsageCorrectionController::class
             || in_array($spec['command'], [AdminOrderMutationOperations::class, SupportAttachmentOperations::class, SupportMutationOperations::class, ContentMutationOperations::class, CouponMutationOperations::class, GiftCardMutationOperations::class, CommissionMutationOperations::class], true);
         if (in_array($spec['mode'], ['workflow', 'domain', 'domain-once'], true)) {
             $key = $request->header('Idempotency-Key', '');
@@ -209,6 +215,9 @@ final class OperationExecutor
             if (!Str::isUuid($key)) return $this->error($request, 'IDEMPOTENCY_KEY_REQUIRED', 400);
             $hash = hash('sha256', 'native-internal/v1:'.$actor->id.':'.$operation.':'.$key);
             $inputHash = OrderIdempotency::requestHash($input);
+            if (in_array($operation, ['identity.accounts.batch-create', 'identity.accounts.profile.update'], true)) {
+                $inputHash = hash_hmac('sha256', $inputHash, (string) config('app.key'));
+            }
             $inserted = DB::table('tx_internal_request')->insertOrIgnore([
                 'key_hash' => $hash, 'input_hash' => $inputHash, 'operation' => $operation,
                 'actor_id' => $actor->id, 'state' => 'started', 'created_at' => time(), 'updated_at' => time(),
@@ -260,7 +269,8 @@ final class OperationExecutor
             $data = $body['data'] ?? null;
             if (!is_array($data)) throw new \LogicException('INTERNAL_RESPONSE_INVALID');
             $project = fn (array $row): array => $this->clean(array_intersect_key($row, array_flip($spec['fields'])),
-                $operation === 'subscription.links.issue', $operation !== 'settings.configuration.get');
+                $operation === 'subscription.links.issue', $operation !== 'settings.configuration.get',
+                $operation === 'network.machines.credentials.get');
             $projected = $spec['list'] ? array_map($project, $data) : $project($data);
             $projected = OperationSchemas::output($operation, $projected);
             $meta = $body['meta'] ?? [];
@@ -273,6 +283,10 @@ final class OperationExecutor
             }
             $meta = OperationSchemas::meta($operation, $meta);
             $result = TxapiResponse::success($request, $projected, $meta, $result->getStatusCode());
+            if (in_array($operation, ['network.machines.credentials.get', 'network.nodes.configuration.get',
+                'network.nodes.material.generate'], true)) {
+                $result->header('Cache-Control', 'private, no-store, max-age=0')->header('Pragma', 'no-cache');
+            }
         }
         if (strlen($result->getContent()) > (int) config('internal_api.max_response_bytes')) {
             throw new \LogicException('INTERNAL_RESPONSE_LIMIT');
@@ -343,11 +357,12 @@ final class OperationExecutor
         return app()->call([app($spec['controller']), $spec['method']], $arguments);
     }
 
-    private function clean(array $value, bool $allowLinkToken = false, bool $normalizeIdentifiers = true): array
+    private function clean(array $value, bool $allowLinkToken = false, bool $normalizeIdentifiers = true, bool $allowMachineToken = false): array
     {
         foreach ($value as $key => &$item) {
             if (is_string($key) && preg_match('/(?:password|secret|private_key|authorization|token|uuid|ciphertext)/i', $key)
-                && !($allowLinkToken && in_array($key, ['link_token', 'token_delivered'], true))) {
+                && !($allowLinkToken && in_array($key, ['link_token', 'token_delivered'], true))
+                && !($allowMachineToken && $key === 'token')) {
                 unset($value[$key]);
                 continue;
             }

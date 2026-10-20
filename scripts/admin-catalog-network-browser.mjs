@@ -95,9 +95,9 @@ try {
   await sorting.getByRole('button', { name: '下移', exact: true }).first().click()
   await page.getByRole('button', { name: '保存完整路由排序', exact: true }).click()
   await page.getByRole('button', { name: '保存完整路由排序', exact: true }).waitFor({ state: 'detached' })
-  const sort = state.calls.find(call => call.operation === 'network.routes.sort')
-  assert.deepEqual(sort.input.items.map(row => row.id), [state.routes[1].id, state.routes[0].id])
-  assert.equal(sort.input.items.length, state.routes.length)
+  const sort = state.calls.find(call => call.operation === 'network.routes.ordering.replace')
+  assert.deepEqual(sort.input.route_ids, [state.routes[1].id, state.routes[0].id])
+  assert.equal(sort.input.route_ids.length, state.routes.length)
   const writesBeforeSimulation = state.calls.filter(call => call.key).length
   await page.getByRole('combobox', { name: /^已读取节点/ }).selectOption(state.node.id)
   await page.getByLabel('目标', { exact: true }).fill('example.test')
@@ -149,7 +149,7 @@ try {
   assert.equal(published.capacity_limit, 9); assert.equal(state.originalRevision.terms.prices_minor.monthly, '9007199254740993')
   const history = page.locator('section[aria-label="套餐修订历史"]')
   await history.getByRole('row').filter({ hasText: state.originalRevision.revision_id }).getByRole('button', { name: '查看此修订', exact: true }).click()
-  await page.locator('section[aria-label="套餐完整条款"]').getByText('月付：9007199254740993 最小单位 CNY', { exact: true }).waitFor()
+  await page.locator('section[aria-label="套餐完整条款"]').getByText('月付：90,071,992,547,409.93 CNY', { exact: true }).waitFor()
   assert.equal(await page.locator('section[aria-label="套餐发布编辑器"]').count(), 0)
   passed('new publication uses authoritative full terms and the observed revision while historical terms remain unchanged')
 

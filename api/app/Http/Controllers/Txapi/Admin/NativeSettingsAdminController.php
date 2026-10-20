@@ -51,7 +51,7 @@ final class NativeSettingsAdminController
             true, 64, JSON_THROW_ON_ERROR)['fields'];
     }
 
-    private function snapshot(): array
+    public function snapshot(): array
     {
         $fields = $this->fields();
         $rows = Setting::query()->useWritePdo()->whereIn('name', array_column($fields, 'setting'))

@@ -194,10 +194,46 @@
 .ui-data-table tbody tr.is-selected:hover td { background: color-mix(in srgb, var(--primary) 10%, var(--panel)); }
 
 .ui-table-settings { display: flex; justify-content: flex-end; margin: 0 0 8px; }
+.ui-copy-control { display: inline-flex; align-items: center; vertical-align: middle; flex: none; }
+.ui-copy-button { display: inline-grid; place-items: center; width: 26px; height: 26px; padding: 0; border: 0; border-radius: 5px; color: var(--muted); background: transparent; cursor: pointer; }
+.ui-copy-button:hover { color: var(--primary); background: var(--hover); }
+.ui-copy-button.is-copied { color: var(--success); }
+.ui-copy-button.is-failed { color: var(--danger); }
+.ui-copy-button:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
+.ui-copy-button:disabled { opacity: .45; cursor: default; }
+.native-pagination-summary { margin-right: auto; font-size: 12px; color: var(--muted); }
+.native-page-size, .native-page-jump { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); font-size: 12px; white-space: nowrap; }
+.native-page-size select, .native-page-jump input { height: 32px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--panel); color: var(--fg); font: inherit; padding: 4px 8px; }
+.native-page-jump input { width: 52px; text-align: center; }
+.native-page-jump input:focus-visible, .native-page-size select:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.data-table .ui-sticky-last { position: sticky; right: 0; z-index: 1; background: var(--panel); box-shadow: -1px 0 0 var(--border); }
+.data-table thead .ui-sticky-last { z-index: 3; background: var(--control-bg); }
+.data-table tbody tr:hover .ui-sticky-last { background: var(--ui-surface-subtle); }
+.data-table tbody tr.is-selected .ui-sticky-last { background: color-mix(in srgb, var(--primary) 7%, var(--panel)); }
+@media (max-width: 600px) {
+  .native-pagination-summary { flex-basis: 100%; text-align: center; margin-right: 0; }
+  .native-page-boundary { display: none; }
+  .data-table.has-sticky-last.has-sticky-first .ui-sticky-cell { position: static; box-shadow: none; }
+}
 .settings-heading-actions { display: flex; align-items: center; gap: 8px; }
 .ui-column-settings { display: grid; gap: 10px; }
 .ui-column-settings > strong { color: var(--muted); font-size: 12px; font-weight: 600; }
 .ui-column-settings .ui-checkbox { min-height: 24px; }
+.ui-tag-field { display: grid; gap: 6px; min-width: 0; }
+.ui-tag-input { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; min-height: 42px; padding: 6px 8px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--panel); }
+.ui-tag-input:focus-within { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
+.ui-tag-input .ui-tag-input-item { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; padding: 3px 7px; border-radius: 5px; background: var(--control-bg); overflow-wrap: anywhere; font-size: 12px; }
+.ui-tag-input-item button { display: grid; place-items: center; flex: none; width: 20px; height: 20px; padding: 0; border: 0; border-radius: 3px; background: transparent; color: var(--muted); cursor: pointer; }
+.ui-tag-input-item button:hover { background: var(--hover); color: var(--fg); }
+.native-content-form .ui-tag-input input { flex: 1 1 120px; width: 120px; min-height: 26px; padding: 2px 4px; border: 0; border-radius: 0; background: transparent; outline: none; box-shadow: none; }
+.ui-tag-hint { color: var(--muted); font-size: 11px; font-weight: 400; }
+.ui-theme-options { display: grid; gap: 4px; }
+.ui-popover-panel.ui-theme-panel { width: 180px; }
+.admin-sidebar-tools .ui-theme-panel { top: auto; bottom: calc(100% + 8px); left: 0; right: auto; }
+.ui-theme-options button { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 0; border-radius: 6px; background: transparent; color: var(--fg); font: inherit; cursor: pointer; }
+.ui-theme-options button[aria-pressed=true], .ui-theme-options button:hover { background: var(--hover); }
+.ui-theme-options button > svg:last-child:not(:first-child) { margin-left: auto; color: var(--primary); }
+.ui-theme-options button:focus-visible { outline: 2px solid var(--focus-ring); }
 
 .table-wrap.is-sticky { max-height: min(72vh, 760px); overflow: auto; }
 .table-wrap.is-sticky .data-table thead th { position: sticky; top: 0; z-index: 2; }
@@ -372,3 +408,6 @@
   .ui-select,
   .ui-textarea { transition: none; }
 }
+.ui-copy-control { vertical-align: middle; }
+/* Also covers an already-running synthetic preview without restarting its server. */
+body > #txboard-preview-label { pointer-events: none; }

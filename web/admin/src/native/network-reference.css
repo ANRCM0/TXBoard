@@ -1,6 +1,15 @@
 /* Network pages mirror the reference's compact cards, toolbar and profile hierarchy.
    All rules are scoped so adjacent feature pages retain their own presentation. */
 .network-reference-page { gap: 20px; }
+.network-reference-page .network-copy-value { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 5px; max-width: 100%; }
+.network-reference-page .network-copy-value > code { white-space: normal; overflow-wrap: anywhere; }
+.network-reference-page .network-protocol { display: inline-flex; align-items: center; padding: 3px 7px; border-radius: 5px; color: var(--primary); background: color-mix(in srgb, var(--primary) 8%, transparent); font-size: 10px; font-weight: 650; text-transform: uppercase; letter-spacing: .04em; }
+.network-reference-page .network-counter-note { margin: 0; padding: 10px 20px; color: var(--muted); font-size: 11px; border-bottom: 1px solid var(--border); line-height: 1.6; }
+.network-reference-page .network-field-hint { color: var(--muted); font-size: 11px; font-weight: 400; line-height: 1.7; }
+.network-reference-page .network-drag-handle { display: inline-flex; align-items: center; padding: 6px 2px; color: var(--muted); cursor: grab; }
+.network-reference-page .network-drag-handle:active { cursor: grabbing; }
+.network-reference-page .network-sort-list > li[data-drop-target] { background: color-mix(in srgb, var(--primary) 7%, var(--panel)); outline: 1px dashed var(--primary); outline-offset: -1px; }
+.network-editor-modal .native-content-form > .network-editor-note { grid-column: 1 / -1; margin-bottom: 0; }
 .network-reference-page .list-card { border: 1px solid var(--border); border-radius: 12px; background: var(--panel); box-shadow: none; overflow: hidden; }
 .network-reference-page .button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 34px; border-radius: 6px; font-size: 12px; font-weight: 500; }
 .network-reference-page .button[data-danger=true] { color: var(--danger); }
@@ -183,3 +192,10 @@
   .network-reference-page .network-danger-zone { align-items: flex-start; flex-direction: column; gap: 14px; }
   .network-reference-page .network-danger-zone .button { align-self: stretch; }
 }
+
+.network-machine-overview { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 1px; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: var(--border); }
+.network-machine-overview > div { display: grid; gap: 8px; padding: 18px; background: var(--card, var(--bg)); }
+.network-machine-overview strong { font-size: 26px; font-variant-numeric: tabular-nums; }
+.network-machine-overview p { grid-column: 1 / -1; margin: 0; padding: 12px 18px; background: var(--card, var(--bg)); font-size: 12px; }
+.network-machine-memory { display: block; white-space: nowrap; }
+@media (max-width: 640px) { .network-machine-overview { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

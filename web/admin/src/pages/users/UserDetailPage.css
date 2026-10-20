@@ -5,8 +5,22 @@
 .reference-user-detail .reference-detail-metrics strong { font-size:22px; overflow-wrap:anywhere; }
 .reference-user-detail .reference-detail-empty { margin:0; padding:24px; border-radius:10px; text-align:center; background:var(--control-bg); color:var(--muted); }
 .reference-user-detail .reference-detail-link { display:inline-flex; align-items:center; flex-wrap:wrap; gap:5px; }
+.reference-user-detail .user-copy-line { display:flex; align-items:center; gap:6px; min-width:0; }
+.reference-user-detail .user-copy-line>button { flex-shrink:0; }
+.reference-user-detail .user-copy-line>.ui-copy-control { flex:0 0 auto; }
+.reference-user-detail .user-copy-line>h3, .reference-user-detail .user-copy-line>code { min-width:0; overflow-wrap:anywhere; }
+.reference-user-detail .reference-profile-avatar { font-size:22px; font-weight:600; }
+.reference-user-detail .user-subscription-summary { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:16px; padding:16px; margin:16px 0; background:var(--ui-surface-subtle); border:1px solid var(--border); border-radius:10px; }
+.reference-user-detail .user-subscription-summary>div { display:grid; align-content:start; gap:8px; min-width:0; }
+.reference-user-detail .user-subscription-summary>div>span { font-size:11px; color:var(--muted); }
+.reference-user-detail .user-subscription-summary strong { font-size:13px; font-weight:500; overflow-wrap:anywhere; }
+.reference-user-detail .user-recent-plan { display:grid; gap:6px; }
+.reference-user-detail .user-recent-plan strong { font-size:12px; font-weight:500; }
+.reference-user-detail .user-recent-plan small { color:var(--muted); font-size:11px; }
 @media(max-width:600px) {
   .reference-user-detail .reference-profile-header { flex-wrap:wrap; align-items:flex-start; }
   .reference-user-detail .reference-profile-identity { flex-basis:calc(100% - 70px); }
   .reference-user-detail .reference-profile-header>.reference-status { margin-left:66px; }
+  .reference-user-detail .reference-profile-header>.ui-status { margin-left:66px; }
+  .reference-user-detail .user-subscription-summary { grid-template-columns:minmax(0,1fr); }
 }

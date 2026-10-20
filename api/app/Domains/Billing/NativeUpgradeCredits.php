@@ -23,6 +23,8 @@ final class NativeUpgradeCredits
         $sources = [];
         foreach ($history['terms'] as $terms) {
             $grant = $store->verifyTerms($terms, $subscription, currentRead: true);
+            // Administrative rights are not another paid source or a new proration window.
+            if (isset($grant['purchase'])) continue;
             if ($grant['order_type'] === Order::TYPE_UPGRADE) { $sources = []; }
             if ($grant['purchase_kind'] !== 'traffic_reset') {
                 $sources[] = ['terms' => $terms, 'grant' => $grant];

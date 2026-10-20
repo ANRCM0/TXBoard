@@ -61,6 +61,13 @@
 .support-sort-title { display: flex; align-items: baseline; gap: 12px; min-width: 0; overflow-wrap: anywhere; font-size: 13px; }
 .support-sort-title small { color: var(--muted); font-variant-numeric: tabular-nums; min-width: 20px; }
 .support-sort .support-actions { flex-shrink: 0; }
+.support-sort-feedback { color: var(--muted); font-size: 12px; line-height: 1.6; }
+.support-sort-identity { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.support-sort-handle { display: inline-flex; align-items: center; padding: 8px 2px; color: var(--muted); cursor: grab; flex-shrink: 0; }
+.support-sort-handle:active { cursor: grabbing; }
+.support-sort-handle[draggable="false"] { cursor: default; opacity: .5; }
+.support-sort > ol > li[data-drop-target] { background: color-mix(in srgb, var(--primary) 8%, var(--panel)); outline: 1px dashed var(--primary); outline-offset: -1px; }
+.support-content-editor { scroll-margin-top: 24px; }
 .support-audit-heading { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 16px; }
 .support-audit-heading strong { font-weight: 550; color: var(--fg); overflow-wrap: anywhere; }
 .support-audit-heading time { font-size: 11px; }
@@ -101,4 +108,56 @@
  .support-attachments li .button { flex-grow: 1; }
  .support-form-footer .support-actions { width: 100%; }
  .support-form-footer .support-actions > .button { flex: 1 1 auto; }
+}
+
+.support-filter-scope { color: var(--muted); font-size: 12px; line-height: 1.7; margin: 8px 0 16px; }
+.modal-placement-center .modal-card.support-content-editor { width: min(1040px, 100%); height: min(880px, calc(100dvh - 36px)); }
+.modal-placement-center .modal-card.support-content-editor .support-content-editor-body { min-height: 0; flex: 1; overflow-y: auto; padding: 18px 24px 24px; }
+.support-content-editor .modal-header, .support-content-editor .modal-footer { flex: none; }
+.support-content-editor .modal-footer .support-form-footer { margin: 0; padding-top: 18px; }
+.support-content-editor .support-editor-grid label:not(.support-toggle) { display: grid; gap: 8px; }
+.modal-placement-center .modal-card.support-ticket-dialog { width: min(1180px, 100%); height: min(940px, calc(100dvh - 36px)); }
+.modal-placement-center .support-ticket-dialog .support-conversation-body { display: grid; grid-template-columns: 220px minmax(0, 1fr); flex: 1; min-height: 180px; padding: 0; overflow: hidden; }
+.support-ticket-sidebar { display: flex; flex-direction: column; min-height: 0; min-width: 0; padding: 16px 12px; border-inline-end: 1px solid var(--border); background: var(--control-bg); }
+.support-ticket-sidebar > label { display: grid; gap: 8px; font-size: 12px; font-weight: 600; }
+.support-ticket-sidebar > small { font-size: 11px; color: var(--muted); line-height: 1.7; margin: 8px 0; }
+.support-ticket-sidebar > div { overflow-y: auto; min-height: 0; display: grid; align-content: start; gap: 8px; }
+.support-ticket-sidebar button { display: grid; gap: 7px; border: 1px solid transparent; border-radius: 9px; background: var(--panel); color: var(--fg); text-align: start; padding: 12px; cursor: pointer; min-width: 0; overflow-wrap: anywhere; }
+.support-ticket-sidebar button[aria-current="true"] { border-color: var(--primary); background: color-mix(in srgb, var(--primary) 7%, var(--panel)); }
+.support-ticket-sidebar button:disabled { cursor: default; opacity: .6; }
+.support-ticket-sidebar strong { font-size: 12px; font-weight: 600; line-height: 1.6; }
+.support-ticket-sidebar :is(span, small) { color: var(--muted); font-size: 11px; line-height: 1.5; }
+.support-ticket-dialog .support-ticket-detail { display: flex; flex-direction: column; position: relative; min-height: 0; min-width: 0; overflow: hidden; }
+.support-conversation-summary { flex: none; padding: 8px 22px 0; border-bottom: 1px solid var(--border); }
+.support-conversation-summary .native-read-fields { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0 16px; margin: 0; }
+.support-conversation-summary .native-read-fields > div { grid-template-columns: minmax(0, 1fr); gap: 4px; padding-block: 8px; min-width: 0; }
+.support-conversation-summary .native-read-fields :is(dt, dd) { overflow-wrap: anywhere; font-size: 11px; }
+.support-conversation-summary .support-assignment { padding: 8px 0 12px; }
+.support-ticket-dialog .support-conversation-scroll { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 0 22px 18px; }
+.support-ticket-dialog .support-conversation-scroll:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -2px; }
+.support-ticket-dialog .modal-footer { flex: none; max-height: 44%; overflow-y: auto; padding: 0 22px 18px; border-top: 1px solid var(--border); }
+.support-ticket-dialog .support-reply-form { display: grid; margin: 0; padding-top: 16px; border: 0; gap: 10px; }
+.support-ticket-dialog .support-reply-form textarea { min-height: 88px; max-height: 180px; }
+.support-reply-hints { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; color: var(--muted); font-size: 11px; }
+.support-reply-hints .support-byte-count { margin: 0; }
+.support-reply-attachments > summary { cursor: pointer; color: var(--primary); font-size: 12px; width: fit-content; line-height: 1.8; }
+.support-reply-attachments[open] > summary { margin-bottom: 10px; }
+.support-ticket-dialog .support-form-footer { padding-top: 10px; }
+.support-ticket-dialog .support-upload { padding: 10px; }
+.support-ticket-dialog .support-attachments h3 { margin-top: 0; }
+.support-ticket-dialog .support-attachments > p { margin-bottom: 0; }
+.support-closed-note, .support-message-more { color: var(--muted); font-size: 12px; line-height: 1.8; }
+.support-new-messages { position: absolute; inset: auto 22px 12px auto; box-shadow: var(--shadow-overlay); }
+@media (max-width: 720px) {
+  .modal-placement-center .modal-card:is(.support-ticket-dialog, .support-content-editor) { height: calc(100dvh - 20px); max-height: calc(100dvh - 20px); }
+  .modal-placement-center .support-ticket-dialog .support-conversation-body { grid-template-columns: minmax(0, 1fr); }
+  .support-ticket-dialog .support-ticket-sidebar { display: none; }
+  .support-conversation-summary { padding: 6px 16px 0; }
+  .support-conversation-summary .native-read-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .support-ticket-dialog .support-conversation-scroll { padding: 0 16px 14px; }
+  .support-ticket-dialog .modal-footer { padding: 0 16px 14px; max-height: 48%; }
+  .support-ticket-dialog .support-form-footer > span { display: none; }
+  .support-ticket-dialog .support-form-footer .support-actions { width: 100%; }
+  .support-ticket-dialog .support-form-footer .button { flex: 1 1 auto; }
+  .modal-placement-center .modal-card.support-content-editor .support-content-editor-body { padding: 12px 16px 20px; }
 }

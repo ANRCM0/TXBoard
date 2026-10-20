@@ -1,0 +1,19 @@
+.ui-column-heading { display:inline-flex; align-items:center; gap:6px; }
+.ui-column-heading .ui-popover-trigger { width:22px; height:22px; min-height:0; padding:0; border:0; background:transparent; color:var(--muted); }
+.ui-filter-chip>button { display:inline-grid; place-items:center; padding:2px; margin-left:5px; border:0; border-radius:3px; color:inherit; background:transparent; cursor:pointer; }
+.ui-filter-chip>button:hover { background:var(--hover); }
+.ui-filter-chip>button:focus-visible { outline:2px solid var(--focus-ring); outline-offset:2px; }
+.ui-mobile-records { display:grid; gap:12px; min-width:0; }
+.ui-mobile-select-all { display:flex; align-items:center; gap:8px; font-size:12px; color:var(--muted); }
+.ui-mobile-record { min-width:0; border:1px solid var(--border); border-radius:10px; background:var(--panel); }
+.ui-mobile-record[data-selected] { border-color:var(--primary); }
+.ui-mobile-record>header { display:flex; align-items:center; gap:10px; padding:14px; border-bottom:1px solid var(--border); }
+.ui-mobile-record>header>div { min-width:0; flex:1; }
+.ui-mobile-record dl { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px 12px; margin:0; padding:14px; }
+.ui-mobile-record dl>div { min-width:0; }
+.ui-mobile-record dt { margin-bottom:7px; color:var(--muted); font-size:11px; }
+.ui-mobile-record dd { margin:0; font-size:12px; overflow-wrap:anywhere; }
+.ui-mobile-record footer { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:8px; padding:12px 14px; border-top:1px solid var(--border); background:var(--ui-surface-subtle); border-radius:0 0 10px 10px; }
+.ui-mobile-record .reference-account { min-width:0; max-width:none; }
+.ui-mobile-record .order-date-cell, .ui-mobile-record .order-plan-cell { min-width:0; }
+@media(max-width:600px) { .native-read-list:has(.ui-mobile-records)>.native-scroll-hint { display:none; } }

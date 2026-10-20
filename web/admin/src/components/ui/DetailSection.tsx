@@ -1,3 +1,4 @@
+import { t, useLocale } from '../../lib/i18n'
 import type { ReactNode } from 'react'
 
 export function DetailSection({ label, title, description, icon, actions, children, className = '' }: {
@@ -9,6 +10,7 @@ export function DetailSection({ label, title, description, icon, actions, childr
   children: ReactNode
   className?: string
 }) {
+  useLocale()
   return <section className={'card ui-detail-section ' + className} aria-label={label}>
     <header className="ui-detail-section-head">
       <div className="ui-detail-section-title">

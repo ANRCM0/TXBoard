@@ -1,3 +1,12 @@
+export function publicBootstrapData(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)
+    || !('ok' in value) || value.ok !== true || !('data' in value)
+    || !value.data || typeof value.data !== 'object' || Array.isArray(value.data)) {
+    throw new Error('PUBLIC_BOOTSTRAP_INVALID')
+  }
+  return value.data as Record<string, unknown>
+}
+
 /** Public CAPTCHA bootstrap has no actor headers, cookies or arbitrary target URL. */
 export async function readPublicBootstrap(signal?: AbortSignal): Promise<unknown> {
   const abort = new AbortController()

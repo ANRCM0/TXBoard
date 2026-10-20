@@ -102,3 +102,23 @@ it('persists hidden columns and refuses to hide the last visible column', () => 
   window.localStorage.removeItem('txboard:admin:columns:test-columns')
   act(() => root.unmount()); host.remove()
 })
+
+it('keeps required identity and action columns visible despite stale stored preferences', () => {
+  const columns = [{ key: 'email', header: '邮箱', hideable: false }, { key: 'role', header: '角色' }, { key: 'actions', header: '操作', hideable: false }]
+  localStorage.setItem('txboard:admin:columns:required-columns', JSON.stringify(['email', 'role', 'actions']))
+  function Harness() {
+    const { hidden, onChange } = useColumnVisibility('required-columns', columns)
+    return <><ColumnSettings columns={columns} hidden={hidden} onChange={onChange} /><output>{[...hidden].join(',')}</output></>
+  }
+  const { host, root } = mount(<Harness />)
+  try {
+    expect(host.querySelector('output')!.textContent).toBe('role')
+    act(() => host.querySelector<HTMLButtonElement>('[aria-label="列设置"]')!.click())
+    const inputs = host.querySelectorAll<HTMLInputElement>('.ui-column-settings input')
+    expect(inputs[0].checked && inputs[0].disabled).toBe(true)
+    expect(inputs[2].checked && inputs[2].disabled).toBe(true)
+    expect(inputs[1].disabled).toBe(false)
+    act(() => inputs[1].click())
+    expect(host.querySelector('output')!.textContent).toBe('')
+  } finally { act(() => root.unmount()); host.remove(); localStorage.removeItem('txboard:admin:columns:required-columns') }
+})

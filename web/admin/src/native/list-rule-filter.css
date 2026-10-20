@@ -1,0 +1,10 @@
+.list-rule-filter { margin: 0 0 18px; border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; }
+.list-rule-filter summary { cursor: pointer; font-weight: 600; }
+.list-rule-filter form { display: grid; gap: 12px; margin-top: 12px; }
+.list-rule-filter p { color: var(--muted); margin: 0; font-size: 13px; }
+.list-rule-row { display: grid; grid-template-columns: minmax(140px, 1fr) minmax(100px, .7fr) minmax(140px, 1.5fr) auto; gap: 8px; }
+.list-rule-actions { display: flex; flex-wrap: wrap; align-items: end; gap: 10px; }
+.list-rule-actions label { display: grid; gap: 5px; font-size: 13px; }
+.identity-batch-list { display: grid; gap: 10px; max-height: 50vh; overflow: auto; }
+.identity-batch-row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; }
+@media (max-width: 640px) { .list-rule-row { grid-template-columns: 1fr 1fr; } .identity-batch-row { grid-template-columns: 1fr; border-bottom: 1px solid var(--border); padding-bottom: 12px; } }

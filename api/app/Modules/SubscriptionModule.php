@@ -44,7 +44,7 @@ final class SubscriptionModule implements ModuleProvider
                 new CapabilityDefinition('subscription.locked-fulfillment', LockedOrderFulfillment::class, exported: false),
                 new CapabilityDefinition('subscription.locked-account-access', LockedAccountAccess::class, exported: false),
                 new CapabilityDefinition('subscription.initial-preparation', \App\Domains\Subscription\Internal\InitialCatalog::class, exported: false),
-            ], requires: [new CapabilityRequirement('installation.admission'), new CapabilityRequirement('platform.clock'), new CapabilityRequirement('credentials.provider-client'), new CapabilityRequirement('billing.winning-proof'),
+            ], requires: [new CapabilityRequirement('installation.admission'), new CapabilityRequirement('platform.clock'), new CapabilityRequirement('credentials.provider-client'), new CapabilityRequirement('credentials.template-validator'), new CapabilityRequirement('billing.winning-proof'),
                 new CapabilityRequirement('billing.locked-coupon-discounts'), new CapabilityRequirement('billing.commission-terms'), new CapabilityRequirement('identity.current-session-authorization')], required: true);
     }
 

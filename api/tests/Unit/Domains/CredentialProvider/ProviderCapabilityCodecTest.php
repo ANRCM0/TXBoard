@@ -59,6 +59,24 @@ class ProviderCapabilityCodecTest extends TestCase
         }
     }
 
+    public function test_optional_template_engine_is_explicit_and_requires_the_enabled_renderer(): void
+    {
+        $legacy = $this->response();
+        $this->assertSame($legacy, ProviderCapabilityCodec::decodeResponse(json_encode($legacy), $this->request()));
+        $current = $legacy + ['subscription_template_engine' => 'tx-template/v1'];
+        $this->assertSame($current, ProviderCapabilityCodec::decodeResponse(json_encode($current), $this->request()));
+        foreach ([array_replace($current, ['subscription_template_engine' => 'unknown/v1']),
+            array_replace($current, ['subscription_render' => false]),
+            array_replace($current, ['subscription_template_engine' => null])] as $invalid) {
+            try {
+                ProviderCapabilityCodec::decodeResponse(json_encode($invalid), $this->request());
+                $this->fail('Unsupported or contradictory template engine was accepted.');
+            } catch (ProviderError $error) {
+                $this->assertSame('PROVIDER_CAPABILITIES_INVALID', $error->codeName);
+            }
+        }
+    }
+
     private function request(): array
     {
         return ['contract_version' => ProviderCapabilityCodec::VERSION, 'request_id' => 'capability-1',

@@ -1,0 +1,3942 @@
+[
+    {
+        "type": "shadowsocks",
+        "label": "Shadowsocks",
+        "schema_version": 1,
+        "defaults": {
+            "cipher": "aes-128-gcm",
+            "obfs": "",
+            "obfs_settings": {
+                "host": "",
+                "path": ""
+            },
+            "plugin": "",
+            "plugin_opts": ""
+        },
+        "form_schema": [
+            {
+                "key": "cipher",
+                "label": "加密方式",
+                "type": "select",
+                "options": [
+                    {
+                        "value": "aes-128-gcm",
+                        "label": "aes-128-gcm"
+                    },
+                    {
+                        "value": "aes-256-gcm",
+                        "label": "aes-256-gcm"
+                    },
+                    {
+                        "value": "chacha20-ietf-poly1305",
+                        "label": "chacha20-ietf-poly1305"
+                    },
+                    {
+                        "value": "2022-blake3-aes-128-gcm",
+                        "label": "2022-blake3-aes-128-gcm"
+                    },
+                    {
+                        "value": "2022-blake3-aes-256-gcm",
+                        "label": "2022-blake3-aes-256-gcm"
+                    },
+                    {
+                        "value": "2022-blake3-chacha20-poly1305",
+                        "label": "2022-blake3-chacha20-poly1305"
+                    }
+                ]
+            },
+            {
+                "key": "obfs",
+                "label": "Obfs",
+                "type": "text",
+                "placeholder": "http / tls"
+            },
+            {
+                "key": "obfs_settings.host",
+                "label": "Obfs Host",
+                "type": "text"
+            },
+            {
+                "key": "obfs_settings.path",
+                "label": "Obfs Path",
+                "type": "text"
+            },
+            {
+                "key": "plugin",
+                "label": "Plugin",
+                "type": "text",
+                "placeholder": "v2ray-plugin / shadow-tls / restls"
+            },
+            {
+                "key": "plugin_opts",
+                "label": "Plugin Options",
+                "type": "text"
+            }
+        ],
+        "certificate_schema": [
+            {
+                "key": "cert_mode",
+                "label": "证书模式",
+                "type": "select",
+                "options": [
+                    {
+                        "value": "",
+                        "label": "节点自动判定"
+                    },
+                    {
+                        "value": "none",
+                        "label": "无证书"
+                    },
+                    {
+                        "value": "http",
+                        "label": "ACME HTTP"
+                    },
+                    {
+                        "value": "dns",
+                        "label": "ACME DNS"
+                    },
+                    {
+                        "value": "self",
+                        "label": "自签证书"
+                    },
+                    {
+                        "value": "file",
+                        "label": "节点本地文件"
+                    },
+                    {
+                        "value": "content",
+                        "label": "证书内容"
+                    }
+                ]
+            },
+            {
+                "key": "domain",
+                "label": "证书域名",
+                "type": "text",
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "one_of": [
+                            "http",
+                            "dns",
+                            "self"
+                        ]
+                    }
+                ]
+            },
+            {
+                "key": "email",
+                "label": "ACME 邮箱",
+                "type": "text",
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "one_of": [
+                            "http",
+                            "dns"
+                        ]
+                    }
+                ]
+            },
+            {
+                "key": "http_port",
+                "label": "HTTP 验证端口",
+                "type": "number",
+                "min": 1,
+                "max": 65535,
+                "placeholder": "80",
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "equals": "http"
+                    }
+                ]
+            },
+            {
+                "key": "dns_provider",
+                "label": "DNS 提供商",
+                "type": "text",
+                "placeholder": "cloudflare",
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "equals": "dns"
+                    }
+                ]
+            },
+            {
+                "key": "dns_env",
+                "label": "DNS 环境变量",
+                "type": "json-object",
+                "full": true,
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "equals": "dns"
+                    }
+                ]
+            },
+            {
+                "key": "cert_file",
+                "label": "节点证书文件路径",
+                "type": "text",
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "equals": "file"
+                    }
+                ]
+            },
+            {
+                "key": "key_file",
+                "label": "节点私钥文件路径",
+                "type": "text",
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "equals": "file"
+                    }
+                ]
+            },
+            {
+                "key": "cert_content",
+                "label": "证书 PEM 内容",
+                "type": "textarea",
+                "full": true,
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "equals": "content"
+                    }
+                ]
+            },
+            {
+                "key": "key_content",
+                "label": "私钥 PEM 内容",
+                "type": "textarea",
+                "full": true,
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "equals": "content"
+                    }
+                ]
+            }
+        ]
+    },
+    {
+        "type": "vless",
+        "label": "VLESS",
+        "schema_version": 1,
+        "defaults": {
+            "tls": 0,
+            "network": "tcp",
+            "network_settings": [],
+            "flow": "",
+            "encryption": {
+                "enabled": false,
+                "encryption": "",
+                "decryption": ""
+            },
+            "tls_settings": {
+                "server_name": "",
+                "allow_insecure": false,
+                "ech": {
+                    "enabled": false,
+                    "config": "",
+                    "query_server_name": "",
+                    "key": "",
+                    "key_path": "",
+                    "config_path": ""
+                }
+            },
+            "reality_settings": {
+                "server_name": "",
+                "server_port": 443,
+                "public_key": "",
+                "private_key": "",
+                "short_id": "",
+                "allow_insecure": false
+            },
+            "multiplex": {
+                "enabled": false,
+                "protocol": "yamux",
+                "max_connections": null,
+                "min_streams": null,
+                "max_streams": null,
+                "padding": false,
+                "brutal": {
+                    "enabled": false,
+                    "up_mbps": null,
+                    "down_mbps": null
+                }
+            },
+            "utls": {
+                "enabled": false,
+                "fingerprint": "chrome"
+            }
+        },
+        "form_schema": [
+            {
+                "key": "tls",
+                "label": "TLS 模式",
+                "type": "select",
+                "options": [
+                    {
+                        "value": 0,
+                        "label": "关闭"
+                    },
+                    {
+                        "value": 1,
+                        "label": "TLS"
+                    },
+                    {
+                        "value": 2,
+                        "label": "Reality"
+                    }
+                ]
+            },
+            {
+                "key": "network",
+                "label": "传输协议",
+                "type": "text",
+                "placeholder": "tcp / ws / grpc / httpupgrade / xhttp"
+            },
+            {
+                "key": "flow",
+                "label": "Flow",
+                "type": "text",
+                "placeholder": "xtls-rprx-vision"
+            },
+            {
+                "key": "network_settings",
+                "label": "Network Settings",
+                "type": "json",
+                "full": true,
+                "templates": [
+                    {
+                        "label": "WebSocket",
+                        "value": {
+                            "path": "/",
+                            "headers": {
+                                "Host": "example.com"
+                            }
+                        },
+                        "transport": "ws"
+                    },
+                    {
+                        "label": "gRPC",
+                        "value": {
+                            "serviceName": "grpc"
+                        },
+                        "transport": "grpc"
+                    },
+                    {
+                        "label": "HTTPUpgrade",
+                        "value": {
+                            "path": "/",
+                            "host": "example.com"
+                        },
+                        "transport": "httpupgrade"
+                    },
+                    {
+                        "label": "HTTP/2",
+                        "value": {
+                            "path": "/",
+                            "host": [
+                                "example.com"
+                            ]
+                        },
+                        "transport": "h2"
+                    },
+                    {
+                        "label": "XHTTP",
+                        "value": {
+                            "path": "/",
+                            "host": "example.com",
+                            "mode": "auto"
+                        },
+                        "transport": "xhttp"
+                    }
+                ]
+            },
+            {
+                "key": "tls_settings.server_name",
+                "label": "SNI / Server Name",
+                "type": "text",
+                "visible_when": [
+                    {
+                        "field": "tls",
+                        "equals": 1
+                    }
+                ]
+            },
+            {
+                "key": "tls_settings.allow_insecure",
+                "label": "跳过证书验证",
+                "type": "checkbox",
+                "visible_when": [
+                    {
+                        "field": "tls",
+                        "equals": 1
+                    }
+                ]
+            },
+            {
+                "key": "tls_settings.ech.enabled",
+                "label": "启用 ECH",
+                "type": "checkbox",
+                "full": true,
+                "visible_when": [
+                    {
+                        "field": "tls",
+                        "equals": 1
+                    }
+                ]
+            },
+            {
+                "key": "tls_settings.ech.config",
+                "label": "ECH Config",
+                "type": "textarea",
+                "full": true,
+                "visible_when": [
+                    {
+                        "field": "tls",
+                        "equals": 1
+                    },
+                    {
+                        "field": "tls_settings.ech.enabled",
+                        "equals": true
+                    }
+                ]
+            },
+            {
+                "key": "tls_settings.ech.query_server_name",
+                "label": "ECH Query Server Name",
+                "type": "text",
+                "visible_when": [
+                    {
+                        "field": "tls",
+                        "equals": 1
+                    },
+                    {
+                        "field": "tls_settings.ech.enabled",
+                        "equals": true
+                    }
+                ]
+            },
+            {
+                "key": "tls_settings.ech.key_path",
+                "label": "ECH Key Path",
+                "type": "text",
+                "visible_when": [
+                    {
+                        "field": "tls",
+                        "equals": 1
+                    },
+                    {
+                        "field": "tls_settings.ech.enabled",
+                        "equals": true
+                    }
+                ]
+            },
+            {
+                "key": "tls_settings.ech.key",
+                "label": "ECH Key",
+                "type": "textarea",
+                "full": true,
+                "visible_when": [
+                    {
+                        "field": "tls",
+                        "equals": 1
+                    },
+                    {
+                        "field": "tls_settings.ech.enabled",
+                        "equals": true
+                    }
+                ],
+                "generator": {
+                    "kind": "ech",
+                    "label": "生成 ECH 密钥",
+                    "params": {
+                        "public_name": "$host"
+                    },
+                    "map": {
+                        "key": "tls_settings.ech.key",
+                        "config": "tls_settings.ech.config"
+                    }
+                }
+            },
+            {
+                "key": "tls_settings.ech.config_path",
+                "label": "ECH Config Path",
+                "type": "text",
+                "full": true,
+                "visible_when": [
+                    {
+                        "field": "tls",
+                        "equals": 1
+                    },
+                    {
+                        "field": "tls_settings.ech.enabled",
+                        "equals": true
+                    }
+                ]
+            },
+            {
+                "key": "reality_settings.server_name",
+                "label": "Reality SNI",
+                "type": "text",
+                "visible_when": [
+                    {
+                        "field": "tls",
+                        "equals": 2
+                    }
+                ]
+            },
+            {
+                "key": "reality_settings.server_port",
+                "label": "Reality 目标端口",
+                "type": "number",
+                "min": 1,
+                "max": 65535,
+                "visible_when": [
+                    {
+                        "field": "tls",
+                        "equals": 2
+                    }
+                ]
+            },
+            {
+                "key": "reality_settings.public_key",
+                "label": "Reality Public Key",
+                "type": "text",
+                "full": true,
+                "visible_when": [
+                    {
+                        "field": "tls",
+                        "equals": 2
+                    }
+                ]
+            },
+            {
+                "key": "reality_settings.private_key",
+                "label": "Reality Private Key",
+                "type": "text",
+                "full": true,
+                "visible_when": [
+                    {
+                        "field": "tls",
+                        "equals": 2
+                    }
+                ],
+                "generator": {
+                    "kind": "x25519",
+                    "label": "生成 Reality 密钥对",
+                    "map": {
+                        "private_key": "reality_settings.private_key",
+                        "public_key": "reality_settings.public_key"
+                    }
+                }
+            },
+            {
+                "key": "reality_settings.short_id",
+                "label": "Reality Short ID",
+                "type": "text",
+                "visible_when": [
+                    {
+                        "field": "tls",
+                        "equals": 2
+                    }
+                ],
+                "generator": {
+                    "kind": "hex",
+                    "label": "随机 Short ID",
+                    "params": {
+                        "bytes": 8
+                    },
+                    "map": {
+                        "value": "reality_settings.short_id"
+                    }
+                }
+            },
+            {
+                "key": "reality_settings.allow_insecure",
+                "label": "Reality 跳过证书验证",
+                "type": "checkbox",
+                "visible_when": [
+                    {
+                        "field": "tls",
+                        "equals": 2
+                    }
+                ]
+            },
+            {
+                "key": "utls.enabled",
+                "label": "启用 uTLS",
+                "type": "checkbox"
+            },
+            {
+                "key": "utls.fingerprint",
+                "label": "uTLS 指纹",
+                "type": "text",
+                "placeholder": "chrome"
+            },
+            {
+                "key": "multiplex.enabled",
+                "label": "启用 Multiplex",
+                "type": "checkbox"
+            },
+            {
+                "key": "multiplex.protocol",
+                "label": "复用协议",
+                "type": "text"
+            },
+            {
+                "key": "multiplex.max_connections",
+                "label": "最大连接数",
+                "type": "number"
+            },
+            {
+                "key": "multiplex.min_streams",
+                "label": "最小流数",
+                "type": "number"
+            },
+            {
+                "key": "multiplex.max_streams",
+                "label": "最大流数",
+                "type": "number"
+            },
+            {
+                "key": "multiplex.padding",
+                "label": "Multiplex Padding",
+                "type": "checkbox"
+            },
+            {
+                "key": "multiplex.brutal.enabled",
+                "label": "启用 Brutal",
+                "type": "checkbox",
+                "full": true
+            },
+            {
+                "key": "multiplex.brutal.up_mbps",
+                "label": "Brutal 上行 Mbps",
+                "type": "number",
+                "visible_when": [
+                    {
+                        "field": "multiplex.brutal.enabled",
+                        "equals": true
+                    }
+                ]
+            },
+            {
+                "key": "multiplex.brutal.down_mbps",
+                "label": "Brutal 下行 Mbps",
+                "type": "number",
+                "visible_when": [
+                    {
+                        "field": "multiplex.brutal.enabled",
+                        "equals": true
+                    }
+                ]
+            },
+            {
+                "key": "encryption.enabled",
+                "label": "启用 VLESS Encryption",
+                "type": "checkbox",
+                "full": true
+            },
+            {
+                "key": "encryption.encryption",
+                "label": "Encryption / Client Public Key",
+                "type": "text",
+                "visible_when": [
+                    {
+                        "field": "encryption.enabled",
+                        "equals": true
+                    }
+                ]
+            },
+            {
+                "key": "encryption.decryption",
+                "label": "Decryption / Server Private Key",
+                "type": "text",
+                "visible_when": [
+                    {
+                        "field": "encryption.enabled",
+                        "equals": true
+                    }
+                ],
+                "generator": {
+                    "kind": "x25519",
+                    "label": "生成 VLESS Encryption 密钥对",
+                    "map": {
+                        "private_key": "encryption.decryption",
+                        "public_key": "encryption.encryption"
+                    }
+                }
+            }
+        ],
+        "certificate_schema": [
+            {
+                "key": "cert_mode",
+                "label": "证书模式",
+                "type": "select",
+                "options": [
+                    {
+                        "value": "",
+                        "label": "节点自动判定"
+                    },
+                    {
+                        "value": "none",
+                        "label": "无证书"
+                    },
+                    {
+                        "value": "http",
+                        "label": "ACME HTTP"
+                    },
+                    {
+                        "value": "dns",
+                        "label": "ACME DNS"
+                    },
+                    {
+                        "value": "self",
+                        "label": "自签证书"
+                    },
+                    {
+                        "value": "file",
+                        "label": "节点本地文件"
+                    },
+                    {
+                        "value": "content",
+                        "label": "证书内容"
+                    }
+                ]
+            },
+            {
+                "key": "domain",
+                "label": "证书域名",
+                "type": "text",
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "one_of": [
+                            "http",
+                            "dns",
+                            "self"
+                        ]
+                    }
+                ]
+            },
+            {
+                "key": "email",
+                "label": "ACME 邮箱",
+                "type": "text",
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "one_of": [
+                            "http",
+                            "dns"
+                        ]
+                    }
+                ]
+            },
+            {
+                "key": "http_port",
+                "label": "HTTP 验证端口",
+                "type": "number",
+                "min": 1,
+                "max": 65535,
+                "placeholder": "80",
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "equals": "http"
+                    }
+                ]
+            },
+            {
+                "key": "dns_provider",
+                "label": "DNS 提供商",
+                "type": "text",
+                "placeholder": "cloudflare",
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "equals": "dns"
+                    }
+                ]
+            },
+            {
+                "key": "dns_env",
+                "label": "DNS 环境变量",
+                "type": "json-object",
+                "full": true,
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "equals": "dns"
+                    }
+                ]
+            },
+            {
+                "key": "cert_file",
+                "label": "节点证书文件路径",
+                "type": "text",
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "equals": "file"
+                    }
+                ]
+            },
+            {
+                "key": "key_file",
+                "label": "节点私钥文件路径",
+                "type": "text",
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "equals": "file"
+                    }
+                ]
+            },
+            {
+                "key": "cert_content",
+                "label": "证书 PEM 内容",
+                "type": "textarea",
+                "full": true,
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "equals": "content"
+                    }
+                ]
+            },
+            {
+                "key": "key_content",
+                "label": "私钥 PEM 内容",
+                "type": "textarea",
+                "full": true,
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "equals": "content"
+                    }
+                ]
+            }
+        ]
+    },
+    {
+        "type": "vmess",
+        "label": "VMess",
+        "schema_version": 1,
+        "defaults": {
+            "tls": 0,
+            "network": "tcp",
+            "network_settings": [],
+            "rules": [],
+            "tls_settings": {
+                "server_name": "",
+                "allow_insecure": false,
+                "ech": {
+                    "enabled": false,
+                    "config": "",
+                    "query_server_name": "",
+                    "key": "",
+                    "key_path": "",
+                    "config_path": ""
+                }
+            },
+            "multiplex": {
+                "enabled": false,
+                "protocol": "yamux",
+                "max_connections": null,
+                "min_streams": null,
+                "max_streams": null,
+                "padding": false,
+                "brutal": {
+                    "enabled": false,
+                    "up_mbps": null,
+                    "down_mbps": null
+                }
+            },
+            "utls": {
+                "enabled": false,
+                "fingerprint": "chrome"
+            }
+        },
+        "form_schema": [
+            {
+                "key": "tls",
+                "label": "TLS 模式",
+                "type": "select",
+                "options": [
+                    {
+                        "value": 0,
+                        "label": "关闭"
+                    },
+                    {
+                        "value": 1,
+                        "label": "TLS"
+                    }
+                ]
+            },
+            {
+                "key": "network",
+                "label": "传输协议",
+                "type": "text",
+                "placeholder": "tcp / ws / grpc / httpupgrade / xhttp"
+            },
+            {
+                "key": "network_settings",
+                "label": "Network Settings",
+                "type": "json",
+                "full": true,
+                "templates": [
+                    {
+                        "label": "WebSocket",
+                        "value": {
+                            "path": "/",
+                            "headers": {
+                                "Host": "example.com"
+                            }
+                        },
+                        "transport": "ws"
+                    },
+                    {
+                        "label": "gRPC",
+                        "value": {
+                            "serviceName": "grpc"
+                        },
+                        "transport": "grpc"
+                    },
+                    {
+                        "label": "HTTPUpgrade",
+                        "value": {
+                            "path": "/",
+                            "host": "example.com"
+                        },
+                        "transport": "httpupgrade"
+                    },
+                    {
+                        "label": "HTTP/2",
+                        "value": {
+                            "path": "/",
+                            "host": [
+                                "example.com"
+                            ]
+                        },
+                        "transport": "h2"
+                    },
+                    {
+                        "label": "XHTTP",
+                        "value": {
+                            "path": "/",
+                            "host": "example.com",
+                            "mode": "auto"
+                        },
+                        "transport": "xhttp"
+                    }
+                ]
+            },
+            {
+                "key": "rules",
+                "label": "VMess Rules",
+                "type": "json-array",
+                "full": true
+            },
+            {
+                "key": "tls_settings.server_name",
+                "label": "SNI / Server Name",
+                "type": "text",
+                "visible_when": [
+                    {
+                        "field": "tls",
+                        "equals": 1
+                    }
+                ]
+            },
+            {
+                "key": "tls_settings.allow_insecure",
+                "label": "跳过证书验证",
+                "type": "checkbox",
+                "visible_when": [
+                    {
+                        "field": "tls",
+                        "equals": 1
+                    }
+                ]
+            },
+            {
+                "key": "tls_settings.ech.enabled",
+                "label": "启用 ECH",
+                "type": "checkbox",
+                "full": true,
+                "visible_when": [
+                    {
+                        "field": "tls",
+                        "equals": 1
+                    }
+                ]
+            },
+            {
+                "key": "tls_settings.ech.config",
+                "label": "ECH Config",
+                "type": "textarea",
+                "full": true,
+                "visible_when": [
+                    {
+                        "field": "tls",
+                        "equals": 1
+                    },
+                    {
+                        "field": "tls_settings.ech.enabled",
+                        "equals": true
+                    }
+                ]
+            },
+            {
+                "key": "tls_settings.ech.query_server_name",
+                "label": "ECH Query Server Name",
+                "type": "text",
+                "visible_when": [
+                    {
+                        "field": "tls",
+                        "equals": 1
+                    },
+                    {
+                        "field": "tls_settings.ech.enabled",
+                        "equals": true
+                    }
+                ]
+            },
+            {
+                "key": "tls_settings.ech.key_path",
+                "label": "ECH Key Path",
+                "type": "text",
+                "visible_when": [
+                    {
+                        "field": "tls",
+                        "equals": 1
+                    },
+                    {
+                        "field": "tls_settings.ech.enabled",
+                        "equals": true
+                    }
+                ]
+            },
+            {
+                "key": "tls_settings.ech.key",
+                "label": "ECH Key",
+                "type": "textarea",
+                "full": true,
+                "visible_when": [
+                    {
+                        "field": "tls",
+                        "equals": 1
+                    },
+                    {
+                        "field": "tls_settings.ech.enabled",
+                        "equals": true
+                    }
+                ],
+                "generator": {
+                    "kind": "ech",
+                    "label": "生成 ECH 密钥",
+                    "params": {
+                        "public_name": "$host"
+                    },
+                    "map": {
+                        "key": "tls_settings.ech.key",
+                        "config": "tls_settings.ech.config"
+                    }
+                }
+            },
+            {
+                "key": "tls_settings.ech.config_path",
+                "label": "ECH Config Path",
+                "type": "text",
+                "full": true,
+                "visible_when": [
+                    {
+                        "field": "tls",
+                        "equals": 1
+                    },
+                    {
+                        "field": "tls_settings.ech.enabled",
+                        "equals": true
+                    }
+                ]
+            },
+            {
+                "key": "utls.enabled",
+                "label": "启用 uTLS",
+                "type": "checkbox"
+            },
+            {
+                "key": "utls.fingerprint",
+                "label": "uTLS 指纹",
+                "type": "text",
+                "placeholder": "chrome"
+            },
+            {
+                "key": "multiplex.enabled",
+                "label": "启用 Multiplex",
+                "type": "checkbox"
+            },
+            {
+                "key": "multiplex.protocol",
+                "label": "复用协议",
+                "type": "text"
+            },
+            {
+                "key": "multiplex.max_connections",
+                "label": "最大连接数",
+                "type": "number"
+            },
+            {
+                "key": "multiplex.min_streams",
+                "label": "最小流数",
+                "type": "number"
+            },
+            {
+                "key": "multiplex.max_streams",
+                "label": "最大流数",
+                "type": "number"
+            },
+            {
+                "key": "multiplex.padding",
+                "label": "Multiplex Padding",
+                "type": "checkbox"
+            },
+            {
+                "key": "multiplex.brutal.enabled",
+                "label": "启用 Brutal",
+                "type": "checkbox",
+                "full": true
+            },
+            {
+                "key": "multiplex.brutal.up_mbps",
+                "label": "Brutal 上行 Mbps",
+                "type": "number",
+                "visible_when": [
+                    {
+                        "field": "multiplex.brutal.enabled",
+                        "equals": true
+                    }
+                ]
+            },
+            {
+                "key": "multiplex.brutal.down_mbps",
+                "label": "Brutal 下行 Mbps",
+                "type": "number",
+                "visible_when": [
+                    {
+                        "field": "multiplex.brutal.enabled",
+                        "equals": true
+                    }
+                ]
+            }
+        ],
+        "certificate_schema": [
+            {
+                "key": "cert_mode",
+                "label": "证书模式",
+                "type": "select",
+                "options": [
+                    {
+                        "value": "",
+                        "label": "节点自动判定"
+                    },
+                    {
+                        "value": "none",
+                        "label": "无证书"
+                    },
+                    {
+                        "value": "http",
+                        "label": "ACME HTTP"
+                    },
+                    {
+                        "value": "dns",
+                        "label": "ACME DNS"
+                    },
+                    {
+                        "value": "self",
+                        "label": "自签证书"
+                    },
+                    {
+                        "value": "file",
+                        "label": "节点本地文件"
+                    },
+                    {
+                        "value": "content",
+                        "label": "证书内容"
+                    }
+                ]
+            },
+            {
+                "key": "domain",
+                "label": "证书域名",
+                "type": "text",
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "one_of": [
+                            "http",
+                            "dns",
+                            "self"
+                        ]
+                    }
+                ]
+            },
+            {
+                "key": "email",
+                "label": "ACME 邮箱",
+                "type": "text",
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "one_of": [
+                            "http",
+                            "dns"
+                        ]
+                    }
+                ]
+            },
+            {
+                "key": "http_port",
+                "label": "HTTP 验证端口",
+                "type": "number",
+                "min": 1,
+                "max": 65535,
+                "placeholder": "80",
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "equals": "http"
+                    }
+                ]
+            },
+            {
+                "key": "dns_provider",
+                "label": "DNS 提供商",
+                "type": "text",
+                "placeholder": "cloudflare",
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "equals": "dns"
+                    }
+                ]
+            },
+            {
+                "key": "dns_env",
+                "label": "DNS 环境变量",
+                "type": "json-object",
+                "full": true,
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "equals": "dns"
+                    }
+                ]
+            },
+            {
+                "key": "cert_file",
+                "label": "节点证书文件路径",
+                "type": "text",
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "equals": "file"
+                    }
+                ]
+            },
+            {
+                "key": "key_file",
+                "label": "节点私钥文件路径",
+                "type": "text",
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "equals": "file"
+                    }
+                ]
+            },
+            {
+                "key": "cert_content",
+                "label": "证书 PEM 内容",
+                "type": "textarea",
+                "full": true,
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "equals": "content"
+                    }
+                ]
+            },
+            {
+                "key": "key_content",
+                "label": "私钥 PEM 内容",
+                "type": "textarea",
+                "full": true,
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "equals": "content"
+                    }
+                ]
+            }
+        ]
+    },
+    {
+        "type": "trojan",
+        "label": "Trojan",
+        "schema_version": 1,
+        "defaults": {
+            "tls": 1,
+            "network": "tcp",
+            "network_settings": [],
+            "server_name": "",
+            "allow_insecure": false,
+            "tls_settings": {
+                "server_name": "",
+                "allow_insecure": false,
+                "ech": {
+                    "enabled": false,
+                    "config": "",
+                    "query_server_name": "",
+                    "key": "",
+                    "key_path": "",
+                    "config_path": ""
+                }
+            },
+            "reality_settings": {
+                "server_name": "",
+                "server_port": 443,
+                "public_key": "",
+                "private_key": "",
+                "short_id": "",
+                "allow_insecure": false
+            },
+            "multiplex": {
+                "enabled": false,
+                "protocol": "yamux",
+                "max_connections": null,
+                "min_streams": null,
+                "max_streams": null,
+                "padding": false,
+                "brutal": {
+                    "enabled": false,
+                    "up_mbps": null,
+                    "down_mbps": null
+                }
+            },
+            "utls": {
+                "enabled": false,
+                "fingerprint": "chrome"
+            }
+        },
+        "form_schema": [
+            {
+                "key": "tls",
+                "label": "TLS 模式",
+                "type": "select",
+                "options": [
+                    {
+                        "value": 0,
+                        "label": "关闭"
+                    },
+                    {
+                        "value": 1,
+                        "label": "TLS"
+                    },
+                    {
+                        "value": 2,
+                        "label": "Reality"
+                    }
+                ]
+            },
+            {
+                "key": "network",
+                "label": "传输协议",
+                "type": "text",
+                "placeholder": "tcp / ws / grpc / httpupgrade / xhttp"
+            },
+            {
+                "key": "network_settings",
+                "label": "Network Settings",
+                "type": "json",
+                "full": true,
+                "templates": [
+                    {
+                        "label": "WebSocket",
+                        "value": {
+                            "path": "/",
+                            "headers": {
+                                "Host": "example.com"
+                            }
+                        },
+                        "transport": "ws"
+                    },
+                    {
+                        "label": "gRPC",
+                        "value": {
+                            "serviceName": "grpc"
+                        },
+                        "transport": "grpc"
+                    },
+                    {
+                        "label": "HTTPUpgrade",
+                        "value": {
+                            "path": "/",
+                            "host": "example.com"
+                        },
+                        "transport": "httpupgrade"
+                    },
+                    {
+                        "label": "HTTP/2",
+                        "value": {
+                            "path": "/",
+                            "host": [
+                                "example.com"
+                            ]
+                        },
+                        "transport": "h2"
+                    },
+                    {
+                        "label": "XHTTP",
+                        "value": {
+                            "path": "/",
+                            "host": "example.com",
+                            "mode": "auto"
+                        },
+                        "transport": "xhttp"
+                    }
+                ]
+            },
+            {
+                "key": "tls_settings.server_name",
+                "label": "SNI / Server Name",
+                "type": "text",
+                "visible_when": [
+                    {
+                        "field": "tls",
+                        "equals": 1
+                    }
+                ]
+            },
+            {
+                "key": "tls_settings.allow_insecure",
+                "label": "跳过证书验证",
+                "type": "checkbox",
+                "visible_when": [
+                    {
+                        "field": "tls",
+                        "equals": 1
+                    }
+                ]
+            },
+            {
+                "key": "tls_settings.ech.enabled",
+                "label": "启用 ECH",
+                "type": "checkbox",
+                "full": true,
+                "visible_when": [
+                    {
+                        "field": "tls",
+                        "equals": 1
+                    }
+                ]
+            },
+            {
+                "key": "tls_settings.ech.config",
+                "label": "ECH Config",
+                "type": "textarea",
+                "full": true,
+                "visible_when": [
+                    {
+                        "field": "tls",
+                        "equals": 1
+                    },
+                    {
+                        "field": "tls_settings.ech.enabled",
+                        "equals": true
+                    }
+                ]
+            },
+            {
+                "key": "tls_settings.ech.query_server_name",
+                "label": "ECH Query Server Name",
+                "type": "text",
+                "visible_when": [
+                    {
+                        "field": "tls",
+                        "equals": 1
+                    },
+                    {
+                        "field": "tls_settings.ech.enabled",
+                        "equals": true
+                    }
+                ]
+            },
+            {
+                "key": "tls_settings.ech.key_path",
+                "label": "ECH Key Path",
+                "type": "text",
+                "visible_when": [
+                    {
+                        "field": "tls",
+                        "equals": 1
+                    },
+                    {
+                        "field": "tls_settings.ech.enabled",
+                        "equals": true
+                    }
+                ]
+            },
+            {
+                "key": "tls_settings.ech.key",
+                "label": "ECH Key",
+                "type": "textarea",
+                "full": true,
+                "visible_when": [
+                    {
+                        "field": "tls",
+                        "equals": 1
+                    },
+                    {
+                        "field": "tls_settings.ech.enabled",
+                        "equals": true
+                    }
+                ],
+                "generator": {
+                    "kind": "ech",
+                    "label": "生成 ECH 密钥",
+                    "params": {
+                        "public_name": "$host"
+                    },
+                    "map": {
+                        "key": "tls_settings.ech.key",
+                        "config": "tls_settings.ech.config"
+                    }
+                }
+            },
+            {
+                "key": "tls_settings.ech.config_path",
+                "label": "ECH Config Path",
+                "type": "text",
+                "full": true,
+                "visible_when": [
+                    {
+                        "field": "tls",
+                        "equals": 1
+                    },
+                    {
+                        "field": "tls_settings.ech.enabled",
+                        "equals": true
+                    }
+                ]
+            },
+            {
+                "key": "reality_settings.server_name",
+                "label": "Reality SNI",
+                "type": "text",
+                "visible_when": [
+                    {
+                        "field": "tls",
+                        "equals": 2
+                    }
+                ]
+            },
+            {
+                "key": "reality_settings.server_port",
+                "label": "Reality 目标端口",
+                "type": "number",
+                "min": 1,
+                "max": 65535,
+                "visible_when": [
+                    {
+                        "field": "tls",
+                        "equals": 2
+                    }
+                ]
+            },
+            {
+                "key": "reality_settings.public_key",
+                "label": "Reality Public Key",
+                "type": "text",
+                "full": true,
+                "visible_when": [
+                    {
+                        "field": "tls",
+                        "equals": 2
+                    }
+                ]
+            },
+            {
+                "key": "reality_settings.private_key",
+                "label": "Reality Private Key",
+                "type": "text",
+                "full": true,
+                "visible_when": [
+                    {
+                        "field": "tls",
+                        "equals": 2
+                    }
+                ],
+                "generator": {
+                    "kind": "x25519",
+                    "label": "生成 Reality 密钥对",
+                    "map": {
+                        "private_key": "reality_settings.private_key",
+                        "public_key": "reality_settings.public_key"
+                    }
+                }
+            },
+            {
+                "key": "reality_settings.short_id",
+                "label": "Reality Short ID",
+                "type": "text",
+                "visible_when": [
+                    {
+                        "field": "tls",
+                        "equals": 2
+                    }
+                ],
+                "generator": {
+                    "kind": "hex",
+                    "label": "随机 Short ID",
+                    "params": {
+                        "bytes": 8
+                    },
+                    "map": {
+                        "value": "reality_settings.short_id"
+                    }
+                }
+            },
+            {
+                "key": "reality_settings.allow_insecure",
+                "label": "Reality 跳过证书验证",
+                "type": "checkbox",
+                "visible_when": [
+                    {
+                        "field": "tls",
+                        "equals": 2
+                    }
+                ]
+            },
+            {
+                "key": "utls.enabled",
+                "label": "启用 uTLS",
+                "type": "checkbox"
+            },
+            {
+                "key": "utls.fingerprint",
+                "label": "uTLS 指纹",
+                "type": "text",
+                "placeholder": "chrome"
+            },
+            {
+                "key": "multiplex.enabled",
+                "label": "启用 Multiplex",
+                "type": "checkbox"
+            },
+            {
+                "key": "multiplex.protocol",
+                "label": "复用协议",
+                "type": "text"
+            },
+            {
+                "key": "multiplex.max_connections",
+                "label": "最大连接数",
+                "type": "number"
+            },
+            {
+                "key": "multiplex.min_streams",
+                "label": "最小流数",
+                "type": "number"
+            },
+            {
+                "key": "multiplex.max_streams",
+                "label": "最大流数",
+                "type": "number"
+            },
+            {
+                "key": "multiplex.padding",
+                "label": "Multiplex Padding",
+                "type": "checkbox"
+            },
+            {
+                "key": "multiplex.brutal.enabled",
+                "label": "启用 Brutal",
+                "type": "checkbox",
+                "full": true
+            },
+            {
+                "key": "multiplex.brutal.up_mbps",
+                "label": "Brutal 上行 Mbps",
+                "type": "number",
+                "visible_when": [
+                    {
+                        "field": "multiplex.brutal.enabled",
+                        "equals": true
+                    }
+                ]
+            },
+            {
+                "key": "multiplex.brutal.down_mbps",
+                "label": "Brutal 下行 Mbps",
+                "type": "number",
+                "visible_when": [
+                    {
+                        "field": "multiplex.brutal.enabled",
+                        "equals": true
+                    }
+                ]
+            }
+        ],
+        "certificate_schema": [
+            {
+                "key": "cert_mode",
+                "label": "证书模式",
+                "type": "select",
+                "options": [
+                    {
+                        "value": "",
+                        "label": "节点自动判定"
+                    },
+                    {
+                        "value": "none",
+                        "label": "无证书"
+                    },
+                    {
+                        "value": "http",
+                        "label": "ACME HTTP"
+                    },
+                    {
+                        "value": "dns",
+                        "label": "ACME DNS"
+                    },
+                    {
+                        "value": "self",
+                        "label": "自签证书"
+                    },
+                    {
+                        "value": "file",
+                        "label": "节点本地文件"
+                    },
+                    {
+                        "value": "content",
+                        "label": "证书内容"
+                    }
+                ]
+            },
+            {
+                "key": "domain",
+                "label": "证书域名",
+                "type": "text",
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "one_of": [
+                            "http",
+                            "dns",
+                            "self"
+                        ]
+                    }
+                ]
+            },
+            {
+                "key": "email",
+                "label": "ACME 邮箱",
+                "type": "text",
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "one_of": [
+                            "http",
+                            "dns"
+                        ]
+                    }
+                ]
+            },
+            {
+                "key": "http_port",
+                "label": "HTTP 验证端口",
+                "type": "number",
+                "min": 1,
+                "max": 65535,
+                "placeholder": "80",
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "equals": "http"
+                    }
+                ]
+            },
+            {
+                "key": "dns_provider",
+                "label": "DNS 提供商",
+                "type": "text",
+                "placeholder": "cloudflare",
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "equals": "dns"
+                    }
+                ]
+            },
+            {
+                "key": "dns_env",
+                "label": "DNS 环境变量",
+                "type": "json-object",
+                "full": true,
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "equals": "dns"
+                    }
+                ]
+            },
+            {
+                "key": "cert_file",
+                "label": "节点证书文件路径",
+                "type": "text",
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "equals": "file"
+                    }
+                ]
+            },
+            {
+                "key": "key_file",
+                "label": "节点私钥文件路径",
+                "type": "text",
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "equals": "file"
+                    }
+                ]
+            },
+            {
+                "key": "cert_content",
+                "label": "证书 PEM 内容",
+                "type": "textarea",
+                "full": true,
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "equals": "content"
+                    }
+                ]
+            },
+            {
+                "key": "key_content",
+                "label": "私钥 PEM 内容",
+                "type": "textarea",
+                "full": true,
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "equals": "content"
+                    }
+                ]
+            }
+        ]
+    },
+    {
+        "type": "hysteria",
+        "label": "Hysteria 2",
+        "schema_version": 1,
+        "defaults": {
+            "version": 2,
+            "alpn": "h3",
+            "bandwidth": {
+                "up": null,
+                "down": null
+            },
+            "obfs": {
+                "open": false,
+                "type": "salamander",
+                "password": ""
+            },
+            "tls": {
+                "server_name": "",
+                "allow_insecure": false,
+                "ech": {
+                    "enabled": false,
+                    "config": "",
+                    "query_server_name": "",
+                    "key": "",
+                    "key_path": "",
+                    "config_path": ""
+                }
+            },
+            "hop_interval": null
+        },
+        "form_schema": [
+            {
+                "key": "version",
+                "label": "版本",
+                "type": "number"
+            },
+            {
+                "key": "alpn",
+                "label": "ALPN",
+                "type": "text",
+                "placeholder": "h3"
+            },
+            {
+                "key": "bandwidth.up",
+                "label": "上行带宽 Mbps",
+                "type": "number"
+            },
+            {
+                "key": "bandwidth.down",
+                "label": "下行带宽 Mbps",
+                "type": "number"
+            },
+            {
+                "key": "hop_interval",
+                "label": "Hop Interval",
+                "type": "number"
+            },
+            {
+                "key": "obfs.open",
+                "label": "启用 Obfs",
+                "type": "checkbox"
+            },
+            {
+                "key": "obfs.type",
+                "label": "Obfs 类型",
+                "type": "text",
+                "visible_when": [
+                    {
+                        "field": "obfs.open",
+                        "equals": true
+                    }
+                ]
+            },
+            {
+                "key": "obfs.password",
+                "label": "Obfs 密码",
+                "type": "text",
+                "visible_when": [
+                    {
+                        "field": "obfs.open",
+                        "equals": true
+                    }
+                ]
+            },
+            {
+                "key": "tls.server_name",
+                "label": "SNI / Server Name",
+                "type": "text",
+                "visible_when": []
+            },
+            {
+                "key": "tls.allow_insecure",
+                "label": "跳过证书验证",
+                "type": "checkbox",
+                "visible_when": []
+            },
+            {
+                "key": "tls.ech.enabled",
+                "label": "启用 ECH",
+                "type": "checkbox",
+                "full": true,
+                "visible_when": []
+            },
+            {
+                "key": "tls.ech.config",
+                "label": "ECH Config",
+                "type": "textarea",
+                "full": true,
+                "visible_when": [
+                    {
+                        "field": "tls.ech.enabled",
+                        "equals": true
+                    }
+                ]
+            },
+            {
+                "key": "tls.ech.query_server_name",
+                "label": "ECH Query Server Name",
+                "type": "text",
+                "visible_when": [
+                    {
+                        "field": "tls.ech.enabled",
+                        "equals": true
+                    }
+                ]
+            },
+            {
+                "key": "tls.ech.key_path",
+                "label": "ECH Key Path",
+                "type": "text",
+                "visible_when": [
+                    {
+                        "field": "tls.ech.enabled",
+                        "equals": true
+                    }
+                ]
+            },
+            {
+                "key": "tls.ech.key",
+                "label": "ECH Key",
+                "type": "textarea",
+                "full": true,
+                "visible_when": [
+                    {
+                        "field": "tls.ech.enabled",
+                        "equals": true
+                    }
+                ],
+                "generator": {
+                    "kind": "ech",
+                    "label": "生成 ECH 密钥",
+                    "params": {
+                        "public_name": "$host"
+                    },
+                    "map": {
+                        "key": "tls.ech.key",
+                        "config": "tls.ech.config"
+                    }
+                }
+            },
+            {
+                "key": "tls.ech.config_path",
+                "label": "ECH Config Path",
+                "type": "text",
+                "full": true,
+                "visible_when": [
+                    {
+                        "field": "tls.ech.enabled",
+                        "equals": true
+                    }
+                ]
+            }
+        ],
+        "certificate_schema": [
+            {
+                "key": "cert_mode",
+                "label": "证书模式",
+                "type": "select",
+                "options": [
+                    {
+                        "value": "",
+                        "label": "节点自动判定"
+                    },
+                    {
+                        "value": "none",
+                        "label": "无证书"
+                    },
+                    {
+                        "value": "http",
+                        "label": "ACME HTTP"
+                    },
+                    {
+                        "value": "dns",
+                        "label": "ACME DNS"
+                    },
+                    {
+                        "value": "self",
+                        "label": "自签证书"
+                    },
+                    {
+                        "value": "file",
+                        "label": "节点本地文件"
+                    },
+                    {
+                        "value": "content",
+                        "label": "证书内容"
+                    }
+                ]
+            },
+            {
+                "key": "domain",
+                "label": "证书域名",
+                "type": "text",
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "one_of": [
+                            "http",
+                            "dns",
+                            "self"
+                        ]
+                    }
+                ]
+            },
+            {
+                "key": "email",
+                "label": "ACME 邮箱",
+                "type": "text",
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "one_of": [
+                            "http",
+                            "dns"
+                        ]
+                    }
+                ]
+            },
+            {
+                "key": "http_port",
+                "label": "HTTP 验证端口",
+                "type": "number",
+                "min": 1,
+                "max": 65535,
+                "placeholder": "80",
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "equals": "http"
+                    }
+                ]
+            },
+            {
+                "key": "dns_provider",
+                "label": "DNS 提供商",
+                "type": "text",
+                "placeholder": "cloudflare",
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "equals": "dns"
+                    }
+                ]
+            },
+            {
+                "key": "dns_env",
+                "label": "DNS 环境变量",
+                "type": "json-object",
+                "full": true,
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "equals": "dns"
+                    }
+                ]
+            },
+            {
+                "key": "cert_file",
+                "label": "节点证书文件路径",
+                "type": "text",
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "equals": "file"
+                    }
+                ]
+            },
+            {
+                "key": "key_file",
+                "label": "节点私钥文件路径",
+                "type": "text",
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "equals": "file"
+                    }
+                ]
+            },
+            {
+                "key": "cert_content",
+                "label": "证书 PEM 内容",
+                "type": "textarea",
+                "full": true,
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "equals": "content"
+                    }
+                ]
+            },
+            {
+                "key": "key_content",
+                "label": "私钥 PEM 内容",
+                "type": "textarea",
+                "full": true,
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "equals": "content"
+                    }
+                ]
+            }
+        ]
+    },
+    {
+        "type": "tuic",
+        "label": "TUIC v5",
+        "schema_version": 1,
+        "defaults": {
+            "version": 5,
+            "congestion_control": "cubic",
+            "alpn": [
+                "h3"
+            ],
+            "udp_relay_mode": "native",
+            "tls": {
+                "server_name": "",
+                "allow_insecure": false,
+                "ech": {
+                    "enabled": false,
+                    "config": "",
+                    "query_server_name": "",
+                    "key": "",
+                    "key_path": "",
+                    "config_path": ""
+                }
+            }
+        },
+        "form_schema": [
+            {
+                "key": "version",
+                "label": "版本",
+                "type": "number"
+            },
+            {
+                "key": "congestion_control",
+                "label": "拥塞控制",
+                "type": "select",
+                "options": [
+                    {
+                        "value": "cubic",
+                        "label": "cubic"
+                    },
+                    {
+                        "value": "bbr",
+                        "label": "bbr"
+                    },
+                    {
+                        "value": "new_reno",
+                        "label": "new_reno"
+                    }
+                ]
+            },
+            {
+                "key": "alpn",
+                "label": "ALPN",
+                "type": "string-list",
+                "separator": "comma"
+            },
+            {
+                "key": "udp_relay_mode",
+                "label": "UDP Relay Mode",
+                "type": "text"
+            },
+            {
+                "key": "tls.server_name",
+                "label": "SNI / Server Name",
+                "type": "text",
+                "visible_when": []
+            },
+            {
+                "key": "tls.allow_insecure",
+                "label": "跳过证书验证",
+                "type": "checkbox",
+                "visible_when": []
+            },
+            {
+                "key": "tls.ech.enabled",
+                "label": "启用 ECH",
+                "type": "checkbox",
+                "full": true,
+                "visible_when": []
+            },
+            {
+                "key": "tls.ech.config",
+                "label": "ECH Config",
+                "type": "textarea",
+                "full": true,
+                "visible_when": [
+                    {
+                        "field": "tls.ech.enabled",
+                        "equals": true
+                    }
+                ]
+            },
+            {
+                "key": "tls.ech.query_server_name",
+                "label": "ECH Query Server Name",
+                "type": "text",
+                "visible_when": [
+                    {
+                        "field": "tls.ech.enabled",
+                        "equals": true
+                    }
+                ]
+            },
+            {
+                "key": "tls.ech.key_path",
+                "label": "ECH Key Path",
+                "type": "text",
+                "visible_when": [
+                    {
+                        "field": "tls.ech.enabled",
+                        "equals": true
+                    }
+                ]
+            },
+            {
+                "key": "tls.ech.key",
+                "label": "ECH Key",
+                "type": "textarea",
+                "full": true,
+                "visible_when": [
+                    {
+                        "field": "tls.ech.enabled",
+                        "equals": true
+                    }
+                ],
+                "generator": {
+                    "kind": "ech",
+                    "label": "生成 ECH 密钥",
+                    "params": {
+                        "public_name": "$host"
+                    },
+                    "map": {
+                        "key": "tls.ech.key",
+                        "config": "tls.ech.config"
+                    }
+                }
+            },
+            {
+                "key": "tls.ech.config_path",
+                "label": "ECH Config Path",
+                "type": "text",
+                "full": true,
+                "visible_when": [
+                    {
+                        "field": "tls.ech.enabled",
+                        "equals": true
+                    }
+                ]
+            }
+        ],
+        "certificate_schema": [
+            {
+                "key": "cert_mode",
+                "label": "证书模式",
+                "type": "select",
+                "options": [
+                    {
+                        "value": "",
+                        "label": "节点自动判定"
+                    },
+                    {
+                        "value": "none",
+                        "label": "无证书"
+                    },
+                    {
+                        "value": "http",
+                        "label": "ACME HTTP"
+                    },
+                    {
+                        "value": "dns",
+                        "label": "ACME DNS"
+                    },
+                    {
+                        "value": "self",
+                        "label": "自签证书"
+                    },
+                    {
+                        "value": "file",
+                        "label": "节点本地文件"
+                    },
+                    {
+                        "value": "content",
+                        "label": "证书内容"
+                    }
+                ]
+            },
+            {
+                "key": "domain",
+                "label": "证书域名",
+                "type": "text",
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "one_of": [
+                            "http",
+                            "dns",
+                            "self"
+                        ]
+                    }
+                ]
+            },
+            {
+                "key": "email",
+                "label": "ACME 邮箱",
+                "type": "text",
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "one_of": [
+                            "http",
+                            "dns"
+                        ]
+                    }
+                ]
+            },
+            {
+                "key": "http_port",
+                "label": "HTTP 验证端口",
+                "type": "number",
+                "min": 1,
+                "max": 65535,
+                "placeholder": "80",
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "equals": "http"
+                    }
+                ]
+            },
+            {
+                "key": "dns_provider",
+                "label": "DNS 提供商",
+                "type": "text",
+                "placeholder": "cloudflare",
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "equals": "dns"
+                    }
+                ]
+            },
+            {
+                "key": "dns_env",
+                "label": "DNS 环境变量",
+                "type": "json-object",
+                "full": true,
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "equals": "dns"
+                    }
+                ]
+            },
+            {
+                "key": "cert_file",
+                "label": "节点证书文件路径",
+                "type": "text",
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "equals": "file"
+                    }
+                ]
+            },
+            {
+                "key": "key_file",
+                "label": "节点私钥文件路径",
+                "type": "text",
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "equals": "file"
+                    }
+                ]
+            },
+            {
+                "key": "cert_content",
+                "label": "证书 PEM 内容",
+                "type": "textarea",
+                "full": true,
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "equals": "content"
+                    }
+                ]
+            },
+            {
+                "key": "key_content",
+                "label": "私钥 PEM 内容",
+                "type": "textarea",
+                "full": true,
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "equals": "content"
+                    }
+                ]
+            }
+        ]
+    },
+    {
+        "type": "anytls",
+        "label": "AnyTLS",
+        "schema_version": 1,
+        "defaults": {
+            "alpn": "h2,http/1.1",
+            "padding_scheme": [
+                "stop=8",
+                "0=30-30",
+                "1=100-400",
+                "2=400-500,c,500-1000,c,500-1000,c,500-1000,c,500-1000",
+                "3=9-9,500-1000",
+                "4=500-1000",
+                "5=500-1000",
+                "6=500-1000",
+                "7=500-1000"
+            ],
+            "tls": {
+                "server_name": "",
+                "allow_insecure": false,
+                "ech": {
+                    "enabled": false,
+                    "config": "",
+                    "query_server_name": "",
+                    "key": "",
+                    "key_path": "",
+                    "config_path": ""
+                }
+            }
+        },
+        "form_schema": [
+            {
+                "key": "alpn",
+                "label": "ALPN",
+                "type": "text",
+                "full": true
+            },
+            {
+                "key": "padding_scheme",
+                "label": "Padding Scheme（每行一项）",
+                "type": "string-list",
+                "separator": "newline",
+                "full": true
+            },
+            {
+                "key": "tls.server_name",
+                "label": "SNI / Server Name",
+                "type": "text",
+                "visible_when": []
+            },
+            {
+                "key": "tls.allow_insecure",
+                "label": "跳过证书验证",
+                "type": "checkbox",
+                "visible_when": []
+            },
+            {
+                "key": "tls.ech.enabled",
+                "label": "启用 ECH",
+                "type": "checkbox",
+                "full": true,
+                "visible_when": []
+            },
+            {
+                "key": "tls.ech.config",
+                "label": "ECH Config",
+                "type": "textarea",
+                "full": true,
+                "visible_when": [
+                    {
+                        "field": "tls.ech.enabled",
+                        "equals": true
+                    }
+                ]
+            },
+            {
+                "key": "tls.ech.query_server_name",
+                "label": "ECH Query Server Name",
+                "type": "text",
+                "visible_when": [
+                    {
+                        "field": "tls.ech.enabled",
+                        "equals": true
+                    }
+                ]
+            },
+            {
+                "key": "tls.ech.key_path",
+                "label": "ECH Key Path",
+                "type": "text",
+                "visible_when": [
+                    {
+                        "field": "tls.ech.enabled",
+                        "equals": true
+                    }
+                ]
+            },
+            {
+                "key": "tls.ech.key",
+                "label": "ECH Key",
+                "type": "textarea",
+                "full": true,
+                "visible_when": [
+                    {
+                        "field": "tls.ech.enabled",
+                        "equals": true
+                    }
+                ],
+                "generator": {
+                    "kind": "ech",
+                    "label": "生成 ECH 密钥",
+                    "params": {
+                        "public_name": "$host"
+                    },
+                    "map": {
+                        "key": "tls.ech.key",
+                        "config": "tls.ech.config"
+                    }
+                }
+            },
+            {
+                "key": "tls.ech.config_path",
+                "label": "ECH Config Path",
+                "type": "text",
+                "full": true,
+                "visible_when": [
+                    {
+                        "field": "tls.ech.enabled",
+                        "equals": true
+                    }
+                ]
+            }
+        ],
+        "certificate_schema": [
+            {
+                "key": "cert_mode",
+                "label": "证书模式",
+                "type": "select",
+                "options": [
+                    {
+                        "value": "",
+                        "label": "节点自动判定"
+                    },
+                    {
+                        "value": "none",
+                        "label": "无证书"
+                    },
+                    {
+                        "value": "http",
+                        "label": "ACME HTTP"
+                    },
+                    {
+                        "value": "dns",
+                        "label": "ACME DNS"
+                    },
+                    {
+                        "value": "self",
+                        "label": "自签证书"
+                    },
+                    {
+                        "value": "file",
+                        "label": "节点本地文件"
+                    },
+                    {
+                        "value": "content",
+                        "label": "证书内容"
+                    }
+                ]
+            },
+            {
+                "key": "domain",
+                "label": "证书域名",
+                "type": "text",
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "one_of": [
+                            "http",
+                            "dns",
+                            "self"
+                        ]
+                    }
+                ]
+            },
+            {
+                "key": "email",
+                "label": "ACME 邮箱",
+                "type": "text",
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "one_of": [
+                            "http",
+                            "dns"
+                        ]
+                    }
+                ]
+            },
+            {
+                "key": "http_port",
+                "label": "HTTP 验证端口",
+                "type": "number",
+                "min": 1,
+                "max": 65535,
+                "placeholder": "80",
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "equals": "http"
+                    }
+                ]
+            },
+            {
+                "key": "dns_provider",
+                "label": "DNS 提供商",
+                "type": "text",
+                "placeholder": "cloudflare",
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "equals": "dns"
+                    }
+                ]
+            },
+            {
+                "key": "dns_env",
+                "label": "DNS 环境变量",
+                "type": "json-object",
+                "full": true,
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "equals": "dns"
+                    }
+                ]
+            },
+            {
+                "key": "cert_file",
+                "label": "节点证书文件路径",
+                "type": "text",
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "equals": "file"
+                    }
+                ]
+            },
+            {
+                "key": "key_file",
+                "label": "节点私钥文件路径",
+                "type": "text",
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "equals": "file"
+                    }
+                ]
+            },
+            {
+                "key": "cert_content",
+                "label": "证书 PEM 内容",
+                "type": "textarea",
+                "full": true,
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "equals": "content"
+                    }
+                ]
+            },
+            {
+                "key": "key_content",
+                "label": "私钥 PEM 内容",
+                "type": "textarea",
+                "full": true,
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "equals": "content"
+                    }
+                ]
+            }
+        ]
+    },
+    {
+        "type": "socks",
+        "label": "SOCKS5",
+        "schema_version": 1,
+        "defaults": {
+            "tls": 0,
+            "tls_settings": {
+                "server_name": "",
+                "allow_insecure": false,
+                "ech": {
+                    "enabled": false,
+                    "config": "",
+                    "query_server_name": "",
+                    "key": "",
+                    "key_path": "",
+                    "config_path": ""
+                }
+            }
+        },
+        "form_schema": [
+            {
+                "key": "tls",
+                "label": "TLS",
+                "type": "select",
+                "options": [
+                    {
+                        "value": 0,
+                        "label": "关闭"
+                    },
+                    {
+                        "value": 1,
+                        "label": "启用"
+                    }
+                ]
+            },
+            {
+                "key": "tls_settings.server_name",
+                "label": "SNI / Server Name",
+                "type": "text",
+                "visible_when": [
+                    {
+                        "field": "tls",
+                        "equals": 1
+                    }
+                ]
+            },
+            {
+                "key": "tls_settings.allow_insecure",
+                "label": "跳过证书验证",
+                "type": "checkbox",
+                "visible_when": [
+                    {
+                        "field": "tls",
+                        "equals": 1
+                    }
+                ]
+            },
+            {
+                "key": "tls_settings.ech.enabled",
+                "label": "启用 ECH",
+                "type": "checkbox",
+                "full": true,
+                "visible_when": [
+                    {
+                        "field": "tls",
+                        "equals": 1
+                    }
+                ]
+            },
+            {
+                "key": "tls_settings.ech.config",
+                "label": "ECH Config",
+                "type": "textarea",
+                "full": true,
+                "visible_when": [
+                    {
+                        "field": "tls",
+                        "equals": 1
+                    },
+                    {
+                        "field": "tls_settings.ech.enabled",
+                        "equals": true
+                    }
+                ]
+            },
+            {
+                "key": "tls_settings.ech.query_server_name",
+                "label": "ECH Query Server Name",
+                "type": "text",
+                "visible_when": [
+                    {
+                        "field": "tls",
+                        "equals": 1
+                    },
+                    {
+                        "field": "tls_settings.ech.enabled",
+                        "equals": true
+                    }
+                ]
+            },
+            {
+                "key": "tls_settings.ech.key_path",
+                "label": "ECH Key Path",
+                "type": "text",
+                "visible_when": [
+                    {
+                        "field": "tls",
+                        "equals": 1
+                    },
+                    {
+                        "field": "tls_settings.ech.enabled",
+                        "equals": true
+                    }
+                ]
+            },
+            {
+                "key": "tls_settings.ech.key",
+                "label": "ECH Key",
+                "type": "textarea",
+                "full": true,
+                "visible_when": [
+                    {
+                        "field": "tls",
+                        "equals": 1
+                    },
+                    {
+                        "field": "tls_settings.ech.enabled",
+                        "equals": true
+                    }
+                ],
+                "generator": {
+                    "kind": "ech",
+                    "label": "生成 ECH 密钥",
+                    "params": {
+                        "public_name": "$host"
+                    },
+                    "map": {
+                        "key": "tls_settings.ech.key",
+                        "config": "tls_settings.ech.config"
+                    }
+                }
+            },
+            {
+                "key": "tls_settings.ech.config_path",
+                "label": "ECH Config Path",
+                "type": "text",
+                "full": true,
+                "visible_when": [
+                    {
+                        "field": "tls",
+                        "equals": 1
+                    },
+                    {
+                        "field": "tls_settings.ech.enabled",
+                        "equals": true
+                    }
+                ]
+            }
+        ],
+        "certificate_schema": [
+            {
+                "key": "cert_mode",
+                "label": "证书模式",
+                "type": "select",
+                "options": [
+                    {
+                        "value": "",
+                        "label": "节点自动判定"
+                    },
+                    {
+                        "value": "none",
+                        "label": "无证书"
+                    },
+                    {
+                        "value": "http",
+                        "label": "ACME HTTP"
+                    },
+                    {
+                        "value": "dns",
+                        "label": "ACME DNS"
+                    },
+                    {
+                        "value": "self",
+                        "label": "自签证书"
+                    },
+                    {
+                        "value": "file",
+                        "label": "节点本地文件"
+                    },
+                    {
+                        "value": "content",
+                        "label": "证书内容"
+                    }
+                ]
+            },
+            {
+                "key": "domain",
+                "label": "证书域名",
+                "type": "text",
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "one_of": [
+                            "http",
+                            "dns",
+                            "self"
+                        ]
+                    }
+                ]
+            },
+            {
+                "key": "email",
+                "label": "ACME 邮箱",
+                "type": "text",
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "one_of": [
+                            "http",
+                            "dns"
+                        ]
+                    }
+                ]
+            },
+            {
+                "key": "http_port",
+                "label": "HTTP 验证端口",
+                "type": "number",
+                "min": 1,
+                "max": 65535,
+                "placeholder": "80",
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "equals": "http"
+                    }
+                ]
+            },
+            {
+                "key": "dns_provider",
+                "label": "DNS 提供商",
+                "type": "text",
+                "placeholder": "cloudflare",
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "equals": "dns"
+                    }
+                ]
+            },
+            {
+                "key": "dns_env",
+                "label": "DNS 环境变量",
+                "type": "json-object",
+                "full": true,
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "equals": "dns"
+                    }
+                ]
+            },
+            {
+                "key": "cert_file",
+                "label": "节点证书文件路径",
+                "type": "text",
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "equals": "file"
+                    }
+                ]
+            },
+            {
+                "key": "key_file",
+                "label": "节点私钥文件路径",
+                "type": "text",
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "equals": "file"
+                    }
+                ]
+            },
+            {
+                "key": "cert_content",
+                "label": "证书 PEM 内容",
+                "type": "textarea",
+                "full": true,
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "equals": "content"
+                    }
+                ]
+            },
+            {
+                "key": "key_content",
+                "label": "私钥 PEM 内容",
+                "type": "textarea",
+                "full": true,
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "equals": "content"
+                    }
+                ]
+            }
+        ]
+    },
+    {
+        "type": "http",
+        "label": "HTTP Proxy",
+        "schema_version": 1,
+        "defaults": {
+            "tls": 1,
+            "tls_settings": {
+                "server_name": "",
+                "allow_insecure": false,
+                "ech": {
+                    "enabled": false,
+                    "config": "",
+                    "query_server_name": "",
+                    "key": "",
+                    "key_path": "",
+                    "config_path": ""
+                }
+            }
+        },
+        "form_schema": [
+            {
+                "key": "tls",
+                "label": "TLS",
+                "type": "select",
+                "options": [
+                    {
+                        "value": 0,
+                        "label": "关闭"
+                    },
+                    {
+                        "value": 1,
+                        "label": "启用"
+                    }
+                ]
+            },
+            {
+                "key": "tls_settings.server_name",
+                "label": "SNI / Server Name",
+                "type": "text",
+                "visible_when": [
+                    {
+                        "field": "tls",
+                        "equals": 1
+                    }
+                ]
+            },
+            {
+                "key": "tls_settings.allow_insecure",
+                "label": "跳过证书验证",
+                "type": "checkbox",
+                "visible_when": [
+                    {
+                        "field": "tls",
+                        "equals": 1
+                    }
+                ]
+            },
+            {
+                "key": "tls_settings.ech.enabled",
+                "label": "启用 ECH",
+                "type": "checkbox",
+                "full": true,
+                "visible_when": [
+                    {
+                        "field": "tls",
+                        "equals": 1
+                    }
+                ]
+            },
+            {
+                "key": "tls_settings.ech.config",
+                "label": "ECH Config",
+                "type": "textarea",
+                "full": true,
+                "visible_when": [
+                    {
+                        "field": "tls",
+                        "equals": 1
+                    },
+                    {
+                        "field": "tls_settings.ech.enabled",
+                        "equals": true
+                    }
+                ]
+            },
+            {
+                "key": "tls_settings.ech.query_server_name",
+                "label": "ECH Query Server Name",
+                "type": "text",
+                "visible_when": [
+                    {
+                        "field": "tls",
+                        "equals": 1
+                    },
+                    {
+                        "field": "tls_settings.ech.enabled",
+                        "equals": true
+                    }
+                ]
+            },
+            {
+                "key": "tls_settings.ech.key_path",
+                "label": "ECH Key Path",
+                "type": "text",
+                "visible_when": [
+                    {
+                        "field": "tls",
+                        "equals": 1
+                    },
+                    {
+                        "field": "tls_settings.ech.enabled",
+                        "equals": true
+                    }
+                ]
+            },
+            {
+                "key": "tls_settings.ech.key",
+                "label": "ECH Key",
+                "type": "textarea",
+                "full": true,
+                "visible_when": [
+                    {
+                        "field": "tls",
+                        "equals": 1
+                    },
+                    {
+                        "field": "tls_settings.ech.enabled",
+                        "equals": true
+                    }
+                ],
+                "generator": {
+                    "kind": "ech",
+                    "label": "生成 ECH 密钥",
+                    "params": {
+                        "public_name": "$host"
+                    },
+                    "map": {
+                        "key": "tls_settings.ech.key",
+                        "config": "tls_settings.ech.config"
+                    }
+                }
+            },
+            {
+                "key": "tls_settings.ech.config_path",
+                "label": "ECH Config Path",
+                "type": "text",
+                "full": true,
+                "visible_when": [
+                    {
+                        "field": "tls",
+                        "equals": 1
+                    },
+                    {
+                        "field": "tls_settings.ech.enabled",
+                        "equals": true
+                    }
+                ]
+            }
+        ],
+        "certificate_schema": [
+            {
+                "key": "cert_mode",
+                "label": "证书模式",
+                "type": "select",
+                "options": [
+                    {
+                        "value": "",
+                        "label": "节点自动判定"
+                    },
+                    {
+                        "value": "none",
+                        "label": "无证书"
+                    },
+                    {
+                        "value": "http",
+                        "label": "ACME HTTP"
+                    },
+                    {
+                        "value": "dns",
+                        "label": "ACME DNS"
+                    },
+                    {
+                        "value": "self",
+                        "label": "自签证书"
+                    },
+                    {
+                        "value": "file",
+                        "label": "节点本地文件"
+                    },
+                    {
+                        "value": "content",
+                        "label": "证书内容"
+                    }
+                ]
+            },
+            {
+                "key": "domain",
+                "label": "证书域名",
+                "type": "text",
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "one_of": [
+                            "http",
+                            "dns",
+                            "self"
+                        ]
+                    }
+                ]
+            },
+            {
+                "key": "email",
+                "label": "ACME 邮箱",
+                "type": "text",
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "one_of": [
+                            "http",
+                            "dns"
+                        ]
+                    }
+                ]
+            },
+            {
+                "key": "http_port",
+                "label": "HTTP 验证端口",
+                "type": "number",
+                "min": 1,
+                "max": 65535,
+                "placeholder": "80",
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "equals": "http"
+                    }
+                ]
+            },
+            {
+                "key": "dns_provider",
+                "label": "DNS 提供商",
+                "type": "text",
+                "placeholder": "cloudflare",
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "equals": "dns"
+                    }
+                ]
+            },
+            {
+                "key": "dns_env",
+                "label": "DNS 环境变量",
+                "type": "json-object",
+                "full": true,
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "equals": "dns"
+                    }
+                ]
+            },
+            {
+                "key": "cert_file",
+                "label": "节点证书文件路径",
+                "type": "text",
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "equals": "file"
+                    }
+                ]
+            },
+            {
+                "key": "key_file",
+                "label": "节点私钥文件路径",
+                "type": "text",
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "equals": "file"
+                    }
+                ]
+            },
+            {
+                "key": "cert_content",
+                "label": "证书 PEM 内容",
+                "type": "textarea",
+                "full": true,
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "equals": "content"
+                    }
+                ]
+            },
+            {
+                "key": "key_content",
+                "label": "私钥 PEM 内容",
+                "type": "textarea",
+                "full": true,
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "equals": "content"
+                    }
+                ]
+            }
+        ]
+    },
+    {
+        "type": "naive",
+        "label": "NaiveProxy",
+        "schema_version": 1,
+        "defaults": {
+            "tls": 1,
+            "tls_settings": {
+                "server_name": "",
+                "allow_insecure": false,
+                "ech": {
+                    "enabled": false,
+                    "config": "",
+                    "query_server_name": "",
+                    "key": "",
+                    "key_path": "",
+                    "config_path": ""
+                }
+            }
+        },
+        "form_schema": [
+            {
+                "key": "tls",
+                "label": "TLS",
+                "type": "select",
+                "options": [
+                    {
+                        "value": 0,
+                        "label": "关闭"
+                    },
+                    {
+                        "value": 1,
+                        "label": "启用"
+                    }
+                ]
+            },
+            {
+                "key": "tls_settings.server_name",
+                "label": "SNI / Server Name",
+                "type": "text",
+                "visible_when": [
+                    {
+                        "field": "tls",
+                        "equals": 1
+                    }
+                ]
+            },
+            {
+                "key": "tls_settings.allow_insecure",
+                "label": "跳过证书验证",
+                "type": "checkbox",
+                "visible_when": [
+                    {
+                        "field": "tls",
+                        "equals": 1
+                    }
+                ]
+            },
+            {
+                "key": "tls_settings.ech.enabled",
+                "label": "启用 ECH",
+                "type": "checkbox",
+                "full": true,
+                "visible_when": [
+                    {
+                        "field": "tls",
+                        "equals": 1
+                    }
+                ]
+            },
+            {
+                "key": "tls_settings.ech.config",
+                "label": "ECH Config",
+                "type": "textarea",
+                "full": true,
+                "visible_when": [
+                    {
+                        "field": "tls",
+                        "equals": 1
+                    },
+                    {
+                        "field": "tls_settings.ech.enabled",
+                        "equals": true
+                    }
+                ]
+            },
+            {
+                "key": "tls_settings.ech.query_server_name",
+                "label": "ECH Query Server Name",
+                "type": "text",
+                "visible_when": [
+                    {
+                        "field": "tls",
+                        "equals": 1
+                    },
+                    {
+                        "field": "tls_settings.ech.enabled",
+                        "equals": true
+                    }
+                ]
+            },
+            {
+                "key": "tls_settings.ech.key_path",
+                "label": "ECH Key Path",
+                "type": "text",
+                "visible_when": [
+                    {
+                        "field": "tls",
+                        "equals": 1
+                    },
+                    {
+                        "field": "tls_settings.ech.enabled",
+                        "equals": true
+                    }
+                ]
+            },
+            {
+                "key": "tls_settings.ech.key",
+                "label": "ECH Key",
+                "type": "textarea",
+                "full": true,
+                "visible_when": [
+                    {
+                        "field": "tls",
+                        "equals": 1
+                    },
+                    {
+                        "field": "tls_settings.ech.enabled",
+                        "equals": true
+                    }
+                ],
+                "generator": {
+                    "kind": "ech",
+                    "label": "生成 ECH 密钥",
+                    "params": {
+                        "public_name": "$host"
+                    },
+                    "map": {
+                        "key": "tls_settings.ech.key",
+                        "config": "tls_settings.ech.config"
+                    }
+                }
+            },
+            {
+                "key": "tls_settings.ech.config_path",
+                "label": "ECH Config Path",
+                "type": "text",
+                "full": true,
+                "visible_when": [
+                    {
+                        "field": "tls",
+                        "equals": 1
+                    },
+                    {
+                        "field": "tls_settings.ech.enabled",
+                        "equals": true
+                    }
+                ]
+            }
+        ],
+        "certificate_schema": [
+            {
+                "key": "cert_mode",
+                "label": "证书模式",
+                "type": "select",
+                "options": [
+                    {
+                        "value": "",
+                        "label": "节点自动判定"
+                    },
+                    {
+                        "value": "none",
+                        "label": "无证书"
+                    },
+                    {
+                        "value": "http",
+                        "label": "ACME HTTP"
+                    },
+                    {
+                        "value": "dns",
+                        "label": "ACME DNS"
+                    },
+                    {
+                        "value": "self",
+                        "label": "自签证书"
+                    },
+                    {
+                        "value": "file",
+                        "label": "节点本地文件"
+                    },
+                    {
+                        "value": "content",
+                        "label": "证书内容"
+                    }
+                ]
+            },
+            {
+                "key": "domain",
+                "label": "证书域名",
+                "type": "text",
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "one_of": [
+                            "http",
+                            "dns",
+                            "self"
+                        ]
+                    }
+                ]
+            },
+            {
+                "key": "email",
+                "label": "ACME 邮箱",
+                "type": "text",
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "one_of": [
+                            "http",
+                            "dns"
+                        ]
+                    }
+                ]
+            },
+            {
+                "key": "http_port",
+                "label": "HTTP 验证端口",
+                "type": "number",
+                "min": 1,
+                "max": 65535,
+                "placeholder": "80",
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "equals": "http"
+                    }
+                ]
+            },
+            {
+                "key": "dns_provider",
+                "label": "DNS 提供商",
+                "type": "text",
+                "placeholder": "cloudflare",
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "equals": "dns"
+                    }
+                ]
+            },
+            {
+                "key": "dns_env",
+                "label": "DNS 环境变量",
+                "type": "json-object",
+                "full": true,
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "equals": "dns"
+                    }
+                ]
+            },
+            {
+                "key": "cert_file",
+                "label": "节点证书文件路径",
+                "type": "text",
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "equals": "file"
+                    }
+                ]
+            },
+            {
+                "key": "key_file",
+                "label": "节点私钥文件路径",
+                "type": "text",
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "equals": "file"
+                    }
+                ]
+            },
+            {
+                "key": "cert_content",
+                "label": "证书 PEM 内容",
+                "type": "textarea",
+                "full": true,
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "equals": "content"
+                    }
+                ]
+            },
+            {
+                "key": "key_content",
+                "label": "私钥 PEM 内容",
+                "type": "textarea",
+                "full": true,
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "equals": "content"
+                    }
+                ]
+            }
+        ]
+    },
+    {
+        "type": "mieru",
+        "label": "Mieru",
+        "schema_version": 1,
+        "defaults": {
+            "transport": "TCP",
+            "traffic_pattern": "",
+            "multiplex": {
+                "enabled": false,
+                "protocol": "yamux",
+                "max_connections": null,
+                "min_streams": null,
+                "max_streams": null,
+                "padding": false,
+                "brutal": {
+                    "enabled": false,
+                    "up_mbps": null,
+                    "down_mbps": null
+                }
+            }
+        },
+        "form_schema": [
+            {
+                "key": "transport",
+                "label": "Transport",
+                "type": "select",
+                "options": [
+                    {
+                        "value": "TCP",
+                        "label": "TCP"
+                    },
+                    {
+                        "value": "UDP",
+                        "label": "UDP"
+                    }
+                ]
+            },
+            {
+                "key": "traffic_pattern",
+                "label": "Traffic Pattern",
+                "type": "text"
+            },
+            {
+                "key": "multiplex.enabled",
+                "label": "启用 Multiplex",
+                "type": "checkbox"
+            },
+            {
+                "key": "multiplex.protocol",
+                "label": "复用协议",
+                "type": "text"
+            },
+            {
+                "key": "multiplex.max_connections",
+                "label": "最大连接数",
+                "type": "number"
+            },
+            {
+                "key": "multiplex.min_streams",
+                "label": "最小流数",
+                "type": "number"
+            },
+            {
+                "key": "multiplex.max_streams",
+                "label": "最大流数",
+                "type": "number"
+            },
+            {
+                "key": "multiplex.padding",
+                "label": "Multiplex Padding",
+                "type": "checkbox"
+            },
+            {
+                "key": "multiplex.brutal.enabled",
+                "label": "启用 Brutal",
+                "type": "checkbox",
+                "full": true
+            },
+            {
+                "key": "multiplex.brutal.up_mbps",
+                "label": "Brutal 上行 Mbps",
+                "type": "number",
+                "visible_when": [
+                    {
+                        "field": "multiplex.brutal.enabled",
+                        "equals": true
+                    }
+                ]
+            },
+            {
+                "key": "multiplex.brutal.down_mbps",
+                "label": "Brutal 下行 Mbps",
+                "type": "number",
+                "visible_when": [
+                    {
+                        "field": "multiplex.brutal.enabled",
+                        "equals": true
+                    }
+                ]
+            }
+        ],
+        "certificate_schema": [
+            {
+                "key": "cert_mode",
+                "label": "证书模式",
+                "type": "select",
+                "options": [
+                    {
+                        "value": "",
+                        "label": "节点自动判定"
+                    },
+                    {
+                        "value": "none",
+                        "label": "无证书"
+                    },
+                    {
+                        "value": "http",
+                        "label": "ACME HTTP"
+                    },
+                    {
+                        "value": "dns",
+                        "label": "ACME DNS"
+                    },
+                    {
+                        "value": "self",
+                        "label": "自签证书"
+                    },
+                    {
+                        "value": "file",
+                        "label": "节点本地文件"
+                    },
+                    {
+                        "value": "content",
+                        "label": "证书内容"
+                    }
+                ]
+            },
+            {
+                "key": "domain",
+                "label": "证书域名",
+                "type": "text",
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "one_of": [
+                            "http",
+                            "dns",
+                            "self"
+                        ]
+                    }
+                ]
+            },
+            {
+                "key": "email",
+                "label": "ACME 邮箱",
+                "type": "text",
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "one_of": [
+                            "http",
+                            "dns"
+                        ]
+                    }
+                ]
+            },
+            {
+                "key": "http_port",
+                "label": "HTTP 验证端口",
+                "type": "number",
+                "min": 1,
+                "max": 65535,
+                "placeholder": "80",
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "equals": "http"
+                    }
+                ]
+            },
+            {
+                "key": "dns_provider",
+                "label": "DNS 提供商",
+                "type": "text",
+                "placeholder": "cloudflare",
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "equals": "dns"
+                    }
+                ]
+            },
+            {
+                "key": "dns_env",
+                "label": "DNS 环境变量",
+                "type": "json-object",
+                "full": true,
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "equals": "dns"
+                    }
+                ]
+            },
+            {
+                "key": "cert_file",
+                "label": "节点证书文件路径",
+                "type": "text",
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "equals": "file"
+                    }
+                ]
+            },
+            {
+                "key": "key_file",
+                "label": "节点私钥文件路径",
+                "type": "text",
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "equals": "file"
+                    }
+                ]
+            },
+            {
+                "key": "cert_content",
+                "label": "证书 PEM 内容",
+                "type": "textarea",
+                "full": true,
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "equals": "content"
+                    }
+                ]
+            },
+            {
+                "key": "key_content",
+                "label": "私钥 PEM 内容",
+                "type": "textarea",
+                "full": true,
+                "visible_when": [
+                    {
+                        "field": "cert_mode",
+                        "equals": "content"
+                    }
+                ]
+            }
+        ]
+    }
+]

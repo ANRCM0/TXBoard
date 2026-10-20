@@ -8,6 +8,15 @@
 .reference-users .reference-account { min-width:240px; max-width:320px; }
 .reference-users .reference-account .table-link { overflow-wrap:anywhere; white-space:normal; line-height:1.5; }
 .reference-user-id { color:var(--muted); font-size:12px; font-variant-numeric:tabular-nums; }
+.reference-users .user-account-identity { display:grid; gap:5px; min-width:0; }
+.reference-users .user-account-identity>small { color:var(--muted); font-size:11px; }
+.reference-users .user-copy-line { display:flex; align-items:center; gap:5px; min-width:0; }
+.reference-users .user-copy-line>button { flex-shrink:0; }
+.reference-users .user-copy-line>.ui-copy-control { flex:0 0 auto; }
+.reference-users .user-role-tag { display:inline-flex; align-items:center; gap:5px; }
+.reference-users .user-row-actions { display:flex; align-items:center; gap:6px; }
+.reference-users .user-row-actions .button { display:inline-flex; align-items:center; gap:5px; white-space:nowrap; }
+.reference-users .user-never-login { color:var(--muted); }
 .reference-applied-filters { margin:0 0 16px; color:var(--muted); font-size:12px; overflow-wrap:anywhere; }
 .reference-users .data-table td:nth-last-child(-n+2) { color:var(--muted); font-size:12px; }
 @media(max-width:600px) {

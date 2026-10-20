@@ -14,6 +14,11 @@ final class ProviderCapabilityCodec
             sort($keys, SORT_STRING);
             $expected = ['contract_version', 'request_id', 'provider_id', 'provider_instance_epoch',
                 'store_version', 'operations', 'node_delivery', 'subscription_render', 'profiles'];
+            if (array_key_exists('subscription_template_engine', $response)) {
+                self::require($response['subscription_template_engine'] === 'tx-template/v1'
+                    && ($response['subscription_render'] ?? false) === true);
+                $expected[] = 'subscription_template_engine';
+            }
             sort($expected, SORT_STRING);
             self::require($keys === $expected);
             foreach (['contract_version', 'request_id', 'provider_id', 'provider_instance_epoch'] as $key) {

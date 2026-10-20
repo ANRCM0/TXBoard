@@ -3,7 +3,7 @@
   "fields": {
     "app_name": {
       "group": "site",
-      "label": "\u7ad9\u70b9\u540d\u79f0",
+      "label": "站点名称",
       "setting": "app_name",
       "kind": "text",
       "default": "TXBoard",
@@ -16,7 +16,7 @@
     },
     "app_description": {
       "group": "site",
-      "label": "\u7ad9\u70b9\u63cf\u8ff0",
+      "label": "站点描述",
       "setting": "app_description",
       "kind": "text",
       "default": "TXBoard control plane",
@@ -29,7 +29,7 @@
     },
     "app_url": {
       "group": "site",
-      "label": "\u7ad9\u70b9\u5730\u5740",
+      "label": "站点地址",
       "setting": "app_url",
       "kind": "text",
       "default": "",
@@ -42,7 +42,7 @@
     },
     "logo": {
       "group": "site",
-      "label": "\u6807\u5fd7\u5730\u5740",
+      "label": "标志地址",
       "setting": "logo",
       "kind": "text",
       "default": "",
@@ -55,7 +55,7 @@
     },
     "tos_url": {
       "group": "site",
-      "label": "\u670d\u52a1\u6761\u6b3e\u5730\u5740",
+      "label": "服务条款地址",
       "setting": "tos_url",
       "kind": "text",
       "default": "",
@@ -68,7 +68,7 @@
     },
     "stop_register": {
       "group": "site",
-      "label": "\u5173\u95ed\u65b0\u7528\u6237\u6ce8\u518c",
+      "label": "关闭新用户注册",
       "setting": "stop_register",
       "kind": "checkbox",
       "default": false,
@@ -79,7 +79,7 @@
     },
     "invite_enable": {
       "group": "features",
-      "label": "\u9080\u8bf7",
+      "label": "邀请",
       "setting": "invite_enable",
       "kind": "checkbox",
       "default": true,
@@ -90,7 +90,7 @@
     },
     "gift_card_enable": {
       "group": "features",
-      "label": "\u793c\u54c1\u5361",
+      "label": "礼品卡",
       "setting": "gift_card_enable",
       "kind": "checkbox",
       "default": true,
@@ -101,7 +101,7 @@
     },
     "ticket_enable": {
       "group": "features",
-      "label": "\u5de5\u5355",
+      "label": "工单",
       "setting": "ticket_enable",
       "kind": "checkbox",
       "default": true,
@@ -112,7 +112,7 @@
     },
     "knowledge_enable": {
       "group": "features",
-      "label": "\u77e5\u8bc6\u5e93",
+      "label": "知识库",
       "setting": "knowledge_enable",
       "kind": "checkbox",
       "default": true,
@@ -123,7 +123,7 @@
     },
     "traffic_log_enable": {
       "group": "features",
-      "label": "\u6d41\u91cf\u8bb0\u5f55",
+      "label": "流量记录",
       "setting": "traffic_log_enable",
       "kind": "checkbox",
       "default": true,
@@ -134,7 +134,7 @@
     },
     "announcement_enable": {
       "group": "features",
-      "label": "\u516c\u544a",
+      "label": "公告",
       "setting": "announcement_enable",
       "kind": "checkbox",
       "default": true,
@@ -145,7 +145,7 @@
     },
     "register_enable": {
       "group": "features",
-      "label": "\u6ce8\u518c\u5165\u53e3",
+      "label": "注册入口",
       "setting": "register_enable",
       "kind": "checkbox",
       "default": true,
@@ -156,7 +156,7 @@
     },
     "email_verify": {
       "group": "safe",
-      "label": "\u6ce8\u518c\u9a8c\u8bc1\u90ae\u7bb1",
+      "label": "注册验证邮箱",
       "setting": "email_verify",
       "kind": "checkbox",
       "default": false,
@@ -167,7 +167,7 @@
     },
     "email_whitelist_enable": {
       "group": "safe",
-      "label": "\u542f\u7528\u90ae\u7bb1\u540e\u7f00\u767d\u540d\u5355",
+      "label": "启用邮箱后缀白名单",
       "setting": "email_whitelist_enable",
       "kind": "checkbox",
       "default": false,
@@ -178,7 +178,7 @@
     },
     "email_gmail_limit_enable": {
       "group": "safe",
-      "label": "\u9650\u5236 Gmail \u522b\u540d",
+      "label": "限制 Gmail 别名",
       "setting": "email_gmail_limit_enable",
       "kind": "checkbox",
       "default": false,
@@ -189,7 +189,7 @@
     },
     "captcha_enable": {
       "group": "safe",
-      "label": "\u542f\u7528\u9a8c\u8bc1\u7801",
+      "label": "启用验证码",
       "setting": "captcha_enable",
       "kind": "checkbox",
       "default": false,
@@ -200,7 +200,7 @@
     },
     "register_limit_by_ip_enable": {
       "group": "safe",
-      "label": "\u9650\u5236\u540c IP \u6ce8\u518c",
+      "label": "限制同 IP 注册",
       "setting": "register_limit_by_ip_enable",
       "kind": "checkbox",
       "default": false,
@@ -211,7 +211,7 @@
     },
     "email_whitelist_suffix": {
       "group": "safe",
-      "label": "\u90ae\u7bb1\u540e\u7f00\u767d\u540d\u5355",
+      "label": "邮箱后缀白名单",
       "setting": "email_whitelist_suffix",
       "kind": "list",
       "default": [],
@@ -228,7 +228,7 @@
     },
     "captcha_type": {
       "group": "safe",
-      "label": "\u9a8c\u8bc1\u7801\u670d\u52a1",
+      "label": "验证码服务",
       "setting": "captcha_type",
       "kind": "select",
       "default": "recaptcha",
@@ -288,7 +288,7 @@
     },
     "recaptcha_key": {
       "group": "safe",
-      "label": "reCAPTCHA \u5bc6\u94a5",
+      "label": "reCAPTCHA 密钥",
       "setting": "recaptcha_key",
       "kind": "password",
       "default": "",
@@ -301,7 +301,7 @@
     },
     "recaptcha_v3_secret_key": {
       "group": "safe",
-      "label": "reCAPTCHA v3 \u5bc6\u94a5",
+      "label": "reCAPTCHA v3 密钥",
       "setting": "recaptcha_v3_secret_key",
       "kind": "password",
       "default": "",
@@ -314,7 +314,7 @@
     },
     "turnstile_secret_key": {
       "group": "safe",
-      "label": "Turnstile \u5bc6\u94a5",
+      "label": "Turnstile 密钥",
       "setting": "turnstile_secret_key",
       "kind": "password",
       "default": "",
@@ -327,7 +327,7 @@
     },
     "login_limit_enabled": {
       "group": "safe",
-      "label": "\u9650\u5236\u767b\u5f55\u5c1d\u8bd5",
+      "label": "限制登录尝试",
       "setting": "password_limit_enable",
       "kind": "checkbox",
       "default": true,
@@ -338,7 +338,7 @@
     },
     "login_limit_count": {
       "group": "safe",
-      "label": "\u5141\u8bb8\u767b\u5f55\u5c1d\u8bd5\u6b21\u6570",
+      "label": "允许登录尝试次数",
       "setting": "password_limit_count",
       "kind": "number",
       "default": 5,
@@ -351,7 +351,7 @@
     },
     "login_limit_expire": {
       "group": "safe",
-      "label": "\u767b\u5f55\u9650\u5236\u65f6\u95f4\uff08\u5206\u949f\uff09",
+      "label": "登录限制时间（分钟）",
       "setting": "password_limit_expire",
       "kind": "number",
       "default": 60,
@@ -364,7 +364,7 @@
     },
     "register_limit_count": {
       "group": "safe",
-      "label": "\u5141\u8bb8\u6ce8\u518c\u6b21\u6570",
+      "label": "允许注册次数",
       "setting": "register_limit_count",
       "kind": "number",
       "default": 3,
@@ -377,7 +377,7 @@
     },
     "register_limit_expire": {
       "group": "safe",
-      "label": "\u6ce8\u518c\u9650\u5236\u65f6\u95f4\uff08\u5206\u949f\uff09",
+      "label": "注册限制时间（分钟）",
       "setting": "register_limit_expire",
       "kind": "number",
       "default": 60,
@@ -390,7 +390,7 @@
     },
     "plan_change_enable": {
       "group": "subscribe",
-      "label": "\u5141\u8bb8\u66f4\u6362\u5957\u9910",
+      "label": "允许更换套餐",
       "setting": "plan_change_enable",
       "kind": "checkbox",
       "default": true,
@@ -401,7 +401,7 @@
     },
     "reset_traffic_method": {
       "group": "subscribe",
-      "label": "\u65b0\u53d1\u5e03\u5957\u9910\u7684\u9ed8\u8ba4\u91cd\u7f6e\u65b9\u5f0f",
+      "label": "新发布套餐的默认重置方式",
       "setting": "reset_traffic_method",
       "kind": "number",
       "default": 1,
@@ -414,7 +414,7 @@
     },
     "new_order_event_id": {
       "group": "subscribe",
-      "label": "\u65b0\u8d2d\u65f6\u5e94\u7528\u6743\u76ca",
+      "label": "新购时应用权益",
       "setting": "new_order_event_id",
       "kind": "number",
       "default": 0,
@@ -427,7 +427,7 @@
     },
     "renew_order_event_id": {
       "group": "subscribe",
-      "label": "\u7eed\u8d39\u65f6\u5e94\u7528\u6743\u76ca",
+      "label": "续费时应用权益",
       "setting": "renew_order_event_id",
       "kind": "number",
       "default": 0,
@@ -440,7 +440,7 @@
     },
     "change_order_event_id": {
       "group": "subscribe",
-      "label": "\u6362\u5957\u9910\u65f6\u5e94\u7528\u6743\u76ca",
+      "label": "换套餐时应用权益",
       "setting": "change_order_event_id",
       "kind": "number",
       "default": 0,
@@ -453,7 +453,7 @@
     },
     "server_pull_interval": {
       "group": "server",
-      "label": "\u8282\u70b9\u62c9\u53d6\u95f4\u9694\uff08\u79d2\uff09",
+      "label": "节点拉取间隔（秒）",
       "setting": "server_pull_interval",
       "kind": "number",
       "default": 60,
@@ -466,7 +466,7 @@
     },
     "server_push_interval": {
       "group": "server",
-      "label": "\u8282\u70b9\u4e0a\u62a5\u95f4\u9694\uff08\u79d2\uff09",
+      "label": "节点上报间隔（秒）",
       "setting": "server_push_interval",
       "kind": "number",
       "default": 60,
@@ -479,7 +479,7 @@
     },
     "device_limit_mode": {
       "group": "server",
-      "label": "\u8bbe\u5907\u9650\u5236\u6a21\u5f0f",
+      "label": "设备限制模式",
       "setting": "device_limit_mode",
       "kind": "number",
       "default": 0,
@@ -492,7 +492,7 @@
     },
     "email_host": {
       "group": "email",
-      "label": "SMTP \u4e3b\u673a",
+      "label": "SMTP 主机",
       "setting": "email_host",
       "kind": "text",
       "default": "",
@@ -505,7 +505,7 @@
     },
     "email_port": {
       "group": "email",
-      "label": "SMTP \u7aef\u53e3",
+      "label": "SMTP 端口",
       "setting": "email_port",
       "kind": "text",
       "default": "465",
@@ -518,7 +518,7 @@
     },
     "email_username": {
       "group": "email",
-      "label": "SMTP \u7528\u6237\u540d",
+      "label": "SMTP 用户名",
       "setting": "email_username",
       "kind": "text",
       "default": "",
@@ -531,7 +531,7 @@
     },
     "email_from_address": {
       "group": "email",
-      "label": "\u53d1\u4ef6\u4eba\u5730\u5740",
+      "label": "发件人地址",
       "setting": "email_from_address",
       "kind": "text",
       "default": "",
@@ -544,7 +544,7 @@
     },
     "email_encryption": {
       "group": "email",
-      "label": "SMTP \u52a0\u5bc6",
+      "label": "SMTP 加密",
       "setting": "email_encryption",
       "kind": "select",
       "default": "ssl",
@@ -565,7 +565,7 @@
     },
     "email_password": {
       "group": "email",
-      "label": "SMTP \u5bc6\u7801",
+      "label": "SMTP 密码",
       "setting": "email_password",
       "kind": "password",
       "default": "",
@@ -578,7 +578,7 @@
     },
     "telegram_bot_enable": {
       "group": "telegram",
-      "label": "\u542f\u7528 Telegram \u673a\u5668\u4eba",
+      "label": "启用 Telegram 机器人",
       "setting": "telegram_bot_enable",
       "kind": "checkbox",
       "default": false,
@@ -589,7 +589,7 @@
     },
     "telegram_bot_token": {
       "group": "telegram",
-      "label": "\u673a\u5668\u4eba Token",
+      "label": "机器人 Token",
       "setting": "telegram_bot_token",
       "kind": "password",
       "default": "",
@@ -602,7 +602,7 @@
     },
     "telegram_webhook_url": {
       "group": "telegram",
-      "label": "Webhook \u7ad9\u70b9\u5730\u5740",
+      "label": "Webhook 站点地址",
       "setting": "telegram_webhook_url",
       "kind": "text",
       "default": "",
@@ -615,7 +615,7 @@
     },
     "telegram_discuss_link": {
       "group": "telegram",
-      "label": "\u8ba8\u8bba\u7fa4\u94fe\u63a5",
+      "label": "讨论群链接",
       "setting": "telegram_discuss_link",
       "kind": "text",
       "default": "",
@@ -628,7 +628,7 @@
     },
     "windows_version": {
       "group": "app",
-      "label": "Windows \u7248\u672c",
+      "label": "Windows 版本",
       "setting": "windows_version",
       "kind": "text",
       "default": "",
@@ -641,7 +641,7 @@
     },
     "windows_download_url": {
       "group": "app",
-      "label": "Windows \u4e0b\u8f7d\u5730\u5740",
+      "label": "Windows 下载地址",
       "setting": "windows_download_url",
       "kind": "text",
       "default": "",
@@ -654,7 +654,7 @@
     },
     "macos_version": {
       "group": "app",
-      "label": "macOS \u7248\u672c",
+      "label": "macOS 版本",
       "setting": "macos_version",
       "kind": "text",
       "default": "",
@@ -667,7 +667,7 @@
     },
     "macos_download_url": {
       "group": "app",
-      "label": "macOS \u4e0b\u8f7d\u5730\u5740",
+      "label": "macOS 下载地址",
       "setting": "macos_download_url",
       "kind": "text",
       "default": "",
@@ -680,7 +680,7 @@
     },
     "android_version": {
       "group": "app",
-      "label": "Android \u7248\u672c",
+      "label": "Android 版本",
       "setting": "android_version",
       "kind": "text",
       "default": "",
@@ -693,7 +693,7 @@
     },
     "android_download_url": {
       "group": "app",
-      "label": "Android \u4e0b\u8f7d\u5730\u5740",
+      "label": "Android 下载地址",
       "setting": "android_download_url",
       "kind": "text",
       "default": "",
@@ -701,6 +701,81 @@
         "type": "string",
         "minLength": 0,
         "maxLength": 2048
+      },
+      "write_only": false
+    },
+    "admin_sidebar_style": {
+      "group": "appearance",
+      "label": "侧栏表面风格",
+      "setting": "admin_sidebar_style",
+      "kind": "select",
+      "default": "normal",
+      "schema": {
+        "type": "string",
+        "enum": [
+          "normal",
+          "contrast"
+        ]
+      },
+      "options": [
+        "normal",
+        "contrast"
+      ],
+      "write_only": false
+    },
+    "admin_header_style": {
+      "group": "appearance",
+      "label": "页面标题区风格",
+      "setting": "admin_header_style",
+      "kind": "select",
+      "default": "normal",
+      "schema": {
+        "type": "string",
+        "enum": [
+          "normal",
+          "accent"
+        ]
+      },
+      "options": [
+        "normal",
+        "accent"
+      ],
+      "write_only": false
+    },
+    "admin_color_scheme": {
+      "group": "appearance",
+      "label": "强调色",
+      "setting": "admin_color_scheme",
+      "kind": "select",
+      "default": "default",
+      "schema": {
+        "type": "string",
+        "enum": [
+          "default",
+          "black",
+          "blackblue",
+          "green"
+        ]
+      },
+      "options": [
+        "default",
+        "black",
+        "blackblue",
+        "green"
+      ],
+      "write_only": false
+    },
+    "admin_login_background_url": {
+      "group": "appearance",
+      "label": "登录背景地址",
+      "setting": "admin_login_background_url",
+      "kind": "text",
+      "default": "",
+      "schema": {
+        "type": "string",
+        "minLength": 0,
+        "maxLength": 2048,
+        "pattern": "^(?:$|https://[^\\s\\\\]+|/(?!/)[^\\s\\\\]*)$"
       },
       "write_only": false
     }

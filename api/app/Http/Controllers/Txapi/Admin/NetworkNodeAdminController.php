@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Txapi\Admin;
 
 use App\Core\Http\TxapiResponse;
+use App\Domains\Network\NativeNodeConfiguration;
+use App\Domains\Network\NativeNodeOrdering;
 use App\Http\Requests\Txapi\Admin\NodeSaveRequest;
 use App\Models\Server;
 use App\Models\ServerGroup;
@@ -21,9 +23,11 @@ final class NetworkNodeAdminController
         $input = $request->validate([
             'page' => ['sometimes', 'integer', 'min:1'],
             'per_page' => ['sometimes', 'integer', 'min:1', 'max:' . self::MAX_PER_PAGE],
+            'machine_id' => ['sometimes', 'integer', 'min:1'],
         ]);
         $perPage = (int) ($input['per_page'] ?? 100);
         $page = Server::query()->with('parent:id,name')
+            ->when(isset($input['machine_id']), fn ($query) => $query->where('machine_id', $input['machine_id']))
             ->orderBy('sort')->orderBy('id')
             ->paginate($perPage, ['*'], 'page', (int) ($input['page'] ?? 1));
         $ids = $page->getCollection()->flatMap(
@@ -47,10 +51,95 @@ final class NetworkNodeAdminController
             ->header('Cache-Control', 'no-store');
     }
 
+    public function protocolMetadata(Request $request, ProtocolRegistry $registry): JsonResponse
+    {
+        return TxapiResponse::success($request, ['metadata_json' => NativeNodeConfiguration::encode($registry->metadata())])
+            ->header('Cache-Control', 'private, no-store');
+    }
+
+    public function configuration(Request $request): JsonResponse
+    {
+        $node = Server::query()->find($request->route('id'));
+        if (!$node) return $this->notFound($request);
+        return TxapiResponse::success($request, [
+            'node_id' => (string) $node->id,
+            'revision' => NativeNodeConfiguration::revision($node),
+            'configuration_json' => NativeNodeConfiguration::encode(NativeNodeConfiguration::read($node)),
+        ])->header('Cache-Control', 'private, no-store');
+    }
+
+    public function generateConfigurationMaterial(Request $request, \App\Services\NodeSecretGenerator $generator): JsonResponse
+    {
+        $input = $request->validate([
+            'kind' => ['required', 'in:x25519,hex,ech'],
+            'bytes' => ['sometimes', 'integer', 'min:1', 'max:64'],
+            'public_name' => ['sometimes', 'string', 'max:253'],
+        ]);
+        return TxapiResponse::success($request, ['material_json' => NativeNodeConfiguration::encode($generator->generate($input['kind'], $request))])
+            ->header('Cache-Control', 'private, no-store');
+    }
+
+    public function createConfigured(Request $request): JsonResponse
+    {
+        $data = $this->validatedConfiguration($request);
+        $node = DB::transaction(function () use ($data): Server {
+            NativeNodeOrdering::lock();
+            $this->assertConfiguredParent($data, null);
+            return Server::query()->create($data);
+        });
+        return TxapiResponse::success($request, ['id' => (string) $node->id]);
+    }
+
+    public function replaceConfigured(Request $request): JsonResponse
+    {
+        $data = $this->validatedConfiguration($request);
+        $revision = (string) $request->input('expected_revision');
+        $status = DB::transaction(function () use ($request, $data, $revision): string {
+            NativeNodeOrdering::lock();
+            $node = Server::query()->lockForUpdate()->find($request->route('id'));
+            if (!$node) return 'missing';
+            if (!hash_equals(NativeNodeConfiguration::revision($node), $revision)) return 'conflict';
+            $this->assertConfiguredParent($data, (int) $node->id);
+            $node->update($data);
+            return 'ok';
+        });
+        if ($status === 'missing') return $this->notFound($request);
+        if ($status === 'conflict') return TxapiResponse::error($request, 'NETWORK_NODE_CONFIGURATION_CONFLICT',
+            'Node configuration changed; read it again before editing', 409);
+        return TxapiResponse::success($request, ['id' => (string) $request->route('id')]);
+    }
+
+    private function validatedConfiguration(Request $request): array
+    {
+        $input = $request->validate(['configuration_json' => ['required', 'string', 'max:131072']]);
+        $configuration = NativeNodeConfiguration::decode($input['configuration_json']);
+        $form = NodeSaveRequest::createFrom($request, new NodeSaveRequest());
+        $form->request->replace($configuration);
+        $form->setJson(new \Symfony\Component\HttpFoundation\InputBag($configuration));
+        $form->setContainer(app())->setRedirector(app('redirect'));
+        $form->validateResolved();
+        return $form->validated();
+    }
+
+    private function assertConfiguredParent(array $data, ?int $nodeId): void
+    {
+        $this->assertParentChain($data['parent_id'] === null ? null : (int) $data['parent_id'], $nodeId);
+        if ($data['parent_id'] !== null) {
+            $parent = Server::query()->whereKey($data['parent_id'])->lockForUpdate()->first();
+            if (!$parent || $parent->type !== $data['type']) {
+                throw \Illuminate\Validation\ValidationException::withMessages(['parent_id' => 'Parent must exist and use the same protocol']);
+            }
+        }
+        if ($nodeId !== null && Server::query()->where('parent_id', $nodeId)->where('type', '!=', $data['type'])->exists()) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['type' => 'Detach incompatible child nodes before changing protocol']);
+        }
+    }
+
     public function save(NodeSaveRequest $request): JsonResponse
     {
         $data = $request->validated();
         $node = DB::transaction(function () use ($data): Server {
+            NativeNodeOrdering::lock();
             $this->assertParentChain($data['parent_id'] ?? null, null);
             return Server::query()->create($data);
         });
@@ -62,6 +151,7 @@ final class NetworkNodeAdminController
         $id = (int) $request->route('id');
         $data = $request->validated();
         $updated = DB::transaction(function () use ($data, $id): bool {
+            NativeNodeOrdering::lock();
             $node = Server::query()->lockForUpdate()->find($id);
             if (!$node) return false;
             $this->assertParentChain($data['parent_id'] ?? null, $id);
@@ -85,6 +175,7 @@ final class NetworkNodeAdminController
         }
         $id = (int) $request->route('id');
         $updated = DB::transaction(function () use ($id, $data): bool {
+            NativeNodeOrdering::lock();
             $node = Server::query()->lockForUpdate()->find($id);
             if (!$node) return false;
             $node->update($data);
@@ -98,6 +189,7 @@ final class NetworkNodeAdminController
     {
         $id = (int) $request->route('id');
         $newId = DB::transaction(function () use ($id): ?int {
+            NativeNodeOrdering::lock();
             $node = Server::query()->lockForUpdate()->find($id);
             if (!$node) return null;
             $clone = $node->replicate();
@@ -117,6 +209,7 @@ final class NetworkNodeAdminController
     {
         $id = (int) $request->route('id');
         $deleted = DB::transaction(function () use ($id): string {
+            NativeNodeOrdering::lock();
             $node = Server::query()->lockForUpdate()->find($id);
             if (!$node) return 'missing';
             if (Server::query()->where('parent_id', $id)->exists()) return 'in_use';
@@ -129,6 +222,47 @@ final class NetworkNodeAdminController
         return TxapiResponse::success($request, ['ok' => true]);
     }
 
+    public function ordering(Request $request): JsonResponse
+    {
+        $snapshot = DB::transaction(function (): ?array {
+            $nodes = NativeNodeOrdering::locked();
+            return $nodes->count() > self::MAX_BATCH ? null : NativeNodeOrdering::snapshot($nodes);
+        });
+        if ($snapshot === null) return TxapiResponse::error($request, 'NETWORK_NODE_SORT_LIMIT',
+            'Complete node ordering supports at most 100 nodes', 422);
+        return TxapiResponse::success($request, $snapshot)->header('Cache-Control', 'private, no-store');
+    }
+
+    public function replaceOrdering(Request $request): JsonResponse
+    {
+        $input = $request->validate([
+            'expected_revision' => ['required', 'regex:/^[a-f0-9]{64}$/D'],
+            'node_ids' => ['required', 'array', 'min:1', 'max:' . self::MAX_BATCH],
+            'node_ids.*' => ['required', 'integer', 'min:1', 'distinct'],
+        ]);
+        $ids = array_map('strval', $input['node_ids']);
+        $result = DB::transaction(function () use ($input, $ids): string {
+            $nodes = NativeNodeOrdering::locked();
+            if ($nodes->count() > self::MAX_BATCH) return 'limit';
+            $snapshot = NativeNodeOrdering::snapshot($nodes);
+            $known = array_column($snapshot['nodes'], 'id');
+            if (!hash_equals($snapshot['revision'], $input['expected_revision'])
+                || count($ids) !== count($known) || array_diff($known, $ids) !== []) return 'conflict';
+            $byId = $nodes->keyBy('id');
+            foreach ($ids as $sort => $id) {
+                $node = $byId->get($id);
+                $node->sort = $sort;
+                $node->save();
+            }
+            return 'ok';
+        });
+        if ($result === 'limit') return TxapiResponse::error($request, 'NETWORK_NODE_SORT_LIMIT',
+            'Complete node ordering supports at most 100 nodes', 422);
+        if ($result !== 'ok') return TxapiResponse::error($request, 'NETWORK_NODE_ORDERING_CONFLICT',
+            'The complete node ordering changed; read it again before sorting', 409);
+        return TxapiResponse::success($request, ['ok' => true]);
+    }
+
     public function sort(Request $request): JsonResponse
     {
         $rows = $request->validate([
@@ -137,6 +271,7 @@ final class NetworkNodeAdminController
         ]);
         if (!$this->validRows($rows)) return $this->invalidBatch($request);
         $ok = DB::transaction(function () use ($rows): bool {
+            NativeNodeOrdering::lock();
             $nodes = Server::query()->whereIn('id', array_column($rows, 'id'))
                 ->lockForUpdate()->get()->keyBy('id');
             if ($nodes->count() !== count($rows)) return false;
@@ -164,6 +299,7 @@ final class NetworkNodeAdminController
         if ($data === []) return TxapiResponse::error($request, 'NETWORK_NODE_UPDATE_EMPTY',
             'No editable fields supplied', 422);
         $ok = DB::transaction(function () use ($ids, $data): bool {
+            NativeNodeOrdering::lock();
             $nodes = Server::query()->whereIn('id', $ids)->lockForUpdate()->get();
             if ($nodes->count() !== count($ids)) return false;
             foreach ($nodes as $node) $node->update($data);
@@ -176,6 +312,7 @@ final class NetworkNodeAdminController
     {
         $ids = $this->validateIds($request);
         $status = DB::transaction(function () use ($ids): string {
+            NativeNodeOrdering::lock();
             $nodes = Server::query()->whereIn('id', $ids)->lockForUpdate()->get();
             if ($nodes->count() !== count($ids)) return 'missing';
             // Reject any references, including children within the same batch:
@@ -194,6 +331,7 @@ final class NetworkNodeAdminController
     {
         $id = (int) $request->route('id');
         $ok = DB::transaction(function () use ($id): bool {
+            NativeNodeOrdering::lock();
             $node = Server::query()->lockForUpdate()->find($id);
             if (!$node) return false;
             $node->u = 0;
@@ -208,6 +346,7 @@ final class NetworkNodeAdminController
     {
         $ids = $this->validateIds($request);
         $ok = DB::transaction(function () use ($ids): bool {
+            NativeNodeOrdering::lock();
             $nodes = Server::query()->whereIn('id', $ids)->lockForUpdate()->get();
             if ($nodes->count() !== count($ids)) return false;
             foreach ($nodes as $node) {

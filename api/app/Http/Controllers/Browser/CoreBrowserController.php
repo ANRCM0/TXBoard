@@ -63,6 +63,7 @@ final class CoreBrowserController
         $key = $type !== null && trim($text($field)) !== '' ? $text($field) : null;
         return BrowserResponse::success($request, [
             'site' => ['name' => $text('app_name', 'TXBoard'), 'description' => $text('app_description'), 'url' => $text('app_url'), 'logo' => $text('logo')],
+            'admin_appearance' => app(\App\Services\NativeAdminAppearance::class)->publicSnapshot(),
             'theme' => ['name' => $text('frontend_theme', 'TXBoard'), 'config' => (object) (is_array($data['theme_config'] ?? null) ? $data['theme_config'] : [])],
             'security' => ['captcha' => ['enabled' => $enabled, 'type' => $type, 'siteKey' => $key]],
             // Advertise only the canonical surface actually implemented in this process.

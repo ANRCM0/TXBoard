@@ -126,18 +126,18 @@ it('requires a successful explicit permission refresh before recovering an unkno
   expect(vi.mocked(admin.write).mock.calls[1]).toEqual(original)
 })
 
-it('creates a coupon through the current fixed immutable policy contract', async () => {
+it.each([['100', '100'], ['1e3', '1000'], ['100.0', '100'], ['0100', '100']])('creates a coupon with canonical integer input from %s', async (amount, canonical) => {
   await render(<CouponsPage />); await click('创建优惠券')
   const inputs = [...host.querySelectorAll<HTMLInputElement>('form input')]
   await act(async () => {
-    for (const [index, value] of [[0, 'newcode8'], [1, 'New coupon']] as const) {
+    for (const [index, value] of [[0, 'newcode8'], [1, 'New coupon'], [2, amount]] as const) {
       Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(inputs[index], value)
       inputs[index].dispatchEvent(new Event('input', { bubbles: true }))
     }
   })
   await act(async () => host.querySelector('form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))); await settle()
   expect(admin.write).toHaveBeenCalledExactlyOnceWith('billing.coupons.create', {
-    code: 'NEWCODE8', name: 'New coupon', currency: 'CNY', discount_kind: 'fixed', value: '100', minimum_minor: '0',
+    code: 'NEWCODE8', name: 'New coupon', currency: 'CNY', discount_kind: 'fixed', value: canonical, minimum_minor: '0',
     total_limit: 100, user_limit: 1, starts_at: null, expires_at: null, offer_ids: [],
   }, expect.any(String))
 })
@@ -150,14 +150,14 @@ it('loads the selected gift batch and revokes the observed card version without 
     operation === 'billing.admin-gift-batches.list' ? [batch] :
     fixtures[operation as keyof typeof fixtures] ?? [], meta,
   }) as never)
-  await render(<GiftCardsPage />); await click('查看逐卡状态')
+  await render(<GiftCardsPage />); await click('发行批次'); await click('查看逐卡状态')
   expect(admin.read).toHaveBeenCalledWith('billing.admin-gift-batches.get', { batch_id: uuid }, expect.any(AbortSignal))
   const batchDetail = [...host.querySelectorAll('section')].find(node => node.querySelector('h2')?.textContent === '批次详情')!
   expect(batchDetail.querySelector('h3')?.textContent).toBe('Batch test')
   expect(batchDetail.querySelectorAll('.commerce-metrics > div')).toHaveLength(4)
   expect(batchDetail.querySelector('.commerce-metrics > div')?.textContent).toBe('待兑换1张')
   const table = host.querySelector('[aria-label="批次内卡片"]')!
-  await act(async () => table.querySelector<HTMLButtonElement>('button')!.click()); await settle()
+  await act(async () => [...table.querySelectorAll<HTMLButtonElement>('button')].find(node => node.textContent === '撤销并退回发行人')!.click()); await settle()
   expect(admin.write).toHaveBeenCalledExactlyOnceWith('billing.admin-gift-cards.revoke', { card_id: uuid, expected_version: '1' }, expect.any(String))
 })
 
@@ -170,4 +170,31 @@ it('ignores an acknowledgement after administrator context replacement without r
   expect(admin.read).toHaveBeenCalledTimes(reads)
   expect(workflowActions.snapshot().pending).toBeUndefined()
   expect(host.querySelector('[role="alert"]')).toBeNull()
+})
+
+
+async function changeLabel(label: string, value: string) {
+  const container = [...host.querySelectorAll('label')].find(node => node.textContent?.startsWith(label))!
+  const input = (container.htmlFor ? document.getElementById(container.htmlFor) : container.querySelector('input,select')) as HTMLInputElement | HTMLSelectElement
+  const prototype = input.tagName === 'SELECT' ? HTMLSelectElement.prototype : HTMLInputElement.prototype
+  await act(async () => { Object.getOwnPropertyDescriptor(prototype, 'value')!.set!.call(input, value); input.dispatchEvent(new Event(input.tagName === 'SELECT' ? 'change' : 'input', { bubbles: true })) }); await settle()
+}
+
+it('rejects a reversed coupon validity window before contacting its owner', async () => {
+  await render(<CouponsPage />); await click('创建优惠券')
+  await changeLabel('开始时间', '2030-01-02T12:00'); await changeLabel('结束时间', '2030-01-01T12:00')
+  const form = host.querySelector('form')!
+  await act(async () => form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))); await settle()
+  expect(host.textContent).toContain('结束时间必须晚于开始时间')
+  expect(admin.write).not.toHaveBeenCalled()
+})
+
+it('retains a coupon draft after declining close and uses explicit expiry presets', async () => {
+  const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
+  await render(<CouponsPage />); await click('创建优惠券'); await changeLabel('名称', 'Retained coupon')
+  await click('立即起 7 天'); await click('关闭')
+  expect([...host.querySelectorAll<HTMLInputElement>('input')].some(input => input.value === 'Retained coupon')).toBe(true)
+  expect(host.querySelector<HTMLInputElement>('input[type="datetime-local"]')!.value).toBe('')
+  expect(host.querySelectorAll<HTMLInputElement>('input[type="datetime-local"]')[1].value).not.toBe('')
+  confirm.mockRestore()
 })

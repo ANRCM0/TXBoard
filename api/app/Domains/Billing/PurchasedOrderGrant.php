@@ -33,6 +33,7 @@ final class PurchasedOrderGrant
             $publishedKeys = [...$expectedKeys, 'catalog'];
             if ($published && array_key_exists('upgrade_credit', $snapshot)) { $publishedKeys[] = 'upgrade_credit'; }
             if ($published && array_key_exists('coupon_discount', $snapshot)) { $publishedKeys[] = 'coupon_discount'; }
+            if ($published && array_key_exists('customer_discount', $snapshot)) { $publishedKeys[] = 'customer_discount'; }
             $this->keys($snapshot, $published ? $publishedKeys : $expectedKeys);
             $hash = $snapshot['content_hash'] ?? null;
             $this->require(is_string($hash) && preg_match('/^[a-f0-9]{64}$/D', $hash) === 1);

@@ -13,7 +13,7 @@ import { TrafficResetPage } from './TrafficResetPage'
 vi.mock('./session', async () => {
   const { createWorkflowActions } = await import('./workflowActions')
   const admin = { read: vi.fn(), write: vi.fn() }
-  return { admin, workflowActions: createWorkflowActions((operation, input, key) => admin.write(operation, input, key)) }
+  return { admin, useAdminSession: () => true, workflowActions: createWorkflowActions((operation, input, key) => admin.write(operation, input, key)) }
 })
 const id = '9007199254740993'
 const node = { id, name: 'private-node', type: 'vless', host: 'example.test', port: 443, server_port: null, parent_id: null, machine_id: null, show: true, enabled: true, sort: 0, u: '0', d: '0', group_ids: [], route_ids: [], tags: [], created_at: null, updated_at: null }
@@ -24,6 +24,7 @@ beforeEach(() => {
   client = new QueryClient({ defaultOptions: { queries: { retry: false } } }); workflowActions.reset()
   vi.mocked(admin.write).mockReset().mockResolvedValue({ data: { ok: true } } as never)
   vi.mocked(admin.read).mockReset().mockImplementation(async (operation, input) => {
+    if (operation === 'subscription.lifecycle.resets.list') return { data: { records: [], next_before_id: null }, meta: {} } as never
     if (operation === 'network.nodes.get') return { data: { ...node }, meta: {} } as never
     if (operation === 'network.nodes.list') return { data: [node], meta: { page: 1, per_page: 20, total: 1, last_page: 1 } } as never
     if (operation === 'network.nodes.traffic-history.get') {
@@ -81,6 +82,18 @@ it('runs a current-page batch update and clears the selection after success', as
   await click('批量启用')
   expect(admin.write).toHaveBeenCalledExactlyOnceWith('network.nodes.batch-update', { ids: [id], enabled: true }, expect.any(String))
   expect(host.querySelector('input[aria-label="选择 private-node"]')?.matches(':checked')).toBe(false)
+})
+
+it('filters server nodes before pagination and prefills the server when opening creation from a deep link', async () => {
+  const original = vi.mocked(admin.read).getMockImplementation()!
+  vi.mocked(admin.read).mockImplementation(async (operation, ...args) => operation === 'network.nodes.protocols.list'
+    ? { data: { metadata_json: JSON.stringify([{ type: 'vless', label: 'VLESS', schema_version: 1, defaults: {}, form_schema: [] }]) }, meta: {} } as never
+    : original(operation, ...args))
+  await render('/nodes?machine_id=' + id + '&open_create=1')
+  await vi.waitFor(() => expect(document.querySelector('form.node-editor-form')).not.toBeNull())
+  expect(admin.read).toHaveBeenCalledWith('network.nodes.list', { page: 1, per_page: 20, machine_id: id }, expect.any(AbortSignal))
+  expect(document.querySelector('[role="dialog"]')?.textContent).toContain('#' + id)
+  await click('取消'); expect(document.querySelector('form.node-editor-form')).toBeNull()
 })
 
 it('loads node traffic history and switches the chart range', async () => {
@@ -179,4 +192,117 @@ it('keeps reset recovery blocked when the read account owns a different subscrip
   await input('10'); await click('读取当前订阅')
   expect(button('确认原操作').disabled).toBe(true)
   expect(admin.write).toHaveBeenCalledTimes(1)
+})
+
+
+it('filters current-page nodes by protocol and deployment and clears hidden selections', async () => {
+  const read = vi.mocked(admin.read).getMockImplementation()!
+  vi.mocked(admin.read).mockImplementation((operation, ...args) => operation === 'network.nodes.list'
+    ? Promise.resolve({ data: [node, { ...node, id: '2', name: 'machine-node', type: 'trojan', machine_id: '12' }], meta: { total: 2, last_page: 1 } } as never)
+    : read(operation, ...args))
+  await render('/nodes')
+  await act(async () => host.querySelector<HTMLInputElement>('input[aria-label="选择 private-node"]')!.click())
+  const protocol = host.querySelector<HTMLSelectElement>('select[aria-label="节点协议"]')!
+  await act(async () => { protocol.value = 'trojan'; protocol.dispatchEvent(new Event('change', { bubbles: true })) }); await settle()
+  expect(host.querySelectorAll('tbody tr')).toHaveLength(1)
+  expect(host.querySelector('tbody')!.textContent).toContain('machine-node')
+  expect(host.querySelector('tbody')!.textContent).not.toContain('private-node')
+  expect(host.querySelector<HTMLInputElement>('input[aria-label="选择 machine-node"]')!.checked).toBe(false)
+  const deployment = host.querySelector<HTMLSelectElement>('select[aria-label="部署归属"]')!
+  await act(async () => { deployment.value = 'standalone'; deployment.dispatchEvent(new Event('change', { bubbles: true })) }); await settle()
+  expect(host.querySelector('tbody')!.textContent).not.toContain('machine-node')
+  expect(host.querySelector('tbody')!.textContent).not.toContain('private-node')
+  expect(admin.write).not.toHaveBeenCalled()
+})
+
+it('shows exact raw node traffic alongside readable decimal GB without losing large integer precision', async () => {
+  const read = vi.mocked(admin.read).getMockImplementation()!
+  vi.mocked(admin.read).mockImplementation((operation, ...args) => operation === 'network.nodes.list'
+    ? Promise.resolve({ data: [{ ...node, u: '9223372036854775807', d: null, host: '2001:db8::1' }], meta: { total: 1, last_page: 1 } } as never)
+    : read(operation, ...args))
+  await render('/nodes')
+  const bytes = host.querySelector('code[title="9223372036854775807 字节"]')!
+  expect(bytes.textContent).toBe('9223372036.85 GB')
+  expect(host.querySelector('tbody')!.textContent).toContain('未上报')
+  expect(host.querySelector('tbody')!.textContent).toContain('[2001:db8::1]:443')
+})
+
+it('shows selected current-page nodes through the supported batch update', async () => {
+  await render('/nodes')
+  await act(async () => host.querySelector<HTMLInputElement>('input[aria-label="选择 private-node"]')!.click())
+  await click('批量显示')
+  expect(admin.write).toHaveBeenCalledExactlyOnceWith('network.nodes.batch-update', { ids: [id], show: true }, expect.any(String))
+})
+
+it('paginates binding servers and submits a server beyond the first hundred', async () => {
+  const read = vi.mocked(admin.read).getMockImplementation()!
+  vi.mocked(admin.read).mockImplementation((operation, input, ...args) => operation === 'network.machines.list'
+    ? Promise.resolve({ data: [{ id: (input as { page: number }).page === 1 ? '10' : id, name: 'binding-server' }], meta: { page: (input as { page: number }).page, per_page: 100, total: 101, last_page: 2 } } as never)
+    : read(operation, input, ...args))
+  await render('/nodes')
+  await act(async () => host.querySelector<HTMLInputElement>('input[aria-label="选择 private-node"]')!.click())
+  await click('绑定服务器'); await click('下一页服务器')
+  expect(admin.read).toHaveBeenCalledWith('network.machines.list', { page: 2, per_page: 100 }, expect.any(AbortSignal))
+  const select = document.querySelector<HTMLSelectElement>('[role="dialog"] select')!
+  await act(async () => { select.value = id; select.dispatchEvent(new Event('change', { bubbles: true })) })
+  await click('保存服务器归属')
+  expect(admin.write).toHaveBeenCalledExactlyOnceWith('network.nodes.batch-update', { ids: [id], machine_id: id }, expect.any(String))
+})
+
+it.each([500, 403])('clears cached binding servers and blocks saving after a %s refetch failure', async status => {
+  const read = vi.mocked(admin.read).getMockImplementation()!
+  let failed = false
+  vi.mocked(admin.read).mockImplementation((operation, input, ...args) => operation === 'network.machines.list'
+    ? failed ? Promise.reject(new CoreAdminApiError(status === 403 ? 'FORBIDDEN' : 'INTERNAL_ERROR', status))
+      : Promise.resolve({ data: [{ id: '10', name: 'private-binding-server' }], meta: { page: 1, per_page: 100, total: 1, last_page: 1 } } as never)
+    : read(operation, input, ...args))
+  await render('/nodes')
+  await act(async () => host.querySelector<HTMLInputElement>('input[aria-label="选择 private-node"]')!.click())
+  await click('绑定服务器')
+  expect(document.querySelector('[role="dialog"]')!.textContent).toContain('private-binding-server')
+  failed = true
+  await act(async () => { await client.refetchQueries({ queryKey: ['native-admin', 'node-binding-machines'] }) }); await settle()
+  expect(document.body.textContent).not.toContain('private-binding-server')
+  const save = [...document.querySelectorAll<HTMLButtonElement>('button')].find(element => element.textContent === '保存服务器归属')
+  expect(!save || save.disabled).toBe(true)
+  expect(admin.write).not.toHaveBeenCalled()
+})
+
+
+it('withdraws node identity after a traffic-history permission revocation and restores it only after both fresh reads succeed', async () => {
+  const original = vi.mocked(admin.read).getMockImplementation()!
+  let forbidden = false
+  vi.mocked(admin.read).mockImplementation(async (operation, ...args) => {
+    if (operation === 'network.nodes.traffic-history.get' && forbidden) throw new CoreAdminApiError('FORBIDDEN', 403)
+    return original(operation, ...args)
+  })
+  await render('/node/' + id)
+  expect(host.textContent).toContain('private-node')
+  forbidden = true
+  await act(async () => { await client.refetchQueries({ queryKey: ['native-admin', 'node-traffic', id] }) }); await settle()
+  expect(host.textContent).not.toContain('private-node')
+  expect(button('隐藏节点')).toBeUndefined()
+  await click('刷新节点')
+  expect(host.textContent).not.toContain('private-node')
+  forbidden = false
+  await click('刷新节点'); await settle()
+  expect(host.textContent).toContain('private-node')
+  expect(button('隐藏节点')).toBeDefined()
+})
+
+it('preserves an unsaved machine draft across background reads and requires consent before replacing it', async () => {
+  await render('/machine/' + id)
+  const notes = host.querySelector<HTMLTextAreaElement>('textarea')!
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!.call(notes, 'unsaved deployment note')
+    notes.dispatchEvent(new Event('input', { bubbles: true }))
+  })
+  await act(async () => { await client.refetchQueries({ queryKey: ['native-admin', 'machine-detail', id] }) }); await settle()
+  expect(notes.value).toBe('unsaved deployment note')
+  vi.mocked(window.confirm).mockReturnValueOnce(false)
+  await click('刷新服务器')
+  expect(notes.value).toBe('unsaved deployment note')
+  expect(window.confirm).toHaveBeenLastCalledWith('服务器配置尚未保存，重新读取将替换草稿，确定继续？')
+  await click('刷新服务器'); await settle()
+  expect(notes.value).toBe('retained note')
 })

@@ -62,7 +62,7 @@ final class NativeBrowserDeliveriesTest extends NativeRuntimeTestCase
         $this->duringMetadata = static function (): void { throw new \RuntimeException('DENIED_DISCOVERY_MUST_NOT_CALL_METADATA'); };
         $options = $this->delivery->browserOptions($owner->id);
         $this->assertFalse($options['authorized']); $this->assertSame([], $options['subjects']);
-        $this->assertCount(6, $options['formats']); $this->assertCount(6, $options['trust']);
+        $this->assertCount(8, $options['formats']); $this->assertCount(6, $options['trust']);
         $this->assertStringStartsWith('ENTITLEMENT_', $options['reason']);
     }
 

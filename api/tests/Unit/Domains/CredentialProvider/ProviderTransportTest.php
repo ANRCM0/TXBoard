@@ -16,9 +16,9 @@ class ProviderTransportTest extends TestCase
         $transport = new ProviderTransport();
         config(['credential_provider.providers' => []]);
         $assertBlocked = function (int $level) use ($transport): void {
-            foreach (['call', 'metadata', 'capabilities'] as $method) {
+            foreach (['call', 'metadata', 'capabilities', 'validateTemplate'] as $method) {
                 try {
-                    $arguments = $method === 'capabilities' ? [[]] : [[], []];
+                    $arguments = $method === 'capabilities' ? [[]] : ($method === 'validateTemplate' ? [[], 'sing-box/v1', '{{ .Default }}'] : [[], []]);
                     $transport->{$method}(...$arguments);
                     $this->fail('Provider network operation accepted inside a transaction: '.$method);
                 } catch (ProviderError $error) {

@@ -11,7 +11,7 @@ export const attachmentId = '11111111-1111-4111-8111-111111111111'
 const hash = bytes => createHash('sha256').update(bytes).digest('hex')
 
 export async function workflowFixture(browser, viewport) {
-  const context = await browser.newContext({ viewport })
+  const context = await browser.newContext({ locale: 'zh-CN', viewport })
   const ticket = { id: '9007199254740993', user_id: '9007199254740995', subject: 'Private connection issue',
     level: 1, status: 0, reply_status: 0, row_version: '7', created_at: stamp, updated_at: stamp, assigned_admin_id: null }
   const coupon = { id: '9007199254740997', code: 'BROWSER01', name: 'Recovery coupon', currency: 'CNY',

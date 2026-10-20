@@ -1,3 +1,4 @@
+import { t, useLocale } from '../../lib/i18n'
 import {
   ChevronDown,
   LayoutDashboard,
@@ -12,6 +13,8 @@ import { coreNavigationGroups } from '../../navigation/core'
 import { preloadAdminRoute, scheduleAdminRouteWarmup } from '../../lib/routePreload'
 import { useDialog } from '../../lib/useDialog'
 import { availableAdminPaths } from '../../native/routes'
+import { useSiteBranding } from '../../lib/useSiteBranding'
+import { SiteMark } from './SiteMark'
 
 const availablePaths = new Set(availableAdminPaths)
 
@@ -49,6 +52,8 @@ function readOpenGroups(): Record<string, boolean> {
 }
 
 export function Sidebar({ open, onClose, collapsed, onExpand, onToggle }: SidebarProps) {
+  useLocale()
+  const site = useSiteBranding()
   const { pathname } = useLocation()
   const dialogRef = useDialog(open, onClose)
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(readOpenGroups)
@@ -80,32 +85,32 @@ export function Sidebar({ open, onClose, collapsed, onExpand, onToggle }: Sideba
   }
 
   return (
-    <div ref={dialogRef} tabIndex={-1} role={open ? 'dialog' : undefined} aria-modal={open || undefined} aria-label="管理导航" className={`admin-sidebar ${open ? 'is-open' : ''}`}>
+    <div ref={dialogRef} tabIndex={-1} role={open ? 'dialog' : undefined} aria-modal={open || undefined} aria-label={t("管理导航")} className={`admin-sidebar ${open ? 'is-open' : ''}`}>
       <div className="admin-sidebar-inner">
         <div className="admin-sidebar-brand">
           <div className="admin-sidebar-brand-main">
-            <div className="admin-brand-mark">TX</div>
+            <SiteMark logo={site.logo} />
             <div className="admin-brand-copy">
-              <strong>TXBoard</strong>
-              <small>管理控制台</small>
+              <strong title={site.name}>{site.name}</strong>
+              <small>{t("管理控制台")}</small>
             </div>
           </div>
-          <button type="button" className="admin-mobile-menu admin-sidebar-close" onClick={onClose} aria-label="关闭导航">
+          <button type="button" className="admin-mobile-menu admin-sidebar-close" onClick={onClose} aria-label={t("关闭导航")}>
             <X size={22} />
           </button>
         </div>
 
-        <nav className="admin-sidebar-nav" aria-label="主导航">
+        <nav className="admin-sidebar-nav" aria-label={t("主导航")}>
           <NavLink
             to="/"
             end
-            title="仪表盘"
-            aria-label="仪表盘"
+            title={t("仪表盘")}
+            aria-label={t("仪表盘")}
             onClick={onClose}
             className={({ isActive }) => `admin-nav-root ${isActive ? 'active' : ''}`}
           >
             <LayoutDashboard size={18} />
-            <span>仪表盘</span>
+            <span>{t("仪表盘")}</span>
           </NavLink>
 
           {coreNavigationGroups.map(group => {
@@ -116,14 +121,14 @@ export function Sidebar({ open, onClose, collapsed, onExpand, onToggle }: Sideba
                 <button
                   type="button"
                   className={`admin-nav-group-trigger ${group.items.some(([path]) => pathname === path || pathname.startsWith(path + '/')) ? 'active' : ''}`}
-                  title={group.title}
-                  aria-label={group.title}
+                  title={t(group.title)}
+                  aria-label={t(group.title)}
                   aria-controls={`admin-nav-${group.key}`}
                   aria-expanded={expanded}
                   onClick={() => collapsed && !open ? onExpand() : toggleGroup(group.key)}
                 >
                   <GroupIcon size={18} />
-                  <span>{group.title}</span>
+                  <span>{t(group.title)}</span>
                   <ChevronDown size={16} className={expanded ? 'open' : ''} />
                 </button>
 
@@ -140,8 +145,8 @@ export function Sidebar({ open, onClose, collapsed, onExpand, onToggle }: Sideba
                         className={({ isActive }) => `admin-nav-sub ${isActive ? 'active' : ''}`}
                       >
                         <Icon size={17} />
-                        <span>{label}</span>
-                        {!availablePaths.has(to) ? <small className="native-nav-pending">待开放</small> : null}
+                        <span>{t(label)}</span>
+                        {!availablePaths.has(to) ? <small className="native-nav-pending">{t("待开放")}</small> : null}
                       </NavLink>
                     ))}
                   </div>
@@ -155,7 +160,7 @@ export function Sidebar({ open, onClose, collapsed, onExpand, onToggle }: Sideba
 
         <div className="admin-sidebar-footer">
           <TopBar onOpenMenu={onClose} />
-          <button type="button" className="admin-sidebar-collapse-toggle" aria-label={collapsed ? '展开侧边栏' : '收起侧边栏'} title={collapsed ? '展开侧边栏' : '收起侧边栏'} aria-expanded={!collapsed} onClick={onToggle ?? onExpand}>
+          <button type="button" className="admin-sidebar-collapse-toggle" aria-label={t(collapsed ? t('展开侧边栏') : t('收起侧边栏'))} title={t(collapsed ? t('展开侧边栏') : t('收起侧边栏'))} aria-expanded={!collapsed} onClick={onToggle ?? onExpand}>
             {collapsed ? <PanelLeftOpen size={19} /> : <PanelLeftClose size={19} />}
           </button>
         </div>

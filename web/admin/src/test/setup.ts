@@ -44,3 +44,5 @@ function installStorage(name: 'localStorage' | 'sessionStorage') {
 
 installStorage('localStorage')
 installStorage('sessionStorage')
+// Existing behavior tests use the source locale; locale tests choose explicitly.
+window.localStorage.setItem('i18nextLng', 'zh-CN')

@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Txapi\Admin;
 
 use App\Core\Http\TxapiResponse;
+use App\Domains\Installation\InstallationAuthority;
+use App\Domains\Network\NativeMachineObservations;
 use App\Models\Server;
 use App\Models\ServerMachine;
 use App\Models\ServerMachineLoadHistory;
@@ -29,6 +31,8 @@ final class NetworkMachineAdminController
                     'load_status', 'image_channel', 'created_at', 'updated_at'], 'page',
                 (int) ($query['page'] ?? 1));
 
+        $observations = app(NativeMachineObservations::class);
+        $now = now()->timestamp;
         $rows = $page->getCollection()->map(static fn (ServerMachine $machine): array => [
             'id' => (int) $machine->id,
             'name' => $machine->name,
@@ -37,6 +41,7 @@ final class NetworkMachineAdminController
             'image_channel' => $machine->image_channel ?: 'stable',
             'last_seen_at' => $machine->last_seen_at,
             'load_status' => $machine->load_status,
+            'observation' => $observations->project($machine, $now),
             'servers_count' => (int) $machine->servers_count,
             'created_at' => $machine->created_at,
             'updated_at' => $machine->updated_at,
@@ -50,21 +55,45 @@ final class NetworkMachineAdminController
         ])->header('Cache-Control', 'no-store');
     }
 
+    public function nativeOverview(Request $request): JsonResponse
+    {
+        return DB::transaction(function () use ($request): JsonResponse {
+            app(InstallationAuthority::class)->assertNativeRead();
+            return TxapiResponse::success($request, app(NativeMachineObservations::class)->overview(now()->timestamp))
+                ->header('Cache-Control', 'no-store');
+        });
+    }
+
     public function create(Request $request): JsonResponse
     {
-        $data = $this->validateFields($request);
-        $machine = ServerMachine::query()->create([
-            'name' => trim($data['name']),
-            'notes' => $data['notes'] ?? null,
-            'is_active' => $data['is_active'] ?? true,
-            'image_channel' => $data['image_channel'] ?? 'stable',
-            'token' => ServerMachine::generateToken(),
-        ]);
+        $machine = $this->createMachine($request);
         return $this->secretResponse($request, [
             'id' => (int) $machine->id,
             'token' => $machine->token,
             'install_command' => $this->installCommand($request, $machine),
         ], 201);
+    }
+
+    public function nativeCreate(Request $request): JsonResponse
+    {
+        $machine = $this->createMachine($request);
+        // Mutation receipts retain identifiers, never deployment credentials.
+        return TxapiResponse::success($request, ['id' => (string) $machine->id], [], 201);
+    }
+
+    public function nativeCredentials(Request $request): JsonResponse
+    {
+        return DB::transaction(function () use ($request): JsonResponse {
+            app(InstallationAuthority::class)->assertNativeRead();
+            return $this->credentials($request);
+        });
+    }
+
+    public function nativeRotateToken(Request $request): JsonResponse
+    {
+        $response = $this->rotateToken($request);
+        if ($response->getStatusCode() >= 400) return $response;
+        return TxapiResponse::success($request, ['ok' => true]);
     }
 
     public function update(Request $request): JsonResponse
@@ -187,6 +216,32 @@ final class NetworkMachineAdminController
         return TxapiResponse::success($request, $rows)->header('Cache-Control', 'no-store');
     }
 
+    public function nativeHistory(Request $request): JsonResponse
+    {
+        return DB::transaction(function () use ($request): JsonResponse {
+            app(InstallationAuthority::class)->assertNativeRead();
+            $request->validate(['limit' => ['sometimes', 'integer', 'min:10', 'max:1000']]);
+            $response = $this->history($request);
+            if ($response->getStatusCode() >= 400) return $response;
+            $points = array_map(static function (array $point): array {
+                $decimal = static fn (float $value): string => rtrim(rtrim(sprintf('%.6F', $value), '0'), '.');
+                $point['cpu'] = $decimal((float) $point['cpu']);
+                foreach (['mem_total', 'mem_used', 'disk_total', 'disk_used'] as $field) {
+                    $point[$field] = (string) $point[$field];
+                }
+                foreach (['net_in_speed', 'net_out_speed'] as $field) {
+                    $point[$field] = $point[$field] === null ? null : $decimal((float) $point[$field]);
+                }
+                return $point;
+            }, $response->getData(true)['data']);
+            return TxapiResponse::success($request, [
+                'machine_id' => (string) $request->route('id'),
+                'range_hours' => (int) $request->input('range_hours'),
+                'points' => $points,
+            ])->header('Cache-Control', 'no-store');
+        });
+    }
+
     public function updateRuntime(Request $request, MachineRuntimeUpdateService $updates): JsonResponse
     {
         $data = $request->validate(['target' => ['required', 'in:latest,dev']]);
@@ -229,6 +284,18 @@ final class NetworkMachineAdminController
             ]);
         }
         return $data;
+    }
+
+    private function createMachine(Request $request): ServerMachine
+    {
+        $data = $this->validateFields($request);
+        return ServerMachine::query()->create([
+            'name' => trim($data['name']),
+            'notes' => $data['notes'] ?? null,
+            'is_active' => $data['is_active'] ?? true,
+            'image_channel' => $data['image_channel'] ?? 'stable',
+            'token' => ServerMachine::generateToken(),
+        ]);
     }
 
     private function missing(Request $request): JsonResponse

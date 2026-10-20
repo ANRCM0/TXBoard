@@ -350,6 +350,12 @@ jobs:
               tests/Feature/Billing/OrderFulfillmentBoundaryTest.php
               tests/Feature/Modules/ModuleDeploymentTest.php
               tests/Feature/Modules/ProofExtensionsTest.php
+          - shard: administrator-account-adjustments
+            test_files: >-
+              tests/Feature/Billing/NativeAccountAdjustmentsTest.php
+              tests/Feature/Billing/NativeAccountAdjustmentBrowserTest.php
+              tests/Feature/Billing/NativeCustomerPoliciesTest.php
+              tests/Feature/Billing/NativeCustomerPolicyMysqlConcurrencyTest.php
     permissions:
       contents: read
     services:
@@ -478,6 +484,36 @@ jobs:
               tests/Feature/Txapi/NodeTrafficHistoryTest.php
               tests/Feature/Txapi/TxapiNativeInternalCheckoutTest.php
               tests/Feature/UsageV2/NativeRuntimeUsageTest.php
+          - shard: administrator-identity-and-network
+            run_usage_concurrency: false
+            test_files: >-
+              tests/Feature/Identity/NativeAdminAccountWorkflowTest.php
+              tests/Feature/Identity/NativeAdminIdentityBrowserTest.php
+              tests/Feature/Identity/NativeAccountMetadataTest.php
+              tests/Feature/Txapi/NativeNodeConfigurationTest.php
+              tests/Feature/Txapi/NativeNodeOrderingTest.php
+              tests/Feature/Txapi/NativeNetworkBrowserTest.php
+              tests/Feature/Txapi/NativeGroupRouteOrderingTest.php
+              tests/Feature/Billing/NativeAdminOrderFiltersTest.php
+              tests/Feature/Billing/NativeDashboardReadTest.php
+              tests/Feature/Subscription/NativeResetHistoryTest.php
+          - shard: administrator-subscription-and-templates
+            run_usage_concurrency: false
+            test_files: >-
+              tests/Feature/Subscription/NativeSubscriptionAmendmentsTest.php
+              tests/Feature/Subscription/NativeSubscriptionPlanAmendmentMysqlConcurrencyTest.php
+              tests/Feature/Subscription/NativeSubscriptionAmendmentBrowserTest.php
+              tests/Feature/Txapi/NativeSubscriptionTemplatesTest.php
+              tests/Feature/Subscription/NativeUsageCorrectionsTest.php
+              tests/Feature/Subscription/NativeUsageCorrectionMysqlConcurrencyTest.php
+          - shard: administrator-modules-and-settings
+            run_usage_concurrency: false
+            test_files: >-
+              tests/Feature/Modules/NativeModuleAdministrationTest.php
+              tests/Feature/Modules/NativeModuleBrowserTest.php
+              tests/Feature/Modules/NativeThemeDeploymentTest.php
+              tests/Feature/Txapi/NativeAdminAppearanceTest.php
+              tests/Feature/Txapi/NativeConfigurationDiagnosticsTest.php
     permissions:
       contents: read
     services:

@@ -1,0 +1,35 @@
+.orders-page .commerce-card-heading { align-items:center; gap:16px; }
+.orders-page .management-filter-form { margin:16px 0 20px; padding:16px; border:1px solid var(--border); border-radius:10px; background:var(--ui-surface-subtle); }
+.orders-page .management-filter-form label { flex:1 1 150px; }
+.orders-page .management-filter-form label:nth-child(2) { flex:2 1 240px; }
+.orders-page .management-filter-form input, .orders-page .management-filter-form select { width:100%; }
+.order-copy-line { display:flex; align-items:center; gap:5px; min-width:0; }
+.order-copy-line>code, .order-copy-line>.commerce-order-link { overflow-wrap:anywhere; white-space:normal; }
+.order-copy-line>button:last-child { flex-shrink:0; }
+.order-copy-line>.ui-copy-control { flex:0 0 auto; }
+.orders-page .native-row-identity { min-width:190px; max-width:290px; }
+.order-plan-cell, .order-date-cell { display:grid; gap:6px; }
+.order-plan-cell { min-width:130px; max-width:220px; }
+.order-plan-cell strong { font-size:12px; font-weight:600; white-space:normal; }
+.order-plan-cell small, .order-date-cell small { font-size:11px; color:var(--muted); }
+.order-type-tag[data-type="2"] { color:var(--success); }
+.order-type-tag[data-type="3"] { color:var(--primary); }
+.orders-page .order-detail-button { display:inline-flex; align-items:center; gap:5px; white-space:nowrap; }
+.commerce-order-dialog .commerce-order-number { margin-top:8px; color:var(--muted); font-size:12px; }
+.commerce-order-dialog .reference-profile-header>.ui-status { flex-shrink:0; }
+.commerce-order-dialog .reference-order-amount { margin-bottom:16px; }
+.order-amount-breakdown { margin:0 0 24px; padding:0 4px; display:grid; gap:10px; }
+.order-amount-breakdown>div { display:flex; justify-content:space-between; gap:20px; font-size:12px; }
+.order-amount-breakdown dt { color:var(--muted); }
+.order-amount-breakdown dd { margin:0; font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
+@media(max-width:640px) {
+  .orders-page .management-filter-form { padding:12px; }
+  .orders-page .management-filter-form label, .orders-page .management-filter-form label:nth-child(2) { flex:1 1 100%; }
+  .orders-page .management-filter-form .button { width:100%; justify-content:center; }
+  .commerce-order-dialog .reference-profile-header { flex-wrap:wrap; }
+  .commerce-order-dialog .reference-profile-identity { flex-basis:calc(100% - 70px); }
+  .commerce-order-dialog .reference-profile-header>.ui-status { margin-left:66px; }
+  .commerce-order-dialog .reference-order-amount { display:grid; grid-template-columns:minmax(0,1fr); gap:10px; padding:16px; }
+  .commerce-order-dialog .reference-order-amount>.reference-tag { margin-left:0; justify-self:start; }
+  .commerce-order-dialog .reference-order-amount strong { font-size:23px; }
+}

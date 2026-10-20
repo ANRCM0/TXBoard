@@ -1,0 +1,13 @@
+.admin-sidebar-tools .ui-popover-trigger.admin-account-trigger { display: grid; place-items: center; width: 32px; height: 36px; padding: 0; border: 0; border-radius: 8px; background: transparent; color: var(--muted); }
+.admin-sidebar-tools .admin-account-trigger:hover, .admin-sidebar-tools .admin-account-trigger[aria-expanded=true] { background: var(--hover); color: var(--fg); }
+.ui-popover-panel.admin-account-menu { width: 270px; padding: 8px; }
+.admin-account-identity { display: grid; gap: 5px; padding: 10px 12px 14px; margin-bottom: 4px; border-bottom: 1px solid var(--border); }
+.admin-account-identity strong { font-size: 12px; font-weight: 600; overflow-wrap: anywhere; }
+.admin-account-identity small { font-size: 11px; color: var(--muted); overflow-wrap: anywhere; }
+.admin-account-identity > button { justify-self: start; padding: 3px 0; border: 0; color: var(--primary); background: transparent; font: inherit; cursor: pointer; }
+.admin-account-actions { display: grid; gap: 3px; }
+.admin-account-actions > button { display: flex; align-items: center; gap: 9px; width: 100%; min-height: 36px; padding: 8px 12px; border: 0; border-radius: 6px; color: var(--fg); background: transparent; font: inherit; text-align: left; cursor: pointer; }
+.admin-account-actions > button:hover { background: var(--hover); }
+.admin-account-actions > button:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -2px; }
+.admin-account-actions > .admin-account-logout { color: var(--danger); }
+.admin-account-actions > button:disabled { opacity: .6; cursor: wait; }

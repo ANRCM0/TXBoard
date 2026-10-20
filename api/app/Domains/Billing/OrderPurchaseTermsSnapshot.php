@@ -111,8 +111,16 @@ final class OrderPurchaseTermsSnapshot
             'catalog' => ['revision_id' => (string) $revision->id, 'offer_id' => (string) $offer->id,
                 'publication_hash' => (string) $revision->content_hash],
         ];
-        $coupon = app(NativeCouponWorkflow::class)->binding((int) $order->id, (int) $order->user_id,
+        $personal = app(NativeCustomerPolicies::class)->priceBinding($order, $offer);
+        $coupon = $personal !== null ? $personal['coupon'] : app(NativeCouponWorkflow::class)->binding((int) $order->id, (int) $order->user_id,
             (int) $offer->id, $offer->currency, (string) $offer->price_minor, (string) $order->total_amount);
+        if ($personal !== null) {
+            $snapshot['customer_discount'] = $personal['binding'];
+            $snapshot['price_minor'] = (string) $order->total_amount;
+            if ($coupon !== null) $snapshot['coupon_discount'] = $coupon;
+            if ($personal['credit'] !== null) $snapshot['upgrade_credit'] = $personal['credit'];
+            return $snapshot + ['content_hash' => $this->catalog->hash($snapshot)];
+        }
         if ($coupon !== null) {
             if ((int) $order->type === Order::TYPE_UPGRADE) throw new RuntimeException('ORDER_COUPON_UPGRADE_UNSUPPORTED');
             $snapshot['coupon_discount'] = $coupon;

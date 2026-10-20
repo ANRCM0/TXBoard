@@ -1,3 +1,4 @@
+import { t, useLocale } from '../../lib/i18n'
 import type { ReactNode } from 'react'
 
 export function PageHeader({ title, description, action }: {
@@ -5,6 +6,7 @@ export function PageHeader({ title, description, action }: {
   description?: string
   action?: ReactNode
 }) {
+  useLocale()
   return <div className="page-header">
     <div className="page-header-copy">
       <h1>{title}</h1>

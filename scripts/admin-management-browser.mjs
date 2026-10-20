@@ -30,12 +30,20 @@ const origin = 'http://127.0.0.1:' + server.address().port
 const checks = [], fixtures = []
 const routes = [
   ['/system/audit-log', '管理审计', 'audit.logs.list'],
-  ['/system/modules', '模块清单', 'platform.modules.list'],
-  ['/config/plugin', '插件管理', 'platform.modules.list'],
-  ['/config/theme', '主题管理', 'platform.modules.list'],
+  ['/system/modules', '模块清单', 'platform.module-cards.list'],
+  ['/config/plugin', '插件管理', 'platform.module-cards.list'],
+  ['/config/theme', '主题管理', 'platform.module-cards.list'],
   ['/system/queue', '队列监控', 'platform.queue.snapshot.get'],
   ['/config/system', '站点设置', 'settings.configuration.get'],
   ['/config/system/safe', '安全设置', 'settings.configuration.get'],
+  ['/config/system/features', '功能设置', 'settings.configuration.get'],
+  ['/config/system/subscribe', '订阅设置', 'settings.configuration.get'],
+  ['/config/server', '节点设置', 'settings.configuration.get'],
+  ['/config/email', '邮件设置', 'settings.configuration.get'],
+  ['/config/telegram', 'Telegram 设置', 'settings.configuration.get'],
+  ['/config/app', '客户端设置', 'settings.configuration.get'],
+  ['/config/appearance', '后台外观', 'settings.configuration.get'],
+  ['/config/system/subscribe-template', '订阅模板', 'subscription.admin-templates.list'],
   ['/config/email/templates', '邮件模板', 'notifications.mail-templates.get'],
   ['/config/payment', '支付配置', 'billing.admin-payment-methods.list'],
   ['/server/manage', '节点管理', 'network.nodes.list'],
@@ -82,17 +90,16 @@ try {
   await page.getByRole('button', { name: '查询', exact: true }).click(); await auditResponse
   assert.equal(state.calls.filter(call => call.operation === 'audit.logs.list').at(-1).input.admin_id, '9007199254740993')
   await open(desktop, '/system/modules')
-  await page.getByRole('region', { name: '模块清单', exact: true }).getByRole('row').filter({ has: page.getByText('Observed plugin', { exact: true }) }).getByRole('button').click()
-  await page.locator('section[aria-label="模块详情"]').getByText('fixture-plugin', { exact: true }).waitFor()
+  await page.locator('.module-card').filter({ hasText: 'Observed plugin' }).getByRole('button', { name: '文档', exact: true }).click()
+  await page.getByRole('dialog').getByText('Declared native module documentation.', { exact: false }).waitFor()
+  await page.getByRole('dialog').getByRole('button', { name: '关闭', exact: true }).last().click()
   const beforeModules = writes(state).length
-  assert.equal(await page.getByRole('button', { name: '卸载', exact: true }).count(), 0)
-  state.denied.add('platform.modules.')
+  state.denied.add('platform.module-')
   await page.locator('.native-management-page .page-header').getByRole('button', { name: '刷新', exact: true }).click()
-  await page.getByText('无法确认模块读取权限，已隐藏清单和详情。', { exact: true }).waitFor()
-  assert.equal(await page.locator('.native-management-page table').count(), 0)
-  assert.equal(await page.locator('section[aria-label="模块详情"]').count(), 0)
+  await page.getByText('无法确认模块权限，已隐藏清单、详情和配置草稿。可重新读取权限后恢复原请求。', { exact: true }).waitFor()
+  assert.equal(await page.locator('.module-card').count(), 0)
   assert.equal(writes(state).length, beforeModules); state.denied.clear()
-  passed('audit filters preserve large IDs and module permission revocation removes cached lists and detail without lifecycle writes')
+  passed('audit filters preserve large IDs and module permission revocation removes cards and dialogs without lifecycle writes')
 
   await open(desktop, '/config/system')
   await page.getByRole('button', { name: '开始编辑', exact: true }).click()
@@ -115,21 +122,46 @@ try {
 
   await open(desktop, '/config/system/safe')
   await page.getByRole('button', { name: '开始编辑', exact: true }).click()
-  for (const secret of ['recaptcha_key', 'recaptcha_v3_secret_key', 'turnstile_secret_key']) {
+  assert.equal(await page.locator('#configuration-captcha_type').count(), 0)
+  await page.locator('#configuration-captcha_enable').check()
+  for (const [provider, secret] of [['recaptcha', 'recaptcha_key'], ['recaptcha-v3', 'recaptcha_v3_secret_key'], ['turnstile', 'turnstile_secret_key']]) {
+    await page.locator('#configuration-captcha_type').selectOption(provider)
     assert.equal(await page.locator('#configuration-' + secret).inputValue(), '')
     assert.equal(await page.locator('#configuration-' + secret).getAttribute('type'), 'password')
+    assert.equal(await page.locator('#configuration-' + (secret === 'recaptcha_key' ? 'turnstile_secret_key' : 'recaptcha_key')).count(), 0)
   }
+  await page.locator('#configuration-turnstile_site_key').fill('synthetic-public-site-key')
   await page.locator('#configuration-turnstile_secret_key').fill('synthetic-new-secret')
   const observed = state.settings.version
   await page.getByRole('button', { name: '保存当前分类', exact: true }).click()
   await page.getByText('设置已保存', { exact: true }).waitFor()
   const secretSave = state.calls.filter(call => call.operation === 'settings.configuration.update').at(-1)
-  assert.deepEqual(secretSave.input, { expected_version: observed, values: { turnstile_secret_key: 'synthetic-new-secret' } })
+  assert.deepEqual(secretSave.input, { expected_version: observed, values: { captcha_enable: true, captcha_type: 'turnstile', turnstile_site_key: 'synthetic-public-site-key', turnstile_secret_key: 'synthetic-new-secret' } })
   await page.getByRole('button', { name: '开始编辑', exact: true }).click()
   assert.equal(await page.locator('#configuration-turnstile_secret_key').inputValue(), '')
   assert.ok(!(await page.content()).includes('synthetic-new-secret'))
   await screenshot(page, 'security-desktop')
   passed('configured credentials are password blanks and new secrets are write-only dirty patches')
+
+  await open(desktop, '/config/appearance')
+  const appearanceVersion = state.settings.version
+  await page.getByLabel('侧栏表面风格', { exact: true }).selectOption('contrast')
+  await page.getByLabel('强调色', { exact: true }).selectOption('green')
+  await page.getByRole('button', { name: '保存外观', exact: true }).click()
+  await page.getByText('后台外观已保存', { exact: true }).waitFor()
+  const appearanceSave = state.calls.filter(call => call.operation === 'settings.configuration.update').at(-1)
+  assert.deepEqual(appearanceSave.input, { expected_version: appearanceVersion, values: { admin_sidebar_style: 'contrast', admin_color_scheme: 'green' } })
+  passed('persistent appearance saves only changed fields using the observed settings version')
+
+  await page.getByRole('combobox', { name: '语言', exact: true }).selectOption('en-US')
+  await page.waitForFunction(() => document.documentElement.lang === 'en-US')
+  assert.ok(!(await page.locator('.page-header').innerText()).includes('后台外观'))
+  await page.getByRole('combobox').filter({ has: page.locator('option[value="ru-RU"]') }).selectOption('ru-RU')
+  await page.waitForFunction(() => document.documentElement.lang === 'ru-RU')
+  assert.ok(!(await page.locator('.page-header').innerText()).includes('后台外观'))
+  await page.getByRole('combobox').filter({ has: page.locator('option[value="zh-CN"]') }).selectOption('zh-CN')
+  await page.getByRole('heading', { name: '后台外观', exact: true }).waitFor()
+  passed('language switching translates the active page and shell without reloading or losing the selected settings')
 
   await open(desktop, '/config/payment')
   await page.getByRole('button', { name: '配置支付方式', exact: true }).click()
@@ -249,7 +281,7 @@ try {
     await screenshot(mobile.page, pathname.replace(/^\//, '').replaceAll('/', '-') + '-mobile')
   }
   verify(mobile.state)
-  passed('all twelve new management paths retain bounded mobile layouts')
+  passed('all management paths retain bounded mobile layouts')
   await writeFile(path.join(output, 'result.json'), JSON.stringify({ passed: true, checks,
     frontend: 'built main-repository admin', transport: 'strict synthetic Core browser-ingress fixtures',
     schema: 'current generated Core input/output/meta schemas',

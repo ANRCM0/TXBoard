@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Txapi\Admin;
 
 use App\Core\Http\TxapiResponse;
+use App\Domains\Network\NativeRouteOrdering;
 use App\Models\Server;
 use App\Models\ServerRoute;
 use Illuminate\Http\JsonResponse;
@@ -65,15 +66,57 @@ final class NetworkRouteAdminController
         }
         if (!array_key_exists('enabled', $data)) $data['enabled'] = true;
 
-        if (isset($data['id'])) {
-            $route = ServerRoute::query()->find($data['id']);
-            if (!$route) return TxapiResponse::error($request, 'NETWORK_ROUTE_NOT_FOUND', 'Route not found', 404);
-            $route->update($data);
-        } else {
+        $route = DB::transaction(function () use ($data): ?ServerRoute {
+            NativeRouteOrdering::lock();
+            if (isset($data['id'])) {
+                $route = ServerRoute::query()->lockForUpdate()->find($data['id']);
+                if (!$route) return null;
+                $route->update($data);
+                return $route;
+            }
             $data['sort'] = $data['sort'] ?? ((int) ServerRoute::query()->max('sort') + 10);
-            $route = ServerRoute::query()->create($data);
-        }
+            return ServerRoute::query()->create($data);
+        });
+        if (!$route) return TxapiResponse::error($request, 'NETWORK_ROUTE_NOT_FOUND', 'Route not found', 404);
         return TxapiResponse::success($request, ['ok' => true, 'id' => (int) $route->id]);
+    }
+
+    public function ordering(Request $request): JsonResponse
+    {
+        $routes = ServerRoute::query()->orderBy('id')->limit(501)->get();
+        if ($routes->count() > 500) return TxapiResponse::error($request, 'NETWORK_ROUTE_SORT_LIMIT',
+            'Complete route ordering supports at most 500 routes', 422);
+        return TxapiResponse::success($request, NativeRouteOrdering::snapshot($routes))
+            ->header('Cache-Control', 'no-store');
+    }
+
+    public function replaceOrdering(Request $request): JsonResponse
+    {
+        $input = $request->validate([
+            'expected_revision' => ['required', 'regex:/^[a-f0-9]{64}$/D'],
+            'route_ids' => ['required', 'array', 'min:1', 'max:500'],
+            'route_ids.*' => ['required', 'integer', 'min:1', 'distinct'],
+        ]);
+        $ids = array_map('strval', $input['route_ids']);
+        $result = DB::transaction(function () use ($input, $ids): string {
+            $routes = NativeRouteOrdering::locked();
+            if ($routes->count() > 500) return 'limit';
+            $snapshot = NativeRouteOrdering::snapshot($routes);
+            if (!hash_equals($snapshot['revision'], $input['expected_revision'])) return 'conflict';
+            if (count($ids) !== $routes->count() || array_diff($snapshot['route_ids'], $ids) !== []) return 'set';
+            $byId = $routes->keyBy('id');
+            foreach ($ids as $sort => $id) {
+                $route = $byId->get($id);
+                $route->sort = $sort;
+                $route->save();
+            }
+            return 'ok';
+        });
+        if ($result === 'limit') return TxapiResponse::error($request, 'NETWORK_ROUTE_SORT_LIMIT',
+            'Complete route ordering supports at most 500 routes', 422);
+        if ($result !== 'ok') return TxapiResponse::error($request, 'NETWORK_ROUTE_ORDERING_CONFLICT',
+            'The complete route ordering changed; read it again before sorting', 409);
+        return TxapiResponse::success($request, ['ok' => true]);
     }
 
     public function sort(Request $request): JsonResponse
@@ -92,6 +135,7 @@ final class NetworkRouteAdminController
                 'Duplicate route IDs are not allowed', 422);
         }
         $result = DB::transaction(function () use ($items, $ids): bool {
+            NativeRouteOrdering::lock();
             $routes = ServerRoute::query()->whereIn('id', $ids)->lockForUpdate()->get()->keyBy('id');
             if ($routes->count() !== count($ids)) return false;
             foreach ($items as $item) {
@@ -192,6 +236,7 @@ final class NetworkRouteAdminController
         // name rather than relying on parameter position.
         $id = (int) $request->route('id');
         $status = DB::transaction(function () use ($id): string {
+            NativeRouteOrdering::lock();
             $route = ServerRoute::query()->lockForUpdate()->find($id);
             if (!$route) return 'missing';
             if ($this->serverUsageQuery($id)->exists()) return 'in_use';

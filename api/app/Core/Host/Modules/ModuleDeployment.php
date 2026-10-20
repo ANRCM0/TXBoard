@@ -19,18 +19,26 @@ final class ModuleDeployment
     public function __construct(private readonly ExtensionRuntime $runtime, private readonly ModuleExecutionLock $lock,
         private readonly InstallationAdmission $installation, private readonly PluginManager $plugins) {}
 
-    public function execute(string $code, string $action, string $deploymentId, ?array $configuration = null): array
+    public function execute(string $code, string $action, string $deploymentId, ?array $configuration = null,
+        ?array $expected = null, ?\Closure $authorize = null, ?\Closure $configurationProvider = null): array
     {
         if (!Str::isUuid($deploymentId) || !in_array($action, ['install', 'enable', 'disable', 'update', 'configure', 'uninstall'], true)
             || ($action === 'configure') !== ($configuration !== null)) throw new ExtensionFailure('MODULE_DEPLOYMENT_INPUT_INVALID', 422);
-        $package = $this->runtime->package($code);
+        if ($expected !== null && (array_keys($expected) !== ['fingerprint', 'revision', 'input_hash']
+            || !is_string($expected['fingerprint']) || !is_string($expected['revision']) || !is_string($expected['input_hash'])
+            || preg_match('/\A[0-9a-f]{64}\z/D', $expected['fingerprint']) !== 1
+            || preg_match('/\A[0-9a-f]{64}\z/D', $expected['revision']) !== 1
+            || preg_match('/\A[0-9a-f]{64}\z/D', $expected['input_hash']) !== 1)) throw new ExtensionFailure('MODULE_DEPLOYMENT_INPUT_INVALID', 422);
+        if ($configurationProvider !== null && ($expected === null || $action !== 'configure')) throw new ExtensionFailure('MODULE_DEPLOYMENT_INPUT_INVALID', 422);
+        $package = $this->runtime->package($code, $expected['fingerprint'] ?? null);
         if (($package['manifest']['lifecycle'] ?? 'managed') !== 'managed') throw new ExtensionFailure('MODULE_LIFECYCLE_OWNED_BY_PAYMENT');
         if ($configuration !== null && strlen(json_encode($configuration, JSON_THROW_ON_ERROR)) > 32768) throw new ExtensionFailure('MODULE_CONFIGURATION_INVALID', 422);
         $installation = DB::transaction(fn (): array => $this->installation->assertModuleDeployment(), 3);
-        $requestHash = hash('sha256', json_encode([$action, $configuration], JSON_THROW_ON_ERROR));
-        return $this->lock->run($code, function () use ($code, $action, $deploymentId, $configuration, $package, $installation, $requestHash): array {
-            $intent = DB::transaction(function () use ($code, $action, $deploymentId, $configuration, $package, $installation, $requestHash): object {
-                $this->installation->assertModuleDeployment();
+        $requestHash = hash('sha256', json_encode($expected === null ? [$action, $configuration] : [$action, $expected], JSON_THROW_ON_ERROR));
+        return $this->lock->run($code, function () use ($code, $action, $deploymentId, $configuration, $package, $installation, $requestHash, $expected, $authorize, $configurationProvider): array {
+            $intent = DB::transaction(function () use ($code, $action, $deploymentId, $configuration, $package, $installation, $requestHash, $expected, $authorize, $configurationProvider): object {
+                $currentInstallation = $this->installation->assertModuleDeployment();
+                if ($authorize !== null) $authorize($currentInstallation);
                 DB::table('tx_plugin_package_fence')->insertOrIgnore(['plugin_code' => $code, 'mutation_token' => null]);
                 $fence = DB::table('tx_plugin_package_fence')->where('plugin_code', $code)->lockForUpdate()->first();
                 $row = Plugin::query()->where('code', $code)->lockForUpdate()->first();
@@ -43,6 +51,9 @@ final class ModuleDeployment
                     if (!in_array($intent->phase, ['completed', 'rejected'], true) && $fence->mutation_token !== $intent->mutation_token) throw new ExtensionFailure('MODULE_DEPLOYMENT_FENCE_LOST');
                     return $intent;
                 }
+                if ($expected !== null && !hash_equals($expected['revision'], ModuleDeploymentRevision::of($package, $row))) {
+                    throw new ExtensionFailure('MODULE_STATE_CHANGED');
+                }
                 if ($fence->mutation_token !== null || $row?->native_payment_mutation_token !== null) throw new ExtensionFailure('MODULE_DEPLOYMENT_BUSY');
                 if ($action === 'enable') $this->runtime->dependencies($code);
                 if (in_array($action, ['disable', 'update', 'uninstall'], true)) $this->assertNoEnabledDependents($package);
@@ -53,17 +64,20 @@ final class ModuleDeployment
                     || $row->version === $package['version'] && (int) $row->module_schema_version >= $package['manifest']['schema_version'])) {
                     throw new ExtensionFailure('MODULE_STOP_BEFORE_UPDATE');
                 }
-                if ($action !== 'update' && $row !== null && $row->version !== $package['version']) throw new ExtensionFailure('MODULE_PACKAGE_VERSION_CONFLICT');
+                if (!in_array($action, ['update', 'disable'], true) && $row !== null && $row->version !== $package['version']) throw new ExtensionFailure('MODULE_PACKAGE_VERSION_CONFLICT');
                 if ($row !== null && !in_array($action, ['update', 'disable'], true) && (int) $row->module_schema_version !== $package['manifest']['schema_version']) {
                     throw new ExtensionFailure('MODULE_SCHEMA_VERSION_CONFLICT');
                 }
                 if ((int) ($row?->module_schema_version ?? 0) > $package['manifest']['schema_version']) throw new ExtensionFailure('MODULE_SCHEMA_DOWNGRADE_FORBIDDEN');
-                $saved = $configuration ?? ($row === null ? $this->plugins->moduleDefaultConfiguration($code) : json_decode($row->config ?: '{}', true, 32, JSON_THROW_ON_ERROR));
+                $saved = $configurationProvider !== null ? $configurationProvider($row, $package, $currentInstallation)
+                    : ($configuration ?? ($row === null ? $this->plugins->moduleDefaultConfiguration($code) : json_decode($row->config ?: '{}', true, 32, JSON_THROW_ON_ERROR)));
+                if (!is_array($saved) || strlen(json_encode($saved, JSON_THROW_ON_ERROR)) > 32768) throw new ExtensionFailure('MODULE_CONFIGURATION_INVALID', 422);
                 if (in_array($action, ['enable', 'configure'], true)) $this->runtime->validateConfiguration($package, $saved);
                 $token = bin2hex(random_bytes(32));
                 $snapshot = ['deployment_id' => $deploymentId, 'module_code' => $code, 'package_hash' => $package['fingerprint'],
                     'request_hash' => $requestHash, 'from_schema' => (int) ($row?->module_schema_version ?? 0), 'configuration' => $saved,
-                    'configuration_version' => (int) ($row?->module_config_version ?? 1) + ($action === 'configure' ? 1 : 0)];
+                    'configuration_version' => (int) ($row?->module_config_version ?? 1) + ($action === 'configure' ? 1 : 0),
+                    'expected' => $expected];
                 $values = ['deployment_id' => $deploymentId, 'installation_id' => $installation['installation_id'],
                     'module_code' => $code, 'action' => $action, 'package_version' => $package['version'],
                     'schema_version' => $package['manifest']['schema_version'], 'package_hash' => $package['fingerprint'],
@@ -103,8 +117,9 @@ final class ModuleDeployment
                     else $this->plugins->moduleRemoveAssets($code);
                     $this->phase($intent, 'assets_ready');
                 }
-                DB::transaction(function () use ($intent, $package, $snapshot, $action, $code): void {
+                DB::transaction(function () use ($intent, $package, $snapshot, $action, $code, $authorize): void {
                     $state = $this->installation->assertModuleDeployment();
+                    if ($authorize !== null) $authorize($state);
                     if ($state['installation_id'] !== $intent->installation_id) throw new ExtensionFailure('MODULE_INSTALLATION_CONFLICT');
                     $fence = DB::table('tx_plugin_package_fence')->where('plugin_code', $code)->lockForUpdate()->first();
                     if ($fence?->mutation_token !== $intent->mutation_token) throw new ExtensionFailure('MODULE_DEPLOYMENT_FENCE_LOST');
@@ -114,7 +129,7 @@ final class ModuleDeployment
                         $row?->delete();
                     } else {
                         $config = json_decode(file_get_contents($package['path'].'/config.json'), true, 32, JSON_THROW_ON_ERROR);
-                        $values = ['version' => $package['version'], 'module_schema_version' => $action === 'disable' ? (int) $row->module_schema_version : $package['manifest']['schema_version'],
+                        $values = ['version' => $action === 'disable' ? $row->version : $package['version'], 'module_schema_version' => $action === 'disable' ? (int) $row->module_schema_version : $package['manifest']['schema_version'],
                             'module_config_version' => $snapshot['configuration_version'],
                             'config' => json_encode($snapshot['configuration'], JSON_THROW_ON_ERROR), 'native_payment_mutation_token' => null];
                         if ($action === 'install') Plugin::create($values + ['code' => $code, 'name' => $config['name'],
@@ -195,7 +210,8 @@ final class ModuleDeployment
         $intent = DB::table('tx_module_deployment')->useWritePdo()->where('deployment_id', $deploymentId)->where('module_code', $code)->first();
         if ($intent === null) throw new ExtensionFailure('MODULE_DEPLOYMENT_NOT_FOUND', 404);
         $snapshot = json_decode(Crypt::decryptString($intent->state_snapshot), true, 32, JSON_THROW_ON_ERROR);
-        return $this->execute($code, $intent->action, $deploymentId, $intent->action === 'configure' ? $snapshot['configuration'] : null);
+        return $this->execute($code, $intent->action, $deploymentId, $intent->action === 'configure' ? $snapshot['configuration'] : null,
+            $snapshot['expected'] ?? null);
     }
 
     private function phase(object $intent, string $phase): void

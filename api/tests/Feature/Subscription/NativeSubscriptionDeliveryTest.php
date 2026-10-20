@@ -8,6 +8,7 @@ use App\Models\Order;
 use App\Models\Server;
 use App\Domains\Subscription\Services\NativeCredentialProviderService;
 use App\Domains\Subscription\Services\NativeSubscriptionDelivery;
+use App\Domains\Subscription\Services\NativeSubscriptionTemplates;
 use App\Domains\Subscription\Services\PublishedOrderService;
 use App\Domains\Subscription\Services\SubscriptionFulfillmentService;
 use DomainException;
@@ -22,10 +23,20 @@ final class NativeSubscriptionDeliveryTest extends NativeSubscriptionTestCase
     private int $owner;
     private int $subject;
     private mixed $duringMetadata = null;
+    private bool $templatesSupported = true;
+    private int $templateProbes = 0;
 
     protected function setUp(): void
     {
         parent::setUp();
+        app(\App\Support\Setting::class)->shouldReceive('save')->with([])->andReturn(true);
+        Schema::create('tx_settings', function (Blueprint $table): void {
+            $table->bigIncrements('id');
+            $table->string('name')->unique();
+            $table->text('value')->nullable();
+            $table->unsignedBigInteger('created_at')->nullable();
+            $table->unsignedBigInteger('updated_at')->nullable();
+        });
         foreach (['2026_10_16_000001_enable_native_credential_provider.php',
             '2026_10_16_000002_enable_native_credential_rotation.php'] as $migration) {
             (require database_path('migrations/'.$migration))->up();
@@ -81,6 +92,11 @@ final class NativeSubscriptionDeliveryTest extends NativeSubscriptionTestCase
                 'credential_generation' => $subject['credential_generation'], 'credential_sha256' => str_repeat('c', 64),
                 'credential_expires_at' => (int) DB::table('tx_access_subject')->where('id', $subject['access_subject_id'])->value('credential_expires_at'),
             ]]];
+        });
+        $transport->shouldReceive('capabilities')->andReturnUsing(function (): array {
+            $this->assertSame(0, DB::transactionLevel());
+            $this->templateProbes++;
+            return ['subscription_render' => true] + ($this->templatesSupported ? ['subscription_template_engine' => 'tx-template/v1'] : []);
         });
         $this->app->instance(ProviderClient::class, $transport);
         $this->owner = (int) $this->user()->id;
@@ -201,6 +217,53 @@ final class NativeSubscriptionDeliveryTest extends NativeSubscriptionTestCase
             $this->assertSame(['h2', 'http/1.1'], $grant['nodes'][0]['tls']['alpn']);
             $this->assertSame(RenderGrantCodec::base64url(str_repeat('k', 32)), $grant['recipient_public_key']);
         }
+    }
+
+    public function test_custom_template_source_hash_version_and_client_are_bound_inside_the_real_core_signature(): void
+    {
+        $owner = app(NativeSubscriptionTemplates::class);
+        $template = DB::transaction(function () use ($owner): array {
+            $initial = $owner->snapshot('sing-box/v1');
+            $owner->replace('sing-box/v1', $initial['version'], '{{ .Default }}');
+            return $owner->snapshot('sing-box/v1');
+        });
+        $grant = $this->clientGrant($this->subject, 'sing-box/v1');
+        $this->assertSame(['engine' => 'tx-template/v1', 'format_id' => 'sing-box/v1',
+            'sha256' => hash('sha256', '{{ .Default }}'), 'source' => '{{ .Default }}', 'version' => $template['version']], $grant['client_template']);
+        $this->assertSame('sing-box/v1', $grant['format_id']);
+        $this->assertSame(1, $this->templateProbes);
+        $this->assertArrayNotHasKey('uuid', $grant);
+        $legacy = $this->clientGrant($this->subject, 'clash-meta/v1');
+        $this->assertArrayNotHasKey('client_template', $legacy);
+        $this->assertSame(1, $this->templateProbes);
+    }
+
+    public function test_custom_template_is_never_silently_ignored_by_a_legacy_provider(): void
+    {
+        $owner = app(NativeSubscriptionTemplates::class);
+        DB::transaction(fn () => $owner->replace('sing-box/v1', $owner->snapshot('sing-box/v1')['version'], '{{ .Default }}'));
+        $this->templatesSupported = false;
+        $this->expectExceptionMessage('NATIVE_SUBSCRIPTION_DELIVERY_TEMPLATE_ENGINE_UNSUPPORTED');
+        $this->clientGrant($this->subject, 'sing-box/v1');
+    }
+
+    public function test_template_change_during_metadata_refuses_the_stale_source_instead_of_signing_it(): void
+    {
+        $owner = app(NativeSubscriptionTemplates::class);
+        DB::transaction(fn () => $owner->replace('sing-box/v1', $owner->snapshot('sing-box/v1')['version'], '{{ .Default }}'));
+        $this->duringMetadata = fn () => DB::transaction(fn () => $owner->replace('sing-box/v1', $owner->snapshot('sing-box/v1')['version'], '{"outbounds":[]}'));
+        $this->expectExceptionMessage('NATIVE_SUBSCRIPTION_DELIVERY_AUTHORITY_CHANGED');
+        $this->clientGrant($this->subject, 'sing-box/v1');
+    }
+
+    public function test_new_stash_and_surfboard_grants_keep_explicit_protocol_and_client_boundaries(): void
+    {
+        $stash = $this->clientGrant($this->subject, 'stash/v1');
+        $this->assertSame('3.4.0', $stash['client_version']);
+        $this->assertSame('vless-uuid/v1', $stash['subject']['credential_profile_id']);
+        $surfboard = $this->clientGrant($this->vmessSubject(), 'surfboard/v1');
+        $this->assertSame('2.35.2', $surfboard['client_version']);
+        $this->assertSame('vmess-uuid/v1', $surfboard['subject']['credential_profile_id']);
     }
 
     private function vmessSubject(): int

@@ -139,12 +139,20 @@ abstract class AbstractProtocolDefinition implements ProtocolDefinition
 
     public function metadata(): array
     {
+        $schema = $this->formSchema();
+        foreach ($schema as &$field) {
+            if ($field['key'] === 'network_settings') {
+                $field['templates'] = \App\Protocols\Shared\ProtocolFields::transportTemplates();
+            }
+        }
+        unset($field);
         return [
             'type' => $this->type(),
             'label' => $this->label(),
             'schema_version' => 1,
             'defaults' => $this->defaults(),
-            'form_schema' => $this->formSchema(),
+            'form_schema' => $schema,
+            'certificate_schema' => \App\Protocols\Shared\ProtocolFields::certificateSchema(),
         ];
     }
 }

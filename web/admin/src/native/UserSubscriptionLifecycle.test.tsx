@@ -3,6 +3,7 @@ import { createRoot, type Root } from 'react-dom/client'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
+import { CoreAdminApiError } from '@txboard/core-sdk'
 import { admin } from './session'
 import { UserDetailPage } from '../pages/users/UserDetailPage'
 
@@ -35,6 +36,7 @@ beforeEach(() => {
   client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   confirmRequest.current = null
   vi.mocked(admin.read).mockReset().mockImplementation(async operation => {
+    if (['billing.admin-account-balances.get', 'billing.admin-customer-policy.get', 'usage.admin-settled-entries.list'].includes(operation)) throw new CoreAdminApiError('FORBIDDEN', 403)
     if (operation === 'identity.accounts.get') return { data: { ...user, subscription }, meta: {} } as never
     if (operation === 'subscription.admin.get') return { data: { user_id: user.id, lifecycle }, meta: {} } as never
     if (operation === 'commerce.admin-orders.list') return { data: [], meta: { page: 1, per_page: 5, total: 0, last_page: 1 } } as never

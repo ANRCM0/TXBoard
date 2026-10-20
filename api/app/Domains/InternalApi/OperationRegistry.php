@@ -97,7 +97,7 @@ final class OperationRegistry
                     'parent_id', 'machine_id', 'show', 'enabled', 'sort', 'u', 'd'], list: true, permission: 'network.nodes.read'),
             'network.machines.list' => self::spec($admin, 'admin', $read, Txapi\Admin\NetworkMachineAdminController::class, 'index',
                 $page, ['id', 'name', 'is_active', 'image_channel', 'last_seen_at', 'servers_count',
-                    'created_at', 'updated_at'], list: true, permission: 'network.machines.read'),
+                    'created_at', 'updated_at', 'observation'], list: true, permission: 'network.machines.read'),
             'catalog.plans.publish' => self::spec($admin, 'admin', $domain, Txapi\Admin\NativePlanAdminController::class, 'publish',
                 array_replace(Txapi\Admin\NativePlanAdminController::publicationRules(), [
                     'plan_id' => array_replace($id, [0 => 'sometimes']),
@@ -123,7 +123,7 @@ final class OperationRegistry
                 ['user_id' => $id, 'limit' => ['sometimes', 'integer', 'min:1', 'max:100'],
                     'after_id' => ['sometimes', 'string', 'regex:/\A(?:0|[1-9][0-9]{0,17})\z/D']],
                 ['user_id', 'scope', 'system_account_projections', 'account_reconciliation', 'read_only', 'complete', 'issues',
-                    'incomplete_reasons', 'checked', 'next_after_id', 'unresolved_attempts', 'refund_liabilities', 'pending_work'],
+                    'incomplete_reasons', 'checked', 'next_after_id', 'unresolved_attempts', 'refund_liabilities', 'pending_work', 'admin_adjustments'],
                 permission: 'billing.reconcile'),
             'settings.site.get' => self::spec($admin, 'admin', $read, Txapi\Admin\SettingsAdminController::class, 'group', [],
                 ['site'], permission: 'settings.read', routeParameters: ['group' => 'site']),

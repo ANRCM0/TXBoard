@@ -50,6 +50,15 @@ final class NetworkGroupAdminController
         return TxapiResponse::success($request, ['id' => (int) $group->id, 'ok' => true]);
     }
 
+    public function names(Request $request): JsonResponse
+    {
+        $input = $request->validate(['group_ids' => ['present', 'array', 'max:100'],
+            'group_ids.*' => ['required', 'integer', 'min:1', 'distinct']]);
+        $groups = ServerGroup::query()->whereIn('id', $input['group_ids'])->orderBy('id')->get(['id', 'name'])
+            ->map(static fn (ServerGroup $group): array => ['id' => (string) $group->id, 'name' => $group->name])->all();
+        return TxapiResponse::success($request, ['groups' => $groups])->header('Cache-Control', 'no-store');
+    }
+
     public function delete(Request $request): JsonResponse
     {
         // The dynamic {admin_path} is the first route parameter; read id by
