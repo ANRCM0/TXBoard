@@ -1201,6 +1201,15 @@
       "domain",
       null
     ],
+    "network.nodes.traffic-history.get": [
+      "handler",
+      "App\\Domains\\InternalApi\\UsageReadOperations",
+      "nodeTrafficHistory",
+      "",
+      [],
+      "",
+      null
+    ],
     "usage.mine.list": [
       "handler",
       "App\\Domains\\InternalApi\\UsageReadOperations",

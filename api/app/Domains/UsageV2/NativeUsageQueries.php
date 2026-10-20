@@ -17,13 +17,13 @@ final class NativeUsageQueries implements UsageQueries
 
     public function nodeTrafficHistory(array $nodeIds, int $days, int $now): array
     {
-        app(InstallationAuthority::class)->assertNativeRead();
         if (!in_array($days, [7, 14, 30], true) || count($nodeIds) < 1 || count($nodeIds) > 20
             || count(array_unique($nodeIds, SORT_STRING)) !== count($nodeIds)) {
             throw new \InvalidArgumentException('USAGE_HISTORY_INPUT_INVALID');
         }
         $startsAt = intdiv($now, 86400) * 86400 - ($days - 1) * 86400;
         return DB::transaction(function () use ($nodeIds, $days, $now, $startsAt): array {
+            app(InstallationAuthority::class)->assertNativeRead();
             $nodes = array_column($this->nodes->findMany($nodeIds), null, 'id');
             if (count($nodes) !== count($nodeIds)) throw new UsageTargetMissing();
             $totals = [];
