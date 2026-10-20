@@ -196,6 +196,8 @@ async function login(page, target = '/admin/') {
 }
 async function nav(page, name) {
   await page.getByRole('link', { name: new RegExp('^' + name + '(?:\\s*待开放)?$') }).click()
+  const title = ({ 仪表盘: '管理中心', 系统配置: '站点设置' })[name] ?? name
+  await page.locator('.native-management-page .page-header').getByRole('heading', { name: title, exact: true }).waitFor()
 }
 try {
   const desktop = await fixture({ width: 1440, height: 960 })
@@ -212,7 +214,7 @@ try {
   await page.getByRole('table').getByRole('link', { name: 'Tokyo-A', exact: true }).waitFor()
   await page.waitForFunction(() => document.documentElement.dataset.theme === 'dark')
   await page.screenshot({ path: output + '/nodes-dark.png', fullPage: true })
-  await page.getByRole('link', { name: '仪表盘', exact: true }).click()
+  await nav(page, '仪表盘')
   await page.getByRole('region', { name: '原生经营统计', exact: true }).waitFor()
   assert.equal(await page.getByRole('region', { name: '管理入口', exact: true }).count(), 0)
   const metricCards = page.getByRole('region', { name: '原生经营统计', exact: true })
@@ -269,9 +271,13 @@ try {
   await trendGraph.waitFor()
   if (await page.getByRole('button', { name: '展开侧边栏', exact: true }).count()) await page.getByRole('button', { name: '展开侧边栏', exact: true }).click()
   await nav(page, '节点管理')
-  await page.getByRole('table').getByRole('link', { name: 'Tokyo-A', exact: true }).waitFor()
+  const nodeManagement = page.locator('.network-nodes-page')
+  await nodeManagement.getByRole('heading', { name: '节点管理', exact: true }).waitFor()
+  await nodeManagement.getByRole('table').getByRole('link', { name: 'Tokyo-A', exact: true }).waitFor()
   passed('login theme persists into management and overview links navigate without layout overflow')
-  assert.equal(await page.locator('table').getByTitle('9007199254740999 字节', { exact: true }).innerText(), '9007199.25 GB')
+  const uploadedBytes = nodeManagement.locator('table code[title="9007199254740999 字节"]')
+  assert.equal(await uploadedBytes.textContent(), '9007199.25 GB')
+  assert.equal(await uploadedBytes.getAttribute('title'), '9007199254740999 字节')
   assert.match(await page.locator('table').innerText(), /\[2001:db8::1\]:443/)
   assert.ok(await page.locator('.native-list-search').evaluate(container => {
     const input = container.querySelector('input'), icon = container.querySelector('svg')
@@ -343,6 +349,7 @@ try {
   assert.match(await page.locator('section[aria-label="账户信息"]').innerText(), new RegExp(account.id))
   assert.doesNotMatch(await page.locator('section[aria-label="账户信息"]').innerText(), /余额|佣金|密码/)
   await page.getByRole('link', { name: '查看该用户订单', exact: true }).click()
+  await page.locator('.orders-page .page-header').getByRole('heading', { name: '订单管理', exact: true }).waitFor()
   await page.getByRole('button', { name: 'ORDER-A', exact: true }).waitFor()
   assert.equal(new URL(page.url()).searchParams.get('user_id'), account.id)
   assert.deepEqual(state.reads.filter(row => row.operation === 'commerce.admin-orders.list').at(-1).input,
@@ -459,8 +466,10 @@ try {
   assert.ok(await mobileSearch.evaluate(button => button.scrollWidth <= button.clientWidth && button.getBoundingClientRect().height >= 36), 'mobile search action must remain readable')
   await mobile.page.screenshot({ path: output + '/users-mobile.png', fullPage: true })
   await mobile.page.getByRole('link', { name: account.email, exact: true }).click()
+  await mobile.page.locator('.native-management-page .page-header').getByRole('heading', { name: '用户详情', exact: true }).waitFor()
   await mobile.page.getByRole('region', { name: '当前订阅', exact: true }).getByText('当前没有可用订阅。', { exact: true }).waitFor()
   await mobile.page.getByRole('link', { name: '查看该用户订单', exact: true }).click()
+  await mobile.page.locator('.orders-page .page-header').getByRole('heading', { name: '订单管理', exact: true }).waitFor()
   await mobile.page.getByRole('button', { name: 'ORDER-A', exact: true }).waitFor()
   assert.ok(await mobile.page.evaluate(() => document.documentElement.scrollWidth <= innerWidth))
   await mobile.page.screenshot({ path: output + '/orders-mobile.png', fullPage: true })
