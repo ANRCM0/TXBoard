@@ -15,6 +15,7 @@ import { StatusBadge } from '../components/ui/StatusBadge'
 import { Popover } from '../components/ui/Popover'
 import { Field, Input } from '../components/ui/Field'
 import { SegmentedControl } from '../components/ui/SegmentedControl'
+import { ChartSkeleton } from '../components/ui/Skeleton'
 import { LineChart } from '../components/charts/ReferenceCharts'
 import { nodeTrafficHistory, type OverviewRange } from './overviewCharts'
 
@@ -65,9 +66,13 @@ export function NodeDetailPage() {
       </DetailSection>
       <DetailSection label="节点流量" title="节点总流量" icon={<Activity size={17} />} className="network-settings-card"
         actions={<SegmentedControl label="节点流量时间范围" value={trafficRange} options={trafficRanges} onChange={setTrafficRange} />}>
-        <ManagementFeedback error={history.isError ? history.error : undefined} loading={history.isFetching} onRetry={() => void history.refetch()} />
-        {!history.isError && history.data ? <LineChart title="节点总流量" labels={traffic.labels} series={traffic.series}
-          xAxisLabel="日期（UTC）" yAxisWidth={92} formatValue={traffic.formatValue} emptyText="暂无节点流量数据" /> : null}
+        {history.isError ? <ManagementFeedback error={history.error} onRetry={() => void history.refetch()} /> : !history.data
+          ? <ChartSkeleton label="正在加载节点流量" />
+          : <>
+            {history.isFetching ? <p className="overview-chart-refresh" role="status">正在刷新节点流量…</p> : null}
+            <LineChart title="节点总流量" labels={traffic.labels} series={traffic.series}
+              xAxisLabel="日期（UTC）" yAxisWidth={92} formatValue={traffic.formatValue} emptyText="暂无节点流量数据" />
+          </>}
         <p className="network-help">每日原始上传与下载之和 · 按已结算批次结束日期（UTC）汇总 · 1 GB = 10⁹ 字节</p>
       </DetailSection>
       <DetailSection label="节点操作" title="节点操作" icon={<Power size={17} />} className="network-settings-card"

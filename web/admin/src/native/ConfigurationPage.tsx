@@ -6,6 +6,8 @@ import metadata from '../../../../contracts/core-api/admin-settings.v1.json'
 import { admin, workflowActions } from './session'
 import { ManagementFeedback, managementError } from './Feedback'
 import { PageHeader } from '../components/ui/PageHeader'
+import { Popover } from '../components/ui/Popover'
+import { Field, Input, Select, Switch, Textarea } from '../components/ui/Field'
 
 export type ConfigurationGroup = 'site' | 'features' | 'safe' | 'subscribe' | 'server' | 'email' | 'telegram' | 'app'
 const titles: Record<ConfigurationGroup, string> = { site: '站点设置', features: '功能设置', safe: '安全设置', subscribe: '订阅设置', server: '节点设置', email: '邮件设置', telegram: 'Telegram 设置', app: '客户端设置' }
@@ -72,19 +74,28 @@ export function ConfigurationPage({ group = 'site' }: { group?: ConfigurationGro
     {message || state.error ? <p role="alert">{message || managementError(state.error)}</p> : null}
     {blocked ? <p role="alert">当前无法确认设置访问权限，已清空表单并隐藏数据</p> : null}
     {pending ? <section className="list-card settings-pending-card"><h2>操作等待确认</h2><p>设置保存的结果尚未确认，请使用原操作确认结果</p><button className="button" disabled={state.busy || !ready || query.isFetching} onClick={() => void perform(true)}>使用原操作确认结果</button></section> : null}
-    {ready ? <section className="list-card settings-section"><header className="settings-section-heading"><div><h2>{titles[group]}</h2><p>{selectedFields.length} 项设置 · 凭据留空保留已配置值</p></div><span className="settings-status" data-editing={editing}>{editing ? '正在编辑' : '当前配置'}</span></header>
-      <details className="settings-help"><summary>设置说明</summary><p>修改仅在保存后生效，取消编辑会放弃本次修改</p><p className="native-configuration-version">设置版本：{query.data!.data.version}</p></details>
+    {ready ? <section className="list-card settings-section"><header className="settings-section-heading"><div><h2>{titles[group]}</h2><p>{selectedFields.length} 项设置 · 凭据留空保留已配置值</p></div><div className="settings-heading-actions"><Popover label="设置说明"><p>修改仅在保存后生效，取消编辑会放弃本次修改</p><p className="native-configuration-version">设置版本：{query.data!.data.version}</p></Popover><span className="settings-status" data-editing={editing}>{editing ? '正在编辑' : '当前配置'}</span></div></header>
       {!editing ? <><dl className="settings-value-grid">{selectedFields.map(([name, field]) => { const value = (query.data!.data.values as Record<string, Value>)[name] ?? field.default; return <div key={name}><dt>{field.label}</dt><dd data-kind={field.kind} data-configured={field.write_only ? query.data!.data.credentials.find(item => item.name === name)?.configured : undefined}>{field.write_only ? (query.data!.data.credentials.find(item => item.name === name)?.configured ? '已配置' : '未配置') : field.kind === 'checkbox' ? (value ? '已开启' : '已关闭') : Array.isArray(value) ? value.join('、') || '未设置' : String(value) || '未设置'}</dd></div> })}</dl><footer className="settings-form-actions"><span>核对当前配置后开始修改</span><button className="button primary" disabled={locked} onClick={begin}>开始编辑</button></footer></> : <form className="native-content-form settings-field-grid" onSubmit={event => { event.preventDefault(); void perform() }}>
         {fields.filter(([, field]) => field.group === group).map(([name, field]) => {
           const id = 'configuration-' + name, value = draft[name] ?? field.default
           const update = (next: Value) => setDraft(old => ({ ...old, [name]: next }))
           const configured = field.write_only && query.data!.data.credentials.find(item => item.name === name)?.configured
-          return <label className={field.kind === 'checkbox' ? 'settings-toggle-field' : field.kind === 'list' ? 'settings-wide-field' : undefined} key={name} htmlFor={id}>{field.label}{field.write_only ? <small>（{configured ? '已配置' : '未配置'}，留空保留）</small> : null}
-            {field.kind === 'checkbox' ? <input id={id} type="checkbox" checked={Boolean(value)} disabled={locked} onChange={event => update(event.target.checked)} />
-              : field.kind === 'select' ? <select id={id} value={String(value)} disabled={locked} onChange={event => update(event.target.value)}>{field.options?.map(option => <option key={option} value={option}>{option || '不加密'}</option>)}</select>
-              : field.kind === 'list' ? <textarea id={id} placeholder="每行填写一项" rows={4} value={Array.isArray(value) ? value.join('\n') : String(value)} disabled={locked} onChange={event => update(event.target.value.split('\n'))} onBlur={() => update(Array.isArray(value) ? value.map(item => item.trim()).filter(Boolean) : [])} />
-              : <input id={id} type={field.write_only ? 'password' : field.kind === 'number' ? 'number' : 'text'} autoComplete={field.write_only ? 'new-password' : 'off'} value={String(value)} min={field.schema.minimum} max={field.schema.maximum} minLength={field.schema.minLength} maxLength={field.schema.maxLength} required={field.kind === 'number' || !!field.schema.minLength} disabled={locked} onChange={event => update(field.kind === 'number' ? Number(event.target.value) : event.target.value)} />}
-          </label>
+          if (field.kind === 'checkbox') return <div className="field ui-field settings-toggle-field" key={name}>
+            <Switch id={id} label={field.label} checked={Boolean(value)} disabled={locked} onChange={event => update(event.target.checked)} />
+          </div>
+          return <Field key={name} label={field.label} className={field.kind === 'list' ? 'settings-wide-field' : undefined}
+            hint={field.write_only ? (configured ? '已配置，留空保留' : '未配置，留空保留') : undefined}>
+            {field.kind === 'select' ? <Select id={id} value={String(value)} disabled={locked} onChange={event => update(event.target.value)}>
+              {field.options?.map(option => <option key={option} value={option}>{option || '不加密'}</option>)}
+            </Select>
+              : field.kind === 'list' ? <Textarea id={id} placeholder="每行填写一项" rows={4} value={Array.isArray(value) ? value.join('\n') : String(value)} disabled={locked}
+                onChange={event => update(event.target.value.split('\n'))}
+                onBlur={() => update(Array.isArray(value) ? value.map(item => item.trim()).filter(Boolean) : [])} />
+              : <Input id={id} type={field.write_only ? 'password' : field.kind === 'number' ? 'number' : 'text'} autoComplete={field.write_only ? 'new-password' : 'off'}
+                value={String(value)} min={field.schema.minimum} max={field.schema.maximum} minLength={field.schema.minLength} maxLength={field.schema.maxLength}
+                required={field.kind === 'number' || !!field.schema.minLength} disabled={locked}
+                onChange={event => update(field.kind === 'number' ? Number(event.target.value) : event.target.value)} />}
+          </Field>
         })}
         <footer className="settings-form-actions"><span aria-live="polite">{changedCount ? `${changedCount} 项待保存` : '尚未修改'}</span><button className="button primary" disabled={locked}>保存当前分类</button><button className="button" type="button" disabled={state.busy} onClick={() => { setDraft({}); setBaseline({}); setEditing(false) }}>取消编辑</button></footer>
       </form>}

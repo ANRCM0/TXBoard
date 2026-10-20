@@ -6,6 +6,8 @@ import { admin, workflowActions } from './session'
 import { managementError, ManagementFeedback } from './Feedback'
 import { ReadFields, ReadList } from './ReadList'
 import { PageHeader } from '../components/ui/PageHeader'
+import { Popover } from '../components/ui/Popover'
+import { Checkbox, Field, Input, Select, Textarea } from '../components/ui/Field'
 import type { Column } from '../components/ui/DataTable'
 
 type Plan = CoreOutput<'catalog.admin-plans.list'>[number]
@@ -210,8 +212,10 @@ export function CatalogPage() {
   ]
   const visible = !blocked && !detail.isError ? detail.data?.data : undefined
   return <div className="native-management-page commerce-reference catalog-page">
-    <PageHeader title="套餐与发布" description="管理套餐版本、周期价格和商品销售状态" action={<><button className="button" disabled={plans.isFetching || offers.isFetching || opening} onClick={() => void refresh()}>刷新</button><button className="button primary" disabled={locked} onClick={() => { view.current++; setDraft(blank()); setAvailability(undefined); setConflict(false); setError('') }}>创建套餐</button></>} />
-    <details className="commerce-help"><summary>套餐版本与销售规则</summary><p>发布新版本仅影响后续购买，已有订单保留原套餐内容</p><p>销售状态可以单独调整，历史版本仍可查看</p></details>
+    <PageHeader title="套餐与发布" description="管理套餐版本、周期价格和商品销售状态" action={<>
+      <Popover label="套餐版本与销售规则"><p>发布新版本仅影响后续购买，已有订单保留原套餐内容</p><p>销售状态可以单独调整，历史版本仍可查看</p></Popover>
+      <button className="button" disabled={plans.isFetching || offers.isFetching || opening} onClick={() => void refresh()}>刷新</button><button className="button primary" disabled={locked} onClick={() => { view.current++; setDraft(blank()); setAvailability(undefined); setConflict(false); setError('') }}>创建套餐</button>
+    </>} />
     {pending ? <section className="list-card commerce-pending" role="status"><h2>套餐操作等待确认</h2><p>请先确认上次发布或销售设置的结果。</p><details className="commerce-help"><summary>查看操作标识</summary><code>{pending.operation} · 原操作 {pending.key}</code></details><button className="button" disabled={blocked || state.busy} onClick={() => void recover()}>使用原操作确认结果</button></section> : null}
     {error || state.error ? <p role="alert">{error || managementError(state.error)}</p> : null}
     {blocked ? <p role="alert">无法确认套餐管理权限，已隐藏数据请刷新确认权限</p> : null}
@@ -241,18 +245,21 @@ export function CatalogPage() {
       {conflict ? <p role="alert">套餐已变化，草稿仍保留，发布已停止；请重新读取当前条款并替换草稿后再确认</p> : null}
       {draft.planId ? <button className="button" disabled={locked} onClick={() => void openCurrent(draft.planId!)}>重新读取当前条款并替换草稿</button> : null}
       <form className="native-content-form commerce-catalog-form" aria-label="发布完整套餐条款" onSubmit={event => { event.preventDefault(); void publish() }}>
-        <fieldset disabled={locked} className="commerce-form-grid"><legend>套餐内容</legend><label htmlFor="catalog-name">套餐名称<input id="catalog-name" value={draft.name} maxLength={255} required disabled={locked} onChange={event => update('name', event.target.value)} /></label>
-        <label htmlFor="catalog-content" className="commerce-wide-field">套餐说明<textarea id="catalog-content" rows={5} value={draft.content ?? ''} maxLength={8192} disabled={locked} onChange={event => update('content', event.target.value)} /></label></fieldset>
+        <fieldset disabled={locked} className="commerce-form-grid"><legend>套餐内容</legend>
+          <Field label="套餐名称"><Input id="catalog-name" value={draft.name} maxLength={255} required disabled={locked} onChange={event => update('name', event.target.value)} /></Field>
+          <Field label="套餐说明" className="commerce-wide-field"><Textarea id="catalog-content" rows={5} value={draft.content ?? ''} maxLength={8192} disabled={locked} onChange={event => update('content', event.target.value)} /></Field>
+        </fieldset>
         <fieldset disabled={locked}><legend>标签（最多 40 项）</legend>{draft.tags.map((tag, index) => <div className="native-filters" key={index}><label>标签 {index + 1}<input value={tag} maxLength={80} onChange={event => update('tags', draft.tags.map((value, position) => position === index ? event.target.value : value))} /></label><button className="button" type="button" onClick={() => update('tags', draft.tags.filter((_, position) => position !== index))}>移除标签 {index + 1}</button></div>)}<button className="button" type="button" disabled={draft.tags.length >= 40} onClick={() => update('tags', [...draft.tags, ''])}>添加标签</button></fieldset>
-        <fieldset disabled={locked} className="commerce-form-grid"><legend>额度与访问限制</legend><label>流量（GiB）<input id="catalog-quota" value={draft.quota} inputMode="numeric" pattern="0|[1-9][0-9]*" required disabled={locked} onChange={event => update('quota', event.target.value)} /></label>
-        <label>分组 ID（留空不指定）<input id="catalog-group" value={draft.group} inputMode="numeric" pattern="[1-9][0-9]{0,18}" disabled={locked} onChange={event => update('group', event.target.value)} /></label>
-        <label>速度限制（Mbps，留空不限）<input id="catalog-speed" value={draft.speed} inputMode="numeric" pattern="0|[1-9][0-9]*" disabled={locked} onChange={event => update('speed', event.target.value)} /></label>
-        <label>设备限制（留空不限）<input id="catalog-devices" value={draft.devices} inputMode="numeric" pattern="0|[1-9][0-9]*" disabled={locked} onChange={event => update('devices', event.target.value)} /></label>
-        <label>流量重置方式<select id="catalog-reset" value={draft.reset} disabled={locked} onChange={event => update('reset', event.target.value)}>{resetNames.map((name, index) => <option value={String(index)} key={index}>{name}</option>)}</select></label>
-        </fieldset><fieldset disabled={locked}><legend>发布价格</legend><label>发布币种<select id="catalog-currency" value={draft.currency} disabled={locked} onChange={event => update('currency', event.target.value)}>{!['CNY', 'USD'].includes(draft.currency) ? <option value={draft.currency}>原币种 {draft.currency}（须明确改选）</option> : null}<option value="CNY">CNY</option><option value="USD">USD</option></select></label>
+        <fieldset disabled={locked} className="commerce-form-grid"><legend>额度与访问限制</legend>
+          <Field label="流量（GiB）"><Input id="catalog-quota" value={draft.quota} inputMode="numeric" pattern="0|[1-9][0-9]*" required disabled={locked} onChange={event => update('quota', event.target.value)} /></Field>
+          <Field label="分组 ID（留空不指定）"><Input id="catalog-group" value={draft.group} inputMode="numeric" pattern="[1-9][0-9]{0,18}" disabled={locked} onChange={event => update('group', event.target.value)} /></Field>
+          <Field label="速度限制（Mbps，留空不限）"><Input id="catalog-speed" value={draft.speed} inputMode="numeric" pattern="0|[1-9][0-9]*" disabled={locked} onChange={event => update('speed', event.target.value)} /></Field>
+          <Field label="设备限制（留空不限）"><Input id="catalog-devices" value={draft.devices} inputMode="numeric" pattern="0|[1-9][0-9]*" disabled={locked} onChange={event => update('devices', event.target.value)} /></Field>
+          <Field label="流量重置方式"><Select id="catalog-reset" value={draft.reset} disabled={locked} onChange={event => update('reset', event.target.value)}>{resetNames.map((name, index) => <option value={String(index)} key={index}>{name}</option>)}</Select></Field>
+        </fieldset><fieldset disabled={locked}><legend>发布价格</legend><Field label="发布币种"><Select id="catalog-currency" value={draft.currency} disabled={locked} onChange={event => update('currency', event.target.value)}>{!['CNY', 'USD'].includes(draft.currency) ? <option value={draft.currency}>原币种 {draft.currency}（须明确改选）</option> : null}<option value="CNY">CNY</option><option value="USD">USD</option></Select></Field>
         {!['CNY', 'USD'].includes(draft.currency) ? <p role="status">原修订使用 {draft.currency}，新发布仅支持 CNY/USD，必须明确选择币种并核对所有价格；系统不会自动换算</p> : null}
-        </fieldset><fieldset disabled={locked} className="commerce-form-grid"><legend>周期价格（分）</legend><p className="commerce-wide-field">CNY / USD 均按百分之一货币单位填写，留空不发布该周期，填写 0 表示免费</p>{periods.map(([key, label]) => <label key={key}>{label}<input id={'catalog-price-' + key} value={draft.prices[key]} inputMode="numeric" pattern="0|[1-9][0-9]{0,18}" maxLength={19} onChange={event => update('prices', { ...draft.prices, [key]: event.target.value })} /></label>)}</fieldset>
-        <fieldset disabled={locked}><legend>本次发布的商品名额</legend><p>为本次发布的各周期商品设置销售名额，旧商品名额不会自动沿用</p><label>名额设置<select id="catalog-capacity-choice" value={draft.capacityChoice} onChange={event => update('capacityChoice', event.target.value as Draft['capacityChoice'])}><option value="">请选择</option><option value="unlimited">不限名额</option><option value="limited">指定名额</option></select></label>{draft.capacityChoice === 'limited' ? <label>本次名额<input id="catalog-capacity" value={draft.capacity} inputMode="numeric" pattern="0|[1-9][0-9]*" required onChange={event => update('capacity', event.target.value)} /></label> : null}</fieldset>
+        </fieldset><fieldset disabled={locked} className="commerce-form-grid"><legend>周期价格（分）</legend><p className="commerce-wide-field">CNY / USD 均按百分之一货币单位填写，留空不发布该周期，填写 0 表示免费</p>{periods.map(([key, label]) => <Field key={key} label={label}><Input id={'catalog-price-' + key} value={draft.prices[key]} inputMode="numeric" pattern="0|[1-9][0-9]{0,18}" maxLength={19} onChange={event => update('prices', { ...draft.prices, [key]: event.target.value })} /></Field>)}</fieldset>
+        <fieldset disabled={locked}><legend>本次发布的商品名额</legend><p>为本次发布的各周期商品设置销售名额，旧商品名额不会自动沿用</p><Field label="名额设置"><Select id="catalog-capacity-choice" value={draft.capacityChoice} onChange={event => update('capacityChoice', event.target.value as Draft['capacityChoice'])}><option value="">请选择</option><option value="unlimited">不限名额</option><option value="limited">指定名额</option></Select></Field>{draft.capacityChoice === 'limited' ? <Field label="本次名额"><Input id="catalog-capacity" value={draft.capacity} inputMode="numeric" pattern="0|[1-9][0-9]*" required onChange={event => update('capacity', event.target.value)} /></Field> : null}</fieldset>
         <footer className="commerce-form-actions"><span>发布后，后续购买将使用新版本</span><button className="button primary" disabled={locked || conflict || !draft.capacityChoice || !['CNY', 'USD'].includes(draft.currency)}>发布完整条款</button><button className="button" type="button" disabled={state.busy} onClick={() => { view.current++; setDraft(undefined); setConflict(false); setOpening(false) }}>关闭编辑</button></footer>
       </form>
     </section> : null}
@@ -260,8 +267,8 @@ export function CatalogPage() {
       {availability.conflict ? <p role="alert">可用性版本已变化，原设置保留，请重新读取后再次确认</p> : null}
       <button className="button" disabled={locked} onClick={() => void reloadAvailability()}>重新读取商品并替换设置</button>
       <form className="native-content-form commerce-availability-form" onSubmit={event => { event.preventDefault(); void saveAvailability() }}>
-        {(['show', 'sell', 'renew'] as const).map((key, index) => <label className="commerce-toggle" key={key}><input type="checkbox" id={'catalog-availability-' + key} checked={availability[key]} disabled={locked} onChange={event => setAvailability(old => old && { ...old, [key]: event.target.checked })} />{['向用户显示', '允许新购', '允许续费'][index]}</label>)}
-        <label>商品名额（留空不限）<input id="catalog-availability-capacity" value={availability.capacity} inputMode="numeric" pattern="0|[1-9][0-9]*" disabled={locked} onChange={event => setAvailability(old => old && { ...old, capacity: event.target.value })} /></label>
+        {(['show', 'sell', 'renew'] as const).map((key, index) => <Checkbox className="commerce-toggle" key={key} id={'catalog-availability-' + key} label={['向用户显示', '允许新购', '允许续费'][index]} checked={availability[key]} disabled={locked} onChange={event => setAvailability(old => old && { ...old, [key]: event.target.checked })} />)}
+        <Field label="商品名额（留空不限）" className="commerce-wide-field"><Input id="catalog-availability-capacity" value={availability.capacity} inputMode="numeric" pattern="0|[1-9][0-9]*" disabled={locked} onChange={event => setAvailability(old => old && { ...old, capacity: event.target.value })} /></Field>
         <footer className="commerce-form-actions"><span>套餐价格与内容保持原值</span><button className="button primary" disabled={locked || availability.conflict}>保存可用性</button><button className="button" type="button" disabled={state.busy} onClick={() => { view.current++; setAvailability(undefined); setOpening(false) }}>关闭可用性编辑</button></footer>
       </form>
     </section> : null}

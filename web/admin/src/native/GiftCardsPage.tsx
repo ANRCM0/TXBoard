@@ -6,6 +6,7 @@ import { admin, workflowActions } from './session'
 import { ManagementFeedback, managementError } from './Feedback'
 import { ReadFields, ReadList } from './ReadList'
 import { PageHeader } from '../components/ui/PageHeader'
+import { Popover } from '../components/ui/Popover'
 import { DataTable, type Column } from '../components/ui/DataTable'
 type Card = CoreOutput<'billing.admin-gift-cards.list'>[number] & { id: string }
 type Batch = CoreOutput<'billing.admin-gift-batches.list'>[number] & { id: string }
@@ -53,7 +54,7 @@ export function GiftCardsPage() {
   ]
   const detail = !denied && !batch.isError ? batch.data?.data : undefined
   return <div className="native-management-page commerce-reference gift-cards-page"><PageHeader title="礼品卡管理" description="查看用户钱包出资的单卡、批次及逐卡兑换状态"
-    action={<button className="button" disabled={list.isFetching || batches.isFetching || batch.isFetching} onClick={() => void refresh()}>刷新</button>} /><details className="commerce-help"><summary>资金与卡码规则</summary><p>发行时预留发行人的钱包资金；未兑换卡片撤销或到期后退回发行人，已兑换资金不能通过撤销收回；卡码仅由发行人保管</p></details>
+    action={<><Popover label="资金与卡码规则"><p>发行时预留发行人的钱包资金 · 未兑换卡片撤销或到期后退回发行人，已兑换资金不能通过撤销收回 · 卡码仅由发行人保管</p></Popover><button className="button" disabled={list.isFetching || batches.isFetching || batch.isFetching} onClick={() => void refresh()}>刷新</button></>} />
     {pending ? <section className="list-card commerce-pending" role="status"><h2>操作等待确认</h2><p>确认上次撤销结果后，可继续管理礼品卡。</p><details className="commerce-help"><summary>查看操作标识</summary><code>{pending.key}</code></details><button className="button" disabled={denied || state.busy} onClick={()=>void recover()}>使用原操作确认结果</button></section> : null}
     {error || state.error ? <p role="alert">{error || managementError(state.error)}</p> : null}
     {denied ? <p role="alert">无法确认礼品卡管理权限，已隐藏数据</p> : null}

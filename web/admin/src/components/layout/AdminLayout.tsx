@@ -2,6 +2,7 @@ import { Suspense, useEffect, useRef, useState } from 'react'
 import { Menu } from 'lucide-react'
 import { Outlet, useLocation } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
+import { RouteErrorBoundary } from './RouteErrorBoundary'
 import { ConfirmDialogHost } from '../ui/ConfirmDialog'
 import { PendingWorkflowNotice } from '../../native/PendingWorkflowNotice'
 
@@ -21,6 +22,9 @@ export function AdminLayout() {
   const [expanded, setExpanded] = useState(readSidebarExpanded)
   const { pathname } = useLocation()
   const scrollRef = useRef<HTMLDivElement>(null)
+  const mainRef = useRef<HTMLElement>(null)
+  const firstRoute = useRef(true)
+  const [announcement, setAnnouncement] = useState('')
 
   useEffect(() => {
     try { window.localStorage.setItem(SIDEBAR_EXPANDED_KEY, String(expanded)) } catch { /* storage is optional */ }
@@ -29,6 +33,24 @@ export function AdminLayout() {
   useEffect(() => {
     setOpen(false)
     if (scrollRef.current) scrollRef.current.scrollTop = 0
+    if (firstRoute.current) { firstRoute.current = false; return }
+    mainRef.current?.focus({ preventScroll: true })
+    setAnnouncement('')
+    let attempts = 0
+    let timer = 0
+    const focusHeading = () => {
+      const heading = document.querySelector<HTMLElement>('#admin-content h1')
+      if (heading) {
+        heading.tabIndex = -1
+        heading.focus({ preventScroll: true })
+        setAnnouncement('已进入' + (heading.textContent?.trim() || '管理页面'))
+        return
+      }
+      if (attempts++ < 8) { timer = window.setTimeout(focusHeading, 50); return }
+      setAnnouncement('页面已更新')
+    }
+    timer = window.setTimeout(focusHeading, 80)
+    return () => window.clearTimeout(timer)
   }, [pathname])
 
   useEffect(() => {
@@ -50,13 +72,16 @@ export function AdminLayout() {
       >
         <Menu size={20} />
       </button>
-      <main className="admin-main" id="admin-content" tabIndex={-1}>
+      <main ref={mainRef} className="admin-main" id="admin-content" tabIndex={-1}>
         <div ref={scrollRef} className="admin-scroll">
           <div className='admin-page'>
+            <p className="admin-route-announcer" role="status" aria-live="polite">{announcement}</p>
             <PendingWorkflowNotice />
-            <Suspense fallback={<div className="route-panel-loading" role="status" aria-live="polite">正在加载页面…</div>}>
-              <Outlet />
-            </Suspense>
+            <RouteErrorBoundary>
+              <Suspense fallback={<div className="route-panel-loading" role="status" aria-live="polite">正在加载页面…</div>}>
+                <Outlet />
+              </Suspense>
+            </RouteErrorBoundary>
           </div>
         </div>
       </main>

@@ -5,6 +5,12 @@ export function Skeleton({ variant = 'line', className = '' }: {
   return <span className={'ui-skeleton ui-skeleton-' + variant + ' ' + className} aria-hidden="true" />
 }
 
+export function ChartSkeleton({ label }: { label: string }) {
+  return <div className="ui-chart-skeleton" role="status" aria-label={label}>
+    <Skeleton variant="chart" />
+  </div>
+}
+
 export function TableSkeleton({ rows = 5, columns = 4, label = '正在加载列表' }: {
   rows?: number
   columns?: number

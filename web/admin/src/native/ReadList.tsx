@@ -1,27 +1,33 @@
 import type { ReactNode } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { DataTable, type Column, type TableSelection } from '../components/ui/DataTable'
+import { ColumnSettings, useColumnVisibility } from '../components/ui/ColumnSettings'
 import { TableSkeleton } from '../components/ui/Skeleton'
 import { ManagementFeedback } from './Feedback'
 
 export function ReadList<T extends { id: string }>({ title, rows, columns, meta, page, ready,
-  loading, error, onRetry, onPage, children, selection }: {
+  loading, error, onRetry, onPage, children, selection, columnSettingsKey, stickyHeader = false, stickyFirstColumn = false }: {
   title: string; rows: T[]; columns: Column<T>[]; page: number; ready: boolean
   meta?: { total: number; last_page: number }; loading: boolean; error?: unknown
   onRetry: () => void; onPage: (page: number) => void; children?: ReactNode
-  selection?: TableSelection<T>
+  selection?: TableSelection<T>; columnSettingsKey?: string; stickyHeader?: boolean; stickyFirstColumn?: boolean
 }) {
+  const { hidden, onChange } = useColumnVisibility(columnSettingsKey, columns)
+  const visibleColumns = columns.filter(column => !hidden.has(column.key))
   const visibleMeta = ready && !error ? meta : undefined
   const lastPage = Math.min(visibleMeta?.last_page ?? page, 100000)
   const pages = [...new Set([1, page - 1, page, page + 1, lastPage])].filter(value => value >= 1 && value <= lastPage)
   return <section className="list-card native-read-list" aria-label={title} aria-busy={loading}>
     {children}
+    {columnSettingsKey ? <div className="ui-table-settings">
+      <ColumnSettings columns={columns} hidden={hidden} onChange={onChange} />
+    </div> : null}
     {!ready && loading
-      ? <TableSkeleton rows={5} columns={columns.length + (selection ? 1 : 0)} label={title + '加载中'} />
+      ? <TableSkeleton rows={5} columns={visibleColumns.length + (selection ? 1 : 0)} label={title + '加载中'} />
       : <ManagementFeedback error={error} loading={loading} onRetry={onRetry} />}
     {ready && !error ? <p className="native-scroll-hint">左右滑动表格查看完整信息</p> : null}
-    {ready && !error ? <DataTable rows={rows} columns={columns} rowKey={row => row.id} label={title}
-      selection={selection} empty="没有符合条件的数据" /> : null}
+    {ready && !error ? <DataTable rows={rows} columns={visibleColumns} rowKey={row => row.id} label={title}
+      selection={selection} stickyHeader={stickyHeader} stickyFirstColumn={stickyFirstColumn} empty="没有符合条件的数据" /> : null}
     <div className="native-pagination" aria-label={title + '分页'}>
       <span aria-live="polite">{visibleMeta ? '共 ' + visibleMeta.total + ' 项 · 第 ' + page + ' 页' : '第 ' + page + ' 页'}</span>
       <nav className="native-page-controls" aria-label="选择页码">

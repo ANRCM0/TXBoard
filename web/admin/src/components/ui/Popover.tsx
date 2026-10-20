@@ -1,10 +1,11 @@
 import { Info } from 'lucide-react'
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 
-export function Popover({ label, children, trigger }: {
+export function Popover({ label, children, trigger, triggerClassName = '' }: {
   label: string
   children: ReactNode
   trigger?: ReactNode
+  triggerClassName?: string
 }) {
   const [open, setOpen] = useState(false)
   const id = useId()
@@ -32,7 +33,7 @@ export function Popover({ label, children, trigger }: {
   }, [open])
 
   return <div className="ui-popover" ref={rootRef}>
-    <button ref={triggerRef} type="button" className="ui-popover-trigger"
+    <button ref={triggerRef} type="button" className={'ui-popover-trigger ' + triggerClassName}
       aria-label={label} aria-expanded={open} aria-controls={id}
       onClick={() => setOpen(value => !value)}>
       {trigger ?? <Info size={16} aria-hidden="true" />}

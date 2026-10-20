@@ -10,6 +10,7 @@ import { FilterBar } from './FilterBar'
 import { DetailSection } from './DetailSection'
 import { DangerZone } from './DangerZone'
 import { Popover } from './Popover'
+import { ColumnSettings, useColumnVisibility } from './ColumnSettings'
 
 function mount(node: ReactNode) {
   ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
@@ -78,5 +79,26 @@ it('keeps switch semantics for boolean settings', () => {
   const { host, root } = mount(<Switch label="启用节点" defaultChecked />)
   expect(host.querySelector('input')?.getAttribute('role')).toBe('switch')
   expect(host.querySelector('input')?.checked).toBe(true)
+  act(() => root.unmount()); host.remove()
+})
+
+it('persists hidden columns and refuses to hide the last visible column', () => {
+  const columns = [{ key: 'name', header: '名称' }, { key: 'state', header: '状态' }]
+  function Harness() {
+    const { hidden, onChange } = useColumnVisibility('test-columns', columns)
+    return <><ColumnSettings columns={columns} hidden={hidden} onChange={onChange} /><span data-testid="hidden">{[...hidden].join(',')}</span></>
+  }
+  const { host, root } = mount(<Harness />)
+  act(() => host.querySelector<HTMLButtonElement>('button[aria-label="列设置"]')!.click())
+  const inputs = host.querySelectorAll<HTMLInputElement>('.ui-column-settings input[type="checkbox"]')
+  expect(inputs).toHaveLength(2)
+  act(() => inputs[1].click())
+  expect(host.querySelector('[data-testid="hidden"]')?.textContent).toBe('state')
+  const remaining = host.querySelectorAll<HTMLInputElement>('.ui-column-settings input[type="checkbox"]')
+  expect(remaining[0].disabled).toBe(true)
+  expect(remaining[1].checked).toBe(false)
+  act(() => remaining[1].click())
+  expect(host.querySelector('[data-testid="hidden"]')?.textContent).toBe('')
+  window.localStorage.removeItem('txboard:admin:columns:test-columns')
   act(() => root.unmount()); host.remove()
 })

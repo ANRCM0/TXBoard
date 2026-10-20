@@ -6,6 +6,7 @@ import { admin, workflowActions } from './session'
 import { managementError } from './Feedback'
 import { ReadList } from './ReadList'
 import { PageHeader } from '../components/ui/PageHeader'
+import { Popover } from '../components/ui/Popover'
 import type { Column } from '../components/ui/DataTable'
 type Reward = CoreOutput<'billing.admin-commissions.rewards.list'>[number]
 type Payout = CoreOutput<'billing.admin-commissions.payouts.list'>[number]
@@ -36,8 +37,7 @@ export function CommissionsPage() {
     {key:'state',header:'状态',render:row=><span className={'commerce-badge '+(row.state==='approved'?'success':row.state==='requested'?'warning':'')}>{payoutStates[row.state]}</span>}, {key:'audit',header:'审核记录',render:row=><div className="commerce-cell-stack"><span>{row.actor_id ? '管理员 #' + row.actor_id : '未审核'}</span>{row.reason ? <small>{row.reason}</small> : null}</div>},
     {key:'actions',header:'操作',render:row=>row.state==='requested'?<div className="commerce-row-actions"><button className="button primary" disabled={locked} onClick={()=>void decide(row,true)}>批准转入钱包</button><button className="button" disabled={locked} onClick={()=>void decide(row,false)}>驳回并释放</button></div>:<span className="commerce-table-note">已处理</span>},
   ]
-  return <div className="native-management-page commerce-reference commissions-page"><PageHeader title="邀请与佣金" description="管理单级邀请奖励、冻结策略和钱包转入审核" action={<button className="button" disabled={policy.isFetching || rewards.isFetching || payouts.isFetching} onClick={()=>void refresh()}>刷新</button>} />
-    <details className="commerce-help"><summary>佣金计提与退款规则</summary><p>已核验付款并完成履约的订单才会计提佣金；计提前扣除已确认退款，计提后不再因退款扣回；申请仅转入用户钱包</p></details>
+  return <div className="native-management-page commerce-reference commissions-page"><PageHeader title="邀请与佣金" description="管理单级邀请奖励、冻结策略和钱包转入审核" action={<><Popover label="佣金计提与退款规则"><p>已核验付款并完成履约的订单才会计提佣金 · 计提前扣除已确认退款，计提后不再因退款扣回 · 申请仅转入用户钱包</p></Popover><button className="button" disabled={policy.isFetching || rewards.isFetching || payouts.isFetching} onClick={()=>void refresh()}>刷新</button></>} />
     {pending?<section className="list-card commerce-pending" role="status"><h2>操作等待确认</h2><p>请先确认上次策略或审核操作的结果。</p><details className="commerce-help"><summary>查看操作标识</summary><code>{pending.key}</code></details><button className="button" disabled={denied || state.busy} onClick={()=>void recover()}>使用原操作确认结果</button></section>:null}
     {error||state.error?<p role="alert">{error||managementError(state.error)}</p>:null}{denied?<p role="alert">无法确认佣金管理权限，已隐藏数据</p>:null}
     {!denied && policy.isFetching && !policy.data ? <p className="commerce-loading" role="status">正在读取佣金策略…</p> : null}

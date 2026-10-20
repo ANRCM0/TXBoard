@@ -115,6 +115,7 @@ export function NodesPage() {
     <ReadList title="节点列表" rows={rows} columns={columns} page={page} meta={query.data?.meta} ready={!!query.data && !management.denied}
       loading={query.isFetching} error={query.error} onRetry={() => void management.refresh()}
       onPage={next => { setPage(next); setSearch(''); setSelected(new Set()) }}
+      columnSettingsKey="nodes" stickyHeader stickyFirstColumn
       selection={{ selected, onChange: setSelected, getKey: node => node.id, getLabel: node => node.name, disabled: locked }}>
       <FilterBar applied={applied} onClear={clearFilters} hint="搜索与状态仅筛选当前页 · 批量操作只作用于当前页选中节点">
         <label className="native-list-search"><Search size={16} aria-hidden="true" /><span className="network-sr-only">搜索当前页</span>

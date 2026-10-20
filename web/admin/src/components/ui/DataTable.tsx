@@ -12,10 +12,10 @@ export type TableSelection<T> = {
   disabled?: boolean
 }
 
-export function DataTable<T>({ rows, columns, empty = '暂无数据', emptyState, loading, error, onRetry, rowKey, label = '数据列表', selection, className = '' }: {
+export function DataTable<T>({ rows, columns, empty = '暂无数据', emptyState, loading, error, onRetry, rowKey, label = '数据列表', selection, className = '', stickyHeader = false, stickyFirstColumn = false }: {
   rows: T[]; columns: Column<T>[]; empty?: string; emptyState?: ReactNode; loading?: boolean; error?: boolean
   onRetry?: () => void; rowKey?: (row: T) => string | number; label?: string
-  selection?: TableSelection<T>; className?: string
+  selection?: TableSelection<T>; className?: string; stickyHeader?: boolean; stickyFirstColumn?: boolean
 }) {
   const hasRows = rows.length > 0
   const showCustomEmpty = !hasRows && !loading && !error && emptyState != null
@@ -51,13 +51,13 @@ export function DataTable<T>({ rows, columns, empty = '暂无数据', emptyState
   return <>
     <QueryFeedback loading={loading} error={error} onRetry={onRetry} />
     {showCustomEmpty ? <div className="table-empty-region">{emptyState}</div> : null}
-    {showTable ? <div className="table-wrap" tabIndex={0} role="region" aria-label={label} aria-busy={loading || false}>
-      <table className={'data-table ui-data-table ' + className}><thead><tr>
+    {showTable ? <div className={'table-wrap' + (stickyHeader ? ' is-sticky' : '')} tabIndex={0} role="region" aria-label={label} aria-busy={loading || false}>
+      <table className={'data-table ui-data-table' + (stickyFirstColumn ? ' has-sticky-first' : '') + (selection ? ' has-selection' : '') + (className ? ' ' + className : '')}><thead><tr>
         {selection ? <th scope="col" className="ui-selection-cell">
           <input ref={headerCheckbox} type="checkbox" aria-label="选择当前页全部行"
             checked={allSelected} disabled={selectionDisabled || !hasRows} onChange={toggleAll} />
         </th> : null}
-        {columns.map(c => <th scope="col" key={c.key} style={{ width: c.width }}>{c.header}</th>)}
+        {columns.map((c, index) => <th scope="col" key={c.key} className={stickyFirstColumn && index === 0 ? 'ui-sticky-cell' : undefined} style={{ width: c.width }}>{c.header}</th>)}
       </tr></thead>
         <tbody>{hasRows ? rows.map((row, i) => {
           const key = rowKey ? rowKey(row) : i
@@ -67,7 +67,7 @@ export function DataTable<T>({ rows, columns, empty = '暂无数据', emptyState
               <input type="checkbox" checked={selected} disabled={selection.disabled} onChange={() => toggleRow(row)}
                 aria-label={'选择 ' + (selection.getLabel?.(row) ?? selection.getKey(row))} />
             </td> : null}
-            {columns.map(c => <td key={c.key}>{c.render(row)}</td>)}
+            {columns.map((c, index) => <td key={c.key} className={stickyFirstColumn && index === 0 ? 'ui-sticky-cell' : undefined}>{c.render(row)}</td>)}
           </tr>
         }) :
           <tr><td className="empty-cell" colSpan={columns.length + (selection ? 1 : 0)}><div className="table-empty-content"><Inbox size={32} strokeWidth={1.4} aria-hidden="true" /><span>{empty}</span></div></td></tr>}</tbody>

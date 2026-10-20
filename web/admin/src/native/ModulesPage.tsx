@@ -9,6 +9,7 @@ import { ReadFields } from './ReadList'
 import { PageHeader } from '../components/ui/PageHeader'
 import { ReadOnlyNotice } from '../components/ui/ReadOnlyNotice'
 import { StatusBadge } from '../components/ui/StatusBadge'
+import { Popover } from '../components/ui/Popover'
 import { DataTable, type Column } from '../components/ui/DataTable'
 
 type Module = CoreOutput<'platform.modules.get'>
@@ -40,7 +41,10 @@ export function ModulesPage({ kind }: { kind?: 'plugin' | 'theme' }) {
     { key: 'health', header: '健康', render: row => <StatusBadge tone={row.health === 'healthy' ? 'success' : row.health === 'unhealthy' ? 'danger' : 'neutral'}>{({ healthy: '正常', unhealthy: '异常', unknown: '未知' } as Record<string, string>)[row.health] ?? row.health}</StatusBadge> },
   ]
   return <div className="native-management-page observation-page observation-modules-page">
-    <PageHeader title={kind === 'theme' ? '主题管理' : kind === 'plugin' ? '插件管理' : '模块清单'} description="管理模块版本与运行状态" action={<button className="button" disabled={!session || list.isFetching} onClick={() => void refresh()}><RefreshCw size={15} />刷新</button>} />
+    <PageHeader title={kind === 'theme' ? '主题管理' : kind === 'plugin' ? '插件管理' : '模块清单'} description="管理模块版本与运行状态" action={<>
+      <Popover label="如何变更模块"><p>安装、启停、升级及卸载需在部署环境中执行 · 此页面仅供查看</p></Popover>
+      <button className="button" disabled={!session || list.isFetching} onClick={() => void refresh()}><RefreshCw size={15} />刷新</button>
+    </>} />
     <ReadOnlyNotice title="运行时清单只读">安装、启停、升级及卸载由受控部署流程负责 · 此页面只展示当前注册状态与声明能力</ReadOnlyNotice>
     <section className="list-card native-read-list"><div className="observation-card-heading"><div><h2>{kind === 'theme' ? '主题目录' : kind === 'plugin' ? '插件目录' : '模块目录'}</h2><p>查看版本、来源与可用状态</p></div><span className="observation-tag">{visible && list.data && !list.isError ? rows.length + ' 项' : '等待加载'}</span></div>
       <form className="native-filters observation-module-filters" onSubmit={event => event.preventDefault()}><label>搜索<input placeholder="搜索名称、ID 或描述" maxLength={120} value={keyword} onChange={event => setKeyword(event.target.value)} /></label><label>状态<select value={status} onChange={event => setStatus(event.target.value)}><option value="">全部</option><option value="installed">已安装</option><option value="enabled">已启用</option><option value="uninstalled">未安装</option></select></label>{keyword || status ? <button className="button observation-reset" type="button" onClick={() => { setKeyword(''); setStatus('') }}>清除筛选</button> : null}</form>
@@ -55,7 +59,6 @@ export function ModulesPage({ kind }: { kind?: 'plugin' | 'theme' }) {
         ['兼容 TXBoard', current.compatibility.txboard], ['能力', current.capabilities.join('、') || '未声明'], ['健康', current.health], ['当前激活', current.active === null ? '不适用' : current.active ? '是' : '否'],
       ]} /> : null}
       {operations.data && !operations.isError ? <p>模块声明支持：{operations.data.data.operations.map(operation => operationLabels[operation]).join('、') || '无生命周期操作'}。</p> : null}
-      <details className="observation-help"><summary>如何变更模块？</summary><p>安装、启停、升级及卸载需在部署环境中执行，此页面仅供查看。</p></details>
     </section> : null}
   </div>
 }

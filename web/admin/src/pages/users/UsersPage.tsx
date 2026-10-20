@@ -86,7 +86,8 @@ export function UsersPage() {
     {!valid ? <p role="alert">筛选参数有误，请清除筛选后重试。</p> : null}
     <ReadList title="用户列表" rows={data?.data ?? []} columns={columns} meta={data?.meta} page={page}
       ready={!!data} loading={query.isFetching} error={query.isError ? query.error : undefined}
-      onRetry={() => void query.refetch()} onPage={paginate}>
+      onRetry={() => void query.refetch()} onPage={paginate}
+      columnSettingsKey="users" stickyHeader stickyFirstColumn>
       <header className="reference-user-list-heading"><div><h2>用户列表</h2><p>按邮箱精确定位，或筛选账户状态</p></div>{data ? <span className="reference-tag">{data.meta.total.toLocaleString('zh-CN')} 位用户</span> : null}</header>
       <form className="management-filter-form" onSubmit={apply}>
         <FilterBar applied={[

@@ -10,6 +10,8 @@ import { ManagementFeedback, managementError } from './Feedback'
 import { ReadFields, ReadList } from './ReadList'
 import { isoDate } from './readPresentation'
 import { PageHeader } from '../components/ui/PageHeader'
+import { FilterBar } from '../components/ui/FilterBar'
+import { Field, Input, Select, Textarea } from '../components/ui/Field'
 import type { Column } from '../components/ui/DataTable'
 
 type Ticket = CoreOutput<'support.admin-tickets.list'>[number]
@@ -122,12 +124,19 @@ export function TicketsPage() {
     {blocked ? <p role="alert">当前无法确认工单访问权限，已隐藏工单内容。确认权限后刷新重试。</p> : null}
     <ReadList title="工单列表" rows={blocked ? [] : list.data?.data ?? []} columns={columns}
       meta={list.data?.meta} page={page} ready={!!list.data && !blocked} loading={list.isFetching}
-      error={list.isError ? list.error : undefined} onRetry={() => void list.refetch()} onPage={setPage}>
+      error={list.isError ? list.error : undefined} onRetry={() => void list.refetch()} onPage={setPage}
+      columnSettingsKey="tickets" stickyHeader stickyFirstColumn>
       <div className="support-heading"><div><h2>工单列表</h2><p>筛选待处理问题与负责的工单</p></div></div><form className="native-filters" onSubmit={event => { event.preventDefault(); setPage(1); setOwner(userId) }}>
-        <label>状态<select value={status} onChange={event => { setPage(1); setStatus(event.target.value) }}><option value="">全部</option><option value="0">处理中</option><option value="1">已关闭</option></select></label>
-        <label>用户 ID<input value={userId} inputMode="numeric" pattern="[1-9][0-9]{0,18}" onChange={event => setUserId(event.target.value)} /></label>
-        <label>分派<select value={assignment} onChange={event => { setPage(1); setAssignment(event.target.value as typeof assignment) }}><option value="any">全部工单</option><option value="mine">我负责的</option><option value="unassigned">未分配</option></select></label>
-        <button className="button">筛选</button>
+        <FilterBar applied={[
+          ...(status ? [{ key: 'status', label: status === '0' ? '处理中' : '已关闭' }] : []),
+          ...(owner ? [{ key: 'owner', label: '用户 #' + owner }] : []),
+          ...(assignment !== 'any' ? [{ key: 'assignment', label: assignment === 'mine' ? '我负责的' : '未分配' }] : []),
+        ]} onClear={() => { setStatus(''); setUserId(''); setOwner(''); setAssignment('any'); setPage(1) }}>
+          <label>状态<Select value={status} onChange={event => { setPage(1); setStatus(event.target.value) }}><option value="">全部</option><option value="0">处理中</option><option value="1">已关闭</option></Select></label>
+          <label>用户 ID<Input value={userId} inputMode="numeric" pattern="[1-9][0-9]{0,18}" onChange={event => setUserId(event.target.value)} /></label>
+          <label>分派<Select value={assignment} onChange={event => { setPage(1); setAssignment(event.target.value as typeof assignment) }}><option value="any">全部工单</option><option value="mine">我负责的</option><option value="unassigned">未分配</option></Select></label>
+          <button className="button">筛选</button>
+        </FilterBar>
       </form>
     </ReadList>
     {selected && !blocked ? <section className="list-card support-ticket-detail">
@@ -142,8 +151,9 @@ export function TicketsPage() {
           <li key={row.id} data-author={row.author_kind}><p><strong>{row.author_kind === 'admin' ? '客服' : row.author_kind === 'user' ? '用户' : '历史消息'}</strong><time dateTime={row.created_at}>{isoDate(row.created_at)}</time></p><p className="support-message-body">{row.message}</p>{row.attachments.length ? <AttachmentsPanel ticketId={ticket.id} attachments={row.attachments} upload={false} disabled={state.busy || !!state.pending} /> : null}</li>)}</ol> : null}
         {messages.hasNextPage ? <button className="button" disabled={messages.isFetching} onClick={() => void messages.fetchNextPage()}>继续读取消息</button> : null}
         {ticket.status === 0 ? <form className="native-content-form support-reply-form" onSubmit={event => { event.preventDefault(); void mutate(false) }}>
-          <label htmlFor="native-ticket-reply">回复用户</label>
-          <textarea id="native-ticket-reply" placeholder="输入回复内容…" rows={5} maxLength={10000} value={message} disabled={state.busy || !!state.pending} onChange={event => setMessage(event.target.value)} />
+          <Field label="回复用户">
+            <Textarea id="native-ticket-reply" placeholder="输入回复内容…" rows={5} maxLength={10000} value={message} disabled={state.busy || !!state.pending} onChange={event => setMessage(event.target.value)} />
+          </Field>
           <small className="support-byte-count" aria-live="polite">{new TextEncoder().encode(message).length.toLocaleString()} / 10,000 字节</small><AttachmentsPanel ticketId={ticket.id} disabled={state.busy || !!state.pending} />
           <div className="support-form-footer"><span>回复将连同已上传附件一起发送</span><div className="support-actions"><button className="button primary" disabled={state.busy || !!state.pending || detail.isFetching || attachmentBlocked || !canReply}><Send size={14} />发送回复</button>
           <button className="button" type="button" disabled={state.busy || !!state.pending || detail.isFetching || attachmentBlocked || hasReadyAttachments} onClick={() => void mutate(true)}>关闭工单</button></div></div>

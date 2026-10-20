@@ -70,10 +70,11 @@ it('filters plugin inventory, loads capabilities and lifecycle declarations with
   expect(admin.read).toHaveBeenCalledWith('platform.modules.get', { module_id: plugin.id }, expect.any(AbortSignal))
   expect(admin.read).toHaveBeenCalledWith('platform.modules.operations.list', { module_id: plugin.id }, expect.any(AbortSignal))
   expect(host.textContent).toContain('停用、升级、卸载')
-  const help = [...host.querySelectorAll('details')].find(node => node.querySelector('summary')?.textContent === '如何变更模块？')!
-  await act(async () => { help.open = true })
-  expect(help.textContent).toContain('安装、启停、升级及卸载需在部署环境中执行')
-  expect(help.textContent).toContain('此页面仅供查看')
+  const help = host.querySelector<HTMLButtonElement>('button[aria-label="如何变更模块"]')!
+  await act(async () => help.click()); await settle()
+  const helpPanel = host.querySelector('[role="dialog"][aria-label="如何变更模块"]')!
+  expect(helpPanel.textContent).toContain('安装、启停、升级及卸载需在部署环境中执行')
+  expect(helpPanel.textContent).toContain('此页面仅供查看')
   expect(Array.from(host.querySelectorAll('button')).some(button => ['安装', '升级', '卸载', '停用'].includes(button.textContent ?? ''))).toBe(false)
   vi.mocked(admin.read).mockRejectedValue(new CoreAdminApiError('FORBIDDEN', 403))
   await click('刷新')

@@ -48,6 +48,6 @@ export function AuditLogsPage() {
     </section>
     {ready ? <ReadList title="管理审计记录" rows={query.data!.data} columns={columns} page={page}
       meta={query.data!.meta} ready={ready} loading={query.isFetching}
-      onRetry={() => void query.refetch()} onPage={setPage}><div className="observation-card-heading"><div><h2>审计记录</h2><p>每页 20 条{filters.action || filters.admin_id || filters.keyword ? ' · 已应用筛选条件' : ' · 全部记录'}</p></div><span className="observation-tag">共 {query.data!.meta.total} 条</span></div></ReadList> : null}
+      onRetry={() => void query.refetch()} onPage={setPage} columnSettingsKey="audit-logs" stickyHeader stickyFirstColumn><div className="observation-card-heading"><div><h2>审计记录</h2><p>每页 20 条{filters.action || filters.admin_id || filters.keyword ? ' · 已应用筛选条件' : ' · 全部记录'}</p></div><span className="observation-tag">共 {query.data!.meta.total} 条</span></div></ReadList> : null}
   </div>
 }

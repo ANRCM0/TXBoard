@@ -57,7 +57,8 @@ export function OrdersPage() {
     {!valid ? <p role="alert">用户 ID、订单号或状态参数有误，请修正筛选。</p> : null}
     <ReadList title="订单列表" rows={data?.data ?? []} columns={columns} meta={data?.meta} page={page}
       ready={!!data} loading={query.isFetching} error={query.isError ? query.error : undefined}
-      onRetry={() => void query.refetch()} onPage={paginate}>
+      onRetry={() => void query.refetch()} onPage={paginate}
+      columnSettingsKey="orders" stickyHeader stickyFirstColumn>
       <header className="commerce-card-heading"><div><h2>订单列表</h2><p>按用户、订单号或处理状态查询购买记录</p></div></header><form className="management-filter-form" onSubmit={apply}>
         <FilterBar applied={[
           ...(appliedUser ? [{ key: 'user', label: '用户 #' + appliedUser }] : []),

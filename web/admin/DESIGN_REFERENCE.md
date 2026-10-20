@@ -53,16 +53,34 @@ success, warning and danger colors remain reserved for status meaning.
   help and errors linked through `useId` and visible focus states.
 - `DataTable` supports current-page selection with an indeterminate header
   checkbox; selection is never treated as a cross-page or full-result set.
-- `StatusBadge`, `EmptyState`, `Skeleton`, `QuotaBar`, `FilterBar`,
-  `BulkActionBar`, `MetricCard`, `DetailSection`, `DangerZone`, `ReadOnlyNotice`
-  and `Popover` cover the repeated page patterns.
+- Wide lists can enable a sticky table header, a sticky identity column and a
+  persisted column-visibility menu. Column visibility is local presentation
+  state; it never changes the read operation or the selected row set.
+- `StatusBadge`, `EmptyState`, `Skeleton`, `ChartSkeleton`, `QuotaBar`, `FilterBar`,
+  `BulkActionBar`, `MetricCard`, `DetailSection`, `DangerZone`, `ReadOnlyNotice`,
+  `ColumnSettings` and `Popover` cover the repeated page patterns.
 - `ReadList` keeps pagination, permission hiding and refresh feedback; it renders
   a table skeleton during the first read and the existing feedback during refresh.
+- `RouteErrorBoundary` isolates a page render failure to the content area; the
+  shell and navigation remain usable, and the route can be retried or reloaded.
 
 Page templates are intentionally small: list pages combine a page header, a
 filter bar, an optional bulk action bar and `ReadList`; detail pages combine a
 summary section, grouped sections and a separate danger zone; observation pages
 declare their read-only boundary before exposing runtime state.
+
+Route changes scroll to the top, focus the new page heading and publish a short
+live-region announcement. Chart cards use a chart skeleton during the first read
+and show refresh feedback without replacing existing data. Explanatory help uses
+the shared `Popover`; data disclosures such as chart tables, operation
+identifiers, message previews and audit records remain explicit disclosures.
+Queue observation keeps its manual refresh and adds an opt-in 30-second
+auto-refresh that stops on navigation or when disabled.
+
+Settings, coupons, catalog publication and ticket reply/filter forms use the
+shared field primitives for ordinary text, select and textarea inputs. Dynamic
+tag lists, credential blanks, attachment uploads, CAPTCHA and other specialized
+controls keep their owner-specific implementations.
 
 Node management adds current-page selection with explicit bulk enable, disable,
 hide, machine binding, counter reset and delete actions. All bulk writes reuse

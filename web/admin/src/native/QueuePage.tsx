@@ -1,6 +1,6 @@
 import { RefreshCw, X } from 'lucide-react'
 import './observation-reference.css'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { CoreAdminApiError, type CoreOutput } from '@txboard/core-sdk'
 import { admin, useAdminSession } from './session'
@@ -14,7 +14,7 @@ import { DataTable, type Column } from '../components/ui/DataTable'
 type Failure = CoreOutput<'platform.queue.failures.list'>[number]
 const statuses = { unavailable: '不可用', not_applicable: '不适用', inactive: '未运行', paused: '已暂停', running: '运行中' }
 export function QueuePage() {
-  const session = useAdminSession(), [selected, setSelected] = useState('')
+  const session = useAdminSession(), [selected, setSelected] = useState(''), [autoRefresh, setAutoRefresh] = useState(false)
   const snapshot = useQuery({ queryKey: ['native-admin', 'queue-snapshot'], enabled: session,
     queryFn: ({ signal }) => admin.read('platform.queue.snapshot.get', {}, signal) })
   const failures = useQuery({ queryKey: ['native-admin', 'queue-failures'], enabled: session,
@@ -26,6 +26,13 @@ export function QueuePage() {
   const current = visible && !snapshot.isError ? snapshot.data?.data : undefined
   const failure = visible && !detail.isError ? detail.data?.data : undefined
   async function refresh() { await Promise.all([snapshot.refetch(), failures.refetch(), ...(selected ? [detail.refetch()] : [])]) }
+  const refreshRef = useRef(refresh)
+  refreshRef.current = refresh
+  useEffect(() => {
+    if (!autoRefresh || !session) return
+    const timer = window.setInterval(() => { void refreshRef.current() }, 30_000)
+    return () => window.clearInterval(timer)
+  }, [autoRefresh, session])
   const columns: Column<Failure>[] = [
     { key: 'id', header: '失败记录', render: row => <button className="native-read-link" onClick={() => setSelected(row.id)}>#{row.id}</button> },
     { key: 'connection', header: '连接', render: row => row.connection },
@@ -34,7 +41,10 @@ export function QueuePage() {
     { key: 'failed_at', header: '失败时间', render: row => <span className="observation-date">{row.failed_at}</span> },
   ]
   return <div className="native-management-page observation-page observation-queue-page">
-    <PageHeader title="队列监控" description="关注任务积压与失败情况" action={<button className="button" disabled={!session || snapshot.isFetching || failures.isFetching} onClick={() => void refresh()}><RefreshCw size={15} />刷新</button>} />
+    <PageHeader title="队列监控" description="关注任务积压与失败情况" action={<>
+      <button type="button" className="button" aria-pressed={autoRefresh} disabled={!session} onClick={() => setAutoRefresh(value => !value)}>{autoRefresh ? '停止自动刷新' : '自动刷新'}</button>
+      <button className="button" disabled={!session || snapshot.isFetching || failures.isFetching} onClick={() => void refresh()}><RefreshCw size={15} />刷新</button>
+    </>} />
     <ReadOnlyNotice title="队列状态只读">快照和失败记录用于运行观察 · 不展示任务载荷或原始异常 · 不提供重试和清理入口</ReadOnlyNotice>
     {denied ? <p role="alert">无法确认队列读取权限，已隐藏快照和失败记录。</p> : null}
     <section className="list-card"><div className="observation-card-heading"><div><h2>运行概况</h2><p>{current ? '更新于 ' + current.observed_at : '队列与任务处理状态'}</p></div>{current ? <StatusBadge tone={current.status === 'running' ? 'success' : 'warning'}>{statuses[current.status]}</StatusBadge> : null}</div><ManagementFeedback loading={snapshot.isFetching} error={snapshot.error} onRetry={() => void refresh()} />
