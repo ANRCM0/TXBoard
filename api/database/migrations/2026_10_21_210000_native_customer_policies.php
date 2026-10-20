@@ -24,13 +24,13 @@ return new class extends Migration {
             $table->char('request_hash', 64); $table->longText('request_json'); $table->longText('result_json'); $table->char('content_hash', 64);
         });
         Schema::create('tx_native_customer_price', function (Blueprint $table): void {
-            $table->unsignedBigInteger('order_id')->primary(); $table->uuid('installation_id'); $table->integer('user_id');
+            $table->integer('order_id')->primary(); $table->uuid('installation_id'); $table->integer('user_id');
             $table->unsignedBigInteger('policy_version'); $table->longText('payload_json'); $table->char('content_hash', 64);
             $table->foreign('order_id')->references('id')->on('tx_order')->restrictOnDelete();
             $table->index(['user_id', 'order_id'], 'tx_customer_price_user_order_idx');
         });
         Schema::create('tx_native_first_paid_claim', function (Blueprint $table): void {
-            $table->integer('user_id')->primary(); $table->uuid('installation_id'); $table->unsignedBigInteger('order_id');
+            $table->integer('user_id')->primary(); $table->uuid('installation_id'); $table->integer('order_id');
             $table->unsignedBigInteger('order_payment_id')->unique(); $table->longText('payload_json'); $table->char('content_hash', 64);
             $table->foreign('user_id')->references('id')->on('tx_user')->restrictOnDelete();
             $table->foreign('order_id')->references('id')->on('tx_order')->restrictOnDelete();

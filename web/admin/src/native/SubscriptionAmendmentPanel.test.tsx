@@ -79,8 +79,10 @@ it('binds the explicitly selected immutable plan and recovers its original reque
     return originalRead(...args)
   })
   vi.spyOn(window, 'confirm').mockReturnValue(true); vi.mocked(admin.write).mockRejectedValueOnce(new TypeError('lost plan response'))
-  await render(); await click('调整订阅条款'); await click('管理员权益套餐改配')
-  await click('Immutable target · #' + binding.plan_id + ' · 修订 #' + binding.revision_id)
+  await render(); await click('调整订阅条款')
+  const dialog = document.querySelector('[role="dialog"]')!
+  await click('管理员权益套餐改配', dialog)
+  await click('Immutable target · #' + binding.plan_id + ' · 修订 #' + binding.revision_id, dialog)
   await fill('调整原因编号', 'entitlement_case'); await click('保存订阅条款', document.querySelector('[role="dialog"]')!)
   const original = vi.mocked(admin.write).mock.calls[0]
   expect(original[1]).toMatchObject({ expected_terms_id: amendment.terms_id, expected_subscription_version: '7', expected_period_version: '4', changes: { plan_revision: binding }, reason: 'entitlement_case' })
@@ -96,7 +98,9 @@ it('does not import a plan whose current publication changed after the list was 
     if (args[0] === 'catalog.admin-plans.get') return { data: { current_revision_id: '13', revision: { revision_id: '12' } } } as never
     return originalRead(...args)
   })
-  await render(); await click('调整订阅条款'); await click('管理员权益套餐改配'); await click('Changed target · #3 · 修订 #12')
+  await render(); await click('调整订阅条款')
+  const dialog = document.querySelector('[role="dialog"]')!
+  await click('管理员权益套餐改配', dialog); await click('Changed target · #3 · 修订 #12', dialog)
   expect(document.querySelector('[role="dialog"]')?.textContent).toContain('套餐发布修订已变化')
   expect(admin.write).not.toHaveBeenCalled()
 })

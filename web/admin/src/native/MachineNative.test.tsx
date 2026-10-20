@@ -132,7 +132,7 @@ it('plots exact-byte usage ratios, leaves absent network samples empty and clear
   expect(host.textContent).toContain('50%')
   expect(host.textContent).toContain('9007199254740993 / 18014398509481986 字节')
   expect(host.textContent).toContain('1.25 B/s')
-  await click('6 小时'); await settle()
+  await click('6小时'); await settle()
   expect(admin.read).toHaveBeenLastCalledWith('network.machines.history.get', { machine_id: id, range_hours: 6, limit: 360 }, expect.any(AbortSignal))
   vi.mocked(admin.read).mockRejectedValue(new CoreAdminApiError('FORBIDDEN', 403))
   await act(async () => { await client.refetchQueries({ queryKey: ['native-admin', 'machine-history', id] }) })

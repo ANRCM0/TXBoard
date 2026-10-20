@@ -26,6 +26,7 @@ export function MachineDetailPage() {
   const [name, setName] = useState(''), [notes, setNotes] = useState('')
   const [active, setActive] = useState(false), [channel, setChannel] = useState('stable')
   const [runtimeError, setRuntimeError] = useState<unknown>()
+  const [nodesBlocked, setNodesBlocked] = useState(true)
   const baseline = useRef({ id: '', value: '' }), discardOnRefresh = useRef(false)
   const draftValue = JSON.stringify({ name, notes, active, channel })
   const currentDraft = useRef(draftValue); currentDraft.current = draftValue
@@ -37,7 +38,7 @@ export function MachineDetailPage() {
     setRuntimeError(undefined)
   }, machineId)
   const machine = !management.denied && !query.isError ? query.data?.data : undefined
-  useEffect(() => { setRuntimeError(undefined) }, [machineId])
+  useEffect(() => { setRuntimeError(undefined); setNodesBlocked(true) }, [machineId])
   useEffect(() => {
     if (machine && baseline.current.id === machine.id && currentDraft.current !== baseline.current.value && !discardOnRefresh.current) return
     const next = { name: machine?.name ?? '', notes: machine?.notes ?? '', active: machine?.is_active ?? false, channel: machine?.image_channel ?? 'stable' }
@@ -58,7 +59,7 @@ export function MachineDetailPage() {
       }
     } finally { discardOnRefresh.current = false }
   }
-  const locked = !machine || query.isFetching || management.state.busy || !!management.state.pending
+  const locked = !machine || query.isFetching || nodesBlocked || management.state.busy || !!management.state.pending
   useDirtyDraft(!!machine && baseline.current.id === machine.id && currentDraft.current !== baseline.current.value)
   async function save() {
     if (locked || !machine || !name.trim() || !['stable', 'dev'].includes(channel) || !window.confirm(t("确定保存服务器配置？请核对当前配置后继续。"))) return
@@ -70,7 +71,7 @@ export function MachineDetailPage() {
   }
   return <div className="native-management-page network-reference-page network-machine-detail-page">
     <PageHeader title={t("服务器详情")} description={t("管理服务器配置并查看已绑定节点。")} action={<><Link className="button" to="/server/machine">{t("返回服务器列表")}</Link><button className="button" disabled={query.isFetching || management.state.busy} onClick={() => void reload()}><RefreshCw size={15} aria-hidden="true" />{t("刷新服务器")}</button></>} />
-    <NetworkRecovery management={management} blocked={!machine || query.isFetching || query.isError || (!!management.pending && 'machine_id' in management.pending.input && management.pending.input.machine_id !== machine.id)} />
+    <NetworkRecovery management={management} blocked={!machine || query.isFetching || query.isError || nodesBlocked || (!!management.pending && 'machine_id' in management.pending.input && management.pending.input.machine_id !== machine.id)} />
     <ManagementFeedback error={query.error} loading={query.isFetching} onRetry={() => void reload()} notFoundMessage={t("服务器不存在或已被删除。")} />
     {machine ? <>
       <DetailSection label={t("服务器配置概况")} title={machine.name} description={t("服务器 #{id} · {channel}", { id: machine.id, channel: machine.image_channel })}
@@ -109,7 +110,7 @@ export function MachineDetailPage() {
           <button type="button" className="button danger" disabled={locked} onClick={() => void remove()}>{t("删除服务器")}</button>
         </DangerZone>
       </DetailSection>
-      <MachineNodeManager key={machine.id} machineId={machine.id} disabled={locked} recoveryBlocked={query.isFetching || query.isError} onAuthorizationFailure={setRuntimeError} />
+      <MachineNodeManager key={machine.id} machineId={machine.id} disabled={locked} recoveryBlocked={query.isFetching || query.isError} onAuthorizationFailure={setRuntimeError} onReadBlockedChange={setNodesBlocked} />
     </> : null}
   </div>
 }

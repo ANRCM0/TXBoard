@@ -62,7 +62,10 @@ it.each(['users', 'orders'] as const)('withdraws cached %s totals after command 
   await render(kind)
   expect(host.textContent).toContain('共 401 项')
   vi.mocked(admin.write).mockRejectedValueOnce(new CoreAdminApiError('FORBIDDEN', 403))
-  await act(async () => { await workflowActions.run('identity.accounts.status.update', { user_id: '7', expected_banned: false, banned: true }).catch(() => {}) }); await settle()
+  await act(async () => {
+    if (kind === 'users') await workflowActions.run('identity.accounts.status.update', { user_id: '7', expected_banned: false, banned: true }).catch(() => {})
+    else await workflowActions.run('commerce.admin-orders.close', { trade_no: 'ORDER-A', expected_status: 0, reason: 'admin_reviewed' }).catch(() => {})
+  }); await settle()
   expect(host.textContent).not.toContain('共 401 项')
   expect(host.textContent).not.toContain(account.email)
   expect(host.querySelector<HTMLSelectElement>('[aria-label="每页显示条数"]')!.disabled).toBe(true)

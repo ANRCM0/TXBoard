@@ -16,8 +16,9 @@ import { useListPagination } from './useListPagination'
 type BoundNode = CoreOutput<'network.machines.nodes.list'>[number]
 type Candidate = CoreOutput<'network.nodes.list'>[number]
 
-export function MachineNodeManager({ machineId, disabled, recoveryBlocked = false, onAuthorizationFailure }: {
+export function MachineNodeManager({ machineId, disabled, recoveryBlocked = false, onAuthorizationFailure, onReadBlockedChange }: {
   machineId: string; disabled: boolean; recoveryBlocked?: boolean; onAuthorizationFailure: (error: unknown) => void
+  onReadBlockedChange?: (blocked: boolean) => void
 }) {
   useLocale()
   const { page, setPage, perPage, setPerPage } = useListPagination()
@@ -36,6 +37,7 @@ export function MachineNodeManager({ machineId, disabled, recoveryBlocked = fals
   }, machineId)
   const locked = disabled || management.denied || list.isError || !list.data || list.isFetching
     || preparing || management.state.busy || !!management.state.pending
+  useEffect(() => { onReadBlockedChange?.(list.isFetching || list.isError || !list.data) }, [list.isFetching, list.isError, list.data, onReadBlockedChange])
   useEffect(() => {
     if (list.error instanceof CoreAdminApiError && [401, 403].includes(list.error.status)) onAuthorizationFailure(list.error)
   }, [list.error, onAuthorizationFailure])

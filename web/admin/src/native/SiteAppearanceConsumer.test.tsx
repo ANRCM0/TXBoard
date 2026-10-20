@@ -5,7 +5,9 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { fetchSiteAppearance, parseSiteAppearance, safeLoginBackground, SiteAppearanceConsumer, SiteLoginBackground, siteAppearanceDefaults } from '../lib/useSiteAppearance'
 import { readPublicBootstrap } from './publicBootstrap'
 
-vi.mock('./publicBootstrap', () => ({ readPublicBootstrap: vi.fn() }))
+vi.mock('./publicBootstrap', async importOriginal => ({
+  ...await importOriginal<typeof import('./publicBootstrap')>(), readPublicBootstrap: vi.fn(),
+}))
 let host: HTMLDivElement, root: Root, client: QueryClient
 beforeEach(() => {
   ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true

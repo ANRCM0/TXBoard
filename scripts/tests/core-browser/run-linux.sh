@@ -129,7 +129,10 @@ CREATE USER IF NOT EXISTS 'txboard_browser_test'@'127.0.0.1' IDENTIFIED BY 'core
 GRANT ALL PRIVILEGES ON txboard_browser_test.* TO 'txboard_browser_test'@'127.0.0.1';
 SQL
 # CREATE DATABASE deliberately refuses reuse: native initialization requires fresh data.
-(cd "$scratch/core/api" && php artisan migrate --force) > "$scratch/migrations.log" 2>&1
+if ! (cd "$scratch/core/api" && php artisan migrate --force) > "$scratch/migrations.log" 2>&1; then
+  tail -n 80 "$scratch/migrations.log"
+  exit 1
+fi
 cd "$repo_root"
 php scripts/tests/core-browser/core-fixture.php "$scratch/core/api" trust > "$scratch/trust.json"
 (cd "$scratch/core/node" && go build -buildvcs=false -o "$scratch/credential-provider" ./cmd/credential-provider) > "$scratch/provider-build.log" 2>&1

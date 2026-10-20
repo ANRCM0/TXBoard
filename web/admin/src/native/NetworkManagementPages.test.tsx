@@ -159,6 +159,26 @@ it('keeps machine mutations locked until the dependent node authorization read f
   await click('保存服务器')
   expect(admin.write).toHaveBeenCalledExactlyOnceWith('network.machines.update', { machine_id: id, name: 'private-machine', notes: 'retained note', is_active: true, image_channel: 'stable' }, expect.any(String))
 })
+it('locks machine writes after a dependent node read fails and withdraws the detail on permission loss', async () => {
+  const original = vi.mocked(admin.read).getMockImplementation()!
+  let failure: CoreAdminApiError | undefined
+  vi.mocked(admin.read).mockImplementation(async (operation, ...args) => {
+    if (operation === 'network.machines.nodes.list' && failure) throw failure
+    return original(operation, ...args)
+  })
+  await render('/machine/' + id)
+  expect(button('保存服务器').disabled).toBe(false)
+  failure = new CoreAdminApiError('DEPENDENCY_UNAVAILABLE', 503)
+  await act(async () => { await client.refetchQueries({ queryKey: ['native-admin', 'machine-nodes', id] }) }); await settle()
+  expect(button('保存服务器').disabled).toBe(true)
+  expect(button('删除服务器').disabled).toBe(true)
+  expect(button('查看认证信息').disabled).toBe(true)
+  failure = new CoreAdminApiError('FORBIDDEN', 403)
+  await act(async () => { await client.refetchQueries({ queryKey: ['native-admin', 'machine-nodes', id] }) }); await settle()
+  expect(host.textContent).not.toContain('private-machine')
+  expect(button('保存服务器')).toBeUndefined()
+  expect(admin.write).not.toHaveBeenCalled()
+})
 it('ignores a delayed node write receipt after session replacement', async () => {
   await render('/node/' + id)
   let resolve!: (result: never) => void
@@ -188,7 +208,9 @@ it('keeps reset recovery blocked when the read account owns a different subscrip
   await render('/reset'); await input('7'); await click('读取当前订阅')
   vi.mocked(admin.write).mockRejectedValueOnce(new TypeError('lost response'))
   await click('重置订阅流量周期')
-  vi.mocked(admin.read).mockResolvedValueOnce({ data: { id: '10', email: 'another@example.test', subscription: { authorized: true, subscription_id: '99', subscription_version: '2' } }, meta: {} } as never)
+  vi.mocked(admin.read).mockResolvedValueOnce({ data: { id: '10', email: 'another@example.test', subscription: {
+    authorized: true, subscription_id: '99', subscription_version: '2', usage_period_id: '100', quota_bytes: '100', consumed_bytes: '20', remaining_bytes: '80',
+  } }, meta: {} } as never)
   await input('10'); await click('读取当前订阅')
   expect(button('确认原操作').disabled).toBe(true)
   expect(admin.write).toHaveBeenCalledTimes(1)

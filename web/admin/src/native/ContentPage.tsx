@@ -236,7 +236,7 @@ export function ContentPage({ kind }: { kind: Kind }) {
         {kind === 'knowledge' ? <label>{t("当前页分类")}<select value={categoryFilter} onChange={event => setCategoryFilter(event.target.value)}><option value="">{t("全部分类")}</option>{[...new Set(pageRows.flatMap(row => 'category' in row ? [row.category] : []))].map(category => <option key={category} value={category}>{category}</option>)}</select></label> : null}
         <label>{t("当前页发布状态")}<select value={visibilityFilter} onChange={event => setVisibilityFilter(event.target.value)}><option value="">{t("全部状态")}</option><option value="shown">{t("已启用")}</option><option value="hidden">{t("草稿")}</option></select></label>
         {categoryFilter || visibilityFilter ? <button type="button" className="button" onClick={() => { setCategoryFilter(''); setVisibilityFilter('') }}>{t("清除当前页筛选")}</button> : null}
-      </form><p className="support-filter-scope">{t("标题在全部分页中查询；分类与发布状态只筛选当前页，不改变分页总数。当前显示")}{visibleRows.length} / {pageRows.length}{t("项。")}</p>
+      </form><p className="support-filter-scope">{t('标题在全部分页中查询；分类与发布状态只筛选当前页，不改变分页总数。当前显示 {visible} / {total} 项。', { visible: visibleRows.length, total: pageRows.length })}</p>
     </ReadList>
     {sortRows.length && !blocked ? <section className="list-card support-sort"><div className="support-heading"><div><h2>{t("完整排序")}</h2><p>{t("拖动内容调整顺序，也可使用上移或下移按钮，确认后统一保存")}</p></div><span className="support-tag">{sortRows.length}{t("项")}</span></div>
       <p className="support-sort-feedback" role="status" aria-live="polite">{sortMessage ? t("已将「{v0}」移动到第 {v1} 项，保存后生效", { v0: sortMessage.title, v1: sortMessage.position }) : t("当前为全部内容的展示顺序，修改后需保存排序。")}</p>

@@ -69,6 +69,6 @@
 
 待 Actions 功能验收包括全量组件、真实 Core/gateway、MySQL 并发、节点模板/协议、桌面/手机/暗色、焦点/键盘、断网编辑器和权限/草稿恢复。Node 的完整 Linux amd64 编译已在备用模块代理重试后通过，使用 Makefile 的完整 Linux tags；两个变更 Provider/Delivery 包的独立编译也通过。首次外部依赖下载超时保留为诊断记录，不作为源码失败。
 
-Node 独立仓库也有模板源码变更；远端验收前须提交为真实固定 gitlink，不能让 Actions 静默使用旧 Node。Windows 生产存储权限边界未改，早期 Windows 诊断使用专用测试 fixture，不能据此声称生产 Node 验收。
+Node 独立仓库的模板变更已提交为 `2470a51` 并通过 Core gitlink 固定；Node 的兼容声明固定到包含本轮 Renderer 契约的 Core `d2e70b8`。Windows 生产存储权限边界未改，早期 Windows 诊断使用专用测试 fixture，不能据此声称生产 Node 验收。
 
-本轮没有提交、推送、远端 CI、合并、镜像发布或生产就绪结论。
+已按用户授权提交并推送，建立 TXBoard #290 与 TXnode #4 配套草稿 PR。Actions 已启动，功能验收结果待记录。当前没有合并、镜像发布或生产就绪结论。
