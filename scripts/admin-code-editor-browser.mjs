@@ -155,6 +155,8 @@ try {
   await page.evaluate(() => { for (const worker of globalThis.editorBrowserWorkers) worker.terminate() })
   await page.screenshot({ path: output + 'subscription-template-editor-desktop.png', fullPage: true })
   await page.setViewportSize({ width: 390, height: 844 })
+  await page.waitForFunction(() => Math.abs(document.querySelector('.admin-main').getBoundingClientRect().left) < 1)
+  await page.locator('[data-sonner-toast]').waitFor({ state: 'detached' })
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), 'Editor fits mobile width')
   await page.screenshot({ path: output + 'subscription-template-editor-mobile.png', fullPage: true })
   checks.push('JSON worker loads from local /admin/assets under CSP and template editor fits mobile width')

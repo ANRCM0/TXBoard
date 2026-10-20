@@ -22,6 +22,10 @@
 .order-amount-breakdown>div { display:flex; justify-content:space-between; gap:20px; font-size:12px; }
 .order-amount-breakdown dt { color:var(--muted); }
 .order-amount-breakdown dd { margin:0; font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
+@media(max-width:600px) {
+  .orders-page .ui-mobile-record dl>div:has(.reference-number) { grid-column:1 / -1; }
+  .orders-page .ui-mobile-record .reference-number { white-space:normal; overflow-wrap:anywhere; }
+}
 @media(max-width:640px) {
   .orders-page .management-filter-form { padding:12px; }
   .orders-page .management-filter-form label, .orders-page .management-filter-form label:nth-child(2) { flex:1 1 100%; }
