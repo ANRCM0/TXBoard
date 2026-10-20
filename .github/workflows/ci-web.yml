@@ -1,6 +1,7 @@
 name: web-ci
 
 on:
+  workflow_dispatch:
   push:
     branches: [main]
     paths:
@@ -20,6 +21,7 @@ on:
       - "scripts/admin-catalog-network-browser.mjs"
       - "scripts/admin-management-browser.mjs"
       - "scripts/admin-code-editor-browser.mjs"
+      - "scripts/run-browser-acceptance.mjs"
       - "scripts/lib/admin-*-fixture.mjs"
       - "scripts/lib/node-protocol-metadata.json"
       - "scripts/user-browser.mjs"
@@ -43,6 +45,7 @@ on:
       - "scripts/admin-catalog-network-browser.mjs"
       - "scripts/admin-management-browser.mjs"
       - "scripts/admin-code-editor-browser.mjs"
+      - "scripts/run-browser-acceptance.mjs"
       - "scripts/lib/admin-*-fixture.mjs"
       - "scripts/lib/node-protocol-metadata.json"
       - "scripts/user-browser.mjs"

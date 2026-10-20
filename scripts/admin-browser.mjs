@@ -319,7 +319,7 @@ try {
   passed('confirmation and original-key recovery after a lost revocation response')
   await nav(page, '用户管理')
   await page.waitForFunction(() => document.activeElement?.tagName === 'H1' && document.activeElement.textContent?.trim() === '用户管理')
-  await page.locator('.admin-route-announcer').filter({ hasText: '已进入用户管理' }).waitFor()
+  await page.locator('.admin-route-announcer').filter({ hasText: /^已进入 用户管理$/ }).waitFor()
   await page.getByRole('link', { name: account.email, exact: true }).waitFor()
   assert.match(await page.locator('table').innerText(), new RegExp(account.id))
   await page.getByRole('button', { name: '下一页', exact: true }).click()
@@ -382,14 +382,14 @@ try {
   passed('order filters, pagination and frozen purchase detail with exact currency and money')
   state.ordersStatus = 403
   await page.getByRole('button', { name: '刷新', exact: true }).click()
-  await page.getByRole('alert').filter({ hasText: '没有此操作的权限' }).waitFor()
+  await page.locator('.native-read-list').getByRole('alert').filter({ hasText: '没有此操作的权限' }).waitFor()
   assert.equal(await page.locator('table').count(), 0)
   assert.ok(!page.url().includes('sign-in'))
   await nav(page, '用户管理')
   await page.getByRole('link', { name: account.email, exact: true }).waitFor()
   state.accountsStatus = 403
   await page.getByRole('button', { name: '刷新', exact: true }).click()
-  await page.getByRole('alert').filter({ hasText: '没有此操作的权限' }).waitFor()
+  await page.locator('.native-read-list').getByRole('alert').filter({ hasText: '没有此操作的权限' }).waitFor()
   assert.equal(await page.locator('table').count(), 0)
   passed('resource permission withdrawal removes user and order rows while preserving login')
   const operationsBeforeModules = state.operations.length
@@ -400,6 +400,7 @@ try {
   assert.equal(state.operations.slice(operationsBeforeModules).some(operation => coreOperations[operation].idempotency !== 'read'), false)
   passed('active plugin inventory shows its empty state without lifecycle writes or old HTTP routes')
   state.logoutFailure = true
+  await page.getByRole('button', { name: '账户菜单', exact: true }).click()
   await page.getByRole('button', { name: '退出登录', exact: true }).click()
   await page.getByRole('heading', { name: '管理员登录' }).waitFor()
   await page.getByText(/服务端退出结果未确认/).waitFor()
