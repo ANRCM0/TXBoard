@@ -32,7 +32,7 @@ final class NativeSubscriptionAmendmentController
             'expected_subscription_version' => ['required', 'string', 'regex:/\A[1-9][0-9]{0,18}\z/D'],
             'expected_terms_id' => ['required', 'string', 'regex:/\A[1-9][0-9]{0,18}\z/D'],
             'expected_period_version' => ['required', 'string', 'regex:/\A[1-9][0-9]{0,18}\z/D'],
-            'changes' => ['required', 'array:quota_bytes,expires_at,speed_limit_mbps,device_limit', 'min:1'],
+            'changes' => ['required', 'array:plan_revision,quota_bytes,expires_at,speed_limit_mbps,device_limit', 'min:1'],
             'reason' => ['required', 'string', 'regex:/\A[A-Za-z0-9][A-Za-z0-9_.:-]{0,63}\z/D']]);
         try { return $this->success($request, $amendments->apply((int) $request->user()->id, (int) $request->route('id'), $input, (string) $request->header('Idempotency-Key'))); }
         catch (DomainException $error) { return $this->failure($request, $error); }

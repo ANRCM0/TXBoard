@@ -44,7 +44,16 @@ final class TxapiUnifiedAdminManagementTest extends NativeRuntimeTestCase
 
     public function test_network_management_round_trips_nested_sort_payloads_and_does_not_expose_machine_credentials(): void
     {
-        [$invoke] = $this->allBoundManagementClient();
+        [$invoke] = $this->boundManagementClient([
+            'network.groups.save', 'network.groups.list', 'network.groups.delete',
+            'network.routes.save', 'network.routes.sort', 'network.routes.list',
+            'network.routes.simulate', 'network.routes.delete', 'network.nodes.copy',
+            'network.machines.update', 'network.nodes.patch', 'network.machines.nodes.list',
+            'network.nodes.sort', 'network.nodes.traffic-reset', 'network.nodes.batch-update',
+            'network.nodes.batch-traffic-reset', 'network.machines.delete', 'network.nodes.batch-delete',
+            'network.access-audit.rules.save', 'network.access-audit.rules.list', 'network.access-audit.events.list',
+            'network.access-audit.rules.delete',
+        ]);
         $group = $invoke('network.groups.save', ['name' => 'Managed group'])->assertOk()->json('data.id');
         $invoke('network.groups.save', ['id' => $group, 'name' => 'Renamed group'])->assertOk();
         $invoke('network.groups.list', [])->assertOk()->assertJsonFragment(['id' => $group, 'name' => 'Renamed group']);
@@ -85,7 +94,17 @@ final class TxapiUnifiedAdminManagementTest extends NativeRuntimeTestCase
 
     public function test_content_and_runtime_views_keep_their_typed_projections_through_the_management_channel(): void
     {
-        [$invoke] = $this->allBoundManagementClient();
+        [$invoke] = $this->boundManagementClient([
+            'content.notices.create', 'content.notices.visibility.toggle', 'content.notices.sort',
+            'content.notices.list', 'content.notices.update', 'content.notices.get',
+            'content.knowledge.create', 'content.knowledge.update', 'content.knowledge.get',
+            'content.knowledge.visibility.toggle', 'content.knowledge.sort', 'content.knowledge.list',
+            'content.knowledge.categories.list', 'content.knowledge.delete', 'notifications.mail-templates.list',
+            'notifications.mail-templates.save', 'notifications.mail-templates.get', 'notifications.mail-templates.reset',
+            'platform.queue.snapshot.get', 'platform.queue.failures.list', 'platform.queue.failures.get',
+            'platform.modules.list', 'platform.modules.get', 'platform.modules.operations.list',
+            'audit.logs.list', 'catalog.admin-offers.list',
+        ]);
         $this->assertTrue(Schema::hasColumn('tx_notice', 'popup'));
         $notice = $invoke('content.notices.create', $this->noticeInput(['show' => false, 'popup' => true]))->assertCreated()->json('data.id');
         $invoke('content.notices.visibility.toggle', ['content_id' => $notice, 'expected_version' => '1', 'show' => true])->assertOk()->assertJsonPath('data.show', true);
@@ -124,10 +143,12 @@ final class TxapiUnifiedAdminManagementTest extends NativeRuntimeTestCase
         $offers->assertJsonPath('data.0.currency', 'USD')->assertJsonPath('meta.per_page', 1);
     }
 
-    private function allBoundManagementClient(): array
+    private function boundManagementClient(array $operations): array
     {
         $bindings = array_merge(AdminOperationBindings::all(), array_filter(ContentOperationBindings::all(),
             static fn (array $spec): bool => $spec['domains'] === ['admin']));
+        $bindings = array_intersect_key($bindings, array_fill_keys($operations, true));
+        $this->assertCount(count($operations), $bindings);
         return $this->managementClient(array_keys($bindings), array_values(array_unique(array_column($bindings, 'permission'))));
     }
 

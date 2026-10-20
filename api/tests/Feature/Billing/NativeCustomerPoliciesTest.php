@@ -48,7 +48,7 @@ final class NativeCustomerPoliciesTest extends NativeRuntimeTestCase
         $this->assertSame($frozen, $originalTerms->fresh()->getAttributes()); $this->assertSame($legacy, $buyer->fresh()->getAttributes());
         $this->assertSame(2, count($policies->history($admin->id, $buyer->id)['items']));
         DB::table('tx_native_customer_price')->where('order_id', $order->id)->update(['content_hash' => str_repeat('0', 64)]);
-        $this->expectException(\RuntimeException::class); app(PurchasedOrderGrant::class)->resolve($order, $terms);
+        $this->workflowBillingFailure('CUSTOMER_POLICY_EVIDENCE_INVALID', fn () => app(PurchasedOrderGrant::class)->resolve($order, $terms));
     }
 
     public function test_sponsor_first_paid_override_is_frozen_and_unpaid_cancellation_does_not_spend_the_claim(): void
@@ -67,8 +67,12 @@ final class NativeCustomerPoliciesTest extends NativeRuntimeTestCase
         app(NativeCommissions::class)->recover(10); $firstReward = DB::table('tx_native_commission_order')->where('order_id', $first->id)->first();
         $this->assertSame('accrued', $firstReward->state); $this->assertSame('308', $this->workflowBalance($sponsor, 'commission_available'));
         $this->assertSame((string) $first->id, (string) DB::table('tx_native_first_paid_claim')->value('order_id'));
-        $second = $this->purchase($buyer->id); app(NativeWalletPayments::class)->pay($buyer->id, $second->id, $this->workflowKey()); app(NativeBillingRecovery::class)->recover();
-        app(NativeCommissions::class)->recover(10);
+        while (time() <= (int) DB::table('tx_subscription_terms')->max('effective_from')) usleep(100000);
+        $second = $this->purchase($buyer->id); app(NativeWalletPayments::class)->pay($buyer->id, $second->id, $this->workflowKey());
+        $recovery = app(NativeBillingRecovery::class)->recover();
+        $this->assertSame(Order::STATUS_COMPLETED, (int) $second->fresh()->status, json_encode($recovery, JSON_THROW_ON_ERROR));
+        $rewards = app(NativeCommissions::class)->recover(10);
+        foreach ($rewards as $reward) $this->assertArrayNotHasKey('error_code', $reward, json_encode($rewards, JSON_THROW_ON_ERROR));
         $this->assertSame('ineligible', DB::table('tx_native_commission_order')->where('order_id', $second->id)->value('state'));
         $this->assertSame('308', $this->workflowBalance($sponsor, 'commission_available')); $this->assertSame(1, DB::table('tx_native_first_paid_claim')->count());
     }

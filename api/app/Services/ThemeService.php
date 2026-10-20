@@ -32,17 +32,21 @@ class ThemeService
         ])];
         $root = base_path('storage/theme');
         if (!File::isDirectory($root)) return $themes;
-        $active = $this->getActiveTheme();
+        $active = null;
         foreach (File::directories($root) as $directory) {
             $name = basename($directory);
             if (!$this->runtime->isInstalled($name)) continue;
             try {
-                $themes[$name] = array_merge($this->runtime->inventory($name), [
-                    'can_delete' => $name !== $active, 'is_system' => false,
-                ]);
+                $inventory = $this->runtime->inventory($name);
             } catch (Throwable) {
                 Log::warning('Invalid installed static theme package', ['theme' => $name]);
+                continue;
             }
+            // Built-in-only inventory must work before installation creates settings.
+            $active ??= $this->getActiveTheme();
+            $themes[$name] = array_merge($inventory, [
+                'can_delete' => $name !== $active, 'is_system' => false,
+            ]);
         }
         return $themes;
     }

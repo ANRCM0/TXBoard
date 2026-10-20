@@ -167,7 +167,7 @@ it('locks machine writes after a dependent node read fails and withdraws the det
     return original(operation, ...args)
   })
   await render('/machine/' + id)
-  expect(button('保存服务器').disabled).toBe(false)
+  await readyButton('保存服务器')
   failure = new CoreAdminApiError('DEPENDENCY_UNAVAILABLE', 503)
   await act(async () => { await client.refetchQueries({ queryKey: ['native-admin', 'machine-nodes', id] }) }); await settle()
   expect(button('保存服务器').disabled).toBe(true)

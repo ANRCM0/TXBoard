@@ -23,9 +23,9 @@ final class NativeUsageCorrectionsTest extends NativeRuntimeTestCase
         $snapshot = $this->snapshot(); $this->submit($snapshot, 'correction-first', '3', '5');
         $this->assertSame(['settled'], array_values(app(UsageSettlement::class)->scan(10, time() + 2)));
         $original = DB::table('tx_usage_entry')->first(); $nodeStat = DB::table('tx_node_usage_stat')->first();
-        $this->submit($snapshot, 'correction-pending', '2', '2');
+        $this->submit($snapshot, 'correction-pending', '2', '2', 1);
         $this->assertSame('6', (string) DB::table('tx_native_usage_reservation')->value('reserved_bytes'));
-        while (time() <= $snapshot['issued_at'] + 1) usleep(100000);
+        while (time() <= $snapshot['issued_at'] + 2) usleep(100000);
         $owner = app(NativeUsageCorrections::class); $entry = $owner->entries($admin->id, $user->id)['items'][0]; $key = $this->workflowKey();
         $input = ['entry_id' => $entry['entry_id'], 'expected_entry_revision' => $entry['entry_revision'], 'expected_period_version' => $entry['period_version'],
             'billed_up_bytes' => '2', 'billed_down_bytes' => '3', 'reason' => 'verified_case'];
@@ -110,7 +110,7 @@ final class NativeUsageCorrectionsTest extends NativeRuntimeTestCase
             DB::table('tx_usage_period')->update(['upload_bytes' => '40002', 'download_bytes' => '70003', 'billable_bytes' => '110005']);
             DB::table('tx_node_usage_stat')->update(['raw_up_bytes' => '30003', 'raw_down_bytes' => '50005']);
         });
-        $this->submit($snapshot, 'large-period-pending', '2', '2');
+        $this->submit($snapshot, 'large-period-pending', '2', '2', 1);
         $this->assertSame(['settled'], array_values(app(UsageSettlement::class)->scan(10, time() + 2)));
         $this->assertSame(10002, DB::table('tx_usage_entry')->count());
         $this->assertSame('110011', (string) DB::table('tx_usage_period')->value('billable_bytes'));
@@ -131,14 +131,14 @@ final class NativeUsageCorrectionsTest extends NativeRuntimeTestCase
         $this->assertSame(1, DB::table('tx_usage_entry')->count());
     }
 
-    private function submit(array $snapshot, string $batch, string $up, string $down): void
+    private function submit(array $snapshot, string $batch, string $up, string $down, int $offset = 0): void
     {
         $grant = $snapshot['usage_v2']['grants'][0];
         $payload = ['protocol_version' => 2, 'node_id' => (string) $this->node->id, 'source_epoch' => $snapshot['usage_v2']['source_epoch'], 'batch_id' => $batch,
-            'started_at' => $snapshot['issued_at'], 'ended_at' => $snapshot['issued_at'] + 1,
+            'started_at' => $snapshot['issued_at'] + $offset, 'ended_at' => $snapshot['issued_at'] + $offset + 1,
             'entries' => [array_intersect_key($grant, array_flip(['access_subject_id', 'auth_snapshot_id', 'tariff_revision_id', 'terms_id', 'usage_period_id'])) + ['raw_up_bytes' => $up, 'raw_down_bytes' => $down]]];
         $submission = app(UsagePayload::class)->submission(json_encode(['payload' => $payload, 'payload_digest' => 'sha256:'.hash('sha256', ProviderCodec::canonical($payload))], JSON_THROW_ON_ERROR));
-        app(UsageReceipts::class)->submit((int) $this->node->id, $submission, $snapshot['issued_at'] + 2);
+        app(UsageReceipts::class)->submit((int) $this->node->id, $submission, $snapshot['issued_at'] + $offset + 2);
     }
     private function reject(string $code, \Closure $operation): void
     {

@@ -64,7 +64,7 @@ final class NativeNodeOrderingTest extends NativeRuntimeTestCase
         $input = ['expected_revision' => $snapshot['revision'], 'node_ids' => [$id]];
         $invoke('network.nodes.ordering.replace', $input, $key)->assertOk();
         for ($index = 1; $index <= 100; $index++) $this->insertNode((string) (1000 + $index), $index);
-        $invoke('network.nodes.ordering.get', [])->assertStatus(422)->assertJsonPath('error.code', 'NETWORK_NODE_SORT_LIMIT');
+        $invoke('network.nodes.ordering.get', [])->assertStatus(422)->assertJsonPath('error.code', 'VALIDATION_ERROR');
         $invoke('network.nodes.ordering.replace', $input)->assertStatus(422);
         $this->assertSame(101, Server::query()->count());
         DB::table('tx_internal_actor_grant')->where('user_id', $actor->id)->delete();

@@ -12,6 +12,8 @@ const formats = [
   ['shadowrocket/v1', '2.2.0', '.txt', 'text/plain', 'txboard-shadowrocket.txt'],
   ['surge-ios/v1', '5.20.0', '.conf', 'text/plain', 'txboard-surge-ios.conf'],
   ['surge-mac/v1', '6.7.0', '.conf', 'text/plain', 'txboard-surge-mac.conf'],
+  ['stash/v1', '3.4.0', '.yaml', 'application/yaml', 'txboard-stash.yaml'],
+  ['surfboard/v1', '2.35.2', '.conf', 'text/plain', 'txboard-surfboard.conf'],
 ]
 const digest = bytes => createHash('sha256').update(bytes).digest('hex')
 
@@ -120,7 +122,7 @@ export async function verifyRendererDelivery(client, other, { root, scratch, act
     const text = response.body.toString('utf8')
     assert.ok(text.length > 20); assert.ok(!text.includes('credential_ref'))
     if (format === 'sing-box/v1') assert.equal(JSON.parse(text).outbounds[1].type, 'vmess')
-    if (format.startsWith('surge-')) {
+    if (format.startsWith('surge-') || format === 'surfboard/v1') {
       assert.equal(text.match(/\[Rule\]/g).length, 1)
       assert.ok(!text.includes('# injection'))
     }

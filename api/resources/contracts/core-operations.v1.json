@@ -24170,7 +24170,8 @@
                 "created_at"
               ],
               "additionalProperties": false
-            }
+            },
+            "maxItems": 100
           },
           "next_cursor": {
             "anyOf": [
@@ -24313,7 +24314,8 @@
                 "editable"
               ],
               "additionalProperties": false
-            }
+            },
+            "maxItems": 100
           },
           "next_cursor": {
             "anyOf": [
@@ -24629,7 +24631,8 @@
                 "occurred_at"
               ],
               "additionalProperties": false
-            }
+            },
+            "maxItems": 100
           },
           "next_cursor": {
             "anyOf": [
