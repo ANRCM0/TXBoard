@@ -26,6 +26,15 @@ beforeEach(() => {
   vi.mocked(admin.read).mockReset().mockImplementation(async (operation, input) => {
     if (operation === 'network.nodes.get') return { data: { ...node }, meta: {} } as never
     if (operation === 'network.nodes.list') return { data: [node], meta: { page: 1, per_page: 20, total: 1, last_page: 1 } } as never
+    if (operation === 'network.nodes.traffic-history.get') {
+      const days = Number((input as { days?: number }).days ?? 14), now = Math.floor(Date.now() / 1000), today = new Date(now * 1000)
+      const start = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()) / 1000 - (days - 1) * 86400
+      return { data: { time_zone: 'UTC', basis: 'settled-raw-usage/v1', bucket: 'day', starts_at: start, ends_at: now,
+        nodes: [{ id, name: 'private-node', points: Array.from({ length: days }, (_, day) => ({
+          date: new Date((start + day * 86400) * 1000).toISOString().slice(0, 10),
+          total_bytes: String(BigInt(day + 1) * 1000000000n),
+        })) }] }, meta: {} } as never
+    }
     if (operation === 'network.machines.get') return { data: { id, name: 'private-machine', notes: 'retained note', is_active: true, image_channel: 'stable', servers_count: 21, last_seen_at: null, created_at: null, updated_at: null }, meta: {} } as never
     if (operation === 'network.machines.nodes.list') return { data: [], meta: { page: 'page' in input ? input.page : 1, per_page: 20, total: 21, last_page: 2 } } as never
     return { data: { id: '7', email: 'account@example.test', subscription: { authorized: true, subscription_id: '8', subscription_version: id, usage_period_id: '9', quota_bytes: '100', consumed_bytes: '20', remaining_bytes: '80' } }, meta: {} } as never
@@ -72,6 +81,19 @@ it('runs a current-page batch update and clears the selection after success', as
   await click('批量启用')
   expect(admin.write).toHaveBeenCalledExactlyOnceWith('network.nodes.batch-update', { ids: [id], enabled: true }, expect.any(String))
   expect(host.querySelector('input[aria-label="选择 private-node"]')?.matches(':checked')).toBe(false)
+})
+
+it('loads node traffic history and switches the chart range', async () => {
+  await render('/node/' + id)
+  await vi.waitFor(async () => {
+    await settle()
+    expect(admin.read).toHaveBeenCalledWith('network.nodes.traffic-history.get', { days: 14, node_ids: [id] }, expect.any(AbortSignal))
+  })
+  await click('7 天')
+  await vi.waitFor(async () => {
+    await settle()
+    expect(admin.read).toHaveBeenCalledWith('network.nodes.traffic-history.get', { days: 7, node_ids: [id] }, expect.any(AbortSignal))
+  })
 })
 
 it('reports a missing node without displaying stale cached detail or requesting login', async () => {

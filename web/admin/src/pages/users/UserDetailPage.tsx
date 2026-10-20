@@ -1,18 +1,29 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router-dom'
-import { RefreshCw, UserRound, CreditCard, ArrowUpRight, Ban, ShieldCheck } from 'lucide-react'
+import { RefreshCw, UserRound, CreditCard, ArrowUpRight, Ban, ShieldCheck, ReceiptText } from 'lucide-react'
+import type { CoreOutput } from '@txboard/core-sdk'
 import { admin, workflowActions } from '../../native/session'
 import { ManagementFeedback } from '../../native/Feedback'
 import { ReadFields } from '../../native/ReadList'
-import { unixDate, validId } from '../../native/readPresentation'
+import { isoDate, minorAmount, orderStatus, unixDate, validId } from '../../native/readPresentation'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { DetailSection } from '../../components/ui/DetailSection'
 import { StatusBadge } from '../../components/ui/StatusBadge'
 import { QuotaBar } from '../../components/ui/QuotaBar'
+import { DataTable, type Column } from '../../components/ui/DataTable'
 import { NetworkRecovery, useNetworkManagement } from '../../native/NetworkManagement'
 import { requestConfirm } from '../../components/ui/ConfirmDialog'
 import './UserDetailPage.css'
 import '../../native/detail-reference.css'
+
+type Order = CoreOutput<'commerce.admin-orders.list'>[number]
+const orderColumns: Column<Order>[] = [
+  { key: 'trade', header: '订单号', render: row => <Link className="table-link" to={'/finance/order?trade_no=' + encodeURIComponent(row.trade_no)}>{row.trade_no}</Link> },
+  { key: 'plan', header: '套餐', render: row => row.plan?.name ?? '未记录' },
+  { key: 'amount', header: '金额', render: row => <span className="reference-number">{minorAmount(row.amount_minor, row.currency)}</span> },
+  { key: 'status', header: '状态', render: row => <StatusBadge tone={row.status === 3 ? 'success' : row.status === 0 || row.status === 1 ? 'warning' : 'neutral'}>{orderStatus(row.status)}</StatusBadge> },
+  { key: 'created', header: '创建时间', render: row => <span className="reference-secondary">{isoDate(row.created_at)}</span> },
+]
 
 export function UserDetailPage() {
   const { userId = '' } = useParams()
@@ -23,6 +34,10 @@ export function UserDetailPage() {
   const user = management.denied || query.isError ? undefined : query.data?.data
   const subscription = user?.subscription
   const locked = !user || query.isFetching || management.state.busy || !!management.state.pending
+  const orders = useQuery({ queryKey: ['native-admin', 'user-orders', userId],
+    enabled: valid && !!user && !management.denied,
+    queryFn: ({ signal }) => admin.read('commerce.admin-orders.list', { page: 1, per_page: 5, user_id: userId }, signal) })
+  const orderRows = Array.isArray(orders.data?.data) ? orders.data.data : []
 
   function confirmStatus() {
     if (!user || locked) return
@@ -78,6 +93,13 @@ export function UserDetailPage() {
           ['到期时间', subscription.expires_at === null ? '长期有效' : unixDate(subscription.expires_at)],
         ]} />
       </> : <p className="reference-detail-empty">当前没有可用订阅。</p>}
+    </DetailSection> : null}
+    {user ? <DetailSection label="最近订单" title="最近订单" icon={<ReceiptText size={17} />} className="reference-detail-card"
+      actions={<Link className="reference-detail-link" to={'/finance/order?user_id=' + user.id}>全部订单<ArrowUpRight size={14} /></Link>}>
+      <ManagementFeedback error={orders.isError ? orders.error : undefined} loading={orders.isFetching} onRetry={() => void orders.refetch()} />
+      {orders.data && !orders.isError
+        ? <DataTable rows={orderRows} columns={orderColumns} rowKey={row => row.id} label="最近订单" empty="该用户暂无订单" />
+        : null}
     </DetailSection> : null}
   </div>
 }

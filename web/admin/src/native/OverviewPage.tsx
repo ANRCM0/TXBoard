@@ -25,10 +25,15 @@ export function OverviewPage() {
   const orders = useQuery({ queryKey: ['native-admin', 'overview', 'orders'],
     queryFn: ({ signal }) => admin.read('commerce.admin-orders.list', { page: 1, per_page: 100 }, signal) })
   const nodes = useQuery({ queryKey: ['native-admin', 'overview', 'nodes'],
-    queryFn: ({ signal }) => admin.read('network.nodes.list', { page: 1, per_page: 5 }, signal) })
+    queryFn: ({ signal }) => admin.read('network.nodes.list', { page: 1, per_page: 100 }, signal) })
   const machines = useQuery({ queryKey: ['native-admin', 'overview', 'machines'],
     queryFn: ({ signal }) => admin.read('network.machines.list', { page: 1, per_page: 1 }, signal) })
-  const nodeIds = nodes.isError ? [] : nodes.data?.data.map(node => node.id) ?? []
+  const trafficNodes = nodes.isError ? [] : [...(nodes.data?.data ?? [])].sort((left, right) => {
+    const leftTotal = (left.u ? BigInt(left.u) : 0n) + (left.d ? BigInt(left.d) : 0n)
+    const rightTotal = (right.u ? BigInt(right.u) : 0n) + (right.d ? BigInt(right.d) : 0n)
+    return leftTotal === rightTotal ? 0 : leftTotal > rightTotal ? -1 : 1
+  }).slice(0, 5)
+  const nodeIds = trafficNodes.map(node => node.id)
   const trafficEnabled = nodeIds.length > 0
   const history = useQuery({ queryKey: ['native-admin', 'overview', 'node-traffic', trafficRange, nodeIds],
     queryFn: ({ signal }) => admin.read('network.nodes.traffic-history.get', { days: trafficRange, node_ids: nodeIds }, signal),
@@ -88,8 +93,8 @@ export function OverviewPage() {
       {trafficEnabled ? <ManagementFeedback error={history.isError ? history.error : undefined} loading={history.isFetching} onRetry={() => void history.refetch()} /> : null}
       {!nodes.isError && !history.isError && history.data && trafficEnabled ? <>
         <LineChart title="节点总流量" labels={traffic.labels} series={traffic.series} xAxisLabel="日期（UTC）" yAxisWidth={92} formatValue={traffic.formatValue} emptyText="暂无节点流量数据" />
-        <div className="overview-chart-footer"><span>当前列表前 {traffic.nodeCount} 个节点 · 每条曲线为一个节点</span>
-          <details className="overview-scope-details"><summary><Info size={14} />流量统计口径</summary><p>每日总流量为原始上传与下载之和，按已结算批次结束日期（UTC）汇总。1 GB = 10⁹ 字节，显示保留两位小数；今日数据截至最近刷新。</p></details></div>
+        <div className="overview-chart-footer"><span>累计流量前 {traffic.nodeCount} 个节点 · 每条曲线为一个节点</span>
+          <details className="overview-scope-details"><summary><Info size={14} />流量统计口径</summary><p>按当前节点列表的累计上传与下载排序取前 5 个节点。每日总流量为原始上传与下载之和，按已结算批次结束日期（UTC）汇总。1 GB = 10⁹ 字节，显示保留两位小数；今日数据截至最近刷新。</p></details></div>
       </> : null}
       {!nodes.isError && nodes.data && !trafficEnabled ? <p className="overview-chart-scope">暂无节点流量数据</p> : null}
     </section>
@@ -105,9 +110,9 @@ export function OverviewPage() {
         ]} /> : null}
       </section>
       <section className="card overview-data-card" aria-label="节点概况">
-        <div className="reference-card-heading"><div><h2>节点概况</h2><p>当前列表前 5 条</p></div><Link to="/server/manage">全部节点<ArrowUpRight size={15} /></Link></div>
+        <div className="reference-card-heading"><div><h2>节点概况</h2><p>累计流量前 5 个节点</p></div><Link to="/server/manage">全部节点<ArrowUpRight size={15} /></Link></div>
         <ManagementFeedback error={nodes.isError ? nodes.error : undefined} loading={nodes.isFetching} onRetry={() => void nodes.refetch()} />
-        {!nodes.isError && nodes.data ? <div className="overview-node-list">{nodes.data.data.length ? nodes.data.data.slice(0, 5).map(node => <Link to={'/server/node/' + node.id} className="overview-node" key={node.id}>
+        {!nodes.isError && nodes.data ? <div className="overview-node-list">{trafficNodes.length ? trafficNodes.map(node => <Link to={'/server/node/' + node.id} className="overview-node" key={node.id}>
           <span className="overview-node-icon"><Server size={18} /></span><span className="native-row-identity"><strong>{node.name}</strong><small>{node.type.toUpperCase()} · {node.host}</small></span><span className={'reference-status ' + (node.enabled ? 'is-success' : '')}>{node.enabled ? '已启用' : '已禁用'}</span>
         </Link>) : <p className="reference-secondary">暂无节点</p>}</div> : null}
       </section>

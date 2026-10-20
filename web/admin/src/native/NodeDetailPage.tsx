@@ -1,4 +1,4 @@
-import { RefreshCw, Network, Power, Link2, Copy, RefreshCcw, Trash2, Eye, EyeOff, PowerOff } from 'lucide-react'
+import { RefreshCw, Network, Power, Link2, Copy, RefreshCcw, Trash2, Eye, EyeOff, PowerOff, Activity } from 'lucide-react'
 import './network-reference.css'
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
@@ -14,14 +14,24 @@ import { DangerZone } from '../components/ui/DangerZone'
 import { StatusBadge } from '../components/ui/StatusBadge'
 import { Popover } from '../components/ui/Popover'
 import { Field, Input } from '../components/ui/Field'
+import { SegmentedControl } from '../components/ui/SegmentedControl'
+import { LineChart } from '../components/charts/ReferenceCharts'
+import { nodeTrafficHistory, type OverviewRange } from './overviewCharts'
+
+const trafficRanges = ([7, 14, 30] as const).map(value => ({ value, label: value + ' 天' }))
 
 export function NodeDetailPage() {
   const { nodeId = '' } = useParams(), navigate = useNavigate()
   const [machine, setMachine] = useState('')
+  const [trafficRange, setTrafficRange] = useState<OverviewRange>(14)
   const query = useQuery({ queryKey: ['native-admin', 'node-detail', nodeId],
     queryFn: ({ signal }) => admin.read('network.nodes.get', { node_id: nodeId }, signal), enabled: !!nodeId })
   const management = useNetworkManagement('network.nodes.', [query.error], () => query.refetch({ throwOnError: true }))
   const node = !management.denied && !query.isError ? query.data?.data : undefined
+  const history = useQuery({ queryKey: ['native-admin', 'node-traffic', nodeId, trafficRange],
+    queryFn: ({ signal }) => admin.read('network.nodes.traffic-history.get', { days: trafficRange, node_ids: [nodeId] }, signal),
+    enabled: !!node && !management.denied })
+  const traffic = nodeTrafficHistory(history.isError || management.denied ? undefined : history.data?.data)
   useEffect(() => { setMachine(node?.machine_id ?? '') }, [node])
   const locked = !node || query.isFetching || management.state.busy || !!management.state.pending
   async function command(kind: 'show' | 'enabled' | 'machine' | 'copy' | 'delete' | 'reset') {
@@ -52,6 +62,13 @@ export function NodeDetailPage() {
           ['分组', node.group_ids.join(', ') || '无'], ['路由', node.route_ids.join(', ') || '无'], ['标签', node.tags.join(', ') || '无'],
           ['创建时间', formatTimestamp(node.created_at)], ['更新时间', formatTimestamp(node.updated_at)],
         ]} />
+      </DetailSection>
+      <DetailSection label="节点流量" title="节点总流量" icon={<Activity size={17} />} className="network-settings-card"
+        actions={<SegmentedControl label="节点流量时间范围" value={trafficRange} options={trafficRanges} onChange={setTrafficRange} />}>
+        <ManagementFeedback error={history.isError ? history.error : undefined} loading={history.isFetching} onRetry={() => void history.refetch()} />
+        {!history.isError && history.data ? <LineChart title="节点总流量" labels={traffic.labels} series={traffic.series}
+          xAxisLabel="日期（UTC）" yAxisWidth={92} formatValue={traffic.formatValue} emptyText="暂无节点流量数据" /> : null}
+        <p className="network-help">每日原始上传与下载之和 · 按已结算批次结束日期（UTC）汇总 · 1 GB = 10⁹ 字节</p>
       </DetailSection>
       <DetailSection label="节点操作" title="节点操作" icon={<Power size={17} />} className="network-settings-card"
         description="重置节点计数只影响节点统计 · 用户订阅额度请使用流量重置入口"

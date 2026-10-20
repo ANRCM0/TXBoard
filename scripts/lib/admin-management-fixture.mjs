@@ -6,7 +6,7 @@ import { catalogNetworkFixture } from './admin-catalog-network-fixture.mjs'
 const requestId = '12345678-1234-4234-8234-123456789abc'
 const stamp = 1792368000
 const metadata = JSON.parse(await readFile(new URL('../../contracts/core-api/admin-settings.v1.json', import.meta.url), 'utf8'))
-const managed = /^(?:audit\.logs\.|platform\.(?:modules\.|queue\.)|settings\.configuration\.|notifications\.mail-templates\.|billing\.admin-payment-|network\.(?:nodes\.get$|nodes\.batch-[a-z-]+$|machines\.)|identity\.accounts\.get$|identity\.accounts\.status\.update$|subscription\.lifecycle\.reset$)/
+const managed = /^(?:audit\.logs\.|platform\.(?:modules\.|queue\.)|settings\.configuration\.|notifications\.mail-templates\.|billing\.admin-payment-|network\.(?:nodes\.get$|nodes\.traffic-history\.get$|nodes\.batch-[a-z-]+$|machines\.)|identity\.accounts\.get$|identity\.accounts\.status\.update$|subscription\.lifecycle\.reset$|commerce\.admin-orders\.list$)/
 
 /** Built admin UI with schema-checked synthetic browser ingress; no live Core acceptance is implied. */
 export async function managementFixture(browser, viewport) {
@@ -34,6 +34,10 @@ export async function managementFixture(browser, viewport) {
     remaining_bytes: '1073741701', upload_bytes: '100', download_bytes: '23' }
   const payment = { id: '91', name: 'Observed payment', provider: 'fixturepay', icon: null, enabled: true,
     available: true, version: 'b'.repeat(64), sort: 0, fee_fixed_minor: '0', fee_percent: '0' }
+  const userOrder = { id: '103', trade_no: 'USER-ORDER-A', plan_id: state.planId, period: 'monthly', type: 1,
+    status: 3, amount_minor: '2900', plan: { id: state.planId, name: 'Observed plan' },
+    paid_at: '2026-10-19T00:00:00Z', created_at: '2026-10-19T00:00:00Z', user_id: '12', currency: 'CNY',
+    purchase_terms_version: 'tx-core.purchase-terms/v2' }
   const failure = { id: '101', connection: 'redis', queue: 'default', job: 'ObservedJob', failed_at: '2026-10-19T00:00:00Z' }
   Object.assign(state, { denied: new Set(), settings, modules, machine, detailNode: node, subscription, payment,
     originalSettingsVersion: settings.version, originalPaymentVersion: payment.version, originalSubscriptionVersion: subscription.subscription_version })
@@ -95,6 +99,16 @@ export async function managementFixture(browser, viewport) {
         return send({ id: payment.id })
       }
       if (operation === 'network.nodes.get') { assert.equal(input.node_id, node.id); return send(node) }
+      if (operation === 'network.nodes.traffic-history.get') {
+        assert.deepEqual(input.node_ids, [node.id])
+        const now = Math.floor(Date.now() / 1000), today = new Date(now * 1000)
+        const start = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()) / 1000 - (input.days - 1) * 86400
+        return send({ time_zone: 'UTC', basis: 'settled-raw-usage/v1', bucket: 'day', starts_at: start, ends_at: now,
+          nodes: [{ id: node.id, name: node.name, points: Array.from({ length: input.days }, (_, day) => ({
+            date: new Date((start + day * 86400) * 1000).toISOString().slice(0, 10),
+            total_bytes: String(BigInt(day + 1) * 1000000000n),
+          })) }] })
+      }
       if (operation === 'network.nodes.batch-update') {
         assert.ok(input.ids.includes(node.id))
         if (input.enabled !== undefined) node.enabled = input.enabled
@@ -126,6 +140,10 @@ export async function managementFixture(browser, viewport) {
         assert.equal(input.expected_banned, accountBanned)
         accountBanned = input.banned
         return send({ id: subscription.user_id, banned: accountBanned })
+      }
+      if (operation === 'commerce.admin-orders.list') {
+        assert.equal(input.user_id, subscription.user_id)
+        return send([userOrder], { page: input.page ?? 1, per_page: input.per_page ?? 5, total: 1, last_page: 1 })
       }
       if (operation === 'subscription.lifecycle.reset') {
         assert.equal(input.subscription_id, subscription.subscription_id)

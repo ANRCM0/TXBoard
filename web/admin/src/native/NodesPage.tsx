@@ -7,6 +7,7 @@ import { useQuery } from '@tanstack/react-query'
 import { dash } from './Inventory'
 import { ReadList } from './ReadList'
 import { PageHeader } from '../components/ui/PageHeader'
+import { ManagementFeedback } from './Feedback'
 import { NetworkRecovery, useNetworkManagement } from './NetworkManagement'
 import type { Column } from '../components/ui/DataTable'
 import { StatusBadge } from '../components/ui/StatusBadge'
@@ -16,7 +17,6 @@ import { Modal } from '../components/ui/Modal'
 import { Field, Input, Select } from '../components/ui/Field'
 import { requestConfirm } from '../components/ui/ConfirmDialog'
 import { admin, workflowActions } from './session'
-import { validId } from './readPresentation'
 
 type Node = CoreOutput<'network.nodes.list'>[number]
 const columns: Column<Node>[] = [
@@ -38,10 +38,13 @@ export function NodesPage() {
   const query = useQuery({ queryKey: ['native-admin', 'network.nodes.list', page],
     queryFn: ({ signal }) => admin.read('network.nodes.list', { page, per_page: 20 }, signal) })
   const management = useNetworkManagement('network.nodes.', [query.error], () => query.refetch({ throwOnError: true }))
+  const machines = useQuery({ queryKey: ['native-admin', 'node-binding-machines'], enabled: bindingOpen,
+    queryFn: ({ signal }) => admin.read('network.machines.list', { page: 1, per_page: 100 }, signal) })
   const rows = management.denied || query.isError ? [] : (query.data?.data ?? []).filter(node =>
     (!status || String(node.enabled) === status)
     && [node.id, node.name, node.type, node.host, node.machine_id].some(value => String(value ?? '').toLowerCase().includes(search.trim().toLowerCase())))
   const selectedRows = rows.filter(node => selected.has(node.id))
+  const mixedMachines = selectedRows.length > 1 && new Set(selectedRows.map(node => node.machine_id)).size > 1
   const locked = management.denied || query.isFetching || query.isError || !query.data
     || management.state.busy || !!management.state.pending
   const applied = [
@@ -90,15 +93,19 @@ export function NodesPage() {
       action: () => { void management.perform(() => workflowActions.run('network.nodes.batch-traffic-reset', { ids }), () => setSelected(new Set())) },
     })
   }
+  function openBinding() {
+    const ids = new Set(selectedRows.map(node => node.machine_id))
+    setMachineId(ids.size === 1 ? [...ids][0] ?? '' : '')
+    setBindingError('')
+    setBindingOpen(true)
+  }
   async function bindMachine(event: FormEvent) {
     event.preventDefault()
     const ids = selectedIds()
     if (!ids.length || locked) return
-    const value = machineId.trim()
-    if (value && !validId(value)) { setBindingError('请输入有效的服务器 ID'); return }
     setBindingError('')
     await management.perform(async () => {
-      await workflowActions.run('network.nodes.batch-update', { ids, machine_id: value || null })
+      await workflowActions.run('network.nodes.batch-update', { ids, machine_id: machineId || null })
     }, () => { setSelected(new Set()); setBindingOpen(false); setMachineId('') })
   }
 
@@ -120,7 +127,7 @@ export function NodesPage() {
         <button type="button" className="button" disabled={locked} onClick={() => void batchUpdate({ enabled: true })}><Power size={14} aria-hidden="true" />批量启用</button>
         <button type="button" className="button" disabled={locked} onClick={() => void batchUpdate({ enabled: false })}><PowerOff size={14} aria-hidden="true" />批量禁用</button>
         <button type="button" className="button" disabled={locked} onClick={() => void batchUpdate({ show: false })}><EyeOff size={14} aria-hidden="true" />批量隐藏</button>
-        <button type="button" className="button" disabled={locked} onClick={() => { setBindingError(''); setBindingOpen(true) }}><Link2 size={14} aria-hidden="true" />绑定服务器</button>
+        <button type="button" className="button" disabled={locked} onClick={openBinding}><Link2 size={14} aria-hidden="true" />绑定服务器</button>
         <button type="button" className="button" disabled={locked} onClick={confirmBatchReset}><RefreshCcw size={14} aria-hidden="true" />重置计数</button>
         <button type="button" className="button danger" disabled={locked} onClick={confirmBatchDelete}><Trash2 size={14} aria-hidden="true" />批量删除</button>
       </BulkActionBar>
@@ -128,8 +135,16 @@ export function NodesPage() {
     <Modal open={bindingOpen && !management.denied} title="批量绑定服务器" subtitle={`作用于当前页选中的 ${selectedRows.length} 个节点`}
       onClose={() => { if (!management.state.busy) { setBindingOpen(false); setBindingError('') } }}>
       <form className="native-content-form" onSubmit={event => void bindMachine(event)}>
-        <Field label="服务器 ID" hint="留空解除绑定 · 只更新选中节点的服务器归属" error={bindingError || management.error}>
-          <Input data-autofocus placeholder="输入服务器 ID，留空解除绑定" value={machineId} disabled={management.state.busy} onChange={event => setMachineId(event.target.value)} />
+        <ManagementFeedback error={machines.isError ? machines.error : undefined} loading={machines.isFetching} onRetry={() => void machines.refetch()} />
+        <Field label="服务器" error={bindingError || management.error}
+          hint={mixedMachines ? '选中节点归属不一致 · 保存会统一绑定到所选服务器' : '留空解除绑定 · 只更新选中节点的服务器归属'}>
+          <Select data-autofocus value={machineId} disabled={management.state.busy || machines.isFetching}
+            onChange={event => setMachineId(event.target.value)}>
+            <option value="">不绑定 / 解除绑定</option>
+            {machineId && !machines.data?.data.some(machine => machine.id === machineId)
+              ? <option value={machineId}>当前服务器 #{machineId}</option> : null}
+            {machines.data?.data.map(machine => <option key={machine.id} value={machine.id}>{machine.name} · #{machine.id}</option>)}
+          </Select>
         </Field>
         <div className="network-form-actions">
           <button className="button primary" disabled={management.state.busy || !selectedRows.length}>保存服务器归属</button>

@@ -1,20 +1,23 @@
 import { useQuery } from '@tanstack/react-query'
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useState, useSyncExternalStore, type FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { RefreshCw, Search } from 'lucide-react'
+import { toast } from 'sonner'
 import type { CoreOutput } from '@txboard/core-sdk'
-import { admin } from '../../native/session'
+import { admin, workflowActions } from '../../native/session'
+import { managementError } from '../../native/Feedback'
 import { ReadList } from '../../native/ReadList'
 import { readPage, unixDate } from '../../native/readPresentation'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { FilterBar } from '../../components/ui/FilterBar'
 import { Input, Select } from '../../components/ui/Field'
 import { StatusBadge } from '../../components/ui/StatusBadge'
+import { requestConfirm } from '../../components/ui/ConfirmDialog'
 import type { Column } from '../../components/ui/DataTable'
 import './UsersPage.css'
 
 type Account = CoreOutput<'identity.accounts.list'>[number]
-const columns: Column<Account>[] = [
+const baseColumns: Column<Account>[] = [
   { key: 'email', header: '用户', render: row => <div className="reference-account"><span className="reference-account-avatar" aria-hidden="true">{row.email.slice(0, 1).toUpperCase()}</span><Link className="table-link" to={'/user/' + row.id}>{row.email}</Link></div> },
   { key: 'id', header: '用户 ID', render: row => <code className="reference-user-id">{row.id}</code> },
   { key: 'state', header: '状态', render: row => <StatusBadge tone={row.banned ? 'danger' : 'success'}>{row.banned ? '已封禁' : '正常'}</StatusBadge> },
@@ -23,6 +26,7 @@ const columns: Column<Account>[] = [
   { key: 'login', header: '最近登录', render: row => unixDate(row.last_login_at) },
 ]
 export function UsersPage() {
+  const state = useSyncExternalStore(workflowActions.subscribe, workflowActions.snapshot)
   const [params, setParams] = useSearchParams()
   const page = readPage(params.get('page'))
   const appliedEmail = params.get('email') ?? ''
@@ -36,6 +40,39 @@ export function UsersPage() {
   const query = useQuery({ queryKey: ['native-admin', 'accounts', input], enabled: valid,
     queryFn: ({ signal }) => admin.read('identity.accounts.list', input, signal) })
   const data = query.isError ? undefined : query.data
+  const locked = state.busy || !!state.pending || !valid || query.isFetching || query.isError || !query.data
+  async function runStatus(row: Account) {
+    const nextBanned = !row.banned, generation = workflowActions.generation()
+    try {
+      await workflowActions.run('identity.accounts.status.update', {
+        user_id: row.id, expected_banned: row.banned, banned: nextBanned,
+      })
+      if (workflowActions.generation() !== generation) return
+      toast.success(nextBanned ? '用户已封禁' : '用户已解除封禁')
+    } catch (error) {
+      if (workflowActions.generation() !== generation) return
+      toast.error(managementError(error))
+    } finally {
+      if (workflowActions.generation() === generation) await query.refetch()
+    }
+  }
+  function confirmStatus(row: Account) {
+    if (locked) return
+    const nextBanned = !row.banned
+    requestConfirm({
+      title: nextBanned ? '封禁用户' : '解除封禁',
+      message: nextBanned ? `封禁 ${row.email} 后，该账号将无法继续使用站点服务` : `解除 ${row.email} 的封禁状态？`,
+      confirmLabel: nextBanned ? '封禁用户' : '解除封禁',
+      danger: nextBanned,
+      action: () => { void runStatus(row) },
+    })
+  }
+  const columns: Column<Account>[] = [...baseColumns, {
+    key: 'actions', header: '操作', render: row => <button type="button"
+      className={'button ' + (row.banned ? '' : 'danger')} disabled={locked}
+      aria-label={(row.banned ? '解封 ' : '封禁 ') + row.email}
+      onClick={() => confirmStatus(row)}>{row.banned ? '解封' : '封禁'}</button>,
+  }]
   function apply(event: FormEvent) {
     event.preventDefault()
     setParams({ ...(email.trim() ? { email: email.trim() } : {}), ...(banned !== '' ? { banned } : {}) })

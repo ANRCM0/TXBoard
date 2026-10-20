@@ -67,9 +67,16 @@ declare their read-only boundary before exposing runtime state.
 Node management adds current-page selection with explicit bulk enable, disable,
 hide, machine binding, counter reset and delete actions. All bulk writes reuse
 the workflow recovery path and are limited to the selected current-page rows.
-User detail adds a subscription quota bar and a version-checked ban/unban action;
-the raw byte values remain visible for exact verification. Observation pages
-state their read-only boundary and do not expose installation, retry or cleanup
+Batch machine binding selects from the current machine list instead of accepting
+a free-form identifier. Node detail reuses the bounded traffic-history read for
+its own 7/14/30-day chart.
+
+The overview ranks its current node sample by exact cumulative upload plus
+download bytes and charts the top five, instead of using list order. User detail
+adds a subscription quota bar, recent orders from the native order list, and a
+version-checked ban/unban action; the user list exposes the same status action.
+Raw byte values remain visible for exact verification. Observation pages state
+their read-only boundary and do not expose installation, retry or cleanup
 actions that Core does not own.
 
 The dashboard reads the latest 100 native orders and the first five nodes in

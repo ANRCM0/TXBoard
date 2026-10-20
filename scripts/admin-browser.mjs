@@ -137,8 +137,8 @@ async function fixture(viewport) {
     }
     if (operation === 'network.nodes.list') {
       if (state.nodesStatus !== 200) return fail(state.nodesStatus)
-      if (input.per_page === 5) return checkedSend(overviewNodes,
-        { page: input.page, per_page: 5, total: 21, last_page: 5 })
+      if (input.per_page === 100) return checkedSend(overviewNodes,
+        { page: input.page, per_page: 100, total: 21, last_page: 5 })
       return send([{ ...node, name: input.page === 2 ? 'Osaka-B' : 'Tokyo-A' }],
         { page: input.page, per_page: 20, total: 21, last_page: 2 })
     }
@@ -323,6 +323,7 @@ try {
   await page.getByRole('link', { name: account.email, exact: true }).click()
   await page.locator('.native-management-page .page-header').getByRole('heading', { name: '用户详情', exact: true }).waitFor()
   await page.getByRole('region', { name: '当前订阅', exact: true }).getByText('当前没有可用订阅。', { exact: true }).waitFor()
+  await page.getByRole('region', { name: '最近订单', exact: true }).getByRole('link', { name: 'ORDER-A', exact: true }).waitFor()
   assert.match(await page.locator('section[aria-label="账户信息"]').innerText(), new RegExp(account.id))
   assert.doesNotMatch(await page.locator('section[aria-label="账户信息"]').innerText(), /余额|佣金|密码/)
   await page.getByRole('link', { name: '查看该用户订单', exact: true }).click()
