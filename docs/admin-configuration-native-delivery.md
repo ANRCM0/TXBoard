@@ -1,11 +1,11 @@
 # Native Configuration And Support Delivery
 
-Status date: 2026-10-21. These are working-tree changes and local checks. No commit, exact-head hosted CI, merge, release or production acceptance is claimed.
+Status date: 2026-10-21. Implementation is committed in the paired TXBoard #290 and TXnode #4 draft pull requests. Unified Actions results and candidate revisions are tracked in [the repair ledger](admin-native-repair-progress.md). Merge, release and production deployment remain separate steps.
 
 ## Configuration
 
 - Security settings show the selected captcha provider only. Switching providers keeps the local draft, while a save submits only visible changed values. Omitted and blank credential fields preserve existing stored credentials. Dirty cancellation and browser unload warn before discarding settings.
-- Settings use responsive horizontal rows and business labels for the existing numeric traffic-reset and order-event values. The Core wire values, publication rules and financial behavior are unchanged.
+- Settings stack labels, explanations and controls vertically, with responsive spacing and business labels for the existing numeric traffic-reset and order-event values. The Core wire values, publication rules and financial behavior are unchanged.
 - Mail variables describe their meaning and provide clearly marked example values. Variables insert into the last focused subject or body selection, with the existing length limits. The optional sample preview changes only the preview. Actual source tokens remain unchanged. HTML stays in an iframe with an empty sandbox and restrictive CSP; remote resources and scripts receive no permissions.
 - Telegram configuration now has separate status inspection and confirmed Webhook registration operations. Both use the saved configuration version. Credentials are read only on Core, the callback comes from the saved HTTPS base address or site address, and no browser request carries the raw token. Saving an address alone never claims registration.
 - Telegram status reports registration, agreement with saved configuration, queued updates and presence of a reported delivery error. Neither the callback URL nor upstream error text is returned. Registration confirms only Telegram's positive `setWebhook` result; it does not claim bot-command installation or successful delivery.
@@ -21,8 +21,8 @@ Status date: 2026-10-21. These are working-tree changes and local checks. No com
 
 ## Native Owner Boundaries
 
-- The later full-template implementation adds a persisted version owner, signed template/client/digest bindings and matching Node validation and consumption. Eight format identifiers preserve the original native clients and add the reference Stash/Surfboard clients. Unsupported Node capabilities reject custom templates explicitly. The editor loads local Monaco assets; actual client imports and the complete paired Core/Node chain still require Actions acceptance.
-- The retired site-wide appearance keys remain rejected. The existing per-theme configuration/runtime is the real appearance owner; a local administrator light/dark preference does not replace site theme configuration.
+- The full-template implementation adds a persisted version owner, signed template/client/digest bindings and matching Node validation and consumption. Eight format identifiers preserve the original native clients and add the reference Stash/Surfboard clients. Unsupported Node capabilities reject custom templates explicitly. The editor loads local Monaco assets. Node output and the paired Core/Node chain are covered separately from synthetic editor fixtures; neither proves compatibility with every third-party client release.
+- Administrator appearance persists through the approved settings owner and is consumed by the management shell. User-site theme configuration remains owned by the existing per-theme runtime. Local administrator light/dark preferences, shared administrator appearance and user-site theme configuration have separate consumers.
 - Payment fee semantics and a global node token bypass are outside this slice and remain unchanged.
 
 ## Historical Local Diagnostics

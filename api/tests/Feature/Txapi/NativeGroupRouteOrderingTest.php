@@ -15,8 +15,8 @@ final class NativeGroupRouteOrderingTest extends NativeRuntimeTestCase
     public function test_complete_route_order_rejects_changed_revisions_subsets_and_duplicate_ids_and_replays_original_key(): void
     {
         [$invoke] = $this->client();
-        // Retain exact string IDs within the production unsigned INT schema on MySQL.
-        $big = DB::connection()->getDriverName() === 'mysql' ? '4000000001' : '9007199254740993';
+        // Retain exact string IDs within the production signed INT schema on MySQL.
+        $big = DB::connection()->getDriverName() === 'mysql' ? '2000000001' : '9007199254740993';
         foreach ([['2', 20], [$big, 10]] as [$id, $sort]) {
             DB::table('tx_server_route')->insert(['id' => $id, 'remarks' => 'Route '.$id, 'match' => '["example.test"]',
                 'action' => 'direct', 'enabled' => true, 'sort' => $sort, 'created_at' => time(), 'updated_at' => time()]);

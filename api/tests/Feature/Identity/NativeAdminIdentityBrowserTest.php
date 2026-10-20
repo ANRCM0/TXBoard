@@ -20,8 +20,8 @@ final class NativeAdminIdentityBrowserTest extends NativeRuntimeTestCase
         foreach (['identity.accounts.manage', 'identity.accounts.read'] as $permission) DB::table('tx_internal_actor_grant')->insert([
             'user_id' => $actor->id, 'permission' => $permission, 'created_at' => time(),
         ]);
-        // MySQL uses production unsigned INT IDs; SQLite also exercises values above the JS safe range.
-        $targetId = DB::connection()->getDriverName() === 'mysql' ? '4000000001' : '9007199254740993';
+        // MySQL uses production signed INT IDs; SQLite also exercises values above the JS safe range.
+        $targetId = DB::connection()->getDriverName() === 'mysql' ? '2000000001' : '9007199254740993';
         [, $target] = app(NativeIdentityService::class)->create('exact-target@example.test', 'original-login-password');
         DB::table('tx_user')->where('id', $target->id)->update(['id' => $targetId]);
         $target = User::findOrFail($targetId); $target->createToken('old-target-session');
