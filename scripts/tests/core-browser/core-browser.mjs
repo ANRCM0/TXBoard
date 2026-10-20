@@ -105,7 +105,8 @@ try {
   const paid = await client.call('commerce.orders.checkout', { trade_no: freeOrder.trade_no }, { idempotencyKey: freeKey })
   assert.equal(paid.type, -1); assert.equal(paid.data, true)
   assert.deepEqual(await client.call('commerce.orders.checkout', { trade_no: freeOrder.trade_no }, { idempotencyKey: freeKey }), paid); checks++
-  checks += await verifyRendererDelivery(client, other, { root, scratch, actorId: actor.id, token, servers })
+  const renderer = await verifyRendererDelivery(client, other, { root, scratch, actorId: actor.id, token, servers })
+  checks += renderer.checks
   const support = await createSupportTicket(client, other)
   checks += support.checks
   const provision = spawnSync('php', ['scripts/tests/core-browser/core-fixture.php', root, 'browser-admin'], { encoding: 'utf8' })
@@ -206,7 +207,8 @@ try {
     browserSdk: true, originalKeyReplay: true, lostResponseRecovery: true, ownerIsolation: true,
     sessionEnd: true, internalServiceMtls: 'separate retained API acceptance', adminChannel: true,
     adminOrderCloseRecovery: true, adminOrderAudit: true, currentOrderGrantReplay: true, orderPaymentDiscovery: true,
-    rendererFormats: 6, rendererSdkProviderWire: true, rendererCliFiles: true, rendererLiveRevocation: true,
+    rendererFormats: renderer.formats.length, rendererFormatIds: renderer.formats,
+    rendererSdkProviderWire: true, rendererCliFiles: true, rendererLiveRevocation: true,
     financialWorkflows: true, couponPurchaseBinding: true, giftBatchRecovery: true, reviewedCommissionPayout: true,
     adminAccountMutation: true, adminContentCrud: true, adminWriteKeyReplay: true, actorGrantRevocation: true, adminPathRotation: true }))
 } finally {

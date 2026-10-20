@@ -34,8 +34,7 @@ final class NativeSubscriptionDeliveryTest extends NativeSubscriptionTestCase
             $table->bigIncrements('id');
             $table->string('name')->unique();
             $table->text('value')->nullable();
-            $table->unsignedBigInteger('created_at')->nullable();
-            $table->unsignedBigInteger('updated_at')->nullable();
+            $table->timestamps();
         });
         foreach (['2026_10_16_000001_enable_native_credential_provider.php',
             '2026_10_16_000002_enable_native_credential_rotation.php'] as $migration) {

@@ -128,7 +128,8 @@ try {
   await open(desktop, '/config/system/safe')
   await page.getByRole('button', { name: '开始编辑', exact: true }).click()
   assert.equal(await page.locator('#configuration-captcha_type').count(), 0)
-  await page.locator('#configuration-captcha_enable').check()
+  await page.locator('.ui-switch').filter({ has: page.locator('#configuration-captcha_enable') }).click()
+  assert.equal(await page.locator('#configuration-captcha_enable').isChecked(), true)
   for (const [provider, secret] of [['recaptcha', 'recaptcha_key'], ['recaptcha-v3', 'recaptcha_v3_secret_key'], ['turnstile', 'turnstile_secret_key']]) {
     await page.locator('#configuration-captcha_type').selectOption(provider)
     assert.equal(await page.locator('#configuration-' + secret).inputValue(), '')

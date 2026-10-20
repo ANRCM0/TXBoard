@@ -168,5 +168,5 @@ export async function verifyRendererDelivery(client, other, { root, scratch, act
   const revoked = await wire('POST', lastRequest)
   assert.ok([403, 409].includes(revoked.status)); assert.ok(!revoked.body.toString().includes(native.connections[0].uuid)); checks++
   await assert.rejects(client.call('subscription.deliveries.authorize', input), e => e.status === 409); checks++
-  return checks
+  return { checks, formats: formats.map(([format]) => format) }
 }

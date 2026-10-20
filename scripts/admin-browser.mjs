@@ -400,6 +400,12 @@ try {
   assert.equal(state.operations.slice(operationsBeforeModules).some(operation => coreOperations[operation].idempotency !== 'read'), false)
   passed('active plugin inventory shows its empty state without lifecycle writes or old HTTP routes')
   state.logoutFailure = true
+  assert.ok(await page.locator('.admin-sidebar-footer').evaluate(footer =>
+    [...footer.querySelectorAll('button, select')].every(control => {
+      const bounds = control.getBoundingClientRect()
+      const target = document.elementFromPoint(bounds.left + bounds.width / 2, bounds.top + bounds.height / 2)
+      return bounds.width > 0 && bounds.height > 0 && target !== null && control.contains(target)
+    })), 'every sidebar footer control must receive a normal pointer at its center')
   await page.getByRole('button', { name: '账户菜单', exact: true }).click()
   await page.getByRole('button', { name: '退出登录', exact: true }).click()
   await page.getByRole('heading', { name: '管理员登录' }).waitFor()

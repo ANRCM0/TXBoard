@@ -20,22 +20,23 @@ final class NativeAdminIdentityBrowserTest extends NativeRuntimeTestCase
         foreach (['identity.accounts.manage', 'identity.accounts.read'] as $permission) DB::table('tx_internal_actor_grant')->insert([
             'user_id' => $actor->id, 'permission' => $permission, 'created_at' => time(),
         ]);
-        // A large target ID verifies the entire real browser projection, not only a mock fixture.
+        // MySQL uses production unsigned INT IDs; SQLite also exercises values above the JS safe range.
+        $targetId = DB::connection()->getDriverName() === 'mysql' ? '4000000001' : '9007199254740993';
         [, $target] = app(NativeIdentityService::class)->create('exact-target@example.test', 'original-login-password');
-        DB::table('tx_user')->where('id', $target->id)->update(['id' => 9007199254740993]);
-        $target = User::findOrFail(9007199254740993); $target->createToken('old-target-session');
+        DB::table('tx_user')->where('id', $target->id)->update(['id' => $targetId]);
+        $target = User::findOrFail($targetId); $target->createToken('old-target-session');
         $headers = ['Authorization' => 'Bearer '.$actor->createToken('browser', ['*'])->plainTextToken,
             'X-Core-Admin-Path' => 'native_identity', 'Origin' => 'https://core.example.test'];
         $invoke = fn (string $operation, array $input, ?string $key = null) => $this->postJson(
             'https://core.example.test/gateway/v1/core/admin/operations/'.$operation,
             ['input' => $input === [] ? (object) [] : $input], $headers + ($key ? ['Idempotency-Key' => $key] : []));
-        $detail = $invoke('identity.accounts.get', ['user_id' => '9007199254740993'])->assertOk()->assertJsonPath('data.id', '9007199254740993')
+        $detail = $invoke('identity.accounts.get', ['user_id' => $targetId])->assertOk()->assertJsonPath('data.id', $targetId)
             ->assertJsonPath('data.credential_status', 'provider_managed')->assertJsonMissingPath('data.password');
         $profileKey = (string) Str::uuid();
-        $profileInput = ['user_id' => '9007199254740993', 'expected_revision' => $detail->json('data.identity_revision'),
+        $profileInput = ['user_id' => $targetId, 'expected_revision' => $detail->json('data.identity_revision'),
             'email' => 'edited-target@example.test', 'password' => 'private-profile-password'];
         $first = $invoke('identity.accounts.profile.update', $profileInput, $profileKey)->assertOk()
-            ->assertJsonPath('data.id', '9007199254740993')->assertJsonPath('data.sessions_revoked', 1);
+            ->assertJsonPath('data.id', $targetId)->assertJsonPath('data.sessions_revoked', 1);
         $this->assertNotSame(\App\Domains\Billing\OrderIdempotency::requestHash($profileInput),
             DB::table('tx_internal_request')->where('operation', 'identity.accounts.profile.update')->value('input_hash'));
         $invoke('identity.accounts.profile.update', $profileInput, $profileKey)->assertOk()->assertJsonPath('data', $first->json('data'));
@@ -46,12 +47,12 @@ final class NativeAdminIdentityBrowserTest extends NativeRuntimeTestCase
         $this->assertSame(0, $target->tokens()->count());
         $this->assertTrue(password_verify('private-profile-password', $target->fresh()->getRawOriginal('password')));
         $notesKey = (string) Str::uuid();
-        $noteInput = ['user_id' => '9007199254740993', 'expected_revision' => $detail->json('data.metadata_revision'), 'remarks' => 'Account support note'];
+        $noteInput = ['user_id' => $targetId, 'expected_revision' => $detail->json('data.metadata_revision'), 'remarks' => 'Account support note'];
         $note = $invoke('identity.accounts.metadata.update', $noteInput, $notesKey)->assertOk()->assertJsonPath('data.remarks', 'Account support note');
         DB::table('tx_internal_request')->where('operation', 'identity.accounts.metadata.update')->delete();
         $invoke('identity.accounts.metadata.update', $noteInput, $notesKey)->assertOk()->assertJsonPath('data', $note->json('data'));
         $invoke('identity.accounts.metadata.update', $noteInput, (string) Str::uuid())->assertStatus(409);
-        $invoke('identity.accounts.get', ['user_id' => '9007199254740993'])->assertOk()->assertJsonPath('data.remarks', 'Account support note')->assertJsonPath('data.referral', null);
+        $invoke('identity.accounts.get', ['user_id' => $targetId])->assertOk()->assertJsonPath('data.remarks', 'Account support note')->assertJsonPath('data.referral', null);
         $batchKey = (string) Str::uuid();
         $batch = ['accounts' => [['email' => 'browser-batch@example.test', 'password' => 'private-batch-password']]];
         $created = $invoke('identity.accounts.batch-create', $batch, $batchKey)->assertOk()->assertJsonPath('data.created_count', 1);
@@ -68,7 +69,7 @@ final class NativeAdminIdentityBrowserTest extends NativeRuntimeTestCase
             $this->assertStringNotContainsString($secret, $audit); $this->assertStringNotContainsString($secret, $receipts);
         }
         DB::table('tx_internal_actor_grant')->where('user_id', $actor->id)->delete();
-        $invoke('identity.accounts.get', ['user_id' => '9007199254740993'])->assertForbidden();
+        $invoke('identity.accounts.get', ['user_id' => $targetId])->assertForbidden();
         $invoke('identity.accounts.profile.update', $profileInput, $profileKey)->assertForbidden();
         $invoke('identity.accounts.batch-create', $batch, $batchKey)->assertForbidden();
         $invoke('identity.accounts.metadata.update', $noteInput, $notesKey)->assertForbidden();

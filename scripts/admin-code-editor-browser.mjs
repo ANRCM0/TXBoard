@@ -86,7 +86,14 @@ try {
   assert.ok(blockedEditorRequests > 0, 'The browser actually refused a local editor chunk')
   await page.getByRole('button', { name: '使用纯文本编辑', exact: true }).click()
   await page.getByRole('textbox', { name: 'Clash 模板源码', exact: true }).fill('# draft survives failed local asset')
+  // Mode switching briefly retains the previous error before the new load effect runs.
+  const refusedBeforeModeSwitch = blockedEditorRequests
+  const refusedModeSwitch = page.waitForEvent('requestfailed', {
+    predicate: request => /\/editor-[^/]+\.js$/.test(new URL(request.url()).pathname)
+      && blockedEditorRequests > refusedBeforeModeSwitch,
+  })
   await page.getByRole('button', { name: '使用代码编辑器', exact: true }).click()
+  await refusedModeSwitch
   await page.getByText('本地编辑器加载失败，源码草稿已保留。', { exact: true }).waitFor()
   blockEditor = false
   await page.getByRole('button', { name: '重新加载编辑器', exact: true }).click()
