@@ -44,11 +44,16 @@ export function AdminLayout() {
     setAnnouncement('')
     let attempts = 0
     let timer = 0
+    let interacted = false
+    const preserveUserFocus = () => { interacted = true }
+    document.addEventListener('pointerdown', preserveUserFocus, true)
+    document.addEventListener('keydown', preserveUserFocus, true)
     const focusHeading = () => {
       const heading = document.querySelector<HTMLElement>('#admin-content h1')
       if (heading) {
         heading.tabIndex = -1
-        heading.focus({ preventScroll: true })
+        // A delayed route focus must not dismiss a menu the user has just opened.
+        if (!interacted) heading.focus({ preventScroll: true })
         setAnnouncement(t('已进入 {page}', { page: heading.textContent?.trim() || t('管理页面') }))
         return
       }
@@ -56,7 +61,11 @@ export function AdminLayout() {
       setAnnouncement(t('页面已更新'))
     }
     timer = window.setTimeout(focusHeading, 80)
-    return () => window.clearTimeout(timer)
+    return () => {
+      window.clearTimeout(timer)
+      document.removeEventListener('pointerdown', preserveUserFocus, true)
+      document.removeEventListener('keydown', preserveUserFocus, true)
+    }
   }, [pathname])
 
   useEffect(() => {

@@ -98,7 +98,9 @@ try {
   blockEditor = false
   await page.getByRole('button', { name: '重新加载编辑器', exact: true }).click()
   await page.locator('[data-editor-state="ready"]').waitFor({ timeout: 30000 })
-  assert.ok(await page.locator('.monaco-editor').innerText().then(text => text.includes('# draft survives failed local asset')))
+  // Monaco paints after creating its model and renders spaces as nonbreaking spaces.
+  await page.waitForFunction(() => document.querySelector('.monaco-editor .view-lines')?.textContent
+    .replace(/\u00a0/g, ' ').includes('# draft survives failed local asset'))
   checks.push('A blocked local editor chunk exposes retry; retry preserves the edited plaintext draft')
   await page.locator('.monaco-editor').click({ position: { x: 180, y: 20 } })
   await page.keyboard.press('Control+A'); await page.keyboard.insertText('# local editor draft')

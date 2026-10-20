@@ -238,7 +238,7 @@ input::placeholder,textarea::placeholder { color:var(--muted); opacity:.85; }
 .admin-auth-tools { display:flex; align-items:center; gap:8px; }
 /* Keep all five footer controls within the sidebar, including expanded navigation. */
 .admin-sidebar-footer .ui-language-selector { display:inline-flex; position:relative; flex:none; }
-.admin-shell.is-sidebar-collapsed .admin-sidebar-footer .ui-language-selector { display:inline-flex; }
+.admin-shell.is-sidebar-collapsed .admin-sidebar-footer .admin-sidebar-tools .ui-language-selector { display:inline-flex; }
 .admin-sidebar-footer .ui-language-selector select { width:32px; max-width:32px; min-width:32px; padding:0; color:transparent; cursor:pointer; }
 .admin-sidebar-footer .ui-language-selector option { color:var(--fg); }
 .admin-sidebar-footer .ui-language-selector svg { position:absolute; inset:8px; pointer-events:none; }

@@ -159,14 +159,28 @@ try {
   assert.deepEqual(appearanceSave.input, { expected_version: appearanceVersion, values: { admin_sidebar_style: 'contrast', admin_color_scheme: 'green' } })
   passed('persistent appearance saves only changed fields using the observed settings version')
 
-  await page.getByRole('combobox', { name: '语言', exact: true }).selectOption('en-US')
-  await page.waitForFunction(() => document.documentElement.lang === 'en-US')
-  assert.ok(!(await page.locator('.page-header').innerText()).includes('后台外观'))
-  await page.getByRole('combobox').filter({ has: page.locator('option[value="ru-RU"]') }).selectOption('ru-RU')
-  await page.waitForFunction(() => document.documentElement.lang === 'ru-RU')
-  assert.ok(!(await page.locator('.page-header').innerText()).includes('后台外观'))
-  await page.getByRole('combobox').filter({ has: page.locator('option[value="zh-CN"]') }).selectOption('zh-CN')
-  await page.getByRole('heading', { name: '后台外观', exact: true }).waitFor()
+  assert.equal(await page.locator('.admin-shell.is-sidebar-collapsed').count(), 1)
+  const languageTools = page.locator('.admin-sidebar-footer .ui-language-selector')
+  const language = languageTools.getByRole('combobox', { name: '语言', exact: true })
+  await language.waitFor({ state: 'visible' })
+  const languageURL = page.url(), writesBeforeLanguage = writes(state).length
+  for (const [from, locale, name, heading, sidebarLabel, accentLabel] of [
+    ['语言', 'en-US', 'Language', 'Admin Appearance', 'Sidebar Style', 'Accent Color'],
+    ['Language', 'ru-RU', 'Язык', 'Оформление панели', 'Стиль боковой панели', 'Акцентный цвет'],
+    ['Язык', 'zh-CN', '语言', '后台外观', '侧栏表面风格', '强调色'],
+  ]) {
+    await languageTools.getByRole('combobox', { name: from, exact: true }).selectOption(locale)
+    await page.waitForFunction(expected => document.documentElement.lang === expected, locale)
+    await page.locator('.native-management-page .page-header').getByRole('heading', { name: heading, exact: true }).waitFor()
+    const translatedLanguage = languageTools.getByRole('combobox', { name, exact: true })
+    await translatedLanguage.waitFor({ state: 'visible' })
+    assert.equal(await translatedLanguage.inputValue(), locale)
+    assert.equal(await page.getByLabel(sidebarLabel, { exact: true }).inputValue(), 'contrast')
+    assert.equal(await page.getByLabel(accentLabel, { exact: true }).inputValue(), 'green')
+    assert.equal(page.url(), languageURL)
+    assert.equal(writes(state).length, writesBeforeLanguage)
+    assert.equal(await page.locator('.admin-shell.is-sidebar-collapsed').count(), 1)
+  }
   passed('language switching translates the active page and shell without reloading or losing the selected settings')
 
   await open(desktop, '/config/payment')
