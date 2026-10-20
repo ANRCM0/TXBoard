@@ -1205,10 +1205,12 @@
       "handler",
       "App\\Domains\\InternalApi\\UsageReadOperations",
       "nodeTrafficHistory",
-      "",
-      [],
-      "",
-      null
+      "admin",
+      [
+        "admin"
+      ],
+      "read",
+      "network.nodes.read"
     ],
     "usage.mine.list": [
       "handler",
