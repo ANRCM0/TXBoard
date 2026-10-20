@@ -34,6 +34,7 @@ beforeEach(() => {
   vi.mocked(admin.read).mockReset().mockImplementation(async operation => {
     if (operation === 'commerce.admin-orders.list') return { data: [order], meta: { page: 1, per_page: 5, total: 1, last_page: 1 } } as never
     if (operation === 'identity.accounts.list') return { data: [user], meta: { page: 1, per_page: 20, total: 1, last_page: 1 } } as never
+    if (operation === 'subscription.admin.get') return { data: { user_id: user.id, lifecycle: null }, meta: {} } as never
     return { data: { ...user, subscription: { authorized: false, reason: 'ENTITLEMENT_MISSING' } }, meta: {} } as never
   })
   vi.mocked(admin.write).mockReset().mockResolvedValue({ data: { id: user.id, banned: true } } as never)
@@ -58,6 +59,30 @@ it('bans a user with the observed status, refreshes the account and shows recent
   expect(admin.write).toHaveBeenCalledExactlyOnceWith('identity.accounts.status.update',
     { user_id: '12', expected_banned: false, banned: true }, expect.any(String))
   expect(vi.mocked(admin.read).mock.calls.filter(call => call[0] === 'identity.accounts.get')).toHaveLength(2)
+})
+
+it('creates a user from the list and opens the new detail page', async () => {
+  vi.mocked(admin.write).mockResolvedValueOnce({ data: { id: '20', email: 'new@example.test' } } as never)
+  await render('/user/manage', <Routes>
+    <Route path="/user/manage" element={<UsersPage />} />
+    <Route path="/user/:userId" element={<div>new user detail</div>} />
+  </Routes>)
+  const create = [...host.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent?.includes('新建用户'))!
+  await act(async () => create.click()); await settle()
+  const dialog = document.querySelector<HTMLElement>('[role="dialog"][aria-label="新建用户"]')!
+  const email = dialog.querySelector<HTMLInputElement>('input[type="email"]')!
+  const password = dialog.querySelector<HTMLInputElement>('input[type="password"]')!
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(email, 'new@example.test')
+    email.dispatchEvent(new Event('input', { bubbles: true }))
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(password, 'secure-pass-2026')
+    password.dispatchEvent(new Event('input', { bubbles: true }))
+  })
+  const submit = [...dialog.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent?.trim() === '创建用户')!
+  await act(async () => submit.click()); await settle()
+  expect(admin.write).toHaveBeenCalledExactlyOnceWith('identity.accounts.create',
+    { email: 'new@example.test', password: 'secure-pass-2026' }, expect.any(String))
+  expect(host.textContent).toContain('new user detail')
 })
 
 it('offers the same version-checked status action from the user list', async () => {

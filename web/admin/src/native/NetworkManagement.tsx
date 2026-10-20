@@ -8,13 +8,17 @@ export function useNetworkManagement(prefix: string, readErrors: unknown[], refr
   const [error, setError] = useState('')
   const denied = [...readErrors, state.error].some(value => value instanceof CoreAdminApiError && [401, 403].includes(value.status))
   const pending = state.pending?.operation.startsWith(prefix) ? state.pending : undefined
-  async function refresh() {
+  async function refresh(): Promise<boolean> {
     const generation = workflowActions.generation()
     try {
       await refreshRead()
-      if (generation !== workflowActions.generation()) return
+      if (generation !== workflowActions.generation()) return false
       workflowActions.confirmReadAuthorization(prefix); workflowActions.clearError(); setError('')
-    } catch { /* A failed authorization read must keep retained commands blocked. */ }
+      return true
+    } catch {
+      // A failed authorization read must keep retained commands blocked.
+      return false
+    }
   }
   async function perform(command: () => Promise<void>, after?: () => void) {
     const generation = workflowActions.generation(); setError('')

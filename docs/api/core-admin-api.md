@@ -89,6 +89,26 @@ acceptance remain separate evidence; they do not certify live production UI,
 production PKI, load capacity or a formal release. New user product work remains
 deferred.
 
+### Subscription lifecycle
+
+`subscription.admin.get` is an administrator read requiring `subscription.manage`.
+It returns the slotted subscription, or the latest historical record when the slot
+is empty, with `subscription_id`, `subscription_version`, `status`, suspension
+reason, plan/terms/period identifiers, expiry, next reset and end timestamps.
+It returns `lifecycle: null` when the user has no subscription record. This read
+is required because the account entitlement projection intentionally omits the
+subscription identifier and version when `authorized` is false.
+
+The existing `subscription.lifecycle.suspend`, `resume`, `revoke`, `expire` and
+`reset` commands retain their owner transactions, observed versions, bounded
+suspension reason and durable recovery rules. Suspension keeps the slot and
+entitlement in place but makes the entitlement unauthorized; resume requires the
+observed suspended version; revoke and expire close the period and release the
+slot.
+
+`identity.accounts.create` remains a versioned administrator workflow for
+creating an account with an initial password. The password is never returned.
+
 ### Daily node traffic history
 
 `network.nodes.traffic-history.get` is an administrator read requiring the current

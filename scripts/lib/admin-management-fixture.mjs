@@ -6,7 +6,7 @@ import { catalogNetworkFixture } from './admin-catalog-network-fixture.mjs'
 const requestId = '12345678-1234-4234-8234-123456789abc'
 const stamp = 1792368000
 const metadata = JSON.parse(await readFile(new URL('../../contracts/core-api/admin-settings.v1.json', import.meta.url), 'utf8'))
-const managed = /^(?:audit\.logs\.|platform\.(?:modules\.|queue\.)|settings\.configuration\.|notifications\.mail-templates\.|billing\.admin-payment-|network\.(?:nodes\.get$|nodes\.traffic-history\.get$|nodes\.batch-[a-z-]+$|machines\.)|identity\.accounts\.get$|identity\.accounts\.status\.update$|subscription\.lifecycle\.reset$|commerce\.admin-orders\.list$)/
+const managed = /^(?:audit\.logs\.|platform\.(?:modules\.|queue\.)|settings\.configuration\.|notifications\.mail-templates\.|billing\.admin-payment-|network\.(?:nodes\.get$|nodes\.traffic-history\.get$|nodes\.batch-[a-z-]+$|machines\.)|identity\.accounts\.get$|identity\.accounts\.status\.update$|subscription\.admin\.get$|subscription\.lifecycle\.(?:reset|suspend|resume|revoke|expire)$|commerce\.admin-orders\.list$)/
 
 /** Built admin UI with schema-checked synthetic browser ingress; no live Core acceptance is implied. */
 export async function managementFixture(browser, viewport) {
@@ -39,8 +39,17 @@ export async function managementFixture(browser, viewport) {
     paid_at: '2026-10-19T00:00:00Z', created_at: '2026-10-19T00:00:00Z', user_id: '12', currency: 'CNY',
     purchase_terms_version: 'tx-core.purchase-terms/v2' }
   const failure = { id: '101', connection: 'redis', queue: 'default', job: 'ObservedJob', failed_at: '2026-10-19T00:00:00Z' }
-  Object.assign(state, { denied: new Set(), settings, modules, machine, detailNode: node, subscription, payment,
+  const lifecycle = { subscription_id: subscription.subscription_id, subscription_version: subscription.subscription_version,
+    plan_id: subscription.plan_id, terms_id: subscription.terms_id, usage_period_id: subscription.usage_period_id,
+    period_version: subscription.period_version, status: 'active', reason: null, expires_at: null, next_reset_at: null,
+    ended_at: null, updated_at: stamp }
+  const lifecycleResult = () => ({ schema: 'core-subscription-operation/v1', user_id: subscription.user_id,
+    subscription_id: lifecycle.subscription_id, terms_id: lifecycle.terms_id, usage_period_id: lifecycle.usage_period_id,
+    subscription_version: lifecycle.subscription_version, period_version: lifecycle.period_version, status: lifecycle.status,
+    expires_at: lifecycle.expires_at, applied_at: stamp, transition_id: null, previous_period_id: null, quota_adjustment_id: null })
+  Object.assign(state, { denied: new Set(), settings, modules, machine, detailNode: node, subscription, lifecycle, payment,
     originalSettingsVersion: settings.version, originalPaymentVersion: payment.version, originalSubscriptionVersion: subscription.subscription_version })
+
   await context.route('**/gateway/v1/core/admin/operations/**', async route => {
     const request = route.request(), operation = new URL(request.url()).pathname.split('/operations/')[1]
     if (!managed.test(operation)) return route.fallback()
@@ -132,8 +141,31 @@ export async function managementFixture(browser, viewport) {
       }
       if (operation === 'identity.accounts.get') {
         assert.equal(input.user_id, subscription.user_id)
+        const active = lifecycle.status === 'active'
+        const reason = lifecycle.status === 'suspended' ? 'ENTITLEMENT_SUSPENDED'
+          : lifecycle.status === 'revoked' ? 'ENTITLEMENT_REVOKED' : 'ENTITLEMENT_EXPIRED'
+        const projected = active
+          ? { ...subscription, subscription_version: lifecycle.subscription_version }
+          : { schema: 'core-entitlement/v1', authorized: false, reason, user_id: subscription.user_id }
         return send({ id: subscription.user_id, email: 'subscription@example.test', banned: accountBanned, is_admin: false,
-          created_at: stamp, last_login_at: null, subscription, credential_status: 'provider_managed' })
+          created_at: stamp, last_login_at: null, subscription: projected, credential_status: 'provider_managed' })
+      }
+      if (operation === 'subscription.admin.get') {
+        assert.equal(input.user_id, subscription.user_id)
+        return send({ user_id: subscription.user_id, lifecycle })
+      }
+      if (/^subscription\.lifecycle\.(?:suspend|resume|revoke|expire)$/.test(operation)) {
+        const kind = operation.split('.').pop()
+        assert.equal(input.subscription_id, lifecycle.subscription_id)
+        assert.equal(input.expected_version, lifecycle.subscription_version)
+        if (kind === 'suspend') assert.ok(!input.reason || /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,63}$/.test(input.reason))
+        lifecycle.subscription_version = String(BigInt(lifecycle.subscription_version) + 1n)
+        lifecycle.status = kind === 'suspend' ? 'suspended' : kind === 'resume' ? 'active' : kind === 'revoke' ? 'revoked' : 'expired'
+        lifecycle.reason = kind === 'suspend' ? (input.reason ?? 'manual') : null
+        lifecycle.ended_at = kind === 'revoke' || kind === 'expire' ? stamp : null
+        lifecycle.updated_at = stamp
+        subscription.subscription_version = lifecycle.subscription_version
+        return send(lifecycleResult())
       }
       if (operation === 'identity.accounts.status.update') {
         assert.equal(input.user_id, subscription.user_id)
@@ -152,6 +184,10 @@ export async function managementFixture(browser, viewport) {
         subscription.subscription_version = String(BigInt(subscription.subscription_version) + 1n)
         subscription.usage_period_id = '83'; subscription.consumed_bytes = '0'; subscription.remaining_bytes = subscription.quota_bytes
         subscription.upload_bytes = '0'; subscription.download_bytes = '0'
+        lifecycle.subscription_version = subscription.subscription_version
+        lifecycle.usage_period_id = subscription.usage_period_id
+        lifecycle.period_version = '1'
+        lifecycle.status = 'active'; lifecycle.reason = null; lifecycle.ended_at = null; lifecycle.updated_at = stamp
         return send({ schema: 'core-subscription-operation/v1', user_id: subscription.user_id,
           subscription_id: subscription.subscription_id, terms_id: subscription.terms_id, usage_period_id: subscription.usage_period_id,
           subscription_version: subscription.subscription_version, period_version: '1', status: 'active', expires_at: null,

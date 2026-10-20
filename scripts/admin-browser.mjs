@@ -112,6 +112,7 @@ async function fixture(viewport) {
     }
     if (operation === 'identity.accounts.get') return send({ ...account, credential_status: 'provider_managed',
       subscription: { schema: 'core-entitlement/v1', authorized: false, reason: 'ENTITLEMENT_MISSING', user_id: account.id } })
+    if (operation === 'subscription.admin.get') return checkedSend({ user_id: account.id, lifecycle: null })
     if (operation === 'commerce.admin-orders.list') {
       if (state.ordersStatus !== 200) return fail(state.ordersStatus)
       if (input.per_page === 100) return checkedSend([order, { ...order, id: '8', trade_no: 'PAID-ORDER-A',

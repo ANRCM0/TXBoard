@@ -86,6 +86,7 @@
     "subscription.lifecycle.revoke",
     "subscription.lifecycle.expire",
     "subscription.lifecycle.reset",
+    "subscription.admin.get",
     "network.groups.list",
     "network.groups.save",
     "network.groups.delete",

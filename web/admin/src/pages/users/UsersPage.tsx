@@ -1,16 +1,18 @@
 import { useQuery } from '@tanstack/react-query'
 import { useEffect, useState, useSyncExternalStore, type FormEvent } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
-import { RefreshCw, Search } from 'lucide-react'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { Plus, RefreshCw, Search } from 'lucide-react'
 import { toast } from 'sonner'
 import type { CoreOutput } from '@txboard/core-sdk'
 import { admin, workflowActions } from '../../native/session'
 import { managementError } from '../../native/Feedback'
+import { NetworkRecovery, useNetworkManagement } from '../../native/NetworkManagement'
 import { ReadList } from '../../native/ReadList'
 import { readPage, unixDate } from '../../native/readPresentation'
 import { PageHeader } from '../../components/ui/PageHeader'
+import { Modal } from '../../components/ui/Modal'
 import { FilterBar } from '../../components/ui/FilterBar'
-import { Input, Select } from '../../components/ui/Field'
+import { Field, Input, Select } from '../../components/ui/Field'
 import { StatusBadge } from '../../components/ui/StatusBadge'
 import { requestConfirm } from '../../components/ui/ConfirmDialog'
 import type { Column } from '../../components/ui/DataTable'
@@ -26,6 +28,7 @@ const baseColumns: Column<Account>[] = [
   { key: 'login', header: '最近登录', render: row => unixDate(row.last_login_at) },
 ]
 export function UsersPage() {
+  const navigate = useNavigate()
   const state = useSyncExternalStore(workflowActions.subscribe, workflowActions.snapshot)
   const [params, setParams] = useSearchParams()
   const page = readPage(params.get('page'))
@@ -33,12 +36,16 @@ export function UsersPage() {
   const appliedBanned = params.get('banned') ?? ''
   const [email, setEmail] = useState(appliedEmail)
   const [banned, setBanned] = useState(appliedBanned)
+  const [creating, setCreating] = useState(false), [newEmail, setNewEmail] = useState('')
+  const [newPassword, setNewPassword] = useState(''), [createError, setCreateError] = useState('')
   useEffect(() => { setEmail(appliedEmail); setBanned(appliedBanned) }, [appliedEmail, appliedBanned])
   const valid = appliedEmail.length <= 254 && ['', '0', '1'].includes(appliedBanned)
   const input = { page, per_page: 20, ...(appliedEmail ? { email: appliedEmail } : {}),
     ...(appliedBanned !== '' ? { banned: appliedBanned === '1' } : {}) }
   const query = useQuery({ queryKey: ['native-admin', 'accounts', input], enabled: valid,
     queryFn: ({ signal }) => admin.read('identity.accounts.list', input, signal) })
+  const recovery = useNetworkManagement('identity.accounts.', [query.error], () => query.refetch({ throwOnError: true }))
+  const subscriptionRecovery = useNetworkManagement('subscription.lifecycle.', [query.error], () => query.refetch({ throwOnError: true }))
   const data = query.isError ? undefined : query.data
   const locked = state.busy || !!state.pending || !valid || query.isFetching || query.isError || !query.data
   async function runStatus(row: Account) {
@@ -80,9 +87,43 @@ export function UsersPage() {
   function paginate(nextPage: number) {
     setParams(current => { const next = new URLSearchParams(current); next.set('page', String(nextPage)); return next })
   }
+  function openCreate() {
+    setNewEmail(''); setNewPassword(''); setCreateError(''); setCreating(true)
+  }
+  async function createAccount(event: FormEvent) {
+    event.preventDefault()
+    if (locked) return
+    const email = newEmail.trim(), password = newPassword
+    if (!email || password.length < 8) {
+      setCreateError('请输入有效邮箱和至少 8 位密码')
+      return
+    }
+    setCreateError('')
+    const generation = workflowActions.generation()
+    try {
+      const result = await workflowActions.runResult('identity.accounts.create', { email, password }) as { data?: { id?: string } }
+      if (workflowActions.generation() !== generation) return
+      setCreating(false); setNewEmail(''); setNewPassword('')
+      toast.success('用户已创建')
+      await query.refetch()
+      if (result?.data?.id) navigate('/user/' + result.data.id)
+    } catch (error) {
+      if (workflowActions.generation() !== generation) return
+      setCreateError(managementError(error))
+      if (workflowActions.snapshot().pending) {
+        setCreating(false); setNewPassword('')
+      }
+    }
+  }
   return <div className="native-management-page reference-users">
     <PageHeader title="用户管理" description="账户身份、状态与订阅"
-      action={<button className="button" disabled={!valid || query.isFetching} onClick={() => void query.refetch()}><RefreshCw size={15} />刷新</button>} />
+      action={<><button className="button" disabled={!valid || query.isFetching} onClick={() => void query.refetch()}><RefreshCw size={15} />刷新</button><button className="button primary" disabled={locked} onClick={openCreate}><Plus size={15} />新建用户</button></>} />
+    {recovery.pending || recovery.state.error
+      ? <NetworkRecovery management={recovery} blocked={query.isFetching || query.isError || !query.data} />
+      : null}
+    {subscriptionRecovery.pending && subscriptionRecovery.pending.operation !== 'subscription.lifecycle.reset'
+      ? <NetworkRecovery management={subscriptionRecovery} blocked={query.isFetching || query.isError || !query.data} />
+      : null}
     {!valid ? <p role="alert">筛选参数有误，请清除筛选后重试。</p> : null}
     <ReadList title="用户列表" rows={data?.data ?? []} columns={columns} meta={data?.meta} page={page}
       ready={!!data} loading={query.isFetching} error={query.isError ? query.error : undefined}
@@ -103,5 +144,19 @@ export function UsersPage() {
         </FilterBar>
       </form>
     </ReadList>
+    <Modal open={creating && !recovery.denied} title="新建用户" subtitle="创建后进入用户详情；初始密码仅本次提交使用"
+      onClose={() => { if (!state.busy) { setCreating(false); setNewPassword(''); setCreateError('') } }}>
+      <form className="native-content-form" onSubmit={createAccount}>
+        <Field label="邮箱" required><Input type="email" autoFocus value={newEmail} maxLength={255} disabled={state.busy}
+          onChange={event => setNewEmail(event.target.value)} placeholder="user@example.com" /></Field>
+        <Field label="初始密码" required hint="至少 8 个字符"><Input type="password" value={newPassword} minLength={8} maxLength={255}
+          disabled={state.busy} autoComplete="new-password" onChange={event => setNewPassword(event.target.value)} placeholder="设置初始密码" /></Field>
+        {createError ? <p role="alert">{createError}</p> : null}
+        <div className="network-form-actions">
+          <button className="button primary" disabled={locked || !newEmail.trim() || newPassword.length < 8}>创建用户</button>
+          <button type="button" className="button" disabled={state.busy} onClick={() => { setCreating(false); setNewPassword(''); setCreateError('') }}>取消</button>
+        </div>
+      </form>
+    </Modal>
   </div>
 }

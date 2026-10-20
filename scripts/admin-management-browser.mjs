@@ -181,6 +181,22 @@ try {
   assert.deepEqual(binding.input, { ids: [state.node.id], machine_id: state.machine.id })
   passed('batch machine binding uses a selector and sends the chosen machine ID')
   await open(desktop, '/user/12')
+  const lifecycle = page.getByRole('region', { name: '订阅生命周期', exact: true })
+  await lifecycle.getByText('生效中', { exact: true }).first().waitFor()
+  await lifecycle.getByRole('button', { name: '暂停订阅', exact: true }).click()
+  await page.getByRole('dialog', { name: '暂停订阅', exact: true }).getByLabel('暂停原因（可选）', { exact: true }).fill('review')
+  await page.getByRole('dialog', { name: '暂停订阅', exact: true }).getByRole('button', { name: '确认暂停', exact: true }).click()
+  await lifecycle.getByText('已暂停', { exact: true }).first().waitFor()
+  const suspend = state.calls.filter(call => call.operation === 'subscription.lifecycle.suspend').at(-1)
+  assert.deepEqual(suspend.input, { subscription_id: state.subscription.subscription_id,
+    expected_version: state.originalSubscriptionVersion, reason: 'review' })
+  await lifecycle.getByRole('button', { name: '恢复订阅', exact: true }).click()
+  await page.getByRole('dialog', { name: '恢复订阅', exact: true }).getByRole('button', { name: '恢复订阅', exact: true }).click()
+  await lifecycle.getByText('生效中', { exact: true }).first().waitFor()
+  const resume = state.calls.filter(call => call.operation === 'subscription.lifecycle.resume').at(-1)
+  assert.deepEqual(resume.input, { subscription_id: state.subscription.subscription_id,
+    expected_version: String(BigInt(state.originalSubscriptionVersion) + 1n) })
+  passed('subscription lifecycle suspends with a reason and resumes with the observed next version')
   await page.getByRole('region', { name: '最近订单', exact: true }).getByRole('link', { name: 'USER-ORDER-A', exact: true }).waitFor()
   await page.getByRole('button', { name: '封禁用户', exact: true }).click()
   await page.getByRole('dialog').getByRole('button', { name: '封禁用户', exact: true }).click()
@@ -198,11 +214,13 @@ try {
   await page.getByLabel('用户 ID', { exact: true }).fill('12')
   await page.getByRole('button', { name: '读取当前订阅', exact: true }).click()
   await page.locator('.native-management-page').getByRole('heading', { name: 'subscription@example.test', exact: true }).waitFor()
+  const beforeResetVersion = state.subscription.subscription_version
+  const afterResetVersion = String(BigInt(beforeResetVersion) + 1n)
   await page.getByRole('button', { name: '重置订阅流量周期', exact: true }).click()
   await page.getByText('查看订阅标识与原始用量', { exact: true }).click()
-  await page.getByText('9007199254740994', { exact: true }).waitFor()
+  await page.getByText(afterResetVersion, { exact: true }).waitFor()
   const reset = state.calls.find(call => call.operation === 'subscription.lifecycle.reset').input
-  assert.deepEqual(reset, { subscription_id: state.subscription.subscription_id, expected_version: state.originalSubscriptionVersion })
+  assert.deepEqual(reset, { subscription_id: state.subscription.subscription_id, expected_version: beforeResetVersion })
   passed('subscription reset confirms the native account projection and submits the observed full-precision subscription version')
   verify(state)
 

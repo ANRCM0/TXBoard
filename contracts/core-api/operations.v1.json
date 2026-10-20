@@ -7175,6 +7175,191 @@
         "IDEMPOTENCY_IN_PROGRESS"
       ]
     },
+    "subscription.admin.get": {
+      "version": 1,
+      "domains": [
+        "admin"
+      ],
+      "actor": "admin",
+      "permission": "subscription.manage",
+      "idempotency": "read",
+      "consistency": "current-owner-view",
+      "input": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "$ref": "#/definitions/id"
+          }
+        },
+        "required": [
+          "user_id"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "$ref": "#/definitions/id"
+          },
+          "lifecycle": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "subscription_id": {
+                    "$ref": "#/definitions/id"
+                  },
+                  "subscription_version": {
+                    "$ref": "#/definitions/id"
+                  },
+                  "plan_id": {
+                    "anyOf": [
+                      {
+                        "$ref": "#/definitions/id"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "terms_id": {
+                    "anyOf": [
+                      {
+                        "$ref": "#/definitions/id"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "usage_period_id": {
+                    "anyOf": [
+                      {
+                        "$ref": "#/definitions/id"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "period_version": {
+                    "anyOf": [
+                      {
+                        "$ref": "#/definitions/id"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "pending",
+                      "active",
+                      "suspended",
+                      "expired",
+                      "revoked"
+                    ]
+                  },
+                  "reason": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 64
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "expires_at": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "next_reset_at": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "ended_at": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "updated_at": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "subscription_id",
+                  "subscription_version",
+                  "plan_id",
+                  "terms_id",
+                  "usage_period_id",
+                  "period_version",
+                  "status",
+                  "reason",
+                  "expires_at",
+                  "next_reset_at",
+                  "ended_at",
+                  "updated_at"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          }
+        },
+        "required": [
+          "user_id",
+          "lifecycle"
+        ],
+        "additionalProperties": false
+      },
+      "meta": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "errors": [
+        "INVALID_REQUEST",
+        "ACTOR_UNAUTHORIZED",
+        "FORBIDDEN",
+        "BUSINESS_REJECTED",
+        "DEPENDENCY_UNAVAILABLE",
+        "IDEMPOTENCY_CONFLICT",
+        "IDEMPOTENCY_IN_PROGRESS"
+      ]
+    },
     "network.groups.list": {
       "version": 1,
       "domains": [
@@ -18952,6 +19137,7 @@
       "subscription.lifecycle.revoke",
       "subscription.lifecycle.expire",
       "subscription.lifecycle.reset",
+      "subscription.admin.get",
       "network.groups.list",
       "network.groups.save",
       "network.groups.delete",

@@ -10,6 +10,7 @@ export const availableAdminPaths: readonly string[] = [
 ]
 
 export function workflowDestination(operation: string, input?: unknown): { path: string; label: string } | undefined {
+  if (operation === 'identity.accounts.create') return { path: '/user/manage', label: '用户管理' }
   if (operation === 'identity.accounts.status.update') {
     const userId = input && typeof input === 'object' && 'user_id' in input && typeof input.user_id === 'string'
       ? input.user_id : ''
@@ -17,9 +18,10 @@ export function workflowDestination(operation: string, input?: unknown): { path:
       ? { path: '/user/' + userId, label: '用户详情' }
       : { path: '/user/manage', label: '用户管理' }
   }
+  if (operation === 'subscription.lifecycle.reset') return { path: '/user/traffic-reset', label: '订阅流量重置' }
+  if (operation.startsWith('subscription.lifecycle.')) return { path: '/user/manage', label: '用户管理' }
   if (operation.startsWith('network.nodes.')) return { path: '/server/manage', label: '节点管理' }
   if (operation.startsWith('network.machines.')) return { path: '/server/machine', label: '服务器管理' }
-  if (operation.startsWith('subscription.lifecycle.')) return { path: '/user/traffic-reset', label: '订阅流量重置' }
   if (operation.startsWith('settings.configuration.')) return { path: '/config/system', label: '系统配置' }
   if (operation.startsWith('notifications.mail-templates.')) return { path: '/config/email/templates', label: '邮件模板' }
   if (operation.startsWith('billing.admin-payment-methods.')) return { path: '/config/payment', label: '支付配置' }

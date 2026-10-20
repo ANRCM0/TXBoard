@@ -7,6 +7,7 @@ use App\Domains\Billing\IdempotencyException;
 use App\Domains\Billing\OrderIdempotency;
 use App\Domains\Installation\InstallationAuthority;
 use App\Domains\Subscription\Contracts\SubscriptionLifecycle;
+use App\Domains\Subscription\Contracts\SubscriptionLifecycleQueries;
 use DomainException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -14,6 +15,24 @@ use Illuminate\Support\Facades\DB;
 
 final class SubscriptionOperationsController
 {
+    public function state(Request $request, SubscriptionLifecycleQueries $queries): JsonResponse
+    {
+        if (app(InstallationAuthority::class)->inspect()['mode'] !== 'native') {
+            return TxapiResponse::error($request, 'NATIVE_SUBSCRIPTION_REQUIRED', 'Native subscription required', 409);
+        }
+        $userId = (string) $request->route('user_id');
+        try {
+            $lifecycle = $queries->current((int) $userId);
+        } catch (DomainException $exception) {
+            $code = $exception->getMessage();
+            if (!preg_match('/\A(?:NATIVE|INSTALLATION)_[A-Z0-9_]{1,64}\z/D', $code)) {
+                $code = 'NATIVE_SUBSCRIPTION_READ_REFUSED';
+            }
+            return TxapiResponse::error($request, $code, 'Subscription lifecycle read refused', 409);
+        }
+        return TxapiResponse::success($request, ['user_id' => $userId, 'lifecycle' => $lifecycle]);
+    }
+
     public function execute(Request $request, SubscriptionLifecycle $service): JsonResponse
     {
         if (app(InstallationAuthority::class)->inspect()['mode'] !== 'native') {

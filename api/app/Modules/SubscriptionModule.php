@@ -12,9 +12,11 @@ use App\Domains\Subscription\Contracts\OrderFulfillment;
 use App\Domains\Subscription\Contracts\CatalogQueries;
 use App\Domains\Subscription\Contracts\Purchases;
 use App\Domains\Subscription\Contracts\SubscriptionLifecycle;
+use App\Domains\Subscription\Contracts\SubscriptionLifecycleQueries;
 use App\Domains\Subscription\NativePurchases;
 use App\Domains\Subscription\Services\NativePlanCatalog;
 use App\Domains\Subscription\Services\SubscriptionLifecycleService;
+use App\Domains\Subscription\Services\NativeSubscriptionLifecycleQueries;
 use App\Domains\Subscription\Internal\LockedEntitlementQueries;
 use App\Domains\Subscription\Internal\LockedOrderFulfillment;
 use App\Domains\Subscription\Services\SubscriptionEntitlementResolver;
@@ -37,6 +39,7 @@ final class SubscriptionModule implements ModuleProvider
                 new CapabilityDefinition('subscription.purchase', Purchases::class),
                 new CapabilityDefinition('subscription.coupon-purchase', \App\Domains\Subscription\Contracts\CouponPurchases::class, exported: false),
                 new CapabilityDefinition('subscription.lifecycle', SubscriptionLifecycle::class),
+                new CapabilityDefinition('subscription.lifecycle-read', SubscriptionLifecycleQueries::class, exported: false),
                 new CapabilityDefinition('subscription.locked-entitlements', LockedEntitlementQueries::class, exported: false),
                 new CapabilityDefinition('subscription.locked-fulfillment', LockedOrderFulfillment::class, exported: false),
                 new CapabilityDefinition('subscription.locked-account-access', LockedAccountAccess::class, exported: false),
@@ -56,6 +59,7 @@ final class SubscriptionModule implements ModuleProvider
             new ServiceBinding(Purchases::class, NativePurchases::class),
             new ServiceBinding(\App\Domains\Subscription\Contracts\CouponPurchases::class, NativePurchases::class),
             new ServiceBinding(SubscriptionLifecycle::class, SubscriptionLifecycleService::class),
+            new ServiceBinding(SubscriptionLifecycleQueries::class, NativeSubscriptionLifecycleQueries::class),
             new ServiceBinding(LockedEntitlementQueries::class, SubscriptionEntitlementResolver::class),
             new ServiceBinding(LockedOrderFulfillment::class, SubscriptionFulfillmentService::class),
             new ServiceBinding(LockedAccountAccess::class, NativeAccountAccess::class),

@@ -7,7 +7,7 @@ type Operation = Extract<CoreAdminWriteOperation,
   | `billing.coupons.${string}` | `billing.admin-gift-cards.${string}` | `billing.admin-commissions.${string}`
   | `catalog.${string}` | `network.groups.${string}` | `network.routes.${string}` | `network.access-audit.${string}`
   | `network.nodes.${string}` | `network.machines.${string}` | `subscription.lifecycle.${string}`
-  | `notifications.mail-templates.${string}` | 'identity.accounts.status.update'
+  | `notifications.mail-templates.${string}` | 'identity.accounts.create' | 'identity.accounts.status.update'
   | 'settings.configuration.update' | 'billing.admin-payment-methods.save'>
 export type PendingWorkflow = { [K in Operation]: {
   operation: K; input: CoreInput<K>; key: string; unknown: boolean
@@ -20,6 +20,31 @@ export function createWorkflowActions(send: Send) {
   let state: State = { busy: false }, epoch = 0
   const listeners = new Set<() => void>()
   function update(next: State) { state = Object.freeze(next); for (const notify of listeners) notify() }
+  async function runResult<K extends Operation>(operation: K, input: CoreInput<K>) {
+      if (state.busy) throw new Error('WORKFLOW_BUSY')
+      if (!coreOperations[operation].input.safeParse(input).success) throw new CoreAdminApiError('VALIDATION_ERROR', 422)
+      const old = state.pending
+      if (old && (old.operation !== operation || JSON.stringify(old.input) !== JSON.stringify(input))) {
+        throw new Error('WORKFLOW_RECOVERY_REQUIRED')
+      }
+      // run() couples K with CoreInput<K>; retain that relation after cloning.
+      const action = old ?? Object.freeze({ operation, input: Object.freeze(structuredClone(input)), key: crypto.randomUUID(), unknown: false }) as unknown as PendingWorkflow
+      const current = epoch
+      update({ busy: true, pending: action })
+      try {
+        const result = await send(operation, action.input as CoreInput<K>, action.key)
+        if (current !== epoch) throw new StaleAdminContext()
+        update({ busy: false })
+        return result
+      } catch (error) {
+        if (current !== epoch) throw new StaleAdminContext()
+        if (current === epoch) {
+          const unknown = action.unknown || !(error instanceof CoreAdminApiError) || error.needsStateConfirmation
+          update({ busy: false, error, ...(unknown ? { pending: { ...action, unknown: true } } : {}) })
+        }
+        throw error
+      }
+  }
   return {
     snapshot: () => state,
     generation: () => epoch,
@@ -32,28 +57,8 @@ export function createWorkflowActions(send: Send) {
       }
     },
     async run<K extends Operation>(operation: K, input: CoreInput<K>) {
-      if (state.busy) throw new Error('WORKFLOW_BUSY')
-      if (!coreOperations[operation].input.safeParse(input).success) throw new CoreAdminApiError('VALIDATION_ERROR', 422)
-      const old = state.pending
-      if (old && (old.operation !== operation || JSON.stringify(old.input) !== JSON.stringify(input))) {
-        throw new Error('WORKFLOW_RECOVERY_REQUIRED')
-      }
-      // run() couples K with CoreInput<K>; retain that relation after cloning.
-      const action = old ?? Object.freeze({ operation, input: Object.freeze(structuredClone(input)), key: crypto.randomUUID(), unknown: false }) as unknown as PendingWorkflow
-      const current = epoch
-      update({ busy: true, pending: action })
-      try {
-        await send(operation, action.input as CoreInput<K>, action.key)
-        if (current !== epoch) throw new StaleAdminContext()
-        update({ busy: false })
-      } catch (error) {
-        if (current !== epoch) throw new StaleAdminContext()
-        if (current === epoch) {
-          const unknown = action.unknown || !(error instanceof CoreAdminApiError) || error.needsStateConfirmation
-          update({ busy: false, error, ...(unknown ? { pending: { ...action, unknown: true } } : {}) })
-        }
-        throw error
-      }
+      await runResult(operation, input)
     },
+    runResult,
   }
 }

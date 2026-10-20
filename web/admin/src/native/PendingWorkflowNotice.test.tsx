@@ -39,11 +39,14 @@ it('only maps bounded current admin operations to enabled management destination
     'content.knowledge.update', 'billing.coupons.disable', 'billing.admin-gift-cards.revoke', 'billing.admin-commissions.payouts.approve',
     'catalog.plans.publish', 'catalog.offers.availability.update', 'network.groups.save', 'network.routes.sort', 'network.access-audit.rules.save',
     'settings.configuration.update', 'notifications.mail-templates.save', 'billing.admin-payment-methods.save',
-    'network.nodes.patch', 'network.machines.update', 'subscription.lifecycle.reset']
+    'network.nodes.patch', 'network.machines.update', 'subscription.lifecycle.reset',
+    'subscription.lifecycle.suspend', 'identity.accounts.create']
   for (const id of operations) expect(availableAdminPaths).toContain(workflowDestination(id)?.path)
   expect(workflowDestination('unknown.action')).toBeUndefined()
   expect(workflowDestination('identity.accounts.status.update', { user_id: '12' })).toEqual({ path: '/user/12', label: '用户详情' })
   expect(workflowDestination('identity.accounts.status.update')).toEqual({ path: '/user/manage', label: '用户管理' })
+  expect(workflowDestination('subscription.lifecycle.suspend')).toEqual({ path: '/user/manage', label: '用户管理' })
+  expect(workflowDestination('subscription.lifecycle.reset')).toEqual({ path: '/user/traffic-reset', label: '订阅流量重置' })
   expect(new Set(availableAdminPaths).size).toBe(availableAdminPaths.length)
   for (const group of coreNavigationGroups) for (const [path] of group.items) expect(availableAdminPaths).toContain(path)
 })

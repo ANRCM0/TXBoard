@@ -184,6 +184,33 @@ class NativeSubscriptionLifecycleTest extends NativeSubscriptionTestCase
         $this->assertSame('suspended', DB::table('tx_subscription')->value('status'));
     }
 
+    public function test_current_lifecycle_read_reports_active_suspended_revoked_and_missing_states(): void
+    {
+        $reader = app(\App\Domains\Subscription\Contracts\SubscriptionLifecycleQueries::class);
+        $this->assertNull($reader->current($this->user()->id));
+
+        [$user, , $initial, $at] = $this->opened();
+        $active = $reader->current($user->id);
+        $this->assertSame('active', $active['status']);
+        $this->assertSame($initial['subscription_id'], $active['subscription_id']);
+        $this->assertSame($initial['usage_period_id'], $active['usage_period_id']);
+        $this->assertSame($initial['terms_id'], $active['terms_id']);
+        $this->assertNull($active['reason']);
+
+        $this->lifecycle()->suspend($user->id, (int) $initial['subscription_id'], 'read-suspend', $active['subscription_version'], $at + 10, 'review');
+        $suspended = $reader->current($user->id);
+        $this->assertSame('suspended', $suspended['status']);
+        $this->assertSame('review', $suspended['reason']);
+        $this->assertNotSame($active['subscription_version'], $suspended['subscription_version']);
+
+        $this->lifecycle()->revoke($user->id, (int) $initial['subscription_id'], 'read-revoke', $suspended['subscription_version'], $at + 20);
+        $revoked = $reader->current($user->id);
+        $this->assertSame('revoked', $revoked['status']);
+        $this->assertSame($initial['subscription_id'], $revoked['subscription_id']);
+        $this->assertNotNull($revoked['ended_at']);
+        $this->assertNull(DB::table('tx_subscription_slot')->where('user_id', $user->id)->value('subscription_id'));
+    }
+
     private function opened(array $plan = [], string $period = 'monthly'): array
     {
         $user = $this->user();

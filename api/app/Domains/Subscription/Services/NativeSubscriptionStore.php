@@ -420,6 +420,39 @@ final class NativeSubscriptionStore
         ]);
     }
 
+    /** Read the slotted subscription, or the latest historical record when the slot is empty. */
+    public function currentLifecycle(int $userId, string $installationId): ?array
+    {
+        $slot = DB::table('tx_subscription_slot')->where('user_id', $userId)->where('slot_no', 1)->first();
+        $subscription = $slot !== null && $slot->subscription_id !== null
+            ? DB::table('tx_subscription')->where('id', $slot->subscription_id)->first()
+            : DB::table('tx_subscription')->where('user_id', $userId)->orderByDesc('id')->first();
+        if (!$subscription) {
+            return null;
+        }
+        $this->assertOwnership($subscription, $userId, $installationId);
+        $period = DB::table('tx_usage_period')->where('subscription_id', $subscription->id)
+            ->orderByRaw("CASE WHEN status = 'open' THEN 0 WHEN status = 'closed' THEN 1 ELSE 2 END")
+            ->orderByDesc('period_no')->first();
+        if ($period && (string) $period->subscription_id !== (string) $subscription->id) {
+            throw new DomainException('NATIVE_PERIOD_OWNERSHIP_INVALID');
+        }
+        return [
+            'subscription_id' => SubscriptionTermsTimeline::decimal($subscription->id, true),
+            'subscription_version' => SubscriptionTermsTimeline::decimal($subscription->row_version, true),
+            'plan_id' => SubscriptionTermsTimeline::decimal($subscription->plan_id, nullable: true),
+            'terms_id' => SubscriptionTermsTimeline::decimal($subscription->current_terms_id, nullable: true),
+            'usage_period_id' => $period ? SubscriptionTermsTimeline::decimal($period->id, true) : null,
+            'period_version' => $period ? SubscriptionTermsTimeline::decimal($period->row_version, true) : null,
+            'status' => (string) $subscription->status,
+            'reason' => $subscription->suspended_reason === null ? null : (string) $subscription->suspended_reason,
+            'expires_at' => SubscriptionTermsTimeline::timestamp($subscription->expires_at, true),
+            'next_reset_at' => $period ? SubscriptionTermsTimeline::timestamp($period->next_reset_at, true) : null,
+            'ended_at' => SubscriptionTermsTimeline::timestamp($subscription->ended_at, true),
+            'updated_at' => SubscriptionTermsTimeline::timestamp($subscription->updated_at),
+        ];
+    }
+
     public function result(object $subscription, object $period, int $now, array $extra = []): array
     {
         return $extra + [

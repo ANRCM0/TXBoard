@@ -93,9 +93,13 @@ The overview ranks its current node sample by exact cumulative upload plus
 download bytes and charts the top five, instead of using list order. User detail
 adds a subscription quota bar, recent orders from the native order list, and a
 version-checked ban/unban action; the user list exposes the same status action.
-Raw byte values remain visible for exact verification. Observation pages state
-their read-only boundary and do not expose installation, retry or cleanup
-actions that Core does not own.
+User detail also reads the current subscription lifecycle projection and offers
+version-checked suspend, resume, revoke and due-only expire actions. Suspension
+accepts a bounded audit reason; revocation and expiry are confirmed as
+irreversible. The user list can create an account with an initial password and
+opens the new detail page after success. Raw byte values remain visible for exact
+verification. Observation pages state their read-only boundary and do not expose
+installation, retry or cleanup actions that Core does not own.
 
 The dashboard reads the latest 100 native orders and the first five nodes in
 Core's list order. Its 7/14/30-day UTC income chart groups paid orders (processing or completed) by payment date. Each currency has its own line; amounts are gross order values, include wallet payments and do not subtract refunds. It never treats this recent-order sample as full-site cash receipts.
