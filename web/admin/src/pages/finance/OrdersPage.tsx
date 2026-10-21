@@ -16,7 +16,8 @@ import { OrderCommandRecovery } from '../../native/OrderAdministration'
 import { isoDate, minorAmount, orderStatus, readPage, validId, validTradeNo } from '../../native/readPresentation'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { FilterBar } from '../../components/ui/FilterBar'
-import { Input, Select } from '../../components/ui/Field'
+import { FacetedFilter } from '../../components/ui/FacetedFilter'
+import { Input } from '../../components/ui/Field'
 import { StatusBadge } from '../../components/ui/StatusBadge'
 import { CopyButton } from '../../components/ui/CopyButton'
 import { orderPeriod, orderType } from '../../native/orderPresentation'
@@ -91,9 +92,8 @@ export function OrdersPage() {
             onChange={event => setUser(event.target.value)} inputMode="numeric" placeholder={t("精确用户 ID")} /></label>
           <label>{t("订单号")}<Input aria-label={t("订单号")} value={trade} maxLength={128}
             onChange={event => setTrade(event.target.value)} placeholder={t("精确订单号")} /></label>
-          <label>{t("订单状态")}<Select aria-label={t("订单状态")} value={status} onChange={event => setStatus(event.target.value)}>
-            <option value="">{t("全部状态")}</option>{[0, 1, 2, 3, 4].map(value => <option key={value} value={String(value)}>{orderStatus(value)}</option>)}
-          </Select></label>
+          <FacetedFilter label={t("订单状态")} multiple={false} value={status ? [status] : []} onChange={next => setStatus(next[0] ?? '')}
+            options={[0, 1, 2, 3, 4].map(value => ({ value: String(value), label: orderStatus(value) }))} />
           <button className="button primary" type="submit"><Search size={15} aria-hidden="true" />{t("查询")}</button>
         </FilterBar>
       </form>

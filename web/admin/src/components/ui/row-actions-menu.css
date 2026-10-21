@@ -1,0 +1,73 @@
+.row-actions { display: inline-flex; align-items: center; justify-content: flex-end; }
+.row-actions-trigger {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--subtle);
+  transition: background var(--ui-motion-fast) ease, color var(--ui-motion-fast) ease, border-color var(--ui-motion-fast) ease;
+}
+.row-actions-trigger:hover,
+.row-actions-trigger[aria-expanded=true] {
+  border-color: var(--border);
+  background: var(--panel);
+  color: var(--fg-strong);
+}
+.data-table tbody tr:hover .row-actions-trigger { color: var(--fg); }
+.row-actions-panel {
+  width: min(220px, calc(100vw - 24px));
+  padding: 5px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--panel);
+  box-shadow: var(--shadow-overlay);
+}
+.row-actions-panel:focus,
+.row-actions-panel:focus-visible { outline: 0; }
+.row-actions-menu { display: grid; gap: 1px; }
+.row-actions-item { display: grid; }
+.row-actions-entry {
+  display: flex;
+  width: 100%;
+  min-height: 36px;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--fg);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 500;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+.row-actions-entry > svg { flex: none; color: var(--muted); }
+.row-actions-entry:hover:not(:disabled),
+.row-actions-entry:focus-visible {
+  background: var(--panel-muted);
+  color: var(--fg-strong);
+  outline: 0;
+}
+.row-actions-entry:hover:not(:disabled) > svg { color: var(--fg); }
+.row-actions-entry.is-danger { color: var(--danger); }
+.row-actions-entry.is-danger > svg { color: currentColor; }
+.row-actions-entry.is-danger:hover:not(:disabled) { background: var(--danger-soft); color: var(--danger); }
+.row-actions-entry:disabled { opacity: .42; cursor: not-allowed; }
+.row-actions-separator {
+  display: block;
+  height: 1px;
+  margin: 4px 6px;
+  background: var(--border);
+}
+@media (max-width: 860px) {
+  .row-actions-trigger { width: 34px; height: 34px; }
+}
+.ui-popover-panel.row-actions-panel:focus,
+.ui-popover-panel.row-actions-panel:focus-visible { outline: 0; }

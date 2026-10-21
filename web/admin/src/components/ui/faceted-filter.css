@@ -1,0 +1,82 @@
+.faceted-filter {
+  width: max-content;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  flex: 0 0 auto;
+}
+.faceted-filter > .ui-popover { display: block; width: max-content; }
+.faceted-filter .button { min-height: 38px; white-space: nowrap; }
+.faceted-filter-count {
+  min-width: 1.1rem;
+  padding: .05rem .3rem;
+  border-radius: 5px;
+  background: var(--panel-muted);
+  color: var(--fg);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-align: center;
+}
+.faceted-filter-panel { width: min(19rem, calc(100vw - 24px)); padding: .7rem; }
+.faceted-filter-search { display: grid; gap: .35rem; color: var(--muted); font-size: 11.5px; }
+.faceted-filter-search input { width: 100%; min-width: 0; box-sizing: border-box; }
+.faceted-filter-options { display: grid; gap: .15rem; max-height: 16rem; margin: .6rem 0; overflow: auto; }
+.faceted-filter-options label {
+  display: flex;
+  min-height: 2.15rem;
+  flex-direction: row;
+  align-items: center;
+  gap: .5rem;
+  padding: .35rem;
+  border-radius: 7px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.faceted-filter-options label:hover { background: var(--panel-muted); }
+.faceted-filter-options label span { flex: 1; }
+.faceted-filter-options input[type="checkbox"],
+.faceted-filter-options input[type="radio"] {
+  width: 16px;
+  min-width: 16px;
+  height: 16px;
+  min-height: 16px;
+  flex: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  accent-color: var(--primary);
+}
+.faceted-filter-options small { color: var(--muted); font-variant-numeric: tabular-nums; }
+.faceted-filter-panel:focus,
+.faceted-filter-panel:focus-visible { outline: 0; }
+.faceted-filter-options p { margin: .5rem 0; color: var(--muted); font-size: 11.5px; text-align: center; }
+
+/* Page-level filter forms set broad label/input widths; keep facet options compact. */
+.admin-shell .faceted-filter-options label {
+  display: flex;
+  min-height: 34px;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  font-size: 12px;
+}
+.admin-shell .faceted-filter-options label > span { flex: 1; }
+.admin-shell .faceted-filter-options input[type="checkbox"],
+.admin-shell .faceted-filter-options input[type="radio"] {
+  width: 16px;
+  min-width: 16px;
+  height: 16px;
+  min-height: 16px;
+  flex: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.ui-popover-panel.faceted-filter-panel:focus,
+.ui-popover-panel.faceted-filter-panel:focus-visible { outline: 0; }

@@ -89,6 +89,7 @@ it('creates a user from the list and opens the new detail page', async () => {
 
 it('offers the same version-checked status action from the user list', async () => {
   await render('/user/manage', <Routes><Route path="/user/manage" element={<UsersPage />} /></Routes>)
+  await act(async () => host.querySelector<HTMLButtonElement>('.row-actions-trigger')!.click()); await settle()
   const ban = host.querySelector<HTMLButtonElement>('button[aria-label="封禁 alice@example.test"]')!
   expect(ban).not.toBeNull()
   await act(async () => ban.click()); await settle()

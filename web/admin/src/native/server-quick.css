@@ -1,0 +1,97 @@
+/* Server quick view: a compact hover card for the server inventory. */
+.server-quick {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 4px;
+}
+.server-quick-name {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  color: var(--fg);
+}
+.server-quick-name a { min-width: 0; color: inherit; text-decoration: none; }
+.server-quick-name a:hover strong { color: var(--primary); text-decoration: underline; text-underline-offset: 3px; }
+.server-quick-name .native-row-identity { min-width: 0; }
+.server-quick-name strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.server-quick-dot {
+  width: 7px;
+  height: 7px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--subtle);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--subtle) 12%, transparent);
+}
+.server-quick-dot.is-online { background: var(--success); box-shadow: 0 0 0 3px var(--success-soft); }
+.server-quick-dot.is-offline { background: var(--danger); box-shadow: 0 0 0 3px var(--danger-soft); }
+.server-quick-dot.is-inactive { background: var(--subtle); box-shadow: none; }
+.server-quick-toggle {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  flex: none;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--subtle);
+  opacity: 0;
+  transition: opacity var(--ui-motion-fast) ease, background var(--ui-motion-fast) ease, color var(--ui-motion-fast) ease;
+}
+.server-quick:hover .server-quick-toggle,
+.server-quick:focus-within .server-quick-toggle,
+.server-quick-toggle[aria-expanded=true] { opacity: 1; }
+.server-quick-toggle:hover { background: var(--panel-muted); color: var(--fg); }
+.server-quick-panel {
+  width: min(342px, calc(100vw - 24px));
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--panel);
+  box-shadow: var(--shadow-overlay), 0 0 0 3px color-mix(in srgb, var(--primary) 9%, transparent);
+}
+.server-quick-panel:focus,
+.server-quick-panel:focus-visible { outline: 0; }
+.server-quick-content { display: grid; gap: 12px; }
+.server-quick-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.server-quick-head > div { min-width: 0; }
+.server-quick-head strong { display: block; overflow: hidden; color: var(--fg-strong); font-size: 14px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+.server-quick-head small { display: block; margin-top: 3px; color: var(--muted); font-family: var(--font-mono); font-size: 10.5px; }
+.server-quick-status { display: flex; flex-wrap: wrap; gap: 6px; }
+.server-quick-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--border);
+}
+.server-quick-facts > div { min-width: 0; padding: 9px 10px; background: var(--panel-soft); }
+.server-quick-facts dt { color: var(--muted); font-size: 10.5px; }
+.server-quick-facts dd { margin: 3px 0 0; overflow-wrap: anywhere; color: var(--fg); font-size: 12px; font-weight: 600; }
+.server-quick-load {
+  display: grid;
+  gap: 7px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--panel-soft);
+}
+.server-quick-load > div { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; min-width: 0; }
+.server-quick-load span { color: var(--muted); font-family: var(--font-mono); font-size: 10px; }
+.server-quick-load strong { overflow-wrap: anywhere; color: var(--fg); font-family: var(--font-mono); font-size: 11px; font-weight: 500; text-align: right; }
+.server-quick-empty { margin: 0; color: var(--muted); font-size: 11.5px; line-height: 1.55; }
+.server-quick-actions { display: flex; gap: 8px; padding-top: 2px; }
+.server-quick-actions .button { flex: 1; min-width: 0; height: 32px; min-height: 32px; justify-content: center; font-size: 12px; }
+
+@media (hover: none) {
+  .server-quick-toggle { opacity: 1; }
+}
+@media (max-width: 860px) {
+  .server-quick-toggle { opacity: 1; }
+}

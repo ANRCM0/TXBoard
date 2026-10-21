@@ -4,7 +4,7 @@ import { readPageSize } from '../../native/useListPagination'
 import { useQuery } from '@tanstack/react-query'
 import { useEffect, useState, useSyncExternalStore, type FormEvent } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { Plus, RefreshCw, Search, ShieldCheck, ArrowUpRight } from 'lucide-react'
+import { ExternalLink, Pencil, Plus, RefreshCw, Search, ShieldCheck, UserCheck, UserX } from 'lucide-react'
 import { toast } from 'sonner'
 import type { CoreInput, CoreOutput } from '@txboard/core-sdk'
 import { ListRuleFilter, accountRules, parseListRules } from '../../native/ListRuleFilter'
@@ -18,9 +18,11 @@ import { readPage, unixDate } from '../../native/readPresentation'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { Modal } from '../../components/ui/Modal'
 import { FilterBar } from '../../components/ui/FilterBar'
-import { Field, Input, Select } from '../../components/ui/Field'
+import { FacetedFilter } from '../../components/ui/FacetedFilter'
+import { Field, Input } from '../../components/ui/Field'
 import { StatusBadge } from '../../components/ui/StatusBadge'
 import { CopyButton } from '../../components/ui/CopyButton'
+import { RowActionsMenu } from '../../components/ui/RowActionsMenu'
 import { requestConfirm } from '../../components/ui/ConfirmDialog'
 import type { Column } from '../../components/ui/DataTable'
 import './UsersPage.css'
@@ -104,10 +106,15 @@ export function UsersPage() {
     })
   }
   const columns: Column<Account>[] = [...baseColumns(), {
-    key: 'actions', header: t("操作"), hideable: false, pin: 'right', render: row => <div className="user-row-actions"><Link className="button" to={'/user/' + row.id} aria-label={t('查看 {email} 详情', { email: row.email })}>{t("详情")}<ArrowUpRight size={13} aria-hidden="true" /></Link><button type="button" className="button" aria-label={t('编辑 {email} 登录资料', { email: row.email })} disabled={locked || row.is_admin} onClick={() => setEditingUser(row.id)}>{t("编辑")}</button><button type="button"
-      className={'button ' + (row.banned ? '' : 'danger')} disabled={locked || row.is_admin}
-      aria-label={t(row.banned ? '解封 {email}' : '封禁 {email}', { email: row.email })}
-      onClick={() => confirmStatus(row)}>{row.banned ? t("解封") : t("封禁")}</button></div>,
+    key: 'actions', header: t("操作"), hideable: false, pin: 'right', render: row => <RowActionsMenu label={t('更多操作')} actions={[
+      { key: 'view', label: t('详情'), ariaLabel: t('查看 {email} 详情', { email: row.email }), icon: <ExternalLink size={14} aria-hidden="true" />, href: '/user/' + row.id },
+      { key: 'edit', label: t('编辑'), ariaLabel: t('编辑 {email} 登录资料', { email: row.email }), icon: <Pencil size={14} aria-hidden="true" />, disabled: locked || row.is_admin, onSelect: () => setEditingUser(row.id) },
+      {
+        key: 'status', label: row.banned ? t('解封') : t('封禁'), ariaLabel: t(row.banned ? '解封 {email}' : '封禁 {email}', { email: row.email }), separator: true, danger: !row.banned,
+        icon: row.banned ? <UserCheck size={14} aria-hidden="true" /> : <UserX size={14} aria-hidden="true" />,
+        disabled: locked || row.is_admin, onSelect: () => confirmStatus(row),
+      },
+    ]} />,
   }]
   function apply(event: FormEvent) {
     event.preventDefault()
@@ -173,9 +180,8 @@ export function UsersPage() {
         ]} onRemove={removeFilter} hint={t("按邮箱精确匹配账户，筛选结果在所有分页中生效")} onClear={() => { setEmail(''); setBanned(''); setParams(perPage !== 20 ? { per_page: String(perPage) } : {}) }}>
           <label>{t("邮箱精确查询")}<Input aria-label={t("用户邮箱")} value={email} maxLength={254} type="email"
             onChange={event => setEmail(event.target.value)} placeholder="user@example.com" /></label>
-          <label>{t("账户状态")}<Select aria-label={t("账户状态")} value={banned} onChange={event => setBanned(event.target.value)}>
-            <option value="">{t("全部状态")}</option><option value="0">{t("正常")}</option><option value="1">{t("已封禁")}</option>
-          </Select></label>
+          <FacetedFilter label={t("账户状态")} multiple={false} value={banned ? [banned] : []} onChange={next => setBanned(next[0] ?? '')}
+            options={[{ value: '0', label: t("正常") }, { value: '1', label: t("已封禁") }]} />
           <button className="button primary" type="submit"><Search size={15} aria-hidden="true" />{t("查询")}</button>
         </FilterBar>
       </form>

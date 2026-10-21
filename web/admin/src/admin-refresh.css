@@ -634,9 +634,6 @@ input[type=checkbox], input[type=radio] { accent-color: var(--primary); }
 .ui-filter-bar { gap: 10px; }
 .ui-filter-controls { gap: 12px; }
 .ui-filter-controls > label { gap: 6px; font-size: 12px; font-weight: 600; }
-.network-facet { width: max-content; flex: 0 0 auto; }
-.network-facet > .ui-popover { width: max-content; }
-.network-facet .button { min-height: 38px; white-space: nowrap; }
 .date-range-trigger { width: auto; flex: none; white-space: nowrap; }
 .ui-popover:has(> .date-range-trigger),
 .reset-history-filters > .ui-popover,

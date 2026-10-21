@@ -14,7 +14,7 @@ import { ReadList } from './ReadList'
 import { PageHeader } from '../components/ui/PageHeader'
 import type { Column } from '../components/ui/DataTable'
 import { FilterBar } from '../components/ui/FilterBar'
-import { NetworkFacet } from './NetworkFacet'
+import { FacetedFilter } from '../components/ui/FacetedFilter'
 
 type Group = CoreOutput<'network.groups.list'>[number]
 export function GroupsPage() {
@@ -95,7 +95,7 @@ export function GroupsPage() {
     <ReadList<Group> title={"分组列表"} columnSettingsKey="network-groups" stickyHeader stickyFirstColumn mobilePrimaryKey="name" rows={rows} columns={columns} perPage={perPage} onPageSize={size => { setPerPage(size); setAssociations([]) }} page={page} meta={list.data?.meta} ready={!!list.data && !denied} loading={list.isFetching} error={list.error} onRetry={() => void refresh()} onPage={next => { setPage(next); setSearch(''); setAssociations([]) }}>
       <FilterBar applied={applied} onClear={() => { setSearch(''); setAssociations([]) }} onRemove={key => key === 'search' ? setSearch('') : setAssociations(current => current.filter(value => value !== key))} hint={t("搜索与资源关联均筛选当前页；资源计数来自原生所有者，分页总数保持全站口径。")}>
         <label className="native-list-search"><Search size={16} aria-hidden="true" /><input aria-label={t("搜索当前页分组")} placeholder={t("搜索当前页分组名称或 ID")} value={search} onChange={event => setSearch(event.target.value)} /></label>
-        <NetworkFacet label={t("资源关联")} value={associations} onChange={setAssociations} disabled={denied || list.isError} options={associationOptions.map(option => ({ ...option, count: allRows.filter(option.test).length }))} />
+        <FacetedFilter label={t("资源关联")} value={associations} onChange={setAssociations} disabled={denied || list.isError} options={associationOptions.map(option => ({ ...option, count: allRows.filter(option.test).length }))} />
       </FilterBar>
     </ReadList>
     <Modal open={editing && !denied} title={id ? t("编辑分组") : t("新增分组")} subtitle={t("名称最长 255 个字符，原有资源关联继续保留。")} className="network-reference-page network-editor-modal" onClose={closeEditor}

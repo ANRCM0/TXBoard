@@ -98,6 +98,7 @@ it('submits a profile against the observed revision without provider fields and 
 it('reads a fresh protected revision before editing from a list row', async () => {
   vi.mocked(admin.write).mockResolvedValue({ data: { id: user.id, email: 'list-edited@example.test', identity_revision: 'b'.repeat(64), sessions_revoked: 0 } } as never)
   await render('/user/manage')
+  await act(async () => host.querySelector<HTMLButtonElement>('.row-actions-trigger')!.click()); await settle()
   await act(async () => host.querySelector<HTMLButtonElement>(`[aria-label="编辑 ${user.email} 登录资料"]`)!.click()); await settle()
   expect(admin.read).toHaveBeenCalledWith('identity.accounts.get', { user_id: user.id }, expect.any(AbortSignal))
   const dialog = document.querySelector('[role="dialog"][aria-label="编辑登录资料"]')!

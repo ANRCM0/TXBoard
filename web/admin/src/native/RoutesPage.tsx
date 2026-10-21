@@ -12,7 +12,7 @@ import { DataTable, type Column } from '../components/ui/DataTable'
 import { PageHeader } from '../components/ui/PageHeader'
 import { Checkbox } from '../components/ui/Field'
 import { FilterBar } from '../components/ui/FilterBar'
-import { NetworkFacet } from './NetworkFacet'
+import { FacetedFilter } from '../components/ui/FacetedFilter'
 
 type Route = CoreOutput<'network.routes.list'>[number]
 type Draft = { id: string; remarks: string; match: string; action: Route['action']; actionValue: string; enabled: boolean }
@@ -162,9 +162,9 @@ export function RoutesPage() {
     <section className="list-card native-read-list">
       <FilterBar applied={applied} onClear={clearFilters} onRemove={removeFilter} hint={t("筛选完整路由集合，按配置顺序匹配；排序始终包含全部路由，并由服务端校验修订。")}>
         <label className="native-list-search"><Search size={16} aria-hidden="true" /><input aria-label={t("搜索路由")} placeholder={t("搜索备注、ID、参数或匹配规则")} value={search} onChange={event => setSearch(event.target.value)} /></label>
-        <NetworkFacet label={t("动作")} value={actions} onChange={setActions} disabled={denied || list.isError} options={Object.entries(actionLabels).map(([value, label]) => ({ value, label: t(label), count: rows.filter(row => row.action === value).length }))} />
-        <NetworkFacet label={t("状态")} value={statuses} onChange={setStatuses} disabled={denied || list.isError} options={[{ value: 'true', label: t("启用"), count: rows.filter(row => row.enabled).length }, { value: 'false', label: t("停用"), count: rows.filter(row => !row.enabled).length }]} />
-        <NetworkFacet label={t("节点关联")} value={associations} onChange={setAssociations} disabled={denied || list.isError} options={[{ value: 'assigned', label: t("已关联节点"), count: rows.filter(row => row.server_count > 0).length }, { value: 'unassigned', label: t("未关联节点"), count: rows.filter(row => row.server_count === 0).length }]} />
+        <FacetedFilter label={t("动作")} value={actions} onChange={setActions} disabled={denied || list.isError} options={Object.entries(actionLabels).map(([value, label]) => ({ value, label: t(label), count: rows.filter(row => row.action === value).length }))} />
+        <FacetedFilter label={t("状态")} value={statuses} onChange={setStatuses} disabled={denied || list.isError} options={[{ value: 'true', label: t("启用"), count: rows.filter(row => row.enabled).length }, { value: 'false', label: t("停用"), count: rows.filter(row => !row.enabled).length }]} />
+        <FacetedFilter label={t("节点关联")} value={associations} onChange={setAssociations} disabled={denied || list.isError} options={[{ value: 'assigned', label: t("已关联节点"), count: rows.filter(row => row.server_count > 0).length }, { value: 'unassigned', label: t("未关联节点"), count: rows.filter(row => row.server_count === 0).length }]} />
       </FilterBar>
       <ManagementFeedback error={list.error} loading={list.isFetching} onRetry={() => void refresh()} />
       {!denied && !list.isError && list.data ? <><p className="network-route-summary">{t("完整集合{total}条 · 当前显示{count}条 · 匹配顺序自上而下", { total: rows.length, count: filtered.length })}</p>

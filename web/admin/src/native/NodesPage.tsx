@@ -1,7 +1,7 @@
 import { t, useLocale } from '../lib/i18n'
 import { useDirtyDraft } from '../lib/useDirtyDraft'
 import { useListPagination } from './useListPagination'
-import { Search, RefreshCw, ArrowUpRight, Eye, EyeOff, Link2, Power, PowerOff, RefreshCcw, Trash2 } from 'lucide-react'
+import { ExternalLink, Search, RefreshCw, Eye, EyeOff, Link2, Power, PowerOff, RefreshCcw, Trash2 } from 'lucide-react'
 import './network-reference.css'
 import { CoreAdminApiError, type CoreOutput } from '@txboard/core-sdk'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
@@ -16,23 +16,25 @@ import type { Column } from '../components/ui/DataTable'
 import { StatusBadge } from '../components/ui/StatusBadge'
 import { BulkActionBar } from '../components/ui/BulkActionBar'
 import { FilterBar } from '../components/ui/FilterBar'
+import { RowActionsMenu } from '../components/ui/RowActionsMenu'
 import { Modal } from '../components/ui/Modal'
 import { Field, Input, Select } from '../components/ui/Field'
 import { requestConfirm } from '../components/ui/ConfirmDialog'
 import { admin, workflowActions } from './session'
 import { NodeEditor } from './NodeEditor'
+import { ServerQuickCard } from './ServerQuickCard'
 
 type Node = CoreOutput<'network.nodes.list'>[number]
 const columns: Column<Node>[] = [
-  { key: 'name', header: '节点', width: '200px', render: node => <div className="nodes-v3-identity">
+  { key: 'name', header: '节点', width: '190px', render: node => <div className="nodes-v3-identity">
     <Link to={'/server/node/' + node.id}><strong>{node.name}</strong></Link><small>#{node.id} <span className="network-protocol">{node.type}</span></small>
   </div> },
   { key: 'host', header: '连接地址', width: '155px', render: node =>
     <NetworkEndpoint host={node.host} port={node.port} /> },
-  { key: 'machine', header: '所属服务器', width: '150px', render: node => node.machine_id ? <Link className="network-resource-link" to={'/server/machine/' + node.machine_id}>#{node.machine_id}</Link> : <span className="network-muted">{t("未绑定")}</span> },
-  { key: 'state', header: '状态', width: '155px', render: node => <div className="network-tags"><StatusBadge tone={node.enabled ? 'success' : 'neutral'}>{node.enabled ? t("已启用") : t("已禁用")}</StatusBadge><span className="reference-tag">{node.show ? t("显示") : t("隐藏")}</span></div> },
+  { key: 'machine', header: '所属服务器', width: '180px', render: node => node.machine_id ? <Link className="network-resource-link" to={'/server/machine/' + node.machine_id}>#{node.machine_id}</Link> : <span className="network-muted">{t("独立部署")}</span> },
+  { key: 'state', header: '状态', width: '150px', render: node => <div className="network-tags"><StatusBadge tone={node.enabled ? 'success' : 'neutral'}>{node.enabled ? t("已启用") : t("已禁用")}</StatusBadge><span className="reference-tag">{node.show ? t("显示") : t("隐藏")}</span></div> },
   { key: 'traffic', header: '累计上传 / 下载', width: '210px', render: node => <div className="network-traffic-pair"><span><small>{t("上传")}</small><NetworkBytes value={node.u} /></span><span><small>{t("下载")}</small><NetworkBytes value={node.d} /></span></div> },
-  { key: 'details', header: '操作', width: '100px', render: node => <Link className="network-icon-link" title={t("查看详情")} aria-label={t("查看 {name} 详情", { name: node.name })} to={'/server/node/' + node.id}><ArrowUpRight size={16} /></Link> },
+  { key: 'details', header: '操作', width: '82px', render: node => <Link className="network-icon-link" title={t("查看详情")} aria-label={t("查看 {name} 详情", { name: node.name })} to={'/server/node/' + node.id}><ExternalLink size={16} /></Link> },
 ]
 
 export function NodesPage() {
@@ -66,6 +68,11 @@ export function NodesPage() {
       setSortReadError(undefined)
     }
   })
+  const machineDirectory = useQuery({ queryKey: ['native-admin', 'node-machine-directory'],
+    queryFn: ({ signal }) => admin.read('network.machines.list', { page: 1, per_page: 100 }, signal),
+    enabled: !management.denied && Array.isArray(query.data?.data) && query.data.data.some(row => row.machine_id), retry: false })
+  const directoryRows = Array.isArray(machineDirectory.data?.data) ? machineDirectory.data.data : []
+  const machineById = new Map(directoryRows.map(row => [row.id, row]))
   useEffect(() => {
     if (management.denied || query.isError) { setSelected(new Set()); setBindingOpen(false); setEditorId(undefined) }
   }, [management.denied, query.isError])
@@ -206,6 +213,21 @@ export function NodesPage() {
     }, () => { setSelected(new Set()); setBindingOpen(false); setMachineId('') })
   }
 
+  const renderedColumns = columns.map(column => {
+    if (column.key === 'machine') return { ...column, render: (node: Node) => {
+      if (!node.machine_id) return <span className="network-muted">{t("独立部署")}</span>
+      const machine = machineById.get(node.machine_id)
+      return machine ? <ServerQuickCard machine={machine} />
+        : <Link className="network-resource-link" to={'/server/machine/' + node.machine_id}>#{node.machine_id}</Link>
+    } }
+    if (column.key === 'details') return { ...column, render: (node: Node) => <div className="native-list-toolbar">
+      <button type="button" className="button" disabled={locked} onClick={() => setEditorId(node.id)}>{t("编辑")}</button>
+      <RowActionsMenu label={t('更多操作')} actions={[
+        { key: 'view', label: t('查看详情'), icon: <ExternalLink size={14} aria-hidden="true" />, href: '/server/node/' + node.id },
+      ]} />
+    </div> }
+    return column
+  })
   return <div className="native-management-page network-reference-page network-nodes-page">
     <PageHeader title={t("节点管理")} description={t("查看节点，并对当前页选中项执行批量状态、归属和计数操作")} action={<><button className="button" disabled={query.isFetching || management.state.busy} onClick={() => void management.refresh()}><RefreshCw size={15} aria-hidden="true" />{t("刷新节点")}</button><button type="button" className="button" data-primary="true" disabled={locked} onClick={() => setEditorId(null)}>{t("创建节点")}</button></>} />
     <NetworkRecovery management={management} blocked={query.isFetching || query.isError || !query.data || management.state.busy} />
@@ -224,7 +246,7 @@ export function NodesPage() {
         <button type="button" className="button" disabled={locked} onClick={closeSort}>{t('取消排序')}</button>
       </div></> : null}
     </section>
-    <ReadList<Node> title={"节点列表"} rows={rows} columns={columns.map(column => column.key === 'details' ? { ...column, render: (node: Node) => <div className="native-list-toolbar"><button type="button" className="button" disabled={locked} onClick={() => setEditorId(node.id)}>{t("编辑")}</button><Link className="network-icon-link" title={t("查看详情")} aria-label={t("查看 {name} 详情", { name: node.name })} to={'/server/node/' + node.id}><ArrowUpRight size={16} /></Link></div> } : column)} perPage={perPage} onPageSize={size => { setPerPage(size); setSelected(new Set()); }} page={page} meta={query.data?.meta} ready={!!query.data && !management.denied}
+    <ReadList<Node> title={"节点列表"} rows={rows} columns={renderedColumns} perPage={perPage} onPageSize={size => { setPerPage(size); setSelected(new Set()); }} page={page} meta={query.data?.meta} ready={!!query.data && !management.denied}
       loading={query.isFetching} error={query.error} onRetry={() => void management.refresh()}
       onPage={next => { setPage(next); setSearch(''); setSelected(new Set()) }}
       columnSettingsKey="nodes" stickyHeader stickyFirstColumn

@@ -14,6 +14,7 @@ import { ReadFields, ReadList } from './ReadList'
 import { isoDate } from './readPresentation'
 import { PageHeader } from '../components/ui/PageHeader'
 import { FilterBar } from '../components/ui/FilterBar'
+import { FacetedFilter } from '../components/ui/FacetedFilter'
 import { Field, Input, Select, Textarea } from '../components/ui/Field'
 import type { Column } from '../components/ui/DataTable'
 import { Modal } from '../components/ui/Modal'
@@ -193,7 +194,8 @@ export function TicketsPage() {
           ...(owner ? [{ key: 'owner', label: t("用户 #") + owner }] : []),
           ...(assignment !== 'any' ? [{ key: 'assignment', label: assignment === 'mine' ? t("我负责的") : t("未分配") }] : []),
         ]} onClear={() => { setStatus(''); setUserId(''); setOwner(''); setAssignment('any'); setPage(1) }}>
-          <label>{t("状态")}<Select value={status} onChange={event => { setPage(1); setStatus(event.target.value) }}><option value="">{t("全部")}</option><option value="0">{t("处理中")}</option><option value="1">{t("已关闭")}</option></Select></label>
+          <FacetedFilter label={t("状态")} multiple={false} value={status ? [status] : []} onChange={next => { setPage(1); setStatus(next[0] ?? '') }}
+            options={[{ value: '0', label: t("处理中") }, { value: '1', label: t("已关闭") }]} />
           <label>{t("用户 ID")}<Input value={userId} inputMode="numeric" pattern="[1-9][0-9]{0,18}" onChange={event => setUserId(event.target.value)} /></label>
           <label>{t("分派")}<Select value={assignment} onChange={event => { setPage(1); setAssignment(event.target.value as typeof assignment) }}><option value="any">{t("全部工单")}</option><option value="mine">{t("我负责的")}</option><option value="unassigned">{t("未分配")}</option></Select></label>
           <button className="button">{t("筛选")}</button>

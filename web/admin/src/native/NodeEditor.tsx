@@ -1,6 +1,6 @@
 import { t, useLocale } from '../lib/i18n'
 import { useDirtyDraft } from '../lib/useDirtyDraft'
-import { useEffect, useId, useRef, useState, useSyncExternalStore, type FormEvent } from 'react'
+import { useEffect, useId, useRef, useState, useSyncExternalStore, type CSSProperties, type FormEvent } from 'react'
 import { CoreAdminApiError } from '@txboard/core-sdk'
 import { Modal } from '../components/ui/Modal'
 import { Field, Input, Select, Switch } from '../components/ui/Field'
@@ -14,6 +14,12 @@ import { GroupCreationRecovery } from './GroupSelector'
 import { newNodeConfiguration, nodeQuotaFromGb, nodeQuotaGb, parseNodeConfiguration, parseNodeProtocols,
   withProtocolValue, type NodeConfiguration, type NodeProtocol, type NodeProtocolField } from './nodeConfiguration'
 import './node-editor.css'
+
+const protocolColors: Record<string, string> = {
+  shadowsocks: '#2f9e44', vmess: '#c026d3', trojan: '#d97706', hysteria: '#3b82f6',
+  vless: '#6366f1', tuic: '#10b981', socks: '#0ea5e9', naive: '#8b5cf6',
+  http: '#f97316', mieru: '#22c55e', anytls: '#14b8a6',
+}
 
 function savedId(response: unknown): string | undefined {
   if (!response || typeof response !== 'object' || !('data' in response) || !response.data || typeof response.data !== 'object') return
@@ -139,10 +145,14 @@ export function NodeEditor({ nodeId, defaultMachineId, onClose, onSaved }: {
     } finally { if (current === epoch.current) setGenerating('') }
   }
   const protocol = protocols.find(item => item.type === draft?.type)
+  const protocolColor = protocol ? protocolColors[protocol.type] ?? '#3d5afe' : '#98a2b3'
   return <Modal open title={nodeId ? t("编辑节点配置") : t("创建节点")} subtitle={t("协议表单由当前服务端协议定义提供。显示、部署启用与服务器归属分别保存。")}
     wide className="node-editor-modal" bodyClassName="node-editor-body" onClose={close}
+    headerAction={<span className="node-editor-protocol-badge" style={{ '--node-protocol': protocolColor } as CSSProperties}>
+      {protocol ? t(protocol.label) : t("请选择协议")}
+    </span>}
     footer={<><button type="button" className="button" disabled={workflow.busy} onClick={close}>{t("取消")}</button>
-      <button type="submit" form={formId} className="button" data-primary="true" disabled={locked || !draft || !protocol}>{workflow.busy ? t("正在保存…") : nodeId ? t("保存完整配置") : t("创建节点")}</button></>}>
+      <button type="submit" form={formId} className="button primary" disabled={locked || !draft || !protocol}>{workflow.busy ? t("正在保存…") : nodeId ? t("保存完整配置") : t("创建节点")}</button></>}>
     <ManagementFeedback error={readError} loading={loading} onRetry={reread} />
     {error ? <p role="alert">{t(error)}</p> : null}
     {conflict ? <div className="node-editor-notice" role="alert"><p>{t("配置已被其他操作修改。当前草稿已保留，请重新读取后核对再编辑。")}</p><button type="button" className="button" onClick={reread}>{t("重新读取配置")}</button></div> : null}

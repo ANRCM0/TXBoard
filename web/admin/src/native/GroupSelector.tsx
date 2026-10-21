@@ -4,7 +4,6 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { CoreAdminApiError } from '@txboard/core-sdk'
 import { admin, workflowActions } from './session'
 import { ManagementFeedback, managementError } from './Feedback'
-import './network-facets.css'
 
 function groupId(response: unknown): string | undefined {
   if (!response || typeof response !== 'object' || !('data' in response) || !response.data || typeof response.data !== 'object') return

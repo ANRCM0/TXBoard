@@ -3,7 +3,7 @@ import { useDirtyDraft } from '../lib/useDirtyDraft'
 import { TagInput } from '../components/ui/TagInput'
 import { MarkdownEditor } from '../components/ui/MarkdownEditor'
 import { useListPagination } from './useListPagination'
-import { RefreshCw, Plus, Search, Save, GripVertical } from 'lucide-react'
+import { Archive, Eye, EyeOff, RefreshCw, Plus, Search, Save, GripVertical } from 'lucide-react'
 import './support-reference.css'
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -14,6 +14,7 @@ import { ReadList } from './ReadList'
 import { PageHeader } from '../components/ui/PageHeader'
 import type { Column } from '../components/ui/DataTable'
 import { requestConfirm } from '../components/ui/ConfirmDialog'
+import { RowActionsMenu } from '../components/ui/RowActionsMenu'
 import { Modal } from '../components/ui/Modal'
 
 type Kind = 'notices' | 'knowledge'
@@ -219,7 +220,10 @@ export function ContentPage({ kind }: { kind: Kind }) {
     { key: 'sort', header: t("排序"), render: row => row.sort },
     ...(kind === 'knowledge' ? [{ key: 'category', header: t("分类"), render: (row: Row) => 'category' in row ? row.category : '' },
       { key: 'language', header: t("语言"), render: (row: Row) => 'language' in row ? languages.find(([code]) => code === row.language)?.[1] ?? row.language : '' }] : []),
-    { key: 'actions', header: t("操作"), render: row => <div className="support-actions"><button className="button" disabled={locked} onClick={() => openEditor(row)}>{t("编辑")}</button><button className="button" disabled={locked || list.isFetching} onClick={() => void change(row, false)}>{row.show ? t("停用") : t("启用")}</button><button className="button" disabled={locked || list.isFetching} onClick={() => archive(row)}>{t("归档")}</button></div> },
+    { key: 'actions', header: t("操作"), render: row => <div className="support-actions"><button className="button" disabled={locked} onClick={() => openEditor(row)}>{t("编辑")}</button><RowActionsMenu label={t('更多操作')} actions={[
+      { key: 'visibility', label: row.show ? t('停用') : t('启用'), icon: row.show ? <EyeOff size={14} aria-hidden="true" /> : <Eye size={14} aria-hidden="true" />, disabled: locked || list.isFetching, onSelect: () => void change(row, false) },
+      { key: 'archive', label: t('归档'), icon: <Archive size={14} aria-hidden="true" />, danger: true, separator: true, disabled: locked || list.isFetching, onSelect: () => archive(row) },
+    ]} /></div> },
   ]
   const pageRows = list.isError || blocked ? [] : list.data?.data ?? []
   const visibleRows = pageRows.filter(row => (!categoryFilter || 'category' in row && row.category === categoryFilter)

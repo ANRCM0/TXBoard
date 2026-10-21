@@ -44,6 +44,9 @@ async function render(content: boolean | 'knowledge' = false) {
 }
 function button(text: string) { return [...document.body.querySelectorAll<HTMLButtonElement>('button')].find(node => node.getAttribute('aria-label') === text || node.textContent === text)! }
 async function click(text: string) { await act(async () => button(text).click()); await settle() }
+async function openRowMenu() {
+  await act(async () => document.querySelector<HTMLButtonElement>('.row-actions-trigger')!.click()); await settle()
+}
 async function input(node: HTMLInputElement | HTMLTextAreaElement, value: string) {
   await act(async () => {
     Object.getOwnPropertyDescriptor(node instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype, 'value')!.set!.call(node, value)
@@ -106,7 +109,7 @@ it('renders untrusted content as textarea text and submits the version originall
 it('confirms an unknown content publish using the original key and keeps support recovery separate', async () => {
   await render(true)
   vi.mocked(admin.write).mockRejectedValueOnce(new TypeError('lost acknowledgement'))
-  await click('启用')
+  await openRowMenu(); await click('启用')
   const original = vi.mocked(admin.write).mock.calls[0]
   expect(original![0]).toBe('content.notices.visibility.toggle')
   await render()
@@ -126,7 +129,7 @@ it('blocks attachment download and reply content after support permissions are r
 it('requires a successful explicit authorization refresh before recovering a forbidden unknown publish', async () => {
   await render(true)
   vi.mocked(admin.write).mockRejectedValueOnce(new CoreAdminApiError('FORBIDDEN', 403, undefined, true))
-  await click('启用')
+  await openRowMenu(); await click('启用')
   const original = vi.mocked(admin.write).mock.calls[0]
   expect(button('使用原操作确认结果').disabled).toBe(true)
   await click('刷新')
@@ -174,7 +177,7 @@ it('discards a delayed notices sort read after navigating to knowledge', async (
 
 
 it('asks for archive confirmation in the shared dialog and keeps the observed version', async () => {
-  await render(true); await click('归档')
+  await render(true); await openRowMenu(); await click('归档')
   const dialog = document.querySelector<HTMLElement>('[role="dialog"]')!
   expect(dialog.textContent).toContain('private notice')
   expect(admin.write).not.toHaveBeenCalled()
@@ -183,7 +186,7 @@ it('asks for archive confirmation in the shared dialog and keeps the observed ve
 })
 
 it('does not archive through a dialog opened before navigating to another content kind', async () => {
-  await render(true); await click('归档'); await render('knowledge')
+  await render(true); await openRowMenu(); await click('归档'); await render('knowledge')
   await act(async () => [...document.querySelectorAll<HTMLButtonElement>('[role="dialog"] button')].find(node => node.textContent === '确认归档')!.click()); await settle()
   expect(admin.write).not.toHaveBeenCalled()
 })

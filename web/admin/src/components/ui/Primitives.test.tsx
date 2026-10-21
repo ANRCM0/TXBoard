@@ -10,6 +10,7 @@ import { FilterBar } from './FilterBar'
 import { DetailSection } from './DetailSection'
 import { DangerZone } from './DangerZone'
 import { Popover } from './Popover'
+import { RowActionsMenu } from './RowActionsMenu'
 import { ColumnSettings, useColumnVisibility } from './ColumnSettings'
 
 function mount(node: ReactNode) {
@@ -121,4 +122,21 @@ it('keeps required identity and action columns visible despite stale stored pref
     act(() => inputs[1].click())
     expect(host.querySelector('output')!.textContent).toBe('')
   } finally { act(() => root.unmount()); host.remove(); localStorage.removeItem('txboard:admin:columns:required-columns') }
+})
+
+it('groups row actions into an accessible overflow menu', () => {
+  let selected = ''
+  const { host, root } = mount(<RowActionsMenu actions={[
+    { key: 'edit', label: '编辑', onSelect: () => { selected = 'edit' } },
+    { key: 'ban', label: '封禁', danger: true, separator: true },
+  ]} />)
+  try {
+    const trigger = host.querySelector<HTMLButtonElement>('.row-actions-trigger')!
+    expect(trigger.getAttribute('aria-label')).toBe('更多操作')
+    act(() => trigger.click())
+    expect(host.querySelector('[role="menu"]')?.textContent).toContain('编辑')
+    const edit = [...host.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')].find(item => item.textContent === '编辑')!
+    act(() => edit.click())
+    expect(selected).toBe('edit')
+  } finally { act(() => root.unmount()); host.remove() }
 })

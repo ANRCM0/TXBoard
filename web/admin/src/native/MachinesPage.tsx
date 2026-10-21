@@ -1,6 +1,6 @@
 import { t, useLocale, formatNumber } from '../lib/i18n'
 import { useListPagination } from './useListPagination'
-import { Search, RefreshCw, ArrowUpRight, Plus } from 'lucide-react'
+import { Search, RefreshCw, Plus, ArrowUpRight } from 'lucide-react'
 import './network-reference.css'
 import type { CoreOutput } from '@txboard/core-sdk'
 import { Link, useNavigate } from 'react-router-dom'
@@ -17,14 +17,14 @@ import { Input } from '../components/ui/Field'
 import { admin, workflowActions } from './session'
 import { MachineCreateDialog } from './MachineCreateDialog'
 import { ManagementFeedback } from './Feedback'
-import { NetworkFacet } from './NetworkFacet'
+import { FacetedFilter } from '../components/ui/FacetedFilter'
 import { NetworkBytes } from './NetworkValues'
+import { ServerQuickCard } from './ServerQuickCard'
 
 type Machine = CoreOutput<'network.machines.list'>[number]
+
 const columns: Column<Machine>[] = [
-  { key: 'name', header: '服务器', render: row => <div className="native-row-identity">
-    <Link to={'/server/machine/' + row.id}><strong>{row.name}</strong></Link><small>#{row.id}</small>
-  </div> },
+  { key: 'name', header: '服务器', render: row => <ServerQuickCard machine={row} /> },
   { key: 'active', header: '管理状态', render: row => <StatusBadge tone={row.is_active ? 'success' : 'neutral'}>{row.is_active ? t("已启用") : t("已停用")}</StatusBadge> },
   { key: 'online', header: '连接状态', render: row => row.observation ? <StatusBadge tone={row.observation.online ? 'success' : 'neutral'}>{row.observation.online ? t('在线') : t('离线')}</StatusBadge> : <span className="network-muted">{t('未上报')}</span> },
   { key: 'load', header: '运行负载', render: row => row.observation?.telemetry_fresh ? <div><span>{row.observation.cpu_percent === null ? t('未上报') : 'CPU ' + row.observation.cpu_percent + '%'}</span><small className="network-machine-memory">{t('内存')} <NetworkBytes value={row.observation.memory_used_bytes} /> / <NetworkBytes value={row.observation.memory_total_bytes} /></small>{row.observation.high_load ? <StatusBadge tone="warning">{t('高负载')}</StatusBadge> : null}</div> : <span className="network-muted">{t('负载未上报或已过期')}</span> },
@@ -58,9 +58,9 @@ export function MachinesPage() {
     <ReadList title={"服务器列表"} rows={management.denied || query.isError ? [] : (query.data?.data ?? []).filter(row => (!status.length || status.includes(String(row.is_active))) && (!channel.length || channel.includes(row.image_channel)) && (!connection.length || connection.includes(row.observation ? row.observation.online ? 'online' : 'offline' : 'unknown')) && [row.id, row.name, row.image_channel].some(value => value.toLowerCase().includes(search.trim().toLowerCase())))} columns={columns} perPage={perPage} onPageSize={setPerPage} page={page} meta={query.data?.meta} ready={!!query.data && !management.denied} loading={query.isFetching} error={query.error} onRetry={() => void management.refresh()} onPage={next => { setPage(next); setSearch('') }} columnSettingsKey="machines" stickyHeader stickyFirstColumn>
       <FilterBar applied={applied} onRemove={key => { if (key === 'search') setSearch(''); if (key.startsWith('status:')) setStatus(values => values.filter(value => value !== key.slice(7))); if (key.startsWith('channel:')) setChannel(values => values.filter(value => value !== key.slice(8))); if (key.startsWith('connection:')) setConnection(values => values.filter(value => value !== key.slice(11))) }} onClear={() => { setSearch(''); setStatus([]); setChannel([]); setConnection([]) }} hint={t('仅筛选当前页 · 管理状态与最近心跳分别展示')}>
         <label className="native-list-search"><Search size={16} aria-hidden="true" /><span className="network-sr-only">{t('搜索当前页')}</span><Input placeholder={t('搜索当前页名称、ID 或镜像通道')} aria-label={t('搜索当前页')} value={search} onChange={event => setSearch(event.target.value)} /></label>
-        <NetworkFacet label={t('服务器状态')} value={status} onChange={setStatus} options={[{ value: 'true', label: t('已启用') }, { value: 'false', label: t('已停用') }]} />
-        <NetworkFacet label={t('镜像通道')} value={channel} onChange={setChannel} options={[...new Set([...(management.denied || query.isError ? [] : query.data?.data ?? []).map(row => row.image_channel), ...channel])].map(value => ({ value, label: value }))} />
-        <NetworkFacet label={t('连接状态')} value={connection} onChange={setConnection} options={[{ value: 'online', label: t('在线') }, { value: 'offline', label: t('离线') }, { value: 'unknown', label: t('未上报') }]} />
+        <FacetedFilter label={t('服务器状态')} value={status} onChange={setStatus} options={[{ value: 'true', label: t('已启用') }, { value: 'false', label: t('已停用') }]} />
+        <FacetedFilter label={t('镜像通道')} value={channel} onChange={setChannel} options={[...new Set([...(management.denied || query.isError ? [] : query.data?.data ?? []).map(row => row.image_channel), ...channel])].map(value => ({ value, label: value }))} />
+        <FacetedFilter label={t('连接状态')} value={connection} onChange={setConnection} options={[{ value: 'online', label: t('在线') }, { value: 'offline', label: t('离线') }, { value: 'unknown', label: t('未上报') }]} />
       </FilterBar>
     </ReadList>
     <MachineCreateDialog open={creating && !management.denied && !query.isError} locked={locked} onClose={() => setCreating(false)} onCreate={async input => {

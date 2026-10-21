@@ -3,7 +3,7 @@ import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } f
 import { registerDismissLayer } from '../../lib/dismissLayers'
 import './popover-layout.css'
 
-export function Popover({ label, children, trigger, triggerClassName = '', panelClassName = '', open: controlledOpen, onOpenChange, closeOnSelect = false }: {
+export function Popover({ label, children, trigger, triggerClassName = '', panelClassName = '', open: controlledOpen, onOpenChange, closeOnSelect = false, align = 'end' }: {
   label: string
   children: ReactNode
   trigger?: ReactNode
@@ -12,6 +12,7 @@ export function Popover({ label, children, trigger, triggerClassName = '', panel
   open?: boolean
   onOpenChange?: (open: boolean) => void
   closeOnSelect?: boolean
+  align?: 'start' | 'end'
 }) {
   const [localOpen, setLocalOpen] = useState(false)
   const open = controlledOpen ?? localOpen
@@ -43,7 +44,8 @@ export function Popover({ label, children, trigger, triggerClassName = '', panel
       const available = Math.max(0, (flip ? above : below) - gap)
       panel.style.maxHeight = `${available}px`
       const panelHeight = Math.min(bounds.height, available)
-      panel.style.left = `${Math.max(leftEdge + edge, Math.min(anchor.right - bounds.width, leftEdge + width - bounds.width - edge))}px`
+      const preferredLeft = align === 'start' ? anchor.left : anchor.right - bounds.width
+      panel.style.left = `${Math.max(leftEdge + edge, Math.min(preferredLeft, leftEdge + width - bounds.width - edge))}px`
       panel.style.top = `${Math.max(topEdge + edge, flip ? anchor.top - gap - panelHeight : anchor.bottom + gap)}px`
       panel.dataset.side = flip ? 'top' : 'bottom'
     }
@@ -62,7 +64,7 @@ export function Popover({ label, children, trigger, triggerClassName = '', panel
       window.visualViewport?.removeEventListener('scroll', position)
       if (typeof panel.hidePopover === 'function') panel.hidePopover()
     }
-  }, [open])
+  }, [align, open])
 
   useEffect(() => {
     const panel = panelRef.current
