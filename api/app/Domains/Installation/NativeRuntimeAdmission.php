@@ -7,7 +7,7 @@ final class NativeRuntimeAdmission
 {
     public const VERSION = 'native-core-runtime/1';
     public const COMMANDS = ['core:subscriptions-tick', 'core:native-work', 'core:module-work', 'core:module-deliveries', 'core:module-deploy', 'core:provider-trust', 'core:internal-service', 'check:order',
-        'schedule:run', 'schedule:work', 'queue:work', 'queue:listen', 'queue:restart',
+        'ws-server', 'schedule:run', 'schedule:work', 'queue:work', 'queue:listen', 'queue:restart',
         'horizon', 'horizon:work', 'horizon:supervisor', 'horizon:terminate', 'horizon:status'];
     public const JOBS = [\App\Jobs\OrderHandleJob::class];
     private const HTTP = [
