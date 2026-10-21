@@ -8,6 +8,7 @@ use App\Domains\Installation\InstallationAuthorityException;
 use App\Domains\Installation\NativeRuntimeAdmission;
 use App\Jobs\OrderHandleJob;
 use App\Listeners\EnforceInstallationAuthority;
+use Illuminate\Console\Events\CommandFinished;
 use Illuminate\Console\Events\CommandStarting;
 use Illuminate\Contracts\Queue\Job;
 use Illuminate\Queue\Events\JobProcessing;
@@ -273,6 +274,27 @@ final class NativeRuntimeReadinessTest extends NativeRuntimeTestCase
         }
         $this->assertSame('initializing', app(InstallationAuthority::class)->inspect()['phase']);
         $this->assertSame(0, DB::table('tx_native_runtime_activation')->count());
+    }
+
+    public function test_websocket_command_requires_ready_native_authority_and_current_worker_epoch(): void
+    {
+        $listener = new EnforceInstallationAuthority();
+        $input = new ArrayInput([]);
+        $output = new NullOutput();
+        try {
+            $listener->commandStarting(new CommandStarting('ws-server', $input, $output));
+            $this->fail('WebSocket command admitted before native activation');
+        } catch (InstallationAuthorityException $error) {
+            $this->assertSame('INSTALLATION_AUTHORITY_NATIVE_NOT_READY', $error->getMessage());
+        }
+
+        $this->activate();
+        $listener->commandStarting(new CommandStarting('ws-server', $input, $output));
+        $listener->commandFinished(new CommandFinished('ws-server', $input, $output, 0));
+
+        config(['core_installation.worker_epoch' => '1']);
+        $this->expectExceptionMessage('INSTALLATION_AUTHORITY_WORKER_MISMATCH');
+        $listener->commandStarting(new CommandStarting('ws-server', $input, $output));
     }
 
     public function test_ready_native_commands_and_queue_payloads_use_closed_admission(): void
