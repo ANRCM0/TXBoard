@@ -6,9 +6,8 @@ import {
   PanelLeftOpen,
   X,
 } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
-import { TopBar } from './TopBar'
 import { coreNavigationGroups } from '../../navigation/core'
 import { preloadAdminRoute, scheduleAdminRouteWarmup } from '../../lib/routePreload'
 import { useDialog } from '../../lib/useDialog'
@@ -56,6 +55,7 @@ export function Sidebar({ open, onClose, collapsed, onExpand, onToggle }: Sideba
   const site = useSiteBranding()
   const { pathname } = useLocation()
   const dialogRef = useDialog(open, onClose)
+  const navRef = useRef<HTMLElement>(null)
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(readOpenGroups)
 
   const coreRoutePaths = useMemo(
@@ -75,6 +75,17 @@ export function Sidebar({ open, onClose, collapsed, onExpand, onToggle }: Sideba
       // A storage write failure must never break navigation.
     }
   }, [openGroups])
+
+  useEffect(() => {
+    const nav = navRef.current
+    if (!nav) return
+    const active = nav.querySelector<HTMLElement>('.admin-nav-sub.active, .admin-nav-root.active')
+    if (!active || typeof active.scrollIntoView !== 'function') return
+    const navBounds = nav.getBoundingClientRect(), itemBounds = active.getBoundingClientRect()
+    if (itemBounds.top < navBounds.top || itemBounds.bottom > navBounds.bottom) {
+      active.scrollIntoView({ block: 'nearest' })
+    }
+  }, [pathname, openGroups])
 
   function toggleGroup(key: string) {
     setOpenGroups(state => ({ ...state, [key]: !(state[key] ?? true) }))
@@ -100,7 +111,7 @@ export function Sidebar({ open, onClose, collapsed, onExpand, onToggle }: Sideba
           </button>
         </div>
 
-        <nav className="admin-sidebar-nav" aria-label={t("主导航")}>
+        <nav ref={navRef} className="admin-sidebar-nav" aria-label={t("主导航")}>
           <NavLink
             to="/"
             end
@@ -159,9 +170,9 @@ export function Sidebar({ open, onClose, collapsed, onExpand, onToggle }: Sideba
         </nav>
 
         <div className="admin-sidebar-footer">
-          <TopBar onOpenMenu={onClose} />
           <button type="button" className="admin-sidebar-collapse-toggle" aria-label={t(collapsed ? t('展开侧边栏') : t('收起侧边栏'))} title={t(collapsed ? t('展开侧边栏') : t('收起侧边栏'))} aria-expanded={!collapsed} onClick={onToggle ?? onExpand}>
             {collapsed ? <PanelLeftOpen size={19} /> : <PanelLeftClose size={19} />}
+            <span>{t(collapsed ? '展开侧边栏' : '收起侧边栏')}</span>
           </button>
         </div>
       </div>

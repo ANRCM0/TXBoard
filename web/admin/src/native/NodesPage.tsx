@@ -24,15 +24,15 @@ import { NodeEditor } from './NodeEditor'
 
 type Node = CoreOutput<'network.nodes.list'>[number]
 const columns: Column<Node>[] = [
-  { key: 'name', header: '节点', render: node => <div className="nodes-v3-identity">
+  { key: 'name', header: '节点', width: '200px', render: node => <div className="nodes-v3-identity">
     <Link to={'/server/node/' + node.id}><strong>{node.name}</strong></Link><small>#{node.id} <span className="network-protocol">{node.type}</span></small>
   </div> },
-  { key: 'host', header: '连接地址', render: node =>
+  { key: 'host', header: '连接地址', width: '155px', render: node =>
     <NetworkEndpoint host={node.host} port={node.port} /> },
-  { key: 'machine', header: '所属服务器', render: node => node.machine_id ? <Link className="network-resource-link" to={'/server/machine/' + node.machine_id}>#{node.machine_id}</Link> : <span className="network-muted">{t("未绑定")}</span> },
-  { key: 'state', header: '状态', render: node => <div className="network-tags"><StatusBadge tone={node.enabled ? 'success' : 'neutral'}>{node.enabled ? t("已启用") : t("已禁用")}</StatusBadge><span className="reference-tag">{node.show ? t("显示") : t("隐藏")}</span></div> },
-  { key: 'traffic', header: '累计上传 / 下载', render: node => <div className="network-traffic-pair"><span><small>{t("上传")}</small><NetworkBytes value={node.u} /></span><span><small>{t("下载")}</small><NetworkBytes value={node.d} /></span></div> },
-  { key: 'details', header: '操作', render: node => <Link className="network-icon-link" title={t("查看详情")} aria-label={t("查看 {name} 详情", { name: node.name })} to={'/server/node/' + node.id}><ArrowUpRight size={16} /></Link> },
+  { key: 'machine', header: '所属服务器', width: '150px', render: node => node.machine_id ? <Link className="network-resource-link" to={'/server/machine/' + node.machine_id}>#{node.machine_id}</Link> : <span className="network-muted">{t("未绑定")}</span> },
+  { key: 'state', header: '状态', width: '155px', render: node => <div className="network-tags"><StatusBadge tone={node.enabled ? 'success' : 'neutral'}>{node.enabled ? t("已启用") : t("已禁用")}</StatusBadge><span className="reference-tag">{node.show ? t("显示") : t("隐藏")}</span></div> },
+  { key: 'traffic', header: '累计上传 / 下载', width: '210px', render: node => <div className="network-traffic-pair"><span><small>{t("上传")}</small><NetworkBytes value={node.u} /></span><span><small>{t("下载")}</small><NetworkBytes value={node.d} /></span></div> },
+  { key: 'details', header: '操作', width: '100px', render: node => <Link className="network-icon-link" title={t("查看详情")} aria-label={t("查看 {name} 详情", { name: node.name })} to={'/server/node/' + node.id}><ArrowUpRight size={16} /></Link> },
 ]
 
 export function NodesPage() {

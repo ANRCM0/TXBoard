@@ -1,9 +1,9 @@
-:root[data-admin-color-scheme=black]{--primary:#243247;--primary-fg:#fff;--accent:#445773;--focus-ring:#445773}
-:root[data-admin-color-scheme=blackblue]{--primary:#315993;--primary-fg:#fff;--accent:#4a73ac;--focus-ring:#4a73ac}
-:root[data-admin-color-scheme=green]{--primary:#24715a;--primary-fg:#fff;--accent:#33896f;--focus-ring:#33896f}
-:root[data-theme=dark][data-admin-color-scheme=black]{--primary:#c3cedd;--primary-fg:#172132;--accent:#d0dae7;--focus-ring:#c3cedd}
-:root[data-theme=dark][data-admin-color-scheme=blackblue]{--primary:#8cb2ed;--primary-fg:#12213b;--accent:#a6c5f3;--focus-ring:#8cb2ed}
-:root[data-theme=dark][data-admin-color-scheme=green]{--primary:#91cbb5;--primary-fg:#11372a;--accent:#a6dac7;--focus-ring:#91cbb5}
+:root[data-admin-color-scheme=black]{--primary:#243247;--primary-hover:#182433;--primary-fg:#fff;--primary-soft:#eef1f5;--accent:#445773;--focus-ring:#445773}
+:root[data-admin-color-scheme=blackblue]{--primary:#315993;--primary-hover:#274a7d;--primary-fg:#fff;--primary-soft:#edf3fa;--accent:#4a73ac;--focus-ring:#4a73ac}
+:root[data-admin-color-scheme=green]{--primary:#24715a;--primary-hover:#1c5b48;--primary-fg:#fff;--primary-soft:#eaf5f1;--accent:#33896f;--focus-ring:#33896f}
+:root[data-theme=dark][data-admin-color-scheme=black]{--primary:#c3cedd;--primary-hover:#d6e0ec;--primary-fg:#172132;--primary-soft:#1d2939;--accent:#d0dae7;--focus-ring:#c3cedd}
+:root[data-theme=dark][data-admin-color-scheme=blackblue]{--primary:#8cb2ed;--primary-hover:#a5c4f5;--primary-fg:#12213b;--primary-soft:#182741;--accent:#a6c5f3;--focus-ring:#8cb2ed}
+:root[data-theme=dark][data-admin-color-scheme=green]{--primary:#91cbb5;--primary-hover:#a9d9c6;--primary-fg:#11372a;--primary-soft:#162e27;--accent:#a6dac7;--focus-ring:#91cbb5}
 :root[data-admin-sidebar-style=contrast] .admin-sidebar{--sidebar:#18283d;--sidebar-fg:#e7eef7;--fg:#edf3fc;--muted:#bacadd;--control-bg:#263950;--hover:#30455e;--surface-selected:#344d6b;--panel:#18283d;background:var(--sidebar);color:var(--sidebar-fg)}
 :root[data-admin-sidebar-style=contrast] .admin-sidebar .admin-brand-mark{background:#e7eef7;color:#18283d}
 :root[data-admin-header-style=accent] .admin-main .page-header{border-inline-start:4px solid var(--primary);padding:16px 20px;border-radius:0 10px 10px 0;background:color-mix(in srgb,var(--primary) 7%,var(--panel))}

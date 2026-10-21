@@ -1,88 +1,155 @@
-/* TXBoard Admin core design tokens.
- * One authoritative palette for both visual themes. Keep feature-specific
- * component rules in their respective stylesheets; avoid inline hex colors.
+/* TXBoard Admin design tokens.
+ * One authoritative palette for both themes. Feature styles must consume these
+ * variables instead of introducing page-local colors.
  */
 :root {
   color-scheme: light;
-  --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --bg: #f6f8fb;
+  --font-sans: "Inter Variable", Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", sans-serif;
+  --font-mono: "JetBrains Mono Variable", ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+
+  /* Canvas and surfaces */
+  --bg: #f4f6fa;
+  --bg-accent: #eef2fb;
   --panel: #ffffff;
-  --fg: #0e1726;
-  --muted: #64748b;
-  --border: #e2e8f0;
-  --primary: #4169d8;
+  --panel-soft: #f8fafc;
+  --panel-muted: #f2f5fa;
+  --fg: #172033;
+  --fg-strong: #0d1526;
+  --muted: #667085;
+  --subtle: #98a2b3;
+  --border: #e3e8f0;
+  --border-strong: #d3dae6;
+  --hover: #f1f4f9;
+  --control-bg: #f4f6fa;
+  --surface-selected: #eef2ff;
+
+  /* Brand */
+  --primary: #3d5afe;
+  --primary-hover: #2f49d8;
   --primary-fg: #ffffff;
-  --hover: #e9eef5;
-  --accent: #5983f4;
-  --control-bg: #f1f5f9;
-  --surface-selected: #e9eef5;
-  --shadow-overlay: 0 18px 38px -18px rgba(14,23,38,.24);
-  --danger: #dc2626;
-  --success: #15803d;
-  --warning: #b45309;
-  --sidebar: #ffffff;
-  --sidebar-fg: #334155;
-  --shadow: 0 10px 22px -18px rgba(14,23,38,.12);
-  --admin-header-height: 60px;
-  --admin-sidebar-width: 251px;
+  --primary-soft: #edf1ff;
+  --accent: #0e9384;
+  --accent-soft: #e7f7f4;
+
+  /* Semantic */
+  --danger: #d92d20;
+  --danger-soft: #fef1f0;
+  --success: #067647;
+  --success-soft: #ecfdf3;
+  --warning: #b54708;
+  --warning-soft: #fffaeb;
+  --info: #175cd3;
+  --info-soft: #eff8ff;
+
+  /* Sidebar (always an ink surface, independent of the content theme) */
+  --sidebar: #0b1322;
+  --sidebar-fg: #a7b3c7;
+  --sidebar-fg-strong: #f4f7ff;
+  --sidebar-muted: #78859b;
+  --sidebar-border: rgba(255, 255, 255, .07);
+  --sidebar-hover: rgba(255, 255, 255, .055);
+  --sidebar-active: rgba(106, 133, 255, .16);
+  --sidebar-control-bg: rgba(255, 255, 255, .055);
+
+  /* Elevation */
+  --shadow: 0 1px 2px rgba(16, 24, 40, .04), 0 1px 3px rgba(16, 24, 40, .05);
+  --shadow-card-hover: 0 10px 26px -14px rgba(16, 24, 40, .22);
+  --shadow-overlay: 0 24px 56px -20px rgba(13, 21, 38, .34), 0 0 0 1px rgba(16, 24, 40, .04);
+  --topbar-bg: rgba(255, 255, 255, .86);
+
+  /* Layout */
+  --admin-header-height: 64px;
+  --admin-sidebar-width: 264px;
   --admin-sidebar-compact-width: 88px;
-  --admin-page-max-width: none;
-  --admin-page-gutter: 24px;
-  --admin-page-block: 24px;
-  --radius-control: 8px;
-  --radius-card: 18px;
-  --radius-overlay: 18px;
-  --focus-ring: #4169d8;
-  /* Admin UI v2: typography, density and non-interactive surfaces. */
+  --admin-page-max-width: 1520px;
+  --admin-page-gutter: 32px;
+  --admin-page-block: 28px;
+  --radius-control: 9px;
+  --radius-card: 16px;
+  --radius-overlay: 16px;
+  --radius-pill: 999px;
+  --focus-ring: #3d5afe;
+
+  /* Type scale */
   --ui-font-body: 14px;
   --ui-font-secondary: 12px;
-  --ui-font-heading: 20px;
-  --ui-font-page: 34px;
+  --ui-font-heading: 18px;
+  --ui-font-page: 28px;
+  --ui-font-metric: clamp(22px, 1.85vw, 30px);
   --ui-control-height: 38px;
   --ui-row-padding: 13px;
   --ui-gap: 12px;
-  --ui-surface-subtle: #f1f5f9;
-  --ui-surface-outline: #d9e3ee;
+  --ui-surface-subtle: #f4f6fa;
+  --ui-surface-outline: #dbe2ec;
+
   /* Categorical data colors. Keep series distinguishable without relying on
    * the semantic status colors, which retain their own meaning. */
-  --data-blue: #3f6fe0;
-  --data-cyan: #0e8fa8;
-  --data-green: #1f8a5b;
-  --data-orange: #b66a12;
-  --data-purple: #7b57c8;
-  --data-red: #c2413b;
+  --data-blue: #3d5afe;
+  --data-cyan: #0e9384;
+  --data-green: #12a150;
+  --data-orange: #d97706;
+  --data-purple: #7a5af8;
+  --data-red: #e5484d;
+
   --ui-motion-fast: 150ms;
   --ui-motion-base: 200ms;
-  --ui-ease: cubic-bezier(.2,.8,.2,1);
+  --ui-ease: cubic-bezier(.2, .8, .2, 1);
 }
 
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --bg: #0b111c;
-  --panel: #111a29;
-  --fg: #d8e2ee;
-  --muted: #9aa8bc;
-  --border: #273449;
-  --primary: #89a7ff;
-  --primary-fg: #08111f;
-  --hover: #202d41;
-  --accent: #89a7ff;
-  --control-bg: #192437;
-  --surface-selected: #253249;
-  --shadow-overlay: 0 18px 38px -18px rgba(0,0,0,.72);
-  --danger: #f87171;
-  --success: #34d399;
-  --warning: #fbbf24;
-  --sidebar: #111a29;
-  --sidebar-fg: #e5ebf4;
-  --shadow: 0 1px 2px -2px rgba(0,0,0,.4), 0 3px 6px rgba(0,0,0,.3);
-  --focus-ring: #93c5fd;
-  --ui-surface-subtle: #172235;
-  --ui-surface-outline: #324156;
-  --data-blue: #89a7ff;
-  --data-cyan: #38c7dd;
-  --data-green: #4ade9b;
-  --data-orange: #f4b860;
-  --data-purple: #b9a0ff;
-  --data-red: #ff8f88;
+  --bg: #080d16;
+  --bg-accent: #0d1524;
+  --panel: #101927;
+  --panel-soft: #0d1622;
+  --panel-muted: #162133;
+  --fg: #e4e9f2;
+  --fg-strong: #f7f9fc;
+  --muted: #98a4b7;
+  --subtle: #758196;
+  --border: #223046;
+  --border-strong: #2e3d56;
+  --hover: #182338;
+  --control-bg: #162133;
+  --surface-selected: #1c2a44;
+
+  --primary: #8ba4ff;
+  --primary-hover: #a9bcff;
+  --primary-fg: #0a1220;
+  --primary-soft: #1a2642;
+  --accent: #5fd6c6;
+  --accent-soft: #102b29;
+
+  --danger: #ff8f86;
+  --danger-soft: #321b1d;
+  --success: #5adf9a;
+  --success-soft: #10281c;
+  --warning: #f7c168;
+  --warning-soft: #2e2313;
+  --info: #84b4ff;
+  --info-soft: #15253d;
+
+  --sidebar: #070c15;
+  --sidebar-fg: #a7b3c7;
+  --sidebar-fg-strong: #f4f7ff;
+  --sidebar-muted: #6f7c91;
+  --sidebar-border: rgba(255, 255, 255, .07);
+  --sidebar-hover: rgba(255, 255, 255, .06);
+  --sidebar-active: rgba(139, 164, 255, .18);
+  --sidebar-control-bg: rgba(255, 255, 255, .06);
+
+  --shadow: 0 1px 2px rgba(0, 0, 0, .35), 0 1px 3px rgba(0, 0, 0, .28);
+  --shadow-card-hover: 0 14px 30px -18px rgba(0, 0, 0, .7);
+  --shadow-overlay: 0 28px 64px -24px rgba(0, 0, 0, .8), 0 0 0 1px rgba(255, 255, 255, .04);
+  --topbar-bg: rgba(12, 19, 31, .84);
+
+  --focus-ring: #9db1ff;
+  --ui-surface-subtle: #162133;
+  --ui-surface-outline: #2c3b53;
+  --data-blue: #8ba4ff;
+  --data-cyan: #5fd6c6;
+  --data-green: #5adf9a;
+  --data-orange: #f7c168;
+  --data-purple: #c4b5fd;
+  --data-red: #ff9d97;
 }

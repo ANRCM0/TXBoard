@@ -118,7 +118,7 @@ export function TopBar(_props: { onOpenMenu: () => void }) {
 
   return (
     <>
-      <div className="admin-toolbar admin-sidebar-tools" aria-label={t("控制台工具")}>
+      <div className="admin-toolbar admin-topbar-tools" aria-label={t("控制台工具")}>
         <button type="button" aria-label={t("搜索菜单和功能")} title={t("搜索菜单和功能")} className="admin-command-trigger" onClick={() => setCommandOpen(true)}>
             <Search size={16} />
             <span>{t("搜索菜单和功能…")}</span>

@@ -11,7 +11,7 @@ export function MetricCard({ label, value, caption, icon, tone = 'blue', href }:
   href?: string
 }) {
   const content = <>
-    <div className="overview-metric-heading"><span>{label}</span>{icon}</div>
+    <div className="overview-metric-heading"><span>{label}</span><span className="overview-metric-icon" aria-hidden="true">{icon}</span></div>
     <strong>{value}</strong>
     <span className="overview-metric-caption">{caption}{href ? <ArrowUpRight size={14} aria-hidden="true" /> : null}</span>
   </>

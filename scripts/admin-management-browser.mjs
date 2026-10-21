@@ -159,8 +159,8 @@ try {
   assert.deepEqual(appearanceSave.input, { expected_version: appearanceVersion, values: { admin_sidebar_style: 'contrast', admin_color_scheme: 'green' } })
   passed('persistent appearance saves only changed fields using the observed settings version')
 
-  assert.equal(await page.locator('.admin-shell.is-sidebar-collapsed').count(), 1)
-  const languageTools = page.locator('.admin-sidebar-footer .ui-language-selector')
+  assert.equal(await page.locator('.admin-shell.is-sidebar-expanded').count(), 1)
+  const languageTools = page.locator('.admin-topbar-tools .ui-language-selector')
   const language = languageTools.getByRole('combobox', { name: '语言', exact: true })
   await language.waitFor({ state: 'visible' })
   const languageURL = page.url(), writesBeforeLanguage = writes(state).length
@@ -179,7 +179,7 @@ try {
     assert.equal(await page.getByLabel(accentLabel, { exact: true }).inputValue(), 'green')
     assert.equal(page.url(), languageURL)
     assert.equal(writes(state).length, writesBeforeLanguage)
-    assert.equal(await page.locator('.admin-shell.is-sidebar-collapsed').count(), 1)
+    assert.equal(await page.locator('.admin-shell.is-sidebar-expanded').count(), 1)
   }
   passed('language switching translates the active page and shell without reloading or losing the selected settings')
 

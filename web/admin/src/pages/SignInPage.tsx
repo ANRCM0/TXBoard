@@ -73,7 +73,19 @@ export function SignInPage() {
     <div className="admin-auth-page">
       <SiteAppearanceConsumer /><SiteLoginBackground />
       <div className="admin-auth-tools"><LanguageSelector /><ThemeToggle /></div>
-      <div className="admin-auth-wrap">
+      <div className="admin-auth-shell">
+        <aside className="admin-auth-aside">
+          <div className="admin-auth-aside-brand">
+            <SiteMark logo={site.logo} />
+            <div><strong>{site.name}</strong><small>ADMIN CONSOLE</small></div>
+          </div>
+          <div className="admin-auth-aside-copy">
+            <span>{t('管理控制台')}</span>
+            <p>{site.description || t('欢迎回来，登录以管理你的站点')}</p>
+          </div>
+          <div className="admin-auth-aside-foot"><span>TXBoard</span><i aria-hidden="true" /><span>ADMIN CONSOLE</span></div>
+        </aside>
+        <div className="admin-auth-wrap">
         <div className="admin-auth-card">
           <div className="admin-auth-brand">
             <SiteMark logo={site.logo} />
@@ -132,6 +144,7 @@ export function SignInPage() {
             </button>
           </form>
           <button className="admin-auth-help" type="button" onClick={() => setHelp(true)}>{t("无法登录？查看恢复帮助")}</button>
+        </div>
         </div>
       </div>
       <Modal open={help} title={t("管理员登录帮助")} onClose={() => setHelp(false)}>

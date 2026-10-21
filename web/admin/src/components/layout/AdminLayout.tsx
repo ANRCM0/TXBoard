@@ -1,24 +1,49 @@
 import { t, useLocale } from '../../lib/i18n'
 import { Suspense, useEffect, useRef, useState } from 'react'
-import { Menu } from 'lucide-react'
+import { ChevronRight, Menu } from 'lucide-react'
 import { Outlet, useLocation } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
+import { TopBar } from './TopBar'
 import { RouteErrorBoundary } from './RouteErrorBoundary'
 import { ConfirmDialogHost } from '../ui/ConfirmDialog'
 import { PendingWorkflowNotice } from '../../native/PendingWorkflowNotice'
 import { useSiteBranding } from '../../lib/useSiteBranding'
 import { SiteAppearanceConsumer } from '../../lib/useSiteAppearance'
 import { DirtyNavigationHost } from './DirtyNavigationHost'
+import { coreNavigationGroups } from '../../navigation/core'
 
 const SIDEBAR_EXPANDED_KEY = 'txboard:admin:sidebar:expanded'
 
 function readSidebarExpanded() {
   try {
-    // New visitors start with a compact icon rail; returning visitors keep their preference.
-    return window.localStorage.getItem(SIDEBAR_EXPANDED_KEY) === 'true'
+    // New visitors get the readable navigation; returning visitors keep their choice.
+    return window.localStorage.getItem(SIDEBAR_EXPANDED_KEY) !== 'false'
   } catch {
-    return false
+    return true
   }
+}
+
+const extraSections: Record<string, readonly [string, string]> = {
+  '/config/email': ['系统管理', '邮件设置'],
+  '/config/telegram': ['系统管理', 'Telegram'],
+  '/config/app': ['系统管理', 'APP 设置'],
+  '/config/appearance': ['系统管理', '管理端外观'],
+}
+
+function currentSection(pathname: string) {
+  if (pathname === '/') return { group: t('管理控制台'), page: t('仪表盘') }
+  const extra = extraSections[pathname]
+  if (extra) return { group: t(extra[0]), page: t(extra[1]) }
+  for (const group of coreNavigationGroups) {
+    for (const [path, label] of group.items) {
+      if (pathname === path || pathname.startsWith(path + '/')) {
+        return { group: t(group.title), page: t(label) }
+      }
+    }
+  }
+  if (pathname.startsWith('/server/')) return { group: t('节点管理'), page: '' }
+  if (pathname.startsWith('/user/')) return { group: t('用户管理'), page: '' }
+  return { group: t('管理控制台'), page: '' }
 }
 
 export function AdminLayout() {
@@ -75,20 +100,25 @@ export function AdminLayout() {
     return () => desktop.removeEventListener('change', closeOnDesktop)
   }, [])
 
+  const section = currentSection(pathname)
+
   return (
     <div className={`admin-shell ${expanded ? 'is-sidebar-expanded' : 'is-sidebar-collapsed'}`}>
       <SiteAppearanceConsumer />
       <a className="admin-skip-link" href="#admin-content">{t("跳转到主要内容")}</a>
       <Sidebar open={open} onClose={() => setOpen(false)} collapsed={!expanded} onExpand={() => setExpanded(true)} onToggle={() => setExpanded(value => !value)} />
-      <button
-        type="button"
-        className="admin-floating-menu"
-        aria-label={t("打开导航")}
-        onClick={() => setOpen(true)}
-      >
-        <Menu size={20} />
-      </button>
       <main ref={mainRef} className="admin-main" id="admin-content" tabIndex={-1}>
+        <header className="admin-topbar">
+          <button type="button" className="admin-topbar-menu" aria-label={t("打开导航")} onClick={() => setOpen(true)}>
+            <Menu size={20} />
+          </button>
+          <div className="admin-breadcrumb">
+            {section.page && section.page !== section.group
+              ? <><span>{section.group}</span><ChevronRight size={14} aria-hidden="true" /><strong aria-current="page">{section.page}</strong></>
+              : <strong aria-current="page">{section.page || section.group}</strong>}
+          </div>
+          <TopBar onOpenMenu={() => setOpen(false)} />
+        </header>
         <div ref={scrollRef} className="admin-scroll">
           <div className='admin-page'>
             <p className="admin-route-announcer" role="status" aria-live="polite">{announcement}</p>

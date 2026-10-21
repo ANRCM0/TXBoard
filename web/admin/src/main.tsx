@@ -6,6 +6,8 @@ import { Toaster } from 'sonner'
 import { router } from './router'
 import { queryClient } from './native/queryClient'
 import { t, useLocale } from './lib/i18n'
+import '@fontsource-variable/inter'
+import '@fontsource-variable/jetbrains-mono'
 import './design-tokens.css'
 import './styles.css'
 import './form-system.css'
@@ -16,6 +18,7 @@ import './admin-monitor-density.css'
 import './native/native.css'
 import './admin-theme.css'
 import './components/ui/ui.css'
+import './admin-refresh.css'
 
 function RouteLoading() {
   useLocale()

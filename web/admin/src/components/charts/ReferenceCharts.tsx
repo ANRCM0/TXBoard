@@ -100,6 +100,14 @@ export function LineChart({ title, labels, series, formatValue = formatNumber, h
   const x = (i: number) => labels.length <= 1 ? (left + right) / 2 : left + (right - left) * i / (labels.length - 1)
   const y = (value: number) => bottom - value / scale * (bottom - top)
   const description = t("{v0} 个数据点，{v1} 条曲线。横轴为{v2}。聚焦图表后用左右方向键选择数据点，Home 和 End 跳到首尾。点击图例突出显示曲线。", { v0: labels.length, v1: series.length, v2: xAxisLabel })
+  const labelStep = Math.max(1, Math.ceil(labels.length / Math.max(2, Math.floor(width / 120))))
+  const visibleLabels = new Set<number>()
+  for (let i = 0; i < labels.length; i++) if (i === 0 || i === labels.length - 1 || i % labelStep === 0) visibleLabels.add(i)
+  if (labels.length > 1) {
+    // Drop an end label that would collide with the previous tick.
+    const previous = Math.max(...[...visibleLabels].filter(index => index !== labels.length - 1))
+    if (Number.isFinite(previous) && x(labels.length - 1) - x(previous) < 54) visibleLabels.delete(labels.length - 1)
+  }
   const valueLabel = (item: ChartSeries, point: number) => sample(item.values[point])
     ? item.displayValues?.[point] ?? formatValue(item.values[point]!) : t("未上报")
   function keyboard(event: KeyboardEvent<SVGSVGElement>) {
@@ -146,7 +154,7 @@ export function LineChart({ title, labels, series, formatValue = formatNumber, h
           <line className="reference-chart-grid" x1={left} x2={right} y1={position} y2={position} />
           <text className="reference-chart-axis" x={left - 8} y={position + 3} textAnchor="end">{formatValue(value)}</text>
         </g> })}
-        {labels.map((label, i) => i === 0 || i === labels.length - 1 || i % Math.max(1, Math.ceil(labels.length / Math.max(2, Math.floor(width / 120)))) === 0
+        {labels.map((label, i) => visibleLabels.has(i)
           ? <text key={i} aria-hidden="true" className="reference-chart-axis" x={x(i)} y={bottom + 22} textAnchor={labels.length === 1 ? 'middle' : i === 0 ? 'start' : i === labels.length - 1 ? 'end' : 'middle'}>{label}</text> : null)}
         {series.map((item, i) => <g key={item.id} className="reference-chart-series" opacity={pinnedId && pinnedId !== item.id ? .18 : 1} aria-hidden="true">
           {pathSegments(item.values).map((part, partIndex) => <g key={partIndex}><path d={part.area} fill={`url(#${id}-area-${i})`} /><path d={part.line} fill="none" stroke={colorAt(i, item.color)} strokeWidth={pinnedId === item.id ? 3 : 2} strokeLinejoin="round" strokeLinecap="round" /></g>)}
