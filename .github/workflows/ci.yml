@@ -1,35 +1,160 @@
-name: api-mysql-ci
+name: CI
 
 on:
   push:
     branches: [main]
-    paths:
-      - "api/**"
-      - "!api/**/*.md"
-      - "scripts/compare-critical-data-snapshots.mjs"
-      - "scripts/tests/compare-critical-data-snapshots.test.mjs"
-      - ".github/workflows/ci-mysql.yml"
   pull_request:
-    paths:
-      - "api/**"
-      - "!api/**/*.md"
-      - "scripts/compare-critical-data-snapshots.mjs"
-      - "scripts/tests/compare-critical-data-snapshots.test.mjs"
-      - ".github/workflows/ci-mysql.yml"
   workflow_dispatch:
     inputs:
-      native_only:
-        description: Run native domain acceptance without the separate full legacy regression job
+      legacy_mysql:
+        description: Also run the retained full legacy MySQL regression
         type: boolean
         default: false
 
+permissions:
+  contents: read
+
 concurrency:
-  group: api-mysql-ci-${{ github.ref }}
-  cancel-in-progress: true
+  group: ci-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+defaults:
+  run:
+    shell: bash
 
 jobs:
+  changes:
+    name: Select checks
+    runs-on: ubuntu-latest
+    outputs:
+      api: ${{ steps.select.outputs.api }}
+      mysql: ${{ steps.select.outputs.mysql }}
+      web: ${{ steps.select.outputs.web }}
+      browser: ${{ steps.select.outputs.browser }}
+      native: ${{ steps.select.outputs.native }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Select checks from the complete Git change set
+        id: select
+        run: python3 scripts/select-ci-jobs.py
+
+  api:
+    name: Core API
+    needs: changes
+    if: needs.changes.outputs.api == 'true'
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      CACHE_DRIVER: array
+      QUEUE_CONNECTION: sync
+      SESSION_DRIVER: array
+      SETTING_CACHE_STORE: array
+    defaults:
+      run:
+        working-directory: api
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - name: Verify current Core domain boundaries
+        working-directory: .
+        run: |
+          python3 scripts/generate-core-contracts.py --check
+          python3 scripts/check-admin-unification.py
+          python3 scripts/check-browser-core-surface.py
+          python3 scripts/check-core-boundaries.py
+          python3 scripts/check-kernel-v1.py
+          python3 scripts/check-node-component.py
+          python3 scripts/check-renderer-registry.py
+          python3 scripts/check-modular-release.py
+          python3 scripts/module-dev.py lock api/bootstrap/module-composition.json api/bootstrap/module-packages.lock.json --application-root api --check
+          python3 scripts/module-dev.py lock api/bootstrap/module-composition.proof.json api/bootstrap/module-packages.proof.lock.json --application-root api --check
+          python3 -m unittest discover -s scripts/tests -p test_check_core_boundaries.py
+          python3 -m unittest discover -s scripts/tests -p test_module_dev.py
+          python3 -m unittest discover -s scripts/tests -p test_renderer_dev.py
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.2"
+          extensions: mbstring, sqlite3, pdo_sqlite, curl, openssl, sodium, redis, bcmath, pcntl, posix, fileinfo
+          coverage: none
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist
+      - name: Prepare test environment
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+      - name: Exercise the real module developer test runner
+        working-directory: .
+        run: python3 -m unittest discover -s scripts/tests -p test_module_dev_integration.py
+      - name: Check PHP syntax
+        run: find app config routes database tests plugins-core plugins/DeliveryReceipt plugins/OfferReservation plugins/ModulePortal -name '*.php' -print0 | xargs -0 -n1 php -l > "$RUNNER_TEMP/php-syntax.log"
+      - name: Run current native development suite
+        env:
+          APP_ENV: testing
+          DB_CONNECTION: sqlite
+          DB_DATABASE: ":memory:"
+        run: php artisan test
+      - name: Actual durable HTTPS receiver restart after lost notification acknowledgement
+        env:
+          CORE_MODULE_RECEIVER_CERT: ${{ runner.temp }}/module-receiver.pem
+          CORE_MODULE_RECEIVER_KEY: ${{ runner.temp }}/module-receiver.key
+        run: |
+          openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj /CN=module-receiver-fixture -addext subjectAltName=IP:127.0.0.1 -keyout "$CORE_MODULE_RECEIVER_KEY" -out "$CORE_MODULE_RECEIVER_CERT" 2>/dev/null
+          chmod 600 "$CORE_MODULE_RECEIVER_KEY"
+          php artisan test tests/Integration/Modules/NotificationReceiverTest.php
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Test native source and route audit tools
+        working-directory: .
+        run: |
+          node --test scripts/tests/check-native-schema-only.test.mjs
+          node --test scripts/tests/p0-api-audit.test.mjs
+          node --test scripts/tests/native-admin-release-audit.test.mjs
+          node --test scripts/tests/export-route-catalog.test.mjs
+          node --test scripts/tests/check-external-integration-routes.test.mjs
+      - name: Check native subscription consumer syntax
+        working-directory: .
+        run: node --check scripts/native-subscription-client.mjs
+      - name: Verify native source and Admin references
+        working-directory: .
+        run: |
+          node scripts/check-native-schema-only.mjs --check
+          node scripts/native-admin-release-audit.mjs --strict --guard-native --output artifacts/release/admin-native-gap.json
+      - name: Audit live HTTP routes and external integration contracts
+        working-directory: .
+        run: |
+          php api/artisan route:list --json > "$RUNNER_TEMP/txboard-routes.json"
+          node scripts/p0-api-audit.mjs --routes "$RUNNER_TEMP/txboard-routes.json" --output-dir artifacts/p0-audit
+          node scripts/export-route-catalog.mjs --routes "$RUNNER_TEMP/txboard-routes.json" --json artifacts/route-catalog/http-routes.json --markdown artifacts/route-catalog/http-routes.md --check
+          node scripts/check-external-integration-routes.mjs --routes "$RUNNER_TEMP/txboard-routes.json"
+      - name: Preserve non-secret schema and route audit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: txboard-api-contract-audit
+          path: |
+            artifacts/release/admin-native-gap.json
+            artifacts/route-catalog/
+            artifacts/p0-audit/
+          if-no-files-found: warn
+          retention-days: 14
+
   mysql-regression:
-    if: github.event_name == 'workflow_dispatch' && !inputs.native_only
+    needs: changes
+    if: github.event_name == 'workflow_dispatch' && inputs.legacy_mysql
     runs-on: ubuntu-latest
     services:
       mysql:
@@ -193,6 +318,8 @@ jobs:
         run: php artisan test tests/Feature/Order/CheckOrderRecoveryTest.php
 
   installation-bootstrap:
+    needs: changes
+    if: needs.changes.outputs.mysql == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
@@ -244,6 +371,8 @@ jobs:
         run: php artisan test tests/Feature/Installation/InstallationBootstrapMysqlTest.php
 
   native-admin-management:
+    needs: changes
+    if: needs.changes.outputs.mysql == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
@@ -307,6 +436,8 @@ jobs:
           tests/Feature/Txapi/TxapiAdminConfigurationTest.php
 
   native-billing-domain:
+    needs: changes
+    if: needs.changes.outputs.mysql == 'true'
     name: native-billing-domain (${{ matrix.shard }})
     runs-on: ubuntu-latest
     timeout-minutes: 45
@@ -409,6 +540,8 @@ jobs:
         run: php artisan test ${{ matrix.test_files }}
 
   native-subscription-domain:
+    needs: changes
+    if: needs.changes.outputs.mysql == 'true'
     name: native-subscription-domain (${{ matrix.shard }})
     runs-on: ubuntu-latest
     timeout-minutes: 60
@@ -568,3 +701,216 @@ jobs:
       - name: Native receipt concurrency and SQL crash recovery on MySQL 8.4
         if: matrix.run_usage_concurrency == true
         run: php artisan test tests/Feature/UsageV2/UsageMysqlConcurrencyTest.php
+
+  web:
+    name: Web
+    needs: changes
+    if: needs.changes.outputs.web == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npm run verify:web
+      - run: npx playwright install --with-deps chromium
+      - name: Verify actual management development server in Chromium
+        run: npm run test:dev-browser --workspace @txboard/admin
+      - run: npm run test:browser
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: admin-browser-${{ github.sha }}
+          path: |
+            artifacts/admin-dev-browser/*.png
+            artifacts/admin-dev-browser/result.json
+            artifacts/admin-browser/
+            artifacts/admin-workflows-browser/
+            artifacts/admin-catalog-network-browser/
+            artifacts/admin-management-browser/
+            artifacts/user-browser/
+            artifacts/admin-native-wave/code-editor-browser-result.json
+            artifacts/admin-native-wave/subscription-template-editor-*.png
+          if-no-files-found: ignore
+
+  browser-native-http:
+    needs: changes
+    if: needs.changes.outputs.browser == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      mariadb:
+        image: mariadb:11.4
+        env:
+          MARIADB_ROOT_PASSWORD: core-browser-root-fixture
+          MARIADB_ROOT_HOST: '%'
+        ports: ['13306:3306']
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval 5s --health-retries 20
+      redis:
+        image: redis:7.4-alpine
+        ports: ['16379:6379']
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          submodules: true
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, pdo_mysql, pdo_sqlite, curl, openssl, sodium, redis, bcmath, pcntl, posix
+          coverage: none
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22.23.2'
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: node/go.mod
+          cache-dependency-path: node/go.sum
+      - name: Validate native commerce fixture syntax
+        run: |
+          python3 scripts/check-browser-core-surface.py
+          bash -n scripts/tests/core-browser/run-linux.sh
+          php -l scripts/tests/core-browser/core-fixture.php
+          node --check scripts/tests/core-browser/core-browser.mjs
+          node --check scripts/tests/core-browser/renderer-delivery.mjs
+          node --check scripts/tests/core-browser/support-workflow.mjs
+          node --check scripts/tests/core-browser/financial-workflow.mjs
+      - name: Install isolated integration dependencies
+        working-directory: .
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y mariadb-client
+          cd api
+          composer install --no-interaction --prefer-dist
+          cd ..
+          npm ci --no-audit --no-fund
+      - name: Test isolated module host in Chromium
+        run: |
+          npm run build:sdk
+          npm run build --workspace @txboard/module-host
+          npx playwright install --with-deps chromium
+          node --test scripts/tests/core-browser/module-host.test.mjs
+      - name: Published offers, support, financial workflows and renderer delivery through actual Core browser HTTP
+        env:
+          TXBOARD_CORE_REPO: ${{ github.workspace }}
+          TXBOARD_CORE_VENDOR: ${{ github.workspace }}/api/vendor
+          MYSQL_TEST_HOST: 127.0.0.1
+          MYSQL_TEST_PORT: '13306'
+          MYSQL_TEST_ROOT_PASSWORD: core-browser-root-fixture
+          REDIS_TEST_PORT: '16379'
+          CORE_BROWSER_INTEGRATION_SCRATCH: ${{ runner.temp }}
+        run: bash scripts/tests/core-browser/run-linux.sh
+      - name: Retain bounded non-secret native commerce evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: core-browser-commerce-${{ github.sha }}
+          if-no-files-found: ignore
+          path: |
+            ${{ runner.temp }}/core-browser.*/core-browser-result.json
+            ${{ runner.temp }}/core-browser.*/fixture.json
+
+  native-c2-live:
+    needs: changes
+    if: needs.changes.outputs.native == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      redis:
+        image: redis:7.4
+        ports: ['6379:6379']
+        options: --health-cmd="redis-cli ping" --health-interval 5s --health-retries 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, pdo_sqlite, curl, openssl, sodium, bcmath, redis
+          coverage: none
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: node/go.mod
+          cache-dependency-path: node/go.sum
+      - name: Prepare Core
+        working-directory: api
+        run: |
+          composer install --no-interaction --prefer-dist
+          cp .env.example .env
+          APP_ENV=testing php artisan key:generate
+      - name: Actual native activation, identity, queue, render, traffic and settlement
+        run: |
+          python3 scripts/check-node-component.py
+          python3 scripts/verify-native-c2.py
+
+  static:
+    name: Static and documentation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test documentation validator fixtures
+        run: node --test scripts/tests/check-docs.test.mjs
+      - name: Discover first-party documentation
+        id: docs
+        run: |
+          has_docs=$(node scripts/check-docs.mjs --has-docs)
+          [[ "$has_docs" == true || "$has_docs" == false ]]
+          printf 'has_docs=%s\n' "$has_docs" >> "$GITHUB_OUTPUT"
+      - name: Validate local documentation links
+        if: steps.docs.outputs.has_docs == 'true'
+        run: node scripts/check-docs.mjs
+      - name: Report skipped documentation links
+        if: steps.docs.outputs.has_docs == 'false'
+        run: echo 'SKIP - no first-party Markdown documentation found; link validation not run.'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install pinned workflow parser
+        run: python -m pip install PyYAML==6.0.3
+      - name: Validate native development CI policy
+        run: python scripts/check-ci-policy.py
+      - name: Test CI selection and policy regressions
+        run: |
+          python3 -m unittest discover -s scripts/tests -p test_select_ci_jobs.py
+          python3 -m unittest discover -s scripts/tests -p test_check_ci_policy.py
+
+  acceptance:
+    name: CI acceptance
+    if: ${{ always() }}
+    needs: [changes, static, api, mysql-regression, installation-bootstrap, native-admin-management, native-billing-domain, native-subscription-domain, web, browser-native-http, native-c2-live]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require every selected check to succeed
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          results = json.loads(os.environ['RESULTS'])
+          failed = [name for name, job in results.items() if job['result'] not in ('success', 'skipped')]
+          if results['changes']['result'] != 'success' or results['static']['result'] != 'success':
+              raise SystemExit('CI selection and static checks must succeed')
+          if failed:
+              raise SystemExit('CI checks did not succeed: ' + ', '.join(failed))
+          print('All selected CI checks passed.')
+          PY

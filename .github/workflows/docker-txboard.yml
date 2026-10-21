@@ -1,4 +1,4 @@
-name: txboard-core-image
+name: Images
 
 on:
   # Runtime/build changes on main update the dev image; documentation-only commits do not.

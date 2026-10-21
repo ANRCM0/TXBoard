@@ -27,7 +27,7 @@ page; new shared rules belong in `ui.css` rather than adding another override
 layer.
 
 Local type checks and builds are static checks. Component and browser acceptance
-run in `ci-web.yml`; browser screenshots are retained as workflow artifacts.
+run in the Web job of `ci.yml`; browser screenshots are retained as workflow artifacts.
 
 ## Components and charts
 

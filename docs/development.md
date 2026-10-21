@@ -118,14 +118,30 @@ test targets include functional suites and belong to the acceptance environment.
 
 | Workflow | Acceptance responsibility |
 | --- | --- |
-| `ci-api.yml` | Current Core application suite and external route boundaries |
-| `ci-mysql.yml` | MySQL 8.4 transactions, conflicts, concurrent receipts and recovery |
-| `ci-web.yml` | Frontend boundaries, components, builds and browser regressions |
-| `ci-core-browser.yml` | Real Core browser HTTP, SDK, Provider, financial and support workflows |
+| `ci.yml` / Core API | Current Core application suite and external route boundaries |
+| `ci.yml` / MySQL jobs | MySQL 8.4 transactions, conflicts, concurrent receipts and recovery |
+| `ci.yml` / Web | Frontend boundaries, components, builds and browser regressions |
+| `ci.yml` / browser-native-http | Real Core browser HTTP, SDK, Provider, financial and support workflows |
 | External `ANRCM0/txnode` CI | Node tests, protocol behavior, pinned Core compatibility and Node releases |
-| `ci-native-c2.yml` | Native Core and Go Node integration |
+| `ci.yml` / native-c2-live | Native Core and Go Node integration |
 | `docker-txboard.yml` | Actual Core image verification and eligible publication |
-| `docs.yml` | Development documentation links and CI policy |
+| `ci.yml` / Static and documentation | Development documentation links, CI policy and selector regressions |
+
+The Actions entry points are **CI** and **Images**. CI runs on every pull request
+and main push. It selects component and integration jobs from the complete Git
+diff using `.github/ci-paths.json`; Markdown-only changes run static checks without
+starting application or database jobs. Workflow and selector changes require the
+full current suite. An unavailable comparison base also selects the full suite.
+Manual CI runs select all current checks; the optional `legacy_mysql` input adds
+the retained full legacy MySQL regression. The **CI acceptance** job aggregates
+all selected jobs and fails if selection, static checks or any selected job fails.
+
+Historical Provider proof and migration workflows have been removed. Their
+remaining fixtures may still be consumed by current native integration; removing
+a workflow is not permission to remove shared fixtures. Retired Actions registry
+entries are disabled separately, while run artifacts remain tied to their original
+commits. Branch protection should require **CI acceptance** when adopting this
+workflow layout.
 
 Record the exact candidate commit and tested tree. Check merged-main runs and
 publication separately. Browser fixtures explicitly identify synthetic Core ingress

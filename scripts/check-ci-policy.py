@@ -10,27 +10,18 @@ import yaml
 
 
 ROOT = Path(__file__).resolve().parent.parent
-AUTOMATIC = {
-    "ci-api.yml",
-    "ci-core-browser.yml",
-    "ci-mysql.yml",
-    "ci-native-c2.yml",
-    "ci-web.yml",
-    "docker-txboard.yml",
-    "docs.yml",
+AUTOMATIC = {"ci.yml", "docker-txboard.yml"}
+CI_GROUPS = {
+    "api": "api",
+    "mysql-regression": "mysql",
+    "installation-bootstrap": "mysql",
+    "native-admin-management": "mysql",
+    "native-billing-domain": "mysql",
+    "native-subscription-domain": "mysql",
+    "web": "web",
+    "browser-native-http": "browser",
+    "native-c2-live": "native",
 }
-RETIRED_WORKFLOWS = {
-    f"ci-authority-{name}.yml"
-    for name in ("writer-fence", "inventory-expand", "finance-fence",
-                 "native-writers", "identity-writers", "ticket-writers")
-}
-RETIRED_WORKFLOWS |= {
-    f"ci-internal-{name}.yml"
-    for name in ("admin", "admin-consumer", "admin-dashboard", "admin-login",
-                 "admin-network-groups", "admin-order-list", "admin-plan-list",
-                 "admin-sessions", "admin-users", "order-cancel", "sessions")
-}
-RETIRED_WORKFLOWS |= {'ci-node-native-authorization.yml', 'ci-node-native-traffic.yml', 'ci-node-native-machine.yml', 'ci-basic-account-authority.yml', 'ci-bounded-node-usage.yml', 'ci-node-native-authority.yml', 'ci-node-live-recovery.yml', 'ci-node-service-usage.yml', 'ci-node-live-protocol.yml'}
 
 
 class WorkflowLoader(yaml.SafeLoader):
@@ -73,11 +64,10 @@ def validate_workflow(path):
     require(isinstance(workflow, dict), f"{path.name}: missing workflow mapping")
     triggers = workflow.get("on")
     require(isinstance(triggers, dict), f"{path.name}: explicit trigger mapping required")
-    if path.name in AUTOMATIC:
-        require("pull_request" in triggers, f"{path.name}: current PR coverage missing")
-    else:
-        require(set(triggers) == {"workflow_dispatch"},
-                f"{path.name}: historical workflow must remain manual-only")
+    require(path.name in AUTOMATIC, f"{path.name}: unrecognized workflow entry point")
+    require("pull_request" in triggers, f"{path.name}: current PR coverage missing")
+    require(not any(key in (triggers["pull_request"] or {}) for key in ("branches", "branches-ignore")),
+            f"{path.name}: acceptance must also run for stacked pull requests")
     require("pull_request_target" not in triggers,
             f"{path.name}: untrusted PRs must not run with target credentials")
     jobs = workflow.get("jobs")
@@ -91,12 +81,6 @@ def validate_workflow(path):
         require(isinstance(needs, list) and all(need in jobs for need in needs),
                 f"{path.name}/{name}: unknown job dependency")
         dependencies[name] = needs
-        if path.name not in AUTOMATIC:
-            for step in job.get("steps", []):
-                command = step.get("run", "")
-                if re.search(r"(?:artisan\s+test|vendor/bin/phpunit)\b", command):
-                    require("--filter" in command or re.search(r"tests/(?:Feature|Unit)/", command),
-                            f"{path.name}/{name}: manual suite must select explicit tests")
     visiting, visited = set(), set()
 
     def visit(name):
@@ -143,34 +127,57 @@ def validate_suites():
     return len(excluded), len(current)
 
 
+def validate_ci(workflow):
+    jobs = workflow["jobs"]
+    require(set(jobs) == set(CI_GROUPS) | {"changes", "static", "acceptance"},
+            "CI must retain component, integration, static and aggregate checks")
+    triggers = workflow["on"]
+    require(set(triggers) == {"push", "pull_request", "workflow_dispatch"},
+            "CI must cover main pushes, all PRs and explicit manual acceptance")
+    require(triggers["push"] == {"branches": ["main"]} and triggers["pull_request"] is None,
+            "CI selection must inspect the complete diff without workflow path limits")
+    require(workflow.get("concurrency") == {
+        "group": "ci-${{ github.event_name == 'pull_request' && github.ref || github.sha }}",
+        "cancel-in-progress": "${{ github.event_name == 'pull_request' }}",
+    }, "Main acceptance must survive a later documentation-only push")
+    for name, group in CI_GROUPS.items():
+        job = jobs[name]
+        require(job.get("needs") == "changes", f"CI/{name}: selection dependency missing")
+        condition = ("github.event_name == 'workflow_dispatch' && inputs.legacy_mysql"
+                     if name == "mysql-regression" else f"needs.changes.outputs.{group} == 'true'")
+        require(job.get("if") == condition, f"CI/{name}: incorrect selection guard")
+    gate = jobs["acceptance"]
+    require(gate.get("if") == "${{ always() }}", "CI acceptance must run after failed or skipped jobs")
+    require(set(gate.get("needs", [])) == set(jobs) - {"acceptance"},
+            "CI acceptance must aggregate every job, including MySQL matrices")
+    require("needs" not in jobs["static"] and "if" not in jobs["static"],
+            "Static checks must run for every CI event")
+    require("if" not in jobs["changes"], "CI selection must run for every event")
+    native_commands = "\n".join(step.get("run", "") for step in jobs["native-c2-live"]["steps"])
+    require("python3 scripts/verify-native-c2.py" in native_commands and "go test" not in native_commands,
+            "Native integration must retain its real chain without repeating Node component tests")
+
+
 def main():
-    files = sorted((ROOT / ".github/workflows").glob("*.yml"))
-    require(AUTOMATIC <= {path.name for path in files}, "An automatic workflow is missing")
-    require(not RETIRED_WORKFLOWS & {path.name for path in files},
-            "A retired prototype workflow was restored")
+    files = sorted((ROOT / ".github/workflows").glob("*.y*ml"))
+    require({path.name for path in files} == AUTOMATIC,
+            "Only CI and the Core image workflow may remain; historical entries must be removed")
     workflows = {path.name: validate_workflow(path) for path in files}
-    for owner in ("ci-api.yml", "ci-mysql.yml", "ci-web.yml", "docker-txboard.yml"):
-        trigger = workflows[owner]["on"]["pull_request"]
-        require(not any(key in trigger for key in ("branches", "branches-ignore")),
-                f"{owner}: Core acceptance must also run for stacked pull requests")
-    require(set(workflows["ci-native-c2.yml"]["jobs"]) == {"native-c2-live"},
-            "Native integration must not repeat component unit suites")
-    require("ci-node.yml" not in workflows,
-            "Independent Node tests and publishing belong to ANRCM0/txnode")
+    validate_ci(workflows["ci.yml"])
     require((ROOT / ".gitmodules").is_file(), "The external Node source pin is missing")
-    for owner in ("ci-api.yml", "ci-core-browser.yml", "ci-native-c2.yml", "docker-txboard.yml"):
-        steps = [step for job in workflows[owner]["jobs"].values()
-                 for step in job.get("steps", [])]
-        core_checkouts = [step for step in steps
-                          if step.get("uses", "").startswith("actions/checkout@")
-                          and "repository" not in step.get("with", {})]
-        require(core_checkouts and all(step.get("with", {}).get("submodules") is True
-                                      for step in core_checkouts),
-                f"{owner}: paired acceptance must initialize the fixed Node source")
+    for owner in AUTOMATIC:
+        for name, job in workflows[owner]["jobs"].items():
+            if owner == "ci.yml" and name in {"changes", "static", "acceptance"}:
+                continue
+            core_checkouts = [step for step in job.get("steps", [])
+                              if step.get("uses", "").startswith("actions/checkout@")
+                              and "repository" not in step.get("with", {})]
+            require(core_checkouts and all(step.get("with", {}).get("submodules") is True
+                                          for step in core_checkouts),
+                    f"{owner}/{name}: paired acceptance must initialize the fixed Node source")
     excluded, current = validate_suites()
-    print(f"CI policy: {len(files)} workflows parsed; {len(AUTOMATIC)} automatic, "
-          f"{len(files) - len(AUTOMATIC)} manual; {excluded} historical suite exclusions, "
-          f"{current} current native test files retained.")
+    print(f"CI policy: {len(files)} workflow entry points; component and integration checks retained; "
+          f"{excluded} historical suite exclusions, {current} current native test files retained.")
 
 
 if __name__ == "__main__":
