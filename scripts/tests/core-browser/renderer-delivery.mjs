@@ -12,6 +12,8 @@ const formats = [
   ['shadowrocket/v1', '2.2.0', '.txt', 'text/plain', 'txboard-shadowrocket.txt'],
   ['surge-ios/v1', '5.20.0', '.conf', 'text/plain', 'txboard-surge-ios.conf'],
   ['surge-mac/v1', '6.7.0', '.conf', 'text/plain', 'txboard-surge-mac.conf'],
+  ['stash/v1', '3.4.0', '.yaml', 'application/yaml', 'txboard-stash.yaml'],
+  ['surfboard/v1', '2.35.2', '.conf', 'text/plain', 'txboard-surfboard.conf'],
 ]
 const digest = bytes => createHash('sha256').update(bytes).digest('hex')
 
@@ -82,7 +84,15 @@ export async function verifyRendererDelivery(client, other, { root, scratch, act
   const bearerPath = `${scratch}/renderer-bearer.private.txt`, trustPath = `${scratch}/renderer-trust.json`
   writeFileSync(bearerPath, token, { mode: 0o600, flag: 'wx' })
   writeFileSync(trustPath, JSON.stringify(options.trust), { mode: 0o600, flag: 'wx' })
+  let cliWindow = Date.now(), cliRequests = 0
   async function cli(format, version, output) {
+    // Exercise every format without bypassing the real ten-per-minute user limit.
+    if (cliRequests === 10) {
+      const remaining = 61_000 - (Date.now() - cliWindow)
+      if (remaining > 0) await new Promise(resolve => setTimeout(resolve, remaining))
+      cliWindow = Date.now(); cliRequests = 0
+    }
+    cliRequests++
     const args = [resolve('scripts/native-subscription-client.mjs'), '--core-origin', 'https://127.0.0.1:18090',
       '--provider-origin', 'https://127.0.0.1:18085', '--provider-id', subject.provider_id,
       '--subject-id', subject.access_subject_id, '--bearer-file', bearerPath, '--ca-file', `${scratch}/ca.pem`,
@@ -120,7 +130,7 @@ export async function verifyRendererDelivery(client, other, { root, scratch, act
     const text = response.body.toString('utf8')
     assert.ok(text.length > 20); assert.ok(!text.includes('credential_ref'))
     if (format === 'sing-box/v1') assert.equal(JSON.parse(text).outbounds[1].type, 'vmess')
-    if (format.startsWith('surge-')) {
+    if (format.startsWith('surge-') || format === 'surfboard/v1') {
       assert.equal(text.match(/\[Rule\]/g).length, 1)
       assert.ok(!text.includes('# injection'))
     }
@@ -140,9 +150,17 @@ export async function verifyRendererDelivery(client, other, { root, scratch, act
   assert.equal((await cli('surge-mac/v1', '6.7.0', symlink)).code, 1)
   assert.equal(digest(readFileSync(lastOutput)), before); checks++
   const nativeOutput = `${scratch}/download-native.json`
-  assert.equal((await cli('native-connection-bundle/v1', undefined, nativeOutput)).code, 0)
+  const nativeDownload = await cli('native-connection-bundle/v1', undefined, nativeOutput)
+  assert.equal(nativeDownload.code, 0, nativeDownload.stderr)
   const native = JSON.parse(readFileSync(nativeOutput, 'utf8'))
   assert.equal(native.format_id, 'native-connection-bundle/v1'); assert.ok(native.connections.length > 0); checks++
+  // The rate-limit wait can outlive the previous grant; prove a fresh grant works before denying it.
+  const fresh = await client.call('subscription.deliveries.authorize', input)
+  const freshDigest = digest(Buffer.from(fresh.grant.payload, 'base64url'))
+  const requestId = 'renderer_revocation'
+  lastRequest = { contract_version: 'credential-render/1', request_id: requestId, authorization: fresh.grant,
+    proof: sign(null, Buffer.from(`native-provider-subscription-request/v1\n${requestId}\n${freshDigest}\n`), pair.privateKey).toString('base64url') }
+  assert.equal((await wire('POST', lastRequest)).status, 200); checks++
   const wrongProof = { ...lastRequest, proof: Buffer.alloc(64).toString('base64url') }
   const rejected = await wire('POST', wrongProof)
   assert.equal(rejected.status, 403); assert.ok(!rejected.body.toString().includes(native.connections[0].uuid)); checks++
@@ -150,5 +168,5 @@ export async function verifyRendererDelivery(client, other, { root, scratch, act
   const revoked = await wire('POST', lastRequest)
   assert.ok([403, 409].includes(revoked.status)); assert.ok(!revoked.body.toString().includes(native.connections[0].uuid)); checks++
   await assert.rejects(client.call('subscription.deliveries.authorize', input), e => e.status === 409); checks++
-  return checks
+  return { checks, formats: formats.map(([format]) => format) }
 }

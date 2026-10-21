@@ -1,3 +1,4 @@
+import { t, useLocale } from '../../lib/i18n'
 import { Suspense, useEffect, useRef, useState } from 'react'
 import { Menu } from 'lucide-react'
 import { Outlet, useLocation } from 'react-router-dom'
@@ -5,6 +6,9 @@ import { Sidebar } from './Sidebar'
 import { RouteErrorBoundary } from './RouteErrorBoundary'
 import { ConfirmDialogHost } from '../ui/ConfirmDialog'
 import { PendingWorkflowNotice } from '../../native/PendingWorkflowNotice'
+import { useSiteBranding } from '../../lib/useSiteBranding'
+import { SiteAppearanceConsumer } from '../../lib/useSiteAppearance'
+import { DirtyNavigationHost } from './DirtyNavigationHost'
 
 const SIDEBAR_EXPANDED_KEY = 'txboard:admin:sidebar:expanded'
 
@@ -18,6 +22,8 @@ function readSidebarExpanded() {
 }
 
 export function AdminLayout() {
+  useLocale()
+  useSiteBranding(t('管理控制台'))
   const [open, setOpen] = useState(false)
   const [expanded, setExpanded] = useState(readSidebarExpanded)
   const { pathname } = useLocation()
@@ -38,19 +44,28 @@ export function AdminLayout() {
     setAnnouncement('')
     let attempts = 0
     let timer = 0
+    let interacted = false
+    const preserveUserFocus = () => { interacted = true }
+    document.addEventListener('pointerdown', preserveUserFocus, true)
+    document.addEventListener('keydown', preserveUserFocus, true)
     const focusHeading = () => {
       const heading = document.querySelector<HTMLElement>('#admin-content h1')
       if (heading) {
         heading.tabIndex = -1
-        heading.focus({ preventScroll: true })
-        setAnnouncement('已进入' + (heading.textContent?.trim() || '管理页面'))
+        // A delayed route focus must not dismiss a menu the user has just opened.
+        if (!interacted) heading.focus({ preventScroll: true })
+        setAnnouncement(t('已进入 {page}', { page: heading.textContent?.trim() || t('管理页面') }))
         return
       }
       if (attempts++ < 8) { timer = window.setTimeout(focusHeading, 50); return }
-      setAnnouncement('页面已更新')
+      setAnnouncement(t('页面已更新'))
     }
     timer = window.setTimeout(focusHeading, 80)
-    return () => window.clearTimeout(timer)
+    return () => {
+      window.clearTimeout(timer)
+      document.removeEventListener('pointerdown', preserveUserFocus, true)
+      document.removeEventListener('keydown', preserveUserFocus, true)
+    }
   }, [pathname])
 
   useEffect(() => {
@@ -62,12 +77,13 @@ export function AdminLayout() {
 
   return (
     <div className={`admin-shell ${expanded ? 'is-sidebar-expanded' : 'is-sidebar-collapsed'}`}>
-      <a className="admin-skip-link" href="#admin-content">跳转到主要内容</a>
+      <SiteAppearanceConsumer />
+      <a className="admin-skip-link" href="#admin-content">{t("跳转到主要内容")}</a>
       <Sidebar open={open} onClose={() => setOpen(false)} collapsed={!expanded} onExpand={() => setExpanded(true)} onToggle={() => setExpanded(value => !value)} />
       <button
         type="button"
         className="admin-floating-menu"
-        aria-label="打开导航"
+        aria-label={t("打开导航")}
         onClick={() => setOpen(true)}
       >
         <Menu size={20} />
@@ -78,7 +94,7 @@ export function AdminLayout() {
             <p className="admin-route-announcer" role="status" aria-live="polite">{announcement}</p>
             <PendingWorkflowNotice />
             <RouteErrorBoundary>
-              <Suspense fallback={<div className="route-panel-loading" role="status" aria-live="polite">正在加载页面…</div>}>
+              <Suspense fallback={<div className="route-panel-loading" role="status" aria-live="polite">{t("正在加载页面…")}</div>}>
                 <Outlet />
               </Suspense>
             </RouteErrorBoundary>
@@ -89,11 +105,12 @@ export function AdminLayout() {
         <button
           type="button"
           className="sidebar-backdrop"
-          aria-label="关闭侧边栏"
+          aria-label={t("关闭侧边栏")}
           onClick={() => setOpen(false)}
         />
       ) : null}
       <ConfirmDialogHost/>
+      <DirtyNavigationHost />
     </div>
   )
 }

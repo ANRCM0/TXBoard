@@ -12,8 +12,11 @@ final class AdminAccountReadOperations
 
     public function listing(User $actor, array $input): ReadOperationResult
     {
-        $page = $this->queries->adminListing(new AdminAccountListQuery(
-            $input['page'] ?? 1, $input['per_page'] ?? 20, $input['email'] ?? null, $input['banned'] ?? null));
+        try { $query = new AdminAccountListQuery(
+            $input['page'] ?? 1, $input['per_page'] ?? 20, $input['email'] ?? null, $input['banned'] ?? null,
+            $input['filters'] ?? [], $input['sort_by'] ?? 'id', $input['sort_direction'] ?? 'desc');
+            $page = $this->queries->adminListing($query); }
+        catch (\InvalidArgumentException) { throw new OperationFailure('INVALID_REQUEST', 422); }
         return new ReadOperationResult($page['items'], $page['meta']);
     }
 

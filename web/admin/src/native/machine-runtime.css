@@ -1,0 +1,12 @@
+.machine-secret-header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:12px 0}
+.machine-secret-header h3{display:flex;align-items:center;gap:8px;margin:0;font-size:14px}
+.machine-secret-value{display:flex;align-items:center;gap:12px;padding:14px 16px;border:1px solid var(--border);border-radius:12px;background:var(--ui-surface-subtle)}
+.machine-secret-value code{overflow-wrap:anywhere;min-width:0;flex:1}
+.machine-install-command{padding:16px;border:1px solid var(--border);border-radius:12px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;line-height:1.8;background:var(--ui-surface-subtle)}
+.machine-secret-placeholder{padding:18px;border:1px dashed var(--border);border-radius:12px;color:var(--muted)}
+.machine-history-ranges{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
+.machine-history-ranges [aria-pressed=true]{background:var(--primary);color:var(--primary-fg);border-color:var(--primary)}
+.machine-latest-load{display:flex;flex-wrap:wrap;gap:12px 24px;margin:16px 0;padding:16px;border-radius:12px;background:var(--ui-surface-subtle)}
+.machine-latest-load strong{margin-left:6px}.machine-latest-load small{width:100%;color:var(--muted)}
+.machine-history-charts{display:grid;grid-template-columns:minmax(0,1fr);gap:18px;min-width:0}
+@media(max-width:600px){.machine-secret-header{flex-wrap:wrap}.machine-secret-header .button{min-height:36px}.machine-secret-value{padding:12px}.machine-install-command{padding:12px}}

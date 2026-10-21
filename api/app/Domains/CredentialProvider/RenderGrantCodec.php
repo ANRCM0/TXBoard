@@ -17,13 +17,15 @@ final class RenderGrantCodec
         'shadowrocket/v1' => ['min' => '2.2.0', 'before' => '3.0.0'],
         'surge-ios/v1' => ['min' => '5.20.0', 'before' => '6.0.0'],
         'surge-mac/v1' => ['min' => '6.7.0', 'before' => '7.0.0'],
+        'stash/v1' => ['min' => '3.4.0', 'before' => '3.4.1'],
+        'surfboard/v1' => ['min' => '2.35.2', 'before' => '2.35.3'],
     ];
 
     public static function profiles(string $format): array
     {
         return match ($format) {
-            'clash/v1', 'surge-ios/v1', 'surge-mac/v1' => ['vmess-uuid/v1'],
-            self::FORMAT, 'clash-meta/v1', 'sing-box/v1', 'shadowrocket/v1' => ['vless-uuid/v1', 'vmess-uuid/v1'],
+            'clash/v1', 'surge-ios/v1', 'surge-mac/v1', 'surfboard/v1' => ['vmess-uuid/v1'],
+            self::FORMAT, 'clash-meta/v1', 'sing-box/v1', 'shadowrocket/v1', 'stash/v1' => ['vless-uuid/v1', 'vmess-uuid/v1'],
             default => throw new DomainException('NATIVE_SUBSCRIPTION_DELIVERY_PROFILE_UNSUPPORTED'),
         };
     }
@@ -33,7 +35,7 @@ final class RenderGrantCodec
     {
         return ($node['transport'] ?? null) === 'tcp'
             && in_array(($node['protocol'] ?? '').'-uuid/v1', self::profiles($format), true)
-            && ($format !== 'clash/v1' || ($node['tls']['alpn'] ?? []) === []);
+            && (!in_array($format, ['clash/v1', 'stash/v1', 'surfboard/v1'], true) || ($node['tls']['alpn'] ?? []) === []);
     }
 
     /** Explicit compatibility admission; user-agent sniffing never chooses policy. */

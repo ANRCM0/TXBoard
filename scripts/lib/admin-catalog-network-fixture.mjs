@@ -9,7 +9,7 @@ const revisionId = '9007199254740995'
 const digest = value => createHash('sha256').update(JSON.stringify(value)).digest('hex')
 
 export async function catalogNetworkFixture(browser, viewport) {
-  const context = await browser.newContext({ viewport })
+  const context = await browser.newContext({ locale: 'zh-CN', viewport })
   const group = { id: '7', name: 'Native group', users_count: 0, plans_count: 1, server_count: 1,
     created_at: stamp, updated_at: stamp }
   const routes = [
@@ -121,6 +121,7 @@ export async function catalogNetworkFixture(browser, viewport) {
         return send({ offer_id: target.offer_id, status: target.status, row_version: target.row_version,
           show: input.show, sell: input.sell, renew: input.renew, capacity_limit: target.capacity_limit })
       }
+      if (operation === 'network.groups.names.get') return send({ groups: input.group_ids.filter(id => id === group.id).map(id => ({ id, name: group.name })) })
       if (operation === 'network.groups.list') return list([group])
       if (operation === 'network.groups.save') {
         assert.equal(input.id, group.id)
@@ -133,6 +134,13 @@ export async function catalogNetworkFixture(browser, viewport) {
         return send(receipts.get(receiptKey))
       }
       if (operation === 'network.routes.list') return send([...routes].sort((a, b) => a.sort - b.sort))
+      if (operation === 'network.routes.ordering.get') return send({ revision: digest([...routes].sort((a, b) => a.sort - b.sort).map(row => row.id)), route_ids: [...routes].sort((a, b) => a.sort - b.sort).map(row => row.id) })
+      if (operation === 'network.routes.ordering.replace') {
+        assert.equal(input.expected_revision, digest([...routes].sort((a, b) => a.sort - b.sort).map(row => row.id)))
+        assert.deepEqual([...input.route_ids].sort(), routes.map(row => row.id).sort())
+        input.route_ids.forEach((id, index) => { routes.find(row => row.id === id).sort = index + 1 })
+        return send({ ok: true })
+      }
       if (operation === 'network.routes.sort') {
         assert.deepEqual([...input.items.map(row => row.id)].sort(), routes.map(row => row.id).sort())
         for (const row of input.items) routes.find(current => current.id === row.id).sort = row.sort

@@ -41,6 +41,10 @@ class ConfigSave extends FormRequest
         // site
         'logo' => 'nullable|url',
         'admin_favicon_url' => 'nullable|string|url|max:2048',
+        'admin_sidebar_style' => 'in:normal,contrast',
+        'admin_header_style' => 'in:normal,accent',
+        'admin_color_scheme' => 'in:default,black,blackblue,green',
+        'admin_login_background_url' => 'nullable|string|max:2048',
         'force_https' => '',
         'stop_register' => '',
         'app_name' => '',
@@ -131,6 +135,9 @@ class ConfigSave extends FormRequest
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator): void {
+            if ($this->exists('admin_login_background_url') && !\App\Services\NativeAdminAppearance::validBackground($this->input('admin_login_background_url'))) {
+                $validator->errors()->add('admin_login_background_url', 'Use an HTTPS image URL or a same-origin absolute path.');
+            }
             // An icon URL is emitted into HTML on the administrator entry page.
             // Only HTTPS images may be used; never emit javascript:, data: or HTTP.
             $favicon = $this->input('admin_favicon_url');

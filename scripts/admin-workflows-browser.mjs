@@ -15,8 +15,13 @@ const server = createServer(async (request, response) => {
     const pathname = new URL(request.url, 'http://localhost').pathname
     const asset = pathname.match(/^\/(?:admin|\.txboard-admin)\/assets\/([A-Za-z0-9_.-]+)$/)
     if (asset) {
-      response.writeHead(200, { 'Content-Type': asset[1].endsWith('.css') ? 'text/css' : 'text/javascript' })
+      const mime = { js: 'text/javascript', css: 'text/css', ttf: 'font/ttf', woff: 'font/woff', woff2: 'font/woff2', svg: 'image/svg+xml', png: 'image/png' }
+      response.writeHead(200, { 'Content-Type': mime[path.extname(asset[1]).slice(1)] || 'application/octet-stream' })
       return response.end(await readFile(path.join(dist, 'assets', asset[1])))
+    }
+    if (/^\/(?:admin|\.txboard-admin)\/editor-assets\.json$/.test(pathname)) {
+      response.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' })
+      return response.end(await readFile(path.join(dist, 'editor-assets.json')))
     }
     if (/^\/admin(?:\/.*)?$/.test(pathname)) {
       response.writeHead(200, { 'Content-Type': 'text/html', 'Cache-Control': 'private, no-store' })
@@ -98,39 +103,45 @@ try {
   await page.getByRole('button', { name: '认领给我', exact: true }).click()
   await page.getByRole('button', { name: '释放我的工单', exact: true }).waitFor()
   assert.equal(state.ticket.row_version, '8')
+  await page.locator('.support-reply-attachments summary').click()
   await page.getByLabel('选择附件', { exact: true }).setInputFiles({ name: 'private-note.txt', mimeType: 'text/plain', buffer: attachmentBytes })
   await page.getByRole('list', { name: '待发送附件', exact: true }).getByRole('listitem').filter({ hasText: 'private-note.txt' }).getByText('待随回复发送', { exact: true }).waitFor()
   await page.getByLabel('回复用户', { exact: true }).fill('Verified response')
   await page.getByRole('button', { name: '发送回复', exact: true }).click()
   await page.locator('.native-ticket-messages').getByText('Verified response', { exact: true }).waitFor()
-  await page.getByRole('list', { name: '已发送附件', exact: true }).getByRole('listitem').filter({ hasText: 'private-note.txt' }).getByText(attachmentBytes.length + ' 字节 · 已发送', { exact: true }).waitFor()
+  await page.getByRole('list', { name: '已发送附件', exact: true }).getByRole('listitem').filter({ hasText: 'private-note.txt' }).getByText(attachmentBytes.length + '字节 · 已发送', { exact: true }).waitFor()
   assert.equal(state.attachment.status, 'attached')
   assert.deepEqual(state.calls.filter(call => call.operation === 'support.admin-tickets.reply').map(call => call.input.attachment_ids), [[attachmentId]])
   assert.deepEqual(state.calls.filter(call => /attachments\.(begin|append|finish)$/.test(call.operation)).map(call => call.operation),
     ['support.admin-tickets.attachments.begin', 'support.admin-tickets.attachments.append', 'support.admin-tickets.attachments.finish'])
   await page.screenshot({ path: path.join(output, 'ticket-desktop.png'), fullPage: true })
   passed('ticket claim uses current version and chunked private attachment binds to a versioned reply')
+  await page.getByRole('button', { name: '关闭详情', exact: true }).click()
 
   for (const name of ['公告管理', '知识库管理']) {
     await navigate(page, name)
     await page.getByRole('row').filter({ hasText: markup }).getByRole('button', { name: '编辑', exact: true }).click()
-    const editor = page.getByLabel('正文', { exact: true })
+    const dialog = page.getByRole('dialog', { name: '编辑内容', exact: true })
+    const editor = dialog.getByLabel('正文', { exact: true })
     await editor.waitFor()
-    await page.waitForFunction(expected => document.querySelector('textarea')?.value === expected, markup)
+    await page.waitForFunction(expected => document.querySelector('[role="dialog"] textarea')?.value === expected, markup)
     assert.equal(await editor.inputValue(), markup)
-    const preview = page.locator('details').filter({ has: page.locator('summary', { hasText: '查看正文预览' }) })
-    await preview.locator('summary').click()
-    assert.equal(await preview.locator('.support-preview').innerText(), markup)
+    await dialog.getByRole('button', { name: '预览', exact: true }).click()
+    const preview = dialog.getByRole('region', { name: '正文预览', exact: true })
+    assert.equal((await preview.innerText()).trim(), markup)
     assert.equal(await page.evaluate(() => window.fixtureInjected === true), false)
-    assert.equal(await page.locator('.native-management-page img[src="x"], .native-management-page script').count(), 0)
+    assert.equal(await page.locator('.native-management-page img[src="x"], [role="dialog"] img[src="x"], .native-management-page script, [role="dialog"] script').count(), 0)
+    await dialog.getByRole('button', { name: '关闭编辑', exact: true }).click()
+    await dialog.waitFor({ state: 'detached' })
   }
   passed('notice and knowledge hostile markup remains inert text in rows and content editors')
 
   await navigate(page, '礼品卡')
+  await page.getByRole('button', { name: '发行批次', exact: true }).click()
   await page.getByRole('button', { name: '查看逐卡状态', exact: true }).click()
   const batchTable = page.getByRole('region', { name: '批次内卡片', exact: true }).getByRole('table')
   await batchTable.getByText('待兑换', { exact: true }).waitFor()
-  assert.match(await batchTable.innerText(), /9007199254740993 分 CNY/)
+  assert.match(await batchTable.innerText(), /90,071,992,547,409\.93 CNY/)
   Object.assign(state.gift, { state: 'redeemed', recipient_id: '31', row_version: '6', closed_at: 1792368001 })
   await page.getByRole('button', { name: '刷新', exact: true }).click()
   await batchTable.getByText('已兑换', { exact: true }).waitFor()
@@ -158,7 +169,7 @@ try {
   for (const [name] of routes) {
     await navigate(mobile.page, name, true)
     assert.equal(await mobile.page.locator('.admin-sidebar.is-open').count(), 0)
-    const table = mobile.page.locator('.native-management-page table').first()
+    const table = mobile.page.locator('.native-management-page table, .native-management-page .ui-mobile-records').first()
     await table.waitFor()
     assert.ok(await mobile.page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), name + ' must not overflow viewport')
     await mobile.page.screenshot({ path: path.join(output, name + '-mobile.png'), fullPage: true })

@@ -26,7 +26,9 @@ final class CoreBrowserIngressTest extends NativeRuntimeTestCase
         $response = $this->browserGet('https://core.example.test/gateway/v1/core/admin/capabilities')->assertOk()
             ->assertJsonPath('ok', true)->assertJsonPath('data.contract', 'core-admin/v1');
         $this->assertContains('settings.configuration.update', array_column($response->json('data.operations'), 'id'));
-        $this->assertStringNotContainsString('credential', $response->getContent());
+        foreach ($response->json('data.operations') as $operation) {
+            $this->assertSame(['id', 'version', 'actor', 'idempotency', 'permission'], array_keys($operation));
+        }
         $this->assertSame(0, DB::table('tx_internal_service')->count());
         $this->assertDatabaseHas('tx_internal_audit', ['service_id' => 'browser', 'service_epoch' => 0, 'state' => 'completed']);
         config(['browser.commerce_enabled' => false]);

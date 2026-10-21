@@ -22,6 +22,16 @@ final class NativeAccountAdministration implements AccountAdministration
         return $created ? new CreatedAccount((int) $user->id, (string) $user->email) : null;
     }
 
+    public function createBatch(int $actorId, array $accounts, string $key): array
+    {
+        return $this->identity->createBatch($actorId, $accounts, $key);
+    }
+
+    public function profile(int $actorId, int $userId, string $expectedRevision, array $changes, string $key): array
+    {
+        return $this->identity->updateProfile($actorId, $userId, $expectedRevision, $changes, $key);
+    }
+
     public function status(int $actorId, int $userId, bool $expectedBanned, bool $banned): array
     {
         if (DB::transactionLevel() !== 0) throw new DomainException('NATIVE_ACCOUNT_TRANSACTION_REQUIRED');

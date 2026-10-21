@@ -13,12 +13,13 @@ export function minorAmount(value: string, currency: string): string {
   return padded.slice(0, -2) + '.' + padded.slice(-2) + ' ' + currency
 }
 export function unixDate(value: string | number | null): string {
-  if (value === null) return '未记录'
+  if (value === null) return t('未记录')
   const raw = String(value)
-  if (!/^(0|[1-9][0-9]*)$/.test(raw) || BigInt(raw) > 8640000000000n) return '时间超出显示范围'
-  return new Date(Number(raw) * 1000).toLocaleString('zh-CN')
+  if (!/^(0|[1-9][0-9]*)$/.test(raw) || BigInt(raw) > 8640000000000n) return t('时间超出显示范围')
+  return formatDate(Number(raw) * 1000, { dateStyle: 'medium', timeStyle: 'medium' })
 }
 export function isoDate(value: string | null): string {
-  return value === null ? '未记录' : new Date(value).toLocaleString('zh-CN')
+  return value === null ? t('未记录') : formatDate(value, { dateStyle: 'medium', timeStyle: 'medium' })
 }
-export const orderStatus = (status: number) => ['待支付', '开通中', '已取消', '已完成', '已折抵'][status] ?? '未知'
+export const orderStatus = (status: number) => t(['待支付', '开通中', '已取消', '已完成', '已折抵'][status] ?? '未知')
+import { formatDate, t } from '../lib/i18n'

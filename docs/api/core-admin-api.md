@@ -129,3 +129,60 @@ The owner streams at most 100,000 entries using exact decimal addition. An
 additional entry fails the whole read with `USAGE_HISTORY_ENTRY_LIMIT` (422),
 without partial data. Invalid or overflowing stored byte values also fail closed
 with `USAGE_HISTORY_BYTES_INVALID` or `USAGE_HISTORY_BYTES_OVERFLOW` (422).
+
+
+## Native administrator repair additions
+
+The current generated catalog and browser allowlist are authoritative for the
+operations below. `admin-native-repair-progress.md` records source and acceptance
+states; adding a declaration does not itself establish functional acceptance.
+
+- Network machine creation, explicit credentials, token rotation and bounded
+  history use `network.machines.create`, `credentials.get`, `token.rotate` and
+  `history.get`. Write receipts omit credentials. Credential reads require the
+  current management grant, bypass browser query caches and expire in component
+  memory. Native node metadata, configuration reads, creation, replacement and
+  key material use `network.nodes.protocols.list`, `configuration.get`, `create`,
+  `configuration.replace` and `material.generate`. Configuration replacement
+  requires its opaque observed revision; the owner validates actual persisted
+  protocol fields and rejects unknown input.
+- Native dashboard statistics come from `analytics.native-dashboard.get`.
+  UTC date windows and per-currency money remain distinct. Rankings use settled
+  raw UsageV2 evidence. Missing online/device authority is displayed as unknown.
+  Route reordering uses a complete ordered snapshot and CAS under the stable
+  ordering head; current-page order is not a substitute for the full set.
+- Identity profile, bounded batch creation and metadata keep identity authority,
+  protected-target checks and permanent receipt recovery. Subscription amendment
+  reads/history/writes are under `subscription.admin.amendment.*`; writes create
+  explicit new terms and transition evidence, preserve the current period and
+  reset anchors, and synchronize access through its existing owner.
+- `billing.admin-account-balances.get` and
+  `billing.admin-account-adjustments.create/list` read and adjust the current
+  ledger using exact minor amounts and an observed ledger revision. Adjustments
+  append balanced evidence with their administrator/reason and dedicated contra
+  accounts. They do not count as purchase income or earned commissions and do
+  not rewrite historical payment evidence.
+- `subscription.admin-templates.list/save/reset` maintain eight versioned output
+  formats: the six reference client families plus explicit Surge platform and
+  Shadowrocket compatibility entries. Saving binds the source, engine, format
+  and digest into the signed Node exchange and invokes the selected Node's real
+  bounded template validator. Core does not receive connection plaintext.
+  Unsupported engines fail explicitly. Local Monaco assets and workers load
+  only when editing; plain text fallback preserves the current source.
+- Module cards, configuration, declared presentation operations and theme package
+  commands remain separate admitted operations under `platform.module-*` and
+  `platform.theme-packages.*`. Their controllers call existing deployment,
+  configuration and theme owners. Browser input cannot select a runtime class,
+  upload arbitrary archives or obtain stored credential values or references.
+- SMTP inspection and Telegram inspection/registration use the native settings
+  owner and observed revisions. Diagnostic results are bounded and omit secrets.
+  Administrator appearance persists four dedicated settings and is projected by
+  the public bootstrap; per-device light/dark/system preference remains local.
+  Guest branding validation is independent of CAPTCHA configuration validation.
+
+Functional unit, application, MySQL, Node, network and browser acceptance for
+these additions belongs to the exact candidate's GitHub Actions runs according
+to `docs/development.md`. Historical local diagnostic results, synthetic browser
+fixtures and static builds do not establish that acceptance. The browser workflow
+includes the local editor/worker/CSP and template save/reset scenario, and retains
+its bounded evidence separately from real Core HTTP acceptance.

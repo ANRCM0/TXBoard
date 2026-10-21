@@ -1,5 +1,6 @@
+import { t, useLocale } from '../../lib/i18n'
 import { X } from 'lucide-react'
-import type { ReactNode } from 'react'
+import { useId, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { useDialog } from '../../lib/useDialog'
 
@@ -28,7 +29,9 @@ export function Modal({
   className?: string
   bodyClassName?: string
 }) {
+  useLocale()
   const dialogRef = useDialog(open, onClose)
+  const descriptionId = useId()
   if (!open) return null
 
   return createPortal(
@@ -39,13 +42,14 @@ export function Modal({
       role="dialog"
       aria-modal="true"
       aria-label={title}
+      aria-describedby={subtitle ? descriptionId : undefined}
     >
       <button
         type="button"
         tabIndex={-1}
         className="modal-backdrop"
         onClick={onClose}
-        aria-label="关闭"
+        aria-label={t("关闭")}
       />
       <div
         className={[
@@ -56,11 +60,11 @@ export function Modal({
         <div className="modal-header">
           <div className="modal-title">
             <h3>{title}</h3>
-            {subtitle ? <p>{subtitle}</p> : null}
+            {subtitle ? <p id={descriptionId}>{subtitle}</p> : null}
           </div>
           <div className="modal-header-actions">
             {headerAction}
-            <button type="button" className="icon-button" onClick={onClose} aria-label="关闭">
+            <button type="button" className="icon-button" onClick={onClose} aria-label={t("关闭")}>
               <X size={18}/>
             </button>
           </div>

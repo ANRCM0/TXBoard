@@ -9,6 +9,7 @@ const Overview = lazy(() => import('./native/OverviewPage').then(m => ({ default
 const Nodes = lazy(() => import('./native/NodesPage').then(m => ({ default: m.NodesPage })))
 const Machines = lazy(() => import('./native/MachinesPage').then(m => ({ default: m.MachinesPage })))
 const Settings = lazy(() => import('./native/SettingsPage').then(m => ({ default: m.SettingsPage })))
+const Appearance = lazy(() => import('./native/AppearancePage').then(m => ({ default: m.AppearancePage })))
 const Tickets = lazy(() => import('./native/TicketsPage').then(m => ({ default: m.TicketsPage })))
 const Content = lazy(() => import('./native/ContentPage').then(m => ({ default: m.ContentPage })))
 const Coupons = lazy(() => import('./native/CouponsPage').then(m => ({ default: m.CouponsPage })))
@@ -24,6 +25,7 @@ const Modules = lazy(() => import('./native/ModulesPage').then(m => ({ default: 
 const Queue = lazy(() => import('./native/QueuePage').then(m => ({ default: m.QueuePage })))
 const Payments = lazy(() => import('./native/PaymentMethodsPage').then(m => ({ default: m.PaymentMethodsPage })))
 const MailTemplates = lazy(() => import('./native/MailTemplatesPage').then(m => ({ default: m.MailTemplatesPage })))
+const SubscriptionTemplates = lazy(() => import('./native/SubscriptionTemplatesPage').then(m => ({ default: m.SubscriptionTemplatesPage })))
 const NodeDetail = lazy(() => import('./native/NodeDetailPage').then(m => ({ default: m.NodeDetailPage })))
 const MachineDetail = lazy(() => import('./native/MachineDetailPage').then(m => ({ default: m.MachineDetailPage })))
 const TrafficReset = lazy(() => import('./native/TrafficResetPage').then(m => ({ default: m.TrafficResetPage })))
@@ -46,6 +48,7 @@ export const router = createBrowserRouter([
       { path: 'config/system/features', element: <Settings group="features" /> },
       { path: 'config/system/safe', element: <Settings group="safe" /> },
       { path: 'config/system/subscribe', element: <Settings group="subscribe" /> },
+      { path: 'config/system/subscribe-template', element: <SubscriptionTemplates /> },
       { path: 'config/system/invite', element: <Commissions /> },
       { path: 'config/server', element: <Settings group="server" /> },
       { path: 'config/email', element: <Settings group="email" /> },
@@ -57,6 +60,7 @@ export const router = createBrowserRouter([
       { path: 'system/modules', element: <Modules /> },
       { path: 'config/plugin', element: <Modules kind="plugin" /> },
       { path: 'config/theme', element: <Modules kind="theme" /> },
+      { path: 'config/appearance', element: <Appearance /> },
       { path: 'system/queue', element: <Queue /> },
       { path: 'system/sessions', element: <Sessions /> },
       { path: 'user/ticket', element: <Tickets /> },
@@ -64,6 +68,10 @@ export const router = createBrowserRouter([
       { path: 'config/knowledge', element: <Content key="knowledge" kind="knowledge" /> },
       { path: 'user/manage', element: <Users /> },
       { path: 'user/traffic-reset', element: <TrafficReset /> },
+      { path: 'user/traffic-reset-logs', element: <TrafficReset /> },
+      { path: '404', element: <NotFound /> },
+      { path: '500', element: <NotFound status={500} /> },
+      { path: '503', element: <NotFound status={503} /> },
       { path: 'finance/order', element: <Orders /> },
       { path: 'finance/plan', element: <Catalog /> },
       { path: 'finance/coupon', element: <Coupons /> },
@@ -73,8 +81,13 @@ export const router = createBrowserRouter([
       { path: 'server/machine/:machineId', element: <MachineDetail /> },
       { path: 'user/:userId', element: <UserDetail /> },
       { path: 'plugins/:pluginCode/*', element: <Navigate to="/config/plugin" replace /> },
-      { path: 'config/frontend', element: <Navigate to="/config/theme" replace /> },
+      { path: 'config/frontend', element: <Navigate to="/config/appearance" replace /> },
+      { path: 'config/system/frontend', element: <Navigate to="/config/appearance" replace /> },
       { path: 'config/APP', element: <Navigate to="/config/app" replace /> },
+      { path: 'config/system/server', element: <Navigate to="/config/server" replace /> },
+      { path: 'config/system/email', element: <Navigate to="/config/email" replace /> },
+      { path: 'config/system/telegram', element: <Navigate to="/config/telegram" replace /> },
+      { path: 'config/system/app', element: <Navigate to="/config/app" replace /> },
       { path: 'user', element: <Navigate to="/user/manage" replace /> },
       { path: 'coupon', element: <Navigate to="/finance/coupon" replace /> },
       { path: 'gift-card', element: <Navigate to="/finance/gift-card" replace /> },

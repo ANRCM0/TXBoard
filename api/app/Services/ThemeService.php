@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Services\Theme\ThemeV2Runtime;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 use RuntimeException;
 use Throwable;
@@ -20,7 +21,7 @@ class ThemeService
     /** Only frontend_theme selects the active theme. Registry reads never persist it. */
     public function getActiveTheme(): string
     {
-        $theme = trim((string) admin_setting('frontend_theme', ''));
+        $theme = trim((string) (\App\Models\Setting::query()->useWritePdo()->where('name', 'frontend_theme')->first()?->value ?? ''));
         return $theme !== '' && $this->exists($theme) ? $theme : self::DEFAULT_THEME;
     }
 
@@ -31,17 +32,21 @@ class ThemeService
         ])];
         $root = base_path('storage/theme');
         if (!File::isDirectory($root)) return $themes;
-        $active = $this->getActiveTheme();
+        $active = null;
         foreach (File::directories($root) as $directory) {
             $name = basename($directory);
             if (!$this->runtime->isInstalled($name)) continue;
             try {
-                $themes[$name] = array_merge($this->runtime->inventory($name), [
-                    'can_delete' => $name !== $active, 'is_system' => false,
-                ]);
+                $inventory = $this->runtime->inventory($name);
             } catch (Throwable) {
                 Log::warning('Invalid installed static theme package', ['theme' => $name]);
+                continue;
             }
+            // Built-in-only inventory must work before installation creates settings.
+            $active ??= $this->getActiveTheme();
+            $themes[$name] = array_merge($inventory, [
+                'can_delete' => $name !== $active, 'is_system' => false,
+            ]);
         }
         return $themes;
     }
@@ -54,30 +59,41 @@ class ThemeService
     public function switch(?string $theme): bool
     {
         if ($theme === null) return true;
-        if (!$this->exists($theme)) throw new InvalidArgumentException('Theme not found');
-        $current = $this->getActiveTheme();
-        if ($theme === self::DEFAULT_THEME) {
-            admin_setting(['frontend_theme' => $theme]);
-        } else {
-            $this->runtime->activate($theme, fn () => admin_setting(['frontend_theme' => $theme]));
-        }
-        if ($current !== $theme) $this->cleanupThemeFiles($current);
+        $this->runtime->withConfigurationLock(fn () => DB::transaction(function () use ($theme): void {
+            app(NativeSettingsStorage::class)->lock();
+            if (!$this->exists($theme)) throw new InvalidArgumentException('Theme not found');
+            $current = $this->getActiveTheme();
+            $save = fn () => app(NativeSettingsStorage::class)->persist(['frontend_theme' => $theme]);
+            if ($theme === self::DEFAULT_THEME) $save();
+            else $this->runtime->activate($theme, $save);
+            if ($current !== $theme) $this->cleanupThemeFiles($current);
+        }));
         return true;
     }
 
     public function delete(string $theme): bool
     {
-        if (!$this->isSafeThemeName($theme)) throw new InvalidArgumentException('Invalid theme name');
-        if (strcasecmp($theme, self::DEFAULT_THEME) === 0) throw new InvalidArgumentException('System theme cannot be deleted');
-        if ($theme === $this->getActiveTheme()) throw new InvalidArgumentException('Current theme cannot be deleted');
-        if (!$this->runtime->isInstalled($theme)) throw new InvalidArgumentException('Theme not found');
-        $this->cleanupThemeFiles($theme);
-        if (!File::deleteDirectory(base_path('storage/theme/'.$theme))) {
-            throw new RuntimeException('Failed to delete theme files');
-        }
-        $this->runtime->removeHistory($theme);
-        admin_setting(['theme_'.$theme => null]);
+        $this->runtime->withConfigurationLock(fn () => DB::transaction(function () use ($theme): void {
+            app(NativeSettingsStorage::class)->lock();
+            if (!$this->isSafeThemeName($theme)) throw new InvalidArgumentException('Invalid theme name');
+            if (strcasecmp($theme, self::DEFAULT_THEME) === 0) throw new InvalidArgumentException('System theme cannot be deleted');
+            if ($theme === $this->getActiveTheme()) throw new InvalidArgumentException('Current theme cannot be deleted');
+            if (!$this->runtime->isInstalled($theme)) throw new InvalidArgumentException('Theme not found');
+            $this->cleanupThemeFiles($theme);
+            if (!File::deleteDirectory(base_path('storage/theme/'.$theme))) throw new RuntimeException('Failed to delete theme files');
+            $this->finalizeDeleted($theme);
+        }));
         return true;
+    }
+
+    /** Resume only the cleanup of a durable deletion intent after package removal. */
+    public function finalizeDeleted(string $theme): void
+    {
+        if (!$this->isSafeThemeName($theme) || strcasecmp($theme, self::DEFAULT_THEME) === 0 || $this->exists($theme)
+            || $theme === $this->getActiveTheme()) throw new InvalidArgumentException('Theme deletion cannot be finalized');
+        $this->cleanupThemeFiles($theme);
+        $this->runtime->removeHistory($theme);
+        app(NativeSettingsStorage::class)->persist(['theme_'.$theme => null]);
     }
 
     public function getConfig(string $theme): ?array
@@ -87,7 +103,7 @@ class ThemeService
         foreach ($this->builtinConfig()['configs'] as $field) {
             $defaults[$field['field_name']] = $field['default_value'] ?? '';
         }
-        $stored = admin_setting('theme_TXBoard');
+        $stored = \App\Models\Setting::query()->useWritePdo()->where('name', 'theme_TXBoard')->first()?->value;
         return array_replace($defaults, is_array($stored) ? $stored : []);
     }
 
@@ -107,14 +123,23 @@ class ThemeService
 
     public function updateConfig(string $theme, array $config): bool
     {
-        if ($theme !== self::DEFAULT_THEME) {
-            $this->runtime->updateConfig($theme, $config);
-        } else {
-            $keys = array_column($this->builtinConfig()['configs'], 'field_name');
-            admin_setting(['theme_TXBoard' => array_replace($this->getConfig($theme) ?? [],
-                array_intersect_key($config, array_flip($keys)))]);
-        }
+        DB::transaction(function () use ($theme, $config): void {
+            app(NativeSettingsStorage::class)->lock();
+            if ($theme !== self::DEFAULT_THEME) $this->runtime->updateConfig($theme, $config);
+            else {
+                $keys = array_column($this->builtinConfig()['configs'], 'field_name');
+                $row = \App\Models\Setting::query()->useWritePdo()->where('name', 'theme_TXBoard')->lockForUpdate()->first();
+                $saved = is_array($row?->value) ? $row->value : [];
+                app(NativeSettingsStorage::class)->persist(['theme_TXBoard' => array_replace($saved,
+                    array_intersect_key($config, array_flip($keys)))]);
+            }
+        });
         return true;
+    }
+
+    public function withConfigurationLock(string $theme, callable $work): mixed
+    {
+        return $theme === self::DEFAULT_THEME ? $work() : $this->runtime->withConfigurationLock($work);
     }
 
     public function cleanupThemeFiles(string $theme): void

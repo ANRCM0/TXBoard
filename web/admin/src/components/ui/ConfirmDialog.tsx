@@ -1,3 +1,4 @@
+import { t, useLocale } from '../../lib/i18n'
 import { useEffect, useReducer } from 'react'
 import { Modal } from './Modal'
 
@@ -37,6 +38,7 @@ function dismiss() {
 }
 
 function ConfirmDialog({ request, onClose }: { request: ConfirmRequest | null; onClose: () => void }) {
+  useLocale()
   if (!request) return null
 
   const cancel = () => {
@@ -49,7 +51,7 @@ function ConfirmDialog({ request, onClose }: { request: ConfirmRequest | null; o
     title={request.title}
     onClose={cancel}
     footer={<div className="modal-actions">
-      <button type="button" className="button" onClick={cancel}>{request.cancelLabel || '取消'}</button>
+      <button type="button" className="button" onClick={cancel}>{request.cancelLabel || t("取消")}</button>
       <button
         type="button"
         className={'button ' + (request.danger ? 'danger' : 'primary')}
@@ -57,15 +59,16 @@ function ConfirmDialog({ request, onClose }: { request: ConfirmRequest | null; o
           onClose()
           request.action()
         }}
-      >{request.confirmLabel || '确认'}</button>
+      >{request.confirmLabel || t("确认")}</button>
     </div>}
   >
-    <p className="confirm-dialog-message">{request.message || '确认执行该操作？'}</p>
+    <p className="confirm-dialog-message">{request.message || t("确认执行该操作？")}</p>
   </Modal>
 }
 
 /** Mount once in the admin shell; renders whatever requestConfirm() asked for. */
 export function ConfirmDialogHost() {
+  useLocale()
   const [, notify] = useReducer(count => count + 1, 0)
   useEffect(() => {
     listeners.add(notify)

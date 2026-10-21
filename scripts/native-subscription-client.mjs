@@ -15,7 +15,11 @@ const clientFormats = new Map([
   ['shadowrocket/v1', { min: [2, 2, 0], before: [3, 0, 0], mime: 'text/plain', extension: '.txt', filename: 'txboard-shadowrocket.txt' }],
   ['surge-ios/v1', { min: [5, 20, 0], before: [6, 0, 0], mime: 'text/plain', extension: '.conf', filename: 'txboard-surge-ios.conf' }],
   ['surge-mac/v1', { min: [6, 7, 0], before: [7, 0, 0], mime: 'text/plain', extension: '.conf', filename: 'txboard-surge-mac.conf' }],
+  ['stash/v1', { min: [3, 4, 0], before: [3, 4, 1], mime: 'application/yaml', extension: '.yaml', filename: 'txboard-stash.yaml' }],
+  ['surfboard/v1', { min: [2, 35, 2], before: [2, 35, 3], mime: 'text/plain', extension: '.conf', filename: 'txboard-surfboard.conf' }],
 ]);
+const vmessOnlyFormats = ['clash/v1', 'surge-ios/v1', 'surge-mac/v1', 'surfboard/v1'];
+const omittedALPNFormats = ['clash/v1', 'stash/v1', 'surfboard/v1'];
 const maxBytes = 1048576;
 const requireValue = (condition) => {
   if (!condition) throw new Error('NATIVE_SUBSCRIPTION_CLIENT_REFUSED');
@@ -158,7 +162,17 @@ export async function fetchNativeSubscription({ coreOrigin, providerOrigin, prov
   keys(grant, ['protocol_version', 'policy_version', 'audience', 'core_instance_id', 'key_id', 'key_epoch',
     'issued_at', 'not_before', 'expires_at', 'grant_id', 'provider_id', 'provider_instance_epoch',
     'recipient_public_key', 'format_id', 'user_id', 'subject', 'credential_sha256', 'credential_expires_at', 'nodes',
-    ...(document ? ['client_version'] : [])]);
+    ...(document ? ['client_version'] : []),
+    ...(document && Object.hasOwn(grant, 'client_template') ? ['client_template'] : [])]);
+  if (Object.hasOwn(grant, 'client_template')) {
+    const template = grant.client_template;
+    keys(template, ['engine', 'format_id', 'version', 'sha256', 'source']);
+    requireValue(template.engine === 'tx-template/v1' && template.format_id === format
+      && /^[0-9a-f]{64}$/.test(template.version) && /^[0-9a-f]{64}$/.test(template.sha256)
+      && typeof template.source === 'string' && Buffer.byteLength(template.source, 'utf8') >= 1
+      && Buffer.byteLength(template.source, 'utf8') <= 65536 && !template.source.includes('\0')
+      && Buffer.from(template.source, 'utf8').toString('utf8') === template.source && digest(template.source) === template.sha256);
+  }
   const now = Math.floor(Date.now() / 1000);
   requireValue(grant.protocol_version === 1 && grant.policy_version === 'native-provider-subscription/v1'
     && grant.audience === 'tx-subscription-client-v1' && grant.core_instance_id === trust.core_instance_id
@@ -174,10 +188,11 @@ export async function fetchNativeSubscription({ coreOrigin, providerOrigin, prov
     && grant.expires_at <= grant.issued_at + 30 && grant.expires_at > grant.issued_at
     && grant.credential_expires_at >= grant.expires_at && delivery.expires_at === grant.expires_at
     && Array.isArray(grant.nodes) && grant.nodes.length > 0 && grant.nodes.length <= 128);
-  if (['clash/v1', 'surge-ios/v1', 'surge-mac/v1'].includes(format)) {
-    requireValue(grant.subject.credential_profile_id === 'vmess-uuid/v1'
-      && grant.nodes.every(node => node.protocol === 'vmess' && node.transport === 'tcp'
-        && (format !== 'clash/v1' || node.tls === null || Array.isArray(node.tls.alpn) && node.tls.alpn.length === 0)));
+  if (document) {
+    const profiles = vmessOnlyFormats.includes(format) ? ['vmess-uuid/v1'] : ['vless-uuid/v1', 'vmess-uuid/v1'];
+    requireValue(profiles.includes(grant.subject.credential_profile_id)
+      && grant.nodes.every(node => `${node.protocol}-uuid/v1` === grant.subject.credential_profile_id && node.transport === 'tcp'
+        && (!omittedALPNFormats.includes(format) || node.tls === null || Array.isArray(node.tls?.alpn) && node.tls.alpn.length === 0)));
   }
   const authorizationDigest = digest(bytes);
   const requestId = `client_${randomBytes(16).toString('hex')}`;

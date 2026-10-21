@@ -36,9 +36,15 @@ final class NativeBillingReconciliation implements \App\Domains\Billing\Contract
             $incomplete = [];
             $next = [];
             $checked = [];
+            $adminAdjustments = [];
             $journals = $this->page('tx_money_journal', $installationId, $userId, $limit, $afterId, $next);
             foreach ($journals as $journal) {
                 $this->observe($issues, 'journal', $journal->id, fn () => $this->ledger->inspectJournal((int) $journal->id));
+                if ($journal->business_type === 'admin_adjustment') {
+                    $this->observe($issues, 'admin_adjustment', $journal->id, function () use ($journal, &$adminAdjustments): void {
+                        $adminAdjustments[] = app(NativeAccountAdjustments::class)->inspectJournal((int) $journal->id);
+                    });
+                }
             }
             $checked['journals'] = $journals->count();
             $accountReconciliation = [];
@@ -158,6 +164,7 @@ final class NativeBillingReconciliation implements \App\Domains\Billing\Contract
                 'incomplete_reasons' => array_values(array_unique($incomplete)), 'checked' => $checked,
                 'next_after_id' => $next === [] ? null : (string) min($next),
                 'unresolved_attempts' => $unresolved, 'refund_liabilities' => $liabilities, 'pending_work' => $pendingWork,
+                'admin_adjustments' => $adminAdjustments,
             ];
         });
     }
@@ -204,7 +211,7 @@ final class NativeBillingReconciliation implements \App\Domains\Billing\Contract
             $report['complete'] = true;
             $this->observe($issues, $scope.'_account', $account->id, function () use ($account, $rows, $ownerId, $installationId, &$report): void {
                 $purposes = $ownerId === 0
-                    ? ['provider_clearing' => 'debit', 'sales_revenue' => 'credit', 'refund_liability' => 'credit', 'gift_card_liability' => 'credit', 'commission_expense' => 'debit']
+                    ? ['provider_clearing' => 'debit', 'sales_revenue' => 'credit', 'refund_liability' => 'credit', 'gift_card_liability' => 'credit', 'commission_expense' => 'debit', 'admin_adjustment_control' => 'debit']
                     : ['wallet_available' => 'credit', 'wallet_reserved' => 'credit', 'commission_available' => 'credit', 'commission_reserved' => 'credit'];
                 MoneyValue::currency($account->currency);
                 $this->check(isset($purposes[$account->purpose]) && $account->normal_side === $purposes[$account->purpose]

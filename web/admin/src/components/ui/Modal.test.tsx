@@ -84,4 +84,10 @@ describe('Modal keyboard interaction', () => {
     expect(dialog.getAttribute('aria-modal')).toBe('true')
     expect(document.querySelector('.modal-card')).not.toBeNull()
   })
+
+  it('associates a supplied subtitle with the dialog description', () => {
+    act(() => root.render(<Modal open title="编辑" subtitle="核对后保存" onClose={() => {}}>内容</Modal>))
+    const dialog = document.querySelector('[role="dialog"]')!
+    expect(document.getElementById(dialog.getAttribute('aria-describedby')!)?.textContent).toBe('核对后保存')
+  })
 })

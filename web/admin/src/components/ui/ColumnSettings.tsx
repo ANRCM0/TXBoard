@@ -1,9 +1,10 @@
+import { t, useLocale } from '../../lib/i18n'
 import { SlidersHorizontal } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Checkbox } from './Field'
 import { Popover } from './Popover'
 
-export type ColumnChoice = { key: string; header: string }
+export type ColumnChoice = { key: string; header: string; hideable?: boolean }
 
 const storagePrefix = 'txboard:admin:columns:'
 
@@ -30,28 +31,31 @@ export function useColumnVisibility(storageKey: string | undefined, columns: rea
   const [hidden, setHidden] = useState<ReadonlySet<string>>(() => readHidden(storageKey))
   useEffect(() => { setHidden(readHidden(storageKey)) }, [storageKey])
   function onChange(next: Set<string>) {
-    const valid = new Set(columns.map(column => column.key))
+    const valid = new Set(columns.filter(column => column.hideable !== false).map(column => column.key))
     const cleaned = new Set([...next].filter(key => valid.has(key)))
     setHidden(cleaned)
     writeHidden(storageKey, cleaned)
   }
-  return { hidden, onChange }
+  const validHidden = new Set(columns.filter(column => column.hideable !== false && hidden.has(column.key)).map(column => column.key))
+  if (validHidden.size === columns.length && columns.length) validHidden.delete(columns[0].key)
+  return { hidden: validHidden, onChange }
 }
 
-export function ColumnSettings({ columns, hidden, onChange, label = '列设置' }: {
+export function ColumnSettings({ columns, hidden, onChange, label = t("列设置") }: {
   columns: readonly ColumnChoice[]
   hidden: ReadonlySet<string>
   onChange: (next: Set<string>) => void
   label?: string
 }) {
+  useLocale()
   const visibleCount = columns.filter(column => !hidden.has(column.key)).length
   return <Popover label={label} trigger={<SlidersHorizontal size={15} aria-hidden="true" />}>
     <div className="ui-column-settings">
-      <strong>显示列</strong>
+      <strong>{t("显示列")}</strong>
       {columns.map(column => {
         const visible = !hidden.has(column.key)
-        return <Checkbox key={column.key} label={column.header} checked={visible}
-          disabled={visible && visibleCount <= 1}
+        return <Checkbox key={column.key} label={t(column.header)} checked={visible}
+          disabled={column.hideable === false || visible && visibleCount <= 1}
           onChange={event => {
             const next = new Set(hidden)
             if (event.target.checked) next.delete(column.key)
@@ -59,6 +63,7 @@ export function ColumnSettings({ columns, hidden, onChange, label = '列设置' 
             onChange(next)
           }} />
       })}
+      <button type="button" className="button" disabled={hidden.size === 0} onClick={() => onChange(new Set())}>{t("恢复默认列")}</button>
     </div>
   </Popover>
 }

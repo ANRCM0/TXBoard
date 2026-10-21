@@ -1,6 +1,7 @@
 name: web-ci
 
 on:
+  workflow_dispatch:
   push:
     branches: [main]
     paths:
@@ -17,11 +18,12 @@ on:
       - "scripts/check-frontend-boundaries.mjs"
       - "scripts/admin-browser.mjs"
       - "scripts/admin-workflows-browser.mjs"
-      - "scripts/lib/admin-workflows-fixture.mjs"
       - "scripts/admin-catalog-network-browser.mjs"
       - "scripts/admin-management-browser.mjs"
-      - "scripts/lib/admin-management-fixture.mjs"
-      - "scripts/lib/admin-catalog-network-fixture.mjs"
+      - "scripts/admin-code-editor-browser.mjs"
+      - "scripts/run-browser-acceptance.mjs"
+      - "scripts/lib/admin-*-fixture.mjs"
+      - "scripts/lib/node-protocol-metadata.json"
       - "scripts/user-browser.mjs"
       - "scripts/check-web-performance.mjs"
       - ".github/workflows/ci-web.yml"
@@ -40,11 +42,12 @@ on:
       - "scripts/check-frontend-boundaries.mjs"
       - "scripts/admin-browser.mjs"
       - "scripts/admin-workflows-browser.mjs"
-      - "scripts/lib/admin-workflows-fixture.mjs"
       - "scripts/admin-catalog-network-browser.mjs"
       - "scripts/admin-management-browser.mjs"
-      - "scripts/lib/admin-management-fixture.mjs"
-      - "scripts/lib/admin-catalog-network-fixture.mjs"
+      - "scripts/admin-code-editor-browser.mjs"
+      - "scripts/run-browser-acceptance.mjs"
+      - "scripts/lib/admin-*-fixture.mjs"
+      - "scripts/lib/node-protocol-metadata.json"
       - "scripts/user-browser.mjs"
       - "scripts/check-web-performance.mjs"
       - ".github/workflows/ci-web.yml"
@@ -83,4 +86,6 @@ jobs:
             artifacts/admin-catalog-network-browser/
             artifacts/admin-management-browser/
             artifacts/user-browser/
+            artifacts/admin-native-wave/code-editor-browser-result.json
+            artifacts/admin-native-wave/subscription-template-editor-*.png
           if-no-files-found: ignore

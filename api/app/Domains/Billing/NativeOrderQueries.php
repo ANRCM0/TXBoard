@@ -83,12 +83,24 @@ final class NativeOrderQueries implements OrderQueries, AdminOrderQueries
 
     public function adminListing(AdminOrderListQuery $query): OrderPage
     {
+        AdminOrderFilterFields::validate($query);
         $orders = Order::query()->useWritePdo()
             ->where('purchase_terms_version', PublishedOrderService::VERSION);
         if ($query->userId !== null) $orders->where('user_id', $query->userId);
         if ($query->tradeNo !== null) $orders->where('trade_no', $query->tradeNo);
         if ($query->status !== null) $orders->where('status', $query->status);
-        $page = $orders->orderByDesc('created_at')->orderByDesc('id')->paginate($query->perPage,
+        foreach ($query->filters as $filter) {
+            if (in_array($filter['field'], ['amount_minor', 'currency'], true)) {
+                $orders->whereHas('purchaseTerms', static function ($terms) use ($filter): void {
+                    \App\Core\Query\BoundedListFilters::apply($terms, $filter['field'] === 'amount_minor' ? 'price_minor' : 'currency', $filter);
+                });
+            } else \App\Core\Query\BoundedListFilters::apply($orders, $filter['field'], $filter);
+        }
+        $orders->orderBy($query->sortBy === 'amount_minor'
+            ? OrderPurchaseTerms::query()->select('price_minor')->whereColumn('order_id', 'tx_order.id')->limit(1)
+            : $query->sortBy, $query->sortDirection);
+        if ($query->sortBy !== 'id') $orders->orderBy('id', $query->sortDirection);
+        $page = $orders->paginate($query->perPage,
             ['id', 'trade_no', 'user_id', 'plan_id', 'period', 'type', 'status', 'total_amount',
                 'paid_at', 'created_at', 'purchase_terms_version'], 'page', $query->page);
         $terms = OrderPurchaseTerms::query()->useWritePdo()->whereIn('order_id', $page->getCollection()->pluck('id'))

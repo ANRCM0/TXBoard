@@ -1,134 +1,102 @@
+import { t, useLocale, getLocale } from '../lib/i18n'
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { Info, ArrowUpRight, Server, Network, Users, ReceiptText, RefreshCw } from 'lucide-react'
-import { admin } from './session'
+import { CoreAdminApiError } from '@txboard/core-sdk'
+import { ArrowUpRight, Users, ReceiptText, RefreshCw, Wallet, Ticket } from 'lucide-react'
+import { admin, useAdminSession } from './session'
+import { QueueFailures } from './QueueFailures'
 import { ManagementFeedback } from './Feedback'
 import { PageHeader } from '../components/ui/PageHeader'
 import { MetricCard } from '../components/ui/MetricCard'
 import { SegmentedControl } from '../components/ui/SegmentedControl'
-import './overview-reference.css'
 import { DataTable } from '../components/ui/DataTable'
-import { isoDate, minorAmount, orderStatus } from './readPresentation'
-import { DonutChart, LineChart } from '../components/charts/ReferenceCharts'
+import { LineChart } from '../components/charts/ReferenceCharts'
 import { ChartSkeleton } from '../components/ui/Skeleton'
-import { Popover } from '../components/ui/Popover'
-import { nodeTrafficHistory, orderStatusShare, incomeTrend, type OverviewRange } from './overviewCharts'
+import { DateRangePicker } from '../components/ui/DateRangePicker'
+import { minorAmount } from './readPresentation'
+import { gigabytes } from '../lib/format'
+import { dashboardDates, dashboardRanges, nativeDashboardTrend, type DashboardMoney, type DashboardTrendKind, type DashboardMeasure } from './overviewCharts'
+import './overview-reference.css'
+import './dashboard-native.css'
 
-const ranges = ([7, 14, 30] as const).map(value => ({ value, label: value + ' 天' }))
+const trendKinds = [
+  { value: 'income' as const, label: '订单收入' },
+  { value: 'earned_commission' as const, label: '已入账佣金' },
+  { value: 'commission_transfer' as const, label: '已转入钱包佣金' },
+]
+const queueStatuses = { unavailable: '不可用', not_applicable: '不适用', inactive: '未运行', paused: '已暂停', running: '运行中' }
+const amounts = (rows: readonly DashboardMoney[]) => rows.length ? rows.map(row => minorAmount(row.amount_minor, row.currency)).join(' / ') : '0'
+const count = (value: string) => BigInt(value).toLocaleString(getLocale())
 
 export function OverviewPage() {
-  const [range, setRange] = useState<OverviewRange>(14)
-  const [trafficRange, setTrafficRange] = useState<OverviewRange>(14)
-  const identity = useQuery({ queryKey: ['native-admin', 'identity'],
-    queryFn: ({ signal }) => admin.read('identity.admin.get', {}, signal) })
-  const accounts = useQuery({ queryKey: ['native-admin', 'overview', 'accounts'],
-    queryFn: ({ signal }) => admin.read('identity.accounts.list', { page: 1, per_page: 1 }, signal) })
-  const orders = useQuery({ queryKey: ['native-admin', 'overview', 'orders'],
-    queryFn: ({ signal }) => admin.read('commerce.admin-orders.list', { page: 1, per_page: 100 }, signal) })
-  const nodes = useQuery({ queryKey: ['native-admin', 'overview', 'nodes'],
-    queryFn: ({ signal }) => admin.read('network.nodes.list', { page: 1, per_page: 100 }, signal) })
-  const machines = useQuery({ queryKey: ['native-admin', 'overview', 'machines'],
-    queryFn: ({ signal }) => admin.read('network.machines.list', { page: 1, per_page: 1 }, signal) })
-  const trafficNodes = nodes.isError ? [] : [...(nodes.data?.data ?? [])].sort((left, right) => {
-    const leftTotal = (left.u ? BigInt(left.u) : 0n) + (left.d ? BigInt(left.d) : 0n)
-    const rightTotal = (right.u ? BigInt(right.u) : 0n) + (right.d ? BigInt(right.d) : 0n)
-    return leftTotal === rightTotal ? 0 : leftTotal > rightTotal ? -1 : 1
-  }).slice(0, 5)
-  const nodeIds = trafficNodes.map(node => node.id)
-  const trafficEnabled = nodeIds.length > 0
-  const history = useQuery({ queryKey: ['native-admin', 'overview', 'node-traffic', trafficRange, nodeIds],
-    queryFn: ({ signal }) => admin.read('network.nodes.traffic-history.get', { days: trafficRange, node_ids: nodeIds }, signal),
-    enabled: trafficEnabled })
-  const queries = [identity, accounts, orders, nodes, machines, ...(trafficEnabled ? [history] : [])]
-  const refreshing = queries.some(query => query.isFetching)
-  const updatedAt = Math.max(...queries.map(query => query.dataUpdatedAt))
-  const orderRows = orders.isError ? [] : orders.data?.data ?? []
-  const trend = incomeTrend(orderRows, range, new Date(orders.dataUpdatedAt || Date.now()))
-  const distribution = orderStatusShare(orderRows)
-  const traffic = nodeTrafficHistory(!nodes.isError && !history.isError && trafficEnabled ? history.data?.data : undefined)
+  useLocale()
+  const session = useAdminSession()
+  const [period, setPeriod] = useState('30')
+  const [dates, setDates] = useState(() => dashboardDates(30))
+  const [kind, setKind] = useState<DashboardTrendKind>('income')
+  const [measure, setMeasure] = useState<DashboardMeasure>('amount')
+  const [currency, setCurrency] = useState('')
+  const dashboard = useQuery({ queryKey: ['native-admin', 'overview', 'native', dates.start_date, dates.end_date], enabled: session,
+    queryFn: ({ signal }) => admin.read('analytics.native-dashboard.get', dates, signal) })
+  const queue = useQuery({ queryKey: ['native-admin', 'queue-snapshot'], enabled: session,
+    queryFn: ({ signal }) => admin.read('platform.queue.snapshot.get', {}, signal) })
+  const denied = dashboard.error instanceof CoreAdminApiError && [401, 403].includes(dashboard.error.status)
+  const current = session && !dashboard.isError ? dashboard.data?.data : undefined
+  const queueCurrent = session && !denied && !queue.isError ? queue.data?.data : undefined
+  const currencies = [...new Set(current?.trends.flatMap(point => point[kind].map(row => row.currency)) ?? [])].sort()
+  const activeCurrency = currencies.includes(currency) ? currency : currencies[0] ?? 'CNY'
+  const trend = nativeDashboardTrend(current?.trends ?? [], kind, measure, activeCurrency)
+  const refreshing = dashboard.isFetching || queue.isFetching
+  const updatedAt = current?.observed_at
+  const cards = current?.cards
   const metrics = [
-    { label: '账户总数', icon: Users, query: accounts, href: '/user/manage', tone: 'blue' as const },
-    { label: '订单总数', icon: ReceiptText, query: orders, href: '/finance/order', tone: 'purple' as const },
-    { label: '节点总数', icon: Network, query: nodes, href: '/server/manage', tone: 'green' as const },
-    { label: '服务器总数', icon: Server, query: machines, href: '/server/machine', tone: 'orange' as const },
+    { label: t('今日收入'), value: cards ? amounts(cards.today_income) : '—', caption: t('已支付原生订单 · UTC'), icon: ReceiptText, tone: 'blue' as const, href: '/finance/order' },
+    { label: t('本月收入'), value: cards ? amounts(cards.month_income) : '—', caption: t('本月累计 · 分币种'), icon: ReceiptText, tone: 'blue' as const, href: '/finance/order' },
+    { label: t('上月收入'), value: cards ? amounts(cards.last_month_income) : '—', caption: t('上个自然月 · 分币种'), icon: ReceiptText, tone: 'green' as const, href: '/finance/order' },
+    { label: t('本月已转入钱包佣金'), value: cards ? amounts(cards.month_commission_transfer) : '—', caption: t('已批准转入 · 非全部应计佣金'), icon: Wallet, tone: 'orange' as const, href: '/finance/commission' },
+    { label: t('上月已转入钱包佣金'), value: cards ? amounts(cards.last_month_commission_transfer) : '—', caption: t('上个自然月已批准转入'), icon: Wallet, tone: 'orange' as const, href: '/finance/commission' },
+    { label: t('本月新增账户'), value: cards ? count(cards.month_new_accounts) : '—', caption: t('按原生身份创建时间'), icon: Users, tone: 'green' as const, href: '/user/manage' },
+    { label: t('待回复工单'), value: cards ? count(cards.pending_tickets) : '—', caption: t('开启且等待回复'), icon: Ticket, tone: 'blue' as const, href: '/user/ticket' },
+    { label: t('待审核佣金转入'), value: cards ? count(cards.pending_commission_payouts) : '—', caption: t('当前申请笔数'), icon: Wallet, tone: 'orange' as const, href: '/finance/commission' },
   ]
-  return <div className="native-management-page reference-overview">
-    <PageHeader title="管理中心" description="站点资源概览" action={<div className="overview-refresh">
-      <span className="overview-update">{refreshing ? '更新中' : updatedAt ? new Date(updatedAt).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }) + ' 更新' : '等待更新'}</span>
-      <button className="icon-button" aria-label="刷新概览" title="刷新概览" disabled={refreshing} onClick={() => { void Promise.allSettled(queries.map(query => query.refetch())) }}><RefreshCw size={19} className={refreshing ? 'is-spinning' : ''} /></button>
+  function selectPeriod(value: string) {
+    setPeriod(value)
+    if (value !== 'custom') setDates(dashboardDates(Number(value)))
+  }
+  return <div className="native-management-page reference-overview native-dashboard">
+    <PageHeader title={t("管理中心")} description={t("原生订单、佣金与已结算流量")} action={<div className="overview-refresh">
+      <span className="overview-update">{refreshing ? t('更新中') : updatedAt ? new Date(updatedAt * 1000).toLocaleTimeString(getLocale()) + t(' 更新') : t('等待更新')}</span>
+      <button className="icon-button" aria-label={t("刷新概览")} title={t("刷新概览")} disabled={!session || refreshing} onClick={() => { void Promise.allSettled([dashboard.refetch(), queue.refetch()]) }}><RefreshCw size={19} className={refreshing ? 'is-spinning' : ''} /></button>
     </div>} />
-    <ManagementFeedback error={identity.isError ? identity.error : undefined} loading={identity.isFetching}
-      onRetry={() => void identity.refetch()} />
-    <section className="overview-metrics" aria-label="资源统计">
-      {metrics.map(({ label, icon: Icon, query, href, tone }) => <MetricCard key={label} label={label} tone={tone}
-        icon={<Icon size={19} aria-hidden="true" />} href={href}
-        value={query.isError ? '—' : query.data ? query.data.meta.total.toLocaleString('zh-CN') : '…'}
-        caption={query.isError ? '暂不可用，点击查看' : '查看全部'} />)}
-    </section>
-    <div className="overview-charts-grid">
-      <section className="card overview-chart-card" aria-label="收入趋势卡片">
-        <div className="reference-card-heading"><div><h2>收入趋势</h2><p>已支付订单金额 · 按支付日期 · UTC</p></div>
-          <SegmentedControl label="收入趋势时间范围" value={range} options={ranges} onChange={setRange} />
-        </div>
-        {orders.isError ? <ManagementFeedback error={orders.error} onRetry={() => void orders.refetch()} /> : !orders.data
-          ? <ChartSkeleton label="正在加载收入趋势" />
-          : <>
-            {orders.isFetching ? <p className="overview-chart-refresh" role="status">正在刷新样本订单…</p> : null}
-            <LineChart title="样本收入趋势" yAxisWidth={92} formatValue={trend.formatValue} labels={trend.labels} series={trend.hasData ? trend.series : []}
-              emptyText="此时间范围内暂无已支付样本订单" />
-            <div className="overview-chart-footer"><span>最近 {trend.sampleSize} 条订单 · 所选范围内 {trend.includedCount} 条已支付</span>
-              <Popover label="收入统计口径" trigger={<><Info size={14} aria-hidden="true" /><span>收入统计口径</span></>} triggerClassName="ui-popover-trigger-text">
-                <p>按支付日期分别汇总各币种的订单金额，含钱包支付，未扣除退款；最近订单样本不代表全站实收。零值表示样本中没有对应记录。</p>
-              </Popover></div>
-          </>}
-      </section>
-      <section className="card overview-chart-card" aria-label="订单状态卡片">
-        <div className="reference-card-heading"><div><h2>订单状态</h2><p>最近订单的当前状态分布</p></div><Link to="/finance/order">全部订单<ArrowUpRight size={15} /></Link></div>
-        {orders.isError ? <p className="overview-chart-scope">订单状态暂不可用</p> : !orders.data
-          ? <ChartSkeleton label="正在加载订单状态" />
-          : <>
-            <DonutChart title="样本订单状态" data={distribution.data} centerLabel="样本订单" />
-            <p className="overview-chart-scope">最近 {distribution.sampleSize} 条订单的当前状态；与收入时间范围独立。</p>
-          </>}
-      </section>
-    </div>
-    <section className="card overview-chart-card" aria-label="节点流量卡片">
-      <div className="reference-card-heading"><div><h2>节点总流量</h2><p>每日上传 + 下载 · GB · UTC</p></div>
-        <SegmentedControl label="节点流量时间范围" value={trafficRange} options={ranges} onChange={setTrafficRange} />
+    <ManagementFeedback error={dashboard.error} loading={dashboard.isFetching} onRetry={() => void dashboard.refetch()} />
+    {denied ? <p role="alert">{t("无法确认概览读取权限，已隐藏统计、趋势与排行榜。")}</p> : null}
+    <section className="overview-metrics" aria-label={t("原生经营统计")}>{metrics.map(({ label, value, caption, icon: Icon, tone, href }) => <MetricCard key={label} label={label} value={value} caption={current ? caption : dashboard.isError ? t('暂不可用') : t('等待统计')} icon={<Icon size={19} />} tone={tone} href={href} />)}</section>
+    <p className="dashboard-online-scope">{t("在线节点：未知 · 在线用户：未知 · 在线设备：未知。当前原生权威尚未提供这些观测指标。")}</p>
+    <section className="card overview-chart-card" aria-label={t("经营趋势")}>
+      <div className="reference-card-heading"><div><h2>{t("经营趋势")}</h2><p>{t("按 UTC 日期统计 · 金额与笔数 · 同时用于下方流量排行")}</p></div>
+        <label className="dashboard-select">{t("时间范围")}<select aria-label={t("概览时间范围")} value={period} onChange={event => selectPeriod(event.target.value)}>{dashboardRanges.map(days => <option key={days} value={String(days)}>{t('近 {days} 天', { days })}</option>)}<option value="custom">{t("自定义日期")}</option></select></label>
       </div>
-      {nodes.isError ? <ManagementFeedback error={nodes.error} onRetry={() => void nodes.refetch()} /> : null}
-      {!nodes.isError && !nodes.data ? <ChartSkeleton label="正在加载节点列表" /> : null}
-      {!nodes.isError && nodes.data && trafficEnabled && !history.data && !history.isError ? <ChartSkeleton label="正在加载节点流量" /> : null}
-      {history.isError ? <ManagementFeedback error={history.error} onRetry={() => void history.refetch()} /> : null}
-      {!nodes.isError && !history.isError && history.data && trafficEnabled ? <>
-        {history.isFetching ? <p className="overview-chart-refresh" role="status">正在刷新节点流量…</p> : null}
-        <LineChart title="节点总流量" labels={traffic.labels} series={traffic.series} xAxisLabel="日期（UTC）" yAxisWidth={92} formatValue={traffic.formatValue} emptyText="暂无节点流量数据" />
-        <div className="overview-chart-footer"><span>累计流量前 {traffic.nodeCount} 个节点 · 每条曲线为一个节点</span>
-          <Popover label="流量统计口径" trigger={<><Info size={14} aria-hidden="true" /><span>流量统计口径</span></>} triggerClassName="ui-popover-trigger-text">
-            <p>按当前节点列表的累计上传与下载排序取前 5 个节点。每日总流量为原始上传与下载之和，按已结算批次结束日期（UTC）汇总。1 GB = 10⁹ 字节，显示保留两位小数；今日数据截至最近刷新。</p>
-          </Popover></div>
-      </> : null}
-      {!nodes.isError && nodes.data && !trafficEnabled ? <p className="overview-chart-scope">暂无节点流量数据</p> : null}
+      {period === 'custom' ? <div className="dashboard-custom-range"><DateRangePicker value={dates} onApply={setDates} onClear={() => { setDates(dashboardDates(30)); setPeriod('30') }} /></div> : null}
+      <div className="dashboard-chart-controls"><SegmentedControl label={t("统计类型")} value={kind} options={trendKinds.map(option => ({ ...option, label: t(option.label) }))} onChange={setKind} /><SegmentedControl label={t("统计指标")} value={measure} options={[{ value: 'amount', label: t('金额') }, { value: 'count', label: t('笔数') }]} onChange={setMeasure} />
+        {currencies.length ? <label className="dashboard-select">{t("币种")}<select aria-label={t("统计币种")} value={activeCurrency} onChange={event => setCurrency(event.target.value)}>{currencies.map(value => <option key={value}>{value}</option>)}</select></label> : null}
+      </div>
+      {!dashboard.data && !dashboard.isError ? <ChartSkeleton label={t("正在加载原生经营趋势")} /> : null}
+      {current ? <><LineChart title={t(trendKinds.find(value => value.value === kind)?.label ?? '经营趋势')} labels={trend.labels} series={trend.series} yAxisWidth={100} formatValue={trend.formatValue} emptyText={t("此日期范围暂无记录")} />
+        <p className="overview-chart-scope">{t('日期范围：{start} 至 {end}（UTC）', { start: current.start_date, end: current.end_date })} · {t('订单收入按支付时间汇总原生购买订单冻结金额，包含钱包部分，未扣退款；充值不重复计入。佣金入账与已批准转入钱包分别统计，币种分别查看。')}</p></> : null}
     </section>
-    <div className="overview-data-grid">
-      <section className="card overview-data-card" aria-label="最近订单">
-        <div className="reference-card-heading"><div><h2>最近订单</h2><p>当前列表前 5 条</p></div><Link to="/finance/order">全部订单<ArrowUpRight size={15} /></Link></div>
-        <ManagementFeedback error={orders.isError ? orders.error : undefined} loading={orders.isFetching} onRetry={() => void orders.refetch()} />
-        {!orders.isError && orders.data ? <DataTable rows={orders.data.data.slice(0, 5)} rowKey={row => row.id} label="最近订单列表" columns={[
-          { key: 'order', header: '订单', render: row => <div className="native-row-identity"><Link className="table-link" to={'/finance/order?trade_no=' + encodeURIComponent(row.trade_no)}>{row.trade_no}</Link><small>{row.plan?.name ?? '未记录套餐'}</small></div> },
-          { key: 'amount', header: '金额', render: row => <span className="reference-number">{minorAmount(row.amount_minor, row.currency)}</span> },
-          { key: 'status', header: '状态', render: row => <span className={'reference-status ' + (row.status === 3 ? 'is-success' : row.status === 0 || row.status === 1 ? 'is-warning' : '')}>{orderStatus(row.status)}</span> },
-          { key: 'time', header: '创建时间', render: row => <span className="reference-secondary">{isoDate(row.created_at)}</span> },
-        ]} /> : null}
-      </section>
-      <section className="card overview-data-card" aria-label="节点概况">
-        <div className="reference-card-heading"><div><h2>节点概况</h2><p>累计流量前 5 个节点</p></div><Link to="/server/manage">全部节点<ArrowUpRight size={15} /></Link></div>
-        <ManagementFeedback error={nodes.isError ? nodes.error : undefined} loading={nodes.isFetching} onRetry={() => void nodes.refetch()} />
-        {!nodes.isError && nodes.data ? <div className="overview-node-list">{trafficNodes.length ? trafficNodes.map(node => <Link to={'/server/node/' + node.id} className="overview-node" key={node.id}>
-          <span className="overview-node-icon"><Server size={18} /></span><span className="native-row-identity"><strong>{node.name}</strong><small>{node.type.toUpperCase()} · {node.host}</small></span><span className={'reference-status ' + (node.enabled ? 'is-success' : '')}>{node.enabled ? '已启用' : '已禁用'}</span>
-        </Link>) : <p className="reference-secondary">暂无节点</p>}</div> : null}
-      </section>
-    </div>
+    <div className="overview-data-grid">{(['nodes', 'users'] as const).map(type => <section className="card overview-data-card" key={type} aria-label={type === 'nodes' ? t('节点流量排行') : t('用户流量排行')}>
+      <div className="reference-card-heading"><div><h2>{type === 'nodes' ? t('节点流量排行') : t('用户流量排行')}</h2><p>{t("所选日期 · 已结算原始上传 + 下载 · 前 10 名")}</p></div></div>
+      {current ? <DataTable rows={current.rankings[type]} rowKey={row => row.id} label={type === 'nodes' ? t('节点流量排行榜') : t('用户流量排行榜')} empty={t("此日期范围暂无已结算流量")} columns={[
+        { key: 'identity', header: type === 'nodes' ? t('节点') : t('用户'), render: row => <Link className="table-link" to={type === 'nodes' ? '/server/node/' + row.id : '/user/' + row.id}>{row.name ?? '#' + row.id}</Link> },
+        { key: 'traffic', header: t('流量'), render: row => <span title={row.total_bytes + t(' 字节')}>{gigabytes(BigInt(row.total_bytes))}<small className="dashboard-byte-value">{t('{value} 字节', { value: count(row.total_bytes) })}</small></span> },
+      ]} /> : <p className="reference-secondary">{dashboard.isError ? t('排行暂不可用') : t('正在加载排行…')}</p>}
+    </section>)}</div>
+    <section className="card overview-data-card" aria-label={t("队列监控概况")}><div className="reference-card-heading"><div><h2>{t("队列监控")}</h2><p>{t("独立实时观测，不受日期范围影响")}</p></div><Link to="/system/queue">{t("查看队列")}<ArrowUpRight size={15} /></Link></div>
+      <ManagementFeedback error={queue.error} loading={queue.isFetching} onRetry={() => void queue.refetch()} />
+      {queueCurrent ? <div className="dashboard-queue-grid">{[[t('运行状态'), t(queueStatuses[queueCurrent.status])], [t('待处理任务'), queueCurrent.pending_jobs], [t('每分钟任务'), queueCurrent.jobs_per_minute], [t('近七日失败'), queueCurrent.failed_last_7_days]].map(([label, value]) => <div key={label}><span>{label}</span><strong>{value ?? t('未知')}</strong></div>)}</div> : null}
+      {queueCurrent?.message ? <p className="overview-chart-scope">{queueCurrent.message}</p> : null}
+      {queueCurrent ? <QueueFailures compact /> : null}
+    </section>
   </div>
 }

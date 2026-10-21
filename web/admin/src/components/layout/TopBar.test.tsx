@@ -4,12 +4,16 @@ import { MemoryRouter, useLocation } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { TopBar } from './TopBar'
+import { admin, logoutAdmin } from '../../native/session'
 vi.mock('../../lib/routePreload', () => ({ preloadAdminRoute: vi.fn() }))
+vi.mock('../../native/session', () => ({ admin: { read: vi.fn() }, logoutAdmin: vi.fn() }))
 let host: HTMLDivElement
 let root: Root
 let queryClient: QueryClient
 function Location() { return <output>{useLocation().pathname}</output> }
 beforeEach(() => {
+  vi.mocked(admin.read).mockReset().mockResolvedValue({ data: { id: '9007199254740993', email: 'admin@example.test' }, meta: {} } as never)
+  vi.mocked(logoutAdmin).mockReset().mockResolvedValue({ serverConfirmed: true })
   ;(globalThis as any).IS_REACT_ACT_ENVIRONMENT = true
   host = document.createElement('div')
   document.body.append(host)
@@ -54,8 +58,18 @@ beforeEach(() => {
 })
 afterEach(() => { act(() => root.unmount()); queryClient.clear(); host.remove() })
 function key(key: string) { act(() => document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }))) }
-it('labels the compact logout control for assistive technology', () => {
-  expect(host.querySelector('.admin-avatar-button')?.getAttribute('aria-label')).toBe('退出登录')
+it('opens an explicit account menu instead of signing out from the compact trigger', async () => {
+  const trigger = host.querySelector<HTMLButtonElement>('[aria-label="账户菜单"]')!
+  act(() => trigger.click())
+  await act(async () => { await new Promise(resolve => setTimeout(resolve, 20)) })
+  expect(admin.read).toHaveBeenCalledExactlyOnceWith('identity.admin.get', {}, expect.any(AbortSignal))
+  expect(document.querySelector('.admin-account-menu')?.textContent).toContain('admin@example.test')
+  expect(document.querySelector('.admin-account-menu')?.textContent).toContain('9007199254740993')
+  expect(logoutAdmin).not.toHaveBeenCalled()
+  const settings = [...document.querySelectorAll<HTMLButtonElement>('.admin-account-actions button')].find(button => button.textContent === '系统设置')!
+  act(() => settings.click())
+  expect(host.querySelector('output')?.textContent).toBe('/config/system')
+  expect(document.querySelector('.admin-account-menu')).toBeNull()
 })
 it('supports arrow selection, Enter navigation, and closes the search', () => {
   act(() => host.querySelector<HTMLButtonElement>('.admin-command-trigger')!.click())

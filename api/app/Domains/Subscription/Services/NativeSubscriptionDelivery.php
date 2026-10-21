@@ -107,6 +107,8 @@ final class NativeSubscriptionDelivery implements BrowserDeliveries
             'shadowrocket/v1' => ['text/plain', 'txboard-shadowrocket.txt', 'Shadowrocket'],
             'surge-ios/v1' => ['text/plain', 'txboard-surge-ios.conf', 'Surge iOS / VMess TCP'],
             'surge-mac/v1' => ['text/plain', 'txboard-surge-mac.conf', 'Surge Mac / VMess TCP'],
+            'stash/v1' => ['application/yaml', 'txboard-stash.yaml', 'Stash iOS / TCP'],
+            'surfboard/v1' => ['text/plain', 'txboard-surfboard.conf', 'Surfboard / VMess TCP'],
         ];
         $result = [];
         foreach (RenderGrantCodec::CLIENT_FORMATS as $format => $rule) {
@@ -135,6 +137,7 @@ final class NativeSubscriptionDelivery implements BrowserDeliveries
             app(InstallationAuthority::class)->assertNativeRead();
             if ($sessionGuard !== null) $sessionGuard();
             $projection = $this->project($userId, $subjectId, $configuration, time());
+            $projection['client_template'] = app(NativeSubscriptionTemplates::class)->envelope($format);
             $this->compatibleNodes($projection, $format);
             if ($guard !== null) { $guard(); }
             return $projection;
@@ -149,11 +152,17 @@ final class NativeSubscriptionDelivery implements BrowserDeliveries
         // No network request is made while holding the account/Subject/Node locks.
         $metadata = $this->transport->metadata($before['registration'], $request);
         $metadata = ProviderMetadataCodec::decodeResponse(ProviderCodec::canonical($metadata), $request);
+        if ($before['client_template'] !== null) {
+            $capabilities = $this->transport->capabilities($before['registration']);
+            $this->require(($capabilities['subscription_template_engine'] ?? null) === 'tx-template/v1'
+                && ($capabilities['subscription_render'] ?? false) === true, 'TEMPLATE_ENGINE_UNSUPPORTED');
+        }
         return DB::transaction(function () use ($userId, $subjectId, $recipientKey, $configuration, $endpoint, $before, $metadata, $guard, $format, $clientVersion, $sessionGuard): array {
             app(InstallationAuthority::class)->assertNativeRead();
             if ($sessionGuard !== null) $sessionGuard();
             $now = time();
             $after = $this->project($userId, $subjectId, $configuration, $now);
+            $after['client_template'] = app(NativeSubscriptionTemplates::class)->envelope($format);
             $policyExpiry = $guard === null ? null : $guard();
             $this->require($after === $before && self::endpoint($configuration['provider_id']) === $endpoint, 'AUTHORITY_CHANGED');
             $credential = $metadata['credentials'][0];
@@ -183,6 +192,7 @@ final class NativeSubscriptionDelivery implements BrowserDeliveries
                 'credential_expires_at' => $after['credential_expires_at'], 'nodes' => $this->compatibleNodes($after, $format),
             ];
             if ($clientVersion !== null) { $payload['client_version'] = $clientVersion; }
+            if ($after['client_template'] !== null) { $payload['client_template'] = $after['client_template']; }
             return [
                 'endpoint' => $endpoint, 'format_id' => $format,
                 'expires_at' => $expires, 'proof_scheme' => 'native-provider-subscription-request/v1',

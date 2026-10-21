@@ -7,12 +7,15 @@ type Operation = Extract<CoreAdminWriteOperation,
   | `billing.coupons.${string}` | `billing.admin-gift-cards.${string}` | `billing.admin-commissions.${string}`
   | `catalog.${string}` | `network.groups.${string}` | `network.routes.${string}` | `network.access-audit.${string}`
   | `network.nodes.${string}` | `network.machines.${string}` | `subscription.lifecycle.${string}`
-  | `notifications.mail-templates.${string}` | 'identity.accounts.create' | 'identity.accounts.status.update'
-  | 'settings.configuration.update' | 'billing.admin-payment-methods.save'>
+  | `notifications.mail-templates.${string}` | `identity.accounts.${string}`
+  | `subscription.admin-templates.${string}` | `platform.module-${string}` | `platform.theme-packages.${string}`
+  | `subscription.admin.amendment.${string}`
+  | `billing.admin-account-adjustments.${string}` | `billing.admin-customer-policy.${string}` | `usage.admin-corrections.${string}`
+  | `settings.telegram.${string}` | 'settings.configuration.update' | 'billing.admin-payment-methods.save'>
 export type PendingWorkflow = { [K in Operation]: {
   operation: K; input: CoreInput<K>; key: string; unknown: boolean
 } }[Operation]
-type State = Readonly<{ pending?: PendingWorkflow; busy: boolean; error?: unknown }>
+type State = Readonly<{ pending?: PendingWorkflow; busy: boolean; error?: unknown; errorOperation?: Operation }>
 type Send = <K extends Operation>(operation: K, input: CoreInput<K>, key: string) => Promise<unknown>
 
 /** Scope survives navigation, but session replacement clears every retained input. */
@@ -40,7 +43,7 @@ export function createWorkflowActions(send: Send) {
         if (current !== epoch) throw new StaleAdminContext()
         if (current === epoch) {
           const unknown = action.unknown || !(error instanceof CoreAdminApiError) || error.needsStateConfirmation
-          update({ busy: false, error, ...(unknown ? { pending: { ...action, unknown: true } } : {}) })
+          update({ busy: false, error, errorOperation: operation, ...(unknown ? { pending: { ...action, unknown: true } } : {}) })
         }
         throw error
       }

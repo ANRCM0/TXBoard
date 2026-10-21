@@ -23,7 +23,7 @@ class NativeCredentialProviderTest extends NativeSubscriptionTestCase
     private array $receipts = [];
     private array $tombstones = [];
     private array $currentCredentials = [];
-    private int $providerClockOffset = 0;
+    private ?int $providerRevokedAt = null;
     private mixed $exchange = null;
     private ProviderClient $transport;
 
@@ -221,12 +221,14 @@ class NativeCredentialProviderTest extends NativeSubscriptionTestCase
         $old = $this->service()->revoke($user->id, (int) $issued['subject_id'], 'old-fact', $issued['subject_version']);
         $this->assertSame('unknown', $old['status']);
         $this->exchange = null;
-        $this->providerClockOffset = -1;
+        // Keep the provider's first fact earlier even if the next call crosses a wall-clock second.
+        $this->providerRevokedAt = $this->calls[1]['input']['effective_at'] - 1;
         $new = $this->service()->revoke($user->id, (int) $issued['subject_id'], 'new-fact',
             $old['subject_version'], 'ACCOUNT_BANNED');
         $this->assertSame('succeeded', $new['status']);
         $this->assertSame('2', $new['revocation_fact_version']);
         $this->assertSame('4', $new['subject_version']);
+        $this->assertSame($this->providerRevokedAt, $new['provider_revoked_at']);
         $this->assertLessThan($this->calls[2]['input']['effective_at'], $new['provider_revoked_at']);
         $recovered = $this->service()->recover($user->id, $old['operation_ref']);
         $this->assertSame('succeeded', $recovered['status']);
@@ -552,7 +554,7 @@ class NativeCredentialProviderTest extends NativeSubscriptionTestCase
                 $this->tombstones[$input['provider_subject_ref']] = [
                     'revocation_fact_version' => $input['revocation_fact_version'],
                     'effective_at' => $input['effective_at'], 'reason_code' => $input['reason_code'],
-                    'provider_revoked_at' => $previous['provider_revoked_at'] ?? time() + $this->providerClockOffset,
+                    'provider_revoked_at' => $previous['provider_revoked_at'] ?? $this->providerRevokedAt ?? time(),
                 ];
             }
             $accepted = $this->tombstones[$input['provider_subject_ref']];

@@ -9,9 +9,9 @@ final class NativeMoneyLedger
 {
     private const USER_PURPOSES = ['wallet_available' => 'credit', 'wallet_reserved' => 'credit', 'commission_available' => 'credit', 'commission_reserved' => 'credit'];
     private const SYSTEM_PURPOSES = ['provider_clearing' => 'debit', 'sales_revenue' => 'credit',
-        'refund_liability' => 'credit', 'gift_card_liability' => 'credit', 'commission_expense' => 'debit'];
+        'refund_liability' => 'credit', 'gift_card_liability' => 'credit', 'commission_expense' => 'debit', 'admin_adjustment_control' => 'debit'];
     private const BUSINESS_TYPES = ['wallet_credit', 'wallet_reserve', 'wallet_release', 'wallet_capture',
-        'provider_capture', 'refund', 'adjustment', 'gift_card_reserve', 'gift_card_release', 'gift_card_capture', 'gift_card_credit', 'commission_accrue', 'commission_reserve', 'commission_approve', 'commission_reject'];
+        'provider_capture', 'refund', 'adjustment', 'admin_adjustment', 'gift_card_reserve', 'gift_card_release', 'gift_card_capture', 'gift_card_credit', 'commission_accrue', 'commission_reserve', 'commission_approve', 'commission_reject'];
 
     public function post(int $userId, array $request): array
     {

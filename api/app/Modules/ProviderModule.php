@@ -16,6 +16,7 @@ final class ProviderModule implements ModuleProvider
     {
         return new ModuleDefinition('provider', '1.0.0', 'connector', provides: [
                 new CapabilityDefinition('credentials.provider-client', ProviderClient::class, exported: false),
+                new CapabilityDefinition('credentials.template-validator', \App\Domains\CredentialProvider\Contracts\TemplateValidationClient::class, exported: false),
             ], requires: [new CapabilityRequirement('installation.admission')], required: true);
     }
 
@@ -23,6 +24,7 @@ final class ProviderModule implements ModuleProvider
     {
         return [
             new ServiceBinding(ProviderClient::class, ProviderTransport::class),
+            new ServiceBinding(\App\Domains\CredentialProvider\Contracts\TemplateValidationClient::class, ProviderTransport::class),
         ];
     }
 }

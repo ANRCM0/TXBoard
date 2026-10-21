@@ -1,90 +1,116 @@
+import { t, useLocale } from '../lib/i18n'
+import { CopyButton } from '../components/ui/CopyButton'
 import { RefreshCw, Server, Settings2 } from 'lucide-react'
 import './network-reference.css'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
-import type { CoreOutput } from '@txboard/core-sdk'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { admin, workflowActions } from './session'
 import { PageHeader } from '../components/ui/PageHeader'
-import type { Column } from '../components/ui/DataTable'
 import { ManagementFeedback } from './Feedback'
-import { ReadFields, ReadList } from './ReadList'
+import { ReadFields } from './ReadList'
+import { MachineNodeManager } from './MachineNodeManager'
+import { useDirtyDraft } from '../lib/useDirtyDraft'
 import { formatTimestamp } from './Inventory'
 import { NetworkRecovery, useNetworkManagement } from './NetworkManagement'
 import { DetailSection } from '../components/ui/DetailSection'
 import { DangerZone } from '../components/ui/DangerZone'
 import { StatusBadge } from '../components/ui/StatusBadge'
 import { Field, Input, Select, Switch, Textarea } from '../components/ui/Field'
+import { MachineCredentialsPanel, MachineHistoryPanel } from './MachineRuntimePanels'
 
-type BoundNode = CoreOutput<'network.machines.nodes.list'>[number]
-const columns: Column<BoundNode>[] = [
-  { key: 'name', header: '节点', render: row => <div className="native-row-identity"><Link to={'/server/node/' + row.id}><strong>{row.name}</strong></Link><small>#{row.id}</small></div> },
-  { key: 'address', header: '地址', render: row => <code>{row.host.includes(':') ? '[' + row.host + ']' : row.host}:{row.port}</code> },
-  { key: 'status', header: '状态', render: row => <div className="network-tags"><StatusBadge tone={row.enabled ? 'success' : 'neutral'}>{row.enabled ? '启用' : '禁用'}</StatusBadge><span className="reference-tag">{row.show ? '显示' : '隐藏'}</span></div> },
-]
 export function MachineDetailPage() {
+  useLocale()
+  const client = useQueryClient()
   const { machineId = '' } = useParams(), navigate = useNavigate()
-  const [page, setPage] = useState(1), [name, setName] = useState(''), [notes, setNotes] = useState('')
+  const [name, setName] = useState(''), [notes, setNotes] = useState('')
   const [active, setActive] = useState(false), [channel, setChannel] = useState('stable')
+  const [runtimeError, setRuntimeError] = useState<unknown>()
+  const [nodesBlocked, setNodesBlocked] = useState(true)
+  const baseline = useRef({ id: '', value: '' }), discardOnRefresh = useRef(false)
+  const draftValue = JSON.stringify({ name, notes, active, channel })
+  const currentDraft = useRef(draftValue); currentDraft.current = draftValue
   const query = useQuery({ queryKey: ['native-admin', 'machine-detail', machineId],
     queryFn: ({ signal }) => admin.read('network.machines.get', { machine_id: machineId }, signal), enabled: !!machineId })
-  const nodes = useQuery({ queryKey: ['native-admin', 'machine-nodes', machineId, page],
-    queryFn: ({ signal }) => admin.read('network.machines.nodes.list', { machine_id: machineId, page, per_page: 20 }, signal), enabled: !!machineId && !!query.data && !query.isError })
-  const management = useNetworkManagement('network.machines.', [query.error, nodes.error], async () => {
-    await query.refetch({ throwOnError: true }); await nodes.refetch({ throwOnError: true })
-  })
+  const management = useNetworkManagement('network.machines.', [query.error, runtimeError], async () => {
+    await query.refetch({ throwOnError: true }); await client.refetchQueries({ queryKey: ['native-admin', 'machine-nodes', machineId], type: 'all' }, { throwOnError: true })
+    await client.refetchQueries({ queryKey: ['native-admin', 'machine-history', machineId], type: 'all' }, { throwOnError: true })
+    setRuntimeError(undefined)
+  }, machineId)
   const machine = !management.denied && !query.isError ? query.data?.data : undefined
-  useEffect(() => { setPage(1) }, [machineId])
-  useEffect(() => { setName(machine?.name ?? ''); setNotes(machine?.notes ?? ''); setActive(machine?.is_active ?? false); setChannel(machine?.image_channel ?? 'stable') }, [machine])
-  const locked = !machine || query.isFetching || nodes.isFetching || nodes.isError || management.state.busy || !!management.state.pending
+  useEffect(() => { setRuntimeError(undefined); setNodesBlocked(true) }, [machineId])
+  useEffect(() => {
+    if (machine && baseline.current.id === machine.id && currentDraft.current !== baseline.current.value && !discardOnRefresh.current) return
+    const next = { name: machine?.name ?? '', notes: machine?.notes ?? '', active: machine?.is_active ?? false, channel: machine?.image_channel ?? 'stable' }
+    baseline.current = { id: machine?.id ?? '', value: JSON.stringify(next) }
+    setName(next.name); setNotes(next.notes); setActive(next.active); setChannel(next.channel)
+  }, [machine])
+  async function reload() {
+    if (baseline.current.id && currentDraft.current !== baseline.current.value && !window.confirm(t('服务器配置尚未保存，重新读取将替换草稿，确定继续？'))) return
+    discardOnRefresh.current = true
+    try {
+      if (await management.refresh()) {
+        const fresh = client.getQueryData<typeof query.data>(['native-admin', 'machine-detail', machineId])?.data
+        if (fresh) {
+          const next = { name: fresh.name, notes: fresh.notes ?? '', active: fresh.is_active, channel: fresh.image_channel }
+          baseline.current = { id: fresh.id, value: JSON.stringify(next) }
+          setName(next.name); setNotes(next.notes); setActive(next.active); setChannel(next.channel)
+        }
+      }
+    } finally { discardOnRefresh.current = false }
+  }
+  const locked = !machine || query.isFetching || nodesBlocked || management.state.busy || !!management.state.pending
+  useDirtyDraft(!!machine && baseline.current.id === machine.id && currentDraft.current !== baseline.current.value)
   async function save() {
-    if (locked || !machine || !name.trim() || !['stable', 'dev'].includes(channel) || !window.confirm('确定保存服务器配置？请核对当前配置后继续。')) return
-    await management.perform(() => workflowActions.run('network.machines.update', { machine_id: machine.id, name: name.trim(), notes: notes || null, is_active: active, image_channel: channel as 'stable' | 'dev' }))
+    if (locked || !machine || !name.trim() || !['stable', 'dev'].includes(channel) || !window.confirm(t("确定保存服务器配置？请核对当前配置后继续。"))) return
+    await management.perform(() => workflowActions.run('network.machines.update', { machine_id: machine.id, name: name.trim(), notes: notes || null, is_active: active, image_channel: channel as 'stable' | 'dev' }), () => { baseline.current.value = currentDraft.current })
   }
   async function remove() {
-    if (locked || !machine || !window.confirm('确定删除服务器 ' + machine.name + '？存在绑定资源时服务端将拒绝。')) return
+    if (locked || !machine || !window.confirm(t("确定删除服务器 {name}？其绑定节点将全部解除服务器归属，节点本身保留。", { name: machine.name }))) return
     await management.perform(() => workflowActions.run('network.machines.delete', { machine_id: machine.id }), () => navigate('/server/machine'))
   }
   return <div className="native-management-page network-reference-page network-machine-detail-page">
-    <PageHeader title="服务器详情" description="管理服务器配置并查看已绑定节点。" action={<><Link className="button" to="/server/machine">返回服务器列表</Link><button className="button" disabled={query.isFetching || nodes.isFetching || management.state.busy} onClick={() => void management.refresh()}><RefreshCw size={15} aria-hidden="true" />刷新服务器</button></>} />
-    <NetworkRecovery management={management} blocked={!machine || query.isFetching || nodes.isFetching || query.isError || nodes.isError || (!!management.pending && 'machine_id' in management.pending.input && management.pending.input.machine_id !== machine.id)} />
-    <ManagementFeedback error={query.error} loading={query.isFetching} onRetry={() => void management.refresh()} notFoundMessage="服务器不存在或已被删除。" />
+    <PageHeader title={t("服务器详情")} description={t("管理服务器配置并查看已绑定节点。")} action={<><Link className="button" to="/server/machine">{t("返回服务器列表")}</Link><button className="button" disabled={query.isFetching || management.state.busy} onClick={() => void reload()}><RefreshCw size={15} aria-hidden="true" />{t("刷新服务器")}</button></>} />
+    <NetworkRecovery management={management} blocked={!machine || query.isFetching || query.isError || nodesBlocked || (!!management.pending && 'machine_id' in management.pending.input && management.pending.input.machine_id !== machine.id)} />
+    <ManagementFeedback error={query.error} loading={query.isFetching} onRetry={() => void reload()} notFoundMessage={t("服务器不存在或已被删除。")} />
     {machine ? <>
-      <DetailSection label="服务器配置概况" title={machine.name} description={'服务器 #' + machine.id + ' · ' + machine.image_channel}
+      <DetailSection label={t("服务器配置概况")} title={machine.name} description={t("服务器 #{id} · {channel}", { id: machine.id, channel: machine.image_channel })}
         icon={<Server size={17} />} className="network-profile-card"
-        actions={<StatusBadge tone={machine.is_active ? 'success' : 'neutral'}>{machine.is_active ? '已启用' : '已停用'}</StatusBadge>}>
-        <h3 className="network-section-heading">运行概况</h3>
+        actions={<StatusBadge tone={machine.is_active ? 'success' : 'neutral'}>{machine.is_active ? t("已启用") : t("已停用")}</StatusBadge>}>
+        <h3 className="network-section-heading">{t("运行概况")}</h3>
         <ReadFields fields={[
-          ['服务器 ID', machine.id], ['绑定节点数', machine.servers_count], ['最近心跳', formatTimestamp(machine.last_seen_at)],
-          ['创建时间', formatTimestamp(machine.created_at)], ['更新时间', formatTimestamp(machine.updated_at)],
+          [t("服务器 ID"), <span className="network-copy-value">{machine.id}<CopyButton value={machine.id} label={t("复制服务器 ID")} /></span>], [t("绑定节点数"), machine.servers_count], [t("最近心跳"), formatTimestamp(machine.last_seen_at)],
+          [t("创建时间"), formatTimestamp(machine.created_at)], [t("更新时间"), formatTimestamp(machine.updated_at)],
         ]} />
       </DetailSection>
-      <DetailSection label="服务器设置" title="服务器设置" description="设置名称、镜像通道和管理状态。保存前请核对当前配置。"
+      <MachineHistoryPanel key={'history-' + machine.id} machineId={machine.id} onAuthorizationFailure={setRuntimeError} />
+      <MachineCredentialsPanel key={'credentials-' + machine.id} machineId={machine.id} disabled={locked} onAuthorizationFailure={setRuntimeError} />
+      <DetailSection label={t("服务器设置")} title={t("服务器设置")} description={t("设置名称、镜像通道和管理状态。保存前请核对当前配置。")}
         icon={<Settings2 size={17} />} className="network-settings-card">
         <form className="native-content-form" onSubmit={event => { event.preventDefault(); void save() }}>
-          <Field label="服务器名称" required>
+          <Field label={t("服务器名称")} required hint={t("用于识别资源归属，建议包含区域和用途。")}>
             <Input required maxLength={255} value={name} disabled={locked} onChange={event => setName(event.target.value)} />
           </Field>
-          <Field label="镜像通道">
+          <Field label={t("镜像通道")} hint={channel === 'dev' ? t("dev 跟随开发版本，升级前请确认兼容性。") : t("stable 使用稳定版本镜像通道。")}>
             <Select value={channel} disabled={locked} onChange={event => setChannel(event.target.value)}>
-              {!['stable', 'dev'].includes(channel) ? <option value={channel}>{channel}（当前值）</option> : null}
+              {!['stable', 'dev'].includes(channel) ? <option value={channel}>{channel}{t("（当前值）")}</option> : null}
               <option value="stable">stable</option><option value="dev">dev</option>
             </Select>
           </Field>
-          <Switch label="启用服务器" checked={active} disabled={locked} onChange={event => setActive(event.target.checked)} />
-          <Field label="备注" className="network-form-field-wide">
-            <Textarea id="machine-notes" placeholder="添加用途、区域或运维备注" rows={4} maxLength={2000} value={notes} disabled={locked} onChange={event => setNotes(event.target.value)} />
+          <Switch label={t("启用服务器")} checked={active} disabled={locked} onChange={event => setActive(event.target.checked)} />
+          <Field label={t("备注")} hint={t("{v0} / 2000 字符", { v0: notes.length })} className="network-form-field-wide">
+            <Textarea id="machine-notes" placeholder={t("添加用途、区域或运维备注")} rows={4} maxLength={2000} value={notes} disabled={locked} onChange={event => setNotes(event.target.value)} />
           </Field>
           <div className="network-save-actions">
-            <button className="button" data-primary="true" disabled={locked || !name.trim() || !['stable', 'dev'].includes(channel)}>保存服务器</button>
-            <span className="network-muted">保存前请核对名称、通道与启用状态</span>
+            <button className="button" data-primary="true" disabled={locked || !name.trim() || !['stable', 'dev'].includes(channel)}>{t("保存服务器")}</button>
+            <span className="network-muted">{t("保存前请核对名称、通道与启用状态")}</span>
           </div>
         </form>
-        <DangerZone title="移除服务器资源" description="存在绑定资源时，服务端会拒绝删除。" className="network-danger-zone">
-          <button type="button" className="button danger" disabled={locked} onClick={() => void remove()}>删除服务器</button>
+        <DangerZone title={t("移除服务器资源")} description={t("删除后，绑定节点将解除服务器归属，节点本身保留。")} className="network-danger-zone">
+          <button type="button" className="button danger" disabled={locked} onClick={() => void remove()}>{t("删除服务器")}</button>
         </DangerZone>
       </DetailSection>
-      <ReadList title="绑定节点" rows={nodes.isError ? [] : nodes.data?.data ?? []} columns={columns} page={page} meta={nodes.data?.meta} ready={!!nodes.data && !management.denied} loading={nodes.isFetching} error={nodes.error} onRetry={() => void management.refresh()} onPage={setPage} />
+      <MachineNodeManager key={machine.id} machineId={machine.id} disabled={locked} recoveryBlocked={query.isFetching || query.isError} onAuthorizationFailure={setRuntimeError} onReadBlockedChange={setNodesBlocked} />
     </> : null}
   </div>
 }

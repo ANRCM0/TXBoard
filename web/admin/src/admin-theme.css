@@ -226,3 +226,23 @@ input::placeholder,textarea::placeholder { color:var(--muted); opacity:.85; }
   .native-management-page .query-feedback { align-items:flex-start; padding:12px; }
   .native-management-page .query-feedback>svg { margin-top:2px; flex:none; }
 }
+.admin-brand-mark img { width:100%; height:100%; object-fit:contain; border-radius:inherit; background:var(--panel); }
+.admin-brand-copy strong { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.admin-auth-brand strong,.admin-auth-card-head p { overflow-wrap:anywhere; }
+.admin-auth-help { display:block; margin:20px auto 0; border:0; background:none; color:var(--muted); font-size:13px; cursor:pointer; }
+.admin-auth-help:hover { color:var(--fg); text-decoration:underline; }
+.admin-login-help { display:grid; gap:12px; line-height:1.8; }
+.admin-login-help p { margin:0; }
+.admin-auth-card { background:var(--panel); backdrop-filter:none; box-shadow:var(--shadow); }
+.admin-auth-page { background:var(--bg); }
+.admin-auth-tools { display:flex; align-items:center; gap:8px; }
+/* Keep all five footer controls within the sidebar, including expanded navigation. */
+.admin-sidebar-footer .ui-language-selector { display:inline-flex; position:relative; flex:none; }
+.admin-shell.is-sidebar-collapsed .admin-sidebar-footer .admin-sidebar-tools .ui-language-selector { display:inline-flex; }
+.admin-sidebar-footer .ui-language-selector select { width:32px; max-width:32px; min-width:32px; padding:0; color:transparent; cursor:pointer; }
+.admin-sidebar-footer .ui-language-selector option { color:var(--fg); }
+.admin-sidebar-footer .ui-language-selector svg { position:absolute; inset:8px; pointer-events:none; }
+.admin-status-page { min-height:320px; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:32px 20px; text-align:center; gap:16px; }
+.admin-status-code { font-size:clamp(72px,14vw,120px); font-weight:650; letter-spacing:-.06em; line-height:1; color:var(--muted); }
+.admin-status-page p { color:var(--muted); }
+.admin-status-page .ui-route-error-actions { justify-content:center; flex-wrap:wrap; }

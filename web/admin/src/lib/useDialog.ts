@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { dismissChildLayers, registerDismissLayer } from './dismissLayers'
 
 const stack: HTMLElement[] = []
 let originalOverflow = ''
@@ -18,6 +19,7 @@ export function useDialog(open: boolean, onClose: () => void) {
     if (!stack.length) originalOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
     stack.push(dialog)
+    const releaseDismissLayer = registerDismissLayer(dialog, () => close.current())
     const background: Element[] = []
     let branch: Element = dialog
     while (branch.parentElement) {
@@ -43,11 +45,6 @@ export function useDialog(open: boolean, onClose: () => void) {
 
     function onKeyDown(event: KeyboardEvent) {
       if (stack.at(-1) !== dialog || event.isComposing) return
-      if (event.key === 'Escape') {
-        event.preventDefault()
-        event.stopImmediatePropagation()
-        close.current()
-      }
       if (event.key === 'Tab') {
         const items = focusable()
         const index = items.indexOf(document.activeElement as HTMLElement)
@@ -63,6 +60,8 @@ export function useDialog(open: boolean, onClose: () => void) {
     document.addEventListener('keydown', onKeyDown, true)
     document.addEventListener('focusin', onFocus)
     return () => {
+      dismissChildLayers(dialog)
+      releaseDismissLayer()
       document.removeEventListener('keydown', onKeyDown, true)
       document.removeEventListener('focusin', onFocus)
       const wasTop = stack.at(-1) === dialog

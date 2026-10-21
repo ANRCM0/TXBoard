@@ -103,6 +103,7 @@ final class UsageSettlement
                 foreach ($totals as $pid => $total) {
                     $period = DB::table('tx_usage_period')->where('id', $pid)->lockForUpdate()->first();
                     if (!$period || (string) $period->subscription_id !== $total['subscription_id']) { throw new UsageError('USAGE_FROZEN_PERIOD_MISSING'); }
+                    app(NativeUsageCorrections::class)->assertCorrectedProjectionLocked($period);
                     foreach ($periodEntries[$pid] as $entry) {
                         ($this->boundaries ?? app(UsageTermsBoundary::class))->assertFrozen($entry, $period, (int) $batch->started_at, (int) $batch->ended_at);
                     }
@@ -136,7 +137,7 @@ final class UsageSettlement
                 return 'settled';
             }, 3);
         } catch (Throwable $error) {
-            $quarantine = $error instanceof UsageError || $error instanceof \JsonException;
+            $quarantine = ($error instanceof UsageError && $error->httpStatus < 500) || $error instanceof \JsonException;
             $state = $quarantine ? 'quarantined' : 'retry_wait';
             DB::transaction(function () use ($batchId, $fence, $now, $error, $state, $quarantine) {
                 $this->policy->requireTransaction();

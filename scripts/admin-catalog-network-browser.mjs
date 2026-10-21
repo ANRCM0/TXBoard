@@ -65,7 +65,14 @@ try {
   await login(page)
   const expand = page.getByRole('button', { name: '展开侧边栏', exact: true })
   if (await expand.count()) await expand.click()
-  for (const [name] of routes) await navigate(page, name)
+  for (const [name] of routes) {
+    await navigate(page, name)
+    await page.locator('.native-management-page table').first().waitFor()
+    const widths = await page.locator('.native-management-page .table-wrap table').evaluateAll(tables =>
+      tables.map(table => table.getBoundingClientRect().width))
+    const minimumTableWidth = name === '套餐管理' ? 740 : name === '权限组管理' ? 580 : 760
+    assert.ok(widths.length > 0 && widths.every(width => width >= minimumTableWidth), name + ' desktop columns must retain readable widths: ' + JSON.stringify(widths))
+  }
   passed('four current catalog and network routes expose active desktop navigation')
 
   await navigate(page, '权限组管理')
@@ -95,19 +102,22 @@ try {
   await sorting.getByRole('button', { name: '下移', exact: true }).first().click()
   await page.getByRole('button', { name: '保存完整路由排序', exact: true }).click()
   await page.getByRole('button', { name: '保存完整路由排序', exact: true }).waitFor({ state: 'detached' })
-  const sort = state.calls.find(call => call.operation === 'network.routes.sort')
-  assert.deepEqual(sort.input.items.map(row => row.id), [state.routes[1].id, state.routes[0].id])
-  assert.equal(sort.input.items.length, state.routes.length)
+  const sort = state.calls.find(call => call.operation === 'network.routes.ordering.replace')
+  assert.ok(sort)
+  assert.deepEqual(sort.input.route_ids, [state.routes[1].id, state.routes[0].id])
+  assert.equal(sort.input.route_ids.length, state.routes.length)
+  assert.equal(state.calls.filter(call => call.operation === 'network.routes.ordering.get').length, 2)
+  assert.equal(state.calls.filter(call => call.operation === 'network.routes.sort').length, 0)
   const writesBeforeSimulation = state.calls.filter(call => call.key).length
   await page.getByRole('combobox', { name: /^已读取节点/ }).selectOption(state.node.id)
   await page.getByLabel('目标', { exact: true }).fill('example.test')
   await page.getByRole('button', { name: '运行只读模拟', exact: true }).click()
-  await page.getByText(/请求目标 example.test/).waitFor()
+  await page.getByText('Native node · 请求目标example.test · 归一化目标example.test', { exact: true }).waitFor()
   await page.getByText(/非权威参考结果/).waitFor()
   assert.equal(state.calls.filter(call => call.key).length, writesBeforeSimulation)
   await page.getByRole('list', { name: '未解析路由规则', exact: true }).getByText('geoip:fixture', { exact: true }).waitFor()
   await page.getByLabel('目标', { exact: true }).fill('different.test')
-  await page.getByText(/请求目标 example.test/).waitFor({ state: 'detached' })
+  await page.getByText('Native node · 请求目标example.test · 归一化目标example.test', { exact: true }).waitFor({ state: 'detached' })
   await page.screenshot({ path: path.join(output, 'routes-desktop.png'), fullPage: true })
   passed('complete route ordering retains exact IDs and read-only simulation binds to the selected node and target')
 
@@ -149,7 +159,7 @@ try {
   assert.equal(published.capacity_limit, 9); assert.equal(state.originalRevision.terms.prices_minor.monthly, '9007199254740993')
   const history = page.locator('section[aria-label="套餐修订历史"]')
   await history.getByRole('row').filter({ hasText: state.originalRevision.revision_id }).getByRole('button', { name: '查看此修订', exact: true }).click()
-  await page.locator('section[aria-label="套餐完整条款"]').getByText('月付：9007199254740993 最小单位 CNY', { exact: true }).waitFor()
+  await page.locator('section[aria-label="套餐完整条款"]').getByText('月付: 90,071,992,547,409.93 CNY', { exact: true }).waitFor()
   assert.equal(await page.locator('section[aria-label="套餐发布编辑器"]').count(), 0)
   passed('new publication uses authoritative full terms and the observed revision while historical terms remain unchanged')
 
@@ -172,16 +182,25 @@ try {
 
   const mobile = await catalogNetworkFixture(browser, { width: 390, height: 844 })
   fixtures.push(mobile); await login(mobile.page)
+  const mobileRecords = {
+    '套餐管理': { identity: 'Authoritative plan', fields: ['币种', '发布时间'], action: '编辑当前套餐' },
+    '权限组管理': { identity: 'Native group', fields: ['用户', '套餐', '节点'], action: '编辑' },
+    '路由管理': { identity: 'Route Alpha', fields: ['匹配', '动作', '状态', '节点'], action: '编辑' },
+    '访问审计': { identity: 'Observed domains', fields: ['匹配条件', '状态'], action: '编辑' },
+  }
   for (const [name] of routes) {
     await navigate(mobile.page, name, true)
-    await mobile.page.locator('.native-management-page table').first().waitFor()
+    const expected = mobileRecords[name]
+    const record = mobile.page.locator('.native-management-page .ui-mobile-record').filter({ hasText: expected.identity }).first()
+    await record.waitFor()
+    await record.getByRole('button', { name: expected.action, exact: true }).waitFor()
+    const labels = await record.locator('dt').allTextContents()
+    for (const label of expected.fields) assert.ok(labels.includes(label), name + ' mobile records must retain ' + label)
     assert.equal(await mobile.page.locator('.admin-sidebar.is-open').count(), 0)
     assert.ok(await mobile.page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), name + ' must fit viewport')
-    const tables = await mobile.page.locator('.native-management-page .table-wrap').evaluateAll(elements => elements.map(element => ({
-      viewport: element.clientWidth, content: element.scrollWidth, table: element.querySelector('table').getBoundingClientRect().width,
-    })))
-    const minimumTableWidth = name === '套餐管理' ? 740 : name === '权限组管理' ? 580 : 760
-    assert.ok(tables.length > 0 && tables.every(table => table.content > table.viewport && table.table >= minimumTableWidth), name + ' tables must retain readable column widths in a horizontal scroll region: ' + JSON.stringify(tables))
+    const bounds = await record.evaluate(element => ({ left: element.getBoundingClientRect().left,
+      right: element.getBoundingClientRect().right, viewport: innerWidth, width: element.clientWidth }))
+    assert.ok(bounds.width > 0 && bounds.left >= 0 && bounds.right <= bounds.viewport, name + ' mobile record must remain within the viewport: ' + JSON.stringify(bounds))
     await mobile.page.screenshot({ path: path.join(output, name + '-mobile.png'), fullPage: true })
   }
   verifyFixture(mobile.state)

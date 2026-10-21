@@ -4,6 +4,44 @@ namespace App\Protocols\Shared;
 
 class ProtocolFields
 {
+    public static function certificateSchema(): array
+    {
+        $domain = [['field' => 'cert_mode', 'one_of' => ['http', 'dns', 'self']]];
+        $acme = [['field' => 'cert_mode', 'one_of' => ['http', 'dns']]];
+        $dns = [['field' => 'cert_mode', 'equals' => 'dns']];
+        $file = [['field' => 'cert_mode', 'equals' => 'file']];
+        $content = [['field' => 'cert_mode', 'equals' => 'content']];
+        return [
+            ['key' => 'cert_mode', 'label' => '证书模式', 'type' => 'select', 'options' => [
+                ['value' => '', 'label' => '节点自动判定'], ['value' => 'none', 'label' => '无证书'],
+                ['value' => 'http', 'label' => 'ACME HTTP'], ['value' => 'dns', 'label' => 'ACME DNS'],
+                ['value' => 'self', 'label' => '自签证书'], ['value' => 'file', 'label' => '节点本地文件'],
+                ['value' => 'content', 'label' => '证书内容'],
+            ]],
+            ['key' => 'domain', 'label' => '证书域名', 'type' => 'text', 'visible_when' => $domain],
+            ['key' => 'email', 'label' => 'ACME 邮箱', 'type' => 'text', 'visible_when' => $acme],
+            ['key' => 'http_port', 'label' => 'HTTP 验证端口', 'type' => 'number', 'min' => 1, 'max' => 65535,
+                'placeholder' => '80', 'visible_when' => [['field' => 'cert_mode', 'equals' => 'http']]],
+            ['key' => 'dns_provider', 'label' => 'DNS 提供商', 'type' => 'text', 'placeholder' => 'cloudflare', 'visible_when' => $dns],
+            ['key' => 'dns_env', 'label' => 'DNS 环境变量', 'type' => 'json-object', 'full' => true, 'visible_when' => $dns],
+            ['key' => 'cert_file', 'label' => '节点证书文件路径', 'type' => 'text', 'visible_when' => $file],
+            ['key' => 'key_file', 'label' => '节点私钥文件路径', 'type' => 'text', 'visible_when' => $file],
+            ['key' => 'cert_content', 'label' => '证书 PEM 内容', 'type' => 'textarea', 'full' => true, 'visible_when' => $content],
+            ['key' => 'key_content', 'label' => '私钥 PEM 内容', 'type' => 'textarea', 'full' => true, 'visible_when' => $content],
+        ];
+    }
+
+    public static function transportTemplates(): array
+    {
+        return [
+            ['label' => 'WebSocket', 'value' => ['path' => '/', 'headers' => ['Host' => 'example.com']], 'transport' => 'ws'],
+            ['label' => 'gRPC', 'value' => ['serviceName' => 'grpc'], 'transport' => 'grpc'],
+            ['label' => 'HTTPUpgrade', 'value' => ['path' => '/', 'host' => 'example.com'], 'transport' => 'httpupgrade'],
+            ['label' => 'HTTP/2', 'value' => ['path' => '/', 'host' => ['example.com']], 'transport' => 'h2'],
+            ['label' => 'XHTTP', 'value' => ['path' => '/', 'host' => 'example.com', 'mode' => 'auto'], 'transport' => 'xhttp'],
+        ];
+    }
+
     public static function tlsDefaults(): array
     {
         return [

@@ -5,7 +5,6 @@ import { beforeEach, afterEach, expect, it, vi } from 'vitest'
 import { CoreAdminApiError } from './api'
 import { admin } from './session'
 import { AuditLogsPage } from './AuditLogsPage'
-import { ModulesPage } from './ModulesPage'
 import { QueuePage } from './QueuePage'
 
 const session = vi.hoisted(() => ({ active: true }))
@@ -56,31 +55,6 @@ it('rejects an unsafe audit administrator ID before sending a filtered query', a
   expect(admin.read).toHaveBeenCalledTimes(calls)
   expect(host.textContent).toContain('有效的十进制字符串')
 })
-const plugin = { id: 'payment-demo', name: 'Payment Demo', version: '1.0.0', type: 'plugin', source: 'package', installed: true, enabled: true, active: null, health: 'healthy', capabilities: ['payment'], compatibility: { txboard: '^0.2.0' } }
-const theme = { ...plugin, id: 'theme-demo', name: 'Theme Demo', type: 'theme' }
-it('filters plugin inventory, loads capabilities and lifecycle declarations without executing them, and hides all module data on permission loss', async () => {
-  vi.mocked(admin.read).mockImplementation(async operation => {
-    if (operation === 'platform.modules.list') return { data: { modules: [plugin, theme], summary: { total: 2, discovery_errors: 0 } } } as never
-    if (operation === 'platform.modules.get') return { data: plugin } as never
-    return { data: { module_id: plugin.id, operations: ['disable', 'upgrade', 'uninstall'] } } as never
-  })
-  await render(<ModulesPage kind="plugin" />)
-  expect(host.textContent).toContain(plugin.name); expect(host.textContent).not.toContain(theme.name)
-  await click(plugin.name)
-  expect(admin.read).toHaveBeenCalledWith('platform.modules.get', { module_id: plugin.id }, expect.any(AbortSignal))
-  expect(admin.read).toHaveBeenCalledWith('platform.modules.operations.list', { module_id: plugin.id }, expect.any(AbortSignal))
-  expect(host.textContent).toContain('停用、升级、卸载')
-  const help = host.querySelector<HTMLButtonElement>('button[aria-label="如何变更模块"]')!
-  await act(async () => help.click()); await settle()
-  const helpPanel = host.querySelector('[role="dialog"][aria-label="如何变更模块"]')!
-  expect(helpPanel.textContent).toContain('安装、启停、升级及卸载需在部署环境中执行')
-  expect(helpPanel.textContent).toContain('此页面仅供查看')
-  expect(Array.from(host.querySelectorAll('button')).some(button => ['安装', '升级', '卸载', '停用'].includes(button.textContent ?? ''))).toBe(false)
-  vi.mocked(admin.read).mockRejectedValue(new CoreAdminApiError('FORBIDDEN', 403))
-  await click('刷新')
-  expect(host.textContent).not.toContain(plugin.name)
-  expect(host.querySelector('[aria-label="模块详情"]')).toBeNull()
-})
 it('shows queue metadata while withholding exception messages and removes all observations on denied detail', async () => {
   vi.mocked(admin.read).mockImplementation(async operation => {
     if (operation === 'platform.queue.snapshot.get') return { data: { status: 'running', connection: 'redis', processes: 2, recent_jobs: 3, jobs_per_minute: 1, wait_seconds: 0, longest_wait_queue: 'mail', pending_jobs: 0, observed_at: '2026-10-19T00:00:00Z', message: 'SECRET-SNAPSHOT', failed_last_7_days: 1, failed_jobs_available: true } } as never
@@ -91,26 +65,9 @@ it('shows queue metadata while withholding exception messages and removes all ob
   expect(host.textContent).not.toContain('SECRET-')
   vi.mocked(admin.read).mockResolvedValueOnce({ data: { id: '12', connection: 'redis', queue: 'mail', job: 'SendMail', failed_at: '2026-10-19T00:00:00Z' } } as never)
   await click('#12')
-  expect(host.querySelector('[aria-label="失败记录详情"]')?.textContent).toContain('SendMail')
+  expect(document.querySelector('[aria-label="失败记录详情"]')?.textContent).toContain('SendMail')
   vi.mocked(admin.read).mockRejectedValue(new CoreAdminApiError('FORBIDDEN', 403))
-  await click('刷新')
+  await act(async () => document.querySelector<HTMLButtonElement>('[role=dialog] button[aria-label=关闭]')!.click()); await settle()
+  await click('刷新失败记录')
   expect(host.textContent).not.toContain('SendMail'); expect(host.textContent).not.toContain('redis')
-})
-it('withdraws cached data and aborts in-flight module detail when the administrator session ends', async () => {
-  let resolveDetail!: (value: never) => void
-  vi.mocked(admin.read).mockImplementation(async operation => {
-    if (operation === 'platform.modules.list') return { data: { modules: [plugin], summary: { total: 1, discovery_errors: 0 } } } as never
-    if (operation === 'platform.modules.get') return new Promise(resolve => { resolveDetail = resolve }) as never
-    return { data: { module_id: plugin.id, operations: [] } } as never
-  })
-  await render(<ModulesPage />); await click(plugin.name)
-  const signal = vi.mocked(admin.read).mock.calls.find(call => call[0] === 'platform.modules.get')![2]!
-  session.active = false
-  await render(<ModulesPage />)
-  expect(host.textContent).not.toContain(plugin.name)
-  // Unmounting the observer cancels the detached detail request.
-  await render(<div />)
-  expect(signal.aborted).toBe(true)
-  await act(async () => resolveDetail({ data: plugin } as never)); await settle()
-  expect(host.textContent).not.toContain(plugin.name)
 })

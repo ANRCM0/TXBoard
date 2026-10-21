@@ -13,8 +13,11 @@ final class AdminOrderReadOperations
 
     public function listing(User $actor, array $input): ReadOperationResult
     {
-        $page = $this->queries->adminListing(new AdminOrderListQuery($input['page'] ?? 1, $input['per_page'] ?? 20,
-            isset($input['user_id']) ? (int) $input['user_id'] : null, $input['trade_no'] ?? null, $input['status'] ?? null));
+        try { $query = new AdminOrderListQuery($input['page'] ?? 1, $input['per_page'] ?? 20,
+            isset($input['user_id']) ? (int) $input['user_id'] : null, $input['trade_no'] ?? null, $input['status'] ?? null,
+            $input['filters'] ?? [], $input['sort_by'] ?? 'created_at', $input['sort_direction'] ?? 'desc');
+            $page = $this->queries->adminListing($query); }
+        catch (\InvalidArgumentException) { throw new OperationFailure('INVALID_REQUEST', 422); }
         return new ReadOperationResult($page->items, $page->meta);
     }
 

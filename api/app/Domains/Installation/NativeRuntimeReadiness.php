@@ -114,6 +114,24 @@ final class NativeRuntimeReadiness
             'tx_notice' => ['id', 'row_version', 'audience', 'publish_at', 'expire_at', 'deleted_at', 'popup'],
             'tx_knowledge' => ['id', 'row_version', 'audience', 'publish_at', 'expire_at', 'deleted_at', 'language', 'category'],
             'tx_native_referral_code' => ['user_id', 'installation_id', 'code', 'created_at'],
+            'tx_native_route_ordering_head' => ['id'],
+            'tx_native_node_ordering_head' => ['id'],
+            'tx_native_account_metadata_head' => ['user_id', 'installation_id', 'version'],
+            'tx_native_account_metadata_revision' => ['user_id', 'version', 'installation_id', 'actor_id', 'remarks', 'content_hash', 'created_at'],
+            'tx_native_identity_admin_request' => ['key_hash', 'installation_id', 'actor_id', 'operation', 'input_hash', 'response_ciphertext', 'content_hash', 'created_at'],
+            'tx_native_subscription_template_receipt' => ['receipt_key', 'actor_id', 'operation', 'input_digest', 'result_ciphertext', 'created_at'],
+            'tx_native_theme_admin_request' => ['key_hash', 'installation_id', 'actor_id', 'module_id', 'input_hash', 'created_at'],
+            'tx_native_theme_deployment' => ['key_hash', 'installation_id', 'actor_id', 'module_id', 'action', 'input_hash', 'before_revision', 'target_json', 'phase', 'created_at', 'updated_at'],
+            'tx_native_customer_policy_head' => ['user_id', 'installation_id', 'version'],
+            'tx_native_customer_policy_revision' => ['id', 'installation_id', 'user_id', 'version', 'actor_id', 'payload_json', 'content_hash', 'created_at'],
+            'tx_native_customer_policy_request' => ['key_hash', 'installation_id', 'actor_id', 'user_id', 'request_hash', 'request_json', 'result_json', 'content_hash'],
+            'tx_native_customer_price' => ['order_id', 'installation_id', 'user_id', 'policy_version', 'payload_json', 'content_hash'],
+            'tx_native_first_paid_claim' => ['user_id', 'installation_id', 'order_id', 'order_payment_id', 'payload_json', 'content_hash'],
+            'tx_native_usage_correction_head' => ['entry_id', 'installation_id', 'version', 'entry_revision'],
+            'tx_native_usage_correction' => ['id', 'installation_id', 'actor_id', 'user_id', 'request_key', 'entry_id', 'period_id', 'version', 'request_hash', 'request_json', 'source_json', 'result_json', 'content_hash', 'created_at'],
+            'tx_native_account_adjustment' => ['id', 'installation_id', 'actor_id', 'user_id', 'request_key', 'currency', 'bucket', 'direction', 'amount_minor', 'journal_id', 'request_hash', 'request_snapshot', 'result_snapshot', 'content_hash', 'created_at'],
+            'tx_native_subscription_amendment' => ['id', 'installation_id', 'actor_id', 'user_id', 'business_key', 'subscription_id',
+                'terms_id', 'transition_id', 'request_hash', 'request_snapshot', 'source_snapshot', 'result_snapshot', 'content_hash', 'created_at'],
             'tx_native_referral' => ['user_id', 'installation_id', 'sponsor_id', 'invite_code', 'created_at', 'content_hash'],
             'tx_native_commission_policy_head' => ['id', 'installation_id', 'version'],
             'tx_native_commission_policy' => ['version', 'installation_id', 'payload_json', 'content_hash', 'created_at'],
@@ -182,6 +200,22 @@ final class NativeRuntimeReadiness
             && Schema::hasIndex('tx_native_gift_batch', 'tx_gift_batch_issuer_idx')
             && Schema::hasIndex('tx_native_gift_card', 'tx_gift_card_batch_idx')
             && Schema::hasIndex('tx_ticket_message', 'tx_ticket_message_cursor_idx')
+            && Schema::hasIndex('tx_native_subscription_amendment', 'tx_native_amend_actor_key_uq', 'unique')
+            && Schema::hasIndex('tx_native_subscription_amendment', 'tx_native_amend_terms_uq', 'unique')
+            && Schema::hasIndex('tx_native_subscription_amendment', 'tx_native_amend_user_id_idx')
+            && Schema::hasIndex('tx_native_customer_policy_head', ['user_id'], 'primary')
+            && Schema::hasIndex('tx_native_customer_policy_revision', ['id'], 'primary')
+            && Schema::hasIndex('tx_native_customer_policy_request', ['key_hash'], 'primary')
+            && Schema::hasIndex('tx_native_customer_price', ['order_id'], 'primary')
+            && Schema::hasIndex('tx_native_first_paid_claim', ['user_id'], 'primary')
+            && Schema::hasIndex('tx_native_usage_correction_head', ['entry_id'], 'primary')
+            && Schema::hasIndex('tx_native_usage_correction', ['id'], 'primary')
+            && Schema::hasIndex('tx_native_customer_price', 'tx_customer_price_user_order_idx')
+            && Schema::hasIndex('tx_native_usage_correction', 'tx_usage_correction_period_id_idx')
+            && Schema::hasIndex('tx_native_usage_correction', 'tx_usage_correction_user_id_idx')
+            && Schema::hasIndex('tx_native_account_adjustment', 'tx_native_adjust_actor_key_uq', 'unique')
+            && Schema::hasIndex('tx_native_account_adjustment', 'tx_native_adjust_journal_uq', 'unique')
+            && Schema::hasIndex('tx_native_account_adjustment', 'tx_native_adjust_user_id_idx')
             && Schema::hasIndex('tx_plugin_package_fence', ['plugin_code'], 'primary'), 'SCHEMA_REQUIRED');
         foreach ([
             ['idempotency_keys', ['user_id', 'operation', 'key_hash']],
@@ -194,6 +228,20 @@ final class NativeRuntimeReadiness
             ['tx_native_referral_code', ['code', 'user_id']],
             ['tx_native_referral', ['user_id']],
             ['tx_native_commission_policy_head', ['id']],
+            ['tx_native_route_ordering_head', ['id']],
+            ['tx_native_node_ordering_head', ['id']],
+            ['tx_native_identity_admin_request', ['key_hash']],
+            ['tx_native_subscription_template_receipt', ['receipt_key']],
+            ['tx_native_theme_admin_request', ['key_hash']],
+            ['tx_native_theme_deployment', ['key_hash']],
+            ['tx_native_customer_policy_revision', ['user_id', 'version']],
+            ['tx_native_first_paid_claim', ['order_payment_id']],
+            ['tx_native_usage_correction', ['installation_id', 'actor_id', 'request_key']],
+            ['tx_native_usage_correction', ['entry_id', 'version']],
+            ['tx_native_account_adjustment', ['id']],
+            ['tx_native_subscription_amendment', ['id']],
+            ['tx_native_account_metadata_head', ['user_id']],
+            ['tx_native_account_metadata_revision', ['user_id', 'version']],
             ['tx_native_commission_policy', ['version']],
             ['tx_native_commission_order', ['id']],
             ['tx_native_commission_order', ['order_id']],
@@ -262,6 +310,18 @@ final class NativeRuntimeReadiness
             ['tx_auth_snapshot', ['usage_period_id', 'subscription_id'], 'tx_usage_period', ['id', 'subscription_id']],
             ['tx_auth_snapshot', ['access_subject_id', 'subscription_id'], 'tx_access_subject', ['id', 'subscription_id']],
             ['tx_auth_snapshot', ['terms_id', 'subscription_id'], 'tx_subscription_terms', ['id', 'subscription_id']],
+            ['tx_native_customer_policy_head', ['user_id'], 'tx_user', ['id']],
+            ['tx_native_customer_policy_revision', ['user_id'], 'tx_user', ['id']],
+            ['tx_native_customer_policy_revision', ['actor_id'], 'tx_user', ['id']],
+            ['tx_native_customer_price', ['order_id'], 'tx_order', ['id']],
+            ['tx_native_first_paid_claim', ['user_id'], 'tx_user', ['id']],
+            ['tx_native_first_paid_claim', ['order_id'], 'tx_order', ['id']],
+            ['tx_native_first_paid_claim', ['order_payment_id'], 'tx_order_payment', ['id']],
+            ['tx_native_usage_correction_head', ['entry_id'], 'tx_usage_entry', ['id']],
+            ['tx_native_usage_correction', ['entry_id'], 'tx_usage_entry', ['id']],
+            ['tx_native_usage_correction', ['period_id'], 'tx_usage_period', ['id']],
+            ['tx_native_usage_correction', ['actor_id'], 'tx_user', ['id']],
+            ['tx_native_usage_correction', ['user_id'], 'tx_user', ['id']],
             ['tx_money_account', ['user_id'], 'tx_user', ['id']],
             ['tx_money_journal', ['user_id'], 'tx_user', ['id']],
             ['tx_money_journal', ['reverses_journal_id'], 'tx_money_journal', ['id']],

@@ -2,11 +2,13 @@ import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import { coreOperations } from '@txboard/core-sdk'
 import { catalogNetworkFixture } from './admin-catalog-network-fixture.mjs'
+import { nativeNetworkRead } from './admin-native-network-fixture.mjs'
+import { nativeAdditionsFixture } from './admin-native-additions-fixture.mjs'
 
 const requestId = '12345678-1234-4234-8234-123456789abc'
 const stamp = 1792368000
 const metadata = JSON.parse(await readFile(new URL('../../contracts/core-api/admin-settings.v1.json', import.meta.url), 'utf8'))
-const managed = /^(?:audit\.logs\.|platform\.(?:modules\.|queue\.)|settings\.configuration\.|notifications\.mail-templates\.|billing\.admin-payment-|network\.(?:nodes\.get$|nodes\.traffic-history\.get$|nodes\.batch-[a-z-]+$|machines\.)|identity\.accounts\.get$|identity\.accounts\.status\.update$|subscription\.admin\.get$|subscription\.lifecycle\.(?:reset|suspend|resume|revoke|expire)$|commerce\.admin-orders\.list$)/
+const managed = /^(?:audit\.logs\.|platform\.(?:modules\.|queue\.)|settings\.configuration\.|notifications\.mail-templates\.|billing\.admin-payment-|network\.(?:nodes\.get$|nodes\.protocols\.list$|nodes\.configuration\.get$|nodes\.traffic-history\.get$|nodes\.ordering\.[a-z]+$|nodes\.batch-[a-z-]+$|machines\.)|identity\.accounts\.get$|identity\.accounts\.status\.update$|subscription\.admin\.get$|subscription\.lifecycle\.(?:resets[.]list|reset|suspend|resume|revoke|expire)$|commerce\.admin-orders\.list$)/
 
 /** Built admin UI with schema-checked synthetic browser ingress; no live Core acceptance is implied. */
 export async function managementFixture(browser, viewport) {
@@ -26,6 +28,7 @@ export async function managementFixture(browser, viewport) {
     is_active: true, image_channel: 'stable', servers_count: 1, last_seen_at: stamp, created_at: stamp, updated_at: stamp }
   const node = { ...state.node, machine_id: machine.id, group_ids: ['7'], route_ids: [], tags: ['observed'], created_at: stamp, updated_at: stamp }
   let accountBanned = false
+  const resetHistory = []
   const subscription = { schema: 'core-entitlement/v1', authorized: true, reason: 'ENTITLEMENT_GRANTED',
     user_id: '12', subscription_id: '9007199254740999', subscription_version: '9007199254740993',
     plan_id: state.planId, terms_id: '81', terms_version: '1', plan_revision_id: state.originalRevision.revision_id,
@@ -49,10 +52,11 @@ export async function managementFixture(browser, viewport) {
     expires_at: lifecycle.expires_at, applied_at: stamp, transition_id: null, previous_period_id: null, quota_adjustment_id: null })
   Object.assign(state, { denied: new Set(), settings, modules, machine, detailNode: node, subscription, lifecycle, payment,
     originalSettingsVersion: settings.version, originalPaymentVersion: payment.version, originalSubscriptionVersion: subscription.subscription_version })
+  const additions = nativeAdditionsFixture(state)
 
   await context.route('**/gateway/v1/core/admin/operations/**', async route => {
     const request = route.request(), operation = new URL(request.url()).pathname.split('/operations/')[1]
-    if (!managed.test(operation)) return route.fallback()
+    if (!managed.test(operation) && !/^(?:platform[.](?:module-|theme-packages[.])|subscription[.](?:admin-templates[.]|admin[.]amendment[.])|billing[.]admin-(?:account-|customer-policy[.])|usage[.]admin-(?:settled-entries|corrections)[.]|settings[.](?:smtp|telegram)[.])/.test(operation)) return route.fallback()
     const json = (status, body) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) })
     try {
       assert.ok(Object.hasOwn(coreOperations, operation), 'Only generated operations are accepted')
@@ -71,6 +75,9 @@ export async function managementFixture(browser, viewport) {
       if ([...state.denied].some(prefix => operation.startsWith(prefix))) {
         return json(403, { ok: false, error: { code: 'FORBIDDEN', message: 'withheld' }, meta: { version: '1', requestId } })
       }
+      const addition = additions(operation, input, key)
+      if (addition !== undefined) return send(addition)
+      if (operation === 'settings.smtp.inspect') return json(422, { ok: false, error: { code: 'VALIDATION_ERROR', message: 'Synthetic SMTP configuration is unavailable' }, meta: { version: '1', requestId } })
       if (operation === 'audit.logs.list') return list([{ id: '111', admin_id: '20', action: 'observed.admin.change', method: 'POST', uri: '/controlled-operation', ip: '192.0.2.1', created_at: stamp, admin: { id: '20', email: 'admin@example.test' } }])
       if (operation === 'platform.modules.list') return send({ modules, summary: { total: modules.length, discovery_errors: 0 } })
       if (operation === 'platform.modules.get') { const row = modules.find(row => row.id === input.module_id); assert.ok(row); return send(row) }
@@ -107,6 +114,8 @@ export async function managementFixture(browser, viewport) {
         payment.name = input.name; payment.version = 'e'.repeat(64)
         return send({ id: payment.id })
       }
+      const native = nativeNetworkRead(operation, input, { node, machine })
+      if (native) return send(native)
       if (operation === 'network.nodes.get') { assert.equal(input.node_id, node.id); return send(node) }
       if (operation === 'network.nodes.traffic-history.get') {
         assert.deepEqual(input.node_ids, [node.id])
@@ -177,13 +186,20 @@ export async function managementFixture(browser, viewport) {
         assert.equal(input.user_id, subscription.user_id)
         return send([userOrder], { page: input.page ?? 1, per_page: input.per_page ?? 5, total: 1, last_page: 1 })
       }
+      if (operation === 'subscription.lifecycle.resets.list') {
+        const records = resetHistory.filter(row => (!input.user_id || row.user_id === input.user_id) && (!input.before_id || BigInt(row.id) < BigInt(input.before_id)) && (!input.start_date || new Date(row.occurred_at * 1000).toISOString().slice(0, 10) >= input.start_date) && (!input.end_date || new Date(row.occurred_at * 1000).toISOString().slice(0, 10) <= input.end_date))
+        const rows = records.slice(0, input.limit ?? 20)
+        return send({ time_zone: 'UTC', start_date: input.start_date ?? new Date(Date.now() - 29 * 86400000).toISOString().slice(0, 10), end_date: input.end_date ?? new Date().toISOString().slice(0, 10), records: rows, next_before_id: records.length > rows.length ? rows.at(-1).id : null })
+      }
       if (operation === 'subscription.lifecycle.reset') {
         assert.equal(input.subscription_id, subscription.subscription_id)
         assert.equal(input.expected_version, subscription.subscription_version)
         const previous = subscription.usage_period_id
+        const old = { upload: subscription.upload_bytes, download: subscription.download_bytes, billable: subscription.consumed_bytes, quota: subscription.quota_bytes }
         subscription.subscription_version = String(BigInt(subscription.subscription_version) + 1n)
         subscription.usage_period_id = '83'; subscription.consumed_bytes = '0'; subscription.remaining_bytes = subscription.quota_bytes
         subscription.upload_bytes = '0'; subscription.download_bytes = '0'
+        resetHistory.unshift({ id: String(9007199254740993n + BigInt(resetHistory.length)), user_id: subscription.user_id, subscription_id: subscription.subscription_id, occurred_at: Math.floor(Date.now() / 1000), trigger: 'manual', subscription_version: subscription.subscription_version, previous_period_id: previous, usage_period_id: subscription.usage_period_id, previous_upload_bytes: old.upload, previous_download_bytes: old.download, previous_billable_bytes: old.billable, previous_quota_bytes: old.quota })
         lifecycle.subscription_version = subscription.subscription_version
         lifecycle.usage_period_id = subscription.usage_period_id
         lifecycle.period_version = '1'
@@ -195,6 +211,7 @@ export async function managementFixture(browser, viewport) {
       }
       throw new Error('Unexpected management fixture operation: ' + operation)
     } catch (error) {
+      if (error.fixtureStatus) return json(error.fixtureStatus, { ok: false, error: { code: error.fixtureCode, message: 'Synthetic fixture conflict' }, meta: { version: '1', requestId } })
       state.errors.push(error.stack ?? String(error))
       return json(500, { ok: false, error: { code: 'FIXTURE_ASSERTION_FAILED', message: 'See fixture errors' }, meta: { version: '1', requestId } })
     }

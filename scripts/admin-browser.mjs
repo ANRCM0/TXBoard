@@ -5,6 +5,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { chromium } from 'playwright'
 import { coreOperations } from '@txboard/core-sdk'
+import { dashboardFixture } from './lib/admin-dashboard-fixture.mjs'
 
 const root = fileURLToPath(new URL('../', import.meta.url))
 const output = fileURLToPath(new URL('../artifacts/admin-browser/', import.meta.url))
@@ -70,10 +71,10 @@ function session(id, name) {
     last_used_at: null, updated_at: null, expires_at: null }
 }
 async function fixture(viewport) {
-  const context = await browser.newContext({ viewport })
+  const context = await browser.newContext({ locale: 'zh-CN', viewport })
   const state = { nodesStatus: 200, logoutFailure: false, revokeLost: true, malformedCaptcha: false,
     sessions: [session('1', 'Current session'), session('2', 'Secondary session')], operations: [], revokeKeys: [],
-    pageErrors: [], forbiddenRequests: [], reads: [], accountsStatus: 200, ordersStatus: 200,
+    pageErrors: [], forbiddenRequests: [], reads: [], accountsStatus: 200, ordersStatus: 200, dashboardStatus: 200,
     eventStage: 0, eventFailure: false, eventsStatus: 200 }
   await context.route('**/gateway/v1/**', async route => {
     const req = route.request()
@@ -105,6 +106,13 @@ async function fixture(viewport) {
     assert.equal(req.headers().authorization, 'Bearer 1|browser-admin-fixture')
     assert.equal(req.headers()['x-core-admin-path'], 'ci_admin')
     if (operation === 'identity.admin.get') return send({ id: '9007199254740993', email: 'admin@example.test' })
+    if (operation === 'analytics.native-dashboard.get') {
+      if (state.dashboardStatus !== 200) return fail(state.dashboardStatus)
+      return checkedSend(dashboardFixture(input, { nodes: overviewNodes, users: [account] }))
+    }
+    if (operation === 'platform.queue.snapshot.get') return checkedSend({ status: 'not_applicable', observed_at: new Date().toISOString(),
+      connection: 'sync', processes: null, recent_jobs: null, wait_seconds: null, longest_wait_queue: null,
+      message: 'Synthetic queue observation', pending_jobs: null, jobs_per_minute: null, failed_last_7_days: null, failed_jobs_available: false })
     if (operation === 'identity.accounts.list') {
       if (state.accountsStatus !== 200) return fail(state.accountsStatus)
       return send([{ ...account, email: input.page === 2 ? 'bob@example.test' : account.email }],
@@ -147,6 +155,7 @@ async function fixture(viewport) {
       if (state.nodesStatus !== 200) return fail(state.nodesStatus)
       return checkedSend(trafficHistory(input, overviewNodes))
     }
+    if (operation === 'network.machines.overview.get') return checkedSend({ observed_at: Math.floor(Date.now() / 1000), freshness_seconds: 180, high_load_threshold_percent: 80, total: 1, enabled: 1, online: 0, high_load: 0, unknown_load: 1 })
     if (operation === 'network.machines.list') return send([{ id: '9', name: 'Tokyo host',
       is_active: true, image_channel: 'dev', last_seen_at: null, servers_count: 1,
       created_at: null, updated_at: null }], { page: input.page, per_page: 20, total: 1, last_page: 1 })
@@ -154,7 +163,9 @@ async function fixture(viewport) {
       app_description: 'Subscription services', app_url: 'https://example.test', logo: null, tos_url: null,
       currency: 'CNY', stop_register: 0 } })
     if (operation === 'settings.configuration.get') return checkedSend(configuration)
-    if (operation === 'platform.modules.list') return checkedSend({ modules: [], summary: { total: 0, discovery_errors: 0 } })
+    if (operation === 'platform.module-cards.list') return checkedSend({ modules: [], discovery_errors: 0 })
+    if (['billing.admin-account-balances.get', 'billing.admin-customer-policy.get',
+      'subscription.admin.amendment.get', 'usage.admin-settled-entries.list'].includes(operation)) return fail(403)
     if (operation === 'identity.sessions.list') return send(state.sessions, { has_more: false })
     if (operation === 'identity.sessions.revoke') {
       state.revokeKeys.push(req.headers()['idempotency-key'])
@@ -185,6 +196,8 @@ async function login(page, target = '/admin/') {
 }
 async function nav(page, name) {
   await page.getByRole('link', { name: new RegExp('^' + name + '(?:\\s*待开放)?$') }).click()
+  const title = ({ 仪表盘: '管理中心', 系统配置: '站点设置' })[name] ?? name
+  await page.locator('.native-management-page .page-header').getByRole('heading', { name: title, exact: true }).waitFor()
 }
 try {
   const desktop = await fixture({ width: 1440, height: 960 })
@@ -192,73 +205,79 @@ try {
   await page.goto(origin + '/admin/sign-in')
   await page.getByRole('heading', { name: '管理员登录' }).waitFor()
   await page.screenshot({ path: output + '/login-desktop.png', fullPage: true })
-  await page.getByRole('button', { name: '切换深色模式', exact: true }).click()
+  await page.getByRole('button', { name: '主题设置', exact: true }).click()
+  await page.getByRole('button', { name: '深色模式', exact: true }).click()
+  assert.equal(await page.getByRole('button', { name: '主题设置', exact: true }).getAttribute('aria-expanded'), 'false')
   await page.waitForFunction(() => document.documentElement.dataset.theme === 'dark')
   await page.screenshot({ path: output + '/login-dark.png', fullPage: true })
   await login(page, '/admin/server/manage')
   await page.getByRole('table').getByRole('link', { name: 'Tokyo-A', exact: true }).waitFor()
   await page.waitForFunction(() => document.documentElement.dataset.theme === 'dark')
   await page.screenshot({ path: output + '/nodes-dark.png', fullPage: true })
-  await page.getByRole('link', { name: '仪表盘', exact: true }).click()
-  await page.getByRole('region', { name: '资源统计', exact: true }).waitFor()
+  await nav(page, '仪表盘')
+  await page.getByRole('region', { name: '原生经营统计', exact: true }).waitFor()
   assert.equal(await page.getByRole('region', { name: '管理入口', exact: true }).count(), 0)
-  await page.getByRole('region', { name: '资源统计', exact: true }).getByRole('link', { name: /账户总数 21/ }).waitFor()
-  const trendCard = page.getByRole('region', { name: '收入趋势卡片', exact: true })
-  const rangeButtons = trendCard.getByRole('group', { name: '收入趋势时间范围', exact: true })
-  await rangeButtons.getByRole('button', { name: '30 天', exact: true }).click()
-  assert.equal(await rangeButtons.getByRole('button', { name: '30 天', exact: true }).getAttribute('aria-pressed'), 'true')
-  const trendGraph = trendCard.getByRole('group', { name: '样本收入趋势交互图表', exact: true })
+  const metricCards = page.getByRole('region', { name: '原生经营统计', exact: true })
+  await metricCards.getByText('90071992547409.93 USD', { exact: true }).waitFor()
+  assert.equal(await metricCards.getByRole('link').count(), 8)
+  const trendCard = page.getByRole('region', { name: '经营趋势', exact: true })
+  const rangeSelect = trendCard.getByRole('combobox', { name: '概览时间范围', exact: true })
+  await rangeSelect.selectOption('30')
+  assert.equal(await rangeSelect.inputValue(), '30')
+  await trendCard.getByRole('combobox', { name: '统计币种', exact: true }).selectOption('USD')
+  const trendGraph = trendCard.getByRole('group', { name: '订单收入交互图表', exact: true })
   await trendGraph.press('End')
-  await trendCard.getByRole('status').filter({ hasText: 'USD 收入' }).waitFor()
+  await trendCard.getByRole('status').filter({ hasText: '已支付订单 · 金额' }).waitFor()
   await trendGraph.press('Escape')
   assert.equal(await trendCard.getByRole('status').count(), 0)
-  const pin = trendCard.getByRole('button', { name: '突出显示USD 收入曲线', exact: true })
+  const pin = trendCard.getByRole('button', { name: '突出显示已支付订单 · 金额曲线', exact: true })
   await pin.click()
   assert.equal(await pin.getAttribute('aria-pressed'), 'true')
-  await trendCard.locator('summary').filter({ hasText: /^查看样本收入趋势数据$/ }).click()
+  await trendCard.locator('summary').filter({ hasText: /^查看订单收入数据$/ }).click()
   assert.equal(await trendCard.locator('tbody tr').count(), 30)
-  await trendCard.locator('summary').filter({ hasText: /^查看样本收入趋势数据$/ }).click()
-  const donut = page.getByRole('region', { name: '样本订单状态', exact: true })
-  await donut.getByRole('button', { name: /^待支付/ }).focus()
-  await donut.getByRole('status').filter({ hasText: '待支付' }).waitFor()
-  const trafficCard = page.getByRole('region', { name: '节点流量卡片', exact: true })
-  const trafficChart = trafficCard.getByRole('region', { name: '节点总流量', exact: true })
-  const trafficRanges = trafficCard.getByRole('group', { name: '节点流量时间范围', exact: true })
-  await trafficChart.getByRole('group', { name: '节点总流量交互图表', exact: true }).press('Home')
-  await trafficChart.getByRole('status').getByText('3.25 GB', { exact: true }).waitFor()
-  await trafficChart.getByRole('status').getByText('6.50 GB', { exact: true }).waitFor()
-  assert.equal(await trafficChart.getByRole('button', { name: /^突出显示.+曲线$/ }).count(), 2)
-  for (const days of [7, 14, 30]) {
-    await trafficRanges.getByRole('button', { name: days + ' 天', exact: true }).click()
-    await trafficChart.locator('summary').filter({ hasText: /^查看节点总流量数据$/ }).click()
-    await page.waitForFunction(expected => document.querySelector('[aria-label="节点总流量"] tbody')?.rows.length === expected, days)
-    await trafficChart.locator('summary').filter({ hasText: /^查看节点总流量数据$/ }).click()
-    assert.ok(state.reads.some(read => read.operation === 'network.nodes.traffic-history.get'
-      && read.input.days === days && JSON.stringify(read.input.node_ids) === JSON.stringify(overviewNodes.map(row => row.id))))
+  await trendCard.locator('summary').filter({ hasText: /^查看订单收入数据$/ }).click()
+  for (const days of [7, 90, 180, 365]) {
+    await rangeSelect.selectOption(String(days))
+    await trendGraph.waitFor()
+    await trendCard.locator('summary').filter({ hasText: /^查看订单收入数据$/ }).click()
+    await page.waitForFunction(expected => document.querySelector('[aria-label="订单收入"] tbody')?.rows.length === expected, days)
+    await trendCard.locator('summary').filter({ hasText: /^查看订单收入数据$/ }).click()
   }
-  assert.equal(await rangeButtons.getByRole('button', { name: '30 天', exact: true }).getAttribute('aria-pressed'), 'true')
-  assert.ok(state.reads.some(read => read.operation === 'commerce.admin-orders.list' && read.input.per_page === 100))
-  passed('sample revenue charts and daily per-node GB curves support independent ranges and keyboard tooltips')
+  await trendCard.getByRole('group', { name: '统计类型', exact: true }).getByRole('button', { name: '已入账佣金', exact: true }).click()
+  await trendCard.getByRole('group', { name: '统计指标', exact: true }).getByRole('button', { name: '笔数', exact: true }).click()
+  await trendCard.getByRole('group', { name: '已入账佣金交互图表', exact: true }).press('End')
+  await trendCard.getByRole('status').filter({ hasText: '笔' }).waitFor()
+  await trendCard.getByRole('group', { name: '统计类型', exact: true }).getByRole('button', { name: '订单收入', exact: true }).click()
+  await page.getByRole('region', { name: '节点流量排行榜', exact: true }).getByTitle('9007199254740999 字节', { exact: true }).waitFor()
+  await page.getByRole('region', { name: '用户流量排行榜', exact: true }).getByRole('link', { name: account.email, exact: true }).waitFor()
+  assert.ok(state.reads.some(read => read.operation === 'analytics.native-dashboard.get'))
+  passed('native aggregate cards, separate currencies, date ranges and settled rankings preserve exact values')
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth))
   await page.screenshot({ path: output + '/overview-dark.png', fullPage: true })
-  await page.getByRole('button', { name: '切换浅色模式', exact: true }).click()
+  await page.getByRole('button', { name: '主题设置', exact: true }).click()
+  await page.getByRole('button', { name: '浅色模式', exact: true }).click()
+  assert.equal(await page.getByRole('button', { name: '主题设置', exact: true }).getAttribute('aria-expanded'), 'false')
   await page.waitForFunction(() => document.documentElement.dataset.theme === 'light')
   await page.screenshot({ path: output + '/overview-desktop.png', fullPage: true })
-  state.ordersStatus = 403; state.nodesStatus = 403
+  state.dashboardStatus = 403
   await page.getByRole('button', { name: '刷新概览', exact: true }).click()
-  await trendCard.getByRole('alert').filter({ hasText: '没有此操作的权限' }).waitFor()
-  assert.equal(await page.getByRole('region', { name: '样本收入趋势', exact: true }).count(), 0)
-  assert.equal(await page.getByRole('region', { name: '样本订单状态', exact: true }).count(), 0)
-  assert.equal(await page.getByRole('region', { name: '节点总流量', exact: true }).count(), 0)
+  await page.getByRole('alert').filter({ hasText: '已隐藏统计、趋势与排行榜' }).waitFor()
+  assert.equal(await page.getByRole('group', { name: '订单收入交互图表', exact: true }).count(), 0)
+  assert.equal(await page.getByRole('region', { name: '节点流量排行榜', exact: true }).count(), 0)
+  assert.equal(await page.getByRole('region', { name: '用户流量排行榜', exact: true }).count(), 0)
   passed('overview withdraws cached charts when their read permissions are denied')
-  state.ordersStatus = 200; state.nodesStatus = 200
+  state.dashboardStatus = 200
   await page.getByRole('button', { name: '刷新概览', exact: true }).click()
   await trendGraph.waitFor()
   if (await page.getByRole('button', { name: '展开侧边栏', exact: true }).count()) await page.getByRole('button', { name: '展开侧边栏', exact: true }).click()
   await nav(page, '节点管理')
-  await page.getByRole('table').getByRole('link', { name: 'Tokyo-A', exact: true }).waitFor()
+  const nodeManagement = page.locator('.network-nodes-page')
+  await nodeManagement.getByRole('heading', { name: '节点管理', exact: true }).waitFor()
+  await nodeManagement.getByRole('table').getByRole('link', { name: 'Tokyo-A', exact: true }).waitFor()
   passed('login theme persists into management and overview links navigate without layout overflow')
-  assert.match(await page.locator('table').innerText(), /9007199254740999/)
+  const uploadedBytes = nodeManagement.locator('table code[title="9007199254740999 字节"]')
+  assert.equal(await uploadedBytes.textContent(), '9007199.25 GB')
+  assert.equal(await uploadedBytes.getAttribute('title'), '9007199254740999 字节')
   assert.match(await page.locator('table').innerText(), /\[2001:db8::1\]:443/)
   assert.ok(await page.locator('.native-list-search').evaluate(container => {
     const input = container.querySelector('input'), icon = container.querySelector('svg')
@@ -306,7 +325,7 @@ try {
   passed('confirmation and original-key recovery after a lost revocation response')
   await nav(page, '用户管理')
   await page.waitForFunction(() => document.activeElement?.tagName === 'H1' && document.activeElement.textContent?.trim() === '用户管理')
-  await page.locator('.admin-route-announcer').filter({ hasText: '已进入用户管理' }).waitFor()
+  await page.locator('.admin-route-announcer').filter({ hasText: /^已进入 用户管理$/ }).waitFor()
   await page.getByRole('link', { name: account.email, exact: true }).waitFor()
   assert.match(await page.locator('table').innerText(), new RegExp(account.id))
   await page.getByRole('button', { name: '下一页', exact: true }).click()
@@ -330,6 +349,7 @@ try {
   assert.match(await page.locator('section[aria-label="账户信息"]').innerText(), new RegExp(account.id))
   assert.doesNotMatch(await page.locator('section[aria-label="账户信息"]').innerText(), /余额|佣金|密码/)
   await page.getByRole('link', { name: '查看该用户订单', exact: true }).click()
+  await page.locator('.orders-page .page-header').getByRole('heading', { name: '订单管理', exact: true }).waitFor()
   await page.getByRole('button', { name: 'ORDER-A', exact: true }).waitFor()
   assert.equal(new URL(page.url()).searchParams.get('user_id'), account.id)
   assert.deepEqual(state.reads.filter(row => row.operation === 'commerce.admin-orders.list').at(-1).input,
@@ -369,24 +389,33 @@ try {
   passed('order filters, pagination and frozen purchase detail with exact currency and money')
   state.ordersStatus = 403
   await page.getByRole('button', { name: '刷新', exact: true }).click()
-  await page.getByRole('alert').filter({ hasText: '没有此操作的权限' }).waitFor()
+  await page.locator('.native-read-list').getByRole('alert').filter({ hasText: '没有此操作的权限' }).waitFor()
   assert.equal(await page.locator('table').count(), 0)
   assert.ok(!page.url().includes('sign-in'))
   await nav(page, '用户管理')
   await page.getByRole('link', { name: account.email, exact: true }).waitFor()
   state.accountsStatus = 403
   await page.getByRole('button', { name: '刷新', exact: true }).click()
-  await page.getByRole('alert').filter({ hasText: '没有此操作的权限' }).waitFor()
+  await page.locator('.native-read-list').getByRole('alert').filter({ hasText: '没有此操作的权限' }).waitFor()
   assert.equal(await page.locator('table').count(), 0)
   passed('resource permission withdrawal removes user and order rows while preserving login')
   const operationsBeforeModules = state.operations.length
   await nav(page, '插件管理')
   await page.locator('.native-management-page .page-header').getByRole('heading', { name: '插件管理', exact: true }).waitFor()
-  await page.getByRole('region', { name: '模块清单', exact: true }).getByText('没有符合条件的模块', { exact: true }).waitFor()
-  assert.equal(state.operations.slice(operationsBeforeModules).includes('platform.modules.list'), true)
+  await page.getByText('没有符合条件的模块', { exact: true }).waitFor()
+  assert.equal(state.operations.slice(operationsBeforeModules).includes('platform.module-cards.list'), true)
   assert.equal(state.operations.slice(operationsBeforeModules).some(operation => coreOperations[operation].idempotency !== 'read'), false)
   passed('active plugin inventory shows its empty state without lifecycle writes or old HTTP routes')
   state.logoutFailure = true
+  assert.ok(await page.locator('.admin-sidebar-footer').evaluate(footer =>
+    [...footer.querySelectorAll('button, select')].every(control => {
+      const bounds = control.getBoundingClientRect()
+      const target = document.elementFromPoint(bounds.left + bounds.width / 2, bounds.top + bounds.height / 2)
+      return bounds.width > 0 && bounds.height > 0 && target !== null && control.contains(target)
+    })), 'every sidebar footer control must receive a normal pointer at its center')
+  await page.getByRole('button', { name: '账户菜单', exact: true }).click()
+  await page.getByRole('status').filter({ hasText: /^已进入 插件管理$/ }).waitFor()
+  assert.equal(await page.getByRole('button', { name: '账户菜单', exact: true }).getAttribute('aria-expanded'), 'true')
   await page.getByRole('button', { name: '退出登录', exact: true }).click()
   await page.getByRole('heading', { name: '管理员登录' }).waitFor()
   await page.getByText(/服务端退出结果未确认/).waitFor()
@@ -416,10 +445,9 @@ try {
   })
   await mobile.page.screenshot({ path: output + '/navigation-mobile.png', fullPage: true })
   await nav(mobile.page, '仪表盘')
-  await mobile.page.getByRole('region', { name: '样本订单状态', exact: true }).waitFor()
-  await mobile.page.getByRole('region', { name: '收入趋势卡片', exact: true }).getByRole('button', { name: '7 天', exact: true }).click()
-  await mobile.page.getByRole('region', { name: '节点流量卡片', exact: true }).getByRole('group', { name: '节点流量时间范围', exact: true }).getByRole('button', { name: '7 天', exact: true }).click()
-  await mobile.page.getByRole('region', { name: '节点总流量', exact: true }).waitFor()
+  await mobile.page.getByRole('region', { name: '原生经营统计', exact: true }).waitFor()
+  await mobile.page.getByRole('combobox', { name: '概览时间范围', exact: true }).selectOption('7')
+  await mobile.page.getByRole('group', { name: '订单收入交互图表', exact: true }).waitFor()
   assert.ok(await mobile.page.evaluate(() => document.documentElement.scrollWidth <= innerWidth))
   await mobile.page.screenshot({ path: output + '/overview-mobile.png', fullPage: true })
   await mobile.page.getByRole('button', { name: '打开导航', exact: true }).click()
@@ -438,22 +466,19 @@ try {
   assert.ok(await mobileSearch.evaluate(button => button.scrollWidth <= button.clientWidth && button.getBoundingClientRect().height >= 36), 'mobile search action must remain readable')
   await mobile.page.screenshot({ path: output + '/users-mobile.png', fullPage: true })
   await mobile.page.getByRole('link', { name: account.email, exact: true }).click()
+  await mobile.page.locator('.native-management-page .page-header').getByRole('heading', { name: '用户详情', exact: true }).waitFor()
   await mobile.page.getByRole('region', { name: '当前订阅', exact: true }).getByText('当前没有可用订阅。', { exact: true }).waitFor()
   await mobile.page.getByRole('link', { name: '查看该用户订单', exact: true }).click()
+  await mobile.page.locator('.orders-page .page-header').getByRole('heading', { name: '订单管理', exact: true }).waitFor()
   await mobile.page.getByRole('button', { name: 'ORDER-A', exact: true }).waitFor()
   assert.ok(await mobile.page.evaluate(() => document.documentElement.scrollWidth <= innerWidth))
   await mobile.page.screenshot({ path: output + '/orders-mobile.png', fullPage: true })
-  const table = mobile.page.locator('.native-read-list .table-wrap')
-  assert.ok(await table.evaluate(element => element.scrollWidth > element.clientWidth))
-  await table.evaluate(element => { element.scrollLeft = element.scrollWidth })
-  assert.ok(await table.evaluate(element => {
-    const last = element.querySelector('tbody td:last-child').getBoundingClientRect()
-    const bounds = element.getBoundingClientRect()
-    return last.right <= bounds.right + 1 && last.left >= bounds.left
-  }))
-  await mobile.page.screenshot({ path: output + '/orders-mobile-scrolled.png', fullPage: true })
-  await table.evaluate(element => { element.scrollLeft = 0 })
-  passed('mobile resource tables scroll to complete fields without compressing exact values')
+  const mobileOrders = mobile.page.locator('.native-read-list .ui-mobile-records')
+  await mobileOrders.waitFor()
+  await mobileOrders.getByText('90071992547409.93 USD', { exact: true }).waitFor()
+  assert.ok(await mobileOrders.evaluate(element => element.scrollWidth <= element.clientWidth))
+  await mobileOrders.getByRole('button', { name: '查看订单 ORDER-A 详情', exact: true }).waitFor()
+  passed('mobile order records retain exact values and a visible detail action without horizontal overflow')
   await mobile.page.getByRole('button', { name: 'ORDER-A', exact: true }).click()
   await mobile.page.getByRole('dialog', { name: '订单详情', exact: true })
     .locator('.reference-order-amount strong').filter({ hasText: /^90071992547409\.93 USD$/ }).waitFor()

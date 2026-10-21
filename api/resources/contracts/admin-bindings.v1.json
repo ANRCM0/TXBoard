@@ -379,6 +379,380 @@
       "parameters": {},
       "routeParameters": {},
       "payload": null
+    },
+    "network.machines.create": {
+      "controller": "NetworkMachineAdminController",
+      "method": "nativeCreate",
+      "parameters": {},
+      "routeParameters": {},
+      "payload": null
+    },
+    "network.machines.credentials.get": {
+      "controller": "NetworkMachineAdminController",
+      "method": "nativeCredentials",
+      "parameters": {
+        "id": "machine_id"
+      },
+      "routeParameters": {},
+      "payload": null
+    },
+    "network.machines.token.rotate": {
+      "controller": "NetworkMachineAdminController",
+      "method": "nativeRotateToken",
+      "parameters": {
+        "id": "machine_id"
+      },
+      "routeParameters": {},
+      "payload": null
+    },
+    "network.machines.history.get": {
+      "controller": "NetworkMachineAdminController",
+      "method": "nativeHistory",
+      "parameters": {
+        "id": "machine_id"
+      },
+      "routeParameters": {},
+      "payload": null
+    },
+    "network.nodes.protocols.list": {
+      "controller": "NetworkNodeAdminController",
+      "method": "protocolMetadata",
+      "parameters": {},
+      "routeParameters": {},
+      "payload": null
+    },
+    "network.nodes.configuration.get": {
+      "controller": "NetworkNodeAdminController",
+      "method": "configuration",
+      "parameters": {
+        "id": "node_id"
+      },
+      "routeParameters": {},
+      "payload": null
+    },
+    "network.nodes.create": {
+      "controller": "NetworkNodeAdminController",
+      "method": "createConfigured",
+      "parameters": {},
+      "routeParameters": {},
+      "payload": null
+    },
+    "network.nodes.configuration.replace": {
+      "controller": "NetworkNodeAdminController",
+      "method": "replaceConfigured",
+      "parameters": {
+        "id": "node_id"
+      },
+      "routeParameters": {},
+      "payload": null
+    },
+    "network.nodes.material.generate": {
+      "controller": "NetworkNodeAdminController",
+      "method": "generateConfigurationMaterial",
+      "parameters": {},
+      "routeParameters": {},
+      "payload": null
+    },
+    "analytics.native-dashboard.get": {
+      "controller": "NativeDashboardController",
+      "method": "snapshot",
+      "parameters": {},
+      "routeParameters": {},
+      "payload": null
+    },
+    "settings.telegram.webhook.inspect": {
+      "controller": "NativeConfigurationDiagnosticsController",
+      "method": "telegramInspect",
+      "parameters": {},
+      "routeParameters": {},
+      "payload": null
+    },
+    "settings.telegram.webhook.register": {
+      "controller": "NativeConfigurationDiagnosticsController",
+      "method": "telegramRegister",
+      "parameters": {},
+      "routeParameters": {},
+      "payload": null
+    },
+    "settings.smtp.inspect": {
+      "controller": "NativeConfigurationDiagnosticsController",
+      "method": "smtpInspect",
+      "parameters": {},
+      "routeParameters": {},
+      "payload": null
+    },
+    "network.groups.names.get": {
+      "controller": "NetworkGroupAdminController",
+      "method": "names",
+      "parameters": {},
+      "routeParameters": {},
+      "payload": null
+    },
+    "network.routes.ordering.get": {
+      "controller": "NetworkRouteAdminController",
+      "method": "ordering",
+      "parameters": {},
+      "routeParameters": {},
+      "payload": null
+    },
+    "network.routes.ordering.replace": {
+      "controller": "NetworkRouteAdminController",
+      "method": "replaceOrdering",
+      "parameters": {},
+      "routeParameters": {},
+      "payload": null
+    },
+    "identity.accounts.batch-create": {
+      "controller": "NativeAccountController",
+      "method": "createBatch",
+      "parameters": {},
+      "routeParameters": {},
+      "payload": null
+    },
+    "identity.accounts.profile.update": {
+      "controller": "NativeAccountController",
+      "method": "profile",
+      "parameters": {
+        "id": "user_id"
+      },
+      "routeParameters": {},
+      "payload": null
+    },
+    "identity.accounts.metadata.update": {
+      "controller": "NativeAccountController",
+      "method": "metadata",
+      "parameters": {
+        "id": "user_id"
+      },
+      "routeParameters": {},
+      "payload": null
+    },
+    "subscription.admin-templates.list": {
+      "controller": "NativeSubscriptionTemplateController",
+      "method": "index",
+      "parameters": {},
+      "routeParameters": {},
+      "payload": null
+    },
+    "subscription.admin-templates.save": {
+      "controller": "NativeSubscriptionTemplateController",
+      "method": "save",
+      "parameters": {},
+      "routeParameters": {},
+      "payload": null
+    },
+    "subscription.admin-templates.reset": {
+      "controller": "NativeSubscriptionTemplateController",
+      "method": "reset",
+      "parameters": {},
+      "routeParameters": {},
+      "payload": null
+    },
+    "platform.module-cards.list": {
+      "controller": "NativeModuleAdminController",
+      "method": "index",
+      "parameters": {},
+      "routeParameters": {},
+      "payload": null
+    },
+    "platform.module-cards.get": {
+      "controller": "NativeModuleAdminController",
+      "method": "show",
+      "parameters": {},
+      "routeParameters": {},
+      "payload": null
+    },
+    "platform.module-configuration.get": {
+      "controller": "NativeModuleAdminController",
+      "method": "configuration",
+      "parameters": {},
+      "routeParameters": {},
+      "payload": null
+    },
+    "platform.module-configuration.save": {
+      "controller": "NativeModuleAdminController",
+      "method": "saveConfiguration",
+      "parameters": {},
+      "routeParameters": {},
+      "payload": null
+    },
+    "platform.module-lifecycle.execute": {
+      "controller": "NativeModuleAdminController",
+      "method": "lifecycle",
+      "parameters": {},
+      "routeParameters": {},
+      "payload": null
+    },
+    "platform.module-presentation.get": {
+      "controller": "NativeModuleAdminController",
+      "method": "presentation",
+      "parameters": {},
+      "routeParameters": {},
+      "payload": null
+    },
+    "platform.module-presentation.query": {
+      "controller": "NativeModuleAdminController",
+      "method": "query",
+      "parameters": {},
+      "routeParameters": {},
+      "payload": null
+    },
+    "platform.module-presentation.execute": {
+      "controller": "NativeModuleAdminController",
+      "method": "invoke",
+      "parameters": {},
+      "routeParameters": {},
+      "payload": null
+    },
+    "subscription.lifecycle.resets.list": {
+      "controller": "NativeResetHistoryController",
+      "method": "index",
+      "parameters": {},
+      "routeParameters": {},
+      "payload": null
+    },
+    "subscription.admin.amendment.get": {
+      "controller": "NativeSubscriptionAmendmentController",
+      "method": "snapshot",
+      "parameters": {
+        "id": "user_id"
+      },
+      "routeParameters": {},
+      "payload": null
+    },
+    "subscription.admin.amendment.apply": {
+      "controller": "NativeSubscriptionAmendmentController",
+      "method": "apply",
+      "parameters": {
+        "id": "user_id"
+      },
+      "routeParameters": {},
+      "payload": null
+    },
+    "subscription.admin.amendment.history": {
+      "controller": "NativeSubscriptionAmendmentController",
+      "method": "history",
+      "parameters": {
+        "id": "user_id"
+      },
+      "routeParameters": {},
+      "payload": null
+    },
+    "platform.theme-packages.list": {
+      "controller": "NativeModuleAdminController",
+      "method": "themePackages",
+      "parameters": {},
+      "routeParameters": {},
+      "payload": null
+    },
+    "platform.theme-packages.deploy": {
+      "controller": "NativeModuleAdminController",
+      "method": "deployTheme",
+      "parameters": {},
+      "routeParameters": {},
+      "payload": null
+    },
+    "billing.admin-account-balances.get": {
+      "controller": "NativeAccountAdjustmentController",
+      "method": "balances",
+      "parameters": {
+        "id": "user_id"
+      },
+      "routeParameters": {},
+      "payload": null
+    },
+    "billing.admin-account-adjustments.create": {
+      "controller": "NativeAccountAdjustmentController",
+      "method": "create",
+      "parameters": {
+        "id": "user_id"
+      },
+      "routeParameters": {},
+      "payload": null
+    },
+    "billing.admin-account-adjustments.list": {
+      "controller": "NativeAccountAdjustmentController",
+      "method": "history",
+      "parameters": {
+        "id": "user_id"
+      },
+      "routeParameters": {},
+      "payload": null
+    },
+    "billing.admin-customer-policy.get": {
+      "controller": "NativeCustomerPolicyController",
+      "method": "snapshot",
+      "parameters": {
+        "id": "user_id"
+      },
+      "routeParameters": {},
+      "payload": null
+    },
+    "billing.admin-customer-policy.update": {
+      "controller": "NativeCustomerPolicyController",
+      "method": "update",
+      "parameters": {
+        "id": "user_id"
+      },
+      "routeParameters": {},
+      "payload": null
+    },
+    "billing.admin-customer-policy.history": {
+      "controller": "NativeCustomerPolicyController",
+      "method": "history",
+      "parameters": {
+        "id": "user_id"
+      },
+      "routeParameters": {},
+      "payload": null
+    },
+    "usage.admin-settled-entries.list": {
+      "controller": "NativeUsageCorrectionController",
+      "method": "entries",
+      "parameters": {
+        "id": "user_id"
+      },
+      "routeParameters": {},
+      "payload": null
+    },
+    "usage.admin-corrections.create": {
+      "controller": "NativeUsageCorrectionController",
+      "method": "create",
+      "parameters": {
+        "id": "user_id"
+      },
+      "routeParameters": {},
+      "payload": null
+    },
+    "usage.admin-corrections.list": {
+      "controller": "NativeUsageCorrectionController",
+      "method": "history",
+      "parameters": {
+        "id": "user_id"
+      },
+      "routeParameters": {},
+      "payload": null
+    },
+    "network.nodes.ordering.get": {
+      "controller": "NetworkNodeAdminController",
+      "method": "ordering",
+      "parameters": {},
+      "routeParameters": {},
+      "payload": null
+    },
+    "network.nodes.ordering.replace": {
+      "controller": "NetworkNodeAdminController",
+      "method": "replaceOrdering",
+      "parameters": {},
+      "routeParameters": {},
+      "payload": null
+    },
+    "network.machines.overview.get": {
+      "controller": "NetworkMachineAdminController",
+      "method": "nativeOverview",
+      "parameters": {},
+      "routeParameters": {},
+      "payload": null
     }
   }
 }

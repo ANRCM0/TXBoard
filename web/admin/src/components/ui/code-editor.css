@@ -1,0 +1,11 @@
+.ui-code-editor { min-width: 0; border: 1px solid var(--border); border-radius: 8px; background: var(--panel); overflow: hidden; }
+.ui-code-editor-host { width: 100%; }
+.ui-code-editor-host[hidden] { display: none; }
+.ui-code-editor textarea { display: block; width: 100%; border: 0; border-radius: 0; resize: vertical; font-family: Consolas, "Courier New", monospace; font-size: 14px; line-height: 1.6; padding: 12px; background: var(--panel); color: var(--fg); }
+.ui-code-editor-message { display: grid; align-content: center; justify-items: start; gap: 12px; min-height: 180px; padding: 20px; color: var(--muted); }
+.ui-code-editor-message p { margin: 0; }
+.ui-code-editor > footer { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 12px; border-top: 1px solid var(--border); color: var(--muted); font-size: 12px; }
+.ui-code-editor-mode { border: 0; padding: 4px; color: var(--accent); background: transparent; cursor: pointer; font: inherit; }
+.ui-code-editor-mode:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (prefers-reduced-motion: no-preference) { .ui-code-editor-message[aria-busy] { animation: code-editor-loading 1.3s ease-in-out infinite alternate; } }
+@keyframes code-editor-loading { to { opacity: .55; } }

@@ -5,6 +5,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { CoreAdminApiError, type CoreOutput } from '@txboard/core-sdk'
 import { admin, workflowActions } from './session'
 import { CatalogPage } from './CatalogPage'
+import { ConfirmDialogHost, dismissConfirm } from '../components/ui/ConfirmDialog'
 
 vi.mock('./session', async () => {
   const { createWorkflowActions } = await import('./workflowActions')
@@ -29,12 +30,15 @@ beforeEach(() => {
   host = document.createElement('div'); document.body.append(host); root = createRoot(host)
   client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: 0 } } })
   workflowActions.reset(); current = structuredClone(original)
+  vi.spyOn(window, 'confirm').mockReturnValue(true)
   vi.mocked(admin.read).mockReset().mockImplementation(async (operation, input) => {
     if (operation === 'catalog.admin-plans.get') {
       const requested = input as { revision_id?: string }
       if (requested.revision_id === '10') return { data: { ...current, revision: { ...current.revision, revision_id: '10', revision_no: '2', terms: { ...current.revision.terms, name: 'Historical immutable plan' } } }, meta: {} } as never
       return { data: structuredClone(current), meta: {} } as never
     }
+    if (operation === 'network.groups.names.get') return { data: { groups: [{ id: groupId, name: 'Authoritative group' }] }, meta: {} } as never
+    if (operation === 'network.groups.list') return { data: [{ id: groupId, name: 'Authoritative group' }], meta: listMeta } as never
     if (operation === 'catalog.admin-plans.list') return { data: [{ plan_id: planId, current_revision_id: current.current_revision_id, revision_no: current.revision.revision_no, name: 'Plan list summary', currency: current.revision.terms.currency, published_at: 1792368000 }], meta: listMeta } as never
     if (operation === 'catalog.admin-plans.history.list') return { data: [{ plan_id: planId, revision_id: '10', revision_no: '2', name: 'Historical summary', currency: 'USD', published_at: 1792300000 }], meta: listMeta } as never
     if (operation === 'catalog.admin-offers.list') return { data: [structuredClone(offer)], meta: listMeta } as never
@@ -42,10 +46,10 @@ beforeEach(() => {
   })
   vi.mocked(admin.write).mockReset().mockResolvedValue({ data: {} } as never)
 })
-afterEach(() => { act(() => root.unmount()); client.clear(); host.remove(); workflowActions.reset() })
+afterEach(() => { act(() => dismissConfirm()); act(() => root.unmount()); client.clear(); host.remove(); workflowActions.reset(); vi.restoreAllMocks() })
 async function settle() { await act(async () => { await new Promise(resolve => setTimeout(resolve, 20)) }) }
 async function render(show = true) {
-  await act(async () => root.render(<QueryClientProvider client={client}>{show ? <CatalogPage /> : null}</QueryClientProvider>)); await settle()
+  await act(async () => root.render(<QueryClientProvider client={client}>{show ? <CatalogPage /> : null}<ConfirmDialogHost /></QueryClientProvider>)); await settle()
 }
 function button(text: string, scope: ParentNode = host) { return [...scope.querySelectorAll<HTMLButtonElement>('button')].find(node => node.getAttribute('aria-label') === text || node.textContent?.trim() === text)! }
 async function click(text: string, scope: ParentNode = host) { await act(async () => button(text, scope).click()); await settle() }
@@ -61,12 +65,25 @@ async function submit(label = '发布完整套餐条款') {
 async function existing() { await render(); await click('编辑当前套餐') }
 async function capacity() { await change('catalog-capacity-choice', 'unlimited') }
 
+it('confirms clearing all cycle price drafts without publishing or losing the observed revision', async () => {
+  await existing()
+  vi.mocked(window.confirm).mockReturnValueOnce(false)
+  await click('清空全部周期价格')
+  expect(field('catalog-price-monthly').value).toBe(original.revision.terms.prices_minor.monthly)
+  vi.mocked(window.confirm).mockReturnValueOnce(true)
+  await click('清空全部周期价格')
+  for (const period of Object.keys(original.revision.terms.prices_minor)) expect(field('catalog-price-' + period).value).toBe('')
+  expect(admin.write).not.toHaveBeenCalled()
+  await change('catalog-price-monthly', '0'); await capacity(); await submit()
+  expect(vi.mocked(admin.write).mock.calls[0]?.[1]).toMatchObject({ plan_id: planId, expected_revision_id: '11', prices_minor: { monthly: '0' } })
+})
+
 it('loads authoritative full current terms instead of reconstructing a plan from partial Offer rows', async () => {
   await existing()
   expect(admin.read).toHaveBeenCalledWith('catalog.admin-plans.get', { plan_id: planId })
   expect(field('catalog-name').value).toBe('Complete authoritative plan')
   expect(field('catalog-content').value).toBe('<b>Plain terms</b>')
-  expect(field('catalog-group').value).toBe(groupId)
+  expect(host.querySelector('[aria-label="已选套餐权限组"]')?.textContent).toContain('Authoritative group · #' + groupId)
   expect(field('catalog-speed').value).toBe('0')
   expect(field('catalog-devices').value).toBe('')
   expect(field('catalog-price-monthly').value).toBe('9007199254740993')
@@ -94,6 +111,15 @@ it('creates a separate new publication with no inherited Plan ID or CAS token', 
     name: 'New native plan', content: null, tags: [], quota_gib: 0, group_id: null,
     speed_limit_mbps: null, device_limit: null, capacity_limit: null, reset_method: 0, currency: 'CNY', prices_minor: { monthly: '1234' },
   }, expect.any(String))
+})
+
+it('clears an uncommitted tag draft when opening a different publication editor', async () => {
+  current.revision.terms.tags = Array.from({ length: 40 }, (_, index) => 'tag-' + index)
+  await existing(); await change('catalog-tags', 'uncommitted previous plan tag')
+  expect(field('catalog-tags').value).toBe('uncommitted previous plan tag')
+  await click('创建套餐')
+  expect(field('catalog-tags').value).toBe('')
+  expect(host.querySelectorAll('.ui-tag-input-item')).toHaveLength(0)
 })
 
 it('keeps the submitted draft and CAS revision after conflict until an explicit authoritative replacement', async () => {
@@ -245,4 +271,57 @@ it('rejects fractional or overflowing minor prices before contacting the publica
   expect(host.textContent).toContain('最小货币单位整数')
   await change('catalog-price-monthly', '9223372036854775808'); await submit()
   expect(admin.write).not.toHaveBeenCalled()
+})
+
+it('requires confirmation before replacing plan content and preserves all other frozen terms', async () => {
+  await existing(); const originalPrice = field('catalog-price-monthly').value
+  await click('使用内容模板')
+  expect(field('catalog-content').value).toBe('<b>Plain terms</b>')
+  await click('保留原文', document.body)
+  expect(field('catalog-content').value).toBe('<b>Plain terms</b>')
+  await click('使用内容模板'); await click('替换正文', document.body)
+  expect(field('catalog-content').value).toContain('123 GiB')
+  expect(field('catalog-content').value).toContain('0 Mbps')
+  expect(field('catalog-content').value).toContain('设备数量：不限')
+  expect(field('catalog-price-monthly').value).toBe(originalPrice)
+  expect(host.querySelector('[aria-label="已选套餐权限组"]')?.textContent).toContain('Authoritative group · #' + groupId)
+  expect(admin.write).not.toHaveBeenCalled()
+})
+
+it('inserts a content template immediately when the plan description is empty', async () => {
+  await existing(); await change('catalog-content', '')
+  await click('使用内容模板')
+  expect(document.querySelector('[role="dialog"]')).toBeNull()
+  expect(field('catalog-content').value).toContain('## Complete authoritative plan')
+  expect(admin.write).not.toHaveBeenCalled()
+})
+
+
+it('keeps the publication draft when an inline permission group create is denied', async () => {
+  await existing(); await change('catalog-name', 'Still retained')
+  await click('选择套餐权限组')
+  const input = host.querySelector<HTMLInputElement>('[aria-label="新权限组名称"]')!
+  await act(async () => { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, 'New group'); input.dispatchEvent(new Event('input', { bubbles: true })) })
+  vi.mocked(admin.write).mockRejectedValueOnce(new CoreAdminApiError('FORBIDDEN', 403))
+  await click('创建并选择权限组')
+  expect(field('catalog-name').value).toBe('Still retained')
+  expect(workflowActions.snapshot().errorOperation).toBe('network.groups.save')
+})
+
+it('confirms replacement of cycle prices and preserves free and non-recurring amounts', async () => {
+  await existing(); await click('按月价重算周期价格')
+  expect(field('catalog-price-yearly').value).toBe('400')
+  const dialog = document.querySelector('[role="dialog"][aria-label="按月价重算周期价格？"]')!
+  await click('重算周期价格', dialog)
+  expect(field('catalog-price-quarterly').value).toBe('0')
+  expect(field('catalog-price-yearly').value).toBe('108086391056891916')
+  expect(field('catalog-price-onetime').value).toBe('700')
+  expect(admin.write).not.toHaveBeenCalled()
+})
+
+it('retains an edited draft when closing or replacing it is cancelled', async () => {
+  await existing(); await change('catalog-name', 'Unsaved draft')
+  vi.mocked(window.confirm).mockReturnValue(false)
+  await click('关闭编辑'); await click('创建套餐')
+  expect(field('catalog-name').value).toBe('Unsaved draft')
 })

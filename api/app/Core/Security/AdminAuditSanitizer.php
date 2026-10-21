@@ -55,6 +55,8 @@ final class AdminAuditSanitizer
         if ($key !== null) {
             $normalized = strtolower(str_replace(['-', '.', ' '], '_', $key));
             if ($normalized === 'key') return '[REDACTED]';
+            // Encoded protocol and extension payloads may contain nested credentials.
+            if (in_array($normalized, ['configuration_json', 'input_json'], true)) return '[REDACTED]';
             foreach (['password','passwd','token','secret','api_key',
                 'private_key','access_key','credential','authorization',
                 'api_secret','signing_key'] as $fragment) {

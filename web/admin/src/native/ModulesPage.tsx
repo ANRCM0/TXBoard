@@ -1,64 +1,105 @@
-import { Blocks, RefreshCw, X } from 'lucide-react'
-import './observation-reference.css'
-import { useEffect, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { t, useLocale } from '../lib/i18n'
+import { Blocks, LockKeyhole, RefreshCw } from 'lucide-react'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { CoreAdminApiError, type CoreOutput } from '@txboard/core-sdk'
-import { admin, useAdminSession } from './session'
+import { admin, useAdminSession, workflowActions } from './session'
 import { ManagementFeedback } from './Feedback'
-import { ReadFields } from './ReadList'
 import { PageHeader } from '../components/ui/PageHeader'
-import { ReadOnlyNotice } from '../components/ui/ReadOnlyNotice'
 import { StatusBadge } from '../components/ui/StatusBadge'
-import { Popover } from '../components/ui/Popover'
-import { DataTable, type Column } from '../components/ui/DataTable'
+import { Modal } from '../components/ui/Modal'
+import { requestConfirm } from '../components/ui/ConfirmDialog'
+import { ModuleConfigurationDialog, ModuleRuntimeDialog } from './ModuleDialogs'
+import { ThemePackagesDialog } from './ThemePackagesDialog'
+import './modules-reference.css'
 
-type Module = CoreOutput<'platform.modules.get'>
-const operationLabels = { install: '安装', enable: '启用', disable: '停用', upgrade: '升级', uninstall: '卸载' }
+export type ModuleCard = CoreOutput<'platform.module-cards.list'>['modules'][number]
+export const moduleActionLabels = { install: '安装', enable: '启用', disable: '停用', upgrade: '升级', uninstall: '卸载' }
+export const moduleDenied = (error: unknown) => error instanceof CoreAdminApiError && [401, 403].includes(error.status)
+const extensionOperation = (operation?: string) => operation?.startsWith('platform.module-') || operation?.startsWith('platform.theme-packages.')
+const actionLabel = (row: ModuleCard, action: ModuleCard['actions'][number]) => row.type === 'theme' ? action === 'enable' ? '应用主题' : action === 'uninstall' ? '删除主题' : moduleActionLabels[action] : moduleActionLabels[action]
+type View = { id: string; mode: 'documentation' | 'configuration' | 'runtime' }
 export function ModulesPage({ kind }: { kind?: 'plugin' | 'theme' }) {
-  const session = useAdminSession()
-  const [selected, setSelected] = useState(''), [keyword, setKeyword] = useState(''), [status, setStatus] = useState('')
-  useEffect(() => { setSelected(''); setKeyword(''); setStatus('') }, [kind])
-  const list = useQuery({ queryKey: ['native-admin', 'modules'], enabled: session,
-    queryFn: ({ signal }) => admin.read('platform.modules.list', {}, signal) })
-  const detail = useQuery({ queryKey: ['native-admin', 'modules', selected], enabled: session && !!selected,
-    queryFn: ({ signal }) => admin.read('platform.modules.get', { module_id: selected }, signal) })
-  const operations = useQuery({ queryKey: ['native-admin', 'module-operations', selected], enabled: session && !!selected,
-    queryFn: ({ signal }) => admin.read('platform.modules.operations.list', { module_id: selected }, signal) })
-  const denied = [list.error, detail.error, operations.error].some(error => error instanceof CoreAdminApiError && [401, 403].includes(error.status))
-  const visible = session && !denied
+  useLocale()
+  const session = useAdminSession(), client = useQueryClient()
+  const workflow = useSyncExternalStore(workflowActions.subscribe, workflowActions.snapshot)
+  const [view, setView] = useState<View>(), [keyword, setKeyword] = useState(''), [category, setCategory] = useState('feature')
+  const [message, setMessage] = useState(''), [messageVariables, setMessageVariables] = useState<Record<string, string>>({}), [localError, setLocalError] = useState<unknown>(), [recovering, setRecovering] = useState(false)
+  const [packagesOpen, setPackagesOpen] = useState(false)
+  const sessionGeneration = useSyncExternalStore(workflowActions.subscribe, workflowActions.generation)
+  const generation = useRef(0), alive = useRef(true)
+  useEffect(() => { alive.current = true; return () => { alive.current = false; generation.current++ } }, [])
+  useEffect(() => { generation.current++; setView(undefined); setPackagesOpen(false); setKeyword(''); setCategory('feature'); setMessage(''); setLocalError(undefined) }, [kind, session, sessionGeneration])
+  const list = useQuery({ queryKey: ['native-admin', 'module-cards'], enabled: session,
+    queryFn: ({ signal }) => admin.read('platform.module-cards.list', {}, signal) })
+  const detail = useQuery({ queryKey: ['native-admin', 'module-card', view?.id], enabled: session && !!view,
+    queryFn: ({ signal }) => admin.read('platform.module-cards.get', { module_id: view!.id }, signal) })
+  const scopedError = extensionOperation(workflow.errorOperation) ? workflow.error : undefined
+  const denied = [list.error, detail.error, localError, scopedError].some(moduleDenied), visible = session && !denied
+  useEffect(() => { if (denied) { generation.current++; setView(undefined); setPackagesOpen(false); setMessage('') } }, [denied])
+  const pending = workflow.pending && (workflow.pending.operation === 'platform.module-configuration.save' || workflow.pending.operation === 'platform.module-lifecycle.execute' || workflow.pending.operation === 'platform.module-presentation.execute' || workflow.pending.operation === 'platform.theme-packages.deploy') ? workflow.pending : undefined
   const rows = visible && !list.isError ? (list.data?.data.modules ?? []).filter(row => (!kind || row.type === kind)
-    && (!status || (status === 'enabled' ? row.enabled : status === 'installed' ? row.installed : !row.installed))
-    && [row.id, row.name, row.description ?? ''].some(value => value.toLowerCase().includes(keyword.toLowerCase()))) : []
-  const current = visible && !detail.isError ? detail.data?.data : undefined
-  async function refresh() { await Promise.all([list.refetch(), ...(selected ? [detail.refetch(), operations.refetch()] : [])]) }
-  const columns: Column<Module>[] = [
-    { key: 'name', header: '模块', render: row => <button className="native-read-link" onClick={() => setSelected(row.id)}><span className="observation-identity"><Blocks size={20} /><span><strong>{row.name || row.id}</strong><small>{row.description || row.id}</small></span></span></button> },
-    { key: 'type', header: '类型', render: row => <span className="observation-tag">{row.type === 'theme' ? '主题' : row.type === 'plugin' ? '插件' : row.type}</span> },
-    { key: 'version', header: '版本', render: row => <span className="observation-mono">{row.version}</span> },
-    { key: 'source', header: '来源', render: row => row.source },
-    { key: 'installed', header: '安装状态', render: row => <StatusBadge tone={row.installed ? 'success' : 'neutral'}>{row.installed ? '已安装' : '未安装'}</StatusBadge> },
-    { key: 'enabled', header: '运行状态', render: row => <StatusBadge tone={row.enabled ? 'success' : 'neutral'}>{row.enabled ? '已启用' : '未启用'}</StatusBadge> },
-    { key: 'health', header: '健康', render: row => <StatusBadge tone={row.health === 'healthy' ? 'success' : row.health === 'unhealthy' ? 'danger' : 'neutral'}>{({ healthy: '正常', unhealthy: '异常', unknown: '未知' } as Record<string, string>)[row.health] ?? row.health}</StatusBadge> },
-  ]
-  return <div className="native-management-page observation-page observation-modules-page">
-    <PageHeader title={kind === 'theme' ? '主题管理' : kind === 'plugin' ? '插件管理' : '模块清单'} description="管理模块版本与运行状态" action={<>
-      <Popover label="如何变更模块"><p>安装、启停、升级及卸载需在部署环境中执行 · 此页面仅供查看</p></Popover>
-      <button className="button" disabled={!session || list.isFetching} onClick={() => void refresh()}><RefreshCw size={15} />刷新</button>
-    </>} />
-    <ReadOnlyNotice title="运行时清单只读">安装、启停、升级及卸载由受控部署流程负责 · 此页面只展示当前注册状态与声明能力</ReadOnlyNotice>
-    <section className="list-card native-read-list"><div className="observation-card-heading"><div><h2>{kind === 'theme' ? '主题目录' : kind === 'plugin' ? '插件目录' : '模块目录'}</h2><p>查看版本、来源与可用状态</p></div><span className="observation-tag">{visible && list.data && !list.isError ? rows.length + ' 项' : '等待加载'}</span></div>
-      <form className="native-filters observation-module-filters" onSubmit={event => event.preventDefault()}><label>搜索<input placeholder="搜索名称、ID 或描述" maxLength={120} value={keyword} onChange={event => setKeyword(event.target.value)} /></label><label>状态<select value={status} onChange={event => setStatus(event.target.value)}><option value="">全部</option><option value="installed">已安装</option><option value="enabled">已启用</option><option value="uninstalled">未安装</option></select></label>{keyword || status ? <button className="button observation-reset" type="button" onClick={() => { setKeyword(''); setStatus('') }}>清除筛选</button> : null}</form>
-      <ManagementFeedback loading={list.isFetching} error={list.error} onRetry={() => void refresh()} />
-      {denied ? <p role="alert">无法确认模块读取权限，已隐藏清单和详情。</p> : null}
-      {visible && list.data && !list.isError ? <>{list.data.data.summary.discovery_errors > 0 ? <p className="observation-tag" data-tone="warning">{list.data.data.summary.discovery_errors} 项模块发现异常</p> : null}<p className="native-scroll-hint">左右滑动表格查看完整信息</p><DataTable label="模块清单" columns={columns} rows={rows} rowKey={row => row.id} empty="没有符合条件的模块" /></> : null}
-    </section>
-    {selected && visible ? <section className="list-card observation-detail" aria-label="模块详情"><div className="observation-card-heading"><div><h2>{current?.name || '模块详情'}</h2><p>版本信息与支持的操作</p></div><button className="button" aria-label="关闭模块详情" onClick={() => setSelected('')}><X size={15} />关闭</button></div>
-      <ManagementFeedback loading={detail.isFetching || operations.isFetching} error={detail.error || operations.error} onRetry={() => void refresh()} />
-      {current ? <ReadFields fields={[
-        ['模块 ID', current.id], ['名称', current.name], ['版本', current.version], ['类型', current.type], ['说明', current.description], ['作者', current.author], ['来源', current.source],
-        ['兼容 TXBoard', current.compatibility.txboard], ['能力', current.capabilities.join('、') || '未声明'], ['健康', current.health], ['当前激活', current.active === null ? '不适用' : current.active ? '是' : '否'],
-      ]} /> : null}
-      {operations.data && !operations.isError ? <p>模块声明支持：{operations.data.data.operations.map(operation => operationLabels[operation]).join('、') || '无生命周期操作'}。</p> : null}
-    </section> : null}
+    && (kind !== 'plugin' || category === 'all' || (category === 'other' ? row.subtype === null : row.subtype === category))
+    && [row.id, row.name, row.description].some(text => text.toLowerCase().includes(keyword.trim().toLowerCase()))) : []
+  const selected = visible && !detail.isError ? detail.data?.data.module : undefined
+  async function refresh() {
+    setLocalError(undefined)
+    if (extensionOperation(workflow.errorOperation)) workflowActions.clearError()
+    await Promise.all([list.refetch(), ...(view ? [detail.refetch()] : [])])
+    await client.invalidateQueries({ queryKey: ['native-admin', 'module-configuration'] })
+  }
+  async function lifecycle(row: ModuleCard, action: ModuleCard['actions'][number]) {
+    if (!alive.current || !session || !visible || workflowActions.generation() !== sessionGeneration || workflowActions.snapshot().busy || workflowActions.snapshot().pending || !row.fingerprint || !row.revision) return
+    const current = generation.current
+    try { setLocalError(undefined); setMessage(''); await workflowActions.run('platform.module-lifecycle.execute', { module_id: row.id, fingerprint: row.fingerprint, expected_revision: row.revision, action })
+      if (alive.current && generation.current === current) { setMessageVariables({ name: row.name, action: actionLabel(row, action) }); setMessage('module-action-completed'); await refresh() }
+    } catch (error) { if (alive.current && generation.current === current) setLocalError(error) }
+  }
+  function confirmLifecycle(row: ModuleCard, action: ModuleCard['actions'][number]) {
+    const current = generation.current
+    requestConfirm({ title: t('{action}{name}', { action: t(actionLabel(row, action)), name: row.name }), message: action === 'uninstall' ? row.type === 'theme' ? t('删除会移除未使用主题的安装文件、公开资产、回滚槽和配置。此操作不可撤销。') : t('卸载会停止模块并执行其已声明的数据卸载流程。请先确认已完成所需备份。') : t('变更由受控部署所有者执行，并校验当前包指纹和配置修订。'),
+      danger: action === 'uninstall' || action === 'disable', action: () => { if (alive.current && generation.current === current) void lifecycle(row, action) } })
+  }
+  async function recover() {
+    if (!alive.current || !session || !pending || workflow.busy || recovering) return
+    const current = generation.current
+    setRecovering(true); setLocalError(undefined)
+    try {
+      if (pending.operation === 'platform.theme-packages.deploy') await admin.read('platform.theme-packages.list', {})
+      else {
+        if (!(pending.operation === 'platform.module-lifecycle.execute' && pending.input.action === 'uninstall' && pending.input.module_id.startsWith('theme.'))) await admin.read('platform.module-cards.get', { module_id: pending.input.module_id })
+        else await admin.read('platform.module-cards.list', {})
+        if (pending.operation === 'platform.module-configuration.save') await admin.read('platform.module-configuration.get', { module_id: pending.input.module_id })
+        if (pending.operation === 'platform.module-presentation.execute') await admin.read('platform.module-presentation.get', { module_id: pending.input.module_id, fingerprint: pending.input.fingerprint })
+      }
+      if (!alive.current || generation.current !== current) return
+      workflowActions.confirmReadAuthorization(pending.operation === 'platform.theme-packages.deploy' ? 'platform.theme-packages.' : 'platform.module-')
+      if (pending.operation === 'platform.module-configuration.save') await workflowActions.run(pending.operation, pending.input)
+      else if (pending.operation === 'platform.module-lifecycle.execute') await workflowActions.run(pending.operation, pending.input)
+      else if (pending.operation === 'platform.module-presentation.execute') await workflowActions.run(pending.operation, pending.input)
+      else if (pending.operation === 'platform.theme-packages.deploy') await workflowActions.run(pending.operation, pending.input)
+      if (alive.current && generation.current === current) { setMessage('原请求结果已确认'); await refresh() }
+    } catch (error) { if (alive.current && generation.current === current) setLocalError(error) }
+    finally { if (alive.current) setRecovering(false) }
+  }
+  return <div className="native-management-page modules-page">
+    <PageHeader title={kind === 'theme' ? t('主题管理') : kind === 'plugin' ? t('插件管理') : t('模块清单')} description={t("查看已声明能力，管理配置和受控生命周期")} action={<>{kind === 'theme' ? <button className="button primary" disabled={!visible || workflow.busy || !!workflow.pending} onClick={() => setPackagesOpen(true)}>{t("部署受控主题")}</button> : null}<button className="button" disabled={!session || list.isFetching} onClick={() => void refresh()}><RefreshCw size={15} />{t("刷新")}</button></>} />
+    {kind === 'theme' ? <p className="modules-owner-note">{t("站点主题配置由主题所有者保存。当前可用操作以卡片为准；管理端本机明暗偏好在导航栏设置。")}</p> : null}
+    {pending ? <div className="modules-recovery" role="status"><p>{t('{resource} 的写入结果待确认。确认前暂停其他变更，恢复会使用原请求和原幂等键。', { resource: pending.operation === 'platform.theme-packages.deploy' ? t('候选包 {id}', { id: pending.input.candidate_id }) : t('模块 {id}', { id: pending.input.module_id }) })}</p><button className="button" disabled={!session || workflow.busy || recovering} onClick={() => void recover()}>{recovering ? t('确认权限与结果中…') : t('恢复原请求')}</button></div> : null}
+    <div className="modules-toolbar">{kind === 'plugin' ? <div className="modules-tabs" role="group" aria-label={t("插件分类")}>{[['feature', t('功能插件')], ['payment', t('支付插件')], ['other', t('其他')], ['all', t('全部')]].map(([id, label]) => <button className="button" aria-pressed={category === id} key={id} onClick={() => setCategory(id)}>{t(label)}</button>)}</div> : null}<label>{t("搜索")}<input className="input" placeholder={t("名称、ID 或描述")} maxLength={120} value={keyword} onChange={event => setKeyword(event.target.value)} /></label></div>
+    <ManagementFeedback loading={list.isFetching} error={list.error || localError || scopedError} onRetry={() => void refresh()} />
+    {message ? <p role="status">{message === 'module-action-completed' ? t('{name}：{action}完成', { name: messageVariables.name, action: t(messageVariables.action) }) : t(message)}</p> : null}
+    {denied ? <p role="alert">{t("无法确认模块权限，已隐藏清单、详情和配置草稿。可重新读取权限后恢复原请求。")}</p> : null}
+    {visible && list.data && !list.isError ? <>{list.data.data.discovery_errors ? <p role="status">{t('{count} 项模块发现异常，请检查部署日志。', { count: list.data.data.discovery_errors })}</p> : null}<div className="module-cards">{rows.map(row => <article key={row.id} className="module-card">
+      <div className="module-card-heading"><div className="module-icon"><Blocks size={23} /></div><div><button className="native-read-link" onClick={() => setView({ id: row.id, mode: 'documentation' })}><strong>{row.name}</strong></button><small>{row.id}</small></div>{row.protected ? <span title={t("受保护模块")}><LockKeyhole size={16} /><span className="sr-only">{t("受保护")}</span></span> : null}</div>
+      <p className="module-description">{row.description || t('未提供说明')}</p>
+      <div className="module-badges"><span>v{row.version}</span><span>{t(({ system: '系统', bundled: '内置', user: '用户安装', external: '外部' })[row.source])}</span><StatusBadge tone={row.enabled ? 'success' : 'neutral'}>{row.enabled ? t('已启用') : row.installed ? t('已停用') : t('未安装')}</StatusBadge>{row.upgrade_available ? <StatusBadge tone="warning">{t("可升级")}</StatusBadge> : null}<span>{({ healthy: t('运行正常'), degraded: t('运行降级'), disabled: t('未运行'), failed: t('运行失败'), incompatible: t('不兼容'), missing_dependency: t('缺少依赖') })[row.health]}</span>{row.active ? <span>{t("当前站点主题")}</span> : null}</div>
+      <div className="module-card-actions"><button className="button" onClick={() => setView({ id: row.id, mode: 'documentation' })}>{t("文档")}</button>{row.configuration_available ? <button className="button" onClick={() => setView({ id: row.id, mode: 'configuration' })}>{t("配置")}</button> : null}{row.presentation_available ? <button className="button" onClick={() => setView({ id: row.id, mode: 'runtime' })}>{t("运行入口")}</button> : null}{row.actions.map(action => <button key={action} className={'button' + (action === 'uninstall' ? ' danger' : '')} disabled={workflow.busy || !!workflow.pending} onClick={() => confirmLifecycle(row, action)}>{t(actionLabel(row, action))}</button>)}</div>
+      {!row.managed && row.type !== 'theme' ? <small>{t("由现有模块所有者维护，未声明受控管理能力。")}</small> : null}
+    </article>)}</div>{!rows.length ? <p className="modules-empty">{t("没有符合条件的模块")}</p> : null}</> : null}
+    {view?.mode === 'documentation' && visible ? <Modal open title={selected?.name || t('模块文档')} onClose={() => setView(undefined)} wide><ManagementFeedback error={detail.error} loading={detail.isFetching} onRetry={() => void detail.refetch()} />{selected ? <><p>{selected.description}</p><p>{t('作者：{author} · 版本 {version}', { author: selected.author || t('未声明'), version: selected.version })}</p><pre className="module-readme">{detail.data?.data.readme || t('此模块没有随包提供文档。')}</pre></> : null}</Modal> : null}
+    {view?.mode === 'configuration' && selected && visible ? <ModuleConfigurationDialog key={selected.id} module={selected} onClose={() => setView(undefined)} onSaved={refresh} onDenied={setLocalError} /> : null}
+    {view?.mode === 'runtime' && selected && visible ? <ModuleRuntimeDialog key={selected.id} module={selected} onClose={() => setView(undefined)} onDenied={setLocalError} /> : null}
+    {packagesOpen && visible ? <ThemePackagesDialog onClose={() => setPackagesOpen(false)} onSaved={refresh} onDenied={setLocalError} /> : null}
   </div>
 }

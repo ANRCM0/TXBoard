@@ -4,6 +4,8 @@ import { createServer } from 'vite'
 import { coreOperations } from '@txboard/core-sdk'
 import { managementFixture } from './lib/admin-management-fixture.mjs'
 import { workflowFixture } from './lib/admin-workflows-fixture.mjs'
+import { nativeNetworkRead } from './lib/admin-native-network-fixture.mjs'
+import { dashboardFixture } from './lib/admin-dashboard-fixture.mjs'
 
 // Local, explicit preview entry point. No middleware is installed in the normal
 // dev command or production build, and no request is forwarded to Core.
@@ -122,7 +124,11 @@ function previewMiddleware(req, res) {
       if (req.headers.authorization !== token) return fail(401, 'PREVIEW_LOGIN_REQUIRED')
       if (operation === 'identity.session.end') return send({ ok: true })
       if (spec.idempotency !== 'read') return fail(403, 'PREVIEW_READ_ONLY')
-      if (operation === 'network.nodes.list') return list(nodes)
+      if (operation === 'analytics.native-dashboard.get') return send(dashboardFixture(input, { nodes, users: accounts }))
+      const selectedNode = nodes.find(row => row.id === input.node_id) ?? state.detailNode
+      const native = nativeNetworkRead(operation, input, { node: selectedNode, machine: state.machine })
+      if (native) return send(native)
+      if (operation === 'network.nodes.list') return list(nodes.filter(row => !input.machine_id || row.machine_id === input.machine_id))
       if (operation === 'network.nodes.traffic-history.get') {
         const startsAt = previewToday - (input.days - 1) * 86400000
         return send({ time_zone: 'UTC', basis: 'settled-raw-usage/v1', bucket: 'day',
@@ -219,7 +225,7 @@ const server = await createServer({ root, configFile: root + '/vite.config.ts',
     },
     transformIndexHtml() {
       return [{ tag: 'aside', attrs: { id: 'txboard-preview-label',
-        style: 'position:fixed;right:16px;bottom:14px;z-index:2147483000;padding:10px 14px;border:1px solid #c8d5f5;border-radius:12px;background:#edf3ff;color:#253a68;font:12px/1.6 system-ui;box-shadow:0 4px 18px #10204018' },
+        style: 'pointer-events:none;position:fixed;right:16px;bottom:14px;z-index:2147483000;padding:10px 14px;border:1px solid #c8d5f5;border-radius:12px;background:#edf3ff;color:#253a68;font:12px/1.6 system-ui;box-shadow:0 4px 18px #10204018' },
       children: '<strong>测试数据 · 本地只读预览</strong><br>admin@example.test / preview123456', injectTo: 'body' }]
     },
   }],

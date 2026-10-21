@@ -149,10 +149,19 @@ final class NativeCommissions implements Commissions, CommissionTerms
         $policy = $this->policyLocked($installation);
         $referral = $this->referrals->forAccountLocked($installation['installation_id'], (int) $order->user_id);
         if (!$policy['enabled'] || $referral === null || $purchase->currency !== 'CNY' || (string) $purchase->price_minor === '0') return;
+        $personal = app(NativeCustomerPolicies::class)->snapshotLocked($installation['installation_id'], (int) $referral['sponsor_id']);
+        $effective = $policy;
+        if ($personal['commission_rate_bps'] !== null) $effective['rate_bps'] = $personal['commission_rate_bps'];
+        $custom = $personal['policy_version'] !== '0';
+        if ($custom) app(NativeCustomerPolicies::class)->claimFirstPaidLocked($installation, (int) $order->user_id);
         $snapshot = ['schema' => 'native-commission-order/1', 'installation_id' => $installation['installation_id'],
             'order_id' => (string) $order->id, 'buyer_id' => (string) $order->user_id, 'sponsor_id' => $referral['sponsor_id'],
             'referral_hash' => $referral['content_hash'], 'purchase_id' => (string) $purchase->id, 'purchase_hash' => $purchase->content_hash,
-            'price_minor' => MoneyValue::minor((string) $purchase->price_minor, true), 'currency' => 'CNY', 'policy' => $policy, 'created_at' => (string) time()];
+            'price_minor' => MoneyValue::minor((string) $purchase->price_minor, true), 'currency' => 'CNY', 'policy' => $effective, 'created_at' => (string) time()];
+        if ($custom) {
+            $snapshot['schema'] = 'native-commission-order/2'; $snapshot['global_policy'] = $policy; $snapshot['sponsor_policy'] = $personal;
+            $snapshot['effective_mode'] = $personal['commission_mode'] === 'inherit' ? 'recurring' : $personal['commission_mode'];
+        }
         DB::table('tx_native_commission_order')->insert(['id' => (string) Str::uuid(), 'installation_id' => $installation['installation_id'],
             'order_id' => (int) $order->id, 'buyer_id' => (int) $order->user_id, 'sponsor_id' => (int) $referral['sponsor_id'],
             'snapshot_json' => json_encode($snapshot, JSON_THROW_ON_ERROR), 'snapshot_hash' => MoneyValue::hash($snapshot),
@@ -195,7 +204,9 @@ final class NativeCommissions implements Commissions, CommissionTerms
                         $allocationId = $proof['order_payment_id'];
                         $refunded = app(NativeRefundService::class)->refundedForPaymentLocked($installation, (int) $row->buyer_id, (int) $allocationId);
                         $net = MoneyValue::minor(bcsub($snapshot['price_minor'], $refunded, 0));
-                        $amount = bcdiv(bcmul($net, (string) $snapshot['policy']['rate_bps'], 0), '10000', 0);
+                        $first = app(NativeCustomerPolicies::class)->claimFirstPaidLocked($installation, (int) $row->buyer_id);
+                        $eligible = ($snapshot['effective_mode'] ?? 'recurring') !== 'first_paid' || ($first['order_id'] ?? null) === (string) $row->order_id;
+                        $amount = $eligible ? bcdiv(bcmul($net, (string) $snapshot['policy']['rate_bps'], 0), '10000', 0) : '0';
                         MoneyValue::minor($amount);
                         if ($amount !== '0') {
                             $journal = $this->ledger->postLocked($installation, (int) $row->sponsor_id, $this->rewardJournal($row, $amount, $now));
@@ -204,6 +215,10 @@ final class NativeCommissions implements Commissions, CommissionTerms
                     } elseif (!in_array((int) $order->status, [Order::STATUS_CANCELLED], true)) return ['state' => 'pending'];
                     $settlement = ['commission_id' => $row->id, 'installation_id' => $installation['installation_id'], 'snapshot_hash' => $row->snapshot_hash,
                         'order_payment_id' => $allocationId, 'net_minor' => $net, 'amount_minor' => $amount, 'journal_id' => $journalId, 'settled_at' => (string) $now];
+                    if (($snapshot['schema'] ?? null) === 'native-commission-order/2') {
+                        $settlement['first_paid_claim'] = isset($first) ? $first : null;
+                        $settlement['eligible'] = $eligible ?? false;
+                    }
                     DB::table('tx_native_commission_reward')->insert(['commission_id' => $row->id, 'installation_id' => $installation['installation_id'], 'sponsor_id' => (int) $row->sponsor_id, 'payload_json' => json_encode($settlement, JSON_THROW_ON_ERROR),
                         'content_hash' => MoneyValue::hash($settlement), 'journal_id' => $journalId]);
                     DB::table('tx_native_commission_order')->where('id', $row->id)->update(['state' => $amount === '0' ? 'ineligible' : 'accrued']);
@@ -243,14 +258,23 @@ final class NativeCommissions implements Commissions, CommissionTerms
     private function rewardSnapshot(object $row): array
     {
         $payload = json_decode($row->snapshot_json, true, 16, JSON_THROW_ON_ERROR);
-        if (!hash_equals($row->snapshot_hash, MoneyValue::hash($payload)) || ($payload['schema'] ?? null) !== 'native-commission-order/1') throw new LogicException('COMMISSION_ORDER_INVALID');
+        if (!hash_equals($row->snapshot_hash, MoneyValue::hash($payload)) || !in_array($payload['schema'] ?? null, ['native-commission-order/1', 'native-commission-order/2'], true)) throw new LogicException('COMMISSION_ORDER_INVALID');
         foreach (['installation_id', 'order_id', 'buyer_id', 'sponsor_id', 'created_at'] as $field) if (($payload[$field] ?? null) !== (string) $row->$field) throw new LogicException('COMMISSION_ORDER_INVALID');
         if ($payload['buyer_id'] === $payload['sponsor_id'] || $payload['currency'] !== 'CNY' || $payload['policy']['enabled'] !== true || (int) $row->hold_seconds !== ($payload['policy']['hold_seconds'] ?? null)) throw new LogicException('COMMISSION_ORDER_INVALID');
-        MoneyValue::minor($payload['price_minor'], true); $this->verifyPolicy($payload['policy']);
+        MoneyValue::minor($payload['price_minor'], true);
+        $global = $payload['policy'];
+        if ($payload['schema'] === 'native-commission-order/2') {
+            $global = $payload['global_policy'] ?? []; $this->verifyPolicy($global);
+            $personal = $payload['sponsor_policy'] ?? [];
+            app(NativeCustomerPolicies::class)->verifyFrozen($row->installation_id, (int) $row->sponsor_id, $personal);
+            $effective = $global; if ($personal['commission_rate_bps'] !== null) $effective['rate_bps'] = $personal['commission_rate_bps'];
+            $mode = $personal['commission_mode'] === 'inherit' ? 'recurring' : $personal['commission_mode'];
+            if ($payload['policy'] !== $effective || ($payload['effective_mode'] ?? null) !== $mode) throw new LogicException('COMMISSION_ORDER_INVALID');
+        } else $this->verifyPolicy($payload['policy']);
         if (!$payload['policy']['enabled'] || (string) $row->policy_version !== $payload['policy']['row_version']) throw new LogicException('COMMISSION_ORDER_INVALID');
         $policy = DB::table('tx_native_commission_policy')->where('version', $row->policy_version)->sharedLock()->first();
         $referral = $this->referrals->forAccountLocked($row->installation_id, (int) $row->buyer_id);
-        if ($policy === null || $policy->installation_id !== $row->installation_id || !hash_equals($policy->content_hash, MoneyValue::hash($payload['policy']))
+        if ($policy === null || $policy->installation_id !== $row->installation_id || !hash_equals($policy->content_hash, MoneyValue::hash($global))
             || !hash_equals($policy->content_hash, MoneyValue::hash(json_decode($policy->payload_json, true, 16, JSON_THROW_ON_ERROR)))
             || $referral === null || $referral['sponsor_id'] !== (string) $row->sponsor_id || !hash_equals($payload['referral_hash'], $referral['content_hash'])) throw new LogicException('COMMISSION_ORDER_INVALID');
         return $payload;
@@ -267,7 +291,14 @@ final class NativeCommissions implements Commissions, CommissionTerms
                 || $payload['installation_id'] !== $row->installation_id || $reward->installation_id !== $row->installation_id || (string) $reward->sponsor_id !== (string) $row->sponsor_id || ($reward->journal_id === null ? null : (string) $reward->journal_id) !== $payload['journal_id']) throw new LogicException('COMMISSION_REWARD_INVALID');
             $amount = MoneyValue::minor($payload['amount_minor']); $settled = (int) $payload['settled_at'];
             if (($amount !== '0') !== ($reward->journal_id !== null) || $reward->journal_id !== null && DB::table('tx_money_journal')->where('reverses_journal_id', $reward->journal_id)->sharedLock()->exists()) throw new LogicException('COMMISSION_REWARD_INVALID');
-            if (($row->state === 'accrued') !== ($amount !== '0') || bcdiv(bcmul(MoneyValue::minor($payload['net_minor']), (string) $snapshot['policy']['rate_bps'], 0), '10000', 0) !== $amount
+            $expectedAmount = bcdiv(bcmul(MoneyValue::minor($payload['net_minor']), (string) $snapshot['policy']['rate_bps'], 0), '10000', 0);
+            if (($snapshot['schema'] ?? null) === 'native-commission-order/2') {
+                $first = app(NativeCustomerPolicies::class)->claimFirstPaidLocked(['installation_id' => $row->installation_id], (int) $row->buyer_id, false);
+                $eligible = $payload['order_payment_id'] !== null && ($snapshot['effective_mode'] !== 'first_paid' || ($first['order_id'] ?? null) === (string) $row->order_id);
+                if (($payload['eligible'] ?? null) !== $eligible || ($payload['first_paid_claim'] ?? null) !== ($payload['order_payment_id'] !== null ? $first : null)) throw new LogicException('COMMISSION_REWARD_INVALID');
+                if (!$eligible) $expectedAmount = '0';
+            }
+            if (($row->state === 'accrued') !== ($amount !== '0') || $expectedAmount !== $amount
                 || bccomp($payload['net_minor'], $snapshot['price_minor'], 0) > 0) throw new LogicException('COMMISSION_REWARD_INVALID');
             if ($amount !== '0') {
                 $journal = $this->ledger->inspectJournalLocked((int) $reward->journal_id);
