@@ -15,6 +15,7 @@ import { PageHeader } from '../components/ui/PageHeader'
 import type { Column } from '../components/ui/DataTable'
 import { requestConfirm } from '../components/ui/ConfirmDialog'
 import { RowActionsMenu } from '../components/ui/RowActionsMenu'
+import { Tag } from '../components/ui/Tag'
 import { Modal } from '../components/ui/Modal'
 
 type Kind = 'notices' | 'knowledge'
@@ -215,8 +216,8 @@ export function ContentPage({ kind }: { kind: Kind }) {
   }
   const columns: Column<Row>[] = [
     { key: 'title', header: t("标题"), render: row => <div className="native-row-identity"><strong>{row.title}</strong><small>#{row.id}{t("· 版本")}{row.row_version}</small></div> },
-    { key: 'status', header: t("发布状态"), render: row => <span className="support-tag" data-tone={row.show ? 'success' : undefined}>{row.show ? t("已启用") : t("草稿")}</span> },
-    { key: 'scope', header: t("可见范围"), render: row => <span className="support-tag">{row.audience === 'subscribed' ? t("有效订阅用户") : t("已登录用户")}</span> },
+    { key: 'status', header: t("发布状态"), render: row => <Tag tone={row.show ? 'success' : 'neutral'}>{row.show ? t("已启用") : t("草稿")}</Tag> },
+    { key: 'scope', header: t("可见范围"), render: row => <Tag tone={row.audience === 'subscribed' ? 'info' : 'neutral'}>{row.audience === 'subscribed' ? t("有效订阅用户") : t("已登录用户")}</Tag> },
     { key: 'sort', header: t("排序"), render: row => row.sort },
     ...(kind === 'knowledge' ? [{ key: 'category', header: t("分类"), render: (row: Row) => 'category' in row ? row.category : '' },
       { key: 'language', header: t("语言"), render: (row: Row) => 'language' in row ? languages.find(([code]) => code === row.language)?.[1] ?? row.language : '' }] : []),
@@ -242,7 +243,7 @@ export function ContentPage({ kind }: { kind: Kind }) {
         {categoryFilter || visibilityFilter ? <button type="button" className="button" onClick={() => { setCategoryFilter(''); setVisibilityFilter('') }}>{t("清除当前页筛选")}</button> : null}
       </form><p className="support-filter-scope">{t('标题在全部分页中查询；分类与发布状态只筛选当前页，不改变分页总数。当前显示 {visible} / {total} 项。', { visible: visibleRows.length, total: pageRows.length })}</p>
     </ReadList>
-    {sortRows.length && !blocked ? <section className="list-card support-sort"><div className="support-heading"><div><h2>{t("完整排序")}</h2><p>{t("拖动内容调整顺序，也可使用上移或下移按钮，确认后统一保存")}</p></div><span className="support-tag">{sortRows.length}{t("项")}</span></div>
+    {sortRows.length && !blocked ? <section className="list-card support-sort"><div className="support-heading"><div><h2>{t("完整排序")}</h2><p>{t("拖动内容调整顺序，也可使用上移或下移按钮，确认后统一保存")}</p></div><Tag>{sortRows.length}{t("项")}</Tag></div>
       <p className="support-sort-feedback" role="status" aria-live="polite">{sortMessage ? t("已将「{v0}」移动到第 {v1} 项，保存后生效", { v0: sortMessage.title, v1: sortMessage.position }) : t("当前为全部内容的展示顺序，修改后需保存排序。")}</p>
       <ol>{sortRows.map((row, index) => <li key={row.id} data-drop-target={dragTarget === row.id || undefined}
         onDragOver={event => { if (locked || !draggedRow.current) return; event.preventDefault(); event.dataTransfer.dropEffect = 'move'; setDragTarget(row.id) }}
@@ -254,8 +255,8 @@ export function ContentPage({ kind }: { kind: Kind }) {
         <div className="support-actions"><button className="button" disabled={locked || index === 0} onClick={() => reorder(index, index - 1)}>{t("上移")}</button><button className="button" disabled={locked || index === sortRows.length - 1} onClick={() => reorder(index, index + 1)}>{t("下移")}</button></div>
       </li>)}</ol><div className="support-actions"><button className="button" disabled={locked} onClick={() => void saveSort()}>{t("保存排序")}</button><button className="button" disabled={locked} onClick={() => { setSortRows([]); setSortMessage(undefined); draggedRow.current = ''; setDragTarget('') }}>{t("取消")}</button></div></section> : null}
     <Modal open={editing && !blocked} title={selected ? t("编辑内容") : t("新增草稿")} subtitle={t("设置正文、可见范围与发布时间")} wide onClose={closeEditor}
-      className="support-page support-content-editor" bodyClassName="support-content-editor-body"
-      headerAction={<span className="support-tag" data-tone={draft.show ? 'success' : undefined}>{draft.show ? t("启用发布") : t("草稿")}</span>}
+      className="support-page support-content-editor admin-form-dialog" bodyClassName="support-content-editor-body"
+      headerAction={<Tag tone={draft.show ? 'success' : 'neutral'}>{draft.show ? t("启用发布") : t("草稿")}</Tag>}
       footer={<div className="support-form-footer"><span>{dirty ? t("有未保存的修改") : selected ? t("编辑当前内容") : t("保存后可继续调整发布设置")}</span><div className="support-actions"><button type="submit" form={formId} className="button primary" disabled={locked || !!selected && (!detail.data || detail.isError || detail.isFetching)}><Save size={14} />{t("保存")}</button><button className="button" type="button" disabled={state.busy} onClick={closeEditor}>{t("关闭编辑")}</button></div></div>}>
       <div ref={editor}>
       {selected ? <ManagementFeedback error={detail.isError ? detail.error : undefined} loading={detail.isFetching} onRetry={() => void detail.refetch()} /> : null}

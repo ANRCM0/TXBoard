@@ -17,6 +17,7 @@ import { isoDate, minorAmount, orderStatus, readPage, validId, validTradeNo } fr
 import { PageHeader } from '../../components/ui/PageHeader'
 import { FilterBar } from '../../components/ui/FilterBar'
 import { FacetedFilter } from '../../components/ui/FacetedFilter'
+import { Tag } from '../../components/ui/Tag'
 import { Input } from '../../components/ui/Field'
 import { StatusBadge } from '../../components/ui/StatusBadge'
 import { CopyButton } from '../../components/ui/CopyButton'
@@ -64,7 +65,7 @@ export function OrdersPage() {
   }
   const columns: Column<Order>[] = [
     { key: 'trade', header: t("订单号"), hideable: false, pin: 'left', render: row => <div className="native-row-identity"><div className="order-copy-line"><button className="native-read-link commerce-order-link" onClick={() => setDetail(row.trade_no)}>{row.trade_no}</button><CopyButton value={row.trade_no} label={t("复制订单号")} /></div><small>{t('订单 #{id}', { id: row.id })}</small></div> },
-    { key: 'type', header: t("类型"), render: row => <span className="reference-tag order-type-tag" data-type={row.type}>{orderType(row.type)}</span> },
+    { key: 'type', header: t("类型"), render: row => <Tag tone={row.type === 2 ? 'success' : row.type === 3 ? 'info' : 'neutral'}>{orderType(row.type)}</Tag> },
     { key: 'user', header: t("用户 ID"), render: row => <Link className="table-link" to={'/user/' + row.user_id}>#{row.user_id}</Link> },
     { key: 'plan', header: t("套餐 / 周期"), render: row => <div className="order-plan-cell"><strong>{row.plan?.name ?? t("未记录")}</strong><small>{orderPeriod(row.period)}</small></div> },
     { key: 'amount', header: t("订单金额"), render: row => <strong className="reference-number">{minorAmount(row.amount_minor, row.currency)}</strong> },
@@ -82,7 +83,7 @@ export function OrdersPage() {
       ready={!!data} loading={query.isFetching} error={query.isError ? query.error : undefined}
       onRetry={() => void recovery.refresh()} onPage={paginate}
       columnSettingsKey="orders" stickyHeader stickyFirstColumn mobilePrimaryKey="trade">
-      <header className="commerce-card-heading"><div><h2>{t("订单列表")}</h2><p>{t("按用户、订单号或处理状态查询购买记录")}</p></div>{data ? <span className="reference-tag">{t('{count} 笔订单', { count: formatNumber(data.meta.total) })}</span> : null}</header><form className="management-filter-form" onSubmit={apply}>
+      <header className="commerce-card-heading"><div><h2>{t("订单列表")}</h2><p>{t("按用户、订单号或处理状态查询购买记录")}</p></div>{data ? <Tag>{t('{count} 笔订单', { count: formatNumber(data.meta.total) })}</Tag> : null}</header><form className="management-filter-form" onSubmit={apply}>
         <FilterBar applied={[
           ...(appliedUser ? [{ key: 'user', label: t('用户 #{id}', { id: appliedUser }) }] : []),
           ...(appliedTrade ? [{ key: 'trade', label: t('订单 {trade}', { trade: appliedTrade }) }] : []),

@@ -98,8 +98,8 @@ export function GroupsPage() {
         <FacetedFilter label={t("资源关联")} value={associations} onChange={setAssociations} disabled={denied || list.isError} options={associationOptions.map(option => ({ ...option, count: allRows.filter(option.test).length }))} />
       </FilterBar>
     </ReadList>
-    <Modal open={editing && !denied} title={id ? t("编辑分组") : t("新增分组")} subtitle={t("名称最长 255 个字符，原有资源关联继续保留。")} className="network-reference-page network-editor-modal" onClose={closeEditor}
-      footer={<><button className="button" type="button" disabled={state.busy} onClick={closeEditor}>{t("取消")}</button><button className="button" type="submit" form={formId} disabled={locked || !name.trim()}><Layers size={15} aria-hidden="true" />{t("保存分组")}</button></>}>
+    <Modal open={editing && !denied} title={id ? t("编辑分组") : t("新增分组")} subtitle={t("名称最长 255 个字符，原有资源关联继续保留。")} className="network-reference-page network-editor-modal admin-form-dialog" onClose={closeEditor}
+      footer={<><button className="button" type="button" disabled={state.busy} onClick={closeEditor}>{t("取消")}</button><button className="button primary" type="submit" form={formId} disabled={locked || !name.trim()}><Layers size={15} aria-hidden="true" />{t("保存分组")}</button></>}>
       <div className="network-editor-body"><p className="network-editor-note">{t("权限分组用于关联用户、套餐与可访问的节点。删除前请先解除资源关联。")}</p>{error || operationError ? <p role="alert">{error ? t(error) : managementError(operationError)}</p> : null}
       {pending ? <div role="status"><p>{t("保存结果等待确认；将复用原名称和原请求编号。")}</p><button type="button" className="button" disabled={state.busy || denied || list.isFetching || list.isError} onClick={() => void recover()}>{t("确认原分组操作")}</button></div> : null}
       {list.isError ? <p role="alert">{t("分组列表读取失败，请关闭编辑后重新加载。")}</p> : null}

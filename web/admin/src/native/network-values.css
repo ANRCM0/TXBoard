@@ -1,0 +1,15 @@
+.network-traffic-split { display: grid; min-width: 178px; gap: 7px; }
+.network-traffic-split-values { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.network-traffic-split-values > span { display: flex; min-width: 0; align-items: baseline; gap: 5px; }
+.network-traffic-split-values small { flex: none; color: var(--muted); font-size: 10px; }
+.network-traffic-split-values code { overflow: hidden; color: var(--fg); font-size: 11.5px; font-variant-numeric: tabular-nums; text-overflow: ellipsis; white-space: nowrap; }
+.network-traffic-split-bar {
+  display: flex;
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--panel-muted);
+}
+.network-traffic-split-bar > span { display: block; height: 100%; }
+.network-traffic-split-bar > .is-upload { background: var(--data-blue); }
+.network-traffic-split-bar > .is-download { flex: 1; background: var(--data-cyan); opacity: .62; }

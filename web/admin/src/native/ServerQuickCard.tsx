@@ -70,6 +70,7 @@ export function ServerQuickCard({ machine }: { machine: ServerQuickMachine }) {
         <footer className="server-quick-actions">
           <Link className="button" to={'/server/machine/' + machine.id}>{t("查看详情")}</Link>
           <Link className="button" to={'/server/manage?machine_id=' + machine.id}>{t("绑定节点")}</Link>
+          <Link className="button" to={'/server/manage?machine_id=' + machine.id + '&open_create=1'}>{t("创建节点")}</Link>
         </footer>
       </div>
     </Popover>

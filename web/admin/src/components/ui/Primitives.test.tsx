@@ -11,6 +11,7 @@ import { DetailSection } from './DetailSection'
 import { DangerZone } from './DangerZone'
 import { Popover } from './Popover'
 import { RowActionsMenu } from './RowActionsMenu'
+import { Tag } from './Tag'
 import { ColumnSettings, useColumnVisibility } from './ColumnSettings'
 
 function mount(node: ReactNode) {
@@ -122,6 +123,15 @@ it('keeps required identity and action columns visible despite stale stored pref
     act(() => inputs[1].click())
     expect(host.querySelector('output')!.textContent).toBe('')
   } finally { act(() => root.unmount()); host.remove(); localStorage.removeItem('txboard:admin:columns:required-columns') }
+})
+
+it('renders shared tag tones without page-specific classes', () => {
+  const { host, root } = mount(<><Tag>草稿</Tag><Tag tone="success" mono>stable</Tag><Tag tone="danger">已封禁</Tag></>)
+  try {
+    expect(host.querySelector('.ui-tag.is-neutral')?.textContent).toBe('草稿')
+    expect(host.querySelector('.ui-tag.is-success.is-mono')?.textContent).toBe('stable')
+    expect(host.querySelector('.ui-tag.is-danger')?.textContent).toBe('已封禁')
+  } finally { act(() => root.unmount()); host.remove() }
 })
 
 it('groups row actions into an accessible overflow menu', () => {

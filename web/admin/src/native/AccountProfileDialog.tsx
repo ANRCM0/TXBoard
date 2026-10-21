@@ -12,7 +12,7 @@ export function AccountProfileDialog({ userId, locked, onClose, onChanged }: { u
     queryFn: ({ signal }) => admin.read('identity.accounts.get', { user_id: userId }, signal) })
   const user = query.isError ? undefined : query.data?.data
   if (user?.identity_editable && user.identity_revision) return <AccountProfileEditor key={user.id + ':' + user.identity_revision} user={user} locked={locked || query.isFetching} onClose={onClose} onChanged={onChanged} />
-  return <Modal open title={t("编辑登录资料")} onClose={onClose}>
+  return <Modal open title={t("编辑登录资料")} className="admin-form-dialog" onClose={onClose}>
     <ManagementFeedback loading={query.isFetching} error={query.error} onRetry={() => void query.refetch()} />
     {user ? <p>{t("该账户受保护，不能通过普通资料操作修改。")}</p> : null}
     <button className="button" onClick={onClose}>{t("关闭")}</button>

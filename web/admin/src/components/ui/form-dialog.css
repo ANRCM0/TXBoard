@@ -1,0 +1,56 @@
+/* Shared chrome for create/edit dialogs. The node editor extends this language
+ * with numbered sections; smaller forms use the same header, body and footer. */
+.admin-form-dialog .modal-header {
+  gap: 14px;
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel-soft);
+}
+.admin-form-dialog .modal-title h3 {
+  font-family: var(--font-mono);
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -.03em;
+}
+.admin-form-dialog .modal-title p { max-width: 62ch; margin-top: 6px; font-size: 12px; line-height: 1.65; }
+.admin-form-dialog .modal-body {
+  padding: 20px 24px 24px;
+  background: var(--bg);
+}
+.admin-form-dialog .modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 24px;
+  border-top: 1px solid var(--border);
+  background: var(--panel-soft);
+}
+.admin-form-dialog .modal-footer .button { min-width: 92px; justify-content: center; }
+.admin-form-dialog :is(.native-content-form, form) :is(.ui-field-label, label > span) {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .01em;
+}
+.admin-form-dialog :is(.native-content-form, form) :is(
+  input:where(:not([type=checkbox]):not([type=radio]):not([type=file])),
+  select,
+  textarea
+) {
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+.admin-form-dialog :is(.native-content-form, form) input::placeholder,
+.admin-form-dialog :is(.native-content-form, form) textarea::placeholder { font-family: var(--font-sans); }
+.admin-form-dialog .modal-body > .network-form-actions,
+.admin-form-dialog .modal-body > .settings-form-actions { border-top: 0; padding-top: 0; }
+
+@media (max-width: 600px) {
+  .admin-form-dialog .modal-header { padding: 18px 16px 14px; }
+  .admin-form-dialog .modal-body { padding: 14px 16px 18px; }
+  .admin-form-dialog .modal-footer { flex-wrap: wrap; padding: 12px 16px; }
+  .admin-form-dialog .modal-footer .button { flex: 1; }
+}
+.admin-form-dialog .ui-field > .ui-field-label { display: block; }

@@ -21,6 +21,7 @@ import { FilterBar } from '../../components/ui/FilterBar'
 import { FacetedFilter } from '../../components/ui/FacetedFilter'
 import { Field, Input } from '../../components/ui/Field'
 import { StatusBadge } from '../../components/ui/StatusBadge'
+import { Tag } from '../../components/ui/Tag'
 import { CopyButton } from '../../components/ui/CopyButton'
 import { RowActionsMenu } from '../../components/ui/RowActionsMenu'
 import { requestConfirm } from '../../components/ui/ConfirmDialog'
@@ -32,7 +33,7 @@ const baseColumns = (): Column<Account>[] => [
   { key: 'email', header: t("用户"), hideable: false, pin: 'left', render: row => <div className="reference-account"><span className="reference-account-avatar" aria-hidden="true">{row.email.slice(0, 1).toUpperCase()}</span><div className="user-account-identity"><div className="user-copy-line"><Link className="table-link" to={'/user/' + row.id}>{row.email}</Link><CopyButton value={row.email} label={t("复制用户邮箱")} /></div><small>{row.is_admin ? t("管理账户") : t("站点账户")}</small></div></div> },
   { key: 'id', header: t("用户 ID"), render: row => <div className="user-copy-line"><code className="reference-user-id">#{row.id}</code><CopyButton value={row.id} label={t("复制用户 ID")} /></div> },
   { key: 'state', header: t("状态"), description: t("封禁后账号无法继续使用站点服务；解封后恢复访问。"), render: row => <StatusBadge tone={row.banned ? 'danger' : 'success'}>{row.banned ? t("已封禁") : t("正常")}</StatusBadge> },
-  { key: 'role', header: t("角色"), render: row => <span className={'reference-tag user-role-tag ' + (row.is_admin ? 'is-primary' : '')}>{row.is_admin ? <ShieldCheck size={13} aria-hidden="true" /> : null}{row.is_admin ? t("管理员") : t("用户")}</span> },
+  { key: 'role', header: t("角色"), render: row => <Tag tone={row.is_admin ? 'info' : 'neutral'} className="user-role-tag">{row.is_admin ? <ShieldCheck size={13} aria-hidden="true" /> : null}{row.is_admin ? t("管理员") : t("用户")}</Tag> },
   { key: 'created', header: t("注册时间"), render: row => unixDate(row.created_at) },
   { key: 'login', header: t("最近登录"), render: row => row.last_login_at === null ? <span className="user-never-login">{t("尚未登录")}</span> : unixDate(row.last_login_at) },
 ]
@@ -172,7 +173,7 @@ export function UsersPage() {
       ready={!!data} loading={query.isFetching} error={query.isError ? query.error : undefined}
       onRetry={() => void recovery.refresh()} onPage={paginate}
       columnSettingsKey="users" stickyHeader stickyFirstColumn mobilePrimaryKey="email">
-      <header className="reference-user-list-heading"><div><h2>{t("用户列表")}</h2><p>{t("按邮箱精确定位，或筛选账户状态")}</p></div>{data ? <span className="reference-tag">{t('{count} 位用户', { count: formatNumber(data.meta.total) })}</span> : null}</header>
+      <header className="reference-user-list-heading"><div><h2>{t("用户列表")}</h2><p>{t("按邮箱精确定位，或筛选账户状态")}</p></div>{data ? <Tag>{t('{count} 位用户', { count: formatNumber(data.meta.total) })}</Tag> : null}</header>
       <form className="management-filter-form" onSubmit={apply}>
         <FilterBar applied={[
           ...(appliedEmail ? [{ key: 'email', label: t('邮箱 {email}', { email: appliedEmail }) }] : []),

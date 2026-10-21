@@ -1368,3 +1368,6 @@ input[type=checkbox], input[type=radio] { accent-color: var(--primary); }
   .admin-nav-root,
   .admin-nav-sub { transition: none; }
 }
+
+/* A FilterBar is the full control row when it is the direct child of a legacy filter form. */
+.native-filters > .ui-filter-bar { flex: 1 1 100%; }

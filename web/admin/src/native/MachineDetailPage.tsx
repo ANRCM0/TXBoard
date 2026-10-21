@@ -1,6 +1,6 @@
 import { t, useLocale } from '../lib/i18n'
 import { CopyButton } from '../components/ui/CopyButton'
-import { RefreshCw, Server, Settings2 } from 'lucide-react'
+import { Plus, RefreshCw, Server, Settings2 } from 'lucide-react'
 import './network-reference.css'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
@@ -70,7 +70,7 @@ export function MachineDetailPage() {
     await management.perform(() => workflowActions.run('network.machines.delete', { machine_id: machine.id }), () => navigate('/server/machine'))
   }
   return <div className="native-management-page network-reference-page network-machine-detail-page">
-    <PageHeader title={t("服务器详情")} description={t("管理服务器配置并查看已绑定节点。")} action={<><Link className="button" to="/server/machine">{t("返回服务器列表")}</Link><button className="button" disabled={query.isFetching || management.state.busy} onClick={() => void reload()}><RefreshCw size={15} aria-hidden="true" />{t("刷新服务器")}</button></>} />
+    <PageHeader title={t("服务器详情")} description={t("管理服务器配置并查看已绑定节点。")} action={<><Link className="button" to="/server/machine">{t("返回服务器列表")}</Link><button className="button" disabled={query.isFetching || management.state.busy} onClick={() => void reload()}><RefreshCw size={15} aria-hidden="true" />{t("刷新服务器")}</button><Link className="button primary" to={'/server/manage?machine_id=' + machineId + '&open_create=1'}><Plus size={15} aria-hidden="true" />{t("创建节点")}</Link></>} />
     <NetworkRecovery management={management} blocked={!machine || query.isFetching || query.isError || nodesBlocked || (!!management.pending && 'machine_id' in management.pending.input && management.pending.input.machine_id !== machine.id)} />
     <ManagementFeedback error={query.error} loading={query.isFetching} onRetry={() => void reload()} notFoundMessage={t("服务器不存在或已被删除。")} />
     {machine ? <>

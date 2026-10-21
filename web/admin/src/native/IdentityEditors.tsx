@@ -1,6 +1,6 @@
 import { t, useLocale } from '../lib/i18n'
 import { useDirtyDraft } from '../lib/useDirtyDraft'
-import { useEffect, useRef, useState, useSyncExternalStore, type FormEvent } from 'react'
+import { useEffect, useId, useRef, useState, useSyncExternalStore, type FormEvent } from 'react'
 import type { CoreOutput } from '@txboard/core-sdk'
 import { Link } from 'react-router-dom'
 import { Modal } from '../components/ui/Modal'
@@ -63,6 +63,7 @@ export function BatchAccountDialog({ locked, onClose, onCreated }: { locked: boo
 export function AccountProfileEditor({ user, locked, onClose, onChanged }: { user: CoreOutput<'identity.accounts.get'>; locked: boolean; onClose: () => void; onChanged: () => void }) {
   useLocale()
   const state = useSyncExternalStore(workflowActions.subscribe, workflowActions.snapshot)
+  const formId = useId()
   const [email, setEmail] = useState(user.email), [password, setPassword] = useState(''), [error, setError] = useState('')
   const mounted = useRef(true), generation = workflowActions.generation()
   const draftScope = useRef(user.id + ':' + user.identity_revision + ':' + generation)
@@ -89,11 +90,13 @@ export function AccountProfileEditor({ user, locked, onClose, onChanged }: { use
       if (workflowActions.snapshot().pending) onClose()
     }
   }
-  return <Modal open title={t("编辑登录资料")} subtitle={t("修改邮箱或密码会撤销现有登录会话；代理连接凭据由凭据提供方管理")} onClose={close}>
-    <form className="native-content-form" onSubmit={submit}>
+  return <Modal open title={t("编辑登录资料")} subtitle={t("修改邮箱或密码会撤销现有登录会话；代理连接凭据由凭据提供方管理")} onClose={close}
+    className="admin-form-dialog"
+    footer={<><button type="button" className="button" disabled={state.busy} onClick={close}>{t("取消")}</button><button type="submit" form={formId} className="button primary" disabled={locked || state.busy || !!state.pending}>{t("保存登录资料")}</button></>}>
+    <form id={formId} className="native-content-form" onSubmit={submit}>
       <Field label={t("登录邮箱")} required><Input type="email" value={email} maxLength={254} disabled={locked || state.busy} onChange={event => setEmail(event.target.value)} /></Field>
       <Field label={t("新登录密码")} hint={t("留空保留原密码；不会修改订阅、余额或代理凭据")}><Input type="password" value={password} maxLength={255} minLength={8} autoComplete="new-password" disabled={locked || state.busy} onChange={event => setPassword(event.target.value)} /></Field>
-      {error ? <><p role="alert">{t(error)}</p><button type="button" className="button" disabled={state.busy} onClick={() => { if (canClose()) onChanged() }}>{t("重新读取资料")}</button></> : null}<div className="network-form-actions"><button className="button primary" disabled={locked || state.busy || !!state.pending}>{t("保存登录资料")}</button><button type="button" className="button" disabled={state.busy} onClick={close}>{t("取消")}</button></div>
+      {error ? <><p role="alert">{t(error)}</p><button type="button" className="button" disabled={state.busy} onClick={() => { if (canClose()) onChanged() }}>{t("重新读取资料")}</button></> : null}
     </form>
   </Modal>
 }

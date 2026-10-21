@@ -18,6 +18,7 @@ import { admin, workflowActions } from './session'
 import { MachineCreateDialog } from './MachineCreateDialog'
 import { ManagementFeedback } from './Feedback'
 import { FacetedFilter } from '../components/ui/FacetedFilter'
+import { Tag } from '../components/ui/Tag'
 import { NetworkBytes } from './NetworkValues'
 import { ServerQuickCard } from './ServerQuickCard'
 
@@ -28,7 +29,7 @@ const columns: Column<Machine>[] = [
   { key: 'active', header: '管理状态', render: row => <StatusBadge tone={row.is_active ? 'success' : 'neutral'}>{row.is_active ? t("已启用") : t("已停用")}</StatusBadge> },
   { key: 'online', header: '连接状态', render: row => row.observation ? <StatusBadge tone={row.observation.online ? 'success' : 'neutral'}>{row.observation.online ? t('在线') : t('离线')}</StatusBadge> : <span className="network-muted">{t('未上报')}</span> },
   { key: 'load', header: '运行负载', render: row => row.observation?.telemetry_fresh ? <div><span>{row.observation.cpu_percent === null ? t('未上报') : 'CPU ' + row.observation.cpu_percent + '%'}</span><small className="network-machine-memory">{t('内存')} <NetworkBytes value={row.observation.memory_used_bytes} /> / <NetworkBytes value={row.observation.memory_total_bytes} /></small>{row.observation.high_load ? <StatusBadge tone="warning">{t('高负载')}</StatusBadge> : null}</div> : <span className="network-muted">{t('负载未上报或已过期')}</span> },
-  { key: 'channel', header: '镜像通道', render: row => <span className="network-tag is-info">{row.image_channel}</span> },
+  { key: 'channel', header: '镜像通道', render: row => <Tag tone="info" mono>{row.image_channel}</Tag> },
   { key: 'nodes', header: '绑定节点', render: row => <span className="network-count">{row.servers_count}</span> },
   { key: 'seen', header: '最近心跳', render: row => <span className={'network-timestamp' + (row.last_seen_at === null ? ' network-muted' : '')}>{row.last_seen_at === null ? t("尚未上报心跳") : formatTimestamp(row.last_seen_at)}</span> },
   { key: 'details', header: '操作', render: row => <Link className="network-icon-link" title={t("查看详情")} aria-label={t("查看 {name} 详情", { name: row.name })} to={'/server/machine/' + row.id}><ArrowUpRight size={16} /></Link> },

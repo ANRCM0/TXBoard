@@ -1,6 +1,6 @@
 import { t, useLocale } from '../lib/i18n'
 import { useDirtyDraft } from '../lib/useDirtyDraft'
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useId, useState, type FormEvent } from 'react'
 import type { CoreInput } from '@txboard/core-sdk'
 import { Modal } from '../components/ui/Modal'
 import { Field, Input, Select, Switch, Textarea } from '../components/ui/Field'
@@ -12,6 +12,7 @@ export function MachineCreateDialog({ open, locked, onClose, onCreate }: {
   onCreate: (input: CoreInput<'network.machines.create'>) => Promise<void>
 }) {
   useLocale()
+  const formId = useId()
   const [name, setName] = useState(''), [notes, setNotes] = useState('')
   const [active, setActive] = useState(true), [channel, setChannel] = useState<'stable' | 'dev'>('stable')
   useEffect(() => { if (open) { setName(''); setNotes(''); setActive(true); setChannel('stable') } }, [open])
@@ -25,8 +26,10 @@ export function MachineCreateDialog({ open, locked, onClose, onCreate }: {
     if (locked || !name.trim()) return
     await onCreate({ name: name.trim(), notes: notes.trim() || null, is_active: active, image_channel: channel })
   }
-  return <Modal open={open} title={t("新建服务器")} subtitle={t("创建后可在详情中查看认证信息、安装命令和负载历史。")} onClose={close}>
-    <form className="native-content-form" onSubmit={event => void submit(event)}>
+  return <Modal open={open} title={t("新建服务器")} subtitle={t("创建后可在详情中查看认证信息、安装命令和负载历史。")} onClose={close}
+    className="admin-form-dialog"
+    footer={<><button type="button" className="button" disabled={locked} onClick={close}>{t("取消")}</button><button type="submit" form={formId} className="button primary" disabled={locked || !name.trim()}>{t("创建服务器")}</button></>}>
+    <form id={formId} className="native-content-form" onSubmit={event => void submit(event)}>
       <Field label={t("服务器名称")} required hint={t("建议包含地区和用途，方便节点绑定时识别。")}>
         <Input data-autofocus required maxLength={255} disabled={locked} value={name} onChange={event => setName(event.target.value)} />
       </Field>
@@ -39,10 +42,6 @@ export function MachineCreateDialog({ open, locked, onClose, onCreate }: {
       <Field label={t("备注")} hint={t("{v0} / 2000 字符", { v0: notes.length })}>
         <Textarea rows={4} maxLength={2000} disabled={locked} value={notes} onChange={event => setNotes(event.target.value)} />
       </Field>
-      <div className="network-form-actions">
-        <button className="button" data-primary="true" disabled={locked || !name.trim()}>{t("创建服务器")}</button>
-        <button type="button" className="button" disabled={locked} onClick={close}>{t("取消")}</button>
-      </div>
     </form>
   </Modal>
 }

@@ -18,6 +18,7 @@ import { FacetedFilter } from '../components/ui/FacetedFilter'
 import { Field, Input, Select, Textarea } from '../components/ui/Field'
 import type { Column } from '../components/ui/DataTable'
 import { Modal } from '../components/ui/Modal'
+import { Tag } from '../components/ui/Tag'
 import { requestConfirm } from '../components/ui/ConfirmDialog'
 
 type Ticket = CoreOutput<'support.admin-tickets.list'>[number]
@@ -168,8 +169,8 @@ export function TicketsPage() {
   }
   const columns: Column<Ticket>[] = [
     { key: 'subject', header: t("主题"), render: row => <div className="native-row-identity"><strong>{row.subject}</strong><small>#{row.id}{t("· 用户")}{row.user_id}</small></div> },
-    { key: 'status', header: t("状态"), render: row => <span className="support-tag" data-tone={row.status === 0 ? 'warning' : undefined}>{row.status === 0 ? t("处理中") : t("已关闭")}</span> },
-    { key: 'reply', header: t("回复"), render: row => <span className="support-tag" data-tone={row.reply_status === 1 ? 'success' : 'warning'}>{row.reply_status === 1 ? t("已回复") : t("待回复")}</span> },
+    { key: 'status', header: t("状态"), render: row => <Tag tone={row.status === 0 ? 'warning' : 'neutral'}>{row.status === 0 ? t("处理中") : t("已关闭")}</Tag> },
+    { key: 'reply', header: t("回复"), render: row => <Tag tone={row.reply_status === 1 ? 'success' : 'warning'}>{row.reply_status === 1 ? t("已回复") : t("待回复")}</Tag> },
     { key: 'assignment', header: t("负责人"), render: row => row.assigned_admin_id ? t("客服 #") + row.assigned_admin_id : t("未分配") },
     { key: 'updated', header: t("更新时间"), render: row => <time dateTime={row.updated_at}>{isoDate(row.updated_at)}</time> },
     { key: 'actions', header: t("操作"), render: row => <button className="button" onClick={() => selectTicket(row.id)}><MessageSquare size={14} />{t("查看")}</button> },

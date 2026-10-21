@@ -18,6 +18,7 @@ import './admin-monitor-density.css'
 import './native/native.css'
 import './admin-theme.css'
 import './components/ui/ui.css'
+import './components/ui/form-dialog.css'
 import './admin-refresh.css'
 
 function RouteLoading() {
