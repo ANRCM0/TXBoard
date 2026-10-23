@@ -18,11 +18,13 @@ import { DangerZone } from '../components/ui/DangerZone'
 import { StatusBadge } from '../components/ui/StatusBadge'
 import { Field, Input, Select, Switch, Textarea } from '../components/ui/Field'
 import { MachineCredentialsPanel, MachineHistoryPanel } from './MachineRuntimePanels'
+import { useAdminConfirmation } from './useAdminConfirmation'
 
 export function MachineDetailPage() {
   useLocale()
   const client = useQueryClient()
   const { machineId = '' } = useParams(), navigate = useNavigate()
+  const confirm = useAdminConfirmation(() => !management.denied && !!machine, machineId)
   const [name, setName] = useState(''), [notes, setNotes] = useState('')
   const [active, setActive] = useState(false), [channel, setChannel] = useState('stable')
   const [runtimeError, setRuntimeError] = useState<unknown>()
@@ -46,7 +48,7 @@ export function MachineDetailPage() {
     setName(next.name); setNotes(next.notes); setActive(next.active); setChannel(next.channel)
   }, [machine])
   async function reload() {
-    if (baseline.current.id && currentDraft.current !== baseline.current.value && !window.confirm(t('服务器配置尚未保存，重新读取将替换草稿，确定继续？'))) return
+    if (baseline.current.id && currentDraft.current !== baseline.current.value && !(await confirm(t('服务器配置尚未保存，重新读取将替换草稿，确定继续？')))) return
     discardOnRefresh.current = true
     try {
       if (await management.refresh()) {
@@ -62,17 +64,17 @@ export function MachineDetailPage() {
   const locked = !machine || query.isFetching || nodesBlocked || management.state.busy || !!management.state.pending
   useDirtyDraft(!!machine && baseline.current.id === machine.id && currentDraft.current !== baseline.current.value)
   async function save() {
-    if (locked || !machine || !name.trim() || !['stable', 'dev'].includes(channel) || !window.confirm(t("确定保存服务器配置？请核对当前配置后继续。"))) return
+    if (locked || !machine || !name.trim() || !['stable', 'dev'].includes(channel) || !(await confirm(t("确定保存服务器配置？请核对当前配置后继续。")))) return
     await management.perform(() => workflowActions.run('network.machines.update', { machine_id: machine.id, name: name.trim(), notes: notes || null, is_active: active, image_channel: channel as 'stable' | 'dev' }), () => { baseline.current.value = currentDraft.current })
   }
   async function remove() {
-    if (locked || !machine || !window.confirm(t("确定删除服务器 {name}？其绑定节点将全部解除服务器归属，节点本身保留。", { name: machine.name }))) return
+    if (locked || !machine || !(await confirm(t("确定删除服务器 {name}？其绑定节点将全部解除服务器归属，节点本身保留。", { name: machine.name })))) return
     await management.perform(() => workflowActions.run('network.machines.delete', { machine_id: machine.id }), () => navigate('/server/machine'))
   }
   return <div className="native-management-page network-reference-page network-machine-detail-page">
     <PageHeader title={t("服务器详情")} description={t("管理服务器配置并查看已绑定节点。")} action={<><Link className="button" to="/server/machine">{t("返回服务器列表")}</Link><button className="button" disabled={query.isFetching || management.state.busy} onClick={() => void reload()}><RefreshCw size={15} aria-hidden="true" />{t("刷新服务器")}</button><Link className="button primary" to={'/server/manage?machine_id=' + machineId + '&open_create=1'}><Plus size={15} aria-hidden="true" />{t("创建节点")}</Link></>} />
     <NetworkRecovery management={management} blocked={!machine || query.isFetching || query.isError || nodesBlocked || (!!management.pending && 'machine_id' in management.pending.input && management.pending.input.machine_id !== machine.id)} />
-    <ManagementFeedback error={query.error} loading={query.isFetching} onRetry={() => void reload()} notFoundMessage={t("服务器不存在或已被删除。")} />
+    <ManagementFeedback error={query.error} loading={query.isFetching} onRetry={async () => void (await reload())} notFoundMessage={t("服务器不存在或已被删除。")} />
     {machine ? <>
       <DetailSection label={t("服务器配置概况")} title={machine.name} description={t("服务器 #{id} · {channel}", { id: machine.id, channel: machine.image_channel })}
         icon={<Server size={17} />} className="network-profile-card"
@@ -87,7 +89,7 @@ export function MachineDetailPage() {
       <MachineCredentialsPanel key={'credentials-' + machine.id} machineId={machine.id} disabled={locked} onAuthorizationFailure={setRuntimeError} />
       <DetailSection label={t("服务器设置")} title={t("服务器设置")} description={t("设置名称、镜像通道和管理状态。保存前请核对当前配置。")}
         icon={<Settings2 size={17} />} className="network-settings-card">
-        <form className="native-content-form" onSubmit={event => { event.preventDefault(); void save() }}>
+        <form className="native-content-form" onSubmit={async event => { event.preventDefault(); void (await save()) }}>
           <Field label={t("服务器名称")} required hint={t("用于识别资源归属，建议包含区域和用途。")}>
             <Input required maxLength={255} value={name} disabled={locked} onChange={event => setName(event.target.value)} />
           </Field>

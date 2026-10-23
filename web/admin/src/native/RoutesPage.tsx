@@ -13,6 +13,7 @@ import { PageHeader } from '../components/ui/PageHeader'
 import { Checkbox } from '../components/ui/Field'
 import { FilterBar } from '../components/ui/FilterBar'
 import { FacetedFilter } from '../components/ui/FacetedFilter'
+import { useAdminConfirmation } from './useAdminConfirmation'
 
 type Route = CoreOutput<'network.routes.list'>[number]
 type Draft = { id: string; remarks: string; match: string; action: Route['action']; actionValue: string; enabled: boolean }
@@ -20,6 +21,7 @@ const actionLabels: Record<string, string> = { direct: '直连', block: '阻止�
 const actionHints = { direct: '匹配此规则的流量直接连接目标。', block: '匹配此规则的流量将被阻止。', dns: '输入此规则使用的 DNS 地址。', proxy: '输入此规则使用的代理参数。' }
 const blank = (): Draft => ({ id: '', remarks: '', match: '', action: 'direct', actionValue: '', enabled: true })
 export function RoutesPage() {
+  const confirm = useAdminConfirmation(() => !denied)
   useLocale()
   const formId = useId()
   const state = useSyncExternalStore(workflowActions.subscribe, workflowActions.snapshot)
@@ -50,8 +52,8 @@ export function RoutesPage() {
     const next = row ? { id: row.id, remarks: row.remarks, match: row.match.join('\n'), action: row.action, actionValue: row.action_value ?? '', enabled: row.enabled } : blank()
     setDraftGeneration(generation); setDraft(next); baseline.current = JSON.stringify(next); actionDrafts.current = { [next.action]: next.actionValue }; setError(''); setEditing(true)
   }
-  function closeEditor() {
-    if (state.busy || (!state.pending && JSON.stringify(draft) !== baseline.current && !window.confirm(t("路由配置尚未保存，确定放弃修改？")))) return
+  async function closeEditor() {
+    if (state.busy || (!state.pending && JSON.stringify(draft) !== baseline.current && !(await confirm(t("路由配置尚未保存，确定放弃修改？"))))) return
     setEditing(false); setDraft(blank()); setError('')
   }
   function changeAction(action: Route['action']) {
@@ -78,7 +80,7 @@ export function RoutesPage() {
     await perform(() => workflowActions.run('network.routes.save', input))
   }
   async function beginSort() {
-    if (locked || (sortIds.length > 0 && !window.confirm(t("重新读取将替换当前排序草稿，确定继续？")))) return
+    if (locked || (sortIds.length > 0 && !(await confirm(t("重新读取将替换当前排序草稿，确定继续？"))))) return
     const generation = workflowActions.generation(); setSorting(true); setError('')
     try {
       const fresh = await admin.read('network.routes.ordering.get', {})
@@ -153,7 +155,7 @@ export function RoutesPage() {
     { key: 'action', header: t("动作"), render: row => <div className="network-match-condition"><span className="network-tag is-info">{t(actionLabels[row.action])}</span>{row.action_value ? <code>{row.action_value}</code> : null}</div> },
     { key: 'enabled', header: t("状态"), render: row => <span className={'network-tag ' + (row.enabled ? 'is-success' : '')}>{row.enabled ? t("启用") : t("停用")}</span> },
     { key: 'nodes', header: t("节点"), render: row => <span className="network-count">{row.server_count}</span> },
-    { key: 'actions', header: t("操作"), pin: 'right', hideable: false, render: row => <div className="network-route-actions"><button className="button" disabled={locked} onClick={() => edit(row)} title={t("编辑")} aria-label={t("编辑")}><Pencil size={15} aria-hidden="true" /><span className="network-action-label">{t("编辑")}</span></button><button className="button" disabled={locked} onClick={() => { if (window.confirm(t("确定删除路由 {name}？有关联节点时服务端会拒绝。", { name: row.remarks }))) void perform(() => workflowActions.run('network.routes.delete', { route_id: row.id })) }} title={t("删除")} aria-label={t("删除")} data-danger="true"><Trash2 size={15} aria-hidden="true" /><span className="network-action-label">{t("删除")}</span></button></div> },
+    { key: 'actions', header: t("操作"), pin: 'right', hideable: false, render: row => <div className="network-route-actions"><button className="button" disabled={locked} onClick={() => edit(row)} title={t("编辑")} aria-label={t("编辑")}><Pencil size={15} aria-hidden="true" /><span className="network-action-label">{t("编辑")}</span></button><button className="button" disabled={locked} onClick={async () => { if ((await confirm(t("确定删除路由 {name}？有关联节点时服务端会拒绝。", { name: row.remarks })))) void perform(() => workflowActions.run('network.routes.delete', { route_id: row.id })) }} title={t("删除")} aria-label={t("删除")} data-danger="true"><Trash2 size={15} aria-hidden="true" /><span className="network-action-label">{t("删除")}</span></button></div> },
   ]
   return <div className="native-management-page network-reference-page network-routes-page">
     <PageHeader title={t("路由管理")} description={t("维护完整路由配置，并只读模拟指定节点的目标匹配。")} action={<><button className="button" disabled={state.busy || list.isFetching} onClick={() => void refresh()}><RefreshCw size={15} aria-hidden="true" />{t("刷新路由")}</button><button className="button" data-primary="true" disabled={locked} onClick={() => edit()}><Plus size={15} aria-hidden="true" />{t("新增路由")}</button></>} />
@@ -178,7 +180,7 @@ export function RoutesPage() {
         onDrop={event => { event.preventDefault(); if (draggedRoute.current) move(sortIds.indexOf(draggedRoute.current), index); draggedRoute.current = ''; setDropTarget('') }}><span className="network-sort-identity"><span className="network-drag-handle" draggable={!locked} title={t("拖动调整路由顺序")} aria-hidden="true"
         onDragStart={event => { if (locked || sortConflict) { event.preventDefault(); return }; draggedRoute.current = id; event.dataTransfer.effectAllowed = 'move'; event.dataTransfer.setData('text/plain', id) }}
         onDragEnd={() => { draggedRoute.current = ''; setDropTarget('') }}><GripVertical size={17} /></span><small>{index + 1}</small><strong>{rows.find(row => row.id === id)?.remarks || '#' + id}</strong><code>#{id}</code></span><div className="network-sort-actions"><button className="button" disabled={locked || sortConflict || index === 0} onClick={() => move(index, index - 1)}>{t("上移")}</button><button className="button" disabled={locked || sortConflict || index === sortIds.length - 1} onClick={() => move(index, index + 1)}>{t("下移")}</button></div></li>)}</ol><div className="network-sort-footer"><button className="button" disabled={locked || sortConflict} onClick={() => void saveSort()}>{t("保存完整路由排序")}</button><button className="button" disabled={locked} onClick={() => { setSortIds([]); setSortRevision(''); setSortConflict(false); draggedRoute.current = ''; setDropTarget('') }}>{t("取消排序")}</button></div></section> : null}
-    <Modal open={editing && !denied} title={draft.id ? t("编辑路由") : t("新增路由")} subtitle={t("路由按配置顺序匹配；动作参数只在指定 DNS 或代理转发时提交。")} className="network-reference-page network-editor-modal" onClose={closeEditor}
+    <Modal size="medium" open={editing && !denied} title={draft.id ? t("编辑路由") : t("新增路由")} subtitle={t("路由按配置顺序匹配；动作参数只在指定 DNS 或代理转发时提交。")} className="network-reference-page network-editor-modal" onClose={closeEditor}
       footer={<><button className="button" type="button" disabled={state.busy} onClick={closeEditor}>{t("取消")}</button><button className="button" type="submit" form={formId} disabled={locked}>{t("保存路由")}</button></>}>
       <div className="network-editor-body">{error || operationError ? <p role="alert">{error ? t(error) : managementError(operationError)}</p> : null}
         {pending ? <div role="status"><p>{t("路由保存结果等待确认，将复用原配置和原请求编号。")}</p><button type="button" className="button" disabled={denied || state.busy || list.isFetching || list.isError} onClick={() => void perform(() => workflowActions.run(pending.operation, pending.input))}>{t("确认原路由操作")}</button></div> : null}

@@ -11,6 +11,7 @@ import { ManagementFeedback, managementError } from './Feedback'
 import { NetworkRecovery, useNetworkManagement } from './NetworkManagement'
 import { ReadFields } from './ReadList'
 import { minorAmount, unixDate } from './readPresentation'
+import { useAdminConfirmation } from './useAdminConfirmation'
 
 type Balances = CoreOutput<'billing.admin-account-balances.get'>
 type Adjustment = CoreInput<'billing.admin-account-adjustments.create'>
@@ -29,6 +30,7 @@ export function fundsAdjustmentInput(base: Balances, draft: Draft): Adjustment {
 }
 
 export function AccountFundsPanel({ userId, locked, onChanged }: { userId: string; locked: boolean; onChanged: () => void }) {
+  const confirm = useAdminConfirmation(() => !locked && !management.denied, userId)
   useLocale()
   const [currency, setCurrency] = useState('CNY'), [showHistory, setShowHistory] = useState(false), [cursor, setCursor] = useState<string>()
   const balances = useQuery({ queryKey: ['native-admin', 'account-funds', userId, currency],
@@ -53,7 +55,7 @@ export function AccountFundsPanel({ userId, locked, onChanged }: { userId: strin
     const guard = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = '' }
     window.addEventListener('beforeunload', guard); return () => window.removeEventListener('beforeunload', guard)
   }, [dirty])
-  function close() { if (!management.state.busy && (!dirty || window.confirm(t("关闭会丢弃尚未提交的资金调整，确认关闭？")))) setEditing(undefined) }
+  async function close() { if (!management.state.busy && (!dirty || (await confirm(t("关闭会丢弃尚未提交的资金调整，确认关闭？"))))) setEditing(undefined) }
   function update<K extends keyof Draft>(field: K, value: Draft[K]) { setEditing(old => old ? { ...old, draft: { ...old.draft, [field]: value } } : old) }
   async function submit(event: FormEvent) {
     event.preventDefault(); if (!editing || blocked) return
@@ -61,7 +63,7 @@ export function AccountFundsPanel({ userId, locked, onChanged }: { userId: strin
     try {
       const input = fundsAdjustmentInput(editing.base, editing.draft)
       const bucket = input.bucket === 'wallet_available' ? t("钱包可用余额") : t("佣金可用余额")
-      if (!window.confirm(t("确认{direction}{bucket} {amount}？本次调整会保留资金记录。", { direction: input.direction === 'credit' ? t('增加') : t('扣减'), bucket, amount: minorAmount(input.amount_minor, input.currency) }))) return
+      if (!(await confirm(t("确认{direction}{bucket} {amount}？本次调整会保留资金记录。", { direction: input.direction === 'credit' ? t('增加') : t('扣减'), bucket, amount: minorAmount(input.amount_minor, input.currency) })))) return
       await workflowActions.run('billing.admin-account-adjustments.create', input)
       if (!mounted.current || generation !== workflowActions.generation()) return
       setEditing(undefined); await management.refresh()
@@ -94,7 +96,7 @@ export function AccountFundsPanel({ userId, locked, onChanged }: { userId: strin
         <Field label={t("调整金额（{currency} 最小单位）", { currency: editing.base.currency })} hint={t("输入正整数，例如 1250 = 12.50；最终确认会显示实际金额")} required><Input inputMode="numeric" value={editing.draft.amount} disabled={blocked} onChange={event => update('amount', event.target.value)} /></Field>
         <Field label={t("资金调整原因编号")} required hint={t("例如 support_case_482；保留在资金记录中")}><Input value={editing.draft.reason} maxLength={64} disabled={blocked} onChange={event => update('reason', event.target.value)} /></Field>
         <Field label={t("资金调整备注")} hint={t("最多 500 字")}><Textarea value={editing.draft.note} maxLength={500} disabled={blocked} onChange={event => update('note', event.target.value)} /></Field>
-        {error ? <><p role="alert">{t(error)}</p><button type="button" className="button" disabled={management.state.busy} onClick={() => { if (!dirty || window.confirm(t("重新读取会丢弃资金调整草稿，确认继续？"))) { setEditing(undefined); void management.refresh() } }}>{t("重新读取资金账户")}</button></> : null}
+        {error ? <><p role="alert">{t(error)}</p><button type="button" className="button" disabled={management.state.busy} onClick={async () => { if (!dirty || (await confirm(t("重新读取会丢弃资金调整草稿，确认继续？")))) { setEditing(undefined); void management.refresh() } }}>{t("重新读取资金账户")}</button></> : null}
         <div className="network-form-actions"><button className="button primary" disabled={blocked}>{t("确认资金调整")}</button><button type="button" className="button" disabled={management.state.busy} onClick={close}>{t("取消")}</button></div>
       </form>
     </Modal> : null}

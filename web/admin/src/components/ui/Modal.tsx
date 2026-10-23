@@ -16,6 +16,7 @@ export function Modal({
   placement = 'center',
   className = '',
   bodyClassName = '',
+  size,
 }: {
   open: boolean
   title: string
@@ -28,6 +29,7 @@ export function Modal({
   placement?: 'center' | 'right'
   className?: string
   bodyClassName?: string
+  size?: 'compact' | 'medium' | 'wide' | 'full'
 }) {
   useLocale()
   const dialogRef = useDialog(open, onClose)
@@ -54,6 +56,7 @@ export function Modal({
       <div
         className={[
           wide ? 'modal-card modal-card-wide' : 'modal-card',
+          'modal-size-' + (size || (wide ? 'wide' : 'medium')),
           className,
         ].filter(Boolean).join(' ')}
       >

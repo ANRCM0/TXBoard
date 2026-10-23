@@ -10,3 +10,10 @@ export async function navigateAdmin(page, path, mobile = false) {
     await page.getByRole('option').filter({ has: page.locator('small').filter({ hasText: new RegExp('^' + escaped + '$') }) }).click()
   }
 }
+
+// Call explicitly at the action under test so unexpected confirmations still fail.
+export async function acceptAdminConfirmation(page, label = '确认') {
+  const dialog = page.locator('[role="dialog"]').filter({ has: page.locator('.admin-confirm-dialog') })
+  await dialog.getByRole('button', { name: label, exact: true }).click()
+  await dialog.waitFor({ state: 'detached' })
+}

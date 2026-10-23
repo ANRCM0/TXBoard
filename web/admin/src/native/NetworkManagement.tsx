@@ -3,6 +3,7 @@ import { useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from
 import { CoreAdminApiError } from '@txboard/core-sdk'
 import { workflowActions } from './session'
 import { managementError } from './Feedback'
+import { useAdminConfirmation } from './useAdminConfirmation'
 
 export function useNetworkManagement(prefix: string, readErrors: unknown[], refreshRead: () => Promise<unknown>, viewKey = prefix) {
   const state = useSyncExternalStore(workflowActions.subscribe, workflowActions.snapshot)
@@ -46,11 +47,12 @@ export function useNetworkManagement(prefix: string, readErrors: unknown[], refr
 }
 
 export function NetworkRecovery({ management, blocked }: { management: ReturnType<typeof useNetworkManagement>; blocked: boolean }) {
+  const confirm = useAdminConfirmation(() => !blocked && !denied)
   useLocale()
   const { pending, state, denied, error, perform } = management
   return <>
-    {pending ? <section className="list-card" role="status"><h2>{t("原操作结果等待确认")}</h2><p>{t("请核对原资源与操作。确认时复用原请求，不会自动重试。")}</p><code>{pending.operation}</code>{!denied ? <pre>{JSON.stringify(pending.input, (key, value) => /(?:password|passwd|secret|token|private_key|authorization|credential|configuration_json|input_json)/i.test(key) ? t("已保留原请求，敏感内容不回显") : value, 2)}</pre> : null}<button className="button" disabled={blocked || denied || state.busy} onClick={() => {
-      if (window.confirm(t("确认继续查询或完成这项原操作？"))) void perform(() => workflowActions.run(pending.operation, pending.input))
+    {pending ? <section className="list-card" role="status"><h2>{t("原操作结果等待确认")}</h2><p>{t("请核对原资源与操作。确认时复用原请求，不会自动重试。")}</p><code>{pending.operation}</code>{!denied ? <pre>{JSON.stringify(pending.input, (key, value) => /(?:password|passwd|secret|token|private_key|authorization|credential|configuration_json|input_json)/i.test(key) ? t("已保留原请求，敏感内容不回显") : value, 2)}</pre> : null}<button className="button" disabled={blocked || denied || state.busy} onClick={async () => {
+      if ((await confirm(t("确认继续查询或完成这项原操作？")))) void perform(() => workflowActions.run(pending.operation, pending.input))
     }}>{t("确认原操作")}</button></section> : null}
     {error ? <p role="alert">{t(error)}</p> : null}
     {denied ? <p role="alert">{t("当前账号没有此操作的权限，已隐藏资源数据。")}</p> : null}

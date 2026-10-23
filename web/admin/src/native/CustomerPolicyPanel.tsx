@@ -11,6 +11,7 @@ import { ManagementFeedback, managementError } from './Feedback'
 import { NetworkRecovery, useNetworkManagement } from './NetworkManagement'
 import { admin, workflowActions } from './session'
 import { unixDate } from './readPresentation'
+import { useAdminConfirmation } from './useAdminConfirmation'
 
 type Policy = CoreOutput<'billing.admin-customer-policy.get'>
 type Update = CoreInput<'billing.admin-customer-policy.update'>
@@ -35,6 +36,7 @@ export function customerPolicyInput(base: Policy, draft: Draft): Update {
 function modeLabel(mode: Policy['commission_mode']): string { return t(mode === 'inherit' ? '跟随系统（循环）' : mode === 'first_paid' ? '仅首次付费' : '循环返佣') }
 
 export function CustomerPolicyPanel({ userId, locked, onChanged }: { userId: string; locked: boolean; onChanged: () => void }) {
+  const confirm = useAdminConfirmation(() => !locked && !management.denied, userId)
   useLocale()
   const [showHistory, setShowHistory] = useState(false), [cursor, setCursor] = useState<string>()
   const query = useQuery({ queryKey: ['native-admin', 'customer-policy', userId], queryFn: ({ signal }) => admin.read('billing.admin-customer-policy.get', { user_id: userId }, signal) })
@@ -51,13 +53,13 @@ export function CustomerPolicyPanel({ userId, locked, onChanged }: { userId: str
   const dirty = !!editing && JSON.stringify(editing.draft) !== JSON.stringify(draftFor(editing.base))
   useDirtyDraft(dirty && draftGeneration.current === generation && !management.denied && !management.state.pending)
   useEffect(() => { if (!dirty) return; const guard = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = '' }; window.addEventListener('beforeunload', guard); return () => window.removeEventListener('beforeunload', guard) }, [dirty])
-  function close() { if (!management.state.busy && (!dirty || window.confirm(t('关闭会丢弃尚未提交的个人政策修改，确认关闭？')))) setEditing(undefined) }
+  async function close() { if (!management.state.busy && (!dirty || (await confirm(t('关闭会丢弃尚未提交的个人政策修改，确认关闭？'))))) setEditing(undefined) }
   function update<K extends keyof Draft>(field: K, value: Draft[K]) { setEditing(old => old ? { ...old, draft: { ...old.draft, [field]: value } } : old) }
   async function submit(event: FormEvent) {
     event.preventDefault(); if (!editing || blocked) return; setError('')
     try {
       const input = customerPolicyInput(editing.base, editing.draft)
-      if (!window.confirm(t('确认修改未来订单的个人购买和佣金政策？既有订单、奖励和退款保持原快照。'))) return
+      if (!(await confirm(t('确认修改未来订单的个人购买和佣金政策？既有订单、奖励和退款保持原快照。')))) return
       await workflowActions.run('billing.admin-customer-policy.update', input)
       if (!mounted.current || generation !== workflowActions.generation()) return
       setEditing(undefined); await management.refresh()
@@ -83,7 +85,7 @@ export function CustomerPolicyPanel({ userId, locked, onChanged }: { userId: str
       <Field label={t('作为推荐人的返佣类型')}><Select disabled={blocked} value={editing.draft.mode} onChange={event => update('mode', event.target.value as Draft['mode'])}><option value="inherit">{t('跟随系统（循环）')}</option><option value="recurring">{t('循环返佣')}</option><option value="first_paid">{t('仅首次付费')}</option></Select></Field>
       <Field label={t('作为推荐人的佣金比例（%）')} hint={t('留空跟随系统；0 表示不产生佣金，系统关闭返佣时个人政策不会启用返佣')}><Input inputMode="decimal" disabled={blocked} value={editing.draft.rate} onChange={event => update('rate', event.target.value)} /></Field>
       <Field label={t('政策变更原因编号')} required><Input maxLength={64} disabled={blocked} value={editing.draft.reason} onChange={event => update('reason', event.target.value)} /></Field>
-      {error ? <><p role="alert">{t(error)}</p><button type="button" className="button" disabled={management.state.busy} onClick={() => { if (!dirty || window.confirm(t('重新读取会丢弃个人政策草稿，确认继续？'))) { setEditing(undefined); void management.refresh() } }}>{t('重新读取个人政策')}</button></> : null}
+      {error ? <><p role="alert">{t(error)}</p><button type="button" className="button" disabled={management.state.busy} onClick={async () => { if (!dirty || (await confirm(t('重新读取会丢弃个人政策草稿，确认继续？')))) { setEditing(undefined); void management.refresh() } }}>{t('重新读取个人政策')}</button></> : null}
       <div className="network-form-actions"><button className="button primary" disabled={blocked}>{t('保存个人政策')}</button><button type="button" className="button" disabled={management.state.busy} onClick={close}>{t('取消')}</button></div>
     </form></Modal> : null}
   </DetailSection>

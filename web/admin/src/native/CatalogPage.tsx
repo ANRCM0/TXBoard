@@ -2,12 +2,13 @@ import { t, useLocale, getLocale, LocalizedError } from '../lib/i18n'
 import { useDirtyDraft } from '../lib/useDirtyDraft'
 import { useListPagination } from './useListPagination'
 import './commerce-reference.css'
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { useEffect, useId, useRef, useState, useSyncExternalStore } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { CoreAdminApiError, coreOperations, type CoreInput, type CoreOutput } from '@txboard/core-sdk'
 import { admin, workflowActions } from './session'
 import { managementError, ManagementFeedback } from './Feedback'
 import { ReadFields, ReadList } from './ReadList'
+import { Modal } from '../components/ui/Modal'
 import { PageHeader } from '../components/ui/PageHeader'
 import { Popover } from '../components/ui/Popover'
 import { Checkbox, Field, Input, Select } from '../components/ui/Field'
@@ -18,6 +19,7 @@ import { TagInput } from '../components/ui/TagInput'
 import { GroupSelector, GroupCreationRecovery } from './GroupSelector'
 import { monthlyPriceDraft } from './catalogPrices'
 import { requestConfirm } from '../components/ui/ConfirmDialog'
+import { useAdminConfirmation } from './useAdminConfirmation'
 
 type Plan = CoreOutput<'catalog.admin-plans.list'>[number]
 type PlanDetail = CoreOutput<'catalog.admin-plans.get'>
@@ -81,7 +83,9 @@ function publication(draft: Draft): Publication {
 }
 
 export function CatalogPage() {
+  const confirm = useAdminConfirmation(() => !blocked)
   useLocale()
+  const formId = useId(), availabilityFormId = useId()
   const client = useQueryClient(), state = useSyncExternalStore(workflowActions.subscribe, workflowActions.snapshot)
   const { page: planPage, setPage: setPlanPage, perPage: planSize, setPerPage: setPlanSize } = useListPagination()
   const { page: offerPage, setPage: setOfferPage, perPage: offerSize, setPerPage: setOfferSize } = useListPagination()
@@ -100,7 +104,7 @@ export function CatalogPage() {
     window.addEventListener('beforeunload', warn); return () => window.removeEventListener('beforeunload', warn)
   }, [dirty])
   function acceptDraft(next: Draft) { draftBaseline.current = JSON.stringify(next); setDraft(next) }
-  function discardDraft() { return !dirty || window.confirm(t("将丢弃未发布的套餐草稿，是否继续？")) }
+  async function discardDraft() { return !dirty || (await confirm(t("将丢弃未发布的套餐草稿，是否继续？"))) }
   const generation = workflowActions.generation(), observedGeneration = useRef(generation)
   useEffect(() => () => { view.current++ }, [])
   useEffect(() => {
@@ -141,7 +145,7 @@ export function CatalogPage() {
   }
   function selectPlan(id: string) { setSelected(id); setRevision(''); setHistoryPage(1) }
   async function openCurrent(id: string) {
-    if (locked || !discardDraft()) return
+    if (locked || !(await discardDraft())) return
     const generation = workflowActions.generation(), current = ++view.current
     setOpening(true); setError('')
     try {
@@ -213,9 +217,9 @@ export function CatalogPage() {
     } catch (failure) { if (generation === workflowActions.generation() && current === view.current) setError(managementError(failure, false)) }
   }
   function update<K extends keyof Draft>(key: K, value: Draft[K]) { setDraft(old => old && { ...old, [key]: value }) }
-  function clearPrices() {
+  async function clearPrices() {
     if (!draft || locked) return
-    if (Object.values(draft.prices).some(value => value !== '') && !window.confirm(t('确认清空全部周期价格草稿？保存发布前仍可重新填写。'))) return
+    if (Object.values(draft.prices).some(value => value !== '') && !(await confirm(t('确认清空全部周期价格草稿？保存发布前仍可重新填写。')))) return
     update('prices', Object.fromEntries(periods.map(([key]) => [key, ''])) as Draft['prices'])
   }
   function useContentTemplate() {
@@ -254,7 +258,7 @@ export function CatalogPage() {
     { key: 'period', header: t("周期 / 发布价格"), render: row => <div className="commerce-cell-stack"><strong>{periodName(row.offer_code)}</strong><span className="commerce-amount">{commerceMoney(row.price_minor, row.currency)}</span></div> },
     { key: 'status', header: t("修订状态"), render: row => <div className="commerce-cell-stack"><span className={row.status === 'published' ? 'commerce-badge success' : 'commerce-badge'}>{statusName(row.status)}</span><small>{t("修订 #")}{row.revision_id}</small></div> },
     { key: 'access', header: t("当前可用性"), render: row => <div className="commerce-cell-stack"><span>{row.show ? t("显示") : t("隐藏")} · {row.sell ? t("可新购") : t("不新购")} · {row.renew ? t("可续费") : t("不续费")}</span><small>{t("名额")}{row.capacity_limit ?? t("不限")}{t("· 版本")}{row.row_version}</small></div> },
-    { key: 'actions', header: t("操作"), pin: 'right', hideable: false, render: row => <button className="button" disabled={locked || offers.isFetching || row.status !== 'published'} onClick={() => { if (!discardDraft()) return; view.current++; setAvailability({ offer: row, show: row.show, sell: row.sell, renew: row.renew, capacity: row.capacity_limit ?? '', conflict: false }); setDraft(undefined); setError('') }}>{t("调整可用性")}</button> },
+    { key: 'actions', header: t("操作"), pin: 'right', hideable: false, render: row => <button className="button" disabled={locked || offers.isFetching || row.status !== 'published'} onClick={async () => { if (!(await discardDraft())) return; view.current++; setAvailability({ offer: row, show: row.show, sell: row.sell, renew: row.renew, capacity: row.capacity_limit ?? '', conflict: false }); setDraft(undefined); setError('') }}>{t("调整可用性")}</button> },
   ]
   const historyColumns: Column<Revision & { id: string }>[] = [
     { key: 'revision', header: t("修订"), render: row => t("第 ") + row.revision_no + t(" 版 · #") + row.revision_id },
@@ -263,14 +267,22 @@ export function CatalogPage() {
     { key: 'open', header: t("操作"), render: row => <button className="button" disabled={locked} onClick={() => setRevision(row.revision_id)}>{t("查看此修订")}</button> },
   ]
   const visible = !blocked && !detail.isError ? detail.data?.data : undefined
+  async function closeEditor() {
+    if (state.busy || !(await discardDraft())) return
+    view.current++; setDraft(undefined); setConflict(false); setOpening(false)
+  }
+  async function closeAvailability() {
+    if (state.busy || availabilityDirty && !(await confirm(t("商品销售设置尚未保存，确定放弃修改？")))) return
+    view.current++; setAvailability(undefined); setOpening(false)
+  }
   return <div className="native-management-page commerce-reference catalog-page">
     <PageHeader title={t("套餐与发布")} description={t("管理套餐版本、周期价格和商品销售状态")} action={<>
       <Popover label={t("套餐版本与销售规则")}><p>{t("发布新版本仅影响后续购买，已有订单保留原套餐内容")}</p><p>{t("销售状态可以单独调整，历史版本仍可查看")}</p></Popover>
-      <button className="button" disabled={plans.isFetching || offers.isFetching || opening} onClick={() => void refresh()}>{t("刷新")}</button><button className="button primary" disabled={locked} onClick={() => { if (!discardDraft()) return; view.current++; acceptDraft(blank()); setAvailability(undefined); setConflict(false); setError('') }}>{t("创建套餐")}</button>
+      <button className="button" disabled={plans.isFetching || offers.isFetching || opening} onClick={() => void refresh()}>{t("刷新")}</button><button className="button primary" disabled={locked} onClick={async () => { if (!(await discardDraft())) return; view.current++; acceptDraft(blank()); setAvailability(undefined); setConflict(false); setError('') }}>{t("创建套餐")}</button>
     </>} />
     <GroupCreationRecovery onCreated={id => { if (draft) update('group', id) }} />
     {pending ? <section className="list-card commerce-pending" role="status"><h2>{t("套餐操作等待确认")}</h2><p>{t("请先确认上次发布或销售设置的结果。")}</p><details className="commerce-help"><summary>{t("查看操作标识")}</summary><code>{pending.operation}{t("· 原操作")}{pending.key}</code></details><button className="button" disabled={blocked || state.busy} onClick={() => void recover()}>{t("使用原操作确认结果")}</button></section> : null}
-    {error || state.error ? <p role="alert">{error instanceof LocalizedError ? error.localizedMessage() : error ? t(error) : managementError(state.error)}</p> : null}
+    {!draft && !availability && (error || state.error) ? <p role="alert">{error instanceof LocalizedError ? error.localizedMessage() : error ? t(error) : managementError(state.error)}</p> : null}
     {blocked ? <p role="alert">{t("无法确认套餐管理权限，已隐藏数据请刷新确认权限")}</p> : null}
     {opening ? <p role="status">{t("正在读取套餐内容…")}</p> : null}
     <ReadList mobilePrimaryKey="name" title={"已发布套餐"} rows={blocked || plans.isError ? [] : plans.data?.data.map(row => ({ ...row, id: row.plan_id })) ?? []} columns={planColumns}
@@ -293,11 +305,11 @@ export function CatalogPage() {
       <ReadList title={"套餐修订历史"} rows={history.isError ? [] : history.data?.data.map(row => ({ ...row, id: row.revision_id })) ?? []} columns={historyColumns}
         meta={history.data?.meta} perPage={historySize} onPageSize={setHistorySize} page={historyPage} ready={!!history.data && !blocked} loading={history.isFetching} error={history.isError ? history.error : undefined} onRetry={() => void refresh()} onPage={setHistoryPage}><header className="commerce-card-heading"><div><h3>{t("套餐修订历史")}</h3><p>{t("选择修订查看发布时的完整条款")}</p></div></header></ReadList>
     </section> : null}
-    {draft && !blocked ? <section className="list-card commerce-editor" aria-label={t("套餐发布编辑器")}><header className="commerce-card-heading"><div><h2>{draft.planId ? t("发布套餐新修订") : t("创建并发布套餐")}</h2><p>{t("完善基本信息、流量额度与周期价格")}</p></div><span className="commerce-badge">{draft.planId ? t("新版本") : t("新套餐")}</span></header>
+    {draft && !blocked ? <Modal open className="commerce-reference catalog-page" size="wide" title={draft.planId ? t("发布套餐新修订") : t("创建并发布套餐")} subtitle={t("完善基本信息、流量额度与周期价格")} onClose={() => void closeEditor()} footer={<div className="commerce-form-actions"><span>{t("发布后，后续购买将使用新版本")}</span><button className="button" type="button" disabled={state.busy} onClick={() => void closeEditor()}>{t("关闭编辑")}</button><button type="submit" form={formId} className="button primary" disabled={locked || conflict || !draft.capacityChoice || !['CNY', 'USD'].includes(draft.currency)}>{t("发布完整条款")}</button></div>}><section className="commerce-editor refined-catalog-editor" aria-label={t("套餐发布编辑器")}>{error || state.error ? <p role="alert">{error instanceof LocalizedError ? error.localizedMessage() : error ? t(error) : managementError(state.error)}</p> : null}
       {draft.planId ? <p>{t("套餐 #")}{draft.planId}{t("· 基于当前修订")}<strong>{draft.expectedRevision}</strong>{t("，草稿不会随刷新自动替换")}</p> : null}
       {conflict ? <p role="alert">{t("套餐已变化，草稿仍保留，发布已停止；请重新读取当前条款并替换草稿后再确认")}</p> : null}
       {draft.planId ? <button className="button" disabled={locked} onClick={() => void openCurrent(draft.planId!)}>{t("重新读取当前条款并替换草稿")}</button> : null}
-      <form key={view.current} className="native-content-form commerce-catalog-form" aria-label={t("发布完整套餐条款")} onSubmit={event => { event.preventDefault(); void publish() }}>
+      <form id={formId} key={view.current} className="native-content-form commerce-catalog-form" aria-label={t("发布完整套餐条款")} onSubmit={event => { event.preventDefault(); void publish() }}>
         <fieldset disabled={locked} className="commerce-form-grid"><legend>{t("套餐内容")}</legend>
           <Field label={t("套餐名称")}><Input id="catalog-name" value={draft.name} maxLength={255} required disabled={locked} onChange={event => update('name', event.target.value)} /></Field>
           <div className="commerce-wide-field"><div className="commerce-card-heading"><label htmlFor="catalog-content">{t("套餐说明")}</label><button type="button" className="button" disabled={locked} onClick={useContentTemplate}>{t("使用内容模板")}</button></div><MarkdownEditor id="catalog-content" required={false} value={draft.content ?? ''} maxLength={8192} disabled={locked} onChange={value => update('content', value)} /></div>
@@ -313,17 +325,17 @@ export function CatalogPage() {
         {!['CNY', 'USD'].includes(draft.currency) ? <p role="status">{t("原修订使用")}{draft.currency}{t("，新发布仅支持 CNY/USD，必须明确选择币种并核对所有价格；系统不会自动换算")}</p> : null}
         </fieldset><fieldset disabled={locked} className="commerce-form-grid"><legend>{t("周期价格（分）")}</legend><div className="commerce-wide-field commerce-date-presets"><button type="button" className="button" disabled={locked} onClick={clearPrices}>{t("清空全部周期价格")}</button><button type="button" className="button" disabled={locked} onClick={() => derivePrices(false)}>{t("按月价填写空白周期")}</button><button type="button" className="button" disabled={locked} onClick={() => derivePrices(true)}>{t("按月价重算周期价格")}</button></div><p className="commerce-wide-field">{t("CNY / USD 均按百分之一货币单位填写，留空不发布该周期，填写 0 表示免费")}</p>{periods.map(([key, label]) => <Field key={key} label={t(label)} hint={draft.prices[key] !== '' && /^\d+$/.test(draft.prices[key]) ? commerceMoney(draft.prices[key], draft.currency) : t("留空不发布该周期")}><Input id={'catalog-price-' + key} value={draft.prices[key]} inputMode="numeric" pattern="0|[1-9][0-9]{0,18}" maxLength={19} onChange={event => update('prices', { ...draft.prices, [key]: event.target.value })} /></Field>)}</fieldset>
         <fieldset disabled={locked}><legend>{t("本次发布的商品名额")}</legend><p>{t("为本次发布的各周期商品设置销售名额，旧商品名额不会自动沿用")}</p><Field label={t("名额设置")}><Select id="catalog-capacity-choice" value={draft.capacityChoice} onChange={event => update('capacityChoice', event.target.value as Draft['capacityChoice'])}><option value="">{t("请选择")}</option><option value="unlimited">{t("不限名额")}</option><option value="limited">{t("指定名额")}</option></Select></Field>{draft.capacityChoice === 'limited' ? <Field label={t("本次名额")}><Input id="catalog-capacity" value={draft.capacity} inputMode="numeric" pattern="0|[1-9][0-9]*" required onChange={event => update('capacity', event.target.value)} /></Field> : null}</fieldset>
-        <footer className="commerce-form-actions"><span>{t("发布后，后续购买将使用新版本")}</span><button className="button primary" disabled={locked || conflict || !draft.capacityChoice || !['CNY', 'USD'].includes(draft.currency)}>{t("发布完整条款")}</button><button className="button" type="button" disabled={state.busy} onClick={() => { if (!discardDraft()) return; view.current++; setDraft(undefined); setConflict(false); setOpening(false) }}>{t("关闭编辑")}</button></footer>
+
       </form>
-    </section> : null}
-    {availability && !blocked ? <section className="list-card commerce-editor" aria-label={t("Offer 可用性编辑器")}><header className="commerce-card-heading"><div><h2>{t("调整商品 #")}{availability.offer.offer_id}{t("销售状态")}</h2><p>{t("分别控制展示、新购与续费")}</p></div><span className="commerce-badge">{t("销售设置")}</span></header><p>{t("当前修订 #")}{availability.offer.revision_id}{t("· 版本")}{availability.offer.row_version}{t("· 价格与冻结条款不会改变")}</p>
+    </section></Modal> : null}
+    {availability && !blocked ? <Modal open className="commerce-reference catalog-page" size="compact" title={t("调整商品销售状态")} subtitle={t("分别控制展示、新购与续费")} onClose={() => void closeAvailability()} footer={<div className="commerce-form-actions"><span>{t("套餐价格与内容保持原值")}</span><button className="button" type="button" disabled={state.busy} onClick={() => void closeAvailability()}>{t("关闭可用性编辑")}</button><button type="submit" form={availabilityFormId} className="button primary" disabled={locked || availability.conflict}>{t("保存可用性")}</button></div>}><section className="commerce-editor" aria-label={t("Offer 可用性编辑器")}><p>{t("当前修订 #")}{availability.offer.revision_id}{t("· 版本")}{availability.offer.row_version}{t("· 价格与冻结条款不会改变")}</p>
       {availability.conflict ? <p role="alert">{t("可用性版本已变化，原设置保留，请重新读取后再次确认")}</p> : null}
       <button className="button" disabled={locked} onClick={() => void reloadAvailability()}>{t("重新读取商品并替换设置")}</button>
-      <form className="native-content-form commerce-availability-form" onSubmit={event => { event.preventDefault(); void saveAvailability() }}>
+      <form id={availabilityFormId} className="native-content-form commerce-availability-form" onSubmit={event => { event.preventDefault(); void saveAvailability() }}>
         {(['show', 'sell', 'renew'] as const).map((key, index) => <Checkbox className="commerce-toggle" key={key} id={'catalog-availability-' + key} label={[t("向用户显示"), t("允许新购"), t("允许续费")][index]} checked={availability[key]} disabled={locked} onChange={event => setAvailability(old => old && { ...old, [key]: event.target.checked })} />)}
         <Field label={t("商品名额（留空不限）")} className="commerce-wide-field"><Input id="catalog-availability-capacity" value={availability.capacity} inputMode="numeric" pattern="0|[1-9][0-9]*" disabled={locked} onChange={event => setAvailability(old => old && { ...old, capacity: event.target.value })} /></Field>
-        <footer className="commerce-form-actions"><span>{t("套餐价格与内容保持原值")}</span><button className="button primary" disabled={locked || availability.conflict}>{t("保存可用性")}</button><button className="button" type="button" disabled={state.busy} onClick={() => { view.current++; setAvailability(undefined); setOpening(false) }}>{t("关闭可用性编辑")}</button></footer>
+
       </form>
-    </section> : null}
+    </section></Modal> : null}
   </div>
 }

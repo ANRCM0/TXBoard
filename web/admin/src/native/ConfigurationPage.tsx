@@ -39,6 +39,8 @@ export function ConfigurationPage({ group = 'site' }: { group?: ConfigurationGro
   useEffect(() => { if (editing) { editor.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' }); editor.current?.querySelector<HTMLElement>('input, select, textarea')?.focus({ preventScroll: true }) } }, [editing])
   const visibleValues = { ...Object.fromEntries(fields.map(([name, field]) => [name, field.default])), ...(query.data?.data.values ?? {}), ...(editing ? draft : {}) }
   const selectedFields = fields.filter(([name, field]) => field.group === group && configurationFieldVisible(name, visibleValues))
+  const sectionOrder = [...new Set(selectedFields.map(([name]) => configurationSection(name, group)))]
+  selectedFields.sort(([left], [right]) => sectionOrder.indexOf(configurationSection(left, group)) - sectionOrder.indexOf(configurationSection(right, group)))
   const changedCount = selectedFields.filter(([name, field]) => JSON.stringify(draft[name]) !== JSON.stringify(baseline[name]) && (!field.write_only || draft[name] !== '')).length
   const dirty = editing && fields.some(([name, field]) => field.group === group && JSON.stringify(draft[name]) !== JSON.stringify(baseline[name]) && (!field.write_only || draft[name] !== ''))
   useDirtyDraft(ready && dirty)

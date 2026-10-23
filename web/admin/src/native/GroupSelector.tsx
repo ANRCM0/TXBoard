@@ -4,6 +4,9 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { CoreAdminApiError } from '@txboard/core-sdk'
 import { admin, workflowActions } from './session'
 import { ManagementFeedback, managementError } from './Feedback'
+import { Modal } from '../components/ui/Modal'
+import { useAdminConfirmation } from './useAdminConfirmation'
+import { useDirtyDraft } from '../lib/useDirtyDraft'
 
 function groupId(response: unknown): string | undefined {
   if (!response || typeof response !== 'object' || !('data' in response) || !response.data || typeof response.data !== 'object') return
@@ -44,6 +47,7 @@ export function GroupSelector({ value, onChange, multiple = true, disabled, labe
 }) {
   useLocale()
   const [open, setOpen] = useState(false), [page, setPage] = useState(1), [search, setSearch] = useState('')
+  const [createOpen, setCreateOpen] = useState(false)
   const pickerId = useId()
   const [name, setName] = useState(''), [error, setError] = useState(''), [createdNames, setCreatedNames] = useState<Record<string, string>>({})
   const state = useSyncExternalStore(workflowActions.subscribe, workflowActions.snapshot), client = useQueryClient(), mounted = useRef(true)
@@ -54,10 +58,17 @@ export function GroupSelector({ value, onChange, multiple = true, disabled, labe
     queryFn: ({ signal }) => admin.read('network.groups.names.get', { group_ids: value }, signal) })
   const denied = [query.error, selected.error, ownWorkflowError].some(failure => failure instanceof CoreAdminApiError && [401, 403].includes(failure.status))
   const locked = disabled || state.busy || !!state.pending || denied
+  const confirm = useAdminConfirmation(() => !locked, pickerId)
+  useDirtyDraft(createOpen && !!name && !locked)
   const rows = query.isError || denied ? [] : (query.data?.data ?? []).filter(group => [group.name, group.id].some(text => text.toLowerCase().includes(search.trim().toLowerCase())))
   const names = Object.fromEntries((selected.isError || denied ? [] : selected.data?.data.groups ?? []).map(group => [group.id, group.name]))
   useEffect(() => { mounted.current = true; return () => { mounted.current = false } }, [])
-  useEffect(() => { if (denied) { setOpen(false); setName(''); setCreatedNames({}) } }, [denied])
+  useEffect(() => { if (denied) { setOpen(false); setCreateOpen(false); setName(''); setCreatedNames({}) } }, [denied])
+  async function closeCreate() {
+    if (state.busy) return
+    if (name.trim() && !(await confirm(t('权限组尚未创建，确定放弃输入的名称？')))) return
+    setCreateOpen(false); setName(''); setError('')
+  }
   async function refreshAuthorization() {
     const generation = workflowActions.generation()
     try {
@@ -77,10 +88,15 @@ export function GroupSelector({ value, onChange, multiple = true, disabled, labe
       if (!mounted.current || generation !== workflowActions.generation()) return
       const id = groupId(result)
       if (!id) throw new Error('GROUP_CREATION_RESULT_MISSING')
-      setCreatedNames(current => ({ ...current, [id]: submitted })); setName('')
+      setCreatedNames(current => ({ ...current, [id]: submitted })); setName(''); setCreateOpen(false)
       onChange(multiple ? [...new Set([...value, id])] : [id])
       await client.invalidateQueries({ queryKey: ['native-admin', 'group-selector'] })
-    } catch (failure) { if (mounted.current && generation === workflowActions.generation()) setError(managementError(failure, false)) }
+    } catch (failure) {
+      if (mounted.current && generation === workflowActions.generation()) {
+        setError(managementError(failure, false))
+        if (workflowActions.snapshot().pending) setCreateOpen(false)
+      }
+    }
   }
   return <div className="network-group-selector">
     <div className="network-group-summary"><span>{label}</span><button type="button" className="button" disabled={locked} aria-expanded={open} onClick={() => setOpen(current => !current)}>{open ? t("收起{label}", { label }) : t("选择{label}", { label })}</button></div>
@@ -102,8 +118,15 @@ export function GroupSelector({ value, onChange, multiple = true, disabled, labe
       </div>
       <div className="network-node-pagination"><button type="button" className="button" disabled={locked || query.isFetching || page === 1} onClick={() => { setPage(current => current - 1); setSearch('') }}>{t("上一页权限组")}</button>
         <small>{t("第{page} / {total}页", { page, total: query.isError ? '?' : query.data?.meta.last_page ?? '?' })}</small><button type="button" className="button" disabled={locked || query.isFetching || query.isError || !query.data || page >= query.data.meta.last_page} onClick={() => { setPage(current => current + 1); setSearch('') }}>{t("下一页权限组")}</button></div>
-      {allowCreate ? <div className="network-group-create"><label>{t("新权限组名称")}<input className="ui-input" aria-label={t("新权限组名称")} value={name} maxLength={255} disabled={locked} onChange={event => setName(event.target.value)} placeholder={t("创建后自动选择，原有草稿继续保留")} /></label>
-        {error ? <p role="alert">{t(error)}</p> : null}<button type="button" className="button" disabled={locked || !name.trim()} onClick={() => void create()}>{t("创建并选择权限组")}</button></div> : null}
+      {allowCreate ? <div className="network-group-create"><p className="field-help">{t("没有合适的权限组？创建后自动选择，当前表单内容继续保留。")}</p><button type="button" className="button" disabled={locked} onClick={() => { setError(''); setCreateOpen(true) }}>{t("新建权限组")}</button></div> : null}
     </div> : null}
+    {createOpen && !denied ? <Modal open size="compact" title={t("新建权限组")} subtitle={t("创建成功后自动选择此权限组，返回原表单继续编辑。")}
+      onClose={() => void closeCreate()} className="network-reference-page network-group-create-dialog"
+      footer={<><button type="button" className="button" disabled={state.busy} onClick={() => void closeCreate()}>{t("取消创建权限组")}</button><button type="submit" form={pickerId + '-create'} className="button primary" disabled={locked || !name.trim()}>{t("创建并选择权限组")}</button></>}>
+      <form id={pickerId + '-create'} className="native-content-form" onSubmit={event => { event.preventDefault(); void create() }}>
+        <label>{t("新权限组名称")}<input data-autofocus className="ui-input" aria-label={t("新权限组名称")} value={name} required maxLength={255} disabled={locked} onChange={event => setName(event.target.value)} placeholder={t("例如：标准订阅组")} /></label>
+        {error ? <p role="alert">{t(error)}</p> : null}
+      </form>
+    </Modal> : null}
   </div>
 }

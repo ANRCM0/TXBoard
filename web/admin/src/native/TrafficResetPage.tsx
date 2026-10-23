@@ -9,8 +9,10 @@ import { ReadFields } from './ReadList'
 import { QuotaBar } from '../components/ui/QuotaBar'
 import { NetworkRecovery, useNetworkManagement } from './NetworkManagement'
 import { ResetHistoryPanel } from './ResetHistoryPanel'
+import { useAdminConfirmation } from './useAdminConfirmation'
 
 export function TrafficResetPage() {
+  const confirm = useAdminConfirmation(() => !locked)
   useLocale()
   const client = useQueryClient()
   const [input, setInput] = useState(''), [userId, setUserId] = useState('')
@@ -24,7 +26,7 @@ export function TrafficResetPage() {
   const subscription = account?.subscription.authorized ? account.subscription : undefined
   const locked = !subscription || query.isFetching || management.state.busy || !!management.state.pending
   async function reset() {
-    if (locked || !subscription || !window.confirm(t('确定重置用户 {email} 的订阅流量周期？本次将使用订阅版本 {version}，旧用量记录会保留', { email: account!.email, version: subscription.subscription_version }))) return
+    if (locked || !subscription || !(await confirm(t('确定重置用户 {email} 的订阅流量周期？本次将使用订阅版本 {version}，旧用量记录会保留', { email: account!.email, version: subscription.subscription_version })))) return
     await management.perform(() => workflowActions.run('subscription.lifecycle.reset', { subscription_id: subscription.subscription_id, expected_version: subscription.subscription_version }))
   }
   const matchingPending = management.pending?.operation === 'subscription.lifecycle.reset' && subscription?.subscription_id === management.pending.input.subscription_id

@@ -11,12 +11,14 @@ import { CopyButton } from '../components/ui/CopyButton'
 import { DetailSection } from '../components/ui/DetailSection'
 import { LineChart } from '../components/charts/ReferenceCharts'
 import './machine-runtime.css'
+import { useAdminConfirmation } from './useAdminConfirmation'
 
 type Credentials = CoreOutput<'network.machines.credentials.get'>
 type HistoryPoint = CoreOutput<'network.machines.history.get'>['points'][number]
 type SecretState = { scope: object; data?: Credentials; error?: string }
 
 export function MachineCredentialsPanel({ machineId, disabled, onAuthorizationFailure }: { machineId: string; disabled: boolean; onAuthorizationFailure?: (error: unknown) => void }) {
+  const confirm = useAdminConfirmation(() => !disabled, machineId)
   useLocale()
   const workflow = useSyncExternalStore(workflowActions.subscribe, workflowActions.snapshot)
   const generation = workflowActions.generation()
@@ -63,7 +65,7 @@ export function MachineCredentialsPanel({ machineId, disabled, onAuthorizationFa
     } finally { if (current()) { request.current = undefined; setReading(false) } }
   }
   async function rotate() {
-    if (locked || !window.confirm(t("确定重置服务器 Token？旧 Token 将立即失效，需要使用新认证信息重新配置服务器。"))) return
+    if (locked || !(await confirm(t("确定重置服务器 Token？旧 Token 将立即失效，需要使用新认证信息重新配置服务器。")))) return
     hide()
     try {
       await workflowActions.run('network.machines.token.rotate', { machine_id: machineId })

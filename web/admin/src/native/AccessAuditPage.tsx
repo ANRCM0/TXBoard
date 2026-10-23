@@ -14,6 +14,7 @@ import { validId, unixDate } from './readPresentation'
 import { DataTable, type Column } from '../components/ui/DataTable'
 import { PageHeader } from '../components/ui/PageHeader'
 import { Checkbox } from '../components/ui/Field'
+import { useAdminConfirmation } from './useAdminConfirmation'
 
 type Rule = CoreOutput<'network.access-audit.rules.list'>[number]
 type AuditEvent = CoreOutput<'network.access-audit.events.list'>[number]
@@ -21,6 +22,7 @@ const blank = () => ({ id: '', name: '', match_type: 'domain' as Rule['match_typ
 const matchLabels = { domain: '域名', domain_suffix: '域名后缀', keyword: '关键词', ip_cidr: 'IP 网段' }
 const filters = () => ({ server: '', user: '', matched: '', keyword: '' })
 export function AccessAuditPage() {
+  const confirm = useAdminConfirmation(() => !denied)
   useLocale()
   const state = useSyncExternalStore(workflowActions.subscribe, workflowActions.snapshot)
   const generation = workflowActions.generation(), observed = useRef(generation)
@@ -33,8 +35,8 @@ export function AccessAuditPage() {
     window.addEventListener('beforeunload', prevent)
     return () => window.removeEventListener('beforeunload', prevent)
   }, [dirty])
-  function closeEditor() {
-    if (state.busy || dirty && !window.confirm(t("审计规则尚未保存，放弃当前修改？"))) return
+  async function closeEditor() {
+    if (state.busy || dirty && !(await confirm(t("审计规则尚未保存，放弃当前修改？")))) return
     setEditing(false); setDraft(blank())
   }
   function edit(next = blank()) { baseline.current = JSON.stringify(next); setDraft(next); setEditing(true) }
@@ -65,7 +67,7 @@ export function AccessAuditPage() {
     await perform(() => workflowActions.run('network.access-audit.rules.save', { ...(draft.id ? { id: draft.id } : {}), name: draft.name, match_type: draft.match_type, match_value: draft.match_value, enabled: draft.enabled }))
   }
   async function remove(row: Rule) {
-    if (locked || !window.confirm(t("确定删除此访问审计规则？已有事件记录仍保留。"))) return
+    if (locked || !(await confirm(t("确定删除此访问审计规则？已有事件记录仍保留。")))) return
     await perform(() => workflowActions.run('network.access-audit.rules.delete', { rule_id: row.id }))
   }
   function applyFilters() {
@@ -90,7 +92,7 @@ export function AccessAuditPage() {
     {pending ? <section className="list-card network-recovery-card" role="status"><h2>{t("审计规则操作等待确认")}</h2><button className="button" disabled={denied || state.busy || rules.isFetching || rules.isError} onClick={() => void perform(() => workflowActions.run(pending.operation, pending.input))}>{t("确认原审计规则操作")}</button></section> : null}
     {!editing && (error || ownError) ? <p role="alert">{error ? t(error) : managementError(ownError)}</p> : null}{denied ? <p role="alert">{t("无法确认访问审计权限，已隐藏规则和事件。")}</p> : null}
     <section className="list-card native-read-list"><div className="network-section-title"><ShieldCheck size={18} /><h2>{t("审计规则")}</h2></div><p className="network-help">{t("按域名、关键词或 IP 网段标记访问记录，历史事件会在规则删除后保留。")}</p><ManagementFeedback error={rules.error} loading={rules.isFetching} onRetry={() => void refresh()} />{rules.data && !rules.isError && !denied ? <><p className="native-scroll-hint">{t("左右滑动表格查看完整信息")}</p><DataTable rows={rules.data.data} columns={columns} rowKey={row => row.id} label={t("访问审计规则")} mobilePrimaryKey="name" /></> : null}</section>
-    <Modal open={editing && !denied} title={draft.id ? t("编辑审计规则") : t("新增审计规则")} subtitle={t("保存会更新当前配置；多人协作时请先刷新并核对。")} className="network-reference-page network-editor-modal" onClose={closeEditor}><div className="network-editor-body">{error || ownError ? <p role="alert">{error ? t(error) : managementError(ownError)}</p> : null}<form className="native-content-form" onSubmit={event => { event.preventDefault(); void save() }}><label>{t("规则名称")}<input data-autofocus placeholder={t("为规则设置便于识别的名称")} maxLength={120} value={draft.name} disabled={locked} onChange={event => setDraft({ ...draft, name: event.target.value })} /></label><label>{t("匹配类型")}<select value={draft.match_type} disabled={locked} onChange={event => setDraft({ ...draft, match_type: event.target.value as Rule['match_type'] })}>{(['domain', 'domain_suffix', 'keyword', 'ip_cidr'] as const).map(value => <option key={value} value={value}>{t(matchLabels[value])}</option>)}</select></label><label>{t("匹配内容")}<textarea aria-label={t("审计规则匹配内容")} rows={5} maxLength={4000} value={draft.match_value} disabled={locked} onChange={event => setDraft({ ...draft, match_value: event.target.value })} /></label><Checkbox label={t("启用")} checked={draft.enabled} disabled={locked} onChange={event => setDraft({ ...draft, enabled: event.target.checked })} /><div className="network-form-actions"><button className="button" disabled={locked}>{t("保存审计规则")}</button><button className="button" type="button" disabled={state.busy} onClick={closeEditor}>{t("取消")}</button></div></form></div></Modal>
+    <Modal size="medium" open={editing && !denied} title={draft.id ? t("编辑审计规则") : t("新增审计规则")} subtitle={t("保存会更新当前配置；多人协作时请先刷新并核对。")} className="network-reference-page network-editor-modal" onClose={closeEditor}><div className="network-editor-body">{error || ownError ? <p role="alert">{error ? t(error) : managementError(ownError)}</p> : null}<form className="native-content-form" onSubmit={event => { event.preventDefault(); void save() }}><label>{t("规则名称")}<input data-autofocus placeholder={t("为规则设置便于识别的名称")} maxLength={120} value={draft.name} disabled={locked} onChange={event => setDraft({ ...draft, name: event.target.value })} /></label><label>{t("匹配类型")}<select value={draft.match_type} disabled={locked} onChange={event => setDraft({ ...draft, match_type: event.target.value as Rule['match_type'] })}>{(['domain', 'domain_suffix', 'keyword', 'ip_cidr'] as const).map(value => <option key={value} value={value}>{t(matchLabels[value])}</option>)}</select></label><label>{t("匹配内容")}<textarea aria-label={t("审计规则匹配内容")} rows={5} maxLength={4000} value={draft.match_value} disabled={locked} onChange={event => setDraft({ ...draft, match_value: event.target.value })} /></label><Checkbox label={t("启用")} checked={draft.enabled} disabled={locked} onChange={event => setDraft({ ...draft, enabled: event.target.checked })} /><div className="network-form-actions"><button className="button" disabled={locked}>{t("保存审计规则")}</button><button className="button" type="button" disabled={state.busy} onClick={closeEditor}>{t("取消")}</button></div></form></div></Modal>
     <ReadList title={"访问审计事件"} rows={denied || events.isError ? [] : events.data?.data ?? []} columns={eventColumns} perPage={perPage} onPageSize={setPerPage} page={page} meta={events.data?.meta} ready={!!events.data && !denied} loading={events.isFetching} error={events.error} mobilePrimaryKey="target" onRetry={() => void refresh()} onPage={setPage}>
       <form className="native-filters network-audit-filters" onSubmit={event => { event.preventDefault(); applyFilters() }}><label>{t("节点 ID")}<input value={filter.server} inputMode="numeric" onChange={event => setFilter({ ...filter, server: event.target.value })} /></label><label>{t("用户 ID")}<input value={filter.user} inputMode="numeric" onChange={event => setFilter({ ...filter, user: event.target.value })} /></label><label>{t("规则命中")}<select value={filter.matched} onChange={event => setFilter({ ...filter, matched: event.target.value })}><option value="">{t("全部")}</option><option value="yes">{t("已命中")}</option><option value="no">{t("未命中")}</option></select></label><label>{t("目标关键字")}<input maxLength={100} value={filter.keyword} onChange={event => setFilter({ ...filter, keyword: event.target.value })} /></label><div className="network-filter-actions"><button className="button" data-primary="true">{t("筛选审计事件")}</button><button type="button" className="button" onClick={() => { setFilter(filters()); setApplied(filters()); setPage(1); setError('') }}>{t("重置筛选")}</button></div></form>
     </ReadList>

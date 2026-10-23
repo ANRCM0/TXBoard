@@ -24,6 +24,7 @@ import { requestConfirm } from '../components/ui/ConfirmDialog'
 import { admin, workflowActions } from './session'
 import { NodeEditor } from './NodeEditor'
 import { ServerQuickCard } from './ServerQuickCard'
+import { useAdminConfirmation } from './useAdminConfirmation'
 
 type Node = CoreOutput<'network.nodes.list'>[number]
 const columns: Column<Node>[] = [
@@ -39,6 +40,7 @@ const columns: Column<Node>[] = [
 ]
 
 export function NodesPage() {
+  const confirm = useAdminConfirmation(() => !management.denied)
   useLocale()
   const [params, setParams] = useSearchParams(), navigate = useNavigate()
   const machineFilter = /^[1-9][0-9]{0,18}$/.test(params.get('machine_id') ?? '') ? params.get('machine_id')! : undefined
@@ -112,7 +114,7 @@ export function NodesPage() {
   function selectedIds() { return selectedRows.map(node => node.id) }
 
   async function beginSort() {
-    if (locked || (sortRevision && !window.confirm(t('重新读取将替换当前排序草稿，确定继续？')))) return
+    if (locked || (sortRevision && !(await confirm(t('重新读取将替换当前排序草稿，确定继续？'))))) return
     const generation = workflowActions.generation(), serial = ++sortSequence.current
     const current = () => mounted.current && serial === sortSequence.current && generation === workflowActions.generation()
     setSorting(true); setSortError('')
@@ -156,8 +158,8 @@ export function NodesPage() {
       }
     } finally { if (current()) setSorting(false) }
   }
-  function closeSort() {
-    if (locked || !window.confirm(t('确定放弃当前节点排序草稿？'))) return
+  async function closeSort() {
+    if (locked || !(await confirm(t('确定放弃当前节点排序草稿？')))) return
     setSortIds([]); setSortNodes([]); setSortRevision(''); setSortConflict(false); setSortError('')
   }
 

@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Field, Input, Select, Switch, Textarea } from '../components/ui/Field'
 import { protocolValue, withProtocolValue, type NodeProtocolField, type NodeProtocol } from './nodeConfiguration'
 import { useDirtyDraft } from '../lib/useDirtyDraft'
+import { useAdminConfirmation } from './useAdminConfirmation'
 
 export function NodeJsonField({ label, value, onChange, disabled, arrayOnly = false, objectOnly = false, templates = [] }: {
   label: string; value: unknown; onChange: (value: unknown) => void; disabled?: boolean; arrayOnly?: boolean; objectOnly?: boolean
@@ -10,6 +11,7 @@ export function NodeJsonField({ label, value, onChange, disabled, arrayOnly = fa
 }) {
   const { locale } = useLocale()
   const encoded = JSON.stringify(value, null, 2) ?? 'null'
+  const confirm = useAdminConfirmation(() => !disabled, encoded)
   const accepted = useRef(encoded)
   const [text, setText] = useState(encoded), [error, setError] = useState('')
   const dirty = text !== encoded
@@ -29,24 +31,24 @@ export function NodeJsonField({ label, value, onChange, disabled, arrayOnly = fa
     try { parse(source); setError('') }
     catch (failure) { setError(failure instanceof SyntaxError ? 'JSON 格式有误，请检查后再保存。' : (failure as Error).message) }
   }
-  function apply() {
+  async function apply() {
     if (disabled || !dirty) return
     try {
       const parsed = parse(text)
-      if (!window.confirm(t('将解析后的 JSON 写入 {label} 草稿，确定应用？', { label }))) return
+      if (!(await confirm(t('将解析后的 JSON 写入 {label} 草稿，确定应用？', { label })))) return
       const next = JSON.stringify(parsed, null, 2)
       accepted.current = next; setText(next); setError(''); onChange(parsed)
     } catch (failure) { setError(failure instanceof SyntaxError ? 'JSON 格式有误，请检查后再保存。' : (failure as Error).message) }
   }
   return <div className="node-editor-json-control"><Field label={label} error={error ? t(error) : undefined}><textarea ref={input} className="ui-textarea node-editor-json" spellCheck={false} rows={5} value={text} disabled={disabled}
     data-json-dirty={dirty || undefined} onChange={event => edit(event.target.value)} /></Field>
-    {templates.length ? <label className="node-editor-template">{t('JSON 模板')}<Select aria-label={t('{label} JSON 模板', { label })} value="" disabled={disabled} onChange={event => {
+    {templates.length ? <label className="node-editor-template">{t('JSON 模板')}<Select aria-label={t('{label} JSON 模板', { label })} value="" disabled={disabled} onChange={async event => {
       const template = templates[Number(event.target.value)]
-      if (template && (!dirty || window.confirm(t('模板将替换当前 JSON 编辑内容，确定继续？')))) edit(JSON.stringify(template.value, null, 2))
+      if (template && (!dirty || (await confirm(t('模板将替换当前 JSON 编辑内容，确定继续？'))))) edit(JSON.stringify(template.value, null, 2))
     }}><option value="">{t('选择模板填入编辑器')}</option>{templates.map((template, index) => <option key={index} value={index}>{t(template.label)}</option>)}</Select></label> : null}
     <div className="network-form-actions"><button type="button" className="button" disabled={disabled || !dirty || !!error} onClick={apply}>{t('解析并应用 {label}', { label })}</button>
-      {dirty ? <><button type="button" className="button" disabled={disabled} onClick={() => {
-        if (window.confirm(t('确定放弃这项 JSON 修改？'))) { setText(encoded); setError('') }
+      {dirty ? <><button type="button" className="button" disabled={disabled} onClick={async () => {
+        if ((await confirm(t('确定放弃这项 JSON 修改？')))) { setText(encoded); setError('') }
       }}>{t('还原 JSON')}</button><span role="status">{t('JSON 修改尚未应用，请先解析并应用。')}</span></> : null}</div>
   </div>
 }
